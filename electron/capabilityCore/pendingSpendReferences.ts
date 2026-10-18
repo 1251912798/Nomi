@@ -8,12 +8,12 @@ type IndexedAsset = { id: string; data: Record<string, unknown> };
 export type SpendReferenceAssets = Readonly<{
   list: (projectId: string) => readonly IndexedAsset[];
   identity: (projectId: string, assetId: string) => Readonly<{ contentHash: string; version: number }> | undefined;
-  import: (projectId: string, url: string, binding: ProjectBinding, assertCurrent: () => void) => Promise<unknown>;
+  import: (projectId: string, url: string, kind: 'image' | 'video' | 'audio', binding: ProjectBinding, assertCurrent: () => void) => Promise<unknown>;
 }>;
 export const projectSpendReferenceAssets: SpendReferenceAssets = {
   list: projectId => [...iterateProjectAssets(cursor => listProjectAssets({ projectId, limit: 500, cursor }))],
   identity: resolveProjectAssetReferenceIdentity,
-  import: (projectId, url, projectBinding, assertCurrent) => importRemoteAsset({ projectId, url, projectBinding,
+  import: (projectId, url, kind, projectBinding, assertCurrent) => importRemoteAsset({ projectId, url, projectBinding, expectedKind: kind,
     sourceEvidence: /^https?:/i.test(url)
       ? { source: 'browser', pageUrl: url, capturedAt: new Date().toISOString(), usageStatus: 'reference_only' }
       : { source: 'user', capturedAt: new Date().toISOString(), usageStatus: 'reference_only' },
@@ -52,7 +52,7 @@ export async function resolveSpendReferenceInputs(input: {
     if (typeof value.url !== 'string' || !value.url.trim() || !['image', 'video', 'audio'].includes(value.kind)) throw new Error('generation_reference_invalid');
     let asset = input.assets.list(input.projectId).find(asset => asset.data.url === value.url);
     if (!asset) {
-      const imported = await input.assets.import(input.projectId, value.url, input.binding, input.assertCurrent);
+      const imported = await input.assets.import(input.projectId, value.url, value.kind as 'image' | 'video' | 'audio', input.binding, input.assertCurrent);
       input.assertCurrent();
       const id = imported && typeof imported === 'object' && 'id' in imported ? imported.id : undefined;
       asset = input.assets.list(input.projectId).find(asset => asset.id === id);

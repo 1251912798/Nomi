@@ -922,6 +922,11 @@
                   "maxLength": 120,
                   "minLength": 1,
                   "type": "string"
+                },
+                "variantId": {
+                  "description": "From list_models variants.",
+                  "minLength": 1,
+                  "type": "string"
                 }
               },
               "type": "object"

@@ -85,3 +85,23 @@ test('空转守卫的原料 · 什么都没扫到时 sites/checked 必须是 0�
   assert.equal(result.sites, 0)
   assert.equal(result.checked, 0)
 })
+
+test('登记 · 故意给错的键：紧贴的登记注释（键名一致、理由非空）才放行，并如实记进 allowed', () => {
+  const result = run(`
+    call.release({ type: 'tool', name: 'draft_shots', args: { shots: [{ title: 't', /* walkthrough-tool-args: intentional-bad-key variant — 演自纠：真模型就把变体写进了这里 */ variant: 'fast' }] } })
+  `)
+  assert.equal(result.violations.length, 0)
+  assert.equal(result.allowed.length, 1)
+  assert.equal(result.allowed[0].key, 'shots[].variant')
+  assert.match(result.allowed[0].reason, /自纠/)
+})
+
+test('登记 · 阴性：没有理由 / 键名对不上 / 登记在别的键上，都不放行；登记不沾光给别的坏键', () => {
+  const noReason = run(`call.release({ name: 'draft_shots', args: { shots: [{ /* walkthrough-tool-args: intentional-bad-key variant — */ variant: 'fast' }] } })`)
+  assert.equal(noReason.violations.length, 1)
+  const wrongKey = run(`call.release({ name: 'draft_shots', args: { shots: [{ /* walkthrough-tool-args: intentional-bad-key other — 理由 */ variant: 'fast' }] } })`)
+  assert.equal(wrongKey.violations.length, 1)
+  const neighbour = run(`call.release({ name: 'draft_shots', args: { shots: [{ /* walkthrough-tool-args: intentional-bad-key variant — 理由 */ variant: 'fast', modelKey: 'x' }] } })`)
+  assert.equal(neighbour.violations.length, 1)
+  assert.equal(neighbour.violations[0].key, 'shots[].modelKey')
+})

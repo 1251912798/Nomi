@@ -19,7 +19,7 @@ export async function executeAntigravityImageOperation(input: ProcessOperationIn
       const artifact = result.artifacts[0];
       const written = await writeAsset(input.projectId, Buffer.from(artifact.bytes), artifact.filename, artifact.mimeType,
         { kind: "generated", provider: "antigravity-cli", conversationId: result.conversationId, localTaskId: taskId,
-          width: artifact.width, height: artifact.height }, `antigravity:${taskId}`) as { data?: { url?: string } };
+          width: artifact.width, height: artifact.height }, "image", `antigravity:${taskId}`) as { data?: { url?: string } };
       return written.data?.url ? [written.data.url] : [];
     });
     return { response, request: { transport: "antigravity-cli", operation: "query", taskId } };

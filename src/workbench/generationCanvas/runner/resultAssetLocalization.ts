@@ -1,4 +1,5 @@
 import { getDesktopBridge } from '../../../desktop/bridge'
+import { assetKindOf } from '../../assets/assetTypes'
 import { unwrapAssetImportResult } from '../../../../electron/shared/contracts/assetImportResult'
 import type { GenerationNodeResult } from '../model/generationCanvasTypes'
 import { readMediaDimensions, type MediaDimensions } from '../nodes/nodeSizing'
@@ -37,12 +38,16 @@ export async function localizeRemoteResultUrl(
   if (!trimmedProjectId) return result // 无项目可落（headless/首启窗口）→ 交给调用方，不硬塞
   const importRemoteUrl = getDesktopBridge()?.assets?.importRemoteUrl
   if (!importRemoteUrl) return result
+  // 落盘关口按它核字节：结果记着是视频，下载到的就得是视频（V-1213）。不是媒体结果就不落。
+  const expectedKind = assetKindOf(result.type)
+  if (!expectedKind) return result
   const remoteUrl = String(result.url)
   try {
     const asset = unwrapAssetImportResult(await awaitMediaTransfer(importRemoteUrl({
       projectId: trimmedProjectId,
       url: remoteUrl,
       kind: 'generated',
+      expectedKind,
       ownerNodeId: nodeId,
     }), (waitedMs) => new Error(describePhaseSilence('finalizing', waitedMs))))
     const localUrl = typeof asset?.data?.url === 'string' ? asset.data.url.trim() : ''

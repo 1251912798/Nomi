@@ -71,7 +71,7 @@ const REFUSE_ON_FLAT = "单镜 create 把这一镜摊成顶层参数，顶层没
  */
 function semanticsOf(shot: DraftShot): CandidatePatch {
   const {
-    storyboard, prompt, taskKind, modeId, modelId, candidate, parameters, durationSec, aspectRatio, references,
+    storyboard, prompt, taskKind, modeId, modelId, variantId, candidate, parameters, durationSec, aspectRatio, references,
     // 信封那三件不属于「语义」，由各自的调用点按这条路有没有位置处置。
     shotId: _envelopeShotId, role: _envelopeRole, title: _envelopeTitle,
     ...unhandled
@@ -92,6 +92,7 @@ function semanticsOf(shot: DraftShot): CandidatePatch {
       } }
       : {}),
     ...(modeId !== undefined ? { modeId } : {}),
+    ...(variantId !== undefined ? { variantId } : {}),
     // ② 拍平嵌套；逐镜点名的 `candidate` 赢过平铺的 `modelId`（谁赢是**声明**出来的，不靠写的顺序）。
     ...(candidate?.modelId !== undefined ? { modelId: candidate.modelId }
       : modelId !== undefined ? { modelId } : {}),

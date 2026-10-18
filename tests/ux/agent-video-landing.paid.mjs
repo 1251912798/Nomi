@@ -11,7 +11,7 @@
 //   ③ 供应商一出片：节点变成结果（真 mp4 落进项目素材库，永久的 nomi-local 地址），任务面板不再说「供应商长时间没有返回新状态」；
 //   ④ 英文界面 + 重开之后：节点上的片子还在。
 //
-// 大脑：APIMart 的 DeepSeek V3.2；视频：Seedance 2.0 fast · 480p · 4 秒 · 无音频（最便宜那一档）。
+// 大脑：APIMart 的 DeepSeek V4 Pro；视频：Seedance 2.0 fast · 480p · 4 秒 · 无音频（最便宜那一档）。
 // 花钱之前逐字段核对 Agent 写进制作 Run 的草稿，不是那一档就关卡、一分钱不花（_agentVideoPaid.mjs）。
 // 步骤本体在 _agentVideoLandingSteps.mjs（接入 → 开项目 → … → 英文重开，顺序也在那里）；零额度的 loopback 演练是
 // agent-video-landing-paid.rehearsal.walk.mjs，调的是同一份——花钱之前先跑它，接入 / 草稿核对 / 落地读数走不通会在那里红。

@@ -264,9 +264,9 @@ export function assertEnvKeyModels(models) {
   if (foreign.length) throw new Error(`${ENV_KEY_VAR} 只能授权 ${ENV_KEY_VENDOR} 的模型，这一场还点名了：${foreign.map((model) => `${model.vendorKey}/${model.modelKey}`).join('、')}（一分钱没花）`)
 }
 
-/** 接入页里要验证的文本模型：授权名单里点名的那个 APIMart 文本模型；没点名就用缺省的 deepseek-v3.2。 */
+/** 接入页里要验证的文本模型：授权名单里点名的那个 APIMart 文本模型；没点名就用缺省的 deepseek-v4-pro。 */
 export function envKeyBrainOf(models) {
-  return models.find((model) => APIMART_TEXT_MODEL_KEYS.includes(model.modelKey))?.modelKey ?? 'deepseek-v3.2'
+  return models.find((model) => APIMART_TEXT_MODEL_KEYS.includes(model.modelKey))?.modelKey ?? 'deepseek-v4-pro'
 }
 
 function readJson(file) {

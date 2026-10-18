@@ -1,0 +1,1170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>ComposerB3 生成框 0.24 拍板图</title>
+<style>
+body{margin:0;padding:24px 20px;background:#fff;font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+.bd{margin:0 0 32px}
+.bd-title{margin:0 0 8px;font-size:14px;font-weight:600;color:#333}
+.bd-B3a .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3a .dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.bd-B3a .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:320px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3a .cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 4px}
+.bd-B3a .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3a .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3a .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3a .tb:hover{background:var(--nomi-ink10)}
+.bd-B3a .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3a .ib.bare{border-color:transparent}
+.bd-B3a .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3a .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.6}
+.bd-B3a .prompt .ph{color:var(--nomi-ink60)}
+.bd-B3a .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3a .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3a .bar .sp{flex:1;min-width:0}
+.bd-B3a .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3a .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3b .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3b .dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.bd-B3b .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:560px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3b .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3b .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3b .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3b .tb:hover{background:var(--nomi-ink10)}
+.bd-B3b .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3b .ib.bare{border-color:transparent}
+.bd-B3b .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3b .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.6}
+.bd-B3b .prompt .ph{color:var(--nomi-ink60)}
+.bd-B3b .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3b .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3b .bar .sp{flex:1;min-width:0}
+.bd-B3b .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3b .chip.open{background:var(--nomi-accent-soft);color:var(--nomi-ink)}
+.bd-B3b .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3b .pop{position:absolute;z-index:3;left:150px;bottom:50px;box-sizing:border-box;width:340px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-lg)}
+.bd-B3b .gl{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--nomi-ink60);margin:10px 0 4px}
+.bd-B3b .gl.first{margin-top:0}
+.bd-B3b .seg{display:flex;padding:2px;background:var(--nomi-ink05);border-radius:999px}
+.bd-B3b .seg button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:28px;padding:0;border:0;border-radius:999px;background:transparent;color:var(--nomi-ink60);font:inherit;font-size:12px}
+.bd-B3b .seg button.on{background:var(--nomi-paper);color:var(--nomi-ink);font-weight:600;box-shadow:var(--nomi-shadow-sm)}
+.bd-B3b .tip{position:absolute;z-index:4;left:80px;top:62px;padding:6px 10px;background:var(--nomi-ink);color:var(--nomi-paper);border-radius:var(--nomi-radius-sm);font-size:12px;line-height:1.4;white-space:nowrap}
+.bd-B3c .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3c .dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.bd-B3c .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:380px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3c .cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 4px}
+.bd-B3c .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3c .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3c .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3c .tb:hover{background:var(--nomi-ink10)}
+.bd-B3c .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3c .ib.bare{border-color:transparent}
+.bd-B3c .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3c .t{position:relative;flex:none;width:40px;height:40px}
+.bd-B3c .t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.bd-B3c .t .x{display:none}
+.bd-B3c .t.hover .x{display:flex}
+.bd-B3c .x{position:absolute;right:-10px;top:-10px;width:28px;height:28px;padding:0;border:0;background:transparent;align-items:center;justify-content:center}
+.bd-B3c .x i{display:flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper)}
+.bd-B3c .cnt{margin-left:auto;align-self:center;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3c .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.9}
+.bd-B3c .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3c .m{display:inline-flex;align-items:center;gap:4px;padding:0 8px 0 3px;border-radius:999px;background:var(--nomi-accent-soft);color:var(--nomi-ink);font-weight:500;line-height:1.5;vertical-align:baseline}
+.bd-B3c .m svg{display:block;border-radius:4px}
+.bd-B3c .tc{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.bd-B3c .tcc{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 4px 0 10px;border-radius:999px;background:var(--nomi-ink05);color:var(--nomi-ink80);font-size:12px}
+.bd-B3c .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3c .bar .sp{flex:1;min-width:0}
+.bd-B3c .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3c .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3c .tip{position:absolute;z-index:4;left:-4px;top:-36px;padding:6px 10px;background:var(--nomi-ink);color:var(--nomi-paper);border-radius:var(--nomi-radius-sm);font-size:12px;line-height:1.4;white-space:nowrap}
+.bd-B3d .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3d .dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.bd-B3d .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:340px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3d .cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 4px}
+.bd-B3d .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3d .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3d .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3d .tb:hover{background:var(--nomi-ink10)}
+.bd-B3d .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3d .ib.bare{border-color:transparent}
+.bd-B3d .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3d .cell{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:40px;margin-left:12px}
+.bd-B3d .cell+.sw+.cell{margin-left:0}
+.bd-B3d .cell .lb{font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3d .t{position:relative;flex:none;width:40px;height:40px}
+.bd-B3d .t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.bd-B3d .t.empty{display:flex;align-items:center;justify-content:center;padding:0;border:0;background:var(--nomi-ink05);color:var(--nomi-ink60);border-radius:var(--nomi-radius-sm)}
+.bd-B3d .sw{margin-top:6px}
+.bd-B3d .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.6}
+.bd-B3d .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3d .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3d .bar .sp{flex:1;min-width:0}
+.bd-B3d .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3d .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3e .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3e .dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.bd-B3e .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:340px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3e .cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 4px}
+.bd-B3e .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3e .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3e .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3e .tb:hover{background:var(--nomi-ink10)}
+.bd-B3e .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3e .ib.bare{border-color:transparent}
+.bd-B3e .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3e .t{position:relative;flex:none;width:40px;height:40px}
+.bd-B3e .t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.bd-B3e .cnt{margin-left:auto;align-self:center;display:inline-flex;align-items:center;gap:2px;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3e .lnk{height:28px;padding:0 4px;border:0;background:transparent;color:var(--nomi-accent);font:inherit;font-size:12px;font-weight:500}
+.bd-B3e .xs{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;background:transparent;color:var(--nomi-ink60);vertical-align:middle}
+.bd-B3e .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.9}
+.bd-B3e .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3e .m{display:inline-flex;align-items:center;gap:4px;padding:0 8px 0 3px;border-radius:999px;background:var(--nomi-accent-soft);color:var(--nomi-ink);font-weight:500;line-height:1.5;vertical-align:baseline}
+.bd-B3e .m svg{display:block;border-radius:4px}
+.bd-B3e .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3e .bar .sp{flex:1;min-width:0}
+.bd-B3e .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3e .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3f .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3f .dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.bd-B3f .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:340px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3f .cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 4px}
+.bd-B3f .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3f .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3f .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3f .tb:hover{background:var(--nomi-ink10)}
+.bd-B3f .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3f .ib.bare{border-color:transparent}
+.bd-B3f .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3f .cell{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:40px;margin-left:12px}
+.bd-B3f .cell+.sw+.cell{margin-left:0}
+.bd-B3f .cell .lb{font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3f .t{position:relative;flex:none;width:40px;height:40px}
+.bd-B3f .t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.bd-B3f .t.dim svg.img{opacity:.45}
+.bd-B3f .sw{margin-top:6px}
+.bd-B3f .cnt{margin-left:auto;align-self:flex-start;line-height:40px;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3f .hintrow{display:flex;align-items:center;gap:4px;margin-top:6px;font-size:12px;color:var(--nomi-ink60)}
+.bd-B3f .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.6}
+.bd-B3f .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3f .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3f .bar .sp{flex:1;min-width:0}
+.bd-B3f .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3f .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3g .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3g .dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.bd-B3g .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:360px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3g .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3g .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3g .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3g .tb:hover{background:var(--nomi-ink10)}
+.bd-B3g .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3g .ib.bare{border-color:transparent}
+.bd-B3g .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3g .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.6}
+.bd-B3g .prompt .ph{color:var(--nomi-ink60)}
+.bd-B3g .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3g .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3g .bar .sp{flex:1;min-width:0}
+.bd-B3g .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3g .chip.open{background:var(--nomi-accent-soft);color:var(--nomi-ink)}
+.bd-B3g .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3g .pop{position:absolute;z-index:3;left:112px;bottom:50px;box-sizing:border-box;width:300px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-lg)}
+.bd-B3g .gl{font-size:12px;color:var(--nomi-ink60);margin:10px 0 4px}
+.bd-B3g .gl.first{margin-top:0}
+.bd-B3g .seg{display:flex;padding:2px;background:var(--nomi-ink05);border-radius:999px}
+.bd-B3g .seg button{flex:1;display:inline-flex;align-items:center;justify-content:center;height:28px;padding:0;border:0;border-radius:999px;background:transparent;color:var(--nomi-ink60);font:inherit;font-size:12px}
+.bd-B3g .seg button.on{background:var(--nomi-paper);color:var(--nomi-ink);font-weight:600;box-shadow:var(--nomi-shadow-sm)}
+.bd-B3h .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3h .dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.bd-B3h .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:340px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3h .cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 4px}
+.bd-B3h .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3h .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3h .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3h .tb:hover{background:var(--nomi-ink10)}
+.bd-B3h .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3h .ib.bare{border-color:transparent}
+.bd-B3h .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3h .t{position:relative;flex:none;width:40px;height:40px}
+.bd-B3h .t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.bd-B3h .cnt{margin-left:auto;align-self:center;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3h .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.9}
+.bd-B3h .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3h .m{display:inline-flex;align-items:center;gap:4px;padding:0 8px 0 3px;border-radius:999px;background:var(--nomi-accent-soft);color:var(--nomi-ink);font-weight:500;line-height:1.5;vertical-align:baseline}
+.bd-B3h .m svg{display:block;border-radius:4px}
+.bd-B3h .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3h .bar .sp{flex:1;min-width:0}
+.bd-B3h .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3h .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3i .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-warning-ink:oklch(.45 .085 72);--nomi-warning-soft:oklch(.968 .024 72);--nomi-warning-edge:oklch(.905 .07 72);--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3i .dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-warning-ink:oklch(.82 .085 72);--nomi-warning-soft:oklch(.295 .04 72);--nomi-warning-edge:oklch(.395 .058 72);--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.bd-B3i .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:380px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3i .cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 40px 4px}
+.bd-B3i .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3i .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3i .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3i .tb:disabled{opacity:.4;cursor:not-allowed}
+.bd-B3i .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3i .ib.bare{border-color:transparent}
+.bd-B3i .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3i .t{position:relative;flex:none;width:40px;height:40px}
+.bd-B3i .t svg.img{display:block;border-radius:var(--nomi-radius-sm);opacity:.45}
+.bd-B3i .cnt{margin-left:auto;align-self:center;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3i .note{display:flex;align-items:center;gap:6px;margin-top:6px;padding:4px 10px;border:1px solid var(--nomi-warning-edge);border-radius:999px;background:var(--nomi-warning-soft);color:var(--nomi-warning-ink);font-size:12px}
+.bd-B3i .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.6}
+.bd-B3i .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3i .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3i .bar .sp{flex:1;min-width:0}
+.bd-B3i .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3i .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3i .tip{position:absolute;z-index:4;left:0;top:-38px;padding:6px 10px;background:var(--nomi-ink);color:var(--nomi-paper);border-radius:var(--nomi-radius-sm);font-size:12px;line-height:1.4;white-space:nowrap}
+.bd-B3j .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3j .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:300px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3j .cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 4px}
+.bd-B3j .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3j .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3j .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3j .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3j .ib.bare{border-color:transparent}
+.bd-B3j .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3j .cell{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:40px;margin-left:12px}
+.bd-B3j .cell+.sw+.cell{margin-left:0}
+.bd-B3j .cell .lb{font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3j .t{position:relative;flex:none;width:40px;height:40px}
+.bd-B3j .t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.bd-B3j .sw{margin-top:6px}
+.bd-B3j .cnt{margin-left:auto;align-self:center;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3j .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.6}
+.bd-B3j .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3j .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3j .bar .sp{flex:1;min-width:0}
+.bd-B3j .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3j .chip.open{background:var(--nomi-accent-soft);color:var(--nomi-ink)}
+.bd-B3j .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3j .mm{position:absolute;z-index:3;left:12px;bottom:50px;box-sizing:border-box;width:200px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-lg);overflow:hidden}
+.bd-B3j .mr{display:flex;align-items:center;gap:8px;height:28px;padding:0 10px;font-size:12px;color:var(--nomi-ink80)}
+.bd-B3j .mr.sel{font-weight:600;color:var(--nomi-ink)}
+.bd-B3j .mr.hov{background:var(--nomi-ink05)}
+.bd-B3j .mr svg{margin-left:auto;color:var(--nomi-accent)}
+.bd-B3j .mf{display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-top:1px solid var(--nomi-line);font-size:12px;color:var(--nomi-ink60)}
+.bd-B3k .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3k .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:420px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3k .cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 4px}
+.bd-B3k .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3k .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3k .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3k .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3k .ib.bare{border-color:transparent}
+.bd-B3k .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3k .cell{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:40px;margin-left:12px}
+.bd-B3k .cell+.sw+.cell{margin-left:0}
+.bd-B3k .cell .lb{font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3k .t{position:relative;flex:none;width:40px;height:40px}
+.bd-B3k .t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.bd-B3k .sw{margin-top:6px}
+.bd-B3k .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.6}
+.bd-B3k .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3k .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3k .bar .sp{flex:1;min-width:0}
+.bd-B3k .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3k .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3k .oseg{display:inline-flex;padding:2px;background:var(--nomi-ink05);border-radius:var(--nomi-radius)}
+.bd-B3k .oseg button{height:32px;padding:0 14px;border:0;border-radius:var(--nomi-radius-sm);background:transparent;color:var(--nomi-ink60);font:inherit;font-size:13px}
+.bd-B3k .oseg button.on{background:var(--nomi-paper);color:var(--nomi-ink);font-weight:600;box-shadow:var(--nomi-shadow-sm)}
+.bd-B3k .obox{display:flex;align-items:center;justify-content:center;width:56px;height:56px;box-sizing:border-box;border:1px dashed var(--nomi-line);border-radius:var(--nomi-radius);background:var(--nomi-ink05);color:var(--nomi-ink60)}
+.bd-B3l .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.bd-B3l .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:380px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3l .cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 34px 4px}
+.bd-B3l .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3l .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3l .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3l .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3l .ib.bare{border-color:transparent}
+.bd-B3l .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3l .cell{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:40px;margin-left:12px}
+.bd-B3l .cell+.sw+.cell{margin-left:0}
+.bd-B3l .cell .lb{font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3l .t{position:relative;flex:none;width:40px;height:40px}
+.bd-B3l .t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.bd-B3l .t.empty{display:flex;align-items:center;justify-content:center;padding:0;border:0;background:var(--nomi-ink05);color:var(--nomi-ink60);border-radius:var(--nomi-radius-sm)}
+.bd-B3l .t .x{display:none}
+.bd-B3l .t.hover .x{display:flex}
+.bd-B3l .x{position:absolute;right:-10px;top:-10px;width:28px;height:28px;padding:0;border:0;background:transparent;align-items:center;justify-content:center}
+.bd-B3l .x i{display:flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper)}
+.bd-B3l .sw{margin-top:6px}
+.bd-B3l .cnt{margin-left:auto;align-self:center;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3l .prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.9}
+.bd-B3l .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3l .m{display:inline-flex;align-items:center;gap:4px;padding:0 8px 0 3px;border-radius:999px;background:var(--nomi-accent-soft);color:var(--nomi-ink);font-weight:500;line-height:1.5;vertical-align:baseline}
+.bd-B3l .m svg{display:block;border-radius:4px}
+.bd-B3l .tc{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.bd-B3l .tcc{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 4px 0 10px;border-radius:999px;background:var(--nomi-ink05);color:var(--nomi-ink80);font-size:12px}
+.bd-B3l .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3l .bar .sp{flex:1;min-width:0}
+.bd-B3l .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3l .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3l .tip{position:absolute;z-index:4;left:-4px;top:-36px;padding:6px 10px;background:var(--nomi-ink);color:var(--nomi-paper);border-radius:var(--nomi-radius-sm);font-size:12px;line-height:1.4;white-space:nowrap}
+.bd-B3m .light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06)}
+.bd-B3m .pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:260px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.bd-B3m .node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.bd-B3m .refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.bd-B3m .tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.bd-B3m .ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.bd-B3m .ib.bare{border-color:transparent}
+.bd-B3m .vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.bd-B3m .t{position:relative;flex:none;width:40px;height:40px}
+.bd-B3m .t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.bd-B3m .cnt{margin-left:auto;align-self:center;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.bd-B3m .prompt{position:relative;padding:8px 36px 8px 4px;min-height:36px;font-size:14px;line-height:1.6}
+.bd-B3m .prompt .ib{position:absolute;right:0;top:4px}
+.bd-B3m .bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bd-B3m .bar .sp{flex:1;min-width:0}
+.bd-B3m .chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.bd-B3m .send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.bd-B3m .sendtxt{flex:none;height:30px;padding:0 12px 0 14px;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);font:inherit;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.bd-B3m .note{margin:10px 0 0 4px;font-size:12px;color:var(--nomi-ink60)}
+
+</style>
+</head>
+<body>
+<section class="bd bd-B3a" lang="zh-CN">
+<h2 class="bd-title">B3a 视频 空，默认参考（浅 + 暗）</h2>
+<div style="display:flex;width:1200px">
+
+<div class="pane light">
+  <div class="cap">视频生成框</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+    </div>
+    <div class="prompt"><span class="ph">写下画面和镜头；输入 @ 可以引用参考图，用它们的名字</span>
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">参考 · 16:9 · 720p · 5s <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-label="有声" role="img"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="pane dark">
+  <div class="cap">视频生成框</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+    </div>
+    <div class="prompt"><span class="ph">写下画面和镜头；输入 @ 可以引用参考图，用它们的名字</span>
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">参考 · 16:9 · 720p · 5s <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-label="有声" role="img"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+</div>
+</section>
+<section class="bd bd-B3b" lang="zh-CN">
+<h2 class="bd-title">B3b 视频 参数弹层，生成方式</h2>
+<div style="display:flex;width:600px">
+
+<div class="pane light">
+  <div style="height:322px"></div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+    </div>
+    <div class="prompt"><span class="ph">写下画面和镜头；输入 @ 可以引用参考图，用它们的名字</span>
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip open">参考 · 16:9 · 720p · 5s <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-label="有声" role="img"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+
+    <div class="pop">
+      <div class="tip">此模型最多：9 张图、3 段视频、3 段音频</div>
+      <div class="gl first">变体</div>
+      <div class="seg"><button>标准</button><button class="on">Fast</button></div>
+      <div class="gl">生成方式</div>
+      <div class="seg"><button class="on">参考<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-label="参考的模型上限" role="img"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/></svg></button><button>首尾帧</button></div>
+      <div class="gl">比例</div>
+      <div class="seg"><button class="on">16:9</button><button>9:16</button><button>1:1</button><button>4:3</button><button>3:4</button><button>21:9</button></div>
+      <div class="gl">清晰度</div>
+      <div class="seg"><button>480p</button><button class="on">720p</button></div>
+      <div class="gl">生成时长</div>
+      <div class="seg"><button>4s</button><button class="on">5s</button><button>6s</button><button>7s</button><button>8s</button><button>9s</button><button>10s</button><button>11s</button><button>12s</button></div>
+      <div class="gl">生成音频</div>
+      <div class="seg"><button class="on">开启</button><button>关闭</button></div>
+    </div>
+  </div>
+</div>
+
+</div>
+</section>
+<section class="bd bd-B3c" lang="zh-CN">
+<h2 class="bd-title">B3c 视频 参考 3 张，含连线</h2>
+<div style="display:flex;width:600px">
+
+<div class="pane light">
+  <div class="cap" style="margin-bottom:34px">视频生成框</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t hover">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="女主肖像，画布节点，来自连线"><rect width="44" height="44" fill="#e6dccf"/><path d="M5 44 C6 35 15 31 22 31 C29 31 38 35 39 44Z" fill="#6c7d92"/><ellipse cx="22" cy="18" rx="8" ry="10" fill="#e2bfa6"/><path d="M14 16 C13 7 19 5 23 6 C30 7 31 13 30 17 C28 12 25 11 22 11 C18 12 16 14 14 16Z" fill="#3a3330"/></svg>
+        <button class="x" aria-label="断开连线"><i><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></i></button>
+        <div class="tip">画布节点：女主肖像 · 点 × 断开连线</div>
+      </div>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边小镇，素材库"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>
+        <button class="x" aria-label="移除海边小镇"><i><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></i></button>
+      </div>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="树林，上传"><rect width="44" height="44" fill="#cfdcc8"/><path d="M5 36 L13 10 L21 36Z" fill="#5f8a63"/><path d="M21 36 L30 7 L40 36Z" fill="#4c7a55"/><rect y="36" width="44" height="8" fill="#8a7a5f"/></svg>
+        <button class="x" aria-label="移除树林"><i><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></i></button>
+      </div>
+      <span class="cnt">参考图 3 张</span>
+    </div>
+    <div class="prompt"><span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#e6dccf"/><path d="M5 44 C6 35 15 31 22 31 C29 31 38 35 39 44Z" fill="#6c7d92"/><ellipse cx="22" cy="18" rx="8" ry="10" fill="#e2bfa6"/><path d="M14 16 C13 7 19 5 23 6 C30 7 31 13 30 17 C28 12 25 11 22 11 C18 12 16 14 14 16Z" fill="#3a3330"/></svg>女主肖像</span> 的人物走进 <span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>海边小镇</span>，树影按 <span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#cfdcc8"/><path d="M5 36 L13 10 L21 36Z" fill="#5f8a63"/><path d="M21 36 L30 7 L40 36Z" fill="#4c7a55"/><rect y="36" width="44" height="8" fill="#8a7a5f"/></svg>树林</span>，镜头缓慢推近。
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="tc">
+      <span class="tcc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg>连入文字 · 开场白<button class="ib bare" aria-label="断开连线" style="width:28px;height:24px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button></span>
+    </div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">参考 · 16:9 · 720p · 5s <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-label="有声" role="img"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+</div>
+</section>
+<section class="bd bd-B3d" lang="zh-CN">
+<h2 class="bd-title">B3d 视频 首尾帧，尾帧可不填（浅 + 暗）</h2>
+<div style="display:flex;width:1200px">
+
+<div class="pane light">
+  <div class="cap">视频生成框</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="cell">
+        <div class="t">
+          <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="首帧，海边小镇"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>
+        </div>
+        <span class="lb">首帧</span>
+      </div>
+      <button class="ib sw" aria-label="对调首帧和尾帧"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 17l-18 0"/><path d="M6 10l-3 -3l3 -3"/><path d="M3 7l18 0"/><path d="M18 20l3 -3l-3 -3"/></svg></button>
+      <div class="cell">
+        <button class="t empty" aria-label="尾帧，可不填，点击添加"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+        <span class="lb">尾帧（可不填）</span>
+      </div>
+    </div>
+    <div class="prompt">镜头缓慢推近，薄雾散开，海面泛起金光。
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">首尾帧 · 16:9 · 720p · 5s <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-label="有声" role="img"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="pane dark">
+  <div class="cap">视频生成框</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="cell">
+        <div class="t">
+          <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="首帧，海边小镇"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>
+        </div>
+        <span class="lb">首帧</span>
+      </div>
+      <button class="ib sw" aria-label="对调首帧和尾帧"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 17l-18 0"/><path d="M6 10l-3 -3l3 -3"/><path d="M3 7l18 0"/><path d="M18 20l3 -3l-3 -3"/></svg></button>
+      <div class="cell">
+        <button class="t empty" aria-label="尾帧，可不填，点击添加"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+        <span class="lb">尾帧（可不填）</span>
+      </div>
+    </div>
+    <div class="prompt">镜头缓慢推近，薄雾散开，海面泛起金光。
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">首尾帧 · 16:9 · 720p · 5s <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-label="有声" role="img"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+</div>
+</section>
+<section class="bd bd-B3e" lang="zh-CN">
+<h2 class="bd-title">B3e 视频 参考 2 张，有歧义提示</h2>
+<div style="display:flex;width:600px">
+
+<div class="pane light">
+  <div class="cap">视频生成框</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边清晨"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>
+      </div>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边傍晚"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg>
+      </div>
+      <span class="cnt">参考图 2 张 · 要当首尾帧用？<button class="lnk">改成首尾帧</button><button class="xs" aria-label="不再提示"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button></span>
+    </div>
+        <div class="prompt"><span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>海边清晨</span> 慢慢过渡到 <span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg>海边傍晚</span> 的暖光，镜头缓慢推近。
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">参考 · 16:9 · 720p · 5s <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-label="有声" role="img"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+</div>
+</section>
+<section class="bd bd-B3f" lang="zh-CN">
+<h2 class="bd-title">B3f 视频 3 张参考切到首尾帧</h2>
+<div style="display:flex;width:600px">
+
+<div class="pane light">
+  <div class="cap">视频生成框</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="cell">
+        <div class="t">
+          <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="首帧，海边清晨"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>
+        </div>
+        <span class="lb">首帧</span>
+      </div>
+      <button class="ib sw" aria-label="对调首帧和尾帧"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 17l-18 0"/><path d="M6 10l-3 -3l3 -3"/><path d="M3 7l18 0"/><path d="M18 20l3 -3l-3 -3"/></svg></button>
+      <div class="cell">
+        <div class="t">
+          <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="尾帧，海边傍晚"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg>
+        </div>
+        <span class="lb">尾帧</span>
+      </div>
+      <span class="vsep" style="margin:6px 4px 0"></span>
+      <div class="cell" style="margin-left:0">
+        <div class="t dim">
+          <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="树林，暂时用不到"><rect width="44" height="44" fill="#cfdcc8"/><path d="M5 36 L13 10 L21 36Z" fill="#5f8a63"/><path d="M21 36 L30 7 L40 36Z" fill="#4c7a55"/><rect y="36" width="44" height="8" fill="#8a7a5f"/></svg>
+        </div>
+        <span class="lb">未用到</span>
+      </div>
+      <span class="cnt">首尾帧用不到，切回参考还在</span>
+    </div>
+    <div class="prompt">镜头缓慢推近，海面从清晨的薄雾过渡到傍晚的暖光。
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">首尾帧 · 16:9 · 720p · 5s <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-label="有声" role="img"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+</div>
+</section>
+<section class="bd bd-B3g" lang="zh-CN">
+<h2 class="bd-title">B3g 图片 空，弹层没有生成方式（浅 + 暗）</h2>
+<div style="display:flex;width:1200px">
+
+<div class="pane light">
+  <div style="font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 4px">图片生成框</div>
+  <div style="height:76px"></div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+    </div>
+    <div class="prompt"><span class="ph">写下想要的画面；加了参考图，就按参考 / 改图来生成</span>
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">GPT Image 2<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip open">1:1 · 2K · 中<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 张<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+    <div class="pop">
+      <div class="gl first">比例</div>
+      <div class="seg"><button class="on">1:1</button><button>16:9</button><button>9:16</button><button>4:3</button><button>3:4</button></div>
+      <div class="gl">清晰度</div>
+      <div class="seg"><button>1K</button><button class="on">2K</button><button>4K</button></div>
+      <div class="gl">画质</div>
+      <div class="seg"><button>低</button><button class="on">中</button><button>高</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="pane dark">
+  <div style="font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 4px">图片生成框</div>
+  <div style="height:76px"></div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+    </div>
+    <div class="prompt"><span class="ph">写下想要的画面；加了参考图，就按参考 / 改图来生成</span>
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">GPT Image 2<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip open">1:1 · 2K · 中<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 张<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+    <div class="pop">
+      <div class="gl first">比例</div>
+      <div class="seg"><button class="on">1:1</button><button>16:9</button><button>9:16</button><button>4:3</button><button>3:4</button></div>
+      <div class="gl">清晰度</div>
+      <div class="seg"><button>1K</button><button class="on">2K</button><button>4K</button></div>
+      <div class="gl">画质</div>
+      <div class="seg"><button>低</button><button class="on">中</button><button>高</button></div>
+    </div>
+  </div>
+</div>
+
+</div>
+</section>
+<section class="bd bd-B3h" lang="zh-CN">
+<h2 class="bd-title">B3h 图片 放 3 张图</h2>
+<div style="display:flex;width:600px">
+
+<div class="pane light">
+  <div class="cap">图片生成框</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="女主肖像"><rect width="44" height="44" fill="#e6dccf"/><path d="M5 44 C6 35 15 31 22 31 C29 31 38 35 39 44Z" fill="#6c7d92"/><ellipse cx="22" cy="18" rx="8" ry="10" fill="#e2bfa6"/><path d="M14 16 C13 7 19 5 23 6 C30 7 31 13 30 17 C28 12 25 11 22 11 C18 12 16 14 14 16Z" fill="#3a3330"/></svg>
+      </div>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边小镇"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>
+      </div>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="树林"><rect width="44" height="44" fill="#cfdcc8"/><path d="M5 36 L13 10 L21 36Z" fill="#5f8a63"/><path d="M21 36 L30 7 L40 36Z" fill="#4c7a55"/><rect y="36" width="44" height="8" fill="#8a7a5f"/></svg>
+      </div>
+      <span class="cnt">参考图 3 张</span>
+    </div>
+    <div class="prompt">让 <span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#e6dccf"/><path d="M5 44 C6 35 15 31 22 31 C29 31 38 35 39 44Z" fill="#6c7d92"/><ellipse cx="22" cy="18" rx="8" ry="10" fill="#e2bfa6"/><path d="M14 16 C13 7 19 5 23 6 C30 7 31 13 30 17 C28 12 25 11 22 11 C18 12 16 14 14 16Z" fill="#3a3330"/></svg>女主肖像</span> 的人物站在 <span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>海边小镇</span>，背景树影按 <span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#cfdcc8"/><path d="M5 36 L13 10 L21 36Z" fill="#5f8a63"/><path d="M21 36 L30 7 L40 36Z" fill="#4c7a55"/><rect y="36" width="44" height="8" fill="#8a7a5f"/></svg>树林</span>，逆光。
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">GPT Image 2<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">1:1 · 2K · 中<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 张<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+</div>
+</section>
+<section class="bd bd-B3i" lang="zh-CN">
+<h2 class="bd-title">B3i 图片 模型不收参考图</h2>
+<div style="display:flex;width:600px">
+
+<div class="pane light">
+  <div class="cap">图片生成框</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" disabled aria-label="画布点选，这个模型用不了" style="position:relative"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" disabled aria-label="添加参考，这个模型用不了"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="女主肖像，不会发出去"><rect width="44" height="44" fill="#e6dccf"/><path d="M5 44 C6 35 15 31 22 31 C29 31 38 35 39 44Z" fill="#6c7d92"/><ellipse cx="22" cy="18" rx="8" ry="10" fill="#e2bfa6"/><path d="M14 16 C13 7 19 5 23 6 C30 7 31 13 30 17 C28 12 25 11 22 11 C18 12 16 14 14 16Z" fill="#3a3330"/></svg>
+      </div>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边小镇，不会发出去"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>
+      </div>
+      <span class="cnt">参考图 2 张 · 这个模型用不上，不会发出去</span>
+      <div class="tip">这个模型只能用文字生成，换个模型才能加参考图</div>
+    </div>
+        <div class="prompt">清晨的海边小镇，薄雾，柔和的逆光。
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">Imagen 4<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">1:1 · 2K<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 张<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+</div>
+</section>
+<section class="bd bd-B3j" lang="zh-CN">
+<h2 class="bd-title">B3j 换模型：菜单不加说明，换完界面自己变</h2>
+<div style="display:flex;width:1200px">
+
+<div class="pane light">
+  <div class="cap">换之前</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="cell">
+        <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="首帧，海边清晨"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg></div>
+        <span class="lb">首帧</span>
+      </div>
+      <button class="ib sw" aria-label="对调首帧和尾帧"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 17l-18 0"/><path d="M6 10l-3 -3l3 -3"/><path d="M3 7l18 0"/><path d="M18 20l3 -3l-3 -3"/></svg></button>
+      <div class="cell">
+        <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="尾帧，海边傍晚"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg></div>
+        <span class="lb">尾帧</span>
+      </div>
+    </div>
+    <div class="prompt">镜头缓慢推近，海面从清晨的薄雾过渡到傍晚的暖光。
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip open">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">首尾帧 · 16:9 · 720p · 5s <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-label="有声" role="img"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+    <div class="mm">
+      <div class="mr sel">Seedance 2.0<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="当前模型" role="img"><path d="M5 12l5 5l10 -10"/></svg></div>
+      <div class="mr hov">Wan 2.7</div>
+      <div class="mr">Veo 3.1</div>
+      <div class="mf"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.585 10.587a2 2 0 0 0 2.829 2.828"/><path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87"/><path d="M3 3l18 18"/></svg>隐藏模型</div>
+    </div>
+  </div>
+</div>
+
+<div class="pane light">
+  <div class="cap">换之后</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边清晨"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg></div>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边傍晚"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg></div>
+      <span class="cnt">参考图 2 张</span>
+    </div>
+    <div class="prompt" style="margin-top:20px">镜头缓慢推近，海面从清晨的薄雾过渡到傍晚的暖光。
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">Wan 2.7<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">参考 · 16:9 · 720p · 5s<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+</div>
+</section>
+<section class="bd bd-B3k" lang="zh-CN">
+<h2 class="bd-title">B3k 现在 vs 新</h2>
+<div style="display:flex;width:1200px">
+<div class="pane light">
+  <div class="cap">现在</div>
+  <div class="node">
+    <div style="font-size:12px;color:var(--nomi-ink60);margin-bottom:4px">生成方式</div>
+    <div class="oseg"><button>文生视频</button><button>图生视频</button><button>全能参考</button><button class="on">首尾帧</button></div>
+    <div style="font-size:12px;color:var(--nomi-ink60);margin:6px 0 4px">首帧 + 尾帧，自动补间过渡</div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <div class="obox"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></div>
+      <div><div style="font-size:12px;color:var(--nomi-ink80);margin-bottom:2px">首帧</div><div class="obox"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></div></div>
+      <div><div style="font-size:12px;color:var(--nomi-ink80);margin-bottom:2px">尾帧</div><div class="obox"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></div></div>
+    </div>
+    <div class="prompt">镜头缓慢推近，薄雾散开，海面泛起金光。</div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">16:9 · 720p · 5s<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="vsep"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+<div class="pane light">
+  <div class="cap">新</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="cell">
+        <div class="t">
+          <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="首帧，海边清晨"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>
+        </div>
+        <span class="lb">首帧</span>
+      </div>
+      <button class="ib sw" aria-label="对调首帧和尾帧"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 17l-18 0"/><path d="M6 10l-3 -3l3 -3"/><path d="M3 7l18 0"/><path d="M18 20l3 -3l-3 -3"/></svg></button>
+      <div class="cell">
+        <div class="t">
+          <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="尾帧，海边傍晚"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg>
+        </div>
+        <span class="lb">尾帧</span>
+      </div>
+    </div>
+    <div class="prompt" style="margin-top:20px">镜头缓慢推近，薄雾散开，海面泛起金光。
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">首尾帧 · 16:9 · 720p · 5s <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-label="有声" role="img"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+</div>
+</section>
+<section class="bd bd-B3l" lang="en">
+<h2 class="bd-title">B3l English</h2>
+<div style="display:flex;width:1200px">
+<div class="pane light">
+  <div class="cap">Video composer</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="Pick on canvas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="Add reference: upload or pick from library"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t hover">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="Portrait, canvas node, connected"><rect width="44" height="44" fill="#e6dccf"/><path d="M5 44 C6 35 15 31 22 31 C29 31 38 35 39 44Z" fill="#6c7d92"/><ellipse cx="22" cy="18" rx="8" ry="10" fill="#e2bfa6"/><path d="M14 16 C13 7 19 5 23 6 C30 7 31 13 30 17 C28 12 25 11 22 11 C18 12 16 14 14 16Z" fill="#3a3330"/></svg>
+        <button class="x" aria-label="Disconnect"><i><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></i></button>
+        <div class="tip">Canvas node: Portrait · Click × to disconnect</div>
+      </div>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="Seaside, library"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>
+        <button class="x" aria-label="Remove Seaside"><i><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></i></button>
+      </div>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="Forest, upload"><rect width="44" height="44" fill="#cfdcc8"/><path d="M5 36 L13 10 L21 36Z" fill="#5f8a63"/><path d="M21 36 L30 7 L40 36Z" fill="#4c7a55"/><rect y="36" width="44" height="8" fill="#8a7a5f"/></svg>
+        <button class="x" aria-label="Remove Forest"><i><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></i></button>
+      </div>
+      <span class="cnt">3 references</span>
+    </div>
+    <div class="prompt"><span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#e6dccf"/><path d="M5 44 C6 35 15 31 22 31 C29 31 38 35 39 44Z" fill="#6c7d92"/><ellipse cx="22" cy="18" rx="8" ry="10" fill="#e2bfa6"/><path d="M14 16 C13 7 19 5 23 6 C30 7 31 13 30 17 C28 12 25 11 22 11 C18 12 16 14 14 16Z" fill="#3a3330"/></svg>Portrait</span> walks into <span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>Seaside</span>, shadows from <span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#cfdcc8"/><path d="M5 36 L13 10 L21 36Z" fill="#5f8a63"/><path d="M21 36 L30 7 L40 36Z" fill="#4c7a55"/><rect y="36" width="44" height="8" fill="#8a7a5f"/></svg>Forest</span>, slow push-in.
+      <button class="ib bare" aria-label="Expand prompt"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="tc">
+      <span class="tcc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg>Connected text · Opening line<button class="ib bare" aria-label="Disconnect" style="width:28px;height:24px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button></span>
+    </div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">Reference · 16:9 · 720p · 5s<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="Prompt presets"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="Translate prompt (Chinese ↔ English; select text to translate only that part)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="Optimize prompt with Nomi"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">×1<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="Generate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+<div class="pane light">
+  <div class="cap">Video composer</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="Pick on canvas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="Add reference: upload or pick from library"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="cell">
+        <div class="t">
+          <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="First frame, morning coast"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>
+        </div>
+        <span class="lb">First</span>
+      </div>
+      <button class="ib sw" aria-label="Swap first and last"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 17l-18 0"/><path d="M6 10l-3 -3l3 -3"/><path d="M3 7l18 0"/><path d="M18 20l3 -3l-3 -3"/></svg></button>
+      <div class="cell">
+        <button class="t empty" aria-label="Last frame, optional, click to add"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+        <span class="lb">Last (optional)</span>
+      </div>
+    </div>
+    <div class="prompt">Slow push-in as the morning haze clears and the sea turns golden.
+      <button class="ib bare" aria-label="Expand prompt"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">First / Last · 16:9 · 720p · 5s<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="Prompt presets"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="Translate prompt (Chinese ↔ English; select text to translate only that part)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="Optimize prompt with Nomi"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">×1<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="Generate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+</div>
+</section>
+<section class="bd bd-B3m" lang="zh-CN">
+<h2 class="bd-title">B3m 底栏两种排法</h2>
+<div style="display:flex;flex-wrap:wrap;width:1200px">
+
+<div class="pane light">
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边清晨"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg></div>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边傍晚"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg></div>
+      <span class="cnt">参考图 2 张</span>
+    </div>
+    <div class="prompt">镜头缓慢推近，海面从清晨过渡到傍晚。</div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">参考 · 16:9 · 720p · 5s<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+  <div class="note">A：左边只放模型和参数；右边是三个提示词按钮、数量、生成钮</div>
+</div>
+
+<div class="pane light">
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边清晨"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg></div>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边傍晚"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg></div>
+      <span class="cnt">参考图 2 张</span>
+    </div>
+    <div class="prompt">镜头缓慢推近，海面从清晨过渡到傍晚。</div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">参考 · 16:9 · 720p · 5s<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="vsep"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="sp"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+  <div class="note">B：三个提示词按钮留在左边；只把数量挪到生成钮左边</div>
+</div>
+
+<div class="pane light">
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边清晨"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg></div>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边傍晚"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg></div>
+      <span class="cnt">参考图 2 张</span>
+    </div>
+    <div class="prompt">镜头缓慢推近，海面从清晨过渡到傍晚。</div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">参考 · 16:9 · 720p · 5s<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+  <div class="note">↑ 圆钮：和现在一样</div>
+</div>
+
+<div class="pane light">
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边清晨"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg></div>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边傍晚"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg></div>
+      <span class="cnt">参考图 2 张</span>
+    </div>
+    <div class="prompt">镜头缓慢推近，海面从清晨过渡到傍晚。</div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">参考 · 16:9 · 720p · 5s<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="sendtxt" aria-label="生成">生成<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+  <div class="note">「生成」字钮：带文字，不容易当成上传</div>
+</div>
+
+<div class="pane light">
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边清晨"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg></div>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边傍晚"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg></div>
+      <span class="cnt">参考图 2 张</span>
+    </div>
+    <div class="prompt">镜头缓慢推近，海面从清晨过渡到傍晚。</div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">参考 · 16:9 · 720p · 5s<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+  <div class="note">Nomi 标记：品牌标记，实心</div>
+</div>
+
+<div class="pane light">
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边清晨"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg></div>
+      <div class="t"><svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边傍晚"><rect width="44" height="44" fill="#b9a7b8"/><circle cx="32" cy="22" r="4" fill="#e9a77c"/><rect y="28" width="44" height="16" fill="#5c6f8c"/><path d="M0 30 L10 20 L20 29 L30 23 L44 31V34H0Z" fill="#4c4a56"/></svg></div>
+      <span class="cnt">参考图 2 张</span>
+    </div>
+    <div class="prompt">镜头缓慢推近，海面从清晨过渡到傍晚。</div>
+    <div class="bar">
+      <button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">参考 · 16:9 · 720p · 5s<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 个<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+  <div class="note">Sparkles：和旁边两颗同一套线条</div>
+</div>
+
+
+</div>
+</section>
+</body>
+</html>
