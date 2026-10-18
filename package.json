@@ -238,7 +238,7 @@
     "design-lab:walk:primitives-surfaces": "python3 scripts/with-gates-lock.py -- node ./tests/ux/design-lab-primitives-surfaces.walk.mjs",
     "check:design-lab": "python3 scripts/with-gates-lock.py -- node ./scripts/check-design-lab.mjs",
     "check:board-parity": "node --test ./scripts/check-board-parity.node-test.mjs && node ./scripts/check-board-parity.mjs",
-    "design-lab:update": "python3 scripts/with-gates-lock.py -- node ./scripts/check-design-lab.mjs --update",
+    "design-lab:accept": "node ./scripts/design-lab-accept.mjs",
     "design-lab:walk:v4": "python3 scripts/with-gates-lock.py -- node ./tests/ux/design-lab-agent-panel-v4.walk.mjs",
     "design-lab:walk:editing": "python3 scripts/with-gates-lock.py -- node ./tests/ux/design-lab-editing.walk.mjs",
     "design-lab:walk:storyboard": "python3 scripts/with-gates-lock.py -- node ./tests/ux/design-lab-storyboard.walk.mjs",

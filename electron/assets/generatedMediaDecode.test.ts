@@ -27,7 +27,7 @@ const work = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-decode-verdict-"));
 afterAll(() => fs.rmSync(work, { recursive: true, force: true }));
 beforeEach(() => { logged.info.length = 0; logged.warn.length = 0; });
 
-/** 真编码器（随包 ffmpeg 自己的 mjpeg / png / libwebp）产出的图，不是手写的字节。 */
+/** 真编码器（随包 ffmpeg 自己的 mjpeg / png）产出的图，不是手写的字节。 */
 function encode(name: string, extra: string[] = []): Buffer {
   const output = path.join(work, name);
   const result = spawnSync(resolveFfmpegPath(), [
@@ -43,7 +43,10 @@ let webp: Buffer;
 beforeAll(() => {
   jpeg = encode("base.jpg", ["-q:v", "3"]);
   png = encode("base.png");
-  webp = encode("base.webp");
+  // 随包 ffmpeg 在 macOS arm64（@ffmpeg-installer 4.4）上没有 WebP 编码器，只有解码器——
+  // 当场编码只在 Linux CI 上成立，Mac 本机一跑就红（2026-10-18）。所以 WebP 用一张提交进仓库的
+  // 真 libwebp 产物（testsrc2 512×512，PIL/libwebp quality 75），被测的解码一侧照样走随包 ffmpeg。
+  webp = fs.readFileSync(new URL("./__fixtures__/testsrc2-512.webp", import.meta.url));
 });
 
 /** 解码器只校验暂存件（文件）：测试把字节落成一个文件再交给它，形状与 generatedAssetStaging 一致。 */

@@ -33,8 +33,11 @@
 //   而且红的是**平台**不是设计。仓库刚在画布性能预算上栽过同一个坑
 //   （docs/lessons：canvas-perf-budget-calibrated-on-macos-fails-on-linux）。
 //   所以：已校准平台上**硬跑**；未校准平台上**明说没跑**，既不假装绿也不制造假红。
-//   想让 CI 也拦住视觉回归，正解是在那个平台上录一套基线并加进 calibration.json，
 //   不是放宽容差（放宽容差 = 把门岗关掉还留个门框）。
+//   2026-10-18 起校准单位从「操作系统」细化到「一台机器」：CI 的 macOS 托管机（calibration.json 的
+//   calibratedRunner）。之前任何一台 Mac 录的图都算数、合并路径上又没人比对，不同机器的图混在一起、
+//   界面改了没人重录，用户本机一跑 97 张不符。现在 CI 那台机器硬拦；本机 Mac 只报告不阻断；
+//   基线只从 CI 运行的产物取回（pnpm run design-lab:accept），本机不录。判定见 tests/ux/design-lab/visualMode.mjs。
 //
 // 关于第 4 条**失败了怎么说**（2026-09-06 重修）：
 //   在此之前，Playwright 只要非零退出，这里就一律说「视觉基线不符，差异图在 test-results/ 下」。
@@ -48,14 +51,15 @@ import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const { readLabStates, readCalibration, baselineDirFor, pendingApprovalScreens, LAB_SCREEN_IDS, CALIBRATION_FILE } = await import(pathToFileURL(path.join(repoRoot, 'tests/ux/design-lab/labStates.mjs')).href)
+const { readLabStates, readCalibration, baselineDirFor, pendingApprovalScreens, LAB_SCREEN_IDS } = await import(pathToFileURL(path.join(repoRoot, 'tests/ux/design-lab/labStates.mjs')).href)
 
 const { triageLabRun, collectDiffImages, formatLabFailure } = await import(pathToFileURL(path.join(repoRoot, 'tests/ux/design-lab/failureTriage.mjs')).href)
 const { inspectLabPort, formatForeignHolder } = await import(pathToFileURL(path.join(repoRoot, 'tests/ux/design-lab/labServer.mjs')).href)
 const { LAB_ORIGIN, LAB_RESULTS_DIR } = await import(pathToFileURL(path.join(repoRoot, 'tests/ux/design-lab/playwright.config.mjs')).href)
+const { currentRunnerIdentity, decideVisualMode, describeRunner, isCiEnvironment } = await import(pathToFileURL(path.join(repoRoot, 'tests/ux/design-lab/visualMode.mjs')).href)
 
-const UPDATE = process.argv.includes('--update')
-const requestedScreenArg = process.argv.find((arg, index) => arg === '--screen' ? process.argv[index + 1] : false)
+const screenFlagIndex = process.argv.indexOf('--screen')
+const requestedScreenArg = screenFlagIndex >= 0 ? process.argv[screenFlagIndex + 1] : undefined
 const SKIP_VISUAL = process.argv.includes('--structure-only')
 // 推送前钩子用（2026-10-09，#1145 在 CI 才撞到 mirrors 行号越界）：只跑注册表 / 基线 / mirrors 这些纯 node 的结构检查，跳过要几十秒的 tsc 和像素比对。
 // 判据一字未动，只是少跑两块；完整版仍是 pnpm run check:design-lab（CI）。
@@ -177,6 +181,11 @@ if (productionImports.length) {
 // ── 4. 基线 ↔ 注册表 ─────────────────────────────────────────────────────────
 
 const calibration = readCalibration()
+const runnerIdentity = currentRunnerIdentity()
+const visualMode = decideVisualMode({ identity: runnerIdentity, calibrated: calibration.calibratedRunner, ci: isCiEnvironment() })
+// CI 的 macOS 机器上，新状态缺基线不在结构这一关拦：视觉那一关会把它判成「快照缺失」照样红，
+// 同时产出这一格的新图供 design-lab:accept 取回——在这里先拦，新状态就永远拿不到第一张基线。
+const missingBaselineIsVisualStage = visualMode === 'strict' || visualMode === 'runner-drift'
 // 「基线待用户拍板」的屏：见 calibration.json 的 why.pendingApprovalScreens。
 // 没被人看过的屏没有可回归的对象，现在录基线只会把「今天碰巧长这样」钉成「应该长这样」。
 const pending = pendingApprovalScreens()
@@ -191,12 +200,13 @@ for (const screen of LAB_SCREEN_IDS) {
     : []
   baselineTotal += baselineFiles.length
   const baselineIds = new Set(baselineFiles.map((name) => name.replace(/\.png$/, '')))
-  // `--update` 就是来补基线的，这时候「缺基线」是它的输入而不是错误（否则新状态永远补不上）。
-  // 孤儿基线仍然照查：update 从来不删图，删状态没删图的欠账必须在这一次就暴露；
+  // 孤儿基线照查：取回新图从来不删图，删状态没删图的欠账必须在这一次就暴露；
   // 待拍板的屏也照查孤儿——登记豁免的只有「还没录」，不是「录错了不用管」。
-  if (!UPDATE && !pending[screen]) {
+  if (!pending[screen]) {
     for (const id of ids) {
-      if (!baselineIds.has(id)) fail(`${screen} 的状态 ${id} 没有视觉基线；拍板后跑 pnpm run design-lab:update`)
+      if (baselineIds.has(id)) continue
+      if (missingBaselineIsVisualStage) console.log(`↷ ${screen}/${id} 还没有基线：视觉那一关会判红并产出新图，用 pnpm run design-lab:accept 取回`)
+      else fail(`${screen} 的状态 ${id} 没有视觉基线：PR 上 CI 的 Design Lab (macOS) 会产出新图，用 pnpm run design-lab:accept -- --run <运行号> 取回`)
     }
   }
   for (const id of baselineIds) {
@@ -283,13 +293,25 @@ if (SKIP_VISUAL) {
   console.log('↷ --structure-only：跳过视觉比对')
   process.exit(0)
 }
-if (!UPDATE && process.platform !== calibration.calibratedPlatform) {
+if (visualMode === 'skip-platform') {
   console.log(
-    `↷ 视觉基线道在本平台（${process.platform}）**未校准**，本次没有比对像素。\n` +
-    `   基线是 ${calibration.calibratedPlatform} 上渲染并拍板的；跨平台字体栅格化不同，逐像素比会红在平台上不是设计上。\n` +
-    `   要让本平台也拦视觉回归：在本平台重录一套基线并写进 ${path.relative(repoRoot, CALIBRATION_FILE)}。`,
+    `↷ 视觉基线道在本平台（${process.platform}）不比对像素。\n` +
+    `   基线由 CI 的 macOS 机器（${describeRunner(calibration.calibratedRunner)}）渲染；跨平台字体栅格化不同，逐像素比会红在平台上不是设计上。\n` +
+    `   改了界面的 PR 由 CI 的 Design Lab (macOS) 任务比对。`,
   )
   process.exit(0)
+}
+if (isCiEnvironment()) {
+  // 把这台机器的身份留在产物里：design-lab:accept 取回新图时据此更新 calibratedRunner。
+  const runnerFile = path.join(repoRoot, 'outputs/design-lab/runner.json')
+  fs.mkdirSync(path.dirname(runnerFile), { recursive: true })
+  fs.writeFileSync(runnerFile, `${JSON.stringify(runnerIdentity, null, 2)}\n`)
+}
+if (visualMode === 'advisory') {
+  console.log(`↷ 本机（${describeRunner(runnerIdentity)}）不是基准机（CI 的 ${describeRunner(calibration.calibratedRunner)}）：照样比对并报告差异，但不阻断，以 CI 为准。`)
+}
+if (visualMode === 'runner-drift') {
+  console.log(`⚠️  这台 CI 机器（${describeRunner(runnerIdentity)}）与基准机（${describeRunner(calibration.calibratedRunner)}）不一致：照样比对并产出新图，本次一定判红。`)
 }
 
 // 起跑前先问端口归属：这一口要是被别的 worktree 占着，跑出来的每一张图都是别人分支的 UI。
@@ -318,7 +340,6 @@ const runStatus = await new Promise((resolve) => {
     ...(process.platform === 'win32' ? { shell: true } : {}),
     env: {
       ...process.env,
-      ...(UPDATE ? { NOMI_DESIGN_LAB_UPDATE: '1' } : {}),
       ...(requestedScreenArg ? { NOMI_DESIGN_LAB_SCREEN: requestedScreenArg } : {}),
     },
   })
@@ -337,7 +358,18 @@ if (runStatus !== 0) {
     diffImages: collectDiffImages(LAB_RESULTS_DIR),
     exitCode: runStatus,
   })
-  console.error(formatLabFailure(triage, { resultsDir: LAB_RESULTS_DIR, origin: LAB_ORIGIN, updating: UPDATE }))
+  console.error(formatLabFailure(triage, { resultsDir: LAB_RESULTS_DIR, origin: LAB_ORIGIN }))
+  if (visualMode === 'advisory') {
+    console.log('\n↷ 以上是本机参考结果，不阻断；合并以 CI 的 Design Lab (macOS) 为准。')
+    process.exit(0)
+  }
   process.exit(1)
 }
-console.log(UPDATE ? '\n✅ 基线已更新——记得在 PR 里附前后对比' : '\n✅ 视觉基线全绿')
+if (visualMode === 'runner-drift') {
+  console.error(
+    `\n❌ 像素都在容差内，但基准机身份还没更新成这台机器（${describeRunner(runnerIdentity)}）。\n` +
+    '   跑 pnpm run design-lab:accept -- --run <这次运行号>，它会把 calibration.json 的 calibratedRunner 改成这台机器。',
+  )
+  process.exit(1)
+}
+console.log(visualMode === 'advisory' ? '\n✅ 本机比对全部相符（参考结果，以 CI 为准）' : '\n✅ 视觉基线全绿')

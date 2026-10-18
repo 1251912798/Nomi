@@ -109,7 +109,7 @@ export function loadSnapshot() {
  * 人话。**刻意控制在 12 行以内**：gates 汇总只回放失败门岗输出的最后
  * FAILURE_TAIL_LINES(=15) 行，超出去的部分在汇总里看不见。
  */
-export function formatLabFailure(triage, { resultsDir, origin, load = loadSnapshot(), updating = false } = {}) {
+export function formatLabFailure(triage, { resultsDir, origin, load = loadSnapshot() } = {}) {
   const l = (value) => value.toFixed(1)
   const port = new URL(origin).port
   const machine = `本机 load ${l(load.one)} / ${l(load.five)} / ${l(load.fifteen)}（${load.cpus} 核）${load.overloaded ? ' ← 超载' : ''}`
@@ -138,7 +138,7 @@ export function formatLabFailure(triage, { resultsDir, origin, load = loadSnapsh
   if (triage.verdict === LAB_VERDICT.BASELINE_MISSING) {
     return [
       '\n❌ 有状态**缺视觉基线**（不是像素不符）。',
-      '   拍板后跑 pnpm run design-lab:update 补录；结构检查那一关本该先拦住它，没拦住就是结构检查漏了。',
+      '   这一趟已产出它的新图：用 pnpm run design-lab:accept -- --run <CI 运行号> 取回。',
       `   ${ran}`,
     ].join('\n')
   }
@@ -157,11 +157,11 @@ export function formatLabFailure(triage, { resultsDir, origin, load = loadSnapsh
   }
 
   return [
-    updating ? '\n❌ 基线更新失败' : '\n❌ 视觉基线不符——差异图已产出，这是设计改动被拦住了，不是工具坏了。',
+    '\n❌ 视觉基线不符——差异图已产出，这是设计改动被拦住了，不是工具坏了。',
     `   差异图 ${triage.diffImages.length} 张（-expected/-actual/-diff）：`,
     ...triage.diffImages.slice(0, 3).map((file) => `     · ${path.relative(process.cwd(), file)}`),
     triage.diffImages.length > 3 ? `     …… 另有 ${triage.diffImages.length - 3} 张` : null,
     '   先看差异图确认改动是不是你要的，要的话给用户看接触表拍板，',
-    '   再跑 pnpm run design-lab:update 更新基线并在 PR 里附前后对比。',
+    '   再用 pnpm run design-lab:accept -- --run <CI 运行号> 取回新图，在 PR 里附前后对比。',
   ].filter(Boolean).join('\n')
 }
