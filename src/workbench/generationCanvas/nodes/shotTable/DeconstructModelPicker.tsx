@@ -2,7 +2,7 @@ import { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NomiSelect } from '../../../../design'
 import type { DeconstructionShotTableDocument } from '../../../../../electron/shared/canvas/shotTable'
-import { identityOf, useDeconstructLegChoice, type DeconstructLeg } from './useDeconstructLegChoice'
+import { identityOf, useDeconstructLegChoice, type DeconstructLeg } from './deconstructLegChoice'
 import { editShotTableFacts } from './shotTableActions'
 import { CONNECT_VENDOR_OPTION_VALUE, openModelCatalog } from '../../../common/useDedupedModelSelect'
 
