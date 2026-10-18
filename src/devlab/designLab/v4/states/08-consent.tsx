@@ -47,6 +47,23 @@ export const V4_CONSENT_STATES: readonly LabState[] = [
     render: () => <Panel><V4ConsentCard force="scope" /></Panel>,
   },
   {
+    id: 'v4-consent-first-ask-zh-dark',
+    name: '首次询问卡 · 中文 · 暗色',
+    source: '现役 AgentPanelV4Consent.tsx',
+    coverage: 'component-only',
+    span: 2,
+    scheme: 'dark',
+    render: () => <Panel><V4ConsentCard force="first" /></Panel>,
+  },
+  {
+    id: 'v4-consent-first-ask-en-light',
+    name: '首次询问卡 · 英文 · 亮色',
+    source: '现役 AgentPanelV4Consent.tsx',
+    coverage: 'component-only',
+    span: 2,
+    render: () => <LabLocaleGate locale="en"><Panel><V4ConsentCard force="first" /></Panel></LabLocaleGate>,
+  },
+  {
     id: 'v4-consent-first-ask-en-dark',
     name: '首次询问卡 · 英文 · 暗色（新增流畅度一项后的文案）',
     source: '现役 AgentPanelV4Consent.tsx · 2026-10-16 告知范围升到 v2',

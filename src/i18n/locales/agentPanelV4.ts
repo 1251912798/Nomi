@@ -94,7 +94,7 @@ export const zhAgentPanelV4 = {
   feedback: '反馈',
   consent: {
     title: '帮 Nomi 变好',
-    collects: '✓ 匿名分享：用了哪些功能、成没成功、界面卡不卡（分档数字）',
+    collects: '✓ 匿名分享：用了哪些功能、成败、界面卡不卡（分档）',
     excludes: '✗ 不含：提示词、文稿、素材、文件路径、密钥',
     // 告知范围升级后，已同意的用户看到的再确认版：只说「多了什么」，不重讲全部。
     scopeTitle: 'Nomi 想多看一项：界面流畅度',
@@ -625,8 +625,8 @@ export const enAgentPanelV4 = {
   feedback: 'Report',
   consent: {
     title: 'Help Nomi get better',
-    collects: '✓ Shared anonymously: which features you used, whether it worked, how smooth the UI feels (bucketed figures)',
-    excludes: '✗ Never included: prompts, manuscripts, assets, file paths, keys',
+    collects: '✓ Shared anonymously: features used, success or failure, how smooth the app feels (in ranges)',
+    excludes: '✗ Never: prompts, scripts, assets, file paths, keys',
     scopeTitle: 'Nomi would like to add one more: smoothness',
     scopeCollects: '✓ Newly shared anonymously: bucketed figures for how fast clicks respond and how often frames drop, plus rough canvas-size, current-page, system and device tiers (CPU core and memory ranges)',
     scopeExcludes: '✗ Never included: any content, file paths, GPU model. Existing statistics carry on; if you decline, only those are sent',
