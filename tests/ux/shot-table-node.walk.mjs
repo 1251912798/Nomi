@@ -15,7 +15,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp, closeNomiApp } from './_launchApp.mjs'
-import { expect, expectVisible, clickOrFail, holdAbsent, screenshotSettled, expectNoCjkInEnglishDom, expectNoRawI18nKeysInDom } from './_assert.mjs'
+import { expect, expectVisible, expectAbsent, proveProbe, clickOrFail, holdAbsent, screenshotSettled, expectNoCjkInEnglishDom, expectNoRawI18nKeysInDom } from './_assert.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { createCanvasPerformanceFixture } from './fixtures/canvas-performance-fixture.mjs'
 import { canvasFitViewButton } from './_shell.mjs'
@@ -166,7 +167,8 @@ async function walkTrack(track) {
     await expectVisible(host.locator('[data-node-floating-toolbar]'), '拆解表上方浮条')
     await expectVisible(host.locator('[data-shot-table-composer="deconstruct"]'), '拆解表下方栏')
     // 拆完的表不给整表重拆（会盖掉改过的格子，canRestartDeconstruction），换模型对单镜「重拆」生效——下方栏要把这句说出来。
-    await expect(host.getByTestId('shot-table-restart-deconstruction')).toHaveCount(0)
+    const composerProof = await proveProbe(host.locator('[data-shot-table-composer="deconstruct"] button'), '拆解栏里的按钮测得到')
+    await expectAbsent(host.getByTestId('shot-table-restart-deconstruction'), { provenBy: composerProof, message: '拆完的表不给整表重拆' })
     await expect(host.locator('[data-shot-table-composer]')).toContainText(zh(track) ? '整表不重拆' : 'not re-run')
     const toolbarOffset = await centerOffset(page, READY_TABLE_ID, '[data-node-floating-toolbar]')
     const composerOffset = await centerOffset(page, READY_TABLE_ID, '[data-shot-table-composer]')
@@ -206,7 +208,7 @@ async function walkTrack(track) {
     await expect(selectionBar).toContainText(zh(track) ? '已选 2 镜' : '2 shots selected')
     await expect(selectionBar.getByRole('button')).toHaveCount(1)
     await shot(page, dir, '05-rows-selected')
-    await clickOrFail(selectionBar.getByRole('button', { name: zh(track) ? '取消选择' : /Clear/i }), 'clear row selection')
+    await clickOrFail(selectionBar.getByRole('button', { name: uiText(track.locale, 'shotTable.node.clearSelection') }), 'clear row selection')
 
     // ⑥ 表一半在舞台右缘外（用户 10-18 截图：浮条被挤成两行）：浮条仍是一行、整条在舞台里
     const stageBox = await page.locator('.generation-canvas-v2__stage').boundingBox()

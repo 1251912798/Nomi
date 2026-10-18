@@ -51,7 +51,7 @@ export const enShotTable = {
     vision: 'Vision', transcribe: 'Transcribe', transcribeAuto: 'Automatic',
     transcribeHint: 'Which model transcribes the dialogue. Each run asks you to confirm the quote first.',
     modelUnavailable: 'Unavailable', modelUnavailableHint: 'This model is unavailable now (disabled, removed or its provider disconnected). Pick another before deconstructing; Nomi will not switch it for you', noVisionModel: 'No model that can read images yet', staleBlocked: 'A chosen model is unavailable. Pick another before deconstructing', deconstruct: 'Deconstruct', idleHint: 'Pick the vision and transcription models below, then Deconstruct',
-    addCustomColumn: '+ Custom column',
+    addCustomColumn: '+ Column',
     selectedCount: '{{count}} shots selected', clearSelection: 'Clear selection',
   },
 }

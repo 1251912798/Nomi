@@ -27,6 +27,7 @@ import { createRuntimeWalk } from '../../tests/ux/agent-runtime-walk-support.mjs
 import { FIXTURE_TEXT_MODEL, FIXTURE_VENDOR } from '../../tests/ux/agent-runtime-fixture.mjs'
 import { requireRealMediaAssets } from '../../tests/ux/fixtures/realMedia.mjs'
 import { clickOrFail } from '../../tests/ux/_assert.mjs'
+import { uiText } from '../../tests/ux/full-walk/invariants.mjs'
 import { judgeCase, scoreDeconstruction, THRESHOLDS } from './metrics.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -79,7 +80,7 @@ if (FIXTURE) {
   const row = (readRealCatalog().models ?? []).find((candidate) => candidate.kind === 'text' && candidate.enabled && `${candidate.vendorKey}/${candidate.modelKey}` === VISION_ARG)
   if (!row) throw new Error(`目录里没有启用的文本模型 ${VISION_ARG}`)
   model = { vendorKey: row.vendorKey, modelKey: row.modelKey }
-  paid = await openPaidWalk('evals/deconstruct/run.mjs', 'deconstruct-eval', [model], { buildMarkers: ['选好下方的读图 / 转写模型后点「拆解」'] })
+  paid = await openPaidWalk('evals/deconstruct/run.mjs', 'deconstruct-eval', [model], { buildMarkers: [uiText('zh-CN', 'shotTable.node.idleHint')] })
   walk = paid.walk
 }
 

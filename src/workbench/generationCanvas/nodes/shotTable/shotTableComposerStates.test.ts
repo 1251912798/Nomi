@@ -21,7 +21,7 @@ function render(source: Record<string, unknown>): string {
   const table = { ...base, source: { ...base.source, ...source } }
   return renderToStaticMarkup(React.createElement(MantineProvider, null, React.createElement(ShotTableComposer, {
     nodeId: 'table-1', table, visualSize: { width: 920, height: 372 }, sourceAvailable: true, hasRows: false,
-    selectedRowIds: [], busy: false, onGenerate: () => {}, onError: () => {},
+    selectedRowIds: [], onError: () => {},
   })))
 }
 

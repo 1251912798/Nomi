@@ -93,7 +93,7 @@ if (FIXTURE) {
     && (wanted ? `${row.vendorKey}/${row.modelKey}` === wanted : row.modelKey === VISION_ARG))
   if (rows.length !== 1) throw new Error(rows.length === 0 ? `目录里没有启用的文本模型 ${VISION_ARG}` : `${VISION_ARG} 在多家都有，请用 供应商/模型 的写法`)
   model = { vendorKey: rows[0].vendorKey, modelKey: rows[0].modelKey, labelZh: rows[0].labelZh ?? rows[0].modelKey }
-  paid = await openPaidWalk('shot-table-vision-leg.paid.mjs', 'shot-table-vision-leg', [model], { buildMarkers: ['选好下方的读图 / 转写模型后点「拆解」'] })
+  paid = await openPaidWalk('shot-table-vision-leg.paid.mjs', 'shot-table-vision-leg', [model], { buildMarkers: [uiText('zh-CN', 'shotTable.node.idleHint')] })
   walk = paid.walk
 }
 const modelLine = `${model.vendorKey} · ${model.modelKey}`
@@ -181,7 +181,8 @@ try {
   const table = win.locator('[data-testid="shot-table-node"]').first()
   await expect(table).toBeAttached({ timeout: stationTimeout() })
   await holdAbsent(dialog, '建表不弹报价卡')
-  expect((await callCounts()).vision, '建表 = 一次读图调用都没发').toBe(0)
+  // 出站计数器本身由夹具模式对过地面真值（计数 = 夹具收到的请求数），这里比的是整只计数器，不是界面上的「不存在」。
+  expect(await callCounts(), '建表 = 一个付费请求都没发').toEqual({ vision: 0, transcribe: 0, other: 0 })
   // 新表落在源视频右边、可能在屏外：画布不自动挪视口，点边缘「新节点在右侧」框进来（useCanvasArrivalHint）
   const arrival = win.locator('[data-canvas-arrival-hint]')
   if (await arrival.count()) await clickOrFail(arrival.first(), '边缘「新节点在右侧」')
@@ -209,7 +210,7 @@ try {
   if (overCap) console.log(`[stop] ${preShots} 次 > 上限 ${VISION_CAP}：不点「拆解」。换个小段重试（--clip-start / --clip-seconds）。`)
 
   if (!CONFIRM || overCap) {
-    expect((await callCounts()).vision, '没点「拆解」：供应商一个读图请求都没有').toBe(0)
+    expect(await callCounts(), '没点「拆解」：供应商一个付费请求都没有').toEqual({ vision: 0, transcribe: 0, other: 0 })
     if (!overCap) console.log('[stop] 未设 NOMI_PAID_CONFIRM=1：停在「拆解」之前，零花费。')
     if (overCap) process.exitCode = 2
     report.verified = ['create-table-sends-nothing', 'picker-sets-model', 'pre-count-within-cap']
