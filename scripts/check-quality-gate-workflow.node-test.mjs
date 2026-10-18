@@ -77,6 +77,7 @@ test('scope exposes every independent validation surface from the shared classif
     canvas: '${{ steps.profile.outputs.canvas }}',
     performance: '${{ steps.profile.outputs.performance }}',
     package: '${{ steps.profile.outputs.package }}',
+    visual: '${{ steps.profile.outputs.visual }}',
     release: '${{ steps.profile.outputs.release }}',
     fail_closed: '${{ steps.profile.outputs.fail_closed }}',
     reason: '${{ steps.profile.outputs.reason }}',
@@ -90,9 +91,9 @@ test('quality gate uses Node 24-native actions without a forced runtime shim', (
     (job) => job.steps?.flatMap((step) => (typeof step.uses === 'string' ? [step.uses] : [])) ?? [],
   )
 
-  assert.equal(actionUses.filter((uses) => uses === 'actions/checkout@v7').length, 9)
-  assert.equal(actionUses.filter((uses) => uses === 'pnpm/action-setup@v6').length, 7)
-  assert.equal(actionUses.filter((uses) => uses === 'actions/setup-node@v7').length, 8)
+  assert.equal(actionUses.filter((uses) => uses === 'actions/checkout@v7').length, 10)
+  assert.equal(actionUses.filter((uses) => uses === 'pnpm/action-setup@v6').length, 8)
+  assert.equal(actionUses.filter((uses) => uses === 'actions/setup-node@v7').length, 9)
   assert.ok(actionUses.includes('actions/upload-artifact@v7'))
   assert.ok(actionUses.every((uses) => !/@v4$/.test(uses)))
   for (const job of Object.values(workflow.jobs)) {
@@ -363,6 +364,26 @@ test('macOS package is selected independently and retains build, package, and si
   ])
 })
 
+test('design lab visual baselines run only on the pinned macOS runner and hand evidence back without repo writes', () => {
+  const lab = workflow.jobs['design-lab-macos']
+  assert.equal(lab.name, 'Design Lab (macOS)')
+  assert.equal(lab.needs, 'scope')
+  assert.equal(lab.if, "needs.scope.outputs.visual == 'true'")
+  // 固定镜像：macos-latest 会被 GitHub 挪到新系统，字体一变整片基线红。
+  assert.equal(lab['runs-on'], 'macos-26')
+  assert.deepEqual(runCommands(lab), [
+    'pnpm install --frozen-lockfile',
+    'bash scripts/ci-install-chromium.sh',
+    'pnpm run check:design-lab',
+  ])
+  const evidence = lab.steps.find((step) => step.uses === 'actions/upload-artifact@v7')
+  assert.equal(evidence.if, 'failure()')
+  assert.equal(evidence.with.name, 'design-lab-evidence')
+  assert.match(evidence.with.path, /test-results\/\*\*/)
+  assert.match(evidence.with.path, /outputs\/design-lab\/runner\.json/)
+  assert.equal(lab.permissions, undefined, 'the visual job must not be granted extra repository permissions')
+})
+
 test('system profiles expose separated surfaces and explicit full/release still include performance', () => {
   assert.deepEqual(PROFILES['ci-contracts'], ['contracts'])
   assert.deepEqual(PROFILES['ci-unit'], ['unit'])
@@ -417,6 +438,7 @@ test('Quality Gate requires mandatory jobs and every risk-selected optional surf
     'canvas-acceptance',
     'canvas-performance',
     'mac-package',
+    'design-lab-macos',
   ])
   assert.equal(quality.if, '${{ always() }}')
   assert.equal(quality.name, 'Quality Gate')
@@ -435,7 +457,7 @@ test('Quality Gate requires mandatory jobs and every risk-selected optional surf
   for (const jobId of ['scope', 'contracts', 'unit']) {
     assert.match(command, new RegExp(`needs\\.${jobId}\\.result`))
   }
-  for (const output of ['desktop', 'journeys', 'canvas', 'performance', 'package']) {
+  for (const output of ['desktop', 'journeys', 'canvas', 'performance', 'package', 'visual']) {
     assert.match(command, new RegExp(`needs\\.scope\\.outputs\\.${output}`))
   }
   // 每个风险面独立聚合：full 走查、perf 预算拆成并行 job 后仍必须逐面要求 success，
@@ -446,6 +468,7 @@ test('Quality Gate requires mandatory jobs and every risk-selected optional surf
   assert.match(command, /needs\['canvas-acceptance'\]\.result/)
   assert.match(command, /needs\['canvas-performance'\]\.result/)
   assert.match(command, /needs\['mac-package'\]\.result/)
+  assert.match(command, /needs\['design-lab-macos'\]\.result/)
   // 核心冒烟 fail-closed：skipped 只在 core_smoke=false 且 reason=docs_only 时放行，其余一律要 success。
   const coreSmokeBlock = /if \[ "\$\{\{ needs\.scope\.outputs\.core_smoke \}\}" = "false" \]; then\n\s*test "\$\{\{ needs\.scope\.outputs\.reason \}\}" = "docs_only"\n\s*test "\$\{\{ needs\['core-smoke'\]\.result \}\}" = "skipped"\n\s*else\n\s*test "\$\{\{ needs\['core-smoke'\]\.result \}\}" = "success"\n\s*fi/
   assert.match(command, coreSmokeBlock)

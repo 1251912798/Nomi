@@ -432,11 +432,42 @@ test('GitHub output exposes every policy dimension with stable snake-case names'
     canvas: 'none',
     performance: 'false',
     package: 'true',
+    visual: 'false',
     release: 'false',
     fail_closed: 'false',
     reason: 'electron:electron/preload.ts',
     changed_count: '1',
   })
+})
+
+// ---- 视觉道：设计实验室截图在 CI 的 macOS 机器上比对 ----
+test('any src change, lab infrastructure, or the visual gate itself selects the macOS visual lane', () => {
+  for (const file of [
+    'src/workbench/timeline/TimelinePanel.tsx',
+    'src/workbench/generationCanvas/nodes/render/nodeEmptyStateLayout.ts',
+    'src/i18n/locales/onboardingProviders.ts',
+    'src/theme/nomi-tokens.css',
+    'tailwind.config.ts',
+    'design-lab.html',
+    'tests/ux/design-lab/calibration.json',
+    'tests/ux/design-lab/__baselines__/settings/s-01.png',
+    'scripts/check-design-lab.mjs',
+    'scripts/design-lab-accept.mjs',
+  ]) {
+    assert.equal(classifyValidationPolicy([file]).visual, true, file)
+  }
+})
+
+test('docs, electron-only, and unrelated validation infrastructure do not start the macOS visual lane', () => {
+  for (const file of ['README.md', 'docs/plan/x.md', 'electron/preload.ts', '.github/workflows/quality-gate.yml', 'scripts/validation-policy.mjs']) {
+    assert.equal(classifyValidationPolicy([file]).visual, false, file)
+  }
+})
+
+test('fail-closed and explicit full validation include the visual lane', () => {
+  assert.equal(classifyValidationPolicy([]).visual, true)
+  assert.equal(classifyValidationPolicy(['src/a.tsx'], { requestedMode: 'full' }).visual, true)
+  assert.equal(classifyValidationPolicy([{ status: 'R100', path: 'src/a.tsx' }]).visual, true)
 })
 
 // ---- 画布显示归属：谁决定画布上显示什么，改了它就必须跑 full 画布验收 ----

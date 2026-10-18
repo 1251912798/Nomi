@@ -41,8 +41,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: [['list']],
-  // 基线只在用户拍板后更新（pnpm run design-lab:update）；CI 上永远不许自己写基线。
-  updateSnapshots: process.env.NOMI_DESIGN_LAB_UPDATE === '1' ? 'all' : 'none',
+  // 任何一趟都不写基线：基线只从 CI 那次运行的 -actual.png 取回（pnpm run design-lab:accept）。
+  updateSnapshots: 'none',
   // 容差**按屏**给（calibration.json 的 screens.<屏>.tolerance），由 spec 在每次
   // toHaveScreenshot 上显式传——一格 340×620 与一格 900×1268 差 5 倍面积，同一个"差异像素比"
   // 在大格上宽到能放过一整行控件改色（2026-09-06 实测：113 像素的真实改动在旧比例下是绿的）。
