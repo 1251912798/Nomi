@@ -24,9 +24,23 @@ export const ZERO_SPEND_CLAIMS = Object.freeze({
 })
 /** 「费用 / Cost」后面跟数字或货币符号 = 把一个金额印成事实（含 0）。未知价那一行只许精确的「费用 / Cost」，带数字一律红。 */
 export const COST_NUMBER_CLAIMS = Object.freeze({
-  'zh-CN': /费用.{0,8}?[\d$¥￥€£]/,
-  en: /\bcost\b.{0,8}?[\d$¥￥€£]/i,
+  'zh-CN': /费用.{0,8}?(?:[\d$¥￥€£零〇一二三四五六七八九十百千万两]|元|块|美元|USD|CNY|RMB)/i,
+  en: /\bcost(?![a-z]).{0,8}?(?:[\d$¥￥€£]|\b(?:USD|CNY|RMB|yuan|dollars?)\b)/i,
 })
+
+/**
+ * 扫描前先把文本规整成一种写法，再套**所有**规则——门岗原先在原文上直接匹配，所以只要换一种写法
+ * （全角数字「１２」、换行 / 制表 / 不换行空格、零宽字符）就能绕过去（V-mcp 两轮验收各绕过一种）。
+ * NFKC：全角转半角、兼容字符归一；去零宽（U+200B–U+200D、U+2060、U+FEFF）；任何空白与换行压成一个空格。
+ * 白名单「整值精确等于」也在规整后比较。
+ */
+export function normalizeForScan(text) {
+  return String(text ?? '')
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 /** 正向花钱断言也禁止：界面不替用户断言已付费、会消耗额度或这一步的价格。 */
 export const POSITIVE_SPEND_CLAIMS = Object.freeze({
   'zh-CN': /已付费|付费(?:的任务|生成|确认|验证|模型|调用)|会花钱|花钱|消耗[^。\n]{0,8}额度|预计消耗|没有免费的|花不花钱|只花那一张的钱|会消耗(?:生成|模型)?额度|花费|费用|价格|计费|扣费|充值|金币|积分|预算/,
@@ -39,7 +53,7 @@ export const POSITIVE_SPEND_CLAIMS = Object.freeze({
 export const COST_LABEL_EXACT = Object.freeze({
   'runtime.capability.generationGateCost': Object.freeze({ 'zh-CN': '费用', en: 'Cost' }),
 })
-const isAllowedCostLabel = (locale, key, value) => COST_LABEL_EXACT[key]?.[locale] === value
+const isAllowedCostLabel = (locale, key, value) => COST_LABEL_EXACT[key]?.[locale] === normalizeForScan(value)
 
 /** 设计实验室的样例串（fixture*）只在 devlab 里渲染，用户界面不出现。 */
 export const isFixture = (key) => /(^|\.)fixture[A-Z]/.test(key)
@@ -86,7 +100,7 @@ export function scanSourceStrings(sources, { notMoney = NOT_MONEY } = {}) {
     let match
     while ((match = re.exec(code))) {
       const value = match[2]
-      if (!SOURCE_MONEY_PATTERN.test(value)) continue
+      if (!SOURCE_MONEY_PATTERN.test(normalizeForScan(value))) continue
       if (/不对用户断言.*花不花钱|do not assert.*whether.*cost/i.test(value)) continue
       const registration = Object.entries(SOURCE_NOT_MONEY).find(([, pattern]) => pattern.test(value))
       const key = registration?.[0] ?? `${file}:${code.slice(0, code.lastIndexOf('\n', match.index) + 1).split('\n').length}`
@@ -106,7 +120,7 @@ export function scanDictionaries(dictionaries, { notMoney = NOT_MONEY } = {}) {
   const hits = []
   for (const locale of Object.keys(NO_COST_CLAIMS)) {
     for (const [key, value] of flatOf(dictionaries[locale] ?? {})) {
-      const visibleValue = value.replace(/\{\{[^}]+\}\}/g, '')
+      const visibleValue = normalizeForScan(value.replace(/\{\{[^}]+\}\}/g, ''))
       const patterns = [NO_COST_CLAIMS[locale], ADDITIONAL_SPEND_CLAIMS[locale], ZERO_SPEND_CLAIMS[locale], COST_NUMBER_CLAIMS[locale], POSITIVE_SPEND_CLAIMS[locale]]
       if (!patterns.some((pattern) => pattern.test(visibleValue))) continue
       if (isFixture(key) || hasNotMoneyReason(notMoney, key) || NON_MONEY_KEYS.includes(key) || isAllowedCostLabel(locale, key, value)) continue
@@ -121,7 +135,7 @@ export function scanDictionaryKeys(keyDictionaries, { notMoney = NOT_MONEY } = {
   const hits = []
   for (const locale of Object.keys(NO_COST_CLAIMS)) {
     for (const [key, value] of flatOf(keyDictionaries[locale] ?? {})) {
-      const visibleValue = value.replace(/\{\{[^}]+\}\}/g, '')
+      const visibleValue = normalizeForScan(value.replace(/\{\{[^}]+\}\}/g, ''))
       const patterns = [NO_COST_CLAIMS[locale], ADDITIONAL_SPEND_CLAIMS[locale], ZERO_SPEND_CLAIMS[locale], COST_NUMBER_CLAIMS[locale], POSITIVE_SPEND_CLAIMS[locale]]
       if (!patterns.some((pattern) => pattern.test(visibleValue))) continue
       if (isFixture(key) || hasNotMoneyReason(notMoney, key) || NON_MONEY_KEYS.includes(key)) continue
