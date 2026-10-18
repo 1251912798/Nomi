@@ -1,7 +1,7 @@
 // 画布节点参考区的真组件（NodeParameterControls section="references" → AssetReference → AssetTile），
 // 零额度：只读目录桥是桩，节点与连线灌进真 store，不发任何生成请求。
 // 用途：参考缩略图的序号角标与 × 要整枚落在可见区域内（tests/ux/asset-tile-badges-visible.test.mjs）。
-import React from 'react'
+import React, { type JSX } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../../../src/styles/index.css'
 import { NomiPreviewHost } from '../../../src/design/previewHost'

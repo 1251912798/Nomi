@@ -1,4 +1,5 @@
 import '../../../src/i18n'
+import '@mantine/core/styles.css'
 import { NodeWriteAccessProvider } from '../../../src/workbench/generationCanvas/nodes/nodeWriteAccess'
 // Controlled host integration: real React lifecycle and real panel/drop/draft writers.
 import React from 'react'
@@ -12,7 +13,6 @@ import type { NodeWriteAccess } from '../../../src/workbench/generationCanvas/no
 
 const NodeGenerationComposer = React.lazy(async () => {
   const [{ default: Composer }, { MantineProvider }] = await Promise.all([import('../../../src/workbench/generationCanvas/nodes/NodeGenerationComposer'), import('@mantine/core')])
-  await import('@mantine/core/styles.css')
   return { default: (props: React.ComponentProps<typeof Composer>) => <MantineProvider><Composer {...props} /></MantineProvider> }
 })
 
@@ -67,7 +67,8 @@ function Drop({ node, access }: { node: GenerationCanvasNode; access: NodeWriteA
   return <button id="upload" onClick={() => {
     stale = access
     staleId = node.id
-    void drop.dropHandlers.onDrop({ preventDefault() {}, stopPropagation() {}, dataTransfer: { getData: () => '', files: [new File(['fixture'], 'reference.png', { type: 'image/png' })] } } as unknown as React.DragEvent<HTMLElement>).finally(() => { completed++ })
+    // onDrop 的类型是 void，实现仍是 async：包一层 Promise.resolve 才能等它收尾（运行时同一个 promise）。
+    void Promise.resolve(drop.dropHandlers.onDrop({ preventDefault() {}, stopPropagation() {}, dataTransfer: { getData: () => '', files: [new File(['fixture'], 'reference.png', { type: 'image/png' })] } } as unknown as React.DragEvent<HTMLElement>)).finally(() => { completed++ })
   }}>upload</button>
 }
 // 宿主那一份待决出价：生产里它随对话投影推过来（`LaneWorkspaceProjection.spend`），这里由夹具「推」——
