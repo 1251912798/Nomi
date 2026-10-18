@@ -31,6 +31,8 @@ export const MCP_VERIFY_REASONS = [
   'timeout',
   'handshake-failed',
   'client-auth-missing',
+  // 本机 HTTP 服务没起来（多为端口被占）：配置和身份都对，但没有服务可连。C-5。
+  'http-not-listening',
 ] as const
 export type McpVerifyReason = (typeof MCP_VERIFY_REASONS)[number]
 

@@ -5,6 +5,7 @@ import type {
   PreparedProductionGenerationAuthorization,
 } from "../productionRun/prepareProductionGenerationAuthorization";
 import type { ProductionRun, RunCommand } from "../productionRun/productionRunTypes";
+import { reservationMaximumForDisplay } from "./approvalReceipt";
 import { spendAuthorizationGates, waitingAuthorizationGates } from "../shared/productionSpendAuthority";
 import type {
   ApprovalReceiptAuthority,
@@ -106,7 +107,7 @@ export function createRunOwnedGenerationGateAuthority(input: Readonly<{
       gateId: envelope.gateId,
       costScope: envelope.costScope,
       // 一批**全是**未知价：没有已知金额可报，如实回 null（绝不是 ¥0）。
-      maximumCost: envelope.budget.unknownJobCount === envelope.jobs.length ? null : envelope.budget.maximum,
+      maximumCost: reservationMaximumForDisplay(envelope.budget),
       ...(envelope.budget.unknownJobCount > 0 ? { unknownShotCount: envelope.budget.unknownJobCount } : {}),
       currency: envelope.budget.currency,
       challengeId: challenge.challenge.challengeId,

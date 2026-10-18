@@ -1,0 +1,108 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-17-mcp-canvas-write-routes",
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-17",
+  "problem_type": "对外 MCP 工具说明里写着能做的画布写操作，主进程没有给它们接传输（名单与路由分写）",
+  "symptom": "nomi_canvas_edit 的 tidy_canvas / propose_storyboard_plan / arrange_storyboard_to_timeline / set_node_text 四个操作，说明书里有，调用回 capability_unsupported（D-3dbox 第五轮，官方 SDK 实调；main 上就坏）",
+  "direct_cause": "rpcServer 只把 CANVAS_WRITE_LIVE_RENDERER_OPERATIONS（此前 patch_shots、create_staging_reference、create_camera_move）送渲染端，其余渲染端拥有的操作落进只认 3 个操作的无头分支",
+  "class_root": "「有哪些画布写操作」（CanvasWriteOperation 联合）与「每个操作走哪条传输」是两份手写名单；#1221 的门岗只比对工具说明里写着的操作并容许一份冻结的旧账，所以新增操作依然可以先上面、后补路",
+  "migration": "无数据迁移：只多了 4 个操作的路由；它们的渲染端实现（applyCanvasToolCall / proposalTxn / 提议收据）原本就在，应用内 Agent 一直在用",
+  "affected_population": [
+    "用 Codex / Claude Code / Cursor 等外部 Agent 经 MCP 整理画布、提分镜方案、把分镜排进时间轴、写文本节点正文的用户",
+    "以后任何新增的画布写操作的外部调用者"
+  ],
+  "scope_paths": [
+    "electron/shared/agentCapabilities/canvasWrite.ts",
+    "electron/capabilityCore/mcpProtocol.ts"
+  ],
+  "entry_points": [
+    "electron/capabilityCore/rpcServer.ts isCanvasWriteLiveRendererOperation（主进程把 canvas.write 送渲染端）",
+    "src/workbench/capability/canonicalCanvasPlanPatch.ts executeCanonicalCanvasPlanPatch（渲染端执行口）",
+    "electron/capabilityCore/dispatcher.ts 无头分支的「需要创作区」提示",
+    "electron/capabilityCore/mcpProtocol.ts 画布写在协议边界的先问再写"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "这是 Nomi 自己的画布操作词表与传输路由的内部不变量，官方 MCP SDK 不管我们的操作名单；SDK 只承担协议与传输。",
+  "invariants": [
+    "CanvasWriteOperation 的每个成员在 CANVAS_WRITE_OPERATION_ROUTES 里恰有一条路（headless | live_renderer），缺一个 tsc 不过",
+    "无头名单、渲染端名单都从这张表派生，主进程路由 / 渲染端执行口 / 无头提示读的是同一份",
+    "改分镜 / 时间轴的画布写（patch_shots / propose_storyboard_plan / arrange_storyboard_to_timeline）在协议边界先问真人一次；客户端问不了时照原样放行"
+  ],
+  "doors": [
+    { "kind": "write", "path": "electron/capabilityCore/rpcServer.ts", "symbol": "isCanvasWriteLiveRendererOperation" },
+    { "kind": "write", "path": "src/workbench/capability/canonicalCanvasPlanPatch.ts", "symbol": "isCanvasWriteLiveRendererOperation" },
+    { "kind": "read", "path": "electron/capabilityCore/dispatcher.ts", "symbol": "CANVAS_WRITE_LIVE_RENDERER_OPERATIONS" },
+    { "kind": "read", "path": "electron/shared/agentCapabilities/canvasWrite.ts", "symbol": "CANVAS_WRITE_LIVE_RENDERER_OPERATIONS" }
+  ],
+  "door_reduction": {
+    "before": 4,
+    "after": 4,
+    "why_not": "四个入口各是一条不同的消费面：主进程路由（决定送不送渲染端）、渲染端执行口（只收路由送来的操作）、无头分支的错误提示（列出可用操作）、名单自身的定义处；它们现在读的都是同一张路由表派生的名单，没有可合并的入口。"
+  },
+  "generality_proof": "把「操作全集」与「每个操作的传输」绑成一张 Record<CanvasWriteOperation, route> 的类型约束表，三个消费面的名单全部从它派生；今后新增、删除或改道任何画布写操作，都只能改这一处，且漏写一条路 tsc 当场失败（已用变异验证）。官方 SDK 实调与渲染端真执行的测试覆盖了这 4 个操作的整条链。",
+  "shared_boundaries": [
+    { "path": "electron/shared/agentCapabilities/canvasWrite.ts", "symbol": "CANVAS_WRITE_OPERATION_ROUTES", "responsibility": "每个画布写操作恰有一条传输路由；无头 / 渲染端两份名单从它派生" },
+    { "path": "electron/shared/agentCapabilities/canvasWrite.ts", "symbol": "CANVAS_WRITE_ELICIT_FIRST_OPERATIONS", "responsibility": "对外 MCP 在协议边界先问真人一次的画布写（分镜 / 时间轴）" }
+  ],
+  "same_class_entry_points": [
+    { "path": "electron/capabilityCore/rpcServer.ts", "entry_point": "isLiveRendererCanvasWrite", "disposition": "enforced", "evidence": "读的是路由表派生的渲染端名单；mcpDirectorReferenceOps.sdk.test.ts 用官方 SDK 实调 7 个渲染端操作" },
+    { "path": "electron/capabilityCore/dispatcher.ts", "entry_point": "canvas.write 无头分支", "disposition": "enforced", "evidence": "无头名单从路由表派生；mcpCanvasWriteHeadlessFallback.test.ts 钉住提示文案" },
+    { "path": "electron/agentLane/laneCanvasTools.ts", "entry_point": "应用内 Agent 的画布写工具", "disposition": "not-affected", "evidence": "应用内 Agent 不经 MCP 传输路由，直接在渲染端执行；lane-l1-matrix / lane-tool-contract 本机手跑全绿" }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "10-16 摆位 / 运镜两个操作、10-17 另外 4 个，同一类（名单与路由分写）已出现两轮",
+    "same_class_scan": [
+      "rg CANVAS_WRITE_(HEADLESS|LIVE_RENDERER)_OPERATIONS electron src：消费面三处（rpcServer / canonicalCanvasPlanPatch / dispatcher）全部读同一份",
+      "rg operation === electron/capabilityCore/rpcServer.ts：没有按操作名单独分支的送渲染端判断",
+      "盘点 CanvasWriteOperation 全集 10 个：3 个无头、7 个渲染端，路由表无空洞"
+    ]
+  },
+  "prevention": {
+    "kind": "type-system",
+    "enforcement_path": "electron/shared/agentCapabilities/canvasWrite.ts",
+    "invariant": "CanvasWriteOperation 的每个成员必须在 CANVAS_WRITE_OPERATION_ROUTES 里有一条路",
+    "failure_mode": "编译失败（TS1360 Record 缺成员），不能合入",
+    "exception_policy": "none",
+    "strategy": "用 satisfies Record<CanvasWriteOperation, route> 把操作全集与路由绑成一张表，两份名单从它派生；删除原来的冻结旧账清单",
+    "artifacts": [
+      "electron/shared/agentCapabilities/canvasWrite.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/capabilityCore/mcpCanvasWriteRoutes.test.ts",
+    "electron/capabilityCore/mcpDirectorReferenceOps.sdk.test.ts",
+    "src/workbench/capability/mcpDirectorReferenceOps.test.ts",
+    "electron/capabilityCore/mcpStoryboardPatchConfirm.test.ts",
+    "electron/capabilityCore/mcpCanvasWriteHeadlessFallback.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/capabilityCore/mcpCanvasWriteRoutes.test.ts",
+    "electron/capabilityCore/mcpDirectorReferenceOps.sdk.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/shared/agentCapabilities/canvasWrite.ts",
+      "electron/capabilityCore/mcpCanvasWriteRoutes.test.ts"
+    ],
+    "rationale": "两份手写名单（无头 / 渲染端）改为从路由表派生；mcpCanvasWriteRoutes.test.ts 里的 ADVERTISED_WITHOUT_ROUTE_DEBT 冻结旧账清单已删除"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "路由名单是 Nomi 画布领域的内部契约，不由第三方依赖控制；协议与传输仍由官方 MCP SDK v2 承担，本次不改版本。",
+    "exit_criteria": []
+  },
+  "invariant_owner_layer": {
+    "layer": "electron/shared/agentCapabilities/canvasWrite.ts",
+    "tests": [
+      "electron/capabilityCore/mcpCanvasWriteRoutes.test.ts",
+      "electron/shared/agentCapabilities/canvasWrite.test.ts"
+    ]
+  },
+  "residual_risks": [
+    "真实外部 Agent（Codex / Claude）在真 App 上的模型驱动调用仍 unverified；这里的证据是官方 SDK 客户端 + 渲染端真执行的拼接",
+    "arrange_storyboard_to_timeline 只验到「路由到达并由操作自己拒绝无镜可排」，带真实已生成视频的排片端到端未跑（需要真媒体）"
+  ]
+}

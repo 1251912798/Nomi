@@ -62,6 +62,15 @@ class StoryboardPatchHarness {
     await this.next()
   }
 
+  startOperation(extra: Record<string, unknown>): void {
+    this.send({
+      jsonrpc: '2.0',
+      id: 3,
+      method: 'tools/call',
+      params: { name: 'nomi_canvas_edit', arguments: { leaseHandle: 'lease-a', projectId: 'project-a', ...extra } },
+    })
+  }
+
   startPatch(): void {
     this.send({
       jsonrpc: '2.0',
@@ -133,6 +142,41 @@ describe('canonical canvas.write patch_shots approval boundary', () => {
     const response = await harness.next()
     expect(response.result?.isError).toBe(true)
     expect(response.result?.structuredContent).toMatchObject({ nomiOutcome: { kind: 'error', tool: 'nomi_canvas_edit', message: 'ECONNRESET' } })
+    expect(harness.invoke).toHaveBeenCalledTimes(1)
+  })
+})
+
+// 2026-10-17：newly routed storyboard / timeline writes get the same ask-first rule as patch_shots;
+// the layout / text writes (tidy_canvas, set_node_text) do not, exactly like set_node_prompt.
+describe('newly routed canvas writes: which ones ask the human first', () => {
+  const askFirst: Array<[string, Record<string, unknown>]> = [
+    ['propose_storyboard_plan', { operation: 'propose_storyboard_plan', title: 'T', anchors: [], shots: [{ index: 1, shotKind: 'image', durationSec: 0, anchorIds: [], prompt: 'p' }] }],
+    ['arrange_storyboard_to_timeline', { operation: 'arrange_storyboard_to_timeline', nodeIds: ['n1'] }],
+  ]
+
+  it.each(askFirst)('%s: declines before the write is invoked', async (operation, args) => {
+    const harness = new StoryboardPatchHarness()
+    await harness.initialize()
+    harness.startOperation(args)
+    const challenge = await harness.next()
+    expect(challenge.method).toBe('elicitation/create')
+    expect(harness.invoke).not.toHaveBeenCalled()
+    harness.send({ jsonrpc: '2.0', id: challenge.id, result: { action: 'decline' } })
+    const response = await harness.next()
+    expect(response.result?.isError).toBe(true)
+    expect(response.result?.structuredContent).toMatchObject({ nomiOutcome: { operation, applied: false, denied: true, reason: 'declined' } })
+    expect(harness.invoke).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['tidy_canvas', { operation: 'tidy_canvas', categoryId: 'shots' }],
+    ['set_node_text', { operation: 'set_node_text', nodeId: 'text-1', text: 'hello', mode: 'replace' }],
+  ] as Array<[string, Record<string, unknown>]>)('%s: goes straight through, no question', async (_operation, args) => {
+    const harness = new StoryboardPatchHarness()
+    await harness.initialize()
+    harness.startOperation(args)
+    const response = await harness.next()
+    expect(response.method).toBeUndefined()
     expect(harness.invoke).toHaveBeenCalledTimes(1)
   })
 })

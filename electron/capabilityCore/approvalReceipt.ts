@@ -44,6 +44,15 @@ export type HumanApprovalChallengeInput = {
   ttlMs?: number;
 };
 
+/**
+ * 把挑战里的额度预览投给界面 / MCP 客户端时的**唯一**判据（C-3，2026-10-16 真宿主实测）。
+ * `maximum` 对「一笔都没标价」存的是占位 0；`unknownJobCount > 0` 且已知部分为 0 ⇒ 没有任何已知金额可报，
+ * 只能回 null（「费用未知」），绝不是 0（会被读成「这次免费」）。部分已知则保留已知小计，未知的另由 unknownJobCount 说。
+ */
+export function reservationMaximumForDisplay(preview: { maximum: number; unknownJobCount?: number }): number | null {
+  return (preview.unknownJobCount ?? 0) > 0 && preview.maximum === 0 ? null : preview.maximum;
+}
+
 export type HumanApprovalChallengeV1 = Omit<HumanApprovalChallengeInput, "ttlMs" | "challengeKey"> & {
   version: typeof HUMAN_APPROVAL_VERSION;
   keyId: string;

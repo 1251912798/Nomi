@@ -1222,7 +1222,8 @@
         "electron/capabilityCore/mcpHostMigration.ts",
         "electron/capabilityCore/hostConfigWrite.ts",
         "electron/capabilityCore/mcpHostEntries.ts",
-        "electron/capabilityCore/mcpVerifyHttp.ts"
+        "electron/capabilityCore/mcpVerifyHttp.ts",
+        "electron/capabilityCore/mcpHttpListenState.ts"
       ],
       "alternativesChecked": [
         {

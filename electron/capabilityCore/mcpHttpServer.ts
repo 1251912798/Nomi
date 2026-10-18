@@ -41,7 +41,7 @@ export type McpHttpServerOptions = Readonly<{
 
 export type McpHttpServerHandle = Readonly<{ port: number; url: string; sessionCount: () => number; close: () => Promise<void> }>
 
-type Session = { transport: NodeStreamableHTTPServerTransport; nomi: NomiMcpServer; client: string; proof: string; lastSeen: number }
+type Session = { transport: NodeStreamableHTTPServerTransport; nomi: NomiMcpServer; client: string; proof: string; lastSeen: number; probe: boolean }
 
 function firstHeader(value: string | string[] | undefined): string {
   return (Array.isArray(value) ? value[0] ?? '' : value ?? '').trim()
@@ -95,7 +95,8 @@ export function startMcpHttpServer(options: McpHttpServerOptions): Promise<McpHt
 
   async function evictIfFull(): Promise<void> {
     while (sessions.size >= maxSessions) {
-      const oldest = [...sessions.entries()].sort((a, b) => a[1].lastSeen - b[1].lastSeen)[0]
+      // 先挤「测试连接」的探针（它们不是干活的会话），探针没了才轮到真实会话里最久没动静的那条。
+      const oldest = [...sessions.entries()].sort((a, b) => Number(b[1].probe) - Number(a[1].probe) || a[1].lastSeen - b[1].lastSeen)[0]
       if (!oldest) return
       sessions.delete(oldest[0])
       await oldest[1].nomi.close().catch(() => {})
@@ -107,19 +108,20 @@ export function startMcpHttpServer(options: McpHttpServerOptions): Promise<McpHt
     const connection = createMcpConnectionContext({ client, proof })
     const nomi = options.sessionFor({ connection, proof })
     let sessionId: string | undefined
+    const reportedName = (body as { params?: { clientInfo?: { name?: unknown } } } | null)?.params?.clientInfo?.name
+    const probe = reportedName === MCP_VERIFY_PROBE_NAME
     const transport = new NodeStreamableHTTPServerTransport({
       sessionIdGenerator: () => crypto.randomUUID(),
       supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
       onsessioninitialized: (id) => {
         sessionId = id
-        sessions.set(id, { transport, nomi, client, proof, lastSeen: Date.now() })
+        sessions.set(id, { transport, nomi, client, proof, lastSeen: Date.now(), probe })
       },
     })
     // 会话关了（宿主发 DELETE、被挤掉、整个服务停）：SDK 中止这条会话上全部在途调用，这里只把账本里那条摘掉。
     nomi.onClose(() => { if (sessionId) sessions.delete(sessionId) })
     await nomi.connect(transport)
-    const reportedName = (body as { params?: { clientInfo?: { name?: unknown } } } | null)?.params?.clientInfo?.name
-    if (reportedName !== MCP_VERIFY_PROBE_NAME) options.onClientConnected?.(client, typeof reportedName === 'string' ? reportedName : undefined)
+    if (!probe) options.onClientConnected?.(client, typeof reportedName === 'string' ? reportedName : undefined)
     await transport.handleRequest(req, res, body)
   }
 
