@@ -428,4 +428,20 @@ describe('generation canvas control structure', () => {
     expect(toolbar).not.toContain('deconstructToShotTable')
     expect(toolbar).not.toContain('openVideoDeconstruction')
   })
+
+  it('stops toolbar clicks before they reach the React Flow node click (portal menus bubble through the React tree)', () => {
+    // 2026-10-18 走查：「拆解 ▾ → 镜头表」选中新表后，同一下点击沿组件树冒到视频节点的 onClick，又把视频选回来。
+    // 真点击路径由 tests/ux/shot-table-node.walk.mjs ① 守（新表被选中、下方拆解栏出现）。
+    const shell = source('../nodes/NodeFloatingToolbar.tsx')
+    const frame = shell.slice(shell.indexOf('data-node-floating-toolbar="true"'), shell.indexOf('{lockNodeId ? (', shell.indexOf('data-node-floating-toolbar="true"')))
+    expect(frame).toContain('onPointerDown={(event) => event.stopPropagation()}')
+    expect(frame).toContain('onClick={(event) => event.stopPropagation()}')
+  })
+
+  it('owns the composer/node event boundary once in ComposerAnchor (pointerdown · wheel · click), not per caller', () => {
+    const anchor = source('../nodes/composerAnchor.tsx')
+    expect(anchor).toContain("onPointerDown: stopAtComposer, onWheel: stopAtComposer, onClick: stopAtComposer")
+    // 调用方传不进来：ComposerAnchorProps 去掉了这三个 handler（类型就是守门，各抄一份的那几份各漏一样、都没拦 click）。
+    expect(anchor).toContain("Omit<React.HTMLAttributes<HTMLDivElement>, 'onPointerDown' | 'onWheel' | 'onClick'>")
+  })
 })

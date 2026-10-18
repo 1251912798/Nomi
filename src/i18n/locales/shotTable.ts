@@ -19,7 +19,7 @@ export const zhShotTable = {
   node: {
     toolbar: '拆解表工具', columns: '显示列', rowShorter: '行变矮', rowTaller: '行变高',
     rowHeight: { compact: '紧凑', standard: '标准', large: '大图' },
-    composer: '拆解栏', composerTitle: '拆这条视频：{{title}}', composerHint: '逐镜读画面、取对白，结果写进上面这张表',
+    composer: '拆解栏', composerTitle: '拆这条视频：{{title}}', composerHint: '逐镜读画面、取对白，结果写进上面这张表', readyHint: '已拆完。换了模型后，点某一镜的「重拆」就用新模型；整表不重拆，免得盖掉你改过的格子',
     vision: '读图', transcribe: '转写', transcribeAuto: '自动选择',
     transcribeHint: '对白用哪个模型转写；每次拆解开始前都会先报价确认。',
     deconstruct: '拆解', idleHint: '选好下方的读图 / 转写模型后点「拆解」',
@@ -47,7 +47,7 @@ export const enShotTable = {
   node: {
     toolbar: 'Shot table tools', columns: 'Columns', rowShorter: 'Shorter rows', rowTaller: 'Taller rows',
     rowHeight: { compact: 'Compact', standard: 'Standard', large: 'Large' },
-    composer: 'Deconstruct bar', composerTitle: 'Deconstruct: {{title}}', composerHint: 'Reads each shot and transcribes the dialogue into the table above',
+    composer: 'Deconstruct bar', composerTitle: 'Deconstruct: {{title}}', composerHint: 'Reads each shot and transcribes the dialogue into the table above', readyHint: 'Done. Switch models, then Retry a shot to use them. The whole table is not re-run, so your edits stay',
     vision: 'Vision', transcribe: 'Transcribe', transcribeAuto: 'Automatic',
     transcribeHint: 'Which model transcribes the dialogue. Each run asks you to confirm the quote first.',
     deconstruct: 'Deconstruct', idleHint: 'Pick the vision and transcription models below, then Deconstruct',

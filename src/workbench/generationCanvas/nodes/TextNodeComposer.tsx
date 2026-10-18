@@ -221,8 +221,6 @@ export default function TextNodeComposer({ onFeedback, node, visualSize, readOnl
         !inFlow && 'group-data-[dragging=true]/canvas:invisible',
       )}
       style={{ cursor: 'default', userSelect: 'auto', touchAction: 'auto', ...(inFlow ? null : { zIndex: CANVAS_LAYER.nodeComposer }) }}
-      onPointerDown={(event) => event.stopPropagation()}
-      onWheel={(event) => event.stopPropagation()}
     >
       <div
         role="group"

@@ -47,6 +47,8 @@ export const CANVAS_PERF_SCALES = Object.freeze({
   // 2026-10-18 拆解前选模型：「选中一张拆解表 → 上方浮条 + 下方拆解栏出现」。一张 200 镜的拆解表（来源 = 第一个视频节点），
   // 外加 100 张图片卡做真实画布密度。表由生产的 createDeconstructionShotTable 建，行按 schema 逐行填，不手写第二份结构。
   T200: { imageCount: 100, videoCount: 1, edgeCount: 50, clipCount: 0, shotTableRows: 200 },
+  // 拆解表走查（tests/ux/shot-table-node.walk.mjs）：一张 12 镜的表（来源 = 第一个视频）+ 第二个视频（还没拆过，走「建表」）+ 4 张图。
+  T12: { imageCount: 4, videoCount: 2, edgeCount: 0, clipCount: 0, shotTableRows: 12 },
 })
 
 const IMAGE_ASSETS = [
@@ -326,7 +328,7 @@ function buildShotTableNode(sourceVideo, rowCount) {
   const { deconstructionShotTableSchema } = tsxRequire('../../../electron/shared/canvas/shotTable.ts', import.meta.url)
   const base = createDeconstructionShotTable(sourceVideo.id, sourceVideo.title)
   const rows = Array.from({ length: rowCount }, (_, index) => ({
-    rowId: `fact-${index + 1}`, order: index, startSeconds: index * 2, endSeconds: index * 2 + 2, durationSeconds: 2, carriedOver: false,
+    rowId: `fact-${index + 1}`, order: index + 1, startSeconds: index * 2, endSeconds: index * 2 + 2, durationSeconds: 2, carriedOver: false,
     cells: { shotSize: index % 3 ? '全景' : '特写', motion: '定机位', visual: `第 ${index + 1} 镜：雨夜街口，灯光映在积水中`, dialogue: index % 4 ? '—' : '我一直在等你。', onScreenText: '—', mood: '悬念' },
   }))
   const table = deconstructionShotTableSchema.parse({ ...base, source: { ...base.source, status: 'ready', durationSeconds: rowCount * 2 }, rows })

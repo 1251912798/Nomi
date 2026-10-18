@@ -60,8 +60,6 @@ export function ShotTableComposer({ nodeId, table, visualSize, sourceAvailable, 
       aria-label={t('shotTable.node.composer')}
       className="nodrag nokey generation-canvas-react-flow__no-pan absolute group-data-[dragging=true]/canvas:invisible"
       style={{ cursor: 'default', zIndex: CANVAS_LAYER.nodeComposer }}
-      onPointerDown={(event) => event.stopPropagation()}
-      onWheel={(event) => event.stopPropagation()}
     >
       <div className="flex flex-col gap-2.5 rounded-nomi-lg border border-nomi-line bg-nomi-paper p-3 text-nomi-ink shadow-nomi-md">
         {selectedRowIds.length ? (
@@ -76,7 +74,7 @@ export function ShotTableComposer({ nodeId, table, visualSize, sourceAvailable, 
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-nomi bg-nomi-ink-05 text-nomi-ink-60"><IconTable size={18} stroke={1.5} /></span>
               <span className="flex min-w-0 flex-col gap-0.5">
                 <span className="truncate text-body-sm">{t('shotTable.node.composerTitle', { title: table.source.title || t('shotTable.title') })}</span>
-                <span className="truncate text-micro text-nomi-ink-60">{hasRows ? t('shotTable.node.composerHint') : t('shotTable.node.idleHint')}</span>
+                <span className="line-clamp-2 text-micro text-nomi-ink-60">{table.source.status === 'ready' ? t('shotTable.node.readyHint') : hasRows ? t('shotTable.node.composerHint') : t('shotTable.node.idleHint')}</span>
               </span>
             </div>
             <div className="h-px bg-nomi-line-soft" />
