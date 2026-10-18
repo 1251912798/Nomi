@@ -12,6 +12,7 @@
 // 必须 electron-free：转发口跑在裸 Node 上。
 import type { JSONRPCMessage, Transport } from '@modelcontextprotocol/server'
 import type { StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
+import { isTransportLevelFailure, outboundRequestWasNeverWritten } from '../outboundDispatchEvidence'
 
 export const NOMI_UNREACHABLE_MESSAGE =
   '连不上 Nomi：请先打开 Nomi 再试。 / Cannot reach Nomi: open the Nomi app first, then try again.'
@@ -25,6 +26,12 @@ export const NOMI_INTERRUPTED_MESSAGE =
   '连接中断了一下，这次操作可能已经执行：请先查看结果再决定要不要重试，不要直接重发。 / The connection dropped and this call may already have run: check the result before retrying.'
 
 const INTERNAL_CALL_TIMEOUT_MS = 10_000
+/**
+ * 探活最多问几次。Nomi 同端口重启后，连接池里还留着几条指向旧进程的空闲 keep-alive 连接：拿它们发请求被对面
+ * 复位（ECONNRESET），每条失败一次就被丢掉。只有「证明一个字节都没写出去」（拒连 / DNS，见 outboundDispatchEvidence）
+ * 才算 Nomi 没开；连接层复位就换条连接再问——ping 天然可重复，多问不花钱、不改画布。超时不再问（Nomi 卡住了，多等无益）。
+ */
+const PROBE_ATTEMPTS = 4
 /** 天然可重复的请求：重发不会花钱、不会改画布。其余（tools/call 等）连接状态不明时绝不重发。 */
 const IDEMPOTENT_METHODS = /^(ping|tools\/list|resources\/(list|read|templates\/list)|prompts\/(list|get)|completion\/complete|logging\/setLevel)$/
 
@@ -118,13 +125,23 @@ export async function bridgeStdioToHttp(
     return recovering
   }
 
-  /** 没拿到状态码的失败（连接被重置 / 连不上）：用 ping 问一句，分清「Nomi 没开」「会话丢了」「连接抖了一下」。 */
+  /**
+   * 没拿到状态码的失败（连接被重置 / 连不上）：用 ping 问，分清「Nomi 没开」「会话丢了」「连接抖了一下」。
+   * 「没开」只认拒连这类证据；复位是旧连接被对面关了，换条连接再问（2026-10-18：同端口重启后头两次 ping 都撞旧连接，
+   * 旧写法第一次复位就判「没开」，Nomi 明明开着却叫用户「请先打开 Nomi」）。
+   */
   const probeUpstream = async (): Promise<'alive' | 'session-lost' | 'down'> => {
-    try {
-      await internalCall('ping', undefined)
-      return 'alive'
-    } catch (error) {
-      return classifyUpstreamFailure(error) === 'session-lost' ? 'session-lost' : 'down'
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        await internalCall('ping', undefined)
+        return 'alive'
+      } catch (error) {
+        const kind = classifyUpstreamFailure(error)
+        if (kind === 'session-lost') return 'session-lost'
+        // 再问的只有连接层复位（旧连接被关）；拒连 = 证据确凿没开，超时 = Nomi 卡住了，都不再问。
+        const staleConnection = kind === 'unreachable' && isTransportLevelFailure(error) && !outboundRequestWasNeverWritten(error)
+        if (!staleConnection || attempt >= PROBE_ATTEMPTS) return 'down'
+      }
     }
   }
 
