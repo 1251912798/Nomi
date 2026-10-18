@@ -50,7 +50,7 @@ function installBrain(fixture) {
     match: (body) => lastUserText(body).includes('纸船在雨后的水洼里'),
     reply: (body) => {
       if (!hasToolResult(body, DRAFT_CALL)) {
-        return { type: 'tool', id: DRAFT_CALL, name: 'draft_shots', args: { shots: [shot({}, { ...base, variant: 'fast' })] } }
+        return { type: 'tool', id: DRAFT_CALL, name: 'draft_shots', args: { shots: [shot({}, { ...base, /* walkthrough-tool-args: intentional-bad-key variant — 故意交一份坏草稿：真模型就把变体写进 parameters，这里演它收到拒绝后能不能自纠 */ variant: 'fast' })] } }
       }
       let drafted = toolResultText(body, DRAFT_CALL)
       if (!operationIdOf(drafted)) {

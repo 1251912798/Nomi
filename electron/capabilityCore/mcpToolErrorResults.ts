@@ -1,7 +1,7 @@
 import type { ResultLocale } from './mcpToolResults'
 import { CAPABILITY_TRANSPORT_PUBLIC_ERROR_CODES } from '../shared/surfacePortBinding'
 import { INTEGRATION_ERROR_CODES } from '../shared/integrationContract'
-import { ADMISSION_REJECTION_HINTS } from '../shared/agentCapabilities/admissionRejectionHints'
+import { ADMISSION_REJECTION_HINTS, GENERATION_INPUT_INVALID_CODE, GENERATION_INPUT_INVALID_HINT } from '../shared/agentCapabilities/admissionRejectionHints'
 
 type Ctx = { locale: ResultLocale }
 const L = (ctx: Ctx, zh: string, en: string): string => (ctx.locale === 'en' ? en : zh)
@@ -29,6 +29,7 @@ const ERROR_HINT: Record<string, { zh: string; en: string; recover: ReadonlyArra
   // MCP 2026-07-28：input validation error 归 tool execution error，客户端 SHOULD 交给模型自纠，
   // 而能自纠的前提正是这两半都到得了模型眼前。
   ...ADMISSION_REJECTION_HINTS,
+  [GENERATION_INPUT_INVALID_CODE]: GENERATION_INPUT_INVALID_HINT,
   contract_invalid: {
     zh: '这份生成计划过不了准入校验',
     en: 'This generation plan failed admission validation',
@@ -174,7 +175,7 @@ const SAFE_CANVAS_READ_CODES = new Set<string>([
 const ADMISSION_CODES = [
   'unknown_parameter', 'parameter_type_mismatch', 'parameter_not_in_enum',
   'parameter_out_of_range', 'missing_required_parameter', 'unknown_variant',
-  'contract_invalid', 'unknown_model_identity', 'ambiguous_model_vendor',
+  'contract_invalid', 'unknown_model_identity', 'ambiguous_model_vendor', GENERATION_INPUT_INVALID_CODE,
 ] as const
 
 const POLICY_CODES = new Set<string>([
@@ -210,7 +211,8 @@ export function buildToolErrorOutcome(
     ? structuredCode
     // 有登记过 zh/en 人话时 `message` 也跟着 locale 走：否则 en 宿主拿到的是中文原句（R15）。
     // 没登记的码仍原样透传 rawMessage（不编内容）。
-    : hintForMessage ? L(ctx, hintForMessage.zh, hintForMessage.en) : rawMessage
+    // `generation_input_invalid` 的正文是我们写的那句可行动的话，原样保留（只补恢复动作）。
+    : hintForMessage && code !== GENERATION_INPUT_INVALID_CODE ? L(ctx, hintForMessage.zh, hintForMessage.en) : rawMessage
   const nextAction = typeof errorRecord.nextAction === 'string'
     ? errorRecord.nextAction
     : structuredCode && USER_ACTION_HINT[structuredCode]?.action === 'reselect_project'
@@ -232,7 +234,7 @@ export function buildToolErrorOutcome(
   const userAction = code ? USER_ACTION_HINT[code] : null
   const recover = hint ? hint.recover.map((r) => L(ctx, r.zh, r.en)) : []
   const text = [
-    `✗ ${userAction ? L(ctx, userAction.zh, userAction.en) : hint ? L(ctx, hint.zh, hint.en) : message}`,
+    `✗ ${userAction ? L(ctx, userAction.zh, userAction.en) : hint && code !== GENERATION_INPUT_INVALID_CODE ? L(ctx, hint.zh, hint.en) : message}`,
     userAction ? null : code ? `${L(ctx, '诊断', 'diagnostic')} ${code}` : null,
     details ? Object.entries(details).map(([key, value]) => `${key}=${value}`).join(' ') : null,
     ...(!userAction ? recover.map((line, index) => `${index + 1}. ${line}`) : []),

@@ -110,7 +110,7 @@
 2. 放错位置的字段：`electron/shared/agentCapabilities/draftFieldAliases.ts` 一张通用对照表（variant→variantId、model→modelId、mode→modeId……），
    `compileParameters` 的 unknown_parameter 在「键是起草顶层字段名、且该模型参数表里没有它」时直说「放到 draft 的 X 字段」，variantId 还列出目录里真实的变体词。
    表里每个目标字段由单测核「在 draft schema 里真实存在」。
-3. `draft_shots` 每一镜新增 `variantId`（模型面）并按宿主既有的 `variantId` 落位；schema 体积预算按看得见的方式记账（+19）。
+3. `draft_shots` 每一镜新增 `variantId`（模型面）并按宿主既有的 `variantId` 落位；schema 体积预算按看得见的方式记账（+22）。
 4. 自纠闭环测试：脚本化模型只读工具结果文本改草稿再交，五类毛病（塞 variant / 写 null / 数字写字符串 / 多一个未知键 / variantId 写错）都要走到付费卡；
    免费演练夹具大脑第一回合写 `variant:'fast'` + `seed:null`，读到指路后改成 `variantId` 再交，读不到指路就停下。
 

@@ -67,6 +67,17 @@ export const ADMISSION_REJECTION_HINTS: Readonly<Record<AdmissionRejectionCode, 
 /** 生成域「模型写的入参我们收不了」那一档的粗码（`transportFailure.ts` 的 `GENERATION_ARGUMENT_REFUSAL` 就是它）。 */
 export const GENERATION_INPUT_INVALID_CODE = "generation_input_invalid";
 
+/**
+ * 粗码 `generation_input_invalid` 的指引（对外 MCP 读它，和 lane 的 `DRAFT_REFUSAL_NEXT_ACTION_EN` 是同一句意思）。
+ * 它的正文是我们自己写的一句可行动的话（「素材不在库里」「模式与种类打架」……），所以 MCP 那边正文原样保留、
+ * 只补这一份恢复动作：什么都没提交、没扣钱，按正文改了再调同一个工具。
+ */
+export const GENERATION_INPUT_INVALID_HINT: Readonly<{ zh: string; en: string; recover: readonly Line[] }> = {
+  zh: "这次起草的入参我们收不了",
+  en: "Nomi could not accept this draft as written",
+  recover: [{ zh: "按上面那句话点名的字段改", en: "Change what the message above names" }, ADMISSION_NOTHING_SENT],
+};
+
 export function isAdmissionRejectionCode(code: unknown): code is AdmissionRejectionCode {
   return typeof code === "string" && Object.prototype.hasOwnProperty.call(ADMISSION_REJECTION_HINTS, code);
 }
