@@ -36,6 +36,7 @@ const TEST_STYLE_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$|^vitest(?:\.\w+)?\.confi
 export const SCAN_GUARDS = Object.freeze([
   // ── electron/ 全树（遍历 electron 找违规文件）──
   { file: 'electron/offLedgerEgress.structure.test.ts', roots: ELECTRON }, // #1156：新增 child_process 出网口没登记（5 秒）
+  { file: 'electron/capabilityCore/reservationAmountSingleExit.structure.test.ts', roots: ELECTRON }, // 2026-10-18：确认卡金额只许从 reservationMaximumForDisplay 出（遍历 electron 源码，1 秒）
   { file: 'electron/fileIdentity.test.ts', roots: ELECTRON }, // #1142：不许手写 dev / ino 比较（2 秒）
   { file: 'scripts/check-network-entry.test.mjs', roots: ELECTRON }, // #1142：Node 网络调用必须走共用传输；扫描器 scripts/check-network-entry.mjs 在闭包里（6 秒）
   { file: 'electron/shared/mcpClientRegistry.test.ts', roots: ['src', 'electron'] }, // #1142：不许手抄客户端清单（4 秒）

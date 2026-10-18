@@ -71,3 +71,14 @@
 V-mcp 先后用「Cost 0 / 12 / 1.25」、再用全角「Cost １２」与换行「Cost\n12」绕过了 no-cost 门岗。类根因：**门岗是在词条原文上直接做正则匹配，没有先规整文本**，所以任何换一种写法（全角数字、换行 / 制表 / 不换行空格、零宽字符）都能躲开；我每次只针对被点名的那一个写法补一条规则，等于在原文匹配这个结构上继续加例外，同一类还会从下一种写法回来。另外「金额」的口径也只认阿拉伯数字与 `$¥`，漏了中文数字与货币词（元、块、美元、USD、CNY、RMB）。
 整类修法（不再加例外）：`normalizeForScan` 在扫描前统一规整——NFKC（全角转半角）、去零宽（U+200B–U+200D、U+2060、U+FEFF）、一切空白与换行压成一个空格——再套**所有**规则（词典值、词典 key、源码字符串都走它），白名单「整值精确等于」也在规整后比较；「费用 / Cost」后跟阿拉伯数字、中文数字（零一二…万、两、〇）、货币符号或货币词一律红。变异「去掉规整」会红（备份拷回 sha256 核对）。
 
+
+### 再补充（第三轮，结构解收口；取代上一节的「整类修法」）
+
+V-mcp 前后三轮各找到一类绕法：带数字的「Cost 12」；全角「Cost １２」与换行「Cost\n12」；罗马数字「Cost Ⅻ」、词中软连字符「Co\u00ADst 12」、运行时插值「Cost {{amount}}」。类根因：**我一直在用正则扫自由文本，去证明「哪里都没有金额」——而正则只能证明「有」，证明不了「没有」，这件事没有边界，永远能再找到绕法**；每轮只补被点名的那一种，等于在同一个结构上继续加例外，到第三轮才停下找根因。
+
+结构解（不再加例外）：
+1. `runtime.capability.generationGateCost` 这一键**只认精确值**：中文只许「费用」，英文只许「Cost」，在**原文上逐字比较**（不规整、不看正则）；带插值占位、规整前后不等、任何别的值都红。
+2. **金额只从 `reservationMaximumForDisplay` 出**：`reservationAmountSingleExit.structure.test.ts` 扫 electron 非测试源码，除 approvalReceipt.ts 外任何文件读 `reservationPreview.maximum` 都红（已登记进 `scripts/pre-push-scan-guards.mjs`）；`unknownPriceGateProjection.test.ts` 证明发给渲染端的 `maximumCost` 恒等于该函数输出；`generationGateCapability.test.ts` 证明卡上费用一行只由收到的 `maximumCost` 决定（数字 → 币种 + 该数字；缺席 / null / NaN / Infinity → 「未知」）。
+3. **其它键的正则扫描降成启发式、尽力而为**，保留现有规则（含 NFKC / 去零宽 / 空白压缩、中文数字与货币词），不再承诺「全覆盖」。脚本头已写明。**已知不覆盖**：罗马数字（Ⅻ）等本规则没列的数字类别、软连字符 U+00AD 等不可见字符、词中插入的其它符号、运行时插值（`Cost {{amount}}` 里 amount 运行时才是 12）。这三个写在白名单键上必红（单测），写在其它键上记成已知局限（单测断言不红并注释原因）。
+4. 变异：去掉第 1 条的精确判定，三条绕法的用例回到漏检（红），备份拷回 sha256 核对一致；往 generationDispatcher.ts 里加一处直接读 `reservationPreview.maximum`，源码扫描守卫红，已还原。
+

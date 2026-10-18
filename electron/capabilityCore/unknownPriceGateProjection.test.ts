@@ -73,3 +73,18 @@ describe('未知价不许在 Nomi 确认卡变成 0', () => {
     expect(reservationMaximumForDisplay({ maximum: 0 })).toBe(0)
   })
 })
+
+// 结构解：发给渲染端的 maximumCost 永远等于 reservationMaximumForDisplay(预览)——金额只有这一个来源。
+describe('确认卡金额的唯一来源', () => {
+  it.each([
+    { currency: 'CNY', maximum: 0, unknownJobCount: 1 },
+    { currency: 'CNY', maximum: 0, unknownJobCount: 3 },
+    { currency: 'CNY', maximum: 7.5, unknownJobCount: 2 },
+    { currency: 'CNY', maximum: 0 },
+    { currency: 'CNY', maximum: 12 },
+  ])('预览 %j → 渲染端收到的 maximumCost 就是函数的输出', async (preview) => {
+    previewForChallenge = preview
+    await createDefaultAuthorities().confirmGenerationInNomi!({ challengeToken: 't' })
+    expect(decisions.at(-1)!.maximumCost).toBe(reservationMaximumForDisplay(preview))
+  })
+})

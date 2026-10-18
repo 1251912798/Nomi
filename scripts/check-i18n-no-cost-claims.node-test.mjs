@@ -101,10 +101,31 @@ test('规整后再扫：全角 / 换行 / 制表 / 零宽 / 中文数字 / 货�
   ).hits.map((h) => h.locale)
   for (const en of ['Cost １２', 'Cost\n12', 'Cost\t12', `Cost${zw}12`, 'Cost\u00a012', 'Cost 12 USD', 'COST １.２５']) assert.deepEqual(at('费用', en), ['en'], JSON.stringify(en))
   for (const zh of ['费用 十二元', '费用\n12', `费用${zw}１２`, '费用：三块', '费用 12 CNY', '费用\u3000一百']) assert.deepEqual(at(zh, 'Cost'), ['zh-CN'], JSON.stringify(zh))
-  // 精确值带零宽 / 多余空白：规整后仍等于「费用」「Cost」，不误红
-  assert.deepEqual(at(` 费用${zw}\n`, ' Cost\t'), [])
+  // 白名单键在原文上逐字比较：带零宽 / 多余空白的「费用」「Cost」也不是精确值，红（不再经规整放行）
+  assert.deepEqual(at(` 费用${zw}\n`, ' Cost\t'), ['zh-CN', 'en'])
   // 别的 key 里不带金额的正常文案不受影响
   const normal = scanDictionaries(dict({ a: { b: '选择模型后开始生成' } }, { a: { b: 'Pick a model to start' } }), { notMoney: [] })
   assert.deepEqual(normal.hits, [])
   assert.equal(normalizeForScan('Ｃｏｓｔ\n１２'), 'Cost 12')
+})
+
+// 结构解（2026-10-18，V-mcp 第三轮后）：generationGateCost 这一键只认精确值，在原文上逐字比较；
+// 其它键的正则扫描只是尽力而为，已知不覆盖的写法记成「已知局限」，不再继续加例外。
+const BYPASSES = ['Cost \u216B', 'Co\u00ADst 12', 'Cost {{amount}}']
+test('白名单键上：罗马数字 / 软连字符 / 运行时插值这三个绕法必红；精确值绿', () => {
+  const at = (zh, en) => scanDictionaries(
+    dict({ runtime: { capability: { generationGateCost: zh } } }, { runtime: { capability: { generationGateCost: en } } }), { notMoney: [] },
+  ).hits.map((h) => `${h.locale}:${h.text}`)
+  assert.deepEqual(at('费用', 'Cost'), [])
+  for (const en of BYPASSES) assert.deepEqual(at('费用', en), [`en:${en}`], JSON.stringify(en))
+  for (const zh of ['费用 {{amount}}', '费用 \u216B', '费\u00AD用', '费用：{{amount}}']) assert.deepEqual(at(zh, 'Cost'), [`zh-CN:${zh}`], JSON.stringify(zh))
+  // 带别的值（哪怕看上去无害）也红：只认精确值
+  assert.deepEqual(at('费用', 'Costs'), ['en:Costs'])
+})
+
+test('已知局限（其它键）：正则扫描是启发式，这三种写法扫不到——断言「不红」只为把局限钉在测试里，别当成保证', () => {
+  // 罗马数字：NFKC 后是 XII，规则里没有这一类数字；软连字符 U+00AD：词中被插入后 `cost` 词边界匹配不上；
+  // 运行时插值：{{amount}} 在扫描时被去掉，真正的金额运行时才出现。要堵这些只能靠结构（精确值键 + 金额单一出口），不能再加正则。
+  const other = scanDictionaries(dict({ a: { b: 'Cost' } }, { a: { b: 'Cost \u216B', c: 'Co\u00ADst 12', d: 'Cost {{amount}}' } }), { notMoney: [] })
+  assert.deepEqual(other.hits, [])
 })
