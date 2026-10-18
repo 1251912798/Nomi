@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { spendActionFailureCopy } from './spendCardFailure'
+import { enAgentPanelV4, zhAgentPanelV4 } from '../../../i18n/locales/agentPanelV4'
 
 describe('付费卡上一下没做成时说哪一句', () => {
   it('账本说可能已经发出去：只说「结果未知、先去核对」，不管种类、不管卡能不能改', () => {
@@ -35,5 +36,34 @@ describe('付费卡上一下没做成时说哪一句', () => {
     expect(spendActionFailureCopy(unknown, false)).toBe('agentPanelV4.spendActionNotStartedLocked')
     // 旧宿主不带 `failure` 也一样（只认得 message）。
     expect(spendActionFailureCopy({ ok: false, code: 'failed', message: 'generation_not_started' }, false)).toBe('agentPanelV4.spendActionNotStartedLocked')
+  })
+
+  it('合同编译口拒了某个参数：说的是点名参数的那一句（卡能改 / 改不了都一样，那句话里两条路都给了），不是笼统的「改一下再按」', () => {
+    const outcome = { ok: false, code: 'failed' as const, message: 'generation_not_started', reason: 'parameter_type_mismatch', failure: 'parameter_rejected' as const, field: 'seed' }
+    expect(spendActionFailureCopy(outcome, true)).toBe('agentPanelV4.spendActionParameterRejected')
+    expect(spendActionFailureCopy(outcome, false)).toBe('agentPanelV4.spendActionParameterRejected')
+    // 账本说可能已经发出去的永远排在前面（钱的事实压过一切）。
+    expect(spendActionFailureCopy({ ...outcome, message: 'generation_execution_failed' }, true)).toBe('agentPanelV4.spendActionFailed')
+  })
+
+  it('这一句中英两轨都在，而且都把被拒的参数名印出来（词条不是占位）', async () => {
+    const { createInstance } = await import('i18next')
+    for (const [lng, locale] of [['zh-CN', zhAgentPanelV4], ['en', enAgentPanelV4]] as const) {
+      const i18n = createInstance()
+      await i18n.init({ lng, resources: { [lng]: { translation: { agentPanelV4: locale } } } })
+      const text = String(i18n.t('agentPanelV4.spendActionParameterRejected', { field: 'seed' }))
+      expect(text, lng).toContain('seed')
+      expect(text, lng).not.toContain('{{')
+    }
+  })
+
+  it('付费卡没有 ×（底栏是「取消」）：spend* 文案中英都不许教用户点 ×', () => {
+    const offenders: string[] = []
+    for (const [lng, locale] of [['zh-CN', zhAgentPanelV4], ['en', enAgentPanelV4]] as const) {
+      for (const [key, value] of Object.entries(locale)) {
+        if (key.startsWith('spend') && typeof value === 'string' && /(点|click|close it with|press)\s*×/i.test(value)) offenders.push(`${lng}:${key}`)
+      }
+    }
+    expect(offenders).toEqual([])
   })
 })

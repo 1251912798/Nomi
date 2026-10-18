@@ -351,7 +351,7 @@ export function useAgentPanelSpendConfirm(): AgentPanelSpendConfirm {
     const failed = (reason: unknown, outcome: SpendActionOutcome | undefined): void => {
       logRendererWarn('spend-confirm-refused', { code: outcome?.message ?? outcome?.code, failure: outcome?.failure }, reason)
       if (stoppedDuringAction.current === target.operationId) return
-      toast(t(spendActionFailureCopy(outcome, writeAccess.canWrite?.() === true)), 'error')
+      toast(t(spendActionFailureCopy(outcome, writeAccess.canWrite?.() === true), { field: outcome?.field ?? '' }), 'error')
     }
     void run(target)
       .then((result) => {
@@ -581,7 +581,7 @@ export function useAgentPanelSpendConfirm(): AgentPanelSpendConfirm {
               const { sent, notSent } = result.batchStopped
               useToastStore.getState().push({ message: t(spendBatchStoppedKey(target.shots), { sent, count: notSent, total: sent + notSent }), type: 'info', ttl: 8000, reason: 'spend-batch-stopped' })
             } else if (!result.ok && result.message !== 'no pending generation to discard') {
-              toast(t(spendActionFailureCopy(result, writeAccess.canWrite?.() === true)), 'error')
+              toast(t(spendActionFailureCopy(result, writeAccess.canWrite?.() === true), { field: result.field ?? '' }), 'error')
             }
           })
           .catch((error: unknown) => logRendererWarn('spend-confirm-refused', { code: 'discard-ipc' }, error))

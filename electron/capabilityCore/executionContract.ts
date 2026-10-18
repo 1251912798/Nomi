@@ -232,8 +232,19 @@ function compileParameters(candidate: PlanCandidate, module: ResolvedModule): { 
   const warnings: string[] = [];
   const allowedKeys = Object.keys(module.parameterSchema).sort();
   const model = `${module.providerId}/${module.modelId}`;
+  // 写成 null / undefined 的键：大模型惯用 null 表示「不设」（2026-10-18 真走查：deepseek-v4-pro 写了 `seed: null`，
+  // 起草放行、点「生成」才在这里被 `typeof null === "object"` 拒掉）。**只放宽空值这一件事**：
+  // 空值 = 没填，不进合同、留一条 warning 供追查；必填参数写空 = 缺必填（下面那一趟点名）；
+  // 字符串冒充数字、"false" 冒充布尔照旧按类型拒。
+  const unsetKeys = new Set<string>();
   for (const [key, value] of Object.entries(candidate.parameters)) {
     const field = module.parameterSchema[key];
+    // 键认不认识都一样：空值不带任何意图，丢掉不会让谁的话被吞（拼错键名 + 真值才是要拦的，下面照拒）。
+    if (value === null || value === undefined) {
+      unsetKeys.add(key);
+      warnings.push(`${model} 的参数 ${key} 为空，按不设处理`);
+      continue;
+    }
     // 选型意图键：Nomi 的推荐器读它，供应商请求里没有它。不进合同，也不算「填错」——
     // 但**类型照判**：垃圾值无声吞掉与静默丢弃是同一个毛病。
     const hintType = generationPlanningHintType(key);
@@ -295,7 +306,7 @@ function compileParameters(candidate: PlanCandidate, module: ResolvedModule): { 
   for (const [key, field] of Object.entries(module.parameterSchema)) {
     if (field.required && !(key in parameters)) {
       throw new ContractCompilationError(
-        `缺少必填参数 parameters.${key}（${model}）。该模型接受的参数键：${allowedKeys.join("、")}。`,
+        `缺少必填参数 parameters.${key}（${model}）${unsetKeys.has(key) ? "：你写的是空值（null），必填参数不能留空" : ""}。该模型接受的参数键：${allowedKeys.join("、")}。`,
         { code: "missing_required_parameter", path: `parameters.${key}`, allowedKeys },
       );
     }
