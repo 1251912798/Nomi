@@ -15,6 +15,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { stationTimeout } from './_station-budget.mjs'
+import { openModelSettings } from './_shell.mjs'
 
 export const ENV_KEY_VAR = 'APIMART_API_KEY'
 export const ENV_KEY_VENDOR = 'apimart'
@@ -121,12 +122,14 @@ const TERMINAL_STAGES = new Set(['completed', 'partial', 'failed', 'cancelled', 
 
 /**
  * 走可见的接入页把 APIMart key 装进被测 App，并验证一个文本模型（Agent 的大脑）。
- * 写法照 tests/ux/agent-vertical-spine-m0-m5.red.e2e.mjs 的 M3 段：打开模型设置 → 点 APIMart →
+ * 写法照 tests/ux/agent-vertical-spine-m0-m5.red.e2e.mjs 的 M3 段：点顶栏齿轮 → 设置里的「模型」页 → 点 APIMart →
  * 只填 key 的页（保存）→ 继续验证 → 获取可用模型 → 选大脑 → 验证 → 等认证走完 → 关设置。
  * 保存之后被授权的模型要是已经能用（接入页：「预置模型可用」），就跳过验证那一半。
  * 之后图片模型能不能用，由调用方的 lockSpendToModels 问主进程（不能用就在花钱前红）。
  *
- * 前提：已经打开了一个项目（打开模型设置的事件由工作区壳监听，项目库页上没人听）。
+ * 前提：无。项目库页和工作区里都行——入口是顶栏齿轮（`openModelSettings`，会等它出现），不是往 window 上派事件：
+ * 事件是发了就走、不等有没有人听，页面刚（重）载、React 还没挂上监听时发出去就丢了，只剩 15 秒后一句「等不到模型设置页」
+ * （2026-10-18 视频付费走查在项目库页接入时就是这么超时的，零花费）。
  *
  * 返回只含事实、不含 key 的小对象，给报告用。`stopAfterSave`：只做到「保存」为止（演练用）。
  */
@@ -134,7 +137,7 @@ export async function connectApimartThroughVisibleUi(win, { apiKey, textModelKey
   assertUsableEnvKey(apiKey)
   const secrets = [apiKey]
   try {
-    await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-open-model-catalog')))
+    await openModelSettings(win, { label: '接入：打开模型设置', timeout: STEP_MS })
     const home = win.locator('[data-model-settings-page="home"]').first()
     await home.waitFor({ state: 'visible', timeout: STEP_MS })
     const available = home.locator(`[data-model-home-available="${ENV_KEY_VENDOR}"]`).first()
