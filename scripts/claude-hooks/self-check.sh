@@ -75,6 +75,33 @@ if hit_block prior-art 'package\.json|SDK|框架|三方库|第三方|依赖升�
   echo "【先查别人 · R5】结论默认是接入（P0），凭记忆判断 = 没查｜碰三方库的 API → Context7 查官方文档(R5.1)｜碰框架/SDK/运行时或它没用过的层 → 四列表「它提供/我们用了/我们另写了/我们拆散了」＋参考实现逐层对照（一致·有意不同[理由须是领域约束]·没想到）(R5.4)｜外部也读写的格式/协议先找规范、写偏差与理由（建议档）"
   echo ""
 fi
+# 调研时刻（R5 扩到交互 / 坑 / 指标，2026-10-19）：每个生命周期时刻一行，命中才出；都提醒「查 ≥3 个先例、记对决定的影响」。
+# 词表刻意收窄（泛词如「设计 / 格式 / 坑」不进），免得每轮都响；落点是设计卡 ★0，不是事后补文档。
+PRIOR_TAIL="查 ≥3 个先例，每条记「出处·它怎么做·对哪个决定的影响(改了/确认了)」，写进设计卡 ★0"
+if hit_block research-direction '产品方向|做不做|值不值得做|要不要做|立项|竞品|对标'; then
+  echo "【调研 · 产品方向】别人怎么解决这件事、用户现在怎么凑合？$PRIOR_TAIL"
+fi
+if hit_block research-interaction '交互|操作方式|手势|信息架构|快捷键设计'; then
+  echo "【调研 · 交互】同类产品的做法与别人踩的坑先看再画，探索图旁放调研摘要｜$PRIOR_TAIL"
+fi
+if hit_block research-tech '选型|技术方案|架构方案|方案对比|换.{0,4}(库|框架)'; then
+  echo "【调研 · 技术选型】近邻开源的真实代码 + 官方文档(Context7)，坏先例也写｜$PRIOR_TAIL"
+fi
+if hit_block research-format '文件格式|导出格式|协议规范|OTIO|FCPXML|EDL'; then
+  echo "【调研 · 外部格式】先找规范，写我们的偏差与理由｜$PRIOR_TAIL"
+fi
+if hit_block research-generic '自己写|自写|造轮子|重新实现|通用能力'; then
+  echo "【调研 · 通用能力】不是我们独有的 → 先找现成的(P0)；自写要登记，理由只认领域约束｜$PRIOR_TAIL"
+fi
+if hit_block research-pitfalls '论坛|issue 里|postmortem|事故复盘|别人踩|踩过的坑'; then
+  echo "【调研 · 别人踩的坑】读论坛 / issue / 事故复盘里真实的失败，不只读宣传页｜$PRIOR_TAIL"
+fi
+if hit_block research-metrics '指标|量具|埋点|成功率|基线'; then
+  echo "【调研 · 指标】每个指标点名量具(evals/<功能>/ · perf 场景 id · 走查脚本 · 使用遥测事件)，没有就写「未验证：缺量具」；按 目标→信号→指标 写，用比例不用计数｜别人怎么量同类东西(HEART / GSM)先看"
+fi
+if hit_block research-rules '改规则|新规则|加一条规则|规则变更|新增门岗|rules\.json'; then
+  echo "【调研 · 规则本身】别人的流程模板(RFC / KEP / GOV.UK / 事故复盘)怎么管这件事？$PRIOR_TAIL；存在性门岗会被事后补文档刷过，优先把调研放在做决定的地方"
+fi
 # 报完成 / 交付（R13 第二、三档）
 if hit_block completion '做完|修好|验收|走查|交付|给你看|可以合了|完成了'; then
   echo "【报完成前 · R13】（P3 全文 docs/engineering/principles-detail.md）Agent/工具/契约改动 → 要有真实模型数字：工具写对率 + 回合成功率，实验室基线只证外观｜功能交付 → 设计卡 ★1 的 ≥2-3 条真实用户任务跑通闭环、冒出的问题全修掉｜画布/性能/导入/导出测试 → 素材必须是 NOMI_REAL_MEDIA_DIR 登记过的真素材，合成夹具证明不了任何事"
