@@ -1,5 +1,6 @@
 import React, { type JSX } from 'react'
 import ShotTableNode from '../../../workbench/generationCanvas/nodes/shotTable/ShotTableNode'
+import { LabCanvasNodeHost } from '../labCanvasViewport'
 import { useGenerationCanvasStore } from '../../../workbench/generationCanvas/store/generationCanvasStore'
 import type { ShotTableFactRow } from '../../../../electron/shared/canvas/shotTable'
 import { createDeconstructionShotTable } from '../../../workbench/generationCanvas/nodes/shotTable/shotTableFacts'
@@ -35,5 +36,5 @@ export function ShotTableStage({ deconstructing = false }: Props): JSX.Element {
     useGenerationCanvasStore.setState({ nodes: [tableNode], edges: [] })
     setReady(true)
   }, [deconstructing])
-  return <div className="bg-nomi-bg p-4" style={{ width: 992, height: 452 }}><div style={{ width: 960, height: 420 }}>{ready && node ? <ShotTableNode node={node} selected={false} /> : null}</div></div>
+  return <div className="bg-nomi-bg p-4" style={{ width: 992, height: 452 }}><LabCanvasNodeHost width={960} height={420}>{ready && node ? <ShotTableNode node={node} selected={false} /> : null}</LabCanvasNodeHost></div>
 }
