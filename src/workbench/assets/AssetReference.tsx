@@ -101,7 +101,9 @@ export default function AssetReference({
   const routeByKind = (kind: AssetKind): AssetSlot => arraySlots.find((s) => s.accept === kind) ?? arraySlots[0]
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-[8px]')}>
+    // 这一排所有虚线框按**框本身**顶对齐（items-start），标签浮在框上方、不占流内高度；
+    // 有标签时整排顶部留一格标签位（pt-4），否则标签会把有标签的框顶低、和鼠标框错开。
+    <div data-reference-row="true" className={cn('flex flex-wrap items-start gap-[8px]', labelSingles && 'pt-4')}>
       <div className="relative shrink-0">
         <AssetReferenceButton disabled={Boolean(uploadingSlotKey)}
           title={totalFull ? capacityMessage : undefined}
@@ -115,8 +117,8 @@ export default function AssetReference({
             const url = typeof raw === 'string' ? raw : ''
             const isOpen = openSlotKey === slot.key
             return (
-              <div key={slot.key} data-asset-slot={slot.key} className={cn('relative flex flex-col gap-[4px]')}>
-                {labelSingles ? <span className={cn('text-nomi-ink-60 text-micro leading-none')}>{slot.label}</span> : null}
+              <div key={slot.key} data-asset-slot={slot.key} className={cn('relative')}>
+                {labelSingles ? <span className={cn('absolute bottom-full mb-[4px] whitespace-nowrap text-nomi-ink-60 text-micro leading-none')}>{slot.label}</span> : null}
                 {url
                   ? <AssetTile asset={displayRef(url, slot.accept, slot.label)} onRemove={() => onRemove(slot, 0)} />
                   : <AssetAddTile label={t('assetLibrary.addNamed', { label: slot.label })} selected={isOpen} onClick={() => onTogglePicker(slot.key)} />}

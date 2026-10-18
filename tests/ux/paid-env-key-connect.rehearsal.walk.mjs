@@ -38,7 +38,9 @@ try {
   // ③ 被测 App 主进程的环境里 APIMART_API_KEY 是空的（走查进程的闭包之外没人拿得到这把 key）。
   expect(await app.evaluate((name) => process.env[name] ?? '', ENV_KEY_VAR), '被测 App 的进程环境里没有这把 key').toBe('')
   // 接入页走完「保存」，然后问被测 App 这些模型能不能用。
-  await walk.newProject() // 打开模型设置的事件由工作区壳监听：先开项目
+  // 在项目库页上接入、而且赶在页面刚（重）载的那一刻（waitUntil: commit，React 还没挂好监听）：接入要走看得见的顶栏齿轮 → 模型页，
+  // 它会等入口出现；往 window 上派事件的老做法在这一刻发出去就丢了（修前这里红：等不到模型设置页，15 秒超时）。
+  await win.reload({ waitUntil: 'commit' })
   let lockRefusal = null
   try { await paid.lockToAuthorizedModels(win) } catch (error) { lockRefusal = error }
   await walk.snap('env-key-00-after-connect-attempt')
@@ -49,6 +51,7 @@ try {
   walk.report.lockRefusal = lockRefusal ? String(lockRefusal.message).slice(0, 200) : null
 
   // ① key 经接入页存住了，且被授权的模型已可用 → 跳过「继续验证」那一半（loopback 夹具没有认证那一整套，真 key 上才会走它）。
+  await walk.newProject() // 接入完了再开项目：下面 Agent 说话那一步要在项目里
   expect(walk.report.envKeyConnect?.keySaved, '接入页保存成功').toBe(true)
   expect(walk.report.envKeyConnect?.verification, '保存后预置模型已可用，跳过验证').toContain('skipped')
   expect(lockRefusal, '花钱面收窄通过（被授权的模型可用，其余生成模型已停）').toBeNull()
