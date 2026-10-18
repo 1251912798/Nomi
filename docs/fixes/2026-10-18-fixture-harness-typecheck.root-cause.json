@@ -71,7 +71,7 @@
       "path": "tests/ux/fixtures/reference-row-alignment-harness.tsx",
       "entry_point": "Stage",
       "disposition": "enforced",
-      "evidence": "Missing graph/modelOptionsState/readMappings (main red); also invalid ProfileKind 'image_to_image' and edge mode 'text_ref'. Fixed; reference-row-alignment.test.mjs 16/16 now pass locally (hung before)."
+      "evidence": "Missing props were fixed by #1242 via composerControlProps; tsc over fixtures still found invalid ProfileKind 'image_to_image', edge mode 'text_ref' and the JSX namespace — fixed here. reference-row-alignment.test.mjs 16/16 pass locally."
     },
     {
       "path": "tests/ux/fixtures/model-contract-limits-harness.tsx",
@@ -139,7 +139,7 @@
     "rationale": "No third-party dependency is involved.",
     "exit_criteria": []
   },
-  "migration": "None.",
+  "migration": "The direct red on main was fixed in parallel by #1242 (shared tests/ux/fixtures/composerControlProps.ts for the three NodeParameterControls harnesses); this change keeps that helper and adds the class-level guard plus the remaining drift it missed (invalid ProfileKind / edge mode / JSX type in reference-row-alignment, selection-drag, spend-panel, composer-lifecycle, dead red test).",
   "residual_risks": [
     "tests/ux/model-contract-limits.walk.mjs is an Electron walk and was not run locally; its harness now type-checks against the production contract."
   ]
