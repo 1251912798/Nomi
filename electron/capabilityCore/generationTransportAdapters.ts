@@ -148,6 +148,8 @@ function safeFailure(error: unknown): Extract<RuntimeToolDecision, { ok: false }
           // 说不出拒了什么，于是同一份参数原样重试（铁律 ⑩ 宿主矩阵首跑抓到）。
           : value instanceof ContractCompilationError ? GENERATION_ARGUMENT_REFUSAL : undefined,
     ownMessage: (value) => (value instanceof ContractCompilationError ? value.message : undefined),
+    // 粗码 `generation_input_invalid` 说不清是哪一种拒绝；具体码（unknown_parameter……）随失败带出去，lane 据它给按码的下一步。
+    admission: (value) => (value instanceof ContractCompilationError ? value.rejection?.code : undefined),
     // 收敛成码挡住的应当只有**供应商 / 凭据的原始文本**。连我们自己 schema 的字段级理由一起抹掉，
     // 模型拿到的就是一个说不出拒了什么的裸码，于是同一份载荷原样重试到回合超时——那正是
     // 2026-09-18 那份根因合同修掉的失效方式（`generation_input_invalid — shots.0.prompt: Required`）。

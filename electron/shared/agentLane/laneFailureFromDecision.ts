@@ -16,6 +16,7 @@
 import { VERB_DECLARATIONS } from "../agentCapabilities/verbDeclarations";
 import { verbMaySubmitGeneration, type VerbEffect, type VerbNextAction } from "../agentCapabilities/verbDeclaration";
 import type { LaneToolFailureShape } from "./laneToolContract";
+import { DRAFT_REFUSAL_NEXT_ACTION_EN, GENERATION_INPUT_INVALID_CODE, admissionNextActionEn, isAdmissionRejectionCode } from "../agentCapabilities/admissionRejectionHints";
 
 /**
  * 工具名 → 它自己声明的 `effect / nextAction`。**从动词声明现取**，不在这里复述一份工具名单——
@@ -59,6 +60,8 @@ export function laneFailureFromDecision(input: {
   advice?: LaneFailureAdvice | undefined;
   nextAction: string;
   reason?: unknown;
+  /** 准入层拒绝的具体码（传输层随失败带来）。 */
+  admission?: string | undefined;
 }): LaneToolFailureShape {
   const code = input.code ?? input.fallbackCode;
   const taskAdvice: Record<string, LaneFailureAdvice> = {
@@ -76,13 +79,18 @@ export function laneFailureFromDecision(input: {
   };
   const safeAdvice = taskAdvice[code];
   if (safeAdvice) return { code, ...safeAdvice };
+  // 起草阶段的拒绝（什么都没提交）：按码给下一步，不套「提交状态不明」那句通用话——后者会让 Agent 停在一张报错卡上。
+  // 表只有一份（`admissionRejectionHints.ts`），对外 MCP 读的是同一张。
+  const draftNextAction = isAdmissionRejectionCode(input.admission)
+    ? admissionNextActionEn(input.admission)
+    : code === GENERATION_INPUT_INVALID_CODE ? DRAFT_REFUSAL_NEXT_ACTION_EN : undefined;
   const detail = isBareCodeMessage(input.message, input.code) ? "" : ` ${(input.message ?? "").trim()}`;
   const message = input.advice?.message
     ?? `${input.toolName} could not complete the requested action (${code}).${detail}`;
   return {
     code,
     message,
-    nextAction: input.advice?.nextAction ?? input.nextAction,
+    nextAction: input.advice?.nextAction ?? draftNextAction ?? input.nextAction,
     ...(input.reason ? { reason: input.reason as LaneToolFailureShape["reason"] } : {}),
   };
 }

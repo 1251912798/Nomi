@@ -91,6 +91,8 @@ const RAW: Readonly<Record<string, Readonly<Record<string, readonly VerbFieldPro
     "shots.durationSec": ["model-authored"],
     "shots.aspectRatio": ["model-authored"],
     "shots.modelId": ["from-read:list_models.modelId"],
+    // 变体词来自 list_models 投出的 `variants[].id`（availableModels.ts）；不写 = 用该模型的默认变体。
+    "shots.variantId": ["from-read:list_models.variants"],
     "shots.candidate": ["from-read:list_models.modelId"],
     // 两档都真：assetId 是模型从 look_at_media 拿的，内容哈希与版本由宿主补。
     // 写成 `from-read:<某个读动词>.contentHash` 会当场红——没有任何读动词返回那个字段。

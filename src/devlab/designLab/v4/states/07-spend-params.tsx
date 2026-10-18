@@ -46,6 +46,7 @@ import { holdDesignLabReady } from '../../labReadyHold'
 import { Notification } from '@mantine/core'
 import { buildToastNotification } from '../../../../ui/toast'
 import { useTranslation } from 'react-i18next'
+import { spendActionFailureCopy } from '../../../../workbench/ai/v4/spendCardFailure'
 import type { LabState } from '../../labScreen'
 
 const SOURCE = '2026-09-10-spend-card-node-params-and-full-auto.md'
@@ -417,6 +418,29 @@ function ReferenceNotInProjectToast({ locale }: { locale?: 'zh-CN' | 'en' }): JS
   )
 }
 
+/**
+ * 卡上点生成、主进程在合同编译口把某个参数拒了时（`failure: 'parameter_rejected'`），卡上弹的那一条。
+ * 文案键就是生产那一个函数（`spendActionFailureCopy`）算出来的、`{{field}}` 点名被拒的参数；通知是生产那一条
+ * （`buildToastNotification` + Mantine Notification），下面摆的是同一张真卡：卡没丢，用户看得见是哪个参数、能改了再按。
+ */
+function ParameterRejectedOnCard({ locale }: { locale?: 'zh-CN' | 'en' }): JSX.Element {
+  const applied = useLabLocale(locale)
+  const fx = useV4Fixtures()
+  if (!applied) return <Piece><div /></Piece>
+  const key = spendActionFailureCopy({ ok: false, code: 'failed', message: 'generation_not_started', reason: 'parameter_type_mismatch', failure: 'parameter_rejected', field: 'seed' }, true)
+  const data = buildToastNotification({ id: 'lab-parameter-rejected', message: fx.t(key, { field: 'seed' }), type: 'error' })
+  return (
+    <>
+      <Piece>
+        <Notification icon={data.icon} color={data.color} withBorder withCloseButton={data.withCloseButton} className="w-[22rem]">
+          {data.message}
+        </Notification>
+      </Piece>
+      <SpendComposerCard shots={1} {...(locale ? { locale } : {})} />
+    </>
+  )
+}
+
 /** 切到「全自动」的二次确认。**不是新组件**：它就是介入槽的可撤销档（换档本身可撤销）。 */
 function AutoModeConfirmCard(): JSX.Element {
   const fx = useV4Fixtures()
@@ -618,6 +642,22 @@ export const V4_SPEND_PARAMS_STATES: readonly LabState[] = [
     mirrors: 'src/workbench/ai/v4/spendCardFailure.ts:45',
     coverage: 'component-only',
     render: () => <ReferenceNotInProjectToast locale="en" />,
+  },
+  {
+    id: 'v4-spend-parameter-rejected',
+    name: '付费卡 · 点生成时有个参数没通过核对（卡还在，通知点名是哪个参数、没开始生成也没花钱）',
+    source: 'docs/plan/2026-10-18-null-optional-params.md',
+    mirrors: 'src/workbench/ai/v4/spendCardFailure.ts:45',
+    coverage: 'component-only',
+    render: () => <ParameterRejectedOnCard />,
+  },
+  {
+    id: 'v4-spend-parameter-rejected-en',
+    name: '付费卡 · 参数没通过核对（英文界面）',
+    source: 'docs/plan/2026-10-18-null-optional-params.md',
+    mirrors: 'src/workbench/ai/v4/spendCardFailure.ts:45',
+    coverage: 'component-only',
+    render: () => <ParameterRejectedOnCard locale="en" />,
   },
   {
     id: 'v4-spend-params-repriced',

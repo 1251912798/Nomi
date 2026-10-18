@@ -33,7 +33,7 @@ import { awaitShotHandover } from "../productionRun/shotProviderHandover";
 import type { ApprovalReceiptAuthority } from "./approvalReceipt";
 import type { DispatchContext } from "./dispatcher";
 import type { GenerationOperationStore, GenerationReviseInput } from "./mcpGenerationTools";
-import type { PlanCandidate } from "./executionContract";
+import { ContractCompilationError, type PlanCandidate } from "./executionContract";
 import type { ProjectBinding } from "../shared/projectBinding";
 import type { ProjectLeaseV2 } from "./projectLease";
 import type { ModelPricing } from "../productionRun/shotPricing";
@@ -118,7 +118,10 @@ function failed(error: unknown, started = true): ProductionActionResult {
   const safe = error instanceof Error && ['generation_quote_changed', 'generation_presentation_stale', 'run_not_open', 'generation_scope_invalid'].includes(error.message)
     ? error.message
     : started ? 'generation_execution_failed' : 'generation_not_started';
-  const reason = spendFailureReason(error);
+  // 合同编译口的参数拒绝：码与参数名都是目录里的事实（不是供应商原话），可以带到卡上点名。
+  const rejection = error instanceof ContractCompilationError ? error.rejection : undefined;
+  const reason = rejection?.code ?? spendFailureReason(error);
+  const field = rejection?.path.replace(/^parameters\./, "");
   // 「私有诊断」此前**谁都拿不到**：原话在这一行被换成兜底码就消失了，主进程日志里一个字都没有。
   // 于是付费卡按下去失败时，能排查的人手上只有一句兜底话（2026-09-21 Pass 3b：一条真机走查红在
   // 这里，查不出为什么，只能靠猜）。原话进日志，不进用户面。
@@ -128,7 +131,7 @@ function failed(error: unknown, started = true): ProductionActionResult {
   // 没发起的那一档还要说清是哪一种（第 11 条：卡上只给存在的出路）。按错误类型认，与重做 / 续拍同一个闭集；
   // 发起过的那一档只说「结果未知、先去核对」，种类不改变那句话，所以不带。
   const failure = safe === 'generation_not_started' ? productionShotActionFailureOf(error) : undefined;
-  return { ok: false, code: "failed", message: safe, ...(reason && reason !== safe ? { reason } : {}), ...(failure ? { failure } : {}) };
+  return { ok: false, code: "failed", message: safe, ...(reason && reason !== safe ? { reason } : {}), ...(failure ? { failure } : {}), ...(failure === "parameter_rejected" && field ? { field } : {}) };
 }
 
 type SpendCardActionInput = Readonly<{
