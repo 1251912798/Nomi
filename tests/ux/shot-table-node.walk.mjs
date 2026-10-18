@@ -9,6 +9,7 @@
 //  ③ 行高「+」：标准 → 大，行真的变高；复位
 //  ④ 显示列菜单：每列一个勾选项
 //  ⑤ 勾两镜：下方栏换成「生成 2 镜」
+//  ⑥ 表一半在舞台右缘外：浮条仍是一行、整条在舞台里（不为了对着节点中心把自己挤成两行）
 // 不点「拆解」——那一下走报价卡、花真钱，真付费单独走（设计卡 ★9 ②）。
 import fs from 'node:fs'
 import path from 'node:path'
@@ -203,6 +204,25 @@ async function walkTrack(track) {
     await expectVisible(selectionBar, '勾选态下方栏')
     await expect(selectionBar).toContainText(zh(track) ? '2 镜' : '2')
     await shot(page, dir, '05-rows-selected')
+    await clickOrFail(selectionBar.getByRole('button', { name: zh(track) ? '取消选择' : /Clear/i }), 'clear row selection')
+
+    // ⑥ 表一半在舞台右缘外（用户 10-18 截图：浮条被挤成两行）：浮条仍是一行、整条在舞台里
+    const stageBox = await page.locator('.generation-canvas-v2__stage').boundingBox()
+    const tableBox = await host.locator('article').boundingBox()
+    const start = await findCanvasBlankPoint(page)
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    await page.mouse.move(start.x + (stageBox.x + stageBox.width - 120) - (tableBox.x + tableBox.width / 2), start.y, { steps: 12 })
+    await page.mouse.up()
+    await sleep(page, 400)
+    await clickOrFail(host.locator('article header'), 'select table at right edge', { position: { x: 60, y: 20 } })
+    const bar = host.locator('[data-node-floating-toolbar]')
+    await expectVisible(bar, '贴右缘时的浮条')
+    await sleep(page, 300)
+    const barBox = await bar.boundingBox()
+    if (barBox.height > 48) throw new Error(`贴右缘时浮条折成了多行（高 ${Math.round(barBox.height)}px）`)
+    if (barBox.x + barBox.width > stageBox.x + stageBox.width + 1) throw new Error('贴右缘时浮条出了舞台')
+    await shot(page, dir, '06-right-edge-toolbar')
     console.log(`  ✓ ${track.id}`)
   } finally {
     await closeNomiApp(app)
