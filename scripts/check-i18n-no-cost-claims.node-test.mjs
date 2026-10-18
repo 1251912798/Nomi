@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { scanDictionaries, scanDictionaryKeys, scanSourceStrings, validateNotMoneyEntries } from './check-i18n-no-cost-claims.mjs'
+import { normalizeForScan, scanDictionaries, scanDictionaryKeys, scanSourceStrings, validateNotMoneyEntries } from './check-i18n-no-cost-claims.mjs'
 
 const dict = (zh, en = {}) => ({ 'zh-CN': zh, en })
 
@@ -92,4 +92,19 @@ test('未知价那一行：精确的「费用 / Cost」绿，带数字或货币�
   // 任何别的 key 里出现带数字的写法同样红（不只是白名单那个 key）
   const elsewhere = scanDictionaries(dict({ a: '费用 12' }, { a: 'Cost 12' }), { notMoney: [] }).hits.map((h) => h.locale)
   assert.deepEqual(elsewhere, ['zh-CN', 'en'])
+})
+
+test('规整后再扫：全角 / 换行 / 制表 / 零宽 / 中文数字 / 货币词都绕不过去；精确值与正常文案仍绿', () => {
+  const zw = '\u200B'
+  const at = (zh, en) => scanDictionaries(
+    dict({ runtime: { capability: { generationGateCost: zh } } }, { runtime: { capability: { generationGateCost: en } } }), { notMoney: [] },
+  ).hits.map((h) => h.locale)
+  for (const en of ['Cost １２', 'Cost\n12', 'Cost\t12', `Cost${zw}12`, 'Cost\u00a012', 'Cost 12 USD', 'COST １.２５']) assert.deepEqual(at('费用', en), ['en'], JSON.stringify(en))
+  for (const zh of ['费用 十二元', '费用\n12', `费用${zw}１２`, '费用：三块', '费用 12 CNY', '费用\u3000一百']) assert.deepEqual(at(zh, 'Cost'), ['zh-CN'], JSON.stringify(zh))
+  // 精确值带零宽 / 多余空白：规整后仍等于「费用」「Cost」，不误红
+  assert.deepEqual(at(` 费用${zw}\n`, ' Cost\t'), [])
+  // 别的 key 里不带金额的正常文案不受影响
+  const normal = scanDictionaries(dict({ a: { b: '选择模型后开始生成' } }, { a: { b: 'Pick a model to start' } }), { notMoney: [] })
+  assert.deepEqual(normal.hits, [])
+  assert.equal(normalizeForScan('Ｃｏｓｔ\n１２'), 'Cost 12')
 })
