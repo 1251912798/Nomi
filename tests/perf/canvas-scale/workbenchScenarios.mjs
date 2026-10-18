@@ -18,6 +18,8 @@ import { uiText } from '../../ux/full-walk/invariants.mjs'
 /** 本模块提供的场景名（canvas-scale-bench 的 --scenarios 可选值的一部分）。 */
 export const WORKBENCH_SCENARIOS = Object.freeze([
   'select-composer',
+  'select-shot-table',
+  'shot-table-row-height',
   'create-node-burst',
   'switch-stages',
   'switch-canvas-list',
@@ -102,6 +104,8 @@ function seedLongDocument(fixture) {
  */
 export async function runWorkbenchScenario(page, scenario, ctx) {
   if (scenario === 'select-composer') return selectComposer(page, ctx)
+  if (scenario === 'select-shot-table') return selectShotTable(page, ctx)
+  if (scenario === 'shot-table-row-height') return shotTableRowHeight(page, ctx)
   if (scenario === 'create-node-burst') return createNodeBurst(page, ctx)
   if (scenario === 'switch-stages') return switchStages(page, ctx)
   if (scenario === 'switch-canvas-list') return switchCanvasList(page, ctx)
@@ -170,6 +174,83 @@ async function selectComposer(page, ctx) {
     selected: 1,
     path: `click → composer（${target.candidates} 张可点）`,
   }
+}
+
+/** 拆解表卡头的可点位置（卡头是拖拽把手，点它只选中节点、不勾任何镜头）。 */
+async function shotTableHeaderPoint(page) {
+  return page.evaluate(() => {
+    const header = document.querySelector('article[data-kind="shot_table"] header')
+    if (!header) return null
+    const rect = header.getBoundingClientRect()
+    const x = Math.round(rect.left + rect.width * 0.6)
+    const y = Math.round(rect.top + rect.height / 2)
+    const hit = document.elementFromPoint(x, y)
+    return hit && header.contains(hit) ? { id: header.closest('article').getAttribute('data-node-id'), x, y } : null
+  })
+}
+
+/** bench 每次采样前都「适应视图」：把鼠标停在拆解表卡头上滚轮放大到工作缩放（≥0.95），和「点卡出生成框」同一种缩放。 */
+async function frameShotTable(page) {
+  const header = await page.evaluate(() => {
+    const rect = document.querySelector('article[data-kind="shot_table"] header')?.getBoundingClientRect()
+    return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null
+  })
+  if (!header) return { skipped: '画布上没有拆解表（夹具规模要用 T200）' }
+  await page.mouse.move(header.x, header.y)
+  for (let tick = 0; tick < 40; tick += 1) {
+    const zoom = await page.evaluate(() => {
+      const viewport = document.querySelector('.react-flow__viewport')
+      return viewport ? new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a : null
+    })
+    if (zoom !== null && zoom >= 0.95) break
+    await page.mouse.wheel(0, -120)
+    await sleep(page, 60)
+  }
+  await sleep(page, 500)
+  return {}
+}
+
+/** ①b 选中拆解表 → 上方浮条 + 下方拆解栏可见（拆解前选模型，2026-10-18）。夹具 T200：一张 200 镜的表 + 100 张图片卡。 */
+async function selectShotTable(page, ctx) {
+  await clearSelection(page)
+  const framed = await frameShotTable(page)
+  if (framed.skipped) return framed
+  const target = await shotTableHeaderPoint(page)
+  if (!target) return { skipped: '拆解表卡头不在视口里 / 被盖住' }
+  await armResponse(page, { predicate: 'shotTableEngaged', arg: target.id })
+  await ctx.startWindow(page)
+  await page.mouse.click(target.x, target.y)
+  const response = await takeResponse(page)
+  const raw = await ctx.stopWindow(page)
+  await clearSelection(page)
+  return { raw, responseMs: response.ms, storeWrites: response.storeWrites, selected: 1, path: 'click header → toolbar + deconstruct bar' }
+}
+
+/**
+ * ①c 拆解表行高「标准 → 大」：点浮条上的「+」到 200 行都按新行高排好。准备（选中表）与复位（点「−」回标准）不进窗口。
+ * 表身不做窗口化，行高一换 200 行全重渲——这正是要看的那一下。
+ */
+async function shotTableRowHeight(page, ctx) {
+  await clearSelection(page)
+  const framed = await frameShotTable(page)
+  if (framed.skipped) return framed
+  const target = await shotTableHeaderPoint(page)
+  if (!target) return { skipped: '拆解表卡头不在视口里 / 被盖住' }
+  await page.mouse.click(target.x, target.y)
+  const host = page.locator(`.react-flow__node[data-id="${target.id}"]`)
+  const control = host.locator('[data-shot-table-row-height]')
+  await control.waitFor({ state: 'visible', timeout: 10_000 })
+  if (await control.getAttribute('data-shot-table-row-height') !== 'standard') throw new Error('拆解表行高不是「标准」，上一次采样没复位')
+  const taller = control.locator('button').last()
+  await armResponse(page, { predicate: 'shotTableRowHeight', arg: { nodeId: target.id, step: 'large', px: 92 } })
+  await ctx.startWindow(page)
+  await taller.click()
+  const response = await takeResponse(page)
+  const raw = await ctx.stopWindow(page)
+  await control.locator('button').first().click()
+  await host.locator('[data-shot-table-row-height="standard"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await clearSelection(page)
+  return { raw, responseMs: response.ms, storeWrites: response.storeWrites, path: 'toolbar + → 200 rows at large' }
 }
 
 /** ④ 连续新建 5 张图片卡：每一下「点加节点条 → 新卡出现」，主数取最慢那一下。 */

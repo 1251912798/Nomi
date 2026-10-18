@@ -23,6 +23,18 @@ const INSTALL_SOURCE = `(() => {
       const article = document.querySelector('article[data-node-id="' + CSS.escape(nodeId) + '"]')
       return Boolean(article) && (visible(composerOf(nodeId)) || Boolean(article.querySelector('[aria-busy="true"]')))
     },
+    // 选中拆解表到位：上方浮条与下方拆解栏都挂在这张表的 React Flow 节点里且可见（两者是 article 的兄弟，不在 article 里面）。
+    shotTableEngaged(nodeId) {
+      const host = document.querySelector('.react-flow__node[data-id="' + CSS.escape(nodeId) + '"]')
+      return Boolean(host) && visible(host.querySelector('[data-node-floating-toolbar]')) && visible(host.querySelector('[data-shot-table-composer]'))
+    },
+    // 拆解表行高切到位：浮条上的档位已换，且表里每一行都按新行高排好（首末两行都量，200 行一次渲完才算）。
+    shotTableRowHeight({ nodeId, step, px }) {
+      const host = document.querySelector('.react-flow__node[data-id="' + CSS.escape(nodeId) + '"]')
+      const rows = host ? host.querySelectorAll('[data-shot-table-row]') : []
+      return Boolean(host && host.querySelector('[data-shot-table-row-height="' + step + '"]')) && rows.length > 0
+        && rows[0].offsetHeight >= px && rows[rows.length - 1].offsetHeight >= px
+    },
     nodeCountAbove(count) {
       return document.querySelectorAll('.react-flow__node').length > count
     },

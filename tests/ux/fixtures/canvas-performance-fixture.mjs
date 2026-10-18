@@ -5,6 +5,7 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
+import { require as tsxRequire } from 'tsx/cjs/api'
 
 const require = createRequire(import.meta.url)
 const bundledFfmpegPath = require('@ffmpeg-installer/ffmpeg').path
@@ -43,6 +44,9 @@ export const CANVAS_PERF_SCALES = Object.freeze({
   V10: { imageCount: 0, videoCount: 10, edgeCount: 5, clipCount: 0 },
   V100: { imageCount: 0, videoCount: 100, edgeCount: 50, clipCount: 0 },
   V200: { imageCount: 0, videoCount: 200, edgeCount: 100, clipCount: 0 },
+  // 2026-10-18 拆解前选模型：「选中一张拆解表 → 上方浮条 + 下方拆解栏出现」。一张 200 镜的拆解表（来源 = 第一个视频节点），
+  // 外加 100 张图片卡做真实画布密度。表由生产的 createDeconstructionShotTable 建，行按 schema 逐行填，不手写第二份结构。
+  T200: { imageCount: 100, videoCount: 1, edgeCount: 50, clipCount: 0, shotTableRows: 200 },
 })
 
 const IMAGE_ASSETS = [
@@ -315,6 +319,23 @@ function buildTimeline(baseTimeline, nodes, clipCount) {
   }
 }
 
+/** 一张拆好的拆解表（ready，N 镜，每镜六格事实都有字），摆在画布左上、来源是 sourceVideo。 */
+function buildShotTableNode(sourceVideo, rowCount) {
+  if (!sourceVideo) throw new Error('拆解表夹具需要至少一个视频节点作来源')
+  const { createDeconstructionShotTable } = tsxRequire('../../../src/workbench/generationCanvas/nodes/shotTable/shotTableFacts.ts', import.meta.url)
+  const { deconstructionShotTableSchema } = tsxRequire('../../../electron/shared/canvas/shotTable.ts', import.meta.url)
+  const base = createDeconstructionShotTable(sourceVideo.id, sourceVideo.title)
+  const rows = Array.from({ length: rowCount }, (_, index) => ({
+    rowId: `fact-${index + 1}`, order: index, startSeconds: index * 2, endSeconds: index * 2 + 2, durationSeconds: 2, carriedOver: false,
+    cells: { shotSize: index % 3 ? '全景' : '特写', motion: '定机位', visual: `第 ${index + 1} 镜：雨夜街口，灯光映在积水中`, dialogue: index % 4 ? '—' : '我一直在等你。', onScreenText: '—', mood: '悬念' },
+  }))
+  const table = deconstructionShotTableSchema.parse({ ...base, source: { ...base.source, status: 'ready', durationSeconds: rowCount * 2 }, rows })
+  return {
+    id: 'canvas-perf-shot-table', kind: 'shot_table', title: sourceVideo.title, categoryId: sourceVideo.categoryId,
+    position: { x: -1040, y: 0 }, size: { width: 920, height: 372 }, status: 'idle', meta: { shotTable: table },
+  }
+}
+
 export function createCanvasPerformanceFixture({ projectsDir, scale = 'M', projectId, projectName, projectDirName, withProjectIdentity = false } = {}) {
   const config = CANVAS_PERF_SCALES[scale]
   if (!config) throw new Error(`未知画布性能规模「${scale}」，可选：${Object.keys(CANVAS_PERF_SCALES).join(', ')}`)
@@ -364,6 +385,7 @@ export function createCanvasPerformanceFixture({ projectsDir, scale = 'M', proje
   for (let index = 0; index < (config.emptyCount || 0); index += 1) {
     nodes.push(buildEmptyNode(imageTemplate, { id: `canvas-perf-empty-${index}`, title: `性能空节点 ${index + 1}`, index: nodes.length }))
   }
+  if (config.shotTableRows) nodes.push(buildShotTableNode(nodes.find((node) => node.kind === 'video'), config.shotTableRows))
   // 版本卡片铺开（NOMI_CANVAS_PERF_VERSION_STACKS=N）：前 N 张图片节点各攒 4 版、宫格铺开着（2×2 盖在邻居上）。
   // 用来量「铺开着几组版本卡时拖 300 节点画布还顺不顺」（版本卡片 V2）；不设就和以前一模一样。
   const versionStacks = Math.max(0, Number(process.env.NOMI_CANVAS_PERF_VERSION_STACKS || 0))
