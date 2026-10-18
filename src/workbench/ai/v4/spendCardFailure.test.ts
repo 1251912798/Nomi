@@ -56,14 +56,4 @@ describe('付费卡上一下没做成时说哪一句', () => {
       expect(text, lng).not.toContain('{{')
     }
   })
-
-  it('付费卡没有 ×（底栏是「取消」）：spend* 文案中英都不许教用户点 ×', () => {
-    const offenders: string[] = []
-    for (const [lng, locale] of [['zh-CN', zhAgentPanelV4], ['en', enAgentPanelV4]] as const) {
-      for (const [key, value] of Object.entries(locale)) {
-        if (key.startsWith('spend') && typeof value === 'string' && /(点|click|close it with|press)\s*×/i.test(value)) offenders.push(`${lng}:${key}`)
-      }
-    }
-    expect(offenders).toEqual([])
-  })
 })

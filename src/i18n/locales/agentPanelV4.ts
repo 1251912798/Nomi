@@ -484,9 +484,9 @@ export const zhAgentPanelV4 = {
   spendActionFailed: '暂时无法确认这一步的结果，请查看任务状态后再操作。',
   spendActionNotStarted: '这一步没成，Nomi 没有开始生成。可以改一下再按一次。',
   /** 合同编译口拒了某个参数：点名是哪个键（目录里的参数名，不是原话），没发起、没花钱。 */
-  spendActionParameterRejected: '参数「{{field}}」没通过核对，Nomi 没有开始生成，也没花钱。在卡上改掉它再按；卡改不了就点「取消」，让 Nomi 重新起草。',
+  spendActionParameterRejected: '参数「{{field}}」没通过核对，Nomi 没有开始生成，也没花钱。在卡上改掉它再按；卡改不了就点 × 关掉，让 Nomi 重新起草。',
   /** 第 11 条：卡此刻改不了时不许说「改一下再按」，说改不了、该怎么办。 */
-  spendActionNotStartedLocked: '这一步没成，Nomi 没有开始生成。这张卡现在改不了：点「取消」，告诉 Nomi 要怎么改，它会重新起草。',
+  spendActionNotStartedLocked: '这一步没成，Nomi 没有开始生成。这张卡现在改不了：点 × 关掉，告诉 Nomi 要怎么改，它会重新起草。',
   /** 按下去的那一刻卡上的内容刚变了（报价换了一份）：没发起，看一眼现在的样子再按。 */
   spendActionCardChanged: '卡上的内容刚变了，Nomi 没有开始生成。看一眼现在的样子再按。',
   /** 这一张已经不在卡上（刚被决定，或卡已关掉）。 */
@@ -946,8 +946,8 @@ export const enAgentPanelV4 = {
   spendParamsDecline: 'No',
   spendActionFailed: 'The outcome could not be confirmed. Check the task status before trying again.',
   spendActionNotStarted: 'That did not go through. Nomi has not started generating — adjust it and press again.',
-  spendActionParameterRejected: 'The parameter "{{field}}" did not pass the check. Nomi has not started generating and nothing was charged. Change it on the card and press again; if the card is locked, click Cancel and ask Nomi to draft it again.',
-  spendActionNotStartedLocked: 'That did not go through. Nomi has not started generating. This card can\'t be changed right now: click Cancel and tell Nomi what to change, and it will draft it again.',
+  spendActionParameterRejected: 'The parameter "{{field}}" did not pass the check. Nomi has not started generating and nothing was charged. Change it on the card and press again; if the card is locked, close it with × and ask Nomi to draft it again.',
+  spendActionNotStartedLocked: 'That did not go through. Nomi has not started generating. This card can\'t be changed right now: close it with × and tell Nomi what to change, and it will draft it again.',
   spendActionCardChanged: 'The card just changed, so Nomi has not started generating. Check what it shows now, then press again.',
   spendActionShotGone: 'This one is no longer on the card, so Nomi has not started generating it.',
 

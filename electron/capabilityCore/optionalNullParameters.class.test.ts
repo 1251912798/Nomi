@@ -101,7 +101,7 @@ describe("可选参数写成 null = 没填（全目录普查）", () => {
       const valid: Record<string, unknown> = {};
       for (const key of keys) {
         const field = schema[key];
-        valid[key] = field.enum?.[0] ?? field.default ?? (field.type === "boolean" ? false : field.type === "string" ? "x" : field.min ?? 1);
+        valid[key] = field.enum?.[0] ?? (field.type === "boolean" ? false : field.type === "string" ? "x" : field.min ?? 1);
       }
       for (const nulled of keys) {
         try {
