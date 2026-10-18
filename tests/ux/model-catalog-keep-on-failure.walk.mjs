@@ -11,6 +11,7 @@ import { chromium } from 'playwright'
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import { expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { REPO_ROOT } from './design-lab/labStates.mjs'
 import { assertLabPortOwnership, labPortFor } from './design-lab/labServer.mjs'
 
@@ -68,23 +69,31 @@ try {
       await page.goto(`${BASE}/design-lab.html?screen=node-composer-bar&frame=1&state=composer-bar-v1-video`, { timeout: COLD_START_MS })
       await until(page, () => window.__designLabReady === true)
       const shot = page.locator('[data-design-lab-shot="composer-bar-v1-video"]')
+      const stale = page.locator('[data-model-catalog-stale="true"]')
+      const configureButton = page.locator('button[aria-label="去配置模型"], button[aria-label="Configure a model"]')
+      const modelChip = page.locator('[data-node-composer-footer] [role="combobox"], [data-node-composer-footer] button[aria-haspopup]')
       if (scenario === 'kept') {
         await until(page, (selector) => document.querySelector(selector) !== null, '[data-node-composer-footer] [role="combobox"], [data-node-composer-footer] button[aria-haspopup]')
         const before = await page.locator('[data-node-composer-footer]').innerText()
-        check(!/data-model-catalog-stale/.test(await page.content()) , `${key}/kept 读成功时没有失败提示`)
         // 走生产的刷新入口（设置页保存模型时同一个）：作废缓存 + 广播刷新事件。
         await page.evaluate(async () => { window.__catalogFail = true; (await import('/src/config/modelCatalogCache.ts')).notifyModelOptionsRefresh('all') })
         await until(page, (selector) => document.querySelector(selector) !== null, '[data-model-catalog-stale="true"]')
-        const note = await page.locator('[data-model-catalog-stale="true"]').innerText()
+        const note = await stale.innerText()
         check(T[key].reason.test(note), `${key}/kept 屏上说得出原因：${note}`)
         const footer = await page.locator('[data-node-composer-footer]').innerText()
         check(footer.includes(before.split('\n')[0]), `${key}/kept 模型芯片还在（${before.split('\n')[0]}）`)
-        check(await page.locator('button[aria-label]').filter({ hasText: /配置|Configure/ }).count() === 0, `${key}/kept 没退成"配置模型"空态`)
+        // 探针活的证明：同屏必然在的对照物（模型芯片）找得到，才轮得到断言「配置模型」空态按钮不在。
+        const chipProof = await proveProbe(modelChip, `${key}/kept 底栏模型芯片`)
+        await expectAbsent(configureButton, { provenBy: chipProof, message: `${key}/kept 没退成"配置模型"空态` })
+        check(true, `${key}/kept 没退成"配置模型"空态`)
       } else {
-        await until(page, () => document.body.innerText.includes('exploded'))
+        await expect(shot.getByText(/exploded/).first()).toBeVisible()
         const text = await shot.innerText()
         check(T[key].empty.test(text), `${key}/cold 空态带着原因：${text.replace(/\n/g, ' | ').slice(0, 160)}`)
-        check(await page.locator('[data-model-catalog-stale="true"]').count() === 0, `${key}/cold 没有假装有选项`)
+        // 探针活的证明：空态按钮（同屏必然在）找得到，才轮得到断言「读失败说明行」不在——冷态没有旧清单可留。
+        const buttonProof = await proveProbe(configureButton, `${key}/cold 配置模型空态按钮`)
+        await expectAbsent(stale, { provenBy: buttonProof, message: `${key}/cold 没有假装有选项` })
+        check(true, `${key}/cold 没有假装有选项`)
       }
       // 整屏截（实验室的取景框会把舞台左侧裁掉一截，底栏左边的模型芯片就看不见了）。
       await page.evaluate(() => { const stage = document.querySelector('[data-design-lab-stage]')?.firstElementChild; if (stage) stage.style.transform = 'translateX(150px)' })
