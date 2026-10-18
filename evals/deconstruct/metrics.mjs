@@ -6,6 +6,7 @@
 //   · fill.<字段>    字段填充率：画面 / 景别 / 情绪 / 运镜提示词 非空的镜 / 读出的镜
 //   · shotSizeValid 景别合规率：景别在提示词给的六档里（极特写/特写/近景/中景/全景/远景）/ 读出的镜
 //   · dialogue      有音轨时：对白非空的镜占比；给了参考稿时再算 CER（字错率，对参考稿里最像的那一段算，参考稿比片子长）
+//   · zhRate.<字段>  中文界面下字段是不是中文（含汉字的镜 / 有值的镜）：表里一列中文一列英文，用户读着就是坏的
 //   · calls         读图调用次数 = 镜数（报价 = 实际，多一次都不行）
 //   · secondsPerShot 每镜耗时
 
@@ -63,6 +64,10 @@ export function scoreDeconstruction(result, context = {}) {
     shots: shots.length,
     readRate: ratio(read.length, shots.length),
     fill,
+    zhRate: Object.fromEntries(['visual', 'motionPrompt'].map((field) => {
+      const filled = read.filter((shot) => nonEmpty(shot[field]))
+      return [field, ratio(filled.filter((shot) => /\p{Script=Han}/u.test(String(shot[field]))).length, filled.length)]
+    })),
     shotSizeValid: ratio(read.filter((shot) => SHOT_SIZES.includes(String(shot.shotSize ?? '').trim())).length, read.length),
     hasAudio: Boolean(result?.hasAudio),
     dialogueShotRate: result?.hasAudio ? ratio(shots.filter((shot) => nonEmpty(shot.dialogue)).length, shots.length) : null,
@@ -75,7 +80,7 @@ export function scoreDeconstruction(result, context = {}) {
 }
 
 /** 门槛（初版，第一次真跑后按实测收紧；只许变严）。返回不达标的条目，空 = 达标。 */
-export const THRESHOLDS = Object.freeze({ readRate: 0.95, fillVisual: 0.95, fillShotSize: 0.9, shotSizeValid: 0.9, dialogueCer: 0.3 })
+export const THRESHOLDS = Object.freeze({ readRate: 0.95, fillVisual: 0.95, fillShotSize: 0.9, shotSizeValid: 0.9, dialogueCer: 0.3, zhMotion: 0.9 })
 
 export function judgeCase(metrics) {
   const misses = []
@@ -84,6 +89,7 @@ export function judgeCase(metrics) {
   if (metrics.fill.shotSize !== null && metrics.fill.shotSize < THRESHOLDS.fillShotSize) misses.push(`景别填充率 ${metrics.fill.shotSize} < ${THRESHOLDS.fillShotSize}`)
   if (metrics.shotSizeValid !== null && metrics.shotSizeValid < THRESHOLDS.shotSizeValid) misses.push(`景别合规率 ${metrics.shotSizeValid} < ${THRESHOLDS.shotSizeValid}`)
   if (metrics.dialogueCer !== null && metrics.dialogueCer > THRESHOLDS.dialogueCer) misses.push(`对白字错率 ${metrics.dialogueCer} > ${THRESHOLDS.dialogueCer}`)
+  if (metrics.zhRate?.motionPrompt !== null && metrics.zhRate?.motionPrompt !== undefined && metrics.zhRate.motionPrompt < THRESHOLDS.zhMotion) misses.push(`运镜列中文率 ${metrics.zhRate.motionPrompt} < ${THRESHOLDS.zhMotion}（中文界面里一列英文）`)
   if (metrics.callsMatchShots === false) misses.push(`读图调用 ${metrics.visionCalls} 次 ≠ 镜数 ${metrics.shots}`)
   return misses
 }
