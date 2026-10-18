@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import type { ResolvedModule } from "./moduleRegistry";
 import type { ParameterField } from "./moduleManifest";
 import { generationPlanningHintType } from "./generationPlanningParameters";
-import { draftFieldForMisplacedParameter } from "../shared/draftFieldAliases";
+import { draftFieldForMisplacedParameter } from "../shared/agentCapabilities/draftFieldAliases";
 import { hasMentions, numberPromptReferences, projectPromptForSend } from "../shared/storyboard/promptMentions";
 
 export const EXECUTION_CONTRACT_SCHEMA_VERSION = 1 as const;

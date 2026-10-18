@@ -16,7 +16,7 @@
 import { VERB_DECLARATIONS } from "../agentCapabilities/verbDeclarations";
 import { verbMaySubmitGeneration, type VerbEffect, type VerbNextAction } from "../agentCapabilities/verbDeclaration";
 import type { LaneToolFailureShape } from "./laneToolContract";
-import { DRAFT_REFUSAL_NEXT_ACTION_EN, GENERATION_INPUT_INVALID_CODE, admissionNextActionEn, isAdmissionRejectionCode } from "../admissionRejectionHints";
+import { DRAFT_REFUSAL_NEXT_ACTION_EN, GENERATION_INPUT_INVALID_CODE, admissionNextActionEn, isAdmissionRejectionCode } from "../agentCapabilities/admissionRejectionHints";
 
 /**
  * 工具名 → 它自己声明的 `effect / nextAction`。**从动词声明现取**，不在这里复述一份工具名单——

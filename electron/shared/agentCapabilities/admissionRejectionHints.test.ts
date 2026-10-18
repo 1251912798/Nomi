@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   ADMISSION_NOTHING_SENT, ADMISSION_REJECTION_CODES, ADMISSION_REJECTION_HINTS, DRAFT_REFUSAL_NEXT_ACTION_EN, admissionNextActionEn,
 } from "./admissionRejectionHints";
-import { laneFailureFromDecision } from "./agentLane/laneFailureFromDecision";
-import { buildToolErrorOutcome } from "../capabilityCore/mcpToolErrorResults";
-import { ContractCompilationError } from "../capabilityCore/executionContract";
+import { laneFailureFromDecision } from "../agentLane/laneFailureFromDecision";
+import { buildToolErrorOutcome } from "../../capabilityCore/mcpToolErrorResults";
+import { ContractCompilationError } from "../../capabilityCore/executionContract";
 
 describe("准入拒绝指引表（唯一 owner）", () => {
   it("每个准入码都有中英人话与恢复动作，最后一条是「没提交、没扣钱」", () => {

@@ -31,7 +31,7 @@
 //   · 其它任何异常（TypeError、供应商抛的、上游库抛的）→ 只给码，一个字的正文都不带。
 // 判据不是「看起来像不像内部信息」，是**谁写的这句话**——后者有单一答案，前者没有。
 import type { RuntimeToolDecision } from "../shared/agentCapabilities/transportContracts";
-import { GENERATION_INPUT_INVALID_CODE } from "../shared/admissionRejectionHints";
+import { GENERATION_INPUT_INVALID_CODE } from "../shared/agentCapabilities/admissionRejectionHints";
 
 export type TransportFailure = Extract<RuntimeToolDecision, { ok: false }>;
 

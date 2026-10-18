@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DRAFT_FIELD_FOR_MISPLACED_PARAMETER, draftFieldForMisplacedParameter } from "./draftFieldAliases";
-import { draftShotSchema } from "./agentCapabilities/verbs/writeVerbs";
+import { draftShotSchema } from "./verbs/writeVerbs";
 
 describe("放错位置的字段对照表", () => {
   it("每个目标都是 draft_shots 每一镜真实存在的字段（schema 改名而这里没跟上就红）", () => {
