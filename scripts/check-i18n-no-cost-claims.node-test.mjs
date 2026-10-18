@@ -71,3 +71,13 @@ test('源码门岗跳过注释但检查发给模型和供应商目录的固定�
   }, { notMoney: { 'knownVendors.fal.credentialHint': '服务商账户前置条件，说明价格和限额由账户决定，并引导去控制台查看' } })
   assert.deepEqual(hits.map((h) => h.key), ['electron/harness/context/agentContext.ts:2'])
 })
+
+test('未知价那一行只放行精确的「费用 / Cost」，换成别的值或别的 key 照样红', () => {
+  const key = 'runtime.capability.generationGateCost'
+  const ok = scanDictionaries(dict({ runtime: { capability: { generationGateCost: '费用' } } }, { runtime: { capability: { generationGateCost: 'Cost' } } }), { notMoney: [] })
+  assert.deepEqual(ok.hits, [], key)
+  const bad = scanDictionaries(dict({ runtime: { capability: { generationGateCost: '费用 ¥0' } } }, { runtime: { capability: { generationGateCost: 'Maximum cost' } } }), { notMoney: [] })
+  assert.deepEqual(bad.hits.map((h) => h.locale), ['zh-CN', 'en'])
+  const other = scanDictionaries(dict({ runtime: { capability: { somethingElse: '费用' } } }), { notMoney: [] })
+  assert.deepEqual(other.hits.map((h) => h.key), ['runtime.capability.somethingElse'])
+})

@@ -57,3 +57,11 @@
 
 - `electron/capabilityCore/mcpHttpServer.test.ts`、`mcpHttpForwarder.test.ts`、`mcpWireContract.test.ts`（四种连接器各跑一遍协议行为）：改前改后均绿，只有一处契约有意变更（拒绝后的结果，见 C-4）。
 - 新增红转绿：`mcpHostReliability.test.ts`（C-1 / C-2）、`unknownPriceGateProjection.test.ts` 与 `generationGateCapability.test.ts`（C-3）、`mcpGenerationDenial.test.ts`（C-4）、`mcpHttpPortConflict.test.ts`（C-5）。
+
+## 补充：自写登记 `gate-family`（花钱文案门岗的一处窄放行）
+
+本线的 C-3 收尾改了 `scripts/check-i18n-no-cost-claims.mjs`（登记条目 id：`gate-family`，状态 under-review，同族 10-15 复盘 `direction-check-2026-10-15-walkthrough-instruments.md` 已在评估）。改动只有一处：未知价那一行的标签需要写成「费用 / Cost」，而门岗禁用词里有「费用」，于是加了 `COST_LABEL_EXACT`——只放行 `runtime.capability.generationGateCost` 这个 key 的**精确**值「费用」「Cost」，换成别的值、带数字、别的 key 都照样红（`check-i18n-no-cost-claims.node-test.mjs` 有正反用例）。
+
+- 为什么现在换不了现成方案：这是 Nomi 自己的「界面不谈钱」词表规则，领域约束（花钱语义，价格未知不许说成 0）；没有通用 i18n lint 能表达「这个 key 只许这两个值」。
+- 为什么是补而不是换：整族门岗是否收拢到一个现成的规则引擎属于 `gate-family` 那份复盘的结论，本次只加一条精确白名单，不新增并行判据。
+- 哪天换：随 `gate-family` 复盘拍板的那一版一起评估（门岗族收拢时，这条精确放行直接并入词表登记）。

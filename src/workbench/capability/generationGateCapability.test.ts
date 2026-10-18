@@ -48,7 +48,7 @@ describe('renderer generation gate confirmation', () => {
 })
 
 describe('renderer generation gate: unknown price (C-3)', () => {
-  it.each(['zh-CN', 'en'] as const)('maximumCost null prints 费用未知, never a zero amount (%s)', async (lng) => {
+  it.each(['zh-CN', 'en'] as const)('maximumCost null prints Unknown, never a zero amount (%s)', async (lng) => {
     const { default: i18n } = await import('../../i18n')
     await i18n.changeLanguage(lng)
     requestConfirm.mockReset().mockResolvedValue(false)
@@ -66,5 +66,40 @@ describe('renderer generation gate: unknown price (C-3)', () => {
     expect(shown).not.toMatch(/CNY\s*0|¥\s*0/)
     expect(shown).toContain(i18n.t('runtime.capability.generationGateCostUnknown'))
     await i18n.changeLanguage('zh-CN')
+  })
+})
+
+// 同一张确认卡的两个 bug（C-3 截图）：英文界面正文混中文；「有效期至」是原始 ISO 串。
+describe('renderer generation gate card copy', () => {
+  const payload = {
+    challengeId: 'challenge-c', projectName: 'P', shotSummary: '生成这一镜', model: 'model-x', maximumCost: null,
+    unknownShotCount: 1, currency: 'CNY', expiresAt: '2026-10-17T12:30:00.000Z',
+  }
+  const cjk = /[\u4e00-\u9fff]/
+
+  it.each(['zh-CN', 'en'] as const)('unknown cost row is the exact label/value pair, sentence is dictionary-only, expiry is not ISO (%s)', async (lng) => {
+    const { default: i18n } = await import('../../i18n')
+    await i18n.changeLanguage(lng)
+    requestConfirm.mockReset().mockResolvedValue(false)
+    await handleCapabilityApply('generation.gate.confirm', payload)
+    const call = requestConfirm.mock.calls[0]![0] as { message: string; details: Array<{ label: string; value: string }> }
+    const row = (key: string) => call.details.find((d) => d.label === i18n.t(`runtime.capability.${key}`))
+    expect(row('generationGateCost')).toEqual({ label: lng === 'en' ? 'Cost' : '费用', value: lng === 'en' ? 'Unknown' : '未知' })
+    expect(call.details.map((d) => d.value).join(' ')).not.toMatch(/\d{4}-\d{2}-\d{2}T|Z\b/)
+    expect(row('generationGateExpires')?.value).toBeTruthy()
+    if (lng === 'en') {
+      // 动作半句来自词典：英文界面正文里没有中文（镜头摘要是调用方内容，单独一行，不拼进句子）。
+      expect(call.message).not.toMatch(cjk)
+      expect(row('generationGateShot')?.value).toBe('生成这一镜')
+    }
+    await i18n.changeLanguage('zh-CN')
+  })
+
+  it('formatGateExpiry gives a short local time and passes unparseable text through', async () => {
+    const { formatGateExpiry } = await import('./capabilityApplyHandler')
+    const out = formatGateExpiry('2026-10-17T12:30:00.000Z', 'en')
+    expect(out).not.toContain('2026-10-17T')
+    expect(out).toMatch(/\d{1,2}[:：]\d{2}/)
+    expect(formatGateExpiry('not a time', 'en')).toBe('not a time')
   })
 })

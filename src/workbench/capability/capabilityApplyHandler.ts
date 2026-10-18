@@ -259,10 +259,8 @@ async function confirmGenerationGateForAgent(
   // ── 单镜路径（今日形态，字节不动；单镜 E2E 是回归门）──
   const model =
     typeof info.model === 'string' && info.model.trim() ? info.model.trim() : i18n.t('runtime.capability.defaultModel')
-  const shot =
-    typeof info.shotSummary === 'string' && info.shotSummary.trim()
-      ? info.shotSummary.trim()
-      : i18n.t('runtime.capability.generationGateShotFallback')
+  // 镜头摘要是调用方给的内容，不拼进句子（英文界面会混进中文）；正文的动作半句永远走词典，摘要单独放一行。
+  const shotSummary = typeof info.shotSummary === 'string' ? info.shotSummary.trim() : ''
   // 「算不出价」和「0 元」是两件事：只有后者才该印出一个数。缺席/非数 → 走未知那一档的文案，
   // 绝不落成 ¥0（2026-09-21 未知价开闸；三种可能里只有 0 会被读成「这次免费」）。
   const costKnown = typeof info.maximumCost === 'number' && Number.isFinite(info.maximumCost)
@@ -273,8 +271,8 @@ async function confirmGenerationGateForAgent(
     kind: 'generation',
     title: i18n.t('runtime.capability.generationGateTitle'),
     message: costKnown
-      ? i18n.t('runtime.capability.generationGateMessage', { model, cost, shot })
-      : i18n.t('runtime.capability.generationGateMessageUnknownCost', { model, shot }),
+      ? i18n.t('runtime.capability.generationGateMessage', { model, cost })
+      : i18n.t('runtime.capability.generationGateMessageUnknownCost', { model }),
     confirmLabel: i18n.t('runtime.capability.confirmGenerate'),
     source: 'agent',
     details: [
@@ -282,14 +280,22 @@ async function confirmGenerationGateForAgent(
         ? [{ label: i18n.t('runtime.capability.generationGateProject'), value: info.projectName }]
         : []),
       { label: i18n.t('runtime.capability.generationGateModel'), value: model },
+      ...(shotSummary ? [{ label: i18n.t('runtime.capability.generationGateShot'), value: shotSummary }] : []),
       ...(Number.isInteger(info.referenceCount)
         ? [{ label: i18n.t('runtime.capability.generationGateReferences'), value: String(info.referenceCount) }]
         : []),
       { label: i18n.t('runtime.capability.generationGateCost'), value: cost },
-      ...(info.expiresAt ? [{ label: i18n.t('runtime.capability.generationGateExpires'), value: info.expiresAt }] : []),
+      ...(info.expiresAt ? [{ label: i18n.t('runtime.capability.generationGateExpires'), value: formatGateExpiry(info.expiresAt) }] : []),
     ],
   })
   return withChallenge({ confirmed: Boolean(ok) })
+}
+
+/** 有效期给人看：本地时间的短格式（按界面语言），不是原始 ISO 串；解析不了就原样给。 */
+export function formatGateExpiry(iso: string, locale: string = i18n.language): string {
+  const at = new Date(iso)
+  if (Number.isNaN(at.getTime())) return iso
+  return new Intl.DateTimeFormat(locale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(at)
 }
 
 /** 外部 MCP 方案门（Phase B）：agent 要往画布落一套节点（≥2）前弹确认卡（免费可撤），复用同一漏斗（P1）。 */
