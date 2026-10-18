@@ -136,6 +136,8 @@ describe('不谈钱：没花钱 / 免费 / 不计费 这类断言', () => {
     'onboardingProviders.keyOnly.probeCostPaid', 'onboardingProviders.keyOnly.probeCostPaidUnpriced', 'onboardingProviders.keyOnly.probeCostUnknown',
     'generationCommon.production.checkpoint.subtitleWithReuse', 'generationCommon.production.checkpoint.note', 'generationCommon.production.checkpoint.noteWithBudget',
     'runtime.capability.credentialProbeMessage',
+    // 0.23.2 移植（#1244）：参数被拒时付费卡上那句「没开始生成、没花钱」——确认被编译口拒在提交之前，这句如实。
+    'agentPanelV4.spendActionParameterRejected',
   ])
   const flatOf = (node, prefix = '') => Object.entries(node).flatMap(([key, value]) => (typeof value === 'string' ? [[`${prefix}${key}`, value]] : value && typeof value === 'object' ? flatOf(value, `${prefix}${key}.`) : []))
   // 设计实验室的样例串（fixture*）只在 devlab 里渲染，用户界面不出现（同上面「整本词典」那条的豁免）。
