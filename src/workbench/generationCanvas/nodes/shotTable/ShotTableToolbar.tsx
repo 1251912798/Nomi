@@ -6,18 +6,12 @@ import type { DeconstructionShotTableDocument } from '../../../../../electron/sh
 import { FloatingToolbarShell, ToolbarIconButton } from '../NodeFloatingToolbar'
 import { ToolbarActionMenu } from '../ToolbarActionMenu'
 import { editShotTableFacts } from './shotTableActions'
+import type { ShotTableRowHeight } from './shotTableRowMetrics'
 
-export type ShotTableRowHeight = 'compact' | 'standard' | 'large'
 const ROW_HEIGHTS: readonly ShotTableRowHeight[] = ['compact', 'standard', 'large']
 
 /** 行高三档：行高与关键帧（16:9）尺寸（紧凑 44 · 标准 58 · 大图 92，见 docs/plan/2026-10-18-shot-table-node.md 图 4）。 */
 const ROW_HEIGHT_LABEL = { compact: 'shotTable.node.rowHeight.compact', standard: 'shotTable.node.rowHeight.standard', large: 'shotTable.node.rowHeight.large' } as const
-
-export const SHOT_TABLE_ROW_METRICS: Record<ShotTableRowHeight, { row: number; thumbWidth: number; thumbHeight: number }> = {
-  compact: { row: 44, thumbWidth: 52, thumbHeight: 30 },
-  standard: { row: 58, thumbWidth: 68, thumbHeight: 38 },
-  large: { row: 92, thumbWidth: 140, thumbHeight: 78 },
-}
 
 /**
  * 拆解表的上方浮条（2026-10-18 拆解前选模型 图 1）：选中才出、以节点为中心。

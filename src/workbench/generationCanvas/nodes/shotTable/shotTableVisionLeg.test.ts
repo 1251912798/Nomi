@@ -9,7 +9,7 @@ import { createDeconstructionShotTable, deconstructionResultToShotTable } from '
 import { selectShotTableRows } from './selectShotTableRows'
 import { editShotTableFacts } from './shotTableActions'
 import { ShotTableGrid } from './ShotTableGrid'
-import { SHOT_TABLE_ROW_METRICS } from './ShotTableToolbar'
+import { SHOT_TABLE_ROW_METRICS } from './shotTableRowMetrics'
 
 // 2026-10-11 走查 §1：拆解表拆不出画面 / 景别，且用户看不到原因、也换不了读图模型。
 // 这里钉表这一层：失败原话落进行、行里看得见；读图模型选择记在表上（source.visionModel），整表重拆与单镜重试都带它。
