@@ -11,7 +11,7 @@ vi.mock('../workbench/api/modelCatalogApi', () => ({
   listWorkbenchModelCatalogVendors: mocks.listVendors,
 }))
 
-import { keepUsableModelRows, notifyModelOptionsRefresh, preloadModelOptions } from './modelCatalogCache'
+import { keepUsableModelRows, notifyModelOptionsRefresh, optionsAfterReadFailure, peekCatalogModelOptions, peekLastGoodModelOptions, preloadModelOptions } from './modelCatalogCache'
 import { derivePublishedExecution } from '../../electron/shared/modelPublication'
 import type { ModelAvailability } from '../../electron/shared/modelAvailability'
 
@@ -194,4 +194,51 @@ it('agent catalog capture includes reference-only models through the real public
   const { listAvailableModelsForAgent } = await import('../workbench/generationCanvas/agent/availableModels')
   const entries = await listAvailableModelsForAgent()
   expect(entries.map((entry) => entry.modelId).sort()).toEqual(['edit-only', 'reference-video'])
+})
+
+describe('a failed catalog read never throws away the last good list', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    notifyModelOptionsRefresh()
+    mocks.listVendors.mockResolvedValue([{ key: 'relay', name: 'Relay', enabled: true, authType: 'none' }])
+  })
+
+  it('after a refresh and a failing models:list the live cache is empty but the last good list is still offered', async () => {
+    mocks.listModels.mockResolvedValue([row('keeper')])
+    const first = await preloadModelOptions('image')
+    expect(first.map((option) => option.value)).toEqual(['keeper'])
+
+    notifyModelOptionsRefresh()
+    mocks.listModels.mockRejectedValue(new Error('models:list exploded'))
+    await expect(preloadModelOptions('image')).rejects.toThrow('models:list exploded')
+
+    expect(peekCatalogModelOptions('image')).toBeNull()
+    expect(peekLastGoodModelOptions('image')?.map((option) => option.value)).toEqual(['keeper'])
+    expect(optionsAfterReadFailure([], 'image').map((option) => option.value)).toEqual(['keeper'])
+  })
+
+  it('a failing vendors:list also leaves the last good list in place', async () => {
+    mocks.listModels.mockResolvedValue([row('keeper-2')])
+    await preloadModelOptions('image')
+    notifyModelOptionsRefresh()
+    mocks.listVendors.mockRejectedValue(new Error('vendors:list exploded'))
+    await expect(preloadModelOptions('image')).rejects.toThrow('vendors:list exploded')
+    expect(optionsAfterReadFailure([], 'image').map((option) => option.value)).toEqual(['keeper-2'])
+  })
+
+  it('a later good read replaces the kept list (the kept list is never newer than the last success)', async () => {
+    mocks.listModels.mockResolvedValue([row('old')])
+    await preloadModelOptions('image')
+    notifyModelOptionsRefresh()
+    mocks.listModels.mockResolvedValue([row('new')])
+    await preloadModelOptions('image')
+    expect(peekLastGoodModelOptions('image')?.map((option) => option.value)).toEqual(['new'])
+  })
+
+  it('never read successfully + failing: nothing is invented, the empty state stays empty (the error carries the reason)', async () => {
+    mocks.listModels.mockRejectedValue(new Error('models:list exploded'))
+    await expect(preloadModelOptions('audio')).rejects.toThrow('models:list exploded')
+    expect(peekLastGoodModelOptions('audio')).toBeNull()
+    expect(optionsAfterReadFailure([], 'audio')).toEqual([])
+  })
 })

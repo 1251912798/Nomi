@@ -39,6 +39,9 @@ let channelMappingsLoaded = false
 let channelMappingsPromise: Promise<readonly unknown[] | undefined> | null = null
 /** 缓存里有东西载入了 / 作废了 → 通知订阅者（`useSyncExternalStore`）重读。 */
 const catalogCacheListeners = new Set<() => void>()
+// 上一次**读成功**的清单。只在成功时写、刷新作废（invalidateAvailableCache）时不清：
+// 读目录失败时界面要有东西可留，而不是把「这一次没读到」说成「你一个模型都没有」。
+const lastGoodOptions = new Map<string, ModelOption[]>()
 let catalogHealthCache: ModelCatalogHealthDto | null = null
 let catalogHealthPromise: Promise<ModelCatalogHealthDto> | null = null
 let vendorNamesCache: Map<string, string> | null = null
@@ -223,6 +226,7 @@ async function getCatalogModelOptions(
       const names = await getVendorNames()
       const annotated = optionsFromRows(rows, names, requiredMode)
       catalogOptionsCache.set(cacheKey, annotated)
+      lastGoodOptions.set(cacheKey, annotated)
       return annotated
     } finally {
       catalogPromiseCache.delete(cacheKey)
@@ -302,6 +306,7 @@ export function seedModelCatalogForTests(
   catalogHealthCache = health
   for (const entry of entries) {
     catalogOptionsCache.set(`${resolveCatalogKind(entry.kind)}:${entry.requiredMode}`, [...entry.options])
+    lastGoodOptions.set(`${resolveCatalogKind(entry.kind)}:${entry.requiredMode}`, [...entry.options])
   }
 }
 
@@ -322,6 +327,7 @@ export function peekCatalogModelOptions(kind?: NodeKind, requiredMode?: ModelQue
     if (!rows || !vendorNamesCache) return null
     cached = optionsFromRows(rows, vendorNamesCache, mode)
     catalogOptionsCache.set(cacheKey, cached)
+    lastGoodOptions.set(cacheKey, cached) // 行是读成功得来的：这份同样算「上一份读成功」
   }
   return visibleOptionsFor(cached, kind)
 }
@@ -335,6 +341,25 @@ function visibleOptionsFor(options: ModelOption[], kind?: NodeKind): ModelOption
   let visible = byKind.get(key)
   if (!visible) { visible = filterHiddenOptionsByKind(options, kind); byKind.set(key, visible) }
   return visible
+}
+
+/**
+ * 读目录失败时**留给界面的那一份**：这个 kind/模式上一次读成功的清单；从没成功过给 null。
+ * 缓存刷新（notifyModelOptionsRefresh）只作废「可直接用的缓存」，不动这一份。
+ */
+export function peekLastGoodModelOptions(kind?: NodeKind, requiredMode?: ModelQueryMode): ModelOption[] | null {
+  const cacheKey = `${resolveCatalogKind(kind)}:${requiredMode ?? defaultPublishedMode(kind)}`
+  const kept = lastGoodOptions.get(cacheKey)
+  return kept ? filterHiddenOptionsByKind(kept, kind) : null
+}
+
+/** 读目录失败后界面该显示哪一份：上一次读成功的清单；从没成功过就保持现状（空态由 error 带着原因）。 */
+export function optionsAfterReadFailure(
+  current: readonly ModelOption[],
+  kind?: NodeKind,
+  requiredMode?: ModelQueryMode,
+): readonly ModelOption[] {
+  return peekLastGoodModelOptions(kind, requiredMode) ?? current
 }
 
 export async function preloadModelOptions(
