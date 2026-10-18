@@ -5,7 +5,7 @@ export const zhShotTable = {
   interrupted: '这次拆解被中断了（应用关闭或切换了项目）。已拆出的都还在，点「重新拆解」接着来。',
   cancelled: '你取消了这次拆解。已拆出的都还在，点「重新拆解」可以重来。',
   cancel: '取消拆解',
-  addColumn: '添加列', editCell: '编辑单元格', renameColumn: '重命名列', removeColumn: '删除列', generate: '生成 {{count}} 镜', running: '正在读取镜头', retry: '重新拆解', retryWithCloud: '改用云端', facts: { shotSize: '景别', motion: '运镜', visual: '画面', dialogue: '对白', onScreenText: '字幕', mood: '情绪' },
+  addColumn: '添加列', editCell: '编辑单元格', renameColumn: '重命名列', removeColumn: '删除列', running: '正在读取镜头', retry: '重新拆解', retryWithCloud: '改用云端', facts: { shotSize: '景别', motion: '运镜', visual: '画面', dialogue: '对白', onScreenText: '字幕', mood: '情绪' },
   title: '分镜表', count: '{{count}} 镜', duration: '{{duration}}s', timeRange: '{{start}}–{{end}}s',
   sourceMissing: '来源数据已删除',
   select: '选择第 {{index}} 镜', selected: '已选 {{count}} 镜',
@@ -24,7 +24,7 @@ export const zhShotTable = {
     transcribeHint: '对白用哪个模型转写；每次拆解开始前都会先报价确认。',
     modelUnavailable: '用不了', modelUnavailableHint: '选的这个模型现在用不了（停用、删了或供应商断开）：先换一个再拆，不会悄悄替你换', noVisionModel: '还没有能读图的模型', staleBlocked: '选的模型用不了，先换一个再拆', deconstruct: '拆解', idleHint: '选好下方的读图 / 转写模型后点「拆解」',
     addCustomColumn: '+ 自定义列',
-    selectionTitle: '用选中的 {{count}} 镜出分镜图', clearSelection: '取消选择',
+    selectedCount: '已选 {{count}} 镜', clearSelection: '取消选择',
   },
 }
 export const enShotTable = {
@@ -33,7 +33,7 @@ export const enShotTable = {
   interrupted: 'Interrupted (the app closed or the project changed). What it read is still here — deconstruct again to continue.',
   cancelled: 'You cancelled this deconstruction. What it read is still here — deconstruct again to start over.',
   cancel: 'Cancel deconstruction',
-  addColumn: 'Add column', editCell: 'Edit cell', renameColumn: 'Rename column', removeColumn: 'Delete column', generate: 'Generate {{count}} Shots', running: 'Reading shots', retry: 'Deconstruct again', retryWithCloud: 'Use cloud', facts: { shotSize: 'Shot size', motion: 'Motion', visual: 'Visual', dialogue: 'Dialogue', onScreenText: 'On-screen text', mood: 'Mood' },
+  addColumn: 'Add column', editCell: 'Edit cell', renameColumn: 'Rename column', removeColumn: 'Delete column', running: 'Reading shots', retry: 'Deconstruct again', retryWithCloud: 'Use cloud', facts: { shotSize: 'Shot size', motion: 'Motion', visual: 'Visual', dialogue: 'Dialogue', onScreenText: 'On-screen text', mood: 'Mood' },
   title: 'Shot table', count: '{{count}} shots', duration: '{{duration}}s', timeRange: '{{start}}–{{end}}s',
   sourceMissing: 'Source data was deleted',
   select: 'Select shot {{index}}', selected: '{{count}} selected',
@@ -52,6 +52,6 @@ export const enShotTable = {
     transcribeHint: 'Which model transcribes the dialogue. Each run asks you to confirm the quote first.',
     modelUnavailable: 'Unavailable', modelUnavailableHint: 'This model is unavailable now (disabled, removed or its provider disconnected). Pick another before deconstructing; Nomi will not switch it for you', noVisionModel: 'No model that can read images yet', staleBlocked: 'A chosen model is unavailable. Pick another before deconstructing', deconstruct: 'Deconstruct', idleHint: 'Pick the vision and transcription models below, then Deconstruct',
     addCustomColumn: '+ Custom column',
-    selectionTitle: 'Make storyboard frames from {{count}} selected shots', clearSelection: 'Clear selection',
+    selectedCount: '{{count}} shots selected', clearSelection: 'Clear selection',
   },
 }

@@ -20,8 +20,6 @@ type Props = {
   /** 镜头表里已有行（「拆解」与「重新拆解」只差这一句）。 */
   hasRows: boolean
   selectedRowIds: readonly string[]
-  busy: boolean
-  onGenerate: () => void
   onError: (message: string) => void
 }
 
@@ -33,7 +31,7 @@ type Props = {
  * 勾了镜头 = 用选中的镜头出分镜图（现有 generate 行为不变，只换入口位置）。
  * 主按钮能不能点的判据仍归终态 owner（`canRestartDeconstruction`），这里不再列一遍状态词。
  */
-export function ShotTableComposer({ nodeId, table, visualSize, sourceAvailable, hasRows, selectedRowIds, busy, onGenerate, onError }: Props): JSX.Element {
+export function ShotTableComposer({ nodeId, table, visualSize, sourceAvailable, hasRows, selectedRowIds, onError }: Props): JSX.Element {
   const { t } = useTranslation()
   const anchorRef = React.useRef<HTMLDivElement>(null)
   const running = table.source.status === 'running'
@@ -67,10 +65,10 @@ export function ShotTableComposer({ nodeId, table, visualSize, sourceAvailable, 
     >
       <div className="flex flex-col gap-2.5 rounded-nomi-lg border border-nomi-line bg-nomi-paper p-3 text-nomi-ink shadow-nomi-md">
         {selectedRowIds.length ? (
+          // 勾选只是标出这几镜（2026-10-18 用户：拆完要干嘛交给 Agent，表上不再闷头「生成 N 镜」）；这里只说选了几镜、能取消。
           <div className="flex items-center gap-2">
-            <span className="text-body-sm">{t('shotTable.node.selectionTitle', { count: selectedRowIds.length })}</span>
-            <WorkbenchButton size="sm" variant="default" className="ml-auto" onClick={clearSelection}>{t('shotTable.node.clearSelection')}</WorkbenchButton>
-            <WorkbenchButton size="sm" variant="primary" loading={busy} onClick={onGenerate}>{t('shotTable.generate', { count: selectedRowIds.length })}</WorkbenchButton>
+            <span className="text-body-sm">{t('shotTable.node.selectedCount', { count: selectedRowIds.length })}</span>
+            <WorkbenchButton size="sm" variant="default" onClick={clearSelection}>{t('shotTable.node.clearSelection')}</WorkbenchButton>
           </div>
         ) : (
           <>
@@ -86,7 +84,9 @@ export function ShotTableComposer({ nodeId, table, visualSize, sourceAvailable, 
               <DeconstructModelPicker leg="vision" nodeId={nodeId} table={table} disabled={running} />
               <DeconstructModelPicker leg="transcribe" nodeId={nodeId} table={table} disabled={running} />
               <WorkbenchButton size="sm" variant="default" disabled={running} onClick={() => { void addColumn() }}>{t('shotTable.node.addCustomColumn')}</WorkbenchButton>
-              <span className="ml-auto flex items-center gap-2">
+              {/* 主按钮靠右：只有主操作许用撑开的空隙（V4Row 同一条规矩），附属信息不贴行尾。 */}
+              <span aria-hidden className="flex-1" />
+              <span className="flex items-center gap-2">
                 {/* 本地离线转写挂了时的出口：用户点的一下才走云端，代码不许失败时自己切（那样会在不知情时花钱）。 */}
                 {table.source.failureKind === 'local-speech' && !running
                   && <WorkbenchButton size="sm" variant="default" data-testid="shot-table-retry-cloud" disabled={!sourceAvailable || visionStale} title={visionStale ? blockedReason : undefined} onClick={() => run('cloud')}>{t('shotTable.retryWithCloud')}</WorkbenchButton>}

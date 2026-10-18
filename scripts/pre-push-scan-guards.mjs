@@ -39,6 +39,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'electron/capabilityCore/reservationAmountSingleExit.structure.test.ts', roots: ELECTRON }, // 2026-10-18：确认卡金额只许从 reservationMaximumForDisplay 出（遍历 electron 源码，1 秒）
   { file: 'electron/fileIdentity.test.ts', roots: ELECTRON }, // #1142：不许手写 dev / ino 比较（2 秒）
   { file: 'scripts/check-network-entry.test.mjs', roots: ELECTRON }, // #1142：Node 网络调用必须走共用传输；扫描器 scripts/check-network-entry.mjs 在闭包里（6 秒）
+  { file: 'src/vendor/tablerIcons.test.ts', roots: ['src'] }, // 2026-10-18：源码用到的 tabler 图标必须在 src/vendor/tablerIcons.ts 登记（否则只有 build 会炸；遍历 src，<1 秒）
   { file: 'electron/shared/mcpClientRegistry.test.ts', roots: ['src', 'electron'] }, // #1142：不许手抄客户端清单（4 秒）
   { file: 'electron/capabilityCore/spendDoorSingleOwner.test.ts', roots: ELECTRON }, // 5 秒
   { file: 'electron/capabilityCore/mcpMigrationEntry.test.ts', roots: ['src', 'electron'] }, // #1142 合入后新增：MCP 宿主迁移入口只有登记的调用点（3 秒）

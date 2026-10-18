@@ -165,7 +165,7 @@
     },
     {
       "id": "composer.selection",
-      "label": "勾了镜头：标题「用选中的 N 镜出分镜图」+ 镜号 +「取消选择」",
+      "label": "勾了镜头：「已选 N 镜」+「取消选择」（不再在表上直接生成；拆完要干嘛交给 Agent）",
       "candidates": [],
       "status": "in-progress",
       "states": [
@@ -178,23 +178,31 @@
       "id": "composer.generate",
       "label": "选中态主按钮「生成 N 镜」（沿用现有 generate）",
       "candidates": [],
-      "status": "in-progress",
+      "status": "dropped",
       "states": [
         "loading",
         "selected"
       ],
-      "owner": "feat/shot-table-node"
+      "userDecision": {
+        "quote": "你问这些问题，我觉得也没必要。直接把这个东西引用或者怎么样，就是说能让Agent读到这个事……具体想要他想怎么改这个东西……他就跟Agent去交互好了。因为其实这个事确实需求是不明确的呀。",
+        "date": "2026-10-18",
+        "source": "Claude Design 画布评论（图 2）"
+      }
     },
     {
       "id": "composer.image-model-chips",
       "label": "选中态的出图模型 / 比例 / 参考关键帧 chips",
       "candidates": [],
-      "status": "missing",
+      "status": "dropped",
       "states": [
         "zh-en",
         "dark"
       ],
-      "owner": "拆解表第二批（全屏 + 右侧详情）"
+      "userDecision": {
+        "quote": "你问这些问题，我觉得也没必要。直接把这个东西引用或者怎么样，就是说能让Agent读到这个事……具体想要他想怎么改这个东西……他就跟Agent去交互好了。因为其实这个事确实需求是不明确的呀。",
+        "date": "2026-10-18",
+        "source": "Claude Design 画布评论（图 2）"
+      }
     },
     {
       "id": "table.header",

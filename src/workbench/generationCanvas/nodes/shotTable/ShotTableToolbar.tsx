@@ -11,6 +11,8 @@ export type ShotTableRowHeight = 'compact' | 'standard' | 'large'
 const ROW_HEIGHTS: readonly ShotTableRowHeight[] = ['compact', 'standard', 'large']
 
 /** 行高三档：行高与关键帧（16:9）尺寸（紧凑 44 · 标准 58 · 大图 92，见 docs/plan/2026-10-18-shot-table-node.md 图 4）。 */
+const ROW_HEIGHT_LABEL = { compact: 'shotTable.node.rowHeight.compact', standard: 'shotTable.node.rowHeight.standard', large: 'shotTable.node.rowHeight.large' } as const
+
 export const SHOT_TABLE_ROW_METRICS: Record<ShotTableRowHeight, { row: number; thumbWidth: number; thumbHeight: number }> = {
   compact: { row: 44, thumbWidth: 52, thumbHeight: 30 },
   standard: { row: 58, thumbWidth: 68, thumbHeight: 38 },
@@ -51,7 +53,7 @@ export function ShotTableToolbar({ nodeId, table }: { nodeId: string; table: Dec
       />
       <span className="inline-flex items-center" data-shot-table-row-height={rowHeight}>
         <ToolbarIconButton icon={<IconMinus size={16} stroke={1.6} />} ariaLabel={t('shotTable.node.rowShorter')} title={t('shotTable.node.rowShorter')} disabled={rowHeight === 'compact'} onClick={() => { stepRowHeight(-1) }} />
-        <span className="min-w-9 text-center text-caption text-nomi-ink-80">{t(`shotTable.node.rowHeight.${rowHeight}`)}</span>
+        <span className="min-w-9 text-center text-caption text-nomi-ink-80">{t(ROW_HEIGHT_LABEL[rowHeight])}</span>
         <ToolbarIconButton icon={<IconPlus size={16} stroke={1.6} />} ariaLabel={t('shotTable.node.rowTaller')} title={t('shotTable.node.rowTaller')} disabled={rowHeight === 'large'} onClick={() => { stepRowHeight(1) }} />
       </span>
     </FloatingToolbarShell>

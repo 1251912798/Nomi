@@ -5,13 +5,12 @@ import { useGenerationFlowNodeManagedDrag } from '../../reactFlow/generationFlow
 import { useTranslation } from 'react-i18next'
 import { IconTable } from '@tabler/icons-react'
 import { WorkbenchMenu, promptDialog } from '../../../../design'
-import { useModelOptionsState } from '../../../../config/useModelOptions'
 import { cn } from '../../../../utils/cn'
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import { readShotTable, type ShotTableColumn } from '../../../../../electron/shared/canvas/shotTable'
 import { selectShotTableRows, shotTableTotalSeconds } from './selectShotTableRows'
-import { editShotTableFacts, generateSelectedTableRows } from './shotTableActions'
+import { editShotTableFacts } from './shotTableActions'
 import { retryShot } from './factBridge'
 import { deconstructionNoticeKey } from './deconstructionLifecycle'
 import { withProjectAction } from '../../../project/projectCanvasReadSurface'
@@ -38,8 +37,6 @@ function ShotTableContent({ node: rawNode, selected, readOnly = false, flowDensi
   // 画布外的宿主（设计实验室样张）没有视口，也就没有缩放——按 1 档算。
   // 画布内的档位由 FlowShotTable 从 React Flow 的 transform 订阅（唯一真相）。
   const zoomDensity = shotTableDensityForZoom(1)
-  const imageModelOptions = useModelOptionsState('image').options
-  const videoModelOptions = useModelOptionsState('video').options
   const rows = React.useMemo(() => table ? selectShotTableRows(table) : [], [table])
   const source = table?.source
   const totalSeconds = React.useMemo(() => shotTableTotalSeconds(rows), [rows])
@@ -67,12 +64,6 @@ function ShotTableContent({ node: rawNode, selected, readOnly = false, flowDensi
     const value = await promptDialog({ title: t('shotTable.editCell'), initialValue })
     if (value === null) return
     editShotTableFacts(node.id, current => ({ ...current, rows: current.rows.map(row => row.rowId === rowId ? { ...row, cells: { ...row.cells, [columnId]: value } } : row) }))
-  }
-  const generate = async () => {
-    setBusy(true); setError(null)
-    try { await generateSelectedTableRows(node.id, imageModelOptions, videoModelOptions) }
-    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)) }
-    finally { setBusy(false) }
   }
   // 选中才出上方浮条与下方拆解栏（同其它节点）；它们是卡片的兄弟——卡片 overflow-hidden，放进去会被裁掉。
   const engaged = Boolean(facts) && selected && !isMultiSelectActive && !readOnly
@@ -108,6 +99,6 @@ function ShotTableContent({ node: rawNode, selected, readOnly = false, flowDensi
   </article>
     {engaged && facts && <ShotTableToolbar nodeId={node.id} table={facts} />}
     {engaged && facts && <ShotTableComposer nodeId={node.id} table={facts} visualSize={resolveNodeVisualSize(node)} sourceAvailable={sourceAvailable}
-      hasRows={rows.length > 0} selectedRowIds={selectedIds} busy={busy} onGenerate={() => { void generate() }} onError={setError} />}
+      hasRows={rows.length > 0} selectedRowIds={selectedIds} onError={setError} />}
   </>
 }

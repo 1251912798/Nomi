@@ -1115,6 +1115,7 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 | 语义 | 图标 | 用在哪 |
 |---|---|---|
 | 将当前媒体加入时间轴 | `IconTimeline` | 图片 / 视频 / 音频节点共享工具栏末尾 |
+| 表格显示哪些列（列显隐）| `IconColumns3` | 拆解表浮条「显示列」（2026-10-18；词典里没有表达「列」的图标，`IconTable` 已用于「整张表 / 镜头表」）|
 | 付费 / 消耗额度（用户直发或 agent 受理）| `IconCoin` | `SpendConfirmDialog`（§3.5）|
 | 外部 AI 助手 / MCP 驱动（agent 身份）| `IconRobot` | `SpendConfirmDialog` 的 `source: 'agent'` 头部（§3.5）|
 | 主角形象确认（锚定妆照检查点·免费质量门）| `IconUser` | `SpendConfirmDialog` 的 `kind: 'anchorCheckpoint'` 头部（§3.5，与 cast 分类同图标）|

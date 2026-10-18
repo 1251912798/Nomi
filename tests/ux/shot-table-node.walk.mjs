@@ -8,7 +8,7 @@
 //  ② 选中拆好的表：上方浮条（显示列 · 行高）+ 下方栏（无整表重拆、说明换模型对单镜重拆生效），浮条与下方栏都以节点为中心
 //  ③ 行高「+」：标准 → 大，行真的变高；复位
 //  ④ 显示列菜单：每列一个勾选项
-//  ⑤ 勾两镜：下方栏换成「生成 2 镜」
+//  ⑤ 勾两镜：下方栏换成「已选 2 镜 · 取消选择」（10-18 用户：拆完要干嘛交给 Agent，表上不再有「生成 N 镜」）
 //  ⑥ 表一半在舞台右缘外：浮条仍是一行、整条在舞台里（不为了对着节点中心把自己挤成两行）
 // 不点「拆解」——那一下走报价卡、花真钱，真付费单独走（设计卡 ★9 ②）。
 import fs from 'node:fs'
@@ -19,6 +19,7 @@ import { expect, expectVisible, clickOrFail, holdAbsent, screenshotSettled, expe
 import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { createCanvasPerformanceFixture } from './fixtures/canvas-performance-fixture.mjs'
 import { canvasFitViewButton } from './_shell.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 import { findCanvasBlankPoint } from './_canvasHit.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -120,8 +121,8 @@ async function walkTrack(track) {
   try {
     await expect(page.locator('html')).toHaveAttribute('data-theme', track.scheme)
     await clickOrFail(page.locator('[data-project-card]', { hasText: fixture.record.name }).first(), 'open fixture project')
-    await page.locator('.generation-canvas-v2__stage').waitFor({ timeout: 60_000 })
-    await page.waitForFunction(() => document.querySelectorAll('.react-flow__node').length > 0, undefined, { timeout: 60_000 })
+    await page.locator('.generation-canvas-v2__stage').waitFor({ timeout: stationTimeout({ operations: 4 }) })
+    await page.waitForFunction(() => document.querySelectorAll('.react-flow__node').length > 0, undefined, { timeout: stationTimeout({ operations: 4 }) })
     await fitView(page)
 
     // ① 视频浮条「拆解 ▾ → 镜头表」：只建表
@@ -141,7 +142,7 @@ async function walkTrack(track) {
       const state = window.__nomiCanvasStore?.getState()
       const table = state?.nodes.find((node) => node.kind === 'shot_table' && node.id !== readyId)
       return table && state.selectedNodeIds.length === 1 && state.selectedNodeIds[0] === table.id ? table.id : null
-    }, READY_TABLE_ID, { timeout: 15_000 }).then((handle) => handle.jsonValue())
+    }, READY_TABLE_ID, { timeout: stationTimeout() }).then((handle) => handle.jsonValue())
     const createdStatus = await page.evaluate((id) => window.__nomiCanvasStore.getState().nodes.find((node) => node.id === id).meta.shotTable.source.status, created)
     if (createdStatus !== 'idle') throw new Error(`新建的拆解表应是待拆（idle），实际 ${createdStatus}`)
     // 新表落在源视频右边，可能在屏外：画布约定是不自动挪视口，边缘出「新节点在右侧」，点它才框进来（useCanvasArrivalHint）。
@@ -196,13 +197,14 @@ async function walkTrack(track) {
     await page.keyboard.press('Escape')
     await sleep(page, 200)
 
-    // ⑤ 勾两镜：下方栏换成「生成 2 镜」
+    // ⑤ 勾两镜：下方栏换成「已选 2 镜 · 取消选择」
     const boxes = host.locator('[data-shot-table-row] input[type="checkbox"]')
     await clickOrFail(boxes.nth(0), 'check row 1')
     await clickOrFail(boxes.nth(1), 'check row 2')
     const selectionBar = host.locator('[data-shot-table-composer="selection"]')
     await expectVisible(selectionBar, '勾选态下方栏')
-    await expect(selectionBar).toContainText(zh(track) ? '2 镜' : '2')
+    await expect(selectionBar).toContainText(zh(track) ? '已选 2 镜' : '2 shots selected')
+    await expect(selectionBar.getByRole('button')).toHaveCount(1)
     await shot(page, dir, '05-rows-selected')
     await clickOrFail(selectionBar.getByRole('button', { name: zh(track) ? '取消选择' : /Clear/i }), 'clear row selection')
 
