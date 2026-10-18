@@ -30,7 +30,7 @@ describe('project upload content identity', () => {
   })
   it('converges concurrent native copies and bytes imports without losing content', async () => {
     const source = path.join(root, 'source.png'); fs.writeFileSync(source, bytes)
-    const pending = [copyAssetFile('one', source, 'native.png', 'image/png', { kind: 'upload' }), copyAssetFile('one', source, 'native.png', 'image/png', { kind: 'upload' })]
+    const pending = [copyAssetFile('one', source, 'native.png', 'image/png', { kind: 'upload' }, null), copyAssetFile('one', source, 'native.png', 'image/png', { kind: 'upload' }, null)]
     const direct = await write()
     const copies = await Promise.all(pending) as Asset[]
     expect(copies.map(asset => asset.id)).toEqual([direct.id, direct.id])
@@ -39,7 +39,7 @@ describe('project upload content identity', () => {
   })
   it('reuses concurrent native imports and preserved metadata across module reload', async () => {
     const source = path.join(root, 'audio.wav'); fs.writeFileSync(source, bytes)
-    const copies = await Promise.all([1, 2].map(() => copyAssetFile('one', source, 'audio.wav', 'audio/wav', { kind: 'upload', title: 'original' }))) as Asset[]
+    const copies = await Promise.all([1, 2].map(() => copyAssetFile('one', source, 'audio.wav', 'audio/wav', { kind: 'upload', title: 'original' }, null))) as Asset[]
     expect(copies[0].id).toBe(copies[1].id)
     vi.resetModules()
     const reloaded = await import('./projectAssetStore')
@@ -55,7 +55,7 @@ describe('project upload content identity', () => {
     fs.writeFileSync(original, bytes)
     fs.writeFileSync(`${original}.meta`, JSON.stringify({ kind: 'upload', title: 'kept' }))
     const source = path.join(root, 'renamed.png'); fs.writeFileSync(source, bytes)
-    const [direct, native] = await Promise.all([write(), copyAssetFile('one', source, 'renamed.png', 'image/png', { kind: 'upload' })]) as Asset[]
+    const [direct, native] = await Promise.all([write(), copyAssetFile('one', source, 'renamed.png', 'image/png', { kind: 'upload' }, null)]) as Asset[]
     expect(direct.data.absolutePath).toBe(original)
     expect(native.id).toBe(direct.id)
     expect(JSON.parse(fs.readFileSync(`${original}.meta`, 'utf8')).contentHash).toMatch(/^[a-f0-9]{64}$/)
@@ -113,8 +113,8 @@ describe('project upload content identity', () => {
   // 生成产物走「异步校验 → 同步原子发布」两步（generatedAssetStaging）；上传去重只管上传类，生成产物各自独立。
   it('does not deduplicate independent generated outputs', async () => {
     const jpeg = fs.readFileSync(path.join(__dirname, '../providerAdapter/__fixtures__/certification-media/valid.jpg'))
-    const first = await writeGeneratedAsset('one', jpeg, 'result.jpg', 'image/jpeg', { kind: 'generated' }) as Asset
-    const second = await writeGeneratedAsset('one', jpeg, 'result.jpg', 'image/jpeg', { kind: 'generated' }) as Asset
+    const first = await writeGeneratedAsset('one', jpeg, 'result.jpg', 'image/jpeg', { kind: 'generated' }, 'image') as Asset
+    const second = await writeGeneratedAsset('one', jpeg, 'result.jpg', 'image/jpeg', { kind: 'generated' }, 'image') as Asset
     expect(second.id).not.toBe(first.id)
   })
   it('preserves independent non-upload captures', async () => {

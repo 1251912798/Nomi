@@ -26,6 +26,35 @@ const STALE_KEY = 'generationCommon.production.status.providerStale'
 const TASK_TRIGGER = '[data-task-center-trigger="true"]'
 
 /**
+ * 等付费卡，但面板里一出现报错卡（AgentPanelV4Receipt.tsx 的 `data-v4-block="errorbar"`）就立刻失败并带上报错文字，
+ * 不再傻等满 MODEL_TURN_MS（10-18 大脑模型 404，面板 20 秒就红了，走查却等了 315 秒）。超时和断言与原来一致。
+ */
+async function waitSpendCardOrFailOnErrorBar(win, card) {
+  const errorBar = win.locator(`${CANVAS_PANEL} [data-v4-block="errorbar"]`).first()
+  let settled = false
+  const watcher = (async () => {
+    const deadline = Date.now() + MODEL_TURN_MS
+    while (!settled && Date.now() < deadline) {
+      if (await errorBar.isVisible().catch(() => false)) {
+        const text = ((await errorBar.innerText().catch(() => '')) || '').trim()
+        throw new Error(`Agent 面板出现报错卡，不用再等付费卡了：${text}`)
+      }
+      await win.waitForTimeout(500).catch(() => {})
+    }
+    return new Promise(() => {})
+  })()
+  watcher.catch(() => {})
+  try {
+    await Promise.race([
+      expect(card, 'Agent 起草并请求生成之后，付费卡摆在面板里等人').toBeVisible({ timeout: MODEL_TURN_MS }),
+      watcher,
+    ])
+  } finally {
+    settled = true
+  }
+}
+
+/**
  * @param {{ paid: Awaited<ReturnType<typeof import('./_paidRun.mjs').openPaidWalk>>, win: import('playwright').Page,
  *   askText?: string, realMedia?: boolean, duringObservation?: (ctx: { node: import('playwright').Locator }) => Promise<void> }} options
  */
@@ -38,7 +67,7 @@ export async function runAgentVideoLanding({ paid, win, askText = ASK, realMedia
 
   await sendCanvas(win, askText)
   const card = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="spend"]`)
-  await expect(card, 'Agent 起草并请求生成之后，付费卡摆在面板里等人').toBeVisible({ timeout: MODEL_TURN_MS })
+  await waitSpendCardOrFailOnErrorBar(win, card)
   // ── 花钱之前：卡上要花的那一笔（等人答的那个 Run）就是被授权的那一档，而且只有一镜 ──
   // 模型可能起草了不止一次（每次一个 Run）；卡上等人的是最后调 generate 的那一份。多出来的草稿不花钱，如实记下。
   const runs = readProductionRuns(projectRoot).filter((run) => run.generationPlan)

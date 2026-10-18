@@ -352,7 +352,7 @@ export async function finishVideoDepthJob(payload: { jobId: string }): Promise<V
       kind: "generated",
       source: "video-depth",
       ownerNodeId: session.nodeId,
-    }) as { id?: string; data?: { url?: string } };
+    }, "video") as { id?: string; data?: { url?: string } };
     const url = record?.data?.url;
     if (!url) throw new VideoDepthJobError("media-failed", "depth video could not be written to the project assets", false);
     logInfo("video-depth", "finished", { jobId: session.jobId, frames: session.totalFrames, bytes: bytes.byteLength });

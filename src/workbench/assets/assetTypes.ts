@@ -13,6 +13,11 @@ import type { WorkspaceFileNode } from '../../../electron/workspace/workspaceFil
 import { buildWorkspaceFileUrl } from '../explorer/workspaceFileDrag'
 
 export type AssetKind = 'image' | 'video' | 'audio' | 'model3d'
+
+/** 一个结果 / 记录「该是」哪一类媒体：只认这四个词（文本结果、认不出的老记录都是 null——生成产物据此不进项目，不猜）。 */
+export function assetKindOf(value: unknown): AssetKind | null {
+  return value === 'image' || value === 'video' || value === 'audio' || value === 'model3d' ? value : null
+}
 export type AssetSource = 'canvas' | 'project'
 
 /**

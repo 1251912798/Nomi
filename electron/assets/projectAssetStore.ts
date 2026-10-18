@@ -31,9 +31,10 @@ import {
   sanitizeAssetMetaForKind,
   stableAssetId,
 } from "./assetPaths";
-import { contentTypeFromMagicBytes, resolveContentType } from "./mediaTypes";
+import { contentTypeFromMagicBytes, mediaKindFromContentType, resolveContentType } from "./mediaTypes";
 import { validateGlbStructure } from "./model3dValidation";
 import { isGeneratedAssetMeta, prepareVerifiedGeneratedAsset, type VerifiedStagedAsset } from "./generatedAssetStaging";
+import { localizedAssetTypeOf, type LocalizedAssetType } from "./localizedAsset";
 import type { CertificationMediaEvidence } from "../providerAdapter/certificationMedia";
 
 import type { UsageStatus, IntendedRole } from "../connectors/connectorDefinition";
@@ -172,6 +173,16 @@ export function writeAsset(
   return storedAssetRecord(projectId, absolutePath, sanitizeName(fileName, "asset"), actualContentType, meta, contentHash, context);
 }
 
+/**
+ * 生成产物进项目只有这一道关口（generatedAssetStaging 暂存 → 字节 / 解码校验 → 发布），它下面三扇写入口都要说清
+ * 「这份产物应该是哪一类」（expectedKind，必填）：任务结果传任务期望，本机生产者传自己产的那一类。
+ * 字节不是那一类就不发布、不登记（V-1213：付了视频的钱，落进来一张参考图）。
+ */
+function generatedExpectation(expectedKind: LocalizedAssetType | null): LocalizedAssetType {
+  if (!expectedKind) throw new Error("generated_output_expected_kind_required");
+  return expectedKind;
+}
+
 /** 生成产物的字节入口：异步准备（暂存 + 校验）→ 同步原子发布。 */
 export async function writeGeneratedAsset(
   projectId: string,
@@ -179,9 +190,10 @@ export async function writeGeneratedAsset(
   fileName: string,
   contentType: string,
   rawMeta: JsonRecord,
+  expectedKind: LocalizedAssetType,
   context?: AssetWriteContext,
 ): Promise<unknown> {
-  const staged = await prepareVerifiedGeneratedAsset({ projectId, source: { bytes }, fileName, contentType, rawMeta, ...(context ? { context } : {}) });
+  const staged = await prepareVerifiedGeneratedAsset({ projectId, source: { bytes }, fileName, contentType, rawMeta, expectedKind, ...(context ? { context } : {}) });
   return publishVerifiedGeneratedAsset(staged);
 }
 
@@ -195,23 +207,28 @@ export async function writeGeneratedDeterministicAsset(
   fileName: string,
   contentType: string,
   rawMeta: JsonRecord,
+  expectedKind: LocalizedAssetType,
   materializationKey: string,
 ): Promise<unknown> {
-  const staged = await prepareVerifiedGeneratedAsset({ projectId, source: { bytes }, fileName, contentType, rawMeta });
+  const staged = await prepareVerifiedGeneratedAsset({ projectId, source: { bytes }, fileName, contentType, rawMeta, expectedKind });
   return publishVerifiedGeneratedAsset(staged, { materializationKey });
 }
 
-/** 调用方传来的 kind 不定（渲染层导入、远端取回）：生成产物走两步发布，其余照旧同步写。 */
+/**
+ * 调用方传来的 kind 不定（渲染层导入、远端取回）：生成产物走两步发布，其余照旧同步写。
+ * expectedKind 必须给：是生成产物时就是它该是的那一类；不是生成产物（上传、导入）给 null。生成产物给 null 直接拒。
+ */
 export async function storeAssetBytes(
   projectId: string,
   bytes: Buffer,
   fileName: string,
   contentType: string,
   rawMeta: JsonRecord,
+  expectedKind: LocalizedAssetType | null,
   context?: AssetWriteContext,
 ): Promise<unknown> {
   return isGeneratedAssetMeta(sanitizeAssetMetaForKind(rawMeta))
-    ? writeGeneratedAsset(projectId, bytes, fileName, contentType, rawMeta, context)
+    ? writeGeneratedAsset(projectId, bytes, fileName, contentType, rawMeta, generatedExpectation(expectedKind), context)
     : writeAsset(projectId, bytes, fileName, contentType, rawMeta, context);
 }
 
@@ -223,7 +240,7 @@ function publishVerifiedGeneratedAsset(staged: VerifiedStagedAsset, options: { m
   try {
     const { context, meta, fileName } = staged;
     const { projectId } = context;
-    const actualContentType = effectiveContentType(fileName, staged.declaredContentType, staged.header);
+    const actualContentType = effectiveContentType(fileName, staged.contentType, staged.header);
     context.assertCurrent();
     if (options.materializationKey === undefined) {
       const storageFileName = canonicalAssetFileName(fileName, actualContentType);
@@ -285,6 +302,8 @@ export async function copyAssetFile(
   fileName: string,
   contentType: string,
   rawMeta: JsonRecord,
+  /** 同 storeAssetBytes：生成产物给它该是的那一类，其余给 null。 */
+  expectedKind: LocalizedAssetType | null,
   captured?: AssetWriteContext,
   options: CopyAssetFileOptions = {},
 ): Promise<unknown> {
@@ -305,7 +324,7 @@ export async function copyAssetFile(
   const actualContentType = effectiveContentType(fileName, contentType, header);
   if (isGeneratedAssetMeta(meta)) {
     // 生成产物：拷进本项目私有暂存、在暂存件上校验、同步原子发布——校验的就是发布的那一份。
-    const staged = await prepareVerifiedGeneratedAsset({ projectId, source: { path: sourcePath, onCopyProgress: options.onCopyProgress }, fileName, contentType, rawMeta: meta, context });
+    const staged = await prepareVerifiedGeneratedAsset({ projectId, source: { path: sourcePath, onCopyProgress: options.onCopyProgress }, fileName, contentType, rawMeta: meta, expectedKind: generatedExpectation(expectedKind), context });
     return attachStoredAssetPreview(publishVerifiedGeneratedAsset(staged), await options.preparedPreview);
   }
   if (actualContentType === "model/gltf-binary") validateStructuredAsset(actualContentType, await fs.promises.readFile(sourcePath));
@@ -372,12 +391,15 @@ export async function copyProjectAsset(input: {
   }
   const stat = await fs.promises.stat(realSourcePath)
   if (!stat.isFile()) throw new Error('source asset is not a file')
+  const storedContentType = contentTypeFromStoredFile(realSourcePath)
   return copyAssetFile(
     targetProjectId,
     realSourcePath,
     path.basename(relativePath),
-    contentTypeFromStoredFile(realSourcePath),
+    storedContentType,
     readAssetSidecarMeta(realSourcePath),
+    // 跨项目复制一份已落过关的产物：它该是的就是它存着的那一类（关口照样重核字节）。
+    localizedAssetTypeOf(mediaKindFromContentType(storedContentType)),
   )
 }
 
@@ -551,7 +573,13 @@ export function sanitizeSourceEvidence(raw: unknown): JsonRecord | undefined {
   return undefined;
 }
 
-export async function importRemoteAsset(payload: unknown, options: RemoteAssetImportOptions = {}): Promise<unknown> {
+/**
+ * 远端（http / data: / nomi-local）导入的载荷。expectedKind 必填：kind 缺省即生成产物，生成产物给它该是的那一类，
+ * 其余（reference / upload）给 null。渲染层经 IPC 来的载荷不过类型系统，主进程照样按 localizedAssetTypeOf 再读一遍。
+ */
+export type RemoteAssetImportPayload = JsonRecord & { projectId: string; url: string; expectedKind: LocalizedAssetType | null };
+
+export async function importRemoteAsset(payload: RemoteAssetImportPayload, options: RemoteAssetImportOptions = {}): Promise<unknown> {
   // 画布预览（图片缩略 / 视频 poster）在落盘边界统一派生：三种来源（项目内引用 / data: / http(s)）出同一扇门。
   return attachStoredAssetPreview(await importRemoteAssetToStore(payload, options));
 }
@@ -564,6 +592,8 @@ async function importRemoteAssetToStore(payload: unknown, options: RemoteAssetIm
   if (!url) throw new Error("url is required");
   const context = await captureAssetWriteContext(projectId, raw.projectBinding as ProjectBinding | undefined, options.assertCurrent);
   const sourceEvidence = sanitizeSourceEvidence(raw.sourceEvidence);
+  // 生成产物应是哪一类，由调用方说（渲染层 / 主进程都一样）；没说或说不清，生成产物在关口被拒。
+  const expectedKind = localizedAssetTypeOf(raw.expectedKind);
   if (url.startsWith("nomi-local://")) {
     // Reuse the canonical original, not a synthetic URL receipt or preview. The same
     // identity must be valid for Agent claims, generation references and history.
@@ -580,7 +610,7 @@ async function importRemoteAssetToStore(payload: unknown, options: RemoteAssetIm
     // Workspace media may live outside assets/. Admit it through the existing
     // original-byte store before returning an attachable identity.
     return copyAssetFile(projectId, absolutePath, path.basename(absolutePath),
-      contentTypeFromStoredFile(absolutePath), { kind: raw.kind || "upload" }, context);
+      contentTypeFromStoredFile(absolutePath), { kind: raw.kind || "upload" }, expectedKind, context);
   }
   if (url.startsWith("data:")) {
     const parsed = parseDataUrl(url);
@@ -591,6 +621,7 @@ async function importRemoteAssetToStore(payload: unknown, options: RemoteAssetIm
       String(raw.fileName || `asset-${Date.now()}.${ext}`),
       options.certificationEvidence?.contentType || parsed.contentType,
       { kind: raw.kind || "generated", originalUrl: null, ...(sourceEvidence ? { sourceEvidence } : {}), ...(options.certificationEvidence ? { certificationEvidence: options.certificationEvidence } : {}) },
+      expectedKind,
       context,
     );
   }
@@ -613,7 +644,7 @@ async function importRemoteAssetToStore(payload: unknown, options: RemoteAssetIm
     ownerNodeId: raw.ownerNodeId || null,
     ...(sourceEvidence ? { sourceEvidence } : {}),
     ...(options.certificationEvidence ? { certificationEvidence: options.certificationEvidence } : {}),
-  }, context);
+  }, expectedKind, context);
 }
 
 export function listProjectAssets(payload: unknown): { items: LocalAssetRecord[]; cursor: string | null } {

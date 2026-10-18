@@ -97,9 +97,9 @@ function sourceFile(bytes: Buffer, name = "download.mp4"): string {
 }
 
 const ENTRIES = {
-  writeGeneratedAsset: (bytes: Buffer) => writeGeneratedAsset("project-1", bytes, "result.mp4", "video/mp4", { kind: "generated" }),
-  writeGeneratedDeterministicAsset: (bytes: Buffer) => writeGeneratedDeterministicAsset("project-1", bytes, "result.mp4", "video/mp4", { kind: "generated" }, "task:output-1"),
-  copyAssetFile: (bytes: Buffer) => copyAssetFile("project-1", sourceFile(bytes), "result.mp4", "video/mp4", { kind: "generated" }),
+  writeGeneratedAsset: (bytes: Buffer) => writeGeneratedAsset("project-1", bytes, "result.mp4", "video/mp4", { kind: "generated" }, "video"),
+  writeGeneratedDeterministicAsset: (bytes: Buffer) => writeGeneratedDeterministicAsset("project-1", bytes, "result.mp4", "video/mp4", { kind: "generated" }, "video", "task:output-1"),
+  copyAssetFile: (bytes: Buffer) => copyAssetFile("project-1", sourceFile(bytes), "result.mp4", "video/mp4", { kind: "generated" }, "video"),
 } as const;
 
 beforeEach(() => { binding.root = makeProject("home"); });
@@ -120,7 +120,7 @@ describe("V-1208-1: the bytes that were verified are the bytes that get publishe
     const original = fixture("valid.mp4");
     const source = sourceFile(original);
     whenDecoderSpawns(() => fs.writeFileSync(source, Buffer.alloc(original.length, 0x41)));
-    const stored = await copyAssetFile("project-1", source, "download.mp4", "video/mp4", { kind: "generated" }) as Stored;
+    const stored = await copyAssetFile("project-1", source, "download.mp4", "video/mp4", { kind: "generated" }, "video") as Stored;
     expect(Buffer.compare(fs.readFileSync(path.join(binding.root, stored.data?.relativePath || "")), original)).toBe(0);
   });
 });
@@ -175,7 +175,7 @@ describe("V-1208-4: a write that fails half-way never leaves a partial file at t
       }
       return realAsync(target, data, options);
     }) as typeof fs.promises.writeFile);
-    await expect(writeGeneratedAsset("project-1", fixture("valid.mp4"), "result.mp4", "video/mp4", { kind: "generated" })).rejects.toThrow("ENOSPC");
+    await expect(writeGeneratedAsset("project-1", fixture("valid.mp4"), "result.mp4", "video/mp4", { kind: "generated" }, "video")).rejects.toThrow("ENOSPC");
     expect(published(binding.root)).toEqual([]);
     expect(staging(binding.root)).toEqual([]);
   });
@@ -183,7 +183,7 @@ describe("V-1208-4: a write that fails half-way never leaves a partial file at t
   it("a GLB upload copy keeps its staged publish (no direct byte write at the published path)", async () => {
     failDirectWritesUnderAssets(binding.root);
     const glb = validGlb();
-    const stored = await copyAssetFile("project-1", sourceFile(glb, "scene.glb"), "scene.glb", "model/gltf-binary", { kind: "upload" }) as Stored;
+    const stored = await copyAssetFile("project-1", sourceFile(glb, "scene.glb"), "scene.glb", "model/gltf-binary", { kind: "upload" }, null) as Stored;
     expect(Buffer.compare(fs.readFileSync(path.join(binding.root, stored.data?.relativePath || "")), glb)).toBe(0);
   });
 });
@@ -194,7 +194,7 @@ describe("V-1208-5: the generated publish adds no whole-file synchronous write t
     // 源文件在开始计数之前就备好（那是测试自己的同步写，不算产品的）。
     const source = entry === "copyAssetFile" ? sourceFile(largeVideo) : "";
     const run = () => entry === "copyAssetFile"
-      ? copyAssetFile("project-1", source, "result.mp4", "video/mp4", { kind: "generated" })
+      ? copyAssetFile("project-1", source, "result.mp4", "video/mp4", { kind: "generated" }, "video")
       : ENTRIES[entry](largeVideo);
     const syncWrites: number[] = [];
     const realSync = fs.writeFileSync;
