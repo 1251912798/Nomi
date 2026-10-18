@@ -37,6 +37,8 @@ const FIXTURE = flag('--fixture')
 const VISION_ARG = valueOf('--vision-model')
 const MAX_CALLS = Number(valueOf('--max-calls') ?? 60)
 const ONLY = valueOf('--only')
+// 转写腿显式选哪个（供应商/模型）；不给 = 自动解析，和拆解栏「转写：自动选择」一样。
+const TRANSCRIBE_ARG = valueOf('--transcribe-model')
 process.argv.splice(2, process.argv.length - 2, ...argv)
 const CONFIRM = FIXTURE || process.env.NOMI_PAID_CONFIRM === '1'
 const ffmpeg = createRequire(import.meta.url)('@ffmpeg-installer/ffmpeg').path
@@ -82,7 +84,7 @@ if (FIXTURE) {
 }
 
 const report = walk.report
-Object.assign(report, { mode: FIXTURE ? 'fixture' : CONFIRM ? 'paid' : 'paid-dry', visionModel: `${model.vendorKey}/${model.modelKey}`, maxCalls: MAX_CALLS, thresholds: THRESHOLDS, cases: [] })
+Object.assign(report, { transcribeModel: TRANSCRIBE_ARG ?? 'auto', mode: FIXTURE ? 'fixture' : CONFIRM ? 'paid' : 'paid-dry', visionModel: `${model.vendorKey}/${model.modelKey}`, maxCalls: MAX_CALLS, thresholds: THRESHOLDS, cases: [] })
 let failure
 try {
   const { win, app } = await walk.start({ first: true })
@@ -131,7 +133,8 @@ try {
       const dialog = win.locator(SPEND_DIALOG)
       try { await dialog.waitFor({ state: 'visible', timeout: 15_000 }); await dialog.locator('[data-spend-confirm-action="confirm"]').click() } catch { /* 没弹卡 = 短片 */ }
     })()
-    const result = await win.evaluate(({ url, projectId, nodeId, vision }) => window.nomiDesktop.video.deconstruct({ videoUrl: url, projectId, nodeId, vision }), { ...seeded, vision: model })
+    const transcribe = TRANSCRIBE_ARG ? { vendorKey: TRANSCRIBE_ARG.split('/')[0], modelKey: TRANSCRIBE_ARG.split('/').slice(1).join('/') } : undefined
+    const result = await win.evaluate(({ url, projectId, nodeId, vision, transcribe }) => window.nomiDesktop.video.deconstruct({ videoUrl: url, projectId, nodeId, vision, ...(transcribe ? { transcribe } : {}) }), { ...seeded, vision: model, transcribe })
     await dialogWatcher
     const seconds = (Date.now() - startedAt) / 1000
     const after = await counts()

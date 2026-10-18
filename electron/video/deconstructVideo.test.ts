@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildShotAnalysisPrompt } from "./deconstructVideo";
 import { parseLooseJsonObject } from "../jsonUtils";
+import { setDesktopLocale } from "../desktopLocale";
 
 const shot = { index: 3, startSeconds: 4, endSeconds: 6.5 };
 
@@ -18,6 +19,16 @@ describe("buildShotAnalysisPrompt", () => {
 
   it("要求把**所有帧**里出现过的屏幕文字都收进来（单帧会漏快闪字幕）", () => {
     expect(buildShotAnalysisPrompt(shot, 3, [])).toContain("所有帧里出现过的");
+  });
+
+  it("字段用界面语言写（效果评测：中文界面里运镜一列多为英文）；景别仍用六档中文", () => {
+    setDesktopLocale("zh-CN");
+    expect(buildShotAnalysisPrompt(shot, 3, [])).toContain("所有文字字段都用中文写（包括 motionPrompt）");
+    setDesktopLocale("en");
+    const english = buildShotAnalysisPrompt(shot, 3, []);
+    expect(english).toContain("Write every text field in English");
+    expect(english).toContain("极特写/特写/近景/中景/全景/远景");
+    setDesktopLocale("zh-CN");
   });
 
   it("六个内置字段都在 schema 里", () => {

@@ -182,6 +182,11 @@ export function buildShotAnalysisPrompt(shot: ShotBoundary, frameCount: number, 
     `你在拆解一条广告片的第 ${shot.index} 个镜头（${shot.startSeconds.toFixed(1)}s–${shot.endSeconds.toFixed(1)}s）。`,
     `下面是这一镜按时间顺序的 ${frameCount} 帧。它们是**同一个镜头**的不同时刻，请合起来看，不要当成 ${frameCount} 个镜头。`,
     "特别注意：有些文字（字幕/价格/促销角标）只在部分帧出现，请把**所有帧里出现过的**屏幕文字都收进 onScreenText。",
+    // 字段用界面语言写（2026-10-18 效果评测：中文界面里「运镜」一列 64%–100% 是英文；英文界面拿到的又全是中文）。
+    // 景别仍从下面那六档中文里选（下游按这六个词认），imagePrompt 是喂给图片模型的，不限语言。
+    getDesktopLocale() === "en"
+      ? "Write every text field in English, except shotSize (pick one of the six Chinese labels below) and imagePrompt."
+      : "除 imagePrompt 外，所有文字字段都用中文写（包括 motionPrompt）。",
     "只返回 JSON，不要 markdown、不要代码块、不要任何解释。JSON 结构：",
     "{",
     '  "shotSize": "景别，从 极特写/特写/近景/中景/全景/远景 里选一个",',
