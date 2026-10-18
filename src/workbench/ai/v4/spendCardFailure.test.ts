@@ -1,6 +1,9 @@
 // 付费卡第 11 条：失败只给存在的出路（2026-09-30）。
 // 用户那一幕：卡改不了，点下去却两次弹「这一步没成……可以改一下再按一次」。
+import { createInstance } from 'i18next'
 import { describe, expect, it } from 'vitest'
+
+import { enAgentPanelV4, zhAgentPanelV4 } from '../../../i18n/locales/agentPanelV4'
 
 import { spendActionFailureCopy } from './spendCardFailure'
 
@@ -55,8 +58,6 @@ describe('付费卡上一下没做成时说哪一句', () => {
   })
 
   it('这一句中英两轨都在，而且都把被拒的参数名印出来（词条不是占位）', async () => {
-    const { createInstance } = await import('i18next')
-    const { zhAgentPanelV4, enAgentPanelV4 } = await import('../../../i18n/locales/agentPanelV4')
     for (const [lng, locale] of [['zh-CN', zhAgentPanelV4], ['en', enAgentPanelV4]] as const) {
       const i18n = createInstance()
       await i18n.init({ lng, resources: { [lng]: { translation: { agentPanelV4: locale } } } })

@@ -14,6 +14,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { expect } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { openModelSettings } from './_shell.mjs'
 
@@ -156,11 +157,11 @@ export async function connectApimartThroughVisibleUi(win, { apiKey, textModelKey
     // 接入页保存之后会说「APIMart 已接入，预置模型可用」（演练截图实测）：要是被授权的模型这一刻都已经能用，
     // 就不必再跑「继续验证」（它还会花几个 token，而且预置的模型在选择页里是灰的、选不了）。问被测 App 自己，不猜。
     if (requiredModels.length) {
-      // listModels 是异步 IPC（返回 Promise）：谓词必须 await，不然 `.find` 落在 Promise 上、永远判成「不可用」。
-      const presetUsable = await win.waitForFunction(async (want) => {
+      // listModels 是异步 IPC（返回 Promise）：用 expect.poll 真正等它，不然 `.find` 落在 Promise 上、永远判成「不可用」。
+      const presetUsable = await expect.poll(() => win.evaluate(async (want) => {
         const rows = (await window.nomiDesktop?.modelCatalog?.listModels?.({})) || []
         return want.every((item) => rows.find((row) => row.vendorKey === item.vendorKey && row.modelKey === item.modelKey)?.availability?.usable === true)
-      }, requiredModels, { timeout: STEP_MS }).then(() => true, () => false)
+      }, requiredModels), { timeout: STEP_MS }).toBe(true).then(() => true, () => false)
       if (presetUsable) {
         await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-model-catalog-changed')))
         await win.locator('[data-settings-close]').first().click()
@@ -194,10 +195,10 @@ export async function connectApimartThroughVisibleUi(win, { apiKey, textModelKey
     }
     if (!latest || latest.stage !== 'completed') throw new Error(`${ENV_KEY_VENDOR}/${textModelKey} 的认证没有走完：${latest?.stage ?? 'unknown'}`)
     // 晋升与验证页是异步的：等这一行真的 enabled + published + verified，再通知界面刷新。
-    await win.waitForFunction(async ({ vendorKey, modelKey }) => {
+    await expect.poll(() => win.evaluate(async ({ vendorKey, modelKey }) => {
       const model = ((await window.nomiDesktop?.modelCatalog?.listModels?.({})) || []).find((row) => row.vendorKey === vendorKey && row.modelKey === modelKey)
       return Boolean(model?.enabled === true && model?.published === true && model?.meta?.adapter?.state === 'verified')
-    }, { vendorKey: ENV_KEY_VENDOR, modelKey: textModelKey }, { timeout: SLOW_STEP_MS })
+    }, { vendorKey: ENV_KEY_VENDOR, modelKey: textModelKey }), { timeout: SLOW_STEP_MS }).toBe(true)
     await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-model-catalog-changed')))
     const overlay = win.locator('[data-settings-overlay]').first()
     await overlay.waitFor({ state: 'visible', timeout: STEP_MS })
