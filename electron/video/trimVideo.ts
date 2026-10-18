@@ -110,7 +110,7 @@ export async function trimVideoToAsset(
     const record = await writeGeneratedAsset(projectId, bytes, `trim-${range.start.toFixed(1)}-${range.end.toFixed(1)}-${crypto.randomUUID().slice(0, 8)}.mp4`, "video/mp4", {
       kind: "generated",
       source: "video-trim",
-    }, context) as { id?: string; data?: { url?: string } };
+    }, "video", context) as { id?: string; data?: { url?: string } };
     const url = record?.data?.url;
     if (!url) throw new TrimVideoError("剪好的 mp4 写盘失败");
     options.onProgress?.(1);

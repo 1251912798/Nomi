@@ -188,7 +188,8 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
         source: "external-mcp",
         providerTaskId: input.providerTaskId,
         ...(input.output.providerOutputId ? { providerOutputId: input.output.providerOutputId } : {}),
-      }, materializationKey);
+        // 期望类型 = 这条产物的种类（取产物时已跟着任务定）：落盘关口按字节核它，图片冒充视频在这里被拒（V-1213）。
+      }, input.output.kind, materializationKey);
     } catch (error) {
       // 落盘校验（字节认不出、解码不了、类型对不上）也是取回这一步的确定性失败；别的落盘错误（磁盘满等）原样抛。
       if (error instanceof GeneratedMediaValidationError) throw retrievalError(error);
@@ -219,7 +220,7 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
         const posterStored = await attachPreview(await storeAsset(input.projectId, poster.bytes, `${path.parse(fileNameFor(input.output)).name}-poster.png`, posterType, {
           kind: "generated", source: "external-mcp", providerTaskId: input.providerTaskId,
           providerOutputId: `${input.output.providerOutputId || input.output.url}:poster`,
-        }, `${materializationKey}:poster`)) as StoredAsset;
+        }, "image", `${materializationKey}:poster`)) as StoredAsset;
         // 供应商给的海报自己也可能是全尺寸大图：画布只挂它的小图；它本身已有界才直接用它。
         const posterOriginal = typeof posterStored.data?.relativePath === "string" ? posterStored.data.relativePath.trim() : "";
         const posterPreview = typeof posterStored.data?.thumbnailRelativePath === "string" ? posterStored.data.thumbnailRelativePath.trim() : "";

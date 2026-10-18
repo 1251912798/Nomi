@@ -177,7 +177,7 @@ export async function extractVideoFrameToAsset(
     const record = await writeGeneratedAsset(projectId, bytes, `frame-${label}-${crypto.randomUUID().slice(0, 8)}.png`, "image/png", {
       kind: "generated",
       source: "video-frame",
-    }, context) as { data?: { url?: string } };
+    }, "image", context) as { data?: { url?: string } };
     const url = record?.data?.url;
     if (!url) throw new VideoFrameError("抽出的帧图写盘失败");
     frameCache.set(key, url);
@@ -256,7 +256,7 @@ export async function extractVideoEndpointsToAsset(payload: ExtractEndpointsPayl
     const record = await writeGeneratedAsset(projectId, bytes, `frame-endpoints-${crypto.randomUUID().slice(0, 8)}.png`, "image/png", {
       kind: "generated",
       source: "video-frame",
-    }, context) as { data?: { url?: string } };
+    }, "image", context) as { data?: { url?: string } };
     const url = record?.data?.url;
     if (!url) throw new VideoFrameError("首尾拼图写盘失败");
     frameCache.set(key, url);

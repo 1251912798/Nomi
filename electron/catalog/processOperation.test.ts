@@ -49,7 +49,8 @@ import type { ProcessOperationInput } from "./processOperation";
 const writeAsset = vi.fn(async () => ({ data: { url: "nomi-local://asset/proj/assets/v.mp4" } }));
 const proc = (args: string[], appendDownloadDir = false) => ({ bin: "dreamina", parser: "dreamina-cli" as const, appendDownloadDir, args });
 const call = (args: string[], opts: { projectId?: string; appendDownloadDir?: boolean } = {}) =>
-  executeProcessOperation({ process: proc(args, opts.appendDownloadDir), context: {}, projectId: opts.projectId ?? "", writeAsset });
+  executeProcessOperation({ process: proc(args, opts.appendDownloadDir), context: {}, projectId: opts.projectId ?? "", writeAsset,
+    identity: { vendorKey: "dreamina", taskKind: "text_to_video" } });
 
 beforeEach(() => {
   runDreaminaCli.mockReset();
@@ -107,7 +108,7 @@ describe("Antigravity image process application route", () => {
     await query(id);
     expect(deterministicWrite).toHaveBeenCalledExactlyOnceWith("project", artifact.bytes, "crane.jpg", "image/jpeg", {
       kind: "generated", provider: "antigravity-cli", conversationId: "conversation", localTaskId: id, width: 64, height: 64,
-    }, `antigravity:${id}`);
+    }, "image", `antigravity:${id}`);
     expect(writeAsset).not.toHaveBeenCalled();
     expect(runDreaminaCli).not.toHaveBeenCalled();
   });

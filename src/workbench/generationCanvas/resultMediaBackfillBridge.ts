@@ -15,6 +15,7 @@
 // 纪律：幂等（同 node+url 每次启动只试一次；写回后有事实就不再进队）；失败记「预览缺失」事实，不重试风暴；
 // 写回前核对 url 未被替换（重生成 / 转码自愈竞态时绝不覆盖新结果）；只看 result 真变了的节点（打字不触发全表扫描）。
 import { hostedAssetCanvasPreview, hostedAssetUrl, importWorkbenchRemoteAssetUrl } from '../api/assetUploadApi'
+import { assetKindOf } from '../assets/assetTypes'
 import { getDesktopBridge } from '../../desktop/bridge'
 import { useGenerationCanvasStore } from './store/generationCanvasStore'
 import type { GenerationCanvasNode, GenerationNodeResult } from './model/generationCanvasTypes'
@@ -110,9 +111,12 @@ function writeBack(project: ProjectExecutionContext, nodeId: string, sourceUrl: 
 
 async function relocalizeNode(nodeId: string, result: GenerationNodeResult, project: ProjectExecutionContext): Promise<void> {
   const sourceUrl = String(result.url || '')
+  // 它该是哪一类就是结果记着的那一类；不是媒体结果就没有可补的本地文件。
+  const expectedKind = assetKindOf(result.type)
+  if (!expectedKind) return
   try {
     const dto = await importWorkbenchRemoteAssetUrl(sourceUrl, undefined, {
-      projectBinding: project.binding, assertCurrent: project.assertCurrent, ownerNodeId: nodeId, kind: 'generated',
+      projectBinding: project.binding, assertCurrent: project.assertCurrent, ownerNodeId: nodeId, kind: 'generated', expectedKind,
     })
     const localUrl = hostedAssetUrl(dto)
     writeBack(project, nodeId, sourceUrl, (current) =>

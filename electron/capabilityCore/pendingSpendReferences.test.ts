@@ -36,6 +36,6 @@ describe('spend reference inputs are pinned at project asset owner', () => {
   it('requires imported assets to belong to indexed project owner; no bare path fallback', async () => {
     const { input, assets } = fixture();
     await expect(resolveSpendReferenceInputs({ ...input, values: [{ url: 'nomi-local://asset/other/a.png', kind: 'image' }] })).rejects.toThrow('unsupported');
-    expect(assets.import).toHaveBeenCalledWith('p', 'nomi-local://asset/other/a.png', binding, input.assertCurrent);
+    expect(assets.import).toHaveBeenCalledWith('p', 'nomi-local://asset/other/a.png', 'image', binding, input.assertCurrent);
   });
 });

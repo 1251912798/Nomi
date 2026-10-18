@@ -4,7 +4,7 @@ import { unwrapAssetImportResult } from '../../../electron/shared/contracts/asse
 import type { GenerationCanvasNode, GenerationNodeResult } from '../generationCanvas/model/generationCanvasTypes'
 import type { TimelineClip } from '../timeline/timelineTypes'
 import type { WorkbenchProjectRecordV1 } from './projectRecordSchema'
-import { assetDimensionsFromMetadata } from '../assets/assetTypes'
+import { assetDimensionsFromMetadata, assetKindOf } from '../assets/assetTypes'
 import { computeMediaMetaPatch, readMediaDimensions, type MediaDimensions } from '../generationCanvas/nodes/nodeSizing'
 
 type BlobLikeRecord = {
@@ -321,6 +321,8 @@ async function localizeRecordDataUrlFields<T extends BlobLikeRecord & { type?: u
         projectId: options.projectId,
         url: value,
         kind: 'generated',
+        // 缩略图一律是图；主结果按它记着的类型（记不清的老记录主进程不收，原值留在原处）。
+        expectedKind: field === 'thumbnailUrl' ? 'image' : assetKindOf(input.type),
         fileName: fileNameForResult(options.prefix, options.ownerId, input, field),
         ownerNodeId: options.ownerId,
       }))

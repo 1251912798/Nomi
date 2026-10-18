@@ -113,11 +113,11 @@ describe('登记表和产品代码对得上', () => {
     expect([...APIMART_TEXT_MODEL_KEYS].sort()).toEqual([...chatKeys].sort())
   })
 
-  test('点名了别家的模型就在花钱前拒；大脑取名单里点名的 APIMart 文本模型，没点名用 deepseek-v3.2', () => {
+  test('点名了别家的模型就在花钱前拒；大脑取名单里点名的 APIMart 文本模型，没点名用 deepseek-v4-pro', () => {
     expect(() => assertEnvKeyModels([{ vendorKey: 'kie', modelKey: 'x' }])).toThrow(/一分钱没花/)
     expect(() => assertEnvKeyModels([{ vendorKey: 'apimart', modelKey: 'z-image-turbo' }])).not.toThrow()
     expect(envKeyBrainOf([{ vendorKey: 'apimart', modelKey: 'deepseek-v4-flash' }, { vendorKey: 'apimart', modelKey: 'z-image-turbo' }])).toBe('deepseek-v4-flash')
-    expect(envKeyBrainOf([{ vendorKey: 'apimart', modelKey: 'z-image-turbo' }])).toBe('deepseek-v3.2')
+    expect(envKeyBrainOf([{ vendorKey: 'apimart', modelKey: 'z-image-turbo' }])).toBe('deepseek-v4-pro')
   })
 })
 

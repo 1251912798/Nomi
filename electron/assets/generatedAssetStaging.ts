@@ -21,7 +21,8 @@ import type { CertificationMediaEvidence } from "../providerAdapter/certificatio
 import { copyFileWithProgress, type AssetCopyProgress } from "./assetImportProgress";
 import { sanitizeAssetMetaForKind } from "./assetPaths";
 import { captureAssetWriteContext, type AssetWriteContext } from "./assetWriteContext";
-import { generatedMediaValidationError, verifyGeneratedMediaDecodes } from "./generatedMediaDecode";
+import { generatedMediaKindMismatchError, generatedMediaValidationError, verifyGeneratedMediaDecodes } from "./generatedMediaDecode";
+import type { LocalizedAssetType } from "./localizedAsset";
 import { contentTypeFromMagicBytes, isCertifiableMediaContentType, isMarkupMasquerade } from "./mediaTypes";
 import { validateGlbStructure } from "./model3dValidation";
 import { registerQuitDrain } from "../quitTeardown";
@@ -41,7 +42,8 @@ export type VerifiedStagedAsset = Readonly<{
   stagingDir: string;
   stagedPath: string;
   fileName: string;
-  declaredContentType: string;
+  /** 按字节核过的内容类型（不是上游声明的那句）：发布照它选扩展名、记 contentType。 */
+  contentType: string;
   header: Buffer;
   meta: JsonRecord;
   contentHash: string;
@@ -81,47 +83,48 @@ async function sha256OfFile(filePath: string): Promise<string> {
  * 判据与以前同步版完全一致（冒充网页 / 认不出字节 / 类型不符 / 格式不支持 / 认证证据不符 / GLB 结构 / 解码），
  * 只是读的是暂存文件：文件头决定类型，哈希按流算，GLB 才整份读入。
  */
-async function verifyStagedGeneratedContent(meta: JsonRecord, declaredRaw: string, stagedPath: string, header: Buffer, size: number, contentHash: string, signal: AbortSignal): Promise<JsonRecord> {
+/** 视频容器装音频（.mp4 / .webm）：要音频时唯一放行的「字节族和期望不同」，落盘按音频记。 */
+const AUDIO_IN_VIDEO_CONTAINER: Readonly<Record<string, string>> = { "video/mp4": "audio/mp4", "video/webm": "audio/webm" };
+
+/**
+ * 在暂存件上核「这份字节就是调用方要的那一类」，再按那一类做解码校验。返回清洗后的 meta 与**按字节定的**内容类型
+ * （发布照它选扩展名、记 contentType）。判据只认字节：上游声明的 content-type、地址扩展名、回执上的种类都不算数——
+ * 声明和字节对不上但字节正是要的那一类（CDN 乱标），照收并按字节记；字节不是要的那一类（视频任务拿到图片 / 音频，
+ * V-1213），一律不收，带 retrieval-download 码（钱已付、任务还在，可找回）。
+ */
+async function verifyStagedGeneratedContent(meta: JsonRecord, declaredRaw: string, wanted: LocalizedAssetType, stagedPath: string, header: Buffer, size: number, contentHash: string, signal: AbortSignal): Promise<{ meta: JsonRecord; contentType: string }> {
   if (isMarkupMasquerade(header)) throw generatedMediaValidationError("markup_masquerade");
   const detected = header.byteLength >= 12 && header.subarray(0, 4).toString("ascii") === "glTF"
     ? "model/gltf-binary"
     : contentTypeFromMagicBytes(header);
-  const normalizedDeclared = String(declaredRaw || "").toLowerCase().split(";", 1)[0].trim();
-  const declared = !normalizedDeclared || normalizedDeclared === "application/octet-stream"
-    ? detected || normalizedDeclared
-    : normalizedDeclared;
-  const expectedKind = generatedMediaKind(declared);
-  if (!expectedKind) return meta;
   if (!detected) throw generatedMediaValidationError("unknown_bytes");
+  const audioContainer = wanted === "audio" ? AUDIO_IN_VIDEO_CONTAINER[detected] : undefined;
   const detectedKind = generatedMediaKind(detected);
-  const ambiguousAudioContainer = expectedKind === "audio"
-    && (declared === "audio/mp4" && detected === "video/mp4"
-      || declared === "audio/webm" && detected === "video/webm");
-  if (!detectedKind || (detectedKind !== expectedKind && !ambiguousAudioContainer)) {
-    throw generatedMediaValidationError("kind_mismatch");
-  }
-  if (!isCertifiableMediaContentType(detected) && !ambiguousAudioContainer) {
-    throw generatedMediaValidationError("unsupported_format");
-  }
+  if (detectedKind !== wanted && !audioContainer) throw generatedMediaKindMismatchError(wanted, detectedKind ?? detected);
+  if (!isCertifiableMediaContentType(detected) && !audioContainer) throw generatedMediaValidationError("unsupported_format");
+  const contentType = audioContainer ?? detected;
   const claimed = meta.certificationEvidence && typeof meta.certificationEvidence === "object"
     ? meta.certificationEvidence as Partial<CertificationMediaEvidence>
     : undefined;
   const cleanMeta = { ...meta };
   delete cleanMeta.certificationEvidence;
   if (claimed) {
-    if (claimed.sha256 !== contentHash || claimed.byteLength !== size || claimed.kind !== expectedKind
+    // 认证证据是对「当时那份字节、当时那句声明」的签收：字节、大小、种类、声明一样都不能变。
+    const normalizedDeclared = String(declaredRaw || "").toLowerCase().split(";", 1)[0].trim();
+    const declared = !normalizedDeclared || normalizedDeclared === "application/octet-stream" ? detected : normalizedDeclared;
+    if (claimed.sha256 !== contentHash || claimed.byteLength !== size || claimed.kind !== wanted
       || claimed.contentType !== declared) throw generatedMediaValidationError("evidence_mismatch");
     // 认证证据只证明「字节没变」，GLB 的结构仍要过（以前由写入边界的 validateStructuredAsset 补这一道）。
-    if (expectedKind === "model3d") validateGlbStructure(await fs.promises.readFile(stagedPath));
-    return cleanMeta;
+    if (wanted === "model3d") validateGlbStructure(await fs.promises.readFile(stagedPath));
+    return { meta: cleanMeta, contentType };
   }
-  if (expectedKind === "model3d") {
+  if (wanted === "model3d") {
     validateGlbStructure(await fs.promises.readFile(stagedPath));
-    return cleanMeta;
+    return { meta: cleanMeta, contentType };
   }
   // 「这份字节能不能解码」由 generatedMediaDecode 一处裁决（判据、超时、日志都在那里）；这里只问、不评。
-  await verifyGeneratedMediaDecodes({ kind: expectedKind, stagedPath, byteLength: size, contentType: detected, signal });
-  return cleanMeta;
+  await verifyGeneratedMediaDecodes({ kind: wanted, stagedPath, byteLength: size, contentType: detected, signal });
+  return { meta: cleanMeta, contentType };
 }
 
 type PrepareInput = {
@@ -130,6 +133,8 @@ type PrepareInput = {
   fileName: string;
   contentType: string;
   rawMeta: JsonRecord;
+  /** 这份产物**应该**是哪一类（任务期望 / 生产者自己产的那一类）。必填：落盘关口不知道要什么，就挡不住「付了视频的钱落一张图」。 */
+  expectedKind: LocalizedAssetType;
   context?: AssetWriteContext;
 };
 
@@ -193,11 +198,11 @@ async function prepareOwned(input: PrepareInput, pinned: Buffer | undefined, ent
     const [header, stat, contentHash] = await Promise.all([readHeader(stagedPath), fs.promises.stat(stagedPath), sha256OfFile(stagedPath)]);
     signal.throwIfAborted();
     // ③ 在暂存文件上校验。
-    const verifiedMeta = await verifyStagedGeneratedContent(meta, input.contentType, stagedPath, header, stat.size, contentHash, signal);
+    const verified = await verifyStagedGeneratedContent(meta, input.contentType, input.expectedKind, stagedPath, header, stat.size, contentHash, signal);
     signal.throwIfAborted();
     return Object.freeze({
-      context, stagingDir, stagedPath, fileName: input.fileName, declaredContentType: input.contentType,
-      header, meta: verifiedMeta, contentHash, size: stat.size,
+      context, stagingDir, stagedPath, fileName: input.fileName, contentType: verified.contentType,
+      header, meta: verified.meta, contentHash, size: stat.size,
     }) as VerifiedStagedAsset;
   } catch (error) {
     await removeScratchAfterUse(stagingDir);

@@ -31,6 +31,8 @@ export type DesktopAssetsSurface = {
     projectBinding?: import('../../electron/shared/projectBinding').ProjectBinding
     url: string
     kind?: string
+    /** 生成产物（kind 缺省即是）该是哪一类；不是生成产物给 null。主进程按字节核，对不上不收。 */
+    expectedKind: 'image' | 'video' | 'audio' | 'model3d' | null
     fileName?: string
     ownerNodeId?: string | null
   }) => Promise<import('../../electron/shared/contracts/assetImportResult').AssetImportResult<DesktopAssetDto>>
