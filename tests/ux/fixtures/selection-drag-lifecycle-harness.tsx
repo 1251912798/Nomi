@@ -54,7 +54,6 @@ function Harness() {
   const state = store.getState()
   const actions = useCanvasSelectionDrag({
     readOnly,
-    selectedNodeCount: 2,
     zoomRef: React.useRef(1),
     captureHistory: state.captureHistory,
     commitPersistedChange: state.commitPersistedChange,

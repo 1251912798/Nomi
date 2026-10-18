@@ -9,9 +9,9 @@ import { TYPECHECK_JOBS, runTypecheckJobs } from './typecheck.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-test('四份检查一份都不少：app / electron / electron-pi（--noEmit）三份生产 tsc，加 check:test-types', () => {
+test('五份检查一份都不少：app / electron / electron-pi（--noEmit）/ 浏览器测试夹具四份 tsc，加 check:test-types', () => {
   const tsc = TYPECHECK_JOBS.filter((job) => job.kind === 'tsc').map((job) => job.args.join(' '))
-  assert.deepEqual(tsc, ['-p tsconfig.app.json', '-p electron/tsconfig.json', '-p electron/tsconfig.pi.json --noEmit'])
+  assert.deepEqual(tsc, ['-p tsconfig.app.json', '-p electron/tsconfig.json', '-p electron/tsconfig.pi.json --noEmit', '-p tsconfig.fixtures.json'])
   const scripts = TYPECHECK_JOBS.filter((job) => job.kind === 'script').map((job) => job.script)
   assert.deepEqual(scripts, ['scripts/check-test-types.mjs'])
   for (const job of TYPECHECK_JOBS) {

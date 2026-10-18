@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// `pnpm run typecheck` 的执行体：把四份类型检查**并发**跑完再汇总。
+// `pnpm run typecheck` 的执行体：把五份类型检查**并发**跑完再汇总（四份 tsc + check:test-types；浏览器测试夹具那份 2026-10-18 加）。
 //
 // 2026-10-01 用户按门岗账本（docs/audit/2026-10-01-gate-ledger.md）拍板「`check:test-types` 与 `typecheck`
 // 合成一次 tsc」。账本数据：这两项是 Contracts 里最贵的两项（55 秒 + 50 秒，各自串行，约占单次 394 秒的 27%），
@@ -23,11 +23,12 @@ import { TYPECHECK_PROJECTS } from './lib/typecheckProjects.mjs'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
 
-/** 四份检查。顺序只影响输出顺序；少一份就是静默少查一块，scripts/typecheck.node-test.mjs 钉死名单。 */
+/** 五份检查。顺序只影响输出顺序；少一份就是静默少查一块，scripts/typecheck.node-test.mjs 钉死名单。 */
 export const TYPECHECK_JOBS = Object.freeze([
   Object.freeze({ name: 'tsc app', kind: 'tsc', args: ['-p', TYPECHECK_PROJECTS.app] }),
   Object.freeze({ name: 'tsc electron', kind: 'tsc', args: ['-p', TYPECHECK_PROJECTS.electron] }),
   Object.freeze({ name: 'tsc electron-pi', kind: 'tsc', args: ['-p', TYPECHECK_PROJECTS.electronPi, '--noEmit'] }),
+  Object.freeze({ name: 'tsc fixtures', kind: 'tsc', args: ['-p', TYPECHECK_PROJECTS.fixtures] }),
   Object.freeze({ name: 'check:test-types', kind: 'script', script: 'scripts/check-test-types.mjs' }),
 ])
 
