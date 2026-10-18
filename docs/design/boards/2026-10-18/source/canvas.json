@@ -1,0 +1,200 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "A1b-agent-input.dc.html": {
+      "h": 640,
+      "title": "1b Agent 输入框",
+      "w": 440,
+      "x": 840,
+      "y": 0
+    },
+    "A1c-agent-reply.dc.html": {
+      "h": 900,
+      "title": "1c Agent 回复",
+      "w": 460,
+      "x": 1360,
+      "y": 0
+    },
+    "B3a-video-empty.dc.html": {
+      "h": 320,
+      "title": "B3a 视频 空，默认参考（浅 + 暗）",
+      "w": 1200,
+      "x": 0,
+      "y": 1300
+    },
+    "B3b-video-params.dc.html": {
+      "h": 560,
+      "title": "B3b 视频 参数弹层，生成方式",
+      "w": 600,
+      "x": 1280,
+      "y": 1300
+    },
+    "B3c-video-three-refs.dc.html": {
+      "h": 380,
+      "title": "B3c 视频 参考 3 张，含连线",
+      "w": 600,
+      "x": 0,
+      "y": 1900
+    },
+    "B3d-video-first-last.dc.html": {
+      "h": 340,
+      "title": "B3d 视频 首尾帧，尾帧可不填（浅 + 暗）",
+      "w": 1200,
+      "x": 680,
+      "y": 1900
+    },
+    "B3e-video-ambiguous.dc.html": {
+      "h": 340,
+      "title": "B3e 视频 参考 2 张，有歧义提示",
+      "w": 600,
+      "x": 0,
+      "y": 2400
+    },
+    "B3f-video-switch-first-last.dc.html": {
+      "h": 340,
+      "title": "B3f 视频 3 张参考切到首尾帧",
+      "w": 600,
+      "x": 680,
+      "y": 2400
+    },
+    "B3g-image-empty.dc.html": {
+      "h": 360,
+      "title": "B3g 图片 空，弹层没有生成方式（浅 + 暗）",
+      "w": 1200,
+      "x": 0,
+      "y": 2860
+    },
+    "B3h-image-three-refs.dc.html": {
+      "h": 340,
+      "title": "B3h 图片 放 3 张图",
+      "w": 600,
+      "x": 1280,
+      "y": 2860
+    },
+    "B3i-image-no-ref-model.dc.html": {
+      "h": 380,
+      "title": "B3i 图片 模型不收参考图",
+      "w": 600,
+      "x": 0,
+      "y": 3380
+    },
+    "B3j-model-swap.dc.html": {
+      "h": 300,
+      "title": "B3j 换模型：菜单不加说明，换完界面自己变",
+      "w": 1200,
+      "x": 680,
+      "y": 3380
+    },
+    "B3k-compare.dc.html": {
+      "h": 420,
+      "title": "B3k 现在 vs 新",
+      "w": 1200,
+      "x": 0,
+      "y": 3920
+    },
+    "B3l-english.dc.html": {
+      "h": 380,
+      "title": "B3l English",
+      "w": 1200,
+      "x": 1280,
+      "y": 3920
+    },
+    "C3a-quote-card.dc.html": {
+      "h": 760,
+      "title": "3a 请求批准档 报价卡",
+      "w": 440,
+      "x": 0,
+      "y": 5660
+    },
+    "C3b-off-plan.dc.html": {
+      "h": 900,
+      "title": "3b 刹车 2 计划外镜头",
+      "w": 440,
+      "x": 520,
+      "y": 5660
+    },
+    "Main.dc.html": {
+      "h": 560,
+      "title": "1a 图片节点提修改",
+      "w": 760,
+      "x": 0,
+      "y": 0
+    },
+    "B3m-bar-layouts.dc.html": {
+      "h": 780,
+      "title": "B3m 底栏两种排法",
+      "w": 1200,
+      "x": 0,
+      "y": 4460
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-17T09:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "g1": {
+      "kind": "title1",
+      "maxW": 1820,
+      "text": "一 标注 → Agent（先只做图片）",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "g2": {
+      "kind": "title1",
+      "maxW": 2480,
+      "text": "二 生成方式放进参数条",
+      "w": 240,
+      "x": 0,
+      "y": 1000
+    },
+    "g3": {
+      "kind": "title1",
+      "maxW": 960,
+      "text": "三 文稿方案确认挪进 Agent 面板",
+      "w": 240,
+      "x": 0,
+      "y": 5360
+    },
+    "n-names": {
+      "x": -340,
+      "y": 1900,
+      "w": 300,
+      "text": "提示词里的名字只给人看。发给模型时，按顺序对应第几张。"
+    },
+    "n-variant": {
+      "x": -340,
+      "y": 1300,
+      "w": 300,
+      "text": "版本（标准 / Fast）在参数弹层第一组选，模型按钮上写「模型名 + 当前版本」。"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "A1b-agent-input.dc.html",
+    "A1c-agent-reply.dc.html",
+    "B3a-video-empty.dc.html",
+    "B3b-video-params.dc.html",
+    "B3c-video-three-refs.dc.html",
+    "B3d-video-first-last.dc.html",
+    "B3e-video-ambiguous.dc.html",
+    "B3f-video-switch-first-last.dc.html",
+    "B3g-image-empty.dc.html",
+    "B3h-image-three-refs.dc.html",
+    "B3i-image-no-ref-model.dc.html",
+    "B3j-model-swap.dc.html",
+    "B3k-compare.dc.html",
+    "B3l-english.dc.html",
+    "B3m-bar-layouts.dc.html",
+    "C3a-quote-card.dc.html",
+    "C3b-off-plan.dc.html"
+  ],
+  "pages": [],
+  "title": "Nomi 0.24 交互方案"
+}

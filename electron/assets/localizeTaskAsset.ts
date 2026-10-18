@@ -55,6 +55,8 @@ export async function localizeTaskAsset(
       projectId,
       url: assetUrl,
       kind: "generated",
+      // 引擎 A 的任务期望：取回的字节必须就是这一类，参考图冒充视频在落盘关口被拒（V-1213）。
+      expectedKind: type,
       ownerNodeId: nodeId || null,
       fileName: localizedTaskAssetFileName(type, assetUrl),
     }, {
