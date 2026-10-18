@@ -8,6 +8,7 @@
  *     且它只控制轨迹投影里那两个可选键（见 `electron/shared/agentLane/laneTrajectory.ts`）。
  */
 import type { DiagnosticsBundleManifest } from './diagnostics'
+import type { PerfSummaryProps } from './perfTelemetry'
 
 /**
  * 这份反馈是从哪儿来的。前四个是**失败面**，**这四个字面量就是「四处共用同一组件」的机器
@@ -50,6 +51,11 @@ export type FeedbackReportRequest = {
    * 清单里写明 why）。
    */
   projectId?: string | null
+  /**
+   * 本机界面流畅度分档数字（卡不卡）。用户点「发送」这一下就是同意带上，不受「帮 Nomi 变好」开关管；
+   * 只有分档标签（见 perfTelemetry.ts），反馈卡上写明「会附带卡顿数字」。给不出（窗口太短 / 接口不支持）就不带。
+   */
+  perf?: PerfSummaryProps
 }
 
 /** 「查看」看到的东西：清单本身。每项一行 what，排除项一行 why。 */

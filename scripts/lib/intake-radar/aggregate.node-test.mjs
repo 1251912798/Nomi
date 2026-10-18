@@ -15,6 +15,7 @@ import {
   isAutomatedEvent,
   splitAutomatedEvents,
   rankFailureReasons,
+  summarizePerf,
 } from './aggregate.mjs'
 import { renderMarkdown, renderTerminalSummary } from './render.mjs'
 
@@ -68,6 +69,7 @@ test('extractFeedbackItem 取出报告要的那几格，缺字段兜底不抛', 
     model: null,
     summary: '占位：素材内容与扩展名不符',
     note: '占位留言',
+    perf: null,
   })
 })
 
@@ -322,4 +324,51 @@ test('buildIntakeReport 默认排除自动化：成功率与失败排行只算�
   assert.match(md, /1\. `asset-upload-failed` × 2/)
   assert.doesNotMatch(md, /model-unavailable-upstream/)
   assert.match(renderTerminalSummary(report), /已排除自动化事件 4 条/)
+})
+
+function perfEvent({ p75 = '100-200', os = 'windows', cores = '5-8', nodes = '1-20', timestamp = '2026-10-17T00:00:00.000Z' } = {}) {
+  return {
+    eventName: 'perf.session.summary',
+    timestamp,
+    date: dayOf(timestamp),
+    systemProps: { osFamily: os, appMajor: 0, appMinor: 24, locale: 'zh-CN' },
+    props: { interactionP75: p75, interactionP95: 'gt-500', longFramesPerMin: '1-3', longestFrame: '100-250', observedMinutes: '5-30', page: 'generation', nodes, imageNodes: '0', generating: false, cpuCores: cores, memoryGb: '8plus' },
+  }
+}
+
+test('summarizePerf：按维度数偏慢占比，样本少的格子标出来，只数性能事件', () => {
+  const perf = summarizePerf([
+    perfEvent({ p75: '200-500', nodes: '101-300' }),
+    perfEvent({ p75: 'gt-500', nodes: '101-300' }),
+    perfEvent({ p75: 'lt-100', nodes: '1-20' }),
+    perfEvent({ p75: '100-200', nodes: '1-20', os: 'macos' }),
+    genEvent({ timestamp: '2026-10-17T00:00:00.000Z', capability: 'image', result: 'success' }),
+  ])
+  assert.equal(perf.total, 4)
+  assert.equal(perf.slow, 2)
+  assert.equal(perf.slowShare, 50)
+  const nodes = perf.byDimension.nodes
+  assert.deepEqual(nodes.map((r) => [r.value, r.total, r.slow, r.slowShare]), [['101-300', 2, 2, 100], ['1-20', 2, 0, 0]])
+  assert.ok(nodes.every((r) => r.lowSample === true))
+  assert.deepEqual(perf.byDimension.osFamily.map((r) => r.value).sort(), ['macos', 'windows'])
+  assert.deepEqual(perf.distributions.interactionP75.map((r) => [r.value, r.count]), [['100-200', 1], ['200-500', 1], ['gt-500', 1], ['lt-100', 1]])
+})
+
+test('summarizePerf：没有性能事件时给零，不抛；反馈里的卡顿附件单独数', () => {
+  const empty = summarizePerf([])
+  assert.equal(empty.total, 0)
+  assert.equal(empty.slowShare, 0)
+  const withFeedback = summarizePerf([], [{ perf: { interactionP75: 'gt-500' } }, { perf: null }, { perf: { interactionP75: 'lt-100' } }])
+  assert.deepEqual(withFeedback.feedbackWithPerf, { count: 2, slow: 1 })
+})
+
+test('perf 进报告与 Markdown / 终端摘要；自动化事件不进性能统计', () => {
+  const automated = { ...perfEvent({ p75: 'gt-500' }), systemProps: { osFamily: 'windows', appMajor: 0, appMinor: 24, locale: 'zh-CN', automated: true } }
+  const records = [{ key: 'events/a.json', record: { payload: { events: [perfEvent({ p75: '200-500' }), perfEvent({ p75: 'lt-100' }), automated] } } }]
+  const report = buildIntakeReport({ feedbackRecords: [], eventRecords: records, trajectoriesCount: 0, newFeedbackKeys: [], newEventKeys: [], generatedAt: '2026-10-17T12:00:00.000Z' })
+  assert.equal(report.perf.total, 2)
+  assert.equal(report.perf.slow, 1)
+  assert.match(renderMarkdown(report), /## 卡不卡/)
+  assert.match(renderMarkdown(report), /共 2 份会话汇总，偏慢 1（50%）/)
+  assert.match(renderTerminalSummary(report), /卡不卡：2 份会话汇总，偏慢 1（50%）/)
 })

@@ -115,7 +115,7 @@ export function renderNaoCell(cell: NaoCellId, variant: NaoVariant): JSX.Element
       case 'keyboard':
         return <KeyboardFocusRow />
       case 'card':
-        return <div className="p-6" style={{ width: 360 }}><V4ConsentCard forceVisible /></div>
+        return <div className="p-6" style={{ width: 360 }}><V4ConsentCard force="first" /></div>
     }
   })()
   return <NaoCell variant={variant}>{body}</NaoCell>
