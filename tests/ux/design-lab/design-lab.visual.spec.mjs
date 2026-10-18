@@ -70,6 +70,15 @@ for (const screen of LAB_SCREEN_IDS) {
             await expect(page.locator('[data-process-lab-ready]')).not.toContainText(/前面\s*\d+\s*个/)
           }
         }
+        // 格子里的画布节点卡必须以格子内的元素为定位祖先（2026-10-18）：生产里卡在 React Flow 外壳里是 relative；
+        // 实验室裸放时会吃到全局的 absolute，去找格子外的祖先、撑出格子，截出来的不是真样子却照样能录成基线
+        // （拆解表就这样丢了底栏）。宿主用 src/devlab/designLab/labCanvasViewport.tsx 的 LabCanvasNodeHost。
+        if (state.capture !== 'viewport') {
+          const escaped = await shot.evaluate((cell) => [...cell.querySelectorAll('.generation-canvas-v2-node')]
+            .filter((node) => ['absolute', 'fixed'].includes(getComputedStyle(node).position) && !(node.offsetParent && cell.contains(node.offsetParent)))
+            .map((node) => node.getAttribute('data-node-id') || node.getAttribute('data-kind') || 'unknown'))
+          expect(escaped, `${state.id}：节点卡按格子外的元素定位，会撑出格子——用 LabCanvasNodeHost 包住`).toEqual([])
+        }
         // 浮层类形态走 BodyPortal + fixed 定位，根本不在舞台的子树里——按元素截会截出
         // 「浮层没打开」的假证据，所以这一族改截整屏（注册项里显式声明 capture: 'viewport'）。
         if (state.capture === 'viewport') await expect(page).toHaveScreenshot([screen, `${state.id}.png`], tolerance)

@@ -1,0 +1,116 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-18-walk-seed-current-format",
+  "problem_type": "Walkthrough seeds claim to be current-format projects but lack fields that a background writer fills after open, so before/after graph comparisons race it",
+  "symptom": "Canvas Acceptance (Linux) (2) failed on PR #1234 (no canvas code changed): canvas-shortcuts 「Prompt Delete preserves graph/result/binding state」 received an extra previewState: 'source' on result and history.",
+  "direct_cause": "Since 24c7509aa (2026-10-16) resultMediaBackfillBridge writes previewState onto local image/video results lacking a preview fact, after open once the canvas is quiet. The C19 seed results had no preview fact, so whether the backfill landed between promptBefore and the post-Delete snapshot was timing-dependent.",
+  "class_root": "Walk seeds that assert 'opening / this gesture does not change the graph' have no check that they really are current-format; when the current format grows a background-filled field, those seeds silently become legacy and their equality assertions flake.",
+  "detected_by": "ci",
+  "recurrence_check_on": "2026-11-01",
+  "invariant_owner_layer": {
+    "layer": "tests/ux/_canvasSeed.mjs",
+    "tests": [
+      "tests/ux/_canvasSeed.test.mjs"
+    ],
+    "why": "assertCurrentFormatCanvasSeed judges seeds with the production predicates shouldBackfillPreview / shouldRelocalizeResult, so a seed that a background writer would rewrite fails at setup."
+  },
+  "affected_population": [
+    "Electron walkthroughs that seed canvas results and compare graph or result snapshots across time"
+  ],
+  "scope_paths": [
+    "tests/ux/_canvasSeed.mjs",
+    "tests/ux/canvas-shortcuts.walk.mjs",
+    "tests/ux/core-a-storyboard-undo.e2e.mjs"
+  ],
+  "entry_points": [
+    "Walk seed construction passed to createWorkspaceProject"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Both the writer (resultMediaBackfillBridge) and the seeds are ours.",
+  "invariants": [
+    "A seed used for before/after equality contains no entry that a post-open background writer would rewrite"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
+      "symbol": "backfilledPreviewPatch"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/_canvasSeed.mjs",
+      "symbol": "shouldBackfillPreview"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 2,
+    "why_not": "The background writer must keep existing (it repairs legacy projects); the seed check reads its predicate rather than copying it, so both doors stay."
+  },
+  "generality_proof": "The seed check uses the writer's own predicates, so it tracks the writer exactly; adding the next background-filled field means adding its predicate in one shared helper, and every walk calling the helper fails at setup instead of flaking.",
+  "shared_boundaries": [
+    {
+      "path": "tests/ux/_canvasSeed.mjs",
+      "symbol": "assertCurrentFormatCanvasSeed",
+      "responsibility": "Rejects seeds that post-open background writers would rewrite."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/canvas-shortcuts.walk.mjs",
+      "entry_point": "C19 seed",
+      "disposition": "enforced",
+      "evidence": "Seed results carry previewState 'source' and pass assertCurrentFormatCanvasSeed."
+    },
+    {
+      "path": "tests/ux/core-a-storyboard-undo.e2e.mjs",
+      "entry_point": "IR02 seed",
+      "disposition": "enforced",
+      "evidence": "Snapshots the unrelated node's result (line ~116) and deep-compares later; seed now carries previewState and is checked."
+    },
+    {
+      "path": "tests/ux/core-a-composer.e2e.mjs",
+      "entry_point": "controlled history",
+      "disposition": "not-affected",
+      "evidence": "Its equality assertions compare meta and drag state, not results."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "The current format keeps evolving with background repairs (version numbers, preview facts, relocalization); every evolution can turn existing seeds legacy.",
+    "same_class_scan": [
+      "grep createWorkspaceProject walks that also assert diskGraph / toEqual(before) / isDeepStrictEqual → canvas-shortcuts, core-a-storyboard-undo, core-a-composer"
+    ]
+  },
+  "prevention": {
+    "kind": "runtime-assertion",
+    "enforcement_path": "tests/ux/_canvasSeed.mjs",
+    "invariant": "Seeds passed to assertCurrentFormatCanvasSeed contain no entry for which shouldBackfillPreview or shouldRelocalizeResult is true.",
+    "failure_mode": "The walk throws at setup naming each offending node entry.",
+    "exception_policy": "none",
+    "strategy": "Judge seeds with the production writer's predicates in one shared helper.",
+    "artifacts": [
+      "tests/ux/_canvasSeed.mjs"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/_canvasSeed.test.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/_canvasSeed.test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "No old path; seeds are corrected in place."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency controls this invariant; it is between our own CSS / background writer and our own test fixtures.",
+    "exit_criteria": []
+  },
+  "migration": "None: seeds are created per run.",
+  "residual_risks": [
+    "Walks that seed results but do not call the helper are still unchecked; only the two with result equality assertions were migrated."
+  ]
+}
