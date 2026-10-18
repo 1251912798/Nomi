@@ -16,8 +16,8 @@ const tempRoot = path.join(repoRoot, '.tmp', 'nomi-telemetry-consent-copy')
 fs.rmSync(tempRoot, { recursive: true, force: true })
 
 const LOCALES = [
-  { locale: 'zh-CN', settings: /设置/, general: '通用', newProject: /新建空白项目/, accept: '愿意', needle: '失败属于哪一类' },
-  { locale: 'en', settings: /Settings/, general: 'General', newProject: /New blank project/, accept: 'I’m in', needle: 'category a failure falls into' },
+  { locale: 'zh-CN', settings: /设置/, general: '通用', newProject: /新建空白项目/, accept: '愿意', needle: '卡不卡' },
+  { locale: 'en', settings: /Settings/, general: 'General', newProject: /New blank project/, accept: 'I’m in', needle: 'smooth' },
 ]
 const CJK = /[㐀-鿿]/
 

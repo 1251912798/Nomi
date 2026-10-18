@@ -15,6 +15,8 @@ export type TelemetrySettingsView = {
   endpointMode: 'nomi'
   consentedAt: string | null
   installSessionId: string | null
+  /** 用户同意的告知范围版本；小于当前版本（2）= 需要在界面上重新确认一次。 */
+  scopeVersion: 1 | 2
   endpointConfigured: boolean
   status: TelemetryStatus
 }

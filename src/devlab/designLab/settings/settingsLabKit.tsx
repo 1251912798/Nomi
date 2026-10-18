@@ -16,12 +16,12 @@ import type { DiagnosticsExportResult } from '../../../../electron/shared/contra
 
 /** 取景宽 = 设置弹窗内容区的实际可用宽（760 外框 − 196 侧栏 − 24×2 内边距）。 */
 export const SETTINGS_CELL_WIDTH = 516
-export const SETTINGS_CELL_HEIGHT = 480
+export const SETTINGS_CELL_HEIGHT = 600
 
 /** 导出行为：结算成什么、还是一直转圈（「正在打包」那一格）。 */
 export type LabExportBehavior = DiagnosticsExportResult | 'never-settles'
 
-function installLabBridge(behavior: LabExportBehavior): void {
+function installLabBridge(behavior: LabExportBehavior, legacyConsent: boolean): void {
   const exportBundle = (): Promise<DiagnosticsExportResult> =>
     behavior === 'never-settles' ? new Promise<DiagnosticsExportResult>(() => {}) : Promise.resolve(behavior)
   ;(window as unknown as { nomiDesktop?: unknown }).nomiDesktop = {
@@ -30,12 +30,13 @@ function installLabBridge(behavior: LabExportBehavior): void {
         get: () =>
           Promise.resolve({
             schemaVersion: 1,
-            enabled: false,
-            endpointMode: 'aptabase',
-            consentedAt: null,
+            enabled: legacyConsent,
+            endpointMode: 'nomi',
+            consentedAt: legacyConsent ? '2026-09-20T00:00:00.000Z' : null,
             installSessionId: null,
-            endpointConfigured: false,
-            status: 'disabled',
+            scopeVersion: legacyConsent ? 1 : 2,
+            endpointConfigured: legacyConsent,
+            status: legacyConsent ? 'configured' : 'disabled',
           }),
         set: () => new Promise(() => {}),
         summary: () =>
@@ -54,14 +55,17 @@ function installLabBridge(behavior: LabExportBehavior): void {
 export function SettingsStage({
   behavior,
   autoExport = false,
+  legacyConsent = false,
   children,
 }: {
   behavior: LabExportBehavior
+  /** 遥测开着、但同意的还是旧告知范围（要再确认）。默认关。 */
+  legacyConsent?: boolean
   /** 结果行/进行态那几格：挂载后自动点一次导出，把组件推到那个状态。 */
   autoExport?: boolean
   children: React.ReactNode
 }): JSX.Element {
-  React.useMemo(() => installLabBridge(behavior), [behavior])
+  React.useMemo(() => installLabBridge(behavior, legacyConsent), [behavior, legacyConsent])
   const ref = React.useRef<HTMLDivElement>(null)
   React.useEffect(() => {
     if (!autoExport) return

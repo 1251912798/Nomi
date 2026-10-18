@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { IconCheck, IconClock } from '@tabler/icons-react'
 import { DesignButton, DesignCheckbox, DesignTextInput } from '../../design'
 import { getDesktopBridge } from '../../desktop/bridge'
+import { snapshotPerfSummary } from '../../workbench/observability/perfCollector'
 import { buildFeedbackDiagnostics } from './feedbackDiagnostics'
 import { feedbackSummaryLine, feedbackSurfaceOf } from './feedbackSummary'
 import type { FeedbackOpenRequest } from './feedbackTypes'
@@ -78,6 +79,9 @@ export function FeedbackReportCard({
     now: openedAt,
   })
 
+  // 卡顿数字：卡片打开这一刻的本机分档快照。点「发送」= 同意带上（卡上写明了），不看遥测开关。
+  const [perf, setPerf] = React.useState(() => snapshotPerfSummary())
+  React.useEffect(() => { setPerf(snapshotPerfSummary()) }, [request])
   const payload: FeedbackReportRequest = React.useMemo(() => ({
     surface: feedbackSurfaceOf(request),
     summary,
@@ -89,7 +93,8 @@ export function FeedbackReportCard({
     ...(request?.laneName ? { laneName: request.laneName } : {}),
     // 项目由发起的那个失败面给（见 feedbackTypes.projectId）；这里只转发，不自己去查。
     ...(request?.projectId ? { projectId: request.projectId } : {}),
-  }), [diagnostics.context.model, diagnostics.context.provider, includeContent, note, request, summary])
+    ...(perf ? { perf } : {}),
+  }), [diagnostics.context.model, diagnostics.context.provider, includeContent, note, perf, request, summary])
 
   const view = React.useCallback(async (): Promise<void> => {
     setViewing(true)

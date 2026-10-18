@@ -1,6 +1,7 @@
 {
   "version": 2,
   "pendingApprovalScreens": {
+    "settings": "2026-10-17 · 「隐私与诊断」说明文字写准（多了界面流畅度分档与场景、设备档位），舞台高度 480 → 600 容纳更长的文字，并新增一格告知范围升级后的再确认（privacy-05，英文暗色）。文案和再确认交互等用户看截图拍板；拍板后在 darwin 上跑 pnpm run design-lab:update -- --screen settings 重录四张旧基线并录新的一张，并**删掉本条登记**。截图在对应 PR 里。",
     "director-3dbox": "2026-10-16 D-3dbox：3D-BOX 成为唯一导演台前补了 14 格（d3-switch-* 5 格对账、d3-produce-* 9 格「出成片 ▾」各态，现役组件只改文案与状态）。验收过后用 pnpm run design-lab:accept -- --screen director-3dbox 录全屏基线并**删掉这条登记**；截图证据 docs/design/boards/2026-10-16/preview/。",
     "no-accent-outline": "2026-10-10 立屏（样张线 D-outline）· 去掉强调色描边的普查 + 八格「现在 / 改后」样张，「改后」是 `.nao-after` 范围内的覆盖样式（生产组件不动），只是样张不是落地实现。用户 10-10 拍板「按样张改」，已落地（L6 线）：「现在」格即落地后的生产组件，「改后」格仍是样张近似。落地后仍须用 pnpm run design-lab:accept -- --screen no-accent-outline 录基线并删掉本条登记。截图证据在 docs/evidence/2026-10-10-no-accent-outline/。",
     "canvas-group-header": "2026-10-10 立屏（I-groupheader 第二段）· 分组框头对齐拍板样张：框内左上「组名 · 镜数」、框内右上「生成全部」、框外标签删除。格子是生产组件搭的（GroupFrame 几何 + WorkbenchButton + CanvasGroupToolbar），但框头本体是新搭的，生产未接。十格覆盖默认 / 悬停 / 选中露出工具条 / 拖动计数 / 改名 / 长名 / 空组 / 普通组 / 英文 / 暗色。差异清单见 docs/plan/2026-10-10-group-header-board-parity.md。等用户对差异清单拍板并实现后，用 pnpm run design-lab:accept -- --screen canvas-group-header 录基线并删掉本条登记。",
