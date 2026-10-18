@@ -102,7 +102,7 @@ describe('视觉道失败分诊', () => {
     expect(triage.verdict).toBe(LAB_VERDICT.VISUAL)
     const message = formatLabFailure(triage, FORMAT_CONTEXT)
     expect(message).toContain('视觉基线不符')
-    expect(message).toContain('design-lab:update')
+    expect(message).toContain('design-lab:accept')
   })
 
   it('说了 Screenshot comparison failed 却一张图都没落盘 → 不给像素结论', () => {

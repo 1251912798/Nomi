@@ -112,3 +112,65 @@ describe('openPaidWalk · build check runs before the isolated copy is built', (
     expect(seen).toHaveLength(1)
   })
 })
+
+describe('openPaidWalk · 接入先于开项目，不靠走查记得顺序', () => {
+  const env = { NOMI_SPEND_OK: '1', CI: '', APIMART_API_KEY: 'sk-fake-key-for-test-0123456789abcdef' }
+  const models = [{ vendorKey: 'apimart', modelKey: 'deepseek-v3.2' }]
+  /** 假走查：App 起来 = 账本里有 guard-loaded 三层；newProject 记下被调时接入有没有做过。 */
+  async function openFake() {
+    const calls = []
+    const win = { id: 'win' }
+    const createWalk = vi.fn(async (name, options) => {
+      fs.writeFileSync(options.env.NOMI_WALK_NET_LOG, `${JSON.stringify({ kind: 'guard-loaded', layers: ['fetch', 'socket', 'chromium'] })}
+`)
+      return {
+        report: {}, settingsDir: '', userDataDir: '', fixture: { close: async () => {} }, stopApp: async () => {},
+        start: async () => ({ win }), newProject: async () => { calls.push('newProject'); return { projectId: 'project-1' } },
+        finish: async () => {},
+      }
+    })
+    const connect = vi.fn(async () => { calls.push('connect'); return { keySaved: true } })
+    const readRows = vi.fn(async () => [{ vendorKey: 'apimart', modelKey: 'deepseek-v3.2', labelZh: 'x' }])
+    const lockSpendTo = vi.fn(async () => { calls.push('lockSpend'); return 3 })
+    const paid = await openPaidWalk('x.paid.mjs', 'x', models, { env, createWalk, assertBuild: () => {}, argv: [], connect, readRows, lockSpendTo })
+    return { paid, calls, win, connect, lockSpendTo }
+  }
+
+  it('walk.newProject runs the connect + spend lock first when the walk never called it (the two walks that skipped it)', async () => {
+    const { paid, calls, win, connect } = await openFake()
+    await paid.walk.start({ first: true })
+    await paid.walk.newProject()
+    expect(calls).toEqual(['connect', 'lockSpend', 'newProject'])
+    expect(connect).toHaveBeenCalledWith(win, expect.objectContaining({ requiredModels: models }))
+  })
+
+  it('an explicit lock before or after newProject runs the connect only once, in either order', async () => {
+    const before = await openFake()
+    const { win: beforeWin } = await before.paid.walk.start({ first: true })
+    await before.paid.lockToAuthorizedModels(beforeWin)
+    await before.paid.walk.newProject()
+    await before.paid.lockToAuthorizedModels(beforeWin)
+    expect(before.calls).toEqual(['connect', 'lockSpend', 'newProject'])
+    const after = await openFake()
+    const { win: afterWin } = await after.paid.walk.start({ first: true })
+    await after.paid.walk.newProject()
+    await after.paid.lockToAuthorizedModels(afterWin)
+    expect(after.calls).toEqual(['connect', 'lockSpend', 'newProject'])
+  })
+
+  it('a failed connect stops newProject and is retried next time (nothing is marked locked)', async () => {
+    const { paid, calls, connect } = await openFake()
+    connect.mockRejectedValueOnce(new Error('connect timed out'))
+    await paid.walk.start({ first: true })
+    await expect(paid.walk.newProject()).rejects.toThrow('connect timed out')
+    expect(calls).not.toContain('newProject')
+    await paid.walk.newProject()
+    expect(calls.filter((call) => call === 'newProject')).toHaveLength(1)
+  })
+
+  it('connecting does not depend on a window event: _paidEnvKey.mjs goes through the visible settings entry', () => {
+    const source = read('tests/ux/_paidEnvKey.mjs')
+    expect(source).toContain('openModelSettings(win')
+    expect(source).not.toContain("dispatchEvent(new CustomEvent('nomi-open-model-catalog')")
+  })
+})
