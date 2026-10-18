@@ -257,7 +257,7 @@ try {
       report.verified = ['rate-limit-reason-on-top-line']
     } else {
       expect(finalState.rows.some((row) => !row.visionFailed && row.shotSize), '至少有一镜读出了景别').toBe(true)
-      report.verified = ['create-table-sends-nothing', 'picker-sets-model', 'no-quote-card-for-short-clip', 'called-model-equals-chip', 'shots-read', 'calls-within-cap']
+      report.verified = ['create-table-sends-nothing', 'picker-sets-model', 'no-quote-card-for-short-clip', FIXTURE ? 'called-model-equals-chip' : 'called-model-by-construction-only', 'shots-read', 'calls-within-cap']
     }
   }
 } catch (error) {
