@@ -8,6 +8,7 @@ import '../../../src/styles/index.css'
 import { NomiPreviewHost } from '../../../src/design/previewHost'
 import NodeParameterControls from '../../../src/workbench/generationCanvas/nodes/NodeParameterControls'
 import NodeInputReferenceEntry from '../../../src/workbench/generationCanvas/nodes/NodeInputReferenceEntry'
+import { useComposerControlProps } from './composerControlProps'
 import { useGenerationCanvasStore } from '../../../src/workbench/generationCanvas/store/generationCanvasStore'
 import { STILL_NEON, STILL_PORTRAIT, STILL_PROP } from '../../../src/devlab/designLab/storyboard/storyboardFixtures'
 import type { GenerationCanvasNode } from '../../../src/workbench/generationCanvas/model/generationCanvasTypes'
@@ -44,10 +45,11 @@ if (fill === 'refs') for (const source of sources.slice(0, 2)) useGenerationCanv
 
 function Stage(): JSX.Element {
   const node = useGenerationCanvasStore((state) => state.nodes.find((candidate) => candidate.id === 'target'))
+  const controlProps = useComposerControlProps(node, 'target')
   return (
     <main className="min-h-screen bg-nomi-bg p-8 text-nomi-ink">
       <div className="w-[560px] rounded-nomi-lg border border-nomi-line bg-nomi-paper p-4" data-reference-row-stage={`${kind}:${archetype}:${mode}:${fill}`}>
-        {kind === 'text' ? <NodeInputReferenceEntry nodeId="target" /> : node ? <NodeParameterControls node={node} section={(query.get('section') || 'references') as 'all' | 'references'} /> : null}
+        {kind === 'text' ? <NodeInputReferenceEntry nodeId="target" /> : node ? <NodeParameterControls node={node} section={(query.get('section') || 'references') as 'all' | 'references'} {...controlProps} /> : null}
       </div>
     </main>
   )
