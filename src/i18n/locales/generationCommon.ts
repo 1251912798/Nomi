@@ -1651,6 +1651,7 @@ export const zhGenerationCommon = {
         planNotSubmitted: '这份方案还没开拍，先在 Agent 面板里确认生成。',
         ledgerWriteFailed: '没能把这一步写进项目记录（磁盘满了，或项目文件夹不能写入），这次没做成。腾出空间或检查权限后再点一次。',
         canvasLandingFailed: '这一镜没放到画布上，没有发出生成请求。再点一次重试。',
+        parameterRejected: '这一镜有个参数没通过核对，没有发出生成请求。改掉它再点一次，或让 Nomi 重新起草。',
         nothingToResume: '这一批没有可以继续发出的镜头：剩下没完成的那几镜，节点已经从画布上删掉、已经在画布上直接生成，或者已经失败、要在那一镜上单独重做。这次没有发出生成请求。',
         internalError: '这是 Nomi 自己的问题：这一步没做成，错误已记进日志。可以从「反馈与分享」把它发给我们。',
       },
@@ -1697,6 +1698,7 @@ export const zhGenerationCommon = {
     otherProjectTask: '无法在这里找回：这条任务属于另一个项目，请回到发起它的项目里重新拉取。',
     retrievingResult: '正在重新拉取结果…',
     stillUpstream: '任务仍在上游进行，请稍后再次拉取。',
+    timedOut: '取回卡在「等待结果」这一步：等到上限还没有结果（任务号 {{taskId}}）。',
   },
   // 生成的某一步等不到回音、到点收场时的说法（runner/generationPhaseDeadline）。每句都说清钱在哪、下一步是什么。
   phaseDeadline: {
@@ -3337,6 +3339,7 @@ export const enGenerationCommon = {
         planNotSubmitted: 'This plan hasn\'t started yet. Confirm it in the Agent panel first.',
         ledgerWriteFailed: 'Couldn\'t save this step to the project record (the disk is full or the project folder isn\'t writable). Nothing was done. Free up space or check permissions, then try again.',
         canvasLandingFailed: 'This shot was not placed on the canvas, so no generation request was sent for it. Click again to retry.',
+        parameterRejected: 'One parameter on this shot did not pass the check, so no generation request was sent. Change it and click again, or ask Nomi to draft it again.',
         nothingToResume: 'Nothing in this batch can be continued: the remaining shots were deleted from the canvas, are being generated directly on the canvas, or already failed and must be redone on that shot. No generation request was sent.',
         internalError: 'This is a problem in Nomi itself: the step didn\'t go through. The error is in the log - you can send it to us from Feedback & share.',
       },
@@ -3382,6 +3385,7 @@ export const enGenerationCommon = {
     otherProjectTask: 'This task belongs to another project. Open the project that started it to retrieve the result.',
     retrievingResult: 'Retrieving the result again…',
     stillUpstream: 'The task is still running upstream. Try retrieving it again later.',
+    timedOut: 'Retrieval stopped while waiting for the result: the wait limit was reached (task {{taskId}}).',
   },
   phaseDeadline: {
     resultSilent:

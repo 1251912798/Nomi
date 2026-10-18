@@ -53,6 +53,8 @@ describe('localizeRemoteResultUrl — 厂商临时 URL 落地结构闸', () => {
       projectId: 'proj-1',
       url: 'https://cdn.vendor/v.mp4',
       kind: 'generated',
+      // 结果记着是视频：主进程落盘关口按字节核它（V-1213）。
+      expectedKind: 'video',
       ownerNodeId: 'node-1',
     })
   })

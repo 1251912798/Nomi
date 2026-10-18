@@ -74,6 +74,10 @@
     {
       "path": "electron/tasks/comfyCandidateTest.ts",
       "symbol": "safeFailure"
+    },
+    {
+      "path": "electron/capabilityCore/mcpGenerationTools.ts",
+      "symbol": "admitDraftParameters"
     }
   ],
   "forbidden_derivations": [
@@ -94,5 +98,5 @@
     "electron/parity/generationParityTestUtils.ts"
   ],
   "since": "2026-09-22",
-  "notes": "2026-09-22 总合并收口（合同 docs/fixes/2026-09-22-parameter-admission-one-owner.root-cause.json）。判据本体 = compileParameters，合法键集三档派生：档案 mode.params（videoCompileOptions / archetypeCompileOptions）→ mapping 的 create op 派生（moduleCatalogBootstrap.modelParameterSchema）→ 都拿不到则放行 + warning。拒绝形状只有 ParameterRejection 一套（droppedFields 账本已删）。「Nomi 自己消费、不上 wire」的意图键表下沉到 electron/capabilityCore/generationPlanningParameters.ts 的 GENERATION_PLANNING_HINTS（键 + 类型，唯一那一张；executionContract 只 re-export）——它是同一个概念的子表，不是第二个 owner。准入那一趟单独有入口 admitPlanCandidate：要校验参数的调用方走它，要整份合同（含提示词 @ 投影）的走 compileExecutionContract。刻意未收：electron/parity/generationParityTestUtils.ts 的对拍 harness 自己编一份（它的职责就是绕开生产装配），已在合同 door_reduction.why_not 点名。 2026-10-05（合同 docs/fixes/2026-10-05-agent-aspect-ratio-semantic.root-cause.json）：GENERATION_PLANNING_HINTS 删掉 aspectRatio（它曾把 Agent 写的比例静默吞掉）；语义比例在写入口由 normalizeAuthoredCandidate → projectSemanticAspectRatio 翻成所选模式的真实键，判据 resolveAspectRatioChoice 住 electron/shared/aspectRatioValue.ts（画布参数面板同读）。三者都是本概念的写接口，不是新主人。 2026-10-05（合同 docs/fixes/2026-10-05-storyboard-ratio-and-merge.root-cause.json）：分镜落画布 / 写回节点 / 批量条三处改调 placeAspectRatio（同一份比例判据）；分镜方案里比例只住 aspect_ratio 槽，foldRatioIntoSlot 收拢。"
+  "notes": "2026-09-22 总合并收口（合同 docs/fixes/2026-09-22-parameter-admission-one-owner.root-cause.json）。判据本体 = compileParameters，合法键集三档派生：档案 mode.params（videoCompileOptions / archetypeCompileOptions）→ mapping 的 create op 派生（moduleCatalogBootstrap.modelParameterSchema）→ 都拿不到则放行 + warning。拒绝形状只有 ParameterRejection 一套（droppedFields 账本已删）。「Nomi 自己消费、不上 wire」的意图键表下沉到 electron/capabilityCore/generationPlanningParameters.ts 的 GENERATION_PLANNING_HINTS（键 + 类型，唯一那一张；executionContract 只 re-export）——它是同一个概念的子表，不是第二个 owner。准入那一趟单独有入口 admitPlanCandidate：要校验参数的调用方走它，要整份合同（含提示词 @ 投影）的走 compileExecutionContract。刻意未收：electron/parity/generationParityTestUtils.ts 的对拍 harness 自己编一份（它的职责就是绕开生产装配），已在合同 door_reduction.why_not 点名。 2026-10-05（合同 docs/fixes/2026-10-05-agent-aspect-ratio-semantic.root-cause.json）：GENERATION_PLANNING_HINTS 删掉 aspectRatio（它曾把 Agent 写的比例静默吞掉）；语义比例在写入口由 normalizeAuthoredCandidate → projectSemanticAspectRatio 翻成所选模式的真实键，判据 resolveAspectRatioChoice 住 electron/shared/aspectRatioValue.ts（画布参数面板同读）。三者都是本概念的写接口，不是新主人。 2026-10-05（合同 docs/fixes/2026-10-05-storyboard-ratio-and-merge.root-cause.json）：分镜落画布 / 写回节点 / 批量条三处改调 placeAspectRatio（同一份比例判据）；分镜方案里比例只住 aspect_ratio 槽，foldRatioIntoSlot 收拢。 2026-10-18（合同 docs/fixes/2026-10-18-null-optional-params.root-cause.json）：起草入口落库前过同一个 admitPlanCandidate（mcpGenerationTools.admitDraftParameters），null / undefined 在 compileParameters 里等于没填；拒绝后的指引按码只有一张表（electron/shared/agentCapabilities/admissionRejectionHints.ts，MCP 与 lane 同读），放错位置的字段对照在 draftFieldAliases.ts——都是本概念的子表，不是新主人。"
 }

@@ -14,6 +14,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { expect } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { openModelSettings } from './_shell.mjs'
 
@@ -156,10 +157,11 @@ export async function connectApimartThroughVisibleUi(win, { apiKey, textModelKey
     // 接入页保存之后会说「APIMart 已接入，预置模型可用」（演练截图实测）：要是被授权的模型这一刻都已经能用，
     // 就不必再跑「继续验证」（它还会花几个 token，而且预置的模型在选择页里是灰的、选不了）。问被测 App 自己，不猜。
     if (requiredModels.length) {
-      const presetUsable = await win.waitForFunction((want) => {
-        const rows = window.nomiDesktop?.modelCatalog?.listModels?.({}) || []
+      // listModels 是异步 IPC（返回 Promise）：用 expect.poll 真正等它，不然 `.find` 落在 Promise 上、永远判成「不可用」。
+      const presetUsable = await expect.poll(() => win.evaluate(async (want) => {
+        const rows = (await window.nomiDesktop?.modelCatalog?.listModels?.({})) || []
         return want.every((item) => rows.find((row) => row.vendorKey === item.vendorKey && row.modelKey === item.modelKey)?.availability?.usable === true)
-      }, requiredModels, { timeout: STEP_MS }).then(() => true, () => false)
+      }, requiredModels), { timeout: STEP_MS }).toBe(true).then(() => true, () => false)
       if (presetUsable) {
         await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-model-catalog-changed')))
         await win.locator('[data-settings-close]').first().click()
@@ -175,7 +177,7 @@ export async function connectApimartThroughVisibleUi(win, { apiKey, textModelKey
     await modelRow.waitFor({ state: 'visible', timeout: SLOW_STEP_MS })
     if (await modelRow.isDisabled().catch(() => true)) throw new Error(`接入页里 ${ENV_KEY_VENDOR}/${textModelKey} 已经配置过、选不了——隔离副本应该是干净的，不该出现这种情况`)
     await modelRow.click()
-    const confirm = addPage.getByRole('button', { name: /验证\s*1\s*个模型|Verify\s*1\s*model/i }).first()
+    const confirm = addPage.getByRole('button', { name: /(?:验证|自检)\s*1\s*个(?:模型)?|(?:Verify|Self-check)\s*1\s*model/i }).first()
     await confirm.waitFor({ state: 'visible', timeout: STEP_MS })
     await confirm.click()
     const verification = win.locator('[data-model-settings-page="verification"]').first()
@@ -193,10 +195,10 @@ export async function connectApimartThroughVisibleUi(win, { apiKey, textModelKey
     }
     if (!latest || latest.stage !== 'completed') throw new Error(`${ENV_KEY_VENDOR}/${textModelKey} 的认证没有走完：${latest?.stage ?? 'unknown'}`)
     // 晋升与验证页是异步的：等这一行真的 enabled + published + verified，再通知界面刷新。
-    await win.waitForFunction(({ vendorKey, modelKey }) => {
-      const model = (window.nomiDesktop?.modelCatalog?.listModels?.() || []).find((row) => row.vendorKey === vendorKey && row.modelKey === modelKey)
+    await expect.poll(() => win.evaluate(async ({ vendorKey, modelKey }) => {
+      const model = ((await window.nomiDesktop?.modelCatalog?.listModels?.({})) || []).find((row) => row.vendorKey === vendorKey && row.modelKey === modelKey)
       return Boolean(model?.enabled === true && model?.published === true && model?.meta?.adapter?.state === 'verified')
-    }, { vendorKey: ENV_KEY_VENDOR, modelKey: textModelKey }, { timeout: SLOW_STEP_MS })
+    }, { vendorKey: ENV_KEY_VENDOR, modelKey: textModelKey }), { timeout: SLOW_STEP_MS }).toBe(true)
     await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-model-catalog-changed')))
     const overlay = win.locator('[data-settings-overlay]').first()
     await overlay.waitFor({ state: 'visible', timeout: STEP_MS })

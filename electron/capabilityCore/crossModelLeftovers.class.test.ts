@@ -69,6 +69,17 @@ async function draft(parameters: Record<string, unknown>) {
   return { handler, operationId: created.operation.operationId, operations };
 }
 
+/**
+ * 升级前落盘的草稿：直接写进存储，**不经过起草准入**。起草现在就拒不认识的键（2026-10-18），
+ * 所以这样的草稿只可能是旧数据——正是这两条回归要守的「旧数据仍读得起来」。
+ */
+async function legacyDraft(parameters: Record<string, unknown>) {
+  const operations = createInMemoryGenerationOperationStore();
+  const handler = createGenerationPlanningHandler({ registry, operations, resolveModelPricing: () => ({ cost: 0, enabled: true, specCosts: [] }), now: () => "2026-09-22T00:00:00.000Z" });
+  const created = await operations.create({ operationId: "op-legacy", projectId: "project-1", candidate: candidate(parameters), now: "2026-09-22T00:00:00.000Z" });
+  return { handler, operationId: created.operationId, operations };
+}
+
 describe("cross-model parameter leftovers", () => {
   it("clears the previous model's parameters on a model switch, reports them, and persists the cleanup", async () => {
     const { handler, operationId } = await draft({ aspect_ratio: "1:1", grain: 4 });
@@ -87,7 +98,7 @@ describe("cross-model parameter leftovers", () => {
 
   it("keeps a legacy draft readable: preview cleans stored leftovers instead of refusing", async () => {
     // 升级前落盘的草稿：参数里带着这个模型不认的键，而这一次调用没有任何人点名它。
-    const { handler, operationId, operations } = await draft({ aspect_ratio: "1:1", legacy_knob: 9 });
+    const { handler, operationId, operations } = await legacyDraft({ aspect_ratio: "1:1", legacy_knob: 9 });
     const current = await operations.read("project-1", operationId);
     expect(current?.candidate.parameters).toHaveProperty("legacy_knob");
 
@@ -103,7 +114,7 @@ describe("cross-model parameter leftovers", () => {
   it("preview -> gate_request on the SAME untouched legacy draft: the cleanup is persisted, the paid gate does not explode", async () => {
     // 2026-09-22 第二轮验收的阻断项①：上一轮 preview 只在局部清、不回写，gate_request 压根不清
     // ⇒ 同一张未改动的草稿**预览看得见、点确认时炸**。破坏没关闭，只是从预览挪到了付费闸。
-    const { handler, operationId, operations } = await draft({ aspect_ratio: "1:1", legacy_knob: 9 });
+    const { handler, operationId, operations } = await legacyDraft({ aspect_ratio: "1:1", legacy_knob: 9 });
 
     const preview = await handler({ capability: "preview", params: { operationId }, lease }) as { clearedParameters?: string[] };
     expect(preview.clearedParameters).toEqual(["legacy_knob"]);

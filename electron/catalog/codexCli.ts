@@ -299,6 +299,7 @@ async function importCodexImageOnce(record: CodexImageJobRecord, input: CodexIma
       fileName,
       contentTypeFromPath(record.imagePath),
       { kind: "generated", provider: "codex-local", originalPath: record.imagePath },
+      "image",
     ) as { data?: { url?: string } };
     const url = String(written.data?.url || "");
     if (url) localUrls.push(url);

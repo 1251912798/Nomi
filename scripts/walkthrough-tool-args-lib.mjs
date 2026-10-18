@@ -19,8 +19,27 @@ import ts from 'typescript'
 /**
  * @typedef {{ filePath: string, line: number, verb: string, key: string }} ArgKeyViolation
  * @typedef {{ filePath: string, verb: string, reason: 'spread' | 'computed-key' | 'non-literal-args' }} UncheckedSite
- * @typedef {{ violations: ArgKeyViolation[], skipped: UncheckedSite[], checked: number, sites: number }} ArgScanResult
+ * @typedef {{ violations: ArgKeyViolation[], allowed: Array<ArgKeyViolation & { reason: string }>, skipped: UncheckedSite[], checked: number, sites: number }} ArgScanResult
  */
+
+/**
+ * 「故意给错」的显式登记（2026-10-18）：有的走查**就是要**交一份坏草稿，看 Agent 读到拒绝后能不能自纠
+ * （`agent-video-landing-paid.rehearsal.walk.mjs` 的夹具大脑第一回合写 `variant`，真模型就是这么写错的）。
+ * 登记方式是紧贴在那个键前面的一条注释：
+ *   `/* walkthrough-tool-args: intentional-bad-key <键名> — <理由> *\/`
+ * 键名必须和被登记的键一致，理由不能为空；登记过的键不算违规，但会如实记进 `allowed`（不是静默放过）。
+ * 按键前面的那段原文里的注释判（不按行号、不拼字符串）——登记跟着那个键走，别的键不沾光。
+ */
+const INTENTIONAL_BAD_KEY = /walkthrough-tool-args:\s*intentional-bad-key\s+(\S+)\s+[—-]+\s+(\S.*)$/
+function intentionalBadKeyReason(property, sourceFile, key) {
+  // 键前面的那段「空白 + 注释」（同一行紧跟在逗号后的块注释，TS 算前一个 token 的尾随注释，所以取原文切片而不是 leading 范围）。
+  const trivia = sourceFile.text.slice(property.getFullStart(), property.getStart(sourceFile))
+  for (const comment of trivia.match(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g) ?? []) {
+    const match = INTENTIONAL_BAD_KEY.exec(comment.replace(/^\/[*/]+\s*/, '').replace(/\*\/$/, '').trim())
+    if (match && match[1] === key && match[2].trim()) return match[2].trim()
+  }
+  return undefined
+}
 
 /** 键路径里表示「数组的每一项」的段。只用于报错信息，不参与匹配。 */
 const ITEM = '[]'
@@ -65,7 +84,10 @@ function checkObject(objectLiteral, schema, sourceFile, filePath, verb, out) {
     if (child === undefined) {
       if (!open) {
         const { line } = sourceFile.getLineAndCharacterOfPosition(name.getStart(sourceFile))
-        out.violations.push({ filePath, line: line + 1, verb, key: [...out.path, key].join('.') })
+        const fullKey = [...out.path, key].join('.')
+        const reason = intentionalBadKeyReason(property, sourceFile, key)
+        if (reason) out.allowed.push({ filePath, line: line + 1, verb, key: fullKey, reason })
+        else out.violations.push({ filePath, line: line + 1, verb, key: fullKey })
       }
       continue
     }
@@ -107,7 +129,7 @@ function propertyOf(objectLiteral, key) {
  */
 export function collectWalkthroughToolArgViolations(files, schemasByVerb) {
   /** @type {ArgScanResult & { path: string[] }} */
-  const out = { violations: [], skipped: [], checked: 0, sites: 0, path: [] }
+  const out = { violations: [], allowed: [], skipped: [], checked: 0, sites: 0, path: [] }
   for (const file of files) {
     const sourceFile = ts.createSourceFile(file.path, file.text, ts.ScriptTarget.ESNext, true, ts.ScriptKind.JS)
     const visit = (node) => {

@@ -5,7 +5,7 @@ import path from "node:path";
 import { assertTrustedSender, assertTrustedUiSender } from "../ipcSenderGuard";
 import { getAutoSavePrefs, setAutoSavePrefs, type AutoSavePrefs } from "./downloadPrefs";
 import { CLIPBOARD_FILE_PATH_FORMATS, parseClipboardFilePaths } from "./clipboardFilePaths";
-import { copyProjectAsset, importRemoteAsset } from "./projectAssetStore";
+import { copyProjectAsset, importRemoteAsset, type RemoteAssetImportPayload } from "./projectAssetStore";
 import type { AssetImportResult } from '../shared/contracts/assetImportResult';
 import type { AssetImportFailure } from '../shared/contracts/assetImportResult';
 import type { ProjectInteractionCapture } from './projectInteractionCapture';
@@ -137,7 +137,8 @@ export function registerAssetsIpc(captureInteraction: ProjectInteractionCapture)
     assertTrustedSender(event);
     try {
       const assertCurrent = captureInteraction(event, payload);
-      return { ok: true, asset: await importRemoteAsset(payload, { assertCurrent }) };
+      // 渲染层载荷不可信：expectedKind 由 importRemoteAsset 自己再读一遍，生成产物说不清就拒。
+      return { ok: true, asset: await importRemoteAsset(payload as RemoteAssetImportPayload, { assertCurrent }) };
     } catch (error) { return importFailure(error); }
   });
   ipcMain.handle("nomi:assets:ensure-playable", async (event, payload) => {

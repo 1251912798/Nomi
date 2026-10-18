@@ -15,7 +15,7 @@ import type { ProductionActionResult } from '../../production/productionRunApi'
 import { SHOT_ACTION_FAILURE_COPY } from '../../production/productionShotActions'
 
 /** 宿主回的那一下（IPC 抛出来的那一种没有结果，传 `undefined`）。 */
-export type SpendActionOutcome = Partial<Pick<ProductionActionResult, 'ok' | 'code' | 'message' | 'failure' | 'reason'>>
+export type SpendActionOutcome = Partial<Pick<ProductionActionResult, 'ok' | 'code' | 'message' | 'failure' | 'reason' | 'field'>>
 
 const CARD_CHANGED = new Set(['generation_quote_changed'])
 const SHOT_GONE = new Set(['generation_scope_invalid', 'generation_shot_not_found'])
@@ -41,6 +41,8 @@ export function spendActionFailureCopy(outcome: SpendActionOutcome | undefined, 
   if (SHOT_GONE.has(message) || message.startsWith('no pending generation')) return 'agentPanelV4.spendActionShotGone'
   if (outcome.code === 'run_not_open' || message === 'run_not_open') return SHOT_ACTION_FAILURE_COPY.run_not_open
   if (outcome.code === 'unavailable') return SHOT_ACTION_FAILURE_COPY.core_starting
+  // 参数被合同编译口拒了：点名是哪个参数（卡上那句带 {{field}}），不是笼统的「改一下再按」。
+  if (outcome.failure === 'parameter_rejected') return 'agentPanelV4.spendActionParameterRejected'
   if (outcome.failure && outcome.failure !== 'internal_error') return SHOT_ACTION_FAILURE_COPY[outcome.failure]
   if (editable && outcome.reason && REFERENCE_NOT_IN_PROJECT.has(outcome.reason)) return 'agentPanelV4.spendActionReferenceNotInProject'
   return editable ? 'agentPanelV4.spendActionNotStarted' : 'agentPanelV4.spendActionNotStartedLocked'

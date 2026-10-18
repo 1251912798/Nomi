@@ -10,6 +10,11 @@ const DEFAULT_ASSET_EXTENSIONS: Record<LocalizedAssetType, string> = {
   model3d: "glb",
 };
 
+/** 从 IPC 载荷 / 内容类型族里读出产物应是哪一类：只认这四个词，别的一律 null（生成产物据此拒收，不猜）。 */
+export function localizedAssetTypeOf(value: unknown): LocalizedAssetType | null {
+  return value === "image" || value === "video" || value === "audio" || value === "model3d" ? value : null;
+}
+
 // ComfyUI 等 vendor 产物 URL 常带 ?filename=xxx.webm；保留真实扩展名，避免 webm/mov 落成 .mp4 → contentType 错 → 播放失败。
 function extensionFromAssetUrl(assetUrl: string): string {
   const pick = (source: string) => /\.([a-z0-9]{1,8})(?:$|[?#])/i.exec(source)?.[1]?.toLowerCase() || "";

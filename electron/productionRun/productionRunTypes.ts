@@ -545,6 +545,7 @@ export type ProductionShotActionFailure =
   | "plan_not_submitted" // 方案还没开拍
   | "ledger_write_failed" // 写不进项目记录（磁盘满 / 没有写入权限）
   | "canvas_landing_failed" // 没放到画布上，这次没有发出生成请求（先落节点、再发请求）
+  | "parameter_rejected" // 合同编译口拒了这一镜的某个参数（类型 / 取值 / 范围 / 缺必填）：没发起，参数名随结果的 `field` 带出
   | "nothing_to_resume" // 剩下没发的镜，节点都已从画布上删掉：这一批没有可以继续的
   | "internal_error"; // Nomi 自己的 bug（不变量断言没过）
 
@@ -585,6 +586,8 @@ export type ProductionActionResult = {
    * 只放 Nomi 自己的码，供应商与凭据文本照旧只进主进程日志。
    */
   reason?: string;
+  /** `failure === "parameter_rejected"` 时被拒的参数名（`seed`）；只放目录里的参数键，不放取值。 */
+  field?: string;
   /**
    * **没发起的那一档是哪一种**（2026-09-30 付费卡① 第 11 条）：窗口弹不出确认、供应商没接好、项目刚变了……
    * 与重做 / 续拍同一个闭集（`productionShotActionFailureOf` 按错误类型认，不读原话），渲染层照它说人话。
