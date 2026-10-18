@@ -31,6 +31,17 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--only-1a1816" alt="许可证" /></a>
 </p>
 
+## 赞助商
+
+赞助商帮 Nomi 保持免费和开源。赞助不会变成默认项或内置线路：接哪家由你自己选，用你自己的 Key，钱按它的原价直接付给它。[想出现在这里？](#社区)
+
+<table>
+<tr>
+<td width="128" align="center"><a href="https://gway.dev/sign-up?aff=8j8f"><img src="docs/media/sponsors/gway-logo.png" alt="极途 Gway" width="96" /></a></td>
+<td><b><a href="https://gway.dev/sign-up?aff=8j8f">极途 Gway</a></b> —— 专注 AI 视频与多图参考生成的 API 平台：Seedance 2.0 / 2.5、Wan 3、MiniMax 等主流模型，OpenAI 兼容，按量计费。Nomi 里暂时还没有它的内置预设，点<b>用 AI 帮我接入</b>，Claude Code 或 Codex 会用你的 Key 把它接好。感谢极途 Gway 赞助 Nomi！<i>（极途 Gway 的链接带推荐码。）</i></td>
+</tr>
+</table>
+
 ## 为什么是 Nomi
 
 中转站、官方 API、ComfyUI、本地模型，本身都很便宜。商业 AI 视频产品用的往往是同一批模型，价钱却常常翻几倍。
@@ -126,17 +137,6 @@ xattr -dr com.apple.quarantine "/Applications/Nomi.app"
 > **说明：** APIMart 的链接带推荐码。你永远用自己的 Key、按供应商原价直接付钱；Nomi 不代理、不转售任何模型调用，每一家都能换成你自己的接口。
 
 更多：[快速上手](https://nomiaqm.com/quickstart) · [B 站视频教程](https://www.bilibili.com/video/BV1Lf8b6nEjf/) · [对话式接入模型](docs/guide/conversational-model-integration.md) · [用户指南](docs/user-guide.md) · [供应商](docs/provider-integration.md) · [CLI + MCP](docs/guide/capability-core-cli-mcp.md)
-
-## 赞助商
-
-赞助商帮 Nomi 保持免费和开源。赞助不会变成默认项或内置线路：接哪家由你自己选，用你自己的 Key，钱按它的原价直接付给它。[想出现在这里？](#社区)
-
-<table>
-<tr>
-<td width="128" align="center"><a href="https://gway.dev/sign-up?aff=8j8f"><img src="docs/media/sponsors/gway-logo.png" alt="极途 Gway" width="96" /></a></td>
-<td><b><a href="https://gway.dev/sign-up?aff=8j8f">极途 Gway</a></b> —— 专注 AI 视频与多图参考生成的 API 平台：Seedance 2.0 / 2.5、Wan 3、MiniMax 等主流模型，OpenAI 兼容，按量计费。Nomi 里暂时还没有它的内置预设，点<b>用 AI 帮我接入</b>，Claude Code 或 Codex 会用你的 Key 把它接好。感谢极途 Gway 赞助 Nomi！<i>（极途 Gway 的链接带推荐码。）</i></td>
-</tr>
-</table>
 
 ## 让你自己的 Agent 来用 Nomi
 
