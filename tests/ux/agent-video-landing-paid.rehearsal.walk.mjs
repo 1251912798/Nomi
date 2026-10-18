@@ -34,8 +34,11 @@ function installBrain(fixture) {
       if (!hasToolResult(body, DRAFT_CALL)) {
         return { type: 'tool', id: DRAFT_CALL, name: 'draft_shots', args: { shots: [{
           title: '纸船', prompt: '一只纸船在雨后的水洼里慢慢漂，清晨的光', taskKind: 'text_to_video',
+          // 模型名只点到目录里的 `doubao-seedance-2.0`（Fast 变体由宿主认）；`parameters.model` 不是这个模型接受的参数键，起草就被拒，不再写。
           candidate: { providerId: VIDEO.vendorKey, modelId: VIDEO.modelKey },
-          parameters: { model: 'doubao-seedance-2.0-fast', duration: 4, resolution: '480p', generate_audio: false },
+          // seed: null —— 模型的坏习惯：把「不设」的可选参数写成 null（2026-10-18 deepseek-v4-pro 真走查）。起草放行、点生成才被拒的老毛病，
+          // 夹具大脑太规整从来没演过；现在每次演练都演一遍。
+          parameters: { duration: 4, resolution: '480p', size: '16:9', generate_audio: false, seed: null },
         }] } }
       }
       if (!hasToolResult(body, GENERATE_CALL)) {
