@@ -6,6 +6,10 @@ import { createRoot } from 'react-dom/client'
 import '../../../src/styles/index.css'
 import { NomiPreviewHost } from '../../../src/design/previewHost'
 import NodeParameterControls from '../../../src/workbench/generationCanvas/nodes/NodeParameterControls'
+import { useComposerGraph } from '../../../src/workbench/generationCanvas/nodes/composerGraphSnapshot'
+import { useComposerResidentData } from '../../../src/workbench/generationCanvas/nodes/composerResidentData'
+import { useVendorMappingsReader } from '../../../src/workbench/generationCanvas/nodes/controls/useChannelCreateBody'
+import { requiredModeForGenerationNode, useGenerationModelOptionsState } from '../../../src/workbench/generationCanvas/adapters/modelOptionsAdapter'
 import { useGenerationCanvasStore } from '../../../src/workbench/generationCanvas/store/generationCanvasStore'
 import { STILL_NEON, STILL_PORTRAIT, STILL_PROP } from '../../../src/devlab/designLab/storyboard/storyboardFixtures'
 import type { GenerationCanvasNode } from '../../../src/workbench/generationCanvas/model/generationCanvasTypes'
@@ -37,10 +41,15 @@ for (const source of sources) useGenerationCanvasStore.getState().connectNodes(s
 
 function Stage(): JSX.Element {
   const node = useGenerationCanvasStore((state) => state.nodes.find((candidate) => candidate.id === 'target'))
+  // 与生产同一条路：工作台根预热内存数据，生成框用同一份图快照 / 模型清单 / mapping 读取器喂给参数控件。
+  useComposerResidentData()
+  const graph = useComposerGraph('target')
+  const readMappings = useVendorMappingsReader()
+  const modelOptionsState = useGenerationModelOptionsState('video', node ? requiredModeForGenerationNode(node, graph) : undefined)
   return (
     <main className="min-h-screen bg-nomi-bg p-8 text-nomi-ink">
       <div className="w-fit rounded-nomi-lg border border-nomi-line bg-nomi-paper p-4" data-asset-tile-stage="canvas">
-        {node ? <NodeParameterControls node={node} section="references" /> : null}
+        {node ? <NodeParameterControls node={node} section="references" graph={graph} modelOptionsState={modelOptionsState} readMappings={readMappings} /> : null}
       </div>
     </main>
   )
