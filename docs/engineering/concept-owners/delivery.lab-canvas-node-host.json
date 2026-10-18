@@ -1,0 +1,27 @@
+{
+  "name": "设计实验室里生产画布节点卡的宿主上下文（卡片相对格子内元素定位，不相对页面）",
+  "subject": "delivery.lab-canvas-node-host",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/devlab/designLab/labCanvasViewport.tsx",
+    "symbol": "LabCanvasNodeHost"
+  },
+  "write_api": [
+    {
+      "path": "src/devlab/designLab/labCanvasViewport.tsx",
+      "symbol": "LabCanvasNodeHost"
+    },
+    {
+      "path": "tests/ux/design-lab/design-lab.visual.spec.mjs",
+      "symbol": "toHaveScreenshot"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-18",
+  "notes": "合同 docs/fixes/2026-10-18-lab-canvas-node-host.root-cause.json：LabCanvasNodeHost 给实验室格子生产的 React Flow 宿主类和有尺寸的定位祖先；视觉规格在截图前拒收节点卡逃出格子的格子。"
+}

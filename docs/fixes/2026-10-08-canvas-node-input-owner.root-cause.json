@@ -89,7 +89,7 @@
       "responsibility": "Single declaration of what each node kind takes in and gives out."
     },
     {
-      "path": "src/workbench/generationCanvas/agent/referenceEdgeCapability.ts",
+      "path": "electron/shared/canvas/edgeAdmission.ts",
       "symbol": "validateReferenceEdge",
       "responsibility": "Refuses new edges into kinds that take no input and enforces asset lists for clip / director."
     },

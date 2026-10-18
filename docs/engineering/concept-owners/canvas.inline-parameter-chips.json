@@ -1,0 +1,23 @@
+{
+  "name": "付费卡上主参数 chip 的呈现（全部上卡、一行放不下就换行，不按宽度降级）",
+  "subject": "canvas.inline-parameter-chips",
+  "lifecycle": "live-interaction",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "projection",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/InlineParameterBar.tsx",
+    "symbol": "InlineParameterBar"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/InlineParameterBar.tsx",
+      "symbol": "InlineParameterBar"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-08",
+  "notes": "合同 docs/fixes/2026-10-08-paid-chips-wrap-not-measure.root-cause.json：InlineParameterBar 在 chips 布局下渲染每个主 chip，行不横向滚动、不重叠，不再按测量宽度把主控件塞进齿轮面板；哪些是主控件由 splitPrimaryParameterControls 按档案决定。"
+}

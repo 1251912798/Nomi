@@ -16,7 +16,7 @@ import { gitPaths } from './lib/gitPaths.mjs'
 
 export const SOURCE_EXTENSION = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
 /** 定义扫描的根：第二个 owner 可能长在任何一处——产品代码、测试夹具之外的走查脚本、门岗脚本、官网 worker。 */
-export const DEFINITION_ROOTS = ['src', 'electron', 'tests', 'evals', 'scripts', 'worker']
+export const DEFINITION_ROOTS = ['src', 'electron', 'tests', 'evals', 'scripts', 'worker', 'workers']
 /** 「生产入口」只数这两处（pending 冻结管的是生产写入口）；owner 住在别处的概念另加它自己的根。 */
 export const PRODUCTION_ROOTS = ['src', 'electron']
 /** 目录遍历时整棵跳过的：依赖、构建产物、临时编译输出。 */

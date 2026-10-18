@@ -1,0 +1,23 @@
+{
+  "name": "PR 正文里的「后续再做」承诺必须同行标已完成或移交去处",
+  "subject": "delivery.pr-deferred-promises",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/pr-body-criteria.mjs",
+    "symbol": "checkDeferredPromises"
+  },
+  "write_api": [
+    {
+      "path": "scripts/pr-body-criteria.mjs",
+      "symbol": "checkDeferredPromises"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-10",
+  "notes": "合同 docs/fixes/2026-10-10-shell-canvas-chrome-parity.root-cause.json：checkDeferredPromises 拦住没标「已完成 <提交号>」或「移交 <去处>」的承诺措辞（合并档红、推送档警告、规则生效前开的 PR 只警告）。"
+}

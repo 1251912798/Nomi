@@ -13,6 +13,30 @@
       "path": "electron/shared/productionShotPhase.ts",
       "symbol": "jobsForShot",
       "reason": "#921 把镜 ↔ job 对应收进 productionShotJobs.jobsForShot，但这里还留着一份私有同名实现，而且多镜分支不按 stageId === 'generate' 过滤，比主人宽：同一件事两份判据、两种结果。收口 = 改 import productionShotJobs 那一份。本 PR 不改生产文件，先记债。"
+    },
+    {
+      "concept": "面向用户的文案不断言「零成本」或「会花钱」（扫描所有 locale 与桌面端字符串）",
+      "path": "electron/capabilityCore/mcpProtocol.ts",
+      "symbol": "resources",
+      "reason": "同名撞车而非第二份实现：合同 2026-10-07-money-copy-truth 声明的共享边界叫 resources（src/i18n/resources.ts 的导出），而 resources 是极常见的标识符。MCP 协议对象里的 resources 能力字段 / 返回字段（resources/list 的键），与词典无关。登记符号不能就地改名（改这份合同会把它的 diff 门禁整套重新触发），改名导出又要动十余处无关调用，先记债；收口 = 导出改名为 i18nResources 并同步合同后删掉这些条目。"
+    },
+    {
+      "concept": "面向用户的文案不断言「零成本」或「会花钱」（扫描所有 locale 与桌面端字符串）",
+      "path": "scripts/control-contract-copy.mjs",
+      "symbol": "resources",
+      "reason": "同名撞车而非第二份实现：合同 2026-10-07-money-copy-truth 声明的共享边界叫 resources（src/i18n/resources.ts 的导出），而 resources 是极常见的标识符。局部变量，存的是 src/i18n/resources.ts 的路径字符串，并没有再造一份词典。登记符号不能就地改名（改这份合同会把它的 diff 门禁整套重新触发），改名导出又要动十余处无关调用，先记债；收口 = 导出改名为 i18nResources 并同步合同后删掉这些条目。"
+    },
+    {
+      "concept": "面向用户的文案不断言「零成本」或「会花钱」（扫描所有 locale 与桌面端字符串）",
+      "path": "scripts/dev-electron.mjs",
+      "symbol": "resources",
+      "reason": "同名撞车而非第二份实现：合同 2026-10-07-money-copy-truth 声明的共享边界叫 resources（src/i18n/resources.ts 的导出），而 resources 是极常见的标识符。局部变量，是打包资源文件清单，与词典无关。登记符号不能就地改名（改这份合同会把它的 diff 门禁整套重新触发），改名导出又要动十余处无关调用，先记债；收口 = 导出改名为 i18nResources 并同步合同后删掉这些条目。"
+    },
+    {
+      "concept": "面向用户的文案不断言「零成本」或「会花钱」（扫描所有 locale 与桌面端字符串）",
+      "path": "tests/ux/packaged-mcp-smoke.e2e.mjs",
+      "symbol": "resources",
+      "reason": "同名撞车而非第二份实现：合同 2026-10-07-money-copy-truth 声明的共享边界叫 resources（src/i18n/resources.ts 的导出），而 resources 是极常见的标识符。MCP 烟测里的 resources/list 计数与局部变量，与词典无关。登记符号不能就地改名（改这份合同会把它的 diff 门禁整套重新触发），改名导出又要动十余处无关调用，先记债；收口 = 导出改名为 i18nResources 并同步合同后删掉这些条目。"
     }
   ],
   "pending_write_doors": [

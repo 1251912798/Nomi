@@ -1,0 +1,23 @@
+{
+  "name": "走查点卡的唯一取点入口（目标卡不再是兜底态才取点）",
+  "subject": "delivery.walk-node-hit-point",
+  "lifecycle": "delivery",
+  "authority_kind": "gateway",
+  "trust_domain": "test",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "tests/ux/_canvasHit.mjs",
+    "symbol": "findNodeHitPoint"
+  },
+  "write_api": [
+    {
+      "path": "tests/ux/_canvasHit.mjs",
+      "symbol": "findNodeHitPoint"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-16",
+  "notes": "合同 docs/fixes/2026-10-16-node-render-swap-eats-click.root-cause.json：findNodeHitPoint 在目标卡仍是 Suspense 兜底（data-node-loading）时条件等待，避免点击落在即将被换掉的渲染树上。"
+}

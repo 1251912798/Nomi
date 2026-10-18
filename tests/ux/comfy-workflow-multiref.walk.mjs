@@ -128,7 +128,7 @@ let app
 let win
 // Opening the legacy fixture migrates the live manifest to the canonical workspace location.
 const readProject = () => JSON.parse(fs.readFileSync(path.join(projectRoot, '.nomi/project.json'), 'utf8')).payload.generationCanvas
-const readCatalog = () => JSON.parse(fs.readFileSync(path.join(settingsDir, 'model-catalog.json'), 'utf8'))
+const readCatalogFromDisk = () => JSON.parse(fs.readFileSync(path.join(settingsDir, 'model-catalog.json'), 'utf8'))
 const snap = (name) => screenshotSettled(win, { path: path.join(shotsDir, `${name}.png`) })
 async function closeApp() {
   if (!app) return
@@ -183,15 +183,15 @@ try {
   // before the candidate can be promoted into the selectable catalog.
   await expect(settings.getByRole('heading', { name: '确认接入并开始验证', exact: true })).toBeVisible()
   await clickOrFail(settings.getByRole('button', { name: '确认验证', exact: true }), '确认 ComfyUI 真实验证')
-  const imported = readCatalog().models.find((model) => model.labelZh === workflowName)
+  const imported = readCatalogFromDisk().models.find((model) => model.labelZh === workflowName)
   await expect.poll(() => {
-    const current = readCatalog().models.find((model) => model.labelZh === workflowName)
-    const mapping = current && readCatalog().mappings.find((candidate) => candidate.modelKey === current.modelKey)
+    const current = readCatalogFromDisk().models.find((model) => model.labelZh === workflowName)
+    const mapping = current && readCatalogFromDisk().mappings.find((candidate) => candidate.modelKey === current.modelKey)
     return Boolean(current?.enabled && mapping?.enabled && current.meta?.adapter?.state === 'verified')
   }, { timeout: 30_000 }).toBe(true)
-  const promoted = readCatalog().models.find((model) => model.labelZh === workflowName)
+  const promoted = readCatalogFromDisk().models.find((model) => model.labelZh === workflowName)
   expect(promoted?.enabled).toBe(true)
-  expect(readCatalog().mappings.find((mapping) => mapping.modelKey === promoted?.modelKey)?.enabled).toBe(true)
+  expect(readCatalogFromDisk().mappings.find((mapping) => mapping.modelKey === promoted?.modelKey)?.enabled).toBe(true)
   expect(imported.meta.comfyWorkflowImport.binding.images).toHaveLength(references.length)
   expect(new Set(imported.meta.comfyWorkflowImport.binding.images.map((input) => input.paramKey)).size).toBe(references.length)
   await clickOrFail(settings.getByRole('button', { name: '关闭', exact: true }), '返回画布连接三张图')
