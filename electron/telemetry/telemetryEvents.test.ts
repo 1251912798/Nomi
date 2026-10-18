@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTelemetryEnvelope, durationBucket, isAutomatedLaunch, isTelemetryEnvelope, isTelemetryProps, toolCallBucket } from './telemetryEvents'
+import { buildTelemetryEnvelope, durationBucket, isAutomatedLaunch, isTelemetryEnvelope, isTelemetryProps, TELEMETRY_EVENT_MIN_SCOPE, TELEMETRY_EVENT_NAMES, toolCallBucket } from './telemetryEvents'
 
 describe('telemetry event contract', () => {
   it('uses fixed enums and rejects free text or extra fields', () => {
@@ -74,5 +74,22 @@ describe('更新动作的失败原因（只有枚举）', () => {
     expect(isTelemetryProps({ action: 'check', result: 'failure', reason: 'getaddrinfo ENOTFOUND github.com' }, 'update.action')).toBe(false)
     expect(isTelemetryProps({ action: 'check', result: 'failure', reason: 'not-packaged' }, 'update.action')).toBe(false)
     expect(isTelemetryProps({ action: 'check', result: 'failure', reason: 'other', url: 'x' }, 'update.action')).toBe(false)
+  })
+})
+
+describe('perf.session.summary（界面流畅度分档）', () => {
+  const props = { interactionP75: '100-200', interactionP95: '200-500', longFramesPerMin: '1-3', longestFrame: '100-250', observedMinutes: '5-30', page: 'generation', nodes: '21-100', imageNodes: '1-20', generating: true, cpuCores: '9-16', memoryGb: '8plus' }
+
+  it('白名单：合法通过，多一个键 / 值不在表里就拒', () => {
+    expect(isTelemetryProps(props, 'perf.session.summary')).toBe(true)
+    expect(isTelemetryProps({ ...props, gpu: 'x' }, 'perf.session.summary')).toBe(false)
+    expect(isTelemetryProps({ ...props, nodes: '57' }, 'perf.session.summary')).toBe(false)
+  })
+
+  it('整份信封合法，且需要告知范围 2 才能入队（旧范围的同意不够）', () => {
+    const envelope = buildTelemetryEnvelope({ eventName: 'perf.session.summary', props: props as never }, 'short-session', '0.24.0')
+    expect(isTelemetryEnvelope(envelope)).toBe(true)
+    expect(TELEMETRY_EVENT_MIN_SCOPE['perf.session.summary']).toBe(2)
+    for (const name of TELEMETRY_EVENT_NAMES) if (name !== 'perf.session.summary') expect(TELEMETRY_EVENT_MIN_SCOPE[name]).toBe(1)
   })
 })

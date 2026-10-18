@@ -9,7 +9,7 @@ export const zhFeedbackReport = {
   title: '反馈这个问题',
   /** 调用处没给那句人话时的兜底。它不该经常出现——出现了说明某个失败面没接上 summary。 */
   summaryFallback: '这一步没成功',
-  attaches: '附带 日志 · 模型目录 · 工具轨迹',
+  attaches: '附带 日志 · 模型目录 · 工具轨迹 · 卡顿数字',
   view: '查看',
   manifestUnavailable: '清单这次没算出来（日志或轨迹暂时读不到）。仍然可以发送。',
   rawHint: '要看完整原文：设置 → 通用 → 导出诊断包。',
@@ -28,7 +28,7 @@ export const zhFeedbackReport = {
 export const enFeedbackReport = {
   title: 'Report this problem',
   summaryFallback: 'This step did not succeed',
-  attaches: 'Attaches logs · model catalog · tool trace',
+  attaches: 'Attaches logs · model catalog · tool trace · slowness figures',
   view: 'View',
   manifestUnavailable: 'The manifest could not be built this time (logs or trace are unreadable right now). You can still send.',
   rawHint: 'For the full raw files: Settings → General → Export a diagnostics bundle.',

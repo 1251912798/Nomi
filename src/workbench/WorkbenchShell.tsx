@@ -23,6 +23,7 @@ import { ShellRail } from '../ui/app-shell/shell/ShellRail';
 import { ShellAgentHost } from '../ui/app-shell/shell/ShellAgentHost';
 import { useEffectiveAgentForm } from '../ui/app-shell/shell/agentFormStore';
 import { useShellLayoutStore } from '../ui/app-shell/shell/shellLayoutStore';
+import { bindPerfScene } from './observability/perfScene';
 import { GenerationViewSwitcher } from './generation/list/GenerationViewSwitcher';
 
 // 工作区懒加载走容错域（审计 A5）：单个工作区 chunk 失败不拖死其余工作区。
@@ -197,6 +198,8 @@ export default function WorkbenchShell({
 }: WorkbenchShellProps): JSX.Element {
     const { t } = useTranslation();
     const workspaceMode = useWorkbenchStore((state) => state.workspaceMode);
+    // 流畅度汇总要知道「在工作台里」：壳挂着 = 不在项目库。卸载（回库）时场景源清空，汇总里 page 回到 library。
+    React.useEffect(() => bindPerfScene(), []);
     const setWorkspaceMode = useWorkbenchStore(
         (state) => state.setWorkspaceMode,
     );
