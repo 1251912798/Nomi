@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// 分镜表「读图腿」真实任务验证（2026-10-11 走查 §1）——底栏选读图模型 → 报价卡上的模型行 = 所选 → 确认后逐镜读图，失败原话看得见。
+// 分镜表「读图腿」真实任务验证（2026-10-11 走查 §1；2026-10-18 拆解前选模型改成先建表再拆）——建表不花钱 → 拆解栏选读图模型 →
+// 「拆解」→ 报价卡上的读图行 = 所选 → 确认后逐镜读图，失败原话看得见。
 //
 // 用法（三种模式，从便宜到贵）：
 //
@@ -29,7 +30,7 @@ import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { clickOrFail, expect, expectAbsent, proveProbe, waitForVisualQuiescence } from './_assert.mjs'
+import { clickOrFail, expect, expectAbsent, holdAbsent, proveProbe, waitForVisualQuiescence } from './_assert.mjs'
 import { SPEND_DIALOG, openPaidWalk } from './_paidRun.mjs'
 import { readRealCatalog } from './_realProfile.mjs'
 import { createRuntimeWalk } from './agent-runtime-walk-support.mjs'
@@ -170,41 +171,41 @@ try {
   })
   const callCounts = async () => app.evaluate(() => ({ ...globalThis.__paidCounts }))
 
-  // ③ 选中视频 → 浮条「拆解 ▾ → 拆成镜头表」→ 第一张报价卡（自动挑的模型）→ 取消（零花费，只为让分镜表节点出现）
+  // ③ 选中视频 → 浮条「拆解 ▾ → 拆成镜头表」：**只建表、不开拆**（2026-10-18 拆解前选模型）——没有报价卡、一个请求都不发
   await videoNode.click()
   await clickOrFail(win.getByRole('button', { name: L('generationCommon.videoToolbar.breakDown'), exact: true }).first(), '浮条「拆解」')
   await clickOrFail(win.getByRole('menuitem', { name: new RegExp(`^${L('generationCommon.videoToolbar.shotTable')}`) }), '菜单「拆成镜头表」')
   const dialog = win.locator(SPEND_DIALOG)
-  const dialogProof = await proveProbe(dialog, '拆解的报价卡出现', stationTimeout({ operations: 4 }))
-  const readRows = () => dialog.evaluate((root) => [...root.querySelectorAll('div.justify-between')].map((row) => [...row.children].map((cell) => cell.textContent?.trim() ?? '')))
-  const firstRows = await readRows()
-  const autoModel = firstRows.find(([label]) => label === L('runtime.capability.model'))?.[1]
-  console.log(`[quote#1] 自动挑的读图模型行：${autoModel ?? '(没找到模型行)'}`)
-  report.autoPickedModelLine = autoModel ?? null
-  await clickOrFail(dialog.locator('[data-spend-confirm-action="cancel"]'), '第一张报价卡「取消」')
-  await expectAbsent(dialog, { provenBy: dialogProof, message: '取消后报价卡退场' })
-  expect((await callCounts()).vision, '取消 = 一次读图调用都没发').toBe(0)
-
-  // ④ 底栏「读图模型」选所选模型
   const table = win.locator('[data-testid="shot-table-node"]').first()
-  await expect(table).toBeVisible({ timeout: stationTimeout() })
+  await expect(table).toBeAttached({ timeout: stationTimeout() })
+  await holdAbsent(dialog, '建表不弹报价卡')
+  expect((await callCounts()).vision, '建表 = 一次读图调用都没发').toBe(0)
+  // 新表落在源视频右边、可能在屏外：画布不自动挪视口，点边缘「新节点在右侧」框进来（useCanvasArrivalHint）
+  const arrival = win.locator('[data-canvas-arrival-hint]')
+  if (await arrival.count()) await clickOrFail(arrival.first(), '边缘「新节点在右侧」')
   await waitForVisualQuiescence(win)
-  const picker = table.getByRole('button', { name: L('shotTable.visionModel') }).or(table.getByRole('combobox', { name: L('shotTable.visionModel') })).first()
-  await clickOrFail(picker, '底栏「读图模型」')
+  const bar = win.locator('.react-flow__node:has([data-testid="shot-table-node"]) [data-shot-table-composer="deconstruct"]').first()
+  await expect(bar, '新表被选中，下方拆解栏出现').toBeVisible({ timeout: stationTimeout() })
+
+  // ④ 下方拆解栏「读图」选所选模型
+  const picker = bar.getByRole('button', { name: L('shotTable.visionModel') }).or(bar.getByRole('combobox', { name: L('shotTable.visionModel') })).first()
+  await clickOrFail(picker, '拆解栏「读图」')
   await clickOrFail(win.getByRole('option', { name: new RegExp(model.labelZh.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).first(), `选读图模型「${model.labelZh}」`)
   await expect(picker).toContainText(model.labelZh)
 
-  // ⑤ 「重新拆解」→ 第二张报价卡：模型行必须 = 所选
-  await clickOrFail(table.locator('[data-testid="shot-table-restart-deconstruction"]'), '底栏「重新拆解」')
-  const dialog2Proof = await proveProbe(dialog, '第二张报价卡出现', stationTimeout({ operations: 4 }))
+  // ⑤ 「拆解」→ 报价卡：读图一行 = 所选（目录显示名）；这段去了音轨，没有转写行
+  await clickOrFail(bar.locator('[data-testid="shot-table-restart-deconstruction"]'), '拆解栏「拆解」')
+  const dialog2Proof = await proveProbe(dialog, '报价卡出现', stationTimeout({ operations: 4 }))
+  const readRows = () => dialog.evaluate((root) => [...root.querySelectorAll('div.justify-between')].map((row) => [...row.children].map((cell) => cell.textContent?.trim() ?? '')))
   const quoteRows = await readRows()
-  const quoteModel = quoteRows.find(([label]) => label === L('runtime.capability.model'))?.[1]
+  const quoteModel = quoteRows.find(([label]) => label === L('runtime.capability.visionModelLine'))?.[1]
   const quoteCalls = quoteRows.find(([label]) => label === L('runtime.capability.callCount'))?.[1]
-  console.log(`[quote#2] 报价卡模型行：${quoteModel}  ·  调用次数：${quoteCalls ?? '(无)'}`)
+  console.log(`[quote] 报价卡读图行：${quoteModel}  ·  调用次数：${quoteCalls ?? '(无)'}`)
   report.quoteModelLine = quoteModel
   report.quoteCallCount = quoteCalls ?? null
   await snap('quote-card')
-  expect(quoteModel, '报价卡上的模型行 = 底栏所选').toBe(modelLine)
+  expect(quoteModel ?? '', '报价卡上的读图行 = 拆解栏所选').toContain(model.labelZh)
+  expect(quoteRows.some(([label]) => label === L('runtime.capability.transcribeModelLine')), '没音轨：报价卡没有转写行').toBe(false)
   const quoted = Number(quoteCalls ?? '0')
   const overCap = quoted > VISION_CAP
   if (overCap) console.log(`[stop] 报价 ${quoted} 次调用 > 读图上限 ${VISION_CAP}：不点确认。换个小段重试（--clip-start / --clip-seconds）。`)
@@ -215,7 +216,7 @@ try {
     expect((await callCounts()).vision, '停在报价卡：供应商一个读图请求都没有').toBe(0)
     if (!overCap) console.log('[stop] 未设 NOMI_PAID_CONFIRM=1：停在报价卡，已取消，零花费。')
     if (overCap) process.exitCode = 2
-    report.verified = ['picker-sets-model', 'quote-model-line-equals-selection', 'cancel-sends-nothing']
+    report.verified = ['create-table-sends-nothing', 'picker-sets-model', 'quote-model-line-equals-selection', 'cancel-sends-nothing']
   } else {
     // ⑥ 确认 → 等结果 → 打印每镜状态 / 顶上一行原话 / 实际调用次数
     await clickOrFail(dialog.locator('[data-spend-confirm-action="confirm"]'), '报价卡「确认」', { noWaitAfter: true })
@@ -248,7 +249,7 @@ try {
       report.verified = ['rate-limit-reason-on-top-line']
     } else {
       expect(finalState.rows.some((row) => !row.visionFailed && row.shotSize), '至少有一镜读出了景别').toBe(true)
-      report.verified = ['picker-sets-model', 'quote-model-line-equals-selection', 'shots-read', 'calls-within-cap']
+      report.verified = ['create-table-sends-nothing', 'picker-sets-model', 'quote-model-line-equals-selection', 'shots-read', 'calls-within-cap']
     }
   }
 } catch (error) {
