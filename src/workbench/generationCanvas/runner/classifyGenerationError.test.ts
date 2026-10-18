@@ -311,7 +311,7 @@ describe('classifyGenerationError — 已知分类', () => {
     )
     expect(coded.kind).toBe('asset-invalid')
     expect(coded.reason).not.toMatch(/未计费/)
-    expect(coded.hint).toMatch(/换一张|重新导入/)
+    expect(coded.hint).toBe(i18n.t('generationCommon.observability.error.assetInvalid.hint'))
     expect(coded.hint).not.toMatch(/服务商临时故障/)
     expect(coded.raw).not.toMatch(/NOMI_ERR/)
     expect(coded.raw).toMatch(/ref\.png/)

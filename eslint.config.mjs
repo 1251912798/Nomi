@@ -318,7 +318,7 @@ export default tseslint.config(
     // `src/workbench/generationCanvas/spend/spendConfirm.ts`（概念 spend.confirmation-requirement）。
     // 2026-10-16 真付费验收：分镜方案整批生成直接调了 requestConfirm，绕过 owner，「直接生成」档对它完全不起作用，
     // 而且没有任何东西会红。下面这几处是允许的调用者——它们只**展示主进程已经做出的决定**，自己不判问不问：
-    //   capabilityApplyHandler.ts（MCP 生成闸 / 计划门）、credentialProbeSpendCard.ts（接入页凭据试跑）、
+    //   capabilityApplyHandler.ts + generationGateConfirm.ts（MCP 生成闸 / 计划门）、credentialProbeSpendCard.ts（接入页凭据试跑）、
     //   useProductionStatus.ts（制作流程门）；SpendConfirmDialog.tsx / NomiStudioApp.tsx 是 E2E 驱动桥。
     // 新增调用者 = 又一处自己决定弹不弹付费框 → 红；要么经 owner，要么先让主进程做决定、再登记进这张表。
     files: ['src/**/*.{ts,tsx}'],
@@ -328,6 +328,7 @@ export default tseslint.config(
       'src/workbench/generationCanvas/spend/SpendConfirmDialog.tsx',
       'src/workbench/NomiStudioApp.tsx',
       'src/workbench/capability/capabilityApplyHandler.ts',
+      'src/workbench/capability/generationGateConfirm.ts', // 从 capabilityApplyHandler.ts 拆出的 MCP 生成确认卡：只展示主进程决定的挑战
       'src/workbench/capability/credentialProbeSpendCard.ts',
       'src/workbench/production/useProductionStatus.ts',
     ],

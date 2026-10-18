@@ -1,0 +1,28 @@
+{
+  "name": "外层画布快捷键的目标准入",
+  "subject": "canvas.shortcut-admission",
+  "lifecycle": "live-interaction",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
+    "symbol": "shouldIgnoreCanvasShortcut"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
+      "symbol": "shouldIgnoreCanvasShortcut"
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
+      "symbol": "createCanvasKeydownHandler"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "src/workbench/generationCanvas/components/useCanvasShortcuts.test.ts",
+  "allowed_consumers": [],
+  "since": "2026-10-12",
+  "notes": "已有外层窗口键盘/粘贴调用者统一经过 shouldIgnoreCanvasShortcut：输入框、非活动画布面、来自 inline whiteboard 或其 portal 的事件不归外层。排除按事件 target 判断，不按任何画板是否打开全局冻结画布。内部画板选择/IME/撤销归 DrawingTool 局部捕获，不允许未命中的 Delete 穿透成整节点删除。"
+}

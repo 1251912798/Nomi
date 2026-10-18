@@ -7,7 +7,8 @@ vi.mock('../generationCanvas/spend/spendConfirm', () => ({
 }))
 
 import i18n from '../../i18n'
-import { formatGateExpiry, handleCapabilityApply } from './capabilityApplyHandler'
+import { handleCapabilityApply } from './capabilityApplyHandler'
+import { formatGateExpiry } from './generationGateConfirm'
 
 describe('renderer generation gate confirmation', () => {
   beforeEach(() => {

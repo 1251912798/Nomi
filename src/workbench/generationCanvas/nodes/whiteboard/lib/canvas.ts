@@ -5,7 +5,7 @@ export type CanvasDimensions = {
   height: number
 }
 
-export type ToolKey = 'brush' | 'select' | 'eraser' | 'shape'
+export type ToolKey = 'brush' | 'select' | 'eraser' | 'shape' | 'text'
 
 export type LayerItem = {
   id: string
@@ -13,7 +13,7 @@ export type LayerItem = {
   visible: boolean
   locked: boolean
   opacity: number
-  kind: 'background' | 'drawing' | 'asset' | 'group'
+  kind: 'background' | 'drawing' | 'asset' | 'group' | 'text'
   thumbnail: 'blank' | 'checker' | 'image'
 }
 
@@ -100,4 +100,16 @@ export function getDefaultLayers(): LayerItem[] {
       thumbnail: 'checker'
     }
   ]
+}
+
+export type CanvasText = {
+  id: string
+  layerId: string
+  text: string
+  x: number
+  y: number
+  width: number
+  height: number
+  fontSize: number
+  color: string
 }

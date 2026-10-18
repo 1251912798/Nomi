@@ -40,18 +40,18 @@ beforeEach(() => {
 describe('确认卡的回答：拒绝与没人答分得开', () => {
   it('用户点忽略 → declined:true；渲染端无应答 → 没有 declined；试拍首镜不算拒绝', async () => {
     previewForChallenge = { currency: 'CNY', maximum: 5 }
-    expect(await createDefaultAuthorities().confirmGenerationInNomi({ challengeToken: 't' })).toMatchObject({ confirmed: false, declined: true })
+    expect(await createDefaultAuthorities().confirmGenerationInNomi!({ challengeToken: 't' })).toMatchObject({ confirmed: false, declined: true })
     rendererAnswer = null
-    expect(await createDefaultAuthorities().confirmGenerationInNomi({ challengeToken: 't' })).not.toHaveProperty('declined')
+    expect(await createDefaultAuthorities().confirmGenerationInNomi!({ challengeToken: 't' })).not.toHaveProperty('declined')
     rendererAnswer = { confirmed: false, trialFirst: true }
-    expect(await createDefaultAuthorities().confirmGenerationInNomi({ challengeToken: 't' })).not.toHaveProperty('declined')
+    expect(await createDefaultAuthorities().confirmGenerationInNomi!({ challengeToken: 't' })).not.toHaveProperty('declined')
   })
 })
 
 describe('未知价不许在 Nomi 确认卡变成 0', () => {
   it('全未知：发给渲染端的 maximumCost 是 null，不是占位 0', async () => {
     previewForChallenge = { currency: 'CNY', maximum: 0, unknownJobCount: 1 }
-    await createDefaultAuthorities().confirmGenerationInNomi({ challengeToken: 't' })
+    await createDefaultAuthorities().confirmGenerationInNomi!({ challengeToken: 't' })
     expect(decisions).toHaveLength(1)
     expect(decisions[0]!.maximumCost).toBeNull()
     expect(decisions[0]!.unknownShotCount).toBe(1)
@@ -59,17 +59,17 @@ describe('未知价不许在 Nomi 确认卡变成 0', () => {
 
   it('已知价照常发出（含已知 0 元也是 0）', async () => {
     previewForChallenge = { currency: 'CNY', maximum: 5 }
-    await createDefaultAuthorities().confirmGenerationInNomi({ challengeToken: 't' })
+    await createDefaultAuthorities().confirmGenerationInNomi!({ challengeToken: 't' })
     expect(decisions[0]!.maximumCost).toBe(5)
     decisions.length = 0
     previewForChallenge = { currency: 'CNY', maximum: 0 }
-    await createDefaultAuthorities().confirmGenerationInNomi({ challengeToken: 't' })
+    await createDefaultAuthorities().confirmGenerationInNomi!({ challengeToken: 't' })
     expect(decisions[0]!.maximumCost).toBe(0)
   })
 
   it('类判据：部分已知保留已知小计，全未知才是 null', () => {
-    expect(reservationMaximumForDisplay({ currency: 'CNY', maximum: 0, unknownJobCount: 2 })).toBeNull()
-    expect(reservationMaximumForDisplay({ currency: 'CNY', maximum: 3, unknownJobCount: 1 })).toBe(3)
-    expect(reservationMaximumForDisplay({ currency: 'CNY', maximum: 0 })).toBe(0)
+    expect(reservationMaximumForDisplay({ maximum: 0, unknownJobCount: 2 })).toBeNull()
+    expect(reservationMaximumForDisplay({ maximum: 3, unknownJobCount: 1 })).toBe(3)
+    expect(reservationMaximumForDisplay({ maximum: 0 })).toBe(0)
   })
 })
