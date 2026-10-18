@@ -6,7 +6,8 @@ vi.mock('../generationCanvas/spend/spendConfirm', () => ({
   useSpendConfirmStore: { getState: () => ({ requestConfirm }) },
 }))
 
-import { handleCapabilityApply } from './capabilityApplyHandler'
+import i18n from '../../i18n'
+import { formatGateExpiry, handleCapabilityApply } from './capabilityApplyHandler'
 
 describe('renderer generation gate confirmation', () => {
   beforeEach(() => {
@@ -49,7 +50,6 @@ describe('renderer generation gate confirmation', () => {
 
 describe('renderer generation gate: unknown price (C-3)', () => {
   it.each(['zh-CN', 'en'] as const)('maximumCost null prints Unknown, never a zero amount (%s)', async (lng) => {
-    const { default: i18n } = await import('../../i18n')
     await i18n.changeLanguage(lng)
     requestConfirm.mockReset().mockResolvedValue(false)
     await handleCapabilityApply('generation.gate.confirm', {
@@ -78,7 +78,6 @@ describe('renderer generation gate card copy', () => {
   const cjk = /[\u4e00-\u9fff]/
 
   it.each(['zh-CN', 'en'] as const)('unknown cost row is the exact label/value pair, sentence is dictionary-only, expiry is not ISO (%s)', async (lng) => {
-    const { default: i18n } = await import('../../i18n')
     await i18n.changeLanguage(lng)
     requestConfirm.mockReset().mockResolvedValue(false)
     await handleCapabilityApply('generation.gate.confirm', payload)
@@ -96,7 +95,6 @@ describe('renderer generation gate card copy', () => {
   })
 
   it('formatGateExpiry gives a short local time and passes unparseable text through', async () => {
-    const { formatGateExpiry } = await import('./capabilityApplyHandler')
     const out = formatGateExpiry('2026-10-17T12:30:00.000Z', 'en')
     expect(out).not.toContain('2026-10-17T')
     expect(out).toMatch(/\d{1,2}[:：]\d{2}/)
