@@ -136,7 +136,7 @@ export async function lockSpendToModels(win, seeded) {
  */
 export async function openPaidWalk(script, name, models, deps = {}) {
   const {
-    env = process.env, createWalk = createRuntimeWalk, connect = connectApimartThroughVisibleUi, isNomiRunning = realNomiIsRunning,
+    env = process.env, createWalk = createRuntimeWalk, connect = connectApimartThroughVisibleUi, isNomiRunning = realNomiIsRunning, lockSpendTo = lockSpendToModels, readRows = readAuthorizedRows,
     // 验某个修复的走查传 buildMarkers：会原样进产物的字面量（界面文案 / 错误码），见 assertPaidBuildReady。
     buildMarkers = [], argv = process.argv.slice(2), assertBuild = assertPaidBuildReady,
   } = deps
@@ -177,18 +177,34 @@ export async function openPaidWalk(script, name, models, deps = {}) {
     console.log(`[paid] 凭据来源：环境变量 ${ENV_KEY_VAR}（走可见接入页，不读真实资料）；授权模型：${models.map((model) => `${model.vendorKey}/${model.modelKey}`).join(' · ')}`)
   }
   const label = (vendorKey, modelKey) => seeded.find((row) => row.vendorKey === vendorKey && row.modelKey === modelKey)?.labelZh
+  // 接入 / 收窄花钱面只做一次：走查里谁先谁后不靠作者记——开项目（walk.newProject）之前一定先走到这里（见下面的包装）。
+  let locked = false
   async function lockToAuthorizedModels(win) {
+    if (locked) return walk.report.disabledUnauthorizedModels
     // 花第一分钱之前先确认闸装上了、账本写得进（否则被挡也没人知道）。
     const unguarded = guardLoadedError(readNetLog(netLog))
     if (unguarded) throw unguarded
     if (envKey) {
       // 接入页上的验证会真的打一次大脑模型（几个 token）——这是真人第一次接入时同样会发生的事，记进报告。
       walk.report.envKeyConnect = await connect(win, { apiKey: envKey, textModelKey: envKeyBrainOf(models), requiredModels: models })
-      seeded = await readAuthorizedRows(win, models)
+      seeded = await readRows(win, models)
       walk.report.seededModels = seeded.map((row) => `${row.vendorKey}/${row.modelKey}`)
     }
-    try { walk.report.disabledUnauthorizedModels = await lockSpendToModels(win, seeded) }
+    try { walk.report.disabledUnauthorizedModels = await lockSpendTo(win, seeded) }
     catch (error) { throw envKey ? redactedError(error, secrets) : error }
+    locked = true
+    return walk.report.disabledUnauthorizedModels
+  }
+  // 顺序由这里保证：走查没显式调 lockToAuthorizedModels 也好、先开项目后调也好，newProject 之前都已接入并收窄过。
+  // （两份走查——agent-default-model-real、agent-long-chat-real——从来没调过它：env-key 路上就是没接入、也没收窄花钱面。）
+  let currentWin = null
+  const startWalk = walk.start
+  walk.start = async (...args) => { const started = await startWalk(...args); currentWin = started.win; return started }
+  const openProject = walk.newProject
+  walk.newProject = async (...args) => {
+    if (!currentWin) throw new Error('walk.newProject 要在 walk.start 之后调用')
+    await lockToAuthorizedModels(currentWin)
+    return openProject(...args)
   }
   /** env-key 路收尾：网络账本打码留一份、原件连同临时目录删掉；整个隔离副本删除并断言。 */
   function envKeyTeardown() {
