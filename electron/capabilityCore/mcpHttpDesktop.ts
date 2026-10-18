@@ -7,6 +7,7 @@ import { appFetch } from '../appFetch'
 import { getDesktopLocale } from '../desktopLocale'
 import { logInfo, logWarn } from '../logging/logger'
 import { recordDetectedMcpClient } from './mcpDetectedClients'
+import { clearMcpHttpStartFailure, recordMcpHttpStartFailure } from './mcpHttpListenState'
 import { clearMcpHttpEndpoint, resolveMcpHttpPort, writeMcpHttpEndpoint } from './mcpHttpEndpoint'
 import type { McpHttpServerHandle } from './mcpHttpServer'
 import { mcpUsageRegistry } from './mcpUsageRegistry'
@@ -39,14 +40,18 @@ export async function startDesktopMcpHttp(deps: Readonly<{ rpcPort: () => number
       }),
     })
     writeMcpHttpEndpoint(handle.port)
+    clearMcpHttpStartFailure()
     logInfo('capability', 'mcp-http-listening', { port: handle.port })
   } catch (error) {
     handle = null
+    // 连接状态卡要能说出「服务没起来、因为端口被占」，不能只躺在日志里（C-5）。
+    recordMcpHttpStartFailure(error)
     logWarn('capability', 'mcp-http-unavailable', { port }, error)
   }
 }
 
 export function stopDesktopMcpHttp(): void {
+  clearMcpHttpStartFailure()
   if (!handle) return
   clearMcpHttpEndpoint()
   void handle.close()

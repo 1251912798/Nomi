@@ -716,6 +716,7 @@ export const zhOnboardingProviders = {
       timeout: '启动超时——{{client}} 连的可能是已经失效的旧配置。点下面重新接入试试。',
       handshakeFailed: '能启动但连不上，多半是旧版本的接入方式。点下面重新接入就好。',
       clientAuthMissing: '这份旧配置缺少当前版本的客户端身份凭据，能列工具但不能安全推进制作。重新接入即可升级。',
+      httpNotListening: 'Nomi 的本机连接服务没有启动（常见原因：端口被别的程序或另一份 Nomi 占着）。{{client}} 的配置本身没问题——关掉占用端口的程序，重启 Nomi 后再点测试连接。',
     },
     // 读回配置就能判死的四种过时形状（不 spawn）；文案按形状说人话，按钮统一是「升级接入」。
     staleConfig: {
@@ -2018,6 +2019,8 @@ export const enOnboardingProviders = {
       handshakeFailed: 'It starts but cannot connect, most likely an older setup. Reconnect below to fix it.',
       clientAuthMissing:
         'This older configuration lacks the client identity proof required for safe production. Reconnect to upgrade it.',
+      httpNotListening:
+        'The local connection service Nomi runs for {{client}} is not running (most often its port is held by another program or another copy of Nomi). The configuration itself is fine — close whatever holds the port, restart Nomi, then test again.',
     },
     staleConfig: {
       legacyLauncher: '{{client}} still points at the launch script of an older Nomi, and that script no longer exists. Upgrading the connection switches to the current launcher.',
