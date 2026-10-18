@@ -11,8 +11,8 @@
 // 半渲染帧那种假红照样能发生；等到「页面真的就绪过一次」才是把窗口关掉。
 //
 // 为什么归属断言也在这里：这是整趟跑里**第一个碰到服务器的地方**，也是像素被信任之前的最后一道。
-// `design-lab:update` 与手工 `npx playwright test` 都不经过门岗脚本，但都经过 globalSetup——
-// 断言放这儿，三条入口一次覆盖（labServer.mjs 是那条不变量的 owner）。
+// 手工 `npx playwright test` 不经过门岗脚本，但经过 globalSetup——
+// 断言放这儿，两条入口一次覆盖（labServer.mjs 是那条不变量的 owner）。
 import { chromium } from '@playwright/test'
 import { LAB_ORIGIN } from './playwright.config.mjs'
 import { assertLabPortOwnership } from './labServer.mjs'
