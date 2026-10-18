@@ -6,7 +6,7 @@
 //
 // 八格（四态 × 光暗）里，改形态后的样子用户**还没看过**，所以这屏显式登记在
 // calibration.json 的 pendingApprovalScreens 里，本轮不录基线——给一个没人看过的屏录基线，
-// 等于把「今天碰巧长这样」钉成「应该长这样」。拍板后跑 design-lab:update，并删掉那条登记。
+// 等于把「今天碰巧长这样」钉成「应该长这样」。拍板后删掉那条登记，再用 design-lab:accept 取回 CI 产出的新图。
 import { DEPTH_ACTION_STATES } from './states/01-depth-action'
 import type { LabState } from '../labScreen'
 

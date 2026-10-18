@@ -22,6 +22,9 @@ type RefreshDetail = 'openai' | 'anthropic' | 'all' | undefined
 
 const catalogOptionsCache = new Map<string, ModelOption[]>()
 const catalogPromiseCache = new Map<string, Promise<ModelOption[]>>()
+// 上一次**读成功**的清单。只在成功时写、刷新作废（invalidateAvailableCache）时不清：
+// 读目录失败时界面要有东西可留，而不是把「这一次没读到」说成「你一个模型都没有」。
+const lastGoodOptions = new Map<string, ModelOption[]>()
 let catalogHealthCache: ModelCatalogHealthDto | null = null
 let catalogHealthPromise: Promise<ModelCatalogHealthDto> | null = null
 let vendorNamesCache: Map<string, string> | null = null
@@ -153,6 +156,7 @@ async function getCatalogModelOptions(
         return name ? { ...opt, vendorName: name } : opt
       })
       catalogOptionsCache.set(cacheKey, annotated)
+      lastGoodOptions.set(cacheKey, annotated)
       return annotated
     } finally {
       catalogPromiseCache.delete(cacheKey)
@@ -184,6 +188,7 @@ export function seedModelCatalogForTests(
   catalogHealthCache = health
   for (const entry of entries) {
     catalogOptionsCache.set(`${resolveCatalogKind(entry.kind)}:${entry.requiredMode}`, [...entry.options])
+    lastGoodOptions.set(`${resolveCatalogKind(entry.kind)}:${entry.requiredMode}`, [...entry.options])
   }
 }
 
@@ -198,6 +203,25 @@ export function peekCatalogModelOptions(kind?: NodeKind, requiredMode?: ModelQue
   const cacheKey = `${resolveCatalogKind(kind)}:${requiredMode ?? defaultPublishedMode(kind)}`
   const cached = catalogOptionsCache.get(cacheKey)
   return cached ? filterHiddenOptionsByKind(cached, kind) : null
+}
+
+/**
+ * 读目录失败时**留给界面的那一份**：这个 kind/模式上一次读成功的清单；从没成功过给 null。
+ * 缓存刷新（notifyModelOptionsRefresh）只作废「可直接用的缓存」，不动这一份。
+ */
+export function peekLastGoodModelOptions(kind?: NodeKind, requiredMode?: ModelQueryMode): ModelOption[] | null {
+  const cacheKey = `${resolveCatalogKind(kind)}:${requiredMode ?? defaultPublishedMode(kind)}`
+  const kept = lastGoodOptions.get(cacheKey)
+  return kept ? filterHiddenOptionsByKind(kept, kind) : null
+}
+
+/** 读目录失败后界面该显示哪一份：上一次读成功的清单；从没成功过就保持现状（空态由 error 带着原因）。 */
+export function optionsAfterReadFailure(
+  current: readonly ModelOption[],
+  kind?: NodeKind,
+  requiredMode?: ModelQueryMode,
+): readonly ModelOption[] {
+  return peekLastGoodModelOptions(kind, requiredMode) ?? current
 }
 
 export async function preloadModelOptions(
