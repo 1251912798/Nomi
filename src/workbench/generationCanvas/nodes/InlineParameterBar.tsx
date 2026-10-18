@@ -672,7 +672,7 @@ export default function InlineParameterBar({
     </>
   )
 
-  return (
+  const bar = (
     <div
       className={cn(
         'generation-canvas-v2-node__params--parameters',
@@ -699,6 +699,16 @@ export default function InlineParameterBar({
           {panelPortals}
         </div>
       ) : null}
+    </div>
+  )
+  // 这一次读目录失败、但上一份清单还在屏上：说清楚「仍是旧的」和原因（只在这个状态多一行，平时 DOM 不变）。
+  if (modelCatalogStatus.status !== 'stale_kept') return bar
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      {bar}
+      <span role="status" data-model-catalog-stale="true" title={modelCatalogStatus.message} className="min-w-0 break-words text-micro text-nomi-warning">
+        {modelCatalogStatus.message}
+      </span>
     </div>
   )
 }

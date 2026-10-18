@@ -31,7 +31,7 @@ export function normalizeCatalogLoadError(caught: unknown): Error {
   return new Error(i18n.t('runtime.modelCatalog.loadFailed'))
 }
 
-export type ModelCatalogStatus = 'loading' | 'api_unreachable' | 'catalog_empty' | 'kind_empty' | 'incomplete' | 'ready'
+export type ModelCatalogStatus = 'loading' | 'api_unreachable' | 'stale_kept' | 'catalog_empty' | 'kind_empty' | 'incomplete' | 'ready'
 
 export function deriveModelCatalogStatus(input: {
   kind?: NodeKind
@@ -43,6 +43,13 @@ export function deriveModelCatalogStatus(input: {
 }): { status: ModelCatalogStatus; message: string } {
   if (input.loading) {
     return { status: 'loading', message: i18n.t('runtime.modelCatalog.loading') }
+  }
+  if (input.error && input.options.length > 0) {
+    // 这一次没读到，但上一份清单还在屏上：说清楚「仍是旧的」和原因，而不是装作一切正常。
+    return {
+      status: 'stale_kept',
+      message: i18n.t('runtime.modelCatalog.staleKept', { message: input.error.message }),
+    }
   }
   if (input.error) {
     return {
