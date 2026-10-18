@@ -54,8 +54,8 @@ function installBrain(fixture) {
       }
       let drafted = toolResultText(body, DRAFT_CALL)
       if (!operationIdOf(drafted)) {
-        // 被拒了：只凭工具结果里写的话改。没指路就停下。
-        if (!/variantId/.test(drafted)) return { type: 'text', text: '这一步我做不下去了。' }
+        // 被拒了：只凭工具结果里写的话改。结果里写着「别重复提交」（修前通用的那句 Next）、或没指路，就停下——真 Agent 就是这样停在报错卡上的。
+        if (/Do not repeat/.test(drafted) || !/variantId/.test(drafted)) return { type: 'text', text: '这一步我做不下去了。' }
         if (!hasToolResult(body, REVISED_CALL)) {
           return { type: 'tool', id: REVISED_CALL, name: 'draft_shots', args: { shots: [shot({ variantId: 'fast' }, base)] } }
         }

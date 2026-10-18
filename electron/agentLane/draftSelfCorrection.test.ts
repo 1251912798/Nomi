@@ -48,6 +48,8 @@ const goodShot = (): Shot => ({
  * 脚本化的模型：**只读失败文本**。每一条规则都对应「文本里确实写了怎么改」——没写就返回 undefined（= 模型停下）。
  */
 function reviseFromFailureText(text: string, shot: Shot): Shot | undefined {
+  // 结果里写着「别重复提交」：真 Agent 就停在这里（2026-10-18 第二次真走查）。
+  if (text.includes("Do not repeat")) return undefined;
   const next: Shot = { ...shot, parameters: { ...(shot.parameters ?? {}) } };
   const params = next.parameters!;
   let changed = false;
