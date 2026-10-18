@@ -28,6 +28,18 @@ const shortenedTimeoutSelectors = [TEST_CALL, HOOK_CALL].flatMap((call) => [
   { selector: `${call}[arguments.length>=2] > ObjectExpression.arguments:last-child > Property[key.name='timeout'] > Literal.value[value<${VITEST_TIMEOUT_FLOOR_MS}]`, message: SHORTENED_TIMEOUT_MESSAGE },
 ])
 
+/**
+ * Store 选择器里禁止 JSON.stringify（2026-10-16 卡顿波）：选择器每次 store 写都会跑，序列化防抖等于
+ * 「每一次别的卡的生成进度都把整份派生值重算 + 序列化一遍」。要稳定引用，用依赖面签名
+ * （src/workbench/generationCanvas/nodes/composerGraphSnapshot.ts）或在组件里 useContentStable 逐字段比。
+ */
+const storeSelectorSerializeSelectors = [
+  {
+    selector: "CallExpression[callee.name=/^use[A-Z][A-Za-z0-9]*Store$/] > :function CallExpression[callee.object.name='JSON'][callee.property.name='stringify']",
+    message: '不要在 store 选择器里 JSON.stringify：它在每次 store 写都会跑。用 composerGraphSnapshot 的依赖面快照，或在组件里 useContentStable 逐字段比。',
+  },
+]
+
 // 用例体 / 钩子里不许 `await import(...)`：冷转换一大片生产模块的那几秒记在用例或钩子的 30 秒超时里，
 // 机器一忙（并行推送前钩子 / CI 满载）就超时——单跑都能过、满载必红。静态 import 在收集阶段加载，不占用例超时，
 // vi.mock 会被提升、静态 import 照样吃到。2026-10-15：tryModelSubmitBudget「Hook timed out in 30000ms」、readTaskTarget 单跑 35 秒、
@@ -267,7 +279,7 @@ export default tseslint.config(
       'no-irregular-whitespace': 'warn',
       'preserve-caught-error': 'warn',
       'prefer-const': 'warn',
-      'no-restricted-syntax': ['error', ...windowsPathSelectors],
+      'no-restricted-syntax': ['error', ...windowsPathSelectors, ...storeSelectorSerializeSelectors],
     },
   },
   {
@@ -284,12 +296,12 @@ export default tseslint.config(
     // 画布 nodes / edges 整表订阅：名单外的文件一处都不许有；名单内的处数由 scripts/canvas-store-subscriptions.test.mjs 卡死（只减不增）。
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**', ...Object.keys(WHOLE_TABLE_SUBSCRIPTION_BASELINE)],
-    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...WHOLE_TABLE_SUBSCRIPTION_SELECTORS] },
+    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...storeSelectorSerializeSelectors, ...WHOLE_TABLE_SUBSCRIPTION_SELECTORS] },
   },
   {
     // 画布壳不订阅选区：选中一张卡，壳 0 次重渲（方向检查 2026-10-16-canvas-shell-subscriptions）。
     files: [CANVAS_SHELL_FILE],
-    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...SHELL_SELECTION_SELECTORS] },
+    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...storeSelectorSerializeSelectors, ...SHELL_SELECTION_SELECTORS] },
   },
   {
     // 渲染层失败证据只有一个出口：src/desktop/rendererLog.ts（→ 主进程日志 → 诊断包）。
@@ -318,7 +330,7 @@ export default tseslint.config(
     // `src/workbench/generationCanvas/spend/spendConfirm.ts`（概念 spend.confirmation-requirement）。
     // 2026-10-16 真付费验收：分镜方案整批生成直接调了 requestConfirm，绕过 owner，「直接生成」档对它完全不起作用，
     // 而且没有任何东西会红。下面这几处是允许的调用者——它们只**展示主进程已经做出的决定**，自己不判问不问：
-    //   capabilityApplyHandler.ts（MCP 生成闸 / 计划门）、credentialProbeSpendCard.ts（接入页凭据试跑）、
+    //   capabilityApplyHandler.ts + generationGateConfirm.ts（MCP 生成闸 / 计划门）、credentialProbeSpendCard.ts（接入页凭据试跑）、
     //   useProductionStatus.ts（制作流程门）；SpendConfirmDialog.tsx / NomiStudioApp.tsx 是 E2E 驱动桥。
     // 新增调用者 = 又一处自己决定弹不弹付费框 → 红；要么经 owner，要么先让主进程做决定、再登记进这张表。
     files: ['src/**/*.{ts,tsx}'],
@@ -328,6 +340,7 @@ export default tseslint.config(
       'src/workbench/generationCanvas/spend/SpendConfirmDialog.tsx',
       'src/workbench/NomiStudioApp.tsx',
       'src/workbench/capability/capabilityApplyHandler.ts',
+      'src/workbench/capability/generationGateConfirm.ts', // 从 capabilityApplyHandler.ts 拆出的 MCP 生成确认卡：只展示主进程决定的挑战
       'src/workbench/capability/credentialProbeSpendCard.ts',
       'src/workbench/production/useProductionStatus.ts',
     ],

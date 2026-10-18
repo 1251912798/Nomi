@@ -252,6 +252,9 @@ async function checkC19GroupUndoAndFocus() {
   await getWin().mouse.click(nodePoint.x, nodePoint.y)
   const prompt = getWin().locator('[data-composer-host="canvas"] [contenteditable="true"]').first()
   await expect(prompt).toHaveText('C19 prompt one')
+  // 项目打开约 4 秒后，后台补预览（resultMediaBackfillBridge）会给每个 nomi-local 结果补上预览事实，这是合法的后台写回、不是编辑。
+  // 基线必须取在它落完之后，否则「点卡出生成框」越快（挂载 0 次 IO），越容易让基线恰好取在写回之前、把它误判成提示词编辑改了图。
+  await expect.poll(async () => (await graph()).nodes.every(node => !node.result || !String(node.result.url).startsWith('nomi-local://') || node.result.previewState)).toBe(true)
   const promptBefore = await graph()
   // Original canvasNodeActions records manual storyboard prompt overrides.
   // This is required binding protection, not an unintended graph edit.

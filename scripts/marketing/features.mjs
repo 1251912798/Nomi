@@ -43,7 +43,7 @@ const zhCN = {
   limitsTitle: '现在还做不到的',
   limits: ['精确对口型、唇形同步：暂时不支持。', 'Mac 安装包还没有苹果签名：第一次打开要右键「打开」，更新要重新下载安装包。'],
   localTitle: '东西都是你的',
-  localBody: '不用注册账号，不上报数据。项目就是你硬盘上的一个文件夹，画布、分镜、时间轴和每一张图、每一段视频都在里面。代码全部开源（AGPL-3.0）。',
+  localBody: '不用注册账号。默认不上报任何数据；想帮忙改进的话，可以在设置里自愿开启匿名统计，随时能关。项目就是你硬盘上的一个文件夹，画布、分镜、时间轴和每一张图、每一段视频都在里面。代码全部开源（AGPL-3.0）。',
 }
 
 const english = {
@@ -71,7 +71,7 @@ const english = {
   limitsTitle: 'What it can’t do yet',
   limits: ['Precise lip sync is not supported yet.', 'The Mac app is not signed by Apple yet: open it with right-click → Open the first time, and updates need a fresh download.'],
   localTitle: 'Everything stays yours',
-  localBody: 'No account, no telemetry. A project is a folder on your disk with the canvas, storyboard, timeline and every image and clip inside. All of the code is open source (AGPL-3.0).',
+  localBody: 'No account. Nothing is sent by default; anonymous usage statistics are opt-in and can be turned off any time. A project is a folder on your disk with the canvas, storyboard, timeline and every image and clip inside. All of the code is open source (AGPL-3.0).',
 }
 
 const featuresByLocale = { 'zh-CN': zhCN, en: english }

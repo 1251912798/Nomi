@@ -68,6 +68,7 @@ const REASON_I18N: Partial<Record<McpVerifyReason, string>> = {
   timeout: 'timeout',
   'handshake-failed': 'handshakeFailed',
   'client-auth-missing': 'clientAuthMissing',
+  'http-not-listening': 'httpNotListening',
 }
 
 /**

@@ -24,6 +24,7 @@ import { NomiColorSchemeProvider } from './theme/NomiColorSchemeProvider'
 import { primeNomiColorScheme } from './theme/colorScheme'
 import { reportVideoCodecSupport } from './media/videoCodecProbe'
 import { installRendererErrorCapture } from './desktop/rendererLog'
+import { startPerfCollector } from './workbench/observability/perfCollector'
 import { installHeldModifierReconciler } from './ui/input/heldModifierReconciler'
 
 // 没人接住的渲染层异常也要进主进程日志（诊断包里要看得到）——越早装，漏的越少。
@@ -32,6 +33,9 @@ installRendererErrorCapture()
 // 修饰键的松开被系统 / 输入法 / 拦截 keyup 的编辑区吞掉时，以下一次输入事件自带的修饰位为准补一次松开
 // （画布「点第二张卡变已选 2 个、卡拖不动」，见该文件头）。全 App 只装这一处，放在 render 之前、第一次输入之前。
 installHeldModifierReconciler()
+
+// 界面流畅度分档（Event Timing + Long Animation Frames，浏览器标准接口）：只在内存里记，发不发看用户同意的告知范围。
+startPerfCollector()
 
 // 预渲染钉死 color-scheme 属性（未手动选过时按本地时间「天黑自动暗」、之后用户存储），让
 // tailwind base 层的 [data-mantine-color-scheme="dark|light"] 选择器即刻命中，避免首帧主题闪烁。

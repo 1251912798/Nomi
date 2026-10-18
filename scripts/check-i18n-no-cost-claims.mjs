@@ -5,6 +5,13 @@
 // 以前这条扫描在 vitest 里，只在 Unit CI 跑，违例要上了 PR 才被拦；现在进 check:i18n，本地 gates / pre-push 都会跑到。
 // 匹配器不在这里写第二份：NO_COST_CLAIMS 来自 tests/ux/full-walk/outcomeText.mjs（走查监视器同一份）。
 // 例外键（NOT_MONEY / NON_MONEY_KEYS）也住在 outcomeText.mjs：本门岗按键豁免，走查监视器按同一批键从词典取值豁免——同一份事实只有一份。
+//
+// ⚠ 能力边界（2026-10-18 写明）：下面对「自由文本」的正则扫描是**启发式、尽力而为**，不承诺「哪里都没有金额」——
+// 正则证明不了「没有」，总能再找到绕法（V-mcp 三轮验收各找到一类）。已知**不覆盖**：罗马数字（Ⅻ）等本规则没列的数字类别、
+// 软连字符 U+00AD 等不可见字符、词中插入的其它符号、运行时插值（`Cost {{amount}}` 里 amount 在运行时才是 12）。
+// 「确认卡上费用一行绝不印出 0 / 任何数字」这件事靠**结构**保证，不靠这里的扫描：
+//   ① `runtime.capability.generationGateCost` 这一个键只认精确值（见 COST_LABEL_EXACT，在原文上逐字比较，不经规整）；
+//   ② 金额只从 `reservationMaximumForDisplay`（electron/capabilityCore/approvalReceipt.ts）出，测试里钉住并有源码扫描守卫。
 import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -22,11 +29,38 @@ export const ZERO_SPEND_CLAIMS = Object.freeze({
   'zh-CN': /(?:预算|已花费|已用|花费)\s*(?:为|[:：])?\s*[¥￥]?\s*0(?:\.00)?(?:\s*元)?/,
   en: /\b(?:budget|spent|spend|cost)\b[^\n]{0,16}\$\s*0(?:\.00)?\b/i,
 })
+/** 「费用 / Cost」后面跟数字或货币符号 = 把一个金额印成事实（含 0）。未知价那一行只许精确的「费用 / Cost」，带数字一律红。 */
+export const COST_NUMBER_CLAIMS = Object.freeze({
+  'zh-CN': /费用.{0,8}?(?:[\d$¥￥€£零〇一二三四五六七八九十百千万两]|元|块|美元|USD|CNY|RMB)/i,
+  en: /\bcost(?![a-z]).{0,8}?(?:[\d$¥￥€£]|\b(?:USD|CNY|RMB|yuan|dollars?)\b)/i,
+})
+
+/**
+ * 扫描前先把文本规整成一种写法，再套**所有**规则——门岗原先在原文上直接匹配，所以只要换一种写法
+ * （全角数字「１２」、换行 / 制表 / 不换行空格、零宽字符）就能绕过去（V-mcp 两轮验收各绕过一种）。
+ * NFKC：全角转半角、兼容字符归一；去零宽（U+200B–U+200D、U+2060、U+FEFF）；任何空白与换行压成一个空格。
+ * 白名单「整值精确等于」也在规整后比较。
+ */
+export function normalizeForScan(text) {
+  return String(text ?? '')
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 /** 正向花钱断言也禁止：界面不替用户断言已付费、会消耗额度或这一步的价格。 */
 export const POSITIVE_SPEND_CLAIMS = Object.freeze({
   'zh-CN': /已付费|付费(?:的任务|生成|确认|验证|模型|调用)|会花钱|花钱|消耗[^。\n]{0,8}额度|预计消耗|没有免费的|花不花钱|只花那一张的钱|会消耗(?:生成|模型)?额度|花费|费用|价格|计费|扣费|充值|金币|积分|预算/,
   en: /paid (?:task|generation|model|verification|confirmation|work)|payment|pricing|price|spend\w* (?:model )?credits?|uses? (?:model )?credits?|\bcredits?\b|\bquota\b|\bbudget\b|costing about|costs? anything|no free verification|maximum cost|\bfee\b|\bcharge\b|billing|top up|est\.? .*credits|about \$\d/i,
 })
+/**
+ * 未知价那一行的标签：确认卡的明细是「费用 / 未知」「Cost / Unknown」。只放行这个 key 的这两个**精确**值——
+ * 值换成别的（带数字、带断言）照样红，不放宽别的词条。
+ */
+export const COST_LABEL_EXACT = Object.freeze({
+  'runtime.capability.generationGateCost': Object.freeze({ 'zh-CN': '费用', en: 'Cost' }),
+})
+
 /** 设计实验室的样例串（fixture*）只在 devlab 里渲染，用户界面不出现。 */
 export const isFixture = (key) => /(^|\.)fixture[A-Z]/.test(key)
 
@@ -72,7 +106,7 @@ export function scanSourceStrings(sources, { notMoney = NOT_MONEY } = {}) {
     let match
     while ((match = re.exec(code))) {
       const value = match[2]
-      if (!SOURCE_MONEY_PATTERN.test(value)) continue
+      if (!SOURCE_MONEY_PATTERN.test(normalizeForScan(value))) continue
       if (/不对用户断言.*花不花钱|do not assert.*whether.*cost/i.test(value)) continue
       const registration = Object.entries(SOURCE_NOT_MONEY).find(([, pattern]) => pattern.test(value))
       const key = registration?.[0] ?? `${file}:${code.slice(0, code.lastIndexOf('\n', match.index) + 1).split('\n').length}`
@@ -92,8 +126,13 @@ export function scanDictionaries(dictionaries, { notMoney = NOT_MONEY } = {}) {
   const hits = []
   for (const locale of Object.keys(NO_COST_CLAIMS)) {
     for (const [key, value] of flatOf(dictionaries[locale] ?? {})) {
-      const visibleValue = value.replace(/\{\{[^}]+\}\}/g, '')
-      const patterns = [NO_COST_CLAIMS[locale], ADDITIONAL_SPEND_CLAIMS[locale], ZERO_SPEND_CLAIMS[locale], POSITIVE_SPEND_CLAIMS[locale]]
+      // 结构解：这个键只认精确值，**在原文上**逐字比较（不规整、不看正则）——带插值占位、罗马数字、软连字符、任何别的值都红。
+      if (Object.prototype.hasOwnProperty.call(COST_LABEL_EXACT, key)) {
+        if (value !== COST_LABEL_EXACT[key][locale]) hits.push({ locale, key, text: value.slice(0, 60) })
+        continue
+      }
+      const visibleValue = normalizeForScan(value.replace(/\{\{[^}]+\}\}/g, ''))
+      const patterns = [NO_COST_CLAIMS[locale], ADDITIONAL_SPEND_CLAIMS[locale], ZERO_SPEND_CLAIMS[locale], COST_NUMBER_CLAIMS[locale], POSITIVE_SPEND_CLAIMS[locale]]
       if (!patterns.some((pattern) => pattern.test(visibleValue))) continue
       if (isFixture(key) || hasNotMoneyReason(notMoney, key) || NON_MONEY_KEYS.includes(key)) continue
       hits.push({ locale, key, text: value.slice(0, 60) })
@@ -107,8 +146,8 @@ export function scanDictionaryKeys(keyDictionaries, { notMoney = NOT_MONEY } = {
   const hits = []
   for (const locale of Object.keys(NO_COST_CLAIMS)) {
     for (const [key, value] of flatOf(keyDictionaries[locale] ?? {})) {
-      const visibleValue = value.replace(/\{\{[^}]+\}\}/g, '')
-      const patterns = [NO_COST_CLAIMS[locale], ADDITIONAL_SPEND_CLAIMS[locale], ZERO_SPEND_CLAIMS[locale], POSITIVE_SPEND_CLAIMS[locale]]
+      const visibleValue = normalizeForScan(value.replace(/\{\{[^}]+\}\}/g, ''))
+      const patterns = [NO_COST_CLAIMS[locale], ADDITIONAL_SPEND_CLAIMS[locale], ZERO_SPEND_CLAIMS[locale], COST_NUMBER_CLAIMS[locale], POSITIVE_SPEND_CLAIMS[locale]]
       if (!patterns.some((pattern) => pattern.test(visibleValue))) continue
       if (isFixture(key) || hasNotMoneyReason(notMoney, key) || NON_MONEY_KEYS.includes(key)) continue
       hits.push({ locale, key, text: value.slice(0, 60), source: 'key' })

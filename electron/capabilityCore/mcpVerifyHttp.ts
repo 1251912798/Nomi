@@ -4,6 +4,7 @@
 // 一律不发请求（fail-closed）——否则有效 proof 会被送到任意地址。
 import { isStableLocalMcpUrl, type ConfiguredHttpEntry } from './mcpHostEntries'
 import { MCP_HTTP_CLIENT_HEADER, MCP_HTTP_CLIENT_PROOF_HEADER, MCP_VERIFY_PROBE_NAME } from './mcpHttpEndpoint'
+import { mcpHttpStartFailure } from './mcpHttpListenState'
 import { verifyMcpClient, type AuthenticatedMcpClient } from './security'
 import type { McpVerifyReason } from '../shared/mcpConnectionContract'
 
@@ -21,6 +22,9 @@ export async function verifyHttpEntry(client: AuthenticatedMcpClient, entry: Con
   if (verifyMcpClient(entry.headers[MCP_HTTP_CLIENT_HEADER], entry.headers[MCP_HTTP_CLIENT_PROOF_HEADER]) !== client) {
     return { ok: false, reason: 'client-auth-missing', detail: 'identity headers missing or invalid' }
   }
+  // 本进程的 HTTP 服务明确没起来（端口被占等）：配置和身份都对也没有服务可连——别去握手别的进程，如实说。
+  const notListening = mcpHttpStartFailure()
+  if (notListening) return { ok: false, reason: 'http-not-listening', detail: notListening }
   const started = Date.now()
   const { Client, StreamableHTTPClientTransport } = await import('@modelcontextprotocol/client')
   const transport = new StreamableHTTPClientTransport(new URL(entry.url), { requestInit: { headers: entry.headers, redirect: 'error' } })
@@ -32,6 +36,9 @@ export async function verifyHttpEntry(client: AuthenticatedMcpClient, entry: Con
   } catch (error) {
     return { ok: false, reason: 'handshake-failed', detail: (error instanceof Error ? error.message : String(error)).slice(0, 400) }
   } finally {
+    // 先让 Nomi 那边收掉这条会话（HTTP DELETE），再关本地：SDK 的 close() 只关本地传输，不通知服务端——
+    // 不这么做，每点一次「测试连接」就在服务端多留一条会话，攒满上限后会挤掉真实助手的工作会话（C-1）。
+    try { await transport.terminateSession() } catch { /* 结束不了就交给服务端的探针优先淘汰 */ }
     try { await probe.close() } catch { /* 关不掉不影响结论 */ }
   }
 }

@@ -20,6 +20,7 @@ const EXPECTED_STATE = {
   'privacy-02-exporting': 'exporting',
   'privacy-03-saved': 'saved',
   'privacy-04-failed': 'failed',
+  'privacy-05-scope-reask-en-dark': 'idle',
 }
 
 await walkDesignLabScreen({
@@ -37,6 +38,10 @@ await walkDesignLabScreen({
     if (!expected) {
       record(`${state.id} 没有在 EXPECTED_STATE 里认领自己停在哪个状态——补上它，别让这一格无人验证`)
       return
+    }
+    // 告知范围升级后的那一格：必须真的出现「确认新范围」那一块，否则这一格没证明任何事。
+    if (state.id === 'privacy-05-scope-reask-en-dark' && !(await page.locator('[data-telemetry-scope-notice]').count())) {
+      record(`${state.id} 里没有告知范围再确认那一块（桥没把 scopeVersion=1 送进组件）`)
     }
     const section = page.locator('[data-settings-section="diagnostics"]')
     if (!(await section.count())) {

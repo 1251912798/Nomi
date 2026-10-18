@@ -10,7 +10,7 @@ import { type McpGenerationCapability } from './mcpGenerationPolicy'
  * 或人证。所以下一步动作换成真正能照做的那一句。
  */
 const OPEN_PROJECT_SESSION_NEXT_ACTION = 'Open a new project session and retry'
-import type { HumanApprovalReceiptV1 } from './approvalReceipt'
+import { reservationMaximumForDisplay, type HumanApprovalReceiptV1 } from './approvalReceipt'
 import type { ProjectLeaseV2 } from './projectLease'
 import { spendDecisionByPolicy } from '../shared/agentCapabilities/directGenerationBrakes'
 import type { DispatchContext } from './dispatcher'
@@ -289,7 +289,7 @@ async function dispatchSemanticStub(
         expiresAt: challenge.challenge.expiresAt,
         model,
         costScope: challenge.challenge.costScope,
-        maximumCost: unknownShotCount > 0 && maximumCost === 0 ? null : challenge.challenge.reservationPreview.maximum,
+        maximumCost: reservationMaximumForDisplay(challenge.challenge.reservationPreview),
         ...(unknownShotCount > 0 ? { unknownShotCount } : {}),
         currency: challenge.challenge.reservationPreview.currency,
         handoff: {
