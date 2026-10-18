@@ -12,6 +12,7 @@ vi.mock('../workbench/api/modelCatalogApi', () => ({
 }))
 
 import { keepUsableModelRows, notifyModelOptionsRefresh, optionsAfterReadFailure, peekCatalogModelOptions, peekLastGoodModelOptions, preloadModelOptions } from './modelCatalogCache'
+import { deriveModelCatalogStatus } from './modelCatalogStatus'
 import { derivePublishedExecution } from '../../electron/shared/modelPublication'
 import type { ModelAvailability } from '../../electron/shared/modelAvailability'
 
@@ -233,6 +234,28 @@ describe('a failed catalog read never throws away the last good list', () => {
     mocks.listModels.mockResolvedValue([row('new')])
     await preloadModelOptions('image')
     expect(peekLastGoodModelOptions('image')?.map((option) => option.value)).toEqual(['new'])
+  })
+
+  it('a mode first served by the synchronous in-memory peek (no IPC) is also remembered: later read failure keeps it and says stale_kept', async () => {
+    // 桶里的行 + 供应商名是读成功得来的；另一个模式第一次被同步 peek 在内存里筛出来，没走 getCatalogModelOptions。
+    mocks.listModels.mockResolvedValue([row('both', ['text_to_image', 'image_edit'])])
+    await preloadModelOptions('image') // 只问 text_to_image：把 image 桶的行和供应商名读进内存
+    const editQueriesBefore = mocks.listModels.mock.calls.length
+    const peeked = peekCatalogModelOptions('image', 'image_edit')
+    expect(peeked?.map((option) => option.value)).toEqual(['both'])
+    expect(mocks.listModels.mock.calls.length).toBe(editQueriesBefore) // 同步取，零 IO
+
+    notifyModelOptionsRefresh()
+    mocks.listModels.mockRejectedValue(new Error('models:list exploded'))
+    const failure = await preloadModelOptions('image', 'image_edit').catch((error: Error) => error)
+    expect(failure).toBeInstanceOf(Error)
+
+    expect(peekCatalogModelOptions('image', 'image_edit')).toBeNull()
+    const kept = optionsAfterReadFailure([], 'image', 'image_edit')
+    expect(kept.map((option) => option.value)).toEqual(['both'])
+    const derived = deriveModelCatalogStatus({ kind: 'image', options: kept, health: null, error: failure as Error, loading: false })
+    expect(derived.status).toBe('stale_kept')
+    expect(derived.message).toContain('models:list exploded')
   })
 
   it('never read successfully + failing: nothing is invented, the empty state stays empty (the error carries the reason)', async () => {

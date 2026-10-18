@@ -3,7 +3,7 @@
   "approvedOn": "2026-10-12",
   "visualReview": "User confirmed final equal square icon frames and requested PR: ok 实现好了 提交pr上去",
   "stage": "built",
-  "sourceBoundary": "Production DOM excerpts from actual macOS development Electron; no second UI implementation. Existing declared-slot array/first/last/source add controls are retained and covered by AssetReference.test.ts, not all live model journeys.",
+  "sourceBoundary": "Production DOM excerpts from actual macOS development Electron; no second UI implementation. Existing declared-slot array/first/last/source add controls are retained and covered by AssetReference.test.ts, not all live model journeys. Same-row frame geometry (every dashed frame in the row shares top edge and height within 1px, zh/en, all generation modes) is guarded by tests/ux/reference-row-alignment.test.mjs.",
   "elements": [
     {
       "id": "agent.entry",
