@@ -102,3 +102,24 @@ describe('renderer generation gate card copy', () => {
     expect(formatGateExpiry('not a time', 'en')).toBe('not a time')
   })
 })
+
+// 结构解的渲染端一半：费用那一行只由收到的 maximumCost 决定——数字 → 币种 + 该数字；缺席 / null / 非有限数 → 「未知」，
+// 任何情况下都不会凭空出现别的数字（金额来源只有主进程的 reservationMaximumForDisplay，见 reservationAmountSingleExit.structure.test.ts）。
+describe('renderer generation gate: cost row only comes from maximumCost', () => {
+  const base = { challengeId: 'c', projectName: 'P', model: 'm', currency: 'CNY', unknownShotCount: 1 }
+  it.each([
+    { maximumCost: null, shown: 'unknown' },
+    { maximumCost: undefined, shown: 'unknown' },
+    { maximumCost: Number.NaN, shown: 'unknown' },
+    { maximumCost: Number.POSITIVE_INFINITY, shown: 'unknown' },
+    { maximumCost: 12, shown: 'CNY12' },
+    { maximumCost: 0, shown: 'CNY0' },
+  ])('maximumCost=$maximumCost → $shown', async ({ maximumCost, shown }) => {
+    await i18n.changeLanguage('zh-CN')
+    requestConfirm.mockReset().mockResolvedValue(false)
+    await handleCapabilityApply('generation.gate.confirm', { ...base, maximumCost })
+    const call = requestConfirm.mock.calls[0]![0] as { details: Array<{ label: string; value: string }> }
+    const row = call.details.find((d) => d.label === i18n.t('runtime.capability.generationGateCost'))
+    expect(row?.value).toBe(shown === 'unknown' ? i18n.t('runtime.capability.generationGateCostUnknown') : shown)
+  })
+})

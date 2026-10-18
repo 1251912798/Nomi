@@ -5,6 +5,13 @@
 // 以前这条扫描在 vitest 里，只在 Unit CI 跑，违例要上了 PR 才被拦；现在进 check:i18n，本地 gates / pre-push 都会跑到。
 // 匹配器不在这里写第二份：NO_COST_CLAIMS 来自 tests/ux/full-walk/outcomeText.mjs（走查监视器同一份）。
 // 例外键（NOT_MONEY / NON_MONEY_KEYS）也住在 outcomeText.mjs：本门岗按键豁免，走查监视器按同一批键从词典取值豁免——同一份事实只有一份。
+//
+// ⚠ 能力边界（2026-10-18 写明）：下面对「自由文本」的正则扫描是**启发式、尽力而为**，不承诺「哪里都没有金额」——
+// 正则证明不了「没有」，总能再找到绕法（V-mcp 三轮验收各找到一类）。已知**不覆盖**：罗马数字（Ⅻ）等本规则没列的数字类别、
+// 软连字符 U+00AD 等不可见字符、词中插入的其它符号、运行时插值（`Cost {{amount}}` 里 amount 在运行时才是 12）。
+// 「确认卡上费用一行绝不印出 0 / 任何数字」这件事靠**结构**保证，不靠这里的扫描：
+//   ① `runtime.capability.generationGateCost` 这一个键只认精确值（见 COST_LABEL_EXACT，在原文上逐字比较，不经规整）；
+//   ② 金额只从 `reservationMaximumForDisplay`（electron/capabilityCore/approvalReceipt.ts）出，测试里钉住并有源码扫描守卫。
 import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -53,7 +60,6 @@ export const POSITIVE_SPEND_CLAIMS = Object.freeze({
 export const COST_LABEL_EXACT = Object.freeze({
   'runtime.capability.generationGateCost': Object.freeze({ 'zh-CN': '费用', en: 'Cost' }),
 })
-const isAllowedCostLabel = (locale, key, value) => COST_LABEL_EXACT[key]?.[locale] === normalizeForScan(value)
 
 /** 设计实验室的样例串（fixture*）只在 devlab 里渲染，用户界面不出现。 */
 export const isFixture = (key) => /(^|\.)fixture[A-Z]/.test(key)
@@ -120,10 +126,15 @@ export function scanDictionaries(dictionaries, { notMoney = NOT_MONEY } = {}) {
   const hits = []
   for (const locale of Object.keys(NO_COST_CLAIMS)) {
     for (const [key, value] of flatOf(dictionaries[locale] ?? {})) {
+      // 结构解：这个键只认精确值，**在原文上**逐字比较（不规整、不看正则）——带插值占位、罗马数字、软连字符、任何别的值都红。
+      if (Object.prototype.hasOwnProperty.call(COST_LABEL_EXACT, key)) {
+        if (value !== COST_LABEL_EXACT[key][locale]) hits.push({ locale, key, text: value.slice(0, 60) })
+        continue
+      }
       const visibleValue = normalizeForScan(value.replace(/\{\{[^}]+\}\}/g, ''))
       const patterns = [NO_COST_CLAIMS[locale], ADDITIONAL_SPEND_CLAIMS[locale], ZERO_SPEND_CLAIMS[locale], COST_NUMBER_CLAIMS[locale], POSITIVE_SPEND_CLAIMS[locale]]
       if (!patterns.some((pattern) => pattern.test(visibleValue))) continue
-      if (isFixture(key) || hasNotMoneyReason(notMoney, key) || NON_MONEY_KEYS.includes(key) || isAllowedCostLabel(locale, key, value)) continue
+      if (isFixture(key) || hasNotMoneyReason(notMoney, key) || NON_MONEY_KEYS.includes(key)) continue
       hits.push({ locale, key, text: value.slice(0, 60) })
     }
   }
