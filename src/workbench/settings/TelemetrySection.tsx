@@ -57,7 +57,11 @@ export function TelemetrySection(): JSX.Element {
   return (
     <section className="mt-5 border-t border-nomi-line pt-4" data-settings-section="telemetry" data-telemetry-state={settings?.status || 'loading'}>
       <div className="mb-1.5 text-body-sm text-nomi-ink">{t('settings.general.telemetry.title')}</div>
-      <p className="mb-3 text-caption leading-relaxed text-nomi-ink-40">{t('settings.general.telemetry.description')}</p>
+      <p className="mb-1.5 text-caption leading-relaxed text-nomi-ink-40">{t('settings.general.telemetry.description')}</p>
+      <details className="mb-3 text-caption text-nomi-ink-40" data-telemetry-detail>
+        <summary className="cursor-pointer text-nomi-ink-60">{t('settings.general.telemetry.detailSummary')}</summary>
+        <p className="mt-1.5 leading-relaxed">{t('settings.general.telemetry.detail')}</p>
+      </details>
       <label className="flex min-h-9 items-center justify-between gap-3 rounded-nomi-sm bg-nomi-ink-05 px-3 py-2 cursor-pointer">
         <span className="min-w-0">
           <span className="block text-body-sm text-nomi-ink">{t('settings.general.telemetry.toggle')}</span>
