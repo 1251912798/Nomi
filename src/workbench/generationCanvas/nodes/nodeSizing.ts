@@ -4,6 +4,7 @@ import type { GenerationCanvasNode } from "../model/generationCanvasTypes";
 import { GENERATION_NODE_PLUGIN_BY_KIND } from "./registry";
 import { readNodeAspectRatio } from "./aspectRatio";
 import { isCardRenderKind, resolveNodeRenderKind } from "./resolveRenderKind";
+import { resultIdentity } from "../model/nodeResultLifecycle";
 import { readGroupPort } from "../model/groupPort";
 
 export type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
@@ -252,7 +253,16 @@ function isImageGridSplit(node: VisualMediaNode): boolean {
     return node.result?.type === "image" && typeof node.meta?.source === "string" && node.meta.source.startsWith("image-grid-split-");
 }
 
+/** A persisted document frame belongs to its raster version, never to a replacement result. */
+function readWhiteboardFrameScale(node: VisualMediaNode): number | null {
+    const scale = readFiniteNumber(node.meta?.whiteboardFrameScale);
+    if (!scale || (node.kind !== "whiteboard" && (!node.result || node.meta?.whiteboardResultIdentity !== resultIdentity(node.result)))) return null;
+    return scale;
+}
+
 export function getNodeResizeBounds(node: VisualMediaNode): NodeSizeBounds {
+    const frameScale = readWhiteboardFrameScale(node);
+    if (frameScale) return { minWidth: 64 * frameScale, minHeight: 64 * frameScale, maxWidth: 4096 * frameScale, maxHeight: 4096 * frameScale };
     const bounds = getNodeSizeBounds(node.kind);
     const ratio = readNodeMediaAspectRatio(node);
     if (!ratio || isCardRenderKind(resolveNodeRenderKind(node))) return bounds;
@@ -351,6 +361,10 @@ export function resolveNodeVisualSize(
         };
     }
     const size = node.size || DEFAULT_VISUAL_SIZE;
+    if (readWhiteboardFrameScale(node)) {
+        const frameBounds = getNodeResizeBounds(node);
+        return { width: clampNumber(size.width, frameBounds.minWidth, frameBounds.maxWidth), height: clampNumber(size.height, frameBounds.minHeight, frameBounds.maxHeight) };
+    }
     if (node.kind === "clip") {
         const bounds = getNodeSizeBounds("clip");
         return {

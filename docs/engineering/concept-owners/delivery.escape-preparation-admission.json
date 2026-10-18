@@ -1,0 +1,32 @@
+{
+  "name": "用户逃逸修复的推送准备与合入结账",
+  "subject": "delivery.escape-preparation-admission",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/pr-body-criteria.mjs",
+    "symbol": "checkEscapeContract"
+  },
+  "write_api": [
+    {
+      "path": "scripts/pr-body-criteria.mjs",
+      "symbol": "checkEscapeContract"
+    },
+    {
+      "path": "scripts/pr-body-criteria.mjs",
+      "symbol": "reviewedContracts"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "scripts/pr-judgement-lib.node-test.mjs",
+  "allowed_consumers": [
+    "scripts/check-pr-judgement.mjs",
+    "scripts/merge-preflight.mjs",
+    "scripts/pr-body-criteria.mjs"
+  ],
+  "since": "2026-10-12",
+  "notes": "只在显式本地 push 对新增用户合同允许已验证 reviewed 证据警告：改动中的 committed 条目、真实提交、根因与类检查必须匹配；沿用 escape-ledger validators。CI/merge 默认严格，不放宽 fixedInPr 或其他门岗；同一 evaluatePrBody 传阶段，无本地副本。"
+}

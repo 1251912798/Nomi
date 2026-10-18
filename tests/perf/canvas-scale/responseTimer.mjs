@@ -55,6 +55,17 @@ const INSTALL_SOURCE = `(() => {
       return Boolean(box) && [...box.querySelectorAll('[data-storyboard-row]')]
         .some((element) => element.getClientRects().length > 0 && Boolean(element.querySelector('[data-prompt-box] [contenteditable="true"]')))
     },
+    // 内联画板能操作：编辑器挂上、画布在、初始图导入完（「导入图片」钮从禁用变可用）。
+    whiteboardEditorReady() {
+      const editor = document.querySelector('[data-nomi-inline-whiteboard="true"]')
+      const importButton = editor ? editor.querySelector('[data-toolbar-action="whiteboard-importImage"]') : null
+      return visible(editor) && Boolean(editor.querySelector('canvas')) && Boolean(importButton) && !importButton.disabled
+    },
+    // 内联画板打字：工具条里的文字框已经是 value（同一帧里画布按它重排，量到的是输入 → 画面的整段）。
+    whiteboardTextValue({ label, value }) {
+      const input = document.querySelector('[data-nomi-inline-whiteboard="true"] [role="toolbar"] input[aria-label="' + CSS.escape(label) + '"]')
+      return Boolean(input) && input.value === value
+    },
     // 切文稿：顶栏文稿切换钮写着目标标题，编辑器里是那份文稿的正文（marker 是正文里的标记句）。
     documentShown({ title, marker }) {
       const switcher = document.querySelector('[data-creation-document-switcher]')

@@ -1,9 +1,14 @@
+import { resultIdentity } from '../../model/nodeResultLifecycle'
+import { captureSceneTransforms, restoreSceneTransforms } from './whiteboardCanvasTypes'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import type { WhiteboardState } from './whiteboardTypes'
 import { ASPECT_RATIOS, getCanvasDimensions, getDefaultLayers, type AspectRatioKey, type CanvasAsset } from './lib/canvas'
 
 export function createDefaultWhiteboardState(ratio: AspectRatioKey = '16:9'): WhiteboardState {
   return {
+    texts: [],
+    sceneTransforms: { offsets: {}, assetTransforms: {}, flips: {} },
+    canvasDimensions: getCanvasDimensions(ratio, 1280),
     strokes: [],
     canvasAssets: [],
     layers: getDefaultLayers(),
@@ -22,12 +27,28 @@ export function readWhiteboardState(node: Pick<GenerationCanvasNode, 'meta'>): W
   const record = value as Partial<WhiteboardState>
   if (!Array.isArray(record.strokes) || !Array.isArray(record.canvasAssets) || !Array.isArray(record.layers)) return undefined
   return {
+    texts: Array.isArray(record.texts) ? record.texts.map((text) => ({ ...text })) : [],
+    sceneTransforms: cloneTransforms(record.sceneTransforms),
+    canvasDimensions: validDimensions(record.canvasDimensions) ? { ...record.canvasDimensions } : getCanvasDimensions(isAspectRatioKey(record.activeRatio) ? record.activeRatio : '16:9', 1280),
     strokes: record.strokes,
     canvasAssets: record.canvasAssets,
     layers: record.layers,
     activeLayerId: typeof record.activeLayerId === 'string' && record.activeLayerId ? record.activeLayerId : 'drawing-layer-1',
     activeRatio: isAspectRatioKey(record.activeRatio) ? record.activeRatio : '16:9',
   }
+}
+
+/** The result version a saved draft belongs to; a board that has no result yet is keyed by its node. */
+export function whiteboardDraftIdentity(node: GenerationCanvasNode): string {
+  return node.result ? resultIdentity(node.result) : `board:${node.id}`
+}
+
+export function readWhiteboardEditingState(node: GenerationCanvasNode) {
+  if (node.kind === 'whiteboard') return readWhiteboardState(node)
+  const identity = node.result ? resultIdentity(node.result) : null
+  if (!identity || !node.meta?.whiteboardResultIdentity || node.meta.whiteboardResultIdentity === identity) return readWhiteboardState(node)
+  const raw = node.result?.raw
+  return raw && typeof raw === 'object' ? readWhiteboardState({ meta: { whiteboardState: (raw as Record<string, unknown>).whiteboardState } }) : undefined
 }
 
 export function inferWhiteboardAspectRatio(width: unknown, height: unknown): AspectRatioKey {
@@ -66,9 +87,10 @@ export function createImageAssetForCanvas(input: {
   url: string
   name?: string
   ratio: AspectRatioKey
+  dimensions?: { width: number; height: number }
   imageSize?: { width: number; height: number } | null
 }): { asset: CanvasAsset; layer: ReturnType<typeof getDefaultLayers>[number] } {
-  const dimensions = getCanvasDimensions(input.ratio, 1280)
+  const dimensions = input.dimensions ?? getCanvasDimensions(input.ratio, 1280)
   const sourceWidth = input.imageSize?.width || dimensions.width
   const sourceHeight = input.imageSize?.height || dimensions.height
   const scale = Math.min(dimensions.width / sourceWidth, dimensions.height / sourceHeight)
@@ -108,6 +130,9 @@ export function createWhiteboardId(prefix: string): string {
 
 export function serializeWhiteboardState(state: WhiteboardState): WhiteboardState {
   return {
+    texts: (state.texts ?? []).map((text) => ({ ...text })),
+    sceneTransforms: cloneTransforms(state.sceneTransforms),
+    ...(validDimensions(state.canvasDimensions) ? { canvasDimensions: { ...state.canvasDimensions } } : {}),
     strokes: state.strokes.map((stroke) => ({
       ...stroke,
       ...(stroke.points ? { points: stroke.points.map((point) => [...point] as typeof point) } : {}),
@@ -117,4 +142,21 @@ export function serializeWhiteboardState(state: WhiteboardState): WhiteboardStat
     activeLayerId: state.activeLayerId,
     activeRatio: state.activeRatio,
   }
+}
+
+function cloneTransforms(value: WhiteboardState['sceneTransforms']) {
+  const maps = restoreSceneTransforms(value)
+  return captureSceneTransforms(maps.offsets, maps.assetTransforms, maps.flips)
+}
+
+function validDimensions(value: WhiteboardState['canvasDimensions']): value is NonNullable<WhiteboardState['canvasDimensions']> {
+  return Boolean(value && Number.isFinite(value.width) && Number.isFinite(value.height) && value.width > 0 && value.height > 0)
+}
+
+/** Read only source URLs for garbage collection, without cloning a potentially large drawing. */
+export function readWhiteboardAssetUrls(value: unknown): string[] {
+  if (!value || typeof value !== 'object') return []
+  const assets = (value as Record<string, unknown>).canvasAssets
+  if (!Array.isArray(assets)) return []
+  return assets.flatMap(asset => asset && typeof asset === 'object' && typeof asset.url === 'string' ? [asset.url] : [])
 }

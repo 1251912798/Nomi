@@ -1,5 +1,6 @@
 import React, { type JSX } from 'react'
 import { createPortal } from 'react-dom'
+import { autoUpdate } from '@floating-ui/dom'
 import { FocusScope } from '@radix-ui/react-focus-scope'
 import { NOMI_OVERLAY_Z_INDEX, hasOpenDialogAbove, hasOpenPopupAbove, isInsidePopupAbove } from './overlayLayers'
 import { resolveAnchoredPopoverPlacement, type AnchoredPopoverAlign, type AnchoredPopoverSide } from './anchoredPopoverPlacement'
@@ -73,6 +74,8 @@ export type AnchoredPopoverProps = {
    * 只管放哪儿；「点在锚点上不算点外面」仍按 `anchorRef`。
    */
   anchorRect?: () => DOMRect
+  /** Optional workspace collision bounds; the caller owns reserved docks, placement stays shared. */
+  boundaryRect?: (size: { width: number; height: number }) => DOMRect
   /** 相对锚点的横向对齐。 */
   align?: AnchoredPopoverAlign
   /** 先往哪边放（默认下方；放不下自动翻边）。 */
@@ -104,6 +107,7 @@ function naturalContentHeight(pop: HTMLElement | null): number {
 export function AnchoredPopover({
   anchorRef,
   anchorRect,
+  boundaryRect,
   align = 'start',
   side = 'bottom',
   gap = 4,
@@ -122,21 +126,24 @@ export function AnchoredPopover({
   const managesFocus = Boolean(onClose) && !passThrough
 
   // 调用方常写成内联函数：放进 ref，身份变了不重建 reposition（否则每次渲染都重算 → setState → 再渲染）。
+  const boundaryRectRef = React.useRef(boundaryRect)
+  React.useLayoutEffect(() => { boundaryRectRef.current = boundaryRect })
   const anchorRectRef = React.useRef(anchorRect)
   React.useLayoutEffect(() => { anchorRectRef.current = anchorRect })
   const reposition = React.useCallback(() => {
     const anchor = anchorRef?.current ?? fallbackAnchorRef.current
     const pop = popRef.current
     if (!anchor || !anchor.isConnected) return
+    const size = { width: pop?.offsetWidth || 300, height: naturalContentHeight(pop) || 360 }
     setPlacement(resolveAnchoredPopoverPlacement(
       anchorRectRef.current ? anchorRectRef.current() : anchor.getBoundingClientRect(),
       // 高度量内容的自然高：被 maxHeight 收过的外壳高度会让下一次判成「放得下」，来回抖；
       // 也不能用外壳的 scrollHeight——浮层里自己挂出来的下拉（NomiSelect 的 portalTarget 指回浮层）是绝对定位的，
       // 会把 scrollHeight 撑高，于是一打开子下拉就误判成「放不下」、收高度滚动，子下拉被裁掉（composerLifecycle 那条）。
-      { width: pop?.offsetWidth || 300, height: naturalContentHeight(pop) || 360 },
+      size,
       align,
       gap,
-      { width: window.innerWidth, height: window.innerHeight },
+      boundaryRectRef.current?.(size) ?? { width: window.innerWidth, height: window.innerHeight },
       side,
     ))
   }, [align, anchorRef, gap, side])
@@ -144,21 +151,17 @@ export function AnchoredPopover({
   // 两段式：先按估计尺寸放一次，渲染后按实测尺寸修正（修正前 visibility:hidden，不闪）。
   React.useLayoutEffect(reposition, [reposition])
 
-  // 锚点会动：时间轴横向滚动、面板拖宽、窗口缩放。跟着重算，别让浮层停在原地指着空气。
-  // 浮层自己也会变高（转场选择器换成「硬切」就少一行时长）——向上翻转时高度是位置的输入，
-  // 不跟着重算就会把长高的那一截顶出视口，于是又变回「露不全」。
+  // One framework watcher owns scroll, ancestor/element resize and anchor layout shifts. The last one is an
+  // IntersectionObserver on the anchor, so it also sees an anchor moved by a transform (canvas zoom / pan / node
+  // move) that changed no layout. Do not add `animationFrame`: it reads the anchor rect on every frame for as long
+  // as the popover is open, moving or not (measured 165 rect reads/s and ~2% of the main thread while idle; the
+  // dynamic-anchor walk follows equally well without it). autoUpdate tears everything down on close.
   React.useEffect(() => {
-    const onMove = () => reposition()
-    window.addEventListener('resize', onMove)
-    window.addEventListener('scroll', onMove, true)
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onMove)
-    if (observer && popRef.current) observer.observe(popRef.current)
-    return () => {
-      window.removeEventListener('resize', onMove)
-      window.removeEventListener('scroll', onMove, true)
-      observer?.disconnect()
-    }
-  }, [reposition])
+    const anchor = anchorRef?.current ?? fallbackAnchorRef.current
+    const pop = popRef.current
+    if (!anchor || !pop) return undefined
+    return autoUpdate(anchor, pop, reposition)
+  }, [anchorRef, reposition])
 
   const dismissOnEscape = React.useCallback((event: KeyboardEvent) => {
     if (!onClose || event.key !== 'Escape') return false

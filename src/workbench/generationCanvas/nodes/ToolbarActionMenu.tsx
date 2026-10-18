@@ -1,6 +1,7 @@
 import React, { type JSX } from 'react'
 import { IconChevronDown } from '@tabler/icons-react'
 import { AnchoredPopover } from '../../../design'
+import type { AnchoredPopoverProps } from '../../../design/AnchoredPopover'
 import { WorkbenchMenu, type WorkbenchMenuAnchorRect, type WorkbenchMenuNode } from '../../../design/menu'
 import { cn } from '../../../utils/cn'
 import { ToolbarButton } from './NodeFloatingToolbar'
@@ -81,6 +82,10 @@ function toolbarMenuAnchorRect(zone: HTMLElement): DOMRect {
 }
 
 const toMenuRect = (rect: DOMRect): WorkbenchMenuAnchorRect => ({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
+
+export function ToolbarActionPanel(props: AnchoredPopoverProps): JSX.Element {
+  return <AnchoredPopover {...props} />
+}
 
 export function ToolbarActionMenu(props: ToolbarActionMenuProps): JSX.Element {
   const { id, icon, label, menuLabel, disabled, iconOnly, primary } = props
@@ -166,9 +171,9 @@ export function ToolbarActionMenu(props: ToolbarActionMenuProps): JSX.Element {
       ) : trigger}
       {props.panel ? (
         open ? (
-          <AnchoredPopover anchorRef={primary ? groupRef : triggerRef} anchorRect={panelAnchorRect} side="top" gap={GAP} onClose={close}>
+          <ToolbarActionPanel anchorRef={primary ? groupRef : triggerRef} anchorRect={panelAnchorRect} side="top" gap={GAP} onClose={close}>
             <div data-testid={contentTestId}>{props.panel(close)}</div>
-          </AnchoredPopover>
+          </ToolbarActionPanel>
         ) : null
       ) : (
         <WorkbenchMenu

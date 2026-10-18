@@ -1,3 +1,4 @@
+import { useWhiteboardSession } from '../nodes/whiteboard/whiteboardSession'
 import { isCardRenderKind, resolveNodeRenderKind } from '../nodes/resolveRenderKind'
 import React, { type JSX } from 'react'
 import {
@@ -184,7 +185,8 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
   const NodeComponent = getGenerationNodeComponentForNode(node)
   const size = resolveNodeVisualSize(node)
   const bounds = getNodeResizeBounds(node)
-  const keepMediaAspect = Boolean(readNodeMediaAspectRatio(node)) && !isCardRenderKind(resolveNodeRenderKind(node))
+  const whiteboardOpen = useWhiteboardSession(state => state.nodeId === node.id)
+  const keepMediaAspect = !whiteboardOpen && Boolean(readNodeMediaAspectRatio(node)) && !isCardRenderKind(resolveNodeRenderKind(node))
   const updateNode = useGenerationCanvasStore((state) => state.updateNode)
   const captureHistory = useGenerationCanvasStore((state) => state.captureHistory)
   const commitPersistedChange = useGenerationCanvasStore((state) => state.commitPersistedChange)

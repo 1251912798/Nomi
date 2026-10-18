@@ -1,0 +1,47 @@
+{
+  "name": "画板可编辑文档（对象、尺寸、变换的持久化表示）",
+  "subject": "canvas.whiteboard-document",
+  "lifecycle": "project-data",
+  "authority_kind": "writer",
+  "trust_domain": "renderer",
+  "fact_kind": "durable",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+    "symbol": "serializeWhiteboardState"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "symbol": "serializeWhiteboardState"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "symbol": "createDefaultWhiteboardState"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasTypes.ts",
+      "symbol": "captureSceneTransforms"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasTypes.ts",
+      "symbol": "restoreSceneTransforms"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "symbol": "readWhiteboardEditingState"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardDocument.test.ts",
+  "allowed_consumers": [
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/NodeInlineWhiteboardHost.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardStateOps.ts",
+    "src/workbench/assets/assetResultDeletion.ts"
+  ],
+  "since": "2026-10-12",
+  "notes": "所有图片/独立画板、历史快照和草稿复用同一份 WhiteboardState；serializeWhiteboardState 去除临时 File 并复制可变集合。capture/restore 只在 whiteboardCanvasTypes.ts 定义，统一转换 offsets、assetTransforms、flips，禁止在保存调用者另抄引擎映射。旧数据由 readWhiteboardState 补空字段。此登记说明实际单一代码 owner，不代表真实 Electron 功能已验收。 readWhiteboardAssetUrls 为资产存活判据读取当前草稿/历史快照 URL，不复制大文档，不另造白板删除策略。 readWhiteboardEditingState 归 whiteboardState owner，按当前结果 identity 读取草稿或 raw 历史文档；节点 host 只消费。"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "FB-20261012-inline-whiteboard-popup-overlap",
+  "since": "2026-10-12",
+  "source": "2026-10-12 当前任务用户截图，由协调会话转交独立审查线；以下为截图现象和复核机制描述，不冒充用户逐字原话。",
+  "category": "interaction-semantics",
+  "problem": "画板尺寸浮层打开时调整画板尺寸，画板及工具栏移动，浮层停在旧位置并盖住工具栏操作。此前真实截图/DOM可见性检查没有动态锚点变化与命中可达断言。",
+  "existingInvariants": [],
+  "ironLaws": [
+    "⑫"
+  ],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "协调会话按用户截图复核：AnchoredPopover 只监听自身 resize 和 scroll，没有覆盖 anchor 位置变化。",
+    "9291455b57：共享 watcher 改用 @floating-ui/dom autoUpdate，删除原手写 watcher；共享 popup placement + workspaceBottomDocks 管高画板和靠边浮层避让。",
+    "2026-10-17 a7cdc4664：删掉 autoUpdate 的 animationFrame 逐帧轮询与 trackTransforms 属性。实测面板开着不动：每秒读矩形 165 次 → 0，主线程忙碌 2.2–2.6% → 0.2%；画布滚轮缩放时面板偏离锚点的帧数两种实现都是 12/~230（tests/ux/whiteboard-perf.probe.mjs moving-panel，登记为 inline-whiteboard-moving-panel）。",
+    "2026-10-17 四轨真实 Electron（zh/en × 亮/暗，tests/ux/whiteboard-refactor.walk.mjs）各 51 checks 全过，含 width / height / 滚轮 七组动态锚点的居中、不盖 bar、不交 dock、elementFromPoint 可达断言，另有轮询版与无轮询版各一轮对照；截图本线逐张读过。",
+    "src/design/anchoredPopoverPlacement.test.ts：共享放置纯函数反例（offset stage、tall dock、near-left wide panel）。",
+    "结构性预防：src/design/popoverTracking.structure.test.ts（已登记 pre-push-scan-guards）——animationFrame 选项、第二个 autoUpdate 入口、trackTransforms 开关任一回来就红。"
+  ],
+  "completionCommits": [
+    "9291455b57",
+    "a7cdc4664"
+  ],
+  "rootCauseContract": "docs/fixes/2026-10-12-inline-whiteboard.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "tests/ux/whiteboard-refactor.walk.mjs"
+  },
+  "fixedInPr": 1189
+}
