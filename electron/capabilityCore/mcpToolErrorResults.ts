@@ -1,12 +1,13 @@
 import type { ResultLocale } from './mcpToolResults'
 import { CAPABILITY_TRANSPORT_PUBLIC_ERROR_CODES } from '../shared/surfacePortBinding'
 import { INTEGRATION_ERROR_CODES } from '../shared/integrationContract'
+import { ADMISSION_REJECTION_HINTS } from '../shared/admissionRejectionHints'
 
 type Ctx = { locale: ResultLocale }
 const L = (ctx: Ctx, zh: string, en: string): string => (ctx.locale === 'en' ? en : zh)
 
 /** A6 已知错误码 → 人话原因 + 恢复动作（只登记确证的码，不编造；未知码原样透传）。 */
-const ERROR_HINT: Record<string, { zh: string; en: string; recover: Array<{ zh: string; en: string }> }> = {
+const ERROR_HINT: Record<string, { zh: string; en: string; recover: ReadonlyArray<{ zh: string; en: string }> }> = {
   node_not_found: {
     zh: '目标画布节点已不存在或不在当前项目',
     en: 'The target canvas node is missing from the current project',
@@ -27,36 +28,7 @@ const ERROR_HINT: Record<string, { zh: string; en: string; recover: Array<{ zh: 
   // allowedVariantIds）——它们是键名与取值，语言中立；这里只出人话那一半，zh/en 两版。
   // MCP 2026-07-28：input validation error 归 tool execution error，客户端 SHOULD 交给模型自纠，
   // 而能自纠的前提正是这两半都到得了模型眼前。
-  unknown_parameter: {
-    zh: '这个模型不接受你写的那个参数键',
-    en: 'This model does not accept the parameter key you sent',
-    recover: [{ zh: '改用 allowedKeys 里的键（有 closestKey 就用它）后重试', en: 'Retry using a key from allowedKeys (prefer closestKey when present)' }],
-  },
-  parameter_type_mismatch: {
-    zh: '参数类型不对',
-    en: 'The parameter value has the wrong type',
-    recover: [{ zh: '按 expectedType 改写该参数的值后重试', en: 'Rewrite the value to match expectedType, then retry' }],
-  },
-  parameter_not_in_enum: {
-    zh: '参数取值不在这个模型的合法取值里',
-    en: 'The parameter value is not one this model allows',
-    recover: [{ zh: '从 allowedValues 里挑一个后重试', en: 'Pick one of allowedValues, then retry' }],
-  },
-  parameter_out_of_range: {
-    zh: '参数取值超出这个模型声明的范围',
-    en: 'The parameter value is outside the range this model declares',
-    recover: [{ zh: '取 min 与 max 之间的值后重试', en: 'Use a value between min and max, then retry' }],
-  },
-  missing_required_parameter: {
-    zh: '缺少这个模型的必填参数',
-    en: 'A parameter this model requires is missing',
-    recover: [{ zh: '补上 at 指出的那个参数后重试', en: 'Supply the parameter named in `at`, then retry' }],
-  },
-  unknown_variant: {
-    zh: '这个变体不属于该模型',
-    en: 'That variant does not belong to this model',
-    recover: [{ zh: '从 allowedVariantIds 里挑一个；为空表示该模型没有变体，别传 variantId', en: 'Pick one of allowedVariantIds; empty means this model has no variants, so omit variantId' }],
-  },
+  ...ADMISSION_REJECTION_HINTS,
   contract_invalid: {
     zh: '这份生成计划过不了准入校验',
     en: 'This generation plan failed admission validation',

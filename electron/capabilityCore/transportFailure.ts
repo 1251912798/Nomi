@@ -31,6 +31,7 @@
 //   · 其它任何异常（TypeError、供应商抛的、上游库抛的）→ 只给码，一个字的正文都不带。
 // 判据不是「看起来像不像内部信息」，是**谁写的这句话**——后者有单一答案，前者没有。
 import type { RuntimeToolDecision } from "../shared/agentCapabilities/transportContracts";
+import { GENERATION_INPUT_INVALID_CODE } from "../shared/admissionRejectionHints";
 
 export type TransportFailure = Extract<RuntimeToolDecision, { ok: false }>;
 
@@ -62,6 +63,8 @@ export type SafeTransportFailureOptions = Readonly<{
   classify?: (error: unknown) => string | undefined;
   /** 我们自己 schema 产生的逐字段理由（**字段名**，不是收到的值）。 */
   detail?: (error: unknown) => string | undefined;
+  /** 准入层拒绝的具体码（`ParameterRejectionCode`）：`code` 是放行表里的粗码，这一格才说清哪一种。 */
+  admission?: (error: unknown) => string | undefined;
   /** 结构化 reason（媒体导入那一族）。 */
   reason?: (error: unknown) => TransportFailure["reason"] | undefined;
   /** 本路对**落到兜底码**这件事的留痕（兜底盖住的也可能是我们自己的缺陷）。 */
@@ -94,7 +97,8 @@ export function safeTransportFailure(error: unknown, options: SafeTransportFailu
     : detail && detail.trim() ? `${code} — ${detail.trim()}`
       : code;
   const reason = options.reason?.(error);
-  return { ok: false, code, message, ...(reason ? { reason } : {}) };
+  const admission = options.admission?.(error);
+  return { ok: false, code, message, ...(reason ? { reason } : {}), ...(admission ? { admission } : {}) };
 }
 
 /**
@@ -104,4 +108,4 @@ export function safeTransportFailure(error: unknown, options: SafeTransportFailu
  * **有意**抛出的拒绝：一次 `refuseToModel(GENERATION_ARGUMENT_REFUSAL, "…")` 写清「哪个字段不行、
  * 该改成什么」，模型读到的就是那句话，而不是兜底的「提交结果可能未知」。
  */
-export const GENERATION_ARGUMENT_REFUSAL = "generation_input_invalid";
+export const GENERATION_ARGUMENT_REFUSAL = GENERATION_INPUT_INVALID_CODE;

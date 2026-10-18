@@ -94,3 +94,24 @@
 | 付费卡上改参数 | `revisePendingSpend` → `normalizePatch` = `resolvePlanPatch` | 是（原本就判） |
 | 画布节点自己生成 | 画布执行器（引擎 A），不经草稿 | 不适用（`freezeCanvasExecutionContract` 冻的是画布已拼好的请求） |
 | 文稿方案改一镜（`storyboard.patch-design`） | `patchStoryboardAuthoring` → 渲染端分镜表 | 不适用：这类草稿的 gate_request 被拒（「用原来的分镜确认」），生成走分镜 / 画布执行器，不经 `compileParameters` |
+
+## 四、第二次验收不过（同一 PR）：起草拒对了，Agent 却改不回来
+
+真付费第二次：大脑写 `parameters.variant: "fast"`，起草校验正确地拒了（「不接受参数 variant」），但工具结果的 `Next` 是 lane 对**所有**失败通用的那句
+「Read the current project state … Do not repeat an unknown paid submission」，Agent 照着停下，面板出「这一步没做成」报错卡。
+
+**类根因**：失败指引没有按码分。那句通用话是给「提交状态不明」那一类写的；起草阶段的拒绝什么都没发出去，却吃了同一句。对外 MCP 早就按码给恢复动作
+（`mcpToolErrorResults`），lane 这边一直是通用句——两个出口各写各的，lane 那边没人对「Agent 收到拒绝后能不能改对」负责。
+还有一个结构缺口：`list_models` 把变体投给了模型，`draft_shots` 每一镜却没有地方写（`variantId`），模型只好塞进 parameters。
+
+**补法**（强弱依次：结构上做不出来 > 门岗自动拦 > 文字）：
+1. 指引表只有一份：`electron/shared/admissionRejectionHints.ts`。MCP 的恢复动作与 lane 的 `Next:` 读同一张；参数类拒绝一律说「什么都没提交、没扣钱，按说明改参数再调同一个工具」。
+   只有「提交状态不明」的码保留「不要重复提交」；认不出的码仍 fail-closed。传输层把具体拒绝码（`admission`）随失败带出去，lane 据它选下一步。
+2. 放错位置的字段：`electron/shared/draftFieldAliases.ts` 一张通用对照表（variant→variantId、model→modelId、mode→modeId……），
+   `compileParameters` 的 unknown_parameter 在「键是起草顶层字段名、且该模型参数表里没有它」时直说「放到 draft 的 X 字段」，variantId 还列出目录里真实的变体词。
+   表里每个目标字段由单测核「在 draft schema 里真实存在」。
+3. `draft_shots` 每一镜新增 `variantId`（模型面）并按宿主既有的 `variantId` 落位；schema 体积预算按看得见的方式记账（+19）。
+4. 自纠闭环测试：脚本化模型只读工具结果文本改草稿再交，五类毛病（塞 variant / 写 null / 数字写字符串 / 多一个未知键 / variantId 写错）都要走到付费卡；
+   免费演练夹具大脑第一回合写 `variant:'fast'` + `seed:null`，读到指路后改成 `variantId` 再交，读不到指路就停下。
+
+验收清单追加：**8. Agent 能当场自纠**（上面第 4 条）。

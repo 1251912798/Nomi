@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import type { ResolvedModule } from "./moduleRegistry";
 import type { ParameterField } from "./moduleManifest";
 import { generationPlanningHintType } from "./generationPlanningParameters";
+import { draftFieldForMisplacedParameter } from "../shared/draftFieldAliases";
 import { hasMentions, numberPromptReferences, projectPromptForSend } from "../shared/storyboard/promptMentions";
 
 export const EXECUTION_CONTRACT_SCHEMA_VERSION = 1 as const;
@@ -67,6 +68,8 @@ export type ParameterRejection = {
   max?: number;
   /** 该模型声明过的变体 id；空数组 = 这个模型没有变体，不是「随便填」。 */
   allowedVariantIds?: string[];
+  /** 写错位置的字段：这个键其实是起草（draft）的顶层字段，该放到那个字段（`draftFieldAliases.ts`）。 */
+  useField?: string;
 };
 
 export type ExecutionContractV1 = {
@@ -106,6 +109,7 @@ function rejectionDetails(rejection: ParameterRejection): Record<string, string 
     ...(rejection.min !== undefined ? { min: rejection.min } : {}),
     ...(rejection.max !== undefined ? { max: rejection.max } : {}),
     ...(rejection.allowedVariantIds ? { allowedVariantIds: rejection.allowedVariantIds.join(",") || "(none)" } : {}),
+    ...(rejection.useField ? { useField: rejection.useField } : {}),
   };
 }
 
@@ -227,7 +231,7 @@ export { GENERATION_PLANNING_HINTS, GENERATION_PLANNING_HINT_KEYS } from "./gene
  * 外部宿主猜错一个键名，计划照样成功，用户拿到的是按默认值跑出来的片子。
  * 现在五种填错方式一律当场拒，并在 `ParameterRejection` 里带上模型下一次写对所需的全部事实。
  */
-function compileParameters(candidate: PlanCandidate, module: ResolvedModule): { parameters: Record<string, unknown>; warnings: string[] } {
+function compileParameters(candidate: PlanCandidate, module: ResolvedModule, allowedVariantIds?: readonly string[]): { parameters: Record<string, unknown>; warnings: string[] } {
   const parameters: Record<string, unknown> = {};
   const warnings: string[] = [];
   const allowedKeys = Object.keys(module.parameterSchema).sort();
@@ -267,11 +271,19 @@ function compileParameters(candidate: PlanCandidate, module: ResolvedModule): { 
     }
     if (!field) {
       const closestKey = closestParameterKey(key, allowedKeys);
+      // 键认得出是起草的顶层字段（variant → variantId……），而这个模型的参数表里本来没有它：直说它的家在哪，
+      // variantId 还把这个模型真实的变体词列出来。
+      const useField = draftFieldForMisplacedParameter(key);
+      const variants = useField === "variantId" && allowedVariantIds ? [...allowedVariantIds] : undefined;
       throw new ContractCompilationError(
         `${model} 不接受参数 ${key}。`
-        + (closestKey ? `最接近的合法键是 ${closestKey}。` : "")
+        + (useField
+          ? `${key} 不是这个模型的参数，是起草（draft）的顶层字段：请放到 draft 的 ${useField} 字段，不要放进 parameters。`
+            + (variants ? `该模型的变体：${variants.length ? variants.join("、") : "（这个模型没有变体，不用传 variantId）"}。` : "")
+          : "")
+        + (!useField && closestKey ? `最接近的合法键是 ${closestKey}。` : "")
         + `该模型此刻接受的参数键：${allowedKeys.length ? allowedKeys.join("、") : "（无）"}。`,
-        { code: "unknown_parameter", path: `parameters.${key}`, allowedKeys, ...(closestKey ? { closestKey } : {}) },
+        { code: "unknown_parameter", path: `parameters.${key}`, allowedKeys, ...(closestKey && !useField ? { closestKey } : {}), ...(useField ? { useField } : {}), ...(variants ? { allowedVariantIds: variants } : {}) },
       );
     }
     if (!parameterMatches(field.type, value)) {
@@ -372,7 +384,7 @@ export function admitPlanCandidate(
     throw new ContractCompilationError("参考素材数量超过当前模式支持的上限");
   }
   const effectiveModule = options.parameterSchema ? { ...module, parameterSchema: options.parameterSchema } : module;
-  return { module, ...compileParameters(candidate, effectiveModule) };
+  return { module, ...compileParameters(candidate, effectiveModule, options.allowedVariantIds) };
 }
 
 /**

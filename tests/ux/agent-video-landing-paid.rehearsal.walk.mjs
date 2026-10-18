@@ -25,25 +25,44 @@ const DRAFT_CALL = 'rh-video-1'
 const GENERATE_CALL = `${DRAFT_CALL}-generate`
 const lastUserText = (body) => flattenRequestText({ messages: (body.messages ?? []).filter((message) => message.role === 'user').slice(-1) })
 
-/** 剧本大脑：起草一镜被授权的那一档 → 调 generate（等人在付费卡上点确认）→ 收尾。 */
+const REVISED_CALL = `${DRAFT_CALL}-revised`
+const toolResultText = (body, callId) => String((body.messages ?? []).find((message) => message.role === 'tool' && message.tool_call_id === callId)?.content ?? '')
+const operationIdOf = (text) => /"operationId":"([^"]+)"/.exec(text)?.[1]
+
+/**
+ * 剧本大脑：起草一镜被授权的那一档 → 调 generate（等人在付费卡上点确认）→ 收尾。
+ *
+ * 它演的是**模型的坏习惯 + 收到拒绝后的反应**（2026-10-18 两次真走查）：
+ *  · 第一回合把可选参数写成 null（`seed: null`），还把变体塞进 parameters（`variant: 'fast'`）；
+ *  · 起草校验会拒掉 `variant`。大脑**只读工具结果的文本**：文本里指了路（「放到 draft 的 variantId 字段」）它就改成
+ *    `variantId` 再交；文本里没指路它就停下、不再调用——和真 Agent 一样（修前通用的那句「Do not repeat an unknown paid
+ *    submission」正是让它停在报错卡上）。夹具大脑以前从不对报错做反应，所以这一类缺陷免费演练永远抓不到。
+ */
 function installBrain(fixture) {
+  const shot = (extra, parameters) => ({
+    title: '纸船', prompt: '一只纸船在雨后的水洼里慢慢漂，清晨的光', taskKind: 'text_to_video',
+    // 模型名只点到目录里的 `doubao-seedance-2.0`（Fast 变体由宿主认）。
+    candidate: { providerId: VIDEO.vendorKey, modelId: VIDEO.modelKey }, ...extra, parameters,
+  })
+  const base = { duration: 4, resolution: '480p', size: '16:9', generate_audio: false, seed: null }
   fixture.respond({
-    label: 'rehearsal brain · one cheap video shot, then generate',
+    label: 'rehearsal brain · bad habits (seed:null, variant in parameters), self-corrects from the tool result, then generate',
     match: (body) => lastUserText(body).includes('纸船在雨后的水洼里'),
     reply: (body) => {
       if (!hasToolResult(body, DRAFT_CALL)) {
-        return { type: 'tool', id: DRAFT_CALL, name: 'draft_shots', args: { shots: [{
-          title: '纸船', prompt: '一只纸船在雨后的水洼里慢慢漂，清晨的光', taskKind: 'text_to_video',
-          // 模型名只点到目录里的 `doubao-seedance-2.0`（Fast 变体由宿主认）；`parameters.model` 不是这个模型接受的参数键，起草就被拒，不再写。
-          candidate: { providerId: VIDEO.vendorKey, modelId: VIDEO.modelKey },
-          // seed: null —— 模型的坏习惯：把「不设」的可选参数写成 null（2026-10-18 deepseek-v4-pro 真走查）。起草放行、点生成才被拒的老毛病，
-          // 夹具大脑太规整从来没演过；现在每次演练都演一遍。
-          parameters: { duration: 4, resolution: '480p', size: '16:9', generate_audio: false, seed: null },
-        }] } }
+        return { type: 'tool', id: DRAFT_CALL, name: 'draft_shots', args: { shots: [shot({}, { ...base, variant: 'fast' })] } }
+      }
+      let drafted = toolResultText(body, DRAFT_CALL)
+      if (!operationIdOf(drafted)) {
+        // 被拒了：只凭工具结果里写的话改。没指路就停下。
+        if (!/variantId/.test(drafted)) return { type: 'text', text: '这一步我做不下去了。' }
+        if (!hasToolResult(body, REVISED_CALL)) {
+          return { type: 'tool', id: REVISED_CALL, name: 'draft_shots', args: { shots: [shot({ variantId: 'fast' }, base)] } }
+        }
+        drafted = toolResultText(body, REVISED_CALL)
       }
       if (!hasToolResult(body, GENERATE_CALL)) {
-        const result = (body.messages ?? []).find((message) => message.role === 'tool' && message.tool_call_id === DRAFT_CALL)
-        return { type: 'tool', id: GENERATE_CALL, name: 'generate', args: { operationId: /"operationId":"([^"]+)"/.exec(String(result?.content ?? ''))?.[1] } }
+        return { type: 'tool', id: GENERATE_CALL, name: 'generate', args: { operationId: operationIdOf(drafted) } }
       }
       return { type: 'text', text: '已经开始生成。' }
     },
