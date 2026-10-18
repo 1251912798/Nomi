@@ -93,7 +93,7 @@ if (FIXTURE) {
     && (wanted ? `${row.vendorKey}/${row.modelKey}` === wanted : row.modelKey === VISION_ARG))
   if (rows.length !== 1) throw new Error(rows.length === 0 ? `目录里没有启用的文本模型 ${VISION_ARG}` : `${VISION_ARG} 在多家都有，请用 供应商/模型 的写法`)
   model = { vendorKey: rows[0].vendorKey, modelKey: rows[0].modelKey, labelZh: rows[0].labelZh ?? rows[0].modelKey }
-  paid = await openPaidWalk('shot-table-vision-leg.paid.mjs', 'shot-table-vision-leg', [model])
+  paid = await openPaidWalk('shot-table-vision-leg.paid.mjs', 'shot-table-vision-leg', [model], { buildMarkers: ['选好下方的读图 / 转写模型后点「拆解」'] })
   walk = paid.walk
 }
 const modelLine = `${model.vendorKey} · ${model.modelKey}`
