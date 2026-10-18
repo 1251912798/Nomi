@@ -1200,7 +1200,7 @@ export const zhGenerationCommon = {
     captureFrame: '截帧',
     breakDown: '拆解',
     shotTable: '拆成镜头表',
-    deconstructHint: '把这条视频拆成一张镜头结构表（景别/情绪/画面/字幕/对白/提示词）→ 勾选镜头加进画布学着做',
+    deconstructHint: '建一张拆解表：选好读图 / 转写模型后点「拆解」，拆成镜头结构表（景别/情绪/画面/字幕/对白）',
   },
   panorama: {
     created: '已创建全景截图节点',
@@ -2885,7 +2885,7 @@ export const enGenerationCommon = {
     captureFrame: 'Capture frame',
     breakDown: 'Break down',
     shotTable: 'Shot table',
-    deconstructHint: 'Break this video into a shot-structure table (framing / mood / visuals / captions / dialogue / prompts) → pick shots to bring onto the canvas and learn from',
+    deconstructHint: 'Add a shot table: pick the vision and transcription models, then Deconstruct to break the video into shots (framing / mood / visuals / captions / dialogue)',
   },
   panorama: {
     created: 'Panorama screenshot node created',

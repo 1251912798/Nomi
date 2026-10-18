@@ -33,6 +33,11 @@ export async function authorizeDeconstructSpend(plan: DeconstructSpendPlan): Pro
     vendor: plan.vision.vendorKey,
     modelKey: plan.vision.modelKey,
     lines: plan.lines,
+    // 读图 / 转写各一行：卡上看到的就是拆解栏里选的、也是这一批真正会调用的（同一份 plan）。
+    legs: [
+      { role: 'vision', vendor: plan.vision.vendorKey, modelKey: plan.vision.modelKey },
+      ...(plan.transcribe ? [{ role: 'transcribe' as const, vendor: plan.transcribe.vendorKey, modelKey: plan.transcribe.modelKey }] : []),
+    ],
     // 报价有几行，这颗令牌就允许发起几次——多一次都没有报过价。
     maxAttemptsPerNode: plan.lines.length,
   });

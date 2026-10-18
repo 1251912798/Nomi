@@ -423,7 +423,9 @@ describe('generation canvas control structure', () => {
     const toolbar = source('../nodes/NodeVideoFrameToolbar.tsx')
     expect(table).toContain('data-testid="shot-table-node"')
     expect(table).toContain('data-kind="shot_table"')
-    expect(toolbar).toContain('deconstructToShotTable')
+    // 拆解前选模型（2026-10-18）：浮条只建表、不开拆——读图 / 转写在表下方的拆解栏里选好，点「拆解」才走报价卡。
+    expect(toolbar).toContain('ensureDeconstructionShotTable')
+    expect(toolbar).not.toContain('deconstructToShotTable')
     expect(toolbar).not.toContain('openVideoDeconstruction')
   })
 })

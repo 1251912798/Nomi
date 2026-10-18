@@ -37,6 +37,11 @@ export type SpendConfirmationRequest = {
   /** 这次动作会真正发出的每一次付费调用，一行一次。 */
   lines: SpendQuoteInput[]
   /**
+   * 一次动作里分几条腿、各用哪个模型（拆解 = 读图 + 转写，2026-10-18 拆解前选模型）。给了，卡上每条腿一行；
+   * 不给，卡上就是上面 vendor / modelKey 那一行（生成类动作只有一条腿）。
+   */
+  legs?: ReadonlyArray<{ role: 'vision' | 'transcribe'; vendor: string; modelKey: string }>
+  /**
    * 每个节点允许发起几次 vendor 请求。缺省 = `spendGrant` 的默认（1 首发 + 2 自动重试），
    * 审片环的重生就吃这份余量。**批量调用方必须显式给 `lines.length`**：一行一次，
    * 报价里没有的那一次不该有预算。
@@ -64,6 +69,7 @@ export async function confirmSpendAndMintGrant(request: SpendConfirmationRequest
     // 这张卡覆盖几次调用。批量确认的卡必须说出这个数——用户点的是「这一批」，
     // 而卡上只有一个总价时，他无从知道这一下批掉了 1 次还是 13 次。
     callCount: quote.lines.length,
+    ...(request.legs ? { legs: request.legs } : {}),
   })) as { confirmed?: boolean } | null
   if (reply?.confirmed !== true) return null
   // 真人点确认才到这里；消费仍在 runTask 的硬闸（信任边界不破）。

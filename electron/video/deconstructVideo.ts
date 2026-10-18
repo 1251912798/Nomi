@@ -108,6 +108,8 @@ export type DeconstructSpendPlan = {
   nodeId: string;
   shotCount: number;
   vision: { vendorKey: string; modelKey: string };
+  /** 这次转写用哪个模型；没有音轨 = 不转写 = null（报价卡上就不出「转写」那一行）。 */
+  transcribe: { vendorKey: string; modelKey: string } | null;
   lines: DeconstructSpendLine[];
 };
 
@@ -307,7 +309,7 @@ async function transcribeShots(
 /**
  * 转写语言。**随输入派生**，不写死（2026-09-17）：原来是 `language: "zh"`，
  * 于是英文界面的用户把一段英文视频拆出来，转写请求仍然按中文发。
- * 这里只修默认派生（取界面语言）；把它做成用户可选那一步归 TODO 的 T-DS-15。
+ * 这里只修默认派生（取界面语言）；把它做成用户可选那一步归 TODO 的 拆解前选模型。
  */
 function transcribeLanguage(): string {
   return getDesktopLocale() === "en" ? "en" : "zh";
@@ -418,6 +420,7 @@ export async function deconstructVideo(payload: DeconstructVideoPayload, options
     nodeId,
     shotCount: targets.length,
     vision: visionIdentity,
+    transcribe: transcribeLeg,
     lines: [
       ...targets.map(() => ({ ...visionIdentity, parameters: visionParameters })),
       // 转写这一行也带上 parameters：报价卡看到的 language 与真实调用发出去的是同一个值

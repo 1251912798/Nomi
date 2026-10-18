@@ -15,6 +15,17 @@ export const zhShotTable = {
   visionModel: '读图模型', visionAuto: '自动选择', visionHint: '换一个读图模型后点「重新拆解」或某一镜的「重新拆解」；每次拆解开始前都会先报价确认。',
   visionFailedSummary: '{{count}} 镜没读出：{{reason}}',
   status: { ready: '未生成', 'anchor-ignored': '参考未使用', 'missing-required': '缺必填参考', generating: '生成中', failed: '生成失败', recoverable: '可找回', done: '已生成', locked: '已锁定' },
+  // 拆解表节点：上方浮条 + 下方拆解栏（2026-10-18 拆解前选模型）
+  node: {
+    toolbar: '拆解表工具', columns: '显示列', rowShorter: '行变矮', rowTaller: '行变高',
+    rowHeight: { compact: '紧凑', standard: '标准', large: '大图' },
+    composer: '拆解栏', composerTitle: '拆这条视频：{{title}}', composerHint: '逐镜读画面、取对白，结果写进上面这张表',
+    vision: '读图', transcribe: '转写', transcribeAuto: '自动选择',
+    transcribeHint: '对白用哪个模型转写；每次拆解开始前都会先报价确认。',
+    deconstruct: '拆解', idleHint: '选好下方的读图 / 转写模型后点「拆解」',
+    addCustomColumn: '+ 自定义列',
+    selectionTitle: '用选中的 {{count}} 镜出分镜图', clearSelection: '取消选择',
+  },
 }
 export const enShotTable = {
   factsEmpty: 'Deconstruct again to read this reference video',
@@ -32,4 +43,15 @@ export const enShotTable = {
   visionModel: 'Vision model', visionAuto: 'Automatic', visionHint: 'Pick another vision model, then deconstruct again (whole table or one shot). Each run asks you to confirm the quote first.',
   visionFailedSummary: '{{count}} shots not read: {{reason}}',
   status: { ready: 'Not generated', 'anchor-ignored': 'Reference unused', 'missing-required': 'Required reference missing', generating: 'Generating', failed: 'Generation failed', recoverable: 'Recoverable', done: 'Generated', locked: 'Locked' },
+  // Shot-table node: floating toolbar above + deconstruct bar below (2026-10-18 拆解前选模型)
+  node: {
+    toolbar: 'Shot table tools', columns: 'Columns', rowShorter: 'Shorter rows', rowTaller: 'Taller rows',
+    rowHeight: { compact: 'Compact', standard: 'Standard', large: 'Large' },
+    composer: 'Deconstruct bar', composerTitle: 'Deconstruct: {{title}}', composerHint: 'Reads each shot and transcribes the dialogue into the table above',
+    vision: 'Vision', transcribe: 'Transcribe', transcribeAuto: 'Automatic',
+    transcribeHint: 'Which model transcribes the dialogue. Each run asks you to confirm the quote first.',
+    deconstruct: 'Deconstruct', idleHint: 'Pick the vision and transcription models below, then Deconstruct',
+    addCustomColumn: '+ Custom column',
+    selectionTitle: 'Make storyboard frames from {{count}} selected shots', clearSelection: 'Clear selection',
+  },
 }

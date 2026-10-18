@@ -5,6 +5,11 @@ const identitySchema = z.string().trim().min(1)
 const viewSchema = z.object({
   selectedRowIds: z.array(identitySchema).refine((ids) => new Set(ids).size === ids.length),
   density: z.enum(['auto', 'full', 'compact', 'card']),
+  /**
+   * 行高三档（拆解表节点浮条的 − / + ，2026-10-18 拆解前选模型）：紧凑 44 · 标准 58 · 大图 92。
+   * 缺席 = 标准；只在用户动过时写，老表读回来就是标准。
+   */
+  rowHeight: z.enum(['compact', 'standard', 'large']).optional(),
 }).strict()
 const commonShape = {
   schemaVersion: z.literal(1),
@@ -111,6 +116,11 @@ export const deconstructionShotTableSchema = z.object({
      * 整表重拆与单镜重试都带它——换了模型的人重试不会悄悄退回默认。身份必须是双段 (vendorKey, modelKey)。
      */
     visionModel: z.object({ vendorKey: z.string().min(1), modelKey: z.string().min(1) }).strict().optional(),
+    /**
+     * 用户在拆解栏给**转写腿**选的模型（与 `visionModel` 同形，2026-10-18 拆解前选模型）。缺席 = 自动挑。
+     * 整表重拆带它；「改用云端重试」是另一个显式动作，不改写它。
+     */
+    transcribeModel: z.object({ vendorKey: z.string().min(1), modelKey: z.string().min(1) }).strict().optional(),
     /**
      * 这张表是不是整条片子（切点超上限时自动抬了阈值）。
      *
