@@ -1,0 +1,122 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-18-lab-canvas-node-host",
+  "problem_type": "Design-lab stages render production canvas node cards outside their production host context, so global canvas CSS positions them against the page",
+  "symptom": "Design Lab (macOS) on PR #1234 captured the shot-table cells with the table spilling past the card, the right-most column clipped and the footer 「已选 0 镜 · 读图模型 · 添加列」 missing; the user judged it a regression.",
+  "direct_cause": "src/devlab/designLab/shotTable/ShotTableStage.tsx rendered ShotTableNode inside a static 960x420 div. Since 16a5b8fd5 (2026-10-08) other lab kits import styles/generationCanvas.css into the same design-lab bundle, whose `.generation-canvas-v2-node { position: absolute }` applies; production cancels it only under `.generation-canvas-react-flow` (generationCanvasReactFlow.css). The card became 1440x1000 positioned against the page and the footer landed at y=987, outside the 452px capture.",
+  "class_root": "Each lab stage hand-builds its own host for production node cards; nothing gives them the production host context or checks that a captured card stays inside its cell, so a stage can silently capture a non-production layout and record it as a baseline.",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-01",
+  "invariant_owner_layer": {
+    "layer": "src/devlab/designLab/labCanvasViewport.tsx",
+    "tests": [
+      "tests/ux/design-lab/design-lab.visual.spec.mjs"
+    ],
+    "why": "LabCanvasNodeHost is the shared lab host that reproduces the React Flow node shell context; the visual spec rejects any captured cell whose node card is positioned against an element outside the cell."
+  },
+  "affected_population": [
+    "Every design-lab screen that renders a production canvas node card (shot-table, node-quick-actions, canvas-frame, canvas-grouping, version-cards, node-composer-bar, process-feedback, canvas-handles)"
+  ],
+  "scope_paths": [
+    "src/devlab/designLab/labCanvasViewport.tsx",
+    "src/devlab/designLab/shotTable/ShotTableStage.tsx",
+    "tests/ux/design-lab/design-lab.visual.spec.mjs"
+  ],
+  "entry_points": [
+    "Lab stages that mount production node components (ShotTableNode, BaseGenerationNode) directly"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The invariant is between our own global canvas stylesheet and our own lab stages.",
+  "invariants": [
+    "A production node card captured in a lab cell is positioned against an element inside that cell (production host context), never against the page"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/devlab/designLab/labCanvasViewport.tsx",
+      "symbol": "LabCanvasNodeHost"
+    },
+    {
+      "kind": "write",
+      "path": "src/devlab/designLab/shotTable/ShotTableStage.tsx",
+      "symbol": "ShotTableStage"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/design-lab/design-lab.visual.spec.mjs",
+      "symbol": "toHaveScreenshot"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 3,
+    "why_not": "door-map.mjs does not scan src/devlab. LabCanvasNodeHost is the shared host (new), ShotTableStage is its first user, and the visual spec is the single read door every cell passes through; each owns a different part of the invariant."
+  },
+  "generality_proof": "The containment assertion runs for every non-viewport cell of every screen in the visual spec, so any present or future stage that hosts a card without production context fails before its screenshot is compared or recorded. A one-off scan of the first state of 11 node-rendering screens found only shot-table violating.",
+  "shared_boundaries": [
+    {
+      "path": "src/devlab/designLab/labCanvasViewport.tsx",
+      "symbol": "LabCanvasNodeHost",
+      "responsibility": "Gives lab cells the production React Flow host class and a sized positioning ancestor for node cards."
+    },
+    {
+      "path": "tests/ux/design-lab/design-lab.visual.spec.mjs",
+      "symbol": "toHaveScreenshot",
+      "responsibility": "Rejects cells whose node cards escape the cell before capture."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/devlab/designLab/shotTable/ShotTableStage.tsx",
+      "entry_point": "ShotTableStage",
+      "disposition": "enforced",
+      "evidence": "Now wraps ShotTableNode in LabCanvasNodeHost; local run: card 960x420 inside the cell, footer at y=407; without the fix the new assertion fails both shot-table states."
+    },
+    {
+      "path": "src/devlab/designLab/processFeedback/processFeedbackLabKit.tsx",
+      "entry_point": "BaseGenerationNode stage",
+      "disposition": "not-affected",
+      "evidence": "Wraps the card in a sized relative div; DOM scan on 2026-10-18 found its node offsetParent inside the cell."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any new lab screen that mounts a production node card without the host context reproduces this, and the CSS that triggers it is bundled whenever any lab kit imports the canvas stylesheet.",
+    "same_class_scan": [
+      "grep -rlE 'BaseGenerationNode|ShotTableNode' src/devlab → 8 kits mount production node cards",
+      "In-page scan of 11 node-rendering screens (first state each) for absolute node cards whose offsetParent is outside the cell → only shot-table"
+    ]
+  },
+  "prevention": {
+    "kind": "runtime-assertion",
+    "enforcement_path": "tests/ux/design-lab/design-lab.visual.spec.mjs",
+    "invariant": "No .generation-canvas-v2-node inside a captured cell is absolute/fixed with an offsetParent outside the cell.",
+    "failure_mode": "The cell fails with a message naming LabCanvasNodeHost before the screenshot is compared or written.",
+    "exception_policy": "none",
+    "strategy": "Shared host component for the context plus a spec-level check every cell passes through.",
+    "artifacts": [
+      "src/devlab/designLab/labCanvasViewport.tsx",
+      "tests/ux/design-lab/design-lab.visual.spec.mjs"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/design-lab/design-lab.visual.spec.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/design-lab/design-lab.visual.spec.mjs"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The bare div host is replaced in place; no parallel path remains."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency controls this invariant; it is between our own CSS / background writer and our own test fixtures.",
+    "exit_criteria": []
+  },
+  "migration": "The shot-table pending registration added on 2026-10-18 is removed; its two baselines are re-recorded from CI (they also predate the #1171 vision-model selector in the footer).",
+  "residual_risks": [
+    "The containment check only covers non-viewport captures; viewport captures (portal popovers) are not checked."
+  ]
+}
