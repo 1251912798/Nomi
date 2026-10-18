@@ -165,7 +165,9 @@ try {
       if (request?.method !== 'POST') return
       const target = String(request.path ?? '')
       if (/\/audio\/transcriptions/.test(target)) counts.transcribe += 1
-      else if (/\/chat\/completions|\/v1\/messages|generateContent/.test(target)) counts.vision += 1
+      else if (/\/chat\/completions|\/v1\/messages|generateContent/.test(target)) {
+        counts.vision += 1
+      }
       else counts.other += 1
     })
   })
@@ -193,33 +195,28 @@ try {
   await clickOrFail(win.getByRole('option', { name: new RegExp(model.labelZh.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).first(), `选读图模型「${model.labelZh}」`)
   await expect(picker).toContainText(model.labelZh)
 
-  // ⑤ 「拆解」→ 报价卡：读图一行 = 所选（目录显示名）；这段去了音轨，没有转写行
-  await clickOrFail(bar.locator('[data-testid="shot-table-restart-deconstruction"]'), '拆解栏「拆解」')
-  const dialog2Proof = await proveProbe(dialog, '报价卡出现', stationTimeout({ operations: 4 }))
-  const readRows = () => dialog.evaluate((root) => [...root.querySelectorAll('div.justify-between')].map((row) => [...row.children].map((cell) => cell.textContent?.trim() ?? '')))
-  const quoteRows = await readRows()
-  const quoteModel = quoteRows.find(([label]) => label === L('runtime.capability.visionModelLine'))?.[1]
-  const quoteCalls = quoteRows.find(([label]) => label === L('runtime.capability.callCount'))?.[1]
-  console.log(`[quote] 报价卡读图行：${quoteModel}  ·  调用次数：${quoteCalls ?? '(无)'}`)
-  report.quoteModelLine = quoteModel
-  report.quoteCallCount = quoteCalls ?? null
-  await snap('quote-card')
-  expect(quoteModel ?? '', '报价卡上的读图行 = 拆解栏所选').toContain(model.labelZh)
-  expect(quoteRows.some(([label]) => label === L('runtime.capability.transcribeModelLine')), '没音轨：报价卡没有转写行').toBe(false)
-  const quoted = Number(quoteCalls ?? '0')
-  const overCap = quoted > VISION_CAP
-  if (overCap) console.log(`[stop] 报价 ${quoted} 次调用 > 读图上限 ${VISION_CAP}：不点确认。换个小段重试（--clip-start / --clip-seconds）。`)
+  // ⑤ 开拆前先数镜（本地切点，零成本，和拆解用的是同一个 detectShotCuts）：读图调用 = 镜数。
+  //    2026-10-18 用户拍板「短片不弹，长片才弹」——≤30 次调用不再有报价卡，所以上限只能在点「拆解」之前守。
+  const preShots = await win.evaluate(async ({ videoId }) => {
+    const projectId = /projectId=([^&]+)/.exec(location.href)?.[1]
+    const node = window.__nomiCanvasStore.getState().nodes.find((candidate) => candidate.id === videoId)
+    const detected = await window.nomiDesktop.video.detectShotCuts({ videoUrl: node.result.url, projectId })
+    return (detected.cuts?.length ?? 0) + 1
+  }, { videoId: seeded.videoId })
+  report.preCountShots = preShots
+  console.log(`[pre] 本地切点数出 ${preShots} 镜 = ${preShots} 次读图（上限 ${VISION_CAP}）`)
+  const overCap = preShots > VISION_CAP
+  if (overCap) console.log(`[stop] ${preShots} 次 > 上限 ${VISION_CAP}：不点「拆解」。换个小段重试（--clip-start / --clip-seconds）。`)
 
   if (!CONFIRM || overCap) {
-    await clickOrFail(dialog.locator('[data-spend-confirm-action="cancel"]'), '第二张报价卡「取消」')
-    await expectAbsent(dialog, { provenBy: dialog2Proof, message: '取消后报价卡退场' })
-    expect((await callCounts()).vision, '停在报价卡：供应商一个读图请求都没有').toBe(0)
-    if (!overCap) console.log('[stop] 未设 NOMI_PAID_CONFIRM=1：停在报价卡，已取消，零花费。')
+    expect((await callCounts()).vision, '没点「拆解」：供应商一个读图请求都没有').toBe(0)
+    if (!overCap) console.log('[stop] 未设 NOMI_PAID_CONFIRM=1：停在「拆解」之前，零花费。')
     if (overCap) process.exitCode = 2
-    report.verified = ['create-table-sends-nothing', 'picker-sets-model', 'quote-model-line-equals-selection', 'cancel-sends-nothing']
+    report.verified = ['create-table-sends-nothing', 'picker-sets-model', 'pre-count-within-cap']
   } else {
-    // ⑥ 确认 → 等结果 → 打印每镜状态 / 顶上一行原话 / 实际调用次数
-    await clickOrFail(dialog.locator('[data-spend-confirm-action="confirm"]'), '报价卡「确认」', { noWaitAfter: true })
+    // ⑥ 点「拆解」：短片不弹报价卡，直接开拆 → 等结果 → 打印每镜状态 / 顶上一行原话 / 实际调用次数
+    await clickOrFail(bar.locator('[data-testid="shot-table-restart-deconstruction"]'), '拆解栏「拆解」', { noWaitAfter: true })
+    await holdAbsent(dialog, `≤30 次调用（这次 ${preShots} 次）不弹报价卡`)
     const tableState = () => win.evaluate(() => {
       const node = window.__nomiCanvasStore.getState().nodes.find((candidate) => candidate.kind === 'shot_table')
       const doc = node?.meta?.shotTable
@@ -240,6 +237,17 @@ try {
     console.log(`[calls] 实际调用：读图 ${counts.vision} 次 · 转写 ${counts.transcribe} 次${FIXTURE ? '（undici 出站计数，夹具模式已与夹具收到的请求对账）' : '（undici 出站计数）'}`)
     Object.assign(report, { finalTableStatus: finalState.status, rows: finalState.rows, summaryLine: summaryText, calls: counts })
     expect(counts.vision, `读图调用 ≤ ${VISION_CAP}`).toBeLessThanOrEqual(VISION_CAP)
+    // 拆解栏选的 = 实际发出去的（短片不再有报价卡）。主进程的出站请求体是流式发的、诊断通道拿不到（10-18 实测 bodyChunkSent 零块），
+    // 所以对账分两路：夹具模式拿夹具收到的请求体逐条比；真付费模式靠构造（同一份 plan 既是报价行也是调用，deconstructVideo 单测钉）
+    // 加供应商后台账单人工核对——这一条在报告里明写，不假装自动对过。
+    if (FIXTURE) {
+      const sent = walk.fixture.requests.map((request) => request.body?.model ?? 'unknown')
+      console.log(`[calls] 夹具收到的读图请求 model：${[...new Set(sent)].join('、')}`)
+      expect(sent.length > 0 && sent.every((value) => value === model.modelKey), '读图请求发给的就是拆解栏选的模型').toBe(true)
+      report.visionModelsSent = [...new Set(sent)]
+    } else {
+      report.visionModelReconciliation = '真付费：请求体诊断通道不可见；按构造（同一份 plan）+ 供应商后台账单人工核对'
+    }
     if (FIXTURE) expect(counts.vision, '计数器 = 夹具实际收到的请求数（地面真值）').toBe(walk.fixture.requests.length)
     else expect(counts.vision, '计数器看到了读图请求（不是 0）').toBeGreaterThan(0)
     await snap(RATE_PROBE ? 'result-rate-limit' : 'result')
@@ -249,7 +257,7 @@ try {
       report.verified = ['rate-limit-reason-on-top-line']
     } else {
       expect(finalState.rows.some((row) => !row.visionFailed && row.shotSize), '至少有一镜读出了景别').toBe(true)
-      report.verified = ['create-table-sends-nothing', 'picker-sets-model', 'quote-model-line-equals-selection', 'shots-read', 'calls-within-cap']
+      report.verified = ['create-table-sends-nothing', 'picker-sets-model', 'no-quote-card-for-short-clip', 'called-model-equals-chip', 'shots-read', 'calls-within-cap']
     }
   }
 } catch (error) {

@@ -42,6 +42,12 @@ export type SpendConfirmationRequest = {
    */
   legs?: ReadonlyArray<{ role: 'vision' | 'transcribe'; vendor: string; modelKey: string }>
   /**
+   * 这一批调用不超过这个数时不弹卡：用户在界面上点的那一下本身就是确认（和画布节点点 ↑ 一样）。超过才弹，卡上说清次数。
+   * 不给 = 每次都弹。只给「用户亲手点的、调用次数开跑前才知道」的动作用（拆解，2026-10-18 用户拍板「短片不弹，长片才弹」）。
+   * 令牌照铸、报价照取：跳过的只是问人那一步，主进程的逐次扣减与上限一样不少。
+   */
+  askWhenCallsAbove?: number
+  /**
    * 每个节点允许发起几次 vendor 请求。缺省 = `spendGrant` 的默认（1 首发 + 2 自动重试），
    * 审片环的重生就吃这份余量。**批量调用方必须显式给 `lines.length`**：一行一次，
    * 报价里没有的那一次不该有预算。
@@ -57,7 +63,8 @@ export async function confirmSpendAndMintGrant(request: SpendConfirmationRequest
   // 内部不变量断言（用户读不到）：没有要花的钱就不该铸令牌。
   if (!request.lines.length) throw new Error('confirmSpendAndMintGrant: lines is empty')
   const quote = prepareSpendQuote(request.lines)
-  const reply = (await requestRendererDecision('spend.confirm', {
+  const askUser = request.askWhenCallsAbove === undefined || quote.lines.length > request.askWhenCallsAbove
+  const reply = !askUser ? { confirmed: true } : (await requestRendererDecision('spend.confirm', {
     projectId: request.projectId,
     projectName: request.projectName,
     nodeId: request.nodeId,
@@ -72,7 +79,7 @@ export async function confirmSpendAndMintGrant(request: SpendConfirmationRequest
     ...(request.legs ? { legs: request.legs } : {}),
   })) as { confirmed?: boolean } | null
   if (reply?.confirmed !== true) return null
-  // 真人点确认才到这里；消费仍在 runTask 的硬闸（信任边界不破）。
+  // 真人点确认（或点「拆解」那一下、且在免问次数内）才到这里；消费仍在 runTask 的硬闸（信任边界不破）。
   return mintSpendGrant({
     nodeIds: [request.nodeId],
     ...(request.maxAttemptsPerNode ? { maxAttemptsPerNode: request.maxAttemptsPerNode } : {}),

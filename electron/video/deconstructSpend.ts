@@ -4,7 +4,9 @@
 // 可以在裸 node 单测里用假闸跑完整条链；真闸（弹卡 / 铸令牌 / 读项目名）住在这里。
 //
 // 语义（2026-09-12 用户拍板的「钱的闸」在本动作上的形状）：
-//   · 用户点一次「拆解」= 一次动作 → **一张报价卡、一次确认**，卡上是这一批的总价（N 镜 + 转写）；
+//   · 用户点一次「拆解」= 一次动作 → 一次确认。2026-10-18 用户拍板「短片不弹，长片才弹」：一共不超过
+//     DECONSTRUCT_ASK_ABOVE_CALLS 次调用（约 1–2 分钟的参考片）时，点「拆解」那一下就是确认，不再弹卡（和画布节点点 ↑ 一样）；
+//     超过才弹一张报价卡，卡上是这一批的总次数（N 镜 + 转写）；
 //   · 确认后铸的令牌只覆盖这一批：`assertAndConsumeQuotedSpend` 逐次扣，扣完为止，
 //     既不会为第 2 镜再弹一张卡，也不会让报价之外的第 N+1 次调用白跑；
 //   · 没确认 / 窗口没了 → 返回 null，编排层整次拒发并把原因摆到分镜表顶上（fail-closed）。
@@ -23,6 +25,9 @@ function projectNameOf(projectId: string): string | undefined {
   }
 }
 
+/** 一次拆解一共不超过这么多次调用就直接开拆，超过才弹报价卡（用户 2026-10-18 拍板「短片不弹，长片才弹」）。 */
+export const DECONSTRUCT_ASK_ABOVE_CALLS = 30;
+
 export async function authorizeDeconstructSpend(plan: DeconstructSpendPlan): Promise<string | null> {
   const projectName = projectNameOf(plan.projectId);
   return confirmSpendAndMintGrant({
@@ -40,5 +45,6 @@ export async function authorizeDeconstructSpend(plan: DeconstructSpendPlan): Pro
     ],
     // 报价有几行，这颗令牌就允许发起几次——多一次都没有报过价。
     maxAttemptsPerNode: plan.lines.length,
+    askWhenCallsAbove: DECONSTRUCT_ASK_ABOVE_CALLS,
   });
 }
