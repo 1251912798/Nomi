@@ -529,3 +529,11 @@ node scripts/research/tikhub-search.mjs \
 **提交前缀如实写**：修 bug 就是 `fix`，不许为了绕方向检查或其他门岗改前缀（把 fix 写成 feat 之类），评审发现就退回。原因：前缀是自报的，门岗按前缀数次数，改前缀等于关掉门岗（2026-10-09 一条实现线为绕开「第 3 个 fix 要先做方向检查」这么写过）。
 
 **限制（写明，不假装全覆盖）**：`git commit --no-verify` 能绕过 commit-msg，只有 CI 警告兜底；「评测分数下降被回滚」「同线第 3 轮」「第三个特例分支」三条触发没有 git 上可算的信号，靠任务书检查（只认「第 N 轮」字样）和人工。
+
+## 21. 规则对标例行（2026-10-18 用户拍板）
+
+**起因**：规则体系长期只从自己的事故里长，没人定期看别人的流程怎么管同一件事。Rust RFC 的 Prior art、Kubernetes KEP 的 Alternatives、GOV.UK discovery 阶段、Google 的 Goals-Signals-Metrics 都是现成的做法，本轮「调研与指标进流程」（`docs/plan/2026-10-19-research-and-metrics-in-flow.md`）就是这么来的。
+
+**例行**：协调会话每月读 1–2 份外部流程资料（RFC / KEP / GOV.UK 服务手册 / 事故复盘模板等），把发现写成规则提案交用户：每条提案写「出处 · 他们怎么做 · 我们对应哪条规则 / 哪个缺口 · 建议改什么（加 / 改 / 删）」，不自己改核心规则；用户点头后走 `rules.json`（加一删二、`check:rule-aliases`）和 CLAUDE.md 的常规路径。提案落在 `docs/research/<日期>-rules-benchmark.md`。
+
+**不做**：不为「有先例」就加规则（先例本身不是理由，要对得上我们真实的逃逸）；不另起门岗去查这件事有没有做，做没做看每月提案文件在不在。
