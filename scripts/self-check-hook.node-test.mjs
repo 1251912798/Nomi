@@ -30,7 +30,7 @@ describe('常驻部分', () => {
     const out = inject(NEUTRAL)
     assert.match(out, /【动手前 · 到这三刻必停/)
     assert.ok(Buffer.byteLength(out, 'utf8') <= 1000, `常驻 ${Buffer.byteLength(out, 'utf8')} 字节`)
-    for (const block of ['【设计卡】', '【设计流程】', '【画新面', '【先查别人', '【报完成前', '【修根因', '【交付', '【命令全表】']) assert.doesNotMatch(out, new RegExp(block))
+    for (const block of ['【设计卡】', '【设计流程】', '【画新面', '【先查别人', '【调研 ·', '【报完成前', '【修根因', '【交付', '【命令全表】']) assert.doesNotMatch(out, new RegExp(block))
   })
 
   test('常驻段保留三刻和贯穿原则的锚点', () => {
@@ -67,6 +67,31 @@ describe('关键词块：命中才注入', () => {
     assert.match(out, /最多 3 个在等收据/)
     assert.match(out, /收据红了立刻停/)
     assert.doesNotMatch(out, /上一个合入没有收据，就不合下一个/)
+  })
+})
+
+describe('调研时刻行：每个生命周期时刻一行，命中才出（R5 扩到交互 / 坑 / 指标）', () => {
+  const cases = [
+    ['这个功能值不值得做，竞品怎么做的', '【调研 · 产品方向】'],
+    ['这块交互怎么设计', '【调研 · 交互】'],
+    ['要做个技术方案对比', '【调研 · 技术选型】'],
+    ['导出文件格式要对齐 FCPXML', '【调研 · 外部格式】'],
+    ['这块想自己写一个', '【调研 · 通用能力】'],
+    ['去看看论坛上别人踩过的坑', '【调研 · 别人踩的坑】'],
+    ['这个指标拿什么量', '【调研 · 指标】'],
+    ['我想加一条规则', '【调研 · 规则本身】'],
+  ]
+  for (const [prompt, expected] of cases) {
+    test(`「${prompt}」→ ${expected}，且只出这一行调研`, () => {
+      const out = inject(prompt)
+      assert.ok(out.includes(expected), out)
+      assert.equal((out.match(/【调研 · /g) ?? []).length, 1, out)
+      assert.match(out, /≥3 个先例|点名量具/)
+      assert.ok(out.includes('【动手前 · 到这三刻必停'), '常驻段不能被挤掉')
+    })
+  }
+  test('中性消息与泛词（设计 / 格式 / 坑）不触发', () => {
+    for (const prompt of [NEUTRAL, '这个设计重做一下', '帮我改下这个界面的颜色', '修一个坑']) assert.doesNotMatch(inject(prompt), /【调研 · /, prompt)
   })
 })
 
