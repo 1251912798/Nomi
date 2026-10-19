@@ -173,3 +173,24 @@ export function modelHasPublishedExecution(
 ): boolean {
   return derivePublishedExecution(model, evidence).published;
 }
+
+/** 一行目录投影（`listModelCatalogModels` 的输出 / 渲染层 DTO）里回答「能不能跑这个模式」要用到的两样。 */
+export type ModeServingRow = {
+  availability?: { usable: boolean } | null;
+  publishedModes?: readonly string[] | null;
+};
+
+/**
+ * 「这一行此刻能不能跑这个模式」的**唯一**判据（2026-10-19）：可用（`availability`，见 modelAvailability.ts）
+ * 且这个模式发布了（`publishedModes`，见上面的 derivePublishedExecution）。
+ * 主进程按模式挑模型（`catalog/executableModel.ts` 的 `modeCandidates`）与渲染层的模型下拉
+ * （`src/config/modelCatalogCache.ts` 的 `optionsFromRows`）都调它——两边各写一份，就会出现
+ * 「chip 列出来的模型引擎跑不了 / 引擎挑的模型 chip 里没有」。
+ * 缺 `availability` = 这一行没经过主进程投影（夹具/旧缓存），按 fail-closed 当作不能跑。
+ * `any-published` = 任一模式发布了就算。
+ */
+// `mode` 收 string：渲染层的 ProfileKind 是 desktopClient 那份联合，两边字面量相同、类型名不同。
+export function rowServesMode(row: ModeServingRow, mode: ProfileKind | "any-published" | (string & {})): boolean {
+  if (row.availability?.usable !== true || !Array.isArray(row.publishedModes)) return false;
+  return mode === "any-published" ? row.publishedModes.length > 0 : row.publishedModes.includes(mode);
+}

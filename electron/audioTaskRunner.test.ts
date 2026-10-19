@@ -176,6 +176,40 @@ describe("runAudioTask（音频同步执行路径）", () => {
     expect(entries.some(([key]) => key === "model")).toBe(false);
   });
 
+  // 2026-10-19：真实种子里 Scribe 的 fileSource 写的是 reference_audio_urls，拆解传的是 file——同一段音频
+  // 在 APIMart 能传、换 ElevenLabs 就「缺少待上传媒体」；Scribe 只回逐词时间戳，拆解读不到 segments，对白整列空。
+  // 用**真实种子** mapping（不是手写夹具），两种调用方各跑一遍。
+  it.each([
+    ["拆解（file）", { file: "data:audio/wav;base64,AAAA" }],
+    ["音频节点（reference_audio_urls）", { referenceAudioUrls: ["data:audio/wav;base64,AAAA"] }],
+  ])("Scribe 真实种子 mapping：%s 都传得上音频，逐词响应出口带 segments", async (_label, extras) => {
+    const { ELEVENLABS_MODELS } = await import("./catalog/elevenlabs");
+    const scribe = ELEVENLABS_MODELS.find((model) => model.modelKey === "scribe_v2")!.mappings[0];
+    let posted: FormData | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (_url, init) => {
+      posted = init?.body as FormData;
+      return new Response(JSON.stringify({
+        language_code: "zho", text: "你好。Hi.",
+        words: [
+          { text: "你好。", start: 0, end: 0.5, type: "word", speaker_id: "speaker_0", logprob: 0 },
+          { text: " ", start: 0.5, end: 0.5, type: "spacing", speaker_id: "speaker_0", logprob: 0 },
+          { text: "Hi.", start: 1.6, end: 1.9, type: "word", speaker_id: "speaker_0", logprob: 0 },
+        ],
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    const result = await runAudioTask({
+      vendor, model: { ...whisperModel, vendorKey: "elevenlabs", modelKey: "scribe_v2" } as Model, apiKey: "k",
+      request: { kind: "transcribe", prompt: "", extras } as never,
+      kind: "transcribe", taskId: "t-scribe", projectId: "p", nodeId: "n",
+      mapping: { create: scribe.create } as never,
+    });
+    expect([...posted!.entries()].find(([key]) => key === "file")?.[1]).toBeInstanceOf(File);
+    expect((result.raw as { segments?: unknown }).segments).toEqual([
+      { start: 0, end: 0.5, text: "你好。" },
+      { start: 1.6, end: 1.9, text: "Hi." },
+    ]);
+  });
+
   it("Whisper 无音频来源 → 明确提示需先连音频", async () => {
     await expect(runAudioTask({
       vendor, model: whisperModel, apiKey: "k",
