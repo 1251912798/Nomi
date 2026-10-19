@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>B3h 图片放三张图</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+.light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.pane{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;width:600px;height:340px;padding:24px 20px;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 4px}
+.node{position:relative;box-sizing:border-box;width:560px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.tb:hover{background:var(--nomi-ink10)}
+.ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.ib.bare{border-color:transparent}
+.vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.t{position:relative;flex:none;width:40px;height:40px}
+.t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.cnt{margin-left:auto;align-self:center;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.prompt{position:relative;padding:8px 36px 8px 4px;min-height:72px;font-size:14px;line-height:1.9}
+.prompt .ib{position:absolute;right:0;top:4px}
+.m{display:inline-flex;align-items:center;gap:4px;padding:0 8px 0 3px;border-radius:999px;background:var(--nomi-accent-soft);color:var(--nomi-ink);font-weight:500;line-height:1.5;vertical-align:baseline}
+.m svg{display:block;border-radius:4px}
+.bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+.bar .sp{flex:1;min-width:0}
+.chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+</style>
+</helmet>
+<div style="display:flex;width:600px">
+<sc-for list="{{themes}}" as="t" hint-placeholder-count="1">
+<div class="pane {{t.cls}}">
+  <div class="cap">图片生成框</div>
+  <div class="node">
+    <div class="refs">
+      <button class="tb" aria-label="画布点选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"/></svg></button>
+      <button class="tb" aria-label="添加参考：上传或从素材库选"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg></button>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="女主肖像"><rect width="44" height="44" fill="#e6dccf"/><path d="M5 44 C6 35 15 31 22 31 C29 31 38 35 39 44Z" fill="#6c7d92"/><ellipse cx="22" cy="18" rx="8" ry="10" fill="#e2bfa6"/><path d="M14 16 C13 7 19 5 23 6 C30 7 31 13 30 17 C28 12 25 11 22 11 C18 12 16 14 14 16Z" fill="#3a3330"/></svg>
+      </div>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="海边小镇"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>
+      </div>
+      <div class="t">
+        <svg class="img" width="40" height="40" viewBox="0 0 44 44" role="img" aria-label="树林"><rect width="44" height="44" fill="#cfdcc8"/><path d="M5 36 L13 10 L21 36Z" fill="#5f8a63"/><path d="M21 36 L30 7 L40 36Z" fill="#4c7a55"/><rect y="36" width="44" height="8" fill="#8a7a5f"/></svg>
+      </div>
+      <span class="cnt">参考图 3 张</span>
+    </div>
+    <div class="prompt">让 <span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#e6dccf"/><path d="M5 44 C6 35 15 31 22 31 C29 31 38 35 39 44Z" fill="#6c7d92"/><ellipse cx="22" cy="18" rx="8" ry="10" fill="#e2bfa6"/><path d="M14 16 C13 7 19 5 23 6 C30 7 31 13 30 17 C28 12 25 11 22 11 C18 12 16 14 14 16Z" fill="#3a3330"/></svg>女主肖像</span> 的人物站在 <span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#d9e6ee"/><circle cx="32" cy="12" r="4" fill="#f2d9a8"/><rect y="24" width="44" height="20" fill="#86a9bd"/><path d="M0 26 L10 15 L20 25 L30 18 L44 27V30H0Z" fill="#938f80"/></svg>海边小镇</span>，背景树影按 <span class="m"><svg width="16" height="16" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" fill="#cfdcc8"/><path d="M5 36 L13 10 L21 36Z" fill="#5f8a63"/><path d="M21 36 L30 7 L40 36Z" fill="#4c7a55"/><rect y="36" width="44" height="8" fill="#8a7a5f"/></svg>树林</span>，逆光。
+      <button class="ib bare" aria-label="展开提示词"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></svg></button>
+    </div>
+    <div class="bar">
+      <button class="chip">GPT Image 2<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="chip">1:1 · 2K · 中<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <span class="sp"></span>
+      <button class="ib bare" aria-label="提示词预设"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></svg></button>
+      <button class="ib bare" aria-label="翻译提示词（中英互译，选中一段只翻那段）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg></button>
+      <button class="ib bare" aria-label="用 Nomi 优化提示词"><svg width="14" height="14" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg></button>
+      <span class="vsep"></span>
+      <button class="chip">1 张<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button>
+      <button class="send" aria-label="生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg></button>
+    </div>
+  </div>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":600,"height":340}}'>
+class Component extends DCLogic {
+  renderVals() { return { themes: [{ cls: 'light' }] }; }
+}
+</script>
+</body>
+</html>
