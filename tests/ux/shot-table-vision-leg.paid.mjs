@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 分镜表「读图腿」真实任务验证（2026-10-11 走查 §1；2026-10-18 拆解前选模型改成先建表再拆）——建表不花钱 → 拆解栏选读图模型 →
-// 「拆解」→ 报价卡上的读图行 = 所选 → 确认后逐镜读图，失败原话看得见。
+// 「拆解」→ 短片（≤30 次调用）不弹报价卡、直接逐镜读图（用户 10-18 拍板「短片不弹，长片才弹」）→ 调用的模型 = 所选，失败原话看得见。
 //
 // 用法（三种模式，从便宜到贵）：
 //
@@ -8,10 +8,10 @@
 //        node tests/ux/shot-table-vision-leg.paid.mjs --fixture [--rate-limit-probe]
 //      读图模型 = 夹具那一个；`--rate-limit-probe` 让夹具对每次读图回 429 原话（验顶上一行是原话）。
 //
-//   2) 真实资料副本，**停在报价卡**（不发任何付费请求）：
+//   2) 真实资料副本，**停在「拆解」之前**（不发任何付费请求）：
 //        NOMI_SPEND_OK=1 node tests/ux/shot-table-vision-leg.paid.mjs --vision-model <id>
 //      会拷一份带凭据的隔离副本（_realProfile.mjs：断开副本里指向真实项目的登记；跑前跑后对用户资料目录做指纹比对，
-//      有差异立刻红），走生产构建，窗口在屏幕外。流程走到报价卡：截图、打印卡上的模型行并断言 = 所选，然后点「取消」退出。
+//      有差异立刻红），走生产构建，窗口在屏幕外。流程走到「拆解」之前：建表零请求、选好模型、本地数镜，停下不点（零花费）。
 //
 //   3) 真付费（只有显式 NOMI_PAID_CONFIRM=1 才点「确认」）：
 //        NOMI_SPEND_OK=1 NOMI_PAID_CONFIRM=1 node tests/ux/shot-table-vision-leg.paid.mjs --vision-model <id> [--rate-limit-probe]
@@ -21,9 +21,9 @@
 //        node tests/ux/shot-table-vision-leg.paid.mjs --list-models
 //
 // 最坏花费（模式 3）：从仓库夹具 canvas-follow-hand-1080p15.mp4 截一小段（--clip-start / --clip-seconds，默认 4.3s 起 1.8s、去音轨，
-// 所以没有转写）；每镜 1 次读图调用（一镜 3 帧同一次请求）。**镜数以第二张报价卡的「调用次数」为准**——超过 4 次脚本在点确认之前直接取消退出；
+// 所以没有转写）；每镜 1 次读图调用（一镜 3 帧同一次请求）。**开拆前用本地切点（同一个 detectShotCuts）先数镜**——超过 4 次脚本不点「拆解」直接退出；
 // 脚本在主进程订阅 undici 出站（diagnostics_channel）计数，读图调用超过 4 次立刻停走查；令牌本身只覆盖报价里那几次。拆解逐镜 `maxRetries: 0`，限流不会重试放大。
-// 未确认（没设 NOMI_PAID_CONFIRM）一分钱不花：报价卡点「取消」，供应商一个请求都没有。
+// 未确认（没设 NOMI_PAID_CONFIRM）一分钱不花：停在「拆解」之前，供应商一个请求都没有。
 import fs from 'node:fs'
 import os from 'node:os'
 import { spawnSync } from 'node:child_process'
@@ -155,7 +155,7 @@ try {
 
   // ② 调用计数器：订阅 undici 的 diagnostics_channel（App 唯一出站入口 appFetch 在模块加载时抓了原生 fetch，
   //    补丁 globalThis.fetch 是拦不到它的——2026-10-11 真付费实测计数全 0 就是这个）。只计数、不拦截：
-  //    上限由两处守住——报价卡的调用次数 > 上限就不点确认；令牌只覆盖报价里那几次（spendGrant 的 maxAttemptsPerNode）。
+  //    上限由两处守住——开拆前本地数镜 > 上限就不点「拆解」；令牌只覆盖这一批那几次（spendGrant 的 maxAttemptsPerNode）。
   //    夹具模式下同时数夹具收到的请求，两个数必须相等——用地面真值证明计数器本身是对的。
   await app.evaluate(() => {
     const counts = { vision: 0, transcribe: 0, other: 0 }

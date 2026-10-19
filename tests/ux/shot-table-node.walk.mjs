@@ -9,14 +9,17 @@
 //  ③ 行高「+」：标准 → 大，行真的变高；复位
 //  ④ 显示列菜单：每列一个勾选项
 //  ⑤ 勾两镜：下方栏换成「已选 2 镜 · 取消选择」（10-18 用户：拆完要干嘛交给 Agent，表上不再有「生成 N 镜」）
+//  ⑤b 横向滚表：镜号与关键帧两列固定在左，画面列跟着滚走（拍板稿「尺寸与缩放」）
 //  ⑥ 表一半在舞台右缘外：浮条仍是一行、整条在舞台里（不为了对着节点中心把自己挤成两行）
+//  ⑦a 缩到 45%–80%：中档只留 镜 · 关键帧 · 景别 · 画面
+//  ⑦ 缩到 45% 以下：远档卡片（标题 · 镜数 · 关键帧条，拍板稿图 4），不再是表格
 // 不点「拆解」——那一下走报价卡、花真钱，真付费单独走（设计卡 ★9 ②）。
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp, closeNomiApp } from './_launchApp.mjs'
 import { expect, expectVisible, expectAbsent, proveProbe, clickOrFail, holdAbsent, screenshotSettled, expectNoCjkInEnglishDom, expectNoRawI18nKeysInDom } from './_assert.mjs'
-import { uiText } from './full-walk/invariants.mjs'
+import { uiText, uiTextPattern } from './full-walk/invariants.mjs'
 import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { createCanvasPerformanceFixture } from './fixtures/canvas-performance-fixture.mjs'
 import { canvasFitViewButton } from './_shell.mjs'
@@ -50,6 +53,18 @@ async function zoomAt(page, point) {
     const zoom = await page.evaluate(() => new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.react-flow__viewport')).transform).a)
     if (zoom >= 0.95) break
     await page.mouse.wheel(0, -120)
+    await sleep(page, 60)
+  }
+  await sleep(page, 500)
+}
+
+/** 鼠标停在 point 上滚轮缩小到远档（< 0.45，拍板稿图 4）。 */
+async function zoomOutBelow(page, point, target) {
+  await page.mouse.move(point.x, point.y)
+  for (let tick = 0; tick < 40; tick += 1) {
+    const zoom = await page.evaluate(() => new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.react-flow__viewport')).transform).a)
+    if (zoom < target) break
+    await page.mouse.wheel(0, 120)
     await sleep(page, 60)
   }
   await sleep(page, 500)
@@ -154,13 +169,16 @@ async function walkTrack(track) {
     await expectVisible(idleBar, '新表下方拆解栏')
     await expect(idleBar.getByTestId('shot-table-restart-deconstruction')).toHaveText(zh(track) ? '拆解' : /Deconstruct/)
     await holdAbsent(page.locator('[data-spend-confirm-dialog]'), '建表不弹报价卡')
+    // 首行：拆这条视频：<名> · m:ss（视频节点量出时长后才有；拍板稿图 1）
+    await expect(idleBar.getByTestId('shot-table-source-line')).toContainText(/\d+:\d\d$/)
     await sleep(page, 400)
     await shot(page, dir, '01-new-table-idle')
 
     // ② 选中拆好的表：浮条 + 下方栏，都以节点为中心
     await fitView(page)
+    // 远档时表只剩卡片、没有头条（拍板稿图 4）：先对着整张卡放大，到了近档再点头条。
+    await zoomAt(page, await aboveOf(nodeHost(page, READY_TABLE_ID).locator('article')))
     const readyHeader = nodeHost(page, READY_TABLE_ID).locator('article header')
-    await zoomAt(page, await aboveOf(readyHeader))
     await panIntoView(page, nodeHost(page, READY_TABLE_ID).locator('article'))
     await clickOrFail(readyHeader, 'select ready table', { position: { x: 300, y: 20 } })
     const host = nodeHost(page, READY_TABLE_ID)
@@ -210,6 +228,19 @@ async function walkTrack(track) {
     await shot(page, dir, '05-rows-selected')
     await clickOrFail(selectionBar.getByRole('button', { name: uiText(track.locale, 'shotTable.node.clearSelection') }), 'clear row selection')
 
+    // ⑤b 横向滚表：镜号与关键帧固定在左，后面的列滚走
+    const firstRow = host.locator('[data-shot-table-row]').first()
+    const pinned = firstRow.locator('td').nth(2)
+    const scrolling = firstRow.locator('td').nth(4)
+    const [pinnedBefore, scrollingBefore] = [await pinned.boundingBox(), await scrolling.boundingBox()]
+    await host.locator('table').evaluate((table) => { table.parentElement.scrollLeft = 240 })
+    await sleep(page, 200)
+    const [pinnedAfter, scrollingAfter] = [await pinned.boundingBox(), await scrolling.boundingBox()]
+    if (Math.abs(pinnedAfter.x - pinnedBefore.x) > 1) throw new Error(`横向滚表时关键帧列跟着动了（${Math.round(pinnedBefore.x)} → ${Math.round(pinnedAfter.x)}）`)
+    if (scrollingBefore.x - scrollingAfter.x < 100) throw new Error('表没有横向滚动——量不出固定列')
+    await shot(page, dir, '05b-scrolled-pinned')
+    await host.locator('table').evaluate((table) => { table.parentElement.scrollLeft = 0 })
+
     // ⑥ 表一半在舞台右缘外（用户 10-18 截图：浮条被挤成两行）：浮条仍是一行、整条在舞台里
     const stageBox = await page.locator('.generation-canvas-v2__stage').boundingBox()
     const tableBox = await host.locator('article').boundingBox()
@@ -227,6 +258,21 @@ async function walkTrack(track) {
     if (barBox.height > 48) throw new Error(`贴右缘时浮条折成了多行（高 ${Math.round(barBox.height)}px）`)
     if (barBox.x + barBox.width > stageBox.x + stageBox.width + 1) throw new Error('贴右缘时浮条出了舞台')
     await shot(page, dir, '06-right-edge-toolbar')
+
+    // ⑦a 中档（45%–80%）：只留 镜 · 关键帧 · 景别 · 画面（+ 勾选与状态）
+    await zoomOutBelow(page, await findCanvasBlankPoint(page), 0.7)
+    await expect(host.locator('article')).toHaveAttribute('data-density', 'compact')
+    await expect(host.locator('thead th')).toHaveCount(6)
+    await shot(page, dir, '07a-mid-columns')
+
+    // ⑦ 缩到远档：卡片代替表格，写着镜数、带关键帧条
+    await zoomOutBelow(page, await findCanvasBlankPoint(page), 0.4)
+    const farCard = host.locator('[data-testid="shot-table-far-card"]')
+    await expectVisible(farCard, '远档卡片')
+    await expect(host.locator('[data-shot-table-row]')).toHaveCount(0)
+    await expect(farCard).toContainText(new RegExp(uiTextPattern(uiText(track.locale, 'shotTable.count'))))
+    if (await farCard.locator('img, .h-5.w-9').count() === 0) throw new Error('远档卡片没有关键帧条')
+    await shot(page, dir, '07-far-card')
     console.log(`  ✓ ${track.id}`)
   } finally {
     await closeNomiApp(app)

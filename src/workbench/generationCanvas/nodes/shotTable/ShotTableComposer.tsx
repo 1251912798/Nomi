@@ -18,6 +18,9 @@ type Props = {
   visualSize: { width: number; height: number }
   /** 源视频节点还在、有结果：拆解 / 重拆才点得动。 */
   sourceAvailable: boolean
+  /** 源视频的 poster 与时长（拍板稿图 1 下方栏首行）；没有就不画，不编。 */
+  sourceThumbnail?: string
+  sourceSeconds?: number
   /** 镜头表里已有行（「拆解」与「重新拆解」只差这一句）。 */
   hasRows: boolean
   selectedRowIds: readonly string[]
@@ -32,7 +35,10 @@ type Props = {
  * 勾了镜头 = 用选中的镜头出分镜图（现有 generate 行为不变，只换入口位置）。
  * 主按钮能不能点的判据仍归终态 owner（`canRestartDeconstruction`），这里不再列一遍状态词。
  */
-export function ShotTableComposer({ nodeId, table, visualSize, sourceAvailable, hasRows, selectedRowIds, onError }: Props): JSX.Element {
+/** 源视频时长写成 m:ss（拍板稿「雨夜参考片 · 0:15」）。先取整再拆分，59.6 秒不会写成 0:60。 */
+const clockOf = (seconds: number): string => { const total = Math.round(seconds); return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}` }
+
+export function ShotTableComposer({ nodeId, table, visualSize, sourceAvailable, sourceThumbnail, sourceSeconds, hasRows, selectedRowIds, onError }: Props): JSX.Element {
   const { t } = useTranslation()
   const anchorRef = React.useRef<HTMLDivElement>(null)
   const running = table.source.status === 'running'
@@ -74,9 +80,13 @@ export function ShotTableComposer({ nodeId, table, visualSize, sourceAvailable, 
         ) : (
           <>
             <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-nomi bg-nomi-ink-05 text-nomi-ink-60"><IconTable size={18} stroke={1.5} /></span>
+              {sourceThumbnail
+                ? <img data-testid="shot-table-source-thumbnail" src={sourceThumbnail} alt="" className="h-9 w-16 shrink-0 rounded-nomi object-cover" />
+                : <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-nomi bg-nomi-ink-05 text-nomi-ink-60"><IconTable size={18} stroke={1.5} /></span>}
               <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="truncate text-body-sm">{t('shotTable.node.composerTitle', { title: table.source.title || t('shotTable.title') })}</span>
+                <span data-testid="shot-table-source-line" className="truncate text-body-sm">{sourceSeconds !== undefined && sourceSeconds > 0
+                  ? t('shotTable.node.composerTitleWithLength', { title: table.source.title || t('shotTable.title'), length: clockOf(sourceSeconds) })
+                  : t('shotTable.node.composerTitle', { title: table.source.title || t('shotTable.title') })}</span>
                 <span className="line-clamp-2 text-micro text-nomi-ink-60">{table.source.status === 'ready' ? t('shotTable.node.readyHint') : hasRows ? t('shotTable.node.composerHint') : t('shotTable.node.idleHint')}</span>
               </span>
             </div>
