@@ -317,13 +317,15 @@
         "R29",
         "R31"
       ],
-      "rule": "先查别人：结论默认接入，凭记忆判断等于没查。三方库 API 先 Context7；做方案先读近邻开源真实代码；外部也读写的格式 / 协议先找规范、写偏差与理由（后两者为建议档）。",
-      "disease": "凭记忆写第三方接口、自造格式",
+      "rule": "先查别人：结论默认接入，凭记忆判断等于没查。三方库 API 先 Context7；做方案先读近邻开源真实代码；外部也读写的格式 / 协议先找规范、写偏差与理由（后两者为建议档）。范围不止代码（2026-10-18 用户拍板）：交互设计、别人踩过的坑（论坛 / issue / 事故复盘）、指标怎么量同样要查——设计卡 ★0 写 ≥3 条「出处 · 它怎么做 · 对哪个决定的影响（改了 / 确认了）」，调研摘要随探索图一起交用户；★1 每个指标点名量具，没有就写「未验证：缺量具」。调研放在做决定的地方、由做决定的人消费，门岗只兜底。",
+      "disease": "凭记忆写第三方接口、自造格式；闭门设计交互、重踩别人踩过的坑；指标只写目标没人量",
       "enforcement": [
         "hook:self-check(先查别人块)",
-        "gate:check:prior-art"
+        "hook:self-check(调研时刻行)",
+        "gate:check:prior-art",
+        "gate:check:board-parity"
       ],
-      "evidence": "prior-art 红灯 60 次几乎全是补文档（登记摩擦）；对应 check:standard-formats / dependency-capabilities / archetype-sources 三道零红门岗已删",
+      "evidence": "prior-art 红灯 60 次几乎全是补文档（登记摩擦），所以新增部分不另立存在性门岗：只有板清单 priorArt（2026-10-19 起）自动查，其余靠设计卡 ★0 / ★1 与提示行；对应 check:standard-formats / dependency-capabilities / archetype-sources 三道零红门岗已删",
       "owner": "协调会话",
       "review_on": "2026-12-01",
       "delete_when": "门岗连续 2 个周期零触发且无外部契约类逃逸",
