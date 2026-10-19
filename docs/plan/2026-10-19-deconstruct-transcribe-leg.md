@@ -23,13 +23,13 @@
 | ★1b 连带界面 | 拆解结果顶部那一行原因：新增两句（点名模型不可用 / 转写无时间戳），中英各一；报价卡转写行仍来自同一解析 | `electron/desktopStrings.ts` |
 | ★2 谁说了算 | 「这一行能不能跑某模式」= `electron/shared/modelPublication.ts#rowServesMode`（可用 × 已发布模式），唯一判据；候选清单 = `listModelCatalogModels` 同一份投影。主进程 `modeCandidates` 与渲染层 `optionsFromRows` 同调；转写结果形状 = `segments`，由 `audioTaskRunner.runTranscribe` 出口统一 | `node scripts/door-map.mjs findExecutableModelAnyVendor`（1 扇，已删）|
 | ★3 一致与复用 | 复用 `findExecutableModel`（三态原话）、`derivePublishedExecution`、`orderByVendorPreference`、读图腿 `resolveVisionLeg` 的三态结果形；逐词 → 句段是供应商适配（`electron/catalog/` 领域内） | `git grep rowServesMode` |
-| ★4 全状态 | 有音轨 + 自动挑到 → 对白按镜头填；自动挑不到 → 「没有可用的转写模型」；点名不可用 → 「你选的转写模型『X』现在用不了（原因）」，不悄悄换别家、不为它发请求；转写有字无时间戳 → 「回了文字但没带时间戳」；本地挂 → 原有「改用云端重试」，云端重试现在排除本机引擎；无音轨 → 不转写 | 单测 + 付费评测 |
+| ★4 全状态 | 有音轨 + 自动挑到 → 对白按镜头填；自动挑不到 → 「没有可用的转写模型」；点名不可用 → 与读图腿同一条规矩：**整次拒绝**，零报价、零付费调用，「你选的转写模型『X』现在用不了（原因）。没有发出任何请求」，不悄悄换别家、也不「画面照拆对白留空」（验收线 C1）；转写有字无时间戳 → 「回了文字但没带时间戳」；本地挂 → 原有「改用云端重试」，云端重试现在排除本机引擎；无音轨 → 不转写 | 单测 + 付费评测 |
 | 5 中途表 | 不改打断语义：转写与读图并行，取消 / 关窗沿用拆解既有路径；点名不可用时转写那一行不进报价卡、不扣 | `deconstructSpend` 既有测试 |
 | 6 外部数据 | ElevenLabs STT：`words[]{text,start,end,type∈word/spacing/audio_event,speaker_id}`（https://elevenlabs.io/docs/api-reference/speech-to-text/convert ，2026-10-19 查）；OpenAI 逐词 `word/start/end`。声音事件不进台词；无时间戳如实报 | 官方文档 |
 | ★7 性能 | 不适用：没有新增用户操作；解析多一次目录投影（每次拆解一次，毫秒级） | — |
 | 8 真实条件 | 真付费：macOS、zh 界面、真实素材、真 APIMart key；ElevenLabs 未验证（用户没有该家 key）；Windows unverified | `evals/runs/deconstruct-paid-2026-10-19T00-39-34-953Z.json` |
 | 拍板图清单 | 不适用：不改界面元素，只多两句结果原因文案 | — |
-| ★9 验收与回滚 | 验收清单（动手前列）：①偏好把 Suno 排第一，自动不拿它转写；②任何供应商顺序下自动结果 ∈ 转写候选，候选每行都发布 transcribe 且可用；③chip 列出的 == 主进程候选（同一份投影）；④点名非转写模型 / 没 key 模型 → requested-unavailable 带原因；⑤「改用云端」不落回本机引擎；⑥Scribe 真实种子 mapping 用 `file` 与 `reference_audio_urls` 两种调用方都传得上、逐词响应出口有 segments；⑦有人说话却无对白 → 评测判不达标；⑧付费评测 dialogueShotRate > 0、CER ≤ 0.3。反例：TTS / 音乐模型、无 key、本机引擎、只回逐词、只回文字。回滚：revert 本 PR 合并提交 | `electron/video/deconstructLegResolution.test.ts` `electron/audioTaskRunner.test.ts` `electron/catalog/transcriptSegments.test.ts` `src/config/modelCatalogCache.test.ts` `evals/deconstruct/metrics.test.mjs` |
+| ★9 验收与回滚 | 验收清单（动手前列）：①偏好把 Suno 排第一，自动不拿它转写；②任何供应商顺序下自动结果 ∈ 转写候选，候选每行都发布 transcribe 且可用；③chip 列出的 == 主进程候选（同一份投影）；④点名非转写模型 / 没 key 模型 / 不存在 → requested-unavailable 带原因，编排本体整次拒绝、authorizeSpend 与 runTask 都没被调（C1）；⑤「改用云端」不落回本机引擎；⑥Scribe 真实种子 mapping 用 `file` 与 `reference_audio_urls` 两种调用方都传得上、逐词响应出口有 segments；⑦有人说话却无对白 → 评测判不达标；⑧付费评测 dialogueShotRate > 0、CER ≤ 0.3。反例：TTS / 音乐模型、无 key、本机引擎、只回逐词、只回文字。回滚：revert 本 PR 合并提交 | `electron/video/deconstructLegResolution.test.ts` `electron/audioTaskRunner.test.ts` `electron/catalog/transcriptSegments.test.ts` `src/config/modelCatalogCache.test.ts` `evals/deconstruct/metrics.test.mjs` |
 
 ### 功能分类
 - [x] 花钱

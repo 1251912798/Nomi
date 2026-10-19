@@ -444,6 +444,12 @@ export async function deconstructVideo(payload: DeconstructVideoPayload, options
   const visionIdentity = { vendorKey: visionModel.vendor.key, modelKey: visionModel.model.modelKey };
   const visionParameters: Record<string, unknown> = { projectId, modelKey: brain.modelKey, temperature: 0.2, maxTokens: DECONSTRUCT_MAX_TOKENS };
   const transcribeResolution = sourceHasAudio ? resolveTranscribeLeg(payload.transcribe) : null;
+  // 点名的转写模型跑不了：和读图腿同一条规矩——**整次拒绝，零报价、零付费调用**，不悄悄换别家，
+  // 也不「画面照拆、对白留空」（验收线 C1，2026-10-19：那样用户花了读图的钱，拿回一列自己没选的空白）。
+  // 「一个能转写的都没有」（自动挑不到）不在此列：画面那半仍值得拆，对白列顶上一行说清原因。
+  if (transcribeResolution && !transcribeResolution.ok && transcribeResolution.reason === "requested-unavailable") {
+    throw new DeconstructError(desktopT("deconstruct.transcribeModelUnavailable", { model: transcribeResolution.requested.modelKey, detail: transcribeResolution.detail }));
+  }
   const transcribeLeg = transcribeResolution?.ok ? { vendorKey: transcribeResolution.vendorKey, modelKey: transcribeResolution.modelKey } : null;
   const plan: DeconstructSpendPlan = {
     projectId,
@@ -474,13 +480,9 @@ export async function deconstructVideo(payload: DeconstructVideoPayload, options
     : Promise.resolve({
         hasAudio: sourceHasAudio,
         dialogues: assignSegmentsToShots([], boundaries),
-        // 有音轨却没转写 —— 这句话必须说出来，不然用户只看到空白的对白列。
-        // 点名的模型跑不了与「一个能转写的都没有」是两件事、两个动作（换一个 vs 去接入），不压成一句。
-        ...(transcribeResolution && !transcribeResolution.ok
-          ? { failureReason: transcribeResolution.reason === "requested-unavailable"
-              ? desktopT("deconstruct.transcribeModelUnavailable", { model: transcribeResolution.requested.modelKey, detail: transcribeResolution.detail })
-              : desktopT("deconstruct.noTranscribeModel") }
-          : {}),
+        // 有音轨却没有可用的转写模型 —— 这句话必须说出来，不然用户只看到空白的对白列。
+        // （点名的模型跑不了已在报价前整次拒绝，走不到这里。）
+        ...(transcribeResolution && !transcribeResolution.ok ? { failureReason: desktopT("deconstruct.noTranscribeModel") } : {}),
       });
 
   onPhase?.(1);
