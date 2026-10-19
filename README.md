@@ -16,6 +16,7 @@
 <p align="center">
   <a href="#download"><b>Download</b></a> ·
   <a href="https://nomiaqm.com/en/">Website</a> ·
+  <a href="https://atomgit.com/aqm857886159/Nomi">AtomGit mirror</a> ·
   <a href="#watch-the-film">Watch the 90-second film</a> ·
   <a href="https://nomiaqm.com/en/quickstart">Quick start</a> ·
   <a href="docs/integrate-with-your-agent-en.md">Let your AI connect it</a> ·
