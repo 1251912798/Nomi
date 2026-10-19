@@ -1,4 +1,5 @@
 import type { CanvasReadResult } from "./canvasRead";
+import { SHOT_TABLE_COMPACT_CHARACTERS, formatShotTableForAgent } from "./canvasReadShotTable";
 
 export const MAX_CANVAS_PROMPT_CHARACTERS = 12_000;
 const SELECTED_IDS_BUDGET = 900;
@@ -106,6 +107,7 @@ export function formatCanvasForAgent(result: CanvasReadResult): string {
       node.currentResultId ? ` | currentResultId: ${compactHead(node.currentResultId, 120)}` : "",
       resultIds ? ` | resultIds: ${resultIds}` : "",
       node.taskRef ? ` | taskRef: ${JSON.stringify(node.taskRef)}` : "",
+      node.shotTable ? ` | 分镜表 ${node.shotTable.rowCount} 镜（行见下方）` : "",
       node.director ? ` | 3D-BOX revision=${node.director.revision} shots=${boundedJoin(node.director.shots, 120, ",", (name) => compactHead(name, 40)).text} actors=${boundedJoin(node.director.actors, 80, ",", (name) => compactHead(name, 40)).text}${node.director.setPieces.length ? ` setPieces=${boundedJoin(node.director.setPieces, 60, ",", (name) => compactHead(name, 40)).text}` : ""} issues=${node.director.issueCount} preview=${node.director.preview}${node.director.previewTargetNodeId ? `→${compactHead(node.director.previewTargetNodeId, 120)}` : ""}${node.director.previewAssetId ? ` previewAssetId=${compactHead(node.director.previewAssetId, 120)}` : ""}` : "",
     ].join("");
   });
@@ -118,10 +120,21 @@ export function formatCanvasForAgent(result: CanvasReadResult): string {
   writer.appendLine(nodes.text);
   writer.appendLine(`引用边: ${edges.text || "无"}`);
 
+  // 分镜表的行：排在选中节点的完整提示词之前（用户说「照第 2 镜复刻」时，那一镜的提示词就是要读的正文）。
+  // 每张表分到「剩余预算 / 剩下几张表」与单表上限中的小者；表内的取舍（勾选的先、没放下的镜号明列）归 formatShotTableForAgent。
+  const tables = result.nodes.filter((node) => node.shotTable);
+  let tableBudgetTruncated = false;
+  tables.forEach((node, index) => {
+    const share = Math.floor((writer.remaining() - 2) / (tables.length - index)) - 1;
+    if (share < 120) { tableBudgetTruncated = true; return; }
+    writer.appendLine("");
+    writer.appendLine(formatShotTableForAgent({ id: node.id, title: node.title, table: node.shotTable! }, Math.min(SHOT_TABLE_COMPACT_CHARACTERS, share)));
+  });
+
   const selectedIds = new Set(result.selectedNodeIds ?? []);
   let promptTruncated = false;
   let promptsOmitted = false;
-  const coreTruncated = selected.truncated || nodes.truncated || edges.truncated;
+  const coreTruncated = selected.truncated || nodes.truncated || edges.truncated || tableBudgetTruncated;
   for (const node of result.nodes) {
     if (!selectedIds.has(node.id) || node.prompt.length <= 60) continue;
     const heading = `「${compactHead(node.title, 80)}」(${compactHead(node.id, 120)}) 完整提示词:`;

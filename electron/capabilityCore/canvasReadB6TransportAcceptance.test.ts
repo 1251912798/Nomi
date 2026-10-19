@@ -56,6 +56,31 @@ const RAW_CANVAS = Object.freeze({
         raw: { credential: "must-not-cross" },
       },
     },
+    // 分镜表的行：MCP / 应用内 Agent / 内部三条传输读到的是同一份投影（canvasReadShotTable.ts 是唯一出口）。
+    {
+      id: "table-b6",
+      kind: "shot_table",
+      title: "B6 shot table",
+      position: { x: 600, y: 34 },
+      meta: {
+        shotTable: {
+          schemaVersion: 1, revision: 1, updatedAt: "2026-10-19T00:00:00.000Z",
+          view: { selectedRowIds: ["fact-2"], density: "auto" },
+          source: { kind: "deconstruction", sourceNodeId: "node-b6", title: "B6", status: "ready" },
+          columnSetId: "facts",
+          columns: [
+            { columnId: "visual", kind: "builtin", labelKey: "visual", order: 0, visible: true },
+            { columnId: "col-b6", kind: "custom", labelKey: "道具", order: 1, visible: true },
+          ],
+          rows: [1, 2].map((order) => ({
+            rowId: `fact-${order}`, order, startSeconds: order - 1, endSeconds: order, durationSeconds: 1, carriedOver: false,
+            keyframeRef: `nomi-local://private-b6/frame-${order}.png`,
+            cells: { visual: `b6 visual ${order}`, "col-b6": `prop ${order}` },
+            imagePrompt: `b6 image prompt ${order}`,
+          })),
+        },
+      },
+    },
   ],
   edges: [],
   groups: [],
@@ -248,6 +273,9 @@ describe("B6 canvas.read transport acceptance", () => {
     expect(internalResult).toEqual(expected);
     expect(piResult).toEqual({ ok: true, result: expected, silent: true });
     if (piResult?.ok) expect(formatCanvasForAgent(piResult.result)).toBe(formatCanvasForAgent(expected));
+    const table = expected.nodes.find((node) => node.id === "table-b6")?.shotTable;
+    expect(table).toMatchObject({ rowCount: 2, selectedShots: [2], rows: [{ shot: 1, imagePrompt: "b6 image prompt 1" }, { shot: 2, selected: true }] });
+    expect(formatCanvasForAgent(expected)).toContain("镜 2 (fact-2) 1–2s · 已勾选 · visual: b6 visual 2 · 道具(自定义列): prop 2 · imagePrompt: b6 image prompt 2");
 
     const mcpPresenter = MCP_CAPABILITY_RESOLVER.resolve(CANVAS_READ_CAPABILITY.aliases.mcp!)!.presentResult;
     const presented = mcpPresenter(mcpResult);
@@ -255,6 +283,8 @@ describe("B6 canvas.read transport acceptance", () => {
     expect(JSON.parse(presented.content[0]!.text)).toEqual(expected);
     expect(JSON.stringify(presented)).not.toContain("provider.invalid");
     expect(JSON.stringify(presented)).not.toContain("private-task-b6");
+    expect(JSON.stringify(presented)).not.toContain("nomi-local://private-b6");
+    expect(JSON.parse(presented.content[0]!.text).nodes[1].shotTable).toEqual(table);
   });
 
   it("projects an expired real route as an open-new-session action and never as an empty canvas", async () => {
