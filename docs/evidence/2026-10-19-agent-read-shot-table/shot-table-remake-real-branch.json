@@ -1,0 +1,168 @@
+{
+  "numbers": {
+    "label": "branch",
+    "brain": "apimart/deepseek-v4-flash",
+    "rounds": "3/3",
+    "readTable": "3/3",
+    "toolWriteCorrect": "3/3",
+    "copiedRightRows": "3/3",
+    "turnSuccess": "3/3",
+    "cardShown": "3/3",
+    "modelCalls": 9,
+    "modelCallCap": 20
+  },
+  "rounds": [
+    {
+      "id": "R1",
+      "ask": "照第 2、3 镜复刻，给我出图",
+      "tick": [],
+      "want": [
+        2,
+        3
+      ],
+      "calls": [
+        {
+          "tool": "look_at_canvas",
+          "args": "{}"
+        },
+        {
+          "tool": "read_script",
+          "args": "{}"
+        },
+        {
+          "tool": "list_models",
+          "args": "{\"kind\":\"image\"}"
+        },
+        {
+          "tool": "draft_shots",
+          "args": "{\"shots\":[{\"title\":\"镜 2 · 伞沿雨珠\",\"taskKind\":\"text_to_image\",\"prompt\":\"特写，伞沿一串雨珠正在下落，背景霓虹灯牌化成焦外光斑，浅景深，冷暖对比，微距，电影感\",\"candidate\":{\"providerId\":\"apimart\",\"modelId\":\"gemini-3.1-flash-image-preview\"}},{\"title\":\"镜 3 · 便利店倒影\",\"taskKind\":\"text_to_image\",\"prompt\":\"中景，女孩走过亮着暖光的便利店橱窗，玻璃映出她的倒影，雨夜街道，横向构图，暖黄与青蓝对比，电影感，35mm 胶片质感\",\"candidate\":{\"providerId\":\"apimart\",\"modelId\":\"gemini-3.1-flash-image-preview\"}}]}"
+        },
+        {
+          "tool": "generate",
+          "args": "{\"operationId\":\"op-309e1148-256a-418e-80ce-6a0fcb29fea6\"}"
+        }
+      ],
+      "rejected": [],
+      "said": "草稿已落画布。你说「出图」，我来提生成确认。\n\n确认卡被关闭了，没有开始生成。草稿还在画布上（两个节点已就位），随时可以再提交。\n\n你是想：\n- 再提交一次确认卡？\n- 或者先调整一下提示词再出？",
+      "modelCalls": 5,
+      "cardShown": true,
+      "error": null,
+      "sendAttempts": 1,
+      "readTable": true,
+      "promptSource": "run",
+      "drafted": [
+        "特写，伞沿一串雨珠正在下落，背景霓虹灯牌化成焦外光斑，浅景深，冷暖对比，微距，电影感",
+        "中景，女孩走过亮着暖光的便利店橱窗，玻璃映出她的倒影，雨夜街道，横向构图，暖黄与青蓝对比，电影感，35mm 胶片质感"
+      ],
+      "draftShotMatches": [
+        [
+          2
+        ],
+        [
+          3
+        ]
+      ],
+      "copiedRightRows": true,
+      "toolWriteCorrect": true,
+      "turnSuccess": true
+    },
+    {
+      "id": "R2",
+      "ask": "把我在分镜表里勾的那几镜复刻成图片",
+      "tick": [
+        4,
+        5
+      ],
+      "want": [
+        4,
+        5
+      ],
+      "calls": [
+        {
+          "tool": "look_at_canvas",
+          "args": "{}"
+        },
+        {
+          "tool": "list_models",
+          "args": "{\"kind\":\"image\"}"
+        },
+        {
+          "tool": "draft_shots",
+          "args": "{\"shots\":[{\"title\":\"镜 4 · 十字路口\",\"taskKind\":\"text_to_image\",\"prompt\":\"全景俯拍，雨夜空旷十字路口，斑马线前撑红伞的女孩，红色信号灯，水洼倒映霓虹，电影感，35mm胶片质感\",\"modeId\":\"t2i\",\"aspectRatio\":\"16:9\"},{\"title\":\"镜 5 · 抬头微笑\",\"taskKind\":\"text_to_image\",\"prompt\":\"特写，女孩抬头微笑，脸上挂着细小雨滴，暖色补光，柔焦，治愈氛围，电影感，35mm胶片质感\",\"modeId\":\"t2i\",\"aspectRatio\":\"16:9\"}]}"
+        },
+        {
+          "tool": "generate",
+          "args": "{\"operationId\":\"op-c88c4cd0-c662-40fe-8e82-433edc1322eb\"}"
+        }
+      ],
+      "rejected": [],
+      "said": "草稿已就位，两镜已落上画布。接下来发起生成？\n\n看起来你关掉了确认卡，两镜的草稿都还在画布上（占位图状态），还没有实际生成。\n\n需要我重新发起生成吗？点确认后就开始出图。",
+      "modelCalls": 4,
+      "cardShown": true,
+      "error": null,
+      "sendAttempts": 1,
+      "readTable": true,
+      "promptSource": "run",
+      "drafted": [
+        "全景俯拍，雨夜空旷十字路口，斑马线前撑红伞的女孩，红色信号灯，水洼倒映霓虹，电影感，35mm胶片质感",
+        "特写，女孩抬头微笑，脸上挂着细小雨滴，暖色补光，柔焦，治愈氛围，电影感，35mm胶片质感"
+      ],
+      "draftShotMatches": [
+        [
+          4
+        ],
+        [
+          5
+        ]
+      ],
+      "copiedRightRows": true,
+      "toolWriteCorrect": true,
+      "turnSuccess": true
+    },
+    {
+      "id": "R3",
+      "ask": "Remake shot 1 from the shot table as an image.",
+      "tick": [],
+      "want": [
+        1
+      ],
+      "calls": [
+        {
+          "tool": "look_at_canvas",
+          "args": "{}"
+        },
+        {
+          "tool": "list_models",
+          "args": "{\"kind\":\"image\"}"
+        },
+        {
+          "tool": "draft_shots",
+          "args": "{\"shots\":[{\"title\":\"镜 1 · 雨夜街口\",\"prompt\":\"近景，雨夜霓虹街口，撑红伞的年轻女孩侧脸，湿润地面反光，侧逆光，电影感，35mm 胶片质感\",\"taskKind\":\"text_to_image\",\"aspectRatio\":\"16:9\",\"role\":\"shot\",\"storyboard\":{\"sceneId\":\"scene-1\"}}]}"
+        },
+        {
+          "tool": "generate",
+          "args": "{\"operationId\":\"op-0193becb-e9d8-4edc-90f5-f6535fa4d684\"}"
+        }
+      ],
+      "rejected": [],
+      "said": "草稿已建好，「镜 1 · 雨夜街口」已放到画布上。现在发起生成？\n\n画面保持显示「镜 1 · 雨夜街口」→「近景，雨夜霓虹街口，撑红伞的年轻女孩侧脸，湿润地面反光，侧逆光，电影感，35mm 胶片质感」的待生成状态。\n\n你关掉了确认卡，所以还没开始生成。想生成的时候告诉我一声就行。",
+      "modelCalls": 0,
+      "cardShown": true,
+      "error": null,
+      "sendAttempts": 1,
+      "readTable": true,
+      "promptSource": "run",
+      "drafted": [
+        "近景，雨夜霓虹街口，撑红伞的年轻女孩侧脸，湿润地面反光，侧逆光，电影感，35mm 胶片质感"
+      ],
+      "draftShotMatches": [
+        [
+          1
+        ]
+      ],
+      "copiedRightRows": true,
+      "toolWriteCorrect": true,
+      "turnSuccess": true
+    }
+  ]
+}
