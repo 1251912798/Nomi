@@ -14,7 +14,7 @@
 
 ## 四步
 
-1. **探索**：在 **Claude Design 画布**（Artifact「Design」类型）按设计系统（`Design.md`、`docs/design/nomi-design-system.md` 的 token 与组件规格）出高保真设计图：用真实内容，关键屏要有光 / 暗、中 / 英。由协调会话出图并逐张对过设计系统，再交用户拍板。**跳过这一步、直接拿组件拼出来的屏不进拍板**（2026-10-08 用户：「是没用你的 claude design 设计吗，因为这个设计很重要」）。其它手写 HTML / 交互 widget 只准标 `exploration`，不能当实现合同。画布链接只有仓库主人能打开，所以拍板后把画布的截图和源码落进 `docs/design/boards/<日期>/preview/`、`source/`，清单从这里抽。
+1. **调研 + 探索**：先调研再出图（2026-10-18 用户拍板；GOV.UK discovery 的做法：先了解用户、现有做法和已有服务，调研结论和图一起交出去）。调研 ≥3 条先例，每条「出处 · 它怎么做 · 对哪个设计决定的影响（改了 / 确认了）」，覆盖同类产品的交互、别人踩过的坑（论坛 / issue / 事故复盘）；摘要放在画布上探索图旁边，用户拍板时同屏看到，清单 `priorArt` 收同样的条目（`check:board-parity`，2026-10-19 起的板必填）。再在 **Claude Design 画布**（Artifact「Design」类型）按设计系统（`Design.md`、`docs/design/nomi-design-system.md` 的 token 与组件规格）出高保真设计图：用真实内容，关键屏要有光 / 暗、中 / 英。由协调会话出图并逐张对过设计系统，再交用户拍板。**跳过这一步、直接拿组件拼出来的屏不进拍板**（2026-10-08 用户：「是没用你的 claude design 设计吗，因为这个设计很重要」）。其它手写 HTML / 交互 widget 只准标 `exploration`，不能当实现合同。画布链接只有仓库主人能打开，所以拍板后把画布的截图和源码落进 `docs/design/boards/<日期>/preview/`、`source/`，清单从这里抽。
 2. **组件搭建**：用生产组件（设计实验室的真组件 + 真实宿主数据）照图搭出来。每个元素必须交代三选一：
    - 用现成组件搭成；
    - 要改或新建组件；
@@ -37,6 +37,7 @@
 ```
 {
   "board": "Main", "approvedOn": "2026-10-08", "stage": "explored" | "built",
+  "priorArt": [{ "url": "https://…", "takeaway": "它怎么做", "decisionImpact": "对哪个决定的影响：改了 / 确认了 …" }],  // 2026-10-19 起的板必填，≥3 项
   "elements": [{
     "id": "group.header.title-inside",   // 元素 id
     "label": "分组框头：框内左上组名与计数",
@@ -61,7 +62,7 @@
   - 真重抽比对是显式开关 `node scripts/check-board-parity.mjs --reextract`：会动态加载 Playwright 真抽一遍、逐字节比对候选文件。只在本机或装了浏览器的环境跑，**不进 gates**。
   - 改了板源：本机跑 `node scripts/board-extract.mjs` 重抽，把新的候选和哈希一起提交。
   - 已挂进 `gates:contracts`，并在推送前门（`scripts/pre-push-contracts.mjs`）里跑默认模式。
-- 清单规则（R1–R8）：每个候选恰好被一个元素或 decor 认领；status 合法；missing / in-progress 有 owner；implemented 的断言名真在走查里；deferred / dropped 有用户原话和日期；旧功能的去处是存在的元素；states 来自词表；PR 认领的元素在合并前有去处。
+- 清单规则（R1–R8，外加 `priorArt`：日期目录 ≥ 2026-10-19 的板必须有 ≥3 项 `{url, takeaway, decisionImpact}`，三个字段都非空，更早的板不查）：每个候选恰好被一个元素或 decor 认领；status 合法；missing / in-progress 有 owner；implemented 的断言名真在走查里；deferred / dropped 有用户原话和日期；旧功能的去处是存在的元素；states 来自词表；PR 认领的元素在合并前有去处。
 - 合并前：`scripts/merge-preflight.mjs` 读 PR 正文的 `## 拍板图`（一行一板：`- Main: 元素id, 元素id`），这些元素在 PR 头上必须是 implemented，或带用户原话的 deferred / dropped，否则红。
 
 ## 复用的现成件（没有另起炉灶）

@@ -7,7 +7,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { checkBoardManifest, checkPrBoardClaims, checkSourceHash, findDatedBoards, loadManifests, parsePrBoardClaims, runBoardParity } from './check-board-parity.mjs'
+import { checkBoardManifest, checkPriorArt, checkPrBoardClaims, checkSourceHash, findDatedBoards, loadManifests, parsePrBoardClaims, runBoardParity } from './check-board-parity.mjs'
 import { hashBoardSourceFiles } from './board-source-hash.mjs'
 
 const CORPUS = "it('board:Main/topbar.title', () => {})"
@@ -130,6 +130,40 @@ describe('R7 states 非空且来自词表', () => {
     const m = base()
     m.elements[0].states = ['看起来还行']
     assert.match(run(m).join('\n'), /不在状态词表里/)
+  })
+})
+
+describe('R9 priorArt：2026-10-19 起的板必须带 ≥3 项先例（更早的板不追溯）', () => {
+  const item = (n) => ({ url: `https://example.com/${n}`, takeaway: '它怎么做', decisionImpact: '改了：底栏位置' })
+  const withPrior = (items, date = '2026-10-19') => ({ manifest: { ...base(), priorArt: items }, date })
+  const runDated = ({ manifest, date }) => checkBoardManifest({ board: 'Main', manifest, candidates, assertionCorpus: CORPUS, date })
+  it('正例：3 项齐全 → 绿', () => assert.deepEqual(runDated(withPrior([item(1), item(2), item(3)])), []))
+  it('正例：更早的板（2026-10-18）没有 priorArt → 绿，不追溯', () => assert.deepEqual(runDated({ manifest: base(), date: '2026-10-18' }), []))
+  it('反例：2026-10-19 的板缺 priorArt → 红', () => assert.match(runDated({ manifest: base(), date: '2026-10-19' }).join('\n'), /必须有 priorArt/))
+  it('反例：只有 2 项 → 红', () => assert.match(runDated(withPrior([item(1), item(2)])).join('\n'), /至少 3 项，现在 2 项/))
+  it('反例：缺 decisionImpact（只列链接，没写对决定的影响）→ 红', () => {
+    const bare = { url: 'https://example.com/x', takeaway: '它怎么做' }
+    assert.match(runDated(withPrior([item(1), item(2), bare])).join('\n'), /priorArt\[2\] 缺 decisionImpact/)
+  })
+  it('反例：url 不是链接 → 红', () => {
+    assert.match(runDated(withPrior([item(1), item(2), { ...item(3), url: '凭记忆' }])).join('\n'), /不是 http\(s\) 链接/)
+  })
+  it('日期没给就看清单的 approvedOn', () => {
+    assert.match(checkPriorArt({ board: 'Main', manifest: { approvedOn: '2026-10-20' } }).join('\n'), /必须有 priorArt/)
+    assert.deepEqual(checkPriorArt({ board: 'Main', manifest: { approvedOn: '2026-10-18' } }), [])
+  })
+  it('真跑：日期目录 ≥ 2026-10-19 的新板缺 priorArt → 门岗红；2026-10-18 目录不红', async () => {
+    const root = fs.mkdtempSync(path.join(process.env.TMPDIR || process.env.TEMP || '.', 'bp-prior-'))
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    const manifest = JSON.stringify({ board: 'Fresh', stage: 'built', elements: [], decor: [], functionCensus: [] })
+    for (const day of ['2026-10-18', '2026-10-19']) {
+      fs.mkdirSync(path.join(root, day))
+      fs.writeFileSync(path.join(root, day, `${day === '2026-10-18' ? 'Old' : 'Fresh'}.board.json`), manifest.replace('Fresh', day === '2026-10-18' ? 'Old' : 'Fresh'))
+    }
+    const errors = await runBoardParity({ dir: main, root })
+    fs.rmSync(root, { recursive: true, force: true })
+    assert.ok(errors.some((e) => /\[Fresh\].*priorArt/.test(e)), errors.join('\n'))
+    assert.ok(!errors.some((e) => /\[Old\].*priorArt/.test(e)), errors.join('\n'))
   })
 })
 
