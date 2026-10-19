@@ -12,6 +12,8 @@
 //  R5 deferred / dropped 必须有 userDecision {quote, date}（用户原话 + 日期）
 //  R6 functionCensus 每项的 after 必须是存在的元素 id（旧功能必须有去处）
 //  R7 states 非空，取值只能来自状态词表
+//  R9 priorArt（2026-10-19 起）：日期目录 ≥ 2026-10-19 的板必须有 ≥3 项 {url, takeaway, decisionImpact}（先查别人：它怎么做 + 对哪个设计决定的影响）；
+//     更早的板不查。日期取板所在的日期目录名（取不到就取清单的 approvedOn）
 //  R8 PR 正文 `## 拍板图` 认领的元素：在 PR 头上必须是 implemented，或带 userDecision 的 deferred / dropped
 //     （认领可以指向任何日期目录里的板；发现到的每张新日期板都跑完整规则：抽取候选核哈希、人工普查须声明）
 //
@@ -30,19 +32,45 @@ export const BOARD_STAGES = Object.freeze(['explored', 'built'])
 export const PR_SECTION = '拍板图'
 const CLAIM_LINE = /^\s*[-*]\s*([A-Za-z]+)\s*[:：]\s*(.+)$/
 
+/** 从这天（含）起，板清单必须带 priorArt。更早的板不追溯。 */
+export const PRIOR_ART_REQUIRED_FROM = '2026-10-19'
+export const PRIOR_ART_MIN_ITEMS = 3
+
 const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0
 
 /**
+ * R9：先查别人。日期 ≥ PRIOR_ART_REQUIRED_FROM 的板必须有 ≥3 项 {url, takeaway, decisionImpact}。纯函数、可测。
+ */
+export function checkPriorArt({ board, manifest, date }) {
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date ?? '')) ? date : manifest?.approvedOn
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(day ?? '')) || day < PRIOR_ART_REQUIRED_FROM) return []
+  const tag = (msg) => `[${board}] ${msg}`
+  const items = manifest?.priorArt
+  if (!Array.isArray(items)) return [tag(`${day} 起的板必须有 priorArt 数组（≥${PRIOR_ART_MIN_ITEMS} 项 {url, takeaway, decisionImpact}：别人怎么做 + 对哪个设计决定的影响）`)]
+  const errors = []
+  if (items.length < PRIOR_ART_MIN_ITEMS) errors.push(tag(`priorArt 至少 ${PRIOR_ART_MIN_ITEMS} 项，现在 ${items.length} 项`))
+  items.forEach((item, index) => {
+    for (const field of ['url', 'takeaway', 'decisionImpact']) {
+      if (!isNonEmptyString(item?.[field])) errors.push(tag(`priorArt[${index}] 缺 ${field}`))
+    }
+    if (isNonEmptyString(item?.url) && !/^https?:\/\/\S+$/.test(item.url.trim())) errors.push(tag(`priorArt[${index}].url 不是 http(s) 链接：${item.url}`))
+  })
+  return errors
+}
+
+/**
  * 单张板的清单校验。纯函数、可测。
- * @param {{board:string, manifest:object, candidates:Array<{id:string}>, assertionCorpus:string}} input
+ * @param {{board:string, manifest:object, candidates:Array<{id:string}>, assertionCorpus:string, date?:string}} input
+ *   date = 板所在日期目录名（YYYY-MM-DD），不给就用清单的 approvedOn
  * @returns {string[]} 错误列表（空 = 通过）
  */
-export function checkBoardManifest({ board, manifest, candidates, assertionCorpus }) {
+export function checkBoardManifest({ board, manifest, candidates, assertionCorpus, date }) {
   const errors = []
   const tag = (msg) => `[${board}] ${msg}`
   if (!manifest || typeof manifest !== 'object') return [tag('清单缺失或不是对象')]
   if (manifest.board !== board) errors.push(tag(`清单里的 board 字段是 ${manifest.board}，应为 ${board}`))
   if (!BOARD_STAGES.includes(manifest.stage)) errors.push(tag(`stage 只能是 ${BOARD_STAGES.join(' / ')}，当前 ${manifest.stage}`))
+  errors.push(...checkPriorArt({ board, manifest, date }))
   const elements = Array.isArray(manifest.elements) ? manifest.elements : []
   const decor = Array.isArray(manifest.decor) ? manifest.decor : []
   const census = Array.isArray(manifest.functionCensus) ? manifest.functionCensus : []
@@ -245,7 +273,7 @@ export async function runBoardParity({ dir = BOARDS_DIR, root = path.dirname(dir
     }
     // 读这张板自己目录里的清单，不按板名查表——同名板不能互相顶替（V-1203 复验 R1）。
     const manifest = JSON.parse(fs.readFileSync(path.join(boardDir, `${board}.board.json`), 'utf8'))
-    errors.push(...checkBoardManifest({ board, manifest, candidates, assertionCorpus: corpus }))
+    errors.push(...checkBoardManifest({ board, manifest, candidates, assertionCorpus: corpus, date: path.basename(boardDir) }))
   }
   // 重名本身就红：PR 正文按板名认领，重名就分不清认的是哪一张。
   const dated = findDatedBoards(root, dir)
@@ -267,7 +295,7 @@ export async function runBoardParity({ dir = BOARDS_DIR, root = path.dirname(dir
       errors.push(`[${board}] 缺清单 ${board}.board.json`)
       continue
     }
-    errors.push(...checkBoardManifest({ board, manifest: manifests[board], candidates: doc.candidates, assertionCorpus: corpus }))
+    errors.push(...checkBoardManifest({ board, manifest: manifests[board], candidates: doc.candidates, assertionCorpus: corpus, date: path.basename(dir) }))
   }
   if (reextract) {
     // 显式开关：动态加载抽取（会起 Playwright 浏览器），逐字节比对候选文件。
