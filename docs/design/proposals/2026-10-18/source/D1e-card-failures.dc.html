@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>D1e 失败：哪段、发没发、怎么办（三种）</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400&display=swap">
+<style>
+
+body{margin:0}
+.light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink40:oklch(.68 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-line-soft:oklch(.95 .003 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-danger:oklch(.55 .13 25);--nomi-danger-ink:oklch(.45 .13 25);--nomi-danger-soft:oklch(.955 .021 25);--nomi-danger-edge:oklch(.895 .052 25);--nomi-warning-ink:oklch(.45 .085 72);--nomi-warning-soft:oklch(.968 .024 72);--nomi-success-ink:oklch(.45 .09 145);--nomi-success-soft:oklch(.962 .033 145);--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink40:oklch(.62 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-line-soft:oklch(.31 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-danger:oklch(.72 .13 25);--nomi-danger-ink:oklch(.82 .13 25);--nomi-danger-soft:oklch(.3 .048 25);--nomi-danger-edge:oklch(.4 .07 25);--nomi-warning-ink:oklch(.82 .085 72);--nomi-warning-soft:oklch(.295 .04 72);--nomi-success-ink:oklch(.82 .09 145);--nomi-success-soft:oklch(.295 .042 145);--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.root{--nomi-radius-sm:6px;--nomi-radius:10px;--nomi-radius-lg:16px;box-sizing:border-box;background-color:var(--nomi-bg);color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.root *{box-sizing:border-box}
+.dots{background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px}
+.row{display:flex;align-items:flex-start}
+.cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 8px 4px}
+.note{margin:10px 0 0 4px;font-size:12px;line-height:1.5;color:var(--nomi-ink60)}
+button{font-family:inherit;cursor:default}
+.ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.ib.bare{border-color:transparent;background:transparent}
+.tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.chip.open{background:var(--nomi-accent-soft);color:var(--nomi-ink);border-color:transparent}
+.chip.bad{color:var(--nomi-danger-ink);border-color:var(--nomi-danger-edge)}
+.send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.sendtxt{flex:none;height:30px;padding:0 12px 0 14px;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);font:inherit;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--nomi-line);background:var(--nomi-paper);color:var(--nomi-ink);font:inherit;font-size:13px;font-weight:500;white-space:nowrap}
+.btn.pri{background:var(--nomi-ink);border-color:var(--nomi-ink);color:var(--nomi-paper)}
+.btn.txt{border-color:transparent;background:transparent;color:var(--nomi-ink60)}
+.btn.danger{background:var(--nomi-danger);border-color:var(--nomi-danger);color:var(--nomi-paper)}
+.lk{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 6px;border:0;border-radius:999px;background:transparent;color:var(--nomi-accent);font:inherit;font-size:12px;white-space:nowrap}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:var(--nomi-ink05);color:var(--nomi-ink60);font-size:12px;white-space:nowrap}
+.sp{flex:1;min-width:0}
+/* 节点卡 */
+.node{position:relative;box-sizing:border-box;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.t{position:relative;flex:none;width:40px;height:40px}
+.t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.cnt{margin-left:auto;align-self:center;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.prompt{position:relative;padding:8px 36px 8px 4px;min-height:36px;font-size:14px;line-height:1.9}
+.prompt .ib{position:absolute;right:0;top:4px}
+.m{display:inline-flex;align-items:center;gap:4px;padding:0 8px 0 3px;border-radius:999px;background:var(--nomi-accent-soft);color:var(--nomi-ink);font-weight:500;font-size:13px;line-height:1.5;vertical-align:baseline}
+.m svg{display:block;border-radius:4px}
+.bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+/* Agent 面板 */
+.panel{width:360px;display:flex;flex-direction:column;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius-lg);background:var(--nomi-paper);box-shadow:var(--nomi-shadow-lg);overflow:hidden}
+.ph{display:flex;align-items:center;gap:8px;height:44px;padding:0 10px 0 12px;border-bottom:1px solid var(--nomi-line-soft);flex:none}
+.wm{font-family:Fraunces,Georgia,serif;font-size:16px;letter-spacing:-.02em;color:var(--nomi-ink)}
+.wm b{font-weight:400;color:var(--nomi-accent)}
+.pmsg{padding:10px 14px;font-size:13px;color:var(--nomi-ink60)}
+.pslot{padding:0 12px 12px}
+.pin{margin:0 12px 12px;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);padding:0 12px;display:flex;align-items:center;height:44px;color:var(--nomi-ink60);font-size:13px}
+/* 付费确认卡 */
+.sc{border:1px solid var(--nomi-ink40);border-radius:var(--nomi-radius);background:var(--nomi-paper);padding:12px;display:flex;flex-direction:column;gap:6px}
+.sc-h{display:flex;align-items:center;gap:8px;min-height:22px}
+.sc-t{font-size:14px;font-weight:600;color:var(--nomi-ink)}
+.sc-s{display:flex;align-items:center;gap:6px;min-height:24px;font-size:13px;color:var(--nomi-ink80)}
+.sc-s .nm{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-s .idx,.li .idx{font-variant-numeric:tabular-nums;color:var(--nomi-ink60);font-size:12px}
+.sc-p{display:flex;align-items:flex-start;gap:6px}
+.pt{flex:1;min-width:0;margin:0;font-size:13px;line-height:20px;color:var(--nomi-ink80);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sc-c{display:flex;flex-wrap:wrap;gap:4px}
+.sc-d{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding-top:2px}
+.sc-d .btn{height:32px;padding:0 12px}
+.sc-d .btn.txt{padding:0 8px}
+.li{display:flex;align-items:center;gap:8px;min-height:28px;padding:0 8px;border-radius:var(--nomi-radius-sm);font-size:13px;color:var(--nomi-ink80)}
+.li .nm{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .st{margin-left:auto;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.li.cur{background:var(--nomi-accent-soft);color:var(--nomi-ink)}
+.li.fin{color:var(--nomi-ink60)}
+.lst{display:flex;flex-direction:column;gap:2px}
+.ok{color:var(--nomi-success-ink)}
+.bad-i{color:var(--nomi-danger-ink)}
+.warn-i{color:var(--nomi-warning-ink)}
+.fact{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:20px;color:var(--nomi-ink)}
+.fact svg{flex:none;margin-top:2px}
+.fact small{display:block;font-size:12px;line-height:18px;color:var(--nomi-ink60)}
+.spin{animation:none}
+
+</style>
+</helmet>
+<div class="root light" style="width:1280px;min-height:714px;padding:24px 40px 28px;"><div style="display:flex;gap:20px;align-items:flex-start">
+      <div><div class="cap">参数被拒：点名参数，确定没发出</div><div class="panel">
+  <div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span><span class="tag" style="margin-left:2px">3%</span><span class="sp"></span><button class="ib bare" aria-label="历史会话"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8l0 4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg></button></div>
+  
+  <div class="pslot"><div class="sc">
+      <div class="sc-h"><span class="sc-t">第 2 段没有发出去</span></div>
+      <div class="lst">
+        <div class="li fin"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-success-ink)"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></svg><span class="idx">01</span><span class="nm">纸船出发</span><span class="st">已发出</span></div>
+        <div class="li cur"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-danger-ink)"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M10 10l4 4m0 -4l-4 4"/></svg><span class="idx">02</span><span class="nm">越过落叶</span><span class="st">没发出</span></div>
+        <div class="li"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-ink60)"><path d="M8.56 3.69a9 9 0 0 0 -2.92 1.95"/><path d="M3.69 8.56a9 9 0 0 0 -.69 3.44"/><path d="M3.69 15.44a9 9 0 0 0 1.95 2.92"/><path d="M8.56 20.31a9 9 0 0 0 3.44 .69"/><path d="M15.44 20.31a9 9 0 0 0 2.92 -1.95"/><path d="M20.31 15.44a9 9 0 0 0 .69 -3.44"/><path d="M20.31 8.56a9 9 0 0 0 -1.95 -2.92"/><path d="M15.44 3.69a9 9 0 0 0 -3.44 -.69"/></svg><span class="idx">03</span><span class="nm">漂向远处</span><span class="st">还没发</span></div>
+      </div>
+      <div class="fact"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-danger-ink)"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0"/><path d="M12 16h.01"/></svg><span>清晰度 1080p 这个模型不支持，这段还没开始生成。<small>改成 720p 或更低，再点生成这段。第 3 段还在等。</small></span></div>
+      <div class="sc-c"><button class="chip">Seedance 2.0 Fast<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button><button class="chip open">16:9 · 5s · <span style="color:var(--nomi-danger-ink);font-weight:600">1080p</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button></div>
+      <div style="display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid var(--nomi-line);border-radius:10px;background:var(--nomi-paper);box-shadow:var(--nomi-shadow-lg)">
+    <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12px;font-weight:600;color:var(--nomi-ink60)">版本</div><div style="display:flex;flex-wrap:wrap;gap:4px"><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;border:1px solid var(--nomi-line);color:var(--nomi-ink80)">标准</span><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;background:var(--nomi-ink);color:var(--nomi-paper);border:1px solid var(--nomi-ink)">Fast</span></div></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12px;font-weight:600;color:var(--nomi-ink60)">比例</div><div style="display:flex;flex-wrap:wrap;gap:4px"><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;background:var(--nomi-ink);color:var(--nomi-paper);border:1px solid var(--nomi-ink)">16:9</span><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;border:1px solid var(--nomi-line);color:var(--nomi-ink80)">9:16</span><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;border:1px solid var(--nomi-line);color:var(--nomi-ink80)">1:1</span><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;border:1px solid var(--nomi-line);color:var(--nomi-ink80)">4:3</span></div></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12px;font-weight:600;color:var(--nomi-ink60)">清晰度</div><div style="display:flex;flex-wrap:wrap;gap:4px"><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;border:1px solid var(--nomi-line);color:var(--nomi-ink80)">480p</span><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;border:1px solid var(--nomi-line);color:var(--nomi-ink80)">720p</span><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;background:var(--nomi-danger-soft);color:var(--nomi-danger-ink);font-weight:600;border:1px solid var(--nomi-danger-edge)">1080p</span></div></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12px;font-weight:600;color:var(--nomi-ink60)">时长</div><div style="display:flex;flex-wrap:wrap;gap:4px"><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;border:1px solid var(--nomi-line);color:var(--nomi-ink80)">4s</span><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;background:var(--nomi-ink);color:var(--nomi-paper);border:1px solid var(--nomi-ink)">5s</span><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;border:1px solid var(--nomi-line);color:var(--nomi-ink80)">8s</span><span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:12px;border:1px solid var(--nomi-line);color:var(--nomi-ink80)">10s</span></div></div>
+  </div>
+      
+    <div class="sc-d"><button class="btn txt">取消本次</button><button class="btn">跳过这段</button><button class="btn pri">生成这段<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6v6a3 3 0 0 1 -3 3h-10l4 -4m0 8l-4 -4"/></svg></button></div>
+    </div></div>
+  
+</div><div class="note" style="margin-left:0;max-width:360px">摘要里出问题的那一项标红，弹层里同一个选项也标出来。</div></div>
+      <div><div class="cap">结果未知：先查任务，不自动重发</div><div class="panel">
+  <div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span><span class="tag" style="margin-left:2px">3%</span><span class="sp"></span><button class="ib bare" aria-label="历史会话"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8l0 4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg></button></div>
+  
+  <div class="pslot"><div class="sc">
+      <div class="sc-h"><span class="sc-t">第 2 段结果还不确定</span></div>
+      <div class="lst">
+        <div class="li fin"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-success-ink)"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></svg><span class="idx">01</span><span class="nm">纸船出发</span><span class="st">已发出</span></div>
+        <div class="li cur"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-warning-ink)"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0"/><path d="M12 16h.01"/></svg><span class="idx">02</span><span class="nm">越过落叶</span><span class="st">待查看</span></div>
+        <div class="li"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-ink60)"><path d="M8.56 3.69a9 9 0 0 0 -2.92 1.95"/><path d="M3.69 8.56a9 9 0 0 0 -.69 3.44"/><path d="M3.69 15.44a9 9 0 0 0 1.95 2.92"/><path d="M8.56 20.31a9 9 0 0 0 3.44 .69"/><path d="M15.44 20.31a9 9 0 0 0 2.92 -1.95"/><path d="M20.31 15.44a9 9 0 0 0 .69 -3.44"/><path d="M20.31 8.56a9 9 0 0 0 -1.95 -2.92"/><path d="M15.44 3.69a9 9 0 0 0 -3.44 -.69"/></svg><span class="idx">03</span><span class="nm">漂向远处</span><span class="st">还没发</span></div>
+      </div>
+      <div class="fact"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-warning-ink)"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0"/><path d="M12 16h.01"/></svg><span>暂时无法确认这段的结果。先查看任务状态，避免重复生成。<small>不会自动重发。第 3 段还没发出。</small></span></div>
+      <div class="sc-d"><button class="btn txt">取消本次</button><button class="btn pri"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 5h8"/><path d="M13 9h5"/><path d="M13 15h8"/><path d="M13 19h5"/><path d="M3 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/><path d="M3 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/></svg>查看任务</button></div>
+    </div></div>
+  
+</div></div>
+      <div><div class="cap">停止失败：不假装已停</div><div class="panel">
+  <div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span><span class="tag" style="margin-left:2px">3%</span><span class="sp"></span><button class="ib bare" aria-label="历史会话"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8l0 4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg></button></div>
+  
+  <div class="pslot"><div class="sc">
+    <div class="sc-h"><span class="sc-t">正在停下…</span></div>
+    <div class="lst">
+      <div class="li fin"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-success-ink)"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></svg><span class="idx">01</span><span class="nm">纸船出发</span><span class="st">已发出</span></div>
+      <div class="li cur"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-warning-ink)"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0"/><path d="M12 16h.01"/></svg><span class="idx">02</span><span class="nm">越过落叶</span><span class="st">状态未确认</span></div>
+      <div class="li"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-ink60)"><path d="M8.56 3.69a9 9 0 0 0 -2.92 1.95"/><path d="M3.69 8.56a9 9 0 0 0 -.69 3.44"/><path d="M3.69 15.44a9 9 0 0 0 1.95 2.92"/><path d="M8.56 20.31a9 9 0 0 0 3.44 .69"/><path d="M15.44 20.31a9 9 0 0 0 2.92 -1.95"/><path d="M20.31 15.44a9 9 0 0 0 .69 -3.44"/><path d="M20.31 8.56a9 9 0 0 0 -1.95 -2.92"/><path d="M15.44 3.69a9 9 0 0 0 -3.44 -.69"/></svg><span class="idx">03</span><span class="nm">漂向远处</span><span class="st">未发出</span></div>
+    </div>
+    <div class="fact"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--nomi-warning-ink)"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0"/><path d="M12 16h.01"/></svg><span>还没能确认已停止，请查看任务状态。<small>已发出的第 1 段照常生成。</small></span></div>
+    <div class="sc-d"><button class="btn">再试停止</button><button class="btn pri"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.67" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 5h8"/><path d="M13 9h5"/><path d="M13 15h8"/><path d="M13 19h5"/><path d="M3 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/><path d="M3 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/></svg>查看任务</button></div>
+  </div></div>
+  
+</div></div>
+    </div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":714}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
