@@ -4,7 +4,7 @@
   "stage": "explored",
   "visualReview": "用户 10-18 看 B3k / B3m 后确认 B3a–B3m，按协调推荐定稿（底栏 A、「生成」字钮、优化钮保留 N 标、数量只在模型声明时显示、锁语义不变、粘贴图片和拖画布结果本轮不新增）。",
   "sourceBoundary": "板源 = Claude Design 画布「Nomi 0.24 交互方案」第二组 B3a–B3m 十三格（source/ 下每格一个 .dc.html，canvas.json 为画布布局）。preview/ComposerB3.html 是把十三格按原宽展开成的静态拼页（亮暗两套展开，样式按格加前缀隔离），candidates 由 board-extract 的抽取函数在该拼页上抽出。画布里的 A1 / C3 组不在本板（Agent 标注与付费卡另有板）。",
-  "designIntent": "生成框 0.24：生成方式进参数条（默认参考，图片不选方式）；参考入口改 40×40 方块 + 缩略图一行；提示词引用用名字；底栏左模型 + 参数、右三钮 + 数量 + 生成钮。清单是实现合同：先清单、后实现；实现线要等 D 组付费卡、E 组复用宿主样张确认后再开。",
+  "designIntent": "生成框 0.24：生成方式进参数条（默认参考，图片不选方式）；参考入口改 40×40 方块 + 缩略图一行；提示词引用用名字；底栏左模型 + 变体 + 参数摘要、右三钮 + 数量 + ↑ 生成钮。清单是实现合同：先清单、后实现；实现线要等 D 组付费卡、E 组复用宿主样张确认后再开。",
   "decisions": [
     {
       "id": "D1",
@@ -16,15 +16,15 @@
     },
     {
       "id": "D2",
-      "text": "底栏选 A（左模型 + 参数，右三个提示词钮 + 分隔 + 数量 + 生成钮）；生成钮用「生成」字钮；优化钮保留 N 标。",
+      "text": "底栏选 A（左模型 + 变体 + 参数摘要，右三个提示词钮 + 分隔 + 数量 + 生成钮）；生成钮改回原来的 ↑ 圆钮（30px、--nomi-ink 底、IconArrowUp、tooltip「生成（Enter）」），「生成」字钮作废；优化钮保留 N 标。",
       "appliesTo": [
         "bar.layout.a",
         "bar.send",
-        "bar.send.text",
+        "bar.send.circle",
         "bar.tool.optimize",
         "bar.optimize.mark"
       ],
-      "source": "用户 10-18 原话「按推荐走 但其实最好先给我画一下样张再做」（确认 B3a–B3m 按推荐）"
+      "source": "用户 10-18 原话「不需要写生成吧，感觉和原来的样子一致就可以」（覆盖同日「按推荐走」里的字钮）"
     },
     {
       "id": "D3",
@@ -59,13 +59,13 @@
     },
     {
       "id": "R2",
-      "text": "模型菜单只列模型本身（28px 行、底部「隐藏模型」）；版本（标准 / Fast）进参数弹层第一组；菜单里不写任何说明。",
+      "text": "模型菜单只列模型本身（28px 行、底部「隐藏模型」），不写说明。变体（标准 / Fast）不进参数弹层：和现在的产品一样是参数条上单独一颗下拉，模型一颗、变体一颗。「版本放进弹层」「模型和版本合一颗」作废。",
       "appliesTo": [
         "modelmenu.row",
         "modelmenu.footer-hide",
         "params.group.variant"
       ],
-      "source": "用户 10-18 评论 B3j 模型菜单 → 协调定稿"
+      "source": "用户 10-19 原话「这个面板可以就按照目前nomi上面的弄吗」→ 协调定稿（画布第 61 版）"
     },
     {
       "id": "R3",
@@ -93,6 +93,23 @@
         "bar.send"
       ],
       "source": "协调任务书 B3（样张规则 10）"
+    },
+    {
+      "id": "R6",
+      "text": "参数区一律照现有组件原样（InlineParameterBar + ParameterControlBody）：摘要钮只印当前值（比例 · 清晰度 · 时长），不带生成方式；生成方式放在面板顶部；面板固定 320 宽、最高 420、组标题在上选项在下、比例带小图形、时长是滑杆、生成音频是开关；同模型多渠道的那一组叫「供应商」。",
+      "appliesTo": [
+        "bar.model",
+        "bar.params",
+        "params.popover",
+        "params.group.variant",
+        "params.group.mode",
+        "params.group.aspect",
+        "params.group.resolution",
+        "params.group.quality",
+        "params.group.duration",
+        "params.group.audio"
+      ],
+      "source": "用户 10-19 原话「这个面板可以就按照目前nomi上面的弄吗」；画布第 61 版"
     }
   ],
   "elements": [
@@ -595,7 +612,7 @@
     },
     {
       "id": "bar.model",
-      "label": "底栏 · 模型钮（只显示模型名；版本在参数弹层第一组）",
+      "label": "底栏 · 模型钮（模型一颗，只显示模型名；现有组件原样）",
       "change": "restyle",
       "candidates": [
         "012-button-Seedance20Fa",
@@ -634,11 +651,11 @@
         "zh-en",
         "dark"
       ],
-      "note": "模型钮点开是 modelmenu；加载 / 无模型配置入口按现状保留（MODEL-04）"
+      "note": "模型钮点开是 modelmenu；加载 / 无模型配置入口按现状保留（MODEL-04）；同模型供应商小签按现状保留（MODEL-02）"
     },
     {
       "id": "bar.params",
-      "label": "底栏 · 参数摘要钮（第一项是生成方式，如「参考 · 16:9 · 720p · 5s」，点开参数弹层）",
+      "label": "底栏 · 参数摘要钮（只印当前值，如「16:9 · 720p · 5s」，不带生成方式；点开参数面板；现有组件原样）",
       "change": "restyle",
       "candidates": [
         "014-button-参考169720p5s",
@@ -683,7 +700,7 @@
         "zh-en",
         "dark"
       ],
-      "note": "图片摘要没有生成方式；摘要精简不代表删长尾参数"
+      "note": "摘要只印当前值，生成方式放在面板顶部（10-19 用户拍板「按照目前 nomi 上面的弄」）；图片摘要同样只印当前值；摘要精简不代表删长尾参数"
     },
     {
       "id": "bar.tool.presets",
@@ -852,8 +869,8 @@
     },
     {
       "id": "bar.send",
-      "label": "底栏右 · 生成钮（拍板：「生成」字钮 pill，可带 ↑；B3a–l 里的 ↑ 圆钮是占位）",
-      "change": "restyle",
+      "label": "底栏右 · 生成钮（↑ 圆钮：30px，--nomi-ink 底，IconArrowUp，tooltip「生成（Enter）」；10-18 用户拍板改回，「生成」字钮作废）",
+      "change": "keep-as-is",
       "candidates": [
         "025-button-生成",
         "026-svg",
@@ -881,7 +898,7 @@
         "442-svg"
       ],
       "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "owner": "I-b1a-composer",
       "states": [
         "loading",
         "disabled",
@@ -890,7 +907,7 @@
         "dark"
       ],
       "decision": "D2",
-      "note": "一次提交、运行中 ···、禁止重复提交、aria「生成」按现状保留（RUN-01）"
+      "note": "一次提交、运行中 ···、禁止重复提交、aria「生成」按现状保留（RUN-01）；不带数字角标、不出花费字样（R5）"
     },
     {
       "id": "params.popover",
@@ -909,7 +926,8 @@
         "long-text",
         "zh-en",
         "dark"
-      ]
+      ],
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
     },
     {
       "id": "params.mode.limit-tip",
@@ -929,7 +947,7 @@
     },
     {
       "id": "params.group.variant",
-      "label": "弹层第一组 · 变体（标准 / Fast 等）",
+      "label": "底栏 · 变体钮（标准 / Fast 等，紧跟模型钮；现有组件原样，不进参数弹层）",
       "change": "new",
       "candidates": [
         "079-div-变体",
@@ -938,7 +956,7 @@
         "082-button-Fast"
       ],
       "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "owner": "I-b1a-composer",
       "states": [
         "selected",
         "disabled",
@@ -946,11 +964,11 @@
         "zh-en",
         "dark"
       ],
-      "note": "版本从模型菜单挪进这里；单 tier 固定值禁用；保存精确 ID（MODEL-03）"
+      "note": "10-19 用户拍板：版本放进弹层作废，变体是参数条上单独一颗下拉；单 tier 固定值禁用；保存精确 ID（MODEL-03）"
     },
     {
       "id": "params.group.mode",
-      "label": "弹层 · 生成方式分段（参考 / 首尾帧；模型只有首帧时叫「首帧」；只在有两种以上带图方式时出现；永远没有「文生视频」）",
+      "label": "参数面板顶部 · 生成方式分段（参考 / 首尾帧；模型只有首帧时叫「首帧」；只在有两种以上带图方式时出现；永远没有「文生视频」；现有组件原样）",
       "change": "new",
       "candidates": [
         "083-div-生成方式",
@@ -1005,7 +1023,8 @@
         "narrow",
         "zh-en",
         "dark"
-      ]
+      ],
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
     },
     {
       "id": "params.group.resolution",
@@ -1034,7 +1053,8 @@
         "disabled",
         "zh-en",
         "dark"
-      ]
+      ],
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
     },
     {
       "id": "params.group.quality",
@@ -1059,7 +1079,8 @@
         "disabled",
         "zh-en",
         "dark"
-      ]
+      ],
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
     },
     {
       "id": "params.group.duration",
@@ -1086,7 +1107,8 @@
         "narrow",
         "zh-en",
         "dark"
-      ]
+      ],
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
     },
     {
       "id": "params.group.audio",
@@ -1105,7 +1127,8 @@
         "disabled",
         "zh-en",
         "dark"
-      ]
+      ],
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
     },
     {
       "id": "modelmenu.row",
@@ -1418,8 +1441,8 @@
     },
     {
       "id": "bar.send.text",
-      "label": "B3m「生成」字钮（拍板）：带文字的 pill，不容易被当成「上传」",
-      "change": "new",
+      "label": "B3m「生成」字钮（作废）：带文字的 pill",
+      "change": "dropped",
       "candidates": [
         "718-div",
         "719-button-画布点选",
@@ -1446,8 +1469,7 @@
         "740-button-生成",
         "741-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "dropped",
       "states": [
         "loading",
         "disabled",
@@ -1456,7 +1478,11 @@
         "dark"
       ],
       "decision": "D2",
-      "note": "即 bar.send 的最终样子"
+      "note": "用户 10-18 改回 ↑ 圆钮，字钮作废",
+      "userDecision": {
+        "quote": "不需要写生成吧，感觉和原来的样子一致就可以",
+        "date": "2026-10-18"
+      }
     },
     {
       "id": "bar.optimize.mark",
@@ -1540,8 +1566,8 @@
     },
     {
       "id": "bar.send.circle",
-      "label": "B3m「↑ 圆钮」（未选）：和现在一样的生成钮",
-      "change": "dropped",
+      "label": "B3m「↑ 圆钮」（拍板）：和现在一样的生成钮",
+      "change": "keep-as-is",
       "candidates": [
         "693-div",
         "694-button-画布点选",
@@ -1568,16 +1594,16 @@
         "715-button-生成",
         "716-svg"
       ],
-      "status": "dropped",
+      "status": "missing",
       "states": [
+        "loading",
+        "disabled",
+        "hover",
         "zh-en",
         "dark"
       ],
-      "userDecision": {
-        "quote": "按推荐走 但其实最好先给我画一下样张再做",
-        "date": "2026-10-18"
-      },
-      "note": "B3a–l 里的 ↑ 圆钮只是样张占位"
+      "note": "10-18 用户拍板：生成钮改回原来的 ↑ 圆钮；即 bar.send 的最终样子",
+      "owner": "I-b1a-composer"
     },
     {
       "id": "bar.optimize.sparkles",
@@ -2839,7 +2865,7 @@
       "before": "多变体可选；单 tier 固定值禁用；保存精确 ID",
       "after": "params.group.variant",
       "landing": "drawn",
-      "afterNote": "样张已画：B3 未明确单独变体控件；保留模型与摘要之间的变体；窄宽/英文不能吞掉。"
+      "afterNote": "10-19 用户拍板：变体是参数条上单独一颗下拉（现有组件原样），紧跟模型钮；窄宽/英文不能吞掉。"
     },
     {
       "censusId": "MODEL-04",
@@ -2879,7 +2905,7 @@
       "before": "图=比例/清晰度；视频=比例/时长；110px，展开时摘要冻结",
       "after": "params.popover",
       "landing": "drawn",
-      "afterNote": "样张已画：B3b：视频首项方式，图片无方式；按 B3 扩充摘要，全部参数仍在同一面板；中英不截断另验。"
+      "afterNote": "10-19 用户拍板：摘要只印当前值，生成方式放面板顶部，全部参数仍在同一面板（现有组件原样）。"
     },
     {
       "censusId": "PARAM-02",
@@ -2975,7 +3001,7 @@
       "before": "深色圆钮；运行 ···，禁止重复提交；aria 生成素材",
       "after": "bar.send",
       "landing": "drawn",
-      "afterNote": "样张已画：B3a–l 发送钮；B3m ↑/生成文字比较；保留一次提交、运行状态及 aria；按钮文案待协调确认。"
+      "afterNote": "样张已画：B3a–l 发送钮；用户 10-18 拍板改回原来的 ↑ 圆钮；保留一次提交、运行状态及 aria。"
     },
     {
       "censusId": "RUN-02",
