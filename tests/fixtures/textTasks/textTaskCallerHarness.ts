@@ -29,22 +29,36 @@ function ensureIpc() {
   registered = true;
 }
 
-/** 调用方 = 进门姿势 + 请求形状。与 docs/plan/2026-10-21-text-tasks-to-pi-ai.md 普查表的编号一一对应。 */
-export type Caller = { id: string; door: "stream" | "one-shot"; kind: TaskRequest["kind"]; extras?: Record<string, unknown> };
+/**
+ * 真入口：这个矩阵从执行器 / IPC handler 往下测，**看不见入口之上的准入**——2026-10-21 改写选区每次都被令牌付费闸挡下，
+ * 矩阵全绿、整机演练才暴露。所以每一行还要写明：谁发起（渲染层 / 主进程）、从真入口经准入一路走到 HTTP 的测试是哪份；
+ * 没有就写缺口（谁跟、到哪天）。渲染层发起的调用方不许只有缺口（登记的例外除外），见 textTaskCallers.integration.test.ts。
+ */
+export type CallerEntry = { from: "renderer" | "main"; test?: string; gap?: string };
+/** 调用方 = 进门姿势 + 请求形状 + 真入口。与 docs/plan/2026-10-21-text-tasks-to-pi-ai.md 普查表的编号一一对应。 */
+export type Caller = { id: string; door: "stream" | "one-shot"; kind: TaskRequest["kind"]; extras?: Record<string, unknown>; entry: CallerEntry };
+const ENTRY_TEST = "electron/ai/textEntries.ipc.integration.test.ts";
 const DATA_PNG = `data:image/png;base64,${PNG.toString("base64")}`;
 export const CALLERS: readonly Caller[] = [
-  { id: "#1 文本节点续写/重写/预设", door: "stream", kind: "chat" },
-  { id: "#2 文本节点改写选区", door: "one-shot", kind: "chat" },
-  { id: "#3 提示词优化", door: "stream", kind: "prompt_refine" },
-  { id: "#4 提示词翻译", door: "stream", kind: "prompt_refine" },
-  { id: "#5 AI 起草脚本", door: "stream", kind: "prompt_refine" },
+  { id: "#1 文本节点续写/重写/预设", door: "stream", kind: "chat", entry: { from: "renderer", test: ENTRY_TEST } },
+  // 2026-10-21 起改写也走文本流式门（paidNodeLedger：文本不进 Run、不要授权），之前走一次性 nomi:tasks:run 撞令牌闸。
+  { id: "#2 文本节点改写选区", door: "stream", kind: "chat", entry: { from: "renderer", test: ENTRY_TEST } },
+  { id: "#3 提示词优化", door: "stream", kind: "prompt_refine", entry: { from: "renderer", test: ENTRY_TEST } },
+  { id: "#4 提示词翻译", door: "stream", kind: "prompt_refine", entry: { from: "renderer", test: ENTRY_TEST } },
+  { id: "#5 AI 起草脚本", door: "stream", kind: "prompt_refine", entry: { from: "renderer", test: ENTRY_TEST } },
   { id: "#6 视频拆解读图", door: "one-shot", kind: "image_to_prompt",
-    extras: { temperature: 0.2, maxTokens: 1200, maxRetries: 0, referenceImages: ["nomi-local://frame-1.png", "nomi-local://frame-2.png", "nomi-local://frame-3.png"] } },
-  { id: "#7 浏览器提取提示词", door: "one-shot", kind: "image_to_prompt", extras: { temperature: 0.35, maxTokens: 1600, referenceImages: [DATA_PNG] } },
-  { id: "#8 MCP 试跑文本模型", door: "one-shot", kind: "chat" },
-  { id: "#9 画布单镜 Run 文本", door: "one-shot", kind: "chat" },
+    extras: { temperature: 0.2, maxTokens: 1200, maxRetries: 0, referenceImages: ["nomi-local://frame-1.png", "nomi-local://frame-2.png", "nomi-local://frame-3.png"] },
+    entry: { from: "main", gap: "主进程内发起，令牌由拆解开跑前的确认铸出（deconstructSpend）；整机演练补（2026-10-21 本机磁盘满，unverified）" } },
+  { id: "#7 浏览器提取提示词", door: "one-shot", kind: "image_to_prompt", extras: { temperature: 0.35, maxTokens: 1600, referenceImages: [DATA_PNG] },
+    entry: { from: "renderer", gap: "既有缺陷：走 nomi:tasks:run 的令牌闸却无人铸令牌。附属付费口（M9，2026-11-15 到期），协调另线真机核实后交用户定" } },
+  { id: "#8 MCP 试跑文本模型", door: "one-shot", kind: "chat",
+    entry: { from: "main", gap: "MCP 工具层（tryModel）经 capabilityCore 的 runTask 发起，准入随工具调度；本线未补真入口测试" } },
+  { id: "#9 画布单镜 Run 文本", door: "one-shot", kind: "chat",
+    entry: { from: "main", gap: "制作流程单镜 Run 经 canvasTransportProvider 以 RUN_APPROVED_ADMISSION 发起；本线未补真入口测试" } },
 ];
 export const STREAM_CALLERS = CALLERS.filter((caller) => caller.door === "stream");
+/** 渲染层发起、却只登记了缺口的调用方——只许这几条（各有到期 / 另线），新增的必须带真入口测试。 */
+export const RENDERER_ENTRY_GAP_EXCEPTIONS: readonly string[] = ["#7 浏览器提取提示词"];
 
 export type Observation = {
   ok: boolean;

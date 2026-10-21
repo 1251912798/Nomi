@@ -10,6 +10,7 @@
 // 后两条是协调 10-21 的硬要求：迁移前后必须一样，文案改动不许悄悄改掉重试行为。
 //
 // 计时类用例（想得久 / 真死连接）用真墙钟跑主进程的真实闸，单条要几十秒：默认不跑，`NOMI_TEXT_REALTIME=1` 时跑。
+import { existsSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { reply } from "../../tests/fixtures/textTasks/textUpstream";
 
@@ -20,7 +21,20 @@ vi.mock("../catalog/validateCandidateCredential", () => ({ revalidatePendingCred
 vi.mock("../assets/localAssetFile", async () => (await import("../../tests/fixtures/textTasks/textTaskCallerState")).localAssetMock());
 vi.mock("../runtime", async () => (await import("../../tests/fixtures/textTasks/textTaskCallerState")).runtimeMock());
 
-import { CALLERS, STREAM_CALLERS, rendererVerdict, runCaller } from "../../tests/fixtures/textTasks/textTaskCallerHarness";
+import { CALLERS, RENDERER_ENTRY_GAP_EXCEPTIONS, STREAM_CALLERS, rendererVerdict, runCaller } from "../../tests/fixtures/textTasks/textTaskCallerHarness";
+
+// 本矩阵从执行器 / IPC handler 往下测，看不见入口之上的准入（2026-10-21 改写选区被令牌闸挡、矩阵全绿的教训）。
+// 每个调用方必须写明真入口测试或缺口；渲染层发起的只能有真入口测试（登记的例外除外）。新增调用方不填 → 这里红。
+describe("真入口登记", () => {
+  it.each(CALLERS)("$id：写明从真入口经准入走到 HTTP 的测试，或缺口", (caller) => {
+    if (caller.entry.test) expect(existsSync(caller.entry.test), caller.entry.test).toBe(true);
+    else expect(caller.entry.gap?.trim(), "没有真入口测试就必须写缺口").toBeTruthy();
+    if (caller.entry.from === "renderer" && !caller.entry.test) expect(RENDERER_ENTRY_GAP_EXCEPTIONS).toContain(caller.id);
+  });
+  it("例外表里每一条都还是真缺口（补上测试就从例外表删掉）", () => {
+    for (const id of RENDERER_ENTRY_GAP_EXCEPTIONS) expect(CALLERS.find((caller) => caller.id === id)?.entry.test).toBeUndefined();
+  });
+});
 
 describe.each(CALLERS)("$id", (caller) => {
   it("正常回话：拿到正文（流式入口逐段收到同一段字）", async () => {

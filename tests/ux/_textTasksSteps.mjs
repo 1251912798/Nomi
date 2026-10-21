@@ -2,7 +2,7 @@
 // 两份脚本共用这一份步骤：
 //   · text-tasks-pi-ai.rehearsal.walk.mjs：零额度、不出网，本机夹具里一个「先想 35 秒再回话」的思考型模型；
 //   · text-tasks-pi-ai-real.paid.mjs：协调带 key 跑一次真模型（key 只从环境变量读）。
-// 五个入口：文本节点扩写（#1 流式，#1264 写作区改写的同一扇门）、文本节点改写选区（#2 一次性）、
+// 五个入口：文本节点扩写（#1 流式，#1264 写作区改写的同一扇门）、文本节点改写选区（#2 同一扇流式门，完成后一次性替换选区）、
 // 提示词翻译（#4）、提示词优化（#3）、视频拆解读图（#6）。每次调用打印一行摘要：入口、协议、首个可见反馈耗时、结果、错误类别。
 import fs from 'node:fs'
 import path from 'node:path'
@@ -74,10 +74,10 @@ export async function runTextTaskEntries(win, { report, snap, protocol = 'openai
     summary(report, { entry: '#1 文本节点扩写（流式）', protocol, ...timing, result: 'ok', errorKind: null })
   }
 
-  // ── #2 文本节点「改写」选区（一次性：nomi:tasks:run）──────────────────────────────────────────
-  // 迁移前就有的缺陷（2026-10-21 本演练发现，未在本 PR 修，等协调拍板）：一次性门走令牌路的付费闸，而画布自「发动机收敛
-  // 第一刀」起不再铸令牌，改写选区一律 SpendNotAuthorizedError。这里照实记一行「被付费闸挡（迁移前就有）」并截图，继续跑后面的入口。
-  try {
+  // ── #2 文本节点「改写」选区（文本流式门，增量不往画布写，完成后一次性替换选区）────────────────────────
+  // 2026-10-21 之前改写走一次性 nomi:tasks:run，撞上令牌付费闸、每次 SpendNotAuthorizedError（本演练发现，协调定 A：
+  // 对齐 paidNodeLedger「文本不进 Run、不要授权」）。现在不该再出现任何付费确认框——出现即回归，当场红。
+  {
     const { id, editor } = await addTextNode(win, `${MARK.rewrite} 她把纸条展开了，慢慢地，像是害怕它会碎掉一样小心翼翼。`)
     await clickOrFail(editor, '点进正文')
     await win.keyboard.press('Control+A')
@@ -91,19 +91,12 @@ export async function runTextTaskEntries(win, { report, snap, protocol = 'openai
     // 发送：在「要怎么改」框里按 Ctrl+Enter（与点 ↑ 同一个 runInstruction）。
     await instruction.press('Control+Enter')
     await snap(`${english ? 'en' : 'zh'}-03-rewrite-running`)
-    // 一次性门（nomi:tasks:run）走令牌路的付费闸：没有令牌就当场问人（spend.confirm）。确认框出现就照真人点确认，并记进报告。
     const dialog = win.locator(SPEND_DIALOG)
     const timing = await timed(
+      async () => (await editor.innerText()).trim() !== before,
       async () => {
-        if (await dialog.count()) {
-          report.rewriteAskedSpend = true
-          await snap(`${english ? 'en' : 'zh'}-03b-rewrite-spend-confirm`)
-          await dialog.locator('[data-spend-confirm-action="confirm"]').first().click()
-        }
-        return (await editor.innerText()).trim() !== before
-      },
-      async () => {
-        // 节点落了错误就别干等：把错误原话带出来（一次性门的失败只在节点上）。
+        if (await dialog.count()) throw new Error('#2 改写弹了付费确认框：文本不该要授权（paidNodeLedger）')
+        // 节点落了错误就别干等：把错误原话带出来。
         const failed = await win.evaluate((nodeId) => {
           const node = window.__nomiCanvasStore.getState().nodes.find((candidate) => candidate.id === nodeId)
           return node?.status === 'error' ? String(node?.error ?? node?.meta?.lastError ?? JSON.stringify(node?.runs?.[0] ?? {})).slice(0, 600) : ''
@@ -116,13 +109,7 @@ export async function runTextTaskEntries(win, { report, snap, protocol = 'openai
     const text = (await editor.innerText()).trim()
     if (expected.rewrite) expect(text, '#2 改写把选区换成了结果').toBe(expected.rewrite)
     await snap(`${english ? 'en' : 'zh'}-04-rewrite-done`)
-    summary(report, { entry: '#2 文本节点改写选区（一次性）', protocol, ...timing, result: 'ok', errorKind: null })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (!/SpendNotAuthorizedError/.test(message)) throw error
-    await snap(`${english ? 'en' : 'zh'}-04-rewrite-blocked-by-spend-gate`)
-    summary(report, { entry: '#2 文本节点改写选区（一次性）', protocol, firstFeedbackMs: null, totalMs: null,
-      result: 'blocked：SpendNotAuthorizedError（迁移前就有，等拍板）', errorKind: 'spend-not-authorized' })
+    summary(report, { entry: '#2 文本节点改写选区（流式门，一次性替换）', protocol, ...timing, result: 'ok', errorKind: null })
   }
 
   // ── #4 提示词翻译、#3 提示词优化（流式，图片节点的提示词框）────────────────────────────────────

@@ -29,7 +29,7 @@
 | # | 功能（用户叫法） | 入口 文件:行 | 流式 | 怎么取消 | 怎么重试（含 429） | 超时：首字 / 整体 | 出错怎么显示 | 现有测试 |
 |---|---|---|---|---|---|---|---|---|
 | 1 | 画布文本节点：续写 / 重写 / 加工预设（扩写、看图写描述、翻译成…、拆成多条） | `src/workbench/generationCanvas/runner/textActions.ts:54` → `catalogTaskActions.ts:559`（`TEXT_STREAM_KINDS`）→ `taskApi.ts:356` → `electron/ai/textStreamIpc.ts:33` | 是 | 节点「停止」→ `onTaskCancelRequested` → `AbortController` → `nomi:tasks:text:cancel` → 主进程真掐 HTTP；渲染层抛 `LocalTaskCancelledError` | 主进程 SDK 2 次；**渲染层运行控制器再整体重提 ≤3 次**，判据是错误文案里含 `timeout`/`rate limit`/`socket` 等（`generationRetryPolicy.ts:14`、`generationRunController.ts:348`） | 主进程 30s / 120s；渲染层「提交中」阶段 ≈16 分钟，每来一段字重新计时（`generationPhaseDeadline.ts`，`clock.heartbeat()`） | 节点错误卡，`classifyError` 认 B64 标记给人话 + 动作 | `textActions.test.ts`、`catalogTaskActions.test.ts`、`taskApi.textStream.test.ts`、`textStreamIpc.test.ts`、`textStreamCancel.integration.test.ts`、`tests/ux/text-document-generation-ownership.test.mjs`（全部桩掉 SDK） |
-| 2 | 画布文本节点：**改写选区**（疑即任务书里的「写作区 AI 改写」，见待拍板 D6） | `textActions.ts:48`（`mode === 'rewrite'` 不传 `onTextDelta`）→ `catalogTaskActions.ts:586` → `canvas-submit` 或 `nomi:tasks:run` → `runtime.ts:405` | **否**（完成后一次性替换选区） | 只有渲染层不再等；**主进程那次调用没有取消信号**，跑到 SDK 自己结束或 120s | 同 #1（SDK 2 次 + 渲染层 ≤3 次） | 主进程 30s / 120s；渲染层同 #1 | 节点错误卡；一次性路**没有结构化标记**，SDK 裸文案靠关键词猜 | `textActions.test.ts`（桩） |
+| 2 | 画布文本节点：**改写选区**（疑即任务书里的「写作区 AI 改写」，见待拍板 D6；**10-21 起改走 #1 同一扇流式门，见六**） | `textActions.ts:48`（`mode === 'rewrite'` 不传 `onTextDelta`）→ `catalogTaskActions.ts:586` → `canvas-submit` 或 `nomi:tasks:run` → `runtime.ts:405` | **否**（完成后一次性替换选区） | 只有渲染层不再等；**主进程那次调用没有取消信号**，跑到 SDK 自己结束或 120s | 同 #1（SDK 2 次 + 渲染层 ≤3 次） | 主进程 30s / 120s；渲染层同 #1 | 节点错误卡；一次性路**没有结构化标记**，SDK 裸文案靠关键词猜 | `textActions.test.ts`（桩） |
 | 3 | 提示词优化（节点提示词框里的魔法棒） | `src/workbench/generationCanvas/nodes/NodePromptOptimizer.tsx:77` | 是 | 再点一次按钮 = abort → 主进程真掐 | SDK 2 次；无渲染层重试 | 主进程 30s / 120s；渲染层无 | 面板里 `e.message` 原样——**vendor 错误时会把 `NOMI_VENDOR_ERR_B64::…` 标记串直接露给用户**（推断，第二段先写测试证实，见 D7） | `NodePromptOptimizer.test.ts`（桩） |
 | 4 | 提示词翻译（中英互译按钮） | `NodePromptTranslator.tsx:73` | 是（只攒不显示，完成后整段替换） | 运行中再点 = abort → 主进程真掐 | 同 #3 | 同 #3 | 节点上方反馈条：`failedWithReason` 带 `e.message` 原样（同 #3 的标记串问题） | `promptTranslate.test.ts`（只测纯函数，无调用测试） |
 | 5 | 接入设置 → 自定义调用脚本 → 「AI 起草 / 修复脚本」 | `src/ui/onboarding/CustomCallEditor.tsx:203` | 是 | 再点 = abort → 主进程真掐 | 同 #3 | 同 #3 | 编辑器下方 `aiError` = `e.message` 原样（同上） | 无调用测试（`customCallModeEditor.test.ts` 等不碰 AI） |
@@ -274,9 +274,12 @@
 - **D9 目录里的 maxOutputTokens**：内置目录（seedBuiltins / apimartTexts / modelscopeTexts 等）没有任何文本模型声明 `meta.maxOutputTokens`，只有用户在目录里手填才会有；所以迁移后不会因为它把长文截断。
 - **pi-ai 子路径**：`createModels` / `createProvider` / `InMemoryCredentialStore` 不在 exports 子路径里，只能经入口导入；深引会破坏包封装，不采用（见「先查别人」）。
 
-### 演练发现的迁移前缺陷（未在本 PR 修，等拍板）
+### 演练发现的迁移前缺陷（协调 10-21 定：#2 选 A 本 PR 修；#7 另线）
 
 - **文本节点「改写选区」一律失败**：改写不走流式门、走 `nomi:tasks:run` → `runtime.runTask` 文本分支的令牌付费闸（`TOKEN_ADMISSION`）；画布自「发动机收敛第一刀」起不再铸令牌，`assertAndConsumeQuotedSpend` 拿不到令牌直接抛 `SpendNotAuthorizedError`，错误卡归 unknown（截图 `docs/evidence/2026-10-21-text-tasks-pi-ai/walk/04-zh-04-rewrite-blocked-by-spend-gate.png`）。同类：浏览器「提取提示词」（#7）也走同一个闸、也没人铸令牌，推断同样失败（未在整机上跑）。矩阵测试直接调执行器、绕过了付费闸，所以没抓到——整机演练才暴露。
   - 选项 A：文本节点改写也走流式门（与 `paidNodeLedger` 文档里「文本不进 Run、不要授权、走它自己的流式口」一致；改写可停、也不再需要整体兜底）。代价：一次 IPC 路由改动，花钱语义与流式文本一致。
   - 选项 B：保留闸，在点击处铸令牌并弹确认。代价：每次改写多一次确认，与扩写 / 重写不一致。
   - 推荐：#2 选 A；#7 浏览器提取在 taskSpend 的注释里登记为「附属付费口」，按设计应走 B（铸令牌）——两条都属花钱边界，交协调定。
+  - **拍板（协调 10-21）**：#2 → **A，本 PR 修**（只是让代码对齐 paidNodeLedger 已定的设计，不是新的花钱决策）；#7 → 本 PR 不动，属 M9（附属付费口例外，2026-11-15 到期），协调另排一条线先真机核实再交用户定 A / B。
+  - **#2 修法**：走哪扇门只看 kind——文本 kind 在 `runCatalogGenerationTask` 里一律走文本流式门（`nomi:tasks:text:*`），`onTextDelta` 只决定增量给不给调用方看；改写不给增量、完成后照旧交编辑器一次性替换选区；停止照流式那套（`onTaskCancelRequested` → abort → `nomi:tasks:text:cancel`，主进程真掐 HTTP）。先写的真入口测试 `electron/ai/textEntries.ipc.integration.test.ts`（渲染层 generateText → 真 preload 桥 → 真 IPC handler → 真 runtime 准入 → 真 pi-ai → 本机假上游）修前抛 `SpendNotAuthorizedError`（`docs/evidence/2026-10-21-text-tasks-pi-ai/rewrite-ipc-before.txt`）、修后绿。
+  - **为什么矩阵没抓到、以后怎么防**：矩阵的一次性门直接调 `executeTextTask`（注释写着「闸不在本测试范围」），测的是执行器往下，入口之上的准入整层看不见。现在矩阵每一行都登记 `entry`（谁发起、真入口测试是哪份、没有就写缺口），渲染层发起的调用方没有真入口测试就红（登记的例外只有 #7），测试见 `textTaskCallers.integration.test.ts`「真入口登记」。
