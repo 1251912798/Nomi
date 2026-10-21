@@ -53,6 +53,7 @@ async function liveJourney(page, record) {
   expect(record, await page.locator('.workbench-ai-rewrite-bar [aria-label="用原要求重来"]').count() === 1, '输入框右端没有 ↻')
   expect(record, (await text()).includes(TARGET_ZH), '接受之前原文就被改了')
   await page.locator('[data-rewrite-action="accept"]').hover()
+  expect(record, await page.locator('[data-rewrite-action="accept"]').getByText(/Enter/).isVisible(), '悬停 ✓ 没有「接受 Enter」提示')
   await shot('live-03-result')
 
   // ④ Enter 接受：正文换掉，Ctrl+Z 一步撤回。
@@ -110,7 +111,13 @@ await walkDesignLabScreen({
     const status = state.id.split('-')[1]
     const has = (selector) => page.locator(selector).count()
     if (status === 'selected') expect(record, await has('.workbench-selection-popover__tool--ai') === 1, `${state.id} 浮条上没有 AI 编辑`)
-    if (status === 'menu') expect(record, await has('.workbench-ai-rewrite-bar input') === 1, `${state.id} 没有输入框`)
+    if (status === 'menu') {
+      expect(record, await has('.workbench-ai-rewrite-bar input') === 1, `${state.id} 没有输入框`)
+      expect(record, await has('.nomi-ai-rewrite-pending') > 0, `${state.id} 待改的字没有被标出来`)
+      expect(record, await has('.workbench-ai-rewrite-bar .nomi-logo-mark') > 0, `${state.id} 输入框前没有 Nomi 标记`)
+      expect(record, (await page.locator('.workbench-ai-rewrite-bar input').getAttribute('placeholder') ?? '').length > 0, `${state.id} 输入框占位文字不对`)
+      expect(record, await has('.workbench-ai-rewrite-bar button[aria-label]') > 0, `${state.id} 菜单态没有发送钮`)
+    }
     if (status === 'result') {
       expect(record, await has('.nomi-ai-rewrite-del') > 0 && await has('[data-rewrite-add]') > 0, `${state.id} 结果态没有新旧对比`)
       expect(record, await has('[data-rewrite-action]') === 2, `${state.id} 段尾应只有 ✓ ✕`)

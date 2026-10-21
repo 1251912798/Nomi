@@ -112,7 +112,7 @@ Windows 实现线；真 Chromium 里跑生产 `WorkbenchEditor`（实验室屏 `
 
 ### 拍板图清单：链接
 
-不适用：本 PR 前未生成该格的 `docs/design/boards/` 清单（样张 WD1 是画布探索图，用户 10-18 在画布评论里确认了交互）；实现与样张逐条对账见下「和样张不一致」，等协调会话决定是否补清单。
+清单路径 `docs/design/boards/2026-10-19/CreationAiRewrite.board.json`（板源 = 画布 WD1 一格；26 个元素带状态表、17 项功能普查含浮条原有 7 项、2 条用户 10-18 拍板、4 项 priorArt）；`pnpm run check:board-parity` 绿，没有豁免。
 
 ### ★9 验收与回滚
 

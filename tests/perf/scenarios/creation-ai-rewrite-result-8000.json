@@ -1,12 +1,16 @@
 {
   "id": "creation-ai-rewrite-result-8000",
-  "feature": "写作区选中 8000 字点 AI 编辑，结果回来后画出新旧对比（打开会话 + 写入结果 + 比较 + 生成装饰 + 区间外一次编辑的区间平移）",
+  "feature": "写作区在 2000 段文稿里选中约 8000 字：点浮条上的「AI 编辑」到输入条出现、结果回来到新旧对比（划线 / 标出来 / 段尾 ✓ ✕）上屏，两个时刻各量一次，主数取较慢的那个",
   "script": "tests/perf/canvas-scale-bench.mjs",
   "args": [
+    "--scales",
+    "M",
     "--scenarios",
-    "creation-ai-rewrite-result"
+    "creation-ai-rewrite-result",
+    "--warmup",
+    "1"
   ],
-  "scale": "2000 段文稿，选区 8000 字，结果同长",
+  "scale": "2000 段文稿（项目里同时有 96 节点的画布），选区 180 段约 8000 字",
   "metrics": [
     "response"
   ],
