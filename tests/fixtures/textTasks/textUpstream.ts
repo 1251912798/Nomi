@@ -73,7 +73,7 @@ export async function startTextUpstream(protocol: UpstreamProtocol, script: (req
     req.on("data", (chunk: Buffer) => chunks.push(chunk));
     req.on("end", () => {
       const raw = Buffer.concat(chunks).toString("utf8");
-      let body: Record<string, unknown> = {};
+      let body: Record<string, unknown>;
       try { body = raw ? JSON.parse(raw) as Record<string, unknown> : {}; } catch { body = { raw }; }
       const request: UpstreamRequest = { method: req.method || "", path: req.url || "", headers: req.headers, body };
       requests.push(request);

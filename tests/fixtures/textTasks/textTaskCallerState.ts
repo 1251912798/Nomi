@@ -16,6 +16,7 @@ export const harnessState = {
 export const FIXTURE_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 
 export const electronMock = () => ({
+  app: { once: () => undefined },
   ipcMain: { handle: (name: string, fn: Handler) => harnessState.handlers.set(name, fn) },
   webContents: {
     fromId: () => ({ isDestroyed: () => false, send: (_channel: string, payload: { streamId: string; event: StreamEvent }) => {

@@ -20,7 +20,7 @@ export async function loadAntigravityImage(url: string, signal?: AbortSignal): P
   } catch (error) {
     checkAbort(signal);
     if (error instanceof Error && error.name === "AbortError") throw error;
-    throw new Error("ANTIGRAVITY_IMAGE_SOURCE_INVALID", { cause: error });
+    throw new Error("ANTIGRAVITY_IMAGE_SOURCE_INVALID");
   }
 }
 

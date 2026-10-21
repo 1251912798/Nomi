@@ -7,6 +7,7 @@ import { ipcMain, webContents as electronWebContents } from "electron";
 import type { WebContents } from "electron";
 
 import { assertTrustedSender } from "../ipcSenderGuard";
+import { installModelCallPrewarm } from "./modelCallPrewarm";
 type TextStreamSession = {
   streamId: string;
   webContentsId: number;
@@ -28,6 +29,8 @@ function sendTextEvent(session: TextStreamSession, event: unknown): void {
 }
 
 export function registerTextStreamIpc(): void {
+  // 文本任务的模型调用核心住在 pi 岛上、第一次用时才装（约 2s）：主窗口加载完后的空闲时先装好（★7，协调 10-21 定）。
+  installModelCallPrewarm();
   ipcMain.handle("nomi:tasks:text:stream", async (event, payload: Record<string, unknown>) => {
     assertTrustedSender(event);
     // 流 id 由渲染层先定、先订阅、再发起：失败得快（被拦 / 凭据 / DNS 一毫秒内就错）的流，事件在 invoke 回包之前就已发出，
