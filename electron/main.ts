@@ -85,6 +85,7 @@ import { issueChildWindowProject } from "./assets/windowProjectCapture";
 import { installWindowNavigation } from "./windowNavigation";
 import { registerQuitDrain, requestQuit } from "./quitTeardown";
 import { installMainQuitOwner } from "./quitOwnerMain";
+import { scheduleModelCallPrewarm } from "./ai/modelCallPrewarm";
 import { backgroundWindowOptions, disposeBackgroundLifecycle, hasInFlightProductionWork, installBackgroundLifecycle, installBackgroundWindowBehavior, isBackgroundLaunch, touchBackgroundActivity } from "./backgroundLaunch";
 // profile 重定向必须排在 installMainProcessLifecycle **之前**：崩溃处理与日志一装上就会写盘，
 // 晚一步重定向，这次会话的头几行（含会话表头）会落在被隔离掉的那个目录里。
@@ -323,6 +324,7 @@ async function createWindow(
     }
   }
   await loadRendererWithRetry(mainWindow, rendererUrl);
+  scheduleModelCallPrewarm(mainWindow); // 文本任务 / 编译器的模型调用核心：窗口加载完、主进程空下来时装好（见文件头）
 
   if (options.maximize) mainWindow.maximize();
 

@@ -37,6 +37,11 @@
       "phase": "use",
       "via": "runLaneSingleShot",
       "when": "一次性提问（发消息）时"
+    },
+    "./laneModelCall.mjs": {
+      "phase": "use",
+      "via": "callModelOnce / prewarmModelCall",
+      "when": "窗口加载完后的空闲预热（modelCallPrewarm，不在打开项目路径上）；或第一次跑文本任务 / 编译接入说明卡时"
     }
   }
 }

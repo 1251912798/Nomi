@@ -1,6 +1,7 @@
 import type { MigrateLaneLegacy } from '../shared/agentLane/laneLegacyMigrationContract';
 import type { SkillToolAuthorityPlacement } from '../shared/agentLane/skillPromptPlacement';
 import type { OpenDesktopLaneWorkspace, RunLaneSingleShot } from './laneRuntimePort';
+import type { CallModelOnce } from '../shared/agentLane/modelCallPort';
 import type { TrajectoryTurnInput } from '../shared/agentLane/laneTrajectory';
 import type { SkillRecord } from '../skills/skillStore';
 
@@ -28,6 +29,15 @@ export const openDesktopLaneWorkspace: OpenDesktopLaneWorkspace = async (options
 
 export const runLaneSingleShot: RunLaneSingleShot = async (options) =>
   (await import('./laneSingleShot.mjs')).runLaneSingleShot(options);
+
+/** 「调一次模型」的唯一核心（文本任务、接入说明卡编译器经 electron/ai/modelCallBridge.ts 走这里）。 */
+export const callModelOnce: CallModelOnce = async (options) =>
+  (await import('./laneModelCall.mjs')).callModelOnce(options);
+
+/** 只装不调：窗口加载完后的空闲预热（electron/ai/modelCallPrewarm.ts）。 */
+export const prewarmModelCall = async (): Promise<void> => {
+  await (await import('./laneModelCall.mjs')).prewarmModelCall();
+};
 
 export const migrateLaneLegacy: MigrateLaneLegacy = async (options) =>
   (await import('./laneLegacyMigration.mjs')).migrateLaneLegacy(options);

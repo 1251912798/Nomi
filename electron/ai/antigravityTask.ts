@@ -1,5 +1,4 @@
-import { readNomiLocalAsset } from "../assets/localAssetFile";
-import { hardenedFetch } from "../hardenedFetch";
+import { readModelImage } from "./modelImageInput";
 import { antigravityConnection, prepareAntigravity, type PreparedAntigravity } from "./antigravityConnection";
 import { readAntigravityEvidence } from "./antigravityEvidenceStore";
 import { runAntigravityProcess, type AntigravityRunOptions } from "./antigravityProcess";
@@ -7,33 +6,22 @@ import { assertPreparedAntigravityMediaInput, prepareAntigravityImageInput, type
   type PreparedAntigravityImageInput } from "./antigravityMedia";
 import type { AntigravityCapability } from "../shared/antigravity";
 
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 function checkAbort(signal?: AbortSignal): void {
   if (signal?.aborted) throw Object.assign(new Error("ANTIGRAVITY_CANCELLED"), { name: "AbortError" });
 }
+/** 同一个取图函数（electron/ai/modelImageInput.ts），按本机 CLI 的约束收紧：不跟跳转、只收 png / jpeg / webp。 */
 export async function loadAntigravityImage(url: string, signal?: AbortSignal): Promise<AntigravityImageInput> {
   checkAbort(signal);
-  let bytes: Uint8Array; let mimeType: string;
-  if (url.startsWith("nomi-local://")) {
-    const asset = readNomiLocalAsset(url, { maxBytes: MAX_IMAGE_BYTES });
-    if (!asset) throw new Error("ANTIGRAVITY_IMAGE_SOURCE_INVALID");
-    bytes = asset.bytes; mimeType = asset.contentType;
-  } else if (url.startsWith("data:")) {
-    if (url.length > Math.ceil(MAX_IMAGE_BYTES / 3) * 4 + 64) throw new Error("ANTIGRAVITY_IMAGE_SOURCE_INVALID");
-    const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(url);
-    if (!match || match[2].length % 4 !== 0) throw new Error("ANTIGRAVITY_IMAGE_SOURCE_INVALID");
-    bytes = Buffer.from(match[2], "base64"); mimeType = match[1];
-  } else if (/^https?:\/\//i.test(url)) {
-    const response = await hardenedFetch(url, { signal, maxBytes: MAX_IMAGE_BYTES, timeoutMs: 20_000,
-      allowContentTypes: ["image/png", "image/jpeg", "image/webp"], allowRedirect: false });
-    bytes = response.bytes; mimeType = response.contentType.split(";")[0].trim().toLowerCase();
-  } else throw new Error("ANTIGRAVITY_IMAGE_SOURCE_INVALID");
-  checkAbort(signal);
-  if (!bytes.length || bytes.length > MAX_IMAGE_BYTES || !["image/png", "image/jpeg", "image/webp"].includes(mimeType)) {
+  try {
+    const image = await readModelImage(url, { signal, allowRedirect: false, types: ["image/png", "image/jpeg", "image/webp"] });
+    checkAbort(signal);
+    // The process runner fully decodes and copies these bytes into its private task directory.
+    return { bytes: image.bytes, mimeType: image.mimeType };
+  } catch (error) {
+    checkAbort(signal);
+    if (error instanceof Error && error.name === "AbortError") throw error;
     throw new Error("ANTIGRAVITY_IMAGE_SOURCE_INVALID");
   }
-  // The process runner fully decodes and copies these bytes into its private task directory.
-  return { bytes, mimeType };
 }
 
 export type PreparedAntigravityTask = PreparedAntigravity & {

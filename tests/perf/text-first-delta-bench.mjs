@@ -6,6 +6,8 @@
 //   · warm：同一进程里第 2 次起的调用（用户连着点第二下）；
 //   · cold：全新进程、运行时模块已在（应用启动后它就在）、文本执行器还没装过的第一次调用——
 //     生产上 textStreamIpc 第一次收到请求时才 import 文本执行器（`loadTextTaskRunner`），这一下的装载算进时延。
+//     应用在主窗口加载完后的空闲时预热「调一次模型」核心（electron/ai/modelCallPrewarm.ts），这里照做：先跑同一个预热、等它完成，
+//     再计时（`--no-prewarm` 量不预热的最坏情况：用户在窗口出来后几秒内就点了文本动作）。
 // 量的是编译产物（dist-electron），不是 tsx 现编的源码：现编的转译时间不是用户会付的钱。先 `pnpm build:electron`。
 //
 // 用法：node tests/perf/text-first-delta-bench.mjs --mode warm|cold --runs 5 --label <label>
@@ -39,9 +41,11 @@ function startUpstream() {
 }
 
 /** 子进程：在一个进程里跑 `count` 次调用，按顺序返回每次「调用 → 第一段字」的毫秒数（第一次 = 冷）。 */
-async function child(baseURL, count) {
+async function child(baseURL, count, prewarm) {
   const require = createRequire(import.meta.url)
   require(path.join(dist, 'runtime.js'))
+  const bridge = path.join(dist, 'ai', 'modelCallBridge.js')
+  if (prewarm && fs.existsSync(bridge)) await require(bridge).prewarmModelCall()
   const samples = []
   for (let index = 0; index < count; index += 1) {
     const started = performance.now()
@@ -61,7 +65,7 @@ async function child(baseURL, count) {
 }
 
 async function main() {
-  if (argv.includes('--child')) return child(arg('base-url'), Number(arg('count', '1')))
+  if (argv.includes('--child')) return child(arg('base-url'), Number(arg('count', '1')), !argv.includes('--no-prewarm'))
   if (!fs.existsSync(path.join(dist, 'textTaskRunner.js'))) throw new Error('dist-electron 不在：先跑 pnpm build:electron')
   const mode = arg('mode', 'warm')
   const runs = Number(arg('runs', '5'))
@@ -70,7 +74,7 @@ async function main() {
   try {
     const url = `http://127.0.0.1:${upstream.port}/v1`
     const spawnAt = (count) => {
-      const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--child', '--base-url', url, '--count', String(count)],
+      const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--child', '--base-url', url, '--count', String(count), ...(argv.includes('--no-prewarm') ? ['--no-prewarm'] : [])],
         { cwd: repoRoot, encoding: 'utf8' })
       if (result.status !== 0) throw new Error(`child failed: ${result.stderr}`)
       return JSON.parse(result.stdout.trim().split('\n').at(-1))

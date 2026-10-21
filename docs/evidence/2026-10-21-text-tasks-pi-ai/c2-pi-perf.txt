@@ -1,0 +1,7 @@
+机器：13th Gen Intel(R) Core(TM) i9-13900H / commit 工作树（C2 + 预热）　2026-10-21
+warm: 9.3, 5.9, 5.2, 5.3, 3.5, 3.9, 8.5, 5.3, 4.1, 3.5, 4, 3.3, 3.2, 2.9, 2.7, 2.9, 2.3, 3.2, 2.5, 2.5 ms → tests\perf\results\text-first-delta-perf-scenarios-text-task-first-delta-warm.json
+| text-task-first-delta-warm | response | 20 | 3.5 | 8.5 | 20 | 5.2/10.2 | ok |
+cold: 30, 23.6, 22.3, 22.4, 27.3, 21.8, 21.4, 20.7, 21.5, 21.1, 19.8, 32.1, 228.1, 170.6, 144.6, 195.1, 73.7, 95.7, 47.3, 69.6 ms → tests\perf\results\text-first-delta-perf-scenarios-text-task-first-delta-cold.json
+| text-task-first-delta-cold | response | 20 | 28.7 | 196.8 | 100 | 50.5/99.8 | ok |
+--- 刚启动就点（预热还没完成，--no-prewarm），10 次：
+cold: 2177.7, 1931, 1674.8, 1536.5, 1502.6, 1678.5, 1933.7, 1825, 1946.3, 1392 ms → tests\perf\results\text-first-delta-noprewarm.json
