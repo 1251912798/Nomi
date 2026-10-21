@@ -1,9 +1,9 @@
 // 设计实验室 · 导演台精修「选中才出」（方向 A）· 样张格。
 //
-// 2026-10-04 用户拍板精修走方向 A：3D 视口满宽，点谁谁的属性卡才出来；大纲 / 资产 / 场景设置各一次点击可达；旧导演台一起变。
+// 2026-10-04 用户拍板精修走方向 A：3D 视口满宽，点谁谁的属性卡才出来；大纲 / 资产 / 场景设置各一次点击可达。
 // 每一格都是现役 DirectorEditor + 现役 Agent 面板（取景台与夹具复用 director3dbox 屏的那一份），数据是 S1 oracle 计划
 // courtyard-standoff 经现役编译器编出的庭院对峙工程；格子要的状态全是**点界面上的真按钮**点出来的（drive / steps），
-// 不往 store 塞状态。2026-10-04 用户拍板后这就是真实精修 / 旧导演台本身（样张期接缝已删），coverage 是 shell。
+// 不往 store 塞状态。2026-10-04 用户拍板后这就是真实精修本身（样张期接缝已删），coverage 是 shell。
 // 设计卡：docs/plan/2026-10-04-director-refine-select-to-show.md。
 import React from 'react'
 import type { LabState } from '../../labScreen'
@@ -279,15 +279,6 @@ export const REFINE_SELECT_TO_SHOW_STATES: readonly LabState[] = [
     render: () => <Director3dBoxLazyStage locale="zh-CN" fixture="empty" steps={EMPTY_REFINE} />,
   },
   {
-    id: 'd3a-legacy-guard-zh',
-    name: '旧导演台（3D-BOX 开关关）· 同一布局 · 选中黑衣侍卫 · 中文',
-    source: SOURCE,
-    coverage: 'shell',
-    scheme: 'dark',
-    capture: 'viewport',
-    render: () => <Director3dBoxLazyStage locale="zh-CN" fixture="courtyard" flag="off" steps={PICK_GUARD} />,
-  },
-  {
     id: 'd3a-light-guard-zh',
     name: '浅色模式下打开精修（导演台永远暗，2026-09-09 拍板）· 选中黑衣侍卫 · 中文',
     source: SOURCE,
@@ -295,5 +286,14 @@ export const REFINE_SELECT_TO_SHOW_STATES: readonly LabState[] = [
     scheme: 'light',
     capture: 'viewport',
     render: () => <Director3dBoxLazyStage locale="zh-CN" fixture="courtyard" drive="shot-2-refine" steps={PICK_GUARD} />,
+  },
+  {
+    id: 'd3a-light-guard-en',
+    name: 'Refine opened in light theme (director stays dark, 2026-09-09) · black-clad guard picked · English',
+    source: SOURCE,
+    coverage: 'shell',
+    scheme: 'light',
+    capture: 'viewport',
+    render: () => <Director3dBoxLazyStage locale="en" fixture="courtyard" drive="shot-2-refine" steps={PICK_GUARD} />,
   },
 ]

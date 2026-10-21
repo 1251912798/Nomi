@@ -14,6 +14,11 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { dispatch } from "../dispatcher";
+import { tryModel, TRY_MODEL_WAIT_BUDGET_MS } from "./tryModel";
+import { runTask, fetchTaskResult } from "../../runtime";
+import { pollTaskToTerminal } from "../pollTaskToTerminal";
+
 vi.mock("electron", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
@@ -88,7 +93,6 @@ describe("nomi_try_model 遇到异步供应商", () => {
 
   beforeEach(async () => {
     vi.stubEnv("NOMI_SETTINGS_DIR", root);
-    const { dispatch } = await import("../dispatcher");
     const docs = "https://docs.example-async.com/api";
     const ctx = { origin: { host: "claude" } } as never;
     const submitted = await dispatch("model.onboarding.setup", {
@@ -136,8 +140,6 @@ describe("nomi_try_model 遇到异步供应商", () => {
   });
 
   async function run(prompt: string, withFetch = true, pollTimeoutMs = 5_000) {
-    const { tryModel } = await import("./tryModel");
-    const { runTask, fetchTaskResult } = await import("../../runtime");
     submits = 0;
     return tryModel({
       runTask,
@@ -145,7 +147,7 @@ describe("nomi_try_model 遇到异步供应商", () => {
       pollIntervalMs: 20,
       pollTimeoutMs,
       // 档位代答：不需要 Nomi 窗口；钱闸照走同一个函数。
-      approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
+      approvalPolicy: () => ({ mode: "direct" }),
     }, { vendorKey, modelKey: "async-paint", prompt }) as Promise<Record<string, unknown> & { code?: string; ok?: boolean; taskId?: string; nextAction?: string; message?: string; state?: { assets: unknown[] } }>;
   }
 
@@ -187,8 +189,6 @@ describe("nomi_try_model 遇到异步供应商", () => {
 
 describe("试跑等待上限", () => {
   it("上限不超过 40 秒；假时钟下等不到终态就在上限内放弃（不真等）", async () => {
-    const { TRY_MODEL_WAIT_BUDGET_MS } = await import("./tryModel");
-    const { pollTaskToTerminal } = await import("../pollTaskToTerminal");
     expect(TRY_MODEL_WAIT_BUDGET_MS).toBeLessThanOrEqual(40_000);
     vi.useFakeTimers();
     try {
@@ -209,8 +209,6 @@ describe("试跑等待上限", () => {
   });
 
   it("单次查询卡死也不拖过上限：卡 60 秒的查询在 40 秒预算处被截断，按到点返回（假时钟）", async () => {
-    const { TRY_MODEL_WAIT_BUDGET_MS } = await import("./tryModel");
-    const { pollTaskToTerminal } = await import("../pollTaskToTerminal");
     vi.useFakeTimers();
     try {
       const fetch = vi.fn(() => new Promise<never>(() => undefined));

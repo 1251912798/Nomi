@@ -11,6 +11,7 @@ import type { RecoveredAgentDraft } from '../projectAgentDraftRecovery'
 import { takeRecoveredAgentDraft } from '../projectAgentDraftRecovery'
 import type { LaneDraftIntent } from '../../../../electron/shared/agentLane/laneDesktopContracts'
 import type { ComposerAttachment } from '../composer/composerAttachmentTypes'
+import { encodeMention } from '../../assets/promptMentions'
 
 const fixture = vi.hoisted(() => {
   const state = {
@@ -21,7 +22,7 @@ const fixture = vi.hoisted(() => {
     workbenchDocuments: [{ id: 'doc-1', title: 'Current document', updatedAt: 42,
       contentJson: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '第一句。' }] }] } }],
     creationActiveSkill: null as { key: string; contentHash?: string } | null, selectedLibraryPrompt: null as { id: string } | null,
-    projectAgentApprovalPolicy: { mode: 'safe-auto', spend: 'confirm' },
+    projectAgentApprovalPolicy: { mode: 'request' },
     setProjectAgentDraft(text: string) { state.projectAgentDraft = text; state.projectAgentDraftRevision++ },
     // 真店里这个 setter 一次清掉同一个引用槽的两半（`workbenchStore.setCreationActiveSkill`）。
     setCreationActiveSkill(skill: { key: string; contentHash?: string } | null) {
@@ -559,4 +560,35 @@ it('ACK consumes only captured storyboard references, preserving a newer selecti
   expect(await actions.send('edit new')).toBe(false)
   expect(fixture.state.projectAgentReferences).toEqual([newer])
   fixture.state.activeStoryboardId=null;fixture.state.storyboardDesignsByDocumentId={};fixture.state.projectAgentReferences=[]
+})
+
+
+it('keeps canonical media still referenced by a draft edited before the send ACK', async () => {
+  const retained: ComposerAttachment = { id:'view-a', assetId:'asset-a', version:1,
+    contentHash:'a'.repeat(64), fileName:'a.png', contentType:'image/png', sizeBytes:12,
+    kind:'image', status:'ready', url:'nomi-local://asset/project-a/assets/a.png' }
+  const released: ComposerAttachment = { ...retained, id:'view-b', assetId:'asset-b',
+    fileName:'b.png', url:'nomi-local://asset/project-a/assets/b.png' }
+  const sentText = `Change ${encodeMention(retained.url!)} and ${encodeMention(released.url!)}`
+  fixture.state.projectAgentDraft = sentText
+  fixture.state.projectAgentAttachments = [retained,released]
+  const ack = deferred()
+  fixture.say.mockReturnValue(ack.promise)
+  const actions = mountActions()
+  const sending = actions.send(sentText)
+  await vi.waitFor(() => expect(fixture.say).toHaveBeenCalledTimes(1))
+  const edited = `Change ${encodeMention(retained.url!)} and keep its framing`
+  fixture.state.setProjectAgentDraft(edited)
+  ack.resolve({ok:true})
+  expect(await sending).toBe(true)
+  expect(fixture.state.projectAgentDraft).toBe(edited)
+  expect(fixture.state.projectAgentAttachments).toEqual([retained])
+  expect(fixture.say.mock.calls[0][2].attachments).toEqual([
+    {assetId:'asset-a',version:1},{assetId:'asset-b',version:1},
+  ])
+  fixture.say.mockResolvedValue({ok:true})
+  expect(await actions.send(edited)).toBe(true)
+  expect(fixture.say.mock.calls[1][2].attachments).toEqual([{assetId:'asset-a',version:1}])
+  expect(fixture.state.projectAgentDraft).toBe('')
+  expect(fixture.state.projectAgentAttachments).toEqual([])
 })

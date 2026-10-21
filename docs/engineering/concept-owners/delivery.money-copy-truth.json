@@ -1,0 +1,31 @@
+{
+  "name": "面向用户的文案不断言「零成本」或「会花钱」（扫描所有 locale 与桌面端字符串）",
+  "subject": "delivery.money-copy-truth",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/check-i18n-no-cost-claims.mjs",
+    "symbol": "scanDictionaries"
+  },
+  "write_api": [
+    {
+      "path": "scripts/check-i18n-no-cost-claims.mjs",
+      "symbol": "scanDictionaries"
+    },
+    {
+      "path": "src/i18n/resources.ts",
+      "symbol": "resources"
+    },
+    {
+      "path": "electron/desktopStrings.ts",
+      "symbol": "desktopT"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-07",
+  "notes": "合同 docs/fixes/2026-10-07-money-copy-truth.root-cause.json：scanDictionaries 扫描渲染端 resources 与主进程 desktopT 加载的全部词典；字典加载口各只有一处。"
+}

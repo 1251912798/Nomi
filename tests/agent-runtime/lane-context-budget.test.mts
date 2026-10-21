@@ -30,7 +30,7 @@ test('C59 stable catalog is in system context; user turns contain only catalog c
     if (previous.settings === undefined) delete process.env.NOMI_SETTINGS_DIR; else process.env.NOMI_SETTINGS_DIR = previous.settings;
     if (previous.projects === undefined) delete process.env.NOMI_PROJECTS_DIR; else process.env.NOMI_PROJECTS_DIR = previous.projects;
   });
-  let context: LaneComposerContext = { approvalPolicy: { mode: 'safe-auto', spend: 'confirm' }, availableModels: [model] };
+  let context: LaneComposerContext = { approvalPolicy: { mode: 'request' }, availableModels: [model] };
   const input = createDesktopLaneInput({ projectId: 'budget-fixture', capture: () => context, activate: () => {}, prepare: async (captured: LaneComposerContext) => captured,
     model: () => ({ model: { modelKey: 'chosen-model' }, kind: 'openai-compatible' }) });
   const lane = await fixture.openLane({ ...fixture.options, input });
@@ -100,7 +100,7 @@ test('C59 the 24 recorded user turns reduce total input by 60 percent and add un
     if (previous.settings === undefined) delete process.env.NOMI_SETTINGS_DIR; else process.env.NOMI_SETTINGS_DIR = previous.settings;
     if (previous.projects === undefined) delete process.env.NOMI_PROJECTS_DIR; else process.env.NOMI_PROJECTS_DIR = previous.projects;
   });
-  const context: LaneComposerContext = { approvalPolicy: { mode: 'safe-auto', spend: 'confirm' }, availableModels: recorded.models,
+  const context: LaneComposerContext = { approvalPolicy: { mode: 'request' }, availableModels: recorded.models,
     model: { vendorKey: 'fixture', modelKey: 'chosen-model' } };
   const input = createDesktopLaneInput({ projectId: 'replay', capture: () => context, activate: () => {}, prepare: async (captured: LaneComposerContext) => captured,
     model: () => ({ model: { modelKey: 'chosen-model' }, kind: 'openai-compatible' }) });

@@ -20,6 +20,7 @@ import { PROMPT_SOURCES } from "../../electron/promptLibrary/promptSources.ts";
 import { MODEL_ARCHETYPES } from "../../electron/shared/modelArchetypes/index.ts";
 import { dedupeModelOptions, modelCatalogLifecycle } from "../../src/config/modelIdentity.ts";
 import { toCatalogModelOptions } from "../../src/config/modelOptionMappers.ts";
+import { isReleasedForSite, resolveReleasedVersion } from "./released-version.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const OUT_JSON = path.join(root, "marketing/data/site-data.json");
@@ -28,6 +29,25 @@ const MEDIA_URL = "/assets/library";
 /** 卡片与详情两种宽度。源图 1–4MB，官网只用派生图。 */
 const MEDIA_WIDTHS = [640, 1280] as const;
 const checkOnly = process.argv.includes("--check");
+/** 只打印会导出的技能名（不写文件），给测试 / 人工核对用。 */
+const listNamesOnly = process.argv.includes("--names");
+
+/**
+ * 最新已发布版本：写导出时读 git 标签（或 NOMI_SITE_RELEASED_VERSION），并记进 site-data.json；
+ * --check 只读已提交的那个值，所以核对结果只由仓库内容决定，发版后不会让门岗在同步 PR 合入前变红。
+ * 拿不到就是 null：声明了 available-since 的技能一律不展示。
+ */
+function releasedVersionForExport(): string | null {
+  if (checkOnly && !process.env.NOMI_SITE_RELEASED_VERSION) {
+    try {
+      const prior = JSON.parse(fs.readFileSync(OUT_JSON, "utf8")) as { releasedVersion?: string };
+      return prior.releasedVersion ?? null;
+    } catch {
+      return null;
+    }
+  }
+  return resolveReleasedVersion({ cwd: root });
+}
 
 type Localized = { "zh-CN": string; en: string };
 
@@ -137,7 +157,7 @@ function deriveMedia(sourceFile: string, name: string, manifest: MediaEntry[], w
     const fileName = `${name}-${width}.webp`;
     const target = path.join(MEDIA_DIR, fileName);
     files[width] = `${MEDIA_URL}/${fileName}`;
-    if (checkOnly) continue;
+    if (checkOnly || listNamesOnly) continue;
     const prior = previousMedia.get(path.relative(root, sourceFile).replaceAll("\\", "/"));
     if (prior && prior.sourceHash === sourceHash && fs.existsSync(target)) continue;
     fs.mkdirSync(MEDIA_DIR, { recursive: true });
@@ -149,13 +169,14 @@ function deriveMedia(sourceFile: string, name: string, manifest: MediaEntry[], w
 
 let previousMedia = new Map<string, MediaEntry>();
 
-async function exportLibrary(media: MediaEntry[]) {
+async function exportLibrary(media: MediaEntry[], releasedVersion: string | null) {
   const { records, diagnostics } = await discoverSkillRecords([{ path: path.join(root, "skills"), origin: "builtin" }]);
   const errors = diagnostics.filter((diagnostic) => diagnostic.type === "error");
   if (errors.length) throw new Error(`技能目录有错误：\n${errors.map((error) => `- ${error.path}: ${error.message}`).join("\n")}`);
   return records
-    // 绑在构建开关上的技能开关关时用户用不了，官网不能先宣传（开关随 2026-11-15 删除时一起放开）。
-    .filter((record) => record.curation && !record.manifestError && !record.manifest?.requiresFlag)
+    .filter((record) => record.curation && !record.manifestError)
+    // 官网只展示最新已发布版本里就有的技能：声明了 available-since 而版本没到的不导出；没声明的照旧。
+    .filter((record) => isReleasedForSite(record.manifest?.availableSince, releasedVersion))
     .sort((left, right) => left.directoryName.localeCompare(right.directoryName))
     .map((record) => {
       const curation = record.curation!;
@@ -222,10 +243,16 @@ async function main() {
     previousMedia = new Map(prior.map((entry) => [entry.source, entry]));
   }
   const media: MediaEntry[] = [];
+  const releasedVersion = releasedVersionForExport();
+  if (listNamesOnly) {
+    console.log(JSON.stringify((await exportLibrary([], releasedVersion)).map((item) => item.name)));
+    return;
+  }
   const data = {
     schemaVersion: 1,
+    ...(releasedVersion ? { releasedVersion } : {}),
     models: exportModels(),
-    library: await exportLibrary(media),
+    library: await exportLibrary(media, releasedVersion),
     collections: exportCollections(),
     expressions: exportExpressions(media),
   };

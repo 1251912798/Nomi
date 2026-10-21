@@ -109,3 +109,8 @@
 - **分类口径**：对每次红灯，取同一 PR 的**下一次运行**，比较两次的提交之间改了哪些文件（`compare` 接口，仅用于文件类型判断，不用于 Git 身份）。纸面类门岗（prior-art、symptom-cluster、root-cause-contracts、door-map、concept-owners 等）只要修复里有文档 / 登记 JSON 变化就算纸面；代码类门岗（类型、体积、走查、lint 等）只要改了 `src/` / `electron/` / `tests/` 就算真。同一次提交里混着修多道门岗时，这个口径会把一部分归得偏「真」；本文没有逐个人工核对。
 - **局限**：① 只覆盖已合并的 PR，被放弃的 PR 不在内；② 最后一次运行没有「下一次」的红灯不存在（合并前总有一次绿）；③ 「真」只表示改了代码，不表示这个问题会影响用户——例如文件体积那 4 次是不是有意义的拆分，没有判断；④ 零红的门岗没有判断它拦过什么历史问题；⑤ 误报只有「重跑过绿」和「修复只改文档的 Unit 红」两种可自动识别的形态，其它环境问题会被归进「真」。
 - 本文不改任何门岗、不改任何基线；删除和降级等用户批示。
+
+## 八、后续决定记录
+
+- **2026-10-02**：`check:concept-owners` 降为警告档（advisory），用户拍板「只提示不阻断」，理由是账本里它红 4 次全是登记没补。
+- **2026-10-19（取代上一条）**：用户拍板「改回挡合并（推荐）」，`check:concept-owners` 回到阻断。依据：警告档下棘轮没有咬合，10-06 冻结 37 处存量债之后，10-07 起每个带 `shared_boundaries` 的根因合同又往里加了 84 处未登记边界（37 -> 121），main 上直接跑该门岗红 86 处而 CI 的 Contracts 是绿的；PR #1254 把 84 处全部登记后升回阻断，成本是 3.6 秒加 21 个单测约 24 秒。改动位置：`package.json` 的 `gates:contracts`（去掉 `--advisory=`）、`scripts/run-gates-contracts.mjs`（`ADVISORY_FILL` 与注释）、`scripts/gate-slimming.node-test.mjs`（advisory 名单现为空，`check:concept-owners` 列入 REAL_PROBLEM_GATES）。

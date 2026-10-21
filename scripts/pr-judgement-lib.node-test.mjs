@@ -20,6 +20,7 @@ import {
   inferRoutes,
   isMissingTool,
   loadRoutingTable,
+  paidSampleVerdict,
   requiredEvidence,
   routingEnforced,
   toolGaps,
@@ -121,6 +122,66 @@ test('验收证据：必交证据取并集；缺条目红；条目没证据红�
   assert.deepEqual(exists.gaps.map((gap) => gap.id), ['ui-click-census', 'ui-ai-walk'])
 })
 
+test('真付费抽检严格判据（合并前扫描）：运行号 / 报告链接 / 协调豁免过；未验证、裸 PR 号、别名行、缺条目都红（#1203 就是写「未验证」被合进来的）', () => {
+  for (const line of [
+    '- spend-paid-sample：run 987654',
+    '- spend-paid-sample：运行号 20261016',
+    '- spend-paid-sample：https://github.com/o/r/actions/runs/12345',
+    '- spend-paid-sample：报告 reports/G-paidkey.md',
+    '- **spend-paid-sample**：D:/Nomi-coord-state/reports/H-paid-1203.md',
+    '- spend-paid-sample：协调豁免：只改了文案，不碰供应商',
+  ]) assert.equal(paidSampleVerdict(line).ok, true, line)
+  assert.equal(paidSampleVerdict('- spend-paid-sample：协调豁免：只改了文案').waived, true)
+  for (const line of [
+    '- spend-paid-sample：未验证：待协调',
+    '- spend-paid-sample：未验证：真付费还没跑 https://example.com/x',
+    '- spend-paid-sample：#1203',
+    '- spend-paid-sample：跑过了',
+    '- spend-paid-sample：协调豁免：',
+    '- spend-paid-sample：协调豁免：无',
+    '- 真付费：https://example.com/report',
+    '- paid：run 987654',
+  ]) assert.equal(paidSampleVerdict(line).ok, false, line)
+
+  const rest = '- spend-walks：tests/ux/agent-spend-card.walk.mjs\n- spend-fault-injection：tests/ux/full-walk/playbooks/pb07-failure-kinds.walk.mjs\n'
+  const evidence = (paidLines) => `## 验收证据\n${rest}${paidLines}`
+  const strict = (body) => checkRoutingEvidence(body, ['spend'], table, null, null, { paidStrict: true })
+  const lenient = (body) => checkRoutingEvidence(body, ['spend'], table)
+
+  // 现状（#1203 的写法）：宽口径放行，严格口径红
+  const unverified = evidence('- spend-paid-sample：未验证：待协调真付费验收\n')
+  assert.equal(lenient(unverified).ok, true, 'CI / 推送前的口径不变')
+  const hit = strict(unverified)
+  assert.equal(hit.ok, false)
+  assert.match(hit.lines.join('\n'), /spend-paid-sample：花钱类 PR 不接受「未验证」/)
+  // 缺条目：两种口径都红，严格口径多一句格式提示
+  assert.equal(lenient(evidence('')).ok, false)
+  assert.match(strict(evidence('')).lines.join('\n'), /spend-paid-sample：合并前扫描要求/)
+  // 补上运行号 → 绿；协调豁免 → 绿且醒目打出理由
+  assert.equal(strict(evidence('- spend-paid-sample：run 987654\n')).ok, true)
+  const waived = strict(evidence('- spend-paid-sample：协调豁免：只改文案不碰供应商\n'))
+  assert.equal(waived.ok, true)
+  assert.match(waived.lines.join('\n'), /⚠ spend-paid-sample：协调豁免——只改文案不碰供应商/)
+  // 别名行 / 别处提到 paid 的行不能顶替这一行
+  assert.equal(strict(evidence('- 真付费：run 987654\n- ui-screens：paid https://example.com/x\n')).ok, false)
+  // 裸 PR 号不算
+  assert.equal(strict(evidence('- spend-paid-sample：#1203\n')).ok, false)
+  // 不是花钱类（没有 spend 类别）时严格口径不要求这一行
+  assert.equal(checkRoutingEvidence('## 验收证据\n', ['long-run'], table, null, null, { paidStrict: true }).lines.join('\n').includes('spend-paid-sample'), false)
+})
+
+test('整体：花钱类 PR 过 evaluatePrJudgement：paidStrict 才把「未验证」判红，CI / 推送前（不传）行为不变', () => {
+  const files = [M('electron/capabilityCore/generationSpendDecision.ts')]
+  const body = '## 设计卡\nx\n### 功能分类\n- [x] 花钱\n\n## 验收证据\n- spend-walks：tests/ux/agent-spend-card.walk.mjs\n- spend-paid-sample：未验证：待协调\n- spend-fault-injection：tests/ux/full-walk/playbooks/pb07-failure-kinds.walk.mjs\n'
+  assert.equal(evaluatePrJudgement({ body, files, createdAt: '2026-10-16T00:00:00Z', table }).blocked, false)
+  const strict = evaluatePrJudgement({ body, files, createdAt: '2026-10-16T00:00:00Z', table, paidStrict: true })
+  assert.equal(strict.blocked, true)
+  assert.match(strict.routing.lines.join('\n'), /不接受「未验证」/)
+  // 补上运行号就过
+  const fixed = body.replace('未验证：待协调', 'run 987654')
+  assert.equal(evaluatePrJudgement({ body: fixed, files, createdAt: '2026-10-16T00:00:00Z', table, paidStrict: true }).blocked, false)
+})
+
 test('整体：路径推出的类别没勾 → 红；勾全且证据齐 → 绿；规则生效日之前开的 PR 路由只警告', () => {
   const files = [M('electron/spendLedger.ts')]
   const bad = checkRouting('## 设计卡\nx', inferRoutes(files, '', table), table)
@@ -197,6 +258,8 @@ test('端到端：临时 git 仓库里跑 CI 脚本——没勾分类 / 缺证�
     fs.writeFileSync(path.join(root, rel), content)
   }
   git(root, 'init', '-q'); git(root, 'config', 'user.email', 't@t'); git(root, 'config', 'user.name', 't'); git(root, 'config', 'commit.gpgsign', 'false')
+  // 政策表取 base 版本（G-perfreg）：fixture 的 base 带上真实路由表
+  fs.mkdirSync(path.join(root, 'docs/engineering'), { recursive: true }); fs.copyFileSync(path.join(here, '..', 'docs/engineering/test-routing.json'), path.join(root, 'docs/engineering/test-routing.json'))
   write('electron/spendLedger.ts', 'export const v = 0\n')
   write('scripts/check-x.mjs', 'export const x = 0\n')
   git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'base')
@@ -238,6 +301,8 @@ test('端到端：逃逸账本一条一个文件——条目文件被删（base 
   fs.mkdirSync(dir, { recursive: true })
   const put = (name, value) => fs.writeFileSync(path.join(dir, name), `${JSON.stringify(value, null, 2)}\n`)
   git(root, 'init', '-q'); git(root, 'config', 'user.email', 't@t'); git(root, 'config', 'user.name', 't'); git(root, 'config', 'commit.gpgsign', 'false')
+  // 政策表取 base 版本（G-perfreg）：fixture 的 base 带上真实路由表
+  fs.mkdirSync(path.join(root, 'docs/engineering'), { recursive: true }); fs.copyFileSync(path.join(here, '..', 'docs/engineering/test-routing.json'), path.join(root, 'docs/engineering/test-routing.json'))
   put('_meta.json', { $schemaVersion: 1 })
   put('LAW12-a.json', { id: 'LAW12-a', status: 'candidate' })
   put('LAW12-b.json', { id: 'LAW12-b', status: 'candidate' })
@@ -259,6 +324,55 @@ test('端到端：逃逸账本一条一个文件——条目文件被删（base 
   const dropped = run()
   assert.equal(dropped.status, 1, dropped.stdout + dropped.stderr)
   assert.match(dropped.stdout, /逃逸账本里有条目被删掉：LAW12-b（/)
+})
+
+test('端到端：真实 committed reviewed 逃逸只准首次 push 警告；CI/merge、缺证据与错绑合同仍红', (t) => {
+  const root = makeTempDir('pr-judgement-reviewed-')
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const write = (rel, value) => {
+    fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true })
+    fs.writeFileSync(path.join(root, rel), typeof value === 'string' ? value : JSON.stringify(value))
+  }
+  git(root, 'init', '-q'); git(root, 'config', 'user.email', 't@t'); git(root, 'config', 'user.name', 't'); git(root, 'config', 'commit.gpgsign', 'false')
+  write('README.md', 'base')
+  // 政策表取 base 版本（G-perfreg）：fixture 的 base 带上真实路由表
+  write('docs/engineering/test-routing.json', fs.readFileSync(path.join(here, '..', 'docs/engineering/test-routing.json'), 'utf8'))
+  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'base')
+  const base = git(root, 'rev-parse', 'HEAD').trim()
+  const contractFile = 'docs/fixes/2026-10-12-fixture.root-cause.json'
+  const checkFile = 'tests/ux/fixture.walk.mjs'
+  const ledgerFile = 'tests/ux/full-walk/escapeLedger/FB-fixture.json'
+  const contract = { detected_by: 'user', prevention: { kind: 'centralized-boundary' }, class_regression_tests: [checkFile] }
+  const entry = { id: 'FB-fixture', status: 'reviewed', manualReview: 'reviewed', rootCauseContract: contractFile,
+    classCheck: { kind: 'matrix', file: checkFile }, evidence: ['real task receipt'], completionCommits: [base] }
+  write(contractFile, contract)
+  write(checkFile, 'const matrix = []; for (const row of matrix) verify(row)')
+  const body = ['## 设计卡', ...CARD_LINES].join('\n')
+  const run = (env = {}) => spawnSync(process.execPath, [path.join(here, 'check-pr-judgement.mjs')], {
+    encoding: 'utf8', env: { ...process.env, PR_JUDGEMENT_REPO_ROOT: root, PR_JUDGEMENT_BASE_REF: base,
+      PR_JUDGEMENT_CREATED_AT: '2026-10-12T00:00:00Z', NOMI_PR_BODY: body, NOMI_PR_JUDGEMENT_STAGE: 'push',
+      GITHUB_EVENT_NAME: '', CI: '', ...env },
+  })
+  const commitEntry = (value) => { write(ledgerFile, value); git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'review evidence') }
+  commitEntry(entry)
+  const push = run()
+  assert.equal(push.status, 0, push.stdout + push.stderr)
+  assert.match(push.stdout, /⚠.*reviewed/)
+  assert.equal(JSON.parse(git(root, 'show', `HEAD:${ledgerFile}`)).status, 'reviewed', 'admission never fabricates fixed')
+  for (const env of [{ NOMI_PR_JUDGEMENT_STAGE: 'merge' }, { CI: 'true' }]) {
+    assert.equal(run(env).status, 1, 'merge/CI must retain settlement requirement')
+  }
+  const unrelatedCommit = git(root, 'commit-tree', 'HEAD^{tree}', '-m', 'unrelated root commit').trim()
+  for (const invalid of [
+    { ...entry, id: 'FB-other' }, { ...entry, status: 'candidate' }, { ...entry, manualReview: 'pending' }, { ...entry, evidence: [] },
+    { ...entry, completionCommits: [] }, { ...entry, completionCommits: ['f'.repeat(40)] },
+    { ...entry, completionCommits: [unrelatedCommit] },
+    { ...entry, classCheck: { kind: 'matrix', file: 'tests/ux/missing.walk.mjs' } },
+    { ...entry, rootCauseContract: 'docs/fixes/2026-10-12-other.root-cause.json' },
+  ]) { commitEntry(invalid); assert.equal(run().status, 1, `invalid preparation admitted: ${JSON.stringify(invalid)}`) }
+  commitEntry(entry)
+  write(checkFile, 'verifyOneExample()'); git(root, 'commit', '-qam', 'not a class check')
+  assert.equal(run().status, 1, 'existence alone is insufficient: check must be class-level')
 })
 
 test('exclude：设计实验室（src/devlab）的 tsx 不算「改交互」；真界面照算', () => {
@@ -401,4 +515,38 @@ test('性能场景证据（2026-10-11）：界面 / 画布 / 长跑改动必交 
   assert.equal(requiredEvidence(['perf'], table, '2026-10-12T00:00:00Z').length, 1)
   assert.equal(requiredEvidence(['perf'], table, null).length, 1)
   assert.equal(evaluatePrJudgement({ body: '## 设计卡\n### 功能分类\n- [x] 新增功能 / 性能', files: [M('src/workbench/generationCanvas/canvasStore.ts')], createdAt: '2026-10-12T00:00:00Z', table }).routing.ok, false)
+})
+
+// G-perfreg（2026-10-15）：合并前扫描的检出是 origin/main，PR 新增的场景文件不在检出里。已知 id = (基线 − 本 PR 删掉的) ∪ 本 PR 新增 / 改动的文件；取不到 PR 头内容 / JSON 坏 → 判红并说人话（fail-closed）。
+// 用公开判据入口 checkRoutingEvidence，输入的 scenarios 形状与 knownScenarios 的返回一致（测试不依赖新导出，修前红的原因是「不在登记表」）。
+test('性能场景：基线没有 X、PR 新增 X → 判过；基线也没有、PR 也没新增的 Y → 红（走 knownScenarios 的真实组合）', async () => {
+  const { knownScenarios } = await import('./perf-scenarios-lib.mjs')
+  const SC = (id) => JSON.stringify({ id, feature: '样例：拖动节点', script: 'tests/perf/canvas-scale-bench.mjs', args: [], scale: '150 个图片节点', metrics: ['frameGapP95'], budget: 33, baseline: { median: 20, p95: 24, runs: 5, machine: 't', date: '2026-10-15', commit: 'abc1234' } })
+  const perfLine = (id) => `## 验收证据
+- perf-scenario：${id} 中位数 20 / p95 24 / 预算 33`
+  const base = [{ file: 'tests/perf/scenarios/base-one.json', data: JSON.parse(SC('base-one')) }]
+  const known = knownScenarios({ baseEntries: base, prFiles: [{ file: 'tests/perf/scenarios/new-one.json', content: SC('new-one') }] })
+  assert.deepEqual(known.problems, [])
+  assert.equal(checkRoutingEvidence(perfLine('new-one'), ['perf'], table, null, known).ok, true, '正文引用本 PR 新增的 new-one，判过')
+  assert.equal(checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, known).ok, true, '基线登记表里的 base-one 照样过')
+  const ghost = checkRoutingEvidence(perfLine('ghost-y'), ['perf'], table, null, known)
+  assert.equal(ghost.ok, false, 'Y 既不在基线、也不是本 PR 新增，必须红')
+  assert.match(ghost.lines.join('\n'), /不在登记表/)
+})
+
+test('性能场景：PR 头文件取不到 / JSON 解析不了 → 判红并说人话（fail-closed）', async () => {
+  const { knownScenarios } = await import('./perf-scenarios-lib.mjs')
+  const SC = (id) => JSON.stringify({ id, feature: '样例：拖动节点', script: 'tests/perf/canvas-scale-bench.mjs', args: [], scale: '150 个图片节点', metrics: ['frameGapP95'], budget: 33, baseline: { median: 20, p95: 24, runs: 5, machine: 't', date: '2026-10-15', commit: 'abc1234' } })
+  const perfLine = (id) => `## 验收证据
+- perf-scenario：${id} 中位数 20 / p95 24 / 预算 33`
+  const base = [{ file: 'tests/perf/scenarios/base-one.json', data: JSON.parse(SC('base-one')) }]
+  const lost = knownScenarios({ baseEntries: base, prFiles: [{ file: 'tests/perf/scenarios/new-one.json', content: null }] })
+  const unreadable = checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, lost)
+  assert.equal(unreadable.ok, false, 'PR 头内容取不到必须红（fail-closed）')
+  assert.match(unreadable.lines.join('\n'), /PR 头内容取不到/, '要说人话写出原因')
+  const broken = knownScenarios({ baseEntries: base, prFiles: [{ file: 'tests/perf/scenarios/new-one.json', content: '{ not json' }] })
+  assert.equal(checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, broken).ok, false, 'JSON 解析不了必须红')
+  assert.match(checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, broken).lines.join('\n'), /JSON 读不了/)
+  const removed = knownScenarios({ baseEntries: base, prFiles: [], removedFiles: ['tests/perf/scenarios/base-one.json'] })
+  assert.equal(checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, removed).ok, false, '本 PR 删掉的基线场景不再认得')
 })

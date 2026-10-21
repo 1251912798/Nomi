@@ -16,6 +16,7 @@
 <p align="center">
   <a href="#下载"><b>下载</b></a> ·
   <a href="https://nomiaqm.com/">官网</a> ·
+  <a href="https://atomgit.com/aqm857886159/Nomi">AtomGit 国内托管</a> ·
   <a href="#看宣传片">看 90 秒宣传片</a> ·
   <a href="https://nomiaqm.com/quickstart">快速上手</a> ·
   <a href="https://pan.quark.cn/s/d3322c17e7b6">夸克网盘镜像</a> ·
@@ -30,6 +31,17 @@
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-1a1816" alt="平台" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--only-1a1816" alt="许可证" /></a>
 </p>
+
+## 赞助商
+
+赞助商帮 Nomi 保持免费和开源。赞助不会变成默认项或内置线路：接哪家由你自己选，用你自己的 Key，钱按它的原价直接付给它。[想出现在这里？](#社区)
+
+<table>
+<tr>
+<td width="128" align="center"><a href="https://gway.dev/sign-up?aff=8j8f"><img src="docs/media/sponsors/gway-logo.png" alt="极途 Gway" width="96" /></a></td>
+<td><b><a href="https://gway.dev/sign-up?aff=8j8f">极途 Gway</a></b> —— 专注 AI 视频与多图参考生成的 API 平台：Seedance 2.0 / 2.5、Wan 3、MiniMax 等主流模型，OpenAI 兼容，按量计费。Nomi 里暂时还没有它的内置预设，点<b>用 AI 帮我接入</b>，Claude Code 或 Codex 会用你的 Key 把它接好。感谢极途 Gway 赞助 Nomi！<i>（极途 Gway 的链接带推荐码。）</i></td>
+</tr>
+</table>
 
 ## 为什么是 Nomi
 
@@ -77,7 +89,7 @@ Seedance、可灵、Wan、海螺、Nano Banana、GPT Image……走 APIMart、Ki
 
 ### 东西都是你的
 
-一个项目就是你硬盘上的一个文件夹：画布、分镜、时间轴、每一个生成的文件、导出的成片都在里面。不用注册，不上报数据。代码 AGPL-3.0 开源。
+一个项目就是你硬盘上的一个文件夹：画布、分镜、时间轴、每一个生成的文件、导出的成片都在里面。不用注册。默认不上报任何数据；想帮忙改进的话，可以在设置里自愿开启匿名统计，随时能关。代码 AGPL-3.0 开源。
 
 **下一步：AI 剪辑。** Nomi 要做的是一站式的内容创作 AI 工作台，欢迎一起来做。
 
@@ -136,7 +148,7 @@ Nomi 自带 MCP 服务（24 个 MCP 工具）：Claude Code、Codex、Cursor 都
 扫左边的码加入用户群，反馈直接进迭代。群码过期了，或者要做 AGPL 合规的定制开发、部署和长期迭代，加右边的维护者微信 **TZ857886159**。
 
 <p align="center">
-  <a href="docs/media/nomi-canvas-group-wechat-2026-10-17.jpg"><img src="docs/media/nomi-canvas-group-wechat-2026-10-17.jpg" alt="Nomi 用户群微信二维码" width="220" /></a>
+  <a href="docs/media/nomi-canvas-group-wechat-2026-10-25.jpg"><img src="docs/media/nomi-canvas-group-wechat-2026-10-25.jpg" alt="Nomi 用户群微信二维码" width="220" /></a>
   &nbsp;&nbsp;
   <a href="docs/media/qingyang-wechat.jpg"><img src="docs/media/qingyang-wechat.jpg" alt="Nomi 维护者微信二维码" width="180" /></a>
 </p>

@@ -1,0 +1,28 @@
+{
+  "id": "inline-whiteboard-idle-panel",
+  "feature": "Inline whiteboard: size panel left open while nothing moves (idle CPU, style/layout and rect reads)",
+  "script": "tests/ux/whiteboard-perf.probe.mjs",
+  "args": [
+    "--scene",
+    "idle-panel",
+    "--repo-media"
+  ],
+  "scale": "2 nodes, 1 active editor with its size panel open; the repository real AI shot (640x360), not the 4K library clip; 5 s idle window after 1.2 s settle",
+  "metrics": [
+    "idleBusyPct",
+    "idleRectReadsPerSec",
+    "idleLayoutsPerSec"
+  ],
+  "budget": 1,
+  "budgetStatus": "proposed",
+  "budgetBasis": "An idle panel should cost about what the editor costs with no panel (0.4-0.6% busy measured as the control); the per-frame tracking it replaced measured 2.2-2.6% busy and 165 rect reads/s. 1% separates the two with room for event-driven updates.",
+  "baseline": {
+    "median": 0.2,
+    "p95": 0.6,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-17",
+    "commit": "a7cdc4664",
+    "noisy": true
+  }
+}

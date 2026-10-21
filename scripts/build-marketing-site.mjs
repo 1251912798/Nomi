@@ -20,11 +20,13 @@ assertFeaturesParity()
 // 生成物：首页、快速上手、三个库（数据来自 marketing/data/site-data.json），各一中一英。
 // 「官网有哪些页面」只有一份 owner：marketing/pages.mjs 的 sitePages()（站点地图也读它，见 build-marketing-sitemap.mjs）。
 const siteData = loadSiteData()
-const outputs = renderSiteOutputs(siteData, runtimeFacts)
+const allOutputs = renderSiteOutputs(siteData, runtimeFacts)
+// 教程站页面（prebuilt）由 build-marketing-docs.mjs 写盘、由 --check 的 docs 构建核对；这里只把它们算进「应有页面」，不重写。
+const outputs = allOutputs.filter(({ prebuilt }) => !prebuilt)
 
 // 生成器不再产出的页面（模型退役、介绍删掉、页面改名）不能留在 marketing/ 里继续上线：
 // --check 把它们报出来，生成时直接删掉（加新必删旧）。
-const expected = new Set(outputs.map(({ relativePath }) => relativePath))
+const expected = new Set(allOutputs.map(({ relativePath }) => relativePath))
 const orphans = listHtmlFiles(root).filter((relativePath) => !expected.has(relativePath))
 
 if (checkOnly) {

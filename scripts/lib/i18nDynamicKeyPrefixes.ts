@@ -39,8 +39,8 @@ export const DYNAMIC_KEY_PREFIXES: DynamicPrefix[] = [
   { prefix: 'shotTable.status', members: ['ready', 'anchor-ignored', 'missing-required', 'generating', 'failed', 'recoverable', 'done', 'locked'], why: '动态：表投影现役执行状态；枚举来源 storyboardRowStatus.ts 的 ShotRowExec.status，未另建状态机。' },
   // ── creationAi ──
   // ── agentPanelV4 ──
-  { prefix: 'agentPanelV4.permission', why: "动态: Agent 面板 v4 的权限三档;枚举来源: PermissionTier = ProjectAgentApprovalPolicy['mode'] 的 step/safe-auto/project(permission.* 词条)" },
-  { prefix: 'agentPanelV4.permissionWhy', why: "动态: 权限三档各自的一句话解释;枚举来源: 同上三档(permissionWhy.* 词条)" },
+  { prefix: 'agentPanelV4.permission', why: "动态: Agent 面板 v4 的权限两档;枚举来源: PermissionTier = ProjectAgentApprovalPolicy['mode'] 的 request/direct(permission.* 词条)" },
+  { prefix: 'agentPanelV4.permissionWhy', why: "动态: 权限两档各自的一行灰字;枚举来源: 同上两档(permissionWhy.* 词条)" },
   { prefix: 'creationAi.mode', why: '动态: 创作助手模式 id;枚举来源: listCreationAiModes() 的内置 mode.id(CreationPromptPicker 用 `creationAi.mode.${id}` 再接 .label/.short/.title/.description)' },
   // ── antigravity ──
   { prefix: 'antigravity.state', why: '动态: Antigravity 连接状态;枚举来源: AntigravityConnectionStatus["state"] 六态(antigravity.state.* 词条)' },
@@ -104,13 +104,6 @@ export const DYNAMIC_KEY_PREFIXES: DynamicPrefix[] = [
   { prefix: 'onboardingProviders.splash.nodes', why: '动态: 开屏动画节点标签;枚举来源: SplashIntro 的 labelKeys 数组(splash.nodes.* 词条)' },
   // ── runtime ──
   { prefix: 'runtime.capability.intent', why: '动态: 能力应用意图;枚举来源: capabilityApplyHandler 归一化后的 intent(capability.intent.* 词条)' },
-  // ── agentResident ──
-  {
-    prefix: 'agentResident.spendPolicy',
-    kind: 'concat',
-    suffixes: ['WithinBudget', 'Confirm'],
-    why: '动态-拼接: 花费策略 `agentResident.spendPolicy${WithinBudget|Confirm}` 标签;枚举来源: ProjectAgentSpendPolicy 二态(within-budget/confirm)',
-  },
   // ── generationCommon ──
   { prefix: 'generationCommon.assistant.toolCall', why: "动态: 工具调用的人话摘要;枚举来源: toolCallSummary.ts 的 tt(key)——键先存进 const T 再 `${T}.${key}` 拼,模板 head 为空、正反两道门岗都看不见,故必须在册(该文件里 summarizeToolCall/buildStepDetailLabels 传入的字面量 key)" },
   { prefix: 'generationCommon.canvas.controlsHelp.sections', why: '动态: 画布控件帮助分节;枚举来源: CanvasControlsHelpPopover 的 section.id(controlsHelp.sections.* 词条)' },

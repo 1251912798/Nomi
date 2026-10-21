@@ -9,6 +9,8 @@ const fixture = vi.hoisted(() => ({
   removeBackground: vi.fn(), fallback: vi.fn(), setters: [] as ReturnType<typeof vi.fn>[],
   callbacks: [] as Promise<unknown>[], selection: null as unknown,
   nodes: [] as GenerationCanvasNode[],
+  initialImageStatus: null as null | 'failed',
+  captureEffects: false, effects: [] as Array<() => void>, drawingHandle: null as null | import('./WhiteboardDrawingTool').WhiteboardDrawingToolHandle,
 }))
 vi.mock('react', async original => {
   const actual = await original<typeof import('react')>()
@@ -21,13 +23,23 @@ vi.mock('react', async original => {
     useState: (initial: unknown) => {
       const setter = vi.fn(); fixture.setters.push(setter)
       return [fixture.setters.length === 1 && fixture.selection ? fixture.selection
-        : typeof initial === 'function' ? initial() : initial, setter]
+        : typeof initial === 'function' ? initial() : initial === 'loading' && fixture.initialImageStatus ? fixture.initialImageStatus : initial, setter]
     },
-    useRef: (current: unknown) => ({ current: current ?? { captureViewportFile: fixture.capture, getState: () => null } }),
-    useMemo: (compute: () => unknown) => compute(), useEffect: () => {}, useImperativeHandle: () => {},
+    useRef: (current: unknown) => ({ current: current ?? { captureViewportFile: fixture.capture, getState: () => null, isBusy: () => false, getSceneTransforms: () => ({ offsets: {}, assetTransforms: {}, flips: {} }) } }),
+    useMemo: (compute: () => unknown) => compute(), useEffect: (callback: () => void) => { if (fixture.captureEffects) fixture.effects.push(callback) }, useLayoutEffect: () => {}, useImperativeHandle: (_ref: unknown, create: () => typeof fixture.drawingHandle) => { if (fixture.captureEffects) fixture.drawingHandle = create() },
     forwardRef: (component: unknown) => component,
   } }
 })
+vi.mock('@mantine/hooks', async () => {
+  const { default: React } = await import('react')
+  return { useStateHistory: (initial: unknown) => {
+    const [value, set] = React.useState(initial)
+    return [value, { set, back: vi.fn(), forward: vi.fn(), reset: vi.fn() }, { history: [initial], current: 0 }]
+  } }
+})
+vi.mock('./WhiteboardEditingToolbar', () => ({ WhiteboardEditingToolbar: 'toolbar' }))
+vi.mock('../nodeAttachedPanel', () => ({ useNodeAttachedPanel: () => {} }))
+vi.mock('./whiteboardSession', () => ({ registerWhiteboardFinish: () => () => {}, closeWhiteboard: () => {} }))
 vi.mock('react-dom', () => ({ createPortal: (element: unknown) => element }))
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('../../../../i18n', () => ({ default: { t: (key: string) => key } }))
@@ -35,6 +47,7 @@ vi.mock('../../../../design', () => ({ WorkbenchButton: 'button' }))
 vi.mock('../../../../ui/notificationPolicy', () => ({ notify: fixture.feedback }))
 vi.mock('../../../../ui/app-shell/windowChrome', () => ({ currentFullscreenOverlayTopOffset: () => 0 }))
 vi.mock('../../../project/projectCanvasReadSurface', () => ({
+  isProjectImportCancellation: () => false,
   // The single issuance point hands the originating project to the action.
   withProjectAction: (run: (project: unknown) => unknown) => run(screenshotProject()),
 }))
@@ -50,12 +63,11 @@ vi.mock('../../components/screenshotCropGeometry', () => ({
   cropScreenshotRegion: fixture.crop, normalizeSelectionRect: () => ({ x: 0, y: 0, width: 0.5, height: 0.5 }),
 }))
 vi.mock('./WhiteboardLeaferCanvas', () => ({ LeaferCanvas: 'leafer' }))
-vi.mock('./WhiteboardToolbarControls', () => ({ AspectRatioPopover: 'ratio', ToolIconButton: 'button', TOOL_ITEMS: [] }))
 vi.mock('./WhiteboardLibraryPanel', () => ({ WhiteboardLibraryPanel: 'library' }))
 vi.mock('./whiteboardState', async original => ({ ...await original<typeof import('./whiteboardState')>(), loadImageSize: fixture.size }))
 vi.mock('../../../../lib/removeBackground', () => ({ removeBackgroundBlob: fixture.removeBackground, blobToDataUrl: fixture.fallback }))
 
-import WhiteboardModal from './WhiteboardModal'
+import InlineWhiteboard from './InlineWhiteboard'
 import WhiteboardDrawingTool from './WhiteboardDrawingTool'
 import { ScreenshotCropOverlay } from '../../components/ScreenshotCropOverlay'
 import { createDefaultWhiteboardState } from './whiteboardState'
@@ -80,6 +92,7 @@ function screenshotProject() {
 const source = { id: 'source', kind: 'image', title: 'source', position: { x: 0, y: 0 } } as GenerationCanvasNode
 beforeEach(() => {
   vi.clearAllMocks(); fixture.controller = new AbortController(); fixture.setters = []; fixture.callbacks = []; fixture.selection = null
+  fixture.initialImageStatus = null; fixture.captureEffects = false; fixture.effects = []; fixture.drawingHandle = null
   fixture.nodes = [source]
   fixture.add.mockReturnValue({ ...source, id: 'created' })
   fixture.persist.mockResolvedValue('nomi-local://stored')
@@ -92,7 +105,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 it.each(['image', 'whiteboard'] as const)('cancels %s screenshot before publication after project replacement during capture', async sourceKind => {
   const captured = deferred<File>(); fixture.capture.mockReturnValue(captured.promise)
-  const tree = WhiteboardModal({ nodeId: 'source', sourceKind, onClose: vi.fn() })
+  const tree = InlineWhiteboard({ nodeId: 'source', sourceKind, onClose: vi.fn() })
   const screenshot = find(tree, node => typeof node.props.onScreenshot === 'function').props.onScreenshot as () => Promise<void>
   const result = screenshot()
   fixture.update.mockClear(); replaceProject()
@@ -106,7 +119,7 @@ it.each(['image', 'whiteboard'] as const)('cancels %s screenshot before publicat
 })
 
 it('passes the original project lifetime into a same-project whiteboard screenshot', async () => {
-  const tree = WhiteboardModal({ nodeId: 'source', sourceKind: 'whiteboard', onClose: vi.fn() })
+  const tree = InlineWhiteboard({ nodeId: 'source', sourceKind: 'whiteboard', onClose: vi.fn() })
   await (find(tree, node => typeof node.props.onScreenshot === 'function').props.onScreenshot as () => Promise<void>)()
   await Promise.allSettled(fixture.callbacks)
   expect(fixture.persist.mock.calls[0][2]).toMatchObject({ binding: { projectId: 'a' }, signal: fixture.controller.signal })
@@ -176,7 +189,7 @@ it.each(['image', 'whiteboard'] as const)('ignores %s screenshot completion afte
     replaceProject(); fixture.update.mockClear(); fixture.setters.forEach(setter => setter.mockClear())
     return 'nomi-local://old-project'
   })
-  const tree = WhiteboardModal({ nodeId: 'source', sourceKind, onClose: vi.fn() })
+  const tree = InlineWhiteboard({ nodeId: 'source', sourceKind, onClose: vi.fn() })
   ;(find(tree, node => typeof node.props.onScreenshot === 'function').props.onScreenshot as () => void)()
   await Promise.allSettled(fixture.callbacks)
   expect(fixture.update).not.toHaveBeenCalled()
@@ -203,10 +216,88 @@ it('does not close a new screenshot overlay or rewrite its nodes after storage c
 it('handles a failed screenshot save after switching projects without stale error feedback', async () => {
   fixture.persist.mockImplementation(async () => { replaceProject(); throw new Error('disk failed after switch') })
   const onClose = vi.fn()
-  const tree = WhiteboardModal({ nodeId: 'source', sourceKind: 'image', onClose })
-  ;(find(tree, node => node.props['aria-label'] === 'generationCommon.whiteboard.doneAria').props.onClick as () => void)()
+  const tree = InlineWhiteboard({ nodeId: 'source', sourceKind: 'image', onClose })
+  ;(find(tree, node => typeof node.props.onDone === 'function').props.onDone as () => void)()
   await Promise.allSettled(fixture.callbacks)
   expect(fixture.update).not.toHaveBeenCalled()
   expect(fixture.feedback).not.toHaveBeenCalled()
   expect(onClose).not.toHaveBeenCalled()
+})
+
+it('publishes the imported raster baseline before the first edit and never publishes the loading empty draft', async () => {
+  fixture.captureEffects = true
+  const onRasterBaseline = vi.fn()
+  const onDraftChange = vi.fn()
+  const tree = WhiteboardDrawingTool({ ownerNodeId: 'source', initialImage: { url: 'nomi-local://source', aspectRatio: '16:9' }, onRasterBaseline, onDraftChange })
+  fixture.effects.forEach(effect => effect())
+  expect(onDraftChange).not.toHaveBeenCalled()
+  await Promise.allSettled(fixture.callbacks)
+  expect(onRasterBaseline).toHaveBeenCalledOnce()
+  expect(onRasterBaseline.mock.calls[0][0].canvasAssets).toHaveLength(1)
+  const canvas = find(tree, node => typeof node.props.onStrokeCommit === 'function')
+  ;(canvas.props.onStrokeCommit as (stroke: unknown) => void)({ id: 'first-edit', layerId: 'drawing-layer-1', tool: 'brush', color: '#111827', size: 8, path: 'M 0 0 L 10 10' })
+  expect(fixture.drawingHandle!.getState().strokes).toHaveLength(1)
+  expect(onRasterBaseline.mock.calls[0][0].strokes).toHaveLength(0)
+})
+
+it('publishes against current history after asynchronous storage, without resurrecting deleted versions', async () => {
+  const older = { id: 'deleted-during-save', type: 'image' as const, url: 'nomi-local://older', createdAt: 1 }
+  const current = { id: 'current', type: 'image' as const, url: 'nomi-local://current', createdAt: 2 }
+  fixture.nodes = [{ ...source, result: current, history: [older, current] }]
+  const stored = deferred<string>(); fixture.persist.mockReturnValue(stored.promise)
+  const tree = InlineWhiteboard({ nodeId: 'source', sourceKind: 'image', onClose: vi.fn() })
+  ;(find(tree, node => typeof node.props.onScreenshot === 'function').props.onScreenshot as () => void)()
+  await Promise.resolve(); await Promise.resolve()
+  expect(fixture.persist).toHaveBeenCalledOnce()
+  fixture.nodes = [{ ...fixture.nodes[0], history: [current], meta: { concurrentlyUpdated: true } }]
+  stored.resolve('nomi-local://new-snapshot')
+  await Promise.allSettled(fixture.callbacks)
+  const patch = fixture.update.mock.calls.at(-1)![1]
+  expect(patch.history.some((result: { id: string }) => result.id === older.id)).toBe(false)
+  expect(patch.meta.concurrentlyUpdated).toBe(true)
+})
+
+it('failed initial import blocks draft and save, while Retry and Cancel remain actionable', () => {
+  fixture.captureEffects = true
+  fixture.initialImageStatus = 'failed'
+  const onDone = vi.fn(), onAbort = vi.fn(), onDraftChange = vi.fn()
+  const tree = WhiteboardDrawingTool({ ownerNodeId: 'source', initialImage: { url: 'nomi-local://source', aspectRatio: '16:9' }, onDone, onAbort, onDraftChange })
+  expect(fixture.drawingHandle!.initialImageStatus()).toBe('failed')
+  expect(fixture.drawingHandle!.isBusy()).toBe(true)
+  fixture.effects.at(-1)!()
+  expect(onDraftChange).not.toHaveBeenCalled()
+  const toolbar = find(tree, node => node.type === 'toolbar')
+  ;(toolbar.props.onDone as () => void)()
+  expect(onDone).not.toHaveBeenCalled()
+  const root = find(tree, node => typeof node.props.onKeyDownCapture === 'function')
+  ;(root.props.onKeyDownCapture as (event: unknown) => void)({ key: 'Escape', keyCode: 27, nativeEvent: {}, target: { closest: () => null }, preventDefault: vi.fn(), stopPropagation: vi.fn() })
+  expect(onDone).not.toHaveBeenCalled()
+  expect(onAbort).toHaveBeenCalledOnce()
+  ;(find(tree, node => node.type === 'button' && node.props.children === 'common.cancel').props.onClick as () => void)()
+  expect(onAbort).toHaveBeenCalledTimes(2)
+  ;(find(tree, node => node.type === 'button' && node.props.children === 'generationCommon.whiteboard.retryImport').props.onClick as () => void)()
+  expect(fixture.setters.some(setter => setter.mock.calls.some(([value]) => value === 'loading'))).toBe(true)
+  expect(fixture.update).not.toHaveBeenCalled()
+  expect(fixture.persist).not.toHaveBeenCalled()
+})
+
+it('a failed image decode cannot establish a raster baseline or publish an empty document', async () => {
+  fixture.captureEffects = true
+  fixture.size.mockResolvedValue(null)
+  const baseline = vi.fn(), draft = vi.fn()
+  WhiteboardDrawingTool({ ownerNodeId: 'source', initialImage: { url: 'nomi-local://broken', aspectRatio: '16:9' }, onRasterBaseline: baseline, onDraftChange: draft })
+  fixture.effects.forEach(effect => effect())
+  await Promise.allSettled(fixture.callbacks)
+  expect(baseline).not.toHaveBeenCalled()
+  expect(draft).not.toHaveBeenCalled()
+  expect(fixture.setters.some(setter => setter.mock.calls.some(([value]) => value === 'failed'))).toBe(true)
+})
+
+it.each([{ dimensions: undefined, expectedHeight: 337.5 }, { dimensions: { width: 1280, height: 900 }, expectedHeight: 421.875 }])('opens a different version with its own document frame: $expectedHeight', ({ dimensions, expectedHeight }) => {
+  fixture.captureEffects = true
+  fixture.nodes = [{ ...source, size: { width: 600, height: 600 }, result: { id: 'old', type: 'image', url: 'nomi-local://old', createdAt: 1 }, meta: { imageWidth: 1920, imageHeight: 1080, whiteboardFrameScale: 0.5, whiteboardResultIdentity: 'different' } }]
+  const initialState = dimensions ? { ...createDefaultWhiteboardState(), canvasDimensions: dimensions } : undefined
+  InlineWhiteboard({ nodeId: 'source', sourceKind: 'image', initialState, initialImage: { url: 'nomi-local://old', aspectRatio: '16:9' }, onClose: vi.fn() })
+  fixture.effects[0]()
+  expect(fixture.update).toHaveBeenCalledWith('source', expect.objectContaining({ size: { width: 600, height: expectedHeight } }), { history: false, persist: false, emit: false })
 })

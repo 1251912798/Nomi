@@ -132,7 +132,9 @@ describe('canvas.write headless fallback', () => {
     expect(String(failure.message)).not.toMatch(/Production run not found/)
     const nextAction = String(failure.nextAction ?? '')
     expect(nextAction).toContain('create_canvas_nodes')
-    expect(nextAction).not.toContain('tidy_canvas')
+    // 无头这条路自己只做名单里的三个；渲染端那一档在「with a project-session lease ... also」之后列出。
+    expect(nextAction).toMatch(/Operations available on this transport right now: set_node_prompt, create_canvas_nodes, connect_canvas_edges;/)
+    expect(nextAction).toMatch(/also: .*tidy_canvas/)
     // 关键：一次都不许递给生成处理器——那正是把画布动作洗成 `Production run not found` 的那一步。
     expect(generationPlanning).not.toHaveBeenCalled()
   })

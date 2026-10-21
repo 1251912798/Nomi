@@ -1,0 +1,7 @@
+{
+  "electron/ai/antigravityProcess.test.ts": 1,
+  "electron/capabilityCore/mcpHttpServer.test.ts": 1,
+  "electron/capabilityCore/mcpWireContract.test.ts": 2,
+  "electron/providerAdapter/serviceHangingModel.integration.test.ts": 2,
+  "electron/shutdownProjectFlush.test.ts": 5
+}

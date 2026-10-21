@@ -7,9 +7,10 @@ export const DIRECTOR_3DBOX_CELL_HEIGHT = 933
 
 /**
  * 工程夹具：空工程，或 courtyard-standoff 计划经现役编译器编出的庭院对峙；
- * courtyard-after = 同一份计划经现役补丁应用器把第 2 镜改成特写之后（画布「正在改：镜头 N」⑤ Agent 改完那一刻）。
+ * courtyard-after = 同一份计划经现役补丁应用器把第 2 镜改成特写之后（画布「正在改：镜头 N」⑤ Agent 改完那一刻）；
+ * chase = police-chase 计划（3 镜 9 秒）：庭院对峙 12 秒超过预演上限（10 秒），「出成片」能出片的那几格要用一份放得下的工程。
  */
-export type Director3dBoxFixture = 'empty' | 'courtyard' | 'courtyard-after'
+export type Director3dBoxFixture = 'empty' | 'courtyard' | 'courtyard-after' | 'chase'
 /** 格子要替用户点的真按钮：不点 / 点第 2 张镜头卡 / 点完再切「精修」。 */
 export type LabDrive = 'none' | 'shot-2' | 'shot-2-refine'
 

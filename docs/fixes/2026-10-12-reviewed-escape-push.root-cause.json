@@ -1,0 +1,150 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-12-reviewed-escape-push",
+  "problem_type": "Stage ownership for reviewed escape evidence before first PR exists",
+  "symptom": "A new user root-cause contract cannot be pushed: PR-body gate requires fixed while escape-ledger fixed requires a real merged PR number, unavailable before first push.",
+  "direct_cause": "checkEscapeContract applies merge-only settlement to push; checkIndependentAcceptance already distinguishes stages. Completion commit cannot substitute for required fixedInPr.",
+  "class_root": "Delivery evidence admission and merged settlement lack an explicit shared stage boundary for new user-found contracts.",
+  "affected_population": [
+    "Any new user/post-release contract with a reviewed escape ledger before first PR creation"
+  ],
+  "scope_paths": [
+    "scripts/pr-body-criteria.mjs",
+    "scripts/check-pr-judgement.mjs"
+  ],
+  "entry_points": [
+    "pre-push-contracts → check-pr-judgement → evaluatePrBody",
+    "CI check-pr-judgement and merge-preflight → same evaluatePrBody"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This invariant is repository delivery policy; actual local shared criteria and escape-ledger validators decide it.",
+  "invariants": [
+    "Only explicit local push may warn for a newly added user contract linked to an actual changed reviewed ledger with manual review, evidence, structural contract and class-level test. Completion commit must exist and be an ancestor of committed HEAD.",
+    "CI/default/merge never accept reviewed as fixed; malformed/missing/mismatched evidence remains blocking.",
+    "Escape ledger fixed validation and every other design/routing/protected-scope rule remain unchanged."
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "scripts/check-pr-judgement.mjs",
+      "symbol": "reviewedContracts"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/pr-body-criteria.mjs",
+      "symbol": "reviewedContracts"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/check-pr-judgement.mjs",
+      "symbol": "ledgerChanges"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/check-pr-judgement.mjs",
+      "symbol": "reviewedContracts"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/check-pr-judgement.mjs",
+      "symbol": "evaluatePrBody"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/merge-preflight.mjs",
+      "symbol": "ledgerChanges"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/merge-preflight.mjs",
+      "symbol": "evaluatePrBody"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/pr-body-criteria.mjs",
+      "symbol": "checkEscapeContract"
+    }
+  ],
+  "door_reduction": {
+    "before": 5,
+    "after": 8,
+    "why_not": "CLI and remote merge adapters remain distinct trusted data readers; both converge on one evaluatePrBody/checkEscapeContract decision. No duplicate policy implementation is retained."
+  },
+  "generality_proof": "Both local judgement and merge scans call the shared evaluatePrBody. Stage defaults to merge and existing resolveJudgementStage disallows inherited push in CI. Reviewed preparation is verified from changed committed files by shared escape-ledger contract/class checks. The CLI verifies commit ancestry with git merge-base --is-ancestor before supplying preparation evidence.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/pr-body-criteria.mjs",
+      "symbol": "checkEscapeContract",
+      "responsibility": "Separate preparation admission at push from fixed settlement required at merge."
+    },
+    {
+      "path": "scripts/pr-body-criteria.mjs",
+      "symbol": "reviewedContracts",
+      "responsibility": "Verify changed committed ledger identity/review/evidence, real existing commit and structural/class-test links using unchanged escape validators."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "scripts/check-pr-judgement.mjs",
+      "entry_point": "evaluatePrBody",
+      "disposition": "enforced",
+      "evidence": "Local push forwards verified committed reviewed evidence and an explicit trusted stage; CI resolves merge."
+    },
+    {
+      "path": "scripts/merge-preflight.mjs",
+      "entry_point": "evaluatePrBody",
+      "disposition": "enforced",
+      "evidence": "Merge call defaults to strict merge and never forwards local push relaxation."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every first PR for a new user-found contract encounters the same impossible ordering.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs checkEscapeContract evaluatePrBody ledgerChanges reviewedContracts --roots=scripts",
+      "rg -n \"fixedInPr|status === .fixed\" scripts/escape-ledger-lib.mjs",
+      "rg -n \"stage|checkEscapeContract\" scripts/pr-body-criteria.mjs scripts/check-pr-judgement.mjs scripts/merge-preflight.mjs"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "scripts/pr-body-criteria.mjs",
+    "invariant": "Push admits reviewable verified preparation without claiming settlement; merge remains fail closed.",
+    "failure_mode": "Any missing/invalid reviewed link or any merge/CI stage retains blocking verdict.",
+    "exception_policy": "none",
+    "strategy": "Reuse existing shared stage and ledger validators, with no bypass env or second local rule.",
+    "artifacts": [
+      "scripts/pr-body-criteria.mjs",
+      "scripts/check-pr-judgement.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/pr-judgement-lib.node-test.mjs",
+    "scripts/pr-body-criteria.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/pr-judgement-lib.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Existing shared predicate gains an explicit stage; no extra gate, fallback or obsolete file is introduced."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Pure repository policy using existing Node/git and escape validators.",
+    "exit_criteria": []
+  },
+  "migration": "Existing fixed entries and contracts remain unchanged. Existing callers without options default to strict merge.",
+  "residual_risks": [
+    "Local push is preparation only; CI/merge stays blocking until true fixed settlement. This task does not authorize merging the feature PR. Related 3 node-test files passed 49 tests after actual red-to-green subprocess reproduction, including unreachable commit rejection."
+  ],
+  "detected_by": "review",
+  "recurrence_check_on": "2026-10-19",
+  "invariant_owner_layer": {
+    "layer": "scripts/pr-body-criteria.mjs",
+    "tests": [
+      "scripts/pr-judgement-lib.node-test.mjs"
+    ]
+  }
+}

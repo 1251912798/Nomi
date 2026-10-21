@@ -155,6 +155,7 @@ export async function runMultiNodeDrag(page) {
     for (const pick of picks) {
       const nodeId = await pick.locator.getAttribute('data-node-id')
       const hit = await findNodeHitPoint(page, {
+        waitForReady: false,
         nodeSelector: `.generation-canvas-v2-node[data-node-id=${JSON.stringify(nodeId)}]`,
       })
       if (!hit) throw new Error(`multi-node-drag: no selectable point for ${nodeId}`)
@@ -170,6 +171,7 @@ export async function runMultiNodeDrag(page) {
   const primary = picks[0]
   const primaryId = await primary.locator.getAttribute('data-node-id')
   const start = await findNodeHitPoint(page, {
+    waitForReady: false,
     nodeSelector: `.generation-canvas-v2-node[data-node-id=${JSON.stringify(primaryId)}]`,
   })
   if (!start) throw new Error(`multi-node-drag: no draggable point for ${primaryId}`)
@@ -439,6 +441,7 @@ export async function marqueeSelectFirstNodes(page, count) {
       if (box.id && selectedIds.has(box.id)) continue
       if (!box.id) throw new Error('marqueeSelectFirstNodes: 节点缺少稳定 id')
       const hit = await findNodeHitPoint(page, {
+        waitForReady: false,
         nodeSelector: `.generation-canvas-v2-node[data-node-id=${JSON.stringify(box.id)}]`,
       })
       if (!hit) throw new Error(`marqueeSelectFirstNodes: 找不到节点 ${box.id} 的真实命中点`)

@@ -46,6 +46,7 @@ import { holdDesignLabReady } from '../../labReadyHold'
 import { Notification } from '@mantine/core'
 import { buildToastNotification } from '../../../../ui/toast'
 import { useTranslation } from 'react-i18next'
+import { spendActionFailureCopy } from '../../../../workbench/ai/v4/spendCardFailure'
 import type { LabState } from '../../labScreen'
 
 const SOURCE = '2026-09-10-spend-card-node-params-and-full-auto.md'
@@ -167,6 +168,8 @@ type CardFixture = {
   openTrigger?: 'model' | 'panel' | 'mention'
   /** 画布上另有两张已经出图的节点（打 @ 时它们该出现在「画布」那一组）。 */
   canvasImages?: boolean
+  /** 「直接生成」档的刹车退回这张卡的原因（卡上多一行说明）。 */
+  brake?: 'retry-limit' | 'out-of-plan' | 'stopped'
   /** 这一格的界面语言（缺省中文）。 */
   locale?: 'zh-CN' | 'en'
   /** 卡上的模型（缺省 Kling 3.0）。 */
@@ -226,6 +229,7 @@ function SpendComposerCard({
   panelWidth,
   inPanel = false,
   waiting,
+  brake,
 }: CardFixture & { inPanel?: boolean; waiting?: boolean }): JSX.Element {
   const modelOption = LAB_MODELS[model]
   const localeApplied = useLabLocale(locale)
@@ -328,6 +332,7 @@ function SpendComposerCard({
     }),
     knownSubtotal: quotes.reduce((sum, quote) => sum + (quote?.amount ?? 0), 0),
     unknownShotCount: quotes.filter((quote) => !quote).length,
+    ...(brake ? { brake: { reason: brake } } : {}),
   }
   const data = projectSpendCard(pendingSpend, { page: index }, fx.t, {
     // 「Nomi 选的」= 模型还是 Nomi 当初挑的那个。用户在卡上一改模型，这句话跟着消失。
@@ -361,6 +366,20 @@ function SpendComposerCard({
           context={{ ...fx.context, used: 36000 }}
           height={860}
           {...(panelWidth ? { width: panelWidth } : {})}
+          {...(brake ? {
+            // 刹车只在「直接生成」档出现：composer 停在这一档、上沿那条常驻提醒也在，和真面板同一个样子。
+            composer: { permission: 'direct' as const },
+            composerBanner: (
+              <V4AutoModeBanner
+                label={fx.t('agentPanelV4.permission.direct')}
+                note={fx.t('agentPanelV4.autoModeBannerNote')}
+                revertLabel={fx.t('agentPanelV4.autoModeBannerRevert')}
+                dismissLabel={fx.t('agentPanelV4.autoModeBannerDismiss')}
+                onRevert={() => undefined}
+                onDismiss={() => undefined}
+              />
+            ),
+          } : {})}
         />
       </div>
     )
@@ -399,6 +418,29 @@ function ReferenceNotInProjectToast({ locale }: { locale?: 'zh-CN' | 'en' }): JS
   )
 }
 
+/**
+ * 卡上点生成、主进程在合同编译口把某个参数拒了时（`failure: 'parameter_rejected'`），卡上弹的那一条。
+ * 文案键就是生产那一个函数（`spendActionFailureCopy`）算出来的、`{{field}}` 点名被拒的参数；通知是生产那一条
+ * （`buildToastNotification` + Mantine Notification），下面摆的是同一张真卡：卡没丢，用户看得见是哪个参数、能改了再按。
+ */
+function ParameterRejectedOnCard({ locale }: { locale?: 'zh-CN' | 'en' }): JSX.Element {
+  const applied = useLabLocale(locale)
+  const fx = useV4Fixtures()
+  if (!applied) return <Piece><div /></Piece>
+  const key = spendActionFailureCopy({ ok: false, code: 'failed', message: 'generation_not_started', reason: 'parameter_type_mismatch', failure: 'parameter_rejected', field: 'seed' }, true)
+  const data = buildToastNotification({ id: 'lab-parameter-rejected', message: fx.t(key, { field: 'seed' }), type: 'error' })
+  return (
+    <>
+      <Piece>
+        <Notification icon={data.icon} color={data.color} withBorder withCloseButton={data.withCloseButton} className="w-[22rem]">
+          {data.message}
+        </Notification>
+      </Piece>
+      <SpendComposerCard shots={1} {...(locale ? { locale } : {})} />
+    </>
+  )
+}
+
 /** 切到「全自动」的二次确认。**不是新组件**：它就是介入槽的可撤销档（换档本身可撤销）。 */
 function AutoModeConfirmCard(): JSX.Element {
   const fx = useV4Fixtures()
@@ -424,17 +466,17 @@ function AutoModeConfirmCard(): JSX.Element {
 /** 开启后的常驻提醒：一条 h-6 微字横条，压在 composer 上沿——它在的地方就是你打字的地方。 */
 function AutoModeReminderCell(): JSX.Element {
   const fx = useV4Fixtures()
-  const [tier, setTier] = React.useState<'project' | 'safe-auto'>('project')
+  const [tier, setTier] = React.useState<'direct' | 'request'>('direct')
   const [dismissed, setDismissed] = React.useState(false)
   return (
     <Piece>
-      {tier === 'project' && !dismissed ? (
+      {tier === 'direct' && !dismissed ? (
         <V4AutoModeBanner
-          label={fx.t('agentPanelV4.permission.project')}
+          label={fx.t('agentPanelV4.permission.direct')}
           note={fx.t('agentPanelV4.autoModeBannerNote')}
           revertLabel={fx.t('agentPanelV4.autoModeBannerRevert')}
           dismissLabel={fx.t('agentPanelV4.autoModeBannerDismiss')}
-          onRevert={() => setTier('safe-auto')}
+          onRevert={() => setTier('request')}
           onDismiss={() => setDismissed(true)}
         />
       ) : null}
@@ -500,6 +542,22 @@ export const V4_SPEND_PARAMS_STATES: readonly LabState[] = [
     coverage: 'component-only',
     span: 2,
     render: () => <SpendComposerCard shots={4} inPanel />,
+  },
+  {
+    id: 'v4-panel-spend-brake-retry',
+    name: '⑤ 付费卡在真面板里 · 直接生成档的刹车：同一镜连续失败（只多一行说明）',
+    source: '2026-10-12 用户：直接生成档只在同一镜连续失败 / 超出计划时才停',
+    coverage: 'component-only',
+    span: 2,
+    render: () => <SpendComposerCard shots={1} inPanel brake="retry-limit" />,
+  },
+  {
+    id: 'v4-panel-spend-brake-out-of-plan-en',
+    name: '⑤ 付费卡在真面板里 · 直接生成档的刹车：计划外的镜头（英文）',
+    source: '2026-10-12 用户：直接生成档只在同一镜连续失败 / 超出计划时才停',
+    coverage: 'component-only',
+    span: 2,
+    render: () => <SpendComposerCard shots={1} inPanel brake="out-of-plan" locale="en" />,
   },
   {
     id: 'v4-panel-spend-unknown',
@@ -584,6 +642,22 @@ export const V4_SPEND_PARAMS_STATES: readonly LabState[] = [
     mirrors: 'src/workbench/ai/v4/spendCardFailure.ts:45',
     coverage: 'component-only',
     render: () => <ReferenceNotInProjectToast locale="en" />,
+  },
+  {
+    id: 'v4-spend-parameter-rejected',
+    name: '付费卡 · 点生成时有个参数没通过核对（卡还在，通知点名是哪个参数、没开始生成也没花钱）',
+    source: 'docs/plan/2026-10-18-null-optional-params.md',
+    mirrors: 'src/workbench/ai/v4/spendCardFailure.ts:45',
+    coverage: 'component-only',
+    render: () => <ParameterRejectedOnCard />,
+  },
+  {
+    id: 'v4-spend-parameter-rejected-en',
+    name: '付费卡 · 参数没通过核对（英文界面）',
+    source: 'docs/plan/2026-10-18-null-optional-params.md',
+    mirrors: 'src/workbench/ai/v4/spendCardFailure.ts:45',
+    coverage: 'component-only',
+    render: () => <ParameterRejectedOnCard locale="en" />,
   },
   {
     id: 'v4-spend-params-repriced',

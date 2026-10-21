@@ -38,6 +38,8 @@ export function extractFeedbackItem(key, wrapped) {
     model: context.model ?? null,
     summary: typeof context.summary === 'string' ? context.summary : '',
     note: typeof context.note === 'string' ? context.note : null,
+    // 用户点发送时附带的卡顿分档（electron/shared/contracts/perfTelemetry.ts）。老版本没有这一格。
+    perf: payload.attachments?.['perf/summary.json'] ?? null,
   }
 }
 
@@ -268,6 +270,62 @@ export function tallyUpdateActions(events) {
 }
 
 // ---------------------------------------------------------------------------
+// 卡不卡：perf.session.summary（分桶）按维度聚合
+// ---------------------------------------------------------------------------
+
+/** 「卡」的判据：会话 p75 交互耗时落在 INP「需改进」档及以上（≥200ms）。只用这一条，不另造综合分。 */
+export const SLOW_P75_BUCKETS = ['200-500', 'gt-500']
+const PERF_DIMENSIONS = ['osFamily', 'appVersion', 'cpuCores', 'memoryGb', 'nodes', 'imageNodes', 'generating', 'page']
+const PERF_DISTRIBUTIONS = ['interactionP75', 'interactionP95', 'longFramesPerMin', 'longestFrame']
+
+function perfDimensionValue(evt, dim) {
+  if (dim === 'osFamily') return evt.systemProps?.osFamily ?? 'unknown'
+  if (dim === 'appVersion') {
+    return Number.isInteger(evt.systemProps?.appMajor) && Number.isInteger(evt.systemProps?.appMinor) ? `${evt.systemProps.appMajor}.${evt.systemProps.appMinor}` : 'unknown'
+  }
+  return String(evt.props?.[dim] ?? 'unknown')
+}
+
+/**
+ * 性能汇总事件 → 总量、各档分布、按「系统 / 版本 / 核数 / 内存 / 画布规模 / 是否在生成 / 所在页」切的慢占比。
+ * 只数得清楚的事：占比与计数；样本太少（< 5 条）的格子照列但标 `lowSample`，由 agent 判断要不要信。
+ * `feedbackItems` 里带卡顿附件的反馈单独数一笔（用户主动点发送带来的，不受遥测开关管）。
+ */
+export function summarizePerf(events, feedbackItems = []) {
+  const perfEvents = events.filter((e) => e.eventName === 'perf.session.summary')
+  const isSlow = (p) => SLOW_P75_BUCKETS.includes(p?.interactionP75)
+  const distributions = Object.fromEntries(PERF_DISTRIBUTIONS.map((field) => {
+    const counts = new Map()
+    for (const e of perfEvents) counts.set(String(e.props?.[field] ?? 'unknown'), (counts.get(String(e.props?.[field] ?? 'unknown')) ?? 0) + 1)
+    return [field, [...counts.entries()].map(([value, count]) => ({ value, count })).sort((a, b) => a.value.localeCompare(b.value))]
+  }))
+  const byDimension = Object.fromEntries(PERF_DIMENSIONS.map((dim) => {
+    const groups = new Map()
+    for (const e of perfEvents) {
+      const value = perfDimensionValue(e, dim)
+      const g = groups.get(value) ?? { value, total: 0, slow: 0 }
+      g.total += 1
+      if (isSlow(e.props)) g.slow += 1
+      groups.set(value, g)
+    }
+    return [dim, [...groups.values()]
+      .map((g) => ({ ...g, slowShare: Math.round((g.slow / g.total) * 1000) / 10, lowSample: g.total < 5 }))
+      .sort((a, b) => b.slowShare - a.slowShare || b.total - a.total || a.value.localeCompare(b.value))]
+  }))
+  const slow = perfEvents.filter((e) => isSlow(e.props)).length
+  const withPerf = feedbackItems.filter((item) => item.perf)
+  return {
+    total: perfEvents.length,
+    slow,
+    slowShare: perfEvents.length ? Math.round((slow / perfEvents.length) * 1000) / 10 : 0,
+    slowDefinition: `会话 p75 交互耗时 ≥200ms（${SLOW_P75_BUCKETS.join(' / ')}）`,
+    distributions,
+    byDimension,
+    feedbackWithPerf: { count: withPerf.length, slow: withPerf.filter((item) => isSlow(item.perf)).length },
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 顶层组装
 // ---------------------------------------------------------------------------
 
@@ -312,6 +370,7 @@ export function buildIntakeReport({
     spikes: detectGenerationSpikes(events, { latestDate, previousDate }),
     launches: tallyLaunches(events),
     updateActions: tallyUpdateActions(events),
+    perf: summarizePerf(events, feedbackItems),
     dataQuality: { corruptFileCount: corruptFiles.length, corruptFiles },
   }
 }

@@ -16,6 +16,7 @@
 <p align="center">
   <a href="#download"><b>Download</b></a> ·
   <a href="https://nomiaqm.com/en/">Website</a> ·
+  <a href="https://atomgit.com/aqm857886159/Nomi">AtomGit mirror</a> ·
   <a href="#watch-the-film">Watch the 90-second film</a> ·
   <a href="https://nomiaqm.com/en/quickstart">Quick start</a> ·
   <a href="docs/integrate-with-your-agent-en.md">Let your AI connect it</a> ·
@@ -28,6 +29,17 @@
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-1a1816" alt="Platform" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--only-1a1816" alt="License" /></a>
 </p>
+
+## Sponsors
+
+Sponsors help keep Nomi free and open source. A sponsor never becomes a default or a built-in route: you connect only what you choose, with your own key, and pay them directly at their price. [Want to appear here?](#community)
+
+<table>
+<tr>
+<td width="128" align="center"><a href="https://gway.dev/sign-up?aff=8j8f"><img src="docs/media/sponsors/gway-logo.png" alt="Gway" width="96" /></a></td>
+<td><b><a href="https://gway.dev/sign-up?aff=8j8f">Gway</a></b> — an API platform focused on AI video and multi-image reference generation: Seedance 2.0 / 2.5, Wan 3, MiniMax and other mainstream models, OpenAI-compatible, pay-as-you-go. Nomi has no built-in preset for it yet; click <b>Let AI connect it for me</b> and Claude Code or Codex wires it in with your key. Thanks to Gway for sponsoring Nomi! <i>(The Gway links carry a referral code.)</i></td>
+</tr>
+</table>
 
 ## Why Nomi
 
@@ -75,7 +87,7 @@ When a new model ships, click **Let AI connect it for me** and let Claude Code o
 
 ### Yours
 
-A project is a plain folder on your disk: canvas, storyboard, timeline, every generated file, and the exported film. No account, no telemetry. The code is AGPL-3.0.
+A project is a plain folder on your disk: canvas, storyboard, timeline, every generated file, and the exported film. No account. Nothing is sent by default; anonymous usage statistics are opt-in (Settings → Privacy & diagnostics) and can be turned off any time. The code is AGPL-3.0.
 
 **Next up: AI editing.** Nomi is heading toward one studio for everything you make with AI — come build it with us.
 
@@ -136,7 +148,7 @@ Nomi ships an MCP server with 24 MCP tools, so Claude Code, Codex, or Cursor can
 WeChat users can scan to join the user group (left). If the group code has expired, add the maintainer (right) at **TZ857886159**.
 
 <p align="center">
-  <a href="docs/media/nomi-canvas-group-wechat-2026-10-17.jpg"><img src="docs/media/nomi-canvas-group-wechat-2026-10-17.jpg" alt="Nomi user group WeChat QR" width="220" /></a>
+  <a href="docs/media/nomi-canvas-group-wechat-2026-10-25.jpg"><img src="docs/media/nomi-canvas-group-wechat-2026-10-25.jpg" alt="Nomi user group WeChat QR" width="220" /></a>
   &nbsp;&nbsp;
   <a href="docs/media/qingyang-wechat.jpg"><img src="docs/media/qingyang-wechat.jpg" alt="Nomi maintainer WeChat QR" width="180" /></a>
 </p>

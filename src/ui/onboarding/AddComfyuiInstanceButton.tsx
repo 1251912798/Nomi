@@ -31,7 +31,7 @@ export function AddComfyuiInstanceButton({ onAdded }: { onAdded: () => void }): 
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState('')
 
-  const submit = () => {
+  const submit = async () => {
     const bridge = getDesktopBridge()?.modelCatalog
     if (!bridge?.upsertVendor) return
     const trimmedName = name.trim()
@@ -40,7 +40,7 @@ export function AddComfyuiInstanceButton({ onAdded }: { onAdded: () => void }): 
     setError('')
     setBusy(true)
     try {
-      const existing = (bridge.listVendors() as Array<{ key?: unknown }>).map((v) => String(v.key))
+      const existing = ((await bridge.listVendors()) as Array<{ key?: unknown }>).map((v) => String(v.key))
       let key = `${COMFYUI_VENDOR_KEY}-${slugFromName(trimmedName)}`
       while (existing.includes(key)) key = `${key}-2` // 重名不覆盖既有那台（宁可多一台也不丢用户配置）
       // Adding an instance only creates a disabled candidate. Native route
@@ -63,7 +63,7 @@ export function AddComfyuiInstanceButton({ onAdded }: { onAdded: () => void }): 
         onClick={() => setOpen(true)}
         className={cn('flex items-center justify-center gap-1.5 h-9 w-full rounded-nomi',
           'border border-dashed border-nomi-line text-caption text-nomi-ink-60',
-          'hover:border-nomi-accent hover:text-nomi-accent')}
+          'hover:border-nomi-ink-30 hover:text-nomi-accent')}
       >
         <IconPlus size={14} stroke={1.8} />{t('onboardingProviders.comfyInstance.addButton')}
       </button>
@@ -71,7 +71,7 @@ export function AddComfyuiInstanceButton({ onAdded }: { onAdded: () => void }): 
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-nomi border border-nomi-accent/40 bg-nomi-paper p-3">
+    <div className="flex flex-col gap-2 rounded-nomi border border-nomi-line bg-nomi-paper p-3">
       <div className="flex items-center gap-2">
         <IconServerBolt size={15} stroke={1.7} className="text-nomi-ink-60" />
         <span className="text-body-sm font-semibold text-nomi-ink flex-1">{t('onboardingProviders.comfyInstance.title')}</span>
@@ -81,13 +81,13 @@ export function AddComfyuiInstanceButton({ onAdded }: { onAdded: () => void }): 
         value={name} onChange={(e) => setName(e.target.value)} autoFocus
         placeholder={t('onboardingProviders.comfyInstance.namePlaceholder')}
         aria-label={t('onboardingProviders.comfyInstance.nameLabel')}
-        className="h-8 px-2.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-caption text-nomi-ink placeholder:text-nomi-ink-30 focus:border-nomi-accent outline-none"
+        className="h-8 px-2.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-caption text-nomi-ink placeholder:text-nomi-ink-30 focus:border-nomi-ink-40 outline-none"
       />
       <label className="text-micro text-nomi-ink-40">{t('onboardingProviders.comfyInstance.addrLabel')}</label>
       <input
         value={addr} onChange={(e) => setAddr(e.target.value)} spellCheck={false}
         aria-label={t('onboardingProviders.comfyInstance.addrLabel')}
-        className="h-8 px-2.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper font-mono text-caption text-nomi-ink focus:border-nomi-accent outline-none"
+        className="h-8 px-2.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper font-mono text-caption text-nomi-ink focus:border-nomi-ink-40 outline-none"
       />
       {error ? <p role="alert" className="m-0 text-caption text-nomi-danger">{error}</p> : null}
       <DecisionBar

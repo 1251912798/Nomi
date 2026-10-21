@@ -1,0 +1,36 @@
+{
+  "id": "workbench-switch-stages",
+  "feature": "顶栏阶段切换走一圈：生成 → 创作 → 预览 → 生成，每一步「点阶段 → 那一页内容到位再过两帧」，主数取这一圈里最慢的一步（三步各自的数也记下）",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "M",
+    "--scenarios",
+    "switch-stages",
+    "--warmup",
+    "1"
+  ],
+  "scale": "48 图 + 48 视频节点 / 192 条边 / 时间轴 24 个片段",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 100,
+  "group": "⑤ 切换创作 / 生成 / 预览",
+  "budgetStatus": "approved",
+  "budgetBasis": "人对「点了有反应」的感知阈值约 100ms（RAIL / Nielsen：100ms 内觉得是即时的，100–300ms 能察觉到慢）；仓库默认预算「操作到可见反馈 ≤100ms」（docs/engineering/perf-scenarios.md）；同类场景 document-switch-after-storyboard（#1193，切文稿）预算也是 100ms",
+  "baseline": {
+    "median": 395.9,
+    "p95": 461.4,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  },
+  "budgetDebt": {
+    "owner": "协调待定（切阶段）",
+    "state": "needs-measurement",
+    "note": "一圈里最慢的一步约 0.4 秒，伴 3–4 个长任务；诊断腿看到切阶段时触发 projects:save-async（单次最长约 370ms），根因还要量",
+    "since": "2026-10-16"
+  }
+}

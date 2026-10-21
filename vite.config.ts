@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { createLogger, defineConfig, loadEnv, type ConfigEnv, type Logger, type Plugin, type UserConfig } from 'vite'
+import { createLogger, defineConfig, type ConfigEnv, type Logger, type Plugin, type UserConfig } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { resolve } from 'node:path'
 import { CROSS_ORIGIN_ISOLATION_HEADERS } from './electron/shared/crossOriginIsolation'
@@ -186,16 +186,11 @@ function shouldDeferModulePreload(dep: string): boolean {
 export default defineConfig(async ({ command, mode }: ConfigEnv): Promise<UserConfig> => {
   const react = (await import('@vitejs/plugin-react')).default
 
-  const env = loadEnv(mode, process.cwd(), '')
-
   if (command === 'build' && mode !== 'production') {
     throw new Error(`[nomi] Dev build is disabled. Use \`vite build --mode production\` (current mode: ${mode}).`)
   }
 
   return {
-    define: {
-      'import.meta.env.VITE_NOMI_DIRECTOR_3DBOX': JSON.stringify(env.NOMI_DIRECTOR_3DBOX === 'true' || env.NOMI_DIRECTOR_3DBOX === '1' ? 'true' : 'false'),
-    },
     base: './',
     cacheDir: resolve(__dirname, '.tmp/vite'),
     customLogger: createNomiLogger(),
@@ -262,6 +257,7 @@ export default defineConfig(async ({ command, mode }: ConfigEnv): Promise<UserCo
         'react-dom/client',
         'react-router-dom',
         '@radix-ui/react-switch',
+        '@floating-ui/dom',
         '@mantine/core',
         '@mantine/modals',
         '@mantine/notifications',

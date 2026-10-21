@@ -32,14 +32,11 @@ describe("curated Skill and effect intake", () => {
     }
   })
 
-  it("explicitly exposes all 49 curated Skills through the existing Workbench opt-in policy (flag-bound ones only with their flag)", async () => {
+  it("explicitly exposes all 49 curated Skills through the existing Workbench opt-in policy", async () => {
     const records = await builtin()
     const library = records.filter(record => record.curation?.kind === 'skill')
     expect(library).toHaveLength(49)
-    // 3D-BOX 工作流技能绑在构建开关上：开关关（单测默认）不可选，其余 48 个照旧全部可选。
-    const flagBound = library.filter(record => record.manifest?.requiresFlag === 'director3dbox').map(record => record.name)
-    expect(flagBound).toEqual(['director-3dbox'])
-    expect(library.filter(isSkillSelectableInWorkbench).map(record => record.name).sort()).toEqual(library.map(record => record.name).filter(name => !flagBound.includes(name)).sort())
+    expect(library.filter(isSkillSelectableInWorkbench).map(record => record.name).sort()).toEqual(library.map(record => record.name).sort())
   })
 
   it("accepts the repository's declared AGPL license without relabeling first-party cover metadata", () => {
@@ -120,22 +117,40 @@ it("never exports a text envelope with dangling media declarations", async () =>
   expect(exportSkillPackageByName("effect-character-three-view", 0, records)).toBeNull();
   expect(exportSkillPackageByName("not-installed", 0, records)).toBeNull();
 });
-it("refuses user media and symlinks outside a skill, including packaged directory layouts", async () => {
+// 文件符号链接在 Windows 上要 SeCreateSymbolicLinkPrivilege（开发者模式 / 管理员），没有就报 EPERM。约定同
+// electron/ai/antigravityMedia.test.ts：只在 Windows 的 EPERM 上放过「建链接」这一步、明说跳过原因，Linux CI 上照样真测。
+const SYMLINK_UNAVAILABLE = "Windows 没有建文件符号链接的权限（EPERM，未开开发者模式）：符号链接逃逸只在能建链接的机器上真测，Linux CI 照测";
+
+async function packagedPreviewFixture() {
   const records = await builtin();
   const record = records.find((item) => item.directoryName === "curated-multi-view")!;
-  expect(resolveSkillPreview([record.directoryName], [{ ...record, origin: "user" }])).toBeNull();
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "curated-preview-"));
+  const dir = path.join(temp, "app.asar", "skills", record.directoryName);
+  fs.mkdirSync(path.join(dir, "assets"), { recursive: true });
+  const outside = path.join(temp, "secret.jpg");
+  fs.writeFileSync(outside, "not allowed");
+  const media = path.join(dir, record.curation!.preview!.path);
+  return { record, temp, outside, media, fixture: { ...record, filePath: path.join(dir, "SKILL.md") } };
+}
+
+it("refuses user media and resolves declared output inside packaged directory layouts", async () => {
+  const { record, temp, media, fixture } = await packagedPreviewFixture();
   try {
-    const dir = path.join(temp, "app.asar", "skills", record.directoryName);
-    fs.mkdirSync(path.join(dir, "assets"), { recursive: true });
-    const outside = path.join(temp, "secret.jpg");
-    fs.writeFileSync(outside, "not allowed");
-    const media = path.join(dir, record.curation!.preview!.path);
-    fs.symlinkSync(outside, media);
-    const fixture = { ...record, filePath: path.join(dir, "SKILL.md") };
-    expect(resolveSkillPreview([record.directoryName], [fixture])).toBeNull();
-    fs.unlinkSync(media);
+    expect(resolveSkillPreview([record.directoryName], [{ ...record, origin: "user" }])).toBeNull();
     fs.writeFileSync(media, "declared output");
     expect(resolveSkillPreview([record.directoryName], [fixture])?.filePath).toBe(fs.realpathSync(media));
+  } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+});
+
+it("refuses a preview that is a symlink outside the skill, including packaged directory layouts", async (context) => {
+  const { record, temp, outside, media, fixture } = await packagedPreviewFixture();
+  try {
+    try {
+      fs.symlinkSync(outside, media);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EPERM" && process.platform === "win32") context.skip(SYMLINK_UNAVAILABLE);
+      throw error;
+    }
+    expect(resolveSkillPreview([record.directoryName], [fixture])).toBeNull();
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 });

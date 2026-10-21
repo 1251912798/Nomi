@@ -256,8 +256,12 @@ const VERB_DISPLAY = {
   export_video: { name: 'agentResident.toolExport', summary: 'agentResident.toolExportSummary' },
 } as const satisfies Record<string, { name: TranslationKey; summary: TranslationKey }>
 
+/** 只有一个动词的契约：契约 id 与动词说同一句话（审批卡 / 工具条可能拿契约 id 来问）。 */
+const CONTRACT_SOLE_VERB: Readonly<Record<string, keyof typeof VERB_DISPLAY>> = { 'director.write': 'stage_shot' }
+
 function verbDisplay(name: string): (typeof VERB_DISPLAY)[keyof typeof VERB_DISPLAY] | undefined {
-  return Object.prototype.hasOwnProperty.call(VERB_DISPLAY, name) ? VERB_DISPLAY[name as keyof typeof VERB_DISPLAY] : undefined
+  const verb = Object.prototype.hasOwnProperty.call(CONTRACT_SOLE_VERB, name) ? CONTRACT_SOLE_VERB[name] : name
+  return Object.prototype.hasOwnProperty.call(VERB_DISPLAY, verb) ? VERB_DISPLAY[verb as keyof typeof VERB_DISPLAY] : undefined
 }
 
 /**

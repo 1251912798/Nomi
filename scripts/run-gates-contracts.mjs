@@ -25,9 +25,8 @@
  *   ② **判断题提醒**（2026-09-07 新增，`check:research-sources` 是第一条）：判据本身是判断题，
  *      机器**原理上补不了**，而硬拦会逼出「写一节假的来过门」——那比没有更糟。
  *      入选门槛很窄：判据必须允许「明写理由也算达标」的诚实出口，否则它就不是提醒而是躲。
- *   ③ **用户按门岗账本拍板降级的提示**（2026-10-01，docs/audit/2026-10-01-gate-ledger.md）：目前只有 `check:concept-owners`
- *      （2026-10-02：红 4 次全是登记没补，「谁说了算」改在设计卡 ★2 格动手前回答）。这一类不是「老红很烦」——是用户看过数据、明确说这道只提示不阻断；
- *      名单由 `gate-slimming.node-test.mjs` 钉死，升回阻断要改那里并说明理由。
+ *   ③ **用户按门岗账本拍板降级的提示**：目前没有。`check:concept-owners` 曾于 2026-10-02 降为警告档，结果是 10-07 起每个带 `shared_boundaries` 的合同都往里攒未登记边界（37 -> 121）却从没有人被拦住；2026-10-19 用户拍板「改回挡合并（推荐）」，它回到阻断名单，登记 owner 要人判断，在写合同的同一个 commit 登记。
+ *      这一类的名单由 `gate-slimming.node-test.mjs` 钉死（现在是空的）；再降级要用户拍板并在那里写清理由。
  *      （`docs-index` / `doc-status` / `research-sources` 在同一次拍板里被**移出** PR 的 Contracts，不再是 advisory。）
  * 「这个门岗老是红、很烦」在前两类里都不是理由——那是要么修根因、要么删门岗，不是降级。
  *
@@ -49,7 +48,7 @@ export class GateConfigError extends Error {}
 
 /**
  * 每个 advisory 门岗的**真实补齐机制**（2026-10-06）：汇总里的提示文案只许按这张表出，
- * 不许对所有 advisory 统一说「自动补齐」——concept-owners 的失败是「登记 owner 要人判断」，docs-autosync 补不了，
+ * 不许对所有 advisory 统一说「自动补齐」——要人判断的失败 docs-autosync 补不了，
  * 那句话就是假的。kind: 'machine' = 有机器补齐主体（`by` 是工作流文件，必须真的存在并提到这个门岗）；
  * kind: 'human' = 要人判断，`how` 写清谁、怎么补。没声明的 advisory 一律当 human 处理（不许默认说自动补齐）。
  * 体检：run-gates-contracts.node-test.mjs 逐条核对「声明 ↔ 工作流 ↔ 打出来的文案」。
@@ -58,10 +57,6 @@ export const ADVISORY_FILL = Object.freeze({
   'check:docs-index': Object.freeze({ kind: 'machine', by: '.github/workflows/docs-autosync.yml' }),
   'check:doc-status': Object.freeze({ kind: 'machine', by: '.github/workflows/docs-autosync.yml' }),
   'check:ledger': Object.freeze({ kind: 'machine', by: '.github/workflows/docs-autosync.yml' }),
-  'check:concept-owners': Object.freeze({
-    kind: 'human',
-    how: '登记 owner 要人判断，机器补不了：新增的未登记边界在同一个 commit 当场登记；存量债冻结在 scripts/concept-owners-baseline.json（只减不增），清债由协调会话排期，见 docs/engineering/experience-system.md「概念 owner 存量债」',
-  }),
 })
 
 /** 一个 advisory 门岗在汇总 / 注解里的补齐说明（文案唯一出处）。 */

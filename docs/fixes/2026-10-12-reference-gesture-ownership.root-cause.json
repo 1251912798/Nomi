@@ -1,0 +1,210 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-12-reference-gesture-ownership",
+  "problem_type": "Reference controls and pointer gestures must retain their existing single owner",
+  "symptom": "Declared reference slots gained a duplicate header plus; Agent canvas picking changed the edit target to the source node. The no-declared-slot entry also replaced the original dashed square add tile with an unapproved bare plus.",
+  "direct_cause": "AssetReference added onAdd beside existing single-slot plus buttons; pick ended on pointerdown and the effect removed its native gesture guard before compatibility click events. Switching from creation to a remembered generation ball form flipped collapsed after point mode started, and its cleanup cancelled the new request. AssetReferenceButton exposed an onAdd prop and implemented its own 30px plus instead of reusing AssetAddTile.",
+  "class_root": "Reference entry was allowed to own an additional asset-add rendering path, bypassing the original visual component and the user-confirmed scope; gesture lifetime and form state also needed their existing owners.",
+  "affected_population": [
+    "Image and multi-media array slots",
+    "Video first/last frame and source-video slots",
+    "All canvas point-pick callers including Agent"
+  ],
+  "scope_paths": [
+    "src/workbench/assets/AssetReference.tsx",
+    "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx",
+    "src/workbench/ai/ProjectAgentResidentShell.tsx",
+    "src/workbench/assets/AssetReferenceButton.tsx",
+    "src/workbench/generationCanvas/nodes/NodeInputReferenceEntry.tsx",
+    "src/workbench/assets/AssetTile.tsx"
+  ],
+  "entry_points": [
+    "Node model-declared reference controls",
+    "Agent and existing node canvas pick mode"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Nomi-owned event lifetime and slot controls; no new API or dependency.",
+  "invariants": [
+    "Declared slots retain their original add buttons; the shared reference header has no second plus.",
+    "A reference pointer gesture is consumed through click before leaving pick mode; selecting a source does not select it as the edit target.",
+    "Explicit Agent point selection opens the existing generation Agent form before surface transition; a prior ball preference cannot silently cancel the new request.",
+    "The shared pointer component cannot render an asset-add control; every node library add box uses the unchanged AssetAddTile. Agent retains its original file-upload plus.",
+    "User-authorized arrangement: pointer entry and original reference tiles/add box share one horizontally aligned row; component appearance and picker owners are retained.",
+    "User-selected node design: pointer and add action use the same original square frame component; only their icons and actions differ. Agent retains its existing compact icon-only control."
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "AssetReference"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx",
+      "symbol": "pickCanvasNode"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/ai/v4/AgentPanelV4Composer.tsx",
+      "symbol": "AssetReferenceButton"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/assets/AssetReference.tsx",
+      "symbol": "AssetReferenceButton"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeInputReferenceEntry.tsx",
+      "symbol": "AssetReferenceButton"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/assets/AssetReference.tsx",
+      "symbol": "AssetAddTile"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/shotRow/ShotReferenceStrip.tsx",
+      "symbol": "AssetAddTile"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeInputReferenceEntry.tsx",
+      "symbol": "AssetAddTile"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/assets/AssetReferenceButton.tsx",
+      "symbol": "AssetActionTile"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/assets/AssetTile.tsx",
+      "symbol": "AssetActionTile"
+    }
+  ],
+  "door_reduction": {
+    "before": 7,
+    "after": 10,
+    "why_not": "Declared slots, fallback node inputs and Agent retain their different existing input owners. Their pointer renderer must have no onAdd API; declared/fallback/shot library boxes converge on the original AssetAddTile rather than a second plus implementation. Canvas gesture remains a separate existing boundary. User subsequently chose equal square frames. AssetAddTile and node pointer now converge on AssetActionTile for frame geometry; their markers and actions remain distinct. The two new reads adapt original add/pointer controls, not a second library implementation."
+  },
+  "generality_proof": "AssetReference renders all declared slot kinds from one schema; all canvas pick callers share one gesture layer. Removing header onAdd and keeping the capture listener alive through click covers images, videos, audio and old left-handle entry. Remove onAdd from the shared pointer API, so none of its three callers can create a replacement plus. Fallback empty and populated rows reuse the original AssetAddTile without changing its geometry or styling.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/assets/AssetReference.tsx",
+      "symbol": "AssetReference",
+      "responsibility": "Reuse original slot add controls without a duplicate header plus."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx",
+      "symbol": "CanvasPickModeLayer",
+      "responsibility": "Consume the complete native pointer gesture before ending pick mode."
+    },
+    {
+      "path": "src/workbench/assets/AssetReferenceButton.tsx",
+      "symbol": "AssetReferenceButton",
+      "responsibility": "Only canvas-point entry; no library-add API or alternate plus markup."
+    },
+    {
+      "path": "src/workbench/assets/AssetTile.tsx",
+      "symbol": "AssetAddTile",
+      "responsibility": "Unchanged original dashed square library-add component for all node slots."
+    },
+    {
+      "path": "src/workbench/assets/AssetTile.tsx",
+      "symbol": "AssetActionTile",
+      "responsibility": "Single owner of the original square frame; original plus markup/behavior retained and node pointer uses the identical frame."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "entry_point": "AssetReference",
+      "disposition": "enforced",
+      "evidence": "All model-declared single/array media slots use this component."
+    },
+    {
+      "path": "src/workbench/generationCanvas/quickActions/nodeInputActions.ts",
+      "entry_point": "pickCanvasInputFor",
+      "disposition": "enforced",
+      "evidence": "Original left-handle point mode and new inline entry share the same canvasPickMode and native gesture layer."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeInputReferenceEntry.tsx",
+      "entry_point": "NodeInputReferenceEntry",
+      "disposition": "enforced",
+      "evidence": "User screenshot of text-to-video fallback identifies the unapproved bare plus; empty and media-populated fallback states must render original AssetAddTile."
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Composer.tsx",
+      "entry_point": "AssetReferenceButton",
+      "disposition": "not-affected",
+      "evidence": "Agent original 24px file upload plus remains; it must not become a node AssetAddTile."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Duplicate plus repeats across any declared slots; premature gesture release repeats for every point-pick caller.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs AssetReference",
+      "node scripts/door-map.mjs pickCanvasNode",
+      "Read AssetReference, NodeParameterControls, nodeInputActions, CanvasPickModeLayer and actual Electron failed target.preserved assertion.",
+      "node scripts/door-map.mjs AssetReferenceButton",
+      "node scripts/door-map.mjs AssetAddTile",
+      "node scripts/door-map.mjs AssetActionTile"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx",
+    "invariant": "The reference interaction owns its full gesture and existing slot add controls.",
+    "failure_mode": "Ineligible nodes remain unpicked; empty-canvas click cancels without selection; original capacity gates control the add tiles.",
+    "exception_policy": "none",
+    "strategy": "Remove duplicate header add and defer ending pointer mode until captured click has been consumed. Delete onAdd and IconPlus from the shared pointer component; use original AssetAddTile in the fallback reference row.",
+    "artifacts": [
+      "src/workbench/assets/AssetReference.tsx",
+      "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx",
+      "src/workbench/assets/AssetReferenceButton.tsx",
+      "src/workbench/generationCanvas/nodes/NodeInputReferenceEntry.tsx",
+      "src/workbench/assets/AssetTile.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/assets/AssetReference.test.ts",
+    "tests/ux/reference-entry.walk.mjs",
+    "src/workbench/generationCanvas/nodes/NodeInputReferenceEntry.test.tsx"
+  ],
+  "class_regression_tests": [
+    "src/workbench/assets/AssetReference.test.ts",
+    "tests/ux/reference-entry.walk.mjs",
+    "src/workbench/generationCanvas/nodes/NodeInputReferenceEntry.test.tsx"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/assets/AssetReference.tsx",
+      "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx",
+      "src/workbench/assets/AssetReferenceButton.tsx"
+    ],
+    "rationale": "Delete added header onAdd for declared slots and immediate pointerdown termination; retain original slot add tiles and shared picker. Remove replacement bare plus implementation and its onAdd API; restore original AssetAddTile."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Application-owned capture listener lifecycle; no dependency change.",
+    "exit_criteria": []
+  },
+  "migration": "No stored schema change.",
+  "residual_risks": [
+    "Native pointer sequence requires actual Electron walk; Windows and paid providers remain unverified."
+  ],
+  "detected_by": "user",
+  "recurrence_check_on": "2026-10-19",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas",
+    "tests": [
+      "src/workbench/assets/AssetReference.test.ts",
+      "tests/ux/reference-entry.walk.mjs"
+    ]
+  }
+}

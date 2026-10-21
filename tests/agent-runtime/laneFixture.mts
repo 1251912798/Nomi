@@ -41,6 +41,30 @@ export const FIXTURE_DESCRIBE = Object.freeze({
   does: 'Fixture tool.', useWhen: 'Only inside this test.', notWhen: 'Never outside the fixture (read_script is the real read).', params: 'None.',
 });
 
+/**
+ * 「这一次调用必然停下来等人」的审批夹具（等待 / 停止 / 重启 / 排队这类测试要一个稳定的等待点）。
+ *
+ * 2026-10-12 挡位收成两档（请求批准 / 直接生成）之后，没有任何一档会让本地可撤销的写入（更不用说只读）停下来——
+ * 原来这些测试用的「每步问」已删。这里不换成某个恰好是硬闸的能力，而是用闸自己的那条事实：宿主说「这一次必须当场确认」
+ * （`forceConfirmation` → `hostMustConfirm`，与逃逸档 shell 命令同一条路），并且不给「本会话允许这类」。
+ * 被测的是等待本身的语义，与这张卡为什么出现无关。不在 `toolNames` 里的工具照常按契约解析。
+ */
+export function mustConfirm(input: { toolNames?: readonly string[]; hasUserInterface?: boolean } = {}): LaneApprovalOptions {
+  const toolNames = new Set(input.toolNames ?? ['write_script']);
+  return {
+    hasUserInterface: input.hasUserInterface ?? true,
+    policy: () => ({ mode: 'request' }),
+    resolveSubject: (request) => toolNames.has(request.toolName) ? {
+      subject: {
+        toolName: request.toolName, capabilityId: `fixture-must-confirm:${request.toolName}`,
+        effect: 'reversible_write', effectClass: 'reversible_local', requiresPlanReview: false, destructiveHint: false,
+      },
+      forceConfirmation: true,
+      grantable: false,
+    } : undefined,
+  };
+}
+
 /** 一个最小但**真**的文稿端口：写进去的东西读得回来，revision 会涨。 */
 export function createDocumentPort(initial = 'The opening scene.') {
   let text = initial;

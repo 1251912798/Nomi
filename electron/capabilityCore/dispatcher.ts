@@ -12,7 +12,7 @@ import {
   type FetchTaskResultFn,
   type RunTaskFn,
 } from './core'
-import { CANVAS_WRITE_OPERATIONS, canvasWriteSemanticInputSchema, type CanvasWriteOperation } from '../shared/agentCapabilities/canvasWrite'
+import { CANVAS_WRITE_HEADLESS_OPERATIONS, CANVAS_WRITE_LIVE_RENDERER_OPERATIONS, CANVAS_WRITE_OPERATIONS, canvasWriteSemanticInputSchema, type CanvasWriteOperation } from '../shared/agentCapabilities/canvasWrite'
 import { canvasDeleteSemanticInputSchema } from '../shared/agentCapabilities/canvasDelete'
 import { documentWriteSemanticInputSchema } from '../shared/agentCapabilities/documentWrite'
 import { readProjectDocument, writeProjectDocument } from './documentSurface'
@@ -109,7 +109,7 @@ export type DispatchContext = {
   openCredentialsInNomi?: (input: { sessionId: string; vendorName: string }) => { opened: boolean } | void | Promise<{ opened: boolean } | void>
   /**
    * 用户此刻选的审批档位（宿主持有的那一份快照）。**它只被读，不被这一层解释**——
-   * 「该不该弹卡」全仓只有 `spendDecidedByPolicy` 回答（capabilityApprovalPolicy.ts:144）。
+   * 「该不该弹卡」带 Run 的入口只有 `directGenerationBrakes.ts#spendDecisionByPolicy` 回答（档位那一半是 `spendDecidedByPolicy`）。
    * 不传 = 不猜档位 = 照旧弹卡，与 `generationTransportAdapters.decideByPolicyAfterDraft` 同一条纪律。
    */
   approvalPolicy?: () => import('../shared/agentCapabilities/capabilityApprovalPolicy').ProjectAgentApprovalPolicy | undefined
@@ -322,9 +322,7 @@ function productionStartInput(params: Record<string, unknown>, authority: Dispat
  * 补集（分镜/站位/运镜/时间轴落地/整理布局）的耐久 owner 在渲染层创作区，主进程只能诚实地说「需要 GUI」，
  * 不再假装那是一次生成计划。
  */
-const HEADLESS_CANVAS_OPERATIONS: ReadonlySet<CanvasWriteOperation> = new Set<CanvasWriteOperation>([
-  'set_node_prompt', 'create_canvas_nodes', 'connect_canvas_edges',
-])
+const HEADLESS_CANVAS_OPERATIONS: ReadonlySet<CanvasWriteOperation> = new Set<CanvasWriteOperation>(CANVAS_WRITE_HEADLESS_OPERATIONS)
 
 export async function dispatch(method: string, params: Record<string, unknown>, ctx: DispatchContext): Promise<unknown> {
   if (method === 'nomi_session_open') {
@@ -634,7 +632,7 @@ export async function dispatch(method: string, params: Record<string, unknown>, 
         501,
         {
           code: 'capability_unsupported',
-          nextAction: `Open the Nomi creation surface and retry. Operations available on this transport right now: ${[...HEADLESS_CANVAS_OPERATIONS].join(', ')}`,
+          nextAction: `Open the Nomi creation surface and retry. Operations available on this transport right now: ${[...HEADLESS_CANVAS_OPERATIONS].join(', ')}; with a project-session lease while Nomi is open also: ${CANVAS_WRITE_LIVE_RENDERER_OPERATIONS.join(', ')}`,
           capability: 'canvas.write' as never,
         },
       )

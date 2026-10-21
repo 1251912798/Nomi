@@ -295,7 +295,7 @@ export function ComfyuiWorkflowSettingsPage({
     reportBackend(backend.vendorKey, '')
     try {
       // 整台移除连它名下的工作流一起删——那些工作流指向的是这台的地址，留着是死的（同 ComfyuiLocalCard）。
-      const owned = (bridge.listModels() as Array<Record<string, unknown>>)
+      const owned = ((await bridge.listModels()) as Array<Record<string, unknown>>)
         .filter((m) => String(m.vendorKey) === backend.vendorKey)
         .map((m) => ({ vendorKey: backend.vendorKey, modelKey: String(m.modelKey) }))
       if (owned.length > 0) bridge.deleteModels(owned)
@@ -435,7 +435,7 @@ export function ComfyuiWorkflowSettingsPage({
                   className={cn(
                     'h-6 w-full max-w-[320px] rounded-nomi-sm border border-transparent bg-transparent px-1 -mx-1',
                     'text-body-sm text-nomi-ink outline-none placeholder:text-nomi-ink-30',
-                    'hover:border-nomi-line focus:border-nomi-accent disabled:opacity-60',
+                    'hover:border-nomi-line focus:border-nomi-ink-40 disabled:opacity-60',
                   )}
                 />
                 <div className="mt-0.5 flex items-center gap-1.5 px-0 text-micro text-nomi-ink-40">

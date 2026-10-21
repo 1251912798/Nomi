@@ -362,7 +362,7 @@ export default function InlineParameterBar({
       <button
         type="button"
         className={cn(
-          'inline-flex items-center gap-1.5 h-7 px-3 rounded-full border border-nomi-accent/30',
+          'inline-flex items-center gap-1.5 h-7 px-3 rounded-full border border-nomi-line',
           'bg-nomi-accent-soft text-nomi-accent font-medium text-caption',
           'hover:bg-nomi-accent hover:text-nomi-paper transition-colors cursor-pointer',
         )}
@@ -637,7 +637,7 @@ export default function InlineParameterBar({
         // 不把右端的「生成」挤出卡外（2026-10-06 #1042）。定宽的画布节点照旧不收。
         summaryMaxWidth !== undefined ? 'shrink' : 'shrink-0',
         'justify-between text-caption text-nomi-ink-80 cursor-pointer min-w-0',
-        'hover:border-nomi-ink-20 focus:outline-none focus-visible:border-nomi-accent',
+        'hover:border-nomi-ink-20 focus:outline-none focus-visible:border-nomi-ink-40',
         stacked && 'w-full',
       )}
       style={stacked ? { width: '100%' } : summaryMaxWidth !== undefined ? { maxWidth: summaryMaxWidth } : { width: resolvedSummaryWidth }}
@@ -672,7 +672,7 @@ export default function InlineParameterBar({
     </>
   )
 
-  return (
+  const bar = (
     <div
       className={cn(
         'generation-canvas-v2-node__params--parameters',
@@ -699,6 +699,16 @@ export default function InlineParameterBar({
           {panelPortals}
         </div>
       ) : null}
+    </div>
+  )
+  // 这一次读目录失败、但上一份清单还在屏上：说清楚「仍是旧的」和原因（只在这个状态多一行，平时 DOM 不变）。
+  if (modelCatalogStatus.status !== 'stale_kept') return bar
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      {bar}
+      <span role="status" data-model-catalog-stale="true" title={modelCatalogStatus.message} className="min-w-0 break-words text-micro text-nomi-warning">
+        {modelCatalogStatus.message}
+      </span>
     </div>
   )
 }

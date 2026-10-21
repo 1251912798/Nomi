@@ -59,6 +59,7 @@ jobs:
       canvas: ${{ steps.profile.outputs.canvas }}
       performance: ${{ steps.profile.outputs.performance }}
       package: ${{ steps.profile.outputs.package }}
+      visual: ${{ steps.profile.outputs.visual }}
       release: ${{ steps.profile.outputs.release }}
       fail_closed: ${{ steps.profile.outputs.fail_closed }}
       reason: ${{ steps.profile.outputs.reason }}
@@ -120,31 +121,6 @@ jobs:
         env:
           DIRECTION_BASE: ${{ github.event.pull_request.base.sha }}
         run: node scripts/fix-churn.mjs --range "$DIRECTION_BASE..HEAD" --warn | tee -a "$GITHUB_STEP_SUMMARY"
-
-  # 3D-BOX 开关开的那张工具面（方案 docs/plan/2026-10-04-director-3dbox-phase3.md §5）：同一族门岗按开关开再跑一遍，
-  # 第一步先证明开关真的开了（check-director3dbox-face-on.ts），否则后面会安静地验成开关关的面。
-  # 开关只经环境变量传给每个门岗进程的引导模块。到期 2026-11-15 随开关一起删。
-  director3dbox-face:
-    name: Tool Face (3D-BOX on)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.8.1
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Flag-on tool-face gates
-        # 只给门岗这一步开开关（安装依赖那步不受影响）。
-        env:
-          NOMI_DESKTOP_DEV: '1'
-          NOMI_DIRECTOR_3DBOX: 'true'
-        run: pnpm run check:director3dbox-face
 
   unit:
     name: Unit
@@ -527,9 +503,45 @@ jobs:
       - name: Verify macOS signature
         run: codesign --verify --deep --strict --verbose=4 release/mac-arm64/Nomi.app
 
+  # 设计实验室截图的唯一比对与录制机器（2026-10-18，docs/plan/2026-10-18-design-lab-macos-ci.md）。
+  # 固定 macos-26，不用 macos-latest：GitHub 换默认镜像时系统字体会变，整片基线跟着红。
+  # 红了把 test-results（每格 -actual/-expected/-diff）与本机身份 runner.json 打包上传，
+  # 本地 `pnpm run design-lab:accept -- --run <运行号>` 取回；工作流本身不写仓库。
+  design-lab-macos:
+    name: Design Lab (macOS)
+    needs: scope
+    if: needs.scope.outputs.visual == 'true'
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.8.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: bash scripts/ci-install-chromium.sh
+      - name: Design lab visual baselines
+        run: pnpm run check:design-lab
+      - name: Upload design lab evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: design-lab-evidence
+          path: |
+            test-results/**
+            outputs/design-lab/runner.json
+          if-no-files-found: warn
+          retention-days: 14
+
   quality:
     name: Quality Gate
-    needs: [scope, contracts, director3dbox-face, unit, core-smoke, desktop-linux, canvas-acceptance, canvas-performance, mac-package]
+    needs: [scope, contracts, unit, core-smoke, desktop-linux, canvas-acceptance, canvas-performance, mac-package, design-lab-macos]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -558,7 +570,6 @@ jobs:
           test "${{ steps.ci-hygiene.outcome }}" = "success"
           test "${{ needs.scope.result }}" = "success"
           test "${{ needs.contracts.result }}" = "success"
-          test "${{ needs['director3dbox-face'].result }}" = "success"
           test "${{ needs.unit.result }}" = "success"
           # 核心冒烟：只有纯文档才允许 skipped；其余（含分类器没给出结论）一律要求 success。
           # 非阻断的 used 带 continue-on-error，它红时 conclusion 仍是 success，
@@ -582,4 +593,7 @@ jobs:
           fi
           if [ "${{ needs.scope.outputs.package }}" = "true" ]; then
             test "${{ needs['mac-package'].result }}" = "success"
+          fi
+          if [ "${{ needs.scope.outputs.visual }}" = "true" ]; then
+            test "${{ needs['design-lab-macos'].result }}" = "success"
           fi

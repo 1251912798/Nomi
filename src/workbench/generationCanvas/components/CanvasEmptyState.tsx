@@ -22,7 +22,7 @@ const TILE_CLASS = cn(
   'inline-flex h-16 w-[68px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-nomi border-0 bg-nomi-paper p-0',
   'font-[inherit] text-caption text-nomi-ink-80 shadow-nomi-sm ring-1 ring-inset ring-nomi-line',
   'transition-colors hover:bg-nomi-ink-05 active:bg-nomi-ink-10',
-  'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-nomi-accent',
+  'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-nomi-ink',
   '[&>svg]:size-5 [&>svg]:text-nomi-ink-60',
 )
 

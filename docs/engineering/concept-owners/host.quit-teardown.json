@@ -22,6 +22,26 @@
     {
       "path": "src/workbench/project/projectAgentLaneOpen.ts",
       "symbol": "openProjectAgentLane"
+    },
+    {
+      "path": "electron/quitTeardown.ts",
+      "symbol": "registerQuitDrain"
+    },
+    {
+      "path": "electron/quitTeardown.ts",
+      "symbol": "exitWithoutConfirmation"
+    },
+    {
+      "path": "electron/quitTeardown.ts",
+      "symbol": "requestQuit"
+    },
+    {
+      "path": "electron/windowCloseConfirmation.ts",
+      "symbol": "installWindowCloseConfirmation"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "symbol": "quitLifecycleSelectors"
     }
   ],
   "forbidden_derivations": [],
@@ -29,7 +49,6 @@
   "allowed_consumers": [
     "electron/main.ts",
     "electron/agentLane/laneIpc.ts",
-    "electron/windowCloseConfirmation.ts",
     "electron/ai/antigravityIpc.ts",
     "electron/tasks/taskIpcHandlers.ts",
     "electron/video/depthVideoIpc.ts"

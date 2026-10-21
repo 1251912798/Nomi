@@ -1,0 +1,27 @@
+{
+  "name": "每种画布节点能接什么输入、能不能被引用（环存在与否）",
+  "subject": "canvas.node-connection-kinds",
+  "lifecycle": "catalog",
+  "authority_kind": "schema",
+  "trust_domain": "renderer",
+  "fact_kind": "value-object",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/registry.ts",
+    "symbol": "connects"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/registry.ts",
+      "symbol": "connects"
+    },
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowVisualContract.ts",
+      "symbol": "resolveGenerationFlowConnectionAffordance"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-08",
+  "notes": "合同 docs/fixes/2026-10-08-canvas-node-input-owner.root-cause.json：registry 的 connects 是各节点种类「收什么、给什么」的唯一声明；左右环是否存在由 resolveGenerationFlowConnectionAffordance 从声明读出，不另猜。"
+}

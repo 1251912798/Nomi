@@ -13,6 +13,7 @@ import { IconCheck, IconDownload, IconLoader2, IconMovie, IconTrash } from '../.
 import { cn } from '../../../../utils/cn'
 // 卡上的画面和节点预览走同一条延后加载队列（DeferredNodeMedia）：铺开 / 平移到一组宫格时，几张整图不在同一帧里一起解码上屏（V-1054 平移最长一帧）。
 import { DeferredNodeImage, DeferredNodeVideo } from '../DeferredNodeMedia'
+import type { CanvasImageSource } from '../canvasImageSource'
 import { historyVideoTimeFromPointer, nudgeHistoryVideoTime } from '../historyVideoScrub'
 import { ToolbarButton, ToolbarDivider, ToolbarIconButton } from '../NodeFloatingToolbar'
 import type { VersionGridLayout } from './versionGridLayout'
@@ -21,8 +22,8 @@ export type VersionCardEntry = Readonly<{
   identity: string
   versionNo: number
   type: 'image' | 'video'
-  /** 画布上挂的预览图（视频是封面；没有封面就是空串）。 */
-  previewUrl: string
+  /** 画布上挂的预览图（视频是封面；没有封面就是空串）。只能由 canvasImageSource 造出来。 */
+  previewUrl: CanvasImageSource | ''
   /** 原始地址（视频卡悬停播放、Alt 拖出复制用）。 */
   url?: string
 }>
@@ -53,7 +54,7 @@ export function NodeVersionCountBadge({
     'absolute right-2 top-2 z-[4] inline-flex h-5 min-w-5 items-center justify-center rounded-pill border px-1.5',
     'text-micro font-semibold leading-none tabular-nums shadow-nomi-sm',
     // 压在画面上的东西用不随明暗翻转的媒体色（白底深字），暗色主题里也是同一枚浅色角标——和卡上「第 N 版」小字同一条规矩。
-    expanded ? 'border-nomi-accent bg-nomi-accent text-nomi-media-ink' : 'border-nomi-overlay-chip/25 bg-nomi-media-ink/[0.88] text-nomi-overlay-chip-strong',
+    expanded ? 'border-transparent bg-nomi-accent text-nomi-media-ink' : 'border-nomi-overlay-chip/25 bg-nomi-media-ink/[0.88] text-nomi-overlay-chip-strong',
   )
   if (readOnly && !expanded) {
     return <span className={look} data-version-badge aria-label={label}>{count}</span>
@@ -62,7 +63,7 @@ export function NodeVersionCountBadge({
     <button
       type="button"
       // nodrag / no-pan：画布内核拖节点是节点元素上的原生 mousedown，只认这两个类；点角标不该拖动节点。
-      className={cn(look, 'nodrag generation-canvas-react-flow__no-pan pointer-events-auto cursor-pointer transition-colors duration-nomi-fast ease-nomi-fast', !expanded && 'hover:bg-nomi-media-ink', 'focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-1')}
+      className={cn(look, 'nodrag generation-canvas-react-flow__no-pan pointer-events-auto cursor-pointer transition-colors duration-nomi-fast ease-nomi-fast', !expanded && 'hover:bg-nomi-media-ink', 'focus-visible:outline-2 focus-visible:outline-nomi-ink focus-visible:outline-offset-1')}
       aria-label={label}
       aria-pressed={expanded}
       title={label}
@@ -186,7 +187,7 @@ function VersionVideoMedia({ entry, active }: { entry: VersionCardEntry; active:
           // 不标这两个类，拖进度条会同时拖动整个节点，画布停在「拖动中」、之后的点击都被吞（10-06 真画布实测）。
           'nodrag generation-canvas-react-flow__no-pan absolute bottom-0 left-0 right-0 z-[3] h-4 cursor-ew-resize px-1.5 pb-1 pt-2 transition-opacity duration-150',
           active ? 'opacity-100' : 'pointer-events-none opacity-0',
-          'focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-1',
+          'focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-nomi-ink focus-visible:outline-offset-1',
         )}
         role="slider"
         tabIndex={0}
@@ -361,7 +362,7 @@ export function NodeVersionGrid({
               <CardShell className={hovered ? 'ring-nomi-ink-20' : undefined}>
                 {entry.type === 'video'
                   ? <VersionVideoMedia entry={entry} active={hovered} />
-                  : <DeferredNodeImage src={entry.previewUrl} alt="" draggable={false} className="h-full w-full object-contain" />}
+                  : entry.previewUrl ? <DeferredNodeImage src={entry.previewUrl} alt="" draggable={false} className="h-full w-full object-contain" /> : null}
                 <span className={cn('absolute rounded-pill bg-nomi-overlay-chip px-1.5 py-0.5 text-micro font-semibold tabular-nums text-nomi-media-ink', entry.type === 'video' ? 'right-1.5 top-1.5' : 'bottom-1.5 left-1.5')} data-version-card-number>
                   {node.width < 200 ? t('generationCommon.versionCards.versionTiny', { n: entry.versionNo }) : t('generationCommon.versionCards.versionShort', { n: entry.versionNo })}
                 </span>

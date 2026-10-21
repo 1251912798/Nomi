@@ -181,10 +181,10 @@ export function AssetLibraryContent({
     if (!bridge?.assets?.onUpdated) return
     return bridge.assets.onUpdated((payload) => {
       if ((payload as { projectId?: string } | null)?.projectId !== projectId) return
+      // 「所有项目」那一份由它自己的 owner（useAllProjectAssets）听同一个广播作废，这里只管本项目这份。
       refreshProjectAssets()
-      refreshAllProjectAssets()
     })
-  }, [projectId, refreshAllProjectAssets, refreshProjectAssets])
+  }, [projectId, refreshProjectAssets])
   const visible = React.useMemo(
     () => filterBaseAssets.filter(
       (asset) => filters.visibleKinds.has(asset.kind) && filters.visibleProvenances.has(assetProvenanceOf(asset)),
@@ -499,7 +499,7 @@ export function AssetLibraryContent({
 
   return (
     <TooltipProvider delayDuration={180} skipDelayDuration={80}>
-      <div tabIndex={0} onDragOver={localImport.onDragOver} onDragLeave={localImport.onDragLeave} onDrop={localImport.onDrop} onPaste={localImport.onPaste} className={cn('flex min-h-0 flex-1 flex-col overflow-hidden outline-none', className, localImport.isDragOver && 'ring-2 ring-inset ring-nomi-accent/50')}>
+      <div tabIndex={0} onDragOver={localImport.onDragOver} onDragLeave={localImport.onDragLeave} onDrop={localImport.onDrop} onPaste={localImport.onPaste} className={cn('flex min-h-0 flex-1 flex-col overflow-hidden outline-none', className, localImport.isDragOver && 'ring-2 ring-inset ring-nomi-ink-30')}>
         {/* 头部 */}
         {showHeader ? (
           <div className={cn('flex items-center gap-2 px-4 pt-3.5 pb-3 border-b border-nomi-line')}>

@@ -3,7 +3,6 @@ import { z } from "zod";
 import type { CapabilityContract } from "./capabilityContract";
 import { jsonTolerantArray } from "./jsonArgTolerance";
 import { cameraMoveParamsObjectSchema, stagingReferenceParamsSchema, storyboardPlanParamsSchema } from "./canvasModelShapes";
-import { director3dBoxFaceEnabled } from "../featureFlags/director3dboxFace";
 
 const canonicalIdSchema = z.string().trim().min(1);
 const changeIdSchema = z.string().trim().min(1).max(200).describe("Versioned reversible change id returned by this write.");
@@ -450,6 +449,64 @@ export const CANVAS_WRITE_OPERATIONS: readonly CanvasWriteOperation[] = Object.f
   canvasWriteSemanticInputUnion.options.map((option) => option.shape.operation.value as CanvasWriteOperation),
 );
 
+/**
+ * 每个画布写操作的传输路由——**一张表，必须覆盖 `CanvasWriteOperation` 的每一个成员**（`satisfies Record<…>`）。
+ * 往 union 里加一个操作却不在这里给它一条路，TypeScript 当场不过：「上了工具面、没接传输」（2026-10-16 V-3dbox：
+ * 摆位 / 运镜；10-17 又清出 4 个）在结构上做不出来，不靠人记得去补名单。
+ *
+ *  - `headless`：主进程无头那条路（dispatcher.ts）自己就能落账。
+ *  - `live_renderer`：耐久 owner 在渲染端（分镜表 / 导演节点 / 文本正文 / 画布布局 / 时间轴），对外 MCP（项目会话租约 + 连接证明）
+ *    送到**开着的渲染端**执行。主进程路由（rpcServer.ts）、渲染端执行口（canonicalCanvasPlanPatch.ts）和无头分支的
+ *    「需要创作区」提示（dispatcher.ts）都读这张表派生的名单，不各写一份。摆位参考 / 运镜参考建出来的是导演节点
+ *    （3D-BOX 是唯一的导演台，2026-10-16）。
+ */
+export const CANVAS_WRITE_OPERATION_ROUTES = Object.freeze({
+  set_node_prompt: "headless",
+  create_canvas_nodes: "headless",
+  connect_canvas_edges: "headless",
+  set_node_text: "live_renderer",
+  tidy_canvas: "live_renderer",
+  propose_storyboard_plan: "live_renderer",
+  patch_shots: "live_renderer",
+  arrange_storyboard_to_timeline: "live_renderer",
+  create_staging_reference: "live_renderer",
+  create_camera_move: "live_renderer",
+} as const satisfies Record<CanvasWriteOperation, "headless" | "live_renderer">);
+
+type CanvasWriteRoute = (typeof CANVAS_WRITE_OPERATION_ROUTES)[CanvasWriteOperation];
+type OperationsRoutedTo<Route extends CanvasWriteRoute> = {
+  [Operation in CanvasWriteOperation]: (typeof CANVAS_WRITE_OPERATION_ROUTES)[Operation] extends Route ? Operation : never;
+}[CanvasWriteOperation];
+
+function operationsRoutedTo<Route extends CanvasWriteRoute>(route: Route): readonly OperationsRoutedTo<Route>[] {
+  return Object.freeze(CANVAS_WRITE_OPERATIONS.filter((operation) => CANVAS_WRITE_OPERATION_ROUTES[operation] === route)) as readonly OperationsRoutedTo<Route>[];
+}
+
+/** 主进程无头那条路（dispatcher.ts）自己就能落账的画布写操作（路由表派生）。 */
+export const CANVAS_WRITE_HEADLESS_OPERATIONS = operationsRoutedTo("headless");
+
+/** 对外 MCP 送到开着的渲染端执行的画布写操作（路由表派生）。 */
+export const CANVAS_WRITE_LIVE_RENDERER_OPERATIONS = operationsRoutedTo("live_renderer");
+
+export function isCanvasWriteLiveRendererOperation(operation: unknown): operation is OperationsRoutedTo<"live_renderer"> {
+  return (CANVAS_WRITE_LIVE_RENDERER_OPERATIONS as readonly unknown[]).includes(operation);
+}
+
+/**
+ * 对外 MCP 在协议边界先问真人一次的画布写：它们改的是用户的分镜 / 时间轴（可撤，但仍是用户的活）。
+ * 客户端能弹表单且 Nomi 开着时，先在聊天里问；问不了就照原样放行（与 patch_shots 同一条规矩）。
+ * 时间轴落地（arrange）并入这里，是因为 nomi_timeline_edit 的 apply 本来就要宿主批准——不能让同一件事从画布写绕开它。
+ */
+export const CANVAS_WRITE_ELICIT_FIRST_OPERATIONS = Object.freeze([
+  "patch_shots",
+  "propose_storyboard_plan",
+  "arrange_storyboard_to_timeline",
+] as const satisfies readonly CanvasWriteOperation[]);
+
+export function isCanvasWriteElicitFirstOperation(operation: unknown): operation is (typeof CANVAS_WRITE_ELICIT_FIRST_OPERATIONS)[number] {
+  return (CANVAS_WRITE_ELICIT_FIRST_OPERATIONS as readonly unknown[]).includes(operation);
+}
+
 export function canvasWritePiInputSchemaForAlias(alias: string): z.ZodTypeAny | undefined {
   switch (alias) {
     case "set_node_prompt":
@@ -631,8 +688,8 @@ export const CANVAS_WRITE_CAPABILITY = {
     ui: "nomi_canvas_plan",
   },
   additionalAliases: {
-    // 3D-BOX 开关开时 `stage_shot` 归 `director.write`（同名换芯，任一构建只装配一份）。
-    pi: Object.freeze(director3dBoxFaceEnabled() ? ["make_artifact", "write_node_text"] : ["make_artifact", "write_node_text", "stage_shot"]),
+    // `stage_shot` 归 `director.write`（3D-BOX，2026-10-16 起唯一）；摆位参考 / 运镜参考两个操作只留给对外 MCP。
+    pi: Object.freeze(["make_artifact", "write_node_text"]),
   },
   inputSchema: canvasWriteSemanticInputSchema,
   outputSchema: canvasWriteResultSchema,

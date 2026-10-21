@@ -53,7 +53,6 @@ describe('Portal 浮层不被 Windows 拖拽区吃掉点击（issue #58）', () 
 // 类不变量：全屏浮层不覆盖窗口栏——顶偏移由 windowChrome 单口给出，各浮层不得自己写 32。
 const FULLSCREEN_OVERLAYS = [
   ['导演台全屏壳', '../../workbench/generationCanvas/nodes/director/DirectorEditor.tsx'],
-  ['白板全屏壳', '../../workbench/generationCanvas/nodes/whiteboard/WhiteboardModal.tsx'],
   ['ComfyUI 工作流设置整页', '../../ui/onboarding/workflowPage/ComfyuiWorkflowSettingsPage.tsx'],
   ['全景查看器', '../../workbench/generationCanvas/nodes/PanoramaViewer.tsx'],
   ['素材预览', '../../workbench/assets/AssetPreviewDialog.tsx'],
@@ -75,4 +74,10 @@ describe('全屏浮层不盖住合一顶栏（它同时是窗口栏：导演台�
     // platform 读成 undefined → 悄悄回落成 0，Windows 上又贴回拖拽带。
     expect(read(file)).not.toMatch(/^const\s+[A-Z_]+\s*=\s*currentFullscreenOverlayTopOffset/m)
   })
+})
+
+it('inline whiteboard remains node content rather than a fullscreen overlay', () => {
+  const source = read('../../workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx')
+  expect(source).toContain('data-nomi-inline-whiteboard')
+  expect(source).not.toMatch(/fixed\s+inset-0/)
 })

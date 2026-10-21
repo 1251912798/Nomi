@@ -108,7 +108,9 @@ export function tabBelongsToCanvas(activeElement: Element | null): boolean {
 }
 
 function shouldIgnoreCanvasShortcut(target: EventTarget | null, stageRef: React.RefObject<HTMLDivElement | null>): boolean {
-  if (document.querySelector('[data-nomi-whiteboard-modal="true"]')) return true
+  const candidate = target as unknown as ClosestTarget | null
+  const element = typeof candidate?.closest === 'function' ? candidate : candidate?.parentElement
+  if (element?.closest?.('[data-nomi-inline-whiteboard], [data-whiteboard-panel]')) return true
   if (isCanvasTextEditingContext(target, document.activeElement)) return true
   // 画布藏起来了、或者同屏的另一面（时间轴）刚被按过：这一下不归画布（shortcutSurface.ts 唯一 owner）。
   if (!shortcutSurfaceMayHandle(stageRef.current)) return true
@@ -291,7 +293,6 @@ export function shouldPreferCanvasClipboard(
 export function useCanvasShortcuts(opts: {
   readOnly: boolean
   stageRef: React.RefObject<HTMLDivElement | null>
-  selectedNodeCount: number
   selectedGroupCount: number
   activeCategoryId: string
   /** 只用于清空（Escape）；签名收窄到 null 以兼容任意 ActiveEdge setState。 */
@@ -313,7 +314,6 @@ export function useCanvasShortcuts(opts: {
   const {
     readOnly,
     stageRef,
-    selectedNodeCount,
     selectedGroupCount,
     activeCategoryId,
     setActiveEdge,
@@ -344,9 +344,8 @@ export function useCanvasShortcuts(opts: {
       window.clearTimeout(pasteFallbackTimerRef.current)
       pasteFallbackTimerRef.current = null
     }
-    const handleKeyDown = createCanvasKeydownHandler({
+    const keydownOptions: Omit<CanvasKeydownHandlerOptions, 'selectedNodeCount'> = {
       stageRef,
-      selectedNodeCount,
       selectedGroupCount,
       activeCategoryId,
       setActiveEdge,
@@ -377,7 +376,12 @@ export function useCanvasShortcuts(opts: {
       connectSelectedNodes,
         openAddNodeMenu,
       tidyCanvas,
-    })
+    }
+    // 选中几张在按键那一刻读（不订阅）：画布壳不因选中重渲，这里也就不靠壳递张数。
+    const handleKeyDown = (event: KeyboardEvent): void => createCanvasKeydownHandler({
+      ...keydownOptions,
+      selectedNodeCount: useGenerationCanvasStore.getState().selectedNodeIds.length,
+    })(event)
     const handlePaste = (event: ClipboardEvent) => {
       // A real paste owns this keystroke even when it belongs to an editor. Cancel the keydown
       // fallback before the editing guard so stale canvas clipboard nodes cannot appear later.
@@ -445,7 +449,6 @@ export function useCanvasShortcuts(opts: {
     readOnly,
     redo,
     selectedGroupCount,
-    selectedNodeCount,
     setActiveEdge,
     stageRef,
     undo,

@@ -1,9 +1,6 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { installDirector3DBoxFace, resetDirector3DBoxFaceForTests } from '../featureFlags/director3dboxFace'
+import { describe, expect, it } from 'vitest'
 import { projectCanvasRead } from './canvasRead'
 import { formatCanvasForAgent } from './canvasReadCompact'
-
-afterEach(() => resetDirector3DBoxFaceForTests())
 
 const canvas = {
   nodes: [
@@ -21,8 +18,7 @@ const canvas = {
 }
 
 describe('look_at_canvas on a 3D-BOX node', () => {
-  it('gives revision, shot / actor / set-piece names, issue count and preview state in one line when the flag is on', () => {
-    installDirector3DBoxFace(true)
+  it('gives revision, shot / actor / set-piece names, issue count and preview state in one line', () => {
     const result = projectCanvasRead(canvas)
     expect(result.nodes.find((node) => node.id === 'node-d1')?.director).toEqual({
       revision: 'dplan-0123456789abcdef', shots: ['wide', 'close'], actors: ['reader', 'friend'], setPieces: ['door'],
@@ -32,26 +28,16 @@ describe('look_at_canvas on a 3D-BOX node', () => {
     expect(line).toContain('3D-BOX revision=dplan-0123456789abcdef shots=wide,close actors=reader,friend setPieces=door issues=2 preview=rendering→node-v1')
     expect(line!.length).toBeLessThan(400)
   })
-
-  it('adds nothing when the flag is off', () => {
-    installDirector3DBoxFace(false)
-    const result = projectCanvasRead(canvas)
-    expect(result.nodes.every((node) => node.director === undefined)).toBe(true)
-    expect(formatCanvasForAgent(result)).not.toContain('3D-BOX revision')
-  })
 })
 
 describe('look_at_canvas gives the ready preview asset id', () => {
   it('shows previewAssetId only once the preview is ready', () => {
-    installDirector3DBoxFace(true)
     const ready = structuredClone(canvas) as { nodes: Array<{ meta?: Record<string, unknown> }> }
     const meta = ready.nodes[1].meta!
     meta.directorPreview = { ...(meta.directorPreview as Record<string, unknown>), status: 'ready', assetId: 'asset-preview-1' }
     const result = projectCanvasRead(ready)
     expect(result.nodes.find((node) => node.id === 'node-d1')?.director?.previewAssetId).toBe('asset-preview-1')
     expect(formatCanvasForAgent(result)).toContain('preview=ready→node-v1 previewAssetId=asset-preview-1')
-    resetDirector3DBoxFaceForTests()
-    installDirector3DBoxFace(true)
     expect(projectCanvasRead(canvas).nodes.find((node) => node.id === 'node-d1')?.director?.previewAssetId).toBeUndefined()
   })
 })

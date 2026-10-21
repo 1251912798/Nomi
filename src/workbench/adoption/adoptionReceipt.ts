@@ -1,7 +1,9 @@
+import { shallow } from 'zustand/shallow'
 import i18n from '../../i18n'
 import { notify } from '../../ui/notificationPolicy'
 import { showUndoToast } from '../../utils/showUndoToast'
 import { useWorkbenchStore } from '../workbenchStore'
+import { timelineContentOf } from '../timeline/kernel/timelineKernel'
 import { proposalIsLanded } from './adoptionProposalRegistry'
 import type { AdoptProposal, AdoptionOutcome } from './adoptionTypes'
 
@@ -79,7 +81,7 @@ export function reportAdoptionOutcome(
         // 光在点击那一刻拦还不够：一个**点了没反应**的按钮仍然摆在那儿，
         // 用户会以为撤销坏了。轴一旦不再 landed 就把这张回执收掉，
         // 让失效的动作**从眼前消失**，而不是留个哑巴按钮。
-        watchUndoable: (recheck) => useWorkbenchStore.subscribe((state) => state.timeline, recheck),
+        watchUndoable: (recheck) => useWorkbenchStore.subscribe((state) => timelineContentOf(state.timeline), recheck, { equalityFn: shallow }),
         onUndo: () => useWorkbenchStore.getState().undoTimeline(),
       })
       return

@@ -1,0 +1,146 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-18-fixture-harness-typecheck",
+  "problem_type": "Browser test harnesses under tests/ux/fixtures are not type-checked, so production prop/contract changes silently break them",
+  "symptom": "main went red after #1231 and #1241 merged (Unit (3), Quality Gate on 25a8e7c70): tests/ux/reference-row-alignment.test.mjs timed out on every case because the harness page crashed with 'Cannot destructure property nodes of graph as it is undefined'.",
+  "direct_cause": "#1231 (0e97307d0) made graph / modelOptionsState / readMappings required props of NodeParameterControls and updated every caller it could see; #1241 (04cbd2d06) added reference-row-alignment-harness.tsx on an older base without them. Each PR was green alone; merged, the harness rendered NodeParameterControls without graph.",
+  "class_root": "tests/ux/fixtures/*.tsx are loaded by Vite as browser code and driven by Playwright, but belong to no tsconfig (not the app import graph, not tsconfig.test.json), so tsc never checks them against production component contracts; drift only shows up as a runtime crash or a test that never runs.",
+  "detected_by": "ci",
+  "recurrence_check_on": "2026-11-01",
+  "invariant_owner_layer": {
+    "layer": "tsconfig.fixtures.json",
+    "tests": [
+      "scripts/typecheck.node-test.mjs"
+    ],
+    "why": "pnpm run typecheck now runs tsc -p tsconfig.fixtures.json alongside the app/electron/pi programs; typecheck.node-test.mjs pins the job list so it cannot be dropped silently."
+  },
+  "affected_population": [
+    "Every browser harness under tests/ux/fixtures (11 files) and the Playwright/Vitest tests that load them"
+  ],
+  "scope_paths": [
+    "tsconfig.fixtures.json",
+    "scripts/typecheck.mjs",
+    "scripts/lib/typecheckProjects.mjs",
+    "tests/ux/fixtures/reference-row-alignment-harness.tsx",
+    "tests/ux/fixtures/model-contract-limits-harness.tsx",
+    "tests/ux/fixtures/selection-drag-lifecycle-harness.tsx",
+    "tests/ux/fixtures/spend-panel-write-ownership-harness.tsx",
+    "tests/ux/fixtures/asset-tile-badges-harness.tsx",
+    "tests/ux/fixtures/composer-lifecycle-harness.tsx"
+  ],
+  "entry_points": [
+    "tests/ux/fixtures/*.tsx harness pages"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The invariant is about which of our own files our own tsc programs cover.",
+  "invariants": [
+    "Every tests/ux/fixtures/*.tsx harness compiles against current production types under pnpm run typecheck"
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "scripts/typecheck.mjs",
+      "symbol": "TYPECHECK_JOBS"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/lib/typecheckProjects.mjs",
+      "symbol": "TYPECHECK_PROJECTS"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 2,
+    "why_not": "TYPECHECK_PROJECTS is the single list of compiled tsconfigs and TYPECHECK_JOBS the single orchestrator that runs them; the fix adds one entry to each rather than a new path."
+  },
+  "generality_proof": "The new program includes the whole tests/ux/fixtures/*.tsx glob, so any harness added or any production contract changed is checked by the same tsc run every PR already executes (typecheck is in gates and Contracts). A scan with it found 16 errors across 7 of 11 harnesses — all now fixed or removed.",
+  "shared_boundaries": [
+    {
+      "path": "tsconfig.fixtures.json",
+      "symbol": "include",
+      "responsibility": "Brings every browser test harness under tsc with the app's compiler options."
+    },
+    {
+      "path": "scripts/typecheck.mjs",
+      "symbol": "TYPECHECK_JOBS",
+      "responsibility": "Runs the fixtures program in pnpm run typecheck (gates and CI Contracts)."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/fixtures/reference-row-alignment-harness.tsx",
+      "entry_point": "Stage",
+      "disposition": "enforced",
+      "evidence": "Missing props were fixed by #1242 via composerControlProps; tsc over fixtures still found invalid ProfileKind 'image_to_image', edge mode 'text_ref' and the JSX namespace — fixed here. reference-row-alignment.test.mjs 16/16 pass locally."
+    },
+    {
+      "path": "tests/ux/fixtures/model-contract-limits-harness.tsx",
+      "entry_point": "Stage",
+      "disposition": "enforced",
+      "evidence": "Same missing props on two NodeParameterControls; fixed."
+    },
+    {
+      "path": "tests/ux/fixtures/selection-drag-lifecycle-harness.tsx",
+      "entry_point": "Harness",
+      "disposition": "enforced",
+      "evidence": "Passed removed option selectedNodeCount (gone since 7920c29ec); removed."
+    },
+    {
+      "path": "tests/ux/fixtures/spend-panel-write-ownership-harness.tsx",
+      "entry_point": "upload button",
+      "disposition": "enforced",
+      "evidence": "onDrop typed void; wrapped in Promise.resolve; Mantine CSS moved to a static import."
+    },
+    {
+      "path": "tests/ux/composer-panel-reference-isolation.red.mjs",
+      "entry_point": "harness",
+      "disposition": "enforced",
+      "evidence": "Not wired into any script, CI job or vitest lane since 2026-09-20 and its harness no longer matched useNodeMentionSource; deleted with its harness."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Production component contracts change often (perf work in #1231 changed props) and harnesses are written on other branches; without type coverage the next contract change breaks a harness again.",
+    "same_class_scan": [
+      "tsc over tests/ux/fixtures/*.tsx with the app config → 16 errors in 7 of 11 harnesses",
+      "grep for each harness's consumer test → composer-panel-reference-isolation.red.mjs referenced nowhere"
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/typecheck.mjs",
+    "invariant": "tsc -p tsconfig.fixtures.json reports zero errors.",
+    "failure_mode": "pnpm run typecheck (gates, pre-push, CI Contracts) goes red naming the harness and the missing prop.",
+    "exception_policy": "none",
+    "strategy": "Cover the harness directory with the same tsc orchestrator, pinned by typecheck.node-test.mjs.",
+    "artifacts": [
+      "tsconfig.fixtures.json",
+      "scripts/typecheck.mjs",
+      "scripts/lib/typecheckProjects.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/typecheck.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/typecheck.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/ux/composer-panel-reference-isolation.red.mjs",
+      "tests/ux/fixtures/composer-panel-reference-isolation-harness.tsx",
+      "tests/ux/fixtures/composer-panel-reference-isolation-harness.html"
+    ],
+    "rationale": "Dead test that no runner executed; its guarantee (panel composer does not write the canvas store) is covered by the live spend-panel-write-ownership.test.mjs."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency is involved.",
+    "exit_criteria": []
+  },
+  "migration": "The direct red on main was fixed in parallel by #1242 (shared tests/ux/fixtures/composerControlProps.ts for the three NodeParameterControls harnesses); this change keeps that helper and adds the class-level guard plus the remaining drift it missed (invalid ProfileKind / edge mode / JSX type in reference-row-alignment, selection-drag, spend-panel, composer-lifecycle, dead red test).",
+  "residual_risks": [
+    "tests/ux/model-contract-limits.walk.mjs is an Electron walk and was not run locally; its harness now type-checks against the production contract."
+  ]
+}

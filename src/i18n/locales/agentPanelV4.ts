@@ -61,13 +61,17 @@ export const zhAgentPanelV4 = {
   skillAdDesc: '15 秒电商产品片模板',
   skillExplore: '探索更多',
   skillManage: '新建 · 管理',
-  permission: { step: '每步问', 'safe-auto': '自动改', project: '全自动' },
+  permission: { request: '请求批准', direct: '直接生成' },
+  permissionGroup: 'Agent 权限',
   systemPrompt: '编辑系统提示词',
   permissionWhy: {
-    step: '改动、生成、计划都先问。',
-    'safe-auto': '文稿和时间轴改动直接做（收据可撤销），生成前仍会问。',
-    project: '可撤销的改动直接做，生成也按你切档时那次确认直接跑，不再逐笔问。不可逆的操作仍然每次问。',
+    request: '改文案、摆节点这类能撤销的直接做；要生成，或做撤销不了的事，先停下来等你确认。',
+    direct: '要生成就直接开跑，不用一次次确认；同一个镜头连续失败、或要做计划外的生成时会停下来问你，随时可以点停止。按文稿里的分镜方案出图，仍会每批问一次。',
   },
+  /** 「直接生成」档的刹车触发时，报价卡上多出的那一行（只说为什么停，卡本身和「请求批准」下一样）。 */
+  brakeRetry: { title: '这一镜连续失败了，先停下问你' },
+  brakeOutOfPlan: { title: '这次要生成的镜头不在刚才说好的计划里，先停下问你' },
+  brakeStopped: { title: '你点过停止，这一次先不自动开跑' },
 
   // Context 环
   context: '上下文用量',
@@ -90,8 +94,14 @@ export const zhAgentPanelV4 = {
   feedback: '反馈',
   consent: {
     title: '帮 Nomi 变好',
-    collects: '✓ 匿名分享：用了哪些功能 · 生成成没成功 · 失败属于哪一类 · Agent 每一步用了什么工具、花了多久',
-    excludes: '✗ 不含：你的提示词 · 文稿 · 素材 · 文件路径 · 密钥',
+    collects: '✓ 匿名分享：用了哪些功能、成败、界面卡不卡（分档）',
+    excludes: '✗ 不含：提示词、文稿、素材、文件路径、密钥',
+    // 告知范围升级后，已同意的用户看到的再确认版：只说「多了什么」，不重讲全部。
+    scopeTitle: 'Nomi 想多看一项：界面流畅度',
+    scopeCollects: '✓ 新增匿名分享：点击多久有反应、掉帧多不多的分档数字，以及粗略的画布规模、当前页面、系统与设备档位（CPU 核数、内存的区间）',
+    scopeExcludes: '✗ 不含：任何内容、文件路径、显卡型号。原有的统计照旧；不确认就只发原来那些',
+    scopeAccept: '同意新增',
+    scopeDecline: '保持原样',
     accept: '愿意',
     decline: '不分享',
     settingsHint: '设置里可关',
@@ -485,8 +495,10 @@ export const zhAgentPanelV4 = {
   /** 宿主拒绝这一下时的兜底句（它通常自己带一句更具体的，那句优先）。按了没反应是最贵的一种沉默。 */
   spendActionFailed: '暂时无法确认这一步的结果，请查看任务状态后再操作。',
   spendActionNotStarted: '这一步没成，Nomi 没有开始生成。可以改一下再按一次。',
+  /** 合同编译口拒了某个参数：点名是哪个键（目录里的参数名，不是原话），没发起、没花钱。 */
+  spendActionParameterRejected: '参数「{{field}}」没通过核对，Nomi 没有开始生成。在卡上改掉它再按；卡改不了就点「取消」，让 Nomi 重新起草。',
   /** 第 11 条：卡此刻改不了时不许说「改一下再按」，说改不了、该怎么办。 */
-  spendActionNotStartedLocked: '这一步没成，Nomi 没有开始生成。这张卡现在改不了：点 × 关掉，告诉 Nomi 要怎么改，它会重新起草。',
+  spendActionNotStartedLocked: '这一步没成，Nomi 没有开始生成。这张卡现在改不了：点「取消」，告诉 Nomi 要怎么改，它会重新起草。',
   /** 按下去的那一刻卡上的内容刚变了（报价换了一份）：没发起，看一眼现在的样子再按。 */
   spendActionCardChanged: '卡上的内容刚变了，Nomi 没有开始生成。看一眼现在的样子再按。',
   /** 这一张已经不在卡上（刚被决定，或卡已关掉）。 */
@@ -494,13 +506,13 @@ export const zhAgentPanelV4 = {
   /** 宿主在本项目素材里认不出卡上的某一张参考图（spendCardFailure 的 REFERENCE_NOT_IN_PROJECT）：点名是参考图、给真能走的那一步。 */
   spendActionReferenceNotInProject: '有一张参考图不在这个项目的素材里，Nomi 没有开始生成。在卡上拿掉它再按；还要用它，就用 @ 重新选一次（别的项目的图会先复制进来）。',
 
-  // 「全自动」档（2026-09-10 用户拍板 · 增量 2）
-  autoModeConfirmTitle: '切到「全自动」？',
-  autoModeConfirmBody: '之后可撤销的改动 Nomi 直接做，**生成也会直接跑、不再逐笔打断你**——这一次确认就是你对它们的授权。不可逆的操作仍然每次问。',
-  autoModeConfirmOk: '切到全自动',
+  // 「直接生成」档（2026-09-10 增量 2 的「全自动」；2026-10-12 用户拍板收成两档）
+  autoModeConfirmTitle: '切到「直接生成」？',
+  autoModeConfirmBody: '之后要生成时 Nomi 会**直接开跑，不再逐次问你**——这一次确认就是你对它的授权。同一个镜头连续失败、或要做计划外的生成时会停下来问你；撤销不了的操作仍然每次问；随时可以点停止。按文稿里的分镜方案出图，仍会每批问一次。',
+  autoModeConfirmOk: '切到直接生成',
   autoModeConfirmCancel: '取消',
-  autoModeBannerNote: '生成会直接跑，不可逆仍会问',
-  autoModeBannerRevert: '回到自动改',
+  autoModeBannerNote: '不可逆的仍会问',
+  autoModeBannerRevert: '回到请求批准',
   /** 叉掉这一条（2026-09-10 用户：可以叉掉，一直放占空间）。 */
   autoModeBannerDismiss: '不再显示这条提醒',
 
@@ -585,13 +597,16 @@ export const enAgentPanelV4 = {
   skillAdDesc: '15-second e-commerce product template',
   skillExplore: 'Explore more',
   skillManage: 'New · Manage',
-  permission: { step: 'Ask each step', 'safe-auto': 'Auto-edit', project: 'Full auto' },
+  permission: { request: 'Ask first', direct: 'Auto-run' },
+  permissionGroup: 'Agent permission',
   systemPrompt: 'Edit system prompt',
   permissionWhy: {
-    step: 'Edits, generation and plans are all confirmed first.',
-    'safe-auto': 'Document and timeline edits happen directly (receipts are undoable); generation still asks.',
-    project: 'Undoable edits happen directly, and generation runs on the confirmation you gave when switching in. Irreversible actions are still confirmed every time.',
+    request: 'Undoable edits like rewriting text or placing nodes happen directly. Anything that generates, or cannot be undone, waits for your confirmation first.',
+    direct: 'Generation starts right away, with no confirmation each time. If one shot keeps failing, or a generation falls outside the plan, it stops and asks you. You can press Stop at any time. Generating from a storyboard plan in your document still asks once per batch.',
   },
+  brakeRetry: { title: 'This shot has failed repeatedly, so Nomi stopped to ask you' },
+  brakeOutOfPlan: { title: 'This generation is not in the plan agreed earlier, so Nomi stopped to ask you' },
+  brakeStopped: { title: 'You pressed Stop, so this one will not start on its own' },
 
   context: 'Context usage',
   contextInputTotal: 'Total input',
@@ -612,8 +627,13 @@ export const enAgentPanelV4 = {
   feedback: 'Report',
   consent: {
     title: 'Help Nomi get better',
-    collects: '✓ Shared anonymously: which features you used · whether a generation succeeded · which category a failure falls into · which tools each Agent step used and how long it took',
-    excludes: '✗ Never included: your prompts · manuscripts · assets · file paths · keys',
+    collects: '✓ Shared anonymously: features used, success or failure, how smooth the app feels (in ranges)',
+    excludes: '✗ Never: prompts, scripts, assets, file paths, keys',
+    scopeTitle: 'Nomi would like to add one more: smoothness',
+    scopeCollects: '✓ Newly shared anonymously: bucketed figures for how fast clicks respond and how often frames drop, plus rough canvas-size, current-page, system and device tiers (CPU core and memory ranges)',
+    scopeExcludes: '✗ Never included: any content, file paths, GPU model. Existing statistics carry on; if you decline, only those are sent',
+    scopeAccept: 'Add it',
+    scopeDecline: 'Keep as is',
     accept: 'I\u2019m in',
     decline: "Don't share",
     settingsHint: 'Off anytime in Settings',
@@ -949,17 +969,18 @@ export const enAgentPanelV4 = {
   spendParamsDecline: 'Cancel',
   spendActionFailed: 'The outcome could not be confirmed. Check the task status before trying again.',
   spendActionNotStarted: 'That did not go through. Nomi has not started generating — adjust it and press again.',
-  spendActionNotStartedLocked: 'That did not go through. Nomi has not started generating. This card can\'t be changed right now: close it with × and tell Nomi what to change, and it will draft it again.',
+  spendActionParameterRejected: 'The parameter "{{field}}" did not pass the check. Nomi has not started generating. Change it on the card and press again; if the card is locked, click Cancel and ask Nomi to draft it again.',
+  spendActionNotStartedLocked: 'That did not go through. Nomi has not started generating. This card can\'t be changed right now: click Cancel and tell Nomi what to change, and it will draft it again.',
   spendActionCardChanged: 'The card just changed, so Nomi has not started generating. Check what it shows now, then press again.',
   spendActionShotGone: 'This one is no longer on the card, so Nomi has not started generating it.',
   spendActionReferenceNotInProject: 'One reference image isn\'t in this project\'s assets, so Nomi hasn\'t started generating. Remove it on the card and press again, or pick it again with @ (images from other projects are copied in first).',
 
-  autoModeConfirmTitle: 'Switch to Full auto?',
-  autoModeConfirmBody: 'Nomi will make undoable edits directly and **generation will run without interrupting you each time** — this confirmation is your authorisation for them. Irreversible actions are still confirmed every time.',
-  autoModeConfirmOk: 'Switch to full auto',
+  autoModeConfirmTitle: 'Switch to Auto-run?',
+  autoModeConfirmBody: 'From now on Nomi will **start generating right away, without asking you each time** — this confirmation is your authorisation for it. If one shot keeps failing, or a generation falls outside the plan, it stops and asks you; irreversible actions are still confirmed every time; you can press Stop at any time. Generating from a storyboard plan in your document still asks once per batch.',
+  autoModeConfirmOk: 'Switch to auto-run',
   autoModeConfirmCancel: 'Cancel',
-  autoModeBannerNote: 'Generation runs directly; irreversible still asks',
-  autoModeBannerRevert: 'Back to Auto-edit',
+  autoModeBannerNote: 'Irreversible still asks',
+  autoModeBannerRevert: 'Back to Ask first',
   autoModeBannerDismiss: 'Hide this reminder',
 
   sandboxInactive: 'Commands need confirming one at a time: {{reason}}',

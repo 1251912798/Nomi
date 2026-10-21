@@ -197,7 +197,7 @@ describe("generate 失败时说真话：没发出去就说没发出去", () => {
     await base.operations.create({ operationId: OPERATION_ID, projectId: PROJECT_ID, candidate: shots[0].candidate, shots,
       cardHidden: true, origin: { host: "nomi" }, now: now() });
     base.operations.present = async () => { throw new Error("storyboard_strategy_blocked"); };
-    const result = await callTool(transport("step"), "nomi_generation_plan", { operation: "present", operationId: OPERATION_ID });
+    const result = await callTool(transport("request"), "nomi_generation_plan", { operation: "present", operationId: OPERATION_ID });
     expect(result).toMatchObject({ ok: false, code: "generation_not_started" });
     expect(base.repository.read(PROJECT_ID, OPERATION_ID)!.jobs, "账本里一个 job 都没有").toEqual([]);
   });

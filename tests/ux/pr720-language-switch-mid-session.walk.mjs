@@ -36,8 +36,7 @@ import {
 import {
   CANVAS_PANEL, ASSISTANT_MESSAGE, USER_BUBBLE, COMPOSER_INPUT,
   THINKING_LINE, SUGGESTION, TOOL_RECEIPT, TASK_CARD, ERROR_BAR,
-  openCanvas, sendCanvas, chooseAssistantModel, waitForV4TurnIdle,
-} from './agent-runtime-walk-support.mjs'
+  openCanvas, sendCanvas, chooseAssistantModel, waitForV4TurnIdle, composerText } from './agent-runtime-walk-support.mjs'
 
 import { fileURLToPath } from 'node:url'
 import { canvasAddBar } from './_shell.mjs'
@@ -72,7 +71,7 @@ async function closeSettings(win) {
 async function snapshotState(win) {
   const assistantLocator = win.locator(`${CANVAS_PANEL} ${ASSISTANT_MESSAGE}`)
   const userLocator = win.locator(`${CANVAS_PANEL} ${USER_BUBBLE}`)
-  const draft = await win.locator(`${CANVAS_PANEL} ${COMPOSER_INPUT}`).inputValue()
+  const draft = await composerText(win.locator(`${CANVAS_PANEL} ${COMPOSER_INPUT}`))
   return {
     assistantCount: await assistantLocator.count(),
     userCount: await userLocator.count(),
@@ -171,7 +170,7 @@ try {
   const composerInput = win.locator(`${CANVAS_PANEL} ${COMPOSER_INPUT}`)
   await composerInput.click()
   await composerInput.fill(DRAFT_TEXT)
-  const draftFilled = await composerInput.inputValue()
+  const draftFilled = await composerText(composerInput)
   record('DRAFT-BASELINE', '切换前 composer 草稿已填入且未发送', draftFilled === DRAFT_TEXT, `draft=${draftFilled}`)
   await screenshotSettled(win, { path: path.join(shots, '02-history-and-draft-zh.png') })
 

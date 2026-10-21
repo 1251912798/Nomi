@@ -57,6 +57,7 @@ export async function callMcpLoopbackRpc(input: McpLoopbackRpcCallInput): Promis
         params: input.params,
         planConfirmed: options?.planConfirmed,
         documentConfirmed: options?.documentConfirmed,
+        call: options?.call,
         signal: controller.signal,
       }),
     })

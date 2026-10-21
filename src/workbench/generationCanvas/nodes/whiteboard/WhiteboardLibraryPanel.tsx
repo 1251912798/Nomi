@@ -10,6 +10,7 @@ import { NODE_SCROLL_REGION_CLASS_NAME } from '../nodeScrollRegionClassName'
 export type WhiteboardLibraryTabKey = 'board' | 'results'
 
 type WhiteboardLibraryPanelProps = {
+  compact?: boolean
   activeObject: CanvasObjectTarget | null
   activeTab: WhiteboardLibraryTabKey
   assetPanelItems: AssetPanelItem[]
@@ -58,6 +59,7 @@ function LibraryResultCard({
 }
 
 export function WhiteboardLibraryPanel({
+  compact = false,
   activeObject,
   activeTab,
   assetPanelItems,
@@ -78,14 +80,14 @@ export function WhiteboardLibraryPanel({
   const mergedResultItems = mergeResultLibraryItems(resultItems, canvasImageItems)
   return (
     <aside
-      className="flex h-full min-h-0 min-w-[320px] shrink-0 flex-col overflow-hidden bg-nomi-paper"
-      style={{ flexBasis: 'clamp(340px, 28vw, 500px)' }}
+      className={cn("flex min-h-0 min-w-[320px] shrink-0 flex-col overflow-hidden bg-nomi-paper", compact ? "h-[280px] w-[360px]" : "h-full")}
+      style={compact ? undefined : { flexBasis: 'clamp(340px, 28vw, 500px)' }}
     >
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex min-h-11 shrink-0 items-center gap-2 border-b border-nomi-line-soft px-3 text-body-sm font-medium text-nomi-ink">
-          <IconPhoto size={16} stroke={1.7} className="shrink-0 text-nomi-ink-40" />
-          <span className="min-w-0 flex-1 truncate">{t('generationCommon.whiteboard.library.title')}</span>
-          <div className="ml-auto inline-flex shrink-0 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 p-0.5">
+          {!compact && <IconPhoto size={16} stroke={1.7} className="shrink-0 text-nomi-ink-40" />}
+          {!compact && <span className="min-w-0 flex-1 truncate">{t('generationCommon.whiteboard.library.title')}</span>}
+          <div className="mx-auto inline-flex shrink-0 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 p-0.5">
             {[
               {
                 key: 'board' as const,
@@ -143,7 +145,7 @@ export function WhiteboardLibraryPanel({
                       'group overflow-hidden rounded-nomi-sm border bg-nomi-paper text-caption shadow-nomi-sm',
                       'cursor-grab active:cursor-grabbing',
                       active
-                        ? 'border-nomi-accent bg-nomi-accent-soft text-nomi-accent'
+                        ? 'border-transparent bg-nomi-accent-soft text-nomi-accent'
                         : 'border-nomi-line-soft text-nomi-ink-80 hover:border-nomi-line hover:bg-nomi-ink-05',
                     )}
                     title={t('generationCommon.whiteboard.library.dragBoard')}

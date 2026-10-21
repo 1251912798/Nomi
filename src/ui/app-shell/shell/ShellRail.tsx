@@ -69,8 +69,8 @@ function RailButton({ id, icon: Icon, active, onClick }: { id: ShellDrawerItem; 
           className={cn(
             'flex size-12 shrink-0 flex-col items-center justify-center gap-[3px] rounded-panel border-0 p-0',
             'cursor-pointer transition-[background,color] duration-nomi-fast ease-nomi-fast',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent',
-            active ? 'bg-nomi-accent-soft text-nomi-accent' : 'bg-transparent text-nomi-ink-60 hover:bg-nomi-ink-10 hover:text-nomi-ink',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
+            active ? 'bg-nomi-accent-soft text-nomi-ink' : 'bg-transparent text-nomi-ink-60 hover:bg-nomi-ink-10 hover:text-nomi-ink',
           )}
           aria-label={label}
           aria-pressed={active}
@@ -194,6 +194,19 @@ export function ShellRail({ projectId }: { projectId: string | null }): JSX.Elem
     if (!otherLayer) setOpen(null)
   })
 
+  // 抽屉是浮在内容上的面板：在里面选中了别的文稿 / 方案 = 内容已经换了，抽屉就让开，不盖着刚打开的页面。
+  // 判据只读「当前文稿 / 方案 / 工作模式」三个唯一字段（点原稿 = 回创作模式，点方案 = 进分镜模式），文稿行、方案行、新建 / 复制方案和以后加的入口都自动覆盖，不靠各入口自己回调。
+  const activeDocumentId = useWorkbenchStore((state) => state.activeDocumentId)
+  const activeStoryboardId = useWorkbenchStore((state) => state.activeStoryboardId)
+  const workspaceMode = useWorkbenchStore((state) => state.workspaceMode)
+  const selectionKey = `${activeDocumentId ?? ''}|${activeStoryboardId ?? ''}|${workspaceMode}`
+  const lastSelectionKey = React.useRef(selectionKey)
+  React.useEffect(() => {
+    if (lastSelectionKey.current === selectionKey) return
+    lastSelectionKey.current = selectionKey
+    setOpen(null)
+  }, [selectionKey])
+
   // 切项目 = 收起抽屉（旧探索栏「切项目收起左栏」那一条的新家）。
   React.useEffect(() => { setOpen(null) }, [projectId])
 
@@ -239,7 +252,7 @@ export function ShellRail({ projectId }: { projectId: string | null }): JSX.Elem
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="grid size-7 place-items-center rounded-nomi-sm border-0 bg-transparent p-0 text-nomi-ink-60 transition-colors hover:bg-nomi-ink-10 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent"
+                className="grid size-7 place-items-center rounded-nomi-sm border-0 bg-transparent p-0 text-nomi-ink-60 transition-colors hover:bg-nomi-ink-10 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink"
                 aria-label={t('appShell.rail.collapse')}
                 onClick={() => { setOpen(null); setCollapsed(true) }}
                 data-shell-rail-collapse

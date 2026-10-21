@@ -7,7 +7,7 @@ import { NomiSegmented, WorkbenchButton, WorkbenchIconButton } from '../../../de
 import { cn } from '../../../utils/cn'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
-import { useAllProjectAssets } from '../../assets/useAllProjectAssets'
+import { invalidateAllProjectAssets } from '../../assets/useAllProjectAssets'
 import AssetPicker from '../../assets/AssetPicker'
 import AssetPickerPopover from '../../assets/AssetPickerPopover'
 import { ClipEmptyTry } from '../quickActions/NodeTryList'
@@ -81,7 +81,6 @@ export default function ClipNode({ node: rawNode, selected, readOnly = false }: 
     .filter((edge) => edge.target === node.id)
     .map((edge) => state.nodes.find((candidate) => candidate.id === edge.source))
     .filter((candidate): candidate is GenerationCanvasNode => Boolean(candidate?.result?.url && (candidate.result.type === 'image' || candidate.result.type === 'video'))))
-  const { refresh } = useAllProjectAssets()
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [playheadFrame, setPlayheadFrame] = React.useState(0)
   const [playing, setPlaying] = React.useState(false)
@@ -246,14 +245,14 @@ export default function ClipNode({ node: rawNode, selected, readOnly = false }: 
         await addAsset(result.asset, context)
         context.assertCurrent()
         setRetryUploadFile(null)
-        refresh()
+        invalidateAllProjectAssets()
       } catch (error) {
         if (isProjectExecutionContextCurrent(context) && !isProjectImportCancellation(error)) setUploadError(t('generationCommon.clipNode.uploadFailed'))
       } finally {
         if (isProjectExecutionContextCurrent(context)) setUploading(false)
       }
     })
-  }, [addAsset, refresh, t])
+  }, [addAsset, t])
 
   // 素材（画布节点的拖到时间轴把手 / 素材库）拖进轴：在落点插入。别的项目的素材先复制进本项目（同全局时间轴的唯一关口）。
   const dropMedia = React.useCallback((payload: ClipDropPayload, boundaryFrame: number) => {
@@ -578,7 +577,7 @@ export default function ClipNode({ node: rawNode, selected, readOnly = false }: 
       ) : null}
 
       <div
-        className={cn('generation-canvas-v2-node__preview flex h-full w-full flex-col overflow-hidden rounded-nomi border bg-nomi-paper shadow-nomi-md', selected ? 'ring-2 ring-nomi-accent' : 'ring-1 ring-inset ring-nomi-line')}
+        className={cn('generation-canvas-v2-node__preview flex h-full w-full flex-col overflow-hidden rounded-nomi border bg-nomi-paper shadow-nomi-md', 'ring-1 ring-inset ring-nomi-line')}
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           if (event.target === event.currentTarget) closeEditing()

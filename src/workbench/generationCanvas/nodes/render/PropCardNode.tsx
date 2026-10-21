@@ -16,6 +16,7 @@ import { useNodeImageUpload } from '../../adapters/useNodeImageUpload'
 import { EditableNodeTitle } from './EditableNodeTitle'
 import { useNodeMediaMeasurement } from '../useNodeMediaMeasurement'
 import { DeferredNodeImage } from '../DeferredNodeMedia'
+import { canvasImageSourceOf } from '../canvasImageSource'
 import { resolveNodeVisualSize } from '../nodeSizing'
 
 type Props = {
@@ -27,7 +28,9 @@ function PropCardNodeImpl({ node }: Props): JSX.Element {
   const mediaMeasurement = useNodeMediaMeasurement(node)
   const meta = readPropMeta(node)
   const usageCount = useNodeUsageCount(node.id, node.title)
-  const hasImage = Boolean(node.result?.url)
+  // 卡片图也只挂画布预览（原图只经被计数的缺失分支，见 canvasImageSource）。
+  const imageSource = canvasImageSourceOf(node.result)
+  const hasImage = Boolean(imageSource)
   const handleUpload = useNodeImageUpload(node.id, 'prop-card-upload')
 
   const hasOwner = Boolean(meta.ownedBy)
@@ -39,7 +42,7 @@ function PropCardNodeImpl({ node }: Props): JSX.Element {
       <div className={cn('relative w-full flex-1 min-h-0 overflow-hidden', !hasImage && EMPTY_SURFACE_CLASS)}>
         {hasImage ? (
           <DeferredNodeImage
-            src={node.result!.url!}
+            src={imageSource!}
             onLoad={mediaMeasurement.onImageLoad}
             alt={node.title || ''}
             className="w-full h-full object-contain object-center select-none pointer-events-none"

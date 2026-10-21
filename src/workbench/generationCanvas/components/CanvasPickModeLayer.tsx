@@ -14,8 +14,10 @@ export function CanvasPickModeLayer(): JSX.Element | null {
   const active = useCanvasPickModeStore((state) => state.request !== null)
   React.useEffect(() => {
     if (!active) return undefined
-    // 按下那一下定下结果；同一次点击后面的 mouseup / click 一起吞掉，免得落到卡上又选中 / 拖动它。
+    // Keep the pick owner alive through the native gesture: exiting on pointerdown
+    // unmounts the guard before compatibility mousedown/click can be swallowed.
     let swallowUntilClick = false
+    let pendingNodeId: string | undefined
     const inBar = (target: EventTarget | null) => target instanceof Element && Boolean(target.closest('[data-canvas-pick-bar]'))
     const onPointerDown = (event: PointerEvent) => {
       if (inBar(event.target)) return
@@ -27,15 +29,18 @@ export function CanvasPickModeLayer(): JSX.Element | null {
       event.preventDefault()
       event.stopPropagation()
       swallowUntilClick = true
-      const nodeId = target.closest<HTMLElement>('.react-flow__node[data-id]')?.dataset.id
-      if (nodeId) pickCanvasNode(nodeId)
-      else cancelCanvasPickMode()
+      pendingNodeId = target.closest<HTMLElement>('.react-flow__node[data-id]')?.dataset.id
     }
     const swallow = (event: Event) => {
       if (!swallowUntilClick || inBar(event.target)) return
       event.preventDefault()
       event.stopPropagation()
-      if (event.type === 'click') swallowUntilClick = false
+      if (event.type === 'click') {
+        swallowUntilClick = false
+        if (pendingNodeId) pickCanvasNode(pendingNodeId)
+        else cancelCanvasPickMode()
+        pendingNodeId = undefined
+      }
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (!handleCanvasPickModeKeyDown(event)) return

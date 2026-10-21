@@ -1,5 +1,5 @@
 import React, { type JSX } from 'react'
-import { EditorContent, type Editor, type JSONContent } from '@tiptap/react'
+import { EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import { Extension } from '@tiptap/core'
@@ -10,28 +10,21 @@ import { TIPTAP_PLACEHOLDER_CLASSES } from './tiptapPlaceholderClasses'
 import { AssetMention } from './AssetMentionNode'
 import { createAssetMentionSuggestion, type MentionSelection } from './AssetMentionSuggestion'
 import type { MentionSuggestionItem, MentionUploadControls } from './AssetMentionSuggestionList'
-import { promptToContent } from './promptEditorContent'
+import { promptToContent, contentToPrompt } from './promptEditorContent'
 import { createControlledEditorSync } from '../common/controlledEditorSync'
 import { useNomiTiptapEditor } from '../common/useNomiRichTextEditor'
-import { encodeMention } from './promptMentions'
 import { promptRangeToDocRanges, promptRunsFromDocument, type PromptEditorSegment } from './promptEditorSkeleton'
 
 // 生成节点的描述框(规范 §4):Tiptap 编辑器替换原 textarea —— 句中可放 18px 缩略图 chip(@ 内联媒体引用),
 // 内容与 node.prompt 字符串双向同步(持久化用 @[asset:url] 标记,见 promptMentions)。
 // 纯文字 prompt 完全等价于以前的 textarea 体验;只有插入 chip 时才出现内联媒体块。
 
-// Tiptap doc → node.prompt 字符串(assetMention → @[asset:url] 标记;段落 → \n)。
-function contentToPrompt(editor: Editor): string {
-  const json = editor.getJSON()
-  const paragraphs = (json.content || []).map((para: JSONContent) =>
-    (para.content || []).map((n: JSONContent) => (n.type === 'assetMention' ? encodeMention(String(n.attrs?.url || '')) : (n.text || ''))).join(''),
-  )
-  return paragraphs.join('\n')
-}
-
-type PromptEditorProps = {
+export type PromptEditorProps = {
+  inputAttributes?: Record<string, string>
+  onKeyDownCapture?: React.KeyboardEventHandler<HTMLDivElement>
+  onFocus?: () => void
   value: string
-  onChange: (next: string) => void
+  onChange: (next: string, previous?: string) => void
   placeholder?: string
   /** 可编辑区的可访问名（提示词框是主输入面，读屏必须报得出它属于哪一镜）。 */
   ariaLabel?: string
@@ -46,8 +39,8 @@ type PromptEditorProps = {
   mentionCandidates?: string[]
   /** All media references used to keep chip labels type-aware. */
   mentionReferences?: { url: string; kind: 'image' | 'video' | 'audio'; index: number }[]
-  /** 打 @ 时按 query 给候选（当前参考 / 画布 / 素材库三组）。缺省 = 不开 @ 面板。 */
-  mentionSearch?: (query: string) => MentionSuggestionItem[]
+  /** 打 @ 时按 query 给候选（当前参考 / 画布 / 素材库三组）。缺省 = 不开 @ 面板。可以异步（素材库打了 @ 才去取）。 */
+  mentionSearch?: (query: string) => MentionSuggestionItem[] | Promise<MentionSuggestionItem[]>
   /** 选中候选：负责真的建立引用（建边/落上传槽），返回最终 chip 编号；返回 null = 没插成。 */
   onMentionSelect?: (item: MentionSuggestionItem) => MentionSelection
   /** @ 面板沿用 composer 附件上传管线；上传完成后作为 upload 来源重新出现在列表。 */
@@ -94,7 +87,7 @@ function createPromptSkeletonPlugin(options: {
   })
 }
 
-export default function PromptEditor({ value, onChange, placeholder, ariaLabel, className, onBlur, onReady, mentionCandidates, mentionReferences, mentionSearch, onMentionSelect, mentionUpload, editable, promptSegments, onPromptSegmentClick }: PromptEditorProps): JSX.Element {
+export default function PromptEditor({ value, onChange, placeholder, ariaLabel, className, onBlur, onReady, mentionCandidates, mentionReferences, mentionSearch, onMentionSelect, mentionUpload, editable, promptSegments, onPromptSegmentClick, inputAttributes, onKeyDownCapture, onFocus }: PromptEditorProps): JSX.Element {
   const onChangeRef = React.useRef(onChange)
   React.useEffect(() => { onChangeRef.current = onChange }, [onChange])
   // 有序参考 url 也留一份 ref：外部 value 变化时 setContent 要用它给 chip 编号（那个 effect 不该依赖它重跑）。
@@ -155,8 +148,8 @@ export default function PromptEditor({ value, onChange, placeholder, ariaLabel, 
   const initialContentRef = React.useRef<ReturnType<typeof promptToContent> | null>(null)
   if (!initialContentRef.current) initialContentRef.current = promptToContent(value, mentionReferences ?? mentionCandidates)
   const editorProps = React.useMemo(
-    () => ({ attributes: { class: 'generation-canvas-v2-node__prompt-input outline-0', ...(ariaLabel ? { 'aria-label': ariaLabel } : {}) } }),
-    [ariaLabel],
+    () => ({ attributes: { class: 'generation-canvas-v2-node__prompt-input outline-0', ...(ariaLabel ? { 'aria-label': ariaLabel } : {}), ...inputAttributes } }),
+    [ariaLabel, inputAttributes],
   )
 
   const editor = useNomiTiptapEditor({
@@ -167,13 +160,19 @@ export default function PromptEditor({ value, onChange, placeholder, ariaLabel, 
     // 仅真正改变 prompt 字符串的文档事务向 owner 回写；胶囊编号事务（串不变）不回写，不覆盖外部 plan 编辑。
     onUpdate: ({ editor: current, transaction }) => {
       if (!transaction.docChanged) return
-      const next = contentToPrompt(current)
-      if (sync.emit(next)) onChangeRef.current(next)
+      const next = contentToPrompt(current.getJSON())
+      if (sync.emit(next)) onChangeRef.current(next, contentToPrompt(transaction.before.toJSON()))
     },
   })
 
   React.useEffect(() => {
-    if (editor && onReady) onReady(editor)
+    if (!editor || !onReady) return
+    // TipTap can expose its Editor before React has mounted the ProseMirror view.
+    // Notify every host only at the shared mounted lifecycle boundary.
+    const ready = () => { if (!editor.isDestroyed) onReady(editor) }
+    if (editor.isInitialized) ready()
+    else editor.on('create', ready)
+    return () => { editor.off('create', ready) }
   }, [editor, onReady])
 
   // placeholder 变了要**主动重画一次**：装饰只在有事务时重算，而「加了一张参考图」这类外部变化
@@ -237,8 +236,12 @@ export default function PromptEditor({ value, onChange, placeholder, ariaLabel, 
     <EditorContent
       editor={editor}
       onBlur={onBlur}
+      onFocus={onFocus}
+      onKeyDownCapture={onKeyDownCapture}
       data-prompt-box="true"
-      className={cn('text-nomi-ink text-body-sm leading-[1.7] [&_.ProseMirror]:outline-0 [&_.ProseMirror]:min-h-[38px] [&_.ProseMirror_p]:m-0', TIPTAP_PLACEHOLDER_CLASSES, '[&_.storyboard-prompt-segment]:border-b [&_.storyboard-prompt-segment]:border-dashed [&_.storyboard-prompt-segment]:border-nomi-ink-30 [&_.storyboard-prompt-segment]:cursor-pointer [&_.storyboard-prompt-segment:hover]:border-nomi-accent [&_.storyboard-prompt-segment:hover]:text-nomi-ink', className)}
+      aria-readonly={editable === false}
+      data-placeholder={placeholder}
+      className={cn('text-nomi-ink text-body-sm leading-[1.7] [&_.ProseMirror]:outline-0 [&_.ProseMirror]:min-h-[38px] [&_.ProseMirror_p]:m-0', TIPTAP_PLACEHOLDER_CLASSES, '[&_.storyboard-prompt-segment]:border-b [&_.storyboard-prompt-segment]:border-dashed [&_.storyboard-prompt-segment]:border-nomi-ink-30 [&_.storyboard-prompt-segment]:cursor-pointer [&_.storyboard-prompt-segment:hover]:border-nomi-ink-60 [&_.storyboard-prompt-segment:hover]:text-nomi-ink', className)}
     />
   )
 }

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '../../utils/cn'
 import AssetTile, { AssetAddTile } from './AssetTile'
 import AssetPicker from './AssetPicker'
+import AssetReferenceButton from './AssetReferenceButton'
 import AssetPickerPopover from './AssetPickerPopover'
 import type { AssetKind, AssetRef } from './assetTypes'
 
@@ -47,6 +48,7 @@ type AssetReferenceProps = {
   onReorder?: (slot: AssetSlot, from: number, to: number) => void
   /** picker 里「浏览全部 →」打开素材面板。 */
   onBrowseAll?: () => void
+  onPickOnCanvas?: (slots: AssetSlot[]) => void
   /** 这个数组槽的第一张缩略图标「首帧」（image_ref[0] 里有 first_frame 连线时才传；见 firstFrameTaggedSlot）。 */
   firstFrameSlotKey?: string
 }
@@ -66,7 +68,7 @@ function kindFromFile(file: File): AssetKind {
 
 export default function AssetReference({
   slots, remainingCapacity, capacityMessage, valuesByKey, occupiedByKey, projectId, openSlotKey, uploadingSlotKey,
-  onTogglePicker, onPick, onUpload, onRemove, onInsertMention, onReorder, onBrowseAll, firstFrameSlotKey,
+  onTogglePicker, onPick, onUpload, onRemove, onInsertMention, onReorder, onBrowseAll, onPickOnCanvas, firstFrameSlotKey,
 }: AssetReferenceProps): JSX.Element {
   const { t } = useTranslation()
   const dragRef = React.useRef<{ key: string; index: number } | null>(null)
@@ -99,7 +101,14 @@ export default function AssetReference({
   const routeByKind = (kind: AssetKind): AssetSlot => arraySlots.find((s) => s.accept === kind) ?? arraySlots[0]
 
   return (
-    <div className={cn('flex flex-col gap-[8px]')}>
+    // 这一排所有虚线框按**框本身**顶对齐（items-start），标签浮在框上方、不占流内高度；
+    // 有标签时整排顶部留一格标签位（pt-4），否则标签会把有标签的框顶低、和鼠标框错开。
+    <div data-reference-row="true" className={cn('flex flex-wrap items-start gap-[8px]', labelSingles && 'pt-4')}>
+      <div className="relative shrink-0">
+        <AssetReferenceButton disabled={Boolean(uploadingSlotKey)}
+          title={totalFull ? capacityMessage : undefined}
+          onClick={() => onPickOnCanvas?.(slots)} />
+      </div>
       {/* 单帧槽(首/尾帧、源视频):横排并列,各一个方块;≥2 时(首尾帧)显小标签区分 */}
       {singleSlots.length > 0 ? (
         <div className={cn('flex flex-wrap items-start gap-[8px]')}>
@@ -108,8 +117,8 @@ export default function AssetReference({
             const url = typeof raw === 'string' ? raw : ''
             const isOpen = openSlotKey === slot.key
             return (
-              <div key={slot.key} data-asset-slot={slot.key} className={cn('relative flex flex-col gap-[4px]')}>
-                {labelSingles ? <span className={cn('text-nomi-ink-60 text-micro leading-none')}>{slot.label}</span> : null}
+              <div key={slot.key} data-asset-slot={slot.key} className={cn('relative')}>
+                {labelSingles ? <span className={cn('absolute bottom-full mb-[4px] whitespace-nowrap text-nomi-ink-60 text-micro leading-none')}>{slot.label}</span> : null}
                 {url
                   ? <AssetTile asset={displayRef(url, slot.accept, slot.label)} onRemove={() => onRemove(slot, 0)} />
                   : <AssetAddTile label={t('assetLibrary.addNamed', { label: slot.label })} selected={isOpen} onClick={() => onTogglePicker(slot.key)} />}

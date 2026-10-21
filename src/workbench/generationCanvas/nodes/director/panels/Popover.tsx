@@ -165,7 +165,7 @@ export function PopoverItem({ children, onClick, disabled, active, title }: { ch
       type="button"
       className={cn(
         'flex w-full items-center gap-2 rounded-nomi-sm px-2 py-1.5 text-left text-body-sm text-nomi-ink hover:bg-workbench-hover disabled:cursor-not-allowed disabled:opacity-50',
-        active ? 'bg-nomi-accent-soft text-nomi-accent' : '',
+        active ? 'bg-nomi-accent-soft text-nomi-ink' : '',
       )}
       onClick={onClick}
       disabled={disabled}

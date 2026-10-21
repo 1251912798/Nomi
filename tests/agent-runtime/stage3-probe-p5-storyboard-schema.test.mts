@@ -30,12 +30,15 @@ const TOOL = 'draft_shots';
 // 2026-09-21 重量：core **777**。原来的 1_220 量的是「所有作者字段都摊在 shot 上」那个形状；
 // 作者字段收进 `storyboard` 子树之后，剩下的 envelope 本身就只有这么大。棘轮只减不增，
 // 所以按今天真实的数收紧（777 + 8 的余量），别让一个已经不成立的上限继续当挡板。
-const CORE_TOKEN_BUDGET = 785;
+// 2026-10-18 +22：每镜新增 `variantId`（实测 core 774→796，total 1703→1725；字段本身含描述 ≈ 22 tokens）。list_models 早就把变体
+// （`variants`）投给了模型，可这里没有地方写——真走查里 deepseek-v4-pro 只好把 `variant: "fast"` 塞进 parameters，被起草校验当未知参数拒掉。
+// 为什么不能更便宜：变体是身份的一部分（和 modelId 同级），不是参数；描述已压到 5 个词。按看得见的方式记账，余量留 8。
+const CORE_TOKEN_BUDGET = 804;
 // 2026-09-20: the original editor's complete author fields are now writable by this
 // tool. Preserve the old core cap separately; explicitly account for the new subtree.
 // This is a +486 total-cap change, not an unchanged budget. No schema field, validator,
 // description or estimator is removed to fit. See core-a-restart.md, P5 contract review.
-const FULL_TOKEN_BUDGET = 1_706;
+const FULL_TOKEN_BUDGET = 1_733; // total 实测 1_725（+22，variantId，见上）+ 余量 8
 
 type DraftPublishedSchema = {
   properties: { shots: { items: { properties: Record<string, unknown> } } };

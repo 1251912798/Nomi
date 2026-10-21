@@ -4,6 +4,7 @@ import '../../../src/styles/index.css'
 import { NomiAppProviders } from '../../../src/NomiAppProviders'
 import { NomiColorSchemeProvider } from '../../../src/theme/NomiColorSchemeProvider'
 import NodeParameterControls from '../../../src/workbench/generationCanvas/nodes/NodeParameterControls'
+import { useComposerControlProps } from './composerControlProps'
 import { useGenerationCanvasStore } from '../../../src/workbench/generationCanvas/store/generationCanvasStore'
 
 // The real catalog, real store and real controls; no network generation calls.
@@ -17,10 +18,11 @@ useGenerationCanvasStore.getState().restoreSnapshot({
 })
 function Stage() {
   const node = useGenerationCanvasStore(state => state.nodes[0])
+  const controlProps = useComposerControlProps(node, 'contract-video')
   return <main className="min-h-screen bg-nomi-bg p-8 text-nomi-ink">
     <div className="w-fit rounded-nomi-lg border border-nomi-line bg-nomi-paper p-4" data-contract-stage>
-      <NodeParameterControls node={node} section="references" />
-      <NodeParameterControls node={node} section="parameters" />
+      <NodeParameterControls node={node} section="references" {...controlProps} />
+      <NodeParameterControls node={node} section="parameters" {...controlProps} />
     </div>
   </main>
 }

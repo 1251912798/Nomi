@@ -1,0 +1,29 @@
+{
+  "id": "storyboard-plan-open",
+  "feature": "在创作页点开一份 320 镜头的分镜方案（冷启后第一次打开，量到首屏可编辑、逻辑总数 320；停表后另验末镜够得着）",
+  "script": "tests/perf/document-switch-bench.mjs",
+  "args": [
+    "--scenario",
+    "plan-open"
+  ],
+  "scale": "160 份文稿、320 个分镜镜头",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 1000,
+  "baseline": {
+    "median": 18219.5,
+    "p95": 18692.7,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  },
+  "budgetDebt": {
+    "owner": "P-plan",
+    "state": "assigned",
+    "note": "320 镜头方案一次挂满 320 行完整镜头行和编辑器，逐行布局读取叠加（C-trace 报告（协调状态目录 reports/C-trace.md））；#1193 修的是切文稿，打开方案本身没修",
+    "since": "2026-10-16"
+  }
+}

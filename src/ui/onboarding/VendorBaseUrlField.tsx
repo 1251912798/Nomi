@@ -111,7 +111,7 @@ export function VendorBaseUrlField({
             autoFocus
             className={cn(
               'min-w-[10rem] flex-[1_1_10rem] h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2.5',
-              'text-body-sm text-nomi-ink placeholder:text-nomi-ink-40 outline-none focus:border-nomi-accent',
+              'text-body-sm text-nomi-ink placeholder:text-nomi-ink-40 outline-none focus:border-nomi-ink-40',
             )}
           />
           <DecisionBar

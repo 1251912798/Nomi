@@ -185,7 +185,7 @@ function WorkflowEditDialog({
 
   const inputClass = cn(
     'w-full rounded-nomi-sm border border-nomi-line bg-nomi-paper px-3 py-2 text-body-sm text-nomi-ink',
-    'placeholder:text-nomi-ink-40 focus:border-nomi-accent focus:outline-none',
+    'placeholder:text-nomi-ink-40 focus:border-nomi-ink-40 focus:outline-none',
   )
 
   return (

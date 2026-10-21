@@ -11,6 +11,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
+import { openModelSettings, openCustomApiWizard } from './_shell.mjs'
 import { screenshotSettled } from './_assert.mjs'
 
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/local-gateway')
@@ -162,17 +163,12 @@ async function dumpClickables(label) {
 }
 
 // 1. 进入模型接入
-await clickFirst([/接入模型/, /模型接入/], '接入模型入口')
+await openModelSettings(win, { label: '接入模型入口' })
 await snap(win, 'model-access-panel')
 await dumpClickables('面板打开')
 
-// 2. 展开「接入生成模型」分组
-await clickFirst([/接入生成模型/], '展开接入生成模型')
-await snap(win, 'expanded-generation-models')
-await dumpClickables('展开后')
-
-// 3. 选「自定义 / 其他」走自建网关
-await clickFirst([/添加模型 ?\/ ?中转站/, /添加模型/, /中转站/, /自定义/], '添加模型 / 中转站')
+// 2. 选「自定义 API / 中转站」走自建网关（有已接入项时它收在「其他接入方式」里，出口里会先展开）
+await openCustomApiWizard(win, { label: 'custom API wizard' })
 await snap(win, 'add-model-dialog')
 await dumpClickables('对话框')
 
@@ -238,17 +234,17 @@ console.log(`  屏幕含 "docs.<数字>" 畸形域名: ${docsHostLeak}`)
 
 // 失败不能再是准入闸：故意失败的图片模型仍需启用、出现在 kind=image 列表；
 // 同时，排在它后面的视频模型必须完成验证并落下可执行 mapping。
-const catalog = await win.evaluate((baseUrl) => {
+const catalog = await win.evaluate(async (baseUrl) => {
   const bridge = window.nomiDesktop.modelCatalog
-  const vendor = (bridge.listVendors() || []).find((item) => item.baseUrlHint === baseUrl)
+  const vendor = ((await bridge.listVendors()) || []).find((item) => item.baseUrlHint === baseUrl)
   if (!vendor) return { vendor: null, models: [], imageModels: [], videoModels: [], mappings: [] }
   const own = (rows) => (rows || []).filter((item) => item.vendorKey === vendor.key)
   return {
     vendor,
-    models: bridge.listModels({ vendorKey: vendor.key }) || [],
-    imageModels: own(bridge.listModels({ kind: 'image', enabled: true })),
-    videoModels: own(bridge.listModels({ kind: 'video', enabled: true })),
-    mappings: bridge.listMappings({ vendorKey: vendor.key, enabled: true }) || [],
+    models: (await bridge.listModels({ vendorKey: vendor.key })) || [],
+    imageModels: own((await bridge.listModels({ kind: 'image', enabled: true }))),
+    videoModels: own((await bridge.listModels({ kind: 'video', enabled: true }))),
+    mappings: (await bridge.listMappings({ vendorKey: vendor.key, enabled: true })) || [],
   }
 }, gatewayBase)
 fs.writeFileSync(path.join(shotsDir, 'catalog.json'), JSON.stringify(catalog, null, 2))

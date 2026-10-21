@@ -31,7 +31,7 @@ fs.mkdirSync(shotsDir, { recursive: true })
 const dirs = { userDataDir: path.join(root, 'user-data'), settingsDir: path.join(root, 'settings'), projectsDir: path.join(root, 'projects'), capabilityDir: path.join(root, 'capability') }
 for (const dir of Object.values(dirs)) fs.mkdirSync(dir, { recursive: true })
 const redact = (text) => String(text).split(API_KEY).join('[REDACTED]')
-const env = { VITE_DEV_SERVER_URL: rendererUrl, NOMI_DIRECTOR_3DBOX: 'true', NOMI_DISABLE_AUTO_UPDATE: '1' }
+const env = { VITE_DEV_SERVER_URL: rendererUrl, NOMI_DISABLE_AUTO_UPDATE: '1' }
 const initialLocalStorage = {
   'nomi:locale:v1': 'zh-CN', 'nomi-color-scheme': 'dark',
   'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen', 'nomi:canvas-gesture-hint:v1': 'seen', __nomiE2E: '1',
@@ -85,7 +85,7 @@ const spendCardVisible = async () => {
  */
 async function sendAndWait(message, { until, timeoutMs, stopOnSpendCard = false }) {
   const before = (await transcript()).length
-  await win.locator('textarea[data-v4-control="input"]').first().fill(message)
+  await win.locator('[data-v4-control="input"]').first().fill(message)
   await win.locator('[data-v4-control="send"]').first().click()
   const started = Date.now()
   const deadline = started + timeoutMs
@@ -119,7 +119,7 @@ try {
   // 2026-10-08：空画布的「+ 新建画面」换成一排任务卡（拍板 ③），建图片卡点「图片」那张。
   await win.locator('[data-empty-canvas-tasks] [data-add-intent="image"]').first().click({ timeout: stationTimeout({ operations: 2 }) }).catch(() => {})
   await win.waitForFunction(() => Boolean(window.__nomiCanvasStore), null, { timeout: stationTimeout({ operations: 2 }) })
-  const input = win.locator('textarea[data-v4-control="input"]').first()
+  const input = win.locator('[data-v4-control="input"]').first()
   await ensureAgentPanelOpen(win)
   await input.waitFor({ state: 'visible', timeout: stationTimeout({ operations: 2 }) })
   // 面板里的「帮 Nomi 变好」征询卡：选不分享（隐私优先）

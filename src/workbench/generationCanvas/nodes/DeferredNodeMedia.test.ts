@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   __resetDeferredNodeMediaQueueForTests,
   __setDeferredNodeMediaLimitForTests,
+  deferredNodeMediaQuietForMs,
   isDeferredVideoFrameReady,
   observeDeferredNodeMediaVisibility,
   requestDeferredNodeMediaSlot,
@@ -195,3 +196,17 @@ describe('deferred node media queue', () => {
     expect(onVisibilityChange).toHaveBeenCalledWith(true)
   })
 })
+
+describe('deferredNodeMediaQuietForMs（后台补预览据它让路）', () => {
+  afterEach(() => __resetDeferredNodeMediaQueueForTests())
+
+  it('有图在载入 → 0；释放后从释放那一刻起算安静时长', () => {
+    let release!: () => void
+    requestDeferredNodeMediaSlot('image', (r) => { release = r })
+    expect(deferredNodeMediaQuietForMs()).toBe(0)
+    const releasedAt = Date.now()
+    release()
+    expect(deferredNodeMediaQuietForMs(releasedAt + 1500)).toBeGreaterThanOrEqual(1400)
+  })
+})
+

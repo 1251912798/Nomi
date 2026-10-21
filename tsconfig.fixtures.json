@@ -1,0 +1,11 @@
+{
+  // 浏览器测试夹具（tests/ux/fixtures/*.tsx）的类型检查入口（2026-10-18）。
+  //
+  // 为什么单独一份：这些夹具由 vite 直接按浏览器代码加载、由 Playwright 驱动，不在 src/main.tsx 的 import 图里，
+  // 也不在 tsconfig.test.json 里——此前没有任何工具核它们的类型。生产组件改了必传 props（#1231 给
+  // NodeParameterControls 加 graph / modelOptionsState / readMappings）时，#1241 新加的夹具照旧不传，
+  // 两个 PR 各自绿、合在一起页面直接崩，main 的 Unit 红。同类夹具当时一共 16 处类型错。
+  // 与 tsconfig.devlab.json 同一个做法：继承应用的 tsconfig.json，只换 include。
+  "extends": "./tsconfig.json",
+  "include": ["tests/ux/fixtures/*.tsx", "src/vendor/**/*.d.ts", "src/rawText.d.ts"]
+}

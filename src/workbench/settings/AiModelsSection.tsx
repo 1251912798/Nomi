@@ -69,8 +69,10 @@ export function AiModelsSection({
       const bridge = getDesktopBridge()
       const described = bridge?.assetTransport?.describeChannels()
       setChannels(Array.isArray(described) ? described : [])
-      const values = bridge?.modelCatalog.listVendors() as SettingsProviderInput[] | undefined
-      setProviders(Array.isArray(values) ? values : [])
+      // 目录读是异步 IPC；读失败保留上一份（不清 providers）。
+      void Promise.resolve(bridge?.modelCatalog.listVendors())
+        .then((values) => { if (Array.isArray(values)) setProviders(values as SettingsProviderInput[]) })
+        .catch(() => undefined)
       const relayApi = bridge?.settings?.assetRelay
       if (relayApi) {
         void relayApi.get()
@@ -259,7 +261,7 @@ export function AiModelsSection({
                   onChange={(event) => setRelayEndpoint(event.currentTarget.value)}
                   placeholder={t('settings.ai.upload.customRelay.endpointPlaceholder')}
                   aria-label={t('settings.ai.upload.customRelay.endpoint')}
-                  className="h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-caption text-nomi-ink outline-none focus:border-nomi-accent"
+                  className="h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-caption text-nomi-ink outline-none focus:border-nomi-ink-40"
                 />
               </label>
               <label className="grid gap-1">
@@ -271,7 +273,7 @@ export function AiModelsSection({
                   onChange={(event) => setRelayToken(event.currentTarget.value)}
                   placeholder={relayHasToken ? t('settings.ai.upload.customRelay.tokenSaved') : t('settings.ai.upload.customRelay.tokenPlaceholder')}
                   aria-label={t('settings.ai.upload.customRelay.token')}
-                  className="h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-caption text-nomi-ink outline-none focus:border-nomi-accent"
+                  className="h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-caption text-nomi-ink outline-none focus:border-nomi-ink-40"
                 />
               </label>
               <div className="flex flex-wrap items-center gap-2">

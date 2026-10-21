@@ -5,6 +5,7 @@ import {
   clientXToDesignPx,
   clipHandleHitWidth,
   clipHitPadWidth,
+  clipLabelInset,
   CLIP_MIN_CLICK_PX,
   edgeScrollStep,
   playheadHitWidth,
@@ -34,6 +35,18 @@ describe('clip node gesture model', () => {
           const floor = Math.min(CLIP_GESTURE_MIN_HIT_PX, (clipWidth * zoom) / 2)
           expect(screenWidth, `selected ${selected} zoom ${zoom} clip ${clipWidth}`).toBeGreaterThanOrEqual(floor - 1e-9)
           expect(screenWidth).toBeLessThanOrEqual(CLIP_HANDLE_MAX_HIT_PX + 1e-9)
+        }
+      }
+    }
+  })
+
+  it('label inset clears the handle in every state (idle / hover / selected), at every zoom and clip width', () => {
+    // matrix 矩阵（缩放 × 片段宽 × 选中态）：标签两侧内边距读 clipLabelInset，必须不小于该片段任何状态下的手柄宽——否则手柄压住标签首字符（"Image" 显示成 "mage"）。
+    for (const zoom of [0.2, 0.5, 1, 1.5, 3]) {
+      for (const clipWidth of [10, 30, 42, 52, 120, 400]) {
+        const inset = clipLabelInset({ clipWidth, canvasZoom: zoom })
+        for (const selected of [true, false]) {
+          expect(inset, `zoom ${zoom} clip ${clipWidth} selected ${selected}`).toBeGreaterThanOrEqual(clipHandleHitWidth({ clipWidth, canvasZoom: zoom, selected }) - 1e-9)
         }
       }
     }

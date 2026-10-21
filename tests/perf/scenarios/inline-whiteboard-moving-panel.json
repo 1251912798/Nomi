@@ -1,0 +1,26 @@
+{
+  "id": "inline-whiteboard-moving-panel",
+  "feature": "Inline whiteboard: size panel open while the canvas zooms by wheel (panel straying from its anchor, counted in frames)",
+  "script": "tests/ux/whiteboard-perf.probe.mjs",
+  "args": [
+    "--scene",
+    "moving-panel",
+    "--repo-media"
+  ],
+  "scale": "2 nodes, 1 editor, 16 wheel ticks (8 out, 8 in) 35 ms apart; the repository real AI shot (640x360), not the 4K library clip; frames where the panel is more than 2 px from where its anchor puts it",
+  "metrics": [
+    "panelFramesOff"
+  ],
+  "budget": 20,
+  "budgetStatus": "proposed",
+  "budgetBasis": "Regression guard for removing per-frame polling: the polling implementation and the IntersectionObserver-only one both measured 12 of ~230 frames off; 20 is about 8% of frames, tolerating machine noise.",
+  "baseline": {
+    "median": 12,
+    "p95": 12.8,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-17",
+    "commit": "a7cdc4664",
+    "noisy": true
+  }
+}

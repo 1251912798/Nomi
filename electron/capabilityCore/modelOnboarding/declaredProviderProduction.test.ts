@@ -20,6 +20,16 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { MCP_TOOL_RESOLVER } from "../mcpToolCatalog";
+import { validateToolArguments } from "../mcpProtocol";
+import { dispatch } from "../dispatcher";
+import { runTask } from "../../runtime";
+import { createLiveGenerationRuntime } from "../liveGenerationRuntime";
+import { readCatalog } from "../../catalog/catalogStore";
+import { compileExecutionContract } from "../executionContract";
+import { createGenerationRuntimeAdapter } from "../generationRuntimeAdapter";
+import { createGenerationOutputMaterializer } from "../generationOutputMaterializer";
+
 vi.mock("electron", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
@@ -94,10 +104,6 @@ describe("issue #975 · 声明登记的自定义供应商进入正式生成", ()
   });
 
   async function mcp(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const { MCP_TOOL_RESOLVER } = await import("../mcpToolCatalog");
-    const { validateToolArguments } = await import("../mcpProtocol");
-    const { dispatch } = await import("../dispatcher");
-    const { runTask } = await import("../../runtime");
     const tool = MCP_TOOL_RESOLVER.resolve(name)!;
     const invalid = validateToolArguments(tool.name, tool.inputSchema, args);
     if (invalid) throw invalid;
@@ -106,12 +112,11 @@ describe("issue #975 · 声明登记的自定义供应商进入正式生成", ()
       : tool.method;
     // 「全自动」档：试跑的钱由档位代答（同 acceptanceLoopback 第二条），不需要一个 Nomi 窗口。
     return await dispatch(method, tool.build(args) as Record<string, unknown>, {
-      origin: { host: "codex" }, runTask, approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
+      origin: { host: "codex" }, runTask, approvalPolicy: () => ({ mode: "direct" }),
     } as never) as Record<string, unknown>;
   }
 
   async function readiness() {
-    const { createLiveGenerationRuntime } = await import("../liveGenerationRuntime");
     return createLiveGenerationRuntime().readBootstrap();
   }
 
@@ -155,7 +160,6 @@ describe("issue #975 · 声明登记的自定义供应商进入正式生成", ()
     expect(keyed.ok, JSON.stringify(keyed)).toBe(true);
 
     // 盘上就是 v0.23.0 写的那个形状：模型行带着声明卡的标记。
-    const { readCatalog } = await import("../../catalog/catalogStore");
     const row = readCatalog().models.find((model) => model.vendorKey === vendorKey && model.modelKey === MODEL_KEY);
     expect(row?.meta).toMatchObject({ adapter: { state: "declared", source: "declaration-card" } });
 
@@ -176,9 +180,6 @@ describe("issue #975 · 声明登记的自定义供应商进入正式生成", ()
 
   it("正式派发：授权封存 → 提交打到本机适配器（带 key）→ 轮询成功 → 取到产物描述", async () => {
     const boot = await readiness();
-    const { createLiveGenerationRuntime } = await import("../liveGenerationRuntime");
-    const { compileExecutionContract } = await import("../executionContract");
-    const { createGenerationRuntimeAdapter } = await import("../generationRuntimeAdapter");
     const contract = compileExecutionContract({
       candidateId: "candidate-975", revision: 1, moduleId: "generation.single-shot",
       providerId: vendorKey, modelId: MODEL_KEY, mode: "text_to_video",
@@ -206,12 +207,11 @@ describe("issue #975 · 声明登记的自定义供应商进入正式生成", ()
 
     const polled = await adapter.query({ providerId: vendorKey, providerTaskId: submitted.providerTaskId });
     expect(polled.state).toBe("succeeded");
-    const outputs = await adapter.materialize({ providerId: vendorKey, providerTaskId: submitted.providerTaskId, raw: polled.raw });
+    const outputs = await adapter.materialize({ providerId: vendorKey, providerTaskId: submitted.providerTaskId, raw: polled.raw, context: { modelId: contract.modelId, mode: contract.mode, parameters: contract.parameters } });
     expect(outputs.outputs).toEqual([expect.objectContaining({ kind: "video", url: `${origin}/out.mp4` })]);
   });
 
   it("产物落盘：这条连接自己的本机 origin 上的产物取得回来；同主机换个端口照旧拒（#975 A）", async () => {
-    const { createGenerationOutputMaterializer } = await import("../generationOutputMaterializer");
     const writes: Buffer[] = [];
     const materializer = createGenerationOutputMaterializer({
       writeAsset: ((_projectId: string, bytes: Buffer) => { writes.push(bytes); return { id: "asset-975", data: { relativePath: "assets/generated/out.mp4" } }; }) as never,
@@ -234,10 +234,13 @@ describe("issue #975 · 声明登记的自定义供应商进入正式生成", ()
 
   it("重启后的旧连接：丢掉模块缓存、从盘上重读同一份目录，仍然就绪", async () => {
     vi.resetModules();
-    const { readCatalog } = await import("../../catalog/catalogStore");
-    const onDisk = readCatalog();
+    // eslint-disable-next-line no-restricted-syntax -- 重启模拟：丢掉模块缓存后必须重新加载这两个模块，静态绑定只会拿到重启前的实例
+    const { readCatalog: readCatalogAfterRestart } = await import("../../catalog/catalogStore");
+    // eslint-disable-next-line no-restricted-syntax -- 同上：重启后的运行时必须是重新加载的那一份
+    const { createLiveGenerationRuntime: createRuntimeAfterRestart } = await import("../liveGenerationRuntime");
+    const onDisk = readCatalogAfterRestart();
     expect(onDisk.models.find((model) => model.vendorKey === vendorKey)?.meta).toMatchObject({ adapter: { source: "declaration-card" } });
-    const boot = await readiness();
+    const boot = await createRuntimeAfterRestart().readBootstrap();
     expect(boot.readinessByProvider[vendorKey]).toMatchObject({ providerReady: true });
   });
 });

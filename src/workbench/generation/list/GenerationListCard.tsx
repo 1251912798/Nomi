@@ -24,6 +24,7 @@ import { cn } from '../../../utils/cn'
 import { parsePromptSegments, promptReferenceForUrl } from '../../assets/promptMentions'
 import { resolveLightweightNodePreview } from '../../generationCanvas/components/canvasNodeLevelOfDetail'
 import { currentReferenceMedia } from '../../generationCanvas/nodes/mentionCandidates'
+import { sameFlatRecords, useContentStable, useComposerGraph } from '../../generationCanvas/nodes/composerGraphSnapshot'
 import { getGenerationNodeExecutionKind, getGenerationNodeLabel } from '../../generationCanvas/model/generationNodeKinds'
 import type { GenerationCanvasNode } from '../../generationCanvas/model/generationCanvasTypes'
 import { useGenerationCanvasStore } from '../../generationCanvas/store/generationCanvasStore'
@@ -59,8 +60,12 @@ export function ReferenceThumbs({ nodeIds, size = 20 }: { nodeIds: readonly stri
  */
 function CardPrompt({ node, lines }: { node: GenerationCanvasNode; lines: 2 | 3 }): JSX.Element | null {
   const { t } = useTranslation()
-  const referencesKey = useGenerationCanvasStore((state) => JSON.stringify(currentReferenceMedia(node, state.nodes, state.edges)))
-  const references = React.useMemo(() => JSON.parse(referencesKey) as Array<{ url: string; kind: 'image' | 'video' | 'audio'; index: number }>, [referencesKey])
+  // 只订这张卡读得到的那一小片图（与画布生成框同一个依赖面），内容没变就沿用同一个数组；不在选择器里 JSON.stringify。
+  const graph = useComposerGraph(node.id)
+  const references = useContentStable(
+    React.useMemo(() => currentReferenceMedia(node, graph.nodes, graph.edges), [node, graph]),
+    sameFlatRecords,
+  )
   const prompt = node.prompt ?? ''
   if (!prompt.trim()) return <p className="m-0 text-caption text-nomi-ink-40">{t('generationList.promptEmpty')}</p>
   const segments = parsePromptSegments(prompt)
@@ -96,7 +101,7 @@ function ToolCard({ card, node, onOpenInCanvas }: { card: GenerationListCard; no
       data-list-card={card.key}
       data-list-card-kind={node?.kind ?? 'tool'}
       data-list-tool-card
-      className="flex w-[256px] min-w-0 cursor-pointer items-center gap-3 self-start rounded-panel border border-nomi-line bg-nomi-paper p-2.5 transition-colors hover:border-nomi-ink-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-accent"
+      className="flex w-[256px] min-w-0 cursor-pointer items-center gap-3 self-start rounded-panel border border-nomi-line bg-nomi-paper p-2.5 transition-colors hover:border-nomi-ink-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink"
       onClick={onOpenInCanvas}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -174,7 +179,7 @@ export function GenerationListCardView({
       role="button"
       tabIndex={0}
     >
-      <div className="relative rounded-panel transition-shadow group-hover:ring-1 group-hover:ring-nomi-ink-20 group-focus-visible:ring-2 group-focus-visible:ring-nomi-accent">
+      <div className="relative rounded-panel transition-shadow group-hover:ring-1 group-hover:ring-nomi-ink-20 group-focus-visible:ring-2 group-focus-visible:ring-nomi-ink">
         {draft ? (
           <div className="flex flex-col overflow-hidden rounded-panel bg-nomi-ink-05 px-4 py-3.5 ring-1 ring-inset ring-nomi-line-soft" style={{ height: CARD_MEDIA_HEIGHT }} data-list-draft-card>
             {node ? <CardPrompt node={node} lines={3} /> : null}

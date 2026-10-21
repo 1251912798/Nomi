@@ -7,7 +7,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { checkBoardManifest, checkPrBoardClaims, checkSourceHash, parsePrBoardClaims } from './check-board-parity.mjs'
+import { checkBoardManifest, checkPriorArt, checkPrBoardClaims, checkSourceHash, findDatedBoards, loadManifests, parsePrBoardClaims, runBoardParity } from './check-board-parity.mjs'
 import { hashBoardSourceFiles } from './board-source-hash.mjs'
 
 const CORPUS = "it('board:Main/topbar.title', () => {})"
@@ -133,6 +133,40 @@ describe('R7 states 非空且来自词表', () => {
   })
 })
 
+describe('R9 priorArt：2026-10-19 起的板必须带 ≥3 项先例（更早的板不追溯）', () => {
+  const item = (n) => ({ url: `https://example.com/${n}`, takeaway: '它怎么做', decisionImpact: '改了：底栏位置' })
+  const withPrior = (items, date = '2026-10-19') => ({ manifest: { ...base(), priorArt: items }, date })
+  const runDated = ({ manifest, date }) => checkBoardManifest({ board: 'Main', manifest, candidates, assertionCorpus: CORPUS, date })
+  it('正例：3 项齐全 → 绿', () => assert.deepEqual(runDated(withPrior([item(1), item(2), item(3)])), []))
+  it('正例：更早的板（2026-10-18）没有 priorArt → 绿，不追溯', () => assert.deepEqual(runDated({ manifest: base(), date: '2026-10-18' }), []))
+  it('反例：2026-10-19 的板缺 priorArt → 红', () => assert.match(runDated({ manifest: base(), date: '2026-10-19' }).join('\n'), /必须有 priorArt/))
+  it('反例：只有 2 项 → 红', () => assert.match(runDated(withPrior([item(1), item(2)])).join('\n'), /至少 3 项，现在 2 项/))
+  it('反例：缺 decisionImpact（只列链接，没写对决定的影响）→ 红', () => {
+    const bare = { url: 'https://example.com/x', takeaway: '它怎么做' }
+    assert.match(runDated(withPrior([item(1), item(2), bare])).join('\n'), /priorArt\[2\] 缺 decisionImpact/)
+  })
+  it('反例：url 不是链接 → 红', () => {
+    assert.match(runDated(withPrior([item(1), item(2), { ...item(3), url: '凭记忆' }])).join('\n'), /不是 http\(s\) 链接/)
+  })
+  it('日期没给就看清单的 approvedOn', () => {
+    assert.match(checkPriorArt({ board: 'Main', manifest: { approvedOn: '2026-10-20' } }).join('\n'), /必须有 priorArt/)
+    assert.deepEqual(checkPriorArt({ board: 'Main', manifest: { approvedOn: '2026-10-18' } }), [])
+  })
+  it('真跑：日期目录 ≥ 2026-10-19 的新板缺 priorArt → 门岗红；2026-10-18 目录不红', async () => {
+    const root = fs.mkdtempSync(path.join(process.env.TMPDIR || process.env.TEMP || '.', 'bp-prior-'))
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    const manifest = JSON.stringify({ board: 'Fresh', stage: 'built', elements: [], decor: [], functionCensus: [] })
+    for (const day of ['2026-10-18', '2026-10-19']) {
+      fs.mkdirSync(path.join(root, day))
+      fs.writeFileSync(path.join(root, day, `${day === '2026-10-18' ? 'Old' : 'Fresh'}.board.json`), manifest.replace('Fresh', day === '2026-10-18' ? 'Old' : 'Fresh'))
+    }
+    const errors = await runBoardParity({ dir: main, root })
+    fs.rmSync(root, { recursive: true, force: true })
+    assert.ok(errors.some((e) => /\[Fresh\].*priorArt/.test(e)), errors.join('\n'))
+    assert.ok(!errors.some((e) => /\[Old\].*priorArt/.test(e)), errors.join('\n'))
+  })
+})
+
 describe('R8 PR 认领的拍板图元素必须有去处', () => {
   const body = ['## 拍板图', '- Main: topbar.title, group.header', '', '## 功能分类', '无']
   it('解析：只读 ## 拍板图 一节', () => {
@@ -203,5 +237,111 @@ describe('门岗结构：默认路径不 import 也不调用 playwright', () => 
     })
     fs.rmSync(empty, { recursive: true, force: true })
     assert.equal(r.status, 0, r.stdout + r.stderr)
+  })
+})
+
+describe('其它日期目录的板（2026-10-16：新板对门岗和合并前扫描都不可见）', () => {
+  const tmpRoot = () => fs.mkdtempSync(path.join(process.env.TMPDIR || process.env.TEMP || '.', 'bp-dated-'))
+  const writeBoard = (root, day, board, manifest, withCandidates = false) => {
+    const dir = path.join(root, day)
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, `${board}.board.json`), JSON.stringify(manifest))
+    if (withCandidates) fs.writeFileSync(path.join(dir, `${board}.candidates.json`), JSON.stringify({ candidates: [] }))
+    return dir
+  }
+  const textOnly = (overrides = {}) => ({
+    board: 'TextOnly', stage: 'built',
+    elements: [{ id: 'tier.popover', label: '弹层', candidates: [], status: 'implemented', assertion: 'board:TextOnly/tier.popover', states: ['zh-en'], ...overrides }],
+    decor: [], functionCensus: [{ function: '旧弹层', before: '三档', after: 'tier.popover' }],
+  })
+  it('正例：只有清单的新板被找到，且 `## 拍板图` 能认领到它', async () => {
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    writeBoard(root, 'later-day', 'TextOnly', textOnly())
+    writeBoard(root, 'later-day', 'Drawn', { board: 'Drawn', stage: 'built', elements: [], decor: [], functionCensus: [] }, true)
+    const found = findDatedBoards(root, main)
+    assert.deepEqual(found.map((entry) => [entry.board, entry.manifestOnly]).sort(), [['Drawn', false], ['TextOnly', true]])
+    const manifests = loadManifests(main, root)
+    assert.deepEqual(checkPrBoardClaims('## 拍板图\n- TextOnly: tier.popover', manifests), [])
+    fs.rmSync(root, { recursive: true, force: true })
+  })
+  it('反例：只有清单的新板也按 R4 查——断言名不在走查里 → 红', async () => {
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    writeBoard(root, 'later-day', 'TextOnly', textOnly({ assertion: 'board:TextOnly/never-written-anywhere' }))
+    const errors = await runBoardParity({ dir: main, root })
+    assert.ok(errors.some((e) => /\[TextOnly\].*never-written-anywhere/.test(e)), errors.join('\n'))
+    fs.rmSync(root, { recursive: true, force: true })
+  })
+})
+
+describe('V-1203 F2：发现到的每张新日期板都跑完整规则（带候选文件的也不例外）', () => {
+  const tmpRoot = () => fs.mkdtempSync(path.join(process.env.TMPDIR || process.env.TEMP || '.', 'bp-v1203-'))
+  const bad = { board: 'ReviewProbe', stage: 'built', elements: [{ id: 'probe', status: 'implemented', assertion: 'NEVER_EXISTS_V1203', states: [] }], functionCensus: [{ function: 'old', after: 'missing' }] }
+  it('反例：带人工候选文件、内容坏的新板 → 红（断言不在走查、states 空、旧功能没去处、候选未认领）', async () => {
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    const day = path.join(root, '2099-01-01'); fs.mkdirSync(day)
+    fs.writeFileSync(path.join(day, 'ReviewProbe.board.json'), JSON.stringify(bad))
+    fs.writeFileSync(path.join(day, 'ReviewProbe.candidates.json'), JSON.stringify({ board: 'ReviewProbe', extractor: 'manual-domain-census@1', candidates: [{ id: 'unclaimed' }] }))
+    const errors = (await runBoardParity({ dir: main, root })).filter((e) => e.includes('ReviewProbe'))
+    fs.rmSync(root, { recursive: true, force: true })
+    for (const pattern of [/NEVER_EXISTS_V1203/, /缺 states/, /没有去处/, /候选未认领.*unclaimed/]) assert.ok(errors.some((e) => pattern.test(e)), `${pattern}\n${errors.join('\n')}`)
+  })
+  it('反例：抽取出来的候选文件（board-extract）板源哈希对不上 → 红', async () => {
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    const day = path.join(root, '2099-01-01'); fs.mkdirSync(day)
+    fs.writeFileSync(path.join(day, 'ReviewProbe.board.json'), JSON.stringify({ board: 'ReviewProbe', stage: 'built', elements: [], decor: [], functionCensus: [] }))
+    fs.writeFileSync(path.join(day, 'ReviewProbe.candidates.json'), JSON.stringify({ board: 'ReviewProbe', extractor: 'board-extract@1', sourceSha256: 'not-the-hash', candidates: [] }))
+    const errors = (await runBoardParity({ dir: main, root })).filter((e) => e.includes('ReviewProbe'))
+    fs.rmSync(root, { recursive: true, force: true })
+    assert.ok(errors.some((e) => /板改了|sourceSha256|哈希/.test(e)), errors.join('\n'))
+  })
+  it('反例：候选文件既没有板源哈希、也没声明人工普查 → 红（不许不声不响地免掉哈希核对）', async () => {
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    const day = path.join(root, '2099-01-01'); fs.mkdirSync(day)
+    fs.writeFileSync(path.join(day, 'ReviewProbe.board.json'), JSON.stringify({ board: 'ReviewProbe', stage: 'built', elements: [], decor: [], functionCensus: [] }))
+    fs.writeFileSync(path.join(day, 'ReviewProbe.candidates.json'), JSON.stringify({ board: 'ReviewProbe', candidates: [] }))
+    const errors = (await runBoardParity({ dir: main, root })).filter((e) => e.includes('ReviewProbe'))
+    fs.rmSync(root, { recursive: true, force: true })
+    assert.ok(errors.length > 0, '没有哈希也没声明人工普查的候选文件必须红')
+  })
+})
+
+describe('V-1203 复验 R1：跨日期同名板——校验按「日期目录 + 板名」逐张读，同名不能互相顶替', () => {
+  const tmpRoot = () => fs.mkdtempSync(path.join(process.env.TMPDIR || process.env.TEMP || '.', 'bp-dup-'))
+  const good = { board: 'ReviewProbe', stage: 'built', elements: [{ id: 'probe', candidates: [], status: 'implemented', assertion: 'board:ReviewProbe/probe-ok', states: ['zh-en'] }], decor: [], functionCensus: [{ function: 'old', after: 'probe' }] }
+  const bad = { board: 'ReviewProbe', stage: 'built', elements: [{ id: 'probe', status: 'implemented', assertion: 'NEVER_EXISTS_V1203_R1', states: [] }], functionCensus: [{ function: 'old', after: 'missing' }] }
+  const setup = (withCandidates) => {
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    for (const [day, manifest] of [['2099-01-01', good], ['2099-01-02', bad]]) {
+      const dir = path.join(root, day); fs.mkdirSync(dir)
+      fs.writeFileSync(path.join(dir, 'ReviewProbe.board.json'), JSON.stringify(manifest))
+      if (withCandidates) fs.writeFileSync(path.join(dir, 'ReviewProbe.candidates.json'), JSON.stringify({ extractor: 'manual-review', candidates: [] }))
+    }
+    return { root, main }
+  }
+  for (const withCandidates of [false, true]) {
+    it(`反例（${withCandidates ? '两份都带人工候选' : '两份都只有清单'}）：第二份坏清单照样报它自己的错，且同名本身也红`, async () => {
+      const { root, main } = setup(withCandidates)
+      const errors = (await runBoardParity({ dir: main, root })).filter((e) => e.includes('ReviewProbe'))
+      fs.rmSync(root, { recursive: true, force: true })
+      for (const pattern of [/NEVER_EXISTS_V1203_R1/, /缺 states/, /没有去处/, /同名/]) assert.ok(errors.some((e) => pattern.test(e)), `${pattern}\n${errors.join('\n')}`)
+    })
+  }
+  it('反例：PR 按板名认领一张重名板 → 红（认领有歧义，不能挑第一份当真）', () => {
+    const { root, main } = setup(false)
+    const errors = checkPrBoardClaims('## 拍板图\n- ReviewProbe: probe', loadManifests(main, root))
+    fs.rmSync(root, { recursive: true, force: true })
+    assert.ok(errors.some((e) => /重名|歧义/.test(e)), errors.join('\n'))
+  })
+  it('发现器把日期目录带进身份：两张同名板都被找到', () => {
+    const { root, main } = setup(false)
+    const found = findDatedBoards(root, main).map((entry) => `${path.basename(entry.dir)}/${entry.board}`).sort()
+    fs.rmSync(root, { recursive: true, force: true })
+    assert.deepEqual(found, ['2099-01-01/ReviewProbe', '2099-01-02/ReviewProbe'])
   })
 })

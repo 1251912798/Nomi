@@ -1,0 +1,100 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-18-mcp-bridge-stale-connection",
+  "problem_type": "The Desktop stdio→HTTP bridge treated a reset on a stale pooled connection as proof that Nomi is not running",
+  "symptom": "pnpm run gates (full tier) failed on electron/capabilityCore/mcpHostReliability.test.ts 'Nomi 重启（同端口、旧会话号作废）后…' with error -32000 「连不上 Nomi：请先打开 Nomi 再试」 although the restarted server was listening; passed alone, failed 12/12 when 12 copies ran in parallel. (Seen in the pre-push gates lane, which shares the CI test set.)",
+  "direct_cause": "After a same-port restart the HTTP client's pool still held idle keep-alive connections to the old process. The forwarded tools/list and the bridge's ping probe each went out on one of them and got ECONNRESET (undici 'fetch failed' with cause code ECONNRESET). probeUpstream mapped any status-less failure to 'down', so the first reset ended recovery with NOMI_UNREACHABLE_MESSAGE.",
+  "class_root": "Two different connection failures were folded into one bucket: 'refused / DNS' (provably never written — Nomi is not there) and 'reset on a reused connection' (ambiguous — Nomi may be there). The repo already has the single verdict for this distinction (electron/outboundDispatchEvidence.ts outboundRequestWasNeverWritten / isTransportLevelFailure), but the bridge classified by 'has an HTTP status or not' instead of using it.",
+  "detected_by": "ci",
+  "recurrence_check_on": "2026-11-01",
+  "invariant_owner_layer": {
+    "layer": "electron/capabilityCore/mcpHttpBridge.ts",
+    "tests": [
+      "electron/capabilityCore/mcpHttpBridge.test.ts",
+      "electron/capabilityCore/mcpHostReliability.test.ts"
+    ],
+    "why": "probeUpstream (inside bridgeStdioToHttp) is the only place the bridge decides \"Nomi is down\" for a status-less failure; it now asks outboundDispatchEvidence and re-probes (ping is idempotent) on transport resets, up to 4 times."
+  },
+  "affected_population": [
+    "Claude Desktop (and any stdio-only host) users whose first MCP call after restarting Nomi was told to open Nomi although it was running"
+  ],
+  "scope_paths": [
+    "electron/capabilityCore/mcpHttpBridge.ts",
+    "electron/capabilityCore/mcpHttpBridge.test.ts"
+  ],
+  "entry_points": [
+    "bridgeStdioToHttp forward() → probeUpstream()"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The behaviour is our bridge's classification of Node/undici connection errors; undici's cause codes are the evidence, already centralised in outboundDispatchEvidence.ts.",
+  "invariants": [
+    "The bridge reports NOMI_UNREACHABLE_MESSAGE only when a probe failure proves the request was never written (refused / DNS / connect) or after a bounded number of transport resets",
+    "A reset on a stale connection never by itself turns into 'open Nomi first'"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/mcpHttpBridge.ts",
+      "symbol": "classifyUpstreamFailure"
+    }
+  ],
+  "door_reduction": {
+    "before": 1,
+    "after": 1,
+    "why_not": "classifyUpstreamFailure / probeUpstream are already the single classification door in the bridge (door-map: one write door); the fix routes it through the repo-wide verdict instead of adding a second classifier."
+  },
+  "generality_proof": "The decision is made from the error's cause chain via the shared verdict, so it holds for every method the host forwards (tools/list, resources/*, tools/call) and every reason a pooled connection goes stale (restart, server-side idle close), not just this test's restart.",
+  "shared_boundaries": [
+    {
+      "path": "electron/outboundDispatchEvidence.ts",
+      "symbol": "outboundRequestWasNeverWritten",
+      "responsibility": "Single answer to 'was this request provably never written' (also used by paid submission and the MCP loopback RPC)."
+    },
+    {
+      "path": "electron/outboundDispatchEvidence.ts",
+      "symbol": "isTransportLevelFailure",
+      "responsibility": "Single answer to 'is this a connection-layer failure (reset / closed) rather than a reply'."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/capabilityCore/mcpLoopbackRpcCall.ts",
+      "entry_point": "callMcpLoopbackRpc",
+      "disposition": "enforced",
+      "evidence": "Already uses outboundRequestWasNeverWritten to decide 'may have run' vs 'not sent'; no change needed."
+    },
+    {
+      "path": "electron/capabilityCore/mcpNodeLauncher.ts",
+      "entry_point": "isConnectionRefused",
+      "disposition": "enforced",
+      "evidence": "Treats only ECONNREFUSED as 'no instance' (spawns one); resets are not counted as refused, so it does not have this bug."
+    }
+  ],
+  "recurrence": {
+    "classification": "one_off",
+    "reason": "The bridge was the only classifier that keyed on 'has a status code'; the other connection-error sites already use the shared verdict.",
+    "same_class_scan": [
+      "grep ECONNREFUSED|ECONNRESET|UND_ERR_SOCKET|fetch failed in electron/capabilityCore → mcpNodeLauncher.isConnectionRefused (refused-only), mcpLoopbackRpcCall (shared verdict), mcpHttpBridge (fixed)"
+    ]
+  },
+  "regression_tests": [
+    "electron/capabilityCore/mcpHttpBridge.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/capabilityCore/mcpHttpBridge.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [],
+    "rationale": "The old 'any status-less ping failure = down' branch is replaced in place; no parallel path kept."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency change; the SDK's StreamableHTTPClientTransport and undici behave as documented.",
+    "exit_criteria": []
+  },
+  "migration": "None: behaviour change only for status-less probe failures. Hung Nomi (ping timeout) still fails after one probe, as before.",
+  "residual_risks": [
+    "Not exercised against a real Claude Desktop restart; covered by the real-SDK mcpHostReliability test (12/12 parallel runs pass, previously 12/12 failed) and the deterministic unit test."
+  ]
+}

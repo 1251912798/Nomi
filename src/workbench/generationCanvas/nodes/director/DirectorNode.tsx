@@ -25,11 +25,11 @@ import { getGenerationNodeIcon } from '../renderRegistry'
 import { assetKindOfFileName } from './model/assetKinds'
 import { DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from './model/directorNodeMeta'
 import { DIRECTOR_PREVIEW_MAX_SECONDS, readDirectorPreview } from './model/directorPreviewState'
+import { requestDirectorPreviewRender } from './agent/directorPreviewCapture'
 import { normalizeDirectorProject, projectStats } from './model/directorProject'
 import type { DirectorLinkedAsset, DirectorProject } from './model/directorTypes'
 import type { DirectorOutput } from './OutputsContext'
-import type { CanvasImage } from './panels/CanvasImagesContext'
-import { collectCanvasImages } from './bridge/canvasImages'
+import { selectCanvasImages } from './bridge/canvasImages'
 
 // 资产节点连进来的文件只认泼溅 / 模型（全景走全景节点，场景 JSON 不从连线来）
 function linkedAssetKindOf(url: string): DirectorLinkedAsset['kind'] | null {
@@ -104,16 +104,8 @@ function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX
     [node.id, updateNode],
   )
 
-  // 按结果语义收集所有图片与历史；稳定签名避免无关画布变化触发导演台重绘。
-  const canvasImagesKey = useGenerationCanvasStore((state) =>
-    JSON.stringify(collectCanvasImages(state.nodes)),
-  )
-  const canvasImages = React.useMemo<CanvasImage[]>(
-    () =>
-      collectCanvasImages(useGenerationCanvasStore.getState().nodes),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- canvasImagesKey 已把影响结果的字段折进来
-    [canvasImagesKey],
-  )
+  // 按结果语义收集所有图片与历史；内容没变就是同一个数组引用，无关画布变化不触发导演台重绘。
+  const canvasImages = useGenerationCanvasStore((state) => selectCanvasImages(state.nodes))
 
   // 产物 → 画布：截图落成 Image 节点、录像落成 Video 节点，放在导演台节点右侧并连一条 reference 边回来
   const handleSendToCanvas = React.useCallback(
@@ -140,16 +132,13 @@ function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX
     [node.id, t],
   )
 
-  // 3D-BOX 预演状态（只有 stage_shot 建的节点才有）：渲染中 / 失败要让人看见，失败给重试——
-  // 重试就是把同一修订重新标成「渲染中」，常驻 Host 扫到即重渲；超长的不给重试（改短才行）。
+  // 3D-BOX 预演状态：渲染中 / 失败要让人看见，失败给重试——重试走预演的唯一写口 requestDirectorPreviewRender
+  // （与导演视图「出成片」同一个），常驻 Host 扫到即重渲；超长的不给重试（改短才行）。
   const preview = readDirectorPreview(node)
   const handleRetryPreview = React.useCallback(() => {
-    const current = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id)
-    const latest = readDirectorPreview(current)
-    if (!current || !latest || latest.status !== 'failed' || latest.reason === 'too_long') return
-    const { reason: _reason, ...rest } = latest
-    updateNode(node.id, { meta: { ...(current.meta || {}), [DIRECTOR_PREVIEW_META_KEY]: { ...rest, status: 'rendering', updatedAt: Date.now() } } })
-  }, [node.id, updateNode])
+    if (readDirectorPreview(useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id))?.status !== 'failed') return
+    requestDirectorPreviewRender(node.id)
+  }, [node.id])
 
   const handleClose = React.useCallback(() => {
     setOpen(false)
@@ -172,7 +161,7 @@ function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX
       <div
         className={cn(
           'generation-canvas-v2-node__preview flex h-full w-full flex-col overflow-hidden rounded-nomi border bg-nomi-paper shadow-nomi-md',
-          selected ? 'border-nomi-accent' : 'border-nomi-line',
+          'border-nomi-line',
         )}
       >
         <header className="flex h-8 shrink-0 items-center gap-2 px-3 text-body-sm text-nomi-ink">

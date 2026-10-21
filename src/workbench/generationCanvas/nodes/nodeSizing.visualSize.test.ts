@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getNodeSizeBounds, resolveNodeVisualSize } from "./nodeSizing";
+import { getNodeSizeBounds, getNodeResizeBounds, resolveNodeVisualSize } from "./nodeSizing";
 import { CARD_FIXED_WIDTH } from "./nodeSizing";
 
 // 回归：连线「连不上」的根因是锚点用名义 node.size，而卡片类实际按固定宽渲染。
@@ -81,4 +81,18 @@ describe('image results own their intrinsic canvas aspect ratio', () => {
     expect(resolveNodeVisualSize(node({ kind: 'image', size: { width: 340, height: 240 }, result: imageResult,
       meta: { imageWidth: Infinity, imageHeight: 0 } }))).toEqual({ width: 340, height: 240 });
   });
+});
+
+// The document frame has its own range; changing it must not reapply source-image aspect.
+describe("inline whiteboard frame geometry", () => {
+    const edited = { kind: "image", size: { width: 600, height: 600 },
+        result: { id: "current", type: "image", url: "nomi-local://image", createdAt: 1 },
+        meta: { imageWidth: 3840, imageHeight: 2160, whiteboardFrameScale: 0.5, whiteboardResultIdentity: "current" } } as const;
+    it("uses both custom frame dimensions across every geometry consumer", () => {
+        expect(resolveNodeVisualSize(edited)).toEqual({ width: 600, height: 600 });
+        expect(getNodeResizeBounds(edited)).toEqual({ minWidth: 32, minHeight: 32, maxWidth: 2048, maxHeight: 2048 });
+    });
+    it("does not apply an older document frame to a different version", () => {
+        expect(resolveNodeVisualSize({ ...edited, result: { ...edited.result, id: "new-version" } })).toEqual({ width: 600, height: 337.5 });
+    });
 });

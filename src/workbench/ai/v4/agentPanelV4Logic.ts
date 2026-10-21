@@ -79,31 +79,17 @@ export function useComposerHeight(
   )
 }
 
-/** 三档 → 仓库合同的两个字段。零新概念（定稿 §2）。 */
+/** 两档 → 仓库合同的 mode。零新概念。 */
 export function approvalPolicyForTier(tier: PermissionTier): ProjectAgentApprovalPolicy {
   return PERMISSION_POLICIES[tier]
 }
 
 /**
- * 三档「永不放宽」的机器证明。
- *
- * `ProjectAgentApprovalPolicy` 的两根轴在合同里明写「Changing the work mode never widens
- * approval」。工作方式三档删掉之后（2026-09-06 拍板 ①），权限成了面板上唯一的授权控件，
- * 那条不变量就全落在这三档身上：任何一档映射出来的策略都不能比它**该有的**更宽。
- * 宽窄的定义就在这里，单测按它逐档核对——不靠人读表。
+ * 切档要不要先问一句：只有切**进**「直接生成」要（它会自动开跑生成）；回到「请求批准」是收紧，
+ * 随时可撤销，不问。同档不是切档。`useAgentPanelAutoMode` 只读这一个答案。
  */
-export function approvalPolicyRank(policy: ProjectAgentApprovalPolicy): Readonly<{ mode: number; spend: number }> {
-  return {
-    mode: policy.mode === 'step' ? 0 : policy.mode === 'safe-auto' ? 1 : 2,
-    spend: policy.spend === 'confirm' ? 0 : 1,
-  }
-}
-
-/** left 是否**不比** right 宽（两根轴都不更宽）。 */
-export function isNoWiderThan(left: ProjectAgentApprovalPolicy, right: ProjectAgentApprovalPolicy): boolean {
-  const a = approvalPolicyRank(left)
-  const b = approvalPolicyRank(right)
-  return a.mode <= b.mode && a.spend <= b.spend
+export function tierSwitchNeedsConfirm(from: PermissionTier, to: PermissionTier): boolean {
+  return to === 'direct' && from !== 'direct'
 }
 
 /**

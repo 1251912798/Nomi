@@ -24,6 +24,8 @@ const JOURNEY_TOUR_KEY = 'nomi:journey-tour:v1'
  * 「他当时点了不用了、后来自己去设置里打开」不会让这张卡再冒出来。
  */
 const AGENT_CONSENT_KEY = 'nomi:agent-consent-asked:v1'
+/** 告知范围升到 v2（界面流畅度分档）后，对已同意的用户再确认一次问过没有。同样记「问过」，不记「同意」。 */
+const AGENT_CONSENT_SCOPE_KEY = 'nomi:agent-consent-scope-asked:v2'
 
 /** 上手清单生命周期上限：首次显示满 2 天仍未完成 → 自动永久关闭，不再回来。 */
 export const CHECKLIST_TTL_MS = 2 * 24 * 60 * 60 * 1000
@@ -98,6 +100,22 @@ export function hasAskedAgentConsent(): boolean {
   } catch {
     // localStorage 不可用时退化成「问过了」：宁可少问一次，也不要每次开面板都弹一张卡。
     return true
+  }
+}
+
+export function hasAskedAgentConsentScope(): boolean {
+  try {
+    return window.localStorage.getItem(AGENT_CONSENT_SCOPE_KEY) === 'asked'
+  } catch {
+    return true
+  }
+}
+
+export function markAgentConsentScopeAsked(): void {
+  try {
+    window.localStorage.setItem(AGENT_CONSENT_SCOPE_KEY, 'asked')
+  } catch {
+    /* ignore */
   }
 }
 

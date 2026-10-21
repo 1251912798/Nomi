@@ -12,7 +12,7 @@
 // 用法：node tests/ux/agent-v4-short-film.walk.mjs
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
+import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   APPROVAL_CARD,
@@ -35,7 +35,6 @@ import {
   USER_BUBBLE,
   V4_FLOW,
   V4_PANEL,
-  approvePendingIntervention,
   chooseAssistantModel,
   createRuntimeWalk,
   expandResidentPanel,
@@ -43,13 +42,11 @@ import {
   openCanvas,
   permissionTier,
   recorded,
-  rejectPendingIntervention,
   requireCurrentPersistedWorkbenchDocument,
   readProject,
   sendCanvas,
   sendCreation,
-  waitForV4TurnIdle,
-} from './agent-runtime-walk-support.mjs'
+  waitForV4TurnIdle, expectComposerText } from './agent-runtime-walk-support.mjs'
 
 // 空态第一条起手（创作面 = 写脚本）。它的字住 i18n（`agentPanelV4.starterWriteScriptPrompt`），
 // 这里抄一份是为了断言「chip 填进去的就是这句」；两边漂了这条走查会当场红。
@@ -59,9 +56,6 @@ const SCRIPT = '清晨，她推开咖啡馆的门。红色杯子落在白色桌�
 const TIGHTEN = '把结尾收紧一点，别拖。'
 const TIGHTEN_APPLIED = 'ENDING_TIGHTENED：她按下录制键，画面定格。'
 const TIGHTEN_TOOL = 'v4-doc-tighten-1'
-const REFUSED = '再把开头也删掉。'
-const REFUSED_TOOL = 'v4-doc-delete-1'
-const REFUSED_TEXT = 'HEAD_DELETED：不该出现在文稿里'
 const REFERENCE = '给这 4 镜生成参考图。'
 const REFERENCE_TOOL = 'v4-canvas-plan-1'
 const SLOW = '再想想整体节奏。'
@@ -102,7 +96,7 @@ try {
 
   // 点第一颗起手 = 把那句话交给 composer 并把光标给用户，**不替他发送**。
   await clickOrFail(empty.locator(EMPTY_STARTER).first(), '空态第一条起手')
-  await expect(panel.locator(COMPOSER_INPUT)).toHaveValue(STARTER_FIRST)
+  await expectComposerText(panel.locator(COMPOSER_INPUT), STARTER_FIRST, '起手句交给了输入框')
   await expect(panel.locator(COMPOSER_SEND)).toBeEnabled()
   // 「没发出去」的正面证据：真发了就会多一条用户气泡、空态也就永远消失了。
   // 这里断言空态**还在**，而不是断言气泡不存在——后者本来就是 0，采样恒真（假绿）。
@@ -154,85 +148,40 @@ try {
   await doc.fill(SCRIPT)
   await expect(doc).toHaveText(SCRIPT)
 
-  // ── 3. 权限三档：切到「每步问」，验证它没有比它该有的更宽 ────────────────
+  // ── 3. 权限两档：默认「请求批准」（2026-10-12 用户拍板：两档，每档一行灰字）──────
   await clickOrFail(panel.locator(COMPOSER_PERMISSION), 'composer 权限档')
   const permissionPopover = panel.locator(PERMISSION_POPOVER)
   await expect(permissionPopover).toBeVisible()
-  await expect(permissionPopover.locator('[data-tier]')).toHaveCount(3)
-  await expect(permissionPopover.locator('[data-tier][data-active="true"]')).toHaveAttribute('data-tier', 'safe-auto')
+  await expect(permissionPopover.locator('[data-tier]')).toHaveCount(2)
+  await expect(permissionPopover.locator('[data-tier][data-active="true"]')).toHaveAttribute('data-tier', 'request')
   await walk.snap('03-permission-popover')
-  await clickOrFail(panel.locator(permissionTier('step')), '权限档「每步问」')
-  await expect(panel.locator(COMPOSER)).toHaveAttribute('data-approval-mode', 'step')
-  await expect(panel.locator(COMPOSER)).toHaveAttribute('data-spend-policy', 'confirm')
+  await clickOrFail(panel.locator(permissionTier('request')), '权限档「请求批准」')
+  await expect(panel.locator(COMPOSER)).toHaveAttribute('data-approval-mode', 'request')
 
-  // ── 4. 「每步问」下改文稿：介入槽出现 → 确认 → 收据 ──────────────────────
+  // ── 4. 「请求批准」下改文稿：能撤销的改动直接做，带收据 ────────────────────
+  // 原来这一段在「每步问」下走介入槽 → 确认；那一档 2026-10-12 删了（「相当于没有挡位」），
+  // 两档下文稿改动都直接做。证据是因果的：工具结果回到模型（下一次请求带着它）之前没有任何人点过任何东西——
+  // 如果有一张卡在等，这次请求永远不会来，`recorded` 会当场超时。
   const tightenRequest = walk.fixture.expectText({
-    label: 'agent proposes tightening the ending',
+    label: 'agent tightens the ending',
     match: (body) => flattenRequestText(body).includes(TIGHTEN) && !hasToolResult(body, TIGHTEN_TOOL),
-    reply: { type: 'tool', id: TIGHTEN_TOOL, name: 'append_to_end', args: { content: TIGHTEN_APPLIED } },
+    reply: { type: 'tool', id: TIGHTEN_TOOL, name: 'write_script', args: { where: 'end', content: TIGHTEN_APPLIED } },
   })
   const tightenFollowup = walk.fixture.expectText({
     label: 'tighten result returns to the model',
     match: (body) => hasToolResult(body, TIGHTEN_TOOL),
-    reply: { type: 'text', text: '已按你的确认收紧结尾。' },
+    reply: { type: 'text', text: '已收紧结尾，可以在收据上撤销。' },
   })
   await sendCreation(win, TIGHTEN)
-  await recorded(tightenRequest.received, 'document edit proposal')
-  const slot = panel.locator(APPROVAL_CARD)
-  await expect(slot).toBeVisible()
-  // 可撤销的改动才有「不再问 →」，而且它只覆盖这一个能力——范围那一行必须说清楚。
-  await expect(slot).toHaveAttribute('data-kind', 'approval-reversible')
-  await expect(slot).toContainText('只对这一个操作生效')
-  await walk.snap('04-intervention-approval')
-  // 带着这条待决收起：小球变成「等你确认 1」胶囊——读的**就是**这批待决，不是一个自己会亮的装饰；
-  // 它不会自己弹开（Chrome 板），点它回到面板里那张卡去批。
-  await clickOrFail(panel.locator(COLLAPSE_BUTTON), '带着一条待确认收起面板')
-  const pendingDock = win.locator(COLLAPSED_DOCK)
-  await expect(pendingDock).toHaveAttribute('data-agent-dock-status', 'needs-confirm')
-  await expect(pendingDock).toHaveAttribute('data-agent-ball', 'pending')
-  await expect(pendingDock).toHaveAttribute('data-agent-dock-count', '1')
-  await expect(pendingDock).toContainText('等你确认 1')
-  await walk.snap('04b-collapsed-needs-confirm')
-  await clickOrFail(pendingDock, '点「等你确认 1」胶囊回到面板')
-  await expect(panel.locator(V4_FLOW)).toBeVisible()
-  await approvePendingIntervention(win, CREATION_PANEL)
-  await recorded(tightenFollowup.received, 'approved document tool result')
-  await waitForV4TurnIdle(win, { panel: CREATION_PANEL, settledBy: panel.locator(TOOL_RECEIPT).last() })
+  await recorded(tightenRequest.received, 'document edit request')
+  await recorded(tightenFollowup.received, 'document tool result without any approval click')
+  await waitForV4TurnIdle(win, { panel: CREATION_PANEL, settledBy: panel.locator(ASSISTANT_MESSAGE).filter({ hasText: '已收紧结尾' }).last() })
   await expect(doc).toContainText(TIGHTEN_APPLIED)
-  await expect(panel.locator(TOOL_RECEIPT).last()).toBeVisible()
+  // 直接做的那一步也留了收据（这一轮收尾后过程行可能折起来，所以只要求它在流里，不要求展开可见）。
+  await expect(panel.locator(TOOL_RECEIPT).last()).toBeAttached()
   await expect.poll(async () => JSON.stringify(requireCurrentPersistedWorkbenchDocument(await readProject(win, projectId))),
-    { message: '确认过的改动必须真的落进项目，不只是气泡上说做了', timeout: 30_000 }).toContain(TIGHTEN_APPLIED)
-  await walk.snap('05-approved-and-applied')
-
-  // ── 5. 改主意：拒绝一次，并且带上原因 ────────────────────────────────────
-  const refusedRequest = walk.fixture.expectText({
-    label: 'agent proposes deleting the opening',
-    match: (body) => flattenRequestText(body).includes(REFUSED) && !hasToolResult(body, REFUSED_TOOL),
-    reply: { type: 'tool', id: REFUSED_TOOL, name: 'append_to_end', args: { content: REFUSED_TEXT } },
-  })
-  const refusedFollowup = walk.fixture.expectText({
-    label: 'rejection returns to the model',
-    match: (body) => hasToolResult(body, REFUSED_TOOL),
-    reply: { type: 'text', text: '好，开头保留。' },
-  })
-  await sendCreation(win, REFUSED)
-  await recorded(refusedRequest.received, 'delete proposal')
-  const rejectProof = await proveProbe(panel.locator(APPROVAL_CARD), '拒绝前介入槽确实浮出来了')
-  await walk.snap('06-intervention-before-reject')
-  await rejectPendingIntervention(win, CREATION_PANEL, '开头是全片的锚，先留着')
-  await recorded(refusedFollowup.received, 'rejected tool result')
-  await waitForV4TurnIdle(win, { panel: CREATION_PANEL, settledBy: panel.locator(ASSISTANT_MESSAGE).last() })
-  await expectAbsent(panel.locator(APPROVAL_CARD), { provenBy: rejectProof, message: '拒绝之后介入槽必须收掉' })
-  await expect(doc).not.toContainText(REFUSED_TEXT)
-  // 用户点的「不要」必须记成**拒绝**，不是失败：行尾写「已拒绝」而不是「失败」。
-  // 少一个 `denied: true` 就会把用户的决定记成系统故障——历史里读起来完全是两件事。
-  await expect(panel.locator(`${TOOL_RECEIPT}[data-status="output-denied"]`).last()).toBeVisible()
-  await walk.snap('07-rejected')
-
-  // 切回「自动改」：档位是**面板上唯一的授权控件**，切回来必须真的切回来。
-  await clickOrFail(panel.locator(COMPOSER_PERMISSION), 'composer 权限档')
-  await clickOrFail(panel.locator(permissionTier('safe-auto')), '权限档「自动改」')
-  await expect(panel.locator(COMPOSER)).toHaveAttribute('data-approval-mode', 'safe-auto')
+    { message: '直接做的改动必须真的落进项目，不只是气泡上说做了', timeout: stationTimeout({ operations: 2 }) }).toContain(TIGHTEN_APPLIED)
+  await walk.snap('05-applied-directly')
 
   // ── 5.5 最小窗 + 收起：藏的是面板，不是「我读到哪儿了」 ────────────────────
   //
@@ -294,8 +243,9 @@ try {
   await sendCanvas(win, REFERENCE)
   await recorded(referenceRequest.received, 'canvas request')
   await recorded(referenceFollowup.received, 'canvas tool result')
-  await waitForV4TurnIdle(win, { panel: CANVAS_PANEL, settledBy: canvas.locator(TOOL_RECEIPT).last() })
-  await expect(canvas.locator(TOOL_RECEIPT).last()).toBeVisible()
+  await waitForV4TurnIdle(win, { panel: CANVAS_PANEL, settledBy: canvas.locator(ASSISTANT_MESSAGE).filter({ hasText: '我先按脚本排 4 镜' }).last() })
+  // 一轮收尾后过程行会折起来：收据要在流里，不要求展开可见。
+  await expect(canvas.locator(TOOL_RECEIPT).last()).toBeAttached()
   await walk.snap('08-canvas-surface')
 
   // ── 7. 停止三态：空闲 → 运行中 → 停下 ───────────────────────────────────
@@ -320,7 +270,7 @@ try {
   //
   // 2026-09-06 用户改：收起态不再是右侧那条满高 32px rail 上的两颗小 icon，
   // 而是 Nomi 一直延续的那枚 logo 钮（血统 `src/ui/app-shell/CollapsedAiChip.tsx`）。
-  // 空闲档在 §1 已验、待确认档在 §4 已验（角标数字 = 那一刻真实的待决条数），这里验失败档。
+  // 空闲档在 §1 已验（待确认档由 shell-redesign 走查覆盖），这里验失败档。
   // 收起前先量一下面板宽：定稿说「点角标 = **原宽**原状态还原」（collapse≠unmount），
   // 所以还原之后这个数必须一模一样，不是「又一个默认 340」。
   const beforeCollapseWidth = Math.round((await win.locator(`${CANVAS_PANEL} ${V4_PANEL}`).boundingBox())?.width ?? 0)
@@ -362,11 +312,9 @@ try {
   const laneBeforeRestart = persistedBeforeRestart[0]
   const messagesBeforeRestart = laneMessages(laneBeforeRestart)
   const toolResults = messagesBeforeRestart.filter(message => message.role === 'toolResult')
-  expect(toolResults.filter(message => [TIGHTEN_TOOL, REFUSED_TOOL, REFERENCE_TOOL].includes(message.toolCallId)))
-    .toHaveLength(3)
+  expect(toolResults.filter(message => [TIGHTEN_TOOL, REFERENCE_TOOL].includes(message.toolCallId)))
+    .toHaveLength(2)
   expect(toolResults.find(message => message.toolCallId === TIGHTEN_TOOL)?.isError).toBe(false)
-  expect(toolResults.find(message => message.toolCallId === REFUSED_TOOL)?.isError).toBe(true)
-  expect(laneMessageText(toolResults.find(message => message.toolCallId === REFUSED_TOOL))).toContain('开头是全片的锚')
   const requestsBeforeRestart = walk.fixture.requests.length
   await walk.stopApp()
   ;({ win } = await walk.start())
@@ -386,7 +334,6 @@ try {
   expect(restoredLane, '冷重启必须恢复原来的 SDK session 身份').toBeTruthy()
   expect(laneMessages(restoredLane), '历史消息按原始顺序恢复，不能重放工具').toEqual(messagesBeforeRestart)
   await expect(win.locator(DOCUMENT)).toContainText(TIGHTEN_APPLIED)
-  await expect(win.locator(DOCUMENT)).not.toContainText(REFUSED_TEXT)
   await walk.snap('12-cold-restart')
 
 } catch (error) {

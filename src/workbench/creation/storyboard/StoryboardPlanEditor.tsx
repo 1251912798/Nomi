@@ -177,6 +177,8 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
   const [skippedShotIds, setSkippedShotIds] = React.useState<ReadonlySet<string>>(new Set())
   const deletedPlanUndoRef = React.useRef<(StoryboardDeletion & { projectId: typeof projectId; documentId: string; designId: string }) | null>(null)
   const editorRef = React.useRef<HTMLElement>(null)
+  // 分镜页的滚动区：镜头表按它的视口只挂看得见的行（StoryboardShotTable 窗口化）。
+  const scrollRef = React.useRef<HTMLDivElement>(null)
   const deletedFocusRef = React.useRef<Element | null>(null)
   const lastEditorFocusRef = React.useRef<Element | null>(null)
   React.useLayoutEffect(() => {
@@ -599,7 +601,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
       {/* 分镜行按**这块**的可用宽度分档（容器查询），不按视口宽——Agent 面板开/关才是真正的变量，
           视口宽只是它的一个远因。`container-type:inline-size` 同时把"内容反过来撑宽容器"这条路堵死，
           于是上面那条 `grid-cols-1` 有了第二道保险。容器起名 `storyboard`，免得被别处的容器截胡。 */}
-      <div className="overflow-y-auto px-4 py-4 flex flex-col gap-4 [container-name:storyboard] [container-type:inline-size]" data-storyboard-scroll="true">
+      <div ref={scrollRef} className="overflow-y-auto px-4 py-4 flex flex-col gap-4 [container-name:storyboard] [container-type:inline-size]" data-storyboard-scroll="true">
         {/* 执行计划审阅条（切片 3）：主进程同源 resolve 的合并/拆条建议 + 阻断问题，逐条采纳即改方案。
             同一份 resolve 结果还喂给表格行的行内警示（D1：摩擦在行上，提示就在行上）。 */}
         <StoryboardPlanStrategyPanel plan={plan} state={strategyState} onChange={setStoryboardPlan} />
@@ -632,7 +634,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
               disabled={rows.length === 0}
               aria-label={t('storyboardEditor.playback.aria')}
               data-storyboard-play-all="true"
-              className="h-6 px-2.5 rounded-full border border-nomi-line text-caption text-nomi-ink-60 inline-flex items-center gap-1 hover:border-nomi-accent hover:text-nomi-accent disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-6 px-2.5 rounded-full border border-nomi-line text-caption text-nomi-ink-60 inline-flex items-center gap-1 hover:border-nomi-ink-30 hover:text-nomi-accent disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <IconPlayerPlay size={12} stroke={1.8} />
               {t('storyboardEditor.playback.start')}
@@ -698,6 +700,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
               }}
               onPlayGroup={onStartPlayback}
               filterAnchorId={filterAnchorId}
+              scrollRef={scrollRef}
             />
             <button
               type="button"

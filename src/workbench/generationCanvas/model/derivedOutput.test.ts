@@ -63,7 +63,7 @@ describe('the five producers use the atomic action', () => {
   it.each([
     ['nodes/useNodePanoramaHandlers.ts', "'panorama-screenshot'"],
     ['nodes/director/DirectorNode.tsx', "'director-output'"],
-    ['nodes/whiteboard/WhiteboardModal.tsx', "'whiteboard-snapshot'"],
+    ['nodes/whiteboard/InlineWhiteboard.tsx', "'whiteboard-snapshot'"],
     ['nodes/ClipNode.tsx', "'clip-export'"],
     ['nodes/shotTable/factBridge.ts', "'shot-table'"],
   ])('%s calls addDerivedOutput with %s', (rel, kind) => {

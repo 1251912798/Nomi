@@ -21,7 +21,8 @@
  */
 import { readCatalog } from "../../catalog/catalogStore";
 import { selectTaskMapping, type ProfileKind } from "../../catalog/types";
-import { spendDecidedByPolicy, type ProjectAgentApprovalPolicy } from "../../shared/agentCapabilities/capabilityApprovalPolicy";
+import type { ProjectAgentApprovalPolicy } from "../../shared/agentCapabilities/capabilityApprovalPolicy";
+import { spendDecisionByPolicy } from "../../shared/agentCapabilities/directGenerationBrakes";
 import { quoteSpendLine } from "../../spendQuote";
 import { isTransportLevelFailure, outboundRequestWasNeverWritten } from "../../outboundDispatchEvidence";
 import { mintSpendGrant, isSpendAuthorizationError } from "../../spendGrant";
@@ -92,8 +93,10 @@ export type TryModelDeps = {
   /**
    * 用户此刻选的审批档位（宿主持有的那一份快照，与 `generationTransportAdapters` 读的是同一份）。
    *
-   * **这一跳不自己回答「该不该问人」**：那个问题全仓只有 `spendDecidedByPolicy` 回答
-   * （`shared/agentCapabilities/capabilityApprovalPolicy.ts:144`，2026-09-12 用户拍板的单一 owner）。
+   * **这一跳不自己回答「该不该问人」**：替用户代答付费全仓只有一个入口 `spendDecisionByPolicy`
+   * （`shared/agentCapabilities/directGenerationBrakes.ts`，2026-10-16 协调拍板：试跑也走它，不另开旁路）。
+   * 试跑没有 Run：没有计划、没有重试谱系，刹车无从判，入口只剩档位那一问；Agent 调 `nomi_try_model` 不是
+   * 用户的一次点击，所以这里**不**伪造一份「用户同意过」的输入——请求批准档照旧弹卡问人。
    * 是否弹卡由**档位**决定，不由入口决定——同一个用户在「全自动」下从画布点一下生成不弹卡，
    * 那么他让自己的 AI 试跑一个刚接进来的模型也不该弹卡。
    *
@@ -155,7 +158,7 @@ export async function tryModel(
   //   · 不带 → 它一定会走到 `confirm()`，也就是一定会去问用户（报价卡在用户自己的 Nomi 窗口里，
   //     报价卡怎么说由渲染层负责，见 `src/workbench/ai/v4/agentPanelSpendCard.ts`：报不出价时卡上不说任何价格的话）。
   // 两条路都经同一个钱闸，这里没有第二套判据，也没有任何「跳过闸」的分支。
-  const policyAnswers = spendDecidedByPolicy(deps.approvalPolicy?.());
+  const policyAnswers = spendDecisionByPolicy(deps.approvalPolicy?.(), undefined).decided;
   const quoted = quoteSpendLine({ vendorKey, modelKey, parameters: {} });
   const grantId = mintSpendGrant({
     nodeIds: [nodeId],

@@ -1,0 +1,31 @@
+{
+  "name": "画布选区投影（选区叠在节点 / 边结构投影上的一层）",
+  "subject": "canvas.flow-selection-projection",
+  "lifecycle": "live-interaction",
+  "authority_kind": "projection",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.ts",
+    "symbol": "projectGenerationFlowNodes"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.ts",
+      "symbol": "projectGenerationFlowNodes"
+    },
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.ts",
+      "symbol": "projectGenerationFlowEdges"
+    },
+    {
+      "path": "scripts/canvas-store-subscriptions.mjs",
+      "symbol": "WHOLE_TABLE_SUBSCRIPTION_BASELINE"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-16",
+  "notes": "结构（节点 / 边数组、端点表、只读、出现 / 闪烁）没变时，选区变化只换选中过 / 被选中的卡和挨着唯一选中卡的边，其余交回上一版同一个对象。选区只由视口层（GenerationCanvasReactFlowViewport）和浮层订阅，画布壳不订阅（eslint 规则 + scripts/canvas-store-subscriptions.test.mjs；方向检查 docs/engineering/direction-checks/2026-10-16-canvas-shell-subscriptions.md）。 整表订阅名单 WHOLE_TABLE_SUBSCRIPTION_BASELINE 是同一条纪律的门岗数据（eslint 与计数测试共用）。"
+}

@@ -18,6 +18,10 @@
     {
       "path": "src/workbench/project/projectOperationFailureText.ts",
       "symbol": "projectNotice"
+    },
+    {
+      "path": "src/workbench/project/projectOperationFailureText.ts",
+      "symbol": "UserText"
     }
   ],
   "forbidden_derivations": [],

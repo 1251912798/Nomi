@@ -8,7 +8,7 @@ import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { useProductionCanvasLandingStore } from '../../production/productionCanvasLandingStore'
 import { isNodeGenerationOwnedByProduction } from '../../production/productionShotOwnership'
-import { directorPreviewSpendBlock } from '../nodes/director/model/directorPreviewState'
+import { directorPreviewSpendBlock, directorPreviewSpendBlockMessageKey } from '../nodes/director/model/directorPreviewState'
 import { isProjectExecutionContextCurrent, withProjectAction } from '../../project/projectCanvasReadSurface'
 import { releaseCanvasShotRun } from '../../api/taskApi'
 import { confirmGenerationSpend, describeGenerationCost, generationCostContextForNode, type GenerationCostKind, type SpendInitiator } from '../spend/spendConfirm'
@@ -238,7 +238,7 @@ export async function runGenerationNode(
   // 3D-BOX 预演闸（方案 §8）：要花钱的单镜 Run 路由主进程准入问它（appIntegrationCanvasShot）；不花钱的本地 / 文本路在这里问。
   const previewBlock = options.ledger === 'run' ? null : directorPreviewSpendBlock(id, initialState.nodes)
   if (previewBlock) {
-    throw new Error(i18n.t(previewBlock.reason === 'rendering' ? 'director.agent.spendBlockedRendering' : 'director.agent.spendBlockedFailed'))
+    throw new Error(i18n.t(directorPreviewSpendBlockMessageKey(previewBlock)))
   }
   if (!canRunGenerationNode(initialNode, { nodes: initialState.nodes, edges: initialState.edges })) {
     throw new Error(
@@ -639,7 +639,7 @@ export function canRunGenerationNode(
   if (!node) return false
   // 这一镜归制作流程生成（报价卡等确认 / 排队 / 生成中）：画布再发一次就是重复生成、重复扣费。
   if ('id' in node && node.id && isNodeGenerationOwnedByProduction(node, useProductionCanvasLandingStore.getState().runs)) return false
-  // 这一镜的 3D-BOX 参考预演还没好（渲染中 / 失败）：花钱就是发一次没有参考的生成。判据只住 directorPreviewState。
+  // 这一镜的 3D-BOX 参考预演还没好（渲染中 / 失败）或已过期（挂上之后又被改过）：花钱就是按错的参考出片。判据只住 directorPreviewState。
   if ('id' in node && node.id && directorPreviewSpendBlock(node.id, context.nodes ?? useGenerationCanvasStore.getState().nodes)) return false
   const executionKind = getGenerationNodeExecutionKind(node.kind)
   if (executionKind === 'image') {

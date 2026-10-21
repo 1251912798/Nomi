@@ -1,0 +1,45 @@
+{
+  "name": "工作区底部停靠区名单与浮层让位几何",
+  "subject": "workspace.bottom-dock-geometry",
+  "lifecycle": "live-interaction",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generation/workspaceBottomDocks.ts",
+    "symbol": "resolveUsableBottomAboveDocks"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generation/workspaceBottomDocks.ts",
+      "symbol": "resolveUsableBottomAboveDocks"
+    },
+    {
+      "path": "src/workbench/generation/workspaceBottomDocks.ts",
+      "symbol": "collectBottomDockRects"
+    },
+    {
+      "path": "src/workbench/generation/workspaceBottomDocks.ts",
+      "symbol": "collectBottomDockElements"
+    },
+    {
+      "path": "src/workbench/generation/workspaceBottomDocks.ts",
+      "symbol": "resolveBottomDockScope"
+    },
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/useCanvasBottomDockRects.ts",
+      "symbol": "useCanvasBottomDockRects"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "src/design/anchoredPopoverPlacement.test.ts",
+  "allowed_consumers": [
+    "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx",
+    "src/workbench/generationCanvas/reactFlow/selectionToolbarPlacement.ts",
+    "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx"
+  ],
+  "since": "2026-10-12",
+  "notes": "登记既有共享 owner，不新建生产实现。workspaceBottomDocks 以元素自身标记数完整工作区名单并转换坐标，resolveUsableBottomAboveDocks 是唯一横向相交/底部让位判据；useCanvasBottomDockRects 只管理 active 时的观测寿命。near-left宽浮层回归组合真实 placement+dock owner 验最终不相交，不能复制 selector 或碰撞算法。"
+}

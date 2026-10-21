@@ -19,7 +19,6 @@ import { evaluateCameraPose } from '../../model/cameraPoseEval'
 import { transformCameraPose } from '../../model/cameraCoordinateSpace'
 import { sceneFrame } from '../../model/sceneObjectGraph'
 import type { DirectorScene } from '../../model/directorTypes'
-import { isDirector3DBoxEnabled } from '../../../../../../featureFlags/director3dbox'
 
 const overlaps = (a: { left: number; top: number; width: number; height: number }, b: typeof a) =>
   a.left < b.left + b.width && b.left < a.left + a.width && a.top < b.top + b.height && b.top < a.top + a.height
@@ -65,7 +64,6 @@ describe('layoutCharacterLabels', () => {
  *   · 视口 DOM 名牌（ViewportLabels，renderToStaticMarkup 出真 DOM，读每张名牌的 left / top）；
  *   · 出片烧进画面的名牌（directorCapture.drawLabels，交给一个记账的 2D 画布上下文，读每张名牌画在哪个框里）。
  * 任一处改回「框底贴锚点」的旧放法，下面的接线用例和普查都会红。
- * 这两处都不看 3D-BOX 开关：开关关着的老导演台同样走它们（本文件不装任何开关桥，isDirector3DBoxEnabled() 为 false）。
  *
  * 普查遍历评测题库里每一道 oracle 计划（S1_ORACLE_PLANS 登记表）：
  *   · 视口：导演视图进场的总览机位（directorOverviewPose）× 全片每 0.25 秒；
@@ -129,9 +127,7 @@ function projectHeads(scene: DirectorScene, camera: THREE.PerspectiveCamera, tim
   return heads
 }
 
-describe('接线：两处画名牌的地方都走共享排版（开关关着也一样）', () => {
-  it('这一组用例跑在开关关着的环境里', () => expect(isDirector3DBoxEnabled()).toBe(false))
-
+describe('接线：两处画名牌的地方都走共享排版', () => {
   it('视口 ViewportLabels：两个角色投影到同一点，两张名牌上下错开、都在锚点之上', () => {
     const placed = viewportBoxes([{ id: 'a', name: '青衣女子', x: 380, y: 500 }, { id: 'b', name: '黑衣侍卫', x: 380, y: 500 }])
     pairwiseClear(placed, 'viewport')

@@ -1,7 +1,7 @@
 // PR#24 抠图(BG Removal) R13 走查 —— DEV 模式真 app 真引擎，验本 PR 最大运行时风险点：
 //  A 启动跨源隔离生效（crossOriginIsolated===true → COOP/COEP 头落地 → SharedArrayBuffer 可用，ONNX 多线程不退单线程）
 //    + 真跑一次 removeBackgroundBlob()（合成图，端到端走 worker → @imgly WASM → CDN 模型 → 透明 PNG）
-//  B 打开画板节点 modal（WhiteboardDrawingTool/LeaferCanvas churn 零回归）
+//  B 打开画板节点内联编辑器（WhiteboardDrawingTool/LeaferCanvas churn 零回归）
 //  贯穿：全程零 console error / 零 pageerror（CSP/worker 接线错会在 preload/抠图时抛）
 // DEV 模式：脚本内起 vite(127.0.0.1:5273) → electron 以 NOMI_DESKTOP_DEV 连 dev（vite 提供 /src，真 import 才解析）
 // 用法: node tests/ux/remove-background.walk.mjs
@@ -10,9 +10,10 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import http from 'node:http'
-import { screenshotSettled } from './_assert.mjs'
+import { expect, screenshotSettled } from './_assert.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, switchWorkspace } from './_shell.mjs'
+
 const repoRoot = process.cwd()
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/remove-background')
 fs.mkdirSync(shotsDir, { recursive: true })
@@ -117,7 +118,7 @@ try {
     check('removeBackground 真跑成功', false, rmbg.error)
   }
 
-  // B 回归：进项目 → 生成画布 → 加画板节点 → 打开 modal
+  // B 回归：进项目 → 生成画布 → 加画板节点 → 打开 inline editor
   await dismiss() // 先关开屏/上手浮层，否则盖住新建按钮
   await getWin().waitForTimeout(400)
   await newProjectEntry(getWin()).click({ timeout: 4000 }).catch(() => {})
@@ -126,7 +127,7 @@ try {
   const projectId = (/projectId=([^&]+)/.exec(getWin().url()) || [])[1] || ''
   check('新建并进入项目', Boolean(projectId))
 
-  await getWin().locator('button, [role="button"], [role="tab"]', { hasText: /^生成$/ }).first().click({ timeout: 4000 }).catch(() => {})
+  await switchWorkspace(getWin(), 'generation', '切到生成区')
   await getWin().waitForTimeout(900)
   await dismiss()
   await getWin().waitForTimeout(500)
@@ -140,12 +141,12 @@ try {
 
   await getWin().locator('[data-testid="whiteboard-empty-action"]').first().click({ timeout: 4000 }).catch(() => {})
   await getWin().waitForTimeout(1000)
-  const modal = getWin().locator('[data-nomi-whiteboard-modal="true"]').first()
-  await modal.waitFor({ state: 'visible', timeout: 6000 }).catch(() => {})
+  const editor = getWin().locator('[data-nomi-inline-whiteboard="true"]').first()
+  await expect(editor).toBeVisible()
   await getWin().waitForTimeout(1000)
   const leaferHost = getWin().locator('[aria-label="Leafer 画板"]').first()
-  const wbMounted = (await modal.count()) > 0 && (await leaferHost.count()) > 0
-  check('画板 modal + leafer 挂载（白板 churn 零回归）', wbMounted)
+  const wbMounted = (await editor.count()) > 0 && (await leaferHost.count()) > 0
+  check('画板 inline editor + leafer 挂载（白板 churn 零回归）', wbMounted)
   await snap('whiteboard-open')
 
   check('全程零 console error / pageerror', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '))

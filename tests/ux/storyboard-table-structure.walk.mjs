@@ -4,7 +4,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 //
 // 要证的三句话（都是「用户看得到、点得到」，不是「DOM 里有」）：
 //   ① 选中一行之后，多选浮条**不用滚动**就在视野里、点得到（sticky 不能被表格的 overflow-hidden 废掉）；
-//   ② 最后一行的弹出层（行 ⋯ 菜单 / 「用作…」菜单 / 提示词片段菜单）完整露出、整块点得到，不被表格边界裁掉；
+//   ② 最后一行的弹出层（行 ⋯ 菜单 / 提示词片段菜单）完整露出、整块点得到，不被表格边界裁掉；
 //   ③ 最小窗口 1100×690、中英两种语言下，每一行的「生成」和「⋯」都点得到。
 //
 // 判据全部走 `_assert.mjs` 的 elementFromPoint 采样（`expectOverlayReachable` / `expectHittable`）：
@@ -12,6 +12,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 //
 // 用法：pnpm run build && node tests/ux/storyboard-table-structure.walk.mjs
 //   STORYBOARD_TABLE_STRUCTURE_OUT=<dir>  截图与报告输出目录（默认 tests/ux/shots/storyboard-table-structure）
+//   WALK_SCHEME=dark                      暗色跑一遍（默认亮色；同 shell-redesign.walk 的写法）
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -23,6 +24,7 @@ import { openStoryboardEditor } from './_creationResourceTree.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const outRoot = process.env.STORYBOARD_TABLE_STRUCTURE_OUT || path.join(repoRoot, 'tests', 'ux', 'shots', 'storyboard-table-structure')
+const scheme = process.env.WALK_SCHEME === 'dark' ? 'dark' : 'light'
 const MIN_WINDOW = { width: 1100, height: 690 }
 const projectId = 'storyboard-table-structure-walk'
 const designId = 'table-structure-design'
@@ -55,7 +57,7 @@ const videoShot = (index, extra = {}) => ({
   index, shotId: `shot-${index}`, shotKind: 'video', durationSec: 5, anchorIds: [],
   modelKey: 'seedance-2-5', modeId: 'omni', prompt: `第 ${index} 镜画面`, ...extra,
 })
-// 最后一镜是「已出图」的图片镜：它的行里有「用作…」菜单，且它是表里最后一行——被表格边界裁掉的菜单就出在这里。
+// 最后一镜是图片镜：它是表里最后一行——行 ⋯ 菜单被表格边界裁掉的问题就出在最后一行。
 const plan = {
   title: '表结构走查',
   profileKey: 'genre.short-drama',
@@ -162,7 +164,7 @@ async function openEditor(locale) {
     viewportSize: MIN_WINDOW,
     mainRequire: [path.join(repoRoot, 'tests', 'ux', '_offscreenWindows.cjs')],
     initialLocalStorage: {
-      'nomi:locale:v1': locale, 'nomi:splash:v1': 'seen',
+      'nomi:locale:v1': locale, 'nomi-color-scheme': scheme, 'nomi:splash:v1': 'seen',
       'nomi:journey-tour:v1': 'seen', 'nomi:canvas-gesture-hint:v1': 'seen',
     },
   })
@@ -177,6 +179,8 @@ async function openEditor(locale) {
   await clickOrFail(win.getByRole('button', { name: /^(创作|Create)$/ }), '切到创作页')
   await setSidebar('expand')
   await openStoryboardEditor(win, designId, '选中走查分镜')
+  // 抽屉选中即收：点开方案后文稿抽屉必须已经让开（它浮在编辑器上，不收就盖住行首「⋯」）。
+  await win.locator('[data-shell-drawer]').first().waitFor({ state: 'hidden', timeout: stationTimeout() }).catch(() => { throw new Error('点开方案后文稿抽屉没收，仍盖在分镜表上') })
   const appeared = await editor().waitFor({ state: 'visible', timeout: stationTimeout() }).then(() => true).catch(() => false)
   if (!appeared) await clickOrFail(win.getByRole('button', { name: /打开分镜|再次编辑|Open storyboard|Edit again/ }).first(), '打开分镜页')
   await expectVisible(editor(), '分镜编辑器未渲染')
@@ -293,24 +297,6 @@ async function walkLocale(locale) {
     await win.waitForTimeout(250)
   }
 
-  await scrollRowIntoView(LAST)
-  const useAsButton = row(LAST).locator('[data-storyboard-actbar] button[aria-label]').last()
-  await clickOrFail(useAsButton, '点最后一行的「用作…」')
-  await check(tag, '最后一行的「用作…」菜单被裁', async () => {
-    await expectOverlayReachable(win.locator('[data-storyboard-result-intake-menu]'), '最后一行的「用作…」菜单')
-  })
-  await snap(tag, '05-last-row-use-as-menu')
-  await win.keyboard.press('Escape')
-  await win.waitForTimeout(250)
-  await check(tag, '「用作…」菜单按 Esc 没有关上', async () => {
-    const open = await win.locator('[data-storyboard-result-intake-menu]').count()
-    if (open > 0) throw new Error(`菜单还在（${open} 个）`)
-  })
-  if (await win.locator('[data-storyboard-result-intake-menu]').count() > 0) {
-    await useAsButton.click()
-    await win.waitForTimeout(250)
-  }
-
   // 提示词片段菜单（第 1 行；它自己也在表里，行内原地定位的那一族）。
   await scrollRowIntoView(1)
   const segment = row(1).locator('[data-storyboard-prompt-segment]').first()
@@ -347,7 +333,7 @@ const report = [
   `result: ${failures.length ? 'failed' : 'passed'}`,
   `screenshots: ${screenshots.join(', ')}`,
   `measured: ${JSON.stringify(measured, null, 2)}`,
-  'covers: selection toolbar reachable without scrolling and while scrolling; last-row row-menu / use-as menu / prompt-segment menu fully hittable; every row generate button and ellipsis hittable at 1100x690 in zh and en; no composer-bar leaf past the row edge.',
+  'covers: selection toolbar reachable without scrolling and while scrolling; last-row row-menu / prompt-segment menu fully hittable; every row generate button and ellipsis hittable at 1100x690 in zh and en; no composer-bar leaf past the row edge.',
   failures.length ? `failures:\n- ${failures.join('\n- ')}` : 'failures: none',
 ].join('\n')
 fs.mkdirSync(outRoot, { recursive: true })

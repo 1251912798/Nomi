@@ -1,0 +1,204 @@
+{
+  "board": "ReferenceEntry",
+  "approvedOn": "2026-10-12",
+  "visualReview": "User confirmed final equal square icon frames and requested PR: ok 实现好了 提交pr上去",
+  "stage": "built",
+  "sourceBoundary": "Production DOM excerpts from actual macOS development Electron; no second UI implementation. Existing declared-slot array/first/last/source add controls are retained and covered by AssetReference.test.ts, not all live model journeys. Same-row frame geometry (every dashed frame in the row shares top edge and height within 1px, zh/en, all generation modes) is guarded by tests/ux/reference-row-alignment.test.mjs.",
+  "elements": [
+    {
+      "id": "agent.entry",
+      "label": "Agent · 原小鼠标",
+      "candidates": [
+        "004-button-加参考",
+        "005-svg"
+      ],
+      "status": "implemented",
+      "assertion": "board:ReferenceEntry/agent.creation.direct",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "agent.inline",
+      "label": "Agent · 句中引用",
+      "candidates": [
+        "007-div-给Nomi的消息",
+        "008-p-changethebac",
+        "009-span",
+        "010-span-图片1",
+        "011-span-图片1",
+        "012-span",
+        "013-span-视频1",
+        "014-span-视频1"
+      ],
+      "status": "implemented",
+      "assertion": "board:ReferenceEntry/agent.at.search",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "node.image.entry",
+      "label": "image · 原参考入口",
+      "candidates": [
+        "016-button-加参考",
+        "017-svg",
+        "018-button-加参考",
+        "019-svg"
+      ],
+      "status": "implemented",
+      "assertion": "board:ReferenceEntry/node.image.direct",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "node.video.entry",
+      "label": "video · 原参考入口",
+      "candidates": [
+        "021-button-加参考",
+        "022-svg",
+        "023-button-加参考",
+        "024-svg"
+      ],
+      "status": "implemented",
+      "assertion": "board:ReferenceEntry/node.video.direct",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "node.text.entry",
+      "label": "text · 原参考入口",
+      "candidates": [
+        "026-button-加参考",
+        "027-svg",
+        "028-button-加参考",
+        "029-svg"
+      ],
+      "status": "implemented",
+      "assertion": "board:ReferenceEntry/node.text.connected",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "agent.at",
+      "label": "Agent · @ 素材候选（英文暗色）",
+      "candidates": [
+        "031-div-Canvas",
+        "032-button-framecurrent",
+        "033-span-framecurrent",
+        "034-span-Connect",
+        "035-svg"
+      ],
+      "status": "implemented",
+      "assertion": "board:ReferenceEntry/agent.at.search",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ]
+    }
+  ],
+  "decor": [
+    "001-h1-参考入口生产组件快照",
+    "002-p-真实Electron走查",
+    "003-h2-Agent原小鼠标",
+    "006-h2-Agent句中引用",
+    "015-h2-image原参考入口",
+    "020-h2-video原参考入口",
+    "025-h2-text原参考入口",
+    "030-h2-Agent素材候选英文暗"
+  ],
+  "functionCensus": [
+    {
+      "function": "原小鼠标立即点选，共用 canvasPickMode",
+      "before": "左输入画布点选 owner",
+      "after": "agent.entry"
+    },
+    {
+      "function": "原素材选择器 +、文本上游连线",
+      "before": "addAssetInput",
+      "after": "node.text.entry"
+    },
+    {
+      "function": "@、原件 claim 和原件 bytes",
+      "before": "PromptEditor / useComposerAttachments",
+      "after": "agent.inline"
+    },
+    {
+      "function": "原素材候选池",
+      "before": "useAssetPool",
+      "after": "agent.at"
+    }
+  ],
+  "stateEvidence": {
+    "runtime": "empty / selected / narrow / long-text / zh-en / dark, genuine JPG/MP4 and loopback payload; see docs/evidence/2026-10-12-reference-entry/acceptance.md",
+    "unit": "loading / error / disabled and declared-slot capacity: useComposerAttachments.behavior.test.tsx, AssetReference.test.ts",
+    "unverified": "hover visual, every native model-slot state in actual Electron, Windows, paid providers, packaged app"
+  },
+  "userScope": {
+    "quote": "我核心是让你做这个鼠标的icon和这些交互，你不要自己瞎带东西。",
+    "agent": "保留鼠标icon就行",
+    "removed": [
+      "重复 header +",
+      "新目标标签",
+      "上方 ready 媒体条",
+      "先搜索再点选流程"
+    ],
+    "node": "同排两个原样式 56px 虚线方框：鼠标 icon 直接画布点选；原 + 保持素材选择与槽容量语义。"
+  }
+}

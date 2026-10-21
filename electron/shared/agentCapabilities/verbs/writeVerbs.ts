@@ -10,9 +10,6 @@ import { z } from "zod";
 import { TIMELINE_WRITE_ALIASES, timelineWriteResultSchema } from "../timelineWrite";
 import { exportWriteResultSchema } from "../exportCapabilities";
 
-import {
-  cameraMoveParamsObjectSchema, CAMERA_MOVE_MODEL_GUIDELINES, STAGING_MODEL_GUIDELINES, stagingReferenceParamsSchema,
-} from "../canvasModelShapes";
 import { canvasDeletePiInputSchema } from "../canvasDelete";
 import { CANVAS_NODE_PROMPT_GUIDELINES, plannedEdgeSchema } from "../canvasWrite";
 import { modelArgumentTolerance } from "../modelArgumentTolerance";
@@ -22,7 +19,6 @@ import type { VerbDeclaration } from "../verbDeclaration";
 import { DOCUMENT_ID_TRANSPORT_FIELD, READ_GUIDELINES } from "./readVerbs";
 import { canvasWriteInputOf, documentWriteInputOf } from "./verbSemanticInput";
 import { directorStageShotModelSchema, directorWriteInputOf, prepareDirectorStageShotArguments } from "./directorStageShotFace";
-import { director3dBoxFaceEnabled } from "../../featureFlags/director3dboxFace";
 import { DIRECTOR_PLAN_MODEL_GUIDELINES } from "../../director/directorPlanGuidelines";
 import {
   cancelJobModelSchema, editTimelineModelSchema, exportVideoModelSchema, generateModelSchema,
@@ -47,6 +43,9 @@ export const draftShotSchema = z.object({
   // 被宿主当意图键静默吞掉，用户付了钱拿到默认画幅。这里只收语义，宿主按所选模式翻成真实键（翻不了就拒）。
   aspectRatio: z.string().trim().optional().describe("e.g. 16:9 or auto."),
   modelId: z.string().trim().min(1).optional().describe("Catalog model id from list_models; omit for the user's default."),
+  // 2026-10-18：list_models 把变体（`variants`）投给了模型，可模型面这里却没有地方写——它只好把 `variant` 塞进 parameters，
+  // 被起草校验当未知参数拒掉。变体是身份的一部分（和 modelId 同级），不是参数。
+  variantId: z.string().trim().min(1).optional().describe("From list_models variants."),
   // 2026-09-22：`taskKind` 与 `modeId` 是同一件事实的两种写法。模式定了，种类就定了
   // （`transportTaskKindForModeId` 从档案扫出来），所以说明书直接告诉模型「写了模式就别再写种类」——
   // 两个都填正是它自己给自己造矛盾的地方（run2 A3/A6 三次）。
@@ -375,50 +374,8 @@ export function writeVerbs(): VerbDeclaration[] {
     semanticInputOf: (args) => canvasWriteInputOf("write_node_text", args),
   };
 
-  const stageShot: VerbDeclaration = {
-    name: "stage_shot", profiles: ["internal"], profileReason: "mcpHandwrittenTransport", contractId: "canvas.write", effect: "reversible_local", nextAction: "none",
-    effectGroups: ["canvas-node-creation"],
-    describe: {
-      does: "Attach a staging (blocking) or camera-move reference to one shot; Nomi renders a gray 3D reference for it.",
-      useWhen: `The user asks for a push-in, a two-shot, a specific blocking, or "show me the camera move".`,
-      notWhen: "It does not generate the shot itself and it is not a prompt edit (draft_shots). Not for links (arrange_canvas) or hand-made artifacts (make_artifact).",
-      params: "shotId from look_at_canvas or draft_shots; exactly one of staging (characters, layout, camera, environment, customBlocking) or cameraMove (move, customMove, speed, subjectPose).",
-    },
-    promptGuidelines: [...STAGING_MODEL_GUIDELINES, ...CAMERA_MOVE_MODEL_GUIDELINES],
-    schema: z.object({
-      shotId: shotId.describe("The shot to attach the reference to."),
-      staging: z.object({
-        characters: stagingReferenceParamsSchema.shape.characters,
-        layout: stagingReferenceParamsSchema.shape.layout,
-        camera: stagingReferenceParamsSchema.shape.camera,
-        environment: stagingReferenceParamsSchema.shape.environment,
-        crowd: stagingReferenceParamsSchema.shape.crowd,
-        sceneTemplate: stagingReferenceParamsSchema.shape.sceneTemplate,
-        props: stagingReferenceParamsSchema.shape.props,
-        customBlocking: stagingReferenceParamsSchema.shape.customBlocking,
-      }).strict().optional().describe("Blocking reference: characters or customBlocking is required."),
-      cameraMove: z.object({
-        move: cameraMoveParamsObjectSchema.shape.move,
-        customMove: cameraMoveParamsObjectSchema.shape.customMove,
-        speed: cameraMoveParamsObjectSchema.shape.speed,
-        shot: cameraMoveParamsObjectSchema.shape.shot,
-        subjectPose: cameraMoveParamsObjectSchema.shape.subjectPose,
-        sceneTemplate: stagingReferenceParamsSchema.shape.sceneTemplate,
-        props: stagingReferenceParamsSchema.shape.props,
-      }).strict().optional().describe("Camera-motion reference: move or customMove is required."),
-    }).strict().superRefine((value, context) => {
-      if ((value.staging === undefined) === (value.cameraMove === undefined)) {
-        context.addIssue({ code: z.ZodIssueCode.custom, path: ["staging"], message: "give exactly one of staging or cameraMove" });
-      }
-    }),
-    examples: [{ when: "Push in on a shot:", arguments: { shotId: "shot-4", cameraMove: { move: "push_in" } } }],
-    prepareArguments: rejectGeneratingNodes("stage_shot", modelArgumentTolerance({ objectFields: ["staging", "cameraMove"] })),
-    semanticInputOf: (args) => canvasWriteInputOf("stage_shot", args),
-  };
-
-  // 3D-BOX（开关开）：同名换芯。契约 `director.write`（仅内部，不投影到对外 MCP），新建交整份导演计划，
-  // 修改交按名字寻址的补丁；任一构建只装配 stageShot / directorStageShot 其中一份（见文件末尾的 return）。
-  // 到期 2026-11-15：切换 PR 同 commit 删掉旧的 stageShot 与这条分叉。
+  // 3D-BOX（2026-10-16 起唯一的导演台）：契约 `director.write`（仅内部，不投影到对外 MCP），新建交整份导演计划，
+  // 修改交按名字寻址的补丁。旧的 canvas.write 版 stage_shot 已随开关删除；对外 MCP 的摆位参考 / 运镜参考仍在 canvas.write 上。
   const directorStageShot: VerbDeclaration = {
     name: "stage_shot", profiles: ["internal"], profileReason: "mcpHandwrittenTransport", contractId: "director.write", effect: "reversible_local", nextAction: "none",
     effectGroups: ["canvas-node-creation"],
@@ -569,5 +526,5 @@ export function writeVerbs(): VerbDeclaration[] {
     prepareArguments: modelArgumentTolerance({}),
   };
 
-  return [writeScript, draftShots, generate, arrangeCanvas, makeArtifact, writeNodeText, director3dBoxFaceEnabled() ? directorStageShot : stageShot, editTimeline, undo, deleteFromCanvas, exportVideo, cancelJob, saveSkill, startModelSetup];
+  return [writeScript, draftShots, generate, arrangeCanvas, makeArtifact, writeNodeText, directorStageShot, editTimeline, undo, deleteFromCanvas, exportVideo, cancelJob, saveSkill, startModelSetup];
 }

@@ -24,8 +24,8 @@ import {
   INTERVENTION_ESCALATE, PERMISSION_POPOVER, PREVIEW_PANEL, PROCESS, QUEUE, QUEUE_ROW, THREAD_ROW,
   TOOL_RECEIPT, USER_BUBBLE, chooseAssistantModel, createRuntimeWalk,
   hasToolResult, newConversation, openCanvas, openProcess,
-  recorded, sendCanvas, sendCreation, toolNames, waitForV4TurnIdle,
-} from './agent-runtime-walk-support.mjs'
+  recorded, sendCanvas, sendCreation, toolNames, waitForV4TurnIdle, expectComposerText } from './agent-runtime-walk-support.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 import { laneDiskSnapshot, laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { residentToolNames } from './agent-runtime-walk-support.mjs'
 
@@ -135,9 +135,9 @@ try {
   const creation = win.locator(CREATION_PANEL)
   await expect(creation, '创作面常驻 Agent 必须挂载').toBeVisible()
   await expect(creation, '默认审批档位是 safe-auto——后面「不出卡」的断言以它为前提')
-    .toHaveAttribute('data-agent-approval-mode', 'safe-auto')
+    .toHaveAttribute('data-agent-approval-mode', 'request')
   await expect(creation.locator(COMPOSER), 'composer 也必须自报同一档，两处不能各说各的')
-    .toHaveAttribute('data-permission', 'safe-auto')
+    .toHaveAttribute('data-permission', 'request')
 
   const t1Call = walk.fixture.expectText({
     label: 'turn 1 asks the document read tool',
@@ -244,14 +244,15 @@ try {
   await clickOrFail(creation.locator(COMPOSER_PERMISSION), '打开权限弹层')
   const permissionMenu = creation.locator(PERMISSION_POPOVER)
   await expect(permissionMenu, '权限弹层必须打开').toBeVisible()
-  await expect(permissionMenu.locator('[data-tier]'), '授权只有三档，不多不少').toHaveCount(3)
-  for (const label of ['每步问', '自动改', '全自动']) {
+  await expect(permissionMenu.locator('[data-tier]'), '授权只有两档，不多不少').toHaveCount(2)
+  for (const tier of ['request', 'direct']) {
+    const label = uiText('zh-CN', `agentPanelV4.permission.${tier}`)
     await expect(permissionMenu, `权限档缺了「${label}」`).toContainText(label)
   }
   await expect(permissionMenu.locator('[data-tier][data-active="true"]'), '当前档恰有一个').toHaveCount(1)
-  await expect(permissionMenu.locator('[data-tier="safe-auto"][data-active="true"]'), '出厂档就是「自动改」')
+  await expect(permissionMenu.locator('[data-tier="request"][data-active="true"]'), '出厂档就是请求批准')
     .toBeVisible()
-  await walk.snap('03-permission-popover-three-tiers')
+  await walk.snap('03-permission-popover-two-tiers')
   await win.keyboard.press('Escape')
   await expect(permissionMenu, '按 Esc 必须关掉弹层').toBeHidden()
 
@@ -513,7 +514,7 @@ try {
   // 8e89e19ce（2026-09-19）起「取消」不再是删掉：被取消的那句原样回到手边可改——第一句回到空着的输入框，
   // 后面的成了队列里一行「未发送」草稿（取回编辑 / 丢弃这条草稿）。先证「一句都没丢」，
   // 再像用户那样把它们清走、按新顺序重发。
-  await expect(canvasInput, '第一条被取消的指令回到输入框，没有丢').toHaveValue(QUEUE_B)
+  await expectComposerText(canvasInput, QUEUE_B, '第一条被取消的指令回到输入框，没有丢')
   const draftRow = canvas.locator(`${QUEUE_ROW}[data-status="draft"]`)
   await expect(draftRow, '第二条被取消的指令成了一行未发送草稿，没有丢').toHaveCount(1)
   await expect(draftRow).toContainText('K_QC：')

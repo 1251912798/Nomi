@@ -18,7 +18,7 @@ import type { LabState } from '../../labScreen'
 
 function ComposerCell({
   mode = 'idle',
-  permission = 'safe-auto',
+  permission = 'request',
   withChips = false,
   text,
   panelHeight = 620,
@@ -123,35 +123,28 @@ export const V4_COMPOSER_STATES: readonly LabState[] = [
   },
   {
     id: 'v4-composer-permission-popover',
-    name: 'composer · 权限弹层（三档 segmented）',
-    source: '2026-09-06-agent-panel-v4.md · Composer 板',
+    name: 'composer · 权限弹层（两档竖排，每档下一行灰字）',
+    source: '2026-10-12 用户：挡位改两档，每个挡位下面写个灰字描述',
     coverage: 'component-only',
     render: () => (
       <Piece>
-        <V4PermissionPopover permission="safe-auto" />
+        <V4PermissionPopover permission="request" />
       </Piece>
     ),
   },
   {
-    id: 'v4-composer-permission-step',
-    name: 'composer · 权限「每步问」（step / confirm）',
-    source: '2026-09-06-agent-panel-v4.md · Composer 板',
+    id: 'v4-composer-permission-request',
+    name: 'composer · 权限「请求批准」（request · 默认）',
+    source: '2026-10-12 用户：挡位改两档',
     coverage: 'component-only',
-    render: () => <ComposerCell permission="step" />,
+    render: () => <ComposerCell permission="request" />,
   },
   {
-    id: 'v4-composer-permission-safe-auto',
-    name: 'composer · 权限「自动改」（safe-auto / confirm · 默认）',
-    source: '2026-09-06-agent-panel-v4.md · Composer 板',
+    id: 'v4-composer-permission-direct',
+    name: 'composer · 权限「直接生成」（direct · 带刹车）',
+    source: '2026-10-12 用户：挡位改两档',
     coverage: 'component-only',
-    render: () => <ComposerCell permission="safe-auto" />,
-  },
-  {
-    id: 'v4-composer-permission-project',
-    name: 'composer · 权限「全自动」（project · 付费仍逐次问）',
-    source: '2026-09-06-agent-panel-v4.md · Composer 板',
-    coverage: 'component-only',
-    render: () => <ComposerCell permission="project" />,
+    render: () => <ComposerCell permission="direct" />,
   },
   {
     id: 'v4-composer-height-one-line',

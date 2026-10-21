@@ -6,8 +6,9 @@
 // 补法不是逐个把漏掉的登记上（只修这一处），而是：
 //   · 本表是这类测试的唯一登记处；每条写明「它扫哪些目录」，改到这些目录才跑（SCAN_GUARDS → pre-push-contracts.mjs 的批量门岗 test:scan-guards）；
 //   · 跑不进推送前的写进 SCAN_GUARD_CI_ONLY（附理由）；识别器的误判写进 NOT_SOURCE_SCANS（附理由）；
-//   · 识别（语法树，scripts/lib/scanGuardDetect.mjs）+ 核对（scanGuardProblems）在 scripts/pre-push-structure.node-test.mjs 里：
-//     以后新写的扫全仓测试，既没进本表、也没被别的门岗覆盖，那个结构测试直接红——不靠记性。
+//   · 识别（语法树，scripts/lib/scanGuardDetect.mjs）+ 核对（scanGuardProblems）：以后新写的扫全仓测试，既没进本表、也没被别的门岗覆盖，核对直接红——不靠记性。
+//     核对本身是推送前独立的一道几秒门 check:scan-guard-census（scripts/check-scan-guard-census.mjs），新增 / 改名 / 删除任何测试文件都触发（2026-10-16 之前它只挂在整份结构测试上、
+//     只在改到钩子自己的输入时才跑，一天 6 个 PR 到 CI 才红：登记类核对必须由「新增被登记对象」触发，见 docs/lessons/registry-checks-must-fire-on-the-registered-object-being-added.md）；CI 里结构测试仍整份跑同一个函数。
 //
 // 单跑耗时来自 2026-10-10 在 Windows 本机逐个 `vitest run <文件>` 的实测（含 vitest 起进程的 2–3 秒）；> 20 秒的不进推送前。
 
@@ -35,7 +36,9 @@ const TEST_STYLE_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$|^vitest(?:\.\w+)?\.confi
 export const SCAN_GUARDS = Object.freeze([
   // ── electron/ 全树（遍历 electron 找违规文件）──
   { file: 'electron/offLedgerEgress.structure.test.ts', roots: ELECTRON }, // #1156：新增 child_process 出网口没登记（5 秒）
+  { file: 'electron/capabilityCore/reservationAmountSingleExit.structure.test.ts', roots: ELECTRON }, // 2026-10-18：确认卡金额只许从 reservationMaximumForDisplay 出（遍历 electron 源码，1 秒）
   { file: 'electron/fileIdentity.test.ts', roots: ELECTRON }, // #1142：不许手写 dev / ino 比较（2 秒）
+  { file: 'electron/shared/agentCapabilities/canvasReadShotTable.test.ts', roots: ['electron/shared/agentCapabilities', 'electron/agentLane', 'electron/capabilityCore'] }, // 2026-10-19：Agent 面只有 canvasReadShotTable.ts 读分镜表文档（遍历三目录，<1 秒）
   { file: 'scripts/check-network-entry.test.mjs', roots: ELECTRON }, // #1142：Node 网络调用必须走共用传输；扫描器 scripts/check-network-entry.mjs 在闭包里（6 秒）
   { file: 'electron/shared/mcpClientRegistry.test.ts', roots: ['src', 'electron'] }, // #1142：不许手抄客户端清单（4 秒）
   { file: 'electron/capabilityCore/spendDoorSingleOwner.test.ts', roots: ELECTRON }, // 5 秒
@@ -46,6 +49,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'electron/nativeDialogParent.invariant.test.ts', roots: ELECTRON }, // 4 秒
   { file: 'electron/productionRun/landFirstOneAdmission.test.ts', roots: ELECTRON }, // 6 秒
   { file: 'electron/settings/sideBySideInstallSeed.test.ts', roots: ELECTRON }, // 3 秒
+  { file: 'electron/shared/agentCapabilities/directGenerationBrakes.boundaries.test.ts', roots: ELECTRON }, // 代答付费只剩一个入口：遍历 electron 找直接调 spendDecidedByPolicy 的生产文件（3 秒）
   { file: 'electron/update/installGate.structure.test.ts', roots: ELECTRON }, // 2 秒
   { file: 'electron/durability.test.ts', roots: ['electron', 'src', 'scripts', 'tests'] }, // 只有测试 harness 能翻成 ephemeral：四个根目录都扫（9 秒）
   { file: 'electron/providerAdapter/architecture.test.ts', roots: ['electron/providerAdapter'] }, // 2 秒
@@ -56,11 +60,14 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'electron/catalog/curatedVideoSharedContracts.test.ts', all: true, exts: '*' }, // git grep 全仓找「已知缺口」豁免记号（docs/ 除外）；记号可以出现在任何文件里
   // ── src/ 全树 ──
   { file: 'src/bundleAssetUrlBoundary.test.ts', roots: SRC },
+  { file: 'src/workbench/generationCanvas/canvasPreviewDoors.test.ts', roots: ['src', 'electron'] }, // 画布预览入口普查：遍历 src 与 electron 生产代码（9 秒）
+  { file: 'src/workbench/generationCanvas/components/lightweightFallbackCensus.test.ts', roots: ['src/workbench'] }, // 兜底节点必须带 loading：遍历 workbench 找 fallback=<LightweightGenerationNode>（<1 秒）
   { file: 'src/workbench/generationCanvas/nodes/textNodeIconSource.test.ts', roots: ['src/workbench/generationCanvas'] }, // 文字节点图标唯一来源：遍历 generationCanvas 找直接引用 IconWriting 的文件（<2 秒）
   { file: 'src/customEventWiring.test.ts', roots: SRC },
   { file: 'src/design/mediaOverlayInk.test.ts', roots: SRC },
   { file: 'src/design/menu.structure.test.ts', roots: SRC },
   { file: 'src/design/portalLayer.structure.test.ts', roots: SRC },
+  { file: 'src/design/popoverTracking.structure.test.ts', roots: SRC }, // 浮层跟踪不许逐帧轮询：遍历 src 找 autoUpdate 与 animationFrame（<2 秒）
   { file: 'src/ui/browser/assetSurfaceInvariants.test.ts', roots: SRC }, // 7 秒
   { file: 'src/workbench/common/modelSelectStructure.test.ts', roots: SRC }, // 7 秒
   { file: 'src/workbench/generation/dockCollapsePrefs.test.ts', roots: SRC }, // 4 秒
@@ -70,6 +77,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'src/workbench/generationCanvas/runner/assetUploadConsentRouting.test.ts', roots: SRC }, // 5 秒
   { file: 'scripts/viteOptimizeDeps.test.mjs', roots: SRC }, // 4 秒
   { file: 'scripts/build-tailwind.test.ts', roots: SRC, exts: [...CODE_EXTS, 'css', 'html'], files: ['tailwind.config.ts'] }, // 跑一次 tailwind content 扫描（12 秒）
+  { file: 'scripts/canvas-store-subscriptions.test.mjs', roots: SRC, files: ['eslint.config.mjs'] }, // 画布 nodes / edges 整表订阅存量冻结：遍历 src 按语法树数处数（11 秒）
   { file: 'src/workbench/project/projectActionIssuance.contract.test.ts', roots: ['src', 'electron'] }, // 13 秒
   { file: 'src/assets/vendor-logos/vendorLogos.test.ts', roots: ['src/assets/vendor-logos', 'src/config', 'src/design', 'src/ui', 'src/workbench'] },
   // ── src/workbench 及以下 ──
@@ -82,6 +90,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'src/workbench/generationCanvas/quickActions/deriveFromNode.noMoneyDoor.test.ts', roots: ['src/workbench/generationCanvas/quickActions'] },
   { file: 'src/workbench/generationCanvas/nodes/director/model/planOverrides.guard.test.ts', roots: ['src/workbench/generationCanvas/nodes/director/model'] },
   { file: 'src/workbench/generationCanvas/nodes/director/panels/inspector/crowdEntry.structure.test.ts', roots: ['src/workbench/generationCanvas/nodes/director/panels/inspector'] },
+  { file: 'src/workbench/creation/storyboard/StoryboardShotTable.windowing.test.ts', roots: ['src/workbench/creation/storyboard'] }, // 分镜表窗口化结构：遍历分镜目录找 useElementWidth / useAssetPool 调用点（19 秒）
   { file: 'src/workbench/creation/storyboard/storyboardTableReach.structure.test.ts', roots: ['src/workbench/creation/storyboard'] },
   { file: 'src/workbench/timeline/timelineGesture.structure.test.ts', roots: ['src/workbench/timeline', 'src/workbench/generationCanvas/nodes', 'src/workbench/preview'] },
   // ── 脚本 / 走查 / 站点 / 测试清单 ──

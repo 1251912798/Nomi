@@ -1,6 +1,8 @@
 import NodeGenerationComposer from './LazyNodeGenerationComposer'
 import { notify } from '../../../ui/notificationPolicy'
 import React, { type JSX } from 'react'
+import { useWhiteboardSession } from './whiteboard/whiteboardSession'
+import { NodeInlineWhiteboardHost } from './whiteboard/NodeInlineWhiteboardHost'
 import type { ImageGenerationPreset } from 'img-fx'
 import { useTranslation } from 'react-i18next'
 import { IconCopy } from '@tabler/icons-react'
@@ -16,7 +18,7 @@ import { ImageQuickActionsToolbarHost } from '../quickActions/ImageQuickActionsT
 import { NodeVersionCardsHost } from './versionCards/NodeVersionCardsHost'
 import { nodeHasVersionCards } from './versionCards/nodeVersionEntries'
 import { useLabelCoveredByVersionGrid } from './versionCards/versionGridCoverage'
-import { EmptyNodeVariantToolbar } from './NodeFloatingToolbar'
+import { EmptyNodeVariantToolbar, NodeHoverTimelineHandle } from './NodeFloatingToolbar'
 import PanoramaNodeToolbar from './render/PanoramaNodeToolbar'
 import { useNodeImageEditing } from './useNodeImageEditing'
 import { isLocalImageOpPending, isRemoveBackgroundPending, isRemoveBackgroundResult } from './localImageOpPhase'
@@ -26,9 +28,9 @@ import { lazyWithChunkBoundary } from '../../../ui/chunkBoundary'
 import { PendingGenerationPlaceholder, LocalImageOpPendingStatus, RemoveBackgroundPendingPlaceholder } from './render/CardCommon'
 import { previewBackgroundClass } from './render/previewBackground'
 import PanoramaUploadFallback from './PanoramaUploadFallback'
-import { TimelineNotchDragHandle } from './NodeTimelineDragHandles'
 import { cn } from '../../../utils/cn'
 import { DeferredNodeImage } from './DeferredNodeMedia'
+import { canvasImageSourceOf } from './canvasImageSource'
 import { NodeVideoSessionProvider } from './NodeVideoSession'
 import { NodeVideoPlaybackGuard } from './NodeVideoPlaybackGuard'
 import { useNodePanoramaHandlers } from './useNodePanoramaHandlers'
@@ -38,8 +40,6 @@ import { NodeGeneratingOverlay } from './NodeGeneratingOverlay'
 import { NodeGenerationStatus } from './NodeGenerationStatus'
 import { ProductionShotOverlays } from './ProductionShotOverlays'
 import { useProductionNodeRetry } from './useProductionNodeRetry'
-import { encodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_MIME } from '../../timeline/timelineDragPayload'
-import { addGenerationNodeToTimelineEnd } from '../../timeline/addNodeToTimelineEnd'
 import { confirmAndRunNode } from '../runner/generationRunController'
 import { selectCanvasNodeById, selectCanvasNodeExists } from '../store/canvasNodeGenerationIndex'
 import { localStepRedoOf } from './localStepRedo'
@@ -54,9 +54,8 @@ import { anchorFreezeToolbarProps } from '../fixation/freezeAnchor'
 import { TechnicalReviewBadge } from './TechnicalReviewBadge'
 import { DerivedReadyBadge } from '../quickActions/DerivedReadyBadge'
 import { isDerivedPromptReady } from '../quickActions/deriveFromNode'
-import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance'
 import { useArtifactNodeSlots } from './artifact/artifactNodeSlots'
-import { RESIZE_DIRECTIONS, getNodeSizeBounds, FOCUS_GENERATION_NODE_EVENT, resolveNodeVisualSize } from './nodeSizing'
+import { RESIZE_DIRECTIONS, getNodeResizeBounds, FOCUS_GENERATION_NODE_EVENT, resolveNodeVisualSize } from './nodeSizing'
 import { NodeLabelRow } from './NodeLabelRow'
 import { NodeShotLabel } from '../../generation/list/CanvasListLinks'
 import { NodeInlineImageTitle } from './NodeImagePreviewActions'
@@ -76,7 +75,6 @@ export type BaseGenerationNodeProps = {
 const Model3DViewer = lazyWithChunkBoundary('3D 模型预览', () => import('./model3d/Model3DViewer')) // 生成出的 .glb 卡内可旋转预览（R3F）
 const TextDocumentNode = lazyWithChunkBoundary('文本节点编辑器', () => import('./render/TextDocumentNode'))
 const PanoramaViewer = lazyWithChunkBoundary('全景预览', () => import('./PanoramaViewer'))
-
 function NodeBodyLoading(): JSX.Element {
   return <div className="h-full w-full rounded-nomi bg-nomi-paper shadow-nomi-md ring-1 ring-inset ring-nomi-line" />
 }
@@ -93,7 +91,6 @@ function BaseGenerationNodeImpl({
   const reportFeedback = React.useCallback((message: string) => {
     notify({ identity: `BaseGenerationNodeImpl:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
   }, [node.id])
-
   const { t } = useTranslation()
   const productionRetry = useProductionNodeRetry(node, reportFeedback) // P4 S6：多镜节点失败→返工链；非多镜/项目没开→null 退回本地重跑（回归门）
   const selectNode = useGenerationCanvasStore((state) => state.selectNode)
@@ -120,20 +117,7 @@ function BaseGenerationNodeImpl({
   const [provenanceOpen, setProvenanceOpen] = React.useState(false)
   const showVersionCards = React.useMemo(() => nodeHasVersionCards(node), [node])
   const { openMediaPreview, mediaPreviewControls, mediaPreviewDoubleClick } = useNodeMediaPreview(node, selected && !isMultiSelectActive && !readOnly, () => setProvenanceOpen(true), reportFeedback)
-  const sizeBounds = getNodeSizeBounds(node.kind)
-
-  const handleTimelineDragStart = (event: React.DragEvent<HTMLElement>) => {
-    event.stopPropagation()
-    event.dataTransfer.effectAllowed = 'copy'
-    event.dataTransfer.setData(TIMELINE_GENERATION_NODE_DRAG_MIME, encodeTimelineGenerationNodeDragPayload(node))
-  }
-
-  const handleAddToTimelineAtPlayhead = (event: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    const liveNode = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id) || node
-    void addGenerationNodeToTimelineEnd(liveNode)
-  }
+  const sizeBounds = getNodeResizeBounds(node)
 
   const mediaMeasurement = useNodeMediaMeasurement(node)
 
@@ -184,11 +168,6 @@ function BaseGenerationNodeImpl({
     commitPersistedChange,
   })
   const isGenerating = status === 'queued' || status === 'running'
-  const canSendToTimeline = canDragGenerationNodeToTimeline(node, { readOnly })
-  // 「拖进时间轴」只有顶部这一个把手。卡片左右两侧归连线「+」圈（generationCanvasReactFlowVisualContract.ts）；
-  // 2026-09-24 用户反馈「多结果卡片拉环不见了」：旧的侧边拖柄就住在右侧「+」圈的位置上、层级还更高，把圈整个盖住，
-  // 于是删掉那一个。版本卡片铺开是持久的（10-06），铺着也要能拖进时间轴、能接着生成，所以这里不再看铺没铺开。
-  const showTimelineNotch = canSendToTimeline
   // 2026-09-05：这几条的 zh+en 词条一直都在，只是渲染处写死了中文（英文界面恒显中文），现接回词条。
   const sourceNodeLabel = sourceNodeTitle || (node.derivedFrom && !sourceNodeExists ? t('generationCommon.node.sourceMissing') : node.derivedFrom || '')
   const sourceCategoryName = sourceNodeCategoryId ? getBuiltinCategoryById(sourceNodeCategoryId)?.name : null
@@ -213,6 +192,7 @@ function BaseGenerationNodeImpl({
   // 面板挂载走可打断的低优先级渲染（按下即选中时同步挂面板，拖动起手实测顿 70–95 ms）：高亮与拖动先出，面板随后到，取消选中立即卸载。
   // 版本宫格铺开时不挂生成浮框（V-1054）：浮框钉在节点正下方、定宽 560，会盖住宫格下面几行；铺开 = 正在挑版本，
   // 和 09-21 结果托盘展开时卸载浮框是同一条约定（不挂才不跑）。收起宫格浮框就回来。
+  const whiteboardOpen = useWhiteboardSession((state) => state.nodeId === node.id) && !readOnly
   const versionGridOpen = showVersionCards && Boolean(node.resultStackOpen)
   const attachedPanelOpen = useHasNodeAttachedPanel(node.id) // 贴着本节点的面板（剪辑面板……）开着时生成面板收起，规矩在 nodeAttachedPanel
   const composerWanted = selected && !isMultiSelectActive && !readOnly && !versionGridOpen && !attachedPanelOpen && nodeHasGenerationComposer(node.kind)
@@ -251,7 +231,7 @@ function BaseGenerationNodeImpl({
     >
 {feedback ? <p role="status" className="absolute inset-x-0 bottom-0 z-[15] m-0 bg-nomi-paper px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
 
-      <EmptyNodeVariantToolbar nodeId={node.id} visible={selected && !isMultiSelectActive && !readOnly && !hasResult} />
+      <EmptyNodeVariantToolbar nodeId={node.id} visible={selected && !isMultiSelectActive && !readOnly && !hasResult && !whiteboardOpen} />
       {node.kind === 'panorama' && selected && !isMultiSelectActive && !readOnly && node.result?.url ? (
         <PanoramaNodeToolbar
           node={node}
@@ -267,6 +247,7 @@ function BaseGenerationNodeImpl({
       selected &&
       !isMultiSelectActive &&
       !readOnly &&
+      !whiteboardOpen &&
       node.result?.type === 'image' &&
       node.result.url ? (
         <ImageQuickActionsToolbarHost
@@ -283,6 +264,7 @@ function BaseGenerationNodeImpl({
           onOpenProvenance={() => setProvenanceOpen(true)}
         />
       ) : null}
+      {whiteboardOpen ? <NodeInlineWhiteboardHost node={node} /> : null}
       {mediaPreviewControls}
       <NodeLabelRow>
         <NodeShotLabel node={node} shotRole={shotIdentity.shotRole}>{(!isCardKind && !isTextKind) || hasEmptyCardLabel({ isCardKind, isTextKind, hasResult, contentJson: node.contentJson }) ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}</NodeShotLabel>
@@ -347,7 +329,7 @@ function BaseGenerationNodeImpl({
       ) : null}
 
       {/* [DESIGN-CARDS-07] 卡片分发抽到 NodeCardBody（R9 治巨壳）：非 shots 分类共用外壳只换 body。 */}
-      {isCardKind ? <NodeCardBody renderKind={renderKind} node={node} readOnly={readOnly} /> : null}
+      {isCardKind && !whiteboardOpen ? <NodeCardBody renderKind={renderKind} node={node} readOnly={readOnly} /> : null}
 
       {/* C5: 文本节点。外层不裁剪让浮动格式条浮到节点上方（圆角/阴影/裁剪在 TextDocumentNode 内层 body）。 */}
       {isTextKind ? (
@@ -369,7 +351,7 @@ function BaseGenerationNodeImpl({
             node.progress?.phase === 'clipboard-import' &&
             'ring-nomi-accent/50 animate-remove-bg-pulse',
           // [DESIGN-CARDS-07] 卡片模式隐藏 preview div；C5 文本节点同理。
-          (isCardKind || isTextKind) && 'hidden',
+          (isCardKind || isTextKind || whiteboardOpen) && 'hidden',
         )}
         draggable={false}
         {...mediaPreviewDoubleClick}
@@ -419,8 +401,9 @@ function BaseGenerationNodeImpl({
                 localImageOpPending && 'blur-sm scale-[1.02] transition-[filter,opacity]',
                 localImageOpPending && 'animate-remove-bg-pulse-slow',
               )}
-              // 画布只挂落盘边界派生的预览；源 URL 留给编辑/导出/大图预览，画布不为每个节点解码 4K/8K 原图。
-              src={node.result.thumbnailUrl || node.result.url}
+              // 画布只挂落盘边界派生的预览（canvasImageSource 唯一判定；原图只经被计数的缺失分支）；
+              // 源 URL 留给编辑/导出/大图预览。这一支只在结果有地址且不是视频 / 3D 时进来，按图片取。
+              src={canvasImageSourceOf({ ...node.result, type: 'image' })!}
               priority={mediaPreviewPriority}
               alt=""
               onLoad={mediaMeasurement.onImageLoad}
@@ -456,12 +439,7 @@ function BaseGenerationNodeImpl({
 
       {artifactSlots.toolbar}
 
-      {showTimelineNotch ? (
-        <TimelineNotchDragHandle
-          onAddAtPlayhead={handleAddToTimelineAtPlayhead}
-          onDragStart={handleTimelineDragStart}
-        />
-      ) : null}
+      {!readOnly ? <NodeHoverTimelineHandle nodeId={node.id} readOnly={readOnly} /> : null}
 
       {!localImageOpPending && !isTextKind ? <NodeGeneratingOverlay reportFeedback={reportFeedback} node={node} motion={waitingMotion} preset={waitingPreset} /> : null}
 
@@ -482,7 +460,7 @@ function BaseGenerationNodeImpl({
                 'generation-canvas-v2-node__resize-zone',
                 `generation-canvas-v2-node__resize-zone--${direction}`,
                 'absolute z-[6] p-0 border-0 bg-transparent',
-                'focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-2',
+                'focus-visible:outline-2 focus-visible:outline-nomi-ink focus-visible:outline-offset-2',
                 (direction === 'n' || direction === 's') && 'left-[10px] w-[calc(100%-20px)] h-[10px] cursor-ns-resize',
                 direction === 'n' && 'top-[-5px]',
                 direction === 's' && 'bottom-[-5px]',
@@ -507,8 +485,6 @@ function BaseGenerationNodeImpl({
   )
 }
 
-// v0.7.1 perf: memo wrap — node 引用稳定时跳过 rerender。
-// 父级 GenerationCanvas 须保证 node 是 zustand store 里同一引用（zustand immer 默认就是）。
 const BaseGenerationNode = React.memo(
   (props: BaseGenerationNodeProps) => props.node.result?.type === 'video'
     ? <NodeVideoSessionProvider key={`${props.node.id}:${props.node.result?.url}`} node={props.node} writable={!props.readOnly}><BaseGenerationNodeImpl {...props} /></NodeVideoSessionProvider>

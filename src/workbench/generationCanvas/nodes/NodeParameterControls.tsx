@@ -1,3 +1,4 @@
+import NodeInputReferenceEntry from './NodeInputReferenceEntry'
 import { notify } from '../../../ui/notificationPolicy'
 import { normalizeConditionalParameters } from '../../../../electron/shared/videoCapabilities/crossFieldConstraints'
 import { nodeReferenceCapacity } from './controls/nodeCrossFieldConstraints'
@@ -8,9 +9,9 @@ import { useOpenProjectId } from '../../project/useOpenProjectId'
 import {
   deriveGenerationModelCatalogStatus,
   findModelOptionByIdentifier,
-  requiredModeForGenerationNode,
-  useGenerationModelOptionsState,
 } from '../adapters/modelOptionsAdapter'
+import type { ModelOptionsState } from '../../../config/useModelOptions'
+import type { ComposerGraph } from './composerGraphSnapshot'
 import { type ModelParameterControl } from '../../../config/modelCatalogMeta'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import {
@@ -72,12 +73,13 @@ import {
 } from './controls/narrowedModeGuidance'
 import NarrowedModeGuidanceNote from './controls/NarrowedModeGuidanceNote'
 import { resolveReferenceSlots, decideArrayReferenceRemoval, firstFrameTaggedSlot } from '../runner/referenceSlots'
-import { useChannelCreateBodies } from './controls/useChannelCreateBody'
+import { useChannelCreateBodies, type VendorMappingsReader } from './controls/useChannelCreateBody'
 import { translateModelDisplayText } from '../../../i18n/modelDisplayText'
 import { modeTransportFor, specializeArchetypeForVariant } from '../../../../electron/shared/modelArchetypes'
 import ModeBar from './controls/ModeBar'
 import AssetReference, { type AssetSlot } from '../../assets/AssetReference'
-import type { AssetRef } from '../../assets/assetTypes'
+import type { AssetRef, AssetKind } from '../../assets/assetTypes'
+import { pickNodeSlotReference } from './nodeSlotReferencePick'
 import { moveArrayItem } from '../../assets/assetTypes'
 import { removeMention } from '../../assets/promptMentions'
 import InlineParameterBar, { type InlineParameterBarParameterLayout } from './InlineParameterBar'
@@ -118,6 +120,8 @@ type NodeParameterControlsProps = {
    * 那会让整幅面板变成底栏那一排的兄弟去抢宽度，把「模型/参数/×N」挤成两行。
    */
   inlinePanelSlot?: React.RefObject<HTMLElement | null>
+  /** 以下三件由生成框各算一份往下传（2026-10-16 可疑点 f / g）：控件不自己订整表、不各算一遍模型清单。 */
+  graph: ComposerGraph; modelOptionsState: ModelOptionsState; readMappings: VendorMappingsReader
 }
 
 export default function NodeParameterControls({
@@ -127,6 +131,7 @@ export default function NodeParameterControls({
   parameterLayout,
   inlinePanelTarget,
   inlinePanelSlot,
+  graph, modelOptionsState, readMappings,
 }: NodeParameterControlsProps): JSX.Element | null {
   const openProjectId = useOpenProjectId()
   const reportFeedback = React.useCallback((message: string) => {
@@ -134,8 +139,7 @@ export default function NodeParameterControls({
   }, [node.id])
 
   const { t } = useTranslation()
-  const nodes = useGenerationCanvasStore((state) => state.nodes)
-  const edges = useGenerationCanvasStore((state) => state.edges)
+  const { nodes, edges } = graph
   // 写入面由宿主接住（付费确认卡走它自己的草稿账本，确认前不碰画布）——见 nodeWriteAccess。
   const { updateNode, latestNode, connectNodes: canConnect } = useNodeWriteAccess()
   const storeConnectNodes = useGenerationCanvasStore((state) => state.connectNodes)
@@ -143,6 +147,7 @@ export default function NodeParameterControls({
   const meta = React.useMemo<Record<string, unknown>>(() => node.meta || {}, [node.meta])
   const [uploadingSlotKey, setUploadingSlotKey] = React.useState('')
   const [uploadError, setUploadError] = React.useState('')
+  const cancelReferencePick = React.useRef<(() => void) | undefined>(undefined)
   const [openSlotKey, setOpenSlotKey] = React.useState('')
   const [uploadingArrayKey, setUploadingArrayKey] = React.useState('')
   const isImageLike = isImageLikeGenerationNodeKind(node.kind)
@@ -151,8 +156,7 @@ export default function NodeParameterControls({
   const isAudioLike = isAudioLikeGenerationNodeKind(node.kind)
   const isModel3dLike = isModel3dLikeGenerationNodeKind(node.kind)
   const isGenerationNode = isImageLike || isVideoLike || isTextLike || isAudioLike || isModel3dLike
-  const requiredMode = requiredModeForGenerationNode(node, { nodes, edges })
-  const modelOptionsState = useGenerationModelOptionsState(node.kind, requiredMode)
+  const ownsDerivedWrites = section === 'parameters' || section === 'all' // 系统纠偏写回只由这一份做（三份各跑一遍 = 可疑点 i 的级联）
   const modelOptions = modelOptionsState.options
   const modelCatalogStatus = deriveGenerationModelCatalogStatus(node.kind, modelOptionsState)
 
@@ -163,6 +167,8 @@ export default function NodeParameterControls({
   const activeVariantId = archetype ? currentArchetypeVariant(archetype, meta)?.id || '' : ''
   const effectiveArchetype = archetype ? specializeArchetypeForVariant(archetype, activeVariantId) : null
   const archMode = effectiveArchetype ? currentArchetypeMode(effectiveArchetype, meta) : null
+  // A point-pick belongs to the slot configuration that opened it.
+  React.useEffect(() => () => cancelReferencePick.current?.(), [node.id, openProjectId, archMode?.id, node.meta, edges])
   const imageCatalogConfig = archetype ? null : buildEffectiveImageCatalogConfig(selectedModelOption?.meta)
   const renderedControls = resolveRenderedControls(selectedModelOption, meta, isImageLike, isVideoLike)
 
@@ -178,7 +184,7 @@ export default function NodeParameterControls({
   const modeBodies = useChannelCreateBodies(
     selectedModelOption?.vendor ?? '',
     selectedModelOption?.value ?? '',
-    modeBodySpecs,
+    modeBodySpecs, readMappings,
   )
   // （Runway 把 model 写死、且 veo3.1 / veo3.1_fast 本就是两个目录行）。惰性时整条不显示，别骗用户。
   const variantChoices = archMode && !archetypeVariantAxisIsLive(modeBodies[archMode.id]) ? [] : declaredVariantChoices
@@ -196,7 +202,7 @@ export default function NodeParameterControls({
     selectedModelOption,
     modelOptions,
     modeBodies,
-    nodeMeta: meta,
+    nodeMeta: meta, readMappings,
   })
 
   // P1 单一真相源：所有 meta 增量 patch 都从 store 读**最新** meta 再 spread，绝不基于渲染快照 prop
@@ -211,13 +217,13 @@ export default function NodeParameterControls({
   }
 
   React.useEffect(() => {
-    if (!archMode) return
+    if (!ownsDerivedWrites || !archMode) return
     const latest = getLatestMeta()
     const next = normalizeConditionalParameters(archMode.params, latest)
     if (next !== latest) updateMeta(next, { history: false })
     // The effect only writes when a conditional selection is invalid.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [archMode, meta])
+  }, [archMode, meta, ownsDerivedWrites])
 
   const updateAspectRatioMeta = (patch: Record<string, unknown>, targetRatio: number | null) => {
     const latest = latestNode(node.id)
@@ -248,7 +254,7 @@ export default function NodeParameterControls({
     selectedModelValue,
     selectedModelOption,
     archetype,
-    isGenerationNode,
+    isGenerationNode: isGenerationNode && ownsDerivedWrites,
     isImageLike,
     isVideoLike,
     updateNode,
@@ -262,7 +268,7 @@ export default function NodeParameterControls({
     .sort()
     .join('|')
   React.useEffect(() => {
-    if (!isVideoLike) return
+    if (!ownsDerivedWrites || !isVideoLike) return
     const latest = getLatestMeta()
     if (latest.aspect_ratio_user_set === true) return
     const state = useGenerationCanvasStore.getState()
@@ -280,7 +286,7 @@ export default function NodeParameterControls({
     // renderedControls/updateMeta 每渲染重建，入 deps 会令 effect 每次 meta 写都重跑；
     // 触发时机只需「输入边集合 / 模型」变化，语义由下面两个签名精确表达。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputAspectSignature, isVideoLike, selectedModelValue, node.id])
+  }, [inputAspectSignature, isVideoLike, selectedModelValue, node.id, ownsDerivedWrites])
 
   // 模式收窄的**选择安全**（U4）：收窄只改「显示哪几个」，节点 meta 里钉的 modeId 不会自己动。存量节点
   // （或用户把模型换到另一家后）可能停在一个已经不显示的模式上——那时模式栏一个都不高亮，而发送路径仍按
@@ -290,7 +296,7 @@ export default function NodeParameterControls({
     ? archetype.modes.filter((mode) => archetypeModeIsVisible(mode, modeBodies[mode.id])).map((m) => m.id).join('|')
     : ''
   React.useEffect(() => {
-    if (!archetype) return
+    if (!ownsDerivedWrites || !archetype) return
     const visibleIds = visibleModeIdSignature ? visibleModeIdSignature.split('|') : []
     const latest = getLatestMeta()
     const next = fallbackVisibleModeId(archetype, latest, visibleIds)
@@ -298,7 +304,7 @@ export default function NodeParameterControls({
     updateNode(node.id, { meta: applyArchetypeModeSwitch(latest, archetype, next) }, { history: false })
     // getLatestMeta/updateNode 每渲染重建；触发时机只需「可见模式集 / 档案 / 节点」变化。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleModeIdSignature, archetype?.id, node.id])
+  }, [visibleModeIdSignature, archetype?.id, node.id, ownsDerivedWrites])
 
   if (!isGenerationNode) return null
 
@@ -358,7 +364,7 @@ export default function NodeParameterControls({
     }
     // 容量先按**已占用位置**判（含连线 + pending 边，单源 resolveReferenceSlots），不能只看 meta 数组长度——
     // 否则被边占满的槽仍允许写入 meta、却落不进槽（显示/发送都没它）=「参考图上不去」。
-    const occupied = resolveReferenceSlots(node, nodes, edges).find(
+    const occupied = resolveReferenceSlots(currentNode, state.nodes, state.edges).find(
       (rs) => referenceSlotStorage({ kind: rs.slotKind })?.metaKey === slot.metaKey,
     )?.fills.length
     if (occupied != null && slot.max !== undefined && occupied >= slot.max) {
@@ -380,7 +386,7 @@ export default function NodeParameterControls({
     // 「×」按这一项的来源分流（单一真相源 decideArrayReferenceRemoval）：
     // 来自连边 → 断边（之前只删 meta 不断边，边来源的图重渲染又被解析回来 = 「叉不掉」根因）；
     // 来自上传 → 按 url 删 meta（显示 index 是「边+上传」合并列表的下标，不能直接拿去 filter meta 数组）。
-    const decision = decideArrayReferenceRemoval(node, nodes, edges, metaKey, index)
+    const decision = decideArrayReferenceRemoval(latestNode(node.id) ?? node, useGenerationCanvasStore.getState().nodes, useGenerationCanvasStore.getState().edges, metaKey, index)
     // image 数组(= character 参考)删除时，同步抹掉描述框里指向它的 @ chip（保 undo 原子性 + 一次持久化）。
     const promptAfterRemovingMention = (url: string | null) =>
       metaKey === 'referenceImageUrls' && url ? removeMention(node.prompt || '', url) : null
@@ -600,7 +606,9 @@ export default function NodeParameterControls({
       const img = imageUrlSlots.find((i) => i.key === slot.key)
       if (!img) return
       // 连边是改画布，只有握着连边权能的宿主（画布）才建边；付费确认卡只写它自己的参考槽（见 nodeWriteAccess）。
-      if (asset.source === 'canvas' && asset.origin.source === 'canvas' && canConnect) handleSlotAssignment(img, asset.origin.nodeId)
+      const sourceNodeId = asset.origin.source === 'canvas' ? asset.origin.nodeId : undefined
+      if (sourceNodeId && canConnect
+        && resultPreviewUrl(useGenerationCanvasStore.getState().nodes.find(candidate => candidate.id === sourceNodeId)) === asset.renderUrl) handleSlotAssignment(img, sourceNodeId)
       else setSingleFrameUrlMeta(img, asset.renderUrl)
       return
     }
@@ -697,7 +705,6 @@ export default function NodeParameterControls({
   }
 
   // 模式分段切换要常驻（即便当前模式无参考槽，如纯文生）——有 modeBar / 数组槽 / 源视频槽都不空返回。
-  // 变体（型号）已从这里挪到底栏 InlineParameterBar 的小下拉（用户拍板：和模型并排在最下面），不再占顶部一排。
   // 处理类 ComfyUI 工作流（去背景/超分/补帧）图里没有提示词槽——诚实说一句，
   // 否则用户在下面的提示词框里打了字却毫无作用，只会以为是我们坏了（D4 缺口明着标）。
   const comfyTakesPrompt = comfyWorkflowTakesPrompt(selectedModelOption?.meta)
@@ -706,6 +713,13 @@ export default function NodeParameterControls({
   // 那时用户什么都看不到。它若跟着模式栏一起消失，最需要说话的场合反而哑了，所以它单独进空返回判据。
   const showModeGuidance = showReferences && Boolean(modeGuidance)
 
+  const potentialReferenceKinds = Array.from(new Set(effectiveArchetype?.modes.flatMap(mode => [
+    ...archetypeModeSlots(mode).map(() => 'image' as AssetKind),
+    ...archetypeModeArraySlots(mode).map(slot => slot.accept),
+    ...(archetypeModeSourceVideoSlot(mode) ? ['video' as AssetKind] : []),
+  ]) ?? (isImageLike || isVideoLike ? ['image' as AssetKind] : [])))
+  const inputReferenceEntry = !assetSlots.length && canConnect && potentialReferenceKinds.length
+    ? <NodeInputReferenceEntry nodeId={node.id} accept={potentialReferenceKinds} /> : null
   if (
     section === 'references' &&
     referencesSectionIsEmpty({
@@ -717,10 +731,8 @@ export default function NodeParameterControls({
       hasModeGuidance: showModeGuidance,
     })
   )
-    return null
+    return inputReferenceEntry
 
-  // 走到这里只剩 section="references"（parameters/settings 已提前 return；旧的 all/model/controls 网格
-  // 渲染随设置弹层落地而删除——参数现在进设置弹层，模型进底栏芯片，不再有这套裸值网格，Rule 1/12）。
   const rootClassName = cn('generation-canvas-v2-node__ref-section', 'flex flex-col gap-1')
 
   return (
@@ -740,6 +752,7 @@ export default function NodeParameterControls({
         />
       ) : null}
 
+      {showReferences ? inputReferenceEntry : null}
       {showReferences && assetSlots.length > 0 ? (
         <AssetReference
           slots={assetSlots}
@@ -751,6 +764,14 @@ export default function NodeParameterControls({
           openSlotKey={openSlotKey}
           uploadingSlotKey={uploadingSlotKey || uploadingArrayKey}
           onTogglePicker={(key) => setOpenSlotKey((prev) => (prev === key ? '' : key))}
+          onPickOnCanvas={(slots) => {
+            setOpenSlotKey('')
+            cancelReferencePick.current = pickNodeSlotReference({
+              nodeId: node.id, slots, valuesByKey: assetValuesByKey, occupiedByKey: arrayOccupiedByKey,
+              remainingCapacity: archMode ? nodeReferenceCapacity(archMode, node, nodes, edges) : Infinity,
+              onPick: handleAssetPick,
+            })
+          }}
           onPick={handleAssetPick}
           onUpload={(slot, file) => {
             void handleAssetUpload(slot, file)

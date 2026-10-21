@@ -6,7 +6,9 @@
 // 是用户数据的真相源，写入口不能对非主窗口内容开放。
 import { ipcMain } from "electron";
 
+import { sweepAbandonedUploadStaging } from "../assets/scratchCleanup";
 import { assertTrustedSender } from "../ipcSenderGuard";
+import { projectDirById } from "./repository";
 import { measureProjectOpenMainStageSync } from "./projectOpenTimeline";
 import { applyCanvasNodePatch } from "./projectCanvasWrite";
 import type { ProjectBinding } from "../shared/projectBinding";
@@ -23,6 +25,21 @@ export type ProjectsIpcDeps = {
   diagnoseProject: (projectId: string) => unknown;
   recoverProject: (projectId: string) => unknown;
 };
+
+/**
+ * 打开项目时顺手收上一个进程留下的生成 / 上传暂存（`.nomi-upload-*`，V-1208-6）：放到下一轮事件循环、异步做，
+ * 不挡打开；扫的判据（主人进程已不在才收）在 scratchCleanup。
+ */
+export function sweepProjectUploadStagingSoon(projectId: string, resolveRoot: (projectId: string) => string | null = projectDirById): void {
+  setImmediate(() => {
+    try {
+      const root = projectId ? resolveRoot(projectId) : null;
+      if (root) void sweepAbandonedUploadStaging(root);
+    } catch {
+      // 打开项目不因收尾失败；下次打开 / 导入再收。
+    }
+  });
+}
 
 export function registerProjectsIpc(deps: ProjectsIpcDeps): void {
   const {
@@ -50,7 +67,10 @@ export function registerProjectsIpc(deps: ProjectsIpcDeps): void {
   registerSyncIpc("nomi:projects:read", readProject as (...args: never[]) => unknown);
   ipcMain.handle("nomi:projects:read-async", (event, projectId: unknown) => {
     assertTrustedSender(event);
-    return measureProjectOpenMainStageSync("read-project", () => readProject(String(projectId || "")));
+    const id = String(projectId || "");
+    const record = measureProjectOpenMainStageSync("read-project", () => readProject(id));
+    sweepProjectUploadStagingSoon(id);
+    return record;
   });
   ipcMain.handle("nomi:projects:diagnose", (event, projectId: unknown) => {
     assertTrustedSender(event);

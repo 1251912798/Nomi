@@ -34,6 +34,8 @@ export type GenerationFlowEdgeData = {
 
 export type GenerationFlowEdge = FlowEdge<GenerationFlowEdgeData, 'generation'>
 
+type AggregateByEdgeId = ReadonlyMap<string, { groupId: string; direction: 'input' | 'output' }>
+
 export const FLOW_SOURCE_LEFT = 'source-left'
 export const FLOW_SOURCE_RIGHT = 'source-right'
 export const FLOW_TARGET_LEFT = 'target-left'
@@ -95,35 +97,45 @@ export function toGenerationFlowNode(
   }
 }
 
+type FlowNodeVisualState = {
+  appearingNodeIds?: ReadonlySet<string>
+  focusFlashNodeId?: string | null
+}
+
+/** 一张卡的投影：输入没变就交回上一版同一个对象（React Flow 靠对象身份决定重不重渲）。全量与增量两条路共用这一个函数。 */
+function projectOneFlowNode(
+  node: GenerationCanvasNode,
+  selectedNodeIds: ReadonlySet<string>,
+  readOnly: boolean,
+  visualState: FlowNodeVisualState,
+  previous: GenerationFlowNode | undefined,
+): GenerationFlowNode {
+  const selected = selectedNodeIds.has(node.id)
+  const primarySelection = selected && selectedNodeIds.size === 1
+  const appear = Boolean(visualState.appearingNodeIds?.has(node.id))
+  const focusFlash = visualState.focusFlashNodeId === node.id
+  if (
+    previous?.data.generationNode === node &&
+    previous.data.readOnly === readOnly &&
+    previous.data.primarySelection === primarySelection &&
+    previous.data.appear === appear &&
+    previous.data.focusFlash === focusFlash &&
+    Boolean(previous.selected) === selected
+  ) {
+    return previous
+  }
+  return toGenerationFlowNode(node, selected, readOnly, primarySelection, { appear, focusFlash })
+}
+
 export function toGenerationFlowNodes(
   nodes: readonly GenerationCanvasNode[],
   selectedNodeIds: ReadonlySet<string>,
   readOnly: boolean,
   previousNodes: readonly GenerationFlowNode[] = [],
-  visualState: {
-    appearingNodeIds?: ReadonlySet<string>
-    focusFlashNodeId?: string | null
-  } = {},
+  visualState: FlowNodeVisualState = {},
 ): GenerationFlowNode[] {
   const previousById = new Map(previousNodes.map((node) => [node.id, node]))
-  const nextNodes = nodes.map((node) => {
-    const selected = selectedNodeIds.has(node.id)
-    const primarySelection = selected && selectedNodeIds.size === 1
-    const appear = Boolean(visualState.appearingNodeIds?.has(node.id))
-    const focusFlash = visualState.focusFlashNodeId === node.id
-    const previous = previousById.get(node.id)
-    if (
-      previous?.data.generationNode === node &&
-      previous.data.readOnly === readOnly &&
-      previous.data.primarySelection === primarySelection &&
-      previous.data.appear === appear &&
-      previous.data.focusFlash === focusFlash &&
-      Boolean(previous.selected) === selected
-    ) {
-      return previous
-    }
-    return toGenerationFlowNode(node, selected, readOnly, primarySelection, { appear, focusFlash })
-  })
+  const nextNodes = nodes.map((node) => projectOneFlowNode(node, selectedNodeIds, readOnly, visualState, previousById.get(node.id)))
   return nextNodes.length === previousNodes.length
     && nextNodes.every((node, index) => node === previousNodes[index])
     ? previousNodes as GenerationFlowNode[]
@@ -171,6 +183,64 @@ export function toGenerationFlowEdge(
   }
 }
 
+type FlowEdgeOptions = {
+  readOnly: boolean
+  selectedEdgeId?: string | null
+  /** 唯一选中的那张卡；挨着它的边高亮（incident）。多选 / 没选为 null。 */
+  incidentNodeId: string | null
+  aggregateByEdgeId?: AggregateByEdgeId
+}
+
+/** 一条边的投影：输入没变就交回上一版同一个对象。全量与增量两条路共用这一个函数。 */
+function projectOneFlowEdge(
+  edge: GenerationCanvasEdge,
+  nodeById: ReadonlyMap<string, GenerationCanvasNode>,
+  options: FlowEdgeOptions,
+  previous: GenerationFlowEdge | undefined,
+): GenerationFlowEdge {
+  const sourceNode = nodeById.get(edge.source)
+  const targetNode = nodeById.get(edge.target)
+  const selected = !options.readOnly && edge.id === options.selectedEdgeId
+  const aggregate = options.aggregateByEdgeId?.get(edge.id)
+  const incident = Boolean(options.incidentNodeId && (edge.source === options.incidentNodeId || edge.target === options.incidentNodeId))
+  if (
+    previous?.data?.generationEdge === edge &&
+    previous.data.sourceNode === sourceNode &&
+    previous.data.targetNode === targetNode &&
+    previous.data.aggregateGroupId === aggregate?.groupId &&
+    previous.data.aggregateDirection === aggregate?.direction &&
+    previous.data.readOnly === options.readOnly &&
+    previous.data.incident === incident &&
+    Boolean(previous.selected) === selected
+  ) {
+    return previous
+  }
+  return toGenerationFlowEdge(edge, nodeById, {
+    readOnly: options.readOnly,
+    selected,
+    incident,
+    aggregateGroupId: aggregate?.groupId,
+    aggregateDirection: aggregate?.direction,
+  })
+}
+
+function projectFlowEdgeList(
+  edges: readonly GenerationCanvasEdge[],
+  nodeById: ReadonlyMap<string, GenerationCanvasNode>,
+  options: FlowEdgeOptions,
+  previousEdges: readonly GenerationFlowEdge[] | undefined,
+): GenerationFlowEdge[] {
+  const previousById = new Map((previousEdges || []).map((edge) => [edge.id, edge]))
+  const nextEdges = edges
+    .filter((edge) => nodeById.has(edge.source) && nodeById.has(edge.target))
+    .map((edge) => projectOneFlowEdge(edge, nodeById, options, previousById.get(edge.id)))
+  return previousEdges
+    && nextEdges.length === previousEdges.length
+    && nextEdges.every((edge, index) => edge === previousEdges[index])
+    ? previousEdges as GenerationFlowEdge[]
+    : nextEdges
+}
+
 export function toGenerationFlowEdges(
   edges: readonly GenerationCanvasEdge[],
   nodeById: ReadonlyMap<string, GenerationCanvasNode>,
@@ -178,49 +248,131 @@ export function toGenerationFlowEdges(
     readOnly?: boolean
     selectedEdgeId?: string | null
     selectedNodeIds?: ReadonlySet<string>
-    aggregateByEdgeId?: ReadonlyMap<string, { groupId: string; direction: 'input' | 'output' }>
+    aggregateByEdgeId?: AggregateByEdgeId
     previousEdges?: readonly GenerationFlowEdge[]
   } = {},
 ): GenerationFlowEdge[] {
-  const readOnly = Boolean(options.readOnly)
-  const previousById = new Map((options.previousEdges || []).map((edge) => [edge.id, edge]))
-  const nextEdges = edges
-    .filter((edge) => nodeById.has(edge.source) && nodeById.has(edge.target))
-    .map((edge) => {
-      const sourceNode = nodeById.get(edge.source)!
-      const targetNode = nodeById.get(edge.target)!
-      const selected = !readOnly && edge.id === options.selectedEdgeId
-      const aggregate = options.aggregateByEdgeId?.get(edge.id)
-      const incident = Boolean(
-        options.selectedNodeIds?.size === 1
-          && (options.selectedNodeIds.has(edge.source) || options.selectedNodeIds.has(edge.target)),
-      )
-      const previous = previousById.get(edge.id)
-      if (
-        previous?.data?.generationEdge === edge &&
-        previous.data.sourceNode === sourceNode &&
-        previous.data.targetNode === targetNode &&
-        previous.data.aggregateGroupId === aggregate?.groupId &&
-        previous.data.aggregateDirection === aggregate?.direction &&
-        previous.data.readOnly === readOnly &&
-        previous.data.incident === incident &&
-        Boolean(previous.selected) === selected
-      ) {
-        return previous
-      }
-      return toGenerationFlowEdge(edge, nodeById, {
-        readOnly,
-        selected,
-        incident,
-        aggregateGroupId: aggregate?.groupId,
-        aggregateDirection: aggregate?.direction,
-      })
-    })
-  return options.previousEdges
-    && nextEdges.length === options.previousEdges.length
-    && nextEdges.every((edge, index) => edge === options.previousEdges?.[index])
-    ? options.previousEdges as GenerationFlowEdge[]
-    : nextEdges
+  const selectedNodeIds = options.selectedNodeIds
+  return projectFlowEdgeList(edges, nodeById, {
+    readOnly: Boolean(options.readOnly),
+    selectedEdgeId: options.selectedEdgeId,
+    incidentNodeId: selectedNodeIds?.size === 1 ? selectedNodeIds.values().next().value ?? null : null,
+    aggregateByEdgeId: options.aggregateByEdgeId,
+  }, options.previousEdges)
+}
+
+// ── 选区是叠在结构投影上的一层（10-16，方向检查 docs/engineering/direction-checks/2026-10-16-canvas-shell-subscriptions.md）──
+//
+// React Flow 靠对象身份决定节点 / 边要不要重渲（https://reactflow.dev/learn/advanced-use/performance）。
+// 结构（节点数组、边数组、端点表、只读、出现 / 闪烁）没变、只有选区变了的时候，只碰「选中过 / 被选中」的那几张卡、
+// 挨着它们的边，其余交回上一版的同一个对象；整张图不再走一遍。结构变了才整表投影一次（逐个复用没变的对象），并重建下标表。
+
+export type FlowNodeProjection = {
+  readonly nodes: readonly GenerationCanvasNode[]
+  readonly selected: ReadonlySet<string>
+  readonly readOnly: boolean
+  readonly appearingNodeIds: ReadonlySet<string> | undefined
+  readonly focusFlashNodeId: string | null | undefined
+  readonly output: GenerationFlowNode[]
+  /** id → 在 output 里的下标（结构不变时选区增量只靠它定位）。 */
+  readonly indexById: ReadonlyMap<string, number>
+}
+
+export type FlowNodeProjectionInput = Omit<FlowNodeProjection, 'output' | 'indexById'>
+
+export function projectGenerationFlowNodes(previous: FlowNodeProjection | null, input: FlowNodeProjectionInput): FlowNodeProjection {
+  if (
+    previous
+    && previous.nodes === input.nodes
+    && previous.readOnly === input.readOnly
+    && previous.appearingNodeIds === input.appearingNodeIds
+    && previous.focusFlashNodeId === input.focusFlashNodeId
+  ) {
+    if (previous.selected === input.selected) return previous
+    let output = previous.output
+    // 只有前后两次选区里的卡会变（selected / primarySelection 都只对选区里的卡为真）。
+    for (const id of new Set([...previous.selected, ...input.selected])) {
+      const index = previous.indexById.get(id)
+      if (index === undefined) continue
+      const next = projectOneFlowNode(input.nodes[index], input.selected, input.readOnly, input, previous.output[index])
+      if (next === output[index]) continue
+      if (output === previous.output) output = output.slice()
+      output[index] = next
+    }
+    return { ...input, output, indexById: previous.indexById }
+  }
+  const output = toGenerationFlowNodes(input.nodes, input.selected, input.readOnly, previous?.output ?? [], input)
+  const indexById = previous && output === previous.output ? previous.indexById : new Map(output.map((flowNode, index) => [flowNode.id, index]))
+  return { ...input, output, indexById }
+}
+
+export type FlowEdgeProjection = {
+  readonly edges: readonly GenerationCanvasEdge[]
+  readonly nodeById: ReadonlyMap<string, GenerationCanvasNode>
+  readonly aggregateByEdgeId: AggregateByEdgeId | undefined
+  readonly readOnly: boolean
+  readonly selectedEdgeId: string | null
+  /** 唯一选中的那张卡（挨着它的边高亮）；多选 / 没选为 null。 */
+  readonly incidentNodeId: string | null
+  readonly output: GenerationFlowEdge[]
+  readonly indexById: ReadonlyMap<string, number>
+  /** 节点 id → 挨着它的边在 output 里的下标。 */
+  readonly indexesByNodeId: ReadonlyMap<string, readonly number[]>
+}
+
+export type FlowEdgeProjectionInput = Omit<FlowEdgeProjection, 'output' | 'indexById' | 'indexesByNodeId'>
+
+export function projectGenerationFlowEdges(previous: FlowEdgeProjection | null, input: FlowEdgeProjectionInput): FlowEdgeProjection {
+  if (
+    previous
+    && previous.edges === input.edges
+    && previous.nodeById === input.nodeById
+    && previous.aggregateByEdgeId === input.aggregateByEdgeId
+    && previous.readOnly === input.readOnly
+  ) {
+    if (previous.incidentNodeId === input.incidentNodeId && previous.selectedEdgeId === input.selectedEdgeId) return previous
+    const touched = new Set<number>()
+    for (const nodeId of [previous.incidentNodeId, input.incidentNodeId]) {
+      if (nodeId) for (const index of previous.indexesByNodeId.get(nodeId) ?? []) touched.add(index)
+    }
+    for (const edgeId of [previous.selectedEdgeId, input.selectedEdgeId]) {
+      const index = edgeId ? previous.indexById.get(edgeId) : undefined
+      if (index !== undefined) touched.add(index)
+    }
+    let output = previous.output
+    for (const index of touched) {
+      const current = previous.output[index]
+      const edge = current.data?.generationEdge
+      if (!edge) continue
+      const next = projectOneFlowEdge(edge, input.nodeById, edgeOptions(input), current)
+      if (next === output[index]) continue
+      if (output === previous.output) output = output.slice()
+      output[index] = next
+    }
+    return { ...input, output, indexById: previous.indexById, indexesByNodeId: previous.indexesByNodeId }
+  }
+  const output = projectFlowEdgeList(input.edges, input.nodeById, edgeOptions(input), previous?.output)
+  if (previous && output === previous.output) return { ...input, output, indexById: previous.indexById, indexesByNodeId: previous.indexesByNodeId }
+  const indexById = new Map<string, number>()
+  const indexesByNodeId = new Map<string, number[]>()
+  output.forEach((flowEdge, index) => {
+    indexById.set(flowEdge.id, index)
+    for (const nodeId of new Set([flowEdge.source, flowEdge.target])) {
+      const list = indexesByNodeId.get(nodeId)
+      if (list) list.push(index)
+      else indexesByNodeId.set(nodeId, [index])
+    }
+  })
+  return { ...input, output, indexById, indexesByNodeId }
+}
+
+function edgeOptions(input: FlowEdgeProjectionInput): FlowEdgeOptions {
+  return {
+    readOnly: input.readOnly,
+    selectedEdgeId: input.selectedEdgeId,
+    incidentNodeId: input.incidentNodeId,
+    aggregateByEdgeId: input.aggregateByEdgeId,
+  }
 }
 
 export function collectFlowPositionChanges(

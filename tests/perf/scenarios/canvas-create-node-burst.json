@@ -1,0 +1,36 @@
+{
+  "id": "canvas-create-node-burst",
+  "feature": "用画布底部加节点条连续新建 5 张图片卡（每一下前先点空白让开生成框，和真人一样），每一下「点击 → 新卡出现再过两帧」，主数取 5 下里最慢的那一下",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "I100",
+    "--scenarios",
+    "create-node-burst",
+    "--warmup",
+    "1"
+  ],
+  "scale": "100 个图片节点 / 50 条边，再连建 5 张",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 100,
+  "group": "④ 新建节点",
+  "budgetStatus": "approved",
+  "budgetBasis": "人对「点了有反应」的感知阈值约 100ms（RAIL / Nielsen：100ms 内觉得是即时的，100–300ms 能察觉到慢）；仓库默认预算「操作到可见反馈 ≤100ms」（docs/engineering/perf-scenarios.md）；canvas-follow-hand 量具里「新建节点·点击到节点出现」也是 100ms",
+  "baseline": {
+    "median": 135.3,
+    "p95": 176.5,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  },
+  "budgetDebt": {
+    "owner": "P-compose",
+    "state": "assigned",
+    "note": "连建 5 张卡，每一下 5 个长任务：新卡建出来即选中，生成框整套挂载跟着新建一起算",
+    "since": "2026-10-16"
+  }
+}

@@ -283,6 +283,10 @@ async function modelCatalog(baseURL, { generationProvider, apimartKey, extraImag
 function validateReply(reply, allowHold = true) {
   if (reply?.reasoning !== undefined && typeof reply.reasoning !== 'string') throw new TypeError('reasoning must be text')
   if (reply?.type === 'text' && typeof reply.text === 'string') return
+  // 一字一字往外吐的正文（性能场景「Agent 流式输出时操作画布」用）：chunkChars 个字一帧、每 intervalMs 毫秒一帧，吐完正常收尾。
+  if (reply?.type === 'stream' && typeof reply.text === 'string' && reply.text
+    && Number.isInteger(reply.chunkChars) && reply.chunkChars > 0
+    && Number.isFinite(reply.intervalMs) && reply.intervalMs > 0) return
   // 供应商整条回 HTTP 错误（带原始 JSON 体）：用来走「服务商报错 → Agent 面板那一行」。
   if (reply?.type === 'http-error' && Number.isInteger(reply.status) && reply.status >= 400 && JSON.stringify(reply.json) !== undefined) return
   if (allowHold && reply?.type === 'hold' && (reply.text === undefined || typeof reply.text === 'string')) return
@@ -291,7 +295,7 @@ function validateReply(reply, allowHold = true) {
     && (reply.text === undefined || typeof reply.text === 'string')) {
     if (JSON.stringify(reply.args) !== undefined) return
   }
-  throw new TypeError('Expected a text/tool reply, or a hold with optional text')
+  throw new TypeError('Expected a text/stream/tool reply, or a hold with optional text')
 }
 
 function canWrite(response) {
@@ -330,6 +334,23 @@ function sendReply(state, reply) {
     state.response.write(wire + frame(state, { content: reply.text }))
     return
   }
+  if (reply.type === 'stream') {
+    state.response.write(wire)
+    let offset = 0
+    const timer = setInterval(() => {
+      if (!canWrite(state.response)) { clearInterval(timer); return }
+      if (offset < reply.text.length) {
+        state.response.write(frame(state, { content: reply.text.slice(offset, offset + reply.chunkChars) }))
+        offset += reply.chunkChars
+        return
+      }
+      clearInterval(timer)
+      const usage = typeof state.usage === 'function' ? state.usage(reply) : FIXTURE_USAGE
+      state.response.end(`${frame(state, {}, 'stop')}${frame(state, {}, null, usage)}data: [DONE]\n\n`)
+    }, reply.intervalMs)
+    state.response.once('close', () => clearInterval(timer))
+    return
+  }
   if (reply.type === 'text') wire += frame(state, { content: reply.text })
   else {
     // 真实模型常在**同一条消息**里既说话又调工具（「让我修正…」+ 下一次调用）。
@@ -348,7 +369,8 @@ function sendReply(state, reply) {
 
 /**
  * @typedef {{path:string, body:unknown, authorization:string, headers:object}} RequestRecord
- * @typedef {({type:'text', text:string}|{type:'tool', id:string, name:string, args:unknown, text?:string}
+ * @typedef {({type:'text', text:string}|{type:'stream', text:string, chunkChars:number, intervalMs:number}
+ *   |{type:'tool', id:string, name:string, args:unknown, text?:string}
  *   |{type:'hold', text?:string}|{type:'http-error', status:number, json:unknown}) & {reasoning?:string}} Reply
  *
  * Seed only a new, caller-isolated settings directory. Existing catalogs are never overwritten.
@@ -360,7 +382,7 @@ function sendReply(state, reply) {
  * `videoResultPath`：apimart 档出片地址的路径段（缺省 `/fixture/video.mp4`）。真供应商的产物地址常带一个很长的
  * basename（签名段 / 哈希段），落盘时怎么起名要靠它复现（2026-09-26 长文件名被截成 `.bin`）。
  */
-export async function createAgentRuntimeFixture({ rootDir, settingsDir, generationProvider = 'loopback', userDataDir, appName, videoResultPath = '/fixture/video.mp4', usage = 'fixed', extraImageVendor = false, contextLimitTokens = null }) {
+export async function createAgentRuntimeFixture({ rootDir, settingsDir, generationProvider = 'loopback', userDataDir, appName, videoResultPath = '/fixture/video.mp4', usage = 'fixed', extraImageVendor = false, contextLimitTokens = null, seedApimartKey = true }) {
   if (!/^\/fixture\/[^/?#]+$/.test(videoResultPath)) throw new TypeError('videoResultPath must be /fixture/<name>')
   if (!['fixed', 'measured'].includes(usage)) throw new TypeError("usage must be 'fixed' or 'measured'")
   if (!path.isAbsolute(rootDir) || !path.isAbsolute(settingsDir)) {
@@ -409,6 +431,8 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
   const unexpected = []
   /** 启动对账发来的只读模型清单请求（见 handleRequest）；走查想核时可读。 */
   const modelListProbes = []
+  /** 接入页保存 key 时那一次免费的 key 有效性探测（GET /v1/balance）。 */
+  const balanceProbes = []
   const expectations = []
   /**
    * 常驻应答（全功能走查用）：App 自己在后台发起、次数不定的文本调用（出图后的镜级审片等）。
@@ -518,6 +542,12 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
       const listed = JSON.parse(await readFile(path.join(settingsDir, 'model-catalog.json'), 'utf8')).models ?? []
       modelListProbes.push(record)
       jsonResponse(response, 200, { object: 'list', data: [...new Set(listed.map((model) => model.modelKey))].map((id) => ({ id, object: 'model' })) })
+      return
+    }
+    // 接入页「保存」会对 APIMart 发一次只读的 key 有效性探测（electron/catalog/apimartVendor.ts 的 credentialProbe，免费）；夹具认它。
+    if (apimartMode && request.method === 'GET' && record.path === '/v1/balance') {
+      balanceProbes.push(record)
+      jsonResponse(response, 200, { remain_balance: -1 })
       return
     }
     if (request.method !== 'POST') {
@@ -654,11 +684,12 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
     await mkdir(settingsDir, { recursive: true })
     const catalog = await modelCatalog(baseURL, {
       generationProvider, extraImageVendor,
-      ...(builtinMode ? { apimartKey: encryptApimartKey({ rootDir, userDataDir, appName }) } : {}),
+      // seedApimartKey: false = 目录里不预置那把钥匙，由走查自己走可见的接入页把 key 填进去（付费走查 env-key 路的演练）。
+      ...(builtinMode && seedApimartKey ? { apimartKey: encryptApimartKey({ rootDir, userDataDir, appName }) } : {}),
     })
     await writeFile(path.join(settingsDir, 'model-catalog.json'), `${JSON.stringify(catalog, null, 2)}\n`, { flag: 'wx' })
     return {
-      baseURL, requests, images, videos, unexpected, modelListProbes, close, generationProvider,
+      baseURL, requests, images, videos, unexpected, modelListProbes, balanceProbes, close, generationProvider,
       /** 已受理的 apimart 图片任务先停在 `processing`（true），放开后下一次轮询照常出图（false）。 */
       holdTasks(on) { holdTasks = Boolean(on) },
       /** apimart 图片 / 视频 create 先压着不回（true），放开后压着的那几笔照常受理（false）。 */

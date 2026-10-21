@@ -13,7 +13,7 @@ for (const contractId of ['canvas.delete', 'canvas.write', 'timeline.write', 'do
         { type: 'tool', calls: [{ id: 'surface-call', name: 'mutate_surface', arguments: {} }] },
         { type: 'text', text: 'Done.' },
       ]);
-      const context: LaneComposerContext = { approvalPolicy: { mode: 'safe-auto', spend: 'confirm' }, ...(target ? { target } : {}) };
+      const context: LaneComposerContext = { approvalPolicy: { mode: 'request' }, ...(target ? { target } : {}) };
       let preparations = 0;
       let executions = 0;
       const expectedAllowed = contractId !== 'canvas.delete' || target?.kind === 'canvas';
@@ -35,7 +35,7 @@ for (const contractId of ['canvas.delete', 'canvas.write', 'timeline.write', 'do
   }
 }
 
-for (const mode of ['safe-auto', 'step'] as const) {
+for (const mode of ['request', 'direct'] as const) {
   for (const probe of [
     { name: 'bash', args: { command: 'printf executed > sentinel.txt' } },
     { name: 'write', args: { path: 'sentinel.txt', content: 'executed' } },
@@ -54,7 +54,7 @@ for (const mode of ['safe-auto', 'step'] as const) {
       const lane = await fixture.openLane({ ...fixture.options,
         tools: [...LANE_MODEL_TOOL_CATALOG, ...LANE_DEFERRED_TOOL_CATALOG].map(spec => bindLaneTool(spec, async () => ({ ok: true, text: 'fixture' }))),
         native: { settingsRoot: join(fixture.projectDir, 'settings'), skills: [] },
-        approval: { hasUserInterface: true, policy: () => ({ mode, spend: 'confirm' }) },
+        approval: { hasUserInterface: true, policy: () => ({ mode }) },
       });
       let pendingSeen = false;
       const unsubscribe = lane.subscribe(projection => {

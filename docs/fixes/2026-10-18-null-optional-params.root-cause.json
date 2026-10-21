@@ -1,0 +1,146 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-18-null-optional-params",
+  "problem_type": "Agent 把可选参数写成 null（`seed: null`），起草放行、点「生成」才在合同编译口被拒，界面只有一句笼统的话",
+  "symptom": "2026-10-18 真付费走查：默认大脑 deepseek-v4-pro 起草 draft_shots 写了 {resolution,size,generate_audio,seed:null}，付费卡正常出现；点「生成这段」后主进程 spend-confirm-failed code=generation_not_started（参数 parameters.seed 的类型不对：要 number，收到的是 object），卡还摆着、节点停在「等你确认」，只弹一句笼统的「这一步没成」，没有说是哪个参数。v0.23.1 同一段代码，用默认大脑让 Agent 生成带 seed 的模型（Seedance 2.0）就用不了。",
+  "direct_cause": "executionContract.ts compileParameters 对 null 值调用 parameterMatches('number', null)=false（typeof null==='object'）抛 parameter_type_mismatch；起草入口（mcpGenerationTools.ts admitDraftShots / admitSingleCandidate）只核了「模型 + 模式」身份，没有把参数值交给同一个 compileParameters，所以坏值进了草稿；确认失败的 appIntegrationSpendConfirm.ts failed() 只带账本事实，不带「哪个参数」，卡上只能说笼统的一句。",
+  "class_root": "参数值的判据有两个时刻、一个入口：起草时只判身份、确认时才判值（plan 改草稿那一路例外）。凡是模型能写、起草能收的东西，一旦第一次被编译口看见才被拒，这一类错就必然出现在最贵的一刻（付费卡已摆上）。再加上「模型的坏习惯（null 表示不设）」在走查夹具里从没演过（夹具大脑写死、格式规整），免费演练永远拦不住它。",
+  "migration": "compileParameters 对 null/undefined 一律按「没填」处理（只放宽空值，类型/枚举/范围/必填照旧）；起草入口（create 单镜 / 多镜 / extend 共用 admitDraftShots + admitSingleCandidate）在草稿落库前调用同一个 admitPlanCandidate；确认失败时结果带 reason + field + failure=parameter_rejected，卡上通知点名参数。旧实现没有可删的并行版：起草没有第二份校验，只是补上调用。旧数据（升级前落盘的草稿）仍走读盘归一（stripParametersNotAccepted）清残留，不受影响。",
+  "affected_population": [
+    "用默认大脑（或任何会把可选参数写成 null 的模型）让 Agent 起草带 seed / 其他可选参数的视频、图片、音频模型的每一位用户（v0.23.1 已发布版本同样受影响）",
+    "对外 MCP 宿主（Codex / Claude Code）通过 nomi_operation_plan 起草同一批模型",
+    "付费卡点生成后被合同编译口拒绝的任何原因（不止 null）：此前卡上只有一句笼统的话"
+  ],
+  "scope_paths": [
+    "electron/capabilityCore/",
+    "electron/productionRun/productionRunTypes.ts",
+    "src/workbench/ai/v4/",
+    "src/workbench/production/productionShotActions.ts",
+    "src/i18n/locales/"
+  ],
+  "entry_points": [
+    "electron/capabilityCore/executionContract.ts:375 compileParameters（唯一的参数值准入边界）",
+    "electron/capabilityCore/mcpGenerationTools.ts admitDraftShots / admitSingleCandidate（起草：Agent draft_shots 三支 create 单镜 / create 多镜 / extend，以及 MCP nomi_operation_plan create）",
+    "electron/capabilityCore/generationPlanPatch.ts resolvePlanPatch（改草稿：Agent draft_shots 带 operationId / MCP nomi_submit_generation_plan，原本就过 admitPlanCandidate）",
+    "electron/capabilityCore/mcpGenerationTools.ts contractFor（preview / gate_request / 多镜密封：确认时）",
+    "electron/capabilityCore/appIntegrationSpendConfirm.ts failed()（确认被拒的结果）"
+  ],
+  "invariants": [
+    "写成 null / undefined 的参数键在合同编译口等同于没填：不进合同、留一条 warning；必填参数写空 = 缺必填并点名键",
+    "字符串冒充数字、\"false\" 冒充布尔、未声明键写真值仍被拒",
+    "凡能产生待付费草稿的入口（create 单镜 / 多镜 / extend / patch），草稿落库前一定过 compileParameters；被拒时不产生草稿（= 不产生付费卡）",
+    "起草放行的参数在确认时也放行（同一个函数、同一份参数表）",
+    "确认被拒时卡上通知点名被拒的参数键（zh / en），主进程与渲染端日志照旧"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/executionContract.ts",
+      "symbol": "compileParameters"
+    }
+  ],
+  "door_reduction": {
+    "before": 1,
+    "after": 1
+  },
+  "regression_tests": [
+    "electron/capabilityCore/optionalNullParameters.class.test.ts",
+    "electron/capabilityCore/draftTimeParameterAdmission.test.ts",
+    "electron/capabilityCore/agentPanelSpendRejected.e2e.test.ts",
+    "src/workbench/ai/v4/spendCardFailure.test.ts"
+  ],
+  "residual_risks": [
+    "确认被拒后卡仍摆着（可重试 / 点 × 重新起草），节点标记仍是「等你确认」——这是卡还在的如实状态，没有把它自动收回；归一入口之外若再长出新的起草入口，需要登记进 admitDraftParameters 的调用点（door-map admitPlanCandidate 会列出）",
+    "真付费上 deepseek-v4-pro 的端到端一次未跑（本轮零花费）：只有零额度演练（agent-video-landing-paid.rehearsal 带 seed:null，修前红修后绿）"
+  ],
+  "internal_only_reason": "纯内部问题：参数准入边界与草稿入口的时序，未涉及外部依赖行为；null 的语义取自模型输出习惯（真走查日志），不是外部文档规定。",
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "同一个参数准入边界被两个时刻调用（起草 / 确认），起草那一头缺调用；模型的坏习惯（null）会从任何一个模型、任何一个可选参数、任何一个入口回来；夹具大脑从不演，免费演练永远抓不到。",
+    "same_class_scan": [
+      "electron/capabilityCore/mcpGenerationTools.ts: operations.create 只有两处（单镜 / 多镜），都在 admitDraftShots / admitSingleCandidate 之后",
+      "electron/capabilityCore/generationPlanPatch.ts:115 admitPlanCandidate（改草稿，原本就判）",
+      "electron/capabilityCore/mcpGenerationTools.ts: contractFor 三处（preview / gate_request / sealMultiShotFor）共用同一个 compileExecutionContract",
+      "node scripts/door-map.mjs compileParameters：写入口 1 扇；admitPlanCandidate：3 扇（合同编译 / 改草稿 / 起草）"
+    ]
+  },
+  "generality_proof": "修在两个最早的共享边界：①参数值只有一个准入函数 compileParameters，空值语义定义在它里面，凡是走它的入口（preview / gate_request / 多镜密封 / 改草稿 / 起草）自动一致；②起草入口把同一个 admitPlanCandidate 放在草稿落库前，operations.create 只有这两条路径（单镜 / 多镜），extend 与多镜共用 admitDraftShots。普查单测遍历全部模型档案 × 变体 × 供应商分层 × 模式（338 个组合）逐个可选参数写 null，目录长了自动覆盖，不靠挑样本。",
+  "shared_boundaries": [
+    {
+      "path": "electron/capabilityCore/executionContract.ts",
+      "symbol": "compileParameters",
+      "responsibility": "参数值层唯一的准入：空值按没填、必填缺失点名、类型 / 枚举 / 范围照旧拒"
+    },
+    {
+      "path": "electron/capabilityCore/mcpGenerationTools.ts",
+      "symbol": "admitDraftParameters",
+      "responsibility": "起草落库前过同一个 admitPlanCandidate：坏参数当场结构化拒绝，不产生草稿 / 付费卡"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/capabilityCore/mcpGenerationTools.ts",
+      "entry_point": "admitDraftShots",
+      "disposition": "enforced",
+      "evidence": "多镜 create 与 extend 共用；draftTimeParameterAdmission.test.ts 的多镜用例（seed \"4\" / generate_audio \"false\"）修前红修后绿"
+    },
+    {
+      "path": "electron/capabilityCore/mcpGenerationTools.ts",
+      "entry_point": "admitSingleCandidate",
+      "disposition": "enforced",
+      "evidence": "单镜 create（Agent draft_shots 单镜、MCP nomi_operation_plan）；draftTimeParameterAdmission.test.ts 单镜用例"
+    },
+    {
+      "path": "electron/capabilityCore/generationPlanPatch.ts",
+      "entry_point": "resolvePlanPatch",
+      "disposition": "not-affected",
+      "evidence": "改草稿一路原本就对点名的参数调 admitPlanCandidate（generationPlanPatch.ts:115），draftTimeParameterAdmission.test.ts 的 plan 用例钉住"
+    },
+    {
+      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
+      "entry_point": "failed",
+      "disposition": "enforced",
+      "evidence": "确认被拒的结果带 reason/field/failure；agentPanelSpendRejected.e2e.test.ts（真 durable Run、真封印、真门）"
+    }
+  ],
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/capabilityCore/mcpGenerationTools.ts",
+    "invariant": "凡能产生待付费草稿的入口，草稿落库前必须过 compileParameters；null 的语义只在 compileParameters 里定义一次",
+    "failure_mode": "起草入口少调用 admitDraftParameters → draftTimeParameterAdmission.test.ts 红；compileParameters 对 null 又拒 → optionalNullParameters.class.test.ts 的全目录普查红；免费演练夹具大脑每次演 seed:null，修前红",
+    "exception_policy": "none",
+    "strategy": "参数值准入只有一个函数，起草与确认调同一个；坏习惯进夹具，每次演练都演",
+    "artifacts": [
+      "electron/capabilityCore/mcpGenerationTools.ts",
+      "electron/capabilityCore/executionContract.ts",
+      "electron/capabilityCore/optionalNullParameters.class.test.ts",
+      "electron/capabilityCore/draftTimeParameterAdmission.test.ts",
+      "tests/ux/agent-video-landing-paid.rehearsal.walk.mjs"
+    ]
+  },
+  "class_regression_tests": [
+    "electron/capabilityCore/optionalNullParameters.class.test.ts",
+    "electron/capabilityCore/draftTimeParameterAdmission.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "起草没有第二份参数校验可删（只是补上对同一个 admitPlanCandidate 的调用）；compileParameters 里没有并行的 null 处理。旧数据读盘归一（stripParametersNotAccepted）是另一件事，保留。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及第三方依赖：参数准入、起草时序与确认失败展示都是 Nomi 自己的领域边界（花钱路径），没有现成库可接。",
+    "exit_criteria": []
+  },
+  "external_sources": [],
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-01",
+  "invariant_owner_layer": {
+    "layer": "electron/capabilityCore/executionContract.ts",
+    "tests": [
+      "electron/capabilityCore/optionalNullParameters.class.test.ts",
+      "electron/capabilityCore/draftTimeParameterAdmission.test.ts"
+    ],
+    "why": "compileParameters 是参数值层唯一的准入函数，起草（admitDraftParameters）与确认（contractFor）都调它；全目录普查单测和起草入口单测在它两侧各守一头。"
+  }
+}

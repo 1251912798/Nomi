@@ -8,6 +8,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { screenshotSettled } from './_assert.mjs'
+import { openCustomApiWizard } from './_shell.mjs'
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/pick-confirm')
 fs.mkdirSync(shotsDir, { recursive: true })
@@ -42,19 +44,8 @@ for (let i = 0; i < 6; i++) {
   await win.waitForTimeout(300)
 }
 
-// 开「模型接入」面板
-const panel = win.locator('button', { hasText: '模型接入' }).first()
-if (await panel.count()) await panel.click({ timeout: 4000 }).catch(() => {})
-await win.waitForTimeout(700)
-
-// 展开「接入生成模型」（有已接入时默认收起）
-const grp = win.locator('text=接入生成模型').first()
-if (await grp.count()) await grp.click({ timeout: 2000 }).catch(() => {})
-await win.waitForTimeout(400)
-
-// 点「添加模型 / 中转站」开 wizard
-const addBtn = win.locator('button', { hasText: '添加模型 / 中转站' }).first()
-await addBtn.click({ timeout: 4000 })
+// 设置 → 模型 →「自定义 API / 中转站」开 wizard（经 _shell.mjs）
+await openCustomApiWizard(win, { label: '开接入向导' })
 await win.waitForTimeout(700)
 console.log('— 第一屏：来源名称字段 + 模型「拉取」空态 —')
 await snap(win, 'form-empty')

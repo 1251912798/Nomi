@@ -7,6 +7,7 @@ import { CardStackPeeks } from './CardStackPeeks'
 import { COLLAPSED_GROUP_CARD_SIZE } from '../model/canvasCardStackModel'
 import { GROUP_VISUAL_CLASS } from './groupVisualContract'
 import { groupColorClass } from '../model/groupColor'
+import { canvasImageSourceOf, canvasVideoPosterOf } from '../nodes/canvasImageSource'
 
 type Props = {
   card: CollapsedGroupCardProjection
@@ -20,11 +21,10 @@ type Props = {
   onExpand: (groupId: string) => void
 }
 
+/** 折叠卡封面也只挂画布预览（canvasImageSource：原图只经被计数的缺失分支；视频只认独立封面）。 */
 function coverUrl(card: CollapsedGroupCardProjection): string {
   const result = card.coverNode?.result
-  if (result?.type === 'image') return result.thumbnailUrl || result.url || ''
-  if (result?.type === 'video') return result.thumbnailUrl || ''
-  return ''
+  return canvasImageSourceOf(result) ?? canvasVideoPosterOf(result) ?? ''
 }
 
 export function CollapsedGroupCard({

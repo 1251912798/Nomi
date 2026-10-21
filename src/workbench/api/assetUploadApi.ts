@@ -1,7 +1,9 @@
 import { getDesktopBridge, type DesktopBridge } from '../../desktop/bridge'
 import type { TaskKind } from './taskApi'
+import type { AssetKind } from '../assets/assetTypes'
 import type { ProjectBinding } from '../../../electron/shared/projectBinding'
 import { unwrapAssetImportResult } from '../../../electron/shared/contracts/assetImportResult'
+import { canvasPreviewFieldsFromReceipt, type CanvasPreviewFields } from '../../../electron/shared/canvas/canvasMediaPreview'
 
 export type WorkbenchAssetDto = {
   id: string
@@ -18,9 +20,15 @@ export function hostedAssetUrl(asset: WorkbenchAssetDto | null | undefined): str
   return typeof asset?.data?.url === 'string' ? asset.data.url.trim() : ''
 }
 
-/** 落盘边界派生的画布预览 URL（图片 ≤1024 缩略 / 视频 poster）；没派生出来则空串，调用方回落到源。 */
-export function hostedAssetThumbnailUrl(asset: WorkbenchAssetDto | null | undefined): string {
-  return typeof asset?.data?.thumbnailUrl === 'string' ? asset.data.thumbnailUrl.trim() : ''
+/**
+ * 落盘回执 → 画布结果的预览两栏（独立小图 + 预览事实）。渲染层所有「拿到落盘资产就往画布结果里写」的入口
+ * 只用这一个，不再各自读 thumbnailUrl、更不许没有小图时把源地址填进去（见 shared/canvas/canvasMediaPreview）。
+ */
+export function hostedAssetCanvasPreview(
+  asset: WorkbenchAssetDto | null | undefined,
+  type: string | undefined,
+): CanvasPreviewFields {
+  return canvasPreviewFieldsFromReceipt(type, asset?.data, hostedAssetUrl(asset))
 }
 
 /**
@@ -35,9 +43,15 @@ export type UploadWorkbenchAssetMeta = {
   modelKey?: string | null
   taskKind?: TaskKind | string | null
   ownerNodeId?: string | null
-  /** 资产分桶：用户上传='upload'（默认）；生成结果补救本地化='generated'（与主进程 localizeTaskAsset 同桶）。 */
-  kind?: 'upload' | 'generated'
-}
+} & (
+  /** 资产分桶：用户上传='upload'（默认）。 */
+  | { kind?: 'upload'; expectedKind?: never }
+  /**
+   * 生成结果补救本地化='generated'（与主进程 localizeTaskAsset 同桶）。必须说清它该是哪一类：主进程落盘关口按字节核，
+   * 对不上就不收（V-1213：视频任务落进一张参考图）。
+   */
+  | { kind: 'generated'; expectedKind: AssetKind }
+)
 
 function requireDesktopRuntime(feature: string): DesktopBridge {
   const desktop = getDesktopBridge()
@@ -106,6 +120,7 @@ export async function importWorkbenchRemoteAssetUrl(
     projectBinding: meta.projectBinding,
     url,
     kind: meta.kind || 'upload',
+    expectedKind: meta.kind === 'generated' ? meta.expectedKind : null,
     fileName: name,
     ownerNodeId: meta.ownerNodeId || null,
   })

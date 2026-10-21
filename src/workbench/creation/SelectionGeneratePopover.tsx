@@ -175,7 +175,7 @@ export default function SelectionGeneratePopover({
               'border border-transparent rounded-workbench-control',
               'bg-transparent text-workbench-muted',
               'cursor-pointer',
-              'hover:border-[color-mix(in_srgb,var(--workbench-accent)_14%,transparent)]',
+              'hover:border-nomi-ink-30',
               'hover:bg-workbench-accent-soft hover:text-workbench-accent',
             )}
             label={action.label}
@@ -203,7 +203,7 @@ export default function SelectionGeneratePopover({
             'border border-workbench-border-soft rounded-workbench-control',
             'bg-workbench-surface text-workbench-ink',
             'cursor-pointer',
-            'hover:border-[color-mix(in_srgb,var(--workbench-accent)_18%,transparent)]',
+            'hover:border-nomi-ink-30',
             'hover:bg-workbench-accent-soft hover:text-workbench-accent',
           )}
           label={t('creationAi.selection.image')}
@@ -218,7 +218,7 @@ export default function SelectionGeneratePopover({
             'border border-workbench-border-soft rounded-workbench-control',
             'bg-workbench-surface text-workbench-ink',
             'cursor-pointer',
-            'hover:border-[color-mix(in_srgb,var(--workbench-accent)_18%,transparent)]',
+            'hover:border-nomi-ink-30',
             'hover:bg-workbench-accent-soft hover:text-workbench-accent',
           )}
           label={t('creationAi.selection.video')}
@@ -233,7 +233,7 @@ export default function SelectionGeneratePopover({
             'border border-workbench-border-soft rounded-workbench-control',
             'bg-workbench-surface text-workbench-ink',
             'cursor-pointer',
-            'hover:border-[color-mix(in_srgb,var(--workbench-accent)_18%,transparent)]',
+            'hover:border-nomi-ink-30',
             'hover:bg-workbench-accent-soft hover:text-workbench-accent',
           )}
           label={t('creationAi.selection.storyboard')}

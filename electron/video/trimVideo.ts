@@ -13,7 +13,7 @@ import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { ensureExecutable } from "../export/ensureExecutable";
 import { parseFfmpegProgressChunk } from "../export/ffmpegProgress";
 import { probeMediaMetadata } from "../export/mediaProbe";
-import { writeAsset } from "../runtime";
+import { writeGeneratedAsset } from "../runtime";
 import { captureAssetWriteContext } from "../assets/assetWriteContext";
 import type { ProjectBinding } from "../shared/projectBinding";
 import { resolveVideoLocalPath } from "./extractVideoFrame";
@@ -107,10 +107,10 @@ export async function trimVideoToAsset(
     // 发布前最后一次复验项目身份：换了项目就不发布（assertCurrent 抛的是项目取消，不当成剪辑失败）。
     options.assertCurrent?.();
     const bytes = fs.readFileSync(outPath);
-    const record = writeAsset(projectId, bytes, `trim-${range.start.toFixed(1)}-${range.end.toFixed(1)}-${crypto.randomUUID().slice(0, 8)}.mp4`, "video/mp4", {
+    const record = await writeGeneratedAsset(projectId, bytes, `trim-${range.start.toFixed(1)}-${range.end.toFixed(1)}-${crypto.randomUUID().slice(0, 8)}.mp4`, "video/mp4", {
       kind: "generated",
       source: "video-trim",
-    }, context) as { id?: string; data?: { url?: string } };
+    }, "video", context) as { id?: string; data?: { url?: string } };
     const url = record?.data?.url;
     if (!url) throw new TrimVideoError("剪好的 mp4 写盘失败");
     options.onProgress?.(1);

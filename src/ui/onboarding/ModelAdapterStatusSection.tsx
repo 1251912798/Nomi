@@ -15,7 +15,7 @@ import { resolveModelAdapterDetailState } from './modelAdapterDetailState'
 
 const TONE_CLASS = {
   neutral: 'border-nomi-line bg-nomi-ink-05',
-  active: 'border-nomi-accent bg-nomi-accent-soft',
+  active: 'border-transparent bg-nomi-accent-soft',
   success: 'border-workbench-success bg-workbench-success-soft',
   warning: 'border-nomi-warning bg-[color-mix(in_oklch,var(--nomi-warning)_9%,var(--nomi-paper))]',
   danger: 'border-workbench-danger bg-[var(--workbench-danger-soft)]',

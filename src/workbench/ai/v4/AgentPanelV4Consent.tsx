@@ -14,44 +14,68 @@
 //
 // 「让他理解我们不是做坏事」这件事不是靠一句承诺做到的，是靠那两行清单**看得见**。
 // 所以这张卡上没有「我们非常重视您的隐私」这类句子，只有事实。
+//
+// 2026-10-16：告知范围升到 v2（多了「界面流畅度分档数字」）。已同意旧范围的用户在**同一个位置、同一个组件**
+// 里再被问一次（`scope` 形态，只讲多了什么）；答之前扩展字段不发（主进程按范围版本拦，见
+// electron/telemetry/telemetryEvents.ts 的 TELEMETRY_EVENT_MIN_SCOPE）。「保持原样」不写任何东西：
+// 原范围的统计照旧，扩展字段继续不发。
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DecisionBar } from '../../../design'
 import { getDesktopBridge } from '../../../desktop/bridge'
-import { hasAskedAgentConsent, markAgentConsentAsked } from '../../onboarding/onboardingState'
+import { hasAskedAgentConsent, hasAskedAgentConsentScope, markAgentConsentAsked, markAgentConsentScopeAsked } from '../../onboarding/onboardingState'
+
+type ConsentMode = 'first' | 'scope'
 
 export function V4ConsentCard({
-  /** 实验室用：跳过 localStorage 判断，强制渲染。生产路径不传。 */
-  forceVisible = false,
+  /** 实验室用：跳过 localStorage / 主进程判断，强制渲染指定形态。生产路径不传。 */
+  force,
 }: {
-  forceVisible?: boolean
+  force?: ConsentMode
 }): JSX.Element {
   const { t } = useTranslation()
   // 初始值就读一次标记：渲染过一帧再消失会闪一下，那比不出现更糟。
-  const [visible, setVisible] = React.useState(() => forceVisible || !hasAskedAgentConsent())
+  const [mode, setMode] = React.useState<ConsentMode | null>(() => force ?? (hasAskedAgentConsent() ? null : 'first'))
+
+  // 首次问过之后，才轮到「范围升级再确认」：开着遥测、但同意的还是旧范围、且这台机器没问过。
+  React.useEffect(() => {
+    if (force || mode !== null || hasAskedAgentConsentScope()) return
+    let active = true
+    void getDesktopBridge()?.settings?.telemetry?.get().then((view) => {
+      if (active && view.enabled && view.scopeVersion < 2) setMode('scope')
+    }).catch(() => undefined)
+    return () => { active = false }
+  }, [force, mode])
 
   // 普通函数就够：它的结果每次渲染都被 `onClick={() => answer(true)}` 包一层新箭头，
   // useCallback 的 memo 从来不生效，只是多一层噪音。
   const answer = (accepted: boolean): void => {
     // 两个钮**都**记「问过了」。记的是问过，不是同意——他点了「不用了」之后自己去设置里
     // 打开，也不该让这张卡再冒出来（判据住在 onboardingState.ts，那儿写了理由）。
-    markAgentConsentAsked()
-    setVisible(false)
+    if (mode === 'scope') markAgentConsentScopeAsked()
+    else markAgentConsentAsked()
+    setMode(null)
     if (!accepted) return
-    // 同意与否的真相源是主进程的同意合同，不是这张卡。这里只是它的第二个写入口。
+    // 同意与否的真相源是主进程的同意合同，不是这张卡。这里只是它的第二个写入口；
+    // 写入 enabled:true 即把主进程记下的告知范围版本升到当前版。
     void getDesktopBridge()?.settings?.telemetry?.set({ enabled: true }).catch(() => undefined)
   }
 
-  if (!visible) return <></>
+  if (!mode) return <></>
+  // 键名写成字面量（不拼接）：check:i18n 要静态认得出每个键。
+  const text = mode === 'scope'
+    ? { title: t('agentPanelV4.consent.scopeTitle'), collects: t('agentPanelV4.consent.scopeCollects'), excludes: t('agentPanelV4.consent.scopeExcludes'), accept: t('agentPanelV4.consent.scopeAccept'), decline: t('agentPanelV4.consent.scopeDecline') }
+    : { title: t('agentPanelV4.consent.title'), collects: t('agentPanelV4.consent.collects'), excludes: t('agentPanelV4.consent.excludes'), accept: t('agentPanelV4.consent.accept'), decline: t('agentPanelV4.consent.decline') }
 
   return (
     <div
       data-v4-block="consent"
-      className="mt-3 rounded-nomi border border-nomi-accent bg-nomi-paper p-3.5 text-left"
+      data-v4-consent-mode={mode}
+      className="mt-3 rounded-nomi border border-nomi-line bg-nomi-paper p-3.5 text-left"
     >
-      <p className="text-body-sm font-medium text-nomi-ink">{t('agentPanelV4.consent.title')}</p>
-      <p className="mt-1.5 text-caption leading-relaxed text-nomi-ink-60">{t('agentPanelV4.consent.collects')}</p>
-      <p className="mt-0.5 text-caption leading-relaxed text-nomi-ink-60">{t('agentPanelV4.consent.excludes')}</p>
+      <p className="text-body-sm font-medium text-nomi-ink">{text.title}</p>
+      <p className="mt-1.5 text-caption leading-relaxed text-nomi-ink-60">{text.collects}</p>
+      <p className="mt-0.5 text-caption leading-relaxed text-nomi-ink-60">{text.excludes}</p>
       {/* 决定栏：拒绝在左、同意在最右（UI-R01）；两颗同尺寸，只有 variant 不同。
           12px 而不是 micro(11px)：体感门岗 `check:feel` 的可读下限就是 12px，
           而这行是首次询问卡上唯一解释「以后去哪儿关」的话——它比按钮更需要被读到。 */}
@@ -59,10 +83,10 @@ export function V4ConsentCard({
         className="mt-3"
         size="md"
         leading={<span className="text-caption text-nomi-ink-40">{t('agentPanelV4.consent.settingsHint')}</span>}
-        cancelLabel={t('agentPanelV4.consent.decline')}
+        cancelLabel={text.decline}
         onCancel={() => answer(false)}
         cancelProps={{ 'data-v4-consent-decline': '' }}
-        primaryLabel={t('agentPanelV4.consent.accept')}
+        primaryLabel={text.accept}
         onPrimary={() => answer(true)}
         primaryProps={{ 'data-v4-consent-accept': '' }}
       />

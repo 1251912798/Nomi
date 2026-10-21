@@ -23,6 +23,7 @@ import { ShellRail } from '../ui/app-shell/shell/ShellRail';
 import { ShellAgentHost } from '../ui/app-shell/shell/ShellAgentHost';
 import { useEffectiveAgentForm } from '../ui/app-shell/shell/agentFormStore';
 import { useShellLayoutStore } from '../ui/app-shell/shell/shellLayoutStore';
+import { bindPerfScene } from './observability/perfScene';
 import { GenerationViewSwitcher } from './generation/list/GenerationViewSwitcher';
 
 // 工作区懒加载走容错域（审计 A5）：单个工作区 chunk 失败不拖死其余工作区。
@@ -73,6 +74,8 @@ const MODE_BY_STEP_PARAM: Record<string, WorkspaceMode> = {
 
 type WorkspaceSlotProps = {
     active: boolean;
+    /** 藏起来时冻结子树（React <Activity>）：不再跟 store 重渲染、effect 全卸。只给渲染贵又不需要在后台保持最新的工作区用。 */
+    freezeWhenHidden?: boolean;
     children: React.ReactNode;
     label: string;
 };
@@ -96,6 +99,7 @@ function WorkspaceLoading({ label }: { label: string }): JSX.Element {
 
 function WorkspaceSlot({
     active,
+    freezeWhenHidden = false,
     children,
     label,
 }: WorkspaceSlotProps): JSX.Element {
@@ -119,7 +123,7 @@ function WorkspaceSlot({
             hidden={!active}>
             <React.Suspense
                 fallback={active ? <WorkspaceLoading label={label} /> : null}>
-                {children}
+                {freezeWhenHidden ? <React.Activity mode={active ? "visible" : "hidden"}>{children}</React.Activity> : children}
             </React.Suspense>
         </div>
     );
@@ -194,6 +198,8 @@ export default function WorkbenchShell({
 }: WorkbenchShellProps): JSX.Element {
     const { t } = useTranslation();
     const workspaceMode = useWorkbenchStore((state) => state.workspaceMode);
+    // 流畅度汇总要知道「在工作台里」：壳挂着 = 不在项目库。卸载（回库）时场景源清空，汇总里 page 回到 library。
+    React.useEffect(() => bindPerfScene(), []);
     const setWorkspaceMode = useWorkbenchStore(
         (state) => state.setWorkspaceMode,
     );
@@ -316,7 +322,7 @@ export default function WorkbenchShell({
                 </WorkspaceSlot>
             ) : null}
             {mountedWorkspaceModes.includes("storyboard") ? (
-                <WorkspaceSlot active={workspaceMode === "storyboard"} label={t("workspace.storyboard")}>
+                <WorkspaceSlot active={workspaceMode === "storyboard"} freezeWhenHidden label={t("workspace.storyboard")}>
                     <StoryboardWorkspace projectId={projectId} aiCollapsed={workspaceAiCollapsed} agentDockRef={agentDockRefs.storyboard} />
                 </WorkspaceSlot>
             ) : null}

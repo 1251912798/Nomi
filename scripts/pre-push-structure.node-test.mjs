@@ -16,6 +16,7 @@ import { makeTempDir } from './_test-temp.mjs'
 import { gitPaths } from './lib/gitPaths.mjs'
 import { TEST_FILE, scanEvidence, walkSites } from './lib/scanGuardDetect.mjs'
 
+import { scanGuardCensusInputs } from './check-scan-guard-census.mjs'
 import { judgeLint } from './lint-changed.mjs'
 import { DERIVED_INPUT_GATES, GATE_INPUTS, touchesGateInputs } from './pre-push-gate-inputs.mjs'
 import { CI_ONLY, PARTIAL_LOCAL, PRE_PUSH_ALIASES, TYPECHECK_NOT_COVERED, declarationProblems, parseContractGates } from './pre-push-gate-table.mjs'
@@ -79,6 +80,8 @@ const SCANNER_READS = {
   'check:test-copy-literals': ['src/a.test.ts', 'electron/b.test.ts', 'scripts/c.node-test.mjs', 'tests/ux/d.walk.mjs', 'tests/ux/exempt.json', 'evals/e.test.mjs', 'packages/p/f.test.ts', 'src/i18n/locales/zh.ts', 'electron/desktopStrings.ts', 'scripts/check-test-copy-literals.mjs'],
   'test:control-contract': ['scripts/check-control-contract.test.mjs', 'scripts/control-contract-copy.mjs', 'scripts/control-contract-discarded-commands.mjs', 'scripts/_test-temp.mjs'],
   'test:pre-push-structure': ['package.json', 'scripts/git-hooks.json', 'scripts/pre-push-structure.node-test.mjs', 'scripts/pre-push-gate-table.mjs', 'scripts/pre-push-gate-inputs.mjs', 'scripts/pre-push-contracts.mjs', 'scripts/pre-push-related-tests.mjs'],
+  // 被登记对象 = 任何位置的测试文件（新增 / 改名 / 删除）；加上 package.json、核对脚本、登记表
+  'check:scan-guard-census': ['src/workbench/x/newGuard.test.ts', 'electron/newGuard.structure.test.ts', 'scripts/newGuard.node-test.mjs', 'tests/ux/y.test.mjs', 'packages/p/z.test.ts', 'package.json', 'scripts/check-scan-guard-census.mjs', 'scripts/pre-push-scan-guards.mjs'],
   'test:quit-lifecycle-guard': ['electron/quitLifecycleGuard.test.ts', 'electron/main.ts', 'electron/x.mts', 'eslint.config.mjs'],
 }
 
@@ -472,19 +475,8 @@ test('必红：typecheck 超时 → 推送不被拦（状态 0）、输出写明
 
 // ── 扫全仓 / 扫目录的守卫测试必须有去处（2026-10-10 一天漏 4 个：#1156 offLedgerEgress.structure、#1142 fileIdentity / mcpClientRegistry / check-network-entry）──
 
-/** 把仓库（或夹具根）整理成 scanGuardProblems 要的输入：被跟踪的测试、推送前已登记的测试、gates:contracts 各门的命令与实现闭包。 */
-function scanGuardInputs(root, trackedFiles, packageJson) {
-  const gateNames = parseContractGates(packageJson.scripts['gates:contracts']).gates
-  const scriptTexts = gateNames.map((name) => packageJson.scripts[name]).filter(Boolean)
-  return {
-    root,
-    testFiles: trackedFiles.filter((file) => TEST_FILE.test(file)),
-    scanTests: new Set(SCAN_TESTS.flatMap((scan) => gateEntryFiles(scan.name))),
-    gateScripts: scriptTexts.join('\n'),
-    gateImplFiles: gateImplementation(scriptTexts, root, (file) => fs.existsSync(path.join(root, file))),
-    prePushGates: new Set(PRE_PUSH_GATES.map((gate) => gate.name)),
-  }
-}
+// 输入整理与核对函数在 scripts/check-scan-guard-census.mjs（推送前独立成一道几秒的门 check:scan-guard-census，新增测试文件就触发；本测试在 CI 里同一份判据再跑一遍）
+const scanGuardInputs = scanGuardCensusInputs
 
 test('扫描型守卫：仓库里每个「遍历源码并对全集断言」的测试都有去处——推送前登记 / CI_ONLY（附理由）/ 已被推送前门岗覆盖 / 识别器误判（附理由）', () => {
   const tracked = gitPaths(['ls-files'], { cwd: repoRoot, maxBuffer: 256 * 1024 * 1024 })
@@ -546,6 +538,18 @@ const WALKS_ELECTRON = [
   "const files = walk(path.join(process.cwd(), 'electron'))",
   "test('没有违规', () => { for (const file of files) if (fs.readFileSync(file, 'utf8').includes('BAD')) throw new Error(file) })",
 ].join('\n')
+
+test('登记核对由「新增测试文件」触发：任何位置新增 / 改名 / 删除测试文件都选中 check:scan-guard-census；纯文档与普通源码不选；算不出改动全跑', () => {
+  for (const file of ['src/a/x.test.ts', 'src/a/x.test.tsx', 'electron/x.structure.test.ts', 'scripts/x.node-test.mjs', 'scripts/x.test.mjs', 'tests/agent-runtime/x.test.mts', 'packages/p/x.test.cts', 'workers/w/x.test.js', 'evals/e/x.test.mjs']) {
+    assert.ok(selectGates([file]).includes('check:scan-guard-census'), `新增测试文件 ${file} 应选中 check:scan-guard-census`)
+  }
+  for (const file of ['docs/engineering/x.md', 'src/a/x.ts', 'electron/main.ts']) assert.ok(!selectGates([file]).includes('check:scan-guard-census'), `${file} 不该选中`)
+  assert.ok(selectGates(null).includes('check:scan-guard-census'))
+  // 触发条件与识别器同一个正则：识别器认的测试扩展名，触发器一定认
+  assert.equal(GATE_INPUTS['check:scan-guard-census'].match, TEST_FILE)
+  // 整份结构测试 > 30 秒，不能当它的触发替身：这道门独立、几秒级
+  assert.ok(SCAN_TESTS.some((scan) => scan.name === 'check:scan-guard-census' && scan.argv.includes('scripts/check-scan-guard-census.mjs')))
+})
 
 test('必红：新写一个扫 electron 的守卫测试，既没进 SCAN_GUARDS 也没进 CI_ONLY → 核对函数红并点名；登记后绿', () => {
   const root = fixtureRepo({ 'electron/a.ts': 'export {}', 'electron/newRule.structure.test.ts': WALKS_ELECTRON })

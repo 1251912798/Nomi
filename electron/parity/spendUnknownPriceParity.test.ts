@@ -17,11 +17,15 @@ vi.mock("electron", async () => {
   const nodeFs = await import("node:fs");
   const nodeOs = await import("node:os");
   const nodePath = await import("node:path");
-  const { electronStub } = await import("./parityElectronMock");
   return electronStub(nodeFs.mkdtempSync(nodePath.join(nodeOs.tmpdir(), "nomi-parity-spend-")));
 });
 
 import { seedParityCatalog } from "./generationParityTestUtils";
+
+import { electronStub } from "./parityElectronMock";
+import { quoteSpendLine } from "../spendQuote";
+import { createCatalogShotPriceResolver } from "../productionRun/catalogPricingResolver";
+import { countUnknownJobPrices } from "../productionRun/productionGenerationAuthorization";
 
 const UNPRICED = { vendorKey: "apimart", modelKey: "z-image-turbo" };
 const PRICED = { vendorKey: "apimart", modelKey: "gpt-image-2", cost: 0.3 };
@@ -37,9 +41,6 @@ beforeAll(async () => {
     pricing: { cost: PRICED.cost, enabled: true, specCosts: [] },
   });
 
-  const { quoteSpendLine } = await import("../spendQuote");
-  const { createCatalogShotPriceResolver } = await import("../productionRun/catalogPricingResolver");
-  const { countUnknownJobPrices } = await import("../productionRun/productionGenerationAuthorization");
   const resolveShotPrice = createCatalogShotPriceResolver(store.readCatalog().models);
 
   for (const row of [UNPRICED, PRICED]) {

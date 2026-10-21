@@ -70,6 +70,12 @@ export function spendCardPage(pending: PendingSpendConfirm, page: number): numbe
  * 「Nomi 选的」是**现算**的：这些候选本来就是 agent 挑的模型，用户一旦在卡上换了模型，
  * 下一次投影里的 `modelId` 就变了，那句话跟着消失——不会留在卡上变成一句假话。
  */
+const BRAKE_COPY = {
+  'retry-limit': 'agentPanelV4.brakeRetry.title',
+  'out-of-plan': 'agentPanelV4.brakeOutOfPlan.title',
+  stopped: 'agentPanelV4.brakeStopped.title',
+} as const
+
 export function projectSpendCard(
   pending: PendingSpendConfirm,
   view: SpendCardView,
@@ -140,6 +146,8 @@ export function projectSpendCard(
     // 标题里**不印金额**：金额随参数变，两个地方印同一个数就一定有一个先漂。
     title: t(wording.title, { count: shots.length }),
     badge,
+    // 「直接生成」档的刹车成立、这笔退回成确认卡时，多这一行说明为什么停（只多这一行，其余与「请求批准」下的卡一模一样）。
+    ...(pending.brake ? { summary: t(BRAKE_COPY[pending.brake.reason]) } : {}),
     ...(shots.length > 1
       ? {
           pager: {

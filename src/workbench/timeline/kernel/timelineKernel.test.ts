@@ -57,6 +57,13 @@ describe('timeline kernel validation and normalization', () => {
     expect(timelineRevision(state)).toBe(timelineRevision(normalized))
   })
 
+  it.each([{ scale: 8.88 }, { playheadFrame: 17 }])('keeps content revision stable across view state %j', (view) => {
+    const state = timeline([clip('a', 0, 30)])
+    expect(timelineRevision({ ...state, ...view })).toBe(timelineRevision(state))
+    expect(timelineRevision({ ...state, fps: 25 })).not.toBe(timelineRevision(state))
+    expect(timelineRevision({ ...state, tracks: [] })).not.toBe(timelineRevision(state))
+  })
+
   it('rejects malformed clip audio and unsupported image audio settings', () => {
     const invalid = timeline([
       { ...clip('gain', 0, 30), audio: { gainDb: 1 } },

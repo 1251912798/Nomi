@@ -71,12 +71,12 @@ export function useAutoFitOnLoad(params: {
     if (openNodes.length === 0) return undefined
     let frame = 0
     let waited = 0
-    const decide = () => {
+    const fitWhenMeasured = () => {
       const rect = stageRef.current?.getBoundingClientRect()
       const measured = Boolean(rect && rect.width > 0 && rect.height > 0) && openNodes.every((node) => latest.current.hasFlowNode(node.id))
       if (!measured || !rect) {
         waited += 1
-        if (waited < MAX_WAIT_FRAMES) frame = requestAnimationFrame(decide)
+        if (waited < MAX_WAIT_FRAMES) frame = requestAnimationFrame(fitWhenMeasured)
         return
       }
       const { categoryViewports: viewports, fitView: fit } = latest.current
@@ -86,7 +86,7 @@ export function useAutoFitOnLoad(params: {
         anyNodeVisible: anyNodeVisibleInViewport(openNodes, zoomRef.current, offsetRef.current, rect.width, rect.height),
       })) fit()
     }
-    frame = requestAnimationFrame(decide)
+    frame = requestAnimationFrame(fitWhenMeasured)
     return () => cancelAnimationFrame(frame)
   }, [ready, activeCategoryId, stageRef, zoomRef, offsetRef])
 }

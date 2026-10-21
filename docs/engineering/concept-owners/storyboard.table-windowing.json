@@ -1,0 +1,27 @@
+{
+  "name": "分镜表挂载窗口（哪些镜挂完整行 / 轻量占位 / 不挂）",
+  "subject": "storyboard.table-windowing",
+  "lifecycle": "live-interaction",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/creation/storyboard/storyboardMountPlan.ts",
+    "symbol": "planItemMounts"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/creation/storyboard/storyboardMountPlan.ts",
+      "symbol": "planItemMounts"
+    },
+    {
+      "path": "src/workbench/creation/storyboard/StoryboardShotTable.tsx",
+      "symbol": "StoryboardShotTable"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-16",
+  "notes": "打开大方案只挂视口 + 缓冲（@tanstack/react-virtual），滚动中新进来的行先挂占位、停下每帧升级一行，焦点 / 拖拽 / 等着聚焦的行钉住完整。根因合同 docs/fixes/2026-10-16-storyboard-plan-windowing.root-cause.json。"
+}

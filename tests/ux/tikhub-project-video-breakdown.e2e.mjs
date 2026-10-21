@@ -12,7 +12,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, openRailDrawer } from './_shell.mjs'
 
 const FIXTURE_VIDEO = path.join(repoRoot, 'tests/ux/fixtures/fixture-video.mp4')
 const TEMP_ROOT = makeTempDir('nomi-tikhub-video-breakdown-')
@@ -180,10 +180,7 @@ function projectIdFromUrl(url) {
 
 async function openAssets(win) {
   const assetSection = win.locator('section[aria-label="素材库"]')
-  if (!(await assetSection.isVisible().catch(() => false))) {
-    const libraryButton = win.getByRole('button', { name: '素材库', exact: true }).first()
-    await libraryButton.click()
-  }
+  await openRailDrawer(win, 'assets', '打开素材库')
   await assetSection.waitFor({ state: 'visible', timeout: 10_000 })
   return assetSection
 }
