@@ -8,7 +8,7 @@ const SOURCE_KINDS = ['用户原话', 'issue', '走查', '调研报告']
 const text = (value) => typeof value === 'string' && value.trim().length > 0
 
 /** 返回问题列表（空 = 通过）。fileExists(相对路径) 由调用方提供，单测里可注入。 */
-export function validateScenarios(catalog, { fileExists = () => true } = {}) {
+export function validateUxScenarios(catalog, { fileExists = () => true } = {}) {
   const problems = []
   const list = catalog.scenarios
   if (!Array.isArray(list) || list.length === 0) return ['catalog.scenarios 缺失或为空']

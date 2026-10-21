@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import { exemptionEvidenceGrowth, feelMode, feelSurfaceKey } from '../tests/ux/_feel-observer.mjs'
 import { execFileSync } from 'node:child_process'
-import { validateScenarios } from '../tests/ux/experience/scenarios.mjs'
+import { validateUxScenarios } from '../tests/ux/experience/scenarios.mjs'
 
 const read = (file) => JSON.parse(fs.readFileSync(file, 'utf8'))
 const base = execFileSync('git', ['merge-base', 'HEAD', 'origin/main'], { encoding: 'utf8' }).trim()
@@ -60,6 +60,6 @@ for (const journey of catalog.journeys) {
   if (!journey.id || !Array.isArray(journey.states) || (!journey.states.length && !experienceOnly)) throw new Error('Invalid feel journey')
   for (const state of journey.states) if (!state.id || !state.html || !state.owner) throw new Error('Invalid feel state')
 }
-const scenarioProblems = validateScenarios(catalog, { fileExists: (file) => fs.existsSync(file) })
+const scenarioProblems = validateUxScenarios(catalog, { fileExists: (file) => fs.existsSync(file) })
 if (scenarioProblems.length) throw new Error(`Invalid scenario list:\n${scenarioProblems.join('\n')}`)
 console.log('Feel generic boundary and baseline/exemption ratchets passed')

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { validateScenarios } from './scenarios.mjs'
+import { validateUxScenarios } from './scenarios.mjs'
 import { machineFromRun, renderScorecard, validateScorecard } from './scorecard.mjs'
 
 const root = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)))
@@ -13,7 +13,7 @@ const exists = (file) => fs.existsSync(path.join(root, file))
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
 test('场景清单：真目录通过，8–12 条，候选和可执行都有', () => {
-  assert.deepEqual(validateScenarios(catalog, { fileExists: exists }), [])
+  assert.deepEqual(validateUxScenarios(catalog, { fileExists: exists }), [])
   assert.ok(catalog.scenarios.length >= 8 && catalog.scenarios.length <= 12)
   assert.ok(catalog.scenarios.some((s) => s.status === 'research-candidate'))
   assert.ok(catalog.scenarios.some((s) => s.status === 'executable'))
@@ -28,7 +28,7 @@ test('场景清单：坏例必须红', () => {
   const bad = (mutate) => {
     const c = clone(catalog)
     mutate(c)
-    return validateScenarios(c, { fileExists: exists })
+    return validateUxScenarios(c, { fileExists: exists })
   }
   assert.match(bad((c) => delete c.scenarios[0].failureGuard).join('\n'), /failureGuard/)
   assert.match(bad((c) => (c.scenarios[0].source = { kind: '拍脑袋', ref: 'x' })).join('\n'), /source/)
@@ -39,7 +39,7 @@ test('场景清单：坏例必须红', () => {
   const candidate = (c) => c.scenarios.find((s) => s.status === 'research-candidate')
   assert.match(bad((c) => (candidate(c).walk = 'tests/ux/contextual-node-guidance.walk.mjs')).join('\n'), /研究候选不能挂/)
   assert.match(bad((c) => c.scenarios.push(...Array.from({ length: 5 }, (_, i) => ({ ...clone(c.scenarios[0]), id: `extra-${i}` })))).join('\n'), /上限/)
-  assert.match(validateScenarios({ journeys: [], scenarios: [{ ...clone(catalog.scenarios.find((s) => s.walk)), walk: 'tests/ux/not-there.walk.mjs' }] }, { fileExists: exists }).join('\n'), /walk/)
+  assert.match(validateUxScenarios({ journeys: [], scenarios: [{ ...clone(catalog.scenarios.find((s) => s.walk)), walk: 'tests/ux/not-there.walk.mjs' }] }, { fileExists: exists }).join('\n'), /walk/)
 })
 
 const cards = ['pr1264-rewrite', 'pr1181-node-guidance'].map((name) => ({ name, file: `docs/evidence/2026-10-21-ux-scorecard/${name}.scorecard` }))
