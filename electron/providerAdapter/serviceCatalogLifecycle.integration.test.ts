@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { LanguageModelV1 } from "ai";
+import type { CompilerLanguageModel } from "./compiler";
 
 let userDataRoot = "";
 
@@ -184,7 +184,7 @@ function serviceDependencies(
       sources: [{ url: "https://candidate.example.test/docs", text: "API reference" }],
       corpus: "API reference",
     }),
-    resolveLanguageModels: () => [{} as LanguageModelV1],
+    resolveLanguageModels: () => [{} as CompilerLanguageModel],
     compile: async () => ({ draft: candidateDraft(), failures: [] }),
     verify: async ({ mode }) => ({
       ok: false,

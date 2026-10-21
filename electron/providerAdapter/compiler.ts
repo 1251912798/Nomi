@@ -1,4 +1,8 @@
-import { generateObject, NoObjectGeneratedError, type LanguageModelV1 } from "ai";
+import { callModelOnce } from "../ai/modelCallBridge";
+import { observeModelFetch } from "../ai/modelCallFetch";
+import { modelCallFailure } from "../ai/runtimeVendorError";
+import { appFetch } from "../appFetch";
+import type { NomiModelConfig } from "../shared/agentLane/laneModelConfig";
 import type { AdapterAuthType, ProviderAdapterCompilation, ProviderAdapterDraft } from "./types";
 import { adapterModelContractSchema, validateProviderAdapterDraft } from "./validator";
 import { redactAdapterSecrets, sanitizedAdapterJson } from "./redaction";
@@ -10,8 +14,14 @@ export class AdapterNeedsAiError extends Error {
   }
 }
 
+/**
+ * 当编译器用的文本模型：一次模型调用的连接配置（vendorModelConnection.nomiModelConfigFor 给的那一份）。
+ * 2026-10-21 起编译走与文本任务同一个「调一次模型」核心（pi-ai），不再是 ai@4 的 CompilerLanguageModel。
+ */
+export type CompilerLanguageModel = NomiModelConfig;
+
 export type StructuredGenerator = (input: {
-  model: LanguageModelV1;
+  model: CompilerLanguageModel;
   schema: typeof adapterModelContractSchema;
   system: string;
   prompt: string;
@@ -50,26 +60,31 @@ Mapping rules:
 
 Nomi supplies and locks the provider identity, model id, display label and billing kind. Return only that one model's parameters and modes in the structured contract requested by the schema.`;
 
+/**
+ * 一次模型调用 → 说明卡 JSON。迁移前是 ai@4 的 generateObject(mode:"json")：它在 OpenAI 兼容协议上发
+ * `response_format: json_object`，拿回文本再修框、再按 schema 校验。这里照同样的三步走，只是调用换成唯一核心：
+ * 请求体同样声明 JSON 输出（只在 chat completions 上，与迁移前一致），回来的文本经 parseAdapterContractText
+ * （安全修框 + zod 校验）——校验失败照旧抛，由 generateModelContract 换下一个候选模型。
+ */
 const defaultGenerate: StructuredGenerator = async (input) => {
-  try {
-    const result = await generateObject({
-      model: input.model,
-      schema: input.schema,
-      system: input.system,
-      prompt: input.prompt,
-      mode: "json",
-      abortSignal: input.abortSignal,
-      maxRetries: input.maxRetries,
-      maxTokens: input.maxTokens,
-      experimental_repairText: async ({ text }) => repairAdapterJsonText(text),
-    });
-    return { object: result.object };
-  } catch (error) {
-    if (NoObjectGeneratedError.isInstance(error) && error.text) {
-      return { object: parseAdapterContractText(error.text) };
-    }
-    throw error;
+  const transport = observeModelFetch(appFetch, { modelId: input.model.modelId, knownSecrets: [input.model.apiKey ?? ""] });
+  const { message } = await callModelOnce({
+    model: input.model,
+    fetch: transport.fetch,
+    systemPrompt: input.system,
+    content: input.prompt,
+    maxTokens: input.maxTokens,
+    maxRetries: input.maxRetries,
+    signal: input.abortSignal,
+    onPayload: (payload, api) => api === "openai-completions" && payload && typeof payload === "object"
+      ? { ...(payload as Record<string, unknown>), response_format: { type: "json_object" } } : payload,
+  });
+  if (message.stopReason === "error" || message.stopReason === "aborted") {
+    throw modelCallFailure({ vendorKey: input.model.providerId, errorMessage: message.errorMessage,
+      http: transport.failure(), thrown: transport.thrown() });
   }
+  const text = message.content.filter((part) => part.type === "text").map((part) => (part as { text: string }).text).join("");
+  return { object: parseAdapterContractText(text) };
 };
 
 function stripTrailingJsonCommas(text: string): string {
@@ -197,7 +212,7 @@ function sourceEvidence(docs: readonly DocPage[]): ProviderAdapterDraft["sources
 }
 
 async function generateModelContract(input: {
-  languageModels: readonly LanguageModelV1[];
+  languageModels: readonly CompilerLanguageModel[];
   prompt: string;
   generate: StructuredGenerator;
   signal?: AbortSignal;
@@ -244,8 +259,8 @@ async function generateModelContract(input: {
 
 export async function compileProviderAdapter(
   input: {
-    languageModel?: LanguageModelV1 | null;
-    languageModels?: readonly LanguageModelV1[];
+    languageModel?: CompilerLanguageModel | null;
+    languageModels?: readonly CompilerLanguageModel[];
     providerBaseUrl: string;
     authType: AdapterAuthType;
     selectedModels: readonly SelectedModel[];

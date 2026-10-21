@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { LanguageModelV1 } from "ai";
+import type { CompilerLanguageModel } from "./compiler";
 import type { Model, Vendor } from "../catalog/types";
 import type { ProviderAdapterDraft } from "./types";
 import { ProviderAdapterStore } from "./store";
@@ -196,7 +196,7 @@ function dependencies(catalog: ReturnType<typeof fakeCatalog>): ProviderAdapterS
       sources: [{ url: "https://docs.example.com/api", text: "API reference" }],
       corpus: "API reference",
     }),
-    resolveLanguageModels: () => [{} as LanguageModelV1],
+    resolveLanguageModels: () => [{} as CompilerLanguageModel],
     compile: async () => ({ draft: draft(), failures: [] }),
     probeCredential: async () => ({ ok: true as const, modelIds: [], listed: false }),
     verify: async ({ mode }) => ({ ok: true, taskKind: mode.taskKind }),
@@ -862,7 +862,7 @@ describe("ProviderAdapterService", () => {
     const deps = dependencies(catalog);
     deps.discover = vi.fn(async () => ({ sources: [{ url: "https://docs.example.com/api", text: "API reference" }], corpus: "API reference" }));
     deps.compile = vi.fn(async () => ({ draft: draft(), failures: [] }));
-    deps.resolveLanguageModels = vi.fn(() => [{} as LanguageModelV1]);
+    deps.resolveLanguageModels = vi.fn(() => [{} as CompilerLanguageModel]);
     const service = new ProviderAdapterService(store(), deps);
     const started = await service.start({ ...startInput, models: [{ modelKey: "text-v1", labelZh: "Text V1", kind: "text" as const }] });
 

@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import type { LanguageModelV1 } from "ai";
+import type { CompilerLanguageModel } from "./compiler";
 import type { OperationLedger } from "../integrationCertification/operationLedger";
 import type { PromotionJournal } from "../integrationCertification/promotionJournal";
 import {
@@ -85,9 +85,9 @@ export type ProviderAdapterServiceDependencies = {
   catalog: ProviderAdapterCatalogPort;
   schedule?: (runId: string) => void;
   discover: (input: { baseUrl: string; modelKeys: readonly string[]; providedDocs?: string; proxyUrl?: string; signal?: AbortSignal }) => Promise<DiscoveredDocs>;
-  resolveLanguageModels: (connection: LoadedConnection) => readonly LanguageModelV1[];
+  resolveLanguageModels: (connection: LoadedConnection) => readonly CompilerLanguageModel[];
   compile: (input: {
-    languageModels: readonly LanguageModelV1[];
+    languageModels: readonly CompilerLanguageModel[];
     providerBaseUrl: string;
     authType: AdapterAuthType;
     selectedModels: Array<{ modelKey: string; label: string; kind: BillingModelKind }>;
