@@ -113,7 +113,7 @@ const reportVerifier = (text) => /验收线\s*[:：]\s*([^（(，,；;|\r\n]+)/.
  * CI 读不到协调目录的报告，所以 CI 只能核正文贴的这些；合并前扫描在协调会话本机读报告本体（scripts/merge-preflight.mjs）。
  * 推送档（报告推送后才有）这些新增项只提醒。
  */
-export function checkIndependentAcceptance(body, { stage = 'merge', strict = false, headSha = null, readReport = undefined } = {}) {
+export function checkIndependentAcceptance(body, { stage = 'merge', strict = false, headSha = null, readReport = undefined, headRelation = undefined } = {}) {
   const section = extractSection(body, '独立验收')
   if (section === null) return { ok: false, lines: [`✖ 四类改动缺 \`## 独立验收\` 一节（报告链接 + 验收线编号${strict ? ' + 报告首行 + 验收 HEAD' : ''}）${englishHeadingHint(body, '独立验收')}`] }
   const lines = []
@@ -154,10 +154,17 @@ export function checkIndependentAcceptance(body, { stage = 'merge', strict = fal
       else if (verdict.blocked) flag(`独立验收的结论里仍有未解除的阻断（${quoted.slice(0, 60)}）：阻断解除、报告更新后再合`)
       else lines.push(`✅ 报告结论：${verdict.verdict === 'pass' ? '通过' : '有条件通过'}`)
     }
+    // 验收的版本 vs PR 当前 head：相等；或祖先 + 之后只有干净合 main / docs/evidence 提交（headRelation，见 scripts/lib/prEvidenceInputs.mjs）
+    const versionLine = (label, sha) => {
+      if (shaMatches(sha, headSha)) return lines.push(`✅ ${label} ${sha.slice(0, 12)} = PR 当前 head`)
+      const relation = typeof headRelation === 'function' ? headRelation(sha, headSha) : undefined
+      if (relation?.ok) return lines.push(`✅ ${label} ${sha.slice(0, 12)}：${relation.note}`)
+      if (relation && relation.ok === false) return flag(`${label} ${sha.slice(0, 12)} 和 PR 当前 head ${String(headSha).slice(0, 12)} 对不上：${relation.reason}`)
+      return lines.push(`⚠ ${label} ${sha.slice(0, 12)} 不等于 PR 当前 head ${String(headSha).slice(0, 12)}，这个环境算不了历史（${relation?.reason ?? '没有历史'}）：只核了正文，是否只多了干净合 main / docs/evidence 提交由合并前扫描在本机核`)
+    }
     if (!claimedHead) flag('独立验收没写「验收 HEAD：<提交号>」——要说清验收的是哪个版本')
     else if (!headSha) flag('拿不到 PR 当前 head，核不了验收的是不是这一版（不拿算不出来当通过）')
-    else if (!shaMatches(claimedHead, headSha)) flag(`验收 HEAD ${claimedHead.slice(0, 12)} 不是 PR 当前 head ${String(headSha).slice(0, 12)}：head 变了，要对新版本重验`)
-    else lines.push(`✅ 验收 HEAD ${claimedHead.slice(0, 12)} = PR 当前 head`)
+    else versionLine('验收 HEAD', claimedHead)
     if (report) {
       const text = typeof readReport === 'function' ? readReport(report) : undefined
       if (text === null) flag(`独立验收的报告读不到（${report}）：读不到不能当通过——报告放仓库里，或让合并前扫描在本机读得到`)
@@ -171,7 +178,7 @@ export function checkIndependentAcceptance(body, { stage = 'merge', strict = fal
         else if (real.blocked) flag(`报告本体的结论里仍有未解除的阻断（${reportFirst.slice(0, 60)}）`)
         const inReport = reportHead(text)
         if (!inReport) flag('报告里没写验收 HEAD：要写清验收的是哪个版本')
-        else if (headSha && !shaMatches(inReport, headSha)) flag(`报告里的验收 HEAD ${inReport.slice(0, 12)} 不是 PR 当前 head ${String(headSha).slice(0, 12)}：报告验的是别的版本`)
+        else if (headSha) versionLine('报告里的验收 HEAD', inReport)
         const reportLine = reportVerifier(text)
         if (!reportLine) flag('报告里没写「验收线：<编号>」')
         else if (verifierId && !(reportLine.includes(verifierId) || verifierId.includes(reportLine))) flag(`报告里的验收线 ${reportLine} 和正文写的 ${verifierId} 不同`)
@@ -198,7 +205,7 @@ export function checkBoardClaim(body, { inferred, strict = false, table = undefi
   let ok = true
   if (claims.length) {
     if (boards) {
-      const errors = checkPrBoardClaims(body, boards)
+      const errors = checkPrBoardClaims(body, typeof boards === 'function' ? boards() : boards)
       if (errors.length) {
         ok = false
         lines.push(`✖ 拍板图认领未过（${errors.length} 条）：`, ...errors.map((error) => `    ✗ ${error}`))
@@ -418,7 +425,7 @@ export function evaluatePrBody({ body, files, addedLines = '', addedByFile = nul
   const result = renderBodyLines({
     classification,
     design: checkDesignCard(body, classification),
-    acceptance: checkIndependentAcceptance(body, { stage, strict: strictEvidence, headSha: inputs.headSha ?? null, readReport: inputs.readReport }),
+    acceptance: checkIndependentAcceptance(body, { stage, strict: strictEvidence, headSha: inputs.headSha ?? null, readReport: inputs.readReport, headRelation: inputs.headRelation }),
     escape: checkEscapeContract(body, contracts, ledger.transitions ?? [], ledger.ids ?? [], ledger.settledContracts ?? [], { stage, reviewed: ledger.preparedContracts ?? [] }),
     promises: checkDeferredPromises(body, { stage, createdAt, enforce }),
     scope: judgement.scope,

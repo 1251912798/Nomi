@@ -12,8 +12,9 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { ESCAPE_LEDGER_DIR, assembleEscapeLedger, escapeIdOfPath } from './escape-ledger-lib.mjs'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
-import { loadManifests } from './check-board-parity.mjs'
+import { boardsAtHead, checkHeadAncestry } from './lib/prEvidenceInputs.mjs'
 import { META_FILE } from './lib/entryDirectory.mjs'
 import { execGhReadSync } from './lib/transientRetry.mjs'
 import { RULES_INTRODUCED_BY_PR, evaluatePrBody, ledgerChanges, mergeReport, settledContracts } from './pr-body-criteria.mjs'
@@ -126,9 +127,12 @@ export function readReportRef(ref, readRepoFile, readLocal = (file) => fs.readFi
 }
 
 /** 对外入口：任何取数失败都收成一行「结论：✖」，退出码 1。exec 可注入（测试用）。 */
-export function main(argv = process.argv.slice(2), exec = execGhReadSync) {
+/** 本机 git（读历史、读 PR 头上的文件）；测试可注入。 */
+const realGit = (args) => execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] })
+
+export function main(argv = process.argv.slice(2), exec = execGhReadSync, git = realGit) {
   try {
-    return run(argv, exec)
+    return run(argv, exec, git)
   } catch (error) {
     if (!(error instanceof PreflightDataError)) throw error
     console.log(`✖ ${error.message}——取数不全就不下结论，重跑一次；反复失败再查网络 / gh 登录`)
@@ -137,7 +141,7 @@ export function main(argv = process.argv.slice(2), exec = execGhReadSync) {
   }
 }
 
-function run(argv, exec) {
+function run(argv, exec, git) {
   const { gh, ghApiFile, ghApiDirectoryNames } = makeGh(exec)
   const prArg = argv.find((arg) => /^\d+$/.test(arg))
   const repoIndex = argv.indexOf('--repo')
@@ -158,6 +162,14 @@ function run(argv, exec) {
   const addedLines = diff.split('\n').filter((line) => line.startsWith('+') && !line.startsWith('+++')).join('\n')
   const addedByFile = addedLinesByFile(diff)
   const body = view.body ?? ''
+  let fetched = false
+  const fetchedGit = () => {
+    if (!fetched) {
+      must('PR head 与 main 的提交历史', () => git(['fetch', '--quiet', 'origin', 'main', `pull/${prArg}/head`]))
+      fetched = true
+    }
+    return git
+  }
 
   const contracts = []
   for (const file of files.filter((entry, index) => apiRows[index].status !== 'removed' && /^docs\/fixes\/.+\.root-cause\.json$/.test(entry.path))) {
@@ -226,7 +238,13 @@ function run(argv, exec) {
       // 协调目录的报告在本机读（读不到 = null = 红）；仓库内路径从 PR 头读；外部链接读不了
       readReport: (ref) => readReportRef(ref, (file) => ghApiFile(slug, file, view.headRefOid)),
       readRaw: (ref) => (isRepoRef(ref) ? ghApiFile(slug, ref, view.headRefOid) : null),
-      boards: loadManifests(),
+      // 拍板图清单和提交历史都取 PR head（PR 自己新增的板在 main 检出里读不到）；规则与判据仍从 base 读。用到才 fetch，取不到 = 取数失败（红）
+      headRelation: (accepted, head) => {
+        const result = checkHeadAncestry({ git: fetchedGit(), accepted, head })
+        // 本机必须算得出：算不了（浅克隆、没有历史）不能当通过
+        return result.unknown ? { ok: false, reason: `读不到提交历史：${result.reason}` } : result
+      },
+      boards: () => must('PR 头上的拍板图清单', () => boardsAtHead({ git: fetchedGit(), sha: view.headRefOid })),
     },
   }))
   console.log(report.text)

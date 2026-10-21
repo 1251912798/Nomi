@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url'
 
 import { checkIndependentAcceptance, evaluatePrBody } from './pr-body-criteria.mjs'
 import { parsePerfEvidence } from './perf-scenarios-lib.mjs'
+import { checkPrBoardClaims } from './check-board-parity.mjs'
+import { boardsAtHead, checkHeadAncestry } from './lib/prEvidenceInputs.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const HEAD = 'abcdef1234567890abcdef1234567890abcdef12'
@@ -57,7 +59,11 @@ test('独立验收·结论写通过但仍带未解除的阻断 → 红', () => {
 })
 
 test('独立验收·验收的 HEAD 和 PR 当前 head 不一致 → 红；写得对 → 绿；缺 HEAD → 红；拿不到 PR head → 红', () => {
-  red(strict(acceptanceBody({ head: '0123456' })), /验收 HEAD|head/)
+  red(strict(acceptanceBody({ head: '0123456' }), { headRelation: () => ({ ok: false, reason: '分支又加了代码提交' }) }), /验收 HEAD|head/)
+  green(strict(acceptanceBody({ head: '0123456' }), { headRelation: () => ({ ok: true, note: '之后只有干净合并 main' }) }))
+  const unknown = strict(acceptanceBody({ head: '0123456' }), { headRelation: () => ({ unknown: true, reason: '浅克隆' }) })
+  green(unknown)
+  assert.match(unknown.lines.join('\n'), /本机核/)
   red(strict(acceptanceBody({ head: null })), /验收 HEAD/)
   green(strict(acceptanceBody({ head: 'abcdef1234567890' })))
   red(strict(acceptanceBody(), { headSha: null }), /PR 当前 head|拿不到/)
@@ -65,7 +71,7 @@ test('独立验收·验收的 HEAD 和 PR 当前 head 不一致 → 红；写得
 
 test('独立验收·读得到报告本体时：首行与正文贴的不同、报告里的 HEAD 过期、报告写不通过而正文写通过 → 红', () => {
   red(strict(acceptanceBody(), { readReport: () => reportText({ first: 'V-x：有条件通过（另一句）' }) }), /首行/)
-  red(strict(acceptanceBody(), { readReport: () => reportText({ head: '0123456789abcdef0123456789abcdef01234567' }) }), /报告里的验收 HEAD|HEAD/)
+  red(strict(acceptanceBody(), { readReport: () => reportText({ head: '0123456789abcdef0123456789abcdef01234567' }), headRelation: () => ({ ok: false, reason: '分支又加了代码提交' }) }), /报告里的验收 HEAD|HEAD/)
   red(strict(acceptanceBody({ first: 'V-x：通过' }), { readReport: () => reportText({ first: 'V-x：不通过（阻断：B1）' }) }), /不通过/)
 })
 
@@ -282,7 +288,7 @@ test('端到端：CLI 在生效日之后的 PR 上，验收 HEAD 对不上当前
     env: { ...process.env, PR_JUDGEMENT_REPO_ROOT: root, PR_JUDGEMENT_BASE_REF: base, PR_JUDGEMENT_CREATED_AT: '2026-10-23T00:00:00Z', NOMI_PR_BODY: body, GITHUB_EVENT_NAME: '', GITHUB_EVENT_PATH: '', CI: '1' },
   })
   const body = (acceptHead) => [FULL_CARD, ACCEPT.replace('abcdef1', acceptHead), '## 拍板图', '- 不适用：single-element-restyle：只调了一个令牌的颜色值'].join('\n')
-  const stale = run(body('0123456'))
+  const stale = run(body(base.slice(0, 12)))
   assert.equal(stale.status, 1, stale.stdout + stale.stderr)
   assert.match(stale.stdout, /验收 HEAD/)
   const fresh = run(body(head.slice(0, 12)))
@@ -299,4 +305,72 @@ test('合并前扫描读报告：本机绝对路径、仓库内路径、外部�
   assert.equal(readReportRef('docs/evidence/r.md', repo), '通过\n')
   assert.equal(readReportRef('docs/evidence/ghost.md', repo), null)
   assert.equal(readReportRef('https://example.com/r', repo), null)
+})
+
+// ── 验收 HEAD 是 PR head 的祖先：之后只许干净合 main、docs/evidence 提交（协调审后改，严格相等会逼人绕门岗）──────────────
+const gitIn = (root) => (args) => {
+  const run = spawnSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+  if (run.status !== 0) { const error = new Error(run.stderr); error.status = run.status; throw error }
+  return run.stdout
+}
+
+function repoWith(t) {
+  const root = fs.mkdtempSync(path.join(process.env.TEMP || os.tmpdir(), 'gates-ancestry-'))
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const g = (...args) => git(root, ...args).trim()
+  const write = (rel, content) => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), content) }
+  g('init', '-q', '-b', 'main'); g('config', 'user.email', 't@t'); g('config', 'user.name', 't'); g('config', 'commit.gpgsign', 'false')
+  write('a.txt', 'one\ntwo\nthree\n'); write('b.txt', 'b\n')
+  g('add', '-A'); g('commit', '-q', '-m', 'base')
+  g('update-ref', 'refs/remotes/origin/main', 'HEAD')
+  g('checkout', '-q', '-b', 'pr')
+  write('feature.txt', 'f\n'); g('add', '-A'); g('commit', '-q', '-m', 'feature')
+  const accepted = g('rev-parse', 'HEAD')
+  const advanceMain = (file, content) => {
+    g('checkout', '-q', 'main'); write(file, content); g('add', '-A'); g('commit', '-q', '-m', `main ${file}`)
+    g('update-ref', 'refs/remotes/origin/main', 'HEAD'); g('checkout', '-q', 'pr')
+  }
+  const ancestry = (from = accepted) => checkHeadAncestry({ git: gitIn(root), accepted: from, head: g('rev-parse', 'HEAD') })
+  return { root, g, write, accepted, advanceMain, ancestry }
+}
+
+test('验收 HEAD 祖先·合了一次干净的 main（无冲突）之后 → 绿；再加只改 docs/evidence 的提交 → 仍绿', (t) => {
+  const r = repoWith(t)
+  r.advanceMain('b.txt', 'b changed on main\n')
+  r.g('merge', '-q', '--no-ff', '-m', 'merge main', 'main')
+  assert.equal(r.ancestry().ok, true, JSON.stringify(r.ancestry()))
+  r.write('docs/evidence/report.md', 'x\n'); r.g('add', '-A'); r.g('commit', '-q', '-m', 'evidence')
+  assert.equal(r.ancestry().ok, true, JSON.stringify(r.ancestry()))
+})
+
+test('验收 HEAD 祖先·合 main 时人工解过冲突（树和 merge-tree 的结果不同）→ 红', (t) => {
+  const r = repoWith(t)
+  r.advanceMain('a.txt', 'one\nMAIN\nthree\n')
+  r.write('a.txt', 'one\nPR\nthree\n'); r.g('add', '-A'); r.g('commit', '-q', '-m', 'pr edit')
+  const accepted = r.g('rev-parse', 'HEAD')
+  assert.notEqual(spawnSync('git', ['merge', '--no-ff', '-m', 'merge main', 'main'], { cwd: r.root }).status, 0, '应当冲突')
+  r.write('a.txt', 'one\nHAND RESOLVED\nthree\n'); r.g('add', '-A'); r.g('commit', '-q', '--no-edit')
+  const result = r.ancestry(accepted)
+  assert.equal(result.ok, false, JSON.stringify(result))
+  assert.match(result.reason, /冲突|不是干净/)
+})
+
+test('验收 HEAD 祖先·验收后分支又加了代码提交 → 红；浅克隆算不了 → unknown（CI 只核正文）', (t) => {
+  const r = repoWith(t)
+  r.write('src.txt', 'code\n'); r.g('add', '-A'); r.g('commit', '-q', '-m', 'more code')
+  const result = r.ancestry()
+  assert.equal(result.ok, false)
+  assert.match(result.reason, /非合并提交/)
+  const shallow = checkHeadAncestry({ git: (args) => (args[1] === '--is-shallow-repository' ? 'true\n' : ''), accepted: r.accepted, head: r.accepted })
+  assert.equal(shallow.unknown, true)
+})
+
+// ── 拍板图清单取 PR head：PR 自己新增的板，认领判绿（main 检出里读不到它）──────────────────────────────────────────
+test('合并前扫描读 PR head 的清单：PR 认领它自己新增的板 → 绿；在 main 上找 → 找不到 → 红', (t) => {
+  const r = repoWith(t)
+  const manifest = { board: 'NewBoard', elements: [{ id: 'a', status: 'implemented' }] }
+  r.write('docs/design/boards/2026-10-19/NewBoard.board.json', JSON.stringify(manifest)); r.g('add', '-A'); r.g('commit', '-q', '-m', 'add board')
+  const claim = '## 拍板图\n- NewBoard: a'
+  assert.deepEqual(checkPrBoardClaims(claim, boardsAtHead({ git: gitIn(r.root), sha: r.g('rev-parse', 'HEAD') })), [])
+  assert.equal(checkPrBoardClaims(claim, boardsAtHead({ git: gitIn(r.root), sha: r.g('rev-parse', 'main') })).length, 1, 'main 上没有这张板')
 })
