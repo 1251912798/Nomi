@@ -22,7 +22,7 @@ import { createCustomCallTestRunRegistry, type CustomCallTestRunInput, type Cust
 
 import { assertTrustedSender } from "../ipcSenderGuard";
 import { desktopT } from "../i18n";
-function resolveTarget(vendorKey: string, modelKey: string) {
+function resolveCustomCallTarget(vendorKey: string, modelKey: string) {
   const state = readCatalog();
   const vendor = state.vendors.find((v) => v.key === vendorKey);
   if (!vendor) throw new Error(desktopT("catalog.vendorMissing", { vendor: vendorKey }));
@@ -70,7 +70,7 @@ async function executeCustomCallTest(
 ): Promise<CustomCallTestRunResult> {
   const started = Date.now();
   try {
-    const { vendor, model, apiKey, customConfig } = resolveTarget(input.vendorKey, input.modelKey);
+    const { vendor, model, apiKey, customConfig } = resolveCustomCallTarget(input.vendorKey, input.modelKey);
     if (!input.script.trim()) throw new Error(desktopT("customCall.emptyScript"));
     const canned = cannedTestInput(model.kind);
     const taskKind = input.taskKind || cannedTaskKind(model.kind);
@@ -127,7 +127,7 @@ export function registerCustomCallIpc(registerSyncIpc: (channel: string, handler
     const raw = (payload || {}) as Record<string, unknown>;
     const vendorKey = trim(raw.vendorKey);
     const modelKey = trim(raw.modelKey);
-    const { vendor, model } = resolveTarget(vendorKey, modelKey);
+    const { vendor, model } = resolveCustomCallTarget(vendorKey, modelKey);
     return buildCustomCallAiInstruction({
       modelKey: model.modelAlias || model.modelKey,
       kind: model.kind,

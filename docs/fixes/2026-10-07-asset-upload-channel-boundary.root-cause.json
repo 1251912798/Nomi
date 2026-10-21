@@ -37,9 +37,9 @@
     "after": 2,
     "why_not": "The registry and resolver are separate desktop boundaries: the registry owns declarations and the resolver owns candidate selection. The Relay worker lives outside the door-map scan roots and is covered by its own shared read boundary and tests."
   },
-  "generality_proof": "All Relay asset reads converge on read(), and all anonymous desktop uploads resolve the single ANON_UPLOAD_CHAIN registry constant before resolveLocalAsset iterates its hosts.",
+  "generality_proof": "All Relay asset reads converge on readAsset(), and all anonymous desktop uploads resolve the single ANON_UPLOAD_CHAIN registry constant before resolveLocalAsset iterates its hosts.",
   "shared_boundaries": [
-    { "path": "workers/nomi-asset-relay/src/index.mjs", "symbol": "read", "responsibility": "Own lookup, expiry, metadata, and GET/HEAD body semantics for every Relay asset read." },
+    { "path": "workers/nomi-asset-relay/src/index.mjs", "symbol": "readAsset", "responsibility": "Own lookup, expiry, metadata, and GET/HEAD body semantics for every Relay asset read." },
     { "path": "electron/catalog/assetIngestionRegistry.ts", "symbol": "ANON_UPLOAD_CHAIN", "responsibility": "Own the ordered anonymous fallback host list for all accepted media kinds." }
   ],
   "same_class_entry_points": [

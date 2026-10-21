@@ -165,8 +165,8 @@ test('package.json 的 gates:contracts 就是这个 runner，且 advisory 只限
   const AUTOSYNC_BACKED = []
   // 判断题提醒：机器原理上补不了，硬拦会逼出假章节。目前没有（research-sources 已移出 PR）。
   const JUDGMENT_REMINDERS = []
-  // 降级为提示（用户拍板）：判据仍在、仍会打印，只是不再阻断 PR。symptom-cluster 6 次红全是补一份结构评审文档。
-  const DOWNGRADED_HINTS = ['check:concept-owners']
+  // 降级为提示（用户拍板）：判据仍在、仍会打印，只是不再阻断 PR。目前没有：check:concept-owners 于 2026-10-19 用户拍板改回阻断。
+  const DOWNGRADED_HINTS = []
   assert.deepEqual([...advisory].sort(), [...AUTOSYNC_BACKED, ...JUDGMENT_REMINDERS, ...DOWNGRADED_HINTS].sort())
   // 三道被移出的 advisory 不许悄悄回到 PR 的 Contracts 里
   for (const removed of ['check:docs-index', 'check:doc-status', 'check:ledger', 'check:research-sources', 'check:door-map']) {
@@ -226,13 +226,13 @@ test('体检：每个 advisory 门岗的提示文案和它真实的补齐机制�
   assert.doesNotMatch(advisoryNote('check:not-declared').text, /自动补齐/)
 })
 
-test('advisory 失败的汇总按门岗各自的补齐机制出文案：concept-owners 不再被说成 docs-autosync 自动补齐', async () => {
-  const run = harness({ 'check:concept-owners': { code: 1, output: '登记缺了\n' }, 'check:docs-index': { code: 1, output: '索引缺了\n' } })
-  await runGateSuite({ gates: ['check:concept-owners', 'check:docs-index'], advisory: new Set(['check:concept-owners', 'check:docs-index']), runGate: run.runGate, write: run.write, env: {} })
+test('advisory 失败的汇总按门岗各自的补齐机制出文案：没声明补齐机制的按人工，不被说成 docs-autosync 自动补齐', async () => {
+  const run = harness({ 'check:needs-human': { code: 1, output: '登记缺了\n' }, 'check:docs-index': { code: 1, output: '索引缺了\n' } })
+  await runGateSuite({ gates: ['check:needs-human', 'check:docs-index'], advisory: new Set(['check:needs-human', 'check:docs-index']), runGate: run.runGate, write: run.write, env: {} })
   const lines = run.output().split('\n')
-  const owners = lines.find((line) => line.includes('· check:concept-owners'))
+  const owners = lines.find((line) => line.includes('· check:needs-human'))
   const docs = lines.find((line) => line.includes('· check:docs-index'))
   assert.doesNotMatch(owners, /自动补齐/)
-  assert.match(owners, /要人判断/)
+  assert.match(owners, /按人工处理/)
   assert.match(docs, /自动补齐/)
 })

@@ -1,0 +1,23 @@
+{
+  "name": "节点兜底态对外声明「加载中」（与真正的轻量档可区分）",
+  "subject": "canvas.node-loading-fallback",
+  "lifecycle": "live-interaction",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "projection",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/components/LightweightGenerationNode.tsx",
+    "symbol": "LightweightGenerationNode"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/components/LightweightGenerationNode.tsx",
+      "symbol": "LightweightGenerationNode"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-16",
+  "notes": "合同 docs/fixes/2026-10-16-node-render-swap-eats-click.root-cause.json：LightweightGenerationNode 在 Suspense 兜底时带 data-node-loading，正式轻量档不带。"
+}

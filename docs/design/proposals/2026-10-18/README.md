@@ -1,10 +1,10 @@
 # Nomi 0.24 交互方案（探索样张）
 
-> 日期：2026-10-18。画布原件：https://claude.ai/artifact/RXjiGoUcsL9S691U9u6eZX（Nomi 0.24 交互方案，**需要用户账号**才能打开）。本目录是它的原样副本，不登录任何账号的 AI 也能拿去实现。
+> 日期：2026-10-18 建，2026-10-19 同步到画布第 62 版或更新（版本号 `1792386632-a305`）。画布原件：https://claude.ai/artifact/RXjiGoUcsL9S691U9u6eZX（Nomi 0.24 交互方案，**需要用户账号**才能打开）。本目录是它的原样副本，不登录任何账号的 AI 也能拿去实现。
 
 ## 这是什么
 
-这是 0.24 交互方案的**探索样张**，共 123 格，**没有全部拍板**。样张只是画面，不是实现合同：拍板以后才会生成 `docs/design/boards/` 下的清单，那才是实现合同（见 `docs/engineering/design-pipeline.md`，`check:board-parity` 守这一条）。没有对应清单的格子，不要直接照着实现，先问协调会话。
+这是 0.24 交互方案的**探索样张**，共 124 格，**没有全部拍板**（下面分组表写了每组状态，以用户 10-18 晚到 10-19 说的为准）。样张只是画面，不是实现合同：拍板以后才会生成 `docs/design/boards/` 下的清单，那才是实现合同（见 `docs/engineering/design-pipeline.md`，`check:board-parity` 守这一条）。没有对应清单的格子，不要直接照着实现，先问协调会话。
 
 ## 统一规则 7 条（画布顶部便签原文）
 
@@ -26,14 +26,30 @@
 
 | 顺序 | 组 | 格子 | 在讲什么 | 状态 | 要用户定的点 |
 |---|---|---|---|---|---|
-| 1 | 生成框（B3）+ 付费卡精简版（D2）+ 复用宿主（E1） | B3a–B3p、D2a–D2i（D1a–D1h 是旧版对照）、E1a–E1d | 画布生成框的新排法（参考行、参数弹层、首尾帧、渠道）；Agent 付费卡精简成三行；同一个生成框放进分镜行、Agent 输入框、列表详情、节点错误报告 | B3 已拍板（10-18 晚两处变动：生成钮改回 ↑ 圆钮；参数弹层保留，只收紧）。D2、E1 待拍 | D2c 的参数「盖住提示词」还是「在参数条下展开、卡片变高」 |
-| 2 | 图标统一（F1） | F1a–F1d | 节点浮条、生成框底栏、顶栏、空态的图标线宽和字号 | 待拍 | 四档：13/1.8、16/2、18/1.8、24/1.5 |
-| 3 | 标注 → Agent 极简版（M） | M1–M8（A3a–A3j 是对照） | 评论模式、线程、意见列表 | 待拍 | 底栏加「评论」、节点浮条去掉「提意见」、列表分未解决 / 已解决两档 |
-| 4 | 分页 | 方案四 D1–D8 是推荐；方案一 P2a–P2m、A2、A4，方案二 B1–B6，方案三 C1–C6 都是对照 | 顶栏页签 + 「全部页面」替代左栏「目录」 | 待选方案四 | 实现前先出结构方案（页面归属和业务身份拆开） |
-| 5 | 写作区 | 方案二「分场」WB1–WB9 是推荐；WD1–WD2 三套共用；方案一 WA、方案三 WC 是对照 | 创作区的稿子组织方式、选中文字的 AI、空行续写 | 待选 | 先做分场 + 全文 |
+| 1 | 生成框（B3）+ 付费卡精简版（D2）+ 复用宿主（E1） | B3a–B3q、D2a–D2i（D1a–D1h 是旧版对照）、E1a–E1d | 画布生成框的新排法（参考行、参数弹层、首尾帧、渠道）；Agent 付费卡精简成三行，一行三颗参数；同一个生成框放进分镜行、Agent 输入框、列表详情、节点错误报告 | B3 已拍板，D2、E1 按本表实现。10-18 晚到 10-19 的定稿：生成钮改回原来的 ↑ 圆钮；参数区一律照现有组件原样（见下「参数区定稿」）；付费卡展开后嵌的就是生成框，参数在原地展开、盖住提示词 | 无（D2c 的「盖住提示词」已定） |
+| 2 | 图标统一（F1） | F1a–F1d | 节点浮条、生成框底栏、顶栏、空态的图标线宽和字号 | 已按推荐拍板 | 四档：13/1.8、16/2、18/1.8、24/1.5 |
+| 3 | 标注 → Agent 极简版（M） | M1–M8（A3a–A3j 是对照） | 评论模式、线程、意见列表 | 已按推荐拍板 | 三点：底栏放「评论」、节点浮条去掉「提意见」、列表分未解决 / 已解决两档 |
+| 4 | 分页 | 方案四 D1–D8 是推荐；方案一 P2a–P2m、A2、A4，方案二 B1–B6，方案三 C1–C6 都是对照 | 顶栏页签 + 「全部页面」替代左栏「目录」 | 已按推荐拍板：选方案四 | 实现前先出结构方案（页面归属和业务身份拆开） |
+| 5 | 写作区 | 方案二「分场」WB1–WB9、WD1–WD2 三套共用；方案一 WA、方案三 WC 是对照 | 创作区的稿子组织方式、选中文字的 AI、空行续写 | **暂不改，只做 Agent 改写**：写作区结构先不改，只做「选中文字 → AI 改写」（WD1）；WD2（空行按空格续写）这次不做；WA / WB / WC 的结构样张这次都不实现 | 无 |
 | — | 文稿方案确认挪进 Agent | C3a、C3b | 报价卡、计划外镜头的刹车 | 已实现（main 上 #1224 等） | 无 |
 
+### 参数区定稿（B3q 是这一条的对比格）
+
+B3q 左边是现有真组件（画布节点的参数面板），右边是样张旧画法。以左边为准：
+
+- 参数条上**模型和变体各一颗**；摘要那一颗**只印当前值**（比例 · 清晰度 · 时长）。
+- **生成方式放在面板顶部**；供应商这一组叫「**供应商**」。
+- 面板就是现有组件原样：宽 320、每组标题在上分段在下、圆角 16；比例带小图形，时长是滑杆，生成音频是开关。
+- B3 原先的两条**作废**：「版本放进弹层」「模型和版本合成一颗」。画布 `canvas.json` 里 `n-variant` 便签（「版本在参数弹层第一组选，模型按钮上写模型名 + 当前版本」）是旧话，以这里为准。
+- B3a、B3c–B3f、B3h–B3m 等格里参数条的旧画法同理只看位置，不照画；以 B3b、B3g、B3o、B3q 为准。
+
+### 付费卡展开（D2c）
+
+付费卡展开后，卡里嵌的就是生成框；点参数条上的参数，参数在**原地展开、盖住提示词框**，选完收起，卡片高度不变（D2c 右图）。现在真代码是在下方展开、把卡片撑高，所以实现时要改 `inlinePanelSlot`。
+
 ## 实现顺序和每块的流程
+
+**实现进度（10-19）**：第 1 块「生成框 + 复用宿主」和写作区「Agent 改写（WD1）」已于 10-19 开工；付费卡 D2 是下一个 PR；其余块排在后面。
 
 按上表顺序，一块一块来，每块都走：
 
@@ -59,7 +75,7 @@
 
 ## 未渲染
 
-无。123 格全部出了预览图。预览用无头浏览器按格子自身宽高截取，没加载网络字体，字体用系统回退，和画布上的字形会有细微差别。
+无。124 格全部出了预览图（2026-10-19 同步：B3q 新增，B3b、B3g、B3o、D2a–D2i 共 12 格内容有变，预览图已重画）。预览用无头浏览器按格子自身宽高截取，没加载网络字体，字体用系统回退，和画布上的字形会有细微差别。
 
 ## 说明
 
@@ -68,7 +84,7 @@
 
 ## 格子索引
 
-### 1 生成框 + 付费卡精简版 + 复用宿主（37 格）
+### 1 生成框 + 付费卡精简版 + 复用宿主（38 格）
 
 | 格 | 标题 | 尺寸 | 预览 | 源文件 |
 |---|---|---|---|---|
@@ -78,7 +94,7 @@
 | B3d-video-first-last | B3d 视频 首尾帧，尾帧可不填（浅 + 暗） | 1200×340 | [png](preview/B3d-video-first-last.png) | [dc.html](source/B3d-video-first-last.dc.html) |
 | B3e-video-ambiguous | B3e 视频 参考 2 张，有歧义提示 | 600×340 | [png](preview/B3e-video-ambiguous.png) | [dc.html](source/B3e-video-ambiguous.dc.html) |
 | B3f-video-switch-first-last | B3f 视频 3 张参考切到首尾帧 | 600×340 | [png](preview/B3f-video-switch-first-last.png) | [dc.html](source/B3f-video-switch-first-last.dc.html) |
-| B3g-image-empty | B3g 图片 空，弹层没有生成方式（浅 + 暗） | 1200×360 | [png](preview/B3g-image-empty.png) | [dc.html](source/B3g-image-empty.dc.html) |
+| B3g-image-empty | B3g 图片 空，弹层没有生成方式（浅 + 暗） | 1200×500 | [png](preview/B3g-image-empty.png) | [dc.html](source/B3g-image-empty.dc.html) |
 | B3h-image-three-refs | B3h 图片 放 3 张图 | 600×340 | [png](preview/B3h-image-three-refs.png) | [dc.html](source/B3h-image-three-refs.dc.html) |
 | B3i-image-no-ref-model | B3i 图片 模型不收参考图 | 600×380 | [png](preview/B3i-image-no-ref-model.png) | [dc.html](source/B3i-image-no-ref-model.dc.html) |
 | B3j-model-swap | B3j 换模型：菜单不加说明，换完界面自己变 | 1200×300 | [png](preview/B3j-model-swap.png) | [dc.html](source/B3j-model-swap.dc.html) |
@@ -98,7 +114,7 @@
 | E1c-list-detail | E1c 列表视图详情用新生成框 | 1080×704 | [png](preview/E1c-list-detail.png) | [dc.html](source/E1c-list-detail.dc.html) |
 | E1d-node-error | E1d 节点错误报告里的参数区 | 700×561 | [png](preview/E1d-node-error.png) | [dc.html](source/E1d-node-error.dc.html) |
 | B3n-hover-preview | B3n 悬停：小提示与大图预览怎么同屏 | 1240×864 | [png](preview/B3n-hover-preview.png) | [dc.html](source/B3n-hover-preview.dc.html) |
-| B3o-model-menu-channel | B3o 模型菜单：渠道直选 | 1320×548 | [png](preview/B3o-model-menu-channel.png) | [dc.html](source/B3o-model-menu-channel.dc.html) |
+| B3o-model-menu-channel | B3o 模型菜单：渠道直选 | 1320×860 | [png](preview/B3o-model-menu-channel.png) | [dc.html](source/B3o-model-menu-channel.dc.html) |
 | B3p-channel-missing-mode | B3p 渠道缺模式：参考行行尾的小字（中 / 英） | 1240×438 | [png](preview/B3p-channel-missing-mode.png) | [dc.html](source/B3p-channel-missing-mode.dc.html) |
 | D2a-compare | D2a 现在 vs 精简：展开态对比 | 920×880 | [png](preview/D2a-compare.png) | [dc.html](source/D2a-compare.dc.html) |
 | D2b-single | D2b 精简 · 单段（推荐） | 440×380 | [png](preview/D2b-single.png) | [dc.html](source/D2b-single.dc.html) |
@@ -109,6 +125,7 @@
 | D2g-minimal | D2g 更极简的备选：整张卡就是 Agent 的一句话加两颗按钮 | 440×360 | [png](preview/D2g-minimal.png) | [dc.html](source/D2g-minimal.dc.html) |
 | D2h-english | D2h English（D2b） | 440×380 | [png](preview/D2h-english.png) | [dc.html](source/D2h-english.dc.html) |
 | D2i-dark | D2i 暗色（D2b） | 440×380 | [png](preview/D2i-dark.png) | [dc.html](source/D2i-dark.dc.html) |
+| B3q-param-panel-compare | B3q 参数面板：现在 vs 样张旧画法 | 1220×760 | [png](preview/B3q-param-panel-compare.png) | [dc.html](source/B3q-param-panel-compare.dc.html) |
 
 ### 2 图标统一（4 格）
 

@@ -1,0 +1,27 @@
+{
+  "name": "tests/ux/fixtures 下浏览器测试 harness 纳入类型检查",
+  "subject": "delivery.fixture-harness-typecheck",
+  "lifecycle": "delivery",
+  "authority_kind": "gateway",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/typecheck.mjs",
+    "symbol": "TYPECHECK_JOBS"
+  },
+  "write_api": [
+    {
+      "path": "scripts/typecheck.mjs",
+      "symbol": "TYPECHECK_JOBS"
+    },
+    {
+      "path": "tsconfig.fixtures.json",
+      "symbol": "include"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-18",
+  "notes": "合同 docs/fixes/2026-10-18-fixture-harness-typecheck.root-cause.json：tsconfig.fixtures.json 的 include 把每个浏览器测试 harness 放进 tsc；scripts/typecheck.mjs 的 TYPECHECK_JOBS 在 pnpm run typecheck（gates 与 CI Contracts）里跑这个程序。"
+}
