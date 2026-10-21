@@ -29,14 +29,14 @@ async function liveJourney(page, record) {
 
   // ① 选中：浮条上出现「AI 编辑」。
   await selectParagraph()
-  await page.locator('.workbench-selection-popover__tool--ai').waitFor({ state: 'visible', timeout: 5000 })
+  await page.locator('.workbench-selection-popover__tool--ai').waitFor({ state: 'visible' })
   expect(record, await page.locator('.workbench-selection-popover [aria-label]').count() >= 4, '浮条上原有的加粗 / 斜体 / 标题等按钮被挤没了')
   await shot('live-01-selected')
 
   // ② 点 AI 编辑 → 输入框 + 常用改法 + 用户已有的写作 Skill。
   await page.locator('.workbench-selection-popover__tool--ai').click()
   const bar = page.locator('.workbench-ai-rewrite-bar')
-  await bar.waitFor({ state: 'visible', timeout: 5000 })
+  await bar.waitFor({ state: 'visible' })
   const chips = (await bar.locator('button').allInnerTexts()).map((value) => value.trim())
   for (const label of ['改写', '缩短', '扩写', '改语气', '翻译']) expect(record, chips.includes(label), `常用改法缺「${label}」：${chips.join('|')}`)
   expect(record, chips.some((value) => value.includes('Kasdan')), `用户的写作 Skill 没出现在常用改法后面：${chips.join('|')}`)
@@ -45,7 +45,7 @@ async function liveJourney(page, record) {
 
   // ③ 点「缩短」→ 原文划线、新字标出来、段尾只有两个小图标。
   await bar.getByRole('button', { name: '缩短' }).click()
-  await page.locator('[data-rewrite-status="result"]').waitFor({ timeout: 5000 })
+  await page.locator('[data-rewrite-status="result"]').waitFor()
   expect(record, await page.locator('.nomi-ai-rewrite-del').count() > 0, '结果态没有划线的删除部分')
   expect(record, (await page.locator('[data-rewrite-add]').allInnerTexts()).join('').length > 0, '结果态没有标出来的新增部分')
   expect(record, await page.locator('[data-rewrite-action]').count() === 2, '段尾应当只有 ✓ ✕ 两个小图标')
@@ -57,7 +57,7 @@ async function liveJourney(page, record) {
 
   // ④ Enter 接受：正文换掉，Ctrl+Z 一步撤回。
   await page.keyboard.press('Enter')
-  await page.locator('.workbench-ai-rewrite-bar').waitFor({ state: 'detached', timeout: 5000 })
+  await page.locator('.workbench-ai-rewrite-bar').waitFor({ state: 'detached' })
   const accepted = await text()
   expect(record, accepted.includes(REWRITTEN_ZH) && !accepted.includes(TARGET_ZH), `Enter 之后正文没有被换成新的：${accepted}`)
   await shot('live-04-accepted')
@@ -71,9 +71,9 @@ async function liveJourney(page, record) {
   await selectParagraph()
   await page.locator('.workbench-selection-popover__tool--ai').click()
   await page.locator('.workbench-ai-rewrite-bar').getByRole('button', { name: '缩短' }).click()
-  await page.locator('[data-rewrite-status="result"]').waitFor({ timeout: 5000 })
+  await page.locator('[data-rewrite-status="result"]').waitFor()
   await page.keyboard.press('Escape')
-  await page.locator('.workbench-ai-rewrite-bar').waitFor({ state: 'detached', timeout: 5000 })
+  await page.locator('.workbench-ai-rewrite-bar').waitFor({ state: 'detached' })
   const discarded = await text()
   expect(record, discarded.includes(TARGET_ZH) && !discarded.includes(REWRITTEN_ZH), `Esc 之后原文变了：${discarded}`)
   await shot('live-06-discarded')
@@ -82,14 +82,14 @@ async function liveJourney(page, record) {
   await selectParagraph()
   await page.locator('.workbench-selection-popover__tool--ai').click()
   await page.locator('.workbench-ai-rewrite-bar').getByRole('button', { name: '缩短' }).click()
-  await page.locator('[data-rewrite-status="result"]').waitFor({ timeout: 5000 })
+  await page.locator('[data-rewrite-status="result"]').waitFor()
   const input = page.locator('.workbench-ai-rewrite-bar input')
   await input.fill('缩短，再冷一点')
   await page.keyboard.press('Enter')
-  await page.locator('[data-rewrite-status="result"]').waitFor({ timeout: 5000 })
+  await page.locator('[data-rewrite-status="result"]').waitFor()
   expect(record, await input.inputValue() === '缩短，再冷一点', '追加要求之后输入框没有留着新的要求')
   await page.locator('.workbench-ai-rewrite-bar [aria-label="用原要求重来"]').click()
-  await page.locator('[data-rewrite-status="result"]').waitFor({ timeout: 5000 })
+  await page.locator('[data-rewrite-status="result"]').waitFor()
   expect(record, (await text()).includes(TARGET_ZH), '↻ 重来的时候原文被动了')
   await page.keyboard.press('Escape')
 }

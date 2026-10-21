@@ -150,12 +150,12 @@ export function acceptRewriteTransaction(state: EditorState): Transaction | null
 
 // —— 画 —————————————————————————————————————————————————————————————————————————
 
-const PENDING_CLASS = 'nomi-ai-rewrite-pending rounded-[4px] bg-workbench-accent-soft'
-const DEL_CLASS = 'nomi-ai-rewrite-del rounded-[3px] bg-workbench-danger-soft text-workbench-danger-ink line-through decoration-1'
-const ADD_CLASS = 'nomi-ai-rewrite-add whitespace-pre-wrap rounded-[3px] bg-workbench-success-soft text-workbench-success-ink underline decoration-1 underline-offset-[3px]'
+const PENDING_CLASS = 'nomi-ai-rewrite-pending rounded-nomi-sm bg-workbench-accent-soft'
+const DEL_CLASS = 'nomi-ai-rewrite-del rounded-nomi-sm bg-workbench-danger-soft text-workbench-danger-ink line-through decoration-1'
+const ADD_CLASS = 'nomi-ai-rewrite-add whitespace-pre-wrap rounded-nomi-sm bg-workbench-success-soft text-workbench-success-ink underline decoration-1 underline-offset-[3px]'
 const ACTION_GROUP_CLASS = 'nomi-ai-rewrite-actions relative ml-2 inline-flex select-none gap-0.5 align-middle'
 const ACTION_BUTTON_CLASS = 'group/btn relative inline-flex size-6 cursor-pointer items-center justify-center rounded-full border border-workbench-border bg-workbench-surface p-0 text-workbench-muted shadow-workbench-pop hover:text-workbench-ink'
-const TIP_CLASS = 'pointer-events-none absolute left-0 top-[30px] z-30 hidden whitespace-nowrap rounded-[6px] bg-workbench-ink px-2 text-[12px] leading-5 text-workbench-surface group-hover/btn:block'
+const TIP_CLASS = 'pointer-events-none absolute left-0 top-[30px] z-30 hidden whitespace-nowrap rounded-nomi-sm bg-workbench-ink px-2 text-caption text-workbench-surface group-hover/btn:block'
 
 export const REWRITE_LABELS_DEFAULT = { accept: 'Accept', discard: 'Discard', acceptHint: 'Accept Enter', discardHint: 'Discard Esc' }
 export type RewriteLabels = typeof REWRITE_LABELS_DEFAULT

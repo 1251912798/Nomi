@@ -9,7 +9,7 @@ import { cn } from '../../../utils/cn'
 import { listWorkbenchSkills, type SkillListItemDto } from '../../api/skillApi'
 import { onSkillLibraryChanged } from '../../skillLibrary/skillLibraryChanged'
 import { skillDisplayTitle } from '../../skillLibrary/skillDisplay'
-import type { AiRewrite } from './useAiRewrite'
+import type { AiRewrite } from './aiRewriteBinding'
 import {
   REWRITE_PRESET_INSTRUCTIONS,
   REWRITE_TONE_INSTRUCTIONS,

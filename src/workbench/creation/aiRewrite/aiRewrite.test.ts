@@ -286,9 +286,10 @@ describe('选中文字 → AI 编辑：就地出结果', () => {
     expect(session.result).toBeNull()
     expect(host.state.doc.toJSON()).toEqual(before)
     // 界面上这句话：中文「没改成：原因」，英文 Could not edit: reason
-    const zh = i18n.getFixedT('zh-CN')('creationAi.rewrite.failed', { reason: session.failure })
+    const translate = (language: string) => i18n.getFixedT(language) as unknown as (key: string, options?: object) => string
+    const zh = translate('zh-CN')('creationAi.rewrite.failed', { reason: session.failure })
     expect(zh).toBe(`没改成：${session.failure}`)
-    expect(i18n.getFixedT('en')('creationAi.rewrite.failed', { reason: 'x' })).toBe('Could not edit: x')
+    expect(translate('en')('creationAi.rewrite.failed', { reason: 'x' })).toBe('Could not edit: x')
     // ↻ 之后仍从同一段原文出发
     controller.retry()
     const retry = await fake.request(2)
