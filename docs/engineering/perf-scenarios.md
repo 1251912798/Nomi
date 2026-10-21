@@ -168,5 +168,7 @@ node scripts/perf-scenarios.mjs --measure-only --out perf-$(node -p "process.pla
 - **旧欠账**只对登记了 `budgetDebt` 的存量场景放行（棘轮照旧）；待测（pending）不是欠账，不放行。
 - 「不适用：理由」照旧，不要求原始结果。
 
+- **政策字段不由 PR 自己批准**：base 上已有的场景，预算 / 统计层级 / 尾部预算 / 主指标 / 预算状态 / 欠账 / 基线数字 / 待测状态 / 量具与参数，判定一律用 base 的值；PR 改了要协调确认（`node scripts/coord-approve.mjs --pr <号> --perf <场景 id>`，哈希对上才用 PR head 的值）；PR 新增的场景预算同样要协调确认。`merge-preflight` 没有记录红，CI 只提示「待协调确认」。机制见 `delivery-and-review.md` 的「协调确认记录」。
+
 回滚：删掉 `test-routing.json` 里的 `evidenceJudgement` 一节，三处新口径同时退回旧判据。
 

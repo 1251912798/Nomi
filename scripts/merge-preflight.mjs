@@ -14,7 +14,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { ESCAPE_LEDGER_DIR, assembleEscapeLedger, escapeIdOfPath } from './escape-ledger-lib.mjs'
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
-import { boardsAtHead, checkHeadAncestry } from './lib/prEvidenceInputs.mjs'
+import { localApprovals } from './lib/coordApprovals.mjs'
+import { boardsAtHead, checkHeadAncestry, isRepoRelativeRef } from './lib/prEvidenceInputs.mjs'
 import { META_FILE } from './lib/entryDirectory.mjs'
 import { execGhReadSync } from './lib/transientRetry.mjs'
 import { RULES_INTRODUCED_BY_PR, evaluatePrBody, ledgerChanges, mergeReport, settledContracts } from './pr-body-criteria.mjs'
@@ -115,7 +116,7 @@ function ghEscapeLedger(exec, repoSlug, ref) {
 }
 
 /** 报告引用是仓库内相对路径（不是链接、不是绝对路径、不含 ..）。 */
-const isRepoRef = (ref) => !/^(?:https?:|[a-z]:[\/]|[\/])/i.test(String(ref)) && !/(?:^|[\/])..(?:[\/]|$)/.test(String(ref))
+const isRepoRef = isRepoRelativeRef
 
 /** 合并前扫描读验收报告：本机绝对路径直接读；仓库内相对路径从 PR 头读；外部链接读不了。读不到一律 null（判据按红处理）。 */
 export function readReportRef(ref, readRepoFile, readLocal = (file) => fs.readFileSync(file, 'utf8')) {
@@ -244,6 +245,12 @@ function run(argv, exec, git) {
         // 本机必须算得出：算不了（浅克隆、没有历史）不能当通过
         return result.unknown ? { ok: false, reason: `读不到提交历史：${result.reason}` } : result
       },
+      // 批准身份看 base（merge-base）或协调确认记录（NOMI_COORD_APPROVALS，本机、不进仓库）：PR 自己新增的板 / 元素 / 政策字段没有记录就红
+      approvals: localApprovals({ pr: Number(prArg) }),
+      baseBoards: () => must('base 上的拍板图清单', () => {
+        const git = fetchedGit()
+        return boardsAtHead({ git, sha: String(git(['merge-base', 'origin/main', view.headRefOid])).trim() })
+      }),
       boards: () => must('PR 头上的拍板图清单', () => boardsAtHead({ git: fetchedGit(), sha: view.headRefOid })),
     },
   }))

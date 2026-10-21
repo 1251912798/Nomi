@@ -30,6 +30,8 @@ export const BOARD_STATUSES = Object.freeze(['implemented', 'in-progress', 'miss
 export const BOARD_STATES = Object.freeze(['empty', 'loading', 'error', 'selected', 'disabled', 'hover', 'narrow', 'long-text', 'zh-en', 'dark'])
 export const BOARD_STAGES = Object.freeze(['explored', 'built'])
 export const PR_SECTION = '拍板图'
+/** 元素 id：字母 / 数字 / 下划线 / 点 / 冒号 / 连字符（清单里的写法，如 node.card）。 */
+const ELEMENT_ID = /^[\p{L}\p{N}_.:-]+$/u
 const CLAIM_LINE = /^\s*[-*]\s*([A-Za-z]+)\s*[:：]\s*(.+)$/
 
 /** 从这天（含）起，板清单必须带 priorArt。更早的板不追溯。 */
@@ -148,7 +150,8 @@ export function parsePrBoardClaims(body) {
     if (heading && heading[1].length <= level) break
     const m = CLAIM_LINE.exec(line)
     if (!m) continue
-    const ids = m[2].split(/[,，、]/).map((s) => s.trim()).filter(Boolean)
+    // 元素 id 以逗号 / 中文逗号 / 顿号 / 空白分隔；空串、纯分隔符得到 ids = []（V-gates B2：空认领不算认领，由 checkPrBoardClaims 判红）
+    const ids = m[2].split(/[,，、\s]+/).map((s) => s.trim()).filter(Boolean)
     claims.push({ board: m[1], ids })
   }
   return claims
@@ -160,6 +163,10 @@ export function parsePrBoardClaims(body) {
 export function checkPrBoardClaims(body, manifests) {
   const errors = []
   for (const { board, ids } of parsePrBoardClaims(body)) {
+    // 每条认领至少一个合法的元素 id：「- Main: ,」这种空认领不能冒充已认领
+    const valid = ids.filter((id) => ELEMENT_ID.test(id))
+    if (!valid.length) errors.push(`拍板图 ${board} 的认领里没有合法的元素 id（写成「- ${board}: <元素 id>, <元素 id>」；空串、只有逗号 / 顿号 / 空白都不算认领）`)
+    for (const id of ids.filter((id) => !ELEMENT_ID.test(id))) errors.push(`[${board}] 认领的「${id}」不是合法的元素 id`)
     const manifest = manifests[board]
     if (!manifest) {
       errors.push(`拍板图 ${board} 不存在（认领了一个没有清单的板）`)
@@ -169,7 +176,7 @@ export function checkPrBoardClaims(body, manifests) {
       errors.push(`拍板图 ${board} 重名（不止一个日期目录有这张板），按板名认领有歧义：先改名`)
       continue
     }
-    for (const id of ids) {
+    for (const id of valid) {
       const el = (manifest.elements ?? []).find((e) => e.id === id)
       if (!el) {
         errors.push(`[${board}] 认领的元素 ${id} 不在清单里`)

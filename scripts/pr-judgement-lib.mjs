@@ -303,7 +303,11 @@ export function evidenceJudgementEnforced(table, createdAt = null) {
   const from = table?.evidenceJudgement?.effectiveFrom
   if (!from) return false
   if (!createdAt) return true
-  return new Date(createdAt) >= new Date(`${from}T00:00:00Z`)
+  const created = new Date(createdAt).getTime()
+  const start = new Date(`${from}T00:00:00Z`).getTime()
+  // 日期读不懂（非法值）按已生效：不能让「写个坏日期」变成关掉严格口径的开关（S5）
+  if (!Number.isFinite(created) || !Number.isFinite(start)) return true
+  return created >= start
 }
 
 /** 生效时间：此日期之前开的 PR 只警告；创建时间未知 = 按生效处理（fail-closed）。 */

@@ -7,6 +7,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { approvalCommand, sha256Of } from './lib/coordApprovals.mjs'
+
 export const SCENARIO_DIR = 'tests/perf/scenarios'
 /** 可选的指标。登记表的 budget / baseline 对应 metrics[0]（主指标），其余指标只打印、不判。 */
 export const METRICS = Object.freeze(['response', 'frameGapP95', 'longTasks', 'openToInteractive', 'mainRoundTripMax', 'idleRectReadsPerSec', 'idleBusyPct', 'idleLayoutsPerSec', 'panelFramesOff'])
@@ -180,7 +182,65 @@ export function knownScenarios({ baseEntries = [], prFiles = [], removedFiles = 
   const ids = new Set([...scenarioIds(kept), ...scenarioIds(prEntries)])
   // 场景本身（PR 头的覆盖基线的）：证据行要拿它核预算与欠账棘轮。
   const byId = new Map([...kept, ...prEntries].filter((entry) => entry.data?.id).map((entry) => [entry.data.id, entry.data]))
-  return { ids: [...ids], byId, problems }
+  return { ids: [...ids], byId, problems, baseById: new Map(kept.filter((entry) => entry.data?.id).map((entry) => [entry.data.id, entry.data])), headById: new Map(prEntries.filter((entry) => entry.data?.id).map((entry) => [entry.data.id, entry.data])) }
+}
+
+// ── 政策字段不能由 PR 自己批准（2026-10-21，V-gates B1）────────────────────────────────────────────────────────────
+/**
+ * 场景文件里的「政策」：预算、统计层级、尾部预算、主指标、预算状态、欠账 / 噪声、基线数字、待测状态、量具与参数。
+ * 放宽其中任何一个，超预算的结果就能变绿——所以判定时一律用 base 的值，PR 改了要协调确认（哈希对上）才用 PR head 的值。
+ * 实现线合理会改的（feature / scale 描述、分组、基线的机器 / 日期 / 提交）不在里面。
+ */
+export const POLICY_KEYS = Object.freeze(['budget', 'budgetStatus', 'budgetStatistic', 'p95Budget', 'metrics', 'budgetDebt', 'measurement', 'script', 'args'])
+export function scenarioPolicy(scenario) {
+  const policy = {}
+  for (const key of POLICY_KEYS) if (scenario?.[key] !== undefined) policy[key] = scenario[key]
+  if (scenario?.baseline && typeof scenario.baseline === 'object') policy.baseline = { median: scenario.baseline.median, p95: scenario.baseline.p95, runs: scenario.baseline.runs, noisy: scenario.baseline.noisy }
+  return policy
+}
+export const scenarioPolicyHash = (scenario) => sha256Of({ id: scenario?.id, policy: scenarioPolicy(scenario) })
+
+/**
+ * 严格口径下给「判定用的场景」定值。known = knownScenarios 的结果；approvals = { mode: 'ci' | 'local', pr, lookup, unavailable }（scripts/lib/coordApprovals.mjs）。
+ *   · base 已有的场景：政策字段没变 → 照用；变了 → 协调确认过（哈希对上）才用 PR head 的值，否则按 base 判，并列出「改了政策字段、待确认」；
+ *   · base 没有的新场景：预算按 PR head 判，但要协调确认——没有记录，合并前扫描红、CI 只提示。
+ * 返回 { known（byId 换成判定用的）, lines, blocked }。
+ */
+export function pinScenarioPolicy(known, approvals) {
+  const baseById = known.baseById ?? new Map()
+  const headById = known.headById ?? new Map()
+  if (!headById.size) return { known, lines: [], blocked: false }
+  const byId = new Map(known.byId)
+  const lines = []
+  let blocked = false
+  const local = approvals?.mode === 'local'
+  const report = (id, kind, text) => {
+    const command = approvalCommand(approvals?.pr, 'perf', id)
+    if (local) {
+      blocked = true
+      lines.push(`✖ 性能场景「${id}」${text}：没有协调确认记录${approvals?.unavailable ? `（${approvals.unavailable}）` : ''}。协调会话确认后跑 ${command}`)
+    } else lines.push(`⚠ 性能场景「${id}」${text}：待协调确认（本机 merge-preflight 核；确认命令 ${command}）`)
+  }
+  for (const [id, head] of headById) {
+    const base = baseById.get(id)
+    const hash = scenarioPolicyHash(head)
+    const approved = approvals?.lookup?.('perf-policy', id, hash) === true
+    if (!base) {
+      if (!approved) report(id, 'new', '是 PR 新增的场景，预算由 PR 自己定')
+      continue
+    }
+    if (scenarioPolicyHash(base) === hash) continue
+    if (approved) { lines.push(`✅ 性能场景「${id}」改了政策字段，协调已确认（哈希对上）`); continue }
+    // 没确认：判定用 base 的政策字段，其余字段取 PR head
+    const effective = { ...head }
+    for (const key of [...POLICY_KEYS, 'baseline']) {
+      if (base[key] === undefined) delete effective[key]
+      else effective[key] = base[key]
+    }
+    byId.set(id, effective)
+    report(id, 'changed', '改了政策字段（预算 / 统计层级 / 尾部预算 / 主指标 / 欠账 / 基线等），判定仍按 base 的值')
+  }
+  return { known: { ...known, byId }, lines, blocked }
 }
 
 /**

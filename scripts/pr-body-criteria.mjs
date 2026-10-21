@@ -5,6 +5,8 @@
 // 路由 / 规则与门岗范围仍在 scripts/pr-judgement-lib.mjs（本模块在它之上叠设计卡等判据，并给一个总入口 evaluatePrBody）。
 import { classCheckErrors, contractErrors, escapeIdOfPath, fixedTransitions } from './escape-ledger-lib.mjs'
 import { checkPrBoardClaims, parsePrBoardClaims } from './check-board-parity.mjs'
+import { approvalCommand, boardApprovalSubject } from './lib/coordApprovals.mjs'
+import { pinScenarioPolicy } from './perf-scenarios-lib.mjs'
 import { localEvidenceInputs } from './lib/prEvidenceInputs.mjs'
 import { evaluatePrJudgement, evidenceJudgementEnforced, extractSection, inferRoutes, loadRoutingTable } from './pr-judgement-lib.mjs'
 
@@ -101,6 +103,8 @@ export const shaMatches = (a, b) => {
   return x.length >= 7 && y.length >= 7 && (x.startsWith(y) || y.startsWith(x))
 }
 const reportHead = (text) => (/验收\s*HEAD[^0-9a-fA-F\n]{0,12}([0-9a-f]{7,40})/i.exec(text) ?? /(?:验收头|HEAD)[^0-9a-fA-F\n]{0,12}([0-9a-f]{7,40})/i.exec(text))?.[1] ?? null
+/** 验收线编号规范化后精确比较：去掉括注 / 「·」后缀，不分大小写——不用子串（V-x 不能冒充 V-x-unrelated，S3）。 */
+const lineKey = (text) => String(text ?? '').replace(/[（(·].*$/, '').trim().toLowerCase()
 const reportVerifier = (text) => /验收线\s*[:：]\s*([^（(，,；;|\r\n]+)/.exec(text)?.[1]?.trim() ?? null
 
 /**
@@ -133,7 +137,7 @@ export function checkIndependentAcceptance(body, { stage = 'merge', strict = fal
     ok = false
     lines.push('✖ 独立验收没写验收线编号（格式：验收线：<编号>）')
   } else if (!implementer) lines.push(`⚠ 验收线 ${verifierId}：正文里没找到实现线编号（设计卡「线/负责人」或「实现线：」），无法核对是否同一条，请人工核`)
-  else if (implementer === verifierId) {
+  else if (lineKey(implementer) === lineKey(verifierId)) {
     ok = false
     lines.push(`✖ 验收线编号 ${verifierId} 和实现线相同——验收必须另一条线做`)
   } else lines.push(`✅ 验收线 ${verifierId} ≠ 实现线 ${implementer}`)
@@ -181,8 +185,8 @@ export function checkIndependentAcceptance(body, { stage = 'merge', strict = fal
         else if (headSha) versionLine('报告里的验收 HEAD', inReport)
         const reportLine = reportVerifier(text)
         if (!reportLine) flag('报告里没写「验收线：<编号>」')
-        else if (verifierId && !(reportLine.includes(verifierId) || verifierId.includes(reportLine))) flag(`报告里的验收线 ${reportLine} 和正文写的 ${verifierId} 不同`)
-        else if (implementer && (reportLine === implementer || implementer.includes(reportLine))) flag(`报告里的验收线 ${reportLine} 和实现线相同`)
+        else if (verifierId && lineKey(reportLine) !== lineKey(verifierId)) flag(`报告里的验收线 ${reportLine} 和正文写的 ${verifierId} 不同`)
+        else if (implementer && lineKey(reportLine) === lineKey(implementer)) flag(`报告里的验收线 ${reportLine} 和实现线相同`)
       }
     }
   }
@@ -194,22 +198,54 @@ export function checkIndependentAcceptance(body, { stage = 'merge', strict = fal
  * 改界面的 PR 必须认领拍板图清单，或给已登记的例外（2026-10-22 起开的 PR，evidenceJudgementEnforced）。
  * 旧判据：没有 `## 拍板图` 一节就当没认领、照常过——#1264 改了界面，一张清单也没有，门岗全绿。
  *   · 路径推出「新界面 / 改交互」（inferred 里有 ui 类）才要求；不碰界面的 PR 不问；
- *   · 认领：\`- <板名>: <元素 id>, …\`，板必须存在、元素必须 implemented（或带用户原话的 deferred / dropped）——同 check-board-parity 的 R8，同一份实现；
- *   · 例外：\`- 不适用：<例外 id>：<具体理由>\`，例外 id 必须在路由政策表 evidenceJudgement.boardClaimExceptions 里已登记，理由至少 8 个字；
- *   · 新增了界面文件（src/**.tsx 新增）不许用例外：新界面必须有清单。
- * boards = loadManifests() 的结果（null = 取不到，只做结构判）。非严格口径（旧 PR）下只在写了认领时核认领本身，和以前一样。
+ *   · 认领：`- <板名>: <元素 id>, …`，每条至少一个合法的元素 id（空认领不算，V-gates B2）；板必须存在、元素必须 implemented（或带用户原话的 deferred / dropped）——同 check-board-parity 的 R8，同一份实现；
+ *   · 批准身份（V-gates B4）：认领只对 base 上已有的板和元素直接有效；PR 新增的板、或给已有板新增 / 改了合同的元素，要协调确认（approvals，哈希对上）才算。
+ *     只改实现状态（status / assertion / owner）不用确认。CI 读不到本机确认记录，只提示「待协调确认」；合并前扫描没有记录就红；
+ *   · 例外：`- 不适用：<例外 id>：<具体理由>`，例外 id 必须在路由政策表 evidenceJudgement.boardClaimExceptions 里已登记，理由至少 8 个字且不是重复字符；
+ *   · 新增了生产 .tsx（文件状态 A，含 src/design/components/**）不许用例外：新界面必须有清单；只改令牌、样式的可以用例外（V-gates B3）。
+ * boards / baseBoards = loadManifests() 形状的清单（对象，或返回它的函数；null = 取不到）：boards 是 PR head 上的，baseBoards 是 base 上的。
+ * 非严格口径（旧 PR）下只在写了认领时核认领本身，和以前一样。
  */
-export function checkBoardClaim(body, { inferred, strict = false, table = undefined, boards = null } = {}) {
+const PRODUCTION_TSX = /^src\/(?!devlab\/).*\.tsx$/
+const TEST_TSX = /(?:\.(?:test|spec)\.tsx$|(?:^|\/)__tests__\/)/
+export function checkBoardClaim(body, { inferred, files = [], strict = false, table = undefined, boards = null, baseBoards = null, approvals = null } = {}) {
   const claims = parsePrBoardClaims(body)
   const lines = []
   let ok = true
+  const resolve = (value) => (typeof value === 'function' ? value() : value)
   if (claims.length) {
-    if (boards) {
-      const errors = checkPrBoardClaims(body, typeof boards === 'function' ? boards() : boards)
+    const headBoards = resolve(boards)
+    const empty = claims.filter((claim) => !claim.ids.length)
+    if (empty.length) {
+      ok = false
+      lines.push(`✖ 拍板图认领没有元素 id：${empty.map((claim) => claim.board).join('、')}（写成 \`- <板名>: <元素 id>, …\`；空串、只有逗号 / 顿号 / 空白都不算认领）`)
+    }
+    if (headBoards) {
+      const errors = checkPrBoardClaims(body, headBoards)
       if (errors.length) {
         ok = false
         lines.push(`✖ 拍板图认领未过（${errors.length} 条）：`, ...errors.map((error) => `    ✗ ${error}`))
-      } else lines.push(`✅ 拍板图：认领的元素都有去处（${claims.map((claim) => claim.board).join('、')}）`)
+      } else if (!empty.length) lines.push(`✅ 拍板图：认领的元素都有去处（${claims.map((claim) => claim.board).join('、')}）`)
+      if (strict && !errors.length && !empty.length) {
+        // 批准身份：base 上已有的板和元素直接有效；PR 新增 / 改了合同的要协调确认
+        const base = resolve(baseBoards)
+        const local = approvals?.mode === 'local'
+        for (const claim of claims) {
+          const head = headBoards[claim.board]
+          const before = base ? (base[claim.board] ?? null) : undefined
+          if (before === undefined) { lines.push(`⚠ 拍板图 ${claim.board}：取不到 base 上的清单，没法核哪些元素是 PR 新增的（待协调确认，本机 merge-preflight 核）`); continue }
+          const subject = boardApprovalSubject(claim.board, before, head)
+          const touched = claim.ids.filter((id) => subject.changed.includes(id))
+          if (!touched.length) continue
+          if (approvals?.lookup?.('board', claim.board, subject.fingerprint) === true) { lines.push(`✅ 拍板图 ${claim.board}：PR 新增 / 改动的元素（${touched.join('、')}）协调已确认（哈希对上）`); continue }
+          const what = before ? `给已有的板新增 / 改了合同的元素（${touched.join('、')}）` : `是 PR 新增的板（认领 ${touched.join('、')}）`
+          const command = approvalCommand(approvals?.pr, 'board', claim.board)
+          if (local) {
+            ok = false
+            lines.push(`✖ 拍板图 ${claim.board} ${what}：清单的批准身份不能由 PR 自己给，没有协调确认记录${approvals?.unavailable ? `（${approvals.unavailable}）` : ''}。协调会话确认后跑 ${command}`)
+          } else lines.push(`⚠ 拍板图 ${claim.board} ${what}：待协调确认（本机 merge-preflight 核；确认命令 ${command}）`)
+        }
+      }
     } else if (strict) lines.push('⚠ 拍板图：这个环境取不到清单目录，认领的元素没核')
   }
   if (!strict) return { ok, lines }
@@ -219,7 +255,8 @@ export function checkBoardClaim(body, { inferred, strict = false, table = undefi
   const registered = table?.evidenceJudgement?.boardClaimExceptions ?? []
   const registry = registered.map((item) => `${item.id}（${item.label}）`).join('；') || '（还没有登记）'
   const exception = /^\s*[-*]\s*不适用\s*[:：]\s*([a-z][a-z0-9-]*)\s*[:：]\s*(\S.*)$/im.exec(extractSection(body, '拍板图') ?? '')
-  const newUiFiles = (inferred?.hits ?? []).filter((hit) => hit.cls === '新界面' && !String(hit.path).startsWith('src/design/')).map((hit) => hit.path)
+  // 新增的生产 .tsx 看文件状态 A（不再按目录豁免 src/design）；改令牌、样式（改动已有文件）可以用例外
+  const newUiFiles = files.filter((file) => (file.status === 'A' || file.status === 'added') && PRODUCTION_TSX.test(String(file.path).split('\\').join('/')) && !TEST_TSX.test(String(file.path))).map((file) => file.path)
   if (!exception) {
     lines.push(`✖ 改了界面，但 \`## 拍板图\` 既没认领清单元素（\`- <板名>: <元素 id>\`，清单在 docs/design/boards/），也没写已登记的例外（\`- 不适用：<例外 id>：<具体理由>\`）。已登记的例外：${registry}`)
     return { ok: false, lines }
@@ -229,8 +266,9 @@ export function checkBoardClaim(body, { inferred, strict = false, table = undefi
     lines.push(`✖ 拍板图写了「不适用：${id}」，但 ${id} 不在已登记的例外里。已登记的例外：${registry}`)
     return { ok: false, lines }
   }
-  if (reason.replace(/\s/g, '').length < 8) {
-    lines.push(`✖ 拍板图的例外「${id}」理由太空（至少 8 个字，说清这次具体改了什么）`)
+  const compact = reason.replace(/\s/g, '')
+  if (compact.length < 8 || new Set(compact).size < 4) {
+    lines.push(`✖ 拍板图的例外「${id}」理由太空（至少 8 个字、不是重复字符，说清这次具体改了什么）`)
     return { ok: false, lines }
   }
   if (newUiFiles.length) {
@@ -363,7 +401,7 @@ export function isGrandfathered({ createdAt, effectiveAt = RULES_EFFECTIVE_AT })
 }
 
 /** 正文判据的逐行输出与是否判红；renderReport（合并前）和推送前各自加抬头 / 结论。 */
-export function renderBodyLines({ classification, design, acceptance, escape, promises = { ok: true, lines: [] }, scope = { ok: true, lines: [] }, routing = { blocking: false, lines: [], ok: true }, board = { ok: true, lines: [] }, grandfathered = false }) {
+export function renderBodyLines({ classification, design, acceptance, escape, promises = { ok: true, lines: [] }, scope = { ok: true, lines: [] }, routing = { blocking: false, lines: [], ok: true }, board = { ok: true, lines: [] }, perfPolicy = { ok: true, lines: [] }, grandfathered = false }) {
   const lines = []
   lines.push(classification.fourClass
     ? `· 四类：命中（${classification.classes.join('、')}）——${classification.hits.slice(0, 5).map((hit) => hit.path).join('、')}${classification.hits.length > 5 ? ' …' : ''}`
@@ -377,10 +415,11 @@ export function renderBodyLines({ classification, design, acceptance, escape, pr
   lines.push(...routing.lines)
   // 拍板图（改界面必须认领清单或给已登记的例外）：只对生效日之后的 PR 出判，旧 PR 在 evaluatePrBody 里就没有这些行
   lines.push(...board.lines)
+  lines.push(...perfPolicy.lines)
   // 规则与门岗的改动范围不吃「规则生效前开的 PR」那条宽限：#1032 这种回退正是旧分支带出来的。
   lines.push(...scope.lines)
   if (grandfathered) lines.push('· 这是规则生效（#961 合并）之前开的 PR：缺项只给警告，不判红')
-  const blocked = !scope.ok || !promises.ok || routing.blocking || !board.ok || (!grandfathered && (!design.ok || (classification.fourClass && !acceptance.ok) || !escape.ok))
+  const blocked = !scope.ok || !promises.ok || routing.blocking || !board.ok || !perfPolicy.ok || (!grandfathered && (!design.ok || (classification.fourClass && !acceptance.ok) || !escape.ok))
   return { lines, blocked }
 }
 
@@ -409,6 +448,8 @@ export function evaluatePrBody({ body, files, addedLines = '', addedByFile = nul
   const policy = table ?? loadRoutingTable()
   const strictEvidence = evidenceJudgementEnforced(policy, enforce ? null : createdAt)
   const inputs = evidence ?? (strictEvidence ? localEvidenceInputs() : {})
+  // 性能场景的政策字段（预算 / 统计层级 / 尾部预算 / 欠账 / 基线……）不能由 PR 自己批准：判定用 base 的值，PR 改了要协调确认（V-gates B1）
+  const pinned = strictEvidence && scenarios ? pinScenarioPolicy(scenarios, inputs.approvals) : { known: scenarios, lines: [], blocked: false }
   const judgement = evaluatePrJudgement({
     body,
     files: normalized,
@@ -417,7 +458,7 @@ export function evaluatePrBody({ body, files, addedLines = '', addedByFile = nul
     packageRemovedLines,
     ledgerRemovedIds: ledger.removed ?? [],
     createdAt: enforce ? null : createdAt,
-    scenarios,
+    scenarios: pinned.known,
     table: policy,
     paidStrict,
     readRaw: inputs.readRaw ?? null,
@@ -430,7 +471,8 @@ export function evaluatePrBody({ body, files, addedLines = '', addedByFile = nul
     promises: checkDeferredPromises(body, { stage, createdAt, enforce }),
     scope: judgement.scope,
     routing: judgement.routing,
-    board: checkBoardClaim(body, { inferred: judgement.inferred, strict: strictEvidence, table: policy, boards: inputs.boards ?? null }),
+    board: checkBoardClaim(body, { inferred: judgement.inferred, files: normalized, strict: strictEvidence, table: policy, boards: inputs.boards ?? null, baseBoards: inputs.baseBoards ?? null, approvals: inputs.approvals ?? null }),
+    perfPolicy: { ok: !pinned.blocked, lines: pinned.lines },
     grandfathered: !enforce && isGrandfathered({ createdAt }),
   })
   return { ...result, classification, judgement }
