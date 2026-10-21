@@ -211,7 +211,6 @@ export function ComposerB3Stage({ scenario }: { scenario: B3Scenario }): JSX.Ele
       ;(window as unknown as { nomiDesktop: unknown }).nomiDesktop = { modelCatalog: { listMappings: () => channelMappings(scenario.channelGap!) } }
     }
     useWorkbenchStore.setState({ activeCategoryId: 'shots' })
-    useWorkbenchStore.getState().rememberCategoryViewport('shots', { zoom: 1, offset: { x: 0, y: 0 } })
     useGenerationCanvasStore.setState({ nodes: built.nodes, edges: built.edges, selectedNodeIds: [built.targetId] })
     setReady(true)
   }, [built, scenario.secondChannel])

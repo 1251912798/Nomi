@@ -699,7 +699,7 @@
         "zh-en",
         "dark"
       ],
-      "note": "摘要只印当前值，生成方式放在面板顶部（10-19 用户拍板「按照目前 nomi 上面的弄」）；图片摘要同样只印当前值；摘要精简不代表删长尾参数",
+      "note": "摘要只印当前值，生成方式放在面板顶部（10-19 用户拍板「按照目前 nomi 上面的弄」）；图片摘要同样只印当前值；摘要精简不代表删长尾参数；视频有清晰度参数时也印（16:9 · 720p · 5s，composerHeadlineSummary 视频键加 resolution；摘要钮默认贴文字宽、最宽 240，不再定宽 110 截断）",
       "assertion": "board:ComposerB3/bar.params"
     },
     {
@@ -1766,7 +1766,7 @@
       "change": "host-pending",
       "candidates": [],
       "status": "implemented",
-      "hostPending": true,
+      "hostPending": false,
       "states": [
         "empty",
         "selected",
@@ -1774,7 +1774,7 @@
         "zh-en",
         "dark"
       ],
-      "note": "等 E 组复用宿主样张确认；与列表详情同属 inline 宿主",
+      "note": "E1a 样张已对：参考在提示词上一行（「+」后面 28px 小图带名字），底栏 模型 + 摘要 + 「生成 ↑」；行宽 <520 时缩略图排到最上一行、底栏折行（E1a 400 / 320 两档）。未做：样张的「选择钮」（画布取点）——分镜表不在画布上，没有可取点的画布；400 档样张里「生成」与参数同行，真实宽度下装不下，折到右下",
       "assertion": "board:ComposerB3/host.storyboard-row"
     },
     {
@@ -1783,7 +1783,7 @@
       "change": "host-pending",
       "candidates": [],
       "status": "implemented",
-      "hostPending": true,
+      "hostPending": false,
       "states": [
         "empty",
         "selected",
@@ -1791,7 +1791,7 @@
         "zh-en",
         "dark"
       ],
-      "note": "等 E 组复用宿主样张确认；inline 宿主有卡壳 / 工具 / 生成钮，普通内容流，不随画布拖动隐藏",
+      "note": "inline 宿主有卡壳 / 工具 / 生成钮，普通内容流，不随画布拖动隐藏；参考行与画布同一件，「+」满额时灰显（悬停写上限）而不是消失，四个宿主一致",
       "assertion": "board:ComposerB3/host.list-detail"
     },
     {

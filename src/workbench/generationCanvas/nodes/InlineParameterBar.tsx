@@ -505,8 +505,9 @@ export default function InlineParameterBar({
     )
   }
 
-  const resolvedSummaryWidth = typeof summaryWidth === 'object' ? undefined : summaryWidth ?? (stacked ? 150 : 110)
-  const summaryMaxWidth = typeof summaryWidth === 'object' ? summaryWidth.hug : undefined
+  // 默认贴文字宽（最宽 240）：B3 摘要印「比例 · 清晰度 · 时长」，定宽 110 会把清晰度截成「720…」。
+  const resolvedSummaryWidth = typeof summaryWidth === 'object' ? undefined : summaryWidth ?? (stacked ? 150 : undefined)
+  const summaryMaxWidth = typeof summaryWidth === 'object' ? summaryWidth.hug : summaryWidth === undefined && !stacked ? 240 : undefined
   // chips 形态的横排里身份两枚**不缩**：模型名本身已由 triggerMaxWidth 截到 150px，再让它跟着挤，
   // 结果是「宽度不够时模型名先被榨没、chip 却一颗不少」——而模型是这一行的一等决策（§1.5.4）。
   // 横排 chips 放不下时**换行**：身份两枚与参数 chip 是同一条可换行 flex 行的直接成员（下面 identityRow 用 `contents`），

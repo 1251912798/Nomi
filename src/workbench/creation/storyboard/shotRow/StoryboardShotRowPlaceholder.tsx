@@ -3,7 +3,7 @@ import { parsePromptSegments } from '../../../assets/promptMentions'
 import type { PlanShot } from '../../../generationCanvas/agent/storyboardPlan'
 import StoryboardRowShell from './StoryboardRowShell'
 import { densityBox, visualColumnWidth, type FrameMediaBox } from './shotFrameGeometry'
-import { useStoryboardRowNarrow } from './storyboardRowDensity'
+import { useStoryboardRowDensity } from './storyboardRowDensity'
 
 /**
  * 快速滚动时先挂的轻量占位（`storyboardMountPlan`）：同一个行外壳、同一只预览框、提示词的纯文本——
@@ -20,8 +20,7 @@ export default function StoryboardShotRowPlaceholder({ shot, frameBox, onActivat
   /** 按下即激活：`prompt` = 点在内容列（提示词 + 底栏）处，焦点进编辑器；`row` = 点在别处，焦点落在行上。 */
   onActivate: (target: 'prompt' | 'row') => void
 }): JSX.Element {
-  const narrow = useStoryboardRowNarrow()
-  const box = densityBox(frameBox, narrow)
+  const box = densityBox(frameBox, useStoryboardRowDensity())
   const text = parsePromptSegments(shot.prompt).map((segment) => (segment.type === 'mention' ? '@' : segment.value)).join('')
   return (
     <StoryboardRowShell

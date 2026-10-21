@@ -18,6 +18,8 @@
 const LONG_EDGE = 240
 const SQUARE_EDGE = 180
 const NARROW_SCALE = 176 / 240
+/** 最窄一档（行宽 < 520，E1a）：预览框缩成一枚缩略图，和参考、提示词排成一列。 */
+const COMPACT_SCALE = 120 / 240
 /** 画幅缺省（模型没声明、plan 没定）时的兜底：竖屏，与项目主画幅一致。 */
 const FALLBACK_RATIO = { width: 9, height: 16 }
 
@@ -48,10 +50,14 @@ export function frameMediaBox(aspect: string | null | undefined): FrameMediaBox 
 }
 
 
-/** 窄窗那一档：整只框等比缩到 176/240。 */
-export function densityBox(box: FrameMediaBox, narrow: boolean): FrameMediaBox {
-  if (!narrow) return box
-  return { width: Math.round(box.width * NARROW_SCALE), height: Math.round(box.height * NARROW_SCALE) }
+/** 行的三档：宽 / 窄（最小窗口）/ 最窄（缩略图在上一行）。 */
+export type StoryboardRowDensity = 'wide' | 'narrow' | 'compact'
+
+/** 窄窗那一档：整只框等比缩到 176/240；最窄一档缩到 120/240。布尔值 = 旧调用方（true = 窄）。 */
+export function densityBox(box: FrameMediaBox, density: boolean | StoryboardRowDensity): FrameMediaBox {
+  const scale = density === 'compact' ? COMPACT_SCALE : density === true || density === 'narrow' ? NARROW_SCALE : 1
+  if (scale === 1) return box
+  return { width: Math.round(box.width * scale), height: Math.round(box.height * scale) }
 }
 
 /** 某个画幅在框里按比例完整放下（contain）的尺寸。 */

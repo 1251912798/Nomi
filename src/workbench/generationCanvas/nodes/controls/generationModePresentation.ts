@@ -97,17 +97,16 @@ export function textModeToReturnTo(archetype: ModelArchetype, activeMode: Archet
 
 /** 把词典里的几句人话收成 Texts（宿主壳只管传 t）。 */
 export function modePresentationTexts(t: (key: string, values?: Record<string, unknown>) => string): Texts {
-  const key = (name: string, values?: Record<string, unknown>) => t(`generationCommon.composerB3.${name}`, values)
   return {
-    reference: key('modeReference'),
-    firstLast: key('modeFirstLast'),
-    firstFrame: key('modeFirstFrame'),
-    limitTip: (counts) => key('modeLimit', {
+    reference: t('generationCommon.composerB3.modeReference'),
+    firstLast: t('generationCommon.composerB3.modeFirstLast'),
+    firstFrame: t('generationCommon.composerB3.modeFirstFrame'),
+    limitTip: (counts) => t('generationCommon.composerB3.modeLimit', {
       limits: [
-        counts.images !== undefined ? key('limitImages', { count: counts.images }) : '',
-        counts.videos !== undefined ? key('limitVideos', { count: counts.videos }) : '',
-        counts.audios !== undefined ? key('limitAudios', { count: counts.audios }) : '',
-      ].filter(Boolean).join(key('limitSeparator')),
+        counts.images !== undefined ? t('generationCommon.composerB3.limitImages', { count: counts.images }) : '',
+        counts.videos !== undefined ? t('generationCommon.composerB3.limitVideos', { count: counts.videos }) : '',
+        counts.audios !== undefined ? t('generationCommon.composerB3.limitAudios', { count: counts.audios }) : '',
+      ].filter(Boolean).join(t('generationCommon.composerB3.limitSeparator')),
     }),
   }
 }

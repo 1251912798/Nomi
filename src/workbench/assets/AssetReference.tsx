@@ -147,11 +147,11 @@ export default function AssetReference({
           title={disabled ? disabledReason : totalFull ? capacityMessage : undefined}
           onClick={() => onPickOnCanvas?.(slots)} />
       </div>
-      {plusKey || disabled ? <div className="relative shrink-0">
+      {plusKey || disabled || arraySlots.length > 0 ? <div className="relative shrink-0">
         <AssetActionTile
           data-reference-add-entry="true"
           aria-label={t('assetLibrary.refRow.addMenu')}
-          title={disabled ? disabledReason : t('assetLibrary.refRow.addMenu')}
+          title={disabled ? disabledReason : !plusKey && capacityMessage ? capacityMessage : t('assetLibrary.refRow.addMenu')}
           disabled={disabled || !plusKey}
           selected={Boolean(plusKey) && openSlotKey === plusKey}
           onClick={() => plusKey && onTogglePicker(plusKey)}

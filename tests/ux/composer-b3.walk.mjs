@@ -102,7 +102,7 @@ try {
     const modelText = await text(page, `${FOOTER} [data-bar-segment="model-params"] button`)
     check('board:ComposerB3/bar.model', /Seedance/.test(modelText ?? ''), String(modelText))
     const summary = await page.evaluate(() => document.querySelector('[data-parameter-summary]')?.getAttribute('data-parameter-summary') ?? '')
-    check('board:ComposerB3/bar.params', /16:9/.test(summary) && !/参考|首尾帧|首帧/.test(summary), summary)
+    check('board:ComposerB3/bar.params', /16:9 · \d{3,4}p · 5s/.test(summary) && !/参考|首尾帧|首帧/.test(summary), summary)
     const variant = await page.evaluate((sel) => [...document.querySelectorAll(`${sel} [data-bar-segment="model-params"] button`)].map((b) => b.textContent?.trim()), FOOTER)
     check('board:ComposerB3/params.group.variant', variant.some((label) => /变体/.test(label ?? '')), JSON.stringify(variant))
     const tools = await page.evaluate(() => [...document.querySelectorAll('[data-prompt-tool]')].map((el) => el.getAttribute('data-prompt-tool')))
@@ -335,11 +335,46 @@ try {
     await shot(page, 'storyboard-reuse', 'sbl-02-film-16x9-narrow', 'E1a-narrow-zh-light')
     await context.close()
   }
+  // E1a 三档宽（样张：宽 640 / 窄 400 / 最窄 320）× 中英：参考在提示词上一行、小图带名字、底栏「生成 ↑」
+  for (const width of [640, 400, 320]) {
+    for (const [lang, langParam] of [['zh', ''], ['en', '&lang=en']]) {
+      const { page, context } = await open('storyboard-reuse', `sbl-e1a-${width}`, langParam)
+      const facts = await page.evaluate(() => {
+        const row = document.querySelector('[data-storyboard-row="1"]')
+        const strip = row?.querySelector('[data-storyboard-refs="above"]')
+        const editor = row?.querySelector('[data-prompt-box="true"], .ProseMirror')
+        const generate = row?.querySelector('[data-storyboard-generate-state]')
+        const bar = row?.querySelector('[data-storyboard-composer-bar]')
+        const chips = [...(strip?.querySelectorAll('[data-storyboard-ref-thumb]') ?? [])].map((el) => ({ name: el.textContent?.trim() ?? '', h: Math.round(el.getBoundingClientRect().height) }))
+        const sr = strip?.getBoundingClientRect()
+        const er = editor?.getBoundingClientRect()
+        const gr = generate?.getBoundingClientRect()
+        const br = bar?.getBoundingClientRect()
+        return {
+          above: Boolean(sr && er && sr.bottom <= er.top + 1),
+          chips,
+          arrow: Boolean(generate?.querySelector('svg')),
+          generateInsideBar: Boolean(gr && br && gr.right <= br.right + 1 && gr.bottom <= br.bottom + 1),
+          clipped: row ? row.scrollWidth > row.clientWidth + 1 : true,
+          density: row?.getAttribute('data-storyboard-row-density'),
+          thumbAbove: (() => {
+            const v = row?.querySelector('[data-storyboard-visual-column]')?.getBoundingClientRect()
+            const c = row?.querySelector('[data-storyboard-content-column]')?.getBoundingClientRect()
+            return Boolean(v && c && v.bottom <= c.top + 1)
+          })(),
+          paramsReadable: [...(bar?.querySelectorAll('[data-parameter-summary]') ?? [])].every((el) => el.getBoundingClientRect().width >= 60),
+        }
+      })
+      check(`board:ComposerB3/host.storyboard-row.refs-above.${width}.${lang}`, facts.above && facts.chips.length >= 1 && facts.chips.every((c) => c.h === 28 && c.name) && facts.arrow && facts.generateInsideBar && !facts.clipped && facts.paramsReadable && (width >= 520 || (facts.density === 'compact' && facts.thumbAbove)), JSON.stringify(facts))
+      await shot(page, 'storyboard-reuse', `sbl-e1a-${width}`, `E1a-${width}-${lang}-light`)
+      await context.close()
+    }
+  }
   {
     const { page, context } = await open('generation-list', 'list-detail-done')
     await page.waitForSelector('[data-composer-host] [data-bar-segment="generate"]', { timeout: stationTimeout() })
-    const host = await page.evaluate(() => ({ host: document.querySelector('[data-composer-host]')?.getAttribute('data-composer-host'), ref: Boolean(document.querySelector('[data-composer-host] [data-reference-entry]')), send: document.querySelector('[data-bar-segment="generate"]')?.closest('span[title]')?.getAttribute('title') ?? '' }))
-    check('board:ComposerB3/host.list-detail', host.host === 'inline' && host.ref && /重新生成/.test(host.send), JSON.stringify(host))
+    const host = await page.evaluate(() => ({ host: document.querySelector('[data-composer-host]')?.getAttribute('data-composer-host'), ref: Boolean(document.querySelector('[data-composer-host] [data-reference-entry]')), plus: Boolean(document.querySelector('[data-composer-host] [data-reference-add-entry]')), send: document.querySelector('[data-bar-segment="generate"]')?.closest('span[title]')?.getAttribute('title') ?? '' }))
+    check('board:ComposerB3/host.list-detail', host.host === 'inline' && host.ref && host.plus && /重新生成/.test(host.send), JSON.stringify(host))
     await shot(page, 'generation-list', 'list-detail-done', 'E1c-zh-light')
     await context.close()
   }

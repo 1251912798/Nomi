@@ -4,8 +4,8 @@
  *
  * 要权衡的那一个东西：chip 过去串接**所有**参数的当前值，视频节点上就成了
  * `1080p · 16:9 · 5 · 音频`——110px 的 pill 装不下，真机上截断成「1080p · 16:…」。
- * v1.1 改成只报**最影响结果和价格的那两个**：视频 = 比例 + 时长，图 = 比例 + 清晰度。
- * 代价是清晰度 / 生成音频这类值要点开 chip 才看得到——它们仍在同一块面板里，一次点击可达。
+ * v1.1 改成只报**最影响结果和价格的几个**：视频 = 比例 + 清晰度 + 时长（B3 清单合同 10-19：「16:9 · 720p · 5s」，有清晰度参数就印），
+ * 图 = 比例 + 清晰度。代价是生成音频这类值要点开 chip 才看得到——它们仍在同一块面板里，一次点击可达。
  *
  * 两个值**从档案 derive**，不写死文案：换个模型（没有时长、清晰度叫别的名字）照样说得对，
  * 一个都没有就返回 undefined → InlineParameterBar 回到它自己的默认串接，不假装有摘要。
@@ -26,7 +26,7 @@ import { localizeAutoOption } from './parameterOptionPresentation'
  * 比例在不同档案里叫 aspect_ratio / size / ratio，都收在这里；命中顺序 = 显示顺序。
  */
 const HEADLINE_KEYS = {
-  video: ['aspect_ratio', 'size', 'ratio', 'duration'],
+  video: ['aspect_ratio', 'size', 'ratio', 'resolution', 'duration'],
   image: ['aspect_ratio', 'size', 'ratio', 'resolution'],
 } as const
 
