@@ -32,13 +32,12 @@ async function documentText(win) {
  */
 export async function runCreationAiRewriteJourney({ win, snap, resultTimeout = stationTimeout({ turns: 1 }) }) {
   const facts = {}
-  // ① 写三句（真键盘），选中第二句（点进去 → End → Shift+Home；这一句在窗口里是一整段，不跨行也能选全：用 Shift+ArrowUp 兜底）。
+  // ① 写三句（真键盘），选中第二句。
   await clickOrFail(win.locator(DOCUMENT), '文稿编辑区')
   await win.keyboard.type(REWRITE_DOC_LINES.join('\n'))
   await expect.poll(() => documentText(win), { message: '三句都写进了文稿' }).toBe(REWRITE_DOC_LINES.join('\n'))
-  await win.keyboard.press('ArrowUp')
-  await win.keyboard.press('End')
-  await win.keyboard.press('Control+Shift+ArrowUp')
+  // 选中第二段：Playwright 的 selectText 选中这一段元素里的全部文字（和用户在这一段上拖选到底同一个选区，不依赖换行 / 折行的键盘行为）。
+  await win.locator(DOCUMENT).locator('p').nth(1).selectText()
   // 选区要正好是第二段：取浏览器里的选中文字核对（读的是屏幕上的真选区）。
   const selected = await win.evaluate(() => String(window.getSelection() ?? ''))
   facts.selectedText = selected
