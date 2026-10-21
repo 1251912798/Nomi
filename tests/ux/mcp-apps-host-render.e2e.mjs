@@ -17,6 +17,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { withLinuxNoSandbox } from './_launchApp.mjs'
+import { assertFreshBuild } from '../../scripts/package-build-stamp.mjs'
 
 const require = createRequire(import.meta.url)
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -32,6 +33,7 @@ const MIME = 'text/html;profile=mcp-app'
 
 const appBundle = process.env.NOMI_APP_PATH || path.join(repoRoot, 'release', 'mac-arm64', 'Nomi.app')
 const packaged = process.platform === 'darwin' && fs.existsSync(path.join(appBundle, 'Contents', 'MacOS', 'Nomi'))
+if (!packaged) assertFreshBuild(repoRoot)
 const appExecutable = packaged ? path.join(appBundle, 'Contents', 'MacOS', 'Nomi') : require('electron')
 const appArgs = packaged ? [] : withLinuxNoSandbox([repoRoot, '--disable-gpu'])
 // 打包版 MCP 入口必须经过同 bundle 的 bare-Node launcher。直接执行 Electron 主进程会
