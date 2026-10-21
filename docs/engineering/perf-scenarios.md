@@ -10,7 +10,7 @@
 
 1. 设计卡填 ★7：新增了哪些用户操作、最坏规模、每个操作的预算、覆盖它的场景 id + 基线数。
 2. 每个新增操作登记成一个性能场景（下面的流程），跑出基线。
-3. PR 正文 `## 验收证据` 交一行：`- perf-scenario：<场景 id> 中位数 X / p95 Y / 预算 Z`。
+3. PR 正文 `## 验收证据` 交一行：`- perf-scenario：<场景 id> 中位数 X / p95 Y / 预算 Z / 原始结果 <路径>`（原始结果一项自 2026-10-22 起要求，见文末「证据判对不对」）。
 
 路径会自动推出这一类：改 `src/**/*.tsx`（设计实验室除外）、画布 / 时间轴目录、任务 / 队列 / 取消类文件、新增 `AbortController`。推出了而这个改动确实碰不到交互、规模、长任务（例如只改一行文案）：证据行写 `- perf-scenario：不适用：<具体理由>`。**「未验证」不算通过**——没有量具就先写量具。
 
@@ -67,6 +67,8 @@
 - 超预算的基线不登记欠账，结构门岗红；修好了（基线回到预算内）还挂着欠账，也红——修复线量完新基线顺手删掉欠账。
 
 **待测场景**：登记了、还差一步才能量（量具或夹具没备好）的，写 `"measurement": { "state": "pending", "reason": "还差哪一步" }`。只许 `proposed` 预算、不许有基线和欠账；整表跑时跳过，点名 `--id` 量完写基线时自动去掉 `measurement`。
+
+**预算比哪个统计层级**（2026-10-21）：`budget` 默认比「跨轮中位数」；场景写 `"budgetStatistic": "p95"` 就比「跨轮 p95」（按键到上屏这类本身是每轮 p95 的指标，要声明按哪层比，别靠猜）。`response` 类另有 p95 尾部预算：显式 `"p95Budget": N`，不写 = 预算 × 1.5（即默认预算表的「≤100ms，p95 ≤150ms」）；登记了欠账的存量场景不判尾部预算。不要把所有场景机械改成「p95 的 p95」。
 
 3. `pnpm run perf:scenarios -- --smoke --id <id>`（1 次冒烟，确认脚本跑得通），再 `pnpm run perf:scenarios -- --id <id> --update-baseline` 写基线（≥5 次；跑的时候别的线在忙就加 `--noisy`，基线标 `noisy: true`，退化只提示）。写基线只许协调会话或验收线做，实现线把冒烟和 5 次的数字贴进 PR 即可。
 4. `pnpm run check:perf-scenarios` 通过（登记表结构门岗）。
@@ -151,3 +153,20 @@ node scripts/perf-scenarios.mjs --measure-only --out perf-$(node -p "process.pla
 ```
 
 只跑一类：加 `--id <场景 id>`（一次一个）。看「随 N 怎么长」的整条曲线：`node tests/perf/canvas-scale-bench.mjs --scales E10,E100,E200,I10,I100,I200,V10,V100,V200 --scenarios select-composer --runs 5 --label select-curve`。
+
+## 证据判「对不对」（2026-10-22 起开的 PR 生效，不追溯）
+
+`## 验收证据` 的 `perf-scenario` 行，旧口径只看「有一行、预算对得上、中位数不超」。新口径（生效日在 `test-routing.json` 的 `evidenceJudgement.effectiveFrom`，CI 取 base 版本；此日期前开的 PR 照旧；创建时间未知按已生效）：
+
+`- perf-scenario：<id> 中位数 X / p95 Y / 预算 Z / 原始结果 <仓库内路径>`
+
+- **pending 不能算达标**：场景是待测（`measurement.state = pending`），或原始结果里这一轮是 pending，一律红。先量出基线再交证据。
+- **原始结果要能读到**：`pnpm run perf:scenarios --id <id> --measure-only --out <文件>` 的 JSON，随 PR 提交（CI 从 PR 头读）；读不到、不是 JSON、里面没有这个场景的运行记录，红。
+- **样本数够、数字有限**：主指标 `runs` ≥ 5；median / p95 必须是有限数（null / NaN / Infinity 红）。
+- **正文数字要和原始结果对上**（误差 0.1）：正文自己写一行数字不算数。
+- **按声明的层级和适用的预算判**：见上面「预算比哪个统计层级」；p95 声明的场景比 p95，response 类另判 p95 尾部预算。
+- **旧欠账**只对登记了 `budgetDebt` 的存量场景放行（棘轮照旧）；待测（pending）不是欠账，不放行。
+- 「不适用：理由」照旧，不要求原始结果。
+
+回滚：删掉 `test-routing.json` 里的 `evidenceJudgement` 一节，三处新口径同时退回旧判据。
+

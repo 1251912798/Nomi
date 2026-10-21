@@ -12,7 +12,8 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { ESCAPE_LEDGER_DIR, assembleEscapeLedger, escapeIdOfPath } from './escape-ledger-lib.mjs'
-import { checkPrBoardClaims, loadManifests } from './check-board-parity.mjs'
+import fs from 'node:fs'
+import { loadManifests } from './check-board-parity.mjs'
 import { META_FILE } from './lib/entryDirectory.mjs'
 import { execGhReadSync } from './lib/transientRetry.mjs'
 import { RULES_INTRODUCED_BY_PR, evaluatePrBody, ledgerChanges, mergeReport, settledContracts } from './pr-body-criteria.mjs'
@@ -112,6 +113,18 @@ function ghEscapeLedger(exec, repoSlug, ref) {
   })
 }
 
+/** 报告引用是仓库内相对路径（不是链接、不是绝对路径、不含 ..）。 */
+const isRepoRef = (ref) => !/^(?:https?:|[a-z]:[\/]|[\/])/i.test(String(ref)) && !/(?:^|[\/])..(?:[\/]|$)/.test(String(ref))
+
+/** 合并前扫描读验收报告：本机绝对路径直接读；仓库内相对路径从 PR 头读；外部链接读不了。读不到一律 null（判据按红处理）。 */
+export function readReportRef(ref, readRepoFile, readLocal = (file) => fs.readFileSync(file, 'utf8')) {
+  try {
+    if (/^https?:/i.test(ref)) return null
+    if (isRepoRef(ref)) return readRepoFile(ref) ?? null
+    return readLocal(ref)
+  } catch { return null }
+}
+
 /** 对外入口：任何取数失败都收成一行「结论：✖」，退出码 1。exec 可注入（测试用）。 */
 export function main(argv = process.argv.slice(2), exec = execGhReadSync) {
   try {
@@ -207,14 +220,17 @@ function run(argv, exec) {
     scenarios,
     // 花钱类的真付费抽检只在这一道严格判：「未验证」与裸 PR 号都不放行（#1203 就是这样被合进来的）
     paidStrict: true,
+    // 证据判「对不对」的输入（取数在这里，判据在 pr-body-criteria）：PR 当前 head、报告 / 原始结果怎么读、拍板图清单
+    evidence: {
+      headSha: view.headRefOid,
+      // 协调目录的报告在本机读（读不到 = null = 红）；仓库内路径从 PR 头读；外部链接读不了
+      readReport: (ref) => readReportRef(ref, (file) => ghApiFile(slug, file, view.headRefOid)),
+      readRaw: (ref) => (isRepoRef(ref) ? ghApiFile(slug, ref, view.headRefOid) : null),
+      boards: loadManifests(),
+    },
   }))
   console.log(report.text)
-  // 拍板图认领（check-board-parity R8）：PR 正文 `## 拍板图` 认领的元素，在 PR 头上必须有去处。
-  const boardErrors = checkPrBoardClaims(body, loadManifests())
-  if (boardErrors.length) {
-    console.log(`拍板图认领未过（${boardErrors.length} 条）：\n${boardErrors.map((e) => `  ✗ ${e}`).join('\n')}`)
-  }
-  return report.blocked || boardErrors.length ? 1 : 0
+  return report.blocked ? 1 : 0
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = main()
