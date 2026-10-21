@@ -22,6 +22,22 @@
     {
       "path": "src/workbench/generationCanvas/store/canvasVisibleArea.ts",
       "symbol": "publishCanvasStageSize"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/resolveInsertionPosition.ts",
+      "symbol": "occupiedSize"
+    },
+    {
+      "path": "electron/capabilityCore/canvasNodeLayout.ts",
+      "symbol": "resolveInsertionPositionWith"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "path": "src/workbench/generationCanvas/events/canvasWriteBoundary.ts",
+      "symbol": "addDerivedOutput"
     }
   ],
   "forbidden_derivations": [],
@@ -33,5 +49,5 @@
     "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlow.tsx"
   ],
   "since": "2026-09-25",
-  "notes": "2026-09-25 用户拍板「程序不再主动平移 / 缩放画布；新建和导入尽量直接落在当前可见区域」（合同 docs/fixes/2026-09-25-canvas-no-auto-viewport.root-cause.json）。单点落点（visibleInsertionPoint，addNode 默认）、整批落点（placeBlockInVisibleArea）、可见区内找空位（resolveInsertionPosition 的 visibleArea 参数）都读这一份；舞台尺寸由画布宿主经 publishCanvasStageSize 发布（0×0 不覆盖）。不许再写死画布坐标当默认落点，也不许「落地后再挪画布露出」。"
+  "notes": "2026-09-25 用户拍板「程序不再主动平移 / 缩放画布；新建和导入尽量直接落在当前可见区域」（合同 docs/fixes/2026-09-25-canvas-no-auto-viewport.root-cause.json）。单点落点（visibleInsertionPoint，addNode 默认）、整批落点（placeBlockInVisibleArea）、可见区内找空位（resolveInsertionPosition 的 visibleArea 参数）都读这一份；舞台尺寸由画布宿主经 publishCanvasStageSize 发布（0×0 不覆盖）。不许再写死画布坐标当默认落点，也不许「落地后再挪画布露出」。 2026-10-19 派生节点落点（合同 docs/fixes/2026-10-19-derived-node-placement-rendered-size.root-cause.json）：按渲染占位避让（occupiedSize 统一换算占位尺寸）、找空位的共享算法（resolveInsertionPositionWith，带新节点自身尺寸、找不到就落到最下方）、派生节点一律走避让（addDerivedOutput 不许 exactPosition）也归本概念。"
 }
