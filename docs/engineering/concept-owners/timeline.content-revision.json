@@ -1,0 +1,27 @@
+{
+  "name": "时间轴内容版本号（视图状态：缩放、播放头，不影响版本）",
+  "subject": "timeline.content-revision",
+  "lifecycle": "project-data",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/timeline/kernel/timelineKernel.ts",
+    "symbol": "timelineRevision"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/timeline/kernel/timelineKernel.ts",
+      "symbol": "timelineRevision"
+    },
+    {
+      "path": "src/workbench/timeline/kernel/timelineKernel.ts",
+      "symbol": "timelineContentOf"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-12",
+  "notes": "合同 docs/fixes/2026-10-12-timeline-content-revision.root-cause.json：timelineRevision 是采纳、Agent 编辑与导出共用的规范内容版本；timelineContentOf 是同一个不含视图态的投影，既喂哈希也喂浅比较订阅。"
+}

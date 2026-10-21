@@ -51,8 +51,9 @@ export function resolveInsertionPositionInAreaWith(
   base: Point,
   existing: readonly NodeBox[],
   area: { x: number; y: number; width: number; height: number },
+  newSize?: Size,
 ): Point | null {
-  const size = footprint(newKind)
+  const size = footprint(newKind, newSize)
   if (size.width > area.width || size.height > area.height) return null
   const inArea = (pos: Point) => pos.x >= area.x && pos.y >= area.y && pos.x + size.width <= area.x + area.width && pos.y + size.height <= area.y + area.height
   if (inArea(base) && !collidesAny(base, size, existing, footprint)) return base
@@ -86,9 +87,20 @@ const SPIRAL_DIRS: readonly Point[] = [
 ]
 
 /**
+ * 螺旋用尽也没找到空位（极端密集）时的**保底落点**：整张画布所有节点的下方——新盒子顶边在所有已有盒子底边之下，
+ * 按构造就不可能相交。旧做法是返回「最后一个候选」，那一格没验过碰撞，密集时就是压在别人身上（派生节点「不压邻居」的最后一道缝）。
+ */
+function belowEverything(footprint: FootprintResolver, base: Point, existing: readonly NodeBox[]): Point {
+  let bottom = base.y
+  for (const node of existing) bottom = Math.max(bottom, node.position.y + footprint(node.kind, node.size).height)
+  return { x: base.x, y: Math.round(bottom + GAP) }
+}
+
+/**
  * 从 base 起按螺旋顺序找第一个不与任何已有节点重叠的落点（真 AABB 判重叠，非整数点等值）。
- * 步距 = 新节点足迹 + GAP（一步跨过一张卡）。全命中（极端密集）→ 返回最后一个候选（行为可预期）。
+ * 步距 = 新节点足迹 + GAP（一步跨过一张卡）。螺旋用尽（极端密集）→ 落到所有节点下方（`belowEverything`，保证不相交）。
  * `existing` 只应传**同分类**（同屏可见）节点——跨分类不同屏不遮挡，拿它们避让只会无谓推远。
+ * `newSize`：新节点的真实占位（不给 = registry 名义尺寸）；调用方知道新节点会渲染得比名义大时必须给。
  */
 export function resolveInsertionPositionWith(
   footprint: FootprintResolver,
@@ -96,29 +108,28 @@ export function resolveInsertionPositionWith(
   base: Point,
   existing: readonly NodeBox[],
   maxRings = 6,
+  newSize?: Size,
 ): Point {
-  const size = footprint(newKind)
+  const size = footprint(newKind, newSize)
   if (!collidesAny(base, size, existing, footprint)) return base
 
   const stepX = Math.round(size.width + GAP)
   const stepY = Math.round(size.height + GAP)
-  let last = base
   for (let ring = 1; ring <= maxRings; ring += 1) {
     for (const dir of SPIRAL_DIRS) {
       const candidate = {
         x: Math.round(base.x + dir.x * stepX * ring),
         y: Math.round(base.y + dir.y * stepY * ring),
       }
-      last = candidate
       if (!collidesAny(candidate, size, existing, footprint)) return candidate
     }
   }
-  return last
+  return belowEverything(footprint, base, existing)
 }
 
 /**
  * 整组落点避让（粘贴多节点用）：整簇当刚体求统一位移 delta，使位移后无一张卡压住 existing。
- * 步距 = 整簇包围盒 + GAP。不冲突 → {0,0}；极端密集 → 最后一个候选（行为可预期）。
+ * 步距 = 整簇包围盒 + GAP。不冲突 → {0,0}；螺旋用尽（极端密集）→ 整簇下移到所有已有节点下方（保证不相交）。
  */
 export function resolveGroupInsertionDeltaWith(
   footprint: FootprintResolver,
@@ -144,15 +155,14 @@ export function resolveGroupInsertionDeltaWith(
   }
   const stepX = Math.round(maxX - minX + GAP)
   const stepY = Math.round(maxY - minY + GAP)
-  let last: Point = { x: 0, y: 0 }
   for (let ring = 1; ring <= maxRings; ring += 1) {
     for (const dir of SPIRAL_DIRS) {
       const delta = { x: dir.x * stepX * ring, y: dir.y * stepY * ring }
-      last = delta
       if (!groupCollides(delta.x, delta.y)) return delta
     }
   }
-  return last
+  const below = belowEverything(footprint, { x: minX, y: minY }, existing)
+  return { x: 0, y: below.y - minY }
 }
 
 // ── 批量分层布局（原 agent/trajectoryLayout.ts 的数学，footprint 注入化）──────────────

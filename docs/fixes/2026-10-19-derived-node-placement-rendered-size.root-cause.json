@@ -1,0 +1,233 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-19-derived-node-placement-rendered-size",
+  "problem_type": "Placement collision avoidance measured neighbours by nominal node.size while the canvas renders them larger, so newly created nodes land on top of them",
+  "symptom": "Electron walk 2026-10-18 (T12 fixture): video toolbar 「拆解 ▾ → 镜头表」 created the shot table on top of neighbouring image nodes. Reproduced 2026-10-19 on origin/main with a row of 9:16 images beside a video: the table's DOM-measured rectangle intersected three of them.",
+  "direct_cause": "addNode's avoidance gate (resolveInsertionPosition) compared candidate boxes against existing nodes' nominal node.size + 64, never their rendered size (resolveNodeVisualSize: media aspect, previewHeight, fixed-width cards). Portrait media renders far taller than nominal + 64, so the requested slot and every spiral / visible-area candidate were judged free while covered by a neighbour. The new node's own footprint also ignored its explicit size, and an exhausted spiral returned an unchecked last candidate.",
+  "class_root": "Two notions of node size coexist (nominal node.size vs rendered resolveNodeVisualSize) and the placement boundary used the wrong one; nothing asserted that a created node's rendered rectangle is disjoint from every existing node's rendered rectangle.",
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-19",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/store/resolveInsertionPosition.ts",
+    "tests": [
+      "src/workbench/generationCanvas/store/canvasDerivedPlacement.test.ts",
+      "src/workbench/generationCanvas/store/canvasDerivedPlacement.visibleArea.test.ts",
+      "src/workbench/generationCanvas/store/resolveInsertionPosition.test.ts"
+    ],
+    "why": "Every renderer node creation (addNode, addDerivedOutput, duplicate, copy-to-category, paste cluster) resolves its slot through this wrapper, which now converts every box to its rendered occupied size before the shared layout math runs."
+  },
+  "affected_population": [
+    "Every addDerivedOutput caller (shot table, video frame / trim, clip export, director output, whiteboard snapshot, panorama screenshot)",
+    "Any addNode caller whose neighbours are portrait or media-bearing nodes",
+    "Duplicate / copy-to-category / paste placement next to tall nodes"
+  ],
+  "scope_paths": [
+    "electron/capabilityCore/canvasNodeLayout.ts",
+    "src/workbench/generationCanvas/store/resolveInsertionPosition.ts",
+    "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+    "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+    "src/workbench/generationCanvas/store/canvasStoreTypes.ts"
+  ],
+  "entry_points": [
+    "store.addDerivedOutput -> addNode -> resolveInsertionPosition",
+    "store.addNode (toolbar, drops, agent single create, imports)",
+    "store.duplicateNodeForRegeneration / copyNodeToCategory",
+    "store.pasteNodes -> resolveGroupInsertionDelta"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Both the layout math and the rendered-size model are ours; no third-party layout library owns node footprints (React Flow only reports measured sizes after render, which the store cannot read at creation time).",
+  "invariants": [
+    "A node created through the store has a rendered rectangle disjoint from every same-category existing node's rendered rectangle",
+    "addDerivedOutput never trusts a caller-supplied exact position",
+    "An exhausted spiral falls back to a slot below every node, never to an unchecked candidate"
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/ClipNode.tsx",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/useNodePanoramaHandlers.ts",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/ClipNode.tsx",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/DirectorNode.tsx",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/extractVideoFrameToNode.ts",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/shotTable/factBridge.ts",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/trimVideoToNode.ts",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/useNodePanoramaHandlers.ts",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasStoreTypes.ts",
+      "symbol": "addDerivedOutput"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+      "symbol": "resolveInsertionPosition"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/resolveInsertionPosition.ts",
+      "symbol": "resolveInsertionPosition"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/canvasNodeLayout.ts",
+      "symbol": "resolveInsertionPositionWith"
+    }
+  ],
+  "door_reduction": {
+    "before": 15,
+    "after": 15,
+    "why_not": "Each caller derives a different node kind from a different source (shot table, video frame / trim, clip export, director output, whiteboard snapshot, panorama screenshot) and must keep its own request; what converges is the placement boundary behind them: every door already reaches addNode -> resolveInsertionPosition, which is where the invariant is now enforced, so no caller can forget it. The read doors only read the action off the store. The last five doors are the boundary files themselves (action definition + type, the addNode / duplicate / copy callers of the wrapper, the wrapper, and the shared layout math): they are the single place the invariant now lives."
+  },
+  "generality_proof": "The invariant is enforced inside resolveInsertionPosition (every box becomes occupiedSize = max(nominal, resolveNodeVisualSize) per axis), addNode feeds it the new node's own occupied size, and addDerivedOutput forbids exactPosition. A new derived kind or caller that reaches addNode inherits it; a new node kind with its own rendering rule inherits it through resolveNodeVisualSize, the single rendered-size owner. The randomized class test places 240 derived nodes over 40 mixed-aspect canvases and asserts disjoint rendered rectangles.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/store/resolveInsertionPosition.ts",
+      "symbol": "occupiedSize",
+      "responsibility": "Single conversion from any node box to its rendered occupied size for placement; never smaller than the old nominal box."
+    },
+    {
+      "path": "electron/capabilityCore/canvasNodeLayout.ts",
+      "symbol": "resolveInsertionPositionWith",
+      "responsibility": "Shared layout math: takes the new node's own size and returns a verified-free slot, falling back to below-everything instead of an unchecked last candidate."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "symbol": "addDerivedOutput",
+      "responsibility": "Derived nodes always go through the avoidance gate; exactPosition is excluded by type and forced false at runtime."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/extractVideoFrameToNode.ts",
+      "entry_point": "extractVideoFrameToNode (video-frame)",
+      "disposition": "enforced",
+      "evidence": "Requests right-of-source + 64 and reaches addDerivedOutput -> addNode; covered by the video-frame case in canvasDerivedPlacement.test.ts."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/trimVideoToNode.ts",
+      "entry_point": "startVideoTrim (video-trim)",
+      "disposition": "enforced",
+      "evidence": "Same boundary; covered by the video-trim case."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/shotTable/factBridge.ts",
+      "entry_point": "ensureDeconstructionShotTable (shot-table)",
+      "disposition": "enforced",
+      "evidence": "Reported case; covered by the shot-table cases (with and without a visible area) and by the Electron walk tests/ux/derived-node-placement.walk.mjs."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/ClipNode.tsx",
+      "entry_point": "clip export (clip-export)",
+      "disposition": "enforced",
+      "evidence": "Calls addDerivedOutput; same addNode gate."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+      "entry_point": "duplicateNodeForRegeneration / copyNodeToCategory",
+      "disposition": "enforced",
+      "evidence": "Both call resolveInsertionPosition and now pass the source's occupied size."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/tidyCanvasLayout.ts",
+      "entry_point": "tidyCategory (re-arrange all)",
+      "disposition": "not-affected",
+      "evidence": "Not a creation path: it re-lays out existing nodes with nominal footprints. Same two-sizes smell, tracked as a separate follow-up (residual_risks)."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every new derived output kind and every caller that requests a slot next to its source reaches the same gate; any media-bearing neighbour whose rendered size differs from its nominal size reproduces the overlap.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs addDerivedOutput: 7 write doors, all converge on addNode",
+      "git grep resolveInsertionPosition: only canvasNodeActions (addNode, duplicate, copy-to-category) and generationCanvasStore (paste cluster) call the store wrapper",
+      "git grep exactPosition: split tiles / drops / imports legitimately pre-compute compact layouts; none are derived outputs",
+      "electron/capabilityCore/canvasGraph.ts layoutBatchWith (MCP create) uses the shared math with nominal sizes and cannot import renderer sizing: residual"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/store/resolveInsertionPosition.ts",
+    "invariant": "Placement compares rendered occupied rectangles (occupiedSize) for both the new node and every existing node, and never returns an unchecked slot.",
+    "failure_mode": "There is no failing path: an unresolvable neighbourhood falls through to a slot below every node, which is disjoint by construction.",
+    "exception_policy": "none",
+    "strategy": "Convert every box to its rendered occupied size at the earliest shared boundary, give the layout math the new node's own size, remove the unchecked last-candidate return, and make addDerivedOutput unable to opt out via exactPosition.",
+    "artifacts": [
+      "src/workbench/generationCanvas/store/resolveInsertionPosition.ts",
+      "electron/capabilityCore/canvasNodeLayout.ts",
+      "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "src/workbench/generationCanvas/store/canvasStoreTypes.ts",
+      "src/workbench/generationCanvas/store/canvasNodeActions.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/store/canvasDerivedPlacement.test.ts",
+    "src/workbench/generationCanvas/store/canvasDerivedPlacement.visibleArea.test.ts",
+    "src/workbench/generationCanvas/store/resolveInsertionPosition.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/store/canvasDerivedPlacement.test.ts",
+    "src/workbench/generationCanvas/store/resolveInsertionPosition.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/capabilityCore/canvasNodeLayout.ts"
+    ],
+    "rationale": "The unchecked 'return the last spiral candidate' fallback in resolveInsertionPositionWith and resolveGroupInsertionDeltaWith is deleted and replaced by the below-everything slot."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency owns node footprints; React Flow measures sizes only after render and the placement invariant is ours.",
+    "exit_criteria": []
+  },
+  "migration": "None: placement only affects newly created nodes; stored positions are untouched.",
+  "residual_risks": [
+    "tidyCategory (one-click arrange) and the MCP / electron batch layout (canvasGraph.ts layoutBatchWith) still size neighbours by nominal node.size; they are layout-all / main-process paths, tracked as a follow-up task.",
+    "Rendered size is the model (resolveNodeVisualSize), not DOM measurement: a node whose DOM grows beyond the model (e.g. a footer taller than modelled) is still covered only by the existing 64px safety margin."
+  ]
+}

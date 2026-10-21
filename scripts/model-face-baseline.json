@@ -5,7 +5,7 @@
       "aliasBoundInput": null,
       "alsoCovers": null,
       "contractId": "canvas.read",
-      "description": "Read everything on the generation canvas: every node (id, kind, title, prompt, model, status), the reference links and groups, and the selection. Before any change to shots, links or groups, and whenever the user asks what is on the canvas or what is still waiting on them. Do not use it to read the script (read_script), the timeline (read_timeline) or the media library (look_at_media). It never changes anything. Takes no arguments. Every id you pass to a write verb comes from here; inventing an id is the most common way an edit fails. Nothing changes; it only reads.",
+      "description": "Read the generation canvas: every node (id, kind, title, prompt, model, status), each shot table's rows and ticked shots, the links, groups and selection. Before any change to shots, links or groups; whenever the user asks what is on the canvas or what is still waiting on them; and when they name shot-table shots by number (\"remake shots 2-3\"). Do not use it to read the script (read_script), the timeline (read_timeline) or the media library (look_at_media). It never changes anything. Takes no arguments. Every id you pass to a write verb comes from here; inventing an id is the most common way an edit fails. Nothing changes; it only reads.",
       "effect": "read",
       "effectGroups": null,
       "examples": [
@@ -26,7 +26,7 @@
       "promptGuidelines": [
         "Read before you write: every id you pass to a write verb comes from a read in this conversation, never from memory or guesswork."
       ],
-      "promptSnippet": "Read everything on the generation canvas: every node (id, kind, title, prompt, model, status), the reference links and groups, and the selection.",
+      "promptSnippet": "Read the generation canvas: every node (id, kind, title, prompt, model, status), each shot table's rows and ticked shots, the links, groups and selection.",
       "publishedJsonSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "additionalProperties": false,

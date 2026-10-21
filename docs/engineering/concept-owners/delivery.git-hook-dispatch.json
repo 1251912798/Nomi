@@ -1,0 +1,23 @@
+{
+  "name": "git 钩子名 → 要跑的脚本的唯一分发处",
+  "subject": "delivery.git-hook-dispatch",
+  "lifecycle": "delivery",
+  "authority_kind": "gateway",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/git-hook.mjs",
+    "symbol": "runHook"
+  },
+  "write_api": [
+    {
+      "path": "scripts/git-hook.mjs",
+      "symbol": "runHook"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-09",
+  "notes": "合同 docs/fixes/2026-10-09-git-hook-pins-script-names.root-cause.json：钩子文件里不写脚本名，只 exec scripts/git-hook.mjs <钩子名>；runHook 按当前树现查分发表，找不到就打印原因。"
+}

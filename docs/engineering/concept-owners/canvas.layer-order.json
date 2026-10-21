@@ -1,0 +1,27 @@
+{
+  "name": "画布叠放层级（节点层高于所有分组头与分组体，选中节点高于其它节点）",
+  "subject": "canvas.layer-order",
+  "lifecycle": "live-interaction",
+  "authority_kind": "schema",
+  "trust_domain": "renderer",
+  "fact_kind": "value-object",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/reactFlow/canvasLayerOrder.ts",
+    "symbol": "CANVAS_LAYER"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/canvasLayerOrder.ts",
+      "symbol": "CANVAS_LAYER"
+    },
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/canvasLayerOrder.ts",
+      "symbol": "CANVAS_LAYER_CSS_VARS"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-10",
+  "notes": "合同 docs/fixes/2026-10-10-group-layer-stacking.root-cause.json：CANVAS_LAYER 一处定义叠放顺序，CANVAS_LAYER_CSS_VARS 把节点层与选中节点的 z 以变量注入 ReactFlow 根，不再各处硬编码 z-index。"
+}

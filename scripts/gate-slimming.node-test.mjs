@@ -26,9 +26,11 @@ const REAL_PROBLEM_GATES = [
   'check:test-waits',
   'check:vocabularies',
   'check:icon-semantics',
-  // 纸面类里仍保留的两道：合同（只对 schema 阻断）/ 先查别人。概念写口 check:concept-owners 已于 2026-10-02 降为警告档
+  // 纸面类里仍保留的两道：合同（只对 schema 阻断）/ 先查别人。概念写口 check:concept-owners 2026-10-02 降为警告档、2026-10-19 用户拍板「改回挡合并」，见下方 REAL_PROBLEM_GATES 的末项
   'check:root-cause-contracts',
   'check:prior-art',
+  // 2026-10-19 用户拍板「改回挡合并（推荐）」：advisory 档下未登记边界从 37 攒到 121 而无人被拦，必须阻断
+  'check:concept-owners',
 ]
 
 test('账本里真问题的门岗：全都还在 PR 的 Contracts 里，且不是 advisory', () => {
@@ -59,8 +61,8 @@ test('被删的门岗不许悄悄回来：docs-index / doc-status / ledger 与 d
   assert.ok(fs.existsSync(path.join(repoRoot, 'scripts/door-map.mjs')))
 })
 
-test('降为提示的：advisory 名单只有 concept-owners（用户拍板降级，「谁说了算」改在设计卡 ★2 格动手前回答）', () => {
-  assert.deepEqual([...advisory].sort(), ['check:concept-owners'])
+test('降为提示的：advisory 名单是空的（concept-owners 2026-10-19 用户拍板改回挡合并；再降级要用户拍板并在这里写清理由）', () => {
+  assert.deepEqual([...advisory].sort(), [])
 })
 
 test('Ponytail 已整套删除：脚本、模式开关、延后账本、check 与 review:branch 都不在了', () => {

@@ -1,0 +1,27 @@
+{
+  "name": "纯图标按钮必须有名字（aria-label / title），行内动作 ≤3 个直接摆图标",
+  "subject": "delivery.icon-only-button-naming",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/check-icon-semantics.mjs",
+    "symbol": "scanUnnamedIconButtons"
+  },
+  "write_api": [
+    {
+      "path": "scripts/check-icon-semantics.mjs",
+      "symbol": "scanUnnamedIconButtons"
+    },
+    {
+      "path": "src/workbench/creation/DocumentListSidebar.tsx",
+      "symbol": "RowActions"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-10",
+  "notes": "合同 docs/fixes/2026-10-10-row-actions-direct-icons.root-cause.json：scanUnnamedIconButtons 对原生 button 全是图标且无 aria-label / title / aria-labelledby 的判红；DocumentListSidebar 的 RowActions 是行内动作直接摆图标的落地（文稿行 2 个、方案行 3 个）。"
+}

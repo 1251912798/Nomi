@@ -1,0 +1,31 @@
+{
+  "name": "Agent 输入里被选中的媒体引用必须解析到项目素材原身份（主进程认领，不是缩略图或渲染端自造 id）",
+  "subject": "agent.reference-attachment-claims",
+  "lifecycle": "author",
+  "authority_kind": "decision",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/assets/projectAssetStore.ts",
+    "symbol": "resolveProjectAgentAttachmentClaims"
+  },
+  "write_api": [
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "resolveProjectAgentAttachmentClaims"
+    },
+    {
+      "path": "electron/ai/agentUserContent.ts",
+      "symbol": "buildAgentUserContent"
+    },
+    {
+      "path": "src/workbench/ai/resident/useAgentReferenceMentions.ts",
+      "symbol": "useAgentReferenceMentions"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-12",
+  "notes": "合同 docs/fixes/2026-10-12-agent-reference-input.root-cause.json：resolveProjectAgentAttachmentClaims 对每个输入做分页的规范身份与文件校验；buildAgentUserContent 为所有媒体保留可执行的原素材身份；useAgentReferenceMentions 让所有 Agent 媒体准入对着活的编辑器文档恢复。"
+}

@@ -6,6 +6,7 @@ import { generationNodeStatusSchema, parseGenerationNodeStatus } from "../canvas
 import { DIRECTOR_PREVIEW_STATUSES } from "../director/directorPreviewStatus";
 import type { CapabilityContract } from "./capabilityContract";
 import { textNodeBody } from "../canvas/textNodeBody";
+import { canvasReadShotTableSchema, projectShotTableForAgent } from "./canvasReadShotTable";
 
 const URI_SCHEME_RESULT_ID = /^[a-z][a-z0-9+.-]*:/i;
 const trimmedNonEmptyStringSchema = z.string().trim().min(1);
@@ -59,6 +60,8 @@ const canvasReadNodeSchema = z
     /** 文本节点的正文（纯文本，和下游拼进提示词的是同一份）；超长截断并带 textTruncated。 */
     text: z.string().optional(),
     textTruncated: z.literal(true).optional(),
+    /** 分镜表节点的行 / 列 / 勾选（有上限，见 `canvasReadShotTable.ts`）。只有 kind=shot_table 且表读得出来时才有。 */
+    shotTable: canvasReadShotTableSchema.optional(),
     hasResult: z.boolean(),
     currentResultId: opaqueResultIdSchema.optional(),
     resultIds: z.array(opaqueResultIdSchema).optional(),
@@ -330,6 +333,7 @@ function projectNode(value: unknown, seen: Set<string>): CanvasReadNode | undefi
   const body = kind === "text" ? textNodeBody(node as Parameters<typeof textNodeBody>[0]) : "";
   const textTruncated = body.length > MAX_CANVAS_TEXT_NODE_CHARACTERS;
   const director = kind === "director" ? projectDirectorBox(asRecord(node.meta)) : undefined;
+  const shotTable = kind === "shot_table" ? projectShotTableForAgent(node.meta) : undefined;
 
   return {
     id,
@@ -347,6 +351,7 @@ function projectNode(value: unknown, seen: Set<string>): CanvasReadNode | undefi
     ...(runId ? { taskRef: { domain: 'generation' as const, jobId: runId } } : {}),
     ...(model ? { model } : {}),
     ...(director ? { director } : {}),
+    ...(shotTable ? { shotTable } : {}),
   };
 }
 

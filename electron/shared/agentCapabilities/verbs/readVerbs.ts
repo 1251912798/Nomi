@@ -59,8 +59,8 @@ export function readVerbs(): VerbDeclaration[] {
   const lookAtCanvas: VerbDeclaration = {
     name: "look_at_canvas", contractId: "canvas.read", effect: "read", nextAction: "none",
     describe: {
-      does: "Read everything on the generation canvas: every node (id, kind, title, prompt, model, status), the reference links and groups, and the selection.",
-      useWhen: "Before any change to shots, links or groups, and whenever the user asks what is on the canvas or what is still waiting on them.",
+      does: "Read the generation canvas: every node (id, kind, title, prompt, model, status), each shot table's rows and ticked shots, the links, groups and selection.",
+      useWhen: "Before any change to shots, links or groups; whenever the user asks what is on the canvas or what is still waiting on them; and when they name shot-table shots by number (\"remake shots 2-3\").",
       notWhen: "Do not use it to read the script (read_script), the timeline (read_timeline) or the media library (look_at_media). It never changes anything.",
       params: "Takes no arguments. Every id you pass to a write verb comes from here; inventing an id is the most common way an edit fails.",
     },

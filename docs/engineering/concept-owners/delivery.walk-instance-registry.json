@@ -1,0 +1,27 @@
+{
+  "name": "走查实例登记（只有走查启动器登记过的 PID 才能推迟整套走查的启动）",
+  "subject": "delivery.walk-instance-registry",
+  "lifecycle": "delivery",
+  "authority_kind": "writer",
+  "trust_domain": "test",
+  "fact_kind": "state-machine",
+  "migration_status": "converged",
+  "owner": {
+    "path": "tests/ux/_walkInstances.mjs",
+    "symbol": "registerWalkInstance"
+  },
+  "write_api": [
+    {
+      "path": "tests/ux/_walkInstances.mjs",
+      "symbol": "registerWalkInstance"
+    },
+    {
+      "path": "tests/ux/_walkInstances.mjs",
+      "symbol": "readLiveWalkInstances"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-08",
+  "notes": "合同 docs/fixes/2026-10-08-walk-instance-registry.root-cause.json：registerWalkInstance 登记并在退出 / 关闭 / 启动失败 / 超时时幂等清理；readLiveWalkInstances 按工作树过滤、测活并删陈旧记录。"
+}

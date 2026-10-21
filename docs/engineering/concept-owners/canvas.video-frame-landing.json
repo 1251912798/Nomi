@@ -1,0 +1,27 @@
+{
+  "name": "视频首 / 尾帧抽取后落成图片节点并聚焦（共用画布聚焦事件）",
+  "subject": "canvas.video-frame-landing",
+  "lifecycle": "project-data",
+  "authority_kind": "writer",
+  "trust_domain": "renderer",
+  "fact_kind": "state-machine",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/extractVideoFrameToNode.ts",
+    "symbol": "extractVideoFrameToNode"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/extractVideoFrameToNode.ts",
+      "symbol": "extractVideoFrameToNode"
+    },
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/useGenerationCanvasReactFlowEffects.ts",
+      "symbol": "handleFocusNode"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-08",
+  "notes": "合同 docs/fixes/2026-10-08-video-frame-node-landing.root-cause.json：extractVideoFrameToNode 发布返回的 nomi-local 图片地址、添加图片节点并派发共用的画布聚焦事件；handleFocusNode 解析新节点并把画布居中到它。"
+}

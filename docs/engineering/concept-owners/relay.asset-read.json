@@ -1,0 +1,23 @@
+{
+  "name": "Relay 素材读取（GET / HEAD 同一套查找、过期、元数据语义，HEAD 无 body）",
+  "subject": "relay.asset-read",
+  "lifecycle": "materialized-artifact",
+  "authority_kind": "decision",
+  "trust_domain": "site",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "workers/nomi-asset-relay/src/index.mjs",
+    "symbol": "readAsset"
+  },
+  "write_api": [
+    {
+      "path": "workers/nomi-asset-relay/src/index.mjs",
+      "symbol": "readAsset"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-07",
+  "notes": "合同 docs/fixes/2026-10-07-asset-upload-channel-boundary.root-cause.json：Relay 上任一素材的 GET 与 HEAD 状态与元数据头相同，缺失与过期判据同一份，只有 readAsset 一处。"
+}
