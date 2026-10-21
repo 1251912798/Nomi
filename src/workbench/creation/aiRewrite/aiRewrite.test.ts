@@ -377,6 +377,28 @@ describe('就地显示：删掉的划线、新加的标出来、段尾两个小�
     expect(parts.filter((part) => part.kind !== 'add').map((part) => part.text).join('')).toBe(P2)
     expect(parts.filter((part) => part.kind !== 'del').map((part) => part.text).join('')).toBe('她慢慢展开纸条。')
   })
+  it('diff：段数不变就一段一段比；段数变了整块比；不管哪种拼回去都是原文和新文', () => {
+    const before = ['她盯着纸条看了很久。', '纸上的字被潮气洇开。', '林薇没有回头。'].join('\n')
+    const same = ['她盯着纸条。', '纸上的字洇开了。', '林薇没有回头。'].join('\n')
+    const merged = ['她盯着纸条，纸上的字洇开了。', '林薇没有回头。'].join('\n')
+    for (const next of [same, merged]) {
+      const parts = diffRewrite(before, next)
+      expect(parts.filter((part) => part.kind !== 'add').map((part) => part.text).join('')).toBe(before)
+      expect(parts.filter((part) => part.kind !== 'del').map((part) => part.text).join('')).toBe(next)
+    }
+    // 第三段没改：整段是 keep，不被前面的改动牵连
+    expect(diffRewrite(before, same).some((part) => part.kind === 'keep' && part.text.includes('林薇没有回头'))).toBe(true)
+  })
+
+  it('diff：8000 字、段数不变的改写，比较在预算里（不再是整块平方级）', () => {
+    const line = '夜里的街道，雨一直在下，霓虹灯在积水里碎成一片一片，她没有回头，伞沿压得很低。'
+    const original = Array.from({ length: 180 }, (_, index) => index + line).join('\n')
+    const rewritten = original.replace(/霓虹灯/g, '灯火').replace(/碎成一片一片/g, '碎了')
+    const started = performance.now()
+    const parts = diffRewrite(original, rewritten)
+    expect(performance.now() - started).toBeLessThan(100)
+    expect(parts.filter((part) => part.kind !== 'del').map((part) => part.text).join('')).toBe(rewritten)
+  })
 })
 
 describe('键盘：Enter 接受、Esc 放弃（焦点在文档里时由插件处理）', () => {

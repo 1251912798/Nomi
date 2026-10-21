@@ -310,6 +310,9 @@ async function creationAiRewriteResult(page, ctx) {
   const paragraphs = await editor.evaluate((element) => element.querySelectorAll(':scope > p').length)
   if (paragraphs < REWRITE_DOCUMENT_PARAGRAPHS) return { skipped: `创作页编辑器里只有 ${paragraphs} 段，长文稿没有载入（要 ${REWRITE_DOCUMENT_PARAGRAPHS} 段）` }
   await editor.click()
+  // 上一个采样留下的选区先收起来：同一段再选一次，浮条才会重新出现。
+  await page.evaluate(() => document.querySelector('.workbench-creation .ProseMirror').editor.commands.setTextSelection(1))
+  await sleep(page, 300)
   const selectedChars = await page.evaluate((count) => {
     const tiptap = document.querySelector('.workbench-creation .ProseMirror').editor
     const doc = tiptap.state.doc
@@ -322,6 +325,8 @@ async function creationAiRewriteResult(page, ctx) {
       if (seen === 900 + count - 1) to = offset + node.nodeSize - 1
     })
     tiptap.commands.setTextSelection({ from, to })
+    // 选区起点要在视口中间：浮条贴在选区上方，起点在屏外浮条就在屏外，真人点不到。
+    document.querySelector('.workbench-creation .ProseMirror').children[899].scrollIntoView({ block: 'center' })
     return doc.textBetween(from, to, ' ').length
   }, REWRITE_SELECTED_PARAGRAPHS)
   if (selectedChars < 6000) return { skipped: `选区只有 ${selectedChars} 字，没选中预期的段落` }
@@ -334,17 +339,17 @@ async function creationAiRewriteResult(page, ctx) {
   await sleep(page, 300)
   // ② 结果回来：同一笔 patch 事务（插件通道），起表用页内自定义事件。
   await armResponse(page, { trigger: 'nomi-perf-trigger', predicate: 'rewriteResultReady' })
-  const dispatched = await page.evaluate(() => {
+  const dispatched = await page.evaluate((runIndex) => {
     const tiptap = document.querySelector('.workbench-creation .ProseMirror').editor
     const plugin = tiptap.state.plugins.find((candidate) => String(candidate.key).startsWith('nomiAiRewrite'))
-    const session = plugin?.getState(tiptap.state)
+    const session = plugin?.getState(tiptap.state)?.session
     if (!session) return false
-    const result = session.original.replace(/霓虹灯/g, '灯火').replace(/碎成一片一片/g, '碎了').replace(/伞沿压得很低/g, '伞压得低')
+    const result = session.original.replace(/霓虹灯/g, '灯火' + runIndex).replace(/碎成一片一片/g, '碎了').replace(/伞沿压得很低/g, '伞压得低')
     const tr = tiptap.state.tr.setMeta(plugin.spec.key, { type: 'patch', id: session.id, patch: { status: 'result', result } })
     document.dispatchEvent(new Event('nomi-perf-trigger'))
     tiptap.view.dispatch(tr)
     return true
-  })
+  }, ctx.runIndex)
   if (!dispatched) return { skipped: '点了「AI 编辑」但没有会话（条没开起来）' }
   const drawn = await takeResponse(page)
   const raw = await ctx.stopWindow(page)

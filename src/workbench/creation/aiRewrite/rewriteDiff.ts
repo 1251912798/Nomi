@@ -27,13 +27,43 @@ function wordSegmenter(): unknown | undefined {
 
 let lastDiff: { original: string; rewritten: string; parts: RewriteDiffPart[] } | null = null
 
-/** 编辑器每次状态更新都会重画装饰；同一对原文 / 新文只比一次（8000 字的比较约几十毫秒）。 */
-export function diffRewrite(original: string, rewritten: string): RewriteDiffPart[] {
-  if (lastDiff && lastDiff.original === original && lastDiff.rewritten === rewritten) return lastDiff.parts
-  const parts = diffWordsWithSpace(original, rewritten, { intlSegmenter: wordSegmenter() })
-  const result = parts
+/** 单次词比较的时间上限：超了就退回「整段删 + 整段加」，界面不会因为一次比较卡住。 */
+const DIFF_TIMEOUT_MS = 60
+
+function wordDiff(original: string, rewritten: string): RewriteDiffPart[] {
+  if (original === rewritten) return original ? [{ kind: 'keep', text: original }] : []
+  const parts = diffWordsWithSpace(original, rewritten, { intlSegmenter: wordSegmenter(), timeout: DIFF_TIMEOUT_MS })
+  if (!parts) {
+    return [
+      ...(original ? [{ kind: 'del' as const, text: original }] : []),
+      ...(rewritten ? [{ kind: 'add' as const, text: rewritten }] : []),
+    ]
+  }
+  return parts
     .filter((part) => part.value.length > 0)
     .map((part): RewriteDiffPart => ({ kind: part.added ? 'add' : part.removed ? 'del' : 'keep', text: part.value }))
+}
+
+/**
+ * 词比较的代价随长度平方长：8000 字一次比下来要两百多毫秒。改写几乎总是「段数不变、段内换词」，
+ * 所以段数一样就一段一段比（每段几十字，总共几十毫秒）；段数变了才整块比（有时间上限兜底）。
+ * 两种走法拼回去都是原文和新文，只是对不齐的粒度不同。
+ * 编辑器每次状态更新都会重画装饰；同一对原文 / 新文只比一次。
+ */
+export function diffRewrite(original: string, rewritten: string): RewriteDiffPart[] {
+  if (lastDiff && lastDiff.original === original && lastDiff.rewritten === rewritten) return lastDiff.parts
+  const before = original.split('\n')
+  const after = rewritten.split('\n')
+  let result: RewriteDiffPart[]
+  if (before.length > 1 && before.length === after.length) {
+    result = []
+    before.forEach((line, index) => {
+      if (index > 0) result.push({ kind: 'keep', text: '\n' })
+      result.push(...wordDiff(line, after[index]!))
+    })
+  } else {
+    result = wordDiff(original, rewritten)
+  }
   lastDiff = { original, rewritten, parts: result }
   return result
 }
