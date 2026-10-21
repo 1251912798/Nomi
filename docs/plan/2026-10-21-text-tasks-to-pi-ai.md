@@ -264,3 +264,19 @@
 - **D9 → A**（协调 10-21 定）；另列目录里文本模型声明的 `maxOutputTokens`，明显会截断长文的写进 PR，不私改目录。
 
 补充要求（协调 10-21 定）：复盘草稿进 `docs/audit/2026-10-21-text-stream-first-token-gate.md`，碰热点的提交带 `Direction-Check:`；渲染层重试判据不许被文案改动带偏——超时 / 429 / 5xx 带结构化类别，「错误种类 → 渲染层是否重提」对照测试迁移前后结果一致，`classifyError` 按类别给人话与动作；失败留证不漏 key；perf 预算按 ★7 批准，冷启动变差就在窗口显示后空闲时预热 pi 岛（不进打开项目路径），不许放宽；真模型走查用 `tests/ux/_paidRun.mjs` 的 `openPaidWalk` / `_paidEnvKey`，命名 `*.paid.mjs`，最小花费；文档同步 `ARCHITECTURE-NOW.md`、`GLOSSARY.md`、`self-written.json`。
+
+## 六、第二段结果（实现线自验，2026-10-21）
+
+- **调用方矩阵**（`electron/ai/textTaskCallers.integration.test.ts`，真 pi-ai + 真 HTTP 假上游，9 个调用方 × 正常 / 空回包 / 429 / 503 / 401 / SSE 包错 / 断流 / 无 finish_reason / 停止 / IPC 契约）：ai@4 上 19 红 → 迁移后全绿；计时类（`textTaskCallers.timing.integration.test.ts`：三相看门狗、整体兜底只给一次性入口、渲染层不自动重提）36 绿。
+- **真墙钟「先想 35 秒」**：9 个调用方在 ai@4 上全部 30 秒被掐 → 迁移后全过（`docs/evidence/2026-10-21-text-tasks-pi-ai/`）。
+- **Electron 零花费演练**（`tests/ux/text-tasks-pi-ai.rehearsal.walk.mjs`）：#1 扩写（流式，先想 35 秒）、#4 翻译、#3 优化中英两轮都过；#2 改写选区被付费闸挡（**迁移前就有**，见下）；#6 拆解被本机磁盘余量闸挡（no-disk-space，环境问题，记 unverified）。
+- **perf**（C4 之后，含预热）：热 中位 2.4 / p95 4.1ms（ai@4 基线 5.2 / 10.2，预算 20）；冷（预热完成后）中位 19.3 / p95 21.9ms（ai@4 基线 50.5 / 99.8，预算 100）；**刚启动就点、预热还没完成**：670–700ms（10 次），这是唯一比 ai@4 差的情形，窗口加载后约 4 秒起预热、约 2 秒装完。
+- **D9 目录里的 maxOutputTokens**：内置目录（seedBuiltins / apimartTexts / modelscopeTexts 等）没有任何文本模型声明 `meta.maxOutputTokens`，只有用户在目录里手填才会有；所以迁移后不会因为它把长文截断。
+- **pi-ai 子路径**：`createModels` / `createProvider` / `InMemoryCredentialStore` 不在 exports 子路径里，只能经入口导入；深引会破坏包封装，不采用（见「先查别人」）。
+
+### 演练发现的迁移前缺陷（未在本 PR 修，等拍板）
+
+- **文本节点「改写选区」一律失败**：改写不走流式门、走 `nomi:tasks:run` → `runtime.runTask` 文本分支的令牌付费闸（`TOKEN_ADMISSION`）；画布自「发动机收敛第一刀」起不再铸令牌，`assertAndConsumeQuotedSpend` 拿不到令牌直接抛 `SpendNotAuthorizedError`，错误卡归 unknown（截图 `docs/evidence/2026-10-21-text-tasks-pi-ai/walk/04-zh-04-rewrite-blocked-by-spend-gate.png`）。同类：浏览器「提取提示词」（#7）也走同一个闸、也没人铸令牌，推断同样失败（未在整机上跑）。矩阵测试直接调执行器、绕过了付费闸，所以没抓到——整机演练才暴露。
+  - 选项 A：文本节点改写也走流式门（与 `paidNodeLedger` 文档里「文本不进 Run、不要授权、走它自己的流式口」一致；改写可停、也不再需要整体兜底）。代价：一次 IPC 路由改动，花钱语义与流式文本一致。
+  - 选项 B：保留闸，在点击处铸令牌并弹确认。代价：每次改写多一次确认，与扩写 / 重写不一致。
+  - 推荐：#2 选 A；#7 浏览器提取在 taskSpend 的注释里登记为「附属付费口」，按设计应走 B（铸令牌）——两条都属花钱边界，交协调定。

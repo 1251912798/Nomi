@@ -1,0 +1,74 @@
+[
+  {
+    "entry": "#1 文本节点扩写（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 39734,
+    "totalMs": 39737,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#2 文本节点改写选区（一次性）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": null,
+    "totalMs": null,
+    "result": "blocked：SpendNotAuthorizedError（迁移前就有，等拍板）",
+    "errorKind": "spend-not-authorized"
+  },
+  {
+    "entry": "#4 提示词翻译（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 444,
+    "totalMs": 445,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#3 提示词优化（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 421,
+    "totalMs": 421,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#6 视频拆解读图（一次性）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": null,
+    "totalMs": null,
+    "result": "blocked：素材导入失败（no-disk-space）",
+    "errorKind": "local"
+  },
+  {
+    "entry": "#1 文本节点扩写（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 39516,
+    "totalMs": 39519,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#2 文本节点改写选区（一次性）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": null,
+    "totalMs": null,
+    "result": "blocked：SpendNotAuthorizedError（迁移前就有，等拍板）",
+    "errorKind": "spend-not-authorized"
+  },
+  {
+    "entry": "#4 提示词翻译（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 444,
+    "totalMs": 445,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#3 提示词优化（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 502,
+    "totalMs": 504,
+    "result": "ok",
+    "errorKind": null
+  }
+]
