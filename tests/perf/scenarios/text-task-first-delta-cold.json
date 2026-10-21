@@ -1,0 +1,24 @@
+{
+  "id": "text-task-first-delta-cold",
+  "feature": "文本任务（文本节点 / 提示词优化 / 翻译 / 拆解……）主进程接到请求到交出第一段字（全新进程第一次：应用启动后第一次用文本任务，执行器与 SDK 现装）",
+  "script": "tests/perf/text-first-delta-bench.mjs",
+  "args": [
+    "--mode",
+    "cold"
+  ],
+  "scale": "本机立刻回话的假上游（量的全是我们这一侧的开销）；先 pnpm build:electron",
+  "metrics": [
+    "response"
+  ],
+  "budget": 100,
+  "budgetStatus": "approved",
+  "budgetBasis": "协调 10-21 批准：冷 p95 ≤ ai@4 冷基线 p95。ai@4 基线（2026-10-21，20 次，commit 4da99122d）中位 50.5 / p95 99.8 → 预算 100ms（迁移后 p95 也按这个数核）；变差就在窗口显示后空闲时预热 pi 岛（不进打开项目路径），不许放宽。",
+  "baseline": {
+    "median": 50.5,
+    "p95": 99.8,
+    "runs": 20,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-21",
+    "commit": "4da99122d"
+  }
+}
