@@ -394,6 +394,7 @@ export function ConnectAssistantCard({
       detail={brokenDetail}
       brokenCode={staleShape ? client.configState : verify?.reason ?? 'broken'}
       primaryLabel={primaryLabel}
+      brokenTitle={brokenPlan ? t(brokenPlan.titleKey) : undefined}
       verifiedToolCount={verify?.phase === 'ok' ? verify.toolCount : null}
       approvalHint={t('onboardingProviders.assistant.hostApprovalHint', { client: label })}
       test={testState}

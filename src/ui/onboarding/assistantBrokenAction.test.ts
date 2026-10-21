@@ -29,7 +29,7 @@ describe('助手失效框主按钮：原因 → 动作', () => {
 
   it('读配置就判死的过时形状：只有重写配置能修，一律「升级接入」', () => {
     for (const reason of MCP_VERIFY_REASONS) {
-      expect(resolveAssistantBrokenAction({ staleShape: true, reason })).toEqual({ action: 'upgrade', labelKey: 'onboardingProviders.assistant.upgrade' })
+      expect(resolveAssistantBrokenAction({ staleShape: true, reason })).toEqual({ action: 'upgrade', labelKey: 'onboardingProviders.assistant.upgrade', titleKey: 'onboardingProviders.assistant.brokenTitle' })
     }
   })
 
@@ -38,6 +38,24 @@ describe('助手失效框主按钮：原因 → 动作', () => {
     expect(plan.labelKey).toBe('onboardingProviders.assistant.box.test')
     expect(zhOnboardingProviders.assistant.box.test).not.toContain('修复')
     expect(enOnboardingProviders.assistant.box.test).not.toMatch(/repair|fix/i)
+  })
+
+  it('标题也出自同一个投影：端口被占不再写「接入配置需要更新」（配置本身没问题）；其余原因仍是配置要更新', () => {
+    for (const reason of MCP_VERIFY_REASONS) {
+      const { titleKey } = resolveAssistantBrokenAction({ staleShape: false, reason })
+      expect(titleKey, reason).toBe(reason === 'http-not-listening' ? 'onboardingProviders.assistant.portBusyTitle' : 'onboardingProviders.assistant.brokenTitle')
+    }
+    expect(zhOnboardingProviders.assistant.portBusyTitle).not.toContain('配置需要更新')
+    expect(enOnboardingProviders.assistant.portBusyTitle).not.toMatch(/needs an update/i)
+    expect(zhOnboardingProviders.assistant.portBusyTitle.length).toBeGreaterThan(0)
+    expect(enOnboardingProviders.assistant.portBusyTitle.length).toBeGreaterThan(0)
+  })
+
+  it('状态框的标题由调用方按投影传入，不在框里写死', () => {
+    const box = fs.readFileSync(path.join(dir, 'AssistantStatusBox.tsx'), 'utf8')
+    expect(box).toContain('props.brokenTitle')
+    const card = fs.readFileSync(path.join(dir, 'ConnectAssistantCard.tsx'), 'utf8')
+    expect(card).toContain('brokenTitle={brokenPlan')
   })
 
   it('卡片按动作分流：retest 走已有的测试连接动作，rewrite 才写配置，主按钮不再无条件接 handleInstall', () => {
