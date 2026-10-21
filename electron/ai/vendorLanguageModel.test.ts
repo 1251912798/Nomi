@@ -15,9 +15,10 @@ describe('shared model connection identity', () => {
     expect(buildLanguageModelForVendor(vendor({ providerKind: 'anthropic', baseUrlHint: '  ' }), model, 'key'))
       .toMatchObject({ kind: 'anthropic', baseURL: 'https://api.anthropic.com/v1', modelId: 'alias' });
   });
+  // 2026-10-21：Anthropic 版本段规范化挪进 vendorModelConnection（两台发动机共用），连接配置里就带 /v1。
   it('keeps a custom Anthropic endpoint and compatible version joining', () => {
     expect(buildLanguageModelForVendor(vendor({ providerKind: 'anthropic', baseUrlHint: ' https://relay.test/messages/ ' }), model, 'key'))
-      .toMatchObject({ baseURL: 'https://relay.test/messages/' });
+      .toMatchObject({ baseURL: 'https://relay.test/messages/v1' });
     expect(buildLanguageModelForVendor(vendor({ providerKind: 'openai-compatible', baseUrlHint: 'https://relay.test/v1/' }), model, ''))
       .toMatchObject({ baseURL: 'https://relay.test/v1' });
   });

@@ -124,24 +124,9 @@ function sanitizeHeaders(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-/**
- * Anthropic base URLs must carry the version segment: `@ai-sdk/anthropic` defaults to
- * `https://api.anthropic.com/v1` and only appends `/messages` after that base.
- *
- * We persist a host root instead — onboarding probing (onboardingIpc.probeOneProtocol) strips a
- * trailing `/v1` (to avoid double-joining its own `/v1/messages`), so the stored baseUrl is
- * `https://api.anthropic.com`. The two paths hold opposite conventions for the same stored value:
- * the probe side treats it as a root and adds `/v1`; the runtime side needs `/v1` already present.
- *
- * Without this, the runtime POSTs to `{root}/messages` → 404 Not Found, while onboarding probing
- * still succeeds — surfacing as "connection passes, canvas 404s" (2026-08-28: connecting Claude
- * made the agent HTTP 404 on every request). Normalizing on read (not in storage) rescues both
- * legacy libraries already stored as roots and new connections.
- */
-export function anthropicBaseUrl(baseURL: string): string {
-  const trimmed = baseURL.trim().replace(/\/+$/, "");
-  return /\/v\d+$/i.test(trimmed) ? trimmed : `${trimmed}/v1`;
-}
+// Anthropic 版本段规范化住在 vendorModelConnection（两台发动机共用的那一处）；这里只是转出口，随本文件一起删。
+export { anthropicBaseUrl } from "./vendorModelConnection";
+import { anthropicBaseUrl } from "./vendorModelConnection";
 
 export function buildAiSdkModel(input: BuildAiSdkModelInput): LanguageModelV1 {
   const apiKey = (input.apiKey || "").trim();

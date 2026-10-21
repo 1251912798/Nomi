@@ -10,180 +10,17 @@
 // 后两条是协调 10-21 的硬要求：迁移前后必须一样，文案改动不许悄悄改掉重试行为。
 //
 // 计时类用例（想得久 / 真死连接）用真墙钟跑主进程的真实闸，单条要几十秒：默认不跑，`NOMI_TEXT_REALTIME=1` 时跑。
-import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
-import type { Model, Vendor } from "../catalog/types";
-import type { TaskRequest } from "../runtime";
-import { reply, startTextUpstream, type UpstreamProtocol, type UpstreamReply } from "./fixtures/textUpstream";
-import { isRetryableGenerationError } from "../../src/workbench/generationCanvas/runner/generationRetryPolicy";
-import { classifyGenerationError } from "../../src/workbench/observability/classifyError";
+import { reply } from "../../tests/fixtures/textTasks/textUpstream";
 
-type Selection = { vendor: Vendor; model: Model; apiKey: string };
-type Sender = EventEmitter & { id: number; isDestroyed: () => boolean };
-type Handler = (event: { sender: Sender }, payload?: unknown) => unknown;
-
-const mocks = vi.hoisted(() => ({
-  handlers: new Map<string, Handler>(),
-  selections: new Map<string, Selection>(),
-  events: new Map<string, Array<{ type?: string; delta?: string; message?: string; result?: unknown }>>(),
-  listeners: new Set<() => void>(),
-}));
-
-vi.mock("electron", () => ({
-  ipcMain: { handle: (name: string, fn: Handler) => mocks.handlers.set(name, fn) },
-  webContents: {
-    fromId: () => ({ isDestroyed: () => false, send: (_channel: string, payload: { streamId: string; event: { type?: string } }) => {
-      const list = mocks.events.get(payload.streamId) ?? [];
-      list.push(payload.event);
-      mocks.events.set(payload.streamId, list);
-      for (const listener of [...mocks.listeners]) listener();
-    } }),
-  },
-}));
+vi.mock("electron", async () => (await import("../../tests/fixtures/textTasks/textTaskCallerState")).electronMock());
 vi.mock("../ipcSenderGuard", () => ({ assertTrustedSender: () => undefined }));
 vi.mock("../events/vendorCallTrace", () => ({ traceVendorCompleted: () => undefined, traceVendorRequested: () => undefined }));
 vi.mock("../catalog/validateCandidateCredential", () => ({ revalidatePendingCredential: async () => undefined }));
-// 一张 1×1 PNG：拆解的 3 帧都是本机素材（nomi-local），读字节走真 readNomiLocalAsset 的契约形状。
-const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
-vi.mock("../assets/localAssetFile", () => ({
-  readNomiLocalAsset: (url: string) => url.startsWith("nomi-local://frame") ? { bytes: PNG, contentType: "image/png" } : null,
-}));
-vi.mock("../runtime", () => ({
-  billingKindForTaskKind: () => "text",
-  findExecutableModelForTask: (vendorKey: string) => {
-    const selection = mocks.selections.get(vendorKey);
-    if (!selection) throw new Error(`fixture vendor not registered: ${vendorKey}`);
-    return selection;
-  },
-}));
+vi.mock("../assets/localAssetFile", async () => (await import("../../tests/fixtures/textTasks/textTaskCallerState")).localAssetMock());
+vi.mock("../runtime", async () => (await import("../../tests/fixtures/textTasks/textTaskCallerState")).runtimeMock());
 
-import { registerTextStreamIpc } from "./textStreamIpc";
-import { executeTextTask } from "../textTaskRunner";
-import { runTaskIpcGuard } from "../tasks/taskIpcGuard";
-
-const owner = Object.assign(new EventEmitter(), { id: 1, isDestroyed: () => false }) as Sender;
-let registered = false;
-function ensureIpc() {
-  if (registered) return;
-  registerTextStreamIpc();
-  registered = true;
-}
-
-/** 调用方 = 进门姿势 + 请求形状。与 docs/plan/2026-10-21-text-tasks-to-pi-ai.md 普查表的编号一一对应。 */
-type Caller = { id: string; door: "stream" | "one-shot"; kind: TaskRequest["kind"]; extras?: Record<string, unknown> };
-const DATA_PNG = `data:image/png;base64,${PNG.toString("base64")}`;
-export const CALLERS: readonly Caller[] = [
-  { id: "#1 文本节点续写/重写/预设", door: "stream", kind: "chat" },
-  { id: "#2 文本节点改写选区", door: "one-shot", kind: "chat" },
-  { id: "#3 提示词优化", door: "stream", kind: "prompt_refine" },
-  { id: "#4 提示词翻译", door: "stream", kind: "prompt_refine" },
-  { id: "#5 AI 起草脚本", door: "stream", kind: "prompt_refine" },
-  { id: "#6 视频拆解读图", door: "one-shot", kind: "image_to_prompt",
-    extras: { temperature: 0.2, maxTokens: 1200, maxRetries: 0, referenceImages: ["nomi-local://frame-1.png", "nomi-local://frame-2.png", "nomi-local://frame-3.png"] } },
-  { id: "#7 浏览器提取提示词", door: "one-shot", kind: "image_to_prompt", extras: { temperature: 0.35, maxTokens: 1600, referenceImages: [DATA_PNG] } },
-  { id: "#8 MCP 试跑文本模型", door: "one-shot", kind: "chat" },
-  { id: "#9 画布单镜 Run 文本", door: "one-shot", kind: "chat" },
-];
-const STREAM_CALLERS = CALLERS.filter((caller) => caller.door === "stream");
-
-export type Observation = {
-  ok: boolean;
-  text: string;
-  deltas: string;
-  /** 渲染层拿到的那句错误（流式：error 事件的 message；一次性：Electron 包过一层的 rejection）。 */
-  error: string;
-  /** 用户点了停止：既没有 done 也没有 error。 */
-  cancelled: boolean;
-  requests: number;
-  closedEarly: number;
-};
-
-let seq = 0;
-
-async function upstream(protocol: UpstreamProtocol, script: (index: number) => UpstreamReply) {
-  const server = await startTextUpstream(protocol, (_request, index) => script(index));
-  const key = `fixture-${++seq}`;
-  const selection: Selection = {
-    vendor: { key, baseUrlHint: server.baseURL, providerKind: protocol, authType: "bearer" } as unknown as Vendor,
-    model: { modelKey: "fixture-model", vendorKey: key, kind: "text" } as unknown as Model,
-    apiKey: "sk-fixture-key",
-  };
-  mocks.selections.set(key, selection);
-  return { server, key, selection };
-}
-
-function until(check: () => boolean): Promise<void> {
-  return new Promise((resolve) => {
-    const tick = () => { if (!check()) return; mocks.listeners.delete(tick); resolve(); };
-    mocks.listeners.add(tick);
-    tick();
-  });
-}
-
-/** 按调用方的姿势跑一次。`stopAfterFirstDelta`：流式入口收到第一段字就点停止。 */
-export async function runCaller(caller: Caller, protocol: UpstreamProtocol, script: (index: number) => UpstreamReply,
-  options: { stopAfterFirstDelta?: boolean } = {}): Promise<Observation> {
-  const { server, key, selection } = await upstream(protocol, script);
-  try {
-    return await runOn(caller, server, key, selection, options);
-  } finally {
-    // 每个用例只关自己的假上游（计时类用例并发跑，不能一个用例收尾把别人的上游也关了）。
-    await server.close();
-  }
-}
-
-async function runOn(caller: Caller, server: Awaited<ReturnType<typeof upstream>>["server"], key: string, selection: Selection,
-  options: { stopAfterFirstDelta?: boolean }): Promise<Observation> {
-  const request: TaskRequest = { kind: caller.kind, prompt: `${caller.id}：缩短这句话`, extras: { modelKey: "fixture-model", ...(caller.extras || {}) } };
-  if (caller.door === "one-shot") {
-    try {
-      // runtime.runTask 的文本分支 = 付费闸 + executeTextTask；闸不在本测试范围，错误编码层（runTaskIpcGuard）是真的。
-      const result = await runTaskIpcGuard({ vendor: key, request }, () => executeTextTask({
-        ...selection, kind: caller.kind, request, taskId: `task-${seq}` }));
-      const text = textOf(result.raw);
-      return { ok: true, text, deltas: "", error: "", cancelled: false, requests: server.requests.length, closedEarly: server.closedEarly };
-    } catch (error) {
-      // Electron 把主进程 handler 的 rejection 包成这一句交给渲染层。
-      const wire = `Error invoking remote method 'nomi:tasks:run': ${error instanceof Error ? `${error.name}: ${error.message}` : String(error)}`;
-      return { ok: false, text: "", deltas: "", error: wire, cancelled: false, requests: server.requests.length, closedEarly: server.closedEarly };
-    }
-  }
-  ensureIpc();
-  const streamId = `text-${key}-0000`;
-  mocks.events.set(streamId, []);
-  await mocks.handlers.get("nomi:tasks:text:stream")!({ sender: owner }, { vendor: key, request, streamId });
-  const events = () => mocks.events.get(streamId)!;
-  if (options.stopAfterFirstDelta) {
-    await until(() => events().some((event) => event.type === "delta"));
-    await mocks.handlers.get("nomi:tasks:text:cancel")!({ sender: owner }, { streamId });
-    await server.whenClosedEarly();
-    // 被掐断的流收尾之后，确认没有补发成功 / 错误事件（不靠墙钟：等到下一次事件循环把已排队的 IPC 事件发完）。
-    await new Promise((resolve) => setImmediate(resolve));
-  } else {
-    await until(() => events().some((event) => event.type === "done" || event.type === "error"));
-  }
-  const done = events().find((event) => event.type === "done");
-  const failed = events().find((event) => event.type === "error");
-  return {
-    ok: Boolean(done),
-    text: done ? textOf((done.result as { raw?: unknown }).raw) : "",
-    deltas: events().filter((event) => event.type === "delta").map((event) => event.delta).join(""),
-    error: failed?.message ?? "",
-    cancelled: !done && !failed,
-    requests: server.requests.length,
-    closedEarly: server.closedEarly,
-  };
-}
-
-function textOf(raw: unknown): string {
-  const choice = (raw as { choices?: Array<{ message?: { content?: unknown } }> })?.choices?.[0];
-  return typeof choice?.message?.content === "string" ? choice.message.content : "";
-}
-
-/** 渲染层的两条判据：会不会自动重提（文本节点的运行控制器），错误卡归哪一类。 */
-function rendererVerdict(message: string): { retried: boolean; kind: string } {
-  return { retried: isRetryableGenerationError(new Error(message)), kind: classifyGenerationError(message).kind };
-}
+import { CALLERS, STREAM_CALLERS, rendererVerdict, runCaller } from "../../tests/fixtures/textTasks/textTaskCallerHarness";
 
 describe.each(CALLERS)("$id", (caller) => {
   it("正常回话：拿到正文（流式入口逐段收到同一段字）", async () => {
@@ -244,8 +81,36 @@ describe.each(STREAM_CALLERS)("$id · 停止", (caller) => {
   it("出字中点停止：真掐 HTTP，不发 done 也不发 error", async () => {
     const seen = await runCaller(caller, "openai-compatible", () => reply.drip(200, 20), { stopAfterFirstDelta: true });
     expect(seen.cancelled).toBe(true);
-    expect(seen.closedEarly).toBe(1);
+    expect(seen.requestAborted).toBe(true);
     expect(seen.deltas.length).toBeGreaterThan(0);
+  });
+});
+
+// 硬约束（协调 10-21 定，★2）：nomi:tasks:text:* 的 IPC 契约一字不变——#1264 的写作区改写不改一行就走新核心，靠的就是它。
+describe("nomi:tasks:text:* IPC 契约", () => {
+  const caller = STREAM_CALLERS[0]!;
+  it("成功：只有 delta{delta} 与一条 done{result}，result 是 succeeded + OpenAI choices 形状", async () => {
+    const seen = await runCaller(caller, "openai-compatible", () => reply.text("一句话。"));
+    const types = seen.ipcEvents!.map((event) => event.type);
+    expect(new Set(types)).toEqual(new Set(["delta", "done"]));
+    expect(types.at(-1)).toBe("done");
+    for (const event of seen.ipcEvents!.filter((item) => item.type === "delta")) expect(Object.keys(event).sort()).toEqual(["delta", "type"]);
+    const done = seen.ipcEvents!.find((event) => event.type === "done")!;
+    expect(Object.keys(done).sort()).toEqual(["result", "type"]);
+    expect(done.result).toMatchObject({ status: "succeeded", assets: [], kind: caller.kind,
+      raw: { choices: [{ message: { role: "assistant", content: "一句话。" } }] } });
+  });
+
+  it("失败：只有一条 error{message}，message 是字符串", async () => {
+    const seen = await runCaller(caller, "openai-compatible", () => reply.http(500, { error: { message: "boom" } }));
+    expect(seen.ipcEvents).toHaveLength(1);
+    expect(Object.keys(seen.ipcEvents![0]!).sort()).toEqual(["message", "type"]);
+    expect(seen.ipcEvents![0]).toMatchObject({ type: "error", message: expect.any(String) });
+  });
+
+  it("停止：不发 done、不发 error（渲染层自己按取消收尾）", async () => {
+    const seen = await runCaller(caller, "openai-compatible", () => reply.drip(200, 20), { stopAfterFirstDelta: true });
+    expect(seen.ipcEvents!.every((event) => event.type === "delta")).toBe(true);
   });
 });
 

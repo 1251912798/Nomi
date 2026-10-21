@@ -13,6 +13,7 @@ import { anthropicMessagesApi } from '@earendil-works/pi-ai/api/anthropic-messag
 import { z } from 'zod';
 import type { NomiModelConfig, NomiPricingBasis } from '../shared/agentLane/laneModelConfig.js';
 import { guardProviderStreams, type NomiStreamGuard } from './laneProviderGuard.mjs';
+import { applyProfileToRequestBody, getModelProfile } from '../ai/modelProfiles.js';
 
 export type { NomiStreamGuard } from './laneProviderGuard.mjs';
 
@@ -76,6 +77,18 @@ function anthropicFetch(baseURL: string, fetchRequest: NonNullable<StreamOptions
     return fetchRequest(input instanceof Request ? new Request(url, input) : url, init);
   };
   return send;
+}
+
+/**
+ * 预热三条协议的实现模块（pi 的 `*.lazy` 包装在第一次真发请求时才 import 它们；OpenAI 那条带着整个 openai SDK，冷装约 0.4s）。
+ * 只装不调：窗口加载完后的空闲预热（electron/ai/modelCallPrewarm.ts）用它，让「应用启动后第一次用文本任务」不再现装 SDK。
+ */
+export async function prewarmProviderProtocols(): Promise<void> {
+  await Promise.all([
+    import('@earendil-works/pi-ai/api/openai-completions'),
+    import('@earendil-works/pi-ai/api/openai-responses'),
+    import('@earendil-works/pi-ai/api/anthropic-messages'),
+  ]);
 }
 
 /** 每百万 token 的美元价 → pi `ModelCost` 的每百万单价（`calculateCost` 自己除以 1e6）。 */
@@ -163,7 +176,10 @@ export async function createNomiProvider(input: NomiModelConfig, fetchRequest: t
         body[config.kind === 'openai-responses' ? 'max_output_tokens' : 'max_tokens'] = cap;
       }
       if (config.temperature !== undefined) body.temperature = config.temperature;
-      return (await options?.onPayload?.(body, selected)) ?? body;
+      // 模型怪癖（o1/o3 只收 temperature 1、kimi 的 enable_thinking…）只在这一处套：lane、文本任务、编译器同一份请求体规矩。
+      // 过去 lane 在自己的 rewritePayload 里套、文本任务在 ai@4 的 fetch 包装里套，两份。Anthropic 那条协议不吃这些字段。
+      const profiled = config.kind === 'anthropic' ? body : applyProfileToRequestBody(body, getModelProfile(config.modelId));
+      return (await options?.onPayload?.(profiled, selected)) ?? profiled;
     },
   });
   const base: ProviderStreams = {

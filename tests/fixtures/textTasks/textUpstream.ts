@@ -26,7 +26,9 @@ export type UpstreamStep =
 
 export type UpstreamReply =
   | { type: "stream"; steps: UpstreamStep[] }
-  | { type: "http"; status: number; json?: unknown; body?: string; headers?: Record<string, string> };
+  | { type: "http"; status: number; json?: unknown; body?: string; headers?: Record<string, string> }
+  /** 收下请求、连响应头都不回（服务商卡在排队 / 网关不放行）。 */
+  | { type: "silent" };
 
 export type UpstreamRequest = { method: string; path: string; headers: http.IncomingHttpHeaders; body: Record<string, unknown> };
 
@@ -48,6 +50,7 @@ export const reply = {
     ...Array.from({ length: count }, (_, index) => ({ kind: "text" as const, text: `段${index}`, afterMs: gapMs })),
     { kind: "finish" },
   ] }),
+  silent: (): UpstreamReply => ({ type: "silent" }),
   hangAfterHeaders: (): UpstreamReply => ({ type: "stream", steps: [{ kind: "hang" }] }),
   cutAfterText: (text: string): UpstreamReply => ({ type: "stream", steps: [{ kind: "text", text }, { kind: "destroy", afterMs: 20 }] }),
   noFinishReason: (text: string): UpstreamReply => ({ type: "stream", steps: [{ kind: "text", text }, { kind: "end" }] }),
@@ -75,13 +78,13 @@ export async function startTextUpstream(protocol: UpstreamProtocol, script: (req
       const request: UpstreamRequest = { method: req.method || "", path: req.url || "", headers: req.headers, body };
       requests.push(request);
       const planned = script(request, requests.length - 1);
-      let finished = false;
+      // 「提前关掉」= 我们这边还没把回包写完，对端（被测的客户端）就断了：停止 / 看门狗真的掐了 HTTP。
       res.on("close", () => {
-        if (finished) return;
+        if (res.writableEnded) return;
         closedEarly += 1;
         for (const wake of closeWaiters.splice(0)) wake();
       });
-      void serve(protocol, planned, request, res).then(() => { finished = true; }, () => { finished = true; });
+      void serve(protocol, planned, request, res).catch(() => undefined);
     });
   });
   server.on("connection", (socket) => { sockets.add(socket); socket.on("close", () => sockets.delete(socket)); });
@@ -103,6 +106,7 @@ export async function startTextUpstream(protocol: UpstreamProtocol, script: (req
 }
 
 async function serve(protocol: UpstreamProtocol, planned: UpstreamReply, request: UpstreamRequest, res: http.ServerResponse): Promise<void> {
+  if (planned.type === "silent") return;
   if (planned.type === "http") {
     res.writeHead(planned.status, { "content-type": "application/json", ...(planned.headers || {}) });
     res.end(planned.body ?? JSON.stringify(planned.json ?? {}));
