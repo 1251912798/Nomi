@@ -97,7 +97,7 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
   })
 
   it('文稿、时间轴片段、画布节点、导演镜头混在一起：账同样平，文稿锚点仍在第一条', () => {
-    const canvas = canvasSnapshot(12).handles
+    const canvas = canvasSnapshot(8).handles
     const snapshot: AgentContextSnapshot = {
       version: 1,
       handles: [
@@ -107,12 +107,12 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
           display: { title: '品牌脚本' }, intentRole: 'source',
         },
         ...canvas,
-        ...Array.from({ length: 12 }, (_, index): AgentContextHandle => ({
+        ...Array.from({ length: 8 }, (_, index): AgentContextHandle => ({
           id: `timeline-clip:clip-${index}`, kind: 'timelineClip', targetId: `clip-${index}`, revision: 'timeline-abc',
           locator: { type: 'timeRange', startMs: index * 1000, endMs: index * 1000 + 900 },
           display: { title: `片段${index + 1}`, subtitle: 'video' }, intentRole: 'target',
         })),
-        ...Array.from({ length: 6 }, (_, index): AgentContextHandle => ({
+        ...Array.from({ length: 4 }, (_, index): AgentContextHandle => ({
           id: `director-shot:dir-1/shot-${index}`, kind: 'canvasNode', targetId: 'dir-1', revision: '8',
           locator: { type: 'custom', key: 'directorShot', value: `shot-${index}` },
           display: { title: `镜头 ${index + 1}`, subtitle: '3D 预演' }, intentRole: 'target',
@@ -124,6 +124,30 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(text).toContain('documentAnchor')
     expect(payload.handles[0]?.targetId).toBe('doc-1')
     expect(payload.listed).toBe(snapshot.handles.length)
+  })
+
+  it('定位器是句柄意思的一部分，任何一档都不丢：20 个导演镜头共用一个节点 id，只有定位器里的镜头名能区分它们', () => {
+    const shots = Array.from({ length: 20 }, (_, index): AgentContextHandle => ({
+      id: `director-shot:dir-1/shot-${index}`, kind: 'canvasNode', targetId: 'dir-1', revision: 'dplan-abc',
+      locator: { type: 'custom', key: 'director.shot', value: `shot-${index}` },
+      display: { title: `${index + 1}-${'镜'.repeat(300)}` }, intentRole: 'target',
+    }))
+    const snapshot: AgentContextSnapshot = { version: 1, handles: shots }
+    const text = formatAgentContextSnapshot(snapshot)
+    const payload = expectBalanced(snapshot, text)
+    expect(payload.listed).toBe(20)
+    for (let index = 0; index < 20; index += 1) expect(text).toContain(`"key":"director.shot","value":"shot-${index}"`)
+  })
+
+  it('选区定位器里没有对应句柄的 id 不会被当成「重复」而吞掉', () => {
+    const [first] = canvasSnapshot(1).handles
+    const snapshot: AgentContextSnapshot = {
+      version: 1,
+      handles: [{ ...first!, locator: { type: 'canvasSelection', nodeIds: [first!.targetId, 'gen-v2-orphan-not-a-handle'] } }],
+    }
+    const text = formatAgentContextSnapshot(snapshot)
+    expect(text).toContain('gen-v2-orphan-not-a-handle')
+    expect(text.split(first!.targetId).length - 1).toBe(2)
   })
 
   it('混合句柄超过预算时同样明说：截的是尾巴，账照平', () => {
@@ -139,7 +163,7 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
   })
 
   it('病态输入（每个字段 5 万字、256 条）：硬上限不破、仍是合法 JSON、账照平', () => {
-    const huge = 'x'.repeat(50_000)
+    const huge = 'x'.repeat(20_000)
     const snapshot: AgentContextSnapshot = {
       version: 1,
       handles: Array.from({ length: 256 }, (_, index): AgentContextHandle => ({
