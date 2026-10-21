@@ -3411,5 +3411,22 @@
       "landing": "retained",
       "afterNote": "保留：落在 keep.prompt.save-selection；保留当前按节点 DOM 归属的选区保存；重排/portal 后验收入口仍能出现，不能与右键菜单混为一项。"
     }
+  ],
+  "priorArt": [
+    {
+      "url": "https://academy.runwayml.com/gen4/gen4-references",
+      "takeaway": "Runway Gen-4：参考图悬停起名，提示词里用 @名字 调用，没起名才退回 image 1 / image 2 按上传顺序",
+      "decisionImpact": "确认了提示词里写「小图 + 名字」；改了——不再靠序号对应参考"
+    },
+    {
+      "url": "https://help.scenario.com/articles/6803483730-runway-gen-4-references",
+      "takeaway": "Scenario 讲 Gen-4：输入图编号成 image_1、image_2，提示词里写编号，顺序一变就对不上",
+      "decisionImpact": "改了：去掉编号徽标和句中「图片N」，换成名字 + 重名加「·2」，名字是现算投影不落盘"
+    },
+    {
+      "url": "https://labs.google/fx/tools/flow/faq",
+      "takeaway": "Google Flow：Frames to Video（起帧 / 尾帧）与 Ingredients to Video（主体 / 风格参考）是两种方式；没有首尾帧对调的控件",
+      "decisionImpact": "确认了「参考」与「首尾帧」分成两种方式、在参数面板顶部切；对调钮是我们新增（B3d）"
+    }
   ]
 }
