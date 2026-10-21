@@ -1,8 +1,8 @@
 {
   "name": "剪辑节点内手势的命中几何（手柄 / 播放头抓取带宽度、窄片段点击下限、屏幕像素换算、边缘自动滚动、落点帧、手势准入）",
   "subject": "canvas.clip-gesture-geometry",
-  "lifecycle": "derived",
-  "authority_kind": "derivation",
+  "lifecycle": "live-interaction",
+  "authority_kind": "decision",
   "trust_domain": "renderer",
   "fact_kind": "rule",
   "migration_status": "converged",

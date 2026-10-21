@@ -1,0 +1,35 @@
+{
+  "name": "MCP 宿主连接的生命周期（探针会话由创建方结束、会话满先挤探针、桥的失败归类与重握手、服务没起来如实上报）",
+  "subject": "mcp.host-connection-lifecycle",
+  "lifecycle": "host",
+  "authority_kind": "gateway",
+  "trust_domain": "main",
+  "fact_kind": "state-machine",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/capabilityCore/mcpHttpBridge.ts",
+    "symbol": "bridgeStdioToHttp"
+  },
+  "write_api": [
+    {
+      "path": "electron/capabilityCore/mcpHttpBridge.ts",
+      "symbol": "bridgeStdioToHttp"
+    },
+    {
+      "path": "electron/capabilityCore/mcpVerifyHttp.ts",
+      "symbol": "verifyHttpEntry"
+    },
+    {
+      "path": "electron/capabilityCore/mcpHttpServer.ts",
+      "symbol": "evictIfFull"
+    },
+    {
+      "path": "electron/capabilityCore/mcpHttpListenState.ts",
+      "symbol": "recordMcpHttpStartFailure"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-17",
+  "notes": "合同 docs/fixes/2026-10-17-mcp-host-reliability.root-cause.json：verifyHttpEntry 的创建方负责结束探针会话；evictIfFull 会话满时探针优先被淘汰；bridgeStdioToHttp 只在 404 时无条件重发、状态不明时不重放写入；recordMcpHttpStartFailure 记录本进程 HTTP 服务起不来的原因供连接状态卡读取。"
+}

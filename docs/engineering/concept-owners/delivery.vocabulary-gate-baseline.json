@@ -1,0 +1,23 @@
+{
+  "name": "词表门的历史基线选择（只收可信的历史快照，origin/main 仅在是 HEAD 祖先时才算）",
+  "subject": "delivery.vocabulary-gate-baseline",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/check-vocabularies.mjs",
+    "symbol": "resolveReferenceBaselines"
+  },
+  "write_api": [
+    {
+      "path": "scripts/check-vocabularies.mjs",
+      "symbol": "resolveReferenceBaselines"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-08",
+  "notes": "合同 docs/fixes/2026-10-08-vocab-gate-release-base.root-cause.json：resolveReferenceBaselines 收集现存历史快照，并只在祖先关系证明 origin/main 属于本分支历史时才纳入。"
+}

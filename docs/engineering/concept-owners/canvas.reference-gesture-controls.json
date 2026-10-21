@@ -1,0 +1,39 @@
+{
+  "name": "参考图控件与指针手势的单一归属（槽位加号、画布取点、原方形加号框）",
+  "subject": "canvas.reference-gesture-controls",
+  "lifecycle": "live-interaction",
+  "authority_kind": "gateway",
+  "trust_domain": "renderer",
+  "fact_kind": "projection",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/assets/AssetTile.tsx",
+    "symbol": "AssetActionTile"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/assets/AssetTile.tsx",
+      "symbol": "AssetActionTile"
+    },
+    {
+      "path": "src/workbench/assets/AssetTile.tsx",
+      "symbol": "AssetAddTile"
+    },
+    {
+      "path": "src/workbench/assets/AssetReference.tsx",
+      "symbol": "AssetReference"
+    },
+    {
+      "path": "src/workbench/assets/AssetReferenceButton.tsx",
+      "symbol": "AssetReferenceButton"
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx",
+      "symbol": "CanvasPickModeLayer"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-12",
+  "notes": "合同 docs/fixes/2026-10-12-reference-gesture-ownership.root-cause.json：已声明槽位保留原加号，共享参考头部没有第二个加号；AssetActionTile 是方形框唯一主人，AssetAddTile 是素材库添加的原虚线方块，AssetReferenceButton 只是画布取点入口；CanvasPickModeLayer 把完整的原生指针手势吃到 click 之后才退出取点模式。"
+}

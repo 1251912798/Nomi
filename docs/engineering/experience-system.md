@@ -26,14 +26,14 @@
 
 ## 门岗体检：advisory 的提示文案要和真实补齐机制对得上
 
-`scripts/run-gates-contracts.mjs` 的 `ADVISORY_FILL` 逐个声明 advisory 门岗的补齐机制：有机器补齐主体（如 docs-autosync 工作流）才可以说「自动补齐」；要人判断的（如 `check:concept-owners`）文案写清谁、怎么补。`run-gates-contracts.node-test.mjs` 核对「声明 ↔ 工作流是否真的提到它 ↔ 打出来的文案」。
+`scripts/run-gates-contracts.mjs` 的 `ADVISORY_FILL` 逐个声明 advisory 门岗的补齐机制：有机器补齐主体（如 docs-autosync 工作流）才可以说「自动补齐」；要人判断的文案写清谁、怎么补（目前 advisory 名单是空的：`check:concept-owners` 已于 2026-10-19 回到阻断）。`run-gates-contracts.node-test.mjs` 核对「声明 ↔ 工作流是否真的提到它 ↔ 打出来的文案」。
 
 ## 概念 owner 存量债
 
-`check:concept-owners` 在 main 上攒了 37 处「受管合同声明了共享边界、但还没登记成概念写接口」。登记 owner 要人判断（它是哪个概念、谁是唯一写入口），docs-autosync 补不了。
+`check:concept-owners`（阻断）在 main 上冻结了 37 处「受管合同声明了共享边界、但还没登记成概念写接口」。登记 owner 要人判断（它是哪个概念、谁是唯一写入口），docs-autosync 补不了。
 
 - 冻结：`scripts/concept-owners-baseline.json` 的 `unregistered_boundaries`，只减不增；新增的未登记边界直接红，基线比参照提交多一条也红，登记完成后对应条目必须删（陈旧也红）。
-- 负责：协调会话。排期原则：每次有 PR 碰到某份合同声明的文件，就顺手把那份合同的边界登记成概念写接口并删基线条目；14 份合同，目标 0.24 发版前清到 ≤10 处，清零后再讨论是否把这道门从 advisory 升回阻断（2026-10-01 用户拍板降级，升回要改 `gate-slimming.node-test.mjs` 并说明理由）。
+- 负责：协调会话。排期原则：每次有 PR 碰到某份合同声明的文件，就顺手把那份合同的边界登记成概念写接口并删基线条目；14 份合同，目标 0.24 发版前清到 ≤10 处，**2026-10-19 用户拍板「改回挡合并（推荐）」**，这道门已回到阻断（取代 2026-10-01/02「只提示不阻断」）：新增的未登记边界当场红，合同作者在写 `shared_boundaries` 的同一 commit 登记；10-19 起 10-07 之后攒下的 84 处已全部登记，存量债仍是基线里冻结的 37 处。
 
 ## 测试路由表（按功能分类决定必交证据）
 

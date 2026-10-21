@@ -182,7 +182,7 @@ async function upload(request, env) {
   return json({ url: `${publicBaseUrl(request, env)}/v1/assets/${encodeURIComponent(key)}`, expiresAt, channel: access.mode }, 201);
 }
 
-async function read(request, env) {
+async function readAsset(request, env) {
   const key = assetPath(request);
   if (!key) return json({ error: "not_found" }, 404);
   const object = await env.ASSETS.get(key);
@@ -229,7 +229,7 @@ export default {
         return json({ error: "usage_unavailable" }, 503);
       }
     }
-    if (["GET", "HEAD"].includes(request.method) && url.pathname.startsWith("/v1/assets/")) return read(request, env);
+    if (["GET", "HEAD"].includes(request.method) && url.pathname.startsWith("/v1/assets/")) return readAsset(request, env);
     return json({ error: "not_found" }, 404);
   },
   async scheduled(_event, env) {

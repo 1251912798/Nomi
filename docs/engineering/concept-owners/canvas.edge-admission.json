@@ -1,0 +1,35 @@
+{
+  "name": "一条新边能不能存在（目标节点种类收输入、来源可引用、模型档案有槽位）",
+  "subject": "canvas.edge-admission",
+  "lifecycle": "author",
+  "authority_kind": "decision",
+  "trust_domain": "shared",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/canvas/edgeAdmission.ts",
+    "symbol": "validateReferenceEdge"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/canvas/edgeAdmission.ts",
+      "symbol": "validateReferenceEdge"
+    },
+    {
+      "path": "electron/shared/canvas/edgeAdmission.ts",
+      "symbol": "admitNewEdges"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasEdgeWrite.ts",
+      "symbol": "appendAdmittedEdges"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/referenceEdgeCapability.ts",
+      "symbol": "connectionCreateVerdictsForTarget"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-10",
+  "notes": "合同 docs/fixes/2026-10-10-edge-validation-all-entries.root-cause.json 与 2026-10-08-canvas-node-input-owner：新边进画布只经 edgeAdmission 的判据（validateReferenceEdge / admitNewEdges）；渲染端 appendAdmittedEdges 是 store 里唯一整条追加边的函数；Agent 面 referenceEdgeCapability 重导出同一个 validateReferenceEdge，connectionCreateVerdictsForTarget 复用同一判据，只多出左右环的理由展示。已在画布上的旧边不被门删除。"
+}

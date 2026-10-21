@@ -107,7 +107,7 @@ export function trustDomainOfPath(file) {
   if (rel.startsWith('electron/')) return 'main'
   if (rel.startsWith('src/')) return 'renderer'
   if (rel.startsWith('tests/') || rel.startsWith('evals/')) return 'test'
-  if (rel.startsWith('worker/') || rel.startsWith('marketing/') || rel === 'wrangler.json') return 'site'
+  if (rel.startsWith('worker/') || rel.startsWith('workers/') || rel.startsWith('marketing/') || rel === 'wrangler.json') return 'site'
   return 'tooling'
 }
 
