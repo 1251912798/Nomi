@@ -80,9 +80,9 @@ export function checkHeadAncestry({ git, accepted, head, mainRef = 'origin/main'
       if (!actual.ok || merged.out.split('\n')[0] !== actual.out) return { ok: false, reason: `验收之后的合并提交 ${short} 不是干净的自动合并（树和 merge-tree 的结果不同，有人工改动）：要重验` }
       merges += 1
     } else if (parents.length === 1) {
-      const files = run(['diff-tree', '--no-commit-id', '--name-only', '-r', sha])
+      const files = run(['diff-tree', '-z', '--no-commit-id', '--name-only', '-r', sha])
       if (!files.ok) return { unknown: true, reason: `取不到提交 ${short} 的改动文件` }
-      const outside = files.out.split('\n').filter(Boolean).filter((file) => !file.startsWith(evidencePrefix))
+      const outside = files.out.split(String.fromCharCode(0)).filter(Boolean).filter((file) => !file.startsWith(evidencePrefix))
       if (outside.length) return { ok: false, reason: `验收之后分支又加了非合并提交 ${short}（改了 ${outside.slice(0, 2).join('、')}${outside.length > 2 ? ' 等' : ''}，不只是 ${evidencePrefix}**）：要重验` }
       evidenceCommits += 1
     } else return { ok: false, reason: `验收之后的提交 ${short} 是根提交或多路合并：要重验` }
@@ -94,7 +94,7 @@ export function checkHeadAncestry({ git, accepted, head, mainRef = 'origin/main'
 export function boardsAtHead({ git, sha }) {
   const tmp = fs.mkdtempSync(path.join(process.env.TEMP || os.tmpdir(), 'pr-boards-'))
   try {
-    const names = String(git(['ls-tree', '-r', '--name-only', sha, 'docs/design/boards/'])).split('\n').filter((name) => name.endsWith('.board.json'))
+    const names = String(git(['ls-tree', '-r', '-z', '--name-only', sha, 'docs/design/boards/'])).split(String.fromCharCode(0)).filter((name) => name.endsWith('.board.json'))
     for (const name of names) {
       const target = path.join(tmp, name)
       fs.mkdirSync(path.dirname(target), { recursive: true })
