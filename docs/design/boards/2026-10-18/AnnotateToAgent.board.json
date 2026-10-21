@@ -2,10 +2,24 @@
   "board": "AnnotateToAgent",
   "approvedOn": "2026-10-18",
   "stage": "explored",
-  "draft": "2026-10-21 设计准备线起草，未经协调会话复核；`pending: true` 的元素是 README 拍板记录没覆盖到、需要协调会话问用户的格子。",
+  "draft": "2026-10-21 设计准备线起草；同日 Q-1 – Q-6 已定（见 decisions 与 approvalUpdates）。M 风格样张由协调会话另补，stage 仍是 explored。`pending: true` 只剩 A3b 一项。",
   "approval": "docs/design/proposals/2026-10-18/README.md「分组和状态」第 3 组原文：「标注 → Agent 极简版（M） | M1–M8（A3a–A3j 是对照） | 评论模式、线程、意见列表 | 已按推荐拍板 | 三点：底栏放「评论」、节点浮条去掉「提意见」、列表分未解决 / 已解决两档」（README 注明以用户 10-18 晚到 10-19 说的为准；本线没有找到用户逐字原话，以 README 记录为准）。",
-  "sourceBoundary": "板源 = 方案画布「Nomi 0.24 交互方案」第 3 组 18 格，副本在 docs/design/proposals/2026-10-18/（preview/*.png、各格 .dc.html、canvas.json）。画布标题写明「七 · 极简版：全局只在底栏加一个「评论」（与左侧 A3 对照）」：M1–M8 是选中的方案，A3a–A3j 是对照。本清单是**只有清单**的草稿（同目录没有 AnnotateToAgent.candidates.json）：要抽候选得先把 18 格拼成 preview/AnnotateToAgent.html 再跑 node scripts/board-extract.mjs，留给拍板复核后的实现线；所以每个元素 candidates 为空，R2–R7 由 check:board-parity 的「只有清单的板」一支照查。",
-  "designIntent": "意见挂在**某个节点的某一版**上：点底栏「评论」进评论模式，在图上点一下钉点或拖一下框区域、写一句就发给 Nomi；回复与结果留在这条意见的线程里，接受 / 放弃；意见列表只分未解决 / 已解决。画面只画了图片节点。",
+  "approvalUpdates": [
+    {
+      "date": "2026-10-21",
+      "by": "用户（协调会话转述，逐字照抄）",
+      "decides": ["Q-2", "Q-4"],
+      "quote": "两处按推荐：新版本照旧自动变主图，放弃=回到上一版；请求批准时，改已有节点就在原节点上出「待生成」草稿版，说「用这些做新的」才建草稿节点。接着推设计文档、补样张。"
+    },
+    {
+      "date": "2026-10-21",
+      "by": "协调会话决定（实现细节或用户当天已表态）",
+      "decides": ["Q-1", "Q-3", "Q-5", "Q-6"],
+      "quote": "Q-1 依据用户当天原话「如果说请求批准的话，那就是说你给我创建好那个节点，然后看一下你是怎么改的，提示词或者东西得写好，然后我再确认。如果不请求批准的话，那就直接去做」"
+    }
+  ],
+  "sourceBoundary": "板源 = 方案画布「Nomi 0.24 交互方案」第 3 组 18 格，副本在 docs/design/proposals/2026-10-18/（preview/*.png、各格 .dc.html、canvas.json）。画布标题写明「七 · 极简版：全局只在底栏加一个「评论」（与左侧 A3 对照）」：M1–M8 是选中的方案，A3a–A3j 是对照。select-to-iterate 的增量元素（agent.selection-chip*、node.version-draft-slot、node.draft-node、thread.discard-revert 等）还没有画，样张由协调会话补。本清单**只有清单**（同目录没有 AnnotateToAgent.candidates.json）：要抽候选得先把格子拼成 preview/AnnotateToAgent.html 再跑 node scripts/board-extract.mjs，留给样张补齐后的实现线；所以每个元素 candidates 为空，R2–R7 由 check:board-parity 的「只有清单的板」一支照查。增量设计卡：docs/plan/2026-10-21-select-to-iterate.md。",
+  "designIntent": "意见挂在**某个节点的某一版**上：点底栏「评论」进评论模式，在图上点一下钉点或拖一下框区域、写一句就发给 Nomi；回复与结果留在这条意见的线程里。请求批准档先在原节点上摆出写好提示词的「第 N 版 · 待生成」草稿给人看、确认才生成；直接生成档直接出新版。新版落地即主图（沿用 2026-09-28 版本卡规则），线程里「放弃」= 回到上一版。另一个入口：画布上选中节点，左侧 Agent 输入框出现选区 chip，发送即确认对象。意见列表只分未解决 / 已解决。",
   "decisions": [
     {
       "id": "M-1",
@@ -21,23 +35,45 @@
     },
     {
       "id": "Q-1",
-      "text": "待定：A3e 画的「请求批准 = 推荐提示词 + 编辑 + 预填选项 +『建节点』；直接生成 = 结果在线程里原图 / 结果对比 +『再改一次 / 接受』」只在对照组里，极简版 M3 只画了一种（「改好了，看看这版」+ 放弃 / 接受）。用户 2026-10-21 原话与 A3e 一致，推荐把 A3e 的两档并进 M3 线程；需协调会话确认。",
+      "text": "A3e 的「请求批准」分流并进 M3 线程：请求批准档先给推荐提示词（可编辑、预填选项）并在原节点上摆出草稿版，确认才生成；直接生成档直接出结果，线程里原图 / 结果对比。M 风格样张由协调会话补画。",
       "appliesTo": ["thread.ask-first-draft", "thread.direct-compare"],
-      "source": "用户 2026-10-21（协调会话转述）：「如果说请求批准的话，那就是说你给我创建好那个节点，然后看一下你是怎么改的，提示词或者东西得写好，然后我再确认。如果不请求批准的话，那就直接去做，给我生成什么的。」",
-      "pending": true
+      "source": "协调会话 2026-10-21 决定，依据用户当天原话：「如果说请求批准的话，那就是说你给我创建好那个节点，然后看一下你是怎么改的，提示词或者东西得写好，然后我再确认。如果不请求批准的话，那就直接去做」"
     },
     {
       "id": "Q-2",
-      "text": "待定：M3 的「接受 / 放弃」与 A3e / A3f 的「第 3 版（候选）→ 接受后已设为主图」意味着新版本先是候选、不顶主图；而现行规则是「新生成的版本自动变主图维持现状，要改归下一刀」（docs/plan/2026-09-28-version-cards.md:49）。两条拍板相互打架，实现前必须由用户定。",
-      "appliesTo": ["thread.accept-discard", "thread.direct-compare"],
-      "source": "docs/plan/2026-09-28-version-cards.md:49 与 M3 / A3e / A3f 画面",
-      "pending": true
+      "text": "Agent 出的新版本沿用 2026-09-28 版本卡规则「新生成的版本自动变主图」（docs/plan/2026-09-28-version-cards.md:49）；线程「放弃」= 主图回到上一版并在线程里写明，被放弃的那一版留在版本卡里（删除仍是版本卡上单独、可撤销的动作，本线默认，协调会话可改）；「接受」= 意见标为已解决。M3 / A3e / A3f 原画的「第 N 版（候选）」「接受后才设为主图」作废。",
+      "appliesTo": ["thread.accept-discard", "thread.discard-revert", "thread.direct-compare", "thread.candidate-label"],
+      "source": "用户 2026-10-21（协调会话转述）：「两处按推荐：新版本照旧自动变主图，放弃=回到上一版；请求批准时，改已有节点就在原节点上出「待生成」草稿版，说「用这些做新的」才建草稿节点。接着推设计文档、补样张。」"
     },
     {
       "id": "Q-3",
-      "text": "待定：A3d 发送前预览、A3g 草稿与重试、A3h 目标失效、A3f 已解决可重新打开这四组状态，极简版没有重画也没有否掉；推荐作为 M 线程 / 列表的状态沿用（文案和布局按 M 的长相改），需协调会话确认。",
-      "appliesTo": ["comment.before-send-preview", "comments.draft-retry", "comments.target-gone", "comments.resolved-reopen"],
-      "source": "README 第 3 组只列了三点拍板，A3 其余格未表态",
+      "text": "A3d 发送前预览、A3f 已解决可重新打开、A3g 草稿与重试、A3h 目标失效四组状态沿用，长相改 M 风格，由协调会话补画。",
+      "appliesTo": ["comment.before-send-preview", "comments.resolved-reopen", "comments.draft-retry", "comments.target-gone"],
+      "source": "协调会话 2026-10-21 决定"
+    },
+    {
+      "id": "Q-4",
+      "text": "请求批准档改已有节点：Agent 在原节点上出一版「第 N 版 · 待生成」草稿（提示词写好、看得出和上一版哪里不同），确认才在这一位生成；只有用户说「用这些做新的」才建草稿节点（连线标明来源）。A3e 左格「建节点」按钮的字面随之改，文案由样张定。",
+      "appliesTo": ["node.version-draft-slot", "node.draft-node", "thread.ask-first-draft"],
+      "source": "用户 2026-10-21（协调会话转述）：「两处按推荐：新版本照旧自动变主图，放弃=回到上一版；请求批准时，改已有节点就在原节点上出「待生成」草稿版，说「用这些做新的」才建草稿节点。接着推设计文档、补样张。」"
+    },
+    {
+      "id": "Q-5",
+      "text": "评论模式的钉点 / 框区域只是标位置，生成仍是整图重出；真·局部重绘属于第二版。线程里保留「当前模型不能只改圈内，会按圈的意思重新生成，圈外也可能变」那行提示。",
+      "appliesTo": ["comment.pin", "comment.box", "thread.outside-may-change-note"],
+      "source": "协调会话 2026-10-21 决定（用户 10-21 默认 3 把「圈区域局部改」放第二版）"
+    },
+    {
+      "id": "Q-6",
+      "text": "选区批量上限暂定 12 个，超出时 chip 明示「已选 N 个，本次带前 12 个」，不静默；这个数要用真实项目复核。静默截断（formatAgentContextSnapshot）由另一条修复线在独立分支修。",
+      "appliesTo": ["agent.selection-chip.over-limit"],
+      "source": "协调会话 2026-10-21 决定"
+    },
+    {
+      "id": "Q-7",
+      "text": "待定：A3b 的「画一笔」「选中图上已有的字或笔迹」在 M2（点一下 / 拖一下）之外是否保留；画一笔目前由线程里的「圈一下」承担。",
+      "appliesTo": ["comment.place.stroke-and-select-existing"],
+      "source": "README 第 3 组三点拍板未覆盖",
       "pending": true
     }
   ],
@@ -45,22 +81,22 @@
     {
       "url": "https://docs.flora.ai/editor/fauna",
       "takeaway": "Flora 的 Fauna：选中的节点自动进下一条消息的上下文，未选中的用 @ 引用；单条最多 15 个节点；Assist 模式先列出要跑的节点和预估用量、批准才跑，Auto 模式直接跑。",
-      "decisionImpact": "确认了：意见 / 选区跟着「发给 Nomi」走，不要求用户复述对象；Assist / Auto 两档与 Nomi 的请求批准 / 直接生成同构，支持 Q-1 把 A3e 两档并进线程。改了：批量要有明示上限（见设计卡增量 B-1）。"
+      "decisionImpact": "确认了：选区 chip 自动进输入框、发送即确认；Assist / Auto 两档与请求批准 / 直接生成同构（Q-1）。改了：批量要有明示上限（Q-6，暂定 12）。"
     },
     {
       "url": "https://code.claude.com/docs/en/vs-code",
       "takeaway": "Claude Code 的 VS Code 扩展：编辑器选区自动出现在输入框，页脚显示选了几行，× 可取消，换选区后指示器回来。",
-      "decisionImpact": "确认了：发出前对象必须看得见、可一键去掉（A3d「本次意见」+ 线程头的节点名 · 第 N 版）；改了：发出去的消息里也要留下对象（Agent 面板里只放引用那一条）。"
+      "decisionImpact": "确认了：选区 chip 跟着选区实时变、× 只管这一次、显示数量；发出前对象看得见（A3d「本次意见」、线程头的节点名 · 第 N 版）。改了：发出去的消息里也要留下对象。"
     },
     {
       "url": "https://www.lovart.ai/docs",
       "takeaway": "Lovart 的 Mark 模式：在图上做标记自动进输入框，单次最多 10 个 mark；用户在 Trustpilot 抱怨改错后重来要再扣一次。",
-      "decisionImpact": "确认了：评论模式钉点 / 框区域（M2）这条路有先例；改了：要花钱的重做必须先让人看清要改哪一版（线程头带版次、A3h 版次对不上时不悄悄改绑）。"
+      "decisionImpact": "确认了：评论模式钉点 / 框区域（M2）有先例；改了：请求批准档先在原节点上摆出草稿版、报价卡逐个写明改哪几个，确认才生成（Q-4）。"
     },
     {
       "url": "https://tldraw.dev/blog/agents-cant-point",
       "takeaway": "tldraw「Agents can't point」：聊天里的「这个 / 这里」对 Agent 不可靠，主张把指代锚定到画布上的具体形状。",
-      "decisionImpact": "确认了：意见绑定到节点 + 版本 + 点 / 框坐标（M2、线程头），不靠 Agent 从一句话里猜对象；A3h 目标失效时保留意见、不改绑到看起来相近的东西。"
+      "decisionImpact": "确认了：意见与选区 chip 都绑定到节点 + 当时那一版（+ 点 / 框坐标），不靠 Agent 从一句话里猜对象；A3h 目标失效时保留意见、不改绑到看起来相近的东西。"
     }
   ],
   "elements": [
@@ -102,7 +138,7 @@
     },
     {
       "id": "comment.pin",
-      "label": "点一下：在图上钉一个带编号的蓝点，旁边一行输入「写一句意见」+ ↑ 圆钮",
+      "label": "点一下：在图上钉一个带编号的蓝点，旁边一行输入「写一句意见」+ ↑ 圆钮（只标位置，生成仍是整图重出，Q-5）",
       "cells": ["M2-comment-mode", "M7-english"],
       "candidates": [],
       "status": "missing",
@@ -111,7 +147,7 @@
     },
     {
       "id": "comment.box",
-      "label": "拖一下：在图上框一块区域（蓝框 + 右上编号），框下一行输入 + ↑",
+      "label": "拖一下：在图上框一块区域（蓝框 + 右上编号），框下一行输入 + ↑（只标位置，Q-5）",
       "cells": ["M2-comment-mode", "M7-english"],
       "candidates": [],
       "status": "missing",
@@ -124,18 +160,17 @@
       "cells": ["A3b-place", "A3i-english"],
       "candidates": [],
       "status": "missing",
-      "owner": "协调会话（待问用户：M2 只画了点一下 / 拖一下；画一笔改由线程里的「圈一下」承担，选已有笔迹是否保留未表态）",
+      "owner": "协调会话（Q-7 待问用户：M2 只画了点一下 / 拖一下；画一笔改由线程里的「圈一下」承担，选已有笔迹是否保留未表态）",
       "pending": true,
       "states": ["selected", "zh-en", "dark"]
     },
     {
       "id": "comment.before-send-preview",
-      "label": "A3d：发送前「本次意见 N 条」——节点名 · 第 N 版、意见原文、原图 / 带笔迹两张预览、「已自动保存」、一颗「发给 Nomi」；发出后 Agent 面板里只放一条引用（编号 + 节点名 · 第 N 版），回复在意见线程里",
+      "label": "A3d（Q-3 沿用，改 M 风格）：发送前「本次意见 N 条」——节点名 · 第 N 版、意见原文、原图 / 带笔迹两张预览、「已自动保存」、一颗「发给 Nomi」；发出后 Agent 面板里只放一条引用（编号 + 节点名 · 第 N 版），回复在意见线程里",
       "cells": ["A3d-before-send"],
       "candidates": [],
       "status": "missing",
-      "owner": "协调会话（Q-3 待确认是否沿用）",
-      "pending": true,
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；M 风格样张由协调会话补）",
       "states": ["empty", "loading", "long-text", "zh-en", "dark"]
     },
     {
@@ -194,13 +229,31 @@
     },
     {
       "id": "thread.accept-discard",
-      "label": "结果下「放弃」（文字）/「接受」（黑底主按钮，在右）",
+      "label": "结果下「放弃」（文字）/「接受」（黑底主按钮，在右）。Q-2：新版落地已是主图；「接受」= 这条意见标为已解决；「放弃」见 thread.discard-revert",
       "cells": ["M3-thread", "M8-dark", "M7-english"],
       "candidates": [],
       "status": "missing",
-      "owner": "协调会话（Q-2：接受 / 放弃与「新版本自动变主图」打架，先定语义再实现）",
-      "pending": true,
+      "owner": "select-to-iterate 实现线（待派）",
       "states": ["hover", "disabled", "zh-en", "dark"]
+    },
+    {
+      "id": "thread.discard-revert",
+      "label": "「放弃」= 主图回到这次之前的那一版（走现有设主图 owner，可撤销），线程写一行说明「已回到第 3 版，第 4 版还在版本里」；被放弃的那一版留在版本卡里",
+      "cells": ["M3-thread"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "select-to-iterate 实现线（待派）",
+      "note": "M3 原画只有「放弃」二字，说明与回到上一版的语义是 2026-10-21 Q-2 新增，样张由协调会话补。",
+      "states": ["hover", "zh-en", "dark"]
+    },
+    {
+      "id": "thread.candidate-label",
+      "label": "A3e / A3f：新版标「第 3 版（候选）」、接受后才「已设为主图」",
+      "cells": ["A3e-nomi-reply", "A3f-resolved", "A3i-english"],
+      "candidates": [],
+      "status": "dropped",
+      "userDecision": { "quote": "两处按推荐：新版本照旧自动变主图，放弃=回到上一版；请求批准时，改已有节点就在原节点上出「待生成」草稿版，说「用这些做新的」才建草稿节点。接着推设计文档、补样张。", "date": "2026-10-21" },
+      "states": ["zh-en"]
     },
     {
       "id": "thread.composer",
@@ -213,23 +266,69 @@
     },
     {
       "id": "thread.ask-first-draft",
-      "label": "A3e 左（请求批准档）：Nomi 复述看到了什么 + 「推荐提示词」框（可编辑）+ 预填选项 chip + 模型限制一行灰字 + 「复制提示词」/「建节点」",
+      "label": "A3e 左（请求批准档，Q-1 并进 M3）：Nomi 复述看到了什么 + 「推荐提示词」框（可编辑）+ 预填选项 chip + 「复制提示词」+ 主按钮；主按钮不再是「建节点」，而是在原节点上出「第 N 版 · 待生成」草稿（Q-4），文案由样张定",
       "cells": ["A3e-nomi-reply", "A3i-english"],
       "candidates": [],
       "status": "missing",
-      "owner": "协调会话（Q-1：是否并进 M3 线程；「建节点」是新建草稿节点还是在原节点上出待生成的一版，见设计卡增量 B-3）",
-      "pending": true,
+      "owner": "select-to-iterate 实现线（待派）",
       "states": ["empty", "long-text", "zh-en", "dark"]
     },
     {
-      "id": "thread.direct-compare",
-      "label": "A3e 右（直接生成档）：结果在线程里，原图 / 结果滑块对比 + 「图片节点 · 镜头 03 新版 · 第 3 版（候选）」+「在画布看」+「再改一次 / 接受」",
+      "id": "thread.outside-may-change-note",
+      "label": "线程里那行灰字：「当前模型不能只改圈内，会按圈的意思重新生成，圈外也可能变。」",
       "cells": ["A3e-nomi-reply", "A3i-english"],
       "candidates": [],
       "status": "missing",
-      "owner": "协调会话（Q-1 / Q-2）",
-      "pending": true,
+      "owner": "select-to-iterate 实现线（待派）",
+      "states": ["long-text", "zh-en", "dark"]
+    },
+    {
+      "id": "thread.direct-compare",
+      "label": "A3e 右（直接生成档，Q-1 并进 M3）：结果在线程里，原图 / 结果滑块对比 + 「图片节点 · 镜头 03 · 第 3 版」（Q-2：已是主图，不写「候选」）+「在画布看」+「再改一次」+ 放弃 / 接受",
+      "cells": ["A3e-nomi-reply", "A3i-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "select-to-iterate 实现线（待派）",
       "states": ["loading", "error", "zh-en", "dark"]
+    },
+    {
+      "id": "node.version-draft-slot",
+      "label": "请求批准档改已有节点（Q-4）：原节点版本里出一位「第 N 版 · 待生成」草稿（提示词写好、能看出和上一版哪里不同；复用版本卡「生成中 · 新的一版会落在这里」占位的位置），确认后就在这一位生成；报价卡上去掉这一项 = 草稿位消失",
+      "cells": [],
+      "candidates": [],
+      "status": "missing",
+      "owner": "select-to-iterate 实现线（待派）",
+      "note": "没有样张，协调会话补画；草稿是 Run 上的草稿投影，不写进节点 history。",
+      "states": ["empty", "loading", "error", "selected", "hover", "long-text", "zh-en", "dark"]
+    },
+    {
+      "id": "node.draft-node",
+      "label": "说「用这些做新的」时建的草稿节点（Q-4）：副标「待生成」，从参与的节点连线过来，确认才生成",
+      "cells": [],
+      "candidates": [],
+      "status": "missing",
+      "owner": "select-to-iterate 实现线（待派）",
+      "note": "没有样张，协调会话补画。",
+      "states": ["empty", "loading", "error", "selected", "zh-en", "dark"]
+    },
+    {
+      "id": "agent.selection-chip",
+      "label": "左侧 Agent 输入框的画布选区 chip：选中节点即出现（灰色引用 chip，小图 + 节点名；>4 个收成「镜03 等 5 个」），× = 这次不带（不改画布选中），发送即确认；发出的气泡里留同一颗",
+      "cells": [],
+      "candidates": [],
+      "status": "missing",
+      "owner": "select-to-iterate 实现线（待派）",
+      "note": "依据 2026-09-06 Agent 面板 v4 定稿第 2 条「范围由选中 chip 决定」与用户 10-21 默认 1；没有样张，协调会话补画。",
+      "states": ["empty", "selected", "hover", "long-text", "narrow", "zh-en", "dark"]
+    },
+    {
+      "id": "agent.selection-chip.over-limit",
+      "label": "批量超限提示（Q-6）：「已选 23 个，本次带前 12 个」，不静默",
+      "cells": [],
+      "candidates": [],
+      "status": "missing",
+      "owner": "select-to-iterate 实现线（待派）",
+      "states": ["long-text", "narrow", "zh-en", "dark"]
     },
     {
       "id": "comments.toggle",
@@ -270,32 +369,29 @@
     },
     {
       "id": "comments.resolved-reopen",
-      "label": "A3f：已解决的意见打开后历史回复和结果都在（「你接受了结果 · 时间」），可「重新打开」",
+      "label": "A3f（Q-3 沿用，改 M 风格）：已解决的意见打开后历史回复和结果都在（「你接受了结果 · 时间」），可「重新打开」",
       "cells": ["A3f-resolved"],
       "candidates": [],
       "status": "missing",
-      "owner": "协调会话（Q-3 待确认是否沿用）",
-      "pending": true,
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；M 风格样张由协调会话补）",
       "states": ["selected", "zh-en"]
     },
     {
       "id": "comments.draft-retry",
-      "label": "A3g：没发出去的意见是草稿、退出再回来还在；发送失败写「没发出去，还没开始生成」+ 重试；重试是同一次发送、不会重复生成",
+      "label": "A3g（Q-3 沿用，改 M 风格）：没发出去的意见是草稿、退出再回来还在；发送失败写「没发出去，还没开始生成」+ 重试；重试是同一次发送、不会重复生成",
       "cells": ["A3g-draft-retry"],
       "candidates": [],
       "status": "missing",
-      "owner": "协调会话（Q-3 待确认是否沿用）",
-      "pending": true,
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；M 风格样张由协调会话补）",
       "states": ["loading", "error", "zh-en"]
     },
     {
       "id": "comments.target-gone",
-      "label": "A3h：原版本被删 / 节点被删 / 版次对不上时意见保留并标出来；给「看发送时的图」「选新目标…」「移除这条意见」「看第 2 版」「改绑到第 3 版」，不悄悄改绑",
+      "label": "A3h（Q-3 沿用，改 M 风格）：原版本被删 / 节点被删 / 版次对不上时意见保留并标出来；给「看发送时的图」「选新目标…」「移除这条意见」「看第 2 版」「改绑到第 3 版」，不悄悄改绑",
       "cells": ["A3h-target-gone"],
       "candidates": [],
       "status": "missing",
-      "owner": "协调会话（Q-3 待确认是否沿用）",
-      "pending": true,
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；M 风格样张由协调会话补）",
       "states": ["error", "long-text", "zh-en"]
     }
   ],
@@ -324,17 +420,31 @@
     },
     {
       "censusId": "VER-01",
-      "function": "版本卡：右上数字角标、原地铺开、悬停设为主图 / 下载 / 删除、生成中占位「新的一版会落在这里」",
+      "function": "版本卡：右上数字角标、原地铺开、悬停设为主图 / 下载 / 删除、生成中占位「新的一版会落在这里」、新版自动变主图",
       "before": "NodeVersionCards（lab-zh-light-version-cards-open-hover / -new-version-pending）",
-      "after": "thread.accept-discard",
-      "disposition": "kept：版本卡不动；线程的「接受 / 放弃」是否等于「设为主图 / 删除这一版」待 Q-2"
+      "after": "node.version-draft-slot",
+      "disposition": "kept + 加一态：版本卡与「新版自动变主图」规则不动（Q-2）；请求批准档多一位「第 N 版 · 待生成」草稿（Q-4），线程「放弃」走同一个设主图 owner 回到上一版"
     },
     {
       "censusId": "AGENT-01",
-      "function": "Agent 面板：用户气泡里的附件 / 技能 chip、输入框的 @ 引用与画布点选参考钮",
+      "function": "Agent 面板：用户气泡里的附件 / 技能 chip、输入框的 @ 引用与画布点选参考钮、时间轴片段 chip、3D-BOX「正在改：镜头 N」标签",
       "before": "V4UserBubble、AgentPanelV4Composer（lab-zh-light-sent-bubble-with-file-chip / lab-zh-light-composer-chips-file-skill-clip）",
+      "after": "agent.selection-chip",
+      "disposition": "kept：原有 chip、@、参考钮、焦点标签都不动；画布选区 chip 排在附件之后，选区 chip 的 × 只管这一次、不清画布选中"
+    },
+    {
+      "censusId": "AGENT-02",
+      "function": "分镜表「交给 Agent 改」：选中镜头挂成 Agent 引用（今天输入框里看不见）",
+      "before": "StoryboardPlanEditor.tsx:476-488（projectAgentReferences）",
+      "after": "agent.selection-chip",
+      "disposition": "changed：在输入框里显示成同一种选区 chip（设计卡 G-3）"
+    },
+    {
+      "censusId": "AGENT-03",
+      "function": "评论发出后 Agent 面板里的那条引用（编号 + 节点名 · 第 N 版）",
+      "before": "新增（A3d 右格）",
       "after": "comment.before-send-preview",
-      "disposition": "kept：面板原有 chip 与 @ 不动；评论发出后面板里多一条引用（编号 + 节点名 · 第 N 版），回复在意见线程里（Q-3）"
+      "disposition": "added：回复在意见线程里，面板里只放引用"
     }
   ]
 }
