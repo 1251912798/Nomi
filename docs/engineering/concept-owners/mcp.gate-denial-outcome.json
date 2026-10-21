@@ -1,0 +1,23 @@
+{
+  "name": "确认被拒绝 / 超时的终态说明（生成门与降档共用）",
+  "subject": "mcp.gate-denial-outcome",
+  "lifecycle": "execution",
+  "authority_kind": "decision",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/capabilityCore/mcpGateConfirmation.ts",
+    "symbol": "generationDenialOutcome"
+  },
+  "write_api": [
+    {
+      "path": "electron/capabilityCore/mcpGateConfirmation.ts",
+      "symbol": "generationDenialOutcome"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-17",
+  "notes": "合同 docs/fixes/2026-10-17-mcp-host-reliability.root-cause.json：generationDenialOutcome 给「拒绝没有终态」一个终态，生成门与降档共用。"
+}

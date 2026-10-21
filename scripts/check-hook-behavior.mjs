@@ -119,7 +119,7 @@ function makeDocsProbeRepo({ docPath, extraPaths = [] }) {
 }
 
 /** 把真实的 PreToolUse 载荷喂给真实的 hook，返回它的退出码。 */
-function runHook(hookPath, cwd, command = 'git push -u origin HEAD') {
+function runHookScript(hookPath, cwd, command = 'git push -u origin HEAD') {
   const payload = JSON.stringify({ tool_input: { command }, cwd })
   try {
     execFileSync('bash', [hookPath], { input: payload, cwd, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
@@ -150,7 +150,7 @@ function checkReaderBehaviour(root, problems) {
   try {
     // ② 唯一书写者盖出的戳，读戳方必须认。
     writeStamp(dir)
-    if (runHook(hookPath, dir) !== 0) {
+    if (runHookScript(hookPath, dir) !== 0) {
       problems.push(
         `读戳方不认 ${STAMPER_REL} 盖出的戳（本该放行却拦了）——` +
           `这正是「gates 全过也推不上去」那个 bug 的形状。`,
@@ -169,20 +169,20 @@ function checkReaderBehaviour(root, problems) {
       }
       writeStamp(dir)
       setField(dir, field, tamper(dir))
-      if (runHook(hookPath, dir) === 0) {
+      if (runHookScript(hookPath, dir) === 0) {
         problems.push(`读戳方没有校验戳里的 \`${field}=\`——篡改它之后依然放行，闸门少一维。`)
       }
     }
 
     // ③ 无戳必须拦。
     fs.rmSync(resolveMarkerPath(dir), { force: true })
-    if (runHook(hookPath, dir) === 0) {
+    if (runHookScript(hookPath, dir) === 0) {
       problems.push('读戳方在**没有戳**时依然放行——有代码改动却不需要过五门。')
     }
 
     // ③ 老格式（只有时间戳）的戳不能当凭据。
     fs.writeFileSync(resolveMarkerPath(dir), `${new Date().toISOString()}\n`)
-    if (runHook(hookPath, dir) === 0) {
+    if (runHookScript(hookPath, dir) === 0) {
       problems.push('读戳方把老格式（只有时间戳）的戳当成了有效凭据——那种戳不认树也不认提交。')
     }
 
@@ -191,7 +191,7 @@ function checkReaderBehaviour(root, problems) {
     git(['worktree', 'add', '-q', '-b', 'sibling', sibling], dir)
     try {
       writeStamp(dir) // 只给主树盖戳
-      if (runHook(hookPath, sibling) === 0) {
+      if (runHookScript(hookPath, sibling) === 0) {
         problems.push(
           `读戳方让**另一棵 worktree** 的戳给本次推送背书了——戳必须落在各自的 ` +
             `\`git rev-parse --absolute-git-dir\`（即 ${MARKER_BASENAME} 一树一份），否则多 worktree 下既误放也误杀。`,
@@ -230,7 +230,7 @@ function checkDocsOnlyDetection(root, problems) {
     const dir = makeDocsProbeRepo({ docPath, extraPaths })
     try {
       // 一枚戳都不盖：doc-only 判真才会放行，判假就一定撞「没有戳」而被拦。
-      const blocked = runHook(hookPath, dir) !== 0
+      const blocked = runHookScript(hookPath, dir) !== 0
       if (expect === 'allow' && blocked) {
         problems.push(
           `doc-only 误判：${label} —— outgoing 全是文档却被要求过五门。` +
@@ -289,7 +289,7 @@ function checkCommandDetection(root, problems) {
   try {
     writeStamp(stamped) // 只有它过了五门
     for (const { cmd, cwd, expect, label } of commandMatrix(stamped, bare)) {
-      const blocked = runHook(hookPath, cwd, cmd) !== 0
+      const blocked = runHookScript(hookPath, cwd, cmd) !== 0
       if (expect === 'block' && !blocked) {
         problems.push(
           `命令识别漏判：${label} —— 闸门放行了一棵**没过五门**的树。` +
@@ -332,7 +332,7 @@ function checkSecretGuard(root, problems) {
   const hookPath = path.join(root, 'scripts/claude-hooks/secret-guard.sh')
   if (!fs.existsSync(hookPath)) return
   for (const { cmd, expect, label } of SECRET_GUARD_MATRIX) {
-    const blocked = runHook(hookPath, os.tmpdir(), cmd) !== 0
+    const blocked = runHookScript(hookPath, os.tmpdir(), cmd) !== 0
     if (expect === 'block' && !blocked) {
       problems.push(
         `secret-guard 漏判：${label} —— 放行了会跳过 pre-commit 敏感数据扫描的命令。` +

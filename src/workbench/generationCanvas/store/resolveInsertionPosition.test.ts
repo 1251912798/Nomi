@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveInsertionPosition, type NodeBox } from './resolveInsertionPosition'
+import { occupiedSize, resolveGroupInsertionDelta, resolveInsertionPosition, type NodeBox } from './resolveInsertionPosition'
 import { DEFAULT_NODE_SIZE } from '../model/generationNodeKinds'
 
 const imageSize = DEFAULT_NODE_SIZE.image
@@ -101,5 +101,48 @@ describe('resolveInsertionPosition × visible area（2026-09-25「新建尽量�
 
   it('a base outside the view keeps the old spiral behaviour (callers placing next to a source node)', () => {
     expect(resolveInsertionPosition('image', { x: 3000, y: 3000 }, [], 6, view)).toEqual({ x: 3000, y: 3000 })
+  })
+})
+
+describe('resolveInsertionPosition × 渲染占位（2026-10-18：避让不能只认名义 node.size）', () => {
+  const tallImage = (x: number, y: number): NodeBox => ({
+    kind: 'image', position: { x, y }, size: { width: 320, height: 180 },
+    result: { id: 'r', type: 'image', url: 'nomi-local://asset/p/a.png', createdAt: 1 },
+    meta: { imageWidth: 1000, imageHeight: 1778, imageAspectRatio: 1000 / 1778 },
+  })
+
+  it('occupiedSize：竖版图按渲染高度占位，比名义高；没有媒体事实的盒子等于名义尺寸', () => {
+    expect(occupiedSize(tallImage(0, 0)).height).toBeGreaterThan(180 + 64)
+    expect(occupiedSize({ kind: 'image', position: { x: 0, y: 0 }, size: { width: 280, height: 200 } })).toEqual({ width: 280, height: 200 })
+  })
+
+  it('已有的竖图：新卡不落进它渲染出来的下半身', () => {
+    const tall = tallImage(100, 100)
+    const placed = resolveInsertionPosition('image', { x: 100, y: 100 }, [tall])
+    const rendered = occupiedSize(tall)
+    const overlap = placed.x < 100 + rendered.width && placed.x + imageSize.width > 100 && placed.y < 100 + rendered.height && placed.y + imageSize.height > 100
+    expect(overlap).toBe(false)
+  })
+
+  it('newSize：新节点比名义大时，用它的真实占位找空位', () => {
+    // 已有一张贴在 base 右下的小卡；新节点实际 900 宽，必须整块让开。
+    const existing = [box('image', 700, 100)]
+    const placed = resolveInsertionPosition('image', { x: 100, y: 100 }, existing, 6, null, { width: 900, height: 200 })
+    const overlap = placed.x < 700 + imageSize.width && placed.x + 900 > 700 && placed.y < 100 + imageSize.height && placed.y + 200 > 100
+    expect(overlap).toBe(false)
+  })
+
+  it('螺旋用尽：落到所有已有节点的下方，不再返回一个没验过的「最后一格」', () => {
+    const huge = box('image', -50_000, -50_000, { width: 100_000, height: 100_000 })
+    const placed = resolveInsertionPosition('image', { x: 100, y: 100 }, [huge])
+    expect(placed.y).toBeGreaterThanOrEqual(-50_000 + 100_000)
+    expect(placed.x).toBe(100)
+  })
+
+  it('整簇避让同理：螺旋用尽整簇下移到所有节点下方', () => {
+    const huge = box('image', -50_000, -50_000, { width: 100_000, height: 100_000 })
+    const delta = resolveGroupInsertionDelta([box('image', 100, 100), box('image', 500, 100)], [huge])
+    expect(100 + delta.y).toBeGreaterThanOrEqual(-50_000 + 100_000)
+    expect(delta.x).toBe(0)
   })
 })

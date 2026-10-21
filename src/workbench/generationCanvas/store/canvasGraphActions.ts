@@ -328,7 +328,8 @@ export const createCanvasGraphActions: CanvasSliceCreator<CanvasGraphActions> = 
     // 建节点，连边。目标一定是刚建出来的新节点（天然没有别的来源），不持久化任何身份字段，也没有「给已有节点补出处边」的入口。
     const source = get().nodes.find((candidate) => candidate.id === sourceNodeId)
     if (!source || !canDeriveOutput(kind, source, node.kind)) return null
-    const created = get().addNode(node)
+    // 落点只是期望：永远走 addNode 的避让总闸（类型不收 exactPosition，运行时再封一道，JS / any 调用方也绕不过）。
+    const created = get().addNode({ ...node, exactPosition: false })
     writeCanvasEdge(set, get, sourceNodeId, created.id, mode, undefined, undefined, () => ({ ok: true as const, mode: mode ?? 'reference', targetParamKey: undefined }))
     return created
   },

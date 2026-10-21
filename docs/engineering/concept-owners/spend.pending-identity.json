@@ -18,6 +18,10 @@
     {
       "path": "electron/productionRun/productionPendingSpend.ts",
       "symbol": "projectPendingSpendConfirm"
+    },
+    {
+      "path": "electron/productionRun/productionPendingSpend.ts",
+      "symbol": "assertPendingSpendIdentity"
     }
   ],
   "forbidden_derivations": [

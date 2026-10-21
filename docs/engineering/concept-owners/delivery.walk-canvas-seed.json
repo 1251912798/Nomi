@@ -1,0 +1,23 @@
+{
+  "name": "走查种子必须是当前格式（后台写入器不会在打开后改写它）",
+  "subject": "delivery.walk-canvas-seed",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "test",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "tests/ux/_canvasSeed.mjs",
+    "symbol": "assertCurrentFormatCanvasSeed"
+  },
+  "write_api": [
+    {
+      "path": "tests/ux/_canvasSeed.mjs",
+      "symbol": "assertCurrentFormatCanvasSeed"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-18",
+  "notes": "合同 docs/fixes/2026-10-18-walk-seed-current-format.root-cause.json：assertCurrentFormatCanvasSeed 用生产判据 shouldBackfillPreview / shouldRelocalizeResult 判种子，会被后台写入器改写的种子在 setup 就失败，而不是在前后对比时偶发。"
+}

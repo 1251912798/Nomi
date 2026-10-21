@@ -1,0 +1,27 @@
+{
+  "name": "生成框挂载路径的常驻数据（挂之前就在内存里，挂载 0 次桌面桥 IO）",
+  "subject": "canvas.composer-resident-data",
+  "lifecycle": "session",
+  "authority_kind": "writer",
+  "trust_domain": "renderer",
+  "fact_kind": "state-machine",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/composerResidentData.ts",
+    "symbol": "warmComposerResidentData"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/composerResidentData.ts",
+      "symbol": "warmComposerResidentData"
+    },
+    {
+      "path": "src/config/modelCatalogCache.ts",
+      "symbol": "peekChannelMappings"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-16",
+  "notes": "合同 docs/fixes/2026-10-16-composer-mount-path.root-cause.json：peekChannelMappings 是渠道 mapping 全表的内存 owner；warmComposerResidentData 启动后把生成框要用的数据载进内存，按变更事件失效。"
+}

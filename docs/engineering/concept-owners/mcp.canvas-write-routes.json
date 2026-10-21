@@ -1,0 +1,27 @@
+{
+  "name": "外部 MCP 画布写操作的传输路由（headless | live_renderer）与先问真人的名单",
+  "subject": "mcp.canvas-write-routes",
+  "lifecycle": "host",
+  "authority_kind": "schema",
+  "trust_domain": "shared",
+  "fact_kind": "value-object",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/agentCapabilities/canvasWrite.ts",
+    "symbol": "CANVAS_WRITE_OPERATION_ROUTES"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/agentCapabilities/canvasWrite.ts",
+      "symbol": "CANVAS_WRITE_OPERATION_ROUTES"
+    },
+    {
+      "path": "electron/shared/agentCapabilities/canvasWrite.ts",
+      "symbol": "CANVAS_WRITE_ELICIT_FIRST_OPERATIONS"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-17",
+  "notes": "合同 docs/fixes/2026-10-17-mcp-canvas-write-routes.root-cause.json：CANVAS_WRITE_OPERATION_ROUTES 让每个画布写操作恰有一条路由，无头 / 渲染端两份名单从它派生；CANVAS_WRITE_ELICIT_FIRST_OPERATIONS 是协议边界先问真人一次的写。"
+}
