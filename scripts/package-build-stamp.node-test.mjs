@@ -18,6 +18,13 @@ function fixture(t) {
   git('config', 'user.name', 'Fixture')
   fs.writeFileSync(path.join(root, '.gitignore'), 'dist/\ndist-electron/\n')
   fs.writeFileSync(path.join(root, 'source.txt'), 'initial')
+  for (const [file, text] of [
+    ['src/app.ts', 'export {}'], ['package.json', '{}'], ['pnpm-lock.yaml', 'lock'], ['README.md', 'r'],
+    ['docs/plan/p.md', 'p'], ['docs/release-notes/v1.md', 'notes'], ['tests/ux/walk.mjs', 'w'], ['tests/ux/fixtures/f.txt', 'f'],
+  ]) {
+    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
+    fs.writeFileSync(path.join(root, file), text)
+  }
   git('add', '.')
   git('commit', '-m', 'fixture')
   for (const output of ['dist', 'dist-electron']) fs.mkdirSync(path.join(root, output))
@@ -32,7 +39,7 @@ test('correct stamps pass; stale renderer or electron stamp fails at CLI before 
     build()
     const stamp = path.join(root, output, 'build-stamp.json')
     const data = JSON.parse(fs.readFileSync(stamp))
-    fs.writeFileSync(stamp, JSON.stringify({ ...data, head: '0'.repeat(40) }))
+    fs.writeFileSync(stamp, JSON.stringify({ ...data, tree: '0'.repeat(40) }))
     const result = spawnSync(process.execPath, [cli, 'verify'], { cwd: root, encoding: 'utf8' })
     assert.equal(result.status, 1)
     assert.match(result.stderr, /先 `pnpm build`/)
@@ -40,11 +47,10 @@ test('correct stamps pass; stale renderer or electron stamp fails at CLI before 
   }
 })
 
-for (const change of ['head', 'staged', 'unstaged', 'untracked', 'missing', 'malformed', 'partial']) {
+for (const change of ['staged', 'unstaged', 'untracked', 'missing', 'malformed', 'partial']) {
   test(`${change} change invalidates build`, t => {
     const { root, git, build } = fixture(t)
     build()
-    if (change === 'head') git('commit', '--allow-empty', '-m', 'new HEAD')
     if (change === 'staged' || change === 'unstaged') {
       fs.writeFileSync(path.join(root, 'source.txt'), change)
       if (change === 'staged') git('add', '.')
@@ -62,7 +68,6 @@ test('dirty content is hashed, actual index is preserved, later dirty edits inva
   const index = git('write-tree')
   fs.writeFileSync(path.join(root, 'source.txt'), 'dirty one')
   build()
-  assert.equal(verifyBuild(root).dirty, true)
   assert.equal(git('write-tree'), index)
   fs.writeFileSync(path.join(root, 'source.txt'), 'dirty two')
   assert.throws(() => verifyBuild(root), /pnpm build/)
@@ -91,9 +96,61 @@ test('assertFreshBuild: no stamp refuses, stale stamp refuses, matching stamp pa
   const { root, build } = fixture(t)
   assert.throws(() => assertFreshBuild(root), /构建产物比源码旧（或没有构建），先跑 pnpm run build/)
   build()
-  assert.equal(assertFreshBuild(root).dirty, false)
+  assert.equal(typeof assertFreshBuild(root).tree, 'string')
   fs.writeFileSync(path.join(root, 'source.txt'), 'edited after build')
   assert.throws(() => assertFreshBuild(root), /构建产物比源码旧（或没有构建），先跑 pnpm run build/)
   build()
   assert.doesNotThrow(() => assertFreshBuild(root))
+})
+
+// 指纹只算会影响构建产物的输入：构建之后写证据、提交文档 / 测试，戳仍新鲜；改 src / 依赖清单，过期。
+const writeAt = (root, file, text) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text) }
+for (const [name, act] of [
+  ['evidence written under docs/evidence', ({ root }) => writeAt(root, 'docs/evidence/2026-10-22/shot.png', 'png')],
+  ['an existing docs file edited', ({ root }) => writeAt(root, 'docs/plan/p.md', 'edited')],
+  ['a docs change committed after the build', ({ root, git }) => { writeAt(root, 'docs/plan/new.md', 'n'); git('add', '.'); git('commit', '-m', 'docs') }],
+  ['an empty commit after the build', ({ git }) => git('commit', '--allow-empty', '-m', 'empty')],
+  ['a walk script edited', ({ root }) => writeAt(root, 'tests/ux/walk.mjs', 'edited')],
+  ['root markdown edited', ({ root }) => writeAt(root, 'README.md', 'edited')],
+]) {
+  test(`stays fresh: ${name}`, t => {
+    const f = fixture(t)
+    f.build()
+    act(f)
+    assert.doesNotThrow(() => assertFreshBuild(f.root))
+  })
+}
+for (const [name, act] of [
+  ['a src file edited', ({ root }) => writeAt(root, 'src/app.ts', 'export const x = 1')],
+  ['a new src file', ({ root }) => writeAt(root, 'src/new.ts', 'x')],
+  ['package.json edited', ({ root }) => writeAt(root, 'package.json', '{"a":1}')],
+  ['the lockfile edited', ({ root }) => writeAt(root, 'pnpm-lock.yaml', 'lock2')],
+  ['release notes (imported ?raw by src) edited', ({ root }) => writeAt(root, 'docs/release-notes/v1.md', 'notes2')],
+  ['a test fixture (referenced by src/devlab) edited', ({ root }) => writeAt(root, 'tests/ux/fixtures/f.txt', 'f2')],
+  ['a src change committed after the build', ({ root, git }) => { writeAt(root, 'src/app.ts', 'export const y = 2'); git('add', '.'); git('commit', '-m', 'src') }],
+]) {
+  test(`goes stale: ${name}`, t => {
+    const f = fixture(t)
+    f.build()
+    act(f)
+    assert.throws(() => assertFreshBuild(f.root), /pnpm run build/)
+  })
+}
+
+test('a v1 stamp (head + dirty) is void', t => {
+  const f = fixture(t)
+  f.build()
+  for (const output of ['dist', 'dist-electron']) {
+    const stamp = path.join(f.root, output, 'build-stamp.json')
+    fs.writeFileSync(stamp, JSON.stringify({ ...JSON.parse(fs.readFileSync(stamp)), version: 1 }))
+  }
+  assert.throws(() => assertFreshBuild(f.root), /pnpm run build/)
+})
+
+test('build: src edited during the build fails; docs written during the build do not', t => {
+  const f = fixture(t)
+  assert.throws(() => stampedBuild(f.root, () => writeAt(f.root, 'src/app.ts', 'changed mid-build')), /构建期间/)
+  assert.throws(() => assertFreshBuild(f.root), /pnpm run build/)
+  assert.doesNotThrow(() => stampedBuild(f.root, () => writeAt(f.root, 'docs/evidence/mid-build.png', 'png')))
+  assert.doesNotThrow(() => assertFreshBuild(f.root))
 })

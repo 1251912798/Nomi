@@ -15,7 +15,7 @@
 - 之前：只有付费跑（`tests/ux/_paidRun.mjs`）核戳。免费的 14 个以上入口都不核，I-b1a（生成框）走查发现之前几轮一直跑旧构建。
 - 之后：戳缺失 / 与当前源码树不一致，起跑前拒跑，提示「构建产物比源码旧（或没有构建），先跑 pnpm run build」。
 - 不做：不加跳过开关；打包形态（传 `executablePath` 指向安装包）跑的是安装包自带产物，不看仓库 dist，不核；`dev-electron` 等开发者自己起 App 的脚本不产出证据，不管。
-- 已知代价：戳是整棵源码树的指纹，构建后改任何受 git 管的文件（含文档）都会让戳过期，要重 build。这正是要的严格度（构建后又改了文件，证据就不对应）。
+- 已知代价：戳 v2 是「构建输入树」的指纹（默认全算，只排除已证明不进产物的 .github、.claude、.agents、根目录 md、docs（除 release-notes）、tests（除 ux/fixtures），证据见 package-build-stamp.mjs 的 NON_INPUTS 注释）：构建后提交文档、写证据不过期，改 src / 依赖清单过期；旧 v1 戳作废。
 - 真实任务：①戳新时 `tests/ux/smoke.e2e.mjs` 在隔离资料目录、屏外窗口真起 Electron 通过（17 条断言）；②构建后新增一个文件，同一脚本拒跑并给出上面的提示；③`pnpm run gates` 的末步就是 `pnpm run build`，CI 各 job 都是 build 在走查之前（已逐个核对 workflow 顺序）。
 - 指标：量具 = 本卡的节点测试（见 ★9）；主指标 = 入口覆盖 100%（门岗守）。
 
