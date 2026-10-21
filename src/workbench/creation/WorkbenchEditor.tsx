@@ -4,6 +4,9 @@ import { CreationDocumentSwitcher } from './CreationDocumentSwitcher'
 import { useTranslation } from 'react-i18next'
 import { EditorContent, type Editor, type JSONContent } from '@tiptap/react'
 import SelectionGeneratePopover from './SelectionGeneratePopover'
+import { AiRewriteBar } from './aiRewrite/AiRewriteBar'
+import { setRewriteLabelProvider } from './aiRewrite/rewriteSession'
+import { useAiRewrite } from './aiRewrite/useAiRewrite'
 import { WorkbenchIconButton } from '../../design/actions'
 import { TIPTAP_PLACEHOLDER_CLASSES } from '../assets/tiptapPlaceholderClasses'
 import { cn } from '../../utils/cn'
@@ -172,6 +175,17 @@ export default function WorkbenchEditor(): JSX.Element {
     persistentSelection: true,
   })
 
+  const rewrite = useAiRewrite(editor)
+  // 文档里的 ✓ ✕ 是裸 DOM 小部件，文案在挂载时从 i18n 取（语言切换后下一次画就是新语言）。
+  React.useEffect(() => {
+    setRewriteLabelProvider(() => ({
+      accept: t('creationAi.rewrite.accept'),
+      discard: t('creationAi.rewrite.discard'),
+      acceptHint: t('creationAi.rewrite.acceptHint'),
+      discardHint: t('creationAi.rewrite.discardHint'),
+    }))
+  }, [t])
+
   // 编辑器挂载时用**增强版**覆盖项目会话层的文稿端口（多了光标/选区锚与选区读），卸载时退回基线。
   // 基线本身随项目在（documentSessionPort），这里不是「有没有文稿能力」的开关。
   React.useEffect(() => {
@@ -230,7 +244,10 @@ export default function WorkbenchEditor(): JSX.Element {
         selectionVersion={selectionState.version}
         onStoryboard={storyboardPlannerLauncher ? () => storyboardPlannerLauncher(selectionState.text) : undefined}
         onCreated={clearSelectionText}
+        onAiEdit={rewrite.controller ? () => { rewrite.controller?.open() } : undefined}
+        hidden={rewrite.session !== null}
       />
+      <AiRewriteBar editor={editor} rewrite={rewrite} />
       <div
         ref={scrollRef}
         className={cn(

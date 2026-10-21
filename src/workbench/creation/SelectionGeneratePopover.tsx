@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { Editor } from '@tiptap/react'
 import { IconBold, IconH1, IconH2, IconItalic, IconMovie, IconPhoto, IconVideo } from '@tabler/icons-react'
 import { WorkbenchIconButton } from '../../design/actions'
+import { NomiLogoMark } from '../../design/identity'
 import { cn } from '../../utils/cn'
 import { createNodeFromSelection, type SelectionGenerationKind } from './createNodeFromSelection'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
@@ -14,6 +15,10 @@ type SelectionGeneratePopoverProps = {
   selectionVersion: number
   onStoryboard?: () => void
   onCreated?: () => void
+  /** 点「AI 编辑」。不给 = 不显示这一颗。 */
+  onAiEdit?: () => void
+  /** AI 编辑进行中：浮条让位给输入框。 */
+  hidden?: boolean
 }
 
 type SelectionPopoverPosition = {
@@ -30,7 +35,7 @@ type SelectionFormatAction = {
   onClick: () => void
 }
 
-const POPOVER_WIDTH = 260
+const POPOVER_WIDTH = 344
 const POPOVER_HEIGHT = 40
 const POPOVER_OFFSET = 10
 
@@ -64,6 +69,8 @@ export default function SelectionGeneratePopover({
   selectionVersion,
   onStoryboard,
   onCreated,
+  onAiEdit,
+  hidden = false,
 }: SelectionGeneratePopoverProps): JSX.Element | null {
   const { t } = useTranslation()
   const normalizedText = selectedText.trim()
@@ -106,7 +113,7 @@ export default function SelectionGeneratePopover({
     }
   }, [editor, normalizedText, updatePosition])
 
-  if (!normalizedText || !editor || !position) return null
+  if (hidden || !normalizedText || !editor || !position) return null
 
   const handleCreate = (kind: SelectionGenerationKind) => {
     if (createNodeFromSelection({ selectedText: normalizedText, kind, addGenerationNode, setWorkspaceMode })) {
@@ -151,7 +158,7 @@ export default function SelectionGeneratePopover({
       className={cn(
         'workbench-selection-popover',
         'absolute z-20 inline-flex items-center',
-        'w-[260px] h-[40px] gap-[5px] p-1 pr-[5px]',
+        'w-[344px] h-[40px] gap-[5px] p-1 pr-[5px]',
         'border border-workbench-border rounded-nomi-lg',
         'bg-workbench-overlay shadow-workbench-pop',
         'backdrop-blur-[18px] backdrop-saturate-[1.06]',
@@ -192,6 +199,32 @@ export default function SelectionGeneratePopover({
           'self-stretch w-px mx-[2px] my-[3px] bg-workbench-border-soft',
         )}
       />
+      {onAiEdit ? (
+        <>
+          <button
+            type="button"
+            className={cn(
+              'workbench-selection-popover__tool workbench-selection-popover__tool--ai',
+              'h-[30px] inline-flex items-center justify-center gap-1 px-2',
+              'border border-workbench-border-soft rounded-workbench-control',
+              'bg-transparent text-body-sm font-medium text-workbench-accent',
+              'cursor-pointer whitespace-nowrap',
+              'hover:border-nomi-ink-30 hover:bg-workbench-accent-soft',
+            )}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onAiEdit}
+          >
+            <NomiLogoMark size={16} />
+            {t('creationAi.rewrite.button')}
+          </button>
+          <div
+            className={cn(
+              'workbench-selection-popover__divider',
+              'self-stretch w-px mx-[2px] my-[3px] bg-workbench-border-soft',
+            )}
+          />
+        </>
+      ) : null}
       <div
         className={cn('workbench-selection-popover__generate-group', 'inline-flex items-center gap-[3px] shrink-0')}
         aria-label={t('creationAi.selection.generate')}
