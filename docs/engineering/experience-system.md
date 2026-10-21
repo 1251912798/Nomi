@@ -41,7 +41,7 @@
 
 | 类别 | 必交证据（`## 验收证据` 里每项一行） | 工具现状 / 计划（调研：#1035 `docs/research/2026-10-06-experience-testing-prior-art.md`） |
 |---|---|---|
-| 新界面 / 改交互 | 真组件样张（用户已拍板）· 按钮普查（每个可点目标按七字段预期表逐项对照，见下）· AI 用户走查 · 中文 / 英文 / 窄窗截图 | 样张、截图已有；**按钮普查 `planned`**（现有 ⑫ `catalog.mjs` 只覆盖分镜表格；计划接 Playwright 无障碍树 + `@axe-core/playwright`，全量跑里加带种子的 gremlins.js；不接 Storybook / Cucumber）；**AI 走查 `stagehand (planned)`**（计划先试 Stagehand：MIT、约 2.5 万 star、observe / act / extract、能直接接 Playwright Page、带 OTel trace——用 Playwright `_electron` 拿到 Page 再交给它；只有接不上才自己写薄跑器记录「预期 → 实际 → 感受」，参考 UXAgent） |
+| 新界面 / 改交互 | 真组件样张（用户已拍板）· 按钮普查（每个可点目标按七字段预期表逐项对照，见下）· AI 用户走查 · 中文 / 英文 / 窄窗截图 · **体验成绩单**（`ui-task-scorecard`，2026-10-21 起；一页入口，取代重复的测试表 / 验收页摘要，见下「体验成绩单」） | 样张、截图已有；**按钮普查 `planned`**（现有 ⑫ `catalog.mjs` 只覆盖分镜表格；计划接 Playwright 无障碍树 + `@axe-core/playwright`，全量跑里加带种子的 gremlins.js；不接 Storybook / Cucumber）；**AI 走查 `stagehand (planned)`**（计划先试 Stagehand：MIT、约 2.5 万 star、observe / act / extract、能直接接 Playwright Page、带 OTel trace——用 Playwright `_electron` 拿到 Page 再交给它；只有接不上才自己写薄跑器记录「预期 → 实际 → 感受」，参考 UXAgent） |
 | 花钱 | 最小量真付费抽检 + 三方对账 · 故障注入（断网、供应商报错、超时） | 已有 `_paidRun` harness（发版最小抽检，平时走零额度回环）、`pb07` 故障类走查 |
 | 长跑 / 可打断 | 端到端任务链（关窗、重启、断网后续上，且不重复扣费） | 已有 J05 暂停 / 恢复、pb05 |
 | Agent 行为 | 意图评测（⑩ 说的=摆的、建了几份方案、首次做对率） | 已有 `evals/` + ⑩ 铁律测试 |
@@ -54,6 +54,18 @@
 - **判据两处同源**：推送前（pre-push 钩子 → `scripts/pre-push-contracts.mjs` → `check:pr-judgement`）、CI（`check:pr-judgement`，Contracts 里）与合并前扫描（协调会话）都调 `scripts/pr-body-criteria.mjs`（设计卡 ★ 格 / 独立验收 / 逃逸合同 detected_by / 中文标题）和 `scripts/pr-judgement-lib.mjs`（路由 / 规则与门岗范围）。#1094 的形状（推送放行、合并才红）靠这一份消灭。#1033 的「规则与门岗改动范围」也在这里。
 - **生效日**：`effectiveFrom`（表里）之前开的 PR 路由只警告；规则与门岗范围不吃宽限。
 - **其他层的工具决定**（调研结论）：功能分类 = 自写路由表 + Playwright tag / annotation 打类别标签（不接 Kiwi、TestLink）；交互预期 = ⑫ `catalog.mjs` + Playwright role/name 定位；体验指标 = 主指标逃逸数 + 关键时刻 User Timing + 用户每次亲手用 30 分钟后填 SUS；测试体系体检 = 汇总 Playwright JSON 报告（每层多久没跑、哪些用例时好时坏），Stryker 先不上、继续手动变异校验。
+
+## 体验成绩单（2026-10-21，依据 R-uxprocess §2、§6（协调本地报告，仓库外）；试行）
+
+回答「这次改动让创作者做成那件事顺不顺」，一页：场景 id、完成 n/d、主指标现状 → 当前、护栏、最大摩擦与决定、没验证的、证据路径。
+
+- **场景从哪来**：`tests/ux/journeys/catalog.json` 的 `scenarios`（8–12 条，试行上限 12）：来源（用户原话 / issue / 走查 / 调研报告，带出处）、创作者类型、时刻、频率证据（不知道写「未知」）、成功终点、失败护栏、状态、负责人。状态两档：`research-candidate`（只有来源和假设）/ `executable`（指向带 runner 的旅程或仓库里存在的走查脚本）；旧 runner 只读 `journeys`，从不执行候选。校验在 `check:feel`。
+- **机器数据**：复用 `collect.mjs` 的采集和 `report.mjs`；`machineFromRun` 把一次运行的 `steps.json` 变成成绩单的机器那一栏（每步一次尝试，失败和没走到的步骤原样保留）。还没接采集器的走查，指标先手工填，口径写「脚本计数」或「估算」，不冒充实测。
+- **真人数据**：SEQ（1–7）和人工事件（误点 / 回退 / 求助 / 首次尝试）单独录入，没有就是 `null`；有分数必须是真人给的（`rater: "human"` 并写参与者），AI 不代打；报告里不出总分。
+- **谁消费**：实现线自验、独立验收线、协调会话读同一页，不再各抄一份；页面由记录 JSON 渲染（`node tests/ux/experience/scorecard.mjs <记录.json>`），单测核对「页面 = 记录渲染结果」，不许手改页面。
+- **接上采集器之前**：路由证据允许引用手工填的记录；接上以后机器那一栏改成自动生成，只剩真人栏手填。
+- **试行期（两周，自 2026-10-21）不加严**：路由证据行 `ui-task-scorecard` 仍接受「未验证：原因」，两周后复盘再决定要不要加严（比如必须引用成绩单路径）。
+- 样例：`docs/evidence/2026-10-21-ux-scorecard/`（#1264 一张、已合入的 #1181 对照一张）。
 
 ## 节奏：每个 PR 按路由跑，全量由用户手动触发
 
