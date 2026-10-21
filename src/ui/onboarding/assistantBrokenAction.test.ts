@@ -29,7 +29,7 @@ describe('助手失效框主按钮：原因 → 动作', () => {
 
   it('读配置就判死的过时形状：只有重写配置能修，一律「升级接入」', () => {
     for (const reason of MCP_VERIFY_REASONS) {
-      expect(resolveAssistantBrokenAction({ staleShape: true, reason })).toEqual({ action: 'upgrade', labelKey: 'onboardingProviders.assistant.upgrade', titleKey: 'onboardingProviders.assistant.brokenTitle' })
+      expect(resolveAssistantBrokenAction({ staleShape: true, reason })).toEqual({ action: 'upgrade', labelKey: 'onboardingProviders.assistant.upgrade', titleKey: 'onboardingProviders.assistant.brokenTitle', badgeKey: 'onboardingProviders.assistant.status.broken' })
     }
   })
 
@@ -49,6 +49,22 @@ describe('助手失效框主按钮：原因 → 动作', () => {
     expect(enOnboardingProviders.assistant.portBusyTitle).not.toMatch(/needs an update/i)
     expect(zhOnboardingProviders.assistant.portBusyTitle.length).toBeGreaterThan(0)
     expect(enOnboardingProviders.assistant.portBusyTitle.length).toBeGreaterThan(0)
+  })
+
+  it('卡头徽章也出自同一个投影：端口被占不再写「配置已失效」，其余原因仍是配置失效', () => {
+    for (const reason of MCP_VERIFY_REASONS) {
+      const { badgeKey } = resolveAssistantBrokenAction({ staleShape: false, reason })
+      expect(badgeKey, reason).toBe(reason === 'http-not-listening' ? 'onboardingProviders.assistant.status.portBusy' : 'onboardingProviders.assistant.status.broken')
+    }
+    expect(zhOnboardingProviders.assistant.status.portBusy).not.toContain('配置')
+    expect(enOnboardingProviders.assistant.status.portBusy).not.toMatch(/configuration/i)
+    expect(zhOnboardingProviders.assistant.status.portBusy.length).toBeGreaterThan(0)
+    expect(enOnboardingProviders.assistant.status.portBusy.length).toBeGreaterThan(0)
+  })
+
+  it('卡头 statusLabel 在失效分支从投影取值', () => {
+    const card = fs.readFileSync(path.join(dir, 'ConnectAssistantCard.tsx'), 'utf8')
+    expect(card).toContain('brokenPlan.badgeKey')
   })
 
   it('状态框的标题由调用方按投影传入，不在框里写死', () => {

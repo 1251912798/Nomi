@@ -115,26 +115,27 @@ export function formatUsageAgo(at: number, now: number, locale: string, justNow:
 }
 
 /**
- * 失效框「原因 → 标题 + 主按钮 + 真正能做的动作」（唯一 owner；卡片只按它分流，标题与按钮都不再各写一份）：
+ * 失效框「原因 → 卡头徽章 + 标题 + 主按钮 + 真正能做的动作」（唯一 owner；卡片只按它分流，标题与按钮都不再各写一份）：
  * - upgrade / repair：配置本身有问题，重写 nomi 条目能修，标题说「配置需要更新」；
  * - retest：配置和身份都对、是本机服务没起来（端口被占）——重写配置释放不了端口，能做的只有处理完再测一次；
  *   标题说服务没启动，不再说配置要更新。
  * 以 Record 穷举 McpVerifyReason：新增原因不归类就过不了类型检查。
  */
 export type AssistantBrokenAction = 'upgrade' | 'repair' | 'retest'
-export type AssistantBrokenPlan = { action: AssistantBrokenAction; labelKey: string; titleKey: string }
+export type AssistantBrokenPlan = { action: AssistantBrokenAction; labelKey: string; titleKey: string; badgeKey: string }
 
 const CONFIG_TITLE = 'onboardingProviders.assistant.brokenTitle'
-const BROKEN_BY_REASON: Record<McpVerifyReason, { action: Exclude<AssistantBrokenAction, 'upgrade'>; titleKey: string }> = {
-  ok: { action: 'repair', titleKey: CONFIG_TITLE },
-  'not-installed': { action: 'repair', titleKey: CONFIG_TITLE },
-  'command-missing': { action: 'repair', titleKey: CONFIG_TITLE },
-  'argument-missing': { action: 'repair', titleKey: CONFIG_TITLE },
-  'spawn-failed': { action: 'repair', titleKey: CONFIG_TITLE },
-  timeout: { action: 'repair', titleKey: CONFIG_TITLE },
-  'handshake-failed': { action: 'repair', titleKey: CONFIG_TITLE },
-  'client-auth-missing': { action: 'repair', titleKey: CONFIG_TITLE },
-  'http-not-listening': { action: 'retest', titleKey: 'onboardingProviders.assistant.portBusyTitle' },
+const CONFIG_BADGE = 'onboardingProviders.assistant.status.broken'
+const BROKEN_BY_REASON: Record<McpVerifyReason, { action: Exclude<AssistantBrokenAction, 'upgrade'>; titleKey: string; badgeKey: string }> = {
+  ok: { action: 'repair', titleKey: CONFIG_TITLE, badgeKey: CONFIG_BADGE },
+  'not-installed': { action: 'repair', titleKey: CONFIG_TITLE, badgeKey: CONFIG_BADGE },
+  'command-missing': { action: 'repair', titleKey: CONFIG_TITLE, badgeKey: CONFIG_BADGE },
+  'argument-missing': { action: 'repair', titleKey: CONFIG_TITLE, badgeKey: CONFIG_BADGE },
+  'spawn-failed': { action: 'repair', titleKey: CONFIG_TITLE, badgeKey: CONFIG_BADGE },
+  timeout: { action: 'repair', titleKey: CONFIG_TITLE, badgeKey: CONFIG_BADGE },
+  'handshake-failed': { action: 'repair', titleKey: CONFIG_TITLE, badgeKey: CONFIG_BADGE },
+  'client-auth-missing': { action: 'repair', titleKey: CONFIG_TITLE, badgeKey: CONFIG_BADGE },
+  'http-not-listening': { action: 'retest', titleKey: 'onboardingProviders.assistant.portBusyTitle', badgeKey: 'onboardingProviders.assistant.status.portBusy' },
 }
 
 const BROKEN_LABEL_KEY: Record<AssistantBrokenAction, string> = {
@@ -144,7 +145,7 @@ const BROKEN_LABEL_KEY: Record<AssistantBrokenAction, string> = {
 }
 
 export function resolveAssistantBrokenAction(input: { staleShape: boolean; reason: McpVerifyReason }): AssistantBrokenPlan {
-  if (input.staleShape) return { action: 'upgrade', labelKey: BROKEN_LABEL_KEY.upgrade, titleKey: CONFIG_TITLE }
+  if (input.staleShape) return { action: 'upgrade', labelKey: BROKEN_LABEL_KEY.upgrade, titleKey: CONFIG_TITLE, badgeKey: CONFIG_BADGE }
   const row = BROKEN_BY_REASON[input.reason]
-  return { action: row.action, labelKey: BROKEN_LABEL_KEY[row.action], titleKey: row.titleKey }
+  return { action: row.action, labelKey: BROKEN_LABEL_KEY[row.action], titleKey: row.titleKey, badgeKey: row.badgeKey }
 }

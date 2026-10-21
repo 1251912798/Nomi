@@ -331,11 +331,17 @@ export function ConnectAssistantCard({
     none: t('onboardingProviders.assistant.status.none'),
     checking: t('onboardingProviders.assistant.status.checking'),
   })[badge]
+  // 失效时卡头徽章 / 标题 / 主按钮做什么由共享投影按原因定：端口被占改写配置没用，主按钮就是「测试连接」，不再写「修复接入」。
+  const brokenPlan = activation.box === 'broken'
+    ? resolveAssistantBrokenAction({ staleShape: Boolean(staleShape), reason: verify?.reason ?? 'ok' })
+    : null
   const statusLabel = !hasTarget
     ? t('onboardingProviders.assistant.status.notDetected')
     : activation.box === 'none' && !info.tokenReady
       ? t('onboardingProviders.assistant.status.notReady')
-      : badgeLabel(activation.badge)
+      : brokenPlan
+        ? t(brokenPlan.badgeKey)
+        : badgeLabel(activation.badge)
 
   const clientDot = (key: ClientKey): JSX.Element | null => {
     const dot: AssistantDot = connectionOf(key).dot
@@ -374,10 +380,6 @@ export function ConnectAssistantCard({
       {activation.box === 'elsewhere' && client.configuredSettingsDir ? <div className="mt-0.5">{client.configuredSettingsDir}</div> : null}
     </>
   ) : null
-  // 失效时主按钮做什么由共享投影按原因定：端口被占改写配置没用，主按钮就是「测试连接」，不再写「修复接入」。
-  const brokenPlan = activation.box === 'broken'
-    ? resolveAssistantBrokenAction({ staleShape: Boolean(staleShape), reason: verify?.reason ?? 'ok' })
-    : null
   const primaryLabel = activation.box === 'none'
     ? t('onboardingProviders.assistant.connect', { client: label })
     : activation.box === 'elsewhere'
