@@ -12,7 +12,7 @@ import { IconLanguage } from '@tabler/icons-react'
 import type { Editor } from '@tiptap/react'
 import { NodePromptToolIconButton } from './NodePromptToolCluster'
 import { getTextBrain } from '../../api/promptLibraryApi'
-import { runWorkbenchTextTaskStream } from '../../api/taskApi'
+import { runWorkbenchTextTaskStream, textTaskFailureText } from '../../api/taskApi'
 import { isProjectExecutionContextCurrent, withProjectAction } from '../../project/projectCanvasReadSurface'
 import type { PromptReference } from '../../assets/promptMentions'
 import { promptTextBetween, replacePromptRange, translateRange } from './promptTranslateDoc'
@@ -96,8 +96,9 @@ export function NodePromptTranslator({
       editor.view.dispatch(replacePromptRange(editor.state, range, `${lead}${restored.prompt}${trail}`, mentionReferences).scrollIntoView())
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return
-      onFeedback(e instanceof Error && e.message
-        ? t('generationCommon.translator.failedWithReason', { reason: e.message })
+      const reason = textTaskFailureText(e)
+      onFeedback(reason
+        ? t('generationCommon.translator.failedWithReason', { reason })
         : t('generationCommon.translator.failed'))
     } finally {
       setRunning(false)

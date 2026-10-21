@@ -11,7 +11,7 @@ import { cn } from '../../../utils/cn'
 import { NomiLogoMark, WorkbenchButton } from '../../../design'
 import { NodePromptToolIconButton } from './NodePromptToolCluster'
 import { getTextBrain } from '../../api/promptLibraryApi'
-import { runWorkbenchTextTaskStream } from '../../api/taskApi'
+import { runWorkbenchTextTaskStream, textTaskFailureText } from '../../api/taskApi'
 import { isProjectExecutionContextCurrent, withProjectAction } from '../../project/projectCanvasReadSurface'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
@@ -93,7 +93,7 @@ export function NodePromptOptimizer({ node, isVideo }: { node: GenerationCanvasN
       else setError(t('generationCommon.optimizer.emptyResult'))
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return
-      setError(e instanceof Error ? e.message : t('generationCommon.optimizer.failed'))
+      setError(textTaskFailureText(e) || t('generationCommon.optimizer.failed'))
     } finally {
       setRunning(false)
       abortRef.current = null
