@@ -64,7 +64,7 @@ describe("项目列表摘要读面", () => {
 
   it("项目文件夹被删（missing）：卡片照出，标 missing，不拖垮别的项目", async () => {
     const healthy = createProject({ name: "健康" });
-    const gone = createProject({ name: "被外部删掉", rootPath: path.join(projectsRoot, "外部文件夹") });
+    const gone = createProject({ name: "被外部删掉", rootPath: path.join(projectsRoot, "ext-folder-project") });
     const goneEntry = findRecentWorkspace(settingsRoot, gone.id) as { rootPath: string };
     fs.rmSync(goneEntry.rootPath, { recursive: true, force: true });
 
