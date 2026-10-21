@@ -16,7 +16,7 @@
     },
     {
       "id": "D2",
-      "text": "底栏选 A（左模型 + 变体 + 参数摘要，右三个提示词钮 + 分隔 + 数量 + 生成钮）；生成钮改回原来的 ↑ 圆钮（30px、--nomi-ink 底、IconArrowUp、tooltip「生成（Enter）」），「生成」字钮作废；优化钮保留 N 标。",
+      "text": "底栏选 A（左模型 + 变体 + 参数摘要，右三个提示词钮 + 分隔 + 数量 + 生成钮）；生成钮改回原来的 ↑ 圆钮（30px、--nomi-ink 底、IconArrowUp、tooltip「生成」），「生成」字钮作废；优化钮保留 N 标。",
       "appliesTo": [
         "bar.layout.a",
         "bar.send",
@@ -869,7 +869,7 @@
     },
     {
       "id": "bar.send",
-      "label": "底栏右 · 生成钮（↑ 圆钮：30px，--nomi-ink 底，IconArrowUp，tooltip「生成（Enter）」；10-18 用户拍板改回，「生成」字钮作废）",
+      "label": "底栏右 · 生成钮（↑ 圆钮：30px，--nomi-ink 底，IconArrowUp，tooltip「生成」；10-18 用户拍板改回，「生成」字钮作废）",
       "change": "keep-as-is",
       "candidates": [
         "025-button-生成",

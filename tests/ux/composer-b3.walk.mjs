@@ -118,7 +118,7 @@ try {
       const s = getComputedStyle(button)
       return { w: Math.round(r.width), h: Math.round(r.height), round: parseFloat(s.borderTopLeftRadius) >= 15, arrow: Boolean(button.querySelector('svg.tabler-icon-arrow-up')), tip: button.closest('span[title]')?.getAttribute('title') ?? '', text: button.textContent?.trim() ?? '' }
     })
-    const sendOk = Boolean(send) && send.w === 30 && send.h === 30 && send.round && send.arrow && send.text === '' && /生成（Enter）/.test(send.tip)
+    const sendOk = Boolean(send) && send.w === 30 && send.h === 30 && send.round && send.arrow && send.text === '' && /^生成$/.test(send.tip)
     check('board:ComposerB3/bar.send', sendOk, JSON.stringify(send))
     check('board:ComposerB3/bar.send.circle', sendOk, JSON.stringify(send))
     check('board:ComposerB3/bar.send.text', !send?.text, 'D2「生成」字钮作废：生成钮上没有字')
