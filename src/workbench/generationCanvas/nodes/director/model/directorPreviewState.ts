@@ -87,7 +87,7 @@ export type DirectorPreviewMeta = Readonly<{
   durationSeconds?: number
   /** 动作库没有的细节动作（编译器报 missing_asset 的那些）：挂接时写进视频节点提示词，交给视频模型演。 */
   notes?: readonly string[]
-  /** 这份预演是对哪份工程渲染的（`directorPreviewSourceFingerprint`）：之后工程被手改过 = 预演过期（`directorPreviewIsStale`）。旧预演没有这一项：没有证据，不判过期。 */
+  /** 这份预演是对哪份工程渲染的（`directorPreviewSourceFingerprint`）：之后工程被手改过 = 预演过期（`directorPreviewIsStale`）。旧预演没有这一项：新鲜度未知，按过期处理（付费前重渲一次，本机免费）。 */
   sourceFingerprint?: string
   updatedAt: number
 }>
@@ -239,10 +239,13 @@ const FINGERPRINTS = new WeakMap<object, string>()
 
 /**
  * 预演过期：预演记了渲染源指纹，且和导演工程此刻的指纹不一样（挂上之后又被改过）。花钱闸与「出成片」共用这一个判据。
- * 没有证据就不判过期：旧预演没有指纹、节点上没有工程，都不算。
+ * **没有指纹的旧预演 = 新鲜度未知 = 过期**（2026-10-21 协调定：拿可能过期的参考去花钱，比多做一次本机免费重渲更伤用户）：
+ * 付费前要先重渲一次，重渲出的新预演必带指纹（applyPreviewCaptured 的指纹是必填参数）。
+ * 只有节点上没有工程对象时不判（没有可比对的工程，导演节点必有工程，这是坏数据的兜底而不是放行口）。
  */
 export function directorPreviewIsStale(preview: DirectorPreviewMeta, project: unknown): boolean {
-  if (preview.status !== 'ready' || !preview.sourceFingerprint || !project || typeof project !== 'object') return false
+  if (preview.status !== 'ready' || !project || typeof project !== 'object') return false
+  if (!preview.sourceFingerprint) return true
   return directorPreviewSourceFingerprint(project) !== preview.sourceFingerprint
 }
 

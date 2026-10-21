@@ -12,7 +12,8 @@
 > cameraMoveBuilder.ts: 运镜 spec → V1 形状场景（主体 + 机位路径绑定：推拉 / 环绕 / 升降 / 横移 / 弧线 / 变焦，速度决定绑定时长，fov 端点走 cameraMoveFovMath）
 > cameraMoveSchedule.ts: frameTimes(start, end, count)：采样时刻序列单一真相（首尾含端点、等距）
 > cameraMoveCaptureRetry.ts: 离屏出片重试纯逻辑：结局 ok / null / timeout × 轮次 → done / retry(延迟) / giveUp；默认 3 轮、30s 看门狗
-> attachCameraMoveToTarget.ts: 运镜小片喂入目标镜头的纯核（computeAttachCameraMove）：只接视频节点、有 video_ref 槽则切全能参考模式 + 填参考视频并提示，否则降级为提示词地板；幂等（同 url 不重贴）
+> attachCameraMoveToTarget.ts: 运镜小片 / 3D-BOX 预演喂入目标镜头的纯核（computeAttachCameraMove）：只接视频节点；「已挂好」按当前模型实际槽 + 实际发送的参考列表（含画布连线视频）+ 网址 + 提示词引用对账，一致才 noop，网址标记只用来认上一次挂的是哪条；有 video_ref 槽则切全能参考模式 + 填参考视频 + 写一句 @[asset:url] 引用标记的参考句（发送时投影成 @videoN，编号不写死），槽被用户的片占满不删用户的片、预演退文字兜底并提示；无槽降级为提示词地板
+> attachCameraMoveForNode.ts: 挂接的唯一入口（出成片 / 预演写回 / 运镜小片 Host 都只调它）：读此刻目标节点与连到它的视频边，交给纯核；attachDoors.guard.test.ts 拦生产代码直接调核
 > createStagingReferenceNode.ts: 站位参考建节点入口：buildStagingSceneAudited → migrateScene3DState → create_nodes(kind director, meta directorProject + stagingAutoCapture)；readStagingAutoCapture
 > createCameraMoveReferenceNode.ts: 运镜参考建节点入口（AI 路 + 手动路共用）：buildCameraMoveScene → 迁移 → create_nodes(kind director, meta directorProject + cameraMoveAutoCapture{targetNodeId, fps 24, frameCount, move})；readCameraMoveAutoCapture
 > DirectorHeadlessCapture.tsx: 离屏出片器：隐藏 FencedCanvas + 独立 store，只装环境 / 实体 / 播放求值 / CaptureBinder；等角色 GLB 落地（对象表里出现 characterMount）→ 按时刻序列逐帧 seek + 等两帧 → 机位 1 出片 → 一次回调 frames[]；短边可封顶（参考视频 720p）
