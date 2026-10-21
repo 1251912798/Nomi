@@ -1,0 +1,340 @@
+{
+  "board": "AnnotateToAgent",
+  "approvedOn": "2026-10-18",
+  "stage": "explored",
+  "draft": "2026-10-21 设计准备线起草，未经协调会话复核；`pending: true` 的元素是 README 拍板记录没覆盖到、需要协调会话问用户的格子。",
+  "approval": "docs/design/proposals/2026-10-18/README.md「分组和状态」第 3 组原文：「标注 → Agent 极简版（M） | M1–M8（A3a–A3j 是对照） | 评论模式、线程、意见列表 | 已按推荐拍板 | 三点：底栏放「评论」、节点浮条去掉「提意见」、列表分未解决 / 已解决两档」（README 注明以用户 10-18 晚到 10-19 说的为准；本线没有找到用户逐字原话，以 README 记录为准）。",
+  "sourceBoundary": "板源 = 方案画布「Nomi 0.24 交互方案」第 3 组 18 格，副本在 docs/design/proposals/2026-10-18/（preview/*.png、各格 .dc.html、canvas.json）。画布标题写明「七 · 极简版：全局只在底栏加一个「评论」（与左侧 A3 对照）」：M1–M8 是选中的方案，A3a–A3j 是对照。本清单是**只有清单**的草稿（同目录没有 AnnotateToAgent.candidates.json）：要抽候选得先把 18 格拼成 preview/AnnotateToAgent.html 再跑 node scripts/board-extract.mjs，留给拍板复核后的实现线；所以每个元素 candidates 为空，R2–R7 由 check:board-parity 的「只有清单的板」一支照查。",
+  "designIntent": "意见挂在**某个节点的某一版**上：点底栏「评论」进评论模式，在图上点一下钉点或拖一下框区域、写一句就发给 Nomi；回复与结果留在这条意见的线程里，接受 / 放弃；意见列表只分未解决 / 已解决。画面只画了图片节点。",
+  "decisions": [
+    {
+      "id": "M-1",
+      "text": "全局入口只在画布底部加节点条最右加一颗「评论」，节点浮条不加「提意见」。",
+      "appliesTo": ["bottombar.comment", "nodebar.comment-button", "whiteboard.comment-tab"],
+      "source": "README 第 3 组拍板记录：「底栏放「评论」、节点浮条去掉「提意见」」"
+    },
+    {
+      "id": "M-2",
+      "text": "意见列表只分两档：未解决 / 已解决（A3c 的全部 / 待回复 / 待确认 / 已解决四档不要）。",
+      "appliesTo": ["comments.list", "comments.list.four-tabs"],
+      "source": "README 第 3 组拍板记录：「列表分未解决 / 已解决两档」"
+    },
+    {
+      "id": "Q-1",
+      "text": "待定：A3e 画的「请求批准 = 推荐提示词 + 编辑 + 预填选项 +『建节点』；直接生成 = 结果在线程里原图 / 结果对比 +『再改一次 / 接受』」只在对照组里，极简版 M3 只画了一种（「改好了，看看这版」+ 放弃 / 接受）。用户 2026-10-21 原话与 A3e 一致，推荐把 A3e 的两档并进 M3 线程；需协调会话确认。",
+      "appliesTo": ["thread.ask-first-draft", "thread.direct-compare"],
+      "source": "用户 2026-10-21（协调会话转述）：「如果说请求批准的话，那就是说你给我创建好那个节点，然后看一下你是怎么改的，提示词或者东西得写好，然后我再确认。如果不请求批准的话，那就直接去做，给我生成什么的。」",
+      "pending": true
+    },
+    {
+      "id": "Q-2",
+      "text": "待定：M3 的「接受 / 放弃」与 A3e / A3f 的「第 3 版（候选）→ 接受后已设为主图」意味着新版本先是候选、不顶主图；而现行规则是「新生成的版本自动变主图维持现状，要改归下一刀」（docs/plan/2026-09-28-version-cards.md:49）。两条拍板相互打架，实现前必须由用户定。",
+      "appliesTo": ["thread.accept-discard", "thread.direct-compare"],
+      "source": "docs/plan/2026-09-28-version-cards.md:49 与 M3 / A3e / A3f 画面",
+      "pending": true
+    },
+    {
+      "id": "Q-3",
+      "text": "待定：A3d 发送前预览、A3g 草稿与重试、A3h 目标失效、A3f 已解决可重新打开这四组状态，极简版没有重画也没有否掉；推荐作为 M 线程 / 列表的状态沿用（文案和布局按 M 的长相改），需协调会话确认。",
+      "appliesTo": ["comment.before-send-preview", "comments.draft-retry", "comments.target-gone", "comments.resolved-reopen"],
+      "source": "README 第 3 组只列了三点拍板，A3 其余格未表态",
+      "pending": true
+    }
+  ],
+  "priorArt": [
+    {
+      "url": "https://docs.flora.ai/editor/fauna",
+      "takeaway": "Flora 的 Fauna：选中的节点自动进下一条消息的上下文，未选中的用 @ 引用；单条最多 15 个节点；Assist 模式先列出要跑的节点和预估用量、批准才跑，Auto 模式直接跑。",
+      "decisionImpact": "确认了：意见 / 选区跟着「发给 Nomi」走，不要求用户复述对象；Assist / Auto 两档与 Nomi 的请求批准 / 直接生成同构，支持 Q-1 把 A3e 两档并进线程。改了：批量要有明示上限（见设计卡增量 B-1）。"
+    },
+    {
+      "url": "https://code.claude.com/docs/en/vs-code",
+      "takeaway": "Claude Code 的 VS Code 扩展：编辑器选区自动出现在输入框，页脚显示选了几行，× 可取消，换选区后指示器回来。",
+      "decisionImpact": "确认了：发出前对象必须看得见、可一键去掉（A3d「本次意见」+ 线程头的节点名 · 第 N 版）；改了：发出去的消息里也要留下对象（Agent 面板里只放引用那一条）。"
+    },
+    {
+      "url": "https://www.lovart.ai/docs",
+      "takeaway": "Lovart 的 Mark 模式：在图上做标记自动进输入框，单次最多 10 个 mark；用户在 Trustpilot 抱怨改错后重来要再扣一次。",
+      "decisionImpact": "确认了：评论模式钉点 / 框区域（M2）这条路有先例；改了：要花钱的重做必须先让人看清要改哪一版（线程头带版次、A3h 版次对不上时不悄悄改绑）。"
+    },
+    {
+      "url": "https://tldraw.dev/blog/agents-cant-point",
+      "takeaway": "tldraw「Agents can't point」：聊天里的「这个 / 这里」对 Agent 不可靠，主张把指代锚定到画布上的具体形状。",
+      "decisionImpact": "确认了：意见绑定到节点 + 版本 + 点 / 框坐标（M2、线程头），不靠 Agent 从一句话里猜对象；A3h 目标失效时保留意见、不改绑到看起来相近的东西。"
+    }
+  ],
+  "elements": [
+    {
+      "id": "bottombar.comment",
+      "label": "画布底部加节点条最右，分隔线后一颗「评论」气泡钮（悬停提示「评论」；开着时是按下态）",
+      "cells": ["M1-bottom-bar", "M2-comment-mode", "M7-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["hover", "selected", "zh-en", "dark", "narrow"]
+    },
+    {
+      "id": "nodebar.comment-button",
+      "label": "A3a：节点浮条上多一颗「提意见」钮",
+      "cells": ["A3a-enter", "A3j-dark", "M6-node-bar"],
+      "candidates": [],
+      "status": "dropped",
+      "userDecision": { "quote": "节点浮条去掉「提意见」（README 第 3 组拍板记录）", "date": "2026-10-19" },
+      "states": ["hover", "dark"]
+    },
+    {
+      "id": "whiteboard.comment-tab",
+      "label": "A3a 备选：白板里「编辑图片 / 提意见」两个页签切换",
+      "cells": ["A3a-enter", "A3j-dark"],
+      "candidates": [],
+      "status": "dropped",
+      "userDecision": { "quote": "底栏放「评论」（README 第 3 组拍板记录；入口改在底栏，白板不另开意见页签）", "date": "2026-10-19" },
+      "states": ["selected", "dark"]
+    },
+    {
+      "id": "comment.cursor-bubble",
+      "label": "评论模式：光标在节点图上变成黑底气泡",
+      "cells": ["M2-comment-mode", "M7-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["hover", "dark"]
+    },
+    {
+      "id": "comment.pin",
+      "label": "点一下：在图上钉一个带编号的蓝点，旁边一行输入「写一句意见」+ ↑ 圆钮",
+      "cells": ["M2-comment-mode", "M7-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["empty", "selected", "long-text", "narrow", "zh-en", "dark"]
+    },
+    {
+      "id": "comment.box",
+      "label": "拖一下：在图上框一块区域（蓝框 + 右上编号），框下一行输入 + ↑",
+      "cells": ["M2-comment-mode", "M7-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["empty", "selected", "long-text", "narrow", "zh-en", "dark"]
+    },
+    {
+      "id": "comment.place.stroke-and-select-existing",
+      "label": "A3b：画一笔圈出位置；选中图上已有的字或笔迹再写一句",
+      "cells": ["A3b-place", "A3i-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "协调会话（待问用户：M2 只画了点一下 / 拖一下；画一笔改由线程里的「圈一下」承担，选已有笔迹是否保留未表态）",
+      "pending": true,
+      "states": ["selected", "zh-en", "dark"]
+    },
+    {
+      "id": "comment.before-send-preview",
+      "label": "A3d：发送前「本次意见 N 条」——节点名 · 第 N 版、意见原文、原图 / 带笔迹两张预览、「已自动保存」、一颗「发给 Nomi」；发出后 Agent 面板里只放一条引用（编号 + 节点名 · 第 N 版），回复在意见线程里",
+      "cells": ["A3d-before-send"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "协调会话（Q-3 待确认是否沿用）",
+      "pending": true,
+      "states": ["empty", "loading", "long-text", "zh-en", "dark"]
+    },
+    {
+      "id": "thread.header",
+      "label": "线程头：编号圆点 + 节点名 · 第 N 版 + 右上 ✕",
+      "cells": ["M3-thread", "M8-dark", "M7-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["long-text", "zh-en", "dark"]
+    },
+    {
+      "id": "thread.user-comment",
+      "label": "线程里用户那句意见（原文，不改写）",
+      "cells": ["M3-thread", "M8-dark", "M7-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["long-text", "zh-en", "dark"]
+    },
+    {
+      "id": "thread.circle-it",
+      "label": "线程里的「圈一下」文字钮：打开这张图的白板补圈",
+      "cells": ["M3-thread", "M4-circle-it", "M7-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["hover", "zh-en", "dark"]
+    },
+    {
+      "id": "circle.whiteboard-min",
+      "label": "圈一下的白板：只留画笔、撤销、完成三颗（复用现有白板，原图不改）",
+      "cells": ["M4-circle-it"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["selected", "dark"]
+    },
+    {
+      "id": "circle.back-to-thread",
+      "label": "画完回到线程：带圈的缩略图 + 意见原文 + 输入框",
+      "cells": ["M4-circle-it"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["zh-en", "dark"]
+    },
+    {
+      "id": "thread.nomi-reply",
+      "label": "Nomi 回复一行（「改好了，看看这版。」）+ 结果缩略图",
+      "cells": ["M3-thread", "M8-dark", "M7-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["loading", "error", "zh-en", "dark"]
+    },
+    {
+      "id": "thread.accept-discard",
+      "label": "结果下「放弃」（文字）/「接受」（黑底主按钮，在右）",
+      "cells": ["M3-thread", "M8-dark", "M7-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "协调会话（Q-2：接受 / 放弃与「新版本自动变主图」打架，先定语义再实现）",
+      "pending": true,
+      "states": ["hover", "disabled", "zh-en", "dark"]
+    },
+    {
+      "id": "thread.composer",
+      "label": "线程底部「写一句意见」输入框 + ↑ 圆钮（在同一条意见里接着说）",
+      "cells": ["M3-thread", "M4-circle-it", "M8-dark", "M7-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["empty", "long-text", "zh-en", "dark"]
+    },
+    {
+      "id": "thread.ask-first-draft",
+      "label": "A3e 左（请求批准档）：Nomi 复述看到了什么 + 「推荐提示词」框（可编辑）+ 预填选项 chip + 模型限制一行灰字 + 「复制提示词」/「建节点」",
+      "cells": ["A3e-nomi-reply", "A3i-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "协调会话（Q-1：是否并进 M3 线程；「建节点」是新建草稿节点还是在原节点上出待生成的一版，见设计卡增量 B-3）",
+      "pending": true,
+      "states": ["empty", "long-text", "zh-en", "dark"]
+    },
+    {
+      "id": "thread.direct-compare",
+      "label": "A3e 右（直接生成档）：结果在线程里，原图 / 结果滑块对比 + 「图片节点 · 镜头 03 新版 · 第 3 版（候选）」+「在画布看」+「再改一次 / 接受」",
+      "cells": ["A3e-nomi-reply", "A3i-english"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "协调会话（Q-1 / Q-2）",
+      "pending": true,
+      "states": ["loading", "error", "zh-en", "dark"]
+    },
+    {
+      "id": "comments.toggle",
+      "label": "画布右上「意见 N」胶囊：打开意见列表",
+      "cells": ["M5-comment-list", "A3c-global-list"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["empty", "hover", "selected", "zh-en", "dark"]
+    },
+    {
+      "id": "comments.list",
+      "label": "意见列表浮层：标题「意见」+ ✕；「未解决 / 已解决」两档；每行编号、意见文字、节点缩略图 + 节点名；点一条回到原处",
+      "cells": ["M5-comment-list"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "states": ["empty", "selected", "hover", "long-text", "narrow", "zh-en", "dark"]
+    },
+    {
+      "id": "comments.list.four-tabs",
+      "label": "A3c：列表四档筛选（全部 / 待回复 / 待确认 / 已解决）+ 行尾状态签",
+      "cells": ["A3c-global-list", "A3f-resolved", "A3g-draft-retry", "A3h-target-gone"],
+      "candidates": [],
+      "status": "dropped",
+      "userDecision": { "quote": "列表分未解决 / 已解决两档（README 第 3 组拍板记录）", "date": "2026-10-19" },
+      "states": ["selected", "zh-en"]
+    },
+    {
+      "id": "comments.markers-on-node",
+      "label": "节点图上的意见编号圆点 / 圈（同一编号在列表、线程、图上一致）",
+      "cells": ["M5-comment-list", "M3-thread", "A3c-global-list"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "note": "M5 画的选中节点是蓝色描边；2026-10-10 用户拍板「蓝色描边不需要，都删掉」（nomi-design-system.md「描边颜色」），实现按现行选中样式，不照画蓝框。",
+      "states": ["selected", "hover", "dark"]
+    },
+    {
+      "id": "comments.resolved-reopen",
+      "label": "A3f：已解决的意见打开后历史回复和结果都在（「你接受了结果 · 时间」），可「重新打开」",
+      "cells": ["A3f-resolved"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "协调会话（Q-3 待确认是否沿用）",
+      "pending": true,
+      "states": ["selected", "zh-en"]
+    },
+    {
+      "id": "comments.draft-retry",
+      "label": "A3g：没发出去的意见是草稿、退出再回来还在；发送失败写「没发出去，还没开始生成」+ 重试；重试是同一次发送、不会重复生成",
+      "cells": ["A3g-draft-retry"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "协调会话（Q-3 待确认是否沿用）",
+      "pending": true,
+      "states": ["loading", "error", "zh-en"]
+    },
+    {
+      "id": "comments.target-gone",
+      "label": "A3h：原版本被删 / 节点被删 / 版次对不上时意见保留并标出来；给「看发送时的图」「选新目标…」「移除这条意见」「看第 2 版」「改绑到第 3 版」，不悄悄改绑",
+      "cells": ["A3h-target-gone"],
+      "candidates": [],
+      "status": "missing",
+      "owner": "协调会话（Q-3 待确认是否沿用）",
+      "pending": true,
+      "states": ["error", "long-text", "zh-en"]
+    }
+  ],
+  "decor": [],
+  "functionCensus": [
+    {
+      "censusId": "BAR-01",
+      "function": "画布底部加节点条：图片 / 视频 / 声音 / 文字 / 剪辑 / 导入 / 更多（7 颗）",
+      "before": "底栏 7 颗（真截图 real-zh-light-01）",
+      "after": "bottombar.comment",
+      "disposition": "kept：原 7 颗位置不变，「评论」加在最右的分隔线后"
+    },
+    {
+      "censusId": "NODEBAR-01",
+      "function": "图片节点浮条：锁定、复制、多机位九宫格▾、抠图、改图▾、宫格▾、画板、全屏、下载、信息、加到时间轴",
+      "before": "NodeFloatingToolbar（真截图 real-zh-light-02 / lab-zh-light-selected-node-quick-toolbar）",
+      "after": "nodebar.comment-button",
+      "disposition": "kept：浮条一颗不动，也不加「提意见」"
+    },
+    {
+      "censusId": "WB-01",
+      "function": "画板（图片节点就地编辑 / 白板，#1189）：选择、画笔、橡皮、文字、撤销 / 重做、导入、素材库、图层、画板尺寸、完成",
+      "before": "InlineWhiteboard + WhiteboardEditingToolbar",
+      "after": "circle.whiteboard-min",
+      "disposition": "kept：「编辑图片」仍是完整白板；线程里的「圈一下」复用同一块白板、只露画笔 / 撤销 / 完成，原图不改"
+    },
+    {
+      "censusId": "VER-01",
+      "function": "版本卡：右上数字角标、原地铺开、悬停设为主图 / 下载 / 删除、生成中占位「新的一版会落在这里」",
+      "before": "NodeVersionCards（lab-zh-light-version-cards-open-hover / -new-version-pending）",
+      "after": "thread.accept-discard",
+      "disposition": "kept：版本卡不动；线程的「接受 / 放弃」是否等于「设为主图 / 删除这一版」待 Q-2"
+    },
+    {
+      "censusId": "AGENT-01",
+      "function": "Agent 面板：用户气泡里的附件 / 技能 chip、输入框的 @ 引用与画布点选参考钮",
+      "before": "V4UserBubble、AgentPanelV4Composer（lab-zh-light-sent-bubble-with-file-chip / lab-zh-light-composer-chips-file-skill-clip）",
+      "after": "comment.before-send-preview",
+      "disposition": "kept：面板原有 chip 与 @ 不动；评论发出后面板里多一条引用（编号 + 节点名 · 第 N 版），回复在意见线程里（Q-3）"
+    }
+  ]
+}
