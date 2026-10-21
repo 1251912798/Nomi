@@ -2,8 +2,8 @@
   {
     "entry": "#1 文本节点扩写（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 39734,
-    "totalMs": 39737,
+    "firstFeedbackMs": 39656,
+    "totalMs": 39746,
     "result": "ok",
     "errorKind": null
   },
@@ -18,16 +18,16 @@
   {
     "entry": "#4 提示词翻译（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 444,
-    "totalMs": 445,
+    "firstFeedbackMs": 434,
+    "totalMs": 436,
     "result": "ok",
     "errorKind": null
   },
   {
     "entry": "#3 提示词优化（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 421,
-    "totalMs": 421,
+    "firstFeedbackMs": 412,
+    "totalMs": 412,
     "result": "ok",
     "errorKind": null
   },
@@ -42,8 +42,8 @@
   {
     "entry": "#1 文本节点扩写（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 39516,
-    "totalMs": 39519,
+    "firstFeedbackMs": 39717,
+    "totalMs": 39719,
     "result": "ok",
     "errorKind": null
   },
@@ -58,16 +58,16 @@
   {
     "entry": "#4 提示词翻译（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 444,
-    "totalMs": 445,
+    "firstFeedbackMs": 442,
+    "totalMs": 444,
     "result": "ok",
     "errorKind": null
   },
   {
     "entry": "#3 提示词优化（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 502,
-    "totalMs": 504,
+    "firstFeedbackMs": 422,
+    "totalMs": 422,
     "result": "ok",
     "errorKind": null
   }

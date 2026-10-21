@@ -8,7 +8,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import ffmpeg from '@ffmpeg-installer/ffmpeg'
-import { clickOrFail, expect } from './_assert.mjs'
+import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
@@ -57,13 +57,16 @@ export async function runTextTaskEntries(win, { report, snap, protocol = 'openai
     const { id, editor } = await addTextNode(win, `${MARK.expand} 一只猫。窗外下雨。`)
     const before = (await editor.innerText()).trim()
     await clickOrFail(win.locator('[data-text-process-box] [data-preset="expand"]'), label('点「扩写」', 'Click Expand'))
-    await snap(`${english ? 'en' : 'zh'}-01-expand-running`)
     const running = win.locator(`[data-node-id="${id}"] [data-text-node-footer="running"]`)
+    // 探针先证明测得到：运行中的「正在写」确实出现过，后面的「不在了」才有意义。
+    const runningProof = await proveProbe(running, '#1 进入运行：底部「正在写」')
+    await snap(`${english ? 'en' : 'zh'}-01-expand-running`)
     const timing = await timed(
       async () => ((await editor.innerText()).trim() !== before),
-      async () => ((await editor.innerText()).trim() !== before && (await running.count()) === 0),
+      async () => ((await editor.innerText()).trim() !== before),
       { operations },
     )
+    await expectAbsent(running, { provenBy: runningProof, message: '#1 扩写完成后退出运行' }, stationTimeout({ operations: 2 }))
     const text = (await editor.innerText()).trim()
     if (expected.expand) expect(text, '#1 扩写结果').toBe(expected.expand)
     else expect(text.length, '#1 扩写有结果').toBeGreaterThan(before.length)
