@@ -26,7 +26,7 @@ const canvasSource = { nodes: [{ id: 'shot-a', kind: 'image', title: 'Opening sh
     raw: { credential: 'private-fixture-value' } } }], edges: [], groups: [], selectedNodeIds: ['shot-a'] }
 
 async function fixture(toolName: string, args: Record<string, unknown>, stale = false,
-  readDocument: DocumentReadPort['read'] = async ({ scope }) => ({ text: `${scope} fixture text` })) {
+  readDocument: DocumentReadPort['read'] = async ({ scope }) => ({ text: `${scope} fixture text` }), source: typeof canvasSource = canvasSource) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'nomi-desktop-lane-reads-'))
   cleanups.push(() => fs.rm(root, { recursive: true, force: true }))
   const binding = { projectId: 'reads-fixture', immutableProjectUuid: '11111111-1111-4111-8111-111111111111', projectGeneration: 1 }
@@ -39,7 +39,7 @@ async function fixture(toolName: string, args: Record<string, unknown>, stale = 
   const committed = await registry.commitCanvasRead(owner, { projectId: binding.projectId, suspension })
   const session = registry.openProjectSession(owner, committed.binding)
   desktopRuntime.registry = registry
-  const canvasRead = vi.fn(async () => canvasSource)
+  const canvasRead = vi.fn(async () => source)
   const documentRead = vi.fn<DocumentReadPort['read']>(readDocument)
   const timelineRead = vi.fn<TimelineReadPort['read']>(async ({ input: raw }) => {
     const input = raw as TimelineReadInput
@@ -97,6 +97,41 @@ describe('desktop lane read adapter contracts', () => {
     expect(f.result.text).toContain('result-a')
     expect(f.result.text).not.toContain('private.invalid')
     expect(f.result.text).not.toContain('private-fixture-value')
+  })
+
+  // 2026-10-21：选 40 个节点，look_at_canvas 过去只列 ~31 个 id、没有总数、也不能翻页。模型照 #1263 的提示来补读，读到的还是同样的 31 个。
+  // 这里走真 lane：模型传 selectedFrom 翻页，结果是同一份选区的下一段。
+  describe('look_at_canvas pages a long selection through the real lane', () => {
+    const many = (count: number) => ({
+      nodes: Array.from({ length: count }, (_, index) => ({ id: `gen-v2-image-lw9x${(index + 100).toString(36)}-ab${(index + 10).toString(36)}`, kind: 'image', title: `Shot ${index + 1}`, prompt: '',
+        position: { x: index, y: 0 }, status: 'idle' })), edges: [], groups: [],
+      selectedNodeIds: Array.from({ length: count }, (_, index) => `gen-v2-image-lw9x${(index + 100).toString(36)}-ab${(index + 10).toString(36)}`),
+    })
+
+    it('says how many are selected and which selectedFrom reads the rest', async () => {
+      const f = await fixture('look_at_canvas', {}, false, undefined, many(40) as never)
+      expect(f.result).toMatchObject({ isError: false })
+      expect(f.result.text).toMatch(/当前选中 40 个，本次列出第 1–\d+ 个，未列 \d+ 个/)
+      expect(f.result.text).toMatch(/selectedFrom: \d+/)
+    })
+
+    it('reads the next page when the model passes selectedFrom, and the canvas is still read once', async () => {
+      const first = await fixture('look_at_canvas', {}, false, undefined, many(40) as never)
+      const next = Number(/selectedFrom: (\d+)/.exec(first.result.text)![1])
+      const f = await fixture('look_at_canvas', { selectedFrom: next }, false, undefined, many(40) as never)
+      expect(f.result).toMatchObject({ isError: false })
+      expect(f.result.text).toContain(`本次列出第 ${next + 1}–40 个`)
+      expect(f.result.text).not.toContain('selectedFrom:')
+      expect(f.canvasRead).toHaveBeenCalledOnce()
+    })
+
+    it('refuses a negative or fractional page before any domain read', async () => {
+      for (const selectedFrom of [-1, 1.5]) {
+        const f = await fixture('look_at_canvas', { selectedFrom }, false, undefined, many(40) as never)
+        expect(f.result).toMatchObject({ isError: true })
+        expect(f.canvasRead).not.toHaveBeenCalled()
+      }
+    })
   })
 
   it.each([['read_script', 'full'], ['read_script', 'selection']] as const)(
