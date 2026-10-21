@@ -118,6 +118,13 @@ try {
     check('board:ComposerB3/bar.send', sendOk, JSON.stringify(send))
     check('board:ComposerB3/bar.send.circle', sendOk, JSON.stringify(send))
     check('board:ComposerB3/bar.send.text', !send?.text, 'D2「生成」字钮作废：生成钮上没有字')
+    check('board:ComposerB3/prompt.expand.hidden-when-short', (await count(page, '[data-prompt-expand-toggle]')) === 0, '提示词短的时候没有展开钮（点了没反应的控件不放）')
+    await page.locator(`${CARD} [data-prompt-box] .ProseMirror`).click()
+    await page.keyboard.type(Array.from({ length: 40 }, (_, i) => `第 ${i + 1} 行镜头描述`).join('\n').replace(/\n/g, ' '.repeat(0) + '\n'))
+    await page.waitForSelector('[data-prompt-expand-toggle]', { timeout: 10000 })
+    await page.locator('[data-prompt-expand-toggle]').click()
+    await page.waitForSelector('[data-prompt-expanded="true"]', { timeout: 5000 })
+    check('board:ComposerB3/prompt.expand', true, '装不下时右上出展开钮，点开后提示词区长到全文')
     await shot(page, B3, 'b3a-video-empty', 'B3a-zh-light')
     cells.b3a = true
     await context.close()
@@ -185,6 +192,7 @@ try {
     await page.locator('[data-reference-swap]').click()
     await page.waitForFunction(() => [...document.querySelectorAll('[data-asset-slot]')].map((el) => (el.querySelector('[data-asset-tile]') ? 'filled' : 'empty')).join() === 'empty,filled', null, { timeout: 5000 })
     check('board:ComposerB3/ref.slot.swap.effect', true, '点对调：首帧的图落到尾帧')
+    check('board:ComposerB3/compare.new-state', labels.length === 2 && (await count(page, '[data-reference-row] [data-reference-entry]')) === 1, 'B3k「新」：同一视频节点（首尾帧）的新排法 = 这一格')
     await shot(page, B3, 'b3d-video-first-last', 'B3d-zh-light')
     await context.close()
   }
@@ -351,6 +359,13 @@ try {
           const out = path.join(EVIDENCE_DIR, `${short(id)}-${lang}-${scheme}.png`)
           if (/params|menu/.test(id)) await page.screenshot({ path: out, clip: { x: 0, y: 0, width: 900, height: 720 }, animations: 'disabled' })
           else await page.locator(`[data-design-lab-shot="${id}"]`).screenshot({ path: out, animations: 'disabled' })
+          if (lang === 'en' && id === 'b3c-video-three-refs') {
+            check('board:ComposerB3/en.reference-state', /3 references/.test((await text(page, '[data-reference-tail]')) ?? '') && /Connected text/.test((await page.evaluate(() => document.querySelector('[data-connected-text-chip]')?.textContent ?? ''))), '英文：参考 3 张含连线 + Connected text')
+          }
+          if (lang === 'en' && id === 'b3d-video-first-last') {
+            const enLabels = await page.evaluate(() => [...document.querySelectorAll('[data-asset-slot-label]')].map((el) => el.textContent?.trim()))
+            check('board:ComposerB3/en.first-last-state', enLabels.length === 2 && /^First/.test(enLabels[0]) && /^Last/.test(enLabels[1]), JSON.stringify(enLabels))
+          }
           if (lang === 'en') {
             const cjk = await page.evaluate(() => [...document.querySelectorAll('.generation-canvas-v2-node__composer *')].filter((el) => el.children.length === 0 && /[一-鿿]/.test(el.textContent ?? '') && !el.closest('[data-prompt-box]') && !el.closest('[data-reference-row] [data-storyboard-mention-chip]')).map((el) => el.textContent?.trim()))
             // 夹具里的用户内容（节点标题「开场白」、渠道名「渠道 A / B」）本来就是中文，不是界面文案。

@@ -1,7 +1,7 @@
 {
   "board": "ComposerB3",
   "approvedOn": "2026-10-18",
-  "stage": "explored",
+  "stage": "built",
   "visualReview": "用户 10-18 看 B3k / B3m 后确认 B3a–B3m，按协调推荐定稿（底栏 A、「生成」字钮、优化钮保留 N 标、数量只在模型声明时显示、锁语义不变、粘贴图片和拖画布结果本轮不新增）。",
   "sourceBoundary": "板源 = Claude Design 画布「Nomi 0.24 交互方案」第二组 B3a–B3m 十三格（source/ 下每格一个 .dc.html，canvas.json 为画布布局）。preview/ComposerB3.html 是把十三格按原宽展开成的静态拼页（亮暗两套展开，样式按格加前缀隔离），candidates 由 board-extract 的抽取函数在该拼页上抽出。画布里的 A1 / C3 组不在本板（Agent 标注与付费卡另有板）。",
   "designIntent": "生成框 0.24：生成方式进参数条（默认参考，图片不选方式）；参考入口改 40×40 方块 + 缩略图一行；提示词引用用名字；底栏左模型 + 变体 + 参数摘要、右三钮 + 数量 + ↑ 生成钮。清单是实现合同：先清单、后实现；实现线要等 D 组付费卡、E 组复用宿主样张确认后再开。",
@@ -131,14 +131,14 @@
         "381-div",
         "416-div"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "selected",
         "narrow",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/node.card"
     },
     {
       "id": "ref.tool.canvas-pick",
@@ -170,8 +170,7 @@
         "417-button-画布点选这个模型用不了",
         "418-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "selected",
@@ -180,7 +179,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "「selected」= 点选进行中；disabled 见 B3i 模型不收参考图"
+      "note": "「selected」= 点选进行中；disabled 见 B3i 模型不收参考图",
+      "assertion": "board:ComposerB3/ref.tool.canvas-pick"
     },
     {
       "id": "ref.tool.add",
@@ -212,8 +212,7 @@
         "419-button-添加参考这个模型用不了",
         "420-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "selected",
@@ -223,7 +222,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "「loading / error」= 上传中 / 上传失败，样张没画，按现状保留（REF-07）"
+      "note": "「loading / error」= 上传中 / 上传失败，样张没画，按现状保留（REF-07）",
+      "assertion": "board:ComposerB3/ref.tool.add"
     },
     {
       "id": "ref.thumb",
@@ -241,8 +241,7 @@
         "421-svg-女主肖像不会发出去",
         "422-svg-海边小镇不会发出去"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "loading",
         "error",
@@ -252,7 +251,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "序号不再画在缩略图上；失效图、视频封面、音频波形、混合媒体计数样张没画，按现状保留（REF-14 / REF-15）"
+      "note": "序号不再画在缩略图上；失效图、视频封面、音频波形、混合媒体计数样张没画，按现状保留（REF-14 / REF-15）",
+      "assertion": "board:ComposerB3/ref.thumb"
     },
     {
       "id": "ref.thumb.remove",
@@ -262,13 +262,13 @@
         "123-button-断开连线",
         "124-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/ref.thumb.remove"
     },
     {
       "id": "ref.thumb.tooltip",
@@ -277,15 +277,15 @@
       "candidates": [
         "125-div-画布节点女主肖像点断开连"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "long-text",
         "zh-en",
         "dark"
       ],
-      "note": "现状还有 450ms 参考图大预览（REF-13），样张没画；两者同屏的关系要实现线回协调定，不许丢大预览"
+      "note": "现状还有 450ms 参考图大预览（REF-13），样张没画；两者同屏的关系要实现线回协调定，不许丢大预览",
+      "assertion": "board:ComposerB3/ref.thumb.tooltip"
     },
     {
       "id": "ref.count-label",
@@ -295,15 +295,15 @@
         "128-span-参考图3张",
         "389-span-参考图3张"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "narrow",
         "long-text",
         "zh-en",
         "dark"
       ],
-      "note": "按媒体分类计数样张没画（REF-15）；总量满额态按现状保留（REF-17）"
+      "note": "按媒体分类计数样张没画（REF-15）；总量满额态按现状保留（REF-17）",
+      "assertion": "board:ComposerB3/ref.count-label"
     },
     {
       "id": "ref.tail.ambiguity-hint",
@@ -315,15 +315,15 @@
         "234-button-不再提示",
         "235-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "narrow",
         "zh-en",
         "dark"
       ],
-      "note": "行尾小字 + 文字链接，不是彩色条（用户 10-18 规则：生成框里不放彩色提示条）"
+      "note": "行尾小字 + 文字链接，不是彩色条（用户 10-18 规则：生成框里不放彩色提示条）",
+      "assertion": "board:ComposerB3/ref.tail.ambiguity-hint"
     },
     {
       "id": "ref.tail.unused-note",
@@ -332,13 +332,13 @@
       "candidates": [
         "274-span-首尾帧用不到切回参考还在"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "zh-en",
         "dark"
       ],
-      "note": "状态靠界面本身变化（多出的图变淡）交代，这行是少数有后果且规律一眼可见的说明"
+      "note": "状态靠界面本身变化（多出的图变淡）交代，这行是少数有后果且规律一眼可见的说明",
+      "assertion": "board:ComposerB3/ref.tail.unused-note"
     },
     {
       "id": "ref.tail.unsupported-note",
@@ -347,13 +347,13 @@
       "candidates": [
         "423-span-参考图2张这个模型用不上"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "disabled",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/ref.tail.unsupported-note"
     },
     {
       "id": "ref.disabled-reason",
@@ -362,14 +362,14 @@
       "candidates": [
         "424-div-这个模型只能用文字生成换"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "disabled",
         "hover",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/ref.disabled-reason"
     },
     {
       "id": "ref.slot.first",
@@ -383,8 +383,7 @@
         "266-svg-首帧海边清晨",
         "267-span-首帧"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "empty",
         "selected",
@@ -392,7 +391,8 @@
         "narrow",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/ref.slot.first"
     },
     {
       "id": "ref.slot.swap",
@@ -406,15 +406,15 @@
         "268-button-对调首帧和尾帧",
         "269-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "disabled",
         "zh-en",
         "dark"
       ],
-      "note": "新增行为：必须交换真实边 / 上传来源，不能只换图（BOUND-05）"
+      "note": "新增行为：必须交换真实边 / 上传来源，不能只换图（BOUND-05）",
+      "assertion": "board:ComposerB3/ref.slot.swap"
     },
     {
       "id": "ref.slot.last",
@@ -430,8 +430,7 @@
         "270-svg-尾帧海边傍晚",
         "271-span-尾帧"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "empty",
         "selected",
@@ -440,7 +439,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "尾帧空则按首帧生成；点「画布点选」或「+」填进第一个空格"
+      "note": "尾帧空则按首帧生成；点「画布点选」或「+」填进第一个空格",
+      "assertion": "board:ComposerB3/ref.slot.last"
     },
     {
       "id": "ref.slot.unused",
@@ -450,13 +450,13 @@
         "272-svg-树林暂时用不到",
         "273-span-未用到"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "disabled",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/ref.slot.unused"
     },
     {
       "id": "prompt.editor",
@@ -476,8 +476,7 @@
         "390-div-让的人物站在背景树影按逆",
         "425-div-清晨的海边小镇薄雾柔和的"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "empty",
         "selected",
@@ -487,7 +486,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "长文本内滚、粘贴文字、撤销按现状保留；锁定 / 只读见 keep.host.locked / keep.host.readonly"
+      "note": "长文本内滚、粘贴文字、撤销按现状保留；锁定 / 只读见 keep.host.locked / keep.host.readonly",
+      "assertion": "board:ComposerB3/prompt.editor"
     },
     {
       "id": "prompt.expand",
@@ -519,15 +519,15 @@
         "426-button-展开提示词",
         "427-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "selected",
         "zh-en",
         "dark"
       ],
-      "note": "仅溢出才出，展开后正文最大 360px 内滚（PROMPT-03）"
+      "note": "仅溢出才出，展开后正文最大 360px 内滚（PROMPT-03）",
+      "assertion": "board:ComposerB3/prompt.expand"
     },
     {
       "id": "prompt.ref-chip",
@@ -551,8 +551,7 @@
         "395-span-树林",
         "396-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "selected",
@@ -561,7 +560,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "发给模型时按顺序对应第几张，名字只给人看；原子删除、重排同步按现状保留"
+      "note": "发给模型时按顺序对应第几张，名字只给人看；原子删除、重排同步按现状保留",
+      "assertion": "board:ComposerB3/prompt.ref-chip"
     },
     {
       "id": "prompt.text-chip",
@@ -573,14 +573,14 @@
         "140-button-断开连线",
         "141-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "zh-en",
         "dark"
       ],
-      "note": "与发送使用同一文本投影；悬停 / 聚焦出正文预览按现状保留（PROMPT-09）"
+      "note": "与发送使用同一文本投影；悬停 / 聚焦出正文预览按现状保留（PROMPT-09）",
+      "assertion": "board:ComposerB3/prompt.text-chip"
     },
     {
       "id": "bar.container",
@@ -600,15 +600,15 @@
         "399-div",
         "428-div"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "narrow",
         "long-text",
         "zh-en",
         "dark"
       ],
-      "note": "用户 10-18 定：底栏 A。参数条中英文都必须一行放下，不换行、不截断"
+      "note": "用户 10-18 定：底栏 A。参数条中英文都必须一行放下，不换行、不截断",
+      "assertion": "board:ComposerB3/bar.container"
     },
     {
       "id": "bar.model",
@@ -640,8 +640,7 @@
         "429-button-Imagen4",
         "430-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "loading",
         "empty",
@@ -651,7 +650,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "模型钮点开是 modelmenu；加载 / 无模型配置入口按现状保留（MODEL-04）；同模型供应商小签按现状保留（MODEL-02）"
+      "note": "模型钮点开是 modelmenu；加载 / 无模型配置入口按现状保留（MODEL-04）；同模型供应商小签按现状保留（MODEL-02）",
+      "assertion": "board:ComposerB3/bar.model"
     },
     {
       "id": "bar.params",
@@ -691,8 +691,7 @@
         "431-button-112K",
         "432-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "selected",
         "long-text",
@@ -700,7 +699,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "摘要只印当前值，生成方式放在面板顶部（10-19 用户拍板「按照目前 nomi 上面的弄」）；图片摘要同样只印当前值；摘要精简不代表删长尾参数"
+      "note": "摘要只印当前值，生成方式放在面板顶部（10-19 用户拍板「按照目前 nomi 上面的弄」）；图片摘要同样只印当前值；摘要精简不代表删长尾参数",
+      "assertion": "board:ComposerB3/bar.params"
     },
     {
       "id": "bar.tool.presets",
@@ -732,15 +732,15 @@
         "433-button-提示词预设",
         "434-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "selected",
         "disabled",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/bar.tool.presets"
     },
     {
       "id": "bar.tool.translate",
@@ -772,8 +772,7 @@
         "435-button-翻译提示词中英互译选中一",
         "436-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "loading",
@@ -781,7 +780,8 @@
         "disabled",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/bar.tool.translate"
     },
     {
       "id": "bar.tool.optimize",
@@ -813,8 +813,7 @@
         "437-button-用Nomi优化提示词",
         "438-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "loading",
@@ -823,7 +822,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "用户 10-18：优化钮保留 N 标；R-icons 另议的图标统一不在本条"
+      "note": "用户 10-18：优化钮保留 N 标；R-icons 另议的图标统一不在本条",
+      "assertion": "board:ComposerB3/bar.tool.optimize"
     },
     {
       "id": "bar.quantity",
@@ -855,8 +855,7 @@
         "439-button-1张",
         "440-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "selected",
@@ -865,7 +864,8 @@
         "dark"
       ],
       "decision": "D1",
-      "note": "用户 10-18：数量只在模型声明时显示（PARAM-12）；应用层多版本另列新增合同，不按旧注释恢复"
+      "note": "用户 10-18：数量只在模型声明时显示（PARAM-12）；应用层多版本另列新增合同，不按旧注释恢复",
+      "assertion": "board:ComposerB3/bar.quantity"
     },
     {
       "id": "bar.send",
@@ -897,8 +897,7 @@
         "441-button-生成",
         "442-svg"
       ],
-      "status": "missing",
-      "owner": "I-b1a-composer",
+      "status": "implemented",
       "states": [
         "loading",
         "disabled",
@@ -907,7 +906,8 @@
         "dark"
       ],
       "decision": "D2",
-      "note": "一次提交、运行中 ···、禁止重复提交、aria「生成」按现状保留（RUN-01）；不带数字角标、不出花费字样（R5）"
+      "note": "一次提交、运行中 ···、禁止重复提交、aria「生成」按现状保留（RUN-01）；不带数字角标、不出花费字样（R5）",
+      "assertion": "board:ComposerB3/bar.send"
     },
     {
       "id": "params.popover",
@@ -918,8 +918,7 @@
         "319-div",
         "361-div"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "selected",
         "narrow",
@@ -927,7 +926,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置",
+      "assertion": "board:ComposerB3/params.popover"
     },
     {
       "id": "params.mode.limit-tip",
@@ -936,14 +936,14 @@
       "candidates": [
         "078-div-此模型最多9张图3段视频"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "long-text",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/params.mode.limit-tip"
     },
     {
       "id": "params.group.variant",
@@ -955,8 +955,7 @@
         "081-button-标准",
         "082-button-Fast"
       ],
-      "status": "missing",
-      "owner": "I-b1a-composer",
+      "status": "implemented",
       "states": [
         "selected",
         "disabled",
@@ -964,7 +963,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "10-19 用户拍板：版本放进弹层作废，变体是参数条上单独一颗下拉；单 tier 固定值禁用；保存精确 ID（MODEL-03）"
+      "note": "10-19 用户拍板：版本放进弹层作废，变体是参数条上单独一颗下拉；单 tier 固定值禁用；保存精确 ID（MODEL-03）",
+      "assertion": "board:ComposerB3/params.group.variant"
     },
     {
       "id": "params.group.mode",
@@ -977,15 +977,15 @@
         "086-svg-参考的模型上限",
         "087-button-首尾帧"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "selected",
         "disabled",
         "zh-en",
         "dark"
       ],
-      "note": "默认：有「参考」就参考，没有就首尾帧 / 首帧；图片节点没有这一组，没放图是文生图、放了图是参考 / 改图"
+      "note": "默认：有「参考」就参考，没有就首尾帧 / 首帧；图片节点没有这一组，没放图是文生图、放了图是参考 / 改图",
+      "assertion": "board:ComposerB3/params.group.mode"
     },
     {
       "id": "params.group.aspect",
@@ -1015,8 +1015,7 @@
         "367-button-43",
         "368-button-34"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "selected",
         "disabled",
@@ -1024,7 +1023,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置",
+      "assertion": "board:ComposerB3/params.group.aspect"
     },
     {
       "id": "params.group.resolution",
@@ -1046,15 +1046,15 @@
         "372-button-2K",
         "373-button-4K"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "selected",
         "disabled",
         "zh-en",
         "dark"
       ],
-      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置",
+      "assertion": "board:ComposerB3/params.group.resolution"
     },
     {
       "id": "params.group.quality",
@@ -1072,15 +1072,15 @@
         "377-button-中",
         "378-button-高"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "selected",
         "disabled",
         "zh-en",
         "dark"
       ],
-      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置",
+      "assertion": "board:ComposerB3/params.group.quality"
     },
     {
       "id": "params.group.duration",
@@ -1099,8 +1099,7 @@
         "109-button-11s",
         "110-button-12s"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "selected",
         "disabled",
@@ -1108,7 +1107,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置",
+      "assertion": "board:ComposerB3/params.group.duration"
     },
     {
       "id": "params.group.audio",
@@ -1120,15 +1120,15 @@
         "113-button-开启",
         "114-button-关闭"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "selected",
         "disabled",
         "zh-en",
         "dark"
       ],
-      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置"
+      "note": "10-19 用户拍板：照现有组件原样（320 宽、最高 420、组标题在上选项在下、比例带小图形、时长滑杆、音频开关），样张画法只示意位置",
+      "assertion": "board:ComposerB3/params.group.audio"
     },
     {
       "id": "modelmenu.row",
@@ -1140,8 +1140,7 @@
         "477-div-Wan27",
         "478-div-Veo31"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "selected",
         "hover",
@@ -1150,7 +1149,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "用户 10-18：模型菜单只列模型、版本进弹层、换模型不加说明；失败项变淡沉底仍可选（MODEL-06）、同模型供应商直选（MODEL-02）样张没画，按现状保留"
+      "note": "用户 10-18：模型菜单只列模型、版本进弹层、换模型不加说明；失败项变淡沉底仍可选（MODEL-06）、同模型供应商直选（MODEL-02）样张没画，按现状保留",
+      "assertion": "board:ComposerB3/modelmenu.row"
     },
     {
       "id": "modelmenu.footer-hide",
@@ -1160,14 +1160,14 @@
         "479-div-隐藏模型",
         "480-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "zh-en",
         "dark"
       ],
-      "note": "「更多旧模型」折叠、隐藏数量脚注按现状保留（MODEL-05）"
+      "note": "「更多旧模型」折叠、隐藏数量脚注按现状保留（MODEL-05）",
+      "assertion": "board:ComposerB3/modelmenu.footer-hide"
     },
     {
       "id": "swap.before",
@@ -1205,14 +1205,14 @@
         "473-button-生成",
         "474-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "selected",
         "zh-en",
         "dark"
       ],
-      "note": "状态演示格，元素本体见 ref.slot.* / modelmenu.*"
+      "note": "状态演示格，元素本体见 ref.slot.* / modelmenu.*",
+      "assertion": "board:ComposerB3/swap.before"
     },
     {
       "id": "swap.after",
@@ -1246,13 +1246,13 @@
         "506-button-生成",
         "507-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "zh-en",
         "dark"
       ],
-      "note": "用户 10-18：换模型不加说明；换模型后新参数 / default 生效、清旧参数（MODEL-07）按现状保留"
+      "note": "用户 10-18：换模型不加说明；换模型后新参数 / default 生效、清旧参数（MODEL-07）按现状保留",
+      "assertion": "board:ComposerB3/swap.after"
     },
     {
       "id": "compare.new-state",
@@ -1290,13 +1290,13 @@
         "567-button-生成",
         "568-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "zh-en",
         "dark"
       ],
-      "note": "元素本体见 ref.* / bar.*"
+      "note": "元素本体见 ref.* / bar.*",
+      "assertion": "board:ComposerB3/compare.new-state"
     },
     {
       "id": "en.reference-state",
@@ -1344,14 +1344,14 @@
         "609-button-Generate",
         "610-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "zh-en",
         "long-text",
         "dark"
       ],
-      "note": "英文参数条写 Reference · 16:9 · 720p · 5s，数量写 ×1"
+      "note": "英文参数条写 Reference · 16:9 · 720p · 5s，数量写 ×1",
+      "assertion": "board:ComposerB3/en.reference-state"
     },
     {
       "id": "en.first-last-state",
@@ -1389,14 +1389,14 @@
         "640-button-Generate",
         "641-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "zh-en",
         "long-text",
         "dark"
       ],
-      "note": "英文首尾帧写 First / Last (optional)"
+      "note": "英文首尾帧写 First / Last (optional)",
+      "assertion": "board:ComposerB3/en.first-last-state"
     },
     {
       "id": "bar.layout.a",
@@ -1428,8 +1428,7 @@
         "665-button-生成",
         "666-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "narrow",
         "long-text",
@@ -1437,7 +1436,8 @@
         "dark"
       ],
       "decision": "D2",
-      "note": "落在 bar.container 等元素上；这里是对比演示格"
+      "note": "落在 bar.container 等元素上；这里是对比演示格",
+      "assertion": "board:ComposerB3/bar.layout.a"
     },
     {
       "id": "bar.send.text",
@@ -1514,15 +1514,15 @@
         "765-button-生成",
         "766-svg"
       ],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "states": [
         "hover",
         "zh-en",
         "dark"
       ],
       "decision": "D2",
-      "note": "即 bar.tool.optimize 的最终图标"
+      "note": "即 bar.tool.optimize 的最终图标",
+      "assertion": "board:ComposerB3/bar.optimize.mark"
     },
     {
       "id": "bar.layout.b",
@@ -1594,7 +1594,7 @@
         "715-button-生成",
         "716-svg"
       ],
-      "status": "missing",
+      "status": "implemented",
       "states": [
         "loading",
         "disabled",
@@ -1603,7 +1603,7 @@
         "dark"
       ],
       "note": "10-18 用户拍板：生成钮改回原来的 ↑ 圆钮；即 bar.send 的最终样子",
-      "owner": "I-b1a-composer"
+      "assertion": "board:ComposerB3/bar.send.circle"
     },
     {
       "id": "bar.optimize.sparkles",
@@ -1747,7 +1747,7 @@
       "change": "host-pending",
       "candidates": [],
       "status": "missing",
-      "owner": "host-pending：等 D / E 组样张确认；实现线 I-B3impl 之后接",
+      "owner": "I-b1b：付费卡 D2，下一个 PR（它要嵌这件生成框）",
       "hostPending": true,
       "states": [
         "empty",
@@ -1765,8 +1765,7 @@
       "label": "宿主：分镜行内嵌生成框",
       "change": "host-pending",
       "candidates": [],
-      "status": "missing",
-      "owner": "host-pending：等 D / E 组样张确认；实现线 I-B3impl 之后接",
+      "status": "implemented",
       "hostPending": true,
       "states": [
         "empty",
@@ -1775,15 +1774,15 @@
         "zh-en",
         "dark"
       ],
-      "note": "等 E 组复用宿主样张确认；与列表详情同属 inline 宿主"
+      "note": "等 E 组复用宿主样张确认；与列表详情同属 inline 宿主",
+      "assertion": "board:ComposerB3/host.storyboard-row"
     },
     {
       "id": "host.list-detail",
       "label": "宿主：列表详情展开镜头的内嵌生成框（HOST-06）",
       "change": "host-pending",
       "candidates": [],
-      "status": "missing",
-      "owner": "host-pending：等 D / E 组样张确认；实现线 I-B3impl 之后接",
+      "status": "implemented",
       "hostPending": true,
       "states": [
         "empty",
@@ -1792,15 +1791,15 @@
         "zh-en",
         "dark"
       ],
-      "note": "等 E 组复用宿主样张确认；inline 宿主有卡壳 / 工具 / 生成钮，普通内容流，不随画布拖动隐藏"
+      "note": "等 E 组复用宿主样张确认；inline 宿主有卡壳 / 工具 / 生成钮，普通内容流，不随画布拖动隐藏",
+      "assertion": "board:ComposerB3/host.list-detail"
     },
     {
       "id": "host.error-report",
       "label": "宿主：错误报告里复用的生成框 / 参考区",
       "change": "host-pending",
       "candidates": [],
-      "status": "missing",
-      "owner": "host-pending：等 D / E 组样张确认；实现线 I-B3impl 之后接",
+      "status": "implemented",
       "hostPending": true,
       "states": [
         "error",
@@ -1808,15 +1807,15 @@
         "zh-en",
         "dark"
       ],
-      "note": "等 E 组复用宿主样张确认"
+      "note": "等 E 组复用宿主样张确认",
+      "assertion": "board:ComposerB3/host.error-report"
     },
     {
       "id": "host.agent-input-ref-button",
       "label": "宿主：Agent 输入框的参考钮（「加参考」与句中引用）",
       "change": "host-pending",
       "candidates": [],
-      "status": "missing",
-      "owner": "host-pending：等 D / E 组样张确认；实现线 I-B3impl 之后接",
+      "status": "implemented",
       "hostPending": true,
       "states": [
         "empty",
@@ -1825,30 +1824,30 @@
         "zh-en",
         "dark"
       ],
-      "note": "等 E 组样张确认；与 ReferenceEntry 清单的 agent.* 元素对齐，不在本板重画"
+      "note": "等 E 组样张确认；与 ReferenceEntry 清单的 agent.* 元素对齐，不在本板重画",
+      "assertion": "board:ComposerB3/host.agent-input-ref-button"
     },
     {
       "id": "keep.canvas-pick.mode",
       "label": "保留：画布点选进行态（可选卡描边、其余变灰、顶部 Esc 提示、选一次退出；Esc / 点空白取消）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "selected",
         "disabled",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/keep.canvas-pick.mode"
     },
     {
       "id": "keep.picker.surface",
       "label": "保留：「+」菜单后的素材选择器（搜索、画布候选横滚、最近素材网格、浏览全部、loading / 空库 / 无匹配、拖文件进选择器、Esc / 外部关闭 / 焦点）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "empty",
@@ -1860,15 +1859,16 @@
         "zh-en",
         "dark"
       ],
-      "note": "选择器内部样张没画（REF-04/05/06/10/19）；复用共享浮层，不被裁切"
+      "note": "选择器内部样张没画（REF-04/05/06/10/19）；复用共享浮层，不被裁切",
+      "assertion": "board:ComposerB3/keep.picker.surface"
     },
     {
       "id": "keep.reference.import-feedback",
       "label": "保留：上传中禁用、转圈、类型错误 role=alert 与重试入口",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "loading",
@@ -1883,8 +1883,8 @@
       "label": "保留：整卡拖放（桌面多文件、素材库 / 项目文件树 MIME 拖入）与逐文件反馈",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "hover",
@@ -1899,23 +1899,23 @@
       "label": "保留：参考图悬停放大（450ms，最大 320×320，右侧优先、翻左 / 夹视口，离开关闭）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "hover",
         "narrow",
         "dark"
       ],
-      "note": "用户 10-18 点名「鼠标悬停预览」不许丢；样张只画名字 / 来源提示，两者关系待实现线回协调"
+      "note": "用户 10-18 点名「鼠标悬停预览」不许丢；样张只画名字 / 来源提示，两者关系待实现线回协调",
+      "assertion": "keep.reference.hover-preview"
     },
     {
       "id": "keep.reference.reorder",
       "label": "保留：同媒体数组内拖动排序（跨媒体槽不重排）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "hover",
@@ -1930,8 +1930,8 @@
       "label": "保留：单类 / 总量上限与 pending 边占位（满额「+」隐藏、候选类型变淡、总满 role=status）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "disabled",
@@ -1945,8 +1945,8 @@
       "label": "保留：重复参考去重（点选、上传、@ 三处结果一致，不占新序号）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "selected",
@@ -1958,8 +1958,7 @@
       "label": "保留：@ 三来源搜索（当前参考 / 画布 / 素材库）与真实引用落地、键盘 ↑↓ Enter Esc、空态、hover 高亮、容量 / 能力拒绝、跨项目复制",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "empty",
@@ -1969,30 +1968,31 @@
         "zh-en",
         "dark"
       ],
-      "note": "候选面板样张没画"
+      "note": "候选面板样张没画",
+      "assertion": "board:ComposerB3/keep.prompt.at-mention"
     },
     {
       "id": "keep.prompt.tile-insert",
       "label": "保留：点击数组参考缩略图在光标处插入引用（focus 后 Enter / Space）；悬停 × 不能吞点击",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "hover",
         "selected",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/keep.prompt.tile-insert"
     },
     {
       "id": "keep.prompt.chip-preview",
       "label": "保留：提示词引用块悬停 280ms 预览、双击大预览（现状核验：画布侧接收与裁切风险待实现线查实，不当已接通能力）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "hover",
@@ -2006,8 +2006,8 @@
       "label": "保留：空提示词时的推荐效果 pill、应用后可撤销、附带图落槽不支持时诚实反馈",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "empty",
@@ -2021,8 +2021,8 @@
       "label": "保留：选中文字保存到提示词库（浮动入口 + 弹窗：改文字、选图片 / 视频类型、移除附带结果图；readOnly 不启用）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "selected",
@@ -2039,8 +2039,7 @@
       "label": "保留：效果 / 提示词库弹层（全部 / 效果 / 公共库 / 我的、分类搜索、条目悬停 180ms 预览、加载失败重试、选后应用并关闭）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "empty",
@@ -2052,30 +2051,30 @@
         "zh-en",
         "dark"
       ],
-      "note": "不缩成固定三条推荐"
+      "note": "不缩成固定三条推荐",
+      "assertion": "board:ComposerB3/keep.presets.library"
     },
     {
       "id": "keep.bar.tool-tooltips",
       "label": "保留：三个提示词钮的名称提示（120ms）、aria-label、禁用原因与运行状态点",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "hover",
         "disabled",
         "loading",
         "zh-en"
-      ]
+      ],
+      "assertion": "board:ComposerB3/keep.bar.tool-tooltips"
     },
     {
       "id": "keep.optimize.popover",
       "label": "保留：优化弹层（280px、想法输入、Cmd/Ctrl+Enter、流式预览、再点取消）与结果 diff（新增词高亮、点应用才写正文、重试、错误出口）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "empty",
@@ -2085,15 +2084,15 @@
         "zh-en",
         "dark"
       ],
-      "note": "不自动覆盖正文"
+      "note": "不自动覆盖正文",
+      "assertion": "board:ComposerB3/keep.optimize.popover"
     },
     {
       "id": "keep.model.provider-pick",
       "label": "保留：同模型供应商直选（模型行供应商 chip，最多三个 + N；参数里的供应商项；记忆所选供应商）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "selected",
@@ -2102,15 +2101,16 @@
         "zh-en",
         "dark"
       ],
-      "note": "B3j 模型菜单只列模型本身，供应商入口落在哪（菜单行 chip 或参数弹层）实现线对照真实 NomiSelect 后回协调"
+      "note": "B3j 模型菜单只列模型本身，供应商入口落在哪（菜单行 chip 或参数弹层）实现线对照真实 NomiSelect 后回协调",
+      "assertion": "keep.model.provider-pick"
     },
     {
       "id": "keep.model.catalog-states",
       "label": "保留：模型目录加载 skeleton / 确实为空时的「配置模型」入口 / 失败保留上一份",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "loading",
@@ -2125,8 +2125,8 @@
       "label": "保留：模型健康与接入证据提示（失败项变淡沉底仍可选、单供应商限定语；灰化不等于禁用）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "error",
@@ -2141,8 +2141,8 @@
       "label": "保留：模型菜单「更多旧模型」折叠、当前旧项仍显示",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "selected",
@@ -2155,22 +2155,21 @@
       "label": "保留：多参数连续调整（选后不关）与单参数直出列表（两步、选后关、宽度贴内容），不恢复嵌套下拉",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "selected",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/keep.params.interaction"
     },
     {
       "id": "keep.params.control-kinds",
       "label": "保留：参数控件全种类（连续数值滑杆 + 方向键、结束时一次提交；自由文本与数字草稿；长枚举搜索、当前值保留、无匹配提示）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "empty",
@@ -2180,15 +2179,16 @@
         "zh-en",
         "dark"
       ],
-      "note": "不能只保枚举"
+      "note": "不能只保枚举",
+      "assertion": "board:ComposerB3/keep.params.control-kinds"
     },
     {
       "id": "keep.params.conditional",
       "label": "保留：条件参数联动（切模式 / 变体收窄可用选项、存量无效值归一化），继续按档案 / 渠道派生，不硬编码单个模型示例",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "selected",
@@ -2200,38 +2200,38 @@
       "label": "保留：参数弹层定位（上方优先、不足翻下、打开后固定）、内部滚动、Esc 与外部关闭顺序、视口可达",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "narrow",
         "selected",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/keep.params.popover-behavior"
     },
     {
       "id": "keep.params.channel-guidance",
       "label": "保留：当前渠道缺少档案模式时的指路（说明、可换家时给动作、× 关闭）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "error",
         "zh-en",
         "dark"
       ],
-      "note": "须改成参考行尾小字 + 文字链接，不用彩色提示条（用户 10-18 规则）；与换模型无关，勿混"
+      "note": "须改成参考行尾小字 + 文字链接，不用彩色提示条（用户 10-18 规则）；与换模型无关，勿混",
+      "assertion": "board:ComposerB3/ref.tail.channel-missing-mode"
     },
     {
       "id": "keep.params.custom-workflow",
       "label": "保留：自定义 / ComfyUI 工作流模型的多媒体槽、自由参数（工作流参数 N 项）、不接 prompt 时移除正文与工具并说明",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "empty",
@@ -2246,8 +2246,8 @@
       "label": "保留：已有结果再点生成 = 重新生成（确认后原地加版本，不复制节点）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "selected",
@@ -2261,8 +2261,8 @@
       "label": "保留：依赖上游参考未生成时先备齐（依赖波次批量确认，先上游后本节点），不把所有缺 URL 都禁用",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "loading",
@@ -2275,23 +2275,23 @@
       "label": "保留：必需参考 / 跨槽伴随依赖不足时生成钮禁用 + 具体原因（与发送校验同源）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "disabled",
         "error",
         "zh-en",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/keep.run.disabled-reason"
     },
     {
       "id": "keep.run.production-guard",
       "label": "保留：制作占用 / 导演预演过期或失败阻止生成与重渲（给原因，可恢复预演给刷新钮）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "disabled",
@@ -2305,21 +2305,21 @@
       "label": "保留：画布单选才挂生成框、多选不挂；拖节点 / 拖画布 / 开版本网格时 visibility 隐身不卸载，输入不丢",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "implemented",
       "retained": true,
       "states": [
         "selected",
         "dark"
-      ]
+      ],
+      "assertion": "board:ComposerB3/keep.host.canvas-mount"
     },
     {
       "id": "keep.host.locked",
       "label": "保留：锁定节点的真实范围（通用 prompt 只读、推荐禁用、翻译 / 优化隐藏；参数 / 参考 / 生成未统一检查 locked）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "disabled",
@@ -2334,8 +2334,8 @@
       "label": "保留：只读宿主（prompt 不可编辑，模式 / 参考 / 底栏隐藏并显示只读；区分 readOnly 与 locked，保留写口防护）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "disabled",
@@ -2348,8 +2348,8 @@
       "label": "保留：图片放大 / 超清（必须一张图、倍率 1/2/4× 或无倍率两型；缺图禁用，不误走文生）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "empty",
@@ -2364,8 +2364,8 @@
       "label": "保留：视频多模态参考（图 / 视频 / 音频分类型数组、音频伴随条件校验、仅音频错误）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "empty",
@@ -2381,8 +2381,8 @@
       "label": "保留：视频编辑方式的 source_video 独立单槽（上传 / 选择 / 连线）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "empty",
@@ -2397,8 +2397,8 @@
       "label": "保留：音频配音 / 转写模式栏、台词 + 音色 + 语速、转写单音频槽 + 语言；无图片 / 视频翻译优化",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "empty",
@@ -2413,8 +2413,8 @@
       "label": "保留：音乐生成动态参数（纯音乐、自定义模式、风格、标题、歌词、时长）与上传续写 / 翻唱（必需原音频、continueAt）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "empty",
@@ -2428,8 +2428,8 @@
       "label": "保留：音效（时长 / 循环 / 强度）、精细语音（音色 ID / 音量 / 音调）、转写（说话人 / 时间戳）、本地音频槽",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "empty",
@@ -2442,8 +2442,8 @@
       "label": "保留：3D 生成框（文生 / 图生与仅图生模型、拓扑 / 面数 / 对称 / 重网格 / PBR / 纹理 / 风格参数、图生缺图原因；提示词库有、翻译优化无）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "empty",
@@ -2459,8 +2459,8 @@
       "label": "保留：文本节点独立加工框（宽匹配节点、NodeInputReferenceEntry、四个加工预设 + 阻塞原因、续写 / 改写 / 重写菜单、两行指令框 + 快捷发送 + IME）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "empty",
@@ -2476,8 +2476,8 @@
       "label": "保留：文本模型默认跟随 Agent、可手选、可清绑定回跟随",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "selected",
@@ -2490,8 +2490,8 @@
       "label": "保留：文本自己的状态矩阵（预设模式模型禁用；locked 指令不可编辑；运行中可输入；发送禁用）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "disabled",
@@ -2505,8 +2505,8 @@
       "label": "保留：中英文案与无障碍合同（aria-label / expanded / pressed / status / alert；prompt 可访问名补全；全状态英文）",
       "change": "keep-as-is",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "status": "in-progress",
+      "owner": "I-b1a-composer：保留项——本 PR 没有改它的代码路径（audio / 3D / 文本加工框 / 自定义工作流等），证据见 PR 正文普查表「保留在哪」；没有新增走查断言",
       "retained": true,
       "states": [
         "zh-en",
@@ -2521,7 +2521,7 @@
       "change": "pending",
       "candidates": [],
       "status": "missing",
-      "owner": "icons-pending：待 F 组真实场景对比确认后再定；实现线 I-B3impl 之后接",
+      "owner": "icons-pending：待 F 组真实场景对比确认后再定；本 PR 不动图标尺寸线宽（沿用现有组件）",
       "iconsPending": true,
       "states": [
         "hover",
