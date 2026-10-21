@@ -1,0 +1,21 @@
+{
+  "id": "creation-ai-rewrite-result-8000",
+  "feature": "写作区选中 8000 字点 AI 编辑，结果回来后画出新旧对比（打开会话 + 写入结果 + 比较 + 生成装饰 + 区间外一次编辑的区间平移）",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scenarios",
+    "creation-ai-rewrite-result"
+  ],
+  "scale": "2000 段文稿，选区 8000 字，结果同长",
+  "metrics": [
+    "response"
+  ],
+  "budget": 100,
+  "group": "写作区 · AI 编辑",
+  "budgetStatus": "proposed",
+  "budgetBasis": "人对「点了有反应」的感知阈值约 100ms（RAIL / Nielsen）；仓库默认预算「操作到可见反馈 ≤100ms」（docs/engineering/perf-scenarios.md）。实现线用 vitest 微量具（不含 DOM 绘制）量计算部分：2000 段 / 选区 8000 字 / 7 次，中位数 99.8ms、最慢 127ms；同一对原文 / 新文的比较已做缓存，后续每次状态更新不再重算。常见选区（一两句）远小于此",
+  "measurement": {
+    "state": "pending",
+    "reason": "驱动（canvas-scale-bench 的 creation-ai-rewrite-result 场景）与 Electron 整机量具未建；本 PR 只有计算部分的微量具数字（见 PR 正文），基线待协调会话安排"
+  }
+}

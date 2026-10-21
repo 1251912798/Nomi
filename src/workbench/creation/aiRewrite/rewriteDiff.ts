@@ -25,9 +25,15 @@ function wordSegmenter(): unknown | undefined {
   return segmenter ?? undefined
 }
 
+let lastDiff: { original: string; rewritten: string; parts: RewriteDiffPart[] } | null = null
+
+/** 编辑器每次状态更新都会重画装饰；同一对原文 / 新文只比一次（8000 字的比较约几十毫秒）。 */
 export function diffRewrite(original: string, rewritten: string): RewriteDiffPart[] {
+  if (lastDiff && lastDiff.original === original && lastDiff.rewritten === rewritten) return lastDiff.parts
   const parts = diffWordsWithSpace(original, rewritten, { intlSegmenter: wordSegmenter() })
-  return parts
+  const result = parts
     .filter((part) => part.value.length > 0)
-    .map((part) => ({ kind: part.added ? 'add' : part.removed ? 'del' : 'keep', text: part.value }))
+    .map((part): RewriteDiffPart => ({ kind: part.added ? 'add' : part.removed ? 'del' : 'keep', text: part.value }))
+  lastDiff = { original, rewritten, parts: result }
+  return result
 }
