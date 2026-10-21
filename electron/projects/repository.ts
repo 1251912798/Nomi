@@ -12,7 +12,6 @@ import { PROJECT_FILE, ensureDir, getProjectsRoot, getWorkspaceRepositoryDeps, r
 import {
   discoverLegacyProjectsOnce,
   isLegacyProjectSuppressed,
-  resetLegacyDiscoveryGuard,
   suppressLegacyProjectRediscovery,
 } from "../workspace/legacyProjectMigration";
 import {
@@ -134,7 +133,12 @@ export function resetEmptyDraftGcGuard(): void {
   emptyDraftGcDone = false;
 }
 
-export function listProjects(): Array<Omit<ProjectRecord, "payload">> {
+/**
+ * 项目列表摘要的**唯一读面**（异步）。渲染层、MCP / 外部 Agent 的项目列表都走它，没有同步版：
+ * 同步版会让渲染层 sendSync 干等主进程扫完全库（41 个项目 ≈340ms，2026-10-16 追踪），
+ * 也会让主进程在扫描期间不响应别的 IPC。读盘的重活在 listWorkspaceProjects（线程池 + 限并发）。
+ */
+export async function listProjects(): Promise<Array<Omit<ProjectRecord, "payload">>> {
   const deps = getWorkspaceRepositoryDeps();
   // 存量 registry 的来源字段冻结由下游 listWorkspaceProjects 统一负责（同参数同进程重复调用
   // 是纯浪费的一次取锁+读表，2026-09-03 去重）。
@@ -152,7 +156,7 @@ export function listProjects(): Array<Omit<ProjectRecord, "payload">> {
   // 全库列举一次，GC 与最终返回共用这一份快照。
   // 曾经是「GC 自己列一遍 + 这里再列一遍」＝ 372 次 manifest 快照读做两遍，
   // 实测占冷启动列举总耗时的 55-63%，而第一遍的结果用完即弃。
-  const listed = listWorkspaceProjects(deps);
+  const listed = await listWorkspaceProjects(deps);
   // 启动首次列举顺手回收上个进程遗留的空白草稿（默认根存在才跑，避免根被移走时雪崩）。
   // 回收掉的项目目录已不在盘上，必须从这份快照里摘掉，否则它们会以「幽灵卡片」返回给渲染层。
   let projects = listed;
@@ -182,13 +186,6 @@ export function listProjects(): Array<Omit<ProjectRecord, "payload">> {
     return true;
   });
   return alive.sort((a, b) => b.updatedAt - a.updatedAt);
-}
-
-// 显式同步：清掉一次性发现 guard 并立即重新发现 + 重注册（首次启动后、用户手动刷新库、
-// 或外部改动磁盘项目集合时调用）。返回最新列表，避免调用方再单独跑一次 listProjects。
-export function syncLegacyProjects(): Array<Omit<ProjectRecord, "payload">> {
-  resetLegacyDiscoveryGuard();
-  return listProjects();
 }
 
 // 「新建项目」走这里：不让渲染层指定路径，由主进程在默认根（getProjectsRoot，

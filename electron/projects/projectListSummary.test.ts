@@ -10,6 +10,8 @@ vi.mock("electron", () => ({
 import { createProject, listProjects, resetEmptyDraftGcGuard, saveProject } from "./repository";
 import { findRecentWorkspace } from "../workspace/workspaceRegistry";
 import { workspaceProjectFile } from "../workspace/workspacePaths";
+import * as manifest from "../workspace/workspaceManifest";
+import { WORKSPACE_LIST_IO_CONCURRENCY } from "../workspace/workspaceRepository";
 
 // 项目列表摘要读面的特征测试（P-library，2026-10-21）：钉住「列表读面返回什么」，
 // 不钉它是同步还是异步——一律 `await listProjects()`，同步实现与异步实现都得过。
@@ -80,5 +82,43 @@ describe("项目列表摘要读面", () => {
     const listed = await listProjects();
     expect(listed.find((item) => item.id === healthy.id)?.name).toBe("健康");
     expect(listed.find((item) => item.id === broken.id)).toMatchObject({ name: "清单坏了", missing: false });
+  });
+
+  it("读清单的盘读并发不超过上限：41 个项目也只同时在飞 WORKSPACE_LIST_IO_CONCURRENCY 个", async () => {
+    for (let index = 0; index < 41; index += 1) createProject({ name: `项目 ${index}` });
+    const original = manifest.readWorkspaceManifestSnapshotAsync;
+    let inFlight = 0;
+    let peak = 0;
+    const spy = vi.spyOn(manifest, "readWorkspaceManifestSnapshotAsync").mockImplementation(async (rootPath: string) => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        return await original(rootPath);
+      } finally {
+        inFlight -= 1;
+      }
+    });
+    try {
+      const listed = await listProjects();
+      expect(listed).toHaveLength(41);
+      expect(spy).toHaveBeenCalledTimes(41);
+      expect(peak).toBeGreaterThan(1);
+      expect(peak).toBeLessThanOrEqual(WORKSPACE_LIST_IO_CONCURRENCY);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("列举期间主进程事件循环不被占住：定时器照常触发", async () => {
+    for (let index = 0; index < 20; index += 1) createProject({ name: `项目 ${index}` });
+    let ticks = 0;
+    const timer = setInterval(() => { ticks += 1; }, 1);
+    try {
+      await listProjects();
+    } finally {
+      clearInterval(timer);
+    }
+    expect(ticks).toBeGreaterThan(0);
   });
 });

@@ -45,35 +45,32 @@ function sortProjectSummaries(items: LocalProjectSummary[]): LocalProjectSummary
   return [...items].sort((left, right) => right.updatedAt - left.updatedAt)
 }
 
-function publishLocalProjectRecord(record: LocalProjectRecord): void {
-  const summary = toProjectSummary(record)
+/**
+ * 改列表缓存的唯一写口。缓存是热的（页面已经读过一次）就**同步**改：SWR 里同一个 key 的并发修改
+ * 只认最后一个，异步的改法会让紧挨着的两次发布（新建后立刻保存）互相覆盖、丢一条。
+ * 缓存是冷的才去读一遍现有列表再改（异步，一次性，读完后缓存就热了）。
+ */
+function updateLocalProjectsCache(apply: (items: LocalProjectSummary[]) => LocalProjectSummary[]): void {
   void mutate<LocalProjectSummary[]>(
     LOCAL_PROJECTS_SWR_KEY,
-    (current) => {
-      const items = Array.isArray(current) ? current : listProjectRecords()
-      const index = items.findIndex((project) => project.id === summary.id)
-      if (index < 0) return sortProjectSummaries([summary, ...items])
-      const next = [...items]
-      next[index] = summary
-      return sortProjectSummaries(next)
-    },
+    (current) => (Array.isArray(current) ? apply(current) : listProjectRecords().then(apply)),
     { revalidate: false },
   )
+}
+
+function publishLocalProjectRecord(record: LocalProjectRecord): void {
+  const summary = toProjectSummary(record)
+  updateLocalProjectsCache((items) => {
+    const index = items.findIndex((project) => project.id === summary.id)
+    if (index < 0) return sortProjectSummaries([summary, ...items])
+    const next = [...items]
+    next[index] = summary
+    return sortProjectSummaries(next)
+  })
 }
 
 function unpublishLocalProject(projectId: string): void {
-  void mutate<LocalProjectSummary[]>(
-    LOCAL_PROJECTS_SWR_KEY,
-    (current) => {
-      const items = Array.isArray(current) ? current : listProjectRecords()
-      return items.filter((project) => project.id !== projectId)
-    },
-    { revalidate: false },
-  )
-}
-
-export function listLocalProjects(): LocalProjectSummary[] {
-  return listProjectRecords()
+  updateLocalProjectsCache((items) => items.filter((project) => project.id !== projectId))
 }
 
 export type UseLocalProjectsResult = {

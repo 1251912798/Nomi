@@ -148,7 +148,7 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
   // 壳不订阅选区（选中一张卡，壳 0 次重渲；eslint 规则见 scripts/canvas-store-subscriptions.mjs）：回调里读那一刻的选区。
   const handleSaveWorkflow = React.useCallback(() => {
     const template = saveSelectedAsWorkflowTemplate(t('generationCommon.selection.defaultWorkflowName', { count: useGenerationCanvasStore.getState().selectedNodeIds.length })); if (!template) return
-    saveWorkflowFromProject(template, withProjectAction((project) => project.binding.projectId) ?? null); toast(t('generationCommon.selection.workflowSaved', { name: template.name }), 'success')
+    void saveWorkflowFromProject(template, withProjectAction((project) => project.binding.projectId) ?? null).then(() => toast(t('generationCommon.selection.workflowSaved', { name: template.name }), 'success'))
   }, [saveSelectedAsWorkflowTemplate, t])
 
   // #4 引用稳定过滤 + #5 minimap 拖动冻结（抽到 useStableCategoryNodes，逐字等价）。

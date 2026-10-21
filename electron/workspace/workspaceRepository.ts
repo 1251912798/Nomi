@@ -2,12 +2,14 @@ import { assertProjectAgentBinding, sameProjectAgentBinding, type ProjectBinding
 import fs from "node:fs";
 import crypto from "node:crypto";
 import path from "node:path";
+import pLimit from "p-limit";
 import { readJsonFile } from "../jsonFile";
 import { migrateLegacyProjectFolder } from "./legacyProjectMigration";
 import {
   initializeWorkspace,
   readWorkspaceManifest,
   readWorkspaceManifestSnapshot,
+  readWorkspaceManifestSnapshotAsync,
   recoverWorkspaceManifest,
   withWorkspaceManifestStagedMutation,
 } from "./workspaceManifest";
@@ -15,6 +17,7 @@ import {
   backfillWorkspaceOrigins,
   findRecentWorkspace,
   listRecentWorkspaces,
+  listRecentWorkspacesAsync,
   rememberWorkspace,
   removeWorkspaceReference,
 } from "./workspaceRegistry";
@@ -260,70 +263,54 @@ export function createWorkspaceProject(
   return record;
 }
 
-export function listWorkspaceProjects(deps: WorkspaceRepositoryDeps): WorkspaceProjectSummary[] {
+/** 项目库一次列举里，同时在飞的盘读个数上限（线程池默认 4 个线程，再多只是排队、还会和别的读盘抢）。 */
+export const WORKSPACE_LIST_IO_CONCURRENCY = 6;
+
+/**
+ * 列出全部已登记项目的摘要（项目库的唯一读面，**异步**：清单快照、文件夹在不在都走线程池，
+ * 限并发读，列举期间主进程事件循环照常转——此前是同步一口气扫完，41 个项目约占主进程 340–480ms，
+ * 保存 / 生成事件 / 别的 IPC 全在后面排队）。
+ * 例外：快照读不出来（含内嵌 data URL 需要加锁瘦身、构建产物地址需要迁移）的那一个项目仍走加锁同步读，
+ * 它是项目自己的一次性修复，不是每次列表的常态成本。
+ */
+export async function listWorkspaceProjects(deps: WorkspaceRepositoryDeps): Promise<WorkspaceProjectSummary[]> {
   backfillWorkspaceOrigins(deps.settingsRoot, deps.defaultProjectsRoot);
-  return listRecentWorkspaces(deps.settingsRoot).map((entry) => {
-    const source = persistedProjectSource(entry);
-    if (entry.missing) {
-      return withoutPayload(
-        normalizeWorkspaceProjectRecord({
-          id: entry.id,
-          name: entry.name,
-          version: 2,
-          createdAt: entry.lastOpenedAt,
-          updatedAt: entry.lastOpenedAt,
-          savedAt: entry.lastOpenedAt,
-          revision: 0,
-          lastKnownRootPath: entry.rootPath,
-        }),
-        entry.rootPath,
-        true,
-        source,
-      );
-    }
-    const manifest = readWorkspaceManifestSnapshot(entry.rootPath) ?? readWorkspaceManifest(entry.rootPath);
-    if (!manifest || manifest.id !== entry.id) {
-      if (hasLegacyProjectFile(entry.rootPath)) {
-        return withoutPayload(
-          normalizeWorkspaceProjectRecord({
-            id: entry.id,
-            name: entry.name,
-            version: 2,
-            createdAt: entry.lastOpenedAt,
-            updatedAt: entry.lastOpenedAt,
-            savedAt: entry.lastOpenedAt,
-            revision: 0,
-            lastKnownRootPath: entry.rootPath,
-          }),
-          entry.rootPath,
-          false,
-          source,
-        );
-      }
-      return withoutPayload(
-        normalizeWorkspaceProjectRecord({
-          id: entry.id,
-          name: entry.name,
-          version: 2,
-          createdAt: entry.lastOpenedAt,
-          updatedAt: entry.lastOpenedAt,
-          savedAt: entry.lastOpenedAt,
-          revision: 0,
-          lastKnownRootPath: entry.rootPath,
-        }),
-        entry.rootPath,
-        false,
-        source,
-      );
-    }
-    const summary = withoutPayload({ ...manifest, lastKnownRootPath: entry.rootPath }, entry.rootPath, false, source);
-    const cover = deriveProjectCover(manifest);
-    return {
-      ...summary,
-      ...(cover.imageUrls.length ? { thumbnailUrls: cover.imageUrls, thumbnail: cover.imageUrls[0] } : {}),
-      ...(cover.videoUrl ? { coverVideoUrl: cover.videoUrl } : {}),
-    };
-  });
+  const limit = pLimit(WORKSPACE_LIST_IO_CONCURRENCY);
+  const entries = await listRecentWorkspacesAsync(deps.settingsRoot, limit);
+  return Promise.all(
+    entries.map((entry) =>
+      limit(async (): Promise<WorkspaceProjectSummary> => {
+        const source = persistedProjectSource(entry);
+        // 注册表里有、但清单读不出来 / 文件夹不在：用注册表里记的名字和最近打开时间兜一张卡，坏项目不从列表里消失。
+        const registryCard = (missing: boolean): WorkspaceProjectSummary =>
+          withoutPayload(
+            normalizeWorkspaceProjectRecord({
+              id: entry.id,
+              name: entry.name,
+              version: 2,
+              createdAt: entry.lastOpenedAt,
+              updatedAt: entry.lastOpenedAt,
+              savedAt: entry.lastOpenedAt,
+              revision: 0,
+              lastKnownRootPath: entry.rootPath,
+            }),
+            entry.rootPath,
+            missing,
+            source,
+          );
+        if (entry.missing) return registryCard(true);
+        const manifest = (await readWorkspaceManifestSnapshotAsync(entry.rootPath)) ?? readWorkspaceManifest(entry.rootPath);
+        if (!manifest || manifest.id !== entry.id) return registryCard(false);
+        const summary = withoutPayload({ ...manifest, lastKnownRootPath: entry.rootPath }, entry.rootPath, false, source);
+        const cover = deriveProjectCover(manifest);
+        return {
+          ...summary,
+          ...(cover.imageUrls.length ? { thumbnailUrls: cover.imageUrls, thumbnail: cover.imageUrls[0] } : {}),
+          ...(cover.videoUrl ? { coverVideoUrl: cover.videoUrl } : {}),
+        };
+      }),
+    ),
+  );
 }
 
 export function readWorkspaceProject(
@@ -455,7 +442,7 @@ function dirHasRealFiles(dir: string): boolean {
  * 372 次 manifest 快照读整整做两遍，实测占冷启动列举总耗时的 55-63%（727/996/837ms
  * of 1310/1598/1323ms，346 项目真实库）。判据只读 summary 字段（source/missing/draft/
  * revision）与磁盘 assets/，与列举时刻的快照一致，故复用不改变任何回收判定。
- * 不给默认值——留 `projects = listWorkspaceProjects(deps)` 这种兜底就等于把旧的
+ * 不给默认值——留 `projects = await listWorkspaceProjects(deps)` 这种兜底就等于把旧的
  * 双份列举留成可达路径（P1：不留并行版）。
  */
 export function gcEmptyDraftWorkspaceProjects(

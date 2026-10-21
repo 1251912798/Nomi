@@ -207,6 +207,8 @@ export type DesktopBridge = DesktopMediaBridge &
     }) => Promise<{ ok: boolean; deletedCount: number; failedCount: number }>
     revealProjectFolder: (payload: { projectId: string }) => Promise<{ ok: boolean }>
     syncInspect?: (payload: string | { projectId: string; adopt?: boolean }) => Promise<WorkspaceSyncInspection>
+    /** 项目库卡片批量检查：一次一批、主进程限并发；查不了的项目值是 null。 */
+    syncInspectMany?: (projectIds: string[]) => Promise<Record<string, WorkspaceSyncInspection | null>>
     syncReveal?: (projectId: string) => Promise<{ ok: boolean }>
     syncCopyConflict?: (payload: { projectId: string; source?: 'local' | 'remote' }) => Promise<{ path: string }>
   }
@@ -215,8 +217,8 @@ export type DesktopBridge = DesktopMediaBridge &
     show: (payload: { title: string; body?: string; event?: import("../../electron/shared/contracts/attentionSound").AttentionSoundEvent }) => Promise<{ ok: boolean; reason?: string }>
   }
   projects: {
-    list: () => unknown[]
-    listAsync?: () => Promise<unknown[]>
+    /** 项目列表摘要：唯一读口，异步（没有同步版）。 */
+    listAsync: () => Promise<unknown[]>
     create: (record: unknown) => unknown
     read: (projectId: string) => unknown | null
     readAsync?: (projectId: string) => Promise<unknown | null>

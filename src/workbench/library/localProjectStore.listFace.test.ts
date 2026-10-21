@@ -45,7 +45,9 @@ describe('项目列表缓存：增删发布', () => {
   it('缓存是冷的时候新建：先从桥读一次现有列表，再把新项目排到最前', async () => {
     const bridge = installBridge([summary('old', 10)])
     const record = createLocalProject('新的')
-    await vi.waitFor(async () => expect((await cached())?.map((item) => item.id)).toEqual([record.id, 'old']))
+    // 冷缓存时发布是异步的（先读一遍现有列表）；先让它落定再读，读本身是一次 mutate，会顶掉还没落定的那次。
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect((await cached())?.map((item) => item.id)).toEqual([record.id, 'old'])
     expect(bridge.projects.create).toHaveBeenCalledTimes(1)
   })
 
@@ -53,6 +55,14 @@ describe('项目列表缓存：增删发布', () => {
     installBridge([summary('a', 20), summary('b', 10)])
     await mutate(LOCAL_PROJECTS_SWR_KEY, [summary('a', 20), summary('b', 10)], { revalidate: false })
     deleteLocalProject('a')
-    await vi.waitFor(async () => expect((await cached())?.map((item) => item.id)).toEqual(['b']))
+    expect((await cached())?.map((item) => item.id)).toEqual(['b'])
+  })
+
+  it('缓存是热的时候紧挨着发布两次：两条都在（同步改，不被 SWR 的「只认最后一次修改」吞掉）', async () => {
+    installBridge([summary('old', 10)])
+    await mutate(LOCAL_PROJECTS_SWR_KEY, [summary('old', 10)], { revalidate: false })
+    const first = createLocalProject('甲')
+    const second = createLocalProject('乙')
+    expect(new Set((await cached())?.map((item) => item.id))).toEqual(new Set([first.id, second.id, 'old']))
   })
 })

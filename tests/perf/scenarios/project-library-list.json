@@ -29,7 +29,7 @@
   "budgetDebt": {
     "owner": "P-library",
     "state": "unassigned",
-    "note": "回项目库同步刷新全库，卡片出来后又触发全库同步状态检查；renderer 大段时间在 sendSync 上等主进程（C-trace 报告（协调状态目录 reports/C-trace.md））",
+    "note": "10-21 结构改动（列表摘要异步 + 状态检查批量限并发 + 删同步通道）后剩余：回库点击先等「离开项目」那一次整份落盘（persistActiveWorkbenchProjectNow 总是写盘，主进程约 175ms，含 fsync），再是约 130ms 的渲染（41 张卡的样式 / 布局）；诊断见 PR 正文",
     "since": "2026-10-16"
   }
 }
