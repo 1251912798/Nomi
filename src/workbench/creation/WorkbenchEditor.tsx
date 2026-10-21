@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { EditorContent, type Editor, type JSONContent } from '@tiptap/react'
 import SelectionGeneratePopover from './SelectionGeneratePopover'
 import { AiRewriteBar } from './aiRewrite/AiRewriteBar'
-import { setRewriteLabelProvider } from './aiRewrite/rewriteSession'
+import { setRewriteDocumentIdentityTransaction, setRewriteLabelProvider } from './aiRewrite/rewriteSession'
+import { toast } from '../../ui/toast'
 import { useAiRewrite } from './aiRewrite/aiRewriteBinding'
 import { WorkbenchIconButton } from '../../design/actions'
 import { TIPTAP_PLACEHOLDER_CLASSES } from '../assets/tiptapPlaceholderClasses'
@@ -175,7 +176,13 @@ export default function WorkbenchEditor(): JSX.Element {
     persistentSelection: true,
   })
 
-  const rewrite = useAiRewrite(editor)
+  const rewrite = useAiRewrite(editor, { onDiscarded: () => toast(t('creationAi.rewrite.documentSwitched'), 'info') })
+  // 编辑器会被不同文稿复用（正文一样时连同步事务都没有）：改写会话只认「打开它的那篇文稿」，换了就作废。
+  const activeWorkbenchDocumentId = workbenchDocument.id
+  React.useLayoutEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    editor.view.dispatch(setRewriteDocumentIdentityTransaction(editor.state, activeWorkbenchDocumentId))
+  }, [editor, activeWorkbenchDocumentId])
   // 文档里的 ✓ ✕ 是裸 DOM 小部件，文案在挂载时从 i18n 取（语言切换后下一次画就是新语言）。
   React.useEffect(() => {
     setRewriteLabelProvider(() => ({

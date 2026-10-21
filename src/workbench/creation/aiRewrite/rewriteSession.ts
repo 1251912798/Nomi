@@ -1,5 +1,6 @@
 import { Extension } from '@tiptap/core'
 import { Fragment, Slice, type Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { closeHistory } from '@tiptap/pm/history'
 import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import { diffRewrite } from './rewriteDiff'
@@ -22,6 +23,8 @@ export type RewriteStatus = 'menu' | 'running' | 'result' | 'failed'
 
 export type RewriteSession = Readonly<{
   id: number
+  /** 打开那一刻编辑器里的是哪篇文稿。接受前必须还是它：同一个编辑器会被不同文稿复用，正文还可能一模一样，只靠内容分不出来。 */
+  documentId: string | null
   from: number
   to: number
   /** 打开那一刻区间里的文字：每一次「重来 / 追加要求」都从它出发，不从上一版结果出发。 */
@@ -36,11 +39,27 @@ type RewriteMeta =
   | { type: 'open'; session: RewriteSession }
   | { type: 'patch'; id: number; patch: Partial<Pick<RewriteSession, 'status' | 'requirement' | 'result' | 'failure'>> }
   | { type: 'close' }
+  | { type: 'document'; id: string | null }
 
-export const rewriteSessionKey = new PluginKey<RewriteSession | null>('nomiAiRewrite')
+/** 插件状态：当前编辑器里是哪篇文稿 + 至多一个会话。 */
+export type RewritePluginState = Readonly<{ documentId: string | null; session: RewriteSession | null }>
+
+export const rewriteSessionKey = new PluginKey<RewritePluginState>('nomiAiRewrite')
 
 export function getRewriteSession(state: EditorState): RewriteSession | null {
-  return rewriteSessionKey.getState(state) ?? null
+  return rewriteSessionKey.getState(state)?.session ?? null
+}
+
+export function getRewriteDocumentId(state: EditorState): string | null {
+  return rewriteSessionKey.getState(state)?.documentId ?? null
+}
+
+/**
+ * 宿主在「编辑器里换了一篇文稿」时发的事务（正文一样、编辑器照旧复用时文档本身不会变，所以必须显式告诉插件）。
+ * 换了文稿 = 属于旧文稿的会话当场作废（进行中的请求随之取消，结果回来也无处可写）。
+ */
+export function setRewriteDocumentIdentityTransaction(state: EditorState, id: string | null): Transaction {
+  return state.tr.setMeta(rewriteSessionKey, { type: 'document', id } satisfies RewriteMeta)
 }
 
 // —— 区间里的文字与「文字偏移 → 文档位置」 ——————————————————————————————————————
@@ -126,6 +145,7 @@ export function closeRewriteTransaction(state: EditorState): Transaction {
 export function acceptRewriteTransaction(state: EditorState): Transaction | null {
   const session = getRewriteSession(state)
   if (!session || session.status !== 'result' || !session.result) return null
+  if (session.documentId !== getRewriteDocumentId(state)) return null
   if (rangeText(state.doc, session.from, session.to) !== session.original) return null
   const { from, to, result } = session
   const tr = state.tr
@@ -146,6 +166,18 @@ export function acceptRewriteTransaction(state: EditorState): Transaction | null
   const end = Math.min(tr.mapping.map(to, 1), tr.doc.content.size)
   tr.setSelection(TextSelection.near(tr.doc.resolve(end), -1))
   return tr.setMeta(rewriteSessionKey, { type: 'close' } satisfies RewriteMeta)
+}
+
+/**
+ * 接受的唯一落地入口（控制器、段尾 ✓、键盘 Enter 都走它）：这一笔自己成一个撤销步，
+ * 之后紧接着的输入也不并进它——编辑器历史默认把 500ms 内相邻的事务合成一组，不隔开的话 Ctrl+Z 会连前面刚打的字一起撤。
+ */
+export function acceptRewrite(target: { readonly state: EditorState; dispatch(transaction: Transaction): void }): boolean {
+  const tr = acceptRewriteTransaction(target.state)
+  if (!tr) return false
+  target.dispatch(closeHistory(tr))
+  target.dispatch(closeHistory(target.state.tr))
+  return true
 }
 
 // —— 画 —————————————————————————————————————————————————————————————————————————
@@ -224,8 +256,7 @@ function actionsWidget(view: EditorView): HTMLElement {
       hint: labels.acceptHint,
       className: 'text-workbench-success-ink',
       onPress: () => {
-        const tr = acceptRewriteTransaction(view.state)
-        if (tr) view.dispatch(tr)
+        acceptRewrite(view)
       },
     }),
     actionButton({
@@ -325,31 +356,39 @@ function selectionInside(state: EditorState, session: RewriteSession, upTo: numb
   return from >= session.from && to <= upTo
 }
 
-export function createRewritePlugin(): Plugin<RewriteSession | null> {
-  return new Plugin<RewriteSession | null>({
+export function createRewritePlugin(): Plugin<RewritePluginState> {
+  const initial: RewritePluginState = { documentId: null, session: null }
+  return new Plugin<RewritePluginState>({
     key: rewriteSessionKey,
     state: {
-      init: () => null,
-      apply(tr, previous, _old, next) {
+      init: () => initial,
+      apply(tr, state, _old, next) {
         const meta = tr.getMeta(rewriteSessionKey) as RewriteMeta | undefined
-        if (meta?.type === 'open') return meta.session
-        if (meta?.type === 'close') return null
-        if (!previous) return null
-        if (meta?.type === 'patch') return meta.id === previous.id ? { ...previous, ...meta.patch } : previous
+        const withSession = (session: RewriteSession | null): RewritePluginState => (session === state.session ? state : { documentId: state.documentId, session })
+        if (meta?.type === 'document') {
+          if (meta.id === state.documentId) return state
+          // 换了文稿：旧文稿的会话作废。
+          return { documentId: meta.id, session: state.session && state.session.documentId === meta.id ? state.session : null }
+        }
+        if (meta?.type === 'open') return withSession(meta.session)
+        if (meta?.type === 'close') return withSession(null)
+        const previous = state.session
+        if (!previous) return state
+        if (meta?.type === 'patch') return withSession(meta.id === previous.id ? { ...previous, ...meta.patch } : previous)
         let current = previous
         if (tr.docChanged) {
           const from = tr.mapping.map(previous.from, 1)
           const to = tr.mapping.map(previous.to, -1)
           // 原文被改过 / 被删了 = 这一版结果已经不是针对眼前这段字的，丢掉，不去猜。
-          if (from >= to || rangeText(tr.doc, from, to) !== previous.original) return null
+          if (from >= to || rangeText(tr.doc, from, to) !== previous.original) return withSession(null)
           if (from !== previous.from || to !== previous.to) current = { ...previous, from, to }
         }
         // 菜单 / 进行中 / 失败态：用户点去了别处 = 不改了。结果已出的不因为一次误点就丢。
         if (tr.selectionSet && current.status !== 'result') {
           const { from, to } = next.selection
-          if (from < current.from || to > current.to) return null
+          if (from < current.from || to > current.to) return withSession(null)
         }
-        return current
+        return withSession(current)
       },
     },
     props: {
@@ -366,10 +405,7 @@ export function createRewritePlugin(): Plugin<RewriteSession | null> {
           return true
         }
         if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && session.status === 'result') {
-          const tr = acceptRewriteTransaction(view.state)
-          if (!tr) return false
-          view.dispatch(tr)
-          return true
+          return acceptRewrite(view)
         }
         return false
       },

@@ -1,8 +1,9 @@
 import type { EditorState, Transaction } from '@tiptap/pm/state'
 import { runRewriteModel } from './rewriteModel'
 import {
-  acceptRewriteTransaction,
+  acceptRewrite,
   closeRewriteTransaction,
+  getRewriteDocumentId,
   getRewriteSession,
   openRewriteTransaction,
   patchRewriteTransaction,
@@ -36,7 +37,12 @@ export type RewriteController = {
 
 let nextSessionId = 1
 
-export function createRewriteController(host: RewriteHost): RewriteController {
+export type RewriteControllerOptions = {
+  /** 会话因为切了文稿被作废（进行中的取消 / 结果已出的丢掉）：界面据此告诉用户「这次改写没有写入」。 */
+  onDiscarded?: (reason: 'document-switched') => void
+}
+
+export function createRewriteController(host: RewriteHost, options: RewriteControllerOptions = {}): RewriteController {
   let inflight: { id: number; abort: AbortController } | null = null
   const listeners = new Set<() => void>()
 
@@ -52,8 +58,17 @@ export function createRewriteController(host: RewriteHost): RewriteController {
     }
   }
 
+  let lastSession = session()
+  let lastDocumentId = getRewriteDocumentId(host.state)
   const offHost = host.subscribe(() => {
     stopInflightIfStale()
+    const now = session()
+    const documentId = getRewriteDocumentId(host.state)
+    if (lastSession && !now && documentId !== lastDocumentId && (lastSession.status === 'running' || lastSession.status === 'result')) {
+      options.onDiscarded?.('document-switched')
+    }
+    lastSession = now
+    lastDocumentId = documentId
     listeners.forEach((listener) => listener())
   })
 
@@ -88,6 +103,7 @@ export function createRewriteController(host: RewriteHost): RewriteController {
       if (!range) return false
       host.dispatch(openRewriteTransaction(host.state, {
         id: nextSessionId++,
+        documentId: getRewriteDocumentId(host.state),
         from: range.from,
         to: range.to,
         original: range.text,
@@ -107,8 +123,7 @@ export function createRewriteController(host: RewriteHost): RewriteController {
       if (requirement) run(requirement)
     },
     accept() {
-      const tr = acceptRewriteTransaction(host.state)
-      if (tr) host.dispatch(tr)
+      acceptRewrite(host)
     },
     discard() {
       if (session()) host.dispatch(closeRewriteTransaction(host.state))

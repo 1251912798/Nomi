@@ -78,6 +78,7 @@ export const zhCreationAi = {
     emptyResult: '模型没有返回内容',
     unchanged: '模型返回的内容和原文一样',
     unknownReason: '原因不明',
+    documentSwitched: '文稿已切换，这次改写没有写入',
   },
   attachmentsUploading: '附件还在上传，请等上传完成再发送。',
   noTextModel: {
@@ -219,6 +220,7 @@ export const enCreationAi = {
     emptyResult: 'The model returned nothing',
     unchanged: 'The model returned the same text',
     unknownReason: 'Unknown reason',
+    documentSwitched: 'Document changed — this edit was not applied',
   },
   attachmentsUploading: 'Attachments are still uploading. Wait for them to finish before sending.',
   noTextModel: {

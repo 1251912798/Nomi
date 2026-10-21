@@ -7,7 +7,7 @@ import { history, undo } from '@tiptap/pm/history'
 import i18n from '../../../i18n'
 import { createProjectSessionTestHarness, type ProjectSessionTestHarness } from '../../project/projectSessionTestHarness'
 import { createRewriteController, type RewriteController, type RewriteHost } from './rewriteController'
-import { buildRewriteDecorations, createRewritePlugin, getRewriteSession, rangeText, rewriteSessionKey, type RewriteRequirement } from './rewriteSession'
+import { buildRewriteDecorations, createRewritePlugin, getRewriteSession, openRewriteTransaction, rangeText, rewriteSessionKey, setRewriteDocumentIdentityTransaction, type RewriteRequirement } from './rewriteSession'
 import { REWRITE_PRESET_INSTRUCTIONS, buildRewritePrompt, cleanRewriteOutput, isWritingSkill, skillBodyText } from './rewritePrompt'
 import { diffRewrite } from './rewriteDiff'
 import type { SkillListItemDto } from '../../api/skillApi'
@@ -25,6 +25,8 @@ type TestHost = RewriteHost & {
   select(from: number, to: number): void
   edit(from: number, to: number, text: string): void
   undo(): void
+  /** 切文稿：和 WorkbenchEditor 的布局副作用一样，发一笔只改「当前是哪篇文稿」的事务（正文可以一模一样、编辑器照旧复用）。 */
+  switchDocument(id: string): void
   text(): string
   /** 等到某个条件在状态里成立（靠事务通知，不靠墙钟）。 */
   until(predicate: () => boolean): Promise<void>
@@ -46,6 +48,7 @@ function createHost(initial: ProseMirrorNode): TestHost {
     select(from, to) { host.dispatch(state.tr.setSelection(TextSelection.create(state.doc, from, to))) },
     edit(from, to, text) { host.dispatch(state.tr.insertText(text, from, to)) },
     undo() { undo(state, (transaction) => host.dispatch(transaction)) },
+    switchDocument(id) { host.dispatch(setRewriteDocumentIdentityTransaction(state, id)) },
     text() { return state.doc.textBetween(0, state.doc.content.size, '\n') },
     until(predicate) {
       if (predicate()) return Promise.resolve()
@@ -117,13 +120,16 @@ let projectSession: ProjectSessionTestHarness
 let controller: RewriteController
 let host: TestHost
 let fake: ReturnType<typeof installFakeDesktop>
+let discarded: string[]
 
 beforeEach(async () => {
   projectSession = createProjectSessionTestHarness()
   await projectSession.open('rewrite-project')
   fake = installFakeDesktop()
   host = createHost(doc(P1, P2, P3))
-  controller = createRewriteController(host)
+  host.switchDocument('doc-A')
+  discarded = []
+  controller = createRewriteController(host, { onDiscarded: (reason) => discarded.push(reason) })
 })
 
 afterEach(() => {
@@ -447,10 +453,84 @@ describe('给模型的话与写作 Skill', () => {
   })
 })
 
+describe('B1：改写结果只落回打开它的那篇文稿（按身份判，不只按内容判）', () => {
+  it('改写进行中切到另一篇正文一模一样的文稿：会话作废、请求取消、迟到的结果无处可写，并告诉用户没写入', async () => {
+    openOnSecondParagraph()
+    controller.submit(REQUIREMENT)
+    const request = await fake.request(1)
+    host.switchDocument('doc-B')
+    expect(getRewriteSession(host.state)).toBeNull()
+    expect(request.signalAborted()).toBe(true)
+    expect(discarded).toEqual(['document-switched'])
+    request.reply('不该出现的结果')
+    await settle()
+    expect(host.text()).toBe([P1, P2, P3].join('\n'))
+    expect(getRewriteSession(host.state)).toBeNull()
+  })
+
+  it('结果已出来后切到另一篇正文一模一样的文稿：结果作废，接受不了，并告诉用户没写入', async () => {
+    await runToResult()
+    host.switchDocument('doc-B')
+    expect(getRewriteSession(host.state)).toBeNull()
+    expect(discarded).toEqual(['document-switched'])
+    controller.accept()
+    expect(host.text()).toBe([P1, P2, P3].join('\n'))
+  })
+
+  it('唯一的落地关口自己也认身份：会话身份和当前文稿对不上就不写（即使有人绕过了「切文稿时关会话」）', async () => {
+    await runToResult()
+    const session = getRewriteSession(host.state)!
+    // 绕过关闭：手工塞回一个「属于别的文稿」的会话
+    host.dispatch(openRewriteTransaction(host.state, { ...session, documentId: 'doc-OTHER' }))
+    controller.accept()
+    expect(host.text()).toBe([P1, P2, P3].join('\n'))
+    expect(getRewriteSession(host.state)?.status).toBe('result')
+  })
+
+  it('会话在原文稿里照常能接受（身份一致不误杀）', async () => {
+    await runToResult()
+    host.switchDocument('doc-A')
+    expect(getRewriteSession(host.state)?.status).toBe('result')
+    controller.accept()
+    expect(host.text()).toBe([P1, '慢慢展开纸条。', P3].join('\n'))
+    expect(discarded).toEqual([])
+  })
+})
+
+describe('B2：接受改写是独立的一步撤销', () => {
+  it('改写前刚打的字、马上接受改写，Ctrl+Z 只撤回这次改写，刚打的字还在', async () => {
+    host.edit(P2_FROM + 3, P2_FROM + 3, 'X') // 刚打的字，紧挨着待改的那段
+    host.select(P2_FROM + 4, P2_TO + 1)
+    expect(controller.open()).toBe(true)
+    controller.submit(REQUIREMENT)
+    const request = await fake.request(1)
+    request.reply('慢慢展开。')
+    await host.until(() => getRewriteSession(host.state)?.status === 'result')
+    const typed = host.text()
+    controller.accept()
+    expect(host.text()).not.toBe(typed)
+    host.undo()
+    expect(host.text()).toBe(typed)
+    expect(host.text()).toContain('X')
+  })
+
+  it('接受之后紧接着打字，Ctrl+Z 先撤打的字、再撤改写（两步），互不并组', async () => {
+    await runToResult()
+    const original = host.text()
+    controller.accept()
+    const accepted = host.text()
+    host.edit(host.state.selection.from, host.state.selection.from, 'Y')
+    host.undo()
+    expect(host.text()).toBe(accepted)
+    host.undo()
+    expect(host.text()).toBe(original)
+  })
+})
+
 describe('会话的唯一 owner 是编辑器插件状态', () => {
   it('会话只活在插件状态里：没有第二份', () => {
     openOnSecondParagraph()
-    expect(rewriteSessionKey.getState(host.state)).toBe(getRewriteSession(host.state))
+    expect(rewriteSessionKey.getState(host.state)?.session).toBe(getRewriteSession(host.state))
     expect(rangeText(host.state.doc, P2_FROM, P2_TO)).toBe(P2)
   })
 })
