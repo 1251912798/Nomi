@@ -104,11 +104,13 @@
 
 ### ★7 性能（新功能）
 
-①新增操作：点 AI 编辑、输入、点常用改法、Enter / Esc、↻。②最坏规模：选区 8 000 字、文稿 2 000 段、结果态下每次按键。③预算：操作到可见反馈 ≤100ms；装饰计算 O(选区长度)（一次 `nodesBetween` + 一次文字 diff，且只在会话变化时重算，文稿其他位置的编辑只做区间平移 + 一次区间文字比对）。④场景 id：本 PR 未登记 `tests/perf/scenarios/`：`perf-scenario：未验证：缺场景（编辑器内操作的最坏规模场景尚未建，协调会话定要不要建）`。
+①新增操作：点 AI 编辑、输入、点常用改法、Enter / Esc、↻、结果上屏。②最坏规模：2000 段文稿、选区 8000 字（180 段）、结果同长。③预算：操作到可见反馈 ≤100ms（默认预算，不放宽）。④场景 `creation-ai-rewrite-result-8000`（`tests/perf/scenarios/`，驱动 `tests/perf/canvas-scale-bench.mjs` 的 `creation-ai-rewrite-result`，真 Electron、隔离资料目录、零花费）：点「AI 编辑」→ 条出现、结果回来 → 新旧对比上屏，两个时刻各量一次取较慢者，每次采样用不同的结果文字（不吃缓存）。**基线 中位数 31.8ms / p95 32.6ms / 预算 100ms**，5 次，状态 ok，预算状态 `proposed`（待协调改 approved）。
+
+优化记录：第一版整块词比较，8000 字冷启动首次 195ms（超预算）。修法：段数不变就一段一段比，整块比加 60ms 时间上限（超了退回整段删加）；冷启动首次降到 51ms，热的中位数 32ms。
 
 ### 8 真实条件
 
-Windows 实现线；真 Chromium 里跑生产 `WorkbenchEditor`（实验室屏 `creation-ai-rewrite`，真键鼠走查）；中 / 英、亮 / 暗各一套截图（`docs/evidence/2026-10-19-creation-ai-rewrite/`，自己逐张看过）。`unverified`：Electron 整机（真桌面桥）、真文本模型回包、最小窗口、2 000 段真规模、键盘全程之外的触摸。
+Windows 实现线；Electron 整机 loopback 演练（假模型，隔离资料目录，截图 `docs/evidence/2026-10-19-creation-ai-rewrite/electron-rehearsal/`，自己逐张看过）；真 Chromium 里跑生产 `WorkbenchEditor`（实验室屏 `creation-ai-rewrite`，真键鼠走查）；中 / 英、亮 / 暗各一套截图（`docs/evidence/2026-10-19-creation-ai-rewrite/`，自己逐张看过）。`unverified`：真文本模型回包（走查脚本已写好，交协调会话带 key 跑一次）、最小窗口、2 000 段真规模、键盘全程之外的触摸。
 
 ### 拍板图清单：链接
 
