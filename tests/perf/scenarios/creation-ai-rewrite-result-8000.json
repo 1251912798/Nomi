@@ -16,7 +16,7 @@
   ],
   "budget": 100,
   "group": "写作区 · AI 编辑",
-  "budgetStatus": "proposed",
+  "budgetStatus": "approved",
   "budgetBasis": "人对「点了有反应」的感知阈值约 100ms（RAIL / Nielsen）；仓库默认预算「操作到可见反馈 ≤100ms」（docs/engineering/perf-scenarios.md）。两个时刻（点 AI 编辑 → 条出现；结果回来 → 新旧对比上屏）各量一次取较慢者。第一版整块词比较一次要约 200ms（8000 字，冷）；改成「段数不变就一段一段比、整块比加 60ms 时间上限」后冷启动首次 51ms、热的中位数 32ms。",
   "baseline": {
     "median": 31.8,
