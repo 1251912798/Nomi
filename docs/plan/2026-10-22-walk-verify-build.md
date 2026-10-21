@@ -48,3 +48,7 @@
   3. `scripts/lib/buildGateScan.test.mjs`（vitest）：有人绕过共享边界直接起 Electron → 门岗红；走 `launchNomiApp` / 自己核戳 / 已登记的非构建起法 → 绿；启动器自己不核戳 → 红；真实 `tests/` 树无漏网。
 - 反例会从哪些入口回来：新写的走查直接 `spawn(require('electron'))`、新写直接起 `dist-electron/main.js` 的脚本、Playwright `_electron` —— 都被 `check:e2e-launch` 的新规则拦；登记表 `NON_BUILD_SPAWNERS` 每条要写理由，且只给「起的不是仓库构建产物」的起法。
 - 回滚：revert 本提交即可；无数据迁移。
+
+## 排除项的自动核对
+
+`scripts/lib/buildInputRefScan.mjs`（测试 `scripts/lib/buildInputRefScan.test.mjs`，登记在 `pre-push-scan-guards.mjs`）：扫 `src/`、`electron/`（不含测试文件）、vite / tailwind / postcss 配置和构建链脚本里的静态 import、`?raw`、`import.meta.glob`、`new URL`、`require`、构建期 fs 读取；字面路径落进 `NON_INPUTS` 且不在 `KEEP_INSIDE_EXCLUDED` 就红。判据直接读 `package-build-stamp.mjs` 导出的同一份常量。`scripts/build-*.mjs` 里只有 build-tailwind / build-electron 在 App 构建链上，build-delivery-ledger 等生成文档的脚本不在范围。

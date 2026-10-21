@@ -25,9 +25,9 @@ const STAMP_VERSION = 2
  * 不能排除的（有引用）：evals/（src/devlab 导入）、skills/、agent-skills/（?raw）、src 下所有 *.md。
  * 加排除项前先重做同样的 grep；有引用就不能加。
  */
-const NON_INPUTS = ['.github', '.claude', '.agents', 'docs', 'tests']
-const NON_INPUT_GLOBS = ['*.md'] // 仓库根目录的 md（glob 里 * 不跨目录）
-const KEEP_INSIDE_EXCLUDED = ['docs/release-notes', 'tests/ux/fixtures']
+export const NON_INPUTS = ['.github', '.claude', '.agents', 'docs', 'tests']
+export const NON_INPUT_GLOBS = ['*.md'] // 仓库根目录的 md（glob 里 * 不跨目录）
+export const KEEP_INSIDE_EXCLUDED = ['docs/release-notes', 'tests/ux/fixtures']
 
 export function sourceIdentity(root) {
   const scratch = makeTempDir('nomi-build-index-')
