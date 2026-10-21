@@ -1,7 +1,7 @@
 {
   "name": "Agent 读到的分镜表（拆解表）的行 / 列 / 勾选（canvas.read 里的那一块，带上限）",
   "subject": "agent.canvas-read-shot-table",
-  "lifecycle": "read-projection",
+  "lifecycle": "projection",
   "authority_kind": "projection",
   "trust_domain": "shared",
   "fact_kind": "rule",
