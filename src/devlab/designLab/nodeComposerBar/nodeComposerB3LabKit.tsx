@@ -25,15 +25,24 @@ const NODE_HEIGHT = 130
 
 /** 仓库里的小图。文件名 = 素材名。 */
 const REF_DIR = '/tests/ux/fixtures/b3-refs'
-const refUrl = (name: string): string => `${window.location.origin}${REF_DIR}/${encodeURIComponent(name)}.svg`
+// 名字后面带 #k 的同一张图是「另一条引用」（URL 加 ?i=k 区分）：参考槽按 URL 去重，要摆出 30 张得有 30 个不同的 URL。
+const refUrl = (name: string): string => {
+  const [base = name, salt] = name.split('#')
+  return `${window.location.origin}${REF_DIR}/${encodeURIComponent(base)}.svg${salt ? `?i=${salt}` : ''}`
+}
 
-export type B3Model = 'seedance' | 'wan' | 'gpt-image' | 'imagen' | 'soul'
+export type B3Model = 'seedance' | 'seedance25' | 'wan' | 'gpt-image' | 'imagen' | 'soul'
 
 const MODELS: Record<B3Model, { option: ModelOption; archetype: string; variantId?: string }> = {
   seedance: {
     option: { value: 'bytedance/seedance-2', modelKey: 'seedance-2', modelAlias: 'bytedance/seedance-2', vendor: 'apimart', vendorName: '渠道 A', label: 'Seedance 2.0', kind: 'video' },
     archetype: 'seedance-2',
     variantId: 'fast',
+  },
+  // 参考上限最大的视频档案（30 图 / 10 视频 / 10 音频）：参考行最坏规模。
+  seedance25: {
+    option: { value: 'seedance-2.5', modelKey: 'seedance-2.5', vendor: 'apimart', vendorName: '渠道 A', label: 'Seedance 2.5', kind: 'video' },
+    archetype: 'seedance-2.5',
   },
   wan: {
     option: { value: 'wan2.7', modelKey: 'wan2.7', vendor: 'apimart', vendorName: '渠道 A', label: 'Wan 2.7', kind: 'video' },
@@ -189,7 +198,7 @@ export function ComposerB3Stage({ scenario }: { scenario: B3Scenario }): JSX.Ele
   const built = React.useMemo(() => buildNodes(scenario), [scenario])
   const [ready, setReady] = React.useState(false)
   React.useLayoutEffect(() => {
-    const videoOptions = [MODELS.seedance.option, MODELS.wan.option, ...EXTRA_VIDEO_OPTIONS, ...(scenario.secondChannel || scenario.channelGap === 'switch' ? [SECOND_CHANNEL] : [])]
+    const videoOptions = [MODELS.seedance.option, MODELS.seedance25.option, MODELS.wan.option, ...EXTRA_VIDEO_OPTIONS, ...(scenario.secondChannel || scenario.channelGap === 'switch' ? [SECOND_CHANNEL] : [])]
     const imageOptions = [MODELS.imagen.option, MODELS['gpt-image'].option, MODELS.soul.option]
     seedModelCatalogForTests(HEALTH, [
       { kind: 'video', requiredMode: 'text_to_video', options: videoOptions },

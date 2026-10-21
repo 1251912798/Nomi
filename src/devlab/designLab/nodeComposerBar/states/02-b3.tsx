@@ -15,6 +15,10 @@ const MIRRORS = [
 
 const THREE_REFS_PROMPT = `${mention('女主肖像')} 的人物走进 ${mention('海边小镇')}，树影按 ${mention('树林')}，镜头缓慢推近。`
 
+const SEVEN = ['女主肖像', '海边小镇', '树林', '海边清晨', '海边傍晚', '纸船', '落叶']
+/** 30 张参考（Seedance 2.5 的参考上限）：七张图轮着用，每张带不同的 #k 好让 URL 不重。 */
+const THIRTY_REFS = Array.from({ length: 30 }, (_, index) => `${SEVEN[index % SEVEN.length]}#${index}`)
+
 const stage = (scenario: B3Scenario): (() => React.JSX.Element) => () => <ComposerB3Stage scenario={scenario} />
 
 export const COMPOSER_B3_STATES: readonly LabState[] = [
@@ -113,6 +117,12 @@ export const COMPOSER_B3_STATES: readonly LabState[] = [
     name: 'B3p · 渠道缺方式（已接入的模型里都做不了）：只有说明，没有链接',
     source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light',
     render: stage({ kind: 'video', model: 'seedance', modeId: 'omni', channelGap: 'none', arrayRefs: ['海边清晨', '海边傍晚'], prompt: '镜头缓慢推近，海面从清晨过渡到傍晚。' }),
+  },
+  {
+    id: 'b3r-video-30-refs',
+    name: 'B3 · 最坏规模 · 参考行 30 张图（Seedance 2.5 参考上限 30 图）——性能场景的夹具',
+    source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light',
+    render: stage({ kind: 'video', model: 'seedance25', modeId: 'omni', arrayRefs: THIRTY_REFS, prompt: `${mention('女主肖像#0')} 走进 ${mention('海边小镇#1')}，镜头缓慢推近。` }),
   },
   {
     id: 'e1d-node-error',

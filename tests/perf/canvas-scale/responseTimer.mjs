@@ -23,6 +23,24 @@ const INSTALL_SOURCE = `(() => {
       const article = document.querySelector('article[data-node-id="' + CSS.escape(nodeId) + '"]')
       return Boolean(article) && (visible(composerOf(nodeId)) || Boolean(article.querySelector('[aria-busy="true"]')))
     },
+    // 生成框里参考行的小图到齐（B3 最坏规模：30 张）。
+    composerRefTilesReady(count) {
+      return document.querySelectorAll('[data-composer-host] [data-reference-row] [data-asset-tile]').length >= count
+    },
+    // 悬停一张参考小图：名字 + 来源的小提示出现（刚停上去的那一阶段，不含 0.45 秒的大图延迟）。
+    refHoverTip() {
+      return visible(document.querySelector('[data-asset-tile-tip]'))
+    },
+    // 点参数摘要钮：参数面板出现，生成方式那一组在里面。
+    paramPanelOpen() {
+      const panel = document.querySelector('[data-agent-parameter-panel]')
+      return visible(panel) && Boolean(panel.querySelector('[data-agent-generation-mode]'))
+    },
+    // 在面板里切生成方式：高亮的分段变成了 label，且参考行已经按新方式重排（首尾帧 = 出现「首帧」格）。
+    modeSwitched(label) {
+      const active = document.querySelector('[data-agent-generation-mode] [role="radio"][aria-checked="true"]')
+      return Boolean(active) && active.textContent.trim() === label && document.querySelectorAll('[data-asset-slot-label]').length >= 2
+    },
     nodeCountAbove(count) {
       return document.querySelectorAll('.react-flow__node').length > count
     },
