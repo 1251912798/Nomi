@@ -41,12 +41,16 @@ export type StreamTextTaskInput = {
 export type StreamTextTaskOptions = {
   onDelta?: (delta: string) => void;
   abortSignal?: AbortSignal;
+  /** 只给测试缩短首字闸（生产恒为 FIRST_TOKEN_TIMEOUT_MS）。 */
+  firstTokenTimeoutMs?: number;
 };
 
 // 文本流式超时（根因修复 2026-06-13）：中转接了连接却不吐 token/不关流时，
 // AI SDK 的 textStream for-await 会永久挂起，节点永远停在「正在把任务发给模型」——
 // 既不报错也进不了重试。两道闸：
 // ① 首字超时：发出请求后这么久还没收到第一个 token 就中断（判活，区别于"慢但在动"）;
+//    「token」包括思考型模型（DeepSeek V4、R1、o 系……）先吐的 reasoning：它们在想 = 在动。只数正文会把
+//    想得久的好模型当成死连接掐掉（2026-10-21 真模型走查：写作区 AI 编辑接 DeepSeek V4，30 秒后「首字未响应」）；
 // ② 整体超时：收到首字后总时长上限，防开了流又卡死在中途。
 // 超时即 abort（真掐断 HTTP 连接，见 buildAiSdkModel 透传 init.signal），并抛错让节点落 error 可重试。
 const FIRST_TOKEN_TIMEOUT_MS = 30_000;
@@ -128,10 +132,18 @@ export async function streamTextTask(
     if (external.aborted) controller.abort();
     else external.addEventListener("abort", () => controller.abort(), { once: true });
   }
+  const firstTokenMs = opts.firstTokenTimeoutMs ?? FIRST_TOKEN_TIMEOUT_MS;
   let firstTokenTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
-    timeoutReason = `首字 ${FIRST_TOKEN_TIMEOUT_MS / 1000}s 未响应`;
+    timeoutReason = `首字 ${firstTokenMs / 1000}s 未响应`;
     controller.abort();
-  }, FIRST_TOKEN_TIMEOUT_MS);
+  }, firstTokenMs);
+  /** 收到首个活着的信号（正文或思考）→ 撤首字闸，后续交给整体闸。 */
+  const sawFirstToken = () => {
+    if (firstTokenTimer) {
+      clearTimeout(firstTokenTimer);
+      firstTokenTimer = null;
+    }
+  };
   const overallTimer = setTimeout(() => {
     timeoutReason = `整体超过 ${OVERALL_TIMEOUT_MS / 1000}s`;
     controller.abort();
@@ -145,6 +157,8 @@ export async function streamTextTask(
   let streamError: unknown;
   const result = streamText({
     onError: ({ error }) => { streamError ??= error; },
+    // 思考型模型先吐 reasoning、正文很久以后才来：textStream 只含正文，所以判活要另听 chunk。
+    onChunk: ({ chunk }) => { if (chunk.type === "reasoning") sawFirstToken(); },
     model,
     messages: [{ role: "user", content }],
     temperature: typeof input.temperature === "number" ? input.temperature : 0.7,
@@ -171,11 +185,7 @@ export async function streamTextTask(
   let text = "";
   const consume = (async () => {
     for await (const delta of result.textStream) {
-      // 收到首字 → 撤首字闸，后续交给整体闸。
-      if (firstTokenTimer) {
-        clearTimeout(firstTokenTimer);
-        firstTokenTimer = null;
-      }
+      sawFirstToken();
       text += delta;
       opts.onDelta?.(delta);
     }
