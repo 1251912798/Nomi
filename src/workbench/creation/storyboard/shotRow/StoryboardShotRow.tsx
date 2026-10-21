@@ -36,6 +36,7 @@ import StoryboardVariantsDrawer from './StoryboardVariantsDrawer'
 import ShotReferenceStrip from './ShotReferenceStrip'
 import { modeDisplayLabel, referenceCapableSibling } from './shotReferenceCells'
 import { dropBindingsForUrls, removeReferenceWithMention } from './shotReferenceSlots'
+import { ReferenceNamesContext, clipReferenceName, dedupeChipNames } from '../../../assets/referenceNames'
 import { droppedMentionUrls } from '../../../assets/promptMentions'
 import ShotComposerBar from './ShotComposerBar'
 import PromptSkeletonSegments from './PromptSkeletonSegments'
@@ -175,6 +176,12 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
     mentionSearch, onMentionSelect, currentRefUrls, mentionUpload, storyboardProfile, sourceSegment,
   } = props
   const orderedVendorKeys = useVendorPreferenceOrder()
+  // 提示词里的引用块写「小图 + 名字」：名字就是参考框里这张图绑定时的名字（重名加「·2」）。
+  const referenceChipNames = React.useMemo(() => {
+    const entries = Object.values(shot.referenceBindings ?? {}).flat().filter((binding) => binding?.url && binding.name?.trim())
+    const names = dedupeChipNames(entries.map((binding) => clipReferenceName(binding.name!)))
+    return Object.fromEntries(entries.map((binding, index) => [binding.url, names[index]!]))
+  }, [shot.referenceBindings])
   const [actionsOpen, setActionsOpen] = React.useState(false)
   const actionsTriggerRef = React.useRef<HTMLButtonElement | null>(null)
   const [variantsOpen, setVariantsOpen] = React.useState(false)
@@ -441,6 +448,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
             </span>
           </div>
         ) : null}
+        <ReferenceNamesContext.Provider value={referenceChipNames}>
         <PromptSkeletonSegments
           prompt={shot.prompt}
           profile={storyboardProfile}
@@ -462,6 +470,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
             onReady: (editor) => { editorRef.current = editor; carryPromptHistory(editor) },
           }}
         />
+        </ReferenceNamesContext.Provider>
         <ShotComposerBar
           shot={shot}
           modelOptions={modelOptions}
