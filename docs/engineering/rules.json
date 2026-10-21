@@ -511,13 +511,13 @@
         "R33.4",
         "R33.5"
       ],
-      "rule": "概念的 owner 先于目录：同一概念同一时段只归一条 lane；谁说了算在设计卡 ★2 格动手前回答；概念登记表 concept-owners/ 由门岗校验（警告档）。",
+      "rule": "概念的 owner 先于目录：同一概念同一时段只归一条 lane；谁说了算在设计卡 ★2 格动手前回答；概念登记表 concept-owners/ 由门岗校验（阻断；2026-10-19 用户拍板改回挡合并，取代 10-02 的警告档）。",
       "disease": "同一概念出现第二个 owner",
       "enforcement": [
-        "gate:check:concept-owners(警告)",
+        "gate:check:concept-owners",
         "template:docs/engineering/design-card.md"
       ],
-      "evidence": "concept-owners 红 4 次全是登记没补",
+      "evidence": "concept-owners 红 4 次全是登记没补（2026-10-02 降为警告档）；警告档下未登记的合同边界 37 -> 121 无人被拦，2026-10-19 用户拍板改回挡合并",
       "owner": "协调会话",
       "review_on": "2026-12-01",
       "delete_when": "不适用",

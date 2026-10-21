@@ -1,0 +1,23 @@
+{
+  "name": "分组（框）的右键 / 头部菜单（重命名、说明、折叠、生成、时间轴、解散、删除）",
+  "subject": "canvas.frame-context-menu",
+  "lifecycle": "live-interaction",
+  "authority_kind": "gateway",
+  "trust_domain": "renderer",
+  "fact_kind": "projection",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/components/FrameContextMenu.tsx",
+    "symbol": "FrameContextMenu"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/components/FrameContextMenu.tsx",
+      "symbol": "FrameContextMenu"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-10",
+  "notes": "合同 docs/fixes/2026-10-10-group-header-chrome.root-cause.json：分组头部的功能各有去处（框内、工具条、右键菜单），FrameContextMenu 是菜单唯一入口，生成全部走与工具条相同的执行路径。"
+}

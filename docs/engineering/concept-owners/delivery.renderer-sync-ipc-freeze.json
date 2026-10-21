@@ -1,0 +1,23 @@
+{
+  "name": "渲染进程同步 IPC 的冻结清单（只减不增）",
+  "subject": "delivery.renderer-sync-ipc-freeze",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/check-renderer-sync-ipc.mjs",
+    "symbol": "decide"
+  },
+  "write_api": [
+    {
+      "path": "scripts/check-renderer-sync-ipc.mjs",
+      "symbol": "decide"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-16",
+  "notes": "合同 docs/fixes/2026-10-16-composer-mount-path.root-cause.json：check-renderer-sync-ipc 的 decide 判冻结清单只减不增。"
+}

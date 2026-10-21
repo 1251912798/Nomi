@@ -16,6 +16,7 @@
 <p align="center">
   <a href="#下载"><b>下载</b></a> ·
   <a href="https://nomiaqm.com/">官网</a> ·
+  <a href="https://atomgit.com/aqm857886159/Nomi">AtomGit 国内托管</a> ·
   <a href="#看宣传片">看 90 秒宣传片</a> ·
   <a href="https://nomiaqm.com/quickstart">快速上手</a> ·
   <a href="https://pan.quark.cn/s/d3322c17e7b6">夸克网盘镜像</a> ·

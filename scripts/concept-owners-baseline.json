@@ -13,6 +13,36 @@
       "path": "electron/shared/productionShotPhase.ts",
       "symbol": "jobsForShot",
       "reason": "#921 把镜 ↔ job 对应收进 productionShotJobs.jobsForShot，但这里还留着一份私有同名实现，而且多镜分支不按 stageId === 'generate' 过滤，比主人宽：同一件事两份判据、两种结果。收口 = 改 import productionShotJobs 那一份。本 PR 不改生产文件，先记债。"
+    },
+    {
+      "concept": "面向用户的文案不断言「零成本」或「会花钱」（扫描所有 locale 与桌面端字符串）",
+      "path": "electron/capabilityCore/mcpProtocol.ts",
+      "symbol": "resources",
+      "reason": "同名撞车而非第二份实现：合同 2026-10-07-money-copy-truth 声明的共享边界叫 resources（src/i18n/resources.ts 的导出），而 resources 是极常见的标识符。MCP 协议对象里的 resources 能力字段 / 返回字段（resources/list 的键），与词典无关。登记符号不能就地改名（改这份合同会把它的 diff 门禁整套重新触发），改名导出又要动十余处无关调用，先记债；收口 = 导出改名为 i18nResources 并同步合同后删掉这些条目。"
+    },
+    {
+      "concept": "面向用户的文案不断言「零成本」或「会花钱」（扫描所有 locale 与桌面端字符串）",
+      "path": "scripts/control-contract-copy.mjs",
+      "symbol": "resources",
+      "reason": "同名撞车而非第二份实现：合同 2026-10-07-money-copy-truth 声明的共享边界叫 resources（src/i18n/resources.ts 的导出），而 resources 是极常见的标识符。局部变量，存的是 src/i18n/resources.ts 的路径字符串，并没有再造一份词典。登记符号不能就地改名（改这份合同会把它的 diff 门禁整套重新触发），改名导出又要动十余处无关调用，先记债；收口 = 导出改名为 i18nResources 并同步合同后删掉这些条目。"
+    },
+    {
+      "concept": "面向用户的文案不断言「零成本」或「会花钱」（扫描所有 locale 与桌面端字符串）",
+      "path": "scripts/dev-electron.mjs",
+      "symbol": "resources",
+      "reason": "同名撞车而非第二份实现：合同 2026-10-07-money-copy-truth 声明的共享边界叫 resources（src/i18n/resources.ts 的导出），而 resources 是极常见的标识符。局部变量，是打包资源文件清单，与词典无关。登记符号不能就地改名（改这份合同会把它的 diff 门禁整套重新触发），改名导出又要动十余处无关调用，先记债；收口 = 导出改名为 i18nResources 并同步合同后删掉这些条目。"
+    },
+    {
+      "concept": "面向用户的文案不断言「零成本」或「会花钱」（扫描所有 locale 与桌面端字符串）",
+      "path": "tests/ux/packaged-mcp-smoke.e2e.mjs",
+      "symbol": "resources",
+      "reason": "同名撞车而非第二份实现：合同 2026-10-07-money-copy-truth 声明的共享边界叫 resources（src/i18n/resources.ts 的导出），而 resources 是极常见的标识符。MCP 烟测里的 resources/list 计数与局部变量，与词典无关。登记符号不能就地改名（改这份合同会把它的 diff 门禁整套重新触发），改名导出又要动十余处无关调用，先记债；收口 = 导出改名为 i18nResources 并同步合同后删掉这些条目。"
+    },
+    {
+      "concept": "凭据「存了」与「可用」「待验证」的分层（谁算可解密、谁算可探测、界面怎么投）",
+      "path": "tests/ux/comfy-workflow-multiref.walk.mjs",
+      "symbol": "readCatalog",
+      "reason": "同名撞车而非第二份实现：走查里的局部 helper，读磁盘上的 model-catalog.json 做断言，与凭据可用性分层无关。就地改名会改动走查等待回调的文本，而 station-waits 基线按回调文本哈希记账（改名 = 基线一删一增，增长即红），所以先记债；收口 = 走查下次因别的原因动到这些回调时一并改名为 readCatalogFromDisk 并删掉这一条。"
     }
   ],
   "pending_write_doors": [

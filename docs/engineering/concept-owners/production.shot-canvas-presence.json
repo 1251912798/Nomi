@@ -22,6 +22,10 @@
     {
       "path": "src/workbench/capability/multiShotCanvasLanding.ts",
       "symbol": "materializeShots"
+    },
+    {
+      "path": "electron/productionRun/canvasLandingHost.ts",
+      "symbol": "draftLandingOutcome"
     }
   ],
   "forbidden_derivations": [],

@@ -189,7 +189,7 @@ async function waitForSuccessfulRun(baselineIds, timeoutMs = 60_000, outputPrefi
   }, timeoutMs, 600)
 }
 
-function readCatalog() {
+function readCatalogFromDisk() {
   return JSON.parse(fs.readFileSync(path.join(settingsDir, 'model-catalog.json'), 'utf8'))
 }
 
@@ -321,7 +321,7 @@ async function runFirstSession() {
       return text.includes('已连上 ComfyUI') && text.includes('v0.33.0') && text.includes('增强模式')
     }, 15_000, 400)
     await screenshot(win, '02-recovered-enhanced.png')
-    const enabledCatalog = readCatalog()
+    const enabledCatalog = readCatalogFromDisk()
     const vendor = (enabledCatalog.vendors || []).find((item) => item.key === 'comfyui-local')
     assert(vendor?.enabled === true, '恢复连接后 catalog 没有持久化 enabled=true')
     assert(vendor?.baseUrlHint === COMFY_BASE, `地址没有规范化并持久化为 ${COMFY_BASE}`)
@@ -353,7 +353,7 @@ async function runFirstSession() {
     await ensureComfyCardExpanded(win)
     await win.getByText(WORKFLOW_NAME, { exact: true }).first().waitFor({ timeout: 12_000 })
     await win.waitForTimeout(1000)
-    const importedCatalog = readCatalog()
+    const importedCatalog = readCatalogFromDisk()
     const imported = findImportedModel(importedCatalog)
     const draft = imported?.meta?.comfyWorkflowImport
     assert(imported, '导入后 catalog 找不到工作流模型')
@@ -382,7 +382,7 @@ async function runFirstSession() {
     await win.waitForTimeout(500)
     await win.getByRole('button', { name: `打开「${WORKFLOW_NAME}」的工作流设置` }).click()
     await win.locator('[data-comfyui-workflow-page]').waitFor({ timeout: 10_000 })
-    const reopenedCatalog = readCatalog()
+    const reopenedCatalog = readCatalogFromDisk()
     const reopenedDraft = findImportedModel(reopenedCatalog)?.meta?.comfyWorkflowImport
     assert(reopenedDraft?.uiWorkflowText === draft.uiWorkflowText, '关闭重开后原 UI graph 发生变化')
     assert(JSON.stringify(reopenedDraft?.binding) === JSON.stringify(draft.binding), '关闭重开后绑定或字段发生变化')
@@ -450,7 +450,7 @@ async function runFirstSession() {
     await ensureComfyCardExpanded(win)
     await win.getByText(PARAM_FREE_WORKFLOW_NAME, { exact: true }).first().waitFor({ timeout: 12_000 })
 
-    const multiCatalog = readCatalog()
+    const multiCatalog = readCatalogFromDisk()
     const originalModel = findImportedModel(multiCatalog)
     const paramFreeModel = (multiCatalog.models || []).find((model) => model.labelZh === PARAM_FREE_WORKFLOW_NAME)
     const originalParams = originalModel?.meta?.comfyWorkflowImport?.binding?.params ?? []
@@ -604,7 +604,7 @@ async function runRestartSession() {
       return (await image.evaluate((element) => element.naturalWidth)) > 0 ? image : null
     }, 15_000, 400)
     assert(await restoredImage.getAttribute('src'), '重启后结果图片 URL 丢失')
-    const catalog = readCatalog()
+    const catalog = readCatalogFromDisk()
     const imported = findImportedModel(catalog)
     assert(imported?.meta?.comfyWorkflowImport?.uiWorkflowText, '重启后 workflow.json 原图丢失')
     await screenshot(win, '07-restart-restored-result.png')
