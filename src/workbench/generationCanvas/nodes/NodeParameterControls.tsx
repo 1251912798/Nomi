@@ -38,7 +38,9 @@ import {
   getSlotThumbUrl,
   imageCatalogReferenceSlot,
   isImportedComfyWorkflowModel,
+  isParameterControl,
   nodeSelectedModelAddress,
+  parameterControlRole,
   parseControlInput,
   readMeta,
   resultPreviewUrl,
@@ -72,12 +74,21 @@ import {
   useNarrowedModeGuidance,
 } from './controls/narrowedModeGuidance'
 import NarrowedModeGuidanceNote from './controls/NarrowedModeGuidanceNote'
+import { referenceAssetKindForNode } from '../agent/referenceEdgeCapability'
 import { resolveReferenceSlots, decideArrayReferenceRemoval, firstFrameTaggedSlot } from '../runner/referenceSlots'
 import { useChannelCreateBodies, type VendorMappingsReader } from './controls/useChannelCreateBody'
 import { translateModelDisplayText } from '../../../i18n/modelDisplayText'
 import { modeTransportFor, specializeArchetypeForVariant } from '../../../../electron/shared/modelArchetypes'
 import ModeBar from './controls/ModeBar'
+import { presentGenerationModes, textModeToReturnTo } from './controls/generationModePresentation'
+import { carryUploadedImagesAcrossModes } from './controls/carryReferencesAcrossModes'
 import AssetReference, { type AssetSlot } from '../../assets/AssetReference'
+import { peekAllProjectAssets } from '../../assets/useAllProjectAssets'
+import { resolveReferenceInfos } from '../../assets/referenceNames'
+import { IconX } from '@tabler/icons-react'
+import { NomiSelect } from '../../../design'
+import { ToolbarDivider } from './NodeFloatingToolbar'
+import { parameterChipOptions, parameterChipValue } from './primaryParameterChips'
 import type { AssetRef, AssetKind } from '../../assets/assetTypes'
 import { pickNodeSlotReference } from './nodeSlotReferencePick'
 import { moveArrayItem } from '../../assets/assetTypes'
@@ -97,9 +108,12 @@ import { buildNodeModelChangePatch } from './buildNodeModelChangePatch'
 
 const ASPECT_RATIO_KEY_SET = new Set<string>(ASPECT_RATIO_KEYS)
 
+/** 用户在这个节点上关掉了「要当首尾帧用？」的提示（只对这个节点生效，随项目持久化）。 */
+const FIRST_LAST_HINT_DISMISSED_META_KEY = 'firstLastHintDismissed'
+
 type NodeParameterControlsProps = {
   node: GenerationCanvasNode
-  section?: 'all' | 'mode' | 'references' | 'parameters' | 'model' | 'controls'
+  section?: 'all' | 'mode' | 'references' | 'parameters' | 'quantity' | 'model' | 'controls'
   /** 点参考 tile → 在描述框光标处插入 @ 引用 chip(主路径,由 composer 注入 editor 命令)。 */
   onInsertMention?: (url: string) => void
   /**
@@ -306,6 +320,21 @@ export default function NodeParameterControls({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleModeIdSignature, archetype?.id, node.id, ownsDerivedWrites])
 
+  // 输入没了，生成方式跟着回到文生（B3：方式由输入决定，界面上没有「文生视频」可选，所以空了只能自己回去）。
+  // 只收回「参考 / 单图 / 改图」；首尾帧是用户在空节点上特意选的，不收回。系统纠偏，不占撤销。
+  React.useEffect(() => {
+    if (!ownsDerivedWrites || !archetype || !archMode) return
+    const latest = latestNode(node.id)
+    if (!latest) return
+    const state = useGenerationCanvasStore.getState()
+    const hasAnyInput = resolveReferenceSlots(latest, state.nodes, state.edges).some((slot) => slot.fills.length > 0)
+    const target = textModeToReturnTo(archetype, archMode, hasAnyInput)
+    if (!target) return
+    updateNode(node.id, { meta: applyArchetypeModeSwitch(latest.meta || {}, archetype, target) }, { history: false })
+    // 触发时机只需「方式 / 参考集合」变化；latestNode/updateNode 每渲染重建。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownsDerivedWrites, archetype?.id, archMode?.id, meta, nodes, edges, node.id])
+
   if (!isGenerationNode) return null
 
   const handleParameterControlChange = (control: ModelParameterControl, value: string) => {
@@ -340,9 +369,15 @@ export default function NodeParameterControls({
   }
 
   // 切生成方式：只改 modeId，参考值全局保留（切回照片还在）；互斥发生在传输投影。
+  // 上传 / 素材库放进来的图跟着走（参考 ↔ 首尾帧）；连线来的图是边，自己按槽落（见 carryReferencesAcrossModes）。
   const handleModeSwitch = (modeId: string) => {
     if (!archetype) return
-    updateNode(node.id, { meta: applyArchetypeModeSwitch(getLatestMeta(), archetype, modeId) })
+    const latest = getLatestMeta()
+    const spec = effectiveArchetype ?? archetype
+    const from = currentArchetypeMode(spec, latest)
+    const to = spec.modes.find((mode) => mode.id === modeId)
+    const carried = to && from.id !== to.id ? carryUploadedImagesAcrossModes(latest, from, to) : null
+    updateNode(node.id, { meta: applyArchetypeModeSwitch(carried ? { ...latest, ...carried } : latest, archetype, modeId) })
     setOpenSlotKey('')
   }
 
@@ -492,7 +527,26 @@ export default function NodeParameterControls({
   const modeChoices = archetype
     ? archetypeModeChoices(archetype, (mode) => modeBodies[mode.id])
     : []
-  const showModeBar = modeChoices.length > 1
+  // 生成方式怎么呈现（B3）：视频 = 参数面板顶部的分段（没有文生）；图片 = 不出现，由输入决定；声音 / 3D = 沿用旧的模式栏。
+  const modePresentation = presentGenerationModes({
+    archetype: effectiveArchetype ?? archetype,
+    visibleChoices: modeChoices,
+    activeModeId: archMode?.id || '',
+    kind: isVideoLike ? 'video' : isImageLike ? 'image' : 'other',
+    texts: {
+      reference: t('generationCommon.composerB3.modeReference'),
+      firstLast: t('generationCommon.composerB3.modeFirstLast'),
+      firstFrame: t('generationCommon.composerB3.modeFirstFrame'),
+      limitTip: (counts) => t('generationCommon.composerB3.modeLimit', {
+        limits: [
+          counts.images !== undefined ? t('generationCommon.composerB3.limitImages', { count: counts.images }) : '',
+          counts.videos !== undefined ? t('generationCommon.composerB3.limitVideos', { count: counts.videos }) : '',
+          counts.audios !== undefined ? t('generationCommon.composerB3.limitAudios', { count: counts.audios }) : '',
+        ].filter(Boolean).join(t('generationCommon.composerB3.limitSeparator')),
+      }),
+    },
+  })
+  const showModeBar = modePresentation.where === 'bar'
   const showVariantBar = variantChoices.length > 1
   // 当前模式的数组参考槽（全能参考，meta-only）+ 源视频单槽（HappyHorse 视频编辑）。
   const arraySlots: ArchetypeArraySlot[] = archMode ? archetypeModeArraySlots(archMode) : []
@@ -513,6 +567,8 @@ export default function NodeParameterControls({
         persistAsEdge: true,
         numbered: false,
         max: 1,
+        // 尾帧可不填（档案里 last_frame 的 min = 0）：格下写「尾帧（可不填）」。
+        optional: s.group === 'last_frame' && Boolean(archMode?.slots.some((slot) => slot.kind === 'last_frame' && slot.min === 0)),
       }),
     ),
     ...arraySlots.map(
@@ -653,6 +709,36 @@ export default function NodeParameterControls({
     updateMeta({ [slot.key]: null })
   }
 
+  // 数量：模型声明了「数量」这类参数（output_count / batch_size / n…）才有这个控件，住在底栏右边、紧挨生成钮左边
+  // （B3：数量只在模型声明时显示）。它**搬家不是复制**：有了它，面板里就不再出现同一个参数（一功能一个家）。
+  // 付费确认卡（逐参数 chip 的 chips 形态）保持原样，数量仍是那一排的一颗 chip。
+  const quantityControl = parameterLayout !== 'chips' && (isImageLike || isVideoLike)
+    ? renderedControls.find((control) => parameterControlRole(control) === 'quantity' && parameterChipOptions(control).length > 0)
+    : undefined
+  const panelRenderedControls = quantityControl ? renderedControls.filter((control) => control !== quantityControl) : renderedControls
+
+  // section="quantity"：数量钮。「1 个 ▾」（视频）/「1 张 ▾」（图片）。
+  if (section === 'quantity') {
+    if (!quantityControl) return null
+    const value = parameterChipValue(quantityControl, meta)
+    const unitKey = isVideoLike ? 'generationCommon.composerB3.quantityVideo' : 'generationCommon.composerB3.quantityImage'
+    return (
+      <>
+      <ToolbarDivider />
+      <span className="inline-flex shrink-0" data-bar-segment="quantity" data-parameter-chip={quantityControl.key} data-parameter-chip-value={value}>
+        <NomiSelect
+          ariaLabel={t('generationCommon.composerB3.quantity')}
+          value={value}
+          options={parameterChipOptions(quantityControl).map((option) => ({ value: option.value, label: t(unitKey, { count: option.label }) }))}
+          onChange={(next) => (isParameterControl(quantityControl)
+            ? handleParameterControlChange(quantityControl, next)
+            : handleCatalogControlChange(quantityControl, next))}
+        />
+      </span>
+      </>
+    )
+  }
+
   // section="parameters"：底栏 = 模型芯片 + 变体 + 摘要 pill + 统一参数面板（实现见 InlineParameterBar）。
   // **画布节点不传 parameterLayout** → 默认 `summary`：2026-09-11 04:30 用户纠正，
   // 同日 02:10 的逐参数 chip 只给付费确认卡，节点这一处退回原样（摘要 pill + 面板，含比例小图形）。
@@ -661,7 +747,7 @@ export default function NodeParameterControls({
     // 把当前值串成 pill（`15 · 24`）没人认得出那是自己勾的东西。改成报名字+条数。
     // 判据取 meta.comfyWorkflowImport 是否存在——它只由导入流程写入，档案模型不会有。
     const workflowSummary = isImportedComfyWorkflowModel(selectedModelOption?.meta) && renderedControls.length > 0
-      ? t('generationCommon.parameters.workflowParams', { count: renderedControls.length })
+      ? t('generationCommon.parameters.workflowParams', { count: panelRenderedControls.length })
       : undefined
     // v1.1 底栏：档案模型的 pill 只报「最影响结果和价格的两个值」（视频=比例+时长、图=比例+清晰度），
     // 其余参数一个不少、仍在同一块弹层里。走 summaryOverride 这条**已有的**缝（导入工作流那支
@@ -670,7 +756,7 @@ export default function NodeParameterControls({
     const summaryOverride = workflowSummary ?? composerHeadlineSummary({
       isImageLike,
       isVideoLike,
-      controls: renderedControls,
+      controls: panelRenderedControls,
       meta,
       formatSeconds: (value) => t('generationCommon.composerBarV1.seconds', { value }),
       autoLabel: t('generationCommon.parameters.auto'),
@@ -679,7 +765,7 @@ export default function NodeParameterControls({
       <InlineParameterBar
         modelOptions={modelOptions}
         modelCatalogStatus={modelCatalogStatus}
-        renderedControls={renderedControls}
+        renderedControls={panelRenderedControls}
         selectedModelOption={selectedModelOption}
         archetype={archetype}
         meta={meta}
@@ -690,6 +776,13 @@ export default function NodeParameterControls({
         activeVariantId={activeVariantId}
         onVariantSelect={handleVariantSwitch}
         summaryOverride={summaryOverride}
+        // 生成方式放在面板顶部（现有组件原样）：视频节点的分段在这里，图片没有，声音 / 3D 仍在参考区上方的模式栏。
+        {...(modePresentation.where === 'panel' ? {
+          modeChoices: modePresentation.choices,
+          activeModeId: modePresentation.activeId,
+          modeLabel: t('generationCommon.parameters.generationMode'),
+          onModeSelect: handleModeSwitch,
+        } : {})}
         {...(parameterLayout ? { parameterLayout } : {})}
         {...(inlinePanelTarget ? { panelMode: 'inline' as const, portalTarget: inlinePanelTarget } : {})}
         {...(inlinePanelSlot ? { inlinePanelSlot } : {})}
@@ -709,19 +802,126 @@ export default function NodeParameterControls({
   // 否则用户在下面的提示词框里打了字却毫无作用，只会以为是我们坏了（D4 缺口明着标）。
   const comfyTakesPrompt = comfyWorkflowTakesPrompt(selectedModelOption?.meta)
   const showNoPromptNote = section === 'references' && comfyTakesPrompt === false
+  // 指路提示：被渠道藏掉的**文生**模式不指路（界面上本来就没有「文生」可选，说了只会让人困惑）。
+  const textTerms = new Set((effectiveArchetype ?? archetype)?.modes.filter((mode) => mode.intent === 'text').map((mode) => mode.vendorTerm) ?? [])
+  const guidance = modeGuidance && modeGuidance.hiddenModeTerms.some((term) => !textTerms.has(term))
+    ? { ...modeGuidance, hiddenModeTerms: modeGuidance.hiddenModeTerms.filter((term) => !textTerms.has(term)) }
+    : null
   // 指路提示**独立于模式栏存在**：最坏的一种（样张 D）恰恰是「只剩 1 个模式 → 整条模式栏不显示」，
   // 那时用户什么都看不到。它若跟着模式栏一起消失，最需要说话的场合反而哑了，所以它单独进空返回判据。
-  const showModeGuidance = showReferences && Boolean(modeGuidance)
+  const showModeGuidance = showReferences && Boolean(guidance)
 
   const potentialReferenceKinds = Array.from(new Set(effectiveArchetype?.modes.flatMap(mode => [
     ...archetypeModeSlots(mode).map(() => 'image' as AssetKind),
     ...archetypeModeArraySlots(mode).map(slot => slot.accept),
     ...(archetypeModeSourceVideoSlot(mode) ? ['video' as AssetKind] : []),
   ]) ?? (isImageLike || isVideoLike ? ['image' as AssetKind] : [])))
+  // 模型任何方式都不收参考图（如只会文生图的模型）：参考行照样在，入口灰掉、悬停说原因（B3i）。
+  const refsUnsupported = Boolean(effectiveArchetype) && (isImageLike || isVideoLike) && potentialReferenceKinds.length === 0
   const inputReferenceEntry = !assetSlots.length && canConnect && potentialReferenceKinds.length
     ? <NodeInputReferenceEntry nodeId={node.id} accept={potentialReferenceKinds} /> : null
+
+  // ── 这一行的名字 / 来源 / 淡显的图 / 行尾小字 ──
+  const inboundImageUrls = edges
+    .filter((edge) => edge.target === node.id)
+    .flatMap((edge) => {
+      const source = nodes.find((candidate) => candidate.id === edge.source)
+      const url = source && referenceAssetKindForNode(source) === 'image' ? resultPreviewUrl(source) : ''
+      return url ? [url] : []
+    })
+  const shownUrls = new Set(Object.values(assetValuesByKey).flat().filter((value): value is string => Boolean(value)))
+  const framesOnly = imageUrlSlots.some((slot) => slot.group === 'first_frame') && arraySlots.length === 0
+  // 首尾帧方式里，别处放着的图（连线多出来的、参考数组里没搬走的）用不上：淡显成「未用到」，切回参考还在。
+  const unusedUrls = refsUnsupported
+    ? Array.from(new Set(inboundImageUrls))
+    : framesOnly
+      ? Array.from(new Set([...inboundImageUrls, ...readArchetypeArray(meta, 'referenceImageUrls')])).filter((url) => !shownUrls.has(url))
+      : []
+  const referenceInfos = (() => {
+    if (!showReferences) return undefined
+    const references = [
+      ...assetSlots.flatMap((slot) => {
+        const raw = assetValuesByKey[slot.key]
+        return (Array.isArray(raw) ? raw : [raw]).filter((url): url is string => Boolean(url)).map((url) => ({ url, kind: slot.accept }))
+      }),
+      ...unusedUrls.map((url) => ({ url, kind: 'image' as AssetKind })),
+    ]
+    return resolveReferenceInfos({
+      nodeId: node.id, references, nodes, edges, library: peekAllProjectAssets(),
+      fallbackName: (kind) => t(kind === 'video' ? 'assetLibrary.referenceVideo' : kind === 'audio' ? 'assetLibrary.referenceAudio' : 'assetLibrary.referenceImage'),
+    })
+  })()
+  const arrayCount = arraySlots.reduce((sum, slot) => sum + (assetValuesByKey[slot.metaKey] as string[] | undefined ?? []).filter(Boolean).length, 0)
+  const countNode = arrayCount > 0 ? <span>{t('assetLibrary.refRow.count', { count: arrayCount })}</span> : null
+
+  // 参考方式里只放了 1–2 张图、模型同时有「参考」和「首尾帧」：问一句要不要当首尾帧用（歧义提示；× 关掉后这个节点不再提示）。
+  const spec = effectiveArchetype ?? archetype
+  const firstLastMode = spec?.modes.find((mode) => mode.intent === 'firstlast')
+  const imageRefOnly = arraySlots.length > 0 && arraySlots.every((slot) => slot.accept === 'image')
+  const ambiguous = Boolean(firstLastMode) && archMode?.intent === 'character' && imageRefOnly
+    && arrayCount >= 1 && arrayCount <= 2 && !meta[FIRST_LAST_HINT_DISMISSED_META_KEY] && isVideoLike
+
+  const handleSwapFrames = () => {
+    const first = imageUrlSlots.find((slot) => slot.group === 'first_frame')
+    const last = imageUrlSlots.find((slot) => slot.group === 'last_frame')
+    if (!first || !last) return
+    const describe = (slot: ImageUrlSlot): { edgeSource: string } | { url: string } | null => {
+      const edgeSource = parameterAssignments.find((assignment) => assignment.slot.key === slot.key)?.edge?.source
+      if (edgeSource) return { edgeSource }
+      const url = assetValuesByKey[slot.key]
+      return typeof url === 'string' && url ? { url } : null
+    }
+    const a = describe(first)
+    const b = describe(last)
+    if (!a && !b) return
+    useGenerationCanvasStore.getState().captureHistory()
+    handleSlotAssignment(first, '')
+    handleSlotAssignment(last, '')
+    const put = (slot: ImageUrlSlot, value: ReturnType<typeof describe>) => {
+      if (!value) return
+      if ('edgeSource' in value) handleSlotAssignment(slot, value.edgeSource)
+      else setSingleFrameUrlMeta(slot, value.url)
+    }
+    put(first, b)
+    put(last, a)
+  }
+
+  const guidanceNote = showModeGuidance && guidance ? (
+    <NarrowedModeGuidanceNote
+      guidance={guidance}
+      currentVendorName={selectedModelOption?.vendorName || selectedModelOption?.vendor || ''}
+      // 复用**已有的** handleModelChange = 与用户手动换模型同一条状态写入路径（updateNode 带 meta patch
+      // → pushEditBurstBarrier），因此天然被 Cmd+Z 覆盖，不新开第二条切换路径。
+      onSwitch={handleModelChange}
+      onDismiss={() => updateMeta({ [NARROWED_MODE_GUIDANCE_DISMISSED_META_KEY]: true })}
+    />
+  ) : null
+
+  // 行尾只放一句 12px 小字，不放彩色提示条（统一规则 5：不写解释句；R3：有后果且一眼可见的说明才写）。
+  const tail: React.ReactNode | undefined = refsUnsupported
+    ? (unusedUrls.length > 0 ? <span>{t('assetLibrary.refRow.count', { count: unusedUrls.length })} · {t('assetLibrary.refRow.unsupportedNote')}</span> : undefined)
+    : guidanceNote
+      ? <>{countNode}{guidanceNote}</>
+      : unusedUrls.length > 0 && framesOnly
+        ? <span>{t('assetLibrary.refRow.unusedNote')}</span>
+        : ambiguous && firstLastMode
+          ? (
+            <>
+              {countNode}
+              <span aria-hidden>·</span>
+              <span>{t('assetLibrary.refRow.ambiguityHint')}</span>
+              <button type="button" data-reference-hint-action="first-last" className="cursor-pointer border-0 bg-transparent p-0 text-caption text-nomi-ink underline underline-offset-2"
+                onClick={() => handleModeSwitch(firstLastMode.id)}>{t('assetLibrary.refRow.ambiguityAction')}</button>
+              <button type="button" aria-label={t('assetLibrary.refRow.ambiguityDismiss')} title={t('assetLibrary.refRow.ambiguityDismiss')}
+                className="inline-flex size-4 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-nomi-ink-40 hover:text-nomi-ink-60"
+                onClick={() => updateMeta({ [FIRST_LAST_HINT_DISMISSED_META_KEY]: true })}><IconX size={12} stroke={1.8} aria-hidden /></button>
+            </>
+          )
+          : undefined
+
   if (
     section === 'references' &&
+    !refsUnsupported &&
     referencesSectionIsEmpty({
       hasImageUrlSlots: imageUrlSlots.length > 0,
       hasArraySlots: arraySlots.length > 0,
@@ -734,6 +934,7 @@ export default function NodeParameterControls({
     return inputReferenceEntry
 
   const rootClassName = cn('generation-canvas-v2-node__ref-section', 'flex flex-col gap-1')
+  const hasReferenceRow = showReferences && (assetSlots.length > 0 || refsUnsupported)
 
   return (
     <div className={rootClassName} aria-label={t('generationCommon.parameters.referencesAria')}>
@@ -741,19 +942,11 @@ export default function NodeParameterControls({
         <ModeBar choices={modeChoices} activeId={archMode?.id || ''} onSelect={handleModeSwitch} />
       ) : null}
 
-      {showModeGuidance && modeGuidance ? (
-        <NarrowedModeGuidanceNote
-          guidance={modeGuidance}
-          currentVendorName={selectedModelOption?.vendorName || selectedModelOption?.vendor || ''}
-          // 复用**已有的** handleModelChange = 与用户手动换模型同一条状态写入路径（updateNode 带 meta patch
-          // → pushEditBurstBarrier），因此天然被 Cmd+Z 覆盖，不新开第二条切换路径。
-          onSwitch={handleModelChange}
-          onDismiss={() => updateMeta({ [NARROWED_MODE_GUIDANCE_DISMISSED_META_KEY]: true })}
-        />
-      ) : null}
+      {/* 没有参考行可挂时（只剩 1 个模式、没有槽），指路提示自己站一行；有参考行就进行尾。 */}
+      {!hasReferenceRow && !inputReferenceEntry ? guidanceNote : null}
 
       {showReferences ? inputReferenceEntry : null}
-      {showReferences && assetSlots.length > 0 ? (
+      {hasReferenceRow ? (
         <AssetReference
           slots={assetSlots}
           remainingCapacity={archMode ? nodeReferenceCapacity(archMode, node, nodes, edges) : undefined}
@@ -781,6 +974,11 @@ export default function NodeParameterControls({
           onReorder={handleReorder}
           onBrowseAll={handleBrowseAll}
           firstFrameSlotKey={firstFrameSlotKey}
+          {...(referenceInfos ? { referenceInfos } : {})}
+          unusedUrls={unusedUrls}
+          {...(imageUrlSlots.length === 2 && imageUrlSlots[0]?.group === 'first_frame' && imageUrlSlots[1]?.group === 'last_frame' ? { onSwapFrames: handleSwapFrames } : {})}
+          {...(refsUnsupported ? { disabledReason: t('assetLibrary.refRow.disabledReason') } : {})}
+          {...(tail !== undefined ? { tail } : {})}
         />
       ) : null}
 

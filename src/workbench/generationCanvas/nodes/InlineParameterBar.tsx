@@ -124,7 +124,7 @@ type InlineParameterBarProps = {
    */
   inlinePanelSlot?: React.RefObject<HTMLElement | null>
   /** Optional generation-mode group shown at the top of the shared panel. */
-  modeChoices?: readonly { id: string; label: string }[]
+  modeChoices?: readonly { id: string; label: string; limitTip?: string }[]
   activeModeId?: string
   modeLabel?: string
   onModeSelect?: (id: string) => void
@@ -439,7 +439,7 @@ export default function InlineParameterBar({
             <ParameterOptionGroup
               ariaLabel={modeLabel || t('generationCommon.parameters.generationMode')}
               value={activeModeId}
-              rawOptions={modeChoices.map((choice) => ({ value: choice.id, text: choice.label }))}
+              rawOptions={modeChoices.map((choice) => ({ value: choice.id, text: choice.label, ...(choice.limitTip ? { hint: choice.limitTip } : {}) }))}
               onChange={onModeSelect}
             />
           </div>

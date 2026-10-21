@@ -166,7 +166,6 @@ export default function ShotReferenceStrip({
       <AssetTile
         className={tileClass}
         asset={{ id: tile.url, kind: tile.kind, name: tile.name, renderUrl: tile.url, source: 'project', origin: { source: 'project', projectId: '', relativePath: '' } }}
-        index={tile.number}
         onRemove={() => onRemove(tile.slotKey, tile.indexInSlot)}
         onClick={onInsertMention ? () => onInsertMention(tile.url) : undefined}
       />
@@ -254,7 +253,6 @@ export default function ShotReferenceStrip({
                 <AssetTile
                   className="w-9 h-9"
                   asset={{ id: tile.url, kind: tile.kind, name: tile.name, renderUrl: tile.url, source: 'project', origin: { source: 'project', projectId: '', relativePath: '' } }}
-                  index={tile.number}
                   onRemove={() => onRemove(tile.slotKey, tile.indexInSlot)}
                   onClick={onInsertMention ? () => onInsertMention(tile.url) : undefined}
                 />

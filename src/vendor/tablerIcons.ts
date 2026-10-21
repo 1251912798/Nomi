@@ -288,3 +288,4 @@ export { default as IconArrowBarToLeft } from '@tabler/icons-react/dist/esm/icon
 export { default as IconArrowBarToRight } from '@tabler/icons-react/dist/esm/icons/IconArrowBarToRight.mjs'
 export { default as IconAppWindow } from '@tabler/icons-react/dist/esm/icons/IconAppWindow.mjs'
 export { default as IconPictureInPicture } from '@tabler/icons-react/dist/esm/icons/IconPictureInPicture.mjs'
+export { default as IconArrowsLeftRight } from '@tabler/icons-react/dist/esm/icons/IconArrowsLeftRight.mjs'
