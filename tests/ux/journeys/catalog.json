@@ -254,7 +254,7 @@
       "title": "选中一段、让 AI 缩短、接受、再撤回",
       "source": {
         "kind": "调研报告",
-        "ref": "D:/Nomi-coord-state/reports/R-write2.md（W1c 选区改稿行）；独立验收 D:/Nomi-coord-state/reports/V-rewrite.md"
+        "ref": "R-write2 W1c 选区改稿行；独立验收 V-rewrite（均协调本地报告，仓库外）"
       },
       "creator": "写作者（已有稿返改）",
       "moment": "已有稿返改",
@@ -270,7 +270,7 @@
       "title": "接住已有稿并开始制作",
       "source": {
         "kind": "调研报告",
-        "ref": "D:/Nomi-coord-state/reports/R-write2.md §3.6「导入优先」、C1/C3/C7 案例"
+        "ref": "R-write2 §3.6「导入优先」、C1/C3/C7 案例（协调本地报告，仓库外）"
       },
       "creator": "接稿的广告 / 短片 / 改编作者",
       "moment": "开工",
@@ -285,7 +285,7 @@
       "title": "保住满意的台词，只修错误的画面",
       "source": {
         "kind": "调研报告",
-        "ref": "D:/Nomi-coord-state/reports/R-write2.md §2.4（C4 PaperTok 研究，论文 §6.3.1）"
+        "ref": "R-write2 §2.4（C4 PaperTok 研究，论文 §6.3.1）（协调本地报告，仓库外）"
       },
       "creator": "广告 / 解说作者",
       "moment": "生成后复核",
@@ -300,7 +300,7 @@
       "title": "改场的顺序后，核对已有镜头",
       "source": {
         "kind": "调研报告",
-        "ref": "D:/Nomi-coord-state/reports/R-write2.md（C2/C6 返改段；改稿到分镜的交接）"
+        "ref": "R-write2 C2/C6 返改段、改稿到分镜的交接（协调本地报告，仓库外）"
       },
       "creator": "剧情 / 漫剧作者",
       "moment": "制作中返工",
@@ -315,7 +315,7 @@
       "title": "连做两集，共用已定好的角色",
       "source": {
         "kind": "调研报告",
-        "ref": "D:/Nomi-coord-state/reports/R-nav.md §3.1「分集」"
+        "ref": "R-nav §3.1「分集」（协调本地报告，仓库外）"
       },
       "creator": "连载创作者",
       "moment": "换集",
@@ -330,7 +330,7 @@
       "title": "长任务进行中去看别的页，再回来取结果",
       "source": {
         "kind": "调研报告",
-        "ref": "D:/Nomi-coord-state/reports/R-nav.md（换页前发起任务、换页后查看结果一行）"
+        "ref": "R-nav「换页前发起任务、换页后查看结果」一行（协调本地报告，仓库外）"
       },
       "creator": "所有创作者",
       "moment": "等待时",

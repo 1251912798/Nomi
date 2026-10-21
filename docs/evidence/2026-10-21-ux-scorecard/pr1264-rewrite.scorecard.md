@@ -2,6 +2,7 @@
 
 - 改动：写作区选中文字 AI 改写（选区浮条「AI 编辑」）（#1264）
 - 验收 head：`0741ff17afaa2d71188d973456635e70b45cd43b`（未合入；merge-base 9adca4202b5db10fe5a68673a7d03767db2676e1）
+  - 本页的两项失败（B1 跨文稿改错、B2 刚输入的句子被一起撤回）属于该 head；该 head 之后 41d2026a5 已修，修法和测试由 V-rewrite 复验；本页是试行样例，#1264 合入前按最终 head 重出一张。失败记录保持原样，不删
 - 场景 id：`rewrite-shorten-accept-undo`
 - 谁验：V-rewrite（独立于实现线 I-rewrite）（独立验收）
 - 日期：2026-10-21；成绩单整理：I-scorecard，只读 V-rewrite 报告与走查产物整理，没有重跑
@@ -64,10 +65,10 @@
 
 ## 证据路径
 
-- D:/Nomi-coord-state/reports/V-rewrite.md（独立验收报告，仓库外）
+- V-rewrite（独立验收报告，仓库外）
 - docs/evidence/2026-10-21-ux-scorecard/1264-shots/live-01-selected.png 到 live-05-undone.png（走查截图，复制自 #1264 分支）
 - docs/evidence/2026-10-21-ux-scorecard/1264-shots/cross-document-running-before-accept.png、cross-document-running-after-accept.png
 - docs/evidence/2026-10-21-ux-scorecard/1264-shots/safety-probe.json
-- D:/Nomi-tmp/V-rewrite/probe-results.json（跨文稿复现数据，仓库外）
+- V-rewrite 附带的跨文稿复现数据 probe-results.json（协调本地，仓库外）
 
 > 这一页不出总分：机器数、真人数、护栏、未验证各看各的。

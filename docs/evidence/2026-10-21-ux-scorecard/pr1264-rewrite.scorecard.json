@@ -5,6 +5,7 @@
     "pr": 1264,
     "headSha": "0741ff17afaa2d71188d973456635e70b45cd43b",
     "headNote": "未合入；merge-base 9adca4202b5db10fe5a68673a7d03767db2676e1",
+    "headFollowUp": "本页的两项失败（B1 跨文稿改错、B2 刚输入的句子被一起撤回）属于该 head；该 head 之后 41d2026a5 已修，修法和测试由 V-rewrite 复验；本页是试行样例，#1264 合入前按最终 head 重出一张。失败记录保持原样，不删",
     "userCan": "选中一段文字，点 AI 编辑、点「缩短」，在原位看新旧对比，Enter 接受或 Esc 放弃，接受后 Ctrl+Z 撤回",
     "added": ["选区浮条上的 AI 编辑、五类常用改法、写作 Skill、就地新旧对比（段尾 ✓ ✕）"],
     "changed": ["选区浮条加宽、AI 会话期间隐藏原有格式按钮"],
@@ -90,10 +91,10 @@
     { "item": "英文暗色下按词对比的可读性", "owner": "设计线", "recheck": "V-rewrite 列为建议，不阻断" }
   ],
   "evidence": [
-    "D:/Nomi-coord-state/reports/V-rewrite.md（独立验收报告，仓库外）",
+    "V-rewrite（独立验收报告，仓库外）",
     "docs/evidence/2026-10-21-ux-scorecard/1264-shots/live-01-selected.png 到 live-05-undone.png（走查截图，复制自 #1264 分支）",
     "docs/evidence/2026-10-21-ux-scorecard/1264-shots/cross-document-running-before-accept.png、cross-document-running-after-accept.png",
     "docs/evidence/2026-10-21-ux-scorecard/1264-shots/safety-probe.json",
-    "D:/Nomi-tmp/V-rewrite/probe-results.json（跨文稿复现数据，仓库外）"
+    "V-rewrite 附带的跨文稿复现数据 probe-results.json（协调本地，仓库外）"
   ]
 }

@@ -119,6 +119,7 @@ export function renderScorecard(card) {
   L.push(`# 体验成绩单：${c.title}`, '')
   L.push(`- 改动：${c.title}${c.pr ? `（#${c.pr}）` : ''}`)
   L.push(`- 验收 head：\`${c.headSha}\`${c.headNote ? `（${c.headNote}）` : ''}`)
+  if (c.headFollowUp) L.push(`  - ${c.headFollowUp}`)
   L.push(`- 场景 id：\`${card.scenarioId}\``)
   L.push(`- 谁验：${card.verifier.line}（${card.verifier.kind}）`)
   L.push(`- 日期：${card.date}${card.compiledBy ? `；成绩单整理：${card.compiledBy}` : ''}`, '')
