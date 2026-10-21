@@ -390,13 +390,13 @@ describe('就地显示：删掉的划线、新加的标出来、段尾两个小�
     expect(diffRewrite(before, same).some((part) => part.kind === 'keep' && part.text.includes('林薇没有回头'))).toBe(true)
   })
 
-  it('diff：8000 字、段数不变的改写，比较在预算里（不再是整块平方级）', () => {
+  it('diff：8000 字、段数不变的改写走一段一段比（不再是整块平方级）', () => {
     const line = '夜里的街道，雨一直在下，霓虹灯在积水里碎成一片一片，她没有回头，伞沿压得很低。'
     const original = Array.from({ length: 180 }, (_, index) => index + line).join('\n')
     const rewritten = original.replace(/霓虹灯/g, '灯火').replace(/碎成一片一片/g, '碎了')
-    const started = performance.now()
     const parts = diffRewrite(original, rewritten)
-    expect(performance.now() - started).toBeLessThan(100)
+    // 走的是「一段一段比」：每两段之间都有一个单独的换行 keep（整块比不会拆出这些）。耗时由性能场景 creation-ai-rewrite-result-8000 在真 Electron 里量，这里不用墙钟判分。
+    expect(parts.filter((part) => part.kind === 'keep' && part.text === '\n')).toHaveLength(179)
     expect(parts.filter((part) => part.kind !== 'del').map((part) => part.text).join('')).toBe(rewritten)
   })
 })

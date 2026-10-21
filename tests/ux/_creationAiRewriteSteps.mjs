@@ -4,7 +4,7 @@
 //   开项目（文稿）→ 敲三句 → 选中第二句 → 点浮条上的「AI 编辑」→ 点「缩短」→ 等模型回 → 就地出新旧对比 →
 //   Enter 接受（正文换成新的）→ Ctrl+Z 撤回（回到改写前）。
 // 每一步只读界面上看得见的东西和文稿本身的字，不读内部状态。
-import { clickOrFail, expect } from './_assert.mjs'
+import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { DOCUMENT } from './agent-runtime-walk-support.mjs'
 
@@ -50,6 +50,7 @@ export async function runCreationAiRewriteJourney({ win, snap, resultTimeout = s
   await clickOrFail(aiButton, '浮条上的「AI 编辑」')
   const bar = win.locator(BAR)
   await expect(bar, 'AI 编辑条出现').toBeVisible()
+  const barProof = await proveProbe(bar, 'AI 编辑条在文稿里出现过')
   await expect(bar.locator('input'), '输入框在').toBeVisible()
   await snap('rewrite-02-menu')
 
@@ -64,7 +65,7 @@ export async function runCreationAiRewriteJourney({ win, snap, resultTimeout = s
 
   // ④ Enter 接受：这一段换成新的，其余两句不动。
   await win.keyboard.press('Enter')
-  await expect(win.locator(BAR), '接受后条消失').toHaveCount(0)
+  await expectAbsent(win.locator(BAR), { provenBy: barProof, message: '接受后条消失' })
   const accepted = await documentText(win)
   facts.acceptedText = accepted
   const lines = accepted.split('\n')

@@ -8,6 +8,7 @@ import { expect } from './_assert.mjs'
 import { BRAIN } from './_agentVideoPaid.mjs'
 import { ENV_KEY_VAR } from './_paidEnvKey.mjs'
 import { openPaidWalk } from './_paidRun.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 import { runCreationAiRewriteJourney } from './_creationAiRewriteSteps.mjs'
 import { CREATION_PANEL, chooseAssistantModel, createRuntimeWalk, expandResidentPanel } from './agent-runtime-walk-support.mjs'
 
@@ -16,7 +17,7 @@ const SHORTER = '她慢慢展开纸条，像怕它碎掉。'
 
 const paid = await openPaidWalk('creation-ai-rewrite-real.rehearsal.walk.mjs', 'creation-ai-rewrite-rehearsal', [BRAIN], {
   env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', [ENV_KEY_VAR]: FAKE_KEY },
-  buildMarkers: ['告诉 Nomi 怎么改'],
+  buildMarkers: [uiText('zh-CN', 'creationAi.rewrite.inputAria')],
   createWalk: (name, options) => createRuntimeWalk(name, {
     ...options, generationProvider: 'apimart', seedApimartKey: false, env: { ...options.env, NOMI_WALK_ALLOW_ORIGINS: '' },
   }),

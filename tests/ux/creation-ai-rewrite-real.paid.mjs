@@ -14,10 +14,11 @@
 import { expect } from './_assert.mjs'
 import { BRAIN } from './_agentVideoPaid.mjs'
 import { openPaidWalk } from './_paidRun.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 import { runCreationAiRewriteJourney } from './_creationAiRewriteSteps.mjs'
 import { CREATION_PANEL, chooseAssistantModel, expandResidentPanel } from './agent-runtime-walk-support.mjs'
 
-const paid = await openPaidWalk('creation-ai-rewrite-real.paid.mjs', 'creation-ai-rewrite-real', [BRAIN], { buildMarkers: ['告诉 Nomi 怎么改'] })
+const paid = await openPaidWalk('creation-ai-rewrite-real.paid.mjs', 'creation-ai-rewrite-real', [BRAIN], { buildMarkers: [uiText('zh-CN', 'creationAi.rewrite.inputAria')] })
 const { walk } = paid
 let failure
 try {
