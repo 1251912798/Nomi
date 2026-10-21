@@ -31,7 +31,7 @@ export default function StoryboardShotRowPlaceholder({ shot, frameBox, onActivat
         // 完整行的内容列整块就是「提示词 + 底栏」的输入框：点在内容列任何地方，都按点进提示词处理。
         onActivate(event.target instanceof Element && event.target.closest('[data-storyboard-content-column]') ? 'prompt' : 'row')
       }}
-      visualWidth={visualColumnWidth(frameBox)}
+      visualWidth={visualColumnWidth(frameBox, false)}
       visual={(
         <div className="relative rounded-nomi border border-dashed border-nomi-ink-20 bg-nomi-ink-05" style={{ width: box.width, height: box.height }} aria-hidden>
           <span className="absolute left-1 top-1 rounded-nomi-sm bg-nomi-ink-10 px-1 text-micro tabular-nums text-nomi-ink-60">

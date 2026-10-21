@@ -83,7 +83,9 @@ export function isPortraitBox(box: FrameMediaBox): boolean {
 /**
  * 视觉列宽：横版与方图 = 框宽；**竖版与横版同宽（240）**——框靠左、参考在框右边那条带里，
  * 这样整片竖版时各行左缘和内容列起点仍与横版表一致，参考也不再把行撑高。
+ * `refsBeside = false`（镜头行，B3 / E1a 起参考在提示词上一行）：框右边没有参考带，列宽 = 框宽，生成框紧接预览框；
+ * 只有参考卡（锚点行）还把参考排在竖版框右边，沿用默认值。
  */
-export function visualColumnWidth(box: FrameMediaBox): number {
-  return isPortraitBox(box) ? LONG_EDGE : box.width
+export function visualColumnWidth(box: FrameMediaBox, refsBeside = true): number {
+  return isPortraitBox(box) && refsBeside ? LONG_EDGE : box.width
 }

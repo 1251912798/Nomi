@@ -554,7 +554,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
       dropIndicator={props.isDragOver}
       grip={grip}
       visual={visual}
-      visualWidth={visualColumnWidth(frameBox)}
+      visualWidth={visualColumnWidth(frameBox, false)}
       contentStretch={!portrait}
       prompt={prompt}
       footer={variantsOpen ? footer : undefined}
