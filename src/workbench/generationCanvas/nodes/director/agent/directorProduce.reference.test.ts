@@ -11,11 +11,13 @@ import { buildCatalogTaskRequest } from '../../../runner/catalogTaskActions'
 import { resolveGenerationReferences } from '../../../runner/generationReferenceResolver'
 import { useGenerationCanvasStore } from '../../../store/generationCanvasStore'
 import { DIRECTOR_PROJECT_META_KEY } from '../model/directorNodeMeta'
+import { directorPreviewSpendBlock } from '../model/directorPreviewState'
 import { normalizeDirectorProject } from '../model/directorProject'
 import type { DirectorProject } from '../model/directorTypes'
 import type { DirectorWriteDomainResult } from './applyDirectorWrite'
 import { applyPreviewCaptured, previewCapturePlan } from './directorPreviewCapture'
 import { prepareProduceFromPreview } from './directorProduce'
+import { startPreviewAttachReconciler } from './previewAttachReconciler'
 
 const PLAN = {
   scene: { environment: 'day', template: 'room', tags: ['书房'] },
@@ -121,5 +123,50 @@ describe('3D-BOX produce: 预演参考真的进付费请求，编号指向它', 
     for (let i = 0; i < 3; i += 1) expect(prepareProduceFromPreview(directorNodeId, projectOf(directorNodeId))).toMatchObject({ kind: 'prepared', attach: 'kept' })
     expect(JSON.stringify(node(shotId))).toBe(settled)
     expect(requestOf(shotId).videos).toEqual([USER_CLIP, URL_V1])
+  })
+})
+
+// ── 直接点节点 ↑（不经「出成片」）：换模型 / 换方式之后预演要跟着重挂，花钱闸再核一次「挂接是当前的」 ──
+describe('节点上直接点 ↑：挂接始终是当前的', () => {
+  const blockOf = (shotId: string) => directorPreviewSpendBlock(shotId, store().nodes)
+
+  it('换成有槽模型 → 挂接对账器自动重挂，请求里带预演（不用再点出成片）', async () => {
+    const { shotId, directorNodeId } = await stagedWith(NO_SLOT_MODEL)
+    renderPreview(directorNodeId)
+    const stop = startPreviewAttachReconciler()
+    try {
+      setShotMeta(shotId, SLOT_MODEL)
+      expect(requestOf(shotId).videos).toEqual([URL_V1])
+      expect(requestOf(shotId).prompt).toMatch(/@video1 跟随这段参考视频的运镜/)
+      expect(blockOf(shotId)).toBeNull()
+    } finally { stop() }
+  })
+
+  it('换成不接参考视频的模型 → 自动退成文字描述，提示词里不留指向空气的引用句', async () => {
+    const { shotId, directorNodeId } = await stagedWith(SLOT_MODEL)
+    renderPreview(directorNodeId)
+    const stop = startPreviewAttachReconciler()
+    try {
+      setShotMeta(shotId, NO_SLOT_MODEL)
+      expect(node(shotId)?.prompt).toContain('3D-BOX 预演运镜：')
+      expect(node(shotId)?.prompt).not.toContain('跟随这段参考视频的运镜')
+    } finally { stop() }
+  })
+
+  it('没有对账器时（比如换模型发生在窗口关着的时候）：花钱闸发现挂接不是当前的 → 挡（用现有的「过期」原因）；出成片重挂后放行', async () => {
+    const { shotId, directorNodeId } = await stagedWith(NO_SLOT_MODEL)
+    renderPreview(directorNodeId)
+    expect(blockOf(shotId)).toBeNull()
+    setShotMeta(shotId, SLOT_MODEL)
+    expect(blockOf(shotId)?.reason).toBe('stale')
+    prepareProduceFromPreview(directorNodeId, projectOf(directorNodeId))
+    expect(blockOf(shotId)).toBeNull()
+  })
+
+  it('用户手动改了提示词（参考没变）不被闸挡', async () => {
+    const { shotId, directorNodeId } = await stagedWith(SLOT_MODEL)
+    renderPreview(directorNodeId)
+    store().updateNode(shotId, { prompt: '我自己重写的提示词' })
+    expect(blockOf(shotId)).toBeNull()
   })
 })

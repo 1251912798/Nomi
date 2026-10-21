@@ -127,6 +127,8 @@ export function requestDirectorPreviewRender(nodeId: string): boolean {
   if (!node) return false
   const preview = readDirectorPreview(node)
   if (preview?.status === 'rendering') return true
+  // 坏掉的记录读不出 preview，但它写的目标镜头要留着：重渲后仍挂回原镜头
+  const salvagedTarget = preview ? undefined : (node.meta?.[DIRECTOR_PREVIEW_META_KEY] as { targetNodeId?: unknown } | undefined)?.targetNodeId
   // 超长按当前工程判（改短了就能重渲；拉长了就不渲——离屏录制只有 10 秒，硬渲会把整段压进 10 秒）。
   // 不改写节点上的预演：已挂好的那份照旧留着，花钱闸与「出成片」按当前工程判超长挡住。
   if (directorProjectTooLong(node.meta?.[DIRECTOR_PROJECT_META_KEY])) return false
@@ -134,7 +136,7 @@ export function requestDirectorPreviewRender(nodeId: string): boolean {
   const next: DirectorPreviewMeta = {
     status: 'rendering',
     revision,
-    ...(preview?.targetNodeId ? { targetNodeId: preview.targetNodeId } : {}),
+    ...(preview?.targetNodeId ? { targetNodeId: preview.targetNodeId } : typeof salvagedTarget === 'string' ? { targetNodeId: salvagedTarget } : {}),
     ...(preview?.proposalId ? { proposalId: preview.proposalId } : {}),
     ...(preview?.notes ? { notes: preview.notes } : {}),
     updatedAt: Date.now(),

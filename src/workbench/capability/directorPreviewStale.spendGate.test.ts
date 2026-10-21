@@ -100,3 +100,19 @@ describe('3D-BOX spend gate: a stale preview blocks the shot like rendering / fa
     expect(canPress(shotId)).toBe(true)
   })
 })
+
+describe('3D-BOX spend gate: a corrupted preview record is freshness-unknown, like a legacy one', () => {
+  const corrupt = (directorNodeId: string, shotId: string) => useGenerationCanvasStore.getState().updateNode(directorNodeId, { meta: { ...node(directorNodeId)!.meta, [DIRECTOR_PREVIEW_META_KEY]: { status: 'weird', targetNodeId: shotId } } })
+
+  it('invalid status / missing revision no longer reads as "no preview": the shot is blocked until one free re-render', async () => {
+    const { shotId, directorNodeId } = await stagedAndRendered()
+    corrupt(directorNodeId, shotId)
+    expect(directorPreviewBlocksOp({ nodeIds: [shotId] }).blocks).toEqual([{ nodeId: shotId, reason: 'stale' }])
+    expect(canPress(shotId)).toBe(false)
+    expect(requestDirectorPreviewRender(directorNodeId)).toBe(true)
+    expect(readDirectorPreview(node(directorNodeId))?.targetNodeId).toBe(shotId)
+    render(directorNodeId, 'nomi-local://asset/p/preview-2.mp4')
+    expect(directorPreviewBlocksOp({ nodeIds: [shotId] }).blocks).toEqual([])
+    expect(canPress(shotId)).toBe(true)
+  })
+})

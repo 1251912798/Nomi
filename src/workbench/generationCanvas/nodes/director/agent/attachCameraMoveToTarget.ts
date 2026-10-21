@@ -88,6 +88,15 @@ function sameMeta(a: Record<string, unknown>, b: Record<string, unknown>): boole
   return true
 }
 
+/**
+ * 花钱闸用：预演在这个镜头上的**挂接是不是当前的**——只看模式与参考列表（meta），不看提示词：
+ * 用户自己改提示词不该挡花钱。核算出来「什么都不用写」或「只差提示词」= 当前；还要改模式 / 参考 = 不是当前（要再点出成片）。
+ */
+export function previewAttachIsCurrent(target: GenerationCanvasNode | undefined, mp4Url: string, directive: AttachPreviewDirective, context: AttachCameraMoveContext = {}): boolean {
+  const outcome = computeAttachCameraMove(target, mp4Url, directive, context)
+  return outcome.kind === 'noop' || sameMeta(outcome.patch.meta, { ...(target?.meta || {}) } as Record<string, unknown>)
+}
+
 const REFERENCE_VIDEOS_KEY = 'referenceVideoUrls'
 
 /**

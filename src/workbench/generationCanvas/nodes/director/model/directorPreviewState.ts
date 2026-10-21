@@ -17,6 +17,7 @@ import { stableProjectAgentJson } from '../../../../../../electron/shared/legacy
 import { synchronousSha256 } from '../../../../../../electron/shared/synchronousSha256'
 import type { GenerationCanvasNode } from '../../../model/generationCanvasTypes'
 import { productionMetaOf } from '../../../model/productionMeta'
+import { previewAttachIsCurrent } from '../agent/attachCameraMoveToTarget'
 import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from './directorNodeMeta'
 import { normalizeDirectorProject } from './directorProject'
 import { sceneContentEndSeconds } from './timeGrid'
@@ -132,18 +133,34 @@ function latestDirectorPreviewFor(
   return latest
 }
 
+/** 预演记录坏了（状态非法 / 缺修订号）但写明指向这个镜头：新鲜度未知，按过期处理（与无指纹的旧预演同一口径）。 */
+function corruptedPreviewBlock(nodeId: string, nodes: readonly Pick<GenerationCanvasNode, 'id' | 'kind' | 'meta'>[]): DirectorPreviewSpendBlock | null {
+  for (const node of nodes) {
+    if (node.kind !== DIRECTOR_NODE_KIND) continue
+    const raw = record(node.meta?.[DIRECTOR_PREVIEW_META_KEY])
+    if (raw && !readDirectorPreview(node) && raw.targetNodeId === nodeId) return { reason: 'stale', directorNodeId: node.id }
+  }
+  return null
+}
+
 export function directorPreviewSpendBlock(
   nodeId: string,
   nodes: readonly Pick<GenerationCanvasNode, 'id' | 'kind' | 'meta'>[],
 ): DirectorPreviewSpendBlock | null {
   const latest = latestDirectorPreviewFor(nodeId, nodes)
-  if (!latest) return null
+  if (!latest) return corruptedPreviewBlock(nodeId, nodes)
   if (latest.preview.status === 'ready') {
     const project = latest.node.meta?.[DIRECTOR_PROJECT_META_KEY]
     // 工程超长：这份预演是被压进 10 秒里的（旧版本会这样出），花钱就是按一段走样的预演出片
     if (project && typeof project === 'object' && directorProjectTooLong(project)) return { reason: 'failed', directorNodeId: latest.node.id, failure: 'too_long' }
     // 挂着的是最新预演才放行：挂上之后导演工程又被改过（精修里手调）= 过期，花钱就是按旧预演出片
-    return directorPreviewIsStale(latest.preview, project) ? { reason: 'stale', directorNodeId: latest.node.id } : null
+    if (directorPreviewIsStale(latest.preview, project)) return { reason: 'stale', directorNodeId: latest.node.id }
+    // 挂接是当前的才放行：换了模型 / 方式之后预演没跟着重挂（窗口关着、或没点出成片）= 付费请求会少带这份预演，挡到再点一次「出成片」
+    const target = nodes.find((node) => node.id === nodeId)
+    if (target && latest.preview.videoUrl && !previewAttachIsCurrent(target as GenerationCanvasNode, latest.preview.videoUrl, { kind: 'preview', cuts: [], notes: latest.preview.notes ?? [] })) {
+      return { reason: 'stale', directorNodeId: latest.node.id }
+    }
+    return null
   }
   return {
     reason: latest.preview.status,

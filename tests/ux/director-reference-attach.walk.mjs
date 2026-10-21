@@ -163,8 +163,9 @@ try {
     const a = add(title + ' A', prompt, -380, noSlot)
     const b = add(title + ' B', prompt, 0, slot)
     const c = add(title + ' C', prompt, 380, { ...slot, archetype: { ...slot.archetype, modeId: 'omni' }, referenceVideoUrls: [userClip] })
+    const d = add(title + ' D', prompt, 760, noSlot)
     window.__nomiCanvasStore.getState().updateNode(director.id, { title, meta: { ...director.meta, directorProject, directorPreview: { status: 'rendering', revision: 'manual:e2e-1', targetNodeId: a.id, updatedAt: Date.now() } } })
-    return { director: director.id, a: a.id, b: b.id, c: c.id }
+    return { director: director.id, a: a.id, b: b.id, c: c.id, d: d.id }
   }, { directorProject: project, noSlot: modelPatch(NO_SLOT_MODEL, 'veo-3.1', 't2v'), slot: modelPatch(SLOT_MODEL, 'seedance-2', 't2v'), userClip: USER_CLIP, title: lang === 'en' ? 'Study preview' : '书房预演', prompt: lang === 'en' ? 'Two people talk in the study' : '书房里两人对话' })
   report.ids = ids
 
@@ -255,6 +256,21 @@ try {
   check('C：请求里两条参考视频，用户自己的在前、预演在后', Array.isArray(c.videos) && c.videos.length === 2 && c.videos[0] === USER_CLIP && uploads.some((u) => u.url === c.videos[1]), JSON.stringify(c.videos))
   check('C：请求提示词里的引用是 @video2（指向预演那一条，不是第一条用户片）', /@video2 /.test(c.prompt) && !/@[Vv]ideo1 /.test(c.prompt), c.prompt)
   await shot('C-final')
+
+  // ── 场景 D：无槽模型上出成片（预演退成文字）→ 换成有槽模型 → **直接点 ↑**（不再点出成片）→ 请求照样带预演 ──
+  await retarget(ids.d)
+  await produce(ids.d, 'D1')
+  const nodeD1 = await nodeById(ids.d)
+  check('D：无槽模型上出成片 → 预演退成文字描述，没有参考视频', !(nodeD1.meta.referenceVideoUrls ?? []).length && /3D-BOX 预演运镜：/.test(nodeD1.prompt))
+  await store(({ id, patch }) => { const state = window.__nomiCanvasStore.getState(); state.updateNode(id, { meta: { ...state.nodes.find((n) => n.id === id).meta, ...patch } }) }, { id: ids.d, patch: modelPatch(SLOT_MODEL, 'seedance-2', 't2v') })
+  await waitFor('D：换模型后挂接对账器自动重挂预演参考', async () => ((await nodeById(ids.d)).meta.referenceVideoUrls ?? []).includes(previewUrl), 30_000)
+  await store((id) => window.dispatchEvent(new CustomEvent('nomi-focus-generation-node', { detail: { nodeId: id, select: true } })), ids.d)
+  await shot('D-node-after-model-switch')
+  const callD = await spendAndCapture(ids.d, 'D')
+  const dd = refsOf(callD)
+  report.scenarios.D = { videos: dd.videos, prompt: dd.prompt }
+  check('D：换模型后直接点 ↑，请求里带着预演参考', Array.isArray(dd.videos) && dd.videos.length === 1 && uploads.some((u) => u.url === dd.videos[0]), JSON.stringify(dd.videos))
+  check('D：请求提示词里的引用是 @video1', /@video1 /.test(dd.prompt), dd.prompt)
 
   check('渲染端没有抛错', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '))
   report.uploads = uploads

@@ -28,13 +28,16 @@
     "src/workbench/generationCanvas/nodes/director/agent/directorProduce.ts",
     "src/workbench/generationCanvas/nodes/director/agent/directorPreviewCapture.ts",
     "src/workbench/generationCanvas/nodes/director/agent/CameraMoveCaptureHost.tsx",
-    "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts"
+    "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts",
+    "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlow.tsx"
   ],
   "entry_points": [
     "DirectorEditor produce -> prepareProduceFromPreview -> attachCameraMoveForNode",
     "Capture host preview write-back (Agent stage_shot, re-render) -> applyPreviewCaptured -> attachCameraMoveForNode",
     "Capture host camera-move clip (manual control + Agent create_camera_move) -> attachToTarget -> attachCameraMoveForNode",
-    "Spend gate (node up-arrow, main-process admission) -> directorPreviewSpendBlock -> directorPreviewIsStale"
+    "Spend gate (node up-arrow, main-process admission) -> directorPreviewSpendBlock -> directorPreviewIsStale",
+    "Canvas shell reconciler: model / mode change on a shot with an attached preview -> attachCameraMoveForNode; spend gate re-checks that the attachment is current"
   ],
   "external_sources": [],
   "internal_only_reason": "Both the attach semantics and the reference numbering are ours (promptMentions and orderedSentMediaReferenceUrls are the in-repo single owners we now reuse); no third-party library owns per-shot reference attachment.",
@@ -130,6 +133,12 @@
       "entry_point": "buildArchetypeInputParams (request builder)",
       "disposition": "not-affected",
       "evidence": "Already the send-order owner; the core now reuses orderedSentMediaReferenceUrls, which calls the same merge primitive, instead of keeping its own list logic."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "entry_point": "directorPreviewSpendBlock (attachment-current check + corrupted preview record)",
+      "disposition": "enforced",
+      "evidence": "Blocks (existing stale reason) when the preview is not currently attached or the record is corrupted; directorProduce.reference.test.ts and directorPreviewStale.spendGate.test.ts."
     }
   ],
   "recurrence": {
@@ -153,7 +162,8 @@
       "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
       "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveForNode.ts",
       "src/workbench/generationCanvas/nodes/director/agent/directorPreviewCapture.ts",
-      "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts"
+      "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts"
     ]
   },
   "regression_tests": [
@@ -182,8 +192,6 @@
   },
   "migration": "Prompts written by the old core carry a literal '@Video1 ...' sentence; the core recognises that sentence by its text and replaces it with a marker sentence on the next attach (no bulk rewrite). Legacy previews without a fingerprint are not rewritten; they are treated as stale until the user triggers the free local re-render that produces a fingerprinted preview.",
   "residual_risks": [
-    "Whether the real video model follows the lowercase '@video2' form is unproven until the paid sample runs (the platform already projects user-picked videos the same way).",
-    "A corrupted preview record (invalid status or missing revision) is still read as 'no preview' and is not treated as stale; out of scope for this change.",
-    "The node up-arrow spend gate checks preview status and freshness but not that the preview is currently attached to the node; after a model switch the user must press produce again (the produce button, not the gate, repairs the attachment)."
+    "Whether the real video model follows the lowercase '@video2' form is unproven until the paid sample runs (the platform already projects user-picked videos the same way)."
   ]
 }
