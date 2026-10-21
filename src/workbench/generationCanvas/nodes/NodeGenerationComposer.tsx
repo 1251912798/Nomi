@@ -45,6 +45,7 @@ import { ConnectedTextChips } from './ConnectedTextChips'
 import TextNodeComposer from './TextNodeComposer'
 import { IconArrowUp, IconArrowsDiagonal, IconArrowsDiagonalMinimize2, IconRefresh } from '@tabler/icons-react'
 import { ReferenceNamesContext, resolveReferenceInfos } from '../../assets/referenceNames'
+import { mentionUrlsInOrder } from '../../assets/promptMentions'
 import { peekAllProjectAssets } from '../../assets/useAllProjectAssets'
 import {
   findModelOptionByIdentifier,
@@ -245,12 +246,16 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
   const referenceNames = React.useMemo(() => {
     const infos = resolveReferenceInfos({
       nodeId: node.id,
-      references: orderedMediaReferences.map((reference) => ({ url: reference.url, kind: reference.kind })),
+      // 当前方式里的参考 + 提示词里写着的引用（换到首尾帧后，参考数组里的图不在当前槽里，句中的小块仍要有名字）。
+      references: [
+        ...orderedMediaReferences.map((reference) => ({ url: reference.url, kind: reference.kind })),
+        ...mentionUrlsInOrder(node.prompt || '').filter((url) => !orderedMediaReferences.some((reference) => reference.url === url)).map((url) => ({ url, kind: 'image' as const })),
+      ],
       nodes: graph.nodes, edges: graph.edges, library: peekAllProjectAssets(),
       fallbackName: (kind) => t(kind === 'video' ? 'assetLibrary.referenceVideo' : kind === 'audio' ? 'assetLibrary.referenceAudio' : 'assetLibrary.referenceImage'),
     })
     return Object.fromEntries([...infos.values()].map((info) => [info.url, info.chipName]))
-  }, [graph, node.id, orderedMediaReferences, t])
+  }, [graph, node.id, node.prompt, orderedMediaReferences, t])
   // 连入的文字是一条连线接进来的：小签尾巴的 × = 断开这条线（和参考小图的 × 同一个动作）。
   const disconnectTextInput = React.useCallback((sourceId: string) => {
     const edge = graph.edges.find((candidate) => candidate.source === sourceId && candidate.target === node.id)
