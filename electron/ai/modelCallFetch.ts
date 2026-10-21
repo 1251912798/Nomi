@@ -10,6 +10,7 @@
 //   · URL 去掉查询串（有的厂商把 key 放在 `?key=`）；
 //   · 响应体截断，并把本次请求用到的密钥（请求头里的、查询串里的）全部抹掉，再过日志的第二道网（redactLogValue）；
 //   · 请求头一个都不记。
+import { appFetch } from "../appFetch";
 import { logDevDetail, logVendorCall } from "../logging/logger";
 import { redactLogValue } from "../logging/redact";
 import { redactRequestSecrets } from "./requestPipeline";
@@ -64,7 +65,7 @@ export function observeModelFetch(base: typeof globalThis.fetch, context: { mode
   let lastFailure: ModelHttpFailure | null = null;
   /** 最后一次请求压根没拿到响应（连不上 / 被掐 / DNS）：抹过密钥的原因。 */
   let lastThrown: string | null = null;
-  const fetch: typeof globalThis.fetch = async (input, init) => {
+  const observedFetch: typeof globalThis.fetch = async (input, init) => {
     const url = input instanceof Request ? input.url : String(input);
     const headers = init?.headers ?? (input instanceof Request ? input.headers : undefined);
     const secrets = secretsOf(url, headers, context.knownSecrets ?? []);
@@ -89,5 +90,14 @@ export function observeModelFetch(base: typeof globalThis.fetch, context: { mode
       throw error;
     }
   };
-  return { fetch, failure: () => lastFailure, thrown: () => lastThrown };
+  return { fetch: observedFetch, failure: () => lastFailure, thrown: () => lastThrown };
+}
+
+/**
+ * 模型调用的传输：应用唯一的 Node 出网口（appFetch，走用户的代理设置）+ 上面的失败留证。
+ * 目的地是用户在目录里接入的模型地址（凭据绑定与跳转规则由 appFetch / credentialRedirectPolicy 管），
+ * 不是用户 / Agent / 供应商临时给的 URL——那种（例如参考图地址）走 hardenedFetch（modelImageInput）。
+ */
+export function modelCallTransport(context: { modelId: string; knownSecrets?: readonly string[] }) {
+  return observeModelFetch(appFetch, context);
 }

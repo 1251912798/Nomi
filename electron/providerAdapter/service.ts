@@ -373,7 +373,7 @@ export class ProviderAdapterService {
       // 分级（2026-08-12）：只有「Nomi 不知道接法」的模型才值得查文档 + AI 编译。
       // 文本的接法全行业已统一到 OpenAI /v1/chat/completions（DeepSeek、Kimi、GLM、Qwen、
       // 阶跃、MiniMax、豆包、xAI、Mistral 全是；Anthropic、Gemini 也都开了兼容层），
-      // 何况文本验证走 streamTextTask（生产同一条路）、根本不读编译出来的草稿——
+      // 何况文本模型跑起来走的是文本任务那一条模型调用、根本不读编译出来的草稿——
       // 编译它纯属白花时间，还平添「文档没抓到 / 编译失败」这些真实使用路径没有的失败模式。
       // 旧行为：全部无差别走完整流程，两个 DeepSeek 文本模型烧掉 132 秒后判死。
       const mediaModels = connection.models.filter((model) => model.kind !== "text");

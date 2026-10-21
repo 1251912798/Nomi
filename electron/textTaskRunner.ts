@@ -8,14 +8,13 @@ import { revalidatePendingCredential } from './catalog/validateCandidateCredenti
 // 无加载期互调）。
 import crypto from "node:crypto";
 import { callModelOnce } from "./ai/modelCallBridge";
-import { observeModelFetch } from "./ai/modelCallFetch";
+import { modelCallTransport } from "./ai/modelCallFetch";
 import { readModelImage, ModelImageUnreadableError } from "./ai/modelImageInput";
 import { modelCallFailure } from "./ai/runtimeVendorError";
 import { nomiModelConfigFor } from "./ai/vendorModelConnection";
 import { sanitizeForBroadCompat } from "./ai/promptSanitize";
 import { runAntigravityTask } from "./ai/antigravityTask";
 import { ANTIGRAVITY_VENDOR_KEY } from "./shared/antigravity";
-import { appFetch } from "./appFetch";
 import { allReferenceImages } from "./catalog/taskParams";
 import { firstString, trim } from "./jsonUtils";
 import { desktopT } from "./i18n";
@@ -100,7 +99,7 @@ export async function executeTextTask(input: {
   const prompt = sanitizeForBroadCompat(input.request.prompt);
   const images = await imageContent(imageUrls, signal);
   const config = nomiModelConfigFor(input.vendor, input.model, input.apiKey);
-  const transport = observeModelFetch(appFetch, { modelId: config.modelId, knownSecrets: [input.apiKey] });
+  const transport = modelCallTransport({ modelId: config.modelId, knownSecrets: [input.apiKey] });
   const failure = (error: unknown, errorMessage?: string) => modelCallFailure({
     vendorKey: input.vendor.key, error, ...(errorMessage === undefined ? {} : { errorMessage }),
     http: transport.failure(), thrown: transport.thrown() });

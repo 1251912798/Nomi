@@ -71,11 +71,9 @@ export function registerTextStreamIpc(): void {
         .catch(async (error: unknown) => {
           // 用户点了「停止」：取消只清理 session，不当错误上报（渲染层自己按取消收尾）。
           if (session.abortController.signal.aborted) return;
-          // 同根因1：透出上游 responseBody 人话，而非裸状态文本。
-          // vendorKey 传下去 → 错误带结构化 category 穿到渲染层，文本节点的错误卡不再靠正则猜。
+          // 厂商失败在抛出那一刻已是结构化错误（带 vendorKey 与 category）：编码后穿到渲染层，文本节点的错误卡不靠正则猜。
           const { describeAgentError } = await import("./agentError");
-          const vendorKey = String((payload as { vendor?: unknown })?.vendor || "").trim();
-          const message = describeAgentError(error, { ...(vendorKey ? { vendorKey } : {}) });
+          const message = describeAgentError(error);
           sendTextEvent(session, { type: "error", message });
         })
         .finally(() => {

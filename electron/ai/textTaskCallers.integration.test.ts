@@ -41,7 +41,7 @@ describe.each(CALLERS)("$id", (caller) => {
     expect(seen.error).toContain("HTTP 429");
     expect(seen.error).toContain("Too many requests, slow down");
     expect(rendererVerdict(seen.error)).toEqual({ retried: false, kind: "quota" });
-  }, 20_000);
+  });
 
   it("503：同样的重试次数，类别 server", async () => {
     const seen = await runCaller(caller, "openai-compatible", () => reply.http(503, { error: { message: "upstream overloaded" } }));
@@ -49,7 +49,7 @@ describe.each(CALLERS)("$id", (caller) => {
     expect(seen.requests).toBe(caller.extras?.maxRetries === 0 ? 1 : 3);
     expect(seen.error).toContain("HTTP 503");
     expect(rendererVerdict(seen.error)).toEqual({ retried: false, kind: "server" });
-  }, 20_000);
+  });
 
   it("401：不重试，类别 auth，带上游原话", async () => {
     const seen = await runCaller(caller, "openai-compatible", () => reply.http(401, { error: { message: "invalid api key" } }));

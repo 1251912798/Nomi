@@ -1,7 +1,6 @@
 import { callModelOnce } from "../ai/modelCallBridge";
-import { observeModelFetch } from "../ai/modelCallFetch";
+import { modelCallTransport } from "../ai/modelCallFetch";
 import { modelCallFailure } from "../ai/runtimeVendorError";
-import { appFetch } from "../appFetch";
 import type { NomiModelConfig } from "../shared/agentLane/laneModelConfig";
 import type { AdapterAuthType, ProviderAdapterCompilation, ProviderAdapterDraft } from "./types";
 import { adapterModelContractSchema, validateProviderAdapterDraft } from "./validator";
@@ -67,7 +66,7 @@ Nomi supplies and locks the provider identity, model id, display label and billi
  * （安全修框 + zod 校验）——校验失败照旧抛，由 generateModelContract 换下一个候选模型。
  */
 const defaultGenerate: StructuredGenerator = async (input) => {
-  const transport = observeModelFetch(appFetch, { modelId: input.model.modelId, knownSecrets: [input.model.apiKey ?? ""] });
+  const transport = modelCallTransport({ modelId: input.model.modelId, knownSecrets: [input.model.apiKey ?? ""] });
   const { message } = await callModelOnce({
     model: input.model,
     fetch: transport.fetch,

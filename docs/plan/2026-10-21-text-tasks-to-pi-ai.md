@@ -86,7 +86,9 @@
 - [ ] 数据格式
 - [x] 新增功能 / 性能
 
-### ★0 先查别人
+### 先查别人（★0）
+
+- pi-ai 的子路径导出（协调 10-21 要求先查能不能只装用得到的部分）：`node_modules/@earendil-works/pi-ai/package.json` 的 exports 只开放 `./api/*` `./utils/*` `./providers/*` 等；我们要的 `createModels` / `createProvider` / `InMemoryCredentialStore` 住在 `dist/models.js` / `dist/auth/credential-store.js`，只经入口 index 导出（实测 models.js 单装 12ms、index 冷装约 0.6–2.4s）· **改了**冷启动的做法：绕过 exports 深引会破坏包封装（ERR_PACKAGE_PATH_NOT_EXPORTED），不采用；改为窗口加载后空闲预热核心 + 三条协议 + 离线空跑一次（electron/ai/modelCallPrewarm.ts），并在登记表 model-call-boundary 的 revisitWhen 写明「pi 提供按需子路径时删预热」。
 
 - 我们自己的 lane：`electron/agentLane/laneStreamObserver.mts:137` 把「响应头之后的任何事件」算作活着，三相预算在 `electron/agentLane/laneProviderGuard.mts:54-56`（10-06 NF-1001-0004 踩过：120s 空闲表把长思考当卡死）· **确认了**「存活判据看任意事件、思考期单独给 300s」这一决定，文本任务直接复用这一份常量，不另起数。
 - pi-ai 的重试：`node_modules/@earendil-works/pi-ai/dist/utils/provider-retry.js:75` 缺省 0 次、可打断、认 `Retry-After`（上限 60s，`provider-retry.js:22-43`）；SDK 自己的重试被关掉（`openai-completions.js:211`）· **改了**「重试次数靠 SDK 默认」→ 主人按调用方显式传（缺省 2、拆解 0），并且停止键在退避等待中也立刻生效。

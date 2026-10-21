@@ -664,7 +664,7 @@ describe("ProviderAdapterService", () => {
   });
 
   // 回归钉子（2026-08-11 用户接 DeepSeek 踩到「自动修复一直失败」）：文本模型验证走
-  // streamTextTask（生产同一条路）、根本不读编译出来的 HTTP 草稿，所以重修草稿对文本失败
+  // executeTextTask（生产同一条路）、根本不读编译出来的 HTTP 草稿，所以重修草稿对文本失败
   // 是个空操作——旧代码照样空转 2 轮、界面还写着「正在根据真实错误自动修复…」，用户白等。
   it("does not publish a failed candidate when no mode passed", async () => {
     const catalog = fakeCatalog();
@@ -854,7 +854,7 @@ describe("ProviderAdapterService", () => {
     });
   });
 
-  // 分级的核心不变量（2026-08-12）：文本的接法行业已统一，且文本验证走 streamTextTask、
+  // 分级的核心不变量（2026-08-12）：文本的接法行业已统一，且文本验证走 executeTextTask、
   // 根本不读编译出来的草稿——查文档 + AI 编译对它是纯开销，还平添「文档没抓到 / 编译失败」
   // 这些真实使用路径没有的失败模式。用户接两个 DeepSeek 文本模型曾为此烧掉 132 秒后判死。
   it("never discovers docs or compiles when only text models were selected", async () => {

@@ -1,15 +1,13 @@
-// 三条把上游失败带过 IPC 的通道（图 / 视频 / JSON 请求的 vendorHttp、AI SDK 的文本请求、Agent 的 pi 运行时）
+// 三条把上游失败带过 IPC 的通道（图 / 视频 / JSON 请求的 vendorHttp、文本任务的模型调用、Agent 的 pi 运行时）
 // 对**同一份上游响应体**必须带出同一份证据——否则渲染层那一张分类目录会在不同通道上对同一次失败说不同的话。
 //
 // 为什么单独一个对等测试：每条通道各有自己的单测，但「新增一条证据字段时漏掉某条通道」这件事，单条通道的单测看不见
 // （漏掉的那条通道根本没有那条用例）。2026-09-29 加 upstreamCode 时，第三条通道（pi 运行时）就是数门才找出来的。
 // 这里把三条通道放在同一张表上：新增字段而某条通道没带，这一条红。
 import assert from "node:assert/strict";
-import { APICallError } from "ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseVendorErrorFromMessage } from "../../src/workbench/generationCanvas/runner/vendorErrorIpc";
-import { vendorErrorFromAiSdkError } from "../ai/aiSdkVendorError";
-import { describeRuntimeError } from "../ai/runtimeVendorError";
+import { describeRuntimeError, modelCallFailure } from "../ai/runtimeVendorError";
 import type { Vendor } from "../catalog/types";
 import { VendorRequestError, requestJson } from "./vendorHttp";
 import { setSubmitOutboundDepsForTests } from "./vendorOutboundGuard";
@@ -43,11 +41,10 @@ async function viaVendorHttp(status: number, body: string): Promise<Evidence> {
   return evidenceOf(error.structured);
 }
 
-function viaAiSdk(status: number, body: string): Evidence {
-  const mapped = vendorErrorFromAiSdkError(new APICallError({
-    message: "Bad Request", url: "https://relay.example/v1/chat/completions", requestBodyValues: {}, statusCode: status, responseBody: body,
-  }));
-  return evidenceOf(mapped?.structured);
+/** 文本任务（2026-10-21 起走 pi-ai 单次调用）：传输层记下的状态码 + 响应体 → modelCallFailure。 */
+function viaTextTask(status: number, body: string): Evidence {
+  const mapped = modelCallFailure({ vendorKey: "relay", thrown: null, http: { status, body, url: "https://relay.example/v1/chat/completions" } });
+  return evidenceOf((mapped as VendorRequestError).structured);
 }
 
 function viaAgentRuntime(status: number, body: string): Evidence {
@@ -65,17 +62,17 @@ describe("同一份上游响应体，三条通道带出同一份证据", () => {
   ] as const)("%s", async (_label, status, body, expectedCode) => {
     const text = JSON.stringify(body);
     const http = await viaVendorHttp(status, text);
-    const sdk = viaAiSdk(status, text);
+    const textTask = viaTextTask(status, text);
     const runtime = viaAgentRuntime(status, text);
     // 三条通道对同一份响应体必须同形：码、分类、状态码逐项相同。
-    expect(sdk).toEqual(http);
+    expect(textTask).toEqual(http);
     expect(runtime).toEqual(http);
     expect(http.upstreamCode).toBe(expectedCode);
   });
 
   it("响应体不是 JSON 时，三条通道都不写码（不把一段文本当码）", async () => {
     const http = await viaVendorHttp(400, "upstream exploded");
-    expect(viaAiSdk(400, "upstream exploded")).toEqual(http);
+    expect(viaTextTask(400, "upstream exploded")).toEqual(http);
     expect(viaAgentRuntime(400, "upstream exploded")).toEqual(http);
     expect(http.upstreamCode).toBeUndefined();
   });

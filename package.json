@@ -275,9 +275,6 @@
     "check:test-temp-static": "node --test ./scripts/check-test-temp-static.node-test.mjs ./scripts/_test-temp.node-test.mjs"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.2.12",
-    "@ai-sdk/openai": "^1",
-    "@ai-sdk/openai-compatible": "^0.2.16",
     "@anthropic-ai/sandbox-runtime": "0.0.75",
     "@earendil-works/pi-agent-core": "0.85.1",
     "@earendil-works/pi-ai": "0.85.1",
@@ -288,7 +285,6 @@
     "@modelcontextprotocol/node": "2.1.1",
     "@modelcontextprotocol/server": "2.3.0",
     "@xmldom/xmldom": "0.9.12",
-    "ai": "^4.3.19",
     "electron-updater": "^6.8.9",
     "fflate": "0.8.3",
     "hono": "4.12.26",

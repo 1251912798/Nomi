@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { APICallError, RetryError } from 'ai'
 import { classifyGenerationError } from './generationRunController'
 import { parseVendorErrorFromMessage, stripVendorErrorMarker } from './vendorErrorIpc'
 import { desktopT } from '../../../../electron/i18n'
 import { describeAgentError } from '../../../../electron/ai/agentError'
-import { vendorStallError } from '../../../../electron/ai/aiSdkVendorError'
+import { modelCallFailure } from '../../../../electron/ai/runtimeVendorError'
+import { laneModelTimeoutMessage } from '../../../../electron/shared/agentLane/laneAssistantFault'
 import { tagNomiError, stripNomiErrorCode } from '../../../../electron/shared/nomiErrorCodes'
 import { describeOutboundRefusal } from '../../../../electron/networkOutboundMessage'
 import { encodeStructuredErrorMessage } from '../../../../electron/vendor/vendorHttp'
@@ -678,34 +678,24 @@ describe('无 query op：诚实失败文案要完整送到错误卡标题', () =
 })
 
 // ---------------------------------------------------------------------------
-// 文本侧（AI SDK）真实错误形态 —— 与图/视频侧同一条结构化契约
+// 文本侧真实错误形态 —— 与图/视频侧同一条结构化契约
 // ---------------------------------------------------------------------------
 // 病根（2026-08-12）：图/视频侧的失败在抛出那一刻就带 category（vendorHttp 查表），穿 IPC 到这里
-// 被优先采信；文本侧走 AI SDK，失败被压成一句裸字符串，这里只能用 detectLegacyErrorKind 的关键词
+// 被优先采信；文本侧失败曾被压成一句裸字符串，这里只能用 detectLegacyErrorKind 的关键词
 // 正则去猜。猜就按类漏——上面那串注释里已记着 5 次同型补丁，每次都是「撞到一种没被枚举的措辞 →
 // 落 unknown → 拿到『可能是服务商临时故障或额度问题，建议稍等重试』」。
 //
-// 这组测试**不手搓字符串**：直接喂 electron 侧 describeAgentError() 的真实产物，钉住整条契约
-// （AI SDK 错误 → VendorRequestError → base64 标记 → 这里的 structured 分支）任一环断了都红。
-describe('文本侧 AI SDK 错误：走 structured 分支，不靠关键词猜', () => {
-  const VENDOR = { vendorKey: 'apimart' }
+// 这组测试**不手搓字符串**：直接喂 electron 侧的真实产物（文本任务的失败映射 modelCallFailure → 文本流 IPC 的
+// describeAgentError），钉住整条契约（传输层事实 → VendorRequestError → base64 标记 → 这里的 structured 分支）。
+// 2026-10-21 文本任务迁 pi-ai 后，事实来自我们自己的传输包装（状态码 + 响应体），不再是 ai@4 的 APICallError。
+describe('文本侧错误：走 structured 分支，不靠关键词猜', () => {
+  const VENDOR = 'apimart'
+  const URL_ = 'https://api.apimart.ai/v1/chat/completions'
 
-  const apiError = (opts: { statusCode?: number; responseBody?: string; message?: string }): APICallError =>
-    new APICallError({
-      message: opts.message ?? 'Bad Request',
-      url: 'https://api.apimart.ai/v1/chat/completions',
-      requestBodyValues: {},
-      ...(opts.statusCode != null ? { statusCode: opts.statusCode } : {}),
-      ...(opts.responseBody != null ? { responseBody: opts.responseBody } : {}),
-    })
-
-  /** maxRetries 打光后 SDK 抛的套壳形态——429/5xx/网络失败在真机上就长这样。 */
-  const retryWrapped = (last: APICallError): RetryError =>
-    new RetryError({
-      message: `Failed after 4 attempts. Last error: ${last.message}`,
-      reason: 'maxRetriesExceeded',
-      errors: [last, last, last, last],
-    })
+  /** 服务商回了非 2xx：传输层记下的事实 → 文本任务抛出的错误（与生产同一个映射）。 */
+  const apiError = (opts: { statusCode: number; responseBody?: string; message?: string }): Error =>
+    modelCallFailure({ vendorKey: VENDOR, thrown: null,
+      http: { status: opts.statusCode, url: URL_, body: opts.responseBody ?? opts.message ?? '' } })
 
   it.each([
     ['401 鉴权', 401, 'auth'],
@@ -714,7 +704,7 @@ describe('文本侧 AI SDK 错误：走 structured 分支，不靠关键词猜',
     ['400 参数', 400, 'input'],
     ['500 服务商故障', 500, 'server'],
   ] as const)('%s → kind=%s，且 category 来自源头而不是正则', (_label, statusCode, kind) => {
-    const message = describeAgentError(apiError({ statusCode }), VENDOR)
+    const message = describeAgentError(apiError({ statusCode }))
     // ① 结构化载荷确实穿过来了（这一条断了就说明 electron 侧没编码）
     expect(parseVendorErrorFromMessage(message)?.category).toBe(kind)
     // ② 分类结果就是它（这一条断了就说明 classifyError 没采信 structured）
@@ -725,32 +715,22 @@ describe('文本侧 AI SDK 错误：走 structured 分支，不靠关键词猜',
   // structured 分支，不是碰巧被关键词猜中。500/400 是关键词表**永远猜不到**的两类
   // （报文里没有 'quota'/'balance'/'timeout' 这些词，只有一个状态码）。
   it('500 关键词表猜不到——剥掉结构化就退回 unknown 的「稍等重试」误导', () => {
-    const message = describeAgentError(retryWrapped(apiError({ statusCode: 500, message: 'Internal Server Error' })), VENDOR)
+    const message = describeAgentError(apiError({ statusCode: 500, message: 'Internal Server Error' }))
     expect(classifyGenerationError(message).kind).toBe('server')
     // 老路（无结构化）在同一条报错上给的是 unknown
     expect(classifyGenerationError(stripVendorErrorMarker(message)).kind).toBe('unknown')
   })
 
   it('400 同理——参数被拒不该落进「可能是额度问题」', () => {
-    const message = describeAgentError(apiError({ statusCode: 400, message: 'Bad Request' }), VENDOR)
+    const message = describeAgentError(apiError({ statusCode: 400, message: 'Bad Request' }))
     expect(classifyGenerationError(message).kind).toBe('input')
     expect(classifyGenerationError(stripVendorErrorMarker(message)).kind).toBe('unknown')
   })
 
   it('连不上服务商（断网/代理不通）：不甩锅给没被请求到的服务商', () => {
-    // provider-utils 在 `TypeError: fetch failed` 且带 cause 时造的正是这个形状（无 statusCode），
-    // 可重试 → 打光 3 次重试后套 RetryError 抛出。用户拆镜头时断网撞的就是这条。
-    const message = describeAgentError(
-      retryWrapped(
-        new APICallError({
-          message: 'Cannot connect to API: connect ECONNREFUSED 127.0.0.1:443',
-          url: 'https://api.apimart.ai/v1/chat/completions',
-          requestBodyValues: {},
-          isRetryable: true,
-        }),
-      ),
-      VENDOR,
-    )
+    // 传输层的 fetch 自己抛了（没拿到任何响应）：用户拆镜头时断网撞的就是这条。
+    const message = describeAgentError(modelCallFailure({ vendorKey: VENDOR, http: null,
+      thrown: 'fetch failed: connect ECONNREFUSED 127.0.0.1:443' }))
     const report = classifyGenerationError(message)
     expect(parseVendorErrorFromMessage(message)?.category).toBe('network')
     expect(report.kind).toBe('network')
@@ -762,7 +742,6 @@ describe('文本侧 AI SDK 错误：走 structured 分支，不靠关键词猜',
   it('上游人话（中转只把真原因放在 responseBody）跟着一起到错误卡', () => {
     const message = describeAgentError(
       apiError({ statusCode: 400, responseBody: JSON.stringify({ error: { message: '官方算力限制，请等待一段时间后再进行使用' } }) }),
-      VENDOR,
     )
     expect(classifyGenerationError(message).providerMessage).toContain('官方算力限制')
   })
@@ -777,13 +756,14 @@ describe('文本侧 AI SDK 错误：走 structured 分支，不靠关键词猜',
           error: { message: 'Your account has not activated the model doubao-seedance. Please activate the model service in the Ark Console.' },
         }),
       }),
-      VENDOR,
     )
     expect(classifyGenerationError(message).kind).toBe('model-not-open')
   })
 
-  it('流式超时（我们自己按下的 abort）归 network，而不是一句正则匹配不上的中文裸串', () => {
-    const message = describeAgentError(vendorStallError('模型 90s 内无响应（端点慢或挂起）', VENDOR), VENDOR)
+  it.each(['first-response', 'first-token', 'idle'] as const)('看门狗（我们自己按下的 abort，%s）归 network，而不是一句正则匹配不上的中文裸串', (phase) => {
+    const message = describeAgentError(modelCallFailure({ vendorKey: VENDOR, http: null, thrown: null,
+      errorMessage: laneModelTimeoutMessage(phase, 90_000) }))
+    expect(parseVendorErrorFromMessage(message)?.category).toBe('network')
     expect(classifyGenerationError(message).kind).toBe('network')
   })
 
@@ -935,12 +915,10 @@ describe('失败原因按上游自己的码与话归类（一张目录，没有�
     expect(report.kind).not.toBe('input')
   })
 
-  it('图 / 视频侧与文本侧两条通道带过来的码同形：文本侧（AI SDK）同样按码归类', () => {
-    const apiError = new APICallError({
-      message: 'Bad Request', url: 'https://api.apimart.ai/v1/chat/completions', requestBodyValues: {}, statusCode: 400,
-      responseBody: JSON.stringify({ error: { code: 'model_not_found', message: 'The model gpt-x does not exist' } }),
-    })
-    const message = describeAgentError(apiError, { vendorKey: 'apimart' })
+  it('图 / 视频侧与文本侧两条通道带过来的码同形：文本侧同样按码归类', () => {
+    const textError = modelCallFailure({ vendorKey: 'apimart', thrown: null, http: { status: 400, url: 'https://api.apimart.ai/v1/chat/completions',
+      body: JSON.stringify({ error: { code: 'model_not_found', message: 'The model gpt-x does not exist' } }) } })
+    const message = describeAgentError(textError)
     expect(parseVendorErrorFromMessage(message)?.upstreamCode).toBe('model_not_found')
     expect(classifyGenerationError(message).kind).toBe('model-unavailable-upstream')
   })
