@@ -45,6 +45,6 @@
 - 节点测试（动手前定的清单，先红后绿）：
   1. `scripts/package-build-stamp.node-test.mjs`：没有戳 → 拒；旧戳 → 拒；戳一致 → 放行。
   2. `scripts/launch-build-gate.node-test.mjs`：`launchNomiApp` 在戳缺失 / 过期时拒跑，且不调用 `electron.launch`。
-  3. `scripts/lib/buildGateScan.node-test.mjs`：有人绕过共享边界直接起 Electron → 门岗红；走 `launchNomiApp` / 自己核戳 / 已登记的非构建起法 → 绿；启动器自己不核戳 → 红；真实 `tests/` 树无漏网。
+  3. `scripts/lib/buildGateScan.test.mjs`（vitest）：有人绕过共享边界直接起 Electron → 门岗红；走 `launchNomiApp` / 自己核戳 / 已登记的非构建起法 → 绿；启动器自己不核戳 → 红；真实 `tests/` 树无漏网。
 - 反例会从哪些入口回来：新写的走查直接 `spawn(require('electron'))`、新写直接起 `dist-electron/main.js` 的脚本、Playwright `_electron` —— 都被 `check:e2e-launch` 的新规则拦；登记表 `NON_BUILD_SPAWNERS` 每条要写理由，且只给「起的不是仓库构建产物」的起法。
 - 回滚：revert 本提交即可；无数据迁移。

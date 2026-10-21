@@ -1,7 +1,6 @@
-import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
-import test from 'node:test'
+import { expect, test } from 'vitest'
 import { fileURLToPath } from 'node:url'
 import { BUILD_LAUNCHER, NON_BUILD_SPAWNERS, findUngatedBuildConsumers } from './buildGateScan.mjs'
 
@@ -11,11 +10,11 @@ test('bypass: a test file that spawns Electron without the build-stamp check is 
   const bypass = `const { spawn } = require('node:child_process')
 spawn(require('electron'), ['.'])
 `
-  assert.equal(findUngatedBuildConsumers([{ rel: 'tests/ux/new-walk.mjs', source: bypass }]).length, 1)
+  expect(findUngatedBuildConsumers([{ rel: 'tests/ux/new-walk.mjs', source: bypass }])).toHaveLength(1)
   const playwright = `import { _electron } from 'playwright'
 await _electron['launch']({})
 `
-  assert.equal(findUngatedBuildConsumers([{ rel: 'tests/ux/other.mjs', source: playwright }]).length, 1)
+  expect(findUngatedBuildConsumers([{ rel: 'tests/ux/other.mjs', source: playwright }])).toHaveLength(1)
 })
 
 test('gated: the stamp check, the shared launcher, or a registered non-build spawner passes', () => {
@@ -32,15 +31,15 @@ app.exit(0)
   const commentOnly = `// spawn(require('electron'), ['.'])
 `
   for (const source of [gated, viaLauncher, inElectron, commentOnly]) {
-    assert.deepEqual(findUngatedBuildConsumers([{ rel: 'tests/ux/ok.mjs', source }]), [])
+    expect(findUngatedBuildConsumers([{ rel: 'tests/ux/ok.mjs', source }])).toEqual([])
   }
   const [rel] = Object.keys(NON_BUILD_SPAWNERS)
-  assert.deepEqual(findUngatedBuildConsumers([{ rel, source: "spawnSync(require('electron'), ['x.cjs'])" }]), [])
+  expect(findUngatedBuildConsumers([{ rel, source: "spawnSync(require('electron'), ['x.cjs'])" }])).toEqual([])
 })
 
 test('the launcher itself must call assertFreshBuild', () => {
-  assert.equal(findUngatedBuildConsumers([{ rel: BUILD_LAUNCHER, source: `electron['launch']({})` }]).length, 1)
-  assert.deepEqual(findUngatedBuildConsumers([{ rel: BUILD_LAUNCHER, source: "assertFreshBuild(repoRoot)\nelectron['launch']({})" }]), [])
+  expect(findUngatedBuildConsumers([{ rel: BUILD_LAUNCHER, source: `electron['launch']({})` }])).toHaveLength(1)
+  expect(findUngatedBuildConsumers([{ rel: BUILD_LAUNCHER, source: "assertFreshBuild(repoRoot)\nelectron['launch']({})" }])).toEqual([])
 })
 
 test('the real tests/ tree has no ungated build consumer', () => {
@@ -54,5 +53,5 @@ test('the real tests/ tree has no ungated build consumer', () => {
     }
   }
   walk(path.join(repoRoot, 'tests'))
-  assert.deepEqual(findUngatedBuildConsumers(files), [])
+  expect(findUngatedBuildConsumers(files)).toEqual([])
 })

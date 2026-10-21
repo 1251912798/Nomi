@@ -74,7 +74,6 @@ console.log('✅ check:e2e-launch —— 起构建产物的入口都先核构建
 const regression = spawnSync(process.execPath, ['--test',
   path.join(repoRoot, 'scripts/e2e-launch-capability.node-test.mjs'),
   path.join(repoRoot, 'scripts/launch-build-gate.node-test.mjs'),
-  path.join(repoRoot, 'scripts/lib/buildGateScan.node-test.mjs'),
   path.join(repoRoot, 'tests/ux/_walkInstances.node-test.mjs'),
 ], { stdio: 'inherit' })
 if (regression.error) throw regression.error

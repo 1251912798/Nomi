@@ -35,7 +35,7 @@ const TEST_STYLE_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$|^vitest(?:\.\w+)?\.confi
  */
 export const SCAN_GUARDS = Object.freeze([
   // ── electron/ 全树（遍历 electron 找违规文件）──
-  { file: 'scripts/lib/buildGateScan.node-test.mjs', roots: ['tests'] }, // G-walk-build：tests/ 下起构建产物的入口都先核构建戳；遍历 tests（<1 秒）
+  { file: 'scripts/lib/buildGateScan.test.mjs', roots: ['tests'] }, // G-walk-build：tests/ 下起构建产物的入口都先核构建戳；遍历 tests（<1 秒）
   { file: 'electron/offLedgerEgress.structure.test.ts', roots: ELECTRON }, // #1156：新增 child_process 出网口没登记（5 秒）
   { file: 'electron/capabilityCore/reservationAmountSingleExit.structure.test.ts', roots: ELECTRON }, // 2026-10-18：确认卡金额只许从 reservationMaximumForDisplay 出（遍历 electron 源码，1 秒）
   { file: 'electron/fileIdentity.test.ts', roots: ELECTRON }, // #1142：不许手写 dev / ino 比较（2 秒）
