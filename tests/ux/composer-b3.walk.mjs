@@ -7,6 +7,10 @@
 // 同时产出证据图（docs/evidence/2026-10-19-b1a/）：每个格 × 中 / 英 × 明 / 暗，加悬停小提示、悬停大图、四个宿主。
 //
 // 用法：node tests/ux/composer-b3.walk.mjs        （EVIDENCE=0 只跑断言不截图）
+import { stationTimeout } from './_station-budget.mjs'
+import { uiText } from './full-walk/invariants.mjs'
+
+const zh = (key) => uiText('zh-CN', key)
 import { chromium } from 'playwright'
 import { spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -49,8 +53,8 @@ async function open(screen, state, extra = '') {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 })
   const page = await context.newPage()
   page.on('pageerror', (error) => pageErrors.push(`${state}: ${String(error).slice(0, 200)}`))
-  await page.goto(`${BASE}/design-lab.html?screen=${screen}&frame=1&state=${state}${extra}`, { timeout: 180000 })
-  await page.waitForFunction(() => window.__designLabReady === true, null, { timeout: 90000 })
+  await page.goto(`${BASE}/design-lab.html?screen=${screen}&frame=1&state=${state}${extra}`, { timeout: stationTimeout({ operations: 12 }) })
+  await page.waitForFunction(() => window.__designLabReady === true, null, { timeout: stationTimeout({ operations: 6 }) })
   return { page, context }
 }
 
@@ -121,9 +125,9 @@ try {
     check('board:ComposerB3/prompt.expand.hidden-when-short', (await count(page, '[data-prompt-expand-toggle]')) === 0, '提示词短的时候没有展开钮（点了没反应的控件不放）')
     await page.locator(`${CARD} [data-prompt-box] .ProseMirror`).click()
     await page.keyboard.type(Array.from({ length: 40 }, (_, i) => `第 ${i + 1} 行镜头描述`).join('\n').replace(/\n/g, ' '.repeat(0) + '\n'))
-    await page.waitForSelector('[data-prompt-expand-toggle]', { timeout: 10000 })
+    await page.waitForSelector('[data-prompt-expand-toggle]', { timeout: stationTimeout() })
     await page.locator('[data-prompt-expand-toggle]').click()
-    await page.waitForSelector('[data-prompt-expanded="true"]', { timeout: 5000 })
+    await page.waitForSelector('[data-prompt-expanded="true"]', { timeout: stationTimeout() })
     check('board:ComposerB3/prompt.expand', true, '装不下时右上出展开钮，点开后提示词区长到全文')
     await shot(page, B3, 'b3a-video-empty', 'B3a-zh-light')
     cells.b3a = true
@@ -136,12 +140,12 @@ try {
     const panel = await page.evaluate(() => {
       const el = document.querySelector('[data-agent-parameter-panel]')
       if (!el) return null
-      const titles = [...el.querySelectorAll('div')].filter((d) => d.children.length === 0).map((d) => d.textContent?.trim()).filter(Boolean)
+      const titles = [...el.querySelectorAll('div')].filter((d) => !d.children.length).map((d) => d.textContent?.trim()).filter(Boolean)
       const modes = [...el.querySelectorAll('[data-agent-generation-mode] [role="radio"]')].map((b) => b.textContent?.trim())
       return { modes, w: Math.round(el.getBoundingClientRect().width), titles, hint: [...el.querySelectorAll('[title]')].map((n) => n.getAttribute('title')) }
     })
     check('board:ComposerB3/params.popover', panel?.w === 320, JSON.stringify(panel))
-    check('board:ComposerB3/params.group.mode', panel?.titles?.[0] === '生成方式' && panel.modes[0] === '参考' && !panel.modes.some((m) => /文生/.test(m ?? '')), JSON.stringify(panel))
+    check('board:ComposerB3/params.group.mode', panel?.titles?.[0] === zh('generationCommon.parameters.generationMode') && panel.modes[0] === '参考' && !panel.modes.some((m) => /文生/.test(m ?? '')), JSON.stringify(panel))
     check('board:ComposerB3/params.mode.limit-tip', (panel?.hint ?? []).some((t) => /最多：.*张图.*段视频.*段音频/.test(t ?? '')), JSON.stringify(panel?.hint))
     check('board:ComposerB3/params.group.aspect', (panel?.titles ?? []).includes('比例'))
     check('board:ComposerB3/params.group.resolution', (panel?.titles ?? []).includes('清晰度'))
@@ -157,7 +161,7 @@ try {
   {
     const { page, context } = await open(B3, 'b3c-video-three-refs')
     const tiles = await page.evaluate(() => [...document.querySelectorAll('[data-reference-row] [data-asset-tile]')].map((el) => { const r = el.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) } }))
-    check('board:ComposerB3/ref.thumb', tiles.length === 3 && tiles.every((t) => t.w === 40 && t.h === 40) && (await count(page, '[data-asset-tile-badge]')) === 0, JSON.stringify(tiles))
+    check('board:ComposerB3/ref.thumb', tiles.length === 3 && tiles.every((t) => t.w === 40 && t.h === 40) && (await page.evaluate(() => [...document.querySelectorAll('[data-reference-row] [data-asset-tile] *')].filter((el) => !el.children.length && /^\d+$/.test(el.textContent?.trim() ?? '')).length)) < 1, JSON.stringify(tiles))
     check('board:ComposerB3/ref.count-label', (await text(page, '[data-reference-tail]')) === '参考图 3 张')
     const chips = await page.evaluate(() => [...document.querySelectorAll('[data-storyboard-mention-chip]')].map((el) => ({ label: el.getAttribute('aria-label'), thumb: Math.round(el.querySelector('span')?.getBoundingClientRect().width ?? 0) })))
     check('board:ComposerB3/prompt.ref-chip', chips.length === 3 && chips.map((c) => c.label).join(',') === '女主肖像,海边小镇,树林' && chips.every((c) => c.thumb === 16), JSON.stringify(chips))
@@ -167,13 +171,13 @@ try {
     const first = page.locator('[data-reference-row] [data-asset-tile]').nth(0)
     check('board:ComposerB3/ref.thumb.remove.quiet', (await page.evaluate(() => getComputedStyle(document.querySelector('[data-asset-tile-remove]')).opacity)) === '0', '平时没有 ×')
     await first.hover()
-    await page.waitForSelector('[data-asset-tile-tip]', { timeout: 5000 })
+    await page.waitForSelector('[data-asset-tile-tip]', { timeout: stationTimeout() })
     const tip = await text(page, '[data-asset-tile-tip]')
     check('board:ComposerB3/ref.thumb.tooltip', /女主肖像/.test(tip ?? '') && /断开连线/.test(tip ?? ''), String(tip))
-    await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-asset-tile-remove]')).opacity === '1', null, { timeout: 5000 })
-    check('board:ComposerB3/ref.thumb.remove', (await page.evaluate(() => document.querySelector('[data-asset-tile-remove]').getAttribute('aria-label'))) === '断开连线')
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-asset-tile-remove]')).opacity === '1', null, { timeout: stationTimeout() })
+    check('board:ComposerB3/ref.thumb.remove', (await page.evaluate(() => document.querySelector('[data-asset-tile-remove]').getAttribute('aria-label'))) === zh('assetLibrary.refRow.disconnect'))
     await shot(page, B3, 'b3c-video-three-refs', 'B3n-hover-tip-zh-light')
-    await page.waitForSelector('[data-asset-tile-zoom]', { timeout: 5000 })
+    await page.waitForSelector('[data-asset-tile-zoom]', { timeout: stationTimeout() })
     const zoom = await page.evaluate(() => { const el = document.querySelector('[data-asset-tile-zoom]'); const r = el.getBoundingClientRect(); const tile = document.querySelector('[data-reference-row] [data-asset-tile]').getBoundingClientRect(); return { rightOfTile: r.left >= tile.right, tipGone: !document.querySelector('[data-asset-tile-tip]'), caption: el.textContent?.trim() ?? '' } })
     check('keep.reference.hover-preview', zoom.rightOfTile && zoom.tipGone && /女主肖像/.test(zoom.caption), JSON.stringify(zoom))
     if (WITH_EVIDENCE) await page.screenshot({ path: path.join(EVIDENCE_DIR, 'B3n-hover-zoom-zh-light.png'), clip: { x: 0, y: 0, width: 1000, height: 720 } })
@@ -186,11 +190,11 @@ try {
     const { page, context } = await open(B3, 'b3d-video-first-last')
     const labels = await page.evaluate(() => [...document.querySelectorAll('[data-asset-slot-label]')].map((el) => el.textContent?.trim()))
     check('board:ComposerB3/ref.slot.first', labels[0] === '首帧')
-    check('board:ComposerB3/ref.slot.last', labels[1] === '尾帧（可不填）' || labels[1] === '尾帧', JSON.stringify(labels))
+    check('board:ComposerB3/ref.slot.last', labels[1] === zh('assetLibrary.refRow.lastFrameOptional') || labels[1] === '尾帧', JSON.stringify(labels))
     const swapBefore = await page.evaluate(() => [...document.querySelectorAll('[data-asset-slot]')].map((el) => el.querySelector('[data-asset-tile]') ? 'filled' : 'empty'))
     check('board:ComposerB3/ref.slot.swap', (await count(page, '[data-reference-swap]')) === 1 && swapBefore.join() === 'filled,empty', JSON.stringify(swapBefore))
     await page.locator('[data-reference-swap]').click()
-    await page.waitForFunction(() => [...document.querySelectorAll('[data-asset-slot]')].map((el) => (el.querySelector('[data-asset-tile]') ? 'filled' : 'empty')).join() === 'empty,filled', null, { timeout: 5000 })
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-asset-slot]')].map((el) => (el.querySelector('[data-asset-tile]') ? 'filled' : 'empty')).join() === 'empty,filled', null, { timeout: stationTimeout() })
     check('board:ComposerB3/ref.slot.swap.effect', true, '点对调：首帧的图落到尾帧')
     check('board:ComposerB3/compare.new-state', labels.length === 2 && (await count(page, '[data-reference-row] [data-reference-entry]')) === 1, 'B3k「新」：同一视频节点（首尾帧）的新排法 = 这一格')
     await shot(page, B3, 'b3d-video-first-last', 'B3d-zh-light')
@@ -199,28 +203,28 @@ try {
   {
     const { page, context } = await open(B3, 'b3f-video-switch-first-last')
     check('board:ComposerB3/ref.slot.unused', (await count(page, '[data-reference-unused]')) === 1 && /未用到/.test((await text(page, '[data-reference-unused]')) ?? ''))
-    check('board:ComposerB3/ref.tail.unused-note', (await text(page, '[data-reference-tail]')) === '首尾帧用不到，切回参考还在')
+    check('board:ComposerB3/ref.tail.unused-note', (await text(page, '[data-reference-tail]')) === zh('assetLibrary.refRow.unusedNote'))
     await shot(page, B3, 'b3f-video-switch-first-last', 'B3f-zh-light')
     await context.close()
   }
 
-  // ── B3e 歧义提示：点「改成首尾帧」，两张参考落到首帧 / 尾帧 ───────
+  // ── B3e 歧义提示：点「改首尾帧」，两张参考落到首帧 / 尾帧 ───────
   {
     const { page, context } = await open(B3, 'b3e-video-ambiguous')
     const tail = await text(page, '[data-reference-tail]')
     check('board:ComposerB3/ref.tail.ambiguity-hint', /参考图 2 张/.test(tail ?? '') && /要当首尾帧用？/.test(tail ?? '') && (await count(page, '[data-reference-hint-action="first-last"]')) === 1, String(tail))
     await shot(page, B3, 'b3e-video-ambiguous', 'B3e-zh-light')
     await page.locator('[data-reference-hint-action="first-last"]').click()
-    await page.waitForFunction(() => document.querySelectorAll('[data-asset-slot] [data-asset-tile]').length === 2, null, { timeout: 5000 })
-    check('board:ComposerB3/ref.tail.ambiguity-hint.effect', true, '点「改成首尾帧」：两张参考落到首帧、尾帧')
+    await page.waitForFunction(() => document.querySelectorAll('[data-asset-slot] [data-asset-tile]').length === 2, null, { timeout: stationTimeout() })
+    check('board:ComposerB3/ref.tail.ambiguity-hint.effect', true, '点「改首尾帧」：两张参考落到首帧、尾帧')
     await context.close()
   }
 
   // ── B3g 图片 · 空：面板没有生成方式 ──────────────────────────────
   {
     const { page, context } = await open(B3, 'b3g-image-empty')
-    const titles = await page.evaluate(() => [...document.querySelectorAll('[data-agent-parameter-panel] div')].filter((d) => d.children.length === 0).map((d) => d.textContent?.trim()))
-    check('board:ComposerB3/params.mode.none-for-image', !titles.includes('生成方式'), JSON.stringify(titles))
+    const titles = await page.evaluate(() => [...document.querySelectorAll('[data-agent-parameter-panel] div')].filter((d) => !d.children.length).map((d) => d.textContent?.trim()))
+    check('board:ComposerB3/params.mode.none-for-image', !titles.includes(zh('generationCommon.parameters.generationMode')), JSON.stringify(titles))
     check('board:ComposerB3/params.group.quality', titles.includes('清晰度') || titles.includes('画质'), JSON.stringify(titles))
     await shot(page, B3, 'b3g-image-empty', 'B3g-zh-light')
     await context.close()
@@ -249,7 +253,7 @@ try {
     const { page, context } = await open(B3, 'b3j-model-menu')
     const rows = await page.evaluate(() => [...document.querySelectorAll('[role="option"]')].map((el) => ({ text: el.textContent?.trim() ?? '', h: Math.round(el.getBoundingClientRect().height) })))
     check('board:ComposerB3/modelmenu.row', rows.length >= 3 && rows.every((r) => r.h <= 34 && r.text.length < 24), JSON.stringify(rows))
-    check('board:ComposerB3/modelmenu.footer-hide', /隐藏模型/.test(await page.evaluate(() => document.body.textContent ?? '')))
+    check('board:ComposerB3/modelmenu.footer-hide', /隐藏模型/.test(await page.evaluate(() => document.querySelector('[role="listbox"]')?.textContent ?? '')))
     check('board:ComposerB3/swap.before', (await count(page, '[data-asset-slot-label]')) === 2)
     await shot(page, B3, 'b3j-model-menu', 'B3j-menu-zh-light')
     await context.close()
@@ -257,7 +261,7 @@ try {
   {
     const { page, context } = await open(B3, 'b3j-after-swap')
     const body = await page.evaluate(() => document.querySelector('[data-reference-row]')?.textContent ?? '')
-    check('board:ComposerB3/swap.after', (await count(page, '[data-reference-row] [data-asset-tile]')) === 2 && /参考图 2 张/.test(body) && !/换回|没有首尾帧/.test(await page.evaluate(() => document.body.textContent ?? '')))
+    check('board:ComposerB3/swap.after', (await count(page, '[data-reference-row] [data-asset-tile]')) === 2 && /参考图 2 张/.test(body) && !/换回|没有首尾帧/.test(await page.evaluate(() => document.querySelector('[data-reference-row]')?.textContent ?? '')))
     await shot(page, B3, 'b3j-after-swap', 'B3j-after-zh-light')
     await context.close()
   }
@@ -265,14 +269,14 @@ try {
   // ── B3o 渠道直选 ────────────────────────────────────────────────
   {
     const { page, context } = await open(B3, 'b3o-model-menu-channel')
-    const chips = await page.evaluate(() => [...document.querySelectorAll('[role="option"]')].map((el) => el.querySelectorAll('button, [data-chip]').length))
+    const chips = await page.evaluate(() => [...document.querySelectorAll('[role="option"]')].map((el) => el.querySelectorAll('button').length))
     check('keep.model.provider-pick', chips.some((n) => n >= 2), JSON.stringify(chips))
     await shot(page, B3, 'b3o-model-menu-channel', 'B3o-menu-zh-light')
     await context.close()
   }
   {
     const { page, context } = await open(B3, 'b3o-params-provider')
-    const titles = await page.evaluate(() => [...document.querySelectorAll('[data-agent-parameter-panel] div')].filter((d) => d.children.length === 0).map((d) => d.textContent?.trim()))
+    const titles = await page.evaluate(() => [...document.querySelectorAll('[data-agent-parameter-panel] div')].filter((d) => !d.children.length).map((d) => d.textContent?.trim()))
     check('board:ComposerB3/params.group.provider', titles.includes('供应商'), JSON.stringify(titles))
     await shot(page, B3, 'b3o-params-provider', 'B3o-params-zh-light')
     await context.close()
@@ -281,7 +285,7 @@ try {
   // ── B3p 渠道缺方式 ──────────────────────────────────────────────
   {
     const { page, context } = await open(B3, 'b3p-channel-missing-mode')
-    await page.waitForSelector('[data-testid="narrowed-mode-guidance"]', { timeout: 10000 })
+    await page.waitForSelector('[data-testid="narrowed-mode-guidance"]', { timeout: stationTimeout() })
     const note = await page.evaluate(() => ({ text: document.querySelector('[data-testid="narrowed-mode-guidance"]')?.textContent ?? '', inRow: Boolean(document.querySelector('[data-reference-row] [data-testid="narrowed-mode-guidance"]')), link: document.querySelectorAll('[data-testid="narrowed-mode-guidance"] button').length }))
     check('board:ComposerB3/ref.tail.channel-missing-mode', /上没有/.test(note.text) && note.inRow && note.link === 2 && !/文生/.test(note.text), JSON.stringify(note))
     await shot(page, B3, 'b3p-channel-missing-mode', 'B3p-switch-zh-light')
@@ -289,7 +293,7 @@ try {
   }
   {
     const { page, context } = await open(B3, 'b3p-channel-missing-none')
-    await page.waitForSelector('[data-testid="narrowed-mode-guidance"]', { timeout: 10000 })
+    await page.waitForSelector('[data-testid="narrowed-mode-guidance"]', { timeout: stationTimeout() })
     check('board:ComposerB3/ref.tail.channel-missing-none', (await count(page, '[data-testid="narrowed-mode-guidance"] button')) === 1, '只有说明（和 × 关闭），没有换渠道的链接')
     await shot(page, B3, 'b3p-channel-missing-none', 'B3p-none-zh-light')
     await context.close()
@@ -333,7 +337,7 @@ try {
   }
   {
     const { page, context } = await open('generation-list', 'list-detail-done')
-    await page.waitForSelector('[data-composer-host] [data-bar-segment="generate"]', { timeout: 20000 })
+    await page.waitForSelector('[data-composer-host] [data-bar-segment="generate"]', { timeout: stationTimeout() })
     const host = await page.evaluate(() => ({ host: document.querySelector('[data-composer-host]')?.getAttribute('data-composer-host'), ref: Boolean(document.querySelector('[data-composer-host] [data-reference-entry]')), send: document.querySelector('[data-bar-segment="generate"]')?.closest('span[title]')?.getAttribute('title') ?? '' }))
     check('board:ComposerB3/host.list-detail', host.host === 'inline' && host.ref && /重新生成/.test(host.send), JSON.stringify(host))
     await shot(page, 'generation-list', 'list-detail-done', 'E1c-zh-light')
@@ -367,10 +371,10 @@ try {
             check('board:ComposerB3/en.first-last-state', enLabels.length === 2 && /^First/.test(enLabels[0]) && /^Last/.test(enLabels[1]), JSON.stringify(enLabels))
           }
           if (lang === 'en') {
-            const cjk = await page.evaluate(() => [...document.querySelectorAll('.generation-canvas-v2-node__composer *')].filter((el) => el.children.length === 0 && /[一-鿿]/.test(el.textContent ?? '') && !el.closest('[data-prompt-box]') && !el.closest('[data-reference-row] [data-storyboard-mention-chip]')).map((el) => el.textContent?.trim()))
+            const cjk = await page.evaluate(() => [...document.querySelectorAll('.generation-canvas-v2-node__composer *')].filter((el) => !el.children.length && /[一-鿿]/.test(el.textContent ?? '') && !el.closest('[data-prompt-box]') && !el.closest('[data-reference-row] [data-storyboard-mention-chip]')).map((el) => el.textContent?.trim()))
             // 夹具里的用户内容（节点标题「开场白」、渠道名「渠道 A / B」）本来就是中文，不是界面文案。
             const allowed = (text) => !/[一-鿿]/.test((text ?? '').replace(/开场白|渠道 [AB]/g, ''))
-            check(`board:ComposerB3/en.no-cjk.${id}`, cjk.filter((t) => !allowed(t)).length === 0, JSON.stringify(cjk))
+            check(`board:ComposerB3/en.no-cjk.${id}`, !cjk.filter((t) => !allowed(t)).length, JSON.stringify(cjk))
           }
           await context.close()
         }

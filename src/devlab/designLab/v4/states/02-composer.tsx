@@ -57,7 +57,7 @@ function ComposerCell({
 
 /**
  * E1b：Agent 输入框的参考按钮（iconOnly 摆法：28px、图标 16 / 2，和附件、模型同一排）+ 句中引用显示「小图 + 名字」。
- * 名字从画布上出这张图的节点标题读（useCanvasReferenceNames），不是图1、图2。
+ * 名字从画布上出这张图的节点标题读（referenceNameKey），不是图1、图2。
  */
 function ReferenceButtonCell(): JSX.Element {
   const [ready, setReady] = React.useState(false)

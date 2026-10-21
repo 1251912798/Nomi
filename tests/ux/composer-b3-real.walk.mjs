@@ -10,12 +10,14 @@
 // 中文 + 浅色一遍、英文 + 暗色一遍；截图进 docs/evidence/2026-10-19-b1a/real/。
 //
 // 用法：先 pnpm run build；node tests/ux/composer-b3-real.walk.mjs
+import { stationTimeout } from './_station-budget.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { launchNomiApp } from './_launchApp.mjs'
-import { clickOrFail, expectVisible, screenshotSettled } from './_assert.mjs'
+import { clickOrFail, expectAbsent, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
 import { canvasFitView, collapseAgentPanel, ensureAgentPanelOpen } from './_shell.mjs'
 import { openStoryboardEditor } from './_creationResourceTree.mjs'
 
@@ -120,7 +122,7 @@ async function runPass({ locale, scheme }) {
     env: { NOMI_TEST_NETWORK_GUARD: '1', NOMI_DISABLE_AUTO_UPDATE: '1' },
   })
   const { app, win } = launched
-  win.setDefaultTimeout(30_000)
+  win.setDefaultTimeout(stationTimeout())
   const errors = []
   win.on('pageerror', (error) => errors.push(String(error).slice(0, 200)))
   const snap = async (name) => { await screenshotSettled(win, { path: path.join(evidenceDir, `${name}-${tag}.png`) }) }
@@ -143,10 +145,10 @@ async function runPass({ locale, scheme }) {
     const card = win.locator('[data-project-card]', { hasText: '参考行走查' }).first()
     await expectVisible(card, '项目库里有走查项目')
     await card.hover()
-    const open = card.getByText(/继续创作|Continue/, { exact: false }).first()
+    const open = card.getByText(new RegExp(`${uiText('zh-CN', 'library.continueCreating')}|${uiText('en', 'library.continueCreating')}`), { exact: false }).first()
     if (await open.isVisible().catch(() => false)) await open.click(); else await card.dblclick()
     await clickOrFail(win.getByRole('button', { name: T('生成', 'Generate'), exact: true }), '生成工作区')
-    await expectVisible(win.locator('.generation-canvas-v2__stage'), '生成画布')
+    await expectVisible(win.locator('.generation-canvas-v2__stage'), 'canvas stage')
     await collapseAgentPanel(win).catch(() => {})
     await canvasFitView(win, 'show nodes')
 
@@ -166,7 +168,7 @@ async function runPass({ locale, scheme }) {
       await expectVisible(win.locator('[data-asset-tile-tip]'), '悬停小提示')
       check(`[${tag}] 连线来的图悬停提示带「断开连线」`, /断开连线|disconnect/i.test((await win.locator('[data-asset-tile-tip]').textContent()) ?? ''))
       await snap('02-hover-tip')
-      await expectVisible(win.locator('[data-asset-tile-zoom]'), '悬停大图', 5000)
+      await expectVisible(win.locator('[data-asset-tile-zoom]'), '悬停大图', stationTimeout())
       await snap('03-hover-zoom')
       await win.mouse.move(5, 5)
     })
@@ -190,7 +192,7 @@ async function runPass({ locale, scheme }) {
       await snap('05-first-last')
       const before = await c.locator('[data-asset-slot]').evaluateAll((els) => els.map((el) => el.querySelector('img')?.getAttribute('src') ?? 'empty').join('|'))
       await c.locator('[data-reference-swap]').click()
-      await win.waitForFunction((was) => [...document.querySelectorAll('.generation-canvas-v2-node__composer [data-asset-slot]')].map((el) => el.querySelector('img')?.getAttribute('src') ?? 'empty').join('|') !== was, before, { timeout: 10000 })
+      await win.waitForFunction((was) => [...document.querySelectorAll('.generation-canvas-v2-node__composer [data-asset-slot]')].map((el) => el.querySelector('img')?.getAttribute('src') ?? 'empty').join('|') !== was, before, { timeout: stationTimeout() })
       check(`[${tag}] 对调钮真的把首帧 / 尾帧换了位置`, true)
       // 切回参考，参考的图还在（切回参考还在）
       await win.keyboard.press('Escape')
@@ -201,7 +203,7 @@ async function runPass({ locale, scheme }) {
       await panel.getByRole('radio', { name: '9:16' }).first().click()
       // 面板打开期间摘要钮是冻结的（宽度稳定）：收起以后再读。
       await win.keyboard.press('Escape')
-      await win.waitForFunction(() => /9:16/.test(document.querySelector('.generation-canvas-v2-node__composer [data-parameter-summary]')?.getAttribute('data-parameter-summary') ?? ''), null, { timeout: 10000 })
+      await win.waitForFunction(() => /9:16/.test(document.querySelector('.generation-canvas-v2-node__composer [data-parameter-summary]')?.getAttribute('data-parameter-summary') ?? ''), null, { timeout: stationTimeout() })
       check(`[${tag}] 改比例：摘要钮跟着变成 9:16`, true)
     })
 
@@ -214,7 +216,7 @@ async function runPass({ locale, scheme }) {
       await expectVisible(picker, '「+」打开选择器')
       await snap('06-add-reference-picker')
       await picker.locator('input[type="file"]').setInputFiles(path.join(repoRoot, 'resources/onboarding-demo/shot-5.jpg'))
-      await win.waitForFunction((n) => document.querySelectorAll('.generation-canvas-v2-node__composer [data-reference-row] [data-asset-tile]').length > n, before, { timeout: 30000 })
+      await win.waitForFunction((n) => document.querySelectorAll('.generation-canvas-v2-node__composer [data-reference-row] [data-asset-tile]').length > n, before, { timeout: stationTimeout() })
       check(`[${tag}] 加参考：真上传一张图后小图 +1`, true)
       await win.keyboard.press('Escape')
       await snap('07-after-upload')
@@ -227,7 +229,7 @@ async function runPass({ locale, scheme }) {
       await expectVisible(win.locator('[data-canvas-pick-bar]'), '画布点选进行态')
       check(`[${tag}] board:ComposerB3/keep.canvas-pick.mode：点选钮进入点选态`, true)
       await win.keyboard.press('Escape')
-      await win.waitForFunction(() => !document.querySelector('[data-canvas-pick-bar]'), null, { timeout: 5000 })
+      await win.waitForFunction(() => !document.querySelector('[data-canvas-pick-bar]'), null, { timeout: stationTimeout() })
       check(`[${tag}] board:ComposerB3/keep.canvas-pick.mode.esc：Esc 退出点选态`, true)
     })
     await section('keep-picker', async () => {
@@ -238,14 +240,14 @@ async function runPass({ locale, scheme }) {
       const surface = await picker.evaluate((el) => ({ search: Boolean(el.querySelector('input:not([type="file"])')), file: Boolean(el.querySelector('input[type="file"]')) }))
       check(`[${tag}] board:ComposerB3/keep.picker.surface：选择器带搜索框和上传入口`, surface.search && surface.file, JSON.stringify(surface))
       await win.keyboard.press('Escape')
-      await win.waitForFunction(() => !document.querySelector('[data-testid="asset-picker"]'), null, { timeout: 5000 })
+      await win.waitForFunction(() => !document.querySelector('[data-testid="asset-picker"]'), null, { timeout: stationTimeout() })
     })
     await section('keep-prompt', async () => {
       await selectNode('target-video')
       const c = composer()
       const before = await c.locator('[data-storyboard-mention-chip]').count()
       await c.locator('[data-reference-row] [data-asset-tile]').nth(2).click()
-      await win.waitForFunction((n) => document.querySelectorAll('.generation-canvas-v2-node__composer [data-storyboard-mention-chip]').length > n, before, { timeout: 5000 })
+      await win.waitForFunction((n) => document.querySelectorAll('.generation-canvas-v2-node__composer [data-storyboard-mention-chip]').length > n, before, { timeout: stationTimeout() })
       check(`[${tag}] board:ComposerB3/keep.prompt.tile-insert：点参考小图在光标处插入引用`, true)
       await c.locator('[data-prompt-box] .ProseMirror').click()
       await win.keyboard.press('End')
@@ -282,7 +284,7 @@ async function runPass({ locale, scheme }) {
       await panel.getByRole('radio', { name: '3:4' }).first().click()
       check(`[${tag}] board:ComposerB3/keep.params.interaction：连改两项面板不关`, await panel.isVisible())
       await win.keyboard.press('Escape')
-      await win.waitForFunction(() => !document.querySelector('[data-agent-parameter-panel]'), null, { timeout: 5000 })
+      await win.waitForFunction(() => !document.querySelector('[data-agent-parameter-panel]'), null, { timeout: stationTimeout() })
       check(`[${tag}] board:ComposerB3/keep.params.popover-behavior：Esc 收起面板`, true)
     })
     await section('keep-run-and-host', async () => {
@@ -293,9 +295,10 @@ async function runPass({ locale, scheme }) {
       await win.keyboard.press('Escape')
       const reason = await c.locator('[data-bar-segment="generate"]').evaluate((el) => ({ disabled: el.disabled, title: el.closest('span[title]')?.getAttribute('title') ?? '' }))
       check(`[${tag}] board:ComposerB3/keep.run.disabled-reason：缺必需首帧时 ↑ 禁用并写原因`, reason.disabled && reason.title.length > 4, JSON.stringify(reason))
-      // 多选不挂生成框
+      // 多选不挂生成框（先证探针：单选时它在）
+      const proof = await proveProbe(win.locator('.generation-canvas-v2-node__composer'), '单选节点时生成框挂在节点下')
       await win.locator('.react-flow__node[data-id="target-video"]').click({ position: { x: 8, y: 8 }, modifiers: ['Shift'] })
-      await win.waitForFunction(() => document.querySelectorAll('.generation-canvas-v2-node__composer').length === 0, null, { timeout: 5000 })
+      await expectAbsent(win.locator('.generation-canvas-v2-node__composer'), { provenBy: proof })
       check(`[${tag}] board:ComposerB3/keep.host.canvas-mount：多选时不挂生成框`, true)
     })
 
@@ -309,7 +312,7 @@ async function runPass({ locale, scheme }) {
       check(`[${tag}] 模型菜单只列模型（没有说明小字），底部有隐藏模型`, rows.length >= 3 && rows.every((r) => r.length < 64) && /隐藏模型|Hide/.test((await win.locator('body').innerText())), rows.join('|'))
       await snap('08-model-menu')
       await options.filter({ hasText: 'Wan 2.7' }).first().click()
-      await win.waitForFunction(() => /Wan 2\.7/.test(document.querySelector('.generation-canvas-v2-node__composer [data-bar-segment="model-params"]')?.textContent ?? ''), null, { timeout: 15000 })
+      await win.waitForFunction(() => /Wan 2\.7/.test(document.querySelector('.generation-canvas-v2-node__composer [data-bar-segment="model-params"]')?.textContent ?? ''), null, { timeout: stationTimeout() })
       check(`[${tag}] 换到 Wan 2.7：底栏换了模型，生成框仍在`, (await c.locator('[data-reference-row], [data-reference-entry]').count()) >= 1)
       await snap('09-after-model-switch')
     })

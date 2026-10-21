@@ -57,7 +57,7 @@ export default function AssetInlineReference({ url, index: suppliedIndex, kind: 
       onMouseLeave={onLeave}
       onDoubleClick={() => window.dispatchEvent(new CustomEvent('nomi:asset-mention-preview', { detail: { url, kind, label } }))}
     >
-      <span className={cn('relative w-4 h-4 overflow-hidden rounded-[4px] bg-nomi-ink-05 shrink-0 flex items-center justify-center')} aria-hidden>
+      <span className={cn('relative w-4 h-4 overflow-hidden rounded-nomi-sm bg-nomi-ink-05 shrink-0 flex items-center justify-center')} aria-hidden>
         <AssetThumb asset={asset} playSize={8} />
       </span>
       <span className={cn('text-caption font-medium leading-none text-nomi-ink whitespace-nowrap')}>{label}</span>

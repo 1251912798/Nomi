@@ -158,7 +158,7 @@ export const zhAssetLibrary = {
   mentionDropUpload: '松开上传',
   addNamed: '添加{{label}}',
   refRow: {
-    sourceCanvas: '画布节点',
+    sourceCanvas: '画布',
     sourceLibrary: '素材库',
     sourceUpload: '上传',
     tipConnected: '画布节点：{{name}} · 点 × 断开连线',
@@ -173,7 +173,7 @@ export const zhAssetLibrary = {
     unsupportedNote: '这个模型用不上，不会发出去',
     disabledReason: '这个模型只能用文字生成，换个模型才能加参考图',
     ambiguityHint: '要当首尾帧用？',
-    ambiguityAction: '改成首尾帧',
+    ambiguityAction: '改首尾帧',
     ambiguityDismiss: '不再提示',
   },
   picker: {
@@ -371,7 +371,7 @@ export const enAssetLibrary = {
     unsupportedNote: 'This model cannot use them — they will not be sent',
     disabledReason: 'This model only works from text — pick another model to add references',
     ambiguityHint: 'Use as first/last frame?',
-    ambiguityAction: 'Switch to first/last',
+    ambiguityAction: 'Use first/last',
     ambiguityDismiss: 'Stop asking',
   },
   picker: {

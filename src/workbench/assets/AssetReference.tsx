@@ -253,7 +253,7 @@ export default function AssetReference({
         </div>
       ))}
       {tailContent ? (
-        <span data-reference-tail="true" className="ml-auto flex min-w-0 max-w-full items-center gap-1 self-center text-caption text-nomi-ink-60">{tailContent}</span>
+        <span data-reference-tail="true" className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1 self-center text-caption text-nomi-ink-60">{tailContent}</span>
       ) : null}
       {totalFull && capacityMessage ? <span className="basis-full text-micro text-nomi-ink-60" role="status">{capacityMessage}</span> : null}
     </div>

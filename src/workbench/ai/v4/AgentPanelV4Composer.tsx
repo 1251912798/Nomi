@@ -22,7 +22,9 @@ import type { Editor } from '@tiptap/react'
 import { SuggestionPluginKey } from '@tiptap/suggestion'
 import AssetReferenceButton from '../../assets/AssetReferenceButton'
 import { ReferenceNamesContext } from '../../assets/referenceNames'
-import { useCanvasReferenceNames } from '../../generationCanvas/nodes/useCanvasReferenceNames'
+import { referenceNameKey, referenceNamesFromKey } from '../../generationCanvas/nodes/canvasReferenceNames'
+import { useGenerationCanvasStore } from '../../generationCanvas/store/generationCanvasStore'
+import { mentionUrlsInOrder } from '../../assets/promptMentions'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
@@ -150,7 +152,9 @@ export function AgentPanelV4Composer({
   inputRef, onEditorReady, mentionReferences, mentionSearch, onMentionSelect,
 }: AgentPanelV4ComposerProps): JSX.Element {
   const { t } = useTranslation()
-  const referenceNames = useCanvasReferenceNames(value)
+  const mentionUrls = React.useMemo(() => mentionUrlsInOrder(value), [value])
+  const referenceNameSignature = useGenerationCanvasStore((state) => referenceNameKey(mentionUrls, state.nodes))
+  const referenceNames = React.useMemo(() => referenceNamesFromKey(referenceNameSignature), [referenceNameSignature])
   const hardRows = Math.max(1, value.split('\n').length)
   const editorRef = React.useRef<Editor | null>(null)
   const [editorElement, setEditorElement] = React.useState<HTMLElement | null>(null)

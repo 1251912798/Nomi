@@ -26,15 +26,14 @@ export function computeHoverZoomPosition(
 }
 
 /** 悬停的两个阶段（B3n）：刚停上去 = 小提示（名字 + 来源）；停满 450ms = 大图出现、小提示收掉、名字和来源挪到大图下面。 */
-type HoverPhase = 'tip' | 'zoom'
-
 function useHoverPreview(zoomSrc: string | undefined): {
   onMouseEnter: (e: React.MouseEvent<HTMLElement>) => void
   onMouseLeave: () => void
-  phase: HoverPhase | null
+  /** null = 没悬停；false = 小提示；true = 大图。 */
+  zoomed: boolean | null
   rect: DOMRect | null
 } {
-  const [state, setState] = React.useState<{ phase: HoverPhase; rect: DOMRect } | null>(null)
+  const [state, setState] = React.useState<{ zoomed: boolean; rect: DOMRect } | null>(null)
   const timerRef = React.useRef<number | undefined>(undefined)
   const clear = React.useCallback(() => {
     if (timerRef.current !== undefined) {
@@ -46,21 +45,21 @@ function useHoverPreview(zoomSrc: string | undefined): {
   const onMouseEnter = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
     const box = event.currentTarget.getBoundingClientRect()
     clear()
-    setState({ phase: 'tip', rect: box })
-    if (zoomSrc) timerRef.current = window.setTimeout(() => setState({ phase: 'zoom', rect: box }), HOVER_ZOOM_DELAY_MS)
+    setState({ zoomed: false, rect: box })
+    if (zoomSrc) timerRef.current = window.setTimeout(() => setState({ zoomed: true, rect: box }), HOVER_ZOOM_DELAY_MS)
   }, [zoomSrc, clear])
   const onMouseLeave = React.useCallback(() => {
     clear()
     setState(null)
   }, [clear])
-  return { onMouseEnter, onMouseLeave, phase: state?.phase ?? null, rect: state?.rect ?? null }
+  return { onMouseEnter, onMouseLeave, zoomed: state?.zoomed ?? null, rect: state?.rect ?? null }
 }
 
-function HoverLayer({ phase, rect, zoomSrc, name, source, tip }: {
-  phase: HoverPhase | null; rect: DOMRect | null; zoomSrc: string | undefined; name: string; source?: string | undefined; tip?: string | undefined
+function HoverLayer({ zoomed, rect, zoomSrc, name, source, tip }: {
+  zoomed: boolean | null; rect: DOMRect | null; zoomSrc: string | undefined; name: string; source?: string | undefined; tip?: string | undefined
 }): JSX.Element | null {
-  if (!phase || !rect) return null
-  if (phase === 'tip') {
+  if (zoomed === null || !rect) return null
+  if (!zoomed) {
     // 小提示在缩略图上方，深底白字（和 Tooltip 同一档），不拦鼠标。
     return createPortal(
       <div
@@ -233,7 +232,7 @@ export default function AssetTile({ asset, tag, sourceLabel, tipText, removeLabe
         </span>
         {onRemove ? <RemoveButton label={removeLabel ?? t('assetLibrary.removeNamed', { name: asset.name })} onRemove={onRemove} /> : null}
       </div>
-      <HoverLayer phase={hover.phase} rect={hover.rect} zoomSrc={zoomSrc} name={asset.name} source={sourceLabel} tip={tipText} />
+      <HoverLayer zoomed={hover.zoomed} rect={hover.rect} zoomSrc={zoomSrc} name={asset.name} source={sourceLabel} tip={tipText} />
     </>
   )
 }

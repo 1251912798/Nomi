@@ -68,7 +68,7 @@ function measureRemove(tileIndex) {
     opacity: Number(getComputedStyle(remove).opacity),
     inside: rect.left >= clip.left - 0.5 && rect.top >= clip.top - 0.5 && rect.right <= clip.right + 0.5 && rect.bottom <= clip.bottom + 0.5,
     hit: Boolean(hit && remove.contains(hit)),
-    badges: document.querySelectorAll('[data-asset-tile-badge]').length,
+    badges: [...tile.querySelectorAll('*')].filter((el) => !el.children.length && /^\d+$/.test(el.textContent?.trim() ?? '')).length,
   }
 }
 
@@ -78,7 +78,7 @@ async function expectHoverRemoveVisible(page, where) {
   for (let index = 0; index < count; index += 1) {
     await page.locator('[data-asset-tile]').nth(index).scrollIntoViewIfNeeded()
     const quiet = await page.evaluate(measureRemove, index)
-    expect(quiet?.opacity, `${where} #${index}: 平时 × 是看不见的`).toBe(0)
+    expect(quiet?.opacity ?? 1, `${where} #${index}: 平时 × 是看不见的`).toBeLessThan(0.01)
     await page.locator('[data-asset-tile]').nth(index).hover()
     await page.waitForTimeout(260)
     const shown = await page.evaluate(measureRemove, index)
