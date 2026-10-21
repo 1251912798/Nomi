@@ -26,6 +26,7 @@ import type { McpConfigState, McpInfo, McpMigrationResult, McpMigrationState, Mc
 import {
   ASSISTANT_CLIENT_LABEL,
   ASSISTANT_CLIENT_ORDER,
+  resolveAssistantBrokenAction,
   resolveAssistantConnection,
   type AssistantClientKey,
   type AssistantDot,
@@ -373,12 +374,16 @@ export function ConnectAssistantCard({
       {activation.box === 'elsewhere' && client.configuredSettingsDir ? <div className="mt-0.5">{client.configuredSettingsDir}</div> : null}
     </>
   ) : null
+  // 失效时主按钮做什么由共享投影按原因定：端口被占改写配置没用，主按钮就是「测试连接」，不再写「修复接入」。
+  const brokenPlan = activation.box === 'broken'
+    ? resolveAssistantBrokenAction({ staleShape: Boolean(staleShape), reason: verify?.reason ?? 'ok' })
+    : null
   const primaryLabel = activation.box === 'none'
     ? t('onboardingProviders.assistant.connect', { client: label })
     : activation.box === 'elsewhere'
       ? t('onboardingProviders.assistant.switchHere', { client: label })
-      : activation.box === 'broken'
-        ? t(staleShape ? 'onboardingProviders.assistant.upgrade' : 'onboardingProviders.assistant.repair', { client: label })
+      : brokenPlan
+        ? t(brokenPlan.labelKey, { client: label })
         : undefined
   const statusBox = (
     <AssistantStatusBox
@@ -395,7 +400,7 @@ export function ConnectAssistantCard({
       busy={busy}
       confirmingRevoke={confirmingRevoke}
       copied={copied === 'client'}
-      onPrimary={handleInstall}
+      onPrimary={brokenPlan?.action === 'retest' ? handleTest : handleInstall}
       onTest={handleTest}
       onRewrite={handleInstall}
       onRevoke={() => setConfirmingRevoke(true)}

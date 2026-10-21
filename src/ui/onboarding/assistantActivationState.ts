@@ -3,6 +3,7 @@ import {
   MCP_CLIENT_REGISTRY,
   type BuiltinMcpClient,
 } from '../../../electron/shared/mcpClientRegistry'
+import type { McpVerifyReason } from '../../../electron/shared/mcpConnectionContract'
 
 /** 内置客户端 key。唯一 owner 是 electron/shared/mcpClientRegistry.ts；渲染层只 derive。 */
 export type AssistantClientKey = BuiltinMcpClient
@@ -111,4 +112,36 @@ export function formatUsageAgo(at: number, now: number, locale: string, justNow:
   if (seconds < 3600) return rtf.format(-Math.round(seconds / 60), 'minute')
   if (seconds < 86_400) return rtf.format(-Math.round(seconds / 3600), 'hour')
   return rtf.format(-Math.round(seconds / 86_400), 'day')
+}
+
+/**
+ * 失效框主按钮「原因 → 真正能做的动作」（唯一 owner；卡片只按它分流，不再无条件把主按钮接到「写配置」）：
+ * - upgrade / repair：配置本身有问题，重写 nomi 条目能修；
+ * - retest：配置和身份都对、是本机服务没起来（端口被占）——重写配置释放不了端口，能做的只有处理完再测一次。
+ * 以 Record 穷举 McpVerifyReason：新增原因不归类就过不了类型检查。
+ */
+export type AssistantBrokenAction = 'upgrade' | 'repair' | 'retest'
+export type AssistantBrokenPlan = { action: AssistantBrokenAction; labelKey: string }
+
+const BROKEN_ACTION_BY_REASON: Record<McpVerifyReason, Exclude<AssistantBrokenAction, 'upgrade'>> = {
+  ok: 'repair',
+  'not-installed': 'repair',
+  'command-missing': 'repair',
+  'argument-missing': 'repair',
+  'spawn-failed': 'repair',
+  timeout: 'repair',
+  'handshake-failed': 'repair',
+  'client-auth-missing': 'repair',
+  'http-not-listening': 'retest',
+}
+
+const BROKEN_LABEL_KEY: Record<AssistantBrokenAction, string> = {
+  upgrade: 'onboardingProviders.assistant.upgrade',
+  repair: 'onboardingProviders.assistant.repair',
+  retest: 'onboardingProviders.assistant.box.test',
+}
+
+export function resolveAssistantBrokenAction(input: { staleShape: boolean; reason: McpVerifyReason }): AssistantBrokenPlan {
+  const action: AssistantBrokenAction = input.staleShape ? 'upgrade' : BROKEN_ACTION_BY_REASON[input.reason]
+  return { action, labelKey: BROKEN_LABEL_KEY[action] }
 }
