@@ -86,7 +86,7 @@ try {
   await open.waitFor({ state: 'attached', timeout: stationTimeout({ operations: 2 }) })
   await open.evaluate((element) => element.click())
   await win.locator('[data-testid="director-editor"]').waitFor({ timeout: stationTimeout({ operations: 4 }) })
-  await win.waitForTimeout(1500)
+  await expect.poll(() => win.locator('[data-testid="director-produce-main"]').isEnabled().catch(() => false), { message: '「出成片」可点', timeout: stationTimeout({ turns: 1 }) }).toBe(true)
   await clickOrFail(win.locator('[data-testid="director-produce-main"]'), '导演视图「出成片」')
   await expect.poll(() => win.evaluate((id) => !document.querySelector('[data-testid="director-editor"]') && window.__nomiCanvasStore.getState().selectedNodeIds.includes(id), ids.shot), { message: '回到画布并选中视频镜头', timeout: stationTimeout({ operations: 2 }) }).toBe(true)
 

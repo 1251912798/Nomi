@@ -184,13 +184,11 @@ try {
     // 画布按当前分类分屏：新节点落在「场景」里，走真入口的聚焦事件（同画布边缘「N 个新节点」角标）切过去并居中
     // 节点可能在视口外（画布不替人挪视野）：按钮在 DOM 里，走它自己的点击处理函数（和鼠标点同一个 onClick）。
     await store((id) => window.dispatchEvent(new CustomEvent('nomi-focus-generation-node', { detail: { nodeId: id } })), ids.director)
-    await win.waitForTimeout(1500)
     const openButton = win.locator('[data-testid="director-node-open"]').first()
     await openButton.waitFor({ state: 'attached', timeout: stationTimeout({ operations: 2 }) })
     await openButton.evaluate((element) => element.click())
     await win.locator('[data-testid="director-editor"]').waitFor({ timeout: stationTimeout({ operations: 4 }) })
-    await win.locator('[data-testid="director-produce-main"]').waitFor({ timeout: stationTimeout({ operations: 2 }) })
-    await win.waitForTimeout(1500)
+    await waitFor(`${label}：出成片按钮可点`, () => win.locator('[data-testid="director-produce-main"]').isEnabled().catch(() => false), 60_000)
     await clickOrDom(win.locator('[data-testid="director-produce-main"]'))
     await waitFor(`${label}：回到画布并选中视频节点`, () => store((id) => {
       const state = window.__nomiCanvasStore.getState()
@@ -211,7 +209,6 @@ try {
     await shot(`${label}-spend-confirm`)
     await dialog.getByRole('button', { name: lang === 'en' ? /^Generate$/ : /^生成$/ }).click()
     await waitFor(`${label}：假上游收到请求`, () => wire.length > before, 60_000)
-    await win.waitForTimeout(1500)
     return wire[wire.length - 1]
   }
   const refsOf = (call) => {
