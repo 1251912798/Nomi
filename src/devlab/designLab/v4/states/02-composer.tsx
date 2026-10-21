@@ -13,6 +13,9 @@ import {
 } from '../../../../workbench/ai/v4/AgentPanelV4Composer'
 import type { ComposerMode, PermissionTier } from '../../../../workbench/ai/v4/agentPanelV4Types'
 import { Piece, useV4Fixtures } from '../agentPanelV4LabKit'
+import { useGenerationCanvasStore } from '../../../../workbench/generationCanvas/store/generationCanvasStore'
+import type { GenerationCanvasNode } from '../../../../workbench/generationCanvas/model/generationCanvasTypes'
+import { mention } from '../../nodeComposerBar/nodeComposerB3LabKit'
 import type { LabState } from '../../labScreen'
 
 
@@ -52,6 +55,29 @@ function ComposerCell({
   )
 }
 
+/**
+ * E1b：Agent 输入框的参考按钮（iconOnly 摆法：28px、图标 16 / 2，和附件、模型同一排）+ 句中引用显示「小图 + 名字」。
+ * 名字从画布上出这张图的节点标题读（useCanvasReferenceNames），不是图1、图2。
+ */
+function ReferenceButtonCell(): JSX.Element {
+  const [ready, setReady] = React.useState(false)
+  React.useLayoutEffect(() => {
+    const url = (name: string): string => `${window.location.origin}/tests/ux/fixtures/b3-refs/${encodeURIComponent(name)}.svg`
+    const node = (name: string, index: number): GenerationCanvasNode => ({
+      id: `e1b-${index}`, kind: 'image', categoryId: 'shots', title: name, prompt: '', position: { x: index * 200, y: 0 },
+      size: { width: 120, height: 90 }, status: 'success', result: { id: `e1b-r-${index}`, type: 'image', url: url(name), createdAt: 1 },
+    } as GenerationCanvasNode)
+    useGenerationCanvasStore.setState({ nodes: [node('女主肖像', 0), node('海边小镇', 1)], edges: [], selectedNodeIds: [] })
+    setReady(true)
+  }, [])
+  const text = `${mention('女主肖像')} 走进 ${mention('海边小镇')}，镜头缓慢推近。`
+  return ready ? (
+    <Piece>
+      <AgentPanelV4Composer panelHeight={620} mode="idle" permission="request" value={text} onAddReference={() => undefined} onAddFile={() => undefined} modelLabel="Claude" />
+    </Piece>
+  ) : <Piece><div /></Piece>
+}
+
 export const V4_COMPOSER_STATES: readonly LabState[] = [
   {
     id: 'v4-composer-idle',
@@ -86,6 +112,13 @@ export const V4_COMPOSER_STATES: readonly LabState[] = [
       }
       return <Cell />
     },
+  },
+  {
+    id: 'v4-composer-reference-button',
+    name: 'composer · 参考按钮（E1b：iconOnly 28px，引用显示小图 + 名字）',
+    source: 'docs/design/boards/2026-10-18/ComposerB3.board.json · host.agent-input-ref-button',
+    coverage: 'component-only',
+    render: () => <ReferenceButtonCell />,
   },
   {
     id: 'v4-composer-model-popover',

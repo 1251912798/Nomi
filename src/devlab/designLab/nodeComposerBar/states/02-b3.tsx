@@ -73,6 +73,12 @@ export const COMPOSER_B3_STATES: readonly LabState[] = [
     render: stage({ kind: 'image', model: 'imagen', edgeRefs: [{ name: '女主肖像' }, { name: '海边小镇' }], prompt: '清晨的海边小镇，薄雾，柔和的逆光。' }),
   },
   {
+    id: 'b3q-image-quantity',
+    name: 'B3 · 数量只在模型声明了「出图张数」时出现（Soul 2）',
+    source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light',
+    render: stage({ kind: 'image', model: 'soul', prompt: '雨夜老街口的定场画面，霓虹与积水。' }),
+  },
+  {
     id: 'b3j-model-menu',
     name: 'B3j · 换模型前 · 模型菜单只列模型',
     source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light', capture: 'viewport',
@@ -95,6 +101,18 @@ export const COMPOSER_B3_STATES: readonly LabState[] = [
     name: 'B3o · 参数面板里的「供应商」一组（和菜单小签同一个选择）',
     source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light', capture: 'viewport',
     render: stage({ kind: 'video', model: 'seedance', modeId: 'omni', secondChannel: true, arrayRefs: ['海边清晨', '海边傍晚'], prompt: '镜头缓慢推近，海面从清晨过渡到傍晚。', open: 'params' }),
+  },
+  {
+    id: 'b3p-channel-missing-mode',
+    name: 'B3p · 渠道缺方式（别家能做）：参考行行尾小字带文字链接',
+    source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light',
+    render: stage({ kind: 'video', model: 'seedance', modeId: 'omni', channelGap: 'switch', arrayRefs: ['海边清晨', '海边傍晚'], prompt: '镜头缓慢推近，海面从清晨过渡到傍晚。' }),
+  },
+  {
+    id: 'b3p-channel-missing-none',
+    name: 'B3p · 渠道缺方式（已接入的模型里都做不了）：只有说明，没有链接',
+    source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light',
+    render: stage({ kind: 'video', model: 'seedance', modeId: 'omni', channelGap: 'none', arrayRefs: ['海边清晨', '海边傍晚'], prompt: '镜头缓慢推近，海面从清晨过渡到傍晚。' }),
   },
   {
     id: 'e1d-node-error',

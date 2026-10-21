@@ -857,7 +857,8 @@ export default function NodeParameterControls({
   // 参考方式里只放了 1–2 张图、模型同时有「参考」和「首尾帧」：问一句要不要当首尾帧用（歧义提示；× 关掉后这个节点不再提示）。
   const spec = effectiveArchetype ?? archetype
   const firstLastMode = spec?.modes.find((mode) => mode.intent === 'firstlast')
-  const imageRefOnly = arraySlots.length > 0 && arraySlots.every((slot) => slot.accept === 'image')
+  // 只放了图（视频 / 音频槽是空的）才问；放了视频 / 音频参考的节点不是在「用图当首尾帧」。
+  const imageRefOnly = arraySlots.some((slot) => slot.accept === 'image') && arraySlots.every((slot) => slot.accept === 'image' || ((assetValuesByKey[slot.metaKey] as string[] | undefined) ?? []).length === 0)
   const ambiguous = Boolean(firstLastMode) && archMode?.intent === 'character' && imageRefOnly
     && arrayCount >= 1 && arrayCount <= 2 && !meta[FIRST_LAST_HINT_DISMISSED_META_KEY] && isVideoLike
 

@@ -27,7 +27,7 @@ const NODE_HEIGHT = 130
 const REF_DIR = '/tests/ux/fixtures/b3-refs'
 const refUrl = (name: string): string => `${window.location.origin}${REF_DIR}/${encodeURIComponent(name)}.svg`
 
-export type B3Model = 'seedance' | 'wan' | 'gpt-image' | 'imagen'
+export type B3Model = 'seedance' | 'wan' | 'gpt-image' | 'imagen' | 'soul'
 
 const MODELS: Record<B3Model, { option: ModelOption; archetype: string; variantId?: string }> = {
   seedance: {
@@ -43,6 +43,11 @@ const MODELS: Record<B3Model, { option: ModelOption; archetype: string; variantI
     option: { value: 'gpt-image-2', modelKey: 'gpt-image-2', vendor: 'apimart', vendorName: '渠道 A', label: 'GPT Image 2', kind: 'image' },
     archetype: 'gpt-image-2',
   },
+  // 声明了「出图张数」的模型：数量钮只在这种模型上出现。
+  soul: {
+    option: { value: 'higgsfield-soul-2', modelKey: 'higgsfield-soul-2', vendor: 'apimart', vendorName: '渠道 A', label: 'Soul 2', kind: 'image' },
+    archetype: 'higgsfield-soul-2',
+  },
   imagen: {
     option: { value: 'imagen-4', modelKey: 'imagen-4', vendor: 'apimart', vendorName: '渠道 A', label: 'Imagen 4', kind: 'image' },
     archetype: 'imagen-4',
@@ -56,6 +61,21 @@ const EXTRA_VIDEO_OPTIONS: readonly ModelOption[] = [
   { value: 'veo3.1', modelKey: 'veo3.1', vendor: 'kie', vendorName: '渠道 B', label: 'Veo 3.1', kind: 'video' },
 ]
 const SECOND_CHANNEL: ModelOption = { value: 'bytedance/seedance-2', modelKey: 'seedance-2', modelAlias: 'bytedance/seedance-2', vendor: 'kie', vendorName: '渠道 B', label: 'Seedance 2.0', kind: 'video' }
+
+/** 渠道 mapping 只给「当前渠道」配了文生 + 参考；首帧 / 首尾帧没有线缆（桶已知、方式没有 → 判为这家发不出）。 */
+const BODY_REFERENCE_ONLY = { prompt: '{{request.params.prompt}}', reference_image_urls: '{{request.params.reference_image_urls}}' }
+const BODY_RICH = { prompt: '{{request.params.prompt}}', first_frame_url: '{{request.params.first_frame_url}}', last_frame_url: '{{request.params.last_frame_url}}', reference_image_urls: '{{request.params.reference_image_urls}}' }
+const mappingRow = (vendorKey: string, taskKind: string, body: Record<string, string>, modeId?: string) => ({
+  id: `b3-${vendorKey}-${taskKind}-${modeId ?? 'any'}`, vendorKey, taskKind, ...(modeId ? { modeId } : {}), name: 'lab', enabled: true,
+  create: { method: 'POST', url: 'https://lab.invalid/v1/video', body }, createdAt: '2026-10-19', updatedAt: '2026-10-19',
+})
+function channelMappings(gap: 'switch' | 'none'): unknown[] {
+  return [
+    mappingRow('apimart', 'text_to_video', { prompt: '{{request.params.prompt}}' }),
+    mappingRow('apimart', 'image_to_video', BODY_REFERENCE_ONLY, 'omni'),
+    ...(gap === 'switch' ? [mappingRow('kie', 'text_to_video', { prompt: '{{request.params.prompt}}' }), mappingRow('kie', 'image_to_video', BODY_RICH)] : []),
+  ]
+}
 
 const HEALTH = {
   ok: true,
@@ -80,6 +100,8 @@ export type B3Scenario = {
   textChip?: string
   /** 另有一家渠道提供同一个模型（B3o）。 */
   secondChannel?: boolean
+  /** 渠道缺方式（B3p）：当前渠道只配了「参考」，发不出首帧 / 首尾帧。switch = 别家渠道能做（出换渠道的文字链接）；none = 谁都做不了。 */
+  channelGap?: 'switch' | 'none'
   /** 打开后自动点一下的东西：参数面板 / 模型菜单。 */
   open?: 'params' | 'model'
   /** 失败态：整张错误卡盖住节点正文（E1d）。 */
@@ -167,14 +189,18 @@ export function ComposerB3Stage({ scenario }: { scenario: B3Scenario }): JSX.Ele
   const built = React.useMemo(() => buildNodes(scenario), [scenario])
   const [ready, setReady] = React.useState(false)
   React.useLayoutEffect(() => {
-    const videoOptions = [MODELS.seedance.option, MODELS.wan.option, ...EXTRA_VIDEO_OPTIONS, ...(scenario.secondChannel ? [SECOND_CHANNEL] : [])]
-    const imageOptions = [MODELS.imagen.option, MODELS['gpt-image'].option]
+    const videoOptions = [MODELS.seedance.option, MODELS.wan.option, ...EXTRA_VIDEO_OPTIONS, ...(scenario.secondChannel || scenario.channelGap === 'switch' ? [SECOND_CHANNEL] : [])]
+    const imageOptions = [MODELS.imagen.option, MODELS['gpt-image'].option, MODELS.soul.option]
     seedModelCatalogForTests(HEALTH, [
       { kind: 'video', requiredMode: 'text_to_video', options: videoOptions },
       { kind: 'video', requiredMode: 'image_to_video', options: videoOptions },
       { kind: 'image', requiredMode: 'text_to_image', options: imageOptions },
       { kind: 'image', requiredMode: 'image_edit', options: imageOptions },
     ])
+    if (scenario.channelGap) {
+      // 渠道 mapping 全表走桌面桥的 listMappings（和生产同一条取数口）；实验室只给这一个方法。
+      ;(window as unknown as { nomiDesktop: unknown }).nomiDesktop = { modelCatalog: { listMappings: () => channelMappings(scenario.channelGap!) } }
+    }
     useWorkbenchStore.setState({ activeCategoryId: 'shots' })
     useWorkbenchStore.getState().rememberCategoryViewport('shots', { zoom: 1, offset: { x: 0, y: 0 } })
     useGenerationCanvasStore.setState({ nodes: built.nodes, edges: built.edges, selectedNodeIds: [built.targetId] })
@@ -182,6 +208,21 @@ export function ComposerB3Stage({ scenario }: { scenario: B3Scenario }): JSX.Ele
   }, [built, scenario.secondChannel])
   const node = useGenerationCanvasStore((state) => state.nodes.find((candidate) => candidate.id === built.targetId))
   const stageRef = React.useRef<HTMLDivElement>(null)
+
+  // 就绪旗等生成框真的长出来（懒加载的 chunk、模型目录、语言都到位）：不等的话截到的是只有节点卡的半成品。
+  React.useEffect(() => {
+    const release = holdDesignLabReady('b3:mounted')
+    let frame = 0
+    const tick = (): void => {
+      const root = stageRef.current
+      const done = Boolean(root?.querySelector('[data-node-composer-footer] [data-bar-segment="generate"], [data-node-composer-footer] [data-bar-segment="model-params"] button'))
+      if (done || frame > 600) { release(); return }
+      frame += 1
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+    return release
+  }, [])
 
   // 展开态由取景台**真的点一下**得到（不是另画一份）：等那颗钮真的在了再点。悬停态由走查脚本用真鼠标停上去。
   const wanted = Boolean(scenario.open)
