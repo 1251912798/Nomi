@@ -18,9 +18,12 @@ export const REWRITE_TARGET = REWRITE_DOC_LINES[1]
 const BAR = '.workbench-ai-rewrite-bar'
 const RESULT = '[data-rewrite-status="result"]'
 
-/** 文稿里现在的字（按段，用换行连起来）。 */
+/** 文稿里现在的字（编辑器文档本身的字，按段用换行连起来；不读屏幕：结果态屏幕上叠着新旧对比，会把原句从中间切开）。 */
 async function documentText(win) {
-  return (await win.locator(DOCUMENT).innerText()).replace(/​/g, '').split('\n').map((line) => line.trim()).filter(Boolean).join('\n')
+  return win.evaluate(() => {
+    const editor = document.querySelector('.workbench-creation .ProseMirror').editor
+    return editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n')
+  })
 }
 
 /**
