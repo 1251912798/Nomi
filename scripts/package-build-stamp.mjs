@@ -41,6 +41,18 @@ export function verifyBuild(root) {
   return current
 }
 
+/**
+ * 走查 / e2e / 性能驱动 / MCP 真机起跑前的唯一构建核对（G-walk-build）：它们跑的都是 dist / dist-electron，
+ * 构建比源码旧，「通过」和截图就不反映新代码。戳缺失或和当前源码树不一致一律拒跑；没有跳过开关。
+ * 打包形态跑的是安装包自带产物，不看仓库里的 dist，调用方不调本函数。
+ */
+export function assertFreshBuild(root) {
+  try { return verifyBuild(root) }
+  catch (error) {
+    throw new Error(`构建产物比源码旧（或没有构建），先跑 pnpm run build——否则走查 / e2e / 性能量到的是旧代码。（${error.message}）`)
+  }
+}
+
 export function stampedBuild(root, build) {
   invalidateBuild(root)
   const before = sourceIdentity(root)

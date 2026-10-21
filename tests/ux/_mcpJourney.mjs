@@ -29,6 +29,7 @@ import readline from 'node:readline'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { withLinuxNoSandbox, withLinuxSyntheticCredentialStorage } from './_launchApp.mjs'
+import { assertFreshBuild } from '../../scripts/package-build-stamp.mjs'
 export { packagedMcpRuntime } from './_packagedMcpRuntime.mjs'
 
 const require = createRequire(import.meta.url)
@@ -40,15 +41,9 @@ export const { NODE_KIND_DEFAULT_SIZE } = tsxRequire('../../electron/capabilityC
 // FALLBACK_SIZE the built module falls back to for unknown kinds.
 export const NODE_KIND_FALLBACK_SIZE = { width: 340, height: 280 }
 
-/** Assert dist-electron is built (the stdio server runs compiled JS, mirroring _launchApp.assertBuilt). */
+/** The stdio server runs the compiled dist-electron build: refuse a missing or stale build (build stamp, same gate as launchNomiApp). */
 export function assertBuilt() {
-  const mainEntry = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')).main
-  const entryPath = path.join(repoRoot, mainEntry)
-  if (!fs.existsSync(entryPath)) {
-    throw new Error(
-      `Electron main entry missing: ${mainEntry}\n→ the MCP stdio server runs the dist-electron build, run: pnpm run build`,
-    )
-  }
+  assertFreshBuild(repoRoot)
 }
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -279,6 +274,7 @@ export function spawnMcpStdioClient({
   settingsDir, userDataDir, projectsDir, capabilityDir, clientInfo, capabilities, env, captureStderr = false,
   tracePath, elicitationAction = 'accept', syntheticCredentialStorage = false, runtime = null,
 }) {
+  if (!runtime) assertBuilt()
   const selectedRuntime = runtime || {
     command: require('electron'),
     args: withLinuxSyntheticCredentialStorage(

@@ -6,7 +6,7 @@ import path from 'node:path'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
-import { invalidateBuild, sourceIdentity, stampedBuild, verifyBuild } from './package-build-stamp.mjs'
+import { assertFreshBuild, invalidateBuild, sourceIdentity, stampedBuild, verifyBuild } from './package-build-stamp.mjs'
 
 const cli = fileURLToPath(new URL('./package-build-stamp.mjs', import.meta.url))
 function fixture(t) {
@@ -84,4 +84,16 @@ test('both packaging scripts verify before electron-builder; partial builds inva
   assert.match(scripts.build, /package-build-stamp\.mjs build/)
   assert.match(scripts['build:renderer'], /package-build-stamp\.mjs invalidate &&/)
   assert.match(fs.readFileSync(new URL('./build-electron.mjs', import.meta.url), 'utf8'), /invalidateBuild\(repoRoot\)/)
+})
+
+// G-walk-build：走查 / e2e / perf 起跑前的统一核对。旧戳、没有戳都拒跑并给出「先 pnpm run build」，戳一致才放行。
+test('assertFreshBuild: no stamp refuses, stale stamp refuses, matching stamp passes', t => {
+  const { root, build } = fixture(t)
+  assert.throws(() => assertFreshBuild(root), /构建产物比源码旧（或没有构建），先跑 pnpm run build/)
+  build()
+  assert.equal(assertFreshBuild(root).dirty, false)
+  fs.writeFileSync(path.join(root, 'source.txt'), 'edited after build')
+  assert.throws(() => assertFreshBuild(root), /构建产物比源码旧（或没有构建），先跑 pnpm run build/)
+  build()
+  assert.doesNotThrow(() => assertFreshBuild(root))
 })

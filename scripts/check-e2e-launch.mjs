@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 门岗：走查/评测脚本不许自己调 electron.launch，一律走 tests/ux/_launchApp.mjs。
+// 门岗：走查/评测脚本不许自己调 electron.launch，一律走 tests/ux/_launchApp.mjs；起构建产物的入口须先核构建戳。
 //
 // 为什么要专门给它一道门（P2 的结构保证）：手抄 launch 样板抄漏 env 会**静默挂死**——
 // 干等到超时、零截图、零提示，排查时像脚本自己写错了（两条死法见 tests/ux/_launchApp.mjs 文件头）。
@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { findUngatedBuildConsumers } from './lib/buildGateScan.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 // 三片全守。`scripts/` 下那 56 个同病的一次性走查脚本已于 2026-08-11 第二批迁完
@@ -29,11 +30,14 @@ function* walk(dir) {
 }
 
 const offenders = []
+const scanned = []
 for (const scanDir of SCAN_DIRS) {
   for (const file of walk(path.join(repoRoot, scanDir))) {
     const rel = path.relative(repoRoot, file)
-    if (rel === LAUNCHER) continue
     const source = fs.readFileSync(file, 'utf8')
+    // 构建戳规则只管 tests/（走查 / e2e / perf / 系统测）；scripts/ 下的 dev-electron 等是开发者自己起 App，不产出证据。
+    if (scanDir === 'tests') scanned.push({ rel: rel.split(path.sep).join('/'), source })
+    if (rel === LAUNCHER) continue
     const lines = source.split('\n')
     lines.forEach((line, i) => {
       // 只认真实调用；注释里提到（讲解为什么要收敛）不算。
@@ -55,9 +59,22 @@ if (offenders.length) {
 
 console.log('✅ check:e2e-launch —— 无直接 electron.launch 调用（全部走 _launchApp.mjs）')
 
+// 起 / 加载构建产物的入口必须先核构建戳（G-walk-build；纯函数与登记见 scripts/lib/buildGateScan.mjs）。
+const ungated = findUngatedBuildConsumers(scanned)
+if (ungated.length) {
+  console.error(`
+❌ ${ungated.length} 处起构建产物却没核构建戳（旧构建会让走查 / e2e / perf 通过却不反映新代码）：
+`)
+  for (const problem of ungated) console.error(`   ${problem}`)
+  process.exit(1)
+}
+console.log('✅ check:e2e-launch —— 起构建产物的入口都先核构建戳')
+
 // Exercise launchNomiApp assembly as well as banning alternate launch paths.
 const regression = spawnSync(process.execPath, ['--test',
   path.join(repoRoot, 'scripts/e2e-launch-capability.node-test.mjs'),
+  path.join(repoRoot, 'scripts/launch-build-gate.node-test.mjs'),
+  path.join(repoRoot, 'scripts/lib/buildGateScan.node-test.mjs'),
   path.join(repoRoot, 'tests/ux/_walkInstances.node-test.mjs'),
 ], { stdio: 'inherit' })
 if (regression.error) throw regression.error
