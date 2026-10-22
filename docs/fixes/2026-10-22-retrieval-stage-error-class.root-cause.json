@@ -15,7 +15,8 @@
   "scope_paths": [
     "electron/tasks/taskResultQuery.ts",
     "electron/shared/nomiErrorCodes.ts",
-    "src/workbench/observability/classifyError.ts"
+    "src/workbench/observability/classifyError.ts",
+    "src/workbench/generationCanvas/runner/recoverTaskActions.ts"
   ],
   "entry_points": [
     "fetchTaskResult (taskResultQuery.ts) -> executeTaskQuery query/result/download -> retrievalStageError",
@@ -43,12 +44,17 @@
       "kind": "read",
       "path": "src/workbench/observability/classifyError.ts",
       "symbol": "matchNomiErrorCode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/runner/recoverTaskActions.ts",
+      "symbol": "reopenRecoverableNode"
     }
   ],
   "door_reduction": {
     "before": 3,
-    "after": 3,
-    "why_not": "Three different owners: the code table declares the phase, the main-process retrieval exit enforces it for every fetchTaskResult caller, and the renderer's single classifier turns retrieval codes into a non-retry action. Each sits on a different process boundary and cannot be merged."
+    "after": 4,
+    "why_not": "Three different owners: the code table declares the phase, the main-process retrieval exit enforces it for every fetchTaskResult caller, and the renderer's single classifier turns retrieval codes into a non-retry action. Each sits on a different process boundary and cannot be merged. recoverTaskActions.reopenRecoverableNode is the error card's way back to the recoverable panel for canvas tasks (coordinator 10-22), next to the existing dismissRecoverableNode; it only flips a node with a taskId back to recoverable."
   },
   "generality_proof": "Every retrieval-path failure reaches users only through fetchTaskResult (20 callers, door-map) and is interpreted only by classifyGenerationError. fetchTaskResult now routes every thrown error through retrievalStageError, which consults the exhaustive phase table, so any present or future producer of a submit-phase code (vendorHttp guard, asset localization, new codes) is re-tagged without the producer knowing the phase; the classifier maps all retrieval-* codes to a kind whose action table has no retry.",
   "shared_boundaries": [
@@ -123,7 +129,8 @@
     "src/workbench/observability/retrievalStageClassification.test.ts",
     "src/workbench/generationCanvas/nodes/NodeRecoverableReport.test.tsx",
     "src/workbench/generationCanvas/runner/recoverTaskActions.projectIdentity.test.ts",
-    "src/workbench/generationCanvas/runner/catalogTaskActions.test.ts"
+    "src/workbench/generationCanvas/runner/catalogTaskActions.test.ts",
+    "src/workbench/generationCanvas/nodes/NodeErrorReport.retrievalSource.test.tsx"
   ],
   "class_regression_tests": [
     "electron/tasks/retrievalStagePhase.test.ts",
