@@ -67,7 +67,11 @@
 | b8 | 13 模型比例格子 | 9 个视频模型 × {Agent 写 9:16 / 21:9 / 不写}：节点显示 = 节点路请求体比例（Kling i2v、Veo 参考 / 首尾帧「比例由图决定、不发」照旧不发，报告 #7 不在本次） | parity 测试（假上游） |
 | b9 | 结构 | 全仓 `videoAspectDefaultPatch` / `preferredVideoAspect` 的调用只在铺默认值那一族（door-map 计数写进合同）；组件挂载 effect 里不再有写比例的路 | door-map + 合同 |
 
-### 要拍板（写进给协调的消息）
+### 拍板结果（用户 2026-10-22「按推荐」）
+
+- 复盘按「换」；Q1 = 档案默认；Q2 = A（连线那一刻算，只改没被明确选过比例的视频节点；Agent / 分镜写过的合法比例落地时记为明确选过；断线、删上游不回头改）。
+
+### 当时的拍板题（原文留档）
 
 - **Q1 Agent 没写比例时，落地节点用什么？** 推荐 **档案默认**（= 卡上显示 = Agent 路实际发出，今天三处一致，只有挂载 effect 把节点改成 16:9）。另一选项「落地也套 16:9」会让 Seedance 2.5 文生 / Wan 3.0 文生 / MiniMax H3 参考这几格变成节点 16:9 ≠ 卡 / Agent 路 adaptive，直到 D2 删掉卡那份为止。
 - **Q2 删掉挂载 effect 后，「已连输入全竖才 9:16」在连线时还算不算？** 今天这个 effect 同时管三件事：挂载、换模型、输入边变化。推荐 **A：连线手势那一刻算**（放在 `writeCanvasEdge` 里，与连线自动切模式 `autoPromoteTargetModeForEdge` 同一处，只改「没显式选过比例」的视频节点）；断线 / 删上游不再回改。B：只在选模型 / 新建时算，之后连线一律不改（最简，但「先建视频节点再拖竖图进来」不再自动变 9:16，是 07-17 规则的主场景）。C：连线、断线、删上游都算（完全保留今天的行为，但门多：单连、组连线物化、断线、删节点、粘贴，`canvasGraphActions.ts` 已是 14 天第 7 个 fix）。
@@ -78,3 +82,14 @@
 - 类级（全部内置供应商、每个带变体的视频行 × 每个变体，52 格）：27 格对不上。其中 24 格是「显式选了非默认变体 → 落地节点回到默认变体」（APIMart Seedance 2.0 / Veo 3.1 / Vidu Q3 / Hailuo 2.3，KIE Seedance 2 / Wan 3.0，火山 Seedance 2.0，Dreamina Seedance 2.0，Runway Seedance 2 ×3 行 / Veo 3.1 ×2 行 / Wan 3）；另 3 格是 Runway wan3 的**另一类**：宿主归一把候选 modelId 换成档案 `catalogModelKey`（KIE 那一行的 `wan/3-0-video`），落地节点认不出模型（不在本 PR 范围，已报协调）。
 - APIMart 请求体（21 格）：6 格节点路 body.model ≠ 宿主路——Seedance 2.0 standard / mini、Veo 3.1 quality / lite、Vidu Q3 mix、Hailuo 2.3 fast。
 - APIMart 比例（11 格，Agent 写 9:16）：落地节点 = 节点路 = 宿主路，全部对得上——比例那一处的元凶只在挂载 effect（PR-b 用真组件挂载测试钉）。
+
+## 后续（不在本次）
+
+- **D2**：节点成为唯一数据源时，落地改走同一个「铺默认值」owner，统一到 07-17「视频首选 16:9」（今天 Q1 选档案默认，是为了节点 = 卡 = Agent 路三处一致）。
+- **PR-c（另排，协调已派）**：宿主归一把供应商自己的型号名换成共享档案的 `catalogModelKey` / 变体 key（`mcpGenerationVideoResolve.ts` 的 `videoCandidateForPlan` / `videoTransportModelIdForPlan` / `normalizeVideoCandidate`）——Runway wan3 / Seedance 2 三行 / Veo 3.1 两行；本 PR 的特征测试里 Runway wan3 那 3 格仍以 `it.fails` 标着。
+- 报告 #3 参考图落节点（等 #1269）、#4 重绑定冲掉用户改动（归 D2）、#5 Agent 路参考类方式的发出缺省（a、b 之后报协调再定）。
+
+## PR-a 修后（本 PR）
+
+特征测试 85 格：82 格对得上，剩 Runway wan3 那 3 格（PR-c 那一类）仍是 `it.fails`。渲染层真 `materializeShots` 两扇门：`src/workbench/capability/landingCarriesVariant.test.ts` 6 格。
+结构门实测：给 `PlanCandidate` 加一个键 → electron tsc 在 `CANDIDATE_LANDING_FIELDS` 报 TS2741；给线类型加一个字段 → app tsc 在 `LANDED_CANDIDATE_FIELDS` 报 TS2741（验完已还原）。

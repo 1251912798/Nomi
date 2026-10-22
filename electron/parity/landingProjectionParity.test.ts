@@ -12,12 +12,11 @@
  *   → 节点路请求体（真 `buildCatalogTaskRequest` + 真 `runtime.runTask`）vs 宿主路请求体（真编译 + 真 provider），
  *   上游是本机假上游（`installFetchCapture`），抓的是真请求体。
  *
- * 「今天对不上」的格子用 `it.fails` 标出（修前跑出来的数字写在 docs/plan/2026-10-22-landing-defaults.md）；
- * 修好之后它们必须翻成普通 `it`——`it.fails` 在格子真的对上时会红，所以修了却忘了翻，这里也会提醒。
+ * 修前（@203886f10）85 格里 33 格对不上（数字记在 docs/plan/2026-10-22-landing-defaults.md）；修后只剩
+ * 另一类的 Runway wan3 那 3 格仍用 `it.fails` 标着（见 HOST_MODEL_REWRITE_SPLIT）——那一类修好时 `it.fails` 会红，提醒翻回 `it`。
  *
- * 渲染层那一步（报文 → `buildPlannedNodeMeta` 入参）今天在 `src/workbench/capability/multiShotCanvasLanding.ts`
- * 的私有函数里（新建、重绑定各一份）；这里按报文**原样**喂（报文有的键都喂），只要报文漏了键，节点就拿不到。
- * 修复会把那一步收成一个导出的函数，届时这里改成调它。
+ * 渲染层那一步（报文 → `buildPlannedNodeMeta` 入参）调的是生产里首落与重绑定共用的那一个函数
+ * （`plannedInputFromCandidate`），不是这里另写一份。
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 
@@ -46,6 +45,7 @@ import { toCatalogModelOptions } from "../../src/config/modelOptionMappers";
 import type { ModelOption } from "../../src/config/models";
 import { buildAgentModelEntries, type AgentModelEntry } from "../../src/workbench/generationCanvas/agent/availableModels";
 import { buildModelEntryIndex, buildPlannedNodeMeta } from "../../src/workbench/generationCanvas/agent/plannedNodeMeta";
+import { plannedInputFromCandidate } from "../../src/workbench/generationCanvas/agent/candidateNodeMeta";
 import { currentArchetypeVariant } from "../../src/workbench/generationCanvas/nodes/controls/archetypeMeta";
 import { createGenerationNode } from "../../src/workbench/generationCanvas/model/graphOps";
 import { buildCatalogTaskRequest } from "../../src/workbench/generationCanvas/runner/catalogTaskActions";
@@ -120,18 +120,15 @@ function runWith(candidate: PlanCandidate): ProductionRun {
   } as ProductionRun;
 }
 
-/** 候选 → 落地报文 → 节点 meta（报文里的候选身份原样喂给节点 meta 的唯一构造器）。 */
+/** 候选 → 落地报文 → 节点 meta（与生产同一个投影 + 同一个构造器）。 */
 function landedNodeMeta(candidate: PlanCandidate): Record<string, unknown> {
   const payload = buildMaterializeShotsPayload(runWith(candidate), { projectRoot: null });
-  const wire = payload?.shots[0]?.candidate as Record<string, unknown> | undefined;
+  const wire = payload?.shots[0]?.candidate;
   expect(wire, "落地报文里有这一镜的候选身份").toBeTruthy();
-  const meta = buildPlannedNodeMeta({
-    modelKey: wire!.modelKey,
-    vendor: wire!.vendor,
-    modeId: wire!.modeId,
-    variantId: wire!.variantId,
-    params: wire!.parameters,
-  }, entryByKey);
+  expect(wire, "落地报文不带内部投影").not.toHaveProperty("transportModelId");
+  const input = plannedInputFromCandidate(wire);
+  expect(input, "候选有模型身份").toBeTruthy();
+  const meta = buildPlannedNodeMeta(input!, entryByKey);
   expect(meta, `${candidate.providerId}/${candidate.modelId} 在可用清单里`).toBeTruthy();
   return meta!;
 }
@@ -168,13 +165,6 @@ async function hostWireBody(candidate: PlanCandidate): Promise<Record<string, un
   return (capture.calls[0]?.body as Record<string, unknown> | undefined) ?? "failure: no outbound request";
 }
 
-/** 今天对不上的格：显式选了一个**非默认**变体（默认变体两边恰好都落到它，所以今天是对的）。 */
-function variantMismatchToday(row: Row, variantId: string | undefined): boolean {
-  if (!variantId) return false;
-  const defaultVariant = currentArchetypeVariant(row.archetype, { modelKey: row.modelKey, archetype: { id: row.archetype.id, modeId: row.archetype.defaultModeId } })?.id;
-  return variantId !== defaultVariant;
-}
-
 /**
  * 另一类、不归本次修的格（2026-10-22 本测试发现，已报协调）：宿主归一把候选的 modelId 换成档案的
  * `catalogModelKey`（`videoCandidateForPlan` 的 baseModelId），而 Wan 3.0 档案的 catalogModelKey 是 KIE 那一行的 key
@@ -197,7 +187,7 @@ describe("类级：任一带变体的模型 × 任一变体，落地节点的变
     for (const variantId of variants) {
       const label = `${row.vendorKey}/${row.modelKey} 变体=${variantId ?? "（不写）"}`;
       const knownSplit = HOST_MODEL_REWRITE_SPLIT.has(`${row.vendorKey}/${row.modelKey}`);
-      (knownSplit || variantMismatchToday(row, variantId) ? it.fails : it)(label, async () => {
+      (knownSplit ? it.fails : it)(label, async () => {
         const candidate = await hostCandidate(row, variantId ? { variantId } : {});
         expect(candidate.variantId, `${label}：宿主归一出了变体`).toBeTruthy();
         const meta = landedNodeMeta(candidate);
@@ -212,7 +202,7 @@ describe("APIMart：节点上点 ↑ 发出的 model === 宿主路发出的 mode
     const variants: Array<string | undefined> = [undefined, ...((row.archetype.variants?.length ?? 0) > 1 ? row.archetype.variants!.map((variant) => variant.id) : [])];
     for (const variantId of variants) {
       const label = `apimart/${row.modelKey} 变体=${variantId ?? "（不写）"}`;
-      (variantMismatchToday(row, variantId) ? it.fails : it)(label, async () => {
+      it(label, async () => {
         const candidate = await hostCandidate(row, variantId ? { variantId } : {});
         const host = await hostWireBody(candidate);
         const canvas = await canvasWireBody(landedNodeMeta(candidate));
