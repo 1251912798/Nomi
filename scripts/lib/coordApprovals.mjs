@@ -26,6 +26,14 @@ export const sha256Of = (value) => crypto.createHash('sha256').update(typeof val
 /** 板的白名单：元素的实现进度字段，实现线推进时合理会改。其余（含板级字段 decor / functionCensus / 设计来源 / stage、元素的用户原话）全算合同。 */
 export const BOARD_PROGRESS_FIELDS = Object.freeze(['status', 'assertion', 'owner'])
 
+/**
+ * 板级 stage 只放行一种前进（协调 2026-10-22 定）：base 是「已拍板」阶段、head 是 built——和元素的 status 一样属于实现进度，不用确认。
+ * 「已拍板」阶段 = approved，以及仓库现行词表里的 explored（check-board-parity 的 BOARD_STAGES 只有 explored / built，explored 的板都带 approvedOn，即已拍板、待实现）。
+ * 其余任何 stage 变化都要确认，尤其是改成 approved（代表用户拍板，只能来自确认记录）、built 退回前面。
+ */
+export const STAGES_BEFORE_BUILT = Object.freeze(['approved', 'explored'])
+export const stageProgressAllowed = (baseStage, headStage) => headStage === 'built' && STAGES_BEFORE_BUILT.includes(baseStage)
+
 /** 剥掉白名单字段、规范化（元素按 id 排序）后的板内容。 */
 export function normalizeBoard(manifest) {
   if (!manifest || typeof manifest !== 'object') return manifest ?? null
@@ -53,8 +61,10 @@ const sameContent = (a, b) => canonicalJson(a) === canonicalJson(b)
  *   fingerprint = 整份规范化后的 head 内容的哈希（删板时是「删除」标记的哈希），批准记录的 sha256 就是它；内容再变一个字，哈希就对不上。
  */
 export function boardApprovalSubject(name, baseManifest, headManifest) {
-  const base = normalizeBoard(baseManifest ?? null)
+  let base = normalizeBoard(baseManifest ?? null)
   const head = normalizeBoard(headManifest ?? null)
+  // 唯一放行的 stage 前进（已拍板 → built）按实现进度处理：比较时把 base 的 stage 对齐到 head
+  if (base && head && stageProgressAllowed(base.stage, head.stage)) base = { ...base, stage: head.stage }
   const baseElements = new Map((base?.elements ?? []).map((element) => [element?.id, element]))
   const headElements = new Map((head?.elements ?? []).map((element) => [element?.id, element]))
   const added = [...headElements.keys()].filter((id) => !baseElements.has(id))

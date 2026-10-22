@@ -64,6 +64,13 @@ V-gates 估算：按 A，一次「全量刷新性能基线」最多 34 条确认
 
 **确认次数（协调多点几下）换「没有清单外的漏洞」**：A 把门岗从「证明没人动了我们想到要保护的东西」改成「证明没人动任何东西，除非明确允许」。
 
+### 8. 实现后的补充（协调 2026-10-22）
+
+- 板级 `stage` 只放行「已拍板 → built」一种前进（approved→built；仓库词表里 explored 即已拍板待实现，→ built 同），其余 stage 变化要确认，尤其改成 approved。
+- 场景白名单加 `group`；`budgetBasis` 留在政策里。
+- `coord-approve.mjs` / `coordApprovals.mjs` 不纳入受保护范围：`merge-preflight` 在 base 检出上跑，PR 改它们影响不了对自己的终审。
+- 合并脚本核退出码：协调已在 `parallel-merge.sh` 改好（退出码非 0 或「结论：✖」都不合）。
+
 ## 特征测试清单
 
 - `scripts/gates-evidence-approvals-r3.node-test.mjs`：本轮新增，6 红 1 绿（修前现状）；实现 A 之后必须全绿，作为 V-gates 第 3 轮复验的靶子。

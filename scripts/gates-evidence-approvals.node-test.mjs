@@ -391,3 +391,18 @@ test('A·板：确认记录的哈希绑整份规范化内容；确认之后板�
   const later = { Foo: { ...head.Foo, decor: ['c-x', 'c-y'] } }
   assert.equal(evalBody(body, { files, evidence: evidenceFor(later, base, withApprovals([record])) }).blocked, true)
 })
+
+test('A·板 stage：只放行「已拍板 → built」（approved→built；仓库词表里的 explored→built 同）；explored→approved、built 退回 approved、其余变化都要确认', () => {
+  const withStage = (stage) => ({ Foo: { board: 'Foo', stage, decor: [], elements: [ELEMENT({ status: 'missing' })] } })
+  const body = CARD.split('### 功能分类')[0]
+  const files = [{ path: 'docs/x.md', status: 'M' }]
+  const run = (from, to) => evalBody(body, { files, evidence: evidenceFor(withStage(to), withStage(from), noRecords()) })
+  assert.equal(run('approved', 'built').blocked, false, 'approved → built 是实现进度')
+  assert.equal(run('explored', 'built').blocked, false, '仓库词表里 explored 即已拍板待实现，→ built 是实现进度')
+  const toApproved = run('explored', 'approved')
+  assert.equal(toApproved.blocked, true, 'explored → approved 代表用户拍板，只能来自确认记录')
+  assert.match(text(toApproved), /板级字段/)
+  assert.equal(run('built', 'approved').blocked, true, 'built 退回 approved 要确认')
+  assert.equal(run('built', 'explored').blocked, true, 'built 退回 explored 要确认')
+  assert.equal(run('built', 'built').blocked, false)
+})
