@@ -182,63 +182,76 @@ export function knownScenarios({ baseEntries = [], prFiles = [], removedFiles = 
   const ids = new Set([...scenarioIds(kept), ...scenarioIds(prEntries)])
   // 场景本身（PR 头的覆盖基线的）：证据行要拿它核预算与欠账棘轮。
   const byId = new Map([...kept, ...prEntries].filter((entry) => entry.data?.id).map((entry) => [entry.data.id, entry.data]))
-  return { ids: [...ids], byId, problems, baseById: new Map(kept.filter((entry) => entry.data?.id).map((entry) => [entry.data.id, entry.data])), headById: new Map(prEntries.filter((entry) => entry.data?.id).map((entry) => [entry.data.id, entry.data])) }
+  return { ids: [...ids], byId, problems, baseById: new Map(kept.filter((entry) => entry.data?.id).map((entry) => [entry.data.id, entry.data])), headById: new Map(prEntries.filter((entry) => entry.data?.id).map((entry) => [entry.data.id, entry.data])), removedIds: baseEntries.filter((entry) => removed.has(entry.file) && entry.data?.id).map((entry) => entry.data.id) }
 }
 
-// ── 政策字段不能由 PR 自己批准（2026-10-21，V-gates B1）────────────────────────────────────────────────────────────
+// ── 政策字段不能由 PR 自己批准：默认全拦（2026-10-22 用户拍板方案 A，V-gates B1 / R2-B1）────────────────────────────
 /**
- * 场景文件里的「政策」：预算、统计层级、尾部预算、主指标、预算状态、欠账 / 噪声、基线数字、待测状态、量具与参数。
- * 放宽其中任何一个，超预算的结果就能变绿——所以判定时一律用 base 的值，PR 改了要协调确认（哈希对上）才用 PR head 的值。
- * 实现线合理会改的（feature / scale 描述、分组、基线的机器 / 日期 / 提交）不在里面。
+ * 场景文件按 base 与 head 的**整份规范化内容**对比：先剥掉白名单（描述字段 + baseline 的机器 / 日期 / 提交，实现线合理会改、不影响判定），
+ * 剩下的任何差异（预算、统计层级、尾部预算、主指标、欠账 / 噪声、基线数字、待测状态、量具与参数、以后新加的任何字段、整个文件被删）
+ * 都算政策变更，判定一律用 base 的值，PR 要用自己的值得协调确认（哈希绑整份规范化后的内容）。不再维护「政策字段」列表——
+ * 列表之外的字段曾是漏洞的来源，现在反过来：除白名单外全算政策。
  */
-export const POLICY_KEYS = Object.freeze(['budget', 'budgetStatus', 'budgetStatistic', 'p95Budget', 'metrics', 'budgetDebt', 'measurement', 'script', 'args'])
+export const DESCRIPTIVE_KEYS = Object.freeze(['feature', 'scale', 'group'])
+export const BASELINE_PROGRESS_KEYS = Object.freeze(['machine', 'date', 'commit'])
 export function scenarioPolicy(scenario) {
   const policy = {}
-  for (const key of POLICY_KEYS) if (scenario?.[key] !== undefined) policy[key] = scenario[key]
-  if (scenario?.baseline && typeof scenario.baseline === 'object') policy.baseline = { median: scenario.baseline.median, p95: scenario.baseline.p95, runs: scenario.baseline.runs, noisy: scenario.baseline.noisy }
+  for (const [key, value] of Object.entries(scenario ?? {})) {
+    if (DESCRIPTIVE_KEYS.includes(key)) continue
+    if (key === 'baseline' && value && typeof value === 'object') policy.baseline = Object.fromEntries(Object.entries(value).filter(([field]) => !BASELINE_PROGRESS_KEYS.includes(field)))
+    else policy[key] = value
+  }
   return policy
 }
 export const scenarioPolicyHash = (scenario) => sha256Of({ id: scenario?.id, policy: scenarioPolicy(scenario) })
+/** 整个场景文件被 PR 删掉时的确认哈希（删掉就是撤掉预算约束）。 */
+export const scenarioRemovedHash = (id) => sha256Of({ id, removed: true })
 
 /**
  * 严格口径下给「判定用的场景」定值。known = knownScenarios 的结果；approvals = { mode: 'ci' | 'local', pr, lookup, unavailable }（scripts/lib/coordApprovals.mjs）。
- *   · base 已有的场景：政策字段没变 → 照用；变了 → 协调确认过（哈希对上）才用 PR head 的值，否则按 base 判，并列出「改了政策字段、待确认」；
- *   · base 没有的新场景：预算按 PR head 判，但要协调确认——没有记录，合并前扫描红、CI 只提示。
- * 返回 { known（byId 换成判定用的）, lines, blocked }。
+ *   · base 已有的场景：规范化内容没变 → 照用；变了 → 协调确认过（哈希对上）才用 PR head 的值，否则按 base 判，并列出「待确认」；
+ *   · base 没有的新场景：预算按 PR head 判，但要协调确认；PR 删掉的场景也要确认。没有记录，合并前扫描红、CI 只提示。
+ * 要确认的集合由真实 diff 构造，不看正文写了什么。返回 { known（byId 换成判定用的）, lines, blocked }。
  */
 export function pinScenarioPolicy(known, approvals) {
   const baseById = known.baseById ?? new Map()
   const headById = known.headById ?? new Map()
-  if (!headById.size) return { known, lines: [], blocked: false }
+  const removedIds = known.removedIds ?? []
+  if (!headById.size && !removedIds.length) return { known, lines: [], blocked: false }
   const byId = new Map(known.byId)
   const lines = []
   let blocked = false
   const local = approvals?.mode === 'local'
-  const report = (id, kind, text) => {
+  const report = (id, text) => {
     const command = approvalCommand(approvals?.pr, 'perf', id)
     if (local) {
       blocked = true
       lines.push(`✖ 性能场景「${id}」${text}：没有协调确认记录${approvals?.unavailable ? `（${approvals.unavailable}）` : ''}。协调会话确认后跑 ${command}`)
     } else lines.push(`⚠ 性能场景「${id}」${text}：待协调确认（本机 merge-preflight 核；确认命令 ${command}）`)
   }
+  for (const id of removedIds) {
+    if (approvals?.lookup?.('perf-policy', id, scenarioRemovedHash(id)) === true) lines.push(`✅ 性能场景「${id}」被删除，协调已确认`)
+    else report(id, '被 PR 删掉了（撤掉预算约束）')
+  }
   for (const [id, head] of headById) {
     const base = baseById.get(id)
     const hash = scenarioPolicyHash(head)
     const approved = approvals?.lookup?.('perf-policy', id, hash) === true
     if (!base) {
-      if (!approved) report(id, 'new', '是 PR 新增的场景，预算由 PR 自己定')
+      if (!approved) report(id, '是 PR 新增的场景，预算由 PR 自己定')
       continue
     }
     if (scenarioPolicyHash(base) === hash) continue
-    if (approved) { lines.push(`✅ 性能场景「${id}」改了政策字段，协调已确认（哈希对上）`); continue }
-    // 没确认：判定用 base 的政策字段，其余字段取 PR head
+    if (approved) { lines.push(`✅ 性能场景「${id}」的政策内容有改动，协调已确认（哈希对上）`); continue }
+    // 没确认：判定用 base 的全部政策内容（白名单外的每个字段，含 baseline 的数字），其余字段取 PR head
     const effective = { ...head }
-    for (const key of [...POLICY_KEYS, 'baseline']) {
+    for (const key of new Set([...Object.keys(base), ...Object.keys(head)])) {
+      if (DESCRIPTIVE_KEYS.includes(key) || key === 'id') continue
       if (base[key] === undefined) delete effective[key]
       else effective[key] = base[key]
     }
     byId.set(id, effective)
-    report(id, 'changed', '改了政策字段（预算 / 统计层级 / 尾部预算 / 主指标 / 欠账 / 基线等），判定仍按 base 的值')
+    report(id, '的政策内容有改动（除 feature / scale 等描述字段和基线的机器 / 日期 / 提交外的任何差异），判定仍按 base 的值')
   }
   return { known: { ...known, byId }, lines, blocked }
 }

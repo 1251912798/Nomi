@@ -17,30 +17,79 @@ export function canonicalJson(value) {
 }
 export const sha256Of = (value) => crypto.createHash('sha256').update(typeof value === 'string' ? value : canonicalJson(value)).digest('hex')
 
-// ── 拍板清单：哪些字段是「合同」（要批准），哪些是实现线合理会改的「实现状态」（不用批准）──────────────────────────────
-/** 实现状态字段：实现线推进时合理会改，不需要协调确认。 */
-export const BOARD_IMPLEMENTATION_FIELDS = Object.freeze(['status', 'assertion', 'owner', 'userDecision'])
+// ── 合同文件的批准范围：默认全拦（2026-10-22 用户拍板方案 A，V-gates 第 2 轮 R2-B1 / R2-B2 后）──────────────────────
+// 旧做法是「默认放行」：由 PR 自报的认领集合 + 一份我们列出来的要保护的字段 / 元素决定，没列到的就漏（删除、板级字段、没被认领的新元素），补不完。
+// 现在反过来：合同文件（板文件、场景文件）按 base 与 head 的**整份规范化内容**对比；先剥掉白名单里允许 PR 自改的字段，
+// 剩下的任何差异（新增、删除、板级字段、以后新加的任何字段）都要协调确认，哈希绑定整份规范化后的内容。
+// 要确认的集合由真实 diff 构造，不看 PR 认领了什么（认领只用来关联实现验收）。
 
-/** 一个元素的合同部分：除实现状态外的所有字段；推迟 / 放弃的决定（用户原话）算合同——不能由 PR 自己写一句话就把元素放弃。 */
-export function elementContract(element) {
-  const contract = {}
-  for (const [key, value] of Object.entries(element ?? {})) if (!BOARD_IMPLEMENTATION_FIELDS.includes(key)) contract[key] = value
-  if (element?.status === 'deferred' || element?.status === 'dropped') contract.decision = { status: element.status, userDecision: element.userDecision ?? null }
-  return contract
+/** 板的白名单：元素的实现进度字段，实现线推进时合理会改。其余（含板级字段 decor / functionCensus / 设计来源 / stage、元素的用户原话）全算合同。 */
+export const BOARD_PROGRESS_FIELDS = Object.freeze(['status', 'assertion', 'owner'])
+
+/** 剥掉白名单字段、规范化（元素按 id 排序）后的板内容。 */
+export function normalizeBoard(manifest) {
+  if (!manifest || typeof manifest !== 'object') return manifest ?? null
+  const out = { ...manifest }
+  if (Array.isArray(manifest.elements)) {
+    out.elements = manifest.elements
+      .map((element) => {
+        if (!element || typeof element !== 'object') return element
+        const copy = { ...element }
+        for (const key of BOARD_PROGRESS_FIELDS) delete copy[key]
+        return copy
+      })
+      .sort((a, b) => String(a?.id).localeCompare(String(b?.id)))
+  }
+  return out
 }
 
+const withoutElements = (board) => Object.fromEntries(Object.entries(board ?? {}).filter(([key]) => key !== 'elements'))
+const sameContent = (a, b) => canonicalJson(a) === canonicalJson(b)
+
 /**
- * PR head 相对 base 新增或合同变了的元素（base 没有这张板 = 全部元素都是新的）。返回 { changed: [元素 id…], fingerprint }；
- * fingerprint = 这些元素的合同哈希，批准记录的 sha256 就是它。只改实现状态（status / assertion / owner）不算变。
+ * 一张板在 PR 里的合同差异（整份对比）。baseManifest / headManifest 任一为 null/undefined = 那一边没有这张板。
+ * 返回 { needsApproval, added, removed, changed, boardLevel, isNewBoard, isRemovedBoard, fingerprint }：
+ *   added / removed / changed = 新增 / 删除 / 合同变了的元素 id；boardLevel = 除 elements 外的板级字段变了；
+ *   fingerprint = 整份规范化后的 head 内容的哈希（删板时是「删除」标记的哈希），批准记录的 sha256 就是它；内容再变一个字，哈希就对不上。
  */
 export function boardApprovalSubject(name, baseManifest, headManifest) {
-  const baseElements = new Map((baseManifest?.elements ?? []).map((element) => [element?.id, element]))
-  const changed = (headManifest?.elements ?? []).filter((element) => {
-    const before = baseElements.get(element?.id)
-    return !before || canonicalJson(elementContract(before)) !== canonicalJson(elementContract(element))
-  })
-  const contracts = changed.map(elementContract).sort((a, b) => String(a.id).localeCompare(String(b.id)))
-  return { changed: changed.map((element) => element.id), fingerprint: sha256Of({ board: name, isNewBoard: !baseManifest, elements: contracts }) }
+  const base = normalizeBoard(baseManifest ?? null)
+  const head = normalizeBoard(headManifest ?? null)
+  const baseElements = new Map((base?.elements ?? []).map((element) => [element?.id, element]))
+  const headElements = new Map((head?.elements ?? []).map((element) => [element?.id, element]))
+  const added = [...headElements.keys()].filter((id) => !baseElements.has(id))
+  const removed = [...baseElements.keys()].filter((id) => !headElements.has(id))
+  const changed = [...headElements.keys()].filter((id) => baseElements.has(id) && !sameContent(baseElements.get(id), headElements.get(id)))
+  const baseLevel = withoutElements(base)
+  const headLevel = withoutElements(head)
+  const boardLevel = !sameContent(baseLevel, headLevel)
+  const needsApproval = !sameContent(base, head)
+  return {
+    needsApproval,
+    added,
+    removed,
+    changed,
+    boardLevel,
+    isNewBoard: !base && !!head,
+    isRemovedBoard: !!base && !head,
+    // 兼容旧字段：所有有差异的元素 id（新增 + 删除 + 改动）
+    changedIds: [...added, ...removed, ...changed],
+    fingerprint: sha256Of({ board: name, content: head, removed: !head }),
+  }
+}
+
+/** 人话描述一张板的差异（确认提示用）。 */
+export function describeBoardDiff(subject) {
+  const parts = []
+  if (subject.isNewBoard) parts.push('是 PR 新增的板')
+  else if (subject.isRemovedBoard) parts.push('被 PR 整张删掉')
+  else {
+    if (subject.added.length) parts.push(`新增了元素（${subject.added.join('、')}）`)
+    if (subject.changed.length) parts.push(`改了合同的元素（${subject.changed.join('、')}）`)
+    if (subject.removed.length) parts.push(`删了元素（${subject.removed.join('、')}）`)
+    if (subject.boardLevel) parts.push('改了板级字段（decor / functionCensus / 设计来源 / stage 等）')
+  }
+  return parts.join('；')
 }
 
 // ── 确认记录文件 ──────────────────────────────────────────────────────────────────────────────────────────────

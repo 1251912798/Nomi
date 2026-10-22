@@ -5,7 +5,7 @@
 // 路由 / 规则与门岗范围仍在 scripts/pr-judgement-lib.mjs（本模块在它之上叠设计卡等判据，并给一个总入口 evaluatePrBody）。
 import { classCheckErrors, contractErrors, escapeIdOfPath, fixedTransitions } from './escape-ledger-lib.mjs'
 import { checkPrBoardClaims, parsePrBoardClaims } from './check-board-parity.mjs'
-import { approvalCommand, boardApprovalSubject } from './lib/coordApprovals.mjs'
+import { approvalCommand, boardApprovalSubject, describeBoardDiff } from './lib/coordApprovals.mjs'
 import { pinScenarioPolicy } from './perf-scenarios-lib.mjs'
 import { localEvidenceInputs } from './lib/prEvidenceInputs.mjs'
 import { evaluatePrJudgement, evidenceJudgementEnforced, extractSection, inferRoutes, loadRoutingTable } from './pr-judgement-lib.mjs'
@@ -195,6 +195,35 @@ export function checkIndependentAcceptance(body, { stage = 'merge', strict = fal
 }
 
 /**
+ * 拍板清单的批准范围：默认全拦（2026-10-22 用户拍板方案 A，V-gates R2-B1 / R2-B2）。
+ * 板文件按 base 与 head 的整份规范化内容对比（先剥掉元素的 status / assertion / owner），任何差异——新增板、整张删板、新增 / 删除 / 改了合同的元素、
+ * 板级字段（decor / functionCensus / 设计来源 / stage 等）——都要协调确认，哈希绑整份规范化后的 head 内容。
+ * 要确认的集合由真实 diff 构造：不看正文认领了什么，也不看 PR 是不是界面改动、有没有写 `## 拍板图` 一节。
+ * CI 读不到本机确认记录，只提示「待协调确认」；合并前扫描没有记录就红。boards / baseBoards = loadManifests() 形状（对象，或返回它的函数；null = 取不到）。
+ */
+export function checkBoardContracts({ strict = false, boards = null, baseBoards = null, approvals = null } = {}) {
+  if (!strict) return { ok: true, lines: [] }
+  const resolve = (value) => (typeof value === 'function' ? value() : value)
+  const head = resolve(boards)
+  const base = resolve(baseBoards)
+  if (!head || !base) return { ok: true, lines: ['⚠ 拍板清单：取不到 PR head 或 base 上的清单，没法对比哪些板被改了（待协调确认，本机 merge-preflight 核）'] }
+  const lines = []
+  let ok = true
+  const local = approvals?.mode === 'local'
+  for (const name of [...new Set([...Object.keys(base), ...Object.keys(head)])].sort()) {
+    const subject = boardApprovalSubject(name, base[name] ?? null, head[name] ?? null)
+    if (!subject.needsApproval) continue
+    if (approvals?.lookup?.('board', name, subject.fingerprint) === true) { lines.push(`✅ 拍板图 ${name}：${describeBoardDiff(subject)}——协调已确认（哈希对上）`); continue }
+    const command = approvalCommand(approvals?.pr, 'board', name)
+    if (local) {
+      ok = false
+      lines.push(`✖ 拍板图 ${name} ${describeBoardDiff(subject)}：清单的批准身份不能由 PR 自己给，没有协调确认记录${approvals?.unavailable ? `（${approvals.unavailable}）` : ''}。协调会话确认后跑 ${command}`)
+    } else lines.push(`⚠ 拍板图 ${name} ${describeBoardDiff(subject)}：待协调确认（本机 merge-preflight 核；确认命令 ${command}）`)
+  }
+  return { ok, lines }
+}
+
+/**
  * 改界面的 PR 必须认领拍板图清单，或给已登记的例外（2026-10-22 起开的 PR，evidenceJudgementEnforced）。
  * 旧判据：没有 `## 拍板图` 一节就当没认领、照常过——#1264 改了界面，一张清单也没有，门岗全绿。
  *   · 路径推出「新界面 / 改交互」（inferred 里有 ui 类）才要求；不碰界面的 PR 不问；
@@ -226,28 +255,12 @@ export function checkBoardClaim(body, { inferred, files = [], strict = false, ta
         ok = false
         lines.push(`✖ 拍板图认领未过（${errors.length} 条）：`, ...errors.map((error) => `    ✗ ${error}`))
       } else if (!empty.length) lines.push(`✅ 拍板图：认领的元素都有去处（${claims.map((claim) => claim.board).join('、')}）`)
-      if (strict && !errors.length && !empty.length) {
-        // 批准身份：base 上已有的板和元素直接有效；PR 新增 / 改了合同的要协调确认
-        const base = resolve(baseBoards)
-        const local = approvals?.mode === 'local'
-        for (const claim of claims) {
-          const head = headBoards[claim.board]
-          const before = base ? (base[claim.board] ?? null) : undefined
-          if (before === undefined) { lines.push(`⚠ 拍板图 ${claim.board}：取不到 base 上的清单，没法核哪些元素是 PR 新增的（待协调确认，本机 merge-preflight 核）`); continue }
-          const subject = boardApprovalSubject(claim.board, before, head)
-          const touched = claim.ids.filter((id) => subject.changed.includes(id))
-          if (!touched.length) continue
-          if (approvals?.lookup?.('board', claim.board, subject.fingerprint) === true) { lines.push(`✅ 拍板图 ${claim.board}：PR 新增 / 改动的元素（${touched.join('、')}）协调已确认（哈希对上）`); continue }
-          const what = before ? `给已有的板新增 / 改了合同的元素（${touched.join('、')}）` : `是 PR 新增的板（认领 ${touched.join('、')}）`
-          const command = approvalCommand(approvals?.pr, 'board', claim.board)
-          if (local) {
-            ok = false
-            lines.push(`✖ 拍板图 ${claim.board} ${what}：清单的批准身份不能由 PR 自己给，没有协调确认记录${approvals?.unavailable ? `（${approvals.unavailable}）` : ''}。协调会话确认后跑 ${command}`)
-          } else lines.push(`⚠ 拍板图 ${claim.board} ${what}：待协调确认（本机 merge-preflight 核；确认命令 ${command}）`)
-        }
-      }
     } else if (strict) lines.push('⚠ 拍板图：这个环境取不到清单目录，认领的元素没核')
   }
+  // 清单合同的批准：真实 diff，不看认领（认领只用来关联实现验收）
+  const contracts = checkBoardContracts({ strict, boards, baseBoards, approvals })
+  lines.push(...contracts.lines)
+  ok = ok && contracts.ok
   if (!strict) return { ok, lines }
   const touchesUi = (inferred?.categories ?? []).some((category) => category.id === 'ui')
   if (!touchesUi) return { ok, lines }

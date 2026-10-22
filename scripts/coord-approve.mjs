@@ -12,9 +12,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { APPROVAL_ENV, boardApprovalSubject } from './lib/coordApprovals.mjs'
+import { APPROVAL_ENV, boardApprovalSubject, describeBoardDiff } from './lib/coordApprovals.mjs'
 import { boardsAtHead } from './lib/prEvidenceInputs.mjs'
-import { scenarioPolicyHash } from './perf-scenarios-lib.mjs'
+import { scenarioPolicyHash, scenarioRemovedHash } from './perf-scenarios-lib.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const realGit = (args) => execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -39,16 +39,20 @@ export function buildApproval({ argv, git = realGit, now = () => new Date().toIS
   if (board) {
     const heads = boardsAtHead({ git, sha: headSha })
     const bases = boardsAtHead({ git, sha: base })
-    if (!heads[board] || heads[board].ambiguous) throw new Error(`PR head 上没有（或重名）板 ${board}`)
-    const subject = boardApprovalSubject(board, bases[board] ?? null, heads[board])
-    if (!subject.changed.length) throw new Error(`板 ${board} 在 PR 里没有新增 / 改合同的元素，不需要确认`)
+    if (heads[board]?.ambiguous) throw new Error(`PR head 上板 ${board} 重名`)
+    const subject = boardApprovalSubject(board, bases[board] ?? null, heads[board] ?? null)
+    if (!subject.needsApproval) throw new Error(`板 ${board} 在 PR 里和 base 比没有合同差异，不需要确认`)
     name = board
     sha256 = subject.fingerprint
-    console.error(`确认板 ${board}：新增 / 改了合同的元素 ${subject.changed.join('、')}`)
+    console.error(`确认板 ${board}：${describeBoardDiff(subject)}`)
   } else {
-    const text = git(['show', `${headSha}:tests/perf/scenarios/${perf}.json`])
     name = perf
-    sha256 = scenarioPolicyHash(JSON.parse(text))
+    let text = null
+    try { text = git(['show', `${headSha}:tests/perf/scenarios/${perf}.json`]) } catch { /* PR 删了这个场景 */ }
+    if (text === null) {
+      try { git(['show', `${base}:tests/perf/scenarios/${perf}.json`]) } catch { throw new Error(`PR head 和 base 上都没有场景 ${perf}`) }
+      sha256 = scenarioRemovedHash(perf)
+    } else sha256 = scenarioPolicyHash(JSON.parse(text))
   }
   return { pr, kind: board ? 'board' : 'perf-policy', name, sha256, at: now(), note: argValue(argv, '--note') ?? '', head: headSha }
 }

@@ -1,5 +1,7 @@
 # 方向检查：证据判「对不对」门岗（PR #1266，自写登记 `gate-family`）
 
+> **用户 2026-10-22 拍板：按推荐方案 A（默认全拦）实现**；协调补充：场景白名单 = `feature` / `scale` / `group` 描述字段 + baseline 的 machine / date / commit，baseline 的 median / p95 / runs / noisy 算政策。已实现，特征测试全绿，等 V-gates 第 3 轮复验。
+>
 > 触发：`fix-churn` 命中自写登记 `gate-family`；同一处（拍板清单与性能场景的「批准范围」）在 #1266 上已修两轮、V-gates 第 2 轮仍不通过（R2-B1、R2-B2），这是第 3 轮——按 P1 停止补丁，先复盘，结构改法交用户拍板。**本页只含复盘与特征测试，不含实现。**
 
 ### 0. 一句话根因
@@ -30,7 +32,7 @@
 | 场景文件里 `POLICY_KEYS` 之外的字段被用来放宽（以后任何新加的字段默认不在名单里） | 给场景加一个新字段并让 `judge` 读它：现在不会被当政策 |
 | 每个新的 PR 载体（新的登记表、新的清单）都要重新想一遍「该保护哪些」 | 看 V-gates 每轮找到的数量：第 1 轮 4、第 2 轮 2 |
 
-特征测试（现在必须是红的）：`scripts/gates-evidence-approvals-r3.node-test.mjs`，6 个攻击形状红、1 个好例绿：删已批准元素并把候选改归 decor；只改板级合同字段；批准后删别的元素；新增元素但不认领；改写元素 b 却认领旧元素 a；清单变了正文完全不写拍板图节。收据 `D:/Nomi-tmp/gates-evidence/r3-characterization.txt`。
+特征测试（实现前是红的，实现 A 之后已全绿）：`scripts/gates-evidence-approvals-r3.node-test.mjs`，6 个攻击形状红、1 个好例绿：删已批准元素并把候选改归 decor；只改板级合同字段；批准后删别的元素；新增元素但不认领；改写元素 b 却认领旧元素 a；清单变了正文完全不写拍板图节。收据 `D:/Nomi-tmp/gates-evidence/r3-characterization.txt`。
 
 ### 4. 靶子独立性检查
 

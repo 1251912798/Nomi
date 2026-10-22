@@ -123,7 +123,7 @@ test('B1·协调确认过（哈希对上）才用 PR head 的政策；内容确�
 
 test('B1·实现线合理会改的字段（feature 描述、基线的机器 / 日期）不要求确认', () => {
   const result = perfRun(scenarioFiles(sc(), sc({ feature: '换了一句描述', baseline: { median: 20, p95: 90, runs: 5, machine: 'other', date: '2026-10-22', commit: 'def5678' } })), noRecords())
-  assert.doesNotMatch(text(result), /待协调确认|没有协调确认记录/)
+  assert.doesNotMatch(text(result), /性能场景.*(?:待协调确认|没有协调确认记录)/)
 })
 
 test('B1·PR 新增的场景：预算由 PR 自己定，必须协调确认——本机没有记录红、CI 只提示、有记录绿', () => {
@@ -223,7 +223,7 @@ test('B4·给已有的板新增元素 / 改了元素合同：要确认；只更�
   const added = boardsOf({ board: 'Foo', elements: [ELEMENT({ status: 'implemented', assertion: 'x' }), ELEMENT({ id: 'new', status: 'implemented', assertion: 'x' })] })
   const addedRun = evalBody(claimFoo(', new'), { files: tsxModified, evidence: evidenceFor(added, base, noRecords()) })
   assert.equal(addedRun.blocked, true, text(addedRun))
-  assert.match(text(addedRun), /新增 \/ 改了合同的元素（new）/)
+  assert.match(text(addedRun), /新增了元素（new）/)
   const rewritten = boardsOf({ board: 'Foo', elements: [ELEMENT({ status: 'implemented', assertion: 'x', candidates: ['999-div'] })] })
   assert.equal(evalBody(claimFoo(), { files: tsxModified, evidence: evidenceFor(rewritten, base, noRecords()) }).blocked, true, '改了元素的候选 = 改了合同')
   const dropped = boardsOf({ board: 'Foo', elements: [ELEMENT({ status: 'dropped', userDecision: { quote: '随便写一句话', date: '2026-10-22' } })] })
@@ -342,4 +342,52 @@ test('S7·合并前扫描读报告：docs/ui/r.md 走仓库读取器、D:\ 反�
   const repo = (file) => (file === 'docs/ui/r.md' ? '通过\n' : null)
   assert.equal(readReportRef('docs/ui/r.md', repo, () => '错读了本机'), '通过\n')
   assert.equal(readReportRef('D:\\Nomi-coord-state\\reports\\V-x.md',() => '错读了仓库', () => '本机报告'), '本机报告')
+})
+
+// ── 默认全拦（2026-10-22 用户拍板方案 A）：场景白名单 = feature / scale / group + baseline 的 machine / date / commit，其余全算政策 ──────────
+test('A·场景：改 feature 描述不需要确认；改 baseline 的 p95 需要确认', () => {
+  const described = perfRun(scenarioFiles(sc(), sc({ feature: '换了一句话', scale: '400 个节点', group: '⑤ 别的组' })), noRecords())
+  assert.doesNotMatch(text(described), /性能场景.*(?:待协调确认|没有协调确认记录)/)
+  const rebaselined = perfRun(scenarioFiles(sc(), sc({ baseline: { median: 20, p95: 120, runs: 5, machine: 'm', date: '2026-10-20', commit: 'abc1234' } })), noRecords())
+  assert.match(text(rebaselined), /没有协调确认记录/)
+  assert.equal(rebaselined.blocked, true)
+})
+
+test('A·场景：以后新加的任何字段、预算依据、整个文件被删，默认也要确认（列表之外不再是漏洞）', () => {
+  assert.match(text(perfRun(scenarioFiles(sc(), sc({ someFutureField: 1 })), noRecords())), /没有协调确认记录/)
+  assert.match(text(perfRun(scenarioFiles(sc(), sc({ budgetBasis: '改了依据' })), noRecords())), /没有协调确认记录/)
+  const removed = knownScenarios({ baseEntries: [{ file: 'tests/perf/scenarios/sample-type.json', data: sc() }], removedFiles: ['tests/perf/scenarios/sample-type.json'] })
+  const result = perfRun(removed, noRecords())
+  assert.equal(result.blocked, true)
+  assert.match(text(result), /被 PR 删掉了/)
+})
+
+test('A·场景：确认过的哈希绑整份规范化内容——只改 machine / date / commit 的刷新不使确认失效，改任何政策字段使其失效', () => {
+  const relaxed = sc({ budgetStatistic: 'median' })
+  const record = { pr: 7, kind: 'perf-policy', name: 'sample-type', sha256: scenarioPolicyHash(relaxed), at: 'T', note: '' }
+  assert.equal(scenarioPolicyHash(relaxed), scenarioPolicyHash({ ...relaxed, feature: '换描述', baseline: { ...relaxed.baseline, machine: 'other', date: 'x', commit: 'y' } }))
+  assert.notEqual(scenarioPolicyHash(relaxed), scenarioPolicyHash({ ...relaxed, extra: true }))
+  assert.equal(perfRun(scenarioFiles(sc(), relaxed), withApprovals([record])).blocked, false)
+})
+
+test('A·板：整张板被删、新增板外的 decor 变化，不看正文有没有拍板图节也要确认；只改 status / assertion / owner 不用', () => {
+  const base = { Foo: { board: 'Foo', decor: [], elements: [ELEMENT({ status: 'missing' })] } }
+  const progress = { Foo: { board: 'Foo', decor: [], elements: [ELEMENT({ status: 'implemented', assertion: 'z', owner: '#99' })] } }
+  assert.equal(evalBody(CARD.split('### 功能分类')[0], { files: [{ path: 'docs/x.md', status: 'M' }], evidence: evidenceFor(progress, base, noRecords()) }).blocked, false)
+  const deletedBoard = evalBody(CARD.split('### 功能分类')[0], { files: [{ path: 'docs/design/boards/2026-10-23/Foo.board.json', status: 'D' }], evidence: evidenceFor({}, base, noRecords()) })
+  assert.equal(deletedBoard.blocked, true)
+  assert.match(text(deletedBoard), /整张删掉/)
+  const decor = { Foo: { board: 'Foo', decor: ['c-x'], elements: [ELEMENT({ status: 'missing' })] } }
+  assert.match(text(evalBody(CARD.split('### 功能分类')[0], { files: [{ path: 'docs/x.md', status: 'M' }], evidence: evidenceFor(decor, base, noRecords()) })), /板级字段/)
+})
+
+test('A·板：确认记录的哈希绑整份规范化内容；确认之后板级字段又变一个字 → 失效', () => {
+  const base = { Foo: { board: 'Foo', decor: [], elements: [ELEMENT({ status: 'missing' })] } }
+  const head = { Foo: { board: 'Foo', decor: ['c-x'], elements: [ELEMENT({ status: 'missing' })] } }
+  const record = { pr: 7, kind: 'board', name: 'Foo', sha256: boardApprovalSubject('Foo', base.Foo, head.Foo).fingerprint, at: 'T', note: '' }
+  const files = [{ path: 'docs/x.md', status: 'M' }]
+  const body = CARD.split('### 功能分类')[0]
+  assert.equal(evalBody(body, { files, evidence: evidenceFor(head, base, withApprovals([record])) }).blocked, false)
+  const later = { Foo: { ...head.Foo, decor: ['c-x', 'c-y'] } }
+  assert.equal(evalBody(body, { files, evidence: evidenceFor(later, base, withApprovals([record])) }).blocked, true)
 })
