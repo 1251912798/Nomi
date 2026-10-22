@@ -28,7 +28,7 @@
 
 | 顺序 | 组 | 格子 | 在讲什么 | 状态 | 要用户定的点 |
 |---|---|---|---|---|---|
-| 1 | 生成框（B3）+ 付费卡精简版（D2）+ 复用宿主（E1） | B3a–B3q、D2a–D2i（D1a–D1h 是旧版对照）、E1a–E1d | 画布生成框的新排法（参考行、参数弹层、首尾帧、渠道）；Agent 付费卡精简成三行，一行三颗参数；同一个生成框放进分镜行、Agent 输入框、列表详情、节点错误报告 | B3 已拍板，D2、E1 按本表实现。10-18 晚到 10-19 的定稿：生成钮改回原来的 ↑ 圆钮；参数区一律照现有组件原样（见下「参数区定稿」）；付费卡展开后嵌的就是生成框，参数在原地展开、盖住提示词 | 无（D2c 的「盖住提示词」已定） |
+| 1 | 生成框（B3）+ 付费卡精简版（D2，**按 10-22 新原则重画，原样张作废**）+ 复用宿主（E1） | B3a–B3q、D2a–D2i（D1a–D1h 是旧版对照）、E1a–E1d | 画布生成框的新排法（参考行、参数弹层、首尾帧、渠道）；Agent 付费卡精简成三行，一行三颗参数；同一个生成框放进分镜行、Agent 输入框、列表详情、节点错误报告 | B3 已拍板，D2、E1 按本表实现。10-18 晚到 10-19 的定稿：生成钮改回原来的 ↑ 圆钮；参数区一律照现有组件原样（见下「参数区定稿」）；付费卡展开后嵌的就是生成框，参数在原地展开、盖住提示词 | 无（D2c 的「盖住提示词」已定） |
 | 2 | 图标统一（F1） | F1a–F1d | 节点浮条、生成框底栏、顶栏、空态的图标线宽和字号 | 已按推荐拍板 | 四档：13/1.8、16/2、18/1.8、24/1.5 |
 | 3 | 标注 → Agent 极简版（M） | M1–M8（A3a–A3j 是对照） | 评论模式、线程、意见列表 | 已按推荐拍板；**排 0.25**（用户 10-21 定） | 三点：底栏放「评论」、节点浮条去掉「提意见」、列表分未解决 / 已解决两档 |
 | 4 | 分页 | 方案四 D1–D8 是推荐；方案一 P2a–P2m、A2、A4，方案二 B1–B6，方案三 C1–C6 都是对照 | 顶栏页签 + 「全部页面」替代左栏「目录」 | 已按推荐拍板：选方案四；**排 0.25**（用户 10-21 定） | 实现前先出结构方案（页面归属和业务身份拆开） |
@@ -46,6 +46,8 @@ B3q 左边是现有真组件（画布节点的参数面板），右边是样张�
 - B3a、B3c–B3f、B3h–B3m 等格里参数条的旧画法同理只看位置，不照画；以 B3b、B3g、B3o、B3q 为准。
 
 ### 付费卡展开（D2c）
+
+> **按 10-22 新原则重画，原样张作废**（一个东西一个家：付费卡不再嵌生成框、不在聊天里调参，见 `docs/design/2026-10-08-approved-designs.md` §⑪）。D2 的 28 项功能去处里第 10、11、12 项同样随重画重排。以下为历史内容。
 
 付费卡展开后，卡里嵌的就是生成框；点参数条上的参数，参数在**原地展开、盖住提示词框**，选完收起，卡片高度不变（D2c 右图）。现在真代码是在下方展开、把卡片撑高，所以实现时要改 `inlinePanelSlot`。
 
@@ -130,8 +132,8 @@ B3q 左边是现有真组件（画布节点的参数面板），右边是样张�
 | B3p-channel-missing-mode | B3p 渠道缺模式：参考行行尾的小字（中 / 英） | 1240×438 | [png](preview/B3p-channel-missing-mode.png) | [dc.html](source/B3p-channel-missing-mode.dc.html) |
 | D2a-compare | D2a 现在 vs 精简：展开态对比 | 920×880 | [png](preview/D2a-compare.png) | [dc.html](source/D2a-compare.dc.html) |
 | D2b-single | D2b 精简 · 单段（推荐） | 440×380 | [png](preview/D2b-single.png) | [dc.html](source/D2b-single.dc.html) |
-| D2c-expanded | D2c 点开以后：复用画布生成框，参数原地展开、盖住提示词框 | 920×700 | [png](preview/D2c-expanded.png) | [dc.html](source/D2c-expanded.dc.html) |
-| D2d-multi | D2d 多段：一行一段，底部一颗「全部生成」，点一行就地展开 | 920×700 | [png](preview/D2d-multi.png) | [dc.html](source/D2d-multi.dc.html) |
+| D2c-expanded | （按 10-22 新原则重画，原样张作废）D2c 点开以后：复用画布生成框，参数原地展开、盖住提示词框 | 920×700 | [png](preview/D2c-expanded.png) | [dc.html](source/D2c-expanded.dc.html) |
+| D2d-multi | （按 10-22 新原则重画，原样张作废）D2d 多段：一行一段，底部一颗「全部生成」，点一行就地展开 | 920×700 | [png](preview/D2d-multi.png) | [dc.html](source/D2d-multi.dc.html) |
 | D2e-progress | D2e 进行中：第几段在发、哪些已发出，加「停止」 | 440×360 | [png](preview/D2e-progress.png) | [dc.html](source/D2e-progress.dc.html) |
 | D2f-failure | D2f 失败：哪一段、发没发出去、下一步，加一颗对应的按钮 | 1360×360 | [png](preview/D2f-failure.png) | [dc.html](source/D2f-failure.dc.html) |
 | D2g-minimal | D2g 更极简的备选：整张卡就是 Agent 的一句话加两颗按钮 | 440×360 | [png](preview/D2g-minimal.png) | [dc.html](source/D2g-minimal.dc.html) |
