@@ -62,3 +62,177 @@
 ## 特征测试清单
 
 未写：本页是停手报告，特征测试在协调放行后、动结构之前补（覆盖摘要读面、坏项目、回库首屏不等状态检查）。
+
+---
+
+# N1：回收与保存排队（P-library-2，10-22）
+
+> 触发：`node scripts/fix-churn.mjs electron/workspace/workspaceRepository.ts` 报**文件本身**近 14 天第 3 个 fix（目录 electron/workspace/ 第 4 个）。不是只因目录口径命中，按规矩交协调转用户。
+> 特征测试已写、已红：`electron/projects/draftGcInterleave.test.ts`「保存正在排队等锁时列举收尾：不回收；保存成功落盘」（照 V-plibrary 用例 C）。实测：列举收尾后草稿目录已被删（`folderAfterGc=false`）。实现代码未动。
+
+## 0. 一句话根因
+
+空草稿回收的「销毁授权」只看「此刻盘上的清单」，看不到「本进程已经发出、正在排队等锁的写」；写的那一侧取锁时又会 `mkdirSync(.nomi, {recursive:true})`，把已经删掉的项目根重新建出来。两边各缺一条不变量：**删之前要问「有没有人正要写它」，取锁时不能凭空造出项目根。**
+
+## 1. 归类表
+
+| 提交 / bug | 直接原因 | 类 |
+|---|---|---|
+| 5b2f4d05c5（F1：列举途中已保存的草稿被删） | 回收拿列举开始时的旧摘要当授权 | 销毁授权看不全「谁在写」 |
+| 本题 N1（保存排队等锁时被删） | 授权重读时锁刚空，看不到排队中的保存 | 销毁授权看不全「谁在写」 |
+| 本题 N1 附带：孤儿目录 | 取锁 `mkdirSync(nomiDir, {recursive:true})` 在根被删后重建根 | 写口能凭空创建项目根 |
+
+## 2. 为什么一直出现
+
+- 回收挂在「列举」这个读动作上（`electron/projects/repository.ts` 的 once-guard）：读的时机变成了删的时机，而列举在 #1268 后是异步的，期间同进程什么写都能插进来。F1 修了「已经写完的」，没修「正在排队的」。
+- 本进程「正在排队的清单写」没有可查询的状态：`workspaceManifestTransaction.ts` 只有给 staged 事务排序用的 `stagedTransactionTails`，非 staged 的 `withWorkspaceManifestTransaction` 等锁时完全不可见。门数（door-map）：`acquireWorkspaceManifestLock` 只有 `workspaceManifestTransaction.ts` 里两处调用（staged / 非 staged 两扇门），同步写 `withWorkspaceManifestTransactionSync` 在同步段里一口气做完，不会跨过回收那段同步代码。所以「本进程正要写某根」可以在这一个文件里收全。
+- 取锁层没有「根必须已存在」的不变量：`tryAcquireCanonicalWorkspaceManifestLock` 每次重试都 `mkdirSync(nomiDir, {recursive:true})`。
+- 铁律 ⑩⑪⑫ 不适用（这是存储层生命周期，不是意图 / 入口 / 点击预期）。
+
+## 3. 不改结构会冒出什么
+
+| 预测 | 怎么验证 |
+|---|---|
+| 只给 `stagedTransactionTails` 加一判：非 staged 写（`withWorkspaceManifestMutation`，改名 / 修复等）排队时照样被删 | 用例 C 把 `saveProject` 换成走 `withWorkspaceManifestMutation` 的写 |
+| 只修授权不修取锁：任何「写者排队期间目录被外部删掉」（用户在资源管理器删 / 同步盘挪走）仍重建孤儿目录 | 等锁期间 `rmSync` 根目录，放锁后看根是否被重建 |
+| 换成「重读 + 删」放进同一次 `withWorkspaceManifestTransactionSync`：解决跨进程那一瞬，但本进程排队的保存在回收放锁后照样拿锁、发现项目没了、报错 | 同用例 C |
+
+## 4. 靶子独立性
+
+用例 C 来自验收线 V-plibrary（另一条线），不是本线写的；特征测试照抄它的时序。
+
+## 5. P0
+
+「删之前确认没人要写」是通用的意图登记 / 引用计数，不需要新依赖；仓库里锁、事务都已自写并登记在 electron/workspace（领域：项目目录单写口）。没有现成库能替这段同步授权。
+
+## 6. 选项
+
+不管选哪个，都保留同一条共用改动：**取锁时根不在，就抛明确的「项目文件夹已不存在」**。
+- 不重试；
+- 不再用 `mkdirSync(recursive)` 重建孤儿目录；
+- 改在 `workspaceManifestLock.ts`，约 10 行。
+
+下面只比回收本身。
+
+### A：回收仍挂在列举上，删除授权补看「排队中的写」
+
+- 回收仍挂在首次列举上。
+- `workspaceManifestTransaction.ts` 把两扇异步写门统一登记成「本进程对某根有待办写」：进门就登记，finally 撤掉。
+- 导出一个查询，回收授权 `isStillEmptyNativeDraft` 在同一段同步代码里问它；有待办写就不删。
+
+### B：「重读 + 删」放进同一把锁
+
+- 回收在锁里重读，然后删整个根，锁目录跟着一起删。
+- 锁模块要新加一条「消费掉租约」的退场路径。
+- 只挡得住跨进程那一瞬；本进程排队的保存照样丢（见预测 3），所以仍然要 A 的查询。不单独选它。
+
+### C：回收搬到启动、接受写入之前
+
+- 主进程启动时，在 IPC / MCP 注册之前，自己扫一遍候选再删。
+
+### C′：列表只读，空草稿在「离开 / 退出」时收（协调 10-22 要求补）
+
+**1. 列表只读**
+- `listProjects` 删掉回收调用和 once-guard，`resetEmptyDraftGcGuard` 一起删。
+- `native + draft + revision 0` 的项目不出现在返回里。
+
+**2. 离开时收**
+- 时机：`NomiStudioApp.leaveProject` 里，`await unbindPersistence()` 之后。这时这个项目自己的保存队列已经排空，回执也到了。
+- 调新的主进程口 `discardEmptyDraftProject(id)`。主进程侧分两步：
+  - 先排进这个根的写队列（复用 `stagedTransactionTails`），所以排在它前面的保存一定先落盘；
+  - 轮到它时在锁里重读，下面几条全满足才删，否则什么都不做：仍是 draft、rev 0、native；`assets/` 里没有文件；本进程没有别的待办写。
+- 它替掉现在的 `gcEmptyDraftWorkspaceProjects` 和 `isStillEmptyNativeDraft`，同一提交删掉旧的。
+- 不挂在持久化 unbind 上。原因：`activeProject` 每次换对象，effect 都会 cleanup 一次，unbind 就跟着跑一次。挂在那里，用户还在项目里时就可能误收。
+
+**3. 退出时收**
+- 时机：现有退出排空项 `renderer-project-flush` 收到渲染层回执之后。
+- 对象：主进程记着的当前打开项目（`canvasReadSurfaceRuntime.getCommittedProjectSelection()`），调同一个 `discardEmptyDraftProject`。
+- 只在正常退出时做。系统关机 / 注销是 500ms 紧急退出，不做，留给下面第 4 条。
+
+**4. 崩溃残余：推荐一直隐藏、不删**
+- 占的地方很小：零编辑草稿只有清单 + 备份两个小文件，几 KB。
+- 来源很窄：只有「开着一个没动过的空白项目时崩溃」才会留下。
+- 后台再扫一遍，就又多了一个「删东西的主人」，又回到「它和谁并发」的老问题。
+- 列表已经不显示它，用户看不到；代价只是注册表多一行。
+- 以后真攒多了，可以在「离开项目」那一刻顺手收，不用新开时机。
+
+**5. 改动量**
+
+生产代码约 +120 / −120 行，8–9 个文件：
+
+| 文件 | 改动 |
+|---|---|
+| `electron/projects/repository.ts` | −30 / +12：删 GC 块和 guard，加隐藏过滤和 discard 包装 |
+| `electron/workspace/workspaceRepository.ts` | −55 / +35：旧 GC 换成单项目 discard |
+| `electron/workspace/workspaceManifestTransaction.ts` | +15：排进根队列，加待办写查询 |
+| `electron/workspace/workspaceManifestLock.ts` | +10：即共用改动 |
+| `projectsIpc.ts`、preload、桥类型 | +10 |
+| `src/workbench/NomiStudioApp.tsx` | +3 |
+| 退出排空：`shutdownProjectFlush.ts` 或 `main.ts` 注册处 | +8 |
+| `scripts/check-read-path-writes.mjs` | +2（见第 9 条） |
+
+- 测试：约 8 条 GC 测试要改写成「离开 / 退出时收」。
+- 热点：`NomiStudioApp.tsx` 是这个文件 14 天内第 3 刀，`electron/projects/` 目录也是第 3 刀。
+
+**6. 启动顺序：不碰**
+- `main.ts` 的启动顺序不变，只在退出排空里多挂一步。
+
+**7. 退出多花多久**
+- 当前项目不是空草稿：只多一次清单读，约 1ms。
+- 是空草稿：多一次取锁、重读，再删一个几 KB 的目录，本机约 5–20ms。
+- 这一步排在 flush 之后，不占紧急退出的 500ms 预算。
+
+**8. 跨进程残留窗口：还在，但缩到「离开那一下」**
+- MCP 新路走本机 HTTP 转发进主进程（`mcpHttpForwarder.ts`），算本进程写者，排进同一条根队列，已覆盖。
+- 剩下的跨进程写者是 `isMcpStdio` 旧模式，以及另一台机器经同步盘写进来。
+- 它们只在用户离开 / 退出一个零编辑草稿的那一瞬才会撞上。撞上了，那次写会明确报错（共用改动保证）：不丢已确认的内容，也不造孤儿目录。
+- 和现在比：窗口从「每次启动的首次列举」缩到「离开那一下」，而且只涉及那一个项目。
+
+**9. 和 `check:read-path-writes` 的关系：为什么它没拦住「列举时删东西」**
+- 这不是豁免：`read-path-writes-baseline.json` 是空的。原因是**不在它的范围里**。
+  - 这条门岗的写盘门刻意只有 `atomicWrite`、`writeConnectorPrefs` 两个，管的是「名字说只读的函数，不许改用户设置」。
+  - 项目内容落盘明写了归根因合同的 doors 管。
+  - 所以 `listProjects → gcEmptyDraftWorkspaceProjects → deleteWorkspaceProject → fs.rmSync` 这条链根本不在它的图上。
+- C′ 做完后，把 `deleteWorkspaceProject` 作为销毁门加进它的写盘门：
+  - 列举路径已经走不到它，门岗是绿的；
+  - 以后谁让 `list* / read* / resolve* / get*` 能走到删项目，门岗自动变红。
+- 注册表写这次不加（`removeWorkspaceReference`、`rememberWorkspaces`、`backfillWorkspaceOrigins`，列举时也会调）。它们是登记自愈，不是销毁；一加就得登记一串豁免。
+- 选 A 的话，这扇门加上就会立刻变红（列举还能走到删除），只能登记豁免，门岗等于没用。
+
+**10. 用户看得见的变化**
+- 新建空白项目、一下没动就回项目库：卡片当场消失。现在要下次启动才消失。
+- MCP / Agent 的项目列表里，看不到还没保存过的空白项目。当前绑定的项目不靠列表，不受影响。
+
+### 对比
+
+| 选项 | 代价 | 风险 | 推荐 |
+|---|---|---|---|
+| A | 小：2 个热点文件各十几行；界面行为不变 | 列表仍在删东西；「首次列举 = 本进程还没写过」仍只靠调用顺序；`check:read-path-writes` 加不上销毁门（一加就红）；跨进程窗口在每次启动 | 可以止血，不推荐当终版 |
+| **C′** | 中：约 ±120 行、8–9 个文件、约 8 条测试改写；碰 `NomiStudioApp.tsx` 热点 | 用户看得见：空白项目回库即消失；退出多 1–20ms；跨进程窗口只剩「离开那一下」，撞上是明确报错 | **是** |
+| C | 改 `main.ts` 启动顺序；多扫一遍候选，10-16 共用列举省下的 55–63% 冷启动又要付回去 | 动冷启动预算和启动路径；仍是「启动时删东西」，跨进程窗口在每次启动 | 否 |
+
+**推荐 C′，理由：**
+- 删除从读路径上彻底拿掉，只发生在这个项目自己的生命周期终点，而且排在它自己的写后面。「回收和保存并发」在结构上不成立。
+- 门岗能把「读路径走得到销毁」变成自动红。
+- 不碰启动顺序。
+
+代价是一次中等改动，加一个用户看得见、但符合原意的变化：没动过的空白项目不留卡。
+
+**更根本的问法：空草稿回收该不该挂在「列举」上？不该。**
+- 列举是读，读的时机不该决定删的时机。
+- 「首次列举 = 本进程还没写过」这个前提只靠调用顺序维持，没有结构保证。比如只要哪天启动时自动恢复上次项目并保存（今天没核实有没有），就会和首次列举并发。
+
+C′ 就是这个答案的落地。
+
+## 7. 要用户权衡的核心
+
+- A：列表里继续删，只是把删除授权补严。
+- C′：列表只读，删除挪到「离开 / 退出这个项目、它的保存排空之后」。
+
+一句话：**要不要接受「没动过的空白项目一回库就消失」，换来「读列表永远不会删东西」这个结构保证。** 推荐 C′。
+
+## door-map（已数）
+
+- `gcEmptyDraftWorkspaceProjects`：1 扇（`electron/projects/repository.ts` listProjects）。
+- `acquireWorkspaceManifestLock`：1 个文件 2 处（`workspaceManifestTransaction.ts` 的 staged / 非 staged 写门）。
+- `withWorkspaceManifestTransaction`：1 扇（`workspaceManifest.ts` 的 `withWorkspaceManifestMutation`）；`withWorkspaceManifestStagedTransaction`：1 扇（`withWorkspaceManifestStagedMutation`，保存走这里）。
