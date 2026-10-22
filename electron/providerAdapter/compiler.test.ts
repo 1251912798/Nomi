@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { LanguageModelV1 } from "ai";
+import type { CompilerLanguageModel } from "./compiler";
 import type { ProviderAdapterDraft } from "./types";
 import {
   AdapterNeedsAiError,
@@ -73,7 +73,7 @@ describe("compileProviderAdapter", () => {
 
     const result = await compileProviderAdapter(
       {
-        languageModel: {} as LanguageModelV1,
+        languageModel: {} as CompilerLanguageModel,
         providerBaseUrl: "https://api.example.com/v1",
         authType: "bearer",
         selectedModels: [{ modelKey: "paint-v2", label: "Paint V2", kind: "image" }],
@@ -110,7 +110,7 @@ describe("compileProviderAdapter", () => {
 
     const result = await compileProviderAdapter(
       {
-        languageModel: {} as LanguageModelV1,
+        languageModel: {} as CompilerLanguageModel,
         providerBaseUrl: "https://api.example.com/v1",
         authType: "bearer",
         selectedModels: [
@@ -161,7 +161,7 @@ describe("compileProviderAdapter", () => {
 
     const result = await compileProviderAdapter(
       {
-        languageModel: {} as LanguageModelV1,
+        languageModel: {} as CompilerLanguageModel,
         providerBaseUrl: "https://api.example.com/v1",
         authType: "bearer",
         selectedModels: [{ modelKey: "paint-v2", label: "Paint V2", kind: "image" }],
@@ -176,9 +176,9 @@ describe("compileProviderAdapter", () => {
   });
 
   it("rotates to the next configured compiler model after a provider failure", async () => {
-    const first = { id: "first-compiler" } as unknown as LanguageModelV1;
-    const second = { id: "second-compiler" } as unknown as LanguageModelV1;
-    const used: LanguageModelV1[] = [];
+    const first = { id: "first-compiler" } as unknown as CompilerLanguageModel;
+    const second = { id: "second-compiler" } as unknown as CompilerLanguageModel;
+    const used: CompilerLanguageModel[] = [];
     const generate: StructuredGenerator = async (input) => {
       used.push(input.model);
       if (input.model === first) throw new Error("HTTP 502 compiler unavailable");
@@ -201,9 +201,9 @@ describe("compileProviderAdapter", () => {
   });
 
   it("rotates to the next compiler when structured output is syntactically valid but semantically unusable", async () => {
-    const first = { id: "first-compiler" } as unknown as LanguageModelV1;
-    const second = { id: "second-compiler" } as unknown as LanguageModelV1;
-    const used: LanguageModelV1[] = [];
+    const first = { id: "first-compiler" } as unknown as CompilerLanguageModel;
+    const second = { id: "second-compiler" } as unknown as CompilerLanguageModel;
+    const used: CompilerLanguageModel[] = [];
     const generate: StructuredGenerator = async (input) => {
       used.push(input.model);
       if (input.model === first) {
@@ -243,7 +243,7 @@ describe("compileProviderAdapter", () => {
 
     const result = await compileProviderAdapter(
       {
-        languageModel: {} as LanguageModelV1,
+        languageModel: {} as CompilerLanguageModel,
         providerBaseUrl: "https://api.example.com/v1",
         authType: "bearer",
         selectedModels: [
@@ -279,7 +279,7 @@ describe("compileProviderAdapter", () => {
 
     const result = await compileProviderAdapter(
       {
-        languageModel: {} as LanguageModelV1,
+        languageModel: {} as CompilerLanguageModel,
         providerBaseUrl: "https://api.example.com/v1",
         authType: "bearer",
         selectedModels: [
@@ -307,7 +307,7 @@ describe("compileProviderAdapter", () => {
 
     const result = await compileProviderAdapter(
       {
-        languageModel: {} as LanguageModelV1,
+        languageModel: {} as CompilerLanguageModel,
         providerBaseUrl: "https://api.example.com/v1",
         authType: "bearer",
         selectedModels: [
@@ -335,7 +335,7 @@ describe("compileProviderAdapter", () => {
     };
     const pending = compileProviderAdapter(
       {
-        languageModel: {} as LanguageModelV1,
+        languageModel: {} as CompilerLanguageModel,
         providerBaseUrl: "https://api.example.com/v1",
         authType: "bearer",
         selectedModels: [{ modelKey: "paint-v2", label: "Paint V2", kind: "image" }],

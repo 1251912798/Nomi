@@ -119,7 +119,11 @@ describe("runTask Antigravity media preflight", () => {
     const start = vi.spyOn(jobs.LocalTaskJobs.prototype, "start");
     const spend = await import("./spendGrant");
     const grantId = spend.mintSpendGrant({ nodeIds: ["node"], maxAttemptsPerNode: 1 });
-    await expect(request(grantId, ["nomi-local://asset/project/ref.png"])).rejects.toThrow("local read failed");
+    // 取图（electron/ai/modelImageInput.ts 的 readModelImage）读不出时，对本机 CLI 一律是同一个稳定码（2026-10-21 文本任务迁
+    // pi-ai 时定的契约，界面按 antigravity.errors.invalidImage 给人话），不再把底层读盘的原话冒给用户。
+    await expect(request(grantId, ["nomi-local://asset/project/ref.png"])).rejects.toThrow("ANTIGRAVITY_IMAGE_SOURCE_INVALID");
+    // 失败确实来自本机读图那一步（不是更早别的拒绝顶替了它）。
+    expect(mocks.readLocal).toHaveBeenCalledWith("nomi-local://asset/project/ref.png", expect.anything());
     expect(spend.__spendGrantCountForTests()).toBe(1);
     expect(start).not.toHaveBeenCalled(); expect(mocks.runProcess).not.toHaveBeenCalled();
     expect(mocks.requested).not.toHaveBeenCalled(); expect(mocks.admitted).not.toHaveBeenCalled();

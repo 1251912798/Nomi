@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { composerCanvasPlacement } from './composerCanvasPlacement'
+import { composerCanvasPlacement, composerFocusFootprint } from './composerCanvasPlacement'
 import { NODE_COMPOSER_GAP, NODE_COMPOSER_WIDTH, TEXT_COMPOSER_GAP, TEXT_COMPOSER_MAX_WIDTH, TEXT_COMPOSER_MIN_WIDTH } from './nodeSizing'
 
 /**
@@ -79,5 +79,18 @@ describe('composerCanvasPlacement', () => {
         expect(source, `${file} ${forbidden}`).not.toContain(forbidden)
       }
     }
+  })
+})
+
+describe('composerFocusFootprint', () => {
+  it('reserves exactly the max height the composer card is allowed to grow to', () => {
+    const source = stripComments(fs.readFileSync(path.join(__dirname, 'NodeGenerationComposer.tsx'), 'utf8'))
+    const match = /function composerMaxHeight\([^)]*\): number \{\s*return kind === 'video' \? (\d+) : (\d+)/.exec(source)
+    expect(match, 'NodeGenerationComposer 的 composerMaxHeight 写法变了，同步这里').not.toBeNull()
+    expect(composerFocusFootprint('video')?.height).toBe(Number(match![1]))
+    expect(composerFocusFootprint('image')?.height).toBe(Number(match![2]))
+  })
+  it('kinds without a generation composer reserve nothing', () => {
+    for (const kind of ['panorama', 'director', 'whiteboard', 'asset', 'agent-artifact']) expect(composerFocusFootprint(kind)).toBeNull()
   })
 })

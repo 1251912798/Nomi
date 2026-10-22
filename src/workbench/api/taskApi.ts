@@ -4,6 +4,7 @@ import { isTerminalTaskStatus, type TaskStatus } from '../../../electron/shared/
 import { classifyGenerationError } from '../observability/classifyError'
 import { describeOpaqueFailure } from '../observability/opaqueFailure'
 import { trackNodeSubmit } from '../generationCanvas/runner/nodeSubmitInFlight'
+import { stripVendorErrorMarker } from '../generationCanvas/runner/vendorErrorIpc'
 
 export type TaskKind =
   | 'chat'
@@ -346,6 +347,15 @@ export async function fetchWorkbenchTaskResultByVendor(
     trackGenerationOutcome(desktop, pending.capability, pending.startedAt, response.result.status === 'succeeded' ? 'success' : 'failure', response.result.error)
   }
   return response
+}
+
+/**
+ * 文本任务的失败给人看的那一句。主进程的错误带着结构化标记（`NOMI_VENDOR_ERR_B64::…:: 人话`，给 classifyError 读的），
+ * 直接把 `e.message` 摆上界面，用户看到的是一长串 base64。不是 Error 的返回空串，调用方用自己的兜底文案。
+ * 提示词优化、翻译、AI 起草脚本都经这里（textTaskErrorDisplay.test.ts 钉住三处都用它）。
+ */
+export function textTaskFailureText(error: unknown): string {
+  return error instanceof Error ? stripVendorErrorMarker(error.message) : ''
 }
 
 /**

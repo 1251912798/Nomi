@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { StoryboardPlan } from './storyboardPlan'
+import { LEGACY_OMITTED_SHOT_KIND, type StoryboardPlan } from './storyboardPlan'
 import { jsonTolerantArray } from '../agentCapabilities/jsonArgTolerance'
 
 const referenceBindingsSchema = z.record(z.array(z.object({
@@ -52,7 +52,7 @@ export const planShotSchema = z.object({
   index: z.number().int(),
   shotId: z.string().min(1).optional().describe('Stable shot id; the host assigns one when omitted.'),
   sceneId: z.string().min(1).optional().describe('Scene id; omit when the story has no scene grouping.'),
-  shotKind: z.enum(['image', 'video']).optional().describe('Shot media kind: image or video; defaults to image.'),
+  shotKind: z.enum(['image', 'video']).optional().describe(`Shot media kind: image or video; omitted means ${LEGACY_OMITTED_SHOT_KIND} (legacy drafts); state it explicitly.`),
   durationSec: z.number(),
   anchorIds: z.array(z.string()),
   /** 按槽的参考绑定：键 = 槽 kind（未知键原样保留，前向兼容），值 = 有序素材。 */

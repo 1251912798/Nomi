@@ -72,7 +72,9 @@ export { normalizeCatalogTaskResult } from './catalogTaskResultParse'
 // 短于此 = 网络抖动，免费重试查询；长于此 = 上游/网络持续不可达，没必要干等到硬超时(视频 20min)空耗。
 const POLL_FAILURE_GRACE_MS = 45000
 
-// 走流式文本通道的 kind(与 catalogTaskResultParse 的 TEXT_TASK_KINDS 同语义)。
+// 文本 kind(与 catalogTaskResultParse 的 TEXT_TASK_KINDS 同语义):一律走文本流式门(nomi:tasks:text:*)。
+// 画布文本不进 Run、不要授权(paidNodeLedger):走哪扇门只看 kind,不看调用方要不要逐字——
+// 2026-10-21 之前「没给 onTextDelta 就走一次性 nomi:tasks:run」,改写选区因此撞上令牌付费闸、每次都失败。
 const TEXT_STREAM_KINDS = new Set<TaskKind>(['chat', 'prompt_refine', 'image_to_prompt'])
 
 // Imported Comfy media inputs are exact keyed parameters. Unique-slot uploads
@@ -553,10 +555,10 @@ async function runCatalogGenerationTaskWithFeedback(
   }
   const { vendor, request } = buildCatalogTaskRequest(executableNode, currentOptions)
 
-  // 文本任务 + 调用方要逐字 → 走流式通道:逐 token 回调 onTextDelta,终态直接返回
-  // (文本无轮询,流 resolve 即 succeeded),不走下面的 runTask + 轮询。runTask 覆盖项
+  // 文本任务 → 走流式通道:逐 token 回调 onTextDelta(调用方要显示才给;改写选区不给、完成后一次性替换),
+  // 终态直接返回(文本无轮询,流 resolve 即 succeeded),不走下面的 runTask + 轮询。runTask 覆盖项
   // (测试注入)优先,保持单测可控。
-  if (options.onTextDelta && TEXT_STREAM_KINDS.has(request.kind) && !options.runTask) {
+  if (TEXT_STREAM_KINDS.has(request.kind) && !options.runTask) {
     const runTextStream = options.runTextStream || runWorkbenchTextTaskStream
     const onTextDelta = options.onTextDelta
     report('requesting')
@@ -569,7 +571,7 @@ async function runCatalogGenerationTaskWithFeedback(
       streamed = await awaitWithinPhase(runTextStream(vendor, request, projectId, {
         onDelta: (delta) => {
           clock.heartbeat()
-          onTextDelta(delta)
+          onTextDelta?.(delta)
         },
         signal: abort.signal,
       }), guard)

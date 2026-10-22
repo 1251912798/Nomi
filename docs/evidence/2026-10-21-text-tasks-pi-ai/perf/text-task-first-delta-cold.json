@@ -1,0 +1,31 @@
+{
+  "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+  "commit": "8f597b947",
+  "date": "2026-10-22",
+  "runs": 10,
+  "results": [
+    {
+      "id": "text-task-first-delta-cold",
+      "metrics": {
+        "response": {
+          "runs": 10,
+          "median": 24.2,
+          "p95": 36.9
+        }
+      },
+      "budget": 100,
+      "baseline": {
+        "median": 50.5,
+        "p95": 99.8,
+        "runs": 20,
+        "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+        "date": "2026-10-21",
+        "commit": "4da99122d"
+      },
+      "verdict": {
+        "status": "ok",
+        "note": ""
+      }
+    }
+  ]
+}

@@ -10,7 +10,7 @@
 //   ✗ Qwen3-235B tool_use 格式不兼容；✗ 文生视频(Wan)500 不serve。
 // 选 3 个 A3B/轻量阶梯(省免费额度)：8B 轻量 / 30B-A3B 均衡 / Next-80B-A3B 最强。
 //
-// kind=text 无 mapping：走 buildLanguageModelForVendor 直连 /v1/chat/completions(魔搭 baseUrl
+// kind=text 无 mapping：走 nomiModelConfigFor（vendorModelConnection）直连 /v1/chat/completions(魔搭 baseUrl
 // 已是 api-inference.modelscope.cn，默认 openai-compatible)。modelKey = 魔搭 hub 路径。
 
 export type ModelscopeTextModel = {

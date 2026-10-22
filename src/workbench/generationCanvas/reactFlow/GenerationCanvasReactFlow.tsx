@@ -15,6 +15,7 @@ import '@xyflow/react/dist/style.css'
 import './generationCanvasReactFlow.css'
 import { useTranslation } from 'react-i18next'
 import { toast } from '../../../ui/toast'
+import { startPreviewAttachReconciler } from '../nodes/director/agent/previewAttachReconciler'
 import { saveWorkflowFromProject } from '../../library/workflowLibrary'
 import { withProjectAction } from '../../project/projectCanvasReadSurface'
 import { lazyWithChunkBoundary } from '../../../ui/chunkBoundary'
@@ -134,7 +135,6 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
   const pendingConnectionSourceId = useGenerationCanvasStore((state) => state.pendingConnectionSourceId)
   const pendingConnectionSourceSide = useGenerationCanvasStore((state) => state.pendingConnectionSourceSide)
   const moveGroupNodes = useGenerationCanvasStore((state) => state.moveGroupNodes)
-  const moveSelectedNodes = useGenerationCanvasStore((state) => state.moveSelectedNodes)
   const cancelConnection = useGenerationCanvasStore((state) => state.cancelConnection)
   const deleteSelectedNodes = useGenerationCanvasStore((state) => state.deleteSelectedNodes)
   const disconnectEdge = useGenerationCanvasStore((state) => state.disconnectEdge)
@@ -148,7 +148,7 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
   // 壳不订阅选区（选中一张卡，壳 0 次重渲；eslint 规则见 scripts/canvas-store-subscriptions.mjs）：回调里读那一刻的选区。
   const handleSaveWorkflow = React.useCallback(() => {
     const template = saveSelectedAsWorkflowTemplate(t('generationCommon.selection.defaultWorkflowName', { count: useGenerationCanvasStore.getState().selectedNodeIds.length })); if (!template) return
-    saveWorkflowFromProject(template, withProjectAction((project) => project.binding.projectId) ?? null); toast(t('generationCommon.selection.workflowSaved', { name: template.name }), 'success')
+    void saveWorkflowFromProject(template, withProjectAction((project) => project.binding.projectId) ?? null).then(() => toast(t('generationCommon.selection.workflowSaved', { name: template.name }), 'success'))
   }, [saveSelectedAsWorkflowTemplate, t])
 
   // #4 引用稳定过滤 + #5 minimap 拖动冻结（抽到 useStableCategoryNodes，逐字等价）。
@@ -301,7 +301,6 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
     captureHistory,
     commitPersistedChange,
     moveGroupNodes,
-    moveSelectedNodes,
     selectNodes,
     onSelectEmptyFrame: frameActions.selectFrame,
   })
@@ -486,6 +485,8 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
 
   // 选中节点 = 放掉选中的线（一次只有一个「当前选中」，Delete 才知道删谁）。store 订阅，不进渲染；没选中线时一次 setState 都不发。
   const selectedEdgeIdRef = React.useRef(selectedEdgeId)
+  // 挂了预演的镜头换模型 / 换方式 → 预演跟着重挂（直接点节点 ↑ 也带着它）。不依赖出片 Host：它只在渲染预演时才挂载
+  React.useEffect(() => startPreviewAttachReconciler((message, level) => toast(message, level)), [])
   React.useEffect(() => { selectedEdgeIdRef.current = selectedEdgeId }, [selectedEdgeId])
   React.useEffect(() => useGenerationCanvasStore.subscribe((state, previous) => {
     if (state.selectedNodeIds === previous.selectedNodeIds || !state.selectedNodeIds.length || selectedEdgeIdRef.current === null) return

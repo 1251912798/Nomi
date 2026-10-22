@@ -331,7 +331,7 @@ describe("applyBuiltinSeeds", () => {
     for (const modelKey of brainKeys) {
       const brain = state.models.find((m) => m.vendorKey === "apimart" && m.modelKey === modelKey);
       expect(brain).toMatchObject({ kind: "text", enabled: true });
-      // 文本模型不挂 archetype（走 buildLanguageModelForVendor 直连 chat，不需 mapping）。
+      // 文本模型不挂 archetype（走 nomiModelConfigFor 直连 chat，不需 mapping）。
       expect((brain?.meta as { archetypeId?: string } | undefined)?.archetypeId).toBeUndefined();
       // 也不该为文本大脑造任何 mapping（避免 unused dead data）。
       expect(state.mappings.find((mp) => mp.vendorKey === "apimart" && mp.modelKey === modelKey)).toBeUndefined();

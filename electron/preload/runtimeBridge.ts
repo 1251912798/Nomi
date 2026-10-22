@@ -54,6 +54,8 @@ export const runtimeBridge = {
     runTextStream: (payload: unknown) =>
       ipcRenderer.invoke("nomi:tasks:text:stream", payload) as Promise<{ streamId: string }>,
     cancelTextStream: (streamId: string) => ipcRenderer.invoke("nomi:tasks:text:cancel", { streamId }),
+    // 有意图时预热文本模型调用核心（指针移进 / 焦点进文本动作时，渲染层空闲回调里叫，src/workbench/api/textActionIntent.ts）。
+    prewarmTextModel: () => ipcRenderer.invoke("nomi:tasks:text:prewarm") as Promise<{ ok: boolean }>,
     onTextEvent: (streamId: string, callback: (event: unknown) => void) => {
       const listener = (_event: unknown, payload: { streamId: string; event: unknown }) => {
         if (payload && payload.streamId === streamId) callback(payload.event);

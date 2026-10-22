@@ -1,4 +1,4 @@
-import type { ZodType } from "zod";
+import type { ZodType, ZodTypeDef } from "zod";
 
 export type CapabilityEffect = "read" | "reversible_write" | "destructive" | "paid";
 /**
@@ -29,7 +29,9 @@ export type CapabilityContract<Input, Output> = {
   readonly version: number;
   readonly aliases: Readonly<Partial<Record<CapabilityProjectionSurface, string>>>;
   readonly additionalAliases?: Readonly<Partial<Record<CapabilityProjectionSurface, readonly string[]>>>;
-  readonly inputSchema: ZodType<Input>;
+  // 第三个类型参数（解析前的入参形状）放开：入参契约可以带默认值（如分镜 shotKind 省略 = image），
+  // 此时「宿主发来的」与「解析后交给执行的」不是同一个类型；合同关心的是后者。
+  readonly inputSchema: ZodType<Input, ZodTypeDef, unknown>;
   readonly outputSchema: ZodType<Output>;
   readonly effect: CapabilityEffect;
   readonly effectClass: CapabilityEffectClass;

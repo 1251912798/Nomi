@@ -4,8 +4,8 @@ import { applyProposalBatch } from '../../../agent/proposalTxn'
 import { applyCompensationOps } from '../../../agent/proposalUndo'
 import { generationCanvasTools } from '../../../agent/generationCanvasTools'
 import { useGenerationCanvasStore } from '../../../store/generationCanvasStore'
-import { DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY } from '../model/directorNodeMeta'
-import { directorPreviewSpendBlock, readDirectorPlanMeta, readDirectorPreview } from '../model/directorPreviewState'
+import { DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from '../model/directorNodeMeta'
+import { directorPreviewSourceFingerprint, directorPreviewSpendBlock, readDirectorPlanMeta, readDirectorPreview } from '../model/directorPreviewState'
 import type { DirectorWriteDomainResult } from './applyDirectorWrite'
 
 function resetCanvas() {
@@ -100,7 +100,7 @@ describe('applyDirectorWrite (3D-BOX stage_shot executor)', () => {
     if (!created.applied) throw new Error('create failed')
     // 常驻 Host 挂好了预演（视频节点 meta 带上参考视频，导演节点预演 ready）。
     useGenerationCanvasStore.getState().updateNode(shot, { meta: { ...nodeById(shot)?.meta, referenceVideoUrls: ['nomi-local://asset/p/preview-1.mp4'] } })
-    useGenerationCanvasStore.getState().updateNode(created.directorNodeId, { meta: { ...nodeById(created.directorNodeId)?.meta, [DIRECTOR_PREVIEW_META_KEY]: { ...readDirectorPreview(nodeById(created.directorNodeId)), status: 'ready', attach: 'video_ref' } } })
+    useGenerationCanvasStore.getState().updateNode(created.directorNodeId, { meta: { ...nodeById(created.directorNodeId)?.meta, [DIRECTOR_PREVIEW_META_KEY]: { ...readDirectorPreview(nodeById(created.directorNodeId)), status: 'ready', attach: 'video_ref', sourceFingerprint: directorPreviewSourceFingerprint(nodeById(created.directorNodeId)?.meta?.[DIRECTOR_PROJECT_META_KEY]) } } })
     const directorBefore = JSON.stringify(nodeById(created.directorNodeId)?.meta)
     const shotBefore = JSON.stringify(nodeById(shot)?.meta)
 

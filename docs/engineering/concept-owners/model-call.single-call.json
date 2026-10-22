@@ -1,0 +1,42 @@
+{
+  "name": "调一次模型（文本任务、接入说明卡编译器、Agent 一次性提问共用的唯一核心）",
+  "subject": "model-call.single-call",
+  "lifecycle": "execution",
+  "authority_kind": "gateway",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/agentLane/laneModelCall.mts",
+    "symbol": "callModelOnce"
+  },
+  "write_api": [
+    {
+      "path": "electron/agentLane/laneModelCall.mts",
+      "symbol": "callModelOnce"
+    },
+    {
+      "path": "electron/agentLane/laneNativeLoader.cts",
+      "symbol": "callModelOnce"
+    },
+    {
+      "path": "electron/ai/modelCallBridge.ts",
+      "symbol": "callModelOnce"
+    },
+    {
+      "path": "tests/setup/modelCallBridge.ts",
+      "symbol": "callModelOnce"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/agentLane/laneModelCall.test.ts",
+  "allowed_consumers": [
+    "electron/agentLane/laneNativeLoader.cts",
+    "electron/agentLane/laneSingleShot.mts",
+    "electron/ai/modelCallBridge.ts",
+    "electron/textTaskRunner.ts",
+    "electron/providerAdapter/compiler.ts"
+  ],
+  "since": "2026-10-21",
+  "notes": "合同 docs/fixes/2026-10-21-text-task-liveness.root-cause.json：装配 provider、三相看门狗（LANE_STREAM_WATCHDOG，任意事件都算活着）、可打断重试、取消、没有停止键时的整体兜底（MODEL_CALL_CEILING_MS）只在这里一份。CJS 主进程经 modelCallBridge → laneNativeLoader 调过来；check:llm-stream-owner 拦核心与两层传输包装之外直接 .streamSimple / .completeSimple，以及任何地方引 ai / @ai-sdk/*。 写接口里另三处是同一个口子的转发，不是第二份实现：laneNativeLoader.cts（ESM 岛的唯一入口）、modelCallBridge.ts（CJS 侧唯一入口）、tests/setup/modelCallBridge.ts（单测跑源码没有 .cjs，替身直接接到岛上）；形状都按 shared/agentLane/modelCallPort.ts 的 ModelCallPort。"
+}

@@ -842,6 +842,43 @@
       "revisitBy": "2026-11-15"
     },
     {
+      "id": "model-call-boundary",
+      "capability": "「调一次模型」接 pi-ai 的 Nomi 边界：唯一调用入口（文本任务 / 编译器 / lane 一次性提问共用）、CJS→ESM 桥与有意图时预热、失败留证（去密钥）、远程图按出站授权本机取回",
+      "status": "justified",
+      "paths": [
+        "electron/agentLane/laneModelCall.mts",
+        "electron/shared/agentLane/modelCallPort.ts",
+        "src/workbench/api/textActionIntent.ts",
+        "electron/ai/modelCallBridge.ts",
+        "electron/ai/modelCallFetch.ts",
+        "electron/ai/modelImageInput.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "pi-ai 的 Models.streamSimple（一次调用本身：协议、SSE 解析、可打断重试都用它，不自写）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/models.d.ts:141"
+        },
+        {
+          "name": "pi-ai 的 provider 重试（retryProviderRequest，认 Retry-After、可打断）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/utils/provider-retry.js:75"
+        },
+        {
+          "name": "pi-ai 的错误展示格式 formatProviderError（\"<status>: <body>\"，只是展示串，没有结构化事实）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/utils/error-body.js:111"
+        },
+        {
+          "name": "pi-ai 的图片入参 ImageContent（只收 base64，不取 URL）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/types.d.ts:251"
+        },
+        {
+          "name": "pi-ai 的子路径导出（createModels / createProvider / InMemoryCredentialStore 只在入口 index 导出，冷装约 2s，无法按需只装用得到的部分）",
+          "source": "node_modules/@earendil-works/pi-ai/package.json"
+        }
+      ],
+      "whyNotIntegrated": "不是自写一份调用栈（调用、协议、重试全是 pi-ai 的），是 Nomi 独有约束的接入面：主进程是 CommonJS 而 pi 只发 ESM（桥）；凭据目录、出站授权（取图必须过 hardenedFetch 的每跳授权）、IPC 契约与按状态码分类的错误表是 Nomi 的（pi 只给展示串，日志不许带密钥）；pi 入口冷装约 2s，首个可见反馈的预算要求预热。",
+      "revisitWhen": "主进程改成 ESM（桥可删）；或 pi-ai 提供结构化的 HTTP 失败事实 / 按需的子路径导出（留证与预热可删）；或 pi 的图片入参接受 URL"
+    },
+    {
       "id": "lane-repeated-failure",
       "capability": "同一个工具连着撞同一堵墙的计数与止损",
       "status": "justified",
@@ -1085,30 +1122,6 @@
       ],
       "whyNotIntegrated": "都是配置与适配：压缩摘要提示词要保留节点 id、modelKey / modeId（pi 的六节摘要为写代码调）；provider 装配把目录单价换成 pi 的 ModelCost；桌面端口把领域事实（默认生成模型、附件声明、任务状态）交给 lane。",
       "revisitWhen": "pi 的压缩提示词可按领域注入字段，或提供附件 / 默认模型的宿主原语时"
-    },
-    {
-      "id": "ai-sdk-text-stack",
-      "capability": "文本任务的第二台 LLM 调用栈（AI SDK ai@4）",
-      "status": "to-replace",
-      "plan": "docs/plan/2026-10-01-tech-stack-line-0.24.md",
-      "paths": [
-        "electron/ai/streamTextTask.ts",
-        "electron/ai/buildAiSdkModel.ts",
-        "electron/ai/vendorLanguageModel.ts",
-        "electron/ai/aiSdkVendorError.ts"
-      ],
-      "alternativesChecked": [
-        {
-          "name": "lane 已走的 pi-ai 单次调用（laneSingleShot：一次 provider 调用，无循环无会话）",
-          "source": "electron/agentLane/laneSingleShot.mts:1"
-        },
-        {
-          "name": "pi 九层对照问 3：文本任务改走 pi-ai，删掉 AI SDK 栈与 ai@4 钉死",
-          "source": "docs/research/2026-10-01-pi-coding-agent-reference-conformance/report.md"
-        }
-      ],
-      "whyNotIntegrated": "没有领域理由：这是历史上先接入的栈，lane 后来走了 pi-ai，于是出现两台调用栈。归 0.24「两台发动机收敛」（S4），也是 AI SDK 版本裁决（S5）的前置。",
-      "revisitWhen": "0.24 S4 开工时按 plan 迁移；迁完整体删除"
     },
     {
       "id": "telemetry-pipeline",
