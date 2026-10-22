@@ -53,7 +53,7 @@ try {
     const before = await canvasZoomPercent(win)
     // 真实入口：与侧栏定位 / 出成片后定位 / 副本角标等 9 处调用方派的是同一个事件，由画布监听器接手。
     await win.evaluate((id) => window.dispatchEvent(new CustomEvent('nomi-focus-generation-node', { detail: { nodeId: id } })), nodeId)
-    await expect.poll(() => canvasZoomPercent(win), { message: `${label}：对焦事件派出后画布没有任何移动`, timeout: 5000 }).not.toBe(before)
+    await expect.poll(() => canvasZoomPercent(win), { message: `${label}：对焦事件派出后画布没有任何移动` }).not.toBe(before)
     await waitForCanvasViewportSettled(win)
     const submit = win.locator(`.generation-canvas-v2-node[data-node-id="${nodeId}"] ${SUBMIT}, ${SUBMIT}`).first()
     await expect(submit, `${label}：对焦后 ↑ 没出现`).toBeVisible()
