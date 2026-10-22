@@ -134,12 +134,7 @@
     {
       "path": "electron/logging/diskSafeFailure.ts",
       "symbol": "diskSafePayload",
-      "responsibility": "事件负载落盘 / 读出前去掉上游原话字段"
-    },
-    {
-      "path": "electron/events/eventLogRepository.ts",
-      "symbol": "appendEvents",
-      "responsibility": "项目事件唯一写者，写前过 diskSafePayload"
+      "responsibility": "事件负载落盘 / 读出前去掉上游原话字段（项目事件唯一写者 appendEvents 写前、唯一读者 readEvents 读后都调它）"
     },
     {
       "path": "electron/logging/redact.ts",
