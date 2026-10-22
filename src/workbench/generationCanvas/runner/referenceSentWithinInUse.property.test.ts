@@ -1,6 +1,6 @@
 // 性质测试：发给供应商的图片 / 视频 / 音频地址 ⊆ 界面上正在用的那些（2026-10-22 线上错花钱热修）。
 //
-// 复盘：docs/audit/2026-10-22-composer-reference-slots-direction.md 末节「main 上是否已存在」；
+// 复盘：#1269 线的 docs/audit/2026-10-22-composer-reference-slots-direction.md 末节「main 上是否已存在」；
 // 设计卡：docs/plan/2026-10-22-reference-leak-hotfix.md。
 //
 // 串的是生产里真走的那几段，不起界面、不起 Electron、不花钱：

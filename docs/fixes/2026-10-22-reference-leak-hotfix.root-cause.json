@@ -16,8 +16,9 @@
   "scope_paths": [
     "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
     "electron/catalog/archetypeInput.ts",
-    "electron/catalog/referenceKeys.ts",
-    "electron/runtime.ts"
+    "electron/shared/contracts/referenceKeys.ts",
+    "electron/runtime.ts",
+    "electron/tasks/referenceResidueGuard.ts"
   ],
   "entry_points": [
     "生成框 / 节点生成钮：runGenerationNode → imageActions / videoActions → runCatalogGenerationTask → buildCatalogTaskRequest → nomi:tasks:run 或 submitCanvasShotRun → runtime.runTask",
@@ -58,7 +59,12 @@
     {
       "kind": "write",
       "path": "electron/runtime.ts",
-      "symbol": "stripReferenceResidue"
+      "symbol": "stripReferenceResidueBeforeSend"
+    },
+    {
+      "kind": "write",
+      "path": "electron/tasks/referenceResidueGuard.ts",
+      "symbol": "stripReferenceResidueBeforeSend"
     },
     {
       "kind": "write",
@@ -67,7 +73,7 @@
     },
     {
       "kind": "read",
-      "path": "electron/catalog/referenceKeys.ts",
+      "path": "electron/shared/contracts/referenceKeys.ts",
       "symbol": "GENERIC_REFERENCE_KEYS"
     },
     {
@@ -102,8 +108,8 @@
     }
   ],
   "door_reduction": {
-    "before": 12,
-    "after": 12,
+    "before": 13,
+    "after": 13,
     "why_not": "热修不合并门：渲染层只有 buildCatalogTaskRequest 一个写口（image / video 两个 action 只是别名）；主进程四个 taskTemplateParams 读口分属四种传输（同步音频、Antigravity 预检、自定义调用脚本、profile HTTP），全部在 runTask 里 stripReferenceResidue 之后，故剥除一处覆盖全部；referenceInputParams / firstReferenceImage 是 taskParams 内部读口。把「在用」收成唯一推导函数、删掉多读口是 #1269 的结构重写（等用户拍板），不在本热修。"
   },
   "generality_proof": "不再按键名逐个过滤：渲染层对通用参考键全集（GENERIC_REFERENCE_KEYS，单一真相源，渲染层和主进程共用）先一律置 undefined，再只填当前方式声明的槽值，且槽值取自 archetypeInput 同一个有序截上限函数（orderedSentMediaReferenceUrls）——漏写的键默认是「不发」。主进程不信渲染层：凡带 archetypeInput 的请求，通用参考键里不在 archetypeInput 里的地址都剥掉，所以 MCP / 旧工程 / 今后新入口绕过渲染层也上不了线。性质测试按全部档案自动展开（新增档案自动覆盖），四种起点 × 三层尺子 + 绕过渲染层两层，共 1691 格。",
@@ -119,7 +125,7 @@
       "responsibility": "主进程契约断言：带档案投影的请求，通用参考键里不在 archetypeInput 的地址剥掉并交给开发态诊断"
     },
     {
-      "path": "electron/catalog/referenceKeys.ts",
+      "path": "electron/shared/contracts/referenceKeys.ts",
       "symbol": "GENERIC_REFERENCE_KEYS",
       "responsibility": "通用参考键全集，渲染层清除、ComfyUI 参数契约过滤、主进程剥除共用一张表"
     }
@@ -170,8 +176,9 @@
     "artifacts": [
       "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
       "electron/catalog/archetypeInput.ts",
-      "electron/catalog/referenceKeys.ts",
-      "electron/runtime.ts"
+      "electron/shared/contracts/referenceKeys.ts",
+      "electron/runtime.ts",
+      "electron/tasks/referenceResidueGuard.ts"
     ]
   },
   "regression_tests": [
