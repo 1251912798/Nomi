@@ -5,6 +5,7 @@
 // 脚本这边先用画布自己的控件（收起 Agent 面板、适配视图、缩小）把按钮调到能点，再用「按钮中心点必须是它自己」自检，点不到就报错。
 import { canvasFitViewButton, canvasZoomPercent, canvasZoomStep, collapseAgentPanel } from './_shell.mjs'
 import { waitForCanvasViewportSettled } from './_canvasHit.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 /** 按钮此刻在不在视口里、禁没禁用、中心点上是不是它自己（被别的元素盖着 = 真鼠标点不到）。 */
 export function readButtonReach(button) {
@@ -25,7 +26,7 @@ export async function bringButtonIntoReach(win, button, label) {
   await collapseAgentPanel(win).catch(() => {})
   const fit = canvasFitViewButton(win)
   if (await fit.isEnabled().catch(() => false)) {
-    await fit.click({ timeout: 5000 }).catch(() => {})
+    await fit.click({ timeout: stationTimeout({ operations: 1 }) }).catch(() => {})
     await waitForCanvasViewportSettled(win)
     steps.push('fit-view')
   }
