@@ -51,9 +51,6 @@ importers:
       '@xmldom/xmldom':
         specifier: 0.9.12
         version: 0.9.12
-      diff:
-        specifier: 8.0.4
-        version: 8.0.4
       electron-updater:
         specifier: ^6.8.9
         version: 6.8.9
@@ -256,6 +253,9 @@ importers:
       dependency-cruiser:
         specifier: 18.2.0
         version: 18.2.0
+      diff:
+        specifier: 8.0.4
+        version: 8.0.4
       electron:
         specifier: 43.4.1
         version: 43.4.1
