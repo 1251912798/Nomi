@@ -7,6 +7,8 @@ import { ipcMain, webContents as electronWebContents } from "electron";
 import type { WebContents } from "electron";
 
 import { assertTrustedSender } from "../ipcSenderGuard";
+import { prewarmModelCall } from "./modelCallBridge";
+import type { ModelProtocol } from "../shared/agentLane/modelCallPort";
 type TextStreamSession = {
   streamId: string;
   webContentsId: number;
@@ -27,7 +29,35 @@ function sendTextEvent(session: TextStreamSession, event: unknown): void {
   target.send("nomi:tasks:text:event", { streamId: session.streamId, event });
 }
 
+/**
+ * 目录里启用着的文本模型用到哪几条协议：预热只装这几条（每条协议带一个 SDK，在 Electron 主进程里装一条就是一段约 120–280ms 的同步卡顿，
+ * 没接的协议不该让用户付这段）。读不出就不点名任何协议（只装核心；第一次真用时照常现装）。
+ */
+async function textModelProtocols(): Promise<ModelProtocol[]> {
+  try {
+    const [{ readCatalog }, { vendorModelConnection }] = await Promise.all([import("../catalog/catalogStore"), import("./vendorModelConnection")]);
+    const catalog = readCatalog();
+    const protocols = new Set<ModelProtocol>();
+    for (const model of catalog.models) {
+      if (!model.enabled || model.kind !== "text") continue;
+      const vendor = catalog.vendors.find((candidate) => candidate.key === model.vendorKey && candidate.enabled);
+      if (!vendor) continue;
+      try { protocols.add(vendorModelConnection(vendor, model, "").kind); } catch { /* 不走 HTTP 协议的接入（本机 CLI 等）不点名 */ }
+    }
+    return [...protocols];
+  } catch {
+    return [];
+  }
+}
+
 export function registerTextStreamIpc(): void {
+  // 文本任务的模型调用核心住在 pi 岛上、第一次用时才装：用户朝文本动作伸手时（指针移进 / 焦点进），渲染层空闲回调里叫这里先装好
+  // （★7，协调 10-21 定「有意图时预热」）。预热失败不影响功能：第一次真用时照常现装。
+  ipcMain.handle("nomi:tasks:text:prewarm", async (event) => {
+    assertTrustedSender(event);
+    await prewarmModelCall(await textModelProtocols()).catch(() => undefined);
+    return { ok: true };
+  });
   ipcMain.handle("nomi:tasks:text:stream", async (event, payload: Record<string, unknown>) => {
     assertTrustedSender(event);
     // 流 id 由渲染层先定、先订阅、再发起：失败得快（被拦 / 凭据 / DNS 一毫秒内就错）的流，事件在 invoke 回包之前就已发出，
@@ -71,11 +101,9 @@ export function registerTextStreamIpc(): void {
         .catch(async (error: unknown) => {
           // 用户点了「停止」：取消只清理 session，不当错误上报（渲染层自己按取消收尾）。
           if (session.abortController.signal.aborted) return;
-          // 同根因1：透出上游 responseBody 人话，而非裸状态文本。
-          // vendorKey 传下去 → 错误带结构化 category 穿到渲染层，文本节点的错误卡不再靠正则猜。
+          // 厂商失败在抛出那一刻已是结构化错误（带 vendorKey 与 category）：编码后穿到渲染层，文本节点的错误卡不靠正则猜。
           const { describeAgentError } = await import("./agentError");
-          const vendorKey = String((payload as { vendor?: unknown })?.vendor || "").trim();
-          const message = describeAgentError(error, { ...(vendorKey ? { vendorKey } : {}) });
+          const message = describeAgentError(error);
           sendTextEvent(session, { type: "error", message });
         })
         .finally(() => {

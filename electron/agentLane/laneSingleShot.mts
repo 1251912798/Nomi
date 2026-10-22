@@ -1,6 +1,5 @@
-import { createModels, getSupportedThinkingLevels } from '@earendil-works/pi-ai';
-import { createNomiProvider } from './laneModelProvider.mjs';
-import { LANE_STREAM_WATCHDOG } from './laneProviderGuard.mjs';
+import { getSupportedThinkingLevels } from '@earendil-works/pi-ai';
+import { callModelOnce } from './laneModelCall.mjs';
 import type { NomiModelConfig } from '../shared/agentLane/laneModelConfig.js';
 import type { LaneProjection, LaneThinkingLevel } from '../shared/agentLane/laneContracts.js';
 import type { OpenLaneOptions } from './laneRuntimePort.js';
@@ -19,24 +18,18 @@ export async function runLaneSingleShot(options: {
   options.signal?.throwIfAborted();
   let captured = options.input?.capture();
   if (captured?.restoredIntent) throw new Error('agent_lane_invalid_command');
-  const { provider, model, credentials, pricingBasis } = await createNomiProvider(options.model, options.fetch, LANE_STREAM_WATCHDOG);
-  const models = createModels({ credentials });
-  models.setProvider(provider);
   if (captured && options.input?.prepare) captured = await options.input.prepare(captured);
   if (captured) options.input?.activate(captured);
   const content = captured && options.input
     ? await options.input.providerContent({ role: 'nomi.input', content: options.prompt, context: captured, timestamp: Date.now() })
     : options.prompt;
-  options.signal?.throwIfAborted();
-  const message = await models.streamSimple(model, {
-    systemPrompt: [options.systemPrompt, captured?.systemPrompt, captured?.skillPrompt, options.systemPromptClosing].filter(Boolean).join('\n\n'),
-    messages: [{ role: 'user', content, timestamp: Date.now() }],
-    tools: [],
-  }, {
-    signal: options.signal,
-    ...(options.input ? { onPayload: (payload: unknown) => options.input!.rewritePayload(payload, model.api) } : {}),
-  }).result();
-  options.signal?.throwIfAborted();
+  const systemPrompt = [options.systemPrompt, captured?.systemPrompt, captured?.skillPrompt, options.systemPromptClosing].filter(Boolean).join('\n\n');
+  const { message, model, pricingBasis } = await callModelOnce({
+    model: options.model, fetch: options.fetch, content,
+    ...(systemPrompt ? { systemPrompt } : {}),
+    ...(options.signal ? { signal: options.signal } : {}),
+    ...(options.input ? { onPayload: (payload: unknown, api) => options.input!.rewritePayload(payload, api) } : {}),
+  });
   if (message.stopReason === 'error' && !message.errorMessage) throw new Error('agent_lane_provider_error');
   return projectSingleShotResponse(message, {
     pricing: pricingBasis,

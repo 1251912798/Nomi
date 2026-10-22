@@ -11,6 +11,7 @@
  *   · 续写 / 改写 / 重写三种原有写法收进最后那个下拉，功能一个不少；
  *   · 模型默认「跟随 Agent 的模型」（节点上没选文本模型 = 运行时用 Agent 的文本大脑，见 textActions），也可以手动换。
  */
+import { TEXT_ACTION_INTENT_PROPS } from '../../api/textActionIntent'
 import NodeInputReferenceEntry from './NodeInputReferenceEntry'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -223,6 +224,7 @@ export default function TextNodeComposer({ onFeedback, node, visualSize, readOnl
       style={{ cursor: 'default', userSelect: 'auto', touchAction: 'auto', ...(inFlow ? null : { zIndex: CANVAS_LAYER.nodeComposer }) }}
       onPointerDown={(event) => event.stopPropagation()}
       onWheel={(event) => event.stopPropagation()}
+      {...TEXT_ACTION_INTENT_PROPS}
     >
       <div
         role="group"

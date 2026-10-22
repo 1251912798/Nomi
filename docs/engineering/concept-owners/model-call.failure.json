@@ -1,0 +1,27 @@
+{
+  "name": "模型调用失败怎么变成结构化错误（HTTP 事实 / 看门狗相位 / 整体兜底 / 断流 / 连不上）",
+  "subject": "model-call.failure",
+  "lifecycle": "provider-observation",
+  "authority_kind": "decision",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/ai/runtimeVendorError.ts",
+    "symbol": "modelCallFailure"
+  },
+  "write_api": [
+    {
+      "path": "electron/ai/runtimeVendorError.ts",
+      "symbol": "modelCallFailure"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/ai/textTaskCallers.integration.test.ts",
+  "allowed_consumers": [
+    "electron/textTaskRunner.ts",
+    "electron/providerAdapter/compiler.ts"
+  ],
+  "since": "2026-10-21",
+  "notes": "合同 docs/fixes/2026-10-21-text-task-liveness.root-cause.json：按传输层（modelCallFetch）记下的状态码与响应体定类，分类只查 categorizeVendorFailure 一张表；上游错误码经 pickUpstreamCode（provider.upstream-error-code）。渲染层「错误种类 → 是否自动重提」对照迁移前后一致（c0-ai4-renderer-verdicts.txt）。"
+}

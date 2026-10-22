@@ -18,7 +18,7 @@ import { collectAssetUrls, firstMappedString, taskStatusFromResponse } from "../
 // 不需真 key——live E2E（需用户 AGNES key）另验数字字段被网关接受 + extra_body 嵌套解析。
 
 describe("Agnes 供应商种子", () => {
-  it("裸 baseUrl + bearer（避 joinUrl 双前缀，文本走 /v1 由 buildLanguageModelForVendor 补）", () => {
+  it("裸 baseUrl + bearer（避 joinUrl 双前缀，文本走 /v1 由 nomiModelConfigFor 补）", () => {
     expect(AGNES_VENDOR_SEED.key).toBe("agnes");
     expect(AGNES_VENDOR_SEED.baseUrl).toBe("https://apihub.agnes-ai.com"); // 裸，不带 /v1
     expect(AGNES_VENDOR_SEED.authType).toBe("bearer");

@@ -1,0 +1,67 @@
+{
+  "script": "tests/ux/director-reference-attach.paid.mjs",
+  "ranBy": "协调 2026-10-22",
+  "model": "apimart/doubao-seedance-2.0 fast · 480p · 4s · 无音频",
+  "paidCalls": 1,
+  "paidCallsNote": "协调 2026-10-22 更正：这次实际付费 1 次（供应商任务 task_01M5H1DSKMHKG60HJ8NNJ4N2TW，见下方 spend.media）。跑的时候脚本按旧逻辑记成 0；脚本已在 ca8f21466 改成按实际次数记。",
+  "hostedUploadRelayAllowed": "https://nomi-asset-relay.2373272608.workers.dev",
+  "networkAllowlist": [
+    "https://api.apimart.ai",
+    "*.getapib.org",
+    "https://nomi-asset-relay.2373272608.workers.dev"
+  ],
+  "networkBlocked": [],
+  "preCheck": {
+    "previewSeconds": 4,
+    "referenceVideoCount": 1,
+    "promptHasMention": true
+  },
+  "generateButtonBeforeClick": {
+    "rect": {
+      "x": 902,
+      "y": 869,
+      "w": 30,
+      "h": 30
+    },
+    "viewport": {
+      "w": 1280,
+      "h": 933
+    },
+    "disabled": false,
+    "hitIsButton": true,
+    "hitElement": "button.inline-flex items-center justify-center shrink-0 w-[30px] h- [生成素材]",
+    "steps": [
+      "fit-view",
+      "zoom-out",
+      "zoom-out",
+      "zoom-out"
+    ],
+    "zoom": 132
+  },
+  "spend": {
+    "media": [
+      {
+        "kind": "video",
+        "vendor": "canvas:apimart",
+        "model": "doubao-seedance-2.0",
+        "taskId": "task_01M5H1DSKMHKG60HJ8NNJ4N2TW",
+        "status": "ready"
+      }
+    ]
+  },
+  "landed": {
+    "bytes": 634281,
+    "probe": {
+      "kind": "video",
+      "hasAudio": false,
+      "streamCount": 1,
+      "durationSeconds": 4.041667,
+      "width": 864,
+      "height": 496,
+      "fps": 24,
+      "videoCodec": "h264",
+      "pixelFormat": "yuv420p"
+    }
+  },
+  "note": "脚本第 167 行当时读 probe.duration（字段叫 durationSeconds）才报失败，成片本身落地正常；成片运镜是否跟随预演：未验证（媒体文件随隔离副本清理，脚本已改成清理前保留）"
+}

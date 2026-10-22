@@ -1,4 +1,4 @@
-import type { LanguageModelV1 } from "ai";
+import type { CompilerLanguageModel } from "./compiler";
 import type { Model } from "../catalog/types";
 import { redactAdapterSecrets } from "./redaction";
 import type { LoadedConnection } from "./serviceCatalog";
@@ -13,7 +13,7 @@ export async function compileMediaModels(input: {
   connection: LoadedConnection;
   models: readonly Model[];
   docs: DiscoveredDocs;
-  languageModels: readonly LanguageModelV1[];
+  languageModels: readonly CompilerLanguageModel[];
   onModel: (modelKey: string) => void;
   compileOne: (model: Model) => Promise<ProviderAdapterCompilation>;
 }): Promise<{ compilation: ProviderAdapterCompilation; compiledModelKeys: Set<string> }> {
@@ -68,7 +68,7 @@ export async function discoverAndCompileMediaModels(input: {
   connection: LoadedConnection;
   models: readonly Model[];
   providedDocs?: string;
-  languageModels: readonly LanguageModelV1[];
+  languageModels: readonly CompilerLanguageModel[];
   discover: (args: {
     baseUrl: string;
     modelKeys: readonly string[];

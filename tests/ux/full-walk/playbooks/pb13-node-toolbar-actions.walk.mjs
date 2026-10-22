@@ -254,7 +254,7 @@ try {
       await openMenu(text('generationCommon.quickActions.refine'))
       await clickOrFail(win().locator('[data-menu-item="crop"]').first(), '裁剪')
       const cancel = win().getByRole('button', { name: text('generationCommon.cropGrid.cancel') }).first()
-      cropOpened = await cancel.isVisible({ timeout: stationTimeout() }).catch(() => false)
+      cropOpened = await cancel.waitFor({ state: 'visible', timeout: stationTimeout() }).then(() => true).catch(() => false)
       await monitor.screenshot('click-tb-refine-crop-open')
       if (cropOpened) await cancel.click()
       await win().waitForTimeout(300)

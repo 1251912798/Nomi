@@ -10,6 +10,15 @@
     "pathRules.pattern / scope 是正则源码（大小写不敏感）；scope 限定它只对哪些路径生效；added = 只在文件是新增（status A）时命中；exclude = 命中这个正则的路径不算（设计实验室本身不算改交互）；skipTests 默认 true（测试、文档、json 不推类别）。"
   ],
   "effectiveFrom": "2026-10-07",
+  "evidenceJudgement": {
+    "_comment": "证据判「对不对」（2026-10-21，流程试行第 3 项；规则正文 docs/engineering/perf-scenarios.md 与 delivery-and-review.md）：独立验收核报告结论 / 验收 HEAD / 验收线，性能证据读原始结果，改界面认领拍板图清单或给下面登记的例外。此日期之前开的 PR 不追溯；创建时间未知按已生效。",
+    "effectiveFrom": "2026-10-22",
+    "boardClaimExceptions": [
+      { "id": "pure-bugfix", "label": "纯 bug 修复：不改布局、元素、文案，只修行为" },
+      { "id": "single-element-restyle", "label": "只改单个已有元素的样子（颜色、间距、尺寸），不增删元素" },
+      { "id": "internal-no-visible-change", "label": "纯内部改动（重构、类型、测试支撑），用户看到的界面与行为都没变" }
+    ]
+  },
   "effectiveNote": "此日期之前开的 PR 只给警告，不判红（旧 PR 没机会照新模板写）；之后开的 PR 缺项就红。",
   "categories": {
     "ui": {
