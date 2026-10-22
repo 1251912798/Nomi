@@ -117,7 +117,8 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
       notify({ identity: `whiteboard:${ownerNodeId}`, reason: 'editing', message, level: 'inline', present: setFeedback })
     }, [ownerNodeId])
     const effectiveScreenshotLabel = screenshotLabel ?? t('generationCommon.whiteboard.screenshotAndCreateNode')
-    const [activeTool, setActiveTool] = React.useState<ToolKey>('select')
+    // Opening a board is for drawing: the first drag draws (0.23.0 behaviour, restored 2026-10-22 after #1189 made it select).
+    const [activeTool, setActiveTool] = React.useState<ToolKey>('brush')
     const [selectedColor, setSelectedColor] = React.useState('#2563eb')
     const [brushSize, setBrushSize] = React.useState(10)
     const [initialDocument] = React.useState(() => ({ state: getInitialState(initialState, initialImage) }))
@@ -251,8 +252,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
           layers: [...current.layers, layer],
           activeLayerId: layer.id,
         }))
-        setActiveCanvasObject({ kind: 'asset', id: asset.id })
-        setActiveTool('select')
+        return asset.id
       },
       [state.activeRatio, t, setState],
     )
@@ -290,7 +290,10 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
             project.assertCurrent()
             const url = localUrl || (await fileToDataUrl(file, t('generationCommon.whiteboard.imageReadFailed')))
             project.assertCurrent()
-            await addImageToCanvas(url, file.name || t('generationCommon.whiteboard.importedImage'), project)
+            const assetId = await addImageToCanvas(url, file.name || t('generationCommon.whiteboard.importedImage'), project)
+            // A picture the creator imports is picked up for placing; the source image seeded on open is not (the brush stays active).
+            setActiveCanvasObject({ kind: 'asset', id: assetId })
+            setActiveTool('select')
           } catch (error) {
             if (project.signal.aborted || isProjectImportCancellation(error)) return
             reportFeedback(
@@ -561,9 +564,13 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
           const bounds = { width: Number.parseFloat(style.width), height: Number.parseFloat(style.height) }
           const scale = viewScaleRef.current
           if (!scale || bounds.width < 1 || bounds.height < 1) return
-          const dimensions = { width: Math.round(bounds.width / scale), height: Math.round(bounds.height / scale) }
           const current = documentRef.current.state
-          if (current.canvasDimensions?.width === dimensions.width && current.canvasDimensions?.height === dimensions.height) return
+          // A frame within one screen pixel of the document is the same frame: stored node sizes are rounded, and reading the
+          // rounding back as a resize turned an untouched reopen into a 1280x719 board and a new version (2026-10-22).
+          const currentDimensions = current.canvasDimensions
+          if (currentDimensions && Math.abs(bounds.width - currentDimensions.width * scale) < 1 && Math.abs(bounds.height - currentDimensions.height * scale) < 1) return
+          const dimensions = { width: Math.round(bounds.width / scale), height: Math.round(bounds.height / scale) }
+          if (currentDimensions?.width === dimensions.width && currentDimensions?.height === dimensions.height) return
           setLiveDimensions(dimensions)
           if (commitTimer !== null) clearTimeout(commitTimer)
           commitTimer = setTimeout(() => {

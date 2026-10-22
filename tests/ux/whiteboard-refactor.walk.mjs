@@ -327,7 +327,17 @@ try {
   await expect(boardNode.locator('img').first(), 'after Done the board node shows its drawn content').toBeVisible()
   await expect(launcher, 'after Done a board with content no longer shows the empty launcher').toBeHidden()
   check('standalone Done leaves the drawn content visible on the board node', true)
+  check('Done right after a screenshot adds no duplicate board version', readNode('board').history.length === 1)
   await snap('standalone-after-done')
+  // Reopen from the picture: the same select-then-click as the empty launcher; an unchanged Done adds nothing.
+  const boardPreview = boardNode.locator('[data-testid="whiteboard-open-preview"]')
+  await boardPreview.click()
+  if (!await editor.isVisible()) await boardPreview.click()
+  await expect(editor).toBeVisible()
+  check('the board reopens from its picture with the drawing intact', (readNode('board').meta.whiteboardState.strokes.length > 0) && readNode('board').meta.whiteboardState.canvasAssets.length === 1)
+  await action('done').click()
+  await expectAbsent(editor, { provenBy: editorProbe })
+  check('an unchanged reopen and Done keeps one board version', readNode('board').history.length === 1)
   check('no renderer exceptions', errors.length === 0)
 } catch (error) {
   evidence.error = String(error)

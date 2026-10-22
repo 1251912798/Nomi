@@ -2,6 +2,8 @@
 
 触发：用户 10-22 反馈画板用不了，要修的两个文件命中 `fix-churn`：`WhiteboardDrawingTool.tsx` 这刀会是第 4 个 fix，`WhiteboardCardBody.tsx` 会是第 3 个。前面的 fix 多是 #1189 的评审轮次和空节点排版。逃逸账本：`tests/ux/full-walk/escapeLedger/FB-20261022-whiteboard-board-unusable.json`。诊断报告在协调状态目录 `reports/R-whiteboard.md`。
 
+> **拍板（2026-10-22）**：用户拍板选 A，推翻 InlineWhiteboard 清单 O40；方向检查按「换」批准，协调转达。默认工具恢复成画笔，协调按回归批准。
+
 ### 0. 一句话根因
 
 画板的验收只核「盘上存了什么」，从没核过「创作者打开后第一下会发生什么、按完成后在画布上看见什么」；所以默认工具被悄悄换掉、完成后节点一片空白，这两件事都能全绿合入。

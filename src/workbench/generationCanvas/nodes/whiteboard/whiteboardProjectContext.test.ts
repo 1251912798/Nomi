@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactElement, ReactNode } from 'react'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 
@@ -10,6 +10,7 @@ const fixture = vi.hoisted(() => ({
   callbacks: [] as Promise<unknown>[], selection: null as unknown,
   nodes: [] as GenerationCanvasNode[],
   initialImageStatus: null as null | 'failed',
+  boardState: null as null | import('./whiteboardTypes').WhiteboardState,
   captureEffects: false, effects: [] as Array<() => void>, drawingHandle: null as null | import('./WhiteboardDrawingTool').WhiteboardDrawingToolHandle,
 }))
 vi.mock('react', async original => {
@@ -25,7 +26,7 @@ vi.mock('react', async original => {
       return [fixture.setters.length === 1 && fixture.selection ? fixture.selection
         : typeof initial === 'function' ? initial() : initial === 'loading' && fixture.initialImageStatus ? fixture.initialImageStatus : initial, setter]
     },
-    useRef: (current: unknown) => ({ current: current ?? { captureViewportFile: fixture.capture, getState: () => null, isBusy: () => false, getSceneTransforms: () => ({ offsets: {}, assetTransforms: {}, flips: {} }) } }),
+    useRef: (current: unknown) => ({ current: current ?? { captureViewportFile: fixture.capture, getState: () => fixture.boardState, isBusy: () => false, getSceneTransforms: () => ({ offsets: {}, assetTransforms: {}, flips: {} }) } }),
     useMemo: (compute: () => unknown) => compute(), useEffect: (callback: () => void) => { if (fixture.captureEffects) fixture.effects.push(callback) }, useLayoutEffect: () => {}, useImperativeHandle: (_ref: unknown, create: () => typeof fixture.drawingHandle) => { if (fixture.captureEffects) fixture.drawingHandle = create() },
     forwardRef: (component: unknown) => component,
   } }
@@ -92,7 +93,7 @@ function screenshotProject() {
 const source = { id: 'source', kind: 'image', title: 'source', position: { x: 0, y: 0 } } as GenerationCanvasNode
 beforeEach(() => {
   vi.clearAllMocks(); fixture.controller = new AbortController(); fixture.setters = []; fixture.callbacks = []; fixture.selection = null
-  fixture.initialImageStatus = null; fixture.captureEffects = false; fixture.effects = []; fixture.drawingHandle = null
+  fixture.initialImageStatus = null; fixture.boardState = null; fixture.captureEffects = false; fixture.effects = []; fixture.drawingHandle = null
   fixture.nodes = [source]
   fixture.add.mockReturnValue({ ...source, id: 'created' })
   fixture.persist.mockResolvedValue('nomi-local://stored')
@@ -215,6 +216,8 @@ it('does not close a new screenshot overlay or rewrite its nodes after storage c
 
 it('handles a failed screenshot save after switching projects without stale error feedback', async () => {
   fixture.persist.mockImplementation(async () => { replaceProject(); throw new Error('disk failed after switch') })
+  // The image entrance only exists on a node that has a picture; Done then always goes through the save transaction.
+  fixture.nodes = [{ ...source, result: { id: 'original', type: 'image', url: 'nomi-local://original' } } as GenerationCanvasNode]
   const onClose = vi.fn()
   const tree = InlineWhiteboard({ nodeId: 'source', sourceKind: 'image', onClose })
   ;(find(tree, node => typeof node.props.onDone === 'function').props.onDone as () => void)()
@@ -224,6 +227,46 @@ it('handles a failed screenshot save after switching projects without stale erro
   expect(onClose).not.toHaveBeenCalled()
 })
 
+// User 2026-10-22 (replaces board O40): Done leaves a picture on a board node that has something on it.
+describe('board Done', () => {
+  const board = { id: 'source', kind: 'whiteboard', title: 'Board', position: { x: 0, y: 0 } } as GenerationCanvasNode
+  const drawn = () => ({ ...createDefaultWhiteboardState(), strokes: [{ id: 's', layerId: 'drawing-layer-1', tool: 'brush' as const, color: '#111827', size: 8, path: 'M 0 0 L 10 10' }] })
+  const done = async (node: GenerationCanvasNode, initialState = createDefaultWhiteboardState()) => {
+    fixture.nodes = [node]
+    const onClose = vi.fn()
+    const tree = InlineWhiteboard({ nodeId: 'source', sourceKind: 'whiteboard', initialState, onClose })
+    ;(find(tree, element => typeof element.props.onDone === 'function').props.onDone as () => void)()
+    await Promise.allSettled(fixture.callbacks)
+    return onClose
+  }
+  it('an empty board that never produced a picture saves its state only and keeps the launcher', async () => {
+    fixture.boardState = createDefaultWhiteboardState()
+    const onClose = await done(board)
+    expect(fixture.capture).not.toHaveBeenCalled()
+    expect(fixture.update.mock.calls.every(([, patch]) => !('result' in patch))).toBe(true)
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+  it('a drawn board exports one picture as the node result', async () => {
+    fixture.boardState = drawn()
+    const onClose = await done(board)
+    expect(fixture.capture).toHaveBeenCalledOnce()
+    const published = fixture.update.mock.calls.find(([, patch]) => 'result' in patch)![1]
+    expect(published.result).toMatchObject({ type: 'image', url: 'nomi-local://stored' })
+    expect(published.history).toHaveLength(1)
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+  it('a board saved as state alone (no picture yet) gets its picture on an unchanged Done', async () => {
+    fixture.boardState = drawn()
+    await done({ ...board, meta: { whiteboardState: drawn() } } as GenerationCanvasNode, drawn())
+    expect(fixture.capture).toHaveBeenCalledOnce()
+  })
+  it('an unchanged Done on a board whose picture already exists adds no version', async () => {
+    fixture.boardState = drawn()
+    const onClose = await done({ ...board, result: { id: 'v1', type: 'image', url: 'nomi-local://v1' }, history: [{ id: 'v1', type: 'image', url: 'nomi-local://v1' }], meta: { whiteboardState: drawn() } } as GenerationCanvasNode, drawn())
+    expect(fixture.capture).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+})
 it('publishes the imported raster baseline before the first edit and never publishes the loading empty draft', async () => {
   fixture.captureEffects = true
   const onRasterBaseline = vi.fn()

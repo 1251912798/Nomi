@@ -61,6 +61,12 @@ const INSTALL_SOURCE = `(() => {
       const importButton = editor ? editor.querySelector('[data-toolbar-action="whiteboard-importImage"]') : null
       return visible(editor) && Boolean(editor.querySelector('canvas')) && Boolean(importButton) && !importButton.disabled
     },
+    // 画板完成：编辑器收起，节点上换成刚导出的那张图，并且图已解码可见（导出 + 落盘 + 节点结果 + 画布预览整段）。
+    whiteboardResultVisible(nodeId) {
+      if (document.querySelector('[data-nomi-inline-whiteboard="true"]')) return false
+      const image = document.querySelector('article[data-node-id="' + CSS.escape(nodeId) + '"] [data-testid="whiteboard-open-preview"] img')
+      return visible(image) && image.complete && image.naturalWidth > 0
+    },
     // 内联画板打字：工具条里的文字框已经是 value（同一帧里画布按它重排，量到的是输入 → 画面的整段）。
     whiteboardTextValue({ label, value }) {
       const input = document.querySelector('[data-nomi-inline-whiteboard="true"] [role="toolbar"] input[aria-label="' + CSS.escape(label) + '"]')
