@@ -8,6 +8,7 @@
 //
 // 用法：node tests/ux/composer-b3.walk.mjs        （EVIDENCE=0 只跑断言不截图）
 import { stationTimeout } from './_station-budget.mjs'
+import { expectAbsent, proveProbe } from './_assert.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 
 const zh = (key) => uiText('zh-CN', key)
@@ -318,6 +319,8 @@ try {
   }
   // ── 往返（参考图结构重写的验收线，2026-10-22）：节点上只存一份有序参考列表，换方式 / 换模型都不改它。
   //    中 / 英各真点一遍：3 张参考 → 首尾帧 → 参考；30 张（Seedance 2.5）→ Veo 3.1 → 切回，一张不少。
+  // 「未用到」探针的基线：3 张上传切首尾帧时必有 1 张未用到——证明这个选择器测得到东西，下面「两条连线没有未用到」才算数。
+  const unusedProbeProof = new Map()
   for (const [lang, langParam, scheme] of [['zh', '', 'light'], ['en', '&lang=en', 'dark']]) {
     const t = (key) => uiText(lang === 'zh' ? 'zh-CN' : 'en', key)
     const tag = `${lang}-${scheme}`
@@ -326,6 +329,7 @@ try {
       const { page, context } = await open(B3, 'b3s-video-three-uploads', `${langParam}&scheme=${scheme}`)
       await pickMode(page, t('generationCommon.composerB3.modeFirstLast'))
       const mid = { slots: await count(page, '[data-asset-slot] [data-asset-tile]'), unused: await unusedTiles(page) }
+      try { unusedProbeProof.set(tag, await proveProbe(page.locator('[data-reference-row] [data-reference-unused]'), `首尾帧方式下 3 张上传参考有 1 张淡显「未用到」（${tag}）`)) } catch { /* 基线不成立：下面的连线格会据此报红 */ }
       await shot(page, B3, 'b3s-video-three-uploads', `R1-3refs-firstlast-${tag}`)
       await pickMode(page, t('generationCommon.composerB3.modeReference'))
       const back = { tiles: await refTiles(page), unused: await unusedTiles(page) }
@@ -355,9 +359,13 @@ try {
     const { page, context } = await open(B3, 'b3t-video-firstlast-two-ref-edges', `${langParam}&scheme=${scheme}`)
     await page.waitForSelector('[data-asset-slot] [data-asset-tile]', { timeout: stationTimeout() })
     const slots = await page.evaluate(() => [...document.querySelectorAll('[data-asset-slot]')].map((el) => (el.querySelector('[data-asset-tile]') ? 'filled' : 'empty')))
-    const unused = await count(page, '[data-reference-row] [data-reference-unused]')
+    const proof = unusedProbeProof.get(`${lang}-${scheme}`)
+    let unusedAbsent = proof ? true : '「未用到」探针基线没立起来（上面 3 张往返那格）'
+    if (proof) {
+      try { await expectAbsent(page.locator('[data-reference-row] [data-reference-unused]'), { provenBy: proof, message: '两条参考连线都落进首尾帧，不该有「未用到」' }) } catch (error) { unusedAbsent = String(error?.message ?? error).split('\n')[0] }
+    }
     await shot(page, B3, 'b3t-video-firstlast-two-ref-edges', `B3t-two-ref-edges-${lang}-${scheme}`)
-    check(`refslots.edges.two-refs-into-first-last.${lang}-${scheme}`, slots.join() === 'filled,filled' && unused === 0, JSON.stringify({ slots, unused }))
+    check(`refslots.edges.two-refs-into-first-last.${lang}-${scheme}`, slots.join() === 'filled,filled' && unusedAbsent === true, JSON.stringify({ slots, unusedAbsent }))
     await context.close()
   }
 
