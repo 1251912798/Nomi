@@ -25,6 +25,7 @@ import { clickOrFail, expect, proveProbe } from './_assert.mjs'
 import { SPEND_DIALOG, openPaidWalk } from './_paidRun.mjs'
 import { VIDEO, cheapVideoNodeProblems, probeLandedMedia } from './_agentVideoPaid.mjs'
 import { stationTimeout } from './_station-budget.mjs'
+import { bringButtonIntoReach, readButtonReach } from './_generateReach.mjs'
 import { openCanvas, readProject } from './agent-runtime-walk-support.mjs'
 import { require as tsxRequire } from 'tsx/cjs/api'
 
@@ -107,24 +108,9 @@ try {
 
   // ── 花钱：按节点 ↑（托管披露确认框出现就按「生成」同意）──
   const generateButton = win.locator(`[data-node-id="${ids.shot}"] ${NODE_GENERATE}`).first()
-  /** 点之前 / 之后各量一次：按钮在不在视口里、禁没禁用、中心点上此刻是不是按钮自己（被别的元素盖着 = 真鼠标点不到它）。 */
-  const readButtonState = () => generateButton.evaluate((element) => {
-    const rect = element.getBoundingClientRect()
-    const top = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
-    const describe = (el) => (el ? `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)}${el.getAttribute('aria-label') ? ` [${el.getAttribute('aria-label')}]` : ''}` : null)
-    return {
-      rect: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) }, viewport: { w: innerWidth, h: innerHeight },
-      disabled: element.disabled, hitIsButton: Boolean(top && (top === element || element.contains(top))), hitElement: describe(top),
-    }
-  }).catch((error) => ({ error: String(error?.message ?? error) }))
-  walk.report.generateButtonBeforeClick = await readButtonState()
-  // 真鼠标点不到就当场红（出成片后画布会放大到节点，↑ 可能掉到视口外 / 被 Agent 面板、时间轴条盖住——免费复现见 director-reference-attach.walk.mjs 的 NOMI_WALK_PAID_LIKE=1）。
-  // 探测模式照点不误（要看数据）。
-  const before = walk.report.generateButtonBeforeClick
-  if (process.env.NOMI_PAID_PROBE_DIALOG !== '1' && !before?.hitIsButton) {
-    await walk.snap('fail-generate-button-not-clickable')
-    throw new Error(`点不到 ↑（一分钱没花）：按钮中心点上是 ${before?.hitElement ?? '视口外（没有元素）'}，视口 ${JSON.stringify(before?.viewport)}，按钮 ${JSON.stringify(before?.rect)}`)
-  }
+  const readButtonState = () => readButtonReach(generateButton)
+  // 出成片后画布对焦放大到 200% 以上，↑ 会掉出视口或被盖住：先用画布自己的控件调到点得到，点不到就报错（探测模式也走这一步）
+  walk.report.generateButtonBeforeClick = await bringButtonIntoReach(win, generateButton, '节点底栏的 ↑')
   const clickedAt = Date.now()
   await clickOrFail(generateButton, '节点底栏的 ↑（生成）', { noWaitAfter: true })
   walk.report.generateButtonAfterClick = await readButtonState()

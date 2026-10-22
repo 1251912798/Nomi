@@ -23,6 +23,7 @@ import { launchNomiApp, currentCatalogVersion } from './_launchApp.mjs'
 import { createBlankProject } from '../../evals/lib/isoApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { ensureAgentPanelOpen, newProjectEntry } from './_shell.mjs'
+import { bringButtonIntoReach } from './_generateReach.mjs'
 import { compileDirectorPlan } from '../../src/workbench/generationCanvas/nodes/director/model/compiler/directorPlanCompiler.ts'
 import { SEEDANCE_2_CREATE_OP, SEEDANCE_2_QUERY_OP } from '../../electron/catalog/kieSeedance.ts'
 
@@ -210,11 +211,7 @@ try {
     const generateButton = win.locator(`[data-node-id="${nodeId}"] button[data-bar-segment="generate"]`).first()
     let clickedAt = Date.now()
     if (PAID_LIKE) {
-      const hit = await generateButton.evaluate((element) => {
-        const rect = element.getBoundingClientRect()
-        const top = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
-        return { rect: [Math.round(rect.x), Math.round(rect.y), Math.round(rect.width), Math.round(rect.height)], viewport: [innerWidth, innerHeight], disabled: element.disabled, hitIsButton: Boolean(top && (top === element || element.contains(top))), hitElement: top ? `${top.tagName.toLowerCase()}.${String(top.className).slice(0, 60)}` : null, zoom: document.querySelector('[data-canvas-zoom-percent]')?.textContent ?? null }
-      })
+      const hit = await bringButtonIntoReach(win, generateButton, `${label}：↑`)
       report.latency = { ...(report.latency ?? {}), [label]: { hit } }
       clickedAt = Date.now()
       await generateButton.click({ timeout: stationTimeout({ operations: 2 }), noWaitAfter: true }) // 只用真鼠标：点不到就红
