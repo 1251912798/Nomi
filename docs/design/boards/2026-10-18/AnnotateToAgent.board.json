@@ -171,7 +171,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "hover",
         "selected",
@@ -226,7 +226,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "hover",
         "dark"
@@ -241,7 +241,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "empty",
         "selected",
@@ -260,7 +260,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "empty",
         "selected",
@@ -295,7 +295,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；M 风格样张由协调会话补）",
+      "owner": "I-AnnotateToAgent（第 3 块，排 0.25；M 风格样张由协调会话补）",
       "states": [
         "empty",
         "loading",
@@ -314,7 +314,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "long-text",
         "zh-en",
@@ -331,7 +331,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "long-text",
         "zh-en",
@@ -348,7 +348,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "hover",
         "zh-en",
@@ -363,7 +363,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "selected",
         "dark"
@@ -377,7 +377,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "zh-en",
         "dark"
@@ -393,7 +393,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "loading",
         "error",
@@ -468,7 +468,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "empty",
         "long-text",
@@ -653,7 +653,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "empty",
         "hover",
@@ -670,7 +670,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "states": [
         "empty",
         "selected",
@@ -711,7 +711,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；排在 B3 / E1、D2 之后，实现线未开）",
+      "owner": "I-AnnotateToAgent（第 3 块，用户 10-21 定排 0.25，见 README / #1267；实现线未开）",
       "note": "M5 画的选中节点是蓝色描边；2026-10-10 用户拍板「蓝色描边不需要，都删掉」（nomi-design-system.md「描边颜色」），实现按现行选中样式，不照画蓝框。",
       "states": [
         "selected",
@@ -727,7 +727,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；M 风格样张由协调会话补）",
+      "owner": "I-AnnotateToAgent（第 3 块，排 0.25；M 风格样张由协调会话补）",
       "states": [
         "selected",
         "zh-en"
@@ -741,7 +741,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；M 风格样张由协调会话补）",
+      "owner": "I-AnnotateToAgent（第 3 块，排 0.25；M 风格样张由协调会话补）",
       "states": [
         "loading",
         "error",
@@ -756,7 +756,7 @@
       ],
       "candidates": [],
       "status": "missing",
-      "owner": "I-AnnotateToAgent（0.24 第 3 块；M 风格样张由协调会话补）",
+      "owner": "I-AnnotateToAgent（第 3 块，排 0.25；M 风格样张由协调会话补）",
       "states": [
         "error",
         "long-text",

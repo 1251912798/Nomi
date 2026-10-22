@@ -51,8 +51,8 @@
 | Agent 面板 8 种积木：用户气泡、助手文本、一行收据、任务卡、介入槽、队列行、收起坞、输入框 | `docs/design/2026-09-06-agent-panel-v4.md`（拍板清单 #1）；`docs/design/mockups/2026-09-06-agent-panel-v4/preview/*.png` | `src/workbench/ai/v4/AgentPanelV4Panel.tsx`；用户气泡 `AgentPanelV4Message.tsx:54`（`V4UserBubble`）；输入框 `AgentPanelV4Composer.tsx` |
 | 选中节点 → 输入框自动带 chip、发出的气泡带 chip（交互） | V4 生成流程板 `preview-FlowGeneration.png`（标注「选中节点 → 输入框自动带 chip」）；agent-panel-v4.md:16 | **未实现**（G-2）；chip 长相见 Δ1 |
 | 现有 chip：file / skill / clip，3D-BOX「正在改：镜头 N」标签 | v4 composer 引用态（`before/lab-zh-light-composer-chips-file-skill-clip.png`）；3D-BOX 画布 10-06 拍板 | `agentPanelV4Types.ts:96`（`V4ChipKind`）；`useAgentPanelV4Data.ts:313-331`（`liveChips`）；`AgentPanelV4Composer.tsx:49-80`（`ComposerChip`）；`timelineAgentSurface.tsx:136-154`；`AgentPanelV4FocusTag.tsx` |
-| D2 确认卡：单段 D2b、展开 D2c、多段 D2d、进行中 D2e、失败 D2f | `docs/design/proposals/2026-10-18/README.md` 第 1 组（D2 按本表实现）；`preview/D2b-single.png`、`D2d-multi.png` | **未实现**（D2 精简版没开工，§8）；现役付费卡投影 `agentPanelSpendCard.ts`（`projectSpendCard` / `spendCardPage`）、`useAgentPanelSpendConfirm.ts` |
-| M3 意见线程（及 M1 底栏「评论」、M2 评论模式、M4 圈一下、M5 意见列表） | 0.24 第 3 组（已按推荐拍板）；`preview/M1…M8*.png`；清单 `AnnotateToAgent.board.json` | **未实现**（0.24 第 3 块） |
+| D2 确认卡：单段 D2b、展开 D2c、多段 D2d、进行中 D2e、失败 D2f | `docs/design/proposals/2026-10-18/README.md` 第 1 组（D2 按本表实现）；`preview/D2b-single.png`、`D2d-multi.png` | **未实现**（D2 精简版没开工，§8；B3 / E1 在 #1269）；现役付费卡投影 `agentPanelSpendCard.ts`（`projectSpendCard` / `spendCardPage`）、`useAgentPanelSpendConfirm.ts` |
+| M3 意见线程（及 M1 底栏「评论」、M2 评论模式、M4 圈一下、M5 意见列表） | 0.24 第 3 组（已按推荐拍板）；`preview/M1…M8*.png`；清单 `AnnotateToAgent.board.json` | **未实现**；用户 10-21 定排 **0.25**（README，#1267） |
 | 版本卡：角标、原地铺开、「生成中 · 新的一版会落在这里」、第 N 版、✓ 主图、设为主图 / 下载 / 删除；新版自动变主图 | `docs/plan/2026-09-28-version-cards.md`；`before/lab-*-version-cards-*.png` | `nodes/versionCards/NodeVersionCards.tsx:272-286`（生成中格）；`versionGridLayout.ts:41`（`versionGridItems`）；`NodeVersionCardsHost.tsx:96、103`；`nodeResultLifecycle.ts:104-118`；`canvasNodeActions.ts:235`（设主图） |
 | 选中工具条「已选 N 个 · 编组 · 总览图 · 存流程 · ×」 | `before/real-*-03-multiselect-3-no-chip.png` | `src/workbench/generationCanvas/components/CanvasSelectionToolbar.tsx:21` |
 | Agent 草稿落画布的占位节点与小标（等你确认 / 还没生成 / 已去掉 / 排队中 / 已停） | 付费卡①、P4 S5 多镜落画布 | `src/workbench/capability/multiShotCanvasLanding.ts:300`；`nodes/ProductionShotPlaceholder.tsx:80-95`；`electron/productionRun/multiShotCanvasLanding.ts:116` |
@@ -99,7 +99,7 @@
 - **画布格**：`D5-draft-node.dc.html`。
 
 ### Δ6 只改字：M3 线程「放弃」→「回到第 N 版」
-- **接进**：M3 线程（未实现）；动作走现有设主图 owner `setNodeMainResultPatch`（`canvasNodeActions.ts:235`，1 扇门），进撤销日志。
+- **接进**：M3 线程（未实现，随第 3 块排 0.25）；动作走现有设主图 owner `setNodeMainResultPatch`（`canvasNodeActions.ts:235`，1 扇门），进撤销日志。
 - **加的**：改字，不画。线程写一行说明「已回到第 3 版，第 4 版还在版本里」。
 - **全部状态**：有上一版（显示「回到第 N 版」）；节点原来是空的、这是第 1 版（不显示这颗钮，只留「接受」，本线默认）；暗色；英文。
 - **验收断言**：`board:AnnotateToAgent/thread.discard-revert` —— 点「回到第 3 版」→ 主图 = 第 3 版、第 4 版仍在版本卡、⌘Z 撤回。
@@ -118,7 +118,7 @@
 | G-3 | `projectAgentReferences` 不是死路径：发送时读、作为 `storyboardTarget.shotIds` 发出；问题是输入框不渲染 | `useAgentPanelV4Actions.ts:181、244`；`StoryboardPlanEditor.tsx:425、478` |
 | G-4 | 发出的气泡不留对象：快照随消息落盘，气泡只投附件 + 技能 | `laneInputMessage.ts:22`；`laneViewModel.ts:391-416` |
 | G-5 | 结果版本没冻结：画布 handle 的 `revision` 是整画布 `persistRevision`；`display` 没有缩略图 | `useAgentPanelV4Actions.ts:68`；`residentContextSnapshot.ts:113-134` |
-| G-6 | **修复线在途**（另一条线在独立分支修 `formatAgentContextSnapshot`，本分支不改代码）。静默截断：只取前 16 个 handle、每个 handle 带整份选区；实测选 12 个只送到 7 个、16 个以上只到 6 个 | `agentContextSnapshot.ts:119、130、183-198、212`；`laneDesktopInput.ts:37` |
+| G-6 | **修复线在途**（PR #1263 `fix/agent-selection-silent-truncation`，本分支不改代码）。静默截断：只取前 16 个 handle、每个 handle 带整份选区；实测选 12 个只送到 7 个、16 个以上只到 6 个 | `agentContextSnapshot.ts:119、130、183-198、212`；`laneDesktopInput.ts:37` |
 | G-7 | Agent 没有设主图 / 回退 / 对比工具；Δ6 走同一个设主图 owner，不另写回退 | `nodeResultLifecycle.ts:104-118`；`canvasNodeActions.ts:235` |
 | G-8 | 计划只收 4 种 taskKind，`draft_shots` 说明书却写 audio | `writeVerbs.ts:39、192、201`；`generationPlanSchemas.ts:101、115、137` |
 | G-9 | 文本节点没有版本栈 | `nodeResultLifecycle.ts:135-149` |
@@ -239,10 +239,12 @@
 | 文本节点工具条、音频节点生成框 | 不动 |
 | 底栏加节点条 7 颗 | 不动；0.24 第 3 组在最右加「评论」 |
 
-## 8 0.24 实施进度（2026-10-21 查 origin 与本机分支）
-- 已合：#1246 ComposerB3 清单、#1251 / #1257 方案样张、#1224 文稿方案报价卡。
-- 没做：B3 生成框改版、E1 复用宿主、D2 付费卡精简、WD1——没有 PR、没有分支；ComposerB3 清单 104 个元素全部 missing。Δ3 依赖 D2 先落地。
-- G-1（按节点改）、G-4（气泡留对象）不依赖界面可先做；G-6 修复线在途。
+## 8 0.24 实施进度（2026-10-22 查 origin）
+- 已合：#1246 ComposerB3 清单、#1251 / #1257 / #1267 方案样张与 README 同步、#1224 文稿方案报价卡。
+- 在做（开着的 PR）：#1269 生成框 B3 + 四处复用宿主（E1）；#1264 写作区 WD1（等 #1271 文本任务迁 pi-ai）；#1263 画布多选静默截断修复（= G-6 修复线）。
+- 没开工：D2 付费卡精简（README 写「下一个 PR」）。Δ3 依赖 D2 先落地。
+- **范围变化**：#1267 记下用户 10-21 定「第 3 块『标注』和第 4 块『分页』挪到 0.25」。所以 M1–M8 评论线程（含 Q-1、Q-3、Δ6）跟着排 0.25；本卡的选区 chip 一路（Δ1–Δ5）不依赖评论线程，版本归属待协调会话定（见报告）。
+- 21 号那版写「B3 / WD1 没有 PR、没有分支」，当时属实，22 号已有 #1269、#1264。
 
 ## 9 拍板记录
 
