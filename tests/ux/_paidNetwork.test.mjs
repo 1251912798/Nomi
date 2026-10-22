@@ -62,7 +62,7 @@ describe('openPaidWalk wiring', () => {
     vi.doUnmock('./_realProfile.mjs')
   })
 
-  async function open() {
+  async function open(extraDeps = {}) {
     const calls = { options: null, stopped: 0, finishedWith: undefined }
     vi.stubEnv('CI', '')
     vi.stubEnv('NOMI_SPEND_OK', '1')
@@ -81,7 +81,7 @@ describe('openPaidWalk wiring', () => {
       removeRealCredentials: () => true, seedRealModels: () => [{ vendorKey: 'apimart', modelKey: 'm', labelZh: 'm' }],
     }))
     const { openPaidWalk } = await import('./_paidRun.mjs')
-    return { calls, paid: await openPaidWalk('x.paid.mjs', 'x', [{ vendorKey: 'apimart', modelKey: 'm' }], { assertBuild: () => {} }) }
+    return { calls, paid: await openPaidWalk('x.paid.mjs', 'x', [{ vendorKey: 'apimart', modelKey: 'm' }], { assertBuild: () => {}, ...extraDeps }) }
   }
 
   it('hands the guard its allowlist and a ledger path without the caller doing anything', async () => {
@@ -91,6 +91,23 @@ describe('openPaidWalk wiring', () => {
     expect(env.NOMI_WALK_NET_LOG).toBeTruthy()
     await paid.finish(undefined)
     expect(calls.finishedWith).toBeUndefined()
+  })
+
+  it('hostedUploads is off by default: the relay origin is not allowed and the allowlist is exactly the vendor list', async () => {
+    const { calls } = await open()
+    const allow = calls.options.env.NOMI_WALK_ALLOW_ORIGINS.split(',')
+    expect(allow).toEqual(paidWalkAllowlist(catalog, ['apimart']))
+    expect(allow.join()).not.toContain('workers.dev')
+  })
+
+  it('hostedUploads on: allows exactly one more origin, the relay the app is configured with (default, or NOMI_ASSET_RELAY_URL)', async () => {
+    const { DEFAULT_NOMI_ASSET_RELAY_URL } = await import('../../electron/catalog/assetRelayRuntimeConfig.ts')
+    const vendorOnly = paidWalkAllowlist(catalog, ['apimart'])
+    const withDefault = await open({ hostedUploads: true, env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', NOMI_ASSET_RELAY_URL: '' } })
+    expect(withDefault.calls.options.env.NOMI_WALK_ALLOW_ORIGINS.split(',')).toEqual([...vendorOnly, new URL(DEFAULT_NOMI_ASSET_RELAY_URL).origin])
+    expect(withDefault.paid.walk.report.hostedUploadRelayAllowed).toBe(new URL(DEFAULT_NOMI_ASSET_RELAY_URL).origin)
+    const custom = await open({ hostedUploads: true, env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', NOMI_ASSET_RELAY_URL: 'https://relay.example.test:8443/v1/assets' } })
+    expect(custom.calls.options.env.NOMI_WALK_ALLOW_ORIGINS.split(',')).toEqual([...vendorOnly, 'https://relay.example.test:8443'])
   })
 
   it('fails right away when the ledger records a block: app stopped, report error names the host and layer', async () => {

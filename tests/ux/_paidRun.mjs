@@ -19,7 +19,7 @@ import { verifyBuild } from '../../scripts/package-build-stamp.mjs'
 
 import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { createRuntimeWalk } from './agent-runtime-walk-support.mjs'
-import { blockedError, guardLoadedError, newNetLogFile, paidWalkAllowlist, readNetLog, watchNetLog } from './_paidNetwork.mjs'
+import { blockedError, guardLoadedError, hostedUploadRelayOrigin, newNetLogFile, paidWalkAllowlist, readNetLog, watchNetLog } from './_paidNetwork.mjs'
 import {
   ENV_KEY_ALLOW_CATALOG, ENV_KEY_VAR, ENV_KEY_VENDOR, assertNoSecretOnDisk, assertUsableEnvKey, connectApimartThroughVisibleUi,
   APIMART_TEXT_MODEL_KEYS, collectAppLogs, envKeyOf, filesContainingSecret, paidCredentialSource, readAuthorizedRows, redact, redactNetLogEntry, redactedError,
@@ -139,6 +139,8 @@ export async function openPaidWalk(script, name, models, deps = {}) {
     env = process.env, createWalk = createRuntimeWalk, connect = connectApimartThroughVisibleUi, isNomiRunning = realNomiIsRunning, lockSpendTo = lockSpendToModels, readRows = readAuthorizedRows,
     // 验某个修复的走查传 buildMarkers：会原样进产物的字面量（界面文案 / 错误码），见 assertPaidBuildReady。
     buildMarkers = [], argv = process.argv.slice(2), assertBuild = assertPaidBuildReady,
+    // 带本地参考素材的生成要先经应用的托管上传中转：按需把**当前配置的那一个**中转源加进放行名单（缺省关，别的付费走查行为不变）。
+    hostedUploads = false,
   } = deps
   // 真实资料目录的位置跟着传进来的 env 走（缺省就是 process.env，和以前一样）；env-key 路根本不会用到它。
   const profile = realNomiProfile({ env })
@@ -149,13 +151,15 @@ export async function openPaidWalk(script, name, models, deps = {}) {
   const secrets = envKey ? [envKey] : []
   if (envKey) assertEnvKeyModels(models)
   // 出网名单按本场授权的供应商自动算（见 _paidNetwork.mjs），连同账本路径一起交给被测 App 的闸；调用方什么都不用配。
-  const allow = envKey
+  const hostedUploadOrigin = hostedUploads ? hostedUploadRelayOrigin(env) : null
+  const allow = [...(envKey
     ? paidWalkAllowlist(ENV_KEY_ALLOW_CATALOG, [ENV_KEY_VENDOR])
-    : paidWalkAllowlist(readRealCatalog(profile), models.map((model) => model.vendorKey))
+    : paidWalkAllowlist(readRealCatalog(profile), models.map((model) => model.vendorKey))), ...(hostedUploadOrigin ? [hostedUploadOrigin] : [])]
   const netLog = newNetLogFile()
   // env-key 路：被测 App 的环境里把 key 这一项清成空串——key 只留在本进程的闭包里，子进程（含它的崩溃转储、诊断包）拿不到。
   const walk = await createWalk(name, { env: { NOMI_WALK_ALLOW_ORIGINS: allow.join(','), NOMI_WALK_NET_LOG: netLog, ...(envKey ? { [ENV_KEY_VAR]: '' } : {}) } })
   walk.report.networkAllowlist = allow
+  if (hostedUploadOrigin) walk.report.hostedUploadRelayAllowed = hostedUploadOrigin
   walk.report.credentialSource = envKey ? `env-key（${ENV_KEY_VAR}，只记变量名）` : 'real-profile'
   let blocked = null
   // 被挡就地失败：别等 UI 超时（以前一次连接被挡要干等 600 多秒）。关掉 App，让走查脚本里正在等的那一步立刻报错，

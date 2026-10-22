@@ -12,6 +12,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import { createRequire } from 'node:module'
 import path from 'node:path'
+import { require as tsxRequire } from 'tsx/cjs/api'
 
 // 判定函数与走查闸四层共用同一份（electron/shared/walkAllowlist.cjs），诊断不再自己写一套匹配。
 const { listsHost, parseAllowlist } = createRequire(import.meta.url)('../../electron/shared/walkAllowlist.cjs')
@@ -47,6 +48,19 @@ export function paidWalkAllowlist(catalog, vendorKeys) {
     allow.push(...apiOrigins, ...(VENDOR_RESULT_DOMAINS[key] ?? []))
   }
   return [...new Set(allow)]
+}
+
+/**
+ * 带本地参考素材（如 3D 预演 mp4）的生成，要先经应用自己的托管上传中转把素材传出去（产品里唯一出处 electron/catalog/assetRelayRuntimeConfig.ts：
+ * 环境变量 NOMI_ASSET_RELAY_URL 优先，否则默认中转）。按需打开（openPaidWalk 的 hostedUploads）：返回这**一个**中转的 origin，不在脚本里写死地址。
+ */
+export function hostedUploadRelayOrigin(env = process.env) {
+  const { readAssetRelayRuntimeConfig } = tsxRequire('../../electron/catalog/assetRelayRuntimeConfig.ts', import.meta.url)
+  const saved = process.env.NOMI_ASSET_RELAY_URL
+  if (env.NOMI_ASSET_RELAY_URL === undefined) delete process.env.NOMI_ASSET_RELAY_URL
+  else process.env.NOMI_ASSET_RELAY_URL = env.NOMI_ASSET_RELAY_URL
+  try { return new URL(readAssetRelayRuntimeConfig().endpoint).origin }
+  finally { if (saved === undefined) delete process.env.NOMI_ASSET_RELAY_URL; else process.env.NOMI_ASSET_RELAY_URL = saved }
 }
 
 /** 账本里的被挡行 → 一句人话（host + 哪一层拦的 + 是不是授权供应商自己）。 */

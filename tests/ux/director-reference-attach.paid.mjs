@@ -54,7 +54,7 @@ const SHOT_META = {
 const VIDEO_LANDS_MS = stationTimeout({ turns: 4 })
 const NODE_GENERATE = 'button[data-bar-segment="generate"]'
 
-const paid = await openPaidWalk(SCRIPT, 'director-reference-attach', [VIDEO])
+const paid = await openPaidWalk(SCRIPT, 'director-reference-attach', [VIDEO], { hostedUploads: true }) // 预演 mp4 要先经应用的托管上传中转：放行当前配置的那一个中转源（report.json 的 hostedUploadRelayAllowed）
 const { walk } = paid
 let failure
 try {
