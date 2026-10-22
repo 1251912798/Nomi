@@ -124,6 +124,14 @@ async function liveJourney(page, record) {
   await page.locator('.workbench-ai-rewrite-bar').getByRole('button', { name: '缩短' }).click()
   await page.locator('[data-rewrite-status="result"]').waitFor()
   // 「消失」类断言先证探针测得到东西：切之前改写条和 ✓ ✕ 确实在。
+  // 提示只显示约 3 秒，机器忙时轮询可能错过：切之前先装一个观察器，只要这句话在页面上出现过就记下（出现过 = 真渲染出来过，和轮询快慢无关）。
+  const notice = uiText('zh-CN', 'creationAi.rewrite.documentSwitched')
+  await page.evaluate((text) => {
+    window.__rewriteNoticeSeen = false
+    const look = () => { if (document.body.innerText.includes(text)) window.__rewriteNoticeSeen = true }
+    new MutationObserver(look).observe(document.body, { childList: true, subtree: true, characterData: true })
+    look()
+  }, notice)
   const barProof = await proveProbe(page.locator('.workbench-ai-rewrite-bar'), '切文稿之前改写条在')
   const actionsProof = await proveProbe(page.locator('[data-rewrite-action]'), '切文稿之前段尾的 ✓ ✕ 在')
   await page.locator('[data-creation-document-switcher]').click()
@@ -131,8 +139,7 @@ async function liveJourney(page, record) {
   await page.locator('[data-creation-document-switcher]').filter({ hasText: 'rewrite copy' }).waitFor()
   await expectAbsent(page.locator('.workbench-ai-rewrite-bar'), { provenBy: barProof, message: '切到正文相同的另一篇文稿后，改写条还在（旧会话没有作废）' })
   await expectAbsent(page.locator('[data-rewrite-action]'), { provenBy: actionsProof, message: '切文稿后段尾的 ✓ ✕ 还在' })
-  // 提示是 Mantine 通知：切完后几十毫秒内淡入，所以等它出现（条件等待），不是点一下就数。
-  const toastShown = await page.getByText(uiText('zh-CN', 'creationAi.rewrite.documentSwitched')).first().waitFor({ state: 'visible' }).then(() => true, () => false)
+  const toastShown = await page.waitForFunction(() => window.__rewriteNoticeSeen === true).then(() => true, () => false)
   expect(record, toastShown, '切文稿后没有看到「文稿已切换，这次改写没有写入」的提示')
   const unchanged = await page.evaluate(async () => {
     const { useWorkbenchStore } = await import('/src/workbench/workbenchStore.ts')
