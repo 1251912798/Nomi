@@ -149,7 +149,7 @@ export function closeRewriteTransaction(state: EditorState): Transaction {
  * 接受 = 一笔事务：换掉区间 + 关会话。只在「结果已出、原文一字未动」时给事务，否则 null（什么都不写）。
  * 一笔事务 = 撤销栈里一条，Ctrl+Z 回到改写前。
  */
-export function acceptRewriteTransaction(state: EditorState): Transaction | null {
+function acceptRewriteTransaction(state: EditorState): Transaction | null {
   const session = getRewriteSession(state)
   if (!session || session.status !== 'result' || !session.result) return null
   if (session.documentId !== getRewriteDocumentId(state)) return null
