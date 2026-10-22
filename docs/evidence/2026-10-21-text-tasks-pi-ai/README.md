@@ -14,5 +14,6 @@
 | `d7-before.txt` / `d7-after.txt` | D7：三处文本任务错误展示，先红后绿 | D7 |
 | `rewrite-ipc-before.txt` / `rewrite-ipc-after.txt` | #2 改写选区真入口测试（渲染层 → 真 IPC → 真准入）：修前 `SpendNotAuthorizedError`，修后绿 | 协调 10-21 定 A 之后 |
 | `f1f2-before.txt` / `f1f2-after.txt` | 独立验收 V-textmigrate 第 1 轮的两项阻断（F1 重试事实串台多生成一次、F2 自定义鉴权头泄露）：回归测试先红（产品文件取 6faf522a2）后绿 | 独立验收第 2 轮修 |
+| `r3-before.txt` / `r3-after.txt` | 第 3 轮收敛：开发诊断出口不记正文（F2-A / F2-B 四夹具对准日志）、断流不再是裸 terminated（N1）：先红后绿 | 独立验收第 3 轮 |
 | `c6-prewarm-trigger.txt` | 预热会不会卡主进程：三种触发方式的主进程最长阻塞、冷打开 100 节点项目、刚启动就点的第一段字 | 合 main 784dde0b1 之后 |
 | `walk/` | Electron 零花费演练截图（中 / 英）与每次调用的一行摘要 `calls.json`；`*-rewrite-blocked-by-spend-gate.png` 是 #2 修前的样子，`*-rewrite-done.png` 是修后 | C5，#2 修后重跑 |

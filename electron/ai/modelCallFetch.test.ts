@@ -103,7 +103,7 @@ describe("模型调用的失败留证", () => {
     await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
     const observed = observeModelFetch(globalThis.fetch, { modelId: "m" });
     await observed.fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/ok`);
-    expect(observed.lastAttempt()).toEqual({ kind: "response", status: 200 });
+    expect(observed.lastAttempt()).toEqual({ kind: "response", status: 200, bodyBroken: false });
     expect(logged.calls).toEqual([]);
   });
 
@@ -129,7 +129,7 @@ describe("每次尝试一份事实（F1）", () => {
     await observed.fetch("https://relay.example/v1/chat/completions");
     expect(observed.lastAttempt()).toMatchObject({ kind: "http", status: 429 });
     await observed.fetch("https://relay.example/v1/chat/completions");
-    expect(observed.lastAttempt()).toEqual({ kind: "response", status: 200 });
+    expect(observed.lastAttempt()).toEqual({ kind: "response", status: 200, bodyBroken: false });
   });
 
   it("429 → 重试连不上：最后一次尝试是「没拿到响应」", async () => {

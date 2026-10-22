@@ -3,12 +3,12 @@
 // 回显用原样、JSON 转义（\" \/ \uXXXX）、URL 编码几种写法。走真执行器 → 真 pi-ai → 真 HTTP（本机假上游，零额度）。
 import { describe, expect, it, vi } from "vitest";
 
-const logs = vi.hoisted(() => ({ dev: [] as string[] }));
+const logs = vi.hoisted(() => ({ dev: [] as string[], calls: [] as string[] }));
 vi.mock("electron", async () => (await import("../../tests/fixtures/textTasks/textTaskCallerState")).electronMock());
 vi.mock("../logging/logger", async (original) => ({
   ...(await original<typeof import("../logging/logger")>()),
   logDevDetail: (_scope: string, detail: string) => { logs.dev.push(detail); },
-  logVendorCall: () => undefined,
+  logVendorCall: (summary: unknown) => { logs.calls.push(JSON.stringify(summary)); },
 }));
 
 import type { Model, Vendor } from "../catalog/types";
@@ -76,5 +76,35 @@ describe("200 里 SSE 包着的错误回显凭据（没有状态码，原话直�
   it("openai-compatible", async () => {
     const shown = await failWith("openai-compatible", (request) => reply.sseError(echoed(request)));
     for (const secret of [KEY, RELAY]) for (const form of echoForms(secret)) expect(shown, `漏了「${form}」`).not.toContain(form);
+  });
+});
+
+// 第 3 轮收敛（协调 10-21）：「按头名猜秘密、按写法枚举变体」是类根因，转 G-redact-owner 另线；本 PR 的判据是「不新增泄漏出口」。
+// 本 PR 新增的开发诊断出口（Anthropic 那条以前就没有）不再记任何正文：只记状态码、类别、主机、模型、耗时。
+// 用独立验收 F2-A / F2-B 的四种夹具对准这个出口——它们在错误原话里仍可能漏（既有，另线），但开发诊断里一个字都不许有。
+describe("开发诊断出口不记正文（F2-A / F2-B 四种夹具）", () => {
+  const cases: Array<[string, string, string, (value: string) => string]> = [
+    ["SDK_PREFIX", "X-Stainless-Relay-Token", "fixture-stainless-pass-42", (value) => value],
+    ["USER_AGENT", "User-Agent", "fixture-agent-pass-42", (value) => value],
+    ["LOWER_PERCENT", "X-Relay-Token", "fixture/Pass+Code=42", (value) => encodeURIComponent(value).replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase())],
+    ["UPPER_UNICODE", "X-Relay-Token", "fixture-é-pass-42", (value) => JSON.stringify(value).slice(1, -1).replace(/é/g, "\\u00E9")],
+  ];
+  it.each(cases)("%s", async (_label, header, secret, echo) => {
+    logs.dev.length = 0;
+    logs.calls.length = 0;
+    const server = await startTextUpstream("anthropic", (request) =>
+      reply.http(401, { error: { message: `Access denied: ${echo(String(request.headers[header.toLowerCase()]))}; contact gateway admin` } }));
+    try {
+      const vendor = { key: "relay-diag", baseUrlHint: server.origin, providerKind: "anthropic", authType: "bearer", meta: { extraHeaders: { [header]: secret } } } as unknown as Vendor;
+      const model = { modelKey: "fixture-model", vendorKey: vendor.key, kind: "text" } as unknown as Model;
+      await executeTextTask({ vendor, model, apiKey: KEY, kind: "chat", request: { kind: "chat", prompt: "fixture", extras: { maxRetries: 0 } }, taskId: "fixture" }).catch(() => undefined);
+      expect(String(server.requests[0]?.headers[header.toLowerCase()] ?? "")).toBe(secret);
+      const diagnostics = [...logs.dev, ...logs.calls].join(" | ");
+      for (const form of [secret, echo(secret), KEY]) expect(diagnostics, `开发诊断里出现了「${form}」`).not.toContain(form);
+      expect(diagnostics).not.toContain("Access denied");
+      expect(logs.calls.join(" | ")).toContain("401");
+    } finally {
+      await server.close();
+    }
   });
 });

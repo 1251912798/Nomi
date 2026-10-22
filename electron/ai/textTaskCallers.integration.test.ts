@@ -13,6 +13,9 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { reply } from "../../tests/fixtures/textTasks/textUpstream";
+import { parseVendorErrorFromMessage } from "../../src/workbench/generationCanvas/runner/vendorErrorIpc";
+import { textTaskFailureText } from "../../src/workbench/api/taskApi";
+import { desktopT } from "../i18n";
 
 vi.mock("electron", async () => (await import("../../tests/fixtures/textTasks/textTaskCallerState")).electronMock());
 vi.mock("../ipcSenderGuard", () => ({ assertTrustedSender: () => undefined }));
@@ -78,10 +81,14 @@ describe.each(CALLERS)("$id", (caller) => {
     expect(seen.error).toContain("relay upstream failed: channel busy");
   });
 
-  it("出字中途断连：失败，不把半截字当成功", async () => {
+  it("出字中途断连：失败，不把半截字当成功；带结构化 network 与现有「中途断了」人话，不是裸 terminated（独立验收 N1）", async () => {
     const seen = await runCaller(caller, "openai-compatible", () => reply.cutAfterText("半截"));
     expect(seen.ok).toBe(false);
-    expect(seen.error).not.toBe("");
+    expect(parseVendorErrorFromMessage(seen.error)).toMatchObject({ category: "network" });
+    // 一次性门的错误由 Electron 再包一层「Error invoking remote method …」，人话照样在里面。
+    expect(textTaskFailureText(new Error(seen.error))).toContain(desktopT("textTask.streamCut"));
+    expect(textTaskFailureText(new Error(seen.error)).toLowerCase()).not.toContain("terminated");
+    expect(rendererVerdict(seen.error).retried).toBe(false);
   });
 
   it("流结束却没有 finish_reason（D3，协调 10-21 定：算失败）", async () => {

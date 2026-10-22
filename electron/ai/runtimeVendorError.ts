@@ -122,6 +122,10 @@ export function modelCallFailure(input: {
       message: desktopT(STALL_KEYS[fault.phase], { seconds: fault.seconds }) }, vendorKey)!;
   }
   if (fault?.kind === 'stream-cut') return vendorErrorFromRuntimeFacts({ kind: 'timeout', message: desktopT('textTask.streamCut') }, vendorKey)!;
+  // 拿到了 2xx、读响应体时连接断了（传输层的事实）：同一句「中途断了」，不是 SDK 冒出来的裸 terminated（独立验收 N1）。
+  if (attempt?.kind === 'response' && attempt.bodyBroken) {
+    return vendorErrorFromRuntimeFacts({ kind: 'timeout', message: desktopT('textTask.streamCut') }, vendorKey)!;
+  }
   if (attempt?.kind === 'thrown') return vendorErrorFromRuntimeFacts({ kind: 'network', message: redact(attempt.reason) }, vendorKey)!;
   return new Error(withoutClassifierMarker(raw) || 'agent_lane_provider_error');
 }

@@ -12,22 +12,26 @@
 //     断流被认成「429 额度问题」，渲染层自动重提、多生成一次。
 //   · **秘密从实际发出去的请求里收集**，不从配置里枚举：每次尝试把真正上线的请求头（Request 或 init 写法、大小写不论）
 //     里除公开系统头以外的值、查询串里的值都收进秘密集合（复用 requestPipeline 的「请求秘密 / 公开系统头」规则），整次调用
-//     累计；响应体、连接异常、开发诊断、给用户看的错误文案都过 `redact()`，并认 JSON 转义 / URL 编码的回显。以前只认几个
+//     累计；响应体、连接异常、给用户看的错误文案都过 `redact()`（尽力而为，见下「日志不记正文」），认 JSON 转义 / URL 编码的回显。以前只认几个
 //     固定鉴权头名 + 目录里那把 key，网关的自定义鉴权头（X-Relay-Token 之类）被上游回显进 401 正文就原样漏出去。
 //   · URL 去掉查询串；请求头一个都不记。
+//   · **日志不记正文**（第 3 轮收敛，协调 10-21）：「按头名猜秘密、按写法枚举变体」抹不干净（独立验收 F2-A / F2-B），
+//     抹密收成单一主人转 G-redact-owner 另线；本 PR 的判据是不新增泄漏出口，所以本 PR 新加的「响应体进开发诊断」删掉，
+//     日志只记主机、模型、状态码（或 error）、耗时。错误对象里的上游原话是迁移前三协议就有的（既有），这里照旧尽力抹。
+//   · **2xx 之后流断了也是事实**：读响应体读到一半出错（对端掐了 TCP）记进这次尝试（`bodyBroken`），错误分类据此给
+//     「中途断了」的人话与 network 类别，而不是 SDK 冒出来的裸 `terminated`（独立验收 N1）。
 import { appFetch } from "../appFetch";
-import { logDevDetail, logVendorCall } from "../logging/logger";
-import { redactLogValue } from "../logging/redact";
+import { logVendorCall } from "../logging/logger";
 import { markPublicSystemRequestHeaders, redactRequestSecrets, sensitiveRequestHeaderValues } from "./requestPipeline";
 
 /**
  * 一次尝试（一次真正发出去的 HTTP 请求）的事实：
- *   · response：拿到了 2xx 响应头（之后流里出什么事，由核心的看门狗 / 断流判断，不归传输层）；
+ *   · response：拿到了 2xx 响应头；`bodyBroken` = 之后读响应体时连接断了（停止 / 看门狗由核心先认，轮不到它）；
  *   · http：服务商回了非 2xx——状态码、去查询串的地址、抹过密钥的原话；
  *   · thrown：压根没拿到响应（连不上 / 被掐 / DNS）——抹过密钥的原因。
  */
 export type ModelCallAttempt =
-  | { kind: "response"; status: number }
+  | { kind: "response"; status: number; bodyBroken: boolean }
   | { kind: "http"; status: number; url: string; body: string }
   | { kind: "thrown"; reason: string };
 export type ModelHttpFailure = Extract<ModelCallAttempt, { kind: "http" }>;
@@ -113,6 +117,31 @@ function jsonEchoVariants(secret: string): string[] {
   return [...forms];
 }
 
+/** 原样转交响应体，只在读的过程中出错时记一笔（流照样带着原错误交给 SDK）。 */
+function watchBody(response: Response, onBroken: (error: unknown) => void): Response {
+  if (!response.body) return response;
+  const reader = response.body.getReader();
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      let chunk: ReadableStreamReadResult<Uint8Array>;
+      try {
+        chunk = await reader.read();
+      } catch (error) {
+        // 只有「从对端读」出错才算断流；往下游交付的事（下游已取消 / 已关）不归这里。
+        onBroken(error);
+        controller.error(error);
+        return;
+      }
+      if (chunk.done) controller.close();
+      else controller.enqueue(chunk.value);
+    },
+    cancel(reason) { return reader.cancel(reason); },
+  });
+  const wrapped = new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
+  Object.defineProperty(wrapped, "url", { value: response.url });
+  return wrapped;
+}
+
 /**
  * 包一层传输。`lastAttempt()` 给出最后那次尝试的事实（还没发过就是 null）；`redact(text)` 用这次调用里所有尝试
  * 真正发出去的秘密（加上调用方手里的 `knownSecrets`）抹任意一段文字——给用户看的错误文案也必须过它。
@@ -132,21 +161,24 @@ export function observeModelFetch(base: typeof globalThis.fetch, context: { mode
     try {
       const response = await base(input, init);
       if (response.ok) {
-        lastAttempt = { kind: "response", status: response.status };
-        return response;
+        const attempt: Extract<ModelCallAttempt, { kind: "response" }> = { kind: "response", status: response.status, bodyBroken: false };
+        lastAttempt = attempt;
+        // SDK 读到 SSE 里的错误后自己掐流、用户点停止——都是 abort，不算「对端断了」。
+        const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+        return watchBody(response, (error) => {
+          if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) return;
+          attempt.bodyBroken = true;
+        });
       }
+      // 日志只记主机、模型、状态码、耗时——正文一个字都不进日志（见文件头「日志不记正文」）。
       logVendorCall({ vendor: hostOf(url), model: context.modelId, status: response.status, ms: Date.now() - started });
       let body = "";
       try { body = redact((await response.clone().text()).slice(0, MAX_BODY_CHARS * 2), MAX_BODY_CHARS); } catch { /* body unreadable */ }
       lastAttempt = { kind: "http", status: response.status, url: safeUrl, body };
-      // 响应体片段可能回显请求内容：只进开发终端，用户机器上一个字都不留（logDevDetail 打包后空操作）。
-      logDevDetail("vendor", redactLogValue(`${response.status} ${response.statusText} ← ${safeUrl} (model=${context.modelId}) :: ${body.replace(/\s+/g, " ").slice(0, 300)}`));
       return response;
     } catch (error) {
-      const reason = redact(error instanceof Error ? error.message : String(error));
-      lastAttempt = { kind: "thrown", reason };
+      lastAttempt = { kind: "thrown", reason: redact(error instanceof Error ? error.message : String(error)) };
       logVendorCall({ vendor: hostOf(url), model: context.modelId, status: "error", ms: Date.now() - started });
-      logDevDetail("vendor", redactLogValue(`fetch threw ← ${safeUrl} (model=${context.modelId}) :: ${reason}`));
       throw error;
     }
   };
