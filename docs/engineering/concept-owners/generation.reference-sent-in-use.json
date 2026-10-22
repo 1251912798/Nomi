@@ -16,6 +16,10 @@
       "symbol": "placeUploadedImages"
     },
     {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
+      "symbol": "readReferenceList"
+    },
+    {
       "path": "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
       "symbol": "uploadPlacementForMode"
     },
@@ -29,15 +33,19 @@
     },
     {
       "path": "electron/catalog/archetypeInput.ts",
-      "symbol": "stripReferenceResidue"
+      "symbol": "findReferenceResidue"
     },
     {
       "path": "electron/shared/modelArchetypes/referenceKeys.ts",
       "symbol": "GENERIC_REFERENCE_KEYS"
+    },
+    {
+      "path": "electron/tasks/referenceResidueGuard.ts",
+      "symbol": "assertNoReferenceResidueBeforeSend"
     }
   ],
   "forbidden_derivations": [],
   "allowed_consumers": [],
   "since": "2026-10-22",
-  "notes": "#1269 参考图结构重写（合同 docs/fixes/2026-10-22-composer-reference-list-single-owner.root-cause.json）后的唯一主人：placeUploadedImages——节点那一份有序参考列表（readReferenceList）+ 当前档案方式 + 连线占位 → 各槽的上传图与「未用到」。参考行经 resolveReferencePlacement、发送经 uploadPlacementForMode 调它，界面标的 = 发出去的。热修 #1279（合同 docs/fixes/2026-10-22-reference-leak-hotfix.root-cause.json）留下的三个符号各归：① buildReferenceExtras 只做请求组装——值全部取自 uploadPlacementForMode / orderedSentMediaReferenceUrls，不再自己判断在不在用；② GENERIC_REFERENCE_KEYS 只回答「哪些键算参考键」（请求组装先把整张表置 undefined、主进程拒发按它查），不是第二份在用判断；③ stripReferenceResidue 从「只剥」升级为主进程拒发守卫（electron/tasks/referenceResidueGuard.ts，协调 10-22 定）：渲染层契约被绕过时在花钱前拒，不再静默剥。钉它的测试：src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts（原 #1269 的特征测试已并入）。"
+  "notes": "#1269 参考图结构重写（合同 docs/fixes/2026-10-22-composer-reference-list-single-owner.root-cause.json）后的唯一主人：placeUploadedImages——节点那一份有序参考列表（readReferenceList）+ 当前档案方式 + 连线占位 → 各槽的上传图与「未用到」。参考行经 resolveReferencePlacement、发送经 uploadPlacementForMode 调它，界面标的 = 发出去的。热修 #1279（合同 docs/fixes/2026-10-22-reference-leak-hotfix.root-cause.json）留下的三个符号各归：① buildReferenceExtras 只做请求组装——值全部取自 uploadPlacementForMode / orderedSentMediaReferenceUrls，不再自己判断在不在用；② GENERIC_REFERENCE_KEYS 只回答「哪些键算参考键」（请求组装先把整张表置 undefined、主进程拒发按它查），不是第二份在用判断；③ stripReferenceResidue（只剥）删掉，换成 findReferenceResidue（只找不改）+ electron/tasks/referenceResidueGuard.ts 的 assertNoReferenceResidueBeforeSend（协调 10-22 定）：渲染层契约被绕过时在发出前拒，不再静默剥。钉它的测试：src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts（原 #1269 的特征测试已并入）。"
 }

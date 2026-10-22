@@ -22,7 +22,11 @@
     "src/workbench/generationCanvas/nodes/controls/referenceRowModel.ts",
     "src/workbench/generationCanvas/nodes/nodeAssetWrite.ts",
     "src/workbench/generationCanvas/nodes/useNodeMentionSource.ts",
-    "src/workbench/creation/storyboard/shotRow/shotReferenceSlots.ts"
+    "src/workbench/creation/storyboard/shotRow/shotReferenceSlots.ts",
+    "electron/runtime.ts",
+    "electron/tasks/referenceResidueGuard.ts",
+    "electron/catalog/archetypeInput.ts",
+    "src/workbench/generationCanvas/nodes/controls/archetypeArrayValues.ts"
   ],
   "entry_points": [
     "画布生成框：上传 / 素材库 / 首尾帧格 / 对调 / 删 / 重排 / 切方式 / 换模型",
@@ -47,7 +51,7 @@
     },
     {
       "kind": "write",
-      "path": "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
+      "path": "src/workbench/generationCanvas/nodes/controls/archetypeArrayValues.ts",
       "symbol": "archetypeArrayWrite"
     },
     {
@@ -104,11 +108,16 @@
       "kind": "read",
       "path": "src/workbench/generationCanvas/nodes/controls/referenceRowModel.ts",
       "symbol": "unusedUploads"
+    },
+    {
+      "kind": "read",
+      "path": "electron/tasks/referenceResidueGuard.ts",
+      "symbol": "assertNoReferenceResidueBeforeSend"
     }
   ],
   "door_reduction": {
     "before": 13,
-    "after": 13,
+    "after": 14,
     "why_not": "写口只剩「把一份新列表落回 meta」这一种动作（withReferenceList / archetypeArrayWrite / referenceListPatch），按调用场景（生成框、拖入、@ 挂参考、分镜落画布）各调一次；读口只剩一个推导函数 placeUploadedImages，经 resolveReferencePlacement（参考行，有画布边）与 uploadPlacementForMode（发送 / 解析，有解析后的连线值）两处调用——连线占位来源不同，上传落槽同一个函数。before 13 = 搬图函数 2 个调用点 + 按槽键写口（parameterReferenceMetaPatch 档案帧路径、shotReferenceMetaPatch、nodeAssetWrite、useNodeMentionSource、referenceWrites 4 处）+ 读口（resolveReferenceSlots 按键读、buildArchetypeInputParams 按键读、referenceRowModel 存 − 显、resolveGenerationReferences 抬旧键）。"
   },
   "generality_proof": "落槽结论不再存储，只能从同一份列表 + 当前方式现推；任何改 modeId 的入口（20 处）都不必、也无法再搬图，界面与发送的上传部分调的是同一个纯函数，所以全部档案 × 每个方式成立（referenceInUseIsSent.characterization.test.ts 按 MODEL_ARCHETYPES 自动展开）。",
