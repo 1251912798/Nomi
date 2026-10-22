@@ -65,3 +65,15 @@ NOMI_REFLEAK_REPORT=<临时文件> npx vitest run src/workbench/generationCanvas
 | 主进程 stripReferenceResidue 改成原样返回 | 红：绕过渲染层的用例（以及 relay/bypass、apimart/bypass 两层） |
 
 每次变异前 `cp` 备份、跑完 `cp` 还原，`git diff` 核过只剩本次改动。
+
+## 真付费样本（待协调跑）
+
+脚本 `tests/ux/reference-leak-hotfix.paid.mjs`，只花一条：复盘场景 2，APIMart Seedance 2.0 fast · 480p · 4 秒 · 无音频。全能参考放 3 张 → 切首尾帧 → 放首、尾帧 → 生成。断言的是 App 真正发往 `api.apimart.ai` 的请求体：只有首帧、尾帧两张图，那 3 张参考没被托管上传、也没发出。请求体由走查网络闸在 fetch 层记账（`NOMI_WALK_NET_BODIES=1`，先脱敏）。
+
+```
+pnpm build
+NOMI_SPEND_OK=1 NOMI_PAID_PROBE_DIALOG=1 APIMART_API_KEY=<key> node tests/ux/reference-leak-hotfix.paid.mjs   # 零花费探测：走到确认框、点取消
+NOMI_SPEND_OK=1 APIMART_API_KEY=<key> node tests/ux/reference-leak-hotfix.paid.mjs                            # 真付费一条
+```
+
+证据摘要写 `paid/report.json`（探测模式写 `paid/probe-report.json`）：paidCalls、供应商任务号、请求体里的图片（只留文件名和地址哈希）、托管上传了哪些文件、成片时长 / 编码；成片拷在走查输出目录（`.tmp/` 下，不进仓库）。

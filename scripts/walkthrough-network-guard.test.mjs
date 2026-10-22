@@ -45,6 +45,31 @@ describe('walkthrough network guard', () => {
     expect(blocked.map((entry) => entry.host)).toEqual(['other.invalid'])
   })
 
+  it('NOMI_WALK_NET_BODIES=1 records the body of allowed public requests, scrubbed (no headers, no signed query, no key-shaped strings)', () => {
+    const { entries } = runGuarded(`
+      const form = new FormData()
+      form.append('file', new Blob([new Uint8Array(4)], { type: 'image/png' }), 'first.png')
+      fetch('https://allowed.invalid/v1/videos/generations', { method: 'POST', headers: { Authorization: 'Bearer sk-live-1234567890abcdef' },
+        body: JSON.stringify({ image_urls: ['https://cdn.invalid/a.png?sig=SECRET&exp=1'], note: 'Bearer sk-live-1234567890abcdef' }) }).catch(() => undefined)
+        .then(() => fetch('https://allowed.invalid/upload', { method: 'POST', body: form })).catch(() => undefined)
+    `, { NOMI_WALK_ALLOW_ORIGINS: 'https://allowed.invalid', NOMI_WALK_NET_BODIES: '1', CI: '' })
+    const recorded = entries.filter((entry) => entry.kind === 'allowed-request')
+    expect(recorded).toHaveLength(2)
+    expect(recorded[0]).toMatchObject({ method: 'POST', host: 'allowed.invalid', url: 'https://allowed.invalid/v1/videos/generations' })
+    const text = recorded[0].body.text
+    expect(JSON.parse(text).image_urls).toEqual(['https://cdn.invalid/a.png?<redacted>'])
+    expect(JSON.stringify(entries)).not.toMatch(/SECRET|sk-live-1234567890abcdef/)
+    expect(recorded[0]).not.toHaveProperty('headers')
+    expect(recorded[1].body.form).toEqual([{ field: 'file', fileName: 'first.png', size: 4, type: 'image/png' }])
+  })
+
+  it('without NOMI_WALK_NET_BODIES nothing about allowed requests is recorded (other walks unchanged)', () => {
+    const { entries } = runGuarded(`
+      fetch('https://allowed.invalid/v1/x', { method: 'POST', body: '{"a":1}' }).catch(() => undefined)
+    `, { NOMI_WALK_ALLOW_ORIGINS: 'https://allowed.invalid', CI: '' })
+    expect(entries.filter((entry) => entry.kind === 'allowed-request')).toEqual([])
+  })
+
   it('NOMI_WALK_ALLOW_ORIGINS is ignored under CI (an inherited variable cannot open the public network there)', () => {
     const { entries } = runGuarded(`
       fetch('https://allowed.invalid/v1/chat/completions', { method: 'POST', body: '{}' }).catch(() => undefined)
