@@ -1,0 +1,39 @@
+{
+  "case": "S2-参考3张切首尾帧再放帧",
+  "transport": "apimart",
+  "kind": "image_to_video",
+  "inUse": [
+    "nomi-local://ref/f.png",
+    "nomi-local://ref/l.png"
+  ],
+  "sent": [
+    "nomi-local://ref/f.png",
+    "nomi-local://ref/l.png"
+  ],
+  "received": {
+    "method": "POST",
+    "path": "/v1/videos/generations",
+    "body": {
+      "model": "doubao-seedance-2.0-fast",
+      "prompt": "一个镜头",
+      "size": "16:9",
+      "resolution": "720p",
+      "duration": 5,
+      "image_urls": [
+        "nomi-local://ref/f.png",
+        "nomi-local://ref/l.png"
+      ],
+      "image_with_roles": [
+        {
+          "url": "nomi-local://ref/f.png",
+          "role": "first_frame"
+        },
+        {
+          "url": "nomi-local://ref/l.png",
+          "role": "last_frame"
+        }
+      ],
+      "generate_audio": true
+    }
+  }
+}

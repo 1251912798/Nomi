@@ -118,6 +118,7 @@ export const CURRENT_PROJECT_READER_ALLOWLIST: Record<string, { reads: number; r
   'src/workbench/generationCanvas/nodes/ClipNode.tsx': { reads: 1, reason: 'display: which project library the clip asset picker lists (pick/upload issue their own context)' },
   'src/workbench/generationCanvas/nodes/NodeInputReferenceEntry.tsx': { reads: 1, reason: 'display: existing picker library and cancellation lifetime; addAssetInput/addUploadedInput issue their own write context' },
   'src/workbench/generationCanvas/nodes/NodeParameterControls.tsx': { reads: 1, reason: 'display: asset reference picker listing' },
+  'src/workbench/creation/WorkbenchEditor.tsx': { reads: 1, reason: 'display: AI 编辑会话身份（项目 + 文稿）的一半，只用来判「编辑器里换了项目 / 文稿」让旧会话作废，不发任何 IO、不授权（改写调用自己在点下去时签发上下文）' },
   'src/workbench/creation/storyboard/shotRow/ShotReferenceStrip.tsx': { reads: 1, reason: 'display: asset reference picker listing (upload issues its own context)' },
   'src/workbench/creation/storyboard/shotRow/useShotMentionSource.ts': { reads: 1, reason: 'display: @-mention asset suggestions when the host passes no project' },
   'src/workbench/timeline/TimelineSecondaryAddRow.tsx': { reads: 1, reason: 'display: music picker listing (adding issues its own context)' },

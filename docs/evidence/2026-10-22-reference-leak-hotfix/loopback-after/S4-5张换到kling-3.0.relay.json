@@ -1,0 +1,17 @@
+{
+  "case": "S4-5张换到kling-3.0",
+  "transport": "relay",
+  "kind": "text_to_video",
+  "inUse": [],
+  "sent": [],
+  "received": {
+    "method": "POST",
+    "path": "/v1/video/generations",
+    "body": {
+      "model": "kling-3.0/video",
+      "prompt": "一个镜头",
+      "duration": "5",
+      "size": "1024x576"
+    }
+  }
+}
