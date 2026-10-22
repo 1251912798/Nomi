@@ -15,6 +15,7 @@ import {
   registerRendererLogIpc,
 } from "./rendererLog";
 import { UntrustedIpcSenderError } from "../ipcSenderGuard";
+import { diskSafeMessage } from "./diskSafeFailure";
 import {
   installRendererErrorCapture,
   logRendererCrash,
@@ -73,7 +74,8 @@ describe("渲染层失败 → 主进程日志（端到端）", () => {
     expect(line).toMatch(/ERROR renderer\s+project-save-failed /);
     expect(line).toContain("trigger=autosave");
     expect(line).toContain("<omitted:prompt>");
-    expect(line).toContain("WorkspaceManifestLockBusyError: Workspace manifest is being changed by another process");
+    // 错误原文不落盘（G-redact-owner）：类名 + 同一句话同一个指纹。
+    expect(line).toContain(`WorkspaceManifestLockBusyError ${diskSafeMessage(error.message)}`);
     expect(line).toContain("code=workspace_manifest_busy");
     expect(line).toContain("index-3f9a.js:12:34");
     for (const leaked of ["alice", "猫咪短片", "Nomi Projects", "东京", "sk-live", "app.asar"]) {
@@ -86,7 +88,8 @@ describe("渲染层失败 → 主进程日志（端到端）", () => {
     wireRendererToMain();
     logRendererWarn("timeline-append-probe-failed-probe", { attempt: 2 }, new Error("probe timeout"));
     const [line] = logLines("timeline-append-probe-failed-probe");
-    expect(line).toMatch(/WARN\s+renderer\s+timeline-append-probe-failed-probe attempt=2 Error: probe timeout/);
+    expect(line).toMatch(/WARN\s+renderer\s+timeline-append-probe-failed-probe attempt=2 Error msg#[0-9a-f]{8}/);
+    expect(line).toContain(diskSafeMessage("probe timeout"));
 
     vi.unstubAllGlobals();
     expect(() => logRendererError("no-bridge-probe", new Error("x"))).not.toThrow();
@@ -98,7 +101,7 @@ describe("渲染层失败 → 主进程日志（端到端）", () => {
     wireRendererToMain();
     const componentStack = "\n    at CanvasNode (http://localhost:5173/src/a.tsx:1:1)\n    at Workspace (x)\n    at App (y)";
     logRendererCrash("root-boundary-probe", new TypeError("cannot read x"), componentStack);
-    expect(readFile(CRASH_LOG_FILE_NAME)).toContain("[renderer:root-boundary-probe] TypeError: cannot read x");
+    expect(readFile(CRASH_LOG_FILE_NAME)).toContain(`[renderer:root-boundary-probe] TypeError ${diskSafeMessage("cannot read x")}`);
     const [line] = logLines("renderer:root-boundary-probe");
     expect(line).toContain("components=CanvasNode < Workspace < App");
     expect(line).not.toContain("localhost:5173/src");
@@ -114,8 +117,8 @@ describe("渲染层失败 → 主进程日志（端到端）", () => {
     // ResizeObserver 回路通知不是失败：不进日志。
     listeners.get("error")!({ error: null, message: "ResizeObserver loop completed with undelivered notifications." } as unknown as Event);
 
-    expect(logLines("uncaught-probe-rejection")[0]).toMatch(/ERROR renderer\s+unhandled-rejection RangeError: uncaught-probe-rejection/);
-    expect(logLines("uncaught-probe-throw")[0]).toMatch(/ERROR renderer\s+uncaught-error Error: uncaught-probe-throw/);
+    expect(logLines(diskSafeMessage("uncaught-probe-rejection"))[0]).toMatch(/ERROR renderer\s+unhandled-rejection RangeError msg#/);
+    expect(logLines(diskSafeMessage("uncaught-probe-throw"))[0]).toMatch(/ERROR renderer\s+uncaught-error Error msg#/);
     expect(logLines("ResizeObserver")).toHaveLength(0);
   });
 });

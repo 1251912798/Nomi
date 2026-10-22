@@ -6,13 +6,61 @@
 // §2 坑1，只在 kieSeedance body 写一次 = M1 单源）。
 //
 // **M2 互斥**：camelCase 只投影非空值；显式 snake 槽值原样保留（null 表示该槽空着）。
-// 渲染层 catalogTaskActions 已把非当前模式的残留键置 undefined，不会进入 body。
+// 当前方式没声明的参考键不许进 body，两道守：
+//   ① 渲染层 catalogTaskActions.buildReferenceExtras 对有档案的模型，把 GENERIC_REFERENCE_KEYS 里当前方式没声明的键显式置 undefined；
+//   ② 主进程 runTask 入口先过 stripReferenceResidue（下面），不信①——带档案投影的请求，通用参考键里凡是
+//      不在 archetypeInput 里的地址一律剥掉（开发态在终端记一条诊断）。
+// 两道都由 referenceSentWithinInUse.property.test.ts 钉住（全部档案 × 每个方式，中转 / APIMart 真请求体）。
 import { firstString, isJsonRecord, type JsonRecord } from "../jsonUtils";
-import { readSelectedComfyReferenceContract, type ParameterReferenceSelection } from "./parameterReferenceContract";
+import { readParameterReferenceSlotsContract, readSelectedComfyReferenceContract, type ParameterReferenceSelection } from "./parameterReferenceContract";
+import { GENERIC_REFERENCE_KEYS } from "../shared/modelArchetypes/referenceKeys";
 
 function stringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
+}
+
+function collectStrings(value: unknown, into: Set<string>): Set<string> {
+  if (typeof value === "string") {
+    if (value.trim()) into.add(value.trim());
+  } else if (Array.isArray(value)) value.forEach((item) => collectStrings(item, into));
+  else if (value && typeof value === "object") Object.values(value).forEach((item) => collectStrings(item, into));
+  return into;
+}
+
+/**
+ * 主进程这道守（契约②，见文件头）：带档案投影（`extras.archetypeInput`）的请求，渲染层已按**当前方式**把每个
+ * 声明槽的值打进 archetypeInput；通用参考键里凡是不在它里面的地址，就是别的方式 / 旧工程 / MCP metadata 留下的
+ * 残留——界面上没在用，发出去就是花错钱。这里把它们剥掉：字符串整键删，数组只留在用的那几张。
+ *
+ * 不带档案投影的请求（无档案模型、ComfyUI 参数契约、headless 调用方显式给的参考）不动：那里没有「当前方式」可比。
+ * 显式参数参考槽（参数契约声明的键）也不动：它们的值本来就不进 archetypeInput。
+ *
+ * 热修期只剥不拒：剥了什么交给 `report`（runtime 记开发态诊断），不把今天能出片的流程打挂。
+ */
+export function stripReferenceResidue(extras: JsonRecord, report?: (stripped: string[]) => void): JsonRecord {
+  if (!isJsonRecord(extras.archetypeInput)) return extras;
+  const inUse = collectStrings(extras.archetypeInput, new Set());
+  const declaredParameterKeys = new Set(readParameterReferenceSlotsContract(extras).map((slot) => slot.key));
+  const stripped: string[] = [];
+  for (const key of GENERIC_REFERENCE_KEYS) {
+    if (declaredParameterKeys.has(key) || !Object.prototype.hasOwnProperty.call(extras, key)) continue;
+    const value = extras[key];
+    if (typeof value === "string") {
+      if (value.trim() && !inUse.has(value.trim())) {
+        delete extras[key];
+        stripped.push(key);
+      }
+    } else if (Array.isArray(value)) {
+      const kept = value.filter((item) => typeof item !== "string" || !item.trim() || inUse.has(item.trim()));
+      if (kept.length === value.length) continue;
+      if (kept.length) extras[key] = kept;
+      else delete extras[key];
+      stripped.push(key);
+    }
+  }
+  if (stripped.length) report?.(stripped);
+  return extras;
 }
 
 /**

@@ -10,6 +10,7 @@ import { redactDeep } from '../events/redact.js';
 import { draftInputFromMessage, isLaneInputMessage } from '../shared/agentLane/laneInputMessage.js';
 import { LANE_APPROVAL_NOTE_TYPE } from '../shared/agentLane/laneContracts.js';
 import { laneToolFailureOf } from '../shared/agentLane/laneToolFailureEnvelope.js';
+import { laneAssistantFaultOf } from '../shared/agentLane/laneAssistantFault.js';
 import type { NomiPricingBasis } from '../shared/agentLane/laneModelConfig.js';
 import { LANE_DIR_MODE, LANE_FILE_MODE } from './laneFileSystem.mjs';
 
@@ -33,6 +34,21 @@ export interface LaneTraceTurn {
   tools: { toolCallId: string; name: string; spanName: string; arguments: unknown;
     resultSummary: string | null; durationMs: number | null; failed: boolean | null; failureCode: string | null }[];
   approvals: unknown[]; errors: string[];
+}
+
+/** 运行失败在轨迹与会话运行记录里的唯一写法（不带原文）。 */
+export const LANE_RUN_FAILED = 'run-failed';
+
+/**
+ * 模型报错原文 → 落盘用的类别（G-redact-owner A3）。原文可能是上游原话连同它回显的凭据，派生轨迹
+ * （trace.jsonl / trace.md，随项目目录同步、可在访达里直接打开）只记类别：
+ * 看门狗 / 断流 / 上下文溢出认 `laneAssistantFaultOf`；厂商报文认 `laneProviderGuard` 追加的分类标记；其余一律 `provider-error`。
+ */
+export function laneErrorKind(errorMessage: string): string {
+  const fault = laneAssistantFaultOf(errorMessage);
+  if (fault) return fault.kind === 'model-timeout' ? `model-timeout:${fault.phase}` : fault.kind;
+  const marker = /\[nomi-classified: ([a-z_ ]{1,32})\]\s*$/.exec(errorMessage);
+  return marker ? marker[1]! : 'provider-error';
 }
 
 /** Strip binary parts before serialization; keep ordinary local manuscript text intact. */
@@ -77,7 +93,7 @@ export function deriveLaneTrace(entries: readonly Entry[], sessionId: string): L
       turn.requestInputs.push(message.usage.input + message.usage.cacheRead);
       rawCosts.set(turn.turnId, (rawCosts.get(turn.turnId) ?? 0) + message.usage.cost.total);
       turn.response += message.content.flatMap(part => part.type === 'text' ? [part.text] : []).join('');
-      if (message.errorMessage) turn.errors.push(message.errorMessage);
+      if (message.errorMessage) turn.errors.push(laneErrorKind(message.errorMessage));
       for (const part of message.content) if (part.type === 'toolCall') {
         turn.tools.push({ toolCallId: part.id, name: part.name, spanName: `execute_tool ${part.name}`,
           arguments: part.arguments, resultSummary: null, durationMs: null, failed: null, failureCode: null });
@@ -92,9 +108,11 @@ export function deriveLaneTrace(entries: readonly Entry[], sessionId: string): L
       const message = entry.message;
       const tool = turn.tools.find(item => item.toolCallId === message.toolCallId);
       const text = message.content.flatMap(part => part.type === 'text' ? [part.text] : []).join('\n');
-      if (tool) { tool.resultSummary = text.slice(0, 2000); tool.failed = message.isError;
-        tool.failureCode = message.isError ? laneToolFailureOf(message.details)?.code ?? null : null; }
-      if (message.isError) turn.errors.push(text.slice(0, 2000));
+      const failureCode = message.isError ? laneToolFailureOf(message.details)?.code ?? null : null;
+      // 失败工具的原文可能转述了上游原话（生成失败时）：轨迹落盘只留失败码，原文留在 pi 会话里给模型。
+      if (tool) { tool.resultSummary = message.isError ? null : text.slice(0, 2000); tool.failed = message.isError;
+        tool.failureCode = failureCode; }
+      if (message.isError) turn.errors.push(failureCode ?? 'tool-failed');
     }
     if (entry.type === 'custom' && entry.customType === LANE_APPROVAL_NOTE_TYPE) turn.approvals.push(entry.data);
   }
@@ -117,7 +135,8 @@ export function deriveLaneTrace(entries: readonly Entry[], sessionId: string): L
       turn.status = run.status;
       // For steered inputs, count only their portion of the run, not time before admission.
       turn.durationMs = run.startedAt === null ? null : Math.max(0, run.endedAt - Math.max(run.startedAt, turn.timestamp));
-      if (run.error) turn.errors.push(run.error);
+      // 旧会话里这一栏存过整段错误 JSON：不论新旧，轨迹只记「这次运行失败了」。
+      if (run.error) turn.errors.push(LANE_RUN_FAILED);
       for (const tool of turn.tools) tool.durationMs = run.tools.find(item => item.toolCallId === tool.toolCallId)?.durationMs ?? null;
     }
   }

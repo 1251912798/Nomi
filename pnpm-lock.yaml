@@ -256,6 +256,9 @@ importers:
       dependency-cruiser:
         specifier: 18.2.0
         version: 18.2.0
+      diff:
+        specifier: 8.0.4
+        version: 8.0.4
       electron:
         specifier: 43.4.1
         version: 43.4.1

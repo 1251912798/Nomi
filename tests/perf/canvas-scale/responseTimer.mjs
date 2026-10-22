@@ -66,6 +66,18 @@ const INSTALL_SOURCE = `(() => {
       const input = document.querySelector('[data-nomi-inline-whiteboard="true"] [role="toolbar"] input[aria-label="' + CSS.escape(label) + '"]')
       return Boolean(input) && input.value === value
     },
+    // 写作区 AI 编辑：条出现且输入框在（点「AI 编辑」之后）。
+    rewriteBarReady() {
+      const bar = document.querySelector('.workbench-ai-rewrite-bar')
+      return visible(bar) && Boolean(bar.querySelector('input'))
+    },
+    // 写作区 AI 编辑：结果就地画完——划线的删除部分、标出来的新增部分、段尾 ✓ ✕ 都在。
+    rewriteResultReady() {
+      return Boolean(document.querySelector('[data-rewrite-status="result"]'))
+        && document.querySelectorAll('.nomi-ai-rewrite-del').length > 0
+        && document.querySelectorAll('[data-rewrite-add]').length > 0
+        && document.querySelectorAll('[data-rewrite-action]').length === 2
+    },
     // 切文稿：顶栏文稿切换钮写着目标标题，编辑器里是那份文稿的正文（marker 是正文里的标记句）。
     documentShown({ title, marker }) {
       const switcher = document.querySelector('[data-creation-document-switcher]')
