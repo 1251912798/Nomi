@@ -17,3 +17,20 @@
 | 8 真实条件 | Windows：是。英文界面：截图已做。真实 junction 越界：是。真规模：80 个项目只做了 perf。干净安装 / 真付费 / 键盘全程：`unverified`，与本改动无关。 |
 | 拍板图清单 | 不适用（pure-bugfix 例外）：复用现有置灰卡，没有新元素；协调 10-22 已批复用和文案。截图：`docs/evidence/2026-10-22-project-library-80/unreadable-card-{zh-CN,en}.png`。 |
 | ★9 验收与回滚 | **验收清单（反例 → 期望）**：① 保存排队等锁时列举收尾 → 目录在、保存成功、之后的列表里有它；② 列举途中保存成功 → 这一次的列表里就有它（对候选再读一次清单）；③ 遗留空草稿 → 不显示，但目录和登记都在，列多少次都不删；④ 草稿 `assets` 里有文件 → 照常显示；⑤ staged / immediate 写者排队期间根被删 → 报 `WorkspaceRootMissingError`，根不被重建；⑥ 一个项目越界 → 整页不抛错，邻居照出，这张卡带 `unreadableReason`；⑦ 一个项目被别的写者锁着 → 整页不抛错，这张卡是普通登记卡；⑧ 删除照用户确认的意图执行：确认「只移除」→ 只解绑，哪怕删除那一刻项目又读得出来了（V-plibrary2 条件：列表时灰卡、删除前 .nomi 挪回）；确认「删除文件」但此刻读不出 → 拒绝、什么都不动；锁忙照常报忙；没带意图 → 拒绝；⑧b 判不出是不是空的草稿（assets 是文件）→ 照常显示，整页不抛；⑨ 任何 list / read / resolve / get 能走到 `deleteWorkspaceProject` → `check:read-path-writes` 变红。**变异**：见 PR 正文。**回滚**：revert fix 提交 `c219118e8`。**独立验收**：V-plibrary2，待出。 |
+
+## 先查别人
+
+本 PR 在 `docs/engineering/self-written.json` 的领域清单里加了 `electron/shared/projectDeleteIntent*`，所以补这一节。按模板四问作答：
+
+- **依赖里已有吗？** 没有可以直接用的。Electron 的 `shell.trashItem(path): Promise<void>`（`node_modules/electron/electron.d.ts:13906`）能把文件或文件夹移进系统回收站，但它管的是「怎么删」，不管「用户确认的是只移除还是删文件」这件事。本 PR 的契约（`electron/shared/projectDeleteIntent.ts`）管的是后者，两者不冲突。
+- **仓库里已有吗？** 有同类，按同样的方式落位：
+  - `electron/shared/projectBinding.ts:1`（`ProjectBinding`）是已登记在领域清单里的项目跨进程契约（`electron/shared/projectBinding*`），渲染层和主进程共读。删除意图和它同类，所以同样放在 `electron/shared/`。原因是 `.dependency-cruiser.mjs:21` 的 `src-no-import-electron` 只放行 `electron/shared/`。
+  - 删盘只有一扇门：`electron/workspace/workspaceRepository.ts:440` 的 `deleteWorkspaceProject`。
+  - 只解绑用的是现成的 `electron/workspace/workspaceRegistry.ts:265` 的 `removeWorkspaceReference`，没有另写一份。
+  - 同文件 `workspaceRepository.ts:426` 还有一个包了一层的 `removeWorkspaceProjectReference`。本 PR 的 `unbindProject` 直接调底层，另外要抑制重发现。
+  - 「忙」的跨进程识别照 `electron/shared/contracts/workspaceBusy.ts` 的写法（名字写进信息开头），没有新造识别方式。
+- **生态里已有吗？**
+  - Electron 官方文档 https://www.electronjs.org/docs/latest/api/shell ：`shell.trashItem` 把文件夹移进系统回收站（Windows 是回收站，macOS 是废纸篓）。这和本 PR 的 `delete-files` 意图相关：真删时要不要改成进回收站、让用户还能找回，记成**跟进、交用户定**，本 PR 不做。现状是 `deleteWorkspaceProject` 直接 `fs.rmSync`。
+  - VS Code 官方文档 https://code.visualstudio.com/docs/editing/workspaces/multi-root-workspaces ：「Remove Folder from Workspace」是把文件夹从工作区里移除。文档只说移除，没写删盘（我读到的原文就这么多）；命令语义是去掉工作区对它的引用，对应我们的 `unbind`。
+  - 结论（确认了）：「只解除引用」和「删文件」是两种不同的用户意图，应该分开确认、分开执行，不能由执行方在执行那一刻自己换。
+- **自媒体里怎么说？** 不适用：这是内部的数据安全语义（确认什么就执行什么），不是创作者能感知的功能，TikHub 里查不到对应的讨论。
