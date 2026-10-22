@@ -132,8 +132,8 @@ export async function importProjectAsset(input: {
   }
 }
 
-export function listAllProjects(): Array<{ id: string; name: string; updatedAt: number }> {
-  return listProjects().map((project) => ({ id: project.id, name: project.name, updatedAt: project.updatedAt }))
+export async function listAllProjects(): Promise<Array<{ id: string; name: string; updatedAt: number }>> {
+  return (await listProjects()).map((project) => ({ id: project.id, name: project.name, updatedAt: project.updatedAt }))
 }
 
 export function createNamedProject(name?: string): { id: string; name: string } {

@@ -117,9 +117,9 @@ export function saveWorkflowToLibrary(input: {
 }
 
 /** sourceProjectId：保存动作起点签发的原项目（没有打开的项目 = null，只是不记来源）。 */
-export function saveWorkflowFromProject(template: CanvasWorkflowTemplate, sourceProject: string | null): WorkflowLibraryEntry | null {
+export async function saveWorkflowFromProject(template: CanvasWorkflowTemplate, sourceProject: string | null): Promise<WorkflowLibraryEntry | null> {
   const sourceProjectId = sourceProject || undefined
-  const sourceProjectName = sourceProjectId ? listLocalProjects().find((project) => project.id === sourceProjectId)?.name : undefined
+  const sourceProjectName = sourceProjectId ? (await listLocalProjects()).find((project) => project.id === sourceProjectId)?.name : undefined
   return saveWorkflowToLibrary({ template, sourceProjectId, sourceProjectName })
 }
 

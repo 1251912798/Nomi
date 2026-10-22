@@ -23,7 +23,7 @@ const { app, win } = await launchNomiApp({ name: 'shot-nodes-media', tempRoot, p
 try {
   await win.setViewportSize({ width: 1100, height: 400 })
   // Project discovery populates the normal local-protocol project registry.
-  await win.evaluate(() => window.nomiDesktop.projects.list())
+  await win.evaluate(() => window.nomiDesktop.projects.listAsync())
   for (const theme of ['light', 'dark']) {
     await win.evaluate(theme => { localStorage.setItem('nomi-color-scheme', theme); localStorage.setItem('nomi:locale:v1', 'zh-CN') }, theme)
     await win.goto(`${base}/tests/ux/fixtures/shot-nodes-media/index.html?media=${encodeURIComponent(`nomi-local://asset/${projectId}/assets/imported/shot.mp4`)}`)
