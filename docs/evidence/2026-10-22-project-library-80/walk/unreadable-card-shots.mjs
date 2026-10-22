@@ -2,10 +2,13 @@
 // 项目库整页照常出，邻居正常；这张卡置灰、不可点、悬停说清原因，没有「在文件夹中显示」。中英各截一张。
 import fs from 'node:fs'
 import path from 'node:path'
-const repo = 'D:/Nomi-plibrary'
-const { launchNomiApp } = await import(`file:///${repo}/tests/ux/_launchApp.mjs`)
-const { expectVisible, clickOrFail } = await import(`file:///${repo}/tests/ux/_assert.mjs`)
-const { backToLibrary, newProjectEntry, setAppLanguage } = await import(`file:///${repo}/tests/ux/_shell.mjs`)
+import { fileURLToPath, pathToFileURL } from 'node:url'
+// 仓库根按脚本位置推（docs/evidence/<目录>/walk/ 往上四层），换工作树也能跑。用法：node <本文件> <截图输出目录>
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..')
+const fromRepo = (rel) => pathToFileURL(path.join(repo, rel)).href
+const { launchNomiApp } = await import(fromRepo('tests/ux/_launchApp.mjs'))
+const { expectVisible, clickOrFail } = await import(fromRepo('tests/ux/_assert.mjs'))
+const { backToLibrary, newProjectEntry, setAppLanguage } = await import(fromRepo('tests/ux/_shell.mjs'))
 
 const out = process.argv[2]
 fs.mkdirSync(out, { recursive: true })
@@ -47,6 +50,8 @@ try {
   results.push(['邻居卡照常可点', (await good.getAttribute('role')) === 'button'])
   results.push(['坏卡不可点', (await bad.getAttribute('role')) === null])
   results.push(['坏卡 title 写下一步', Boolean(await bad.getAttribute('title'))])
+  results.push(['坏卡没有同步角标（弹层里的打开文件夹 / 重新检查对它只会报失败）', (await bad.locator('[data-sync-status]').count()) === 0])
+  results.push(['邻居卡同步角标照常', (await good.locator('[data-sync-status]').count()) === 1])
   for (const [locale, label] of [['zh-CN', '项目数据指向文件夹外，已停止读取'], ['en', 'Project data points outside its folder; reading stopped']]) {
     await setAppLanguage(page, locale)
     await bad.hover()
