@@ -423,7 +423,7 @@ test('package scripts expose canonical separated profiles and classifier contrac
   // 棘轮只减不增：2026-09-06 v4 接线删掉旧面板后降到 81；2026-09-22 总合并清完合并带来的
   // 未用 import 与两处 prefer-const 后降到 79。调高需要理由，调低直接改这一行。
   // 2026-10-22 scripts / tests/ux / evals 进 ESLint：带进来 16 条存量警告（TS 脚本里的 any / 未用变量等，批量抑制只冻结错误、冻不了警告），79 → 95。
-  // --cache：CI 的 Contracts 用 actions/cache 恢复 .tmp/eslintcache（按内容判，检出会改 mtime）；警告上限不受缓存影响。
+  // --cache（按内容判，检出会改 mtime）：本机重跑走缓存；CI 上没有恢复缓存时每次冷跑、结果不变。警告上限不受缓存影响。
   assert.equal(scripts['lint:ci'], 'eslint . --max-warnings=95 --cache --cache-location .tmp/eslintcache --cache-strategy content')
   assert.match(scripts['check:quality-gate-workflow'], /validation-policy\.node-test\.mjs/)
   assert.match(scripts['check:quality-gate-workflow'], /real-user-test-gates\.node-test\.mjs/)
