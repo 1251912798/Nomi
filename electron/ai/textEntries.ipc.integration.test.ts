@@ -44,7 +44,7 @@ vi.mock("electron", async () => {
           return await handler(event, payload);
         } catch (error) {
           const inner = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-          throw new Error(`Error invoking remote method '${channel}': ${inner}`);
+          throw new Error(`Error invoking remote method '${channel}': ${inner}`, { cause: error });
         }
       },
       on: (channel: string, listener: Listener) => {
@@ -96,6 +96,7 @@ vi.mock("../../src/workbench/library/localProjectStore", async () => {
 });
 
 import { startTextUpstream, reply, type UpstreamReply } from "../../tests/fixtures/textTasks/textUpstream";
+import * as runtime from "../runtime";
 import { registerTaskIpcHandlers } from "../tasks/taskIpcHandlers";
 import { registerTextStreamIpc } from "./textStreamIpc";
 import { generateText } from "../../src/workbench/generationCanvas/runner/textActions";
@@ -110,7 +111,7 @@ let script: (index: number) => UpstreamReply = () => reply.text("改写后的句
 beforeAll(async () => {
   upstream = await startTextUpstream("openai-compatible", (_request, index) => script(index));
   fixture.baseURL = upstream.baseURL;
-  registerTaskIpcHandlers(() => import("../runtime"), async () => { throw new Error("canvas core is not part of this test"); });
+  registerTaskIpcHandlers(async () => runtime, async () => { throw new Error("canvas core is not part of this test"); });
   registerTextStreamIpc();
 });
 afterAll(async () => { await upstream.close(); });
