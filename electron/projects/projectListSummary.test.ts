@@ -7,7 +7,7 @@ vi.mock("electron", () => ({
   app: { getPath: () => os.tmpdir(), getAppPath: () => process.cwd() },
 }));
 
-import { createProject, listProjects, saveProject } from "./repository";
+import { createProject, deleteProject, listProjects, saveProject } from "./repository";
 import { findRecentWorkspace } from "../workspace/workspaceRegistry";
 import { workspaceProjectFile } from "../workspace/workspacePaths";
 import * as manifest from "../workspace/workspaceManifest";
@@ -108,6 +108,25 @@ describe("项目列表摘要读面", () => {
       });
     } finally {
       fs.unlinkSync(source); // 先摘 junction，别顺着它删目标
+    }
+  });
+
+  it("删除一个数据越界的项目：只从项目库解绑，盘上文件（含根外那份）一个不动", async () => {
+    // native（默认根内）项目：正常删除会整目录 rmSync，所以这里能证明「读不出就绝不删盘」。
+    const project = createProject({ name: "要移除的越界项目" });
+    const inside = (findRecentWorkspace(settingsRoot, project.id) as { rootPath: string; source?: string }).rootPath;
+    expect(findRecentWorkspace(settingsRoot, project.id)).toMatchObject({ source: "native" });
+    const source = path.join(inside, ".nomi");
+    const destination = path.join(settingsRoot, "outside-metadata-delete");
+    fs.renameSync(source, destination);
+    fs.symlinkSync(destination, source, "junction");
+    try {
+      expect(deleteProject(project.id)).toEqual({ id: project.id, deleted: false });
+      expect(findRecentWorkspace(settingsRoot, project.id)).toBeFalsy();
+      expect(fs.existsSync(inside)).toBe(true);
+      expect(fs.existsSync(path.join(destination, "project.json"))).toBe(true);
+    } finally {
+      fs.unlinkSync(source);
     }
   });
 
