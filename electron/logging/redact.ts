@@ -13,7 +13,7 @@
 //
 // 刻意不做的事：**不试图用正则识别"这是不是一段提示词"**。提示词没有可匹配的特征，
 // 靠内容检测去拦它只会给出一种「已经防住了」的错觉。真正防住它的是 ①，以及值长度上限。
-import { diskSafeErrorFacts } from "../events/diskSafeFailure";
+import { diskSafeErrorFacts } from "./diskSafeFailure";
 
 const MAX_VALUE_CHARS = 200;
 const MAX_LINE_CHARS = 2000;

@@ -15,7 +15,7 @@ import {
   registerRendererLogIpc,
 } from "./rendererLog";
 import { UntrustedIpcSenderError } from "../ipcSenderGuard";
-import { diskSafeMessage } from "../events/diskSafeFailure";
+import { diskSafeMessage } from "./diskSafeFailure";
 import {
   installRendererErrorCapture,
   logRendererCrash,

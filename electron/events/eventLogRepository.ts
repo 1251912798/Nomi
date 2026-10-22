@@ -13,7 +13,7 @@ import path from "node:path";
 import { getWorkspaceRepositoryDeps } from "../runtimePaths";
 import { resolveWorkspaceProjectDir } from "../workspace/workspaceRepository";
 import { redactDeep } from "./redact";
-import { diskSafePayload } from "./diskSafeFailure";
+import { diskSafePayload } from "../logging/diskSafeFailure";
 import { logError } from "../logging/logger";
 import type { NewNomiEvent, NomiEvent, TruncatedPayloadField } from "./types";
 

@@ -17,10 +17,10 @@ vi.mock("../catalog/validateCandidateCredential", () => ({ revalidatePendingCred
 import type { Entry } from "@earendil-works/pi-agent-core";
 import { executeTextTask } from "../textTaskRunner";
 import { runTaskIpcGuard } from "../tasks/taskIpcGuard";
-import { readEvents, resetEventLogStateForTests, setEventLogProjectDirResolverForTests } from "./eventLogRepository";
-import { traceVendorCompleted } from "./vendorCallTrace";
-import { logError, logWarn } from "../logging/logger";
-import { dailyLogFileName } from "../logging/logFiles";
+import { readEvents, resetEventLogStateForTests, setEventLogProjectDirResolverForTests } from "../events/eventLogRepository";
+import { traceVendorCompleted } from "../events/vendorCallTrace";
+import { logError, logWarn } from "./logger";
+import { dailyLogFileName } from "./logFiles";
 import { VendorRequestError, type VendorErrorCategory } from "../vendor/vendorHttp";
 import type { VendorFailureCategory } from "./diskSafeFailure";
 

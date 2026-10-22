@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import { appendEvents } from "./eventLogRepository";
 import type { NormalizedRecipe } from "../vendor/provenance";
 import type { VendorErrorStructured } from "../vendor/vendorHttp";
-import { vendorFailureFacts } from "./diskSafeFailure";
+import { vendorFailureFacts } from "../logging/diskSafeFailure";
 import type { ProviderCostActual } from "../vendor/cost";
 
 const mintId = () => `evt_${crypto.randomUUID().slice(0, 12)}`;

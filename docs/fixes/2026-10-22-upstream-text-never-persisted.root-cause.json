@@ -13,7 +13,7 @@
     "旧项目：2026-10-22 之前已写下带 upstreamMsg 的事件"
   ],
   "scope_paths": [
-    "electron/events/diskSafeFailure.ts",
+    "electron/logging/diskSafeFailure.ts",
     "electron/events/vendorCallTrace.ts",
     "electron/events/eventLogRepository.ts",
     "electron/logging/redact.ts",
@@ -100,7 +100,7 @@
     },
     {
       "kind": "write",
-      "path": "electron/events/diskSafeFailure.ts",
+      "path": "electron/logging/diskSafeFailure.ts",
       "symbol": "vendorFailureFacts"
     },
     {
@@ -127,12 +127,12 @@
   "generality_proof": "不变量放在落盘的输入类型上而不是秘密识别上：事件侧，唯一写者 appendEvents 把任何写入方给的负载过 diskSafePayload（认我们自己 schema 的 upstreamMsg 字段，换成结构事实或去掉），唯一读者 readEvents 同样过一遍，所以新写入方、旧数据都回不来；日志侧，logger 与 crashLog 两扇门都经 redactError，而 redactError 从不输出 error.message 原文（只给码形 message 或指纹），所以不论原话被哪一层、以什么编码、带不带 cause 拼进 message，都写不进文件；轨迹侧，deriveLaneTrace 只产出类别。三处都不依赖「认出秘密」，F2-A / F2-B 之外的新头名、新编码同样挡住",
   "shared_boundaries": [
     {
-      "path": "electron/events/diskSafeFailure.ts",
+      "path": "electron/logging/diskSafeFailure.ts",
       "symbol": "vendorFailureFacts",
       "responsibility": "供应商失败能落盘的唯一形状（无自由文本位）"
     },
     {
-      "path": "electron/events/diskSafeFailure.ts",
+      "path": "electron/logging/diskSafeFailure.ts",
       "symbol": "diskSafePayload",
       "responsibility": "事件负载落盘 / 读出前去掉上游原话字段"
     },
@@ -202,13 +202,13 @@
   },
   "prevention": {
     "kind": "centralized-boundary",
-    "enforcement_path": "electron/events/diskSafeFailure.ts",
+    "enforcement_path": "electron/logging/diskSafeFailure.ts",
     "invariant": "落盘出口只收结构事实：事件经 vendorFailureFacts / diskSafePayload，日志经 redactError（diskSafeErrorFacts），轨迹经 laneErrorKind",
     "failure_mode": "认不出形状的供应商错误不落任何字段；不像码的 upstreamCode 不落；错误原文一律换成 msg#<指纹>；旧事件读出时去掉 upstreamMsg",
     "exception_policy": "none",
     "strategy": "删掉落盘那份原话（删 > 脱敏，用户 2026-10-22 拍板），并把「落盘收什么」收成一个模块；原话只给开发态终端（logDevDetail，打包版空操作）",
     "artifacts": [
-      "electron/events/diskSafeFailure.ts",
+      "electron/logging/diskSafeFailure.ts",
       "electron/events/vendorCallTrace.ts",
       "electron/events/eventLogRepository.ts",
       "electron/logging/redact.ts",
@@ -218,13 +218,13 @@
     ]
   },
   "regression_tests": [
-    "electron/events/diskSafeFailure.test.ts",
+    "electron/logging/diskSafeFailure.test.ts",
     "electron/events/vendorCallTrace.test.ts",
     "electron/logging/redact.test.ts",
     "electron/logging/rendererLog.test.ts"
   ],
   "class_regression_tests": [
-    "electron/events/diskSafeFailure.test.ts",
+    "electron/logging/diskSafeFailure.test.ts",
     "electron/events/vendorCallTrace.test.ts"
   ],
   "legacy_paths": {
@@ -250,9 +250,9 @@
     "electron/events/agentChatTrace.ts 会把 error / tool-error 原文写进事件，但生产代码无调用方（只剩测试 import）"
   ],
   "invariant_owner_layer": {
-    "layer": "electron/events/diskSafeFailure.ts",
+    "layer": "electron/logging/diskSafeFailure.ts",
     "tests": [
-      "electron/events/diskSafeFailure.test.ts",
+      "electron/logging/diskSafeFailure.test.ts",
       "electron/events/vendorCallTrace.test.ts",
       "electron/logging/redact.test.ts"
     ],

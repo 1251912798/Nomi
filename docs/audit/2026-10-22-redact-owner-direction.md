@@ -24,7 +24,7 @@
 - 上游原话进入系统的入口不止一个：`vendorHttp`、`modelCallFailure`（含 SSE 兜底 `new Error(raw)`）、自定义调用、音频 / 转写包装、pi 的 `errorMessage`。原话随后被**任意**一层拼进新 Error 的 message（有的带 cause，有的不带）。落盘出口在末端只拿到一段字符串，**已经不知道它从哪儿来**。
 - 末端只能「认出秘密再擦」，而认秘密靠头名白名单和编码枚举，两张表永远追不上真实输入（F2-A / F2-B）。
 - 所以类根因不在某个出口漏了 redact，而在**落盘出口的输入类型是自由文本**。只要输入类型不变，新的出口、新的包装层、新的编码就会把同一类泄漏带回来。
-- 三条体验铁律：⑩ ⑪ ⑫ 均不适用（这是安全 / 隐私类，不涉及参数一致、可选项或点击预期）。结账挂的类检查是本 PR 新增的 `electron/events/diskSafeFailure.test.ts`（落盘出口 × F2-A/B 夹具矩阵）。
+- 三条体验铁律：⑩ ⑪ ⑫ 均不适用（这是安全 / 隐私类，不涉及参数一致、可选项或点击预期）。结账挂的类检查是本 PR 新增的 `electron/logging/diskSafeFailure.test.ts`（落盘出口 × F2-A/B 夹具矩阵）。
 
 ## 3. 不改结构的话，接下来会冒出什么
 
@@ -69,5 +69,5 @@
 
 ## 特征测试清单（动结构前先锁住）
 
-- `electron/events/diskSafeFailure.test.ts`：先在未改产品代码的树上跑，项目事件、日志两类断言红（泄漏现状钉住），改后转绿；变异（把 `upstreamMsg` 加回 trace 投影）转红。
+- `electron/logging/diskSafeFailure.test.ts`：先在未改产品代码的树上跑，项目事件、日志两类断言红（泄漏现状钉住），改后转绿；变异（把 `upstreamMsg` 加回 trace 投影）转红。
 - 既有测试照跑：`electron/logging/logger.test.ts`、`electron/logging/redact.test.ts`、`electron/events/eventLogRepository.test.ts`、`electron/agentLane/` 轨迹相关测试、`electron/telemetry/trajectoryProjection` 相关测试。
