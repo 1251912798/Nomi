@@ -59,7 +59,7 @@
 | 选项 | 做什么 | 代价 | 风险 | 推荐 |
 |---|---|---|---|---|
 | 接入现成方案 | 无对应库 | — | — | — |
-| 补 A（runtime.ts，推荐） | `executeProfileOperation` 只在 `stage === "create"` 时本地化；`stage` 改成必填（类型上新入口忘不了）；query / result 渲染出的请求里若还有本地素材值就当场报错（用户自配映射把参考写进轮询时 fail-closed，不把 `nomi-local://` 发出去）；外加门岗测试：全部内置映射的 query / result 步渲染时不读参考 | runtime.ts 改 ~4 行，逻辑放在 `assetLocalization.ts`（不热） | 低：内置轮询步全靠 task_id 寻址（门岗测试钉死） | ✅ |
+| 补 A（runtime.ts，推荐） | `executeProfileOperation` 只在 `stage === "create"` 时本地化；`stage` 改成必填（类型上新入口忘不了）；query / result 渲染出的请求里若还有本地素材值就当场报错（用户自配映射把参考写进轮询时 fail-closed，不把 `nomi-local://` 发出去）；外加门岗测试：全部内置映射的 query / result 步渲染时不读参考 | runtime.ts 改 ~4 行，逻辑放在 `catalog/referenceStage.ts`（新文件，不热） | 低：内置轮询步全靠 task_id 寻址（门岗测试钉死） | ✅ |
 | 补 B（taskResultQuery.ts） | 轮询前把请求里的参考剥掉再交给执行器 | 同样碰热点（tasks/ 第 16 个） | 只盖住 1 个查询入口，catalogCommit「测试映射」查询步照旧重传；执行器还是「谁调都传」 | ❌ |
 | 补 C（上传结果缓存） | 按文件内容缓存上传地址，重复本地化命中缓存 | 新状态 + 过期管理 | 轮询仍依赖参考文件存在（删了照样取不回）；治标 | ❌ |
 | 重写 | 把本地化从执行器里搬出去，只在 runTask 提交处做一次，缓存存「实际发出去的请求」 | runtime.ts 改动更大；溯源 / 指纹要区分「原始参考」与「已上传地址」 | 中：溯源记成会过期的公网地址，复跑会坏 | 以后 runtime 拆壳时再做 |
@@ -75,30 +75,19 @@
 
 ## 拟改 diff（runtime.ts）——用户 10-22 拍板按 A 落地
 
-本线已提交的部分（不碰 runtime.ts）：`assetLocalization.ts` 的 `stageSubmitsReferences` / `assertNoReferencesOutsideSubmit`、门岗测试、特征测试。批后只差下面这几行：
+落地形状（与拍板时的拟改相同，只是为过文件体积门岗把 owner 挪进新文件 `electron/catalog/referenceStage.ts`、runtime.ts 净减 2 行）：
 
 ```diff
---- a/electron/runtime.ts
-+++ b/electron/runtime.ts
-@@ imports
--import { assertLocalAssetTransportReady, localizeAssetsForVendor } from "./catalog/assetLocalization";
-+import { assertLocalAssetTransportReady, assertNoReferencesOutsideSubmit, localizeAssetsForVendor, stageSubmitsReferences } from "./catalog/assetLocalization";
-@@ export async function executeProfileOperation(input: {
--  localAssetReader?: …; signal?: AbortSignal; stage?: ProfileOperationStage; antigravityPreflight?: …;
-+  localAssetReader?: …; signal?: AbortSignal; stage: ProfileOperationStage; antigravityPreflight?: …;
-@@
-   const uploadCatalog = readCatalog();
++import { assertNoReferencesOutsideSubmit, stageSubmitsReferences } from "./catalog/referenceStage";
+-  …; stage?: ProfileOperationStage; …
++  …; stage: ProfileOperationStage; …
 -  const localized = await localizeAssetsForVendor(
-+  // 参考只在提交这一步交给供应商；查任务 / 取结果按任务号寻址（assetLocalization.stageSubmitsReferences）。
 +  const localized = stageSubmitsReferences(input.stage) ? await localizeAssetsForVendor(
-     input.request.extras,
      …
-     putBinaryForAssetUpload,
 -  );
 +  ) : { value: input.request.extras, uploaded: 0 };
-@@
-   const built = buildProfileHttpRequest(effectiveInput);
-+  assertNoReferencesOutsideSubmit(input.stage, built);
+-  const built = buildProfileHttpRequest(effectiveInput);
++  const built = assertNoReferencesOutsideSubmit(input.stage, buildProfileHttpRequest(effectiveInput));
 ```
 
 - `stage` 改必填：生产调用方三处（runTask 的 create、taskResultQuery 的 query / result、catalogCommit 测试映射）都已传；新入口忘了传，typecheck 就红（类型上做不出「不说是哪一步」）。

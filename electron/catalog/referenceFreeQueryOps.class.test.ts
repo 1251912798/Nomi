@@ -1,6 +1,6 @@
 // 门岗（类）：所有内置映射的「查任务」「取结果」步都按任务号寻址，渲染出的请求里一张参考都没有。
 //
-// 这是「参考素材只在提交这一步交给供应商」（assetLocalization.stageSubmitsReferences）能成立的前提：
+// 这是「参考素材只在提交这一步交给供应商」（referenceStage.stageSubmitsReferences）能成立的前提：
 // 执行器在查询步不再本地化参考，若某个内置查询步把参考写进了请求，那条映射会在查询时报错
 // （assertNoReferencesOutsideSubmit），而不是悄悄把本机地址发出去。新加一家供应商、一种查询形状，
 // 这里自动覆盖（遍历的是种子目录、中转通用通道、原生通道全集，不是手抄名单）。
@@ -13,7 +13,7 @@ vi.mock("electron", () => ({
 
 const { applyBuiltinSeeds } = await import("./seedBuiltins");
 const { buildProfileHttpRequest } = await import("./profileHttpRequest");
-const { assertNoReferencesOutsideSubmit, stageSubmitsReferences } = await import("./assetLocalization");
+const { assertNoReferencesOutsideSubmit, stageSubmitsReferences } = await import("./referenceStage");
 const { NEWAPI_VIDEO_QUERY_OP } = await import("./newapiTransport");
 const { listNativeWireProfiles } = await import("./nativeWireProfiles");
 type CatalogState = import("./types").CatalogState;

@@ -13,7 +13,7 @@
     "Users who delete or move a reference asset while its task is still running"
   ],
   "scope_paths": [
-    "electron/catalog/assetLocalization.ts",
+    "electron/catalog/referenceStage.ts",
     "electron/runtime.ts"
   ],
   "entry_points": [
@@ -47,24 +47,24 @@
     },
     {
       "kind": "write",
-      "path": "electron/catalog/assetLocalization.ts",
-      "symbol": "localizeAssetsForVendor"
+      "path": "electron/catalog/referenceStage.ts",
+      "symbol": "stageSubmitsReferences"
     }
   ],
   "door_reduction": {
-    "before": 4,
+    "before": 3,
     "after": 4,
-    "why_not": "The three callers are three distinct submission points (engine A HTTP executor, custom-call script dispatch, engine B pre-seal) and each localizes exactly once per submission; assetLocalization.ts is the single implementation they share. Only the runtime door sat on the polling path, and it is now gated by the stage owner instead of being removed."
+    "why_not": "The three callers are three distinct submission points (engine A HTTP executor, custom-call script dispatch, engine B pre-seal) and each localizes exactly once per submission. Only the runtime door sat on the polling path, and it is now gated by the stage owner (referenceStage.stageSubmitsReferences) instead of being removed. referenceStage.ts is the stage owner itself (door-map stageSubmitsReferences: referenceStage.ts + runtime.ts), not an extra localization entry."
   },
   "generality_proof": "Polling re-upload can only happen where localization runs on a non-submission step. door-map shows three localization doors; customCallDispatch and productionReferenceUrls run once per submission, and runtime.executeProfileOperation is the single HTTP exit for every engine-A step (create, query, result, catalog test mapping). Gating that one exit on stageSubmitsReferences covers every provider and transport, and the class gate enumerates every built-in query/result operation so a provider whose query step needs references cannot be added silently.",
   "shared_boundaries": [
     {
-      "path": "electron/catalog/assetLocalization.ts",
+      "path": "electron/catalog/referenceStage.ts",
       "symbol": "stageSubmitsReferences",
       "responsibility": "Single owner of which task step hands references to the provider (create only)."
     },
     {
-      "path": "electron/catalog/assetLocalization.ts",
+      "path": "electron/catalog/referenceStage.ts",
       "symbol": "assertNoReferencesOutsideSubmit",
       "responsibility": "Fail closed when a query/result request would carry a local reference value."
     },
@@ -116,9 +116,9 @@
     "invariant": "Only the create step localizes references; query/result requests never carry local reference values.",
     "failure_mode": "A query/result request that would carry a nomi-local:// or data: value throws before sending, without an asset-* code (the task is already submitted), and lands as recoverable retrieval.",
     "exception_policy": "none",
-    "strategy": "Stage owner in assetLocalization consulted by the single engine-A HTTP exit; stage becomes a required parameter so a new caller cannot omit it; class gate enumerates built-in query/result operations.",
+    "strategy": "Stage owner in referenceStage consulted by the single engine-A HTTP exit; stage becomes a required parameter so a new caller cannot omit it; class gate enumerates built-in query/result operations.",
     "artifacts": [
-      "electron/catalog/assetLocalization.ts",
+      "electron/catalog/referenceStage.ts",
       "electron/runtime.ts"
     ]
   },
@@ -146,7 +146,7 @@
     "No Electron GUI walkthrough was run for this change (no free loopback mode exists for the reference paid script); the loopback integration test drives real runTask/fetchTaskResult over HTTP, and the end-to-end paid sample is run by the coordinator."
   ],
   "invariant_owner_layer": {
-    "layer": "electron/catalog/assetLocalization.ts",
+    "layer": "electron/catalog/referenceStage.ts",
     "tests": [
       "electron/catalog/referenceFreeQueryOps.class.test.ts",
       "electron/tasks/pollDoesNotReuploadReferences.test.ts"

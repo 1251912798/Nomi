@@ -1,6 +1,7 @@
 import { revalidatePendingCredential } from './catalog/validateCandidateCredential';
 import crypto from "node:crypto";
-import { assertLocalAssetTransportReady, assertNoReferencesOutsideSubmit, localizeAssetsForVendor, stageSubmitsReferences } from "./catalog/assetLocalization";
+import { assertLocalAssetTransportReady, localizeAssetsForVendor } from "./catalog/assetLocalization";
+import { assertNoReferencesOutsideSubmit, stageSubmitsReferences } from "./catalog/referenceStage";
 import { assetIngestionResolver, assetLocalizationOptions } from "./catalog/assetTransportRuntime";
 import { readNomiLocalAsset, postJsonForAssetUpload, postMultipartForAssetUpload, putBinaryForAssetUpload } from "./assets/localAssetFile";
 import { writeAsset, writeGeneratedAsset, writeGeneratedDeterministicAsset } from "./assets/projectAssetStore";
@@ -209,7 +210,6 @@ export async function executeProfileOperation(input: {
   }
   if (input.operation.multipart) return runMultipartProfileOperation(input, (u, h, q, f) => requestMultipart(input.vendor, input.apiKey, u, h, q, f, input.signal, { maxResponseBytes: vendorResponseLimitForKind(input.model.kind) }));
   const uploadCatalog = readCatalog();
-  // 参考只在提交这一步交给供应商；查任务 / 取结果按任务号寻址（assetLocalization.stageSubmitsReferences）。
   const localized = stageSubmitsReferences(input.stage) ? await localizeAssetsForVendor(
     input.request.extras,
     assetIngestionResolver(input.vendor, uploadCatalog, input.operation.assetIngestion),
@@ -219,12 +219,8 @@ export async function executeProfileOperation(input: {
     assetLocalizationOptions(input.request.extras),
     putBinaryForAssetUpload,
   ) : { value: input.request.extras, uploaded: 0 };
-  const effectiveInput =
-    localized.uploaded > 0
-      ? { ...input, request: { ...input.request, extras: localized.value as TaskRequest["extras"] } }
-      : input;
-  const built = buildProfileHttpRequest(effectiveInput);
-  assertNoReferencesOutsideSubmit(input.stage, built);
+  const effectiveInput = localized.uploaded > 0 ? { ...input, request: { ...input.request, extras: localized.value as TaskRequest["extras"] } } : input;
+  const built = assertNoReferencesOutsideSubmit(input.stage, buildProfileHttpRequest(effectiveInput));
   const body = await applyRequestTransform(input.operation.request_transform, built.body, { baseUrl: String(input.vendor.baseUrlHint || ""), promptId: trim(input.request.extras?.comfyPromptId), request: input.request });
   const { vendor, apiKey } = effectiveInput;
   const response = await requestJson(vendor, apiKey, built.method, built.url, built.headers, built.query, body, input.signal, { maxResponseBytes: vendorResponseLimitForKind(input.model.kind) });
