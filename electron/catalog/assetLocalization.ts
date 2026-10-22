@@ -593,6 +593,28 @@ export function stageSubmitsReferences(stage: ReferenceStage): boolean {
 }
 
 /**
+ * 查任务 / 取结果的出站请求里不许出现本地素材值（`nomi-local://` / `data:`）。
+ *
+ * 内置映射的查询步全靠任务号（`referenceFreeQueryOps.class.test.ts` 钉死）；这道闸拦的是用户自配映射
+ * 把参考写进了查询步——宁可当场报错，也不把本机地址发给供应商、更不为查询重传参考。
+ * 报错不带 asset-* 码：那一族的意思是「请求还没发出去」，而走到查询这一步，任务已经提交、钱已经花了。
+ */
+export function assertNoReferencesOutsideSubmit(
+  stage: ReferenceStage,
+  outbound: { url: string; query: unknown; body: unknown },
+): void {
+  if (stageSubmitsReferences(stage)) return;
+  const leaked = Array.from(collectLocalAssetUrls([outbound.query, outbound.body]));
+  if (/nomi-local(:|%3A)/i.test(outbound.url)) leaked.push(outbound.url);
+  if (leaked.length === 0) return;
+  throw new Error(
+    `这个模型映射的「${stage === "query" ? "查任务" : "取结果"}」步引用了参考素材（${describeAssetValue(leaked[0])}），` +
+      "而这一步只应按任务号查询。Nomi 不会为查询重新上传参考，所以这次没有发出查询。" +
+      "任务已经提交给服务商；请在「模型接入」里把这个映射的查询步改成只用任务号，然后重新取回。",
+  );
+}
+
+/**
  * 对一整个值(通常是 request.extras)做本地素材本地化:扫出所有 nomi-local、每个唯一 URL 只上传一次、
  * 替换成可达值。无本地素材时原样返回(零开销)。
  *
