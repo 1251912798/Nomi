@@ -112,3 +112,50 @@
 - 界面：resolveReferenceSlots（16 处读）、computeReferenceRowModel、uploadedImageUrls、NodeParameterControls 的 assetValuesByKey。
 - 渲染层发送：resolveGenerationReferences（10 个文件读，meta 首帧兜底不分方式）、buildReferenceExtras（`...meta` + 标准面）、buildArchetypeInputParams、orderedSent*（@ 编号）、resolveTaskKind（首帧 → 图生视频）、collectLocalAssetUrls → activeAssetUrls、buildConsentNode / hasLocalAssetReference（托管同意）。
 - 主进程：referenceInputParams、firstReferenceImage / allReferenceImages、taskTemplateParams（`...extras` 整包）、projectReferencesOntoBodyKeys、apimartGenerationProjection（`PROJECTION_KEYS` 直接认 camel 键）、newapiTransport 视频 body `image_url`。
+
+## main 上是否已存在（协调追问，2026-10-22）
+
+**结论：存在，线上就在漏，不依赖 #1269。** #1269 没有制造这个漏洞，只是用「暂存」把它变成了常走的路。删图是 #1269 才有的，main 不删图（30 张换到 Veo 再切回，30 张都还在）。
+
+怎么核的：
+- 只读审查树 `D:/Nomi-v-b1a`，detach 到 origin/main `97eab7bec`。它是 3d7f7bb96 的后代，之间只改了画布拖选，和本题无关。
+- 临时探针按 main 真实入口串起来：切方式 = `applyArchetypeModeSwitch`；换模型 = `buildNodeModelChangePatch` + `ensureArchetypeNodeMeta`（界面 effect 紧接着做的那一步）；连线 = `resolveGenerationReferences`。
+- 之后按 `runtime.ts` 的顺序渲染**真请求体**：`applyHeadlessParamDefaults` → `templateContext` → `buildHttpRequest`。通用中转用 `NEWAPI_VIDEO_CREATE_OP` 和图片 op，APIMart 用 `APIMART_VIDEO_MODELS` / `APIMART_IMAGE_MODELS` 的 mapping。
+- 「界面在用」取 `resolveReferenceSlots`。main 没有「未用到」：当前方式没有的槽，参考区**根本不显示**。
+- 探针未提交，跑完已删，审查树 `git status` 为空。
+- 已发布的 v0.23.2 读码确认是同样三处：`...meta`、首帧优先、中转视频 body 写 `image: image_url`。
+
+| 场景（main） | 界面显示 | 真请求体发出 | 用户看不到却发出、生成照扣？ |
+|---|---|---|---|
+| 1a 首帧放 1 张 → 切文生视频 | 参考区不显示 | 中转：`image` = 那张首帧（文生被当成图生发）；APIMart：不发 | **是**（中转用户） |
+| 1b 首尾帧 2 张 → 切文生视频 | 不显示 | 中转：`image` = 首帧；APIMart：不发 | **是**（中转） |
+| 1c 参考 3 张 → 切文生视频 | 不显示 | 中转：`image` = 第 1 张；APIMart：不发 | **是**（中转） |
+| 2a 参考 3 张 → 切首尾帧，再放首、尾帧 | 首帧、尾帧 2 张 | APIMart：`image_urls` = 首、尾 + 那 3 张里留下的参考；中转：不发 | **是**（APIMart 官方渠道） |
+| 2b 参考 3 张 → 切首尾帧，不放帧 | 首尾帧空着 | 中转 `image` = 第 1 张；APIMart 3 张都发 | 否（首帧必填，生成钮灰）；Agent / 批量绕不绕得过：unverified |
+| 3 连 3 张进 Seedance 2.0 首尾帧（APIMart） | 参考区只显示第 1 张（首帧），连线看得见 | APIMart：`image_urls` 带上第 2、3 张；中转：不发 | **是，半可见**（线看得见，参考区说只用 1 张） |
+| 4 Seedance 5 张 → Veo 3.1 / Kling 3.0 / Wan 2.7（30 张 → Veo 同） | 落到新模型默认的文生方式，参考区不显示 | 中转：`image` = 第 1 张；APIMart：不发 | **是**（中转） |
+
+规模（同 141 格口径：放满参考起切，按钮灰不灰按「必填槽是否空」近似）：
+
+| 口径 | 漏的格 | 其中生成钮可点 |
+|---|---|---|
+| 模板参数层（和 PR 上 79 格同一把尺子） | 141 格里 80 格 | — |
+| 通用中转真请求体，从参考起切 | 141 格里 51 格 | 24 格（主要是各家文生方式） |
+| 通用中转真请求体，从首尾帧起切（视频） | 84 格里 47 格 | 39 格 |
+| APIMart 真请求体，从参考 / 首尾帧起切 | 80 格里 19 格 | 7 格：Seedance 2.0 / 2.5 切「全能参考」、MiniMax-H3 / Wan 3.0 切「参考」时首尾帧原样发出；Seedance 2.5 / Wan 3.0 / HappyHorse 1.1 首帧方式发出残留尾帧 |
+
+是否多扣钱：
+- 每一格都是真发、真生成，结果被用户看不到的图左右，这一笔照常扣。中转文生被带上图，等于按图生视频发出。
+- 单价会不会因此变高：不知道（中转价格未知是常态），记 unverified。
+
+**最小止血改法**（可单独热修，不依赖 #1269）：
+- 位置：`src/workbench/generationCanvas/runner/catalogTaskActions.ts` 的 `buildReferenceExtras` 有档案分支（main 约 249–265 行）。
+- 标准参考面改成 `orderedSentImageReferenceUrls`，只有当前方式有参考数组时才带，而且截到槽上限；原来是不分方式的 `referenceImages ∪ meta.referenceImageUrls`，还不截上限。
+- 当前方式没声明的参考键在 `derived` 里**显式置 undefined**，覆盖 `...meta` 带进来的残留。要清的键：`firstFrameUrl`、`lastFrameUrl`、`referenceImageUrls`、`referenceImages`，以及别名 `referenceImageUrl`、`imageUrl`、`image_url`、`first_frame_url`、`last_frame_url`、`reference_image_urls`、`reference_images`、`firstFrameRef`、`lastFrameRef`。
+- 只改发出去的东西，不动 meta，用户的图一张不丢。
+- 我在审查树上原型验证过（约 10 行，验完用备份还原）：上面四种口径全部降到 0 格，四个场景全部 0 漏；`runner/`、`nodes/`、`model/` 下 272 个测试文件、3010 条全过。
+- 热修还要补三样：
+  - 视频 / 音频同类键（`referenceVideoUrls`、`sourceVideoUrl`、`referenceAudioUrls`）照此清，本次没探；
+  - 把本文件的性质测试改到 main 能跑的形状，常驻 CI；
+  - `electron/catalog/archetypeInput.ts` 文件头那句注释由此变真，或者改成主进程断言。
+- 这一刀等于第 6 节的「补」，只是先止血；结构仍按「重写」走。
