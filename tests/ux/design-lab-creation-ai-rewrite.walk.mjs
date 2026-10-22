@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { REPO_ROOT } from './design-lab/labStates.mjs'
 import { walkDesignLabScreen } from './design-lab/walkScreen.mjs'
+import { expectAbsent, proveProbe } from './_assert.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 
 const OUT_DIR = path.join(REPO_ROOT, 'tests/ux/shots/design-lab-creation-ai-rewrite')
@@ -21,11 +22,24 @@ async function liveJourney(page, record) {
   const text = () => page.evaluate(() => document.querySelector('.workbench-editor__content').editor.state.doc.textBetween(0, document.querySelector('.workbench-editor__content').editor.state.doc.content.size, ' '))
   const shot = (name) => page.locator('[data-design-lab-shot]').screenshot({ path: path.join(OUT_DIR, `${name}.png`), animations: 'disabled' })
   const paragraph = page.locator('.workbench-editor__content p', { hasText: TARGET_ZH })
-  // 真用户的选法：点进这一行，End 到行尾，Shift+Home 选回行首（这一段正好一行）。
+  // 选中这一段的全部文字（selectText：和拖选到底同一个选区；用键盘 End / Shift+Home 选，在改写条刚消失、版面还在挪动的瞬间会点偏，偶发选不上）。
   const selectParagraph = async () => {
-    await paragraph.click()
-    await page.keyboard.press('End')
-    await page.keyboard.press('Shift+Home')
+    await paragraph.selectText()
+    // 选区真的建好、浮条上的「AI 编辑」落定（连续三帧位置不动）再往下：条件等待，不是墙钟。
+    await page.waitForFunction(() => {
+      const editor = document.querySelector('.workbench-editor__content').editor
+      return editor.state.selection.to > editor.state.selection.from
+    })
+    await page.waitForFunction(() => {
+      const button = document.querySelector('.workbench-selection-popover__tool--ai')
+      if (!button) return false
+      const rect = button.getBoundingClientRect()
+      const key = Math.round(rect.x) + ',' + Math.round(rect.y)
+      const seen = window.__popoverSettle ?? { key: '', frames: 0 }
+      window.__popoverSettle = seen.key === key ? { key, frames: seen.frames + 1 } : { key, frames: 0 }
+      return window.__popoverSettle.frames >= 3
+    }, null, { polling: 'raf' })
+    await page.evaluate(() => { window.__popoverSettle = undefined })
   }
 
   // ① 选中：浮条上出现「AI 编辑」。
@@ -109,12 +123,17 @@ async function liveJourney(page, record) {
   await page.locator('.workbench-selection-popover__tool--ai').click()
   await page.locator('.workbench-ai-rewrite-bar').getByRole('button', { name: '缩短' }).click()
   await page.locator('[data-rewrite-status="result"]').waitFor()
+  // 「消失」类断言先证探针测得到东西：切之前改写条和 ✓ ✕ 确实在。
+  const barProof = await proveProbe(page.locator('.workbench-ai-rewrite-bar'), '切文稿之前改写条在')
+  const actionsProof = await proveProbe(page.locator('[data-rewrite-action]'), '切文稿之前段尾的 ✓ ✕ 在')
   await page.locator('[data-creation-document-switcher]').click()
   await page.getByRole('menuitemradio', { name: 'rewrite copy', exact: true }).click()
   await page.locator('[data-creation-document-switcher]').filter({ hasText: 'rewrite copy' }).waitFor()
-  expect(record, await page.locator('.workbench-ai-rewrite-bar').count() === 0, '切到正文相同的另一篇文稿后，改写条还在（旧会话没有作废）')
-  expect(record, await page.locator('[data-rewrite-action]').count() === 0, '切文稿后段尾的 ✓ ✕ 还在')
-  expect(record, await page.getByText(uiText('zh-CN', 'creationAi.rewrite.documentSwitched')).count() > 0, '切文稿后没有看到「文稿已切换，这次改写没有写入」的提示')
+  await expectAbsent(page.locator('.workbench-ai-rewrite-bar'), { provenBy: barProof, message: '切到正文相同的另一篇文稿后，改写条还在（旧会话没有作废）' })
+  await expectAbsent(page.locator('[data-rewrite-action]'), { provenBy: actionsProof, message: '切文稿后段尾的 ✓ ✕ 还在' })
+  // 提示是 Mantine 通知：切完后几十毫秒内淡入，所以等它出现（条件等待），不是点一下就数。
+  const toastShown = await page.getByText(uiText('zh-CN', 'creationAi.rewrite.documentSwitched')).first().waitFor({ state: 'visible' }).then(() => true, () => false)
+  expect(record, toastShown, '切文稿后没有看到「文稿已切换，这次改写没有写入」的提示')
   const unchanged = await page.evaluate(async () => {
     const { useWorkbenchStore } = await import('/src/workbench/workbenchStore.ts')
     return useWorkbenchStore.getState().workbenchDocuments.map((doc) => JSON.stringify(doc.contentJson) === window.__rewriteSwitchBefore)
