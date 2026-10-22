@@ -1,7 +1,7 @@
 # 方向检查：拖组框不跟手（P-dragframe）
 
 > 触发：`node scripts/fix-churn.mjs src/workbench/generationCanvas/components/useCanvasSelectionDrag.ts` 命中「画布分组交互」概念（7 个文件，14 天 10 个 fix，这刀是第 11 个）；`components/` 目录 14 天 20 个 fix。
-> 状态：只写了复盘，没改代码，没量，等协调 / 用户拍板。
+> 状态：用户 10-22 放行，按「换」做（协调转达）。
 
 ## 0. 一句话根因
 拖动预览把「找目标」放在每帧里（`document.querySelectorAll` 按 id 拼出 241 个分支的选择器），因为 10-11 的 `f73fe2bc2`（成员壳与手柄跟着走）为了让预览不触发边重算，选了「直接改 DOM translate」，却没有在 pointerdown 时把目标解析一次并持有；缺的是「拖动预览的目标集合在手势开始时冻结」这一层。

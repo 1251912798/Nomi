@@ -157,3 +157,59 @@ it.each(['replaceGraph', 'invalidateProject'])(
     expect(after.dragging).toBeNull()
   },
 )
+// 门岗：目标在按下时解析一次并持有，拖动帧内不许再做全局 DOM 查询（P-dragframe：querySelectorAll 曾占每帧 96%）。
+it.each(['group', 'selection'])('%s drag resolves its targets once at pointerdown, never per frame', async (target) => {
+  await page.evaluate(() => window.selectionDragFixture.countQueries())
+  await page
+    .locator(`#${target}`)
+    .dispatchEvent('pointerdown', { pointerId: 7, button: 0, clientX: 10, clientY: 10, bubbles: true })
+  const afterDown = await page.evaluate(() => window.selectionDragFixture.queryCalls())
+  for (let step = 1; step <= 6; step += 1) {
+    await page.evaluate(
+      (step) =>
+        window.dispatchEvent(
+          new PointerEvent('pointermove', { pointerId: 7, clientX: 10 + step * 5, clientY: 10 + step * 4, bubbles: true }),
+        ),
+      step,
+    )
+    await frames()
+  }
+  expect((await snapshot()).groupPreview || (await snapshot()).selectionPreview).not.toBe('')
+  expect(await page.evaluate(() => window.selectionDragFixture.queryCalls())).toBe(afterDown)
+  await release()
+  expect((await snapshot()).nodes[0].position).toEqual({ x: 40, y: 44 })
+})
+it('survives a member being deleted and unmounted mid-drag: no error, nothing resurrected, rest lands once', async () => {
+  const errors = []
+  page.on('pageerror', (error) => errors.push(String(error)))
+  const before = await snapshot()
+  await start('group')
+  await frames()
+  await page.evaluate(() => window.selectionDragFixture.dropMember())
+  await frames()
+  await page.evaluate(() =>
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 7, clientX: 60, clientY: 50, bubbles: true })),
+  )
+  await frames()
+  await release()
+  const settled = await snapshot()
+  expect(errors).toEqual([])
+  expect(settled.nodes.map((node) => node.id)).toEqual(['one'])
+  expect(settled.nodes[0].position).toEqual({ x: 60, y: 60 })
+  expect(settled.groupPreview).toBe('')
+  expect(settled.revision).toBeGreaterThan(before.revision)
+  expect(settled.dragging).toBeNull()
+})
+it('ignores Escape while dragging: the gesture still settles once, undoable', async () => {
+  const before = await snapshot()
+  await start('group')
+  await frames()
+  await page.keyboard.press('Escape')
+  await frames()
+  await release()
+  const settled = await snapshot()
+  expect(settled.nodes[0].position).toEqual({ x: 40, y: 45 })
+  expect(settled.revision).toBe(before.revision + 1)
+  await page.evaluate(() => window.selectionDragFixture.undo())
+  expect((await snapshot()).nodes[0].position).toEqual(before.nodes[0].position)
+})

@@ -18,6 +18,13 @@ type DragRecord = {
   historyCaptured: boolean
   totalDelta: Delta
   previewNodeIds?: string[]
+  /**
+   * 预览要平移的 DOM 元素：按下时解析一次并持有，帧内只写 `style.translate`，不再做任何全局查询
+   * （每帧一次 241 个分支的 `querySelectorAll` 曾占拖组框可归因耗时的 96%，P-dragframe）。
+   * `null` = 还没解析（复制拖动换了新框，等新框渲染出来再解析一次）。
+   */
+  previewElements: HTMLElement[] | null
+  resolveAttempts: number
 }
 
 /**
@@ -30,6 +37,57 @@ type GroupDragRecord = DragRecord & {
   memberIds: string[]
 }
 type Delta = { x: number; y: number }
+
+// Keep React Flow's measured wrapper stationary during the preview. Moving that wrapper makes its
+// ResizeObserver recalculate every connected edge on every pointer sample. The shell is the visual
+// surface, so translating it preserves the preview without invalidating edge anchors until commit.
+const NODE_PREVIEW_PARTS = [
+  '.generation-canvas-react-flow__node-shell',
+  '.generation-canvas-react-flow__handle',
+  '.generation-canvas-react-flow__handle-hit',
+  '.generation-canvas-react-flow__handle-icon',
+]
+const MAX_RESOLVE_ATTEMPTS = 8
+
+/** 全文件唯一的 DOM 查询：只在手势开始（或复制拖动换框）时调用，不在帧内调用。 */
+function resolvePreviewElements(groupId: string | null, nodeIds: readonly string[]): HTMLElement[] {
+  const selectors = [
+    ...(groupId ? [`[data-group-id="${CSS.escape(groupId)}"]`] : []),
+    ...nodeIds.flatMap((id) =>
+      NODE_PREVIEW_PARTS.map((part) => `.react-flow__node[data-id="${CSS.escape(id)}"] ${part}`),
+    ),
+  ]
+  if (!selectors.length) return []
+  return Array.from(document.querySelectorAll<HTMLElement>(selectors.join(',')))
+}
+
+function resolveDragPreview(drag: DragRecord): void {
+  const group = (drag as Partial<GroupDragRecord>).groupId
+  const found = resolvePreviewElements(group ?? null, group ? ((drag as GroupDragRecord).memberIds) : (drag.previewNodeIds ?? []))
+  drag.resolveAttempts += 1
+  // 复制拖动：新框的 DOM 要等 React 渲染；框本身还没出现就下一帧再解析（有上限，找不到就不预览）。
+  if (group && !found.some((element) => element.dataset.groupId === group) && drag.resolveAttempts < MAX_RESOLVE_ATTEMPTS) return
+  drag.previewElements = found
+}
+
+function applyDragPreview(drag: DragRecord): void {
+  if (!drag.previewElements) resolveDragPreview(drag)
+  const elements = drag.previewElements
+  if (!elements) return
+  const value = `${drag.totalDelta.x}px ${drag.totalDelta.y}px`
+  let gone = 0
+  for (const element of elements) {
+    // 拖动途中被卸载的节点：引用失效，跳过、不报错（落点位置由 store 的 settle 决定，与 DOM 无关）。
+    if (!element.isConnected) gone += 1
+    else element.style.translate = value
+  }
+  if (gone) drag.previewElements = elements.filter((element) => element.isConnected)
+}
+
+function clearDragPreview(drag: DragRecord): void {
+  for (const element of drag.previewElements ?? []) if (element.isConnected) element.style.translate = ''
+  drag.previewElements = null
+}
 
 function isDragTargetCurrent(drag: DragRecord): boolean {
   return !drag.project.signal.aborted && drag.generation === getUndoJournalGeneration()
@@ -70,85 +128,6 @@ export function useCanvasSelectionDrag({
   const pendingGroupDeltaRef = React.useRef<(Delta & { groupId: string }) | null>(null)
   const pendingSelectionDeltaRef = React.useRef<Delta | null>(null)
 
-  /**
-   * 拖动期间只累计浮点 delta 并更新视觉 shell；节点/框的持久位置在共享 settle 边界一次性写回。
-   * 这样既保留缩放下的亚像素余数，也不让每个 pointer sample 触发全图 store 订阅者和边投影。
-   */
-  const groupPreviewSelector = React.useCallback(
-    (drag: GroupDragRecord) =>
-      [
-        `[data-group-id="${CSS.escape(drag.groupId)}"]`,
-        // Keep React Flow's measured wrapper stationary during the preview. Moving
-        // that wrapper makes its ResizeObserver recalculate every connected edge on
-        // every pointer sample. The shell is the visual surface, so translating it
-        // preserves the preview without invalidating edge anchors until commit.
-        ...drag.memberIds.map(
-          (id) => [
-            `.react-flow__node[data-id="${CSS.escape(id)}"] .generation-canvas-react-flow__node-shell`,
-            `.react-flow__node[data-id="${CSS.escape(id)}"] .generation-canvas-react-flow__handle`,
-            `.react-flow__node[data-id="${CSS.escape(id)}"] .generation-canvas-react-flow__handle-hit`,
-            `.react-flow__node[data-id="${CSS.escape(id)}"] .generation-canvas-react-flow__handle-icon`,
-          ].join(','),
-        ),
-      ].join(','),
-    [],
-  )
-
-  const clearGroupPreview = React.useCallback(
-    (drag: GroupDragRecord) => {
-      document.querySelectorAll<HTMLElement>(groupPreviewSelector(drag)).forEach((element) => {
-        element.style.translate = ''
-      })
-    },
-    [groupPreviewSelector],
-  )
-
-  const applyGroupPreview = React.useCallback(
-    (drag: GroupDragRecord) => {
-      const value = `${drag.totalDelta.x}px ${drag.totalDelta.y}px`
-      document.querySelectorAll<HTMLElement>(groupPreviewSelector(drag)).forEach((element) => {
-        element.style.translate = value
-      })
-    },
-    [groupPreviewSelector],
-  )
-
-  const selectionPreviewSelector = React.useCallback(
-    (drag: DragRecord) =>
-      (drag.previewNodeIds ?? [])
-        .map((id) => [
-          `.react-flow__node[data-id="${CSS.escape(id)}"] .generation-canvas-react-flow__node-shell`,
-          `.react-flow__node[data-id="${CSS.escape(id)}"] .generation-canvas-react-flow__handle`,
-          `.react-flow__node[data-id="${CSS.escape(id)}"] .generation-canvas-react-flow__handle-hit`,
-          `.react-flow__node[data-id="${CSS.escape(id)}"] .generation-canvas-react-flow__handle-icon`,
-        ].join(','))
-        .join(','),
-    [],
-  )
-
-  const clearSelectionPreview = React.useCallback(
-    (drag: DragRecord) => {
-      const selector = selectionPreviewSelector(drag)
-      if (!selector) return
-      document.querySelectorAll<HTMLElement>(selector).forEach((element) => {
-        element.style.translate = ''
-      })
-    },
-    [selectionPreviewSelector],
-  )
-
-  const applySelectionPreview = React.useCallback(
-    (drag: DragRecord) => {
-      const selector = selectionPreviewSelector(drag)
-      if (!selector) return
-      const value = `${drag.totalDelta.x}px ${drag.totalDelta.y}px`
-      document.querySelectorAll<HTMLElement>(selector).forEach((element) => {
-        element.style.translate = value
-      })
-    },
-    [selectionPreviewSelector],
-  )
-
   const flushPendingDragMove = React.useCallback(() => {
     dragMoveFrameRef.current = null
     const drag = draggingGroupRef.current ?? draggingSelectionRef.current
@@ -157,15 +136,15 @@ export function useCanvasSelectionDrag({
     const selectionDelta = pendingSelectionDeltaRef.current
     if (groupDelta) {
       const drag = draggingGroupRef.current
-      if (drag && drag.groupId === groupDelta.groupId) applyGroupPreview(drag)
+      if (drag && drag.groupId === groupDelta.groupId) applyDragPreview(drag)
       pendingGroupDeltaRef.current = null
     }
     if (selectionDelta) {
       const drag = draggingSelectionRef.current
-      if (drag) applySelectionPreview(drag)
+      if (drag) applyDragPreview(drag)
       pendingSelectionDeltaRef.current = null
     }
-  }, [applyGroupPreview, applySelectionPreview])
+  }, [])
 
   const emitGroupDragSettled = React.useCallback((groupId: string) => {
     const state = useGenerationCanvasStore.getState()
@@ -250,19 +229,19 @@ export function useCanvasSelectionDrag({
           },
           { persist: false, emit: false },
         )
-        clearGroupPreview(group)
+        clearDragPreview(group)
         emitGroupDragSettled(group.groupId)
       } else if (selection) {
-        clearSelectionPreview(selection)
+        clearDragPreview(selection)
         const whole = { x: Math.trunc(selection.totalDelta.x), y: Math.trunc(selection.totalDelta.y) }
         if (whole.x !== 0 || whole.y !== 0) moveSelectedNodes(whole, { persist: false, emit: false })
         emitSelectionDragSettled()
       }
       commitPersistedChange()
     } else if (group) {
-      clearGroupPreview(group)
+      clearDragPreview(group)
     } else if (selection) {
-      clearSelectionPreview(selection)
+      clearDragPreview(selection)
     }
     draggingGroupRef.current = null
     draggingSelectionRef.current = null
@@ -271,8 +250,6 @@ export function useCanvasSelectionDrag({
     pendingGroupDeltaRef.current = null
     pendingSelectionDeltaRef.current = null
   }, [
-    clearGroupPreview,
-    clearSelectionPreview,
     commitPersistedChange,
     emitGroupDragSettled,
     emitSelectionDragSettled,
@@ -301,7 +278,13 @@ export function useCanvasSelectionDrag({
           const copyId = useGenerationCanvasStore.getState().duplicateGroupForDrag(drag.groupId)
           if (copyId) {
             const copiedGroup = useGenerationCanvasStore.getState().groups.find((candidate) => candidate.id === copyId)
-            Object.assign(drag, { groupId: copyId, memberIds: copiedGroup?.nodeIds ?? [], historyCaptured: true })
+            Object.assign(drag, {
+              groupId: copyId,
+              memberIds: copiedGroup?.nodeIds ?? [],
+              historyCaptured: true,
+              previewElements: null,
+              resolveAttempts: 0,
+            })
           }
         }
         if (!drag.historyCaptured) {
@@ -405,7 +388,10 @@ export function useCanvasSelectionDrag({
         moved: false,
         historyCaptured: false,
         duplicateOnMove: event.altKey,
+        previewElements: null,
+        resolveAttempts: 0,
       }
+      resolveDragPreview(draggingGroupRef.current)
     },
     [settleDrag, onSelectEmptyFrame, readOnly, selectNodes],
   )
@@ -439,7 +425,10 @@ export function useCanvasSelectionDrag({
         historyCaptured: false,
         totalDelta: { x: 0, y: 0 },
         previewNodeIds: [...useGenerationCanvasStore.getState().selectedNodeIds],
+        previewElements: null,
+        resolveAttempts: 0,
       }
+      resolveDragPreview(draggingSelectionRef.current)
     },
     [settleDrag, readOnly],
   )
