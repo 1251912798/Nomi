@@ -105,10 +105,22 @@ try {
   // ── 花钱：按节点 ↑（托管披露确认框出现就按「生成」同意）──
   await clickOrFail(win.locator(`[data-node-id="${ids.shot}"] ${NODE_GENERATE}`).first(), '节点底栏的 ↑（生成）', { noWaitAfter: true })
   const dialog = win.locator(SPEND_DIALOG)
-  if (await dialog.first().isVisible({ timeout: 8000 }).catch(() => false)) {
+  // 真正的等待：Playwright 的 isVisible 不等待、会忽略 timeout，框晚几百毫秒出现就被当成「没有框」（协调 10-22 实跑踩到）。
+  if (await dialog.first().waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false)) {
     await proveProbe(dialog, '付费 / 托管披露确认框')
     await walk.snap('02-zh-confirm-dialog')
     await clickOrFail(dialog.locator('[data-spend-confirm-action="confirm"]'), '确认框「生成」', { noWaitAfter: true })
+  }
+  // 快速失败：点了 ↑（并按过确认）之后 30 秒内这个镜头必须有新的提交记录，没有就当场报错，不空等成片。
+  let submitted = false
+  const submitDeadline = Date.now() + stationTimeout({ operations: 2 })
+  while (!submitted && Date.now() < submitDeadline) {
+    submitted = ((await nodeOnDisk(ids.shot))?.runs?.length ?? 0) > 0
+    if (!submitted) await new Promise((resolve) => setTimeout(resolve, 1000))
+  }
+  if (!submitted) {
+    await walk.snap('fail-no-submission')
+    throw new Error('点了生成但没有提交：30 秒内这个镜头没有出现提交记录（确认框是否还开着、按钮是否被禁用见 fail-no-submission 截图）')
   }
   await expect.poll(async () => (await nodeOnDisk(ids.shot))?.result?.url ?? '', { message: '成片落在这个镜头上', timeout: VIDEO_LANDS_MS }).toMatch(/^nomi-local:\/\//)
   const done = await nodeOnDisk(ids.shot)
