@@ -61,7 +61,6 @@ function Harness() {
     captureHistory: state.captureHistory,
     commitPersistedChange: state.commitPersistedChange,
     moveGroupNodes: state.moveGroupNodes,
-    moveSelectedNodes: state.moveSelectedNodes,
     selectNodes: state.selectNodes,
   })
   return (
@@ -80,9 +79,6 @@ function Harness() {
       >
         Group
       </div>
-      <div id="selection" onPointerDown={actions.handleSelectionBoundsPointerDown}>
-        Selection
-      </div>
     </div>
   )
 }
@@ -97,7 +93,7 @@ Object.assign(window, {
       events: [...events],
       dragging: document.querySelector('#stage')?.getAttribute('data-dragging') ?? null,
       groupPreview: (document.querySelector('#group') as HTMLElement | null)?.style.translate ?? '',
-      selectionPreview:
+      memberPreview:
         (document.querySelector('[data-id="one"] .generation-canvas-react-flow__node-shell') as HTMLElement | null)
           ?.style.translate ?? '',
     }),

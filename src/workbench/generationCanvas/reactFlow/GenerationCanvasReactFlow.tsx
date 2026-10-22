@@ -134,7 +134,6 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
   const pendingConnectionSourceId = useGenerationCanvasStore((state) => state.pendingConnectionSourceId)
   const pendingConnectionSourceSide = useGenerationCanvasStore((state) => state.pendingConnectionSourceSide)
   const moveGroupNodes = useGenerationCanvasStore((state) => state.moveGroupNodes)
-  const moveSelectedNodes = useGenerationCanvasStore((state) => state.moveSelectedNodes)
   const cancelConnection = useGenerationCanvasStore((state) => state.cancelConnection)
   const deleteSelectedNodes = useGenerationCanvasStore((state) => state.deleteSelectedNodes)
   const disconnectEdge = useGenerationCanvasStore((state) => state.disconnectEdge)
@@ -301,7 +300,6 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
     captureHistory,
     commitPersistedChange,
     moveGroupNodes,
-    moveSelectedNodes,
     selectNodes,
     onSelectEmptyFrame: frameActions.selectFrame,
   })
