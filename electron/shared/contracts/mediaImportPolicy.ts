@@ -33,6 +33,7 @@ export type MediaImportSurfaceId =
   | 'agent-composer'
   | 'director-3d'
   | 'panorama'
+  | 'model-image-input'
 
 /** 素材库展示的媒体种类；项目存储还承载文档/文本产物。 */
 export const LIBRARY_MEDIA_KINDS: readonly MediaKind[] = ['image', 'video', 'audio', 'model3d']
@@ -101,6 +102,14 @@ export const MEDIA_IMPORT_SURFACES: Readonly<Record<MediaImportSurfaceId, MediaI
     // 整张图要一次性上传成 WebGL 纹理，受 GPU 单纹理内存约束。
     hardCapBytes: 80 * 1024 * 1024,
     hardCapBecause: '整张图一次性上传成 WebGL 纹理，受 GPU 单纹理内存约束',
+  },
+  // 交给模型「看」的图（文本任务的参考图、拆解帧；electron/ai/modelImageInput.ts）：不落盘，取回后整张 base64 内联进那一次请求。
+  'model-image-input': {
+    id: 'model-image-input',
+    kinds: ['image'],
+    narrowedBecause: '模型只看静态图片；视频由拆解先抽成帧再交来',
+    hardCapBytes: 20 * 1024 * 1024,
+    hardCapBecause: '整张图 base64 内联进一次模型请求，受供应商单请求体积上限约束（协调 10-21 定 20MB）',
   },
 }
 

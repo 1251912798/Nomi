@@ -31,7 +31,7 @@ const ADAPTER_PROVIDER_KINDS = new Set(["openai-compatible", "anthropic", "opena
 
 /**
  * 这次接入需不需要「借 Nomi 已接的文本模型去读文档」。四种不需要：
- * 全是文本模型（接法固定，验证走 streamTextTask）、baseUrl 不合法、
+ * 全是文本模型（接法固定，跑起来走文本任务那一条模型调用）、baseUrl 不合法、
  * 自建/内网端点（走内置 OpenAI 兼容契约）、以及本机确实有可用的文本模型。
  */
 export function compileRequestFor(

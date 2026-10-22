@@ -13,7 +13,8 @@ import { cleanupTestTemp, makeTempDir } from '../../scripts/_test-temp.mjs'
 // 从点菜单项（捕获阶段）起表、到 N+1 张卡全部可见再过两帧停表，记成 backToLibraryMs（性能场景表的 response）。
 //
 // 用法（先 pnpm run build）：
-//   node tests/ux/project-open-stages.e2e.mjs <label> [--scale I300] [--runs 5] [--warmup 1] [--exe <打包好的 Nomi.exe>] [--onscreen] [--assert-read-only] [--library-projects 40] [--diag-out <目录>]
+//   node tests/ux/project-open-stages.e2e.mjs <label> [--scale I300] [--runs 5] [--warmup 1] [--exe <打包好的 Nomi.exe>] [--onscreen] [--assert-read-only] [--library-projects 40] [--diag-out <目录>] [--cold-click-at-ms 4000]
+// --cold-click-at-ms N：cold 那一下在 App 起来（launchNomiApp 返回）后第 N 毫秒点，用来量「启动后几秒内打开项目」撞上后台装载时的样子。
 // 结果：tests/ux/perf-results/project-open-<label>.json，终端打印中位数 / p95 表。
 // 窗口默认挂屏幕外、不抢焦点；只用临时目录，不碰真实 profile；零花费（不发任何生成请求）。
 import fs from 'node:fs'
@@ -44,6 +45,7 @@ const assertNoCliEntry = args.includes('--assert-no-cli-entry')
 const measureFirstSendLoad = args.includes('--first-send-load')
 const libraryProjects = Math.max(0, Number(argValue('--library-projects') || 0))
 const diagOut = argValue('--diag-out')
+const coldClickAtMs = argValue('--cold-click-at-ms') === undefined ? null : Number(argValue('--cold-click-at-ms'))
 const OPEN_TIMEOUT_MS = 90_000
 const SETTLE_AFTER_MEDIA_MS = 3_000
 
@@ -87,7 +89,7 @@ async function timedBackToLibrary(app, page, { diag = false } = {}) {
 }
 
 async function launch() {
-  return launchNomiApp({
+  const launched = await launchNomiApp({
     name: 'project-open-stages',
     ...(executablePath ? { executablePath } : {}),
     userDataDir,
@@ -100,6 +102,7 @@ async function launch() {
     env: { NOMI_PERF_MARKS: '1' },
     settleMs: 900,
   })
+  return { ...launched, launchedAt: Date.now() }
 }
 
 async function pollUntil(page, predicate, arg, timeoutMs) {
@@ -116,10 +119,14 @@ async function pollUntil(page, predicate, arg, timeoutMs) {
   }
 }
 
-async function openOnce(app, page, kind) {
+async function openOnce(app, page, kind, launchedAt) {
   const card = page.locator(`[data-project-card][data-project-id="${fixture.record.id}"]`).first()
   await card.waitFor({ timeout: stationTimeout({ operations: 2 }) })
   await new Promise((resolve) => setTimeout(resolve, 1_000))
+  if (kind === 'cold' && coldClickAtMs !== null && launchedAt) {
+    const wait = launchedAt + coldClickAtMs - Date.now()
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
+  }
   await page.evaluate(() => {
     window.__openLongTasks = []
     window.__openLongTaskObserver?.disconnect()
@@ -199,7 +206,7 @@ function summarize(samples) {
   return out
 }
 
-const results = { label, scale, runs, warmup, executable: executablePath || 'dev-electron', platform: process.platform, startedAt: new Date().toISOString(), fixture: fixture.summary, samples: [] }
+const results = { label, scale, runs, warmup, coldClickAtMs, executable: executablePath || 'dev-electron', platform: process.platform, startedAt: new Date().toISOString(), fixture: fixture.summary, samples: [] }
 try {
   // 迁移打开：夹具是测试写的，第一次打开会走一次性迁移（补身份、补字段）。用户自己的老项目早就是稳定态。
   {
@@ -207,9 +214,9 @@ try {
     try { results.migrationOpen = await openOnce(app, win, 'migration') } finally { await closeNomiApp(app) }
   }
   for (let index = 0; index < warmup + runs; index += 1) {
-    const { app, win } = await launch()
+    const { app, win, launchedAt } = await launch()
     try {
-      const cold = await openOnce(app, win, 'cold')
+      const cold = await openOnce(app, win, 'cold', launchedAt)
       cold.backToLibraryMs = await timedBackToLibrary(app, win, { diag: Boolean(diagOut) && index === warmup })
       const reopen = await openOnce(app, win, 'reopen')
       if (index >= warmup) results.samples.push(cold, reopen)

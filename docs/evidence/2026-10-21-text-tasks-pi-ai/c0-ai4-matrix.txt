@@ -1,0 +1,87 @@
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#1 文本节点续写/重写/预设' > 正常回话：拿到正文（流式入口逐段收到同一段字） 104ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#1 文本节点续写/重写/预设' > 空回包（200、stop、没有正文）：不报错，正文为空，交给入口自己的「空结果」文案 22ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#1 文本节点续写/重写/预设' > 429：缺省重试 2 次（拆解 0 次），最后的错误带结构化类别 quota，渲染层不自动重提 6297ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#1 文本节点续写/重写/预设' > 503：同样的重试次数，类别 server 6088ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#1 文本节点续写/重写/预设' > 401：不重试，类别 auth，带上游原话 59ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#1 文本节点续写/重写/预设' > 包装过的回包（HTTP 200、SSE 里是 error）：失败，说出上游原话 39ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#1 文本节点续写/重写/预设' > 出字中途断连：失败，不把半截字当成功 59ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#1 文本节点续写/重写/预设' > 流结束却没有 finish_reason（D3，协调 10-21 定：算失败） 34ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#2 文本节点改写选区' > 正常回话：拿到正文（流式入口逐段收到同一段字） 16ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#2 文本节点改写选区' > 空回包（200、stop、没有正文）：不报错，正文为空，交给入口自己的「空结果」文案 12ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#2 文本节点改写选区' > 429：缺省重试 2 次（拆解 0 次），最后的错误带结构化类别 quota，渲染层不自动重提 6042ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#2 文本节点改写选区' > 503：同样的重试次数，类别 server 6088ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#2 文本节点改写选区' > 401：不重试，类别 auth，带上游原话 36ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#2 文本节点改写选区' > 包装过的回包（HTTP 200、SSE 里是 error）：失败，说出上游原话 13ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#2 文本节点改写选区' > 出字中途断连：失败，不把半截字当成功 48ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#2 文本节点改写选区' > 流结束却没有 finish_reason（D3，协调 10-21 定：算失败） 11ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#3 提示词优化' > 正常回话：拿到正文（流式入口逐段收到同一段字） 11ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#3 提示词优化' > 空回包（200、stop、没有正文）：不报错，正文为空，交给入口自己的「空结果」文案 28ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#3 提示词优化' > 429：缺省重试 2 次（拆解 0 次），最后的错误带结构化类别 quota，渲染层不自动重提 6047ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#3 提示词优化' > 503：同样的重试次数，类别 server 6065ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#3 提示词优化' > 401：不重试，类别 auth，带上游原话 24ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#3 提示词优化' > 包装过的回包（HTTP 200、SSE 里是 error）：失败，说出上游原话 12ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#3 提示词优化' > 出字中途断连：失败，不把半截字当成功 46ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#3 提示词优化' > 流结束却没有 finish_reason（D3，协调 10-21 定：算失败） 20ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#4 提示词翻译' > 正常回话：拿到正文（流式入口逐段收到同一段字） 32ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#4 提示词翻译' > 空回包（200、stop、没有正文）：不报错，正文为空，交给入口自己的「空结果」文案 28ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#4 提示词翻译' > 429：缺省重试 2 次（拆解 0 次），最后的错误带结构化类别 quota，渲染层不自动重提 6074ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#4 提示词翻译' > 503：同样的重试次数，类别 server 6108ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#4 提示词翻译' > 401：不重试，类别 auth，带上游原话 20ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#4 提示词翻译' > 包装过的回包（HTTP 200、SSE 里是 error）：失败，说出上游原话 14ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#4 提示词翻译' > 出字中途断连：失败，不把半截字当成功 55ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#4 提示词翻译' > 流结束却没有 finish_reason（D3，协调 10-21 定：算失败） 10ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#5 AI 起草脚本' > 正常回话：拿到正文（流式入口逐段收到同一段字） 12ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#5 AI 起草脚本' > 空回包（200、stop、没有正文）：不报错，正文为空，交给入口自己的「空结果」文案 10ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#5 AI 起草脚本' > 429：缺省重试 2 次（拆解 0 次），最后的错误带结构化类别 quota，渲染层不自动重提 6085ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#5 AI 起草脚本' > 503：同样的重试次数，类别 server 6090ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#5 AI 起草脚本' > 401：不重试，类别 auth，带上游原话 25ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#5 AI 起草脚本' > 包装过的回包（HTTP 200、SSE 里是 error）：失败，说出上游原话 11ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#5 AI 起草脚本' > 出字中途断连：失败，不把半截字当成功 68ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#5 AI 起草脚本' > 流结束却没有 finish_reason（D3，协调 10-21 定：算失败） 13ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#6 视频拆解读图' > 正常回话：拿到正文（流式入口逐段收到同一段字） 54ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#6 视频拆解读图' > 空回包（200、stop、没有正文）：不报错，正文为空，交给入口自己的「空结果」文案 14ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#6 视频拆解读图' > 429：缺省重试 2 次（拆解 0 次），最后的错误带结构化类别 quota，渲染层不自动重提 12ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#6 视频拆解读图' > 503：同样的重试次数，类别 server 13ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#6 视频拆解读图' > 401：不重试，类别 auth，带上游原话 10ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#6 视频拆解读图' > 包装过的回包（HTTP 200、SSE 里是 error）：失败，说出上游原话 30ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#6 视频拆解读图' > 出字中途断连：失败，不把半截字当成功 58ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#6 视频拆解读图' > 流结束却没有 finish_reason（D3，协调 10-21 定：算失败） 12ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#7 浏览器提取提示词' > 正常回话：拿到正文（流式入口逐段收到同一段字） 15ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#7 浏览器提取提示词' > 空回包（200、stop、没有正文）：不报错，正文为空，交给入口自己的「空结果」文案 9ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#7 浏览器提取提示词' > 429：缺省重试 2 次（拆解 0 次），最后的错误带结构化类别 quota，渲染层不自动重提 6089ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#7 浏览器提取提示词' > 503：同样的重试次数，类别 server 6083ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#7 浏览器提取提示词' > 401：不重试，类别 auth，带上游原话 12ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#7 浏览器提取提示词' > 包装过的回包（HTTP 200、SSE 里是 error）：失败，说出上游原话 11ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#7 浏览器提取提示词' > 出字中途断连：失败，不把半截字当成功 51ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#7 浏览器提取提示词' > 流结束却没有 finish_reason（D3，协调 10-21 定：算失败） 24ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#8 MCP 试跑文本模型' > 正常回话：拿到正文（流式入口逐段收到同一段字） 13ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#8 MCP 试跑文本模型' > 空回包（200、stop、没有正文）：不报错，正文为空，交给入口自己的「空结果」文案 17ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#8 MCP 试跑文本模型' > 429：缺省重试 2 次（拆解 0 次），最后的错误带结构化类别 quota，渲染层不自动重提 6109ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#8 MCP 试跑文本模型' > 503：同样的重试次数，类别 server 6064ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#8 MCP 试跑文本模型' > 401：不重试，类别 auth，带上游原话 11ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#8 MCP 试跑文本模型' > 包装过的回包（HTTP 200、SSE 里是 error）：失败，说出上游原话 10ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#8 MCP 试跑文本模型' > 出字中途断连：失败，不把半截字当成功 57ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#8 MCP 试跑文本模型' > 流结束却没有 finish_reason（D3，协调 10-21 定：算失败） 9ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#9 画布单镜 Run 文本' > 正常回话：拿到正文（流式入口逐段收到同一段字） 12ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#9 画布单镜 Run 文本' > 空回包（200、stop、没有正文）：不报错，正文为空，交给入口自己的「空结果」文案 9ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#9 画布单镜 Run 文本' > 429：缺省重试 2 次（拆解 0 次），最后的错误带结构化类别 quota，渲染层不自动重提 6083ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#9 画布单镜 Run 文本' > 503：同样的重试次数，类别 server 6072ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#9 画布单镜 Run 文本' > 401：不重试，类别 auth，带上游原话 10ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#9 画布单镜 Run 文本' > 包装过的回包（HTTP 200、SSE 里是 error）：失败，说出上游原话 11ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#9 画布单镜 Run 文本' > 出字中途断连：失败，不把半截字当成功 55ms
+ × electron/ai/textTaskCallers.integration.test.ts > '#9 画布单镜 Run 文本' > 流结束却没有 finish_reason（D3，协调 10-21 定：算失败） 39ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#1 文本节点续写/重写/预设' · 停止 > 出字中点停止：真掐 HTTP，不发 done 也不发 error 89ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#3 提示词优化' · 停止 > 出字中点停止：真掐 HTTP，不发 done 也不发 error 39ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#4 提示词翻译' · 停止 > 出字中点停止：真掐 HTTP，不发 done 也不发 error 32ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#5 AI 起草脚本' · 停止 > 出字中点停止：真掐 HTTP，不发 done 也不发 error 39ms
+ ↓ electron/ai/textTaskCallers.integration.test.ts > 真墙钟（NOMI_TEXT_REALTIME=1） > '#1 文本节点续写/重写/预设' · 思考型模型：先想 35 秒（每 5 秒一段 reasoning）再出字——不被当死连接掐掉
+ ↓ electron/ai/textTaskCallers.integration.test.ts > 真墙钟（NOMI_TEXT_REALTIME=1） > '#2 文本节点改写选区' · 思考型模型：先想 35 秒（每 5 秒一段 reasoning）再出字——不被当死连接掐掉
+ ↓ electron/ai/textTaskCallers.integration.test.ts > 真墙钟（NOMI_TEXT_REALTIME=1） > '#3 提示词优化' · 思考型模型：先想 35 秒（每 5 秒一段 reasoning）再出字——不被当死连接掐掉
+ ↓ electron/ai/textTaskCallers.integration.test.ts > 真墙钟（NOMI_TEXT_REALTIME=1） > '#4 提示词翻译' · 思考型模型：先想 35 秒（每 5 秒一段 reasoning）再出字——不被当死连接掐掉
+ ↓ electron/ai/textTaskCallers.integration.test.ts > 真墙钟（NOMI_TEXT_REALTIME=1） > '#5 AI 起草脚本' · 思考型模型：先想 35 秒（每 5 秒一段 reasoning）再出字——不被当死连接掐掉
+ ↓ electron/ai/textTaskCallers.integration.test.ts > 真墙钟（NOMI_TEXT_REALTIME=1） > '#6 视频拆解读图' · 思考型模型：先想 35 秒（每 5 秒一段 reasoning）再出字——不被当死连接掐掉
+ ↓ electron/ai/textTaskCallers.integration.test.ts > 真墙钟（NOMI_TEXT_REALTIME=1） > '#7 浏览器提取提示词' · 思考型模型：先想 35 秒（每 5 秒一段 reasoning）再出字——不被当死连接掐掉
+ ↓ electron/ai/textTaskCallers.integration.test.ts > 真墙钟（NOMI_TEXT_REALTIME=1） > '#8 MCP 试跑文本模型' · 思考型模型：先想 35 秒（每 5 秒一段 reasoning）再出字——不被当死连接掐掉
+ ↓ electron/ai/textTaskCallers.integration.test.ts > 真墙钟（NOMI_TEXT_REALTIME=1） > '#9 画布单镜 Run 文本' · 思考型模型：先想 35 秒（每 5 秒一段 reasoning）再出字——不被当死连接掐掉
+⎯⎯⎯⎯⎯⎯ Failed Tests 19 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  19 failed | 57 passed | 9 skipped (85)

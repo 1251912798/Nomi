@@ -9,7 +9,7 @@
  * the agent runtime, we centralize known quirks here. Each profile:
  *   - matches a model id (via regex or substring)
  *   - declares its quirks declaratively
- *   - the runtime layer (buildAiSdkModel + agent.ts) consumes the profile
+ *   - the runtime layer (createNomiProvider in electron/agentLane/laneModelProvider.mts) consumes the profile
  *
  * Adding a new quirky provider = adding one entry. The agent core stays clean.
  */

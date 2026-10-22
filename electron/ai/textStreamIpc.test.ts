@@ -68,3 +68,22 @@ describe("textStreamIpc destroyed listener lifecycle", () => {
     expect(abortSpy).toHaveBeenCalledOnce();
   });
 });
+
+describe("文本流 id 由渲染层先定（先订阅、后发起）", () => {
+  beforeEach(() => {
+    mocks.handlers.clear();
+    mocks.runTextTaskStream.mockReset().mockResolvedValue({ status: "succeeded", assets: [] });
+    mocks.fromId.mockReturnValue(undefined);
+    registerTextStreamIpc();
+  });
+
+  it("带合法 streamId 就沿用它；不合法的由主进程另生成", async () => {
+    const handler = mocks.handlers.get("nomi:tasks:text:stream")!;
+    const owner = sender(7);
+    const mine = (await handler({ sender: owner }, { prompt: "hi", streamId: "text-0123abcd-4567" })) as { streamId: string };
+    expect(mine.streamId).toBe("text-0123abcd-4567");
+    const bad = (await handler({ sender: owner }, { prompt: "hi", streamId: "../evil" })) as { streamId: string };
+    expect(bad.streamId).not.toBe("../evil");
+    expect(bad.streamId).toMatch(/^text-/);
+  });
+});

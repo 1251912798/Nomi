@@ -1,0 +1,7 @@
+机器：13th Gen Intel(R) Core(TM) i9-13900H · commit a8904aafa（C4 之后，含预热）· 2026-10-21
+warm: 4.7, 3.5, 3.1, 2.4, 2.8, 2.5, 4.1, 3.8, 2.7, 2.1, 3.2, 2.4, 1.9, 1.7, 1.5, 2.1, 2.4, 1.4, 2.1, 1.9 ms → tests\perf\results\text-first-delta-perf-scenarios-text-task-first-delta-warm.json
+| text-task-first-delta-warm | response | 20 | 2.4 | 4.1 | 20 | 5.2/10.2 | ok |
+cold: 21.4, 18.5, 20.3, 17.6, 22.5, 20.2, 20.6, 18.9, 19.1, 17.7, 20.3, 21.9, 19.1, 19.9, 18.3, 18.3, 17.8, 18.4, 19.4, 20.2 ms → tests\perf\results\text-first-delta-perf-scenarios-text-task-first-delta-cold.json
+| text-task-first-delta-cold | response | 20 | 19.3 | 21.9 | 100 | 50.5/99.8 | ok |
+--- 刚启动就点（预热还没完成，--no-prewarm），10 次：
+cold: 686.1, 670, 672.1, 697.3, 701.7, 673.2, 669.3, 684.4, 698.7, 681 ms → tests\perf\results\text-first-delta-noprewarm.json

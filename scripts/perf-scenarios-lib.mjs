@@ -117,6 +117,17 @@ export const DRIVERS = Object.freeze({
       return { response: samples.map((sample) => sample.responseMs), longTasks: samples.map((sample) => sample.longTasks) }
     },
   },
+  // 文本任务「接到请求 → 第一段字」的主进程时延（tests/perf/text-first-delta-bench.mjs：本机立刻回话的假上游，量编译产物；
+  // --mode cold = 全新进程第一次、warm = 同进程第 2 次起）。设计卡 docs/plan/2026-10-21-text-tasks-to-pi-ai.md ★7。
+  'tests/perf/text-first-delta-bench.mjs': {
+    supports: ['response'],
+    buildArgs: (script, args, { runs, label }) => [script, ...args, '--runs', String(runs), '--label', label],
+    resultFile: (label) => `tests/perf/results/text-first-delta-${label}.json`,
+    readRuns(payload) {
+      const row = firstRow(payload)
+      return row ? { response: row.samples.map((sample) => sample.responseMs).filter(isNumber) } : {}
+    },
+  },
 })
 
 // ── 登记表读取与校验 ───────────────────────────────────────────────────────────────────────────────────────────
