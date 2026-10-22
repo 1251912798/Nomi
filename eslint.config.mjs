@@ -126,6 +126,28 @@ const directQuitSelectors = [
   },
 ]
 
+// Playwright 的 isVisible / isHidden 不等待：传进去的 timeout 被忽略、立刻返回（playwright-core types.d.ts 把
+// Locator / Page / Frame 上这两个方法的 timeout 都标了 @deprecated）。2026-10-22 三条付费样本按「最多等 N 秒」写，
+// 实际一次没等，后面的流程空等 20 分钟。eslint-plugin-playwright 的 no-action-timeout 不管这两个方法、
+// typescript-eslint no-deprecated 不报对象字面量里的弃用键，所以用核心选择器（不要类型信息，.mjs 也行）。
+// 拦不住「先放进变量再传」——可以接受。调研：docs/audit/2026-10-22-gate-family-direction.md。
+export const playwrightNoWaitSelectors = [
+  {
+    selector: "CallExpression[callee.property.name=/^is(Visible|Hidden)$/] > ObjectExpression > Property[key.name='timeout']",
+    message: "isVisible / isHidden do not wait: the timeout is ignored and they return immediately (Playwright marks it @deprecated). To wait, use locator.waitFor({ state: 'visible' | 'hidden', timeout }), e.g. await loc.waitFor({ state: 'visible', timeout }).then(() => true).catch(() => false).",
+  },
+]
+
+/**
+ * 每个 no-restricted-syntax 都经这里拼：flat config 里后面的对象会**整条覆盖**前面同名规则的选项，
+ * 某个块漏写一组选择器，那组在该块的文件上就静默失效。全仓都该成立的选择器（目前是 Playwright 不等待）放在这里，
+ * 新加的块只要走这个函数就自动带上（eslint-coverage.node-test.mjs 按代表路径核）。
+ */
+const restrictedSyntax = (...selectors) => ['error', ...selectors, ...playwrightNoWaitSelectors]
+
+/** 脚本、走查、评测：2026-10-22 起进 ESLint（之前整片忽略）。存量错误冻结在 eslint-suppressions.json，只减不增。 */
+export const SCRIPT_LIKE_FILES = ['scripts/**/*.{mjs,cjs,js}', 'tests/ux/**/*.{mjs,cjs,js}', 'evals/**/*.{mjs,cjs,js}']
+
 // Reviewed exemptions; each call site carries the same reason in a comment.
 const directQuitExemptionFiles = [
   // Separate one-shot headless Electron entry (spawned as "electron host.js"); the GUI owner is
@@ -164,11 +186,7 @@ export default tseslint.config(
       'coverage/**',
       // 本地走查/探针输出目录（gitignored，含临时诊断 .mjs）——非源码，不 lint。
       '.pose-lab/**',
-      'scripts/**/*',
-      '!scripts/check-vocabularies*.mjs',
-      'tests/ux/**',
       'tests/transport-spike/**',
-      'evals/**',
       // 3D 预设动作校准台：仅 dev 工具（vite 不打包，独立 Three.js 渲染页），非产品源码，不纳入 lint/token 门禁。
       'src/devlab/**',
       // 技能(Claude Skill)安装产物:脚本是独立运行体(require/window/node 全局),非本项目源码,不纳入 lint。
@@ -194,12 +212,10 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['scripts/check-vocabularies*.mjs'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'module',
-      globals: globals.node,
-    },
+    // 脚本、走查、评测：Node 脚本，但走查里 page.evaluate 的回调体是页内代码，两套全局都给（同下面 tests/perf）。
+    // 不设 sourceType：.cjs 由 ESLint 默认按 commonjs 解析。
+    files: SCRIPT_LIKE_FILES,
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
     files: ['tests/network/**/*.{cjs,mjs}'],
@@ -239,10 +255,15 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   {
-    // scripts/** 与 tests/ux/** 在上面的全局 ignore 里，本规则管不到；那两处的平台路径问题归门岗换底层线
-    // （在 Windows 上跑通 gates 时一并兜住），见 docs/fixes/2026-10-07-windows-local-gates.root-cause.json。
+    // 所有 JS 文件都至少带全仓选择器（Playwright 不等待）；TS 文件由下面的 TS 块带上。
+    files: ['**/*.{js,mjs,cjs}'],
+    rules: { 'no-restricted-syntax': restrictedSyntax() },
+  },
+  {
+    // windowsPathSelectors 还没作用到 scripts / tests/ux / evals 的 JS（2026-10-22 这三片刚进 ESLint，先只开 Playwright 不等待）；
+    // 那里的平台路径问题归门岗换底层线，见 docs/fixes/2026-10-07-windows-local-gates.root-cause.json。
     files: ['docs/design/**/*.mjs'],
-    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors] },
+    rules: { 'no-restricted-syntax': restrictedSyntax(...windowsPathSelectors) },
   },
   {
     files: ['**/*.{ts,tsx,mts,cts}'],
@@ -279,29 +300,34 @@ export default tseslint.config(
       'no-irregular-whitespace': 'warn',
       'preserve-caught-error': 'warn',
       'prefer-const': 'warn',
-      'no-restricted-syntax': ['error', ...windowsPathSelectors, ...storeSelectorSerializeSelectors],
+      'no-restricted-syntax': restrictedSyntax(...windowsPathSelectors, ...storeSelectorSerializeSelectors),
     },
   },
   {
+    // 走查夹具（tests/ux/**/*.tsx）是一次性挂载的测试页，不是热更新的产品组件，这条只对产品有意义（放在 TS 块之后才压得住它的 warn）。
+    files: ['tests/ux/**/*.{ts,tsx}'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
+  {
     files: ['**/*.test.{ts,tsx}'],
-    rules: { 'no-restricted-syntax': ['error', ...testFileRestrictedSyntax] },
+    rules: { 'no-restricted-syntax': restrictedSyntax(...testFileRestrictedSyntax) },
   },
   {
     // 存量基线之外的测试文件才拦用例体 / 钩子里的 await import；基线里的文件逐个迁完就从 JSON 里删掉。
     files: ['**/*.test.{ts,tsx}'],
     ignores: coldImportBaselineFiles,
-    rules: { 'no-restricted-syntax': ['error', ...testFileRestrictedSyntax, ...coldImportSelectors] },
+    rules: { 'no-restricted-syntax': restrictedSyntax(...testFileRestrictedSyntax, ...coldImportSelectors) },
   },
   {
     // 画布 nodes / edges 整表订阅：名单外的文件一处都不许有；名单内的处数由 scripts/canvas-store-subscriptions.test.mjs 卡死（只减不增）。
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**', ...Object.keys(WHOLE_TABLE_SUBSCRIPTION_BASELINE)],
-    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...storeSelectorSerializeSelectors, ...WHOLE_TABLE_SUBSCRIPTION_SELECTORS] },
+    rules: { 'no-restricted-syntax': restrictedSyntax(...windowsPathSelectors, ...storeSelectorSerializeSelectors, ...WHOLE_TABLE_SUBSCRIPTION_SELECTORS) },
   },
   {
     // 画布壳不订阅选区：选中一张卡，壳 0 次重渲（方向检查 2026-10-16-canvas-shell-subscriptions）。
     files: [CANVAS_SHELL_FILE],
-    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...storeSelectorSerializeSelectors, ...SHELL_SELECTION_SELECTORS] },
+    rules: { 'no-restricted-syntax': restrictedSyntax(...windowsPathSelectors, ...storeSelectorSerializeSelectors, ...SHELL_SELECTION_SELECTORS) },
   },
   {
     // 渲染层失败证据只有一个出口：src/desktop/rendererLog.ts（→ 主进程日志 → 诊断包）。
@@ -314,16 +340,16 @@ export default tseslint.config(
   {
     files: ['electron/**/*.{ts,tsx}'],
     ignores: ['electron/**/*.test.{ts,tsx}', 'electron/**/__tests__/**', 'electron/quitTeardown.ts', ...directQuitExemptionFiles],
-    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...quitLifecycleSelectors, ...directQuitSelectors] },
+    rules: { 'no-restricted-syntax': restrictedSyntax(...windowsPathSelectors, ...quitLifecycleSelectors, ...directQuitSelectors) },
   },
   {
     // Exemptions still may not subscribe to the quit lifecycle.
     files: directQuitExemptionFiles,
-    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...quitLifecycleSelectors] },
+    rules: { 'no-restricted-syntax': restrictedSyntax(...windowsPathSelectors, ...quitLifecycleSelectors) },
   },
   {
     files: ['electron/quitTeardown.ts'],
-    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors] },
+    rules: { 'no-restricted-syntax': restrictedSyntax(...windowsPathSelectors) },
   },
   {
     // 付费确认框（`useSpendConfirmStore.requestConfirm`）只有一扇门：「这一笔问不问用户」的 owner
