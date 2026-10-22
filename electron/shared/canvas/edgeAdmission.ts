@@ -156,6 +156,20 @@ export function validateReferenceEdge(source: EdgeEndpoint, target: EdgeEndpoint
   return satisfiable ? { ok: true } : { ok: false, reason: 'unsupported_reference' }
 }
 
+/**
+ * 给模型看的连线说明所依据的事实——**从上面这几道闸本身问出来**，不在说明文案里手抄一份：
+ * - textContextTargets：文字节点的通用 reference 边实际放行的目标种类（文字上下文，不是媒体参考）；
+ * - noOutputKinds：没有任何可被下游引用的产出的种类（不能当源；文字另有一句，不在此列）。
+ * canvas.write 的说明（agentCapabilities/canvasWrite.ts）读这里；对账测试逐个种类拿闸门核。
+ */
+export function edgeAdmissionFactsForModels(): { textContextTargets: string[]; noOutputKinds: string[] } {
+  const kinds = Object.keys(NODE_KIND_CONNECTS)
+  return {
+    textContextTargets: kinds.filter((kind) => validateReferenceEdge({ kind: 'text' }, { kind }, 'reference').ok),
+    noOutputKinds: kinds.filter((kind) => kind !== 'text' && referenceAssetKindForNode({ kind }) === null),
+  }
+}
+
 export type EdgeLike = { id: string; source: string; target: string; mode?: string }
 export type RejectedEdge<E extends EdgeLike = EdgeLike> = { edge: E; reason: EdgeSkipReason }
 

@@ -1,0 +1,36 @@
+{
+  "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+  "commit": "4ed9e1c8c",
+  "date": "2026-10-22",
+  "runs": 5,
+  "results": [
+    {
+      "id": "canvas-drag-group-frame",
+      "metrics": {
+        "frameGapP95": {
+          "runs": 5,
+          "median": 52.6,
+          "p95": 62.5
+        },
+        "longTasks": {
+          "runs": 5,
+          "median": 92,
+          "p95": 178
+        }
+      },
+      "budget": 33,
+      "baseline": {
+        "median": 38.6,
+        "p95": 39.4,
+        "runs": 5,
+        "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+        "date": "2026-10-16",
+        "commit": "94724f860"
+      },
+      "verdict": {
+        "status": "regression",
+        "note": "欠账场景又变差：中位数 52.6 比欠账基线 38.6 差 36%（负责线 P-dragframe）"
+      }
+    }
+  ]
+}

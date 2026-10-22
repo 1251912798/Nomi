@@ -1,0 +1,12 @@
+[walkthrough] content viewport {"width":1280,"height":933}
+✓ A：无槽模型备好的预演退成文字描述（提示词有预演运镜行，没有参考视频） — {"attach":"prompt_only"}
+✗ A：换成有槽模型后出成片 → 预演作为参考视频重新挂上
+file:///D:/Nomi-3dref/tests/ux/director-reference-attach.walk.mjs:121
+  if (!ok) throw new Error(`检查没过：${name}${detail ? `（${detail}）` : ''}`)
+                 ^
+
+Error: 检查没过：A：换成有槽模型后出成片 → 预演作为参考视频重新挂上
+    at check (file:///D:/Nomi-3dref/tests/ux/director-reference-attach.walk.mjs:121:18)
+    at file:///D:/Nomi-3dref/tests/ux/director-reference-attach.walk.mjs:227:3
+
+Node.js v22.15.0
