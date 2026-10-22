@@ -99,6 +99,7 @@ describe('ComfyUI generic workflow HTTP boundary', () => {
     const executed = await executeProfileOperation({
       vendor, model: model as never, apiKey: '', request: request as never,
       operation: mapping.create as never,
+      stage: "create",
       localAssetReader: (url) => localAssets[url] ?? null,
     })
 
@@ -126,6 +127,7 @@ describe('ComfyUI generic workflow HTTP boundary', () => {
       apiKey: '',
       request: { kind: mapping.taskKind, prompt: '', extras: { comfy_selected: 'nomi-local://a' } } as never,
       operation: mapping.create as never,
+      stage: "create",
       localAssetReader: (url) => url === 'nomi-local://a' ? LOCAL_ASSET('a.png', 'image/png') : null,
     })
 
@@ -148,6 +150,7 @@ describe('ComfyUI generic workflow HTTP boundary', () => {
       model: model as never, apiKey: '',
       request: { kind: mapping.taskKind, prompt: '', extras: { comfy_missing: 'nomi-local://gone' } } as never,
       operation: mapping.create as never,
+      stage: "create",
       localAssetReader: () => null,
     })).rejects.toThrow(/本地文件读取失败|素材/)
     expect(promptBodies).toHaveLength(0)
