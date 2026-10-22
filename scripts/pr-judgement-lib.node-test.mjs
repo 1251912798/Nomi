@@ -97,7 +97,7 @@ test('证据行判据：链接 / 路径 / 截图 / 运行号 / PR 号算；「�
 
 test('验收证据：必交证据取并集；缺条目红；条目没证据红；未验证:工具未建 接受并列出缺口', () => {
   const req = requiredEvidence(['ui', 'spend'], table).map((item) => item.id)
-  assert.deepEqual(req, ['ui-mockup', 'ui-click-census', 'ui-capability-unavailable', 'ui-ai-walk', 'ui-screens', 'spend-walks', 'spend-paid-sample', 'spend-fault-injection'])
+  assert.deepEqual(req, ['ui-mockup', 'ui-click-census', 'ui-capability-unavailable', 'ui-ai-walk', 'ui-screens', 'ui-task-scorecard', 'spend-walks', 'spend-paid-sample', 'spend-fault-injection'])
   const none = checkRoutingEvidence('## 设计卡\nx', ['ui'], table)
   assert.equal(none.ok, false)
   assert.match(none.lines.join('\n'), /ui-mockup/)
@@ -111,15 +111,26 @@ test('验收证据：必交证据取并集；缺条目红；条目没证据红�
     '- ui-capability-unavailable：docs/plan/example-design-card.md',
     '- AI 用户走查：未验证：工具未建',
     '- ui-screens：tests/ux/shots/zh-CN.png、tests/ux/shots/en.png、tests/ux/shots/narrow.png',
+    '- ui-task-scorecard：docs/evidence/2026-10-21-ux-scorecard/pr1264-rewrite.scorecard.md',
   ].join('\n')
   const ok = checkRoutingEvidence(body, ['ui'], table)
   assert.equal(ok.ok, true, ok.lines.join('\n'))
   assert.deepEqual(ok.gaps.map((gap) => gap.id), ['ui-click-census', 'ui-ai-walk'])
   assert.match(ok.lines.join('\n'), /缺工具：ui-click-census/)
   // 工具已有的证据写「未验证」也接受，但不进缺口
-  const exists = checkRoutingEvidence('## 验收证据\n- ui-mockup：未验证：本次没有新界面\n- ui-click-census：未验证：工具未建\n- ui-capability-unavailable：未验证：本次没有要模型的动作\n- ui-ai-walk：未验证：工具未建\n- ui-screens：未验证：无窄窗', ['ui'], table)
+  const exists = checkRoutingEvidence('## 验收证据\n- ui-mockup：未验证：本次没有新界面\n- ui-click-census：未验证：工具未建\n- ui-capability-unavailable：未验证：本次没有要模型的动作\n- ui-ai-walk：未验证：工具未建\n- ui-screens：未验证：无窄窗\n- ui-task-scorecard：未验证：本次没有真人', ['ui'], table)
   assert.equal(exists.ok, true)
   assert.deepEqual(exists.gaps.map((gap) => gap.id), ['ui-click-census', 'ui-ai-walk'])
+})
+
+test('体验成绩单证据：新界面必交，生效日之前开的 PR 不要求，之后开的要求（since）', () => {
+  const ids = (createdAt) => requiredEvidence(['ui'], table, createdAt).map((item) => item.id)
+  assert.ok(ids('2026-10-21T00:00:00Z').every((id) => id !== 'ui-task-scorecard'))
+  assert.ok(ids('2026-10-22T00:00:00Z').includes('ui-task-scorecard'))
+  assert.ok(ids(null).includes('ui-task-scorecard'), '创建时间未知按已生效处理')
+  const miss = checkRoutingEvidence('## 验收证据\n- ui-mockup：https://example.com/m\n', ['ui'], table)
+  assert.match(miss.lines.join('\n'), /ui-task-scorecard/)
+  assert.equal(table.categories.ui.evidence.find((item) => item.id === 'ui-task-scorecard').tool, 'exists')
 })
 
 test('真付费抽检严格判据（合并前扫描）：运行号 / 报告链接 / 协调豁免过；未验证、裸 PR 号、别名行、缺条目都红（#1203 就是写「未验证」被合进来的）', () => {
