@@ -29,6 +29,8 @@
 - P0：这段是「按助手记工具调用次数」的展示账，登记在案；通用的部分（HTTP 响应关闭、SDK）已用现成的，没有成熟库替「展示用的调用计数」，登记里 alternativesChecked 已写。
 - `src/ui/onboarding/ConnectAssistantCard.tsx` 命中硬热点（14 天 7 个 fix，这一刀是第 8 个）：**本 PR 不改这个文件**，只加行为测试（复盘前先钉住现状，正是方向检查要求的第一步）；`REASON_I18N` 改穷举要动该文件，等协调批。
 
+- R3 动到 `src/workbench/generationCanvas/agent/storyboardPlan.ts`：只因**目录** `src/workbench/generationCanvas/agent/`（14 天 3 个 fix、同概念）口径命中，文件本身未命中；改法是**换**（删两处手写的 `=== 'image'` 缺省判断，改用同一个常量），不新增分支、不改行为，按任务书属协调可代批。特征测试：`storyboardPlan.test.ts`（现有，全绿）+ 新增 `storyboardShotKindDefault.test.ts`（对账）。
+
 ### 复盘要点（精简版，R1 类根因）
 
 0. 一句话根因：用「有限条数的历史」去近似「一次调用的生命周期」。
