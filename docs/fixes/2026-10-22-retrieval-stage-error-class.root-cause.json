@@ -119,6 +119,7 @@
   },
   "regression_tests": [
     "electron/tasks/retrievalStagePhase.test.ts",
+    "electron/tasks/retrievalStagePhase.realGuard.test.ts",
     "src/workbench/observability/retrievalStageClassification.test.ts",
     "src/workbench/generationCanvas/nodes/NodeRecoverableReport.test.tsx",
     "src/workbench/generationCanvas/runner/recoverTaskActions.projectIdentity.test.ts",
@@ -126,7 +127,8 @@
   ],
   "class_regression_tests": [
     "electron/tasks/retrievalStagePhase.test.ts",
-    "src/workbench/observability/retrievalStageClassification.test.ts"
+    "src/workbench/observability/retrievalStageClassification.test.ts",
+    "electron/tasks/retrievalStagePhase.realGuard.test.ts"
   ],
   "legacy_paths": {
     "status": "not-applicable",
