@@ -80,7 +80,7 @@ describe("列举与同进程写入交错：列举不删项目", () => {
   it("保存正在排队等锁时列举收尾：不删；保存成功落盘，之后的列表里有它", async () => {
     const draft = createProject({ name: "排队等锁的保存", draft: true });
     const sibling = createProject({ name: "慢的同伴" });
-    let saving: Promise<{ ok: true; revision: number } | { ok: false; error: string }> | null = null;
+    let saving: Promise<{ ok: true; revision: number | undefined } | { ok: false; error: string }> | null = null;
     let lease: Awaited<ReturnType<typeof acquireWorkspaceManifestLock>> | null = null;
     const { rows, draftRoot } = await listingWithWindow(draft.id, sibling.id, async () => {
       const root = (findRecentWorkspace(settingsRoot, draft.id) as { rootPath: string }).rootPath;
