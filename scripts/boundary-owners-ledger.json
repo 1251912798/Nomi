@@ -3,6 +3,16 @@
   "note": "根因合同 shared_boundaries 声明过的 owner 的处置台账。由 scripts/check-boundary-owners.mjs 逐条核对。本文件只能手改：没有 --update，红了不许一键洗绿。",
   "reanchored": [
     {
+      "contract": "docs/fixes/2026-09-10-c09-readable-focus.root-cause.json",
+      "path": "src/workbench/generationCanvas/reactFlow/focusViewportRecovery.ts",
+      "symbol": "resolveCanvasFocusZoom",
+      "anchor": {
+        "path": "src/workbench/generationCanvas/reactFlow/focusViewportRecovery.ts",
+        "symbol": "resolveCanvasFocusViewport"
+      },
+      "reason": "2026-10-22 对焦算式换成 resolveCanvasFocusViewport：把节点加选中后的生成框整体框进扣掉浮层的可见区，缩放封顶 100%；旧的只看节点的 resolveCanvasFocusZoom 同提交删除，「对焦给可读缩放、不保留总览的缩小比例」这条不变量由新算式继续守（单元测试 focusViewportRecovery.test.ts）。"
+    },
+    {
       "contract": "docs/fixes/2026-09-25-model-catalog-sync-read-per-mount.root-cause.json",
       "path": "src/workbench/generationCanvas/nodes/controls/useChannelCreateBody.ts",
       "symbol": "createVendorMappingsReader",
