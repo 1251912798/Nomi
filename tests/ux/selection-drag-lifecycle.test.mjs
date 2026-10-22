@@ -26,10 +26,12 @@ afterAll(async () => {
 beforeEach(async () => {
   await page.goto(
     `http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/selection-drag-lifecycle-harness.html`,
+    { timeout: 90_000 },
   )
-  await page.locator('#group').waitFor()
+  await page.locator('#group').waitFor({ timeout: 90_000 })
   await frames()
-})
+  // 冷启动（vite 首次转译整棵画布 store）在忙的机器上可超 30 秒，钩子超时按冷启动给足。
+}, 120_000)
 const frames = () =>
   page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
 const snapshot = () => page.evaluate(() => window.selectionDragFixture.snapshot())
