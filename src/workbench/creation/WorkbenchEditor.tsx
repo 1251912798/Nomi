@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { EditorContent, type Editor, type JSONContent } from '@tiptap/react'
 import SelectionGeneratePopover from './SelectionGeneratePopover'
 import { AiRewriteBar } from './aiRewrite/AiRewriteBar'
-import { setRewriteDocumentIdentityTransaction, setRewriteLabelProvider } from './aiRewrite/rewriteSession'
+import { rewriteDocumentIdentity, setRewriteDocumentIdentityTransaction, setRewriteLabelProvider } from './aiRewrite/rewriteSession'
+import { useOpenProjectId } from '../project/useOpenProjectId'
 import { toast } from '../../ui/toast'
 import { useAiRewrite } from './aiRewrite/aiRewriteBinding'
 import { WorkbenchIconButton } from '../../design/actions'
@@ -178,11 +179,12 @@ export default function WorkbenchEditor(): JSX.Element {
 
   const rewrite = useAiRewrite(editor, { onDiscarded: () => toast(t('creationAi.rewrite.documentSwitched'), 'info') })
   // 编辑器会被不同文稿复用（正文一样时连同步事务都没有）：改写会话只认「打开它的那篇文稿」，换了就作废。
-  const activeWorkbenchDocumentId = workbenchDocument.id
+  const openProjectId = useOpenProjectId()
+  const rewriteIdentity = rewriteDocumentIdentity(openProjectId, workbenchDocument.id)
   React.useLayoutEffect(() => {
     if (!editor || editor.isDestroyed) return
-    editor.view.dispatch(setRewriteDocumentIdentityTransaction(editor.state, activeWorkbenchDocumentId))
-  }, [editor, activeWorkbenchDocumentId])
+    editor.view.dispatch(setRewriteDocumentIdentityTransaction(editor.state, rewriteIdentity))
+  }, [editor, rewriteIdentity])
   // 文档里的 ✓ ✕ 是裸 DOM 小部件，文案在挂载时从 i18n 取（语言切换后下一次画就是新语言）。
   React.useEffect(() => {
     setRewriteLabelProvider(() => ({

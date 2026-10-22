@@ -55,6 +55,13 @@ export function getRewriteDocumentId(state: EditorState): string | null {
 }
 
 /**
+ * 会话身份 = 项目 + 文稿。只用文稿 id 不够：整份复制项目再打开，两个项目里有同 id、同正文的文稿，切项目时文稿 id 没变。
+ */
+export function rewriteDocumentIdentity(projectId: string | null, documentId: string): string {
+  return `${projectId ?? ''}::${documentId}`
+}
+
+/**
  * 宿主在「编辑器里换了一篇文稿」时发的事务（正文一样、编辑器照旧复用时文档本身不会变，所以必须显式告诉插件）。
  * 换了文稿 = 属于旧文稿的会话当场作废（进行中的请求随之取消，结果回来也无处可写）。
  */

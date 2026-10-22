@@ -8,7 +8,7 @@ import i18n from '../../../i18n'
 import { VendorRequestError, encodeVendorErrorMessage } from '../../../../electron/vendor/vendorHttp'
 import { createProjectSessionTestHarness, type ProjectSessionTestHarness } from '../../project/projectSessionTestHarness'
 import { createRewriteController, type RewriteController, type RewriteHost } from './rewriteController'
-import { buildRewriteDecorations, createRewritePlugin, getRewriteSession, openRewriteTransaction, rangeText, rewriteSessionKey, setRewriteDocumentIdentityTransaction, type RewriteRequirement } from './rewriteSession'
+import { buildRewriteDecorations, createRewritePlugin, getRewriteSession, openRewriteTransaction, rangeText, rewriteSessionKey, rewriteDocumentIdentity, setRewriteDocumentIdentityTransaction, type RewriteRequirement } from './rewriteSession'
 import { REWRITE_PRESET_INSTRUCTIONS, buildRewritePrompt, cleanRewriteOutput, isWritingSkill, skillBodyText } from './rewritePrompt'
 import { diffRewrite } from './rewriteDiff'
 import type { SkillListItemDto } from '../../api/skillApi'
@@ -524,6 +524,17 @@ describe('B1：改写结果只落回打开它的那篇文稿（按身份判，�
     controller.accept()
     expect(host.text()).toBe([P1, P2, P3].join('\n'))
     expect(getRewriteSession(host.state)?.status).toBe('result')
+  })
+
+  it('整份复制的项目：两个项目里有同 id、同正文的文稿，切项目也作废（身份是「项目 + 文稿」）', async () => {
+    host.switchDocument(rewriteDocumentIdentity('project-1', 'doc-A'))
+    await runToResult()
+    expect(rewriteDocumentIdentity('project-1', 'doc-A')).not.toBe(rewriteDocumentIdentity('project-2', 'doc-A'))
+    host.switchDocument(rewriteDocumentIdentity('project-2', 'doc-A'))
+    expect(getRewriteSession(host.state)).toBeNull()
+    expect(discarded).toEqual(['document-switched'])
+    controller.accept()
+    expect(host.text()).toBe([P1, P2, P3].join('\n'))
   })
 
   it('会话在原文稿里照常能接受（身份一致不误杀）', async () => {
