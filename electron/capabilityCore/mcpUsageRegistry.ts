@@ -21,8 +21,17 @@ type Entry = {
   running: Map<string, number>
 }
 
-/** 助手每次工具调用留在 countedCalls 里的上限：只为去重，满了丢最旧的，不让它无限涨。 */
+/** 已结束调用号留在 countedCalls 里的上限：只为去重，满了丢最旧的「已结束」的，不让它无限涨。在途调用的号不受此限（见 trimCounted）。 */
 const COUNTED_CALLS_CAP = 256
+
+/** 只丢已经结束（不在 running 里）的最旧调用号。在途的号被丢掉，它后续的请求跳会被当成新调用再记一次。 */
+function trimCounted(entry: Entry): void {
+  if (entry.countedCalls.size <= COUNTED_CALLS_CAP) return
+  for (const id of entry.countedCalls) {
+    if (entry.countedCalls.size <= COUNTED_CALLS_CAP) return
+    if (!entry.running.has(id)) entry.countedCalls.delete(id)
+  }
+}
 
 export function createMcpUsageRegistry(options: Readonly<{ now?: () => number; onChange?: () => void }> = {}) {
   const now = options.now ?? Date.now
@@ -54,12 +63,9 @@ export function createMcpUsageRegistry(options: Readonly<{ now?: () => number; o
       if (!entry.countedCalls.has(call.id)) {
         entry.countedCalls.add(call.id)
         entry.callCount += 1
-        if (entry.countedCalls.size > COUNTED_CALLS_CAP) {
-          const oldest = entry.countedCalls.values().next().value
-          if (oldest !== undefined) entry.countedCalls.delete(oldest)
-        }
       }
       entry.running.set(call.id, (entry.running.get(call.id) ?? 0) + 1)
+      trimCounted(entry)
       changed()
       let ended = false
       return () => {
@@ -68,6 +74,7 @@ export function createMcpUsageRegistry(options: Readonly<{ now?: () => number; o
         const left = (entry.running.get(call.id) ?? 1) - 1
         if (left > 0) entry.running.set(call.id, left)
         else entry.running.delete(call.id)
+        trimCounted(entry)
         entry.lastSeenAt = now()
         changed()
       }
