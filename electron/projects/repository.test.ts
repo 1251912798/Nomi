@@ -96,9 +96,9 @@ describe("legacyProjectDirById（folder rename 自愈）", () => {
 });
 
 // 列表只读（2026-10-22，V-plibrary N1）：listProjects 不删任何项目。空白草稿回收曾挂在首次列举上，
-// 列举是异步的，期间排队等锁的保存会被它删掉。能证明为空的草稿（native + draft + revision 0 + assets 空）
-// 只是不显示，目录和登记都留着。
-describe("listProjects 只读：能证明为空的草稿不显示、不删", () => {
+// 列举是异步的，期间排队等锁的保存会被它删掉。读面也不做展示上的取舍（V-plibrary2 r3，用户拍板 B）：
+// 刚新建、还没保存的空白项目照常在列表里——MCP、全部项目素材、走查都靠它找刚建的项目。
+describe("listProjects 只读：所有登记过的项目都在、不删", () => {
   let projectsRoot = "";
   let settingsRoot = "";
   beforeEach(() => {
@@ -113,33 +113,13 @@ describe("listProjects 只读：能证明为空的草稿不显示、不删", () 
     fs.rmSync(settingsRoot, { recursive: true, force: true });
   });
 
-  it("零编辑空白草稿不出现在列表里，但目录与登记都还在；列多少次都不删", async () => {
-    const draft = createProject({ name: "上个进程的空白", draft: true });
+  it("刚新建、零编辑的空白草稿就在列表里（带 rootPath）；列多少次都不删", async () => {
+    const draft = createProject({ name: "刚建的空白", draft: true });
     const root = (findRecentWorkspace(settingsRoot, draft.id) as { rootPath: string }).rootPath;
     for (let round = 0; round < 2; round += 1) {
-      expect((await listProjects()).some((p) => p.id === draft.id)).toBe(false);
+      expect((await listProjects()).find((p) => p.id === draft.id)).toMatchObject({ rootPath: root, draft: true, revision: 0 });
       expect(fs.existsSync(root)).toBe(true);
-      expect(findRecentWorkspace(settingsRoot, draft.id)).toBeTruthy();
     }
-  });
-
-  it("草稿 assets 里已有真实文件：照常显示（不能证明为空就不藏）", async () => {
-    const draft = createProject({ name: "有素材的草稿", draft: true });
-    const root = (findRecentWorkspace(settingsRoot, draft.id) as { rootPath: string }).rootPath;
-    fs.mkdirSync(path.join(root, "assets", "imported"), { recursive: true });
-    fs.writeFileSync(path.join(root, "assets", "imported", "a.png"), "x");
-    expect((await listProjects()).some((p) => p.id === draft.id)).toBe(true);
-  });
-
-  it("判不出是不是空的草稿（assets 是个文件）：整页不抛，这张照常显示，邻居也在", async () => {
-    const draft = createProject({ name: "assets 坏了的草稿", draft: true });
-    const neighbour = createProject({ name: "邻居" });
-    const root = (findRecentWorkspace(settingsRoot, draft.id) as { rootPath: string }).rootPath;
-    fs.rmSync(path.join(root, "assets"), { recursive: true, force: true });
-    fs.writeFileSync(path.join(root, "assets"), "not a directory");
-    const listed = await listProjects();
-    expect(listed.some((p) => p.id === draft.id)).toBe(true);
-    expect(listed.some((p) => p.id === neighbour.id)).toBe(true);
   });
 
   it("非草稿项目照常显示", async () => {

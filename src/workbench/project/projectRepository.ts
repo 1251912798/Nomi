@@ -146,7 +146,7 @@ export function createLocalProject(
 ): WorkbenchProjectRecordV1 {
   const now = Date.now()
   const template = getProjectTemplate(templateId || null)
-  // 草稿态：用户手动「新建空白」（无 seedKey 播种、无 rootPath 外部绑定）。零编辑时不出现在项目库列表里（列表只读、不删，2026-10-22）。
+  // 草稿态：用户手动「新建空白」（无 seedKey 播种、无 rootPath 外部绑定）。列表照常返回它；零编辑空壳的整理并进「离开只写欠着的」那条线（2026-10-22）。
   // example（seedKey）/打开文件夹（rootPath）不打标记，永不被回收。
   const isDraft = !options.seedKey?.trim() && !options.rootPath?.trim()
   const summary: WorkbenchProjectSummary = {

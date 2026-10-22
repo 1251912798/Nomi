@@ -2,6 +2,8 @@
 
 > 触发：同线第 3 轮修补（CLAUDE.md P1）；`node scripts/fix-churn.mjs` 报 `electron/workspace/workspaceRepository.ts` 文件 14 天第 5 刀、`electron/projects/repository.ts` 第 4 刀、概念 `project.directory-lifecycle` 第 5 刀。
 > 本页只写复盘，**未改任何实现代码**。已 merge 最新 origin/main（`071e78e22`，不 rebase）后在本机复现。
+>
+> **用户 2026-10-22 拍板：B（收窄本 PR）；C（库成员资格唯一主人，与「离开只写欠着的」合成一条线）另开线，等 #1282 合入后再开。**
 
 ## 0. 一句话根因
 

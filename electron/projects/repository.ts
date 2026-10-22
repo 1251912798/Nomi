@@ -47,7 +47,7 @@ export type ProjectRecord = {
   thumbnail?: string;
   thumbnailUrls?: string[];
   seedKey?: string;
-  /** 草稿态标记：新建空白零编辑项目。首次 save 即清除。能证明为空的草稿不出现在列表里（见 workspaceRepository.listWorkspaceProjects）。 */
+  /** 草稿态标记：新建空白零编辑项目。首次 save 即清除。列表照常返回它（读面不做展示上的取舍）。 */
   draft?: boolean;
   /** 列表摘要专用：这一项的数据读不出来（见 WorkspaceProjectSummary.unreadableReason）。 */
   unreadableReason?: "outside-workspace" | "unreadable";
@@ -152,7 +152,7 @@ export async function listProjects(): Promise<Array<Omit<ProjectRecord, "payload
     })),
   );
   // 列举只读项目、不删项目（N1，2026-10-22）：空白草稿回收曾挂在首次列举上，列举是异步的，
-  // 期间排队等锁的保存会被它删掉。能证明为空的草稿由 listWorkspaceProjects 直接不显示；
+  // 期间排队等锁的保存会被它删掉。列表返回所有登记过的项目，不藏也不删（读面不做展示上的取舍）；
   // 删项目只有用户点删除这一扇门（check:read-path-writes 把 deleteWorkspaceProject 列为销毁门，读路径可达即红）。
   const projects = await listWorkspaceProjects(deps);
   // 自愈对齐磁盘 ↔ registry:native 项目(Nomi 自管目录,~/Documents/Nomi Projects 内)

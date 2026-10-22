@@ -117,7 +117,7 @@ export type WorkbenchProjectSummary = {
   seedKey?: string
   /**
    * 草稿态：新建空白零编辑项目的标记。首次真实保存即清除（promote 为持久态）。
-   * 带此标记且 revision===0、assets 为空的 native 空壳不出现在项目库列表里（审计 P0-3；列表只读不删，2026-10-22）。
+   * 列表照常返回带此标记的项目（读面不做展示上的取舍，2026-10-22）；零编辑空壳的整理并进「离开只写欠着的」那条线。
    * example（有 seedKey）/打开文件夹（有 rootPath）/老项目都无此字段。
    */
   draft?: boolean

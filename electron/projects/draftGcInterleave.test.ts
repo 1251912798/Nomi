@@ -98,22 +98,22 @@ describe("列举与同进程写入交错：列举不删项目", () => {
     expect(folderAfterGc).toBe(true);
     expect(result).toEqual({ ok: true, revision: 1 });
     expect(findRecentWorkspace(settingsRoot, draft.id)).toBeTruthy();
-    // 这一次的列表里有没有它取决于保存的 10ms 重试和列举谁先收尾，两种都对，不断言（V-plibrary2 S8：冷跑红过）。
-    // 确定的同步点只有两个：列举 resolve 之后目录一定在（没有删除器）；保存 resolve 之后再列一定有它。
-    expect(rows.length).toBeGreaterThan(0);
+    // 列表不做展示上的取舍：这一次的列表里就有它（读面返回所有登记过的项目）。
+    expect(rows.some((row) => row.id === draft.id)).toBe(true);
     expect((await listProjects()).some((row) => row.id === draft.id)).toBe(true);
   });
 
-  it("上个进程遗留的空草稿与列举途中新建的草稿：都不显示，目录与登记都还在", async () => {
+  it("上个进程遗留的空草稿与列举途中新建的草稿：都不删，之后的列表里两个都在", async () => {
     const stale = createProject({ name: "上个进程遗留", draft: true });
     const sibling = createProject({ name: "慢的同伴" });
     let fresh = "";
     const { rows, draftRoot } = await listingWithWindow(stale.id, sibling.id, async () => {
       fresh = createProject({ name: "列举途中新建", draft: true }).id;
     });
-    expect(rows.some((row) => row.id === stale.id)).toBe(false);
+    expect(rows.some((row) => row.id === stale.id)).toBe(true);
     expect(fs.existsSync(draftRoot)).toBe(true);
-    expect(findRecentWorkspace(settingsRoot, stale.id)).toBeTruthy();
-    expect(findRecentWorkspace(settingsRoot, fresh)).toBeTruthy();
+    const next = await listProjects();
+    expect(next.some((row) => row.id === stale.id)).toBe(true);
+    expect(next.some((row) => row.id === fresh)).toBe(true);
   });
 });

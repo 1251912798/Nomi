@@ -330,30 +330,11 @@ export async function listWorkspaceProjects(deps: WorkspaceRepositoryDeps): Prom
       }),
     ),
   );
-  // 列表只读、不删任何东西（N1：回收挂在列举上会和排队中的保存并发，删掉用户刚保存的草稿）。
-  // 能证明是零编辑空壳的草稿只是不显示：它们只会是崩溃 / 关机 / 强杀留下的（离开和关窗口都会先整存「转正」），
-  // 盘上隐藏保留，删除等「离开只写欠着的」落地后由项目自己的离开流程做。
-  return summaries.filter((summary) => !isProvablyEmptyDraft(summary));
-}
-
-/**
- * 能证明是零编辑的空壳草稿：native、目录在、此刻的清单仍是 draft + revision 0、assets/ 里没有任何真实文件。
- * 不变量 `revision===0 ⟺ 落盘 payload 即出生默认值`（首次保存即清 draft、revision+1）。
- */
-function isProvablyEmptyDraft(project: WorkspaceProjectSummary): boolean {
-  if (project.source !== "native" || project.missing || project.unreadableReason) return false;
-  if (project.draft !== true || (project.revision ?? 0) !== 0) return false;
-  // 判不出来（assets 变成了文件、目录读不了……）一律当「不能证明为空」照常显示，和每项读取同一个承诺：
-  // 一项出错只影响它自己，绝不让整页列表抛错（V-plibrary2 S1）。
-  try {
-    // 列举是异步的，摘要可能是保存之前读的：只对这几个候选再读一次「此刻」的清单，已经转正的照常显示。
-    const current = readWorkspaceManifestSnapshot(project.rootPath);
-    if (!current || current.id !== project.id || current.draft !== true || current.revision !== 0) return false;
-    return !dirHasRealFiles(path.join(project.rootPath, "assets"));
-  } catch (error) {
-    logWarn("workspace", "list-empty-draft-check-failed", undefined, error);
-    return false;
-  }
+  // 读面只给事实、不做展示上的取舍：所有登记过的项目都在（V-plibrary2 r3，用户 2026-10-22 拍板 B）。
+  // 项目库页面、全部项目素材、MCP 项目列表、工作流来源名、走查都读这一份，都默认「列表 = 所有登记过的项目」；
+  // 曾在这里藏「零编辑空白草稿」，刚新建、还没保存的项目就从 MCP 与走查的列表里消失了。
+  // 列表也不删任何东西（N1：回收挂在列举上会和排队中的保存并发，删掉用户刚保存的草稿）。
+  return summaries;
 }
 
 export function readWorkspaceProject(
@@ -454,22 +435,6 @@ export function deleteWorkspaceProject(
   if (!isNative) return { id: projectId, deleted: false }; // 外部文件夹：只解绑，不删用户内容
   fs.rmSync(resolved, { recursive: true, force: true });
   return { id: projectId, deleted: true };
-}
-
-// 递归判断目录下是否有任何真实文件（忽略空日期目录与 .DS_Store）。「可证明为空」的防御纵深：
-// 即便 draft/revision 判据通过，只要项目目录里有任何用户素材就照常显示。
-function dirHasRealFiles(dir: string): boolean {
-  if (!fs.existsSync(dir)) return false;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === ".DS_Store") continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (dirHasRealFiles(full)) return true;
-    } else if (entry.isFile()) {
-      return true;
-    }
-  }
-  return false;
 }
 
 export function resolveWorkspaceProjectDir(projectId: string, deps: WorkspaceRepositoryDeps): string | null {
