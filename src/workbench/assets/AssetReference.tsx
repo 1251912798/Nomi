@@ -194,7 +194,7 @@ export default function AssetReference({
                 <IconArrowsLeftRight size={16} stroke={2} aria-hidden />
               </button>
             ) : null}
-            <div data-asset-slot={slot.key} className={cn('relative flex w-10 shrink-0 flex-col items-start gap-1', slotIndex === 0 && 'ml-3')}>
+            <div data-asset-slot={slot.key} className={cn('relative flex min-w-10 shrink-0 flex-col items-start gap-1', slotIndex === 0 && 'ml-3')}>
               {url
                 ? <AssetTile {...tileProps(url, slot.accept, slot.label)} onRemove={() => onRemove(slot, 0)} dimmed={disabled} />
                 : <AssetActionTile data-asset-add-tile="true" aria-label={t('assetLibrary.addNamed', { label: slot.label })} selected={isOpen} disabled={disabled}
@@ -249,7 +249,7 @@ export default function AssetReference({
       ) : null}
       {/* 别的方式里放着、这个方式用不上的图：淡显，名字写「未用到」，切回去还在。 */}
       {(unusedUrls ?? []).map((url) => (
-        <div key={`unused-${url}`} data-reference-unused="true" className="flex w-10 shrink-0 flex-col items-start gap-1">
+        <div key={`unused-${url}`} data-reference-unused="true" className="flex min-w-10 shrink-0 flex-col items-start gap-1">
           <AssetTile {...tileProps(url, 'image', t('assetLibrary.referenceImage'))} dimmed
             {...(onRemoveUnused && !disabled ? { onRemove: () => onRemoveUnused(url) } : {})} />
           {disabled ? null : <span className="whitespace-nowrap text-caption leading-4 text-nomi-ink-60">{t('assetLibrary.refRow.unused')}</span>}

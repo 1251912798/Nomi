@@ -505,7 +505,7 @@ try {
 
   // ── 中 / 英 × 明 / 暗：每个格各查一遍（EVIDENCE=1 时顺手截图）：英文不漏中文、底栏字不被省略号截掉、参考行没有多出的滚动条 ──────────
   {
-    const ids = ['b3a-video-empty', 'b3b-video-params', 'b3c-video-three-refs', 'b3d-video-first-last', 'b3e-video-ambiguous', 'b3f-video-switch-first-last', 'b3g-image-empty', 'b3h-image-three-refs', 'b3i-image-no-ref-model', 'b3j-model-menu', 'b3j-after-swap', 'b3o-model-menu-channel', 'b3o-params-provider', 'b3p-channel-missing-mode', 'b3p-channel-missing-none', 'b3q-image-quantity', 'e1d-node-error']
+    const ids = ['b3a-video-empty', 'b3b-video-params', 'b3c-video-three-refs', 'b3d-video-first-last', 'b3e-video-ambiguous', 'b3f-video-switch-first-last', 'b3t-video-firstlast-two-ref-edges', 'b3g-image-empty', 'b3h-image-three-refs', 'b3i-image-no-ref-model', 'b3j-model-menu', 'b3j-after-swap', 'b3o-model-menu-channel', 'b3o-params-provider', 'b3p-channel-missing-mode', 'b3p-channel-missing-none', 'b3q-image-quantity', 'e1d-node-error']
     const short = (id) => id.replace(/^(b3[a-z]|e1d)-.*/, (m, p) => p).toUpperCase() + '-' + id.replace(/^(b3[a-z]|e1d)-/, '')
     for (const id of ids) {
       for (const [lang, langParam] of [['zh', ''], ['en', '&lang=en']]) {
@@ -518,6 +518,18 @@ try {
           }
           const clipped = await page.evaluate(() => [...document.querySelectorAll('.generation-canvas-v2-node__composer [data-node-composer-footer] *')].filter((el) => getComputedStyle(el).textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth).map((el) => el.textContent?.trim()))
           check(`board:ComposerB3/bar.no-truncation.${id}.${lang}.${scheme}`, !clipped.length, JSON.stringify(clipped))
+          // ⑩（用户 10-22 拍板）：参考行格下的字（首帧 / 尾帧 / 未用到）互不重叠——英文「Last frame」「Unused」最长。
+          const overlaps = await page.evaluate(() => {
+            const labels = [...document.querySelectorAll('[data-reference-row] [data-asset-slot-label], [data-reference-row] [data-reference-unused] > span')]
+              .map((el) => ({ text: el.textContent?.trim() ?? '', r: el.getBoundingClientRect() }))
+            const hits = []
+            for (let i = 0; i < labels.length; i += 1) for (let j = i + 1; j < labels.length; j += 1) {
+              const a = labels[i].r; const b = labels[j].r
+              if (a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5) hits.push(`${labels[i].text}×${labels[j].text}`)
+            }
+            return hits
+          })
+          check(`refslots.labels.no-overlap.${id}.${lang}.${scheme}`, !overlaps.length, JSON.stringify(overlaps))
           const scroller = await page.evaluate(() => { const el = document.querySelector('[data-node-composer-references]'); return el ? { scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, overflowY: getComputedStyle(el).overflowY } : null })
           if (scroller && id !== 'b3r-video-30-refs') check(`board:ComposerB3/ref.row.no-scrollbar.${id}.${lang}.${scheme}`, scroller.scrollHeight <= scroller.clientHeight, JSON.stringify(scroller))
           if (lang === 'en' && id === 'b3c-video-three-refs') {
