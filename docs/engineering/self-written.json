@@ -179,6 +179,10 @@
       "reason": "项目绑定：对话与创作项目的归属"
     },
     {
+      "path": "electron/shared/projectDeleteIntent*",
+      "reason": "项目删除意图：用户在确认框里确认的是「从项目库移除」还是「删除文件」，主进程只照它执行——项目目录生命周期的领域语义（V-plibrary2，2026-10-22）；放中立契约层是因为渲染层确认框和主进程删除口共读这一份"
+    },
+    {
       "path": "electron/shared/model*",
       "reason": "模型发布、可用性与上下文窗口目录"
     },

@@ -10,6 +10,7 @@ import { markdownToTiptapContent } from '../creation/markdownToTiptap'
 import { sanitizePastedHtml } from './sanitizePastedHtml'
 import { PersistentSelectionExtension } from './persistentSelection'
 import { createControlledEditorSync } from './controlledEditorSync'
+import { AiRewriteExtension } from '../creation/aiRewrite/rewriteSession'
 
 // ==高亮== 输入/粘贴规则：Tiptap 默认规则要求 `==` 前是行首或空白，中文「这是==重点==」
 // 无空格场景会失效；这里放宽为任意位置触发，对齐 ColaMD 的 `/==([^=]+)==/`。
@@ -29,6 +30,8 @@ export const RICH_TEXT_FEATURE_EXTENSIONS: AnyExtension[] = [
   TaskList,
   TaskItem,
   TableKit,
+  // 选中文字 → AI 编辑 → 就地出结果（只有创作编辑器挂；画布文字节点不挂）。
+  AiRewriteExtension,
 ]
 
 const EMPTY_EXTENSIONS: AnyExtension[] = []

@@ -75,7 +75,8 @@ function toProjectRecordObject(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
-function isWorkspaceBoundaryError(error: unknown): boolean {
+/** 越界读写的统一判据：workspacePaths 的边界错只有这一条信息。 */
+export function isWorkspaceBoundaryError(error: unknown): boolean {
   return error instanceof Error && /inside the selected workspace/i.test(error.message);
 }
 

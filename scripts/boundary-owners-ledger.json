@@ -884,6 +884,12 @@
       "path": "electron/preload.ts",
       "symbol": "director3dBox",
       "reason": "用户 2026-10-16 拍板 3D-BOX 成为唯一导演台（「我觉得可以打开给大家用吧」「为什么要切回旧导演台？」），切换 PR 同一提交删掉旧导演台和构建开关（方向检查 docs/plan/2026-10-16-director-3dbox-sole-director-direction-check.md）。3D-BOX 构建开关整套删除：preload 不再解码、核对主进程经 additionalArguments 传来的开关证明，导航前已经没有任何「功能协商」，「导航前协商只能走 additionalArguments、不许调 IPC」这条不变量失去对象。主进程那一半（mainWindowWebPreferences 的开关证明参数）同一提交删除。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-03-startup-library-discovery-rescan.root-cause.json",
+      "path": "electron/workspace/workspaceRepository.ts",
+      "symbol": "gcEmptyDraftWorkspaceProjects",
+      "reason": "读列表不再删东西（C′，用户 2026-10-22 拍板；方向检查 docs/plan/2026-10-21-project-library-direction-check.md 的 N1 节 §8）：启动回收器 gcEmptyDraftWorkspaceProjects 连同 once-guard 同一提交删除，空草稿改为在列表里隐藏（listWorkspaceProjects 的 isProvablyEmptyDraft，只对候选再读一次，不再列举全库），回收挪到「离开只写欠着的」那条线。这条锚守的是「启动回收器吃调用方现成的快照、不再自己列一遍全库」，回收器没了，不变量失去对象；同一份合同里「一次 listProjects 最多列举一次全库」仍由 listProjects 锚点在位，electron/projects/repository.test.ts「一次列举里每个项目的 manifest 只被快照读一次」继续钉住。"
     }
   ],
   "unverified": [
