@@ -229,7 +229,7 @@ export function narrateModelKind(kind: string): string {
 // fix-model-kind：**直接把缺口补上**（改类型 + 按新类型重建调用通道），不是又把用户送去某一页
 // 自己找。这是这次唯一新增的动作——因为它是唯一一类「我们确切知道哪里错、也确切知道怎么改对」的
 // 失败。其余类别我们只知道现象、改不动，所以只能给「去哪儿」或「换一个」。
-export type GenerationErrorAction = 'retry' | 'switch-model' | 'switch-same-capability' | 'open-model-access' | 'fix-model-kind' | 'reconcile' | 'view-task' | 'release-regenerate'
+export type GenerationErrorAction = 'retry' | 'switch-model' | 'switch-same-capability' | 'open-model-access' | 'fix-model-kind' | 'reconcile' | 'view-task' | 'open-recoverable' | 'release-regenerate'
 
 // 每类的主动作 + 次动作都写在表里（2026-09-29 起）。次动作默认是「另一个最可能有用的」：主动作不是重试 →
 // 次给重试（想试还能试，不堵死用户）；主动作就是重试 → 次给换模型（等不及就换一家）。下面三个常量就是这条
@@ -377,6 +377,8 @@ const ACTION_KEY: Record<GenerationErrorAction, string> = {
   retry: 'retry',
   reconcile: 'reconcile',
   'view-task': 'viewTask',
+  // 画布任务（不是制作 Run）的「去重新取回」：错误卡按任务来源把 view-task 换成它（NodeErrorReport），点了回到可找回面板。
+  'open-recoverable': 'openRecoverable',
   'release-regenerate': 'releaseRegenerate',
 }
 

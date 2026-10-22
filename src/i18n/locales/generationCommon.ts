@@ -311,6 +311,7 @@ export const zhGenerationCommon = {
     action: {
       reconcile: { main: '在任务中心查看', alt: '先在任务中心查看' },
       viewTask: { main: '查看制作任务', alt: '去看制作任务' },
+      openRecoverable: { main: '去重新取回', alt: '去重新取回' },
       releaseRegenerate: { main: '我核对过了，重新生成', alt: '我核对过了，重新生成' },
       retry: { main: '重试', alt: '仍要重试' },
       switchModel: { main: '换个模型', alt: '换个模型' },
@@ -455,7 +456,7 @@ export const zhGenerationCommon = {
       // 只给「去任务面板重新取回」，绝不给重试：重试 = 再生成一份新的。
       retrievalIncomplete: {
         reason: '任务已提交，这次没能取回结果',
-        hint: '这一镜已经交给服务商了，是 Nomi 这一次查结果、读结果或下载结果没成（常见原因：本机网络或代理一时不通、服务商的查询接口报错）。不要重新生成，那会另做一份新的。到任务面板点「重新取回」，Nomi 只会再查一次、再下载一次。具体原因见下方技术详情。',
+        hint: '这一镜已经交给服务商了，是 Nomi 这一次查结果、读结果或下载结果没成（常见原因：本机网络或代理一时不通、服务商的查询接口报错）。不要重新生成，那会另做一份新的。点「重新取回」，Nomi 只会再查一次、再下载一次。具体原因见下方技术详情。',
       },
       // 本机处理失败（截帧 / 提取深度 / 本地素材复制）：没有服务商、没有模型参与——不说「换模型」，只留重试。
       localProcessing: {
@@ -2035,6 +2036,7 @@ export const enGenerationCommon = {
     action: {
       reconcile: { main: 'View in task center', alt: 'View in task center first' },
       viewTask: { main: 'View production task', alt: 'Open task center' },
+      openRecoverable: { main: 'Retrieve again', alt: 'Retrieve again' },
       releaseRegenerate: { main: "I've checked, generate again", alt: "I've checked, generate again" },
       retry: { main: 'Retry', alt: 'Retry anyway' },
       switchModel: { main: 'Switch model', alt: 'Switch model' },
@@ -2175,7 +2177,7 @@ export const enGenerationCommon = {
       },
       retrievalIncomplete: {
         reason: 'Submitted, but the result could not be retrieved this time',
-        hint: 'This shot was already handed to the provider; what failed is Nomi checking the task, reading its result or downloading it this time (usually the local network or proxy dropped for a moment, or the provider’s status endpoint returned an error). Do not generate again — that makes a brand-new one. Open the task panel and click “Retrieve again”: Nomi only checks the task and downloads it once more. The technical details below give the exact reason.',
+        hint: 'This shot was already handed to the provider; what failed is Nomi checking the task, reading its result or downloading it this time (usually the local network or proxy dropped for a moment, or the provider’s status endpoint returned an error). Do not generate again — that makes a brand-new one. Use “Retrieve again”: Nomi only checks the task and downloads it once more. The technical details below give the exact reason.',
       },
       localProcessing: {
         reason: 'Local processing failed',
