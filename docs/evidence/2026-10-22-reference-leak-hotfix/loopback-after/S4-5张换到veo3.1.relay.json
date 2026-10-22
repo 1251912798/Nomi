@@ -1,0 +1,17 @@
+{
+  "case": "S4-5张换到veo3.1",
+  "transport": "relay",
+  "kind": "text_to_video",
+  "inUse": [],
+  "sent": [],
+  "received": {
+    "method": "POST",
+    "path": "/v1/video/generations",
+    "body": {
+      "model": "veo3.1-fast",
+      "prompt": "一个镜头",
+      "duration": "",
+      "size": "1024x576"
+    }
+  }
+}

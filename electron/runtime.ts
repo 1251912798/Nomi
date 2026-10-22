@@ -55,6 +55,8 @@ import { unlocalizedTaskAsset } from "./tasks/unlocalizedTaskAsset";
 import type { BillingModelKind, HttpOperation, Mapping, Model, ProfileKind, Vendor } from "./catalog/types";
 import { billingKindForTaskKind, selectTaskMapping } from "./catalog/types";
 import { applyHeadlessParamDefaults, imageEditGuardError, projectOutboundPrompt } from "./catalog/taskParams";
+import { stripReferenceResidue } from "./catalog/archetypeInput";
+import { logDevDetail } from "./logging/logger";
 import { modelModeBodies } from "./catalog/modelCatalogListing";
 import { runCustomCallTask } from "./catalog/customCallDispatch";
 import { resolveCustomCallExecution } from "./catalog/customCallMode";
@@ -312,6 +314,9 @@ export async function runTask(payload: unknown, admission: TaskAdmission = TOKEN
   const taskId = `task-${crypto.randomUUID()}`;
   const effectiveVendorKey = vendor.key;
   const mapping = stagedCandidate?.mapping || findTaskMapping(effectiveVendorKey, kind, modelKey, modeId);
+  // 当前方式没声明的参考键不上线（契约②，见 catalog/archetypeInput 文件头）：读 extras 的每一处都在这之后。
+  if (request.extras) request.extras = stripReferenceResidue(request.extras, (stripped) =>
+    logDevDetail("tasks", `reference residue stripped before send (renderer contract broken): ${modelKey}/${modeId || "-"} ${stripped.join(",")}`));
   request.extras = applyHeadlessParamDefaults(request.extras, (model?.meta as { archetypeId?: string } | undefined)?.archetypeId, kind, effectiveVendorKey, mapping?.create?.defaultParams, mapping?.create?.body, model.modelKey);
   // A5：@ 内联参考在发出去之前投影成 @image1/@video1。判据与注释住 taskParams（引擎 A 只有这一个出口）。
   request.prompt = projectOutboundPrompt(request.prompt, request.extras);

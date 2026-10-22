@@ -1,0 +1,32 @@
+{
+  "case": "OK2-参考方式照发参考数组",
+  "transport": "apimart",
+  "kind": "image_to_video",
+  "inUse": [
+    "nomi-local://ref/u1.png",
+    "nomi-local://ref/u2.png",
+    "nomi-local://ref/u3.png"
+  ],
+  "sent": [
+    "nomi-local://ref/u1.png",
+    "nomi-local://ref/u2.png",
+    "nomi-local://ref/u3.png"
+  ],
+  "received": {
+    "method": "POST",
+    "path": "/v1/videos/generations",
+    "body": {
+      "model": "doubao-seedance-2.0-fast",
+      "prompt": "一个镜头",
+      "size": "16:9",
+      "resolution": "720p",
+      "duration": 5,
+      "image_urls": [
+        "nomi-local://ref/u1.png",
+        "nomi-local://ref/u2.png",
+        "nomi-local://ref/u3.png"
+      ],
+      "generate_audio": true
+    }
+  }
+}
