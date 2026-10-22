@@ -32,7 +32,8 @@ vi.mock("../runtime", async () => {
 const { fetchTaskResult, retrievalStageError } = await import("./taskResultQuery");
 const { admitTask, taskCache } = await import("../runtime");
 const { VendorRequestError } = await import("../vendor/vendorHttp");
-const { matchNomiErrorCode, tagNomiError, NOMI_ERROR_PHASE } = await import("../shared/nomiErrorCodes");
+const { matchNomiErrorCode, tagNomiError, NOMI_ERROR_ONLY_BEFORE_SUBMIT } = await import("../shared/nomiErrorCodes");
+const { readTask } = await import("../capabilityCore/readTask");
 type NomiErrorCode = import("../shared/nomiErrorCodes").NomiErrorCode;
 
 /** 提交前那一族的口径：任何一句出现在取回阶段的报错里都是假话。 */
@@ -121,7 +122,6 @@ describe("C1：没有查询步的任务，下载产物失败也经同一个出�
 
 describe("C8：MCP read_task 读到的报错不再带提交前口径", () => {
   it("查询被出站守卫拦 → read_task 的 message 里没有「没发出去 / 重新生成」", async () => {
-    const { readTask } = await import("../capabilityCore/readTask");
     admitPolling("task_mcp");
     executeProfileOperation.mockRejectedValue(queryRefusedByGuard("outbound-blocked-submit"));
     const read = await readTask({ fetchTaskResult: fetchTaskResult as never }, { taskId: "task_mcp" });
@@ -132,10 +132,10 @@ describe("C8：MCP read_task 读到的报错不再带提交前口径", () => {
 
 describe("C3：码表给每个码登记阶段，出口只按这张表放行", () => {
   it("每个提交前的码都被改挂、其余原样放行", () => {
-    for (const [code, phase] of Object.entries(NOMI_ERROR_PHASE) as Array<[NomiErrorCode, string]>) {
+    for (const [code, onlyBeforeSubmit] of Object.entries(NOMI_ERROR_ONLY_BEFORE_SUBMIT) as Array<[NomiErrorCode, boolean]>) {
       const original = new Error(tagNomiError(code, "x"));
       const wrapped = retrievalStageError("retrieval-download", original);
-      if (phase === "submit") {
+      if (onlyBeforeSubmit) {
         expect(matchNomiErrorCode(wrapped.message), code).toBe("retrieval-download");
         expect(wrapped.message, code).toContain(code);
       } else {
@@ -145,7 +145,7 @@ describe("C3：码表给每个码登记阶段，出口只按这张表放行", ()
   });
 
   it("提交前那一族一个不少", () => {
-    const submit = Object.entries(NOMI_ERROR_PHASE).filter(([, phase]) => phase === "submit").map(([code]) => code).sort();
+    const submit = Object.entries(NOMI_ERROR_ONLY_BEFORE_SUBMIT).filter(([, only]) => only).map(([code]) => code).sort();
     expect(submit).toEqual(["asset-invalid", "asset-too-large", "asset-upload-failed", "model-config", "outbound-blocked-credential-origin", "outbound-blocked-submit", "submission-unknown"]);
   });
 });

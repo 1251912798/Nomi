@@ -53,7 +53,7 @@ C4 需要分类器给 `retrieval-*` 一个归宿，两种做法：
 | ★1 用户怎么用 | 当我的视频已经提交、Nomi 查结果时被本机网络 / 代理拦住，我想看到「任务还在，修好后点重新取回」，而不是「这次没发出去，重新生成」。真实任务：① 开 Clash TUN fake-ip 生成视频，生成中途代理出问题；② 改了供应商地址没重存 key，查询被凭据绑定拦；③ #1285 修前的参考重传失败。主指标：取回阶段错误被说成「没发出去 / 可重试」的比例 = 0（量具：C1–C7 测试） |
 | ★1b 连带界面 | 可找回面板的「服务商原话」、错误卡、分镜格悬停、Agent 面板失败说明、MCP read_task 的 message |
 | ★2 谁说了算 | 「码属于哪个阶段」唯一 owner = `nomiErrorCodes.ts` 的阶段表；主进程出口 = `fetchTaskResult`；渲染出口 = `classifyGenerationError` |
-| ★3 一致与复用 | 复用 `isRetrievalStageCode` 改成读阶段表；不新造第二份判据 |
+| ★3 一致与复用 | 阶段表就是 `nomiErrorCodes.ts` 里的 `NOMI_ERROR_ONLY_BEFORE_SUBMIT`（码表旁边，同一个 owner）；`isRetrievalStageCode`（「可找回」去处）不变；新分类复用 `output-retrieval-failed` 的动作形状（view-task） |
 | ★4 全状态 | 查询失败 / 读结果失败 / 下载失败 / 超时：都是可找回 + 重新取回；提交阶段失败：照旧 |
 | 5 中途表 | 关窗重开：可找回节点照旧能重新取回（无状态重建）；断网：查询失败落可找回；连点重新取回：只查不提交 |
 | 6 外部数据与失败 | 服务商真原话照旧保留；Nomi 自己的拒绝不冒充服务商原话 |

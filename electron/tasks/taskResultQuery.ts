@@ -25,7 +25,7 @@ import {
   localizeTaskAsset,
 } from "../runtime";
 import { logWarn } from "../logging/logger";
-import { NOMI_ERROR_PHASE, matchNomiErrorCode, tagNomiError } from "../shared/nomiErrorCodes";
+import { NOMI_ERROR_ONLY_BEFORE_SUBMIT, matchNomiErrorCode, tagNomiError } from "../shared/nomiErrorCodes";
 import { VendorRequestError } from "../vendor/vendorHttp";
 import { noteRelayQueryOutcome } from "../catalog/relayNativeWireUpgrade";
 import { expectedMediaKind, readTaskResponse } from "./taskResultReading";
@@ -101,14 +101,14 @@ function upstreamExcerpt(response: unknown): string {
  * 取回阶段的错误（出站被拦 / 产物读不出……）原样放行——那是更具体的事实。VendorRequestError 保留结构化字段
  * （IPC 那头靠它说出「服务商原话」）。渲染层见码即落「可找回」：任务已受理，重新取回，绝不重新提交。
  *
- * 码说的是「提交之前」的（NOMI_ERROR_PHASE = submit：没发出去 / 没请求服务商 / 可以重新生成）：生产者被提交和
+ * 码的话只在「提交之前」成立（NOMI_ERROR_ONLY_BEFORE_SUBMIT：没发出去 / 没请求服务商 / 可以重新生成）：生产者被提交和
  * 查询共用、不知道这是查询（vendorHttp 出站守卫一律按提交挂码），这里改挂本阶段码。原码和诊断前缀留进正文
  * （技术详情），标明是 Nomi 本机拦下；那句提交前的话不带（任务已提交，它是假话），也不把它当服务商原话（不带 structured）。
  */
 export function retrievalStageError(code: "retrieval-query" | "retrieval-parse" | "retrieval-download", error: unknown, note = ""): Error {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const carried = matchNomiErrorCode(message);
-  if (carried && NOMI_ERROR_PHASE[carried] !== "submit") return error instanceof Error ? error : new Error(message);
+  if (carried && !NOMI_ERROR_ONLY_BEFORE_SUBMIT[carried]) return error instanceof Error ? error : new Error(message);
   const stageKey = code === "retrieval-query" ? "tasks.retrievalStage.query" : code === "retrieval-parse" ? "tasks.retrievalStage.parse" : "tasks.retrievalStage.download";
   if (carried) {
     const marker = message.indexOf("NOMI_ERR::");

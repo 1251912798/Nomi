@@ -24,7 +24,7 @@
   ],
   "internal_only_reason": "The phase semantics of Nomi's own error codes and the recoverable-retrieval flow are internal contracts; no external document decides them.",
   "invariants": [
-    "Every NomiErrorCode declares the task phase it speaks for (NOMI_ERROR_PHASE is an exhaustive Record).",
+    "Every NomiErrorCode declares whether its wording only holds before submission (NOMI_ERROR_ONLY_BEFORE_SUBMIT is an exhaustive Record).",
     "No error leaving fetchTaskResult carries a submit-phase code; submit-phase codes are re-tagged with the retrieval stage code, keep the original code and a 'blocked locally by Nomi' label in the technical text, and never carry Nomi's own refusal as provider text.",
     "classifyGenerationError maps every retrieval-* code to retrieval-incomplete whose actions never include retry (regenerate)."
   ],
@@ -32,7 +32,7 @@
     {
       "kind": "write",
       "path": "electron/shared/nomiErrorCodes.ts",
-      "symbol": "NOMI_ERROR_PHASE"
+      "symbol": "NOMI_ERROR_ONLY_BEFORE_SUBMIT"
     },
     {
       "kind": "write",
@@ -54,7 +54,7 @@
   "shared_boundaries": [
     {
       "path": "electron/shared/nomiErrorCodes.ts",
-      "symbol": "NOMI_ERROR_PHASE",
+      "symbol": "NOMI_ERROR_ONLY_BEFORE_SUBMIT",
       "responsibility": "Exhaustive declaration of which task phase each error code speaks for."
     },
     {
