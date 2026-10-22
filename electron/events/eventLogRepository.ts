@@ -5,7 +5,7 @@
 //  - 撕裂尾行容忍:最后一行 parse 失败即视为不存在(JSONL 标配);
 //  - 单事件 ≤4KB:超限的 payload 字段截断为 {truncated, head, sha256, sidecarRef};
 //  - 分段:每段 5000 事件或 5MB rotation;
-//  - 落盘前 redactDeep(评测安全铁律)。
+//  - 落盘前去掉上游原话(diskSafePayload,只留结构事实)再 redactDeep(评测安全铁律)。
 // 失败策略:事件落盘是旁路观察,任何 IO 失败只记一条日志(logging/logger),绝不打断产品主流程。
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -13,6 +13,7 @@ import path from "node:path";
 import { getWorkspaceRepositoryDeps } from "../runtimePaths";
 import { resolveWorkspaceProjectDir } from "../workspace/workspaceRepository";
 import { redactDeep } from "./redact";
+import { diskSafePayload } from "../logging/diskSafeFailure";
 import { logError } from "../logging/logger";
 import type { NewNomiEvent, NomiEvent, TruncatedPayloadField } from "./types";
 
@@ -219,8 +220,9 @@ export function appendEvents(projectId: string, newEvents: readonly NewNomiEvent
     let buffer = "";
     for (const raw of newEvents) {
       state.seq += 1;
-      // 顺序有讲究:先砍超大字段(只看 length),再脱敏,最后才 sidecar —— 后两步的成本都随长度涨。
-      const payload = capPayload(state.dir, state.seq, redactDeep(stripOversizeStrings(raw.payload), secrets));
+      // 顺序有讲究:先砍超大字段(只看 length),再去掉上游原话、脱敏,最后才 sidecar —— 后几步的成本都随长度涨。
+      // diskSafePayload:上游原话(upstreamMsg)不落项目目录,供应商失败只留结构事实(唯一写者兜住所有写入方)。
+      const payload = capPayload(state.dir, state.seq, redactDeep(diskSafePayload(stripOversizeStrings(raw.payload)), secrets));
       const event: NomiEvent = { v: 1, ...raw, payload, seq: state.seq, ts: new Date().toISOString() };
       const line = `${JSON.stringify(event)}\n`;
       buffer += line;
@@ -269,7 +271,8 @@ export function readEvents(projectId: string, opts: { fromSeq?: number } = {}): 
     const events: NomiEvent[] = [];
     for (const segIndex of listSegments(state.dir)) {
       for (const event of parseLines(segmentPath(state.dir, segIndex))) {
-        if (event.seq > fromSeq) events.push({ ...event, payload: rehydratePayload(state.dir, event.payload) });
+        // 旧日志(2026-10-22 之前)里可能存着 upstreamMsg:照常读,但原话不再往外传(渲染层 / 评测 / 重放)。
+        if (event.seq > fromSeq) events.push({ ...event, payload: diskSafePayload(rehydratePayload(state.dir, event.payload)) });
       }
     }
     return events;

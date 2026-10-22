@@ -1,0 +1,262 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-22-upstream-text-never-persisted",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-22",
+  "problem_type": "落盘出口收自由文本：上游原话（连同它回显的用户凭据）经错误 message / 结构化错误 / pi 报错原文写进项目事件、主进程日志与 Agent 派生轨迹",
+  "symptom": "独立验收 V-textmigrate N3：文本一次性门失败 + projectId 时，X-Stainless-* / User-Agent 头里的凭据（F2-A）与小写 %xx / 大写 \\u 编码形态（F2-B）原样出现在 <项目>/.nomi/events/log-*.jsonl；同样的原话经 logError 进主进程日志文件，再随诊断包出机",
+  "direct_cause": "taskIpcGuard 把 VendorRequestError.structured（含 upstreamMsg 与 url）原样交 traceVendorCompleted；logging/redact.redactError 把 error.message 写进日志；laneTrace 把 errorMessage、run.error（JSON.stringify(event.error)）和失败工具原文写进 trace.jsonl / trace.md 与会话运行记录。三处落盘前的兜底都是「已知秘密精确匹配 + 形态正则」，不认用户自定义头、不认等价编码",
+  "class_root": "落盘出口的输入类型是来源不明的自由文本；上游原话可被任意一层拼进新错误（有的不带 cause），落盘那一刻只能靠「按头名猜秘密 + 枚举编码变体」去擦，而这一套对真实输入永远不完备。缺的不变量：落盘出口只收结构事实，不收任何自由文本",
+  "affected_population": [
+    "配置了自定义请求头（中转网关令牌等）的用户：凭据被上游回显后落进项目目录（可能同步 / 分享）与日志（随诊断包 / 反馈包出机）",
+    "所有用户：上游错误原话（可能含账户、内部路由、请求内容片段）落盘",
+    "旧项目：2026-10-22 之前已写下带 upstreamMsg 的事件"
+  ],
+  "scope_paths": [
+    "electron/logging/diskSafeFailure.ts",
+    "electron/events/vendorCallTrace.ts",
+    "electron/events/eventLogRepository.ts",
+    "electron/logging/redact.ts",
+    "electron/logging/logger.ts",
+    "electron/agentLane/laneTrace.mts",
+    "electron/agentLane/laneTraceRecorder.mts",
+    "electron/telemetry/trajectoryProjection.ts",
+    "electron/crashLog.ts"
+  ],
+  "entry_points": [
+    "项目事件：traceVendorCompleted 的 4 个调用方（taskIpcGuard / runtime / taskResultQuery / customCallDispatch）与 appendEvents 的 7 个写入方（含渲染层 nomi:events:append）",
+    "日志文件与崩溃日志：logger.logError / logWarn 的全部调用方与 crashLog（经 redactError 两扇门）；渲染层上报经 rendererLog 进同一个 logger",
+    "Agent 派生轨迹：deriveLaneTrace（trace.jsonl / trace.md）与 laneTraceRecorder 写进 pi 会话的运行记录"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://github.com/pinojs/pino/blob/main/docs/redaction.md",
+      "checked_at": "2026-10-22",
+      "purpose": "确认成熟日志库的 redact 只按路径擦结构字段、不处理错误 message 自由文本——「哪段文本可落盘」只能由我们定"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://www.npmjs.com/package/@earendil-works/pi-ai/v/0.85.1",
+      "checked_at": "2026-10-22",
+      "purpose": "pi-ai 回放跳过 stopReason=error 的助手消息（本机 node_modules/@earendil-works/pi-ai/dist/api/transform-messages.js:153-159）：派生轨迹去掉报错原文不影响模型回放；A2 会话存档另交协调"
+    }
+  ],
+  "invariants": [
+    "写进 <项目>/.nomi/events 的供应商失败只有 VendorFailureFacts（vendorKey / category / retryable / httpStatus / 码形 upstreamCode / logicalCode / reasonCode），没有 upstreamMsg 与 url",
+    "事件唯一写者 appendEvents 与唯一读者 readEvents 都经 diskSafePayload：任何写入方塞进来的、或旧日志里存着的 upstreamMsg 都不落盘、不往外传",
+    "日志文件与崩溃日志里的错误只有类名、码形 code、我们自己的码形 message 或 msg#<8 位指纹>、cause 链上的供应商结构事实、剥过路径的栈帧",
+    "Agent 派生轨迹的 errors 只有闭合类别；失败工具不留原文摘要；Nomi 写进会话的运行记录 error 只有 run-failed"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/catalog/customCallDispatch.ts",
+      "symbol": "traceVendorCompleted"
+    },
+    {
+      "kind": "write",
+      "path": "electron/runtime.ts",
+      "symbol": "traceVendorCompleted"
+    },
+    {
+      "kind": "write",
+      "path": "electron/tasks/taskIpcGuard.ts",
+      "symbol": "traceVendorCompleted"
+    },
+    {
+      "kind": "write",
+      "path": "electron/tasks/taskResultQuery.ts",
+      "symbol": "traceVendorCompleted"
+    },
+    {
+      "kind": "write",
+      "path": "electron/crashLog.ts",
+      "symbol": "redactError"
+    },
+    {
+      "kind": "write",
+      "path": "electron/logging/logger.ts",
+      "symbol": "redactError"
+    },
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneTrace.mts",
+      "symbol": "deriveLaneTrace"
+    },
+    {
+      "kind": "write",
+      "path": "electron/events/vendorCallTrace.ts",
+      "symbol": "appendEvents"
+    },
+    {
+      "kind": "write",
+      "path": "electron/events/eventLogRepository.ts",
+      "symbol": "diskSafePayload"
+    },
+    {
+      "kind": "read",
+      "path": "electron/events/eventLogRepository.ts",
+      "symbol": "readEvents"
+    },
+    {
+      "kind": "write",
+      "path": "electron/logging/diskSafeFailure.ts",
+      "symbol": "vendorFailureFacts"
+    },
+    {
+      "kind": "write",
+      "path": "electron/logging/redact.ts",
+      "symbol": "redactError"
+    },
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneTraceRecorder.mts",
+      "symbol": "LANE_RUN_FAILED"
+    },
+    {
+      "kind": "read",
+      "path": "electron/telemetry/trajectoryProjection.ts",
+      "symbol": "errorKinds"
+    }
+  ],
+  "door_reduction": {
+    "before": 14,
+    "after": 14,
+    "why_not": "门不合并、改为全部汇到两处边界：traceVendorCompleted 的 4 个调用方各自是不同的终态时刻（创建即失败 / 同步终态 / 轮询终态 / 自定义调用），合并会丢时刻语义，它们写的内容由 traceVendorCompleted 内的 vendorFailureFacts 投影与 appendEvents 的 diskSafePayload 统一约束；redactError 的两扇门是日志道与崩溃道两份文件（崩溃道要在进程将死时同步直写），格式同出 redactError 一个函数；deriveLaneTrace 只有一扇门；其余几扇是边界本身（diskSafeFailure 的投影、唯一写者 / 读者、redactError、运行记录写法）与轨迹的唯一出门读者 errorKinds，各自只有一份"
+  },
+  "generality_proof": "不变量放在落盘的输入类型上而不是秘密识别上：事件侧，唯一写者 appendEvents 把任何写入方给的负载过 diskSafePayload（认我们自己 schema 的 upstreamMsg 字段，换成结构事实或去掉），唯一读者 readEvents 同样过一遍，所以新写入方、旧数据都回不来；日志侧，logger 与 crashLog 两扇门都经 redactError，而 redactError 从不输出 error.message 原文（只给码形 message 或指纹），所以不论原话被哪一层、以什么编码、带不带 cause 拼进 message，都写不进文件；轨迹侧，deriveLaneTrace 只产出类别。三处都不依赖「认出秘密」，F2-A / F2-B 之外的新头名、新编码同样挡住",
+  "shared_boundaries": [
+    {
+      "path": "electron/logging/diskSafeFailure.ts",
+      "symbol": "vendorFailureFacts",
+      "responsibility": "供应商失败能落盘的唯一形状（无自由文本位）"
+    },
+    {
+      "path": "electron/logging/diskSafeFailure.ts",
+      "symbol": "diskSafePayload",
+      "responsibility": "事件负载落盘 / 读出前去掉上游原话字段（项目事件唯一写者 appendEvents 写前、唯一读者 readEvents 读后都调它）"
+    },
+    {
+      "path": "electron/logging/redact.ts",
+      "symbol": "redactError",
+      "responsibility": "日志与崩溃日志里错误的唯一格式：结构事实 + 指纹，无原文"
+    },
+    {
+      "path": "electron/agentLane/laneTrace.mts",
+      "symbol": "laneErrorKind",
+      "responsibility": "派生轨迹里错误的唯一写法：闭合类别"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/tasks/taskIpcGuard.ts",
+      "entry_point": "runTaskIpcGuard",
+      "disposition": "enforced",
+      "evidence": "未改此文件；它传给 traceVendorCompleted 的 structured 在 trace 内投影为 VendorFailureFacts，diskSafeFailure.test.ts 的 T4 四夹具用例经真 HTTP 打一次性门 + projectId 后读盘断言"
+    },
+    {
+      "path": "electron/video/deconstructVideo.ts",
+      "entry_point": "logError(deconstruct.model-failed / transcribe-failed)",
+      "disposition": "enforced",
+      "evidence": "未改此文件；经 logger → redactError，diskSafeFailure.test.ts 的「结构化供应商错误 / SSE 原话 / 不带 cause 的包装」三类日志用例覆盖"
+    },
+    {
+      "path": "electron/productionRun/multiShotBatchScheduler.ts",
+      "entry_point": "logWarn(batch-observe-failed / batch-dispatch-failed)",
+      "disposition": "enforced",
+      "evidence": "未改此文件；同一个 logger → redactError"
+    },
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "entry_point": "logWarn(lane-resume-failed)",
+      "disposition": "enforced",
+      "evidence": "未改此文件；同一个 logger → redactError"
+    },
+    {
+      "path": "electron/catalog/customCallDispatch.ts",
+      "entry_point": "traceVendorCompleted(failed)",
+      "disposition": "not-affected",
+      "evidence": "失败事件本就不带 error 字段（customCallDispatch.ts 第 123 行）"
+    },
+    {
+      "path": "electron/agentLane/laneSession.mts",
+      "entry_point": "pi JsonlSessionRepo 会话存档（AssistantMessage.errorMessage）",
+      "disposition": "not-affected",
+      "evidence": "清单 A2：pi 自有格式且运行中重试判据与面板历史在读它，本步不动，选项交协调；见 residual_risks"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "上游原话进入系统的入口有多处（vendorHttp、modelCallFailure 的 SSE 兜底、自定义调用、音频 / 转写包装、pi errorMessage），任何新调用点、新包装层、新编码都会把同一类泄漏带回任意落盘出口",
+    "same_class_scan": [
+      "node scripts/door-map.mjs traceVendorCompleted / appendEvents / redactError / deriveLaneTrace（门表见 doors）",
+      "git grep -n \"upstreamMsg\" electron（生产者：vendorHttp、runtimeVendorError、customCallRunner、audioTaskRunner、relayNativeWireUpgrade、imageRouteFallback）",
+      "git grep -n \"logError(\\|logWarn(\" electron（138 处，全部经 logger.write → redactError）",
+      "audioTaskRunner.ts 的 transcribe.httpError 包装不带 cause（eslint-disable preserve-caught-error），按类型 / cause 认不出——证明「认出上游错误再擦」不完备"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/logging/diskSafeFailure.ts",
+    "invariant": "落盘出口只收结构事实：事件经 vendorFailureFacts / diskSafePayload，日志经 redactError（diskSafeErrorFacts），轨迹经 laneErrorKind",
+    "failure_mode": "认不出形状的供应商错误不落任何字段；不像码的 upstreamCode 不落；错误原文一律换成 msg#<指纹>；旧事件读出时去掉 upstreamMsg",
+    "exception_policy": "none",
+    "strategy": "删掉落盘那份原话（删 > 脱敏，用户 2026-10-22 拍板），并把「落盘收什么」收成一个模块；原话只给开发态终端（logDevDetail，打包版空操作）",
+    "artifacts": [
+      "electron/logging/diskSafeFailure.ts",
+      "electron/events/vendorCallTrace.ts",
+      "electron/events/eventLogRepository.ts",
+      "electron/logging/redact.ts",
+      "electron/logging/logger.ts",
+      "electron/agentLane/laneTrace.mts",
+      "electron/agentLane/laneTraceRecorder.mts",
+      "electron/crashLog.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/logging/diskSafeFailure.test.ts",
+    "electron/events/vendorCallTrace.test.ts",
+    "electron/logging/redact.test.ts",
+    "electron/logging/rendererLog.test.ts",
+    "electron/crashLog.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/logging/diskSafeFailure.test.ts",
+    "electron/events/vendorCallTrace.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/events/vendorCallTrace.ts",
+      "electron/logging/redact.ts",
+      "electron/agentLane/laneTrace.mts",
+      "electron/agentLane/laneTraceRecorder.mts"
+    ],
+    "rationale": "同一提交删掉：trace 原样写 structured、redactError 写 error.message、轨迹写 errorMessage / 失败工具原文 / run.error 原文。没有并行的旧格式或开关"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不变量是 Nomi 自己的隐私口径（哪段文本可落盘），pino / electron-log 只提供序列化钩子；自写登记 logging-and-crash 日后换库时，redactError 原样作为错误序列化钩子",
+    "exit_criteria": []
+  },
+  "migration": "不改写旧数据（事件日志历史永不回写）：readEvents 读出时经 diskSafePayload 去掉 upstreamMsg，旧事件照常读、seq 接续；派生轨迹每次从会话重建，旧会话里的 run.error 原文在重建时只记 run-failed；旧日志文件按保留期自然滚掉",
+  "residual_risks": [
+    "A2：pi 会话存档 .nomi/agent-sessions/*.jsonl 里的 AssistantMessage.errorMessage 仍是上游原文（交协调定）",
+    "画布节点 error / runs[].error / runs[].raw 与镜头表 failureReason 随项目文件落盘，渲染层画布事件经 nomi:events:append 进 .nomi/events（只 upstreamMsg 字段被写者去掉，界面文本照存）——归第 2 步唯一出口一起定",
+    "日志 fields 仍收字符串标量：调用点若把错误原文放进字段（现有 mcpStdioServer / localSpeech 两处，均为本机进程文本），不经 redactError；未加门岗",
+    "electron/events/agentChatTrace.ts 会把 error / tool-error 原文写进事件，但生产代码无调用方（只剩测试 import）",
+    "制作运行账本 <项目>/.nomi/runs/<runId>/run.json 与 events.ndjson 存上游原话（submissionOutbox.markProviderRejected / markNotDispatched、productionRunDriverOps reconcile_error、productionGenerationSubmission 取回失败 detail），且 diagnosticsBundle.ts 把 run.json 原样打进诊断包——独立验收 V-redact N1 实测，本 PR 不修，归第 2 步",
+    "事件层结构防线只认 upstreamMsg 这个键名：新写入方把原话放进 message 一类的键照样落盘（V-redact N4）",
+    "原有缺陷（本 PR 未引入）：事件日志里只要有一行 payload 为 null，rehydratePayload 抛错被 readEvents 吞掉，整份读成空数组（V-redact N6）"
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/logging/diskSafeFailure.ts",
+    "tests": [
+      "electron/logging/diskSafeFailure.test.ts",
+      "electron/events/vendorCallTrace.test.ts",
+      "electron/logging/redact.test.ts"
+    ],
+    "why": "「落盘收什么」由 diskSafeFailure.ts 单点持有（vendorFailureFacts / diskSafePayload / diskSafeErrorFacts），事件唯一写者、日志 redactError、派生轨迹只调用它或产出闭合类别；tests 是 4 夹具 × 落盘出口的端到端矩阵与各层单测，改这条不变量必先让它们红。"
+  }
+}
