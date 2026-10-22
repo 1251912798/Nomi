@@ -1,3 +1,4 @@
+import { nodeHasGenerationComposer } from './resolveRenderKind'
 import { NODE_COMPOSER_GAP, NODE_COMPOSER_WIDTH, TEXT_COMPOSER_GAP, TEXT_COMPOSER_MAX_WIDTH, TEXT_COMPOSER_MIN_WIDTH } from './nodeSizing'
 
 /**
@@ -41,4 +42,24 @@ export function composerCanvasPlacement(
     transform: `scale(${1 / safeZoom}) translateX(-50%)`,
     transformOrigin: 'top left',
   }
+}
+
+/**
+ * 画布生成浮框的高度上限（屏幕像素）——对焦预留用；卡片自己的 maxHeight 在 NodeGenerationComposer.tsx 的
+ * `composerMaxHeight`，两边的数由 composerCanvasPlacement.test.ts 逐 kind 对账（NodeGenerationComposer 是 14 天热点文件，
+ * 这次不动它，热点解除后把那份并到这里）。
+ */
+function composerMaxHeight(kind: string): number {
+  return kind === 'video' ? 460 : 400
+}
+
+/** 文本加工框（预设 + 一句话）的最坏高度，屏幕像素。 */
+const TEXT_COMPOSER_FOCUS_HEIGHT = 160
+
+/** 对焦要给选中后出现的生成框留多大地方：没有生成框的 kind 返回 null。 */
+export function composerFocusFootprint(kind: string): { gap: number; height: number } | null {
+  if (!nodeHasGenerationComposer(kind)) return null
+  return kind === 'text'
+    ? { gap: TEXT_COMPOSER_GAP, height: TEXT_COMPOSER_FOCUS_HEIGHT }
+    : { gap: NODE_COMPOSER_GAP, height: composerMaxHeight(kind) }
 }
