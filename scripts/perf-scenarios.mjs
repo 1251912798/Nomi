@@ -16,6 +16,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { sourceIdentity } from './package-build-stamp.mjs'
 import { DRIVERS, MIN_RUNS, SCENARIO_DIR, judge, loadScenarios, summarizeRuns, validateScenarios } from './perf-scenarios-lib.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -51,7 +52,9 @@ if (!Number.isInteger(runs) || runs < (smoke ? 1 : MIN_RUNS)) { console.error(`�
 
 const git = (...gitArgs) => { try { return execFileSync('git', gitArgs, { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() } catch { return 'unknown' } }
 const machine = `${os.platform()} ${os.arch()} ${os.cpus()[0]?.model?.trim() ?? 'cpu'} x${os.cpus().length} / ${Math.round(os.totalmem() / 2 ** 30)}GB`
-const report = { machine, commit: git('rev-parse', '--short', 'HEAD'), date: new Date().toISOString().slice(0, 10), runs, results: [] }
+// 结果要能对回「到底量的是哪棵树」（V-plibrary F5）：完整 HEAD、工作树是否有未提交改动、构建戳用的源码树 id（和 dist 核戳同一口径）。
+const dirtyFiles = git('status', '--porcelain')
+const report = { machine, commit: git('rev-parse', '--short', 'HEAD'), head: git('rev-parse', 'HEAD'), dirty: dirtyFiles === 'unknown' ? 'unknown' : dirtyFiles.length > 0, sourceTree: (() => { try { return sourceIdentity(repoRoot).tree } catch { return 'unknown' } })(), date: new Date().toISOString().slice(0, 10), runs, results: [] }
 
 for (const scenario of picked) {
   // 待测场景（measurement.state = pending）：整表跑时跳过、说清还差什么；点名 --id 时照跑（量完写基线就转成已测）。
@@ -74,7 +77,7 @@ for (const scenario of picked) {
   const stats = Object.fromEntries(scenario.metrics.map((metric) => [metric, summarizeRuns(values[metric] ?? [])]))
   const primary = stats[scenario.metrics[0]]
   const verdict = smoke ? { status: primary.runs ? 'smoke-ok' : 'no-data', note: '冒烟：不判预算' } : judge(scenario, primary)
-  report.results.push({ id: scenario.id, metrics: stats, budget: scenario.budget, baseline: scenario.baseline, verdict })
+  report.results.push({ id: scenario.id, metrics: stats, samples: values, budget: scenario.budget, baseline: scenario.baseline, verdict })
 }
 
 console.log(`\n机器：${machine}　提交：${report.commit}`)

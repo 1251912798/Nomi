@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 
 import { extensionFromMime, localAssetUrl } from "../assets/assetPaths";
@@ -17,6 +18,7 @@ import {
   workspaceAssetsImportedDir,
   workspaceExportsDir,
   workspaceNomiDir,
+  resolveWorkspaceReadFile,
   workspaceProjectBackupFile,
   workspaceProjectFile,
   workspaceProjectQuarantineFile,
@@ -579,40 +581,52 @@ export function readSettledWorkspaceIdentity(canonicalRootPath: string): { id: s
   }
 }
 
+/** 快照读的判定（纯函数，同步读与异步读共用；null = 要走加锁读）。 */
+function snapshotFromRawManifest(
+  rawRecord: Record<string, unknown> | null,
+  backup: { raw: Record<string, unknown> | null } | null,
+): WorkspaceProjectRecordV2 | null {
+  if (!rawRecord) return null;
+  const parsed = workspaceProjectRecordSchema.safeParse(rawRecord);
+  if (!parsed.success || manifestIdentity(rawRecord).state === "partial") return null;
+  // 备份身份冲突必须走加锁读，由它抛出规范的身份错误，不能静默回一份可能不安全的投影。
+  if (backup) {
+    if (!backup.raw) return null;
+    const backupIdentity = manifestIdentity(backup.raw);
+    if (backupIdentity.state === "partial") return null;
+    const mainIdentity = manifestIdentity(rawRecord);
+    if (mainIdentity.state === "complete" && backupIdentity.state === "complete" && !sameCompleteIdentity(mainIdentity, backupIdentity)) return null;
+  }
+  // 内嵌 data URL（要加锁瘦身）与构建产物地址（要迁移成项目资产，项目库封面也靠这一步修好）一律走加锁读。
+  const rawText = JSON.stringify(rawRecord);
+  if (rawText.includes('"data:') || mayContainBuildArtifactUrl(rawText)) return null;
+  return normalizeWorkspaceProjectRecord(rawRecord);
+}
+
 export function readWorkspaceManifestSnapshot(rootPath: string): WorkspaceProjectRecordV2 | null {
   try {
     const canonicalRootPath = fs.realpathSync(rootPath);
-    const raw = readJsonFile(workspaceProjectFile(canonicalRootPath));
-    const rawRecord = toProjectRecordObject(raw);
+    const rawRecord = toProjectRecordObject(readJsonFile(workspaceProjectFile(canonicalRootPath)));
     if (!rawRecord) return null;
-    const parsed = workspaceProjectRecordSchema.safeParse(rawRecord);
-    if (!parsed.success || manifestIdentity(rawRecord).state === "partial") return null;
-
-    // A backup with a conflicting complete identity must still go through the
-    // locked reader so it can raise the canonical identity error instead of
-    // silently returning a potentially unsafe projection.
     const backupPath = workspaceProjectBackupFile(canonicalRootPath);
-    if (fs.existsSync(backupPath)) {
-      const backupRaw = toProjectRecordObject(readJsonFile(backupPath));
-      if (!backupRaw) return null;
-      const backupIdentity = manifestIdentity(backupRaw);
-      if (backupIdentity.state === "partial") return null;
-      const mainIdentity = manifestIdentity(rawRecord);
-      if (
-        mainIdentity.state === "complete" &&
-        backupIdentity.state === "complete" &&
-        !sameCompleteIdentity(mainIdentity, backupIdentity)
-      ) return null;
-    }
+    const backup = fs.existsSync(backupPath) ? { raw: toProjectRecordObject(readJsonFile(backupPath)) } : null;
+    return snapshotFromRawManifest(rawRecord, backup);
+  } catch (error) {
+    if (error instanceof WorkspaceProjectIdentityUnavailableError) throw error;
+    return null;
+  }
+}
 
-    // Embedded data URLs need the transactional reader's slimming side effect.
-    // Keep this check conservative: any data URL sends the caller to the safe
-    // locked path rather than returning a snapshot that would never be
-    // localized.
-    // 构建产物地址同理：迁移成项目资产要走加锁读（项目库封面也靠这一步修好）。
-    const rawText = JSON.stringify(rawRecord);
-    if (rawText.includes('"data:') || mayContainBuildArtifactUrl(rawText)) return null;
-    return normalizeWorkspaceProjectRecord(rawRecord);
+/** 快照读的异步版：走线程池读盘，不占主进程事件循环（项目库一次读几十份清单）；判定与同步版共用。 */
+export async function readWorkspaceManifestSnapshotAsync(rootPath: string): Promise<WorkspaceProjectRecordV2 | null> {
+  try {
+    const manifestFile = await resolveWorkspaceReadFile(rootPath, "manifest");
+    if (!manifestFile) return null;
+    const rawRecord = toProjectRecordObject(JSON.parse(await fsp.readFile(manifestFile, "utf8")));
+    if (!rawRecord) return null;
+    const backupFile = await resolveWorkspaceReadFile(rootPath, "backup");
+    const backup = backupFile === null ? null : { raw: toProjectRecordObject(JSON.parse(await fsp.readFile(backupFile, "utf8"))) };
+    return snapshotFromRawManifest(rawRecord, backup);
   } catch (error) {
     if (error instanceof WorkspaceProjectIdentityUnavailableError) throw error;
     return null;

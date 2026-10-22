@@ -28,7 +28,7 @@ import { LibraryDiscoveryToolbar } from './LibraryDiscoveryToolbar'
 import { getDesktopBridge } from '../../desktop/bridge'
 import ProjectSyncBadge from './ProjectSyncBadge'
 import { syncStatusBlocksOpen } from './projectSyncFace'
-import type { WorkspaceSyncInspection } from '../../../electron/shared/workspaceSyncContracts'
+import { librarySyncInspect, useLibrarySyncInspections } from './projectSyncInspectStore'
 
 const SkillLibraryContent = lazyWithChunkBoundary('i18n:sidebar.skillLibrary', () =>
   import('../skillLibrary/SkillLibraryPanel').then((module) => ({ default: module.SkillLibraryContent })))
@@ -142,7 +142,7 @@ export default function ProjectLibraryPage({
   // 双击项目名进入 inline 编辑：editingId 记哪张卡在编辑、editValue 是输入中的名字。
   const [editingId, setEditingId] = React.useState('')
   const [editValue, setEditValue] = React.useState('')
-  const [syncInspectionByProject, setSyncInspectionByProject] = React.useState<Record<string, WorkspaceSyncInspection>>({})
+  const syncInspectionByProject = useLibrarySyncInspections()
   const [openSyncProjectId, setOpenSyncProjectId] = React.useState<string | null>(null)
   // 「重新检查」这一下自己失败了（≠ 检查跑完发现还没就绪）。不记它的话，两种情况在界面上
   // 长得一模一样：弹层原样不动——用户会以为检查跑过了、文件夹还是坏的。
@@ -183,31 +183,14 @@ export default function ProjectLibraryPage({
       : searchedProjects.filter((project) =>
           sourceFilter === 'folder' ? project.source === 'folder' : project.source !== 'folder',
         )
-  const inspectSyncProjects = React.useCallback(async (): Promise<void> => {
-    const api = getDesktopBridge()?.workspace?.syncInspect
-    if (!api) return
-    const entries = await Promise.all(
-      projects.filter((project) => Boolean(project.rootPath)).map(async (project) => {
-        try {
-          const inspection = await api({ projectId: project.id })
-          return [project.id, inspection] as const
-        } catch {
-          // 有意静默：这是**后台批量探测**（挂在 mount + window focus 上，用户没点任何东西），
-          // 产出的只是卡片上的同步告警徽标——一个可选增强。探不到就退回「不显示徽标」，
-          // 也就是探测能力上线前的行为，界面不会因此显示**错误的**同步状态。
-          // 反例见下面的 recheckSync：那条是用户亲手点的，失败必须出声。
-          return null
-        }
-      }),
-    )
-    setSyncInspectionByProject(Object.fromEntries(entries.filter((entry): entry is readonly [string, WorkspaceSyncInspection] => entry !== null)))
-  }, [projects])
-
+  // 卡片上的同步状态在首屏画完之后才在后台查（调度规则见 projectSyncInspectScheduler.ts）：
+  // 项目没变就不重查，聚焦也只是重新登记，不再每次全量发。
   React.useEffect(() => {
-    void inspectSyncProjects()
-    window.addEventListener('focus', inspectSyncProjects)
-    return () => window.removeEventListener('focus', inspectSyncProjects)
-  }, [inspectSyncProjects])
+    const request = (): void => librarySyncInspect.request(projects)
+    request()
+    window.addEventListener('focus', request)
+    return () => window.removeEventListener('focus', request)
+  }, [projects])
 
   const recheckSync = React.useCallback(async (projectId: string): Promise<void> => {
     const api = getDesktopBridge()?.workspace?.syncInspect
@@ -215,14 +198,14 @@ export default function ProjectLibraryPage({
     setSyncRecheckFailedId(null)
     try {
       const inspection = await api({ projectId, adopt: true })
-      setSyncInspectionByProject((current) => ({ ...current, [projectId]: inspection }))
+      librarySyncInspect.set(projects.find((project) => project.id === projectId) ?? { id: projectId }, inspection)
       if (inspection.status === 'ready') setOpenSyncProjectId(null)
     } catch {
       // 用户点的「重新检查」——不能静默：弹层原样不动会被读成「检查跑完了，还是坏的」。
       setSyncRecheckFailedId(projectId)
       setOpenSyncProjectId(projectId)
     }
-  }, [])
+  }, [projects])
   const sourceOptions: Array<{ id: 'all' | 'native' | 'folder'; label: string; count: number }> = [
     { id: 'all', label: t('library.all'), count: sourceCounts.all },
     { id: 'native', label: t('library.local'), count: sourceCounts.native },

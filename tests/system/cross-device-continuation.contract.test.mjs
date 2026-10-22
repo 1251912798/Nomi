@@ -22,7 +22,7 @@ function mirror(source, destination) {
 }
 
 describe("cross-device continuation contract", () => {
-  it("continues a real workspace with assets after a clean handoff", () => {
+  it("continues a real workspace with assets after a clean handoff", async () => {
     const machineA = tempRoot("nomi-machine-a-");
     const machineB = tempRoot("nomi-machine-b-");
     const projectA = path.join(machineA, "Film One");
@@ -34,22 +34,22 @@ describe("cross-device continuation contract", () => {
     writeWorkspaceManifest(projectA, { ...initial, revision: 1, savedAt: Date.now(), updatedAt: Date.now() });
 
     mirror(projectA, projectB);
-    const report = inspectWorkspaceSync(projectB, initial.id);
+    const report = await inspectWorkspaceSync(projectB, initial.id);
     expect(report.status).toBe("ready");
     expect(report.referencedAssetCount).toBe(1);
     expect(report.missingAssetCount).toBe(0);
     expect(fs.existsSync(path.join(projectB, "assets", "imported", "hero.png"))).toBe(true);
   });
 
-  it("detects an unsafe handoff when the source is changed after the mirror snapshot", () => {
+  it("detects an unsafe handoff when the source is changed after the mirror snapshot", async () => {
     const machineA = tempRoot("nomi-machine-a-");
     const machineB = tempRoot("nomi-machine-b-");
     const projectA = path.join(machineA, "Film One");
     const projectB = path.join(machineB, "Film One");
     const initial = initializeWorkspace(projectA, { name: "Film One", payload: { title: "first" } });
     mirror(projectA, projectB);
-    const snapshot = inspectWorkspaceSync(projectB, initial.id);
+    const snapshot = await inspectWorkspaceSync(projectB, initial.id);
     writeWorkspaceManifest(projectA, { ...initial, revision: 1, savedAt: Date.now(), updatedAt: Date.now(), payload: { title: "second" } });
-    expect(inspectWorkspaceSync(projectA, initial.id, { revision: snapshot.observedRevision ?? 0, contentHash: snapshot.contentHash ?? "" }).status).toBe("external-change");
+    expect((await inspectWorkspaceSync(projectA, initial.id, { revision: snapshot.observedRevision ?? 0, contentHash: snapshot.contentHash ?? "" })).status).toBe("external-change");
   });
 });

@@ -138,6 +138,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     deleteFiles: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:delete-files", payload),
     revealProjectFolder: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:reveal-project-folder", payload),
     syncInspect: (payload: string | { projectId: string; adopt?: boolean }) => ipcRenderer.invoke("nomi:workspace:sync-inspect", payload),
+    syncInspectMany: (projectIds: string[]) => ipcRenderer.invoke("nomi:workspace:sync-inspect-many", projectIds),
     syncReveal: (projectId: string) => ipcRenderer.invoke("nomi:workspace:sync-reveal", projectId),
     syncCopyConflict: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:sync-copy-conflict", payload),
   },
@@ -146,7 +147,6 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     show: (payload: unknown) => ipcRenderer.invoke("nomi:notifications:show", payload),
   },
   projects: {
-    list: () => invokeSync("nomi:projects:list"),
     listAsync: () => ipcRenderer.invoke("nomi:projects:list-async"),
     create: (record: unknown) => invokeSync("nomi:projects:create", record),
     read: (projectId: string) => invokeSync("nomi:projects:read", projectId),

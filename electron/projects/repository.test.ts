@@ -121,17 +121,17 @@ describe("listProjects 启动一次 GC（空白草稿回收）", () => {
     fs.rmSync(settingsRoot, { recursive: true, force: true });
   });
 
-  it("首次列举回收草稿，二次列举不再回收本会话新建的草稿", () => {
+  it("首次列举回收草稿，二次列举不再回收本会话新建的草稿", async () => {
     const stale = createProject({ name: "上个进程的空白", draft: true });
-    expect(listProjects().some((p) => p.id === stale.id)).toBe(false); // 首次 = 回收
+    expect((await listProjects()).some((p) => p.id === stale.id)).toBe(false); // 首次 = 回收
 
     const fresh = createProject({ name: "本会话新建空白", draft: true });
-    expect(listProjects().some((p) => p.id === fresh.id)).toBe(true); // 二次 = guard 已消费，保留
+    expect((await listProjects()).some((p) => p.id === fresh.id)).toBe(true); // 二次 = guard 已消费，保留
   });
 
-  it("非草稿项目不被回收", () => {
+  it("非草稿项目不被回收", async () => {
     const keep = createProject({ name: "正常项目" });
-    expect(listProjects().some((p) => p.id === keep.id)).toBe(true);
+    expect((await listProjects()).some((p) => p.id === keep.id)).toBe(true);
   });
 
   it("在创建入口冻结默认项目与打开文件夹的来源", () => {
@@ -169,9 +169,9 @@ describe("listProjects 启动一次 GC（空白草稿回收）", () => {
     resetEmptyDraftGcGuard();
 
     const workspaceManifest = await import("../workspace/workspaceManifest");
-    const spy = vi.spyOn(workspaceManifest, "readWorkspaceManifestSnapshot");
+    const spy = vi.spyOn(workspaceManifest, "readWorkspaceManifestSnapshotAsync");
     try {
-      listProjects();
+      await listProjects();
 
       const keepEntry = findRecentWorkspace(settingsRoot, keep.id) as { rootPath: string } | null;
       expect(keepEntry).toBeTruthy();
@@ -189,12 +189,12 @@ describe("listProjects 启动一次 GC（空白草稿回收）", () => {
 
   // 上一条只证「少列了一遍」，不证「列的那遍仍然对」。GC 会删项目，被删的必须从
   // 复用的那份快照里摘掉——否则省下的一次列举会以「幽灵卡片」的形式还回去。
-  it("被 GC 回收的草稿不出现在同一次列举的返回里（复用快照不留幽灵）", () => {
+  it("被 GC 回收的草稿不出现在同一次列举的返回里（复用快照不留幽灵）", async () => {
     const stale = createProject({ name: "上个进程的空白", draft: true });
     const keep = createProject({ name: "正常项目" });
     resetEmptyDraftGcGuard();
 
-    const listed = listProjects();
+    const listed = await listProjects();
     expect(listed.some((p) => p.id === stale.id)).toBe(false);
     expect(listed.some((p) => p.id === keep.id)).toBe(true);
   });

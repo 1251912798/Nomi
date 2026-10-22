@@ -2,7 +2,7 @@
 //
 // 真组件 vs 夹具：
 //   · 项目库整页是现役 `ProjectLibraryPage`（顶部就是外壳的 40px 合一顶栏 ShellTopBar，平台由 labPlatform.ts 钉成 win32），
-//     项目列表从假桥 `projects.list()` 喂几条带封面的项目。
+//     项目列表从假桥 `projects.listAsync()` 喂几条带封面的项目。
 //   · 项目内顶栏是现役 `ShellTopBar`（40px 合一顶栏：项目名 / 阶段步骤器 / 右簇）。
 //   · 胶囊 / 横幅 / 更新后卡片 / 弹窗身体是**生产组件**（src/ui/app-shell/UpdatePill、HotfixBanner、UpdatedCard、
 //     UpdateDialog 的 View 件），这里只喂夹具数据。它们在生产里的位置由外壳线（I-shell）摆；
@@ -82,7 +82,7 @@ function installLibraryBridge(locale: LabLocale, badge?: BadgeSpec, scenario?: N
   host.nomiDesktop = {
     ...(host.nomiDesktop ?? {}),
     platform: 'win32',
-    projects: { ...((host.nomiDesktop?.projects as object) ?? {}), list: () => projects },
+    projects: { ...((host.nomiDesktop?.projects as object) ?? {}), listAsync: async () => projects },
   }
   installUpdateBridge(badge, scenario)
 }
