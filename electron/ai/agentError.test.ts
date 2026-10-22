@@ -5,7 +5,7 @@ import { parseVendorErrorFromMessage, stripVendorErrorMarker } from "../../src/w
 
 /** 服务商回了非 2xx：传输层记下的事实 → 文本任务抛出的那个错误（与生产同一个映射）。 */
 function httpFailure(status: number, body = "", vendorKey = "relay"): Error {
-  return modelCallFailure({ vendorKey, http: { status, body, url: "https://relay.example/v1/chat/completions" }, thrown: null });
+  return modelCallFailure({ vendorKey, attempt: { kind: "http", status, body, url: "https://relay.example/v1/chat/completions" } });
 }
 
 describe("describeAgentError", () => {

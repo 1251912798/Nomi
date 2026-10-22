@@ -102,7 +102,7 @@ export async function executeTextTask(input: {
   const transport = modelCallTransport({ modelId: config.modelId, knownSecrets: [input.apiKey] });
   const failure = (error: unknown, errorMessage?: string) => modelCallFailure({
     vendorKey: input.vendor.key, error, ...(errorMessage === undefined ? {} : { errorMessage }),
-    http: transport.failure(), thrown: transport.thrown() });
+    attempt: transport.lastAttempt(), redact: transport.redact });
   let result: Awaited<ReturnType<typeof callModelOnce>>;
   try {
     result = await callModelOnce({

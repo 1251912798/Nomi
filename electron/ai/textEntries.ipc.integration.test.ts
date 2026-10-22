@@ -100,6 +100,7 @@ import * as runtime from "../runtime";
 import { registerTaskIpcHandlers } from "../tasks/taskIpcHandlers";
 import { registerTextStreamIpc } from "./textStreamIpc";
 import { generateText } from "../../src/workbench/generationCanvas/runner/textActions";
+import { runGenerationNode } from "../../src/workbench/generationCanvas/runner/generationRunController";
 import { runWorkbenchTextTaskStream } from "../../src/workbench/api/taskApi";
 import { requestTaskCancel, clearTaskCancel, isLocalTaskCancelledError } from "../../src/workbench/generationCanvas/runner/localTaskControl";
 import { useGenerationCanvasStore } from "../../src/workbench/generationCanvas/store/generationCanvasStore";
@@ -208,3 +209,45 @@ describe("#2 文本节点改写选区：真 IPC + 真准入", () => {
   });
 });
 
+
+// 独立验收 V-textmigrate F1（10-21）：重试之前那次的 HTTP 事实不许串到这一次的失败上。
+// 走真实运行控制器（runGenerationNode：渲染层自动重提就在这里），断言的是**上游被请求了几次**——多一次就是多生成一次、多花一次钱。
+describe("重试事实不串台：真运行控制器 + 真 HTTP 次数", () => {
+  // 原话带「rate limit」：渲染层的重提判据认关键词，串台时它会被当成可重试的限流再生成一次（独立验收复现的就是这条）。
+  const RATE_LIMIT = (status: number) => reply.http(status, { error: { message: `initial rate limit (${status})` } }, { "retry-after-ms": "1" });
+  const run = (nodeId: string) => runGenerationNode(nodeId, { target: projectTarget, assetUploadConsent: "not-needed", executor: generateText, retry: { baseDelayMs: 0 } })
+    .then((result) => ({ ok: true as const, text: result.text }), (error: unknown) => ({ ok: false as const, error: String(error) }));
+
+  it.each([429, 503])("%i → 重试成功出字后断流：与只有断流时同一个结局（失败、不自动重提），上游一共 2 次", async (status) => {
+    script = (index) => index === 0 ? reply.cutAfterText("已经生成了一半") : reply.text("不该有的第二次生成");
+    const control = await run(rewriteNode().id);
+    expect(control.ok).toBe(false);
+    expect(upstream.requests).toHaveLength(1);
+    upstream.requests.length = 0;
+    ipc.invoked.length = 0;
+    script = (index) => index === 0 ? RATE_LIMIT(status) : index === 1 ? reply.cutAfterText("已经生成了一半") : reply.text("不该有的第二次生成");
+    const outcome = await run(rewriteNode().id);
+    expect(outcome).toEqual(control);
+    expect(upstream.requests).toHaveLength(2);
+    expect(ipc.invoked.filter((channel) => channel === "nomi:tasks:text:stream")).toHaveLength(1);
+  });
+
+  it("429 → 连接被重置：认成「连不上」，与只有连接重置时的结局与请求次数一样（不是额度问题）", async () => {
+    script = (index) => index < 3 ? reply.reset() : reply.text("重提之后的结果");
+    const control = await run(rewriteNode().id);
+    const controlRequests = upstream.requests.length;
+    upstream.requests.length = 0;
+    script = (index) => index === 0 ? RATE_LIMIT(429) : index < 3 ? reply.reset() : reply.text("重提之后的结果");
+    const mixed = await run(rewriteNode().id);
+    expect(mixed).toEqual(control);
+    expect(upstream.requests).toHaveLength(controlRequests);
+  });
+
+  it("429 → 重试成功：拿到结果，上游一共 2 次，只进一次文本流式门", async () => {
+    script = (index) => index === 0 ? RATE_LIMIT(429) : reply.text("他慢慢展开纸条。");
+    const outcome = await run(rewriteNode().id);
+    expect(outcome).toEqual({ ok: true, text: "他慢慢展开纸条。" });
+    expect(upstream.requests).toHaveLength(2);
+    expect(ipc.invoked.filter((channel) => channel === "nomi:tasks:text:stream")).toHaveLength(1);
+  });
+});

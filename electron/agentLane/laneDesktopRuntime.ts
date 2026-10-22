@@ -17,7 +17,7 @@ import { resolveWorkspaceProjectDir } from '../workspace/workspaceRepository'
 import { ensureWorkspaceProjectIdentity } from '../workspace/workspaceProjectIdentity'
 import { chooseTextModel } from '../ai/textBrainResolver'
 import { nomiModelConfigFor } from '../ai/vendorModelConnection'
-import { observeModelFetch } from '../ai/modelCallFetch'
+import { modelCallTransport } from '../ai/modelCallFetch'
 import { NOMI_AGENT_IDENTITY, buildLanguageRule, resolveRequestedSkill } from '../harness/context/agentContext'
 import type { SkillRecord } from '../skills/skillStore'
 import { getProjectMemory, formatMemoryForPrompt } from '../memory/projectMemory'
@@ -106,7 +106,7 @@ export function createDesktopLaneDependencies(surface: DesktopCanvasReadRuntime,
         capture: () => context, prepare: prepareInput, activate: () => undefined, model: () => model })
       const { runLaneSingleShot } = createRequire(__filename)('./laneNativeLoader.cjs') as { runLaneSingleShot: RunLaneSingleShot }
       // 失败留证（状态码 / 原话 / 去查询串的地址，不含密钥）与文本任务同一个传输包装。
-      const transport = observeModelFetch(appFetch, { modelId: model.config.modelId, knownSecrets: [model.config.apiKey ?? ''] })
+      const transport = modelCallTransport({ modelId: model.config.modelId, knownSecrets: [model.config.apiKey ?? ''] })
       const result = await runLaneSingleShot({ fetch: transport.fetch, model: model.config, prompt: command.text, input, signal: actionSignal,
         systemPrompt: [buildLanguageRule(), NOMI_AGENT_IDENTITY].filter(Boolean).join('\n\n'),
         systemPromptClosing: buildLanguageRule() })

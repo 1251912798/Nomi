@@ -28,7 +28,9 @@ export type UpstreamReply =
   | { type: "stream"; steps: UpstreamStep[] }
   | { type: "http"; status: number; json?: unknown; body?: string; headers?: Record<string, string> }
   /** 收下请求、连响应头都不回（服务商卡在排队 / 网关不放行）。 */
-  | { type: "silent" };
+  | { type: "silent" }
+  /** 收下请求、不回响应头就掐断 TCP（连接被重置：客户端的 fetch 直接抛错）。 */
+  | { type: "reset" };
 
 export type UpstreamRequest = { method: string; path: string; headers: http.IncomingHttpHeaders; body: Record<string, unknown> };
 
@@ -51,6 +53,7 @@ export const reply = {
     { kind: "finish" },
   ] }),
   silent: (): UpstreamReply => ({ type: "silent" }),
+  reset: (): UpstreamReply => ({ type: "reset" }),
   hangAfterHeaders: (): UpstreamReply => ({ type: "stream", steps: [{ kind: "hang" }] }),
   cutAfterText: (text: string): UpstreamReply => ({ type: "stream", steps: [{ kind: "text", text }, { kind: "destroy", afterMs: 20 }] }),
   noFinishReason: (text: string): UpstreamReply => ({ type: "stream", steps: [{ kind: "text", text }, { kind: "end" }] }),
@@ -107,6 +110,7 @@ export async function startTextUpstream(protocol: UpstreamProtocol, script: (req
 
 async function serve(protocol: UpstreamProtocol, planned: UpstreamReply, request: UpstreamRequest, res: http.ServerResponse): Promise<void> {
   if (planned.type === "silent") return;
+  if (planned.type === "reset") { res.socket?.destroy(); return; }
   if (planned.type === "http") {
     res.writeHead(planned.status, { "content-type": "application/json", ...(planned.headers || {}) });
     res.end(planned.body ?? JSON.stringify(planned.json ?? {}));

@@ -66,10 +66,10 @@
   ],
   "same_class_entry_points": [
     {
-      "path": "src/ui/browser/prompt/browserPromptExtractionRunner.ts",
-      "entry_point": "browserPromptExtractionRunner",
-      "disposition": "deferred",
-      "evidence": "浏览器提取提示词（#7）同样走 nomi:tasks:run 的令牌闸却无人铸令牌；它在 taskSpend 里登记为附属付费口（M9，2026-11-15 到期），协调 10-21 定另线真机核实后交用户定，矩阵 RENDERER_ENTRY_GAP_EXCEPTIONS 记着"
+      "path": "src/workbench/generationCanvas/runner/textActions.ts",
+      "entry_point": "generateText",
+      "disposition": "enforced",
+      "evidence": "续写 / 重写 / 预设 / 改写四种模式都经 runCatalogGenerationTask 按 kind 进流式门；electron/ai/textEntries.ipc.integration.test.ts 从 generateText 走真 IPC、真准入"
     },
     {
       "path": "src/workbench/generationCanvas/nodes/NodePromptOptimizer.tsx",
@@ -87,12 +87,12 @@
     ]
   },
   "prevention": {
-    "kind": "test",
-    "enforcement_path": "electron/ai/textTaskCallers.integration.test.ts",
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
     "invariant": "每个文本调用方登记真入口测试或缺口；渲染层发起的必须有真入口测试（例外表只有 #7）",
-    "failure_mode": "新增调用方不填 entry、填的测试文件不存在、渲染层调用方只写缺口而不在例外表里、例外表里的那条已经补了测试——任一出现，「真入口登记」那组用例红",
-    "exception_policy": "RENDERER_ENTRY_GAP_EXCEPTIONS 只放有另线和到期的缺口，补上测试即删",
-    "strategy": "门的选择改为只看 kind（结构上不再由显示偏好决定花钱门）；真入口测试从渲染层 generateText / runWorkbenchTextTaskStream 经真 preload 桥、真 IPC handler、真 runtime 准入走到本机假上游；矩阵登记把「入口之上看不见」这件事变成必须填的一栏",
+    "failure_mode": "把选门改回「看 onTextDelta」：改写选区的真入口测试抛 SpendNotAuthorizedError 而红；新增调用方不填真入口、渲染层调用方只写缺口——textTaskCallers.integration.test.ts「真入口登记」红",
+    "exception_policy": "none",
+    "strategy": "门的选择改为只看 kind（结构上不再由显示偏好决定花钱门）；真入口测试从渲染层 generateText / runWorkbenchTextTaskStream 经真 preload 桥、真 IPC handler、真 runtime 准入走到本机假上游；矩阵登记把「入口之上看不见」这件事变成必须填的一栏。例外表 RENDERER_ENTRY_GAP_EXCEPTIONS 只放有另线和到期的缺口，补上测试即删",
     "artifacts": [
       "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
       "electron/ai/textEntries.ipc.integration.test.ts",
@@ -116,6 +116,7 @@
   },
   "migration": "不改落盘格式与 IPC 契约；改写结果照旧经 textPendingSelectionApply 交编辑器替换选区。",
   "residual_risks": [
+    "浏览器提取提示词（#7，src/ui/browser/prompt/browserPromptExtractionRunner.ts）同样走 nomi:tasks:run 的令牌闸却无人铸令牌：附属付费口 M9（2026-11-15 到期），协调另线真机核实后交用户定；矩阵 RENDERER_ENTRY_GAP_EXCEPTIONS 记着",
     "浏览器提取提示词（#7）仍会撞同一个令牌闸：另线处理",
     "真模型上的改写未跑：由协调带 key 的真模型走查覆盖"
   ],
@@ -126,5 +127,11 @@
       "electron/ai/textTaskCallers.integration.test.ts"
     ],
     "why": "按 kind 选门只在 runCatalogGenerationTask 一处；真入口测试从它上面的 generateText 一路走到准入与 HTTP，改回「看 onTextDelta 选门」改写那条会当场抛 SpendNotAuthorizedError 而红"
-  }
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及依赖：只改画布选门判据与测试",
+    "exit_criteria": []
+  },
+  "internal_only_reason": "纯内部路由判据：选门规则与 paidNodeLedger 都是 Nomi 自己的花钱语义，没有外部文档可查"
 }

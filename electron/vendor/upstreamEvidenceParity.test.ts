@@ -43,7 +43,7 @@ async function viaVendorHttp(status: number, body: string): Promise<Evidence> {
 
 /** 文本任务（2026-10-21 起走 pi-ai 单次调用）：传输层记下的状态码 + 响应体 → modelCallFailure。 */
 function viaTextTask(status: number, body: string): Evidence {
-  const mapped = modelCallFailure({ vendorKey: "relay", thrown: null, http: { status, body, url: "https://relay.example/v1/chat/completions" } });
+  const mapped = modelCallFailure({ vendorKey: "relay", attempt: { kind: "http", status, body, url: "https://relay.example/v1/chat/completions" } });
   return evidenceOf((mapped as VendorRequestError).structured);
 }
 

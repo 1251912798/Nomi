@@ -80,7 +80,7 @@ const defaultGenerate: StructuredGenerator = async (input) => {
   });
   if (message.stopReason === "error" || message.stopReason === "aborted") {
     throw modelCallFailure({ vendorKey: input.model.providerId, errorMessage: message.errorMessage,
-      http: transport.failure(), thrown: transport.thrown() });
+      attempt: transport.lastAttempt(), redact: transport.redact });
   }
   const text = message.content.filter((part) => part.type === "text").map((part) => (part as { text: string }).text).join("");
   return { object: parseAdapterContractText(text) };

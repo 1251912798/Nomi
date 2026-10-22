@@ -12,7 +12,7 @@ import { MODEL_CALL_CEILING_ERROR } from '../shared/agentLane/modelCallPort';
 import { isJsonRecord, pickUpstreamCode } from '../jsonUtils';
 import { VendorRequestError, categorizeVendorFailure, encodeVendorErrorMessage } from '../vendor/vendorHttp';
 import { desktopT } from '../i18n';
-import type { ModelHttpFailure } from './modelCallFetch';
+import type { ModelCallAttempt } from './modelCallFetch';
 
 /** 上游报文里的人话：{error:{message}} / {error} / {message} / {msg} 四种常见信封。 */
 function pickBodyMessage(parsed: unknown): string {
@@ -89,36 +89,39 @@ function withoutClassifierMarker(text: string): string {
 }
 
 /**
- * 一次模型调用失败了 → 交给调用方抛出去的那个错误。
+ * 一次模型调用失败了 → 交给调用方抛出去的那个错误。只认**最后那次尝试**的传输事实（`attempt`，modelCallFetch 每次尝试开头清掉
+ * 上一次的）：重试之前那次 429 不许串成这一次断流的原因（独立验收 V-textmigrate F1）。
  *   · 服务商回了非 2xx：状态码 + 原话 + 上游自己的码（传输层记下的事实）；
  *   · 看门狗到点 / 整体兜底到点 / 流中途断了：我们自己的话（按相位说），结构化成 network，可重试；
  *   · 压根没连上：network + 连接层原因（已抹密钥）；
  *   · 其余（SSE 里包着的错误等，服务商给了原话但没有状态码）：原话。
  * 用户点的停止不经这里（调用方先认 AbortError）。
+ * `redact`：传输层收集的、这次调用真正发出去的秘密——原话进错误文案（用户会在错误卡上看到）之前都过它（F2）。
  */
 export function modelCallFailure(input: {
   vendorKey: string
   error?: unknown
   errorMessage?: string
-  http: ModelHttpFailure | null
-  thrown: string | null
+  attempt: ModelCallAttempt | null
+  redact?: (text: string) => string
 }): Error {
-  const { vendorKey, http } = input;
+  const { vendorKey, attempt } = input;
+  const redact = input.redact ?? ((text: string) => text);
   if (input.error instanceof Error && input.error.name === MODEL_CALL_CEILING_ERROR) {
     const milliseconds = (input.error as Error & { milliseconds?: number }).milliseconds ?? 600_000;
     const message = desktopT('textTask.stall.overall', { minutes: Math.round(milliseconds / 60_000) });
     return vendorErrorFromRuntimeFacts({ kind: 'timeout', message }, vendorKey)!;
   }
-  if (http) {
-    return vendorErrorFromRuntimeFacts({ kind: 'http', status: http.status, body: http.body, url: http.url, message: `HTTP ${http.status}` }, vendorKey)!;
+  if (attempt?.kind === 'http') {
+    return vendorErrorFromRuntimeFacts({ kind: 'http', status: attempt.status, body: redact(attempt.body), url: redact(attempt.url), message: `HTTP ${attempt.status}` }, vendorKey)!;
   }
-  const raw = input.errorMessage ?? (input.error instanceof Error ? input.error.message : input.error === undefined ? '' : String(input.error));
+  const raw = redact(input.errorMessage ?? (input.error instanceof Error ? input.error.message : input.error === undefined ? '' : String(input.error)));
   const fault = laneAssistantFaultOf(raw);
   if (fault?.kind === 'model-timeout') {
     return vendorErrorFromRuntimeFacts({ kind: 'timeout', timeoutPhase: fault.phase,
       message: desktopT(STALL_KEYS[fault.phase], { seconds: fault.seconds }) }, vendorKey)!;
   }
   if (fault?.kind === 'stream-cut') return vendorErrorFromRuntimeFacts({ kind: 'timeout', message: desktopT('textTask.streamCut') }, vendorKey)!;
-  if (input.thrown) return vendorErrorFromRuntimeFacts({ kind: 'network', message: input.thrown }, vendorKey)!;
+  if (attempt?.kind === 'thrown') return vendorErrorFromRuntimeFacts({ kind: 'network', message: redact(attempt.reason) }, vendorKey)!;
   return new Error(withoutClassifierMarker(raw) || 'agent_lane_provider_error');
 }

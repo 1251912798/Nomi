@@ -694,8 +694,8 @@ describe('文本侧错误：走 structured 分支，不靠关键词猜', () => {
 
   /** 服务商回了非 2xx：传输层记下的事实 → 文本任务抛出的错误（与生产同一个映射）。 */
   const apiError = (opts: { statusCode: number; responseBody?: string; message?: string }): Error =>
-    modelCallFailure({ vendorKey: VENDOR, thrown: null,
-      http: { status: opts.statusCode, url: URL_, body: opts.responseBody ?? opts.message ?? '' } })
+    modelCallFailure({ vendorKey: VENDOR,
+      attempt: { kind: 'http', status: opts.statusCode, url: URL_, body: opts.responseBody ?? opts.message ?? '' } })
 
   it.each([
     ['401 鉴权', 401, 'auth'],
@@ -729,8 +729,8 @@ describe('文本侧错误：走 structured 分支，不靠关键词猜', () => {
 
   it('连不上服务商（断网/代理不通）：不甩锅给没被请求到的服务商', () => {
     // 传输层的 fetch 自己抛了（没拿到任何响应）：用户拆镜头时断网撞的就是这条。
-    const message = describeAgentError(modelCallFailure({ vendorKey: VENDOR, http: null,
-      thrown: 'fetch failed: connect ECONNREFUSED 127.0.0.1:443' }))
+    const message = describeAgentError(modelCallFailure({ vendorKey: VENDOR,
+      attempt: { kind: 'thrown', reason: 'fetch failed: connect ECONNREFUSED 127.0.0.1:443' } }))
     const report = classifyGenerationError(message)
     expect(parseVendorErrorFromMessage(message)?.category).toBe('network')
     expect(report.kind).toBe('network')
@@ -761,7 +761,7 @@ describe('文本侧错误：走 structured 分支，不靠关键词猜', () => {
   })
 
   it.each(['first-response', 'first-token', 'idle'] as const)('看门狗（我们自己按下的 abort，%s）归 network，而不是一句正则匹配不上的中文裸串', (phase) => {
-    const message = describeAgentError(modelCallFailure({ vendorKey: VENDOR, http: null, thrown: null,
+    const message = describeAgentError(modelCallFailure({ vendorKey: VENDOR, attempt: null,
       errorMessage: laneModelTimeoutMessage(phase, 90_000) }))
     expect(parseVendorErrorFromMessage(message)?.category).toBe('network')
     expect(classifyGenerationError(message).kind).toBe('network')
@@ -916,7 +916,7 @@ describe('失败原因按上游自己的码与话归类（一张目录，没有�
   })
 
   it('图 / 视频侧与文本侧两条通道带过来的码同形：文本侧同样按码归类', () => {
-    const textError = modelCallFailure({ vendorKey: 'apimart', thrown: null, http: { status: 400, url: 'https://api.apimart.ai/v1/chat/completions',
+    const textError = modelCallFailure({ vendorKey: 'apimart', attempt: { kind: 'http', status: 400, url: 'https://api.apimart.ai/v1/chat/completions',
       body: JSON.stringify({ error: { code: 'model_not_found', message: 'The model gpt-x does not exist' } }) } })
     const message = describeAgentError(textError)
     expect(parseVendorErrorFromMessage(message)?.upstreamCode).toBe('model_not_found')
