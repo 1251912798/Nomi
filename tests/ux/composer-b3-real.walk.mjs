@@ -370,6 +370,22 @@ async function runPass({ locale, scheme }) {
       await snap('21-roundtrip-three-back')
       check(`[${tag}] 往返：3 张上传参考 → 首尾帧（首帧、尾帧 + 1 张未用到）→ 参考，3 张一张不少`, before.tiles === 3 && mid.slots === 2 && mid.unused === 1 && back.tiles === 3 && back.unused === 0, JSON.stringify({ before, mid, back, trioState }))
     })
+    await section('remove-unused', async () => {
+      // ⑫（用户 10-22 拍板）：3 张上传参考切首尾帧，第 3 张「未用到」悬停出同一颗 ×，点了从节点上删掉；切回参考只剩 2 张。
+      await selectNode('trio-video')
+      await pickMode(new RegExp('首尾帧|First / Last'))
+      await expectVisible(composer().locator('[data-reference-unused] [data-asset-tile]').first(), '未用到那张')
+      await composer().locator('[data-reference-unused] [data-asset-tile]').first().hover()
+      await composer().locator('[data-reference-unused] [data-asset-tile-remove]').first().click()
+      await win.waitForFunction(() => !document.querySelector('.generation-canvas-v2-node__composer [data-reference-unused]'), null, { timeout: stationTimeout() })
+      const mid = await tileCounts()
+      await pickMode(/^(参考|Reference)$/)
+      await win.waitForFunction(() => document.querySelectorAll('.generation-canvas-v2-node__composer [data-reference-row] [data-asset-tile]').length === 2, null, { timeout: stationTimeout() }).catch(() => {})
+      const back = await tileCounts()
+      await win.mouse.move(5, 5)
+      await snap('25-remove-unused-back')
+      check(`[${tag}] 「未用到」那张点 × 删掉：首尾帧 2 格不动，切回参考只剩 2 张（用户 10-22 拍板 ⑫）`, mid.slots === 2 && mid.unused === 0 && back.tiles === 2, JSON.stringify({ mid, back }))
+    })
     await section('two-ref-edges-into-first-last', async () => {
       await selectNode('edges-video')
       await expectVisible(composer().locator('[data-asset-slot] [data-asset-tile]').first(), '首帧格里有连线来的图')

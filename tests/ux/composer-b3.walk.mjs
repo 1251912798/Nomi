@@ -230,6 +230,17 @@ try {
     check('board:ComposerB3/ref.slot.unused', (await count(page, '[data-reference-unused]')) === 1 && /未用到/.test((await text(page, '[data-reference-unused]')) ?? ''))
     check('board:ComposerB3/ref.tail.unused-note', (await text(page, '[data-reference-tail]')) === zh('assetLibrary.refRow.unusedNote'))
     await shot(page, B3, 'b3f-video-switch-first-last', 'B3f-zh-light')
+    // ⑫（用户 10-22 拍板）：「未用到」那张也有同一颗悬停 ×（复用 ref.thumb.remove，不新增元素），点了就从节点上删掉它。
+    const unusedTile = page.locator('[data-reference-unused] [data-asset-tile]').first()
+    const before = { tiles: await refTiles(page), slots: await count(page, '[data-asset-slot] [data-asset-tile]') }
+    await unusedTile.hover()
+    const unusedRemove = page.locator('[data-reference-unused] [data-asset-tile-remove]').first()
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-reference-unused] [data-asset-tile-remove]')).opacity === '1', null, { timeout: stationTimeout() })
+    await shot(page, B3, 'b3f-video-switch-first-last', 'B3f-unused-remove-hover-zh-light')
+    await unusedRemove.click()
+    await page.waitForFunction(() => !document.querySelector('[data-reference-unused]'), null, { timeout: stationTimeout() })
+    const after = { tiles: await refTiles(page), slots: await count(page, '[data-asset-slot] [data-asset-tile]') }
+    check('refslots.unused.remove', after.slots === before.slots && after.tiles === before.tiles - 1, JSON.stringify({ before, after }))
     await context.close()
   }
 

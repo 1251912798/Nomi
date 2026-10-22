@@ -46,7 +46,7 @@ import {
   shouldUseVideoFrameSlotFallback,
 } from './controls/parameterControlModel'
 import { createSlotFileUploads } from './controls/slotFileUploads'
-import { addToArraySlot, assignSlotSource, removeFromArray, setSlotUrl, swapFrameSlots, type ReferenceWriteContext } from './controls/referenceWrites'
+import { addToArraySlot, assignSlotSource, removeFromArray, removeUnusedReference, setSlotUrl, swapFrameSlots, type ReferenceWriteContext } from './controls/referenceWrites'
 import {
   type ArchetypeArraySlot,
   applyArchetypeModeSwitch,
@@ -788,6 +788,7 @@ export default function NodeParameterControls({
           firstFrameSlotKey={firstFrameSlotKey}
           {...(referenceInfos ? { referenceInfos } : {})}
           unusedUrls={unusedUrls}
+          onRemoveUnused={(url) => removeUnusedReference(writeCtx, url)}
           {...(imageUrlSlots.length === 2 && imageUrlSlots[0]?.group === 'first_frame' && imageUrlSlots[1]?.group === 'last_frame' ? { onSwapFrames: handleSwapFrames } : {})}
           {...(refsUnsupported ? { disabledReason: t('assetLibrary.refRow.disabledReason') } : {})}
           {...(tail ? { tail } : {})}

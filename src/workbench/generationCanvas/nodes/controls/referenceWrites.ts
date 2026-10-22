@@ -14,6 +14,7 @@ import {
 import { decideArrayReferenceRemoval, resolveReferencePlacement, resolveReferenceSlots } from '../../runner/referenceSlots'
 import { putInReferenceSlot, readReferenceList, removeFromReferenceList, swapInReferenceList, withReferenceList } from './referenceList'
 import { removeMention } from '../../../assets/promptMentions'
+import { resultPreviewUrl as resultPreviewUrlOf } from './parameterControlModel'
 import { nodeReferenceCapacity } from './nodeCrossFieldConstraints'
 import type { useNodeWriteAccess } from '../nodeWriteAccess'
 
@@ -99,6 +100,28 @@ export function removeFromArray(ctx: ReferenceWriteContext, metaKey: string, ind
     meta: archetypeArrayWrite(latestMeta, metaKey, next),
     ...(nextPrompt != null && nextPrompt !== (node.prompt || '') ? { prompt: nextPrompt } : {}),
   })
+}
+
+/**
+ * 删一张「未用到」的图（参考行淡显那张上的 ×，用户 10-22 拍板 ⑫）。上传的：从节点参考列表里删；连线来的（首尾帧已满、
+ * 多出来的那条）：断开那条线。提示词里指向它的 @ 一起删，和删在用的那张同一个规矩。
+ */
+export function removeUnusedReference(ctx: ReferenceWriteContext, url: string): void {
+  const { node } = ctx
+  const state = useGenerationCanvasStore.getState()
+  const edge = state.edges.find((candidate) => candidate.target === node.id
+    && resultPreviewUrlOf(state.nodes.find((source) => source.id === candidate.source)) === url)
+  const nextPrompt = removeMention(node.prompt || '', url)
+  const promptPatch = nextPrompt !== (node.prompt || '') ? { prompt: nextPrompt } : {}
+  if (edge) {
+    ctx.storeDisconnectEdge(edge.id)
+    if (promptPatch.prompt !== undefined) ctx.updateNode(node.id, promptPatch)
+    return
+  }
+  const latestMeta = ctx.getLatestMeta()
+  const list = readReferenceList(latestMeta, ctx.archMode)
+  if (!list.includes(url)) return
+  ctx.updateNode(node.id, { meta: withReferenceList(latestMeta, removeFromReferenceList(list, url)), ...promptPatch })
 }
 
 function existingEdgeOf(ctx: ReferenceWriteContext, slot: ImageUrlSlot) {
