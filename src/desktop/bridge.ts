@@ -3,6 +3,7 @@ import type { UpdateEvent, UpdateReminderMemory, UpdateSnapshot } from '../../el
 import type { WorkspaceFileListResult } from '../../electron/workspace/workspaceFileIndex'
 import type { WorkspaceSyncInspection } from '../../electron/shared/workspaceSyncContracts'
 import type { ProviderKind } from './providerKind'
+import type { ProjectDeleteIntent } from '../../electron/shared/projectDeleteIntent'
 import type { DesktopMediaBridge, DesktopVideoDepthBridge } from './bridgeMedia'
 import type { DesktopConnectorBridge } from './bridgeConnector'
 import type { McpClientProfile, McpClientUsage, McpInfo, McpInstallResult, McpMigrationResult, McpMigrationState, McpUninstallResult, McpVerifyResult } from './mcpBridgeTypes'
@@ -226,7 +227,8 @@ export type DesktopBridge = DesktopMediaBridge &
     recover?: (projectId: string) => Promise<unknown>
     save: (projectId: string, record: unknown) => Promise<unknown>
     applyCanvasNodePatch?: (input: { projectId: string; nodeId: string; patch: Record<string, unknown>; expectedBinding?: unknown }) => Promise<{ applied: boolean }>
-    delete: (projectId: string) => { id: string; deleted: boolean }
+    /** intent = 用户在确认框里确认的那一种；主进程只照它执行（electron/shared/projectDeleteIntent.ts）。 */
+    delete: (projectId: string, intent: ProjectDeleteIntent) => { id: string; deleted: boolean }
   }
   assets: DesktopAssetsSurface
   browser?: DesktopBrowserSurface
