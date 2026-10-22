@@ -94,6 +94,9 @@ export type PlanReferenceBinding = {
   ignore?: string
 }
 
+/** 旧草稿里没写 shotKind 的镜头，落画布与算时长时按这个种类处理（既有行为；改它会改按镜头的花钱语义）。发给规划 LLM 的 schema 说明与落画布共用这一个常量。 */
+export const LEGACY_OMITTED_SHOT_KIND = 'video' as const
+
 export type PlanShot = {
   index: number
   /** Stable story-order identifier. Legacy plans may omit it; the converter derives `shot-${index}`. */

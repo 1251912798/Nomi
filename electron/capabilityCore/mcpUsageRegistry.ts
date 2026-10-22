@@ -14,22 +14,29 @@ type Entry = {
   reportedName: string | null
   lastSeenAt: number | null
   lastCall: { tool: string; at: number } | null
-  /** 已经计过数的调用号：一次工具调用可能在领域里发好几跳请求，只算一次。 */
-  countedCalls: Set<string>
+  /** 已经计过数的调用号 → 这个号最近一次有动静（某一跳开始或结束）的时刻。一次工具调用可能在领域里发好几跳请求，只算一次。 */
+  countedCalls: Map<string, number>
   callCount: number
   /** 调用号 → 还在跑的请求数。 */
   running: Map<string, number>
+  lastSweepAt: number
 }
 
-/** 已结束调用号留在 countedCalls 里的上限：只为去重，满了丢最旧的「已结束」的，不让它无限涨。在途调用的号不受此限（见 trimCounted）。 */
-const COUNTED_CALLS_CAP = 256
+/**
+ * 一个调用号「最后一跳结束后」还保留多久：覆盖跳与跳之间等真人确认的空档（elicitation 5 分钟、Codex 单次工具超时 10 分钟），
+ * 过了这个时间这个调用必已结束——调用号是每次调用现生成的 UUID，不会再来。
+ * 是「调用的生命周期」决定记没记过，不是「历史有多少条」：别人再多的调用也挤不掉空档里的号。
+ */
+export const MCP_CALL_IDLE_RELEASE_MS = 30 * 60 * 1000
+/** 清理最多每分钟扫一次，不在每次调用上做 O(n)。 */
+const SWEEP_EVERY_MS = 60 * 1000
 
-/** 只丢已经结束（不在 running 里）的最旧调用号。在途的号被丢掉，它后续的请求跳会被当成新调用再记一次。 */
-function trimCounted(entry: Entry): void {
-  if (entry.countedCalls.size <= COUNTED_CALLS_CAP) return
-  for (const id of entry.countedCalls) {
-    if (entry.countedCalls.size <= COUNTED_CALLS_CAP) return
-    if (!entry.running.has(id)) entry.countedCalls.delete(id)
+/** 释放「已结束且空闲超过 MCP_CALL_IDLE_RELEASE_MS」的号。在跑的号（running 里有）永不释放，所以不会被当成新调用。 */
+function releaseIdleCalls(entry: Entry, at: number): void {
+  if (at - entry.lastSweepAt < SWEEP_EVERY_MS) return
+  entry.lastSweepAt = at
+  for (const [id, lastActiveAt] of entry.countedCalls) {
+    if (at - lastActiveAt > MCP_CALL_IDLE_RELEASE_MS && !entry.running.has(id)) entry.countedCalls.delete(id)
   }
 }
 
@@ -39,7 +46,7 @@ export function createMcpUsageRegistry(options: Readonly<{ now?: () => number; o
   const touch = (client: string): Entry => {
     let entry = entries.get(client)
     if (!entry) {
-      entry = { reportedName: null, lastSeenAt: null, lastCall: null, countedCalls: new Set(), callCount: 0, running: new Map() }
+      entry = { reportedName: null, lastSeenAt: null, lastCall: null, countedCalls: new Map(), callCount: 0, running: new Map(), lastSweepAt: now() }
       entries.set(client, entry)
     }
     return entry
@@ -60,12 +67,10 @@ export function createMcpUsageRegistry(options: Readonly<{ now?: () => number; o
       const at = now()
       entry.lastSeenAt = at
       entry.lastCall = { tool: call.tool, at }
-      if (!entry.countedCalls.has(call.id)) {
-        entry.countedCalls.add(call.id)
-        entry.callCount += 1
-      }
+      if (!entry.countedCalls.has(call.id)) entry.callCount += 1
+      entry.countedCalls.set(call.id, at)
       entry.running.set(call.id, (entry.running.get(call.id) ?? 0) + 1)
-      trimCounted(entry)
+      releaseIdleCalls(entry, at)
       changed()
       let ended = false
       return () => {
@@ -74,8 +79,10 @@ export function createMcpUsageRegistry(options: Readonly<{ now?: () => number; o
         const left = (entry.running.get(call.id) ?? 1) - 1
         if (left > 0) entry.running.set(call.id, left)
         else entry.running.delete(call.id)
-        trimCounted(entry)
-        entry.lastSeenAt = now()
+        const endedAt = now()
+        entry.countedCalls.set(call.id, endedAt)
+        releaseIdleCalls(entry, endedAt)
+        entry.lastSeenAt = endedAt
         changed()
       }
     },
