@@ -22,8 +22,6 @@
 // 规则本体住这里（`assembleVerbDeclarations`），阳性对照住 `verbDeclarations.test.ts`（R17）。
 import type { ZodTypeAny } from "zod";
 
-import { z } from "zod";
-
 import type { CapabilityContract, CapabilityEffectClass } from "./capabilityContract";
 import type { JsonSchemaObject } from "./modelVisibleJsonSchema";
 import { toPublishedJsonSchema } from "./modelVisibleJsonSchema";
@@ -92,9 +90,6 @@ export interface VerbExample {
   readonly when: string;
   readonly arguments: Readonly<Record<string, unknown>>;
 }
-
-/** 显式的空对象 schema。`{}` 说的是「随便填」，这个说的是「这个工具不收参数」。 */
-export const NO_ARGUMENTS_SCHEMA = z.object({}).strict();
 
 export interface VerbDeclaration {
   /** 内部 profile 的工具名。一别名一工具。 */

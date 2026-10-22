@@ -47,6 +47,52 @@ function boundedJoin<T>(
   return { text, truncated: false };
 }
 
+/**
+ * 给模型看的选区的账：总数 = 本次列出 + 本次未列，永远写在文本里（与 #1263 的 `AgentContextProjection`
+ * 同一套词：total / listed / omitted）。`from` 是窗口起点（0 起），窗口里列出的永远是选区里连续的一段。
+ */
+export type CanvasSelectionAccount = Readonly<{ total: number; from: number; listed: number; omitted: number }>;
+
+/** 选区窗口：从 `from` 起，在预算里放得下几个就列几个（至少一个：id 最长 120 字，远小于预算）。 */
+function selectionWindow(ids: readonly string[], from: number): { text: string; listed: number } {
+  let text = "";
+  let listed = 0;
+  for (let index = from; index < ids.length; index += 1) {
+    const formatted = compactHead(ids[index]!, 120);
+    const addition = text ? `, ${formatted}` : formatted;
+    if (text.length + addition.length > SELECTED_IDS_BUDGET) break;
+    text += addition;
+    listed += 1;
+  }
+  return { text, listed };
+}
+
+/** 1 起的闭区间：「第 3 个」「第 32–40 个」。 */
+const spanLabel = (first: number, last: number): string => (first === last ? `第 ${first} 个` : `第 ${first}–${last} 个`);
+
+/**
+ * 「当前选中」那一块（一到两行）。**选区不会在这里被悄悄截短**：列不全就写总数、本次列了哪一段、没列哪几段；
+ * 能翻页的调用方（`pageable`）再被指到下一页要传的 `selectedFrom`，不能翻页的（单次文本）只被告知没列的数量。
+ * 提示是常量句式、数字放在字段里：同一份选区每次的文本都一样。
+ */
+function selectionLines(account: CanvasSelectionAccount, requestedFrom: number, text: string, pageable: boolean): string[] {
+  const { total, from, listed, omitted } = account;
+  if (total === 0) return ["当前选中: 无"];
+  if (requestedFrom >= total) {
+    return [`当前选中 ${total} 个，selectedFrom=${requestedFrom} 超出了选区末尾（有效范围 0–${total - 1}），本次没有列出任何一个`];
+  }
+  if (omitted === 0) return [`当前选中 ${total} 个: ${text}`];
+  const last = from + listed;
+  const gaps = [from > 0 ? spanLabel(1, from) : "", last < total ? spanLabel(last + 1, total) : ""].filter(Boolean).join("、");
+  const lines = [`当前选中 ${total} 个，本次列出${spanLabel(from + 1, last)}，未列 ${omitted} 个(${gaps}): ${text}`];
+  if (last < total) {
+    lines.push(pageable
+      ? `未列出的仍在当前选中里，不要猜；再调用 look_at_canvas 并传 selectedFrom: ${last} 读后面的（还剩 ${total - last} 个）。`
+      : `未列出的 ${omitted} 个仍在当前选中里，不要猜它们是哪几个。`);
+  }
+  return lines;
+}
+
 function createPromptWriter(maxCharacters: number) {
   const parts: string[] = [];
   let length = 0;
@@ -77,9 +123,31 @@ function createPromptWriter(maxCharacters: number) {
   };
 }
 
+export type CanvasProjectionOptions = Readonly<{
+  /**
+   * 选区窗口的起点（0 起）。**传了 = 这个调用方能翻页**（`look_at_canvas`）：列不全的选区会被指到下一页的
+   * `selectedFrom`；完整提示词也只跟本页列出的选中节点走。不传 = 一次性文本（分镜规划，不能再调工具），
+   * 只明说没列的数量，不指向它调不了的工具。
+   */
+  selectedFrom?: number;
+}>;
+
+/** 紧凑文本，加上它对选区做的账（让调用方 / 测试读事实，而不是反过来解析排版）。 */
+export type CanvasAgentProjection = Readonly<{ text: string; selection: CanvasSelectionAccount }>;
+
+const EMPTY_SELECTION: CanvasSelectionAccount = Object.freeze({ total: 0, from: 0, listed: 0, omitted: 0 });
+
 /** Compact Pi presentation of the canonical, already-safe canvas.read result. */
-export function formatCanvasForAgent(result: CanvasReadResult): string {
-  if (result.nodes.length === 0) return "画布当前为空。";
+export function formatCanvasForAgent(result: CanvasReadResult, options?: CanvasProjectionOptions): string {
+  return projectCanvasForAgent(result, options).text;
+}
+
+/**
+ * 紧凑文本的唯一 owner。选区那一块的不变量：`total = listed + omitted` 写在文本里；窗口里的 id 是选区里连续的一段；
+ * 翻遍所有窗口恰好读到每个选中的 id 一次。截断不是静默的——`…` 只用来说节点 / 边 / 分镜表被截了。
+ */
+export function projectCanvasForAgent(result: CanvasReadResult, options: CanvasProjectionOptions = {}): CanvasAgentProjection {
+  if (result.nodes.length === 0) return { text: "画布当前为空。", selection: EMPTY_SELECTION };
 
   const titleById = new Map(result.nodes.map((node) => [node.id, compactHead(node.title, 80)]));
   const nodes = boundedJoin(result.nodes, NODE_SUMMARY_BUDGET, "\n", (node) => {
@@ -113,10 +181,16 @@ export function formatCanvasForAgent(result: CanvasReadResult): string {
   });
   const edges = boundedJoin(result.edges, EDGE_SUMMARY_BUDGET, ", ", (edge) =>
     `${titleById.get(edge.source) || compactHead(edge.source, 120)}→${titleById.get(edge.target) || compactHead(edge.target, 120)}`);
-  const selected = boundedJoin(result.selectedNodeIds ?? [], SELECTED_IDS_BUDGET, ", ", (id) => compactHead(id, 120));
+  const selectedAll = result.selectedNodeIds ?? [];
+  const requestedFrom = Number.isFinite(options.selectedFrom) ? Math.max(0, Math.floor(options.selectedFrom!)) : 0;
+  const from = Math.min(requestedFrom, selectedAll.length);
+  const listedSlice = selectionWindow(selectedAll, from);
+  const selection: CanvasSelectionAccount = selectedAll.length === 0
+    ? EMPTY_SELECTION
+    : { total: selectedAll.length, from, listed: listedSlice.listed, omitted: selectedAll.length - listedSlice.listed };
   const writer = createPromptWriter(MAX_CANVAS_PROMPT_CHARACTERS);
   writer.appendLine(`画布节点 ${result.nodes.length} 个(id | 类型 | 镜头号与角色 | 归属节点 | 标题 | 状态 | prompt 摘要 | 结果身份):`);
-  writer.appendLine(`当前选中: ${selected.text || "无"}`);
+  for (const line of selectionLines(selection, requestedFrom, listedSlice.text, options.selectedFrom !== undefined)) writer.appendLine(line);
   writer.appendLine(nodes.text);
   writer.appendLine(`引用边: ${edges.text || "无"}`);
 
@@ -131,10 +205,11 @@ export function formatCanvasForAgent(result: CanvasReadResult): string {
     writer.appendLine(formatShotTableForAgent({ id: node.id, title: node.title, table: node.shotTable! }, Math.min(SHOT_TABLE_COMPACT_CHARACTERS, share)));
   });
 
-  const selectedIds = new Set(result.selectedNodeIds ?? []);
+  // 完整提示词 / 正文只跟本次列出的选中节点走：读后面一页，才读得到后面那些节点的完整内容。
+  const selectedIds = new Set(selectedAll.slice(from, from + listedSlice.listed));
   let promptTruncated = false;
   let promptsOmitted = false;
-  const coreTruncated = selected.truncated || nodes.truncated || edges.truncated || tableBudgetTruncated;
+  const coreTruncated = nodes.truncated || edges.truncated || tableBudgetTruncated;
   for (const node of result.nodes) {
     if (!selectedIds.has(node.id) || node.prompt.length <= 60) continue;
     const heading = `「${compactHead(node.title, 80)}」(${compactHead(node.id, 120)}) 完整提示词:`;
@@ -159,5 +234,5 @@ export function formatCanvasForAgent(result: CanvasReadResult): string {
     promptTruncated = writer.appendRemaining(node.text, coreTruncated ? 2 : 0);
   }
   if ((coreTruncated || promptsOmitted) && !promptTruncated) writer.appendLine("…");
-  return writer.text();
+  return { text: writer.text(), selection };
 }

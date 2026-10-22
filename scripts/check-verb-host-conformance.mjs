@@ -89,6 +89,7 @@ const TRANSLATOR_CONSUMED = {
   'check_job/domain': 'laneVerbTransport.verbToTransportCall 消费为 generation/export lane；域内宿主只接收自己的 jobId/operationId，不再次选择任务域',
   'cancel_job/domain': 'laneVerbTransport.verbToTransportCall 消费为 generation/export lane；laneExtendedDesktopPorts 先要求明确任务域，禁止用取消失败探测另一个域',
   'draft_shots/shots[].role': 'patch 分支改的是候选，role 是逐镜信封字段，宿主的 candidatePatch 不收（表上是 refuse：填了就当场拒，不会静默丢）',
+  'look_at_canvas/selectedFrom': '只决定应用内文本从选区第几个起列（canvasReadCompact.projectCanvasForAgent 在排版时消费）；宿主 canvas.read 恒返回完整 selectedNodeIds，不分页，所以不进语义输入',
   'read_script/scope': 'scope 是契约的 operation 判别值，翻译成 full/selection 后由方法名承载',
   'write_script/where': '同上：where 翻成 document.write 的 operation（insert/replace/append）',
   'arrange_canvas/tidy': '布尔开关本身就是 operation 判别（tidy:true → tidy_canvas），不作为字段下传',

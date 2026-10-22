@@ -6,7 +6,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
-import { mcpProfileToolFor } from "../shared/agentCapabilities/modelFacingToolRegistry";
+import { mcpProfileToolFor, specsForCapability } from "../shared/agentCapabilities/modelFacingToolRegistry";
+import { toPublishedJsonSchema } from "../shared/agentCapabilities/modelVisibleJsonSchema";
 import type { CapabilityContract } from "../shared/agentCapabilities/capabilityContract";
 import {
   CANVAS_READ_CAPABILITY,
@@ -141,13 +142,16 @@ const CANVAS_SOURCE = {
 };
 
 describe("canvas.read MCP capability projection", () => {
-  it("broadcasts the shared descriptor's empty argument schema, overlaid with only leaseHandle plus an optional project hint", () => {
+  it("broadcasts the shared descriptor's argument schema (only the optional selectedFrom paging window), overlaid with only leaseHandle plus an optional project hint", () => {
     expect(CANVAS_READ_MCP_ADAPTER.contract).toBe(CANVAS_READ_CAPABILITY);
     expect(CANVAS_READ_MCP_ADAPTER.transportInputSchema).toEqual({
       type: "object",
       properties: {
         leaseHandle: { type: "string", minLength: 1, description: "The project lease handle returned by nomi_session_open." },
         projectId: { type: "string", minLength: 1 },
+        // 共享描述符的唯一字段：只决定应用内文本从选区第几个起列。外部 MCP 的 `nomi_read target=canvas` 不发布它、
+        // 也不转发它（见下一条），宿主读到的永远是完整选区。
+        selectedFrom: toPublishedJsonSchema(specsForCapability("canvas.read")[0]!.schema).properties!.selectedFrom,
       },
       required: ["leaseHandle"],
       additionalProperties: false,
@@ -166,6 +170,17 @@ describe("canvas.read MCP capability projection", () => {
       CANVAS_READ_MCP_ADAPTER.parseCall({ leaseHandle: "lease-a", scopeSet: ["generation:submit"] }),
     ).toThrow();
     expect(canvasReadSemanticInputSchema.safeParse({ projectId: "project-a" }).success).toBe(false);
+    // 翻页参数不进宿主契约：即使带上，语义输入仍是空的（宿主读完整选区）。
+    expect(CANVAS_READ_MCP_ADAPTER.parseCall({ leaseHandle: "lease-a", selectedFrom: 3 })).toEqual({
+      semanticInput: {},
+      transport: { leaseHandle: "lease-a" },
+    });
+  });
+
+  it("external nomi_read target=canvas neither publishes nor forwards selectedFrom: MCP hosts always get the whole selection", () => {
+    const read = MCP_TOOL_RESOLVER.list().find((tool) => tool.name === "nomi_read")!;
+    expect(Object.keys((read.inputSchema as { properties: Record<string, unknown> }).properties)).not.toContain("selectedFrom");
+    expect((read.inputSchema as { additionalProperties?: unknown }).additionalProperties).toBe(false);
   });
 
   it("registers only the explicitly project-session-authorized canvas.read adapter", () => {

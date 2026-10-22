@@ -151,13 +151,4 @@ export function modelArgumentTolerance(shape: ModelToleranceShape): (args: unkno
   };
 }
 
-/**
- * 不收参数的工具的容忍：模型很爱给不收参数的工具塞一个 `{"scope":"full"}`（因为别的工具收）。
- * 那不是错误，是它在复述我们已经用工具名说过的事——把它安静地丢掉，别让一次正确意图
- * 死在 `additionalProperties: false` 上。
- */
-export function noArgumentTolerance(): Record<string, never> {
-  return {};
-}
-
 export { parseJsonText as parseModelArgumentJsonText };

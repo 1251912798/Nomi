@@ -1,0 +1,42 @@
+# look_at_canvas 选区静默截断：修前修后与真模型量具
+
+合同：`docs/fixes/2026-10-22-look-at-canvas-selection-truncation.root-cause.json`。
+同类的上一刀：#1263（发送时的选区投影，`electron/shared/agentContextSnapshot.ts`）；那一刀留下的口子正是这里：模型被提示去 `look_at_canvas` 补读，读到的却还是同样的前 32 个。
+
+## 零花费：修前修后（`census.mts`）
+
+同一份 N 档（1 / 31 / 32 / 40 / 256 个选中节点，真实形状的节点 id，约 26 字），数「当前选中」那一行里有几个 id、有没有明说总数、顺着提示翻页能不能读全。
+
+| 选中 | 修前：行内 id | 修前：明说总数 | 修前：静默少了 | 修前：翻页可达 | 修后：行内 id | 修后：明说总数 | 修后：静默少了 | 修后：翻页可达 |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1 | 否 | 0 | 1 | 1 | 是 | 0 | 1（1 页） |
+| 31 | 31 | 否 | 0 | 31 | 31 | 是 | 0 | 31（1 页） |
+| 32 | 32 | 否 | 0 | 32 | 32 | 是 | 0 | 32（1 页） |
+| 40 | 32 | 否 | **8** | 32 | 32 | 是 | 0 | 40（2 页） |
+| 256 | 32 | 否 | **224** | 32 | 32 | 是 | 0 | 256（8 页） |
+
+原始数据：`census-before.json`、`census-after.json`。修前那一列是把 `origin/main` 的 `canvasReadCompact.ts` 复制成同目录临时文件，用 `--module` 指过去跑的：
+
+```
+git show origin/main:electron/shared/agentCapabilities/canvasReadCompact.ts > electron/shared/agentCapabilities/canvasReadCompact.before.tmp.ts
+pnpm exec tsx docs/evidence/2026-10-22-look-at-canvas-selection-truncation/census.mts --module electron/shared/agentCapabilities/canvasReadCompact.before.tmp.ts
+rm electron/shared/agentCapabilities/canvasReadCompact.before.tmp.ts
+pnpm exec tsx docs/evidence/2026-10-22-look-at-canvas-selection-truncation/census.mts
+```
+
+## 真模型（`probe.mts`）：unverified
+
+量具已备好：走生产的 `createCanvasLaneTools`（真 look_at_canvas 说明书与排版）→ 真 `openLane` → 真 OpenAI 兼容端点，让模型把选中的每个 id 都说出来，数说对几个、调了几次 look_at_canvas、有没有翻页。
+
+**没有真模型数字，原因：本机唯一的凭据 `DEEPSEEK_API_KEY` 返回 402 Insufficient Balance（2026-10-22 复测仍是 402）。** 没有拿脚本化模型的结果顶替。
+
+`probe-selftest.json` 只是量具接线的自检（脚本化模型，不是模型分数）：它证明生产的 look_at_canvas 在真 lane 里收得下 `selectedFrom: 32`、两次调用读完 40 个。
+
+有额度之后：
+
+```
+NOMI_EVAL_AGENT_SPEND_OK=1 NOMI_EVAL_AGENT_BASE_URL=https://api.deepseek.com/v1 NOMI_EVAL_AGENT_MODEL=deepseek-chat NOMI_EVAL_AGENT_API_KEY=… \
+pnpm exec tsx docs/evidence/2026-10-22-look-at-canvas-selection-truncation/probe.mts --count 40 --trials 3 --out <file.json>
+```
+
+修前的对照需要把 `canvasReadCompact.ts` 换回 `origin/main` 的版本再跑一次（修前该动词不收 `selectedFrom`，模型翻页会被拒收，预期只能说出前 32 个）。

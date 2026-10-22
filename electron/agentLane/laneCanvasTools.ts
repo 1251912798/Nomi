@@ -9,7 +9,7 @@ import { canvasReadResultSchema, type CanvasReadResult } from "../shared/agentCa
 import { canvasWriteSemanticInputSchema, type CanvasWriteInput, type CanvasWriteResult } from "../shared/agentCapabilities/canvasWrite";
 import { specsForCapability } from "../shared/agentCapabilities/modelFacingToolRegistry";
 import { projectsToProfile } from "../shared/agentCapabilities/modelFacingTools";
-import { formatCanvasForAgent } from "../shared/agentCapabilities/canvasReadCompact";
+import { projectCanvasForAgent } from "../shared/agentCapabilities/canvasReadCompact";
 import { bindLaneTool, type LaneToolDescriptor, type LaneToolExecutionContext } from "./laneRuntimePort";
 import { toSemanticInput } from "../shared/agentCapabilities/modelFacingTools";
 import { DIRECTOR_WRITE_CAPABILITY, type DirectorWriteInput, type DirectorWriteResult } from "../shared/agentCapabilities/directorWrite";
@@ -31,9 +31,12 @@ export function createCanvasLaneTools(port: CanvasLanePort): LaneToolDescriptor[
     .filter(spec => projectsToProfile(spec, "internal"))
   return specs.map((spec) => {
     if (spec.contractId === "canvas.read") {
-      return bindLaneTool(spec, async (_args, context) => {
+      return bindLaneTool(spec, async (args, context) => {
         const result: CanvasReadResult = canvasReadResultSchema.parse(await port.read(context));
-        return { ok: true, text: formatCanvasForAgent(result), details: { nodeCount: result.nodes.length } };
+        // 宿主读的永远是完整选区；`selectedFrom` 只决定这一页文本从选区的第几个起列（见 `projectCanvasForAgent`）。
+        const { selectedFrom } = args as { selectedFrom?: number };
+        const projection = projectCanvasForAgent(result, { selectedFrom: selectedFrom ?? 0 });
+        return { ok: true, text: projection.text, details: { nodeCount: result.nodes.length, selection: projection.selection } };
       });
     }
     if (spec.contractId === DIRECTOR_WRITE_CAPABILITY.id) {
