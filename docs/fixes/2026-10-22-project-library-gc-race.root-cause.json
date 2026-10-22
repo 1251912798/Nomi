@@ -102,7 +102,7 @@
       "path": "electron/projects/repository.ts",
       "entry_point": "deleteProject",
       "disposition": "enforced",
-      "evidence": "Executes exactly the intent confirmed in the renderer dialog (electron/shared/contracts/projectDeleteIntent.ts): unbind never reaches deleteWorkspaceProject; delete-files reaches it only when readWorkspaceProject succeeds and refuses otherwise. projectListSummary.test.ts reproduces V-plibrary2's gray-at-list / readable-at-delete case."
+      "evidence": "Executes exactly the intent confirmed in the renderer dialog (electron/shared/projectDeleteIntent.ts): unbind never reaches deleteWorkspaceProject; delete-files reaches it only when readWorkspaceProject succeeds and refuses otherwise. projectListSummary.test.ts reproduces V-plibrary2's gray-at-list / readable-at-delete case."
     },
     {
       "path": "electron/workspace/workspaceManifestTransaction.ts",

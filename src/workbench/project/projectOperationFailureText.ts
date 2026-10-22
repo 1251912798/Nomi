@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next'
 import { isWorkspaceBusyError } from '../../../electron/shared/contracts/workspaceBusy'
-import { isProjectDeleteStateChangedError } from '../../../electron/shared/contracts/projectDeleteIntent'
+import { isProjectDeleteStateChangedError } from '../../../electron/shared/projectDeleteIntent'
 
 /**
  * 项目表面（项目库 / 外壳）上「一句话告诉用户出了什么事」的单一出口。

@@ -1,4 +1,4 @@
-import type { ProjectDeleteIntent } from '../../../electron/shared/contracts/projectDeleteIntent'
+import type { ProjectDeleteIntent } from '../../../electron/shared/projectDeleteIntent'
 import type { ProjectBinding } from '../../../electron/shared/projectBinding'
 import React from 'react'
 import useSWR, { mutate } from 'swr'

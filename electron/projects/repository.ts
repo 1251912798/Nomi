@@ -25,7 +25,7 @@ import {
   PROJECT_DELETE_INTENTS,
   PROJECT_DELETE_STATE_CHANGED_ERROR_NAME,
   isProjectDeleteIntent,
-} from "../shared/contracts/projectDeleteIntent";
+} from "../shared/projectDeleteIntent";
 import {
   createWorkspaceProject,
   deleteWorkspaceProject,
@@ -67,6 +67,7 @@ export const SANITIZED_NAME_MAX_LENGTH = 90;
 export function sanitizeName(value: unknown, fallback = "Untitled"): string {
   const text = String(value || "").trim() || fallback;
   return text
+    // eslint-disable-next-line no-control-regex -- 文件名里不许留 U+0000–U+001F 这些控制字符（Windows 保留），这里就是要匹配它们
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_")
     .replace(/\s+/g, " ")
     .slice(0, SANITIZED_NAME_MAX_LENGTH)
@@ -240,18 +241,21 @@ export async function saveProject(projectId: string, input: unknown): Promise<Pr
   return record;
 }
 
+function readableWorkspaceDir(id: string, deps: ReturnType<typeof getWorkspaceRepositoryDeps>): string | null {
+  try {
+    return resolveWorkspaceProjectDir(id, deps);
+  } catch {
+    return null;
+  }
+}
+
 /** 只从项目库解除登记，不碰盘上任何文件（「从项目库移除」）。 */
 function unbindProject(id: string): { id: string; deleted: false } {
   const deps = getWorkspaceRepositoryDeps();
   if (findRecentWorkspace(deps.settingsRoot, id)) {
     // 读得出来的目录要抑制下次启动的 legacy 重发现，否则它会自己回到库里：默认根内的项目（启动发现会扫默认根），
     // 以及根目录还有旧版 project.json 的外部文件夹。读不出来的不往里写任何东西。
-    let workspaceDir: string | null = null;
-    try {
-      workspaceDir = resolveWorkspaceProjectDir(id, deps);
-    } catch {
-      workspaceDir = null; // 读不出来（越界 / 损坏）：不往那个目录里写任何东西
-    }
+    const workspaceDir = readableWorkspaceDir(id, deps); // 读不出来（越界 / 损坏）= null：不往那个目录里写任何东西
     removeWorkspaceReference(deps.settingsRoot, id);
     const insideDefaultRoot = workspaceDir !== null && path.resolve(workspaceDir).startsWith(`${path.resolve(deps.defaultProjectsRoot)}${path.sep}`);
     if (workspaceDir && (insideDefaultRoot || fs.existsSync(path.join(workspaceDir, PROJECT_FILE)))) suppressLegacyProjectRediscovery(workspaceDir);
@@ -263,7 +267,7 @@ function unbindProject(id: string): { id: string; deleted: false } {
 }
 
 /**
- * 删除项目：严格照用户在确认框里确认过的意图执行（electron/shared/contracts/projectDeleteIntent.ts）。
+ * 删除项目：严格照用户在确认框里确认过的意图执行（electron/shared/projectDeleteIntent.ts）。
  * 确认框按列表那一刻的卡片说话，这里在删除这一刻执行；两刻之间状态可能变了，所以这里**不自己判断该删多少**：
  *   · unbind：只解除登记，绝不删盘——哪怕此刻项目又读得出来了（V-plibrary2：灰卡确认「只解绑」后 .nomi 被挪回，
  *     旧写法在删除这一刻重读、读得出来就整目录删了）；
