@@ -128,7 +128,7 @@
     "dist:mac:dir": "python3 scripts/with-gates-lock.py --command \"node scripts/package-build-stamp.mjs verify && pnpm run check:electron-install && electron-builder --mac dir --arm64 && node tests/ux/packaged-mcp-smoke.e2e.mjs release/mac-arm64/Nomi.app\"",
     "postinstall": "node ./scripts/install-electron-runtime.mjs && node ./scripts/install-git-hooks.cjs && node ./scripts/install-claude-hooks.cjs",
     "test:e2e:ci-chain": "python3 scripts/with-gates-lock.py -- node scripts/run-ci-e2e-chain.mjs",
-    "test:e2e": "python3 scripts/with-gates-lock.py --command \"pnpm run check:electron-install && node tests/ux/smoke.e2e.mjs\"",
+    "test:e2e": "python3 scripts/with-gates-lock.py --command \"pnpm run check:electron-install && node tests/ux/playwright-main-evaluate.e2e.mjs && node tests/ux/smoke.e2e.mjs\"",
     "test:cross-device": "python3 scripts/with-gates-lock.py --command \"pnpm run build && node tests/ux/cross-device-continuation.e2e.mjs\"",
     "test:mcp-journey": "python3 scripts/with-gates-lock.py --command \"pnpm run check:electron-install && node tests/ux/mcp-l1-handshake.e2e.mjs && node tests/ux/mcp-l2-journeys.e2e.mjs && node tests/ux/mcp-skills-integration.e2e.mjs && node tests/ux/mcp-http-direct.e2e.mjs\"",
     "test:mcp-real-client": "pnpm run build && node --test tests/system/mcp-real-client.node-test.mjs && node tests/system/mcp-real-client.mjs",
@@ -524,7 +524,8 @@
       "@ffprobe-installer/darwin-arm64"
     ],
     "patchedDependencies": {
-      "img-fx@0.5.1": "patches/img-fx@0.5.1.patch"
+      "img-fx@0.5.1": "patches/img-fx@0.5.1.patch",
+      "playwright-core@1.60.0": "patches/playwright-core@1.60.0.patch"
     }
   }
 }

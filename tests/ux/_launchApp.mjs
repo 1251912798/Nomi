@@ -505,19 +505,11 @@ export async function launchNomiApp(options = {}) {
       throw new Error(diagnoseLaunchFailure(`等了 ${timeout}ms 没等到窗口`, name, error, logTail))
     }
     await win.waitForLoadState('domcontentloaded')
-    // 等启动期那次路由改写落地（`index.html` → `index.html#/studio`）再碰几何。
-    // 为什么非等不可：下面 `app.browserWindow(win)` 拿到的句柄绑在页面当前的执行上下文上，
-    // 而那次改写恰好发生在 domcontentloaded 之后的一两百毫秒里——热启动（profile 已有内容、
-    // 缓存已热）时它正好落在两行之间，句柄当场失效，报成
-    // 「jsHandle.evaluate: Execution context was destroyed」。表现是**只有重启那一次**起不来，
-    // 首启永远好好的（2026-09-12 model-availability-agreement 冷重启阶段复现）。
-    // 等的是 app 自己的契约：渲染层启动后一定落在某个 hash 路由上（#/studio、#/studio?projectId=…）。
-    // Most launches rewrite to a hash route, but a blank-context acceptance can
-    // legitimately remain on the entry document.  Wait for the rewrite when it
-    // happens, then fall back to a settled document instead of failing startup.
-    await win.waitForURL(/#\//, { timeout: Math.min(timeout, 5000) }).catch(async () => {
-      await win.waitForLoadState('networkidle', { timeout: Math.min(timeout, 5000) }).catch(() => undefined)
-    })
+    // 这里原先等过一次启动路由改写（09-12「热启动时 browserWindow 句柄随页面导航失效」）。那个归因不成立：
+    // `app.browserWindow(win)` 的句柄活在主进程，不绑页面上下文。当时那句「Execution context was destroyed」
+    // 与 10-18 起打包冒烟的间歇红是同一类——主进程正忙时 Playwright 的 evaluate 结果被 GC 收掉
+    // （"Promise was collected" 被改写成导航报错），已在共享边界修掉：patches/playwright-core@1.60.0.patch，
+    // 回归见 tests/ux/playwright-main-evaluate.e2e.mjs。等路由只是挪了时机，按 P1 同批删掉。
     const viewportSize = options.viewportSize ?? ACCEPTANCE_VIEWPORT
     // Native resize alone may be clamped by CI's display; bind Chromium content geometry too.
     const browserWindow = await app.browserWindow(win)
