@@ -2,10 +2,9 @@
 // （与 skillStore.readSkillRecords 同一座桥）。签名只认 `shared/agentLane/modelCallPort.ts` 那一份。
 // 单测跑源码、没有这座桥：tests/setup/modelCallBridge.ts 把它直接接到岛上（同一个 callModelOnce，只是不经 .cjs）。
 import { createRequire } from "node:module";
-import type { CallModelOnce, ModelProtocol, PrewarmModelCall } from "../shared/agentLane/modelCallPort";
+import type { CallModelOnce, ModelCallPort, ModelProtocol } from "../shared/agentLane/modelCallPort";
 
-type Native = { callModelOnce: CallModelOnce; prewarmModelCall: PrewarmModelCall };
-const native = () => createRequire(__filename)("../agentLane/laneNativeLoader.cjs") as Native;
+const native = () => createRequire(__filename)("../agentLane/laneNativeLoader.cjs") as ModelCallPort;
 
 export const callModelOnce: CallModelOnce = (options) => native().callModelOnce(options);
 

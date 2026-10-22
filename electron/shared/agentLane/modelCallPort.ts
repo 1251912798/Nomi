@@ -34,5 +34,14 @@ export type CallModelOnce = (options: ModelCallOptions) => Promise<ModelCallResu
 export type ModelProtocol = NomiModelConfig['kind']
 export type PrewarmModelCall = (protocols: readonly ModelProtocol[]) => Promise<void>
 
+/**
+ * 岛对外的两个口子。实现只有岛上 laneModelCall.mts 那一份；CJS 一侧的两座桥（laneNativeLoader.cts、electron/ai/modelCallBridge.ts）
+ * 与单测的替身（tests/setup/modelCallBridge.ts）按这个槽位接线、只转发（概念 model-call.single-call）。
+ */
+export interface ModelCallPort {
+  callModelOnce: CallModelOnce
+  prewarmModelCall: PrewarmModelCall
+}
+
 /** 一次性入口的整体兜底到点的错误名（不是存活判据：存活由三相看门狗管）。按名认，不按类（类住在岛上）。 */
 export const MODEL_CALL_CEILING_ERROR = 'ModelCallCeilingError'

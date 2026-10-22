@@ -1,0 +1,27 @@
+{
+  "name": "文本任务的唯一一扇门（全部文本调用方汇到这里再调核心）",
+  "subject": "text-task.execution-door",
+  "lifecycle": "execution",
+  "authority_kind": "gateway",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/textTaskRunner.ts",
+    "symbol": "executeTextTask"
+  },
+  "write_api": [
+    {
+      "path": "electron/textTaskRunner.ts",
+      "symbol": "executeTextTask"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/ai/textTaskCallers.integration.test.ts",
+  "allowed_consumers": [
+    "electron/runtime.ts",
+    "electron/textTaskRunner.ts"
+  ],
+  "since": "2026-10-21",
+  "notes": "合同 docs/fixes/2026-10-21-text-task-liveness.root-cause.json：流式（nomi:tasks:text:stream → runTextTaskStream）与一次性（runtime.runTask 文本分支，准入之后）都经它：图片按出站授权取回内联、缺省温度 0.7 / 重试 2、只把正文交给 onDelta、失败经 modelCallFailure 结构化。调用方矩阵按 9 个调用方逐个跑，每行登记真入口测试或缺口。"
+}
