@@ -343,10 +343,17 @@ export async function listWorkspaceProjects(deps: WorkspaceRepositoryDeps): Prom
 function isProvablyEmptyDraft(project: WorkspaceProjectSummary): boolean {
   if (project.source !== "native" || project.missing || project.unreadableReason) return false;
   if (project.draft !== true || (project.revision ?? 0) !== 0) return false;
-  // 列举是异步的，摘要可能是保存之前读的：只对这几个候选再读一次「此刻」的清单，已经转正的照常显示。
-  const current = readWorkspaceManifestSnapshot(project.rootPath);
-  if (!current || current.id !== project.id || current.draft !== true || current.revision !== 0) return false;
-  return !dirHasRealFiles(path.join(project.rootPath, "assets"));
+  // 判不出来（assets 变成了文件、目录读不了……）一律当「不能证明为空」照常显示，和每项读取同一个承诺：
+  // 一项出错只影响它自己，绝不让整页列表抛错（V-plibrary2 S1）。
+  try {
+    // 列举是异步的，摘要可能是保存之前读的：只对这几个候选再读一次「此刻」的清单，已经转正的照常显示。
+    const current = readWorkspaceManifestSnapshot(project.rootPath);
+    if (!current || current.id !== project.id || current.draft !== true || current.revision !== 0) return false;
+    return !dirHasRealFiles(path.join(project.rootPath, "assets"));
+  } catch (error) {
+    logWarn("workspace", "list-empty-draft-check-failed", undefined, error);
+    return false;
+  }
 }
 
 export function readWorkspaceProject(
@@ -387,7 +394,7 @@ export async function saveWorkspaceProject(
     const now = Date.now();
     const next = normalizeWorkspaceProjectRecord({
       ...existing,
-      // 首次真实保存 = 从草稿态 promote 为持久态：清掉 draft 标记，此后 GC 永不回收它。
+      // 首次真实保存 = 从草稿态 promote 为持久态：清掉 draft 标记，此后它永远显示在项目库里。
       draft: undefined,
       name: inputName(record, existing.name),
       updatedAt: now,

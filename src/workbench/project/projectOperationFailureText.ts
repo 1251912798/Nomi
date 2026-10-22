@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next'
 import { isWorkspaceBusyError } from '../../../electron/shared/contracts/workspaceBusy'
+import { isProjectDeleteStateChangedError } from '../../../electron/shared/contracts/projectDeleteIntent'
 
 /**
  * 项目表面（项目库 / 外壳）上「一句话告诉用户出了什么事」的单一出口。
@@ -36,6 +37,8 @@ export type ProjectOperation = 'save' | 'delete' | 'revealFolder' | 'openWorkspa
  */
 export function projectOperationFailureText(operation: ProjectOperation, error: unknown, t: TFunction): UserText {
   if (isWorkspaceBusyError(error)) return t('studio.projectInUseElsewhere') as UserText
+  // 删除时项目状态和确认那一刻对不上（主进程拒绝执行）：不是失败，是要按新状态重新确认。
+  if (operation === 'delete' && isProjectDeleteStateChangedError(error)) return t('studio.projectDeleteStateChanged') as UserText
   const key = {
     save: 'studio.projectSaveFailed',
     delete: 'studio.projectDeleteFailed',

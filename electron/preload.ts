@@ -6,6 +6,7 @@ import { creationBridge } from "./preload/creationBridge";
 import { mediaBridge } from "./preload/mediaBridge";
 import { modelOnboardingBridge } from "./preload/modelOnboardingBridge";
 import { runtimeBridge } from "./preload/runtimeBridge";
+import type { ProjectDeleteIntent } from "./shared/contracts/projectDeleteIntent";
 
 type ProductionDeepLinkPayload = { projectId: string; runId?: string; nodeId?: string; artifactId?: string };
 let queuedProductionDeepLink: ProductionDeepLinkPayload | null = null;
@@ -157,7 +158,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       ipcRenderer.invoke("nomi:projects:save-async", projectId, record),
     applyCanvasNodePatch: (input: { projectId: string; nodeId: string; patch: Record<string, unknown>; expectedBinding?: unknown }) =>
       ipcRenderer.invoke("nomi:projects:apply-canvas-node-patch", input),
-    delete: (projectId: string) => invokeSync("nomi:projects:delete", projectId),
+    delete: (projectId: string, intent: ProjectDeleteIntent) => invokeSync("nomi:projects:delete", projectId, intent),
   },
   clipboard: {
     readFilePaths: () => ipcRenderer.invoke("nomi:clipboard:read-file-paths") as Promise<string[]>,

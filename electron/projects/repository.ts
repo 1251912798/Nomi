@@ -22,6 +22,11 @@ import {
 import { resolveWorkspaceRelativePath } from "../workspace/workspacePaths";
 import { WorkspaceManifestLockBusyError } from "../workspace/workspaceManifestLock";
 import {
+  PROJECT_DELETE_INTENTS,
+  PROJECT_DELETE_STATE_CHANGED_ERROR_NAME,
+  isProjectDeleteIntent,
+} from "../shared/contracts/projectDeleteIntent";
+import {
   createWorkspaceProject,
   deleteWorkspaceProject,
   diagnoseWorkspaceProject,
@@ -235,23 +240,55 @@ export async function saveProject(projectId: string, input: unknown): Promise<Pr
   return record;
 }
 
-export function deleteProject(projectId: string): { id: string; deleted: boolean } {
-  const id = String(projectId || "").trim();
-  if (!id) throw new Error("projectId is required");
-  let readable: ReturnType<typeof readWorkspaceProject>;
-  try {
-    readable = readWorkspaceProject(id, getWorkspaceRepositoryDeps());
-  } catch (error) {
-    // 数据读不出来的已登记项目（如 .nomi 越界）：只从项目库解绑，绝不删盘——读不清楚的目录不能当成自己的去删。
-    // 别的写者正锁着（暂时的）照常报错，让用户稍后再删；不能把一次「忙」当成「读不出来」去解绑。
-    if (error instanceof WorkspaceManifestLockBusyError || !findRecentWorkspace(getWorkspaceRepositoryDeps().settingsRoot, id)) throw error;
-    removeWorkspaceReference(getWorkspaceRepositoryDeps().settingsRoot, id);
+/** 只从项目库解除登记，不碰盘上任何文件（「从项目库移除」）。 */
+function unbindProject(id: string): { id: string; deleted: false } {
+  const deps = getWorkspaceRepositoryDeps();
+  if (findRecentWorkspace(deps.settingsRoot, id)) {
+    // 读得出来的目录要抑制下次启动的 legacy 重发现，否则它会自己回到库里：默认根内的项目（启动发现会扫默认根），
+    // 以及根目录还有旧版 project.json 的外部文件夹。读不出来的不往里写任何东西。
+    let workspaceDir: string | null = null;
+    try {
+      workspaceDir = resolveWorkspaceProjectDir(id, deps);
+    } catch {
+      workspaceDir = null; // 读不出来（越界 / 损坏）：不往那个目录里写任何东西
+    }
+    removeWorkspaceReference(deps.settingsRoot, id);
+    const insideDefaultRoot = workspaceDir !== null && path.resolve(workspaceDir).startsWith(`${path.resolve(deps.defaultProjectsRoot)}${path.sep}`);
+    if (workspaceDir && (insideDefaultRoot || fs.existsSync(path.join(workspaceDir, PROJECT_FILE)))) suppressLegacyProjectRediscovery(workspaceDir);
     return { id, deleted: false };
   }
+  const projectDir = legacyProjectDirById(id);
+  if (projectDir) suppressLegacyProjectRediscovery(projectDir);
+  return { id, deleted: false };
+}
+
+/**
+ * 删除项目：严格照用户在确认框里确认过的意图执行（electron/shared/contracts/projectDeleteIntent.ts）。
+ * 确认框按列表那一刻的卡片说话，这里在删除这一刻执行；两刻之间状态可能变了，所以这里**不自己判断该删多少**：
+ *   · unbind：只解除登记，绝不删盘——哪怕此刻项目又读得出来了（V-plibrary2：灰卡确认「只解绑」后 .nomi 被挪回，
+ *     旧写法在删除这一刻重读、读得出来就整目录删了）；
+ *   · delete-files：此刻读不出来 = 和确认时对不上，拒绝，让界面刷新后重新确认；锁忙照常报忙。
+ */
+export function deleteProject(projectId: string, intent: unknown): { id: string; deleted: boolean } {
+  const id = String(projectId || "").trim();
+  if (!id) throw new Error("projectId is required");
+  if (!isProjectDeleteIntent(intent)) throw new Error(`Project delete intent is required (${PROJECT_DELETE_INTENTS.join(" / ")})`);
+  const deps = getWorkspaceRepositoryDeps();
+  if (intent === "unbind") return unbindProject(id);
+  let readable: ReturnType<typeof readWorkspaceProject>;
+  try {
+    readable = readWorkspaceProject(id, deps);
+  } catch (error) {
+    if (error instanceof WorkspaceManifestLockBusyError || !findRecentWorkspace(deps.settingsRoot, id)) throw error;
+    const changed = new Error(`${PROJECT_DELETE_STATE_CHANGED_ERROR_NAME}: project data is no longer readable; refresh and confirm again`);
+    changed.name = PROJECT_DELETE_STATE_CHANGED_ERROR_NAME;
+    Object.defineProperty(changed, "cause", { configurable: true, value: error });
+    throw changed;
+  }
   if (readable) {
-    const workspaceDir = resolveWorkspaceProjectDir(id, getWorkspaceRepositoryDeps());
+    const workspaceDir = resolveWorkspaceProjectDir(id, deps);
     // 真删盘:native 项目整目录 fs.rmSync;外部「打开文件夹」绑定只解绑、绝不删用户内容。
-    const result = deleteWorkspaceProject(id, getWorkspaceRepositoryDeps());
+    const result = deleteWorkspaceProject(id, deps);
     // 仅外部文件夹(未真删、目录仍在)需抑制下次 list 的 legacy 重发现;native 已真删无需抑制。
     if (!result.deleted && workspaceDir && fs.existsSync(path.join(workspaceDir, PROJECT_FILE))) {
       suppressLegacyProjectRediscovery(workspaceDir);

@@ -98,8 +98,9 @@ describe("列举与同进程写入交错：列举不删项目", () => {
     expect(folderAfterGc).toBe(true);
     expect(result).toEqual({ ok: true, revision: 1 });
     expect(findRecentWorkspace(settingsRoot, draft.id)).toBeTruthy();
-    // 列举收尾时保存还在排队，那一刻它确实是空草稿，这一次的列表不显示是如实的；保存落盘后再列就在。
-    expect(rows.some((row) => row.id === draft.id)).toBe(false);
+    // 这一次的列表里有没有它取决于保存的 10ms 重试和列举谁先收尾，两种都对，不断言（V-plibrary2 S8：冷跑红过）。
+    // 确定的同步点只有两个：列举 resolve 之后目录一定在（没有删除器）；保存 resolve 之后再列一定有它。
+    expect(rows.length).toBeGreaterThan(0);
     expect((await listProjects()).some((row) => row.id === draft.id)).toBe(true);
   });
 

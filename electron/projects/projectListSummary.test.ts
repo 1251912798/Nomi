@@ -12,7 +12,7 @@ import { findRecentWorkspace } from "../workspace/workspaceRegistry";
 import { workspaceProjectFile } from "../workspace/workspacePaths";
 import * as manifest from "../workspace/workspaceManifest";
 import { WORKSPACE_LIST_IO_CONCURRENCY } from "../workspace/workspaceRepository";
-import { acquireWorkspaceManifestLock, releaseWorkspaceManifestLock } from "../workspace/workspaceManifestLock";
+import { WorkspaceManifestLockBusyError, acquireWorkspaceManifestLock, releaseWorkspaceManifestLock } from "../workspace/workspaceManifestLock";
 
 // 项目列表摘要读面的特征测试（P-library，2026-10-21）：钉住「列表读面返回什么」，
 // 不钉它是同步还是异步——一律 `await listProjects()`，同步实现与异步实现都得过。
@@ -111,23 +111,88 @@ describe("项目列表摘要读面", () => {
     }
   });
 
-  it("删除一个数据越界的项目：只从项目库解绑，盘上文件（含根外那份）一个不动", async () => {
-    // native（默认根内）项目：正常删除会整目录 rmSync，所以这里能证明「读不出就绝不删盘」。
-    const project = createProject({ name: "要移除的越界项目" });
-    const inside = (findRecentWorkspace(settingsRoot, project.id) as { rootPath: string; source?: string }).rootPath;
-    expect(findRecentWorkspace(settingsRoot, project.id)).toMatchObject({ source: "native" });
-    const source = path.join(inside, ".nomi");
-    const destination = path.join(settingsRoot, "outside-metadata-delete");
-    fs.renameSync(source, destination);
-    fs.symlinkSync(destination, source, "junction");
-    try {
-      expect(deleteProject(project.id)).toEqual({ id: project.id, deleted: false });
-      expect(findRecentWorkspace(settingsRoot, project.id)).toBeFalsy();
-      expect(fs.existsSync(inside)).toBe(true);
-      expect(fs.existsSync(path.join(destination, "project.json"))).toBe(true);
-    } finally {
-      fs.unlinkSync(source);
+  // 删除严格照用户在确认框里确认的意图执行（V-plibrary2 条件，丢数据）：确认框按列表那一刻的卡片说话，
+  // 主进程在删除那一刻执行，两刻之间状态可能变了——主进程不许自己重新判断「该删多少」。
+  describe("删除照用户确认的意图执行", () => {
+    function nativeWithOutsideNomi(name: string) {
+      const project = createProject({ name });
+      const inside = (findRecentWorkspace(settingsRoot, project.id) as { rootPath: string }).rootPath;
+      expect(findRecentWorkspace(settingsRoot, project.id)).toMatchObject({ source: "native" }); // 正常删会整目录 rmSync
+      fs.mkdirSync(path.join(inside, "assets", "imported"), { recursive: true });
+      fs.writeFileSync(path.join(inside, "assets", "imported", "user.png"), "user asset");
+      const source = path.join(inside, ".nomi");
+      const destination = path.join(settingsRoot, `outside-${project.id}`);
+      fs.renameSync(source, destination);
+      fs.symlinkSync(destination, source, "junction");
+      const restore = () => { fs.unlinkSync(source); fs.renameSync(destination, source); };
+      return { project, inside, source, destination, restore };
     }
+
+    it("列表时是灰卡（确认「只移除」），删除前 .nomi 被挪回原处：只解绑，目录与素材一个不动", async () => {
+      const { project, inside, restore } = nativeWithOutsideNomi("灰卡确认后又修好了");
+      const card = (await listProjects()).find((item) => item.id === project.id);
+      expect(card).toMatchObject({ unreadableReason: "outside-workspace" });
+      restore(); // 界面还没刷新，用户点了「从项目库移除」
+      expect(deleteProject(project.id, "unbind")).toEqual({ id: project.id, deleted: false });
+      expect(fs.existsSync(path.join(inside, "assets", "imported", "user.png"))).toBe(true);
+      expect(fs.existsSync(workspaceProjectFile(inside))).toBe(true);
+      expect(findRecentWorkspace(settingsRoot, project.id)).toBeFalsy();
+    });
+
+    it("灰卡确认「只移除」：只解绑，盘上文件（含根外那份）一个不动", async () => {
+      const { project, inside, source, destination } = nativeWithOutsideNomi("要移除的越界项目");
+      try {
+        expect(deleteProject(project.id, "unbind")).toEqual({ id: project.id, deleted: false });
+        expect(findRecentWorkspace(settingsRoot, project.id)).toBeFalsy();
+        expect(fs.existsSync(path.join(inside, "assets", "imported", "user.png"))).toBe(true);
+        expect(fs.existsSync(path.join(destination, "project.json"))).toBe(true);
+      } finally {
+        fs.unlinkSync(source);
+      }
+    });
+
+    it("确认的是「删除文件」，此刻却读不出来：拒绝（状态变了），什么都不删、登记还在", async () => {
+      const { project, inside, source } = nativeWithOutsideNomi("确认删除后变坏了");
+      try {
+        expect(() => deleteProject(project.id, "delete-files")).toThrow(/ProjectDeleteStateChangedError:/);
+        expect(fs.existsSync(path.join(inside, "assets", "imported", "user.png"))).toBe(true);
+        expect(findRecentWorkspace(settingsRoot, project.id)).toBeTruthy();
+      } finally {
+        fs.unlinkSync(source);
+      }
+    });
+
+    it("确认「删除文件」时清单正被别的写者锁着：照常报忙，不解绑、不删盘", async () => {
+      const busy = createProject({ name: "删除时正在被写" });
+      const root = (findRecentWorkspace(settingsRoot, busy.id) as { rootPath: string }).rootPath;
+      const raw = JSON.parse(fs.readFileSync(workspaceProjectFile(root), "utf8"));
+      raw.payload = { note: "data:image/png;base64,AAAA" }; // 逼它走加锁读
+      fs.writeFileSync(workspaceProjectFile(root), JSON.stringify(raw));
+      const lease = await acquireWorkspaceManifestLock(root);
+      try {
+        expect(() => deleteProject(busy.id, "delete-files")).toThrow(WorkspaceManifestLockBusyError);
+        expect(findRecentWorkspace(settingsRoot, busy.id)).toBeTruthy();
+        expect(fs.existsSync(root)).toBe(true);
+      } finally {
+        releaseWorkspaceManifestLock(lease);
+      }
+    });
+
+    it("没带意图 / 意图不认识：拒绝，什么都不动", () => {
+      const project = createProject({ name: "没带意图" });
+      const root = (findRecentWorkspace(settingsRoot, project.id) as { rootPath: string }).rootPath;
+      expect(() => deleteProject(project.id, undefined)).toThrow(/intent is required/);
+      expect(() => deleteProject(project.id, "delete")).toThrow(/intent is required/);
+      expect(fs.existsSync(root)).toBe(true);
+      expect(findRecentWorkspace(settingsRoot, project.id)).toBeTruthy();
+    });
+
+    it("读得出来的 native 项目确认「删除文件」：照旧整目录删", () => {
+      const project = createProject({ name: "正常删除" });
+      const root = (findRecentWorkspace(settingsRoot, project.id) as { rootPath: string }).rootPath;
+      expect(deleteProject(project.id, "delete-files")).toEqual({ id: project.id, deleted: true });
+      expect(fs.existsSync(root)).toBe(false);
+    });
   });
 
   it("一个项目的清单正被别的写者加锁写：整页不抛，这张卡退回登记卡（不标坏，下次刷新就好）", async () => {

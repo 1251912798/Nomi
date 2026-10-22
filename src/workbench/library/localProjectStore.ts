@@ -1,3 +1,4 @@
+import type { ProjectDeleteIntent } from '../../../electron/shared/contracts/projectDeleteIntent'
 import type { ProjectBinding } from '../../../electron/shared/projectBinding'
 import React from 'react'
 import useSWR, { mutate } from 'swr'
@@ -146,8 +147,8 @@ export async function renameLocalProject(projectId: string, name: string): Promi
   return record
 }
 
-export function deleteLocalProject(projectId: string): void {
-  deleteProjectRecord(projectId)
+export function deleteLocalProject(projectId: string, intent: ProjectDeleteIntent): void {
+  deleteProjectRecord(projectId, intent)
   unpublishLocalProject(projectId)
 }
 

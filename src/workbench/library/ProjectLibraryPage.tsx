@@ -544,8 +544,9 @@ export default function ProjectLibraryPage({
                         <IconTrash size={14} stroke={1.8} />
                       </button>
                       {unavailable ? (
+                        // 贴缩略图下沿、不居中：居中会压在占位胶片图标上，把字盖住（V-plibrary2 截图）。
                         <span
-                          className="min-h-8 px-3 py-1 rounded-nomi-sm text-caption font-medium text-nomi-paper/80 flex items-center text-center"
+                          className="absolute inset-x-3 bottom-3 min-h-8 px-3 py-1 rounded-nomi-sm text-caption font-medium text-nomi-paper/80 flex items-center justify-center text-center"
                           title={unavailableHint}
                         >
                           {project.missing
@@ -616,7 +617,8 @@ export default function ProjectLibraryPage({
                       )}
                       <div className="flex items-center gap-2 text-micro text-nomi-ink-40">
                         <span>{formatUpdatedAt(project.updatedAt)}</span>
-                        {project.rootPath && syncInspectionByProject[project.id] ? (
+                        {/* 读不出来的卡不放同步角标：它弹层里的「打开文件夹 / 重新检查」对这种项目只会报失败，原因已写在灰卡上。 */}
+                        {project.rootPath && !project.unreadableReason && syncInspectionByProject[project.id] ? (
                           <ProjectSyncBadge
                             inspection={syncInspectionByProject[project.id]}
                             rootPath={project.rootPath}

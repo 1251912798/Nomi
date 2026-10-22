@@ -1,4 +1,5 @@
 import { sameProjectAgentBinding, type ProjectBinding } from '../../../electron/shared/projectBinding'
+import type { ProjectDeleteIntent } from '../../../electron/shared/contracts/projectDeleteIntent'
 import {
   workbenchProjectRecordSchema,
   type WorkbenchProjectPayload,
@@ -145,7 +146,7 @@ export function createLocalProject(
 ): WorkbenchProjectRecordV1 {
   const now = Date.now()
   const template = getProjectTemplate(templateId || null)
-  // 草稿态：用户手动「新建空白」（无 seedKey 播种、无 rootPath 外部绑定）零编辑会被启动 GC 回收。
+  // 草稿态：用户手动「新建空白」（无 seedKey 播种、无 rootPath 外部绑定）。零编辑时不出现在项目库列表里（列表只读、不删，2026-10-22）。
   // example（seedKey）/打开文件夹（rootPath）不打标记，永不被回收。
   const isDraft = !options.seedKey?.trim() && !options.rootPath?.trim()
   const summary: WorkbenchProjectSummary = {
@@ -326,12 +327,12 @@ export async function renameLocalProject(projectId: string, name: string): Promi
   return next
 }
 
-export function deleteLocalProject(projectId: string): void {
+export function deleteLocalProject(projectId: string, intent: ProjectDeleteIntent): void {
   const id = String(projectId || '').trim()
   if (!id) throw new Error('projectId is required')
   const desktop = getDesktopBridge()
   if (desktop) {
-    desktop.projects.delete(id)
+    desktop.projects.delete(id, intent)
     // 「所有项目的素材」那一份清单里还有这个项目的素材：删项目不经过素材写入层的广播，这里显式作废。
     invalidateAllProjectAssets()
   }

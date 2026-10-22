@@ -131,6 +131,17 @@ describe("listProjects 只读：能证明为空的草稿不显示、不删", () 
     expect((await listProjects()).some((p) => p.id === draft.id)).toBe(true);
   });
 
+  it("判不出是不是空的草稿（assets 是个文件）：整页不抛，这张照常显示，邻居也在", async () => {
+    const draft = createProject({ name: "assets 坏了的草稿", draft: true });
+    const neighbour = createProject({ name: "邻居" });
+    const root = (findRecentWorkspace(settingsRoot, draft.id) as { rootPath: string }).rootPath;
+    fs.rmSync(path.join(root, "assets"), { recursive: true, force: true });
+    fs.writeFileSync(path.join(root, "assets"), "not a directory");
+    const listed = await listProjects();
+    expect(listed.some((p) => p.id === draft.id)).toBe(true);
+    expect(listed.some((p) => p.id === neighbour.id)).toBe(true);
+  });
+
   it("非草稿项目照常显示", async () => {
     const keep = createProject({ name: "正常项目" });
     expect((await listProjects()).some((p) => p.id === keep.id)).toBe(true);
