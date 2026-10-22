@@ -10,6 +10,9 @@
 //   全能参考方式放 3 张参考图 → 切到「首尾帧」（参考图留在节点上，参考区不再显示它们）→ 放首帧、尾帧 → 点 ↑ → 确认框点「生成」。
 // 修前：APIMart 的请求体里 image_urls / image_with_roles 带着首、尾帧**加上**那 3 张残留参考（花钱买的是用户看不到的图左右的片）。
 // 修后要证明：真正发往 api.apimart.ai 的那份请求体里只有首帧、尾帧两张图，那 3 张参考一张都没上传、没发出。
+// 判定在 tests/ux/_referenceLeakWire.mjs（纯函数）：APIMart 首尾帧的请求体里 image_urls 和 image_with_roles 各带一遍两帧，
+// 所以按去掉查询串的地址去重，再断言集合恰好是 first.png、last.png；残留参考的文件名 / 本地地址 / 托管地址都不许出现。
+// _referenceLeakWire.test.mjs 用真 runtime.runTask 渲染这一档的请求体、零花费跑过这套判定（判对，也判得出修前的形状）。
 //
 // 请求体从哪抓：走查网络闸（scripts/walkthrough-network-guard.cjs）在 fetch 层对放行名单上的请求记账（openPaidWalk 的
 // recordAllowedBodies）。不记请求头（key 在头里）；正文里的签名查询串、key 形状的串先打码再落盘。托管上传的 multipart 记文件名，
@@ -28,7 +31,6 @@
 //
 // 凭据与护栏：全部走 tests/ux/_paidRun.mjs 的 openPaidWalk（CI 拒跑、没有 NOMI_SPEND_OK=1 拒跑、构建产物过期或不含本修复拒跑、
 // 隔离资料目录、出网只放行授权供应商与当前托管中转、跑完删凭据副本）；key 只从环境变量读，不进报告 / 日志 / 截图。
-import crypto from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -40,6 +42,7 @@ import { VIDEO, cheapVideoNodeProblems, probeLandedMedia } from './_agentVideoPa
 import { stationTimeout } from './_station-budget.mjs'
 import { bringButtonIntoReach, readButtonReach } from './_generateReach.mjs'
 import { openCanvas, readProject } from './agent-runtime-walk-support.mjs'
+import { judgeReferenceWire } from './_referenceLeakWire.mjs'
 
 const SCRIPT = 'reference-leak-hotfix.paid.mjs'
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -172,7 +175,7 @@ try {
       throw new Error('点了生成但没有提交：30 秒内这个镜头没有出现提交记录（见 fail-no-submission 截图）')
     }
     // 请求体一提交就记下了：先核它（成片要等几分钟，这一步红了也照样等成片落地，钱已经花了，证据要齐）。
-    const wire = readWireEvidence(paid.readAllowedRequests())
+    const wire = judgeReferenceWire(paid.readAllowedRequests(), { host: APIMART_HOST, firstFile: FIRST_FILE, lastFile: LAST_FILE, referenceFiles: REFERENCE_FILES, localUrlOf: urlOf })
     evidence.request = wire.summary
 
     await expect.poll(async () => (await nodeOnDisk())?.result?.url ?? '', { message: '成片落在这个镜头上', timeout: VIDEO_LANDS_MS }).toMatch(/^nomi-local:\/\//)
@@ -197,64 +200,6 @@ try {
 } finally {
   await paid.finish(failure)
   writeEvidence(failure)
-}
-
-/** URL 去掉查询串（签名参数）后的样子；闸已经把查询串换成 `?<redacted>`。 */
-function bareUrl(url) {
-  return String(url).split('?')[0].split('#')[0]
-}
-
-function shortHash(text) {
-  return crypto.createHash('sha256').update(String(text)).digest('hex').slice(0, 12)
-}
-
-function urlsIn(value, out = []) {
-  if (typeof value === 'string') { if (/^(https?:|data:)/i.test(value)) out.push(value) }
-  else if (Array.isArray(value)) value.forEach((item) => urlsIn(item, out))
-  else if (value && typeof value === 'object') Object.values(value).forEach((item) => urlsIn(item, out))
-  return out
-}
-
-/**
- * 从闸的账本里取出：发往 api.apimart.ai 的那一次创建请求、它带的图片地址、托管上传了哪些本地文件。
- * 主判据（不依赖地址能不能对回文件名）：①恰好一次创建请求；②请求体里恰好两张图；③托管上传的文件恰好是首帧、尾帧，那 3 张参考一张都没上传。
- * 能对回文件名的再逐张核：发出去的就是 first.png / last.png。
- */
-function readWireEvidence(entries) {
-  const problems = []
-  const creates = entries.filter((entry) => entry.kind === 'allowed-request' && entry.host === APIMART_HOST && entry.method === 'POST' && /\/videos\/generations$/.test(new URL(entry.url).pathname))
-  if (creates.length !== 1) problems.push(`发往 ${APIMART_HOST} 的视频创建请求有 ${creates.length} 次（应恰好 1 次）`)
-  let body = null
-  try { body = creates[0]?.body?.text ? JSON.parse(creates[0].body.text) : null } catch { problems.push('创建请求的请求体不是 JSON（或被截断）') }
-  if (creates[0]?.body?.truncated) problems.push('创建请求的请求体超过记账上限被截断，图片地址可能没读全')
-  const imageUrls = body ? urlsIn(body).filter((url) => !/\.(mp4|mov|webm|mp3|wav|m4a)(\?|$)/i.test(bareUrl(url))) : []
-  // 托管上传：multipart 记了文件名；同一个 seq 的响应里带着公网地址。
-  const uploads = entries.filter((entry) => entry.kind === 'allowed-request' && Array.isArray(entry.body?.form))
-    .flatMap((entry) => entry.body.form.filter((part) => part.fileName).map((part) => ({ seq: entry.seq, fileName: part.fileName })))
-  const fileByRemote = new Map()
-  for (const upload of uploads) {
-    const response = entries.find((entry) => entry.kind === 'allowed-response' && entry.seq === upload.seq)
-    for (const url of String(response?.text ?? '').match(/https?:\/\/[^\s"'\\]+/g) ?? []) fileByRemote.set(bareUrl(url), upload.fileName)
-  }
-  const sent = imageUrls.map((url) => ({ file: fileByRemote.get(bareUrl(url)) ?? null, urlSha256: shortHash(bareUrl(url)) }))
-  const uploadedFiles = [...new Set(uploads.map((upload) => upload.fileName))].sort()
-  if (imageUrls.length !== 2) problems.push(`请求体里有 ${imageUrls.length} 张图（应恰好 2 张：首帧、尾帧）`)
-  const leakedUploads = uploadedFiles.filter((file) => REFERENCE_FILES.includes(file))
-  if (leakedUploads.length) problems.push(`界面上没在用的参考图被托管上传了：${leakedUploads.join('、')}`)
-  if (uploadedFiles.length && JSON.stringify(uploadedFiles) !== JSON.stringify([FIRST_FILE, LAST_FILE].sort())) problems.push(`托管上传的文件是 ${uploadedFiles.join('、')}（应只有 ${FIRST_FILE}、${LAST_FILE}）`)
-  const named = sent.filter((entry) => entry.file)
-  if (named.some((entry) => ![FIRST_FILE, LAST_FILE].includes(entry.file))) problems.push(`请求体里出现了首尾帧以外的图：${named.map((entry) => entry.file).join('、')}`)
-  return {
-    problems,
-    summary: {
-      createRequests: creates.length,
-      endpoint: creates[0] ? `${new URL(creates[0].url).host}${new URL(creates[0].url).pathname}` : null,
-      imageUrlsInBody: sent,
-      unmappedImageUrls: sent.filter((entry) => !entry.file).length,
-      hostedUploads: uploadedFiles,
-      problems,
-    },
-  }
 }
 
 function writeEvidence(error) {
