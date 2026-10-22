@@ -16,9 +16,10 @@
 - 只上传过 first.png、last.png（残留参考从未上传）。
 - 但每张上传了 26 / 26 次：请求序列 BUUCUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPUUPD（B=余额、U=上传、C=创建、P=查任务、D=取成片）——**每次查任务前都把两张图重新上传一遍**。这是 main 上既有的问题（runtime.ts 在每个 HTTP 操作前都跑 localizeAssetsForVendor，轮询也不例外），不是本 PR 引入，另开线修。
 
-## 为什么脚本判了红
-- 记录口把请求体存成 body.text（JSON 字符串），脚本的判定按已解析对象取，结果「创建请求 0 次 / 图片集合为空」。属于脚本侧解析口径不一致，产品行为正确。
-- 修脚本（解析 body.text、上传响应先按 JSON 解析、放宽创建请求的 APIMart 线路、成片落地后用最新账本再判、报告带「上传文件名 → 地址哈希」对照）作为本 PR 合入后的小跟进，免得验收 HEAD 之后再动测试文件。
+## 为什么脚本判了红（原因未定，下面是更正）
+- 初判写的是「脚本没解析记录口的 body.text」——**这个归因不对**：实现线指出 fad60c03f 的判定 _referenceLeakWire.mjs 本来就解析 body.text，零花费测试也是按这个形状喂的；这次跑的正是含它的 f44aa88f5。
+- 已核的事实：落盘账本副本里确有 1 条 POST https://api.apimart.ai/v1/videos/generations，主机、路径都和判定口径一致。所以「创建 0 次」的真正原因还没查清，候选：判定读的是运行中的账本快照（记账时序）、按 via / kind 过滤掉了这一条、或成片落地前就判了。
+- 这不影响产品结论：请求体内容按落盘副本逐项核过（见上），修复生效。脚本侧的原因留到 #1279 合入后修脚本时，用这次的落盘副本先复现、再改。
 
 ## 探测模式为什么没用上
 - probe-report.json：探测模式在启动时查余额（GET /v1/balance）被探测模式的测试网闸挡下，当场失败、零花费。按预案直接跑正常模式（确认框前同样整套核对）。已记跟进：探测模式放行供应商只读的健康 / 余额端点。
