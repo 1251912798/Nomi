@@ -47,7 +47,7 @@ const rel = (file) => path.relative(repoRoot, file).split(path.sep).join('/')
  * 这条门岗管的是一件很窄但很具体的事：**名字说「我只算答案」的函数，不许改用户的设置**。
  * 范围窄不是妥协——一条拦得住、没人想关掉的规则，比一条报 200 行然后被加进豁免名单的规则有用。
  */
-const WRITE_DOORS = new Set(['atomicWrite', 'writeConnectorPrefs', 'deleteWorkspaceProject'])
+const READ_PATH_WRITE_DOORS = new Set(['atomicWrite', 'writeConnectorPrefs', 'deleteWorkspaceProject'])
 /** 名字承诺「我不改东西」的前缀。 */
 const READ_PREFIX = /^(read|resolve|list|get)[A-Z]/
 
@@ -119,7 +119,7 @@ function reachesWriteDoor(site, seen = new Set()) {
   const entry = callsOf.get(site)
   if (!entry) return null
   for (const callee of entry.callees) {
-    if (WRITE_DOORS.has(callee)) return [site, callee]
+    if (READ_PATH_WRITE_DOORS.has(callee)) return [site, callee]
   }
   for (const callee of entry.callees) {
     for (const next of targetsFor(callee, site)) {

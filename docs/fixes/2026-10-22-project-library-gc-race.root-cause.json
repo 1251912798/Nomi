@@ -87,7 +87,7 @@
     },
     {
       "path": "scripts/check-read-path-writes.mjs",
-      "symbol": "WRITE_DOORS",
+      "symbol": "READ_PATH_WRITE_DOORS",
       "responsibility": "Static gate: no read-named function may reach deleteWorkspaceProject."
     }
   ],
