@@ -11,6 +11,7 @@ import readline from 'node:readline'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { packagedMcpRuntime } from './_packagedMcpRuntime.mjs'
+import { assertFreshBuild } from '../../scripts/package-build-stamp.mjs'
 
 const require = createRequire(import.meta.url)
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -44,6 +45,7 @@ export function resolveRuntime() {
   if (requested || (process.platform === 'darwin' && fs.existsSync(defaultBundle))) {
     return packagedMcpRuntime(requested || defaultBundle)
   }
+  assertFreshBuild(repoRoot)
   const electronPath = require('electron')
   const compiledEntry = path.join(repoRoot, 'dist-electron', 'main.js')
   assert(fs.existsSync(compiledEntry), `compiled Electron entry missing: ${compiledEntry}`)
