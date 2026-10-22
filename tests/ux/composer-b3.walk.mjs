@@ -89,7 +89,7 @@ async function activeMode(page) {
 /** 真点：打开模型菜单 → 点某个模型。 */
 async function swapModel(page, name) {
   // 有的格自带打开的模型菜单（B3j），别再点一下把它关掉。
-  if ((await page.locator('[role="option"]:visible').count()) === 0) await page.locator(`${FOOTER} [data-bar-segment="model-params"] [role="combobox"], ${FOOTER} [data-bar-segment="model-params"] button[aria-haspopup]`).first().click()
+  if (!(await page.locator('[role="option"]:visible').count())) await page.locator(`${FOOTER} [data-bar-segment="model-params"] [role="combobox"], ${FOOTER} [data-bar-segment="model-params"] button[aria-haspopup]`).first().click()
   await page.locator('[role="option"]:visible', { hasText: name }).first().click()
 }
 const refTiles = (page) => count(page, '[data-reference-row] [data-asset-tile]')
@@ -420,7 +420,7 @@ try {
           generateText: generate?.textContent?.trim() ?? '',
         }
       })
-      check(`board:ComposerB3/host.storyboard-row.refs-above.${width}.${lang}`, facts.above && facts.chips.length >= 1 && facts.chips.every((c) => c.h === 28 && c.name) && facts.arrow && facts.generateInsideBar && !facts.clipped && facts.paramsReadable && facts.truncated.length === 0 && (width >= 520 || (facts.density === 'compact' && facts.thumbAbove)), JSON.stringify(facts))
+      check(`board:ComposerB3/host.storyboard-row.refs-above.${width}.${lang}`, facts.above && facts.chips.length >= 1 && facts.chips.every((c) => c.h === 28 && c.name) && facts.arrow && facts.generateInsideBar && !facts.clipped && facts.paramsReadable && !facts.truncated.length && (width >= 520 || (facts.density === 'compact' && facts.thumbAbove)), JSON.stringify(facts))
       // 英文图真是英文（此前分镜实验室屏不认 ?lang=en，英文图和中文图逐字节相同，几条「英文」断言是空跑）
       check(`board:ComposerB3/host.storyboard-row.lang.${width}.${lang}`, lang === 'en' ? facts.generateText === uiText('en', 'storyboardEditor.frame.generate') : facts.generateText === zh('storyboardEditor.frame.generate'), facts.generateText)
       await shot(page, 'storyboard-reuse', `sbl-e1a-${width}`, `E1a-${width}-${lang}-light`)
@@ -461,7 +461,7 @@ try {
             else await page.locator(`[data-design-lab-shot="${id}"]`).screenshot({ path: out, animations: 'disabled' })
           }
           const clipped = await page.evaluate(() => [...document.querySelectorAll('.generation-canvas-v2-node__composer [data-node-composer-footer] *')].filter((el) => getComputedStyle(el).textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth).map((el) => el.textContent?.trim()))
-          check(`board:ComposerB3/bar.no-truncation.${id}.${lang}.${scheme}`, clipped.length === 0, JSON.stringify(clipped))
+          check(`board:ComposerB3/bar.no-truncation.${id}.${lang}.${scheme}`, !clipped.length, JSON.stringify(clipped))
           const scroller = await page.evaluate(() => { const el = document.querySelector('[data-node-composer-references]'); return el ? { scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, overflowY: getComputedStyle(el).overflowY } : null })
           if (scroller && id !== 'b3r-video-30-refs') check(`board:ComposerB3/ref.row.no-scrollbar.${id}.${lang}.${scheme}`, scroller.scrollHeight <= scroller.clientHeight, JSON.stringify(scroller))
           if (lang === 'en' && id === 'b3c-video-three-refs') {
