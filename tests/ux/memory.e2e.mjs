@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { WebSocket } from "undici";
 import { withLinuxNoSandbox } from "./_launchApp.mjs";
+import { assertFreshBuild } from "../../scripts/package-build-stamp.mjs";
 
 const require = createRequire(import.meta.url);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -307,6 +308,7 @@ function prepareFixtureEnvironment() {
   };
 }
 
+assertFreshBuild(repoRoot); // 内存量的是 dist-electron；旧构建量出来的数字不反映新代码
 const prepared = prepareFixtureEnvironment();
 const debugPort = Number(process.env.NOMI_MEMORY_DEBUG_PORT || 9333);
 const childEnv = {

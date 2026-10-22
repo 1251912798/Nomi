@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url'
 import { ensureElectronSignature } from '../../scripts/ensure-electron-signature.mjs'
 import { installFeelObserver } from './_feel-observer.mjs'
 import { assertElectronBuildArtifacts } from '../../scripts/electron-build-artifacts.mjs'
+import { assertFreshBuild } from '../../scripts/package-build-stamp.mjs'
 import { registerWalkProcess } from './_walkInstances.mjs'
 
 const require = createRequire(import.meta.url)
@@ -387,6 +388,8 @@ export async function launchNomiApp(options = {}) {
   // 再塞个 `.` 反而会被当成「要打开的路径」参数。所以这两件事都跟着「是不是开发构建」走。
   const isDevElectron = executablePath === require('electron')
   if (isDevElectron) {
+    // 构建戳核对在最前：产物比源码旧时，后面的「文件在不在」都会通过，走查却量到旧代码。
+    assertFreshBuild(repoRoot)
     assertElectronBuildArtifacts(repoRoot)
     // Apple 会在首次启动时直接删除已吊销公证的 Electron.app。走查必须在 spawn 前复用
     // dev 启动器的静态探测与重签，否则表现为 60s 超时且一张截图也产不出来。
