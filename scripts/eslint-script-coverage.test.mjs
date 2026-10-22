@@ -104,6 +104,11 @@ describe('lint:changed 对批量抑制的判据', () => {
     expect(judgeSuppressionGrowth({}, { 'scripts/c.mjs': { 'no-undef': { count: 1 } } })[0]).toContain('no-undef：0 → 1')
   })
 
+  it('同一改动里 eslint.config.mjs 也变了（新开规则 / 扩大覆盖面）才允许冻进新存量', () => {
+    expect(judgeSuppressionGrowth({}, frozen, { configChanged: true })).toEqual([])
+    expect(judgeSuppressionGrowth({}, frozen, { configChanged: false })).toHaveLength(1)
+  })
+
   it('存量变少却没收紧 → 拦，并给出收紧命令；超出冻结数时只报错误、不重复报「没收紧」', () => {
     expect(judgeUnprunedSuppressions([{ file: 'scripts/a.mjs', suppressedByRule: { 'no-unused-vars': 2 } }], frozen)).toEqual([])
     const [stale] = judgeUnprunedSuppressions([{ file: 'scripts/a.mjs', suppressedByRule: { 'no-unused-vars': 1 } }], frozen)

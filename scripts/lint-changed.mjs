@@ -10,7 +10,8 @@
 // 批量抑制（eslint-suppressions.json；2026-10-22 起 scripts / tests/ux / evals 进 ESLint，存量错误冻结在这里）：
 //   · 和 CLI 一样应用抑制（applySuppressions），否则推送前把存量当新错、CI 却放行；
 //   · 改动文件里冻结的存量变少了却没收紧 → CI 的 lint:ci 以「unused suppressions」退出码 2 判红，推送前同样拦，并给出收紧命令；
-//   · 抑制只许减少：eslint-suppressions.json 里任一规则的冻结总数比 base 多就拦（改名搬家总数不变，不受影响）。
+//   · 抑制只许减少：eslint-suppressions.json 里任一规则的冻结总数比 base 多就拦（改名搬家总数不变，不受影响）；
+//     同一改动里 eslint.config.mjs 也变了（新开规则 / 扩大覆盖面）才允许冻进新存量。
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -19,6 +20,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const LINTABLE = /\.(?:tsx?|jsx?|[cm]js)$/
 export const SUPPRESSIONS_FILE = 'eslint-suppressions.json'
+const CONFIG_FILE = 'eslint.config.mjs'
 const PRUNE_COMMAND = 'pnpm exec eslint --prune-suppressions'
 
 function git(args) {
@@ -48,12 +50,16 @@ export function suppressionTotals(suppressions) {
   return totals
 }
 
-/** 纯函数：抑制只许减少——任一规则的冻结总数比 base 多就拦。 */
-export function judgeSuppressionGrowth(baseSuppressions, headSuppressions) {
+/**
+ * 纯函数：抑制只许减少——任一规则的冻结总数比 base 多就拦。
+ * 唯一的例外是同一改动里 eslint.config.mjs 也变了：新开一条规则或扩大覆盖面时把存量冻进来，正是批量抑制的本意
+ * （那份配置改动本身要过评审）；只改代码时涨冻结数 = 把新违规藏起来，一律拦。
+ */
+export function judgeSuppressionGrowth(baseSuppressions, headSuppressions, { configChanged = false } = {}) {
   const base = suppressionTotals(baseSuppressions)
   const grown = Object.entries(suppressionTotals(headSuppressions)).filter(([rule, count]) => count > (base[rule] ?? 0))
-  if (grown.length === 0) return []
-  return [`✖ ${SUPPRESSIONS_FILE}：冻结的存量只许减少，这些规则涨了\n${grown.map(([rule, count]) => `    ${rule}：${base[rule] ?? 0} → ${count}`).join('\n')}\n  → 新违规请修掉，不要用 --suppress-all / --suppress-rule 把它也冻进去`]
+  if (grown.length === 0 || configChanged) return []
+  return [`✖ ${SUPPRESSIONS_FILE}：冻结的存量只许减少，这些规则涨了\n${grown.map(([rule, count]) => `    ${rule}：${base[rule] ?? 0} → ${count}`).join('\n')}\n  → 新违规请修掉，不要用 --suppress-all / --suppress-rule 把它也冻进去（只有同一改动里新开规则 / 扩大覆盖面、改了 ${CONFIG_FILE} 时才允许冻进新存量）`]
 }
 
 /** 纯函数：文件里实际被抑制的条数 < 冻结条数 = 存量变少了但没收紧（CLI 判 unused suppressions，退出码 2）。 */
@@ -109,7 +115,8 @@ export async function main() {
   const suppressionsPath = path.join(repoRoot, SUPPRESSIONS_FILE)
   const headSuppressions = fs.existsSync(suppressionsPath) ? readSuppressions(fs.readFileSync(suppressionsPath, 'utf8')) : {}
   const baseSuppressionsText = (() => { try { return git(['show', `${base}:${SUPPRESSIONS_FILE}`]) } catch { return null } })()
-  const growth = judgeSuppressionGrowth(baseSuppressionsText === null ? {} : readSuppressions(baseSuppressionsText), headSuppressions)
+  const configChanged = git(['diff', '-z', '--name-only', base, 'HEAD', '--', CONFIG_FILE]).split('\0').filter(Boolean).length > 0
+  const growth = judgeSuppressionGrowth(baseSuppressionsText === null ? {} : readSuppressions(baseSuppressionsText), headSuppressions, { configChanged })
   const files = changedLintableFiles(base)
   if (files.length === 0) {
     if (growth.length) { console.error(growth.join('\n')); return 1 }
