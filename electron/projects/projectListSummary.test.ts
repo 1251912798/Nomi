@@ -7,7 +7,7 @@ vi.mock("electron", () => ({
   app: { getPath: () => os.tmpdir(), getAppPath: () => process.cwd() },
 }));
 
-import { createProject, listProjects, resetEmptyDraftGcGuard, saveProject } from "./repository";
+import { createProject, listProjects, saveProject } from "./repository";
 import { findRecentWorkspace } from "../workspace/workspaceRegistry";
 import { workspaceProjectFile } from "../workspace/workspacePaths";
 import * as manifest from "../workspace/workspaceManifest";
@@ -25,7 +25,6 @@ describe("项目列表摘要读面", () => {
     settingsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-list-settings-"));
     vi.stubEnv("NOMI_PROJECTS_DIR", projectsRoot);
     vi.stubEnv("NOMI_SETTINGS_DIR", settingsRoot);
-    resetEmptyDraftGcGuard();
   });
   afterEach(() => {
     vi.unstubAllEnvs();

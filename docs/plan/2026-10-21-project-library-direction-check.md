@@ -199,8 +199,8 @@
 - 注册表写这次不加（`removeWorkspaceReference`、`rememberWorkspaces`、`backfillWorkspaceOrigins`，列举时也会调）。它们是登记自愈，不是销毁；一加就得登记一串豁免。
 - 选 A 的话，这扇门加上就会立刻变红（列举还能走到删除），只能登记豁免，门岗等于没用。
 
-**10. 用户看得见的变化**
-- 新建空白项目、一下没动就回项目库：卡片当场消失。现在要下次启动才消失。
+**10. 用户看得见的变化**（⚠ 第一条写错了，以文末「§8 10-22 更正与落地范围」为准）
+- ~~新建空白项目、一下没动就回项目库：卡片当场消失。现在要下次启动才消失。~~
 - MCP / Agent 的项目列表里，看不到还没保存过的空白项目。当前绑定的项目不靠列表，不受影响。
 
 ### 对比
@@ -231,8 +231,45 @@ C′ 就是这个答案的落地。
 
 一句话：**要不要接受「没动过的空白项目一回库就消失」，换来「读列表永远不会删东西」这个结构保证。** 推荐 C′。
 
+**拍板（10-22）**：用户选 C′。实现时查出第 2、3 步走不到，按协调确认只做共用部分，见下节。
+
+## 8. 10-22 更正与落地范围（实现时查实）
+
+**更正：用户看得见的变化写错了。**
+- 今天离开项目（`leaveProject`）和关窗口（`useProjectWindowLifecycle` 的关闭确认）都会先调 `persistActiveWorkbenchProjectNow`。它无条件把当前状态整存一次，`saveWorkspaceProject` 首存即清 draft、revision +1。
+- 所以离开或关窗口过的空白项目会被「转正」，永久留在库里。今天如此，C′ 共用部分落地后也如此，**可见行为不变**。
+- 今天能留下 draft + rev 0 的只有崩溃、系统关机 / 注销（那条排空只写欠着的）、强杀。旧的启动回收实际上也只收这些。
+- 「空白项目离开即消失」要等「离开只写欠着的」（协调记账的 A 项）落地。
+
+**所以 C′ 的第 2、3 步（离开时收、退出时收）现在写了也走不到。**
+- 它们运行时草稿早已转正，等于两段死代码，还要多碰热点 `NomiStudioApp.tsx`。
+- 按协调 10-22 确认，并进 A 项：A 让离开只写欠着的之后，「离开 / 关闭后经根队列在锁里重核再收」才是活代码。
+
+**本 PR 落地的共用部分：**
+- 列表只读：删掉 `gcEmptyDraftWorkspaceProjects`、`isStillEmptyNativeDraft`、once-guard、`resetEmptyDraftGcGuard`。
+- 能证明为空的草稿不显示：native、此刻清单仍是 draft + rev 0（对候选再读一次）、`assets/` 无真实文件。
+- 崩溃残余隐藏、不删。
+- 取锁时根不在抛 `WorkspaceRootMissingError`，不重试，不再递归建目录。
+- `deleteWorkspaceProject` 进 `check:read-path-writes` 的销毁门。
+- N2：列表每项错误只落在这一张卡。
+
+**代价：** 崩溃 / 关机 / 强杀留下的空草稿目录在盘上隐藏保留（每个几 KB，列表看不到），直到 A 项落地。今天它们在下次启动时被删。
+
+**结果：** 进程里不再有任何东西会自动删项目，「回收与保存并发」这一类在结构上不存在了。
+
 ## door-map（已数）
 
 - `gcEmptyDraftWorkspaceProjects`：1 扇（`electron/projects/repository.ts` listProjects）。
 - `acquireWorkspaceManifestLock`：1 个文件 2 处（`workspaceManifestTransaction.ts` 的 staged / 非 staged 写门）。
 - `withWorkspaceManifestTransaction`：1 扇（`workspaceManifest.ts` 的 `withWorkspaceManifestMutation`）；`withWorkspaceManifestStagedTransaction`：1 扇（`withWorkspaceManifestStagedMutation`，保存走这里）。
+
+### 8a. 自写登记命中：gate-family
+
+本 PR 改了 `scripts/check-read-path-writes.mjs`，它属于自写登记 `gate-family`（status: under-review，reviewBy 2026-10-31，paths: `scripts/check-*.mjs`）。这次只是在这道已有门岗的写盘门名单里加一扇 `deleteWorkspaceProject`，不新开门岗。
+
+**为什么现在换不了现成方案：**
+- 要守的是我们独有的领域不变量：名字承诺「只读」的函数（list / read / resolve / get）不许沿调用链走到「删项目目录」。
+- 考察过 dependency-cruiser 和 eslint-plugin-boundaries，它们管的是「哪个模块能 import 哪个」，表达不了「函数名前缀 → 跨文件调用链 → 某个具体函数」这种可达性。
+- ESLint 的 `no-restricted-syntax` 只看单个文件里的语法形状。
+
+**哪天换：** gate-family 在 2026-10-31 前出合并 / 删除清单时一并评估。届时考虑把「删项目」收进一个只能由删除 IPC 拿到的能力对象（类型层做不出读路径调用），这条门岗规则随之删除，不留两份。

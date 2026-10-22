@@ -20,11 +20,11 @@ import {
   removeWorkspaceReference,
 } from "../workspace/workspaceRegistry";
 import { resolveWorkspaceRelativePath } from "../workspace/workspacePaths";
+import { WorkspaceManifestLockBusyError } from "../workspace/workspaceManifestLock";
 import {
   createWorkspaceProject,
   deleteWorkspaceProject,
   diagnoseWorkspaceProject,
-  gcEmptyDraftWorkspaceProjects,
   listWorkspaceProjects,
   readWorkspaceProject,
   recoverWorkspaceProject,
@@ -42,8 +42,10 @@ export type ProjectRecord = {
   thumbnail?: string;
   thumbnailUrls?: string[];
   seedKey?: string;
-  /** 草稿态标记：新建空白零编辑项目，启动 GC 会回收。首次 save 即清除。见 workspaceRepository.gcEmptyDraftWorkspaceProjects。 */
+  /** 草稿态标记：新建空白零编辑项目。首次 save 即清除。能证明为空的草稿不出现在列表里（见 workspaceRepository.listWorkspaceProjects）。 */
   draft?: boolean;
+  /** 列表摘要专用：这一项的数据读不出来（见 WorkspaceProjectSummary.unreadableReason）。 */
+  unreadableReason?: "outside-workspace" | "unreadable";
   version: number;
   payload?: unknown;
   rootPath?: string;
@@ -123,16 +125,6 @@ function getInputRootPath(input: unknown): string | null {
   return typeof rootPath === "string" && rootPath.trim() ? rootPath.trim() : null;
 }
 
-// 启动 GC「一进程一次」guard（仿 discoverLegacyProjectsOnce）：首次列举 = App 启动加载库，
-// 此刻盘上任何 draft 必来自上一个进程（本进程还没新建过）→ 回收它们是安全的；本会话之后新建的
-// 草稿在 GC 之后才产生，guard 保证只跑一次 → 永不误删当前会话项目。挂在 listProjects 而非 main.ts，
-// 既守住「启动一次」语义，又不越界改 main.ts（范围外）。
-let emptyDraftGcDone = false;
-
-export function resetEmptyDraftGcGuard(): void {
-  emptyDraftGcDone = false;
-}
-
 /**
  * 项目列表摘要的**唯一读面**（异步）。渲染层、MCP / 外部 Agent 的项目列表都走它，没有同步版：
  * 同步版会让渲染层 sendSync 干等主进程扫完全库（41 个项目 ≈340ms，2026-10-16 追踪），
@@ -153,23 +145,10 @@ export async function listProjects(): Promise<Array<Omit<ProjectRecord, "payload
       origin: { source: "native", nativeRootPath: deps.defaultProjectsRoot } as const,
     })),
   );
-  // 全库列举一次，GC 与最终返回共用这一份快照。
-  // 曾经是「GC 自己列一遍 + 这里再列一遍」＝ 372 次 manifest 快照读做两遍，
-  // 实测占冷启动列举总耗时的 55-63%，而第一遍的结果用完即弃。
-  const listed = await listWorkspaceProjects(deps);
-  // 启动首次列举顺手回收上个进程遗留的空白草稿（默认根存在才跑，避免根被移走时雪崩）。
-  // 回收掉的项目目录已不在盘上，必须从这份快照里摘掉，否则它们会以「幽灵卡片」返回给渲染层。
-  let projects = listed;
-  if (!emptyDraftGcDone) {
-    emptyDraftGcDone = true;
-    if (fs.existsSync(deps.defaultProjectsRoot)) {
-      const { recycled } = gcEmptyDraftWorkspaceProjects(deps, listed);
-      if (recycled.length) {
-        const recycledIds = new Set(recycled);
-        projects = listed.filter((project) => !recycledIds.has(project.id));
-      }
-    }
-  }
+  // 列举只读项目、不删项目（N1，2026-10-22）：空白草稿回收曾挂在首次列举上，列举是异步的，
+  // 期间排队等锁的保存会被它删掉。能证明为空的草稿由 listWorkspaceProjects 直接不显示；
+  // 删项目只有用户点删除这一扇门（check:read-path-writes 把 deleteWorkspaceProject 列为销毁门，读路径可达即红）。
+  const projects = await listWorkspaceProjects(deps);
   // 自愈对齐磁盘 ↔ registry:native 项目(Nomi 自管目录,~/Documents/Nomi Projects 内)
   // 若文件夹已不存在 = 真删(本地盘不会临时消失),从 registry 摘除引用,不再当幽灵卡片展示。
   // 防雪崩:仅当默认根本身仍存在时才清;根整体不可访问(被移走/同步中)则全部保留,等其回归。
@@ -259,7 +238,17 @@ export async function saveProject(projectId: string, input: unknown): Promise<Pr
 export function deleteProject(projectId: string): { id: string; deleted: boolean } {
   const id = String(projectId || "").trim();
   if (!id) throw new Error("projectId is required");
-  if (readWorkspaceProject(id, getWorkspaceRepositoryDeps())) {
+  let readable: ReturnType<typeof readWorkspaceProject>;
+  try {
+    readable = readWorkspaceProject(id, getWorkspaceRepositoryDeps());
+  } catch (error) {
+    // 数据读不出来的已登记项目（如 .nomi 越界）：只从项目库解绑，绝不删盘——读不清楚的目录不能当成自己的去删。
+    // 别的写者正锁着（暂时的）照常报错，让用户稍后再删；不能把一次「忙」当成「读不出来」去解绑。
+    if (error instanceof WorkspaceManifestLockBusyError || !findRecentWorkspace(getWorkspaceRepositoryDeps().settingsRoot, id)) throw error;
+    removeWorkspaceReference(getWorkspaceRepositoryDeps().settingsRoot, id);
+    return { id, deleted: false };
+  }
+  if (readable) {
     const workspaceDir = resolveWorkspaceProjectDir(id, getWorkspaceRepositoryDeps());
     // 真删盘:native 项目整目录 fs.rmSync;外部「打开文件夹」绑定只解绑、绝不删用户内容。
     const result = deleteWorkspaceProject(id, getWorkspaceRepositoryDeps());

@@ -7,14 +7,15 @@ vi.mock("electron", () => ({
   app: { getPath: () => os.tmpdir(), getAppPath: () => process.cwd() },
 }));
 
-import { createProject, listProjects, resetEmptyDraftGcGuard, saveProject } from "./repository";
+import { createProject, listProjects, saveProject } from "./repository";
 import { findRecentWorkspace } from "../workspace/workspaceRegistry";
 import * as manifest from "../workspace/workspaceManifest";
 import { acquireWorkspaceManifestLock, releaseWorkspaceManifestLock } from "../workspace/workspaceManifestLock";
 
-// 首次列举里的空草稿回收：列举是异步的，等它读完，同进程的保存 / 改名 / 创建可能已经插进来过。
-// 回收拿的是列举开始时的旧摘要，不能当销毁授权——删之前要重新核「此刻」的清单（V-plibrary F1，丢数据）。
-describe("首次列举的草稿回收与同进程写入交错", () => {
+// 列举与同进程写入交错：列举是异步的，等它读完，同进程的保存 / 改名 / 创建可能已经插进来过，
+// 也可能有保存正排队等锁。空草稿回收曾挂在首次列举上，这些交错都能删掉用户的草稿（V-plibrary F1、N1，丢数据）。
+// 2026-10-22 起列举只读、不删任何项目；这里钉住每种交错下项目都还在。
+describe("列举与同进程写入交错：列举不删项目", () => {
   let projectsRoot = "";
   let settingsRoot = "";
   beforeEach(() => {
@@ -22,7 +23,6 @@ describe("首次列举的草稿回收与同进程写入交错", () => {
     settingsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-gcx-settings-"));
     vi.stubEnv("NOMI_PROJECTS_DIR", projectsRoot);
     vi.stubEnv("NOMI_SETTINGS_DIR", settingsRoot);
-    resetEmptyDraftGcGuard();
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -77,7 +77,7 @@ describe("首次列举的草稿回收与同进程写入交错", () => {
   // V-plibrary 用例 C（N1，丢数据）：保存已经发出、正在等别的写者放锁（10ms 一次重试），
   // 别的写者刚放锁、保存的重试计时器还没到，列举就收尾了。此刻锁是空的、清单还是 draft rev 0，
   // 只看「此刻清单」的回收授权会把它删掉——用户这次保存随后失败，取锁时还会重建一个没清单、没登记的孤儿目录。
-  it("保存正在排队等锁时列举收尾：不回收；保存成功落盘", async () => {
+  it("保存正在排队等锁时列举收尾：不删；保存成功落盘，之后的列表里有它", async () => {
     const draft = createProject({ name: "排队等锁的保存", draft: true });
     const sibling = createProject({ name: "慢的同伴" });
     let saving: Promise<{ ok: true; revision: number } | { ok: false; error: string }> | null = null;
@@ -98,18 +98,21 @@ describe("首次列举的草稿回收与同进程写入交错", () => {
     expect(folderAfterGc).toBe(true);
     expect(result).toEqual({ ok: true, revision: 1 });
     expect(findRecentWorkspace(settingsRoot, draft.id)).toBeTruthy();
-    expect(rows.some((row) => row.id === draft.id)).toBe(true);
+    // 列举收尾时保存还在排队，那一刻它确实是空草稿，这一次的列表不显示是如实的；保存落盘后再列就在。
+    expect(rows.some((row) => row.id === draft.id)).toBe(false);
+    expect((await listProjects()).some((row) => row.id === draft.id)).toBe(true);
   });
 
-  it("列举途中新建的草稿：不在候选里，不被回收；上个进程遗留的真草稿照常回收", async () => {
+  it("上个进程遗留的空草稿与列举途中新建的草稿：都不显示，目录与登记都还在", async () => {
     const stale = createProject({ name: "上个进程遗留", draft: true });
     const sibling = createProject({ name: "慢的同伴" });
     let fresh = "";
     const { rows, draftRoot } = await listingWithWindow(stale.id, sibling.id, async () => {
       fresh = createProject({ name: "列举途中新建", draft: true }).id;
     });
-    expect(fs.existsSync(draftRoot)).toBe(false);
     expect(rows.some((row) => row.id === stale.id)).toBe(false);
+    expect(fs.existsSync(draftRoot)).toBe(true);
+    expect(findRecentWorkspace(settingsRoot, stale.id)).toBeTruthy();
     expect(findRecentWorkspace(settingsRoot, fresh)).toBeTruthy();
   });
 });

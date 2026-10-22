@@ -504,8 +504,8 @@ export default function NomiStudioApp(): JSX.Element {
     async (project: LocalProjectSummary) => {
       // 应用内确认框（审计 A7）：原生 window.confirm 脱设计系统、E2E 测不到、
       // Electron/macOS 有焦点丢失史。
-      // 文案按来源如实区分（真删盘只对 native；外部「打开文件夹」只解绑、不删用户文件）。
-      const isExternal = project.source === 'folder'
+      // 文案按主进程实际会做的如实区分：真删盘只对读得出来的 native；外部「打开文件夹」和数据读不出来的项目只解绑、不删文件。
+      const isExternal = project.source === 'folder' || Boolean(project.unreadableReason)
       const confirmed = await confirmDialog({
         title: isExternal ? t('studio.removeProjectTitle') : t('studio.deleteProjectTitle'),
         message: isExternal
