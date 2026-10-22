@@ -12,4 +12,6 @@
 | `c2-pi-perf.txt` | C2 + 预热的 perf（机器负载高时的一轮） | C2 |
 | `c5-final-perf.txt` | C4 之后的 perf：热 2.4/4.1ms、冷（预热后）19.3/21.9ms、刚启动就点 670–700ms | C5 |
 | `d7-before.txt` / `d7-after.txt` | D7：三处文本任务错误展示，先红后绿 | D7 |
-| `walk/` | Electron 零花费演练截图（中 / 英）与每次调用的一行摘要 `calls.json` | C5 |
+| `rewrite-ipc-before.txt` / `rewrite-ipc-after.txt` | #2 改写选区真入口测试（渲染层 → 真 IPC → 真准入）：修前 `SpendNotAuthorizedError`，修后绿 | 协调 10-21 定 A 之后 |
+| `c6-prewarm-trigger.txt` | 预热会不会卡主进程：三种触发方式的主进程最长阻塞、冷打开 100 节点项目、刚启动就点的第一段字 | 合 main 784dde0b1 之后 |
+| `walk/` | Electron 零花费演练截图（中 / 英）与每次调用的一行摘要 `calls.json`；`*-rewrite-blocked-by-spend-gate.png` 是 #2 修前的样子，`*-rewrite-done.png` 是修后 | C5，#2 修后重跑 |

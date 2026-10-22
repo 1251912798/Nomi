@@ -238,7 +238,7 @@
     "真模型（DeepSeek V4 等）未跑：真模型走查脚本已写好，由协调带 key 跑一次",
     "录好的 APIMart 真流形状：仓库里没有，「没有 finish_reason 就断」只用合成夹具证过，记 unverified，由真模型走查证实",
     "看门狗开火后，约 2% 的运行在 3 秒内看不到假上游那一侧的连接关闭（我们这一侧传给 fetch 的 signal 已 abort，已断言）；与本迁移无关，lane 同样如此",
-    "冷启动：窗口加载后约 7 秒内（预热完成前）第一次文本任务约 1.4–2.2 秒才出第一段字（ai@4 约 50ms）；预热完成后中位约 30ms",
+    "冷启动：预热没装就点（真 App 主进程）第一段字中位 174 / p95 207ms（ai@4 冷基线 p95 99.8ms）；预热在指针移进 / 焦点进文本动作时触发，装完后中位 18.7ms；预热本身在主进程里是一段约 190–230ms 的同步阻塞（单个 SDK 模块图），只在用户伸手时发生一次（docs/evidence/2026-10-21-text-tasks-pi-ai/c6-prewarm-trigger.txt）",
     "文本节点的双层重试（主进程 2 次 × 渲染层 ≤3 次）保持现状（D8），另记跟进",
     "scope_paths 里 catalog / providerAdapter 那几份只改了过时注释（指向已删的 streamTextTask / buildLanguageModelForVendor），行为未变"
   ],

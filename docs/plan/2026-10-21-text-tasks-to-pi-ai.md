@@ -269,8 +269,9 @@
 
 - **调用方矩阵**（`electron/ai/textTaskCallers.integration.test.ts`，真 pi-ai + 真 HTTP 假上游，9 个调用方 × 正常 / 空回包 / 429 / 503 / 401 / SSE 包错 / 断流 / 无 finish_reason / 停止 / IPC 契约）：ai@4 上 19 红 → 迁移后全绿；计时类（`textTaskCallers.timing.integration.test.ts`：三相看门狗、整体兜底只给一次性入口、渲染层不自动重提）36 绿。
 - **真墙钟「先想 35 秒」**：9 个调用方在 ai@4 上全部 30 秒被掐 → 迁移后全过（`docs/evidence/2026-10-21-text-tasks-pi-ai/`）。
-- **Electron 零花费演练**（`tests/ux/text-tasks-pi-ai.rehearsal.walk.mjs`）：#1 扩写（流式，先想 35 秒）、#4 翻译、#3 优化中英两轮都过；#2 改写选区被付费闸挡（**迁移前就有**，见下）；#6 拆解被本机磁盘余量闸挡（no-disk-space，环境问题，记 unverified）。
-- **perf**（C4 之后，含预热）：热 中位 2.4 / p95 4.1ms（ai@4 基线 5.2 / 10.2，预算 20）；冷（预热完成后）中位 19.3 / p95 21.9ms（ai@4 基线 50.5 / 99.8，预算 100）；**刚启动就点、预热还没完成**：670–700ms（10 次），这是唯一比 ai@4 差的情形，窗口加载后约 4 秒起预热、约 2 秒装完。
+- **Electron 零花费演练**（`tests/ux/text-tasks-pi-ai.rehearsal.walk.mjs`）：#1 扩写（流式，先想 35 秒）、#4 翻译、#3 优化中英两轮都过；#2 改写选区第一轮被付费闸挡（**迁移前就有**，见下），按拍板 A 修后中英两轮都过（`walk/04-zh-04-rewrite-done.png`、`walk/10-en-04-rewrite-done.png`）；#6 拆解被本机磁盘余量闸挡（no-disk-space，环境问题，记 unverified，等用户清盘后补）。
+- **perf**（合 main 784dde0b1 之后）：热 中位 2.7 / p95 4.8ms（ai@4 基线 5.2 / 10.2，预算 20）；冷（预热完成后）中位 18.7 / p95 20.7ms（ai@4 基线 50.5 / 99.8，预算 100）；**刚启动就点、预热还没装**（真 App 主进程，10 次）：中位 174 / p95 207ms——唯一比 ai@4 差的情形（Node 子进程同量法 595–679ms，多出来的 pi-ai 入口在真 App 启动时已被别的模块装好）。
+- **预热的触发（协调 10-21 第 3 条，`docs/evidence/2026-10-21-text-tasks-pi-ai/c6-prewarm-trigger.txt`）**：启动后固定 4 秒预热 = Electron 主进程一段 250–290ms 同步阻塞，撞上「启动后几秒打开项目」时冷打开 100 节点中位 946 → 1341ms；照协调改成「带文本动作的界面一挂上就在空闲回调里预热」——这些界面随项目一起挂，仍落在打开过程里（1257ms），不采用；最终改为**指针移进 / 焦点进文本动作**（提示词优化、翻译、文本节点输入框、Agent 输入框，`src/workbench/api/textActionIntent.ts`）时在渲染层空闲回调里预热，主进程只装目录里启用了的文本模型用到的协议、逐条装：打开项目时不开火，冷打开回到中位 963–1022ms；预热本身最长阻塞中位 184 / 最大 231ms（单个 openai SDK 的模块图，主进程里拆不小——仍高于 100ms 线，选项见交付报告）。
 - **D9 目录里的 maxOutputTokens**：内置目录（seedBuiltins / apimartTexts / modelscopeTexts 等）没有任何文本模型声明 `meta.maxOutputTokens`，只有用户在目录里手填才会有；所以迁移后不会因为它把长文截断。
 - **pi-ai 子路径**：`createModels` / `createProvider` / `InMemoryCredentialStore` 不在 exports 子路径里，只能经入口导入；深引会破坏包封装，不采用（见「先查别人」）。
 

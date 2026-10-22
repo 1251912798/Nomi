@@ -2,32 +2,32 @@
   {
     "entry": "#1 文本节点扩写（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 39656,
-    "totalMs": 39746,
+    "firstFeedbackMs": 39726,
+    "totalMs": 39728,
     "result": "ok",
     "errorKind": null
   },
   {
-    "entry": "#2 文本节点改写选区（一次性）",
+    "entry": "#2 文本节点改写选区（流式门，一次性替换）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": null,
-    "totalMs": null,
-    "result": "blocked：SpendNotAuthorizedError（迁移前就有，等拍板）",
-    "errorKind": "spend-not-authorized"
+    "firstFeedbackMs": 39800,
+    "totalMs": 39886,
+    "result": "ok",
+    "errorKind": null
   },
   {
     "entry": "#4 提示词翻译（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 434,
-    "totalMs": 436,
+    "firstFeedbackMs": 441,
+    "totalMs": 442,
     "result": "ok",
     "errorKind": null
   },
   {
     "entry": "#3 提示词优化（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 412,
-    "totalMs": 412,
+    "firstFeedbackMs": 418,
+    "totalMs": 418,
     "result": "ok",
     "errorKind": null
   },
@@ -42,32 +42,32 @@
   {
     "entry": "#1 文本节点扩写（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 39717,
-    "totalMs": 39719,
+    "firstFeedbackMs": 39686,
+    "totalMs": 39686,
     "result": "ok",
     "errorKind": null
   },
   {
-    "entry": "#2 文本节点改写选区（一次性）",
+    "entry": "#2 文本节点改写选区（流式门，一次性替换）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": null,
-    "totalMs": null,
-    "result": "blocked：SpendNotAuthorizedError（迁移前就有，等拍板）",
-    "errorKind": "spend-not-authorized"
+    "firstFeedbackMs": 39747,
+    "totalMs": 39849,
+    "result": "ok",
+    "errorKind": null
   },
   {
     "entry": "#4 提示词翻译（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 442,
-    "totalMs": 444,
+    "firstFeedbackMs": 435,
+    "totalMs": 436,
     "result": "ok",
     "errorKind": null
   },
   {
     "entry": "#3 提示词优化（流式）",
     "protocol": "openai-compatible",
-    "firstFeedbackMs": 422,
-    "totalMs": 422,
+    "firstFeedbackMs": 480,
+    "totalMs": 481,
     "result": "ok",
     "errorKind": null
   }
