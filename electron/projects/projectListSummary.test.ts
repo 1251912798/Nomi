@@ -12,6 +12,7 @@ import { findRecentWorkspace } from "../workspace/workspaceRegistry";
 import { workspaceProjectFile } from "../workspace/workspacePaths";
 import * as manifest from "../workspace/workspaceManifest";
 import { WORKSPACE_LIST_IO_CONCURRENCY } from "../workspace/workspaceRepository";
+import { acquireWorkspaceManifestLock, releaseWorkspaceManifestLock } from "../workspace/workspaceManifestLock";
 
 // 项目列表摘要读面的特征测试（P-library，2026-10-21）：钉住「列表读面返回什么」，
 // 不钉它是同步还是异步——一律 `await listProjects()`，同步实现与异步实现都得过。
@@ -82,6 +83,53 @@ describe("项目列表摘要读面", () => {
     const listed = await listProjects();
     expect(listed.find((item) => item.id === healthy.id)?.name).toBe("健康");
     expect(listed.find((item) => item.id === broken.id)).toMatchObject({ name: "清单坏了", missing: false });
+  });
+
+  // N2（V-plibrary）：一个项目的 .nomi 被挪到根外再用 junction 接回。快照读拒绝越界返回 null，
+  // 回落的加锁读又抛边界错——此前这一个错让整次 listProjects 抛出，邻居项目一张都拿不到。
+  it("一个项目的数据越界：整页不抛，邻居照出；这张卡标「越界、不可打开」，不读根外内容", async () => {
+    const neighbour = createProject({ name: "无辜的邻居" });
+    const inside = path.join(projectsRoot, "registered");
+    const project = createProject({ name: "登记时的名字", rootPath: inside });
+    const source = path.join(inside, ".nomi");
+    const destination = path.join(settingsRoot, "outside-metadata");
+    fs.renameSync(source, destination);
+    const outsideFile = path.join(destination, "project.json");
+    const value = JSON.parse(fs.readFileSync(outsideFile, "utf8"));
+    value.name = "根外的内容";
+    fs.writeFileSync(outsideFile, JSON.stringify(value));
+    fs.symlinkSync(destination, source, "junction");
+    try {
+      const listed = await listProjects();
+      expect(listed.find((item) => item.id === neighbour.id)?.name).toBe("无辜的邻居");
+      expect(listed.find((item) => item.id === project.id)).toMatchObject({
+        name: "登记时的名字",
+        missing: false,
+        unreadableReason: "outside-workspace",
+      });
+    } finally {
+      fs.unlinkSync(source); // 先摘 junction，别顺着它删目标
+    }
+  });
+
+  it("一个项目的清单正被别的写者加锁写：整页不抛，这张卡退回登记卡（不标坏，下次刷新就好）", async () => {
+    const neighbour = createProject({ name: "无辜的邻居" });
+    const busy = createProject({ name: "正在被写" });
+    const busyRoot = (findRecentWorkspace(settingsRoot, busy.id) as { rootPath: string }).rootPath;
+    // 内嵌 data URL 让快照读让位给加锁读；锁被另一写者占着 → 加锁读抛 busy。
+    const raw = JSON.parse(fs.readFileSync(workspaceProjectFile(busyRoot), "utf8"));
+    raw.payload = { note: "data:image/png;base64,AAAA" };
+    fs.writeFileSync(workspaceProjectFile(busyRoot), JSON.stringify(raw));
+    const lease = await acquireWorkspaceManifestLock(busyRoot);
+    try {
+      const listed = await listProjects();
+      expect(listed.find((item) => item.id === neighbour.id)?.name).toBe("无辜的邻居");
+      const card = listed.find((item) => item.id === busy.id);
+      expect(card).toMatchObject({ name: "正在被写", missing: false });
+      expect(card).not.toHaveProperty("unreadableReason");
+    } finally {
+      releaseWorkspaceManifestLock(lease);
+    }
   });
 
   it("读清单的盘读并发不超过上限：41 个项目也只同时在飞 WORKSPACE_LIST_IO_CONCURRENCY 个", async () => {

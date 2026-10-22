@@ -10,6 +10,7 @@ vi.mock("electron", () => ({
 import { createProject, listProjects, resetEmptyDraftGcGuard, saveProject } from "./repository";
 import { findRecentWorkspace } from "../workspace/workspaceRegistry";
 import * as manifest from "../workspace/workspaceManifest";
+import { acquireWorkspaceManifestLock, releaseWorkspaceManifestLock } from "../workspace/workspaceManifestLock";
 
 // 首次列举里的空草稿回收：列举是异步的，等它读完，同进程的保存 / 改名 / 创建可能已经插进来过。
 // 回收拿的是列举开始时的旧摘要，不能当销毁授权——删之前要重新核「此刻」的清单（V-plibrary F1，丢数据）。
@@ -71,6 +72,33 @@ describe("首次列举的草稿回收与同进程写入交错", () => {
     });
     expect(fs.existsSync(draftRoot)).toBe(true);
     expect(findRecentWorkspace(settingsRoot, draft.id)).toBeTruthy();
+  });
+
+  // V-plibrary 用例 C（N1，丢数据）：保存已经发出、正在等别的写者放锁（10ms 一次重试），
+  // 别的写者刚放锁、保存的重试计时器还没到，列举就收尾了。此刻锁是空的、清单还是 draft rev 0，
+  // 只看「此刻清单」的回收授权会把它删掉——用户这次保存随后失败，取锁时还会重建一个没清单、没登记的孤儿目录。
+  it("保存正在排队等锁时列举收尾：不回收；保存成功落盘", async () => {
+    const draft = createProject({ name: "排队等锁的保存", draft: true });
+    const sibling = createProject({ name: "慢的同伴" });
+    let saving: Promise<{ ok: true; revision: number } | { ok: false; error: string }> | null = null;
+    let lease: Awaited<ReturnType<typeof acquireWorkspaceManifestLock>> | null = null;
+    const { rows, draftRoot } = await listingWithWindow(draft.id, sibling.id, async () => {
+      const root = (findRecentWorkspace(settingsRoot, draft.id) as { rootPath: string }).rootPath;
+      lease = await acquireWorkspaceManifestLock(root); // 另一写者占着清单锁
+      saving = saveProject(draft.id, { ...draft, payload: { text: "用户刚敲进去的字" } }).then(
+        (record) => ({ ok: true as const, revision: record.revision }),
+        (error: unknown) => ({ ok: false as const, error: String((error as Error)?.message ?? error) }),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 30)); // 保存进入重试
+      releaseWorkspaceManifestLock(lease); // 放锁后立刻放行列举
+    });
+    expect(lease).not.toBeNull();
+    const folderAfterGc = fs.existsSync(draftRoot);
+    const result = await saving!;
+    expect(folderAfterGc).toBe(true);
+    expect(result).toEqual({ ok: true, revision: 1 });
+    expect(findRecentWorkspace(settingsRoot, draft.id)).toBeTruthy();
+    expect(rows.some((row) => row.id === draft.id)).toBe(true);
   });
 
   it("列举途中新建的草稿：不在候选里，不被回收；上个进程遗留的真草稿照常回收", async () => {
