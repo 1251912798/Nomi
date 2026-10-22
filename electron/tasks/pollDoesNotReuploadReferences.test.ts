@@ -26,6 +26,8 @@ let base = "";
 let server: http.Server;
 let pollCount = 0;
 let uploadSeq = 0;
+/** 用例可以换掉查询步（模拟用户自配映射）；缺省是 APIMart 真查询步。 */
+let queryOverride: import("../catalog/types").HttpOperation | null = null;
 
 vi.mock("electron", () => ({
   app: { getPath: () => projectRoot, getAppPath: () => process.cwd() },
@@ -86,7 +88,7 @@ function model(): Model {
 function seedanceMapping(): Mapping {
   const seedance = APIMART_VIDEO_MODELS.find((m) => m.modelKey === "doubao-seedance-2.0")!;
   const i2v = seedance.mappings.find((m) => m.taskKind === "image_to_video")!;
-  return { ...i2v, vendorKey: "apimart-loopback", modelKey: seedance.modelKey, enabled: true, query: APIMART_VIDEO_QUERY_OP, statusMapping: APIMART_STATUS_MAPPING, createdAt: "now", updatedAt: "now" } as Mapping;
+  return { ...i2v, vendorKey: "apimart-loopback", modelKey: seedance.modelKey, enabled: true, query: queryOverride ?? APIMART_VIDEO_QUERY_OP, statusMapping: APIMART_STATUS_MAPPING, createdAt: "now", updatedAt: "now" } as Mapping;
 }
 
 function readBody(req: http.IncomingMessage): Promise<Buffer> {
@@ -134,6 +136,7 @@ beforeEach(() => {
   wire.length = 0;
   pollCount = 0;
   uploadSeq = 0;
+  queryOverride = null;
   localFiles.clear();
   localFiles.set(FIRST, PNG);
   localFiles.set(LAST, PNG);
@@ -223,6 +226,16 @@ describe("查任务不重传参考素材（#1279 真付费样本复现：每次�
     const done = await fetchTaskResult({ taskId: created.id });
     expect(done.result.status, String(done.result.error)).toBe("succeeded");
     expect(done.result.assets).toMatchObject([{ type: "video" }]);
+    expect(uploads()).toHaveLength(2);
+  });
+
+  it("类：用户自配映射把参考写进查询步——查询当场拦下，不发本机地址、不重传参考，也不说「还没请求服务商」", async () => {
+    queryOverride = { method: "POST", path: "/v1/tasks/{{providerMeta.task_id}}", body: { first: "{{request.params.first_frame_image}}", refs: "{{request.params.image_with_roles}}" }, response_mapping: { status: "data.status" } } as import("../catalog/types").HttpOperation;
+    const created = await runTask(firstLastFrameRequest(FIRST, LAST), FREE_ADMISSION);
+    const error = await fetchTaskResult({ taskId: created.id }).then(() => null, (caught: Error) => caught);
+    expect(error?.message ?? "").toMatch(/查任务[\s\S]*任务已经提交/);
+    expect(error?.message ?? "").not.toMatch(/NOMI_ERR::asset-|还没请求/);
+    expect(wire.filter((w) => w.url.startsWith("/v1/tasks/"))).toEqual([]);
     expect(uploads()).toHaveLength(2);
   });
 });

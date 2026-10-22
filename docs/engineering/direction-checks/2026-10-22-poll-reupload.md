@@ -65,11 +65,15 @@
 | 重写 | 把本地化从执行器里搬出去，只在 runTask 提交处做一次，缓存存「实际发出去的请求」 | runtime.ts 改动更大；溯源 / 指纹要区分「原始参考」与「已上传地址」 | 中：溯源记成会过期的公网地址，复跑会坏 | 以后 runtime 拆壳时再做 |
 | 删 | — | — | — | 不适用 |
 
+## 拍板
+
+用户 2026-10-22 拍板：按 A 改 runtime.ts；同类口子（`retrievalStageError` 放行提交前语义的码）另开 PR 修。
+
 ## 7. 用户要权衡的核心
 
 热点文件 runtime.ts 里改 4 行（加「只有提交这一步交参考」的判断），换来轮询不再重传、提交后删参考也能取回成片；不改 runtime.ts 的替代方案都要么只盖一个入口、要么仍依赖参考文件存在。
 
-## 拟改 diff（runtime.ts，待用户批；批前不提交、不落盘）
+## 拟改 diff（runtime.ts）——用户 10-22 拍板按 A 落地
 
 本线已提交的部分（不碰 runtime.ts）：`assetLocalization.ts` 的 `stageSubmitsReferences` / `assertNoReferencesOutsideSubmit`、门岗测试、特征测试。批后只差下面这几行：
 

@@ -71,7 +71,7 @@
     {
       "path": "electron/runtime.ts",
       "symbol": "executeProfileOperation",
-      "responsibility": "Engine-A HTTP exit; consults the stage owner before localizing and asserts outbound query/result requests are reference-free (pending user approval of the hot-file change)."
+      "responsibility": "Engine-A HTTP exit; consults the stage owner before localizing, requires an explicit stage from every caller, and asserts outbound query/result requests are reference-free (user approved 2026-10-22)."
     }
   ],
   "same_class_entry_points": [
@@ -112,13 +112,14 @@
   },
   "prevention": {
     "kind": "centralized-boundary",
-    "enforcement_path": "electron/catalog/assetLocalization.ts",
+    "enforcement_path": "electron/runtime.ts",
     "invariant": "Only the create step localizes references; query/result requests never carry local reference values.",
     "failure_mode": "A query/result request that would carry a nomi-local:// or data: value throws before sending, without an asset-* code (the task is already submitted), and lands as recoverable retrieval.",
     "exception_policy": "none",
     "strategy": "Stage owner in assetLocalization consulted by the single engine-A HTTP exit; stage becomes a required parameter so a new caller cannot omit it; class gate enumerates built-in query/result operations.",
     "artifacts": [
-      "electron/catalog/assetLocalization.ts"
+      "electron/catalog/assetLocalization.ts",
+      "electron/runtime.ts"
     ]
   },
   "regression_tests": [
@@ -140,9 +141,9 @@
   },
   "migration": "No persisted state changes; in-memory task cache entries keep the original request and simply stop being localized on query.",
   "residual_risks": [
-    "runtime.ts gate is pending user approval (hot file); until it lands the invariant is only enforced by the owner function and tests, not by the executor.",
     "retrievalStageError passes through already-coded errors, including pre-submit codes (asset-*, submission-not-sent, outbound-blocked-submit); after this fix no query-stage producer of those codes is known, but the pass-through itself is unguarded (listed in the direction check for a separate change).",
-    "Echo filtering in buildProfileTaskResult uses the cached request (local references), so an uploaded reference URL echoed in a query response is not recognized as an echo by URL; media-kind priority still covers the video case."
+    "Echo filtering in buildProfileTaskResult uses the cached request (local references), so an uploaded reference URL echoed in a query response is not recognized as an echo by URL; media-kind priority still covers the video case.",
+    "No Electron GUI walkthrough was run for this change (no free loopback mode exists for the reference paid script); the loopback integration test drives real runTask/fetchTaskResult over HTTP, and the end-to-end paid sample is run by the coordinator."
   ],
   "invariant_owner_layer": {
     "layer": "electron/catalog/assetLocalization.ts",
