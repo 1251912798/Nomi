@@ -5,6 +5,7 @@ import { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { EditorState, TextSelection, type Transaction } from '@tiptap/pm/state'
 import { history, undo } from '@tiptap/pm/history'
 import i18n from '../../../i18n'
+import { VendorRequestError, encodeVendorErrorMessage } from '../../../../electron/vendor/vendorHttp'
 import { createProjectSessionTestHarness, type ProjectSessionTestHarness } from '../../project/projectSessionTestHarness'
 import { createRewriteController, type RewriteController, type RewriteHost } from './rewriteController'
 import { buildRewriteDecorations, createRewritePlugin, getRewriteSession, openRewriteTransaction, rangeText, rewriteSessionKey, setRewriteDocumentIdentityTransaction, type RewriteRequirement } from './rewriteSession'
@@ -300,6 +301,22 @@ describe('选中文字 → AI 编辑：就地出结果', () => {
     controller.retry()
     const retry = await fake.request(2)
     expect(retry.prompt).toContain(P2)
+  })
+
+  it('主进程的错误带结构化标记（base64）：界面上只给人话，不把乱码摆给用户', async () => {
+    const marked = encodeVendorErrorMessage(new VendorRequestError('（HTTP 429）Too many requests, slow down', {
+      vendorKey: 'relay', method: 'POST', url: 'https://relay.example.test/v1/chat/completions', httpStatus: 429,
+      upstreamMsg: 'Too many requests, slow down', category: 'quota', retryable: true,
+    }))
+    expect(marked).toContain('NOMI_VENDOR_ERR_B64::')
+    openOnSecondParagraph()
+    controller.submit(REQUIREMENT)
+    const request = await fake.request(1)
+    request.fail(marked)
+    await host.until(() => getRewriteSession(host.state)?.status === 'failed')
+    const failure = getRewriteSession(host.state)!.failure!
+    expect(failure).not.toContain('NOMI_VENDOR_ERR_B64')
+    expect(failure).toBe('（HTTP 429）Too many requests, slow down')
   })
 
   it('没有可用文本模型：不发请求，写清原因，原文不变', async () => {

@@ -34,6 +34,7 @@ describe('文本任务错误给人看的那一句', () => {
     'src/workbench/generationCanvas/nodes/NodePromptOptimizer.tsx',
     'src/workbench/generationCanvas/nodes/NodePromptTranslator.tsx',
     'src/ui/onboarding/CustomCallEditor.tsx',
+    'src/workbench/creation/aiRewrite/rewriteModel.ts',
   ])('%s 的文本任务错误走 textTaskFailureText，不直接摆 e.message', (file) => {
     const source = readFileSync(path.join(repoRoot, file), 'utf8')
     expect(source).toContain('textTaskFailureText(')

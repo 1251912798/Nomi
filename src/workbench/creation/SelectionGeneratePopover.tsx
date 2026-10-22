@@ -4,6 +4,7 @@ import type { Editor } from '@tiptap/react'
 import { IconBold, IconH1, IconH2, IconItalic, IconMovie, IconPhoto, IconVideo } from '@tabler/icons-react'
 import { WorkbenchIconButton } from '../../design/actions'
 import { NomiLogoMark } from '../../design/identity'
+import { TEXT_ACTION_INTENT_PROPS } from '../api/textActionIntent'
 import { cn } from '../../utils/cn'
 import { createNodeFromSelection, type SelectionGenerationKind } from './createNodeFromSelection'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
@@ -211,6 +212,7 @@ export default function SelectionGeneratePopover({
               'cursor-pointer whitespace-nowrap',
               'hover:border-nomi-ink-30 hover:bg-workbench-accent-soft',
             )}
+            {...TEXT_ACTION_INTENT_PROPS}
             onMouseDown={(event) => event.preventDefault()}
             onClick={onAiEdit}
           >

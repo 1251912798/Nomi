@@ -1,6 +1,6 @@
 import i18n from '../../../i18n'
 import { getTextBrain } from '../../api/promptLibraryApi'
-import { runWorkbenchTextTaskStream } from '../../api/taskApi'
+import { runWorkbenchTextTaskStream, textTaskFailureText } from '../../api/taskApi'
 import { isProjectExecutionContextCurrent, withProjectAction } from '../../project/projectCanvasReadSurface'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { buildRewritePrompt, cleanRewriteOutput } from './rewritePrompt'
@@ -52,6 +52,7 @@ export async function runRewriteModel(input: {
     return { ok: true, text }
   } catch (error) {
     if (input.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) return { ok: false, aborted: true }
-    return failure(error instanceof Error && error.message ? error.message : i18n.t('creationAi.rewrite.unknownReason'))
+    // 主进程的错误带结构化标记（给错误卡分类用的 base64），直接摆 e.message 用户看到的是一长串乱码：经唯一的展示函数剥掉。
+    return failure(textTaskFailureText(error) || i18n.t('creationAi.rewrite.unknownReason'))
   }
 }
