@@ -1,6 +1,7 @@
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey, type EditorState, type Transaction } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import { getRewriteSession } from '../creation/aiRewrite/rewriteSession'
 
 export const PERSISTENT_SELECTION_CLASS = 'nomi-persistent-selection'
 
@@ -38,6 +39,8 @@ export function createPersistentSelectionPlugin(): Plugin<PersistentSelectionSta
     },
     props: {
       decorations: (state) => {
+        // AI 编辑进行中，待改的字由它自己标（新旧对比的颜色不能被这层选区蓝盖掉）。
+        if (getRewriteSession(state)) return DecorationSet.empty
         const range = persistentSelectionPluginKey.getState(state)?.range
         if (!range || range.from >= range.to) return DecorationSet.empty
         return DecorationSet.create(state.doc, [
