@@ -29,9 +29,14 @@ const BASELINE = path.join(repoRoot, 'scripts', 'read-path-writes-baseline.json'
 const rel = (file) => path.relative(repoRoot, file).split(path.sep).join('/')
 
 /**
- * 写盘门 —— **刻意只有这两个**（审计 §3 的分类）：
+ * 写盘门 —— **刻意只有这三个**（审计 §3 的分类）：
  *   · `atomicWrite`：宿主配置（`~/.claude.json` 这类**别人的**文件）的唯一门；
- *   · `writeConnectorPrefs`：connector 偏好（用户在高级设置里调的那些）的唯一门。
+ *   · `writeConnectorPrefs`：connector 偏好（用户在高级设置里调的那些）的唯一门；
+ *   · `deleteWorkspaceProject`：删项目目录的销毁门（2026-10-22 V-plibrary N1）。空白草稿回收曾挂在
+ *     `listProjects` 上，列举是异步的，期间排队等锁的保存被它删掉。删项目只许由用户的删除动作触发，
+ *     任何 list / read / resolve / get 能走到它即红——这是**门岗自动拦**，不是结构上做不出来：
+ *     它按门函数名连边、只认这四个读前缀，读路径里直接写 fs.rmSync、或从别的前缀（bootstrap / refresh / sync…）
+ *     的函数走到删除，都不在这张图上（V-plibrary2 变异 C 实测），那一层靠测试兜。
  *
  * 明确**不**在范围内、并且不该被这条规则拦的三类，写在这里免得下一个人把它们加进来：
  *   · 日志（`logger.write` → `writeFileSync`）：几乎所有函数都可达它，它不是「用户状态」；
@@ -42,7 +47,7 @@ const rel = (file) => path.relative(repoRoot, file).split(path.sep).join('/')
  * 这条门岗管的是一件很窄但很具体的事：**名字说「我只算答案」的函数，不许改用户的设置**。
  * 范围窄不是妥协——一条拦得住、没人想关掉的规则，比一条报 200 行然后被加进豁免名单的规则有用。
  */
-const WRITE_DOORS = new Set(['atomicWrite', 'writeConnectorPrefs'])
+const READ_PATH_WRITE_DOORS = new Set(['atomicWrite', 'writeConnectorPrefs', 'deleteWorkspaceProject'])
 /** 名字承诺「我不改东西」的前缀。 */
 const READ_PREFIX = /^(read|resolve|list|get)[A-Z]/
 
@@ -114,7 +119,7 @@ function reachesWriteDoor(site, seen = new Set()) {
   const entry = callsOf.get(site)
   if (!entry) return null
   for (const callee of entry.callees) {
-    if (WRITE_DOORS.has(callee)) return [site, callee]
+    if (READ_PATH_WRITE_DOORS.has(callee)) return [site, callee]
   }
   for (const callee of entry.callees) {
     for (const next of targetsFor(callee, site)) {
