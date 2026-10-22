@@ -18,7 +18,7 @@ import {
   workspaceAssetsImportedDir,
   workspaceExportsDir,
   workspaceNomiDir,
-  workspaceManifestPathsForRead,
+  resolveWorkspaceReadFile,
   workspaceProjectBackupFile,
   workspaceProjectFile,
   workspaceProjectQuarantineFile,
@@ -620,14 +620,12 @@ export function readWorkspaceManifestSnapshot(rootPath: string): WorkspaceProjec
 /** 快照读的异步版：走线程池读盘，不占主进程事件循环（项目库一次读几十份清单）；判定与同步版共用。 */
 export async function readWorkspaceManifestSnapshotAsync(rootPath: string): Promise<WorkspaceProjectRecordV2 | null> {
   try {
-    const paths = workspaceManifestPathsForRead(await fsp.realpath(rootPath));
-    const rawRecord = toProjectRecordObject(JSON.parse(await fsp.readFile(paths.manifest, "utf8")));
+    const manifestFile = await resolveWorkspaceReadFile(rootPath, "manifest");
+    if (!manifestFile) return null;
+    const rawRecord = toProjectRecordObject(JSON.parse(await fsp.readFile(manifestFile, "utf8")));
     if (!rawRecord) return null;
-    const backupText = await fsp.readFile(paths.backup, "utf8").then((text) => text, (error: NodeJS.ErrnoException) => {
-      if (error.code === "ENOENT") return null;
-      throw error;
-    });
-    const backup = backupText === null ? null : { raw: toProjectRecordObject(JSON.parse(backupText)) };
+    const backupFile = await resolveWorkspaceReadFile(rootPath, "backup");
+    const backup = backupFile === null ? null : { raw: toProjectRecordObject(JSON.parse(await fsp.readFile(backupFile, "utf8"))) };
     return snapshotFromRawManifest(rawRecord, backup);
   } catch (error) {
     if (error instanceof WorkspaceProjectIdentityUnavailableError) throw error;

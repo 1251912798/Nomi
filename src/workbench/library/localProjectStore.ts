@@ -76,7 +76,7 @@ function unpublishLocalProject(projectId: string): void {
 export type UseLocalProjectsResult = {
   projects: LocalProjectSummary[]
   /**
-   * 读取失败（fetcher 抛，桌面端 `desktop.projects.list()` 是会抛的）。非 null 时 `projects`
+   * 读取失败（fetcher 抛，桌面端 `desktop.projects.listAsync()` 是会 reject 的）。非 null 时 `projects`
    * 是 fallback `[]`——那是「读不到」不是「一个都没有」，调用方必须先看这个字段再决定渲染空态，
    * 否则读取失败会被冒充成首启空库引导屏（用户以为项目全没了）。
    */

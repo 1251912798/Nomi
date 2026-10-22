@@ -11,7 +11,13 @@ import type { WorkspaceSyncInspection } from '../../../electron/shared/workspace
  * - 只查「需要查」的：项目的 revision / 保存时间变了，或上次结果超过 TTL；聚焦也只是重新登记，没变就什么都不发；
  * - 分批串行：一批最多 BATCH_SIZE 个项目、同一时刻只有一批在飞，主进程那边再限并发；
  * - 结果存在这里（模块级），离开项目库再回来卡片上的徽标不闪、不重查。
- * 没查到（null / 失败）就不记，卡片继续不显示徽标——和检查能力上线前一样，不会显示错的状态。
+ *
+ * 结果的语义（「失效的结果不能冒充当前状态」）：
+ * - 有结果 = 对这一版项目（revision / 保存时间）、在 TTL 之内查到的状态；
+ * - 没有结果 = unknown，卡片不显示徽标，也不参与「打开项目前要不要拦」的判断；
+ * - 项目变了（revision / 保存时间不同）或结果超过 TTL，**登记那一刻**就把旧结果撤掉再重查；重查返回 null 或抛错，
+ *   就停在 unknown，不会退回旧值。
+ * 注意 TTL 不是定时器：没人再调 `request`（聚焦、列表变化、重新挂载），停在页面上不会自己到期刷新。
  */
 export const SYNC_INSPECT_TTL_MS = 5 * 60 * 1000
 export const SYNC_INSPECT_BATCH_SIZE = 6
@@ -79,11 +85,15 @@ export function createSyncInspectScheduler(options: {
     /** 登记要检查的项目；已有新鲜结果的跳过。不会在本次调用里发请求。 */
     request(targets: readonly SyncInspectTarget[]): void {
       const queued = new Set(pending.map((target) => target.id))
+      let revoked = false
       for (const target of targets) {
         if (!target.rootPath || queued.has(target.id) || !stale(target)) continue
+        // 过期 / 对不上这一版的旧结果先撤掉：重查没结果时停在 unknown，不留旧徽标冒充当前状态。
+        if (entries.delete(target.id)) revoked = true
         pending.push(target)
         queued.add(target.id)
       }
+      if (revoked) publish()
       if (!pending.length || scheduled || running) return
       scheduled = true
       schedule(() => {

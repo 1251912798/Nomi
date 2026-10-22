@@ -2,7 +2,7 @@
 // 项目库「读取失败」态走查（设计系统优化 B2）。
 //
 // 修复前的真实假象：`useLocalProjects` 只解构 `{ data, mutate }`，配 `fallbackData: []`，
-// 于是 `desktop.projects.list()` 抛错时 `projects` 仍是 `[]`，页面落进
+// 于是 `desktop.projects.listAsync()` reject 时 `projects` 仍是 `[]`，页面落进
 // `library.firstEmpty`——用户看到的是**崭新的首启空库引导屏**，读作「我的项目全没了」。
 //
 // 这条走查证三件事：

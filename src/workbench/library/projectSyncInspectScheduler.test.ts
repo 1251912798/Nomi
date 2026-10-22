@@ -90,4 +90,48 @@ describe('项目库卡片同步状态：回库首屏不等状态检查', () => {
     await flush()
     await vi.waitFor(() => expect(Object.keys(scheduler.snapshot())).toHaveLength(2))
   })
+
+  describe('失效的结果不能冒充当前状态', () => {
+    const missingAssets = (): WorkspaceSyncInspection => ({ ...ready(), status: 'missing-assets', missingAssetCount: 2 })
+
+    it('先有旧值，项目变了再查返回 null：旧徽标撤掉，停在 unknown', async () => {
+      const { scheduler, inspectMany, flush } = harness()
+      inspectMany.mockResolvedValueOnce({ p0: missingAssets() })
+      scheduler.request(projects(1))
+      await flush()
+      await vi.waitFor(() => expect(scheduler.snapshot().p0?.status).toBe('missing-assets'))
+      inspectMany.mockResolvedValueOnce({ p0: null })
+      scheduler.request(projects(1, 2))
+      expect(scheduler.snapshot()).toEqual({})
+      await flush()
+      await vi.waitFor(() => expect(inspectMany).toHaveBeenCalledTimes(2))
+      expect(scheduler.snapshot()).toEqual({})
+    })
+
+    it('先有旧值，超过 TTL 再查整批抛错：同样停在 unknown', async () => {
+      const { scheduler, inspectMany, flush, now } = harness()
+      inspectMany.mockResolvedValueOnce({ p0: missingAssets() })
+      scheduler.request(projects(1))
+      await flush()
+      await vi.waitFor(() => expect(scheduler.snapshot().p0?.status).toBe('missing-assets'))
+      now.value += SYNC_INSPECT_TTL_MS + 1
+      inspectMany.mockRejectedValueOnce(new Error('ipc down'))
+      scheduler.request(projects(1))
+      await flush()
+      await vi.waitFor(() => expect(inspectMany).toHaveBeenCalledTimes(2))
+      expect(scheduler.snapshot()).toEqual({})
+    })
+
+    it('TTL 不是定时器：没有人再 request，过期的旧结果原样留着（这是缓存的可见限制，不自动刷新）', async () => {
+      const { scheduler, inspectMany, flush, now } = harness()
+      scheduler.request(projects(1))
+      await flush()
+      await vi.waitFor(() => expect(Object.keys(scheduler.snapshot())).toHaveLength(1))
+      inspectMany.mockClear()
+      now.value += SYNC_INSPECT_TTL_MS * 3
+      await flush()
+      expect(inspectMany).not.toHaveBeenCalled()
+      expect(Object.keys(scheduler.snapshot())).toHaveLength(1)
+    })
+  })
 })

@@ -121,15 +121,36 @@ const NOMI_DIR_NAME = ".nomi";
 const PROJECT_MANIFEST_NAME = "project.json";
 const PROJECT_BACKUP_NAME = "project.backup.json";
 
+export type WorkspaceReadFile = "manifest" | "backup" | "sync-state";
+const READ_FILE_NAMES: Record<WorkspaceReadFile, string> = {
+  manifest: PROJECT_MANIFEST_NAME,
+  backup: PROJECT_BACKUP_NAME,
+  "sync-state": "sync-state.json",
+};
+
 /**
- * 清单与备份的路径，**纯字符串拼接、不碰盘**——只给「只读列举 / 检查」用。
- * workspaceProjectFile 等写路径函数每次都要逐段 existsSync + lstat 防「符号链接逃出文件夹」，
- * 项目库一次要为几十个项目各算几遍，Windows 上这些系统调用合计约 300ms 的主进程占用（2026-10-21 剖析）。
- * 只读一个已登记根目录下固定名字的两个文件，不需要这道防线；任何写、删、迁移仍走上面带校验的函数。
+ * 只读列举 / 检查用：解析 `.nomi/` 下一个固定名字的文件的**真实路径**，不存在返回 null。
+ * 异步（realpath 走线程池），一次系统调用同时回答「在不在」和「真实路径还在不在项目根里」：
+ * `.nomi` 被换成指向根外的目录 junction、文件被换成指向根外的 symlink，realpath 解出来都在根外 →
+ * 抛边界错（与同步路径 workspaceProjectFile 的 assertInsideWorkspace 同一口径，只是不再逐段 existsSync + lstat，
+ * 那一串在 Windows 上合计约 300ms 的主进程占用，2026-10-21 剖析）。写、删、迁移仍走带校验的同步函数。
+ * 注册根本身若是链接，以它的真实路径为界（用户把项目文件夹放在链接下是合法的）。
  */
-export function workspaceManifestPathsForRead(workspaceRoot: string): { nomiDir: string; manifest: string; backup: string } {
-  const nomiDir = path.join(assertWorkspaceRoot(workspaceRoot), NOMI_DIR_NAME);
-  return { nomiDir, manifest: path.join(nomiDir, PROJECT_MANIFEST_NAME), backup: path.join(nomiDir, PROJECT_BACKUP_NAME) };
+export async function resolveWorkspaceReadFile(workspaceRoot: string, file: WorkspaceReadFile): Promise<string | null> {
+  const root = assertWorkspaceRoot(workspaceRoot);
+  const realRoot = await fsp.realpath(root).catch(() => null);
+  if (!realRoot) return null;
+  const target = path.join(root, NOMI_DIR_NAME, READ_FILE_NAMES[file]);
+  let real: string;
+  try {
+    real = await fsp.realpath(target);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return null;
+    throw error;
+  }
+  assertRelativeInsideRoot(realRoot, real);
+  return real;
 }
 
 export function workspaceNomiDir(workspaceRoot: string): string {

@@ -4,7 +4,7 @@ import fsp from "node:fs/promises";
 import pLimit from "p-limit";
 import path from "node:path";
 import { writeJsonFileAtomic } from "../jsonFile";
-import { createAssetProbe, workspaceManifestPathsForRead, workspaceNomiDir, workspaceProjectFile } from "./workspacePaths";
+import { createAssetProbe, resolveWorkspaceReadFile, workspaceNomiDir, workspaceProjectFile } from "./workspacePaths";
 import type { WorkspaceSyncInspection } from "../shared/workspaceSyncContracts";
 export type { WorkspaceSyncInspection, WorkspaceSyncStatus } from "../shared/workspaceSyncContracts";
 
@@ -57,7 +57,9 @@ export function writeWorkspaceSyncState(rootPath: string, state: WorkspaceSyncSt
 
 export async function readWorkspaceSyncState(rootPath: string): Promise<WorkspaceSyncState | null> {
   try {
-    const raw = JSON.parse(await fsp.readFile(path.join(workspaceManifestPathsForRead(rootPath).nomiDir, SYNC_STATE_NAME), "utf8")) as Partial<WorkspaceSyncState>;
+    const file = await resolveWorkspaceReadFile(rootPath, "sync-state");
+    if (!file) return null;
+    const raw = JSON.parse(await fsp.readFile(file, "utf8")) as Partial<WorkspaceSyncState>;
     if (raw.schemaVersion !== 1 || typeof raw.workspaceId !== "string" || typeof raw.writerId !== "string") return null;
     if (!Number.isInteger(raw.revision) || typeof raw.contentHash !== "string" || typeof raw.writtenAt !== "string") return null;
     return raw as WorkspaceSyncState;
@@ -65,8 +67,6 @@ export async function readWorkspaceSyncState(rootPath: string): Promise<Workspac
     return null;
   }
 }
-
-const pathExists = (target: string): Promise<boolean> => fsp.access(target).then(() => true, () => false);
 
 /** 素材存在性探测同时在飞的上限：整个进程共用一个，批量检查几十个项目时也不会把线程池塞满、饿死别的读盘。 */
 const ASSET_PROBE_LIMIT = pLimit(8);
@@ -81,8 +81,11 @@ export async function inspectWorkspaceSync(
   projectId: string,
   expected?: { revision: number; contentHash: string },
 ): Promise<WorkspaceSyncInspection> {
-  const { manifest: manifestPath, backup: backupPath } = workspaceManifestPathsForRead(rootPath);
-  const [manifestExists, backupExists] = await Promise.all([pathExists(manifestPath), pathExists(backupPath)]);
+  // 路径解析（含「真实路径仍在项目根内」）一律走 resolveWorkspaceReadFile；越界当「读不到」，不是「可读」。
+  const resolveOrNull = (file: "manifest" | "backup"): Promise<string | null> => resolveWorkspaceReadFile(rootPath, file).catch(() => null);
+  const [manifestPath, backupPath] = await Promise.all([resolveOrNull("manifest"), resolveOrNull("backup")]);
+  const manifestExists = manifestPath !== null;
+  const backupExists = backupPath !== null;
   const corrupt = (): WorkspaceSyncInspection => ({
     status: "corrupt-manifest",
     manifestExists,
@@ -93,7 +96,7 @@ export async function inspectWorkspaceSync(
     lastWriterId: null,
     contentHash: null,
   });
-  if (!manifestExists) return corrupt();
+  if (manifestPath === null) return corrupt();
 
   let bytes: Buffer;
   let observedRevision: number;

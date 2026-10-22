@@ -445,16 +445,35 @@ function dirHasRealFiles(dir: string): boolean {
  * 不给默认值——留 `projects = await listWorkspaceProjects(deps)` 这种兜底就等于把旧的
  * 双份列举留成可达路径（P1：不留并行版）。
  */
+/**
+ * 销毁授权：此刻盘上的清单仍是同一个项目、仍是草稿、仍是 revision 0，登记项仍是没丢的 native 项目。
+ * 读不到 / 清单正被别处加锁写（busy）一律算「不是」——宁可漏删不可误删。
+ */
+function isStillEmptyNativeDraft(projectId: string, deps: WorkspaceRepositoryDeps): boolean {
+  const entry = findRecentEntry(projectId, deps);
+  if (!entry || entry.missing || entry.source !== "native" || !fs.existsSync(entry.rootPath)) return false;
+  try {
+    const manifest = readWorkspaceManifest(entry.rootPath);
+    return Boolean(manifest) && manifest?.id === projectId && manifest?.draft === true && (manifest?.revision ?? 0) === 0;
+  } catch {
+    return false;
+  }
+}
+
 export function gcEmptyDraftWorkspaceProjects(
   deps: WorkspaceRepositoryDeps,
   projects: WorkspaceProjectSummary[],
 ): { recycled: string[]; scanned: number } {
   const recycled: string[] = [];
   for (const project of projects) {
+    // 候选只用来挑人：列举是异步的，等它读完，同进程的保存 / 改名 / 创建早就可能插进来过，
+    // 手里的 draft / revision 是旧的，不能当销毁授权。下面这一段全部同步（中间没有 await），
+    // 重新读「此刻」的清单再删，同进程别的写入插不进来。
     if (project.source !== "native") continue;
     if (project.missing) continue;
     if (project.draft !== true) continue;
     if ((project.revision ?? 0) !== 0) continue;
+    if (!isStillEmptyNativeDraft(project.id, deps)) continue;
     const dir = resolveWorkspaceProjectDir(project.id, deps);
     if (!dir) continue;
     if (dirHasRealFiles(path.join(dir, "assets"))) continue;
