@@ -21,6 +21,8 @@
 //
 // 凭据与护栏：全部走 tests/ux/_paidRun.mjs 的 openPaidWalk（CI 拒跑、没有 NOMI_SPEND_OK=1 拒跑、构建产物过期拒跑、
 // 出网只放行授权供应商、跑完删凭据副本）；key 只从环境变量读，不进报告 / 日志 / 截图。
+import fs from 'node:fs'
+import path from 'node:path'
 import { clickOrFail, expect, proveProbe } from './_assert.mjs'
 import { SPEND_DIALOG, openPaidWalk } from './_paidRun.mjs'
 import { VIDEO, cheapVideoNodeProblems, probeLandedMedia } from './_agentVideoPaid.mjs'
@@ -103,6 +105,14 @@ try {
   if (/@Video1/.test(shot.prompt ?? '')) problems.push('提示词里还有写死的 @Video1')
   if (Math.abs((preview.durationSeconds ?? 0) - 4) > 0.5) problems.push(`预演时长 ${preview.durationSeconds} 秒，与镜头 4 秒不符`)
   if (problems.length) throw new Error(`花钱前核对没过（一分钱没花）：\n  ${problems.join('\n  ')}`)
+  // 媒体在隔离副本删除之前拷进证据目录（工作树 .tmp/ 下，不进仓库）：协调要肉眼对比成片运镜是不是跟随预演（上次两个文件随副本删掉了）
+  const keepMedia = async (url, name) => {
+    const { filePath } = await probeLandedMedia(projectRoot, projectId, url)
+    const target = path.join(walk.report.outputDir, name)
+    fs.copyFileSync(filePath, target)
+    return target
+  }
+  walk.report.keptPreviewMp4 = await keepMedia(preview.videoUrl, 'preview.mp4')
   await walk.snap('01-zh-before-spend-reference-attached')
   walk.report.preCheck = { previewUrl: preview.videoUrl, previewSeconds: preview.durationSeconds, referenceVideoUrls: refs, promptHasMention: true }
 
@@ -164,7 +174,8 @@ try {
   expect(Boolean(done.result?.taskId), '结果带着供应商任务号').toBe(true)
   const landed = await probeLandedMedia(projectRoot, projectId, done.result.url)
   walk.report.landed = { url: done.result.url, bytes: landed.bytes, probe: landed.probe, previewUrl: preview.videoUrl, note: '成片与预演放在一起肉眼对比：运镜是不是照预演（脚本不判画面）' }
-  expect(landed.probe.duration ?? 0, '成片是一段真视频（ffprobe 量出时长）').toBeGreaterThan(1)
+  expect(landed.probe.durationSeconds ?? 0, '成片是一段真视频（ffprobe 量出时长）').toBeGreaterThan(1)
+  walk.report.keptResultMp4 = await keepMedia(done.result.url, 'result.mp4')
   await walk.snap('03-zh-result-landed')
   walk.report.verified = ['preview-reference-attached-before-spend', 'one-provider-task', 'result-landed-and-probed']
   }
