@@ -19,6 +19,8 @@ NOMI_REFLEAK_REPORT=<临时文件> npx vitest run src/workbench/generationCanvas
 
 ## 抓包结论（收到的请求体）
 
+> **更正（独立验收 V-refleak 第 1 轮）**：这里的请求体由测试里的 `wire` 按 runtime 顺序渲染，**没经过 runTask 里的 `imageEditGuardError`**（「为免白扣费这次不发」）。真 App 上，下表「修前」里 S1b、S1c、S4（中转）和 S1a–S1c、S4（APIMart）其实是**被拒发**、文生生不出来，不是漏发；OK2 / OK3 / S2 的中转一栏在真 App 上修前修后都拒发（中转视频只有一个图位，带不了尾帧 / 多参考）。main 上真漏钱的是中转 S1a、APIMart S2 和 S3，验收线 389 行真 runTask 矩阵里共 37 行；修后 0，且原本被拒的文生格能正常出片。下表保留作为「请求组装层」的证据，修前数字以验收报告为准。
+
 | 场景 | 传输 | 参考区在用 | 修前收到 | 修后收到 |
 |---|---|---|---|---|
 | S1a 首帧 1 张 → 切文生 | 中转 | — | `image` = f | 不带图 |
