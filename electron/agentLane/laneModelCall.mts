@@ -15,7 +15,7 @@
 import { createModels } from '@earendil-works/pi-ai';
 import { createNomiProvider, prewarmProviderProtocols } from './laneModelProvider.mjs';
 import { LANE_STREAM_WATCHDOG, MODEL_CALL_CEILING_MS } from './laneProviderGuard.mjs';
-import { MODEL_CALL_CEILING_ERROR, type CallModelOnce, type ModelCallOptions, type ModelCallResult } from '../shared/agentLane/modelCallPort.js';
+import { MODEL_CALL_CEILING_ERROR, type CallModelOnce, type ModelCallOptions, type ModelCallResult, type PrewarmModelCall } from '../shared/agentLane/modelCallPort.js';
 
 export type { ModelCallOptions, ModelCallResult } from '../shared/agentLane/modelCallPort.js';
 
@@ -54,12 +54,14 @@ export const callModelOnce: CallModelOnce = async (options: ModelCallOptions): P
 };
 
 /**
- * 把核心与三条协议的实现先装好，并对 OpenAI 兼容那条**空跑一次**（窗口加载完后的空闲预热，electron/ai/modelCallPrewarm.ts）。
+ * 把核心与点名的协议实现先装好；点名里有 OpenAI 兼容就对它**空跑一次**（有意图时预热：指针移进 / 焦点进文本动作时渲染层空闲回调里
+ * 经 nomi:tasks:text:prewarm 叫，主进程按目录里启用的文本模型点名协议，electron/ai/textStreamIpc.ts）。
  * 空跑不出网：传输换成一个就地回一段固定 SSE 的假 fetch，走的是同一条装配 → SDK → 解析 → 看门狗的路，
  * 只为让这些代码在用户第一次点之前就已初始化 / 编译过（实测首调从约 110ms 降到与后续调用同级）。
  */
-export async function prewarmModelCall(): Promise<void> {
-  await prewarmProviderProtocols();
+export const prewarmModelCall: PrewarmModelCall = async (protocols) => {
+  await prewarmProviderProtocols(protocols);
+  if (!protocols.includes('openai-compatible')) return;
   const chunk = (delta: Record<string, unknown>, finish: string | null = null) =>
     `data: ${JSON.stringify({ id: 'prewarm', object: 'chat.completion.chunk', created: 0, model: 'prewarm', choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`;
   const body = chunk({ role: 'assistant', content: '' }) + chunk({ content: '.' }) + chunk({}, 'stop') + 'data: [DONE]\n\n';
@@ -68,4 +70,4 @@ export async function prewarmModelCall(): Promise<void> {
     model: { kind: 'openai-compatible', providerId: 'nomi-prewarm', modelId: 'prewarm', baseURL: 'http://prewarm.invalid/v1', authType: 'none' },
     fetch: offline, content: 'prewarm', signal: new AbortController().signal, onEvent: () => undefined,
   });
-}
+};

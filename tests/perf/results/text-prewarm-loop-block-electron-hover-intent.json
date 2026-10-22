@@ -1,0 +1,107 @@
+{
+  "label": "electron-hover-intent",
+  "runs": 10,
+  "host": "electron-main",
+  "samples": [
+    {
+      "maxBlockMs": 212,
+      "totalMs": 223,
+      "firedOnMount": false,
+      "hoverToPrewarmMs": 31,
+      "protocols": [
+        "openai-compatible"
+      ]
+    },
+    {
+      "maxBlockMs": 187.8,
+      "totalMs": 203,
+      "firedOnMount": false,
+      "hoverToPrewarmMs": 23,
+      "protocols": [
+        "openai-compatible"
+      ]
+    },
+    {
+      "maxBlockMs": 181,
+      "totalMs": 193,
+      "firedOnMount": false,
+      "hoverToPrewarmMs": 29,
+      "protocols": [
+        "openai-compatible"
+      ]
+    },
+    {
+      "maxBlockMs": 231.2,
+      "totalMs": 255,
+      "firedOnMount": false,
+      "hoverToPrewarmMs": 22,
+      "protocols": [
+        "openai-compatible"
+      ]
+    },
+    {
+      "maxBlockMs": 227.4,
+      "totalMs": 250,
+      "firedOnMount": false,
+      "hoverToPrewarmMs": 31,
+      "protocols": [
+        "openai-compatible"
+      ]
+    },
+    {
+      "maxBlockMs": 143.1,
+      "totalMs": 167,
+      "firedOnMount": false,
+      "hoverToPrewarmMs": 22,
+      "protocols": [
+        "openai-compatible"
+      ]
+    },
+    {
+      "maxBlockMs": 175.6,
+      "totalMs": 185,
+      "firedOnMount": false,
+      "hoverToPrewarmMs": 27,
+      "protocols": [
+        "openai-compatible"
+      ]
+    },
+    {
+      "maxBlockMs": 166.9,
+      "totalMs": 187,
+      "firedOnMount": false,
+      "hoverToPrewarmMs": 21,
+      "protocols": [
+        "openai-compatible"
+      ]
+    },
+    {
+      "maxBlockMs": 168.2,
+      "totalMs": 188,
+      "firedOnMount": false,
+      "hoverToPrewarmMs": 23,
+      "protocols": [
+        "openai-compatible"
+      ]
+    },
+    {
+      "maxBlockMs": 221.4,
+      "totalMs": 236,
+      "firedOnMount": false,
+      "hoverToPrewarmMs": 27,
+      "protocols": [
+        "openai-compatible"
+      ]
+    }
+  ],
+  "summary": {
+    "maxBlockMs": {
+      "median": 184.4,
+      "max": 231.2
+    },
+    "totalMs": {
+      "median": 198,
+      "max": 255
+    }
+  }
+}

@@ -24,7 +24,7 @@
     "electron/ai/vendorModelConnection.ts",
     "electron/ai/modelCallFetch.ts",
     "electron/ai/modelCallBridge.ts",
-    "electron/ai/modelCallPrewarm.ts",
+    "src/workbench/api/textActionIntent.ts",
     "electron/ai/modelImageInput.ts",
     "electron/ai/runtimeVendorError.ts",
     "electron/ai/agentError.ts",

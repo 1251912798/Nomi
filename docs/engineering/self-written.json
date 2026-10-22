@@ -843,13 +843,13 @@
     },
     {
       "id": "model-call-boundary",
-      "capability": "「调一次模型」接 pi-ai 的 Nomi 边界：唯一调用入口（文本任务 / 编译器 / lane 一次性提问共用）、CJS→ESM 桥与空闲预热、失败留证（去密钥）、远程图按出站授权本机取回",
+      "capability": "「调一次模型」接 pi-ai 的 Nomi 边界：唯一调用入口（文本任务 / 编译器 / lane 一次性提问共用）、CJS→ESM 桥与有意图时预热、失败留证（去密钥）、远程图按出站授权本机取回",
       "status": "justified",
       "paths": [
         "electron/agentLane/laneModelCall.mts",
         "electron/shared/agentLane/modelCallPort.ts",
+        "src/workbench/api/textActionIntent.ts",
         "electron/ai/modelCallBridge.ts",
-        "electron/ai/modelCallPrewarm.ts",
         "electron/ai/modelCallFetch.ts",
         "electron/ai/modelImageInput.ts"
       ],

@@ -6,11 +6,14 @@
 //   · warm：同一进程里第 2 次起的调用（用户连着点第二下）；
 //   · cold：全新进程、运行时模块已在（应用启动后它就在）、文本执行器还没装过的第一次调用——
 //     生产上 textStreamIpc 第一次收到请求时才 import 文本执行器（`loadTextTaskRunner`），这一下的装载算进时延。
-//     应用在主窗口加载完后的空闲时预热「调一次模型」核心（electron/ai/modelCallPrewarm.ts），这里照做：先跑同一个预热、等它完成，
-//     再计时（`--no-prewarm` 量不预热的最坏情况：用户在窗口出来后几秒内就点了文本动作）。
+//     应用在用户朝文本动作伸手时（指针移进 / 焦点进，渲染层空闲回调）预热「调一次模型」核心（electron/ai/modelCallBridge.ts 的 prewarmModelCall），
+//     这里照做：先跑同一个预热、等它完成，再计时（`--no-prewarm` 量不预热的最坏情况：文本动作一出现就立刻点，预热还没装完）。
 // 量的是编译产物（dist-electron），不是 tsx 现编的源码：现编的转译时间不是用户会付的钱。先 `pnpm build:electron`。
 //
-// 用法：node tests/perf/text-first-delta-bench.mjs --mode warm|cold --runs 5 --label <label>
+// --electron（只配 --mode cold --no-prewarm）：真 App 主进程里量最坏情况——每轮新起 App（launchNomiApp，隔离 profile），停在项目库、
+//   没碰过任何文本动作（预热没触发），在主进程里直接跑一次文本任务。与 Node 子进程的差别：真 App 启动时 pi-ai 入口已经装好了
+//   （别的模块在用），所以这里量到的是「协议 SDK + 核心」现装的代价，这才是用户「刚启动就点」付的那一段。先 `pnpm run build`。
+// 用法：node tests/perf/text-first-delta-bench.mjs --mode warm|cold --runs 5 --label <label> [--no-prewarm] [--electron]
 // 结果：tests/perf/results/text-first-delta-<label>.json（{ results: [{ samples: [{ responseMs }] }] }，给 perf:scenarios 读）。
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -45,7 +48,7 @@ async function child(baseURL, count, prewarm) {
   const require = createRequire(import.meta.url)
   require(path.join(dist, 'runtime.js'))
   const bridge = path.join(dist, 'ai', 'modelCallBridge.js')
-  if (prewarm && fs.existsSync(bridge)) await require(bridge).prewarmModelCall()
+  if (prewarm && fs.existsSync(bridge)) await require(bridge).prewarmModelCall(['openai-compatible'])
   const samples = []
   for (let index = 0; index < count; index += 1) {
     const started = performance.now()
@@ -79,9 +82,11 @@ async function main() {
       if (result.status !== 0) throw new Error(`child failed: ${result.stderr}`)
       return JSON.parse(result.stdout.trim().split('\n').at(-1))
     }
-    const samples = mode === 'cold'
-      ? Array.from({ length: runs }, () => spawnAt(1)[0])
-      : spawnAt(runs + 1).slice(1)
+    const samples = argv.includes('--electron')
+      ? await electronColdSamples(url, runs)
+      : mode === 'cold'
+        ? Array.from({ length: runs }, () => spawnAt(1)[0])
+        : spawnAt(runs + 1).slice(1)
     const out = path.join(repoRoot, 'tests/perf/results', `text-first-delta-${label}.json`)
     fs.mkdirSync(path.dirname(out), { recursive: true })
     fs.writeFileSync(out, `${JSON.stringify({ mode, results: [{ samples: samples.map((responseMs) => ({ responseMs })) }] }, null, 2)}\n`)
@@ -89,6 +94,35 @@ async function main() {
   } finally {
     upstream.stop()
   }
+}
+
+/** 真 App 主进程里的最坏情况：每轮新起 App，不碰文本动作（不预热），主进程里直接跑一次文本任务到第一段字。 */
+async function electronColdSamples(baseURL, runs) {
+  const { launchNomiApp, closeNomiApp } = await import('../ux/_launchApp.mjs')
+  const samples = []
+  for (let index = 0; index < runs; index += 1) {
+    const { app } = await launchNomiApp({ name: 'text-first-delta-electron', settleMs: 900 })
+    try {
+      samples.push(await app.evaluate(async ({ app: electronApp }, url) => {
+        const nodePath = process.mainModule.require('node:path')
+        const { executeTextTask } = process.mainModule.require(nodePath.join(electronApp.getAppPath(), 'dist-electron', 'textTaskRunner.js'))
+        const started = performance.now()
+        let first = null
+        await executeTextTask({
+          vendor: { key: 'bench', baseUrlHint: url, providerKind: 'openai-compatible', authType: 'bearer' },
+          model: { modelKey: 'bench-model', vendorKey: 'bench', kind: 'text' },
+          apiKey: 'sk-bench', kind: 'chat', request: { kind: 'chat', prompt: '写一句话', extras: {} }, taskId: 'bench-electron',
+          onDelta: () => { if (first === null) first = performance.now() - started },
+          abortSignal: new AbortController().signal,
+        })
+        if (first === null) throw new Error('no delta arrived')
+        return Math.round(first * 10) / 10
+      }, baseURL))
+    } finally {
+      await closeNomiApp(app)
+    }
+  }
+  return samples
 }
 
 /** 假上游放进一个常驻子进程（spawnSync 会挡住本进程的事件循环，上游不能和它同进程）。 */

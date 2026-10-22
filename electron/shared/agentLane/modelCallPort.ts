@@ -30,5 +30,9 @@ export interface ModelCallResult {
 
 export type CallModelOnce = (options: ModelCallOptions) => Promise<ModelCallResult>
 
+/** 预热只装这些协议的实现（每条带一个 SDK，装一条就是一段同步卡顿）：只装用户真接了的那几条。 */
+export type ModelProtocol = NomiModelConfig['kind']
+export type PrewarmModelCall = (protocols: readonly ModelProtocol[]) => Promise<void>
+
 /** 一次性入口的整体兜底到点的错误名（不是存活判据：存活由三相看门狗管）。按名认，不按类（类住在岛上）。 */
 export const MODEL_CALL_CEILING_ERROR = 'ModelCallCeilingError'

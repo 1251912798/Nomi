@@ -14,8 +14,6 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("electron", () => ({
-  // registerTextStreamIpc 顺手挂模型调用核心的预热（等第一扇窗口加载完）；单测里没有窗口，挂上即可。
-  app: { once: () => undefined },
   ipcMain: { handle: (name: string, fn: Handler) => mocks.handlers.set(name, fn) },
   webContents: { fromId: (id: number) => mocks.fromId(id) },
 }));

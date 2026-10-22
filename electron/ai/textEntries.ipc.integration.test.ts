@@ -30,7 +30,7 @@ vi.mock("electron", async () => {
   });
   const event = { sender, senderFrame: { routingId: 1, origin: "app://nomi" } };
   return {
-    app: { once: () => undefined, getPath: () => process.cwd(), getAppPath: () => process.cwd(), on: () => undefined },
+    app: { getPath: () => process.cwd(), getAppPath: () => process.cwd(), on: () => undefined },
     safeStorage: { isEncryptionAvailable: () => false, encryptString: (value: string) => Buffer.from(value), decryptString: (value: Buffer) => value.toString() },
     ipcMain: { handle: (channel: string, fn: Handler) => ipc.handlers.set(channel, fn) },
     webContents: { fromId: (id: number) => (id === sender.id ? sender : undefined), getAllWebContents: () => [sender] },

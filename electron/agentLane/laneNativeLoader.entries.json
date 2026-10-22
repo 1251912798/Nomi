@@ -41,7 +41,7 @@
     "./laneModelCall.mjs": {
       "phase": "use",
       "via": "callModelOnce / prewarmModelCall",
-      "when": "窗口加载完后的空闲预热（modelCallPrewarm，不在打开项目路径上）；或第一次跑文本任务 / 编译接入说明卡时"
+      "when": "有意图时预热（指针移进 / 焦点进文本动作时渲染层空闲回调里经 nomi:tasks:text:prewarm；不在打开项目路径上）；或第一次跑文本任务 / 编译接入说明卡时"
     }
   }
 }

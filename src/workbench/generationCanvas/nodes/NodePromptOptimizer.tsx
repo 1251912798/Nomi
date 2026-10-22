@@ -4,6 +4,7 @@
  * 完成后高亮展示「改了哪些」(diff),用户确认再应用到提示词(creator control:不擅自覆盖)。
  * 复用现成文本流式管线(runWorkbenchTextTaskStream + prompt_refine),不新建改写通道。
  */
+import { TEXT_ACTION_INTENT_PROPS } from '../../api/textActionIntent'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconX } from '@tabler/icons-react'
@@ -124,7 +125,7 @@ export function NodePromptOptimizer({ node, isVideo }: { node: GenerationCanvasN
   return (
     // v1.1（2026-09-11 拍板）：触发器降级成 B 簇里那颗缩小一号的纯 icon（保留现役 NomiLogoMark
     // 实心标记），带文字的旧外观与把自己推到行尾的 `ml-auto` 一起删掉——底栏的行尾只留主行动。
-    <div className={cn('relative inline-flex')}>
+    <div className={cn('relative inline-flex')} {...TEXT_ACTION_INTENT_PROPS}>
       {open ? (
         <div
           className={cn(

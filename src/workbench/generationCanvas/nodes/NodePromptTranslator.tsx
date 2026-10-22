@@ -6,6 +6,7 @@
  * 复用优化器同一条文本管线（getTextBrain + runWorkbenchTextTaskStream + prompt_refine），
  * 不新建通道、不新增 TaskKind（P1）。纯逻辑（方向/引用保护/指令）在 promptTranslate.ts。
  */
+import { TEXT_ACTION_INTENT_PROPS } from '../../api/textActionIntent'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconLanguage } from '@tabler/icons-react'
@@ -115,6 +116,7 @@ export function NodePromptTranslator({
       disabled={empty && !running}
       disabledReason={t('generationCommon.translator.emptyReason')}
       onClick={() => void onClick()}
+      {...TEXT_ACTION_INTENT_PROPS}
     />
   )
 }

@@ -7,5 +7,6 @@ import { vi } from 'vitest';
 vi.mock('../../electron/ai/modelCallBridge', () => ({
   callModelOnce: async (options: Parameters<typeof import('../../electron/agentLane/laneModelCall.mjs')['callModelOnce']>[0]) =>
     (await import('../../electron/agentLane/laneModelCall.mjs')).callModelOnce(options),
-  prewarmModelCall: async () => (await import('../../electron/agentLane/laneModelCall.mjs')).prewarmModelCall(),
+  prewarmModelCall: async (protocols: Parameters<typeof import('../../electron/agentLane/laneModelCall.mjs')['prewarmModelCall']>[0]) =>
+    (await import('../../electron/agentLane/laneModelCall.mjs')).prewarmModelCall(protocols),
 }));

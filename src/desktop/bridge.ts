@@ -261,6 +261,7 @@ export type DesktopBridge = DesktopMediaBridge &
     grantSpend: (payload: { nodeIds: string[]; maxAttemptsPerNode?: number }) => Promise<{ grantId: string }>
     runTextStream: (payload: unknown) => Promise<{ streamId: string }>
     cancelTextStream: (streamId: string) => Promise<unknown>
+    prewarmTextModel?: () => Promise<{ ok: boolean }>
     onTextEvent: (streamId: string, callback: (event: unknown) => void) => () => void
     /** ComfyUI ws 进度桥（P 轨）。旧 preload 可能没有 → 全部可选。 */
     comfyuiWatch?: (payload: { promptId: string; nodeId: string; projectId?: string; taskKind?: string; modelKey?: string | null; vendorKey?: string }) => Promise<{ ok: boolean }>
