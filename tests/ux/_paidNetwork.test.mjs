@@ -106,6 +106,10 @@ describe('openPaidWalk wiring', () => {
     const withDefault = await open({ hostedUploads: true, env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', NOMI_ASSET_RELAY_URL: '' } })
     expect(withDefault.calls.options.env.NOMI_WALK_ALLOW_ORIGINS.split(',')).toEqual([...vendorOnly, new URL(DEFAULT_NOMI_ASSET_RELAY_URL).origin])
     expect(withDefault.paid.walk.report.hostedUploadRelayAllowed).toBe(new URL(DEFAULT_NOMI_ASSET_RELAY_URL).origin)
+  })
+
+  it('hostedUploads on with NOMI_ASSET_RELAY_URL set: the one extra origin is that custom relay', async () => {
+    const vendorOnly = paidWalkAllowlist(catalog, ['apimart'])
     const custom = await open({ hostedUploads: true, env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', NOMI_ASSET_RELAY_URL: 'https://relay.example.test:8443/v1/assets' } })
     expect(custom.calls.options.env.NOMI_WALK_ALLOW_ORIGINS.split(',')).toEqual([...vendorOnly, 'https://relay.example.test:8443'])
   })
