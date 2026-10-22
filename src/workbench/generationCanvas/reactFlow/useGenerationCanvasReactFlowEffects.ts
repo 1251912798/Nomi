@@ -10,11 +10,13 @@ import { toast } from '../../../ui/toast'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { importBrowserAssetsToGenerationCanvas } from '../components/canvasStageDrop'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
+import { collectCanvasOverlayRects } from '../../generation/workspaceBottomDocks'
+import { composerFocusFootprint } from '../nodes/composerCanvasPlacement'
 import { FOCUS_GENERATION_NODE_EVENT, resolveNodeVisualSize } from '../nodes/nodeSizing'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { publishCanvasStageSize } from '../store/canvasVisibleArea'
 import type { GenerationFlowEdge, GenerationFlowNode } from './generationCanvasReactFlowAdapter'
-import { resolveCanvasFocusZoom, resolvePendingCanvasFocus, type PendingCanvasFocus } from './focusViewportRecovery'
+import { resolveCanvasFocusViewport, resolveFreeViewRect, resolvePendingCanvasFocus, type PendingCanvasFocus } from './focusViewportRecovery'
 
 type HostEffectsArgs = {
   animateViewportTo: (zoom: number, offset: { x: number; y: number }, duration?: number) => void
@@ -27,7 +29,8 @@ type HostEffectsArgs = {
   setStageSize: React.Dispatch<React.SetStateAction<{ width: number; height: number }>>
   setLiveViewport: React.Dispatch<React.SetStateAction<{ x: number; y: number; zoom: number }>>
   setFocusFlashNodeId: React.Dispatch<React.SetStateAction<string | null>>
-  zoomRef: React.MutableRefObject<number>
+  /** 对焦不再读它（缩放封顶 100%）；调用方 GenerationCanvasReactFlow.tsx 是 14 天热点文件，待热点解除后一并删除这个字段。 */
+  zoomRef?: React.MutableRefObject<number>
 }
 
 export function useGenerationCanvasReactFlowHostEffects({
@@ -41,12 +44,14 @@ export function useGenerationCanvasReactFlowHostEffects({
   setStageSize,
   setLiveViewport,
   setFocusFlashNodeId,
-  zoomRef,
 }: HostEffectsArgs): void {
   const { t } = useTranslation()
   const setActiveCategoryId = useWorkbenchStore((state) => state.setActiveCategoryId)
   const selectNode = useGenerationCanvasStore((state) => state.selectNode)
   const pendingFocusRef = React.useRef<PendingCanvasFocus | null>(null)
+  // 对焦请求的“门铃”：同分类、节点没变时（再点一次侧栏 / 出成片回来），下面那个 effect 的其它依赖都不变，
+  // 光写 pendingFocusRef 没人来取——对焦请求必须自己触发一次评估。
+  const [focusRequest, setFocusRequest] = React.useState(0)
   const focusFlashTimerRef = React.useRef<number | null>(null)
 
   React.useEffect(() => {
@@ -70,6 +75,7 @@ export function useGenerationCanvasReactFlowHostEffects({
         viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
       }
       pendingFocusRef.current = focus
+      setFocusRequest((count) => count + 1)
       setActiveCategoryId(target.categoryId || 'shots')
       if (select) selectNode(nodeId)
     }
@@ -103,20 +109,20 @@ export function useGenerationCanvasReactFlowHostEffects({
     }, 1_400)
     // 聚焦跳转也走我们自己的调度器：React Flow 的 setCenter({ duration }) 同样是 d3 过渡，
     // 撞上 pane 那一帧 0×0 的 extent 缓存就会算出 NaN 视口，被打断时 promise 也永不结算。
-    const stage = hostRef.current?.getBoundingClientRect()
-    if (stage) {
-      const focusZoom = resolveCanvasFocusZoom(size, stage, zoomRef.current || 1)
-      animateViewportTo(
-        focusZoom,
-        {
-          x: stage.width / 2 - (decision.node.position.x + size.width / 2) * focusZoom,
-          y: stage.height / 2 - (decision.node.position.y + size.height / 2) * focusZoom,
-        },
-        220,
-      )
+    const host = hostRef.current
+    const stage = host?.getBoundingClientRect()
+    if (host && stage) {
+      // 对焦框住的是「节点 + 选中后出现的生成框」，可见区要扣掉浮层（浮动 Agent 窗、迷你画面窗、缩放条、工具条）。
+      const view = resolveFreeViewRect(stage, collectCanvasOverlayRects(host, stage))
+      const next = resolveCanvasFocusViewport({
+        node: { x: decision.node.position.x, y: decision.node.position.y, width: size.width, height: size.height },
+        composer: composerFocusFootprint(decision.node.kind),
+        view,
+      })
+      animateViewportTo(next.zoom, { x: next.x, y: next.y }, 220)
     }
     return
-  }, [activeCategoryId, allNodes, animateViewportTo, cancelViewportAnimation, flow, hostRef, nodes, setFocusFlashNodeId, setLiveViewport, zoomRef])
+  }, [activeCategoryId, allNodes, animateViewportTo, cancelViewportAnimation, flow, focusRequest, hostRef, nodes, setFocusFlashNodeId, setLiveViewport])
 
   React.useEffect(() => () => {
     if (focusFlashTimerRef.current !== null) window.clearTimeout(focusFlashTimerRef.current)
