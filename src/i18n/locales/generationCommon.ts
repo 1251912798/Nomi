@@ -451,6 +451,12 @@ export const zhGenerationCommon = {
         reason: '已经生成，但结果没能取回到本机',
         hint: '服务商那边这一镜已经做完了，是 Nomi 把结果下载回项目这一步没成（地址不让访问、对方拒绝了下载，或者返回的不是能用的文件）。不要重新生成，那会另做一份新的。到任务面板点「重新取回」，Nomi 只会再查一次、再下载一次。具体原因见下方技术详情。',
       },
+      // 已提交、这次没取回（⑬）：查结果 / 读结果 / 下载结果这一次没成，不知道服务商那边做完没有——不说「已经生成」。
+      // 只给「去任务面板重新取回」，绝不给重试：重试 = 再生成一份新的。
+      retrievalIncomplete: {
+        reason: '任务已提交，这次没能取回结果',
+        hint: '这一镜已经交给服务商了，是 Nomi 这一次查结果、读结果或下载结果没成（常见原因：本机网络或代理一时不通、服务商的查询接口报错）。不要重新生成，那会另做一份新的。到任务面板点「重新取回」，Nomi 只会再查一次、再下载一次。具体原因见下方技术详情。',
+      },
       // 本机处理失败（截帧 / 提取深度 / 本地素材复制）：没有服务商、没有模型参与——不说「换模型」，只留重试。
       localProcessing: {
         reason: '本机处理没成功',
@@ -2166,6 +2172,10 @@ export const enGenerationCommon = {
       outputRetrievalFailed: {
         reason: 'Generated, but the result could not be retrieved',
         hint: 'The provider finished this shot; the step that failed is Nomi downloading the result into your project (the address was not allowed, the download was refused, or what came back was not a usable file). Do not generate again — that makes a brand-new one. Open the task panel and click “Retrieve again”: Nomi only checks the task and downloads it once more. The technical details below give the exact reason.',
+      },
+      retrievalIncomplete: {
+        reason: 'Submitted, but the result could not be retrieved this time',
+        hint: 'This shot was already handed to the provider; what failed is Nomi checking the task, reading its result or downloading it this time (usually the local network or proxy dropped for a moment, or the provider’s status endpoint returned an error). Do not generate again — that makes a brand-new one. Open the task panel and click “Retrieve again”: Nomi only checks the task and downloads it once more. The technical details below give the exact reason.',
       },
       localProcessing: {
         reason: 'Local processing failed',

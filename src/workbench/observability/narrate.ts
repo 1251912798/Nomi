@@ -143,6 +143,10 @@ export type GenerationErrorKind =
   // 已生成、取回失败（#975 A2，机器码 NOMI_ERR::output-retrieval-failed::）：结果在服务商那边，丢的只是下载。
   // 与 outbound-blocked 分开：那条的下一步是去看网络；这条覆盖整个确定性取回失败族，下一步只有「重新取回」。
   | 'output-retrieval-failed'
+  // 已提交、这次没取回（机器码 NOMI_ERR::retrieval-query / -parse / -download / -timeout::，⑬ 用户 10-22 拍板）：任务已经交给服务商、
+  // 钱已经花了，是查结果 / 读结果 / 下载结果这一次没成，**不知道**服务商那边做完没有（所以不能说成 output-retrieval-failed 的「已经生成」）。
+  // 以前分类器不认这四个码，落进 unknown，给「可以重试一次」+ 主动作 retry——再生成、再扣一次。下一步只有「重新取回」。
+  | 'retrieval-incomplete'
   // 本机处理失败（机器码 NOMI_ERR::local-processing::）：截帧 / 提取深度 / 本地素材复制——没有服务商参与，所以动作只有「重试」。
   | 'local-processing'
   | 'unknown'
@@ -177,6 +181,7 @@ export const ERROR_KEY_BY_KIND: Record<GenerationErrorKind, string> = {
   'submission-unknown': 'submissionUnknown',
   'submission-not-sent': 'submissionNotSent',
   'output-retrieval-failed': 'outputRetrievalFailed',
+  'retrieval-incomplete': 'retrievalIncomplete',
   'local-processing': 'localProcessing',
   unknown: 'unknown',
 }
@@ -295,6 +300,8 @@ const ACTION_BY_KIND: Record<GenerationErrorKind, GenerationErrorActions> = {
   'submission-not-sent': RETRY_FIRST,
   // 只指路去任务面板（那里有「重新取回」）。绝不给 retry：重试 = 再生成一份、再花一次钱，而这一份已经做好了。
   'output-retrieval-failed': { primary: 'view-task', secondary: null },
+  // 同上：只指路去任务面板「重新取回」。绝不给 retry（= 再生成、再扣一次），也不给换模型（换了也是另一份新的）。
+  'retrieval-incomplete': { primary: 'view-task', secondary: null },
   // 本机处理失败：换模型帮不上忙（没有模型参与），只留重试。
   'local-processing': { primary: 'retry', secondary: null },
   unknown: RETRY_FIRST,
@@ -339,6 +346,8 @@ const VENDOR_SIDE_BY_KIND: Record<GenerationErrorKind, boolean> = {
   'submission-not-sent': false,
   // 失败在 Nomi 取回这一侧（策略 / 对方拒绝下载 / 返回的不是可用文件），不点名服务商「失败了」。
   'output-retrieval-failed': false,
+  // 失败在取回这一侧；服务商原话（如 503「无可用渠道」）照旧由分类器单独给，这里不替服务商定性、不触发「换一家」。
+  'retrieval-incomplete': false,
   // 全程在本机，没有服务商。
   'local-processing': false,
   unknown: false,
