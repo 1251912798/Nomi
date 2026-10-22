@@ -435,6 +435,7 @@ describe("自建中转一致性台架 · 视频生成阶段（认证之后的真
         extras: { modelKey: VIDEO_MODEL_KEY, referenceImages: [firstFrameUrl], duration: 5 },
       } as never,
       operation: mode.create,
+      stage: "create",
     });
 
     const create = createVideoHits();
@@ -471,6 +472,7 @@ describe("自建中转一致性台架 · 变体轴（切档真的换掉线上的
       apiKey: "sk-relay-test",
       request: { kind: "text_to_video", prompt: "a cat", extras: { modelKey: VIDEO_MODEL_KEY, ...extras } } as never,
       operation: mode.create,
+      stage: "create",
     });
     const create = createVideoHits();
     expect(create.length, "生成请求没打到 /v1/video/generations").toBe(1);

@@ -73,19 +73,19 @@ describe("fal queue lifecycle loopback (zero provider spend)", () => {
     const vendor: Vendor = { key: "fal", name: "fal.ai", enabled: true, baseUrlHint: baseUrl, authType: "bearer", authHeader: "Authorization", createdAt: "", updatedAt: "" };
     const request = { kind: taskKind, prompt: "a loopback test", extras: { modelKey, params: { duration: 5, resolution: "768P" } } } as never;
 
-    const created = await executeProfileOperation({ vendor, model, apiKey: "loopback-key", request, operation: mapping.create });
+    const created = await executeProfileOperation({ vendor, model, apiKey: "loopback-key", request, operation: mapping.create, stage: "create" });
     const queued = await buildProfileTaskResult({ response: created.response, mapping, operation: mapping.create, request, taskIdFallback: "", wantedKind: _kind, vendor, model });
     expect(queued.result.status).toBe("queued");
     const providerMeta = { task_id: queued.result.id, query_id: queued.result.id };
 
-    const runningResponse = await executeProfileOperation({ vendor, model, apiKey: "loopback-key", request, operation: mapping.query!, providerMeta });
+    const runningResponse = await executeProfileOperation({ vendor, model, apiKey: "loopback-key", request, operation: mapping.query!, stage: "query", providerMeta });
     const running = await buildProfileTaskResult({ response: runningResponse.response, mapping, operation: mapping.query!, request, taskIdFallback: queued.result.id, wantedKind: _kind, vendor, model });
     expect(running.result.status).toBe("running");
-    const completedResponse = await executeProfileOperation({ vendor, model, apiKey: "loopback-key", request, operation: mapping.query!, providerMeta });
+    const completedResponse = await executeProfileOperation({ vendor, model, apiKey: "loopback-key", request, operation: mapping.query!, stage: "query", providerMeta });
     const completed = await buildProfileTaskResult({ response: completedResponse.response, mapping, operation: mapping.query!, request, taskIdFallback: queued.result.id, wantedKind: _kind, vendor, model });
     expect(completed.result.status).toBe("succeeded");
 
-    const resultResponse = await executeProfileOperation({ vendor, model, apiKey: "loopback-key", request, operation: mapping.result!, providerMeta });
+    const resultResponse = await executeProfileOperation({ vendor, model, apiKey: "loopback-key", request, operation: mapping.result!, stage: "result", providerMeta });
     const result = await buildProfileTaskResult({ response: resultResponse.response, mapping, operation: mapping.result!, request, taskIdFallback: queued.result.id, wantedKind: _kind, vendor, model });
     expect(result.result.status).toBe("succeeded");
     expect(result.result.assets[0]?.providerUrl).toMatch(/^https:\/\/cdn\.example\.test\/asset\./);
