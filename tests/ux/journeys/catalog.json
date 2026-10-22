@@ -164,5 +164,181 @@
         "3": "顺畅"
       }
     }
+  ],
+  "scenarioFields": {
+    "_comment": "场景清单（2026-10-21，I-scorecard）：和 journeys 同住这一份目录，但分开放——journeys 是旧 runner 会执行的，scenarios 里的候选从不被任何 runner 读取。状态只有两档：research-candidate（研究候选，只有来源和假设，没有可重跑的脚本）/ executable（可执行，必须指向 journeys 里带 runner 的旅程 journey，或仓库里存在的走查脚本 walk）。频率证据不知道就写「未知」，不许写「高频」顶替。检查在 scripts/check-feel.mjs → tests/ux/experience/scenarios.mjs。当前活跃条目上限 12（试行）。",
+    "required": [
+      "id",
+      "title",
+      "source",
+      "creator",
+      "moment",
+      "frequencyEvidence",
+      "successEnd",
+      "failureGuard",
+      "status",
+      "owner"
+    ],
+    "status": [
+      "research-candidate",
+      "executable"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "settings-model",
+      "title": "设置页接入一个自己的模型",
+      "source": {
+        "kind": "走查",
+        "ref": "tests/ux/journeys/catalog.json journeys[settings-model]；设计卡 ★4「能力不可用」来源 docs/plan/2026-10-06-node-quick-actions-round2-direction-check.md"
+      },
+      "creator": "新手 / 换了环境的人",
+      "moment": "第一次开始，或上游换了",
+      "frequencyEvidence": "未知（每个新用户必经一次；没有遥测）",
+      "successEnd": "模型出现在可选列表，验证请求通过",
+      "failureGuard": "密钥不回显；失败时输入的连接名和地址保留",
+      "status": "executable",
+      "journey": "settings-model",
+      "owner": "协调会话"
+    },
+    {
+      "id": "agent-panel-tool-call",
+      "title": "Agent 对话完成一次工具调用",
+      "source": {
+        "kind": "走查",
+        "ref": "tests/ux/journeys/catalog.json journeys[agent-panel]"
+      },
+      "creator": "所有创作者",
+      "moment": "让 Agent 代做一件事",
+      "frequencyEvidence": "未知",
+      "successEnd": "回执出现在对话里，且是用户要的那件事",
+      "failureGuard": "不重复调用；中途停下后不重复扣费",
+      "status": "executable",
+      "journey": "agent-panel",
+      "owner": "协调会话"
+    },
+    {
+      "id": "canvas-image-generate",
+      "title": "画布上生成一张图",
+      "source": {
+        "kind": "走查",
+        "ref": "tests/ux/journeys/catalog.json journeys[canvas-image]"
+      },
+      "creator": "所有创作者",
+      "moment": "制作中，要一张画面",
+      "frequencyEvidence": "未知",
+      "successEnd": "图落在发起生成的那个节点上",
+      "failureGuard": "花钱由人确认；失败后节点内容不丢",
+      "status": "executable",
+      "journey": "canvas-image",
+      "owner": "协调会话"
+    },
+    {
+      "id": "empty-node-next-step",
+      "title": "新建空节点后知道下一步，浏览时又不被说明挤满",
+      "source": {
+        "kind": "用户原话",
+        "ref": "docs/plan/2026-10-11-contextual-node-guidance.md（2026-10-11「去实现吧，考虑各种节点类型等等」；2026-10-12 反馈「浏览态 Icon 太小」）"
+      },
+      "creator": "所有创作者",
+      "moment": "搭画布、新建节点后",
+      "frequencyEvidence": "未知（每次新建节点都经过；没有按节点类型的计数）",
+      "successEnd": "单选时看到下一步；点空白浏览分组时只认类型图标",
+      "failureGuard": "浏览时第一次点击不打开文件框；业务状态（排队、报错）不被藏起来",
+      "status": "executable",
+      "walk": "tests/ux/contextual-node-guidance.walk.mjs",
+      "owner": "协调会话"
+    },
+    {
+      "id": "rewrite-shorten-accept-undo",
+      "title": "选中一段、让 AI 缩短、接受、再撤回",
+      "source": {
+        "kind": "调研报告",
+        "ref": "R-write2 W1c 选区改稿行；独立验收 V-rewrite（均协调本地报告，仓库外）"
+      },
+      "creator": "写作者（已有稿返改）",
+      "moment": "已有稿返改",
+      "frequencyEvidence": "未知",
+      "successEnd": "只有目标段变短，一步撤回回到改写前",
+      "failureGuard": "切到别的文稿不改到别篇；撤回不连带删掉改写前刚输入的字",
+      "status": "research-candidate",
+      "note": "走查脚本 tests/ux/design-lab-creation-ai-rewrite.walk.mjs 在 #1264 分支上，合入后把 status 改 executable 并填 walk。",
+      "owner": "协调会话"
+    },
+    {
+      "id": "import-existing-script",
+      "title": "接住已有稿并开始制作",
+      "source": {
+        "kind": "调研报告",
+        "ref": "R-write2 §3.6「导入优先」、C1/C3/C7 案例（协调本地报告，仓库外）"
+      },
+      "creator": "接稿的广告 / 短片 / 改编作者",
+      "moment": "开工",
+      "frequencyEvidence": "未知（案例覆盖，不是占比）",
+      "successEnd": "原文保留、无需重抄；拆错能纠正，拒绝结构化也能继续",
+      "failureGuard": "再次导入不重复建镜、不覆盖已做结果；原文与 AI 补写可区分",
+      "status": "research-candidate",
+      "owner": "协调会话"
+    },
+    {
+      "id": "keep-good-line-fix-picture",
+      "title": "保住满意的台词，只修错误的画面",
+      "source": {
+        "kind": "调研报告",
+        "ref": "R-write2 §2.4（C4 PaperTok 研究，论文 §6.3.1）（协调本地报告，仓库外）"
+      },
+      "creator": "广告 / 解说作者",
+      "moment": "生成后复核",
+      "frequencyEvidence": "未知（来自科研传播研究，不代表影视解说多数）",
+      "successEnd": "台词文字不变，只重新选画面",
+      "failureGuard": "换画面不隐式重写已确认的口播",
+      "status": "research-candidate",
+      "owner": "协调会话"
+    },
+    {
+      "id": "reorder-scenes-recheck-shots",
+      "title": "改场的顺序后，核对已有镜头",
+      "source": {
+        "kind": "调研报告",
+        "ref": "R-write2 C2/C6 返改段、改稿到分镜的交接（协调本地报告，仓库外）"
+      },
+      "creator": "剧情 / 漫剧作者",
+      "moment": "制作中返工",
+      "frequencyEvidence": "未知",
+      "successEnd": "镜头身份和已有结果保持，关系不确定的地方明示",
+      "failureGuard": "不静默覆盖已生成的镜头",
+      "status": "research-candidate",
+      "owner": "协调会话"
+    },
+    {
+      "id": "serial-episodes-shared-character",
+      "title": "连做两集，共用已定好的角色",
+      "source": {
+        "kind": "调研报告",
+        "ref": "R-nav §3.1「分集」（协调本地报告，仓库外）"
+      },
+      "creator": "连载创作者",
+      "moment": "换集",
+      "frequencyEvidence": "未知（R-nav 推测高频，没有人数比例）",
+      "successEnd": "新集用上同一个角色，旧集不被动",
+      "failureGuard": "复制和引用能分清；跨集复制不当共享角色",
+      "status": "research-candidate",
+      "owner": "协调会话"
+    },
+    {
+      "id": "browse-away-during-long-task",
+      "title": "长任务进行中去看别的页，再回来取结果",
+      "source": {
+        "kind": "调研报告",
+        "ref": "R-nav「换页前发起任务、换页后查看结果」一行（协调本地报告，仓库外）"
+      },
+      "creator": "所有创作者",
+      "moment": "等待时",
+      "frequencyEvidence": "未知",
+      "successEnd": "结果回到发起它的对象，不抢当前正在做的操作",
+      "failureGuard": "取消后迟到的结果不可写入；任一方案改错目标即不通过",
+      "status": "research-candidate",
+      "owner": "协调会话"
+    }
   ]
 }
