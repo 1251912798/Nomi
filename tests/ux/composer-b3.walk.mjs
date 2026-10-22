@@ -14,6 +14,7 @@ const zh = (key) => uiText('zh-CN', key)
 import { chromium } from 'playwright'
 import { spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import { createHash } from 'node:crypto'
 import path from 'node:path'
 import { REPO_ROOT } from './design-lab/labStates.mjs'
 import { assertLabPortOwnership, labPortFor } from './design-lab/labServer.mjs'
@@ -45,6 +46,7 @@ if (spawnSync('node', ['scripts/build-tailwind.mjs'], { cwd: REPO_ROOT, stdio: '
 assertLabPortOwnership(ROLE)
 const vite = spawn(process.execPath, [path.join(REPO_ROOT, 'node_modules/vite/bin/vite.js'), '--host', HOST, '--port', String(PORT), '--strictPort'], { cwd: REPO_ROOT, stdio: ['ignore', 'ignore', 'pipe'] })
 vite.stderr?.on('data', (chunk) => process.stderr.write(`[vite] ${chunk}`))
+await waitForServer(BASE)
 const browser = await chromium.launch({ headless: true })
 const pageErrors = []
 
@@ -68,6 +70,29 @@ const box = (page, selector, index = 0) => page.evaluate(([sel, i]) => {
 }, [selector, index])
 const text = (page, selector, index = 0) => page.evaluate(([sel, i]) => document.querySelectorAll(sel)[i]?.textContent?.trim() ?? null, [selector, index])
 const count = (page, selector) => page.evaluate((sel) => document.querySelectorAll(sel).length, selector)
+const PANEL_MODE = '[data-agent-parameter-panel] [data-agent-generation-mode]'
+/** 真点：打开参数面板 → 点方式 → 收起（和用户同一条手势）。 */
+async function pickMode(page, label) {
+  await page.locator(`${CARD} [data-parameter-summary]`).click()
+  await page.waitForSelector(PANEL_MODE, { timeout: stationTimeout() })
+  await page.locator(`${PANEL_MODE} [role="radio"]`, { hasText: label }).first().click()
+  await page.keyboard.press('Escape')
+}
+/** 面板里当前高亮的方式（必须和节点实际的方式一致）。 */
+async function activeMode(page) {
+  await page.locator(`${CARD} [data-parameter-summary]`).click()
+  await page.waitForSelector(PANEL_MODE, { timeout: stationTimeout() })
+  const label = await page.locator(`${PANEL_MODE} [role="radio"][aria-checked="true"]`).first().textContent()
+  await page.keyboard.press('Escape')
+  return label?.trim() ?? null
+}
+/** 真点：打开模型菜单 → 点某个模型。 */
+async function swapModel(page, name) {
+  // 有的格自带打开的模型菜单（B3j），别再点一下把它关掉。
+  if ((await page.locator('[role="option"]:visible').count()) === 0) await page.locator(`${FOOTER} [data-bar-segment="model-params"] [role="combobox"], ${FOOTER} [data-bar-segment="model-params"] button[aria-haspopup]`).first().click()
+  await page.locator('[role="option"]:visible', { hasText: name }).first().click()
+}
+const refTiles = (page) => count(page, '[data-reference-row] [data-asset-tile]')
 
 async function shot(page, screen, state, name) {
   if (!WITH_EVIDENCE) return
@@ -266,6 +291,33 @@ try {
     await context.close()
   }
 
+  // ── 转换（真点击）：参考 ↔ 首尾帧往返、换模型（上传的图 / 连线的图）——不是看摆好的终态，而是真点过去 ──
+  {
+    const { page, context } = await open(B3, 'b3s-video-three-uploads')
+    check('board:ComposerB3/swap.roundtrip.before', (await refTiles(page)) === 3)
+    await pickMode(page, '首尾帧')
+    const mid = await page.evaluate(() => ({ slots: document.querySelectorAll('[data-asset-slot] [data-asset-tile]').length, unused: document.querySelectorAll('[data-reference-unused]').length }))
+    await pickMode(page, '参考')
+    const back = await refTiles(page)
+    await pickMode(page, '首尾帧')
+    await pickMode(page, '参考')
+    check('board:ComposerB3/swap.roundtrip.click', mid.slots === 2 && mid.unused === 1 && back === 3 && (await refTiles(page)) === 3, JSON.stringify({ mid, back }))
+    await shot(page, B3, 'b3s-video-three-uploads', 'B3s-roundtrip-zh-light')
+    await context.close()
+  }
+  for (const [name, state] of [['Wan 2.7', 'b3j-model-menu'], ['Veo 3.1', 'b3j-model-menu'], ['Wan 2.7', 'b3j-swap-edges'], ['Veo 3.1', 'b3j-swap-edges']]) {
+    const { page, context } = await open(B3, state)
+    await swapModel(page, name)
+    await page.waitForSelector('[data-reference-row]', { timeout: stationTimeout() })
+    const tiles = await refTiles(page)
+    const mode = await activeMode(page)
+    const tail = (await text(page, '[data-reference-tail]')) ?? ''
+    // 两张图都带过来了（显示在新模型的槽里），面板高亮的方式不是「看不见的文生」，也不是借来的别的方式
+    check(`board:ComposerB3/swap.model.click.${state}.${name.replace(/\W/g, '')}`, tiles === 2 && Boolean(mode) && !/文生/.test(mode ?? ''), JSON.stringify({ tiles, mode, tail }))
+    await shot(page, B3, state, `B3j-swap-${name.replace(/\W/g, '')}-${state === 'b3j-swap-edges' ? 'edges' : 'upload'}-zh-light`)
+    await context.close()
+  }
+
   // ── B3o 渠道直选 ────────────────────────────────────────────────
   {
     const { page, context } = await open(B3, 'b3o-model-menu-channel')
@@ -363,10 +415,19 @@ try {
             return Boolean(v && c && v.bottom <= c.top + 1)
           })(),
           paramsReadable: [...(bar?.querySelectorAll('[data-parameter-summary]') ?? [])].every((el) => el.getBoundingClientRect().width >= 60),
+          // 字不截断（样张 E1a 320 档原注）：条里没有任何被省略号截掉的字
+          truncated: [...(bar?.querySelectorAll('*') ?? [])].filter((el) => getComputedStyle(el).textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth).map((el) => el.textContent?.trim()),
+          generateText: generate?.textContent?.trim() ?? '',
         }
       })
-      check(`board:ComposerB3/host.storyboard-row.refs-above.${width}.${lang}`, facts.above && facts.chips.length >= 1 && facts.chips.every((c) => c.h === 28 && c.name) && facts.arrow && facts.generateInsideBar && !facts.clipped && facts.paramsReadable && (width >= 520 || (facts.density === 'compact' && facts.thumbAbove)), JSON.stringify(facts))
+      check(`board:ComposerB3/host.storyboard-row.refs-above.${width}.${lang}`, facts.above && facts.chips.length >= 1 && facts.chips.every((c) => c.h === 28 && c.name) && facts.arrow && facts.generateInsideBar && !facts.clipped && facts.paramsReadable && facts.truncated.length === 0 && (width >= 520 || (facts.density === 'compact' && facts.thumbAbove)), JSON.stringify(facts))
+      // 英文图真是英文（此前分镜实验室屏不认 ?lang=en，英文图和中文图逐字节相同，几条「英文」断言是空跑）
+      check(`board:ComposerB3/host.storyboard-row.lang.${width}.${lang}`, lang === 'en' ? facts.generateText === uiText('en', 'storyboardEditor.frame.generate') : facts.generateText === zh('storyboardEditor.frame.generate'), facts.generateText)
       await shot(page, 'storyboard-reuse', `sbl-e1a-${width}`, `E1a-${width}-${lang}-light`)
+      if (lang === 'en' && WITH_EVIDENCE) {
+        const hash = (name) => createHash('sha256').update(fs.readFileSync(path.join(EVIDENCE_DIR, name))).digest('hex')
+        check(`board:ComposerB3/host.storyboard-row.en-differs.${width}`, hash(`E1a-${width}-en-light.png`) !== hash(`E1a-${width}-zh-light.png`), '英文图不许和中文图逐字节相同')
+      }
       await context.close()
     }
   }
@@ -386,18 +447,23 @@ try {
     await context.close()
   }
 
-  // ── 中 / 英 × 明 / 暗：每个格各截一遍（证据）+ 英文不漏中文 ──────────
-  if (WITH_EVIDENCE) {
+  // ── 中 / 英 × 明 / 暗：每个格各查一遍（EVIDENCE=1 时顺手截图）：英文不漏中文、底栏字不被省略号截掉、参考行没有多出的滚动条 ──────────
+  {
     const ids = ['b3a-video-empty', 'b3b-video-params', 'b3c-video-three-refs', 'b3d-video-first-last', 'b3e-video-ambiguous', 'b3f-video-switch-first-last', 'b3g-image-empty', 'b3h-image-three-refs', 'b3i-image-no-ref-model', 'b3j-model-menu', 'b3j-after-swap', 'b3o-model-menu-channel', 'b3o-params-provider', 'b3p-channel-missing-mode', 'b3p-channel-missing-none', 'b3q-image-quantity', 'e1d-node-error']
     const short = (id) => id.replace(/^(b3[a-z]|e1d)-.*/, (m, p) => p).toUpperCase() + '-' + id.replace(/^(b3[a-z]|e1d)-/, '')
     for (const id of ids) {
       for (const [lang, langParam] of [['zh', ''], ['en', '&lang=en']]) {
         for (const scheme of ['light', 'dark']) {
-          if (lang === 'zh' && scheme === 'light') continue // 已在上面截过
           const { page, context } = await open(B3, id, `${langParam}&scheme=${scheme}`)
           const out = path.join(EVIDENCE_DIR, `${short(id)}-${lang}-${scheme}.png`)
-          if (/params|menu/.test(id)) await page.screenshot({ path: out, clip: { x: 0, y: 0, width: 900, height: 720 }, animations: 'disabled' })
-          else await page.locator(`[data-design-lab-shot="${id}"]`).screenshot({ path: out, animations: 'disabled' })
+          if (WITH_EVIDENCE && !(lang === 'zh' && scheme === 'light')) { // 中文浅色已在上面各格里截过
+            if (/params|menu/.test(id)) await page.screenshot({ path: out, clip: { x: 0, y: 0, width: 900, height: 720 }, animations: 'disabled' })
+            else await page.locator(`[data-design-lab-shot="${id}"]`).screenshot({ path: out, animations: 'disabled' })
+          }
+          const clipped = await page.evaluate(() => [...document.querySelectorAll('.generation-canvas-v2-node__composer [data-node-composer-footer] *')].filter((el) => getComputedStyle(el).textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth).map((el) => el.textContent?.trim()))
+          check(`board:ComposerB3/bar.no-truncation.${id}.${lang}.${scheme}`, clipped.length === 0, JSON.stringify(clipped))
+          const scroller = await page.evaluate(() => { const el = document.querySelector('[data-node-composer-references]'); return el ? { scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, overflowY: getComputedStyle(el).overflowY } : null })
+          if (scroller && id !== 'b3r-video-30-refs') check(`board:ComposerB3/ref.row.no-scrollbar.${id}.${lang}.${scheme}`, scroller.scrollHeight <= scroller.clientHeight, JSON.stringify(scroller))
           if (lang === 'en' && id === 'b3c-video-three-refs') {
             check('board:ComposerB3/en.reference-state', /3 references/.test((await text(page, '[data-reference-tail]')) ?? '') && /Connected text/.test((await page.evaluate(() => document.querySelector('[data-connected-text-chip]')?.textContent ?? ''))), '英文：参考 3 张含连线 + Connected text')
           }

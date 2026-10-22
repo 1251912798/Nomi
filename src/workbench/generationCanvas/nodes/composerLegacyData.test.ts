@@ -14,7 +14,7 @@ import { resolveReferenceInfos } from '../../assets/referenceNames'
 import { currentReferenceMedia } from './mentionCandidates'
 import { archetypeModeChoices } from './controls/channelModeReach'
 import { applyArchetypeModeSwitch, currentArchetypeMode } from './controls/archetypeMeta'
-import { carryUploadedImagesAcrossModes } from './controls/carryReferencesAcrossModes'
+import { reassignUploadedImages } from './controls/reassignUploadedImages'
 import { presentGenerationModes, textModeToReturnTo } from './controls/generationModePresentation'
 
 const spec = resolveArchetypeForModel({ modelKey: 'seedance-2', vendorKey: 'apimart', meta: {} } as never)!
@@ -58,7 +58,7 @@ describe('旧项目的节点在 B3 下', () => {
   })
 
   it('参数一个不丢：切方式只动方式（和被收窄的选项），比例 / 时长 / 变体原样', () => {
-    const carried = carryUploadedImagesAcrossModes(legacyOmni.meta!, currentArchetypeMode(spec, legacyOmni.meta), spec.modes.find((m) => m.id === 'firstlast')!)
+    const carried = reassignUploadedImages(legacyOmni.meta!, spec.modes.find((m) => m.id === 'firstlast')!).patch
     const next = applyArchetypeModeSwitch({ ...legacyOmni.meta!, ...carried }, spec, 'firstlast')
     expect(next).toMatchObject({ aspect_ratio: '9:16', duration: 8, archetype: { id: 'seedance-2', modeId: 'firstlast', variantId: 'fast' } })
     expect(next.referenceImageUrls).toEqual([])

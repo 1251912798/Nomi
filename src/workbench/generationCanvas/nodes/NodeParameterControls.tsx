@@ -80,7 +80,7 @@ import { translateModelDisplayText } from '../../../i18n/modelDisplayText'
 import { modeTransportFor, specializeArchetypeForVariant } from '../../../../electron/shared/modelArchetypes'
 import ModeBar from './controls/ModeBar'
 import { modePresentationTexts, presentGenerationModes, useRevertToTextMode } from './controls/generationModePresentation'
-import { carryUploadedImagesAcrossModes } from './controls/carryReferencesAcrossModes'
+import { reassignUploadedImages } from './controls/reassignUploadedImages'
 import AssetReference, { type AssetSlot } from '../../assets/AssetReference'
 import { parameterChipOptions } from './primaryParameterChips'
 import QuantitySelect from './controls/QuantitySelect'
@@ -245,14 +245,17 @@ export default function NodeParameterControls({
   const handleModelChange = (value: string, vendor?: string) => {
     const state = useGenerationCanvasStore.getState()
     const current = latestNode(node.id) || node
-    updateNode(node.id, buildNodeModelChangePatch({
+    const change = buildNodeModelChangePatch({
       node: current,
       nodes: state.nodes,
       edges: state.edges,
       modelOptions,
       value,
       vendor,
-    }))
+    })
+    updateNode(node.id, change)
+    // 新模型放不下的上传图不静默丢：说一句有几张没带过来。
+    if (change.uploadsDropped > 0) reportFeedback(t('generationCommon.composerB3.modelSwapDropped', { count: change.uploadsDropped }))
   }
 
   useNodeModelAutoSelect({
@@ -348,15 +351,13 @@ export default function NodeParameterControls({
     updateMeta(patch)
   }
 
-  // 切生成方式：只改 modeId，参考值全局保留（切回照片还在）；互斥发生在传输投影。
-  // 上传 / 素材库放进来的图跟着走（参考 ↔ 首尾帧）；连线来的图是边，自己按槽落（见 carryReferencesAcrossModes）。
+  // 切生成方式：改 modeId，并把上传 / 素材库放进来的图搬进目标方式的槽（参考 ↔ 首尾帧往返不丢，见 reassignUploadedImages）；
+  // 连线来的图是边，自己按槽落。
   const handleModeSwitch = (modeId: string) => {
     if (!archetype) return
     const latest = getLatestMeta()
-    const spec = effectiveArchetype ?? archetype
-    const from = currentArchetypeMode(spec, latest)
-    const to = spec.modes.find((mode) => mode.id === modeId)
-    const carried = to && from.id !== to.id ? carryUploadedImagesAcrossModes(latest, from, to) : null
+    const to = (effectiveArchetype ?? archetype).modes.find((mode) => mode.id === modeId)
+    const carried = to ? reassignUploadedImages(latest, to).patch : null
     updateNode(node.id, { meta: applyArchetypeModeSwitch(carried ? { ...latest, ...carried } : latest, archetype, modeId) })
     setOpenSlotKey('')
   }

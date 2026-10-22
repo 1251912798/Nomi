@@ -9,7 +9,8 @@ import { peekAllProjectAssets } from '../../../assets/useAllProjectAssets'
 import { resolveReferenceInfos } from '../../../assets/referenceNames'
 import type { AssetKind } from '../../../assets/assetTypes'
 import type { AssetSlot } from '../../../assets/AssetReference'
-import { readArchetypeArray, type ArchetypeArraySlot } from './archetypeMeta'
+import type { ArchetypeArraySlot } from './archetypeMeta'
+import { uploadedImageUrls } from './reassignUploadedImages'
 import { resultPreviewUrl } from './parameterControlModel'
 
 export function computeReferenceRowModel(args: {
@@ -35,12 +36,10 @@ export function computeReferenceRowModel(args: {
     })
   const shownUrls = new Set(Object.values(assetValuesByKey).flat().filter((value): value is string => Boolean(value)))
   const framesOnly = imageUrlSlots.some((slot) => slot.group === 'first_frame') && arraySlots.length === 0
-  // 首尾帧方式里，别处放着的图（连线多出来的、参考数组里没搬走的）用不上：淡显成「未用到」，切回参考还在。
-  const unusedUrls = refsUnsupported
-    ? Array.from(new Set(inboundImageUrls))
-    : framesOnly
-      ? Array.from(new Set([...inboundImageUrls, ...readArchetypeArray(meta, 'referenceImageUrls')])).filter((url) => !shownUrls.has(url))
-      : []
+  // 别处放着、此刻用不上的图（首尾帧方式里的参考数组、参考方式里放不下的首 / 尾帧键、模型根本不收图时全部上传的图）：
+  // 淡显成「未用到」，切回去还在——绝不能「既不显示也不发送」。连线多出来的图只在首尾帧 / 不收参考时算。
+  const stored = uploadedImageUrls(meta)
+  const unusedUrls = Array.from(new Set(refsUnsupported || framesOnly ? [...inboundImageUrls, ...stored] : stored)).filter((url) => !shownUrls.has(url))
   const referenceInfos = args.showReferences
     ? resolveReferenceInfos({
       nodeId: node.id,

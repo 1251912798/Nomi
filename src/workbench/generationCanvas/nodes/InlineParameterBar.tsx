@@ -105,6 +105,11 @@ type InlineParameterBarProps = {
    * 宽差近一倍，定宽要么英文截断、要么中文留一截空白）。 */
   summaryWidth?: number | { hug: number }
   /**
+   * 放不下就整颗换行、一个字都不截（分镜行最窄一档，E1a 的 320）：模型钮和摘要钮不设最大宽度，横排里是同一条可换行的 flex 行的成员。
+   * 不传 = 原样（画布一行、贴文字宽最宽 240）。
+   */
+  wrap?: boolean
+  /**
    * 身份行两个下拉的浮层落点。
    *
    * 画布上不传 = Mantine 默认 portal 到 body（下拉要能盖出节点卡外面）。对话流里的卡不一样：
@@ -195,6 +200,7 @@ export default function InlineParameterBar({
   layout = 'inline',
   panelMode = 'portal',
   summaryWidth,
+  wrap = false,
   portalTarget,
   inlinePanelSlot,
   modeChoices,
@@ -506,8 +512,8 @@ export default function InlineParameterBar({
   }
 
   // 默认贴文字宽（最宽 240）：B3 摘要印「比例 · 清晰度 · 时长」，定宽 110 会把清晰度截成「720…」。
-  const resolvedSummaryWidth = typeof summaryWidth === 'object' ? undefined : summaryWidth ?? (stacked ? 150 : undefined)
-  const summaryMaxWidth = typeof summaryWidth === 'object' ? summaryWidth.hug : summaryWidth === undefined && !stacked ? 240 : undefined
+  const resolvedSummaryWidth = wrap || typeof summaryWidth === 'object' ? undefined : summaryWidth ?? (stacked ? 150 : undefined)
+  const summaryMaxWidth = wrap ? undefined : typeof summaryWidth === 'object' ? summaryWidth.hug : summaryWidth === undefined && !stacked ? 240 : undefined
   // chips 形态的横排里身份两枚**不缩**：模型名本身已由 triggerMaxWidth 截到 150px，再让它跟着挤，
   // 结果是「宽度不够时模型名先被榨没、chip 却一颗不少」——而模型是这一行的一等决策（§1.5.4）。
   // 横排 chips 放不下时**换行**：身份两枚与参数 chip 是同一条可换行 flex 行的直接成员（下面 identityRow 用 `contents`），
@@ -516,7 +522,7 @@ export default function InlineParameterBar({
   // 省略号、hover 的 title 是全名。变体是短枚举（「变体 5.0」），和分镜底栏的模式 / 时长同一条规则
   // （2026-10-06 前分镜旧底栏的让位表同一条规则：短枚举从不缩）——2026-09-21 走查：1100×720 英文下它被压到值区只剩
   // 5px，「Variant 5.0」读成「Variant E」，缩它省下的几像素换来的是一颗读不出的芯片。
-  const modelChipClass = chipsMode && !stacked ? 'shrink-0' : undefined
+  const modelChipClass = (chipsMode || wrap) && !stacked ? 'shrink-0' : undefined
   const variantChipClass = stacked ? undefined : 'shrink-0'
   const identityRow = (
     // 2026-09-22 总合并裁决：身份两枚谁让宽由 **#834 的规则**说了算（只有模型 chip `shrink-0`，
@@ -524,12 +530,12 @@ export default function InlineParameterBar({
     // 它想修的「EN 下 Kling 3.0 压住 16:9」由 #834 的 `modelChipClass` / `variantChipClass`
     // 两条一起覆盖；本分支留下的是**判据**——参数条一行里相邻两颗控件不许相压
     // （`tests/ux/design-lab-ask-card-in-panel.walk.mjs` 的重叠断言，原样保留、照跑）。
-    <div className={cn(chipsMode && !stacked ? 'contents' : 'flex min-w-0 items-center gap-2', stacked && 'w-full')}>
+    <div className={cn(chipsMode && !stacked ? 'contents' : 'flex min-w-0 items-center gap-1.5', stacked && 'w-full')}>
       {!hideModel ? (
         <NomiSelect
           ariaLabel={t('generationCommon.parameters.model')}
           placeholder={t('generationCommon.parameters.selectModel')}
-          triggerMaxWidth={stacked ? 132 : 150}
+          triggerMaxWidth={stacked ? 132 : wrap ? 260 : summaryWidth === undefined ? 200 : 150}
           className={modelChipClass}
           value={modelSelect.modelValue}
           options={leadingModelOption ? [{ value: '', label: leadingModelOption.label }, ...modelSelect.modelOptions] : modelSelect.modelOptions}
@@ -643,7 +649,7 @@ export default function InlineParameterBar({
       )}
       style={stacked ? { width: '100%' } : summaryMaxWidth !== undefined ? { maxWidth: summaryMaxWidth } : { width: resolvedSummaryWidth }}
     >
-      <span className="min-w-0 truncate" style={{ maxWidth: stacked ? 'calc(100% - 18px)' : 240 }}>
+      <span className="min-w-0 truncate" style={{ maxWidth: stacked ? 'calc(100% - 18px)' : wrap ? 'none' : 240 }}>
         {pillText || t('generationCommon.parameters.parameters')}
       </span>
       <IconChevronDown
@@ -680,7 +686,7 @@ export default function InlineParameterBar({
         'min-w-0',
         // chips 横排放不下就**换行**：每颗 chip（含模型 / 变体）整颗留在原处或整颗挪到下一行，
         // 不缩、不叠、不滚动。summary 横排只有一颗 pill，保持一行（画布节点长相不变）。
-        stacked ? 'flex flex-col items-stretch gap-1.5' : cn('flex items-center gap-2', chipsMode && 'flex-wrap'),
+        stacked ? 'flex flex-col items-stretch gap-1.5' : cn('flex items-center', chipsMode || wrap ? 'flex-wrap gap-2' : 'gap-1.5'),
       )}
     >
       {stacked ? identityRow : <div className="contents">{identityRow}</div>}

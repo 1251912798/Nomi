@@ -44,7 +44,11 @@ describe('existing slot add buttons remain the only library entrances', () => {
     {name:'empty first and last frame',slots:[single('first'),single('last')],values:{},adds:2,entry:true},
     {name:'first frame already filled',slots:[single('first'),single('last')],values:{first:'a.jpg'},adds:1,entry:true},
     {name:'filled single source',slots:[single('source')],values:{source:'a.jpg'},adds:0,entry:false},
-  ])('$name has one add entry plus the empty cells only',({slots,values,adds,entry})=>{
+    // 首尾帧两格都满：「+」仍在、灰显（悬停写已放满），和参考数组满额同一套（验收阻断 4）
+    {name:'both frames filled',slots:[single('first'),single('last')],values:{first:'a.jpg',last:'b.jpg'},adds:0,entry:false,present:true},
+  ])('$name has one add entry plus the empty cells only',(row)=>{
+    const {slots,values,adds,entry}=row
+    const present='present' in row&&row.present
     const html=renderToStaticMarkup(React.createElement(AssetReference,{
       slots,valuesByKey:values as Record<string,string|string[]>,projectId:null,openSlotKey:'',uploadingSlotKey:'',
       onTogglePicker:vi.fn(),onPick:vi.fn(),onUpload:vi.fn(),onRemove:vi.fn(),onPickOnCanvas:vi.fn(),
@@ -53,6 +57,7 @@ describe('existing slot add buttons remain the only library entrances', () => {
     expect(html).not.toContain('data-reference-add=')
     expect(html.match(/data-asset-add-tile="true"/g)?.length??0).toBe(adds)
     expect(addEntryEnabled(html)).toBe(entry)
+    if (present) expect(html).toMatch(/<button[^>]*data-reference-add-entry="true"[^>]*disabled/)
   })
 })
 

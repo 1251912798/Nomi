@@ -1216,7 +1216,7 @@
     },
     {
       "id": "swap.after",
-      "label": "B3j 换之后：换成没有首尾帧的模型，两格变成两张缩略图 + 「参考图 2 张」，不加任何说明（状态演示）",
+      "label": "B3j 换之后：换模型时图跟着走——首尾帧（上传的 / 连线的）换到 Wan 2.7、Veo 3.1 等，两张图落在新模型的槽里（两张缩略图 + 「参考图 2 张」），不加说明，节点不掉成文生",
       "change": "new",
       "candidates": [
         "482-div",
@@ -1251,7 +1251,7 @@
         "zh-en",
         "dark"
       ],
-      "note": "用户 10-18：换模型不加说明；换模型后新参数 / default 生效、清旧参数（MODEL-07）按现状保留",
+      "note": "用户 10-18：换模型不加说明；换模型后新参数 / default 生效、清旧参数（MODEL-07）按现状保留；10-22 验收后：走真点击（swap.model.click.*），换模型和手动换方式走同一个搬运函数 reassignUploadedImages；新模型接不下的上传图给提示，不静默丢",
       "assertion": "board:ComposerB3/swap.after"
     },
     {
@@ -1927,7 +1927,7 @@
     },
     {
       "id": "keep.reference.capacity",
-      "label": "保留：单类 / 总量上限与 pending 边占位（满额「+」隐藏、候选类型变淡、总满 role=status）",
+      "label": "保留：单类 / 总量上限与 pending 边占位（满额「+」灰显、悬停写已放满，候选类型变淡、总满 role=status）",
       "change": "keep-as-is",
       "candidates": [],
       "status": "in-progress",

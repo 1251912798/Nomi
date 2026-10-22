@@ -60,13 +60,22 @@ export function presentGenerationModes(args: {
   const modeOf = (id: string): ArchetypeMode | undefined => archetype.modes.find((mode) => mode.id === id)
   // 「参考」排第一（默认），其余按档案声明顺序。
   const bodyChoices = visibleChoices.filter((choice) => modeOf(choice.id)?.intent !== 'text')
-  const withBody = [...bodyChoices.filter((choice) => modeOf(choice.id)?.intent === 'character'), ...bodyChoices.filter((choice) => modeOf(choice.id)?.intent !== 'character')]
+  const isReferenceMode = (id: string): boolean => {
+    const kinds = new Set(modeOf(id)?.slots.map((slot) => slot.kind))
+    return kinds.has('image_ref') && !kinds.has('first_frame') && !kinds.has('source_video')
+  }
+  const withBody = [...bodyChoices.filter((choice) => isReferenceMode(choice.id)), ...bodyChoices.filter((choice) => !isReferenceMode(choice.id))]
   if (withBody.length < 2) return { where: 'none' }
+  // 按方式的**实际能力**标，不按意图词猜：槽是首 / 尾帧 → 首帧 / 首尾帧；槽是参考图数组 → 参考；认不出的（视频编辑等）用档案真名。
+  // （只看意图词 `single` 会把 Veo 3.1 的 3 张参考、Seedance 2 apimart 的 9 张都标成「首帧」——用户想用一张图当首帧，
+  //  发出去的却是参考图驱动，生成类型不对，钱照扣。）
   const labelOf = (choice: ArchetypeModeChoice): string => {
     const mode = modeOf(choice.id)
-    if (mode?.intent === 'character') return texts.reference
-    if (mode?.intent === 'firstlast') return texts.firstLast
-    if (mode?.intent === 'single') return texts.firstFrame
+    const kinds = new Set(mode?.slots.map((slot) => slot.kind))
+    if (kinds.has('source_video')) return choice.vendorTerm
+    if (kinds.has('first_frame') && kinds.has('last_frame')) return texts.firstLast
+    if (kinds.has('first_frame')) return texts.firstFrame
+    if (kinds.has('image_ref')) return texts.reference
     return choice.vendorTerm
   }
   const rawLabels = withBody.map(labelOf)
@@ -74,13 +83,13 @@ export function presentGenerationModes(args: {
   const labels = rawLabels.map((label, index) => (rawLabels.indexOf(label) === index && rawLabels.lastIndexOf(label) === index ? label : withBody[index]!.vendorTerm))
   const choices = withBody.map((choice, index): PanelModeChoice => {
     const mode = modeOf(choice.id)
-    const limits = mode?.intent === 'character' ? referenceLimits(mode) : {}
+    const limits = mode && isReferenceMode(choice.id) ? referenceLimits(mode) : {}
     const hasLimit = limits.images !== undefined || limits.videos !== undefined || limits.audios !== undefined
     return { id: choice.id, label: labels[index]!, ...(hasLimit ? { limitTip: texts.limitTip(limits) } : {}) }
   })
   // 当前是文生那个看不见的方式（空节点的默认）：高亮「参考」——没放参考就是文字生成，和「参考」里一张都没放等价。
   const activeIsVisible = choices.some((choice) => choice.id === activeModeId)
-  const defaultVisible = withBody.find((choice) => modeOf(choice.id)?.intent === 'character') ?? withBody[0]!
+  const defaultVisible = withBody.find((choice) => isReferenceMode(choice.id)) ?? withBody[0]!
   return { where: 'panel', choices, activeId: activeIsVisible ? activeModeId : defaultVisible.id }
 }
 

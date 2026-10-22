@@ -158,6 +158,7 @@ export const zhAssetLibrary = {
   mentionDropUpload: '松开上传',
   addNamed: '添加{{label}}',
   refRow: {
+    addFull: '已放满，先删一张再添加',
     sourceCanvas: '画布',
     sourceLibrary: '素材库',
     sourceUpload: '上传',
@@ -356,6 +357,7 @@ export const enAssetLibrary = {
   mentionDropUpload: 'Drop Upload',
   addNamed: 'Add {{label}}',
   refRow: {
+    addFull: 'Full — remove one to add another',
     sourceCanvas: 'Canvas node',
     sourceLibrary: 'Library',
     sourceUpload: 'Upload',

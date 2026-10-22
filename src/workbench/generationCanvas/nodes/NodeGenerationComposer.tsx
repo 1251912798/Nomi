@@ -243,7 +243,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
   const { orderedReferenceUrls: mentionCandidates, orderedMediaReferences, mentionSearch, onMentionSelect } =
     useNodeMentionSource(node, reportFeedback, writeAccess, graph)
   // 提示词里的引用块写「小图 + 名字」（不写图1、图2）：名字是当前这批参考的投影，重名加「·2」。
-  const referenceNames = React.useMemo(() => {
+  const computedReferenceNames = React.useMemo(() => {
     const infos = resolveReferenceInfos({
       nodeId: node.id,
       // 当前方式里的参考 + 提示词里写着的引用（换到首尾帧后，参考数组里的图不在当前槽里，句中的小块仍要有名字）。
@@ -256,6 +256,11 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
     })
     return Object.fromEntries([...infos.values()].map((info) => [info.url, info.chipName]))
   }, [graph, node.id, node.prompt, orderedMediaReferences, t])
+  // 名字表内容没变就沿用同一个对象：换方式时参考集合换了新数组，名字表内容却一样——对象一换，提示词里每枚引用块都会白白重渲一遍
+  // （30 张参考切方式时，这一项是提示词编辑器 ~16ms 的来源）。
+  const referenceNamesKey = JSON.stringify(computedReferenceNames)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const referenceNames = React.useMemo(() => computedReferenceNames, [referenceNamesKey])
   // 连入的文字是一条连线接进来的：小签尾巴的 × = 断开这条线（和参考小图的 × 同一个动作）。
   const disconnectTextInput = React.useCallback((sourceId: string) => {
     const edge = graph.edges.find((candidate) => candidate.source === sourceId && candidate.target === node.id)
@@ -487,7 +492,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
           `data-node-composer-footer` / `data-bar-segment` 是走查锚点，好断言「单行 + 段序没漂」。 */}
       {!readOnly && <div data-node-composer-footer className={cn('flex items-center gap-2 mt-auto pt-1 shrink-0 w-full flex-nowrap')}>
         {/* 第一段：模型芯片 + 变体 + 参数区（画布=摘要 pill，见 composerHeadlineSummary；付费卡=chips）。 */}
-        <div data-bar-segment="model-params" className={cn('flex min-w-0 shrink items-center')}>
+        <div data-bar-segment="model-params" className={cn('flex min-w-0 flex-1 items-center')}>
           <NodeParameterControls
             node={node}
             section="parameters"
@@ -503,8 +508,8 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
               : {})}
           />
         </div>
-        {/* 右半边从这里开始：把三个提示词钮、数量、↑ 推到卡片右侧。 */}
-        <span className="min-w-0 flex-1" aria-hidden />
+        {/* 右半边（三个提示词钮、数量、↑）靠卡片右侧：第一段 flex-1 吃掉剩余宽度，不再另放一个占 8px 间距的空垫片
+            ——英文「Standard」那一档正是被这 8px 挤得模型名和摘要各被截掉几像素（验收 V-b1a 建议 1）。 */}
         {/* B 簇（三个提示词钮）。它和数量之间的分隔线由数量自己带（只有数量存在才有）。 */}
         {hasPromptTools ? (
           <NodePromptToolCluster ariaLabel={t('generationCommon.composerBarV1.promptTools')}>

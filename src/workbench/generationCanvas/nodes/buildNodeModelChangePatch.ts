@@ -2,7 +2,8 @@ import type { ModelOption } from '../../../config/models'
 import { findModelOptionByIdentifier } from '../adapters/modelOptionsAdapter'
 import type { GenerationCanvasEdge, GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { isImageLikeGenerationNodeKind, isVideoLikeGenerationNodeKind } from '../model/generationNodeKinds'
-import { resolveModeForConnectedReferences } from '../agent/referenceEdgeCapability'
+import { resolveModeForConnectedReferences, resolveModeForReferenceDemand } from '../agent/referenceEdgeCapability'
+import { reassignUploadedImages, uploadedImageDemands } from './controls/reassignUploadedImages'
 import { replaceCustomCapabilityContractMeta } from '../../../../electron/shared/modelArchetypes'
 import {
   buildModelControls,
@@ -11,7 +12,7 @@ import {
   removePreviousControlParams,
   videoAspectDefaultPatch,
 } from './controls/parameterControlModel'
-import { applyArchetypeModeSwitch } from './controls/archetypeMeta'
+import { applyArchetypeModeSwitch, currentArchetypeMode } from './controls/archetypeMeta'
 import { resolveArchetypeForOption, resolveRenderedControls } from './nodeModelArchetype'
 import { collectInputAspectRatios, preferredVideoAspect } from './aspectRatio'
 import { projectParameterReferenceSlots } from '../model/parameterReferenceSlots'
@@ -39,7 +40,7 @@ export function buildNodeModelChangePatch({
   modelOptions,
   value,
   vendor,
-}: BuildNodeModelChangePatchInput): { meta: Record<string, unknown>; changeset: NodeModelChangeSet } {
+}: BuildNodeModelChangePatchInput): { meta: Record<string, unknown>; changeset: NodeModelChangeSet; uploadsDropped: number } {
   const currentMeta = node.meta || {}
   const currentAddress = nodeSelectedModelAddress(currentMeta)
   const currentOption = findModelOptionByIdentifier(
@@ -92,6 +93,7 @@ export function buildNodeModelChangePatch({
   }
 
   nextMeta = projectParameterReferenceSlots(nextMeta, nextOption?.meta)
+  let uploadsDropped = 0
   if (!nextArchetype) {
     delete nextMeta.archetype
   } else {
@@ -101,7 +103,16 @@ export function buildNodeModelChangePatch({
       edges as GenerationCanvasEdge[],
     )
     if (promotedModeId) nextMeta = applyArchetypeModeSwitch(nextMeta, nextArchetype, promotedModeId)
+    // 上传 / 素材库放进来的图（它们的家是旧模型的槽键，不会自己跟过来）：对**新档案**算「该落在哪个方式」（不能借
+    // 节点身上还没换掉的旧档案算），再把图搬进那个方式的槽——换模型和手动换方式走同一个搬运函数。
+    else {
+      const uploadMode = resolveModeForReferenceDemand(nextArchetype, nextMeta, uploadedImageDemands(nextMeta))
+      if (uploadMode) nextMeta = applyArchetypeModeSwitch(nextMeta, nextArchetype, uploadMode)
+    }
+    const placed = reassignUploadedImages(nextMeta, currentArchetypeMode(nextArchetype, nextMeta))
+    if (placed.patch) nextMeta = { ...nextMeta, ...placed.patch }
+    uploadsDropped = placed.dropped
   }
 
-  return { meta: nextMeta, changeset }
+  return { meta: nextMeta, changeset, uploadsDropped }
 }

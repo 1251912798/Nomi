@@ -95,6 +95,18 @@ export const COMPOSER_B3_STATES: readonly LabState[] = [
     render: stage({ kind: 'video', model: 'wan', modeId: 'ref', edgeRefs: [{ name: '海边清晨' }, { name: '海边傍晚' }], prompt: '镜头缓慢推近，海面从清晨的薄雾过渡到傍晚的暖光。' }),
   },
   {
+    id: 'b3s-video-three-uploads',
+    name: 'B3 · 参考 3 张（都是上传的）· 来回切首尾帧的往返走查夹具',
+    source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light',
+    render: stage({ kind: 'video', model: 'seedance', modeId: 'omni', arrayRefs: ['海边清晨', '海边傍晚', '树林'], prompt: `${mention('海边清晨')} 慢慢过渡到 ${mention('海边傍晚')}，树影按 ${mention('树林')}。` }),
+  },
+  {
+    id: 'b3j-swap-edges',
+    name: 'B3j · 换模型前 · 首尾帧是两条连线（换模型的走查夹具，连线来的图自己按槽落）',
+    source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light', capture: 'viewport',
+    render: stage({ kind: 'video', model: 'seedance', modeId: 'firstlast', edgeRefs: [{ name: '海边清晨', mode: 'first_frame' }, { name: '海边傍晚', mode: 'last_frame' }], prompt: '镜头缓慢推近，海面从清晨的薄雾过渡到傍晚。' }),
+  },
+  {
     id: 'b3o-model-menu-channel',
     name: 'B3o · 模型菜单 · 渠道直选（同模型多家直接点小签）',
     source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light', capture: 'viewport',

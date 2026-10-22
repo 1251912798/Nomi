@@ -866,6 +866,7 @@ export const zhGenerationCommon = {
   // A 类（决定出什么/花多少）留底栏；B 类（帮我写提示词）收成提示词框右上角一簇纯 icon；锁回节点浮条。
   composerB3: {
     generateTip: '生成',
+    modelSwapDropped: '新模型放不下，有 {{count}} 张参考图没有带过来',
     quantityImage: '{{count}} 张',
     quantityVideo: '{{count}} 个',
     quantity: '数量',
@@ -2570,6 +2571,7 @@ export const enGenerationCommon = {
   },
   composerB3: {
     generateTip: 'Generate',
+    modelSwapDropped: 'The new model cannot hold {{count}} of the reference images, so they were not carried over',
     quantityImage: '×{{count}}',
     quantityVideo: '×{{count}}',
     quantity: 'Quantity',

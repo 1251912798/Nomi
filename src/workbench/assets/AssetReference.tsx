@@ -147,11 +147,11 @@ export default function AssetReference({
           title={disabled ? disabledReason : totalFull ? capacityMessage : undefined}
           onClick={() => onPickOnCanvas?.(slots)} />
       </div>
-      {plusKey || disabled || arraySlots.length > 0 ? <div className="relative shrink-0">
+      {plusKey || disabled || arraySlots.length > 0 || labelSingles ? <div className="relative shrink-0">
         <AssetActionTile
           data-reference-add-entry="true"
           aria-label={t('assetLibrary.refRow.addMenu')}
-          title={disabled ? disabledReason : !plusKey && capacityMessage ? capacityMessage : t('assetLibrary.refRow.addMenu')}
+          title={disabled ? disabledReason : !plusKey ? capacityMessage || t('assetLibrary.refRow.addFull') : t('assetLibrary.refRow.addMenu')}
           disabled={disabled || !plusKey}
           selected={Boolean(plusKey) && openSlotKey === plusKey}
           onClick={() => plusKey && onTogglePicker(plusKey)}
@@ -197,7 +197,7 @@ export default function AssetReference({
                 ? <AssetTile {...tileProps(url, slot.accept, slot.label)} onRemove={() => onRemove(slot, 0)} dimmed={disabled} />
                 : <AssetActionTile data-asset-add-tile="true" aria-label={t('assetLibrary.addNamed', { label: slot.label })} selected={isOpen} disabled={disabled}
                   onClick={() => onTogglePicker(slot.key)}><IconPlus size={20} stroke={1.6} aria-hidden /></AssetActionTile>}
-              {labelSingles ? <span data-asset-slot-label="true" className="whitespace-nowrap text-caption leading-none text-nomi-ink-60">{label}</span> : null}
+              {labelSingles ? <span data-asset-slot-label="true" className="whitespace-nowrap text-caption leading-4 text-nomi-ink-60">{label}</span> : null}
               {isOpen && plusKey !== MERGED_ARRAY_KEY ? (
                 <AssetPickerPopover onClose={() => onTogglePicker(slot.key)}>
                   <AssetPicker
@@ -249,7 +249,7 @@ export default function AssetReference({
       {(unusedUrls ?? []).map((url) => (
         <div key={`unused-${url}`} data-reference-unused="true" className="flex w-10 shrink-0 flex-col items-start gap-1">
           <AssetTile {...tileProps(url, 'image', t('assetLibrary.referenceImage'))} dimmed />
-          {disabled ? null : <span className="whitespace-nowrap text-caption leading-none text-nomi-ink-60">{t('assetLibrary.refRow.unused')}</span>}
+          {disabled ? null : <span className="whitespace-nowrap text-caption leading-4 text-nomi-ink-60">{t('assetLibrary.refRow.unused')}</span>}
         </div>
       ))}
       {tailContent ? (

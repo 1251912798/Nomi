@@ -141,6 +141,11 @@ export function archetypeModeSlots(mode: ArchetypeMode): ImageUrlSlot[] {
   })
 }
 
+/** 首 / 尾帧的两个上传键（与档案无关：所有模型共用 firstFrameUrl / lastFrameUrl），清空 / 暂存别处来的图用。 */
+export function frameUrlSlots(): ImageUrlSlot[] {
+  return Object.values(FRAME_SLOT_FLAT).flatMap((flat) => (flat ? [{ key: flat.urlKey, label: '', group: flat.group }] : []))
+}
+
 export type ArchetypeArraySlot = {
   metaKey: string
   label: string

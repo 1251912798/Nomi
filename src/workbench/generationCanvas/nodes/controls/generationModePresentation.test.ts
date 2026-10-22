@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveArchetypeForModel } from '../../../../../electron/shared/modelArchetypes'
+import { MODEL_ARCHETYPES, resolveArchetypeForModel } from '../../../../../electron/shared/modelArchetypes'
 import { currentArchetypeMode } from './archetypeMeta'
 import { archetypeModeChoices } from './channelModeReach'
 import { presentGenerationModes, textModeToReturnTo } from './generationModePresentation'
@@ -64,4 +64,33 @@ describe('输入没了回到文生', () => {
   it('首尾帧是用户特意选的，空了也不收回', () => expect(back('seedance-2', 'firstlast', false)).toBeNull())
   it('图片改图方式没图 → 回文生图', () => expect(back('gpt-image-2', 'i2i', false)).toBe('t2i'))
   it('没有文生方式的模型不动', () => expect(back('happyhorse', 'edit', false)).toBe('t2v'))
+})
+
+describe('方式名按槽的实际能力标（遍历全部档案）', () => {
+  const T = { reference: '参考', firstLast: '首尾帧', firstFrame: '首帧', limitTip: () => '' }
+  const rows = MODEL_ARCHETYPES.flatMap((spec) => {
+    const result = presentGenerationModes({ archetype: spec, visibleChoices: archetypeModeChoices(spec), activeModeId: spec.defaultModeId ?? spec.modes[0]!.id, kind: 'video', texts: T })
+    return result.where === 'panel' ? result.choices.map((choice) => ({ spec, choice, mode: spec.modes.find((mode) => mode.id === choice.id)! })) : []
+  })
+  const kindsOf = (mode: { slots: readonly { kind: string }[] }) => new Set(mode.slots.map((slot) => slot.kind))
+
+  it('标成「首帧」的方式，槽一定有首帧、没有尾帧；标成「首尾帧」的两个都有；标成「参考」的有参考图数组、没有首帧', () => {
+    expect(rows.length).toBeGreaterThan(20)
+    for (const { spec, choice, mode } of rows) {
+      const kinds = kindsOf(mode)
+      const where = `${spec.id}:${mode.id}`
+      if (choice.label === mode.vendorTerm) continue // 认不清的方式回到档案真名，档案真名恰好叫「首帧」不是本规则管的
+      if (choice.label === '首帧') expect(kinds.has('first_frame') && !kinds.has('last_frame'), where).toBe(true)
+      if (choice.label === '首尾帧') expect(kinds.has('first_frame') && kinds.has('last_frame'), where).toBe(true)
+      if (choice.label === '参考') expect(kinds.has('image_ref') && !kinds.has('first_frame'), where).toBe(true)
+    }
+  })
+
+  it('点名过的几个「多张参考图」方式不再叫首帧', () => {
+    const labelOf = (specId: string, modeId: string) => rows.find((row) => row.spec.id === specId && row.mode.id === modeId)?.choice.label
+    for (const [specId, modeId] of [['veo-3.1', 'reference'], ['grok-imagine-1.5-video', 'i2v'], ['kling-3.0', 'i2v'], ['wan-2.7', 'i2v']] as const) {
+      const label = labelOf(specId, modeId)
+      if (label !== undefined) expect(label, `${specId}:${modeId}`).not.toBe('首帧')
+    }
+  })
 })
