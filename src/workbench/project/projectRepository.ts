@@ -113,10 +113,14 @@ function summaryCoverFields(cover: ProjectCover): Pick<WorkbenchProjectSummary, 
   }
 }
 
-export function listLocalProjects(): WorkbenchProjectSummary[] {
+/**
+ * 项目列表摘要的唯一读面（异步）。桌面端走主进程的异步摘要读口，渲染层不再 sendSync 干等主进程扫完全库。
+ * 浏览器预览（无桌面桥）读 localStorage，同样以 Promise 返回，调用方只有一种写法。
+ */
+export async function listLocalProjects(): Promise<WorkbenchProjectSummary[]> {
   const desktop = getDesktopBridge()
   if (desktop) {
-    return (desktop.projects.list() as WorkbenchProjectSummary[]).sort((a, b) => b.updatedAt - a.updatedAt)
+    return ((await desktop.projects.listAsync()) as WorkbenchProjectSummary[]).sort((a, b) => b.updatedAt - a.updatedAt)
   }
   // 封面永远从 record 内容现场派生（与桌面 main list 同语义）；持久化 summary 里的缩略图
   // 字段只在 record 读不出来时兜底——避免陈旧封面 URL（尤其视频 url 混进 <img>）钉死在列表里。

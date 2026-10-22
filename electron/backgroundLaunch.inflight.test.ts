@@ -7,7 +7,8 @@ async function load(parts: { tasks?: boolean; exports?: number; runs?: string[];
   vi.doMock("electron", () => ({ app: { dock: undefined }, BrowserWindow: class {} }));
   vi.doMock("./tasks/taskCache", () => ({ hasInFlightTasks: () => parts.tasks ?? false }));
   vi.doMock("./export/exportJobs", () => ({ activeExportCount: () => parts.exports ?? 0 }));
-  vi.doMock("./projects/repository", () => ({ listProjects: () => [{ id: "p1" }] }));
+  vi.doMock("./runtimePaths", () => ({ getWorkspaceRepositoryDeps: () => ({ settingsRoot: "unused", defaultProjectsRoot: "unused" }) }));
+  vi.doMock("./workspace/workspaceRegistry", () => ({ listRegisteredProjectIds: () => ["p1"] }));
   vi.doMock("./productionRun/productionRunRuntime", () => ({
     getProductionRunService: () => {
       if (parts.throwRuns) throw new Error("not ready");

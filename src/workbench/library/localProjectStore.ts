@@ -45,41 +45,38 @@ function sortProjectSummaries(items: LocalProjectSummary[]): LocalProjectSummary
   return [...items].sort((left, right) => right.updatedAt - left.updatedAt)
 }
 
-function publishLocalProjectRecord(record: LocalProjectRecord): void {
-  const summary = toProjectSummary(record)
+/**
+ * 改列表缓存的唯一写口。缓存是热的（页面已经读过一次）就**同步**改：SWR 里同一个 key 的并发修改
+ * 只认最后一个，异步的改法会让紧挨着的两次发布（新建后立刻保存）互相覆盖、丢一条。
+ * 缓存是冷的才去读一遍现有列表再改（异步，一次性，读完后缓存就热了）。
+ */
+function updateLocalProjectsCache(apply: (items: LocalProjectSummary[]) => LocalProjectSummary[]): void {
   void mutate<LocalProjectSummary[]>(
     LOCAL_PROJECTS_SWR_KEY,
-    (current) => {
-      const items = Array.isArray(current) ? current : listProjectRecords()
-      const index = items.findIndex((project) => project.id === summary.id)
-      if (index < 0) return sortProjectSummaries([summary, ...items])
-      const next = [...items]
-      next[index] = summary
-      return sortProjectSummaries(next)
-    },
+    (current) => (Array.isArray(current) ? apply(current) : listProjectRecords().then(apply)),
     { revalidate: false },
   )
+}
+
+function publishLocalProjectRecord(record: LocalProjectRecord): void {
+  const summary = toProjectSummary(record)
+  updateLocalProjectsCache((items) => {
+    const index = items.findIndex((project) => project.id === summary.id)
+    if (index < 0) return sortProjectSummaries([summary, ...items])
+    const next = [...items]
+    next[index] = summary
+    return sortProjectSummaries(next)
+  })
 }
 
 function unpublishLocalProject(projectId: string): void {
-  void mutate<LocalProjectSummary[]>(
-    LOCAL_PROJECTS_SWR_KEY,
-    (current) => {
-      const items = Array.isArray(current) ? current : listProjectRecords()
-      return items.filter((project) => project.id !== projectId)
-    },
-    { revalidate: false },
-  )
-}
-
-export function listLocalProjects(): LocalProjectSummary[] {
-  return listProjectRecords()
+  updateLocalProjectsCache((items) => items.filter((project) => project.id !== projectId))
 }
 
 export type UseLocalProjectsResult = {
   projects: LocalProjectSummary[]
   /**
-   * 读取失败（fetcher 抛，桌面端 `desktop.projects.list()` 是会抛的）。非 null 时 `projects`
+   * 读取失败（fetcher 抛，桌面端 `desktop.projects.listAsync()` 是会 reject 的）。非 null 时 `projects`
    * 是 fallback `[]`——那是「读不到」不是「一个都没有」，调用方必须先看这个字段再决定渲染空态，
    * 否则读取失败会被冒充成首启空库引导屏（用户以为项目全没了）。
    */
