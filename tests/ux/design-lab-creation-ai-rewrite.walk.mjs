@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { REPO_ROOT } from './design-lab/labStates.mjs'
 import { walkDesignLabScreen } from './design-lab/walkScreen.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const OUT_DIR = path.join(REPO_ROOT, 'tests/ux/shots/design-lab-creation-ai-rewrite')
 const TARGET_ZH = '她盯着纸条看了很久，才慢慢展开。'
@@ -93,6 +94,33 @@ async function liveJourney(page, record) {
   await page.locator('[data-rewrite-status="result"]').waitFor()
   expect(record, (await text()).includes(TARGET_ZH), '↻ 重来的时候原文被动了')
   await page.keyboard.press('Escape')
+
+  // ⑦ 切文稿：另一篇文稿的正文和这一篇一模一样（编辑器照旧复用、正文没变，文档本身不发任何事务）。
+  //    真实下拉切过去：改写条必须消失、两篇文稿都没被改写、看得到「文稿已切换，这次改写没有写入」。
+  //    守的是 WorkbenchEditor 里「换文稿 → 通知插件作废会话」那段接线：单测自己模拟切换，覆盖不到它（V-rewrite 第 2 轮 S3）。
+  await page.evaluate(async () => {
+    const { useWorkbenchStore } = await import('/src/workbench/workbenchStore.ts')
+    const state = useWorkbenchStore.getState()
+    const source = state.workbenchDocuments[0]
+    window.__rewriteSwitchBefore = JSON.stringify(source.contentJson)
+    useWorkbenchStore.setState({ workbenchDocuments: [source, { ...structuredClone(source), id: 'rewrite-draft-copy', title: 'rewrite copy' }] })
+  })
+  await selectParagraph()
+  await page.locator('.workbench-selection-popover__tool--ai').click()
+  await page.locator('.workbench-ai-rewrite-bar').getByRole('button', { name: '缩短' }).click()
+  await page.locator('[data-rewrite-status="result"]').waitFor()
+  await page.locator('[data-creation-document-switcher]').click()
+  await page.getByRole('menuitemradio', { name: 'rewrite copy', exact: true }).click()
+  await page.locator('[data-creation-document-switcher]').filter({ hasText: 'rewrite copy' }).waitFor()
+  expect(record, await page.locator('.workbench-ai-rewrite-bar').count() === 0, '切到正文相同的另一篇文稿后，改写条还在（旧会话没有作废）')
+  expect(record, await page.locator('[data-rewrite-action]').count() === 0, '切文稿后段尾的 ✓ ✕ 还在')
+  expect(record, await page.getByText(uiText('zh-CN', 'creationAi.rewrite.documentSwitched')).count() > 0, '切文稿后没有看到「文稿已切换，这次改写没有写入」的提示')
+  const unchanged = await page.evaluate(async () => {
+    const { useWorkbenchStore } = await import('/src/workbench/workbenchStore.ts')
+    return useWorkbenchStore.getState().workbenchDocuments.map((doc) => JSON.stringify(doc.contentJson) === window.__rewriteSwitchBefore)
+  })
+  expect(record, unchanged.length === 2 && unchanged.every(Boolean), `切文稿后有文稿被改写了：${JSON.stringify(unchanged)}`)
+  await shot('live-07-switched')
 }
 
 fs.mkdirSync(OUT_DIR, { recursive: true })
