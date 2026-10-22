@@ -13,7 +13,7 @@
 // 两道都由 referenceSentWithinInUse.property.test.ts 钉住（全部档案 × 每个方式，中转 / APIMart 真请求体）。
 import { firstString, isJsonRecord, type JsonRecord } from "../jsonUtils";
 import { readParameterReferenceSlotsContract, readSelectedComfyReferenceContract, type ParameterReferenceSelection } from "./parameterReferenceContract";
-import { GENERIC_REFERENCE_KEYS } from "../shared/contracts/referenceKeys";
+import { GENERIC_REFERENCE_KEYS } from "../shared/modelArchetypes/referenceKeys";
 
 function stringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];

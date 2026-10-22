@@ -16,7 +16,7 @@
   "scope_paths": [
     "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
     "electron/catalog/archetypeInput.ts",
-    "electron/shared/contracts/referenceKeys.ts",
+    "electron/shared/modelArchetypes/referenceKeys.ts",
     "electron/runtime.ts",
     "electron/tasks/referenceResidueGuard.ts"
   ],
@@ -73,7 +73,7 @@
     },
     {
       "kind": "read",
-      "path": "electron/shared/contracts/referenceKeys.ts",
+      "path": "electron/shared/modelArchetypes/referenceKeys.ts",
       "symbol": "GENERIC_REFERENCE_KEYS"
     },
     {
@@ -125,7 +125,7 @@
       "responsibility": "主进程契约断言：带档案投影的请求，通用参考键里不在 archetypeInput 的地址剥掉并交给开发态诊断"
     },
     {
-      "path": "electron/shared/contracts/referenceKeys.ts",
+      "path": "electron/shared/modelArchetypes/referenceKeys.ts",
       "symbol": "GENERIC_REFERENCE_KEYS",
       "responsibility": "通用参考键全集，渲染层清除、ComfyUI 参数契约过滤、主进程剥除共用一张表"
     }
@@ -176,7 +176,7 @@
     "artifacts": [
       "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
       "electron/catalog/archetypeInput.ts",
-      "electron/shared/contracts/referenceKeys.ts",
+      "electron/shared/modelArchetypes/referenceKeys.ts",
       "electron/runtime.ts",
       "electron/tasks/referenceResidueGuard.ts"
     ]

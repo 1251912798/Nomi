@@ -60,7 +60,7 @@ import {
 import { parseVendorErrorFromMessage } from './vendorErrorIpc'
 import { collectLocalAssetUrls } from '../../../../electron/catalog/assetLocalization'
 import { readParameterReferenceContract } from '../../../../electron/catalog/parameterReferenceContract'
-import { GENERIC_REFERENCE_KEYS } from '../../../../electron/shared/contracts/referenceKeys'
+import { GENERIC_REFERENCE_KEYS } from '../../../../electron/shared/modelArchetypes/referenceKeys'
 import { isTerminalTaskStatus } from '../../../../electron/shared/taskStatus'
 
 // 重导出：实现已拆到 catalogTaskResolve（节点→vendor/model/kind 选择）与
