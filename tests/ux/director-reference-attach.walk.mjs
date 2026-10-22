@@ -22,11 +22,13 @@ import { fileURLToPath } from 'node:url'
 import { launchNomiApp, currentCatalogVersion } from './_launchApp.mjs'
 import { createBlankProject } from '../../evals/lib/isoApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { ensureAgentPanelOpen, newProjectEntry } from './_shell.mjs'
 import { compileDirectorPlan } from '../../src/workbench/generationCanvas/nodes/director/model/compiler/directorPlanCompiler.ts'
 import { SEEDANCE_2_CREATE_OP, SEEDANCE_2_QUERY_OP } from '../../electron/catalog/kieSeedance.ts'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+// NOMI_WALK_PAID_LIKE=1：照付费脚本的样子走——Agent 面板开着、点 ↑ 只用真鼠标（不退到 DOM 点击），并量「点击 → 确认框可见」的毫秒数与按钮被谁盖着（协调 10-22 查付费样本点 ↑ 没反应）。
+const PAID_LIKE = process.env.NOMI_WALK_PAID_LIKE === '1'
 const lang = process.env.NOMI_WALK_LANG === 'en' ? 'en' : 'zh-CN'
 const langDir = lang === 'en' ? 'en' : 'zh'
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/director-reference-attach', langDir)
@@ -153,6 +155,7 @@ try {
   await newProjectEntry(win).waitFor({ timeout: stationTimeout({ operations: 4 }) })
   await createBlankProject(win, projectsDir)
   await win.getByRole('button', { name: lang === 'en' ? 'Generate' : '生成', exact: true }).first().click({ timeout: stationTimeout({ operations: 2 }) })
+  if (PAID_LIKE) await ensureAgentPanelOpen(win)
   await win.waitForFunction(() => Boolean(window.__nomiCanvasStore), null, { timeout: stationTimeout({ operations: 2 }) })
 
   // 导演节点 + 三个视频镜头（A 无槽模型 / B 有槽模型 / C 有槽模型 + 用户自己的一条参考视频）。预演先指向 A。
@@ -204,9 +207,21 @@ try {
   }, { director: ids.director, target: targetId })
   const spendAndCapture = async (nodeId, label) => {
     const before = wire.length
-    await clickOrDom(win.locator(`[data-node-id="${nodeId}"] button[data-bar-segment="generate"]`).first())
+    const generateButton = win.locator(`[data-node-id="${nodeId}"] button[data-bar-segment="generate"]`).first()
+    let clickedAt = Date.now()
+    if (PAID_LIKE) {
+      const hit = await generateButton.evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        const top = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+        return { rect: [Math.round(rect.x), Math.round(rect.y), Math.round(rect.width), Math.round(rect.height)], viewport: [innerWidth, innerHeight], disabled: element.disabled, hitIsButton: Boolean(top && (top === element || element.contains(top))), hitElement: top ? `${top.tagName.toLowerCase()}.${String(top.className).slice(0, 60)}` : null, zoom: document.querySelector('[data-canvas-zoom-percent]')?.textContent ?? null }
+      })
+      report.latency = { ...(report.latency ?? {}), [label]: { hit } }
+      clickedAt = Date.now()
+      await generateButton.click({ timeout: stationTimeout({ operations: 2 }), noWaitAfter: true }) // 只用真鼠标：点不到就红
+    } else await clickOrDom(generateButton)
     const dialog = win.locator('div.fixed.inset-0').filter({ hasText: lang === 'en' ? /Start generating|Generate/ : /开始生成/ }).last()
-    await dialog.waitFor({ timeout: stationTimeout({ operations: 1 }) })
+    await dialog.waitFor({ timeout: PAID_LIKE ? stationTimeout({ turns: 1 }) : stationTimeout({ operations: 1 }) })
+    if (PAID_LIKE) { report.latency[label].dialogMs = Date.now() - clickedAt; console.log(`  · ${label}：点击 → 确认框可见 ${report.latency[label].dialogMs} ms`) }
     await shot(`${label}-spend-confirm`)
     await dialog.getByRole('button', { name: lang === 'en' ? /^Generate$/ : /^生成$/ }).click()
     await waitFor(`${label}：假上游收到请求`, () => wire.length > before, 60_000)

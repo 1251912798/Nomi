@@ -16,6 +16,9 @@
 // 花钱后：节点恰好一次提交、结果带供应商任务号、落地的 mp4 用 ffprobe 量过；证据目录里留着：预演 mp4 路径、成片路径、截图，
 // 供协调**肉眼对比**「成片的运镜是不是照预演」（这一步是人判，脚本不判画面）。
 //
+// 零花费探测模式（NOMI_PAID_PROBE_DIALOG=1，协调 10-22 加）：照常走到点 ↑，然后只量「从点击到确认框可见」多少毫秒（最多等 3 分钟），
+// 每 5 秒截一张图、读一次节点状态 / 按钮是否禁用 / 按钮中心点此刻被哪个元素盖着；框出现后截图、点「取消」、退出。**绝不点生成。**
+//
 // 凭据与护栏：全部走 tests/ux/_paidRun.mjs 的 openPaidWalk（CI 拒跑、没有 NOMI_SPEND_OK=1 拒跑、构建产物过期拒跑、
 // 出网只放行授权供应商、跑完删凭据副本）；key 只从环境变量读，不进报告 / 日志 / 截图。
 import { clickOrFail, expect, proveProbe } from './_assert.mjs'
@@ -103,8 +106,54 @@ try {
   walk.report.preCheck = { previewUrl: preview.videoUrl, previewSeconds: preview.durationSeconds, referenceVideoUrls: refs, promptHasMention: true }
 
   // ── 花钱：按节点 ↑（托管披露确认框出现就按「生成」同意）──
-  await clickOrFail(win.locator(`[data-node-id="${ids.shot}"] ${NODE_GENERATE}`).first(), '节点底栏的 ↑（生成）', { noWaitAfter: true })
+  const generateButton = win.locator(`[data-node-id="${ids.shot}"] ${NODE_GENERATE}`).first()
+  /** 点之前 / 之后各量一次：按钮在不在视口里、禁没禁用、中心点上此刻是不是按钮自己（被别的元素盖着 = 真鼠标点不到它）。 */
+  const readButtonState = () => generateButton.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const top = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+    const describe = (el) => (el ? `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)}${el.getAttribute('aria-label') ? ` [${el.getAttribute('aria-label')}]` : ''}` : null)
+    return {
+      rect: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) }, viewport: { w: innerWidth, h: innerHeight },
+      disabled: element.disabled, hitIsButton: Boolean(top && (top === element || element.contains(top))), hitElement: describe(top),
+    }
+  }).catch((error) => ({ error: String(error?.message ?? error) }))
+  walk.report.generateButtonBeforeClick = await readButtonState()
+  // 真鼠标点不到就当场红（出成片后画布会放大到节点，↑ 可能掉到视口外 / 被 Agent 面板、时间轴条盖住——免费复现见 director-reference-attach.walk.mjs 的 NOMI_WALK_PAID_LIKE=1）。
+  // 探测模式照点不误（要看数据）。
+  const before = walk.report.generateButtonBeforeClick
+  if (process.env.NOMI_PAID_PROBE_DIALOG !== '1' && !before?.hitIsButton) {
+    await walk.snap('fail-generate-button-not-clickable')
+    throw new Error(`点不到 ↑（一分钱没花）：按钮中心点上是 ${before?.hitElement ?? '视口外（没有元素）'}，视口 ${JSON.stringify(before?.viewport)}，按钮 ${JSON.stringify(before?.rect)}`)
+  }
+  const clickedAt = Date.now()
+  await clickOrFail(generateButton, '节点底栏的 ↑（生成）', { noWaitAfter: true })
+  walk.report.generateButtonAfterClick = await readButtonState()
   const dialog = win.locator(SPEND_DIALOG)
+  if (process.env.NOMI_PAID_PROBE_DIALOG === '1') {
+    // 探测：最多等 3 分钟，只看、只截图、只取消。
+    const PROBE_MS = 180_000
+    const samples = []
+    let dialogMs = null
+    let lastShot = 0
+    while (Date.now() - clickedAt < PROBE_MS) {
+      if (await dialog.first().isVisible().catch(() => false)) { dialogMs = Date.now() - clickedAt; break }
+      if (Date.now() - lastShot >= 5000) {
+        lastShot = Date.now()
+        const nodeNow = await storeNode(ids.shot)
+        samples.push({ afterMs: Date.now() - clickedAt, status: nodeNow?.status ?? null, runs: nodeNow?.runs?.length ?? 0, button: await readButtonState() })
+        await walk.snap(`probe-${String(samples.length).padStart(2, '0')}-${Math.round((Date.now() - clickedAt) / 1000)}s`)
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+    walk.report.probe = { mode: 'dialog-latency', dialogMs, samples, note: dialogMs === null ? '3 分钟内确认框没出现' : '确认框出现；已点取消，没点生成' }
+    if (dialogMs === null) throw new Error(`探测：点 ↑ 之后 ${PROBE_MS / 1000} 秒内确认框一直没出现（见 probe-*.png 与 report.json 的 probe.samples）`)
+    await walk.snap('probe-dialog-visible')
+    await clickOrFail(dialog.locator('[data-spend-confirm-action="cancel"]'), '确认框「取消」（探测模式绝不点生成）', { noWaitAfter: true })
+    await dialog.first().waitFor({ state: 'hidden', timeout: stationTimeout({ operations: 1 }) })
+    const runsAfterCancel = (await nodeOnDisk(ids.shot))?.runs?.length ?? 0
+    if (runsAfterCancel > 0) throw new Error(`探测模式取消之后镜头上有 ${runsAfterCancel} 条提交记录（不该有）`)
+    walk.report.verified = ['probe-dialog-latency']
+  } else {
   // 真正的等待：Playwright 的 isVisible 不等待、会忽略 timeout，框晚几百毫秒出现就被当成「没有框」（协调 10-22 实跑踩到）。
   if (await dialog.first().waitFor({ state: 'visible', timeout: stationTimeout({ operations: 1 }) }).then(() => true).catch(() => false)) {
     await proveProbe(dialog, '付费 / 托管披露确认框')
@@ -132,6 +181,7 @@ try {
   expect(landed.probe.duration ?? 0, '成片是一段真视频（ffprobe 量出时长）').toBeGreaterThan(1)
   await walk.snap('03-zh-result-landed')
   walk.report.verified = ['preview-reference-attached-before-spend', 'one-provider-task', 'result-landed-and-probed']
+  }
 } catch (error) {
   failure = error
   process.exitCode = 1
