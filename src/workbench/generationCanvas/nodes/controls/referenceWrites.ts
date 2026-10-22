@@ -14,6 +14,7 @@ import {
 import { decideArrayReferenceRemoval, resolveReferencePlacement, resolveReferenceSlots } from '../../runner/referenceSlots'
 import { putInReferenceSlot, readReferenceList, removeFromReferenceList, swapInReferenceList, withReferenceList } from './referenceList'
 import { removeMention } from '../../../assets/promptMentions'
+import { moveArrayItem } from '../../../assets/assetTypes'
 import { resultPreviewUrl as resultPreviewUrlOf } from './parameterControlModel'
 import { nodeReferenceCapacity } from './nodeCrossFieldConstraints'
 import type { useNodeWriteAccess } from '../nodeWriteAccess'
@@ -241,4 +242,12 @@ export function swapFrameSlots(ctx: ReferenceWriteContext, first: ImageUrlSlot, 
   }
   put(first, b)
   put(last, a)
+}
+
+/** 同槽内拖拽重排：移动数组项（图片走那一份有序列表）。character{N} 编号由 projectPromptForSend 按新位置重算。 */
+export function reorderArray(ctx: ReferenceWriteContext, metaKey: string, from: number, to: number): void {
+  const latest = ctx.getLatestMeta()
+  const arr = readArchetypeArrayForWrite(latest, metaKey, ctx.archMode)
+  if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return
+  ctx.updateNode(ctx.node.id, { meta: archetypeArrayWrite(latest, metaKey, moveArrayItem(arr, from, to)) })
 }

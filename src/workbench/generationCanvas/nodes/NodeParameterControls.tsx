@@ -46,7 +46,7 @@ import {
   shouldUseVideoFrameSlotFallback,
 } from './controls/parameterControlModel'
 import { createSlotFileUploads } from './controls/slotFileUploads'
-import { addToArraySlot, assignSlotSource, removeFromArray, removeUnusedReference, setSlotUrl, swapFrameSlots, type ReferenceWriteContext } from './controls/referenceWrites'
+import { addToArraySlot, assignSlotSource, removeFromArray, removeUnusedReference, reorderArray, setSlotUrl, swapFrameSlots, type ReferenceWriteContext } from './controls/referenceWrites'
 import {
   type ArchetypeArraySlot,
   applyArchetypeModeSwitch,
@@ -80,7 +80,7 @@ import { translateModelDisplayText } from '../../../i18n/modelDisplayText'
 import { modeTransportFor, specializeArchetypeForVariant } from '../../../../electron/shared/modelArchetypes'
 import ModeBar from './controls/ModeBar'
 import { modePresentationTexts, presentGenerationModes, useRevertToTextMode } from './controls/generationModePresentation'
-import { normalizeReferenceListMeta, readReferenceList, REFERENCE_LIST_KEY, withReferenceList } from './controls/referenceList'
+import { normalizeReferenceListMeta } from './controls/referenceList'
 import AssetReference, { type AssetSlot } from '../../assets/AssetReference'
 import { parameterChipOptions } from './primaryParameterChips'
 import QuantitySelect from './controls/QuantitySelect'
@@ -88,7 +88,6 @@ import referenceRowTail from './controls/referenceRowTail'
 import { FIRST_LAST_HINT_DISMISSED_META_KEY, computeReferenceRowModel, firstLastAmbiguityTarget } from './controls/referenceRowModel'
 import type { AssetRef, AssetKind } from '../../assets/assetTypes'
 import { pickNodeSlotReference } from './nodeSlotReferencePick'
-import { moveArrayItem } from '../../assets/assetTypes'
 import InlineParameterBar, { type InlineParameterBarParameterLayout } from './InlineParameterBar'
 import { composerHeadlineSummary } from './composerHeadlineSummary'
 import { useNodeModelAutoSelect } from './useNodeModelAutoSelect'
@@ -349,9 +348,8 @@ export default function NodeParameterControls({
     updateMeta(patch)
   }
 
-  // 切生成方式：只改 modeId。参考列表不动——哪张落哪个槽、哪张「未用到」由 resolveReferencePlacement 按新方式推导，
-  // 切回去就是原样（往返一张不少）。旧数据（按槽存的首 / 尾帧键）借这一笔按**切换前**看得见的顺序落成规范形，
-  // 免得换了方式后旧键的归一顺序跟着变。连线来的图是边，自己按槽落。
+  // 切生成方式：只改 modeId，参考列表不动（落槽 / 「未用到」由 resolveReferencePlacement 按新方式推导，往返一张不少）。
+  // 旧数据（按槽存的首 / 尾帧键）借这一笔按**切换前**看得见的顺序落成规范形；连线来的图是边，自己按槽落。
   const handleModeSwitch = (modeId: string) => {
     if (!archetype) return
     const latest = getLatestMeta()
@@ -372,7 +370,6 @@ export default function NodeParameterControls({
     node, archMode, getImageUrlSlots: () => imageUrlSlots, latestNode, updateNode, getLatestMeta, updateMeta,
     storeConnectNodes, storeDisconnectEdge, closeSlot: () => setOpenSlotKey(''), feedback: (key, values) => reportFeedback(t(key, values)),
   }
-  const setArrayValue = (metaKey: string, next: string[]) => updateMeta({ [metaKey]: next })
   const handleArrayAdd = (slot: ArchetypeArraySlot, url: string) => addToArraySlot(writeCtx, slot, url)
   const handleArrayRemove = (metaKey: string, index: number) => removeFromArray(writeCtx, metaKey, index)
   const handleSlotAssignment = (slot: ImageUrlSlot, newSourceNodeId: string) => assignSlotSource(writeCtx, slot, newSourceNodeId)
@@ -573,16 +570,8 @@ export default function NodeParameterControls({
     }
     await handleSourceVideoUpload(slot.key, file)
   }
-  // 同槽内拖拽重排:移动 referenceXxxUrls 数组项(单源 setArrayValue 写入);character{N} 编号由
-  // projectPromptForSend 按新数组位置自动重算(单源,无需手动改 prompt/chip)。
   const handleReorder = (slot: AssetSlot, from: number, to: number) => {
-    if (slot.form !== 'array') return
-    const latest = getLatestMeta()
-    const isImageList = slot.key === REFERENCE_LIST_KEY
-    const arr = isImageList ? readReferenceList(latest, archMode) : readArchetypeArray(latest, slot.key)
-    if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return
-    if (isImageList) updateNode(node.id, { meta: withReferenceList(latest, moveArrayItem(arr, from, to)) })
-    else setArrayValue(slot.key, moveArrayItem(arr, from, to))
+    if (slot.form === 'array') reorderArray(writeCtx, slot.key, from, to)
   }
   const handleBrowseAll = () => {
     setOpenSlotKey('')
