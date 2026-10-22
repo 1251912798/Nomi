@@ -43,7 +43,10 @@ describe('Playwright isVisible / isHidden 不等待：带 timeout 就红', () =>
     "  const c = await page.isVisible('#c', { timeout: 1 })",
     "  const d = await page.locator('#d').waitFor({ state: 'visible', timeout }).then(() => true).catch(() => false)",
     "  const e = await page.locator('#e').isVisible()",
-    '  return [a, b, c, d, e]',
+    "  const f = await page['isVisible']('#f', { timeout })",
+    "  const g = await page.locator('#g')['isHidden']({ timeout: 5 })",
+    "  const h = await page['isVisible']('#h')",
+    '  return [a, b, c, d, e, f, g, h]',
     '}',
     '',
   ].join('\n')
@@ -64,9 +67,44 @@ describe('Playwright isVisible / isHidden 不等待：带 timeout 就红', () =>
     'electron/a.ts',
     'electron/quitTeardown.ts',
     CANVAS_SHELL_FILE,
-  ])('%s：三种写法都红，waitFor 与不带 timeout 的不红', async (file) => {
+  ])('%s：点号三种写法、计算属性两种写法都红；waitFor、不带 timeout 的不红', async (file) => {
     const hits = (await lint(file, source)).filter((message) => message.ruleId === 'no-restricted-syntax' && message.message.startsWith(NO_WAIT))
-    expect(hits.map((message) => message.line)).toEqual([2, 3, 4])
+    expect(hits.map((message) => message.line)).toEqual([2, 3, 4, 7, 8])
+  })
+
+  it('有意接受的缺口：options 先放进变量再传不拦（静态看不出变量里有没有 timeout）', async () => {
+    const messages = await lint('tests/ux/a.walk.mjs', "export async function f(page, timeout) { const options = { timeout }; return page.isVisible('#a', options) }\n")
+    expect(messages.filter((message) => String(message.ruleId).endsWith('no-restricted-syntax'))).toEqual([])
+  })
+})
+
+describe('Playwright isVisible / isHidden 不许当值取出来（scripts / tests / evals）', () => {
+  const ALIAS = 'Call isVisible / isHidden directly'
+  const aliasLines = async (file, ...rows) => (await lint(file, ['export function f(page, loc) {', ...rows, '}', ''].join('\n')))
+    .filter((message) => message.ruleId === 'playwright-wait/no-restricted-syntax' && message.message.startsWith(ALIAS))
+    .map((message) => message.line)
+
+  it.each([
+    ['解构', '  const { isVisible } = page; return isVisible({ timeout: 1 })'],
+    ['解构（字符串键）', "  const { 'isHidden': h } = page; return h()"],
+    ['取成别名', '  const fn = page.isHidden; return fn({ timeout: 1 })'],
+    ['计算属性取值', "  const fn = loc['isVisible']; return fn()"],
+    ['当参数传出去', '  return [loc.isVisible].map((m) => m.call(loc))'],
+  ])('%s → 红', async (_name, row) => {
+    for (const file of ['tests/ux/a.walk.mjs', 'scripts/a.mjs', 'evals/journeys/a.mjs', 'tests/ux/a.ts', 'tests/perf/a.mjs']) expect(await aliasLines(file, row)).toEqual([2])
+  })
+
+  it.each([
+    ['直接调用', "  return page.isVisible('#a')"],
+    ['可选链调用', '  return loc?.isHidden?.()'],
+    ['计算属性直接调用', "  return page['isVisible']('#a')"],
+    ['同名对象字面量（mock）', '  return { isVisible: () => true, isHidden: () => false }'],
+  ])('%s → 不红', async (_name, row) => {
+    expect(await aliasLines('tests/ux/a.walk.mjs', row)).toEqual([])
+  })
+
+  it('src / electron 不开（那里 isHidden / isVisible 是普通领域字段，例：分类的 isHidden）', async () => {
+    for (const file of ['src/workbench/sidebar/a.tsx', 'electron/a.ts', 'src/a.test.ts']) expect(await aliasLines(file, '  return [page.isHidden, loc.isVisible]')).toEqual([])
   })
 })
 
@@ -103,15 +141,28 @@ describe('批量抑制的判据（lint:changed / PR 正文判据 / coord-approve
   const approvalsWith = (records, pr = null) => localApprovals({ pr, env: { NOMI_COORD_APPROVALS: 'x' }, readFile: () => records.map((r) => JSON.stringify(r)).join('\n') })
   const record = (extra = {}) => ({ pr: null, kind: 'eslint-suppressions', name: 'eslint-suppressions.json', sha256: fingerprint, at: 'T', note: '', ...extra })
 
-  it('冻结总数不涨就不用确认：不变、减少、搬家（换文件、总数不变）都放行', () => {
+  it('没有任何文件 × 规则上涨就不用确认：不变、只减少都放行', () => {
     expect(judgeSuppressionGrowth(frozen, frozen)).toEqual([])
-    expect(judgeSuppressionGrowth(frozen, { 'scripts/renamed.mjs': { 'no-unused-vars': { count: 2 } }, 'tests/ux/b.mjs': { 'no-empty': { count: 1 } } })).toEqual([])
     expect(judgeSuppressionGrowth(frozen, { 'scripts/a.mjs': { 'no-unused-vars': { count: 1 } } })).toEqual([])
+    expect(judgeSuppressionGrowth(frozen, {})).toEqual([])
+  })
+
+  it('按文件 × 规则判：先减后增、规则总数不变也要确认；改名 / 搬家同样要确认', () => {
+    const swapped = { 'scripts/a.mjs': { 'no-unused-vars': { count: 1 } }, 'scripts/new.mjs': { 'no-unused-vars': { count: 1 } }, 'tests/ux/b.mjs': { 'no-empty': { count: 1 } } }
+    const [swap] = judgeSuppressionGrowth(frozen, swapped, approvalsWith([]))
+    expect(swap).toContain('scripts/new.mjs no-unused-vars：0 → 1')
+    expect(suppressionApprovalSubject(frozen, swapped).grownEntries).toEqual([{ file: 'scripts/new.mjs', rule: 'no-unused-vars', base: 0, head: 1 }])
+    const renamed = { 'scripts/renamed.mjs': { 'no-unused-vars': { count: 2 } }, 'tests/ux/b.mjs': { 'no-empty': { count: 1 } } }
+    expect(judgeSuppressionGrowth(frozen, renamed, approvalsWith([]))).toHaveLength(1)
+    // 确认绑的是这份上涨 diff：对 swapped 的确认放行 swapped，不放行别的搬法
+    const swapRecord = record({ sha256: suppressionApprovalSubject(frozen, swapped).fingerprint })
+    expect(judgeSuppressionGrowth(frozen, swapped, approvalsWith([swapRecord]))).toEqual([])
+    expect(judgeSuppressionGrowth(frozen, renamed, approvalsWith([swapRecord]))).toHaveLength(1)
   })
 
   it('推送前：涨了又没有确认记录就红（记录文件没配置也红），并给出确认命令', () => {
     const [grown] = judgeSuppressionGrowth(frozen, grownHead, approvalsWith([]))
-    expect(grown).toContain('no-unused-vars：2 → 3')
+    expect(grown).toContain('scripts/c.mjs no-unused-vars：0 → 1')
     expect(grown).toContain('node scripts/coord-approve.mjs --suppressions')
     const [unconfigured] = judgeSuppressionGrowth({}, grownHead, localApprovals({ pr: null, env: {} }))
     expect(unconfigured).toContain('NOMI_COORD_APPROVALS')

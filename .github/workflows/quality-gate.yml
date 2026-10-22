@@ -109,6 +109,16 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      # lint:ci 的 ESLint 缓存（2026-10-22 G1：scripts / tests/ux / evals 进 ESLint 后 lint:ci 40.7s → 79.8s）。
+      # lint:ci 带 --cache-strategy content（按文件内容判，检出会改 mtime）；配置一变 ESLint 自己作废对应结果，抑制文件在缓存之后才套用。
+      # 键带提交号、每次写新的一份，靠 restore-keys 取最近一份（PR 能读到 main 上的缓存）；依赖锁文件变了从头来。
+      - name: Restore ESLint cache
+        uses: actions/cache@v6
+        with:
+          path: .tmp/eslintcache
+          key: eslint-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            eslint-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Static contracts, lint, and types
         run: pnpm run test:system:contracts
       - name: Autosync publication regression

@@ -10,7 +10,7 @@
 // 批量抑制（eslint-suppressions.json；2026-10-22 起 scripts / tests/ux / evals 进 ESLint，存量错误冻结在这里）：
 //   · 和 CLI 一样应用抑制（applySuppressions），否则推送前把存量当新错、CI 却放行；
 //   · 改动文件里冻结的存量变少了却没收紧 → CI 的 lint:ci 以「unused suppressions」退出码 2 判红，推送前同样拦，并给出收紧命令；
-//   · 抑制只许减少：eslint-suppressions.json 里任一规则的冻结总数比 base 多就拦（改名搬家总数不变，不受影响）；
+//   · 抑制只许减少：eslint-suppressions.json 里任一文件 × 规则的冻结数比 base 多就拦（改名 / 搬家也算，要确认）；
 //     新开规则 / 扩大覆盖面确需冻进存量的，由协调确认（coord-approve --suppressions，哈希绑上涨那部分 diff），
 //     推送前读本机确认记录；CI 读不到记录，只在 PR 正文判据里提示「待协调确认」，合并前扫描没记录就红。
 import { execFileSync } from 'node:child_process'
@@ -50,9 +50,11 @@ export function judgeSuppressionGrowth(baseSuppressions, headSuppressions, appro
   const subject = suppressionApprovalSubject(baseSuppressions, headSuppressions)
   if (!subject.needsApproval) return []
   if (approvals?.lookup?.('eslint-suppressions', SUPPRESSIONS_FILE, subject.fingerprint) === true) return []
-  const rules = subject.grownRules.map(({ rule, base, head }) => `    ${rule}：${base} → ${head}`).join('\n')
+  const shown = subject.grownEntries.slice(0, 20).map(({ file, rule, base, head }) => `    ${file} ${rule}：${base} → ${head}`)
+  if (subject.grownEntries.length > 20) shown.push(`    …共 ${subject.grownEntries.length} 处`)
+  const rules = shown.join('\n')
   const why = approvals?.unavailable ? `（${approvals.unavailable}）` : ''
-  return [`✖ ${SUPPRESSIONS_FILE}：冻结的存量只许减少，这些规则涨了，没有协调确认记录${why}\n${rules}\n  → 只改代码时：新违规请修掉，不要用 --suppress-all / --suppress-rule 把它也冻进去\n  → 新开规则 / 扩大覆盖面、确需冻进存量：交协调看 diff，协调确认后跑 ${approvalCommand(null, 'eslint-suppressions')}`]
+  return [`✖ ${SUPPRESSIONS_FILE}：冻结的存量只许减少（按文件 × 规则），这些涨了，没有协调确认记录${why}\n${rules}\n  → 只改代码时：新违规请修掉，不要用 --suppress-all / --suppress-rule 把它也冻进去\n  → 新开规则 / 扩大覆盖面、确需冻进存量：交协调看 diff，协调确认后跑 ${approvalCommand(null, 'eslint-suppressions')}`]
 }
 
 /** 纯函数：文件里实际被抑制的条数 < 冻结条数 = 存量变少了但没收紧（CLI 判 unused suppressions，退出码 2）。 */

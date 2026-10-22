@@ -9,6 +9,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
 import prettier from 'eslint-config-prettier'
 import fs from 'node:fs'
+import { builtinRules } from 'eslint/use-at-your-own-risk'
 import {
   CANVAS_SHELL_FILE,
   SHELL_SELECTION_SELECTORS,
@@ -130,18 +131,36 @@ const directQuitSelectors = [
 // Locator / Page / Frame 上这两个方法的 timeout 都标了 @deprecated）。2026-10-22 三条付费样本按「最多等 N 秒」写，
 // 实际一次没等，后面的流程空等 20 分钟。eslint-plugin-playwright 的 no-action-timeout 不管这两个方法、
 // typescript-eslint no-deprecated 不报对象字面量里的弃用键，所以用核心选择器（不要类型信息，.mjs 也行）。
-// 拦不住「先放进变量再传」——可以接受。调研：docs/audit/2026-10-22-gate-family-direction.md。
+// 调研：docs/audit/2026-10-22-gate-family-direction.md。
+//
+// 两层（V-gates-g1 窄核后补齐）：
+//   ① 全仓：调用时带 timeout 就红——点号调用、计算属性调用（page['isVisible'](…, { timeout })）都算；
+//   ② scripts / tests / evals：把这两个方法当值取出来（const fn = page.isHidden、const { isVisible } = page、page['isHidden'] 不调用）
+//      一律红，不看 timeout——取出来再调就绕过了 ①，而这种写法在走查里本身就可疑。只放在这三片：src 里 isHidden / isVisible
+//      是普通的领域字段（例：分类的 isHidden），全仓开会误报。
+// 有意接受的缺口：options 先放进变量再传（const o = { timeout }; loc.isVisible(o)）——静态看不出变量里有没有 timeout，不拦。
+const PLAYWRIGHT_NO_WAIT = '/^is(Visible|Hidden)$/'
+const PLAYWRIGHT_NO_WAIT_MESSAGE = "isVisible / isHidden do not wait: the timeout is ignored and they return immediately (Playwright marks it @deprecated). To wait, use locator.waitFor({ state: 'visible' | 'hidden', timeout }), e.g. await loc.waitFor({ state: 'visible', timeout }).then(() => true).catch(() => false)."
 export const playwrightNoWaitSelectors = [
-  {
-    selector: "CallExpression[callee.property.name=/^is(Visible|Hidden)$/] > ObjectExpression > Property[key.name='timeout']",
-    message: "isVisible / isHidden do not wait: the timeout is ignored and they return immediately (Playwright marks it @deprecated). To wait, use locator.waitFor({ state: 'visible' | 'hidden', timeout }), e.g. await loc.waitFor({ state: 'visible', timeout }).then(() => true).catch(() => false).",
-  },
+  { selector: `CallExpression[callee.property.name=${PLAYWRIGHT_NO_WAIT}] > ObjectExpression > Property[key.name='timeout']`, message: PLAYWRIGHT_NO_WAIT_MESSAGE },
+  { selector: `CallExpression[callee.computed=true][callee.property.value=${PLAYWRIGHT_NO_WAIT}] > ObjectExpression > Property[key.name='timeout']`, message: PLAYWRIGHT_NO_WAIT_MESSAGE },
 ]
+const PLAYWRIGHT_ALIAS_MESSAGE = "Call isVisible / isHidden directly on the locator or page; do not take them as values (alias, destructuring, computed access) - that hides whether a timeout is passed, and they never wait anyway. To wait, use locator.waitFor({ state, timeout })."
+export const playwrightAliasSelectors = [
+  { selector: `MemberExpression[property.name=${PLAYWRIGHT_NO_WAIT}]:not(CallExpression > MemberExpression.callee)`, message: PLAYWRIGHT_ALIAS_MESSAGE },
+  { selector: `MemberExpression[computed=true][property.value=${PLAYWRIGHT_NO_WAIT}]:not(CallExpression > MemberExpression.callee)`, message: PLAYWRIGHT_ALIAS_MESSAGE },
+  { selector: `ObjectPattern > Property[key.name=${PLAYWRIGHT_NO_WAIT}]`, message: PLAYWRIGHT_ALIAS_MESSAGE },
+  { selector: `ObjectPattern > Property[key.value=${PLAYWRIGHT_NO_WAIT}]`, message: PLAYWRIGHT_ALIAS_MESSAGE },
+]
+// ② 用核心 no-restricted-syntax 的一份**独立注册**（同一个内置规则，换个规则 id）：flat config 里同名规则后面的块会整条覆盖前面的，
+// 只在三片目录开的选择器若混进 no-restricted-syntax，就得在每个能匹配到这三片的块里重拼一遍；独立 id 只有下面一个块配置它，不会被覆盖。
+const playwrightAliasPlugin = { rules: { 'no-restricted-syntax': builtinRules.get('no-restricted-syntax') } }
+export const PLAYWRIGHT_ALIAS_FILES = ['scripts', 'tests', 'evals'].map((dir) => `${dir}/**/*.{js,mjs,cjs,ts,tsx,mts,cts}`)
 
 /**
  * 每个 no-restricted-syntax 都经这里拼：flat config 里后面的对象会**整条覆盖**前面同名规则的选项，
  * 某个块漏写一组选择器，那组在该块的文件上就静默失效。全仓都该成立的选择器（目前是 Playwright 不等待）放在这里，
- * 新加的块只要走这个函数就自动带上（eslint-coverage.node-test.mjs 按代表路径核）。
+ * 新加的块只要走这个函数就自动带上（scripts/eslint-script-coverage.test.mjs 按代表路径核）。
  */
 const restrictedSyntax = (...selectors) => ['error', ...selectors, ...playwrightNoWaitSelectors]
 
@@ -387,6 +406,12 @@ export default tseslint.config(
         paths: [{ name: '@tiptap/react', importNames: ['useEditor'], message: '用 useNomiTiptapEditor（src/workbench/common/useNomiRichTextEditor.ts），它固定了编辑器生命周期选项。' }],
       }],
     },
+  },
+  {
+    // Playwright isVisible / isHidden 不许当值取出来（见上面 playwrightAliasSelectors 的说明）；只有这一个块配置这个规则 id。
+    files: PLAYWRIGHT_ALIAS_FILES,
+    plugins: { 'playwright-wait': playwrightAliasPlugin },
+    rules: { 'playwright-wait/no-restricted-syntax': ['error', ...playwrightAliasSelectors] },
   },
   prettier,
 )

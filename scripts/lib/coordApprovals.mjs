@@ -103,7 +103,8 @@ export function describeBoardDiff(subject) {
 }
 
 // ── ESLint 批量抑制（eslint-suppressions.json）的冻结数上涨：2026-10-22 协调定，同 board / perf ─────────────────────
-// 冻结数只许减少；涨了（新开规则 / 扩大覆盖面把存量冻进来）要协调确认。「涨」按规则的冻结总数算（改名搬家总数不变，不用确认）；
+// 冻结数只许减少；涨了（新开规则 / 扩大覆盖面把存量冻进来）要协调确认。「涨」按**文件 × 规则**算：任何一个文件里任何一条规则的冻结数
+// 比 base 多就要确认——按规则总数算会让「这里修一处、那里新冻一处」总数不变混进来（V-gates-g1 窄核）。改名 / 搬家也要确认，接受。
 // 确认绑定的是**上涨的那部分 diff**：每个 (文件, 规则) 冻结数比 base 多的条目。之后再多冻一处，哈希就对不上；只减少不影响。
 export const SUPPRESSIONS_FILE = 'eslint-suppressions.json'
 
@@ -116,13 +117,9 @@ export function suppressionTotals(suppressions) {
   return totals
 }
 
-/** base → head 的冻结数上涨。返回 { needsApproval, grownRules: [{ rule, base, head }], grownEntries: [{ file, rule, base, head }], fingerprint }。 */
+/** base → head 的冻结数上涨。返回 { needsApproval（任一文件 × 规则上涨）, grownRules（规则总数的变化，只用于描述）, grownEntries: [{ file, rule, base, head }], fingerprint }。 */
 export function suppressionApprovalSubject(baseSuppressions, headSuppressions) {
   const baseTotals = suppressionTotals(baseSuppressions)
-  const grownRules = Object.entries(suppressionTotals(headSuppressions))
-    .filter(([rule, count]) => count > (baseTotals[rule] ?? 0))
-    .map(([rule, count]) => ({ rule, base: baseTotals[rule] ?? 0, head: count }))
-    .sort((a, b) => a.rule.localeCompare(b.rule))
   const grownEntries = []
   for (const [file, rules] of Object.entries(headSuppressions ?? {})) {
     for (const [rule, entry] of Object.entries(rules ?? {})) {
@@ -131,8 +128,11 @@ export function suppressionApprovalSubject(baseSuppressions, headSuppressions) {
     }
   }
   grownEntries.sort((a, b) => a.file.localeCompare(b.file) || a.rule.localeCompare(b.rule))
+  const headTotals = suppressionTotals(headSuppressions)
+  const grownRules = [...new Set(grownEntries.map((entry) => entry.rule))].sort()
+    .map((rule) => ({ rule, base: baseTotals[rule] ?? 0, head: headTotals[rule] ?? 0 }))
   return {
-    needsApproval: grownRules.length > 0,
+    needsApproval: grownEntries.length > 0,
     grownRules,
     grownEntries,
     fingerprint: sha256Of({ subject: SUPPRESSIONS_FILE, grown: grownEntries }),
@@ -141,9 +141,9 @@ export function suppressionApprovalSubject(baseSuppressions, headSuppressions) {
 
 /** 人话描述冻结数上涨（确认提示用）。 */
 export function describeSuppressionGrowth(subject) {
-  const rules = subject.grownRules.map(({ rule, base, head }) => `${rule} ${base}→${head}`)
+  const entries = subject.grownEntries.map(({ file, rule, base, head }) => `${file} ${rule} ${base}→${head}`)
   const files = new Set(subject.grownEntries.map((entry) => entry.file)).size
-  return `冻结数涨了：${rules.slice(0, 6).join('、')}${rules.length > 6 ? ` 等 ${rules.length} 条规则` : ''}（涉及 ${files} 个文件）`
+  return `冻结数涨了 ${entries.length} 处（文件 × 规则，涉及 ${files} 个文件）：${entries.slice(0, 4).join('、')}${entries.length > 4 ? ' …' : ''}`
 }
 
 // ── 确认记录文件 ──────────────────────────────────────────────────────────────────────────────────────────────
