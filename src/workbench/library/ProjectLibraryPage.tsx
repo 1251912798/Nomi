@@ -117,6 +117,11 @@ const ThumbnailMosaic = React.memo(
   (prev, next) => (prev.urls[0] || '') === (next.urls[0] || '') && (prev.videoUrl || '') === (next.videoUrl || ''),
 )
 
+/** 卡片不可打开：文件夹不在，或这一项的数据读不出来（主进程列表已标好原因）。 */
+function isProjectUnavailable(project: LocalProjectSummary): boolean {
+  return Boolean(project.missing || project.unreadableReason)
+}
+
 export default function ProjectLibraryPage({
   projectFeedback,
   onOpenProject,
@@ -148,7 +153,7 @@ export default function ProjectLibraryPage({
   // 长得一模一样：弹层原样不动——用户会以为检查跑过了、文件夹还是坏的。
   const [syncRecheckFailedId, setSyncRecheckFailedId] = React.useState<string | null>(null)
   const beginRename = (project: LocalProjectSummary): void => {
-    if (!onRenameProject || project.missing) return
+    if (!onRenameProject || isProjectUnavailable(project)) return
     setEditingId(project.id)
     setEditValue(project.name)
   }
@@ -481,6 +486,10 @@ export default function ProjectLibraryPage({
           <div className="shrink-0 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-6 min-[1200px]:grid-cols-[repeat(auto-fill,248px)]">
             {filteredProjects.map((project) => {
               const urls = project.thumbnailUrls || (project.thumbnail ? [project.thumbnail] : [])
+              const unavailable = isProjectUnavailable(project)
+              const unavailableHint = project.unreadableReason === 'outside-workspace'
+                ? t('library.dataOutsideFolderHint')
+                : project.unreadableReason ? t('library.dataUnreadableHint') : undefined
               return (
                 <div
                   key={project.id}
@@ -489,22 +498,23 @@ export default function ProjectLibraryPage({
                   // 建的两个项目排序就是掷硬币。走查必须按**身份**点项目，不能按位置（`.first()`），
                   // 所以身份要在 DOM 上拿得到——这条 data 属性就是那个锚点。
                   data-project-id={project.id}
+                  title={unavailableHint}
                   className={cn(
                     'group relative overflow-visible rounded-panel text-left',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-nomi-ink',
-                    project.missing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+                    unavailable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
                   )}
-                  role={project.missing ? undefined : 'button'}
-                  tabIndex={project.missing ? undefined : 0}
-                  onClick={project.missing ? undefined : () => openProject(project.id)}
-                  onKeyDown={project.missing ? undefined : (e) => e.key === 'Enter' && openProject(project.id)}
+                  role={unavailable ? undefined : 'button'}
+                  tabIndex={unavailable ? undefined : 0}
+                  onClick={unavailable ? undefined : () => openProject(project.id)}
+                  onKeyDown={unavailable ? undefined : (e) => e.key === 'Enter' && openProject(project.id)}
                 >
                   {projectFeedback?.projectId === project.id && projectFeedback.message ? <p role="alert" className="m-0 px-3 py-2 text-caption text-nomi-danger">{projectFeedback.message}</p> : null}
                   <div
                     className={cn(
                       'aspect-video relative overflow-hidden rounded-panel bg-nomi-ink-05 ring-1 ring-inset ring-nomi-line-soft',
                       'transition-[box-shadow,transform] duration-150',
-                      !project.missing && 'group-hover:-translate-y-0.5 group-hover:shadow-nomi-md',
+                      !unavailable && 'group-hover:-translate-y-0.5 group-hover:shadow-nomi-md',
                     )}
                     style={urls.length === 0 && project.thumbStyle ? { background: project.thumbStyle } : undefined}
                   >
@@ -533,9 +543,17 @@ export default function ProjectLibraryPage({
                       >
                         <IconTrash size={14} stroke={1.8} />
                       </button>
-                      {project.missing ? (
-                        <span className="h-8 px-3 rounded-nomi-sm text-caption font-medium text-nomi-paper/80 flex items-center">
-                          {t('library.folderUnavailable')}
+                      {unavailable ? (
+                        // 贴缩略图下沿、不居中：居中会压在占位胶片图标上，把字盖住（V-plibrary2 截图）。
+                        <span
+                          className="absolute inset-x-3 bottom-3 min-h-8 px-3 py-1 rounded-nomi-sm text-caption font-medium text-nomi-paper/80 flex items-center justify-center text-center"
+                          title={unavailableHint}
+                        >
+                          {project.missing
+                            ? t('library.folderUnavailable')
+                            : project.unreadableReason === 'outside-workspace'
+                              ? t('library.dataOutsideFolder')
+                              : t('library.dataUnreadable')}
                         </span>
                       ) : (
                         <button
@@ -580,13 +598,13 @@ export default function ProjectLibraryPage({
                         <div
                           className={cn(
                             'text-body-sm font-semibold text-nomi-ink truncate mb-0.5',
-                            onRenameProject && !project.missing && 'cursor-text',
+                            onRenameProject && !unavailable && 'cursor-text',
                           )}
-                          title={onRenameProject && !project.missing ? t('library.renameHint') : undefined}
+                          title={onRenameProject && !unavailable ? t('library.renameHint') : undefined}
                           // 名字区单击不打开项目（留给双击改名）；缩略图/「继续创作」仍单击打开。
-                          onClick={onRenameProject && !project.missing ? (e) => e.stopPropagation() : undefined}
+                          onClick={onRenameProject && !unavailable ? (e) => e.stopPropagation() : undefined}
                           onDoubleClick={
-                            onRenameProject && !project.missing
+                            onRenameProject && !unavailable
                               ? (e) => {
                                   e.stopPropagation()
                                   beginRename(project)
@@ -599,7 +617,8 @@ export default function ProjectLibraryPage({
                       )}
                       <div className="flex items-center gap-2 text-micro text-nomi-ink-40">
                         <span>{formatUpdatedAt(project.updatedAt)}</span>
-                        {project.rootPath && syncInspectionByProject[project.id] ? (
+                        {/* 读不出来的卡不放同步角标：它弹层里的「打开文件夹 / 重新检查」对这种项目只会报失败，原因已写在灰卡上。 */}
+                        {project.rootPath && !project.unreadableReason && syncInspectionByProject[project.id] ? (
                           <ProjectSyncBadge
                             inspection={syncInspectionByProject[project.id]}
                             rootPath={project.rootPath}
@@ -613,7 +632,7 @@ export default function ProjectLibraryPage({
                         ) : null}
                       </div>
                     </div>
-                    {onRevealProjectFolder && project.rootPath ? (
+                    {onRevealProjectFolder && project.rootPath && !project.unreadableReason ? (
                       <button
                         type="button"
                         aria-label={t('library.openProjectFolder', { name: project.name })}
