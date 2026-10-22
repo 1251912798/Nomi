@@ -141,6 +141,8 @@ export async function openPaidWalk(script, name, models, deps = {}) {
     buildMarkers = [], argv = process.argv.slice(2), assertBuild = assertPaidBuildReady,
     // 带本地参考素材的生成要先经应用的托管上传中转：按需把**当前配置的那一个**中转源加进放行名单（缺省关，别的付费走查行为不变）。
     hostedUploads = false,
+    // false = 供应商的源不进放行名单（零花费探测：就算误提交，网络闸也当场挡下，结构上花不了钱）。缺省 true，别的付费走查不变。
+    vendorNetwork = true,
   } = deps
   // 真实资料目录的位置跟着传进来的 env 走（缺省就是 process.env，和以前一样）；env-key 路根本不会用到它。
   const profile = realNomiProfile({ env })
@@ -152,9 +154,10 @@ export async function openPaidWalk(script, name, models, deps = {}) {
   if (envKey) assertEnvKeyModels(models)
   // 出网名单按本场授权的供应商自动算（见 _paidNetwork.mjs），连同账本路径一起交给被测 App 的闸；调用方什么都不用配。
   const hostedUploadOrigin = hostedUploads ? hostedUploadRelayOrigin(env) : null
-  const allow = [...(envKey
+  const vendorAllow = !vendorNetwork ? [] : envKey
     ? paidWalkAllowlist(ENV_KEY_ALLOW_CATALOG, [ENV_KEY_VENDOR])
-    : paidWalkAllowlist(readRealCatalog(profile), models.map((model) => model.vendorKey))), ...(hostedUploadOrigin ? [hostedUploadOrigin] : [])]
+    : paidWalkAllowlist(readRealCatalog(profile), models.map((model) => model.vendorKey))
+  const allow = [...vendorAllow, ...(hostedUploadOrigin ? [hostedUploadOrigin] : [])]
   const netLog = newNetLogFile()
   // env-key 路：被测 App 的环境里把 key 这一项清成空串——key 只留在本进程的闭包里，子进程（含它的崩溃转储、诊断包）拿不到。
   const walk = await createWalk(name, { env: { NOMI_WALK_ALLOW_ORIGINS: allow.join(','), NOMI_WALK_NET_LOG: netLog, ...(envKey ? { [ENV_KEY_VAR]: '' } : {}) } })
@@ -244,11 +247,11 @@ export async function openPaidWalk(script, name, models, deps = {}) {
         catch (error) { if (!envKey) throw error; spend = { media: [], text: null, readError: redact(String(error?.message ?? error), secrets).slice(0, 300) } }
         if (envKey) {
           envKeyTeardown()
-          return { spend, credentialCopyRemoved: true }
+          return { spend, paidCalls: spend.media.length, credentialCopyRemoved: true }
         }
         const credentialCopyRemoved = removeCredentialCopy()
         const after = guard.assertRealProfileUntouched()
-        return { spend, realProfileAfter: after, credentialCopyRemoved }
+        return { spend, paidCalls: spend.media.length, realProfileAfter: after, credentialCopyRemoved }
       },
     })
     // 报告 / 日志 / 截图都落盘之后再核一遍证据目录：发现 key 就删掉那些文件并红。

@@ -16,7 +16,10 @@
 // 花钱后：节点恰好一次提交、结果带供应商任务号、落地的 mp4 用 ffprobe 量过；证据目录里留着：预演 mp4 路径、成片路径、截图，
 // 供协调**肉眼对比**「成片的运镜是不是照预演」（这一步是人判，脚本不判画面）。
 //
-// 零花费探测模式（NOMI_PAID_PROBE_DIALOG=1，协调 10-22 加）：照常走到点 ↑，然后只量「从点击到确认框可见」多少毫秒（最多等 3 分钟），
+// 探测模式（NOMI_PAID_PROBE_DIALOG=1，协调 10-22 加）：供应商的源不进放行名单，所以就算哪天托管策略变成「允许」、点 ↑ 直接提交，网络闸也会当场挡下，结构上花不了钱。
+// 注意：用环境变量里的 key 接入时，接入页若要验证 key 会真调一次模型（几个 token）；探测模式下这次调用会被网络闸挡下，走查当场失败并点名被挡的主机——遇到就改回正常放行。
+// 所以「零」指的是**生成花费**，不是「一次供应商调用都没有」（正常模式下接入验证本来就可能调一次，几个 token）。
+照常走到点 ↑，然后只量「从点击到确认框可见」多少毫秒（最多等 3 分钟），
 // 每 5 秒截一张图、读一次节点状态 / 按钮是否禁用 / 按钮中心点此刻被哪个元素盖着；框出现后截图、点「取消」、退出。**绝不点生成。**
 //
 // 凭据与护栏：全部走 tests/ux/_paidRun.mjs 的 openPaidWalk（CI 拒跑、没有 NOMI_SPEND_OK=1 拒跑、构建产物过期拒跑、
@@ -56,7 +59,7 @@ const SHOT_META = {
 const VIDEO_LANDS_MS = stationTimeout({ turns: 4 })
 const NODE_GENERATE = 'button[data-bar-segment="generate"]'
 
-const paid = await openPaidWalk(SCRIPT, 'director-reference-attach', [VIDEO], { hostedUploads: true }) // 预演 mp4 要先经应用的托管上传中转：放行当前配置的那一个中转源（report.json 的 hostedUploadRelayAllowed）
+const paid = await openPaidWalk(SCRIPT, 'director-reference-attach', [VIDEO], { hostedUploads: true, vendorNetwork: process.env.NOMI_PAID_PROBE_DIALOG !== '1' }) // 预演 mp4 要先经应用的托管上传中转：放行当前配置的那一个中转源（report.json 的 hostedUploadRelayAllowed）
 const { walk } = paid
 let failure
 try {

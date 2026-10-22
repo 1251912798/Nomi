@@ -2,7 +2,7 @@
 import fs from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { blockedError, describeBlocked, guardLoadedError, paidWalkAllowlist, VENDOR_RESULT_DOMAINS } from './_paidNetwork.mjs'
+import { assertExactOrigin, blockedError, describeBlocked, hostedUploadRelayOrigin, guardLoadedError, paidWalkAllowlist, VENDOR_RESULT_DOMAINS } from './_paidNetwork.mjs'
 
 const catalog = {
   vendors: [
@@ -26,6 +26,26 @@ describe('paidWalkAllowlist', () => {
   it('throws instead of silently under-configuring', () => {
     expect(() => paidWalkAllowlist(catalog, ['missing'])).toThrow('missing')
     expect(() => paidWalkAllowlist({ vendors: [{ key: 'x' }] }, ['x'])).toThrow('没有 API 地址')
+  })
+})
+
+describe('hosted upload relay origin must be exactly one exact origin', () => {
+  it('accepts scheme + host + optional port', () => {
+    expect(assertExactOrigin('https://relay.example.test')).toBe('https://relay.example.test')
+    expect(assertExactOrigin('http://127.0.0.1:8787')).toBe('http://127.0.0.1:8787')
+  })
+  it.each([
+    ['comma', 'https://a.example,*.evil.test'],
+    ['percent-encoded comma', 'https://a.example%2C.evil.test'],
+    ['wildcard', 'https://*.evil.test'],
+    ['whitespace', 'https://a.example .evil.test'],
+  ])('rejects %s before any spend', (_name, origin) => {
+    expect(() => assertExactOrigin(origin)).toThrow('不是一个精确源')
+  })
+  it('the injection through NOMI_ASSET_RELAY_URL never reaches the allowlist', () => {
+    for (const url of ['https://a.example,*.evil.test/v1', 'https://a.example%2C*.evil.test/v1']) {
+      expect(() => hostedUploadRelayOrigin({ NOMI_ASSET_RELAY_URL: url })).toThrow()
+    }
   })
 })
 
@@ -106,6 +126,11 @@ describe('openPaidWalk wiring', () => {
     const withDefault = await open({ hostedUploads: true, env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', NOMI_ASSET_RELAY_URL: '' } })
     expect(withDefault.calls.options.env.NOMI_WALK_ALLOW_ORIGINS.split(',')).toEqual([...vendorOnly, new URL(DEFAULT_NOMI_ASSET_RELAY_URL).origin])
     expect(withDefault.paid.walk.report.hostedUploadRelayAllowed).toBe(new URL(DEFAULT_NOMI_ASSET_RELAY_URL).origin)
+  })
+
+  it('vendorNetwork:false keeps the vendor origins out of the allowlist (probe mode: even a mistaken submit is blocked by the net guard)', async () => {
+    const { calls } = await open({ hostedUploads: true, vendorNetwork: false, env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', NOMI_ASSET_RELAY_URL: 'https://relay.example.test/v1/assets' } })
+    expect(calls.options.env.NOMI_WALK_ALLOW_ORIGINS.split(',')).toEqual(['https://relay.example.test'])
   })
 
   it('hostedUploads on with NOMI_ASSET_RELAY_URL set: the one extra origin is that custom relay', async () => {

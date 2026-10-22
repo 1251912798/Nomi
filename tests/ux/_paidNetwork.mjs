@@ -51,6 +51,19 @@ export function paidWalkAllowlist(catalog, vendorKeys) {
 }
 
 /**
+ * 放行名单是逗号拼起来、再按逗号切开的，而 URL 解析允许主机名里带 `,` 和 `*`（`https://a.example,*.evil.test/v1`、`%2C` 同理）。
+ * 所以取到的源必须恰好是**一个精确源**：scheme + 主机（字母数字 . -）+ 可选端口；没有逗号、通配符、空白、百分号编码。花钱之前就抛。
+ */
+export function assertExactOrigin(origin) {
+  let decoded = origin
+  try { decoded = decodeURIComponent(origin) } catch { /* 解不开本身就不合格，下面的正则会拒 */ }
+  if (decoded !== origin || !/^https?:\/\/[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::\d{1,5})?$/.test(origin)) {
+    throw new Error(`托管上传中转源不是一个精确源（只许 scheme + 主机 + 可选端口，不许逗号 / 通配符 / 空白 / 百分号编码）：${JSON.stringify(origin)}（一分钱没花）`)
+  }
+  return origin
+}
+
+/**
  * 带本地参考素材（如 3D 预演 mp4）的生成，要先经应用自己的托管上传中转把素材传出去（产品里唯一出处 electron/catalog/assetRelayRuntimeConfig.ts：
  * 环境变量 NOMI_ASSET_RELAY_URL 优先，否则默认中转）。按需打开（openPaidWalk 的 hostedUploads）：返回这**一个**中转的 origin，不在脚本里写死地址。
  */
@@ -59,7 +72,7 @@ export function hostedUploadRelayOrigin(env = process.env) {
   const saved = process.env.NOMI_ASSET_RELAY_URL
   if (env.NOMI_ASSET_RELAY_URL === undefined) delete process.env.NOMI_ASSET_RELAY_URL
   else process.env.NOMI_ASSET_RELAY_URL = env.NOMI_ASSET_RELAY_URL
-  try { return new URL(readAssetRelayRuntimeConfig().endpoint).origin }
+  try { return assertExactOrigin(new URL(readAssetRelayRuntimeConfig().endpoint).origin) }
   finally { if (saved === undefined) delete process.env.NOMI_ASSET_RELAY_URL; else process.env.NOMI_ASSET_RELAY_URL = saved }
 }
 
