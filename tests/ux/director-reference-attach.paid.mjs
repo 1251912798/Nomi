@@ -106,7 +106,7 @@ try {
   await clickOrFail(win.locator(`[data-node-id="${ids.shot}"] ${NODE_GENERATE}`).first(), '节点底栏的 ↑（生成）', { noWaitAfter: true })
   const dialog = win.locator(SPEND_DIALOG)
   // 真正的等待：Playwright 的 isVisible 不等待、会忽略 timeout，框晚几百毫秒出现就被当成「没有框」（协调 10-22 实跑踩到）。
-  if (await dialog.first().waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false)) {
+  if (await dialog.first().waitFor({ state: 'visible', timeout: stationTimeout({ operations: 1 }) }).then(() => true).catch(() => false)) {
     await proveProbe(dialog, '付费 / 托管披露确认框')
     await walk.snap('02-zh-confirm-dialog')
     await clickOrFail(dialog.locator('[data-spend-confirm-action="confirm"]'), '确认框「生成」', { noWaitAfter: true })
