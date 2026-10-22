@@ -186,11 +186,9 @@
     "src/workbench/generationCanvas/runner/referenceInUseIsSent.characterization.test.ts"
   ],
   "legacy_paths": {
-    "status": "removed",
-    "removed_paths": [
-      "src/workbench/generationCanvas/nodes/controls/reassignUploadedImages.ts"
-    ],
-    "rationale": "搬家 / 暂存 / 删图函数与「N 张没带过来」提示同提交删除"
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "搬家 / 暂存 / 删图函数 reassignUploadedImages.ts 是本 PR 分支（#1269）自己加的，同一分支在合入前删掉（提交 4566b6647）；相对 main 没有要删的旧路径。按槽存储的旧键由 readReferenceList 读时归一、写时删除，见 migration。"
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
