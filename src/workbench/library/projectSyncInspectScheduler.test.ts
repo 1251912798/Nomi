@@ -11,7 +11,7 @@ const projects = (count: number, revision = 1) =>
 
 function harness(now = { value: 1000 }) {
   const queued: Array<() => void> = []
-  const inspectMany = vi.fn(async (ids: string[]) => Object.fromEntries(ids.map((id) => [id, ready()])))
+  const inspectMany = vi.fn(async (ids: string[]): Promise<Record<string, WorkspaceSyncInspection | null>> => Object.fromEntries(ids.map((id) => [id, ready()])))
   const scheduler = createSyncInspectScheduler({ inspectMany, schedule: (task) => { queued.push(task) }, now: () => now.value })
   const flush = async (): Promise<void> => {
     while (queued.length) { queued.shift()?.(); await vi.waitFor(() => undefined); await new Promise((resolve) => setTimeout(resolve, 0)) }
