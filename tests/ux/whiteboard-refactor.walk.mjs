@@ -64,6 +64,17 @@ async function stroke() {
   await page.mouse.up()
   await expect.poll(() => readNode('image').meta.whiteboardState?.strokes.length ?? 0).toBeGreaterThan(0)
 }
+// The creator's first gesture after opening: no tool is picked first (the 2026-10-22 escape — the walk used to pick the brush for them).
+async function firstGestureStroke(nodeId) {
+  const layer = editor.getByLabel(t('generationCommon.whiteboard.drawingLayerAria'), { exact: true })
+  const box = await layer.boundingBox()
+  expect(box).not.toBeNull()
+  await page.mouse.move(box.x + box.width * .3, box.y + box.height * .4)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width * .6, box.y + box.height * .55, { steps: 16 })
+  await page.mouse.up()
+  await expect.poll(() => readNode(nodeId).meta?.whiteboardState?.strokes?.length ?? 0, { message: 'dragging right after opening draws a stroke without picking a tool first' }).toBeGreaterThan(0)
+}
 async function openImage() {
   await node.click()
   await page.getByRole('button', { name: t('generationCommon.imageToolbar.whiteboard'), exact: true }).click()
@@ -87,6 +98,11 @@ try {
   await openImage()
   await expect.poll(() => readNode('image').meta.whiteboardState?.canvasAssets.length ?? 0).toBe(1)
   evidence.openToPersistedInitialImageMs = performance.now() - firstOpenStarted
+  const offsetsBeforeFirstGesture = JSON.stringify(readNode('image').meta.whiteboardState.sceneTransforms?.offsets ?? {})
+  await firstGestureStroke('image')
+  check('image entry: the first drag after opening draws and leaves the photo where it was', JSON.stringify(readNode('image').meta.whiteboardState.sceneTransforms?.offsets ?? {}) === offsetsBeforeFirstGesture)
+  await action('undo').click()
+  await expect.poll(() => readNode('image').meta.whiteboardState.strokes.length).toBe(0)
   check('inline editor replaces the image preview; only one Leafer instance', await page.locator('.leafer-app-view').count() === 1)
   const editorProbe = await proveProbe(editor, 'inline editor is actually mounted')
   const toolbar = editor.getByRole('toolbar')
@@ -293,6 +309,8 @@ try {
   await launcher.click()
   if (!await editor.isVisible()) await launcher.click()
   await expect(editor).toBeVisible()
+  await firstGestureStroke('board')
+  check('standalone entry: the first drag after opening draws a stroke', true)
   await editor.locator('input[type=file]').setInputFiles(imagePath)
   await expect.poll(() => readNode('board').meta?.whiteboardState?.canvasAssets.length ?? 0).toBe(1)
   check('standalone entry reuses the same editor and real import', true)
@@ -304,6 +322,12 @@ try {
   await snap('standalone')
   await action('done').click()
   await expectAbsent(editor, { provenBy: editorProbe })
+  // What the creator sees after Done: the board node shows what was drawn, not the empty launcher (2026-10-22 escape).
+  const boardNode = page.locator('[data-node-id="board"]')
+  await expect(boardNode.locator('img').first(), 'after Done the board node shows its drawn content').toBeVisible()
+  await expect(launcher, 'after Done a board with content no longer shows the empty launcher').toBeHidden()
+  check('standalone Done leaves the drawn content visible on the board node', true)
+  await snap('standalone-after-done')
   check('no renderer exceptions', errors.length === 0)
 } catch (error) {
   evidence.error = String(error)
