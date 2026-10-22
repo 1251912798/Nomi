@@ -79,6 +79,20 @@ function seedProfile(root) {
       error: 'InvalidParameter: resolution "1080p" is not supported by this model', prompt: '纸船缓缓漂过水洼，镜头固定。', meta: videoMeta({ resolution: '1080p' }),
     },
   ]
+  // 参考图结构重写的往返走查（2026-10-22）：一张只有 3 张上传参考的视频卡、一张放满 30 张上传参考的视频卡（Seedance 2.5 参考上限 30）。
+  // 地址刻意不用画布上图片卡的产物：那些地址打开工程时会被迁移成连线（projectV51ToV60Migration），就不是「上传」了。
+  const demoShots = ['shot-1.jpg', 'shot-2.jpg', 'shot-3.jpg', 'shot-4.jpg', 'shot-5.jpg', 'shot-6.jpg', 'shot-7.jpg', 'shot-8.jpg']
+  const thirty = Array.from({ length: 30 }, (_, i) => {
+    const file = `ref-${String(i + 1).padStart(2, '0')}.jpg`
+    fs.copyFileSync(demo(demoShots[i % demoShots.length]), path.join(projectRoot, 'assets', file))
+    return url(file)
+  })
+  nodes.push(
+    { id: 'trio-video', kind: 'video', categoryId: 'shots', title: '三张参考', position: { x: 700, y: 700 }, size: { width: 340, height: 192 }, status: 'idle',
+      prompt: '海边的清晨慢慢过渡到傍晚。', meta: videoMeta({ referenceImageUrls: thirty.slice(0, 3) }) },
+    { id: 'thirty-video', kind: 'video', categoryId: 'shots', title: '三十张参考', position: { x: 160, y: 700 }, size: { width: 340, height: 192 }, status: 'idle',
+      prompt: '镜头缓慢推近。', meta: videoMeta({ referenceImageUrls: thirty }) },
+  )
   // 画布最下面放一张远处的小文本卡：「适应视图」按全部节点的包围盒摆，有了它目标卡的生成框就落在底部时间轴胶囊和缩放条上方，点得到。
   nodes.push({ id: 'memo', kind: 'text', categoryId: 'shots', title: '备忘', prompt: '备忘', position: { x: 160, y: 1250 }, size: { width: 220, height: 120 }, status: 'success', result: { id: 'memo-r', type: 'text', text: '备忘', createdAt: 1 } })
   const edges = [
@@ -315,6 +329,56 @@ async function runPass({ locale, scheme }) {
       await win.waitForFunction(() => /Wan 2\.7/.test(document.querySelector('.generation-canvas-v2-node__composer [data-bar-segment="model-params"]')?.textContent ?? ''), null, { timeout: stationTimeout() })
       check(`[${tag}] 换到 Wan 2.7：底栏换了模型，生成框仍在`, (await c.locator('[data-reference-row], [data-reference-entry]').count()) >= 1)
       await snap('09-after-model-switch')
+    })
+
+    // ── 往返（参考图结构重写的验收线）：节点上只存一份有序参考列表，换方式 / 换模型都不改它 ──
+    const pickMode = async (pattern) => {
+      const c = composer()
+      await c.locator('[data-parameter-summary]').click()
+      const panel = win.locator('[data-agent-parameter-panel]')
+      await expectVisible(panel, '参数面板')
+      await panel.locator('[data-agent-generation-mode] [role="radio"]', { hasText: pattern }).first().click()
+      await win.keyboard.press('Escape')
+    }
+    const pickModel = async (name) => {
+      await composer().locator('[data-bar-segment="model-params"] button').first().click()
+      await win.locator('[role="option"]').filter({ hasText: name }).first().click()
+      await win.waitForFunction((label) => (document.querySelector('.generation-canvas-v2-node__composer [data-bar-segment="model-params"]')?.textContent ?? '').includes(label), name, { timeout: stationTimeout() })
+      await win.keyboard.press('Escape')
+    }
+    const tileCounts = () => composer().evaluate((el) => ({
+      tiles: el.querySelectorAll('[data-reference-row] [data-asset-tile]').length,
+      unused: el.querySelectorAll('[data-reference-row] [data-reference-unused]').length,
+      slots: el.querySelectorAll('[data-asset-slot] [data-asset-tile]').length,
+    }))
+    await section('roundtrip-three-refs', async () => {
+      await selectNode('trio-video')
+      const before = await tileCounts()
+      await pickMode(new RegExp('首尾帧|First / Last'))
+      await expectVisible(composer().locator('[data-asset-slot-label]').first(), '首尾帧格出现')
+      const mid = await tileCounts()
+      await snap('20-roundtrip-three-firstlast')
+      const trioState = await win.evaluate(() => { const st = window.__nomiCanvasStore?.getState(); const n = st?.nodes.find((node) => node.id === 'trio-video'); return { meta: n ? { archetype: n.meta?.archetype, refs: n.meta?.referenceImageUrls, gap: n.meta?.referenceFirstFrameEmpty, first: n.meta?.firstFrameUrl, last: n.meta?.lastFrameUrl } : null, edges: st?.edges.filter((e) => e.target === 'trio-video').map((e) => [e.source, e.mode]) } })
+      await pickMode(/^(参考|Reference)$/)
+      await win.waitForFunction(() => !document.querySelector('.generation-canvas-v2-node__composer [data-reference-unused]'), null, { timeout: stationTimeout() })
+      const back = await tileCounts()
+      await snap('21-roundtrip-three-back')
+      check(`[${tag}] 往返：3 张上传参考 → 首尾帧（首帧、尾帧 + 1 张未用到）→ 参考，3 张一张不少`, before.tiles === 3 && mid.slots === 2 && mid.unused === 1 && back.tiles === 3 && back.unused === 0, JSON.stringify({ before, mid, back, trioState }))
+    })
+    await section('roundtrip-thirty-refs', async () => {
+      await selectNode('thirty-video')
+      const before = await tileCounts()
+      await pickModel('Veo 3.1')
+      await expectVisible(composer().locator('[data-reference-unused]').first(), 'Veo 3.1 下放不下的图淡显「未用到」')
+      const there = await tileCounts()
+      await snap('22-roundtrip-thirty-veo')
+      const metaOf = () => win.evaluate(() => { const n = window.__nomiCanvasStore?.getState().nodes.find((node) => node.id === 'thirty-video'); return n ? { archetype: n.meta?.archetype, modelKey: n.meta?.modelKey, refs: (n.meta?.referenceImageUrls ?? []).length } : null })
+      const atVeo = await metaOf()
+      await pickModel('Seedance 2.5')
+      await win.waitForFunction(() => !document.querySelector('.generation-canvas-v2-node__composer [data-reference-unused]'), null, { timeout: stationTimeout() }).catch(() => {})
+      const back = { ...(await tileCounts()), atVeo, meta: await metaOf() }
+      await snap('23-roundtrip-thirty-back')
+      check(`[${tag}] 往返：30 张 → Veo 3.1（在用 + 未用到 = 30）→ 切回 Seedance 2.5，30 张一张不少`, before.tiles === 30 && there.tiles === 30 && there.unused > 0 && back.tiles === 30 && back.unused === 0, JSON.stringify({ before, there, back }))
     })
 
     await section('host-error-report', async () => {

@@ -305,6 +305,40 @@ try {
     await shot(page, B3, 'b3s-video-three-uploads', 'B3s-roundtrip-zh-light')
     await context.close()
   }
+  // ── 往返（参考图结构重写的验收线，2026-10-22）：节点上只存一份有序参考列表，换方式 / 换模型都不改它。
+  //    中 / 英各真点一遍：3 张参考 → 首尾帧 → 参考；30 张（Seedance 2.5）→ Veo 3.1 → 切回，一张不少。
+  for (const [lang, langParam, scheme] of [['zh', '', 'light'], ['en', '&lang=en', 'dark']]) {
+    const t = (key) => uiText(lang === 'zh' ? 'zh-CN' : 'en', key)
+    const tag = `${lang}-${scheme}`
+    const unusedTiles = (page) => count(page, '[data-reference-row] [data-reference-unused]')
+    {
+      const { page, context } = await open(B3, 'b3s-video-three-uploads', `${langParam}&scheme=${scheme}`)
+      await pickMode(page, t('generationCommon.composerB3.modeFirstLast'))
+      const mid = { slots: await count(page, '[data-asset-slot] [data-asset-tile]'), unused: await unusedTiles(page) }
+      await shot(page, B3, 'b3s-video-three-uploads', `R1-3refs-firstlast-${tag}`)
+      await pickMode(page, t('generationCommon.composerB3.modeReference'))
+      const back = { tiles: await refTiles(page), unused: await unusedTiles(page) }
+      await shot(page, B3, 'b3s-video-three-uploads', `R1-3refs-back-${tag}`)
+      check(`refslots.roundtrip.three-refs.${tag}`, mid.slots === 2 && mid.unused === 1 && back.tiles === 3 && back.unused === 0, JSON.stringify({ mid, back }))
+      await context.close()
+    }
+    {
+      const { page, context } = await open(B3, 'b3r-video-30-refs', `${langParam}&scheme=${scheme}`)
+      const before = await refTiles(page)
+      await swapModel(page, 'Veo 3.1')
+      await page.waitForSelector('[data-reference-row] [data-reference-unused]', { timeout: stationTimeout() })
+      const there = { tiles: await refTiles(page), unused: await unusedTiles(page) }
+      await shot(page, B3, 'b3r-video-30-refs', `R2-30refs-veo-${tag}`)
+      await swapModel(page, 'Seedance 2.5')
+      await page.waitForFunction(() => !document.querySelector('[data-reference-row] [data-reference-unused]'), null, { timeout: stationTimeout() })
+      const back = { tiles: await refTiles(page), unused: await unusedTiles(page) }
+      await shot(page, B3, 'b3r-video-30-refs', `R2-30refs-back-${tag}`)
+      // 停在 Veo 3.1：在用 + 未用到 = 30（一张不删）；切回 Seedance 2.5：30 张都在用。
+      check(`refslots.roundtrip.thirty-refs.${tag}`, before === 30 && there.tiles === 30 && there.unused > 0 && back.tiles === 30 && back.unused === 0, JSON.stringify({ before, there, back }))
+      await context.close()
+    }
+  }
+
   for (const [name, state] of [['Wan 2.7', 'b3j-model-menu'], ['Veo 3.1', 'b3j-model-menu'], ['Wan 2.7', 'b3j-swap-edges'], ['Veo 3.1', 'b3j-swap-edges']]) {
     const { page, context } = await open(B3, state)
     await swapModel(page, name)
