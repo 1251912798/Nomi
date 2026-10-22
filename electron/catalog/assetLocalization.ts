@@ -575,6 +575,24 @@ function allChannelsFailedError(asset: LocalAsset | null, mediaKind: AssetMediaK
 }
 
 /**
+ * 一个 HTTP 操作处在任务的哪一步。值域与 runtime 的 ProfileOperationStage 相同；这里单列，
+ * 免得 catalog 层反向依赖 runtime。
+ */
+export type ReferenceStage = "create" | "query" | "result";
+
+/**
+ * 参考素材只在「提交」这一步交给供应商。查任务 / 取结果按任务号寻址，一张参考都不碰：
+ * 不读盘、不上传。
+ *
+ * 为什么是硬规则而不是逐个映射声明：缓存里的任务请求刻意保留原始 `nomi-local://`（指纹、溯源要用），
+ * 若执行器每一步都本地化，每轮询一次就重传一遍（2026-10-22 #1279 真付费样本：首尾帧两张图各传 26 次），
+ * 而且提交后参考被删 / 随项目搬走，已付费的任务就再也查不回来。
+ */
+export function stageSubmitsReferences(stage: ReferenceStage): boolean {
+  return stage === "create";
+}
+
+/**
  * 对一整个值(通常是 request.extras)做本地素材本地化:扫出所有 nomi-local、每个唯一 URL 只上传一次、
  * 替换成可达值。无本地素材时原样返回(零开销)。
  *
