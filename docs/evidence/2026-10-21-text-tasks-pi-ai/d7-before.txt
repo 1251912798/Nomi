@@ -1,0 +1,10 @@
+ ❯ src/workbench/api/textTaskErrorDisplay.test.ts (5 tests | 5 failed) 80ms
+     × 结构化标记被剥掉，服务商原话留着 11ms
+     × 没有标记的错误原样；不是 Error 的给空串（调用方用自己的兜底文案） 2ms
+     × src/workbench/generationCanvas/nodes/NodePromptOptimizer.tsx 的文本任务错误走 textTaskFailureText，不直接摆 e.message 23ms
+     × src/workbench/generationCanvas/nodes/NodePromptTranslator.tsx 的文本任务错误走 textTaskFailureText，不直接摆 e.message 12ms
+     × src/ui/onboarding/CustomCallEditor.tsx 的文本任务错误走 textTaskFailureText，不直接摆 e.message 29ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/workbench/api/textTaskErrorDisplay.test.ts > 文本任务错误给人看的那一句 > 结构化标记被剥掉，服务商原话留着
+TypeError: textTaskFailureText is not a function
+ ❯ src/workbench/api/textTaskErrorDisplay.test.ts:23:19

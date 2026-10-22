@@ -180,10 +180,10 @@
   },
   "regression_tests": [
     "src/workbench/generationCanvas/nodes/controls/referenceList.test.ts",
-    "src/workbench/generationCanvas/runner/referenceInUseIsSent.characterization.test.ts"
+    "src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts"
   ],
   "class_regression_tests": [
-    "src/workbench/generationCanvas/runner/referenceInUseIsSent.characterization.test.ts"
+    "src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts"
   ],
   "legacy_paths": {
     "status": "not-applicable",
@@ -197,7 +197,6 @@
   },
   "migration": "读时归一：readReferenceList 把旧的 firstFrameUrl / lastFrameUrl / first_frame_url / last_frame_url / referenceImageUrl / referenceImages 按「当前方式看得见的在前」并进列表；任何一次参考写入、切方式、换模型都用 withReferenceList 落成规范形并删旧键。只存了尾帧的旧节点落成 referenceFirstFrameEmpty。不改工程文件版本号，不做加载时批量迁移。",
   "residual_risks": [
-    "请求组装仍整包 `...meta`：列表里未用到的图经 referenceImageUrls → reference_image_urls、旧键 firstFrameUrl → image_url 带出去——归热修 #1279（GENERIC_REFERENCE_KEYS 白名单 + 主进程剥除），合入 main 后 merge 并把 7 条 it.fails 改回 it",
     "渠道只收单图时参考行把槽收成 1 张（capOf），发送侧不知道渠道上限：模板参数层会多带，线上 body 只有单图位所以不上线；未在统一函数里收口",
     "画布边的落槽仍是两份解析（参考行 resolveReferenceSlots 的边循环、发送 resolveGenerationReferences），本次只统一了上传图",
     "列表没有空位：首帧空着、往尾帧放之外的「空位」（如参考数组中间留空）不支持"
@@ -206,7 +205,7 @@
     "layer": "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
     "tests": [
       "src/workbench/generationCanvas/nodes/controls/referenceList.test.ts",
-      "src/workbench/generationCanvas/runner/referenceInUseIsSent.characterization.test.ts"
+      "src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts"
     ]
   }
 }

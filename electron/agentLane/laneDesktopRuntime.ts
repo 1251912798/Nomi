@@ -9,7 +9,6 @@ import { desktopT, getDesktopLocale } from '../i18n'
 import type { DesktopCanvasReadRuntime } from '../capabilityCore/canvasReadMainRuntime'
 import type { LaneIpcDependencies } from './laneIpc'
 import type { LaneComposerContext } from '../shared/agentLane/laneDesktopContracts'
-import type { NomiModelConfig } from '../shared/agentLane/laneModelConfig'
 import type { LaneWorkspaceHandle } from '../shared/agentLane/laneContracts'
 import { assertProjectAgentBinding, type ProjectBinding } from '../shared/projectBinding'
 import { readAgentApprovalPolicy, writeAgentApprovalPolicy } from '../settings/agentApprovalPolicySettings';
@@ -17,8 +16,8 @@ import { getSettingsRoot, getWorkspaceRepositoryDeps } from '../runtimePaths'
 import { resolveWorkspaceProjectDir } from '../workspace/workspaceRepository'
 import { ensureWorkspaceProjectIdentity } from '../workspace/workspaceProjectIdentity'
 import { chooseTextModel } from '../ai/textBrainResolver'
-import { vendorModelConnection } from '../ai/vendorModelConnection'
-import { modelContextWindow } from '../shared/modelContextWindow'
+import { nomiModelConfigFor } from '../ai/vendorModelConnection'
+import { modelCallTransport } from '../ai/modelCallFetch'
 import { NOMI_AGENT_IDENTITY, buildLanguageRule, resolveRequestedSkill } from '../harness/context/agentContext'
 import type { SkillRecord } from '../skills/skillStore'
 import { getProjectMemory, formatMemoryForPrompt } from '../memory/projectMemory'
@@ -62,18 +61,8 @@ function currentProjectMemory(projectId: string): string {
 function selectModel(preference: LaneComposerContext['model']) {
   const selected = chooseTextModel(preference?.modelKey ?? '', false, preference?.vendorKey ?? '')
   const { vendor, model, apiKey } = selected
-  const connection = vendorModelConnection(vendor, model, apiKey)
-  const contextWindow = modelContextWindow(model.meta, connection.modelId)
-  const maxOutputTokens = (model.meta as Record<string, unknown> | undefined)?.maxOutputTokens
-  const config: NomiModelConfig = {
-    ...connection, providerId: vendor.key, authType: vendor.authType === 'none' ? 'none' : 'api-key',
-    ...(contextWindow === undefined ? {} : { contextWindow }),
-    ...(typeof maxOutputTokens === 'number' && Number.isFinite(maxOutputTokens) && maxOutputTokens >= 1
-      ? { maxOutputTokens: Math.floor(maxOutputTokens) } : {}),
-    ...(model.tokenPricing ? { tokenPricing: model.tokenPricing } : {}),
-    ...(model.free ? { free: true as const } : {}),
-  }
-  return { model, kind: connection.kind, config }
+  const config = nomiModelConfigFor(vendor, model, apiKey)
+  return { model, kind: config.kind, config }
 }
 
 /** Owns desktop identity and domain ports; pi owns conversation execution and persistence. */
@@ -116,7 +105,9 @@ export function createDesktopLaneDependencies(surface: DesktopCanvasReadRuntime,
       const input = createDesktopLaneInput({ projectId: binding.projectId,
         capture: () => context, prepare: prepareInput, activate: () => undefined, model: () => model })
       const { runLaneSingleShot } = createRequire(__filename)('./laneNativeLoader.cjs') as { runLaneSingleShot: RunLaneSingleShot }
-      const result = await runLaneSingleShot({ fetch: appFetch, model: model.config, prompt: command.text, input, signal: actionSignal,
+      // 失败留证（状态码 / 原话 / 去查询串的地址，不含密钥）与文本任务同一个传输包装。
+      const transport = modelCallTransport({ modelId: model.config.modelId, knownSecrets: [model.config.apiKey ?? ''] })
+      const result = await runLaneSingleShot({ fetch: transport.fetch, model: model.config, prompt: command.text, input, signal: actionSignal,
         systemPrompt: [buildLanguageRule(), NOMI_AGENT_IDENTITY].filter(Boolean).join('\n\n'),
         systemPromptClosing: buildLanguageRule() })
       actionSignal.throwIfAborted()

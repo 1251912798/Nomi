@@ -1,19 +1,63 @@
 import { revalidatePendingCredential } from './catalog/validateCandidateCredential';
-// 文本任务执行引擎（从 runtime.ts 抽出——规则 12 巨壳门岗：runtime.ts 已逼近 800 行硬上限，
-// 文本任务这块自成一单元）。方案 A：路径 B 文本生成统一走 AI SDK streamTextTask。
+// 文本任务执行引擎（从 runtime.ts 抽出——规则 12 巨壳门岗）。2026-10-21 起走 pi-ai 单次调用的唯一核心
+// （electron/agentLane/laneModelCall.mts，经 ai/modelCallBridge 过 CJS→ESM 桥），与 Agent 的一次性提问、接入说明卡编译器同一台发动机。
+// 过去这里走的是 ai@4（streamTextTask），判活只数正文，思考型模型 30 秒就被掐（docs/audit/2026-10-21-text-stream-first-token-gate.md）。
 //
 // 回引 runtime 的 findExecutableModelForTask/billingKindForTaskKind（同 catalogCommit 的既定模式）：
 // 调用都在函数体内（运行期），CommonJS 循环引用安全（runtime ↔ textTaskRunner 仅函数体互引，
 // 无加载期互调）。
 import crypto from "node:crypto";
-import { streamTextTask } from "./ai/streamTextTask";
+import { callModelOnce } from "./ai/modelCallBridge";
+import { modelCallTransport } from "./ai/modelCallFetch";
+import { readModelImage, ModelImageUnreadableError } from "./ai/modelImageInput";
+import { modelCallFailure } from "./ai/runtimeVendorError";
+import { nomiModelConfigFor } from "./ai/vendorModelConnection";
+import { sanitizeForBroadCompat } from "./ai/promptSanitize";
+import { runAntigravityTask } from "./ai/antigravityTask";
+import { ANTIGRAVITY_VENDOR_KEY } from "./shared/antigravity";
 import { allReferenceImages } from "./catalog/taskParams";
 import { firstString, trim } from "./jsonUtils";
+import { desktopT } from "./i18n";
 import { billingKindForTaskKind, findExecutableModelForTask, type TaskRequest, type TaskResult } from "./runtime";
 import type { Model, Vendor } from "./catalog/types";
 
+/**
+ * 文本任务缺省的重试次数（流开始之前的 408/409/429/5xx/连不上）。迁移前是 ai@4 的 SDK 默认 2 次；
+ * pi 缺省 0 次，所以这里**显式**给，策略不变（任务书：429 照现在的策略处理）。拆解路径显式传 0（2026-10-11 拍板）。
+ */
+const DEFAULT_TEXT_TASK_RETRIES = 2;
+/** 迁移前的缺省温度（streamTextTask 没给就是 0.7）。 */
+const DEFAULT_TEXT_TASK_TEMPERATURE = 0.7;
+
+function abortError(): DOMException {
+  return new DOMException("text stream aborted", "AbortError");
+}
+
+/**
+ * 参考图 → 模型看得到的图片段。要了图却**一张都读不进** → 宁可报错也别让模型瞎编（「静默骗人」的收口闸，迁移前就有）：
+ * 单图读不出原样抛那张图的错误（既有契约），多图全读不出走可国际化的收口文案。读得出几张就送几张（拆解一镜 3 帧，丢一帧照跑）。
+ */
+async function imageContent(urls: readonly string[], signal: AbortSignal | undefined) {
+  const images: Array<{ type: "image"; data: string; mimeType: string }> = [];
+  let firstError: unknown = null;
+  for (const url of urls) {
+    try {
+      const image = await readModelImage(url, signal ? { signal } : {});
+      images.push({ type: "image", data: Buffer.from(image.bytes).toString("base64"), mimeType: image.mimeType });
+    } catch (error) {
+      if (signal?.aborted) throw abortError();
+      firstError ??= error;
+    }
+  }
+  if (urls.length && !images.length) {
+    if (urls.length === 1 && firstError instanceof Error) throw firstError;
+    throw new ModelImageUnreadableError(desktopT("textTask.imagesUnreadable", { count: urls.length }), urls[0] ?? "");
+  }
+  return images;
+}
+
 // 文本任务的执行收口（单一真相）：runTask（收集最终）与 runTextTaskStream（逐字流式）
-// 共用这一份——resolve 之后只差「传不传 onDelta」。
+// 共用这一份——resolve 之后只差「传不传 onDelta / abortSignal」。
 export async function executeTextTask(input: {
   vendor: Vendor;
   model: Model;
@@ -32,25 +76,57 @@ export async function executeTextTask(input: {
     : [];
   const maxTokensValue = Number(input.request.extras?.maxTokens ?? input.request.extras?.max_tokens);
   const temperatureValue = Number(input.request.extras?.temperature);
-  // 只有调用方显式给了才传（拆解路径给 0）；没给就是 SDK 默认，其它文本任务行为不变。
+  // 只有调用方显式给了才用（拆解路径给 0）；没给就是缺省 2 次。
   const maxRetriesRaw = input.request.extras?.maxRetries;
-  const maxRetriesValue = typeof maxRetriesRaw === "number" && Number.isInteger(maxRetriesRaw) && maxRetriesRaw >= 0 && maxRetriesRaw <= 2 ? maxRetriesRaw : undefined;
-  const { raw, finishReason } = await streamTextTask(
-    {
-      vendor: input.vendor,
-      model: input.model,
-      apiKey: input.apiKey,
-      prompt: input.request.prompt,
-      ...(imageUrls.length ? { imageUrls } : {}),
-      ...(Number.isFinite(temperatureValue) ? { temperature: temperatureValue } : {}),
+  const maxRetries = typeof maxRetriesRaw === "number" && Number.isInteger(maxRetriesRaw) && maxRetriesRaw >= 0 && maxRetriesRaw <= 2
+    ? maxRetriesRaw : DEFAULT_TEXT_TASK_RETRIES;
+  const signal = input.abortSignal;
+  const succeeded = (text: string, finishReason?: string): TaskResult => ({
+    id: input.taskId, kind: input.kind, status: "succeeded", assets: [],
+    // raw 合成成 OpenAI choices 形状：渲染层既有的 extractTextFromChatRaw 零改动继续可用。
+    raw: { choices: [{ message: { role: "assistant", content: text } }] },
+    // finishReason 必须带出去：截断（`length`）这一类问题在下游**只能**靠它自证。
+    ...(finishReason ? { finishReason } : {}),
+  });
+
+  if (input.vendor.key === ANTIGRAVITY_VENDOR_KEY) {
+    const result = await runAntigravityTask({ prompt: input.request.prompt, model: input.model.modelKey,
+      imageUrls, signal, onDelta: input.onDelta });
+    return { ...succeeded(result.text, "stop"), raw: { choices: [{ message: { role: "assistant", content: result.text } }], usage: result.usage } };
+  }
+
+  // 收口 sanitize（P0-6）：prompt 统一 ASCII 可移植化（迁移前同语义）。
+  const prompt = sanitizeForBroadCompat(input.request.prompt);
+  const images = await imageContent(imageUrls, signal);
+  const config = nomiModelConfigFor(input.vendor, input.model, input.apiKey);
+  const transport = modelCallTransport({ modelId: config.modelId, knownSecrets: [input.apiKey] });
+  const failure = (error: unknown, errorMessage?: string) => modelCallFailure({
+    vendorKey: input.vendor.key, error, ...(errorMessage === undefined ? {} : { errorMessage }),
+    attempt: transport.lastAttempt(), redact: transport.redact });
+  let result: Awaited<ReturnType<typeof callModelOnce>>;
+  try {
+    result = await callModelOnce({
+      model: config,
+      fetch: transport.fetch,
+      content: images.length ? [{ type: "text", text: prompt }, ...images] : prompt,
+      temperature: Number.isFinite(temperatureValue) ? temperatureValue : DEFAULT_TEXT_TASK_TEMPERATURE,
       ...(Number.isFinite(maxTokensValue) && maxTokensValue > 0 ? { maxTokens: maxTokensValue } : {}),
-      ...(maxRetriesValue !== undefined ? { maxRetries: maxRetriesValue } : {}),
-    },
-    { ...(input.onDelta ? { onDelta: input.onDelta } : {}), ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}) },
-  );
-  // finishReason 必须带出去：截断（`length`）这一类问题在下游**只能**靠它自证。
-  // 2026-09-12 诊断里「候选 C 截断」之所以两轮都证伪不了，就是因为它被原地丢在了这一行。
-  return { id: input.taskId, kind: input.kind, status: "succeeded", assets: [], raw, ...(finishReason ? { finishReason } : {}) };
+      maxRetries,
+      // 有停止键的入口（流式）传 signal；一次性入口没有，核心自加整体兜底（协调 10-21 定，D2）。
+      ...(signal ? { signal } : {}),
+      // 只有正文进 onDelta；思考事件只说明「还活着」，判活由核心的看门狗管。
+      ...(input.onDelta ? { onEvent: (event) => { if (event.type === "text_delta") input.onDelta!(event.delta); } } : {}),
+    });
+  } catch (error) {
+    // 用户点了停止 = 取消：不是成功（不把残文本当结果）也不是错误（调用方按 AbortError 收尾，IPC 层不发 error）。
+    if (signal?.aborted) throw abortError();
+    throw failure(error);
+  }
+  const { message } = result;
+  if (message.stopReason === "aborted") throw signal?.aborted ? abortError() : failure(undefined, message.errorMessage);
+  if (message.stopReason === "error") throw failure(undefined, message.errorMessage);
+  const text = message.content.filter((part) => part.type === "text").map((part) => (part as { text: string }).text).join("");
+  return succeeded(text, message.stopReason === "length" ? "length" : "stop");
 }
 
 /**

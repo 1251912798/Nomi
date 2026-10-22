@@ -1,0 +1,36 @@
+{
+  "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+  "commit": "56892e220",
+  "date": "2026-10-22",
+  "runs": 5,
+  "results": [
+    {
+      "id": "canvas-drag-group-frame",
+      "metrics": {
+        "frameGapP95": {
+          "runs": 5,
+          "median": 15.2,
+          "p95": 16.2
+        },
+        "longTasks": {
+          "runs": 5,
+          "median": 0,
+          "p95": 0
+        }
+      },
+      "budget": 33,
+      "baseline": {
+        "median": 38.6,
+        "p95": 39.4,
+        "runs": 5,
+        "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+        "date": "2026-10-16",
+        "commit": "94724f860"
+      },
+      "verdict": {
+        "status": "ok",
+        "note": ""
+      }
+    }
+  ]
+}

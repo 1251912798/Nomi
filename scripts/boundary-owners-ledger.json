@@ -440,6 +440,16 @@
         "symbol": "spendDecisionByPolicy"
       },
       "reason": "2026-10-12 挡位收成两档：付费门这扇门不再直接问档位，改问带刹车的单一代答入口 spendDecisionByPolicy（directGenerationBrakes.ts，档位那一半仍是 spendDecidedByPolicy）；不变量「宿主递持久化档位、判据只有一份」不变，门还在同一个文件。"
+    },
+    {
+      "contract": "docs/fixes/2026-08-29-anthropic-protocol-boundary.root-cause.json",
+      "path": "electron/ai/buildAiSdkModel.ts",
+      "symbol": "buildAiSdkModel",
+      "anchor": {
+        "path": "electron/ai/vendorModelConnection.ts",
+        "symbol": "vendorModelConnection"
+      },
+      "reason": "2026-10-21 文本任务迁 pi-ai 单次调用：ai@4 的 buildAiSdkModel 随栈删除。「运行时 base 在造模型之前按协议规范化」（Anthropic 补 /v1）挪进两台发动机共用的 vendorModelConnection（anthropicBaseUrl），Agent、文本任务、编译器都经它拿连接配置；顺手修掉 lane 只存根地址时打到 {root}/messages 的 404（laneModelCall.test.ts）。"
     }
   ],
   "retirements": [

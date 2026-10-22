@@ -403,6 +403,10 @@ export const zhGenerationCommon = {
         reason: '这个素材太大，传不上去',
         hint: '本机素材要先换成公网地址才能给服务商用，而这个文件超过了所有可用上传通道的大小上限（HTTP 413），Nomi 每条通道都试过了。重试没用——同一个文件每次都会被同一个上限挡回来。请把它压缩或裁短一点再放进来（视频尤其常见），或在「模型接入」接一个上传上限更高的通道。具体是哪个素材、多大，见下方技术详情。',
       },
+      referenceNotInUse: {
+        reason: '这次生成没发出去：请求里带了参考区没在用的图',
+        hint: 'Nomi 在发给服务商之前发现，这次请求里夹着参考区标「未用到」或当前方式用不上的图，于是在发出之前拦下了——这次请求一个字节都没离开你的电脑，服务商没被请求到。重新点一次生成即可：Nomi 会按参考区里正在用的图重新组一次请求。如果反复出现，请把下方技术详情反馈给我们，这说明有个入口没走统一的参考规则。',
+      },
       assetInvalid: {
         reason: '参考素材本身有问题',
         hint: '这张参考素材没通过发送前的本机检查：文件读不到、认不出类型，或者内容不是真正的图片/视频（比如把网页存成了 .png）。请求还没发出去。同一个文件重试结果不会变——请在画布上换一张参考素材，或重新导入原文件，再点重试。具体是哪个文件，见下方技术详情。',
@@ -2132,6 +2136,10 @@ export const enGenerationCommon = {
       assetTooLarge: {
         reason: 'This asset is too large to upload',
         hint: 'Local assets must first be turned into a publicly reachable URL, and this file exceeds the size limit of every available upload channel (HTTP 413) — Nomi tried them all. Retrying will not help: the same file hits the same ceiling every time. Compress or trim it (videos especially) and add it again, or connect a channel with a higher upload limit under Model Access. The technical details below name the asset and its size.',
+      },
+      referenceNotInUse: {
+        reason: 'This generation was not sent: the request carried references that are not in use',
+        hint: 'Before sending, Nomi found images in this request that the reference row marks as Unused, or that the current mode cannot take, so it stopped the request before sending. Not a single byte left your machine and the provider was never called. Just generate again: Nomi will rebuild the request from the references currently in use. If this keeps happening, please send us the technical details below — it means some entry point is not following the shared reference rule.',
       },
       assetInvalid: {
         reason: 'The reference asset itself is invalid',

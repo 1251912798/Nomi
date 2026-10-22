@@ -42,9 +42,12 @@ function restoreGraph() {
 restoreGraph()
 let changeReadOnly: (value: boolean) => void
 let changeHidden: (value: boolean) => void
+let changeTwoGone: (value: boolean) => void
 function Harness() {
   const [readOnly, setReadOnly] = React.useState(false)
   const [hidden, setHidden] = React.useState(false)
+  const [twoGone, setTwoGone] = React.useState(false)
+  changeTwoGone = setTwoGone
   changeReadOnly = setReadOnly
   changeHidden = setHidden
   const stageRef = React.useRef<HTMLDivElement>(null)
@@ -58,14 +61,13 @@ function Harness() {
     captureHistory: state.captureHistory,
     commitPersistedChange: state.commitPersistedChange,
     moveGroupNodes: state.moveGroupNodes,
-    moveSelectedNodes: state.moveSelectedNodes,
     selectNodes: state.selectNodes,
   })
   return (
     <div ref={stageRef} className="generation-canvas-v2__stage" id="stage" hidden={hidden}>
       {/* 假 React Flow 包裹层：属性名必须与真库一致（RF 12 打 `data-id`），
           这里曾写成 `data-node-id`，把生产里同名的选择器 bug 一起锁成了「绿」。 */}
-      {['one', 'two'].map((id) => (
+      {['one', 'two'].filter((id) => !(twoGone && id === 'two')).map((id) => (
         <div key={id} className="react-flow__node" data-id={id}>
           <div className="generation-canvas-react-flow__node-shell" />
         </div>
@@ -76,9 +78,6 @@ function Harness() {
         onPointerDown={(event) => actions.handleGroupFramePointerDown(event, 'group')}
       >
         Group
-      </div>
-      <div id="selection" onPointerDown={actions.handleSelectionBoundsPointerDown}>
-        Selection
       </div>
     </div>
   )
@@ -94,13 +93,29 @@ Object.assign(window, {
       events: [...events],
       dragging: document.querySelector('#stage')?.getAttribute('data-dragging') ?? null,
       groupPreview: (document.querySelector('#group') as HTMLElement | null)?.style.translate ?? '',
-      selectionPreview:
+      memberPreview:
         (document.querySelector('[data-id="one"] .generation-canvas-react-flow__node-shell') as HTMLElement | null)
           ?.style.translate ?? '',
     }),
     unmount: () => root.unmount(),
     readOnly: () => changeReadOnly(true),
     hide: () => changeHidden(true),
+    // 拖动途中成员被删：store 里删掉、DOM 里卸载（真实路径：deleteNode + React Flow 卸载壳）。
+    dropMember: () => {
+      store.getState().deleteNode('two')
+      changeTwoGone(true)
+    },
+    // 数拖动期间 document.querySelectorAll 的调用次数（门岗：帧内不许做全局查询）。
+    countQueries: () => {
+      const original = document.querySelectorAll.bind(document)
+      const counter = { calls: 0 }
+      document.querySelectorAll = ((selector: string) => {
+        counter.calls += 1
+        return original(selector)
+      }) as typeof document.querySelectorAll
+      Object.assign(window, { __queryCounter: counter })
+    },
+    queryCalls: () => (window as unknown as { __queryCounter?: { calls: number } }).__queryCounter?.calls ?? 0,
     replaceGraph: restoreGraph,
     invalidateProject: () => session.close(),
     switchProject: async () => {

@@ -1,7 +1,7 @@
 # 方向检查：生成框参考图「在不在用」没有唯一主人（#1269，D-b1a-refslots）
 
 > 触发：PR #1269（feat/composer-b3）独立验收 V-b1a 第 2 次不过（= 同线第 3 轮修补，RW）。本线只做复盘和特征测试，不修 bug。
-> 验收报告：`D:/Nomi-coord-state/reports/V-b1a-r2.md`。特征测试：`src/workbench/generationCanvas/runner/referenceInUseIsSent.characterization.test.ts`。
+> 验收报告：`D:/Nomi-coord-state/reports/V-b1a-r2.md`。特征测试：原 `referenceInUseIsSent.characterization.test.ts`，重写合 main 后全部转绿并并入 `src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts`。
 > `node scripts/fix-churn.mjs` 对 catalogTaskActions / reassignUploadedImages / archetypeInput / taskParams：未命中热点（触发来自轮次，不来自 14 天计数）。
 
 ## 0. 一句话根因

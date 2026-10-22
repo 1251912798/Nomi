@@ -156,7 +156,7 @@ async function scanAllProjectAssets(isCurrent: () => boolean): Promise<{ assets:
   let partial = false
   let projectRecords: unknown
   try {
-    projectRecords = desktop.projects.listAsync ? await desktop.projects.listAsync() : desktop.projects.list()
+    projectRecords = await desktop.projects.listAsync()
   } catch {
     projectRecords = []
     partial = true

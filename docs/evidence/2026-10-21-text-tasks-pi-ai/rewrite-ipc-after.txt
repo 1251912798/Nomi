@@ -1,0 +1,19 @@
+# 改写选区 真 IPC 集成测试——修之后
+# npx vitest run electron/ai/textEntries.ipc.integration.test.ts electron/ai/textTaskCallers.integration.test.ts
+ ✓ electron/ai/textTaskCallers.integration.test.ts > 真入口登记 > '#1 文本节点续写/重写/预设'：写明从真入口经准入走到 HTTP 的测试，或缺口 2ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > 真入口登记 > '#2 文本节点改写选区'：写明从真入口经准入走到 HTTP 的测试，或缺口 1ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > 真入口登记 > '#3 提示词优化'：写明从真入口经准入走到 HTTP 的测试，或缺口 0ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > 真入口登记 > '#4 提示词翻译'：写明从真入口经准入走到 HTTP 的测试，或缺口 1ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > 真入口登记 > '#5 AI 起草脚本'：写明从真入口经准入走到 HTTP 的测试，或缺口 0ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > 真入口登记 > '#6 视频拆解读图'：写明从真入口经准入走到 HTTP 的测试，或缺口 0ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > 真入口登记 > '#7 浏览器提取提示词'：写明从真入口经准入走到 HTTP 的测试，或缺口 1ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > 真入口登记 > '#8 MCP 试跑文本模型'：写明从真入口经准入走到 HTTP 的测试，或缺口 0ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > 真入口登记 > '#9 画布单镜 Run 文本'：写明从真入口经准入走到 HTTP 的测试，或缺口 0ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > 真入口登记 > 例外表里每一条都还是真缺口（补上测试就从例外表删掉） 0ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > #1 文本节点续写：真 IPC > 逐段写流式草稿、定稿；走文本流式门 1931ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > #3 #4 #5 提示词优化 / 翻译 / AI 起草脚本：真 IPC > 三者共用的 runWorkbenchTextTaskStream 逐段收到正文、拿到结果；不走付费令牌闸 25ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > #2 文本节点改写选区：真 IPC + 真准入 > 拿到改写结果、交编辑器一次性替换选区；走文本流式门，不走付费令牌闸 63ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > #2 文本节点改写选区：真 IPC + 真准入 > 流式期间不往画布写增量草稿（选区只在编辑器里，数据层不碰正文） 44ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > #2 文本节点改写选区：真 IPC + 真准入 > 点停止：主进程那条 HTTP 真断，渲染层按取消收尾，选区不动 67ms
+ Test Files  2 passed (2)
+      Tests  95 passed | 9 skipped (104)

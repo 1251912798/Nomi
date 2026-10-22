@@ -1,0 +1,254 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-21-text-task-liveness",
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-21",
+  "problem_type": "第二台模型调用栈各自实现判活 / 超时 / 重试 / 取消，判活信号选错，把还在工作的模型当死连接掐掉",
+  "symptom": "写作区 AI 改写接 DeepSeek V4（思考型），30 秒后提示「文本生成超时（首字 30s 未响应）」被掐断；提示词优化、翻译、文本节点、拆解读图同样会在 30 秒处失败（真墙钟夹具：9 个调用方全部复现，docs/evidence/2026-10-21-text-tasks-pi-ai/c0-ai4-think35s-realtime.txt）",
+  "direct_cause": "ai@4 文本栈（electron/ai/streamTextTask.ts）的首字闸只在 textStream 出正文时撤销；textStream 只放 text-delta（node_modules/ai/dist/index.js:6172），reasoning 不算活着，思考型模型先流 35 秒 reasoning 就被 30 秒闸掐断",
+  "class_root": "主进程有两台各自实现的模型调用栈（Agent 走 pi-ai，文本任务走 ai@4），判活、超时、重试、取消、错误分类各一份；第二台的判活口径与模型真实行为不一致，而每次只在那一台上打补丁（14 天 5 刀），同一类问题从另一个模型、另一个入口、另一个协议回来",
+  "affected_population": [
+    "接思考型模型（DeepSeek V4 / R1 / o 系 / 经中转的推理模型）的所有文本任务用户",
+    "一次性文本入口（改写选区、拆解读图、浏览器提取、MCP 试跑、画布 Run）：错误不带结构化类别，界面靠关键词猜",
+    "只存了根地址的 Anthropic 接入（lane 一次性提问打到 {root}/messages → 404）"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneModelCall.mts",
+    "electron/agentLane/laneSingleShot.mts",
+    "electron/agentLane/laneModelProvider.mts",
+    "electron/agentLane/laneProviderGuard.mts",
+    "electron/agentLane/laneDesktopInput.ts",
+    "electron/agentLane/laneDesktopRuntime.ts",
+    "electron/agentLane/laneNativeLoader.cts",
+    "electron/textTaskRunner.ts",
+    "electron/ai/vendorModelConnection.ts",
+    "electron/ai/modelCallFetch.ts",
+    "electron/ai/modelCallBridge.ts",
+    "src/workbench/api/textActionIntent.ts",
+    "electron/ai/modelImageInput.ts",
+    "electron/ai/runtimeVendorError.ts",
+    "electron/ai/agentError.ts",
+    "electron/ai/textStreamIpc.ts",
+    "electron/ai/antigravityTask.ts",
+    "electron/providerAdapter/compiler.ts",
+    "electron/providerAdapter/serviceLanguageModels.ts",
+    "electron/shared/agentLane/modelCallPort.ts",
+    "electron/main.ts",
+    "electron/catalog/apimartTexts.ts",
+    "electron/catalog/catalogCommit.ts",
+    "electron/catalog/customCallDispatch.ts",
+    "electron/catalog/modelscopeTexts.ts",
+    "electron/catalog/seedBuiltins.ts",
+    "electron/catalog/taskParams.ts",
+    "electron/providerAdapter/builtinOpenAiCompatibleDraft.ts",
+    "electron/providerAdapter/service.ts",
+    "electron/providerAdapter/serviceCompilation.ts",
+    "electron/integrationCertification/integrationAdapterContract.ts",
+    "electron/jsonUtils.ts",
+    "electron/ai/modelProfiles.ts"
+  ],
+  "entry_points": [
+    "流式文本任务：nomi:tasks:text:stream → textStreamIpc → runTextTaskStream → executeTextTask（文本节点续写 / 重写 / 预设、提示词优化、翻译、AI 起草脚本，#1264 写作区改写）",
+    "一次性文本任务：nomi:tasks:run / canvas-submit / MCP / 拆解 → runtime.runTask 文本分支 → executeTextTask",
+    "接入说明卡编译器：providerAdapter/service → compileProviderAdapter → defaultGenerate",
+    "Agent 一次性提问：laneDesktopRuntime.singleShot → runLaneSingleShot"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://github.com/vercel/ai/blob/v4.3.19/packages/ai/core/generate-text/stream-text.ts",
+      "checked_at": "2026-10-21",
+      "purpose": "ai@4 的 textStream 只投 text-delta（本机 node_modules/ai/dist/index.js:6172 同一份），reasoning 走单独 Promise——判活只数正文的根源"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://www.npmjs.com/package/@earendil-works/pi-ai/v/0.85.1",
+      "checked_at": "2026-10-21",
+      "purpose": "pi-ai 0.85.1 的 openai-completions 把 reasoning_content / reasoning / reasoning_text 投成 thinking 事件（dist/api/openai-completions.js:411-434），重试缺省 0 次、可打断、认 Retry-After（dist/utils/provider-retry.js:75），流结束无 finish_reason 报错（:494-501）"
+    }
+  ],
+  "invariants": [
+    "主进程里「调一次模型」只有一个实现：electron/agentLane/laneModelCall.mts 的 callModelOnce；文本任务、编译器、lane 一次性提问都经它",
+    "判活看任意事件（正文、思考、工具调用增量），响应头之后另给思考期预算；常量只有 LANE_STREAM_WATCHDOG 一份",
+    "没有停止键的调用有整体兜底（MODEL_CALL_CEILING_MS），有停止键的没有",
+    "模型调用的失败按传输层记下的事实（状态码、响应体）结构化，分类只查 categorizeVendorFailure 一张表",
+    "ai 与 @ai-sdk/* 不在依赖里，代码引用即红"
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "electron/textTaskRunner.ts",
+      "symbol": "callModelOnce"
+    },
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneModelCall.mts",
+      "symbol": "callModelOnce"
+    },
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneNativeLoader.cts",
+      "symbol": "callModelOnce"
+    },
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneSingleShot.mts",
+      "symbol": "callModelOnce"
+    },
+    {
+      "kind": "write",
+      "path": "electron/ai/modelCallBridge.ts",
+      "symbol": "callModelOnce"
+    },
+    {
+      "kind": "write",
+      "path": "electron/providerAdapter/compiler.ts",
+      "symbol": "callModelOnce"
+    }
+  ],
+  "door_reduction": {
+    "before": 8,
+    "after": 6,
+    "why_not": "迁移前「调一次模型」有两套实现：ai@4（streamTextTask / buildAiSdkModel / vendorLanguageModel 三扇 + 编译器的 generateObject 一扇）与 pi（laneSingleShot 自己装配一扇）。迁移后实现只剩 laneModelCall 一处；剩下的门是它的调用方与跨 CJS→ESM 的桥：laneNativeLoader（ESM 岛的唯一入口）、modelCallBridge（CJS 侧唯一入口）、textTaskRunner（全部 9 个文本调用方的唯一一扇门）、compiler、laneSingleShot（lane 的一次性提问）。每个调用方语义不同（文本任务 / 说明卡 / Agent 投影），不能合并；它们都不再自己装配、判活或重试。"
+  },
+  "generality_proof": "判活、超时、重试、取消、错误分类只在 callModelOnce 与它的传输包装里各有一份；所有文本入口在 executeTextTask 汇成一扇门，编译器与 lane 一次性提问也直接调同一个核心。新的模型、协议、调用方都只能经这个核心（第二台栈的依赖已删，check:llm-stream-owner 拦核心之外直接 streamSimple），所以同一类「某一台栈判活口径不对」没有第二个落脚点。调用方矩阵（9 个入口 × 正常 / 空回包 / 429 / 503 / 401 / SSE 包错 / 断流 / 无 finish_reason / 停止 / 三相超时 / 整体兜底）在同一份真 HTTP 夹具上逐个证。",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneModelCall.mts",
+      "symbol": "callModelOnce",
+      "responsibility": "唯一的一次模型调用：装配 provider + 三相看门狗 + 可打断重试 + 取消；没有 signal 时整体兜底"
+    },
+    {
+      "path": "electron/textTaskRunner.ts",
+      "symbol": "executeTextTask",
+      "responsibility": "全部文本任务的唯一一扇门：图片内联、缺省重试 / 温度、只把正文交给 onDelta、失败映射"
+    },
+    {
+      "path": "electron/ai/runtimeVendorError.ts",
+      "symbol": "modelCallFailure",
+      "responsibility": "模型调用失败 → 结构化错误（HTTP 事实 / 看门狗相位 / 整体兜底 / 断流 / 连不上），一张分类表"
+    },
+    {
+      "path": "electron/ai/vendorModelConnection.ts",
+      "symbol": "nomiModelConfigFor",
+      "responsibility": "目录一行 → 连接配置（含 Anthropic 版本段规范化），lane / 文本任务 / 编译器同一份"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/ai/textStreamIpc.ts",
+      "entry_point": "registerTextStreamIpc",
+      "disposition": "enforced",
+      "evidence": "流式入口经 runTextTaskStream → executeTextTask → callModelOnce；electron/ai/textTaskCallers.integration.test.ts 的 #1 #3 #4 #5 与 IPC 契约测试"
+    },
+    {
+      "path": "electron/runtime.ts",
+      "entry_point": "runTask",
+      "disposition": "enforced",
+      "evidence": "文本分支（付费闸之后）调 executeTextTask；一次性入口 #2 #6 #7 #8 #9 在矩阵里经 runTaskIpcGuard 逐个跑，计时类在 textTaskCallers.timing.integration.test.ts"
+    },
+    {
+      "path": "electron/providerAdapter/compiler.ts",
+      "entry_point": "compileProviderAdapter",
+      "disposition": "enforced",
+      "evidence": "defaultGenerate 调 callModelOnce；compiler.realHttp.test.ts 证 JSON 输出声明、思考型模型、会话取消"
+    },
+    {
+      "path": "electron/agentLane/laneSingleShot.mts",
+      "entry_point": "runLaneSingleShot",
+      "disposition": "enforced",
+      "evidence": "改为调 callModelOnce；tests/agent-runtime/lane-single-shot.test.mts 三协议照旧"
+    },
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "entry_point": "openLane",
+      "disposition": "not-affected",
+      "evidence": "Agent 多轮由 pi-agent-core 的 AgentHarness 调同一个 createNomiProvider + LANE_STREAM_WATCHDOG，判活口径本来就是任意事件（laneStreamObserver.mts:137）"
+    },
+    {
+      "path": "electron/catalog/customCallDispatch.ts",
+      "entry_point": "runCustomCallTask",
+      "disposition": "not-affected",
+      "evidence": "用户自己的调用脚本自己发请求，不是模型调用栈"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "判活口径是调用栈的属性，不是某个模型的属性：任何先思考、慢首字、静默思考、中转改写流形状的模型，在任何走旧栈的入口都会重现；同一文件 14 天 5 个 fix 已经证明它在复发",
+    "same_class_scan": [
+      "git grep streamTextTask / executeTextTask / runTextTaskStream / runWorkbenchTextTaskStream / getTextBrain / from \"ai\" / @ai-sdk：普查出 12 个入口（设计卡「一、调用方普查」）",
+      "node scripts/door-map.mjs streamTextTask / executeTextTask / buildLanguageModelForVendor / runLaneSingleShot / callModelOnce",
+      "git grep createModels / streamSimple / completeSimple：lane 主路（AgentHarness）、旧版迁移 lane 与核心之外没有直接对模型发一次的调用"
+    ]
+  },
+  "prevention": {
+    "kind": "dependency-upgrade",
+    "enforcement_path": "electron/agentLane/laneModelCall.mts",
+    "invariant": "调一次模型只经 callModelOnce；ai / @ai-sdk/* 不在依赖里",
+    "failure_mode": "依赖已删，任何 import 'ai' / '@ai-sdk/*' 在构建时就找不到模块；check:llm-stream-owner 在核心与两层传输包装之外直接调 .streamSimple / .completeSimple、或依赖里出现这两个包时报红",
+    "exception_policy": "none",
+    "strategy": "删掉第二台调用栈（文件、依赖、门岗旧版），全部调用方汇到唯一核心；门岗改写为守「回不来」与「只有一个主人」",
+    "artifacts": [
+      "electron/agentLane/laneModelCall.mts",
+      "electron/textTaskRunner.ts",
+      "electron/providerAdapter/compiler.ts",
+      "scripts/check-llm-stream-owner.mjs",
+      "package.json"
+    ]
+  },
+  "regression_tests": [
+    "electron/ai/textTaskCallers.integration.test.ts",
+    "electron/ai/textTaskCallers.timing.integration.test.ts",
+    "electron/agentLane/laneModelCall.test.ts",
+    "electron/providerAdapter/compiler.realHttp.test.ts",
+    "electron/ai/modelCallFetch.test.ts",
+    "electron/ai/modelImageInput.test.ts",
+    "scripts/check-llm-stream-owner.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "electron/ai/textTaskCallers.timing.integration.test.ts",
+    "electron/agentLane/laneModelCall.test.ts",
+    "scripts/check-llm-stream-owner.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/ai/streamTextTask.ts",
+      "electron/ai/buildAiSdkModel.ts",
+      "electron/ai/vendorLanguageModel.ts",
+      "electron/ai/aiSdkVendorError.ts",
+      "electron/ai/textStreamCancel.integration.test.ts",
+      "package.json"
+    ],
+    "rationale": "ai@4 文本栈整台删除（含它独有的补丁：首字 / 整体闸、元数据宽限、onError 收口、RetryError 拆壳），依赖从 package.json 与 lockfile 移除；没有开关、没有并行旧路"
+  },
+  "dependency_lifecycle": {
+    "decision": "upgrade-now",
+    "current": "ai@4.3.19 + @ai-sdk/openai@1 + @ai-sdk/anthropic@1.2.12 + @ai-sdk/openai-compatible@0.2.16（只给文本任务与编译器）",
+    "target": "移除；统一用已钉死的 @earendil-works/pi-ai@0.85.1（lane 已在用）",
+    "rationale": "0.24 计划 S4「两台发动机收敛」+ S5「AI SDK 版本裁决」：主进程不再装 ai。用户 10-21 拍板直接迁移",
+    "exit_criteria": [
+      "package.json / pnpm-lock.yaml 不再有 ai 与 @ai-sdk/anthropic|openai|openai-compatible",
+      "check:llm-stream-owner 通过",
+      "调用方矩阵与计时类测试全绿"
+    ]
+  },
+  "migration": "不改任何落盘格式：目录、模型设置、项目文件都不动。已保存的模型设置经 nomiModelConfigFor 读出（自定义 headers、免鉴权、Anthropic 根地址、目录声明的 maxOutputTokens 都覆盖在 vendorModelConnection.test.ts）。IPC 契约 nomi:tasks:text:* 一字不变（#1264 写作区改写不改代码就走新核心）。",
+  "residual_risks": [
+    "真模型（DeepSeek V4 等）未跑：真模型走查脚本已写好，由协调带 key 跑一次",
+    "录好的 APIMart 真流形状：仓库里没有，「没有 finish_reason 就断」只用合成夹具证过，记 unverified，由真模型走查证实",
+    "看门狗开火后，约 2% 的运行在 3 秒内看不到假上游那一侧的连接关闭（我们这一侧传给 fetch 的 signal 已 abort，已断言）；与本迁移无关，lane 同样如此",
+    "冷启动：预热没装就点（真 App 主进程）第一段字中位 174 / p95 207ms（ai@4 冷基线 p95 99.8ms）；预热在指针移进 / 焦点进文本动作时触发，装完后中位 18.7ms；预热本身在主进程里是一段约 190–230ms 的同步阻塞（单个 SDK 模块图），只在用户伸手时发生一次（docs/evidence/2026-10-21-text-tasks-pi-ai/c6-prewarm-trigger.txt）",
+    "文本节点的双层重试（主进程 2 次 × 渲染层 ≤3 次）保持现状（D8），另记跟进",
+    "scope_paths 里 catalog / providerAdapter 那几份只改了过时注释（指向已删的 streamTextTask / buildLanguageModelForVendor），行为未变"
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneModelCall.mts",
+    "tests": [
+      "electron/agentLane/laneModelCall.test.ts",
+      "electron/ai/textTaskCallers.timing.integration.test.ts",
+      "electron/ai/textTaskCallers.integration.test.ts"
+    ],
+    "why": "判活 / 超时 / 重试 / 取消由 laneModelCall.mts 单点持有（即 prevention.enforcement_path）；文本任务、编译器、lane 一次性提问只调用它、不各自重判。tests 是该层的类级测试（三协议判活、整体兜底、可打断重试）与按调用方逐个跑的矩阵，改动这条不变量必先让它们红。"
+  }
+}

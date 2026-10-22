@@ -110,6 +110,9 @@ export type GenerationErrorKind =
   // 参考素材本身有问题（上传前的本机检查没过）。与 asset-upload-failed 分开：那条是通道没通、
   // 换网络或稍后重试可能就好；这条是**这个文件**不行，重试一万次都一样，得换素材。
   | 'asset-invalid'
+  // 主进程发送前的参考守在花钱之前拒了：请求里带着参考区没在用的图（有入口绕过了唯一推导）。
+  // 请求没离开本机；下一步是重新点生成，会按参考区重新组一次请求。不是服务商的事。
+  | 'reference-not-in-use'
   // Nomi 自己的出站安全策略把取片拦下了（私网/回环/fake-ip 未确证）。与 network 分开，因为
   // 它的**真相和下一步都不同**：network = 上游或线路偶发，等一等重试可能就好；这条是**确定性**
   // 的自我拒绝（同一个 URL 重试一万次都是同一堵墙），而且任务**已经付过钱**——正确的动作是去
@@ -166,6 +169,7 @@ export const ERROR_KEY_BY_KIND: Record<GenerationErrorKind, string> = {
   'asset-upload-failed': 'assetUploadFailed',
   'asset-too-large': 'assetTooLarge',
   'asset-invalid': 'assetInvalid',
+  'reference-not-in-use': 'referenceNotInUse',
   'outbound-blocked': 'outboundBlocked',
   'outbound-blocked-submit': 'outboundBlockedSubmit',
   'outbound-blocked-credential-origin': 'outboundBlockedCredentialOrigin',
@@ -267,6 +271,8 @@ const ACTION_BY_KIND: Record<GenerationErrorKind, GenerationErrorActions> = {
   // 参考素材本身不行：换素材的地方就在画布上（连着的那个节点，不需要按钮），换好后点重试。
   // 同「改提示词后重试」那两类的理由——按钮只给 retry，改的动作在画布上。
   'asset-invalid': RETRY_FIRST,
+  // 请求没离开本机：重新点生成会按参考区重新组请求，主动作就是重试。
+  'reference-not-in-use': RETRY_FIRST,
   // 「去模型接入」正是网络那一行的家（NetworkSection 就住在模型设置抽屉里）。绝不给 retry：
   // 重试 = 再生成 = 再扣一次钱，而这次的钱根本没丢，只是产物还没取回来。
   'outbound-blocked': ACCESS_FIRST,
@@ -325,6 +331,7 @@ const VENDOR_SIDE_BY_KIND: Record<GenerationErrorKind, boolean> = {
   'asset-upload-failed': false,
   'asset-too-large': true,
   'asset-invalid': false,
+  'reference-not-in-use': false,
   'outbound-blocked': false,
   'outbound-blocked-submit': false,
   'outbound-blocked-credential-origin': false,

@@ -104,6 +104,8 @@ export default defineConfig({
       fileURLToPath(new URL("./tests/setup/networkTransport.ts", import.meta.url)),
       // 技能目录的 CJS→岛桥在源码上不存在（要编译产物）；单测里把 readSkillRecords 直接接到岛上（见文件头）。
       fileURLToPath(new URL("./tests/setup/skillCatalogBridge.ts", import.meta.url)),
+      // 「调一次模型」的 CJS→岛桥同理（见文件头）。
+      fileURLToPath(new URL("./tests/setup/modelCallBridge.ts", import.meta.url)),
       // 每个用例后核模块级单例里有没有没落定的后台任务（跨用例泄漏），见文件头。
       fileURLToPath(new URL("./tests/setup/inflightWork.ts", import.meta.url))],
     globalSetup: fileURLToPath(new URL("./tests/setup/tempWorkspace.ts", import.meta.url)),

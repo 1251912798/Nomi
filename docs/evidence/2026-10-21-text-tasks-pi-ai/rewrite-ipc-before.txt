@@ -1,0 +1,13 @@
+# 改写选区 真 IPC 集成测试——修之前（base 9e24778a0）
+# npx vitest run electron/ai/textNodeRewrite.ipc.integration.test.ts
+     × 拿到改写结果、交编辑器一次性替换选区；走文本流式门，不走付费令牌闸 1238ms
+     × 流式期间不往画布写增量草稿（选区只在编辑器里，数据层不碰正文） 2ms
+     × 点停止：主进程那条 HTTP 真断，渲染层按取消收尾，选区不动 1017ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  electron/ai/textNodeRewrite.ipc.integration.test.ts > 文本节点改写选区：真 IPC + 真准入 > 拿到改写结果、交编辑器一次性替换选区；走文本流式门，不走付费令牌闸
+ FAIL  electron/ai/textNodeRewrite.ipc.integration.test.ts > 文本节点改写选区：真 IPC + 真准入 > 流式期间不往画布写增量草稿（选区只在编辑器里，数据层不碰正文）
+Error: Error invoking remote method 'nomi:tasks:run': SpendNotAuthorizedError: Authorization expired or does not cover this target; confirm again
+ FAIL  electron/ai/textNodeRewrite.ipc.integration.test.ts > 文本节点改写选区：真 IPC + 真准入 > 点停止：主进程那条 HTTP 真断，渲染层按取消收尾，选区不动
+AssertionError: expected [] to have a length of 1 but got +0
+Error: Error invoking remote method 'nomi:tasks:run': SpendNotAuthorizedError: Authorization expired or does not cover this target; confirm again
+      Tests  3 failed (3)
