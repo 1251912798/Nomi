@@ -7,7 +7,7 @@ import { projectDeleteChoice } from './projectDeleteChoice'
 // 删除确认框的文案与交给主进程的意图出自同一个判断（V-plibrary2 T1：意图一处被改成一律 delete-files 时测试全绿）。
 describe('删除确认：卡片状态 → 文案 + 意图', () => {
   it.each([
-    ['外部文件夹', { source: 'folder' }],
+    ['打开文件夹绑定的项目', { source: 'folder' }],
     ['本地项目但数据越界（灰卡）', { source: 'native', unreadableReason: 'outside-workspace' }],
     ['本地项目但读不出（灰卡）', { source: 'native', unreadableReason: 'unreadable' }],
     ['外部文件夹且读不出', { source: 'folder', unreadableReason: 'unreadable' }],
