@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createMcpUsageRegistry } from './mcpUsageRegistry'
+import { MCP_CALL_IDLE_RELEASE_MS, createMcpUsageRegistry } from './mcpUsageRegistry'
 
 function fixture() {
   let clock = 1_000
@@ -117,17 +117,15 @@ describe('mcp usage registry', () => {
       }
     })
 
-    it('keeps protecting across cancel and double-close, and stays bounded once nothing is running', () => {
+    it('keeps protecting across cancel and double-close', () => {
       const { registry } = fixture()
       const end = registry.callStarted('claude', { tool: 'nomi_generate', id: 'long' })
       churn(registry, 'claude', 300)
       end()
       end()
       expect(registry.snapshot().claude).toMatchObject({ callCount: 301, inFlight: 0 })
-      churn(registry, 'claude', 300, 'p')
-      // 历史有限：早已结束且被挤出历史的号再来，按新调用计（这是上限存在的代价，不是重复记账）。
       registry.callStarted('claude', { tool: 'nomi_generate', id: 'long' })()
-      expect(registry.snapshot().claude.callCount).toBe(602)
+      expect(registry.snapshot().claude.callCount).toBe(301)
     })
 
     it('never lets one identity in-flight call shield or evict another identity history', () => {
@@ -140,6 +138,44 @@ describe('mcp usage registry', () => {
       expect(registry.snapshot().claude.callCount).toBe(301)
       expect(registry.snapshot().cursor.callCount).toBe(301)
       claudeEnd()
+    })
+  })
+
+  describe('one tool call lives across hops, including the gap between them (R1)', () => {
+    const churn = (registry: ReturnType<typeof fixture>['registry'], client: string, count: number, prefix = 'o') => {
+      for (let i = 0; i < count; i += 1) registry.callStarted(client, { tool: 'nomi_read', id: `${prefix}${i}` })()
+    }
+
+    it('counts once when hop 1 is closed, 300 other calls pass, then hop 2 arrives', () => {
+      const { registry } = fixture()
+      registry.callStarted('claude', { tool: 'nomi_operation_gate', id: 'gate' })() // challenge 一跳，已关闭
+      churn(registry, 'claude', 300)
+      registry.callStarted('claude', { tool: 'nomi_operation_gate', id: 'gate' })() // 等真人确认后的 decide/start 一跳
+      expect(registry.snapshot().claude).toMatchObject({ callCount: 301, inFlight: 0 })
+    })
+
+    it('holds across a long human wait, however many other calls pass, as long as the wait is under the release time', () => {
+      const { registry, advance } = fixture()
+      registry.callStarted('claude', { tool: 'nomi_operation_gate', id: 'gate' })()
+      for (let round = 0; round < 5; round += 1) {
+        advance(MCP_CALL_IDLE_RELEASE_MS / 6)
+        churn(registry, 'claude', 100, `r${round}-`)
+      }
+      registry.callStarted('claude', { tool: 'nomi_operation_gate', id: 'gate' })()
+      expect(registry.snapshot().claude.callCount).toBe(501)
+    })
+
+    it('lets go of an ended call after the idle release time, so memory is bounded by time (and a hop still open is never let go)', () => {
+      const { registry, advance } = fixture()
+      registry.callStarted('claude', { tool: 'nomi_read', id: 'done' })()
+      const open = registry.callStarted('claude', { tool: 'nomi_generate', id: 'open' })
+      advance(MCP_CALL_IDLE_RELEASE_MS * 3)
+      churn(registry, 'claude', 1, 'tick') // 触发清理
+      registry.callStarted('claude', { tool: 'nomi_generate', id: 'open' })()
+      expect(registry.snapshot().claude.callCount).toBe(3) // done、open、tick0；open 第二跳不重复记
+      registry.callStarted('claude', { tool: 'nomi_read', id: 'done' })() // 已释放：号是每次调用现生成的，真来了就是新调用
+      expect(registry.snapshot().claude.callCount).toBe(4)
+      open()
     })
   })
 })
