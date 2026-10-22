@@ -2,7 +2,8 @@
   "script": "tests/ux/director-reference-attach.paid.mjs",
   "ranBy": "协调 2026-10-22",
   "model": "apimart/doubao-seedance-2.0 fast · 480p · 4s · 无音频",
-  "paidCalls": 0,
+  "paidCalls": 1,
+  "paidCallsNote": "协调 2026-10-22 更正：这次实际付费 1 次（供应商任务 task_01M5H1DSKMHKG60HJ8NNJ4N2TW，见下方 spend.media）。跑的时候脚本按旧逻辑记成 0；脚本已在 ca8f21466 改成按实际次数记。",
   "hostedUploadRelayAllowed": "https://nomi-asset-relay.2373272608.workers.dev",
   "networkAllowlist": [
     "https://api.apimart.ai",
