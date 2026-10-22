@@ -11,16 +11,16 @@
 //   · 和 CLI 一样应用抑制（applySuppressions），否则推送前把存量当新错、CI 却放行；
 //   · 改动文件里冻结的存量变少了却没收紧 → CI 的 lint:ci 以「unused suppressions」退出码 2 判红，推送前同样拦，并给出收紧命令；
 //   · 抑制只许减少：eslint-suppressions.json 里任一规则的冻结总数比 base 多就拦（改名搬家总数不变，不受影响）；
-//     同一改动里 eslint.config.mjs 也变了（新开规则 / 扩大覆盖面）才允许冻进新存量。
+//     新开规则 / 扩大覆盖面确需冻进存量的，由协调确认（coord-approve --suppressions，哈希绑上涨那部分 diff），
+//     推送前读本机确认记录；CI 读不到记录，只在 PR 正文判据里提示「待协调确认」，合并前扫描没记录就红。
 import { execFileSync } from 'node:child_process'
-import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { approvalCommand, localApprovals, suppressionApprovalSubject, SUPPRESSIONS_FILE } from './lib/coordApprovals.mjs'
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const LINTABLE = /\.(?:tsx?|jsx?|[cm]js)$/
-export const SUPPRESSIONS_FILE = 'eslint-suppressions.json'
-const CONFIG_FILE = 'eslint.config.mjs'
 const PRUNE_COMMAND = 'pnpm exec eslint --prune-suppressions'
 
 function git(args) {
@@ -41,25 +41,18 @@ export function changedLintableFiles(base) {
 const count = (messages, severity) => messages.filter((message) => message.severity === severity).length
 const describe = (message) => `${message.line ?? 0}:${message.column ?? 0} ${message.ruleId ?? '(parse)'} ${message.message}`
 
-/** 每条规则的冻结总数（eslint-suppressions.json 的形状：{ 文件: { 规则: { count } } }）。 */
-export function suppressionTotals(suppressions) {
-  const totals = {}
-  for (const rules of Object.values(suppressions ?? {})) {
-    for (const [rule, entry] of Object.entries(rules)) totals[rule] = (totals[rule] ?? 0) + (entry?.count ?? 0)
-  }
-  return totals
-}
-
 /**
- * 纯函数：抑制只许减少——任一规则的冻结总数比 base 多就拦。
- * 唯一的例外是同一改动里 eslint.config.mjs 也变了：新开一条规则或扩大覆盖面时把存量冻进来，正是批量抑制的本意
- * （那份配置改动本身要过评审）；只改代码时涨冻结数 = 把新违规藏起来，一律拦。
+ * 纯函数：抑制只许减少——任一规则的冻结总数比 base 多，又没有协调确认记录（哈希绑上涨那部分 diff），就拦。
+ * 新开规则 / 扩大覆盖面把存量冻进来是正当的，但由协调看过 diff 后确认（同 board / perf），不由 PR 自己决定。
+ * approvals = scripts/lib/coordApprovals.mjs 的 localApprovals（推送前读本机 NOMI_COORD_APPROVALS）。
  */
-export function judgeSuppressionGrowth(baseSuppressions, headSuppressions, { configChanged = false } = {}) {
-  const base = suppressionTotals(baseSuppressions)
-  const grown = Object.entries(suppressionTotals(headSuppressions)).filter(([rule, count]) => count > (base[rule] ?? 0))
-  if (grown.length === 0 || configChanged) return []
-  return [`✖ ${SUPPRESSIONS_FILE}：冻结的存量只许减少，这些规则涨了\n${grown.map(([rule, count]) => `    ${rule}：${base[rule] ?? 0} → ${count}`).join('\n')}\n  → 新违规请修掉，不要用 --suppress-all / --suppress-rule 把它也冻进去（只有同一改动里新开规则 / 扩大覆盖面、改了 ${CONFIG_FILE} 时才允许冻进新存量）`]
+export function judgeSuppressionGrowth(baseSuppressions, headSuppressions, approvals = null) {
+  const subject = suppressionApprovalSubject(baseSuppressions, headSuppressions)
+  if (!subject.needsApproval) return []
+  if (approvals?.lookup?.('eslint-suppressions', SUPPRESSIONS_FILE, subject.fingerprint) === true) return []
+  const rules = subject.grownRules.map(({ rule, base, head }) => `    ${rule}：${base} → ${head}`).join('\n')
+  const why = approvals?.unavailable ? `（${approvals.unavailable}）` : ''
+  return [`✖ ${SUPPRESSIONS_FILE}：冻结的存量只许减少，这些规则涨了，没有协调确认记录${why}\n${rules}\n  → 只改代码时：新违规请修掉，不要用 --suppress-all / --suppress-rule 把它也冻进去\n  → 新开规则 / 扩大覆盖面、确需冻进存量：交协调看 diff，协调确认后跑 ${approvalCommand(null, 'eslint-suppressions')}`]
 }
 
 /** 纯函数：文件里实际被抑制的条数 < 冻结条数 = 存量变少了但没收紧（CLI 判 unused suppressions，退出码 2）。 */
@@ -111,12 +104,10 @@ export async function main() {
     console.error('✖ lint:changed：拿不到 merge-base(HEAD, origin/main)，算不出改动范围——不拿算不出来当通过')
     return 1
   }
-  const readSuppressions = (text) => { try { return JSON.parse(text) } catch { return {} } }
-  const suppressionsPath = path.join(repoRoot, SUPPRESSIONS_FILE)
-  const headSuppressions = fs.existsSync(suppressionsPath) ? readSuppressions(fs.readFileSync(suppressionsPath, 'utf8')) : {}
-  const baseSuppressionsText = (() => { try { return git(['show', `${base}:${SUPPRESSIONS_FILE}`]) } catch { return null } })()
-  const configChanged = git(['diff', '-z', '--name-only', base, 'HEAD', '--', CONFIG_FILE]).split('\0').filter(Boolean).length > 0
-  const growth = judgeSuppressionGrowth(baseSuppressionsText === null ? {} : readSuppressions(baseSuppressionsText), headSuppressions, { configChanged })
+  // 冻结数和确认哈希都按提交里的版本算（推送的是提交，不是工作树）
+  const suppressionsAt = (rev) => { try { return JSON.parse(git(['show', `${rev}:${SUPPRESSIONS_FILE}`])) } catch { return {} } }
+  const headSuppressions = suppressionsAt('HEAD')
+  const growth = judgeSuppressionGrowth(suppressionsAt(base), headSuppressions, localApprovals({ pr: null }))
   const files = changedLintableFiles(base)
   if (files.length === 0) {
     if (growth.length) { console.error(growth.join('\n')); return 1 }

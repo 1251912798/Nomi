@@ -18,7 +18,7 @@
 | `node scripts/pre-push-contracts.mjs` | 推送前自动跑（pre-push 钩子，无需手动）：按 origin/main...HEAD 的改动选出本机 Contracts 门岗（filesize / self-written / boundary-owners / test-waits / mjs-parse / ipc-sender-binding / 改动文件 lint / prior-art / pr-judgement），并行跑、一次列出全部失败项，典型 < 60 秒；PR 正文取 `gh pr view`，还没有 PR 就读仓库根 `.tmp-pr-body.md`。入口不接受任何缩小门岗集合的参数（只有 `--list`，其余报错）；单独重跑某道请直接 `pnpm run check:xxx` |
 | `pnpm run delivery:verify-merged -- --expected-sha <SHA>` | 在真实 merged-main 上记录 exact-SHA CI checks 收据，不本地重跑 |
 | `pnpm run test:e2e` | Playwright smoke（零额度，CI-ready） |
-| `pnpm run lint:ci` | Lint + max-warnings=95 棘轮（新增 1 个 warning 即红）；存量错误冻结在 `eslint-suppressions.json`（ESLint 批量抑制，只减不增：修掉存量后跑 `pnpm exec eslint --prune-suppressions` 收紧再提交）|
+| `pnpm run lint:ci` | Lint + max-warnings=95 棘轮（新增 1 个 warning 即红）；存量错误冻结在 `eslint-suppressions.json`（ESLint 批量抑制，只减不增：修掉存量后跑 `pnpm exec eslint --prune-suppressions` 收紧再提交；冻结数要涨须协调确认 `node scripts/coord-approve.mjs --suppressions`，见 delivery-and-review.md「协调确认记录」）|
 | `pnpm run typecheck` | TypeScript 双向类型检查 |
 | `pnpm run check:filesize` | 巨壳文件门岗 |
 | `pnpm run check:tokens` | 设计 token 门岗（禁任意 px 字号/圆角、hex 色、默认色板；棘轮只减不增）|

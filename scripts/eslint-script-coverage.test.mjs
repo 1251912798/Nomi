@@ -3,7 +3,7 @@
 // ② 「isVisible / isHidden 带 timeout」在代表路径上都红——flat config 里后面的块会整条覆盖 no-restricted-syntax，
 //    哪个块漏拼了全仓选择器，那片文件上这条就静默失效，所以按路径逐个核，而不是只核一个文件；
 // ③ 走查里的未定义标识符由 ESLint no-undef 管（替掉 check-walkthroughs 里手写的那一套，夜跑 I05 的形状照搬过来）；
-// ④ lint:changed 对批量抑制的两条判据：存量变少要收紧、冻结总数不许涨。
+// ④ 批量抑制的两条判据：存量变少要收紧；冻结数上涨要协调确认（推送前 / 合并前扫描读本机记录，CI 只提示）。
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -11,7 +11,10 @@ import { ESLint } from 'eslint'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { CANVAS_SHELL_FILE } from './canvas-store-subscriptions.mjs'
+import { buildApproval } from './coord-approve.mjs'
 import { judgeLint, judgeSuppressionGrowth, judgeUnprunedSuppressions } from './lint-changed.mjs'
+import { ciApprovals, localApprovals, suppressionApprovalSubject } from './lib/coordApprovals.mjs'
+import { checkSuppressionContracts } from './pr-body-criteria.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const NO_WAIT = 'isVisible / isHidden do not wait'
@@ -92,21 +95,70 @@ describe('走查里的未定义标识符：ESLint no-undef（夜跑 I05 的形�
   })
 })
 
-describe('lint:changed 对批量抑制的判据', () => {
+describe('批量抑制的判据（lint:changed / PR 正文判据 / coord-approve）', () => {
   const frozen = { 'scripts/a.mjs': { 'no-unused-vars': { count: 2 } }, 'tests/ux/b.mjs': { 'no-empty': { count: 1 } } }
 
-  it('冻结总数不许涨；搬家（换文件、总数不变）和减少都放行', () => {
+  const grownHead = { ...frozen, 'scripts/c.mjs': { 'no-unused-vars': { count: 1 } } }
+  const fingerprint = suppressionApprovalSubject(frozen, grownHead).fingerprint
+  const approvalsWith = (records, pr = null) => localApprovals({ pr, env: { NOMI_COORD_APPROVALS: 'x' }, readFile: () => records.map((r) => JSON.stringify(r)).join('\n') })
+  const record = (extra = {}) => ({ pr: null, kind: 'eslint-suppressions', name: 'eslint-suppressions.json', sha256: fingerprint, at: 'T', note: '', ...extra })
+
+  it('冻结总数不涨就不用确认：不变、减少、搬家（换文件、总数不变）都放行', () => {
     expect(judgeSuppressionGrowth(frozen, frozen)).toEqual([])
     expect(judgeSuppressionGrowth(frozen, { 'scripts/renamed.mjs': { 'no-unused-vars': { count: 2 } }, 'tests/ux/b.mjs': { 'no-empty': { count: 1 } } })).toEqual([])
     expect(judgeSuppressionGrowth(frozen, { 'scripts/a.mjs': { 'no-unused-vars': { count: 1 } } })).toEqual([])
-    const [grown] = judgeSuppressionGrowth(frozen, { ...frozen, 'scripts/c.mjs': { 'no-unused-vars': { count: 1 } } })
-    expect(grown).toContain('no-unused-vars：2 → 3')
-    expect(judgeSuppressionGrowth({}, { 'scripts/c.mjs': { 'no-undef': { count: 1 } } })[0]).toContain('no-undef：0 → 1')
   })
 
-  it('同一改动里 eslint.config.mjs 也变了（新开规则 / 扩大覆盖面）才允许冻进新存量', () => {
-    expect(judgeSuppressionGrowth({}, frozen, { configChanged: true })).toEqual([])
-    expect(judgeSuppressionGrowth({}, frozen, { configChanged: false })).toHaveLength(1)
+  it('推送前：涨了又没有确认记录就红（记录文件没配置也红），并给出确认命令', () => {
+    const [grown] = judgeSuppressionGrowth(frozen, grownHead, approvalsWith([]))
+    expect(grown).toContain('no-unused-vars：2 → 3')
+    expect(grown).toContain('node scripts/coord-approve.mjs --suppressions')
+    const [unconfigured] = judgeSuppressionGrowth({}, grownHead, localApprovals({ pr: null, env: {} }))
+    expect(unconfigured).toContain('NOMI_COORD_APPROVALS')
+  })
+
+  it('推送前：哈希对上的确认放行；之后再多冻一处，哈希对不上，重新红', () => {
+    expect(judgeSuppressionGrowth(frozen, grownHead, approvalsWith([record()]))).toEqual([])
+    const more = { ...grownHead, 'scripts/d.mjs': { 'no-empty': { count: 1 } } }
+    expect(judgeSuppressionGrowth(frozen, more, approvalsWith([record()]))).toHaveLength(1)
+    // 只是改了配置文件不再自动放行（旧口子）：确认只认记录
+    expect(judgeSuppressionGrowth({}, frozen, approvalsWith([]))).toHaveLength(1)
+  })
+
+  it('确认与 PR 号：开 PR 前（pr 为空）记的确认，PR 开了以后合并前扫描也认；两边都有号就要相等', () => {
+    expect(approvalsWith([record()], 42).lookup('eslint-suppressions', 'eslint-suppressions.json', fingerprint)).toBe(true)
+    expect(approvalsWith([record({ pr: 42 })], null).lookup('eslint-suppressions', 'eslint-suppressions.json', fingerprint)).toBe(true)
+    expect(approvalsWith([record({ pr: 41 })], 42).lookup('eslint-suppressions', 'eslint-suppressions.json', fingerprint)).toBe(false)
+    // board / perf 照旧必须同号
+    expect(approvalsWith([{ pr: null, kind: 'board', name: 'b', sha256: 'h' }], 42).lookup('board', 'b', 'h')).toBe(false)
+  })
+
+  it('CI 只提示「待协调确认」不红；合并前扫描（本机）没有记录就红、有记录就过；取不到内容本机也红', () => {
+    const ci = checkSuppressionContracts({ strict: true, suppressions: grownHead, baseSuppressions: frozen, approvals: ciApprovals })
+    expect(ci.ok).toBe(true)
+    expect(ci.lines.join('\n')).toContain('待协调确认')
+    const local = checkSuppressionContracts({ strict: true, suppressions: grownHead, baseSuppressions: frozen, approvals: approvalsWith([], 42) })
+    expect(local.ok).toBe(false)
+    expect(local.lines.join('\n')).toContain('--pr 42 --suppressions')
+    expect(checkSuppressionContracts({ strict: true, suppressions: grownHead, baseSuppressions: frozen, approvals: approvalsWith([record()], 42) }).ok).toBe(true)
+    expect(checkSuppressionContracts({ strict: true, suppressions: frozen, baseSuppressions: frozen, approvals: approvalsWith([], 42) })).toEqual({ ok: true, lines: [] })
+    expect(checkSuppressionContracts({ strict: true, suppressions: null, baseSuppressions: frozen, approvals: approvalsWith([], 42) }).ok).toBe(false)
+  })
+
+  it('coord-approve --suppressions：按 base / head 的内容算出同一个哈希；没有上涨就拒绝写记录；不带 --pr 用本地 HEAD', () => {
+    const files = { BASE: frozen, HEAD_SHA: grownHead }
+    const git = (args) => {
+      if (args[0] === 'rev-parse') return 'HEAD_SHA'
+      if (args[0] === 'merge-base') return 'BASE'
+      if (args[0] === 'show') return JSON.stringify(files[args[1].split(':')[0]])
+      throw new Error(args.join(' '))
+    }
+    const approval = buildApproval({ argv: ['--suppressions'], git, now: () => 'T', fetch: false })
+    expect(approval).toMatchObject({ pr: null, kind: 'eslint-suppressions', name: 'eslint-suppressions.json', sha256: fingerprint, head: 'HEAD_SHA' })
+    expect(buildApproval({ argv: ['--pr', '7', '--suppressions', '--head', 'HEAD_SHA'], git, now: () => 'T', fetch: false }).pr).toBe(7)
+    files.HEAD_SHA = frozen
+    expect(() => buildApproval({ argv: ['--suppressions'], git, now: () => 'T', fetch: false })).toThrow(/没有上涨/)
+    expect(() => buildApproval({ argv: ['--board', 'x'], git, now: () => 'T', fetch: false })).toThrow(/用法/)
   })
 
   it('存量变少却没收紧 → 拦，并给出收紧命令；超出冻结数时只报错误、不重复报「没收紧」', () => {

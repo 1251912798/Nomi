@@ -5,7 +5,7 @@
 // 路由 / 规则与门岗范围仍在 scripts/pr-judgement-lib.mjs（本模块在它之上叠设计卡等判据，并给一个总入口 evaluatePrBody）。
 import { classCheckErrors, contractErrors, escapeIdOfPath, fixedTransitions } from './escape-ledger-lib.mjs'
 import { checkPrBoardClaims, parsePrBoardClaims } from './check-board-parity.mjs'
-import { approvalCommand, boardApprovalSubject, describeBoardDiff } from './lib/coordApprovals.mjs'
+import { approvalCommand, boardApprovalSubject, describeBoardDiff, describeSuppressionGrowth, suppressionApprovalSubject, SUPPRESSIONS_FILE } from './lib/coordApprovals.mjs'
 import { pinScenarioPolicy } from './perf-scenarios-lib.mjs'
 import { localEvidenceInputs } from './lib/prEvidenceInputs.mjs'
 import { evaluatePrJudgement, evidenceJudgementEnforced, extractSection, inferRoutes, loadRoutingTable } from './pr-judgement-lib.mjs'
@@ -224,6 +224,32 @@ export function checkBoardContracts({ strict = false, boards = null, baseBoards 
 }
 
 /**
+ * ESLint 批量抑制的冻结数上涨（2026-10-22 协调定，同拍板图 / 性能政策）：冻结数只许减少，涨了要协调确认，哈希绑上涨那部分 diff。
+ * 推送前（lint:changed）读本机确认记录直接判；这里给 CI 和合并前扫描：CI 读不到记录只提示「待协调确认」，合并前扫描没有记录就红。
+ * suppressions / baseSuppressions = eslint-suppressions.json 的内容（对象，或返回它的函数；null = 取不到；文件不存在 = {}）；
+ * 两个都没给（undefined）= 调用方不提供这项输入（只判别的证据的回放 / 夹具），不判。
+ */
+export function checkSuppressionContracts({ strict = false, suppressions = undefined, baseSuppressions = undefined, approvals = null } = {}) {
+  if (!strict || (suppressions === undefined && baseSuppressions === undefined)) return { ok: true, lines: [] }
+  const resolve = (value) => (typeof value === 'function' ? value() : value)
+  const head = resolve(suppressions)
+  const base = resolve(baseSuppressions)
+  if (!head || !base) {
+    // 合并前扫描在本机必须算得出：取不到不能当通过
+    if (approvals?.mode === 'local') return { ok: false, lines: [`✖ ${SUPPRESSIONS_FILE}：取不到 PR head 或 base 上的内容，没法对比冻结数`] }
+    return { ok: true, lines: [`⚠ ${SUPPRESSIONS_FILE}：取不到 PR head 或 base 上的内容，没法对比冻结数（待协调确认，本机 merge-preflight 核）`] }
+  }
+  const subject = suppressionApprovalSubject(base, head)
+  if (!subject.needsApproval) return { ok: true, lines: [] }
+  if (approvals?.lookup?.('eslint-suppressions', SUPPRESSIONS_FILE, subject.fingerprint) === true) return { ok: true, lines: [`✅ ${SUPPRESSIONS_FILE}：${describeSuppressionGrowth(subject)}——协调已确认（哈希对上）`] }
+  const command = approvalCommand(approvals?.pr, 'eslint-suppressions')
+  if (approvals?.mode === 'local') {
+    return { ok: false, lines: [`✖ ${SUPPRESSIONS_FILE}：${describeSuppressionGrowth(subject)}，没有协调确认记录${approvals?.unavailable ? `（${approvals.unavailable}）` : ''}。冻结数只许减少；确需冻进存量，协调看过 diff 后跑 ${command}`] }
+  }
+  return { ok: true, lines: [`⚠ ${SUPPRESSIONS_FILE}：${describeSuppressionGrowth(subject)}——待协调确认（本机 merge-preflight 核；确认命令 ${command}）`] }
+}
+
+/**
  * 改界面的 PR 必须认领拍板图清单，或给已登记的例外（2026-10-22 起开的 PR，evidenceJudgementEnforced）。
  * 旧判据：没有 `## 拍板图` 一节就当没认领、照常过——#1264 改了界面，一张清单也没有，门岗全绿。
  *   · 路径推出「新界面 / 改交互」（inferred 里有 ui 类）才要求；不碰界面的 PR 不问；
@@ -414,7 +440,7 @@ export function isGrandfathered({ createdAt, effectiveAt = RULES_EFFECTIVE_AT })
 }
 
 /** 正文判据的逐行输出与是否判红；renderReport（合并前）和推送前各自加抬头 / 结论。 */
-export function renderBodyLines({ classification, design, acceptance, escape, promises = { ok: true, lines: [] }, scope = { ok: true, lines: [] }, routing = { blocking: false, lines: [], ok: true }, board = { ok: true, lines: [] }, perfPolicy = { ok: true, lines: [] }, grandfathered = false }) {
+export function renderBodyLines({ classification, design, acceptance, escape, promises = { ok: true, lines: [] }, scope = { ok: true, lines: [] }, routing = { blocking: false, lines: [], ok: true }, board = { ok: true, lines: [] }, perfPolicy = { ok: true, lines: [] }, suppressions = { ok: true, lines: [] }, grandfathered = false }) {
   const lines = []
   lines.push(classification.fourClass
     ? `· 四类：命中（${classification.classes.join('、')}）——${classification.hits.slice(0, 5).map((hit) => hit.path).join('、')}${classification.hits.length > 5 ? ' …' : ''}`
@@ -429,10 +455,11 @@ export function renderBodyLines({ classification, design, acceptance, escape, pr
   // 拍板图（改界面必须认领清单或给已登记的例外）：只对生效日之后的 PR 出判，旧 PR 在 evaluatePrBody 里就没有这些行
   lines.push(...board.lines)
   lines.push(...perfPolicy.lines)
+  lines.push(...suppressions.lines)
   // 规则与门岗的改动范围不吃「规则生效前开的 PR」那条宽限：#1032 这种回退正是旧分支带出来的。
   lines.push(...scope.lines)
   if (grandfathered) lines.push('· 这是规则生效（#961 合并）之前开的 PR：缺项只给警告，不判红')
-  const blocked = !scope.ok || !promises.ok || routing.blocking || !board.ok || !perfPolicy.ok || (!grandfathered && (!design.ok || (classification.fourClass && !acceptance.ok) || !escape.ok))
+  const blocked = !scope.ok || !promises.ok || routing.blocking || !board.ok || !perfPolicy.ok || !suppressions.ok || (!grandfathered && (!design.ok || (classification.fourClass && !acceptance.ok) || !escape.ok))
   return { lines, blocked }
 }
 
@@ -486,6 +513,7 @@ export function evaluatePrBody({ body, files, addedLines = '', addedByFile = nul
     routing: judgement.routing,
     board: checkBoardClaim(body, { inferred: judgement.inferred, files: normalized, strict: strictEvidence, table: policy, boards: inputs.boards ?? null, baseBoards: inputs.baseBoards ?? null, approvals: inputs.approvals ?? null }),
     perfPolicy: { ok: !pinned.blocked, lines: pinned.lines },
+    suppressions: checkSuppressionContracts({ strict: strictEvidence, suppressions: inputs.suppressions, baseSuppressions: inputs.baseSuppressions, approvals: inputs.approvals ?? null }),
     grandfathered: !enforce && isGrandfathered({ createdAt }),
   })
   return { ...result, classification, judgement }
