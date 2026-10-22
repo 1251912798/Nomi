@@ -57,7 +57,9 @@ async function interrupt(reason) {
 }
 // 唯一的拖动入口是组框（生产里从没有别的所有者）：每一种收尾方式都必须只在落点写一次、拖动途中 revision / events 纹丝不动。
 const target = 'group'
-it.each(['pointerup', 'blur', 'hidden', 'unmount', 'readOnly', 'pointercancel', 'lostpointercapture'])(
+// 收尾方式矩阵：每一种结束 / 打断手势的方式都要走同一个共享 settle 边界。
+const SETTLE_REASON_MATRIX = ['pointerup', 'blur', 'hidden', 'unmount', 'readOnly', 'pointercancel', 'lostpointercapture']
+it.each(SETTLE_REASON_MATRIX)(
   `${target} settles applied positions once on %s`,
   async (reason) => {
     const before = await snapshot()
