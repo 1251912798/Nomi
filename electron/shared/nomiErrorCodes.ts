@@ -63,6 +63,36 @@ export type NomiErrorCode =
   | 'retrieval-download'
   | 'retrieval-timeout'
 
+/**
+ * 每个码说的是任务的哪个阶段（穷举：新增一个码不写阶段，typecheck 就红）。
+ *
+ * - `submit`：码的话只在「提交之前」成立——「请求还没发出去 / 服务商没被请求到 / 可以放心重新生成」。
+ *   这些码的生产者（素材本地化、vendorHttp 出站守卫……）被提交和查询共用、不知道自己在哪个阶段，
+ *   所以取回出口（taskResultQuery.retrievalStageError）按这张表把它们改挂成取回阶段码：
+ *   任务已经提交、钱已经花了之后，任何界面都不许再说「没发出去、重新生成吧」（⑬，用户 2026-10-22 拍板）。
+ * - `retrieval`：任务已受理之后、把结果拿回来这一段的码。
+ * - `any`：两个阶段都可能、说法也都成立（本机处理、服务商地址跳转——它明说请求已经到过对方）。
+ */
+export type NomiErrorPhase = 'submit' | 'retrieval' | 'any'
+export const NOMI_ERROR_PHASE: Readonly<Record<NomiErrorCode, NomiErrorPhase>> = {
+  'model-config': 'submit',
+  'asset-too-large': 'submit',
+  'asset-upload-failed': 'submit',
+  'asset-invalid': 'submit',
+  'outbound-blocked': 'retrieval',
+  'outbound-blocked-submit': 'submit',
+  'outbound-blocked-credential-origin': 'submit',
+  'credential-redirect': 'any',
+  'output-unreadable': 'retrieval',
+  'submission-unknown': 'submit',
+  'output-retrieval-failed': 'retrieval',
+  'local-processing': 'any',
+  'retrieval-query': 'retrieval',
+  'retrieval-parse': 'retrieval',
+  'retrieval-download': 'retrieval',
+  'retrieval-timeout': 'retrieval',
+}
+
 const MARKER_PREFIX = 'NOMI_ERR::'
 const MARKER_SUFFIX = '::'
 // 码只用 [a-z-]，标记形如 `NOMI_ERR::asset-too-large:: <人话>`；正则据此从任意位置抠出码。

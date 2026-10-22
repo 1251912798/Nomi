@@ -25,7 +25,7 @@ import {
   localizeTaskAsset,
 } from "../runtime";
 import { logWarn } from "../logging/logger";
-import { matchNomiErrorCode, tagNomiError } from "../shared/nomiErrorCodes";
+import { NOMI_ERROR_PHASE, matchNomiErrorCode, tagNomiError } from "../shared/nomiErrorCodes";
 import { VendorRequestError } from "../vendor/vendorHttp";
 import { noteRelayQueryOutcome } from "../catalog/relayNativeWireUpgrade";
 import { expectedMediaKind, readTaskResponse } from "./taskResultReading";
@@ -97,14 +97,24 @@ function upstreamExcerpt(response: unknown): string {
 }
 
 /**
- * 取回失败的统一出口：带上阶段码（shared/nomiErrorCodes 的 retrieval-*）与阶段说明。已经带码的错误
- * （出站被拦 / 产物读不出……）原样放行——那是更具体的事实。VendorRequestError 保留结构化字段（IPC 那头
- * 靠它说出「服务商原话」）。渲染层见码即落「可找回」：任务已受理，免费重新取回，绝不重新提交。
+ * 取回失败的统一出口：带上阶段码（shared/nomiErrorCodes 的 retrieval-*）与阶段说明。已经带码、且码说的是
+ * 取回阶段的错误（出站被拦 / 产物读不出……）原样放行——那是更具体的事实。VendorRequestError 保留结构化字段
+ * （IPC 那头靠它说出「服务商原话」）。渲染层见码即落「可找回」：任务已受理，重新取回，绝不重新提交。
+ *
+ * 码说的是「提交之前」的（NOMI_ERROR_PHASE = submit：没发出去 / 没请求服务商 / 可以重新生成）：生产者被提交和
+ * 查询共用、不知道这是查询（vendorHttp 出站守卫一律按提交挂码），这里改挂本阶段码。原码和诊断前缀留进正文
+ * （技术详情），标明是 Nomi 本机拦下；那句提交前的话不带（任务已提交，它是假话），也不把它当服务商原话（不带 structured）。
  */
 export function retrievalStageError(code: "retrieval-query" | "retrieval-parse" | "retrieval-download", error: unknown, note = ""): Error {
   const message = error instanceof Error ? error.message : String(error ?? "");
-  if (matchNomiErrorCode(message)) return error instanceof Error ? error : new Error(message);
+  const carried = matchNomiErrorCode(message);
+  if (carried && NOMI_ERROR_PHASE[carried] !== "submit") return error instanceof Error ? error : new Error(message);
   const stageKey = code === "retrieval-query" ? "tasks.retrievalStage.query" : code === "retrieval-parse" ? "tasks.retrievalStage.parse" : "tasks.retrievalStage.download";
+  if (carried) {
+    const marker = message.indexOf("NOMI_ERR::");
+    const diagnostic = marker > 0 ? message.slice(0, marker).replace(/[:：\s]+$/, "").trim() : "";
+    return new Error(tagNomiError(code, `${note ? `${note} ` : ""}${desktopT(stageKey)}${desktopT("tasks.refusedLocallyAfterSubmit", { code: carried })}${diagnostic ? ` ${diagnostic}` : ""}`));
+  }
   const human = `${note ? `${note} ` : ""}${desktopT(stageKey)}${message}`;
   const tagged = tagNomiError(code, human);
   // 只带 message + structured（IPC 那头读 structured 说出服务商原话）：providerAnswer 只服务「提交有没有被受理」的判定，
@@ -340,7 +350,7 @@ async function executeTaskQuery(taskId: string, cached: CachedTask): Promise<{ v
     // vendor 提示必须带上：本地 ComfyUI 的产物 URL 是私网 /view，缺它 hardenedFetch 会按 SSRF 拒下载。
     const vendorHint = readCatalog().vendors.find((item) => item.key === cached.vendor);
     const asset = cached.projectId
-      ? await localizeTaskAsset(cached.projectId, assetUrl, type, cached.nodeId, vendorHint)
+      ? await localizeTaskAsset(cached.projectId, assetUrl, type, cached.nodeId, vendorHint).catch((error: unknown) => { throw retrievalStageError("retrieval-download", error); })
       : unlocalizedTaskAsset(type, assetUrl);
     taskCache.delete(taskId);
     const lateResult: TaskResult = { id: taskId, kind: cached.request.kind, status: "succeeded", assets: [asset], raw: cached.raw };
@@ -398,8 +408,11 @@ function assertPollProjectMatchesTask(cached: CachedTask, pollProjectId: string)
 export async function fetchTaskResult(payload: unknown): Promise<{ vendor: string; result: TaskResult }> {
   const raw = payload as JsonRecord;
   const taskId = trim(raw.taskId);
+  // 唯一出口：从这里抛出去的错误一律带「提交之后」那一族的码（retrievalStageError 按阶段表放行 / 改挂），
+  // 20 个调用者（画布、重新取回、MCP、制作 Run 对账、试模型……）读到的都不会是「没发出去、重新生成」。
+  const query = (task: CachedTask) => executeTaskQuery(taskId, task).catch((error: unknown) => { throw retrievalStageError("retrieval-query", error); });
   const cached = taskCache.get(taskId);
-  if (cached) return executeTaskQuery(taskId, assertPollProjectMatchesTask(cached, trim(raw.projectId)));
+  if (cached) return query(assertPollProjectMatchesTask(cached, trim(raw.projectId)));
 
   // 缓存 miss：先试无状态重建（重启/驱逐后仍能续查的治本点）。重建得了就走同一段 query。
   const rebuilt = rebuildCachedTaskFromPayload(taskId, raw);
@@ -410,7 +423,7 @@ export async function fetchTaskResult(payload: unknown): Promise<{ vendor: strin
     // unrecoverable after restart (especially when localization hit a transient
     // CDN/proxy failure). Only an actually unreconstructable task reaches the
     // cache-miss classifier below.
-    return executeTaskQuery(taskId, rebuilt);
+    return query(rebuilt);
   }
 
   // 区分两种 miss：曾受理但被驱逐/过期(可能 vendor 侧已完成) vs 真·未知 id（修 P1）。
