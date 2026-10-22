@@ -368,7 +368,13 @@ export function useNodeModelAutoSelect({
   React.useEffect(() => {
     if (!isGenerationNode || !archetype) return
     const latestNode = getLatestNode()
+    // 这一帧的档案是按渲染快照里的模型算的；store 里的节点可能已经换了模型（换模型那一笔刚写进去，这个宿主还没重渲）。
+    // 拿旧模型的档案去「初始化」新模型的节点，会把换模型时按参考挑好的方式改回旧档案的默认文生（真机走查 2026-10-22：
+    // 30 张参考换到 Veo 3.1 被打回文生、切回 Seedance 2.5 又被打回文生）。对不上就等下一帧。
+    const latestModelKey = typeof latestNode.meta?.modelKey === 'string' ? latestNode.meta.modelKey : ''
+    if (selectedModelOption && latestModelKey
+      && ![selectedModelOption.modelKey, selectedModelOption.value, selectedModelOption.modelAlias].includes(latestModelKey)) return
     const initialized = initializedArchetypeMeta(latestNode, latestNode.meta || {}, archetype)
     if (initialized) writeDerivedMeta(node.id, { meta: initialized })
-  }, [archetype, getLatestNode, isGenerationNode, node.id, writeDerivedMeta])
+  }, [archetype, getLatestNode, isGenerationNode, node.id, selectedModelOption, writeDerivedMeta])
 }
