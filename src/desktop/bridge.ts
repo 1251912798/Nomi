@@ -207,6 +207,8 @@ export type DesktopBridge = DesktopMediaBridge &
     }) => Promise<{ ok: boolean; deletedCount: number; failedCount: number }>
     revealProjectFolder: (payload: { projectId: string }) => Promise<{ ok: boolean }>
     syncInspect?: (payload: string | { projectId: string; adopt?: boolean }) => Promise<WorkspaceSyncInspection>
+    /** 项目库卡片批量检查：一次一批、主进程限并发；查不了的项目值是 null。 */
+    syncInspectMany?: (projectIds: string[]) => Promise<Record<string, WorkspaceSyncInspection | null>>
     syncReveal?: (projectId: string) => Promise<{ ok: boolean }>
     syncCopyConflict?: (payload: { projectId: string; source?: 'local' | 'remote' }) => Promise<{ path: string }>
   }
@@ -215,8 +217,8 @@ export type DesktopBridge = DesktopMediaBridge &
     show: (payload: { title: string; body?: string; event?: import("../../electron/shared/contracts/attentionSound").AttentionSoundEvent }) => Promise<{ ok: boolean; reason?: string }>
   }
   projects: {
-    list: () => unknown[]
-    listAsync?: () => Promise<unknown[]>
+    /** 项目列表摘要：唯一读口，异步（没有同步版）。 */
+    listAsync: () => Promise<unknown[]>
     create: (record: unknown) => unknown
     read: (projectId: string) => unknown | null
     readAsync?: (projectId: string) => Promise<unknown | null>
@@ -261,6 +263,7 @@ export type DesktopBridge = DesktopMediaBridge &
     grantSpend: (payload: { nodeIds: string[]; maxAttemptsPerNode?: number }) => Promise<{ grantId: string }>
     runTextStream: (payload: unknown) => Promise<{ streamId: string }>
     cancelTextStream: (streamId: string) => Promise<unknown>
+    prewarmTextModel?: () => Promise<{ ok: boolean }>
     onTextEvent: (streamId: string, callback: (event: unknown) => void) => () => void
     /** ComfyUI ws 进度桥（P 轨）。旧 preload 可能没有 → 全部可选。 */
     comfyuiWatch?: (payload: { promptId: string; nodeId: string; projectId?: string; taskKind?: string; modelKey?: string | null; vendorKey?: string }) => Promise<{ ok: boolean }>

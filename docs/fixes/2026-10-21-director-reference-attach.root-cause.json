@@ -1,0 +1,197 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-21-director-reference-attach",
+  "problem_type": "A shared attach core trusted a remembered URL marker instead of the target's actual reference state, and wrote a hard-coded reference number into the prompt",
+  "symptom": "3D-BOX 「出成片」 could leave the paid request without the preview reference video (model switched to one with a reference slot, or the user deleted the reference) or with the prompt pointing at the wrong clip (@Video1 while the preview was appended after the user's own clip). Legacy previews without a source fingerprint passed the stale spend gate. Found by the 2026-10-21 read-only audit R-3d-close (D1 / D2 / R1); reproduced with free counter-example tests before the fix.",
+  "direct_cause": "computeAttachCameraMove returned noop when cameraMoveAttachedUrl equalled the new URL, and directorProduce.ts repeated the same check one layer above, both before looking at the current model's reference slots or list. The prompt line was a literal '@Video1' written only when no '@Video1' existed, while the preview was appended after other reference videos. directorPreviewIsStale returned false whenever the preview had no sourceFingerprint.",
+  "class_root": "'Already attached' was answered by a side-channel memory (a URL marker written at attach time) instead of by comparing the current state that the paid request is built from (mode, ordered sent reference list including canvas edges, prompt reference); and the reference number was stored as text instead of being derived from the actual send order. Nothing forced callers to go through one place that asks the question, so an upper layer could re-answer it from the marker.",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-21",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+    "tests": [
+      "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.reference.test.ts",
+      "src/workbench/generationCanvas/nodes/director/agent/directorProduce.reference.test.ts",
+      "src/workbench/generationCanvas/nodes/director/agent/attachDoors.guard.test.ts"
+    ],
+    "why": "Every attach of a preview or camera-move clip to a video shot goes through attachCameraMoveForNode into this core; the core compares the current mode, the ordered sent reference list (same function as the request builder) and the prompt, and numbers the prompt reference through the platform mention marker."
+  },
+  "affected_population": [
+    "Every 3D-BOX 'produce' click after a model switch, a manual reference deletion, or with another reference video present",
+    "Agent stage_shot / create_camera_move previews written back by the capture host",
+    "Manual and Agent camera-move clips attached by the capture host",
+    "Projects that carry a ready preview rendered before source fingerprints existed"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveForNode.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/directorProduce.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/directorPreviewCapture.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/CameraMoveCaptureHost.tsx",
+    "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts",
+    "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlow.tsx"
+  ],
+  "entry_points": [
+    "DirectorEditor produce -> prepareProduceFromPreview -> attachCameraMoveForNode",
+    "Capture host preview write-back (Agent stage_shot, re-render) -> applyPreviewCaptured -> attachCameraMoveForNode",
+    "Capture host camera-move clip (manual control + Agent create_camera_move) -> attachToTarget -> attachCameraMoveForNode",
+    "Spend gate (node up-arrow, main-process admission) -> directorPreviewSpendBlock -> directorPreviewIsStale",
+    "Canvas shell reconciler: model / mode change on a shot with an attached preview -> attachCameraMoveForNode; spend gate re-checks that the attachment is current"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Both the attach semantics and the reference numbering are ours (promptMentions and orderedSentMediaReferenceUrls are the in-repo single owners we now reuse); no third-party library owns per-shot reference attachment.",
+  "invariants": [
+    "The core answers 'already attached' only when mode, ordered sent reference list, marker and prompt reference all match the state it would write",
+    "The prompt reference is an @[asset:url] marker projected to @videoN from the actual send order, never a hard-coded number",
+    "A user's own reference videos are never deleted to make room; when the preview cannot fit it falls back to text with a warning",
+    "A ready preview without a source fingerprint is stale; a new preview cannot be written without one",
+    "Production code reaches the core only through attachCameraMoveForNode; the URL marker is read only inside the core"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/CameraMoveCaptureHost.tsx",
+      "symbol": "attachCameraMoveForNode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewCapture.ts",
+      "symbol": "attachCameraMoveForNode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorProduce.ts",
+      "symbol": "attachCameraMoveForNode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveForNode.ts",
+      "symbol": "computeAttachCameraMove"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+      "symbol": "CAMERA_MOVE_ATTACHED_URL_KEY"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "symbol": "directorPreviewIsStale"
+    }
+  ],
+  "door_reduction": {
+    "before": 6,
+    "after": 6,
+    "why_not": "Before: three callers invoked the core directly, the URL marker was read in two places (produce and the core), and the stale predicate had one door. After: the same three moments still attach (user clicks produce; the host finishes a preview render; the host finishes a camera-move clip) and each writes under its own transaction identity, now all through the one wrapper; the wrapper reaches the core through one door; the marker is read only inside the core (produce's own read is deleted, the guard test fails if it comes back); the stale predicate keeps its single door. The door count stays equal on purpose: what converged is the decision (who answers 'already attached'), not the number of moments that must attach."
+  },
+  "generality_proof": "The decision lives in one pure core fed by one wrapper that reads the same references the runner reads (resolveGenerationReferences) and merges them with the same function the request builder uses (orderedSentMediaReferenceUrls). A new caller, a new model with a different slot count, a model without video slots, a canvas edge video, a legacy prompt with the old literal sentence, or a replaced preview all go through the same comparison. The numbering is delegated to the platform mention projection, so it cannot drift from the send order. The stale rule is a single predicate shared by the spend gate and the produce state.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+      "symbol": "computeAttachCameraMove",
+      "responsibility": "Compare current reference state with the desired one; write only the difference; number the prompt reference through the mention marker; never delete user references."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveForNode.ts",
+      "symbol": "attachCameraMoveForNode",
+      "responsibility": "The only production entry to the core; supplies the canvas edge videos so the numbering matches the real send order."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "symbol": "directorPreviewIsStale",
+      "responsibility": "Single freshness predicate for the spend gate and the produce state; a ready preview without a fingerprint is stale."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorProduce.ts",
+      "entry_point": "prepareProduceFromPreview",
+      "disposition": "enforced",
+      "evidence": "Its own marker early-return is deleted; covered by directorProduce.reference.test.ts (model switch, deleted reference, existing user clip, repeated clicks)."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewCapture.ts",
+      "entry_point": "applyPreviewCaptured",
+      "disposition": "enforced",
+      "evidence": "Calls the wrapper with the live target id; fingerprint is now a required argument; directorPreviewCapture.test.ts and the spend-gate tests exercise it."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/CameraMoveCaptureHost.tsx",
+      "entry_point": "attachToTarget (camera-move clip)",
+      "disposition": "enforced",
+      "evidence": "Calls the wrapper; the non-preview branch of the core shares the same state comparison and prompt-only fallback."
+    },
+    {
+      "path": "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "entry_point": "main-process single-shot admission (preview gate)",
+      "disposition": "enforced",
+      "evidence": "Asks the renderer's director.preview-blocks handler, which uses directorPreviewSpendBlock -> directorPreviewIsStale; legacy previews are now reported stale (directorPreviewStale.spendGate.test.ts)."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
+      "entry_point": "buildArchetypeInputParams (request builder)",
+      "disposition": "not-affected",
+      "evidence": "Already the send-order owner; the core now reuses orderedSentMediaReferenceUrls, which calls the same merge primitive, instead of keeping its own list logic."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "entry_point": "directorPreviewSpendBlock (attachment-current check + corrupted preview record)",
+      "disposition": "enforced",
+      "evidence": "Blocks (existing stale reason) when the preview is not currently attached or the record is corrupted; directorProduce.reference.test.ts and directorPreviewStale.spendGate.test.ts."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any future caller that attaches a preview or clip, any model with a different slot count, any canvas edge video and any legacy prompt could reproduce a wrong 'already attached' answer or a wrong number if the decision were re-derived anywhere else.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs computeAttachCameraMove: 3 write doors (produce, preview write-back, camera-move host), all now via attachCameraMoveForNode",
+      "git grep CAMERA_MOVE_ATTACHED_URL_KEY / cameraMoveAttachedUrl: after the fix only attachCameraMoveToTarget.ts (guard test)",
+      "git grep '@Video1' in production code: only the legacy-sentence detector remains (matches the sentence text, not the number)",
+      "git grep directorPreviewIsStale: spend gate (directorPreviewSpendBlock) and directorProduceState, both through the one predicate"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveForNode.ts",
+    "invariant": "Attach decisions are made only by the core fed through the wrapper; the URL marker is never consulted outside the core; the preview freshness predicate treats a missing fingerprint as stale.",
+    "failure_mode": "Production code that calls the core directly or reads the marker fails attachDoors.guard.test.ts; a preview written without a fingerprint does not type-check; a legacy preview is blocked at the spend gate until one free local re-render.",
+    "exception_policy": "none",
+    "strategy": "Delete the upper-layer early return, make the core compare current state instead of remembering, derive the number from the send order through the mention marker, route all callers through one wrapper guarded by a static test, and make the fingerprint a required argument of the preview write-back.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+      "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveForNode.ts",
+      "src/workbench/generationCanvas/nodes/director/agent/directorPreviewCapture.ts",
+      "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.reference.test.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/directorProduce.reference.test.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/attachDoors.guard.test.ts",
+    "src/workbench/capability/directorPreviewStale.spendGate.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.reference.test.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/attachDoors.guard.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/director/agent/directorProduce.ts",
+      "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+      "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts"
+    ],
+    "rationale": "The upper-layer marker early return in directorProduce.ts, the core's same-URL early return, the hard-coded '@Video1' sentence and the 'no fingerprint means not stale' branch are deleted in the same change; no flag or fallback keeps them."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency owns per-shot reference attachment or numbering; the in-repo mention projection and ordered-reference merge are reused.",
+    "exit_criteria": []
+  },
+  "migration": "Prompts written by the old core carry a literal '@Video1 ...' sentence; the core recognises that sentence by its text and replaces it with a marker sentence on the next attach (no bulk rewrite). Legacy previews without a fingerprint are not rewritten; they are treated as stale until the user triggers the free local re-render that produces a fingerprinted preview.",
+  "residual_risks": [
+    "Whether the real video model follows the lowercase '@video2' form is unproven until the paid sample runs (the platform already projects user-picked videos the same way)."
+  ]
+}

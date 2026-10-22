@@ -114,7 +114,7 @@ export function pickUpstreamMessage(record: JsonRecord, sanitize: (message: stri
 /**
  * 从上游失败响应体里挑出**它自己给的错误码**（不是那句人话）：`{ error: { code: "model_not_found" } }` /
  * `{ code: "model_not_found" }`。与 `pickUpstreamMessage` 同住一处、同一个「全仓唯一键优先级表」的纪律——
- * 谁要把上游失败的原因带过 IPC（vendorHttp 的媒体请求、aiSdkVendorError 的文本请求）都读这一份。
+ * 谁要把上游失败的原因带过 IPC（vendorHttp 的媒体请求、runtimeVendorError 的模型调用）都读这一份。
  *
  * 为什么要带码：状态码（400/422）只说「请求有问题」，从不说**为什么**——把它当成「参数不被接受」就是猜
  * （2026-09-29：供应商说模型已下线，界面却叫用户去改比例）。上游的错误码才是它自己说的原因。

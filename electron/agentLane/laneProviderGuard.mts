@@ -61,6 +61,14 @@ export const LANE_STREAM_WATCHDOG: NomiStreamGuard = Object.freeze({
 });
 
 /**
+ * 一次调用的**整体兜底**——只给没有停止键的入口（调用方没传 signal：文本节点改写选区、拆解读图、浏览器提取、
+ * MCP 试跑、画布 Run）。它不是存活判据（存活归上面三相），只保证这种入口一定收尾。
+ * 传了 signal 的入口（有停止键、进度看得见）不设：思考 5 分钟加慢中转出长文，合法地可能超过 10 分钟（协调 10-21 定）。
+ * 与看门狗住同一处、只有一份；消费者是 `laneModelCall.mts`。
+ */
+export const MODEL_CALL_CEILING_MS = 600_000;
+
+/**
  * 厂商报文 → 上游正则认得的标记。**顺序即优先级**：余额排第一，因为它同时是
  * 「别重试」的开关（上游先跑 `NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN`），
  * 而把一次确定的付费失败重试三次，用户等的是四倍的时间换同一个结果。

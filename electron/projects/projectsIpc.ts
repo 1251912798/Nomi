@@ -17,7 +17,7 @@ type RegisterSyncIpc = (channel: string, handler: (...args: never[]) => unknown)
 
 export type ProjectsIpcDeps = {
   registerSyncIpc: RegisterSyncIpc;
-  listProjects: () => unknown;
+  listProjects: () => Promise<unknown>;
   createProject: (record: unknown) => unknown;
   readProject: (projectId: string) => unknown;
   saveProject: (projectId: string, record: unknown) => unknown;
@@ -53,7 +53,7 @@ export function registerProjectsIpc(deps: ProjectsIpcDeps): void {
     recoverProject,
   } = deps;
 
-  registerSyncIpc("nomi:projects:list", listProjects as (...args: never[]) => unknown);
+  // 项目列表只有这一条读口，且是异步的：没有同步版（sendSync 会让渲染层干等主进程扫完全库）。
   ipcMain.handle("nomi:projects:list-async", (event) => {
     assertTrustedSender(event);
     return listProjects();

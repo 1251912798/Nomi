@@ -697,7 +697,7 @@ export function imageEditGuardError(
   selected?: ParameterReferenceSelection,
 ): string | null {
   // image_to_prompt is a runtime-fixed multimodal text path: executeTextTask
-  // sends its referenceImages directly through streamTextTask, so it has no
+  // inlines its referenceImages into the one model call itself, so it has no
   // profile/fallback body for this guard to audit.
   if (kind === "image_to_prompt") return null;
 

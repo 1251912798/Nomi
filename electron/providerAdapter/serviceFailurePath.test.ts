@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { LanguageModelV1 } from "ai";
+import type { CompilerLanguageModel } from "./compiler";
 import type { Model, Vendor } from "../catalog/types";
 import { ProviderAdapterStore, isTerminalAdapterStage } from "./store";
 import { ProviderAdapterService, type ProviderAdapterCatalogPort, type ProviderAdapterServiceDependencies } from "./service";
@@ -118,7 +118,7 @@ function harness(overrides: Partial<ProviderAdapterServiceDependencies> = {}) {
     catalog: fakeCatalog(),
     schedule: () => {},
     discover: async () => ({ sources: [{ url: "https://docs.example.com/api", text: "API reference" }], corpus: "API reference" }),
-    resolveLanguageModels: () => [{} as LanguageModelV1],
+    resolveLanguageModels: () => [{} as CompilerLanguageModel],
     compile: async () => ({ draft: draft(), failures: [] }),
     repair: async () => draft(),
     verify: async ({ mode }) => ({ ok: true, taskKind: mode.taskKind }),

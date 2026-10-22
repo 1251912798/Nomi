@@ -61,7 +61,7 @@ describe("abandoned upload staging is reclaimed by who owns it, not only by age"
     const leftover = staged(root, `.nomi-upload-p${deadPid()}-quit01`);
     registerProjectsIpc({
       registerSyncIpc: () => undefined,
-      listProjects: () => [],
+      listProjects: async () => [],
       createProject: () => null,
       readProject: (projectId: string) => ({ id: projectId }),
       saveProject: () => null,

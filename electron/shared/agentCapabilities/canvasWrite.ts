@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { CapabilityContract } from "./capabilityContract";
 import { jsonTolerantArray } from "./jsonArgTolerance";
+import { edgeAdmissionFactsForModels } from "../canvas/edgeAdmission";
 import { cameraMoveParamsObjectSchema, stagingReferenceParamsSchema, storyboardPlanParamsSchema } from "./canvasModelShapes";
 
 const canonicalIdSchema = z.string().trim().min(1);
@@ -109,6 +110,13 @@ export const plannedNodeSchema = z
     }
   });
 
+// 连线说明里「文字上下文 vs 媒体参考」两句，从准入闸本身（edgeAdmission）问出来，不手抄：
+// 手抄过一次，写成「text 不能当参考源」，而闸门其实放行文字当提示词上下文（2026-10-21 对账）。
+const EDGE_ADMISSION_FACTS = edgeAdmissionFactsForModels();
+const EDGE_ADMISSION_NOTE =
+  `Text node: it is never a media reference; a generic reference edge (mode omitted or reference) only passes its text as prompt context to: ${EDGE_ADMISSION_FACTS.textContextTargets.join(", ")}. Other modes from a text node are skipped. ` +
+  `These kinds produce nothing to reference: ${EDGE_ADMISSION_FACTS.noOutputKinds.join(", ")}.`;
+
 export const plannedEdgeSchema = z
   .object({
     sourceClientId: z.string().trim().min(1).describe("Source node client id."),
@@ -117,7 +125,7 @@ export const plannedEdgeSchema = z
       .enum(["reference", "first_frame", "last_frame", "style_ref", "character_ref", "composition_ref"])
       .optional()
       .describe(
-        "Slot semantics: character_ref (cast sheet feeds keyframe), style_ref (scene/style feeds keyframe), composition_ref, first_frame (keyframe image feeds the video's first frame; from a VIDEO source it means last-frame relay, which the user must opt into), last_frame, reference (generic, default). Connect only a reference the TARGET model supports (see its per-mode reference slots in the available-models list); text/shot/output nodes cannot be a reference source. Unsupported edges are skipped and reported in skippedEdges.",
+        `Slot semantics: character_ref (cast sheet feeds keyframe), style_ref (scene/style feeds keyframe), composition_ref, first_frame (keyframe image feeds the video's first frame; from a VIDEO source it means last-frame relay, which the user must opt into), last_frame, reference (generic, default). Connect only a reference the TARGET model supports (see its per-mode reference slots in the available-models list). ${EDGE_ADMISSION_NOTE} Unsupported edges are skipped and reported in skippedEdges.`,
       ),
   })
   .strict();

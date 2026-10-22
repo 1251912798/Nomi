@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { LanguageModelV1 } from "ai";
+import type { CompilerLanguageModel } from "./compiler";
 import type { Model, Vendor } from "../catalog/types";
 import type { ProviderAdapterDraft } from "./types";
 import { ProviderAdapterStore } from "./store";
@@ -196,7 +196,7 @@ function dependencies(catalog: ReturnType<typeof fakeCatalog>): ProviderAdapterS
       sources: [{ url: "https://docs.example.com/api", text: "API reference" }],
       corpus: "API reference",
     }),
-    resolveLanguageModels: () => [{} as LanguageModelV1],
+    resolveLanguageModels: () => [{} as CompilerLanguageModel],
     compile: async () => ({ draft: draft(), failures: [] }),
     probeCredential: async () => ({ ok: true as const, modelIds: [], listed: false }),
     verify: async ({ mode }) => ({ ok: true, taskKind: mode.taskKind }),
@@ -664,7 +664,7 @@ describe("ProviderAdapterService", () => {
   });
 
   // 回归钉子（2026-08-11 用户接 DeepSeek 踩到「自动修复一直失败」）：文本模型验证走
-  // streamTextTask（生产同一条路）、根本不读编译出来的 HTTP 草稿，所以重修草稿对文本失败
+  // executeTextTask（生产同一条路）、根本不读编译出来的 HTTP 草稿，所以重修草稿对文本失败
   // 是个空操作——旧代码照样空转 2 轮、界面还写着「正在根据真实错误自动修复…」，用户白等。
   it("does not publish a failed candidate when no mode passed", async () => {
     const catalog = fakeCatalog();
@@ -854,7 +854,7 @@ describe("ProviderAdapterService", () => {
     });
   });
 
-  // 分级的核心不变量（2026-08-12）：文本的接法行业已统一，且文本验证走 streamTextTask、
+  // 分级的核心不变量（2026-08-12）：文本的接法行业已统一，且文本验证走 executeTextTask、
   // 根本不读编译出来的草稿——查文档 + AI 编译对它是纯开销，还平添「文档没抓到 / 编译失败」
   // 这些真实使用路径没有的失败模式。用户接两个 DeepSeek 文本模型曾为此烧掉 132 秒后判死。
   it("never discovers docs or compiles when only text models were selected", async () => {
@@ -862,7 +862,7 @@ describe("ProviderAdapterService", () => {
     const deps = dependencies(catalog);
     deps.discover = vi.fn(async () => ({ sources: [{ url: "https://docs.example.com/api", text: "API reference" }], corpus: "API reference" }));
     deps.compile = vi.fn(async () => ({ draft: draft(), failures: [] }));
-    deps.resolveLanguageModels = vi.fn(() => [{} as LanguageModelV1]);
+    deps.resolveLanguageModels = vi.fn(() => [{} as CompilerLanguageModel]);
     const service = new ProviderAdapterService(store(), deps);
     const started = await service.start({ ...startInput, models: [{ modelKey: "text-v1", labelZh: "Text V1", kind: "text" as const }] });
 

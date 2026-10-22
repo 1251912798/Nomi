@@ -15,27 +15,21 @@
  *
  * Electron-free so it can be unit-tested offline (agentError.test.ts).
  */
-import { encodeVendorErrorMessage } from "../vendor/vendorHttp";
-import { vendorErrorFromAiSdkError, type AiSdkErrorContext } from "./aiSdkVendorError";
+import { VendorRequestError, encodeVendorErrorMessage } from "../vendor/vendorHttp";
 
 /**
- * Turn any agent error into a message worth showing the user.
+ * Turn any text-task error into the message that crosses IPC.
  *
- * 这是文本侧**所有**错误的唯一漏斗（streamText onError / 流的 error 块 / 流抛出中断 /
- * textStreamIpc catch 四条入口都过这里），所以结构化也收口在这一层：厂商请求失败先映射成
- * VendorRequestError，带 `NOMI_VENDOR_ERR_B64::` 标记编码后穿 IPC —— 渲染层
- * classifyGenerationError 于是走「源头保留的事实」分支，而不是拿关键词正则猜 category
- * （治「又漏了一类」的按类复发，来龙去脉见 aiSdkVendorError.ts 文件头）。
+ * 文本流 IPC（textStreamIpc 的 catch）唯一的漏斗。厂商失败在抛出那一刻就已经是 VendorRequestError
+ * （文本任务的失败映射只一处：runtimeVendorError.modelCallFailure，读的是传输层记下的事实），
+ * 这里只负责带 `NOMI_VENDOR_ERR_B64::` 标记编码后穿 IPC——渲染层 classifyGenerationError 走「源头保留的事实」分支。
+ * 不是厂商失败的（没配文本模型 / 图片读不出 / 服务商在 SSE 里给的原话）返回原句。
  *
- * 映射不到的（工具报错 / 没配文本模型 / 空响应截断 / 用户点停止）返回裸字符串走 legacy 兜底——
- * 那几类的判据是**我们自己的固定文案**，不是猜厂商的话，本来就不该结构化。
- *
- * 展示串一字未变：标记段在渲染层由 stripVendorErrorMarker 剥掉，用户看到的仍是
- * 「（HTTP 400）官方算力限制，请等待一段时间后再进行使用」。
+ * 2026-10-21 文本任务迁 pi-ai：过去这里还要拆 ai@4 的 RetryError 壳、认 APICallError（aiSdkVendorError），随 ai@4 一起删。
+ * 展示串不变：标记段在渲染层由 stripVendorErrorMarker 剥掉，用户看到的仍是「（HTTP 400）官方算力限制……」。
  */
-export function describeAgentError(error: unknown, ctx: AiSdkErrorContext = {}): string {
-  const vendorError = vendorErrorFromAiSdkError(error, ctx);
-  if (vendorError) return encodeVendorErrorMessage(vendorError);
+export function describeAgentError(error: unknown): string {
+  if (error instanceof VendorRequestError) return encodeVendorErrorMessage(error);
   if (error instanceof Error) return error.message;
   return String(error);
 }

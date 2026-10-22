@@ -1,3 +1,4 @@
+import { TEXT_ACTION_INTENT_PROPS } from '../../api/textActionIntent'
 import { LibraryPicker, type LibraryPickerRow } from '../../library/LibraryPicker'
 import { V4Row } from './AgentPanelV4Row'
 // Agent 面板 v4 · 积木 ⑧ composer（AI Elements PromptInput + MiniMax 底栏）
@@ -197,6 +198,7 @@ export function AgentPanelV4Composer({
         if (canSend) onSubmit?.()
       }}
       data-v4-block="composer"
+      {...TEXT_ACTION_INTENT_PROPS}
       data-mode={mode}
       data-height={height}
       data-permission={permission}

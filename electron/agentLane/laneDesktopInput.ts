@@ -13,7 +13,6 @@ import { readNomiLocalAsset } from '../assets/localAssetFile'
 import { extractTextFromLocalAsset } from '../files/extractText'
 import { buildAgentUserContent, projectAgentPromptForSend, modelSupportsImageInput, modelSupportsPdfInput } from '../ai/agentUserContent'
 import { rewritePdfPayload, type NativePdf } from '../ai/nativePdfPayload'
-import { applyProfileToRequestBody, getModelProfile } from '../ai/modelProfiles'
 
 const text = z.string().max(128 * 1024)
 const intentSchema = z.object({
@@ -107,11 +106,9 @@ export function createDesktopLaneInput(input: {
       })
     },
     rewritePayload: (payload, api) => {
-      const selected = input.model()
       if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid provider payload')
-      const profiled = selected && api !== 'anthropic-messages'
-        ? applyProfileToRequestBody(payload as Record<string, unknown>, getModelProfile(selected.model.modelAlias || selected.model.modelKey)) : payload
-      const rewritten = rewritePdfPayload(profiled, api, [...pdfs.values()])
+      // 模型怪癖（modelProfiles）已在 createNomiProvider 的 onPayload 里套过（唯一一处），这里只管 PDF。
+      const rewritten = rewritePdfPayload(payload, api, [...pdfs.values()])
       if ([...pdfs.keys()].some((marker) => !rewritten.applied.has(marker))) {
         throw new Error('Native PDF was not preserved by the provider payload adapter')
       }

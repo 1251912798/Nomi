@@ -65,6 +65,7 @@ export const CI_ONLY = Object.freeze([
       'check:mcp-payload',
       'check:mcp-scope-reachable',
       'check:mcp-tool-refs',
+      'check:guide-mcp-hosts',
       'check:skill-tool-binding',
       'check:walkthrough-tool-args',
       'check:credential-origin',
