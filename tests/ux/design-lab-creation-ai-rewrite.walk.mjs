@@ -1,6 +1,6 @@
 // 设计实验室 · 写作区「选中文字 → AI 编辑」走查。零额度：纯本地渲染，模型一头是假桌面桥。
 // 产出：`tests/ux/shots/design-lab-creation-ai-rewrite/<state>.png` + `_contact-sheet.png`。
-// 其中 `rewrite-live-zh-light` 那一格由 Playwright 真选字、真点、真敲（见 assertState）。
+// 其中 `rewrite-live-zh-light` 那一格由 Playwright 真选字、真点、真敲（见 expectRewriteState）。
 import fs from 'node:fs'
 import path from 'node:path'
 import { REPO_ROOT } from './design-lab/labStates.mjs'
@@ -144,13 +144,11 @@ async function liveJourney(page, record) {
 
 fs.mkdirSync(OUT_DIR, { recursive: true })
 
-await walkDesignLabScreen({
-  screen: 'creation-ai-rewrite',
-  title: '写作区 AI 编辑 ',
-  role: 'walk-creation-ai-rewrite',
-  cellWidth: 760,
-  columns: 2,
-  async assertState(page, state, record) {
+/**
+ * 每一格的检查（walkDesignLabScreen 的逐格钩子）。注意：这和「控制文案动作词登记」里登记的 assertState 不是一件事——
+ * 那些是各走查自己的逐格断言，这里也是；它们都只是传给走查框架的钩子，不写控制文案登记。所以不复用别人的函数，只用不同的名字声明。
+ */
+async function expectRewriteState(page, state, record) {
     if (state.id === 'rewrite-live-zh-light') {
       await liveJourney(page, record)
       return
@@ -171,5 +169,13 @@ await walkDesignLabScreen({
     }
     if (status === 'accepted' || status === 'discarded') expect(record, await has('.workbench-ai-rewrite-bar') === 0 && await has('[data-rewrite-action]') === 0, `${state.id} 会话没有关干净`)
     if (status === 'failed') expect(record, await has('.workbench-ai-rewrite-bar [role="alert"]') === 1, `${state.id} 没有「没改成」提示`)
-  },
+}
+
+await walkDesignLabScreen({
+  screen: 'creation-ai-rewrite',
+  title: '写作区 AI 编辑 ',
+  role: 'walk-creation-ai-rewrite',
+  cellWidth: 760,
+  columns: 2,
+  assertState: expectRewriteState,
 })
