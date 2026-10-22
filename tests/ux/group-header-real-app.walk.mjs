@@ -9,6 +9,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { launchNomiApp } from './_launchApp.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 import { createCanvasPerformanceFixture } from './fixtures/canvas-performance-fixture.mjs'
 import { applyColorSchemeForShot, clickOrFail, expect, expectAbsent, proveProbe, waitForVisualQuiescence } from './_assert.mjs'
 import { GROUP_TOOLBAR } from './_groupGenerate.mjs'
@@ -168,7 +169,7 @@ try {
   await generateAll.click()
   await waitForVisualQuiescence(win)
   const spend = win.locator('div.fixed.inset-0').filter({ hasText: /开始生成|Start generating|Generate/ }).last()
-  const confirmShown = await spend.isVisible({ timeout: 8000 }).catch(() => false)
+  const confirmShown = await spend.waitFor({ state: 'visible', timeout: stationTimeout() }).then(() => true).catch(() => false)
   if (confirmShown) {
     await win.screenshot({ path: path.join(outDir, '04-generate-all-confirm-cancelled.png') })
     await spend.getByRole('button', { name: /^(取消|Cancel)$/ }).first().click()
