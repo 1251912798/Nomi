@@ -6,6 +6,7 @@ import { ConfirmDialogHost, confirmDialog, NomiLoadingMark } from '../design'
 import ProjectLibraryPage from './library/ProjectLibraryPage'
 import { SettingsDialog } from './settings/SettingsDialog'
 import { useSettingsDialogController } from './settings/useSettingsDialogController'
+import { projectDeleteChoice } from './library/projectDeleteChoice'
 import {
   createLocalProject,
   deleteLocalProject,
@@ -504,14 +505,12 @@ export default function NomiStudioApp(): JSX.Element {
     async (project: LocalProjectSummary) => {
       // 应用内确认框（审计 A7）：原生 window.confirm 脱设计系统、E2E 测不到、
       // Electron/macOS 有焦点丢失史。
-      // 文案按主进程实际会做的如实区分：真删盘只对读得出来的 native；外部「打开文件夹」和数据读不出来的项目只解绑、不删文件。
-      const isExternal = project.source === 'folder' || Boolean(project.unreadableReason)
+      // 确认框说什么、交给主进程什么意图，同一个判断出两样（projectDeleteChoice）：说「只移除」就一定传 unbind。
+      const choice = projectDeleteChoice(project)
       const confirmed = await confirmDialog({
-        title: isExternal ? t('studio.removeProjectTitle') : t('studio.deleteProjectTitle'),
-        message: isExternal
-          ? t('studio.removeProjectMessage', { name: project.name })
-          : t('studio.deleteProjectMessage', { name: project.name }),
-        confirmLabel: isExternal ? t('studio.removeProject') : t('common.delete'),
+        title: t(choice.titleKey),
+        message: t(choice.messageKey, { name: project.name }),
+        confirmLabel: t(choice.confirmLabelKey),
         danger: true,
       })
       if (!confirmed) return
@@ -524,7 +523,7 @@ export default function NomiStudioApp(): JSX.Element {
           if (laneClient.context()) await laneClient.close()
         }
         // 主进程只照用户在这个确认框里确认的那一种执行：说了「只移除」就绝不删文件（V-plibrary2）。
-        deleteLocalProject(project.id, isExternal ? 'unbind' : 'delete-files')
+        deleteLocalProject(project.id, choice.intent)
         if (activeProjectIdRef.current === project.id) {
           activeProjectIdRef.current = null
           setActiveProject(null)

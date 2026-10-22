@@ -16,7 +16,8 @@
     "electron/workspace/workspaceManifestLock.ts",
     "electron/workspace/workspaceManifest.ts",
     "scripts/check-read-path-writes.mjs",
-    "electron/projects/projectsIpc.ts"
+    "electron/projects/projectsIpc.ts",
+    "electron/workspace/legacyProjectMigration.ts"
   ],
   "entry_points": [
     "listProjects (renderer library, MCP / Agent project list) — the only caller of the former GC",
@@ -28,7 +29,7 @@
   "invariants": [
     "No list / read / resolve / get function can reach deleteWorkspaceProject; project folders are deleted only by the user's delete action.",
     "Taking the manifest lock never creates a project root; a missing root fails with WorkspaceRootMissingError and is not retried.",
-    "A read failure of one listed project affects only that project's card (busy -> plain registry card, anything else -> unreadable card; an empty-draft check that cannot decide shows the card instead of hiding it); listProjects never rejects because of one item.",
+    "A read failure of one listed project affects only that project's card (busy -> plain registry card, anything else -> unreadable card; an empty-draft check that cannot decide shows the card instead of hiding it); listProjects never rejects because of one item — including the start-up discovery of unregistered directories in the default root (discoverLegacyProjects skips an unreadable directory).",
     "Deleting a project follows the intent the user confirmed in the dialog: 'unbind' only removes the registry entry and never touches files even if the project became readable again; 'delete-files' refuses with ProjectDeleteStateChangedError when the project is no longer readable; a missing or unknown intent is refused."
   ],
   "doors": [
@@ -66,12 +67,17 @@
       "kind": "write",
       "path": "electron/projects/projectsIpc.ts",
       "symbol": "deleteProject"
+    },
+    {
+      "kind": "read",
+      "path": "electron/workspace/legacyProjectMigration.ts",
+      "symbol": "discoverLegacyProjects"
     }
   ],
   "door_reduction": {
-    "before": 8,
-    "after": 7,
-    "why_not": "少掉的一扇是 gcEmptyDraftWorkspaceProjects（列举里的第二个删除调用方）。剩下的：deleteWorkspaceProject 的定义与唯一调用方（用户删除）；listWorkspaceProjects 的定义与唯一调用方（#1268 的唯一异步读面）；所有写者共用的唯一取锁函数；列表每项回落用的加锁清单读。各自是同一状态的不同必要入口，不能再合。 projectsIpc.ts 的 deleteProject 是用户删除走的唯一 IPC 口，它把确认框的意图原样交给主进程 deleteProject。"
+    "before": 9,
+    "after": 8,
+    "why_not": "少掉的一扇是 gcEmptyDraftWorkspaceProjects（列举里的第二个删除调用方）。剩下的：deleteWorkspaceProject 的定义与唯一调用方（用户删除）；listWorkspaceProjects 的定义与唯一调用方（#1268 的唯一异步读面）；所有写者共用的唯一取锁函数；列表每项回落用的加锁清单读。各自是同一状态的不同必要入口，不能再合。 projectsIpc.ts 的 deleteProject 是用户删除走的唯一 IPC 口，它把确认框的意图原样交给主进程 deleteProject。 discoverLegacyProjects 是启动发现：扫默认根里没登记的目录，和列表读面是两件事（一个对账新目录、一个读已登记项目），两处都逐项隔离读取错误。"
   },
   "generality_proof": "The race existed because a read path could destroy. Removing the GC from listProjects leaves exactly one caller of deleteWorkspaceProject (the user delete IPC), and check:read-path-writes now treats deleteWorkspaceProject as a write door, so any future list/read/resolve/get function that reaches it fails CI. No in-process or cross-process writer can be raced by a deleter that does not exist. The orphan-root half is closed in the single lock acquisition function every writer goes through (door-map: acquireWorkspaceManifestLock has one owner file). The list failure domain is closed in the single list read face, per item, for every error type.",
   "shared_boundaries": [
@@ -115,6 +121,18 @@
       "entry_point": "withWorkspaceManifestTransactionSync",
       "disposition": "enforced",
       "evidence": "Uses tryAcquireWorkspaceManifestLock, the same canonical acquisition function; a missing root throws instead of being recreated."
+    },
+    {
+      "path": "electron/workspace/legacyProjectMigration.ts",
+      "entry_point": "discoverLegacyProjects",
+      "disposition": "enforced",
+      "evidence": "V-plibrary2 r2：从库移除读不出的灰卡后目录仍在默认根，下次启动发现读它抛边界 / 身份错，整次 listProjects reject。每项读取包 try、跳过并记 warn；projectListSummary.test.ts「移除 outside-workspace / unreadable 灰卡后下次启动」两条钉住，去掉 try 即红。"
+    },
+    {
+      "path": "electron/projects/repository.ts",
+      "entry_point": "legacyProjectDirById",
+      "disposition": "not-affected",
+      "evidence": "逐目录用 readJson（runtimePaths.ts，读失败返回 fallback）比对 id，单个目录读不出不会抛到整体。"
     }
   ],
   "recurrence": {

@@ -9,7 +9,8 @@ vi.mock("electron", () => ({
 
 import { createProject, deleteProject, listProjects, saveProject } from "./repository";
 import { findRecentWorkspace } from "../workspace/workspaceRegistry";
-import { workspaceProjectFile } from "../workspace/workspacePaths";
+import { workspaceProjectBackupFile, workspaceProjectFile } from "../workspace/workspacePaths";
+import { resetLegacyDiscoveryGuard } from "../workspace/legacyProjectMigration";
 import * as manifest from "../workspace/workspaceManifest";
 import { WORKSPACE_LIST_IO_CONCURRENCY } from "../workspace/workspaceRepository";
 import { WorkspaceManifestLockBusyError, acquireWorkspaceManifestLock, releaseWorkspaceManifestLock } from "../workspace/workspaceManifestLock";
@@ -150,6 +151,42 @@ describe("项目列表摘要读面", () => {
         fs.unlinkSync(source);
       }
     });
+
+    // V-plibrary2 r2 条件：移除灰卡只摘登记，目录还在默认根里；下次启动的发现扫到它、读它抛错，
+    // 此前整次 listProjects 跟着 reject，所有项目都打不开。发现的每一项也只坏它自己。
+    for (const kind of ["outside-workspace", "unreadable"] as const) {
+      it(`移除 ${kind} 灰卡后下次启动：整页照常出、邻居都在，被移除的那个不回来`, async () => {
+        const neighbour = createProject({ name: "无辜的邻居" });
+        const project = createProject({ name: `要移除的 ${kind}` });
+        const root = (findRecentWorkspace(settingsRoot, project.id) as { rootPath: string }).rootPath;
+        let cleanup = () => {};
+        if (kind === "outside-workspace") {
+          const source = path.join(root, ".nomi");
+          const destination = path.join(settingsRoot, `outside-next-launch-${project.id}`);
+          fs.renameSync(source, destination);
+          fs.symlinkSync(destination, source, "junction");
+          cleanup = () => fs.unlinkSync(source);
+        } else {
+          for (const file of [workspaceProjectFile(root), workspaceProjectBackupFile(root)]) {
+            if (!fs.existsSync(file)) continue;
+            const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+            delete raw.projectGeneration; // 身份半缺：快照读拒、加锁读抛身份错
+            fs.writeFileSync(file, JSON.stringify(raw));
+          }
+        }
+        try {
+          expect((await listProjects()).find((item) => item.id === project.id)).toMatchObject({ unreadableReason: kind });
+          expect(deleteProject(project.id, "unbind")).toEqual({ id: project.id, deleted: false });
+          resetLegacyDiscoveryGuard(); // 模拟下次启动：发现会重新扫默认根
+          const next = await listProjects();
+          expect(next.some((item) => item.id === neighbour.id)).toBe(true);
+          expect(next.some((item) => item.id === project.id)).toBe(false);
+          expect(fs.existsSync(root)).toBe(true);
+        } finally {
+          cleanup();
+        }
+      });
+    }
 
     it("确认的是「删除文件」，此刻却读不出来：拒绝（状态变了），什么都不删、登记还在", async () => {
       const { project, inside, source } = nativeWithOutsideNomi("确认删除后变坏了");
