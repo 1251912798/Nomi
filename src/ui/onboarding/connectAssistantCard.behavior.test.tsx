@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createReactTestRenderer } from '../../workbench/ai/v4/testReactRenderer'
 import { MCP_VERIFY_REASONS, type McpConfigState, type McpVerifyReason } from '../../../electron/shared/mcpConnectionContract'
 
-const seen = vi.hoisted(() => ({ box: null as null | Record<string, any>, verify: vi.fn(), install: vi.fn() }))
+const seen = vi.hoisted(() => ({ box: null as null | Record<string, unknown> & { detail: unknown; onPrimary: () => void; onTest: () => void; primaryLabel: unknown }, verify: vi.fn(), install: vi.fn() }))
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'zh-CN', resolvedLanguage: 'zh-CN' } }) }))
 vi.mock('../../desktop/bridge', () => ({
@@ -20,7 +20,7 @@ vi.mock('../../desktop/bridge', () => ({
 }))
 vi.mock('./FoldableModelCard', () => ({ FoldableModelCard: ({ children }: { children?: React.ReactNode }) => <>{children}</> }))
 vi.mock('../../design', () => ({ DesignSegmentedControl: () => null, DesignSwitch: () => null }))
-vi.mock('./AssistantStatusBox', () => ({ AssistantStatusBox: (props: Record<string, any>) => { seen.box = props; return null } }))
+vi.mock('./AssistantStatusBox', () => ({ AssistantStatusBox: (props: NonNullable<typeof seen.box>) => { seen.box = props; return null } }))
 
 import { ConnectAssistantCard } from './ConnectAssistantCard'
 

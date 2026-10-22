@@ -13,8 +13,8 @@ const PLAN: StoryboardPlan = {
 }
 
 function publishedOmittedKind(): string {
-  const schema = toPublishedJsonSchema(storyboardPlanSchema) as { properties?: Record<string, any> }
-  const shotKind = schema.properties?.shots?.items?.properties?.shotKind as { description?: string } | undefined
+  const schema = toPublishedJsonSchema(storyboardPlanSchema) as { properties?: { shots?: { items?: { properties?: { shotKind?: { description?: string } } } } } }
+  const shotKind = schema.properties?.shots?.items?.properties?.shotKind
   const match = /omitted means (image|video)/.exec(shotKind?.description ?? '')
   expect(match, `shotKind description: ${shotKind?.description}`).not.toBeNull()
   return match![1]
