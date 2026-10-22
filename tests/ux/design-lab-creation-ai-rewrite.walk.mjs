@@ -128,7 +128,7 @@ async function liveJourney(page, record) {
   const notice = uiText('zh-CN', 'creationAi.rewrite.documentSwitched')
   await page.evaluate((text) => {
     window.__rewriteNoticeSeen = false
-    const look = () => { if (document.body.innerText.includes(text)) window.__rewriteNoticeSeen = true }
+    const look = () => { if ([...document.querySelectorAll('[data-notification-reason]')].some((node) => (node.textContent ?? '').includes(text))) window.__rewriteNoticeSeen = true }
     new MutationObserver(look).observe(document.body, { childList: true, subtree: true, characterData: true })
     look()
   }, notice)
