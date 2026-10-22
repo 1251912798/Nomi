@@ -9,16 +9,35 @@ const outputs = ['dist', 'dist-electron']
 const stampName = 'build-stamp.json'
 const hint = '构建产物缺失、过期或构建失败；先 `pnpm build`。'
 
+/**
+ * 戳的版本。v2：指纹只算会影响构建产物的输入（见 NON_INPUTS），不再带 HEAD / dirty；v1 戳一律作废。
+ */
+const STAMP_VERSION = 2
+
+/**
+ * 能证明不进 dist / dist-electron 的路径（默认一切都算输入，只有这里列出的才排除；失败时偏安全）。
+ * 每一项的证据（2026-10-22 在 src/、electron/、vite.config.ts、tailwind.config.ts、scripts/build-*.mjs、
+ * scripts/write-intake-config.mjs、package.json 里 grep，含 ?raw 导入、import.meta.glob、new URL、构建期 fs 读取）：
+ *   · .github/、.claude/、.agents/  —— 构建链与源码里没有任何引用（只有提示文案里的提及）。
+ *   · 根目录 *.md（AGENTS / CLAUDE / README* / Design / CHANGELOG / CLA / CODEX-* / MARKET-RESEARCH）—— 没有被导入或读取。
+ *   · docs/ —— 除 docs/release-notes/：src/devlab 以 ?raw 导入 docs/release-notes/*.md，进产物，见 KEEP_INSIDE_EXCLUDED。
+ *   · tests/ —— 除 tests/ux/fixtures/：src/devlab 以 new URL(...) 引用 tests/ux/fixtures 里的视频，进产物，见 KEEP_INSIDE_EXCLUDED。
+ * 不能排除的（有引用）：evals/（src/devlab 导入）、skills/、agent-skills/（?raw）、src 下所有 *.md。
+ * 加排除项前先重做同样的 grep；有引用就不能加。
+ */
+export const NON_INPUTS = ['.github', '.claude', '.agents', 'docs', 'tests']
+export const NON_INPUT_GLOBS = ['*.md'] // 仓库根目录的 md（glob 里 * 不跨目录）
+export const KEEP_INSIDE_EXCLUDED = ['docs/release-notes', 'tests/ux/fixtures']
+
 export function sourceIdentity(root) {
   const scratch = makeTempDir('nomi-build-index-')
-  const git = (args, env = process.env) => execFileSync('git', args, { cwd: root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+  const env = { ...process.env, GIT_INDEX_FILE: path.join(scratch, 'index') }
+  const git = (args) => execFileSync('git', args, { cwd: root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
   try {
-    const head = git(['rev-parse', 'HEAD'])
-    const env = { ...process.env, GIT_INDEX_FILE: path.join(scratch, 'index') }
-    git(['read-tree', 'HEAD'], env)
-    git(['add', '-A', '--', '.'], env)
-    const tree = git(['write-tree'], env)
-    return { head, tree, dirty: tree !== git(['rev-parse', 'HEAD^{tree}']) }
+    git(['read-tree', '--empty'])
+    git(['add', '-A', '--', '.', ...NON_INPUTS.map(dir => `:(exclude)${dir}`), ...NON_INPUT_GLOBS.map(glob => `:(exclude,glob)${glob}`)])
+    for (const dir of KEEP_INSIDE_EXCLUDED) if (fs.existsSync(path.join(root, dir))) git(['add', '-A', '--', dir])
+    return { tree: git(['write-tree']) }
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true })
   }
@@ -34,11 +53,23 @@ export function verifyBuild(root) {
     let stamp
     try { stamp = JSON.parse(fs.readFileSync(path.join(root, output, stampName), 'utf8')) }
     catch { throw new Error(`${output}: ${hint}`) }
-    if (stamp.version !== 1 || Object.keys(current).some(key => stamp[key] !== current[key])) {
+    if (stamp.version !== STAMP_VERSION || Object.keys(current).some(key => stamp[key] !== current[key])) {
       throw new Error(`${output}: ${hint}`)
     }
   }
   return current
+}
+
+/**
+ * 走查 / e2e / 性能驱动 / MCP 真机起跑前的唯一构建核对（G-walk-build）：它们跑的都是 dist / dist-electron，
+ * 构建比源码旧，「通过」和截图就不反映新代码。戳缺失或和当前源码树不一致一律拒跑；没有跳过开关。
+ * 打包形态跑的是安装包自带产物，不看仓库里的 dist，调用方不调本函数。
+ */
+export function assertFreshBuild(root) {
+  try { return verifyBuild(root) }
+  catch (error) {
+    throw new Error(`构建产物比源码旧（或没有构建），先跑 pnpm run build——否则走查 / e2e / 性能量到的是旧代码。（${error.message}）`)
+  }
 }
 
 export function stampedBuild(root, build) {
@@ -51,7 +82,7 @@ export function stampedBuild(root, build) {
     if (!fs.statSync(path.join(root, output)).isDirectory()) throw new Error(hint)
   }
   try {
-    for (const output of outputs) fs.writeFileSync(path.join(root, output, stampName), JSON.stringify({ version: 1, ...before }) + '\n')
+    for (const output of outputs) fs.writeFileSync(path.join(root, output, stampName), JSON.stringify({ version: STAMP_VERSION, ...before }) + '\n')
   } catch (error) {
     invalidateBuild(root)
     throw error

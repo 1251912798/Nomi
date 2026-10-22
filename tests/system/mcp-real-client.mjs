@@ -5,6 +5,7 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { repoRoot, makeIsolatedDirs, seedMcpClientIdentityEnv } from '../ux/_mcpJourney.mjs'
 import { createRequire } from 'node:module'
+import { assertFreshBuild } from '../../scripts/package-build-stamp.mjs'
 import { fileURLToPath } from 'node:url'
 import { realNomiProfile } from '../ux/_realProfile.mjs'
 import { require as tsxRequire } from 'tsx/cjs/api'
@@ -159,6 +160,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
   console.log(JSON.stringify({ client, fixture, command, args, overrides: client === 'codex' ? args.slice(3, -1) : configFile }, null, 2))
   if (!dryRun) {
+    assertFreshBuild(repoRoot) // 真起客户端才核；dry-run 只打印命令，不启动构建产物
     const result = await runProcess(command, args, env)
     process.stdout.write(result.stdout); process.stderr.write(result.stderr)
     if (result.code !== 0) throw new Error(`client exited ${result.code}`)

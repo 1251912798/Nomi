@@ -76,7 +76,7 @@ describe('private pi build and test wiring', () => {
     expect(dev.match(/compileElectronMain\(\);/g)).toHaveLength(1)
     expect(read('scripts/start-electron.mjs')).toMatch(/assertElectronBuildArtifacts\(repoRoot\)/)
     const launch = read('tests/ux/_launchApp.mjs')
-    expect(launch).toMatch(/if \(isDevElectron\)\s*\{\s*assertElectronBuildArtifacts\(repoRoot\)/)
+    expect(launch).toMatch(/if \(isDevElectron\)\s*\{\s*(?:\/\/[^\n]*\s*)*assertFreshBuild\(repoRoot\)\s*assertElectronBuildArtifacts\(repoRoot\)/)
     expect(launch).not.toContain('function assertBuilt(')
   })
 
