@@ -430,6 +430,21 @@ function dirHasRealFiles(dir: string): boolean {
 }
 
 /**
+ * 销毁授权：此刻盘上的清单仍是同一个项目、仍是草稿、仍是 revision 0，登记项仍是没丢的 native 项目。
+ * 读不到 / 清单正被别处加锁写（busy）一律算「不是」——宁可漏删不可误删。
+ */
+function isStillEmptyNativeDraft(projectId: string, deps: WorkspaceRepositoryDeps): boolean {
+  const entry = findRecentEntry(projectId, deps);
+  if (!entry || entry.missing || entry.source !== "native" || !fs.existsSync(entry.rootPath)) return false;
+  try {
+    const manifest = readWorkspaceManifest(entry.rootPath);
+    return Boolean(manifest) && manifest?.id === projectId && manifest?.draft === true && (manifest?.revision ?? 0) === 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 启动 GC：回收「从未编辑的空白草稿」，防项目库再次堆满「未命名」垃圾（审计 P0-3）。
  * 仅当全部判据满足才删（AND，宁可漏删不可误删）：
  *   native（默认根内）+ 目录在（!missing）+ draft===true + revision===0 + assets/ 无任何真实文件。
@@ -445,21 +460,6 @@ function dirHasRealFiles(dir: string): boolean {
  * 不给默认值——留 `projects = await listWorkspaceProjects(deps)` 这种兜底就等于把旧的
  * 双份列举留成可达路径（P1：不留并行版）。
  */
-/**
- * 销毁授权：此刻盘上的清单仍是同一个项目、仍是草稿、仍是 revision 0，登记项仍是没丢的 native 项目。
- * 读不到 / 清单正被别处加锁写（busy）一律算「不是」——宁可漏删不可误删。
- */
-function isStillEmptyNativeDraft(projectId: string, deps: WorkspaceRepositoryDeps): boolean {
-  const entry = findRecentEntry(projectId, deps);
-  if (!entry || entry.missing || entry.source !== "native" || !fs.existsSync(entry.rootPath)) return false;
-  try {
-    const manifest = readWorkspaceManifest(entry.rootPath);
-    return Boolean(manifest) && manifest?.id === projectId && manifest?.draft === true && (manifest?.revision ?? 0) === 0;
-  } catch {
-    return false;
-  }
-}
-
 export function gcEmptyDraftWorkspaceProjects(
   deps: WorkspaceRepositoryDeps,
   projects: WorkspaceProjectSummary[],

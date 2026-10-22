@@ -27,12 +27,20 @@ function junctionNomiToOutside(root: string, outside: string) {
   fs.rmSync(path.join(root, ".nomi"), { recursive: true, force: true });
   fs.symlinkSync(outside, path.join(root, ".nomi"), "junction");
 }
-function tryFileSymlink(target: string, link: string): boolean {
-  try { fs.symlinkSync(target, link, "file"); return true; } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") return false; // 没有创建文件符号链接的权限（Windows 非开发者模式）
-    throw error;
+/** 本机能不能建文件 symlink（Windows 没开开发者模式 / 非管理员会 EPERM）：不能就把依赖它的用例显式跳过，不冒充通过。 */
+const CAN_FILE_SYMLINK = (() => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-symlink-probe-"));
+  try {
+    fs.writeFileSync(path.join(base, "t"), "x");
+    fs.symlinkSync(path.join(base, "t"), path.join(base, "l"), "file");
+    return true;
+  } catch {
+    return false;
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
   }
-}
+})();
+const symlinkOnly = it.skipIf(!CAN_FILE_SYMLINK);
 
 describe("异步清单 / 状态读不越过项目根", () => {
   it("正常项目：三个文件都读得到，不存在的返回 null", async () => {
@@ -60,25 +68,23 @@ describe("异步清单 / 状态读不越过项目根", () => {
     expect(inspection.contentHash).toBeNull();
   });
 
-  it("文件 symlink：清单 / 备份 / sync-state 各自指到根外 → 读不到", async () => {
+  symlinkOnly("文件 symlink（本机不能建文件 symlink 时跳过）：清单 / 备份 / sync-state 各自指到根外 → 读不到", async () => {
     const { root, outside } = fixture();
     const targets = { "project.json": manifestJson("根外清单"), "project.backup.json": manifestJson("根外备份"), "sync-state.json": stateJson };
-    let linked = true;
     for (const [name, body] of Object.entries(targets)) {
       fs.writeFileSync(path.join(outside, name), body);
-      linked = tryFileSymlink(path.join(outside, name), path.join(root, ".nomi", name)) && linked;
+      fs.symlinkSync(path.join(outside, name), path.join(root, ".nomi", name), "file");
     }
-    if (!linked) return; // 本机不能建文件 symlink：目录 junction 那条已覆盖同一道校验
     expect(await readWorkspaceManifestSnapshotAsync(root)).toBeNull();
     expect(await readWorkspaceSyncState(root)).toBeNull();
     expect((await inspectWorkspaceSync(root, "project-1")).status).toBe("corrupt-manifest");
   });
 
-  it("只有备份文件 symlink 到根外：清单快照读不到（备份路径也过校验）", async () => {
+  symlinkOnly("只有备份文件 symlink 到根外：清单快照读不到（备份路径也过校验）", async () => {
     const { root, outside } = fixture();
     fs.writeFileSync(path.join(root, ".nomi", "project.json"), manifestJson("根内清单"));
     fs.writeFileSync(path.join(outside, "project.backup.json"), manifestJson("根外备份"));
-    if (!tryFileSymlink(path.join(outside, "project.backup.json"), path.join(root, ".nomi", "project.backup.json"))) return;
+    fs.symlinkSync(path.join(outside, "project.backup.json"), path.join(root, ".nomi", "project.backup.json"), "file");
     expect(await readWorkspaceManifestSnapshotAsync(root)).toBeNull();
   });
 });
