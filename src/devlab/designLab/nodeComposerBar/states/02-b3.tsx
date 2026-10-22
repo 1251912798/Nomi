@@ -107,6 +107,12 @@ export const COMPOSER_B3_STATES: readonly LabState[] = [
     render: stage({ kind: 'video', model: 'seedance', modeId: 'firstlast', edgeRefs: [{ name: '海边清晨', mode: 'first_frame' }, { name: '海边傍晚', mode: 'last_frame' }], prompt: '镜头缓慢推近，海面从清晨的薄雾过渡到傍晚。' }),
   },
   {
+    id: 'b3t-video-firstlast-two-ref-edges',
+    name: 'B3t · 首尾帧 · 连两条参考连线（不带首 / 尾帧语义）：第一条落首帧、第二条落尾帧（用户 10-22 拍板 ⑪）',
+    source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light', capture: 'viewport',
+    render: stage({ kind: 'video', model: 'seedance', modeId: 'firstlast', edgeRefs: [{ name: '海边清晨', mode: 'reference' }, { name: '海边傍晚', mode: 'reference' }], prompt: '镜头缓慢推近，海面从清晨的薄雾过渡到傍晚。' }),
+  },
+  {
     id: 'b3o-model-menu-channel',
     name: 'B3o · 模型菜单 · 渠道直选（同模型多家直接点小签）',
     source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light', capture: 'viewport',

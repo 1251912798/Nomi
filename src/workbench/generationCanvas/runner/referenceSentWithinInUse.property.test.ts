@@ -396,7 +396,7 @@ describe('场景 2：参考 3 张切到首尾帧再放帧，APIMart image_urls �
 })
 
 describe('场景 3：连 3 张图进 Seedance 2.0 首尾帧，参考区说用几张就发几张', () => {
-  it('APIMart 不再多带第 2、3 张', () => {
+  it('第 1、2 条依次落首帧、尾帧（参考区看得见、照发），第 3 条未用到、不发（用户 10-22 拍板 ⑪）', () => {
     const archetype = archetypeOf('doubao-seedance-2.0')
     const { node } = graphOn(archetype, 'doubao-seedance-2.0', 'apimart', 'firstlast', {})
     const sources = [1, 2, 3].map((i) => ({
@@ -409,7 +409,25 @@ describe('场景 3：连 3 张图进 Seedance 2.0 首尾帧，参考区说用几
     const { apimart, relay } = bodies(graph)
     expect(sentUrls(apimart).filter((url) => !shown.has(url))).toEqual([])
     expect(sentUrls(relay).filter((url) => !shown.has(url))).toEqual([])
-    expect(sentUrls(apimart)).toContain(img('e1'))
+    expect([...shown].sort()).toEqual([img('e1'), img('e2')])
+    expect(sentUrls(apimart)).toEqual([img('e1'), img('e2')])
+    const frames = resolveReferenceSlots(graph.node, graph.nodes, graph.edges).map((slot) => [slot.slotKind, slot.fills.map((fill) => fill.url)])
+    expect(frames).toEqual([['first_frame', [img('e1')]], ['last_frame', [img('e2')]]])
+    expect(resolveGenerationReferences(graph.node, { nodes: graph.nodes, edges: graph.edges })).toMatchObject({ firstFrameUrl: img('e1'), lastFrameUrl: img('e2') })
+  })
+
+  it('两条参考连线进首尾帧（拖线不带语义 / character_ref 都一样）：首帧、尾帧各一条', () => {
+    const archetype = archetypeOf('seedance-2')
+    for (const mode of [undefined, 'reference', 'character_ref'] as const) {
+      const { node } = graphOn(archetype, 'seedance-2', 'apimart', 'firstlast', {})
+      const sources = [1, 2].map((i) => ({
+        ...createGenerationNode({ id: `s${i}`, kind: 'image' }),
+        result: { id: `r${i}`, type: 'image' as const, url: img(`m${i}`), createdAt: 0 },
+      }))
+      const edges = sources.map((source, order) => ({ id: `edge-${order}`, source: source.id, target: node.id, order, ...(mode ? { mode } : {}) })) as unknown as GenerationCanvasEdge[]
+      const graph = { node, nodes: [node, ...sources] as GenerationCanvasNode[], edges }
+      expect(resolveReferenceSlots(graph.node, graph.nodes, graph.edges).map((slot) => slot.fills.map((fill) => fill.url)), String(mode)).toEqual([[img('m1')], [img('m2')]])
+    }
   })
 })
 
@@ -555,7 +573,8 @@ describe('免费抓包：本机假上游收到的请求体（四个场景 + 没�
     ['S1c-中转-参考3张切文生', () => switchMode(graphOn(seedance(), 'seedance-2', 'apimart', 'omni', { referenceImageUrls: imgs(3) }), seedance(), 't2v'), 'seedance-2', [], null],
     ['S1d-APIMart-首尾帧切文生', () => switchMode(graphOn(apimartSeedance(), 'doubao-seedance-2.0', 'apimart', 'firstlast', { firstFrameUrl: img('f'), lastFrameUrl: img('l') }), apimartSeedance(), 't2v'), 'doubao-seedance-2.0', [], []],
     ['S2-参考3张切首尾帧再放帧', () => withFrames(switchMode(graphOn(apimartSeedance(), 'doubao-seedance-2.0', 'apimart', 'omni', { referenceImageUrls: imgs(3) }), apimartSeedance(), 'firstlast')), 'doubao-seedance-2.0', [img('f')], [img('f'), img('l')].sort()],
-    ['S3-连3张进Seedance2.0首尾帧', threeEdges, 'doubao-seedance-2.0', [img('e1')], [img('e1')]],
+    // 用户 10-22 拍板 ⑪：参考类连线和上传一样依次落首帧、尾帧——第 2 条落尾帧（生成前在尾帧格里看得见），第 3 条未用到、不发。
+    ['S3-连3张进Seedance2.0首尾帧', threeEdges, 'doubao-seedance-2.0', [img('e1')], [img('e1'), img('e2')]],
     // #1269 参考图结构重写之后：换模型按参考挑方式（不再落文生），新方式在用的图照发——中转视频 body 只有一个 image 位，收第一张。
     ...['veo3.1', 'kling-3.0', 'wan2.7'].map((to): LoopbackCase => [`S4-5张换到${to}`, () => swapModel(graphOn(seedance(), 'seedance-2', 'apimart', 'omni', { referenceImageUrls: imgs(5) }), to, 'apimart').graph, to, [imgs(5)[0]!], null]),
     ['OK1-首帧方式照发首帧', () => graphOn(hailuo(), 'MiniMax-Hailuo-2.3', 'apimart', hailuo().modes.find((m) => m.slots.some((s) => s.kind === 'first_frame'))!.id, { firstFrameUrl: img('f') }), 'MiniMax-Hailuo-2.3', [img('f')], [img('f')]],

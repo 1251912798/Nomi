@@ -90,6 +90,8 @@ function seedProfile(root) {
   nodes.push(
     { id: 'trio-video', kind: 'video', categoryId: 'shots', title: '三张参考', position: { x: 700, y: 700 }, size: { width: 340, height: 192 }, status: 'idle',
       prompt: '海边的清晨慢慢过渡到傍晚。', meta: videoMeta({ referenceImageUrls: thirty.slice(0, 3) }) },
+    { id: 'edges-video', kind: 'video', categoryId: 'shots', title: '两条参考连线', position: { x: 1240, y: 700 }, size: { width: 340, height: 192 }, status: 'idle',
+      prompt: '从清晨推到傍晚。', meta: videoMeta({ archetype: { id: 'seedance-2.5', modeId: 'firstlast' } }) },
     { id: 'thirty-video', kind: 'video', categoryId: 'shots', title: '三十张参考', position: { x: 160, y: 700 }, size: { width: 340, height: 192 }, status: 'idle',
       prompt: '镜头缓慢推近。', meta: videoMeta({ referenceImageUrls: thirty }) },
   )
@@ -98,6 +100,9 @@ function seedProfile(root) {
   const edges = [
     { id: 'e1', source: 'ref-portrait', target: 'target-video', mode: 'reference', order: 0 },
     { id: 'e2', source: 'ref-seaside', target: 'target-video', mode: 'reference', order: 1 },
+    // 用户 10-22 拍板 ⑪：两条参考连线进首尾帧，第一条落首帧、第二条落尾帧。
+    { id: 'e3', source: 'ref-forest', target: 'edges-video', mode: 'reference', order: 0 },
+    { id: 'e4', source: 'ref-portrait', target: 'edges-video', mode: 'reference', order: 1 },
   ]
   const designId = 'b3-design'
   const shot = (index, prompt, bindings) => ({
@@ -364,6 +369,14 @@ async function runPass({ locale, scheme }) {
       const back = await tileCounts()
       await snap('21-roundtrip-three-back')
       check(`[${tag}] 往返：3 张上传参考 → 首尾帧（首帧、尾帧 + 1 张未用到）→ 参考，3 张一张不少`, before.tiles === 3 && mid.slots === 2 && mid.unused === 1 && back.tiles === 3 && back.unused === 0, JSON.stringify({ before, mid, back, trioState }))
+    })
+    await section('two-ref-edges-into-first-last', async () => {
+      await selectNode('edges-video')
+      await expectVisible(composer().locator('[data-asset-slot] [data-asset-tile]').first(), '首帧格里有连线来的图')
+      const counts = await tileCounts()
+      await win.mouse.move(5, 5)
+      await snap('24-two-ref-edges-first-last')
+      check(`[${tag}] 两条参考连线进首尾帧：首帧、尾帧各一条，没有未用到（用户 10-22 拍板 ⑪）`, counts.slots === 2 && counts.unused === 0, JSON.stringify(counts))
     })
     await section('roundtrip-thirty-refs', async () => {
       await selectNode('thirty-video')

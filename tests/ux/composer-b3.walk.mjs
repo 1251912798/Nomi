@@ -339,6 +339,17 @@ try {
     }
   }
 
+  // ── 连两条参考连线进首尾帧（用户 10-22 拍板 ⑪）：和上传一样依次落首帧、尾帧，没有「未用到」——中英各一遍 ──
+  for (const [lang, langParam, scheme] of [['zh', '', 'light'], ['en', '&lang=en', 'dark']]) {
+    const { page, context } = await open(B3, 'b3t-video-firstlast-two-ref-edges', `${langParam}&scheme=${scheme}`)
+    await page.waitForSelector('[data-asset-slot] [data-asset-tile]', { timeout: stationTimeout() })
+    const slots = await page.evaluate(() => [...document.querySelectorAll('[data-asset-slot]')].map((el) => (el.querySelector('[data-asset-tile]') ? 'filled' : 'empty')))
+    const unused = await count(page, '[data-reference-row] [data-reference-unused]')
+    await shot(page, B3, 'b3t-video-firstlast-two-ref-edges', `B3t-two-ref-edges-${lang}-${scheme}`)
+    check(`refslots.edges.two-refs-into-first-last.${lang}-${scheme}`, slots.join() === 'filled,filled' && unused === 0, JSON.stringify({ slots, unused }))
+    await context.close()
+  }
+
   for (const [name, state] of [['Wan 2.7', 'b3j-model-menu'], ['Veo 3.1', 'b3j-model-menu'], ['Wan 2.7', 'b3j-swap-edges'], ['Veo 3.1', 'b3j-swap-edges']]) {
     const { page, context } = await open(B3, state)
     await swapModel(page, name)

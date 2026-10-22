@@ -61,9 +61,39 @@ function assignEdgeToSlot(
     const ir = findKind('image_ref'); if (ir >= 0) return { slotIndex: ir, preferredPosition: 1 } // 尾帧 = image_ref[1]
   }
   // 通用 reference / style_ref / character_ref / composition_ref / 未知：按源资产挑第一个能吃的槽
-  for (const kind of preferredSlotKinds('reference', assetKind)) { const i = findKind(kind); if (i >= 0) return { slotIndex: i } }
-  const any = slots.findIndex(accepts)
-  return any >= 0 ? { slotIndex: any } : null
+  return genericSlotCandidates(assetKind, slots)[0] ?? null
+}
+
+/**
+ * 一条边可以落的槽，按偏好排好序（第一格放不下就落下一格）。首 / 尾帧语义的边只认那一格（它们说的就是那一格）；
+ * 参考类的边（reference / character_ref / style_ref / composition_ref / 未写语义）按 preferredSlotKinds 的顺序、
+ * 再接上其余能吃这种资产的槽——所以首尾帧方式下，第一条参考连线落首帧、第二条落尾帧，和上传图按列表依次落首、尾帧
+ * 同一个规矩（用户 10-22 拍板 ⑪）。
+ */
+function edgeSlotCandidates(
+  mode: GenerationCanvasEdgeMode | undefined,
+  assetKind: ReferenceAssetKind,
+  slots: readonly ArchetypeReferenceSlot[],
+): Array<{ slotIndex: number; preferredPosition?: number }> {
+  if (mode === 'first_frame' || mode === 'last_frame') {
+    const single = assignEdgeToSlot(mode, assetKind, slots)
+    return single ? [single] : []
+  }
+  return genericSlotCandidates(assetKind, slots)
+}
+
+/** 参考类连线（没说是首 / 尾帧）能落的槽：先按 preferredSlotKinds 的偏好，再接上其余能吃这种资产的槽。 */
+function genericSlotCandidates(
+  assetKind: ReferenceAssetKind,
+  slots: readonly ArchetypeReferenceSlot[],
+): Array<{ slotIndex: number; preferredPosition?: number }> {
+  const accepts = (slot: ArchetypeReferenceSlot) => SLOT_ACCEPTS[slot.kind].includes(assetKind)
+  const ordered: number[] = []
+  for (const kind of preferredSlotKinds('reference', assetKind)) {
+    slots.forEach((slot, index) => { if (slot.kind === kind && accepts(slot) && !ordered.includes(index)) ordered.push(index) })
+  }
+  slots.forEach((slot, index) => { if (accepts(slot) && !ordered.includes(index)) ordered.push(index) })
+  return ordered.map((slotIndex) => ({ slotIndex }))
 }
 
 /**
@@ -129,17 +159,19 @@ export function resolveReferencePlacement(
   const positionsBySlot: (ReferenceFill | null)[][] = slots.map(() => [])
   const seenUrlBySlot: Set<string>[] = slots.map(() => new Set<string>())
 
-  const placeAt = (slotIndex: number, fill: Omit<ReferenceFill, 'position'>, preferred?: number) => {
+  /** 放进去了返回 true；同一张已在这一格（去重）也算放好；槽满返回 false（交给下一个候选槽）。 */
+  const placeAt = (slotIndex: number, fill: Omit<ReferenceFill, 'position'>, preferred?: number): boolean => {
     const row = positionsBySlot[slotIndex]
     const max = slots[slotIndex].max
-    if (fill.url && seenUrlBySlot[slotIndex].has(fill.url)) return
+    if (fill.url && seenUrlBySlot[slotIndex].has(fill.url)) return true
     let pos = preferred != null && (max === undefined || preferred < max) && row[preferred] == null ? preferred : -1
     if (pos < 0) pos = row.findIndex((cell) => cell === null)
     if (pos < 0 && (max === undefined || row.length < max)) pos = row.length
-    if (pos < 0) return // 槽已满
+    if (pos < 0) return false // 槽已满
     while (row.length <= pos) row.push(null)
     if (fill.url) seenUrlBySlot[slotIndex].add(fill.url)
     row[pos] = { ...fill, position: pos }
+    return true
   }
 
   // 1) 边：一对一落槽。dangling / 源无可参考资产 → 跳过（连了但不可作参考）。
@@ -150,21 +182,23 @@ export function resolveReferencePlacement(
     if (!source) continue
     const assetKind = referenceAssetKindForNode(source)
     if (!assetKind) continue
-    const assignment = assignEdgeToSlot(edge.mode, assetKind, slots)
-    if (!assignment) continue
-    const slot = slots[assignment.slotIndex]
-    // 待抽帧接力判据必须按**媒体类型**（assetKind，line 110 已按 result.type 算），不能按 source.kind：
-    // 导入的视频素材 kind='asset'（图/视频同种类），按 kind 判会漏判 → 视频 URL 落 first_frame 图槽
-    // 渲染成 <img src=video.mp4> 加载失败（与「导入视频当参考被判成图」同一根因，只是换到 i2v 单首帧入口）。
-    const isRelay = slot.kind === 'first_frame' && assetKind === 'video'
     const rawUrl = findNodeResultUrl(nodesById, edge.source)
-    const status: ReferenceFillStatus = isRelay ? 'pending-extraction' : rawUrl ? 'resolved' : 'pending-generation'
-    placeAt(assignment.slotIndex, {
-      // 待抽帧时不把视频 URL 当填充值（封死「视频/封面冒充首帧」）；待生成时 url 暂空。
-      url: isRelay ? null : rawUrl || null,
-      status,
-      origin: { type: 'edge', sourceNodeId: edge.source, ...(edge.mode ? { semantic: edge.mode } : {}) },
-    }, assignment.preferredPosition)
+    // 候选槽依次试：第一格满了落下一格（首尾帧方式下第二条参考连线落尾帧）。
+    for (const assignment of edgeSlotCandidates(edge.mode, assetKind, slots)) {
+      const slot = slots[assignment.slotIndex]
+      // 待抽帧接力判据必须按**媒体类型**（assetKind，line 110 已按 result.type 算），不能按 source.kind：
+      // 导入的视频素材 kind='asset'（图/视频同种类），按 kind 判会漏判 → 视频 URL 落 first_frame 图槽
+      // 渲染成 <img src=video.mp4> 加载失败（与「导入视频当参考被判成图」同一根因，只是换到 i2v 单首帧入口）。
+      const isRelay = slot.kind === 'first_frame' && assetKind === 'video'
+      const status: ReferenceFillStatus = isRelay ? 'pending-extraction' : rawUrl ? 'resolved' : 'pending-generation'
+      const placed = placeAt(assignment.slotIndex, {
+        // 待抽帧时不把视频 URL 当填充值（封死「视频/封面冒充首帧」）；待生成时 url 暂空。
+        url: isRelay ? null : rawUrl || null,
+        status,
+        origin: { type: 'edge', sourceNodeId: edge.source, ...(edge.mode ? { semantic: edge.mode } : {}) },
+      }, assignment.preferredPosition)
+      if (placed) break
+    }
   }
 
   // 2a) 视频 / 音频 / 源视频的上传：各住各的键，填剩余空位。
@@ -301,10 +335,13 @@ export function canFitReferenceEdge(source: GenerationCanvasNode, target: Genera
   const promoted = resolveTargetModeForEdge(source, target, semantic)
   const effectiveTarget = promoted ? { ...target, meta: applyArchetypeModeSwitch(target.meta ?? {}, archetype, promoted) } : target
   const mode = currentArchetypeMode(archetype, effectiveTarget.meta ?? {})
-  const assignment = assignEdgeToSlot(semantic, asset, mode.slots)
-  if (!assignment) return false
+  const candidates = edgeSlotCandidates(semantic, asset, mode.slots)
+  if (!candidates.length) return false
   const filled = resolveReferenceSlots(effectiveTarget, [...nodes], [...edges])
-  const slot = filled[assignment.slotIndex]
-  if (slot.max !== undefined && slot.fills.length >= slot.max) return false
+  const hasRoom = candidates.some(({ slotIndex }) => {
+    const slot = filled[slotIndex]!
+    return slot.max === undefined || slot.fills.length < slot.max
+  })
+  if (!hasRoom) return false
   return remainingReferenceCapacity(mode, Object.fromEntries(filled.map((item) => [item.slotKind, item.fills.length]))) > 0
 }

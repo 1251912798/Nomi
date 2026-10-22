@@ -3,7 +3,8 @@ import { sortEdgesByOrder } from '../model/graphOps'
 import { archetypeForNode, referenceAssetKindForNode } from '../agent/referenceEdgeCapability'
 import { validateEdgeKinds } from '../../../../electron/shared/canvas/edgeAdmission'
 import { isDerivedOutputPair } from '../model/derivedOutput'
-import { currentArchetypeMode, uploadPlacementForMode } from '../nodes/controls/archetypeMeta'
+import { currentArchetypeMode } from '../nodes/controls/archetypeMeta'
+import { resolveReferencePlacement } from './referenceSlots'
 import { asUrl, findNodeResultUrl, resolveReferenceUrl } from './referenceUrl'
 import { resolveIndexedParameterReferenceAssignments } from '../model/parameterReferenceSlots'
 import { isComfyuiVendorKey } from '../model/comfyuiVendor'
@@ -289,22 +290,19 @@ export function resolveGenerationReferences(
     resolveReferenceUrl(nodesById, meta.lastFrameReference))
   // relay 时首帧要等抽帧填，绝不 fallback 到通用参考图（否则又冒充）。只从**图片**参考兜底（视频已分流）。
   const edgeFirst = firstFrameFromEdge || (relayFromVideoUrl ? '' : imageReferenceImages[0] || '')
-  // 档案节点：首 / 尾帧格子里的上传图 = 节点参考列表按当前方式落进这两格的那张（uploadPlacementForMode，
-  // 和参考行、请求组装同一个推导；连线 / 待抽帧的视频先占位）。不再从按槽存的旧键直接抬。
-  const archetype = ownsUploadsViaList ? archetypeForNode(node) : null
-  const placed = archetype
+  // 档案节点：首 / 尾帧格子里是谁，直接问参考行用的那一个推导（resolveReferencePlacement：连线按候选槽依次落、
+  // 上传图按参考列表依次落）——发送侧和参考行同一个主人，第二条参考连线落尾帧时两边一起落（用户 10-22 拍板 ⑪）。
+  // 待抽帧的视频占着首帧格但还没有地址：这里给空，提交时由 relayFrameResolver 把抽出的帧填进来。
+  const frames = ownsUploadsViaList
     ? (() => {
-      const mode = currentArchetypeMode(archetype, meta as Record<string, unknown>)
-      const placement = uploadPlacementForMode(meta as Record<string, unknown>, mode, {
-        firstFrameUrl: edgeFirst || null, lastFrameUrl: lastFrameFromEdge || null, relayFromVideoUrl: relayFromVideoUrl || null,
-        referenceImages: imageReferenceImages, referenceVideos, referenceAudios,
-      }, 'judge')
-      const inSlot = (kind: string) => placement.bySlot[mode.slots.findIndex((slot) => slot.kind === kind)]?.[0] ?? ''
-      return { first: inSlot('first_frame'), last: inSlot('last_frame') }
+      const placement = resolveReferencePlacement(node, nodes, edges)
+      const slotOf = (kind: string) => placement.slots.find((slot) => slot.slotKind === kind)
+      const urlIn = (kind: string) => slotOf(kind)?.fills.find((fill) => fill.url)?.url ?? ''
+      return { hasFirst: Boolean(slotOf('first_frame')), hasLast: Boolean(slotOf('last_frame')), first: urlIn('first_frame'), last: urlIn('last_frame') }
     })()
-    : { first: '', last: '' }
-  const firstFrameUrl = edgeFirst || legacyFirst || placed.first || undefined
-  const lastFrameUrl = lastFrameFromEdge || legacyLast || placed.last || undefined
+    : null
+  const firstFrameUrl = (frames?.hasFirst ? frames.first : edgeFirst || legacyFirst) || undefined
+  const lastFrameUrl = (frames?.hasLast ? frames.last : lastFrameFromEdge || legacyLast) || undefined
 
   return {
     ...(parameterSlots.length ? { parameterReferenceUrls } : {}),
