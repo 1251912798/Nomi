@@ -292,11 +292,6 @@ function validateReply(reply, allowHold = true) {
   if (reply?.type === 'think-then-text' && typeof reply.text === 'string' && reply.text
     && Number.isInteger(reply.thinkFrames) && reply.thinkFrames > 0
     && Number.isFinite(reply.intervalMs) && reply.intervalMs > 0) return
-  // 思考型模型（DeepSeek V4 / R1 一类）：先每 intervalMs 毫秒吐一帧 reasoning_content、共 thinkFrames 帧，之后才吐正文、收尾。
-  // 用来量「判活会不会把想得久的好模型当成死连接」——正文迟到的时长 = thinkFrames × intervalMs。
-  if (reply?.type === 'think-then-text' && typeof reply.text === 'string' && reply.text
-    && Number.isInteger(reply.thinkFrames) && reply.thinkFrames > 0
-    && Number.isFinite(reply.intervalMs) && reply.intervalMs > 0) return
   // 供应商整条回 HTTP 错误（带原始 JSON 体）：用来走「服务商报错 → Agent 面板那一行」。
   if (reply?.type === 'http-error' && Number.isInteger(reply.status) && reply.status >= 400 && JSON.stringify(reply.json) !== undefined) return
   if (allowHold && reply?.type === 'hold' && (reply.text === undefined || typeof reply.text === 'string')) return
@@ -342,23 +337,6 @@ function sendReply(state, reply) {
   if (reply.reasoning) wire += frame(state, { reasoning_content: reply.reasoning })
   if (reply.type === 'hold') {
     state.response.write(wire + frame(state, { content: reply.text }))
-    return
-  }
-  if (reply.type === 'think-then-text') {
-    state.response.write(wire)
-    let frames = 0
-    const timer = setInterval(() => {
-      if (!canWrite(state.response)) { clearInterval(timer); return }
-      if (frames < reply.thinkFrames) {
-        state.response.write(frame(state, { reasoning_content: `想${frames}` }))
-        frames += 1
-        return
-      }
-      clearInterval(timer)
-      const usage = typeof state.usage === 'function' ? state.usage(reply) : FIXTURE_USAGE
-      state.response.end(`${frame(state, { content: reply.text })}${frame(state, {}, 'stop')}${frame(state, {}, null, usage)}data: [DONE]\n\n`)
-    }, reply.intervalMs)
-    state.response.once('close', () => clearInterval(timer))
     return
   }
   if (reply.type === 'think-then-text') {
