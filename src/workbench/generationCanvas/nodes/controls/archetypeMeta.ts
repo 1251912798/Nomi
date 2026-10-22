@@ -4,10 +4,10 @@
 // 需要的三样东西 —— ① 模式分段切换的选项、② 当前模式的参考槽（复用现有 ImageUrlSlot 形状）、
 // ③ 当前模式的标量参数。
 //
-// **参考图存储模型（对齐样张 v3）**：参考值按 slot 键**全局**存在 flat meta 里（firstFrameUrl /
-// lastFrameUrl…），跨模式持久——切模式只改变「显示哪些槽」，不搬动/清空数据，所以切回照片还在
-// （真实用户 F4「怕丢上传」）。**模式互斥（M2）发生在 `buildArchetypeInputParams`**：它只把**当前模式
-// 声明的槽键**打进 archetypeInput，残留的别的模式的键根本不进 body（§2 坑2，避免 Seedance 422）。
+// **参考图存储模型（2026-10-22 方向检查重写）**：上传的图片只存**一份有序列表**（referenceList.ts，
+// meta.referenceImageUrls），跨模式、跨模型不动；「落哪个槽、在不在用」每次由 placeUploadedImages 推导，
+// 参考行（resolveReferencePlacement）和发送（buildArchetypeInputParams / uploadPlacementForMode）同一个函数。
+// 视频 / 音频 / 源视频仍按 slot 键存在 flat meta 里。**模式互斥（M2）**：archetypeInput 只含当前模式声明的槽键。
 // node.meta.archetype 只记 { id, modeId }（当前模式），不囤参考数据。
 //
 // C2b 只处理首帧 / 尾帧两类 frame 槽，映射到现有 flat 传输键（firstFrameUrl/lastFrameUrl），
@@ -28,6 +28,7 @@ import {
 } from '../../../../../electron/shared/modelArchetypes'
 import type { ImageUrlSlot } from '../../model/parameterReferenceSlots'
 import { translateModelDisplayText } from '../../../../i18n/modelDisplayText'
+import { firstFrameLeftEmpty, isImageUploadSlot, placeUploadedImages, readReferenceList, REFERENCE_LIST_KEY, withReferenceList, type UploadPlacement } from './referenceList'
 import {
   DEFAULT_SLOT_INPUT_KEY,
   modeSlotReach,
@@ -246,6 +247,45 @@ function filledValueForSingleSlot(
 }
 
 /**
+ * 发送 / 判定侧的上传图落槽：连线占位从画布边解析结果（references）算，上传图交给 placeUploadedImages——
+ * 和参考行 resolveReferencePlacement 同一个函数、同一份有序列表，所以「标在用的」=「发出去的」。
+ * purpose='judge' 时首帧槽连着待抽帧的视频也算占位（同 filledValueForSingleSlot）；'send' 只认真发上线的值。
+ */
+export function uploadPlacementForMode(
+  meta: Record<string, unknown> | undefined,
+  mode: ArchetypeMode,
+  references: ResolvedReferenceValues | undefined,
+  purpose: 'send' | 'judge' = 'send',
+): UploadPlacement {
+  const countBySlot: number[] = []
+  const urls = new Set<string>()
+  let occupied = 0
+  mode.slots.forEach((slot, slotIndex) => {
+    const route = ARRAY_SLOT_ROUTE[slot.kind]
+    let edgeCount = 0
+    if (route) {
+      const fromEdges = mergeOrderedReferenceImageUrls(edgeListForArraySlotAccept(route.accept, references), [], slot.max)
+      if (route.accept === 'image') fromEdges.forEach((url) => urls.add(url))
+      edgeCount = fromEdges.length
+      // 视频 / 音频上传各住各的键：只占总数预算，不占图片槽。
+      if (route.accept !== 'image') occupied += mergeOrderedReferenceImageUrls(fromEdges, readArchetypeArray(meta, route.metaKey), slot.max).length - edgeCount
+    } else {
+      const value = purpose === 'judge' ? filledValueForSingleSlot(slot.kind, references) : sentValueForSingleSlot(slot.kind, references)
+      if (value) {
+        edgeCount = 1
+        if (isImageUploadSlot(slot.kind)) urls.add(value)
+      } else if (slot.kind === 'source_video' && typeof meta?.sourceVideoUrl === 'string' && meta.sourceVideoUrl.trim()) occupied += 1
+    }
+    countBySlot[slotIndex] = edgeCount
+    occupied += edgeCount
+  })
+  return placeUploadedImages(mode, readReferenceList(meta, mode), { countBySlot, urls }, {
+    ...(mode.maxTotalReferences === undefined ? {} : { totalBudget: mode.maxTotalReferences - occupied }),
+    firstFrameEmpty: firstFrameLeftEmpty(meta),
+  })
+}
+
+/**
  * **当前模式的参考槽里是否已经放进了任何东西 —— 判定侧的唯一入口。**
  *
  * 覆盖**所有**槽种（数组槽 image_ref/video_ref/audio_ref + 单值槽 first_frame/last_frame/source_video）
@@ -265,14 +305,17 @@ export function hasAnyArchetypeReference(
   references?: ResolvedReferenceValues,
 ): boolean {
   const mode = currentArchetypeMode(archetype, meta)
-  return mode.slots.some((slot) => {
+  const placement = uploadPlacementForMode(meta, mode, references, 'judge')
+  return mode.slots.some((slot, slotIndex) => {
+    if (isImageUploadSlot(slot.kind) && placement.bySlot[slotIndex]!.length > 0) return true
     const route = ARRAY_SLOT_ROUTE[slot.kind]
     if (route) {
       return (
-        readArchetypeArray(meta, route.metaKey).length > 0 ||
+        (route.accept !== 'image' && readArchetypeArray(meta, route.metaKey).length > 0) ||
         edgeListForArraySlotAccept(route.accept, references).length > 0
       )
     }
+    if (isImageUploadSlot(slot.kind)) return Boolean(filledValueForSingleSlot(slot.kind, references))
     const metaKey = SINGLE_SLOT_META_KEY[slot.kind]
     if (!metaKey) return false
     const uploaded = typeof meta?.[metaKey] === 'string' ? (meta[metaKey] as string).trim() : ''
@@ -312,10 +355,23 @@ export function appendArchetypeArrayValue(
 ): ArchetypeArrayAppend {
   const trimmed = url.trim()
   if (!trimmed) return { status: 'empty' }
-  const current = readArchetypeArray(meta, slot.metaKey)
+  const current = readArchetypeArrayForWrite(meta, slot.metaKey)
   if (current.includes(trimmed)) return { status: 'duplicate' }
   if (slot.max !== undefined && current.length >= slot.max) return { status: 'full', max: slot.max }
   return { status: 'added', next: [...current, trimmed] }
+}
+
+/**
+ * 数组参考槽的「写之前读」：图片住节点那一份有序参考列表（旧数据归一进来），视频 / 音频读各自的键。
+ * 和 archetypeArrayWrite 成对用——读写同一份，旧的按槽存的首 / 尾帧键在写回时删掉。
+ */
+export function readArchetypeArrayForWrite(meta: Record<string, unknown> | undefined, metaKey: string, mode?: ArchetypeMode | null): string[] {
+  return metaKey === REFERENCE_LIST_KEY ? readReferenceList(meta, mode) : readArchetypeArray(meta, metaKey)
+}
+
+/** 把数组参考槽的新值写回 meta（返回整份新 meta）：图片列表走 withReferenceList（落规范形），其余直接写键。 */
+export function archetypeArrayWrite(meta: Record<string, unknown>, metaKey: string, next: readonly string[]): Record<string, unknown> {
+  return metaKey === REFERENCE_LIST_KEY ? withReferenceList(meta, next) : { ...meta, [metaKey]: [...next] }
 }
 
 /** 当前模式的标量参数（复用现有 ModelParameterControl 渲染路径）。 */
@@ -635,10 +691,11 @@ export function orderedSentImageReferenceUrls(
   edgeImageUrls: readonly string[],
 ): string[] {
   const mode = currentArchetypeMode(archetype, meta)
-  const slot = mode.slots.find((s) => ARRAY_SLOT_ROUTE[s.kind]?.accept === 'image')
-  const route = slot ? ARRAY_SLOT_ROUTE[slot.kind] : undefined
-  if (!slot || !route) return []
-  return mergeOrderedReferenceImageUrls(edgeImageUrls, readArchetypeArray(meta, route.metaKey), slot.max)
+  const slotIndex = mode.slots.findIndex((s) => ARRAY_SLOT_ROUTE[s.kind]?.accept === 'image')
+  const slot = mode.slots[slotIndex]
+  if (!slot) return []
+  const placed = uploadPlacementForMode(meta, mode, { referenceImages: edgeImageUrls }).bySlot[slotIndex]!
+  return mergeOrderedReferenceImageUrls(edgeImageUrls, placed, slot.max)
 }
 
 /** 当前模式所有数组媒体参考的发送顺序 + 类型编号，供 @imageN/@videoN/@audioN 共用。 */
@@ -654,12 +711,16 @@ export function orderedSentMediaReferenceUrls(
   const mode = currentArchetypeMode(archetype, meta)
   const counts: Record<'image' | 'video' | 'audio', number> = { image: 0, video: 0, audio: 0 }
   const out: Array<{ url: string; kind: 'image' | 'video' | 'audio'; index: number }> = []
-  for (const slot of mode.slots) {
+  const placement = uploadPlacementForMode(meta, mode, {
+    referenceImages: edgeReferences.image ?? [], referenceVideos: edgeReferences.video ?? [], referenceAudios: edgeReferences.audio ?? [],
+  })
+  for (const [slotIndex, slot] of mode.slots.entries()) {
     const route = ARRAY_SLOT_ROUTE[slot.kind]
     if (!route) continue
     const kind = route.accept
     const edgeUrls = edgeReferences[kind] ?? []
-    const urls = mergeOrderedReferenceImageUrls(edgeUrls, readArchetypeArray(meta, route.metaKey), slot.max)
+    const uploads = kind === 'image' ? placement.bySlot[slotIndex]! : readArchetypeArray(meta, route.metaKey)
+    const urls = mergeOrderedReferenceImageUrls(edgeUrls, uploads, slot.max)
     for (const url of urls) {
       counts[kind] += 1
       out.push({ url, kind, index: counts[kind] })
@@ -685,7 +746,9 @@ export function buildArchetypeInputParams(
 ): Record<string, ArchetypeInputValue> {
   const mode = currentArchetypeMode(archetype, meta)
   const out: Record<string, ArchetypeInputValue> = {}
-  for (const slot of mode.slots) {
+  // 上传图落哪个槽：和参考行同一个函数（uploadPlacementForMode → placeUploadedImages），列表里用不上的图不进来。
+  const placement = uploadPlacementForMode(meta, mode, references)
+  for (const [slotIndex, slot] of mode.slots.entries()) {
     const inputKey = slotInputKey(slot)
     const asArray = slotAsArray(slot)
     const arr = ARRAY_SLOT_ROUTE[slot.kind]
@@ -694,7 +757,7 @@ export function buildArchetypeInputParams(
       // **连线在前、上传在后**（option 2 · 2026-06-25 拍板），去重、截到 slot.max——与面板编号①②③、
       // @ 候选、@ 投影 character{N} 同一顺序，杜绝张冠李戴。仅 image 槽收图片边（video/audio 槽不污染，
       // edgeList=[]）；cap 顺带封死手动超额导致的 vendor 422。
-      const metaList = readArchetypeArray(meta, arr.metaKey)
+      const metaList = arr.accept === 'image' ? placement.bySlot[slotIndex]! : readArchetypeArray(meta, arr.metaKey)
       // 按槽资产类型喂对应的连线参考（B4：video_ref/audio_ref 槽此前只收 meta 上传，连线的视频/音频被丢）。
       // 这条规则与判定侧 hasArchetypeArrayReferences 共用同一个函数，别在这里就地展开成 ternary。
       const edgeList = edgeListForArraySlotAccept(arr.accept, references)
@@ -727,12 +790,10 @@ export function buildArchetypeInputParams(
     // 连了线也取不到值（meta.sourceVideoUrl 为空 → video_url 键根本不发），HappyHorse 视频编辑
     // 「拖一段视频进去」等于白拖（2026-08-20 不变量测试扫出，与判定侧同一根因）。
     const fromRef = sentValueForSingleSlot(slot.kind, references)
-    const raw =
-      typeof fromRef === 'string' && fromRef.trim()
-        ? fromRef.trim()
-        : typeof meta[metaKey] === 'string'
-          ? (meta[metaKey] as string).trim()
-          : ''
+    const uploaded = isImageUploadSlot(slot.kind)
+      ? placement.bySlot[slotIndex]![0] ?? ''
+      : typeof meta[metaKey] === 'string' ? (meta[metaKey] as string).trim() : ''
+    const raw = typeof fromRef === 'string' && fromRef.trim() ? fromRef.trim() : uploaded
     if (raw) {
       out[inputKey] = volcengineContentItem(inputKey, raw) ?? (asArray ? [raw] : raw)
     }

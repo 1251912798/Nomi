@@ -164,18 +164,17 @@ describe('buildNodeModelChangePatch', () => {
       const mode = spec.modes.find((m) => m.id === modeId)!
       expect(mode.intent, `${key} 换完停在 ${modeId}`).not.toBe('text')
       const kinds = new Set(mode.slots.map((slot) => slot.kind))
-      const shown = [result.meta.firstFrameUrl, result.meta.lastFrameUrl, ...((result.meta.referenceImageUrls as string[] | undefined) ?? [])].filter(Boolean)
-      // 面板显示的方式 = 节点实际的方式；两张图要么在新方式的槽里，要么留在另一个家里（一张不少）
-      expect(new Set(shown)).toEqual(new Set(['a', 'b']))
+      // 参考列表不动：旧的首 / 尾帧键落成规范的一份有序列表，首帧在前（一张不少、顺序不变）
+      expect(result.meta.referenceImageUrls).toEqual(['a', 'b'])
+      expect(result.meta.firstFrameUrl).toBeUndefined()
       expect(kinds.has('first_frame') || kinds.has('image_ref'), key).toBe(true)
     })
 
-    it('新模型一个能收图的方式都没有：图留在原处（不丢），不删', () => {
+    it('新模型一个能收图的方式都没有：图留在参考列表里（不丢），不删', () => {
       const textOnly = resolveArchetypeForModel({ modelKey: 'minimax-h3-regeneration', vendorKey: 'apimart', meta: {} } as never)
       if (!textOnly) return
       const result = swapTo('minimax-h3-regeneration', { firstFrameUrl: 'a', lastFrameUrl: 'b' })
-      expect(result.meta.firstFrameUrl).toBe('a')
-      expect(result.uploadsDropped).toBe(0)
+      expect(result.meta.referenceImageUrls).toEqual(['a', 'b'])
     })
   })
 })

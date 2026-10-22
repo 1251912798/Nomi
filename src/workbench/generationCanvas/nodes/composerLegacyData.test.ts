@@ -14,7 +14,8 @@ import { resolveReferenceInfos } from '../../assets/referenceNames'
 import { currentReferenceMedia } from './mentionCandidates'
 import { archetypeModeChoices } from './controls/channelModeReach'
 import { applyArchetypeModeSwitch, currentArchetypeMode } from './controls/archetypeMeta'
-import { reassignUploadedImages } from './controls/reassignUploadedImages'
+import { readReferenceList } from './controls/referenceList'
+import { resolveReferencePlacement } from '../runner/referenceSlots'
 import { presentGenerationModes, textModeToReturnTo } from './controls/generationModePresentation'
 
 const spec = resolveArchetypeForModel({ modelKey: 'seedance-2', vendorKey: 'apimart', meta: {} } as never)!
@@ -57,18 +58,20 @@ describe('旧项目的节点在 B3 下', () => {
     expect(result.where === 'panel' && result.activeId).toBe('omni')
   })
 
-  it('参数一个不丢：切方式只动方式（和被收窄的选项），比例 / 时长 / 变体原样', () => {
-    const carried = reassignUploadedImages(legacyOmni.meta!, spec.modes.find((m) => m.id === 'firstlast')!).patch
-    const next = applyArchetypeModeSwitch({ ...legacyOmni.meta!, ...carried }, spec, 'firstlast')
+  it('参数一个不丢：切方式只动方式（和被收窄的选项），比例 / 时长 / 变体原样；参考列表不动，前两张落首帧 / 尾帧', () => {
+    const next = applyArchetypeModeSwitch(legacyOmni.meta!, spec, 'firstlast')
     expect(next).toMatchObject({ aspect_ratio: '9:16', duration: 8, archetype: { id: 'seedance-2', modeId: 'firstlast', variantId: 'fast' } })
-    expect(next.referenceImageUrls).toEqual([])
-    expect(next).toMatchObject({ firstFrameUrl: U1, lastFrameUrl: U2 })
+    expect(next.referenceImageUrls).toEqual([U1, U2])
+    const placed = resolveReferencePlacement({ ...legacyOmni, meta: next }, [legacyOmni], [])
+    expect(placed.slots.map((slot) => slot.fills.map((fill) => fill.url))).toEqual([[U1], [U2]])
   })
 
-  it('旧的首尾帧节点：首帧 / 尾帧原样，空了也不被收回成文生', () => {
-    const meta = { archetype: { id: 'seedance-2', modeId: 'firstlast' }, firstFrameUrl: U1 }
+  it('旧的首尾帧节点：首帧 / 尾帧原样（读进参考列表、落回首帧），空了也不被收回成文生', () => {
+    const meta = { modelKey: 'seedance-2', archetype: { id: 'seedance-2', modeId: 'firstlast' }, firstFrameUrl: U1 }
     const mode = currentArchetypeMode(spec, meta)
     expect(textModeToReturnTo(spec, mode, false)).toBeNull()
-    expect(meta.firstFrameUrl).toBe(U1)
+    expect(readReferenceList(meta, mode)).toEqual([U1])
+    const placed = resolveReferencePlacement({ ...legacyOmni, meta }, [legacyOmni], [])
+    expect(placed.slots[0]!.fills.map((fill) => fill.url)).toEqual([U1])
   })
 })

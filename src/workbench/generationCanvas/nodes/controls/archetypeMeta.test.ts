@@ -208,9 +208,12 @@ describe('C3 全能参考 — 数组槽声明', () => {
     // nomi-local:// 也算「有参考」（传输前 R1 本地化），不做 http 过滤
     const withLocal = { ...empty, referenceVideoUrls: ['nomi-local://asset/p/v.mp4'] }
     expect(hasAnyArchetypeReference(withLocal, SEEDANCE)).toBe(true)
-    // 首帧模式无数组槽 → 即便 meta 残留 referenceImageUrls 也不算（互斥）
+    // 首帧模式：参考列表里的第一张落首帧槽 → 算「有参考」（列表不分槽存，切到首帧方式就是用第一张当首帧）
     const firstMode = { archetype: { id: 'seedance-2', modeId: 'first' }, referenceImageUrls: ['c1.png'] }
-    expect(hasAnyArchetypeReference(firstMode, SEEDANCE)).toBe(false)
+    expect(hasAnyArchetypeReference(firstMode, SEEDANCE)).toBe(true)
+    // 文生方式没有收图的槽 → 列表里有图也不算
+    const textMode = { archetype: { id: 'seedance-2', modeId: 't2v' }, referenceImageUrls: ['c1.png'] }
+    expect(hasAnyArchetypeReference(textMode, SEEDANCE)).toBe(false)
   })
   // 2026-08-20 用户反馈：参考只从画布边来（没走手动上传）时，判定必须照样看得见。
   it('hasAnyArchetypeReference：连线来的参考（meta 全空）也算——三种槽都要覆盖', () => {
@@ -237,15 +240,15 @@ describe('C3 全能参考 — 数组 input 构建（M2 互斥含数组槽，snak
       referenceImageUrls: ['c1.png', 'c2.png', 'c3.png'],
       referenceVideoUrls: ['v1.mp4'],
       referenceAudioUrls: [],
-      firstFrameUrl: 'stale.png', // 别的模式残留 → 不该出
+      firstFrameUrl: 'stale.png', // 旧数据按槽存的首帧：归一进参考列表、参考方式下排在后面，不当首帧发
     }
     expect(buildArchetypeInputParams(meta, SEEDANCE)).toEqual({
-      reference_image_urls: ['c1.png', 'c2.png', 'c3.png'],
+      reference_image_urls: ['c1.png', 'c2.png', 'c3.png', 'stale.png'],
       reference_video_urls: ['v1.mp4'],
       model: 'bytedance/seedance-2',
     })
   })
-  it('首帧模式：即便 meta 残留 omni 的角色图数组，也不出（互斥）', () => {
+  it('首帧模式（旧数据）：首帧键在前，参考数组里的图「未用到」，不出', () => {
     const meta = {
       archetype: { id: 'seedance-2', modeId: 'first' },
       firstFrameUrl: 'F.png',

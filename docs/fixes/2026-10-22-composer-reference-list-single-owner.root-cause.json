@@ -1,0 +1,214 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-22-composer-reference-list-single-owner",
+  "problem_type": "同一事实（这张参考图在不在用）多处各算：存储键即槽位，换方式 / 换模型只能搬数据迁就槽位",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-05",
+  "symptom": "#1269 独立验收两轮不过：切方式丢参考、换模型丢首尾帧、30 张参考换到 Veo 3.1 删 25 张且切回找不回、同模型切方式少图；界面标「未用到」的图仍进请求",
+  "direct_cause": "上传图按槽存在 firstFrameUrl / lastFrameUrl / referenceImageUrls 三个键里；reassignUploadedImages 搬家 / 暂存 / 删图；参考行、档案输入、标准参考面、主进程各自从这些键推「在用」",
+  "class_root": "「这张图现在落哪个槽、在不在用」没有唯一主人：数据层把槽位语义写进了存储位置，导致 20 个改 modeId 的写入口里只要有一个没搬图，界面与发送就分家",
+  "affected_population": [
+    "所有带档案的视频 / 图片节点（全部档案 × 每个方式），画布、分镜行、批量换模型、同能力替换、派生、MCP canvas.write 的 metadata 透传、旧工程"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
+    "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
+    "src/workbench/generationCanvas/runner/referenceSlots.ts",
+    "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+    "src/workbench/generationCanvas/runner/generationReferenceResolver.ts",
+    "src/workbench/generationCanvas/nodes/buildNodeModelChangePatch.ts",
+    "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+    "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+    "src/workbench/generationCanvas/nodes/controls/referenceRowModel.ts",
+    "src/workbench/generationCanvas/nodes/nodeAssetWrite.ts",
+    "src/workbench/generationCanvas/nodes/useNodeMentionSource.ts",
+    "src/workbench/creation/storyboard/shotRow/shotReferenceSlots.ts"
+  ],
+  "entry_points": [
+    "画布生成框：上传 / 素材库 / 首尾帧格 / 对调 / 删 / 重排 / 切方式 / 换模型",
+    "分镜行落画布（shotReferenceMetaPatch）",
+    "拖入素材（nodeAssetWrite）、@ 提示词挂参考（useNodeMentionSource）",
+    "批量换模型 / 同能力替换 / 派生（buildNodeModelChangePatch）",
+    "发送：buildCatalogTaskRequest → buildReferenceExtras / buildArchetypeInputParams；resolveGenerationReferences",
+    "旧工程与 MCP metadata 留下的按槽键（读口归一）"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "参考按模型 / 方式落槽是 Nomi 档案的领域语义，没有外部文档或三方库能裁定；不变量由仓库内的性质测试钉住。",
+  "invariants": [
+    "节点上的上传图片只存一份有序列表 meta.referenceImageUrls（+ 首帧是否特意空着的开关）；换方式、换模型不改这份列表",
+    "每个槽落哪张图、哪张未用到，只由 placeUploadedImages 推导；参考行（resolveReferencePlacement）与发送（uploadPlacementForMode → buildArchetypeInputParams / 标准参考面 / resolveGenerationReferences）调同一个函数",
+    "在用 ∪ 未用到 = 节点上那一份列表，一张不少"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
+      "symbol": "withReferenceList"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
+      "symbol": "archetypeArrayWrite"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "withReferenceList"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "withReferenceList"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/creation/storyboard/shotRow/shotReferenceSlots.ts",
+      "symbol": "referenceListPatch"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/runner/referenceSlots.ts",
+      "symbol": "placeUploadedImages"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
+      "symbol": "placeUploadedImages"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/nodeAssetWrite.ts",
+      "symbol": "archetypeArrayWrite"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/useNodeMentionSource.ts",
+      "symbol": "archetypeArrayWrite"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "symbol": "uploadPlacementForMode"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/runner/generationReferenceResolver.ts",
+      "symbol": "uploadPlacementForMode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/buildNodeModelChangePatch.ts",
+      "symbol": "normalizeReferenceListMeta"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceRowModel.ts",
+      "symbol": "unusedUploads"
+    }
+  ],
+  "door_reduction": {
+    "before": 13,
+    "after": 13,
+    "why_not": "写口只剩「把一份新列表落回 meta」这一种动作（withReferenceList / archetypeArrayWrite / referenceListPatch），按调用场景（生成框、拖入、@ 挂参考、分镜落画布）各调一次；读口只剩一个推导函数 placeUploadedImages，经 resolveReferencePlacement（参考行，有画布边）与 uploadPlacementForMode（发送 / 解析，有解析后的连线值）两处调用——连线占位来源不同，上传落槽同一个函数。before 13 = 搬图函数 2 个调用点 + 按槽键写口（parameterReferenceMetaPatch 档案帧路径、shotReferenceMetaPatch、nodeAssetWrite、useNodeMentionSource、referenceWrites 4 处）+ 读口（resolveReferenceSlots 按键读、buildArchetypeInputParams 按键读、referenceRowModel 存 − 显、resolveGenerationReferences 抬旧键）。"
+  },
+  "generality_proof": "落槽结论不再存储，只能从同一份列表 + 当前方式现推；任何改 modeId 的入口（20 处）都不必、也无法再搬图，界面与发送的上传部分调的是同一个纯函数，所以全部档案 × 每个方式成立（referenceInUseIsSent.characterization.test.ts 按 MODEL_ARCHETYPES 自动展开）。",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
+      "symbol": "placeUploadedImages",
+      "responsibility": "上传图落槽与「未用到」的唯一推导"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
+      "symbol": "readReferenceList",
+      "responsibility": "节点参考列表的唯一读口（旧的按槽存的键在这里归一）"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "entry_point": "handleModeSwitch",
+      "disposition": "enforced",
+      "evidence": "只改 modeId，旧数据先 normalizeReferenceListMeta；往返测试 refslots.roundtrip.three-refs"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/buildNodeModelChangePatch.ts",
+      "entry_point": "buildNodeModelChangePatch",
+      "disposition": "enforced",
+      "evidence": "不再搬图 / 删图（删掉 uploadsDropped），只按旧方式里的用途给新档案挑方式；30 张 → Veo 3.1 → 切回测试"
+    },
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/shotReferenceSlots.ts",
+      "entry_point": "shotReferenceMetaPatch",
+      "disposition": "enforced",
+      "evidence": "分镜绑定写成参考列表，不再写 firstFrameUrl / lastFrameUrl"
+    },
+    {
+      "path": "src/workbench/generationCanvas/runner/generationReferenceResolver.ts",
+      "entry_point": "resolveGenerationReferences",
+      "disposition": "enforced",
+      "evidence": "档案节点不再从 node.references / meta.referenceImages / upstreamResultUrls / *FrameRef 抬参考；首尾帧上传图取 uploadPlacementForMode"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/applyCanvasToolCall.ts",
+      "entry_point": "applyCanvasToolCall",
+      "disposition": "enforced",
+      "evidence": "metadata 原样进 meta 的按槽键由 readReferenceList 读口归一（文生方式残留首帧测试）"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "改 modeId 的写入口 20 处、换模型入口 3 处、分镜 / MCP / 旧工程各自写按槽键，任何一处漏搬图都会复发",
+    "same_class_scan": [
+      "node scripts/door-map.mjs applyArchetypeModeSwitch（20 处）",
+      "node scripts/door-map.mjs buildNodeModelChangePatch（3 处）",
+      "grep firstFrameUrl|lastFrameUrl|referenceImageUrls src electron（28 个文件）"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
+    "invariant": "落槽结论不落盘，只由 placeUploadedImages 从一份列表推导",
+    "failure_mode": "放不下 / 不收图的图进 unused：界面淡显、档案输入不含",
+    "exception_policy": "none",
+    "strategy": "删掉按槽存储与搬家函数，让「漏搬」在结构上不存在",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
+      "src/workbench/generationCanvas/runner/referenceSlots.ts",
+      "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/controls/referenceList.test.ts",
+    "src/workbench/generationCanvas/runner/referenceInUseIsSent.characterization.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/runner/referenceInUseIsSent.characterization.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/controls/reassignUploadedImages.ts"
+    ],
+    "rationale": "搬家 / 暂存 / 删图函数与「N 张没带过来」提示同提交删除"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及三方依赖",
+    "exit_criteria": []
+  },
+  "migration": "读时归一：readReferenceList 把旧的 firstFrameUrl / lastFrameUrl / first_frame_url / last_frame_url / referenceImageUrl / referenceImages 按「当前方式看得见的在前」并进列表；任何一次参考写入、切方式、换模型都用 withReferenceList 落成规范形并删旧键。只存了尾帧的旧节点落成 referenceFirstFrameEmpty。不改工程文件版本号，不做加载时批量迁移。",
+  "residual_risks": [
+    "请求组装仍整包 `...meta`：列表里未用到的图经 referenceImageUrls → reference_image_urls、旧键 firstFrameUrl → image_url 带出去——归热修 #1279（GENERIC_REFERENCE_KEYS 白名单 + 主进程剥除），合入 main 后 merge 并把 7 条 it.fails 改回 it",
+    "渠道只收单图时参考行把槽收成 1 张（capOf），发送侧不知道渠道上限：模板参数层会多带，线上 body 只有单图位所以不上线；未在统一函数里收口",
+    "画布边的落槽仍是两份解析（参考行 resolveReferenceSlots 的边循环、发送 resolveGenerationReferences），本次只统一了上传图",
+    "列表没有空位：首帧空着、往尾帧放之外的「空位」（如参考数组中间留空）不支持"
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
+    "tests": [
+      "src/workbench/generationCanvas/nodes/controls/referenceList.test.ts",
+      "src/workbench/generationCanvas/runner/referenceInUseIsSent.characterization.test.ts"
+    ]
+  }
+}

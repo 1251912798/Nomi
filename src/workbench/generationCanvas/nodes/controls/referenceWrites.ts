@@ -9,9 +9,10 @@ import {
   resolveParameterReferenceAssignments, type ImageUrlSlot,
 } from '../../model/parameterReferenceSlots'
 import {
-  appendArchetypeArrayValue, readArchetypeArray, referenceSlotStorage, type ArchetypeArraySlot,
+  appendArchetypeArrayValue, archetypeArrayWrite, readArchetypeArrayForWrite, referenceSlotStorage, type ArchetypeArraySlot,
 } from './archetypeMeta'
-import { decideArrayReferenceRemoval, resolveReferenceSlots } from '../../runner/referenceSlots'
+import { decideArrayReferenceRemoval, resolveReferencePlacement, resolveReferenceSlots } from '../../runner/referenceSlots'
+import { putInReferenceSlot, readReferenceList, removeFromReferenceList, swapInReferenceList, withReferenceList } from './referenceList'
 import { removeMention } from '../../../assets/promptMentions'
 import { nodeReferenceCapacity } from './nodeCrossFieldConstraints'
 import type { useNodeWriteAccess } from '../nodeWriteAccess'
@@ -59,7 +60,7 @@ export function addToArraySlot(ctx: ReferenceWriteContext, slot: ArchetypeArrayS
     return
   } // 到上限:明确告知(对抗评审:别静默丢)
   if (result.status !== 'added') return // empty / duplicate：静默
-  ctx.updateMeta({ [slot.metaKey]: result.next })
+  ctx.updateNode(node.id, { meta: archetypeArrayWrite(ctx.getLatestMeta(), slot.metaKey, result.next) })
   ctx.closeSlot()
 }
 
@@ -79,11 +80,11 @@ export function removeFromArray(ctx: ReferenceWriteContext, metaKey: string, ind
     // B5：同一 url 既来自边、又残留在 meta 上传里（去重后只显示边那份）→ 仅断边会让它以 upload 形态
     // 重现（「叉一次还在」）。断边时一并清掉 meta 里的同 url 上传（与断边/删 chip 合成一次持久化，保 undo 原子）。
     const latestMeta = ctx.getLatestMeta()
-    const metaArr = readArchetypeArray(latestMeta, metaKey)
+    const metaArr = readArchetypeArrayForWrite(latestMeta, metaKey, ctx.archMode)
     const cleanedMeta = decision.url ? metaArr.filter((u) => u !== decision.url) : metaArr
     const nextPrompt = promptAfterRemovingMention(decision.url)
     const patch: { meta?: Record<string, unknown>; prompt?: string } = {}
-    if (cleanedMeta.length !== metaArr.length) patch.meta = { ...latestMeta, [metaKey]: cleanedMeta }
+    if (cleanedMeta.length !== metaArr.length) patch.meta = archetypeArrayWrite(latestMeta, metaKey, cleanedMeta)
     if (nextPrompt != null && nextPrompt !== (node.prompt || '')) patch.prompt = nextPrompt
     if (Object.keys(patch).length > 0) ctx.updateNode(node.id, patch)
     return
@@ -92,13 +93,12 @@ export function removeFromArray(ctx: ReferenceWriteContext, metaKey: string, ind
 
   // remove-upload：按 url 从 meta 数组删（不是显示 index）。
   const latestMeta = ctx.getLatestMeta()
-  const next = readArchetypeArray(latestMeta, metaKey).filter((u) => u !== decision.url)
+  const next = readArchetypeArrayForWrite(latestMeta, metaKey, ctx.archMode).filter((u) => u !== decision.url)
   const nextPrompt = promptAfterRemovingMention(decision.url)
-  if (nextPrompt != null && nextPrompt !== (node.prompt || '')) {
-    ctx.updateNode(node.id, { meta: { ...latestMeta, [metaKey]: next }, prompt: nextPrompt })
-    return
-  }
-  ctx.updateMeta({ [metaKey]: next })
+  ctx.updateNode(node.id, {
+    meta: archetypeArrayWrite(latestMeta, metaKey, next),
+    ...(nextPrompt != null && nextPrompt !== (node.prompt || '') ? { prompt: nextPrompt } : {}),
+  })
 }
 
 function existingEdgeOf(ctx: ReferenceWriteContext, slot: ImageUrlSlot) {
@@ -112,10 +112,40 @@ function existingEdgeOf(ctx: ReferenceWriteContext, slot: ImageUrlSlot) {
   }
 }
 
+/**
+ * 档案节点的首帧 / 尾帧格子：它不是存储位置，而是「参考列表里落进这个槽的那一张」。返回这个格子在当前方式里的槽下标，
+ * 以及现在每个槽里落着的上传图（resolveReferencePlacement，与参考行、请求组装同一个推导）。非档案槽 → null（走旧的按键写）。
+ */
+function frameSlotIndex(ctx: ReferenceWriteContext, kind: 'first_frame' | 'last_frame'): number {
+  return ctx.archMode?.slots.findIndex((candidate) => candidate.kind === kind) ?? -1
+}
+
+function archetypeFrameSlot(ctx: ReferenceWriteContext, slot: ImageUrlSlot): { slotIndex: number; uploadsBySlot: string[][]; list: string[]; meta: Record<string, unknown> } | null {
+  const mode = ctx.archMode
+  if (!mode || (slot.group !== 'first_frame' && slot.group !== 'last_frame')) return null
+  const slotIndex = mode.slots.findIndex((candidate) => candidate.kind === slot.group)
+  if (slotIndex < 0) return null
+  const state = useGenerationCanvasStore.getState()
+  const meta = ctx.getLatestMeta()
+  const target = { ...(ctx.latestNode(ctx.node.id) ?? ctx.node), meta }
+  const placement = resolveReferencePlacement(target, state.nodes, state.edges)
+  const uploadsBySlot = placement.slots.map((resolved) => resolved.fills
+    .filter((fill) => fill.origin.type === 'upload' && fill.url).map((fill) => fill.url as string))
+  return { slotIndex, uploadsBySlot, list: readReferenceList(meta, mode), meta }
+}
+
 export function assignSlotSource(ctx: ReferenceWriteContext, slot: ImageUrlSlot, newSourceNodeId: string): void {
   const { state, target, edge: existingEdge } = existingEdgeOf(ctx, slot)
   if (!newSourceNodeId) {
     if (existingEdge) ctx.storeDisconnectEdge(existingEdge.id, { scope: 'parameter' })
+    const frame = existingEdge ? null : archetypeFrameSlot(ctx, slot)
+    const uploaded = frame?.uploadsBySlot[frame.slotIndex]?.[0]
+    if (frame) {
+      // 清掉的是落在这一格的那张上传图：从参考列表里删（别的图位置不变）。
+      if (uploaded) ctx.updateNode(ctx.node.id, { meta: withReferenceList(frame.meta, removeFromReferenceList(frame.list, uploaded)) })
+      ctx.closeSlot()
+      return
+    }
     const clearPatch = parameterReferenceMetaPatch(slot, ctx.getImageUrlSlots(), null)
     ctx.updateNode(ctx.node.id, { meta: { ...ctx.getLatestMeta(), ...clearPatch } }, { history: !existingEdge })
     ctx.closeSlot()
@@ -125,6 +155,10 @@ export function assignSlotSource(ctx: ReferenceWriteContext, slot: ImageUrlSlot,
   if (existingEdge?.source === newSourceNodeId) { ctx.closeSlot(); return }
   if (existingEdge) ctx.storeDisconnectEdge(existingEdge.id, { scope: 'parameter' })
   else state.captureHistory()
+  // 档案首 / 尾帧格子里原来是一张上传图：用户这一步是「换掉这一格」，那张上传图从参考列表里拿掉（不让它挤到下一格）。
+  const frame = existingEdge ? null : archetypeFrameSlot(ctx, slot)
+  const replaced = frame?.uploadsBySlot[frame.slotIndex]?.[0]
+  if (frame && replaced) ctx.updateNode(ctx.node.id, { meta: withReferenceList(frame.meta, removeFromReferenceList(frame.list, replaced)) }, { history: false })
   ctx.storeConnectNodes(newSourceNodeId, ctx.node.id, edgeModeForGroup(slot.group), declared ? slot.key : undefined)
   // S2 写收口：边即真相源——不再写 firstFrameUrl/firstFrameRef/referenceImages 等快照 meta（源未生成时快照为空=陈旧，
   // 且与其它参数写入竞态）；读取方都已边优先，源生成后 url 由边实时解析。
@@ -135,6 +169,18 @@ export function assignSlotSource(ctx: ReferenceWriteContext, slot: ImageUrlSlot,
 export function setSlotUrl(ctx: ReferenceWriteContext, slot: ImageUrlSlot, url: string): void {
   const { edge: existingEdge } = existingEdgeOf(ctx, slot)
   if (existingEdge) ctx.storeDisconnectEdge(existingEdge.id, { scope: 'parameter' })
+  const frame = archetypeFrameSlot(ctx, slot)
+  if (frame) {
+    // 档案首 / 尾帧：放进参考列表，让它落进这一格（putInReferenceSlot），不再写 firstFrameUrl / lastFrameUrl。
+    // 往尾帧格放、首帧格空着（没有上传图）→ 记下「首帧特意空着」，图落尾帧；往首帧格放 → 首帧不再空着。
+    const isLast = slot.group === 'last_frame'
+    const firstHasUpload = (frame.uploadsBySlot[frameSlotIndex(ctx, 'first_frame')] ?? []).length > 0
+    const firstFrameEmpty = isLast && !firstHasUpload
+    const next = putInReferenceSlot(frame.list, frame.uploadsBySlot, frame.slotIndex, url)
+    ctx.updateNode(ctx.node.id, { meta: withReferenceList(frame.meta, next, { firstFrameEmpty }) }, { history: !existingEdge })
+    ctx.closeSlot()
+    return
+  }
   const patch = parameterReferenceMetaPatch(slot, ctx.getImageUrlSlots(), url)
   ctx.updateNode(ctx.node.id, { meta: { ...ctx.getLatestMeta(), ...patch } }, { history: !existingEdge })
   ctx.closeSlot()
@@ -152,6 +198,16 @@ export function swapFrameSlots(ctx: ReferenceWriteContext, first: ImageUrlSlot, 
   const a = describe(first)
   const b = describe(last)
   if (!a && !b) return
+  // 档案节点、两格里只有上传图（没有连线）：列表里对调两张；只有一张时用「首帧特意空着」开关把它挪到另一格。一次写入。
+  const uploadOnly = (!a || 'url' in a) && (!b || 'url' in b)
+  const frame = uploadOnly ? archetypeFrameSlot(ctx, first) : null
+  if (frame) {
+    const firstUrl = a && 'url' in a ? a.url : ''
+    const lastUrl = b && 'url' in b ? b.url : ''
+    const next = firstUrl && lastUrl ? swapInReferenceList(frame.list, firstUrl, lastUrl) : frame.list
+    ctx.updateNode(ctx.node.id, { meta: withReferenceList(frame.meta, next, { firstFrameEmpty: Boolean(firstUrl) && !lastUrl }) })
+    return
+  }
   useGenerationCanvasStore.getState().captureHistory()
   assignSlotSource(ctx, first, '')
   assignSlotSource(ctx, last, '')

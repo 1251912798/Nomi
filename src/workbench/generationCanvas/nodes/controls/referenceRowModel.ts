@@ -10,7 +10,6 @@ import { resolveReferenceInfos } from '../../../assets/referenceNames'
 import type { AssetKind } from '../../../assets/assetTypes'
 import type { AssetSlot } from '../../../assets/AssetReference'
 import type { ArchetypeArraySlot } from './archetypeMeta'
-import { uploadedImageUrls } from './reassignUploadedImages'
 import { resultPreviewUrl } from './parameterControlModel'
 
 export function computeReferenceRowModel(args: {
@@ -23,10 +22,12 @@ export function computeReferenceRowModel(args: {
   imageUrlSlots: ImageUrlSlot[]
   arraySlots: ArchetypeArraySlot[]
   refsUnsupported: boolean
+  /** 节点参考列表里当前方式用不上的图（resolveReferencePlacement 的 unused，和请求组装同一个推导）。 */
+  unusedUploads: readonly string[]
   showReferences: boolean
   fallbackName: (kind: AssetKind) => string
 }) {
-  const { node, nodes, edges, meta, assetSlots, assetValuesByKey, imageUrlSlots, arraySlots, refsUnsupported } = args
+  const { node, nodes, edges, assetSlots, assetValuesByKey, imageUrlSlots, arraySlots, refsUnsupported } = args
   const inboundImageUrls = edges
     .filter((edge) => edge.target === node.id)
     .flatMap((edge) => {
@@ -36,10 +37,10 @@ export function computeReferenceRowModel(args: {
     })
   const shownUrls = new Set(Object.values(assetValuesByKey).flat().filter((value): value is string => Boolean(value)))
   const framesOnly = imageUrlSlots.some((slot) => slot.group === 'first_frame') && arraySlots.length === 0
-  // 别处放着、此刻用不上的图（首尾帧方式里的参考数组、参考方式里放不下的首 / 尾帧键、模型根本不收图时全部上传的图）：
-  // 淡显成「未用到」，切回去还在——绝不能「既不显示也不发送」。连线多出来的图只在首尾帧 / 不收参考时算。
-  const stored = uploadedImageUrls(meta)
-  const unusedUrls = Array.from(new Set(refsUnsupported || framesOnly ? [...inboundImageUrls, ...stored] : stored)).filter((url) => !shownUrls.has(url))
+  // 节点参考列表里此刻用不上的图（放不下、或当前方式 / 模型不收图）：淡显成「未用到」，切回去还在、也不会发出去。
+  // 「用不上」由 resolveReferencePlacement 推导（和请求组装同一个函数），这里不另算。连线多出来的图只在首尾帧 / 不收参考时算。
+  const uploads = args.unusedUploads
+  const unusedUrls = Array.from(new Set(refsUnsupported || framesOnly ? [...inboundImageUrls, ...uploads] : uploads)).filter((url) => !shownUrls.has(url))
   const referenceInfos = args.showReferences
     ? resolveReferenceInfos({
       nodeId: node.id,

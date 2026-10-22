@@ -6,18 +6,17 @@ import { resolveArchetypeForModel, type ModelArchetype } from '../../../../../el
 import { createGenerationNode } from '../../model/graphOps'
 import { buildNodeModelChangePatch } from '../buildNodeModelChangePatch'
 import { applyArchetypeModeSwitch, buildArchetypeInputParams, currentArchetypeMode } from './archetypeMeta'
-import { reassignUploadedImages } from './reassignUploadedImages'
+import { normalizeReferenceListMeta } from './referenceList'
 
 const seedance = resolveArchetypeForModel({ modelKey: 'seedance-2', vendorKey: 'apimart', meta: {} } as never)!
 
+/** 照 NodeParameterControls.handleModeSwitch：旧数据先落成规范的参考列表，再只改 modeId（列表不动）。 */
 function switchMode(meta: Record<string, unknown>, spec: ModelArchetype, modeId: string): Record<string, unknown> {
-  const patch = reassignUploadedImages(meta, spec.modes.find((mode) => mode.id === modeId)!).patch
-  return applyArchetypeModeSwitch(patch ? { ...meta, ...patch } : meta, spec, modeId)
+  const normalized = normalizeReferenceListMeta(meta, currentArchetypeMode(spec, meta)) ?? meta
+  return applyArchetypeModeSwitch(normalized, spec, modeId)
 }
-const body = (meta: Record<string, unknown>, spec: ModelArchetype) => buildArchetypeInputParams(meta, spec, {
-  firstFrameUrl: (meta.firstFrameUrl as string | null) ?? null,
-  lastFrameUrl: (meta.lastFrameUrl as string | null) ?? null,
-})
+/** 只有上传图、没有连线：上传图由 buildArchetypeInputParams 自己按当前方式落槽。 */
+const body = (meta: Record<string, unknown>, spec: ModelArchetype) => buildArchetypeInputParams(meta, spec, {})
 /** 请求体里出现的所有图片地址（不管它放在哪个键、什么形状里）。 */
 function imagesIn(value: unknown, found = new Set<string>()): Set<string> {
   if (typeof value === 'string') { if (/^(a|b|c|u\d+)$/.test(value)) found.add(value) }

@@ -20,7 +20,7 @@ import { readParameterReferenceSlots } from '../model/parameterReferenceSlots'
 import { getGenerationNodeExecutionKind } from '../model/generationNodeKinds'
 import { applyRelayFirstFrame } from './relayFrameResolver'
 import { narrateProgress, type GenerationProgressPhase, type ProgressNarrationContext } from '../../observability/narrate'
-import { buildArchetypeInputParams, currentArchetypeMode, orderedSentImageReferenceUrls, orderedSentMediaReferenceUrls } from '../nodes/controls/archetypeMeta'
+import { buildArchetypeInputParams, currentArchetypeMode, orderedSentImageReferenceUrls, orderedSentMediaReferenceUrls, uploadPlacementForMode } from '../nodes/controls/archetypeMeta'
 import { projectPromptForSend } from '../../assets/promptMentions'
 import {
   type CatalogTaskActionOptions,
@@ -219,12 +219,19 @@ function buildReferenceExtras(
   // 认不出 → 现有无条件带首/尾帧（非档案模型走老路）。
   const archetype = resolveTaskArchetype(meta)
   if (archetype) {
-    const archetypeInput = buildArchetypeInputParams(meta, archetype, {
+    // 档案节点的上传图只住节点那一份有序参考列表（旧的 meta.referenceImages 已在 readReferenceList 里归一进去），
+    // 这里的 referenceImages 只剩画布边——上传图由 buildArchetypeInputParams 按当前方式落槽，和参考行同一个推导。
+    const edgeReferenceImages = uniqueStrings(references.referenceImages || [])
+    const edgeReferences = {
       firstFrameUrl: asTrimmedString(references.firstFrameUrl) || null,
       lastFrameUrl: asTrimmedString(references.lastFrameUrl) || null,
+      referenceImages: edgeReferenceImages,
+      referenceVideos: references.referenceVideos || [],
+      referenceAudios: references.referenceAudios || [],
+    }
+    const archetypeInput = buildArchetypeInputParams(meta, archetype, {
+      ...edgeReferences,
       // 切片1：把画布边产出的实时参考图喂进档案 image 槽（此前只读 meta，边的角色图被丢）。
-      // referenceImages 已是 meta.referenceImages + 边超集的去重并集。
-      referenceImages,
       // B4：连线进来的视频/音频参考喂进 video_ref/audio_ref 槽（此前只收 meta 上传）。
       referenceVideos: references.referenceVideos || [],
       referenceAudios: references.referenceAudios || [],
@@ -236,22 +243,22 @@ function buildReferenceExtras(
     // M2 互斥同样约束标准面：首/尾帧只在**当前模式声明了对应槽**时才带（活边优先、meta 兜底），
     // 否则「首帧模式残留尾帧」的 §2 坑2 会从标准键复活（kie 同名 token 渲进 body）。
     const mode = currentArchetypeMode(archetype, meta)
-    const modeHasFirst = (mode.slots || []).some((slot) => slot.kind === 'first_frame')
-    const modeHasLast = (mode.slots || []).some((slot) => slot.kind === 'last_frame')
-    const firstFrameUrl = modeHasFirst
-      ? asTrimmedString(references.firstFrameUrl) || asTrimmedString(meta.firstFrameUrl)
-      : ''
-    const lastFrameUrl = modeHasLast
-      ? asTrimmedString(references.lastFrameUrl) || asTrimmedString(meta.lastFrameUrl)
-      : ''
-    // 档案图槽的上传住 meta.referenceImageUrls（ARRAY_SLOT_ROUTE.image_ref.metaKey）——它同样必须进
-    // 标准面，否则中转 multipart 的 params.reference_images 恒空、0 张图被诚实抛（走查 B 段抓出的
-    // 第二个吞点）。同样按当前模式门控（声明了 image_ref 槽才带，防 t2i 残留复活进 chat 回退 body）。
+    // 首 / 尾帧：连线优先，否则是参考列表里落进这一格的那张上传图（uploadPlacementForMode，与参考行同一个推导）。
+    const placement = uploadPlacementForMode(meta, mode, edgeReferences)
+    const uploadIn = (kind: string) => {
+      const slotIndex = (mode.slots || []).findIndex((slot) => slot.kind === kind)
+      return slotIndex >= 0 ? placement.bySlot[slotIndex]?.[0] ?? '' : null
+    }
+    const firstUpload = uploadIn('first_frame')
+    const lastUpload = uploadIn('last_frame')
+    const firstFrameUrl = firstUpload === null ? '' : asTrimmedString(references.firstFrameUrl) || firstUpload
+    const lastFrameUrl = lastUpload === null ? '' : asTrimmedString(references.lastFrameUrl) || lastUpload
+    // 参考数组的标准面 = archetypeInput 那个图片数组槽同一份有序列表（连线在前、上传按当前方式落槽、截到上限），
+    // 否则中转 multipart 的 params.reference_images 恒空（走查 B 段抓出的第二个吞点）。
     const modeHasImageArray = (mode.slots || []).some((slot) => slot.kind === 'image_ref')
-    const standardReferenceImages = uniqueStrings([
-      ...referenceImages,
-      ...(modeHasImageArray ? readStringArray(meta.referenceImageUrls) : []),
-    ])
+    const standardReferenceImages = modeHasImageArray
+      ? orderedSentImageReferenceUrls(meta, archetype, edgeReferenceImages)
+      : edgeReferenceImages
     const derived = {
       ...(standardReferenceImages.length ? { referenceImages: standardReferenceImages } : {}),
       ...(firstFrameUrl ? { firstFrameUrl } : {}),

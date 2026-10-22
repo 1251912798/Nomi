@@ -74,13 +74,13 @@ import {
   withoutTextModes,
 } from './controls/narrowedModeGuidance'
 import NarrowedModeGuidanceNote from './controls/NarrowedModeGuidanceNote'
-import { resolveReferenceSlots, firstFrameTaggedSlot } from '../runner/referenceSlots'
+import { resolveReferencePlacement, firstFrameTaggedSlot } from '../runner/referenceSlots'
 import { useChannelCreateBodies, type VendorMappingsReader } from './controls/useChannelCreateBody'
 import { translateModelDisplayText } from '../../../i18n/modelDisplayText'
 import { modeTransportFor, specializeArchetypeForVariant } from '../../../../electron/shared/modelArchetypes'
 import ModeBar from './controls/ModeBar'
 import { modePresentationTexts, presentGenerationModes, useRevertToTextMode } from './controls/generationModePresentation'
-import { reassignUploadedImages } from './controls/reassignUploadedImages'
+import { normalizeReferenceListMeta, readReferenceList, REFERENCE_LIST_KEY, withReferenceList } from './controls/referenceList'
 import AssetReference, { type AssetSlot } from '../../assets/AssetReference'
 import { parameterChipOptions } from './primaryParameterChips'
 import QuantitySelect from './controls/QuantitySelect'
@@ -253,9 +253,7 @@ export default function NodeParameterControls({
       value,
       vendor,
     })
-    updateNode(node.id, change)
-    // 新模型放不下的上传图不静默丢：说一句有几张没带过来。
-    if (change.uploadsDropped > 0) reportFeedback(t('generationCommon.composerB3.modelSwapDropped', { count: change.uploadsDropped }))
+    updateNode(node.id, { meta: change.meta })
   }
 
   useNodeModelAutoSelect({
@@ -351,14 +349,14 @@ export default function NodeParameterControls({
     updateMeta(patch)
   }
 
-  // 切生成方式：改 modeId，并把上传 / 素材库放进来的图搬进目标方式的槽（参考 ↔ 首尾帧往返不丢，见 reassignUploadedImages）；
-  // 连线来的图是边，自己按槽落。
+  // 切生成方式：只改 modeId。参考列表不动——哪张落哪个槽、哪张「未用到」由 resolveReferencePlacement 按新方式推导，
+  // 切回去就是原样（往返一张不少）。旧数据（按槽存的首 / 尾帧键）借这一笔按**切换前**看得见的顺序落成规范形，
+  // 免得换了方式后旧键的归一顺序跟着变。连线来的图是边，自己按槽落。
   const handleModeSwitch = (modeId: string) => {
     if (!archetype) return
     const latest = getLatestMeta()
-    const to = (effectiveArchetype ?? archetype).modes.find((mode) => mode.id === modeId)
-    const carried = to ? reassignUploadedImages(latest, to).patch : null
-    updateNode(node.id, { meta: applyArchetypeModeSwitch(carried ? { ...latest, ...carried } : latest, archetype, modeId) })
+    const normalized = normalizeReferenceListMeta(latest, archMode) ?? latest
+    updateNode(node.id, { meta: applyArchetypeModeSwitch(normalized, archetype, modeId) })
     setOpenSlotKey('')
   }
 
@@ -494,8 +492,19 @@ export default function NodeParameterControls({
   // 必须用它，而非「有 url 的显示图数」或「meta 数组长度」——否则被 pending 边占满的槽仍显示「+」、上传/连线
   // 写得进去却落不下（resolveReferenceSlots 没空位放）→「参考图上不去 / 连线连不上」（2026-06-25 真机存档定位）。
   const arrayOccupiedByKey = new Map<string, number>()
+  // 参考行的「在用 / 未用到」：和请求组装同一个推导（resolveReferencePlacement → placeUploadedImages）。
+  // 渠道只收得下单图的槽按 1 张算（与下面槽上限收窄同一份可达性），渠道压根发不出的槽按 0 张算——放不下的都淡显「未用到」。
+  const referencePlacement = archMode
+    ? resolveReferencePlacement(node, nodes, edges, {
+      capOf: (slot) => {
+        const storage = referenceSlotStorage(slot)
+        const reach = storage ? slotReachByKey[storage.metaKey] : undefined
+        return reach === 'none' ? 0 : reach === 'single' ? 1 : undefined
+      },
+    })
+    : { slots: [], unused: [] }
   if (archMode) {
-    const resolvedSlots = resolveReferenceSlots(node, nodes, edges)
+    const resolvedSlots = referencePlacement.slots
     const taggedSlot = firstFrameTaggedSlot(resolvedSlots)
     for (const rs of resolvedSlots) {
       const storage = referenceSlotStorage({ kind: rs.slotKind })
@@ -568,9 +577,12 @@ export default function NodeParameterControls({
   // projectPromptForSend 按新数组位置自动重算(单源,无需手动改 prompt/chip)。
   const handleReorder = (slot: AssetSlot, from: number, to: number) => {
     if (slot.form !== 'array') return
-    const arr = readArchetypeArray(getLatestMeta(), slot.key)
+    const latest = getLatestMeta()
+    const isImageList = slot.key === REFERENCE_LIST_KEY
+    const arr = isImageList ? readReferenceList(latest, archMode) : readArchetypeArray(latest, slot.key)
     if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return
-    setArrayValue(slot.key, moveArrayItem(arr, from, to))
+    if (isImageList) updateNode(node.id, { meta: withReferenceList(latest, moveArrayItem(arr, from, to)) })
+    else setArrayValue(slot.key, moveArrayItem(arr, from, to))
   }
   const handleBrowseAll = () => {
     setOpenSlotKey('')
@@ -685,6 +697,7 @@ export default function NodeParameterControls({
 
   const { unusedUrls, framesOnly, referenceInfos, arrayCount } = computeReferenceRowModel({
     node, nodes, edges, meta, assetSlots, assetValuesByKey, imageUrlSlots, arraySlots, refsUnsupported, showReferences,
+    unusedUploads: referencePlacement.unused,
     fallbackName: (kind) => t(kind === 'video' ? 'assetLibrary.referenceVideo' : kind === 'audio' ? 'assetLibrary.referenceAudio' : 'assetLibrary.referenceImage'),
   })
 
@@ -715,9 +728,12 @@ export default function NodeParameterControls({
     onDismissAmbiguity: () => updateMeta({ [FIRST_LAST_HINT_DISMISSED_META_KEY]: true }),
   })
 
+  // 当前方式一个收图的槽都没有（文生，或渠道发不出这些槽）时，参考列表里的图照样要看得见——淡显「未用到」，
+  // 不能「既不显示也不发送」（换到 Veo 3.1 文生、30 张参考一张都看不见，真机走查 2026-10-22 抓到）。
   if (
     section === 'references' &&
     !refsUnsupported &&
+    unusedUrls.length === 0 &&
     referencesSectionIsEmpty({
       hasImageUrlSlots: imageUrlSlots.length > 0,
       hasArraySlots: arraySlots.length > 0,
@@ -730,7 +746,7 @@ export default function NodeParameterControls({
     return inputReferenceEntry
 
   const rootClassName = cn('generation-canvas-v2-node__ref-section', 'flex flex-col gap-1')
-  const hasReferenceRow = showReferences && (assetSlots.length > 0 || refsUnsupported)
+  const hasReferenceRow = showReferences && (assetSlots.length > 0 || refsUnsupported || unusedUrls.length > 0)
 
   return (
     <div className={rootClassName} aria-label={t('generationCommon.parameters.referencesAria')}>
@@ -741,7 +757,7 @@ export default function NodeParameterControls({
       {/* 没有参考行可挂时（只剩 1 个模式、没有槽），指路提示自己站一行；有参考行就进行尾。 */}
       {!hasReferenceRow && !inputReferenceEntry ? guidanceNote : null}
 
-      {showReferences ? inputReferenceEntry : null}
+      {showReferences && !hasReferenceRow ? inputReferenceEntry : null}
       {hasReferenceRow ? (
         <AssetReference
           slots={assetSlots}

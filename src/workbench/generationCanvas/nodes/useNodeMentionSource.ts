@@ -14,7 +14,7 @@ import type { TFunction } from 'i18next'
 import { useNodeWriteAccess, type NodeWriteAccess } from './nodeWriteAccess'
 import { useTranslation } from 'react-i18next'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
-import { applyArchetypeModeSwitch, currentArchetypeMode, referenceSlotStorage } from './controls/archetypeMeta'
+import { applyArchetypeModeSwitch, archetypeArrayWrite, currentArchetypeMode, readArchetypeArrayForWrite, referenceSlotStorage } from './controls/archetypeMeta'
 import { archetypeForNode, validateReferenceEdge } from '../agent/referenceEdgeCapability'
 import { MENTION_SLOT_BY_MEDIA, resolveMentionReference } from '../model/canvasReferenceConnection'
 import { translateModelDisplayText } from '../../../i18n/modelDisplayText'
@@ -101,8 +101,8 @@ export function createMentionSelect(deps: MentionSelectDeps): (item: MentionSugg
     const storage = referenceSlotStorage({ kind: MENTION_SLOT_BY_MEDIA[mediaKind] })
     if (!storage) return null
     const meta = (access.latestNode(nodeId)?.meta || {}) as Record<string, unknown>
-    const existing = Array.isArray(meta[storage.metaKey]) ? (meta[storage.metaKey] as string[]) : []
-    if (!existing.includes(url)) access.updateNode(nodeId, { meta: { ...meta, [storage.metaKey]: [...existing, url] } })
+    const existing = readArchetypeArrayForWrite(meta, storage.metaKey)
+    if (!existing.includes(url)) access.updateNode(nodeId, { meta: archetypeArrayWrite(meta, storage.metaKey, [...existing, url]) })
     return finalIndexOrUndo(url, mediaKind, metaBefore, edgeIdsBefore)
   }
 
