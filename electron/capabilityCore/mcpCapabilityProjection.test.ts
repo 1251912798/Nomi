@@ -151,7 +151,7 @@ describe("canvas.read MCP capability projection", () => {
         projectId: { type: "string", minLength: 1 },
         // 共享描述符的唯一字段：只决定应用内文本从选区第几个起列。外部 MCP 的 `nomi_read target=canvas` 不发布它、
         // 也不转发它（见下一条），宿主读到的永远是完整选区。
-        selectedFrom: toPublishedJsonSchema(specsForCapability("canvas.read")[0]!.schema).properties!.selectedFrom,
+        selectedFrom: (toPublishedJsonSchema(specsForCapability("canvas.read")[0]!.schema).properties as Record<string, unknown>).selectedFrom,
       },
       required: ["leaseHandle"],
       additionalProperties: false,
