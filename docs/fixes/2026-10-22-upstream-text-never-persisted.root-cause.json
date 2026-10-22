@@ -20,7 +20,8 @@
     "electron/logging/logger.ts",
     "electron/agentLane/laneTrace.mts",
     "electron/agentLane/laneTraceRecorder.mts",
-    "electron/telemetry/trajectoryProjection.ts"
+    "electron/telemetry/trajectoryProjection.ts",
+    "electron/crashLog.ts"
   ],
   "entry_points": [
     "项目事件：traceVendorCompleted 的 4 个调用方（taskIpcGuard / runtime / taskResultQuery / customCallDispatch）与 appendEvents 的 7 个写入方（含渲染层 nomi:events:append）",
@@ -209,14 +210,16 @@
       "electron/logging/redact.ts",
       "electron/logging/logger.ts",
       "electron/agentLane/laneTrace.mts",
-      "electron/agentLane/laneTraceRecorder.mts"
+      "electron/agentLane/laneTraceRecorder.mts",
+      "electron/crashLog.ts"
     ]
   },
   "regression_tests": [
     "electron/logging/diskSafeFailure.test.ts",
     "electron/events/vendorCallTrace.test.ts",
     "electron/logging/redact.test.ts",
-    "electron/logging/rendererLog.test.ts"
+    "electron/logging/rendererLog.test.ts",
+    "electron/crashLog.test.ts"
   ],
   "class_regression_tests": [
     "electron/logging/diskSafeFailure.test.ts",
@@ -242,7 +245,10 @@
     "A2：pi 会话存档 .nomi/agent-sessions/*.jsonl 里的 AssistantMessage.errorMessage 仍是上游原文（交协调定）",
     "画布节点 error / runs[].error / runs[].raw 与镜头表 failureReason 随项目文件落盘，渲染层画布事件经 nomi:events:append 进 .nomi/events（只 upstreamMsg 字段被写者去掉，界面文本照存）——归第 2 步唯一出口一起定",
     "日志 fields 仍收字符串标量：调用点若把错误原文放进字段（现有 mcpStdioServer / localSpeech 两处，均为本机进程文本），不经 redactError；未加门岗",
-    "electron/events/agentChatTrace.ts 会把 error / tool-error 原文写进事件，但生产代码无调用方（只剩测试 import）"
+    "electron/events/agentChatTrace.ts 会把 error / tool-error 原文写进事件，但生产代码无调用方（只剩测试 import）",
+    "制作运行账本 <项目>/.nomi/runs/<runId>/run.json 与 events.ndjson 存上游原话（submissionOutbox.markProviderRejected / markNotDispatched、productionRunDriverOps reconcile_error、productionGenerationSubmission 取回失败 detail），且 diagnosticsBundle.ts 把 run.json 原样打进诊断包——独立验收 V-redact N1 实测，本 PR 不修，归第 2 步",
+    "事件层结构防线只认 upstreamMsg 这个键名：新写入方把原话放进 message 一类的键照样落盘（V-redact N4）",
+    "原有缺陷（本 PR 未引入）：事件日志里只要有一行 payload 为 null，rehydratePayload 抛错被 readEvents 吞掉，整份读成空数组（V-redact N6）"
   ],
   "invariant_owner_layer": {
     "layer": "electron/logging/diskSafeFailure.ts",

@@ -127,7 +127,10 @@ export function redactField(key: string, value: unknown): string {
 export function redactError(error: unknown): string {
   const facts = diskSafeErrorFacts(error);
   const parts = [facts.message ? `${facts.name} ${facts.message}` : facts.name];
-  if (facts.code) parts.push(`code=${facts.code}`);
+  if (facts.code !== undefined) parts.push(`code=${facts.code}`);
+  if (facts.errno !== undefined) parts.push(`errno=${facts.errno}`);
+  if (facts.exitCode !== undefined) parts.push(`exitCode=${facts.exitCode}`);
+  if (facts.signal) parts.push(`signal=${facts.signal}`);
   if (facts.vendor) {
     const vendor = facts.vendor;
     parts.push(`vendor=${vendor.vendorKey} category=${vendor.category}`);
@@ -135,15 +138,26 @@ export function redactError(error: unknown): string {
     if (vendor.upstreamCode) parts.push(`upstreamCode=${vendor.upstreamCode}`);
     if (vendor.reasonCode) parts.push(`reason=${vendor.reasonCode}`);
   }
-  const frames = error instanceof Error ? stackFrames(error) : [];
+  let frames: string[] = [];
+  try {
+    if (error instanceof Error) frames = stackFrames(error);
+  } catch {
+    /* instanceof 本身也可能抛（Proxy）：没有帧照样写这一行 */
+  }
   if (frames.length) parts.push(`| ${frames.map((frame) => redactLogValue(frame)).join(" < ")}`);
   return parts.join(" ");
 }
 
 /** 栈帧（不含首部的 message 行——message 可能跨行，跨出来的行不许冒充帧混进日志）。 */
 function stackFrames(error: Error): string[] {
-  const stack = error.stack || "";
-  const header = error.message ? `${error.name}: ${error.message}` : error.name;
+  let stack: string;
+  let header: string;
+  try {
+    stack = typeof error.stack === "string" ? error.stack : "";
+    header = error.message ? `${String(error.name)}: ${String(error.message)}` : String(error.name);
+  } catch {
+    return []; // 读栈都会抛的错误对象：不记帧，也绝不让日志道跟着抛
+  }
   const body = stack.startsWith(header) ? stack.slice(header.length) : stack.split("\n").slice(1).join("\n");
   return body
     .split("\n")
@@ -156,8 +170,12 @@ function stackFrames(error: Error): string[] {
 
 /** 开发态终端用的完整一行（含原文，仍剥路径 / 密钥形串）。**不许**交给任何落盘写手。 */
 export function describeErrorForDevTerminal(error: unknown): string {
-  if (!(error instanceof Error)) return redactLogValue(String(error));
-  return redactLogValue(`${error.name}: ${error.message}`);
+  try {
+    if (!(error instanceof Error)) return redactLogValue(String(error));
+    return redactLogValue(`${String(error.name)}: ${String(error.message)}`);
+  } catch {
+    return "<unreadable error>";
+  }
 }
 
 /** 一整行的兜底上限——单值上限之外再兜一次，免得字段多到把文件撑爆。 */

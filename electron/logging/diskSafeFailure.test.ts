@@ -17,7 +17,7 @@ vi.mock("../catalog/validateCandidateCredential", () => ({ revalidatePendingCred
 import type { Entry } from "@earendil-works/pi-agent-core";
 import { executeTextTask } from "../textTaskRunner";
 import { runTaskIpcGuard } from "../tasks/taskIpcGuard";
-import { readEvents, resetEventLogStateForTests, setEventLogProjectDirResolverForTests } from "../events/eventLogRepository";
+import { appendEvents, readEvents, resetEventLogStateForTests, setEventLogProjectDirResolverForTests } from "../events/eventLogRepository";
 import { traceVendorCompleted } from "../events/vendorCallTrace";
 import { logError, logWarn } from "./logger";
 import { dailyLogFileName } from "./logFiles";
@@ -30,6 +30,7 @@ const categoriesMatch: Same<VendorFailureCategory, VendorErrorCategory> = true;
 void categoriesMatch;
 import { desktopT } from "../i18n";
 import { deriveLaneTrace, LANE_TRACE_NOTE } from "../agentLane/laneTrace.mjs";
+import { attachLaneTrace } from "../agentLane/laneTraceRecorder.mjs";
 import { startTextUpstream, reply } from "../../tests/fixtures/textTasks/textUpstream";
 
 type Fixture = { label: string; header: string; secret: string; echo: (value: string) => string };
@@ -210,5 +211,114 @@ describe("旧数据：带 upstreamMsg 的旧事件照常读、不崩、原话不
     // 旧事件之后继续写，seq 照常接上。
     traceVendorCompleted(projectId, { runId: "new", status: "succeeded", assetCount: 1 });
     expect(readEvents(projectId).map((item) => item.seq)).toEqual([1, 2]);
+  });
+});
+
+describe("事件唯一写者自己的兜底（不靠 trace 层也干净；V-redact N3 mu1 / mu4）", () => {
+  const secret = "fixture-writer-pass-42";
+
+  function rawLog(projectId: string): string {
+    return eventsOnDisk(projectId);
+  }
+
+  it("写入方把完整 structured 原样塞进来：盘上只剩结构事实", () => {
+    const projectId = "proj-writer-guard";
+    appendEvents(projectId, [{ id: "evt_w1", source: "runtime", type: "vendor.call.completed", payload: {
+      runId: "w", status: "failed", assetCount: 0,
+      error: { vendorKey: "relay", method: "POST", url: `https://relay.example/v1?key=${secret}`, httpStatus: 401,
+        upstreamMsg: `Access denied: ${secret}; contact gateway admin`, category: "auth", retryable: false },
+    } }]);
+    const disk = rawLog(projectId);
+    expect(disk).not.toContain(secret);
+    expect(disk).not.toContain("upstreamMsg");
+    expect(disk).toContain('"category":"auth"');
+  });
+
+  it("认不出类别的对象：只去掉 upstreamMsg 这个键，其余字段照留", () => {
+    const projectId = "proj-writer-unknown";
+    appendEvents(projectId, [{ id: "evt_w2", source: "runtime", type: "custom.probe", payload: {
+      nested: [{ upstreamMsg: `Access denied: ${secret}`, category: "weird", keep: "this-stays" }],
+    } }]);
+    const disk = rawLog(projectId);
+    expect(disk).not.toContain(secret);
+    expect(disk).not.toContain("upstreamMsg");
+    expect(disk).toContain("this-stays");
+    expect(disk).toContain('"category":"weird"');
+  });
+});
+
+describe("日志道绝不抛（V-redact 条件 2）", () => {
+  it("message 被事后改成非字符串：照常写一行", () => {
+    const numeric = new Error("x");
+    (numeric as unknown as { message: unknown }).message = 42;
+    const objectMessage = new Error("y");
+    (objectMessage as unknown as { message: unknown }).message = { said: "fixture-object-pass-42" };
+    const missing = new Error("z");
+    (missing as unknown as { message: unknown }).message = undefined;
+    expect(() => logError("tasks", "probe-nonstring-message", numeric)).not.toThrow();
+    expect(() => logError("tasks", "probe-object-message", objectMessage)).not.toThrow();
+    expect(() => logError("tasks", "probe-undefined-message", missing)).not.toThrow();
+    expect(logLines("probe-nonstring-message")).toMatch(/Error msg#[0-9a-f]{8}/);
+    expect(logLines("probe-object-message")).not.toContain("fixture-object-pass-42");
+    expect(logLines("probe-undefined-message")).toContain("probe-undefined-message Error");
+  });
+
+  it("cause 链上读属性就抛的对象、整个错误是 Proxy：照常写一行", () => {
+    const hostile = new Proxy({}, { get() { throw new Error("trap"); }, getPrototypeOf() { throw new Error("trap"); } });
+    const withHostileCause = Object.assign(new Error("outer"), { cause: hostile });
+    expect(() => logError("tasks", "probe-hostile-cause", withHostileCause)).not.toThrow();
+    expect(() => logWarn("tasks", "probe-hostile-error", undefined, hostile)).not.toThrow();
+    expect(logLines("probe-hostile-cause")).toMatch(/probe-hostile-cause Error msg#/);
+    expect(logLines("probe-hostile-error")).toContain("probe-hostile-error UnreadableError");
+  });
+});
+
+describe("本机错误的纯结构字段照留（协调 10-22 放宽一档）：退出码、signal、数字 errno、cause 链上的码", () => {
+  it("子进程 / ffmpeg 形状的错误：exitCode、signal、errno、数字 code 落盘，stderr 原文不落", () => {
+    const ffmpeg = Object.assign(new Error("ffmpeg exited 1: fixture-stderr-pass-42 Invalid data found"), { exitCode: 1, signal: "SIGTERM" });
+    const spawn = Object.assign(new Error("spawn ffmpeg ENOENT"), { code: "ENOENT", errno: -4058, syscall: "spawn ffmpeg" });
+    const execFile = Object.assign(new Error("Command failed: fixture-cmd-pass-42"), { code: 1, signal: null, killed: false });
+    const fetchFailed = new TypeError("fetch failed", { cause: Object.assign(new Error("getaddrinfo ENOTFOUND relay.example"), { code: "ENOTFOUND" }) });
+    logError("tasks", "probe-ffmpeg-exit", ffmpeg);
+    logError("tasks", "probe-spawn-enoent", spawn);
+    logError("tasks", "probe-execfile-code", execFile);
+    logError("tasks", "probe-fetch-cause-code", fetchFailed);
+    expect(logLines("probe-ffmpeg-exit")).toMatch(/Error msg#[0-9a-f]{8} exitCode=1 signal=SIGTERM/);
+    expect(logLines("probe-spawn-enoent")).toMatch(/code=ENOENT errno=-4058/);
+    expect(logLines("probe-execfile-code")).toMatch(/Error msg#[0-9a-f]{8} code=1( |$)/);
+    expect(logLines("probe-fetch-cause-code")).toMatch(/TypeError msg#[0-9a-f]{8} code=ENOTFOUND/);
+    for (const marker of ["probe-ffmpeg-exit", "probe-execfile-code", "probe-fetch-cause-code"]) {
+      expect(logLines(marker)).not.toMatch(/pass-42|Invalid data|relay\.example/);
+    }
+  });
+});
+
+describe("A3：Nomi 写进 pi 会话的运行记录不带 pi 的错误对象（V-redact N3 mu13）", () => {
+  it("run_end(failed) 的错误原文不进会话条目", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lane-recorder-"));
+    try {
+      const handlers = new Map<string, (event: Record<string, unknown>) => void>();
+      const committed: { customType?: string; data?: unknown }[] = [];
+      const harness = { events: { on: (name: string, listener: (event: Record<string, unknown>) => void) => { handlers.set(name, listener); return () => undefined; } } };
+      const session = {
+        metadata: { path: path.join(dir, "s1.jsonl"), id: "s1" },
+        idGenerator: { next: () => `e${committed.length}` },
+        findEntries: async () => [],
+        mutate: async (work: (mutator: { commit(items: { entry: { customType?: string; data?: unknown } }[]): Promise<void> }, context: unknown) => Promise<void>, context: unknown) =>
+          work({ commit: async (items) => { for (const item of items) committed.push(item.entry); } }, context),
+      };
+      const trace = attachLaneTrace({ harness: harness as never, session: session as never, pricing: "unpriced", secrets: [], model: { provider: "p", model: "m" } });
+      handlers.get("run_start")!({ runId: "r1", startedAt: 1 });
+      handlers.get("run_end")!({ runId: "r1", fromTipId: null, tipId: null, endedAt: 2, status: "failed",
+        error: { message: "401 Access denied: fixture-recorder-pass-42; contact gateway admin" } });
+      await trace.flush();
+      const note = committed.find((entry) => entry.customType === LANE_TRACE_NOTE);
+      expect(note).toBeDefined();
+      expect((note!.data as { error: unknown }).error).toBe("run-failed");
+      expect(JSON.stringify(committed)).not.toContain("fixture-recorder-pass-42");
+      await trace.close();
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

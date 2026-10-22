@@ -70,21 +70,40 @@ export function vendorFailureFacts(structured: unknown): VendorFailureFacts | nu
 }
 
 /** 错误本身或它 cause 链上的结构化供应商错误（包装层带了 cause 时，事实照样找得回来）。 */
+/**
+ * 读一个属性，读不了就当没有。日志层**绝不许抛**：落盘道一抛，调用它的 catch 分支就跟着炸，
+ * 而错误对象的形状不由我们定（getter 抛错、Proxy、事后改过的字段都见过）。
+ */
+function readField(value: unknown, key: string): unknown {
+  if (!value || (typeof value !== "object" && typeof value !== "function")) return undefined;
+  try {
+    return (value as Record<string, unknown>)[key];
+  } catch {
+    return undefined;
+  }
+}
+
+/** 错误本身或它 cause 链上的结构化供应商错误（包装层带了 cause 时，事实照样找得回来）。 */
 export function vendorFailureFactsOf(error: unknown): VendorFailureFacts | null {
   const seen = new Set<unknown>();
   let current: unknown = error;
   for (let depth = 0; depth < 8 && current && typeof current === "object" && !seen.has(current); depth += 1) {
     seen.add(current);
-    const facts = vendorFailureFacts((current as { structured?: unknown }).structured);
+    const facts = vendorFailureFacts(readField(current, "structured"));
     if (facts) return facts;
-    current = (current as { cause?: unknown }).cause;
+    current = readField(current, "cause");
   }
   return null;
 }
 
-/** 一段错误文本 → 能落盘的样子：我们自己的码原样；其余只给指纹。 */
-export function diskSafeMessage(message: string): string {
-  const text = message.trim();
+/** 一段错误文本 → 能落盘的样子：我们自己的码原样；其余只给指纹。非字符串（事后被改过的 message）按字符串化处理。 */
+export function diskSafeMessage(message: unknown): string {
+  let text: string;
+  try {
+    text = (typeof message === "string" ? message : message == null ? "" : String(message)).trim();
+  } catch {
+    return "msg#unreadable";
+  }
   if (!text) return "";
   if (text.length <= 64 && OWN_CODE_MESSAGE.test(text)) return text;
   return `msg#${crypto.createHash("sha256").update(text).digest("hex").slice(0, 8)}`;
@@ -94,21 +113,61 @@ export type DiskSafeErrorFacts = {
   name: string;
   /** 码形 message，或 `msg#<指纹>`；空 message 时为空串。 */
   message: string;
-  code?: string;
+  /** 字符串码（码形）或数字码（子进程退出码就放在 `code` 上）。 */
+  code?: string | number;
+  /** 本机进程 / 系统调用的纯结构字段：数字或枚举，没有自由文本，不可能带秘密（协调 10-22 定放宽这一档）。 */
+  errno?: number;
+  exitCode?: number;
+  signal?: string;
   vendor?: VendorFailureFacts;
 };
 
-/** 任意错误 → 能落盘的事实（日志与崩溃道共用；栈帧由调用方另行剥路径）。 */
-export function diskSafeErrorFacts(error: unknown): DiskSafeErrorFacts {
-  if (!(error instanceof Error)) {
-    if (typeof error === "string") return { name: "Error", message: diskSafeMessage(error) };
-    if (typeof error === "number" || typeof error === "boolean" || error == null) return { name: "Error", message: String(error) };
-    return { name: "NonError", message: "" };
+function integerField(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isInteger(value) ? value : undefined;
+}
+
+/** 码：本身没有就沿 cause 链取第一个（`fetch failed` 的 `ENOTFOUND` 在 cause 上）。 */
+function codeOf(error: unknown): string | number | undefined {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  for (let depth = 0; depth < 8 && current && typeof current === "object" && !seen.has(current); depth += 1) {
+    seen.add(current);
+    const raw = readField(current, "code");
+    const code = integerField(raw) ?? codeToken(raw);
+    if (code !== undefined) return code;
+    current = readField(current, "cause");
   }
-  const name = /^[A-Za-z_$][\w$]{0,63}$/.test(error.name) ? error.name : "Error";
-  const code = codeToken((error as NodeJS.ErrnoException).code);
-  const vendor = vendorFailureFactsOf(error);
-  return { name, message: diskSafeMessage(error.message), ...(code ? { code } : {}), ...(vendor ? { vendor } : {}) };
+  return undefined;
+}
+
+/** 任意错误 → 能落盘的事实（日志与崩溃道共用；栈帧由调用方另行剥路径）。不抛。 */
+export function diskSafeErrorFacts(error: unknown): DiskSafeErrorFacts {
+  try {
+    if (!(error instanceof Error)) {
+      if (typeof error === "string") return { name: "Error", message: diskSafeMessage(error) };
+      if (typeof error === "number" || typeof error === "boolean" || error == null) return { name: "Error", message: String(error) };
+      return { name: "NonError", message: "" };
+    }
+    const rawName = readField(error, "name");
+    const name = typeof rawName === "string" && /^[A-Za-z_$][\w$]{0,63}$/.test(rawName) ? rawName : "Error";
+    const code = codeOf(error);
+    const errno = integerField(readField(error, "errno"));
+    const exitCode = integerField(readField(error, "exitCode"));
+    const signal = codeToken(readField(error, "signal"));
+    const vendor = vendorFailureFactsOf(error);
+    return {
+      name,
+      message: diskSafeMessage(readField(error, "message")),
+      ...(code !== undefined ? { code } : {}),
+      ...(errno !== undefined ? { errno } : {}),
+      ...(exitCode !== undefined ? { exitCode } : {}),
+      ...(signal ? { signal } : {}),
+      ...(vendor ? { vendor } : {}),
+    };
+  } catch {
+    // instanceof 也可能抛（Proxy 的 getPrototypeOf）：认不出就只记「有个认不出的错误」。
+    return { name: "UnreadableError", message: "" };
+  }
 }
 
 /**
