@@ -206,7 +206,8 @@ describe("查任务不重传参考素材（#1279 真付费样本复现：每次�
     const inline = `data:image/png;base64,${PNG.toString("base64")}`;
     await createThenPollToDone(firstLastFrameRequest(inline, LAST));
     expect(uploads()).toHaveLength(2);
-    expect(wire.findIndex((w) => w.url.startsWith("/v1/tasks/"))).toBeGreaterThan(wire.findLastIndex((w) => w.url === "/v1/uploads/images"));
+    const lastUpload = wire.map((w) => w.url).lastIndexOf("/v1/uploads/images");
+    expect(wire.findIndex((w) => w.url.startsWith("/v1/tasks/"))).toBeGreaterThan(lastUpload);
   });
 
   it("症状 2：提交之后参考图被删掉 / 随项目搬走——已付费的任务照样查得到、成片照样落地（查任务不再依赖参考文件）", async () => {
