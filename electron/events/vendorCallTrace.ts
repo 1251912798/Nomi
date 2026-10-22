@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { appendEvents } from "./eventLogRepository";
 import type { NormalizedRecipe } from "../vendor/provenance";
 import type { VendorErrorStructured } from "../vendor/vendorHttp";
+import { vendorFailureFacts } from "./diskSafeFailure";
 import type { ProviderCostActual } from "../vendor/cost";
 
 const mintId = () => `evt_${crypto.randomUUID().slice(0, 12)}`;
@@ -42,6 +43,10 @@ export function traceVendorCached(
   ]);
 }
 
+/**
+ * 终态入账。失败时收完整的 `VendorErrorStructured`（调用方不用自己挑字段），
+ * 但**落盘的只有 `vendorFailureFacts` 那几项结构事实**：上游原话与 URL 不进项目事件（独立验收 V-textmigrate N3）。
+ */
 export function traceVendorCompleted(
   projectId: string | undefined,
   payload: {
@@ -55,6 +60,7 @@ export function traceVendorCompleted(
 ): void {
   const id = String(projectId || "").trim();
   if (!id) return;
+  const error = payload.error ? vendorFailureFacts(payload.error) : null;
   appendEvents(id, [
     {
       id: mintId(),
@@ -65,7 +71,7 @@ export function traceVendorCompleted(
         ...(payload.nodeId ? { nodeId: payload.nodeId } : {}),
         status: payload.status,
         assetCount: payload.assetCount,
-        ...(payload.error ? { error: payload.error } : {}),
+        ...(error ? { error } : {}),
         ...(payload.cost ? { cost: payload.cost } : {}),
       },
     },
