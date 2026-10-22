@@ -61,13 +61,13 @@ export function readVerbs(): VerbDeclaration[] {
       does: "Read the generation canvas: every node (id, kind, title, prompt, model, status), each shot table's rows and ticked shots, the links, groups and selection.",
       useWhen: "Before any change to shots, links or groups; whenever the user asks what is on the canvas or what is still waiting on them; and when they name shot-table shots by number (\"remake shots 2-3\").",
       notWhen: "Do not use it to read the script (read_script), the timeline (read_timeline) or the media library (look_at_media). It never changes anything.",
-      params: "Normally called with no arguments. A long selection is listed in pages: when the selection line says some selected nodes were not listed, call again with the selectedFrom it names. Every id you pass to a write verb comes from here; inventing an id is the most common way an edit fails.",
+      params: "If the selection line says nodes were not listed, call again with the selectedFrom it names. Every id you pass to a write verb comes from here; inventing an id is the most common way an edit fails.",
     },
     promptGuidelines: READ_GUIDELINES,
     // 翻页只改「选区这一块怎么列」，不改宿主读到什么：契约 `canvas.read` 仍不收参数、仍返回完整 `selectedNodeIds`
     // （对外 MCP 拿到的就是整份），所以 `selectedFrom` 不翻译进语义输入——由 `laneCanvasTools` 在排版时消费。
     schema: z.object({
-      selectedFrom: z.number().int().min(0).optional().describe("Position, counting from 0, of the first selected node to list. Leave it out to start at the beginning; when the selection line says some were not listed, pass the number it names."),
+      selectedFrom: z.number().int().min(0).optional().describe("Index from 0 of the first selected node to list."),
     }).strict(),
     examples: [
       { when: "Read the canvas:", arguments: {} },
