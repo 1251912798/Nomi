@@ -3,9 +3,9 @@ import { connectNodes, disconnectEdge, removeNodes } from '../model/graphOps'
 import { normalizeParameterEdges, readParameterReferenceSlots } from '../model/parameterReferenceSlots'
 import { resolveCanvasReferenceConnection } from '../model/canvasReferenceConnection'
 import { canDeriveOutput } from '../model/derivedOutput'
-import { archetypeForNode, resolveTargetModeForEdge, validateReferenceEdge } from '../agent/referenceEdgeCapability'
-import { applyArchetypeModeSwitch } from '../nodes/controls/archetypeMeta'
-import type { GenerationCanvasEdge, GenerationCanvasEdgeMode, GenerationCanvasNode, NodeGroup } from '../model/generationCanvasTypes'
+import { validateReferenceEdge } from '../agent/referenceEdgeCapability'
+import { deriveTargetAfterConnect } from './canvasConnectDerivations'
+import type { GenerationCanvasEdge, GenerationCanvasEdgeMode, NodeGroup } from '../model/generationCanvasTypes'
 import { groupMemberNodes, removeGroupLinkEdgesForMember, upsertGroupInputLink, upsertGroupOutputLink } from '../model/groupInputLinks'
 import { createGroupId } from './canvasIds'
 import { frameBoundsFromMembers, unionFrameBounds } from '../model/canvasFrameBounds'
@@ -20,43 +20,6 @@ import { getHistoryFlags, pushUndoSnapshot } from '../events/canvasUndoJournal'
 import { reconcileTimelineForDeletedNodes } from './canvasTimelineBridge'
 import { emitCanvasGesture } from '../events/canvasEventEmitter'
 import type { CanvasGraphActions, CanvasSliceCreator } from './canvasStoreTypes'
-
-/**
- * 连线落地后，若目标当前「生成方式」收不下这条参考、档案却有能收的模式 → 自动切过去(t2i→改图)。
- * 三个连线入口共用(手动拖把柄 connectToNode、agent 计划 connectNodes、3D 站位 StagingCaptureHost)，
- * 杜绝「拉图进新图片节点却停在文生图」这类 bug 从任一入口复发(P2)。**幂等**：当前模式已能落该参考则
- * resolveTargetModeForEdge 返回 null → no-op，故对「已正确规划模式」的 agent 路径零影响。走 updateNode
- * 单一写路径(与手动切 ModeBar 同)。须在边已确认建上之后调用。
- *
- * **`history: false` 不是可选项**（2026-09-07 真机走查测出来的）：这次切模式是**连线这一个手势的
- * 后果**，不是用户另做的一件事。updateNode 默认会给 `meta` patch 打一个自己的 undo barrier，
- * 于是连完一条线后日志里叠了两个 barrier——第一下 ⌘Z 只把模式切回去（用户眼里画布毫无变化），
- * 得按第二下才撤掉那条边。用户按一下没反应就不会再按第二下，他得到的结论是「连线撤不了」。
- * 关掉的只是 barrier：这条 meta 变更照常入日志、照常落盘，所以撤到连线那个 barrier 时它跟着回退。
- */
-type ModeSwitchStore = {
-  nodes: GenerationCanvasNode[]
-  updateNode: (nodeId: string, patch: { meta: Record<string, unknown> }, options?: { history?: boolean }) => void
-}
-function autoPromoteTargetModeForEdge(
-  store: ModeSwitchStore,
-  sourceNodeId: string,
-  targetNodeId: string,
-  mode: GenerationCanvasEdgeMode | undefined,
-): void {
-  const source = store.nodes.find((n) => n.id === sourceNodeId)
-  const target = store.nodes.find((n) => n.id === targetNodeId)
-  if (!source || !target) return
-  const nextModeId = resolveTargetModeForEdge(source, target, mode)
-  if (!nextModeId) return
-  const archetype = archetypeForNode(target)
-  if (!archetype) return
-  store.updateNode(
-    targetNodeId,
-    { meta: applyArchetypeModeSwitch((target.meta || {}) as Record<string, unknown>, archetype, nextModeId) },
-    { history: false },
-  )
-}
 
 type GroupEdgeDisconnectScope =
   | { groupId: string; direction: 'input'; sourceNodeId: string; mode?: GenerationCanvasEdgeMode }
@@ -126,7 +89,7 @@ function writeCanvasEdge(
       { type: 'canvas.edge.added', payload: { edge: addedEdge } },
     ])
     // agent 计划 / 3D 站位经此入口连线，同样把收不下参考的目标自动切到能收的模式(幂等，见 helper)。
-    autoPromoteTargetModeForEdge(get(), sourceNodeId, targetNodeId, mode)
+    deriveTargetAfterConnect(get, sourceNodeId, targetNodeId, mode)
   }
 }
 
@@ -182,7 +145,7 @@ export const createCanvasGraphActions: CanvasSliceCreator<CanvasGraphActions> = 
           Object.assign(state, getHistoryFlags())
         })
         emitCanvasGesture(outcome.connected.map(({ edge }) => ({ type: 'canvas.edge.added' as const, payload: { edge } })))
-        for (const item of outcome.connected) autoPromoteTargetModeForEdge(get(), item.sourceNodeId, item.targetNodeId, item.mode)
+        for (const item of outcome.connected) deriveTargetAfterConnect(get, item.sourceNodeId, item.targetNodeId, item.mode)
       }
       get().cancelConnection()
       const counts = { connected: outcome.connected.length, skipped: outcome.skipped, alreadyConnected: outcome.alreadyConnected }
@@ -236,13 +199,13 @@ export const createCanvasGraphActions: CanvasSliceCreator<CanvasGraphActions> = 
         // Cmd+Z 会去撤上一笔（用户眼里是「撤销把别的东西弄没了」）。
         // 2026-09-07 真机走查发现这里一直没打 barrier：连错一条线按 Cmd+Z 毫无反应，
         // 而同族的 connectToGroup（同文件 275 行）一直是打的——这不是设计，是漏了一处。
-        // 只补这一处还不够：紧跟着的 autoPromoteTargetModeForEdge 会再打一个自己的 barrier，
-        // 于是要按两下才撤掉边。那一半修在它自己身上（history: false，见该函数的 JSDoc）。
+        // 只补这一处还不够：紧跟着的连线派生写（deriveTargetAfterConnect）会再打一个自己的 barrier，
+        // 于是要按两下才撤掉边。那一半修在它自己身上（history: false，见 canvasConnectDerivations 头注释）。
         pushUndoSnapshot(pre)
         emitCanvasGesture([{ type: 'canvas.edge.added', payload: { edge: addedEdge } }])
       }
       // 边真建上了才切模式(重复连线等空操作不写 meta)。
-      autoPromoteTargetModeForEdge(get(), sourceNodeId, targetNodeId, mode)
+      deriveTargetAfterConnect(get, sourceNodeId, targetNodeId, mode)
     }
     return { ok: true }
   },
@@ -306,7 +269,7 @@ export const createCanvasGraphActions: CanvasSliceCreator<CanvasGraphActions> = 
     ])
     // 边建上了才切模式（与 connectToNode 同一后置时机，幂等）。
     for (const item of outcome.connected) {
-      autoPromoteTargetModeForEdge(get(), item.sourceNodeId, item.targetNodeId, item.mode)
+      deriveTargetAfterConnect(get, item.sourceNodeId, item.targetNodeId, item.mode)
     }
     return { ok: true, connected: outcome.connected.length, skipped: outcome.skipped, alreadyConnected: outcome.alreadyConnected }
   },
@@ -710,7 +673,7 @@ export const createCanvasGraphActions: CanvasSliceCreator<CanvasGraphActions> = 
       Object.assign(state, getHistoryFlags())
     })
     for (const item of joinedEdges) {
-      autoPromoteTargetModeForEdge(get(), item.sourceNodeId, item.targetNodeId, item.mode)
+      deriveTargetAfterConnect(get, item.sourceNodeId, item.targetNodeId, item.mode)
     }
     const post = get()
     emitCanvasGesture([

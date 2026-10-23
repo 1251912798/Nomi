@@ -15,6 +15,10 @@ import { compileShotOutbound } from '../../../generationCanvas/agent/storyboardP
 import { resolveKeyframeParams, resolveShotParams, shotModeControls } from '../../../generationCanvas/agent/storyboardShotScope'
 import { aspectRatioControlsOf, placeAspectRatio } from '../../../../../electron/shared/aspectRatioValue'
 import type { ArchetypeMode } from '../../../../../electron/shared/modelArchetypes/types'
+import { ASPECT_RATIO_KEYS } from '../../../generationCanvas/nodes/aspectRatio'
+import { ASPECT_EXPLICIT_META_KEY } from '../../../generationCanvas/nodes/aspectExplicit'
+
+const ASPECT_RATIO_KEY_SET: ReadonlySet<string> = new Set(ASPECT_RATIO_KEYS)
 const PRIMITIVE = new Set(['string', 'number', 'boolean'])
 
 /** Shared projection for plan writes and generation; canvas overrides are never reset. */
@@ -50,7 +54,10 @@ export function projectShotNode(
       modeId: typeof metaModeId === 'string' ? metaModeId : undefined, meta })
     const placed = controls ? placeAspectRatio(rowParams, aspectRatioControlsOf(controls)).parameters : rowParams
     for (const [key, value] of Object.entries(placed)) {
-      if (PRIMITIVE.has(typeof value)) meta[key] = value
+      if (!PRIMITIVE.has(typeof value)) continue
+      meta[key] = value
+      // 分镜写的画幅 = 明确选过（与落画布那一处 buildPlannedNodeMeta 同一条）：连线时视频比例的产品默认不改它。
+      if (ASPECT_RATIO_KEY_SET.has(key)) meta[ASPECT_EXPLICIT_META_KEY] = true
     }
   }
   if (part === 'shot' && !isImageShot && Number.isFinite(shot.durationSec) && shot.durationSec > 0) {

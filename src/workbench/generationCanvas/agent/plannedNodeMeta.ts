@@ -14,6 +14,10 @@ import {
 } from "../../../../electron/shared/modelArchetypes";
 import { pickImplicitVendorMatch } from "../../../config/modelIdentity";
 import { aspectRatioControlsOf, placeAspectRatio } from "../../../../electron/shared/aspectRatioValue";
+import { ASPECT_RATIO_KEYS } from "../nodes/aspectRatio";
+import { ASPECT_EXPLICIT_META_KEY } from "../nodes/aspectExplicit";
+
+const ASPECT_RATIO_KEY_SET: ReadonlySet<string> = new Set(ASPECT_RATIO_KEYS);
 
 export type PlannedNodeModelInput = {
   modelKey?: unknown;
@@ -180,12 +184,16 @@ export function buildPlannedNodeMeta(
       isValidParamValue(control, value)
     ) {
       meta[control.key] = value;
+      // 起草方（Agent / 分镜）写了合法比例 = 明确选过：连线时视频比例的产品默认不改它（用户 2026-10-22 Q2 拍板）。
+      // 没写或写了非法值 → 档案默认、不打标记（Q1），连线时照常按输入铺默认。
+      if (ASPECT_RATIO_KEY_SET.has(control.key)) meta[ASPECT_EXPLICIT_META_KEY] = true;
     }
   }
   return meta;
 }
 
-const RESERVED_META_KEYS = new Set(["modelKey", "modelLabel", "archetype", "modelVendor", "vendor"]);
+// 比例「明确选过」标记是节点状态，不是要批准 / 发出的参数。
+const RESERVED_META_KEYS = new Set(["modelKey", "modelLabel", "archetype", "modelVendor", "vendor", ASPECT_EXPLICIT_META_KEY]);
 
 /**
  * 把一个 planned node 的 modelKey/modeId/params 解析成「执行后会真正写入的值」——与
