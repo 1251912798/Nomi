@@ -228,7 +228,7 @@ export type DesktopBridge = DesktopMediaBridge &
     save: (projectId: string, record: unknown) => Promise<unknown>
     applyCanvasNodePatch?: (input: { projectId: string; nodeId: string; patch: Record<string, unknown>; expectedBinding?: unknown }) => Promise<{ applied: boolean }>
     /** intent = 用户在确认框里确认的那一种；主进程只照它执行（electron/shared/projectDeleteIntent.ts）。 */
-    delete: (projectId: string, intent: ProjectDeleteIntent) => { id: string; deleted: boolean }
+    delete: (projectId: string, intent: ProjectDeleteIntent) => Promise<{ id: string; deleted: boolean }>
   }
   assets: DesktopAssetsSurface
   browser?: DesktopBrowserSurface

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Δ4 选区超过 12 个</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+.light{--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink40:oklch(.68 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-warning-ink:oklch(.45 .085 72);--nomi-warning-soft:oklch(.968 .024 72)}
+.root{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;background-color:var(--nomi-bg);color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.root *{box-sizing:border-box}
+.lbl{font-size:12px;color:var(--nomi-ink60);margin:0 0 8px 2px}
+.lbl b{color:var(--nomi-ink);font-weight:600;margin-right:6px}
+.shot{display:block;border:1px solid var(--nomi-line);border-radius:12px}
+.sp{flex:1;min-width:0}
+button{font-family:inherit;cursor:default}
+.comp{width:390px;border:1px solid var(--nomi-line);border-radius:12px;background:var(--nomi-paper);padding:10px 12px 8px;display:flex;flex-direction:column;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.cc{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 4px;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius-sm);background:var(--nomi-paper);font-size:12px;color:var(--nomi-ink80);white-space:nowrap}
+.cc.more{padding:0 8px;background:var(--nomi-ink05);border-color:transparent}
+.cc svg.t{display:block;border-radius:3px;flex:none}
+.warn{display:flex;align-items:center;gap:6px;min-height:28px;padding:0 4px 0 8px;border-radius:var(--nomi-radius-sm);background:var(--nomi-warning-soft);color:var(--nomi-warning-ink);font-size:12px}
+.warn button{margin-left:auto;height:24px;padding:0 8px;border:0;border-radius:999px;background:transparent;color:var(--nomi-warning-ink);font-size:12px;font-weight:600}
+.txt{font-size:13px;line-height:20px;color:var(--nomi-ink)}
+.bar{display:flex;align-items:center;gap:2px}
+.bar .t{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:0;border-radius:999px;background:transparent;color:var(--nomi-ink80);font-size:13px}
+.vsep{flex:none;width:1px;height:16px;background:var(--nomi-line);margin:0 2px}
+.send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink10);color:var(--nomi-ink40);display:flex;align-items:center;justify-content:center}
+</style>
+</helmet>
+<div class="root light" style="width:960px;height:300px;padding:28px 32px;display:flex;gap:44px;align-items:flex-start">
+  <div>
+    <div class="lbl"><b>现在</b>真实输入框</div>
+    <img class="shot" src="/_blob/d1d5ed8984866aeff55862b67359689d" width="390" height="120" alt="现有输入框空闲态">
+  </div>
+  <div>
+    <div class="lbl"><b>新增</b>选了 15 个：chip 收起 + 一条提示行，发送先停</div>
+    <div class="comp">
+      <div class="chips">
+        <span class="cc"><svg class="t" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect width="18" height="18" fill="#2d4a48"/><rect x="7" y="5" width="4" height="10" rx="2" fill="#e3b33c"/></svg>镜头 03</span>
+        <span class="cc"><svg class="t" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect width="18" height="18" fill="#30514e"/><rect x="9" y="4" width="4" height="11" rx="2" fill="#e3b33c"/></svg>镜头 04</span>
+        <span class="cc"><svg class="t" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect width="18" height="18" fill="#3a4f4b"/><rect x="6" y="5" width="5" height="10" rx="2" fill="#e3b33c"/></svg>镜头 05</span>
+        <button class="cc more" type="button">还有 12 个</button>
+      </div>
+      <div class="warn">已选 15 个 · 一次最多改 12 个<button type="button">只留前 12 个</button></div>
+      <div class="txt">都换成雨夜，人物动作不变</div>
+      <div class="bar">
+        <button class="t" type="button" aria-label="添加文件" style="width:28px;padding:0;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="t" type="button">GPT-5.6 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <span class="vsep"></span>
+        <button class="t" type="button">Skill</button>
+        <span class="sp"></span>
+        <button class="t" type="button">请求批准 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="send" type="button" aria-label="发送（选区超过上限）" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":960,"height":300}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

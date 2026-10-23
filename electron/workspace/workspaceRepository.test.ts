@@ -74,7 +74,11 @@ describe("workspace repository", () => {
     );
 
     expect((await listWorkspaceProjects(changedDeps))[0]).toMatchObject({ id: created.id, source: "native" });
-    expect(deleteWorkspaceProject(created.id, changedDeps)).toEqual({ id: created.id, deleted: true });
+    const trashed: string[] = [];
+    // 回收站由调用方注入（主进程传 shell.trashItem 那一份）；这里只记下交给回收站的是哪个目录，再把它挪走。
+    const moveToTrash = async (folder: string) => { trashed.push(folder); fs.renameSync(folder, `${folder}.trashed`); };
+    await expect(deleteWorkspaceProject(created.id, changedDeps, moveToTrash)).resolves.toEqual({ id: created.id, deleted: true });
+    expect(trashed).toEqual([path.resolve(oldProjectRoot)]);
     expect(fs.existsSync(oldProjectRoot)).toBe(false);
   });
 
@@ -97,7 +101,8 @@ describe("workspace repository", () => {
     fs.writeFileSync(marker, "must survive", "utf8");
 
     expect((await listWorkspaceProjects(changedDeps))[0]).toMatchObject({ id: created.id, source: "folder" });
-    expect(deleteWorkspaceProject(created.id, changedDeps)).toEqual({ id: created.id, deleted: false });
+    const moveToTrash = async () => { throw new Error("external folders must never reach the trash"); };
+    await expect(deleteWorkspaceProject(created.id, changedDeps, moveToTrash)).resolves.toEqual({ id: created.id, deleted: false });
     expect(fs.readFileSync(marker, "utf8")).toBe("must survive");
   });
 
