@@ -26,3 +26,32 @@ export function isProjectDeleteStateChangedError(error: unknown): boolean {
   if (typeof message === "string" && message.includes(`${PROJECT_DELETE_STATE_CHANGED_ERROR_NAME}:`)) return true;
   return cause !== undefined && cause !== error && isProjectDeleteStateChangedError(cause);
 }
+
+/**
+ * 「删除文件」= 把项目文件夹移进系统回收站（Windows 回收站 / macOS 废纸篓 / Linux 桌面回收站，Electron shell.trashItem），
+ * 可以从回收站还原（⑭，用户 2026-10-22 拍板）。进不了回收站就报这个错：什么都没删、项目还在库里，**绝不退回永久删除**。
+ * 原因只分三类给人看（权限 / 这个位置没有回收站 / 文件被占用），其余 unknown（原文进日志）。
+ * 名字和原因都写进信息开头：ipcRenderer.invoke 只把信息文本带回渲染层。
+ */
+export const PROJECT_TRASH_FAILED_ERROR_NAME = "ProjectTrashFailedError";
+export const PROJECT_TRASH_FAILURE_REASONS = ["permission", "no-trash", "in-use", "unknown"] as const;
+export type ProjectTrashFailureReason = (typeof PROJECT_TRASH_FAILURE_REASONS)[number];
+
+export function projectTrashFailedMessage(reason: ProjectTrashFailureReason, detail: string): string {
+  return `${PROJECT_TRASH_FAILED_ERROR_NAME}[${reason}]: project folder was not moved to the trash and nothing was deleted (${detail})`;
+}
+
+/** 认得出直接拿到的、经 IPC 包过一层（只剩信息文本）的、或挂在 cause 上的。认不出返回 null。 */
+export function projectTrashFailureReason(error: unknown): ProjectTrashFailureReason | null {
+  if (!error || typeof error !== "object") return null;
+  const { message, cause } = error as { message?: unknown; cause?: unknown };
+  if (typeof message === "string") {
+    const match = message.match(/ProjectTrashFailedError\[([a-z-]+)\]:/);
+    if (match && (PROJECT_TRASH_FAILURE_REASONS as readonly string[]).includes(match[1])) return match[1] as ProjectTrashFailureReason;
+  }
+  return cause !== undefined && cause !== error ? projectTrashFailureReason(cause) : null;
+}
+
+export function isProjectTrashFailedError(error: unknown): boolean {
+  return projectTrashFailureReason(error) !== null;
+}
