@@ -1,0 +1,25 @@
+{"label":"废纸篓一开始是空的（映像刚建）","ok":true,"detail":""}
+{"label":"项目文件夹建在映像卷的默认项目根里","ok":true,"detail":"未命名项目 10_23 23_04-mvl3p6qg-894fbf0f"}
+{"label":"zh-CN 确认框文字","ok":true,"detail":"删除项目 确定删除「未命名项目 10/23 23:04」吗？项目文件夹会移到废纸篓，需要时可以从废纸篓还原；还原后下次启动 Nomi 时它会回到项目库。 取消 删除"}
+{"label":"zh-CN 确认框按 macOS 叫法说「废纸篓」","ok":true,"detail":"删除项目 确定删除「未命名项目 10/23 23:04」吗？项目文件夹会移到废纸篓，需要时可以从废纸篓还原；还原后下次启动 Nomi 时它会回到项目库。 取消 删除"}
+{"label":"zh-CN 确认框不再说永久删除","ok":true,"detail":""}
+{"label":"zh-CN 取消后卡片还在、文件夹还在","ok":true,"detail":""}
+{"label":"en 确认框文字","ok":true,"detail":"Delete project Delete “未命名项目 10/23 23:04”? Its project folder will be moved to the Trash, where you can restore it; after restoring, it comes back to the library the next time you start Nomi. Cancel Delete"}
+{"label":"en 确认框按 macOS 叫法说「Trash」","ok":true,"detail":"Delete project Delete “未命名项目 10/23 23:04”? Its project folder will be moved to the Trash, where you can restore it; after restoring, it comes back to the library the next time you start Nomi. Cancel Delete"}
+{"label":"en 确认框不再说永久删除","ok":true,"detail":""}
+{"label":"en 取消后卡片还在、文件夹还在","ok":true,"detail":""}
+{"label":"进不了废纸篓：卡片上说「没有权限」并说明项目没有被删除","ok":true,"detail":"没能把项目移到废纸篓：没有权限操作这个文件夹。项目没有被删除。"}
+{"label":"进不了废纸篓：卡片还在、文件夹和素材原样","ok":true,"detail":""}
+{"label":"进不了废纸篓：废纸篓里什么都没有","ok":true,"detail":""}
+{"label":"提示说「已移到废纸篓」并交代还原和回库","ok":true,"detail":"「未命名项目 10/23 23:04」已移到废纸篓。要找回就从废纸篓还原，下次启动 Nomi 时它会回到项目库。"}
+{"label":"原路径不在了","ok":true,"detail":""}
+{"label":"废纸篓里恰好有这个项目文件夹","ok":true,"detail":"未命名项目 10_23 23_04-mvl3p6qg-894fbf0f"}
+{"label":"文件夹整个在里面、素材原样","ok":true,"detail":""}
+{"label":"系统记了「放回原处」信息（ptbL / ptbN）","ok":true,"detail":""}
+{"label":"刷新后项目库里没有这个项目","ok":true,"detail":""}
+{"label":"还原后文件夹回到原位、素材在","ok":true,"detail":""}
+{"label":"还原后废纸篓空了","ok":true,"detail":""}
+{"label":"重启后同一个项目（同 id）回到项目库","ok":true,"detail":""}
+{"label":"还原回来的项目能打开","ok":true,"detail":""}
+{"label":"收尾时映像卷的废纸篓里没有本走查的项目","ok":true,"detail":""}
+{"label":"映像已卸载","ok":true,"detail":"/Volumes/NomiTrashRoundtrip-24497"}

@@ -41,9 +41,12 @@ describe('删除确认：卡片状态 → 文案 + 意图', () => {
   })
 
   // 调用点不许自己再算一遍意图：确认框和删除调用都只从 projectDeleteChoice 取（否则又是两处各算各的）。
+  // 删除流程在 projectDeleteFlow.ts（行为测试见 projectDeleteFlow.test.ts），NomiStudioApp 只注入依赖。
   it('项目库删除入口只用 projectDeleteChoice 的意图，不在调用点写死', () => {
-    const source = readFileSync(resolve(process.cwd(), 'src/workbench/NomiStudioApp.tsx'), 'utf8')
-    expect(source).toContain('deleteLocalProject(project.id, choice.intent)')
-    expect(source).not.toMatch(/deleteLocalProject\([^)]*'(unbind|delete-files)'/)
+    const flow = readFileSync(resolve(process.cwd(), 'src/workbench/library/projectDeleteFlow.ts'), 'utf8')
+    const app = readFileSync(resolve(process.cwd(), 'src/workbench/NomiStudioApp.tsx'), 'utf8')
+    expect(flow).toContain('deps.deleteLocalProject(project.id, choice.intent)')
+    expect(app).toContain('runProjectDeleteFlow(project, {')
+    for (const source of [flow, app]) expect(source).not.toMatch(/deleteLocalProject\([^)]*'(unbind|delete-files)'/)
   })
 })
