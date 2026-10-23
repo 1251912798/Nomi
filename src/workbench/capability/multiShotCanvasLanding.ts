@@ -23,7 +23,7 @@ import {
   materializedNodeIdsByClientId,
   sanitizeMaterializationOperationId,
 } from '../generationCanvas/agent/materializationStamp'
-import { CANDIDATE_META_KEYS } from '../generationCanvas/agent/candidateNodeMeta'
+import { CANDIDATE_META_KEYS, plannedInputFromCandidate, type LandedShotCandidate } from '../generationCanvas/agent/candidateNodeMeta'
 import { withCanvasGestureContext } from '../generationCanvas/events/canvasGestureContext'
 import { pushUndoSnapshot } from '../generationCanvas/events/canvasUndoJournal'
 import { interruptPendingCanvasWrite } from '../generationCanvas/events/canvasWriteBoundary'
@@ -34,22 +34,6 @@ import type { MediaDimensions } from '../generationCanvas/nodes/nodeSizing'
 import type { HeldNodeOutcome } from '../generationCanvas/store/nodeRunOutcome'
 import { findAnchorNode, findShotNode } from '../creation/storyboard/exec/storyboardNodeBinding'
 import { stableShotId, type PlanAnchor, type PlanShot } from '../generationCanvas/agent/storyboardPlan'
-
-/**
- * 这一镜候选的模型身份（主进程 MaterializeShotCandidateWire 的渲染半）。
- * **它在则节点模型以它为准**——渲染层不再另挑默认模型（那是「agent 说的模型 ≠ 节点上的模型」的直接原因）。
- */
-export type MaterializeShotCandidate = {
-  candidateId: string
-  /** PlanCandidate.revision：只有它比节点上记着的更新，才重绑定 prompt/模型。 */
-  revision: number
-  vendor?: string
-  modelKey?: string
-  modeId?: string
-  mode?: string
-  /** 候选选中的标量参数。节点是候选的投影，参数是投影的一部分——漏掉它节点就会回落档案默认。 */
-  parameters?: Record<string, string | number | boolean>
-}
 
 /**
  * 没出片的一镜此刻在节点上该挂的运行状态（主进程 `MaterializeShotGenerationWire` 的渲染半，判定在主进程那一份）。
@@ -71,7 +55,8 @@ export type MaterializeShotInput = {
   kind?: GenerationNodeKind
   title?: string
   prompt?: string
-  candidate?: MaterializeShotCandidate
+  /** 这一镜候选的模型身份与选择（主进程线类型的同一份，见 electron/shared/canvas/materializeShotCandidate.ts）。它在则节点模型以它为准。 */
+  candidate?: LandedShotCandidate
   /** 已完成镜的结果（打开项目补齐时一并回填；确认即落时为空）。 */
   result?: GenerationNodeResult
   mediaDimensions?: MediaDimensions
@@ -107,21 +92,8 @@ export type MaterializeShotsResult = {
   groupId: string | null
 }
 
-/** 候选身份写进节点入参（create_canvas_nodes 认 modelKey/vendor/modeId，由 buildPlannedNodeMeta 解析成 meta）。 */
-function candidateNodeArgs(candidate: MaterializeShotCandidate | undefined): Record<string, unknown> {
-  if (!candidate?.modelKey) return {}
-  return {
-    modelKey: candidate.modelKey,
-    ...(candidate.vendor ? { vendor: candidate.vendor } : {}),
-    ...(candidate.modeId ? { modeId: candidate.modeId } : {}),
-    // 候选选的参数要跟着身份一起过来：`buildPlannedNodeMeta` 铺的是档案**默认值**，
-    // 不喂它真实选择，新建出来的节点就会显示一份没人选过的参数（而卡上印的价格是按真实选择算的）。
-    ...(candidate.parameters ? { params: candidate.parameters } : {}),
-  }
-}
-
 /** 候选来源戳：节点从此**知道自己是谁的意图**（自愈 effect 据此不静默改写；重绑定据 revision 判断）。 */
-function candidateStamp(candidate: MaterializeShotCandidate | undefined): Record<string, unknown> {
+function candidateStamp(candidate: LandedShotCandidate | undefined): Record<string, unknown> {
   if (!candidate) return {}
   return {
     [CANDIDATE_META_KEYS.candidateId]: candidate.candidateId,
@@ -161,19 +133,10 @@ async function rebindLandedShots(
     const node = store.nodes.find((candidate) => candidate.id === nodeId)
     if (!node) continue
     const currentMeta = (node.meta as Record<string, unknown> | undefined) ?? {}
-    const modelMeta = shot.candidate?.modelKey
-      ? buildPlannedNodeMeta(
-          {
-            modelKey: shot.candidate.modelKey,
-            ...(shot.candidate.vendor ? { vendor: shot.candidate.vendor } : {}),
-            ...(shot.candidate.modeId ? { modeId: shot.candidate.modeId } : {}),
-            // 同上：重绑定必须带上候选真正选的参数，否则每一次重绑定都把用户挑过的值
-            // 按回档案默认（2026-09-11 付费卡上改尺寸「改完又弹回去」就是这条漏掉的后果）。
-            ...(shot.candidate.parameters ? { params: shot.candidate.parameters } : {}),
-          },
-          entryByKey,
-        )
-      : undefined
+    // 与首次落地同一个投影（plannedInputFromCandidate）：模型身份、方式、变体、候选选的参数一起重绑——
+    // 漏一样，重绑定就把它按回档案默认（2026-09-11 尺寸弹回去、2026-10-22 变体回到 Fast 都是这一类）。
+    const plannedInput = plannedInputFromCandidate(shot.candidate)
+    const modelMeta = plannedInput ? buildPlannedNodeMeta(plannedInput, entryByKey) : undefined
     const title = (shot.title || '').trim()
     inLandingTxn(() => useGenerationCanvasStore.getState().updateNode(nodeId, {
       ...(typeof shot.prompt === 'string' ? { prompt: shot.prompt } : {}),
@@ -289,8 +252,9 @@ export async function materializeShots(payload: MaterializeShotsPayload): Promis
           // （`cand-op-…`），印成节点标题用户读不懂，也不是他起的名字。
           title: (shot.title || '').trim() || i18n.t('generationCommon.production.canvasLanding.shotFallbackTitle', { shot: ordered.indexOf(shot) + 1 }),
           prompt: typeof shot.prompt === 'string' ? shot.prompt : '',
-          // 候选的模型身份：节点模型以它为准（写边界 buildPlannedNodeMeta 负责校验+补全档案参数）。
-          ...candidateNodeArgs(shot.candidate),
+          // 候选的模型身份与选择：节点模型以它为准（写边界 buildPlannedNodeMeta 负责校验 + 补全档案参数）；
+          // 入参只从 plannedInputFromCandidate 来——与重绑定同一个投影。
+          ...(plannedInputFromCandidate(shot.candidate) ?? {}),
           // categoryId 由 groupCategoryId 统一定（create_canvas_nodes 忽略 per-node categoryId，按 groupCategoryId/kind 定）。
           ...(shot.role === 'anchor' ? { referenceSheet: true as const } : {}),
           // 幂等章 + 批次占位标记（三态占位组件据 productionRunId 找到对应 Run 的 job 派生态）+ 候选来源戳。

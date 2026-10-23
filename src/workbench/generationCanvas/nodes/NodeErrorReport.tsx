@@ -23,6 +23,7 @@ import { revealNotificationTarget } from '../../../ui/notificationPolicy'
 import { useSameCapabilityAlternative } from './useSameCapabilityAlternative'
 import { productionMetaOf } from '../model/productionMeta'
 import { withProjectAction } from '../../project/projectCanvasReadSurface'
+import { reopenRecoverableNode } from '../runner/recoverTaskActions'
 
 const ACTION_ICON: Record<GenerationErrorAction, typeof IconRefresh> = {
   retry: IconRefresh,
@@ -33,6 +34,7 @@ const ACTION_ICON: Record<GenerationErrorAction, typeof IconRefresh> = {
   // 「查看任务」去的是任务中心：和任务中心按钮同一个动作，用同一个图标。
   reconcile: IconListCheck,
   'view-task': IconListDetails,
+  'open-recoverable': IconRefresh,
   'release-regenerate': IconRefresh,
 }
 
@@ -55,9 +57,12 @@ export function NodeErrorReport({
   onDismiss,
   meta,
   nodeId,
+  taskId,
   summaryVisible = true,
 }: {
   message: string
+  /** 这次运行在服务商那边的任务号（节点 runs[0].taskId）。画布任务有它，「已提交、没取回」那一类才能回到可找回面板。 */
+  taskId?: string
   /** False when the owning node already displays this same failure summary inline. */
   summaryVisible?: boolean
   onRetry?: () => void
@@ -166,6 +171,13 @@ export function NodeErrorReport({
     })
   }, [releaseBusy, releaseRunId])
 
+  // 画布任务（不是制作 Run）且节点记着这次的 taskId：才回得到可找回面板。
+  const canvasRetrievable = Boolean(nodeId && taskId?.trim() && !productionMetaOf({ meta })?.runId)
+  const handleOpenRecoverable = React.useCallback((event: React.MouseEvent) => {
+    event.stopPropagation()
+    if (nodeId) reopenRecoverableNode(nodeId)
+  }, [nodeId])
+
   const handleReconcile = React.useCallback((event: React.MouseEvent) => {
     event.stopPropagation()
     const runId = productionMetaOf({ meta })?.runId
@@ -224,11 +236,15 @@ export function NodeErrorReport({
     'fix-model-kind': kindFixTarget ? handleFixModelKind : undefined,
     reconcile: handleReconcile,
     'view-task': handleReconcile,
+    'open-recoverable': canvasRetrievable ? handleOpenRecoverable : undefined,
     // 只有制作里的镜（有 runId）才放得了行；放行是把 Run 里那次未知尝试记掉，没有 Run 就没东西可记。
     'release-regenerate': releaseRunId ? (event: React.MouseEvent) => { event.stopPropagation(); setConfirmingRelease(true) } : undefined,
   }
   // 主动作点不了（例：同能力里没有另一个）时退到次动作，再不行才去模型接入。
-  const primaryAction = actionHandlers[report.primary] ? report.primary : report.secondary && actionHandlers[report.secondary] ? report.secondary : 'open-model-access'
+  // 「已提交、没取回」那一类的去处按任务来源分：制作 Run 去「查看制作任务」（任务中心里那一笔）；画布任务回到可找回面板
+  // 「去重新取回」——画布任务上写「查看制作任务」会误导（那是 Agent 制作任务的说法），而任务中心也不是重新取回的地方。
+  const sourcePrimary: GenerationErrorAction = report.primary === 'view-task' && canvasRetrievable ? 'open-recoverable' : report.primary
+  const primaryAction = actionHandlers[sourcePrimary] ? sourcePrimary : report.secondary && actionHandlers[report.secondary] ? report.secondary : 'open-model-access'
   const secondaryAction = report.secondary && report.secondary !== primaryAction && actionHandlers[report.secondary] ? report.secondary : null
   // 「改成图片」要点出改成**哪个**类型，否则按钮只是「改类型」——用户还得自己再想一步。
   const actionLabelParams: Record<string, string> | undefined = kindFixTarget ? { kind: narrateModelKind(kindFixTarget.requested) } : sameCapability ? { model: sameCapability.option.label } : undefined
