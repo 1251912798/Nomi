@@ -1,9 +1,9 @@
-# 独立验收报告（L-acc-opus-20261023）：通过 · 验收 HEAD 550ba434e
+# 独立验收报告（L-acc-opus-20261023）：通过 · 验收 HEAD d7888639a
 验收线：L-acc-opus-20261023
 
-> 本文件记了三轮：第一轮（59c836ee8，L-acc-sonnet-20261023，有条件通过）→ 复核（d20a4a1e1，L-acc-sonnet-20261023，通过）→ 最终验收（550ba434e，本线 L-acc-opus-20261023，见文末「最终验收」一节）。前两轮原文保留在下面，只把版本号的写法改成「第一轮（…）」「复核（…）」，标题降了一级。
+> 本文件记了四轮：第一轮（59c836ee8，L-acc-sonnet-20261023，有条件通过）→ 复核（d20a4a1e1，L-acc-sonnet-20261023，通过）→ 最终验收（550ba434e，本线 L-acc-opus-20261023，通过）→ 增量复验（d7888639a，本线，见文末「增量复验」一节）。前几轮原文保留在下面，版本号统一写成「第一轮（…）」「复核（…）」「最终验收（…）」。
 >
-> 最终结论：通过，没有阻断项。1 条应修不挡合并（AnchoredPopover 的 `closedByOutsidePressRef` 不复位：点外面被调用方拒绝后再按 Esc 关，不还焦点，与合同写的「按 Esc 关闭照旧还焦点」不一致，可跟进 PR 修）；另有 5 条建议、1 条存疑（平移画布也会收抽屉，需用户定）、1 条本 PR 之外的顺带发现（Mod+J 不聚焦 Agent 输入框，main 上同样存在）。
+> 当前结论（d7888639a）：通过，没有阻断项。上一轮的应修 1（`closedByOutsidePressRef` 不复位）已修好，五种关法的真 Chromium 测试和本线测试页都确认了；建议 2、3、4、6 已做；建议 5（PR 正文）由协调随本结论一起改。存疑 7 实现线按默认定了「按下即算」，理由的结论站得住，但其中「xyflow 的 paneClickDistance 是 0」这条事实不对（装的版本默认是 1px），文字要改，不挡合并。
 
 ## 第一轮（59c836ee8）· L-acc-sonnet-20261023：点外面就收 + 富文本格式按钮
 
@@ -129,7 +129,9 @@ c. owner 的测试不再钉 `removeEventListener('pointerdown', fn, true)`（上
 
 整 App 里没点过的只剩：NomiBrowserDialog、素材筛选菜单、帧菜单、TimelinePreview 文字菜单、EditingLayoutMenu 这五处迁移点（只靠读码和同机制的测试页）；选区浮条的滚出隐藏只在测试页里点过，没在整 App 里点。
 
-## 最终验收（L-acc-opus-20261023，HEAD 550ba434e）
+## 最终验收（550ba434e）· L-acc-opus-20261023
+
+> 这一节是 550ba434e 那一轮的原文。其中的应修 / 建议 / 存疑在文末「增量复验（d7888639a）」逐条核过；PR 正文现在要写的验收 HEAD 是 d7888639a，不是下文里的 550ba434e。
 
 - 验收线：L-acc-opus-20261023（Opus 子代理，只读复核）。实现线是会话「PR审查与项目定位策略」，前两轮是 L-acc-sonnet-20261023，三条线互不相同。日期 2026-10-23。
 - 范围：`git diff d20a4a1e1..550ba434e` 的六个提交（62932ad80、0f550988c、13f5ffbfb、71e648c85、1f934d337、550ba434e）。这一段里 src 只改了 `src/design/AnchoredPopover.tsx`（+9 / −1：因点外面关闭的不还焦点）和 `src/design/outsidePress.structure.test.ts`，其余是走查、拍板图、证据、合同与登记。前两轮核过的部分没有重做。
@@ -212,3 +214,106 @@ c. owner 的测试不再钉 `removeEventListener('pointerdown', fn, true)`（上
 
 - 扫描脚本、测试页（打包真源码）和各次日志都在 `/private/tmp/claude-501/-Users-aoqimin-Desktop-Nomi--claude-worktrees-pr-review-project-positioning-4eebec/60c58d99-0149-4b6c-baf1-e1e5354fc810/scratchpad/opus-acc/`，没进仓库。
 - 对 `tests/ux/canvas-shortcuts.walk.mjs`、`tests/ux/shell-redesign.walk.mjs`、`src/design/outsidePress.ts` 的临时改动都当场恢复了，hash 与 HEAD 的 blob 一致。改 src 的那一次，恢复后 `sourceIdentity` 回到 `f6fab69f…`，之后的走查不受影响。走查截图写在已被忽略的 `tests/ux/shots/` 下。`git status --short` 只多出本报告这一个文件。
+
+## 增量复验（d7888639a）
+
+- 验收线：L-acc-opus-20261023（同一条线）。日期 2026-10-23。
+- 范围：`git diff 550ba434e..d7888639a`，三个提交：a69ae08df（只提交了上一轮报告）、f736d9ac9（应修 1、建议 2）、d7888639a（建议 3、4、6，以及存疑 7 写进拍板图与方向检查）。src 只改了四个文件：`src/design/AnchoredPopover.tsx`（标记三处复位）、`NodeEffectChips.tsx` 和 `CanvasControlsHelpPopover.tsx`（删掉关闭时自己调的 `focus()`）、`src/design/outsidePress.structure.test.ts`（新普查）；另新增真 Chromium 测试 `tests/ux/anchored-popover-focus.test.mjs` 及其测试页。
+- 结论：**通过**，没有阻断项。应修 1 修好了，测试两个方向都钉住，反例证明会红。删掉两处 `focus()` 后，在整 App 里焦点都落在合理的位置。建议 3、4、6 已做，建议 5 待协调改 PR 正文。存疑 7 的理由结论站得住，但有一条事实写错了（见第五节），只是文字问题，不挡合并。
+- 构建：`dist/`、`dist-electron/build-stamp.json` 的 tree 都是 `13c7bdb7…`（22:10 写入），和现算的 `sourceIdentity` 一致；启动器没拒跑，我没 build。
+- CI（d7888639a，写报告时）：Unit ×3、E2E Walkthroughs (1)(2)(4)、Canvas Acceptance ×2（含 C19 新断言）、Core Flow Smoke ×2、Design Lab 已绿；Contracts、Canvas Performance、E2E (3) 还在跑。PR 正文「## 独立验收」要改成本报告第一行、`验收 HEAD：d7888639a`、`验收线：L-acc-opus-20261023`，否则 Contracts 里的 `check:pr-judgement` 还会红。
+
+### 一、检查项 → 结果 → 证据
+
+| 检查项 | 结果 | 证据 |
+|---|---|---|
+| HEAD / 工作树 | d7888639a，干净 | `git rev-parse --short HEAD`；开始时 `git status --short` 为空 |
+| `npx vitest run tests/ux/anchored-popover-focus.test.mjs src/design/outsidePress.structure.test.ts src/workbench/common/richTextActions.structure.test.ts tests/ux/storyboard-popover-keyboard.test.mjs` | 22/22 | `Test Files 4 passed (4)`、`Tests 22 passed (22)`；新测试五种关法：点画布空白关、Esc 关、被拒关后按 Esc、被拒关后在浮层里点一项、被拒关后键盘选一项，全 ✓ |
+| 反例：换回 550ba434e 的 `AnchoredPopover.tsx` 跑新测试 | 后三条红 | `3 failed \| 2 passed`（三条「被拒关后」）。三条各对应一个复位点：Esc 的 `dismissOnEscape`、点一项的根 `onPointerDown`、键盘选一项的根 `onKeyDown`；已恢复，hash 4ea99517 = HEAD |
+| 反例：换回 d20a4a1e1 的 `AnchoredPopover.tsx` 跑新测试 | 第一条红 | 「点画布空白关」失败：触发钮上挂着提示（`locator resolved to 1 element`），其余 4 条过。可见这份测试两个方向都钉住了：既不许点外面后还焦点，也不许标记卡住。已恢复 |
+| 反例：换回 550ba434e 的 `NodeEffectChips.tsx`、`CanvasControlsHelpPopover.tsx` 跑结构测试 | 红，两处都认出 | `渲染 AnchoredPopover 的文件不自己把焦点塞回锚点` 失败，列出 `CanvasControlsHelpPopover.tsx anchorRef.current?.querySelector('button')?.focus(` 和 `NodeEffectChips.tsx anchorRef.current?.focus(`；已恢复，`sourceIdentity` 回到 `13c7bdb7…` |
+| 新普查的盲区现状 | 目前没有漏网的 | 合同已写明，这条普查认不出经包装组件或 props 透传的锚点。实查：渲染 `<AnchoredPopover` 的 13 个文件，加上经 `AssetPickerPopover` / `ToolbarActionPanel` 包一层的 14 个调用方文件，`rg "\.focus\("` 只命中 `StoryboardShotRow.tsx` 里两处编辑器 focus 和 `:533` 行内 Enter 的 `box?.focus()`，都不是关闭时把焦点塞回锚点 |
+| 测试页复跑（上一轮那版：真 `AnchoredPopover` + 真 React Flow 空白处 + 设计系统 Tooltip，`onClose` 照 `closePicker` 忙时拒关） | 修好了 | 见第二节 |
+| 走查：`node tests/ux/outside-press-and-text-format.walk.mjs --shot`，以及 `--locale en`、`--scheme dark` | 三轨各 12/12 | 22:21 三轨都是 `RESULT 12/12 passed`。临时加一行日志读新断言的实测值：`zoom=3.000 bar.height=42 bar.y=48 stage.y=40`（已恢复，hash = HEAD） |
+| `node tests/ux/canvas-shortcuts.walk.mjs` | 17 项全过 | `✅ 画布快捷键走查通过：17 项`，包括新加的「C19 点画布空白后目录抽屉该已收起」 |
+| 截图亲眼读（22:21–22:22 这一轮产出） | 与断言一致 | `dismiss-after-zh-CN.png`：「⋯」浮层已收，「⋯」上没挂提示。`canvas-text-node-zh-CN-dark.png`：暗色格式条高约 42px，在顶栏下面，悬停「斜体」出提示，列表有圆点。`creation-toolbar-en.png`：悬停出「Inline code」提示，选区浮条在选区下方。`canvas-shortcuts/02-c19-group-restored.png`：重开的目录抽屉里「C19 restore whole group」和 C19 one / two 两个成员都在，画布上组框和两张图都回来了 |
+| 相关单测 | 过 | `npx vitest run src/design src/workbench/generationCanvas/components src/workbench/generationCanvas/nodes`：251 个文件 / 2078 条 |
+| tsc、eslint | 过 | `tsc -p tsconfig.app.json --noEmit` 无输出；8 个改动文件 0 error（4 条 warning 都是「tests/ux 下的文件被忽略」提示） |
+| board-parity、escape-ledger、root-cause-contracts、self-written、concept-owners | 过 | 输出同上一轮；自写登记「新增代码文件 4 个（0 个未认领）」 |
+| 方向检查增补里的历史说法 | 属实 | 两处 `focus()` 分别来自 b48bbb3e3（2026-08-07）和 eabe66ef7（2026-09-20），FocusScope 接管还焦点是 565a78a90（2026-10-05），确实是早于它的旧实现 |
+
+### 二、测试页复跑：复位时机有没有新漏洞
+
+| 场景 | HEAD（d7888639a） | 550ba434e | d20a4a1e1 |
+|---|---|---|---|
+| 拒一次点外面 → Esc | 回触发钮 | BODY | 回触发钮 |
+| 拒一次点外面 → 在浮层里点一项 | 回触发钮 | BODY | 回触发钮 |
+| 拒一次点外面 → 在浮层输入框里打字 → Esc | 回触发钮 | BODY | 回触发钮 |
+| 拒一次点外面 → 在浮层 portal 出去的下拉（`role=listbox`，`aria-controls` 指回浮层）里点一项 → 调用方程序关 | 回触发钮 | BODY | 回触发钮 |
+| 点浮层 portal 出去、但不算「上层弹层」的子元素（调用方接受关闭） | BODY，0 个提示 | BODY | 回触发钮，挂着提示 |
+| 同上，但调用方拒关 → Esc | 回触发钮 | BODY | 回触发钮 |
+| 拒一次点外面 → 调用方程序关（如上传结束自动收起） | BODY | BODY | 回触发钮 |
+| 先在浮层里按一下 → 再点画布空白 | BODY，0 个提示 | — | — |
+| 点画布空白 / 点 mousedown 里 `preventDefault` 的按钮 | BODY，0 个提示 | — | — |
+| 直接 Esc | 回触发钮 | — | — |
+
+回答协调问的两点：
+
+- **portal 下拉的按下会不会经 React 合成事件冒到浮层根、把标记复位？会。** 第四行就是证据：只有走了这条冒泡，程序关时焦点才会回来。这正是想要的语义。标记只在浮层还开着时有意义；用户在浮层自己弹出的下拉里点了东西，最近一下就是「回到浮层里」，之后关闭理应还焦点。
+- **同一次按下里会不会「先置真、又被合成事件复位」，把挂提示的毛病带回来？不会。** 点外面的监听挂在 document 的捕获阶段。调用方收起浮层的更新是离散优先级，React 19（package.json `^19.3.0`）在这个监听返回后的微任务里就提交卸载。浮层连同它 portal 出去的子元素都卸掉了，React 根上分发合成事件时找不到它们，复位不会发生（第五行：BODY、0 个提示）。只有调用方拒关、浮层还在时，合成事件才会复位（第六行），而那时用户点的确实是浮层自己的东西。
+- **「先在浮层里按下、再点外面」的顺序对。** 里面那一下先复位，外面那一下再置真，浮层关掉、焦点不回（倒数第三行）。
+- 「拒关后由调用方程序关，不还焦点」是合同 `residual_risks` 里写明的有意行为（用户最后一下点的是别处），和实现一致。
+
+### 三、删掉两处 `focus()` 之后焦点去哪（真 Electron）
+
+用临时脚本起真 Electron：生产构建、屏外窗口、隔离资料目录，开 `NOMI_TEST_NETWORK_GUARD=1` 不出网，零花费。种了一个只有一张图片节点的项目。
+
+| 场景 | 焦点 | 提示 |
+|---|---|---|
+| 「⋯」里「画布操作」整行：开帮助 → Esc | 回到「画布操作」那一行，「⋯」仍开着 | 「画布操作」 |
+| 同上，再点那一行收起帮助 | 那一行 | 无 |
+| 帮助开着时点画布空白 | BODY；「⋯」和帮助都收了，「⋯」钮也没焦点 | 无 |
+| 图片节点「提示词预设」：搜「三视图」，选「人物三视图」 | 落在生成框的提示词编辑器里（插入的文字在里面），不在触发钮上 | 无 |
+| 选完再点触发钮 | 重新打开，焦点进搜索框 | 无 |
+| 打开后按 Esc | 回到触发钮 | 「提示词预设」 |
+| 打开后再点触发钮收起 | 触发钮 | 无 |
+| 打开后点画布空白 | BODY（节点取消选中，生成框连同触发钮一起卸掉） | 无 |
+
+- 选一项这一路比修前更好。选中时 `applyPromptPickerItem` 先把焦点放进提示词编辑器（`NodeGenerationComposer.tsx:259-267` 的 `focus('end')`）；修前 `close()` 紧接着把焦点抢回触发钮，触发钮的提示随之弹出，用户得再点回编辑器才能接着写。现在 FocusScope 看到焦点已经在编辑器里，就不动它了。
+- 按 Esc 关闭后焦点回到触发钮、提示随焦点出来，修前就是这样；对键盘用户这是对的，不算新问题。
+
+### 四、逐条核上一轮的应修 / 建议 / 存疑
+
+| 上一轮 | 处理 | 核验结果 |
+|---|---|---|
+| 应修 1：`closedByOutsidePressRef` 不复位 | 已修（f736d9ac9） | 三处复位（`dismissOnEscape`、浮层根 `onPointerDown`、浮层根 `onKeyDown`）；新测试 5/5，换回旧版各自会红；测试页「拒关后 Esc / 点一项 / 打字后 Esc」都回触发钮；合同 invariant 改成「按 Esc / 选一项关闭照旧还焦点；只记最近一下」，与实测一致 |
+| 建议 2：两处调用方自己 `focus()` | 已删，并加了普查 | 普查对旧文件会红；整 App 里焦点都落在合理位置（第三节） |
+| 建议 3：格式条恒定屏幕尺寸没断言 | 已加 | 先断言 zoom ≥ 2，再断言高 < 60px；实测 zoom 3.000、高 42px |
+| 建议 4：C19 前提没钉住 | 已加 | 重开前 `toBeHidden`；canvas-shortcuts 17 项全过 |
+| 建议 5：PR 正文过时 | 待协调随结论改 | 现在核不了；要改的有：系统改进的「基线 3 处」→ 4 处、没做的补 CategoryTree 冒泡 click、独立验收换成本报告首行和 `验收 HEAD：d7888639a`、先查别人里 Radix 补「非模态时」 |
+| 建议 6：Radix「非模态时」限定 | 拍板图已补 | `TextFormatDismiss.board.json` 的 priorArt 写明非模态（或右键）才不还焦点、默认模态照样还；PR 正文那一处随建议 5 一起改 |
+| 存疑 7：平移画布也会收 | 按默认定了「按下即算」，事后报用户 | 拍板元素 `dismiss.outside-press` 的说明、方向检查增补、合同 invariant 都写了；理由核验见第五节 1 |
+| 顺带发现 8：Mod+J 不聚焦 Agent 输入框 | 已提成独立任务卡 | 不在本 PR |
+
+### 五、新发现
+
+1. **建议（文档事实，不挡合并）**：存疑 7 的理由里有一条事实不对。方向检查增补和协调消息里写「xyflow 在 selectionOnDrag=false 时用的 paneClickDistance 也是 0」，合同 invariant 写「手抖 1px 的按下被 d3-zoom 当拖动吞掉 click」。实际是：
+   - 本仓库装的 `@xyflow/react` 12.11.5 里，`ReactFlow` 的默认值是 `paneClickDistance = 1`（`dist/esm/index.mjs:3745`），Nomi 没有覆盖（`rg paneClickDistance src` 为空）。
+   - `@xyflow/system` 0.0.81 把它原样交给 d3-zoom：`clickDistance(selectionOnDrag ? Infinity : paneClickDistance)`（`dist/esm/index.mjs:3002`）。
+   - d3-zoom 判定拖动的条件是「位移平方 > clickDistance²」（`d3-zoom/src/zoom.js:289`）。一旦算作拖动，就在 window 捕获阶段吞掉随后那次 click（`d3-drag/src/nodrag.js:15-21`）。
+
+   我在真 React Flow 空白处实测了 document 捕获阶段收到的 click：不动 1 次，横移 1px 1 次；斜移 1px（√2）、横移 2px / 5px / 40px 都是 0 次。pointerdown 每次都收到。所以结论仍成立：改成 click 判定后，手抖超过 1px 的点击会被吞掉，「点了没反应」会回来。要改的只是两处措辞：方向检查增补里的「clickDistance 是 0」「手抖 1px 就算拖动」，和合同 invariant 里的「手抖 1px」，都改成「xyflow 默认 1px：横移 1px 仍算点击，超过就被吞」。还可以补上没选的那条路：把 `paneClickDistance` 调大（比如 4px），再改用 click 判定，这样平移不收、轻微抖动照样收。代价是画布空白处的 onPaneClick / 取消选中也改按 4px 判，而且要改「只有一种听法」。这仍然是交给用户的产品取舍，本线不替用户拍板。
+
+除此之外，复位时机和删掉 `focus()` 这两处都没发现新问题。
+
+### 六、没能验证的
+
+- `tests/ux/node-prompt-presets.walk.mjs`（只在夜间跑，覆盖效果预设的完整旅程）没跑：它的公共提示词和配图要连外部源，这条线不出网。焦点相关的关键路径，已用上面的真 Electron 脚本在测试网闸开着的情况下点过。
+- ClipNode「上传中拒关」的整 App 路径仍没真走一遍（要造一次进行中、随后失败的上传）。这条路径由新的真 Chromium 测试和测试页覆盖：同一个 `AnchoredPopover`，同样的拒关写法。
+- CI 里还在跑的几项（见本节开头）。
+- Windows、窄窗口：同前。
+
+### 七、临时文件与工作树
+
+- 本轮新增的临时文件都在 `/private/tmp/claude-501/-Users-aoqimin-Desktop-Nomi--claude-worktrees-pr-review-project-positioning-4eebec/60c58d99-0149-4b6c-baf1-e1e5354fc810/scratchpad/opus-acc/` 下：测试页的 `harness/run4.mjs`、`harness/run5.mjs`、`harness/MidAnchoredPopover.tsx`（550ba434e 版），以及真 Electron 脚本 `app-focus.mjs`。没进仓库。
+- 临时改动都当场恢复了，hash 与 HEAD 的 blob 一致：`src/design/AnchoredPopover.tsx`（两次换回旧版跑反例）、`NodeEffectChips.tsx` 和 `CanvasControlsHelpPopover.tsx`（换回旧版跑普查反例）、`tests/ux/outside-press-and-text-format.walk.mjs`（加一行日志读实测值）。每次改 src 后都确认 `sourceIdentity` 回到了 `13c7bdb7…`，所有走查和真 Electron 脚本都在恢复之后跑。`git status --short` 只有本报告这一个文件。
