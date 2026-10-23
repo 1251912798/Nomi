@@ -17,7 +17,10 @@ function runBash(body) {
 
 test('超时会结束这一次起的整个进程组（孙进程也不留下）', () => {
   const marker = `nomi-ci-group-${process.pid}`
-  const result = runBash(`set +e; run_group_with_timeout 2 bash -c 'sleep 30 & sleep 30 & wait' ${marker}; echo "rc=$?"; sleep 1; ps -eo comm=,args= | awk '$1 == "sleep" && $2 == "sleep" && $3 == "30"' | wc -l`)
+  // 只数这一次起的 sleep：秒数按本进程取一个别人不会用的数。按「sleep 30」数的是整台机器，
+  // 别的任务正好用 sleep 30 轮询时就误报残留（2026-10-24 多条线共用一台 Mac，所有人的 gates 都红在这里）。
+  const seconds = 3000 + (process.pid % 997)
+  const result = runBash(`set +e; run_group_with_timeout 2 bash -c 'sleep ${seconds} & sleep ${seconds} & wait' ${marker}; echo "rc=$?"; sleep 1; ps -eo comm=,args= | awk '$1 == "sleep" && $2 == "sleep" && $3 == "${seconds}"' | wc -l`)
   assert.match(result.stdout, /rc=124/)
   const leftover = Number(result.stdout.trim().split('\n').pop())
   assert.equal(leftover, 0, `超时后还剩 ${leftover} 个子孙进程：${result.stdout}${result.stderr}`)
