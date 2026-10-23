@@ -88,7 +88,7 @@
 - Windows：确认框截图（中 / 英）已亲眼看过（`delete-confirm-zh-CN.png` / `delete-confirm-en.png`）。Windows 回收站里真删、真还原：**unverified**。
 - **macOS（Mac 真机，2026-10-23，已验）**：`docs/evidence/2026-10-23-project-delete-to-trash/walk/real-trash-roundtrip.mjs` 用真 App、真界面点击，走完「进废纸篓 → 还原 → 下次启动回项目库」，加一条「进不了废纸篓」：
   - 项目放在脚本自己建的一次性磁盘映像卷里（`<卷>/.Trashes/<uid>` 是系统真的废纸篓，同一个 `NSFileManager trashItemAtURL`）。原因：`~/.Trash` 命令行进程读不了（Operation not permitted），在那里看不到、还原不了、也清不掉，会往用户真废纸篓里留垃圾；映像卷用完卸载删掉，用户真实的废纸篓一个字节没碰；
-  - 结果：25 条断言全过（`mac-roundtrip-result.jsonl`），截图 5 张逐张亲眼看过（`mac-confirm-zh-CN.png` / `mac-confirm-en.png` / `mac-trash-refused-zh-CN.png` / `mac-after-delete-zh-CN.png` / `mac-after-relaunch-zh-CN.png`）；
+  - 结果：25 行结果全过（23 条断言 + 2 行确认框原文记录，`mac-roundtrip-result.jsonl`），截图 5 张逐张亲眼看过（`mac-confirm-zh-CN.png` / `mac-confirm-en.png` / `mac-trash-refused-zh-CN.png` / `mac-after-delete-zh-CN.png` / `mac-after-relaunch-zh-CN.png`）；
   - 还原用「把文件夹搬回原位」代替 Finder 的「放回原处」（两者效果相同；系统写的 `ptbL` / `ptbN` 放回原处信息已确认在）。**系统卷的 `~/.Trash` 本身没验**（读不了，且不往用户废纸篓留垃圾）；
   - 这一轮还发现并修了一处缺口：macOS 报错原文随系统语言变，原分类认不出（见 ★6）。
 - Linux：unverified（桌面回收站）。
@@ -117,7 +117,7 @@
 | ⑫ | 平台差异 | 见方向检查 §2 |
 | ⑬ | 系统报错原文随平台 / 系统语言变，还带着用户起的文件夹名 | 真机采样的原文（macOS 中 / 英 × 没有废纸篓 / 没权限、Windows 放弃操作）分对类；名字叫 permission / locked 不带偏；其它语言认不出就是 unknown、什么都不删；变异「去掉 macOS 样本」「不剔文件夹名」都红 |
 | ⑭ | 走查 / 脚本收尾往用户真回收站塞测试垃圾 | 走查不许调产品删除（桥、IPC 通道、界面点确认；素材删除口同样先关上）、不许直接 `shell.trashItem`；唯一例外是自带一次性磁盘映像的真机脚本，收尾断言映像废纸篓是空的；守卫测试给每个口各一个反例（`tests/system/walks-never-trash-projects.test.mjs`） |
-| ⑮ | Mac 真机闭环 | 进废纸篓 → 还原 → 下次启动回库，加「进不了」一条，`real-trash-roundtrip.mjs` 25 条断言全过 |
+| ⑮ | Mac 真机闭环 | 进废纸篓 → 还原 → 下次启动回库，加「进不了」一条，`real-trash-roundtrip.mjs` 23 条断言全过（另有 2 行确认框原文记录） |
 
 **回滚**：revert 本 PR 的 fix 提交。
 
