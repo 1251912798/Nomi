@@ -12,7 +12,7 @@
   "fullWalkJourneys": [],
   "status": "fixed",
   "manualReview": "reviewed",
-  "fixedInPr": 9999,
+  "fixedInPr": 1302,
   "evidence": [
     "electron/promptLibrary/userPromptStore.test.ts：删除→恢复保留 id、tags、referenceImages、futureField；无撤销时记录移除且引用文件不被误删",
     "src/workbench/api/promptLibraryApi.test.ts：renderer 映射保留完整快照并经 IPC restoreSnapshot 回传",
