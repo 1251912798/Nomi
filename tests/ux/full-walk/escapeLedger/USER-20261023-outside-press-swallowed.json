@@ -8,17 +8,21 @@
   "ironLaws": [],
   "useCases": [],
   "fullWalkJourneys": [],
-  "status": "reviewed",
+  "status": "fixed",
   "manualReview": "reviewed",
   "evidence": [
     "docs/fixes/2026-10-23-outside-press-capture.root-cause.json",
     "src/design/outsidePress.ts",
     "src/design/outsidePress.structure.test.ts"
   ],
-  "completionCommits": [],
+  "completionCommits": [
+    "6ef8c3e6b",
+    "62932ad80"
+  ],
   "rootCauseContract": "docs/fixes/2026-10-23-outside-press-capture.root-cause.json",
   "classCheck": {
     "kind": "matrix",
     "file": "src/design/outsidePress.structure.test.ts"
-  }
+  },
+  "fixedInPr": 1299
 }

@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest'
 //   ② 不许用 Mantine 的 useClickOutside（它听的就是 document 冒泡的 mousedown + touchstart）；
 //   ③ document / window 上冒泡阶段的 pointerdown / click 只许减不许增：下面四处没有「点在自己身上」的判据，
 //      靠菜单自己 stopPropagation 撑着不被关，换成捕获会让菜单项点不动，要先补判据才能迁。
+// 这是普查：遍历 src 全部非测试源码，对每一处按下监听判一次；存量例外只认下面登记的清单（BUBBLE_PRESS_BASELINE）。
 // 识别不看处理器怎么写（具名 / 内联箭头 / function），收件方认 document、window、ownerDocument，Mantine 的 useWindowEvent 同样算
 // （独立验收 L-acc-sonnet-20261023 发现 3：只认具名处理器时，这几种写法都能溜过去）。
 const stripComments = (source: string): string => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')

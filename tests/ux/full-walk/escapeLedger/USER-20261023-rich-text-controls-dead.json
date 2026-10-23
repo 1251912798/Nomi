@@ -8,7 +8,7 @@
   "ironLaws": [],
   "useCases": [],
   "fullWalkJourneys": [],
-  "status": "reviewed",
+  "status": "fixed",
   "manualReview": "reviewed",
   "evidence": [
     "docs/fixes/2026-10-23-rich-text-controls-single-source.root-cause.json",
@@ -16,10 +16,14 @@
     "src/workbench/common/richTextActions.structure.test.ts",
     "tests/ux/outside-press-and-text-format.walk.mjs"
   ],
-  "completionCommits": [],
+  "completionCommits": [
+    "59c836ee8",
+    "62932ad80"
+  ],
   "rootCauseContract": "docs/fixes/2026-10-23-rich-text-controls-single-source.root-cause.json",
   "classCheck": {
     "kind": "matrix",
     "file": "src/workbench/common/richTextActions.structure.test.ts"
-  }
+  },
+  "fixedInPr": 1299
 }
