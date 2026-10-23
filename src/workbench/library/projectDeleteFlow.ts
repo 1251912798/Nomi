@@ -27,9 +27,7 @@ export type ProjectDeleteFlowDeps = {
   onFailed: (projectId: string, error: unknown, trashBin: string) => void
 }
 
-export type ProjectDeleteOutcome = 'cancelled' | 'unbound' | 'moved-to-trash' | 'failed'
-
-export async function runProjectDeleteFlow(project: ProjectDeleteTarget, deps: ProjectDeleteFlowDeps): Promise<ProjectDeleteOutcome> {
+export async function runProjectDeleteFlow(project: ProjectDeleteTarget, deps: ProjectDeleteFlowDeps): Promise<void> {
   const { t } = deps
   const choice = projectDeleteChoice(project)
   const bin = t(trashBinKey(deps.platform))
@@ -39,21 +37,16 @@ export async function runProjectDeleteFlow(project: ProjectDeleteTarget, deps: P
     confirmLabel: t(choice.confirmLabelKey),
     danger: true,
   })
-  if (!confirmed) return 'cancelled'
+  if (!confirmed) return
   const wasActive = deps.isActive(project.id)
   try {
     // 删的是正打开的项目：先拿到主进程的释放回执，旧的画布读路由不能活得比项目久。
     if (wasActive) await deps.releaseActive()
     // 主进程只照用户在这个确认框里确认的那一种执行：说了「只移除」就绝不删文件（V-plibrary2）。
     await deps.deleteLocalProject(project.id, choice.intent)
-    if (choice.intent === 'delete-files') {
-      deps.onMovedToTrash(t('studio.projectMovedToTrash', { name: project.name, bin }))
-      return 'moved-to-trash'
-    }
-    return 'unbound'
+    if (choice.intent === 'delete-files') deps.onMovedToTrash(t('studio.projectMovedToTrash', { name: project.name, bin }))
   } catch (error: unknown) {
     deps.onFailed(project.id, error, bin)
-    return 'failed'
   } finally {
     if (wasActive) deps.leaveToLibrary()
   }

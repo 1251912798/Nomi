@@ -38,7 +38,7 @@ const local: ProjectDeleteTarget = { id: 'p-local', name: '本地', source: 'nat
 describe('项目库删除流程', () => {
   it.each([grayOutside, grayUnreadable])('灰卡（$unreadableReason）点删除：确认框说「从项目库移除」，交给主进程的是 unbind，不进回收站', async (project) => {
     const { deps, calls } = harness()
-    await expect(runProjectDeleteFlow(project, deps)).resolves.toBe('unbound')
+    await runProjectDeleteFlow(project, deps)
     expect(calls.confirm[0].title).toBe('«studio.removeProjectTitle»')
     expect(calls.confirm[0].message).toContain('studio.removeProjectMessage')
     expect(calls.deleted).toEqual([{ id: project.id, intent: 'unbind' }])
@@ -57,7 +57,7 @@ describe('项目库删除流程', () => {
     ['linux', 'studio.trashBinLinux'],
   ])('本地项目（%s）：确认框说移到这个平台的回收站，意图 delete-files，成功后提示「已移到回收站」', async (platform, binKey) => {
     const { deps, calls } = harness({ platform })
-    await expect(runProjectDeleteFlow(local, deps)).resolves.toBe('moved-to-trash')
+    await runProjectDeleteFlow(local, deps)
     const bin = `«${binKey}»`
     expect(calls.confirm[0].message).toBe(`«studio.deleteProjectMessage|${JSON.stringify({ name: '本地', bin })}»`)
     expect(calls.deleted).toEqual([{ id: 'p-local', intent: 'delete-files' }])
@@ -66,7 +66,7 @@ describe('项目库删除流程', () => {
 
   it('用户取消：什么都不做', async () => {
     const { deps, calls } = harness({ confirm: async () => false })
-    await expect(runProjectDeleteFlow(local, deps)).resolves.toBe('cancelled')
+    await runProjectDeleteFlow(local, deps)
     expect(calls.deleted).toEqual([])
     expect(calls.released).toBe(0)
   })
@@ -74,7 +74,7 @@ describe('项目库删除流程', () => {
   it('进不了回收站：交给失败处理（带上回收站叫法），不提示成功', async () => {
     const failure = new Error("Error invoking remote method 'nomi:projects:delete': Error: ProjectTrashFailedError[no-trash]: ...")
     const { deps, calls } = harness({ deleteLocalProject: async () => { throw failure } })
-    await expect(runProjectDeleteFlow(local, deps)).resolves.toBe('failed')
+    await runProjectDeleteFlow(local, deps)
     expect(calls.failed).toEqual([{ id: 'p-local', error: failure, trashBin: '«studio.trashBinWindows»' }])
     expect(calls.movedToTrash).toEqual([])
   })
