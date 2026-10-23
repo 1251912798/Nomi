@@ -1,4 +1,4 @@
-# 独立验收报告（L-acc-opus-20261023）：通过 · 验收 HEAD d7888639a
+# 独立验收报告（L-acc-opus-20261023）：通过 · 验收 HEAD 48d6b79a9
 验收线：L-acc-opus-20261023
 
 > 本文件记了四轮：第一轮（59c836ee8，L-acc-sonnet-20261023，有条件通过）→ 复核（d20a4a1e1，L-acc-sonnet-20261023，通过）→ 最终验收（550ba434e，本线 L-acc-opus-20261023，通过）→ 增量复验（d7888639a，本线，见文末「增量复验」一节）。前几轮原文保留在下面，版本号统一写成「第一轮（…）」「复核（…）」「最终验收（…）」。
@@ -216,6 +216,8 @@ c. owner 的测试不再钉 `removeEventListener('pointerdown', fn, true)`（上
 - 对 `tests/ux/canvas-shortcuts.walk.mjs`、`tests/ux/shell-redesign.walk.mjs`、`src/design/outsidePress.ts` 的临时改动都当场恢复了，hash 与 HEAD 的 blob 一致。改 src 的那一次，恢复后 `sourceIdentity` 回到 `f6fab69f…`，之后的走查不受影响。走查截图写在已被忽略的 `tests/ux/shots/` 下。`git status --short` 只多出本报告这一个文件。
 
 ## 增量复验（d7888639a）
+
+文字修正 48d6b79a9：只改措辞，已核
 
 - 验收线：L-acc-opus-20261023（同一条线）。日期 2026-10-23。
 - 范围：`git diff 550ba434e..d7888639a`，三个提交：a69ae08df（只提交了上一轮报告）、f736d9ac9（应修 1、建议 2）、d7888639a（建议 3、4、6，以及存疑 7 写进拍板图与方向检查）。src 只改了四个文件：`src/design/AnchoredPopover.tsx`（标记三处复位）、`NodeEffectChips.tsx` 和 `CanvasControlsHelpPopover.tsx`（删掉关闭时自己调的 `focus()`）、`src/design/outsidePress.structure.test.ts`（新普查）；另新增真 Chromium 测试 `tests/ux/anchored-popover-focus.test.mjs` 及其测试页。
