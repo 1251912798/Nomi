@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Δ3 D2 确认卡：改谁 / 新建什么</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+.light{--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink40:oklch(.68 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper))}
+.root{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;background-color:var(--nomi-bg);color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.root *{box-sizing:border-box}
+.lbl{font-size:12px;color:var(--nomi-ink60);margin:0 0 8px 2px}
+.lbl b{color:var(--nomi-ink);font-weight:600;margin-right:6px}
+.shot{display:block;border:1px solid var(--nomi-line);border-radius:12px}
+.sp{flex:1;min-width:0}
+.sc2{position:relative;width:300px;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);background:var(--nomi-paper);padding:12px;display:flex;flex-direction:column;gap:8px}
+.xtop{position:absolute;right:8px;top:8px}
+.xb{flex:none;width:28px;height:28px;border-radius:999px;display:grid;place-items:center;color:var(--nomi-ink40);border:0;background:transparent;padding:0}
+.rrow{display:flex;align-items:center;gap:8px;min-height:32px;padding-right:32px}
+.rt32{display:block;width:32px;height:32px;border-radius:6px;flex:none;box-shadow:0 0 0 1px var(--nomi-line)}
+.nm13{font-size:13px;font-weight:600;color:var(--nomi-ink);display:flex;align-items:baseline;gap:8px;min-width:0}
+.nm13 .idx{font-size:12px;font-weight:400;color:var(--nomi-ink60);font-variant-numeric:tabular-nums}
+.tgt{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;height:22px;padding:0 8px;border-radius:999px;background:var(--nomi-accent-soft);color:var(--nomi-ink);font-size:12px}
+.pr1{font-size:13px;line-height:20px;color:var(--nomi-ink60);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr1 mark{background:var(--nomi-accent-soft);color:var(--nomi-ink);border-radius:3px;padding:0 1px}
+.last{display:flex;align-items:center;gap:8px;min-height:32px;min-width:0}
+.par{font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.pri2{flex:none;height:32px;padding:0 14px;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);font:inherit;font-size:13px;font-weight:500}
+.mr{display:flex;align-items:center;gap:8px;min-height:36px;padding:0 0 0 8px;font-size:13px;color:var(--nomi-ink80)}
+.mr .idx{font-size:12px;color:var(--nomi-ink60);font-variant-numeric:tabular-nums}
+.mr .v{font-size:12px;color:var(--nomi-accent)}
+.mr .d{font-size:12px;color:var(--nomi-ink60)}
+.k{font-size:12px;color:var(--nomi-ink60);margin:0 0 6px 2px}
+</style>
+</helmet>
+<div class="root light" style="width:1480px;height:460px;padding:28px 32px;display:flex;gap:40px;align-items:flex-start">
+  <div>
+    <div class="lbl"><b>现在</b>0.24 D2 精简确认卡（已拍板）</div>
+    <img class="shot" src="/_blob/0a9661abdc0f5a6d6cdaf7764884a864" width="380" height="315" alt="0.24 D2 单段确认卡：参考图、01 纸船出发、一行提示词、参数和生成按钮">
+  </div>
+  <div>
+    <div class="lbl"><b>新增</b>参考图下多一行「改谁 / 新建什么」，提示词里标出改动的词</div>
+    <div style="display:flex;gap:20px;align-items:flex-start">
+      <div>
+        <div class="k">改一个</div>
+        <div class="sc2">
+          <span class="xtop"><button class="xb" type="button" aria-label="不生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+          <div class="rrow"><svg class="rt32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#2d4a48"/><rect x="13" y="9" width="7" height="17" rx="3" fill="#e3b33c"/></svg></div>
+          <div class="nm13"><span class="idx">03</span>走进光里</div>
+          <span class="tgt">改这一张 · 第 2 版 → 第 3 版</span>
+          <div class="pr1"><mark>雨夜</mark>的旧仓库门口，林夏<mark>撑伞</mark>走进<mark>霓虹</mark>光里，动作不变</div>
+          <div class="last"><span class="par">Seedream 4.0 · 16:9 · 2K</span><span class="sp"></span><button class="pri2" type="button">生成</button></div>
+        </div>
+      </div>
+      <div>
+        <div class="k">框选多个（D2 多段 · 每行带出哪一版）</div>
+        <div class="sc2" style="gap:2px">
+          <div class="mr"><span class="idx">03</span><span>走进光里</span><span class="v">第 3 版</span><span class="sp"></span><button class="xb" type="button" aria-label="去掉 03"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+          <div class="mr"><span class="idx">04</span><span>列车进站</span><span class="v">第 2 版</span><span class="sp"></span><button class="xb" type="button" aria-label="去掉 04"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+          <div class="mr"><span class="idx">05</span><span>站台回眸</span><span class="v">第 4 版</span><span class="sp"></span><button class="xb" type="button" aria-label="去掉 05"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+          <div style="display:flex;justify-content:flex-end;padding-top:8px"><button class="pri2" type="button">全部生成（3）</button></div>
+        </div>
+      </div>
+      <div>
+        <div class="k">用这些做新的</div>
+        <div class="sc2">
+          <span class="xtop"><button class="xb" type="button" aria-label="不生成"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+          <div class="rrow"><svg class="rt32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#ece3d6"/><circle cx="16" cy="11" r="5" fill="#e2c09e"/><rect x="12" y="16" width="8" height="16" rx="3" fill="#e3b33c"/></svg><svg class="rt32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#1f2c42"/><rect x="8" y="6" width="12" height="4" rx="1" fill="#e05a8a"/><rect y="22" width="32" height="10" fill="#141d2c"/></svg></div>
+          <div class="nm13"><span class="idx">新</span>林夏走上站台</div>
+          <span class="tgt">新建 1 个视频 · 参考 林夏、雨夜站台</span>
+          <div class="pr1">雨夜，林夏撑伞走上站台，霓虹倒映在积水里</div>
+          <div class="last"><span class="par">Kling 3.0 · 16:9 · 5s</span><span class="sp"></span><button class="pri2" type="button">生成</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1480,"height":460}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
