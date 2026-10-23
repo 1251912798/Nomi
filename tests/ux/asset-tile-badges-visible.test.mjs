@@ -72,15 +72,39 @@ function measureRemove(tileIndex) {
   }
 }
 
+/**
+ * 读**终态**，不靠时机：× 带 transition-opacity，注入样式 / 悬停之后立刻读，读到的是渐变半路的值
+ * （CI 上 0.0552 / 0.0166，本机忙时 0.79）。getAnimations() 会先刷新样式、把正在跑的 CSS 过渡交出来，
+ * finish() 直接跳到终值；无限循环的动画没有终点，跳过。
+ */
+async function settleTransitions(page) {
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) {
+      try { animation.finish() } catch { /* 无限循环的动画没有终点 */ }
+    }
+  })
+}
+
+/** 量「平时」之前把指针挪到所有小图之外：滚动后指针可能正好停在下一格上，那一格的 × 就在淡入。 */
+async function movePointerOffTiles(page) {
+  const point = await page.evaluate(() => {
+    const corners = [[1, 1], [window.innerWidth - 2, 1], [1, window.innerHeight - 2], [window.innerWidth - 2, window.innerHeight - 2]]
+    return corners.find(([x, y]) => !document.elementFromPoint(x, y)?.closest('[data-asset-tile]')) ?? corners[0]
+  })
+  await page.mouse.move(point[0], point[1])
+}
+
 async function expectHoverRemoveVisible(page, where) {
   const count = await page.locator('[data-asset-tile]').count()
   expect(count, `${where}: 应该量到参考缩略图`).toBeGreaterThan(0)
   for (let index = 0; index < count; index += 1) {
     await page.locator('[data-asset-tile]').nth(index).scrollIntoViewIfNeeded()
+    await movePointerOffTiles(page)
+    await settleTransitions(page)
     const quiet = await page.evaluate(measureRemove, index)
     expect(quiet?.opacity ?? 1, `${where} #${index}: 平时 × 是看不见的`).toBeLessThan(0.01)
     await page.locator('[data-asset-tile]').nth(index).hover()
-    await page.waitForTimeout(260)
+    await settleTransitions(page)
     const shown = await page.evaluate(measureRemove, index)
     expect(shown, `${where} #${index}: 找不到 ×`).not.toBeNull()
     expect(shown.opacity, `${where} #${index}: 悬停后 × 要出现`).toBe(1)
