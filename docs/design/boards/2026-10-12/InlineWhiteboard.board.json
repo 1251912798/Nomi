@@ -442,10 +442,14 @@
       "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
     },
     {
-      "function": "O40: 独立画板完成只保存 state，不截图",
+      "function": "O40: 独立画板完成只保存 state，不截图 —— 用户 2026-10-22 拍板推翻（A）：画板上有内容时，「完成」即导出一张图作为节点结果（节点显示缩略图，可连下游当参考，点缩略图重开）；从没出过图且是空画板才只存 state、显示「打开画板」",
       "before": "WhiteboardModal",
       "after": "export",
-      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+      "verification": "tests/ux/whiteboard-refactor.walk.mjs: standalone Done leaves the drawn content visible on the board node; the board reopens from its picture with the drawing intact",
+      "userDecision": {
+        "quote": "按推荐（Q1 = A：有内容显示缩略图，作为节点结果可连下游；没内容才显示启动器）",
+        "date": "2026-10-22"
+      }
     },
     {
       "function": "O41: 重新打开恢复节点可编辑 state",

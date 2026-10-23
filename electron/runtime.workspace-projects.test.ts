@@ -20,6 +20,13 @@ vi.mock("electron", () => ({
     },
     getAppPath: () => process.cwd(),
   },
+  // 系统回收站用临时目录假扮：删项目文件夹进回收站（⑭），原路径不在了、文件还能还原。
+  shell: {
+    trashItem: async (target: string) => {
+      const bin = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-runtime-trash-"));
+      fs.renameSync(target, path.join(bin, path.basename(target)));
+    },
+  },
 }));
 
 beforeEach(() => {
@@ -126,29 +133,29 @@ describe("runtime workspace project APIs", () => {
     expect(raw.payload).toEqual({ draft: 2 });
   });
 
-  it("deleteProject 对外部「打开文件夹」项目只解绑,绝不删用户目录", () => {
+  it("deleteProject 对外部「打开文件夹」项目只解绑,绝不删用户目录", async () => {
     // makeTempDir() 在默认根之外 = 外部文件夹(folder source):真删盘绝不碰用户内容。
     const workspaceRoot = makeTempDir();
     const created = createProject({ rootPath: workspaceRoot, name: "Remove Reference", payload: {} });
 
-    const result = deleteProject(created.id);
+    const result = await deleteProject(created.id, "delete-files");
 
     expect(result).toEqual({ id: created.id, deleted: false });
     expect(readProject(created.id)).toBeNull();
     expect(fs.existsSync(workspaceProjectFile(workspaceRoot))).toBe(true);
   });
 
-  it("deleteProject 对 native(默认根内)项目真删盘:整目录消失", () => {
+  it("deleteProject 对 native(默认根内)项目：整个文件夹进系统回收站，原路径不在了", async () => {
     // 不传 rootPath 才是产品里的“新建项目”；显式 rootPath 永远代表用户“打开文件夹”。
     const created = createProject({ name: "Native Proj", payload: {} });
     const nativeRoot = String((created as { lastKnownRootPath?: string }).lastKnownRootPath || "");
     expect(nativeRoot.startsWith(path.join(mockedDocumentsRoot, "Nomi Projects"))).toBe(true);
 
-    const result = deleteProject(created.id);
+    const result = await deleteProject(created.id, "delete-files");
 
     expect(result).toEqual({ id: created.id, deleted: true });
     expect(readProject(created.id)).toBeNull();
-    expect(fs.existsSync(nativeRoot)).toBe(false); // 真删盘:目录不再存在
+    expect(fs.existsSync(nativeRoot)).toBe(false); // 进了回收站：原路径不再存在
   });
 
   it("listProjects migrates legacy projects from the default projects root into the workspace registry", async () => {
@@ -231,8 +238,8 @@ describe("runtime workspace project APIs", () => {
     );
     expect((await listProjects())).toEqual([expect.objectContaining({ id: "delete-legacy-id" })]);
 
-    // 迁移后该 legacy 项目位于默认根内 = native,真删盘:整目录消失,自然不会再被 list 重发现。
-    expect(deleteProject("delete-legacy-id")).toEqual({ id: "delete-legacy-id", deleted: true });
+    // 迁移后该 legacy 项目位于默认根内 = native：整个文件夹进回收站，原路径不在了，自然不会再被 list 重发现。
+    await expect(deleteProject("delete-legacy-id", "delete-files")).resolves.toEqual({ id: "delete-legacy-id", deleted: true });
 
     expect(fs.existsSync(legacyRoot)).toBe(false);
     expect((await listProjects())).toEqual([]);

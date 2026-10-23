@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import { createDefaultWhiteboardState, readWhiteboardEditingState, whiteboardDraftIdentity } from './whiteboardState'
-import { whiteboardRasterStateKey } from './whiteboardRasterState'
+import { whiteboardHasVisibleContent, whiteboardRasterStateKey } from './whiteboardRasterState'
 import { closeWhiteboard, finishWhiteboard, openWhiteboard, registerWhiteboardFinish, useWhiteboardSession, whiteboardSessionLifetime } from './whiteboardSession'
 
 afterEach(() => { closeWhiteboard(useWhiteboardSession.getState().nodeId ?? '') })
@@ -11,6 +11,16 @@ it('selection and labels do not create another raster version; bounds and transf
   expect(whiteboardRasterStateKey({ ...original, activeLayerId: 'different', layers: original.layers.map(layer => ({ ...layer, name: 'renamed' })) })).toBe(key)
   expect(whiteboardRasterStateKey({ ...original, canvasDimensions: { width: 1600, height: 900 } })).not.toBe(key)
   expect(whiteboardRasterStateKey({ ...original, sceneTransforms: { offsets: { 'asset:a': { x: 20, y: 0 } }, assetTransforms: {}, flips: {} } })).not.toBe(key)
+})
+it('Done leaves a picture only when something was drawn or placed: brush paths, images and non-blank text count, eraser paths and blank text do not', () => {
+  const empty = createDefaultWhiteboardState()
+  const stroke = { id: 's', layerId: 'l', color: '#000', size: 4, path: 'M0 0L1 1' }
+  expect(whiteboardHasVisibleContent(empty)).toBe(false)
+  expect(whiteboardHasVisibleContent({ ...empty, strokes: [{ ...stroke, tool: 'eraser' as const }] })).toBe(false)
+  expect(whiteboardHasVisibleContent({ ...empty, texts: [{ id: 't', layerId: 'l', x: 0, y: 0, width: 10, height: 10, text: '   ', color: '#000', fontSize: 24 }] as never })).toBe(false)
+  expect(whiteboardHasVisibleContent({ ...empty, strokes: [{ ...stroke, tool: 'brush' as const }] })).toBe(true)
+  expect(whiteboardHasVisibleContent({ ...empty, texts: [{ id: 't', layerId: 'l', x: 0, y: 0, width: 10, height: 10, text: 'Title', color: '#000', fontSize: 24 }] as never })).toBe(true)
+  expect(whiteboardHasVisibleContent({ ...empty, canvasAssets: [{ id: 'a', layerId: 'l', name: 'a', url: 'x', source: 'upload', x: 0, y: 0, width: 1, height: 1 }] as never })).toBe(true)
 })
 it('projects saved while the annotation tool existed open cleanly and keep the stored feedback untouched', () => {
   const state = createDefaultWhiteboardState()

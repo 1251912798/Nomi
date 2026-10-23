@@ -1,0 +1,21 @@
+{
+  "case": "OK1-首帧方式照发首帧",
+  "transport": "relay",
+  "kind": "image_to_video",
+  "inUse": [
+    "nomi-local://ref/f.png"
+  ],
+  "sent": [
+    "nomi-local://ref/f.png"
+  ],
+  "received": {
+    "method": "POST",
+    "path": "/v1/video/generations",
+    "body": {
+      "model": "MiniMax-Hailuo-2.3",
+      "prompt": "一个镜头",
+      "duration": 6,
+      "image": "nomi-local://ref/f.png"
+    }
+  }
+}

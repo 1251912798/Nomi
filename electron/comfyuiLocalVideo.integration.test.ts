@@ -126,7 +126,7 @@ describe("本地 ComfyUI 视频传输链（真 HTTP 端到端）", () => {
     const request = { prompt: "a dragon flying over misty mountains", extras: { comfyPromptId: REQUEST_PROMPT_ID } } as never;
 
     // ── 1) 提交 ──
-    const created = await executeProfileOperation({ vendor, model, apiKey: "", request, operation: VIDEO_CREATE_OP });
+    const created = await executeProfileOperation({ vendor, model, apiKey: "", request, operation: VIDEO_CREATE_OP, stage: "create" });
     const createNorm = await buildProfileTaskResult({
       response: created.response, mapping: { create: VIDEO_CREATE_OP, query: VIDEO_QUERY_OP } as never,
       operation: VIDEO_CREATE_OP, request, taskIdFallback: "", wantedKind: "video", vendor, model,
@@ -143,7 +143,7 @@ describe("本地 ComfyUI 视频传输链（真 HTTP 端到端）", () => {
     let status = createNorm.result.status;
     let assetUrl = "";
     for (let tries = 0; status !== "succeeded" && status !== "failed" && tries < 6; tries += 1) {
-      const polled = await executeProfileOperation({ vendor, model, apiKey: "", request, operation: VIDEO_QUERY_OP, providerMeta });
+      const polled = await executeProfileOperation({ vendor, model, apiKey: "", request, operation: VIDEO_QUERY_OP, stage: "query", providerMeta });
       const norm = await buildProfileTaskResult({
         response: polled.response, mapping: { create: VIDEO_CREATE_OP, query: VIDEO_QUERY_OP } as never,
         operation: VIDEO_QUERY_OP, request, taskIdFallback: REQUEST_PROMPT_ID, wantedKind: "video", projectId: project.id, vendor, model,

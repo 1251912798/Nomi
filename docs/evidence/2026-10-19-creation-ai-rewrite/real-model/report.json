@@ -1,0 +1,69 @@
+{
+  "name": "creation-ai-rewrite-real",
+  "mode": "development",
+  "tempRoot": "D:\\Nomi-tmp\\I-rewrite\\nomi-pi-creation-ai-rewrite-real-6ZTXti",
+  "outputDir": "D:\\Nomi-rewrite\\.tmp\\pi-creation-ai-rewrite-real-development-1792676692185",
+  "launches": [
+    {
+      "packaged": false,
+      "appPath": "D:\\Nomi-rewrite",
+      "userData": "D:\\Nomi-tmp\\I-rewrite\\nomi-pi-creation-ai-rewrite-real-6ZTXti\\user-data",
+      "node": "24.18.1",
+      "electron": "43.4.1",
+      "pid": 162600
+    }
+  ],
+  "screenshots": [
+    "D:\\Nomi-rewrite\\.tmp\\pi-creation-ai-rewrite-real-development-1792676692185\\01-rewrite-01-selected.png",
+    "D:\\Nomi-rewrite\\.tmp\\pi-creation-ai-rewrite-real-development-1792676692185\\02-rewrite-02-menu.png",
+    "D:\\Nomi-rewrite\\.tmp\\pi-creation-ai-rewrite-real-development-1792676692185\\03-rewrite-03-result.png",
+    "D:\\Nomi-rewrite\\.tmp\\pi-creation-ai-rewrite-real-development-1792676692185\\04-rewrite-04-accepted.png",
+    "D:\\Nomi-rewrite\\.tmp\\pi-creation-ai-rewrite-real-development-1792676692185\\05-rewrite-05-undone.png"
+  ],
+  "paidCalls": 0,
+  "networkAllowlist": [
+    "https://api.apimart.ai",
+    "*.getapib.org"
+  ],
+  "credentialSource": "env-key（APIMART_API_KEY，只记变量名）",
+  "envKeyConnect": {
+    "vendorKey": "apimart",
+    "keySaved": true,
+    "certifiedTextModel": null,
+    "verification": "skipped：保存后被授权的模型已可用",
+    "viaVisibleOnboarding": true
+  },
+  "seededModels": [
+    "apimart/deepseek-v4-pro"
+  ],
+  "disabledUnauthorizedModels": 142,
+  "projectId": "project-1792676711951-d6kl2x",
+  "projectRoot": "D:\\Nomi-tmp\\I-rewrite\\nomi-pi-creation-ai-rewrite-real-6ZTXti\\projects\\未命名项目 10_22 10_45-mvjlffo8-93640aaf",
+  "rewrite": {
+    "selectedText": "她盯着纸条看了很久，才慢慢展开，像是怕它在手里碎掉，又像是怕自己看清上面写的是什么。",
+    "originalUnchangedBeforeAccept": true,
+    "acceptedText": "△ 林薇回到家，没开大灯。台灯下，她撬开怀表后盖，抽出一张折成四折的纸条。\n她盯着纸条许久才慢慢展开，像怕它碎掉，也怕看清写的是什么。\n△ 纸上的字被潮气洇开，只认得出一个“沉”字。",
+    "undoRestoredOriginal": true
+  },
+  "networkBlocked": [],
+  "backgroundFixtureCalls": [],
+  "appLogsCopied": [
+    "main-logs/nomi-2026-10-22.log",
+    "lane-sessions/--nomi-lane-main--/01a163db-d1b9-731e-b44c-3afbeef3d208.trace/trace.jsonl",
+    "lane-sessions/--nomi-lane-main--/2026-10-22T13-45-12-889Z_01a163db-d1b9-731e-b44c-3afbeef3d208.jsonl"
+  ],
+  "isolatedCopyRemoved": true,
+  "spend": {
+    "media": [],
+    "text": {
+      "replies": 0,
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "models": {}
+    }
+  },
+  "credentialCopyRemoved": true,
+  "result": "passed"
+}

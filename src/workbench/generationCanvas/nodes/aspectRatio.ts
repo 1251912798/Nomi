@@ -55,15 +55,23 @@ export function preferredVideoAspect(inputRatios: readonly number[]): "16:9" | "
   return "16:9";
 }
 
-/** 采集节点已连接输入（首帧/尾帧/参考）的上游比例（可读的）。供 preferredVideoAspect 用。 */
+/**
+ * 这种边算不算「比例规则要看的输入」（首帧 / 尾帧 / 参考；角色参考、风格参考、构图参考不算）。
+ * 唯一判据：collectInputAspectRatios 数哪些边、连线时新边要不要触发重算（store/canvasConnectDerivations）都问它。
+ */
 const INPUT_EDGE_MODES = new Set<string>(["first_frame", "last_frame", "reference"]);
+export function isAspectInputEdgeMode(mode: string | undefined): boolean {
+  return INPUT_EDGE_MODES.has(String(mode || ""));
+}
+
+/** 采集节点已连接输入（首帧/尾帧/参考）的上游比例（可读的）。供 preferredVideoAspect 用。 */
 export function collectInputAspectRatios(
   nodeId: string,
   edges: readonly GenerationCanvasEdge[],
   nodes: readonly GenerationCanvasNode[],
 ): number[] {
   return edges
-    .filter((e) => e.target === nodeId && INPUT_EDGE_MODES.has(String(e.mode || "")))
+    .filter((e) => e.target === nodeId && isAspectInputEdgeMode(e.mode))
     .map((e) => nodes.find((n) => n.id === e.source))
     .filter((n): n is GenerationCanvasNode => Boolean(n))
     .map((n) => readNodeAspectRatio(n))

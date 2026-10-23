@@ -191,8 +191,8 @@ export const SCAN_TESTS = Object.freeze([
 /** 正文类（需要 PR 正文）：prior-art 与 pr-judgement，正文取不到时只说「今天没查成」（CI 侧仍然 fail-closed）。 */
 export const BODY_GATES = Object.freeze(['check:prior-art', 'check:pr-judgement'])
 
-/** 改动文件的 eslint 子集（警告数不得比 base 多、错误一律拦）；脚本是 scripts/lint-changed.mjs，不在 package.json 里。 */
-export const LINT_GATE = Object.freeze({ name: 'lint:changed', script: 'scripts/lint-changed.mjs', when: (files) => files.some((file) => /\.(?:tsx?|jsx?|[cm]js)$/.test(file)) })
+/** 改动文件的 eslint 子集（警告数不得比 base 多、错误一律拦、批量抑制只减不增）；脚本是 scripts/lint-changed.mjs，不在 package.json 里。 */
+export const LINT_GATE = Object.freeze({ name: 'lint:changed', script: 'scripts/lint-changed.mjs', when: (files) => files.some((file) => /\.(?:tsx?|jsx?|[cm]js)$/.test(file) || file === 'eslint-suppressions.json') })
 
 /**
  * 没放进推送前的 Contracts 门岗及原因（只写在这里一处，报告与 --list 都读它）：

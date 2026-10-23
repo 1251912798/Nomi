@@ -1,0 +1,49 @@
+{
+  "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+  "commit": "e5ad38ae5",
+  "head": "e5ad38ae5cc17b7bf2305c983bed7831ba5c348f",
+  "dirty": true,
+  "sourceTree": "1ff2274b9d13e46721198ca52bae7bf807553610",
+  "date": "2026-10-22",
+  "runs": 5,
+  "results": [
+    {
+      "id": "project-library-list-80",
+      "metrics": {
+        "response": {
+          "runs": 5,
+          "median": 424.8,
+          "p95": 539.1
+        }
+      },
+      "samples": {
+        "openToInteractive": [
+          1663,
+          1913,
+          2101,
+          2251,
+          4310
+        ],
+        "longTasks": [
+          3,
+          4,
+          4,
+          4,
+          4
+        ],
+        "response": [
+          424.8,
+          349.2,
+          374.4,
+          550.7,
+          492.6
+        ]
+      },
+      "budget": 300,
+      "verdict": {
+        "status": "over-budget",
+        "note": "中位数 424.8 > 预算 300"
+      }
+    }
+  ]
+}

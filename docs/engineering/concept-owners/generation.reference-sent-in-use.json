@@ -1,0 +1,31 @@
+{
+  "name": "发给供应商的参考图只能是当前方式声明、界面在用的那些（节点 meta 里别的方式 / 旧工程 / MCP metadata 留下的参考键不上线）",
+  "subject": "generation.reference-sent-in-use",
+  "lifecycle": "execution",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+    "symbol": "buildReferenceExtras"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "symbol": "buildReferenceExtras"
+    },
+    {
+      "path": "electron/catalog/archetypeInput.ts",
+      "symbol": "stripReferenceResidue"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/referenceKeys.ts",
+      "symbol": "GENERIC_REFERENCE_KEYS"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-22",
+  "notes": "合同 docs/fixes/2026-10-22-reference-leak-hotfix.root-cause.json（PR #1279）：buildReferenceExtras 对有档案的模型把 GENERIC_REFERENCE_KEYS 全集先置 undefined、只填当前方式声明的槽值（与 archetypeInput 同一份有序截上限列表）；主进程 runTask 入口经 electron/tasks/referenceResidueGuard.ts 调 stripReferenceResidue，带档案投影的请求里不在 archetypeInput 的参考地址一律剥掉。钉它的测试：src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts。「在用」今天仍由界面 resolveReferenceSlots、resolveGenerationReferences、请求构造各算一份；#1269 的重写接入统一推导函数（参考列表 + 档案 + 方式 → 各槽位 + 未用到）时，把它登记为这条概念的 owner 并改这里的 write_api。"
+}

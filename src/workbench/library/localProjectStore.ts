@@ -1,3 +1,4 @@
+import type { ProjectDeleteIntent } from '../../../electron/shared/projectDeleteIntent'
 import type { ProjectBinding } from '../../../electron/shared/projectBinding'
 import React from 'react'
 import useSWR, { mutate } from 'swr'
@@ -146,9 +147,11 @@ export async function renameLocalProject(projectId: string, name: string): Promi
   return record
 }
 
-export function deleteLocalProject(projectId: string): void {
-  deleteProjectRecord(projectId)
+/** 删除并从列表缓存摘掉；把主进程说的 `deleted`（文件夹真进了回收站才是 true）原样带回给调用方。 */
+export async function deleteLocalProject(projectId: string, intent: ProjectDeleteIntent): Promise<{ id: string; deleted: boolean }> {
+  const result = await deleteProjectRecord(projectId, intent)
   unpublishLocalProject(projectId)
+  return result
 }
 
 export type {

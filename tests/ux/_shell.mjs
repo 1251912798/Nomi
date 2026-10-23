@@ -343,10 +343,15 @@ export async function canvasZoomStep(win, direction, label = `zoom ${direction}`
   await clickOrFail(stepButton, label)
 }
 
+/** 缩放簇里的 ⋯（视图选项）触发钮。开 / 关 / 判焦点都经它，别在走查里按文案另抄一份。 */
+export function canvasViewOptionsButton(win) {
+  return win.locator(CANVAS_ZOOM_BAR).getByRole('button', { name: navAny('viewOptions') })
+}
+
 /** 开 ⋯（视图选项）。已经开着就不动。 */
 export async function openCanvasViewOptions(win, label = 'open view options') {
   if (await win.locator(CANVAS_VIEW_OPTIONS).first().isVisible().catch(() => false)) return
-  const optionsButton = win.locator(CANVAS_ZOOM_BAR).getByRole('button', { name: navAny('viewOptions') })
+  const optionsButton = canvasViewOptionsButton(win)
   await revealCanvasDock(win, optionsButton, label)
   await clickOrFail(optionsButton, label)
   await expect(win.locator(CANVAS_VIEW_OPTIONS).first(), `${label}：点完面板没出来`).toBeVisible()
@@ -358,7 +363,7 @@ export async function openCanvasViewOptions(win, label = 'open view options') {
  */
 export async function closeCanvasViewOptions(win) {
   if (!(await win.locator(CANVAS_VIEW_OPTIONS).first().isVisible().catch(() => false))) return
-  await win.locator(CANVAS_ZOOM_BAR).getByRole('button', { name: navAny('viewOptions') }).click()
+  await canvasViewOptionsButton(win).click()
   await expect(win.locator(CANVAS_VIEW_OPTIONS).first()).toBeHidden()
 }
 

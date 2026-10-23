@@ -138,7 +138,9 @@ describe("production project-session runtime with the real workspace repository"
     const harness = await makeProductionHarness();
     const opened = await harness.runtime.authority.open({ bootstrap: { mode: "current_project" } }, harness.connection);
 
-    expect(deleteWorkspaceProject(PROJECT_ID, harness.deps)).toEqual({ id: PROJECT_ID, deleted: true });
+    // 删项目进系统回收站（⑭）：回收站由调用方注入，这里把文件夹挪到旁边当「回收站」。
+    const moveToTrash = async (folder: string) => { fs.renameSync(folder, `${folder}.trashed`); };
+    await expect(deleteWorkspaceProject(PROJECT_ID, harness.deps, moveToTrash)).resolves.toEqual({ id: PROJECT_ID, deleted: true });
     const replacementRoot = path.join(harness.deps.defaultProjectsRoot, "replacement");
     createWorkspaceProject(
       {

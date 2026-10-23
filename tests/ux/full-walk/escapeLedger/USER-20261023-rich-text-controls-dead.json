@@ -1,0 +1,29 @@
+{
+  "id": "USER-20261023-rich-text-controls-dead",
+  "since": "2026-10-23",
+  "source": "用户 2026-10-23 原话：「节点内部的东西无法更改格式 上面有节点功能但是无法使用」「创作区域的格式选择 应该增加hover上去显示的 现在完全不理解」「点击有些按钮感觉没反应 比如那个代码icon」",
+  "category": "interaction-semantics",
+  "problem": "画布文本节点格式条自写 absolute 定位，跟着画布缩放、贴顶时被顶栏盖住；三个格式壳在渲染时读一次 isActive，按下态跟不上光标；创作区顶栏没有按下态样式、名字只靠原生 title；选区浮条盖住顶栏；列表没有符号。走查从没按过格式按钮看正文变化。",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "docs/fixes/2026-10-23-rich-text-controls-single-source.root-cause.json",
+    "docs/engineering/direction-checks/2026-10-23-outside-press-and-rich-text-controls.md",
+    "src/workbench/common/richTextActions.structure.test.ts",
+    "tests/ux/outside-press-and-text-format.walk.mjs"
+  ],
+  "completionCommits": [
+    "59c836ee8",
+    "62932ad80"
+  ],
+  "rootCauseContract": "docs/fixes/2026-10-23-rich-text-controls-single-source.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "src/workbench/common/richTextActions.structure.test.ts"
+  },
+  "fixedInPr": 1299
+}

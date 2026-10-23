@@ -1,0 +1,57 @@
+{
+  "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+  "commit": "e5ad38ae5",
+  "head": "e5ad38ae5cc17b7bf2305c983bed7831ba5c348f",
+  "dirty": true,
+  "sourceTree": "1ff2274b9d13e46721198ca52bae7bf807553610",
+  "date": "2026-10-22",
+  "runs": 5,
+  "results": [
+    {
+      "id": "project-library-list",
+      "metrics": {
+        "response": {
+          "runs": 5,
+          "median": 443,
+          "p95": 477.7
+        }
+      },
+      "samples": {
+        "openToInteractive": [
+          1809,
+          1949,
+          2237,
+          2335,
+          2435
+        ],
+        "longTasks": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "response": [
+          443,
+          391.9,
+          428.9,
+          486,
+          444.7
+        ]
+      },
+      "budget": 300,
+      "baseline": {
+        "median": 799.8,
+        "p95": 837.1,
+        "runs": 5,
+        "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+        "date": "2026-10-16",
+        "commit": "94724f860"
+      },
+      "verdict": {
+        "status": "known-debt",
+        "note": "已知超预算（预算 300，负责线 P-library），没比欠账基线 799.8 更差"
+      }
+    }
+  ]
+}

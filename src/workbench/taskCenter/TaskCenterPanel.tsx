@@ -22,7 +22,7 @@ import { confirmAndRunPlan } from '../generationCanvas/components/batchPlanPrevi
 import { buildDependencyWaves } from '../generationCanvas/runner/dependencyWaves'
 import { buildTaskCenterView, formatElapsed, summarizeTaskCenterRows, type TaskCenterRow } from './taskCenterEntries'
 import { notify } from '../../ui/notificationPolicy'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../design'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, listenOutsidePress } from '../../design'
 import { currentWorkbenchFloatingTopOffset } from '../../ui/app-shell/windowChrome'
 import type { ProductionRunSummary } from '../../../electron/productionRun/productionRunTypes'
 import { TASK_CENTER_GROUPS, type TaskCenterGroup, type TaskCenterProjection } from './taskCenterProjection'
@@ -74,19 +74,12 @@ export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, o
 
   React.useEffect(() => {
     if (!opened) return
-    const cleanup = { current: () => {} }
-    // rAF 延一帧再挂，否则「点开按钮」那次 mousedown 会立刻把自己关掉。
-    const frame = window.requestAnimationFrame(() => {
-      const handler = (event: MouseEvent) => {
-        if (panelRef.current && !panelRef.current.contains(event.target as Node)) onClose()
-      }
-      window.addEventListener('mousedown', handler)
-      cleanup.current = () => window.removeEventListener('mousedown', handler)
-    })
-    return () => {
-      window.cancelAnimationFrame(frame)
-      cleanup.current()
-    }
+    // 点开它的那一下（pointerdown）早在打开之前就过去了，不会把自己关掉；触发钮自己负责开合（再点一次 = 收），不算点外面。
+    return listenOutsidePress(
+      (target) => (target instanceof Node && Boolean(panelRef.current?.contains(target)))
+        || (target instanceof Element && Boolean(target.closest('[data-task-center-trigger]'))),
+      () => onClose(),
+    )
   }, [opened, onClose])
 
   const view = React.useMemo(

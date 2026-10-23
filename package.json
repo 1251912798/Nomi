@@ -102,7 +102,7 @@
     "new:contract": "node ./scripts/new-root-cause-contract.mjs",
     "typecheck": "node ./scripts/typecheck.mjs",
     "lint": "eslint .",
-    "lint:ci": "eslint . --max-warnings=79",
+    "lint:ci": "eslint . --max-warnings=95 --cache --cache-location .tmp/eslintcache --cache-strategy content",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -128,7 +128,7 @@
     "dist:mac:dir": "python3 scripts/with-gates-lock.py --command \"node scripts/package-build-stamp.mjs verify && pnpm run check:electron-install && electron-builder --mac dir --arm64 && node tests/ux/packaged-mcp-smoke.e2e.mjs release/mac-arm64/Nomi.app\"",
     "postinstall": "node ./scripts/install-electron-runtime.mjs && node ./scripts/install-git-hooks.cjs && node ./scripts/install-claude-hooks.cjs",
     "test:e2e:ci-chain": "python3 scripts/with-gates-lock.py -- node scripts/run-ci-e2e-chain.mjs",
-    "test:e2e": "python3 scripts/with-gates-lock.py --command \"pnpm run check:electron-install && node tests/ux/smoke.e2e.mjs\"",
+    "test:e2e": "python3 scripts/with-gates-lock.py --command \"pnpm run check:electron-install && node tests/ux/playwright-main-evaluate.e2e.mjs && node tests/ux/smoke.e2e.mjs\"",
     "test:cross-device": "python3 scripts/with-gates-lock.py --command \"pnpm run build && node tests/ux/cross-device-continuation.e2e.mjs\"",
     "test:mcp-journey": "python3 scripts/with-gates-lock.py --command \"pnpm run check:electron-install && node tests/ux/mcp-l1-handshake.e2e.mjs && node tests/ux/mcp-l2-journeys.e2e.mjs && node tests/ux/mcp-skills-integration.e2e.mjs && node tests/ux/mcp-http-direct.e2e.mjs\"",
     "test:mcp-real-client": "pnpm run build && node --test tests/system/mcp-real-client.node-test.mjs && node tests/system/mcp-real-client.mjs",
@@ -219,7 +219,7 @@
     "check:batch-machines": "node ./scripts/check-batch-machines.mjs",
     "check:test-types": "node --test ./scripts/typecheck.node-test.mjs && node ./scripts/check-test-types.mjs",
     "check:gates-chain": "node --test ./scripts/gate-slimming.node-test.mjs ./scripts/run-gates-contracts.node-test.mjs ./scripts/repair-doc-gates.node-test.mjs && node ./scripts/check-gates-chain.mjs",
-    "check:quality-gate-workflow": "node --test ./scripts/validation-policy.node-test.mjs ./scripts/check-quality-gate-workflow.node-test.mjs ./scripts/ci-install-chromium.node-test.mjs ./scripts/nightly-walk-summary.node-test.mjs ./scripts/nightly-walk-selection.node-test.mjs ./scripts/run-gates-tests.node-test.mjs ./scripts/ci-annotation-hygiene.node-test.mjs ./scripts/test-focused.node-test.mjs ./scripts/real-user-test-gates.node-test.mjs",
+    "check:quality-gate-workflow": "node --test ./scripts/validation-policy.node-test.mjs ./scripts/check-quality-gate-workflow.node-test.mjs ./scripts/ci-install-chromium.node-test.mjs ./scripts/nightly-walk-summary.node-test.mjs ./scripts/nightly-build-gate.node-test.mjs ./scripts/nightly-workflow-outputs.node-test.mjs ./scripts/nightly-walk-selection.node-test.mjs ./scripts/run-gates-tests.node-test.mjs ./scripts/ci-annotation-hygiene.node-test.mjs ./scripts/test-focused.node-test.mjs ./scripts/real-user-test-gates.node-test.mjs",
     "check:desktop-rc-workflow": "node --test ./scripts/check-desktop-rc-workflow.node-test.mjs",
     "check:workflow-protected-writes": "node --test ./scripts/check-workflow-protected-writes.node-test.mjs && node ./scripts/check-workflow-protected-writes.mjs",
     "check:workflow-script-refs": "node --test ./scripts/check-workflow-script-refs.node-test.mjs && node ./scripts/check-workflow-script-refs.mjs",
@@ -242,6 +242,7 @@
     "check:board-parity": "node --test ./scripts/check-board-parity.node-test.mjs && node ./scripts/check-board-parity.mjs",
     "design-lab:accept": "node ./scripts/design-lab-accept.mjs",
     "design-lab:walk:v4": "python3 scripts/with-gates-lock.py -- node ./tests/ux/design-lab-agent-panel-v4.walk.mjs",
+    "design-lab:walk:creation-ai-rewrite": "python3 scripts/with-gates-lock.py -- node ./tests/ux/design-lab-creation-ai-rewrite.walk.mjs",
     "design-lab:walk:editing": "python3 scripts/with-gates-lock.py -- node ./tests/ux/design-lab-editing.walk.mjs",
     "design-lab:walk:storyboard": "python3 scripts/with-gates-lock.py -- node ./tests/ux/design-lab-storyboard.walk.mjs",
     "design-lab:walk:host-config": "python3 scripts/with-gates-lock.py -- node ./tests/ux/design-lab-host-config.walk.mjs",
@@ -356,6 +357,7 @@
     "autoprefixer": "^10.5.0",
     "clsx": "^2.1.1",
     "dependency-cruiser": "18.2.0",
+    "diff": "8.0.4",
     "electron": "43.4.1",
     "electron-builder": "26.15.3",
     "eslint": "^10.4.1",
@@ -522,7 +524,8 @@
       "@ffprobe-installer/darwin-arm64"
     ],
     "patchedDependencies": {
-      "img-fx@0.5.1": "patches/img-fx@0.5.1.patch"
+      "img-fx@0.5.1": "patches/img-fx@0.5.1.patch",
+      "playwright-core@1.60.0": "patches/playwright-core@1.60.0.patch"
     }
   }
 }

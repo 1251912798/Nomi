@@ -15,6 +15,7 @@
 
 import { VENDOR_CONNECTION_PILL_LABEL_MEMBERS } from '../../src/ui/onboarding/vendorConnectionView'
 import { MISSING_CARD_REASONS } from '../../src/workbench/ai/v4/missingInterventionCard'
+import { REWRITE_PRESET_INSTRUCTIONS, REWRITE_TONE_INSTRUCTIONS, REWRITE_TRANSLATE_INSTRUCTIONS } from '../../src/workbench/creation/aiRewrite/rewritePrompt'
 
 export type DynamicPrefix =
   | { prefix: string; why: string; kind?: 'subtree'; members?: readonly string[] }
@@ -38,6 +39,9 @@ export const DYNAMIC_KEY_PREFIXES: DynamicPrefix[] = [
   { prefix: 'shotTable.facts', members: ['shotSize', 'motion', 'visual', 'dialogue', 'onScreenText', 'mood'], why: '动态：事实表按持久列顺序展示内置列；枚举来源 shotTableFacts.ts 的事实列集，自定义列直接显示用户标签。' },
   { prefix: 'shotTable.status', members: ['ready', 'anchor-ignored', 'missing-required', 'generating', 'failed', 'recoverable', 'done', 'locked'], why: '动态：表投影现役执行状态；枚举来源 storyboardRowStatus.ts 的 ShotRowExec.status，未另建状态机。' },
   // ── creationAi ──
+  { prefix: 'creationAi.rewrite.preset', members: Object.keys(REWRITE_PRESET_INSTRUCTIONS), why: '动态: 写作区 AI 编辑条的常用改法按钮（改写 / 缩短 / 扩写）按 id 取标签;枚举来源: rewritePrompt.ts 的 REWRITE_PRESET_INSTRUCTIONS 的键（改语气 / 翻译两个带 ▾ 的标签是静态键）' },
+  { prefix: 'creationAi.rewrite.tone', members: Object.keys(REWRITE_TONE_INSTRUCTIONS), why: '动态: 「改语气 ▾」展开的语气选项按 id 取标签;枚举来源: rewritePrompt.ts 的 REWRITE_TONE_INSTRUCTIONS 的键' },
+  { prefix: 'creationAi.rewrite.language', members: Object.keys(REWRITE_TRANSLATE_INSTRUCTIONS), why: '动态: 「翻译 ▾」展开的目标语言选项按 id 取标签;枚举来源: rewritePrompt.ts 的 REWRITE_TRANSLATE_INSTRUCTIONS 的键' },
   // ── agentPanelV4 ──
   { prefix: 'agentPanelV4.permission', why: "动态: Agent 面板 v4 的权限两档;枚举来源: PermissionTier = ProjectAgentApprovalPolicy['mode'] 的 request/direct(permission.* 词条)" },
   { prefix: 'agentPanelV4.permissionWhy', why: "动态: 权限两档各自的一行灰字;枚举来源: 同上两档(permissionWhy.* 词条)" },

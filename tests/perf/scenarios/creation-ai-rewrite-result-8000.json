@@ -1,0 +1,29 @@
+{
+  "id": "creation-ai-rewrite-result-8000",
+  "feature": "写作区在 2000 段文稿里选中约 8000 字：点浮条上的「AI 编辑」到输入条出现、结果回来到新旧对比（划线 / 标出来 / 段尾 ✓ ✕）上屏，两个时刻各量一次，主数取较慢的那个",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "M",
+    "--scenarios",
+    "creation-ai-rewrite-result",
+    "--warmup",
+    "1"
+  ],
+  "scale": "2000 段文稿（项目里同时有 96 节点的画布），选区 180 段约 8000 字",
+  "metrics": [
+    "response"
+  ],
+  "budget": 100,
+  "group": "写作区 · AI 编辑",
+  "budgetStatus": "approved",
+  "budgetBasis": "人对「点了有反应」的感知阈值约 100ms（RAIL / Nielsen）；仓库默认预算「操作到可见反馈 ≤100ms」（docs/engineering/perf-scenarios.md）。两个时刻（点 AI 编辑 → 条出现；结果回来 → 新旧对比上屏）各量一次取较慢者。第一版整块词比较一次要约 200ms（8000 字，冷）；改成「段数不变就一段一段比、整块比加 60ms 时间上限」后冷启动首次 51ms、热的中位数 32ms。",
+  "baseline": {
+    "median": 31.8,
+    "p95": 32.6,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-21",
+    "commit": "169ee197d"
+  }
+}

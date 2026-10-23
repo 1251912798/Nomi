@@ -46,6 +46,30 @@
   "registered": [
     {
       "members": [
+        "accepted",
+        "discarded",
+        "failed",
+        "live",
+        "menu",
+        "result",
+        "running",
+        "selected"
+      ],
+      "reason": "实验室舞台自己的剧本场景名（选中 / 菜单 / 进行中 / 结果 / 接受 / 放弃 / 失败 / 真操作），只在这个舞台里驱动界面走到哪一步，不是任何生产状态机的词表，无处可复用。",
+      "site": "src/devlab/designLab/creationAiRewrite/CreationAiRewriteStage.tsx::type:RewriteScene/type-union"
+    },
+    {
+      "members": [
+        "failed",
+        "menu",
+        "result",
+        "running"
+      ],
+      "reason": "AI 编辑会话自己的四个状态（菜单 / 进行中 / 结果 / 失败）：会话的唯一 owner 就是这个插件状态，没有别处定义同一组状态可以复用。",
+      "site": "src/workbench/creation/aiRewrite/rewriteSession.ts::type:RewriteStatus/type-union"
+    },
+    {
+      "members": [
         "failed",
         "loading",
         "ready"

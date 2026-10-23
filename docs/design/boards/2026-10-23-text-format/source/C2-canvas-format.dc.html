@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>② 画布文本节点格式条</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:1360px;height:500px;box-sizing:border-box;padding:32px 40px;background:#fbfaf7;color:#2b2925;font-family:Inter,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;display:flex;flex-direction:column;gap:16px">
+  <h3 style="margin:0;font-size:18px;font-weight:600">② 画布文本节点：只有一张节点的项目打开即 300%，点进正文写字</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#8a3b2e;font-weight:600">修前 · 格式条放大三倍、被顶栏盖住，点不到</figcaption>
+      <img src="/_blob/66e9aea3c9dd624581e57a93749952cb" alt="修前：格式条跟着画布缩放，被顶栏盖住" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">修后 · 恒定尺寸、在可见区，悬停出名字，列表有圆点</figcaption>
+      <img src="/_blob/1744c89bb11c13c5afafcb53fab05b9d" alt="修后：格式条恒定尺寸，悬停出「斜体」提示，列表有项目符号" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">修后 · 暗色</figcaption>
+      <img src="/_blob/bbca9c1d9430a2e3f6375b7cf03db54a" alt="修后暗色：格式条与提示随主题变暗" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+  </div>
+  <p style="margin:0;font-size:13px;line-height:1.6;color:#5f5b54">编辑时格式条顶替节点上方的锁 / 复制条（同白板编辑条），点回节点头部它们就回来。</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

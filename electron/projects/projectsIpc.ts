@@ -21,7 +21,8 @@ export type ProjectsIpcDeps = {
   createProject: (record: unknown) => unknown;
   readProject: (projectId: string) => unknown;
   saveProject: (projectId: string, record: unknown) => unknown;
-  deleteProject: (projectId: string) => unknown;
+  /** intent 来自渲染层确认框，未经校验（主进程 deleteProject 自己核，缺失 / 不认识即拒绝）。 */
+  deleteProject: (projectId: string, intent: unknown) => Promise<unknown>;
   diagnoseProject: (projectId: string) => unknown;
   recoverProject: (projectId: string) => unknown;
 };
@@ -96,5 +97,9 @@ export function registerProjectsIpc(deps: ProjectsIpcDeps): void {
       if (!projectId || !nodeId || !patch) throw new Error("Invalid canvas node patch");
       return applyCanvasNodePatch({ projectId, nodeId, patch, expectedBinding: value.expectedBinding as ProjectBinding | undefined });
     });
-  registerSyncIpc("nomi:projects:delete", deleteProject as (...args: never[]) => unknown);
+  // 删除是异步的：项目文件夹要进系统回收站（shell.trashItem，⑭）。原来的同步通道（sendSync 等删完）同一提交删掉。
+  ipcMain.handle("nomi:projects:delete", (event, projectId: unknown, intent: unknown) => {
+    assertTrustedSender(event);
+    return deleteProject(String(projectId || ""), intent);
+  });
 }

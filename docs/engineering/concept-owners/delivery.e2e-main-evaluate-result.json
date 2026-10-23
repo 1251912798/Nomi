@@ -1,0 +1,23 @@
+{
+  "name": "走查 / 冒烟对 Electron 主进程求值的结果送达（Playwright 注入脚本把结果强引用到落定后，协议原文不被改写吞掉）",
+  "subject": "delivery.e2e-main-evaluate-result",
+  "lifecycle": "delivery",
+  "authority_kind": "gateway",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "patches/playwright-core@1.60.0.patch",
+    "symbol": "_retainUntilDelivered"
+  },
+  "write_api": [
+    {
+      "path": "patches/playwright-core@1.60.0.patch",
+      "symbol": "_retainUntilDelivered"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-22",
+  "notes": "合同 docs/fixes/2026-10-22-playwright-main-evaluate-promise-collected.root-cause.json：app.evaluate / evaluateHandle / browserWindow / 主进程句柄求值全部经 playwright-core 注入的 UtilityScript.evaluate；V8 只弱持有 awaitPromise 的结果，主进程正忙时一次 GC 就丢回包（\"Promise was collected\"，被改写成导航报错）。补丁是本仓库里这条不变量的唯一持有者，类回归 tests/ux/playwright-main-evaluate.e2e.mjs。上游改强引用或 Playwright 升级打不上补丁时复核（retain-with-exit）。"
+}
