@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Δ2 版本卡：第 N 版 · 待生成</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+.light{--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink40:oklch(.68 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06)}
+.root{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;background-color:var(--nomi-bg);color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.root *{box-sizing:border-box}
+.dots{background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px}
+.lbl{font-size:12px;color:var(--nomi-ink60);margin:0 0 8px 2px}
+.lbl b{color:var(--nomi-ink);font-weight:600;margin-right:6px}
+.shot{display:block;border:1px solid var(--nomi-line);border-radius:12px}
+.vrow{display:flex;gap:14px;align-items:flex-start}
+.vc{position:relative;width:200px;height:113px;border-radius:var(--nomi-radius);overflow:hidden;box-shadow:var(--nomi-shadow-md)}
+.vc svg{display:block}
+.vc .lb{position:absolute;left:10px;bottom:7px;font-size:12px;font-weight:600;color:#fff}
+.vc .main{position:absolute;left:7px;top:7px;display:inline-flex;align-items:center;gap:3px;height:20px;padding:0 7px;border-radius:6px;background:var(--nomi-accent);color:#fff;font-size:12px;font-weight:600}
+.draft{width:200px;height:113px;border:1.5px dashed var(--nomi-accent);border-radius:var(--nomi-radius);background:var(--nomi-paper);padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+.draft .h{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--nomi-ink)}
+.draft .t{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:999px;background:var(--nomi-accent-soft);color:var(--nomi-accent);font-size:11px;font-weight:500}
+.draft .p{font-size:12px;line-height:17px;color:var(--nomi-ink80);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.draft mark{background:var(--nomi-accent-soft);color:var(--nomi-ink);border-radius:3px;padding:0 1px}
+.pend{width:200px;height:113px;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);background:var(--nomi-ink05);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.pend b{font-size:12px;font-weight:600}
+.pend span{font-size:11px;color:var(--nomi-ink60)}
+.flow{display:flex;align-items:center;gap:10px}
+.flow .k{font-size:12px;color:var(--nomi-ink60);text-align:center;margin-top:6px}
+.arrow{color:var(--nomi-ink40)}
+</style>
+</helmet>
+<div class="root light dots" style="width:1240px;height:420px;padding:28px 32px;display:flex;gap:44px;align-items:flex-start">
+  <div>
+    <div class="lbl"><b>现在</b>真实版本卡：生成中、第 N 版、✓ 主图</div>
+    <img class="shot" src="/_blob/5c487da91c044a5e09a3e88eff7dd98f" width="540" height="205" alt="现有版本卡：生成中的占位卡、第 4 版主图、第 3 / 2 / 1 版">
+  </div>
+  <div style="display:flex;flex-direction:column;gap:26px">
+    <div>
+      <div class="lbl"><b>新增</b>请求批准时，草稿先落在「生成中」那一格</div>
+      <div class="vrow">
+        <div class="draft">
+          <div class="h">第 3 版<span class="t">待生成</span></div>
+          <div class="p"><mark>雨夜</mark>的旧仓库门口，林夏<mark>撑伞</mark>走进<mark>霓虹</mark>光里，动作不变</div>
+        </div>
+        <div class="vc"><svg width="200" height="113" viewBox="0 0 200 113" aria-hidden="true"><rect width="200" height="113" fill="#2d4a48"/><rect y="80" width="200" height="33" fill="#5a4630"/><rect x="88" y="34" width="22" height="48" rx="9" fill="#e3b33c"/><circle cx="99" cy="27" r="9" fill="#e2c09e"/></svg><span class="main"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>主图</span><span class="lb">第 2 版</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="lbl"><b>前后</b>在确认卡上按「生成」之后，接回现有状态</div>
+      <div class="flow">
+        <div><div class="draft" style="width:150px;height:85px;padding:8px 10px"><div class="h">第 3 版<span class="t">待生成</span></div></div><div class="k">新增</div></div>
+        <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <div><div class="pend" style="width:150px;height:85px"><b>生成中</b><span>新的一版会落在这里</span></div><div class="k">现有</div></div>
+        <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <div><div class="vc" style="width:150px;height:85px"><svg width="150" height="85" viewBox="0 0 200 113" aria-hidden="true"><rect width="200" height="113" fill="#1f2c42"/><rect y="80" width="200" height="33" fill="#141d2c"/><rect x="130" y="16" width="44" height="14" rx="2" fill="#e05a8a"/><rect x="88" y="34" width="22" height="48" rx="9" fill="#e3b33c"/><circle cx="99" cy="27" r="9" fill="#e2c09e"/></svg><span class="main"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>主图</span><span class="lb">第 3 版</span></div><div class="k">现有 · 自动变主图</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":420}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
