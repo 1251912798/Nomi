@@ -80,14 +80,8 @@ async function expectStatesBoard(page, state, record, english) {
   await noAccentOutline(page, state, record)
 }
 
-await walkDesignLabScreen({
-  screen: 'node-pointer',
-  title: '指向元素',
-  role: 'walk-node-pointer',
-  cellWidth: 1240,
-  columns: 1,
-  viewport: { width: 1240, height: 780 },
-  assertState: async (page, state, record) => {
+/** 每一格的板断言（walkDesignLabScreen 的逐格钩子）。 */
+async function expectNodePointerState(page, state, record) {
     switch (state.id) {
       case 'np-anatomy': {
         // 一张脸：指向元素的镜号、制作小标、状态条原话 = 画布上同一个节点的那几样（同一个组件 / 同一句话）。
@@ -202,5 +196,14 @@ await walkDesignLabScreen({
       default:
         record(`${state.id}: 走查没有登记这一格的断言`)
     }
-  },
+}
+
+await walkDesignLabScreen({
+  screen: 'node-pointer',
+  title: '指向元素',
+  role: 'walk-node-pointer',
+  cellWidth: 1240,
+  columns: 1,
+  viewport: { width: 1240, height: 780 },
+  assertState: expectNodePointerState,
 })

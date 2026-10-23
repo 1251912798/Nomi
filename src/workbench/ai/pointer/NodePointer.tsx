@@ -464,7 +464,7 @@ export function NodePointerReturnToChat({ withLabel = false, className }: { with
   const ref = React.useRef<HTMLButtonElement>(null)
   useOverlayEscape(ref, Boolean(target), returnToChat)
   if (!target) return null
-  const text = withLabel ? t('nodePointer.returnToChatWithLabel', { label: target.label }) : t('nodePointer.returnToChat')
+  const text = withLabel ? t('nodePointer.backToChatWithLabel', { label: target.label }) : t('nodePointer.backToChat')
   return (
     <button
       ref={ref}

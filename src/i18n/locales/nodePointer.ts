@@ -12,8 +12,8 @@ export const zhNodePointer = {
   moreCompact: '+{{count}}',
   moreAria: '还有 {{count}} 个，点了全部展开',
   /** 窄窗口点了指向、对话收起之后，回来的那一颗。 */
-  returnToChat: '回到对话',
-  returnToChatWithLabel: '{{label}} · 回到对话',
+  backToChat: '回到对话',
+  backToChatWithLabel: '{{label}} · 回到对话',
   /** 读屏念的名字：镜号 + 名字 + 状态；点了会去画布。 */
   aria: '{{name}}，{{status}}，点了在画布上定位',
   ariaPlain: '{{name}}，点了在画布上定位',
@@ -30,8 +30,8 @@ export const enNodePointer: typeof zhNodePointer = {
   more: '{{count}} more',
   moreCompact: '+{{count}}',
   moreAria: '{{count}} more, show all',
-  returnToChat: 'Back to chat',
-  returnToChatWithLabel: '{{label}} · Back to chat',
+  backToChat: 'Back to chat',
+  backToChatWithLabel: '{{label}} · Back to chat',
   aria: '{{name}}, {{status}}. Opens it on the canvas',
   ariaPlain: '{{name}}. Opens it on the canvas',
   ariaDeleted: '{{name}}, deleted',
