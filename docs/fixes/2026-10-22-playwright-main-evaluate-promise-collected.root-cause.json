@@ -1,0 +1,793 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-22-playwright-main-evaluate-promise-collected",
+  "detected_by": "ci",
+  "recurrence_check_on": "2026-11-21",
+  "problem_type": "Playwright 对 Electron 主进程的 evaluate 在主进程正忙时丢失结果回包，并被改写成误导性的导航报错",
+  "symptom": "CI「Mac Package」打包冒烟 tests/ux/packaged-mcp-smoke.e2e.mjs 读主进程 env 时偶发 `electronApplication.evaluate: Execution context was destroyed, most likely because of a navigation.`（10-18 起 6 次；Linux 画布验收 / 核心冒烟 / 画布跟手各见过同一句）",
+  "direct_cause": "Node 调试协议对 Runtime.callFunctionOn 回 {\"code\":-32000,\"message\":\"Promise was collected\"}；playwright-core 的 crExecutionContext.rewriteError 把一切认不出的协议错误改写成「Execution context was destroyed」。本机 Windows 打包产物 30 次启动挂 3 次，DEBUG=pw:protocol 抓到的三次原文全是这一句。",
+  "class_root": "Playwright 每次 evaluate 都带 awaitPromise:true；V8 调试器把返回值包成 promise 且只弱引用它，等微任务回调才回包。Electron 主进程（Node 调试器）在 JS 正忙时用中断插队执行调试消息，回包要等这段同步代码跑完，期间任何一次 GC 都能把那个 promise 收掉。缺的不变量：「evaluate 的结果在送达前一直强可达」——没有任何一层保证它，所以一切主进程 evaluate 入口在主进程忙时都会偶发丢结果。",
+  "affected_population": [
+    "所有经 Playwright 对 Electron 主进程求值的测试入口：app.evaluate / app.evaluateHandle / app.browserWindow / 主进程 JSHandle.evaluate（tests/ux、evals、scripts 下的走查、冒烟、评测、性能脚本）",
+    "macOS / Windows / Linux 三平台（同一 V8 行为；本机 Windows 打包产物与开发版 Electron 均已复现）",
+    "渲染进程 page.evaluate 不受影响：Chromium 在任务之间派发 CDP，不插队（实测主线程忙循环 30/30 正常）"
+  ],
+  "scope_paths": [
+    "patches/playwright-core@1.60.0.patch",
+    "package.json",
+    "pnpm-lock.yaml",
+    "tests/ux/_launchApp.mjs",
+    "tests/ux/playwright-main-evaluate.e2e.mjs",
+    "tests/ux/playwright-main-evaluate.busy-main.cjs",
+    ".github/workflows/nightly-walkthroughs.yml",
+    "scripts/check-quality-gate-workflow.node-test.mjs"
+  ],
+  "entry_points": [
+    "tests/ux/packaged-mcp-smoke.e2e.mjs 读 GUI 主进程 NOMI_CAPABILITY_DIR（报道案例）",
+    "tests/ux/_launchApp.mjs 启动器里的 app.browserWindow + setContentSize（每条走查都过）",
+    "其余经 browserWindow（door-map 126 个文件）与 app.evaluate（88 个文件）读写主进程的走查 / 评测脚本"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://github.com/microsoft/playwright/issues/41826",
+      "checked_at": "2026-10-22",
+      "purpose": "同一现象（\"Promise was collected\" 被改写成 context destroyed）；维护者判定为 V8 行为、Playwright 侧不修"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/microsoft/playwright/pull/27867",
+      "checked_at": "2026-10-22",
+      "purpose": "2023 年同一现象的修补 PR（返回值包一层 Promise.resolve），未合入"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/tlockney/cdp-kernel/issues/55",
+      "checked_at": "2026-10-22",
+      "purpose": "独立复现：awaitPromise 下普通返回值也被弱持有，GC 即失败；建议目标侧强引用到落定后"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/v8/v8/blob/main/src/inspector/injected-script.cc",
+      "checked_at": "2026-10-22",
+      "purpose": "ProtocolPromiseHandler 弱持有结果 promise、被回收时回 \"Promise was collected\""
+    }
+  ],
+  "invariants": [
+    "Playwright 注入的 UtilityScript.evaluate 返回给调试器的结果，在落定后的下一个宏任务之前一直被 UtilityScript 实例强引用",
+    "Playwright 改写协议错误时保留原始协议消息，导航报错不再掩盖别的协议失败",
+    "打包冒烟每夜至少在 macOS 上跑一次，不只在打包范围文件变动时才跑"
+  ],
+  "invariant_owner_layer": {
+    "layer": "patches/playwright-core@1.60.0.patch",
+    "tests": [
+      "tests/ux/playwright-main-evaluate.e2e.mjs"
+    ],
+    "why": "主进程求值结果能否送达只由 Playwright 注入的 UtilityScript 决定，补丁是这一层在本仓库的唯一持有者；类回归测试先核补丁在位，再在主进程持续忙时跑四种结果形态，去掉补丁即红（实测补丁前红）。"
+  },
+  "doors": [
+    {
+      "kind": "read",
+      "path": "evals/journeys/j5-edit-export.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "evals/lib/journeyRunner.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/asset-preview-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/batch-generate-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/browser-contained-canvas-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/canvas-delete-undo-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/canvas-gestures-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/canvas-image-sharpness-measure.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/character-card-upload-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-e2e-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-inline-prompt-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-multi-instance-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-onboarding-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-preset-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-progress-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-real-user-journey.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-reconcile-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-template-library-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-utility-workflow-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-workflow-page-real-server-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-workflow-page-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/comfyui-workflow-params-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/custom-call-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/dreamina-honest-error-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/error-card-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/expression-pack-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/failure-message-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/feedback-mode-video-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/i2i-reliability-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/local-protocol-seek-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/model-identity-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/model-panel-shot.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/model-vendor-dedup-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/onboarding-demo-asset-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/poll-cadence-live-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/pr53-image-video-mode-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/project-rename-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/proxy-setting-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/relay-image-route-fallback-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/relay-model-fetch-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/retired-model-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/settings-autosave-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/settings-capability-contract-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/settings-direct-script-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/settings-existing-connection-add-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/settings-fixed-shell-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/settings-keyless-gateway-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/settings-model-access-save-first-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/settings-models-tab-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/settings-nested-overlay-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/shot-mode-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/text-error-card-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/token-alpha-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/whiteboard-library-walkthrough.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/_launchApp.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/adoption-bridge.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/agent-runtime-walk-support.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/agent-timeline-ops.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/agent-timeline-receipt.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/antigravity-cli.live.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/archetype-modebar.e2e.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/audit-storyboard.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-context-menu-click.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-control-clarity.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-drag-pan-gestures.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-follow-hand/session.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-frame-real-task.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-frame.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-handles-alt-drag.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-image-aspect.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-magnetic-handle.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-node-context-menu.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-open-fit.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-performance-benchmark.e2e.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-s5-walkthrough.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-shortcut-parity.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-shortcuts.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-stuck-modifier.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-three-gestures.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/canvas-toolbar-open-select.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/clip-drop-zoom.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/clip-gesture-ownership.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/clip-label-under-handle.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/clip-node-editing.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/comfy-workflow-feedback.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/comfy-workflow-multiref.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/composer-overlap-and-fast-typing.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/control-hierarchy-u2.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/core-smoke/fixture.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/deconstruction-interrupted-recovery.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/deconstruction-panel.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/default-generation-model.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/editing-panel-system.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/editing-real-user-pass.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/feedback-batch-hardening.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/full-walk/actions.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/generation-list-window.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/ia-audit-shots.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/image-grid-split-freeze.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/layout-timeline-panel-span.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/library-category-collapse.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/library-sync-badge.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/model-kind-misguess.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/model3d-asset-library.e2e.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/narrowed-mode-guidance.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/node-actions-off-image.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/node-prompt-presets.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/node-timeline-toolbar.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/overlay-z-order.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/preview-control-scope.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/preview-export-busy.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/process-feedback-imgfx-real.e2e.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/reference-companion-required.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/runway-vendor-honest-modes.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/settings-relocation.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/skill-cover-wall.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/skill-library-cards.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/skill-library-specimen.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/storyboard-windowing.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/timeline-context-menu.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/timeline-toolbar-row.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/timeline-transition-preview.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/timeline-visual-feedback.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/vendor-honest-variant-axis.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/video-depth-real-task.walk.mjs",
+      "symbol": "browserWindow"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/windows-freeze-sweep.walk.mjs",
+      "symbol": "browserWindow"
+    }
+  ],
+  "door_reduction": {
+    "before": 126,
+    "after": 126,
+    "why_not": "这些是各自独立的走查 / 冒烟 / 评测脚本，本来就不该合并成一个入口；它们求值主进程时全部经过同一个 Playwright UtilityScript（没有绕开它的第二条通道——仓库里唯一自发 CDP 的 requireBeforePackagedMain 用 Debugger.evaluateOnCallFrame、不带 awaitPromise）。不变量修在这个共同边界上，入口数不必减。"
+  },
+  "generality_proof": "所有主进程求值（app.evaluate / evaluateHandle / browserWindow / 主进程句柄 evaluate）都由 playwright-core 发 Runtime.callFunctionOn「(utilityScript, ...args) => utilityScript.evaluate(...args)」，结果都从 UtilityScript.evaluate 返回。补丁让这一处返回的 promise 在送达前强可达，任何调用者、任何平台、任何启动阶段都不再依赖 GC 时机；类回归测试在主进程持续忙的条件下覆盖同步值、异步值、句柄上求值、抛错四种形态。",
+  "shared_boundaries": [
+    {
+      "path": "patches/playwright-core@1.60.0.patch",
+      "symbol": "_retainUntilDelivered",
+      "responsibility": "UtilityScript.evaluate 的结果强引用到落定后下一个宏任务；rewriteError 附原始协议消息"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/packaged-mcp-smoke.e2e.mjs",
+      "entry_point": "evaluate",
+      "disposition": "enforced",
+      "evidence": "gui.app.evaluate(() => process.env.NOMI_CAPABILITY_DIR) 经 UtilityScript；本机打包产物探针补丁前 3/30 挂、补丁后见报告"
+    },
+    {
+      "path": "tests/ux/_launchApp.mjs",
+      "entry_point": "browserWindow",
+      "disposition": "enforced",
+      "evidence": "app.browserWindow(win) 与 browserWindow.evaluate(setContentSize) 都是主进程求值；09-12 那次「热启动句柄失效」同形，当时加的 waitForURL 只是挪时机，本次删掉"
+    },
+    {
+      "path": "tests/ux/canvas-follow-hand/session.mjs",
+      "entry_point": "evaluate",
+      "disposition": "enforced",
+      "evidence": "10-17 Linux run 里 processMemory 的 app.evaluate 报同一句；同一 UtilityScript 边界"
+    },
+    {
+      "path": "tests/ux/_launchApp.mjs",
+      "entry_point": "requireBeforePackagedMain",
+      "disposition": "not-affected",
+      "evidence": "自开调试会话只发 Debugger.evaluateOnCallFrame / Runtime.runIfWaitingForDebugger，不带 awaitPromise，不经弱持有的结果 promise"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "任何主进程忙的时刻（启动、导出、批量写盘）+ 任何主进程 evaluate 都能触发；已在 Mac 打包冒烟、Linux 画布验收、核心冒烟、画布跟手四处出现，产品启动越重越频繁",
+    "same_class_scan": [
+      "gh api 近 30 天 Quality Gate 全部失败 job 日志 grep「Execution context was destroyed」：Mac Package 6 次（10-18 起）、Canvas Acceptance 2 次、Core Flow Smoke 1 次（canvas-follow-hand）",
+      "node scripts/door-map.mjs browserWindow --roots=tests,evals,scripts --include-tests：126 个入口；grep app.evaluate：88 个文件",
+      "grep -rn \"context was destroyed|Promise was collected\" tests scripts evals electron src：除 _launchApp 的旧注释外无代码依赖该报错文本",
+      "渲染进程对照：Playwright Chromium page 主线程忙循环下 page.evaluate 30/30 正常（不同派发机制，不在本类）"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "patches/playwright-core@1.60.0.patch",
+    "invariant": "主进程 evaluate 的结果在送达调试器前一直强可达；协议失败的原文不被改写吞掉",
+    "failure_mode": "补丁打不上时 pnpm install 失败；补丁被删或 Playwright 升级后未复核时类回归测试 playwright-main-evaluate.e2e.mjs 红（先查补丁在位，再在主进程持续忙时求值）",
+    "exception_policy": "none",
+    "strategy": "在所有调用者共同经过的 Playwright UtilityScript 上补上强引用，不在调用方 sleep / 重试（求值体可能有副作用，丢的是回包不是执行）；同时删掉 09-12 为同一类加的时机等待；打包冒烟加每夜定时跑，补上「只在打包文件变动时才跑」的缺口",
+    "artifacts": [
+      "patches/playwright-core@1.60.0.patch",
+      "package.json",
+      "tests/ux/playwright-main-evaluate.e2e.mjs",
+      ".github/workflows/nightly-walkthroughs.yml"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/playwright-main-evaluate.e2e.mjs",
+    "scripts/check-quality-gate-workflow.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/playwright-main-evaluate.e2e.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/ux/_launchApp.mjs"
+    ],
+    "rationale": "删掉启动器里 09-12 为同一类问题加的 waitForURL / networkidle 等待（误归因为页面导航，只是挪了时机）"
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "playwright-core@1.60.0 + patches/playwright-core@1.60.0.patch（补丁，不是新依赖）",
+    "target": "上游 Playwright 或 V8 让 awaitPromise 的结果在送达前强可达后，删补丁",
+    "rationale": "上游维护者在 #41826 判定不修；Electron 主进程只有 Playwright 这一条官方测试通道，没有可替换的库。补丁两处、各几行，按 pnpm patchedDependencies 官方机制管理。",
+    "exit_criteria": [
+      "升级 Playwright 时 pnpm 打不上补丁即安装失败：先在新版本上去掉补丁跑 tests/ux/playwright-main-evaluate.e2e.mjs，绿则删补丁，红则把补丁移植到新版本",
+      "上游 Playwright 在 UtilityScript 侧保活结果或 V8 改为强持有时，删补丁并保留类回归测试"
+    ]
+  },
+  "migration": "无数据迁移；改的是测试依赖与测试启动器，装依赖即生效（pnpm patchedDependencies）。",
+  "residual_risks": [
+    "V8 包装 promise 在我们的 promise 落定之后、回调执行之前仍是弱持有，理论上同一微任务检查点内仍有极窄窗口；实测开发版 Electron 主进程持续忙 120/120 次、打包产物 30 次启动均 0 失败，未能观测到",
+    "返回永不落定的 promise 的 evaluate 会被一直强引用（之前是偶发报错、现在一直挂起），不会再被 GC 报错提前结束——仓库现无此用法",
+    "Mac 上的原始协议消息尚未亲眼抓到（实验分支未推）：由本 PR 的 Mac Package 跑 3 次验证；若仍挂，改写后的报错会带原文"
+  ]
+}
