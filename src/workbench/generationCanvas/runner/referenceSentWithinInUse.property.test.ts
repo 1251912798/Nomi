@@ -8,14 +8,18 @@
 //   换方式 / 换模型 = applyArchetypeModeSwitch / buildNodeModelChangePatch + ensureArchetypeNodeMeta（main 上的真入口）
 //   渲染层发送    = resolveGenerationReferences → buildCatalogTaskRequest
 //   主进程        = 和 runtime.runTask 同顺序：assertNoReferenceResidueBeforeSend（拒发）→ applyHeadlessParamDefaults → buildProfileHttpRequest
-//                  （通用中转用 NEWAPI_* op，APIMart 用 APIMART_*_MODELS 的 mapping）
+//                  （通用中转用 NEWAPI_* op，APIMart 用 APIMART_*_MODELS 的 mapping，「内置」用 applyBuiltinSeeds 种下的全部供应商真 mapping）
 //
 // 两层尺子分开量：
 //   ① 模板参数层（buildCatalogTaskRequest → taskTemplateParams，不经主进程剥除）——量的是**渲染层**有没有守住契约；
 //      渲染层那步「当前方式没声明的参考键显式置 undefined」被删，这一层立刻红。
-//   ② 真请求体（中转 / APIMart 两种传输）——量的是**最后上线的字节**。
+//   ② 真请求体（中转 / APIMart / 内置全部供应商）——量的是**最后上线的字节**。
 // 主进程拒发（assertNoReferenceResidueBeforeSend，协调 10-22 定）另有一组用例：绕过渲染层、把节点 meta 原样塞进 extras，
 // 主进程在花钱之前拒，一个字节都不发；渲染层正常组出来的请求永远不会被拒（全档案 × 每个方式）。
+//
+// 「哪些键算参考键」不信 GENERIC_REFERENCE_KEYS 自己说的：另做一份普查（bodyReferenceKeyCensus）——内置目录里每条请求体读的
+// 每个参数键，减去声明过的非参考参数，剩下的就是请求体实际读的参考键。普查结果必须全在键表里（键表完整性），夹带格也逐个塞图。
+// 新请求体多读一个键而没人归类，这里先红（条件 2，2026-10-23）。
 //
 // 设 NOMI_REFLEAK_REPORT=<文件> 时把每层的漏格数和每格「在用且发出」写进去（修前 / 修后对账用）。
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -41,7 +45,12 @@ import {
 } from '../../../../electron/catalog/newapiTransport'
 import { APIMART_VIDEO_MODELS } from '../../../../electron/catalog/apimartVideos'
 import { APIMART_IMAGE_MODELS } from '../../../../electron/catalog/apimartImages'
-import type { HttpOperation, Model, Vendor } from '../../../../electron/catalog/types'
+import { selectTaskMapping, type CatalogState, type HttpOperation, type Model, type Vendor } from '../../../../electron/catalog/types'
+import { applyBuiltinSeeds } from '../../../../electron/catalog/seedBuiltins'
+import { wireReferencedParamKeys } from '../../../../electron/catalog/paramTranslate'
+import { DEFAULT_SLOT_INPUT_KEY } from '../../../../electron/catalog/referenceReachability'
+import { ARCHETYPE_WIRE_DEFAULTS } from '../../../../electron/catalog/archetypeWireDefaults.generated'
+import { GENERIC_REFERENCE_KEYS } from '../../../../electron/shared/modelArchetypes/referenceKeys'
 import type { GenerationCanvasEdge, GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { createGenerationNode } from '../model/graphOps'
 import { buildNodeModelChangePatch } from '../nodes/buildNodeModelChangePatch'
@@ -180,6 +189,76 @@ function wire(transport: Transport, request: { kind: string; prompt: string; ext
   return { body: built.body, query: built.query, url: built.url, method: built.method, headers: built.headers }
 }
 
+// ── 内置目录：applyBuiltinSeeds 种下的全部供应商真 mapping（kie / fal / runway / volcengine / agnes / minimax …）──────────
+
+const SEEDED: CatalogState = applyBuiltinSeeds({ version: 4, vendors: [], models: [], mappings: [], apiKeysByVendor: {} } as unknown as CatalogState, '2026-10-23T00:00:00.000Z').state
+
+/** 和 runtime.findTaskMapping 同一个选择器（selectTaskMapping）：精确模型 > 通用，按方式再挑。找不到 = 这家没有这条路。 */
+function seededTransport(modelKey: string, vendorKey: string, archetypeId: string, kind: string, modeId: string): Transport {
+  const vendor = SEEDED.vendors.find((candidate) => candidate.key === vendorKey)
+  const model = SEEDED.models.find((candidate) => candidate.vendorKey === vendorKey && candidate.modelKey === modelKey)
+  const mapping = vendor && model ? selectTaskMapping(SEEDED.mappings, vendorKey, kind as never, modelKey, modeId) : null
+  return {
+    vendor: { ...(vendor ?? { key: vendorKey, name: vendorKey, enabled: true }), baseUrlHint: LOOPBACK } as Vendor,
+    model: (model ?? { modelKey, vendorKey, labelZh: modelKey, kind: 'video', enabled: true, meta: { archetypeId } }) as Model,
+    op: mapping?.create ?? null, archetypeId,
+  }
+}
+
+// ── 请求体实际读的参考键（普查，独立于 GENERIC_REFERENCE_KEYS 的推导）──────────────────────────────────
+//
+// 内置目录每条 mapping 请求体读的每个参数键（wireReferencedParamKeys：body + 进程 args），先减去**声明过的非参考参数**：
+//   档案参数 / vendorParams / fixedParams、档案 wire 默认、mapping defaultParams、paramMap 的 wire 键、进程 fileParams 的 expose 键
+//   （物化时一定覆盖）、taskTemplateParams 一定会算出来的键；再减去下面这张台账里「档案没声明的供应商标量」。
+// 剩下的就是请求体实际读的参考键。新请求体多读一个键而没人归类 → 键表完整性那条先红：说清它是参考（进档案声明）还是标量（进台账）。
+
+/** 档案没声明、内置请求体里有的供应商标量参数（不是参考素材）。每条写理由；台账不留死条目（下面有一条断言）。 */
+const UNDECLARED_SCALAR_BODY_KEYS: Readonly<Record<string, string>> = {
+  num_images: 'fal 图片接口的出图张数（整数）；档案没有数量参数',
+  bitrate_mode: 'fal Seedance 2.5 的码率档位（枚举，官方默认 standard）',
+  enable_safety_checker: 'fal 的安全审查开关（布尔）',
+  enable_texture: 'fal hitem3d 是否出贴图（布尔）',
+  end_user_id: 'fal Seedance 2.5 的终端用户标识（供应商侧风控用的 id，不是素材）',
+  export_format: 'fal hitem3d 的导出格式（枚举）',
+  face_count: 'fal hitem3d 的面数（整数）',
+  prompt_expansion_mode: 'fal MiniMax H3-Max 的提示词扩写档位（枚举）',
+  shading: 'fal hitem3d 的着色方式（枚举）',
+  shot_type: 'fal Kling V3 Pro 的镜头类型（枚举）',
+}
+
+/** 声明过的非参考参数键（来源见上）。 */
+function declaredScalarKeys(): Set<string> {
+  const keys = new Set<string>(Object.keys(taskTemplateParams({ extras: {} })))
+  for (const archetype of MODEL_ARCHETYPES) {
+    for (const mode of archetype.modes) {
+      for (const param of mode.params ?? []) keys.add(param.key)
+      for (const params of Object.values(mode.vendorParams ?? {})) for (const param of params) keys.add(param.key)
+      for (const key of Object.keys(mode.fixedParams ?? {})) keys.add(key)
+    }
+  }
+  for (const byKind of Object.values(ARCHETYPE_WIRE_DEFAULTS)) for (const byVendor of Object.values(byKind)) for (const defaults of Object.values(byVendor)) for (const key of Object.keys(defaults)) keys.add(key)
+  for (const mapping of SEEDED.mappings) {
+    for (const key of Object.keys(mapping.create.defaultParams ?? {})) keys.add(key)
+    for (const rule of mapping.create.paramMap?.rules ?? []) keys.add(rule.wire)
+    for (const file of mapping.create.process?.fileParams ?? []) keys.add(file.expose)
+  }
+  return keys
+}
+
+/** 普查：请求体实际读的参考键 → 在哪几条 mapping 里读到（vendor/model/taskKind）。 */
+function bodyReferenceKeyCensus(): Map<string, string[]> {
+  const scalars = declaredScalarKeys()
+  const census = new Map<string, string[]>()
+  for (const mapping of SEEDED.mappings) {
+    for (const key of wireReferencedParamKeys(mapping.create)) {
+      if (scalars.has(key) || key in UNDECLARED_SCALAR_BODY_KEYS) continue
+      census.set(key, [...(census.get(key) ?? []), `${mapping.vendorKey}/${mapping.modelKey ?? '*'}/${mapping.taskKind}`])
+    }
+  }
+  return census
+}
+const REFERENCE_KEY_CENSUS = bodyReferenceKeyCensus()
+
 // ── 格子：每个档案从「放满」起切到它的每个方式 ──────────────────────────────────────
 
 type Start = 'refs' | 'frames' | 'media'
@@ -221,9 +300,39 @@ function startFor(archetype: ModelArchetype, start: Start): { mode: ArchetypeMod
  * upstreamResultUrls 会被 resolveGenerationReferences 抬成首帧 / 参考（那是另一类问题，见设计卡「残余风险」），
  * 所以只在当前方式**没有**对应槽时放。
  */
+/**
+ * 普查出来的参考键里，下面那张手列别名之外的（`image_urls`、`first_frame_image`、`image_with_roles`、`video_list`、`mask_url`…）：
+ * 每个键塞一张没在用的图，数组形的键塞一个数组。上传图住的那几个键（参考列表 + 旧的按槽存的键 + 视频 / 音频 / 源视频）
+ * 是「用户放进来的图」不是夹带，语义另有测试（参考列表那一组），这里不碰。
+ */
+const UPLOAD_STORAGE_KEYS = new Set([
+  'referenceImageUrls', 'firstFrameUrl', 'first_frame_url', 'lastFrameUrl', 'last_frame_url', 'referenceImageUrl', 'referenceImages',
+  'sourceVideoUrl', 'referenceVideoUrls', 'referenceAudioUrls',
+])
+/**
+ * 一张没在用的图塞进某个参考键时长什么样。`object`：照这个键真实的值形状造（`image_with_roles` 是 `[{url, role}]`，
+ * 火山 content 是 `{type, image_url:{url}, role}`）——MCP metadata 照抄一份 archetypeInput 进 meta 就是这个样子；
+ * `plain`：字符串，数组形的键给数组。
+ */
+function strayValueFor(key: string, tag: string, shape: 'plain' | 'object'): unknown {
+  const url = /video/i.test(key) ? vid(`${tag}-${key}`) : /audio|voice/i.test(key) ? aud(`${tag}-${key}`) : img(`${tag}-${key}`)
+  if (shape === 'object') {
+    if (/with_roles$/.test(key)) return [{ url, role: 'reference_image' }]
+    if (/_contents$/.test(key)) return [{ type: 'image_url', image_url: { url }, role: 'reference_image' }]
+    if (/_content$/.test(key)) return { type: 'image_url', image_url: { url }, role: 'first_frame' }
+  }
+  return /(s|_list|_ids)$/.test(key) ? [url] : url
+}
+/** 普查出来的参考键（上传图住的那几个除外），按这个键真实的值形状各塞一张没在用的图。 */
+const CENSUS_STRAY_KEYS = [...REFERENCE_KEY_CENSUS.keys()].filter((key) => !UPLOAD_STORAGE_KEYS.has(key)).sort()
+function censusStrayMeta(): Record<string, unknown> {
+  return Object.fromEntries(CENSUS_STRAY_KEYS.map((key) => [key, strayValueFor(key, 'census', 'object')]))
+}
+
 function aliasMetaFor(mode: ArchetypeMode): Record<string, unknown> {
   const has = (kind: string) => mode.slots.some((slot) => slot.kind === kind)
   return {
+    ...censusStrayMeta(),
     image_url: img('alias-image_url'), imageUrl: img('alias-imageUrl'), referenceImageUrl: img('alias-referenceImageUrl'),
     reference_images: [img('alias-reference_images')], reference_image_urls: [img('alias-reference_image_urls')],
     video_url: vid('alias-video_url'), source_video_url: vid('alias-source_video_url'),
@@ -269,23 +378,38 @@ const apimartArchetypes = APIMART_MODELS.flatMap((model) => {
   const archetype = resolveArchetypeForModel({ modelKey: model.modelKey, vendorKey: 'apimart', meta: { archetypeId: model.archetypeId } })
   return archetype && archetype.id === model.archetypeId ? [{ archetype, modelKey: model.modelKey, vendor: 'apimart', model }] : []
 })
+/** 内置目录里每个认得出档案的视频 / 图片模型行（同一个档案经几家接入就有几行）。 */
+const seededArchetypes = SEEDED.models.flatMap((model) => {
+  const archetype = resolveArchetypeForModel({ modelKey: model.modelKey, vendorKey: model.vendorKey, meta: model.meta as Record<string, unknown> | undefined })
+  return archetype && (archetype.kind === 'video' || archetype.kind === 'image') ? [{ archetype, modelKey: model.modelKey, vendor: model.vendorKey }] : []
+})
 
-type Layer = 'params' | 'relay' | 'apimart' | 'relay-bypass' | 'apimart-bypass'
+type Layer = 'params' | 'relay' | 'apimart' | 'seeded' | 'relay-bypass' | 'apimart-bypass' | 'seeded-bypass'
 
 /** 绕过渲染层的入口长什么样：节点 meta 原样进 extras，只带上渲染层那份按当前方式打好的 archetypeInput。 */
 function bypassRenderer(graph: Graph, request: ReturnType<typeof rendererRequest>) {
   return { ...request, extras: { ...graph.node.meta, archetypeInput: request.extras?.archetypeInput ?? {} } }
 }
-type CellResult = { label: string; leaked: string[]; clickable: boolean; sentInUse: string[] }
+/** skipped：内置这一行的请求体渲染不了（进程型 / 本测试不模拟的传输），如实计数，不算过也不算漏。 */
+type CellResult = { label: string; leaked: string[]; clickable: boolean; sentInUse: string[]; skipped?: string }
 
 function audit(cells: Cell[], layer: Layer): CellResult[] {
-  return cells.map(({ label, archetype, mode, graph, modelKey }) => {
+  return cells.map(({ label: cellLabel, archetype, mode, graph, modelKey }) => {
+    // 内置目录里同一个档案经几家接入：格名前面带上是哪一家。
+    const label = layer.startsWith('seeded') ? `${String(graph.node.meta?.modelVendor)}/${cellLabel}` : cellLabel
     const shown = inUse(graph)
     const built = rendererRequest(graph)
     const request = layer.endsWith('-bypass') ? bypassRenderer(graph, built) : built
     let sent: Map<string, string[]>
     if (layer === 'params') sent = urlsIn(taskTemplateParams(request))
-    else {
+    else if (layer.startsWith('seeded')) {
+      const transport = seededTransport(modelKey, String(graph.node.meta?.modelVendor), archetype.id, request.kind, mode.id)
+      try {
+        sent = urlsIn(wire(transport, request as never))
+      } catch (error) {
+        return { label, leaked: [], clickable: clickable(graph, mode), sentInUse: [], skipped: String((error as Error).message).slice(0, 80) }
+      }
+    } else {
       const transport = layer.startsWith('relay')
         ? relayTransport(modelKey, archetype.id, request.kind)
         : apimartTransport(apimartArchetypes.find((entry) => entry.modelKey === modelKey)!.model, request.kind, mode.id)
@@ -293,6 +417,38 @@ function audit(cells: Cell[], layer: Layer): CellResult[] {
     }
     const leaked = [...sent].filter(([url]) => !shown.has(url)).map(([url, keys]) => `${url.slice(REF.length)}←${[...new Set(keys)].join(',')}`)
     return { label, leaked, clickable: clickable(graph, mode), sentInUse: [...sent.keys()].filter((url) => shown.has(url)).sort() }
+  })
+}
+
+/**
+ * 主进程这道守逐键量：渲染层组好的（本来就干净、主进程不会拒的）请求，只在**一个**参考键下多夹带一张没在用的图
+ * （值按这个键真实的形状造，含对象形），模拟「某个新入口漏清了这一个键」。每格一个键，别的键的拒发遮不住它。
+ * 键：请求体直接读的普查键只在这条传输真读它时才量（读不到的键夹带了也上不了线）；主进程翻译读的标准键（不在普查里，
+ * 如 imageUrl / referenceImages，会被翻成 image_url / reference_images）每格都量。上传图住的那几个键语义另测，不夹带。
+ */
+const PER_KEY_UNIVERSE = [...new Set([...CENSUS_STRAY_KEYS, ...[...GENERIC_REFERENCE_KEYS].filter((key) => !UPLOAD_STORAGE_KEYS.has(key))])].sort()
+function bypassPerKey(cells: Cell[], family: 'relay' | 'apimart' | 'seeded'): CellResult[] {
+  return cells.flatMap(({ label: cellLabel, archetype, mode, graph, modelKey }) => {
+    const label = family === 'seeded' ? `${String(graph.node.meta?.modelVendor)}/${cellLabel}` : cellLabel
+    const shown = inUse(graph)
+    const request = rendererRequest(graph)
+    const transport = family === 'relay' ? relayTransport(modelKey, archetype.id, request.kind)
+      : family === 'apimart' ? apimartTransport(apimartArchetypes.find((entry) => entry.modelKey === modelKey)!.model, request.kind, mode.id)
+        : seededTransport(modelKey, String(graph.node.meta?.modelVendor), archetype.id, request.kind, mode.id)
+    if (!transport.op) return []
+    const read = new Set(wireReferencedParamKeys(transport.op))
+    return PER_KEY_UNIVERSE.filter((key) => read.has(key) || !REFERENCE_KEY_CENSUS.has(key)).map((key): CellResult => {
+      const smuggled = { ...request, extras: { ...request.extras, [key]: strayValueFor(key, 'bypass', 'object') } }
+      let sent: Map<string, string[]>
+      try {
+        sent = urlsIn(wire(transport, smuggled as never))
+      } catch (error) {
+        if (family !== 'seeded') throw error
+        return { label: `${label} +${key}`, leaked: [], clickable: clickable(graph, mode), sentInUse: [], skipped: String((error as Error).message).slice(0, 80) }
+      }
+      const leaked = [...sent].filter(([url]) => !shown.has(url)).map(([url, keys]) => `${url.slice(REF.length)}←${[...new Set(keys)].join(',')}`)
+      return { label: `${label} +${key}`, leaked, clickable: clickable(graph, mode), sentInUse: [...sent.keys()].filter((url) => shown.has(url)).sort() }
+    })
   })
 }
 
@@ -319,6 +475,16 @@ const LAYERS = {
   // 主进程这道守单独量：渲染层整个被绕过（MCP / 将来新入口 / 渲染层回归），真请求体照样只有在用的。
   'relay/bypass': () => audit([...cellsFor(imageOrVideo, 'refs'), ...cellsFor(imageOrVideo, 'frames'), ...cellsFor(imageOrVideo, 'media'), ...aliasCellsFor(imageOrVideo)], 'relay-bypass'),
   'apimart/bypass': () => audit([...cellsFor(apimartArchetypes, 'refs'), ...cellsFor(apimartArchetypes, 'frames'), ...cellsFor(apimartArchetypes, 'media'), ...aliasCellsFor(apimartArchetypes)], 'apimart-bypass'),
+  // 内置目录全部供应商的真 mapping（验收 r3 第 3 节第 3 条：kie / runninghub / fal / runway / volcengine … 此前只在 params 层量过）。
+  'seeded/refs': () => audit(cellsFor(seededArchetypes, 'refs'), 'seeded'),
+  'seeded/frames': () => audit(cellsFor(seededArchetypes, 'frames'), 'seeded'),
+  'seeded/media': () => audit(cellsFor(seededArchetypes, 'media'), 'seeded'),
+  'seeded/aliases': () => audit(aliasCellsFor(seededArchetypes), 'seeded'),
+  'seeded/bypass': () => audit([...cellsFor(seededArchetypes, 'refs'), ...cellsFor(seededArchetypes, 'frames'), ...cellsFor(seededArchetypes, 'media'), ...aliasCellsFor(seededArchetypes)], 'seeded-bypass'),
+  // 逐键：干净请求只漏清一个参考键（含对象形的值），主进程照样拦住。
+  'relay/bypass-per-key': () => bypassPerKey([...cellsFor(imageOrVideo, 'refs'), ...cellsFor(imageOrVideo, 'frames'), ...cellsFor(imageOrVideo, 'media')], 'relay'),
+  'apimart/bypass-per-key': () => bypassPerKey([...cellsFor(apimartArchetypes, 'refs'), ...cellsFor(apimartArchetypes, 'frames'), ...cellsFor(apimartArchetypes, 'media')], 'apimart'),
+  'seeded/bypass-per-key': () => bypassPerKey([...cellsFor(seededArchetypes, 'refs'), ...cellsFor(seededArchetypes, 'frames'), ...cellsFor(seededArchetypes, 'media')], 'seeded'),
 } as const
 
 describe('性质：全部档案 × 每个方式，发出去的 ⊆ 界面在用', () => {
@@ -337,8 +503,53 @@ describe('性质：全部档案 × 每个方式，发出去的 ⊆ 界面在用'
     expect(results['apimart/refs'].length).toBeGreaterThanOrEqual(40)
   })
 
+  it('覆盖面自检（内置目录）：至少 8 家供应商、20 个档案真渲染出了请求体；渲染不了的只能是少数（理由如实列出）', () => {
+    const seeded = [...results['seeded/refs'], ...results['seeded/frames'], ...results['seeded/media'], ...results['seeded/aliases']]
+    const rendered = seeded.filter((r) => !r.skipped)
+    expect(new Set(rendered.map((r) => r.label.split('/')[0])).size).toBeGreaterThanOrEqual(8)
+    expect(new Set(rendered.map((r) => r.label.split('/').slice(1).join('/').split(':')[0])).size).toBeGreaterThanOrEqual(20)
+    expect(rendered.length, `渲染不了的格：${[...new Set(seeded.filter((r) => r.skipped).map((r) => r.skipped))].join(' | ')}`).toBeGreaterThan(seeded.length * 0.8)
+  })
+
+  it('覆盖面自检（逐键夹带）：每种传输都量到了足够多的「格 × 键」', () => {
+    expect(results['relay/bypass-per-key'].length).toBeGreaterThanOrEqual(2000)
+    expect(results['apimart/bypass-per-key'].length).toBeGreaterThanOrEqual(800)
+    expect(results['seeded/bypass-per-key'].filter((r) => !r.skipped).length).toBeGreaterThanOrEqual(4000)
+  })
+
   it.each(Object.keys(LAYERS) as Array<keyof typeof LAYERS>)('%s：没有一格把界面上没在用的地址发出去', (name) => {
     expect(leaksOf(results[name])).toEqual([])
+  })
+})
+
+describe('键表完整性：请求体实际读的参考键都在 GENERIC_REFERENCE_KEYS 里（条件 2，2026-10-23）', () => {
+  it('普查覆盖面：内置 mapping ≥ 200 条、请求体实际读的参考键 ≥ 40 个', () => {
+    expect(SEEDED.mappings.length).toBeGreaterThanOrEqual(200)
+    expect(REFERENCE_KEY_CENSUS.size).toBeGreaterThanOrEqual(40)
+  })
+
+  it('请求体读的每个参考键都在键表里（渲染层先清、主进程拒发）；漏了的这里点名', () => {
+    const missing = [...REFERENCE_KEY_CENSUS].filter(([key]) => !GENERIC_REFERENCE_KEYS.has(key))
+      .map(([key, where]) => `${key} ← ${where.slice(0, 2).join(' | ')}${where.length > 2 ? ` (+${where.length - 2})` : ''}`)
+    expect(missing).toEqual([])
+  })
+
+  it('台账不留死条目：每个「档案没声明的供应商标量」都真有内置请求体在读，且没有被档案声明过', () => {
+    const read = new Set(SEEDED.mappings.flatMap((mapping) => wireReferencedParamKeys(mapping.create)))
+    const scalars = declaredScalarKeys()
+    expect(Object.keys(UNDECLARED_SCALAR_BODY_KEYS).filter((key) => !read.has(key) || scalars.has(key))).toEqual([])
+  })
+
+  it('档案声明的参数没有一个落进参考键表（否则渲染层会把真参数清掉、主进程会拒发）', () => {
+    const params = new Set(MODEL_ARCHETYPES.flatMap((archetype) => archetype.modes.flatMap((mode) => [
+      ...(mode.params ?? []).map((param) => param.key),
+      ...Object.values(mode.vendorParams ?? {}).flatMap((list) => list.map((param) => param.key)),
+    ])))
+    expect([...params].filter((key) => GENERIC_REFERENCE_KEYS.has(key))).toEqual([])
+  })
+
+  it('参考槽缺省的 inputKey 都在键表里', () => {
+    expect(Object.values(DEFAULT_SLOT_INPUT_KEY).filter((key) => !GENERIC_REFERENCE_KEYS.has(key))).toEqual([])
   })
 })
 
@@ -495,6 +706,27 @@ describe('主进程拒发：绕过渲染层，把节点 meta 原样塞进 extras
     const archetype = archetypeOf('doubao-seedance-2.0')
     const request = rendererRequest(graphOn(archetype, 'doubao-seedance-2.0', 'apimart', 'firstlast', { firstFrameUrl: img('f'), lastFrameUrl: img('l') }))
     expect(assertNoReferenceResidueBeforeSend(structuredClone(request.extras!) as never, 'test')).toEqual(request.extras)
+  })
+
+  it('认得每一个请求体实际读的参考键，值是字符串、数组还是对象形（[{url, role}]、火山 content）都认', () => {
+    const inUseExtras = { archetypeInput: { image_urls: [img('in-use')], model: 'm' } }
+    const missed: string[] = []
+    for (const key of [...new Set([...CENSUS_STRAY_KEYS, ...GENERIC_REFERENCE_KEYS])].sort()) {
+      for (const shape of ['plain', 'object'] as const) {
+        const extras = { ...inUseExtras, [key]: strayValueFor(key, `guard-${shape}`, shape) }
+        if (!findReferenceResidue(extras as never).includes(key)) missed.push(`${key}(${shape})`)
+      }
+    }
+    expect(missed).toEqual([])
+  })
+
+  it('和在用的是同一张图、或只是在用那几张换了个形状装着：不算残留', () => {
+    const extras = {
+      archetypeInput: { image_with_roles: [{ url: img('f'), role: 'first_frame' }, { url: img('l'), role: 'last_frame' }] },
+      first_frame_image: img('f'), image_urls: [img('f'), img('l')],
+      volcengine_first_image_content: { type: 'image_url', image_url: { url: img('f') }, role: 'first_frame' },
+    }
+    expect(findReferenceResidue(extras as never)).toEqual([])
   })
 
   it('没有档案投影（ComfyUI / 无档案 / headless 调用方显式给的参考）不查', () => {
