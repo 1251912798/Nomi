@@ -27,12 +27,20 @@ export function registerPromptLibraryIpc(): void {
     }
   });
 
-  ipcMain.handle("nomi:prompt-library:user-add", async (event, input: { title?: string; prompt: string; promptType: "image" | "video"; tags?: string[]; referenceImages?: { url: string; title?: string; sourceUrl?: string }[]; restoreSnapshot?: unknown }) => {
+  ipcMain.handle("nomi:prompt-library:user-add", async (event, input: { title?: string; prompt: string; promptType: "image" | "video"; tags?: string[]; referenceImages?: { url: string; title?: string; sourceUrl?: string }[] }) => {
     assertTrustedSender(event);
     try {
-      if (input.restoreSnapshot !== undefined) return { ok: true, prompts: restoreUserPrompt(input.restoreSnapshot) };
       addUserPrompt(input);
       return { ok: true, prompts: listUserPrompts() };
+    } catch (error) {
+      return { ok: false, prompts: listUserPrompts(), error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle("nomi:prompt-library:user-restore", async (event, snapshot: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return { ok: true, prompts: restoreUserPrompt(snapshot) };
     } catch (error) {
       return { ok: false, prompts: listUserPrompts(), error: error instanceof Error ? error.message : String(error) };
     }

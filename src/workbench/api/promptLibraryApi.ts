@@ -121,7 +121,7 @@ export async function deleteUserPromptWithSnapshot(id: string): Promise<{ items:
 
 export async function restoreUserPrompt(snapshot: LibraryPrompt): Promise<LibraryPrompt[]> {
   const desktop = requireDesktopRuntime('restore prompt')
-  const res = await desktop.promptLibrary!.userAdd({ restoreSnapshot: snapshot } as never) as { ok?: boolean; prompts?: unknown[]; error?: string }
+  const res = await desktop.promptLibrary!.userRestore(snapshot) as { ok?: boolean; prompts?: unknown[]; error?: string }
   if (!res?.ok || !Array.isArray(res.prompts)) throw new Error(res?.error || i18n.t('runtime.promptLibrary.saveFailed'))
   return mapUserPrompts(res)
 }

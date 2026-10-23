@@ -95,14 +95,14 @@ describe('promptLibraryApi', () => {
       futureField: { keep: true },
     }
     const userDelete = vi.fn().mockResolvedValue({ ok: true, prompts: [], deleted })
-    const userAdd = vi.fn().mockResolvedValue({ ok: true, prompts: [deleted] })
-    mockedBridge.mockReturnValue({ promptLibrary: { userDelete, userAdd } } as never)
+    const userRestore = vi.fn().mockResolvedValue({ ok: true, prompts: [deleted] })
+    mockedBridge.mockReturnValue({ promptLibrary: { userDelete, userRestore } } as never)
 
     const result = await deleteUserPromptWithSnapshot('mine-1')
     expect(result.items).toEqual([])
     expect(result.deleted).toMatchObject({ id: 'mine-1', tags: ['tag'], referenceImages: deleted.referenceImages, futureField: { keep: true } })
     await expect(restoreUserPrompt(result.deleted!)).resolves.toMatchObject([{ id: 'mine-1', futureField: { keep: true } }])
-    expect(userAdd).toHaveBeenCalledWith(expect.objectContaining({ restoreSnapshot: expect.objectContaining({ id: 'mine-1', futureField: { keep: true } }) }))
+    expect(userRestore).toHaveBeenCalledWith(expect.objectContaining({ id: 'mine-1', futureField: { keep: true } }))
   })
 
   it('filters by prompt type and searchable title/body/source without another data owner', () => {
