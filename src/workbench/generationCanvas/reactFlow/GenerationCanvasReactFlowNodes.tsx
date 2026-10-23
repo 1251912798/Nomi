@@ -236,8 +236,15 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
         'generation-canvas-react-flow__node-shell',
         pickable === true && 'cursor-pointer rounded-nomi ring-1 ring-nomi-ink-40 ring-offset-2 ring-offset-workbench-bg hover:ring-nomi-ink',
         pickable === false && 'opacity-40 grayscale',
+        // 画布外面点名了这张卡（D2 指向元素 P1，2026-10-23）：中性样式，不用强调色描边（10-10「蓝色描边都删掉」）。
+        // 悬停 = 深色细线 + 阴影抬一级；定位后闪一下 = ink 12% 淡光晕，闪完由对焦那条路清掉、阴影自己淡出。
+        // 画在外壳上而不是卡面里：轻量卡（大画布）和完整卡同一个样子，也不碰节点的脸。
+        'rounded-nomi transition-shadow duration-300',
+        data.externalHighlight === 'hover' && 'shadow-[0_0_0_1px_var(--nomi-ink),var(--nomi-shadow-lg)]',
+        data.externalHighlight === 'flash' && 'shadow-[0_0_0_6px_color-mix(in_oklch,var(--nomi-ink)_12%,transparent),var(--nomi-shadow-lg)]',
       )}
       data-pick={pickable === null ? undefined : pickable ? 'eligible' : 'ineligible'}
+      data-external-highlight={data.externalHighlight ?? undefined}
       onDragStart={blockImplicitNativeDrag}
       // 卡面与自己把手的上下层由把手档位派生（见 generationCanvasReactFlow.css 的同名选择器）：
       // 只有磁吸档才把卡面抬到带子之上，小圆点档的把手必须压在卡面上。
@@ -299,7 +306,7 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
       {!groupPort ? (
         <GenerationFlowNodeScope>
           <NodeEmptyStateProvider engaged={primarySelection} readOnly={data.readOnly}>
-          {shouldRenderFullNodeContent({ lightweightMode, selected: primarySelection, focusFlash: data.focusFlash }) ? (
+          {shouldRenderFullNodeContent({ lightweightMode, selected: primarySelection, flashing: data.externalHighlight === 'flash' }) ? (
             // 节点渲染器按种类懒加载（renderRegistry 的 React.lazy）。第一次建某种节点时 chunk 还没到，
             // 若没有就近的 Suspense 边界，React 会把最近那层（NomiStudioApp 包住整个画布的那个）
             // 已提交的内容整体 display:none 直到 chunk 到达：画布闪黑一帧，而且 React Flow 缓存的
@@ -320,7 +327,7 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
                 node={node}
                 selected={selected}
                 readOnly={data.readOnly}
-                focusFlash={data.focusFlash}
+                externalHighlight={data.externalHighlight}
                 appear={data.appear}
                 host={pluginHost}
               />

@@ -9,6 +9,7 @@ import {
   collectFlowPositionChanges,
   collectFlowSelectionChanges,
   flowViewportFromCanvas,
+  projectGenerationFlowNodes,
   toGenerationFlowEdges,
   toGenerationFlowNode,
   toGenerationFlowNodes,
@@ -193,13 +194,39 @@ describe('generation canvas React Flow adapter', () => {
 
     expect(appearing[0]).toBe(first[0])
     expect(appearing[1]).not.toBe(first[1])
-    expect(appearing[1].data).toMatchObject({ appear: true, focusFlash: false })
+    expect(appearing[1].data).toMatchObject({ appear: true, externalHighlight: null })
 
     const focused = toGenerationFlowNodes([a, b], new Set(['a']), false, appearing, {
       focusFlashNodeId: 'a',
     })
-    expect(focused[0].data).toMatchObject({ appear: false, focusFlash: true })
-    expect(focused[1].data).toMatchObject({ appear: false, focusFlash: false })
+    expect(focused[0].data).toMatchObject({ appear: false, externalHighlight: 'flash' })
+    expect(focused[1].data).toMatchObject({ appear: false, externalHighlight: null })
+  })
+
+  it('projects a chat pointer hover as a neutral external highlight, and flash wins over hover', () => {
+    const a = node('a', 0)
+    const b = node('b', 300)
+    const first = toGenerationFlowNodes([a, b], new Set(), false)
+    const hovered = toGenerationFlowNodes([a, b], new Set(), false, first, { pointerHoverNodeId: 'b' })
+    expect(hovered[0]).toBe(first[0])
+    expect(hovered[1].data.externalHighlight).toBe('hover')
+    const both = toGenerationFlowNodes([a, b], new Set(), false, hovered, { pointerHoverNodeId: 'b', focusFlashNodeId: 'b' })
+    expect(both[1].data.externalHighlight).toBe('flash')
+  })
+
+  it('re-projects only the cards whose hover changed when the structure is unchanged', () => {
+    const nodes = [node('a', 0), node('b', 300), node('c', 600)]
+    const base = { nodes, selected: new Set<string>(), readOnly: false, appearingNodeIds: undefined, focusFlashNodeId: null }
+    const first = projectGenerationFlowNodes(null, { ...base, pointerHoverNodeId: null })
+    const hoverB = projectGenerationFlowNodes(first, { ...base, pointerHoverNodeId: 'b' })
+    expect(hoverB.output[0]).toBe(first.output[0])
+    expect(hoverB.output[2]).toBe(first.output[2])
+    expect(hoverB.output[1].data.externalHighlight).toBe('hover')
+    const hoverC = projectGenerationFlowNodes(hoverB, { ...base, pointerHoverNodeId: 'c' })
+    expect(hoverC.output[0]).toBe(first.output[0])
+    expect(hoverC.output[1].data.externalHighlight).toBeNull()
+    expect(hoverC.output[2].data.externalHighlight).toBe('hover')
+    expect(projectGenerationFlowNodes(hoverC, { ...base, pointerHoverNodeId: 'c' })).toBe(hoverC)
   })
 
   it('extracts position and selection changes while ignoring unrelated changes', () => {

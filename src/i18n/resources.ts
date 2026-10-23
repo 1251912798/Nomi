@@ -1,5 +1,6 @@
 import { enShotTable, zhShotTable } from './locales/shotTable'
 import { enGenerationList, zhGenerationList } from './locales/generationList'
+import { enNodePointer, zhNodePointer } from './locales/nodePointer'
 import { enAntigravity, zhAntigravity } from './locales/antigravity'
 import { enModelSetup, zhModelSetup } from './locales/modelSetup'
 import { enBrowserAssets, zhBrowserAssets } from './locales/browserAssets'
@@ -30,6 +31,7 @@ export const zhCN = {
   appShell: zhAppShell,
   shotTable: zhShotTable,
   generationList: zhGenerationList,
+  nodePointer: zhNodePointer,
   common: {
     language: '语言',
     chinese: '简体中文',
@@ -441,6 +443,7 @@ export const en = {
   appShell: enAppShell,
   shotTable: enShotTable,
   generationList: enGenerationList,
+  nodePointer: enNodePointer,
   common: {
     language: 'Language',
     chinese: '简体中文',

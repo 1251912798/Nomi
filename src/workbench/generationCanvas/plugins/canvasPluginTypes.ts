@@ -46,7 +46,7 @@ export type CanvasPluginNodeRenderProps = {
   node: unknown
   selected: boolean
   readOnly?: boolean
-  focusFlash?: boolean
+  externalHighlight?: 'hover' | 'flash' | null
   appear?: boolean
   host?: CanvasPluginHost
 }

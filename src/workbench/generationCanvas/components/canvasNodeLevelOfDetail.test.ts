@@ -23,10 +23,10 @@ describe('canvas node level of detail', () => {
   })
 
   it('keeps selected and focused nodes fully interactive in lightweight mode', () => {
-    expect(shouldRenderFullNodeContent({ lightweightMode: true, selected: false, focusFlash: false })).toBe(false)
-    expect(shouldRenderFullNodeContent({ lightweightMode: true, selected: true, focusFlash: false })).toBe(true)
-    expect(shouldRenderFullNodeContent({ lightweightMode: true, selected: false, focusFlash: true })).toBe(true)
-    expect(shouldRenderFullNodeContent({ lightweightMode: false, selected: false, focusFlash: false })).toBe(true)
+    expect(shouldRenderFullNodeContent({ lightweightMode: true, selected: false, flashing: false })).toBe(false)
+    expect(shouldRenderFullNodeContent({ lightweightMode: true, selected: true, flashing: false })).toBe(true)
+    expect(shouldRenderFullNodeContent({ lightweightMode: true, selected: false, flashing: true })).toBe(true)
+    expect(shouldRenderFullNodeContent({ lightweightMode: false, selected: false, flashing: false })).toBe(true)
   })
 
   it('keeps large-canvas multi-selection lightweight without degrading single selection', () => {

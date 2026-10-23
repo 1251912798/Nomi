@@ -66,8 +66,9 @@ export function retainLargeCanvasLightweightRendering(input: {
 export function shouldRenderFullNodeContent(input: {
   lightweightMode: boolean
   selected: boolean
-  focusFlash: boolean
+  /** 刚被定位过去、正在闪的那一张给完整内容（悬停不升档：鼠标划过一排指向元素不该让大画布逐张换重卡）。 */
+  flashing: boolean
 }): boolean {
   if (!input.lightweightMode) return true
-  return input.selected || input.focusFlash
+  return input.selected || input.flashing
 }
