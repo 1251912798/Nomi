@@ -67,6 +67,33 @@ export type NomiErrorCode =
   | 'retrieval-download'
   | 'retrieval-timeout'
 
+/**
+ * 每个码的话是不是**只在提交之前才成立**（穷举：新增一个码不回答这一问，typecheck 就红）。
+ *
+ * true = 码的话是「请求还没发出去 / 服务商没被请求到 / 可以放心重新生成」。这些码的生产者（素材本地化、
+ * vendorHttp 出站守卫……）被提交和查询共用、不知道自己在哪个阶段，所以取回出口（taskResultQuery.retrievalStageError）
+ * 按这张表把它们改挂成取回阶段码：任务已经提交、钱已经花了之后，任何界面都不许再说「没发出去、重新生成吧」
+ * （⑬，用户 2026-10-22 拍板）。false = 取回阶段的码，或两个阶段说法都成立（本机处理、服务商地址跳转）。
+ */
+export const NOMI_ERROR_ONLY_BEFORE_SUBMIT: Readonly<Record<NomiErrorCode, boolean>> = {
+  'model-config': true,
+  'asset-too-large': true,
+  'asset-upload-failed': true,
+  'asset-invalid': true,
+  'outbound-blocked': false,
+  'outbound-blocked-submit': true,
+  'outbound-blocked-credential-origin': true,
+  'credential-redirect': false,
+  'output-unreadable': false,
+  'submission-unknown': true,
+  'output-retrieval-failed': false,
+  'local-processing': false,
+  'retrieval-query': false,
+  'retrieval-parse': false,
+  'retrieval-download': false,
+  'retrieval-timeout': false,
+}
+
 const MARKER_PREFIX = 'NOMI_ERR::'
 const MARKER_SUFFIX = '::'
 // 码只用 [a-z-]，标记形如 `NOMI_ERR::asset-too-large:: <人话>`；正则据此从任意位置抠出码。

@@ -544,7 +544,7 @@ describe('动作表：每类主 / 次动作都写在表里，改一类不许带�
     'image-route-disabled': true, 'account-gate': true, 'content-policy': true, 'input-image-blocked': true,
     'asset-upload-failed': true, 'asset-too-large': true, 'asset-invalid': true, 'reference-not-in-use': true, 'outbound-blocked': true,
     'outbound-blocked-submit': true, 'outbound-blocked-credential-origin': true, 'credential-redirect': true, server: true, input: true,
-    'output-truncated': true, 'output-unreadable': true, 'submission-unknown': true, 'submission-not-sent': true, 'output-retrieval-failed': true, 'local-processing': true, unknown: true,
+    'output-truncated': true, 'output-unreadable': true, 'submission-unknown': true, 'submission-not-sent': true, 'output-retrieval-failed': true, 'retrieval-incomplete': true, 'local-processing': true, unknown: true,
   }
 
   it('已下线、读不出来以外的每一类，次动作都和改表前的规则一样（主动作是重试 / 一键改对 → 换个模型；其余 → 重试）', () => {
@@ -553,9 +553,9 @@ describe('动作表：每类主 / 次动作都写在表里，改一类不许带�
       const before = primary === 'retry' || primary === 'fix-model-kind' || primary === 'switch-same-capability' ? 'switch-model' : 'retry'
       // 已下线、读不出来：这两类不给第二个动作（重试必再撞同一张卡 / 换供应商不是解法）；
       // 结果未知：不给重试（可能重复提交），只指路去核对。
-      // 已生成、取回失败：只指路去任务面板「重新取回」，不给第二个动作（重试 = 再生成一份）。
+      // 已生成、取回失败 / 已提交、这次没取回：只指路「重新取回」，不给第二个动作（重试 = 再生成一份）。
       // 本机处理失败：没有模型参与，只留重试。
-      expect({ kind, secondary }).toEqual({ kind, secondary: kind === 'model-retired' || kind === 'output-unreadable' || kind === 'output-retrieval-failed' || kind === 'local-processing' ? null : kind === 'submission-unknown' ? 'release-regenerate' : before })
+      expect({ kind, secondary }).toEqual({ kind, secondary: kind === 'model-retired' || kind === 'output-unreadable' || kind === 'output-retrieval-failed' || kind === 'retrieval-incomplete' || kind === 'local-processing' ? null : kind === 'submission-unknown' ? 'release-regenerate' : before })
     }
   })
 })

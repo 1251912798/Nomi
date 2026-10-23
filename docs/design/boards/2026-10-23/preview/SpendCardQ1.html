@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>SpendCardQ1 付费卡 Q1 拍板图</title>
+<style>
+body{margin:0;padding:24px 20px;background:#fff;font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+.bd{margin:0 0 32px}
+.bd-title{margin:0 0 8px;font-size:14px;font-weight:600;color:#333}
+/* 静态预览：停掉转圈动画，候选抽取才确定（转圈的 svg 每次量到的框都不同）。 */
+*,*::before,*::after{animation:none!important;transition:none!important}
+</style>
+<style>
+/* Nomi 设计系统 token（照 tailwind.config.ts 真值）+ 指向元素 / 请示卡样张共用样式。仅样张用，不进仓库。 */
+.light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink40:oklch(.68 .01 80);--nomi-ink20:oklch(.88 .005 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-line-soft:oklch(.95 .003 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-danger:oklch(.55 .13 25);--nomi-danger-ink:oklch(.45 .13 25);--nomi-danger-soft:oklch(.955 .021 25);--nomi-danger-edge:oklch(.895 .052 25);--nomi-warning-ink:oklch(.45 .085 72);--nomi-warning-soft:oklch(.968 .024 72);--nomi-success-ink:oklch(.45 .09 145);--nomi-success-soft:oklch(.962 .033 145);--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink40:oklch(.62 .006 85);--nomi-ink20:oklch(.42 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-line-soft:oklch(.31 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-danger:oklch(.72 .13 25);--nomi-danger-ink:oklch(.82 .13 25);--nomi-danger-soft:oklch(.3 .048 25);--nomi-danger-edge:oklch(.4 .07 25);--nomi-warning-ink:oklch(.82 .085 72);--nomi-warning-soft:oklch(.295 .04 72);--nomi-success-ink:oklch(.82 .09 145);--nomi-success-soft:oklch(.295 .042 145);--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.nm{--nomi-radius-sm:6px;--nomi-radius:10px;--nomi-radius-lg:16px;box-sizing:border-box;background:var(--nomi-bg);color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.nm *{box-sizing:border-box}
+.nm button{font-family:inherit;cursor:default;color:inherit}
+.nm p{margin:0}
+.i{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
+.i10{width:10px;height:10px}.i12{width:12px;height:12px}.i14{width:14px;height:14px}.i16{width:16px;height:16px}
+.sp{flex:1;min-width:0}
+.row{display:flex;align-items:center}
+.top{align-items:flex-start}
+.g4{gap:4px}.g6{gap:6px}.g8{gap:8px}.g12{gap:12px}.g16{gap:16px}.g24{gap:24px}
+.col{display:flex;flex-direction:column}
+.wrap{flex-wrap:wrap}
+/* 板面标注 */
+.cap{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--nomi-ink60);margin:0 0 8px 2px;white-space:nowrap}
+.cap b{color:var(--nomi-ink);font-weight:600}
+.tag{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:999px;background:var(--nomi-ink05);color:var(--nomi-ink60);font-size:12px;white-space:nowrap}
+.tag.sch{background:var(--nomi-ink);color:var(--nomi-paper);font-weight:600}
+.note{font-size:12px;line-height:18px;color:var(--nomi-ink60)}
+.h1{font-size:20px;font-weight:600;letter-spacing:-.01em;margin:0}
+.h2{font-size:14px;font-weight:600;margin:0}
+.sec{font-size:12px;font-weight:600;color:var(--nomi-ink60);letter-spacing:.02em}
+/* 按钮 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--nomi-line);background:var(--nomi-paper);color:var(--nomi-ink);font:inherit;font-size:13px;font-weight:500;white-space:nowrap}
+.btn.pri{background:var(--nomi-ink);border-color:var(--nomi-ink);color:var(--nomi-paper)}
+.btn.txt{border-color:transparent;background:transparent;color:var(--nomi-ink60);padding:0 8px}
+.btn.sm{height:28px;padding:0 10px;font-size:12px}
+.btn.dim{opacity:.5}
+.ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;border-radius:999px;background:transparent;color:var(--nomi-ink60)}
+/* Agent 面板 */
+.panel{width:360px;display:flex;flex-direction:column;border:1px solid var(--nomi-line);border-radius:16px;background:var(--nomi-paper);box-shadow:var(--nomi-shadow-lg);overflow:hidden}
+.panel.w300{width:300px}
+.ph{display:flex;align-items:center;gap:8px;height:44px;padding:0 10px 0 12px;border-bottom:1px solid var(--nomi-line-soft);flex:none}
+.wm{font-family:Fraunces,Georgia,serif;font-size:16px;letter-spacing:-.02em}
+.wm b{font-weight:400;color:var(--nomi-accent)}
+.pbody{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.say{font-size:13px;line-height:21px;color:var(--nomi-ink80)}
+.usr{align-self:flex-end;max-width:80%;padding:6px 12px;border-radius:14px 14px 4px 14px;background:var(--nomi-ink05);font-size:13px;line-height:20px}
+.pinp{margin:0 12px 12px;border:1px solid var(--nomi-line);border-radius:10px;padding:0 12px;display:flex;align-items:center;height:40px;color:var(--nomi-ink40);font-size:13px}
+.rq{margin:0 12px 12px;border:1px solid var(--nomi-ink40);border-radius:10px;background:var(--nomi-paper);padding:12px;display:flex;flex-direction:column;gap:10px}
+.rq.quiet{border-color:var(--nomi-line)}
+.rq.bad{border-color:var(--nomi-danger-edge)}
+.rq-h{display:flex;align-items:center;gap:8px}
+.rq-t{font-size:14px;font-weight:600}
+.rq-f{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.price{font-size:12px;color:var(--nomi-ink60);font-variant-numeric:tabular-nums;white-space:nowrap}
+.fact{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:20px}
+.fact .i{margin-top:2px}
+.fact small{display:block;font-size:12px;line-height:18px;color:var(--nomi-ink60)}
+.ok{color:var(--nomi-success-ink)}.bd{color:var(--nomi-danger-ink)}.wn{color:var(--nomi-warning-ink)}
+.docked{margin:0 12px 8px;display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 6px 6px 12px;border:1px solid var(--nomi-ink40);border-radius:10px;background:var(--nomi-paper)}
+.docked .tx{font-size:13px;font-weight:500;min-width:0;flex:1}
+.docked .tx small{display:block;font-size:12px;font-weight:400;color:var(--nomi-ink60)}
+/* 缩略图占位（渐变代替真图，不是 emoji） */
+.im1{background:linear-gradient(165deg,#e9e4dc 0%,#9bb7c9 100%)}
+.im2{background:linear-gradient(165deg,#41576a 0%,#c8b48a 100%)}
+.im3{background:linear-gradient(165deg,#b9c9b0 0%,#5d7a6b 100%)}
+.im4{background:linear-gradient(165deg,#d8c3d9 0%,#6f7fb0 100%)}
+.dark .im1,.dark .im2,.dark .im3,.dark .im4{filter:brightness(.82)}
+.th{position:relative;overflow:hidden;background-size:cover}
+.th.empty{background:var(--nomi-ink05);box-shadow:inset 0 0 0 1px var(--nomi-line)}
+.th.draft{background:var(--nomi-paper);box-shadow:inset 0 0 0 1.5px var(--nomi-ink20);background-image:repeating-linear-gradient(135deg,transparent 0 6px,var(--nomi-ink05) 6px 7px)}
+.th .tp{position:absolute;left:4px;bottom:4px;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;background:var(--nomi-overlay,oklch(.18 .01 80/.64));color:#fff}
+.th .ct{position:absolute;inset:0;display:grid;place-items:center;color:var(--nomi-ink40)}
+.th.gen::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,oklch(1 0 0/.5) 50%,transparent 70%)}
+.th.bad{box-shadow:inset 0 0 0 1.5px var(--nomi-danger-edge);background:var(--nomi-danger-soft)}
+.th.gone{background:var(--nomi-ink05);box-shadow:inset 0 0 0 1px var(--nomi-line)}
+/* 镜号角标：照 NodeShotLabel */
+.shot{display:inline-flex;align-items:center;flex:none;height:20px;padding:0 7px;border:1px solid var(--nomi-line);border-radius:6px;background:var(--nomi-paper);font-size:12px;color:var(--nomi-ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ttl{font-size:12px;font-weight:600;color:var(--nomi-ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sum{font-size:12px;color:var(--nomi-ink60);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stt{display:inline-flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;color:var(--nomi-ink60)}
+.stt.acc{color:var(--nomi-ink60)}
+/* ===== P1 镜像小卡 ===== */
+.p1{display:flex;flex-direction:column;gap:4px;width:100%;min-width:0;padding:0;border:0;background:transparent;text-align:left;border-radius:10px}
+.p1 .lab{display:flex;align-items:center;gap:6px;min-width:0}
+.p1 .th{width:100%;aspect-ratio:16/9;border-radius:8px}
+.p1.v .th{aspect-ratio:9/16;width:auto;height:100%}
+.p1.hot .th{box-shadow:0 0 0 1.5px var(--nomi-ink),var(--nomi-shadow-md)}
+.p1 .sum{display:block}
+.p1.gone .ttl{text-decoration:line-through;color:var(--nomi-ink40)}
+.p1.gone .sum{color:var(--nomi-ink40)}
+.strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.strip.s2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.one-p1{display:grid;grid-template-columns:132px minmax(0,1fr);gap:10px;align-items:start}
+/* ===== P2 行内标签 ===== */
+.p2{display:inline-flex;align-items:center;gap:6px;max-width:100%;height:28px;padding:0 10px 0 3px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink);font:inherit;font-size:12px;white-space:nowrap;vertical-align:middle}
+.p2 .th{width:22px;height:22px;border-radius:999px;flex:none}
+.p2 .th .tp{display:none}
+.p2.hot{background:var(--nomi-ink05);border-color:transparent}
+.p2.gone{color:var(--nomi-ink40);background:var(--nomi-ink05)}
+.p2.gone .ttl{text-decoration:line-through;color:var(--nomi-ink40)}
+.p2.bad{border-color:var(--nomi-danger-edge)}
+.p2row{display:flex;align-items:center;gap:8px;min-height:40px;width:100%;padding:4px 8px 4px 4px;border:1px solid var(--nomi-line);border-radius:10px;background:var(--nomi-paper);text-align:left}
+.p2row .th{width:32px;height:32px;border-radius:6px;flex:none}
+.p2row .tx{display:flex;flex-direction:column;min-width:0;flex:1}
+.p2row .l1{display:flex;align-items:center;gap:6px}
+.p2row.hot{background:var(--nomi-ink05);border-color:transparent}
+.p2row.gone{background:var(--nomi-ink05)}
+.p2row.gone .ttl{text-decoration:line-through;color:var(--nomi-ink40)}
+.p2row.bad{border-color:var(--nomi-danger-edge)}
+.p2list{display:flex;flex-direction:column;gap:6px}
+/* ===== P3 配对号标 ===== */
+.mk{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--nomi-paper)}
+.mk.s{width:18px;height:18px;font-size:11px}
+.mk.off{background:var(--nomi-ink20);color:var(--nomi-ink60)}
+.mk.bad{background:var(--nomi-danger)}
+.p3{display:flex;align-items:center;gap:8px;min-height:44px;width:100%;padding:6px 8px 6px 8px;border:1px solid var(--nomi-line);border-radius:10px;background:var(--nomi-paper);text-align:left}
+.p3 .tx{display:flex;flex-direction:column;min-width:0;flex:1}
+.p3 .l1{display:flex;align-items:center;gap:6px;min-width:0}
+.p3.hot{background:var(--nomi-ink05);border-color:transparent}
+.p3.gone{background:var(--nomi-ink05)}
+.p3.gone .ttl{text-decoration:line-through;color:var(--nomi-ink40)}
+.p3.bad{border-color:var(--nomi-danger-edge)}
+.p3 .th{width:28px;height:28px;border-radius:6px;flex:none}
+.p3 .th .tp{display:none}
+/* ===== 画布场景 ===== */
+.cv{position:relative;overflow:hidden;background-color:var(--nomi-bg);background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px;border:1px solid var(--nomi-line);border-radius:12px}
+.cn{position:absolute}
+.cn .lab{position:absolute;left:0;right:0;bottom:calc(100% + 6px);display:flex;align-items:center;gap:6px;height:22px;white-space:nowrap}
+.cn .card{position:relative;width:100%;height:100%;border-radius:10px;overflow:hidden;background:var(--nomi-paper);box-shadow:0 0 0 1px var(--nomi-line),var(--nomi-shadow-md)}
+.cn .card .th{position:absolute;inset:0;border-radius:0}
+.cn.hot .card{box-shadow:0 0 0 1.5px var(--nomi-ink),0 10px 28px oklch(0 0 0/.16)}
+.cn.flash .card{box-shadow:0 0 0 1.5px var(--nomi-ink),0 0 0 9px color-mix(in srgb,var(--nomi-ink) 12%,transparent),0 10px 28px oklch(0 0 0/.16)}
+.cn .badge{position:absolute;right:6px;top:6px}
+.cn .stbar{position:absolute;left:0;right:0;bottom:0;padding:4px 8px;background:var(--nomi-paper);font-size:11px;color:var(--nomi-ink60);display:flex;align-items:center;gap:4px}
+.cn .pm{position:absolute;left:-9px;top:-9px;z-index:3}
+.cn .ghost{position:absolute;inset:0;display:grid;place-items:center;color:var(--nomi-ink40)}
+.edge{position:absolute;pointer-events:none}
+.leader{position:absolute;height:0;border-top:1.5px dashed var(--nomi-ink40)}
+/* 画布生成框（节点选中时浮在节点下方，简化示意） */
+.cmp{position:absolute;padding:10px;border:1px solid var(--nomi-line);border-radius:14px;background:var(--nomi-paper);box-shadow:var(--nomi-shadow-lg);display:flex;flex-direction:column;gap:6px}
+.cmp .pt{font-size:12px;line-height:18px;color:var(--nomi-ink80)}
+.cmp .pr{display:flex;align-items:center;gap:6px}
+.chp{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;font-size:11px;color:var(--nomi-ink80);background:var(--nomi-paper);white-space:nowrap}
+.chp.chg{background:var(--nomi-ink05);border-color:transparent;color:var(--nomi-ink);font-weight:600}
+.up{flex:none;width:28px;height:28px;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:grid;place-items:center}
+/* 浮球 / 回到对话 */
+.ball{width:44px;height:44px;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:grid;place-items:center;box-shadow:var(--nomi-shadow-lg);position:absolute}
+.back{position:absolute;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px 0 12px;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);font-size:13px;font-weight:500;box-shadow:var(--nomi-shadow-lg)}
+.win{position:relative;border:1px solid var(--nomi-line);border-radius:12px;overflow:hidden;background:var(--nomi-bg)}
+.sheet{position:absolute;left:10px;right:10px;bottom:10px;border:1px solid var(--nomi-line);border-radius:16px;background:var(--nomi-paper);box-shadow:var(--nomi-shadow-lg);overflow:hidden}
+/* 表 */
+table.cmpt{border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px}
+table.cmpt th,table.cmpt td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--nomi-line-soft);line-height:19px}
+table.cmpt th{font-weight:600;color:var(--nomi-ink60);font-size:12px;background:var(--nomi-ink05)}
+table.cmpt td:first-child{font-weight:600;white-space:nowrap}
+table.cmpt tr.rec td{background:var(--nomi-ink05)}
+.pill-ok{color:var(--nomi-success-ink);font-weight:600}.pill-mid{color:var(--nomi-warning-ink);font-weight:600}.pill-bad{color:var(--nomi-danger-ink);font-weight:600}
+.sb{position:absolute;right:4px;bottom:4px;display:inline-flex;align-items:center;gap:3px;height:18px;padding:0 6px;border-radius:999px;background:oklch(.16 .01 80/.78);color:#fff;font-size:11px;white-space:nowrap}
+.sb.ok{background:oklch(.40 .09 145/.92)}
+.sb.bad{background:oklch(.45 .13 25/.94)}
+.sb.acc{background:oklch(.45 .13 250/.92)}
+.mkr{position:absolute;z-index:5}
+.leg{display:grid;grid-template-columns:22px 1fr;gap:6px 8px;align-items:start;font-size:12px;line-height:20px;color:var(--nomi-ink80)}
+.leg b{color:var(--nomi-ink)}
+.spin{animation:spin 1.2s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.th{display:block}
+.docked.wr{flex-wrap:wrap;justify-content:flex-end;padding:10px 10px 8px 12px;row-gap:6px}
+.docked.wr .tx{flex:1 1 calc(100% - 26px)}
+/* ===== 第二版：缩略图 = 真节点的脸（CardCommon / NodeEmptyState / GenerationWaitingSurface / ProductionShotPlaceholder / GenerationStatusBar）===== */
+.th{box-shadow:0 0 0 1px var(--nomi-line)}
+/* 空 / 待生成节点：纸白底，中间一枚 ink-05 圆托 + 种类图标（NodeEmptyState icon 档） */
+.th.draft,.th.empty,.th.bad,.th.gone{background:var(--nomi-paper);background-image:none;box-shadow:0 0 0 1px var(--nomi-line)}
+.th .ct{position:absolute;inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:999px;background:var(--nomi-ink05);box-shadow:inset 0 0 0 1px var(--nomi-line);color:var(--nomi-ink80);display:grid;place-items:center}
+.th .ct.bd{color:var(--nomi-danger-ink)}
+.th.gone .ct{color:var(--nomi-ink40);background:transparent}
+.p2 .th .ct,.p2row .th .ct,.p3 .th .ct{display:none}
+/* 生成中：等待面（ink-05 底 + 竖条遮罩的渐变格），没有真进度就不画进度 */
+.th.gen{background:var(--nomi-ink05);background-image:none}
+.th.gen::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,var(--nomi-ink20),var(--nomi-ink05) 70%);-webkit-mask-image:repeating-linear-gradient(90deg,#000 0 14px,transparent 14px 18px);mask-image:repeating-linear-gradient(90deg,#000 0 14px,transparent 14px 18px)}
+.th.gen::after{display:none}
+.th.gen .ct{display:none}
+/* 真节点上没有的类型角标：不画 */
+.th .tp{display:none}
+/* 状态：GenerationStatusBar 的 overlay 形态（paper/90 底、点 + 一句话），点：生成中 = 蓝点（进度）、排队 = ink-30、失败 = 红、已晚 = 警告 */
+.sb{position:absolute;left:4px;right:auto;bottom:4px;top:auto;display:inline-flex;align-items:center;gap:5px;max-width:calc(100% - 8px);height:20px;padding:0 7px;border-radius:999px;background:color-mix(in srgb,var(--nomi-paper) 90%,transparent);color:var(--nomi-ink60);font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb::before{content:"";flex:none;width:6px;height:6px;border-radius:999px;background:var(--nomi-ink30,var(--nomi-ink20))}
+.sb svg{display:none}
+.sb.acc,.sb.ok{background:color-mix(in srgb,var(--nomi-paper) 90%,transparent);color:var(--nomi-ink60)}
+.sb.acc::before{background:var(--nomi-accent)}
+.sb.bad{background:color-mix(in srgb,var(--nomi-paper) 90%,transparent);color:var(--nomi-danger-ink)}
+.sb.bad::before{background:var(--nomi-danger)}
+/* 制作占位的左上小标（ProductionShotPlaceholder）：paper/85 + 阴影，ink-60 小字；排队带钟 */
+.pl{position:absolute;left:4px;top:4px;display:inline-flex;align-items:center;gap:3px;height:18px;padding:0 6px;border-radius:999px;background:color-mix(in srgb,var(--nomi-paper) 85%,transparent);color:var(--nomi-ink60);font-size:11px;white-space:nowrap;box-shadow:var(--nomi-shadow-sm);max-width:calc(100% - 8px);overflow:hidden;text-overflow:ellipsis}
+.pl svg{flex:none}
+/* 卡标题行里的元信息：现有付费卡就是一小段灰字，不是药丸 */
+.bdg{font-size:11px;font-weight:400;color:var(--nomi-ink60);white-space:nowrap}
+/* 竖版：缩略图槽固定 16:9 高度，竖版按真比例居中，不裁 */
+.slot{display:grid;place-items:center;width:100%;aspect-ratio:16/9;min-width:0}
+.slot .th{height:100%}
+.slot .th.v{aspect-ratio:9/16;width:auto}
+.slot .th.h{aspect-ratio:16/9;width:100%}
+.only{display:inline-flex;align-items:center;height:16px;padding:0 6px;border-radius:4px;background:var(--nomi-ink05);color:var(--nomi-ink60);font-size:10.5px;white-space:nowrap}
+.light{--nomi-ink30:oklch(.78 .01 80)}
+.dark{--nomi-ink30:oklch(.50 .006 85)}
+.rq-h{flex-wrap:wrap;row-gap:2px}
+.slot.t{aspect-ratio:4/3}
+
+</style>
+<style>
+.bd-Q1s{margin:0}
+.bd-Q1f{margin:0}.bd-Q1f .chg2{background:var(--nomi-ink10);border-radius:4px;padding:0 3px;color:var(--nomi-ink);font-weight:600}
+.bd-Q4{margin:0}.bd-Q4 .docked.bad{border-color:var(--nomi-danger-edge)}.bd-Q4 .docked.quiet{border-color:var(--nomi-line)}
+</style>
+</head>
+<body>
+<section class="bd bd-Q1s" data-board-cell="Q1s">
+<h3 class="bd-title">Q1 一张卡一颗「生成」· 状态</h3>
+<div class="nm light" style="width:1240px;padding:32px 40px;display:flex;flex-direction:column;gap:24px">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="Q1s-v" viewBox="0 0 24 24"><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z"/><path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"/></symbol>
+<symbol id="Q1s-ck" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></symbol>
+<symbol id="Q1s-al" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></symbol>
+<symbol id="Q1s-cl" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></symbol>
+<symbol id="Q1s-ld" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+<symbol id="Q1s-st" viewBox="0 0 24 24"><path d="M5 5m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"/></symbol>
+<symbol id="Q1s-fc" viewBox="0 0 24 24"><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 3l0 2"/><path d="M3 12l2 0"/><path d="M12 19l0 2"/><path d="M19 12l2 0"/></symbol>
+<symbol id="Q1s-cr" viewBox="0 0 24 24"><path d="M9 6l6 6l-6 6"/></symbol></defs></svg>
+<div class="row g8"><span class="tag sch">Q1</span><h2 class="h2">一张卡 · 一颗「确认」：指向元素 + 一句话 + 确认（中文 · 光色）</h2><span class="note">卡里只有：标题 + 指向元素 + 一行只读摘要 + 合计 + 取消 / 确认。想改 = 点镜头去画布（见 Q1 想改的路径）。画法用 P1，换成 P2 / P3 同样成立。</span></div>
+
+<div style="display:grid;grid-template-columns:repeat(3,360px);gap:28px 40px;align-items:start">
+
+<!-- 1 单段 -->
+<div class="col g4"><div class="cap"><b>① 单段 · 确认前</b></div>
+<div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 1 个镜头。</p></div>
+<div class="rq"><div class="rq-h"><span class="rq-t">生成这 1 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="one-p1"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i16"><use href="#Q1s-v"/></svg></span><span class="pl">等你确认</span></span></button>
+<div class="col g4" style="padding-top:26px"><span class="sum">Seedance 2.0 Fast</span><span class="sum">16:9 · 4s · 480p</span></div></div>
+<div class="rq-f"><span class="price">合计 ¥0.70</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">生成</button></div></div>
+<div class="pinp">可继续输入，将排队发送…</div></div></div>
+
+<!-- 2 三段 -->
+<div class="col g4"><div class="cap"><b>② 三段 · 确认前</b></div>
+<div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
+<div class="rq"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span></span></button></div>
+<span class="sum">Seedance 2.0 Fast · 16:9 · 480p · 共 13s</span>
+<div class="rq-f"><span class="price">3 段 · 合计 ¥2.10</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div>
+<div class="pinp">可继续输入，将排队发送…</div></div></div>
+
+<!-- 3 生成中 -->
+<div class="col g4"><div class="cap"><b>③ 生成中 · 哪段在发、可停止</b></div>
+<div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
+<div class="rq quiet"><div class="rq-h"><svg class="i i14 spin" style="color:var(--nomi-accent)"><use href="#Q1s-ld"/></svg><span class="rq-t">正在发出 2/3 段</span></div>
+<div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty gen"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="sb acc"><svg class="i i10 spin"><use href="#Q1s-ld"/></svg>生成中</span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th empty gen"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="sb acc"><svg class="i i10 spin"><use href="#Q1s-ld"/></svg>发出中</span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th empty"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl"><svg class="i i10"><use href="#Q1s-cl"/></svg>排队中</span></span></button></div>
+<div class="rq-f"><span class="note">点「取消」停下剩下的</span><span class="sp"></span><button class="btn" type="button">取消</button></div></div>
+<div class="pinp">可继续输入，将排队发送…</div></div></div>
+
+<!-- 4 完成 -->
+<div class="col g4"><div class="cap"><b>④ 完成</b></div>
+<div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
+<div class="rq quiet"><div class="rq-h"><svg class="i i14 ok"><use href="#Q1s-ck"/></svg><span class="rq-t">已生成 3 段</span><span class="sp"></span><span class="price">3 段 · 合计 ¥2.10</span></div>
+<div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th im1"><span class="tp"><svg class="i i12"><use href="#Q1s-v"/></svg></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th im2"><span class="tp"><svg class="i i12"><use href="#Q1s-v"/></svg></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th im3"><span class="tp"><svg class="i i12"><use href="#Q1s-v"/></svg></span></span></button></div>
+<span class="note">完成时画布上这三个节点各亮一下，聊天里不再有确认钮。</span></div>
+<div class="pinp">继续告诉我下一步…</div></div></div>
+
+<!-- 5 失败：没发出 -->
+<div class="col g4"><div class="cap"><b>⑤ 失败 · 没发出去（服务暂不可用）</b></div>
+<div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
+<div class="rq bad"><div class="rq-h"><svg class="i i14 bd"><use href="#Q1s-al"/></svg><span class="rq-t">镜 02 没有发出去</span></div>
+<div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty gen"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="sb acc"><svg class="i i10 spin"><use href="#Q1s-ld"/></svg>生成中</span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th bad"><span class="ct bd"><svg class="i i14"><use href="#Q1s-al"/></svg></span><span class="sb bad">失败</span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">还没生成</span></span></button></div>
+<div class="fact"><svg class="i i14 bd"><use href="#Q1s-al"/></svg><span>服务暂时不可用。<small>镜 01 已发出并在生成；镜 03 还没发。</small></span></div>
+<div class="rq-f"><button class="btn txt" type="button">先不发了</button><button class="btn pri" type="button">再试一次</button></div></div>
+<div class="pinp">可继续输入，将排队发送…</div></div></div>
+
+<!-- 6 失败：参数被拒 -->
+<div class="col g4"><div class="cap"><b>⑥ 失败 · 参数被拒（下一步 = 去节点里改）</b></div>
+<div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
+<div class="rq bad"><div class="rq-h"><svg class="i i14 bd"><use href="#Q1s-al"/></svg><span class="rq-t">镜 02 参数被拒</span></div>
+<div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty gen"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="sb acc"><svg class="i i10 spin"><use href="#Q1s-ld"/></svg>生成中</span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th bad"><span class="ct bd"><svg class="i i14"><use href="#Q1s-al"/></svg></span><span class="sb bad">失败</span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">还没生成</span></span></button></div>
+<div class="fact"><svg class="i i14 bd"><use href="#Q1s-al"/></svg><span>时长 5s 超出这个模型的上限。<small>镜 01 已发出；镜 03 未发。</small></span></div>
+<div class="rq-f"><button class="btn txt" type="button">先不发了</button><button class="btn pri" type="button"><svg class="i i14"><use href="#Q1s-fc"/></svg>去改镜 02</button></div></div>
+<div class="pinp">可继续输入，将排队发送…</div></div></div>
+<!-- 7 价格算不出 -->
+<div class="col g4"><div class="cap"><b>⑦ 价格算不出（多数模型的常态）：整行不印，不写 ¥0</b></div>
+<div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
+<div class="rq"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">等你确认</span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">等你确认</span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">等你确认</span></span></button></div>
+<span class="sum">Seedance 2.0 Fast · 16:9 · 480p · 共 13s</span>
+<div class="rq-f"><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div>
+<div class="pinp">可继续输入，将排队发送…</div></div></div>
+
+<!-- 8 逐镜不同 + 竖版 -->
+<div class="col g4"><div class="cap"><b>⑧ 逐镜不同 · 含竖版：逐镜单价展开</b></div>
+<div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
+<div class="rq"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="slot t"><span class="th h draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="slot t"><span class="th v draft"><span class="ct" style="width:22px;height:22px"><svg class="i i12"><use href="#Q1s-v"/></svg></span></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="slot t"><span class="th v draft"><span class="ct" style="width:22px;height:22px"><svg class="i i12"><use href="#Q1s-v"/></svg></span></span></span></button></div>
+<span class="sum">3 镜 · 逐镜不同：16:9 ×1 · 9:16 ×2</span>
+<div class="col" style="gap:3px"><span class="sum" style="display:flex;align-items:center;gap:4px"><svg class="i i12" style="transform:rotate(90deg)"><use href="#Q1s-cr"/></svg>逐镜 · 3 镜</span>
+<div class="row" style="padding-left:16px"><span class="sum" style="flex:1">镜头 1 · Seedance 2.0 Fast · 16:9 · 4s</span><span class="price">¥0.70</span></div>
+<div class="row" style="padding-left:16px"><span class="sum" style="flex:1">镜头 2 · Seedance 2.0 Fast · 9:16 · 5s</span><span class="price">¥0.88</span></div>
+<div class="row" style="padding-left:16px"><span class="sum" style="flex:1">镜头 3 · Seedance 2.0 Fast · 9:16 · 4s</span><span class="price">¥0.70</span></div></div>
+<div class="rq-f"><span class="price">3 段 · 合计 ¥2.28</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div>
+<div class="pinp">可继续输入，将排队发送…</div></div></div>
+
+
+</div>
+</div>
+</section>
+<section class="bd bd-Q1f" data-board-cell="Q1f">
+<h3 class="bd-title">Q1 想改的路径</h3>
+<div class="nm light" style="width:1700px;padding:32px 40px;display:flex;flex-direction:column;gap:20px">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="Q1f-v" viewBox="0 0 24 24"><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z"/><path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"/></symbol>
+<symbol id="Q1f-up" viewBox="0 0 24 24"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></symbol>
+<symbol id="Q1f-ld" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+<symbol id="Q1f-fc" viewBox="0 0 24 24"><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 3l0 2"/><path d="M3 12l2 0"/><path d="M12 19l0 2"/><path d="M19 12l2 0"/></symbol>
+</defs></svg>
+<div class="row g8"><span class="tag sch">Q1</span><h2 class="h2">想改参数：点指向 → 在节点里改 → 回聊天点「全部生成」，或直接在节点上生成</h2><span class="note">卡上的摘要和合计读节点，所以节点里一改，卡跟着变；聊天里没有第二份参数。</span></div>
+<div style="display:grid;grid-template-columns:repeat(2,780px);gap:24px 40px">
+
+<!-- ① -->
+<div class="col g4"><div class="note"><b>① 点「镜 02」</b> 　不想改的人，直接点「全部生成」，不用走这条路</div>
+<div style="display:flex;width:780px;height:320px">
+<div class="cv" style="width:420px;height:320px;border-radius:12px 0 0 12px">
+<div class="cn" style="left:24px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></div></div></div>
+<div class="cn hot" style="left:156px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></div></div></div>
+<div class="cn" style="left:288px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></div></div></div></div>
+<div class="panel" style="width:360px;height:320px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="rq" style="margin-top:12px"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button><button class="p1 hot" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button></div>
+<span class="sum">Seedance 2.0 Fast · 16:9 · 480p · 共 13s</span>
+<div class="rq-f"><span class="price">3 段 · 合计 ¥2.10</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div></div>
+</div></div>
+
+<!-- ② -->
+<div class="col g4"><div class="note"><b>② 画布滑到镜 02，生成框就在节点下面</b> 　把 5s 改成 8s；卡上的「共 13s」「合计」同时跟着变</div>
+<div style="display:flex;width:780px;height:320px">
+<div class="cv" style="width:420px;height:320px;border-radius:12px 0 0 12px">
+<div class="cn" style="left:-80px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th draft"></div></div></div>
+<div class="cn flash" style="left:154px;top:66px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></div></div></div>
+<div class="cn" style="left:290px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th draft"></div></div></div>
+<div class="cmp" style="left:50px;top:142px;width:320px"><div class="pt">雨后清晨，落叶随水流缓缓漂过纸船身侧，船身轻轻晃动。</div><div class="pr"><span class="chp">Seedance 2.0 Fast</span><span class="chp">16:9</span><span class="chp chg">8s</span><span class="chp">480p</span><span class="sp"></span><span class="up"><svg class="i i14"><use href="#Q1f-up"/></svg></span></div></div></div>
+<div class="panel" style="width:360px;height:320px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="rq" style="margin-top:12px"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button><button class="p1 hot" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button></div>
+<span class="sum">Seedance 2.0 Fast · 16:9 · 480p · <span class="chg2">共 16s</span></span>
+<div class="rq-f"><span class="price"><span class="chg2">3 段 · 合计 ¥2.94</span></span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div></div>
+</div></div>
+
+<!-- ③ -->
+<div class="col g4"><div class="note"><b>③ 回到聊天，点「全部生成」</b> 　按节点当前的参数发出；画布上三个节点依次亮起、进入生成</div>
+<div style="display:flex;width:780px;height:320px">
+<div class="cv" style="width:420px;height:320px;border-radius:12px 0 0 12px">
+<div class="cn" style="left:-80px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg></span></div></div></div>
+<div class="cn" style="left:154px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg></span></div></div></div>
+<div class="cn" style="left:290px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg></span></div></div></div></div>
+<div class="panel" style="width:360px;height:320px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="rq quiet" style="margin-top:12px"><div class="rq-h"><svg class="i i14 spin" style="color:var(--nomi-accent)"><use href="#Q1f-ld"/></svg><span class="rq-t">正在发出 1/3 段</span></div>
+<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg>发出中</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th empty"><span class="pl"><svg class="i i10"><use href="#Q1f-cl"/></svg>排队中</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th empty"><span class="pl"><svg class="i i10"><use href="#Q1f-cl"/></svg>排队中</span></span></button></div>
+<div class="rq-f"><span class="sp"></span><button class="btn" type="button">取消</button></div></div></div>
+</div></div>
+
+<!-- ④ -->
+<div class="col g4"><div class="note"><b>④ 或者：在节点上直接点 ↑</b> 　卡自己认出镜 02 已经发了，生成钮变成「生成剩下 2 段」，合计只算剩下的</div>
+<div style="display:flex;width:780px;height:320px">
+<div class="cv" style="width:420px;height:320px;border-radius:12px 0 0 12px">
+<div class="cn" style="left:-80px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th draft"></div></div></div>
+<div class="cn hot" style="left:154px;top:66px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg>生成中</span></div></div></div>
+<div class="cn" style="left:290px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th draft"></div></div></div></div>
+<div class="panel" style="width:360px;height:320px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
+<div class="rq" style="margin-top:12px"><div class="rq-h"><span class="rq-t">生成这 2 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button><button class="p1 hot" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg>生成中</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button></div>
+<span class="sum">镜 02 已发出 · 其余 Seedance 2.0 Fast · 16:9 · 480p</span>
+<div class="rq-f"><span class="price">2 段 · 合计 ¥1.40</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">生成剩下 2 段</button></div></div></div>
+</div></div>
+
+</div>
+</div>
+</section>
+<section class="bd bd-Q4" data-board-cell="Q4">
+<h3 class="bd-title">Q4 英文 / 暗色 / 窄屏（Q1 行）</h3>
+<div class="nm light" style="width:1580px;padding:32px 40px;display:flex;flex-direction:column;gap:22px">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="Q4-v" viewBox="0 0 24 24"><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z"/><path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"/></symbol>
+<symbol id="Q4-al" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></symbol>
+<symbol id="Q4-ld" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+<symbol id="Q4-cl" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></symbol>
+<symbol id="Q4-st" viewBox="0 0 24 24"><path d="M5 5m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"/></symbol>
+<symbol id="Q4-fc" viewBox="0 0 24 24"><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 3l0 2"/><path d="M3 12l2 0"/><path d="M12 19l0 2"/><path d="M19 12l2 0"/></symbol>
+</defs></svg>
+<div class="row g8"><span class="tag sch">Q4</span><h2 class="h2">三种请示卡的英文 / 暗色 / 窄屏（每行：英文·光　中文·暗·失败　英文·暗·生成中　中文·光·窄屏 300 px）</h2><span class="note">窄屏（面板 ≤ 320 px）：指向元素只留镜号 + 缩略图，名字靠悬停；Q2 行里不放摘要；Q3 细栏的按钮折到第二行。</span></div>
+
+<!-- ===== Q1 ===== -->
+<div class="col g8"><div class="cap"><span class="tag sch">Q1</span><b>一张卡一颗确认</b></div>
+<div style="display:flex;gap:8px;align-items:flex-start">
+<div class="nm light" style="padding:12px;width:384px"><div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div><div class="pbody"><p class="say">Drafted 3 shots on the canvas.</p></div>
+<div class="rq"><div class="rq-h"><span class="rq-t">Generate these 3 clips?</span><span class="bdg">Generation · Nomi picked</span></div>
+<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">Shot 01</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">Shot 02</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">Shot 03</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button></div>
+<span class="sum">Seedance 2.0 Fast · 16:9 · 480p · 13s total</span>
+<div class="rq-f"><span class="price">3 videos · Total ¥2.10</span><span class="sp"></span><button class="btn txt" type="button">Cancel</button><button class="btn pri" type="button">Generate all (3)</button></div></div><div class="pinp">You can keep typing; it will be queued…</div></div></div>
+<div class="nm dark" style="padding:12px;width:384px"><div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div><div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
+<div class="rq bad"><div class="rq-h"><svg class="i i14 bd"><use href="#Q4-al"/></svg><span class="rq-t">镜 02 没有发出去</span></div>
+<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q4-ld"/></svg>生成中</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th bad"><span class="ct bd"><svg class="i i14"><use href="#Q4-al"/></svg></span><span class="sb bad">失败</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="pl">还没生成</span></span></button></div>
+<div class="fact"><svg class="i i14 bd"><use href="#Q4-al"/></svg><span>服务暂时不可用。<small>镜 01 已发出并在生成；镜 03 还没发。</small></span></div>
+<div class="rq-f"><button class="btn txt" type="button">先不发了</button><button class="btn pri" type="button">再试一次</button></div></div><div class="pinp">可继续输入，将排队发送…</div></div></div>
+<div class="nm dark" style="padding:12px;width:384px"><div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div><div class="pbody"><p class="say">Drafted 3 shots on the canvas.</p></div>
+<div class="rq quiet"><div class="rq-h"><svg class="i i14 spin" style="color:var(--nomi-accent)"><use href="#Q4-ld"/></svg><span class="rq-t">Sending 2 of 3 videos</span></div>
+<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">Shot 01</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q4-ld"/></svg>Generating</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">Shot 02</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q4-ld"/></svg>Sending</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">Shot 03</span></span><span class="th empty"><span class="pl"><svg class="i i10"><use href="#Q4-cl"/></svg>Queued</span></span></button></div>
+<div class="rq-f"><span class="note">Cancel to stop the rest</span><span class="sp"></span><button class="btn" type="button">Cancel</button></div></div><div class="pinp">You can keep typing; it will be queued…</div></div></div>
+<div class="nm light" style="padding:12px;width:324px"><div class="panel w300"><div class="ph"><span class="wm">No<b>m</b>i</span></div><div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
+<div class="rq" style="margin:0 10px 10px;padding:10px"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="strip" style="gap:6px"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button></div>
+<span class="sum">Seedance 2.0 Fast · 16:9 · 共 13s</span>
+<div class="rq-f" style="flex-wrap:wrap"><span class="price">3 段 · 合计 ¥2.10</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div></div></div>
+</div></div>
+
+</div>
+</section>
+</body>
+</html>

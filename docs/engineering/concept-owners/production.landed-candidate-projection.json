@@ -1,0 +1,31 @@
+{
+  "name": "Agent 候选落到画布节点时，节点上的模型身份 / 方式 / 变体 / 参数（候选 → 节点 meta 的投影）",
+  "subject": "production.landed-candidate-projection",
+  "lifecycle": "projection",
+  "authority_kind": "writer",
+  "trust_domain": "renderer",
+  "fact_kind": "projection",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/agent/candidateNodeMeta.ts",
+    "symbol": "plannedInputFromCandidate"
+  },
+  "write_api": [
+    {
+      "path": "electron/productionRun/multiShotCanvasLanding.ts",
+      "symbol": "CANDIDATE_LANDING_FIELDS"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/candidateNodeMeta.ts",
+      "symbol": "plannedInputFromCandidate"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/parity/landingProjectionParity.test.ts",
+  "allowed_consumers": [
+    "src/workbench/capability/multiShotCanvasLanding.ts",
+    "electron/parity/landingProjectionParity.test.ts"
+  ],
+  "since": "2026-10-22",
+  "notes": "R-d2-defaults #2：落地报文没带 variantId，渲染层首落 / 重绑定各手写一份 buildPlannedNodeMeta 入参也没带，Agent 选的标准 / Mini 落到节点变回默认变体。现在线类型只有一份（electron/shared/canvas/materializeShotCandidate.ts）；主进程按 PlanCandidate 每个键归类（CANDIDATE_LANDING_FIELDS：过线或写不过线的理由），渲染层按线上每个字段归类（candidateNodeMeta 的 LANDED_CANDIDATE_FIELDS），首落与重绑定只调 plannedInputFromCandidate。新键不归类 tsc 即红。不许在别处另写候选 → buildPlannedNodeMeta 入参的对象字面量（合同 docs/fixes/2026-10-22-landing-candidate-projection.root-cause.json）。"
+}

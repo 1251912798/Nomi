@@ -1,0 +1,161 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-22-retrieval-stage-error-class",
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-21",
+  "problem_type": "Error codes whose wording only holds before submission leak out of the post-submission retrieval path, and the renderer does not recognize retrieval-stage codes",
+  "symptom": "After a paid task was submitted, a query / download failure can be shown as 'this generation was never sent ... generate again' (outbound-blocked-submit, asset-upload-failed), and the renderer classifies retrieval-query as unknown with the hint 'retry once or switch model' and primary action retry, i.e. regenerate and pay again.",
+  "direct_cause": "taskResultQuery.retrievalStageError passes any already-coded error through unchanged; vendorHttp's outbound guard tags every refused vendor request (including task queries) as outbound-blocked-submit and copies the refusal into structured.upstreamMsg; classifyGenerationError has no branch for retrieval-* codes.",
+  "class_root": "Nothing records which task phase each NomiErrorCode speaks for; producers shared by submission and retrieval cannot know the phase, and neither the retrieval exit nor the single renderer classifier enforces phase-correct wording.",
+  "affected_population": [
+    "Any async generation whose status query or result download is refused locally (fake-ip proxy, private address, credential-origin binding) or hits a pre-submit-coded failure",
+    "Every fetchTaskResult caller: canvas polling and retrieve-again, MCP read_task, Agent, production run reconciliation, model try, certification",
+    "Renderer surfaces that read classifyGenerationError for retrieval failures (Agent panel failure text, storyboard copy, error cards)"
+  ],
+  "scope_paths": [
+    "electron/tasks/taskResultQuery.ts",
+    "electron/shared/nomiErrorCodes.ts",
+    "src/workbench/observability/classifyError.ts",
+    "src/workbench/generationCanvas/runner/recoverTaskActions.ts"
+  ],
+  "entry_points": [
+    "fetchTaskResult (taskResultQuery.ts) -> executeTaskQuery query/result/download -> retrievalStageError",
+    "vendorHttp.requestJson outbound guard (authorizeSubmitDestination) used by both submission and query requests",
+    "classifyGenerationError used by NodeRecoverableReport, NodeErrorReport, storyboard failure copy, Agent lane failure text, task telemetry"
+  ],
+  "internal_only_reason": "The phase semantics of Nomi's own error codes and the recoverable-retrieval flow are internal contracts; no external document decides them.",
+  "invariants": [
+    "Every NomiErrorCode declares whether its wording only holds before submission (NOMI_ERROR_ONLY_BEFORE_SUBMIT is an exhaustive Record).",
+    "No error leaving fetchTaskResult carries a submit-phase code; submit-phase codes are re-tagged with the retrieval stage code, keep the original code and a 'blocked locally by Nomi' label in the technical text, and never carry Nomi's own refusal as provider text.",
+    "classifyGenerationError maps every retrieval-* code to retrieval-incomplete whose actions never include retry (regenerate)."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/shared/nomiErrorCodes.ts",
+      "symbol": "NOMI_ERROR_ONLY_BEFORE_SUBMIT"
+    },
+    {
+      "kind": "write",
+      "path": "electron/tasks/taskResultQuery.ts",
+      "symbol": "retrievalStageError"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/observability/classifyError.ts",
+      "symbol": "matchNomiErrorCode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/runner/recoverTaskActions.ts",
+      "symbol": "reopenRecoverableNode"
+    }
+  ],
+  "door_reduction": {
+    "before": 3,
+    "after": 4,
+    "why_not": "Three different owners: the code table declares the phase, the main-process retrieval exit enforces it for every fetchTaskResult caller, and the renderer's single classifier turns retrieval codes into a non-retry action. Each sits on a different process boundary and cannot be merged. recoverTaskActions.reopenRecoverableNode is the error card's way back to the recoverable panel for canvas tasks (coordinator 10-22), next to the existing dismissRecoverableNode; it only flips a node with a taskId back to recoverable."
+  },
+  "generality_proof": "Every retrieval-path failure reaches users only through fetchTaskResult (20 callers, door-map) and is interpreted only by classifyGenerationError. fetchTaskResult now routes every thrown error through retrievalStageError, which consults the exhaustive phase table, so any present or future producer of a submit-phase code (vendorHttp guard, asset localization, new codes) is re-tagged without the producer knowing the phase; the classifier maps all retrieval-* codes to a kind whose action table has no retry.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/nomiErrorCodes.ts",
+      "symbol": "NOMI_ERROR_ONLY_BEFORE_SUBMIT",
+      "responsibility": "Exhaustive declaration of which task phase each error code speaks for."
+    },
+    {
+      "path": "electron/tasks/taskResultQuery.ts",
+      "symbol": "retrievalStageError",
+      "responsibility": "Single retrieval-stage error exit (fetchTaskResult routes every thrown error through it); passes through only non-submit codes and re-tags submit-phase codes."
+    },
+    {
+      "path": "src/workbench/observability/classifyError.ts",
+      "symbol": "classifyGenerationError",
+      "responsibility": "Single renderer classifier; retrieval-* codes map to retrieval-incomplete (view-task, no retry)."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/vendor/vendorHttp.ts",
+      "entry_point": "requestJson",
+      "disposition": "enforced",
+      "evidence": "Its outbound guard tags query refusals as outbound-blocked-submit; retrievalStagePhase.test.ts drives that exact shape through fetchTaskResult and asserts the re-tag."
+    },
+    {
+      "path": "electron/capabilityCore/readTask.ts",
+      "entry_point": "readTask",
+      "disposition": "enforced",
+      "evidence": "MCP read_task wraps fetchTaskResult errors with the raw message; retrievalStagePhase.test.ts asserts the message no longer carries the pre-submit claim."
+    },
+    {
+      "path": "src/workbench/generationCanvas/runner/recoverTaskActions.ts",
+      "entry_point": "recoverNodeResult",
+      "disposition": "not-affected",
+      "evidence": "Query failures already land recoverable regardless of code; recoverTaskActions.projectIdentity.test.ts pins it with a pre-submit-coded failure."
+    },
+    {
+      "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "entry_point": "runCatalogGenerationTask",
+      "disposition": "not-affected",
+      "evidence": "Poll failures are wrapped into RecoverableTimeoutError whatever their code; catalogTaskActions.test.ts pins one submission and a recoverable outcome for pre-submit-coded poll failures."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any producer shared between submission and retrieval (vendorHttp guard, asset localization, future codes) can emit submit-phase wording during retrieval, and every retrieval failure reaches users through the same exit and classifier.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs retrievalStageError -> taskResultQuery.ts (6 call sites)",
+      "node scripts/door-map.mjs fetchTaskResult -> 20 callers across canvas, MCP, Agent, production run, model try, certification",
+      "rg outbound-blocked-submit -> networkOutboundMessage.ts / vendorOutboundGuard.ts, used by vendorHttp.requestJson for every vendor request including task queries",
+      "classifyGenerationError probe: retrieval-query -> unknown + retry before the fix"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/tasks/taskResultQuery.ts",
+    "invariant": "Errors leaving the retrieval path never carry submit-phase codes, and retrieval codes never classify to a retry action.",
+    "failure_mode": "Submit-phase codes are re-tagged to the retrieval stage code with the original code kept in the technical text; uncoded errors are tagged with the stage code.",
+    "exception_policy": "none",
+    "strategy": "Exhaustive phase table consulted by the single retrieval exit, plus a dedicated classifier branch for retrieval codes.",
+    "artifacts": [
+      "electron/shared/nomiErrorCodes.ts",
+      "electron/tasks/taskResultQuery.ts",
+      "src/workbench/observability/classifyError.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/tasks/retrievalStagePhase.test.ts",
+    "electron/tasks/retrievalStagePhase.realGuard.test.ts",
+    "src/workbench/observability/retrievalStageClassification.test.ts",
+    "src/workbench/generationCanvas/nodes/NodeRecoverableReport.test.tsx",
+    "src/workbench/generationCanvas/runner/recoverTaskActions.projectIdentity.test.ts",
+    "src/workbench/generationCanvas/runner/catalogTaskActions.test.ts",
+    "src/workbench/generationCanvas/nodes/NodeErrorReport.retrievalSource.test.tsx"
+  ],
+  "class_regression_tests": [
+    "electron/tasks/retrievalStagePhase.test.ts",
+    "src/workbench/observability/retrievalStageClassification.test.ts",
+    "electron/tasks/retrievalStagePhase.realGuard.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The pass-through rule is replaced in place by the phase-table rule; no parallel path remains."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency controls Nomi's error code phases.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted state changes. Node errors already stored with retrieval-* codes are reclassified by the renderer on read (retrieval-incomplete) with no data migration.",
+  "residual_risks": [
+    "Producers still do not know the phase (vendorHttp tags query refusals as submit); the retrieval exit corrects the code, but the specific network hint of the refusal (host / address) is reduced to the diagnostic prefix in the technical text.",
+    "Main-process 'failed' results for paid tasks (model unresolvable, no query operation) still render as ordinary failures; they are deliberate honest-failure decisions from #1213 and out of this change."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/tasks/taskResultQuery.ts",
+    "tests": [
+      "electron/tasks/retrievalStagePhase.test.ts"
+    ]
+  }
+}
