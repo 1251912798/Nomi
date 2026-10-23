@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>提示词抽屉 · 修后</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.nm{--shell:#f5f4f2;--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.nm.dark{--shell:#0c0b09;--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80)}
+.nm .illus{filter:none}
+.nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm .clamp5{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.nm button{font-family:inherit}
+</style>
+</helmet>
+<div class="nm {{themeClass}}" style="width: 1440px; height: 900px; background: var(--shell); position: relative; overflow: hidden;">
+  <img src="{{shellSrc}}" alt="{{s.shellAlt}}" style="position: absolute; left: 0; top: 0; width: 1440px; height: 900px; display: block;">
+  <aside aria-label="{{s.drawerAria}}" style="position: absolute; left: 64px; top: 44px; width: 280px; bottom: 12px; background: var(--paper); border-radius: 16px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="height: 44px; display: flex; align-items: center; gap: 2px; padding: 0 8px 0 16px; flex: none;">
+      <h2 style="margin: 0; font-size: 13px; font-weight: 600; flex: 1;">{{s.drawerTitle}}</h2>
+      <button type="button" aria-label="{{s.newName}}" title="{{s.newName}}" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
+    </div>
+    <div style="display: flex; gap: 6px; padding: 0 12px 10px 12px; flex: none;">
+      <label style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 30px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+        <input type="search" placeholder="{{s.search}}" aria-label="{{s.search}}" style="border: 0; outline: 0; background: transparent; font: inherit; font-size: 12px; color: var(--ink); width: 100%; min-width: 0;">
+      </label>
+      <button type="button" aria-haspopup="listbox" aria-label="{{s.filterAria}}" style="height: 30px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink80); font-size: 12px;">{{s.all}}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+    </div>
+    <div style="flex: 1; min-height: 0; overflow: hidden; padding: 4px 12px 12px 12px; display: flex; flex-direction: column; gap: 16px;">
+      <sc-for list="{{sections}}" as="sec" hint-placeholder-count="4">
+        <section aria-label="{{sec.title}}" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--ink);">{{sec.title}}</h3>
+            <sc-if value="{{sec.hasMore}}" hint-placeholder-val="{{ true }}">
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;">{{sec.more}}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            </sc-if>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+            <sc-for list="{{sec.items}}" as="it" hint-placeholder-count="2">
+              <button type="button" title="{{it.title}}" style="border: 0; padding: 0; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  <sc-if value="{{it.hasImg}}" hint-placeholder-val="{{ true }}">
+                    <img class="{{it.cls}}" src="{{it.src}}" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  </sc-if>
+                  <sc-if value="{{it.isText}}" hint-placeholder-val="{{ false }}">
+                    <span class="clamp5" style="box-sizing: border-box; height: 100%; padding: 8px 10px; font-size: 11px; line-height: 15px; color: var(--ink60);">{{it.text}}</span>
+                  </sc-if>
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);">{{it.title}}</strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  <sc-if value="{{it.video}}" hint-placeholder-val="{{ false }}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                  </sc-if>
+                  <span class="one">{{it.meta}}</span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+        </section>
+      </sc-for>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"lang":{"editor":"enum","options":["zh","en"],"default":"zh"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const en = (this.props.lang ?? 'zh') === 'en';
+    const T = (zh, e) => (en ? e : zh);
+    // 抽屉外面的外壳 = 现役真截图（左栏提示词抽屉打开时，中英 × 明暗），只把抽屉换成修后
+    const SHELL = {
+      'zh-light': '/_blob/62361cf7f47ed9a9170a71d3b5338edf',
+      'zh-dark': '/_blob/1e3ad6585e3dac432743796fb99740f1',
+      'en-light': '/_blob/016883e65e4b7498f6a2de9ff769b179',
+      'en-dark': '/_blob/78e0b23c70fec494fe3cbcc51cb67e4a',
+    };
+    const shellSrc = SHELL[(en ? 'en' : 'zh') + '-' + (dark ? 'dark' : 'light')];
+    const s = {
+      shellAlt: T('现役画布外壳（真截图）：顶栏、左栏、画布、底部工具条和时间轴照现状', 'Current canvas shell (real screenshot): top bar, rail, canvas, toolbar and timeline as they are today'),
+      drawerAria: T('提示词库', 'Prompt library'), drawerTitle: T('提示词', 'Prompts'), newName: T('新建提示词', 'New prompt'),
+      search: T('搜提示词…', 'Search prompts…'), filterAria: T('分类和图片 / 视频', 'Category and image / video'), all: T('全部', 'All'),
+    };
+    const IMG = T('图片', 'Image');
+    const VID = T('视频', 'Video');
+    const img = (title, id, meta, video, illus) => ({ title, src: id, hasImg: true, isText: false, text: '', meta, video, cls: illus ? 'illus' : 'photo' });
+    const txt = (title, text, meta, video) => ({ title, src: '', hasImg: false, isText: true, text, meta, video, cls: '' });
+    const sec = (title, total, items) => ({ title, items, hasMore: total > items.length, more: T('全部 ', 'All ') + total });
+    const sections = [
+      sec(T('我的', 'Mine'), 3, [
+        img('Q 版角色卡', '/_blob/5e2a1f7cc87876ec47c529c67e604066', T('网页提取 · 图片', 'Web extract · Image'), false, false),
+        txt('Tokyo Walk', 'A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage…', VID, true),
+      ]),
+      sec(T('表情预设', 'Expression presets'), 25, [
+        img('喜悦 1/5 · 一丝笑意', '/_blob/37a2b310f720f13a2a8cabda6f724215', IMG, false, false),
+        img('喜悦 3/5 · 明朗微笑', '/_blob/0f8e2e54147d58a84d9c1434b4114707', IMG, false, false),
+      ]),
+      sec(T('运镜', 'Camera'), 23, [
+        img(T('空镜转场', 'Empty-frame bridge'), '/_blob/c7860becc3b99fd1257ba758605e55ff', VID, true, true),
+        img(T('过肩对话', 'OTS dialogue'), '/_blob/ca527711624517d16418d72b017c4150', VID, true, true),
+      ]),
+      sec(T('构图', 'Composition'), 8, [
+        img(T('画框构图', 'Frame-within-frame'), '/_blob/97caaa935fb2a87fe3349d14e5245dbe', IMG, false, true),
+        img(T('对角线构图', 'Diagonal dynamic'), '/_blob/9f7f5594f9612ccea43e9862a0db306f', IMG, false, true),
+      ]),
+    ];
+    return { themeClass: dark ? 'dark' : '', shellSrc, s, sections };
+  }
+}
+</script>
+</body>
+</html>
