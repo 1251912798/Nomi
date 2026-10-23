@@ -29,7 +29,7 @@ function assert(cond, label) {
 
 // 隔离 profile：临时项目都建在这次运行自己的临时根里。收尾用 close() 连临时根一起删（测试自己的 fs.rm），
 // 不走产品的「删除项目」——那条现在会把文件夹放进运行者电脑的系统回收站（⑭），走查不许往用户回收站塞测试垃圾。
-const { app, win, close } = await launchNomiApp({ name: "seedance-apimart" });
+const { win, close } = await launchNomiApp({ name: "seedance-apimart" });
 
 try {
 
