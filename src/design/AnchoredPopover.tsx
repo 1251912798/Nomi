@@ -125,6 +125,9 @@ export function AnchoredPopover({
   const [openerBeforeOpen] = React.useState<Element | null>(() => (typeof document === 'undefined' ? null : document.activeElement))
   // 只有「会被关掉的交互浮层」管焦点；悬停预览（passThrough）与自己管开合的浮层（没传 onClose）不碰。
   const managesFocus = Boolean(onClose) && !passThrough
+  // 是不是被「点外面」关掉的：是就不把焦点还给触发钮（照 Radix DropdownMenu 的 hasInteractedOutsideRef）。
+  // 还回去会让触发钮的悬停提示在用户点完画布空白后冒出来挂着（2026-10-23 走查截图）；Esc 关闭照旧还焦点。
+  const closedByOutsidePressRef = React.useRef(false)
 
   // 调用方常写成内联函数：放进 ref，身份变了不重建 reposition（否则每次渲染都重算 → setState → 再渲染）。
   const boundaryRectRef = React.useRef(boundaryRect)
@@ -193,7 +196,10 @@ export function AnchoredPopover({
       if (target instanceof Node && (popRef.current?.contains(target) || anchor?.contains(target))) return true
       return Boolean(popRef.current && isInsidePopupAbove(popRef.current, target))
     }
-    const stopListeningOutside = listenOutsidePress(isInside, () => onClose())
+    const stopListeningOutside = listenOutsidePress(isInside, () => {
+      closedByOutsidePressRef.current = true
+      onClose()
+    })
     document.addEventListener('keydown', onKey, true)
     return () => {
       document.removeEventListener('keydown', onKey, true)
@@ -240,6 +246,7 @@ export function AnchoredPopover({
       onUnmountAutoFocus={(event) => {
         // 还给「打开前」的元素（见上），不用 FocusScope 默认记的那个；用户已把焦点挪到别处（点了另一个输入框）就不抢回来。
         event.preventDefault()
+        if (closedByOutsidePressRef.current) return
         const active = document.activeElement
         if ((!active || active === document.body) && openerBeforeOpen instanceof HTMLElement && openerBeforeOpen.isConnected) {
           openerBeforeOpen.focus({ preventScroll: true })

@@ -29,9 +29,9 @@
   "external_sources": [
     {
       "kind": "official-doc",
-      "url": "https://tiptap.dev/docs/editor/getting-started/install/react#optimize-your-performance",
+      "url": "https://tiptap.dev/docs/editor/getting-started/style-editor/custom-menus",
       "checked_at": "2026-10-23",
-      "purpose": "TipTap 官方建议 shouldRerenderOnTransaction:false 时用 useEditorState 订阅需要的那一小片状态（本机 @tiptap/react dist/index.d.ts 的 UseEditorStateOptions：默认 deepEqual，没变不重渲）"
+      "purpose": "TipTap 官方「自定义菜单 · 按下态」：React 里编辑器状态默认不响应，isActive() 一直是初始值，要用 useEditorState 订阅（2026-10-23 经 Context7 核对原文；性能指南 https://tiptap.dev/docs/guides/performance 同样推荐 useEditorState + 深比较）"
     },
     {
       "kind": "source-code",
@@ -47,14 +47,46 @@
     "列表的符号 / 序号由编辑器内核的类名给出，不靠全局 CSS"
   ],
   "doors": [
-    { "kind": "write", "path": "src/workbench/common/richTextActions.tsx", "symbol": "useRichTextActions" },
-    { "kind": "write", "path": "src/workbench/creation/SelectionGeneratePopover.tsx", "symbol": "useRichTextActions" },
-    { "kind": "write", "path": "src/workbench/creation/WorkbenchEditor.tsx", "symbol": "useRichTextActions" },
-    { "kind": "write", "path": "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx", "symbol": "useRichTextActions" },
-    { "kind": "read", "path": "src/workbench/common/RichTextActionButton.tsx", "symbol": "RichTextAction" },
-    { "kind": "read", "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx", "symbol": "TextDocumentNode" },
-    { "kind": "read", "path": "src/workbench/common/useNomiRichTextEditor.ts", "symbol": "useRichTextActions" },
-    { "kind": "read", "path": "src/workbench/workbench.css", "symbol": "workbench-editor__content" }
+    {
+      "kind": "write",
+      "path": "src/workbench/common/richTextActions.tsx",
+      "symbol": "useRichTextActions"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/creation/SelectionGeneratePopover.tsx",
+      "symbol": "useRichTextActions"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/creation/WorkbenchEditor.tsx",
+      "symbol": "useRichTextActions"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx",
+      "symbol": "useRichTextActions"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/common/RichTextActionButton.tsx",
+      "symbol": "RichTextAction"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "symbol": "TextDocumentNode"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/common/useNomiRichTextEditor.ts",
+      "symbol": "useRichTextActions"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/workbench.css",
+      "symbol": "workbench-editor__content"
+    }
   ],
   "door_reduction": {
     "before": 3,
@@ -63,15 +95,48 @@
   },
   "generality_proof": "按下态 / 禁用态只有 owner 一处在读，并且是订阅式读法（useEditorState），任何壳、任何以后新增的壳拿到的都是随事务刷新的状态；按钮外观（Tooltip、aria-pressed、§5.5 Pressed 底色、mousedown 不抢焦点）只在 RichTextActionButton 一处；画布壳的定位交给节点浮条共享外壳，反向缩放与夹边对所有浮条一致。结构测试普查 src 全部源码，owner 之外出现 isActive('…') 或格式命令、壳不经 owner 出钮、画布壳离开共享外壳都会红。",
   "shared_boundaries": [
-    { "path": "src/workbench/common/richTextActions.tsx", "symbol": "useRichTextActions", "responsibility": "格式按钮的唯一清单、唯一状态读法（订阅事务）、唯一命令入口。" },
-    { "path": "src/workbench/common/RichTextActionButton.tsx", "symbol": "RichTextActionButton", "responsibility": "格式按钮的唯一画法：Tooltip 名字、按下态、不抢焦点。" }
+    {
+      "path": "src/workbench/common/richTextActions.tsx",
+      "symbol": "useRichTextActions",
+      "responsibility": "格式按钮的唯一清单、唯一状态读法（订阅事务）、唯一命令入口。"
+    },
+    {
+      "path": "src/workbench/common/RichTextActionButton.tsx",
+      "symbol": "RichTextActionButton",
+      "responsibility": "格式按钮的唯一画法：Tooltip 名字、按下态、不抢焦点。"
+    }
   ],
   "same_class_entry_points": [
-    { "path": "src/workbench/creation/WorkbenchEditor.tsx", "entry_point": "WorkbenchEditorToolbar", "disposition": "enforced", "evidence": "原 buildRichTextActions 渲染时读一次 + 自写 ToolbarButton（无按下态样式、原生 title）；改经 useRichTextActions + RichTextActionButton。" },
-    { "path": "src/workbench/creation/SelectionGeneratePopover.tsx", "entry_point": "SelectionGeneratePopover format group", "disposition": "enforced", "evidence": "原第三份格式清单（bold / italic / h1 / h2）渲染时读 isActive；改取 useRichTextActions 子集；摆位以正文区（.workbench-editor__scroll）上沿为界，不再盖住顶栏。" },
-    { "path": "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx", "entry_point": "TextDocumentNode format bar", "disposition": "enforced", "evidence": "原自写 absolute 条（画布坐标、无夹边）；改挂 FloatingToolbarShell，编辑期间由 BaseGenerationNode 收起节点浮条（与白板编辑条同一做法）。" },
-    { "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx", "entry_point": "WhiteboardEditingToolbar", "disposition": "not-affected", "evidence": "白板编辑条不是富文本格式按钮（画笔 / 橡皮 / 图层），已经走 FloatingToolbarShell，是本次画布壳的先例。" },
-    { "path": "src/workbench/assets/PromptEditor.tsx", "entry_point": "PromptEditor", "disposition": "not-affected", "evidence": "提示词框用同一个 TipTap 内核但没有格式按钮（rg 'isActive|toggleBold' 只命中 owner）。" }
+    {
+      "path": "src/workbench/creation/WorkbenchEditor.tsx",
+      "entry_point": "WorkbenchEditorToolbar",
+      "disposition": "enforced",
+      "evidence": "原 buildRichTextActions 渲染时读一次 + 自写 ToolbarButton（无按下态样式、原生 title）；改经 useRichTextActions + RichTextActionButton。"
+    },
+    {
+      "path": "src/workbench/creation/SelectionGeneratePopover.tsx",
+      "entry_point": "SelectionGeneratePopover format group",
+      "disposition": "enforced",
+      "evidence": "原第三份格式清单（bold / italic / h1 / h2）渲染时读 isActive；改取 useRichTextActions 子集；摆位以正文区（.workbench-editor__scroll）上沿为界，不再盖住顶栏。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx",
+      "entry_point": "TextDocumentNode format bar",
+      "disposition": "enforced",
+      "evidence": "原自写 absolute 条（画布坐标、无夹边）；改挂 FloatingToolbarShell，编辑期间由 BaseGenerationNode 收起节点浮条（与白板编辑条同一做法）。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx",
+      "entry_point": "WhiteboardEditingToolbar",
+      "disposition": "not-affected",
+      "evidence": "白板编辑条不是富文本格式按钮（画笔 / 橡皮 / 图层），已经走 FloatingToolbarShell，是本次画布壳的先例。"
+    },
+    {
+      "path": "src/workbench/assets/PromptEditor.tsx",
+      "entry_point": "PromptEditor",
+      "disposition": "not-affected",
+      "evidence": "提示词框用同一个 TipTap 内核但没有格式按钮（rg 'isActive|toggleBold' 只命中 owner）。"
+    }
   ],
   "recurrence": {
     "classification": "recurring",

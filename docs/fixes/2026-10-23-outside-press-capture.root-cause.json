@@ -48,12 +48,19 @@
       "url": "https://github.com/mantinedev/mantine/blob/master/packages/@mantine/hooks/src/use-click-outside/use-click-outside.ts",
       "checked_at": "2026-10-23",
       "purpose": "useClickOutside 默认事件 ['mousedown', 'touchstart']，在 document 上冒泡阶段注册"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/radix-ui/primitives/blob/main/packages/react/dropdown-menu/src/dropdown-menu.tsx",
+      "checked_at": "2026-10-23",
+      "purpose": "DropdownMenuContent 的 onCloseAutoFocus：hasInteractedOutsideRef 为真（因点外面关闭）时不 focus 触发钮（本机 node_modules/@radix-ui/react-dropdown-menu dist/index.mjs:105-124 已核）"
     }
   ],
   "invariants": [
     "「点外面就收」只经 src/design/outsidePress.ts 的 listenOutsidePress 听：document 上 pointerdown 捕获阶段，在任何目标处理器之前",
     "src 里没有 document / window 上的 mousedown / touchstart 监听，也不用 Mantine useClickOutside",
-    "document / window 上冒泡阶段的 pointerdown / click 监听只许减不许增（基线 4 处）"
+    "document / window 上冒泡阶段的 pointerdown / click 监听只许减不许增（基线 4 处）",
+    "因「点外面」关闭的锚点浮层不把焦点还给触发钮（照 Radix DropdownMenu 的 hasInteractedOutsideRef），按 Esc 关闭照旧还焦点；否则触发钮的悬停提示会在用户点完画布空白后挂着"
   ],
   "doors": [
     {
