@@ -112,7 +112,7 @@ async function expectNodePointerState(page, state, record) {
         if (!byId['np-failed']?.text.includes('没有发出去')) record(`${state.id} ${A.failed}: 失败摘要行没印宿主给的结局`)
         // 失败的宿主结局行是红（danger-ink）：板 markup 本意是 .bd，渲成灰是样张里 CSS 优先级被 .sum 压过的意外（V-d2-pointer 偏差 5，保留红）。
         const outcomeInk = await page.evaluate(() => {
-          const line = [...document.querySelectorAll('[data-node-pointer-id="np-failed"] span')].find((el) => el.children.length === 0 && el.textContent?.includes('没有发出去'))
+          const line = [...document.querySelectorAll('[data-node-pointer-id="np-failed"] span')].find((el) => !el.firstElementChild && el.textContent?.includes('没有发出去'))
           const probe = document.createElement('span')
           probe.className = 'text-nomi-danger-ink'
           document.body.appendChild(probe)

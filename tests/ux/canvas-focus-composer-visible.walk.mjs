@@ -107,7 +107,8 @@ try {
     expect(Boolean(halo), `${label}：闪的时候少了 9px 淡光晕那一层（${flash.shadow}）`).toBe(true)
     expect(flash.layers.some((layer) => layer.raw.includes(flash.accent)), `${label}：闪的任何一层都不许含强调色`).toBe(false)
     await expect(shell, `${label}：闪完没有清掉`).not.toHaveAttribute('data-external-highlight', /.+/, { timeout: 4000 })
-    // 约 1.4 秒清掉（对焦那条路的 setTimeout(1400)）：量页面里观察到的「亮起 → 清掉」，容 ±0.3 秒的渲染与机器抖动。
+    // 约 1.4 秒清掉（对焦那条路的 setTimeout(1400)）：量页面里观察到的「亮起 → 清掉」。定时器不会早到（下限只留亮起那一帧的提交延迟），
+    // 晚到的余量留给慢机器；仍远紧于原来「4 秒内清掉就行」，改成 0.6 秒或 3 秒都会红。
     const lit = await win.evaluate(() => {
       const log = window.__flashLog
       window.__flashObserver.disconnect()
@@ -116,7 +117,7 @@ try {
       return { litMs: on && off ? Math.round(off.at - on.at) : null, steps: log.length }
     })
     console.log('FOCUS_FLASH_DURATION', JSON.stringify({ label, ...lit }))
-    expect(lit.litMs !== null && lit.litMs >= 1100 && lit.litMs <= 1700, `${label}：闪光应亮约 1.4 秒后清掉，实际 ${lit.litMs}ms`).toBe(true)
+    expect(lit.litMs !== null && lit.litMs >= 1250 && lit.litMs <= 1900, `${label}：闪光应亮约 1.4 秒后清掉（1.25–1.9 秒），实际 ${lit.litMs}ms`).toBe(true)
     await expect.poll(() => canvasZoomPercent(win), { message: `${label}：对焦事件派出后画布没有任何移动` }).not.toBe(before)
     await waitForCanvasViewportSettled(win)
     const submit = win.locator(`.generation-canvas-v2-node[data-node-id="${nodeId}"] ${SUBMIT}, ${SUBMIT}`).first()
