@@ -108,6 +108,29 @@ describe('Playwright isVisible / isHidden 不许当值取出来（scripts / test
   })
 })
 
+// ⑤ 2026-10-24：vitest 车道的浏览器夹具测试起 vite 开发服务只经 tests/ux/_browserFixture.mjs（冷编译不进用例的操作预算）。
+describe('浏览器夹具测试不直接起 vite 开发服务（tests/**/*.test.*）', () => {
+  const RULES = ['browser-fixture/no-restricted-imports', 'browser-fixture/no-restricted-syntax']
+  const hits = async (file, source) => (await lint(file, source)).filter((message) => RULES.includes(message.ruleId)).map((message) => message.line)
+  const source = [
+    "import { createServer } from 'vite'",
+    "import { createServer as startVite, normalizePath } from 'vite'",
+    "import * as vite from 'vite'",
+    "export const later = async () => (await import('vite')).createServer",
+    "import { normalizePath as other } from 'vite'",
+    'export const all = [createServer, startVite, normalizePath, vite, other]',
+    '',
+  ].join('\n')
+
+  it.each(['tests/ux/a.test.mjs', 'tests/ux/design-lab/a.test.mjs', 'tests/network/a.test.mjs'])('%s：具名、改名、命名空间、动态 import 都红；只取 vite 别的导出不红', async (file) => {
+    expect(await hits(file, source)).toEqual([1, 2, 3, 4])
+  })
+
+  it.each(['tests/ux/_browserFixture.mjs', 'tests/ux/a.walk.mjs', 'scripts/a.mjs'])('%s：唯一主人与别的车道不归这条规则', async (file) => {
+    expect(await hits(file, source)).toEqual([])
+  })
+})
+
 describe('走查里的未定义标识符：ESLint no-undef（夜跑 I05 的形状）', () => {
   const undefinedNames = async (file, ...rows) => (await lint(file, rows.join('\n') + '\n'))
     .filter((message) => message.ruleId === 'no-undef')

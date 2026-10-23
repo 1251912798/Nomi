@@ -1,14 +1,11 @@
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
 import { proveProbe, expectAbsent } from './_assert.mjs'
 // Host integration, not live-provider/Electron acceptance. Only environment ports are replaced.
-import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest'
-import { zhAgentPanelV4 } from '../../src/i18n/locales/agentPanelV4.ts'
+import { beforeEach, expect, it } from 'vitest'
 import { chromium } from 'playwright'
-import { createServer } from 'vite'
-let server, browser, page, cacheDir
+import { zhAgentPanelV4 } from '../../src/i18n/locales/agentPanelV4.ts'
+import { useBrowserFixture } from './_browserFixture.mjs'
+const ENTRY = 'tests/ux/fixtures/spend-panel-write-ownership-harness.html'
+let page
 const ports = {
   // 拖文件进卡体那张框（`useNodeAssetDrop`）在当前项目里上传。
   projectCanvasReadSurface: `export const withProjectAction = fn => fn({ binding: { projectId: 'project' }, assertCurrent() {} }); export const isProjectExecutionContextCurrent = () => true; export const isProjectImportCancellation = () => false;`,
@@ -18,27 +15,21 @@ const ports = {
   generationCanvasStore: `export const useGenerationCanvasStore = Object.assign(selector => selector({ nodes: window.spendOwnership.nodes, edges: window.spendOwnership.edges, updateNode() { throw new Error('canvas write forbidden') } }), { getState: () => ({ nodes: window.spendOwnership.nodes, edges: window.spendOwnership.edges }) });`,
   assetUploadApi: `export const importWorkbenchLocalAssetFile = (...args) => window.spendOwnership.upload(...args);`,
 }
-beforeAll(async () => {
-  cacheDir = makeTempDir('nomi-t7-vite-panel-')
-  server = await createServer({ configFile: false, cacheDir, plugins: [{ name: 'controlled-panel-environment', enforce: 'pre',
-    resolveId(source, importer) {
-      if (!importer || !/\/(useAgentPanelSpendConfirm|useNodeAssetDrop|nodeWriteAccess)\.ts$/.test(importer)) return
-      const name = source.split('/').at(-1)
-      if (name in ports) return '\0panel-environment:' + name
-    },
-    load(id) { if (id.startsWith('\0panel-environment:')) return ports[id.split(':')[1]] },
-  }], server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } })
-  await server.listen()
-  browser = await chromium.launch({ headless: true })
-})
+const fixture = useBrowserFixture({ entries: [ENTRY], browserType: chromium, plugins: [{ name: 'controlled-panel-environment', enforce: 'pre',
+  resolveId(source, importer) {
+    if (!importer || !/\/(useAgentPanelSpendConfirm|useNodeAssetDrop|nodeWriteAccess)\.ts$/.test(importer)) return
+    const name = source.split('/').at(-1)
+    if (name in ports) return '\0panel-environment:' + name
+  },
+  load(id) { if (id.startsWith('\0panel-environment:')) return ports[id.split(':')[1]] },
+}] })
 beforeEach(async () => {
   await page?.close()
-  page = await browser.newPage()
+  page = await fixture.browser.newPage()
   page.on('pageerror', error => console.error(error.message))
-  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/spend-panel-write-ownership-harness.html`)
+  await page.goto(fixture.url(ENTRY))
   await page.locator('#upload').waitFor({ state: 'visible' })
 })
-afterAll(async () => { await browser?.close(); await server?.close(); if (cacheDir) rmSync(cacheDir, { recursive: true, force: true }) })
 async function upload() {
   await page.locator('#upload').click()
   await page.waitForFunction(() => window.spendOwnership.snapshot().uploads === 1)

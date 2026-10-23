@@ -1453,11 +1453,6 @@
       "count": 2
     }
   },
-  "tests/ux/composerLifecycle.test.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    }
-  },
   "tests/ux/control-hierarchy-u2.walk.mjs": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -2149,11 +2144,6 @@
       "count": 1
     }
   },
-  "tests/ux/selection-drag-lifecycle.test.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    }
-  },
   "tests/ux/settings-relocation.walk.mjs": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -2184,24 +2174,9 @@
       "count": 1
     }
   },
-  "tests/ux/spend-panel-write-ownership.test.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    }
-  },
-  "tests/ux/storyboard-agent-handoff.test.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    }
-  },
   "tests/ux/storyboard-anchor-policy.walk.mjs": {
     "@typescript-eslint/no-unused-vars": {
       "count": 4
-    }
-  },
-  "tests/ux/storyboard-delete-undo.test.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
     }
   },
   "tests/ux/storyboard-film-aspect-passthrough.walk.mjs": {
@@ -2227,11 +2202,6 @@
   "tests/ux/storyboard-narrow-row.walk.mjs": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    }
-  },
-  "tests/ux/storyboard-popover-keyboard.test.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
     }
   },
   "tests/ux/storyboard-reference-slots.walk.mjs": {
@@ -2267,11 +2237,6 @@
   "tests/ux/task-center-states.walk.mjs": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    }
-  },
-  "tests/ux/text-document-generation-ownership.test.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
     }
   },
   "tests/ux/text-node-agent-undo-and-describe.walk.mjs": {

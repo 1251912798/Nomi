@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>LibraryDrawers 项目里左栏两个抽屉（Skill / 提示词） 拍板图（2026-10-24）</title>
+<style>
+body{margin:0;padding:24px 20px;background:#fff;font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+.bd{margin:0 0 32px}
+.bd-title{margin:0 0 8px;font-size:14px;font-weight:600;color:#333}
+/* 静态预览：去掉动画，候选抽取才确定。图片去掉了 src（画布素材不进仓库），封面看同目录截图（.webp）。 */
+*,*::before,*::after{animation:none!important;transition:none!important}
+</style>
+<style>
+.bd-s1 .nm{--shell:#f5f4f2;--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink30:oklch(0.78 0.01 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s1 .nm.dark{--shell:#0c0b09;--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink30:oklch(0.50 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80)}
+.bd-s1 .nm .illus{filter:none}
+.bd-s1 .nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.bd-s1 .nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-s1 .nm .clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bd-s1 .nm button{font-family:inherit}
+
+.bd-s2 .nm{--shell:#f5f4f2;--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink30:oklch(0.78 0.01 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s2 .nm.dark{--shell:#0c0b09;--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink30:oklch(0.50 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80)}
+.bd-s2 .nm .illus{filter:none}
+.bd-s2 .nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.bd-s2 .nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-s2 .nm .clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bd-s2 .nm button{font-family:inherit}
+.bd-s3 .nm{--shell:#f5f4f2;--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s3 .nm.dark{--shell:#0c0b09;--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80)}
+.bd-s3 .nm .illus{filter:none}
+.bd-s3 .nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.bd-s3 .nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-s3 .nm .clamp5{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.bd-s3 .nm button{font-family:inherit}
+
+.bd-s4 .nm{--shell:#f5f4f2;--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s4 .nm.dark{--shell:#0c0b09;--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80)}
+.bd-s4 .nm .illus{filter:none}
+.bd-s4 .nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.bd-s4 .nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-s4 .nm .clamp5{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.bd-s4 .nm button{font-family:inherit}
+</style>
+</head>
+<body>
+<section class="bd bd-s1" lang="zh-CN" data-artboard="DrawerSkill">
+<h3 class="bd-title">修后 · Skill 抽屉（中·明；外壳是真截图，只换抽屉）（去壳：抽屉外面的外壳是现役真截图，见同名截图）</h3>
+<div class="sc-host" data-sc-name="DrawerSkill"><div class="nm " style="width: 1440px; height: 900px; background: var(--shell); position: relative; overflow: hidden;">
+  
+  <aside aria-label="技能库" style="position: absolute; left: 64px; top: 44px; width: 280px; bottom: 12px; background: var(--paper); border-radius: 16px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="height: 44px; display: flex; align-items: center; gap: 2px; padding: 0px 8px 0px 16px; flex: 0 0 auto;">
+      <h2 style="margin: 0px; font-size: 13px; font-weight: 600; flex: 1 1 0%;"><span class="sc-interp">Skill</span></h2>
+      <button type="button" aria-label="导入技能：SKILL.md、zip 或整个文件夹，也可以直接拖进来" title="导入技能：SKILL.md、zip 或整个文件夹，也可以直接拖进来" style="width: 28px; height: 28px; border: 0px; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path><path d="M7 9l5-5 5 5"></path><path d="M12 4v12"></path></svg></button>
+      <button type="button" aria-label="用 AI 新建技能" title="用 AI 新建技能" style="width: 28px; height: 28px; border: 0px; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21l15-15-3-3-15 15 3 3"></path><path d="M15 6l3 3"></path><path d="M9 3a2 2 0 0 0 2 2 2 2 0 0 0-2 2 2 2 0 0 0-2-2 2 2 0 0 0 2-2"></path><path d="M19 13a2 2 0 0 0 2 2 2 2 0 0 0-2 2 2 2 0 0 0-2-2 2 2 0 0 0 2-2"></path></svg></button>
+    </div>
+    <div style="display: flex; gap: 6px; padding: 0px 12px 10px; flex: 0 0 auto;">
+      <label style="flex: 1 1 0%; min-width: 0px; display: flex; align-items: center; gap: 6px; height: 30px; box-sizing: border-box; padding: 0px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+        <input type="search" placeholder="搜技能…" aria-label="搜技能…" style="border: 0px; outline: 0px; background: transparent; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 12px; color: var(--ink); width: 100%; min-width: 0px;">
+      </label>
+      <button type="button" aria-haspopup="listbox" aria-label="分类" style="height: 30px; display: inline-flex; align-items: center; gap: 4px; padding: 0px 8px 0px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink80); font-size: 12px;"><span class="sc-interp">全部</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+    </div>
+    <div style="flex: 1 1 0%; min-height: 0px; overflow: hidden; padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 16px;">
+      
+        <section aria-label="我的" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">我的</span></h3>
+            
+          </div>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path><path d="M16 5.25l-8 4.5"></path></svg>
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">improv-scene-mine</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">即兴生台词——让角色在设定好的世界里即兴对戏，长出编剧预设不出的真实口语与情节。</span></span>
+              </span>
+            </button>
+          
+        </section>
+      
+        <section aria-label="创作流程" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">创作流程</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 10</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">品牌宣传片</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">做产品/品牌宣传片。当用户要把产品文案、卖点或品牌介绍做成一条短宣传视频时用我。</span></span>
+              </span>
+            </button>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">分镜规划</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">把短故事拆成有序镜头，整理为可审阅的分镜方案。</span></span>
+              </span>
+            </button>
+          
+        </section>
+      
+        <section aria-label="导演" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">导演</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 13</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">镜头语言</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">镜头语言与摄影技法方法论——统一景别体系/构图规则/运镜的情绪语言/打光方案/景深控制。</span></span>
+              </span>
+            </button>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">多角色调度</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">多角色调度方法论——3 人以上同框的站位设计/视线网络/注意力引导/前后景分层。</span></span>
+              </span>
+            </button>
+          
+        </section>
+      
+        <section aria-label="编剧" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">编剧</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 11</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">剧本审查</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">剧本审查·导演视角——用视觉叙事/节奏把控/镜头语言/空间调度/情绪曲线等导演维度审一份剧本。</span></span>
+              </span>
+            </button>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">对白设计</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">对白专家（David Mamet 方法论）——台词创作 / 潜台词设计 / 角色语言个性化 / 对白节拍分析 / 沉默设计。</span></span>
+              </span>
+            </button>
+          
+        </section>
+      
+        <section aria-label="广告" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">广告</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 8</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="photo" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">凝露产品广告</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">用微距、水滴和环绕镜头展示产品质感。</span></span>
+              </span>
+            </button>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="photo" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">咖啡倾注特写</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">把注入、油脂和蒸汽拆成清楚的镜头节拍。</span></span>
+              </span>
+            </button>
+          
+        </section>
+      
+    </div>
+  </aside></div></div>
+</section>
+<section class="bd bd-s2" lang="zh-CN" data-artboard="DrawerSkill-Dark">
+<h3 class="bd-title">修后 · Skill 抽屉（中·暗；外壳是真截图，只换抽屉）（去壳：外壳是现役真截图，见同名截图）</h3>
+<div class="sc-host" data-sc-name="DrawerSkill-Dark"><div style="width: 1440px; height: 900px;">
+  <div class="sc-host" data-sc-name="DrawerSkill"><div class="nm dark" style="width: 1440px; height: 900px; background: var(--shell); position: relative; overflow: hidden;">
+  
+  <aside aria-label="技能库" style="position: absolute; left: 64px; top: 44px; width: 280px; bottom: 12px; background: var(--paper); border-radius: 16px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="height: 44px; display: flex; align-items: center; gap: 2px; padding: 0px 8px 0px 16px; flex: 0 0 auto;">
+      <h2 style="margin: 0px; font-size: 13px; font-weight: 600; flex: 1 1 0%;"><span class="sc-interp">Skill</span></h2>
+      <button type="button" aria-label="导入技能：SKILL.md、zip 或整个文件夹，也可以直接拖进来" title="导入技能：SKILL.md、zip 或整个文件夹，也可以直接拖进来" style="width: 28px; height: 28px; border: 0px; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path><path d="M7 9l5-5 5 5"></path><path d="M12 4v12"></path></svg></button>
+      <button type="button" aria-label="用 AI 新建技能" title="用 AI 新建技能" style="width: 28px; height: 28px; border: 0px; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21l15-15-3-3-15 15 3 3"></path><path d="M15 6l3 3"></path><path d="M9 3a2 2 0 0 0 2 2 2 2 0 0 0-2 2 2 2 0 0 0-2-2 2 2 0 0 0 2-2"></path><path d="M19 13a2 2 0 0 0 2 2 2 2 0 0 0-2 2 2 2 0 0 0-2-2 2 2 0 0 0 2-2"></path></svg></button>
+    </div>
+    <div style="display: flex; gap: 6px; padding: 0px 12px 10px; flex: 0 0 auto;">
+      <label style="flex: 1 1 0%; min-width: 0px; display: flex; align-items: center; gap: 6px; height: 30px; box-sizing: border-box; padding: 0px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+        <input type="search" placeholder="搜技能…" aria-label="搜技能…" style="border: 0px; outline: 0px; background: transparent; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 12px; color: var(--ink); width: 100%; min-width: 0px;">
+      </label>
+      <button type="button" aria-haspopup="listbox" aria-label="分类" style="height: 30px; display: inline-flex; align-items: center; gap: 4px; padding: 0px 8px 0px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink80); font-size: 12px;"><span class="sc-interp">全部</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+    </div>
+    <div style="flex: 1 1 0%; min-height: 0px; overflow: hidden; padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 16px;">
+      
+        <section aria-label="我的" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">我的</span></h3>
+            
+          </div>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path><path d="M16 5.25l-8 4.5"></path></svg>
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">improv-scene-mine</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">即兴生台词——让角色在设定好的世界里即兴对戏，长出编剧预设不出的真实口语与情节。</span></span>
+              </span>
+            </button>
+          
+        </section>
+      
+        <section aria-label="创作流程" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">创作流程</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 10</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">品牌宣传片</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">做产品/品牌宣传片。当用户要把产品文案、卖点或品牌介绍做成一条短宣传视频时用我。</span></span>
+              </span>
+            </button>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">分镜规划</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">把短故事拆成有序镜头，整理为可审阅的分镜方案。</span></span>
+              </span>
+            </button>
+          
+        </section>
+      
+        <section aria-label="导演" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">导演</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 13</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">镜头语言</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">镜头语言与摄影技法方法论——统一景别体系/构图规则/运镜的情绪语言/打光方案/景深控制。</span></span>
+              </span>
+            </button>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">多角色调度</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">多角色调度方法论——3 人以上同框的站位设计/视线网络/注意力引导/前后景分层。</span></span>
+              </span>
+            </button>
+          
+        </section>
+      
+        <section aria-label="编剧" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">编剧</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 11</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">剧本审查</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">剧本审查·导演视角——用视觉叙事/节奏把控/镜头语言/空间调度/情绪曲线等导演维度审一份剧本。</span></span>
+              </span>
+            </button>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="illus" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">对白设计</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">对白专家（David Mamet 方法论）——台词创作 / 潜台词设计 / 角色语言个性化 / 对白节拍分析 / 沉默设计。</span></span>
+              </span>
+            </button>
+          
+        </section>
+      
+        <section aria-label="广告" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">广告</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 8</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="photo" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">凝露产品广告</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">用微距、水滴和环绕镜头展示产品质感。</span></span>
+              </span>
+            </button>
+          
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                
+                  <img class="photo" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                
+                
+              </span>
+              <span style="min-width: 0px; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">咖啡倾注特写</span></strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">把注入、油脂和蒸汽拆成清楚的镜头节拍。</span></span>
+              </span>
+            </button>
+          
+        </section>
+      
+    </div>
+  </aside></div></div></div></div>
+</section>
+<section class="bd bd-s3" lang="zh-CN" data-artboard="DrawerPrompt">
+<h3 class="bd-title">修后 · 提示词抽屉（中·明；外壳是真截图，只换抽屉）（去壳：外壳是现役真截图，见同名截图）</h3>
+<div class="sc-host" data-sc-name="DrawerPrompt"><div class="nm " style="width: 1440px; height: 900px; background: var(--shell); position: relative; overflow: hidden;">
+  
+  <aside aria-label="提示词库" style="position: absolute; left: 64px; top: 44px; width: 280px; bottom: 12px; background: var(--paper); border-radius: 16px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="height: 44px; display: flex; align-items: center; gap: 2px; padding: 0px 8px 0px 16px; flex: 0 0 auto;">
+      <h2 style="margin: 0px; font-size: 13px; font-weight: 600; flex: 1 1 0%;"><span class="sc-interp">提示词</span></h2>
+      <button type="button" aria-label="新建提示词" title="新建提示词" style="width: 28px; height: 28px; border: 0px; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
+    </div>
+    <div style="display: flex; gap: 6px; padding: 0px 12px 10px; flex: 0 0 auto;">
+      <label style="flex: 1 1 0%; min-width: 0px; display: flex; align-items: center; gap: 6px; height: 30px; box-sizing: border-box; padding: 0px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+        <input type="search" placeholder="搜提示词…" aria-label="搜提示词…" style="border: 0px; outline: 0px; background: transparent; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 12px; color: var(--ink); width: 100%; min-width: 0px;">
+      </label>
+      <button type="button" aria-haspopup="listbox" aria-label="分类和图片 / 视频" style="height: 30px; display: inline-flex; align-items: center; gap: 4px; padding: 0px 8px 0px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink80); font-size: 12px;"><span class="sc-interp">全部</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+    </div>
+    <div style="flex: 1 1 0%; min-height: 0px; overflow: hidden; padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 16px;">
+      
+        <section aria-label="我的" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">我的</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 3</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 10px;">
+            
+              <button type="button" title="Q 版角色卡" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Q 版角色卡</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                  <span class="one"><span class="sc-interp">网页提取 · 图片</span></span>
+                </span>
+              </button>
+            
+              <button type="button" title="Tokyo Walk" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                  
+                    <span class="clamp5" style="box-sizing: border-box; height: 100%; padding: 8px 10px; font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage…</span></span>
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Tokyo Walk</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                  
+                  <span class="one"><span class="sc-interp">视频</span></span>
+                </span>
+              </button>
+            
+          </div>
+        </section>
+      
+        <section aria-label="表情预设" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">表情预设</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 25</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 10px;">
+            
+              <button type="button" title="喜悦 1/5 · 一丝笑意" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 1/5 · 一丝笑意</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                  <span class="one"><span class="sc-interp">图片</span></span>
+                </span>
+              </button>
+            
+              <button type="button" title="喜悦 3/5 · 明朗微笑" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 3/5 · 明朗微笑</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                  <span class="one"><span class="sc-interp">图片</span></span>
+                </span>
+              </button>
+            
+          </div>
+        </section>
+      
+        <section aria-label="运镜" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">运镜</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 23</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 10px;">
+            
+              <button type="button" title="空镜转场" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">空镜转场</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                  
+                  <span class="one"><span class="sc-interp">视频</span></span>
+                </span>
+              </button>
+            
+              <button type="button" title="过肩对话" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">过肩对话</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                  
+                  <span class="one"><span class="sc-interp">视频</span></span>
+                </span>
+              </button>
+            
+          </div>
+        </section>
+      
+        <section aria-label="构图" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">构图</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 8</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 10px;">
+            
+              <button type="button" title="画框构图" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">画框构图</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                  <span class="one"><span class="sc-interp">图片</span></span>
+                </span>
+              </button>
+            
+              <button type="button" title="对角线构图" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">对角线构图</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                  <span class="one"><span class="sc-interp">图片</span></span>
+                </span>
+              </button>
+            
+          </div>
+        </section>
+      
+    </div>
+  </aside></div></div>
+</section>
+<section class="bd bd-s4" lang="en" data-artboard="DrawerPrompt-En-Dark">
+<h3 class="bd-title">修后 · 提示词抽屉（英·暗；外壳是真截图，只换抽屉）（去壳：外壳是现役真截图，见同名截图）</h3>
+<div class="sc-host" data-sc-name="DrawerPrompt-En-Dark"><div style="width: 1440px; height: 900px;">
+  <div class="sc-host" data-sc-name="DrawerPrompt"><div class="nm dark" style="width: 1440px; height: 900px; background: var(--shell); position: relative; overflow: hidden;">
+  
+  <aside aria-label="Prompt library" style="position: absolute; left: 64px; top: 44px; width: 280px; bottom: 12px; background: var(--paper); border-radius: 16px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="height: 44px; display: flex; align-items: center; gap: 2px; padding: 0px 8px 0px 16px; flex: 0 0 auto;">
+      <h2 style="margin: 0px; font-size: 13px; font-weight: 600; flex: 1 1 0%;"><span class="sc-interp">Prompts</span></h2>
+      <button type="button" aria-label="New prompt" title="New prompt" style="width: 28px; height: 28px; border: 0px; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
+    </div>
+    <div style="display: flex; gap: 6px; padding: 0px 12px 10px; flex: 0 0 auto;">
+      <label style="flex: 1 1 0%; min-width: 0px; display: flex; align-items: center; gap: 6px; height: 30px; box-sizing: border-box; padding: 0px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+        <input type="search" placeholder="Search prompts…" aria-label="Search prompts…" style="border: 0px; outline: 0px; background: transparent; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 12px; color: var(--ink); width: 100%; min-width: 0px;">
+      </label>
+      <button type="button" aria-haspopup="listbox" aria-label="Category and image / video" style="height: 30px; display: inline-flex; align-items: center; gap: 4px; padding: 0px 8px 0px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink80); font-size: 12px;"><span class="sc-interp">All</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+    </div>
+    <div style="flex: 1 1 0%; min-height: 0px; overflow: hidden; padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 16px;">
+      
+        <section aria-label="Mine" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Mine</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">All 3</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 10px;">
+            
+              <button type="button" title="Q 版角色卡" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Q 版角色卡</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                  <span class="one"><span class="sc-interp">Web extract · Image</span></span>
+                </span>
+              </button>
+            
+              <button type="button" title="Tokyo Walk" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                  
+                    <span class="clamp5" style="box-sizing: border-box; height: 100%; padding: 8px 10px; font-size: 11px; line-height: 15px; color: var(--ink60);"><span class="sc-interp">A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage…</span></span>
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Tokyo Walk</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                  
+                  <span class="one"><span class="sc-interp">Video</span></span>
+                </span>
+              </button>
+            
+          </div>
+        </section>
+      
+        <section aria-label="Expression presets" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Expression presets</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">All 25</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 10px;">
+            
+              <button type="button" title="喜悦 1/5 · 一丝笑意" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 1/5 · 一丝笑意</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                  <span class="one"><span class="sc-interp">Image</span></span>
+                </span>
+              </button>
+            
+              <button type="button" title="喜悦 3/5 · 明朗微笑" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 3/5 · 明朗微笑</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                  <span class="one"><span class="sc-interp">Image</span></span>
+                </span>
+              </button>
+            
+          </div>
+        </section>
+      
+        <section aria-label="Camera" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Camera</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">All 23</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 10px;">
+            
+              <button type="button" title="Empty-frame bridge" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Empty-frame bridge</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                  
+                  <span class="one"><span class="sc-interp">Video</span></span>
+                </span>
+              </button>
+            
+              <button type="button" title="OTS dialogue" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">OTS dialogue</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                  
+                  <span class="one"><span class="sc-interp">Video</span></span>
+                </span>
+              </button>
+            
+          </div>
+        </section>
+      
+        <section aria-label="Composition" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0px; font-size: 12px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Composition</span></h3>
+            
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">All 8</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 10px;">
+            
+              <button type="button" title="Frame-within-frame" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Frame-within-frame</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                  <span class="one"><span class="sc-interp">Image</span></span>
+                </span>
+              </button>
+            
+              <button type="button" title="Diagonal dynamic" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 4px; min-width: 0px;">
+                <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                  
+                    <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                  
+                  
+                </span>
+                <strong class="one" style="font-size: 12px; line-height: 17px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Diagonal dynamic</span></strong>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink40); margin-top: -3px;">
+                  
+                  <span class="one"><span class="sc-interp">Image</span></span>
+                </span>
+              </button>
+            
+          </div>
+        </section>
+      
+    </div>
+  </aside></div></div></div></div>
+</section>
+</body>
+</html>
