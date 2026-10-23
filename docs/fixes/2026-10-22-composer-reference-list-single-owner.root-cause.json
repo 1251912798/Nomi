@@ -26,7 +26,9 @@
     "electron/runtime.ts",
     "electron/tasks/referenceResidueGuard.ts",
     "electron/catalog/archetypeInput.ts",
-    "src/workbench/generationCanvas/nodes/controls/archetypeArrayValues.ts"
+    "src/workbench/generationCanvas/nodes/controls/archetypeArrayValues.ts",
+    "electron/shared/modelArchetypes/referenceKeys.ts",
+    "electron/capabilityCore/apimartGenerationProjection.ts"
   ],
   "entry_points": [
     "画布生成框：上传 / 素材库 / 首尾帧格 / 对调 / 删 / 重排 / 切方式 / 换模型",
@@ -41,7 +43,8 @@
   "invariants": [
     "节点上的上传图片只存一份有序列表 meta.referenceImageUrls（+ 首帧是否特意空着的开关）；换方式、换模型不改这份列表",
     "每个槽落哪张图、哪张未用到，只由 placeUploadedImages 推导；参考行（resolveReferencePlacement）与发送（uploadPlacementForMode → buildArchetypeInputParams / 标准参考面 / resolveGenerationReferences）调同一个函数",
-    "在用 ∪ 未用到 = 节点上那一份列表，一张不少"
+    "在用 ∪ 未用到 = 节点上那一份列表，一张不少",
+    "「哪些请求键算参考键」由声明推导、不手写：GENERIC_REFERENCE_KEYS = 主进程翻译读的标准输入键 ∪ 每个档案每个方式的槽 inputKey 与合并键 ∪ APIMart 引擎 B 的参考别名 ∪ 档案的 headlessReferenceKeys（请求体认、生成框没控件的参考输入）。渲染层先把整张表置 undefined，主进程按整张表拒发；拒发收值递归——字符串、数组、对象形（[{url, role}]、火山 content）都认，只有描述字段 role / type 不算素材（#1269 条件 2，用户 2026-10-23 拍板 A）"
   ],
   "doors": [
     {
@@ -128,12 +131,22 @@
       "kind": "read",
       "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
       "symbol": "resolveReferencePlacement"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/modelArchetypes/referenceKeys.ts",
+      "symbol": "GENERIC_REFERENCE_KEYS"
+    },
+    {
+      "kind": "read",
+      "path": "electron/capabilityCore/apimartGenerationProjection.ts",
+      "symbol": "APIMART_REFERENCE_PARAMETER_ALIASES"
     }
   ],
   "door_reduction": {
     "before": 13,
-    "after": 17,
-    "why_not": "写口只剩「把一份新列表落回 meta」这一种动作（withReferenceList / archetypeArrayWrite / referenceListPatch），按调用场景（生成框、拖入、@ 挂参考、分镜落画布）各调一次；读口只剩一个推导函数 placeUploadedImages，经 resolveReferencePlacement（参考行，有画布边）与 uploadPlacementForMode（发送 / 解析，有解析后的连线值）两处调用——连线占位来源不同，上传落槽同一个函数。before 13 = 搬图函数 2 个调用点 + 按槽键写口（parameterReferenceMetaPatch 档案帧路径、shotReferenceMetaPatch、nodeAssetWrite、useNodeMentionSource、referenceWrites 4 处）+ 读口（resolveReferenceSlots 按键读、buildArchetypeInputParams 按键读、referenceRowModel 存 − 显、resolveGenerationReferences 抬旧键）。 after 比 before 多：主进程拒发三扇（findReferenceResidue 只找、runtime.ts 调用点、referenceResidueGuard 拒）是热修 #1279 原本就有的「只剥」门换成「拒」，不是新开写口；生成框读参考行（NodeParameterControls → resolveReferencePlacement）和拖拽重排（referenceWrites.reorderArray）是同一份列表的读 / 写，单独记一扇便于门表核对。"
+    "after": 19,
+    "why_not": "写口只剩「把一份新列表落回 meta」这一种动作（withReferenceList / archetypeArrayWrite / referenceListPatch），按调用场景（生成框、拖入、@ 挂参考、分镜落画布）各调一次；读口只剩一个推导函数 placeUploadedImages，经 resolveReferencePlacement（参考行，有画布边）与 uploadPlacementForMode（发送 / 解析，有解析后的连线值）两处调用——连线占位来源不同，上传落槽同一个函数。before 13 = 搬图函数 2 个调用点 + 按槽键写口（parameterReferenceMetaPatch 档案帧路径、shotReferenceMetaPatch、nodeAssetWrite、useNodeMentionSource、referenceWrites 4 处）+ 读口（resolveReferenceSlots 按键读、buildArchetypeInputParams 按键读、referenceRowModel 存 − 显、resolveGenerationReferences 抬旧键）。 after 比 before 多：主进程拒发三扇（findReferenceResidue 只找、runtime.ts 调用点、referenceResidueGuard 拒）是热修 #1279 原本就有的「只剥」门换成「拒」，不是新开写口；生成框读参考行（NodeParameterControls → resolveReferencePlacement）和拖拽重排（referenceWrites.reorderArray）是同一份列表的读 / 写，单独记一扇便于门表核对。 2026-10-23 条件 2 加两扇读门：GENERIC_REFERENCE_KEYS 改为由档案声明推导后，它本身是一扇被渲染层清键 / Comfy 过滤 / 主进程拒发共读的门；APIMart 引擎 B 的别名表挪进同一个 shared 模块，引擎 B 改为读它（同提交删掉原定义）——都是读口，不新开写口。"
   },
   "generality_proof": "落槽结论不再存储，只能从同一份列表 + 当前方式现推；任何改 modeId 的入口（20 处）都不必、也无法再搬图，界面与发送的上传部分调的是同一个纯函数，所以全部档案 × 每个方式成立（referenceInUseIsSent.characterization.test.ts 按 MODEL_ARCHETYPES 自动展开）。",
   "shared_boundaries": [
@@ -199,7 +212,8 @@
     "artifacts": [
       "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
       "src/workbench/generationCanvas/runner/referenceSlots.ts",
-      "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts"
+      "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
+      "electron/shared/modelArchetypes/referenceKeys.ts"
     ]
   },
   "regression_tests": [
@@ -223,7 +237,9 @@
   "residual_risks": [
     "渠道只收单图时参考行把槽收成 1 张（capOf），发送侧不知道渠道上限：模板参数层会多带，线上 body 只有单图位所以不上线；未在统一函数里收口",
     "画布边的落槽仍是两份解析（参考行 resolveReferenceSlots 的边循环、发送 resolveGenerationReferences），本次只统一了上传图",
-    "列表没有空位：首帧空着、往尾帧放之外的「空位」（如参考数组中间留空）不支持"
+    "列表没有空位：首帧空着、往尾帧放之外的「空位」（如参考数组中间留空）不支持",
+    "用户自建的中转 mapping 若在请求体里读内置目录没有的参考键名（如 ref_image），键表推导与普查门都测不到：节点 meta 里夹带这个键时渲染层不清、主进程不拒。没做「按值兜底」（任何键下不在用的 URL 都拒），因为带 URL 的合法参数（如 MiniMax H3 的 webhook）会被误伤，写 meta 的入口也没数全（协调 2026-10-23 批：不做，写进这里）",
+    "旧节点只存了参考数组（referenceImageUrls）、停在首尾帧方式、没有任何旧的帧键：它和新规范形长得一样，打开后数组会按列表依次落进首帧 / 尾帧并发出。生成前在首尾帧格里看得见，不算界面看不见的花钱（协调 2026-10-23 批：接受，写进这里和 PR「没做的」）"
   ],
   "invariant_owner_layer": {
     "layer": "src/workbench/generationCanvas/nodes/controls/referenceList.ts",

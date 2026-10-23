@@ -11,7 +11,10 @@
 //      值只取唯一推导（placeUploadedImages，经 uploadPlacementForMode）——结构上做不出残留；
 //   ② 主进程 runTask 入口先过 findReferenceResidue（下面），不信①——带档案投影的请求，通用参考键里凡是
 //      不在 archetypeInput 里的地址 → 在花钱之前拒发（electron/tasks/referenceResidueGuard.ts，协调 10-22 定）。
-// 两道都由 referenceSentWithinInUse.property.test.ts 钉住（全部档案 × 每个方式，中转 / APIMart 真请求体）。
+// 键表由声明推导（shared/modelArchetypes/referenceKeys.ts：翻译输入键 + 各槽 inputKey / 合并键 + APIMart 别名 + 档案的
+// headlessReferenceKeys），值递归收（对象形也认）——#1269 条件 2，用户 10-23 拍板 A。
+// 两道都由 referenceSentWithinInUse.property.test.ts 钉住（全部档案 × 每个方式，中转 / APIMart / 内置全部供应商真请求体，
+// 外加「请求体实际读的参考键」普查和逐键夹带）。
 import { firstString, isJsonRecord, type JsonRecord } from "../jsonUtils";
 import { readParameterReferenceSlotsContract, readSelectedComfyReferenceContract, type ParameterReferenceSelection } from "./parameterReferenceContract";
 import { GENERIC_REFERENCE_KEYS } from "../shared/modelArchetypes/referenceKeys";
@@ -26,6 +29,24 @@ function collectStrings(value: unknown, into: Set<string>): Set<string> {
     if (value.trim()) into.add(value.trim());
   } else if (Array.isArray(value)) value.forEach((item) => collectStrings(item, into));
   else if (value && typeof value === "object") Object.values(value).forEach((item) => collectStrings(item, into));
+  return into;
+}
+
+/** 参考值对象里只描述「这是什么」、不装素材的字段（`[{url, role}]` 的 role、火山 content 的 type）。 */
+const REFERENCE_DESCRIPTOR_FIELDS = new Set(["role", "type"]);
+
+/**
+ * 一个参考键的值里装着的素材（地址 / id）：字符串、数组、对象形（`image_with_roles: [{url, role}]`、
+ * 火山 `{type, image_url: {url}, role}`）一样递归收——以前只认字符串和字符串数组，对象形的夹带看不见（#1269 条件 2）。
+ * 对象里描述用的 role / type 不算素材；其余字段一律收（新的值形状默认算素材：宁可拒发，不放行看不见的图）。
+ */
+function referenceValueStrings(value: unknown, into: Set<string> = new Set()): Set<string> {
+  if (typeof value === "string") {
+    if (value.trim()) into.add(value.trim());
+  } else if (Array.isArray(value)) value.forEach((item) => referenceValueStrings(item, into));
+  else if (value && typeof value === "object") {
+    for (const [field, item] of Object.entries(value)) if (!REFERENCE_DESCRIPTOR_FIELDS.has(field)) referenceValueStrings(item, into);
+  }
   return into;
 }
 
@@ -45,9 +66,7 @@ export function findReferenceResidue(extras: JsonRecord): string[] {
   const residue: string[] = [];
   for (const key of GENERIC_REFERENCE_KEYS) {
     if (declaredParameterKeys.has(key) || !Object.prototype.hasOwnProperty.call(extras, key)) continue;
-    const value = extras[key];
-    const strings = typeof value === "string" ? [value] : Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-    if (strings.some((item) => item.trim() && !inUse.has(item.trim()))) residue.push(key);
+    if ([...referenceValueStrings(extras[key])].some((item) => !inUse.has(item))) residue.push(key);
   }
   return residue;
 }

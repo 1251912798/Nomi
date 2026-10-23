@@ -31,3 +31,14 @@ relay/bypass-per-key（3627 格）修前就是 0 漏：通用中转请求体只�
 ## 原始输出
 
 本机临时目录 `/Users/aoqimin/Nomi-coord/tmp/I-b1a/`：`c2-red3.log`（vitest 全文）、`c2-red3-refleak.json`（每层漏格与「在用且发出」）。
+
+## 中间态：只把键表改成推导、值判断还没改递归（B 半）
+
+72 条里 3 条红，剩下的全是**对象形**夹带——值判断必须递归（用户 10-23 选的 A）：
+- 主进程拒发逐键 × 形状：`image_with_roles(object)` 和 6 个火山 content 键（object）认不出；
+- apimart/bypass-per-key 2735 格里 14 格、seeded/bypass-per-key 12235 格里 94 格：`[{url, role}]` / 火山 content 对象照发。
+
+## 修后（键表推导 + 递归收值，A）
+
+72 条全绿；22 层共 25859 格，漏 0 格（`c2-after-refleak.json`）。同时跑了 `src/workbench/generationCanvas`、`creation`、`assets`、`ai`、
+`electron/catalog`、`capabilityCore`、`tasks`、`shared`、`parity`：1115 个测试文件、12005 条全过（含 Comfy 参数契约、APIMart 引擎 B 投影）。
