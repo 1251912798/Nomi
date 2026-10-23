@@ -193,6 +193,8 @@ function BaseGenerationNodeImpl({
   // 版本宫格铺开时不挂生成浮框（V-1054）：浮框钉在节点正下方、定宽 560，会盖住宫格下面几行；铺开 = 正在挑版本，
   // 和 09-21 结果托盘展开时卸载浮框是同一条约定（不挂才不跑）。收起宫格浮框就回来。
   const whiteboardOpen = useWhiteboardSession((state) => state.nodeId === node.id) && !readOnly
+  // 文本节点正文在编辑：格式条顶替节点浮条（和白板编辑条同一个做法），两条不叠在节点上方。
+  const [textEditing, setTextEditing] = React.useState(false)
   const versionGridOpen = showVersionCards && Boolean(node.resultStackOpen)
   const attachedPanelOpen = useHasNodeAttachedPanel(node.id) // 贴着本节点的面板（剪辑面板……）开着时生成面板收起，规矩在 nodeAttachedPanel
   const composerWanted = selected && !isMultiSelectActive && !readOnly && !versionGridOpen && !attachedPanelOpen && nodeHasGenerationComposer(node.kind)
@@ -231,7 +233,7 @@ function BaseGenerationNodeImpl({
     >
 {feedback ? <p role="status" className="absolute inset-x-0 bottom-0 z-[15] m-0 bg-nomi-paper px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
 
-      <EmptyNodeVariantToolbar nodeId={node.id} visible={selected && !isMultiSelectActive && !readOnly && !hasResult && !whiteboardOpen} />
+      <EmptyNodeVariantToolbar nodeId={node.id} visible={selected && !isMultiSelectActive && !readOnly && !hasResult && !whiteboardOpen && !textEditing} />
       {node.kind === 'panorama' && selected && !isMultiSelectActive && !readOnly && node.result?.url ? (
         <PanoramaNodeToolbar
           node={node}
@@ -335,7 +337,7 @@ function BaseGenerationNodeImpl({
       {isTextKind ? (
         <div className="w-full h-full">
           <React.Suspense fallback={<NodeBodyLoading />}>
-            <TextDocumentNode node={node} />
+            <TextDocumentNode node={node} onEditingChange={setTextEditing} />
           </React.Suspense>
         </div>
       ) : null}
