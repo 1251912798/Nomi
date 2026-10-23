@@ -32,7 +32,7 @@ import {
 } from "./workspaceTypes";
 import { workspaceProjectBackupFile, workspaceProjectFile } from "./workspacePaths";
 import { writeWorkspaceSyncBaseline } from "./workspaceSyncBaseline";
-import { WorkspaceManifestLockBusyError } from "./workspaceManifestLock";
+import { WorkspaceManifestLockBusyError, releaseWorkspaceManifestLock, tryAcquireWorkspaceManifestLock } from "./workspaceManifestLock";
 import { logWarn } from "../logging/logger";
 
 export type WorkspaceRepositoryDeps = {
@@ -413,27 +413,39 @@ export function removeWorkspaceProjectReference(
 }
 
 /**
- * 删除一个 workspace 项目（真删盘，2026-06-14 用户拍板）。
- * - native（默认根内的 Nomi 原生项目）→ fs.rmSync 整个目录，deleted:true。
+ * 删除一个 workspace 项目（⑭，用户 2026-10-22 拍板：进系统回收站、可以恢复，绝不永久删除）。
+ * - native（默认根内的 Nomi 原生项目）→ 整个文件夹交给 `moveToTrash`（electron/projects/projectTrash.ts 的系统回收站），
+ *   **成功并核过原路径不在了才解绑登记**；进不了回收站就原样抛出，登记和文件都不动。
  * - folder（用户用「打开文件夹」绑定的外部目录）→ **绝不碰用户的文件**，只解绑库引用，deleted:false。
  * 双重边界防误删用户目录：必须解析出真实目录、source 判 native、且严格位于默认根之下（非根本身）。
+ * workspace 层不 import electron：回收站由调用方注入（主进程传 shell.trashItem 的那一份）。
  */
-export function deleteWorkspaceProject(
+export async function deleteWorkspaceProject(
   projectId: string,
   deps: WorkspaceRepositoryDeps,
-): { id: string; deleted: boolean } {
+  moveToTrash: (folder: string) => Promise<void>,
+): Promise<{ id: string; deleted: boolean }> {
   backfillWorkspaceOrigins(deps.settingsRoot, deps.defaultProjectsRoot);
   const entry = findRecentWorkspace(deps.settingsRoot, projectId);
   const dir = resolveWorkspaceProjectDir(projectId, deps); // 解析必须在解绑引用之前
-  removeWorkspaceReference(deps.settingsRoot, projectId);
-  if (!dir || entry?.source !== "native" || !entry.nativeRootPath) {
+  const resolved = dir ? path.resolve(dir) : null;
+  const nativeRoot = entry?.source === "native" && entry.nativeRootPath ? path.resolve(entry.nativeRootPath) : null;
+  const isNative = Boolean(resolved && nativeRoot && resolved !== nativeRoot && resolved.startsWith(`${nativeRoot}${path.sep}`));
+  if (!resolved || !isNative) {
+    removeWorkspaceReference(deps.settingsRoot, projectId); // 外部文件夹 / 解析不出：只解绑，不碰用户内容
     return { id: projectId, deleted: false };
   }
-  const resolved = path.resolve(dir);
-  const nativeRoot = path.resolve(entry.nativeRootPath);
-  const isNative = resolved !== nativeRoot && resolved.startsWith(`${nativeRoot}${path.sep}`);
-  if (!isNative) return { id: projectId, deleted: false }; // 外部文件夹：只解绑，不删用户内容
-  fs.rmSync(resolved, { recursive: true, force: true });
+  // 别的写者此刻正锁着这个项目（另一个 Nomi 窗口 / 另一台电脑经同步盘）：照常报「正被别处占用」，不删。
+  // 这一步只拿来探「别处占用」，所以**只把 WorkspaceManifestLockBusyError 往外抛**：取锁 / 放锁碰到别的错（只读卷、没权限写
+  // .nomi：EROFS / EACCES / EPERM…）不是占用，往外抛会绕过回收站那一步的分类，界面把真原因说成「可能有别的程序正占用它的
+  // 文件夹」（V-library-trash 建议 1，真只读卷实测）。这里吞掉，让 moveToTrash 去试、去报真原因（进不了就抛，登记不摘、文件不动）。
+  try {
+    releaseWorkspaceManifestLock(tryAcquireWorkspaceManifestLock(resolved));
+  } catch (error) {
+    if (error instanceof WorkspaceManifestLockBusyError) throw error;
+  }
+  await moveToTrash(resolved); // 失败就抛：登记不摘、文件不动
+  removeWorkspaceReference(deps.settingsRoot, projectId);
   return { id: projectId, deleted: true };
 }
 

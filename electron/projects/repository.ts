@@ -21,6 +21,7 @@ import {
 } from "../workspace/workspaceRegistry";
 import { resolveWorkspaceRelativePath } from "../workspace/workspacePaths";
 import { WorkspaceManifestLockBusyError } from "../workspace/workspaceManifestLock";
+import { moveProjectFolderToTrash } from "./projectTrash";
 import {
   PROJECT_DELETE_INTENTS,
   PROJECT_DELETE_STATE_CHANGED_ERROR_NAME,
@@ -272,8 +273,9 @@ function unbindProject(id: string): { id: string; deleted: false } {
  *   · unbind：只解除登记，绝不删盘——哪怕此刻项目又读得出来了（V-plibrary2：灰卡确认「只解绑」后 .nomi 被挪回，
  *     旧写法在删除这一刻重读、读得出来就整目录删了）；
  *   · delete-files：此刻读不出来 = 和确认时对不上，拒绝，让界面刷新后重新确认；锁忙照常报忙。
+ *     读得出来：项目文件夹进系统回收站（moveProjectFolderToTrash，⑭），进不了就原样报错、什么都不删。
  */
-export function deleteProject(projectId: string, intent: unknown): { id: string; deleted: boolean } {
+export async function deleteProject(projectId: string, intent: unknown): Promise<{ id: string; deleted: boolean }> {
   const id = String(projectId || "").trim();
   if (!id) throw new Error("projectId is required");
   if (!isProjectDeleteIntent(intent)) throw new Error(`Project delete intent is required (${PROJECT_DELETE_INTENTS.join(" / ")})`);
@@ -291,8 +293,8 @@ export function deleteProject(projectId: string, intent: unknown): { id: string;
   }
   if (readable) {
     const workspaceDir = resolveWorkspaceProjectDir(id, deps);
-    // 真删盘:native 项目整目录 fs.rmSync;外部「打开文件夹」绑定只解绑、绝不删用户内容。
-    const result = deleteWorkspaceProject(id, deps);
+    // native 项目整个文件夹进系统回收站（能还原）；外部「打开文件夹」绑定只解绑、绝不碰用户内容。
+    const result = await deleteWorkspaceProject(id, deps, moveProjectFolderToTrash);
     // 仅外部文件夹(未真删、目录仍在)需抑制下次 list 的 legacy 重发现;native 已真删无需抑制。
     if (!result.deleted && workspaceDir && fs.existsSync(path.join(workspaceDir, PROJECT_FILE))) {
       suppressLegacyProjectRediscovery(workspaceDir);
@@ -312,7 +314,7 @@ export function deleteProject(projectId: string, intent: unknown): { id: string;
   if (resolvedProjectDir === root || !resolvedProjectDir.startsWith(rootWithSep)) {
     throw new Error("Refusing to delete a path outside the projects root");
   }
-  fs.rmSync(resolvedProjectDir, { recursive: true, force: true });
+  await moveProjectFolderToTrash(resolvedProjectDir); // 老格式项目同样进回收站；进不了就原样报错，绝不永久删除
   return { id, deleted: true };
 }
 
