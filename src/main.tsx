@@ -24,11 +24,14 @@ import { NomiColorSchemeProvider } from './theme/NomiColorSchemeProvider'
 import { primeNomiColorScheme } from './theme/colorScheme'
 import { reportVideoCodecSupport } from './media/videoCodecProbe'
 import { installRendererErrorCapture } from './desktop/rendererLog'
+import { installRendererModelNameSourceLookup } from './config/modelNameSourceLookup'
 import { startPerfCollector } from './workbench/observability/perfCollector'
 import { installHeldModifierReconciler } from './ui/input/heldModifierReconciler'
 
 // 没人接住的渲染层异常也要进主进程日志（诊断包里要看得到）——越早装，漏的越少。
 installRendererErrorCapture()
+// 档案型号名按供应商作用域解析：渲染层只有节点 meta 的档案解析，问目录随行下发的结果（electron/shared/modelArchetypes/modelNameSource.ts）。
+installRendererModelNameSourceLookup()
 
 // 修饰键的松开被系统 / 输入法 / 拦截 keyup 的编辑区吞掉时，以下一次输入事件自带的修饰位为准补一次松开
 // （画布「点第二张卡变已选 2 个、卡拖不动」，见该文件头）。全 App 只装这一处，放在 render 之前、第一次输入之前。

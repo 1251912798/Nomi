@@ -20,6 +20,8 @@ import { CURRENT_CATALOG_VERSION } from "./types";
 import { normalizeCustomCall } from "./customCallMode";
 import { sealUpsertDraft } from "./upsertDraft";
 import { derivePublishedExecution } from "../shared/modelPublication";
+import { installModelNameSourceLookup, type ModelNameSource } from "../shared/modelArchetypes/modelNameSource";
+import { modelNameSourceKey, modelNameSourceTable } from "./modelNameSource";
 import type { ModelAvailability } from "../shared/modelAvailability";
 import { createCatalogAvailability } from "./catalogModelAvailability";
 import { deriveModelCatalogHealth } from "./catalogHealth";
@@ -209,16 +211,38 @@ export function listModelCatalogVendors(): Vendor[] {
 /** 目录模型的对外投影。`availability` 见 shared/modelAvailability.ts：那是「能不能用」的唯一答案，
  * 在这里随行下发，渲染层一律读它、谁都不许再拼一份（P0-10 根因）。 */
 export function listModelCatalogModels(params?: unknown): Array<Model & {
-  published: boolean; publishedModes: ProfileKind[]; availability: ModelAvailability;
+  published: boolean; publishedModes: ProfileKind[]; availability: ModelAvailability; modelNameSource: ModelNameSource;
 }> {
   const state = readCatalog();
   const availability = createCatalogAvailability(state);
+  const nameSources = currentModelNameSources();
   return filterByParams(state.models, params).map((model) => ({
     ...model,
     ...derivePublishedExecution(model, { mappings: state.mappings }),
     availability: availability.of(model),
-  })) as Array<Model & { published: boolean; publishedModes: ProfileKind[]; availability: ModelAvailability }>;
+    // 这一行发出的型号名由档案提供还是就是这一行的 key（按这家的映射算，唯一计算处 ./modelNameSource）；
+    // 渲染层的档案解析据它收窄档案（electron/shared/modelArchetypes/modelNameSource.ts）。
+    modelNameSource: nameSources.get(modelNameSourceKey(model.vendorKey, model.modelKey)) ?? "row",
+  })) as Array<Model & { published: boolean; publishedModes: ProfileKind[]; availability: ModelAvailability; modelNameSource: ModelNameSource }>;
 }
+
+/**
+ * 当前目录的型号名来源表：同一份冻结状态只算一次。档案解析一次会问很多次，所以这里**不**每问一次就去读盘：
+ * 用最近一次读出的那份（任何地方 readCatalog / 写目录都会刷新它），还没读过才读一次。
+ */
+const modelNameSourceCache = new WeakMap<object, ReadonlyMap<string, ModelNameSource>>();
+function currentModelNameSources(): ReadonlyMap<string, ModelNameSource> {
+  const state = catalogReadCache && catalogReadCache.path === catalogPath() ? catalogReadCache.state : readCatalogShared();
+  let table = modelNameSourceCache.get(state);
+  if (!table) {
+    table = modelNameSourceTable(state as CatalogState);
+    modelNameSourceCache.set(state, table);
+  }
+  return table;
+}
+
+// 主进程的档案解析（宿主归一、准入、list_models、视频候选表）问的就是这张表：型号名按供应商作用域解析。
+installModelNameSourceLookup((vendorKey, modelKey) => currentModelNameSources().get(modelNameSourceKey(vendorKey, modelKey)));
 export function listModelCatalogMappings(params?: unknown): readonly Readonly<Mapping>[] {
   return filterByParams(readCatalogShared().mappings as Mapping[], params);
 }

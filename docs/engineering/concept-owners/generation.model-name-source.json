@@ -1,0 +1,35 @@
+{
+  "name": "一行发给供应商的型号名从哪来（档案提供，还是就是这家目录行自己的 key）",
+  "subject": "generation.model-name-source",
+  "lifecycle": "projection",
+  "authority_kind": "decision",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/catalog/modelNameSource.ts",
+    "symbol": "deriveModelNameSource"
+  },
+  "write_api": [
+    {
+      "path": "electron/catalog/modelNameSource.ts",
+      "symbol": "deriveModelNameSource"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/modelNameSource.ts",
+      "symbol": "scopeArchetypeModelNames"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/parity/vendorScopedModelId.matrix.test.ts",
+  "allowed_consumers": [
+    "electron/catalog/catalogStore.ts",
+    "electron/shared/modelArchetypes/index.ts",
+    "electron/shared/videoCapabilities/registry.ts",
+    "src/config/modelNameSourceLookup.ts",
+    "src/config/modelOptionMappers.ts",
+    "src/workbench/generationCanvas/nodes/nodeModelArchetype.ts"
+  ],
+  "since": "2026-10-23",
+  "notes": "R-runway-wan3：共享档案上的型号名（catalogModelKey / 变体 modelKey / 方式 modelEnum）是某一家的名字，以前被当成所有供应商的名字用。用户 2026-10-23 拍板方案 A：型号名的家是供应商映射——映射请求体模板读 request.params.model = 这家接受档案型号名，否则型号名就是这一行自己的 key。只在 deriveModelNameSource 算（与发送同一个 selectTaskMapping 选法），随目录读出给渲染层（listModelCatalogModels 的 modelNameSource），两侧查询口只转述；两个档案解析口共用 scopeArchetypeModelNames 收窄。不许按名字比对判断归属，不许写供应商 / 型号名特判（合同 docs/fixes/2026-10-23-vendor-scoped-model-id.root-cause.json）。"
+}

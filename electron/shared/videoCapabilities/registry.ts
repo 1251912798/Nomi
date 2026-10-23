@@ -6,6 +6,7 @@ import type {
 } from "./types";
 import type { VideoModelCandidate } from "./recommendation";
 import { resolveArchetypeVariant } from "../modelArchetypes/variantResolution";
+import { modelNameSourceFor, scopeArchetypeModelNames, type ModelNameSource } from "../modelArchetypes/modelNameSource";
 import { AGNES_VIDEO_ARCHETYPE } from "./agnesVideo";
 import { AGNES_VIDEO_25_ARCHETYPE, AGNES_VIDEO_25_FLASH_ARCHETYPE } from "./agnesVideo25";
 import { DREAMINA_MULTIFRAME_ARCHETYPE } from "./dreaminaMultiframe";
@@ -51,6 +52,8 @@ export type VideoCatalogModel = {
   label: string;
   archetypeId?: string;
   parameterControls?: readonly ModelParameterControl[];
+  /** 这一行接不接受档案的型号名（缺省 = 问本进程的查询口），见 modelArchetypes/modelNameSource.ts。 */
+  modelNameSource?: ModelNameSource;
 };
 
 export function videoArchetypeIdFromMeta(meta: unknown): string | undefined {
@@ -265,7 +268,11 @@ export function buildVideoModelCandidates(models: readonly VideoCatalogModel[]):
   return models
     .filter((model) => model.provider.trim() && model.modelKey.trim())
     .map((model) => {
-      const archetype = specializeForProvider(profileFor(model), model.provider);
+      // 型号名按供应商作用域解析（与 resolveArchetypeForModel 同一个函数）：不接受档案型号名的行，档案只给参数。
+      const archetype = scopeArchetypeModelNames(
+        specializeForProvider(profileFor(model), model.provider),
+        modelNameSourceFor({ vendorKey: model.provider, modelKey: model.modelKey, modelNameSource: model.modelNameSource }),
+      );
       return {
         provider: model.provider,
         modelKey: model.modelKey,
