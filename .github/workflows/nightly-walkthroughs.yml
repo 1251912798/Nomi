@@ -37,6 +37,10 @@ jobs:
         run: bash scripts/ci-install-chromium.sh
       - name: Build desktop surfaces
         run: pnpm run build
+      - name: Build self-check (same verify as every walkthrough launch)
+        env:
+          BATCH: ${{ matrix.batch }}
+        run: node scripts/nightly-build-gate.mjs nightly-walks "nightly-walks/results-${BATCH}.tsv"
       - name: Run non-paid walkthrough batch
         env:
           BATCH: ${{ matrix.batch }}
@@ -92,6 +96,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm run build
+      - name: Build self-check (same verify as every walkthrough launch)
+        run: node scripts/nightly-build-gate.mjs nightly-walks nightly-walks/results-packaged-mac.tsv
       - name: Package macOS app and run packaged smoke
         run: |
           mkdir -p nightly-walks
