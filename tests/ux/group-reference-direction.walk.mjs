@@ -195,8 +195,12 @@ try {
   await referenceImages.nth(1).waitFor({ state: 'visible', timeout: 10_000 })
   const referenceImageCount = await referenceImages.count()
   check('目标顶部真实显示两张参考缩略图', referenceImageCount === 2, String(referenceImageCount))
-  const activeMode = await targetNode.locator('[aria-label="生成方式"] [data-active="true"]').first().textContent().catch(() => '')
-  check('界面模式同步显示“改图”', /改图/.test(activeMode || ''), activeMode || '')
+  // B3 之后图片节点不再显示「生成方式」（方式随输入走，presentGenerationModes：image → none）。界面上看得出「已切到改图」的
+  // 是参考行：两张连线图是在用的小图、没有淡显「未用到」；还停在文生图时没有参考槽，参考行根本不出现。
+  const referenceRow = targetNode.locator('[data-reference-row]')
+  const rowTiles = await referenceRow.locator('[data-asset-tile]').count()
+  const rowUnused = await referenceRow.locator('[data-reference-unused]').count()
+  check('界面上两张参考都在用（方式已随输入切到改图）', rowTiles === 2 && rowUnused === 0, `参考行小图 ${rowTiles} · 未用到 ${rowUnused}`)
   await screenshotSettled(win, { path: path.join(shotsDir, '03-after-connected.png') })
 
   const clickableEdgePoint = await findEdgeHitPoint(win, { withinSelector: '[data-group-id="reference-group"]' })
