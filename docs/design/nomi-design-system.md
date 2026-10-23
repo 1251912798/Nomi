@@ -990,6 +990,57 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 
 ---
 
+### 4.7 `NodePointer`（聊天里的指向元素）
+
+文件：`src/workbench/ai/pointer/NodePointer.tsx`（零件 + 组 `NodePointerGroup` + 窄窗口「回到对话」`NodePointerReturnToChat`）；脸的判序与摘要在 `nodePointerFace.ts`，「已定位 / 回到哪个形态」在 `nodePointerStore.ts`，点击定位在 `revealNodeFromChat.ts`；悬停认领在 `src/workbench/generationCanvas/store/nodeExternalHighlightStore.ts`，节点外壳上的高亮样式是 `externalHighlightShellClass`（`generationCanvasReactFlowAdapter.ts`）。拍板稿：`docs/design/boards/2026-10-23/NodePointer.board.json`（19 个元素，`preview/NodePointer.html`）。设计实验室屏「指向元素」（`src/devlab/designLab/nodePointer/`）画全了状态；聊天里的第一个宿主在 D2 第③步（新付费卡），第②步还没有。
+
+视觉：聊天里代表画布上的**一个节点**——长得和节点一样（同一个镜号小胶囊、制作小标、状态条、等待面、结果缩略图，全挂节点自己的件，不另写一张「状态 → 文案」表）；悬停它，画布上那个节点同时亮；点一下，画布定位过去。这是 §1.0「一个东西一个家 / Agent 只指路」在聊天这一端的零件：聊天里不放参数、不放编辑器、不放预览播放器，想改就点过去在节点里改。
+
+**一个零件三种密度**（P2 是 P1 的窄屏 / 行内形态，不是第二套）：
+
+| 密度 | 形态 | 规格 |
+|---|---|---|
+| `card`（P1 镜像小卡）| 标题行在框外、画面框、下面一行只读摘要 | 标题行高 22px（镜号小胶囊 `ShotNumberPill` + 名字，`text-caption`，名字 `font-semibold`，长名截断、`title` 给全名）；画面框是 16:9 槽，节点的真比例放进去（宽的贴满宽、竖的贴满高并居中，不裁不拉伸），`rounded-nomi-sm`，常态 `ring-1 ring-inset ring-nomi-line`；摘要 `text-caption text-nomi-ink-60`：模型 · 比例 · 时长（读节点，和列表卡同一组读法）。**单个竖版**：槽高固定 96px、宽按真比例，摘要放画面右边分两行（模型 / 比例 · 时长 · 清晰度）|
+| `row`（P2 列表行）| 缩略图 + 标题行 + 摘要 + 行尾状态图标 | `min-h-10`、`rounded-nomi border-nomi-line bg-nomi-paper`；32px 缩略图 `rounded-nomi-sm`；摘要 = 模型 · 时长（竖版必须带比例）；行尾图标 14px / stroke 1.8：✓ 完成、转圈 生成中（蓝只留在转圈上）、钟 排队、⚠ 失败、断链 已删除、暂停 已停、钟搜 可找回；点过的那一行行尾改写「已定位」|
+| `chip`（P2 句中小标签）| 圆缩略图 + 镜号 + 名字，嵌在 Agent 的话里自然折行 | `h-7 rounded-full border-nomi-line bg-nomi-paper`，22px 圆缩略图，镜号小胶囊缩到 18px 高；一行内不折 |
+
+**组**（`NodePointerGroup`，一次说多个镜头）：`card` 一行三格（`grid-cols-3 gap-2`，格里只留镜号 + 名字 + 画面，不印摘要）；超过 3 个（4 个也算）第 3 格的画面位置盖「还有 N 个」，点它展开全部；`chip` 句中最后接「+N」，点它展开；`row` 是一列、不折。**组下方有一行常驻**（行高由 `text-caption` 撑着，没有悬停时放一个空格）：悬停 / 聚焦哪一格，就写那一镜的「镜号 · 模型 · 比例 · 时长」——从节点现算、不存，所以悬停和离开都不改组的高度，不把下面的东西（第③步的「生成」钮）顶下去。
+
+**状态**（脸的判序照 `BaseGenerationNode` 叠层，`nodePointerFace.ts`；文案都是节点自己的那句）：
+
+| 状态 | 画法 |
+|---|---|
+| 等你确认 / 排队 · 第 k/N | 空卡 + 左上制作小标（`ProductionShotCornerLabel`，和节点上同一枚，贴得更近：左 4 上 4）|
+| 生成中 | 等待面（`GenerationWaitingSurface`，聊天里一律 `motion="reduced"` 静态方格、不起 WebGL）+ 状态条（`GenerationStatusBar overlay`，`text-micro`，原话「生成中」）|
+| 完成 | 结果缩略图（画布轻量档同一个取图函数）|
+| 失败 | ⚠ 圆托 + 状态条（红点 + 节点自己的失败原因，窄格截断）+ 摘要行写**宿主给的结局**（例如「没有发出去」），用 `text-nomi-danger-ink` 保持红 |
+| 可找回 / 制作已停 / 导入中 / 其余 | 节点同一句：可找回小标、已停原因、等待面、种类图标圆托（28px `bg-nomi-ink-05` + `ring-nomi-line`）|
+| **已删除** | 只认宿主**显式**给的 `removed`：名字快照划线 + 断链圆托 + 「已删除」小标；不可点（`aria-disabled`）|
+| **占位** | 节点不在、或画布还没载入完、而宿主没说删：中性空卡，**不说已删除**（载入中 / 撤销回放的那一瞬节点也会不在），不可点（板 D4）|
+
+**悬停 / 聚焦 / 已定位**：
+
+| 属性 | 值 |
+|---|---|
+| 悬停 / 键盘聚焦 | 指向元素这一头：`card` 画面框外一圈 1.5px 深色细线（`--nomi-ink`）+ `--nomi-shadow-md`，`row` / `chip` 淡底（`bg-nomi-ink-05`、边线透明）；画布那一头：节点外壳同样 1.5px 深色细线 + `--nomi-shadow-lg`（`externalHighlightShellClass('hover')`）。一律中性，不用蓝（§8「描边颜色」）|
+| 谁在亮 | 悬停是**一摞认领**（每个指向元素最多一条，亮最后到的那一条指着的节点）：同一节点被几个指向元素指着，谁先走谁后走都不清掉别人还亮着的；已删除 / 占位不点亮画布 |
+| 点击 | `revealNodeFromChat`：切到生成页 / 画布视图 → 窄窗口先收对话 → 派现役对焦事件（`viewNodeInCanvas`，缩放封顶 100%、扣掉浮层、目标闪 1.4 秒：外壳 1.5px 细线 + 9px ink 12% 淡光晕）。指向元素自己不动视口（`pointerDoors.test.ts` 守）|
+| 已定位 | 点过的那一项左上小标「已定位」（`IconFocus2` 11px / stroke 1.8，压过制作小标）；回到对话后仍标着；全局只有一项 |
+
+**窄窗口「回到对话」**（`NodePointerReturnToChat`）：浮着的对话把画布盖住大半（或停靠但窗口太窄）时，点指向元素 → 对话**先**收成小球露出目标、**再**对焦；画布底部出现一颗深色胶囊 `h-9 rounded-full bg-nomi-ink text-nomi-paper shadow-nomi-lg`（`text-body-sm`、`IconMessage` 16px / stroke 1.8）；P2 形态在最前面带那一镜的圆缩略图和标签（「镜 02 · 回到对话」）。点它或按 Esc：对话回到收起前的形态，焦点落回被点的那一项（它仍标着「已定位」）。可见文字 §1.8 规则 3：中文「回到对话」（4 字）、英文「Back」（≤2 词）；读屏名 / 悬停名写全（英文「Back to chat」）。
+
+其余 token：字号 `text-caption`（12px，标题行 / 摘要）、`text-micro`（11px，状态条 / 行尾「已定位」）、`text-body-sm`（13px，「还有 N 个」/ 回到对话）；圆角 `rounded-nomi-sm` / `rounded-nomi` / `rounded-full`；底 `bg-nomi-paper` / `bg-nomi-ink-05`；边线 `border-nomi-line`；全部走 token，光 / 暗自动翻。22 / 18 / 96px 这几个尺寸（标题行与圆缩略图、镜号小胶囊、单个竖版的槽高）照拍板稿写成任意值，不是 §2.2 的 4 倍数刻度（门岗不拦）。与拍板稿的已知差异：画面框圆角用 token 6px（板 8px）、聊天里等待面静态（板示意渐变竖条）、失败原因在窄格里截断（均 2026-10-23 协调接受）。
+
+使用场景：Agent 说「已在画布上起草了 3 个镜头。想改哪个，点它。」，后面跟一组 `card`（一行三格）。悬停第 2 格 → 画布上镜 02 同时亮、组下方一行写「镜 02 · Seedance 2 · 16:9 · 5s」；点它 → 画布滑到镜 02 并闪一下，那一格标「已定位」。窄窗口：对话浮在画布上盖住大半 → 点镜 02，对话收成小球、画布露出并定位 → 底部「回到对话」（Esc 也回）→ 对话原样回来、镜 02 仍标着「已定位」。Agent 的话里提到镜头时用 `chip`，列出一批时用 `row`。
+
+何时用：
+- 用：Agent 的话或聊天卡（起草结果、付费卡的每一镜、完成收据）里提到画布上的某一个 / 一批镜头——凡是「指着画布上那个节点说话」。
+- 不用：要在聊天里改参数 / 播放预览 → 点过去在节点里做（§1.0：聊天卡片不许引用编辑器组件）；指的不是画布节点（素材库里的素材、时间轴片段）→ 用它们各自的卡；画布上的节点自己 → 用节点。
+
+可访问性：整张指向元素就是一颗原生 `<button>`（Tab 可达，Enter / Space 定位），不嵌套别的可交互元素。读屏名 = 镜号 + 名字 + 状态（失败时再念宿主给的结局）+「点了在画布上定位」；已删除念「X，已删除」、占位念「X，现在还定位不到」，二者 `aria-disabled`；「还有 N 个」`aria-expanded="false"`、点了全部展开；行尾状态图标 `aria-hidden`，状态文字另在读屏名里。**焦点环只用全局那一份**（§8「焦点环」）：组件不自己加 `focus-visible:ring-*` / `outline-*`（`pointerDoors.test.ts` 守）；「回到对话」`useOverlayEscape` 接 Esc。
+
+---
+
 ## 5. 视觉 Patterns（recur 模式）
 
 ### 5.1 节点卡片（NodeCard）
@@ -1163,7 +1214,7 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 | 剪辑（取视频的一段，拖入点 / 出点）| `IconCut` | 视频节点浮条「剪辑」钮（样张 `video-node-next`，2026-10-09 待拍板）。与剪辑节点「分割片段」同一把刀：都是在时间轴上切 |
 | 拆解（把一条视频按镜头分开）| `IconLayoutRows` | 视频节点浮条「拆解▾」及其「按镜头拆」项（同上样张）。取分镜分类图标（§7 shots）：拆出来的产物就是分镜，不再用剪刀，免得和「剪辑」并排两把剪刀 |
 | 指向的目标已不在画布上（聊天里的指向元素「已删除」，只在指向元素上有）| `IconLinkOff` | `NodePointer` 已删除态的圆托与 P2 行尾（NodePointer 板 `pointer.deleted`，2026-10-23 D2）。词典里没有现成的：`IconTrash` 是「删除」这个动作的按钮，放在一个不可点的状态上会读成「点了删掉」；断开的链才说得出「指着的那个东西没了」 |
-| 已定位（点过、画布定位过去的那一项，回到对话后仍标着）| `IconFocus2` | `NodePointer` 左上「已定位」小标与 P2 行尾（NodePointer 板 `pointer.located`，2026-10-23 D2）。词典里没有现成的：`IconPointer` 是鼠标点选、`IconTarget` 不在词典里；圆心一点的取景框说得出「已经对准过」 |
+| 定位到画布上的那个节点（动作「去定位」与结果「已定位」同一个图形）| `IconFocus2` | 分镜行菜单「定位」（`StoryboardShotRow`，`storyboardEditor.rowMenu.locateInCanvas`：定位到画布上那一镜）；`NodePointer` 左上「已定位」小标与 P2 行尾（NodePointer 板 `pointer.located`，2026-10-23 D2；点过、画布定位过去的那一项，回到对话后仍标着）。同一个「定位」语义全仓一个图标，不另选：`IconPointer` 是鼠标点选、`IconTarget` 不在词典里；圆心一点的取景框说得出「对准了某个东西」 |
 
 ### 选图规则
 
