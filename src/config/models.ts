@@ -10,6 +10,7 @@ import type { BillingModelKind } from '../workbench/api/modelCatalogApi'
 // 有规格加价时比真正要扣的少报——少报比不报更坏）。
 export type { ModelPricingSpec as ModelOptionPricingSpec, ModelPricing as ModelOptionPricing } from '../../electron/shared/contracts/shotPricingRule'
 import type { ModelPricing as ModelOptionPricing } from '../../electron/shared/contracts/shotPricingRule'
+import type { ModelNameSource } from '../../electron/shared/modelArchetypes/modelNameSource'
 
 /** Display grouping only; each option still addresses its own executable catalog row. */
 export type ModelOptionVariant = Readonly<{
@@ -34,6 +35,8 @@ export interface ModelOption {
    * 模型框据此在那一行后面加一句实话；它**不**影响可选性，用户照样选得了。
    */
   unlisted?: true
+  /** 这一行发出的型号名由档案提供还是就是这一行的 key（目录随行下发，见 ModelCatalogModelDto.modelNameSource）。 */
+  modelNameSource?: ModelNameSource
   meta?: unknown
   pricing?: ModelOptionPricing
   variant?: ModelOptionVariant

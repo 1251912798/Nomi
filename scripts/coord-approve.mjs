@@ -6,13 +6,16 @@
 // 用法（环境变量 NOMI_COORD_APPROVALS = 本机 JSONL 文件路径，不进仓库）：
 //   node scripts/coord-approve.mjs --pr <号> --board <板名> [--note 说明]
 //   node scripts/coord-approve.mjs --pr <号> --perf <场景 id> [--note 说明]
+//   node scripts/coord-approve.mjs [--pr <号>] --suppressions [--note 说明]
+//     ESLint 批量抑制冻结数上涨（eslint-suppressions.json）：确认绑上涨那部分 diff 的哈希。还没开 PR 时不带 --pr，
+//     按本地 HEAD 对 origin/main 的 merge-base 算（协调推送前在任务分支的工作树里跑）。
 // 哈希从 PR head 算（git fetch origin main pull/<号>/head 之后读 git 对象），不读工作树。
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { APPROVAL_ENV, boardApprovalSubject, describeBoardDiff } from './lib/coordApprovals.mjs'
+import { APPROVAL_ENV, boardApprovalSubject, describeBoardDiff, describeSuppressionGrowth, suppressionApprovalSubject, SUPPRESSIONS_FILE } from './lib/coordApprovals.mjs'
 import { boardsAtHead } from './lib/prEvidenceInputs.mjs'
 import { scenarioPolicyHash, scenarioRemovedHash } from './perf-scenarios-lib.mjs'
 
@@ -23,10 +26,16 @@ const argValue = (argv, name) => { const index = argv.indexOf(name); return inde
 
 /** 算出要写的那条记录（纯逻辑，git 与时间可注入，测试用）。取不到内容 / 没有要确认的东西 → 抛出带人话的错误。 */
 export function buildApproval({ argv, git = realGit, now = () => new Date().toISOString(), fetch = true }) {
-  const pr = Number(argValue(argv, '--pr'))
+  const prArg = argValue(argv, '--pr')
+  const pr = prArg === undefined ? null : Number(prArg)
   const board = argValue(argv, '--board')
   const perf = argValue(argv, '--perf')
-  if (!Number.isInteger(pr) || pr <= 0 || (!board && !perf) || (board && perf)) throw new Error('用法：node scripts/coord-approve.mjs --pr <号> (--board <板名> | --perf <场景 id>) [--note 说明]')
+  const suppressions = argv.includes('--suppressions')
+  const usage = '用法：node scripts/coord-approve.mjs --pr <号> (--board <板名> | --perf <场景 id>) [--note 说明]；或 node scripts/coord-approve.mjs [--pr <号>] --suppressions [--note 说明]'
+  if ([board, perf, suppressions].filter(Boolean).length !== 1) throw new Error(usage)
+  if (pr !== null && (!Number.isInteger(pr) || pr <= 0)) throw new Error(usage)
+  if (pr === null && !suppressions) throw new Error(usage)
+  if (suppressions) return buildSuppressionsApproval({ argv, pr, git, now, fetch })
   // --head <sha>：测试 / 已经 fetch 过时直接指定 PR head，不再去 fetch
   let headSha = argValue(argv, '--head')
   if (!headSha) {
@@ -55,6 +64,24 @@ export function buildApproval({ argv, git = realGit, now = () => new Date().toIS
     } else sha256 = scenarioPolicyHash(JSON.parse(text))
   }
   return { pr, kind: board ? 'board' : 'perf-policy', name, sha256, at: now(), note: argValue(argv, '--note') ?? '', head: headSha }
+}
+
+/** --suppressions：PR head（或还没开 PR 时的本地 HEAD）对 merge-base 的冻结数上涨。没有上涨就不需要确认（抛错说明）。 */
+function buildSuppressionsApproval({ argv, pr, git, now, fetch }) {
+  let headSha = argValue(argv, '--head')
+  if (!headSha) {
+    if (fetch) git(['fetch', '--quiet', 'origin', 'main'])
+    if (pr !== null) {
+      if (fetch) git(['fetch', '--quiet', 'origin', `pull/${pr}/head`])
+      headSha = String(git(['rev-parse', 'FETCH_HEAD'])).trim()
+    } else headSha = String(git(['rev-parse', 'HEAD'])).trim()
+  }
+  const base = String(git(['merge-base', 'origin/main', headSha])).trim()
+  const read = (sha) => { try { return JSON.parse(git(['show', `${sha}:${SUPPRESSIONS_FILE}`])) } catch { return {} } }
+  const subject = suppressionApprovalSubject(read(base), read(headSha))
+  if (!subject.needsApproval) throw new Error(`${SUPPRESSIONS_FILE} 在 ${String(headSha).slice(0, 9)} 上和 base 比冻结数没有上涨，不需要确认`)
+  console.error(`确认 ${SUPPRESSIONS_FILE}：${describeSuppressionGrowth(subject)}`)
+  return { pr, kind: 'eslint-suppressions', name: SUPPRESSIONS_FILE, sha256: subject.fingerprint, at: now(), note: argValue(argv, '--note') ?? '', head: headSha }
 }
 
 function main() {

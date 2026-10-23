@@ -282,7 +282,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
       {/* 行菜单贴着「⋯」开，点外面 / Esc 关：开合交给 AnchoredPopover（同一行底栏 ⋯ 弹层用的就是它），这里不另写监听。
           以前是原地 absolute、只有再点一次「⋯」才收：点别处它一直开着，盖住本镜和下一镜的画面格，
           用户以为在点缩略图，实际点进了「复制镜头」（铁律 ⑫ 走查 LAW12-sb-row-more）。
-          点外面那一下是 mousedown 关菜单、不吞事件，所以同一下照样落到被点的东西上。 */}
+          点外面那一下是 pointerdown 捕获阶段关菜单（listenOutsidePress）、不吞事件，所以同一下照样落到被点的东西上。 */}
       {actionsOpen ? (
         // Portal 贴锚点：行在表格的 overflow-hidden 里，原地 absolute 的菜单在最后一行会被裁成一条边。
         <AnchoredPopover anchorRef={actionsTriggerRef} align="start" gap={4} onClose={closeMenus}>
