@@ -1,0 +1,23 @@
+{
+  "id": "FB-20261022-whiteboard-board-unusable",
+  "since": "2026-10-22",
+  "source": "用户 2026-10-22 测试画板后的反馈（协调转交 R-whiteboard 诊断线）；以下是复现到的现象，不冒充用户逐字原话。用户本机装的是 0.23.0。",
+  "category": "interaction-semantics",
+  "problem": "画板用不了：① 画板节点画完按「完成」后，节点上只剩空的「打开画板」启动器，画的内容看不见（0.23.0 与 main 都如此，只有按相机截图才出一张可见图）；② main 上 #1189 把打开后的默认工具从画笔改成选择：空画板直接拖什么也画不出，在图片上拖会把照片挪走，完成后挪过的图存成新主版本。走查只核盘上数据、且每次替用户先点画笔，所以两条都没被拦住。",
+  "existingInvariants": [],
+  "ironLaws": [
+    "⑫"
+  ],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "candidate",
+  "manualReview": "pending",
+  "evidence": [
+    "R-whiteboard 诊断报告（协调状态目录 reports/R-whiteboard.md）：main 开发版、main 的 Windows 打包版（中/英）各走一遍创作者路径，0.23.0 只读代码；截图 A5（完成后节点空了）、B3/B4（默认工具拖动挪走照片并存成新版本）。",
+    "WhiteboardDrawingTool.tsx 的默认工具：v0.23.0 是 useState<ToolKey>('brush')，9291455b57 起变成 'select'。",
+    "WhiteboardCardBody 永远只渲染 EmptyStateLauncher；拍板清单 InlineWhiteboard.board.json 的 O40 写的是「独立画板完成只保存 state，不截图」。",
+    "tests/ux/whiteboard-refactor.walk.mjs 新加三条断言，在 203886f10 上先红：图片入口打开后直接拖（得到 0 笔）、画板入口打开后直接拖（得到 0 笔）、完成后画板节点上看得见内容（找不到 img）。",
+    "方向检查：docs/engineering/direction-checks/2026-10-22-whiteboard-first-gesture-and-visible-result.md"
+  ],
+  "completionCommits": []
+}

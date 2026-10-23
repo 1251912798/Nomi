@@ -1,0 +1,68 @@
+{
+  "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+  "commit": "460d57444",
+  "head": "460d574442ecdd92947d0c0976948b3d1303de66",
+  "dirty": true,
+  "sourceTree": "0f036ea66877dd3a17e65c527dcabcec85b7c2ee",
+  "date": "2026-10-22",
+  "runs": 5,
+  "results": [
+    {
+      "id": "inline-whiteboard-done-export",
+      "metrics": {
+        "response": {
+          "runs": 5,
+          "median": 3436.7,
+          "p95": 3469.5
+        },
+        "longTasks": {
+          "runs": 5,
+          "median": 1,
+          "p95": 1
+        }
+      },
+      "samples": {
+        "openToInteractive": [
+          432.8,
+          441.6,
+          418.9,
+          398.4,
+          392.2
+        ],
+        "response": [
+          2726.9,
+          3476.1,
+          3443.2,
+          2838.8,
+          3436.7
+        ],
+        "frameGapP95": [],
+        "longTasks": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "idleRectReadsPerSec": [],
+        "idleBusyPct": [],
+        "idleLayoutsPerSec": [],
+        "panelFramesOff": []
+      },
+      "budget": 3000,
+      "baseline": {
+        "median": 4143.7,
+        "p95": 4489.3,
+        "runs": 5,
+        "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+        "date": "2026-10-22",
+        "commit": "460d57444",
+        "noisy": true
+      },
+      "verdict": {
+        "status": "known-debt",
+        "note": "已知超预算（预算 3000，负责线 待协调派（共享落盘 importWorkbenchLocalAssetFile）），没比欠账基线 4143.7 更差"
+      }
+    }
+  ]
+}
