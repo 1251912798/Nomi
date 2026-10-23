@@ -213,7 +213,7 @@ export function LabCanvasNode({ nodeId, width, flash = false }: { nodeId: string
   const size = resolveNodeVisualSize(width ? { ...target, size: { width, height: Math.round(width * 9 / 16) } } : target)
   const highlight: ExternalNodeHighlight | null = flash ? 'flash' : hovered ? 'hover' : null
   return (
-    <div className="relative" style={{ width: size.width, height: size.height + 34, paddingTop: 34 }} data-lab-canvas-node={nodeId}>
+    <div className="relative" style={{ width: size.width, height: size.height + 72, paddingTop: 72 }} data-lab-canvas-node={nodeId}>
       <LabCanvasNodeHost width={size.width} height={size.height}>
         <div className={cn('generation-canvas-react-flow__node-shell size-full', externalHighlightShellClass(highlight))} data-external-highlight={highlight ?? undefined}>
           <BaseGenerationNode node={{ ...target, size: { width: size.width, height: size.height } }} selected={false} readOnly waitingMotion="reduced" />
