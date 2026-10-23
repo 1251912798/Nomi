@@ -78,6 +78,12 @@ try {
   })
   await check('左栏素材抽屉：点画布空白处收起', async () => {
     await openRailDrawer(win, 'assets')
+    // 抽屉是滑入的（Mantine 过渡 160ms）：动画没走完就找空白点，找到的点等抽屉滑到位会被它盖住，
+    // 这一下就点在了抽屉里（2026-10-23 英文轨偶发 1/4）。等抽屉上没有在跑的动画再找。
+    await expect.poll(() => railDrawer(win, 'assets').evaluate((element) => {
+      const panel = element.closest('[role="dialog"]') ?? element
+      return panel.getAnimations({ subtree: true }).filter((animation) => animation.playState === 'running').length
+    }), { message: '抽屉的滑入动画一直没停' }).toBe(0)
     const blank = await findCanvasBlankPoint(win)
     if (!blank) throw new Error('画布上找不到空白点')
     await win.mouse.click(blank.x, blank.y)
