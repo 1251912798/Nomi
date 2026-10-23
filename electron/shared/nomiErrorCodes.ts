@@ -80,6 +80,8 @@ export const NOMI_ERROR_ONLY_BEFORE_SUBMIT: Readonly<Record<NomiErrorCode, boole
   'asset-too-large': true,
   'asset-upload-failed': true,
   'asset-invalid': true,
+  // 主进程在 runTask 碰任何网络之前拒发（referenceResidueGuard）：只有提交前这一个生产者，话是「没发出去、重新点生成」。
+  'reference-not-in-use': true,
   'outbound-blocked': false,
   'outbound-blocked-submit': true,
   'outbound-blocked-credential-origin': true,
