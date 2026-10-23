@@ -9,11 +9,10 @@ import {
   defaultPatchForControls,
   nodeSelectedModelAddress,
   removePreviousControlParams,
-  videoAspectDefaultPatch,
 } from './controls/parameterControlModel'
 import { applyArchetypeModeSwitch } from './controls/archetypeMeta'
 import { resolveArchetypeForOption, resolveRenderedControls } from './nodeModelArchetype'
-import { collectInputAspectRatios, preferredVideoAspect } from './aspectRatio'
+import { videoAspectSeedPatch } from './videoAspectSeed'
 import { projectParameterReferenceSlots } from '../model/parameterReferenceSlots'
 
 export type BuildNodeModelChangePatchInput = {
@@ -69,8 +68,9 @@ export function buildNodeModelChangePatch({
       .map((key) => ({ key, from: currentMeta[key], to: defaultPatch[key] })),
   }
   const nextArchetype = resolveArchetypeForOption(nextOption)
+  // 换模型 = 重铺全部默认值（比例也在内，不让「明确选过」），默认值只问唯一出处。
   const aspectPatch = isVideoLike
-    ? videoAspectDefaultPatch(controls, preferredVideoAspect(collectInputAspectRatios(node.id, edges, nodes)))
+    ? videoAspectSeedPatch({ nodeId: node.id, nodes, edges, controls, meta: currentMeta, respectExplicit: false })
     : {}
 
   const baseMeta = replaceCustomCapabilityContractMeta(

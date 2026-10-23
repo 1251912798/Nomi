@@ -13,7 +13,8 @@ import {
   type ModelArchetype,
 } from "../../../../electron/shared/modelArchetypes";
 import { pickImplicitVendorMatch } from "../../../config/modelIdentity";
-import { aspectRatioControlsOf, placeAspectRatio } from "../../../../electron/shared/aspectRatioValue";
+import { aspectRatioControlKey, aspectRatioControlsOf, placeAspectRatio } from "../../../../electron/shared/aspectRatioValue";
+import { ASPECT_EXPLICIT_META_KEY } from "../nodes/aspectExplicit";
 
 export type PlannedNodeModelInput = {
   modelKey?: unknown;
@@ -166,12 +167,16 @@ export function buildPlannedNodeMeta(
   //    比例意图（分镜的比例槽 `aspect_ratio` / 语义键 `aspectRatio`）先按这个模式的比例控件翻成真实键——
   //    与宿主准入同一个判据（`electron/shared/aspectRatioValue.ts`）。以前这里只认同名控件：整片 16:9 落到
   //    Z-Image（比例键叫 `size`）上被当未知键丢掉，节点是出厂 1:1。
+  const ratioControls = aspectRatioControlsOf(mode.params);
   const rawParams = placeAspectRatio(
     planned.params && typeof planned.params === "object" && !Array.isArray(planned.params)
       ? (planned.params as Record<string, unknown>)
       : {},
-    aspectRatioControlsOf(mode.params),
+    ratioControls,
   ).parameters;
+  // 哪个控件是这个模式的比例控件按控件的选项判（与 placeAspectRatio 同一个判据），不按键名：
+  // Agnes Video 2.5 的 `size` 是清晰度（720P / 960P / 2K），比例在 `aspect_ratio`。
+  const ratioKey = aspectRatioControlKey(ratioControls);
   for (const control of mode.params) {
     const value = rawParams[control.key];
     if (value === undefined) continue;
@@ -180,12 +185,16 @@ export function buildPlannedNodeMeta(
       isValidParamValue(control, value)
     ) {
       meta[control.key] = value;
+      // 起草方（Agent / 分镜）写了合法比例 = 明确选过：连线时视频比例的产品默认不改它（用户 2026-10-22 Q2 拍板）。
+      // 没写或写了非法值 → 档案默认、不打标记（Q1），连线时照常按输入铺默认。
+      if (control.key === ratioKey) meta[ASPECT_EXPLICIT_META_KEY] = true;
     }
   }
   return meta;
 }
 
-const RESERVED_META_KEYS = new Set(["modelKey", "modelLabel", "archetype", "modelVendor", "vendor"]);
+// 比例「明确选过」标记是节点状态，不是要批准 / 发出的参数。
+const RESERVED_META_KEYS = new Set(["modelKey", "modelLabel", "archetype", "modelVendor", "vendor", ASPECT_EXPLICIT_META_KEY]);
 
 /**
  * 把一个 planned node 的 modelKey/modeId/params 解析成「执行后会真正写入的值」——与
