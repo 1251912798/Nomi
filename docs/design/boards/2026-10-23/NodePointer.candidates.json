@@ -2,7 +2,7 @@
   "board": "NodePointer",
   "extractor": "board-extract@1",
   "source": "preview/NodePointer.html",
-  "sourceSha256": "fc9cde855a34f535bf364f70cf513d276c8dfe7da190ccb491b5901599623e41",
+  "sourceSha256": "97f7d11277ef4fe0f6bf56bded5f5aead31aa260dff6e683bda5f44ab127f447",
   "viewport": {
     "width": 1280,
     "height": 800
