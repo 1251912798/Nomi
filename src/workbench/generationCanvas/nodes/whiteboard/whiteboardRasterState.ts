@@ -12,3 +12,10 @@ export function whiteboardRasterStateKey(state: WhiteboardState): string {
     layers: state.layers.map(({ name: _name, thumbnail: _thumbnail, ...layer }) => layer),
   })
 }
+
+/** Whether the board would export anything a creator drew or placed: brush paths, images or non-blank text. Eraser paths alone are not content. */
+export function whiteboardHasVisibleContent(state: WhiteboardState): boolean {
+  return state.canvasAssets.length > 0
+    || state.strokes.some((stroke) => stroke.tool === 'brush')
+    || (state.texts ?? []).some((text) => text.text.trim().length > 0)
+}
