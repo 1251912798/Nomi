@@ -34,7 +34,8 @@ const FORBIDDEN = [
 ]
 // 项目卡删除按钮的名字（中 / 英）。走查点它之后，紧接着碰的第一个确认框钩子必须是取消，不是确认。
 // 同一份走查里别的确认框（删文件夹、退出导演台……）不归这条管，所以看「点完之后最近的那个钩子」，不看整份文件。
-const UI_DELETE_BUTTON = /删除项目|Delete project/g
+// 走查可以直接写名字，也可以从词典读（uiText(…, 'library.deleteNamedProject')），两种写法都要认。
+const UI_DELETE_BUTTON = /删除项目|Delete project|uiText\([^)]*['"]library\.deleteNamedProject['"]/g
 const CONFIRM_HOOK = /data-confirm-dialog-(cancel|confirm)|Escape/
 const HOOK_REACH = 600
 
@@ -85,6 +86,7 @@ describe('走查与脚本收尾不往系统回收站里扔东西', () => {
     ['素材删除 IPC 通道', "await ipcRenderer.invoke('nomi:workspace:delete-files', payload)"],
     ['界面点确认', "await click(card.getByRole('button', { name: '删除项目 天台' })); await click(page.locator('[data-confirm-dialog-confirm]'))"],
     ['界面点删除后没取消', "await click(card.getByRole('button', { name: 'Delete project Rooftop' }))"],
+    ['界面点确认（名字从词典读）', "await click(card.getByRole('button', { name: uiText(locale, 'library.deleteNamedProject') })); await click(page.locator('[data-confirm-dialog-confirm]'))"],
   ])('反例（%s）被认出来', (_label, source) => {
     expect(findViolations('tests/ux/example.walk.mjs', source)).not.toEqual([])
   })

@@ -3,6 +3,19 @@
   "approvedOn": "2026-10-08",
   "stage": "explored",
   "source": "preview/Library.html",
+  "decisions": [
+    {
+      "id": "D1",
+      "text": "项目库删除 = 项目文件夹进系统回收站，可还原；先进回收站、核对原路径不在了才从库里摘；进不了就什么都不删，分三类说原因（权限 / 该位置没有回收站 / 文件被占用，其余指向日志）；文案按平台叫法（回收站 / 废纸篓）；还原后下次启动回到项目库；不加「永久删除」选项。",
+      "appliesTo": [
+        "library.card.delete",
+        "library.delete.confirm",
+        "library.delete.moved",
+        "library.delete.failed"
+      ],
+      "source": "用户 10-22（第二批）与 10-23（回收站方向检查 + 五个默认）两次原话「按推荐」；被推荐的是 ⑭：删文件改进回收站（shell.trashItem，失败绝不静默退回永久删）+ 五个默认（文案按平台叫法、还原后下次启动回库、不加「永久删除」二次选项、失败分三类说、先进回收站成功才摘库），见协调台账和交接文档「用户拍板」一节。确认框 / 提示 / 失败提示的具体文案是协调 10-23 按 ⑭ 行为定的，非用户逐字。"
+    }
+  ],
   "elements": [
     {
       "id": "library.title",
@@ -313,6 +326,113 @@
         "empty"
       ],
       "note": "产品代码里有字样「未命名项目」，待真 App 核并补走查断言（下一刀）"
+    },
+    {
+      "id": "library.card.delete",
+      "label": "项目卡 删除动作：悬停卡片出右上角删除钮（红底垃圾桶）；普通卡点它进「删除」确认框，灰卡 / 外部文件夹点它进「从库移除」确认框",
+      "change": "keep",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "board:Library/library.card.delete",
+      "states": [
+        "hover",
+        "zh-en"
+      ],
+      "copy": {
+        "buttonName": {
+          "zh-CN": "删除项目 {{name}}",
+          "en": "Delete project {{name}}"
+        }
+      },
+      "note": "既有组件与位置不变（ProjectLibraryPage 项目卡右上角）；⑭ 只改了确认「删除」之后去哪：项目文件夹进系统回收站，不再永久删除。板上原本没有这一项（板只画了项目卡缩略图与名字，旧功能普查也没列删除），随 ⑭ 补进清单。走查：tests/ux/shell-redesign.walk.mjs #47（悬停出钮、点开确认框、取消不删）。"
+    },
+    {
+      "id": "library.delete.confirm",
+      "label": "删除确认框（本地项目）：标题「删除项目」，正文说清项目文件夹移到回收站 / 废纸篓、可还原、还原后下次启动回到项目库；按钮「取消 / 删除」（危险红）",
+      "change": "keep",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "board:Library/library.delete.confirm",
+      "states": [
+        "zh-en",
+        "long-text"
+      ],
+      "copy": {
+        "title": {
+          "zh-CN": "删除项目",
+          "en": "Delete project"
+        },
+        "message": {
+          "zh-CN": "确定删除「{{name}}」吗？项目文件夹会移到{{bin}}，需要时可以从{{bin}}还原；还原后下次启动 Nomi 时它会回到项目库。",
+          "en": "Delete “{{name}}”? Its project folder will be moved to the {{bin}}, where you can restore it; after restoring, it comes back to the library the next time you start Nomi."
+        },
+        "bin": {
+          "win32": {
+            "zh-CN": "回收站",
+            "en": "Recycle Bin"
+          },
+          "darwin": {
+            "zh-CN": "废纸篓",
+            "en": "Trash"
+          },
+          "linux": {
+            "zh-CN": "回收站",
+            "en": "Trash"
+          }
+        }
+      },
+      "note": "沿用现有确认框组件，只改正文：原来写「项目文件夹和本地资源会从磁盘永久删除，无法恢复」，现在按平台说移到哪、能还原。布局没变，不出样张——文案是行为改动的直接结果（说真话）。中英原文在 copy，和产品词典同一份（tests/ux/library-delete-copy.test.mjs 逐字核对；走查 #47 核真界面上的正文）。真机截图 docs/evidence/2026-10-23-project-delete-to-trash/mac-confirm-zh-CN.png / mac-confirm-en.png；Windows 见同目录 delete-confirm-zh-CN.png / delete-confirm-en.png。「从库移除」确认框（灰卡 / 外部文件夹）不变。"
+    },
+    {
+      "id": "library.delete.moved",
+      "label": "删除成功提示（toast）：「{名}」已移到回收站 / 废纸篓，说明怎么找回、下次启动回到项目库；卡片随即消失",
+      "change": "keep",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "board:Library/library.delete.moved",
+      "states": [
+        "zh-en",
+        "long-text"
+      ],
+      "copy": {
+        "message": {
+          "zh-CN": "「{{name}}」已移到{{bin}}。要找回就从{{bin}}还原，下次启动 Nomi 时它会回到项目库。",
+          "en": "“{{name}}” was moved to the {{bin}}. To get it back, restore it from the {{bin}}; it returns to the library the next time you start Nomi."
+        }
+      },
+      "note": "沿用现有 toast 组件，只补这一句（原来删完没有任何提示）。真机截图 docs/evidence/2026-10-23-project-delete-to-trash/mac-after-delete-zh-CN.png。"
+    },
+    {
+      "id": "library.delete.failed",
+      "label": "进不了回收站时卡片上的失败提示：四类原因（没有权限 / 该位置没有回收站 / 文件被占用 / 其余）各一句，都写明项目没有被删除；卡片留在库里，没有「永久删除」选项",
+      "change": "keep",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "board:Library/library.delete.failed",
+      "states": [
+        "error",
+        "zh-en",
+        "long-text"
+      ],
+      "copy": {
+        "permission": {
+          "zh-CN": "没能把项目移到{{bin}}：没有权限操作这个文件夹。项目没有被删除。",
+          "en": "Couldn't move the project to the {{bin}}: no permission to change this folder. Nothing was deleted."
+        },
+        "no-trash": {
+          "zh-CN": "没能把项目移到{{bin}}：这个位置（比如网络盘或外接盘）没有{{bin}}。项目没有被删除，需要的话请到文件夹里自己处理。",
+          "en": "Couldn't move the project to the {{bin}}: this location (such as a network or external drive) has no {{bin}}. Nothing was deleted; handle the folder yourself if needed."
+        },
+        "in-use": {
+          "zh-CN": "没能把项目移到{{bin}}：里面有文件正被别的程序占用，关掉它再试一次。项目没有被删除。",
+          "en": "Couldn't move the project to the {{bin}}: a file in it is being used by another program. Close it and try again. Nothing was deleted."
+        },
+        "unknown": {
+          "zh-CN": "没能把项目移到{{bin}}，项目没有被删除。详细原因已记进日志。",
+          "en": "Couldn't move the project to the {{bin}}. Nothing was deleted. Details are in the log."
+        }
+      },
+      "note": "沿用卡片上方的反馈条（role=alert），不新增元素；分类依据与真机原文样本见方向检查 docs/engineering/direction-checks/2026-10-23-project-delete-to-trash.md §5。认不出的原因落「其余」，指向日志。真机截图 docs/evidence/2026-10-23-project-delete-to-trash/mac-trash-refused-zh-CN.png（没有权限）。"
     }
   ],
   "decor": [
@@ -331,6 +451,11 @@
       "function": "项目库：打开文件夹",
       "before": "「打开文件夹」",
       "after": "library.open-folder"
+    },
+    {
+      "function": "项目库：删除项目",
+      "before": "卡片删除钮 → 确认框「永久删除，无法恢复」→ 项目文件夹被永久删除",
+      "after": "library.card.delete"
     }
   ]
 }
