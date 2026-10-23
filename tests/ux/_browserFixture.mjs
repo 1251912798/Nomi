@@ -14,11 +14,15 @@
 //   · 准备阶段把每个入口页在一次性浏览器上下文里完整加载一遍：load 事件（再加可选的 ready 选择器）= 这张页面编完了，
 //     这是确定的「准备好」信号，不是赌秒数；
 //   · 冷编译是构建，不是一次界面操作：它只受下面这一份构建余量约束，用例里的操作预算不再替它背锅；
-//   · 只能导航到登记过（编过）的入口页，免得冷编译又溜回用例里。
+//   · 只能导航到登记过（编过）的入口页，免得冷编译又溜回用例里；
+//   · 夹具不替测试起浏览器：浏览器类型由测试文件 `import { chromium } from 'playwright'` 后传进来（browserType 必填）。
+//     推送前的相关单测（scripts/pre-push-related-tests.mjs 的 startsBrowser）靠「测试文件自己 import playwright」认出
+//     起浏览器的测试、只交给 CI；这里要是自己 import playwright，信号就被夹具带走，这些测试会被当快测试塞回推送前、
+//     和 typecheck 并发冷启动（2026-10-24 本机 gates 的 check:claude-hooks 两条必红就是这么来的）。
+//     所以本文件只在 JSDoc 里用 playwright 的类型，不 import 它的启动器；普查在 tests/ux/_browserFixture.test.mjs。
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromium } from 'playwright'
 import { createServer } from 'vite'
 import { afterAll, beforeAll } from 'vitest'
 import { cleanupTestTemp, makeTempDir } from '../../scripts/_test-temp.mjs'
@@ -34,14 +38,20 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 export const FIXTURE_BUILD_BUDGET_MS = 120_000
 
 /**
- * 在当前测试文件里登记一个只服务这些夹具入口页的开发服务 + 一个无头 Chromium：beforeAll 里起服并把入口页编完，
- * afterAll 里关掉并删缓存目录。返回的句柄在 beforeAll 跑完后可用。
- * @param {{ entries: string[], plugins?: import('vite').PluginOption[], ready?: string }} options
+ * 在当前测试文件里登记一个只服务这些夹具入口页的开发服务 + 一个无头浏览器：beforeAll 里起服并把入口页编完，
+ * afterAll 里关掉并删缓存目录。返回的句柄在 beforeAll 跑完后可用。准备阶段和用例用同一个浏览器。
+ * @param {{ entries: string[], browserType: import('playwright').BrowserType, plugins?: import('vite').PluginOption[], ready?: string }} options
  *   entries：本测试会打开的入口页，相对仓库根的路径（不带查询串），例如 `tests/ux/fixtures/x.html`。
+ *   browserType：必填。测试文件自己 `import { chromium } from 'playwright'` 后传进来（见文件头：起浏览器的信号留在测试文件里）。
  *   ready：可选的选择器。页面挂载还要按需加载模块时，编译阶段等到它可见才算编完（只等 load 不够）。
  * @returns {{ readonly browser: import('playwright').Browser, url: (entry: string, search?: string) => string }}
  */
 export function useBrowserFixture(options) {
+  // 登记钩子之前就核：缺了在收集测试时当场红，不等到 beforeAll 才发现
+  if (typeof options?.browserType?.launch !== 'function') {
+    throw new Error("useBrowserFixture：browserType 必填——测试文件自己 import { chromium } from 'playwright'，再写 useBrowserFixture({ entries, browserType: chromium })。"
+      + '夹具不替测试起浏览器：推送前靠测试文件里的 playwright import 认出它要起浏览器、只交给 CI。')
+  }
   let opened
   let close
   // close 在起服第一步就交出来：构建余量用完、beforeAll 被判超时时，afterAll 照样能关掉已经起来的服务和浏览器。
@@ -57,7 +67,7 @@ export function useBrowserFixture(options) {
   }
 }
 
-async function openBrowserFixture({ entries, plugins = [], ready }, exposeClose) {
+async function openBrowserFixture({ entries, browserType, plugins = [], ready }, exposeClose) {
   if (!Array.isArray(entries) || entries.length === 0) throw new Error('useBrowserFixture：entries 至少要有一张入口页')
   for (const entry of entries) {
     if (typeof entry !== 'string' || entry.includes('?') || !fs.existsSync(path.join(repoRoot, entry))) {
@@ -95,7 +105,7 @@ async function openBrowserFixture({ entries, plugins = [], ready }, exposeClose)
   await own(() => server.close())
   await server.listen()
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`
-  const browser = await chromium.launch({ headless: true })
+  const browser = await browserType.launch({ headless: true })
   await own(() => browser.close())
   // 一次性上下文：和用例的页面不共用存储，夹具在这里跑过一遍不会把状态留给用例。
   // 这里的等待不另设上限（timeout: 0），只受上面那份构建余量约束——一份安全网，不叠第二份。

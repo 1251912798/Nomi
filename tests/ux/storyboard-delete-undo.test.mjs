@@ -1,6 +1,7 @@
 // Real original editor in Chromium; persistence/host ports are controlled, not Electron acceptance.
 import { test } from 'vitest'
 import { expect } from '@playwright/test'
+import { chromium } from 'playwright'
 import { assertTailwindApplied, freshTailwindCss } from './_freshTailwindCss.mjs'
 import { useBrowserFixture } from './_browserFixture.mjs'
 
@@ -8,7 +9,7 @@ import { useBrowserFixture } from './_browserFixture.mjs'
 freshTailwindCss()
 const HARNESS = 'tests/ux/fixtures/original-storyboard-editor-harness.html'
 // Build and mount the real fixture under setup's existing budget. Scenario timeouts measure interactions.
-const fixture = useBrowserFixture({ entries: [HARNESS], ready: '[data-storyboard-editor]' })
+const fixture = useBrowserFixture({ entries: [HARNESS], browserType: chromium, ready: '[data-storyboard-editor]' })
 for (const scenario of ['redo', 'consumed', 'hidden', 'later-edit', 'outside', 'input', 'ordinary', 'immediate', 'generated-immediate']) test(`storyboard deletion Undo: ${scenario}`, async () => {
   const page = await fixture.browser.newPage({ viewport: { width: 1280, height: 1000 } })
   page.setDefaultTimeout(5000)

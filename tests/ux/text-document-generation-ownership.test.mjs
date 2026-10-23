@@ -1,6 +1,7 @@
 // Real Chromium, original TextDocumentNode/ProseMirror and generation action; controlled supplier/storage, not Electron acceptance.
 import { expect, test } from 'vitest'
 import { expect as browserExpect } from '@playwright/test'
+import { chromium } from 'playwright'
 import { useBrowserFixture } from './_browserFixture.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { assertTailwindApplied, freshTailwindCss } from './_freshTailwindCss.mjs'
@@ -10,7 +11,7 @@ freshTailwindCss()
 
 const ENTRY = 'tests/ux/fixtures/text-document-generation-ownership.html'
 // 夹具页在准备阶段编完（_browserFixture.mjs）：用例里的 goto 只是执行页面，不再在 15 秒的操作预算里等开发服务冷编译。
-const fixture = useBrowserFixture({ entries: [ENTRY] })
+const fixture = useBrowserFixture({ entries: [ENTRY], browserType: chromium })
 
 test('selection rewrite persists its actual result body, reopens without replay, and rejects later manual edits', async () => {
   const page = await fixture.browser.newPage()

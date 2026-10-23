@@ -1,11 +1,12 @@
 // Controlled browser component behavior; not Electron/package acceptance.
 import { test } from 'vitest'
 import { expect } from '@playwright/test'
+import { chromium } from 'playwright'
 import { expectAbsent, proveProbe } from './_assert.mjs'
 import { useBrowserFixture } from './_browserFixture.mjs'
 
 const ENTRY = 'tests/ux/fixtures/creation-sidebar-delete-harness.html'
-const fixture = useBrowserFixture({ entries: [ENTRY] })
+const fixture = useBrowserFixture({ entries: [ENTRY], browserType: chromium })
 test('sidebar deletes a plan at once (undo is the net) and still confirms document deletion', async () => {
   const page = await fixture.browser.newPage()
   try {

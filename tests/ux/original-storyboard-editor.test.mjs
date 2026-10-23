@@ -1,5 +1,6 @@
 import { test } from 'vitest'
 import { expect } from '@playwright/test'
+import { chromium } from 'playwright'
 import fs from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -9,7 +10,7 @@ import { useBrowserFixture } from './_browserFixture.mjs'
 // 现编一次 Tailwind（收集阶段做完，不占用例自己的超时），后面各用例复用。
 freshTailwindCss()
 const HARNESS = 'tests/ux/fixtures/original-storyboard-editor-harness.html'
-const fixture = useBrowserFixture({ entries: [HARNESS] })
+const fixture = useBrowserFixture({ entries: [HARNESS], browserType: chromium })
 
 for (const locale of ['zh-CN', 'en']) for (const media of ['image', 'video']) test(`original storyboard ${locale}/${media} keeps loaded-model controls clickable at the established collapsed-sidebar editor width`, async () => {
   const en = locale === 'en'

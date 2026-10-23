@@ -3,12 +3,13 @@
 // 走真编辑器（harness 里是真 StoryboardPlanEditor + 真项目记录 store）：勾镜 → 点入口 → 看常驻 Agent 引用里确实挂上了这一镜。
 import { test } from 'vitest'
 import { expect } from '@playwright/test'
+import { chromium } from 'playwright'
 import { assertTailwindApplied, freshTailwindCss } from './_freshTailwindCss.mjs'
 import { useBrowserFixture } from './_browserFixture.mjs'
 
 freshTailwindCss()
 const HARNESS = 'tests/ux/fixtures/original-storyboard-editor-harness.html'
-const fixture = useBrowserFixture({ entries: [HARNESS] })
+const fixture = useBrowserFixture({ entries: [HARNESS], browserType: chromium })
 
 const ENTRIES = [
   { name: '页脚入口', select: true, click: (page) => page.locator('[data-storyboard-agent-handoff="footer"]').click() },

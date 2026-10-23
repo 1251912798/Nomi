@@ -28,7 +28,8 @@
     "tests/ux/spend-panel-write-ownership.test.mjs",
     "tests/ux/storyboard-agent-handoff.test.mjs",
     "tests/ux/storyboard-delete-undo.test.mjs",
-    "tests/ux/storyboard-popover-keyboard.test.mjs"
+    "tests/ux/storyboard-popover-keyboard.test.mjs",
+    "tests/ux/_browserFixture.test.mjs"
   ],
   "entry_points": [
     "vitest 车道里的浏览器夹具测试：beforeAll / 用例体里 createServer 起 vite + chromium.launch + page.goto(夹具页)",
@@ -59,7 +60,8 @@
     "依赖扫描只认本测试要打开的入口页（optimizeDeps.entries）",
     "每个入口页在准备阶段编完（一次性上下文里 load 事件，可选 ready 选择器可见）后用例才导航；url() 拒绝没登记的入口页",
     "冷编译只受一份构建余量 FIXTURE_BUILD_BUDGET_MS 约束；用例里的操作预算不再包含冷编译，散在各测试里的 90 / 120 / 240 秒同提交删掉",
-    "测试需要的编辑器选区经编辑器自己的选区命令落下（同步写进屏幕选区和节点 meta），不在 ProseMirror 聚焦收尾窗口里用原生按键挪选区"
+    "测试需要的编辑器选区经编辑器自己的选区命令落下（同步写进屏幕选区和节点 meta），不在 ProseMirror 聚焦收尾窗口里用原生按键挪选区",
+    "共享夹具不替测试起浏览器：浏览器类型由调用方传入（browserType 必填，缺了在登记钩子之前当场抛错），夹具源码里没有 playwright 的运行时 import；每个经夹具起服的测试文件自己 import playwright，推送前识别起浏览器测试的信号（测试本文件 import playwright）照旧成立"
   ],
   "doors": [
     {
@@ -76,6 +78,11 @@
       "kind": "write",
       "path": "tests/ux/reference-row-alignment.test.mjs",
       "symbol": "createServer"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/_browserFixture.test.mjs",
+      "symbol": "useBrowserFixture"
     },
     {
       "kind": "read",
@@ -130,10 +137,10 @@
   ],
   "door_reduction": {
     "before": 12,
-    "after": 13,
-    "why_not": "门表由 node scripts/door-map.mjs createServer / useBrowserFixture --roots=tests --include-tests 生成（vitest 车道部分）。修之前是 12 扇各自起服的写门（每个测试一份 createServer）；修之后起服的写门只剩 3 扇：唯一主人 _browserFixture.mjs，加两份用应用 vite.config 的存量（设计实验室的屏按查询串懒加载，迁过去要 helper 支持应用配置和「屏就绪」判据，调用处显式豁免并写明迁移前提，已交协调另立账）。另外 10 扇是读门：每个测试文件各自登记自己的夹具入口页，入口页不同、不能合并，它们都不再自己起服、扫描或计时冷编译。"
+    "after": 14,
+    "why_not": "门表由 node scripts/door-map.mjs createServer --roots=tests --include-tests 与 node scripts/door-map.mjs useBrowserFixture --read=useBrowserFixture --roots=tests --include-tests 生成（vitest 车道部分）。修之前是 12 扇各自起服的写门（每个测试一份 createServer）；修之后起服的写门只剩 3 扇：唯一主人 _browserFixture.mjs，加两份用应用 vite.config 的存量（设计实验室的屏按查询串懒加载，迁过去要 helper 支持应用配置和「屏就绪」判据，调用处显式豁免并写明迁移前提，已交协调另立账）。另外 11 扇是读门：10 个测试文件各自登记自己的夹具入口页、自己传入浏览器类型，入口页不同、不能合并，它们都不再自己起服、扫描或计时冷编译；1 扇是夹具自己的合同测试（只核缺 browserType 当场抛错，不起服）。"
   },
-  "generality_proof": "两条机制都收在共享边界上：① 起服、限定依赖扫描、准备阶段编完、构建余量都只在 useBrowserFixture 一处；ESLint 规则 browser-fixture/no-restricted-imports + browser-fixture/no-restricted-syntax 在 tests/**/*.test.* 里拦一切直接起 vite（具名、改名、命名空间导入、动态 import('vite')），所以新测试只能经这个主人，冷编译回不到用例的操作预算里；url() 只给登记过的入口页，导航到没编过的页面当场抛错。② 选区改走编辑器命令后不再有「原生选区等异步 selectionchange」这一步，ProseMirror 聚焦收尾定时器到点时屏幕选区与它记得的一致，什么也不改；这与机器快慢无关。",
+  "generality_proof": "两条机制都收在共享边界上：① 起服、限定依赖扫描、准备阶段编完、构建余量都只在 useBrowserFixture 一处；ESLint 规则 browser-fixture/no-restricted-imports + browser-fixture/no-restricted-syntax 在 tests/**/*.test.* 里拦一切直接起 vite（具名、改名、命名空间导入、动态 import('vite')），所以新测试只能经这个主人，冷编译回不到用例的操作预算里；url() 只给登记过的入口页，导航到没编过的页面当场抛错。② 选区改走编辑器命令后不再有「原生选区等异步 selectionchange」这一步，ProseMirror 聚焦收尾定时器到点时屏幕选区与它记得的一致，什么也不改；这与机器快慢无关。③ 起浏览器的信号也收在同一个边界上：夹具结构上没法背着调用方起浏览器（不 import playwright 的启动器，browserType 必填），所以任何经夹具起服的测试都得自己 import playwright，推送前的识别器不用改就认得出；tests/ux/_browserFixture.test.mjs 普查每个调用 useBrowserFixture( 的测试 startsBrowser 为 true、夹具源码自己为 false。",
   "shared_boundaries": [
     {
       "path": "tests/ux/_browserFixture.mjs",
@@ -208,6 +215,12 @@
       "evidence": "受控端口插件经 useBrowserFixture({ plugins }) 传入同一个主人；beforeEach 的 goto 只执行页面"
     },
     {
+      "path": "scripts/pre-push-related-tests.mjs",
+      "entry_point": "startsBrowser（推送前相关单测的起浏览器识别）",
+      "disposition": "enforced",
+      "evidence": "识别器一字未改：它认「测试文件自己 import playwright」。夹具第一版自己 import playwright，信号被夹具带走，10 个夹具测试被划进推送前的 vitest 车道（本机 gates 的 check:claude-hooks 两条必红）；现在夹具不起浏览器、browserType 由调用方传入，10 个测试文件自己 import playwright。全仓 2265 个测试文件按 17fd1dfa1 与现在两版比，起浏览器的都是 14 个、一个不差；tests/ux/_browserFixture.test.mjs 普查每个调用 useBrowserFixture( 的测试 startsBrowser 为 true（迁错一个就红）"
+    },
+    {
       "path": "tests/ux/design-lab-creation-ai-rewrite.walk.mjs",
       "entry_point": "selectParagraph",
       "disposition": "not-affected",
@@ -221,7 +234,8 @@
       "node scripts/door-map.mjs createServer --roots=tests --include-tests：73 扇（含 net/http 服务与走查），其中 vitest 车道起 vite 的 12 个 *.test.mjs；修后 64 扇，vitest 车道只剩 _browserFixture.mjs 与 2 份豁免的存量",
       "git grep -n \"from 'vite'\" tests | grep .test.mjs：12 个文件，全部是 createServer",
       "git grep -n \"timeout: 90\\|120000\\|240000\\|90_000\\|120_000\" tests/ux/*.test.mjs：storyboard-agent-handoff / storyboard-popover-keyboard / selection-drag-lifecycle / asset-tile-badges-visible / reference-row-alignment 都是为冷编译调大的",
-      "git grep -n \"Shift+Arrow\\|selectText()\\|ControlOrMeta+a\" tests evals scripts：vitest 车道只有本测试在聚焦后用原生按键挪选区；走查里 _creationAiRewriteSteps.mjs（先打字已聚焦）与 design-lab-creation-ai-rewrite.walk.mjs（selectText + 等 state.selection）记录在报告里"
+      "git grep -n \"Shift+Arrow\\|selectText()\\|ControlOrMeta+a\" tests evals scripts：vitest 车道只有本测试在聚焦后用原生按键挪选区；走查里 _creationAiRewriteSteps.mjs（先打字已聚焦）与 design-lab-creation-ai-rewrite.walk.mjs（selectText + 等 state.selection）记录在报告里",
+      "推送前识别（scripts/pre-push-related-tests.mjs 的 startsBrowser）按全仓测试文件逐个判：17fd1dfa1 起浏览器的 14 个；第一版夹具（d1dcacedb，夹具自己 import playwright）时只剩 4 个，丢的正是迁过去的 10 个；改成 browserType 由调用方传入后回到 14 个、一个不差"
     ]
   },
   "prevention": {
@@ -230,7 +244,7 @@
     "invariant": "vitest 车道测试文件不直接起 vite 开发服务；起服、扫描范围、准备阶段编完、构建余量只归 useBrowserFixture",
     "failure_mode": "lint:ci / lint:changed 报 browser-fixture/no-restricted-imports 或 browser-fixture/no-restricted-syntax（error），指向 useBrowserFixture；两份存量的豁免注释在迁走后变成没用的豁免，ESLint 照样报出来",
     "exception_policy": "none",
-    "strategy": "共享主人 + 现成的 ESLint 内置规则（不往自写门岗族 scripts/check-*.mjs 里再加一条）：新写法只能经 useBrowserFixture；两份应用配置的存量在调用处显式豁免并写明迁移前提；scripts/eslint-script-coverage.test.mjs 按代表路径核四种起服写法与三种不归它管的文件",
+    "strategy": "共享主人 + 现成的 ESLint 内置规则（不往自写门岗族 scripts/check-*.mjs 里再加一条）：新写法只能经 useBrowserFixture；两份应用配置的存量在调用处显式豁免并写明迁移前提；scripts/eslint-script-coverage.test.mjs 按代表路径核四种起服写法与三种不归它管的文件；夹具不替测试起浏览器（browserType 由调用方传入），推送前识别起浏览器测试的信号留在测试文件里，普查在 tests/ux/_browserFixture.test.mjs",
     "artifacts": [
       "eslint.config.mjs",
       "tests/ux/_browserFixture.mjs"
@@ -247,11 +261,13 @@
     "tests/ux/storyboard-delete-undo.test.mjs",
     "tests/ux/composerLifecycle.test.mjs",
     "tests/ux/anchored-popover-focus.test.mjs",
-    "tests/ux/spend-panel-write-ownership.test.mjs"
+    "tests/ux/spend-panel-write-ownership.test.mjs",
+    "tests/ux/_browserFixture.test.mjs"
   ],
   "class_regression_tests": [
     "scripts/eslint-script-coverage.test.mjs",
-    "tests/ux/text-document-generation-ownership.test.mjs"
+    "tests/ux/text-document-generation-ownership.test.mjs",
+    "tests/ux/_browserFixture.test.mjs"
   ],
   "legacy_paths": {
     "status": "removed",
@@ -280,14 +296,16 @@
     "asset-tile-badges-visible / reference-row-alignment 仍在用例里冷编译设计实验室（goto 90 秒），调用处带 ESLint 豁免；迁移要 useBrowserFixture 先支持应用配置和「屏就绪」判据",
     "走查 / e2e 车道里的 createServer（约 50 扇）仍在 goto 里冷编译，按 stationTimeout 预算；不在本次范围",
     "原生键盘在编辑器刚聚焦时改选区这一类，真人反应时间够不到 20 毫秒窗口，但主线程被长任务卡住时（大画布点选节点后立刻 Shift+方向键）理论上同样会被 ProseMirror 吃掉一次；属上游行为，未修，只记录",
-    "夹具渲染 TextDocumentNode 时没有 ReactFlowProvider，聚焦时格式条（FloatingToolbarShell）抛错进它自己的错误边界、控制台有报错；测试没覆盖真实聚焦态的格式条，已列给协调"
+    "夹具渲染 TextDocumentNode 时没有 ReactFlowProvider，聚焦时格式条（FloatingToolbarShell）抛错进它自己的错误边界、控制台有报错；测试没覆盖真实聚焦态的格式条，已列给协调",
+    "另写一个自己 import playwright 起浏览器的 helper 给 vitest 测试用，推送前的识别器仍看不见（测试文件里没有 playwright 的 import）；普查只盯 useBrowserFixture 的调用者。普查用 git grep 列调用者，扫描型守卫识别器（scripts/lib/scanGuardDetect.mjs）不认 gitPaths 这种列路径的统一入口，所以它在推送前只随夹具 / 识别器的改动被挑中，新增调用者由 CI 普查兜底"
   ],
   "invariant_owner_layer": {
     "layer": "tests/ux/_browserFixture.mjs",
     "tests": [
       "scripts/eslint-script-coverage.test.mjs",
-      "tests/ux/text-document-generation-ownership.test.mjs"
+      "tests/ux/text-document-generation-ownership.test.mjs",
+      "tests/ux/_browserFixture.test.mjs"
     ],
-    "why": "起服、扫描范围、准备阶段编完与构建余量只在 useBrowserFixture 一处；ESLint 规则的代表路径测试钉住「直接起服」的各种写法与不归它管的文件，本测试是在忙机条件下证这两条机制的类级回归。"
+    "why": "起服、扫描范围、准备阶段编完与构建余量只在 useBrowserFixture 一处；ESLint 规则的代表路径测试钉住「直接起服」的各种写法与不归它管的文件，本测试是在忙机条件下证这两条机制的类级回归。tests/ux/_browserFixture.test.mjs 钉住夹具不替测试起浏览器、缺 browserType 当场抛错，并普查每个调用者在推送前被认作起浏览器的测试。"
   }
 }

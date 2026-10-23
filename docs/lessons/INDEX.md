@@ -115,7 +115,7 @@
 - [文档级对照拦不住代码级硬写](doc-level-conformance-misses-field-level-hardcoding.md) — 刚交完四列表/逐层对照就想说「这个框架接好了」；框架某个字段逐项可选而我们对所有实例写了同一个值，两份文档都看不见（字段裁决要机器化、门岗不许绑死某个框架）
 - [参考实现不拆开逐层对照 = 没研究](reference-implementation-not-dissected-is-not-research.md) — 上一条的第二半：四列表只覆盖「已经想到的能力」，照不出「压根没想到还有这一层」；框架自带 coding agent/官方 example 必须按九层拆开并排，判定 `一致`/`有意不同(理由须是领域约束)`/`没想到`，「没想到」清单是实施阶段前置门
 - [写死的墙钟上限会在工作量长大时把 CI 砍在半路](fixed-wall-clock-caps-break-when-work-grows.md) — `exceeded <N>ms and was terminated` 而每条断言都有结果 = 进程被砍不是断言红；上限要从「有多少活」派生，别把 20 改成 40
-- [夹具页的第一次 goto 是一次冷编译，不是一次界面操作](fixture-first-goto-is-a-cold-build.md) — ✅ 已固化（`useBrowserFixture` + ESLint `browser-fixture/no-restricted-imports`）；浏览器夹具测试 goto / 钩子超时、单跑能过、想把 goto 调到 90 秒时读
+- [夹具页的第一次 goto 是一次冷编译，不是一次界面操作](fixture-first-goto-is-a-cold-build.md) — ✅ 已固化（`useBrowserFixture` + ESLint `browser-fixture/no-restricted-imports` + 夹具合同测试）；浏览器夹具测试 goto / 钩子超时、单跑能过、想把 goto 调到 90 秒时读；共享 helper 想自己起浏览器时也读（浏览器由调用方传入）
 - [机器速度的键盘选区，会被 ProseMirror 的聚焦收尾吃掉](prosemirror-focus-restore-eats-robot-speed-selection.md) — 点进编辑器立刻按方向键 / Shift+方向键，忙机上选区变空、变全选或偏几个字；测试要选区就用编辑器命令落下
 - [门岗的 scope 指到不存在的目录，会安静地报绿](gate-scope-pointing-nowhere-passes-silently.md) — 依赖「登记表+scope+禁令」式门岗、刚搬过目录、或在给新禁令做阳性对照时；附「探针写成注释会被 stripComments 吃掉」一坑
 

@@ -1,8 +1,9 @@
 import { beforeAll, expect, it } from 'vitest'
+import { chromium } from 'playwright'
 import { expectAbsent, proveProbe } from './_assert.mjs'
 import { useBrowserFixture } from './_browserFixture.mjs'
 const ENTRY = 'tests/ux/fixtures/composer-lifecycle-harness.html'
-const fixture = useBrowserFixture({ entries: [ENTRY] })
+const fixture = useBrowserFixture({ entries: [ENTRY], browserType: chromium })
 let page
 beforeAll(async () => {
   page = await fixture.browser.newPage()

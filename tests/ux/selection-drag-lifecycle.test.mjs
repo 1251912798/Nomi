@@ -1,9 +1,10 @@
 import { beforeAll, beforeEach, expect, it } from 'vitest'
+import { chromium } from 'playwright'
 import { useBrowserFixture } from './_browserFixture.mjs'
 
 const ENTRY = 'tests/ux/fixtures/selection-drag-lifecycle-harness.html'
 // 冷启动（vite 首次转译整棵画布 store）在准备阶段由 _browserFixture.mjs 编完，每个用例前的 goto 只是执行页面。
-const fixture = useBrowserFixture({ entries: [ENTRY], ready: '#group' })
+const fixture = useBrowserFixture({ entries: [ENTRY], browserType: chromium, ready: '#group' })
 let page
 beforeAll(async () => { page = await fixture.browser.newPage() })
 beforeEach(async () => {

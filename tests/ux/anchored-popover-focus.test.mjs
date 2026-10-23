@@ -4,11 +4,12 @@
 // 独立验收 L-acc-opus-20261023 应修 1：标记只置真不复位时，后三条的焦点都落在 BODY。按清单遍历，多一种关法就加一行。
 import { test } from 'vitest'
 import { expect } from '@playwright/test'
+import { chromium } from 'playwright'
 import { expectAbsent, proveProbe } from './_assert.mjs'
 import { useBrowserFixture } from './_browserFixture.mjs'
 
 const ENTRY = 'tests/ux/fixtures/anchored-popover-focus-harness.html'
-const fixture = useBrowserFixture({ entries: [ENTRY] })
+const fixture = useBrowserFixture({ entries: [ENTRY], browserType: chromium })
 
 const POPOVER = '[data-focus-popover]'
 const TRIGGER = '[data-focus-trigger]'

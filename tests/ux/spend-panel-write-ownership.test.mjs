@@ -1,6 +1,7 @@
 import { proveProbe, expectAbsent } from './_assert.mjs'
 // Host integration, not live-provider/Electron acceptance. Only environment ports are replaced.
 import { beforeEach, expect, it } from 'vitest'
+import { chromium } from 'playwright'
 import { zhAgentPanelV4 } from '../../src/i18n/locales/agentPanelV4.ts'
 import { useBrowserFixture } from './_browserFixture.mjs'
 const ENTRY = 'tests/ux/fixtures/spend-panel-write-ownership-harness.html'
@@ -14,7 +15,7 @@ const ports = {
   generationCanvasStore: `export const useGenerationCanvasStore = Object.assign(selector => selector({ nodes: window.spendOwnership.nodes, edges: window.spendOwnership.edges, updateNode() { throw new Error('canvas write forbidden') } }), { getState: () => ({ nodes: window.spendOwnership.nodes, edges: window.spendOwnership.edges }) });`,
   assetUploadApi: `export const importWorkbenchLocalAssetFile = (...args) => window.spendOwnership.upload(...args);`,
 }
-const fixture = useBrowserFixture({ entries: [ENTRY], plugins: [{ name: 'controlled-panel-environment', enforce: 'pre',
+const fixture = useBrowserFixture({ entries: [ENTRY], browserType: chromium, plugins: [{ name: 'controlled-panel-environment', enforce: 'pre',
   resolveId(source, importer) {
     if (!importer || !/\/(useAgentPanelSpendConfirm|useNodeAssetDrop|nodeWriteAccess)\.ts$/.test(importer)) return
     const name = source.split('/').at(-1)

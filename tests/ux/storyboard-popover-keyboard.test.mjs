@@ -4,13 +4,14 @@
 // 清单少一项 = 有一个 Portal 弹层没有被盯着；多接一个弹层就往清单里加一行。
 import { test } from 'vitest'
 import { expect } from '@playwright/test'
+import { chromium } from 'playwright'
 import { assertTailwindApplied, freshTailwindCss } from './_freshTailwindCss.mjs'
 import { useBrowserFixture } from './_browserFixture.mjs'
 
 // 现编一次 Tailwind（收集阶段做完，不占用例自己的超时），后面各用例复用。
 freshTailwindCss()
 const HARNESS = 'tests/ux/fixtures/original-storyboard-editor-harness.html'
-const fixture = useBrowserFixture({ entries: [HARNESS] })
+const fixture = useBrowserFixture({ entries: [HARNESS], browserType: chromium })
 
 const POPOVERS = [
   {
