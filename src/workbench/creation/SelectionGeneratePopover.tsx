@@ -53,6 +53,8 @@ function resolveSelectionPosition(editor: Editor, root: HTMLElement | null): Sel
   // 上方放得下的判据是「正文区」的上沿，不是整个编辑器：编辑器顶上还有一排格式工具栏，
   // 以整个编辑器为界时，选中第一行的浮条会盖在工具栏上，工具栏那几颗钮就点不到了（2026-10-23 用户实测「代码钮没反应」）。
   const contentTop = (root.querySelector('.workbench-editor__scroll')?.getBoundingClientRect().top ?? rootRect.top) - rootRect.top
+  // 选区整段滚出正文可视区：浮条不跟着钉在边上（看不见选区还留着一条浮条），等滚回来再出。
+  if (selectionBottom - rootRect.top <= contentTop || selectionTop >= rootRect.bottom) return null
   const topPlacementTop = selectionTop - rootRect.top - POPOVER_HEIGHT - POPOVER_OFFSET
   if (topPlacementTop >= contentTop + 8) {
     return { left, top: topPlacementTop, placement: 'top' }

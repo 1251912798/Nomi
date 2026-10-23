@@ -36,7 +36,7 @@
 
 ### 4. 靶子独立性检查
 
-- 尺子是用户实测 + 本线新写的真机走查；走查在修前构建上 3/10、修后 10/10（zh / en 两轨），截图本线逐张读过。修前失败点与用户描述一一对应（「⋯」不收、节点格式条点不到、按下态不变、悬停无提示）。
+- 尺子是用户实测 + 本线新写的真机走查；走查在修前构建（cad909708）上 1/10、只含第一个提交的中间构建上 3/10、修后 10/10（zh / en 两轨），截图本线逐张读过。修前失败点与用户描述一一对应（「⋯」不收、节点格式条点不到、按下态不变、悬停无提示）。
 - 没有「修对了反而掉分」：打字性能同机对照修前 15.2 / 16.3ms、修后 16.1 / 16.6ms（预算 50ms）。
 
 ### 5. P0：这些是我们独有的吗？现成方案有哪些
@@ -59,7 +59,7 @@
 
 ## 特征测试清单（动结构前先锁住）
 
-- 修前现状：真机走查 `tests/ux/outside-press-and-text-format.walk.mjs` 在修前构建上 3/10（失败截图见 PR）；修后 10/10。
+- 修前现状：真机走查 `tests/ux/outside-press-and-text-format.walk.mjs` 在修前构建（cad909708）上 1/10（`docs/evidence/2026-10-23-rich-text-controls/walk-before-zh-CN.json` 与 before-*.png）；修后 10/10。
 - `src/design/outsidePress.structure.test.ts`（类 A 普查，已验证对修前源码会红：AnchoredPopover / TaskCenterPanel 的 mousedown、AssetLibraryPanel 的冒泡 pointerdown）。
 - `src/workbench/common/richTextActions.structure.test.ts`（类 B 普查）。
 - 性能：`canvas-text-node-typing`（新登记）、`document-long-typing`（复跑）。

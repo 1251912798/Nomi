@@ -186,15 +186,13 @@ function BaseGenerationNodeImpl({
   const { handlePanoramaFileChange, handlePanoramaScreenshot } = useNodePanoramaHandlers(node, visualSize, reportFeedback)
   const artifactSlots = useArtifactNodeSlots(node, { reportFeedback, selected, isMultiSelectActive, readOnly }) // 手艺产物的正文/浮条归 artifact 目录
 
-  // 图片本地编辑（切图 / 裁剪 / 旋转翻转）—— A1.5 抽进 useNodeImageEditing。
-  // 图片类与素材类共用；编辑产物进入当前节点历史堆叠，并切换为主图。
+  // 图片本地编辑（切图 / 裁剪 / 旋转翻转，A1.5 抽进 useNodeImageEditing）：图片类与素材类共用，编辑产物进当前节点历史堆叠并切为主图。
   const imageEditing = useNodeImageEditing(node, visualSize, reportFeedback)
   // 面板挂载走可打断的低优先级渲染（按下即选中时同步挂面板，拖动起手实测顿 70–95 ms）：高亮与拖动先出，面板随后到，取消选中立即卸载。
   // 版本宫格铺开时不挂生成浮框（V-1054）：浮框钉在节点正下方、定宽 560，会盖住宫格下面几行；铺开 = 正在挑版本，
   // 和 09-21 结果托盘展开时卸载浮框是同一条约定（不挂才不跑）。收起宫格浮框就回来。
   const whiteboardOpen = useWhiteboardSession((state) => state.nodeId === node.id) && !readOnly
-  // 文本节点正文在编辑：格式条顶替节点浮条（和白板编辑条同一个做法），两条不叠在节点上方。
-  const [textEditing, setTextEditing] = React.useState(false)
+  const [textEditing, setTextEditing] = React.useState(false) // 文本正文在编辑：格式条顶替节点浮条（同白板编辑条），两条不叠
   const versionGridOpen = showVersionCards && Boolean(node.resultStackOpen)
   const attachedPanelOpen = useHasNodeAttachedPanel(node.id) // 贴着本节点的面板（剪辑面板……）开着时生成面板收起，规矩在 nodeAttachedPanel
   const composerWanted = selected && !isMultiSelectActive && !readOnly && !versionGridOpen && !attachedPanelOpen && nodeHasGenerationComposer(node.kind)

@@ -9,14 +9,17 @@ import { describe, expect, it } from 'vitest'
 // 合同：「点外面」只有一种听法——src/design/outsidePress.ts 的 listenOutsidePress（document 上 pointerdown 捕获阶段）。
 //   ① 不许在 document / window 上听 mousedown / touchstart（d3 必吃）；
 //   ② 不许用 Mantine 的 useClickOutside（它听的就是 document 冒泡的 mousedown + touchstart）；
-//   ③ document / window 上冒泡阶段的 pointerdown 只许减不许增：下面三处没有「点在自己身上」的判据，
+//   ③ document / window 上冒泡阶段的 pointerdown / click 只许减不许增：下面四处没有「点在自己身上」的判据，
 //      靠菜单自己 stopPropagation 撑着不被关，换成捕获会让菜单项点不动，要先补判据才能迁。
+// 识别不看处理器怎么写（具名 / 内联箭头 / function），收件方认 document、window、ownerDocument，Mantine 的 useWindowEvent 同样算
+// （独立验收 L-acc-sonnet-20261023 发现 3：只认具名处理器时，这几种写法都能溜过去）。
 const stripComments = (source: string): string => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 const OWNER = 'src/design/outsidePress.ts'
-const BUBBLE_POINTERDOWN_BASELINE: Record<string, number> = {
+const BUBBLE_PRESS_BASELINE: Record<string, number> = {
   'src/workbench/creation/DocumentListSidebar.tsx': 1,
   'src/workbench/generationCanvas/reactFlow/useGenerationCanvasReactFlowMenus.ts': 1,
   'src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSelectionActions.ts': 1,
+  'src/workbench/sidebar/CategoryTree.tsx': 1,
 }
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -29,33 +32,88 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 const sources = walk(resolve(process.cwd(), 'src')).map((file) => ({ file: relative(process.cwd(), file).split('\\').join('/'), code: stripComments(readFileSync(file, 'utf8')) }))
-const PRESS_LISTENER = /\b(?:document|window)\.addEventListener\(\s*['"](mousedown|touchstart|pointerdown)['"]\s*,\s*[\w.]+\s*(,[^)]*)?\)/g
+
+type PressListener = { file: string, event: string, capture: boolean }
+const PRESS_EVENTS = 'mousedown|touchstart|pointerdown|click'
+const ADD_LISTENER = new RegExp(`\\b(?:document|window|ownerDocument)\\s*\\??\\.addEventListener\\(\\s*['"](${PRESS_EVENTS})['"]`, 'g')
+const WINDOW_EVENT_HOOK = new RegExp(`\\buseWindowEvent\\(\\s*['"](${PRESS_EVENTS})['"]`, 'g')
+
+/** 从 `(` 起数括号，取整个调用的参数文本（处理器写成内联函数时，捕获参数在函数体后面）。 */
+function callArguments(code: string, openParen: number): string {
+  let depth = 0
+  for (let index = openParen; index < code.length; index += 1) {
+    const char = code[index]
+    if (char === '(') depth += 1
+    else if (char === ')') {
+      depth -= 1
+      if (depth === 0) return code.slice(openParen + 1, index)
+    }
+  }
+  return code.slice(openParen + 1)
+}
+
+/** 最后一个顶层参数（捕获参数：`true` 或 `{ capture: true }`）。 */
+function lastTopLevelArgument(args: string): string {
+  let depth = 0
+  let start = 0
+  for (let index = 0; index < args.length; index += 1) {
+    const char = args[index]
+    if ('([{'.includes(char)) depth += 1
+    else if (')]}'.includes(char)) depth -= 1
+    else if (char === ',' && depth === 0) start = index + 1
+  }
+  return args.slice(start).trim()
+}
+
+function pressListeners(file: string, code: string): PressListener[] {
+  const found: PressListener[] = []
+  for (const match of code.matchAll(ADD_LISTENER)) {
+    const openParen = (match.index ?? 0) + match[0].indexOf('(')
+    const args = callArguments(code, openParen)
+    const last = lastTopLevelArgument(args)
+    found.push({ file, event: match[1], capture: /^true$|capture\s*:\s*true/.test(last) })
+  }
+  // useWindowEvent 只能挂冒泡阶段。
+  for (const match of code.matchAll(WINDOW_EVENT_HOOK)) found.push({ file, event: match[1], capture: false })
+  return found
+}
+
+const listeners = sources.flatMap(({ file, code }) => pressListeners(file, code))
 
 describe('「点外面就收」只有一种听法', () => {
+  it('识别器认得出各种写法（反例自检）', () => {
+    const probe = [
+      "document.addEventListener('mousedown', (event) => { if (x) close() })",
+      "window.addEventListener('click', function close() { setOpen(false) })",
+      "node.ownerDocument.addEventListener('touchstart', handler)",
+      "useWindowEvent('mousedown', () => close())",
+      "document.addEventListener('pointerdown', (event) => { close(event) }, { capture: true })",
+      "document.addEventListener('pointerdown', onDown)",
+    ].join('\n')
+    expect(pressListeners('probe', probe).map(({ event, capture }) => `${event}:${capture}`)).toEqual([
+      'mousedown:false', 'click:false', 'touchstart:false', 'pointerdown:true', 'pointerdown:false', 'mousedown:false',
+    ])
+  })
+
   it('document / window 上没有 mousedown / touchstart 监听', () => {
-    const offenders = sources.flatMap(({ file, code }) => [...code.matchAll(PRESS_LISTENER)].filter((match) => match[1] !== 'pointerdown').map(() => file))
-    expect(offenders).toEqual([])
+    expect(listeners.filter(({ event }) => event === 'mousedown' || event === 'touchstart').map(({ file, event }) => `${file} ${event}`)).toEqual([])
   })
 
   it('不用 Mantine 的 useClickOutside', () => {
     expect(sources.filter(({ code }) => /import[^;]*\buseClickOutside\b[^;]*from\s*['"]@mantine\/hooks['"]/.test(code)).map(({ file }) => file)).toEqual([])
   })
 
-  it('冒泡阶段的 pointerdown 只许减不许增', () => {
+  it('冒泡阶段的 pointerdown / click 只许减不许增', () => {
     const counts: Record<string, number> = {}
-    for (const { file, code } of sources) {
-      for (const match of code.matchAll(PRESS_LISTENER)) {
-        const options = match[2] ?? ''
-        if (match[1] !== 'pointerdown' || /\btrue\b|capture:\s*true/.test(options)) continue
-        counts[file] = (counts[file] ?? 0) + 1
-      }
+    for (const { file, event, capture } of listeners) {
+      if ((event !== 'pointerdown' && event !== 'click') || capture) continue
+      counts[file] = (counts[file] ?? 0) + 1
     }
-    for (const [file, count] of Object.entries(counts)) expect({ file, count }).toEqual({ file, count: Math.min(count, BUBBLE_POINTERDOWN_BASELINE[file] ?? 0) })
+    for (const [file, count] of Object.entries(counts)) expect({ file, count }).toEqual({ file, count: Math.min(count, BUBBLE_PRESS_BASELINE[file] ?? 0) })
   })
 
   it('owner 听的是 document 上捕获阶段的 pointerdown', () => {
-    const owner = sources.find(({ file }) => file === OWNER)?.code ?? ''
-    expect(owner).toMatch(/document\.addEventListener\('pointerdown',\s*\w+,\s*true\)/)
-    expect(owner).toMatch(/document\.removeEventListener\('pointerdown',\s*\w+,\s*true\)/)
+    const owner = listeners.filter(({ file }) => file === OWNER)
+    expect(owner).toEqual([{ file: OWNER, event: 'pointerdown', capture: true }])
   })
 })

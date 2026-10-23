@@ -90,7 +90,9 @@ function readActionStates(editor: Editor | null, ids: readonly string[] | undefi
  */
 export function useRichTextActions(editor: Editor | null, ids?: readonly string[]): RichTextAction[] {
   const { t } = useTranslation()
-  const states = useEditorState({ editor, selector: ({ editor: current }) => readActionStates(current, ids) }) ?? NO_STATES
+  // 读闭包里的 editor，不读快照里的：编辑器实例被换掉（placeholder 变了会重建）后，快照要等新实例第一次事务才换，
+  // 期间读到的是已销毁的旧实例，整排钮会消失（独立验收 L-acc-sonnet-20261023 发现 2）。selector 每次渲染都是新函数，换实例那次渲染就按新实例重算。
+  const states = useEditorState({ editor, selector: () => readActionStates(editor, ids) }) ?? NO_STATES
   return React.useMemo(() => {
     if (!isEditorReady(editor)) return []
     const byId = new Map(DEFINITIONS.map((definition) => [definition.id, definition]))

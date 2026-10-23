@@ -40,8 +40,9 @@ describe('格式按钮只有一份定义', () => {
     expect(sources.filter(({ file, code }) => file !== OWNER && FORMAT_COMMAND.test(code)).map(({ file }) => file)).toEqual([])
   })
 
-  it('owner 订阅编辑器事务取按下 / 禁用态', () => {
-    expect(codeOf(OWNER)).toMatch(/useEditorState\(\{\s*editor,\s*selector:/)
+  it('owner 订阅编辑器事务取按下 / 禁用态，并且读的是当前实例（不读快照里的 editor）', () => {
+    // 快照里的 editor 在实例被换掉后要等新实例第一次事务才更新，期间是已销毁的旧实例（独立验收 L-acc-sonnet-20261023 发现 2）。
+    expect(codeOf(OWNER)).toMatch(/useEditorState\(\{\s*editor,\s*selector:\s*\(\)\s*=>\s*readActionStates\(editor,/)
   })
 
   for (const shell of SHELLS) {
