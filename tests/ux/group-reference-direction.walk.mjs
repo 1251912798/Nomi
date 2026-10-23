@@ -196,11 +196,12 @@ try {
   const referenceImageCount = await referenceImages.count()
   check('目标顶部真实显示两张参考缩略图', referenceImageCount === 2, String(referenceImageCount))
   // B3 之后图片节点不再显示「生成方式」（方式随输入走，presentGenerationModes：image → none）。界面上看得出「已切到改图」的
-  // 是参考行：两张连线图是在用的小图、没有淡显「未用到」；还停在文生图时没有参考槽，参考行根本不出现。
+  // 是参考行：两张连线图都落在参考槽里（在用的小图），没有淡显「未用到」；还停在文生图时没有参考槽，参考行根本不出现。
+  // 按正面数：行里的小图 = 槽里的小图 = 2，就没有一张是「未用到」（不写「未用到 = 0」这种没有基线的不存在断言）。
   const referenceRow = targetNode.locator('[data-reference-row]')
   const rowTiles = await referenceRow.locator('[data-asset-tile]').count()
-  const rowUnused = await referenceRow.locator('[data-reference-unused]').count()
-  check('界面上两张参考都在用（方式已随输入切到改图）', rowTiles === 2 && rowUnused === 0, `参考行小图 ${rowTiles} · 未用到 ${rowUnused}`)
+  const slottedTiles = await referenceRow.locator('[data-asset-slot-group="array"] [data-asset-tile], [data-asset-slot] [data-asset-tile]').count()
+  check('界面上两张参考都在用（方式已随输入切到改图）', rowTiles === 2 && slottedTiles === 2, `参考行小图 ${rowTiles} · 落在槽里 ${slottedTiles}`)
   await screenshotSettled(win, { path: path.join(shotsDir, '03-after-connected.png') })
 
   const clickableEdgePoint = await findEdgeHitPoint(win, { withinSelector: '[data-group-id="reference-group"]' })
