@@ -53,6 +53,21 @@ try {
     const before = await canvasZoomPercent(win)
     // 真实入口：与侧栏定位 / 出成片后定位 / 副本角标等 9 处调用方派的是同一个事件，由画布监听器接手。
     await win.evaluate((id) => window.dispatchEvent(new CustomEvent('nomi-focus-generation-node', { detail: { nodeId: id } })), nodeId)
+    // board:NodePointer/canvas.node.highlight —— 定位闪光改中性（2026-10-23 D2）：对焦那条路给节点外壳一档 flash，
+    // 样子是深色细线 + ink 淡光晕，不用强调色；1.4 秒后由同一条路清掉。列表 / 通知 / 侧栏等 9 处入口派的都是这个事件。
+    const shell = win.locator(`.react-flow__node[data-id="${nodeId}"] .generation-canvas-react-flow__node-shell`)
+    await expect(shell, `${label}：对焦后外壳没有闪一下`).toHaveAttribute('data-external-highlight', 'flash', { timeout: 1500 })
+    const flash = await shell.evaluate((el) => {
+      const probe = document.createElement('div')
+      probe.style.color = 'var(--nomi-accent)'
+      document.body.appendChild(probe)
+      const accent = getComputedStyle(probe).color
+      probe.remove()
+      return { shadow: getComputedStyle(el).boxShadow, accent }
+    })
+    console.log('FOCUS_FLASH', JSON.stringify({ label, ...flash }))
+    expect(flash.shadow !== 'none' && !flash.shadow.includes(flash.accent), `${label}：闪一下必须是中性光晕、不许强调色（${flash.shadow}）`).toBe(true)
+    await expect(shell, `${label}：闪完没有清掉`).not.toHaveAttribute('data-external-highlight', /.+/, { timeout: 4000 })
     await expect.poll(() => canvasZoomPercent(win), { message: `${label}：对焦事件派出后画布没有任何移动` }).not.toBe(before)
     await waitForCanvasViewportSettled(win)
     const submit = win.locator(`.generation-canvas-v2-node[data-node-id="${nodeId}"] ${SUBMIT}, ${SUBMIT}`).first()

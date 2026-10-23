@@ -8,6 +8,7 @@ import {
   canvasViewportFromFlow,
   collectFlowPositionChanges,
   collectFlowSelectionChanges,
+  externalHighlightShellClass,
   flowViewportFromCanvas,
   projectGenerationFlowNodes,
   toGenerationFlowEdges,
@@ -227,6 +228,25 @@ describe('generation canvas React Flow adapter', () => {
     expect(hoverC.output[1].data.externalHighlight).toBeNull()
     expect(hoverC.output[2].data.externalHighlight).toBe('hover')
     expect(projectGenerationFlowNodes(hoverC, { ...base, pointerHoverNodeId: 'c' })).toBe(hoverC)
+  })
+
+  it('paints the external highlight on the shell in neutral ink only (board NodePointer canvas.node.highlight)', () => {
+    const hover = externalHighlightShellClass('hover')
+    const flash = externalHighlightShellClass('flash')
+    // 悬停 = 1.5px 深色细线 + 阴影抬一级；闪一下 = 同一条细线 + 9px ink 12% 淡光晕。
+    expect(hover).toContain('0_0_0_1.5px_var(--nomi-ink)')
+    expect(hover).toContain('var(--nomi-shadow-lg)')
+    expect(flash).toContain('0_0_0_1.5px_var(--nomi-ink)')
+    expect(flash).toContain('0_0_0_9px_color-mix(in_oklab,var(--nomi-ink)_12%,transparent)')
+    expect(externalHighlightShellClass(null)).not.toContain('box-shadow')
+    // 多段阴影 + var() 不许写成 shadow-[…]（Tailwind 会把它当阴影颜色、不出 box-shadow），只认任意属性写法。
+    expect(hover).toMatch(/^.*\[box-shadow:/)
+    expect(flash).toMatch(/^.*\[box-shadow:/)
+    expect(`${hover} ${flash}`).not.toContain('shadow-[')
+    // 不许蓝色描边：没有强调色 / info 色 / 蓝；混 transparent 不用 oklch（中性色会被判成 h=none 落成粉）。
+    for (const value of [hover, flash, externalHighlightShellClass(null)]) {
+      expect(value).not.toMatch(/accent|info|blue|in_oklch/)
+    }
   })
 
   it('extracts position and selection changes while ignoring unrelated changes', () => {

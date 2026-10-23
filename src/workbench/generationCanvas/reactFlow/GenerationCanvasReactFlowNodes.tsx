@@ -30,7 +30,7 @@ import {
   shouldRenderFullNodeContent,
   shouldUseLightweightNodeRenderingForSelection,
 } from '../components/canvasNodeLevelOfDetail'
-import type { GenerationFlowEdge, GenerationFlowNode } from './generationCanvasReactFlowAdapter'
+import { externalHighlightShellClass, type GenerationFlowEdge, type GenerationFlowNode } from './generationCanvasReactFlowAdapter'
 import { selectFlowZoom } from './canvasViewportScale'
 import { GenerationFlowNodeScope, useGenerationFlowHandleMenu } from './generationFlowNodeContext'
 import { handleMenuAnchor } from '../quickActions/connectionMenuModel'
@@ -236,12 +236,8 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
         'generation-canvas-react-flow__node-shell',
         pickable === true && 'cursor-pointer rounded-nomi ring-1 ring-nomi-ink-40 ring-offset-2 ring-offset-workbench-bg hover:ring-nomi-ink',
         pickable === false && 'opacity-40 grayscale',
-        // 画布外面点名了这张卡（D2 指向元素 P1，2026-10-23）：中性样式，不用强调色描边（10-10「蓝色描边都删掉」）。
-        // 悬停 = 深色细线 + 阴影抬一级；定位后闪一下 = ink 12% 淡光晕，闪完由对焦那条路清掉、阴影自己淡出。
-        // 画在外壳上而不是卡面里：轻量卡（大画布）和完整卡同一个样子，也不碰节点的脸。
-        'rounded-nomi transition-shadow duration-300',
-        data.externalHighlight === 'hover' && 'shadow-[0_0_0_1px_var(--nomi-ink),var(--nomi-shadow-lg)]',
-        data.externalHighlight === 'flash' && 'shadow-[0_0_0_6px_color-mix(in_oklch,var(--nomi-ink)_12%,transparent),var(--nomi-shadow-lg)]',
+        // 画布外面点名了这张卡（D2 指向元素，2026-10-23）：中性样式，不用强调色描边（10-10「蓝色描边都删掉」）。
+        externalHighlightShellClass(data.externalHighlight),
       )}
       data-pick={pickable === null ? undefined : pickable ? 'eligible' : 'ineligible'}
       data-external-highlight={data.externalHighlight ?? undefined}
@@ -327,7 +323,8 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
                 node={node}
                 selected={selected}
                 readOnly={data.readOnly}
-                externalHighlight={data.externalHighlight}
+                // 节点只需要知道「定位后在闪」（定预览优先级）；悬停样子画在外壳上，不进卡面。
+                focusFlash={data.externalHighlight === 'flash'}
                 appear={data.appear}
                 host={pluginHost}
               />

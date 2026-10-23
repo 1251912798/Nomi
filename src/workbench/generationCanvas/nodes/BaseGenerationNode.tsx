@@ -63,13 +63,11 @@ import { hasEmptyCardLabel } from './render/emptyCardLabel'
 import { useNodeMediaMeasurement } from './useNodeMediaMeasurement'
 import { useNodeVideoPreviewIntent } from './useNodeVideoPreviewIntent'
 import { useNodeMediaPreview } from './useNodeMediaPreview'
-import type { ExternalNodeHighlight } from '../reactFlow/generationCanvasReactFlowAdapter'
 export type BaseGenerationNodeProps = {
   node: GenerationCanvasNode
   selected: boolean
   readOnly?: boolean
-  /** 画布外面点名了这个节点（悬停 / 闪一下）；样子画在画布节点外壳上，这里只用它定预览优先级。 */
-  externalHighlight?: ExternalNodeHighlight | null
+  focusFlash?: boolean
   appear?: boolean
   waitingMotion?: 'reduced'
   waitingPreset?: ImageGenerationPreset
@@ -84,7 +82,7 @@ function BaseGenerationNodeImpl({
   node,
   selected,
   readOnly = false,
-  externalHighlight = null,
+  focusFlash = false,
   appear = false,
   waitingMotion,
   waitingPreset,
@@ -149,7 +147,7 @@ function BaseGenerationNodeImpl({
   // C5: 文本节点走专属可编辑 body（TextDocumentNode），像 card 那样脱离图片预览。
   const isTextKind = node.kind === 'text'
   const hasResult = Boolean(node.result?.url)
-  const mediaPreviewPriority = selected || externalHighlight === 'flash'
+  const mediaPreviewPriority = selected || focusFlash
   const localImageOpPending = isLocalImageOpPending(node)
   // 可视尺寸（卡片固定宽 / 动态高）的单一真相源 resolveNodeVisualSize——连线锚点 / 最小地图 /
   // fitView 与本外壳共用同一函数，避免名义 size 与渲染尺寸两套真相源（连线起笔飘在节点外的根因）。
@@ -216,7 +214,7 @@ function BaseGenerationNodeImpl({
       data-node-id={node.id}
       data-kind={node.kind}
       data-selected={selected ? 'true' : 'false'}
-      data-external-highlight={externalHighlight ?? undefined}
+      data-focus-flash={focusFlash ? 'true' : 'false'}
       data-appear={appear ? 'true' : undefined}
       data-status={status}
       style={{
@@ -495,7 +493,7 @@ const BaseGenerationNode = React.memo(
     prev.node === next.node &&
     prev.selected === next.selected &&
     prev.readOnly === next.readOnly &&
-    prev.externalHighlight === next.externalHighlight &&
+    prev.focusFlash === next.focusFlash &&
     prev.appear === next.appear,
 )
 BaseGenerationNode.displayName = 'BaseGenerationNode'

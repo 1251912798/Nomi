@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { GenerationCanvasNode } from '../../generationCanvas/model/generationCanvasTypes'
 import type { GenerationFeedback } from '../../observability/generationFeedback'
-import { nodePointerAspect, nodePointerFace, nodePointerGroupVisible } from './nodePointerFace'
+import type { ProductionShotState } from '../../../../electron/shared/productionShotPhase'
+import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary } from './nodePointerFace'
 
 const node = (patch: Partial<GenerationCanvasNode> = {}): GenerationCanvasNode => ({
   id: 'n1', kind: 'video', title: '纸船出发', categoryId: 'shots', position: { x: 0, y: 0 }, status: 'idle', prompt: '', meta: {}, ...patch,
@@ -11,34 +12,51 @@ const feedback = (patch: Partial<GenerationFeedback>): GenerationFeedback => ({
   phase: 'generating', message: '生成中 · 已等 12 秒', late: false, active: true, previewLabel: '', ...patch,
 })
 
+const ready = { canvasReady: true, feedback: null } as const
+
 describe('nodePointerFace', () => {
-  it('says deleted only when the node is gone from the canvas', () => {
-    expect(nodePointerFace({ node: undefined, feedback: null })).toEqual({ kind: 'deleted' })
+  it('says deleted only on the host’s explicit fact, never because the node is merely missing (board D4)', () => {
+    expect(nodePointerFace({ ...ready, node: undefined, removed: true })).toEqual({ kind: 'removed' })
+    expect(nodePointerFace({ ...ready, node: undefined })).toEqual({ kind: 'unavailable' })
+    // 画布还没载入完：节点不在不代表被删。
+    expect(nodePointerFace({ node: undefined, canvasReady: false, feedback: null })).toEqual({ kind: 'unavailable' })
+    // 撤销回来了：节点又在画布上，以节点为准。
+    expect(nodePointerFace({ ...ready, node: node(), removed: true })).toEqual({ kind: 'empty' })
+    expect(nodePointerLocatable({ kind: 'removed' })).toBe(false)
+    expect(nodePointerLocatable({ kind: 'unavailable' })).toBe(false)
+    expect(nodePointerLocatable({ kind: 'empty' })).toBe(true)
   })
 
   it('follows the node shell layering: running feedback beats a stale result and production labels', () => {
     const running = node({ status: 'running', result: { id: 'r', type: 'image', url: 'nomi-asset://a.png', createdAt: 1 } })
-    const face = nodePointerFace({ node: running, feedback: feedback({}), productionPhase: 'awaiting_confirmation' })
+    const face = nodePointerFace({ node: running, canvasReady: true, feedback: feedback({}), productionState: { phase: 'awaiting_confirmation' } })
     expect(face.kind).toBe('generating')
   })
 
   it('shows the failure the node itself shows (same feedback), not a pointer-only copy', () => {
     const failed = feedback({ phase: 'failed', active: false, message: '服务暂时不可用' })
-    expect(nodePointerFace({ node: node({ status: 'error' }), feedback: failed })).toEqual({ kind: 'failed', feedback: failed })
+    expect(nodePointerFace({ node: node({ status: 'error' }), canvasReady: true, feedback: failed })).toEqual({ kind: 'failed', feedback: failed })
+  })
+
+  it('mirrors recoverable and local processing instead of falling into an empty card', () => {
+    expect(nodePointerFace({ ...ready, node: node({ status: 'recoverable' }) }).kind).toBe('recoverable')
+    expect(nodePointerFace({ ...ready, node: node({ meta: { uploadStatus: 'uploading' } }) }).kind).toBe('processing')
   })
 
   it('shows the result thumbnail through the canvas lightweight preview owner', () => {
     const done = node({ result: { id: 'r', type: 'image', url: 'nomi-asset://a.png', createdAt: 1 } })
-    const face = nodePointerFace({ node: done, feedback: null, productionPhase: 'done' })
-    expect(face).toMatchObject({ kind: 'result', preview: { kind: 'image' } })
+    expect(nodePointerFace({ ...ready, node: done, productionState: { phase: 'done' } })).toMatchObject({ kind: 'result', preview: { kind: 'image' } })
   })
 
-  it('maps production phases that the node marks with a corner label, and keeps stopped without actions', () => {
-    for (const phase of ['awaiting_confirmation', 'not_generated', 'removed', 'queued'] as const) {
-      expect(nodePointerFace({ node: node(), feedback: null, productionPhase: phase })).toEqual({ kind: 'production', phase })
+  it('carries the whole production state so the corner label can say 第 k/N, and keeps stopped without actions', () => {
+    for (const phase of ['awaiting_confirmation', 'not_generated', 'removed'] as const) {
+      expect(nodePointerFace({ ...ready, node: node(), productionState: { phase } })).toEqual({ kind: 'production', state: { phase } })
     }
-    expect(nodePointerFace({ node: node(), feedback: null, productionPhase: 'stopped' })).toEqual({ kind: 'stopped' })
-    expect(nodePointerFace({ node: node(), feedback: null, productionPhase: null })).toEqual({ kind: 'empty' })
+    const queued: ProductionShotState = { phase: 'queued', queueIndex: 1, queueTotal: 3 }
+    expect(nodePointerFace({ ...ready, node: node(), productionState: queued })).toEqual({ kind: 'production', state: queued })
+    const stopped: ProductionShotState = { phase: 'stopped', stoppedReason: 'user_paused' }
+    expect(nodePointerFace({ ...ready, node: node(), productionState: stopped })).toEqual({ kind: 'stopped', state: stopped })
+    expect(nodePointerFace({ ...ready, node: node(), productionState: null })).toEqual({ kind: 'empty' })
   })
 })
 
@@ -50,9 +68,30 @@ describe('nodePointerAspect', () => {
 })
 
 describe('nodePointerGroupVisible', () => {
-  it('folds the tail into "N more" and never folds a single extra', () => {
+  it('folds anything over three into the third tile (board drawing), including four', () => {
     expect(nodePointerGroupVisible(5, 3, false)).toEqual({ shown: 3, hidden: 2 })
-    expect(nodePointerGroupVisible(4, 3, false)).toEqual({ shown: 4, hidden: 0 })
+    expect(nodePointerGroupVisible(4, 3, false)).toEqual({ shown: 3, hidden: 1 })
+    expect(nodePointerGroupVisible(3, 3, false)).toEqual({ shown: 3, hidden: 0 })
     expect(nodePointerGroupVisible(5, 3, true)).toEqual({ shown: 5, hidden: 0 })
+  })
+})
+
+describe('nodePointerSummary', () => {
+  const facts = { model: 'Seedance 2', aspect: '16:9', duration: '4s', resolution: '480p' }
+  it('card reads model · ratio · duration from the node', () => {
+    expect(nodePointerSummary(facts, 'card')).toEqual(['Seedance 2 · 16:9 · 4s'])
+  })
+  it('row drops the ratio for landscape but never for portrait', () => {
+    expect(nodePointerSummary(facts, 'row')).toEqual(['Seedance 2 · 4s'])
+    expect(nodePointerSummary({ ...facts, aspect: '9:16' }, 'row')).toEqual(['Seedance 2 · 9:16 · 4s'])
+  })
+  it('a single portrait card puts two lines beside the frame: model / ratio · duration · resolution', () => {
+    expect(nodePointerSummary({ ...facts, aspect: '9:16', duration: '5s' }, 'side')).toEqual(['Seedance 2', '9:16 · 5s · 480p'])
+  })
+  it('prints nothing it cannot read (no empty separators)', () => {
+    expect(nodePointerSummary({ model: '', aspect: null, duration: null, resolution: null }, 'card')).toEqual([])
+    expect(isPortraitAspect('3:4')).toBe(true)
+    expect(isPortraitAspect('16:9')).toBe(false)
+    expect(isPortraitAspect(null)).toBe(false)
   })
 })

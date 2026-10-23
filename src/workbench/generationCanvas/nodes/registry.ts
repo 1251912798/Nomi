@@ -1,14 +1,12 @@
 import type { ComponentType } from 'react'
 import type { BillingModelKind } from '../../../api/desktopClient'
 import type { CanvasPluginHost } from '../plugins/canvasPluginTypes'
-import type { ExternalNodeHighlight } from '../reactFlow/generationCanvasReactFlowAdapter'
 
 export type GenerationNodeRenderProps<TNode = unknown> = {
   node: TNode
   selected: boolean
   readOnly?: boolean
-  /** 画布外面点名了这个节点（聊天里的指向元素悬停 / 定位后闪一下）。 */
-  externalHighlight?: ExternalNodeHighlight | null
+  focusFlash?: boolean
   /** 新落点（add/paste/Agent）一次性弹入动画；开项目已有节点不传（不齐闪）。 */
   appear?: boolean
   /** Present only for host-registered plugin nodes; core nodes ignore it. */

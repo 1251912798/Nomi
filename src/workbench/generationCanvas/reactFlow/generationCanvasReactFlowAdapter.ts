@@ -27,6 +27,20 @@ export type GenerationFlowNodeData = {
 
 export type ExternalNodeHighlight = 'hover' | 'flash'
 
+/**
+ * 外部高亮画在节点**外壳**上的样子（NodePointer 板 `canvas.node.highlight`；D2：不许蓝色描边）：
+ * 悬停 = 1.5px 深色细线 + 阴影抬一级；闪一下 = 同一条细线 + 9px ink 12% 淡光晕；移开 / 闪完由 transition 淡出。
+ * 画在外壳上而不是卡面里：大画布的轻量卡和完整卡同一个样子，也不碰节点的脸。外壳与设计实验室共用这一个函数。
+ * 混 transparent 用 oklab：in oklch 会把中性色的色相判成 none（check:tokens 第 5b 类）。
+ */
+export function externalHighlightShellClass(highlight: ExternalNodeHighlight | null): string {
+  // 写成任意属性 [box-shadow:…]：Tailwind 的 shadow-[…] 碰上「多段阴影 + var()」会把整串当成阴影颜色（只出 --tw-shadow-color、
+  // 不出 box-shadow），样子静默消失——设计实验室走查读 computed box-shadow 抓到的。
+  if (highlight === 'hover') return 'rounded-nomi transition-shadow duration-300 [box-shadow:0_0_0_1.5px_var(--nomi-ink),var(--nomi-shadow-lg)]'
+  if (highlight === 'flash') return 'rounded-nomi transition-shadow duration-300 [box-shadow:0_0_0_1.5px_var(--nomi-ink),0_0_0_9px_color-mix(in_oklab,var(--nomi-ink)_12%,transparent),var(--nomi-shadow-lg)]'
+  return 'rounded-nomi transition-shadow duration-300'
+}
+
 export type GenerationFlowNode = FlowNode<GenerationFlowNodeData, 'generation'>
 
 export type GenerationFlowEdgeData = {
@@ -107,7 +121,7 @@ export function toGenerationFlowNode(
 type FlowNodeVisualState = {
   appearingNodeIds?: ReadonlySet<string>
   focusFlashNodeId?: string | null
-  /** 聊天里正被悬停的指向元素指着的节点（`nodePointerStore`）。 */
+  /** 聊天里正被悬停的指向元素指着的节点（`nodeExternalHighlightStore`）。 */
   pointerHoverNodeId?: string | null
 }
 
