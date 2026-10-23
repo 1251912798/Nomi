@@ -1,0 +1,2356 @@
+{
+  "evals/director/judge/preregister.ts": {
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 1
+    }
+  },
+  "evals/director/judge/review.ts": {
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 1
+    }
+  },
+  "evals/journeys/j5-edit-export.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    },
+    "no-useless-escape": {
+      "count": 4
+    }
+  },
+  "evals/journeys/j6-camera-move.mjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 2
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "evals/lib/judge.mjs": {
+    "no-control-regex": {
+      "count": 1
+    }
+  },
+  "evals/loop/appBridge.mjs": {
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "evals/loop/poseLoop.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "evals/verify-shot-smoke.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/after-pack-mac.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 3
+    }
+  },
+  "scripts/agent-trajectory-report.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/agent-worktree-janitor.mjs": {
+    "no-redeclare": {
+      "count": 2
+    }
+  },
+  "scripts/agent-worktree-janitor.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/analyze-state-coverage-gaps.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/apimart-domestic-line-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/apimart-line-netsim.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 4
+    }
+  },
+  "scripts/asset-preview-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/attention-cue/attention-cue.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/audit-package.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/batch-generate-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/board-extract.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "scripts/browser-live-capture-sweep.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/build-agentic-draft-film.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/canvas-delete-undo-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/canvas-gestures-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/canvas-image-sharpness-measure.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/canvas-store-subscriptions.test.mjs": {
+    "no-control-regex": {
+      "count": 1
+    }
+  },
+  "scripts/census-silent-branches.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "scripts/check-app-icons.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 4
+    }
+  },
+  "scripts/check-asset-evidence.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-board-parity.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-control-contract.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-doc-status.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/check-error-surface.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-control-regex": {
+      "count": 1
+    }
+  },
+  "scripts/check-file-sizes.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-framework-boundary.mjs": {
+    "no-undef": {
+      "count": 2
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/check-framework-surface.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-generation-entrances.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-generation-entrances.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-git-path-quoting.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-hook-behavior.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-icon-semantics.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-main-guard.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-mcp-tool-references.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-mjs-parse.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-model-certification-coverage.mjs": {
+    "no-useless-escape": {
+      "count": 2
+    }
+  },
+  "scripts/check-no-secrets.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-packaged-deps.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-perf-scenarios.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/check-progress-update.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/check-push-bypass.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 7
+    }
+  },
+  "scripts/check-real-media-fixture.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-root-cause-contracts.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-root-cause-contracts.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-self-written.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-site-attribution.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-store-lifetime.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-supply-chain-pins.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-test-temp-static.node-test.mjs": {
+    "no-useless-escape": {
+      "count": 2
+    }
+  },
+  "scripts/check-test-types.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/check-test-waits.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-escape": {
+      "count": 2
+    }
+  },
+  "scripts/check-workflow-script-refs.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/child-process-lifecycle.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/ci-annotation-hygiene.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/comfyui-e2e-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "scripts/comfyui-inline-prompt-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/comfyui-multi-instance-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/comfyui-onboarding-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/comfyui-preset-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/comfyui-progress-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/comfyui-real-user-journey.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/comfyui-reconcile-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/comfyui-template-library-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/comfyui-utility-workflow-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/comfyui-video-input-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/comfyui-workflow-corpus-report.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/comfyui-workflow-page-real-server-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/comfyui-workflow-page-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/comfyui-workflow-params-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/concept-owners-scan.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/covers/generate-covers.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/custom-call-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/dev-electron.mjs": {
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "scripts/dreamina-honest-error-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/e2e-launch-capability.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/eng-metrics.mjs": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "scripts/eng-metrics.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/entry-directory.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/eval-diff.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/eval-ops-report.mjs": {
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "scripts/eval-review-images.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/failure-message-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/feedback-mode-video-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/fix-churn-units.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/fix-churn.mjs": {
+    "no-regex-spaces": {
+      "count": 2
+    },
+    "no-useless-assignment": {
+      "count": 3
+    }
+  },
+  "scripts/fix-churn.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/fixtures/storyboardTableReleaseWriter.probe.ts": {
+    "@typescript-eslint/ban-ts-comment": {
+      "count": 1
+    }
+  },
+  "scripts/framework-boundary-lib.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/gates-evidence-approvals.node-test.mjs": {
+    "no-useless-escape": {
+      "count": 1
+    }
+  },
+  "scripts/generate-app-icon.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 4
+    }
+  },
+  "scripts/generate-expression-pack-media.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 4
+    }
+  },
+  "scripts/git-delivery.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/inject-mockup-tokens.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/install-agent-worktree-janitor.mjs": {
+    "no-redeclare": {
+      "count": 2
+    }
+  },
+  "scripts/install-claude-hooks.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 3
+    }
+  },
+  "scripts/install-git-hooks.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-useless-assignment": {
+      "count": 3
+    }
+  },
+  "scripts/intake-radar.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/intake-radar.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/lib/entryDirectory.mjs": {
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "scripts/lib/gitPaths.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/lib/intake-radar/cloudflare.mjs": {
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "scripts/lib/intake-radar/store.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/lib/nomiClient.mjs": {
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "scripts/lib/rawShellAnchors.mjs": {
+    "no-useless-escape": {
+      "count": 1
+    }
+  },
+  "scripts/lib/scanGuardDetect.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/lint-changed.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/local-protocol-abort-stress.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/local-protocol-seek-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/model-identity-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/model-panel-shot.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/model-vendor-dedup-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/new-root-cause-contract.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/notification-signing-spike.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/onboarding-demo-asset-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/package-build-stamp.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "scripts/package-build-stamp.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/packaging/audit-packaged-media.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 3
+    }
+  },
+  "scripts/packaging/native-binaries.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "scripts/packaging/platform-binaries.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 3
+    }
+  },
+  "scripts/packaging/platform-binaries.test.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 7
+    }
+  },
+  "scripts/perf-scenarios.mjs": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "scripts/poll-cadence-live-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/pr-judgement-lib.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/pr53-image-video-mode-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/pre-push-check.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/pre-push-contracts.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/pre-push-gate-inputs.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/pre-push-structure.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/probe-asset-upload-channels.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/project-rename-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/proxy-setting-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/real-user-test-gates.mjs": {
+    "no-redeclare": {
+      "count": 2
+    }
+  },
+  "scripts/real-user-test-gates.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-redeclare": {
+      "count": 1
+    }
+  },
+  "scripts/relay-i2v-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/relay-model-fetch-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/relay-native-wire-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/release-contract.mjs": {
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "scripts/release-contract.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/repair-doc-gates.mjs": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "scripts/repair-doc-gates.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/self-check-hook.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/self-written-lib.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-control-regex": {
+      "count": 1
+    }
+  },
+  "scripts/seo/seo-audit.mjs": {
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "scripts/settings-autosave-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/settings-capability-contract-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-useless-assignment": {
+      "count": 3
+    }
+  },
+  "scripts/settings-direct-script-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/settings-existing-connection-add-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/settings-fixed-shell-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/settings-keyless-gateway-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/settings-model-access-save-first-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-undef": {
+      "count": 3
+    }
+  },
+  "scripts/settings-models-tab-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/settings-nested-overlay-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "scripts/skills-format-lib.mjs": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "scripts/sweep.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/tempWorkspace.test.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "scripts/test-focused.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/text-error-card-walkthrough.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/token-alpha-walkthrough.mjs": {
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "scripts/validation-policy.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/verify-workflow-ref.mjs": {
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "scripts/vitest-fair-share.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/walkthrough-network-guard.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 5
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/walkthrough-network-guard.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/walkthrough-tool-args-lib.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/with-gates-lock.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/_agentSpendScopeJourney.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "tests/ux/_card12CpuProfiler.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 2
+    }
+  },
+  "tests/ux/_collect.mjs": {
+    "no-unsafe-finally": {
+      "count": 1
+    }
+  },
+  "tests/ux/_comfyImportPanel.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/_contract.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/_encryptFixtureKey.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "tests/ux/_feel-observer.browser.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/_goldenOriginalStoryboard.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/_launchApp.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "preserve-caught-error": {
+      "count": 3
+    }
+  },
+  "tests/ux/_mcpJourney.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/_mcpL2Fixture.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/_modelIntegrationHarness.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/_offscreenWindows.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 2
+    }
+  },
+  "tests/ux/_paidNetwork.mjs": {
+    "no-useless-escape": {
+      "count": 1
+    }
+  },
+  "tests/ux/_paidRun.mjs": {
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "tests/ux/_realProfile.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/_textTasksSteps.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/_walkInstances.mjs": {
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "tests/ux/_walkInstances.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/adoption-bridge.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-artifact.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 8
+    }
+  },
+  "tests/ux/agent-askback-real-model.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-default-model-real.paid.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-domain-owners.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-lane-models-block.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-lane-observer.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-long-chat-real.paid.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-panel-form.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-permission-two-tiers-paid.rehearsal.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-permission-two-tiers.paid.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-runtime-editing.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-runtime-fixture.mjs": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-runtime-fixture.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/agent-runtime-provider.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-runtime-video-export.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-runtime-walk-support.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-runtime-walk-support.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-regex-spaces": {
+      "count": 1
+    },
+    "no-useless-escape": {
+      "count": 6
+    }
+  },
+  "tests/ux/agent-spend-long-output-name.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-spend-per-shot-real.paid.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-spend-per-shot.walk.mjs": {
+    "no-control-regex": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-spend-r30.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-spend-real-image.paid.mjs": {
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-spend-stop-midway.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-timeline-ops.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-timeline-receipt.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-ui-a-composer.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/agent-ui-exception-states-runtime.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/agent-vertical-spine-m0-m5.red.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/agnes.e2e.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/anchor-checkpoint-card.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/anchor-real.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/antigravity-cli.live.walk.mjs": {
+    "no-redeclare": {
+      "count": 3
+    }
+  },
+  "tests/ux/apimart-domestic-line.paid.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/apimart-seedance25-h3.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/app-page-zoom.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/archetype-modebar.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/arrange-draft-cta.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/asset-audio-upload.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/asset-library-interactions.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/asset-library-native-import.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/asset-tab-overlap-and-nomi-entry.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/asset-transport-settings.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/asset-video-preview.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/assisted-onboarding-entry.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/at-mention-edge.walk.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/audio-timeline.walk.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/browser-asset-i18n.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/build-artifact-url-migration.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/camera-move-render-e2e.mjs": {
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "tests/ux/canvas-batch-production.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "tests/ux/canvas-card-stack.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-context-menu-click.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/canvas-control-clarity.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/canvas-drop-at-cursor.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-edge-disconnect.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "tests/ux/canvas-frame-real-task.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-frame.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-handles-alt-drag.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-image-aspect.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-image-preview-and-rename.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-magnetic-handle.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-marquee-group.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-migration-backfill.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-node-context-menu.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/canvas-open-fit.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-perf/failureDiagnostics.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-performance-benchmark.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-real-suite.mjs": {
+    "no-control-regex": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-real-suite.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-s5-walkthrough.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/canvas-shortcut-parity.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-shortcuts.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "tests/ux/canvas-shot-identity.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/canvas-toolbar-open-select.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/catalog-seed-version-repro.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/clip-drop-zoom.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/clip-node-editing.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/comfy-workflow-feedback.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/comfy-workflow-multiref.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/composer-long-prompt.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-empty": {
+      "count": 2
+    }
+  },
+  "tests/ux/control-hierarchy-u2.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/core-a-blank-storyboard.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/core-a-composer.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/core-a-creation-plans.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/core-a-storyboard-undo.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/core-a-storyboard.paid.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-redeclare": {
+      "count": 3
+    }
+  },
+  "tests/ux/core-smoke/fixture.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/creation-editor-mount.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "tests/ux/creation-flow-fixes.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "tests/ux/creation-pill-overlap.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/creation-plan-delete-undo.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/creation-sidebar-multi-doc.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/creation-work-surfaces.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/credential-connect-honesty.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/credential-probe-free.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/credential-redirect.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/cross-device-continuation.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "tests/ux/custom-prompt-realtask.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/dark-audit.walk.mjs": {
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 1
+    }
+  },
+  "tests/ux/dark-journey.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/deconstruction-interrupted-recovery.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 2
+    }
+  },
+  "tests/ux/deconstruction-panel.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/deep-link-navigate.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/default-generation-model.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/design-fidelity.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/design-lab/labStates.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/diagnostics-bundle.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/director-assets.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/director-j2-walk-to-b.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/director-j4-kneel-stand-look.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/docs-media.record.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/document-format-persist-undo.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/draft-loop.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/editing-panel-system.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/editing-real-user-pass.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/experience/collector.browser.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/experience/experience.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/f3-f16b.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "tests/ux/feel-policy.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/find-reference.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/fixtures/canvas-performance-fixture.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/full-walk/escapeLedger.test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/full-walk/invariants.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/full-walk/monitor.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    },
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "tests/ux/full-walk/offscreenWindow.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "tests/ux/full-walk/playbooks/pb04-script-attachment-long-chat.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "tests/ux/full-walk/playbooks/pb07-storyboard-prompt-truth.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/g1/c0-fixture.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/g1/c0-real-assembly.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/g1/c0-real-budget.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 6
+    }
+  },
+  "tests/ux/g1/credential-precheck.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/g1/sweep-budget.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "tests/ux/g1/sweep-c0.mjs": {
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "tests/ux/g1/sweep-evidence.mjs": {
+    "no-control-regex": {
+      "count": 1
+    }
+  },
+  "tests/ux/g1/sweep-evidence.node-test.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/golden-path.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/group-header-real-app.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/group-ports.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/grouping-real-media.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/ia-audit-shots.walk.mjs": {
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/image-grid-split-freeze.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/import-reveal.walk.mjs": {
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "tests/ux/journeys/experience.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/layout-timeline-panel-span.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/library-cover-imported-video.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/local-gateway-onboarding.walk.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/mcp-apps-host-render.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/mcp-client-activation.walk.mjs": {
+    "no-empty": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "tests/ux/mcp-connection-truthfulness.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/mcp-generation-elicitation-first.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/mcp-http-direct.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/mcp-l1-handshake.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/media-import-matrix.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/memory.e2e.mjs": {
+    "no-empty": {
+      "count": 2
+    }
+  },
+  "tests/ux/model-access-journeys/fixture-server.mjs": {
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "tests/ux/model-access-journeys/journey-cases.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "tests/ux/model-availability-agreement.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/model-box-tidy.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/model-catalog-config-package.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/model-integration-trusted-audio.e2e.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/model-kind-misguess.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/model-selection-real.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/model3d-asset-library.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/narrowed-mode-guidance.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/node-actions-off-image.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/node-label-project-journey.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/node-toolbar-one-row.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "tests/ux/onboarding-auto-fetch.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/onboarding-checkmark-honesty.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/outbound-policy-paid-retrieval.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/overlay-z-order.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/p4-s5-canvas-landing.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/p4-s6p5-multishot-paid.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    }
+  },
+  "tests/ux/packaged-mcp-smoke.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "tests/ux/packaged-sandbox-active.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/paid-env-key-connect.rehearsal.walk.mjs": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/pd1-deferred-tools-cache.probe.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/perf/openModuleProbe.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "tests/ux/perf/openWriteProbe.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "tests/ux/plan-gate.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/pr720-apimart-key.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/pr720-language-switch-mid-session.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/pr720-prompt-language.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/pr720-ux-geometry.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/preview-control-scope.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/preview-export-busy.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/probe-generate.mjs": {
+    "no-empty": {
+      "count": 2
+    }
+  },
+  "tests/ux/process-feedback-electron.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/process-feedback-imgfx-real.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/production-flow-fixes.walk.mjs": {
+    "no-control-regex": {
+      "count": 1
+    }
+  },
+  "tests/ux/production-mcp-journey.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 2
+    }
+  },
+  "tests/ux/production-stalled-draft.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/project-asset-healthcheck.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/project-location-settings.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/project-switch-background-run.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/prompt-library-remote-media.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/prompt-picker.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/provider-model-discovery.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    },
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "tests/ux/r1-upload-verify.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/react-flow-read-only.walk.mjs": {
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "tests/ux/real-user-long-video.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/reference-companion-required.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/reference-entry.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-escape": {
+      "count": 1
+    }
+  },
+  "tests/ux/reference-url-scheme-boot.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/resident-composer-receipt-fix.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/rich-editor-p1.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/runway-vendor-honest-modes.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/screenshot-hotkey.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/settings-relocation.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/shot-nodes-lifecycle.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/shot-nodes-media.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/skill-import-formats.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/smoke.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/spend-confirm-a11y.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/storyboard-anchor-policy.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "tests/ux/storyboard-film-aspect-passthrough.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/storyboard-first-frame-false-alarms.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/storyboard-methodology.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/storyboard-model-same-name.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/storyboard-narrow-row.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/storyboard-reference-slots.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/storyboard-strategy-no-model.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/storyboard-strategy-resolve.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/storyboard-table-exec.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/storyboard-table-phasec.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/storyboard-table-structure.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/task-center-states.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/text-node-agent-undo-and-describe.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/tikhub-connector.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/tikhub-project-video-breakdown.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "tests/ux/timeline-context-menu.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/timeline-toolbar-row.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/timeline-transition-preview.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/timeline-visual-feedback.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/timeout-recover.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/toolbar-order.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/ui-rules-census.dom.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-escape": {
+      "count": 1
+    }
+  },
+  "tests/ux/ui-rules-census.shots.mjs": {
+    "no-useless-escape": {
+      "count": 1
+    }
+  },
+  "tests/ux/update-reminder-host.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/vendor-baseurl-discoverability.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "tests/ux/vendor-honest-variant-axis.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/vendor-preference-order.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/vendor-validation-error-persistence.walk.mjs": {
+    "no-empty": {
+      "count": 2
+    }
+  },
+  "tests/ux/video-clip-direct.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/video-deconstruct.e2e.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/video-depth-real-task.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/video-playback-heal.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "tests/ux/visibility-i18n-batch.walk.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    }
+  }
+}

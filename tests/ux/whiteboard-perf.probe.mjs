@@ -6,6 +6,7 @@
 //   --scene open-type      click "whiteboard" on an image -> editor usable; then type 12 characters into a text object
 //   --scene many-images    24 visible image nodes (6 distinct real frames) around the open editor: drag frame gap + long tasks
 //   --scene moving-panel   size panel open while the canvas zooms by wheel: how far the panel strays from its anchor, frame by frame
+//   --scene done-export    worst-case board (4096x4096, 12 placed photographs from 6 distinct frames, 24 brush paths): Done -> its picture on the node
 //
 // Measurement tools are the existing ones (Playwright + CDP Performance.getMetrics + PerformanceObserver + the shared
 // response timer); nothing here is a profiler of our own.
@@ -20,7 +21,7 @@ import { armResponse, takeResponse } from '../perf/canvas-scale/responseTimer.mj
 
 const argValue = (name) => { const index = process.argv.indexOf(name); return index >= 0 ? process.argv[index + 1] : undefined }
 const scene = argValue('--scene')
-const SCENES = ['idle-panel', 'open-type', 'many-images', 'moving-panel']
+const SCENES = ['idle-panel', 'open-type', 'many-images', 'moving-panel', 'done-export']
 if (!SCENES.includes(scene)) throw new Error(`--scene must be one of ${SCENES.join(' / ')}`)
 const runs = Number(argValue('--runs') ?? 1)
 const label = argValue('--label') ?? `${scene}-adhoc`
@@ -37,12 +38,38 @@ const samples = []
 for (let iteration = 0; iteration < runs; iteration++) samples.push(await runOnce())
 fs.writeFileSync(path.join(outputRoot, 'report.json'), JSON.stringify({ scene, locale, samples }, null, 2))
 
+// The largest board the size panel allows, filled with placed photographs and brush paths, never finished before (no picture yet).
+function worstCaseBoard(sources, size) {
+  const side = 4096
+  const assets = Array.from({ length: 12 }, (_, index) => {
+    const width = 1280, height = Math.round(1280 * size.height / size.width)
+    return { id: `asset-${index}`, layerId: `asset-layer-${index}`, name: `Frame ${index}`, url: sources[index % sources.length].result.url, source: 'upload',
+      x: (index % 3) * 1400, y: Math.floor(index / 3) * 1000, width, height }
+  })
+  const strokes = Array.from({ length: 24 }, (_, index) => {
+    const x = 120 + (index % 6) * 640, y = 160 + Math.floor(index / 6) * 980
+    return { id: `stroke-${index}`, layerId: `stroke-layer-${index}`, color: '#ef4444', size: 12, tool: 'brush', path: `M ${x} ${y} L ${x + 520} ${y + 260} L ${x + 520} ${y + 284} L ${x} ${y + 24} Z` }
+  })
+  const whiteboardState = {
+    texts: [], sceneTransforms: { offsets: {}, assetTransforms: {}, flips: {} }, canvasDimensions: { width: side, height: side }, strokes, canvasAssets: assets,
+    layers: [
+      { id: 'background', name: 'Background', visible: true, locked: true, opacity: 1, kind: 'background', thumbnail: 'blank' },
+      { id: 'drawing-layer-1', name: 'Layer 1', visible: true, locked: false, opacity: 1, kind: 'drawing', thumbnail: 'checker' },
+      ...assets.map((asset) => ({ id: asset.layerId, name: asset.name, visible: true, locked: false, opacity: 1, kind: 'asset', thumbnail: 'image' })),
+      ...strokes.map((stroke, index) => ({ id: stroke.layerId, name: `Path ${index + 1}`, visible: true, locked: false, opacity: 1, kind: 'drawing', thumbnail: 'checker' })),
+    ],
+    activeLayerId: 'drawing-layer-1', activeRatio: '1:1',
+  }
+  return { id: 'big-board', kind: 'whiteboard', categoryId: 'shots', title: 'Big board', prompt: '', position: { x: 880, y: 440 }, size: { width: 300, height: 300 }, status: 'idle', meta: { whiteboardState } }
+}
+
 async function runOnce() {
   const manyImages = scene === 'many-images'
+  const doneExport = scene === 'done-export'
   const project = buildInlineWhiteboardProject({
     repoMedia,
-    frames: manyImages ? 6 : 1,
-    extraNodes: ({ sources, size }) => manyImages
+    frames: manyImages || doneExport ? 6 : 1,
+    extraNodes: ({ sources, size }) => doneExport ? [worstCaseBoard(sources, size)] : manyImages
       ? Array.from({ length: 24 }, (_, index) => ({
         id: `visible-${index}`, kind: 'image', categoryId: 'shots', title: `Frame ${index}`, prompt: '',
         position: { x: 100 + (index % 6) * 380, y: 560 + Math.floor(index / 6) * 230 }, size: { width: 340, height: 191.25 }, status: 'success',
@@ -117,6 +144,28 @@ async function runOnce() {
         idleBusyPct: Math.round((after.TaskDuration - before.TaskDuration) / elapsed * 10000) / 100,
         idleRectReadsPerSec: Math.round((readsAfter - readsBefore) / elapsed * 10) / 10,
       }
+    }
+
+    if (doneExport) {
+      // Leave the image's editor, open the big board from its launcher (select, then click), let its 12 photographs decode, then Done.
+      await action('done').click()
+      await expect(editor).toBeHidden()
+      await page.keyboard.press('Escape') // deselect the image so its composer no longer covers the board below it
+      const launcher = page.locator('[data-node-id="big-board"] [data-testid="whiteboard-empty-action"]')
+      await launcher.click()
+      if (!await editor.isVisible()) await launcher.click()
+      await expect(editor).toBeVisible()
+      await expect.poll(() => page.evaluate(() => {
+        const board = document.querySelector('[data-nomi-inline-whiteboard="true"]')
+        return Boolean(board?.querySelector('canvas')) && [...document.images].every((image) => image.complete)
+      }), { message: 'the big board is mounted and every image on the page has decoded' }).toBe(true)
+      await page.waitForTimeout(1500)
+      await armResponse(page, { trigger: 'pointerdown', predicate: 'whiteboardResultVisible', early: 'whiteboardSaving', arg: 'big-board', timeoutMs: 60_000 })
+      await action('done').click()
+      const finished = await takeResponse(page)
+      Object.assign(sample, { doneToVisibleMs: finished.ms, doneToFeedbackMs: finished.earlyMs, longTasks: finished.longTasks, board: '4096x4096, 12 photographs (6 distinct), 24 brush paths' })
+      await expect.poll(() => (project.readNode('big-board').history ?? []).length).toBe(1)
+      sample.savedVersions = project.readNode('big-board').history.length
     }
 
     if (scene === 'idle-panel') {

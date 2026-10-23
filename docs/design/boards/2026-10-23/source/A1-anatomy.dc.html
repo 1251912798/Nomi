@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>A1 一张脸</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="nomi-ds.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,400&amp;display=swap">
+<style>body{margin:0}.nd{position:relative;width:200px;height:112px;margin-top:62px}.nd .stp{position:absolute;left:0;bottom:calc(100% + 34px)}</style>
+</helmet>
+<div class="nm light" style="width:1240px;height:880px;padding:32px 40px;display:flex;flex-direction:column;gap:22px">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="v" viewBox="0 0 24 24"><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z"/><path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"/></symbol>
+<symbol id="ck" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></symbol>
+<symbol id="cl" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></symbol>
+<symbol id="ld" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+</defs></svg>
+<div class="row g8"><span class="tag sch">A1</span><h2 class="h2">一张脸：指向元素的每个部件都来自真节点，不另造</h2><span class="note">真组件出处：BaseGenerationNode 标题行 + NodeShotLabel（镜号）· NodeEmptyState（空卡）· ProductionShotPlaceholder（等你确认 / 排队）· GenerationWaitingSurface + GenerationStatusBar（生成中）· 结果图</span></div>
+
+<div style="display:flex;gap:40px;align-items:flex-start">
+<div class="col" style="width:700px;gap:6px">
+<div class="cap" style="margin:0"><b>画布上的节点</b><span>同一个镜头的三个阶段，真实排法：状态条在最上、标题行在框外、画面在框里</span></div>
+<div style="display:flex;gap:30px">
+<!-- 节点：等你确认 -->
+<div class="col"><div class="nd"><div class="cn" style="position:absolute;inset:0"><div class="lab"><span class="shot">镜 01</span><span class="ttl" style="font-size:13px">纸船出发</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span><span class="pl"><svg class="i i10" style="display:none"><use href="#cl"/></svg>等你确认</span></div></div></div></div><div class="note" style="margin-top:6px">① 等你确认</div></div>
+<!-- 节点：生成中 -->
+<div class="col"><div class="nd"><span class="stp"><span class="stt" style="background:var(--nomi-ink05);border-radius:999px;padding:3px 9px;gap:6px;font-weight:500;font-size:12px"><span style="width:6px;height:6px;border-radius:999px;background:var(--nomi-accent)"></span>生成中 · 已等 12 秒</span></span><div class="cn" style="position:absolute;inset:0"><div class="lab"><span class="shot">镜 01</span><span class="ttl" style="font-size:13px">纸船出发</span></div><div class="card"><div class="th gen"></div></div></div></div><div class="note" style="margin-top:6px">② 生成中</div></div>
+<!-- 节点：完成 -->
+<div class="col"><div class="nd"><div class="cn" style="position:absolute;inset:0"><div class="lab"><span class="shot">镜 01</span><span class="ttl" style="font-size:13px">纸船出发</span></div><div class="card"><div class="th im1"></div></div></div></div><div class="note" style="margin-top:6px">③ 完成（只剩结果图）</div></div>
+</div>
+<div class="cap" style="margin:18px 0 0"><b>聊天里的 P1</b><span>同样大小、同样排法；状态条落进缩略图里（GenerationStatusBar 自带的 overlay 形态）</span></div>
+<div style="display:flex;gap:30px">
+<div class="col" style="width:200px"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span><span class="pl">等你确认</span></span><span class="sum">Seedance 2.0 Fast · 16:9 · 4s</span></button></div>
+<div class="col" style="width:200px"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th gen"><span class="sb acc">生成中 · 已等 12 秒</span></span><span class="sum">Seedance 2.0 Fast · 16:9 · 4s</span></button></div>
+<div class="col" style="width:200px"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th im1"></span><span class="sum">Seedance 2.0 Fast · 16:9 · 4s</span></button></div>
+</div>
+</div>
+
+<div class="col g8" style="width:420px">
+<div class="cap" style="margin:0"><span class="tag sch">P2</span><b>行内标签</b><span>只取标题行那一半</span></div>
+<div class="p2list">
+<button class="p2row" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="sum">等你确认</span></span></button>
+<button class="p2row" type="button"><span class="th gen"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="sum">生成中 · 已等 12 秒</span></span><svg class="i i14 spin" style="color:var(--nomi-accent)"><use href="#ld"/></svg></button>
+<button class="p2row" type="button"><span class="th im1"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 Fast · 16:9 · 4s</span></span></button></div>
+<div class="cap" style="margin:14px 0 0"><span class="tag sch">P3</span><b>配对号标</b><span>聊天里「号 + 名」，画布节点角挂同号小标</span></div>
+<div class="p2list">
+<button class="p3" type="button"><span class="mk">1</span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum">等你确认</span></span></button>
+<button class="p3" type="button"><span class="mk">1</span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum">生成中 · 已等 12 秒</span></span><svg class="i i14 spin" style="color:var(--nomi-accent)"><use href="#ld"/></svg></button>
+<button class="p3" type="button"><span class="mk">1</span><span class="th im1" style="width:28px;height:28px;border-radius:6px"></span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 Fast · 16:9 · 4s</span></span></button></div>
+</div>
+</div>
+
+<table class="cmpt" style="font-size:12px">
+<tr><th style="width:150px">部件</th><th>来自哪（真组件）</th><th>指向元素里的做法</th><th style="width:230px">真节点上有吗</th></tr>
+<tr><td>镜号角标 + 名字</td><td>NodeShotLabel / 节点标题行</td><td>原样（边线、圆角、字号同标题行）；改名两边一起变</td><td>有</td></tr>
+<tr><td>画面</td><td>结果图；空卡 = NodeEmptyState 的圆托 + 种类图标</td><td>同比例缩小；无结果就是同一个空卡；9:16 按真比例（见 A2）</td><td>有</td></tr>
+<tr><td>状态</td><td>等你确认 / 排队：ProductionShotPlaceholder 左上小标；生成中 / 失败：GenerationStatusBar 一点一句话</td><td>小标在缩略图左上；状态条的 overlay 形态落进缩略图左下。完成没有标，只剩结果图</td><td>有（状态条在节点上方，指向元素里挪进画面）</td></tr>
+<tr><td>一行摘要</td><td>读节点的模型 / 比例 / 时长</td><td>缩略图下一行灰字，只读</td><td>节点上没有这一行，是读节点那一份算出来的</td></tr>
+<tr><td>已删除态</td><td>—</td><td>划线名字 + 空圆托 + 「已删除」，不可点</td><td><span class="only">只在指向元素上</span>（节点没了才有）</td></tr>
+</table>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":880}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

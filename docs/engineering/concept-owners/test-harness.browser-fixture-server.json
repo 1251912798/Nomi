@@ -1,0 +1,28 @@
+{
+  "name": "vitest 浏览器夹具测试的页面服务（唯一起服入口）",
+  "subject": "test-harness.browser-fixture-server",
+  "lifecycle": "delivery",
+  "authority_kind": "gateway",
+  "trust_domain": "test",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "tests/ux/_browserFixture.mjs",
+    "symbol": "useBrowserFixture"
+  },
+  "write_api": [
+    {
+      "path": "tests/ux/_browserFixture.mjs",
+      "symbol": "useBrowserFixture"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "symbol": "browserFixturePlugin"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "tests/ux/_browserFixture.test.mjs",
+  "allowed_consumers": [],
+  "since": "2026-10-24",
+  "notes": "合同 docs/fixes/2026-10-24-browser-fixture-ready-signals.root-cause.json：tests/**/*.test.* 起 vite 开发服务只经 useBrowserFixture（依赖扫描只认入口页、准备阶段把入口页编完再导航、冷编译只受 FIXTURE_BUILD_BUDGET_MS 约束）。夹具不替测试起浏览器：浏览器类型由调用方传入（browserType 必填，缺了当场抛错），测试文件自己 import playwright，推送前的相关单测照旧靠这个 import 把它们交给 CI；普查在 tests/ux/_browserFixture.test.mjs。eslint.config.mjs 的 browserFixturePlugin 在 tests/**/*.test.* 里拦直接从 vite 导入 createServer 与动态 import('vite')。用应用 vite.config 的两份存量（asset-tile-badges-visible / reference-row-alignment）在调用处带 ESLint 豁免，迁移另立账。"
+}

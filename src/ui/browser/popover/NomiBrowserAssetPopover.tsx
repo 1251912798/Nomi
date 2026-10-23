@@ -1,5 +1,6 @@
 import React, { type JSX } from 'react'
 import { getDesktopBridge } from '../../../desktop/bridge'
+import { listenOutsidePress } from '../../../design/outsidePress'
 import type { NomiBrowserAsset, NomiBrowserAssetTab } from '../assets/browserAssetData'
 import { dispatchBrowserAssetsImportToCanvas } from '../overlay/globalAssetPopoverEvents'
 import {
@@ -174,15 +175,11 @@ export function NomiBrowserAssetPopover({
 
   React.useEffect(() => {
     if (!popoverOpen || contained) return
-    const handleMouseDown = (event: MouseEvent): void => {
-      const target = event.target as Node
+    return listenOutsidePress((target) => {
+      if (!(target instanceof Node)) return false
       const targetElement = target instanceof HTMLElement ? target : target.parentElement
-      if (rootRef.current?.contains(target)) return
-      if (targetElement?.closest(PROMPT_EXTRACTION_SETTINGS_DIALOG_SELECTOR)) return
-      setPopoverOpen(false)
-    }
-    document.addEventListener('mousedown', handleMouseDown)
-    return () => document.removeEventListener('mousedown', handleMouseDown)
+      return Boolean(rootRef.current?.contains(target) || targetElement?.closest(PROMPT_EXTRACTION_SETTINGS_DIALOG_SELECTOR))
+    }, () => setPopoverOpen(false))
   }, [contained, popoverOpen, setPopoverOpen])
 
   React.useEffect(() => {
@@ -349,25 +346,12 @@ export function NomiBrowserAssetPopover({
 
   React.useEffect(() => {
     if (!filtersOpen) return
-    const handlePointerDown = (event: PointerEvent): void => {
-      const target = event.target as Node
-      if (filterPopoverRef.current?.contains(target)) return
-      if (filterButtonRef.current?.contains(target)) return
-      setFiltersOpen(false)
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
+    return listenOutsidePress((target) => target instanceof Node && Boolean(filterPopoverRef.current?.contains(target) || filterButtonRef.current?.contains(target)), () => setFiltersOpen(false))
   }, [filtersOpen])
 
   React.useEffect(() => {
     if (!assetContextMenu) return
-    const handlePointerDown = (event: PointerEvent): void => {
-      const target = event.target as Node
-      if (assetContextMenuRef.current?.contains(target)) return
-      setAssetContextMenu(null)
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
+    return listenOutsidePress((target) => target instanceof Node && Boolean(assetContextMenuRef.current?.contains(target)), () => setAssetContextMenu(null))
   }, [assetContextMenu])
 
   React.useEffect(() => {

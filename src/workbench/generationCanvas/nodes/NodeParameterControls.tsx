@@ -33,7 +33,6 @@ import {
   type DynamicCatalogControl,
   buildEffectiveImageCatalogConfig,
   defaultPatchForCatalogControl,
-  videoAspectDefaultPatch,
   getSlotNodeRef,
   getSlotThumbUrl,
   imageCatalogReferenceSlot,
@@ -87,11 +86,8 @@ import { composerHeadlineSummary } from './composerHeadlineSummary'
 import { useNodeModelAutoSelect } from './useNodeModelAutoSelect'
 import { resolveArchetypeForOption, resolveRenderedControls } from './nodeModelArchetype'
 import { buildAspectRatioNodePatch } from './nodeSizing'
-import {
-  ASPECT_RATIO_KEYS,
-  collectInputAspectRatios,
-  preferredVideoAspect,
-} from './aspectRatio'
+import { ASPECT_RATIO_KEYS } from './aspectRatio'
+import { ASPECT_EXPLICIT_META_KEY } from './aspectExplicit'
 import { normalizeAspectRatioToWH, parseAspectRatioValue } from '../../../../electron/shared/aspectRatioValue'
 import { buildNodeModelChangePatch } from './buildNodeModelChangePatch'
 
@@ -260,33 +256,9 @@ export default function NodeParameterControls({
     updateNode,
   })
 
-  // 连边联动（2026-07-17 用户拍板）：视频比例产品默认 = 首选 16:9、已连输入**全竖**才 9:16。
-  // 输入边集合或模型变化时重算；用户显式选过比例（aspect_ratio_user_set）后不再自动改。
-  const inputAspectSignature = edges
-    .filter((e) => e.target === node.id)
-    .map((e) => `${e.source}:${String(e.mode || '')}`)
-    .sort()
-    .join('|')
-  React.useEffect(() => {
-    if (!ownsDerivedWrites || !isVideoLike) return
-    const latest = getLatestMeta()
-    if (latest.aspect_ratio_user_set === true) return
-    const state = useGenerationCanvasStore.getState()
-    const preferred = preferredVideoAspect(collectInputAspectRatios(node.id, state.edges, state.nodes))
-    const current = ((): string | null => {
-      for (const key of ASPECT_RATIO_KEYS) {
-        const wh = normalizeAspectRatioToWH(String(latest[key] ?? ''))
-        if (wh) return wh
-      }
-      return null
-    })()
-    if (current === preferred) return
-    const patch = videoAspectDefaultPatch(renderedControls, preferred)
-    if (Object.keys(patch).length > 0) updateMeta(patch, { history: false })
-    // renderedControls/updateMeta 每渲染重建，入 deps 会令 effect 每次 meta 写都重跑；
-    // 触发时机只需「输入边集合 / 模型」变化，语义由下面两个签名精确表达。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputAspectSignature, isVideoLike, selectedModelValue, node.id, ownsDerivedWrites])
+  // 视频比例的产品默认（首选 16:9、已连输入全竖 9:16）不在这里：它只在选模型 / 新卡自动选模型 / 连线这三个手势里铺
+  // （唯一出处 videoAspectSeed.ts）。这里以前有个挂载 effect 按它「纠正」比例——Agent 写的 9:16 一点开就变 16:9
+  // （2026-10-22 R-d2-defaults #1），打开节点不是改参数的手势，2026-10-22 删除。
 
   // 模式收窄的**选择安全**（U4）：收窄只改「显示哪几个」，节点 meta 里钉的 modeId 不会自己动。存量节点
   // （或用户把模型换到另一家后）可能停在一个已经不显示的模式上——那时模式栏一个都不高亮，而发送路径仍按
@@ -318,7 +290,7 @@ export default function NodeParameterControls({
       const wh = normalizeAspectRatioToWH(parsed)
       patch.aspect_ratio = wh ?? (control.key === 'aspect_ratio' ? parsed : null)
       // 用户显式选过比例 → 打标记，连边联动不再自动改（用户选择优先于产品默认）。
-      patch.aspect_ratio_user_set = true
+      patch[ASPECT_EXPLICIT_META_KEY] = true
       updateAspectRatioMeta(patch, parseAspectRatioValue(parsed))
       return
     }
@@ -330,7 +302,7 @@ export default function NodeParameterControls({
       control.binding === 'size' || control.binding === 'aspectRatio' || ASPECT_RATIO_KEY_SET.has(control.key)
     const patch = {
       ...defaultPatchForCatalogControl({ ...control, defaultValue: value }),
-      ...(isAspect ? { aspect_ratio_user_set: true } : {}),
+      ...(isAspect ? { [ASPECT_EXPLICIT_META_KEY]: true } : {}),
     }
     if (isAspect) {
       updateAspectRatioMeta(patch, parseAspectRatioValue(value))

@@ -3,7 +3,10 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
-/** 汇总表里「构建门」那一行的走查名与退出码；汇总脚本认它，不当成一条普通走查红。 */
+/**
+ * 汇总表里「构建门」那一行的走查名与退出码。汇总脚本现在还不认它：会把它当成一条名为 build-gate、
+ * 退出码 97、带日志路径的普通失败行列出来；构建门失败单独分栏在 #1294（PR-2）。
+ */
 export const BUILD_GATE_WALK = 'build-gate'
 export const BUILD_GATE_STATUS = 97
 

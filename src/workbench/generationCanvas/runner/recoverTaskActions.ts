@@ -171,6 +171,20 @@ export async function recoverNodeResult(nodeId: string, project: ProjectExecutio
   }
 }
 
+/**
+ * 回到可找回面板：画布任务（不是制作 Run）在错误卡上显示「已提交、没取回」那一类时，主按钮「去重新取回」走这里。
+ * 只有节点记着这次运行的 taskId 才回得去（免费续查靠它无状态重建查询）；没有就返回 false，调用方退回原动作。
+ * 错误原话留着：可找回面板照样给出服务商原话 / 技术详情。
+ */
+export function reopenRecoverableNode(nodeId: string): boolean {
+  const id = String(nodeId || '').trim()
+  const store = useGenerationCanvasStore.getState()
+  const node = store.nodes.find((item) => item.id === id)
+  if (!node || !String(node.runs?.[0]?.taskId || '').trim()) return false
+  store.setNodeStatus(id, 'recoverable', node.error)
+  return true
+}
+
 /** 放弃找回：用户明确把这个超时节点标为失败（进红色错误桶，可重试生成）。 */
 export function dismissRecoverableNode(nodeId: string): void {
   const id = String(nodeId || '').trim()

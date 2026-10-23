@@ -1,0 +1,198 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-23-rich-text-controls-single-source",
+  "detected_by": "user",
+  "recurrence_check_on": "2026-11-23",
+  "problem_type": "Rich-text format controls implemented per shell: each shell reads format state at render time and positions itself on its own",
+  "symptom": "用户 2026-10-23 实测：画布文本节点「上面有格式功能但是无法使用」；创作区格式按钮悬停看不懂、「代码」等按钮点了没反应；点列表只看到整段右移。",
+  "direct_cause": "① 画布文本节点格式条自写 absolute 定位（top -44px，在画布坐标里），跟着画布缩放、节点贴顶时整条落到顶栏下面点不到；② 编辑器关掉了按事务重渲（useNomiRichTextEditor），三个壳都在渲染时读一次 isActive / can()，按下态跟不上光标，空选区按「代码」只改存储标记，界面毫无变化；创作区顶栏按钮还没有按下态样式；③ 选区浮条（第三份格式清单）以整个编辑器为界摆位，选中第一行时盖住顶栏；④ Tailwind preflight 把 ul / ol 的 list-style 清成 none，全局 CSS 只补了缩进。",
+  "class_root": "格式按钮不是单一来源：清单统一了（buildRichTextActions），但「怎么读状态」「怎么摆」「按下去看不看得见」留给每个壳自己写，选区浮条还另抄一份清单；没有任何一层规定只能经哪个入口出钮。",
+  "affected_population": [
+    "画布文本节点里改格式的用户（任何缩放、节点贴近画布顶边时尤甚）",
+    "创作区用工具栏 / 选区浮条改格式的用户"
+  ],
+  "scope_paths": [
+    "src/workbench/common/richTextActions.tsx",
+    "src/workbench/common/RichTextActionButton.tsx",
+    "src/workbench/common/useNomiRichTextEditor.ts",
+    "src/workbench/creation/WorkbenchEditor.tsx",
+    "src/workbench/creation/SelectionGeneratePopover.tsx",
+    "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/workbench/workbench.css"
+  ],
+  "entry_points": [
+    "创作区顶栏格式按钮",
+    "创作区选区浮条的四颗格式按钮",
+    "画布文本节点编辑时的格式浮条"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://tiptap.dev/docs/editor/getting-started/style-editor/custom-menus",
+      "checked_at": "2026-10-23",
+      "purpose": "TipTap 官方「自定义菜单 · 按下态」：React 里编辑器状态默认不响应，isActive() 一直是初始值，要用 useEditorState 订阅（2026-10-23 经 Context7 核对原文；性能指南 https://tiptap.dev/docs/guides/performance 同样推荐 useEditorState + 深比较）"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/tailwindlabs/tailwindcss/blob/v3.4.17/src/css/preflight.css",
+      "checked_at": "2026-10-23",
+      "purpose": "preflight 对 ol, ul, menu 设 list-style: none; margin: 0; padding: 0（本机 src/styles/index.css 第 1 行 @import 'tailwindcss/base'）"
+    }
+  ],
+  "invariants": [
+    "格式状态（editor.isActive）只在 richTextActions.tsx 里读，且经 useEditorState 订阅编辑器事务",
+    "格式命令（toggleBold 等）只在 richTextActions.tsx 里发",
+    "三个壳都经 useRichTextActions + RichTextActionButton 出钮；画布那一壳挂在 FloatingToolbarShell 里",
+    "列表的符号 / 序号由编辑器内核的类名给出，不靠全局 CSS"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/common/richTextActions.tsx",
+      "symbol": "useRichTextActions"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/creation/SelectionGeneratePopover.tsx",
+      "symbol": "useRichTextActions"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/creation/WorkbenchEditor.tsx",
+      "symbol": "useRichTextActions"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx",
+      "symbol": "useRichTextActions"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/common/RichTextActionButton.tsx",
+      "symbol": "RichTextAction"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "symbol": "TextDocumentNode"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/common/useNomiRichTextEditor.ts",
+      "symbol": "useRichTextActions"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/workbench.css",
+      "symbol": "workbench-editor__content"
+    }
+  ],
+  "door_reduction": {
+    "before": 3,
+    "after": 8,
+    "why_not": "修前三个壳各有一份「读状态 + 出钮」（顶栏、选区浮条各一份清单与按钮，画布壳一份按钮）；修后它们都只调 useRichTextActions 取钮、用 RichTextActionButton 画钮，三个壳本身必须存在（三处界面是三个产品位置）。门表多出的几行是 owner 自身、按钮组件、再导出注释与挂载文本节点的外壳（只传编辑态回调），不是新的读状态入口。"
+  },
+  "generality_proof": "按下态 / 禁用态只有 owner 一处在读，并且是订阅式读法（useEditorState），任何壳、任何以后新增的壳拿到的都是随事务刷新的状态；按钮外观（Tooltip、aria-pressed、§5.5 Pressed 底色、mousedown 不抢焦点）只在 RichTextActionButton 一处；画布壳的定位交给节点浮条共享外壳，反向缩放与夹边对所有浮条一致。结构测试普查 src 全部源码，owner 之外出现 isActive('…') 或格式命令、壳不经 owner 出钮、画布壳离开共享外壳都会红。",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/common/richTextActions.tsx",
+      "symbol": "useRichTextActions",
+      "responsibility": "格式按钮的唯一清单、唯一状态读法（订阅事务）、唯一命令入口。"
+    },
+    {
+      "path": "src/workbench/common/RichTextActionButton.tsx",
+      "symbol": "RichTextActionButton",
+      "responsibility": "格式按钮的唯一画法：Tooltip 名字、按下态、不抢焦点。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/creation/WorkbenchEditor.tsx",
+      "entry_point": "WorkbenchEditorToolbar",
+      "disposition": "enforced",
+      "evidence": "原 buildRichTextActions 渲染时读一次 + 自写 ToolbarButton（无按下态样式、原生 title）；改经 useRichTextActions + RichTextActionButton。"
+    },
+    {
+      "path": "src/workbench/creation/SelectionGeneratePopover.tsx",
+      "entry_point": "SelectionGeneratePopover format group",
+      "disposition": "enforced",
+      "evidence": "原第三份格式清单（bold / italic / h1 / h2）渲染时读 isActive；改取 useRichTextActions 子集；摆位以正文区（.workbench-editor__scroll）上沿为界，不再盖住顶栏。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx",
+      "entry_point": "TextDocumentNode format bar",
+      "disposition": "enforced",
+      "evidence": "原自写 absolute 条（画布坐标、无夹边）；改挂 FloatingToolbarShell，编辑期间由 BaseGenerationNode 收起节点浮条（与白板编辑条同一做法）。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx",
+      "entry_point": "WhiteboardEditingToolbar",
+      "disposition": "not-affected",
+      "evidence": "白板编辑条不是富文本格式按钮（画笔 / 橡皮 / 图层），已经走 FloatingToolbarShell，是本次画布壳的先例。"
+    },
+    {
+      "path": "src/workbench/assets/PromptEditor.tsx",
+      "entry_point": "PromptEditor",
+      "disposition": "not-affected",
+      "evidence": "提示词框用同一个 TipTap 内核但没有格式按钮（rg 'isActive|toggleBold' 只命中 owner）。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "任何新的富文本表面（分镜提示词、Agent 输入框）都会再想加格式按钮；不收口就会再抄一份清单和一种读状态的方法，而编辑器关掉按事务重渲是有意保留的决定，渲染时读一次的写法必然再次失效。",
+    "same_class_scan": [
+      "rg -n \"\\.isActive\\(|toggleBold|toggleItalic|toggleHeading|toggleBulletList\" src：修前命中 richTextActions.tsx 与 SelectionGeneratePopover.tsx 两处清单；修后只剩 owner",
+      "rg -n \"buildRichTextActions\" src：修前 TextDocumentNode、WorkbenchEditor 两个调用；修后删除",
+      "rg -n \"FloatingToolbarShell\" src：画布节点浮条 7 个消费者，文本节点格式条是唯一没用它的编辑期浮条"
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "src/workbench/common/richTextActions.tsx",
+    "invariant": "owner 之外不读格式状态、不发格式命令；三个壳经 useRichTextActions + RichTextActionButton 出钮；画布壳在 FloatingToolbarShell 里；owner 用 useEditorState 订阅。",
+    "failure_mode": "结构测试 src/workbench/common/richTextActions.structure.test.ts 红，列出违规文件。",
+    "exception_policy": "none",
+    "strategy": "把清单、状态读法、命令、按钮画法收进 owner 与按钮组件两处，删掉 buildRichTextActions 和两份自写按钮；画布壳复用节点浮条共享外壳。",
+    "artifacts": [
+      "src/workbench/common/richTextActions.tsx",
+      "src/workbench/common/RichTextActionButton.tsx",
+      "src/workbench/common/richTextActions.structure.test.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/common/richTextActions.structure.test.ts",
+    "tests/ux/outside-press-and-text-format.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/common/richTextActions.structure.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/common/richTextActions.tsx",
+      "src/workbench/creation/WorkbenchEditor.tsx",
+      "src/workbench/creation/SelectionGeneratePopover.tsx",
+      "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx",
+      "src/workbench/workbench.css"
+    ],
+    "rationale": "buildRichTextActions、WorkbenchEditor 的自写 ToolbarButton、SelectionGeneratePopover 的第三份清单、TextDocumentNode 的自写 absolute 格式条、workbench.css 里只补缩进的 ul / ol 规则，同一提交删除。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "TipTap 的 shouldRerenderOnTransaction:false 是我们有意的选择，官方为它配了 useEditorState；Tailwind preflight 是设计系统的基线，不动它，列表样式由编辑器内核的类名给出。",
+    "exit_criteria": []
+  },
+  "migration": "纯渲染层行为，没有持久化状态，不需要迁移。",
+  "residual_risks": [
+    "每次按键多跑一遍按钮状态选择器：同机对照创作区 2 万字文稿打字 p95 15.2 → 16.1ms、画布 3000 字文本节点 16.3 → 16.6ms（预算 50ms）。",
+    "用户说的「文本节点打字卡」在本机 3000 字 / 96 节点下修前修后都量不出来（16ms 量级），没有在本 PR 里改打字路径；需要用户给出卡的具体场景再量。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/common/richTextActions.tsx",
+    "tests": [
+      "src/workbench/common/richTextActions.structure.test.ts"
+    ],
+    "why": "格式按钮的清单、状态读法与命令由 richTextActions.tsx 单点持有；结构测试普查 src 全部非测试源码，任一壳绕开它或 owner 改回渲染时读一次就红。"
+  }
+}
