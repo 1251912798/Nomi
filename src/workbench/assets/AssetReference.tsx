@@ -62,6 +62,9 @@ type AssetReferenceProps = {
   unusedUrls?: readonly string[]
   /** 「未用到」那张的 ×（和在用缩略图同一颗悬停 ×，用户 10-22 拍板 ⑫）：删的是节点参考列表里那一张；连线来的就断开那条线。 */
   onRemoveUnused?: (url: string) => void
+  /** 「未用到」里先放一边的旧工程残留（#1269 条件 4）：点一下 onUseParked 放回在用，悬停写「点一下用上」。 */
+  parkedUrls?: ReadonlySet<string>
+  onUseParked?: (url: string) => void
   /** 首尾帧两格的对调（只有恰好两个单帧槽时才给）。 */
   onSwapFrames?: () => void
   /** 模型根本不收参考：入口灰掉、悬停说原因；已经连进来的图淡显。 */
@@ -86,7 +89,7 @@ function kindFromFile(file: File): AssetKind {
 export default function AssetReference({
   slots, remainingCapacity, capacityMessage, valuesByKey, occupiedByKey, projectId, openSlotKey, uploadingSlotKey,
   onTogglePicker, onPick, onUpload, onRemove, onInsertMention, onReorder, onBrowseAll, onPickOnCanvas, firstFrameSlotKey,
-  referenceInfos, unusedUrls, onRemoveUnused, onSwapFrames, disabledReason, tail,
+  referenceInfos, unusedUrls, onRemoveUnused, parkedUrls, onUseParked, onSwapFrames, disabledReason, tail,
 }: AssetReferenceProps): JSX.Element {
   const { t } = useTranslation()
   const dragRef = React.useRef<{ key: string; index: number } | null>(null)
@@ -247,14 +250,19 @@ export default function AssetReference({
           ))}
         </div>
       ) : null}
-      {/* 别的方式里放着、这个方式用不上的图：淡显，名字写「未用到」，切回去还在。 */}
-      {(unusedUrls ?? []).map((url) => (
-        <div key={`unused-${url}`} data-reference-unused="true" className="flex min-w-10 shrink-0 flex-col items-start gap-1">
-          <AssetTile {...tileProps(url, 'image', t('assetLibrary.referenceImage'))} dimmed
-            {...(onRemoveUnused && !disabled ? { onRemove: () => onRemoveUnused(url) } : {})} />
+      {/* 别的方式里放着、这个方式用不上的图：淡显，名字写「未用到」，切回去还在。旧工程里以前藏着的图（先放一边）也在这里：点一下用上。 */}
+      {(unusedUrls ?? []).map((url) => {
+        const unusedTile = tileProps(url, 'image', t('assetLibrary.referenceImage'))
+        const usable = Boolean(onUseParked && parkedUrls?.has(url) && !disabled)
+        return (
+        <div key={`unused-${url}`} data-reference-unused="true" data-reference-parked={parkedUrls?.has(url) ? 'true' : undefined} className="flex min-w-10 shrink-0 flex-col items-start gap-1">
+          <AssetTile {...unusedTile} dimmed
+            {...(onRemoveUnused && !disabled ? { onRemove: () => onRemoveUnused(url) } : {})}
+            {...(usable ? { onClick: () => onUseParked!(url), tipText: t('assetLibrary.refRow.useParked', { name: unusedTile.asset.name }) } : {})} />
           {disabled ? null : <span className="whitespace-nowrap text-caption leading-4 text-nomi-ink-60">{t('assetLibrary.refRow.unused')}</span>}
         </div>
-      ))}
+        )
+      })}
       {tailContent ? (
         <span data-reference-tail="true" className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1 self-center text-caption text-nomi-ink-60">{tailContent}</span>
       ) : null}

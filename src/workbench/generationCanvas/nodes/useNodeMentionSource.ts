@@ -15,6 +15,7 @@ import { useNodeWriteAccess, type NodeWriteAccess } from './nodeWriteAccess'
 import { useTranslation } from 'react-i18next'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { applyArchetypeModeSwitch, archetypeArrayWrite, currentArchetypeMode, readArchetypeArrayForWrite, referenceSlotStorage } from './controls/archetypeMeta'
+import { readParkedReferences, REFERENCE_LIST_KEY, withReferenceList } from './controls/referenceList'
 import { archetypeForNode, validateReferenceEdge } from '../agent/referenceEdgeCapability'
 import { MENTION_SLOT_BY_MEDIA, resolveMentionReference } from '../model/canvasReferenceConnection'
 import { translateModelDisplayText } from '../../../i18n/modelDisplayText'
@@ -103,6 +104,8 @@ export function createMentionSelect(deps: MentionSelectDeps): (item: MentionSugg
     const meta = (access.latestNode(nodeId)?.meta || {}) as Record<string, unknown>
     const existing = readArchetypeArrayForWrite(meta, storage.metaKey)
     if (!existing.includes(url)) access.updateNode(nodeId, { meta: archetypeArrayWrite(meta, storage.metaKey, [...existing, url]) })
+    // @ 了列表里「先放一边」的那张（旧工程残留）：用户点名要用它，放回在用；放不下由下面的 finalIndexOrUndo 撤回并明说。
+    else if (storage.metaKey === REFERENCE_LIST_KEY && readParkedReferences(meta).includes(url)) access.updateNode(nodeId, { meta: withReferenceList(meta, existing, { unpark: [url] }) })
     return finalIndexOrUndo(url, mediaKind, metaBefore, edgeIdsBefore)
   }
 

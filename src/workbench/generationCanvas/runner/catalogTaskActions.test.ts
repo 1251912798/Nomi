@@ -162,13 +162,13 @@ describe('buildCatalogTaskRequest — 档案驱动 input（extras.archetypeInput
     expect(ai.last_frame_url).toBe('L.png')
   })
 
-  it('全能参考模式：角色图数组进（按序）；旧数据残留的 firstFrameUrl 归一进参考列表、排在后面（参考行看得见，也照样发），不当首帧发', () => {
+  it('全能参考模式：角色图数组进（按序）；旧数据残留的 firstFrameUrl 旧界面看不见 → 先放一边，不发、也不当首帧发（#1269 条件 4）', () => {
     const ai = archetypeInput(seedanceVideoNode('omni', {
       referenceImageUrls: ['c1.png', 'c2.png'],
       referenceVideoUrls: ['v1.mp4'],
       firstFrameUrl: 'stale.png',
     }))
-    expect(ai.reference_image_urls).toEqual(['c1.png', 'c2.png', 'stale.png'])
+    expect(ai.reference_image_urls).toEqual(['c1.png', 'c2.png'])
     expect(ai.reference_video_urls).toEqual(['v1.mp4'])
     expect(ai.first_frame_url).toBeUndefined()
   })

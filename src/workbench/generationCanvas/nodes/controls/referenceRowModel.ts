@@ -24,6 +24,8 @@ export function computeReferenceRowModel(args: {
   refsUnsupported: boolean
   /** 节点参考列表里当前方式用不上的图（resolveReferencePlacement 的 unused，和请求组装同一个推导）。 */
   unusedUploads: readonly string[]
+  /** unusedUploads 里「先放一边」的旧工程残留（resolveReferencePlacement 的 parked）：点一下放回在用。 */
+  parkedUploads?: readonly string[]
   showReferences: boolean
   fallbackName: (kind: AssetKind) => string
 }) {
@@ -41,6 +43,8 @@ export function computeReferenceRowModel(args: {
   // 「用不上」由 resolveReferencePlacement 推导（和请求组装同一个函数），这里不另算。连线多出来的图只在首尾帧 / 不收参考时算。
   const uploads = args.unusedUploads
   const unusedUrls = Array.from(new Set(refsUnsupported || framesOnly ? [...inboundImageUrls, ...uploads] : uploads)).filter((url) => !shownUrls.has(url))
+  const parked = new Set(args.parkedUploads ?? [])
+  const parkedUrls = new Set(unusedUrls.filter((url) => parked.has(url)))
   const referenceInfos = args.showReferences
     ? resolveReferenceInfos({
       nodeId: node.id,
@@ -55,7 +59,7 @@ export function computeReferenceRowModel(args: {
     })
     : undefined
   const arrayCount = arraySlots.reduce((sum, slot) => sum + ((assetValuesByKey[slot.metaKey] as string[] | undefined) ?? []).filter(Boolean).length, 0)
-  return { unusedUrls, framesOnly, referenceInfos, arrayCount }
+  return { unusedUrls, parkedUrls, framesOnly, referenceInfos, arrayCount }
 }
 
 /** 用户在这个节点上关掉了「要当首尾帧用？」的提示（只对这个节点生效，随项目持久化）。 */

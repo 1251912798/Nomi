@@ -12,7 +12,8 @@
 //   ① TRANSLATED_REFERENCE_INPUT_KEYS：主进程把参考翻成请求体之前读的标准输入键（不是请求体键）；
 //   ② 每个档案每个方式的参考槽 inputKey 与合并键 combineSlotsInto.key——按 M1 合同，请求体就是从这些键读参考；
 //   ③ APIMART_REFERENCE_PARAMETER_ALIASES：APIMart 引擎 B 认的参考别名（capabilityCore/apimartGenerationProjection 从这里取）；
-//   ④ 档案的 headlessReferenceKeys：请求体认、生成框没有控件的参考输入（KIE Gemini Omni 的 video_list…、fal 改图的 mask_url）。
+//   ④ 档案的 headlessReferenceKeys：请求体认、生成框没有控件的参考输入（KIE Gemini Omni 的 video_list…、fal 改图的 mask_url）；
+//   ⑤ REFERENCE_PARKED_KEY：节点上「先放一边」的旧工程残留（不是请求输入，但装的是图）。
 // 完整性门：referenceSentWithinInUse.property.test.ts「键表完整性」——内置目录每条请求体读的键都要能归类，
 // 新请求体多读一个参考键而没进这张表，那里先红。
 import { MODEL_ARCHETYPES } from "./index";
@@ -29,6 +30,13 @@ export const TRANSLATED_REFERENCE_INPUT_KEYS: readonly string[] = [
   "styleReferenceImages", "characterReferenceImages", "compositionReferenceImages",
   "upstreamResultUrls",
 ];
+
+/**
+ * ⑤ 节点上存着图、但不是请求输入的键：「先放一边」的旧工程残留（src/workbench/generationCanvas/nodes/controls/referenceList.ts
+ * 的 PARKED_KEY 就是它，#1269 条件 4）。它们照样是图——随 `...meta` 进了 extras 会被当成上传白名单（activeAssetUrls）托管出去，
+ * 所以同样进表：渲染层清掉，主进程见到就拒。
+ */
+export const REFERENCE_PARKED_KEY = "referenceParkedUrls";
 
 /** ③ APIMart 引擎 B 的参考别名：请求体键 → 它认的同义参数键（原在 capabilityCore/apimartGenerationProjection）。 */
 export const APIMART_REFERENCE_PARAMETER_ALIASES = {
@@ -53,6 +61,7 @@ function archetypeDeclaredReferenceKeys(): string[] {
 
 export const GENERIC_REFERENCE_KEYS: ReadonlySet<string> = new Set([
   ...TRANSLATED_REFERENCE_INPUT_KEYS,
+  REFERENCE_PARKED_KEY,
   ...archetypeDeclaredReferenceKeys(),
   ...Object.values(APIMART_REFERENCE_PARAMETER_ALIASES).flat(),
 ]);

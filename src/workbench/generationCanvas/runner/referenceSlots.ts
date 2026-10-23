@@ -16,7 +16,7 @@ import { applyArchetypeModeSwitch, currentArchetypeMode, referenceSlotStorage } 
 import { archetypeForNode, referenceAssetKindForNode, resolveTargetModeForEdge, SLOT_ACCEPTS, preferredSlotKinds, type ReferenceAssetKind } from '../agent/referenceEdgeCapability'
 import { sortEdgesByOrder } from '../model/graphOps'
 import { asUrl, findNodeResultUrl } from './referenceUrl'
-import { firstFrameLeftEmpty, isImageUploadSlot, placeUploadedImages, readReferenceList } from '../nodes/controls/referenceList'
+import { isImageUploadSlot, listPlacementInputs, placeUploadedImages } from '../nodes/controls/referenceList'
 
 export type ReferenceFillOrigin =
   | { type: 'edge'; sourceNodeId: string; semantic?: GenerationCanvasEdgeMode }
@@ -138,21 +138,24 @@ export type ReferencePlacementOptions = {
 }
 
 /**
- * 同 resolveReferenceSlots，另给出节点参考列表里**当前方式用不上**的图（unused，参考行淡显「未用到」）。
- * 在用 ∪ unused = 节点上那一份参考列表，一张不少。
+ * 同 resolveReferenceSlots，另给出节点参考列表里**当前方式用不上**的图（unused，参考行淡显「未用到」），
+ * 其中「先放一边」的旧工程残留另列在 parked（点一下放回在用）。在用 ∪ unused = 节点上那一份参考列表，一张不少。
  */
 export function resolveReferencePlacement(
   target: GenerationCanvasNode,
   nodes: GenerationCanvasNode[],
   edges: GenerationCanvasEdge[],
   options: ReferencePlacementOptions = {},
-): { slots: ResolvedReferenceSlot[]; unused: string[] } {
+): { slots: ResolvedReferenceSlot[]; unused: string[]; parked: string[] } {
   const archetype = archetypeForNode(target)
-  if (!archetype) return { slots: [], unused: [] }
+  if (!archetype) return { slots: [], unused: [], parked: [] }
   const meta = (target.meta || {}) as Record<string, unknown>
   const mode = currentArchetypeMode(archetype, meta)
   const slots = mode.slots
-  if (slots.length === 0) return { slots: [], unused: readReferenceList(meta, mode) }
+  if (slots.length === 0) {
+    const inputs = listPlacementInputs(meta, mode)
+    return { slots: [], unused: inputs.list, parked: inputs.list.filter((url) => inputs.parked.has(url)) }
+  }
   const nodesById = new Map(nodes.map((n) => [n.id, n]))
 
   // 按实际输入增长，不为未公开的上限分配 Infinity/NaN 长度数组，也不编造数量限制。
@@ -217,15 +220,17 @@ export function resolveReferencePlacement(
     }
   })
 
-  // 2b) 图片上传：节点上那一份有序参考列表，按唯一规则 placeUploadedImages 依次落进收图的槽（与请求组装同一个函数）。
+  // 2b) 图片上传：节点上那一份有序参考列表，按唯一规则 placeUploadedImages 依次落进收图的槽（与请求组装同一个函数、同一组输入）。
   const occupiedUrls = new Set(positionsBySlot.flatMap((row) => row.flatMap((cell) => (cell?.url ? [cell.url] : []))))
   const occupiedTotal = positionsBySlot.reduce((sum, row) => sum + row.filter(Boolean).length, 0)
-  const placement = placeUploadedImages(mode, readReferenceList(meta, mode), {
+  const inputs = listPlacementInputs(meta, mode)
+  const placement = placeUploadedImages(mode, inputs.list, {
     countBySlot: positionsBySlot.map((row) => row.filter(Boolean).length),
     urls: occupiedUrls,
   }, {
     totalBudget: mode.maxTotalReferences === undefined ? undefined : mode.maxTotalReferences - occupiedTotal,
-    firstFrameEmpty: firstFrameLeftEmpty(meta),
+    firstFrameEmpty: inputs.firstFrameEmpty,
+    parked: inputs.parked,
     ...(options.capOf ? { capOf: (slotIndex: number) => options.capOf!(slots[slotIndex]!) } : {}),
   })
   placement.bySlot.forEach((urls, slotIndex) => {
@@ -234,6 +239,7 @@ export function resolveReferencePlacement(
 
   return {
     unused: placement.unused,
+    parked: placement.parked,
     slots: slots.map((slot, slotIndex) => ({
       slotKind: slot.kind,
       label: slot.label,

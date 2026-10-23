@@ -9,7 +9,7 @@
 // 用法：node tests/ux/composer-b3.walk.mjs        （EVIDENCE=0 只跑断言不截图）
 import { stationTimeout } from './_station-budget.mjs'
 import { expectAbsent, proveProbe } from './_assert.mjs'
-import { uiText } from './full-walk/invariants.mjs'
+import { uiText, uiTextPattern } from './full-walk/invariants.mjs'
 
 const zh = (key) => uiText('zh-CN', key)
 import { chromium } from 'playwright'
@@ -366,6 +366,35 @@ try {
     }
     await shot(page, B3, 'b3t-video-firstlast-two-ref-edges', `B3t-two-ref-edges-${lang}-${scheme}`)
     check(`refslots.edges.two-refs-into-first-last.${lang}-${scheme}`, slots.join() === 'filled,filled' && unusedAbsent === true, JSON.stringify({ slots, unusedAbsent }))
+    await context.close()
+  }
+
+  // ── 旧工程残留先放一边（#1269 条件 4，协调 10-23 定、已报用户）：参考方式里以前藏着的首帧淡显「未用到」、悬停写「点一下用上」，
+  //    点一下放回在用（参考行在用 +1、未用到 0）。挂在已有元素 ref.slot.unused 上，不新增元素。中 / 英 × 明 / 暗各一遍。
+  for (const [lang, langParam, scheme] of [['zh', '', 'light'], ['zh', '', 'dark'], ['en', '&lang=en', 'light'], ['en', '&lang=en', 'dark']]) {
+    const locale = lang === 'zh' ? 'zh-CN' : 'en'
+    const tag = `${lang}-${scheme}`
+    const { page, context } = await open(B3, 'b3u-video-legacy-parked', `${langParam}&scheme=${scheme}`)
+    await page.waitForSelector('[data-reference-row] [data-reference-parked]', { timeout: stationTimeout() })
+    const before = {
+      tiles: await refTiles(page),
+      inUse: await count(page, '[data-reference-row] [data-asset-tile]:not([data-reference-unused] [data-asset-tile])'),
+      parked: await count(page, '[data-reference-row] [data-reference-parked]'),
+      label: await text(page, '[data-reference-parked] > span'),
+    }
+    const parkedTile = page.locator('[data-reference-parked] [data-asset-tile]').first()
+    await parkedTile.hover()
+    await page.waitForSelector('[data-asset-tile-tip]', { timeout: stationTimeout() })
+    const tip = await text(page, '[data-asset-tile-tip]')
+    await shot(page, B3, 'b3u-video-legacy-parked', `B3u-legacy-parked-hover-${tag}`)
+    const tipOk = new RegExp(uiTextPattern(uiText(locale, 'assetLibrary.refRow.useParked'))).test(tip ?? '')
+    check(`board:ComposerB3/ref.slot.unused · 旧工程残留先放一边：淡显「未用到」，悬停写「点一下用上」（${tag}）`, before.parked === 1 && before.label === uiText(locale, 'assetLibrary.refRow.unused') && tipOk, JSON.stringify({ before, tip }))
+    await parkedTile.click()
+    await page.waitForFunction(() => !document.querySelector('[data-reference-row] [data-reference-unused]'), null, { timeout: stationTimeout() })
+    await page.mouse.move(1, 1)
+    const after = { tiles: await refTiles(page), unused: await count(page, '[data-reference-row] [data-reference-unused]') }
+    await shot(page, B3, 'b3u-video-legacy-parked', `B3u-legacy-restored-${tag}`)
+    check(`board:ComposerB3/ref.slot.unused · 点一下用上：放回在用，一张不少（${tag}）`, after.tiles === before.tiles && after.unused === 0, JSON.stringify({ before, after }))
     await context.close()
   }
 

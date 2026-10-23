@@ -74,4 +74,17 @@ describe('旧项目的节点在 B3 下', () => {
     const placed = resolveReferencePlacement({ ...legacyOmni, meta }, [legacyOmni], [])
     expect(placed.slots[0]!.fills.map((fill) => fill.url)).toEqual([U1])
   })
+
+  it('旧参考方式节点里以前藏着的首帧（#1269 条件 4）：读进来、先放一边——参考行看得见（未用到）、不在用；切到首尾帧也不落；参数不丢', () => {
+    const STALE = 'http://x/refs/stale-first.png'
+    const meta = { ...legacyOmni.meta!, firstFrameUrl: STALE }
+    const placed = resolveReferencePlacement({ ...legacyOmni, meta }, [legacyOmni], [])
+    expect(placed.slots.flatMap((slot) => slot.fills.map((fill) => fill.url))).toEqual([U1, U2])
+    expect(placed).toMatchObject({ unused: [STALE], parked: [STALE] })
+    const next = applyArchetypeModeSwitch(meta, spec, 'firstlast')
+    expect(next).toMatchObject({ aspect_ratio: '9:16', duration: 8, referenceImageUrls: [U1, U2, STALE], referenceParkedUrls: [STALE] })
+    const there = resolveReferencePlacement({ ...legacyOmni, meta: next }, [legacyOmni], [])
+    expect(there.slots.map((slot) => slot.fills.map((fill) => fill.url))).toEqual([[U1], [U2]])
+    expect(there.parked).toEqual([STALE])
+  })
 })

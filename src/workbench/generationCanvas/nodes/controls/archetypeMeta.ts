@@ -28,7 +28,7 @@ import {
 } from '../../../../../electron/shared/modelArchetypes'
 import type { ImageUrlSlot } from '../../model/parameterReferenceSlots'
 import { translateModelDisplayText } from '../../../../i18n/modelDisplayText'
-import { firstFrameLeftEmpty, isImageUploadSlot, placeUploadedImages, readReferenceList, type UploadPlacement } from './referenceList'
+import { isImageUploadSlot, listPlacementInputs, normalizeReferenceListMeta, placeUploadedImages, type UploadPlacement } from './referenceList'
 import { readArchetypeArray } from './archetypeArrayValues'
 export { appendArchetypeArrayValue, archetypeArrayWrite, readArchetypeArray, readArchetypeArrayForWrite, type ArchetypeArrayAppend } from './archetypeArrayValues'
 import {
@@ -276,9 +276,11 @@ export function uploadPlacementForMode(
     countBySlot[slotIndex] = edgeCount
     occupied += edgeCount
   })
-  return placeUploadedImages(mode, readReferenceList(meta, mode), { countBySlot, urls }, {
+  const inputs = listPlacementInputs(meta, mode)
+  return placeUploadedImages(mode, inputs.list, { countBySlot, urls }, {
     ...(mode.maxTotalReferences === undefined ? {} : { totalBudget: mode.maxTotalReferences - occupied }),
-    firstFrameEmpty: firstFrameLeftEmpty(meta),
+    firstFrameEmpty: inputs.firstFrameEmpty,
+    parked: inputs.parked,
   })
 }
 
@@ -362,7 +364,7 @@ function preservedVariantId(meta: Record<string, unknown>, archetype: ModelArche
 
 /**
  * 切到 nextModeId：改 node.meta.archetype.modeId，并把**存量越界的 select 值夹回新模式的默认**
- * （参考值/照片全局保留，不搬不清）。返回**整份新 meta**。
+ * （参考值/照片全局保留，不搬不清；旧工程按槽存的参考图先按切换前的方式落成那一份列表，见函数体）。返回**整份新 meta**。
  * 互斥不在这里发生——发生在 buildArchetypeInputParams（只发当前模式声明的槽键）。这样切回时照片还在。
  * variantId 跟随保留（切 mode 不动变体）；无变体档案则不写 variantId 键。
  *
@@ -373,10 +375,13 @@ function preservedVariantId(meta: Record<string, unknown>, archetype: ModelArche
  * 收窄了「选项」却不收窄「已存的值」= UI 与发送不一致。通用坑，不是 Seedance 专属。
  */
 export function applyArchetypeModeSwitch(
-  meta: Record<string, unknown>,
+  rawMeta: Record<string, unknown>,
   archetype: ModelArchetype,
   nextModeId: string,
 ): Record<string, unknown> {
+  // 旧工程的按槽存的参考图，先按**切换前**的方式落成规范形：旧界面那时看不见的记进「先放一边」（#1269 条件 4）。
+  // 放在这里是因为改 modeId 的入口有 20 处——只要有一处先改了方式、后归一，旧图就会按新方式被当成「看得见」而在用。
+  const meta = normalizeReferenceListMeta(rawMeta, currentArchetypeMode(archetype, rawMeta)) ?? rawMeta
   const variantId = preservedVariantId(meta, archetype)
   // 按当前变体特化后再取模式参数：变体与模式**都**可能收窄同一个 select，夹的必须是两层叠加后的选项集。
   const specialized = specializeArchetypeForVariant(archetype, variantId)

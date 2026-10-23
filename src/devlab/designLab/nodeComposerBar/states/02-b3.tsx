@@ -113,6 +113,12 @@ export const COMPOSER_B3_STATES: readonly LabState[] = [
     render: stage({ kind: 'video', model: 'seedance', modeId: 'firstlast', edgeRefs: [{ name: '海边清晨', mode: 'reference' }, { name: '海边傍晚', mode: 'reference' }], prompt: '镜头缓慢推近，海面从清晨的薄雾过渡到傍晚。' }),
   },
   {
+    id: 'b3u-video-legacy-parked',
+    name: 'B3 · 旧工程：参考方式里以前藏着的首帧先放一边（淡显「未用到」，悬停「点一下用上」，点一下放回在用；#1269 条件 4）',
+    source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light',
+    render: stage({ kind: 'video', model: 'seedance', modeId: 'omni', arrayRefs: ['海边清晨', '海边傍晚'], frames: { first: '纸船' }, prompt: `${mention('海边清晨')} 慢慢过渡到 ${mention('海边傍晚')}，镜头缓慢推近。` }),
+  },
+  {
     id: 'b3o-model-menu-channel',
     name: 'B3o · 模型菜单 · 渠道直选（同模型多家直接点小签）',
     source: SOURCE, mirrors: MIRRORS, coverage: 'shell', scheme: 'light', capture: 'viewport',

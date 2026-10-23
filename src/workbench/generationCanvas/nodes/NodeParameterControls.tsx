@@ -46,7 +46,7 @@ import {
   shouldUseVideoFrameSlotFallback,
 } from './controls/parameterControlModel'
 import { createSlotFileUploads } from './controls/slotFileUploads'
-import { addToArraySlot, assignSlotSource, removeFromArray, removeUnusedReference, reorderArray, setSlotUrl, swapFrameSlots, type ReferenceWriteContext } from './controls/referenceWrites'
+import { addToArraySlot, assignSlotSource, removeFromArray, removeUnusedReference, reorderArray, restoreParkedReference, setSlotUrl, swapFrameSlots, type ReferenceWriteContext } from './controls/referenceWrites'
 import {
   type ArchetypeArraySlot,
   applyArchetypeModeSwitch,
@@ -499,7 +499,7 @@ export default function NodeParameterControls({
         return reach === 'none' ? 0 : reach === 'single' ? 1 : undefined
       },
     })
-    : { slots: [], unused: [] }
+    : { slots: [], unused: [], parked: [] }
   if (archMode) {
     const resolvedSlots = referencePlacement.slots
     const taggedSlot = firstFrameTaggedSlot(resolvedSlots)
@@ -684,9 +684,9 @@ export default function NodeParameterControls({
   const inputReferenceEntry = !assetSlots.length && canConnect && potentialReferenceKinds.length
     ? <NodeInputReferenceEntry nodeId={node.id} accept={potentialReferenceKinds} /> : null
 
-  const { unusedUrls, framesOnly, referenceInfos, arrayCount } = computeReferenceRowModel({
+  const { unusedUrls, parkedUrls, framesOnly, referenceInfos, arrayCount } = computeReferenceRowModel({
     node, nodes, edges, meta, assetSlots, assetValuesByKey, imageUrlSlots, arraySlots, refsUnsupported, showReferences,
-    unusedUploads: referencePlacement.unused,
+    unusedUploads: referencePlacement.unused, parkedUploads: referencePlacement.parked,
     fallbackName: (kind) => t(kind === 'video' ? 'assetLibrary.referenceVideo' : kind === 'audio' ? 'assetLibrary.referenceAudio' : 'assetLibrary.referenceImage'),
   })
 
@@ -777,7 +777,7 @@ export default function NodeParameterControls({
           firstFrameSlotKey={firstFrameSlotKey}
           {...(referenceInfos ? { referenceInfos } : {})}
           unusedUrls={unusedUrls}
-          onRemoveUnused={(url) => removeUnusedReference(writeCtx, url)}
+          onRemoveUnused={(url) => removeUnusedReference(writeCtx, url)} parkedUrls={parkedUrls} onUseParked={(url) => restoreParkedReference(writeCtx, url)}
           {...(imageUrlSlots.length === 2 && imageUrlSlots[0]?.group === 'first_frame' && imageUrlSlots[1]?.group === 'last_frame' ? { onSwapFrames: handleSwapFrames } : {})}
           {...(refsUnsupported ? { disabledReason: t('assetLibrary.refRow.disabledReason') } : {})}
           {...(tail ? { tail } : {})}

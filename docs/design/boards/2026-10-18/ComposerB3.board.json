@@ -453,9 +453,11 @@
       "status": "implemented",
       "states": [
         "disabled",
+        "hover",
         "zh-en",
         "dark"
       ],
+      "note": "同一格也装旧工程里以前藏着的图（先放一边，#1269 条件 4，协调 2026-10-23 定、已报用户）：悬停小提示写「名字 · 点一下用上」，点一下放回在用；当前方式放不下就不放、提示「已放满，先删一张再添加」。不新增元素、不另出画布稿（协调 2026-10-23）。走查：composer-b3.walk.mjs 旧工程残留一节（中 / 英 × 明 / 暗）。",
       "assertion": "board:ComposerB3/ref.slot.unused"
     },
     {

@@ -93,15 +93,17 @@ describe('applyArchetypeModeSwitch — 只改 modeId，参考值全局保留', (
   it('切模式不搬不清参考值（切回照片还在 = 真实用户 F4）', () => {
     let meta: Record<string, unknown> = ensureArchetypeNodeMeta({}, SEEDANCE)!
     meta = applyArchetypeModeSwitch(meta, SEEDANCE, 'firstlast')
-    meta = { ...meta, firstFrameUrl: 'F.png', lastFrameUrl: 'L.png', lastFrameRef: 'n2' }
+    meta = { ...meta, firstFrameUrl: 'F.png', lastFrameUrl: 'L.png', lastFrameRef: 'n2' } // 旧工程：按槽存的首 / 尾帧
     meta = applyArchetypeModeSwitch(meta, SEEDANCE, 'first') // 离开
-    // meta 里值仍在（全局存储），只是「首帧」模式不显示尾帧槽
-    expect(meta.firstFrameUrl).toBe('F.png')
-    expect(meta.lastFrameUrl).toBe('L.png')
+    // 切换前先按「首尾帧」落成那一份参考列表（#1269）：两张在那个方式下都看得见，所以都不是「先放一边」；
+    // 「首帧」方式只用第一张，第二张在列表里等着（未用到）。旧的影子键（lastFrameRef）不再留。
+    expect(meta.referenceImageUrls).toEqual(['F.png', 'L.png'])
+    expect(meta.referenceParkedUrls).toBeUndefined()
+    expect(meta.firstFrameUrl).toBeUndefined()
     expect((meta.archetype as { modeId: string }).modeId).toBe('first')
+    expect(buildArchetypeInputParams(meta, SEEDANCE)).toMatchObject({ first_frame_url: 'F.png' })
     meta = applyArchetypeModeSwitch(meta, SEEDANCE, 'firstlast') // 回来
-    expect(meta.lastFrameUrl).toBe('L.png')
-    expect(meta.lastFrameRef).toBe('n2')
+    expect(buildArchetypeInputParams(meta, SEEDANCE)).toMatchObject({ first_frame_url: 'F.png', last_frame_url: 'L.png' })
   })
 
   // 2026-08-26 走查实测到的真 bug：模式收窄了 select 的**选项**，却没收窄**已存的值**。
@@ -240,10 +242,10 @@ describe('C3 全能参考 — 数组 input 构建（M2 互斥含数组槽，snak
       referenceImageUrls: ['c1.png', 'c2.png', 'c3.png'],
       referenceVideoUrls: ['v1.mp4'],
       referenceAudioUrls: [],
-      firstFrameUrl: 'stale.png', // 旧数据按槽存的首帧：归一进参考列表、参考方式下排在后面，不当首帧发
+      firstFrameUrl: 'stale.png', // 旧数据按槽存的首帧：旧界面在参考方式下看不见它 → 先放一边，不发（#1269 条件 4）
     }
     expect(buildArchetypeInputParams(meta, SEEDANCE)).toEqual({
-      reference_image_urls: ['c1.png', 'c2.png', 'c3.png', 'stale.png'],
+      reference_image_urls: ['c1.png', 'c2.png', 'c3.png'],
       reference_video_urls: ['v1.mp4'],
       model: 'bytedance/seedance-2',
     })

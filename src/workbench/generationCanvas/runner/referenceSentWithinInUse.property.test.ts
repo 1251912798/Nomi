@@ -57,7 +57,8 @@ import { buildNodeModelChangePatch } from '../nodes/buildNodeModelChangePatch'
 import { applyArchetypeModeSwitch, ensureArchetypeNodeMeta } from '../nodes/controls/archetypeMeta'
 import { computeReferenceRowModel } from '../nodes/controls/referenceRowModel'
 import { archetypeModeArraySlots, archetypeModeSlots, currentArchetypeMode, referenceSlotStorage } from '../nodes/controls/archetypeMeta'
-import { normalizeReferenceListMeta } from '../nodes/controls/referenceList'
+import { normalizeReferenceListMeta, readParkedReferences } from '../nodes/controls/referenceList'
+import { metaWithParkedRestored } from '../nodes/controls/referenceWrites'
 import { buildCatalogTaskRequest } from './catalogTaskActions'
 import { resolveGenerationReferences } from './generationReferenceResolver'
 import { resolveReferencePlacement, resolveReferenceSlots } from './referenceSlots'
@@ -932,5 +933,104 @@ describe('参考列表：换方式 / 换模型一张不丢（#1269 重写）', (
       const back = swapModel(swapModel(thirty(), 'veo3.1', 'apimart').graph, 'seedance-2.5', 'apimart')
       expect([...inUse(back.graph)]).toEqual(imgs(30))
     })
+  })
+})
+
+// ── 旧工程残留（#1269 合并前条件 4，协调 10-23 定、已报用户）：旧界面看不见的图一律先放一边 ─────────────────────
+// 判据只看 main 上旧参考区真实显示了什么：有首帧槽才显示 firstFrameUrl、有尾帧槽才显示 lastFrameUrl、有参考数组槽才显示
+// referenceImageUrls；snake 别名、referenceImageUrl、referenceImages 从来不显示。看不见的那张：不在用、不发、参考行淡显「未用到」；
+// 切到哪个方式都一样；用户点它一下（metaWithParkedRestored，和生成框 restoreParkedReference 同一个函数）才在用、才发。
+
+describe('旧工程残留：旧界面看不见的图先放一边——不在用、不发；点回在用才发（全部档案 × 每个方式 × 每个旧键）', () => {
+  const LEGACY_KEYS = ['firstFrameUrl', 'lastFrameUrl', 'first_frame_url', 'last_frame_url', 'referenceImageUrl', 'referenceImages', 'referenceImageUrls'] as const
+  type LegacyKey = typeof LEGACY_KEYS[number]
+  const legacyMetaFor = (key: LegacyKey): { stale: string; meta: Record<string, unknown> } => {
+    const stale = img(`stale-${key}`)
+    // referenceImageUrls 单独放和规范形长得一样（不算旧节点，见根因合同 residual_risks）：配一个旧帧键，节点才是旧工程。
+    if (key === 'referenceImageUrls') return { stale, meta: { referenceImageUrls: [stale], firstFrameUrl: img('anchor-first') } }
+    return { stale, meta: { [key]: key === 'referenceImages' ? [stale] : stale } }
+  }
+  const visibleInOldUi = (key: LegacyKey, mode: ArchetypeMode) => {
+    const has = (kind: string) => mode.slots.some((slot) => slot.kind === kind)
+    return (key === 'firstFrameUrl' && has('first_frame')) || (key === 'lastFrameUrl' && has('last_frame')) || (key === 'referenceImageUrls' && has('image_ref'))
+  }
+  const hidden = imageOrVideo.flatMap(({ archetype, modelKey }) => archetype.modes.flatMap((mode) => LEGACY_KEYS
+    .filter((key) => !visibleInOldUi(key, mode))
+    .map((key) => ({ archetype, modelKey, mode, key, ...legacyMetaFor(key) }))))
+  const sentBy = (graph: Graph, archetype: ModelArchetype, modelKey: string) => {
+    const request = rendererRequest(graph)
+    return new Set([...urlsIn(taskTemplateParams(request)).keys(), ...urlsIn(wire(relayTransport(modelKey, archetype.id, request.kind), request as never)).keys()])
+  }
+
+  it('覆盖面：收图档案 × 方式 × 旧键里，旧界面看不见的格 ≥ 600', () => {
+    expect(hidden.length).toBeGreaterThanOrEqual(600)
+  })
+
+  it('打开时：看不见的那张不在用、请求里没有（模板参数层 + 中转真请求体），参考行里淡显「未用到」、记作先放一边', () => {
+    const wrong: string[] = []
+    for (const { archetype, modelKey, mode, key, stale, meta } of hidden) {
+      const graph = graphOn(archetype, modelKey, 'apimart', mode.id, meta)
+      const label = `${archetype.id}/${mode.id}/${key}`
+      if (inUse(graph).has(stale)) wrong.push(`${label}: 在用`)
+      else if (sentBy(graph, archetype, modelKey).has(stale)) wrong.push(`${label}: 发出去了`)
+      else if (!unusedOf(graph, archetype).includes(stale)) wrong.push(`${label}: 参考行里看不见`)
+      else if (!resolveReferencePlacement(graph.node, graph.nodes, graph.edges).parked.includes(stale)) wrong.push(`${label}: 没记作先放一边`)
+    }
+    expect(wrong).toEqual([])
+  })
+
+  it('之后切到任何一个方式（生成框切方式，和 20 处改 modeId 的入口共用的 applyArchetypeModeSwitch）：照样不在用、不发', () => {
+    const wrong: string[] = []
+    for (const { archetype, modelKey, mode, key, stale, meta } of hidden) {
+      const start = graphOn(archetype, modelKey, 'apimart', mode.id, meta)
+      for (const next of archetype.modes) {
+        if (next.id === mode.id) continue
+        for (const [how, graph] of [['入口', switchMode(start, archetype, next.id)], ['生成框', switchModeLikeComposer(start, archetype, next.id)]] as const) {
+          if (inUse(graph).has(stale) || sentBy(graph, archetype, modelKey).has(stale)) wrong.push(`${archetype.id}/${mode.id}→${next.id}/${key}（${how}）`)
+        }
+      }
+    }
+    expect(wrong).toEqual([])
+  })
+
+  it('点回在用：当前方式收得下它，点一下就在用、照发；收不下就不写（生成框说「已放满」）；在用 ∪ 未用到始终 = 原来那一份', () => {
+    const wrong: string[] = []
+    let restoredCount = 0
+    for (const { archetype, modelKey, mode, key, stale, meta } of hidden) {
+      const graph = graphOn(archetype, modelKey, 'apimart', mode.id, meta)
+      const before = everyReference(graph, archetype)
+      const restoredMeta = metaWithParkedRestored(graph.node, graph.nodes, graph.edges, stale, mode)
+      const label = `${archetype.id}/${mode.id}/${key}`
+      const takesImages = mode.slots.some((slot) => slot.kind === 'first_frame' || slot.kind === 'last_frame' || slot.kind === 'image_ref')
+      if (!restoredMeta) {
+        if (takesImages && key !== 'referenceImageUrls') wrong.push(`${label}: 收得下却没放回`)
+        continue
+      }
+      restoredCount += 1
+      const node = { ...graph.node, meta: restoredMeta }
+      const after = { ...graph, node, nodes: graph.nodes.map((n) => (n.id === node.id ? node : n)) }
+      if (!inUse(after).has(stale)) wrong.push(`${label}: 放回后不在用`)
+      else if (!sentBy(after, archetype, modelKey).has(stale) && !mode.slots.every((slot) => slot.kind !== 'image_ref' && slot.kind !== 'first_frame')) {
+        // 中转真请求体只有一个单图位：那一格让给了排在前面的图时，模板参数层仍要带它
+        if (!urlsIn(taskTemplateParams(rendererRequest(after))).has(stale)) wrong.push(`${label}: 放回后没发`)
+      }
+      if (readParkedReferences(restoredMeta).includes(stale)) wrong.push(`${label}: 放回后还记着先放一边`)
+      const kept = everyReference(after, archetype)
+      if ([...before].some((url) => !kept.has(url))) wrong.push(`${label}: 放回后少了图`)
+    }
+    expect(restoredCount).toBeGreaterThanOrEqual(300)
+    expect(wrong).toEqual([])
+  })
+
+  it('免费抓包：旧工程参考方式里残留的首帧（Seedance 2.0 APIMart 全能参考）——中转 / APIMart 收到的请求体都不带它；点回在用后照发', () => {
+    const archetype = archetypeOf('doubao-seedance-2.0')
+    const graph = graphOn(archetype, 'doubao-seedance-2.0', 'apimart', 'omni', { referenceImageUrls: imgs(2), firstFrameUrl: img('stale-first') })
+    const { apimart, relay } = bodies(graph)
+    expect(sentUrls(apimart)).toEqual(imgs(2))
+    expect(sentUrls(relay)).not.toContain(img('stale-first'))
+    const omni = archetype.modes.find((m) => m.id === 'omni')!
+    const restored = metaWithParkedRestored(graph.node, graph.nodes, graph.edges, img('stale-first'), omni)!
+    const node = { ...graph.node, meta: restored }
+    expect(sentUrls(bodies({ node, nodes: [node], edges: [] }).apimart)).toEqual([...imgs(2), img('stale-first')].sort())
   })
 })

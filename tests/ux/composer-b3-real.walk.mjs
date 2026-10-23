@@ -11,7 +11,7 @@
 //
 // 用法：先 pnpm run build；node tests/ux/composer-b3-real.walk.mjs
 import { stationTimeout } from './_station-budget.mjs'
-import { uiText } from './full-walk/invariants.mjs'
+import { uiText, uiTextPattern } from './full-walk/invariants.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -94,6 +94,9 @@ function seedProfile(root) {
       prompt: '从清晨推到傍晚。', meta: videoMeta({ archetype: { id: 'seedance-2.5', modeId: 'firstlast' } }) },
     { id: 'thirty-video', kind: 'video', categoryId: 'shots', title: '三十张参考', position: { x: 160, y: 700 }, size: { width: 340, height: 192 }, status: 'idle',
       prompt: '镜头缓慢推近。', meta: videoMeta({ referenceImageUrls: thirty }) },
+    // 旧工程（#1269 条件 4）：参考方式的节点里还存着一张早先首尾帧方式留下的 firstFrameUrl——旧界面在参考方式下根本不显示它。
+    { id: 'legacy-video', kind: 'video', categoryId: 'shots', title: '旧工程残留', position: { x: 1240, y: 300 }, size: { width: 340, height: 192 }, status: 'idle',
+      prompt: '海边的清晨。', meta: videoMeta({ referenceImageUrls: thirty.slice(3, 5), firstFrameUrl: thirty[5] }) },
   )
   // 画布最下面放一张远处的小文本卡：「适应视图」按全部节点的包围盒摆，有了它目标卡的生成框就落在底部时间轴胶囊和缩放条上方，点得到。
   nodes.push({ id: 'memo', kind: 'text', categoryId: 'shots', title: '备忘', prompt: '备忘', position: { x: 160, y: 1250 }, size: { width: 220, height: 120 }, status: 'success', result: { id: 'memo-r', type: 'text', text: '备忘', createdAt: 1 } })
@@ -386,6 +389,24 @@ async function runPass({ locale, scheme }) {
       await snap('25-remove-unused-back')
       check(`[${tag}] 「未用到」那张点 × 删掉：首尾帧 2 格不动，切回参考只剩 2 张（用户 10-22 拍板 ⑫）`, mid.slots === 2 && mid.unused === 0 && back.tiles === 2, JSON.stringify({ mid, back }))
     })
+    await section('legacy-parked', async () => {
+      // 旧工程以前藏着的首帧：淡显「未用到」、悬停写「名字 · 点一下用上」；点一下放回在用，一张不少（#1269 条件 4）。
+      await selectNode('legacy-video')
+      const parked = composer().locator('[data-reference-parked] [data-asset-tile]').first()
+      await expectVisible(parked, '旧工程残留的首帧淡显「未用到」')
+      const before = await composer().locator('[data-reference-row] [data-asset-tile]').count()
+      await parked.hover()
+      await expectVisible(win.locator('[data-asset-tile-tip]'), '悬停小提示')
+      const tip = (await win.locator('[data-asset-tile-tip]').textContent()) ?? ''
+      check(`[${tag}] board:ComposerB3/ref.slot.unused · 旧工程残留先放一边，悬停写「点一下用上」（真机）`, new RegExp(uiTextPattern(uiText(en ? 'en' : 'zh-CN', 'assetLibrary.refRow.useParked'))).test(tip), tip)
+      await snap('26-legacy-parked-hover')
+      await parked.click()
+      await win.waitForFunction(() => !document.querySelector('.generation-canvas-v2-node__composer [data-reference-unused]'), null, { timeout: stationTimeout() })
+      const after = { tiles: await composer().locator('[data-reference-row] [data-asset-tile]').count(), unused: await composer().locator('[data-reference-row] [data-reference-unused]').count() }
+      check(`[${tag}] board:ComposerB3/ref.slot.unused · 点一下用上：放回在用，一张不少（真机）`, after.tiles === before && after.unused === 0, JSON.stringify({ before, after }))
+      await snap('27-legacy-restored')
+    })
+
     await section('two-ref-edges-into-first-last', async () => {
       await selectNode('edges-video')
       await expectVisible(composer().locator('[data-asset-slot] [data-asset-tile]').first(), '首帧格里有连线来的图')

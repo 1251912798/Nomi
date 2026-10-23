@@ -3,7 +3,7 @@
  * 数组槽追加 / 删除、首尾帧等单槽的指派 / 换图、两帧对调。宿主壳只负责把它们接到界面上。
  */
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
-import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
+import type { GenerationCanvasEdge, GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import {
   edgeModeForGroup, parameterReferenceMetaPatch, readParameterReferenceSlots,
   resolveParameterReferenceAssignments, type ImageUrlSlot,
@@ -12,7 +12,7 @@ import {
   appendArchetypeArrayValue, archetypeArrayWrite, readArchetypeArrayForWrite, referenceSlotStorage, type ArchetypeArraySlot,
 } from './archetypeMeta'
 import { decideArrayReferenceRemoval, resolveReferencePlacement, resolveReferenceSlots } from '../../runner/referenceSlots'
-import { putInReferenceSlot, readReferenceList, removeFromReferenceList, swapInReferenceList, withReferenceList } from './referenceList'
+import { firstFrameLeftEmpty, putInReferenceSlot, readParkedReferences, readReferenceList, removeFromReferenceList, swapInReferenceList, withReferenceList } from './referenceList'
 import { removeMention } from '../../../assets/promptMentions'
 import { moveArrayItem } from '../../../assets/assetTypes'
 import { resultPreviewUrl as resultPreviewUrlOf } from './parameterControlModel'
@@ -61,9 +61,46 @@ export function addToArraySlot(ctx: ReferenceWriteContext, slot: ArchetypeArrayS
     ctx.feedback('generationCommon.parameters.maximum', { max: slot.max, label: slot.label })
     return
   } // 到上限:明确告知(对抗评审:别静默丢)
+  // 已在列表里、但先放一边的那张：用户又选了它 = 要用它，放回在用（和点那张淡显的小图同一个写法）。
+  if (result.status === 'duplicate' && readParkedReferences(ctx.getLatestMeta(), archMode).includes(url.trim())) {
+    restoreParkedReference(ctx, url.trim())
+    ctx.closeSlot()
+    return
+  }
   if (result.status !== 'added') return // empty / duplicate：静默
   ctx.updateNode(node.id, { meta: archetypeArrayWrite(ctx.getLatestMeta(), slot.metaKey, result.next) })
   ctx.closeSlot()
+}
+
+/**
+ * 「先放一边」的那张放回在用之后的 meta（纯函数）：按放回之后重新推导一次，真落进槽了才返回新 meta；放不下返回 null。
+ * 首帧格「特意空着」（旧数据只存了尾帧）挡住它时，用户这一点就是要用它：放进首帧、开关一并收掉。
+ */
+export function metaWithParkedRestored(target: GenerationCanvasNode, nodes: GenerationCanvasNode[], edges: GenerationCanvasEdge[], url: string, mode?: ArchMode | null): Record<string, unknown> | null {
+  const meta = (target.meta || {}) as Record<string, unknown>
+  const list = readReferenceList(meta, mode)
+  if (!list.includes(url)) return null
+  const lands = (next: Record<string, unknown>) => !resolveReferencePlacement({ ...target, meta: next }, nodes, edges).unused.includes(url)
+  const restored = withReferenceList(meta, list, { unpark: [url], mode })
+  if (lands(restored)) return restored
+  const withoutGap = withReferenceList(meta, list, { unpark: [url], mode, firstFrameEmpty: false })
+  return firstFrameLeftEmpty(meta) && lands(withoutGap) ? withoutGap : null
+}
+
+/**
+ * 「先放一边」的那张（旧工程打开时界面看不见的残留，参考行淡显「未用到」）点一下：放回在用（#1269 条件 4）。
+ * 放得下才写；放不下就不写、说清楚（「已放满，先删一张再添加」），不做点了没反应的事。
+ */
+export function restoreParkedReference(ctx: ReferenceWriteContext, url: string): void {
+  const { node } = ctx
+  const state = useGenerationCanvasStore.getState()
+  const target = { ...(ctx.latestNode(node.id) ?? node), meta: ctx.getLatestMeta() }
+  const nextMeta = metaWithParkedRestored(target, state.nodes, state.edges, url, ctx.archMode)
+  if (!nextMeta) {
+    if (readReferenceList(target.meta, ctx.archMode).includes(url)) ctx.feedback('assetLibrary.refRow.addFull', {})
+    return
+  }
+  ctx.updateNode(node.id, { meta: nextMeta })
 }
 
 export function removeFromArray(ctx: ReferenceWriteContext, metaKey: string, index: number): void {
@@ -201,7 +238,8 @@ export function setSlotUrl(ctx: ReferenceWriteContext, slot: ImageUrlSlot, url: 
     const firstHasUpload = (frame.uploadsBySlot[frameSlotIndex(ctx, 'first_frame')] ?? []).length > 0
     const firstFrameEmpty = isLast && !firstHasUpload
     const next = putInReferenceSlot(frame.list, frame.uploadsBySlot, frame.slotIndex, url)
-    ctx.updateNode(ctx.node.id, { meta: withReferenceList(frame.meta, next, { firstFrameEmpty }) }, { history: !existingEdge })
+    // 用户亲手放进这一格：就算这张原来是「先放一边」的旧图，也算放回在用。
+    ctx.updateNode(ctx.node.id, { meta: withReferenceList(frame.meta, next, { firstFrameEmpty, unpark: [url], mode: ctx.archMode }) }, { history: !existingEdge })
     ctx.closeSlot()
     return
   }
