@@ -1,13 +1,13 @@
 // 协调确认记录（2026-10-21，V-gates 复验 B1 / B4）：合同类数据（性能预算政策、拍板清单）不能由 PR 自己批准。
 // 批准身份只能来自 base（main）上已有的内容，或协调在本机留下的确认记录——一个本机 JSONL 文件，路径取环境变量 NOMI_COORD_APPROVALS，不写死、不进仓库。
-// 每条记录：{ pr, kind: 'board' | 'perf-policy', name, sha256, at, note }；sha256 是 PR head 上被批准内容的哈希，
+// 每条记录：{ pr, kind: 'board' | 'perf-policy' | 'eslint-suppressions', name, sha256, at, note }；sha256 是 PR head 上被批准内容的哈希，
 // 批准之后内容又改了，哈希就对不上，重新判红。记录用 scripts/coord-approve.mjs 写（只给协调用）。
 // CI 读不到本机文件：同一批检测只打「待协调确认」警告；merge-preflight（协调本机）没有匹配记录就红。
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 
 export const APPROVAL_ENV = 'NOMI_COORD_APPROVALS'
-export const APPROVAL_KINDS = Object.freeze(['board', 'perf-policy'])
+export const APPROVAL_KINDS = Object.freeze(['board', 'perf-policy', 'eslint-suppressions'])
 
 /** 键排序的规范化 JSON：同一份内容永远同一个哈希。 */
 export function canonicalJson(value) {
@@ -102,6 +102,50 @@ export function describeBoardDiff(subject) {
   return parts.join('；')
 }
 
+// ── ESLint 批量抑制（eslint-suppressions.json）的冻结数上涨：2026-10-22 协调定，同 board / perf ─────────────────────
+// 冻结数只许减少；涨了（新开规则 / 扩大覆盖面把存量冻进来）要协调确认。「涨」按**文件 × 规则**算：任何一个文件里任何一条规则的冻结数
+// 比 base 多就要确认——按规则总数算会让「这里修一处、那里新冻一处」总数不变混进来（V-gates-g1 窄核）。改名 / 搬家也要确认，接受。
+// 确认绑定的是**上涨的那部分 diff**：每个 (文件, 规则) 冻结数比 base 多的条目。之后再多冻一处，哈希就对不上；只减少不影响。
+export const SUPPRESSIONS_FILE = 'eslint-suppressions.json'
+
+/** 每条规则的冻结总数（eslint-suppressions.json 的形状：{ 文件: { 规则: { count } } }）。 */
+export function suppressionTotals(suppressions) {
+  const totals = {}
+  for (const rules of Object.values(suppressions ?? {})) {
+    for (const [rule, entry] of Object.entries(rules ?? {})) totals[rule] = (totals[rule] ?? 0) + (entry?.count ?? 0)
+  }
+  return totals
+}
+
+/** base → head 的冻结数上涨。返回 { needsApproval（任一文件 × 规则上涨）, grownRules（规则总数的变化，只用于描述）, grownEntries: [{ file, rule, base, head }], fingerprint }。 */
+export function suppressionApprovalSubject(baseSuppressions, headSuppressions) {
+  const baseTotals = suppressionTotals(baseSuppressions)
+  const grownEntries = []
+  for (const [file, rules] of Object.entries(headSuppressions ?? {})) {
+    for (const [rule, entry] of Object.entries(rules ?? {})) {
+      const base = baseSuppressions?.[file]?.[rule]?.count ?? 0
+      if ((entry?.count ?? 0) > base) grownEntries.push({ file, rule, base, head: entry.count })
+    }
+  }
+  grownEntries.sort((a, b) => a.file.localeCompare(b.file) || a.rule.localeCompare(b.rule))
+  const headTotals = suppressionTotals(headSuppressions)
+  const grownRules = [...new Set(grownEntries.map((entry) => entry.rule))].sort()
+    .map((rule) => ({ rule, base: baseTotals[rule] ?? 0, head: headTotals[rule] ?? 0 }))
+  return {
+    needsApproval: grownEntries.length > 0,
+    grownRules,
+    grownEntries,
+    fingerprint: sha256Of({ subject: SUPPRESSIONS_FILE, grown: grownEntries }),
+  }
+}
+
+/** 人话描述冻结数上涨（确认提示用）。 */
+export function describeSuppressionGrowth(subject) {
+  const entries = subject.grownEntries.map(({ file, rule, base, head }) => `${file} ${rule} ${base}→${head}`)
+  const files = new Set(subject.grownEntries.map((entry) => entry.file)).size
+  return `冻结数涨了 ${entries.length} 处（文件 × 规则，涉及 ${files} 个文件）：${entries.slice(0, 4).join('、')}${entries.length > 4 ? ' …' : ''}`
+}
+
 // ── 确认记录文件 ──────────────────────────────────────────────────────────────────────────────────────────────
 /**
  * 合并前扫描用：读本机确认记录，返回 approvals = { mode: 'local', lookup(kind, name, sha256) → boolean, unavailable?: 原因 }。
@@ -116,13 +160,24 @@ export function localApprovals({ pr, env = process.env, readFile = (file) => fs.
   return {
     mode: 'local',
     pr,
-    lookup: (kind, name, sha256) => records.some((record) => Number(record?.pr) === Number(pr) && record?.kind === kind && record?.name === name && record?.sha256 === sha256),
+    lookup: (kind, name, sha256) => records.some((record) => record?.kind === kind && record?.name === name && record?.sha256 === sha256 && samePr(kind, record?.pr, pr)),
   }
+}
+
+/**
+ * 记录与 PR 对得上吗。board / perf：必须同一个 PR 号。
+ * eslint-suppressions：确认绑的是上涨那部分 diff 的哈希，和 PR 号无关；协调常在开 PR 之前（推送前钩子拦下时）就确认，
+ * 那时还没有号，记录的 pr 为空——所以两边任一边没号都算对上，两边都有号才要求相等。
+ */
+function samePr(kind, recordPr, pr) {
+  if (kind === 'eslint-suppressions' && (recordPr == null || pr == null)) return true
+  return Number(recordPr) === Number(pr)
 }
 
 /** CI 用：读不到本机记录，只提示待确认。 */
 export const ciApprovals = Object.freeze({ mode: 'ci', lookup: () => false })
 
 export function approvalCommand(pr, kind, name) {
+  if (kind === 'eslint-suppressions') return `node scripts/coord-approve.mjs${pr ? ` --pr ${pr}` : ''} --suppressions`
   return `node scripts/coord-approve.mjs --pr ${pr ?? '<号>'} ${kind === 'board' ? '--board' : '--perf'} ${name}`
 }

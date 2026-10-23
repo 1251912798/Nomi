@@ -15,7 +15,7 @@ import { ESCAPE_LEDGER_DIR, assembleEscapeLedger, escapeIdOfPath } from './escap
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import { localApprovals } from './lib/coordApprovals.mjs'
-import { boardsAtHead, checkHeadAncestry, isRepoRelativeRef } from './lib/prEvidenceInputs.mjs'
+import { boardsAtHead, checkHeadAncestry, isRepoRelativeRef, suppressionsAt } from './lib/prEvidenceInputs.mjs'
 import { META_FILE } from './lib/entryDirectory.mjs'
 import { execGhReadSync } from './lib/transientRetry.mjs'
 import { RULES_INTRODUCED_BY_PR, evaluatePrBody, ledgerChanges, mergeReport, settledContracts } from './pr-body-criteria.mjs'
@@ -252,6 +252,12 @@ function run(argv, exec, git) {
         return boardsAtHead({ git, sha: String(git(['merge-base', 'origin/main', view.headRefOid])).trim() })
       }),
       boards: () => must('PR 头上的拍板图清单', () => boardsAtHead({ git: fetchedGit(), sha: view.headRefOid })),
+      // ESLint 批量抑制的冻结数上涨：没有协调确认记录就红
+      suppressions: () => must('PR 头上的 eslint-suppressions.json', () => suppressionsAt({ git: fetchedGit(), sha: view.headRefOid })),
+      baseSuppressions: () => must('base 上的 eslint-suppressions.json', () => {
+        const git = fetchedGit()
+        return suppressionsAt({ git, sha: String(git(['merge-base', 'origin/main', view.headRefOid])).trim() })
+      }),
     },
   }))
   console.log(report.text)

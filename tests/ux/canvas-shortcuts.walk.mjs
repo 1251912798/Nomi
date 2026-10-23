@@ -29,7 +29,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { screenshotSettled, expect, proveProbe, expectAbsent } from './_assert.mjs'
 import { findCanvasBlankPoint, findNodeHitPoint } from './_canvasHit.mjs'
-import { backToLibrary, canvasAddBar, newProjectEntry, openRailDrawer } from './_shell.mjs'
+import { backToLibrary, canvasAddBar, newProjectEntry, openRailDrawer, railDrawer } from './_shell.mjs'
 import { assertCurrentFormatCanvasSeed } from './_canvasSeed.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -247,6 +247,11 @@ async function checkC19GroupUndoAndFocus() {
   await expect.poll(graph).toEqual(before)
   await expect.poll(diskGraph).toEqual(before)
   assert(isDeepStrictEqual(authority(), c19AuthorityBefore), 'Dismissed draft and approval ledger remain unchanged')
+  // 上面为了让 Ctrl+Z 落在画布上点了一下画布空白：左栏抽屉按「点空白收起」规矩收起了（2026-10-23 #1299 修好的行为；
+  // 修前 d3-zoom 吞掉 mousedown，抽屉收不起，这里曾隐式依赖那个 bug）。重新打开目录抽屉再看整组是否回来。
+  // 先钉住这个前提（上面打开时它是可见的，所以这里的「看不见」不是瞎探针）：openRailDrawer 对开着的抽屉什么也不做。
+  await expect(railDrawer(getWin(), 'catalog'), 'C19 点画布空白后目录抽屉该已收起').toBeHidden()
+  await openRailDrawer(getWin(), 'catalog', 'C19 撤销后重开分组列表')
   await expect(groupRow).toBeVisible()
   const restoredImage = getWin().locator('.generation-canvas-v2-node[data-node-id="c19-one"] img').first()
   await expect.poll(() => restoredImage.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true)

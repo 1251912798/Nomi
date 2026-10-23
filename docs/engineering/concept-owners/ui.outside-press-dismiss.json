@@ -1,0 +1,33 @@
+{
+  "name": "点外面就收起：在哪个事件、哪个阶段听",
+  "subject": "ui.outside-press-dismiss",
+  "lifecycle": "live-interaction",
+  "authority_kind": "gateway",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/design/outsidePress.ts",
+    "symbol": "listenOutsidePress"
+  },
+  "write_api": [
+    {
+      "path": "src/design/outsidePress.ts",
+      "symbol": "listenOutsidePress"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "src/design/AnchoredPopover.tsx",
+    "src/ui/app-shell/shell/ShellRail.tsx",
+    "src/workbench/taskCenter/TaskCenterPanel.tsx",
+    "src/ui/browser/popover/NomiBrowserAssetPopover.tsx",
+    "src/ui/browser/dialog/NomiBrowserDialog.tsx",
+    "src/workbench/assets/AssetLibraryPanel.tsx",
+    "src/workbench/preview/EditingLayoutMenu.tsx",
+    "src/workbench/preview/TimelinePreview.tsx",
+    "src/workbench/generationCanvas/components/useCanvasFrameActions.ts"
+  ],
+  "since": "2026-10-23",
+  "notes": "用户 2026-10-23 实测：画布左下「⋯」点开后点画布中间不收（合同 docs/fixes/2026-10-23-outside-press-capture.root-cause.json）。画布平移面 d3-zoom 在 mousedown 上 stopImmediatePropagation，所以「点外面」只在 document 上 pointerdown 捕获阶段听（与 Floating UI useDismiss 默认值一致）；调用方只给「算不算点在自己身上」与收起动作。结构测试 src/design/outsidePress.structure.test.ts 拒绝 mousedown / touchstart 监听、Mantine useClickOutside 与新增冒泡 pointerdown / click（存量 4 处冻结在基线）。"
+}
