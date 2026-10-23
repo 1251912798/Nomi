@@ -80,24 +80,60 @@ export function EmptyStateLauncher({
   height?: number
 }): JSX.Element {
   const { t } = useTranslation()
-  const activation = useEmptyNodeActivation()
   const cluster = <NodeEmptyState icon={icon} title={label || ''} description={hint || ''} height={height} />
   if (!onActivate) {
     return <div className="h-full w-full">{cluster}</div>
   }
   return (
+    <CardActivationButton
+      testId={testId}
+      ariaLabel={activateAriaLabel || label || t('generationCommon.card.open')}
+      onActivate={onActivate}
+      onPreload={onPreload}
+      className="flex-col items-center justify-center gap-2 text-center px-4 py-3"
+    >
+      {cluster}
+    </CardActivationButton>
+  )
+}
+
+/**
+ * 卡片正文「点开」的那颗按钮：空态启动器和有内容的卡（如画板缩略图）共用一套激活规矩——
+ * 宿主判定节点已被选中才放行（按下那一刻定，见 useEmptyNodeActivation），没选中时这一下只是选中 / 拖动。
+ */
+export function CardActivationButton({
+  children,
+  onActivate,
+  onPreload,
+  ariaLabel,
+  title,
+  testId,
+  className,
+}: {
+  children: React.ReactNode
+  onActivate: () => void
+  onPreload?: () => void
+  ariaLabel: string
+  title?: string
+  testId?: string
+  className?: string
+}): JSX.Element {
+  const activation = useEmptyNodeActivation()
+  return (
     <button
       type="button"
       data-testid={testId}
-      aria-label={activateAriaLabel || label || t('generationCommon.card.open')}
+      aria-label={ariaLabel}
+      title={title}
       tabIndex={activation.canActivate ? 0 : -1}
       onPointerDownCapture={activation.onPointerDownCapture}
       onPointerCancelCapture={activation.onPointerCancelCapture}
       onClickCapture={activation.onClickCapture}
       className={cn(
-        'flex h-full w-full flex-col items-center justify-center gap-2 text-center rounded-nomi px-4 py-3 bg-transparent border-0 cursor-pointer',
+        'flex h-full w-full rounded-nomi bg-transparent border-0 cursor-pointer',
         'transition-[background] duration-nomi-fast ease-nomi-fast hover:bg-nomi-ink-05',
         'focus-visible:outline-2 focus-visible:outline-nomi-ink focus-visible:outline-offset-2',
+        className,
       )}
       onClick={(event) => {
         if (event.defaultPrevented) return
@@ -108,7 +144,7 @@ export function EmptyStateLauncher({
       onPointerEnter={activation.canActivate ? onPreload : undefined}
       onFocus={activation.canActivate ? onPreload : undefined}
     >
-      {cluster}
+      {children}
     </button>
   )
 }

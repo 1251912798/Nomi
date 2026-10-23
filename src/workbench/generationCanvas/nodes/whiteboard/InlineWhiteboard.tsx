@@ -15,7 +15,7 @@ import WhiteboardDrawingTool, { type WhiteboardDrawingToolHandle } from './White
 import type { WhiteboardResultLibraryItem } from './whiteboardTypes'
 import type { WhiteboardInitialImage, WhiteboardState } from './whiteboardTypes'
 import { readWhiteboardState, serializeWhiteboardState, whiteboardDraftIdentity } from './whiteboardState'
-import { whiteboardRasterStateKey } from './whiteboardRasterState'
+import { whiteboardHasVisibleContent, whiteboardRasterStateKey } from './whiteboardRasterState'
 import { getCanvasDimensions } from './lib/canvas'
 import { useNodeAttachedPanel } from '../nodeAttachedPanel'
 import { closeWhiteboard, registerWhiteboardFinish } from './whiteboardSession'
@@ -139,9 +139,12 @@ export default function InlineWhiteboard({
       const sourceAtStart = useGenerationCanvasStore.getState().nodes.find((node) => node.id === nodeId)
       if (!sourceAtStart) throw new Error(t('generationCommon.whiteboard.imageNodeMissing'))
       const serializedState = whiteboardState ? serializeWhiteboardState(whiteboardState) : null
+      // Unchanged only counts when that raster already exists as the node's result: a board saved as state alone
+      // (before 2026-10-22, or never finished) still gets its picture on the next Done.
       if (
         options?.skipIfUnchanged &&
         serializedState &&
+        sourceAtStart.result?.url &&
         isSameWhiteboardState(savedStateRef.current ?? undefined, serializedState)
       ) {
         persistWhiteboardState(serializedState)
@@ -196,7 +199,10 @@ export default function InlineWhiteboard({
     if (drawingRef.current?.isBusy()) { reportFeedback(t('generationCommon.whiteboard.operationInProgress')); return false }
     setFeedback(null)
     const currentWhiteboardState = drawingRef.current?.getState() || null
-    if (sourceKind !== 'image') {
+    // Done leaves a picture on the node (user 2026-10-22, replaces board O40 "Done saves state only"). The one exception is a
+    // board that has never produced a picture and has nothing on it: it keeps showing the launcher, so Done saves state only.
+    const hasResult = Boolean(useGenerationCanvasStore.getState().nodes.find((node) => node.id === nodeId)?.result?.url)
+    if (!hasResult && !(currentWhiteboardState && whiteboardHasVisibleContent(currentWhiteboardState))) {
       persistWhiteboardState(currentWhiteboardState)
       onClose()
       return true
@@ -219,7 +225,7 @@ export default function InlineWhiteboard({
       }
     })
     return closed
-  }, [onClose, persistWhiteboardState, reportFeedback, saveImageWhiteboardSnapshot, sourceKind, t])
+  }, [nodeId, onClose, persistWhiteboardState, reportFeedback, saveImageWhiteboardSnapshot, t])
 
   React.useEffect(() => registerWhiteboardFinish(handleClose), [handleClose])
   React.useEffect(() => () => closeWhiteboard(nodeId), [nodeId])
@@ -301,6 +307,8 @@ export default function InlineWhiteboard({
             meta: { ...latestSourceAfterCreate?.meta, ...sourceMeta, whiteboardResultIdentity: snapshotResult.id },
           })
           draftIdentityRef.current = snapshotResult.id
+          // The board's picture now matches this state, so an immediate Done adds no duplicate version.
+          if (currentWhiteboardState) savedStateRef.current = serializeWhiteboardState(currentWhiteboardState)
         }
         return created.id
       } catch (error) {
@@ -319,6 +327,7 @@ export default function InlineWhiteboard({
     nodeId,
     persistWhiteboardState,
     saveImageWhiteboardSnapshot,
+    savedStateRef,
     screenshotBusy,
     reportFeedback,
     sourceKind,

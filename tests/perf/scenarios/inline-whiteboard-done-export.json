@@ -1,0 +1,34 @@
+{
+  "id": "inline-whiteboard-done-export",
+  "feature": "Whiteboard Done leaves the board's picture on the node (user 2026-10-22, replaces board O40): click Done until the exported picture is decoded on the node",
+  "script": "tests/ux/whiteboard-perf.probe.mjs",
+  "args": [
+    "--scene",
+    "done-export",
+    "--repo-media"
+  ],
+  "scale": "worst case the size panel allows: 4096x4096 board (export capped at the 16MP pixel budget), 12 placed photographs from 6 distinct frames of the repository real AI shot (640x360), 24 brush paths, never finished before; time from the pointer down on Done",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 3000,
+  "p95Budget": 3500,
+  "budgetStatus": "proposed",
+  "budgetBasis": "Done is a save that encodes and writes a full-resolution PNG (the node result is a reference picture for downstream generation, so it is not downscaled); a 16MP PNG encode alone takes on the order of a second. Done and the screenshot button are disabled while it runs. 3s keeps it inside a deliberate save with visible busy state; the 100ms response default is for on-screen feedback, not for encoding a file.",
+  "baseline": {
+    "median": 4143.7,
+    "p95": 4489.3,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-22",
+    "commit": "460d57444",
+    "noisy": true
+  },
+  "budgetDebt": {
+    "owner": "P-asset-persist（协调 10-22 派）",
+    "state": "assigned",
+    "note": "最坏画板 ~3.2–4.5s：Leafer 导出 16MP PNG 约 0.8s，其余 2–2.8s 在共享落盘 importWorkbenchLocalAssetFile（写 9.8MB + 派生预览）；1280×720 小画板也要 ~1.5s，固定开销在落盘这段。修在共享落盘边界，不在画板里绕；期间「完成」钮当帧显示「保存中」（doneToFeedbackMs）。",
+    "since": "2026-10-22"
+  }
+}
