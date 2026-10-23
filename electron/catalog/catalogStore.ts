@@ -220,28 +220,13 @@ export function listModelCatalogModels(params?: unknown): Array<Model & {
     ...model,
     ...derivePublishedExecution(model, { mappings: state.mappings }),
     availability: availability.of(model),
-    // 这一行发出的型号名由档案提供还是就是这一行的 key（按这家的映射算，唯一计算处 ./modelNameSource）；
-    // 渲染层的档案解析据它收窄档案（electron/shared/modelArchetypes/modelNameSource.ts）。
+    // 型号名由档案提供还是就是这一行的 key（唯一计算处 ./modelNameSource）；渲染层的档案解析据它收窄档案。
     modelNameSource: nameSources.get(modelNameSourceKey(model.vendorKey, model.modelKey)) ?? "row",
   })) as Array<Model & { published: boolean; publishedModes: ProfileKind[]; availability: ModelAvailability; modelNameSource: ModelNameSource }>;
 }
 
-/**
- * 当前目录的型号名来源表：同一份冻结状态只算一次。档案解析一次会问很多次，所以这里**不**每问一次就去读盘：
- * 用最近一次读出的那份（任何地方 readCatalog / 写目录都会刷新它），还没读过才读一次。
- */
-const modelNameSourceCache = new WeakMap<object, ReadonlyMap<string, ModelNameSource>>();
-function currentModelNameSources(): ReadonlyMap<string, ModelNameSource> {
-  const state = catalogReadCache && catalogReadCache.path === catalogPath() ? catalogReadCache.state : readCatalogShared();
-  let table = modelNameSourceCache.get(state);
-  if (!table) {
-    table = modelNameSourceTable(state as CatalogState);
-    modelNameSourceCache.set(state, table);
-  }
-  return table;
-}
-
-// 主进程的档案解析（宿主归一、准入、list_models、视频候选表）问的就是这张表：型号名按供应商作用域解析。
+// 型号名来源表（./modelNameSource，同一份冻结状态只算一次）：用最近一次读出的那份，不每问一次就读盘。主进程的档案解析问它。
+const currentModelNameSources = () => modelNameSourceTable(catalogReadCache && catalogReadCache.path === catalogPath() ? catalogReadCache.state : readCatalogShared());
 installModelNameSourceLookup((vendorKey, modelKey) => currentModelNameSources().get(modelNameSourceKey(vendorKey, modelKey)));
 export function listModelCatalogMappings(params?: unknown): readonly Readonly<Mapping>[] {
   return filterByParams(readCatalogShared().mappings as Mapping[], params);

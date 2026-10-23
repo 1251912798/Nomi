@@ -35,8 +35,13 @@ export function modelNameSourceKey(vendorKey: string, modelKey: string): string 
   return JSON.stringify([vendorKey, modelKey]);
 }
 
-/** 整份目录的「（供应商, 目录 key）→ 来源」表（目录状态不变就不重算）。 */
-export function modelNameSourceTable(state: { models: readonly { vendorKey: string; modelKey: string; modelAlias?: string | null }[]; mappings: readonly Mapping[] }): ReadonlyMap<string, ModelNameSource> {
+type CatalogShape = { models: readonly { vendorKey: string; modelKey: string; modelAlias?: string | null }[]; mappings: readonly Mapping[] };
+const tableByState = new WeakMap<object, ReadonlyMap<string, ModelNameSource>>();
+
+/** 整份目录的「（供应商, 目录 key）→ 来源」表。同一份目录状态对象只算一次（档案解析一次会问很多次）。 */
+export function modelNameSourceTable(state: CatalogShape): ReadonlyMap<string, ModelNameSource> {
+  const cached = tableByState.get(state);
+  if (cached) return cached;
   const table = new Map<string, ModelNameSource>();
   for (const model of state.models) {
     const source = deriveModelNameSource(model, state.mappings);
@@ -44,5 +49,6 @@ export function modelNameSourceTable(state: { models: readonly { vendorKey: stri
     const alias = typeof model.modelAlias === "string" ? model.modelAlias.trim() : "";
     if (alias && !table.has(modelNameSourceKey(model.vendorKey, alias))) table.set(modelNameSourceKey(model.vendorKey, alias), source);
   }
+  tableByState.set(state, table);
   return table;
 }

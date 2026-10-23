@@ -26,7 +26,7 @@
     "electron/catalog/catalogStore.ts",
     "electron/shared/modelArchetypes/index.ts",
     "electron/shared/videoCapabilities/registry.ts",
-    "src/config/modelNameSourceLookup.ts",
+    "src/workbench/generationCanvas/model/modelNameSourceLookup.ts",
     "src/config/modelOptionMappers.ts",
     "src/workbench/generationCanvas/nodes/nodeModelArchetype.ts"
   ],

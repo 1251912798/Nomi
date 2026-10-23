@@ -24,7 +24,7 @@ import { NomiColorSchemeProvider } from './theme/NomiColorSchemeProvider'
 import { primeNomiColorScheme } from './theme/colorScheme'
 import { reportVideoCodecSupport } from './media/videoCodecProbe'
 import { installRendererErrorCapture } from './desktop/rendererLog'
-import { installRendererModelNameSourceLookup } from './config/modelNameSourceLookup'
+import { installRendererModelNameSourceLookup } from './workbench/generationCanvas/model/modelNameSourceLookup'
 import { startPerfCollector } from './workbench/observability/perfCollector'
 import { installHeldModifierReconciler } from './ui/input/heldModifierReconciler'
 

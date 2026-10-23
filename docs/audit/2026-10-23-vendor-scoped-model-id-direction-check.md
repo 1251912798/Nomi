@@ -1,6 +1,6 @@
 # 方向检查：共享档案的型号名被当成所有供应商的型号名（2026-10-23）
 
-触发：`node scripts/fix-churn.mjs` 命中——概念「参数准入」14 天第 5 个 fix（`mcpGenerationVideoResolve.ts` 等文件本身不热）；`src/config/` 目录第 3 个、`src/workbench/api/` 目录第 8 个（本次只加一个类型字段 / 一个新文件）；概念「生成框挂载路径的常驻数据」第 3 个（`modelCatalogCache.ts`——本次**没改**它，查询口放在新文件 `src/config/modelNameSourceLookup.ts`，只调它已有的同步读口）。改法是「换」，协调 2026-10-23 代批（概念 / 目录口径命中、文件本身没命中），事后报用户。
+触发：`node scripts/fix-churn.mjs` 命中——概念「参数准入」14 天第 5 个 fix（`mcpGenerationVideoResolve.ts` 等文件本身不热）；`src/config/` 目录第 3 个、`src/workbench/api/` 目录第 8 个（本次只加一个类型字段 / 一个新文件）；概念「生成框挂载路径的常驻数据」第 3 个（`modelCatalogCache.ts`——本次**没改**它，查询口放在新文件 `src/workbench/generationCanvas/model/modelNameSourceLookup.ts`，只调它已有的同步读口）。改法是「换」，协调 2026-10-23 代批（概念 / 目录口径命中、文件本身没命中），事后报用户。
 
 ### 0. 一句话根因
 

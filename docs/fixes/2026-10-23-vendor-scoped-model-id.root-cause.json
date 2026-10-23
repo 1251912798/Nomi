@@ -19,7 +19,7 @@
     "electron/catalog/modelNameSource.ts",
     "electron/catalog/catalogStore.ts",
     "electron/capabilityCore/mcpGenerationVideoResolve.ts",
-    "src/config/modelNameSourceLookup.ts",
+    "src/workbench/generationCanvas/model/modelNameSourceLookup.ts",
     "src/config/modelOptionMappers.ts",
     "src/config/models.ts",
     "src/workbench/api/modelCatalogApi.ts",
@@ -68,7 +68,7 @@
     },
     {
       "kind": "write",
-      "path": "src/config/modelNameSourceLookup.ts",
+      "path": "src/workbench/generationCanvas/model/modelNameSourceLookup.ts",
       "symbol": "installModelNameSourceLookup"
     },
     {
