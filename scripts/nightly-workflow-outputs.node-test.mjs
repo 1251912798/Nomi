@@ -16,7 +16,7 @@ function writeTargets() {
   const targets = new Set()
   const add = (raw) => {
     const value = raw.replace(/^["']|["']$/g, '')
-    if (!value || /^[$&\/-]/.test(value)) return
+    if (!value || /^[$&/-]/.test(value)) return
     targets.add(value.replace(/\/\*\*$/, '').replace(/\$\{[^}]*\}/g, 'x'))
   }
   for (const job of Object.values(workflow.jobs)) {
