@@ -71,5 +71,5 @@
 ## 特征测试清单（动结构前已钉住）
 
 - `src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.test.ts`：闪 / 悬停投影、闪压悬停、结构不变时只重投前后被点名的两张卡（对象身份）、外壳类只用 ink（无强调色、无 in oklch）。
-- `src/workbench/generationCanvas/components/canvasNodeLevelOfDetail.test.ts`：悬停不升档（只有闪的那一张给完整内容）。
+- `src/workbench/generationCanvas/components/canvasNodeLevelOfDetail.test.ts`（main 原样）：大画布轻量档里只有选中 / 定位后在闪的那一张给完整内容；外壳只把 `externalHighlight === 'flash'` 传进去，悬停不升档。
 - `tests/ux/canvas-focus-composer-visible.walk.mjs`：真入口对焦后外壳闪一下、不含强调色、1.4 秒后清掉。

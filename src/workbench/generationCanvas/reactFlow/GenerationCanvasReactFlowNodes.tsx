@@ -302,7 +302,7 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
       {!groupPort ? (
         <GenerationFlowNodeScope>
           <NodeEmptyStateProvider engaged={primarySelection} readOnly={data.readOnly}>
-          {shouldRenderFullNodeContent({ lightweightMode, selected: primarySelection, flashing: data.externalHighlight === 'flash' }) ? (
+          {shouldRenderFullNodeContent({ lightweightMode, selected: primarySelection, focusFlash: data.externalHighlight === 'flash' }) ? (
             // 节点渲染器按种类懒加载（renderRegistry 的 React.lazy）。第一次建某种节点时 chunk 还没到，
             // 若没有就近的 Suspense 边界，React 会把最近那层（NomiStudioApp 包住整个画布的那个）
             // 已提交的内容整体 display:none 直到 chunk 到达：画布闪黑一帧，而且 React Flow 缓存的
