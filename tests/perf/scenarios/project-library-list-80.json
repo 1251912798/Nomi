@@ -1,0 +1,25 @@
+{
+  "id": "project-library-list-80",
+  "feature": "库里 81 个项目（80 个各带 4 张图的小项目 + 1 个 96 图项目），打开大项目后「回项目库」：点菜单项 → 81 张卡全部可见再过两帧（离开项目 → 回库，规模翻倍；用来判断要不要窗口化卡片 / 离开时不等保存）",
+  "script": "tests/ux/project-open-stages.e2e.mjs",
+  "args": [
+    "--scale",
+    "MIMG",
+    "--library-projects",
+    "80",
+    "--warmup",
+    "1"
+  ],
+  "scale": "项目库 81 个项目",
+  "metrics": [
+    "response"
+  ],
+  "budget": 300,
+  "group": "⑥ 项目库",
+  "budgetStatus": "proposed",
+  "budgetBasis": "与 project-library-list（41 项目，已批 300ms）同一操作、同一预算，只把库规模翻倍：验证列表读面随规模的增长仍在预算内",
+  "measurement": {
+    "state": "pending",
+    "reason": "P-library-2 10-22 已用 --measure-only 量过（中位 424.8 / p95 539.1，本机 CPU 100% 时量的，noisy；原始结果 docs/evidence/2026-10-22-project-library-80/perf-80.json），基线待协调安静窗口写"
+  }
+}

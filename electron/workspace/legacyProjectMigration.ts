@@ -9,6 +9,7 @@ import {
   readWorkspaceManifestSummary,
   withWorkspaceManifestMutationSync,
 } from "./workspaceManifest";
+import { logWarn } from "../logging/logger";
 import { listRegisteredRootPaths } from "./workspaceRegistry";
 import { workspaceNomiDir } from "./workspacePaths";
 import { normalizeWorkspaceProjectRecord, type WorkspaceProjectRecordV2 } from "./workspaceTypes";
@@ -168,17 +169,24 @@ export function discoverLegacyProjects(
     if (!entry.isDirectory()) continue;
     const projectRoot = path.join(root, entry.name);
     if (isRegisteredRoot(known, projectRoot)) continue;
-    if (isLegacyProjectSuppressed(projectRoot)) continue;
-    if (hasWorkspaceManifest(projectRoot)) {
-      const manifest = readDiscoveredManifestSummary(projectRoot);
-      if (manifest) {
-        projects.push({ ...manifest, lastKnownRootPath: path.resolve(projectRoot) });
+    // 每个目录的读取错误只跳过这一个（V-plibrary2 r2：从库里移除一张读不出的灰卡后，目录还在默认根里，
+    // 下次启动发现它、读它抛边界 / 身份错，整次 listProjects 跟着 reject，所有项目都打不开——N2 从这扇门回来）。
+    // 读不出的目录不进列表、不往里写任何东西；修好后下次启动自然会被发现回来。
+    try {
+      if (isLegacyProjectSuppressed(projectRoot)) continue;
+      if (hasWorkspaceManifest(projectRoot)) {
+        const manifest = readDiscoveredManifestSummary(projectRoot);
+        if (manifest) {
+          projects.push({ ...manifest, lastKnownRootPath: path.resolve(projectRoot) });
+        }
+        continue;
       }
-      continue;
-    }
-    const summary = readLegacyProjectSummary(projectRoot);
-    if (summary) {
-      projects.push(summary);
+      const summary = readLegacyProjectSummary(projectRoot);
+      if (summary) {
+        projects.push(summary);
+      }
+    } catch (error) {
+      logWarn("workspace", "legacy-discovery-item-unreadable", { name: entry.name }, error);
     }
   }
   return projects;

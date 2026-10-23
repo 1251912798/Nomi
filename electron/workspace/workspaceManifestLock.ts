@@ -71,6 +71,20 @@ export class WorkspaceManifestLockPublishError extends Error {
   }
 }
 
+/**
+ * 取锁时项目根已经不在（被删 / 被挪走）。不可重试：等多久根也不会自己回来，而重试时建目录会凭空造出一个
+ * 没清单、没登记的孤儿根（V-plibrary N1）。取锁只在「根已在」的前提下建 .nomi，结构上不再创建项目根。
+ */
+export class WorkspaceRootMissingError extends Error {
+  readonly code = "workspace_root_missing";
+
+  constructor(rootPath: string, options?: { cause?: unknown }) {
+    super(`Workspace project folder no longer exists: ${rootPath}`);
+    this.name = "WorkspaceRootMissingError";
+    if (options) Object.defineProperty(this, "cause", { configurable: true, value: options.cause });
+  }
+}
+
 export class WorkspaceManifestLockLostError extends Error {
   readonly code = "workspace_manifest_lock_lost";
 
@@ -355,7 +369,14 @@ function tryAcquireCanonicalWorkspaceManifestLock(
   const processLiveness = options.processLiveness ?? defaultProcessLiveness;
   const initializationGraceMs = options.initializationGraceMs ?? DEFAULT_INITIALIZATION_GRACE_MS;
   const nomiDir = workspaceNomiDir(canonicalRootPath);
-  fs.mkdirSync(nomiDir, { recursive: true });
+  // 只建 .nomi、不递归：根没了就是没了（ENOENT），绝不在这里把项目根重新建出来。
+  try {
+    fs.mkdirSync(nomiDir);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException)?.code;
+    if (code === "ENOENT") throw new WorkspaceRootMissingError(canonicalRootPath, { cause: error });
+    if (code !== "EEXIST") throw error;
+  }
   const lockDir = path.join(nomiDir, LOCK_DIR_NAME);
 
   removeReleasedLocks(nomiDir);
