@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 // ⑭ 起，产品的「删除项目」会把文件夹放进运行者电脑的系统回收站（shell.trashItem）。走查 / 脚本跑在开发者或用户的
@@ -12,8 +13,9 @@ import { describe, expect, it } from 'vitest'
 //   1. 渲染层桥 window.nomiDesktop.projects.delete(...)；
 //   2. 直接点名 IPC 通道 nomi:projects:delete；
 //   3. 界面：项目卡上的删除按钮 → 确认框 →「删除」。走查只许打开确认框再取消（shell-redesign.walk.mjs 就是这样）。
-// 另外 shell.trashItem 本身也不许出现（素材删除也走它，那一单另排）。
-const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '../..')
+// 另外 shell.trashItem 本身也不许出现；素材删除（workspace.deleteFiles / nomi:workspace:delete-files）也走它，
+// 走查这一侧的口现在就先关上（素材删除的产品改动是下一单）。目前全仓没有走查调它。
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const ROOTS = ['tests/ux', 'tests/system', 'scripts', 'evals', 'docs/evidence']
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'dist-electron', 'perf-results', 'shots'])
 const SELF = 'tests/system/walks-never-trash-projects.test.mjs'
@@ -26,6 +28,9 @@ const FORBIDDEN = [
   { pattern: /nomiDesktop\.projects\.delete\s*\(/, why: '调了产品的删除项目口（会进系统回收站）' },
   { pattern: /['"]nomi:projects:delete['"]/, why: '直接点名产品删除 IPC 通道' },
   { pattern: /shell\.trashItem\s*\(/, why: '直接往系统回收站里放东西' },
+  // 素材删除是同一类：workspaceFileDelete.ts 也走 shell.trashItem（那条的产品改动是下一单，走查这一侧现在就先关上）。
+  { pattern: /nomiDesktop\.workspace\.deleteFiles\s*\(/, why: '调了产品的删除素材口（也会进系统回收站）' },
+  { pattern: /['"]nomi:workspace:delete-files['"]/, why: '直接点名产品删除素材 IPC 通道（也会进系统回收站）' },
 ]
 // 项目卡删除按钮的名字（中 / 英）。走查点它之后，紧接着碰的第一个确认框钩子必须是取消，不是确认。
 // 同一份走查里别的确认框（删文件夹、退出导演台……）不归这条管，所以看「点完之后最近的那个钩子」，不看整份文件。
@@ -76,6 +81,8 @@ describe('走查与脚本收尾不往系统回收站里扔东西', () => {
     ['桥', "await win.evaluate((pid) => window.nomiDesktop.projects.delete(pid, 'delete-files'), projectId)"],
     ['IPC 通道', "await ipcRenderer.invoke('nomi:projects:delete', id, 'delete-files')"],
     ['trashItem', 'await shell.trashItem(folder)'],
+    ['素材删除桥', "await win.evaluate((a) => window.nomiDesktop.workspace.deleteFiles(a), { projectId, relativePaths: ['assets/a.png'] })"],
+    ['素材删除 IPC 通道', "await ipcRenderer.invoke('nomi:workspace:delete-files', payload)"],
     ['界面点确认', "await click(card.getByRole('button', { name: '删除项目 天台' })); await click(page.locator('[data-confirm-dialog-confirm]'))"],
     ['界面点删除后没取消', "await click(card.getByRole('button', { name: 'Delete project Rooftop' }))"],
   ])('反例（%s）被认出来', (_label, source) => {
