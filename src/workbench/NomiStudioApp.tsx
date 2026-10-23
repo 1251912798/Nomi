@@ -524,6 +524,7 @@ export default function NomiStudioApp(): JSX.Element {
         },
         deleteLocalProject,
         onMovedToTrash: (message) => toast(message, 'success'),
+        onRemovedWithoutTrash: (message) => toast(message, 'info'),
         onFailed: (projectId, error, trashBin) => {
           logRendererError('project-delete-failed', error)
           report(projectId, projectOperationFailureText('delete', error, t, { trashBin }))

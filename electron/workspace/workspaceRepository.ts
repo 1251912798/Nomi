@@ -436,7 +436,14 @@ export async function deleteWorkspaceProject(
     return { id: projectId, deleted: false };
   }
   // 别的写者此刻正锁着这个项目（另一个 Nomi 窗口 / 另一台电脑经同步盘）：照常报「正被别处占用」，不删。
-  releaseWorkspaceManifestLock(tryAcquireWorkspaceManifestLock(resolved));
+  // 这一步只拿来探「别处占用」，所以**只把 WorkspaceManifestLockBusyError 往外抛**：取锁 / 放锁碰到别的错（只读卷、没权限写
+  // .nomi：EROFS / EACCES / EPERM…）不是占用，往外抛会绕过回收站那一步的分类，界面把真原因说成「可能有别的程序正占用它的
+  // 文件夹」（V-library-trash 建议 1，真只读卷实测）。这里吞掉，让 moveToTrash 去试、去报真原因（进不了就抛，登记不摘、文件不动）。
+  try {
+    releaseWorkspaceManifestLock(tryAcquireWorkspaceManifestLock(resolved));
+  } catch (error) {
+    if (error instanceof WorkspaceManifestLockBusyError) throw error;
+  }
   await moveToTrash(resolved); // 失败就抛：登记不摘、文件不动
   removeWorkspaceReference(deps.settingsRoot, projectId);
   return { id: projectId, deleted: true };

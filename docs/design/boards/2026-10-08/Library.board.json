@@ -363,7 +363,7 @@
           "en": "Delete project"
         },
         "message": {
-          "zh-CN": "确定删除「{{name}}」吗？项目文件夹会移到{{bin}}，需要时可以从{{bin}}还原；还原后下次启动 Nomi 时它会回到项目库。",
+          "zh-CN": "确定删除「{{name}}」吗？\n项目文件夹会移到{{bin}}，需要时可以从那里还原。\n还原后下次启动 Nomi 时它会回到项目库。",
           "en": "Delete “{{name}}”? Its project folder will be moved to the {{bin}}, where you can restore it; after restoring, it comes back to the library the next time you start Nomi."
         },
         "bin": {
@@ -381,7 +381,7 @@
           }
         }
       },
-      "note": "沿用现有确认框组件，只改正文：原来写「项目文件夹和本地资源会从磁盘永久删除，无法恢复」，现在按平台说移到哪、能还原。布局没变，不出样张——文案是行为改动的直接结果（说真话）。中英原文在 copy，和产品词典同一份（tests/ux/library-delete-copy.test.mjs 逐字核对；走查 #47 核真界面上的正文）。真机截图 docs/evidence/2026-10-23-project-delete-to-trash/mac-confirm-zh-CN.png / mac-confirm-en.png；Windows 见同目录 delete-confirm-zh-CN.png / delete-confirm-en.png。「从库移除」确认框（灰卡 / 外部文件夹）不变。"
+      "note": "沿用现有确认框组件，只改正文：原来写「项目文件夹和本地资源会从磁盘永久删除，无法恢复」，现在按平台说移到哪、能还原。布局没变，不出样张——文案是行为改动的直接结果（说真话）。中英原文在 copy，和产品词典同一份（tests/ux/library-delete-copy.test.mjs 逐字核对；走查 #47 核真界面上的正文）。真机截图 docs/evidence/2026-10-23-project-delete-to-trash/mac-confirm-zh-CN.png / mac-confirm-en.png；Windows 见同目录 delete-confirm-zh-CN.png / delete-confirm-en.png。「从库移除」确认框（灰卡 / 外部文件夹）不变。 2026-10-24 验收（V-library-trash 建议 5）：中文正文在窄框里会把回收站叫法拆在行尾（「废纸 / 篓」），因为叫法和用户起的项目名挤在同一行、折行位置随名字长度变。现在中文正文换行分三行，叫法单独在不含项目名的一行里、整行放得进确认框一行（tests/ux/library-delete-copy.test.mjs 核这一结构）；英文按词折行，不动。"
     },
     {
       "id": "library.delete.moved",
@@ -401,6 +401,25 @@
         }
       },
       "note": "沿用现有 toast 组件，只补这一句（原来删完没有任何提示）。真机截图 docs/evidence/2026-10-23-project-delete-to-trash/mac-after-delete-zh-CN.png。"
+    },
+    {
+      "id": "library.delete.removedOnly",
+      "label": "删除时没有东西进回收站的提示（toast）：确认的是「删除」，主进程却只摘了登记（项目文件夹已被挪走、库页没刷新，或其实是外部文件夹）；说清「已从项目库移除、项目文件夹没有移到回收站、没有删除任何文件」，不再说「已移到回收站」",
+      "change": "keep",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "board:Library/library.delete.removedOnly",
+      "states": [
+        "zh-en",
+        "long-text"
+      ],
+      "copy": {
+        "message": {
+          "zh-CN": "「{{name}}」已从项目库移除，但项目文件夹没有移到{{bin}}：它已不在原来的位置，或是外部文件夹。没有删除任何文件。",
+          "en": "“{{name}}” was removed from the project library, but its folder was not moved to the {{bin}}: the folder is no longer in its original place, or is an external folder. No files were deleted."
+        }
+      },
+      "note": "沿用现有 toast 组件（info 样式），只补这一句。V-library-trash 验收建议 2：成功提示原先按「用户点了删除」弹，用户在访达里把项目文件夹挪走、库页没刷新时点删除，主进程回 deleted:false，界面却说「已移到废纸篓」。现在只有主进程回 deleted:true 才说「已移到…」，否则说这一句。板上原文 = 词典 = 流程交给界面的那句，断言在 tests/ux/library-delete-copy.test.mjs；「只移除」确认框（灰卡 / 外部文件夹）不弹任何一句，行为不变。 真机截图 docs/evidence/2026-10-23-project-delete-to-trash/mac-removed-only-zh-CN.png（一次性磁盘映像卷上建项目，在访达里把项目文件夹挪走、库页没刷新，点删除再确认）。"
     },
     {
       "id": "library.delete.failed",
@@ -432,7 +451,7 @@
           "en": "Couldn't move the project to the {{bin}}. Nothing was deleted. Details are in the log."
         }
       },
-      "note": "沿用卡片上方的反馈条（role=alert），不新增元素；分类依据与真机原文样本见方向检查 docs/engineering/direction-checks/2026-10-23-project-delete-to-trash.md §5。认不出的原因落「其余」，指向日志。真机截图 docs/evidence/2026-10-23-project-delete-to-trash/mac-trash-refused-zh-CN.png（没有权限）。"
+      "note": "沿用卡片上方的反馈条（role=alert），不新增元素；分类依据与真机原文样本见方向检查 docs/engineering/direction-checks/2026-10-23-project-delete-to-trash.md §5。认不出的原因落「其余」，指向日志。真机截图 docs/evidence/2026-10-23-project-delete-to-trash/mac-trash-refused-zh-CN.png（没有权限）。 第 2 轮补：项目放在只读卷上时，删除前取清单锁写不进 .nomi 不再被说成「可能有别的程序正占用」，交给回收站报真原因（该位置没有回收站），真机截图 docs/evidence/2026-10-23-project-delete-to-trash/mac-readonly-volume-zh-CN.png。"
     }
   ],
   "decor": [

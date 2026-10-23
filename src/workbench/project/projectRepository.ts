@@ -327,13 +327,19 @@ export async function renameLocalProject(projectId: string, name: string): Promi
   return next
 }
 
-/** 桌面端：等主进程把项目文件夹移进回收站（或只解绑）成功后，才清本地缓存；失败原样抛出，什么都不清。 */
-export async function deleteLocalProject(projectId: string, intent: ProjectDeleteIntent): Promise<void> {
+/**
+ * 桌面端：等主进程把项目文件夹移进回收站（或只解绑）成功后，才清本地缓存；失败原样抛出，什么都不清。
+ * 返回主进程说的结果：`deleted: true` 才是「文件夹真进了回收站」；false = 只摘了登记（「只移除」、外部文件夹、文件夹已不在
+ * 原位置…）。调用方据此决定提示说什么，不能按「用户点了删除」就说成功（V-library-trash 建议 2）。
+ * 没有桌面桥（浏览器预览）没有回收站这回事，只清本地缓存，恒为 false。
+ */
+export async function deleteLocalProject(projectId: string, intent: ProjectDeleteIntent): Promise<{ id: string; deleted: boolean }> {
   const id = String(projectId || '').trim()
   if (!id) throw new Error('projectId is required')
   const desktop = getDesktopBridge()
+  let deleted = false
   if (desktop) {
-    await desktop.projects.delete(id, intent)
+    deleted = (await desktop.projects.delete(id, intent)).deleted === true
     // 「所有项目的素材」那一份清单里还有这个项目的素材：删项目不经过素材写入层的广播，这里显式作废。
     invalidateAllProjectAssets()
   }
@@ -349,4 +355,5 @@ export async function deleteLocalProject(projectId: string, intent: ProjectDelet
     }
   }
   writeIndex(readMergedProjectSummaries().filter((item) => item.id !== id))
+  return { id, deleted }
 }

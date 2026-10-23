@@ -22,14 +22,15 @@ function memoryStorage(): Storage {
   }
 }
 
-function installBridge(initial: Summary[]) {
+// deleted：主进程删除口回什么（delete-files 真把文件夹移进回收站才是 true；只摘登记、没有东西进回收站是 false）。
+function installBridge(initial: Summary[], options: { deleted?: boolean } = {}) {
   const rows = [...initial]
   const bridge = {
     projects: {
       list: vi.fn(() => rows.map((row) => ({ ...row }))),
       listAsync: vi.fn(async () => rows.map((row) => ({ ...row }))),
       create: vi.fn((record: Summary) => { rows.unshift({ ...record }); return record }),
-      delete: vi.fn((id: string) => { rows.splice(rows.findIndex((row) => row.id === id), 1); return { id, deleted: true } }),
+      delete: vi.fn((id: string) => { rows.splice(rows.findIndex((row) => row.id === id), 1); return { id, deleted: options.deleted ?? true } }),
     },
   }
   vi.stubGlobal('window', { nomiDesktop: bridge, localStorage: memoryStorage(), dispatchEvent: () => true, addEventListener: () => undefined, removeEventListener: () => undefined })
@@ -55,6 +56,17 @@ describe('项目列表缓存：增删发布', () => {
     installBridge([summary('a', 20), summary('b', 10)])
     await mutate(LOCAL_PROJECTS_SWR_KEY, [summary('a', 20), summary('b', 10)], { revalidate: false })
     await deleteLocalProject('a', 'delete-files')
+    expect((await cached())?.map((item) => item.id)).toEqual(['b'])
+  })
+
+  // V-library-trash 建议 2：删除口曾把主进程返回的 {deleted} 丢掉，调用方没法区分「真进了回收站」和「只摘了登记」，
+  // 于是按「用户点了删除」弹成功提示。结果必须原样带回来。
+  it.each([true, false])('删除把主进程说的 deleted 带回给调用方（deleted=%s）：界面据此决定提示说什么，列表缓存照样摘掉', async (deleted) => {
+    const bridge = installBridge([summary('a', 20), summary('b', 10)], { deleted })
+    await mutate(LOCAL_PROJECTS_SWR_KEY, [summary('a', 20), summary('b', 10)], { revalidate: false })
+    const result = await deleteLocalProject('a', 'delete-files')
+    expect(bridge.projects.delete).toHaveBeenCalledWith('a', 'delete-files')
+    expect(result).toEqual({ id: 'a', deleted })
     expect((await cached())?.map((item) => item.id)).toEqual(['b'])
   })
 

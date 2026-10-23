@@ -337,12 +337,16 @@ export const zhCN = {
     removeProjectTitle: '从库移除项目',
     deleteProjectTitle: '删除项目',
     removeProjectMessage: '确定从项目库移除「{{name}}」吗？这只解除绑定，你的原始文件夹和文件不会被删除。',
-    deleteProjectMessage: '确定删除「{{name}}」吗？项目文件夹会移到{{bin}}，需要时可以从{{bin}}还原；还原后下次启动 Nomi 时它会回到项目库。',
+    // 正文用换行分三行（确认框 white-space: pre-line 会照排）：{{bin}} 单独在不含项目名的一行里、且整行放得进确认框一行。
+    // 项目名是用户起的、长度不定，叫法若和名字挤在同一行就可能落在行尾被拆成「废纸 / 篓」（2026-10-24 验收）。
+    deleteProjectMessage: '确定删除「{{name}}」吗？\n项目文件夹会移到{{bin}}，需要时可以从那里还原。\n还原后下次启动 Nomi 时它会回到项目库。',
     // 删项目进系统回收站（⑭）：按平台叫法，Windows「回收站」、macOS「废纸篓」。
     trashBinWindows: '回收站',
     trashBinMac: '废纸篓',
     trashBinLinux: '回收站',
     projectMovedToTrash: '「{{name}}」已移到{{bin}}。要找回就从{{bin}}还原，下次启动 Nomi 时它会回到项目库。',
+    // 确认的是「删除文件」，主进程却没把文件夹移进回收站（只摘了登记：文件夹已被挪走、库页没刷新，或其实是外部文件夹）：说实话。
+    projectRemovedWithoutTrash: '「{{name}}」已从项目库移除，但项目文件夹没有移到{{bin}}：它已不在原来的位置，或是外部文件夹。没有删除任何文件。',
     projectTrashFailedPermission: '没能把项目移到{{bin}}：没有权限操作这个文件夹。项目没有被删除。',
     projectTrashFailedNoTrash: '没能把项目移到{{bin}}：这个位置（比如网络盘或外接盘）没有{{bin}}。项目没有被删除，需要的话请到文件夹里自己处理。',
     projectTrashFailedInUse: '没能把项目移到{{bin}}：里面有文件正被别的程序占用，关掉它再试一次。项目没有被删除。',
@@ -758,6 +762,7 @@ export const en = {
     trashBinMac: 'Trash',
     trashBinLinux: 'Trash',
     projectMovedToTrash: '“{{name}}” was moved to the {{bin}}. To get it back, restore it from the {{bin}}; it returns to the library the next time you start Nomi.',
+    projectRemovedWithoutTrash: '“{{name}}” was removed from the project library, but its folder was not moved to the {{bin}}: the folder is no longer in its original place, or is an external folder. No files were deleted.',
     projectTrashFailedPermission: "Couldn't move the project to the {{bin}}: no permission to change this folder. Nothing was deleted.",
     projectTrashFailedNoTrash: "Couldn't move the project to the {{bin}}: this location (such as a network or external drive) has no {{bin}}. Nothing was deleted; handle the folder yourself if needed.",
     projectTrashFailedInUse: "Couldn't move the project to the {{bin}}: a file in it is being used by another program. Close it and try again. Nothing was deleted.",

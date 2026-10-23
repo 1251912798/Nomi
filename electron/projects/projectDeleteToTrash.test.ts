@@ -105,6 +105,47 @@ describe("删项目进系统回收站", () => {
     }
   });
 
+  // 删除前「取清单锁」那一下只用来探「别处占用」。取锁时写不进 .nomi（只读卷 EROFS、没权限 EACCES / EPERM）不是占用：
+  // 若原样往外抛，会绕过回收站那一步的分类，界面把真原因说成「可能有别的程序正占用它的文件夹」（V-library-trash 建议 1，
+  // 真只读卷实测）。这里照真只读卷上的样子让建锁候选目录那一步失败，核「只有别处占用才拦，其余交给回收站报真原因」。
+  describe("删除前取清单锁写不进 .nomi（只读卷 / 没权限写）", () => {
+    let mkdirSpy: { mockRestore: () => void } | null = null;
+    function failLockCandidateMkdir(code: string) {
+      const realMkdir = fs.mkdirSync;
+      mkdirSpy = vi.spyOn(fs, "mkdirSync").mockImplementation(((target: fs.PathLike, ...rest: unknown[]) => {
+        if (String(target).includes("manifest-transaction.candidate-")) {
+          throw Object.assign(new Error(`${code}: operation failed, mkdir '${String(target)}'`), { code });
+        }
+        return (realMkdir as (...args: unknown[]) => unknown)(target, ...rest);
+      }) as never);
+    }
+    afterEach(() => {
+      mkdirSpy?.mockRestore();
+      mkdirSpy = null;
+    });
+
+    it.each(["EROFS", "EACCES", "EPERM"])("%s：不报成「别处占用」，交给回收站那一步报真原因；文件和登记原样", async (code) => {
+      const { project, root } = nativeProjectWithAsset("只读卷上的项目");
+      trash.failWith = new Error("“只读卷上的项目” couldn’t be moved to the trash because the volume “V” doesn’t have one.");
+      failLockCandidateMkdir(code);
+      const error = await deleteProject(project.id, "delete-files").then(() => null, (caught: unknown) => caught);
+      expect(trash.calls).toEqual([path.resolve(root)]); // 回收站那一步真的被走到了
+      expect(error).not.toBeInstanceOf(WorkspaceManifestLockBusyError);
+      expect(projectTrashFailureReason(error)).toBe("no-trash"); // 报的是回收站给的真原因，不是原始的 EROFS / EACCES
+      expect(fs.existsSync(path.join(root, "assets", "imported", "user.png"))).toBe(true);
+      expect(findRecentWorkspace(settingsRoot, project.id)).toBeTruthy();
+    });
+
+    it("取锁写不进 .nomi、但回收站进得去：照常进回收站（取锁只拦「别处占用」，不拦别的错）", async () => {
+      const { project, root } = nativeProjectWithAsset("取锁失败但能进回收站");
+      failLockCandidateMkdir("EROFS");
+      await expect(deleteProject(project.id, "delete-files")).resolves.toEqual({ id: project.id, deleted: true });
+      expect(trash.calls).toEqual([path.resolve(root)]);
+      expect(fs.existsSync(root)).toBe(false);
+      expect(findRecentWorkspace(settingsRoot, project.id)).toBeFalsy();
+    });
+  });
+
   it("回收站报成功、原路径却还在：当失败处理，不从项目库移除", async () => {
     const { project, root } = nativeProjectWithAsset("报成功但还在");
     trash.leaveInPlace = true;
