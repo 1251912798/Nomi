@@ -1,0 +1,137 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-prompt-library-undo",
+  "change_kind": "corrective",
+  "detected_by": "user",
+  "recurrence_check_on": "2026-11-24",
+  "problem_type": "删除用户提示词后撤销按部分字段重建记录",
+  "symptom": "在我的库删除一条带参考图和标签的提示词后点击撤销，记录虽然回来但 id、参考图、标签、更新时间及未来字段丢失。",
+  "direct_cause": "PromptLibraryPanel.handleDelete 先删除原记录，撤销回调再调用 user.add，只传 title、prompt、promptType；addUserPrompt 会生成新 id 并只保存当前输入字段。",
+  "class_root": "用户提示词删除没有在存储边界定义删除快照与恢复快照的成对契约，渲染层可以按手挑字段重建，未知字段因此静默丢失。",
+  "affected_population": [
+    "所有在 Electron 我的库删除后使用 5 秒撤销的用户提示词",
+    "带 referenceImages、tags 或历史/未来扩展字段的用户提示词记录",
+    "从旧 JSON 水合后经过渲染层映射再撤销的记录"
+  ],
+  "scope_paths": [
+    "electron/promptLibrary/userPromptStore.ts",
+    "electron/promptLibrary/promptLibraryIpc.ts",
+    "src/workbench/api/promptLibraryApi.ts",
+    "src/workbench/promptLibrary/useUserPrompts.ts",
+    "src/workbench/promptLibrary/PromptLibraryPanel.tsx"
+  ],
+  "entry_points": [
+    "我的库卡片删除按钮 → PromptLibraryContent.handleDelete",
+    "渲染层 useUserPrompts.remove/restore → promptLibrary:user-delete/user-add(restoreSnapshot)",
+    "主进程 userPromptStore.deleteUserPrompt/restoreUserPrompt → prompt-library-user.json"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "删除快照、用户提示词字段完整性和 nomi-local 参考素材归属是 Nomi 的内部存储契约；本次没有第三方运行时行为需要决定不变量。",
+  "invariants": [
+    "删除操作必须返回删除前的完整用户提示词对象，包含原 id、所有已知字段和未知未来字段。",
+    "撤销只能把同一份快照交回存储层恢复；恢复不得按字段重建或生成新 id。",
+    "渲染层映射已知字段时必须保留记录中的未知字段，才能把完整快照跨 IPC 往返。",
+    "撤销窗口结束且没有恢复调用时，用户提示词记录保持删除状态；该存储不拥有 referenceImages 指向的素材文件。"
+  ],
+  "doors": [
+    { "kind": "write", "path": "electron/promptLibrary/userPromptStore.ts", "symbol": "deleteUserPrompt" },
+    { "kind": "write", "path": "electron/promptLibrary/userPromptStore.ts", "symbol": "restoreUserPrompt" },
+    { "kind": "write", "path": "electron/promptLibrary/promptLibraryIpc.ts", "symbol": "registerPromptLibraryIpc" },
+    { "kind": "write", "path": "src/workbench/api/promptLibraryApi.ts", "symbol": "deleteUserPromptWithSnapshot" },
+    { "kind": "write", "path": "src/workbench/api/promptLibraryApi.ts", "symbol": "restoreUserPrompt" },
+    { "kind": "write", "path": "src/workbench/promptLibrary/useUserPrompts.ts", "symbol": "useUserPrompts" },
+    { "kind": "read", "path": "src/workbench/promptLibrary/PromptLibraryPanel.tsx", "symbol": "PromptLibraryContent" }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 7,
+    "why_not": "删除与恢复必须分别存在于主进程存储边界，IPC/渲染 API 负责跨进程传递完整快照，hook 负责缓存刷新，面板负责 toast 生命周期；这些是不同层的真实入口，合并会把存储不变量重新放回调用方。"
+  },
+  "generality_proof": "所有用户提示词删除都由 PromptLibraryContent 进入 useUserPrompts，再经 deleteUserPromptWithSnapshot 和 user-delete IPC 到 userPromptStore；恢复同样必须经 restoreUserPrompt 回到同一存储层。userPromptStore 以完整对象做删除快照和恢复输入，promptLibraryApi.toPrompt 先展开原始记录再覆盖规范化字段，因此新增字段不会在往返中被丢掉。",
+  "shared_boundaries": [
+    {
+      "path": "electron/promptLibrary/userPromptStore.ts",
+      "symbol": "deleteUserPrompt",
+      "responsibility": "持有用户提示词 JSON 的唯一删除/恢复语义：删除返回完整快照，restoreUserPrompt 只接受完整用户记录并保持原 id。"
+    },
+    {
+      "path": "src/workbench/api/promptLibraryApi.ts",
+      "symbol": "deleteUserPromptWithSnapshot",
+      "responsibility": "跨 IPC 传递删除后的全量列表和完整快照，并在规范化已知字段时保留未知字段。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/promptLibrary/PromptLibraryPanel.tsx",
+      "entry_point": "PromptLibraryContent.handleDelete",
+      "disposition": "enforced",
+      "evidence": "唯一现有提示词删除入口现在等待存储返回 deleted 快照，撤销回调只调用 user.restore(deleted)，不再调用按字段 user.add。"
+    },
+    {
+      "path": "src/workbench/skillLibrary/SkillLibraryPanel.tsx",
+      "entry_point": "SkillLibraryContent.handleDelete",
+      "disposition": "not-affected",
+      "evidence": "这是技能包目录删除；撤销使用 exportPackage/importPackage 的完整包快照，不经过用户提示词存储，也没有部分字段重建。"
+    },
+    {
+      "path": "src/workbench/assets/assetSurfaceMigration.ts",
+      "entry_point": "migrateLegacyPromptCards",
+      "disposition": "not-affected",
+      "evidence": "该入口只把旧 localStorage 提示词卡一次性新增到用户库，没有删除或撤销路径；新增仍收敛到同一 addUserPrompt。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "只要任何删除入口继续把记录投影成部分字段再新增，就会对现有参考图、标签、时间或未来字段造成同样的数据丢失；字段扩展也会自动触发。",
+    "same_class_scan": [
+      "node scripts/door-map.mjs deleteUserPrompt：确认主进程用户提示词删除只有 promptLibraryIpc 一扇写门。",
+      "rg -n \"onUndo:.*(add|import|restore)|user\\.add\\(|deleteUserPrompt|userDelete\" src electron：确认提示词按字段撤销只命中原 PromptLibraryPanel，技能库走完整包快照。",
+      "node scripts/door-map.mjs addUserPrompt：确认新增还有浏览器提取、素材迁移、选区保存等入口，但它们没有删除+撤销语义，不能绕过删除快照边界。"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/promptLibrary/userPromptStore.ts",
+    "invariant": "userPromptStore 的删除返回完整快照，恢复只接受并写回完整用户记录；调用方不得通过 addUserPrompt 重新拼装撤销记录。",
+    "failure_mode": "无效恢复快照在主进程存储层抛错并返回失败 IPC 响应；已存在同 id 的恢复幂等返回当前列表。",
+    "exception_policy": "none",
+    "strategy": "把删除和恢复成对固定在 JSON 存储 owner，IPC 只传递快照，渲染层只消费 deleted 并回传 restoreSnapshot；API 展开原始记录保留未知字段，未来字段无需新增撤销分支。",
+    "artifacts": [
+      "electron/promptLibrary/userPromptStore.ts",
+      "electron/promptLibrary/promptLibraryIpc.ts",
+      "src/workbench/api/promptLibraryApi.ts",
+      "src/workbench/promptLibrary/useUserPrompts.ts",
+      "src/workbench/promptLibrary/PromptLibraryPanel.tsx"
+    ]
+  },
+  "regression_tests": [
+    "electron/promptLibrary/userPromptStore.test.ts",
+    "src/workbench/api/promptLibraryApi.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/promptLibrary/userPromptStore.test.ts",
+    "src/workbench/api/promptLibraryApi.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "旧的按字段撤销实现位于仍保留的面板函数内部，已在同一文件同一提交替换；没有独立的旧文件或可继续调用的并行路径。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不变量由 Nomi 自己的主进程 JSON 存储和 IPC 契约决定，不涉及第三方依赖版本。",
+    "exit_criteria": []
+  },
+  "migration": "现有 prompt-library-user.json 记录无需迁移；删除前仍按原记录形状读取，新增字段会随快照保留。旧版本已经删除的记录无法恢复，因为旧版本没有保存快照。",
+  "residual_risks": [
+    "本地 referenceImages 指向的项目素材由项目素材 owner 管理，用户提示词删除路径不删除文件；本次用测试证明删除不会误删引用文件，素材 GC 仍由资产生命周期另行负责。",
+    "未启动真实 Electron UI 走查；面板调用链由 API/存储单测覆盖，真实窗口验收由协调线完成。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/promptLibrary/userPromptStore.ts",
+    "tests": [
+      "electron/promptLibrary/userPromptStore.test.ts"
+    ],
+    "why": "用户提示词 JSON 的删除与恢复在主进程存储层拥有，任何 renderer 入口都只能通过 IPC 得到完整快照并回传，不能自行生成恢复记录。"
+  }
+}

@@ -113,8 +113,26 @@ export function updateUserPrompt(id: string, patch: Partial<UserPromptInput>): L
   return listUserPrompts();
 }
 
-export function deleteUserPrompt(id: string): LibraryPrompt[] {
-  persist(load().filter((item) => item.id !== id));
+export type DeletedUserPrompt = {
+  prompts: LibraryPrompt[];
+  deleted?: LibraryPrompt;
+};
+
+/** 删除时把完整记录交给上层；撤销必须使用这份快照，不能在渲染层按字段重建。 */
+export function deleteUserPrompt(id: string): DeletedUserPrompt {
+  const current = load();
+  const deleted = current.find((item) => item.id === id);
+  if (!deleted) return { prompts: listUserPrompts() };
+  persist(current.filter((item) => item.id !== id));
+  return { prompts: listUserPrompts(), deleted };
+}
+
+/** 恢复删除快照，保留记录的 id 与所有未知/未来字段。相同 id 已存在时保持幂等。 */
+export function restoreUserPrompt(snapshot: unknown): LibraryPrompt[] {
+  if (!isUserPrompt(snapshot)) throw new Error("无效的提示词恢复快照");
+  const current = load();
+  if (current.some((item) => item.id === snapshot.id)) return listUserPrompts();
+  persist([snapshot, ...current]);
   return listUserPrompts();
 }
 

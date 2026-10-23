@@ -2,8 +2,9 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   addUserPrompt as apiAdd,
-  deleteUserPrompt as apiDelete,
+  deleteUserPromptWithSnapshot as apiDelete,
   fetchUserPrompts,
+  restoreUserPrompt as apiRestore,
   updateUserPrompt as apiUpdate,
   type LibraryPrompt,
   type PromptMediaType,
@@ -27,7 +28,8 @@ export type UseUserPrompts = State & {
   reload: () => void
   add: (draft: UserPromptDraft) => Promise<void>
   update: (id: string, patch: Partial<UserPromptDraft>) => Promise<void>
-  remove: (id: string) => Promise<void>
+  remove: (id: string) => Promise<LibraryPrompt | null>
+  restore: (snapshot: LibraryPrompt) => Promise<void>
 }
 
 /** 我的库(用户级)数据 + CRUD;首次打开拉取,写操作后用返回的全量刷新缓存。 */
@@ -71,7 +73,12 @@ export function useUserPrompts(opened: boolean): UseUserPrompts {
     async (id: string, patch: Partial<UserPromptDraft>) => apply(await apiUpdate(id, patch)),
     [apply],
   )
-  const remove = React.useCallback(async (id: string) => apply(await apiDelete(id)), [apply])
+  const remove = React.useCallback(async (id: string) => {
+    const result = await apiDelete(id)
+    apply(result.items)
+    return result.deleted
+  }, [apply])
+  const restore = React.useCallback(async (snapshot: LibraryPrompt) => apply(await apiRestore(snapshot)), [apply])
 
-  return { ...state, reload: () => load(true), add, update, remove }
+  return { ...state, reload: () => load(true), add, update, remove, restore }
 }

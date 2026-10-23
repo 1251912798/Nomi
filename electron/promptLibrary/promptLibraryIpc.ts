@@ -3,7 +3,7 @@
 import { ipcMain } from "electron";
 import { assertTrustedSender } from "../ipcSenderGuard";
 import { getPromptLibrary } from "./promptLibraryStore";
-import { addUserPrompt, deleteUserPrompt, listUserPrompts, updateUserPrompt } from "./userPromptStore";
+import { addUserPrompt, deleteUserPrompt, listUserPrompts, restoreUserPrompt, updateUserPrompt } from "./userPromptStore";
 
 export function registerPromptLibraryIpc(): void {
   ipcMain.handle("nomi:prompt-library:list", async (event) => {
@@ -27,9 +27,10 @@ export function registerPromptLibraryIpc(): void {
     }
   });
 
-  ipcMain.handle("nomi:prompt-library:user-add", async (event, input: { title?: string; prompt: string; promptType: "image" | "video"; tags?: string[]; referenceImages?: { url: string; title?: string; sourceUrl?: string }[] }) => {
+  ipcMain.handle("nomi:prompt-library:user-add", async (event, input: { title?: string; prompt: string; promptType: "image" | "video"; tags?: string[]; referenceImages?: { url: string; title?: string; sourceUrl?: string }[]; restoreSnapshot?: unknown }) => {
     assertTrustedSender(event);
     try {
+      if (input.restoreSnapshot !== undefined) return { ok: true, prompts: restoreUserPrompt(input.restoreSnapshot) };
       addUserPrompt(input);
       return { ok: true, prompts: listUserPrompts() };
     } catch (error) {
@@ -49,11 +50,13 @@ export function registerPromptLibraryIpc(): void {
   ipcMain.handle("nomi:prompt-library:user-delete", async (event, payload: { id: string }) => {
     assertTrustedSender(event);
     try {
-      return { ok: true, prompts: deleteUserPrompt(payload.id) };
+      const result = deleteUserPrompt(payload.id);
+      return { ok: true, prompts: result.prompts, deleted: result.deleted };
     } catch (error) {
       return { ok: false, prompts: listUserPrompts(), error: error instanceof Error ? error.message : String(error) };
     }
   });
+
 
   // 节点提示词优化用的文本大脑(vendor/modelKey,不含 apiKey)。这里只回答 catalog 是否已配置，
   // 不为首屏 readiness 解密；locked 由首次真实文本请求以结构化错误报告。
