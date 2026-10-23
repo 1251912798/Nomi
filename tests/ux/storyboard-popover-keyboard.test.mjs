@@ -1,19 +1,16 @@
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 分镜表里每一个 Portal 弹层的键盘合同（V-1039 评审：「用作…」/ 片段菜单挪进 Portal 后 Tab 进不去）。
 // 修在 `src/design/AnchoredPopover.tsx` 这一层，所以这里按**清单遍历**，不是只测一个：
 //   打开 → 焦点进浮层 → Tab / Shift+Tab 在浮层内循环（不掉出去）→ Esc 关 → 焦点回到打开前的那个元素。
 // 清单少一项 = 有一个 Portal 弹层没有被盯着；多接一个弹层就往清单里加一行。
 import { test } from 'vitest'
 import { expect } from '@playwright/test'
-import { chromium } from 'playwright'
-import { createServer } from 'vite'
-import fs from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
 import { assertTailwindApplied, freshTailwindCss } from './_freshTailwindCss.mjs'
+import { useBrowserFixture } from './_browserFixture.mjs'
 
 // 现编一次 Tailwind（收集阶段做完，不占用例自己的超时），后面各用例复用。
 freshTailwindCss()
+const HARNESS = 'tests/ux/fixtures/original-storyboard-editor-harness.html'
+const fixture = useBrowserFixture({ entries: [HARNESS] })
 
 const POPOVERS = [
   {
@@ -47,14 +44,9 @@ const POPOVERS = [
 ]
 
 for (const item of POPOVERS) test(`分镜 Portal 弹层键盘合同：${item.name}`, async () => {
-  const cacheDir = makeTempDir('nomi-storyboard-popover-kbd-')
-  const server = await createServer({ configFile: false, cacheDir, server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } })
-  let browser
+  const page = await fixture.browser.newPage({ viewport: { width: 1280, height: 1000 } })
   try {
-    await server.listen()
-    browser = await chromium.launch({ headless: true })
-    const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } })
-    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/original-storyboard-editor-harness.html?locale=en&${item.query}`)
+    await page.goto(fixture.url(HARNESS, `?locale=en&${item.query}`))
     await page.addStyleTag({ content: freshTailwindCss() })
     await assertTailwindApplied(page, 'storyboard-popover-keyboard.test.mjs')
     await page.addStyleTag({ url: '/src/styles/index.css' })
@@ -110,7 +102,6 @@ for (const item of POPOVERS) test(`分镜 Portal 弹层键盘合同：${item.nam
     // Radix FocusScope 在卸载后的下一个任务里还焦点，所以要等，不能立刻读。
     await expect.poll(() => page.evaluate(() => document.activeElement === window.__opener), { message: `${item.name}：关闭后焦点没有回到打开前的那个元素`, timeout: 3000 }).toBe(true)
   } finally {
-    await browser?.close()
-    await server.close()
+    await page.close()
   }
-}, 240000)
+})

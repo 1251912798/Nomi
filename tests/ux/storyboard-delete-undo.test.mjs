@@ -1,39 +1,19 @@
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // Real original editor in Chromium; persistence/host ports are controlled, not Electron acceptance.
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
-import { afterAll, beforeAll, test } from 'vitest'
-import { chromium } from 'playwright'
+import { test } from 'vitest'
 import { expect } from '@playwright/test'
-import { createServer } from 'vite'
 import { assertTailwindApplied, freshTailwindCss } from './_freshTailwindCss.mjs'
+import { useBrowserFixture } from './_browserFixture.mjs'
 
 // 现编一次 Tailwind（收集阶段做完，不占用例自己的超时），后面各用例复用。
 freshTailwindCss()
-let server, browser, cacheDir
-beforeAll(async () => {
-  cacheDir = makeTempDir('nomi-storyboard-undo-vite-')
-  server = await createServer({ configFile: false, cacheDir, server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } })
-  await server.listen()
-  browser = await chromium.launch({ headless: true })
-  // Build and mount the real fixture under setup's existing budget. Scenario timeouts measure interactions.
-  const fixture = await browser.newPage()
-  try {
-    await fixture.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/original-storyboard-editor-harness.html?undo=true`)
-    await expect(fixture.locator('[data-storyboard-editor]')).toBeVisible()
-  } finally { await fixture.close() }
-})
-afterAll(async () => {
-  await browser?.close()
-  await server?.close()
-  if (cacheDir) rmSync(cacheDir, { recursive: true, force: true })
-})
+const HARNESS = 'tests/ux/fixtures/original-storyboard-editor-harness.html'
+// Build and mount the real fixture under setup's existing budget. Scenario timeouts measure interactions.
+const fixture = useBrowserFixture({ entries: [HARNESS], ready: '[data-storyboard-editor]' })
 for (const scenario of ['redo', 'consumed', 'hidden', 'later-edit', 'outside', 'input', 'ordinary', 'immediate', 'generated-immediate']) test(`storyboard deletion Undo: ${scenario}`, async () => {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } })
+  const page = await fixture.browser.newPage({ viewport: { width: 1280, height: 1000 } })
   page.setDefaultTimeout(5000)
   try {
-    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/original-storyboard-editor-harness.html?undo=true${scenario === 'generated-immediate' ? '&confirm=true' : ''}`)
+    await page.goto(fixture.url(HARNESS, `?undo=true${scenario === 'generated-immediate' ? '&confirm=true' : ''}`))
     await page.addStyleTag({ content: freshTailwindCss() })
     await assertTailwindApplied(page, 'storyboard-delete-undo.test.mjs')
     const editor = page.locator('[data-storyboard-editor]')
@@ -63,10 +43,10 @@ for (const scenario of ['redo', 'consumed', 'hidden', 'later-edit', 'outside', '
 })
 
 test('delayed delete confirmation cannot delete after the editor target changed', async () => {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } })
+  const page = await fixture.browser.newPage({ viewport: { width: 1280, height: 1000 } })
   page.setDefaultTimeout(5000)
   try {
-    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/original-storyboard-editor-harness.html?undo=true&confirm=true`)
+    await page.goto(fixture.url(HARNESS, '?undo=true&confirm=true'))
     await page.addStyleTag({ content: freshTailwindCss() })
     await assertTailwindApplied(page, 'storyboard-delete-undo.test.mjs')
     const editor = page.locator('[data-storyboard-editor]')

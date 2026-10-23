@@ -2,16 +2,14 @@
 import { test } from 'vitest'
 import { expect } from '@playwright/test'
 import { expectAbsent, proveProbe } from './_assert.mjs'
-import { chromium } from 'playwright'
-import { createServer } from 'vite'
+import { useBrowserFixture } from './_browserFixture.mjs'
+
+const ENTRY = 'tests/ux/fixtures/creation-sidebar-delete-harness.html'
+const fixture = useBrowserFixture({ entries: [ENTRY] })
 test('sidebar deletes a plan at once (undo is the net) and still confirms document deletion', async () => {
-  const server = await createServer({ configFile: false, server: { host: '127.0.0.1', port: 0 } })
-  let browser
+  const page = await fixture.browser.newPage()
   try {
-    await server.listen()
-    browser = await chromium.launch({ headless: true })
-    const page = await browser.newPage()
-    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/creation-sidebar-delete-harness.html`)
+    await page.goto(fixture.url(ENTRY))
     const plan = page.locator('[data-storyboard-id]')
     await expect(plan).toHaveCount(1)
     const planProof = await proveProbe(plan, 'existing sidebar plan before deletion')
@@ -34,5 +32,5 @@ test('sidebar deletes a plan at once (undo is the net) and still confirms docume
     await expect(page.locator('[role="menu"] [data-resource-action="delete"]')).toBeDisabled()
     // 最后一篇原稿：行内垃圾桶同样禁用，并说明为什么
     await expect(page.locator('[data-document-row="a"] [data-resource-action="delete"]')).toBeDisabled()
-  } finally { await browser?.close(); await server.close() }
+  } finally { await page.close() }
 })

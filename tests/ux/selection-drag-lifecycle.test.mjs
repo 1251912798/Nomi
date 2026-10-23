@@ -1,37 +1,16 @@
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
-import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest'
-import { chromium } from 'playwright'
-import { createServer } from 'vite'
+import { beforeAll, beforeEach, expect, it } from 'vitest'
+import { useBrowserFixture } from './_browserFixture.mjs'
 
-let server, browser, page, cacheDir
-beforeAll(async () => {
-  cacheDir = makeTempDir('nomi-selection-drag-vite-')
-  server = await createServer({
-    configFile: false,
-    cacheDir,
-    server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
-  })
-  await server.listen()
-  browser = await chromium.launch({ headless: true })
-  page = await browser.newPage()
-})
-afterAll(async () => {
-  await browser?.close()
-  await server?.close()
-  if (cacheDir) rmSync(cacheDir, { recursive: true, force: true })
-})
+const ENTRY = 'tests/ux/fixtures/selection-drag-lifecycle-harness.html'
+// 冷启动（vite 首次转译整棵画布 store）在准备阶段由 _browserFixture.mjs 编完，每个用例前的 goto 只是执行页面。
+const fixture = useBrowserFixture({ entries: [ENTRY], ready: '#group' })
+let page
+beforeAll(async () => { page = await fixture.browser.newPage() })
 beforeEach(async () => {
-  await page.goto(
-    `http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/selection-drag-lifecycle-harness.html`,
-    { timeout: 90_000 },
-  )
-  await page.locator('#group').waitFor({ timeout: 90_000 })
+  await page.goto(fixture.url(ENTRY))
+  await page.locator('#group').waitFor()
   await frames()
-  // 冷启动（vite 首次转译整棵画布 store）在忙的机器上可超 30 秒，钩子超时按冷启动给足。
-}, 120_000)
+})
 const frames = () =>
   page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
 const snapshot = () => page.evaluate(() => window.selectionDragFixture.snapshot())

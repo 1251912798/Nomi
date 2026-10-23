@@ -1,27 +1,14 @@
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // AnchoredPopover 关掉之后焦点去哪（真 Chromium + 真 AnchoredPopover + 真 React Flow 空白处 + 设计系统 Tooltip）。
 // 规矩在 src/design/AnchoredPopover.tsx：因点外面关闭不还焦点（还回去触发钮的悬停提示会挂着）；Esc / 选一项关闭还给打开前的元素。
 // 「点外面」只记最近一下：调用方可以拒关（ClipNode 上传中），之后用户按 Esc / 在浮层里点一项或用键盘选一项关掉，焦点照旧回到触发钮。
 // 独立验收 L-acc-opus-20261023 应修 1：标记只置真不复位时，后三条的焦点都落在 BODY。按清单遍历，多一种关法就加一行。
-import { rmSync } from 'node:fs'
-import { afterAll, beforeAll, test } from 'vitest'
+import { test } from 'vitest'
 import { expect } from '@playwright/test'
-import { chromium } from 'playwright'
-import { createServer } from 'vite'
 import { expectAbsent, proveProbe } from './_assert.mjs'
+import { useBrowserFixture } from './_browserFixture.mjs'
 
-let server, browser, cacheDir
-beforeAll(async () => {
-  cacheDir = makeTempDir('nomi-anchored-popover-focus-')
-  server = await createServer({ configFile: false, cacheDir, server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } })
-  await server.listen()
-  browser = await chromium.launch({ headless: true })
-})
-afterAll(async () => {
-  await browser?.close()
-  await server?.close()
-  if (cacheDir) rmSync(cacheDir, { recursive: true, force: true })
-})
+const ENTRY = 'tests/ux/fixtures/anchored-popover-focus-harness.html'
+const fixture = useBrowserFixture({ entries: [ENTRY] })
 
 const POPOVER = '[data-focus-popover]'
 const TRIGGER = '[data-focus-trigger]'
@@ -59,9 +46,9 @@ const CLOSES = [
 ]
 
 for (const item of CLOSES) test(`AnchoredPopover 关闭后的焦点：${item.name}`, async () => {
-  const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
+  const page = await fixture.browser.newPage({ viewport: { width: 1000, height: 700 } })
   try {
-    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/anchored-popover-focus-harness.html`)
+    await page.goto(fixture.url(ENTRY))
     await expect(page.locator('.react-flow__pane')).toBeVisible()
     // 提示探针是活的：悬停触发钮时看得到它。之后「没挂提示」才有意义。
     await page.locator(TRIGGER).hover()
