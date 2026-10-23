@@ -63,3 +63,14 @@
 - `src/design/outsidePress.structure.test.ts`（类 A 普查，已验证对修前源码会红：AnchoredPopover / TaskCenterPanel 的 mousedown、AssetLibraryPanel 的冒泡 pointerdown）。
 - `src/workbench/common/richTextActions.structure.test.ts`（类 B 普查）。
 - 性能：`canvas-text-node-typing`（新登记）、`document-long-typing`（复跑）。
+
+## 增补：最终验收之后（L-acc-opus-20261023，验收 HEAD 550ba434e）
+
+- **应修 1，已修**：AnchoredPopover 的「被点外面关掉」标记只置真、不复位。调用方拒关时（ClipNode 上传中），后面按 Esc 或选一项关，焦点都会掉到 BODY。现在只记最近一下：用户回到浮层里按一下 / 按键，或按 Esc，就复位。真 Chromium 测试 `tests/ux/anchored-popover-focus.test.mjs` 遍历五种关法，修前后三条红，修后 5/5。
+- **建议 2，已删**：NodeEffectChips、CanvasControlsHelpPopover 在自己的关闭里把焦点塞回触发钮，绕过了 AnchoredPopover 的规矩。两处都早于 2026-10-05 FocusScope 接管还焦点，属于留下的旧实现，同提交删掉。`outsidePress.structure.test.ts` 加了一条普查：渲染 `<AnchoredPopover anchorRef={x}>` 的文件不许出现 `x.current…focus(`。对修前两个文件跑过，两处都能认出。
+- **存疑 7，按默认定了，事后报用户**：「点外面」按下即判定，所以在画布上拖动平移的起手也会收起抽屉和浮层；滚轮 / 触控板平移不产生 pointerdown，不收。不改成「原地点一下才收」，理由是：
+  - d3-zoom 的 clickDistance 是 0，按下时手抖 1px 就算拖动，随后的 click 会被吞掉。用户报的正是「点了没反应」，这样会把它换个样子带回来。
+  - 这样还要第二种听法，违背「只有一种听法」。
+  - 与 Floating UI `useDismiss`、Radix DismissableLayer 的默认一致。
+
+  代价：开着素材抽屉时用鼠标拖动画布找落点，抽屉会收起，要再点一下左栏重开。拍板图元素 `dismiss.outside-press` 的说明已写明。

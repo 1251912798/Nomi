@@ -122,3 +122,29 @@ describe('「点外面就收」只有一种听法', () => {
     expect(sources.find(({ file }) => file === OWNER)?.code).toMatch(/document\.removeEventListener\('pointerdown',\s*\w+,\s*true\)/)
   })
 })
+
+// 关掉之后还不还焦点只归 AnchoredPopover：因点外面关闭不还，Esc / 选一项关闭还给打开前的元素。
+// 调用方在自己的关闭里把焦点塞回锚点就绕过了它：点在不抢焦点的东西上（mousedown 里 preventDefault 的按钮、禁用钮）时，
+// 焦点停回触发钮、悬停提示挂着（独立验收 L-acc-opus-20261023 建议 2；NodeEffectChips、CanvasControlsHelpPopover 两处已删）。
+// 普查：渲染 <AnchoredPopover anchorRef={x}> 的文件里，不许出现 x.current…focus(。
+function anchorRefocusCalls(code: string): string[] {
+  if (!code.includes('<AnchoredPopover')) return []
+  const anchors = [...code.matchAll(/anchorRef=\{(\w+)\}/g)].map((match) => match[1])
+  return anchors.flatMap((name) => [...code.matchAll(new RegExp(`\\b${name}\\.current\\??\\.(?:[\\w$]+\\([^)]*\\)\\??\\.)*focus\\(`, 'g'))].map((match) => match[0]))
+}
+
+describe('关掉之后还不还焦点只归 AnchoredPopover', () => {
+  it('识别器认得出「关闭时把焦点塞回锚点」（反例自检）', () => {
+    const probe = [
+      'const close = () => { setOpen(false); anchorRef.current?.focus() }',
+      "const close = React.useCallback(() => { setOpen(false); triggerRef.current?.querySelector('button')?.focus() }, [])",
+      '<AnchoredPopover anchorRef={anchorRef} onClose={close} />',
+      '<AnchoredPopover anchorRef={triggerRef} onClose={close} />',
+    ].join('\n')
+    expect(anchorRefocusCalls(probe)).toEqual(['anchorRef.current?.focus(', "triggerRef.current?.querySelector('button')?.focus("])
+  })
+
+  it('渲染 AnchoredPopover 的文件不自己把焦点塞回锚点', () => {
+    expect(sources.flatMap(({ file, code }) => anchorRefocusCalls(code).map((call) => `${file} ${call}`))).toEqual([])
+  })
+})

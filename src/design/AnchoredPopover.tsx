@@ -125,8 +125,10 @@ export function AnchoredPopover({
   const [openerBeforeOpen] = React.useState<Element | null>(() => (typeof document === 'undefined' ? null : document.activeElement))
   // 只有「会被关掉的交互浮层」管焦点；悬停预览（passThrough）与自己管开合的浮层（没传 onClose）不碰。
   const managesFocus = Boolean(onClose) && !passThrough
-  // 是不是被「点外面」关掉的：是就不把焦点还给触发钮（照 Radix DropdownMenu 的 hasInteractedOutsideRef）。
-  // 还回去会让触发钮的悬停提示在用户点完画布空白后冒出来挂着（2026-10-23 走查截图）；Esc 关闭照旧还焦点。
+  // 是不是被「点外面」关掉的：是就不把焦点还给触发钮（照 Radix 非模态浮层的 hasInteractedOutsideRef）。
+  // 还回去会让触发钮的悬停提示在用户点完画布空白后冒出来挂着（2026-10-23 走查截图）。
+  // 只记最近一下：调用方可以拒关（ClipNode 上传中），浮层还开着时用户回到浮层里按一下 / 按键、或按 Esc，就复位，
+  // 之后 Esc / 选一项关照旧还焦点（独立验收 L-acc-opus-20261023 应修 1；tests/ux/anchored-popover-focus.test.mjs）。
   const closedByOutsidePressRef = React.useRef(false)
 
   // 调用方常写成内联函数：放进 ref，身份变了不重建 reposition（否则每次渲染都重算 → setState → 再渲染）。
@@ -176,6 +178,7 @@ export function AnchoredPopover({
     if (event.isComposing || event.defaultPrevented) return true
     event.preventDefault()
     event.stopPropagation()
+    closedByOutsidePressRef.current = false
     onClose()
     return true
   }, [onClose])
@@ -226,8 +229,12 @@ export function AnchoredPopover({
         outline: 'none',
         ...(passThrough ? { pointerEvents: 'none' as const } : {}),
       }}
-      onPointerDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => {
+        closedByOutsidePressRef.current = false
+        event.stopPropagation()
+      }}
       onKeyDown={(event) => {
+        closedByOutsidePressRef.current = false
         if (!onClose || event.key !== 'Escape' || !event.currentTarget.contains(event.target as Node)) return
         // A child may prevent dismissal without stopping propagation. Keep even that
         // Escape inside this portal; it must not cancel the ancestor node's selection.

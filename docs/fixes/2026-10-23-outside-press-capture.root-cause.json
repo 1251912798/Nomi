@@ -60,7 +60,8 @@
     "「点外面就收」只经 src/design/outsidePress.ts 的 listenOutsidePress 听：document 上 pointerdown 捕获阶段，在任何目标处理器之前",
     "src 里没有 document / window 上的 mousedown / touchstart 监听，也不用 Mantine useClickOutside",
     "document / window 上冒泡阶段的 pointerdown / click 监听只许减不许增（基线 4 处）",
-    "因「点外面」关闭的锚点浮层不把焦点还给触发钮（照 Radix DropdownMenu 的 hasInteractedOutsideRef），按 Esc 关闭照旧还焦点；否则触发钮的悬停提示会在用户点完画布空白后挂着"
+    "因「点外面」关闭的锚点浮层不把焦点还给触发钮（照 Radix 非模态浮层的 hasInteractedOutsideRef），按 Esc / 选一项关闭照旧还焦点；「点外面」只记最近一下，调用方拒关后用户回到浮层里按一下 / 按键或按 Esc 即复位；还不还焦点只归 AnchoredPopover，调用方不在自己的关闭里把焦点塞回锚点；否则触发钮的悬停提示会在用户点完画布空白后挂着",
+    "「点外面」按下即判定：在画布上拖动平移的起手也算（与 Floating UI / Radix 默认一致；改成 click 判定会让手抖 1px 的按下被 d3-zoom 当拖动吞掉 click，重新变成「点了没反应」），滚轮 / 触控板平移不产生 pointerdown、不收"
   ],
   "doors": [
     {
@@ -212,7 +213,7 @@
   "prevention": {
     "kind": "static-gate",
     "enforcement_path": "src/design/outsidePress.ts",
-    "invariant": "src 非测试代码里没有 document / window 上的 mousedown / touchstart 监听、没有 Mantine useClickOutside；冒泡阶段的 document / window pointerdown / click 只许是基线里的 4 处（识别不看处理器写法，认 ownerDocument 与 useWindowEvent）；owner 本身听 document 捕获阶段 pointerdown、并按捕获阶段解绑。",
+    "invariant": "src 非测试代码里没有 document / window 上的 mousedown / touchstart 监听、没有 Mantine useClickOutside；冒泡阶段的 document / window pointerdown / click 只许是基线里的 4 处（识别不看处理器写法，认 ownerDocument 与 useWindowEvent）；owner 本身听 document 捕获阶段 pointerdown、并按捕获阶段解绑。渲染 AnchoredPopover 的文件不自己把焦点塞回锚点（普查，还焦点只归 AnchoredPopover）。",
     "failure_mode": "结构测试红，列出违规文件；新浮层只能经 listenOutsidePress。",
     "exception_policy": "none",
     "strategy": "统一听法收进 src/design/outsidePress.ts 一处，存量 11 处里能安全迁的 8 处 + 3 处 mousedown 全部迁完；剩下 3 处冒泡 pointerdown 与 CategoryTree 的 1 处冒泡 click 以基线冻结、只减不增（独立验收 L-acc-sonnet-20261023 发现 3 后扩到 click）。",
@@ -222,7 +223,8 @@
     ]
   },
   "regression_tests": [
-    "src/design/outsidePress.structure.test.ts"
+    "src/design/outsidePress.structure.test.ts",
+    "tests/ux/anchored-popover-focus.test.mjs"
   ],
   "class_regression_tests": [
     "src/design/outsidePress.structure.test.ts"
@@ -251,7 +253,9 @@
   "residual_risks": [
     "useGenerationCanvasReactFlowMenus、DocumentListSidebar、useWhiteboardSelectionActions 三处冒泡 pointerdown 与 CategoryTree 一处冒泡 click 仍会被子树里的 stopPropagation 截断（画布空白不受影响）；迁移前要先给它们补「点在自己身上」的判据。",
     "结构测试是文本扫描：document 的变量别名、globalThis / self 上的监听、变量做事件名认不出来（仓库目前没有这类写法）；要彻底就换成 ESLint / AST 规则。",
-    "没有 DOM 单测环境（vitest environment=node），行为证据来自生产构建真机走查，见 PR。"
+    "「点外面」的行为证据来自生产构建真机走查（见 PR）；焦点另有真 Chromium 测试 tests/ux/anchored-popover-focus.test.mjs（真 AnchoredPopover + 真 React Flow 空白处），其余迁移点没有 DOM 单测。",
+    "调用方拒关之后、浮层又被程序自己关掉（例如上传结束后自动收起）时，最近一下仍是「点外面」，不还焦点：用户已经去点别处了，这是有意的。",
+    "焦点规矩的普查按 anchorRef={x} 认锚点：锚点经别名或 props 透传到别的文件再 focus() 的写法认不出来（仓库目前没有）。"
   ],
   "invariant_owner_layer": {
     "layer": "src/design/outsidePress.ts",
