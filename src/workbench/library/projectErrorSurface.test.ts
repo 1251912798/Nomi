@@ -73,6 +73,12 @@ describe('项目库报错：原文只进日志，界面只给一句人话', () =
     expect(projectOperationFailureText(operation, busy, t)).toBe('«studio.projectInUseElsewhere»')
   })
 
+  it('删除时状态和确认那一刻对不上（经同步 IPC 只剩信息文本）：说「没删、已刷新、请重新确认」，不说删除失败', () => {
+    const changed = new Error('ProjectDeleteStateChangedError: project data is no longer readable; refresh and confirm again')
+    expect(projectOperationFailureText('delete', changed, t)).toBe('«studio.projectDeleteStateChanged»')
+    expect(projectOperationFailureText('save', changed, t)).toBe('«studio.projectSaveFailed»')
+  })
+
   it('类型上做不出来：原文字符串不能当 UserText 传进界面', () => {
     const accept = (_message: UserText): void => {}
     // @ts-expect-error 裸字符串（含 error.message）不是 UserText，编译不过

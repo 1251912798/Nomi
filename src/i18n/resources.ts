@@ -270,6 +270,11 @@ export const zhCN = {
     clearSearch: '清除搜索',
     deleteNamedProject: '删除项目 {{name}}',
     folderUnavailable: '文件夹暂不可用',
+    // 项目数据读不出来的置灰卡（悬停标签 + title 写下一步）：删除只从项目库移除、不删文件。
+    dataOutsideFolder: '项目数据指向文件夹外，已停止读取',
+    dataOutsideFolderHint: '可从项目库移除，不会删除文件。修好这个文件夹里的 .nomi 后，回到项目库会自动恢复。',
+    dataUnreadable: '读不出这个项目的数据',
+    dataUnreadableHint: '可从项目库移除，不会删除文件。文件夹里的内容修好后，回到项目库会自动恢复。',
     openProjectFolder: '打开项目文件夹 {{name}}',
   },
   errors: {
@@ -335,6 +340,7 @@ export const zhCN = {
     deleteProjectMessage: '确定删除「{{name}}」吗？项目文件夹和本地资源会从磁盘永久删除，无法恢复。',
     removeProject: '从库移除',
     projectDeleteFailed: '项目没能删除。可能有别的程序正占用它的文件夹，关掉后再试一次；详细原因已记进日志。',
+    projectDeleteStateChanged: '这个项目的状态刚刚变了，没有删除任何东西。项目库已刷新，请看清卡片后再确认一次。',
     projectRestoreFailed: '项目恢复失败',
     renameFailed: '项目重命名保存失败',
   },
@@ -667,6 +673,10 @@ export const en = {
     clearSearch: 'Clear search',
     deleteNamedProject: 'Delete project {{name}}',
     folderUnavailable: 'Folder unavailable',
+    dataOutsideFolder: 'Project data points outside its folder; reading stopped',
+    dataOutsideFolderHint: 'You can remove it from the library; no files are deleted. Fix the .nomi folder inside it and it comes back next time you open the library.',
+    dataUnreadable: "Can't read this project's data",
+    dataUnreadableHint: 'You can remove it from the library; no files are deleted. Fix the folder contents and it comes back next time you open the library.',
     openProjectFolder: 'Open project folder for {{name}}',
   },
   errors: {
@@ -737,6 +747,7 @@ export const en = {
       'Delete “{{name}}”? Its project folder and local assets will be permanently deleted from disk and cannot be recovered.',
     removeProject: 'Remove from library',
     projectDeleteFailed: 'The project could not be deleted. Another program may be using its folder; close it and try again. Details are in the log.',
+    projectDeleteStateChanged: "This project changed since you confirmed, so nothing was deleted. The library has been refreshed; check the card and confirm again.",
     projectRestoreFailed: 'Could not restore the project',
     renameFailed: 'Could not save the renamed project',
   },

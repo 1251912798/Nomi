@@ -140,7 +140,7 @@ try {
       return await window.nomiDesktop.video.extractFrame({ videoUrl: a.url, which: "last", projectId: a.pid });
     }, { url: video.url, pid: projectId });
     assert(frame?.url && frame.url.startsWith("nomi-local://"), `M-A 抽帧：从真实视频抽出尾帧 → nomi-local 素材（${(frame?.url || "").slice(0, 56)}…）`);
-    await win.evaluate((pid) => window.nomiDesktop.projects.delete(pid), projectId).catch(() => undefined);
+    await win.evaluate((pid) => window.nomiDesktop.projects.delete(pid, 'delete-files'), projectId).catch(() => undefined);
   } else {
     console.log("  (跳过 M-A 抽帧验证：临时项目创建失败)");
   }

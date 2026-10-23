@@ -21,7 +21,8 @@ export type ProjectsIpcDeps = {
   createProject: (record: unknown) => unknown;
   readProject: (projectId: string) => unknown;
   saveProject: (projectId: string, record: unknown) => unknown;
-  deleteProject: (projectId: string) => unknown;
+  /** intent 来自渲染层确认框，未经校验（主进程 deleteProject 自己核，缺失 / 不认识即拒绝）。 */
+  deleteProject: (projectId: string, intent: unknown) => unknown;
   diagnoseProject: (projectId: string) => unknown;
   recoverProject: (projectId: string) => unknown;
 };

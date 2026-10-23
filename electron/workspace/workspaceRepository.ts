@@ -7,6 +7,7 @@ import { readJsonFile } from "../jsonFile";
 import { migrateLegacyProjectFolder } from "./legacyProjectMigration";
 import {
   initializeWorkspace,
+  isWorkspaceBoundaryError,
   readWorkspaceManifest,
   readWorkspaceManifestSnapshot,
   readWorkspaceManifestSnapshotAsync,
@@ -31,7 +32,8 @@ import {
 } from "./workspaceTypes";
 import { workspaceProjectBackupFile, workspaceProjectFile } from "./workspacePaths";
 import { writeWorkspaceSyncBaseline } from "./workspaceSyncBaseline";
-import { logInfo } from "../logging/logger";
+import { WorkspaceManifestLockBusyError } from "./workspaceManifestLock";
+import { logWarn } from "../logging/logger";
 
 export type WorkspaceRepositoryDeps = {
   settingsRoot: string;
@@ -115,7 +117,14 @@ export type WorkspaceProjectSummary = Omit<WorkspaceProjectRecordV2, "payload"> 
   thumbnail?: string;
   thumbnailUrls?: string[];
   coverVideoUrl?: string;
+  /**
+   * 这一项的数据读不出来（不是暂时忙）：卡片置灰、不能打开，删除只解绑登记、不删盘。
+   * outside-workspace = 项目数据经链接指向了项目文件夹外，按边界规则拒读；unreadable = 其余读不出来的情况。
+   */
+  unreadableReason?: WorkspaceProjectUnreadableReason;
 };
+
+export type WorkspaceProjectUnreadableReason = "outside-workspace" | "unreadable";
 
 function persistedProjectSource(entry: RecentWorkspaceEntry): WorkspaceProjectSource {
   return entry.source === "native" && entry.nativeRootPath ? "native" : "folder";
@@ -277,7 +286,7 @@ export async function listWorkspaceProjects(deps: WorkspaceRepositoryDeps): Prom
   backfillWorkspaceOrigins(deps.settingsRoot, deps.defaultProjectsRoot);
   const limit = pLimit(WORKSPACE_LIST_IO_CONCURRENCY);
   const entries = await listRecentWorkspacesAsync(deps.settingsRoot, limit);
-  return Promise.all(
+  const summaries = await Promise.all(
     entries.map((entry) =>
       limit(async (): Promise<WorkspaceProjectSummary> => {
         const source = persistedProjectSource(entry);
@@ -299,7 +308,17 @@ export async function listWorkspaceProjects(deps: WorkspaceRepositoryDeps): Prom
             source,
           );
         if (entry.missing) return registryCard(true);
-        const manifest = (await readWorkspaceManifestSnapshotAsync(entry.rootPath)) ?? readWorkspaceManifest(entry.rootPath);
+        // 每一项的读取错误只落在这一张卡上，绝不让一项拖垮整页（V-plibrary N2）：
+        // 别的写者正锁着清单 = 暂时的，退回普通登记卡、下次刷新就好；其余读不出来 = 置灰卡，说清原因。
+        let manifest: WorkspaceProjectRecordV2 | null;
+        try {
+          manifest = (await readWorkspaceManifestSnapshotAsync(entry.rootPath)) ?? readWorkspaceManifest(entry.rootPath);
+        } catch (error) {
+          if (error instanceof WorkspaceManifestLockBusyError) return registryCard(false);
+          const unreadableReason: WorkspaceProjectUnreadableReason = isWorkspaceBoundaryError(error) ? "outside-workspace" : "unreadable";
+          logWarn("workspace", "list-item-unreadable", { reason: unreadableReason }, error);
+          return { ...registryCard(false), unreadableReason };
+        }
         if (!manifest || manifest.id !== entry.id) return registryCard(false);
         const summary = withoutPayload({ ...manifest, lastKnownRootPath: entry.rootPath }, entry.rootPath, false, source);
         const cover = deriveProjectCover(manifest);
@@ -311,6 +330,11 @@ export async function listWorkspaceProjects(deps: WorkspaceRepositoryDeps): Prom
       }),
     ),
   );
+  // 读面只给事实、不做展示上的取舍：所有登记过的项目都在（V-plibrary2 r3，用户 2026-10-22 拍板 B）。
+  // 项目库页面、全部项目素材、MCP 项目列表、工作流来源名、走查都读这一份，都默认「列表 = 所有登记过的项目」；
+  // 曾在这里藏「零编辑空白草稿」，刚新建、还没保存的项目就从 MCP 与走查的列表里消失了。
+  // 列表也不删任何东西（N1：回收挂在列举上会和排队中的保存并发，删掉用户刚保存的草稿）。
+  return summaries;
 }
 
 export function readWorkspaceProject(
@@ -351,7 +375,7 @@ export async function saveWorkspaceProject(
     const now = Date.now();
     const next = normalizeWorkspaceProjectRecord({
       ...existing,
-      // 首次真实保存 = 从草稿态 promote 为持久态：清掉 draft 标记，此后 GC 永不回收它。
+      // 首次真实保存 = 从草稿态 promote 为持久态：清掉 draft 标记，此后它永远显示在项目库里。
       draft: undefined,
       name: inputName(record, existing.name),
       updatedAt: now,
@@ -411,79 +435,6 @@ export function deleteWorkspaceProject(
   if (!isNative) return { id: projectId, deleted: false }; // 外部文件夹：只解绑，不删用户内容
   fs.rmSync(resolved, { recursive: true, force: true });
   return { id: projectId, deleted: true };
-}
-
-// 递归判断目录下是否有任何真实文件（忽略空日期目录与 .DS_Store）。GC 的防御纵深：
-// 即便 draft/revision 判据通过，只要项目目录里有任何用户素材就绝不回收。
-function dirHasRealFiles(dir: string): boolean {
-  if (!fs.existsSync(dir)) return false;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === ".DS_Store") continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (dirHasRealFiles(full)) return true;
-    } else if (entry.isFile()) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * 销毁授权：此刻盘上的清单仍是同一个项目、仍是草稿、仍是 revision 0，登记项仍是没丢的 native 项目。
- * 读不到 / 清单正被别处加锁写（busy）一律算「不是」——宁可漏删不可误删。
- */
-function isStillEmptyNativeDraft(projectId: string, deps: WorkspaceRepositoryDeps): boolean {
-  const entry = findRecentEntry(projectId, deps);
-  if (!entry || entry.missing || entry.source !== "native" || !fs.existsSync(entry.rootPath)) return false;
-  try {
-    const manifest = readWorkspaceManifest(entry.rootPath);
-    return Boolean(manifest) && manifest?.id === projectId && manifest?.draft === true && (manifest?.revision ?? 0) === 0;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 启动 GC：回收「从未编辑的空白草稿」，防项目库再次堆满「未命名」垃圾（审计 P0-3）。
- * 仅当全部判据满足才删（AND，宁可漏删不可误删）：
- *   native（默认根内）+ 目录在（!missing）+ draft===true + revision===0 + assets/ 无任何真实文件。
- * folder/external 一律豁免（复用 deleteWorkspaceProject 的双重边界，绝不碰用户文件）。
- * 不变量 `revision===0 ⟺ 落盘 payload 即出生默认值` 保证「revision 0 的草稿 = 可证明的零编辑」。
- * 调用方负责「一进程一次」（见 repository.listProjects 的 once-guard），故本会话新建的草稿不会被误删。
- *
- * `projects` 由调用方传入已列举好的库快照：GC 唯一需要的输入就是「当前这批项目」，
- * 而它的调用方（listProjects）本来就要为自己再列举一次同一批。自己再列一遍 = 把
- * 372 次 manifest 快照读整整做两遍，实测占冷启动列举总耗时的 55-63%（727/996/837ms
- * of 1310/1598/1323ms，346 项目真实库）。判据只读 summary 字段（source/missing/draft/
- * revision）与磁盘 assets/，与列举时刻的快照一致，故复用不改变任何回收判定。
- * 不给默认值——留 `projects = await listWorkspaceProjects(deps)` 这种兜底就等于把旧的
- * 双份列举留成可达路径（P1：不留并行版）。
- */
-export function gcEmptyDraftWorkspaceProjects(
-  deps: WorkspaceRepositoryDeps,
-  projects: WorkspaceProjectSummary[],
-): { recycled: string[]; scanned: number } {
-  const recycled: string[] = [];
-  for (const project of projects) {
-    // 候选只用来挑人：列举是异步的，等它读完，同进程的保存 / 改名 / 创建早就可能插进来过，
-    // 手里的 draft / revision 是旧的，不能当销毁授权。下面这一段全部同步（中间没有 await），
-    // 重新读「此刻」的清单再删，同进程别的写入插不进来。
-    if (project.source !== "native") continue;
-    if (project.missing) continue;
-    if (project.draft !== true) continue;
-    if ((project.revision ?? 0) !== 0) continue;
-    if (!isStillEmptyNativeDraft(project.id, deps)) continue;
-    const dir = resolveWorkspaceProjectDir(project.id, deps);
-    if (!dir) continue;
-    if (dirHasRealFiles(path.join(dir, "assets"))) continue;
-    const result = deleteWorkspaceProject(project.id, deps);
-    if (result.deleted) recycled.push(project.id);
-  }
-  if (recycled.length) {
-    logInfo("workspace", "recycled-empty-drafts", { count: recycled.length });
-  }
-  return { recycled, scanned: projects.length };
 }
 
 export function resolveWorkspaceProjectDir(projectId: string, deps: WorkspaceRepositoryDeps): string | null {
