@@ -1,0 +1,1481 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>PromptLibrary 提示词库 · 项目库页「提示词」页签 拍板图（2026-10-24）</title>
+<style>
+body{margin:0;padding:24px 20px;background:#fff;font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+.bd{margin:0 0 32px}
+.bd-title{margin:0 0 8px;font-size:14px;font-weight:600;color:#333}
+/* 静态预览：去掉动画，候选抽取才确定。图片去掉了 src（画布素材不进仓库），封面看同目录截图（.webp）。 */
+*,*::before,*::after{animation:none!important;transition:none!important}
+</style>
+<style>
+.bd-s1 .nm{--shell:#f6f5f3;--accent:oklch(0.55 0.13 250);--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink30:oklch(0.78 0.01 80);--ink20:oklch(0.88 0.005 80);--ink10:oklch(0.94 0.003 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);--shsm:0 1px 2px oklch(0 0 0 / 0.04),0 1px 1px oklch(0 0 0 / 0.03);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s1 .nm.dark{--shell:#0d0c09;--accent:oklch(0.70 0.13 250);--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink30:oklch(0.50 0.006 85);--ink20:oklch(0.42 0.006 85);--ink10:oklch(0.34 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80);--shsm:0 1px 2px oklch(0 0 0 / 0.32),0 1px 1px oklch(0 0 0 / 0.22)}
+.bd-s1 .nm .illus{filter:none}
+.bd-s1 .nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.bd-s1 .nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-s1 .nm .clamp6{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.bd-s1 .nm button{font-family:inherit}
+
+.bd-s2 .nm{--shell:#f6f5f3;--accent:oklch(0.55 0.13 250);--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink30:oklch(0.78 0.01 80);--ink20:oklch(0.88 0.005 80);--ink10:oklch(0.94 0.003 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);--shsm:0 1px 2px oklch(0 0 0 / 0.04),0 1px 1px oklch(0 0 0 / 0.03);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s2 .nm.dark{--shell:#0d0c09;--accent:oklch(0.70 0.13 250);--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink30:oklch(0.50 0.006 85);--ink20:oklch(0.42 0.006 85);--ink10:oklch(0.34 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80);--shsm:0 1px 2px oklch(0 0 0 / 0.32),0 1px 1px oklch(0 0 0 / 0.22)}
+.bd-s2 .nm .illus{filter:none}
+.bd-s2 .nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.bd-s2 .nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-s2 .nm .clamp6{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.bd-s2 .nm button{font-family:inherit}
+
+.bd-s3 .nm{--shell:#f6f5f3;--accent:oklch(0.55 0.13 250);--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink30:oklch(0.78 0.01 80);--ink20:oklch(0.88 0.005 80);--ink10:oklch(0.94 0.003 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);--shsm:0 1px 2px oklch(0 0 0 / 0.04),0 1px 1px oklch(0 0 0 / 0.03);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s3 .nm.dark{--shell:#0d0c09;--accent:oklch(0.70 0.13 250);--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink30:oklch(0.50 0.006 85);--ink20:oklch(0.42 0.006 85);--ink10:oklch(0.34 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80);--shsm:0 1px 2px oklch(0 0 0 / 0.32),0 1px 1px oklch(0 0 0 / 0.22)}
+.bd-s3 .nm .illus{filter:none}
+.bd-s3 .nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.bd-s3 .nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-s3 .nm .clamp6{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.bd-s3 .nm button{font-family:inherit}
+</style>
+</head>
+<body>
+<section class="bd bd-s1" lang="zh-CN" data-artboard="Prompt">
+<h3 class="bd-title">修后 · 提示词库 · 全部（中·明）</h3>
+<div class="sc-host" data-sc-name="Prompt"><div class="nm " style="width: 1440px; height: 900px; background: var(--shell); position: relative; overflow: hidden;">
+  <div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0px 8px 0px 76px; box-sizing: border-box;">
+    <svg width="20" height="20" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="oklch(0.22 0.01 80)"></rect><path d="M7.5 20V8h2.6l7.4 8.4V8h2.6v12h-2.6L10.1 11.6V20z" fill="#fff"></path></svg>
+    <span style="font-size: 13px; font-weight: 500;"><span class="sc-interp">项目库</span></span>
+    <span style="flex: 1 1 0%;"></span>
+    <div style="display: flex; align-items: center; gap: 2px;">
+      <button type="button" aria-label="窗口" style="position: relative; width: 28px; height: 28px; border: 0px; padding: 0px; background: transparent; color: var(--ink60); display: grid; place-items: center; border-radius: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16"></path><path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12"></path><path d="M8 4v4"></path></svg></button>
+      <button type="button" aria-label="设置" style="position: relative; width: 28px; height: 28px; border: 0px; padding: 0px; background: transparent; color: var(--ink60); display: grid; place-items: center; border-radius: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"></path></svg><span aria-hidden="true" style="position: absolute; right: 5px; top: 5px; width: 6px; height: 6px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 2px var(--shell);"></span></button>
+    </div>
+  </div>
+  <div style="position: absolute; inset: 40px 8px 8px; background: var(--paper); border-radius: 10px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: center; gap: 16px; padding: 24px 32px 0px; height: 32px;">
+      <div role="tablist" aria-label="项目库页签" style="display: flex; align-items: baseline; gap: 20px;">
+        <button type="button" role="tab" aria-selected="false" style="border: 0px; background: transparent; padding: 0px; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink40);"><span class="sc-interp">项目</span></button>
+        <button type="button" role="tab" aria-selected="false" style="border: 0px; background: transparent; padding: 0px; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink40);"><span class="sc-interp">Skill</span></button>
+        <button type="button" role="tab" aria-selected="true" style="border: 0px; background: transparent; padding: 0px; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink);"><span class="sc-interp">提示词</span></button>
+      </div>
+      <div role="radiogroup" aria-label="图片或视频" style="margin-left: 8px; display: inline-flex; height: 28px; box-sizing: border-box; padding: 2px; gap: 2px; border-radius: 999px; background: var(--ink05);">
+        <button type="button" role="radio" aria-checked="true" style="border: 0px; border-radius: 999px; padding: 0px 12px; font-size: 12px; font-weight: 600; background: var(--paper); color: var(--ink); box-shadow: var(--shsm);"><span class="sc-interp">全部</span></button>
+        <button type="button" role="radio" aria-checked="false" style="border: 0px; border-radius: 999px; padding: 0px 12px; font-size: 12px; background: transparent; color: var(--ink60);"><span class="sc-interp">图片</span></button>
+        <button type="button" role="radio" aria-checked="false" style="border: 0px; border-radius: 999px; padding: 0px 12px; font-size: 12px; background: transparent; color: var(--ink60);"><span class="sc-interp">视频</span></button>
+      </div>
+      <label style="display: flex; align-items: center; gap: 6px; width: 260px; height: 30px; box-sizing: border-box; padding: 0px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+        <input type="search" placeholder="搜提示词…" aria-label="搜提示词…" style="border: 0px; outline: 0px; background: transparent; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 13px; color: var(--ink); width: 100%;">
+      </label>
+      <span style="flex: 1 1 0%;"></span>
+      <button type="button" style="height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0px 12px 0px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink80); font-size: 12px; font-weight: 500;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span class="sc-interp">新建</span></button>
+    </div>
+    <div style="display: flex; gap: 28px; padding: 20px 32px 0px; flex: 1 1 0%; min-height: 0px;">
+      <nav aria-label="提示词分类" style="width: 176px; flex: 0 0 auto; display: flex; flex-direction: column; gap: 2px;">
+        
+          <button type="button" aria-current="true" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: var(--ink05); color: var(--ink); font-weight: 600;"><span class="one"><span class="sc-interp">全部</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">222</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">我的</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">3</span></span></button>
+        
+        <div style="margin: 14px 0px 4px 10px; font-size: 11px; color: var(--ink40);"><span class="sc-interp">内置</span></div>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">表情预设</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">25</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">运镜</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">23</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">构图</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">8</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">分镜</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">5</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">角色设定</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">4</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">修图</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">2</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">场景</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">1</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">去 AI 感</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">1</span></span></button>
+        
+        <div style="margin: 14px 0px 4px 10px; font-size: 11px; color: var(--ink40);"><span class="sc-interp">公开库</span></div>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">GPT Image 2</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Nano Banana Pro</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">GPT-4o 图像</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Sora 2</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Sora 官方</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+      </nav>
+      <main style="flex: 1 1 0%; min-width: 0px; overflow: hidden; display: flex; flex-direction: column; gap: 22px;">
+        
+          <section aria-label="我的" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;">
+              <h3 style="margin: 0px; font-size: 13px; font-weight: 600; color: var(--ink);"><span class="sc-interp">我的</span></h3>
+              
+              
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0px, 1fr)); gap: 16px 12px;">
+              
+                <button type="button" title="Q 版角色卡" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Q 版角色卡</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">网页提取 · 图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="Tokyo Walk" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                    
+                      <span class="clamp6" style="box-sizing: border-box; height: 100%; padding: 10px 12px; font-size: 12px; line-height: 17px; color: var(--ink60);"><span class="sc-interp">A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots…</span></span>
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Tokyo Walk</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="未命名提示词" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                    
+                      <span class="clamp6" style="box-sizing: border-box; height: 100%; padding: 10px 12px; font-size: 12px; line-height: 17px; color: var(--ink60);"><span class="sc-interp">Prompt 1: Create a cinematic hero image of a gourmet cheeseburger on a dark stone surface with glossy brioche bun, melted cheese, crisp lettuce, tomato…</span></span>
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">未命名提示词</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+            </div>
+          </section>
+        
+          <section aria-label="表情预设" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;">
+              <h3 style="margin: 0px; font-size: 13px; font-weight: 600; color: var(--ink);"><span class="sc-interp">表情预设</span></h3>
+              
+              
+                <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 25</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+              
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0px, 1fr)); gap: 16px 12px;">
+              
+                <button type="button" title="喜悦 1/5 · 一丝笑意" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 1/5 · 一丝笑意</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="喜悦 3/5 · 明朗微笑" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 3/5 · 明朗微笑</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="愤怒 2/5 · 面露不悦" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">愤怒 2/5 · 面露不悦</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="悲伤 3/5 · 哽咽欲哭" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">悲伤 3/5 · 哽咽欲哭</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="惊讶 3/5 · 睁大双眼" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">惊讶 3/5 · 睁大双眼</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="恐惧 2/5 · 警觉戒备" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">恐惧 2/5 · 警觉戒备</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+            </div>
+          </section>
+        
+          <section aria-label="运镜" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;">
+              <h3 style="margin: 0px; font-size: 13px; font-weight: 600; color: var(--ink);"><span class="sc-interp">运镜</span></h3>
+              
+              
+                <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 23</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+              
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0px, 1fr)); gap: 16px 12px;">
+              
+                <button type="button" title="空镜转场" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">空镜转场</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="过肩对话" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">过肩对话</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="特写情绪" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">特写情绪</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="推轨跟拍" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">推轨跟拍</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="仰拍起势" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">仰拍起势</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="俯拍众生" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">俯拍众生</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+            </div>
+          </section>
+        
+          <section aria-label="构图" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;">
+              <h3 style="margin: 0px; font-size: 13px; font-weight: 600; color: var(--ink);"><span class="sc-interp">构图</span></h3>
+              
+              
+                <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 8</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+              
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0px, 1fr)); gap: 16px 12px;">
+              
+                <button type="button" title="画框构图" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">画框构图</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="对角线构图" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">对角线构图</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="绝对对称" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">绝对对称</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="三分法构图" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">三分法构图</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="前景遮挡" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">前景遮挡</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="后景虚化" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">后景虚化</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+            </div>
+          </section>
+        
+      </main>
+    </div>
+  </div></div></div>
+</section>
+<section class="bd bd-s2" lang="zh-CN" data-artboard="Prompt-Dark">
+<h3 class="bd-title">修后 · 提示词库 · 全部（中·暗；示意插画 = 暗纸底 + 浅线，Q8）</h3>
+<div class="sc-host" data-sc-name="Prompt-Dark"><div style="width: 1440px; height: 900px;">
+  <div class="sc-host" data-sc-name="Prompt"><div class="nm dark" style="width: 1440px; height: 900px; background: var(--shell); position: relative; overflow: hidden;">
+  <div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0px 8px 0px 76px; box-sizing: border-box;">
+    <svg width="20" height="20" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="oklch(0.22 0.01 80)"></rect><path d="M7.5 20V8h2.6l7.4 8.4V8h2.6v12h-2.6L10.1 11.6V20z" fill="#fff"></path></svg>
+    <span style="font-size: 13px; font-weight: 500;"><span class="sc-interp">项目库</span></span>
+    <span style="flex: 1 1 0%;"></span>
+    <div style="display: flex; align-items: center; gap: 2px;">
+      <button type="button" aria-label="窗口" style="position: relative; width: 28px; height: 28px; border: 0px; padding: 0px; background: transparent; color: var(--ink60); display: grid; place-items: center; border-radius: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16"></path><path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12"></path><path d="M8 4v4"></path></svg></button>
+      <button type="button" aria-label="设置" style="position: relative; width: 28px; height: 28px; border: 0px; padding: 0px; background: transparent; color: var(--ink60); display: grid; place-items: center; border-radius: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"></path></svg><span aria-hidden="true" style="position: absolute; right: 5px; top: 5px; width: 6px; height: 6px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 2px var(--shell);"></span></button>
+    </div>
+  </div>
+  <div style="position: absolute; inset: 40px 8px 8px; background: var(--paper); border-radius: 10px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: center; gap: 16px; padding: 24px 32px 0px; height: 32px;">
+      <div role="tablist" aria-label="项目库页签" style="display: flex; align-items: baseline; gap: 20px;">
+        <button type="button" role="tab" aria-selected="false" style="border: 0px; background: transparent; padding: 0px; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink40);"><span class="sc-interp">项目</span></button>
+        <button type="button" role="tab" aria-selected="false" style="border: 0px; background: transparent; padding: 0px; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink40);"><span class="sc-interp">Skill</span></button>
+        <button type="button" role="tab" aria-selected="true" style="border: 0px; background: transparent; padding: 0px; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink);"><span class="sc-interp">提示词</span></button>
+      </div>
+      <div role="radiogroup" aria-label="图片或视频" style="margin-left: 8px; display: inline-flex; height: 28px; box-sizing: border-box; padding: 2px; gap: 2px; border-radius: 999px; background: var(--ink05);">
+        <button type="button" role="radio" aria-checked="true" style="border: 0px; border-radius: 999px; padding: 0px 12px; font-size: 12px; font-weight: 600; background: var(--paper); color: var(--ink); box-shadow: var(--shsm);"><span class="sc-interp">全部</span></button>
+        <button type="button" role="radio" aria-checked="false" style="border: 0px; border-radius: 999px; padding: 0px 12px; font-size: 12px; background: transparent; color: var(--ink60);"><span class="sc-interp">图片</span></button>
+        <button type="button" role="radio" aria-checked="false" style="border: 0px; border-radius: 999px; padding: 0px 12px; font-size: 12px; background: transparent; color: var(--ink60);"><span class="sc-interp">视频</span></button>
+      </div>
+      <label style="display: flex; align-items: center; gap: 6px; width: 260px; height: 30px; box-sizing: border-box; padding: 0px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+        <input type="search" placeholder="搜提示词…" aria-label="搜提示词…" style="border: 0px; outline: 0px; background: transparent; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 13px; color: var(--ink); width: 100%;">
+      </label>
+      <span style="flex: 1 1 0%;"></span>
+      <button type="button" style="height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0px 12px 0px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink80); font-size: 12px; font-weight: 500;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span class="sc-interp">新建</span></button>
+    </div>
+    <div style="display: flex; gap: 28px; padding: 20px 32px 0px; flex: 1 1 0%; min-height: 0px;">
+      <nav aria-label="提示词分类" style="width: 176px; flex: 0 0 auto; display: flex; flex-direction: column; gap: 2px;">
+        
+          <button type="button" aria-current="true" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: var(--ink05); color: var(--ink); font-weight: 600;"><span class="one"><span class="sc-interp">全部</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">222</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">我的</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">3</span></span></button>
+        
+        <div style="margin: 14px 0px 4px 10px; font-size: 11px; color: var(--ink40);"><span class="sc-interp">内置</span></div>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">表情预设</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">25</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">运镜</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">23</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">构图</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">8</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">分镜</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">5</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">角色设定</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">4</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">修图</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">2</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">场景</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">1</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">去 AI 感</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">1</span></span></button>
+        
+        <div style="margin: 14px 0px 4px 10px; font-size: 11px; color: var(--ink40);"><span class="sc-interp">公开库</span></div>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">GPT Image 2</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Nano Banana Pro</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">GPT-4o 图像</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Sora 2</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Sora 官方</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+      </nav>
+      <main style="flex: 1 1 0%; min-width: 0px; overflow: hidden; display: flex; flex-direction: column; gap: 22px;">
+        
+          <section aria-label="我的" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;">
+              <h3 style="margin: 0px; font-size: 13px; font-weight: 600; color: var(--ink);"><span class="sc-interp">我的</span></h3>
+              
+              
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0px, 1fr)); gap: 16px 12px;">
+              
+                <button type="button" title="Q 版角色卡" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Q 版角色卡</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">网页提取 · 图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="Tokyo Walk" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                    
+                      <span class="clamp6" style="box-sizing: border-box; height: 100%; padding: 10px 12px; font-size: 12px; line-height: 17px; color: var(--ink60);"><span class="sc-interp">A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots…</span></span>
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Tokyo Walk</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="未命名提示词" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                    
+                      <span class="clamp6" style="box-sizing: border-box; height: 100%; padding: 10px 12px; font-size: 12px; line-height: 17px; color: var(--ink60);"><span class="sc-interp">Prompt 1: Create a cinematic hero image of a gourmet cheeseburger on a dark stone surface with glossy brioche bun, melted cheese, crisp lettuce, tomato…</span></span>
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">未命名提示词</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+            </div>
+          </section>
+        
+          <section aria-label="表情预设" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;">
+              <h3 style="margin: 0px; font-size: 13px; font-weight: 600; color: var(--ink);"><span class="sc-interp">表情预设</span></h3>
+              
+              
+                <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 25</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+              
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0px, 1fr)); gap: 16px 12px;">
+              
+                <button type="button" title="喜悦 1/5 · 一丝笑意" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 1/5 · 一丝笑意</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="喜悦 3/5 · 明朗微笑" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 3/5 · 明朗微笑</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="愤怒 2/5 · 面露不悦" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">愤怒 2/5 · 面露不悦</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="悲伤 3/5 · 哽咽欲哭" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">悲伤 3/5 · 哽咽欲哭</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="惊讶 3/5 · 睁大双眼" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">惊讶 3/5 · 睁大双眼</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="恐惧 2/5 · 警觉戒备" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">恐惧 2/5 · 警觉戒备</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+            </div>
+          </section>
+        
+          <section aria-label="运镜" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;">
+              <h3 style="margin: 0px; font-size: 13px; font-weight: 600; color: var(--ink);"><span class="sc-interp">运镜</span></h3>
+              
+              
+                <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 23</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+              
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0px, 1fr)); gap: 16px 12px;">
+              
+                <button type="button" title="空镜转场" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">空镜转场</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="过肩对话" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">过肩对话</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="特写情绪" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">特写情绪</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="推轨跟拍" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">推轨跟拍</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="仰拍起势" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">仰拍起势</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="俯拍众生" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">俯拍众生</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      
+                      <span class="one"><span class="sc-interp">视频</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+            </div>
+          </section>
+        
+          <section aria-label="构图" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;">
+              <h3 style="margin: 0px; font-size: 13px; font-weight: 600; color: var(--ink);"><span class="sc-interp">构图</span></h3>
+              
+              
+                <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><span class="sc-interp">全部 8</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+              
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0px, 1fr)); gap: 16px 12px;">
+              
+                <button type="button" title="画框构图" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">画框构图</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="对角线构图" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">对角线构图</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="绝对对称" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">绝对对称</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="三分法构图" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">三分法构图</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="前景遮挡" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">前景遮挡</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="后景虚化" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">后景虚化</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">图片</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+            </div>
+          </section>
+        
+      </main>
+    </div>
+  </div></div></div></div></div>
+</section>
+<section class="bd bd-s3" lang="en" data-artboard="Prompt-En-Category">
+<h3 class="bd-title">修后 · 选中一个分类 = 全部摊开（英·明）</h3>
+<div class="sc-host" data-sc-name="Prompt-En-Category"><div style="width: 1440px; height: 900px;">
+  <div class="sc-host" data-sc-name="Prompt"><div class="nm " style="width: 1440px; height: 900px; background: var(--shell); position: relative; overflow: hidden;">
+  <div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0px 8px 0px 76px; box-sizing: border-box;">
+    <svg width="20" height="20" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="oklch(0.22 0.01 80)"></rect><path d="M7.5 20V8h2.6l7.4 8.4V8h2.6v12h-2.6L10.1 11.6V20z" fill="#fff"></path></svg>
+    <span style="font-size: 13px; font-weight: 500;"><span class="sc-interp">Projects</span></span>
+    <span style="flex: 1 1 0%;"></span>
+    <div style="display: flex; align-items: center; gap: 2px;">
+      <button type="button" aria-label="Window" style="position: relative; width: 28px; height: 28px; border: 0px; padding: 0px; background: transparent; color: var(--ink60); display: grid; place-items: center; border-radius: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16"></path><path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12"></path><path d="M8 4v4"></path></svg></button>
+      <button type="button" aria-label="Settings" style="position: relative; width: 28px; height: 28px; border: 0px; padding: 0px; background: transparent; color: var(--ink60); display: grid; place-items: center; border-radius: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"></path></svg><span aria-hidden="true" style="position: absolute; right: 5px; top: 5px; width: 6px; height: 6px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 2px var(--shell);"></span></button>
+    </div>
+  </div>
+  <div style="position: absolute; inset: 40px 8px 8px; background: var(--paper); border-radius: 10px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: center; gap: 16px; padding: 24px 32px 0px; height: 32px;">
+      <div role="tablist" aria-label="Library tabs" style="display: flex; align-items: baseline; gap: 20px;">
+        <button type="button" role="tab" aria-selected="false" style="border: 0px; background: transparent; padding: 0px; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink40);"><span class="sc-interp">Projects</span></button>
+        <button type="button" role="tab" aria-selected="false" style="border: 0px; background: transparent; padding: 0px; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink40);"><span class="sc-interp">Skills</span></button>
+        <button type="button" role="tab" aria-selected="true" style="border: 0px; background: transparent; padding: 0px; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Prompts</span></button>
+      </div>
+      <div role="radiogroup" aria-label="Image or video" style="margin-left: 8px; display: inline-flex; height: 28px; box-sizing: border-box; padding: 2px; gap: 2px; border-radius: 999px; background: var(--ink05);">
+        <button type="button" role="radio" aria-checked="true" style="border: 0px; border-radius: 999px; padding: 0px 12px; font-size: 12px; font-weight: 600; background: var(--paper); color: var(--ink); box-shadow: var(--shsm);"><span class="sc-interp">All</span></button>
+        <button type="button" role="radio" aria-checked="false" style="border: 0px; border-radius: 999px; padding: 0px 12px; font-size: 12px; background: transparent; color: var(--ink60);"><span class="sc-interp">Image</span></button>
+        <button type="button" role="radio" aria-checked="false" style="border: 0px; border-radius: 999px; padding: 0px 12px; font-size: 12px; background: transparent; color: var(--ink60);"><span class="sc-interp">Video</span></button>
+      </div>
+      <label style="display: flex; align-items: center; gap: 6px; width: 260px; height: 30px; box-sizing: border-box; padding: 0px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+        <input type="search" placeholder="Search prompts…" aria-label="Search prompts…" style="border: 0px; outline: 0px; background: transparent; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 13px; color: var(--ink); width: 100%;">
+      </label>
+      <span style="flex: 1 1 0%;"></span>
+      <button type="button" style="height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0px 12px 0px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink80); font-size: 12px; font-weight: 500;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span class="sc-interp">New</span></button>
+    </div>
+    <div style="display: flex; gap: 28px; padding: 20px 32px 0px; flex: 1 1 0%; min-height: 0px;">
+      <nav aria-label="Prompt categories" style="width: 176px; flex: 0 0 auto; display: flex; flex-direction: column; gap: 2px;">
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">All</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">222</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Mine</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">3</span></span></button>
+        
+        <div style="margin: 14px 0px 4px 10px; font-size: 11px; color: var(--ink40);"><span class="sc-interp">Built-in</span></div>
+        
+          <button type="button" aria-current="true" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: var(--ink05); color: var(--ink); font-weight: 600;"><span class="one"><span class="sc-interp">Expression presets</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">25</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Camera</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">23</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Composition</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">8</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Storyboard</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">5</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Character</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">4</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Editing</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">2</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Scene</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">1</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Natural texture</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">1</span></span></button>
+        
+        <div style="margin: 14px 0px 4px 10px; font-size: 11px; color: var(--ink40);"><span class="sc-interp">Public</span></div>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">GPT Image 2</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Nano Banana Pro</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">GPT-4o Image</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Sora 2</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+          <button type="button" aria-current="false" style="height: 28px; border: 0px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; background: transparent; color: var(--ink80); font-weight: 400;"><span class="one"><span class="sc-interp">Sora official</span></span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;"><span class="sc-interp">30</span></span></button>
+        
+      </nav>
+      <main style="flex: 1 1 0%; min-width: 0px; overflow: hidden; display: flex; flex-direction: column; gap: 22px;">
+        
+          <section aria-label="Expression presets" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;">
+              <h3 style="margin: 0px; font-size: 13px; font-weight: 600; color: var(--ink);"><span class="sc-interp">Expression presets</span></h3>
+              
+                <span style="font-size: 12px; color: var(--ink40);"><span class="sc-interp">25</span></span>
+              
+              
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0px, 1fr)); gap: 16px 12px;">
+              
+                <button type="button" title="喜悦 1/5 · 一丝笑意" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 1/5 · 一丝笑意</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="喜悦 2/5 · 浅笑" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 2/5 · 浅笑</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="喜悦 3/5 · 明朗微笑" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 3/5 · 明朗微笑</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="喜悦 4/5 · 开怀大笑" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 4/5 · 开怀大笑</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="喜悦 5/5 · 欣喜若狂" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">喜悦 5/5 · 欣喜若狂</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="愤怒 1/5 · 眉头微蹙" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">愤怒 1/5 · 眉头微蹙</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="愤怒 2/5 · 面露不悦" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">愤怒 2/5 · 面露不悦</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="愤怒 3/5 · 愠怒压火" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">愤怒 3/5 · 愠怒压火</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="愤怒 4/5 · 怒目而视" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">愤怒 4/5 · 怒目而视</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="愤怒 5/5 · 暴怒嘶吼" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">愤怒 5/5 · 暴怒嘶吼</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="悲伤 1/5 · 黯然失神" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">悲伤 1/5 · 黯然失神</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="悲伤 2/5 · 失落低落" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">悲伤 2/5 · 失落低落</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="悲伤 3/5 · 哽咽欲哭" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">悲伤 3/5 · 哽咽欲哭</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="悲伤 4/5 · 无声落泪" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">悲伤 4/5 · 无声落泪</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="悲伤 5/5 · 痛哭崩溃" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">悲伤 5/5 · 痛哭崩溃</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="惊讶 1/5 · 微微一怔" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">惊讶 1/5 · 微微一怔</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="惊讶 2/5 · 疑惑挑眉" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">惊讶 2/5 · 疑惑挑眉</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="惊讶 3/5 · 睁大双眼" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">惊讶 3/5 · 睁大双眼</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="惊讶 4/5 · 目瞪口呆" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">惊讶 4/5 · 目瞪口呆</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="惊讶 5/5 · 惊骇失色" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">惊讶 5/5 · 惊骇失色</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="恐惧 1/5 · 隐隐不安" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">恐惧 1/5 · 隐隐不安</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="恐惧 2/5 · 警觉戒备" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">恐惧 2/5 · 警觉戒备</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="恐惧 3/5 · 心生惶恐" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">恐惧 3/5 · 心生惶恐</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="恐惧 4/5 · 惊恐后缩" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">恐惧 4/5 · 惊恐后缩</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+                <button type="button" title="恐惧 5/5 · 魂飞魄散" style="border: 0px; padding: 0px; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    
+                      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    
+                    
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0px;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);"><span class="sc-interp">恐惧 5/5 · 魂飞魄散</span></strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      
+                      <span class="one"><span class="sc-interp">Image</span></span>
+                    </span>
+                  </span>
+                </button>
+              
+            </div>
+          </section>
+        
+      </main>
+    </div>
+  </div></div></div></div></div>
+</section>
+</body>
+</html>

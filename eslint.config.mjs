@@ -157,6 +157,17 @@ export const playwrightAliasSelectors = [
 const playwrightAliasPlugin = { rules: { 'no-restricted-syntax': builtinRules.get('no-restricted-syntax') } }
 export const PLAYWRIGHT_ALIAS_FILES = ['scripts', 'tests', 'evals'].map((dir) => `${dir}/**/*.{js,mjs,cjs,ts,tsx,mts,cts}`)
 
+// ③ vitest 车道的浏览器夹具测试起 vite 开发服务只经 tests/ux/_browserFixture.mjs 的 useBrowserFixture（2026-10-24）。
+// 直接 createServer 会让依赖扫描爬仓库里全部 *.html（596 个），并把夹具页一千多个模块的冷编译算进用例里一次 goto 的操作预算，
+// 机器一忙就红、各测试只好把 goto 调到 90 / 120 秒（docs/lessons/fixture-first-goto-is-a-cold-build.md）。
+// 同 ② 的做法独立注册内置规则：别的块里同名规则的选项会整条覆盖，这一组只在下面一个块里配置。
+const browserFixturePlugin = { rules: {
+  'no-restricted-imports': builtinRules.get('no-restricted-imports'),
+  'no-restricted-syntax': builtinRules.get('no-restricted-syntax'),
+} }
+const RAW_VITE_SERVER_MESSAGE = '浏览器夹具测试不直接起 vite 开发服务：用 tests/ux/_browserFixture.mjs 的 useBrowserFixture({ entries })——依赖扫描只认入口页，准备阶段先把页面编完，用例里的 goto 只执行页面。'
+export const BROWSER_FIXTURE_TEST_FILES = ['tests/**/*.test.{js,mjs,cjs,ts,tsx,mts,cts}']
+
 /**
  * 每个 no-restricted-syntax 都经这里拼：flat config 里后面的对象会**整条覆盖**前面同名规则的选项，
  * 某个块漏写一组选择器，那组在该块的文件上就静默失效。全仓都该成立的选择器（目前是 Playwright 不等待）放在这里，
@@ -405,6 +416,15 @@ export default tseslint.config(
       'no-restricted-imports': ['error', {
         paths: [{ name: '@tiptap/react', importNames: ['useEditor'], message: '用 useNomiTiptapEditor（src/workbench/common/useNomiRichTextEditor.ts），它固定了编辑器生命周期选项。' }],
       }],
+    },
+  },
+  {
+    // 浏览器夹具测试起开发服务只有一扇门（见上面 ③）；只有这一个块配置这两个规则 id。
+    files: BROWSER_FIXTURE_TEST_FILES,
+    plugins: { 'browser-fixture': browserFixturePlugin },
+    rules: {
+      'browser-fixture/no-restricted-imports': ['error', { paths: [{ name: 'vite', importNames: ['createServer'], message: RAW_VITE_SERVER_MESSAGE }] }],
+      'browser-fixture/no-restricted-syntax': ['error', { selector: "ImportExpression[source.value='vite']", message: RAW_VITE_SERVER_MESSAGE }],
     },
   },
   {

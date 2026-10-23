@@ -1,0 +1,477 @@
+{
+  "board": "LibraryPointers",
+  "approvedOn": "2026-10-24",
+  "stage": "explored",
+  "approval": {
+    "quote": "技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。",
+    "date": "2026-10-24",
+    "source": "用户原话（协调转述）",
+    "canvas": "https://claude.ai/artifact/A7vtfvcPzy8zCWJUdrJn9y",
+    "canvasVersion": "第 48 版拍板；第 50 版只修对齐（右上两颗图标、新抽屉描边），第 51 版只改便签措辞，第 52 版只把源码里的素材编号改写成整段素材路径（画面不变）；内容同第 48 版"
+  },
+  "visualReview": "用户 2026-10-24 在 Claude Design 画布「技能库与提示词库排版改版（0.24 探索）」第 48 版上把 10 个问题全按默认定（https://claude.ai/artifact/A7vtfvcPzy8zCWJUdrJn9y，私有，只有仓库主人能开）。",
+  "designCard": "docs/plan/2026-10-23-skill-prompt-library-layout.md",
+  "sourceBoundary": "板源 = Claude Design 画布第 52 版里「修后」画板的原样副本（source/*.dc.html；第 52 版与用户 10-24 拍板的第 48 版内容一致，只修了右上两颗图标与新抽屉描边的对齐，并把源码里的素材编号改写成整段素材路径、画面不变）+ 画布索引公开版（source/canvas.json：只留修后画板；带产品名的先例便签与私有待办编号去掉，先例见设计卡 ★0 与本清单 priorArt）。preview/<板>.html 是把这些画板用画布运行时渲染后去壳拼成的静态页：每格样式加前缀隔离，图片去掉 src（画布素材不进仓库），抽屉板去掉外壳真截图、详情板去掉背景里压暗的库页；preview/<画板>.webp 是同一渲染的截图（1440×900，WebP 质量 90）。候选由 scripts/board-extract.mjs 的抽取函数（extractBoard + renderCandidatesFile，同样的浏览器设置）在拼页上抽出，两次抽取逐字节一致。「修前」画板（现役真截图）不进清单，只作旧功能普查的 before 依据。",
+  "designIntent": "别处只指回家：Agent「/」行、输入框芯片、节点「提示词预设」行与库里条目同一张缩略图、同一个名字；分类叫法与库一致；芯片按家分图标。",
+  "artboards": [
+    "Pointers"
+  ],
+  "priorArt": [
+    {
+      "url": "https://docs.openwebui.com/features/workspace/",
+      "takeaway": "一款开源 AI 对话界面的工作区把 Prompts 和 Skills 做成两个页签、两份清单：Prompts 是用「/」插进输入框的模板，Skills 是教模型「怎么做」的说明、按需加载。",
+      "decisionImpact": "确认了：按「用的时候干什么」分家，技能库只放方法、提示词库只放要填进去的话；「/」可以同时指向两边（与 10 月拍板⑤一致）。"
+    },
+    {
+      "url": "https://code.claude.com/docs/en/skills",
+      "takeaway": "一款 AI 编程工具 2026-01 把斜杠命令并进技能：两种东西用户意图相同，就不该让用户学两套。",
+      "decisionImpact": "改了：效果的家按「用的那一刻想干嘛」定（填进节点），不按文件格式定 → 效果归提示词库（Q1）；技能和提示词意图不同，不合库（Q2 分开）。"
+    },
+    {
+      "url": "https://www.nngroup.com/articles/horizontal-scrolling/",
+      "takeaway": "桌面用户很少发现横向滚动里的内容，关键导航别放横滚。",
+      "decisionImpact": "改了：14 个「来源」标签那一长排（抽屉里横滚、滚动条还藏起来）删掉，并进一列有名字的分类。"
+    },
+    {
+      "url": "https://www.nngroup.com/articles/accordions-on-desktop/",
+      "takeaway": "用户需要看大部分内容时，手风琴每段都要点开，交互成本高。",
+      "decisionImpact": "改了：首页不再整组折成一行字，每组露一行真卡片 +「全部 N ›」；选中某组或搜索时全部摊开（Q3）。"
+    },
+    {
+      "url": "https://www.smashingmagazine.com/2023/08/designing-accessible-text-over-images-part1/",
+      "takeaway": "图上压字要靠遮罩 / 色条 / 模糊压住杂乱背景，并保证对比度；字要放在图里安静的地方。",
+      "decisionImpact": "改了，且更彻底：封面是真实产物，没有「安静的地方」，所以卡片封面上不压任何字和角标，标题和元信息放到封面下方。"
+    },
+    {
+      "url": "https://www.sarasoueidan.com/newsletter/issue-2025-10-31/",
+      "takeaway": "暗色里给图片降亮度，会让图里的字更难认，悬停恢复是补救。",
+      "decisionImpact": "改了：降亮度对线稿插画不够，暗色里「示意插画」封面换成暗纸底 + 浅线（插画里没有字，反相不伤可读）；真实产物照片 / 视频不动（Q8）。"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "Q1",
+      "text": "效果住提示词库：44 个效果按组出现在提示词库「内置」里，技能库不再出现效果；数据仍是 SKILL.md，不复制。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q2",
+      "text": "两个库分开（照 10-08 外壳拍板），不合成一个库两个页签。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q3",
+      "text": "两个库首页每组露一行真卡片 +「全部 N ›」，选中分类 / 搜索时全部摊开；Agent「/」和节点弹层照旧折叠。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q4",
+      "text": "技能详情的「用到节点」删掉；技能详情主按钮改为「放进对话」。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q5",
+      "text": "技能卡改「小封面 + 名字 + 两行简介」条卡（宽页 3 列、抽屉 1 列）。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q6",
+      "text": "「我的」从顶上的分段钮改成左侧分类第一项；没有我的东西时首页不出现「我的」一组。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q7",
+      "text": "主按钮叫法：技能「放进对话」、提示词「放上画布」。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q8",
+      "text": "暗色下示意插画封面换成暗纸底 + 浅线；真实产物照片 / 视频不动。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q9",
+      "text": "「放上画布」统一成总是新建对应类型节点 + 带参考图 + 选中它；往已有节点加只走节点自己的「提示词预设」。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q10",
+      "text": "我的提示词卡的编辑 / 删除放在卡片标题行，悬停或键盘聚焦时露出。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    }
+  ],
+  "elements": [
+    {
+      "id": "pointers.agent-slash.panel",
+      "label": "Agent「/」弹层外框与分组头（技能 · 分组 / 提示词 · 分组）",
+      "change": "changed",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "002-aside-Agent斜杠菜单",
+        "007-div-技能创作流程",
+        "014-div-提示词运镜"
+      ],
+      "status": "missing",
+      "owner": "I-libraries"
+    },
+    {
+      "id": "pointers.agent-slash.search",
+      "label": "Agent「/」搜索框（一次搜两段）",
+      "change": "keep",
+      "states": [
+        "empty",
+        "zh-en"
+      ],
+      "candidates": [
+        "003-div-搜索技能和提示词"
+      ],
+      "status": "missing",
+      "owner": "I-libraries"
+    },
+    {
+      "id": "pointers.agent-slash.categories",
+      "label": "Agent「/」分类「全部 / 技能 / 提示词」（效果归提示词，作为它的分组）",
+      "change": "changed",
+      "states": [
+        "selected",
+        "zh-en"
+      ],
+      "candidates": [
+        "004-span-全部",
+        "005-span-技能",
+        "006-span-提示词"
+      ],
+      "status": "missing",
+      "owner": "I-libraries"
+    },
+    {
+      "id": "pointers.agent-slash.row",
+      "label": "Agent「/」行 = 技能条卡的小号：缩略图 + 界面语言名字 + 一句描述，不再印内部 id；点行挂芯片",
+      "change": "changed",
+      "states": [
+        "hover",
+        "selected",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "008-img",
+        "009-span-品牌宣传片",
+        "010-span-做产品品牌宣传片把产品文",
+        "011-img",
+        "012-span-分镜规划",
+        "013-span-把短故事拆成有序镜头整理",
+        "015-span-推轨跟拍",
+        "016-span-Smoothdollyt",
+        "017-span-过肩对话",
+        "018-span-Longlensover"
+      ],
+      "status": "missing",
+      "owner": "I-libraries"
+    },
+    {
+      "id": "pointers.agent-slash.footer",
+      "label": "弹层底部「去 Skill 库」（只开抽屉）",
+      "change": "keep",
+      "states": [
+        "hover",
+        "zh-en"
+      ],
+      "candidates": [
+        "019-div-去Skill库"
+      ],
+      "status": "missing",
+      "owner": "I-libraries"
+    },
+    {
+      "id": "pointers.agent-chip",
+      "label": "输入框芯片：技能芯片用技能图标、提示词芯片用提示词图标（和左栏两颗一致），名字取界面语言标题；× 移除",
+      "change": "changed",
+      "states": [
+        "hover",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "020-span-分镜规划",
+        "021-svg",
+        "022-button-移除",
+        "023-svg",
+        "024-span-继续告诉Nomi要改什么",
+        "025-span-推轨跟拍",
+        "026-svg",
+        "027-button-移除",
+        "028-svg",
+        "029-span-继续告诉Nomi要改什么"
+      ],
+      "status": "missing",
+      "owner": "I-libraries"
+    },
+    {
+      "id": "pointers.node-picker.panel",
+      "label": "节点「提示词预设」弹层外框与分组头",
+      "change": "keep",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "030-aside-节点提示词预设",
+        "036-div-构图8"
+      ],
+      "status": "missing",
+      "owner": "I-libraries"
+    },
+    {
+      "id": "pointers.node-picker.search",
+      "label": "节点弹层搜索框",
+      "change": "keep",
+      "states": [
+        "empty",
+        "zh-en"
+      ],
+      "candidates": [
+        "031-div-搜索提示词"
+      ],
+      "status": "missing",
+      "owner": "I-libraries"
+    },
+    {
+      "id": "pointers.node-picker.categories",
+      "label": "节点弹层分类「全部 / 我的 / 内置 / 公开库」（和提示词库同一套词）",
+      "change": "changed",
+      "states": [
+        "selected",
+        "zh-en"
+      ],
+      "candidates": [
+        "032-span-全部",
+        "033-span-我的",
+        "034-span-内置",
+        "035-span-公开库"
+      ],
+      "status": "missing",
+      "owner": "I-libraries"
+    },
+    {
+      "id": "pointers.node-picker.row",
+      "label": "节点弹层行：同一张缩略图 + 名字 + 一句；选中 = 追加到节点提示词 + 带参考图，可撤销",
+      "change": "keep",
+      "states": [
+        "hover",
+        "selected",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "037-span-画框构图",
+        "038-span-subjectframe",
+        "039-span-对角线构图",
+        "040-span-Strongdiagon",
+        "041-span-绝对对称",
+        "042-span-Deadcentersy"
+      ],
+      "status": "missing",
+      "owner": "I-libraries"
+    },
+    {
+      "id": "pointers.agent-skill-button",
+      "label": "Agent 底栏「Skill」钮（打开「/」弹层）照旧",
+      "change": "keep",
+      "states": [
+        "selected",
+        "zh-en"
+      ],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-libraries",
+      "note": "不在本板画面。"
+    },
+    {
+      "id": "pointers.message-badge",
+      "label": "Agent 消息气泡「已载入技能」（提示词也要显示，另修）",
+      "change": "keep",
+      "states": [
+        "zh-en"
+      ],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-libraries",
+      "note": "不在本板画面；只认技能的问题另修。"
+    },
+    {
+      "id": "pointers.node-empty-chips",
+      "label": "空节点 4 个推荐效果芯片照旧（指向提示词库里的效果）",
+      "change": "keep",
+      "states": [
+        "empty",
+        "zh-en"
+      ],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-libraries",
+      "note": "不在本板画面。"
+    },
+    {
+      "id": "pointers.rewrite-skill-chip",
+      "label": "创作区 AI 改写条里我的写作技能芯片照旧（已用技能图标；命名分段后续）",
+      "change": "keep",
+      "states": [
+        "zh-en"
+      ],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-libraries",
+      "note": "不在本板画面。"
+    },
+    {
+      "id": "pointers.unchanged-elsewhere",
+      "label": "别处照现状、不在本次画面：排队栏用技能名做标题、选中文字「拆成镜头」、图片浮条快捷动作、权限弹层「编辑系统提示词」、启动后台预热",
+      "change": "keep",
+      "states": [
+        "zh-en"
+      ],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-libraries",
+      "note": "实现时只核不改。"
+    }
+  ],
+  "decor": [
+    "001-h3-指向元素对齐只标名字和脸"
+  ],
+  "functionCensus": [
+    {
+      "censusId": "P-35",
+      "function": "挂到 Agent",
+      "before": "提示词库·（无按钮）：无",
+      "after": "pointers.agent-slash.row",
+      "afterNote": "家在 Agent「/」（提示词库本身不加挂到 Agent 的按钮）"
+    },
+    {
+      "censusId": "B-06",
+      "function": "「Skill」钮",
+      "before": "Agent 底栏：打开 `/` 弹层；钮上 aria-pressed 表示已挂技能或提示词",
+      "after": "pointers.agent-skill-button",
+      "afterNote": "不变"
+    },
+    {
+      "censusId": "B-07",
+      "function": "列表：技能段（用户技能在前）、提示词段（精选加我的库）、效果段；搜索、分类",
+      "before": "Agent `/` 弹层：每行：封面、名字、「/命令」、一句描述。打开弹层时才去拉提示词，没有加载提示",
+      "after": "pointers.agent-slash.row",
+      "afterNote": "分类「全部 / 技能 / 提示词」、去内部 id"
+    },
+    {
+      "censusId": "B-08",
+      "function": "点技能行",
+      "before": "Agent `/` 弹层：挂成技能芯片；再点同一行取消；挂技能会清掉提示词",
+      "after": "pointers.agent-slash.row",
+      "afterNote": "不变（取消方式统一另修）"
+    },
+    {
+      "censusId": "B-09",
+      "function": "点提示词行",
+      "before": "Agent `/` 弹层：挂成提示词芯片；再点同一行不会取消（只能点芯片上的 ×）；挂提示词会清掉技能",
+      "after": "pointers.agent-slash.row",
+      "afterNote": "不变（取消方式统一另修）"
+    },
+    {
+      "censusId": "B-10",
+      "function": "「探索更多 · 新建·管理」",
+      "before": "Agent `/` 弹层·底部：关掉弹层，打开 Skill 抽屉",
+      "after": "pointers.agent-slash.footer",
+      "afterNote": "不变"
+    },
+    {
+      "censusId": "B-11",
+      "function": "芯片（技能、提示词、文件、时间轴片段）",
+      "before": "Agent 输入框上方：技能芯片和提示词芯片长得一样，都标成 kind skill（X-09）",
+      "after": "pointers.agent-chip",
+      "afterNote": "芯片带家的图标、名字取界面语言标题"
+    },
+    {
+      "censusId": "B-12",
+      "function": "发送时带上芯片",
+      "before": "Agent 发送：技能走 skillKey；提示词注入系统提示词；发送成功后两者都清掉（一次性）",
+      "after": "pointers.agent-chip",
+      "afterNote": "不变"
+    },
+    {
+      "censusId": "B-13",
+      "function": "「已载入技能：名字」加小封面",
+      "before": "Agent 消息气泡：发出的那条消息上显示用了哪个技能",
+      "after": "pointers.message-badge",
+      "afterNote": "另修：提示词也要显示"
+    },
+    {
+      "censusId": "B-14",
+      "function": "排队条目标题",
+      "before": "Agent 排队栏：排队条目没写字时，用技能名做标题",
+      "after": "pointers.unchanged-elsewhere",
+      "afterNote": "不变"
+    },
+    {
+      "censusId": "B-15",
+      "function": "「拆成镜头」→ 分镜规划技能",
+      "before": "创作区·选中文字工具条：用分镜规划技能发一条消息（key 写作 workbench.storyboard.planner），结束后自动打开分镜结果",
+      "after": "pointers.unchanged-elsewhere",
+      "afterNote": "不变"
+    },
+    {
+      "censusId": "B-16",
+      "function": "写作技能芯片",
+      "before": "创作区·AI 改写条：直接用这个技能改写选中文字，一点即改，没有确认",
+      "after": "pointers.rewrite-skill-chip",
+      "afterNote": "不变（命名分段后续）"
+    },
+    {
+      "censusId": "B-17",
+      "function": "「提示词预设」钮（代码里叫 effects）加弹层",
+      "before": "节点 composer：弹出选择器：分类（全部、效果、公共库、我的库）、搜索、悬停大预览",
+      "after": "pointers.node-picker.categories",
+      "afterNote": "分类叫法和提示词库对齐"
+    },
+    {
+      "censusId": "B-18",
+      "function": "选中一条",
+      "before": "节点 composer：正文追加到节点提示词末尾（不是替换）；参考图落到节点（模式不够会自动切模式）；可撤销",
+      "after": "pointers.node-picker.row",
+      "afterNote": "不变（往已有节点加的唯一入口）"
+    },
+    {
+      "censusId": "B-19",
+      "function": "空节点的推荐芯片（4 个）",
+      "before": "节点 composer：选中该效果，同 B-18",
+      "after": "pointers.node-empty-chips",
+      "afterNote": "不变（往已有节点加的入口之一）"
+    },
+    {
+      "censusId": "B-20",
+      "function": "快捷动作：多机位九宫格、更多效果▾（下一刻、前一刻、三视图、剧情四宫格）、改图▾（改图、放大、扩图）",
+      "before": "图片节点浮条：建一个连着源图、填好提示词的空闲节点（不生成）；效果缺或模型缺时灰掉并说明",
+      "after": "pointers.unchanged-elsewhere",
+      "afterNote": "不变"
+    },
+    {
+      "censusId": "B-25",
+      "function": "「编辑系统提示词」",
+      "before": "权限弹层：打开系统提示词编辑框（改创作 AI 各模式的提示词，含自定义模式）",
+      "after": "pointers.unchanged-elsewhere",
+      "afterNote": "不变"
+    },
+    {
+      "censusId": "B-26",
+      "function": "后台预热（精选库、我的库、模型目录）",
+      "before": "应用启动：启动后后台载入，挂生成框时直接读内存",
+      "after": "pointers.unchanged-elsewhere",
+      "afterNote": "不变"
+    }
+  ]
+}
