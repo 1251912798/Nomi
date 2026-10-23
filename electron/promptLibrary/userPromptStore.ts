@@ -4,8 +4,9 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { readConfigFileOrDefault, writeConfigFileAtomic } from "../configFileStore";
+import { desktopT } from "../i18n";
 import { getSettingsRoot } from "../runtimePaths";
-import type { LibraryPrompt, PromptMediaType, PromptReferenceImage } from "./promptLibraryTypes";
+import type { LibraryPrompt, PromptMediaType, PromptReferenceImage } from "../shared/contracts/promptLibrary";
 
 const FILE = "prompt-library-user.json"; // 落 userData(NOMI_SETTINGS_DIR 可覆盖,隔离 eval/测试)
 
@@ -129,7 +130,7 @@ export function deleteUserPrompt(id: string): DeletedUserPrompt {
 
 /** 恢复删除快照，保留记录的 id 与所有未知/未来字段。相同 id 已存在时保持幂等。 */
 export function restoreUserPrompt(snapshot: unknown): LibraryPrompt[] {
-  if (!isUserPrompt(snapshot)) throw new Error("无效的提示词恢复快照");
+  if (!isUserPrompt(snapshot)) throw new Error(desktopT("promptLibrary.invalidRestoreSnapshot"));
   const current = load();
   if (current.some((item) => item.id === snapshot.id)) return listUserPrompts();
   persist([snapshot, ...current]);

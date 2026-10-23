@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import type { UserPromptRestoreSnapshot } from '../../../electron/shared/contracts/promptLibrary'
 import {
   addUserPrompt as apiAdd,
   deleteUserPromptWithSnapshot as apiDelete,
@@ -28,8 +29,8 @@ export type UseUserPrompts = State & {
   reload: () => void
   add: (draft: UserPromptDraft) => Promise<void>
   update: (id: string, patch: Partial<UserPromptDraft>) => Promise<void>
-  remove: (id: string) => Promise<LibraryPrompt | null>
-  restore: (snapshot: LibraryPrompt) => Promise<void>
+  remove: (id: string) => Promise<UserPromptRestoreSnapshot | null>
+  restore: (snapshot: UserPromptRestoreSnapshot) => Promise<void>
 }
 
 /** 我的库(用户级)数据 + CRUD;首次打开拉取,写操作后用返回的全量刷新缓存。 */
@@ -78,7 +79,7 @@ export function useUserPrompts(opened: boolean): UseUserPrompts {
     apply(result.items)
     return result.deleted
   }, [apply])
-  const restore = React.useCallback(async (snapshot: LibraryPrompt) => apply(await apiRestore(snapshot)), [apply])
+  const restore = React.useCallback(async (snapshot: UserPromptRestoreSnapshot) => apply(await apiRestore(snapshot)), [apply])
 
   return { ...state, reload: () => load(true), add, update, remove, restore }
 }

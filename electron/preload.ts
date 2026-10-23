@@ -7,7 +7,7 @@ import { mediaBridge } from "./preload/mediaBridge";
 import { modelOnboardingBridge } from "./preload/modelOnboardingBridge";
 import { runtimeBridge } from "./preload/runtimeBridge";
 import type { ProjectDeleteIntent } from "./shared/projectDeleteIntent";
-import type { UserPromptRestoreSnapshot } from "./promptLibrary/promptLibraryTypes";
+import type { UserPromptRestoreSnapshot } from "./shared/contracts/promptLibrary";
 
 type ProductionDeepLinkPayload = { projectId: string; runId?: string; nodeId?: string; artifactId?: string };
 let queuedProductionDeepLink: ProductionDeepLinkPayload | null = null;

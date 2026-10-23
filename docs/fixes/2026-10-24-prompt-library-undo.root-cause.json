@@ -17,7 +17,6 @@
   "scope_paths": [
     "electron/promptLibrary/userPromptStore.ts",
     "electron/promptLibrary/promptLibraryIpc.ts",
-    "electron/promptLibrary/promptLibraryTypes.ts",
     "electron/preload.ts",
     "src/workbench/api/promptLibraryApi.ts",
     "src/desktop/bridge.ts",
@@ -25,7 +24,8 @@
     "src/workbench/promptLibrary/PromptLibraryPanel.tsx",
     "src/workbench/skillLibrary/deleteSkillWithUndo.ts",
     "src/workbench/skillLibrary/SkillLibraryPanel.tsx",
-    "src/i18n/locales/libraries.ts"
+    "src/i18n/locales/libraries.ts",
+    "electron/shared/contracts/promptLibrary.ts"
   ],
   "entry_points": [
     "我的库卡片删除按钮 → PromptLibraryContent.handleDelete",
@@ -41,21 +41,81 @@
     "撤销窗口结束且没有恢复调用时，用户提示词记录保持删除状态；该存储不拥有 referenceImages 指向的素材文件。"
   ],
   "doors": [
-    { "kind": "write", "path": "electron/promptLibrary/userPromptStore.ts", "symbol": "deleteUserPrompt" },
-    { "kind": "write", "path": "electron/promptLibrary/userPromptStore.ts", "symbol": "restoreUserPrompt" },
-    { "kind": "write", "path": "electron/promptLibrary/promptLibraryIpc.ts", "symbol": "registerPromptLibraryIpc" },
-    { "kind": "write", "path": "src/workbench/api/promptLibraryApi.ts", "symbol": "deleteUserPromptWithSnapshot" },
-    { "kind": "write", "path": "src/workbench/api/promptLibraryApi.ts", "symbol": "restoreUserPrompt" },
-    { "kind": "write", "path": "src/workbench/promptLibrary/useUserPrompts.ts", "symbol": "useUserPrompts" },
-    { "kind": "read", "path": "src/workbench/promptLibrary/PromptLibraryPanel.tsx", "symbol": "PromptLibraryContent" },
-    { "kind": "write", "path": "electron/preload.ts", "symbol": "userRestore" },
-    { "kind": "write", "path": "src/workbench/api/promptLibraryApi.ts", "symbol": "userRestore" },
-    { "kind": "write", "path": "src/workbench/skillLibrary/deleteSkillWithUndo.ts", "symbol": "deleteSkillWithUndo" },
-    { "kind": "write", "path": "src/workbench/skillLibrary/SkillLibraryPanel.tsx", "symbol": "SkillLibraryContent" },
-    { "kind": "read", "path": "electron/promptLibrary/promptLibraryTypes.ts", "symbol": "UserPromptRestoreSnapshot" },
-    { "kind": "read", "path": "electron/preload.ts", "symbol": "UserPromptRestoreSnapshot" },
-    { "kind": "read", "path": "src/desktop/bridge.ts", "symbol": "UserPromptRestoreSnapshot" },
-    { "kind": "read", "path": "src/i18n/locales/libraries.ts", "symbol": "zhLibraries" }
+    {
+      "kind": "write",
+      "path": "electron/promptLibrary/userPromptStore.ts",
+      "symbol": "deleteUserPrompt"
+    },
+    {
+      "kind": "write",
+      "path": "electron/promptLibrary/userPromptStore.ts",
+      "symbol": "restoreUserPrompt"
+    },
+    {
+      "kind": "write",
+      "path": "electron/promptLibrary/promptLibraryIpc.ts",
+      "symbol": "registerPromptLibraryIpc"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/api/promptLibraryApi.ts",
+      "symbol": "deleteUserPromptWithSnapshot"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/api/promptLibraryApi.ts",
+      "symbol": "restoreUserPrompt"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/promptLibrary/useUserPrompts.ts",
+      "symbol": "useUserPrompts"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/promptLibrary/PromptLibraryPanel.tsx",
+      "symbol": "PromptLibraryContent"
+    },
+    {
+      "kind": "write",
+      "path": "electron/preload.ts",
+      "symbol": "userRestore"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/api/promptLibraryApi.ts",
+      "symbol": "userRestore"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/skillLibrary/deleteSkillWithUndo.ts",
+      "symbol": "deleteSkillWithUndo"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/skillLibrary/SkillLibraryPanel.tsx",
+      "symbol": "SkillLibraryContent"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/contracts/promptLibrary.ts",
+      "symbol": "UserPromptRestoreSnapshot"
+    },
+    {
+      "kind": "read",
+      "path": "electron/preload.ts",
+      "symbol": "UserPromptRestoreSnapshot"
+    },
+    {
+      "kind": "read",
+      "path": "src/desktop/bridge.ts",
+      "symbol": "UserPromptRestoreSnapshot"
+    },
+    {
+      "kind": "read",
+      "path": "src/i18n/locales/libraries.ts",
+      "symbol": "zhLibraries"
+    }
   ],
   "door_reduction": {
     "before": 2,
@@ -159,7 +219,7 @@
       "src/workbench/api/promptLibraryApi.ts",
       "src/workbench/promptLibrary/useUserPrompts.ts",
       "src/workbench/promptLibrary/PromptLibraryPanel.tsx",
-      "electron/promptLibrary/promptLibraryTypes.ts",
+      "electron/shared/contracts/promptLibrary.ts",
       "electron/preload.ts",
       "src/desktop/bridge.ts",
       "src/workbench/skillLibrary/deleteSkillWithUndo.ts",
@@ -179,9 +239,11 @@
     "src/workbench/skillLibrary/deleteSkillWithUndo.test.ts"
   ],
   "legacy_paths": {
-    "status": "not-applicable",
-    "removed_paths": [],
-    "rationale": "旧行为是现有文件中的分支和调用形状，已在原文件内替换，没有需要单独声明的已删除文件路径。"
+    "status": "removed",
+    "removed_paths": [
+      "electron/promptLibrary/promptLibraryTypes.ts"
+    ],
+    "rationale": "提示词库跨 IPC 契约类型已迁入 electron/shared/contracts/promptLibrary.ts；旧主进程位置的类型定义同一提交删除，仅保留无定义的兼容转出口，避免 renderer 继续依赖主进程模块或保留第二份定义。"
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
