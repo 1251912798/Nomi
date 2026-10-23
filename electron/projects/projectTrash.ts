@@ -22,7 +22,7 @@ export async function moveProjectFolderToTrash(folder: string): Promise<void> {
   try {
     await shell.trashItem(target);
   } catch (error) {
-    throw projectTrashFailed(classifyTrashFailure(error), error);
+    throw projectTrashFailed(classifyTrashFailure(error, target), error);
   }
   if (fs.existsSync(target)) {
     throw projectTrashFailed("unknown", new Error("trash reported success but the folder is still in place"));
@@ -40,13 +40,19 @@ function projectTrashFailed(reason: ProjectTrashFailureReason, cause: unknown): 
 /**
  * 只分三类给人看，其余 unknown。依据：Node 风格的 code（EPERM / EACCES / EBUSY…），Windows IFileOperation
  * 的 HRESULT（0x80070005 拒绝访问、0x80070020 共享冲突）与 Electron 的「Operation was aborted」（回收站放弃 = 这个
- * 位置进不了回收站），macOS / Linux 的「不支持 / 没有回收站」类文字。认不准就归 unknown，不猜。
+ * 位置进不了回收站），macOS 的 NSError 原文（中文 / 英文系统各一份，2026-10-23 在真机上采的样本）。认不准就归 unknown，不猜。
+ * 系统原文会带上项目文件夹名（用户起的，可能叫 permission / locked）和卷名：匹配前先把完整路径和 macOS 引号“……”
+ * 里的名字剔掉，只看原因那半句（不单剔短名字：名字叫「e」会把原文里所有的 e 都吃掉）。分类只决定提示怎么说，
+ * 进不了回收站就一律什么都不删，认错不会多删一个字节。
  */
-export function classifyTrashFailure(error: unknown): ProjectTrashFailureReason {
+export function classifyTrashFailure(error: unknown, target: string): ProjectTrashFailureReason {
   const code = String((error as { code?: unknown } | null)?.code ?? "").toUpperCase();
-  const message = String((error as { message?: unknown } | null)?.message ?? error ?? "").toLowerCase();
-  if (code === "EPERM" || code === "EACCES" || /0x80070005|access is denied|permission|not permitted/.test(message)) return "permission";
+  const message = String((error as { message?: unknown } | null)?.message ?? error ?? "")
+    .split(target).join(" ")
+    .replace(/“[^”]*”/g, " ")
+    .toLowerCase();
+  if (code === "EPERM" || code === "EACCES" || /0x80070005|access is denied|permission|not permitted|没有[^，。]{0,16}(许可|权限)/.test(message)) return "permission";
   if (code === "EBUSY" || /0x80070020|0x80070021|sharing violation|being used by another process|resource busy|locked/.test(message)) return "in-use";
-  if (code === "ENOTSUP" || code === "EXDEV" || /operation was aborted|not supported|no trash|trash.*(unavailable|not available)|cannot be moved to the trash|recycle bin/.test(message)) return "no-trash";
+  if (code === "ENOTSUP" || code === "EXDEV" || /operation was aborted|not supported|no trash|trash.*(unavailable|not available)|cannot be moved to the trash|recycle bin|volume.{0,80}doesn.t have one|没有废纸篓/.test(message)) return "no-trash";
   return "unknown";
 }

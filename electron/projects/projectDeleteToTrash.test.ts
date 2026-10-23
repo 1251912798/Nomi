@@ -27,6 +27,7 @@ import { resetLegacyDiscoveryGuard } from "../workspace/legacyProjectMigration";
 import { findRecentWorkspace } from "../workspace/workspaceRegistry";
 import { WorkspaceManifestLockBusyError, acquireWorkspaceManifestLock, releaseWorkspaceManifestLock } from "../workspace/workspaceManifestLock";
 import { isProjectTrashFailedError, projectTrashFailureReason } from "../shared/projectDeleteIntent";
+import { classifyTrashFailure } from "./projectTrash";
 
 // ⑭（用户 2026-10-22 拍板）：确认「删除文件」后项目文件夹进系统回收站、可以恢复；进不了回收站就报清楚原因、
 // 什么都不删，绝不静默退回永久删除。方向检查 docs/engineering/direction-checks/2026-10-23-project-delete-to-trash.md。
@@ -156,5 +157,28 @@ describe("删项目目录只有进回收站这一种做法", () => {
       const source = fs.readFileSync(path.resolve(process.cwd(), file), "utf8").replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
       expect(source, file).not.toMatch(/\b(rmSync|rmdirSync|unlinkSync|rm|rmdir|unlink)\s*\(/);
     }
+  });
+});
+
+// 回收站报错原文 → 三类原因。样本是 2026-10-23 在真 macOS 上用 Electron shell.trashItem 采到的原文（不是凭记忆写的）：
+// 「没有废纸篓」= 项目所在的卷是只读的 / 没有废纸篓，「没有权限」= 项目文件夹的上级目录不可写。中文、英文系统各一份。
+// 其它语言认不出就归 unknown，只影响提示怎么说；进不了回收站一律什么都不删，认错不会多删一个字节。
+describe("回收站报错原文 → 三类原因（真机采样）", () => {
+  it.each([
+    ["macOS 中文系统 · 该位置没有废纸篓", "未能将“folder1”移到废纸篓，因为宗卷“PLIBTRASHTEST”没有废纸篓。", "no-trash"],
+    ["macOS 英文系统 · 该位置没有废纸篓", "“folder1” couldn’t be moved to the trash because the volume “PLIBTRASHTEST” doesn’t have one.", "no-trash"],
+    ["macOS 中文系统 · 没有权限", "未能将“child”移到废纸篓，因为你没有访问该诊断报告的许可。", "permission"],
+    ["macOS 英文系统 · 没有权限", "“child” couldn’t be moved to the trash because you don’t have permission to access it.", "permission"],
+    ["Windows · 回收站放弃操作（Electron 自带的英文）", "Operation was aborted", "no-trash"],
+    ["别的系统语言 · 认不出就是 unknown", "「folder1」をゴミ箱に入れられませんでした。", "unknown"],
+  ] as const)("%s", (_label, message, reason) => {
+    expect(classifyTrashFailure(new Error(message), "/Volumes/X/projects/folder1")).toBe(reason);
+  });
+
+  it("项目文件夹名是用户起的，会出现在系统原文里：名字叫 permission / locked 不能把原因带偏", () => {
+    const folder = "/Volumes/X/projects/permission locked 项目";
+    const noTrash = new Error("“permission locked 项目” couldn’t be moved to the trash because the volume “X” doesn’t have one.");
+    expect(classifyTrashFailure(noTrash, folder)).toBe("no-trash");
+    expect(classifyTrashFailure(new Error(`Failed on ${folder}`), folder)).toBe("unknown");
   });
 });
