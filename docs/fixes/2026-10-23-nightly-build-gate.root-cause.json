@@ -47,13 +47,7 @@
     "why_not": "door-map over src and electron finds no entries for the nightly summary or the build gate; the nightly workflow is the only caller and the shared launch boundary tests/ux/_launchApp.mjs is unchanged."
   },
   "generality_proof": "The test derives write targets from the workflow itself (mkdir, redirects, tee, log assignments, summary arguments, artifact paths), so adding an output directory to either job without ignoring it turns the test red; mutation check: removing the .gitignore entries fails it.",
-  "shared_boundaries": [
-    {
-      "path": "scripts/nightly-workflow-outputs.node-test.mjs",
-      "symbol": "writeTargets",
-      "responsibility": "Reject any nightly workflow output path that is not ignored by .gitignore."
-    }
-  ],
+  "shared_boundaries": [],
   "same_class_entry_points": [
     {
       "path": ".github/workflows/nightly-walkthroughs.yml",
