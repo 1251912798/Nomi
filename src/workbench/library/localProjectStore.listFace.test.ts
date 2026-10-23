@@ -54,7 +54,7 @@ describe('项目列表缓存：增删发布', () => {
   it('删除后列表缓存立刻摘掉这个项目，别的项目原样', async () => {
     installBridge([summary('a', 20), summary('b', 10)])
     await mutate(LOCAL_PROJECTS_SWR_KEY, [summary('a', 20), summary('b', 10)], { revalidate: false })
-    deleteLocalProject('a', 'delete-files')
+    await deleteLocalProject('a', 'delete-files')
     expect((await cached())?.map((item) => item.id)).toEqual(['b'])
   })
 

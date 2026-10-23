@@ -327,12 +327,13 @@ export async function renameLocalProject(projectId: string, name: string): Promi
   return next
 }
 
-export function deleteLocalProject(projectId: string, intent: ProjectDeleteIntent): void {
+/** 桌面端：等主进程把项目文件夹移进回收站（或只解绑）成功后，才清本地缓存；失败原样抛出，什么都不清。 */
+export async function deleteLocalProject(projectId: string, intent: ProjectDeleteIntent): Promise<void> {
   const id = String(projectId || '').trim()
   if (!id) throw new Error('projectId is required')
   const desktop = getDesktopBridge()
   if (desktop) {
-    desktop.projects.delete(id, intent)
+    await desktop.projects.delete(id, intent)
     // 「所有项目的素材」那一份清单里还有这个项目的素材：删项目不经过素材写入层的广播，这里显式作废。
     invalidateAllProjectAssets()
   }

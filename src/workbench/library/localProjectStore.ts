@@ -147,8 +147,8 @@ export async function renameLocalProject(projectId: string, name: string): Promi
   return record
 }
 
-export function deleteLocalProject(projectId: string, intent: ProjectDeleteIntent): void {
-  deleteProjectRecord(projectId, intent)
+export async function deleteLocalProject(projectId: string, intent: ProjectDeleteIntent): Promise<void> {
+  await deleteProjectRecord(projectId, intent)
   unpublishLocalProject(projectId)
 }
 

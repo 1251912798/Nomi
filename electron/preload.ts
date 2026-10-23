@@ -158,7 +158,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       ipcRenderer.invoke("nomi:projects:save-async", projectId, record),
     applyCanvasNodePatch: (input: { projectId: string; nodeId: string; patch: Record<string, unknown>; expectedBinding?: unknown }) =>
       ipcRenderer.invoke("nomi:projects:apply-canvas-node-patch", input),
-    delete: (projectId: string, intent: ProjectDeleteIntent) => invokeSync("nomi:projects:delete", projectId, intent),
+    delete: (projectId: string, intent: ProjectDeleteIntent) => ipcRenderer.invoke("nomi:projects:delete", projectId, intent),
   },
   clipboard: {
     readFilePaths: () => ipcRenderer.invoke("nomi:clipboard:read-file-paths") as Promise<string[]>,
