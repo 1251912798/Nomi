@@ -1,0 +1,63 @@
+{
+  "machine": "darwin arm64 Apple M5 x10 / 24GB",
+  "commit": "d20a4a1e1",
+  "head": "d20a4a1e13a06a47135d5a9085de48818e8b9e4a",
+  "dirty": true,
+  "sourceTree": "9f7699ab094541c022f99cbd2cfe69107e7ba661",
+  "date": "2026-10-23",
+  "runs": 5,
+  "results": [
+    {
+      "id": "canvas-text-node-typing",
+      "metrics": {
+        "response": {
+          "runs": 5,
+          "median": 16.2,
+          "p95": 17
+        },
+        "longTasks": {
+          "runs": 5,
+          "median": 0,
+          "p95": 0
+        }
+      },
+      "samples": {
+        "frameGapP95": [
+          12.8,
+          12.3,
+          12.2,
+          12.4,
+          11.9
+        ],
+        "longTasks": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "response": [
+          16.1,
+          15.8,
+          17.1,
+          16.2,
+          16.7
+        ],
+        "mainRoundTripMax": []
+      },
+      "budget": 50,
+      "baseline": {
+        "median": 16.6,
+        "p95": 16.7,
+        "runs": 5,
+        "machine": "darwin arm64 Apple M5 x10 / 24GB",
+        "date": "2026-10-23",
+        "commit": "cad909708"
+      },
+      "verdict": {
+        "status": "ok",
+        "note": ""
+      }
+    }
+  ]
+}

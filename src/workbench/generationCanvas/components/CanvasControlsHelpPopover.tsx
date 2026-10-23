@@ -25,10 +25,8 @@ export function CanvasControlsHelpPopover({ asRow = false, rowClassName }: { asR
   const anchorRef = React.useRef<HTMLSpanElement>(null)
   const platform = typeof navigator === 'undefined' ? '' : navigator.platform
   const sections = React.useMemo(() => canvasControlsHelpSections(scheme, platform), [platform, scheme])
-  const close = React.useCallback(() => {
-    setOpen(false)
-    anchorRef.current?.querySelector('button')?.focus()
-  }, [])
+  // 还焦点归 AnchoredPopover（Esc 还给触发钮，因点外面关闭不还），这里不自己塞回去。
+  const close = React.useCallback(() => setOpen(false), [])
 
   const label = t('generationCommon.navigation.canvasControls')
 

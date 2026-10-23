@@ -1,0 +1,267 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-23-outside-press-capture",
+  "detected_by": "user",
+  "recurrence_check_on": "2026-11-23",
+  "problem_type": "Outside-press dismissal listens in a phase or event that a descendant press handler can swallow",
+  "symptom": "用户 2026-10-23 实测：点开画布左下「⋯」视图浮层后，点画布中间空白处浮层不收，一直挡在左下角；左栏抽屉、任务中心面板点画布空白同样不收。",
+  "direct_cause": "AnchoredPopover / TaskCenterPanel 在 document / window 上听冒泡阶段的 mousedown，ShellRail 用 Mantine useClickOutside（同样是 document 冒泡 mousedown + touchstart）。画布空白处是 d3-zoom 的平移面（GenerationCanvasReactFlowViewport 的 panOnDrag=[0,1]），d3-zoom 在 mousedown 上 stopImmediatePropagation，事件到不了 document，onClose 从不触发。",
+  "class_root": "「点外面就收」没有统一的听法：十一处各自选了 mousedown 或冒泡阶段的 pointerdown，凡是落在会吃掉按下事件的子树（d3-zoom 平移面、d3-drag 节点、React Flow 框选的 preventDefault、节点与浮层里的 onPointerDown stopPropagation）上的按下，都到不了这些监听。",
+  "affected_population": [
+    "所有在画布上方打开锚点浮层（AnchoredPopover 的全部消费者：画布视图选项、帮助、节点浮条下拉、分镜行菜单、素材选择、同步徽标、转场选择）后去点画布的用户",
+    "打开左栏抽屉（文稿 / 目录 / 素材 / 流程 / Skill / 提示词）后点画布的用户",
+    "打开任务中心后点画布的用户"
+  ],
+  "scope_paths": [
+    "src/design/outsidePress.ts",
+    "src/design/AnchoredPopover.tsx",
+    "src/design/index.ts",
+    "src/ui/app-shell/shell/ShellRail.tsx",
+    "src/workbench/taskCenter/TaskCenterPanel.tsx",
+    "src/ui/browser/popover/NomiBrowserAssetPopover.tsx",
+    "src/ui/browser/dialog/NomiBrowserDialog.tsx",
+    "src/workbench/assets/AssetLibraryPanel.tsx",
+    "src/workbench/preview/EditingLayoutMenu.tsx",
+    "src/workbench/preview/TimelinePreview.tsx",
+    "src/workbench/generationCanvas/components/useCanvasFrameActions.ts"
+  ],
+  "entry_points": [
+    "按下画布空白处（d3-zoom 平移面）时关闭任何已打开的锚点浮层 / 左栏抽屉 / 任务中心",
+    "按下画布节点（d3-drag）或节点内 stopPropagation 的控件时关闭同上浮层",
+    "React Flow 框选（selection key 按住）时的按下"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://github.com/d3/d3-zoom/blob/v3.0.0/src/zoom.js",
+      "checked_at": "2026-10-23",
+      "purpose": "mousedowned 调 nopropagation(event)，即 event.stopImmediatePropagation()（本机 node_modules/.pnpm/d3-zoom@3.0.0/src/zoom.js:270-280 与 noevent.js 已核）"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/xyflow/xyflow/blob/main/packages/react/src/container/Pane/index.tsx",
+      "checked_at": "2026-10-23",
+      "purpose": "Pane 的 onPointerDownCapture 在框选开始且目标不是容器时 stopPropagation + preventDefault（本机 @xyflow/react dist/esm/index.mjs:1478-1512 已核），preventDefault 会让浏览器不再派发兼容 mousedown"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/mantinedev/mantine/blob/master/packages/@mantine/hooks/src/use-click-outside/use-click-outside.ts",
+      "checked_at": "2026-10-23",
+      "purpose": "useClickOutside 默认事件 ['mousedown', 'touchstart']，在 document 上冒泡阶段注册"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/radix-ui/primitives/blob/main/packages/react/dropdown-menu/src/dropdown-menu.tsx",
+      "checked_at": "2026-10-23",
+      "purpose": "DropdownMenuContent 的 onCloseAutoFocus：hasInteractedOutsideRef 为真（因点外面关闭）时不 focus 触发钮（本机 node_modules/@radix-ui/react-dropdown-menu dist/index.mjs:105-124 已核）"
+    }
+  ],
+  "invariants": [
+    "「点外面就收」只经 src/design/outsidePress.ts 的 listenOutsidePress 听：document 上 pointerdown 捕获阶段，在任何目标处理器之前",
+    "src 里没有 document / window 上的 mousedown / touchstart 监听，也不用 Mantine useClickOutside",
+    "document / window 上冒泡阶段的 pointerdown / click 监听只许减不许增（基线 4 处）",
+    "因「点外面」关闭的锚点浮层不把焦点还给触发钮（照 Radix 非模态浮层的 hasInteractedOutsideRef），按 Esc / 选一项关闭照旧还焦点；「点外面」只记最近一下，调用方拒关后用户回到浮层里按一下 / 按键或按 Esc 即复位；还不还焦点只归 AnchoredPopover，调用方不在自己的关闭里把焦点塞回锚点；否则触发钮的悬停提示会在用户点完画布空白后挂着",
+    "「点外面」按下即判定：在画布上拖动平移的起手也算（与 Floating UI / Radix 默认一致；改成 click 判定的话，按下后稍一移动（xyflow 默认 paneClickDistance 1px：斜移 1px 或移动 2px 以上）就被 d3-zoom 当拖动吞掉 click，重新变成「点了没反应」），滚轮 / 触控板平移不产生 pointerdown、不收"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/design/outsidePress.ts",
+      "symbol": "listenOutsidePress"
+    },
+    {
+      "kind": "read",
+      "path": "src/design/index.ts",
+      "symbol": "listenOutsidePress"
+    },
+    {
+      "kind": "write",
+      "path": "src/design/AnchoredPopover.tsx",
+      "symbol": "listenOutsidePress"
+    },
+    {
+      "kind": "write",
+      "path": "src/ui/app-shell/shell/ShellRail.tsx",
+      "symbol": "listenOutsidePress"
+    },
+    {
+      "kind": "write",
+      "path": "src/ui/browser/dialog/NomiBrowserDialog.tsx",
+      "symbol": "listenOutsidePress"
+    },
+    {
+      "kind": "write",
+      "path": "src/ui/browser/popover/NomiBrowserAssetPopover.tsx",
+      "symbol": "listenOutsidePress"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/assets/AssetLibraryPanel.tsx",
+      "symbol": "listenOutsidePress"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/useCanvasFrameActions.ts",
+      "symbol": "listenOutsidePress"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/preview/EditingLayoutMenu.tsx",
+      "symbol": "listenOutsidePress"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/preview/TimelinePreview.tsx",
+      "symbol": "listenOutsidePress"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/taskCenter/TaskCenterPanel.tsx",
+      "symbol": "listenOutsidePress"
+    }
+  ],
+  "door_reduction": {
+    "before": 12,
+    "after": 11,
+    "why_not": "修前是 9 个文件里 12 处各自注册的监听（外加 ShellRail 的 Mantine useClickOutside），每处自己选事件和阶段；修后只剩 src/design/outsidePress.ts 一处真正注册监听，index.ts 是它的再导出，其余 9 个文件各管一块自己的开合状态和自己的「点在我身上」判据（浮层本体、触发钮、自己弹出的下拉、右键菜单），这些判据是各面的领域事实，合不成一个；收拢的是它们共同的那一半——在哪个事件、哪个阶段听。"
+  },
+  "generality_proof": "失败机制只取决于监听的事件和阶段，与是哪个浮层无关：document 上 pointerdown 的捕获阶段先于任何目标处理器，d3-zoom / d3-drag 的 stopImmediatePropagation、React Flow 的 preventDefault、组件里的 stopPropagation 都发生在之后，拦不住它。所有经 listenOutsidePress 的面因此对任何子树的吞事件免疫；结构测试把 mousedown / touchstart 监听、useClickOutside 和新的冒泡 pointerdown 一并挡在门外，新面只能走这一处。",
+  "shared_boundaries": [
+    {
+      "path": "src/design/outsidePress.ts",
+      "symbol": "listenOutsidePress",
+      "responsibility": "唯一的「点外面」听法：document 上 pointerdown 捕获阶段，调用方只给「算不算点在自己身上」的判据和收起动作。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/design/AnchoredPopover.tsx",
+      "entry_point": "AnchoredPopover",
+      "disposition": "enforced",
+      "evidence": "原 document 冒泡 mousedown，改走 listenOutsidePress；用户实测的画布左下「⋯」（CanvasViewOptionsPopover）即它的消费者。"
+    },
+    {
+      "path": "src/ui/app-shell/shell/ShellRail.tsx",
+      "entry_point": "ShellRail",
+      "disposition": "enforced",
+      "evidence": "原 Mantine useClickOutside（document 冒泡 mousedown + touchstart），改走 listenOutsidePress，判据保留 rail / drawer 节点与 portal 弹层选择器。"
+    },
+    {
+      "path": "src/workbench/taskCenter/TaskCenterPanel.tsx",
+      "entry_point": "TaskCenterPanel",
+      "disposition": "enforced",
+      "evidence": "原 window 冒泡 mousedown + rAF 延迟挂载，改走 listenOutsidePress；触发钮 [data-task-center-trigger] 计入「自己身上」，再点触发钮是收起而不是先关后又被 toggle 打开。"
+    },
+    {
+      "path": "src/workbench/assets/AssetLibraryPanel.tsx",
+      "entry_point": "AssetLibraryContent filter menu",
+      "disposition": "enforced",
+      "evidence": "素材抽屉浮在画布上方，筛选菜单原 document 冒泡 pointerdown，点到节点内 stopPropagation 的控件时不收；改走 listenOutsidePress。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/useCanvasFrameActions.ts",
+      "entry_point": "useCanvasFrameActions frame menu",
+      "disposition": "enforced",
+      "evidence": "画布分组框右键菜单原 window 冒泡 pointerdown，改走 listenOutsidePress，判据 [data-frame-menu] 保留。"
+    },
+    {
+      "path": "src/workbench/preview/EditingLayoutMenu.tsx",
+      "entry_point": "EditingLayoutMenu",
+      "disposition": "enforced",
+      "evidence": "原 window 冒泡 pointerdown + contains 判据，改走 listenOutsidePress。"
+    },
+    {
+      "path": "src/workbench/preview/TimelinePreview.tsx",
+      "entry_point": "TimelinePreview text preset menu",
+      "disposition": "enforced",
+      "evidence": "原 window 冒泡 pointerdown + contains 判据，改走 listenOutsidePress。"
+    },
+    {
+      "path": "src/ui/browser/popover/NomiBrowserAssetPopover.tsx",
+      "entry_point": "NomiBrowserAssetPopover",
+      "disposition": "enforced",
+      "evidence": "素材盒本体原 document 冒泡 mousedown，筛选 / 右键菜单原冒泡 pointerdown，三处都改走 listenOutsidePress。"
+    },
+    {
+      "path": "src/ui/browser/dialog/NomiBrowserDialog.tsx",
+      "entry_point": "NomiBrowserDialog tab / bookmark context menus",
+      "disposition": "enforced",
+      "evidence": "两处右键菜单原 document 冒泡 pointerdown + contains 判据，改走 listenOutsidePress。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/ToolbarActionMenu.tsx",
+      "entry_point": "ToolbarActionMenu",
+      "disposition": "not-affected",
+      "evidence": "已是 document 捕获阶段 pointerdown（同类还有 InlineParameterBar、CanvasToolbar、director/panels/Popover、ProjectAgentResidentShell、CanvasPickModeLayer、TimelineContextMenu、OnboardingSpotlight、NomiBrowserDialog:104/122、BrowserAssetOverlayApp），子树吞不掉。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/useGenerationCanvasReactFlowMenus.ts",
+      "entry_point": "useGenerationCanvasReactFlowMenus closeMenus",
+      "disposition": "not-affected",
+      "evidence": "听的是 pointerdown（d3 只吃 mousedown，画布空白照常能收），但没有「点在自己身上」判据、靠菜单自己 stopPropagation 撑着；直接换捕获会让菜单项点不动。冻结在结构测试基线里，迁移要先补判据（同类 DocumentListSidebar、useWhiteboardSelectionActions）。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "每个新浮层都会再写一遍「点外面」；没有统一听法时，下一处照样可能选 mousedown（框架默认，如 Mantine useClickOutside）或冒泡阶段，而画布上的每一次按下都会被 d3 吃掉。",
+    "same_class_scan": [
+      "rg -n \"(document|window)\\.addEventListener\\(\\s*['\\\"](pointerdown|mousedown|touchstart)\" src：修前 25 处，其中 mousedown 3 处（AnchoredPopover、TaskCenterPanel、NomiBrowserAssetPopover），冒泡 pointerdown 11 处，捕获 pointerdown 11 处",
+      "rg -n useClickOutside src：ShellRail 1 处",
+      "逐个读了 11 处冒泡 pointerdown 的判据：8 处有 contains / closest 判据（已迁），3 处没有（冻结在基线）"
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "src/design/outsidePress.ts",
+    "invariant": "src 非测试代码里没有 document / window 上的 mousedown / touchstart 监听、没有 Mantine useClickOutside；冒泡阶段的 document / window pointerdown / click 只许是基线里的 4 处（识别不看处理器写法，认 ownerDocument 与 useWindowEvent）；owner 本身听 document 捕获阶段 pointerdown、并按捕获阶段解绑。渲染 AnchoredPopover 的文件不自己把焦点塞回锚点（普查，还焦点只归 AnchoredPopover）。",
+    "failure_mode": "结构测试红，列出违规文件；新浮层只能经 listenOutsidePress。",
+    "exception_policy": "none",
+    "strategy": "统一听法收进 src/design/outsidePress.ts 一处，存量 11 处里能安全迁的 8 处 + 3 处 mousedown 全部迁完；剩下 3 处冒泡 pointerdown 与 CategoryTree 的 1 处冒泡 click 以基线冻结、只减不增（独立验收 L-acc-sonnet-20261023 发现 3 后扩到 click）。",
+    "artifacts": [
+      "src/design/outsidePress.ts",
+      "src/design/outsidePress.structure.test.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/design/outsidePress.structure.test.ts",
+    "tests/ux/anchored-popover-focus.test.mjs"
+  ],
+  "class_regression_tests": [
+    "src/design/outsidePress.structure.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/design/AnchoredPopover.tsx",
+      "src/ui/app-shell/shell/ShellRail.tsx",
+      "src/workbench/taskCenter/TaskCenterPanel.tsx",
+      "src/ui/browser/popover/NomiBrowserAssetPopover.tsx",
+      "src/ui/browser/dialog/NomiBrowserDialog.tsx",
+      "src/workbench/assets/AssetLibraryPanel.tsx",
+      "src/workbench/preview/EditingLayoutMenu.tsx",
+      "src/workbench/preview/TimelinePreview.tsx",
+      "src/workbench/generationCanvas/components/useCanvasFrameActions.ts"
+    ],
+    "rationale": "各处自写的 mousedown / 冒泡 pointerdown 监听与 Mantine useClickOutside 调用在同一提交里删掉，没有保留旧听法作回退。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "d3-zoom 吞 mousedown 是它平移手势的正当设计，不是缺陷；不升级也不绕过它，改的是我们自己的听法。Mantine useClickOutside 不再使用。",
+    "exit_criteria": []
+  },
+  "migration": "纯渲染层行为，没有持久化状态，不需要迁移。",
+  "residual_risks": [
+    "useGenerationCanvasReactFlowMenus、DocumentListSidebar、useWhiteboardSelectionActions 三处冒泡 pointerdown 与 CategoryTree 一处冒泡 click 仍会被子树里的 stopPropagation 截断（画布空白不受影响）；迁移前要先给它们补「点在自己身上」的判据。",
+    "结构测试是文本扫描：document 的变量别名、globalThis / self 上的监听、变量做事件名认不出来（仓库目前没有这类写法）；要彻底就换成 ESLint / AST 规则。",
+    "「点外面」的行为证据来自生产构建真机走查（见 PR）；焦点另有真 Chromium 测试 tests/ux/anchored-popover-focus.test.mjs（真 AnchoredPopover + 真 React Flow 空白处），其余迁移点没有 DOM 单测。",
+    "调用方拒关之后、浮层又被程序自己关掉（例如上传结束后自动收起）时，最近一下仍是「点外面」，不还焦点：用户已经去点别处了，这是有意的。",
+    "焦点规矩的普查按 anchorRef={x} 认锚点：锚点经别名或 props 透传到别的文件再 focus() 的写法认不出来（仓库目前没有）。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/design/outsidePress.ts",
+    "tests": [
+      "src/design/outsidePress.structure.test.ts"
+    ],
+    "why": "「点外面在哪个事件、哪个阶段听」由 listenOutsidePress 单点持有；结构测试普查 src 全部非测试源码，mousedown / touchstart 监听、useClickOutside、新增冒泡 pointerdown、owner 改掉捕获阶段，任一出现就红。"
+  }
+}

@@ -1,0 +1,51 @@
+[
+  {
+    "name": "画布「⋯」浮层：点画布空白处收起",
+    "ok": false,
+    "error": "点空白后「⋯」浮层还在"
+  },
+  {
+    "name": "左栏素材抽屉：点画布空白处收起",
+    "ok": false,
+    "error": "点空白后抽屉还在"
+  },
+  {
+    "name": "节点格式条：加粗按下去正文变粗、按钮显示按下",
+    "ok": false,
+    "error": "点不到「点加粗」：等满 15000ms 它都没可见。"
+  },
+  {
+    "name": "节点格式条：键盘取消加粗后按钮跟着弹起",
+    "ok": false,
+    "error": "基线不成立：「节点正文里有上一步加的粗体」应当能被探针找到，但一个都没找到。"
+  },
+  {
+    "name": "节点格式条：无序列表有项目符号",
+    "ok": false,
+    "error": "点不到「点无序列表」：等满 15000ms 它都没可见。"
+  },
+  {
+    "name": "节点格式条：悬停按钮出提示",
+    "ok": false,
+    "error": "locator.hover: Timeout 30000ms exceeded."
+  },
+  {
+    "name": "创作区工具栏：加粗按下去正文变粗、按钮显示按下",
+    "ok": false,
+    "error": "加粗后按钮没显示按下"
+  },
+  {
+    "name": "创作区工具栏：键盘取消加粗后按钮跟着弹起",
+    "ok": true
+  },
+  {
+    "name": "创作区工具栏：有序 / 无序列表有序号和项目符号",
+    "ok": false,
+    "error": "locator.click: Timeout 15000ms exceeded."
+  },
+  {
+    "name": "创作区工具栏：悬停按钮出提示",
+    "ok": false,
+    "error": "locator.hover: Timeout 30000ms exceeded."
+  }
+]
