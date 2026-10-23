@@ -588,6 +588,16 @@ test('spending and nightly workflows use shared routing, browser setup, timeouts
   assert.equal(nightly.jobs.walks.steps.find((step) => step.name === 'Install Chromium').run, PLAYWRIGHT_INSTALL_STEP)
   assert.match(nightly.jobs.walks.steps.find((step) => step.name === 'Run non-paid walkthrough batch').run, /timeout 600/)
   assert.match(nightly.jobs.report.steps.find((step) => step.name === 'Publish summary and update issue').run, /nightly-walk-summary\.mjs/)
+  // 打包冒烟每夜一跑（R-mac-smoke-flake）：PR 上的 Mac Package 只在打包文件变动时才跑，夜跑是它唯一的定时兜底。
+  // 跑的必须是同一条 dist:mac:dir（不另抄一份冒烟命令），结果必须进同一张汇总表（report 依赖它、行写进 nightly-walks-*）。
+  const packaged = nightly.jobs['packaged-mac']
+  assert.ok(packaged, '夜跑缺 packaged-mac：打包冒烟又只剩「碰打包文件才跑」')
+  assert.match(String(packaged['runs-on']), /^macos-/)
+  const packagedRun = packaged.steps.find((step) => step.name === 'Package macOS app and run packaged smoke').run
+  assert.match(packagedRun, /pnpm run dist:mac:dir/)
+  assert.match(packagedRun, /nightly-walks\/results-packaged-mac\.tsv/)
+  assert.match(packaged.steps.find((step) => step.name === 'Upload packaged smoke evidence').with.name, /^nightly-walks-/)
+  assert.deepEqual([nightly.jobs.report.needs].flat().sort(), ['packaged-mac', 'walks'])
 })
 
 test('workflows delegate Chromium installation to the shared script', () => {
