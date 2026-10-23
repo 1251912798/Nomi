@@ -262,7 +262,7 @@ describe('board Done', () => {
   })
   it('an unchanged Done on a board whose picture already exists adds no version', async () => {
     fixture.boardState = drawn()
-    const onClose = await done({ ...board, result: { id: 'v1', type: 'image', url: 'nomi-local://v1' }, history: [{ id: 'v1', type: 'image', url: 'nomi-local://v1' }], meta: { whiteboardState: drawn() } } as GenerationCanvasNode, drawn())
+    const onClose = await done({ ...board, result: { id: 'v1', type: 'image', url: 'nomi-local://v1' }, history: [{ id: 'v1', type: 'image', url: 'nomi-local://v1' }], meta: { whiteboardState: drawn() } } as unknown as GenerationCanvasNode, drawn())
     expect(fixture.capture).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalledOnce()
   })
