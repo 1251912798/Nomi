@@ -8,10 +8,19 @@
  *   · Agent 落地的节点（真 buildPlannedNodeMeta 造 meta）挂载后 meta 一个字不变；
  *   · Agent 没写比例（档案默认）、旧项目没标记的节点：同样不变；
  *   · 用户手建的新视频卡：挂载时自动选模型那一笔就带上 16:9（有竖图输入则 9:16），仍然最多 1 次 store 写。
+ * 同一套渲染器还钉「明确选过」标记的两个用户写口：生成框底栏的比例控件（档案控件 / 目录控件）上选比例，
+ * 要记 aspect_ratio_user_set（桩拿到的 props 就是真组件交给底栏的那一套，回调是真的）——连线时用户选过的比例不被产品默认覆盖。
  */
 import React, { type JSX } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createReactTestRenderer } from '../../ai/v4/testReactRenderer'
+
+/** 真组件交给底栏的那一套：渲染出来的控件，以及用户在控件上选值的两个回调（档案控件 / 目录控件）。 */
+type BarProps = {
+  renderedControls: Array<{ key: string; binding?: string }>
+  onParameterControlChange: (control: unknown, value: string) => void
+  onCatalogControlChange: (control: unknown, value: string) => void
+}
 
 const probe = vi.hoisted(() => ({
   /** 每一次桌面桥调用（订阅类 on* 不算 IO，单独记）。 */
@@ -20,6 +29,8 @@ const probe = vi.hoisted(() => ({
   editorRenders: 0,
   editorCreates: 0,
   leafRenders: 0,
+  /** 底栏最近一次拿到的 props。 */
+  bar: null as unknown as BarProps | null,
 }))
 
 vi.mock('../../common/useNomiRichTextEditor', async () => {
@@ -45,7 +56,7 @@ vi.mock('react-i18next', async () => ({
 vi.mock('../reactFlow/canvasViewportScale', () => ({ useCanvasLiveZoom: () => 1 }))
 
 // 只把「要真 DOM / Mantine 主题」的纯展示叶子换成计数桩：它们拿到的数据（模型清单、参数、参考槽）全是现役链路算出来的。
-vi.mock('./InlineParameterBar', () => ({ default: () => { probe.leafRenders += 1; return null } }))
+vi.mock('./InlineParameterBar', () => ({ default: (props: BarProps) => { probe.leafRenders += 1; probe.bar = props; return null } }))
 vi.mock('../../assets/AssetReference', () => ({ default: () => { probe.leafRenders += 1; return null } }))
 vi.mock('./NodeEffectRecommendations', () => ({ NodeEffectRecommendations: () => null }))
 vi.mock('../../../design/tooltip', () => {
@@ -72,6 +83,8 @@ const MODELS = [
   { modelKey: 'kling-v3', vendorKey: 'apimart', labelZh: 'Kling 3.0', kind: 'video', enabled: true, published: true, publishedModes: ['text_to_video', 'image_to_video'], availability: usable },
   { modelKey: 'veo3.1-fast', vendorKey: 'apimart', labelZh: 'Veo 3.1', kind: 'video', enabled: true, published: true, publishedModes: ['text_to_video', 'image_to_video'], availability: usable },
   { modelKey: 'doubao-seedance-2.5', vendorKey: 'apimart', labelZh: 'Seedance 2.5', kind: 'video', enabled: true, published: true, publishedModes: ['text_to_video', 'image_to_video'], availability: usable },
+  // 认不出档案的自接模型：画幅控件来自目录自己声明的 video.sizeOptions（目录控件，不是档案控件）。
+  { modelKey: 'custom-catalog-video', vendorKey: 'apimart', labelZh: 'Custom Video', kind: 'video', enabled: true, published: true, publishedModes: ['text_to_video', 'image_to_video'], availability: usable, meta: { video: { sizeOptions: ['16:9', '9:16'], defaultSize: '16:9' } } },
 ]
 const HEALTH = { ok: true, counts: { vendors: 1, enabledVendors: 1, models: 2, enabledModels: 2, mappings: 0, enabledMappings: 0, enabledApiKeys: 1 }, byKind: [], issues: [] }
 const PROJECTS = [{ id: 'project-a', name: 'A' }, { id: 'project-b', name: 'B' }, { id: 'project-c', name: 'C' }]
@@ -233,6 +246,41 @@ describe('打开节点不改比例；新卡的比例默认值在自动选模型�
   it('新视频卡建的时候已经连着竖图：自动选模型那一笔就是 9:16', async () => {
     await openNode(videoNode('shot', {}), { nodes: [tallRef], edges: [{ id: 'tall-shot', source: 'tall', target: 'shot', mode: 'reference' }] })
     expect(metaOf('shot').modelKey).toBeTruthy()
+    expect(orientationOf('shot')).toBe('portrait')
+  })
+
+  // 「明确选过」标记在生成框里的两个写口：用户在底栏比例控件上选值。标记是「用户选的比例连线时不被产品默认覆盖」的唯一防线，
+  // 写口必须有测试钉住（V-ratio 阻断 2）。选完再连一张横图：没记标记的节点会被 07-17 规则改回 16:9，记了的不动。
+  it('档案控件（Kling 的 aspect_ratio）上选 9:16 → 记明确选过；之后连一张横图，比例仍是 9:16', async () => {
+    await openNode(videoNode('shot', landed('kling-v3', {})))
+    expect(metaOf('shot')[ASPECT_EXPLICIT_META_KEY]).toBeUndefined()
+    expect(orientationOf('shot')).toBe('landscape')
+    const bar = probe.bar!
+    const control = bar.renderedControls.find((candidate) => candidate.key === 'aspect_ratio')
+    expect(control, '底栏渲染出了档案的比例控件').toBeTruthy()
+    bar.onParameterControlChange(control, '9:16')
+    await settle(renderer)
+    expect(metaOf('shot')[ASPECT_EXPLICIT_META_KEY]).toBe(true)
+    expect(orientationOf('shot')).toBe('portrait')
+    useGenerationCanvasStore.getState().connectNodes('wide', 'shot')
+    expect(useGenerationCanvasStore.getState().edges.map((edge) => edge.source)).toEqual(['wide'])
+    expect(orientationOf('shot')).toBe('portrait')
+  })
+
+  it('目录控件（自接模型目录声明的画幅）上选 9:16 → 记明确选过；之后连一张横图，比例仍是 9:16', async () => {
+    await openNode(videoNode('shot', {
+      modelKey: 'custom-catalog-video', modelVendor: 'apimart', vendor: 'apimart', modelLabel: 'Custom Video', aspect_ratio: '16:9',
+    }))
+    expect(metaOf('shot')[ASPECT_EXPLICIT_META_KEY]).toBeUndefined()
+    const bar = probe.bar!
+    const control = bar.renderedControls.find((candidate) => candidate.binding === 'size')
+    expect(control, '底栏渲染出了目录的画幅控件').toBeTruthy()
+    bar.onCatalogControlChange(control, '9:16')
+    await settle(renderer)
+    expect(metaOf('shot')[ASPECT_EXPLICIT_META_KEY]).toBe(true)
+    expect(orientationOf('shot')).toBe('portrait')
+    useGenerationCanvasStore.getState().connectNodes('wide', 'shot')
+    expect(useGenerationCanvasStore.getState().edges.map((edge) => edge.source)).toEqual(['wide'])
     expect(orientationOf('shot')).toBe('portrait')
   })
 })

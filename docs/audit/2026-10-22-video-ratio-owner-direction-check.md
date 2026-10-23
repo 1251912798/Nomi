@@ -56,3 +56,72 @@
 - `src/workbench/generationCanvas/nodes/composerKeepsAspect.test.tsx`：真挂 `NodeGenerationComposer`。修前（base 代码）5 格红：Agent 落地的 Kling 9:16 / Veo 9:16 / Seedance 2.5 21:9、Agent 没写比例、旧节点没标记；修后 7 格全绿（含手建新卡 16:9 / 已连竖图 9:16 两格护栏，修前修后都绿）。
 - `src/workbench/generationCanvas/store/canvasConnectVideoAspect.test.ts`：连线 / 组连线 / 明确选过 / 断线删上游。修前 4 格红，修后 8 格全绿。
 - 现有：`composerMountBudget.test.tsx`（新卡首次挂载最多 1 次 store 写）不变。
+
+## 第 2 轮（2026-10-24 · I-ratio-fix：补独立验收 V-ratio 的条件）
+
+触发：第 1 轮用户拍板「换」之后，独立验收 V-ratio 判「有条件通过」（三条阻断 + 若干建议），协调派一条实现线在 #1291 分支上续做（补，不换）。这一轮要碰的文件 `node scripts/fix-churn.mjs` 再次命中，逐条列在下面，派工书要求按 P1 追加本节并带 `Direction-Check:` trailer。
+
+### 命中清单
+
+| 命中 | 构成 | 是不是只有口径命中 |
+|---|---|---|
+| `store/canvasDocumentCommit.ts` 文件 14 天已有 4 个 fix（10-09 ×2、10-10、10-11）；自写登记「canvas-undo-journal-write-boundary」（`under-review`，reviewBy 2026-11-06，paths 含它）30 天 18 个 | 全是别的 PR 的修复 | 否，文件本身命中 |
+| `electron/shared/canvas/externalCanvasWrite.ts` 文件 2 个（10-09 ×2），目录 6 个 | 别的 PR | 否，文件本身命中 |
+| `store/canvasGraphActions.ts` 文件 3 个 | 本 PR 自己的 d8575797b + 10-11 + 10-19 各一 | 否（去掉本 PR 自己的仍有 2 个） |
+| `adapters/` 目录 6 个、`agent/`（plannedNodeMeta）目录 5 个、`creation/storyboard/exec/` 目录 2 个；概念「画布分组交互」「画布整写…怎么对待事实层」「新东西落在画布哪里」「制作镜头从画布显式解绑」 | 目录 / 概念口径 | 是 |
+
+文件级命中的三处（`canvasDocumentCommit.ts`、`externalCanvasWrite.ts`、`canvasGraphActions.ts`）本轮的改法都是**在已有边界上多接一个调用 / 回调**，没有新增分支、特例或兜底；是否按「代批」处理由协调定。
+
+### 0. 一句话根因
+
+第 1 轮把「视频比例默认值」收到一个出处、把连线收到一个派生口，但派生口**外面**还有四处没收齐：入口没数全也没钉死（外部 MCP 连线没数到；3 个 derive 调用点、3 个「明确选过」标记写口没有测试）、派生口里自己另取了一份「这个节点有哪些比例档」（按种类的默认方式取目录，生成框按节点当前生成方式取）、触发条件比规则宽（任何一条边都重算）、标记按键名判而不按控件语义判。
+
+### 1. 归类表（V-ratio 条目 → 直接原因 → 类）
+
+| V-ratio 条目 | 直接原因 | 类 |
+|---|---|---|
+| 阻断 1：只发布「图生视频」的模型连线时不铺 9:16 | `seedTargetVideoAspect` 自己用 `peekCatalogModelOptions(种类)` 取清单，缺省是文生视频那份 | 同一个事实两处取（生成框一份、派生口一份） |
+| 阻断 2：3 个 derive 调用、3 个标记写口删掉整套测试仍绿 | 入口只测了单连 / 组连线 | 入口没全写成测试（P2） |
+| 阻断 3：外部 MCP 连线不经 derive | `applyExternalGraph` 是整图提交，当时被归为「不是手势」 | 入口没数全 |
+| 建议 1：Agnes Video 2.5 只写 `size: 960P` 被记成「比例明确选过」 | `ASPECT_RATIO_KEY_SET.has(控件键名)` | 按键名判，不按控件语义判 |
+| 建议 2：Seedance 2.5 连角色参考边，adaptive 被改成 16:9 | 任何一条边都调重算 | 触发条件比规则宽 |
+
+### 2. 为什么这一类会一直出现
+
+「连线之后目标跟着变什么」有很多扇入口（手势、Agent、外部 MCP、进组），每一扇都是在自己的上下文里调一个函数；入口多、测试只钉最常走的两扇，其余的删掉也没人发现。派生口里需要的事实（模型清单、哪些边算输入、哪个控件是比例）又各有现成的 owner，派生口第一次写的时候各抄了一份近似的。铁律 ⑩（说的 = 摆的）：Agent 说的比例要落到节点、节点显示的要等于会发的。
+
+### 3. 不补的话接下来会冒出什么
+
+| 预测 | 怎么验证 |
+|---|---|
+| 外部 Agent（Claude Code / Codex）连竖图到视频节点，07-17 规则不生效（打开节点也没有兜底了） | `canvasConnectVideoAspect.test.ts`「外部 MCP 连线」 |
+| 再出现一个只发布「图生视频」的模型，连线又不铺比例 | `canvasConnectVideoAspect.test.ts`「按节点当前生成方式」 |
+| 下一个把 `size` 当清晰度的模型被记成「比例明确选过」，连竖图不变 9:16 | `plannedNodeMeta.test.ts`、`storyboardProjection.test.ts` |
+
+### 4. 靶子独立性检查
+
+尺子是 V-ratio（独立验收线，Claude Sonnet）的变异复核和探针；本线没有改它们。每条新测试都在源码导出副本里用「删掉对应调用」的变异验过会红（红格数在设计卡「变异复核」一节）。没有「修对了反而掉分」的先例。
+
+### 5. P0 与自写登记
+
+- 「视频首选 16:9、输入全竖 9:16」仍是我们的产品规则，判据复用已有的 `aspectRatioControlKey`、`collectInputAspectRatios`、模型清单缓存，没有新写判据。
+- 自写登记「canvas-undo-journal-write-boundary」（`canvasDocumentCommit.ts` 在它的 paths 里）：本轮只在 `external` 分支末尾加一个对共用派生口的调用，不改撤销日志和整写规则本身。该登记的 `whyNotIntegrated`（撤销「建节点」时装着付费结果的节点要留下，Yjs / tldraw 按来源撤销表达不了）和 `revisitWhen`（撤销栈改 Immer 反向补丁的评估结论出来时）不变，本轮不动它。
+
+### 6. 对比与推荐
+
+| 选项 | 做什么 | 代价 | 风险 | 推荐 |
+|---|---|---|---|---|
+| 接入现成方案 | 无：这是产品规则 + 我们的画布手势，没有库能代替 | — | — | — |
+| 补（同提交删旧） | 派生口改用生成框同一个取法并删掉自己那份；标记判据换成已有的 `aspectRatioControlKey` 并删两处键名清单；外部写口接同一个派生口；入口 / 标记写口各补一条测试 | 中 | 外部连线现在也会切生成方式（口径同进程内 Agent） | **是** |
+| 重写 | 把所有入口收成一个「建边」函数 | 大 | 碰撤销日志和写边界，与「补，不换」冲突 | 否 |
+| 删 | 去掉连线时铺比例，回到挂载 effect 或只在选模型时铺 | 小 | 违背 07-17 与 Q2 拍板 | 否 |
+
+### 7. 用户要权衡的核心
+
+已由协调裁定（10-23）：外部 MCP 连线算连线手势，和进程内 Agent 同一口径；项目没打开、主进程直接写盘那条路这次不做（打开后生成框显示的就是会发的比例，不会「显示 ≠ 发出」），记在根因合同 `residual_risks`，交协调立账。
+
+## 第 2 轮特征测试清单
+
+- `src/workbench/generationCanvas/store/canvasConnectVideoAspect.test.ts`：8 → 20 格（目录取法 4、入口 3、新边种类 2、外部 MCP 连线 3）。
+- `src/workbench/generationCanvas/nodes/composerKeepsAspect.test.tsx`：7 → 9 格（用户在比例控件上选的两个写口）。
+- `src/workbench/generationCanvas/agent/plannedNodeMeta.test.ts`：+6 格；`src/workbench/creation/storyboard/exec/storyboardProjection.test.ts`：+4 格；`electron/shared/canvas/externalCanvasWrite.test.ts`：+4 格；`src/workbench/generationCanvas/nodes/aspectRatio.test.ts`：+8 格。

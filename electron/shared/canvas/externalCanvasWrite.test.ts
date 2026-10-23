@@ -82,4 +82,45 @@ describe('mergeExternalCanvasWrite', () => {
       expect(mergeExternalCanvasWrite({ ...args, restoredEdgeIds: ['old'] }).edges).toEqual([legacy])
     })
   })
+
+  // 2026-10-23 视频比例默认值的外部连线口（I-ratio-fix）：渲染层据 onAdmittedEdges 对外部连线跑「连线之后目标跟着变的东西」
+  // （store/canvasConnectDerivations）。报出来的必须恰好是这次写入里真的「连了线」的那几条：过了总闸的新边；
+  // 放回的、没动过的旧边、被总闸拒掉的都不算。
+  describe('onAdmittedEdges reports exactly the edges this write really connected', () => {
+    const kinds = [node('v', { kind: 'video' }), node('t', { kind: 'text' }), node('i', { kind: 'image' }), node('w', { kind: 'video' })]
+    const asEdge = (id: string, source: string, target: string, mode?: string) => ({ id, source, target, ...(mode ? { mode } : {}) })
+    const admittedIds = (args: Parameters<typeof mergeExternalCanvasWrite>[0]) => {
+      const admitted: string[] = []
+      mergeExternalCanvasWrite({ ...args, onAdmittedEdges: (edges) => admitted.push(...edges.map((edge) => edge.id)) })
+      return admitted
+    }
+
+    it('a new legal edge is reported; a rejected one and an untouched pre-existing one are not', () => {
+      const legacy = asEdge('legacy', 'v', 't')
+      const current = { nodes: kinds, edges: [legacy] }
+      const next = { nodes: kinds, edges: [legacy, asEdge('bad', 'v', 't', 'first_frame'), asEdge('ok', 'i', 'w', 'reference')] }
+      expect(admittedIds({ base: current, next, current })).toEqual(['ok'])
+    })
+
+    it('an edge restored by restoredEdgeIds (undo of a delete) is not a new connection', () => {
+      const edge = asEdge('back', 'i', 'w', 'reference')
+      const args = { base: { nodes: kinds, edges: [] }, next: { nodes: kinds, edges: [edge] }, current: { nodes: kinds, edges: [] } }
+      expect(admittedIds(args)).toEqual(['back'])
+      expect(admittedIds({ ...args, restoredEdgeIds: ['back'] })).toEqual([])
+    })
+
+    it('an existing edge id re-wired to a new link that passes the gate is a new connection', () => {
+      const original = asEdge('e', 'i', 'w', 'reference')
+      const current = { nodes: kinds, edges: [original] }
+      const rewired = asEdge('e', 'i', 'w', 'first_frame')
+      expect(admittedIds({ base: current, next: { nodes: kinds, edges: [rewired] }, current })).toEqual(['e'])
+    })
+
+    it('nothing is reported when the write adds no edge, and the callback is optional', () => {
+      const original = asEdge('e', 'i', 'w', 'reference')
+      const same = { nodes: kinds, edges: [original] }
+      expect(admittedIds({ base: same, next: same, current: same })).toEqual([])
+      expect(() => mergeExternalCanvasWrite({ base: same, next: same, current: same })).not.toThrow()
+    })
+  })
 })

@@ -64,7 +64,6 @@ function writeCanvasEdge(
   get: GraphGet,
   sourceNodeId: string,
   targetNodeId: string,
-  mode: GenerationCanvasEdgeMode | undefined,
   targetParamKey: string | undefined,
   order: number | undefined,
   decide: (state: ReturnType<GraphGet>) => { ok: false } | { ok: true; mode: GenerationCanvasEdgeMode; targetParamKey?: string },
@@ -83,13 +82,16 @@ function writeCanvasEdge(
   const afterEdges = get().edges
   if (afterEdges !== beforeEdges) {
     const addedEdge = afterEdges.find((candidate) => !beforeEdges.some((edge) => edge.id === candidate.id))
-    if (addedEdge) emitCanvasGesture([
-      ...beforeEdges.filter((edge) => !afterEdges.some((candidate) => candidate.id === edge.id))
-        .map((edge) => ({ type: 'canvas.edge.removed' as const, payload: { edge } })),
-      { type: 'canvas.edge.added', payload: { edge: addedEdge } },
-    ])
-    // agent 计划 / 3D 站位经此入口连线，同样把收不下参考的目标自动切到能收的模式(幂等，见 helper)。
-    deriveTargetAfterConnect(get, sourceNodeId, targetNodeId, mode)
+    if (addedEdge) {
+      emitCanvasGesture([
+        ...beforeEdges.filter((edge) => !afterEdges.some((candidate) => candidate.id === edge.id))
+          .map((edge) => ({ type: 'canvas.edge.removed' as const, payload: { edge } })),
+        { type: 'canvas.edge.added', payload: { edge: addedEdge } },
+      ])
+      // agent 计划 / 3D 站位经此入口连线，同样把收不下参考的目标自动切到能收的模式(幂等，见 helper)。
+      // 传落库后的 mode：调用方请求的 mode 可以缺省，decide 还会按目标当前模式改写它。
+      deriveTargetAfterConnect(get, sourceNodeId, targetNodeId, addedEdge.mode)
+    }
   }
 }
 
@@ -275,7 +277,7 @@ export const createCanvasGraphActions: CanvasSliceCreator<CanvasGraphActions> = 
   },
   connectNodes: (sourceNodeId, targetNodeId, mode, targetParamKey, order) => {
     // **新边的唯一写边边界**：不管目标有没有参数槽都先过总闸（没有任何「我是系统出处边」的开关——出处边走 addDerivedOutput：建节点 + 连边一个原子动作）。
-    writeCanvasEdge(set, get, sourceNodeId, targetNodeId, mode, targetParamKey, order, (state) => {
+    writeCanvasEdge(set, get, sourceNodeId, targetNodeId, targetParamKey, order, (state) => {
       const target = state.nodes.find((node) => node.id === targetNodeId)
       const source = state.nodes.find((node) => node.id === sourceNodeId)
       const slots = readParameterReferenceSlots(target?.meta)
@@ -293,7 +295,7 @@ export const createCanvasGraphActions: CanvasSliceCreator<CanvasGraphActions> = 
     if (!source || !canDeriveOutput(kind, source, node.kind)) return null
     // 落点只是期望：永远走 addNode 的避让总闸（类型不收 exactPosition，运行时再封一道，JS / any 调用方也绕不过）。
     const created = get().addNode({ ...node, exactPosition: false })
-    writeCanvasEdge(set, get, sourceNodeId, created.id, mode, undefined, undefined, () => ({ ok: true as const, mode: mode ?? 'reference', targetParamKey: undefined }))
+    writeCanvasEdge(set, get, sourceNodeId, created.id, undefined, undefined, () => ({ ok: true as const, mode: mode ?? 'reference', targetParamKey: undefined }))
     return created
   },
   updateEdgeMode: (edgeId, mode) => {

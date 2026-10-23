@@ -13,12 +13,10 @@ import { renderShotNodePrompt, renderShotKeyframePrompt, effectiveShotDurationSe
 import { shotReferenceMetaPatch } from '../shotRow/shotReferenceSlots'
 import { compileShotOutbound } from '../../../generationCanvas/agent/storyboardPromptCompiler'
 import { resolveKeyframeParams, resolveShotParams, shotModeControls } from '../../../generationCanvas/agent/storyboardShotScope'
-import { aspectRatioControlsOf, placeAspectRatio } from '../../../../../electron/shared/aspectRatioValue'
+import { aspectRatioControlKey, aspectRatioControlsOf, placeAspectRatio } from '../../../../../electron/shared/aspectRatioValue'
 import type { ArchetypeMode } from '../../../../../electron/shared/modelArchetypes/types'
-import { ASPECT_RATIO_KEYS } from '../../../generationCanvas/nodes/aspectRatio'
 import { ASPECT_EXPLICIT_META_KEY } from '../../../generationCanvas/nodes/aspectExplicit'
 
-const ASPECT_RATIO_KEY_SET: ReadonlySet<string> = new Set(ASPECT_RATIO_KEYS)
 const PRIMITIVE = new Set(['string', 'number', 'boolean'])
 
 /** Shared projection for plan writes and generation; canvas overrides are never reset. */
@@ -52,12 +50,15 @@ export function projectShotNode(
     const controls = shotModeControls({ modelKey: typeof meta.modelKey === 'string' ? meta.modelKey : undefined,
       modelVendor: typeof meta.modelVendor === 'string' ? meta.modelVendor : undefined,
       modeId: typeof metaModeId === 'string' ? metaModeId : undefined, meta })
-    const placed = controls ? placeAspectRatio(rowParams, aspectRatioControlsOf(controls)).parameters : rowParams
+    const ratioControls = controls ? aspectRatioControlsOf(controls) : []
+    const placed = controls ? placeAspectRatio(rowParams, ratioControls).parameters : rowParams
+    // 写进来的哪个键是这个模式的比例控件按控件的选项判（与落画布那一处 buildPlannedNodeMeta 同一个判据），不按键名。
+    const ratioKey = aspectRatioControlKey(ratioControls)
     for (const [key, value] of Object.entries(placed)) {
       if (!PRIMITIVE.has(typeof value)) continue
       meta[key] = value
       // 分镜写的画幅 = 明确选过（与落画布那一处 buildPlannedNodeMeta 同一条）：连线时视频比例的产品默认不改它。
-      if (ASPECT_RATIO_KEY_SET.has(key)) meta[ASPECT_EXPLICIT_META_KEY] = true
+      if (key === ratioKey) meta[ASPECT_EXPLICIT_META_KEY] = true
     }
   }
   if (part === 'shot' && !isImageShot && Number.isFinite(shot.durationSec) && shot.durationSec > 0) {
