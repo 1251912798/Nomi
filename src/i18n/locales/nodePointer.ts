@@ -11,11 +11,15 @@ export const zhNodePointer = {
   more: '还有 {{count}} 个',
   moreCompact: '+{{count}}',
   moreAria: '还有 {{count}} 个，点了全部展开',
-  /** 窄窗口点了指向、对话收起之后，回来的那一颗。 */
+  /** 窄窗口点了指向、对话收起之后，回来的那一颗：看得见的字（设计系统 §1.8 规则 3：中文 ≤4 字、英文 ≤2 词）。 */
   backToChat: '回到对话',
   backToChatWithLabel: '{{label}} · 回到对话',
-  /** 读屏念的名字：镜号 + 名字 + 状态；点了会去画布。 */
+  /** 同一颗的读屏名 / 悬停名（不受 ≤2 词限制；英文写全「Back to chat」）。 */
+  backToChatName: '回到对话',
+  backToChatNameWithLabel: '{{label}} · 回到对话',
+  /** 读屏念的名字：镜号 + 名字 + 状态；点了会去画布。失败时宿主给的结局（例如「没有发出去」）也念。 */
   aria: '{{name}}，{{status}}，点了在画布上定位',
+  ariaOutcome: '{{name}}，{{status}}，{{outcome}}，点了在画布上定位',
   ariaPlain: '{{name}}，点了在画布上定位',
   ariaDeleted: '{{name}}，已删除',
   /** 节点此刻不在画布上、宿主也没说删（画布还在载入 / 撤销回放那一瞬）：不说已删除，只说现在定位不了。 */
@@ -30,9 +34,12 @@ export const enNodePointer: typeof zhNodePointer = {
   more: '{{count}} more',
   moreCompact: '+{{count}}',
   moreAria: '{{count}} more, show all',
-  backToChat: 'Back to chat',
-  backToChatWithLabel: '{{label}} · Back to chat',
+  backToChat: 'Back',
+  backToChatWithLabel: '{{label}} · Back',
+  backToChatName: 'Back to chat',
+  backToChatNameWithLabel: '{{label}} · Back to chat',
   aria: '{{name}}, {{status}}. Opens it on the canvas',
+  ariaOutcome: '{{name}}, {{status}}, {{outcome}}. Opens it on the canvas',
   ariaPlain: '{{name}}. Opens it on the canvas',
   ariaDeleted: '{{name}}, deleted',
   ariaUnavailable: '{{name}}, can’t be located right now',

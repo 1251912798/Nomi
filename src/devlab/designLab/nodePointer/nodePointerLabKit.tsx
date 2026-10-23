@@ -139,7 +139,7 @@ export function NodePointerStage({ locale = 'zh-CN', scene = {}, children }: { l
     useGenerationCanvasStore.getState().restoreSnapshot({ nodes: [], edges: [], groups: [] }, 'lab-node-pointer')
     useGenerationCanvasStore.setState({ nodes: labNodes(locale), edges: [], groups: [] })
     seedRuns()
-    useNodeExternalHighlightStore.setState({ hoverNodeId: null, hoverOwner: null })
+    useNodeExternalHighlightStore.setState({ hoverNodeId: null, claims: [] })
     useNodePointerStore.setState({
       locatedNodeId: scene.located ?? null,
       returnTo: scene.returnTo ? { surface: 'generation', form: 'float', nodeId: scene.returnTo.nodeId, label: scene.returnTo.label } : null,

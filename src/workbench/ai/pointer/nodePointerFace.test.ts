@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GenerationCanvasNode } from '../../generationCanvas/model/generationCanvasTypes'
 import type { GenerationFeedback } from '../../observability/generationFeedback'
 import type { ProductionShotState } from '../../../../electron/shared/productionShotPhase'
-import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary } from './nodePointerFace'
+import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, pointerHoverStack } from './nodePointerFace'
 
 const node = (patch: Partial<GenerationCanvasNode> = {}): GenerationCanvasNode => ({
   id: 'n1', kind: 'video', title: '纸船出发', categoryId: 'shots', position: { x: 0, y: 0 }, status: 'idle', prompt: '', meta: {}, ...patch,
@@ -73,6 +73,24 @@ describe('nodePointerGroupVisible', () => {
     expect(nodePointerGroupVisible(4, 3, false)).toEqual({ shown: 3, hidden: 1 })
     expect(nodePointerGroupVisible(3, 3, false)).toEqual({ shown: 3, hidden: 0 })
     expect(nodePointerGroupVisible(5, 3, true)).toEqual({ shown: 5, hidden: 0 })
+  })
+})
+
+describe('pointerHoverStack', () => {
+  it('the last tile to arrive is the one shown; leaving takes away only the one that left', () => {
+    const afterBoth = pointerHoverStack(pointerHoverStack([], 'a', true), 'b', true)
+    expect(afterBoth).toEqual(['a', 'b'])
+    // 先到的走了，后到的还在；后到的走了，先到的回来。
+    expect(pointerHoverStack(afterBoth, 'a', false)).toEqual(['b'])
+    expect(pointerHoverStack(afterBoth, 'b', false)).toEqual(['a'])
+    expect(pointerHoverStack(pointerHoverStack(afterBoth, 'a', false), 'b', false)).toEqual([])
+  })
+
+  it('arriving again moves a tile to the end; nothing changes (same array) when there is nothing to change', () => {
+    expect(pointerHoverStack(['a', 'b'], 'a', true)).toEqual(['b', 'a'])
+    const same = ['a', 'b']
+    expect(pointerHoverStack(same, 'b', true)).toBe(same)
+    expect(pointerHoverStack(same, 'c', false)).toBe(same)
   })
 })
 

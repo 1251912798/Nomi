@@ -28,7 +28,7 @@ import { NodeShotLabel, ShotNumberPill } from '../../generation/list/CanvasListL
 import { formatStoryboardShotLabel, isAutoStoryboardShotTitle, useStoryboardShotLabel } from '../../generation/list/storyboardLabels'
 import { useModelLabels } from '../../generation/list/generationListModelLabels'
 import { formatSeconds, readAspect, readDurationSeconds } from '../../generation/list/generationListMediaFacts'
-import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, type NodePointerFace } from './nodePointerFace'
+import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, pointerHoverStack, type NodePointerFace } from './nodePointerFace'
 import { useNodePointerStore } from './nodePointerStore'
 import { returnToChat, revealNodeFromChat } from './revealNodeFromChat'
 
@@ -112,10 +112,13 @@ function faceStatusText(t: Translate, face: NodePointerFace): string | null {
   }
 }
 
-function ariaLabel(t: Translate, model: PointerModel): string {
+/** 读屏念的名字。失败时宿主给的结局（例如「没有发出去」）也要念：它是「这一镜有没有发出去、钱有没有花」的事实，不只念节点自己的原因。 */
+function ariaLabel(t: Translate, model: PointerModel, outcome?: string): string {
   if (model.face.kind === 'removed') return t('nodePointer.ariaDeleted', { name: model.name })
   if (model.face.kind === 'unavailable') return t('nodePointer.ariaUnavailable', { name: model.name })
-  return model.status ? t('nodePointer.aria', { name: model.name, status: model.status }) : t('nodePointer.ariaPlain', { name: model.name })
+  if (outcome && model.status) return t('nodePointer.ariaOutcome', { name: model.name, status: model.status, outcome })
+  const status = outcome ?? model.status
+  return status ? t('nodePointer.aria', { name: model.name, status }) : t('nodePointer.ariaPlain', { name: model.name })
 }
 
 /** 悬停 / 聚焦时把画布上那个节点点亮；离开、失焦、卸载只清自己点亮的那一下（同一节点被两个指向元素指着时不互相清）。 */
@@ -242,11 +245,11 @@ export type NodePointerProps = {
   narrow?: boolean
   /** 组指向折叠：这一格的画面位置盖「还有 N 个」，点它展开（板 pointer.group.more）。 */
   overflow?: Readonly<{ hidden: number; onExpand: () => void }>
-  /** 组指向用：悬停 / 聚焦时把这一格的摘要报上去（组下方那一行）。 */
-  onHoverSummary?: (summary: string | null) => void
+  /** 组指向用：悬停 / 聚焦、离开 / 失焦时报一声，组据此在下方那一行现算被悬停那一镜的摘要。 */
+  onHover?: (hovering: boolean) => void
 }
 
-export function NodePointer({ subject, density = 'card', frame = 'single', narrow = false, overflow, onHoverSummary }: NodePointerProps): JSX.Element {
+export function NodePointer({ subject, density = 'card', frame = 'single', narrow = false, overflow, onHover }: NodePointerProps): JSX.Element {
   const { t } = useTranslation()
   const model = usePointerModel(subject)
   const locatable = nodePointerLocatable(model.face)
@@ -256,11 +259,11 @@ export function NodePointer({ subject, density = 'card', frame = 'single', narro
   const failedOutcome = model.face.kind === 'failed' ? subject.outcome : undefined
   const enter = (): void => {
     hover.on()
-    if (!overflow) onHoverSummary?.([model.shotText ?? model.name, ...model.summary('card')].join(' · '))
+    if (!overflow) onHover?.(true)
   }
   const leave = (): void => {
     hover.off()
-    onHoverSummary?.(null)
+    onHover?.(false)
   }
   const locate = (): void => {
     if (overflow) { overflow.onExpand(); return }
@@ -274,7 +277,7 @@ export function NodePointer({ subject, density = 'card', frame = 'single', narro
     'data-node-pointer-id': subject.nodeId,
     'data-node-pointer-face': model.face.kind,
     'data-node-pointer-hot': lit ? 'true' : undefined,
-    'aria-label': overflow ? t('nodePointer.moreAria', { count: overflow.hidden }) : ariaLabel(t, model),
+    'aria-label': overflow ? t('nodePointer.moreAria', { count: overflow.hidden }) : ariaLabel(t, model, failedOutcome),
     'aria-disabled': gone && !overflow ? true : undefined,
     'aria-expanded': overflow ? false : undefined,
     onClick: locate,
@@ -291,7 +294,6 @@ export function NodePointer({ subject, density = 'card', frame = 'single', narro
         className={cn(
           // 嵌在一句话里：行高不跟着那句话走（leading 固定），镜号小胶囊按板缩到 18px 高。
           'inline-flex h-7 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full border border-nomi-line bg-nomi-paper py-0 pl-[3px] pr-2.5 align-middle text-caption leading-[18px] text-nomi-ink transition-colors [&_[data-shot-number]]:py-0',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink',
           lit && 'border-transparent bg-nomi-ink-05',
           model.face.kind === 'failed' && 'border-nomi-danger-edge',
           gone && 'cursor-default bg-nomi-ink-05 text-nomi-ink-40',
@@ -315,7 +317,6 @@ export function NodePointer({ subject, density = 'card', frame = 'single', narro
         {...common}
         className={cn(
           'flex min-h-10 w-full min-w-0 items-center gap-2 rounded-nomi border border-nomi-line bg-nomi-paper py-1 pl-1 pr-2 text-left text-caption transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink',
           lit && 'border-transparent bg-nomi-ink-05',
           model.face.kind === 'failed' && 'border-nomi-danger-edge',
           gone && 'cursor-default bg-nomi-ink-05',
@@ -351,7 +352,7 @@ export function NodePointer({ subject, density = 'card', frame = 'single', narro
     ? <span className="absolute inset-0 grid place-items-center bg-nomi-ink-05 text-body-sm font-semibold text-nomi-ink-80" data-node-pointer-more={overflow.hidden}>{t('nodePointer.more', { count: overflow.hidden })}</span>
     : <PointerFaceArt model={model} size={frame === 'cell' ? 'cell' : 'card'} located={located} />
   return (
-    <button {...common} className={cn('flex w-full min-w-0 flex-col gap-1 rounded-nomi text-left text-caption focus-visible:outline-none', gone && 'cursor-default focus-visible:ring-2 focus-visible:ring-nomi-ink-40')}>
+    <button {...common} className={cn('flex w-full min-w-0 flex-col gap-1 rounded-nomi text-left text-caption', gone && 'cursor-default')}>
       <PointerLabel model={model} narrow={narrow} />
       {side ? (
         <span className="flex min-w-0 items-start gap-3">
@@ -403,11 +404,14 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
 }): JSX.Element {
   const { t } = useTranslation()
   const [expanded, setExpanded] = React.useState(false)
-  const [hovered, setHovered] = React.useState<string | null>(null)
+  // 被悬停 / 聚焦的格子：存 nodeId（先后到的排成一摞，离开的只拿掉自己），不存摘要——摘要每次渲染从节点现算，
+  // 模型目录后到、节点改名都会跟着变（独立验收 V-d2-pointer 偏差 8：摘要曾拍成字符串存进 state，目录晚到就缺模型名）。
+  const [hovered, setHovered] = React.useState<readonly string[]>([])
   if (density === 'row') {
     return <div className="flex flex-col gap-1.5" data-node-pointer-group="row">{subjects.map((subject) => <NodePointer key={subject.nodeId} subject={subject} density="row" narrow={narrow} />)}</div>
   }
   const visible = nodePointerGroupVisible(subjects.length, max, expanded)
+  const hoveredSubject = subjects.find((subject) => subject.nodeId === hovered[hovered.length - 1])
   if (density === 'chip') {
     return (
       <span data-node-pointer-group="chip">
@@ -415,7 +419,7 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
         {visible.hidden ? (
           <button
             type="button"
-            className="inline-flex h-7 items-center rounded-full border border-nomi-line bg-nomi-paper px-2.5 align-middle text-caption font-semibold text-nomi-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink"
+            className="inline-flex h-7 items-center rounded-full border border-nomi-line bg-nomi-paper px-2.5 align-middle text-caption font-semibold text-nomi-ink"
             aria-label={t('nodePointer.moreAria', { count: visible.hidden })}
             aria-expanded={false}
             data-node-pointer-more={visible.hidden}
@@ -437,13 +441,29 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
             frame="cell"
             narrow={narrow}
             overflow={visible.hidden && index === visible.shown - 1 ? { hidden: visible.hidden, onExpand: () => setExpanded(true) } : undefined}
-            onHoverSummary={setHovered}
+            onHover={(hovering) => setHovered((stack) => pointerHoverStack(stack, subject.nodeId, hovering))}
           />
         ))}
       </div>
-      {hovered ? <p className="m-0 min-w-0 truncate text-caption text-nomi-ink-60" data-node-pointer-hover-summary="true">{hovered}</p> : null}
+      {/* 摘要这一行常驻（没有悬停时放一个空格撑着行高）：悬停 / 离开不改组的高度，不把下面的东西（第③步的「生成」钮）顶下去。 */}
+      {hoveredSubject ? <PointerHoverSummary subject={hoveredSubject} /> : <PointerHoverLine text={null} />}
     </div>
   )
+}
+
+/** 组下方那一行：有内容就是被悬停那一镜的摘要，没有就是一个不换行空格——两种情况同一个 `<p>`、同一行高。 */
+function PointerHoverLine({ text }: { text: string | null }): JSX.Element {
+  return (
+    <p className="m-0 min-w-0 truncate text-caption text-nomi-ink-60" data-node-pointer-hover-summary={text ? 'true' : undefined} aria-hidden={text ? undefined : true}>
+      {text ?? '\u00a0'}
+    </p>
+  )
+}
+
+/** 被悬停那一镜的摘要（镜号 · 模型 · 比例 · 时长）：每次渲染从节点现算，不存。 */
+function PointerHoverSummary({ subject }: { subject: NodePointerSubject }): JSX.Element {
+  const model = usePointerModel(subject)
+  return <PointerHoverLine text={[model.shotText ?? model.name, ...model.summary('card')].join(' · ')} />
 }
 
 /** 「回到对话」上那一枚圆缩略图（P2 形态）：读的还是那个节点。 */
@@ -466,15 +486,18 @@ export function NodePointerReturnToChat({ withLabel = false, className }: { with
   const ref = React.useRef<HTMLButtonElement>(null)
   useOverlayEscape(ref, Boolean(target), returnToChat)
   if (!target) return null
+  // 看得见的字按设计系统 §1.8 规则 3 英文 ≤2 词（中文「回到对话」、英文「Back」）；读屏名 / 悬停名写全（英文「Back to chat」）。
   const text = withLabel ? t('nodePointer.backToChatWithLabel', { label: target.label }) : t('nodePointer.backToChat')
+  const name = withLabel ? t('nodePointer.backToChatNameWithLabel', { label: target.label }) : t('nodePointer.backToChatName')
   return (
     <button
       ref={ref}
       type="button"
-      aria-label={text}
+      aria-label={name}
+      title={name}
       data-node-pointer-return="true"
       onClick={returnToChat}
-      className={cn('inline-flex h-9 items-center gap-1.5 rounded-full bg-nomi-ink pl-3 pr-3.5 text-body-sm font-medium text-nomi-paper shadow-nomi-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink-40', withLabel && 'pl-1.5', className)}
+      className={cn('inline-flex h-9 items-center gap-1.5 rounded-full bg-nomi-ink pl-3 pr-3.5 text-body-sm font-medium text-nomi-paper shadow-nomi-lg', withLabel && 'pl-1.5', className)}
     >
       {withLabel ? <ReturnThumb nodeId={target.nodeId} /> : <IconMessage size={16} stroke={1.8} aria-hidden="true" />}
       {text}

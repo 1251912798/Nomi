@@ -77,6 +77,16 @@ export function nodePointerGroupVisible(total: number, max: number, expanded: bo
   return { shown: max, hidden: total - max }
 }
 
+/**
+ * 组里被悬停 / 聚焦的是哪一格（纯函数）：先后到的排成一摞，离开的只拿掉自己，亮最后到的那一格。
+ * 只存一个「当前是谁」的话，后到者一走就会把先到者还指着的清掉——和画布高亮的认领（nodeExternalHighlightStore）同一类错。
+ * 摘要行只需要这一摞的最后一个 nodeId，摘要本身每次渲染从节点现算（不存）。
+ */
+export function pointerHoverStack(stack: readonly string[], nodeId: string, hovering: boolean): readonly string[] {
+  if (hovering) return stack[stack.length - 1] === nodeId ? stack : [...stack.filter((id) => id !== nodeId), nodeId]
+  return stack.includes(nodeId) ? stack.filter((id) => id !== nodeId) : stack
+}
+
 /** 比例是不是竖的（「9:16」）。读不出就不是。 */
 export function isPortraitAspect(aspect: string | null): boolean {
   const match = aspect ? /^(\d+):(\d+)$/.exec(aspect) : null
