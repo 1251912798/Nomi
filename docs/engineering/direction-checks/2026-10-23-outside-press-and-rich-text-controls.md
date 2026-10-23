@@ -69,7 +69,7 @@
 - **应修 1，已修**：AnchoredPopover 的「被点外面关掉」标记只置真、不复位。调用方拒关时（ClipNode 上传中），后面按 Esc 或选一项关，焦点都会掉到 BODY。现在只记最近一下：用户回到浮层里按一下 / 按键，或按 Esc，就复位。真 Chromium 测试 `tests/ux/anchored-popover-focus.test.mjs` 遍历五种关法，修前后三条红，修后 5/5。
 - **建议 2，已删**：NodeEffectChips、CanvasControlsHelpPopover 在自己的关闭里把焦点塞回触发钮，绕过了 AnchoredPopover 的规矩。两处都早于 2026-10-05 FocusScope 接管还焦点，属于留下的旧实现，同提交删掉。`outsidePress.structure.test.ts` 加了一条普查：渲染 `<AnchoredPopover anchorRef={x}>` 的文件不许出现 `x.current…focus(`。对修前两个文件跑过，两处都能认出。
 - **存疑 7，按默认定了，事后报用户**：「点外面」按下即判定，所以在画布上拖动平移的起手也会收起抽屉和浮层；滚轮 / 触控板平移不产生 pointerdown，不收。不改成「原地点一下才收」，理由是：
-  - d3-zoom 的 clickDistance 是 0，按下时手抖 1px 就算拖动，随后的 click 会被吞掉。用户报的正是「点了没反应」，这样会把它换个样子带回来。
+  - 画布平移用的 d3-zoom 把「按下到松开移动超过 clickDistance」算拖动，并吞掉随后的 click。xyflow 12.11.5 给的 paneClickDistance 默认 1px（Nomi 没改）：独立验收 L-acc-opus-20261023 实测横移 1px 仍有 click，斜移 1px 或移动 2px 以上 click 就被吞。按下时稍一抖就可能被当成拖动，用户报的正是「点了没反应」，改成 click 判定会把它换个样子带回来。另一个选项是调大 paneClickDistance 再用 click 判定，代价是多一种听法，仍留给用户定。
   - 这样还要第二种听法，违背「只有一种听法」。
   - 与 Floating UI `useDismiss`、Radix DismissableLayer 的默认一致。
 

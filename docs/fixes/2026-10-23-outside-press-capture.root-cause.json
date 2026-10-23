@@ -61,7 +61,7 @@
     "src 里没有 document / window 上的 mousedown / touchstart 监听，也不用 Mantine useClickOutside",
     "document / window 上冒泡阶段的 pointerdown / click 监听只许减不许增（基线 4 处）",
     "因「点外面」关闭的锚点浮层不把焦点还给触发钮（照 Radix 非模态浮层的 hasInteractedOutsideRef），按 Esc / 选一项关闭照旧还焦点；「点外面」只记最近一下，调用方拒关后用户回到浮层里按一下 / 按键或按 Esc 即复位；还不还焦点只归 AnchoredPopover，调用方不在自己的关闭里把焦点塞回锚点；否则触发钮的悬停提示会在用户点完画布空白后挂着",
-    "「点外面」按下即判定：在画布上拖动平移的起手也算（与 Floating UI / Radix 默认一致；改成 click 判定会让手抖 1px 的按下被 d3-zoom 当拖动吞掉 click，重新变成「点了没反应」），滚轮 / 触控板平移不产生 pointerdown、不收"
+    "「点外面」按下即判定：在画布上拖动平移的起手也算（与 Floating UI / Radix 默认一致；改成 click 判定的话，按下后稍一移动（xyflow 默认 paneClickDistance 1px：斜移 1px 或移动 2px 以上）就被 d3-zoom 当拖动吞掉 click，重新变成「点了没反应」），滚轮 / 触控板平移不产生 pointerdown、不收"
   ],
   "doors": [
     {
