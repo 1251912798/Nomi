@@ -108,6 +108,10 @@ try {
     const stage = await win.locator('.generation-canvas-v2__stage').first().boundingBox()
     const bar = await noteToolbar.boundingBox()
     if (!stage || !bar || bar.y < stage.y) throw new Error(`格式条跑到画布可见区外（bar.y=${bar?.y} stage.y=${stage?.y}） · board:TextFormatDismiss/format.canvas-bar.shell`)
+    // 恒定屏幕尺寸：画布放大时格式条不跟着放大（跟着放大的话 300% 下约 120px，现在约 42px）。
+    const zoom = await win.locator('.react-flow__viewport').first().evaluate((element) => new DOMMatrix(getComputedStyle(element).transform).a)
+    if (zoom < 2) throw new Error(`前提不成立：画布没放大到 200% 以上（zoom=${zoom.toFixed(2)}），测不出格式条会不会跟着放大`)
+    if (bar.height >= 60) throw new Error(`格式条跟着画布放大了（zoom=${zoom.toFixed(2)}，高 ${bar.height}px，正常约 42px） · board:TextFormatDismiss/format.canvas-bar.shell`)
     await expect(note.locator('[data-node-floating-toolbar="true"]'), '编辑时节点上方不止一条浮条 · board:TextFormatDismiss/format.canvas-bar.shell').toHaveCount(1)
   })
   await win.keyboard.press('ControlOrMeta+A')

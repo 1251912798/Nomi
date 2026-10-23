@@ -13,8 +13,8 @@
     },
     {
       "url": "https://github.com/radix-ui/primitives/blob/main/packages/react/dropdown-menu/src/dropdown-menu.tsx",
-      "takeaway": "Radix DropdownMenu 用 hasInteractedOutsideRef：因点外面关闭时不把焦点还给触发钮，只有 Esc 等键盘关闭才还。",
-      "decisionImpact": "改了：AnchoredPopover 被点外面关掉时不再还焦点，修掉「点空白收起后『⋯』挂着『视图选项』提示」（走查截图发现）。"
+      "takeaway": "Radix DropdownMenu 用 hasInteractedOutsideRef：非模态时（或右键）因点外面关闭不把焦点还给触发钮，Esc 等键盘关闭才还；默认模态的 DropdownMenu 左键点外面照样还焦点。",
+      "decisionImpact": "改了：AnchoredPopover 是非模态浮层，照非模态那一支：被点外面关掉时不再还焦点，修掉「点空白收起后『⋯』挂着『视图选项』提示」（走查截图发现）。标记只管最近一下：调用方拒关后用户回到浮层里或按 Esc 就复位。"
     },
     {
       "url": "https://tiptap.dev/docs/editor/getting-started/style-editor/custom-menus",
@@ -37,7 +37,7 @@
   "elements": [
     {
       "id": "dismiss.outside-press",
-      "label": "点外面就收起：画布「⋯」、左栏抽屉、任务中心等点画布空白处收起；因点外面关闭的不把焦点还给触发钮",
+      "label": "点外面就收起：画布「⋯」、左栏抽屉、任务中心等点画布空白处收起（按下即算，在画布上拖动平移的起手也算；滚轮 / 触控板平移不算）；因点外面关闭的不把焦点还给触发钮",
       "change": "behavior",
       "states": ["hover", "selected", "zh-en", "dark"],
       "candidates": [
