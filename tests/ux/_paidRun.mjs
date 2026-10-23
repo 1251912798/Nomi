@@ -143,6 +143,9 @@ export async function openPaidWalk(script, name, models, deps = {}) {
     hostedUploads = false,
     // false = 供应商的源不进放行名单（零花费探测：就算误提交，网络闸也当场挡下，结构上花不了钱）。缺省 true，别的付费走查不变。
     vendorNetwork = true,
+    // true = 闸把放行名单上公网请求的请求体（先脱敏：不记请求头、签名查询串与 key 形状的串打码）记进账本，`readAllowedRequests()` 读回。
+    // 给要核「App 真正发给供应商的是什么」的付费走查用（参考图错发热修的真付费样本）；缺省关，别的付费走查不变。
+    recordAllowedBodies = false,
   } = deps
   // 真实资料目录的位置跟着传进来的 env 走（缺省就是 process.env，和以前一样）；env-key 路根本不会用到它。
   const profile = realNomiProfile({ env })
@@ -160,7 +163,7 @@ export async function openPaidWalk(script, name, models, deps = {}) {
   const allow = [...vendorAllow, ...(hostedUploadOrigin ? [hostedUploadOrigin] : [])]
   const netLog = newNetLogFile()
   // env-key 路：被测 App 的环境里把 key 这一项清成空串——key 只留在本进程的闭包里，子进程（含它的崩溃转储、诊断包）拿不到。
-  const walk = await createWalk(name, { env: { NOMI_WALK_ALLOW_ORIGINS: allow.join(','), NOMI_WALK_NET_LOG: netLog, ...(envKey ? { [ENV_KEY_VAR]: '' } : {}) } })
+  const walk = await createWalk(name, { env: { NOMI_WALK_ALLOW_ORIGINS: allow.join(','), NOMI_WALK_NET_LOG: netLog, ...(recordAllowedBodies ? { NOMI_WALK_NET_BODIES: '1' } : {}), ...(envKey ? { [ENV_KEY_VAR]: '' } : {}) } })
   walk.report.networkAllowlist = allow
   if (hostedUploadOrigin) walk.report.hostedUploadRelayAllowed = hostedUploadOrigin
   walk.report.credentialSource = envKey ? `env-key（${ENV_KEY_VAR}，只记变量名）` : 'real-profile'
@@ -262,7 +265,11 @@ export async function openPaidWalk(script, name, models, deps = {}) {
       if (hits.length) throw new Error(`key 泄漏进了证据目录（${hits.join('、')}）——文件已删，请立即更换这把 key`)
     }
   }
-  return { walk, label, lockToAuthorizedModels, finish }
+  /** 闸记下的放行请求 / 上传响应（recordAllowedBodies 时才有；env-key 路再按 key 原串打码一遍）。要在 finish 之前读：env-key 路收尾会删账本原件。 */
+  const readAllowedRequests = () => readNetLog(netLog)
+    .filter((entry) => entry.kind === 'allowed-request' || entry.kind === 'allowed-response')
+    .map((entry) => (envKey ? redactNetLogEntry(entry, secrets) : entry))
+  return { walk, label, lockToAuthorizedModels, finish, readAllowedRequests }
 }
 
 /** env-key 路只认 APIMart：别家的 key 这条路不管；点名了别家模型就在花钱前拒。 */

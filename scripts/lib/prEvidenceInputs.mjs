@@ -14,7 +14,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { loadManifests } from '../check-board-parity.mjs'
-import { ciApprovals } from './coordApprovals.mjs'
+import { ciApprovals, SUPPRESSIONS_FILE } from './coordApprovals.mjs'
 
 const defaultRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -60,6 +60,9 @@ export function localEvidenceInputs({ root = process.env.PR_JUDGEMENT_REPO_ROOT 
     // 拍板清单：PR head 上的内容；base 上的内容用来判「哪些板 / 元素是 PR 新增的」（新增的要协调确认，CI 只提示）
     boards: () => manifestsAt(headSha),
     baseBoards: () => manifestsAt(baseSha()),
+    // ESLint 批量抑制：冻结数上涨要协调确认（CI 只提示）；文件不存在 = {}，取不到提交 = null
+    suppressions: () => suppressionsAt({ git, sha: headSha }),
+    baseSuppressions: () => suppressionsAt({ git, sha: baseSha() }),
     approvals: ciApprovals,
     headRelation: (accepted, head) => checkHeadAncestry({ git, accepted, head }),
     readRaw: (ref) => (isRepoRelativeRef(ref) ? showAtHead(ref) : null),
@@ -126,6 +129,15 @@ export function checkHeadAncestry({ git, accepted, head, mainRef = 'origin/main'
 }
 
 /** PR head 上的拍板图清单（合并前扫描用：PR 自己新增的板在 main 检出里读不到）。git show 到临时目录再走同一个 loadManifests。 */
+/** 某个提交上的 eslint-suppressions.json：文件不存在 = {}（还没有存量）；提交本身取不到 = null。 */
+export function suppressionsAt({ git, sha }) {
+  if (!sha) return null
+  try { git(['rev-parse', '--verify', '--quiet', `${sha}^{commit}`]) } catch { return null }
+  let text
+  try { text = git(['show', `${sha}:${SUPPRESSIONS_FILE}`]) } catch { return {} }
+  try { return JSON.parse(text) } catch { return null }
+}
+
 export function boardsAtHead({ git, sha }) {
   const tmp = fs.mkdtempSync(path.join(process.env.TEMP || os.tmpdir(), 'pr-boards-'))
   try {

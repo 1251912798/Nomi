@@ -1,0 +1,236 @@
+{
+  "generatedBy": "NOMI_REFLEAK_REPORT=… npx vitest run src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts（修前 = origin/main 97eab7bec 的 catalogTaskActions + 主进程不剥）",
+  "layers": {
+    "params/refs": {
+      "cells": 148,
+      "before": {
+        "leakedCells": 85,
+        "leakedClickable": 57,
+        "sampleLeaks": [
+          "seedance-2: omni→t2v: u1.png←referenceImageUrls,activeAssetUrls,reference_image_urls u2.png←referenceImageUrls,activeAssetUrls,reference_image_urls u3.png←referenceImageUrls,activeAssetUrls,reference_image_urls u4.png←referenceImageUrls,activeAssetUrls,reference_image_urls u5.png←referenceImageUrls,activeAssetUrls,reference_image_urls u6.png←referenceImageUrls,activeAssetUrls,reference_image_urls u7.png←referenceImageUrls,activeAssetUrls,reference_image_urls u8.png←referenceImageUrls,activeAssetUrls,reference_image_urls u9.png←referenceImageUrls,activeAssetUrls,reference_image_urls",
+          "seedance-2: omni→first: u1.png←referenceImageUrls,activeAssetUrls,reference_image_urls u2.png←referenceImageUrls,activeAssetUrls,reference_image_urls u3.png←referenceImageUrls,activeAssetUrls,reference_image_urls u4.png←referenceImageUrls,activeAssetUrls,reference_image_urls u5.png←referenceImageUrls,activeAssetUrls,reference_image_urls u6.png←referenceImageUrls,activeAssetUrls,reference_image_urls u7.png←referenceImageUrls,activeAssetUrls,reference_image_urls u8.png←referenceImageUrls,activeAssetUrls,reference_image_urls u9.png←referenceImageUrls,activeAssetUrls,reference_image_urls",
+          "seedance-2: omni→firstlast: u1.png←referenceImageUrls,activeAssetUrls,reference_image_urls u2.png←referenceImageUrls,activeAssetUrls,reference_image_urls u3.png←referenceImageUrls,activeAssetUrls,reference_image_urls u4.png←referenceImageUrls,activeAssetUrls,reference_image_urls u5.png←referenceImageUrls,activeAssetUrls,reference_image_urls u6.png←referenceImageUrls,activeAssetUrls,reference_image_urls u7.png←referenceImageUrls,activeAssetUrls,reference_image_urls u8.png←referenceImageUrls,activeAssetUrls,reference_image_urls u9.png←referenceImageUrls,activeAssetUrls,reference_image_urls"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "params/frames": {
+      "cells": 71,
+      "before": {
+        "leakedCells": 48,
+        "leakedClickable": 43,
+        "sampleLeaks": [
+          "seedance-2: firstlast→t2v: first.png←firstFrameUrl,activeAssetUrls,image_url,first_frame_url last.png←lastFrameUrl,activeAssetUrls,last_frame_url",
+          "seedance-2: firstlast→first: last.png←lastFrameUrl,activeAssetUrls,last_frame_url",
+          "seedance-2: firstlast→omni: first.png←firstFrameUrl,activeAssetUrls,image_url,first_frame_url last.png←lastFrameUrl,activeAssetUrls,last_frame_url"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "params/media": {
+      "cells": 69,
+      "before": {
+        "leakedCells": 47,
+        "leakedClickable": 24,
+        "sampleLeaks": [
+          "seedance-2: omni→t2v: u1.png←referenceImageUrls,activeAssetUrls,reference_image_urls u2.png←referenceImageUrls,activeAssetUrls,reference_image_urls u3.png←referenceImageUrls,activeAssetUrls,reference_image_urls u4.png←referenceImageUrls,activeAssetUrls,reference_image_urls u5.png←referenceImageUrls,activeAssetUrls,reference_image_urls u6.png←referenceImageUrls,activeAssetUrls,reference_image_urls u7.png←referenceImageUrls,activeAssetUrls,reference_image_urls u8.png←referenceImageUrls,activeAssetUrls,reference_image_urls u9.png←referenceImageUrls,activeAssetUrls,reference_image_urls v1.mp4←referenceVideoUrls,activeAssetUrls,reference_video_urls,source_video_url v2.mp4←referenceVideoUrls,activeAssetUrls,reference_video_urls v3.mp4←referenceVideoUrls,activeAssetUrls,reference_video_urls a1.mp3←referenceAudioUrls,activeAssetUrls,reference_audio_urls a2.mp3←referenceAudioUrls,activeAssetUrls,reference_audio_urls a3.mp3←referenceAudioUrls,activeAssetUrls,reference_audio_urls",
+          "seedance-2: omni→first: u1.png←referenceImageUrls,activeAssetUrls,reference_image_urls u2.png←referenceImageUrls,activeAssetUrls,reference_image_urls u3.png←referenceImageUrls,activeAssetUrls,reference_image_urls u4.png←referenceImageUrls,activeAssetUrls,reference_image_urls u5.png←referenceImageUrls,activeAssetUrls,reference_image_urls u6.png←referenceImageUrls,activeAssetUrls,reference_image_urls u7.png←referenceImageUrls,activeAssetUrls,reference_image_urls u8.png←referenceImageUrls,activeAssetUrls,reference_image_urls u9.png←referenceImageUrls,activeAssetUrls,reference_image_urls v1.mp4←referenceVideoUrls,activeAssetUrls,reference_video_urls,source_video_url v2.mp4←referenceVideoUrls,activeAssetUrls,reference_video_urls v3.mp4←referenceVideoUrls,activeAssetUrls,reference_video_urls a1.mp3←referenceAudioUrls,activeAssetUrls,reference_audio_urls a2.mp3←referenceAudioUrls,activeAssetUrls,reference_audio_urls a3.mp3←referenceAudioUrls,activeAssetUrls,reference_audio_urls",
+          "seedance-2: omni→firstlast: u1.png←referenceImageUrls,activeAssetUrls,reference_image_urls u2.png←referenceImageUrls,activeAssetUrls,reference_image_urls u3.png←referenceImageUrls,activeAssetUrls,reference_image_urls u4.png←referenceImageUrls,activeAssetUrls,reference_image_urls u5.png←referenceImageUrls,activeAssetUrls,reference_image_urls u6.png←referenceImageUrls,activeAssetUrls,reference_image_urls u7.png←referenceImageUrls,activeAssetUrls,reference_image_urls u8.png←referenceImageUrls,activeAssetUrls,reference_image_urls u9.png←referenceImageUrls,activeAssetUrls,reference_image_urls v1.mp4←referenceVideoUrls,activeAssetUrls,reference_video_urls,source_video_url v2.mp4←referenceVideoUrls,activeAssetUrls,reference_video_urls v3.mp4←referenceVideoUrls,activeAssetUrls,reference_video_urls a1.mp3←referenceAudioUrls,activeAssetUrls,reference_audio_urls a2.mp3←referenceAudioUrls,activeAssetUrls,reference_audio_urls a3.mp3←referenceAudioUrls,activeAssetUrls,reference_audio_urls"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "params/aliases": {
+      "cells": 197,
+      "before": {
+        "leakedCells": 197,
+        "leakedClickable": 101,
+        "sampleLeaks": [
+          "seedance-2: aliases@t2v: alias-image_url.png←image_url,activeAssetUrls alias-imageUrl.png←imageUrl,activeAssetUrls alias-referenceImageUrl.png←referenceImageUrl,activeAssetUrls alias-reference_images.png←reference_images,activeAssetUrls,chat_image_parts,json_edit_image alias-reference_image_urls.png←reference_image_urls,activeAssetUrls alias-video_url.mp4←video_url,activeAssetUrls alias-source_video_url.mp4←source_video_url,activeAssetUrls alias-reference_video_urls.mp4←reference_video_urls,activeAssetUrls alias-reference_audio_urls.mp3←reference_audio_urls,activeAssetUrls alias-first_frame_url.png←first_frame_url,activeAssetUrls alias-last_frame_url.png←last_frame_url,activeAssetUrls alias-referenceImages.png←referenceImages,activeAssetUrls alias-upstream.png←referenceImages,upstreamResultUrls,activeAssetUrls alias-sourceVideoUrl.mp4←sourceVideoUrl,activeAssetUrls alias-referenceVideoUrls.mp4←referenceVideoUrls,activeAssetUrls alias-referenceAudioUrls.mp3←referenceAudioUrls,activeAssetUrls",
+          "seedance-2: aliases@first: alias-image_url.png←image_url,activeAssetUrls alias-imageUrl.png←imageUrl,activeAssetUrls alias-referenceImageUrl.png←referenceImageUrl,activeAssetUrls alias-reference_images.png←reference_images,activeAssetUrls,chat_image_parts,json_edit_image alias-reference_image_urls.png←reference_image_urls,activeAssetUrls alias-video_url.mp4←video_url,activeAssetUrls alias-source_video_url.mp4←source_video_url,activeAssetUrls alias-reference_video_urls.mp4←reference_video_urls,activeAssetUrls alias-reference_audio_urls.mp3←reference_audio_urls,activeAssetUrls alias-last_frame_url.png←last_frame_url,activeAssetUrls alias-sourceVideoUrl.mp4←sourceVideoUrl,activeAssetUrls alias-referenceVideoUrls.mp4←referenceVideoUrls,activeAssetUrls alias-referenceAudioUrls.mp3←referenceAudioUrls,activeAssetUrls",
+          "seedance-2: aliases@firstlast: alias-image_url.png←image_url,activeAssetUrls alias-imageUrl.png←imageUrl,activeAssetUrls alias-referenceImageUrl.png←referenceImageUrl,activeAssetUrls alias-reference_images.png←reference_images,activeAssetUrls,chat_image_parts,json_edit_image alias-reference_image_urls.png←reference_image_urls,activeAssetUrls alias-video_url.mp4←video_url,activeAssetUrls alias-source_video_url.mp4←source_video_url,activeAssetUrls alias-reference_video_urls.mp4←reference_video_urls,activeAssetUrls alias-reference_audio_urls.mp3←reference_audio_urls,activeAssetUrls alias-sourceVideoUrl.mp4←sourceVideoUrl,activeAssetUrls alias-referenceVideoUrls.mp4←referenceVideoUrls,activeAssetUrls alias-referenceAudioUrls.mp3←referenceAudioUrls,activeAssetUrls"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "relay/aliases": {
+      "cells": 172,
+      "before": {
+        "leakedCells": 133,
+        "leakedClickable": 49,
+        "sampleLeaks": [
+          "seedance-2: aliases@t2v: alias-image_url.png←body",
+          "seedance-2: aliases@first: alias-image_url.png←body",
+          "seedance-2: aliases@firstlast: alias-image_url.png←body"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "apimart/aliases": {
+      "cells": 60,
+      "before": {
+        "leakedCells": 36,
+        "leakedClickable": 7,
+        "sampleLeaks": [
+          "vidu-q3: aliases@ref: alias-reference_images.png←body alias-image_url.png←body alias-first_frame_url.png←body alias-last_frame_url.png←body alias-reference_image_urls.png←body",
+          "kling-3.0-turbo: aliases@i2v: alias-reference_images.png←body",
+          "happyhorse-1.1: aliases@i2v: alias-reference_images.png←body alias-image_url.png←body alias-last_frame_url.png←body alias-reference_image_urls.png←body"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "relay/refs": {
+      "cells": 148,
+      "before": {
+        "leakedCells": 53,
+        "leakedClickable": 26,
+        "sampleLeaks": [
+          "seedance-2: omni→t2v: u1.png←body",
+          "seedance-2: omni→first: u1.png←body",
+          "seedance-2: omni→firstlast: u1.png←body"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "relay/frames": {
+      "cells": 71,
+      "before": {
+        "leakedCells": 39,
+        "leakedClickable": 34,
+        "sampleLeaks": [
+          "seedance-2: firstlast→t2v: first.png←body",
+          "seedance-2: firstlast→omni: first.png←body",
+          "seedance-2.5: firstlast→t2v: first.png←body"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "relay/media": {
+      "cells": 60,
+      "before": {
+        "leakedCells": 41,
+        "leakedClickable": 18,
+        "sampleLeaks": [
+          "seedance-2: omni→t2v: u1.png←body",
+          "seedance-2: omni→first: u1.png←body",
+          "seedance-2: omni→firstlast: u1.png←body"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "apimart/refs": {
+      "cells": 54,
+      "before": {
+        "leakedCells": 9,
+        "leakedClickable": 0,
+        "sampleLeaks": [
+          "happyhorse-1.1: ref→i2v: u1.png←body u2.png←body u3.png←body u4.png←body u5.png←body u6.png←body u7.png←body u8.png←body u9.png←body",
+          "veo-3.1: reference→frame: u1.png←body u2.png←body u3.png←body",
+          "seedance-2-apimart: i2v→firstlast: u1.png←body u2.png←body u3.png←body u4.png←body u5.png←body u6.png←body u7.png←body u8.png←body u9.png←body"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "apimart/frames": {
+      "cells": 19,
+      "before": {
+        "leakedCells": 8,
+        "leakedClickable": 6,
+        "sampleLeaks": [
+          "veo-3.1: frame→reference: first.png←body last.png←body",
+          "seedance-2-apimart: firstlast→i2v: first.png←body last.png←body",
+          "seedance-2-apimart: firstlast→omni: first.png←body last.png←body"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "apimart/media": {
+      "cells": 19,
+      "before": {
+        "leakedCells": 10,
+        "leakedClickable": 3,
+        "sampleLeaks": [
+          "seedance-2-apimart: omni→i2v: v1.mp4←body v2.mp4←body v3.mp4←body a1.mp3←body a2.mp3←body a3.mp3←body",
+          "seedance-2-apimart: omni→firstlast: u1.png←body u2.png←body u3.png←body u4.png←body u5.png←body u6.png←body u7.png←body u8.png←body u9.png←body v1.mp4←body v2.mp4←body v3.mp4←body a1.mp3←body a2.mp3←body a3.mp3←body",
+          "seedance-2.5-apimart: omni→first: u1.png←body u2.png←body u3.png←body u4.png←body u5.png←body u6.png←body u7.png←body u8.png←body u9.png←body v1.mp4←body v2.mp4←body v3.mp4←body v4.mp4←body v5.mp4←body v6.mp4←body v7.mp4←body v8.mp4←body v9.mp4←body a1.mp3←body a2.mp3←body a3.mp3←body a4.mp3←body a5.mp3←body a6.mp3←body a7.mp3←body a8.mp3←body a9.mp3←body"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "relay/bypass": {
+      "cells": 451,
+      "before": {
+        "leakedCells": 266,
+        "leakedClickable": 127,
+        "sampleLeaks": [
+          "seedance-2: omni→t2v: u1.png←body",
+          "seedance-2: omni→first: u1.png←body",
+          "seedance-2: omni→firstlast: u1.png←body"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    },
+    "apimart/bypass": {
+      "cells": 152,
+      "before": {
+        "leakedCells": 63,
+        "leakedClickable": 16,
+        "sampleLeaks": [
+          "happyhorse-1.1: ref→i2v: u1.png←body u2.png←body u3.png←body u4.png←body u5.png←body u6.png←body u7.png←body u8.png←body u9.png←body",
+          "veo-3.1: reference→frame: u1.png←body u2.png←body u3.png←body",
+          "seedance-2-apimart: i2v→firstlast: u1.png←body u2.png←body u3.png←body u4.png←body u5.png←body u6.png←body u7.png←body u8.png←body u9.png←body"
+        ]
+      },
+      "after": {
+        "leakedCells": 0,
+        "leakedClickable": 0
+      }
+    }
+  },
+  "noCollateral": {
+    "scope": "真实路径各层（params / relay / apimart，不含 bypass 假设入口）",
+    "cellsCompared": 1088,
+    "inUseSentBeforeButNotAfter": 0,
+    "inUseSentAfterButNotBefore": 0,
+    "bypassNote": "bypass 两层模拟「绕过渲染层、只有 meta + archetypeInput」的假设入口（今天没有这样的真入口）。其中 3 格（happyhorse ref→edit、wan-2.7 ref→i2v、agnes-video keyframes→i2v）修前中转 image 带了在用的第 1 张，是因为残留参考让 projectReferencesOntoBodyKeys 认出「有独立平铺来源」才顺手投了 image_url；剥掉残留后这条投影不再触发。真实路径由渲染层给出 referenceImages 标准面，这 3 格在 relay/refs 层修前修后一致。"
+  }
+}

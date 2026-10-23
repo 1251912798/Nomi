@@ -20,11 +20,16 @@ import {
   removeWorkspaceReference,
 } from "../workspace/workspaceRegistry";
 import { resolveWorkspaceRelativePath } from "../workspace/workspacePaths";
+import { WorkspaceManifestLockBusyError } from "../workspace/workspaceManifestLock";
+import {
+  PROJECT_DELETE_INTENTS,
+  PROJECT_DELETE_STATE_CHANGED_ERROR_NAME,
+  isProjectDeleteIntent,
+} from "../shared/projectDeleteIntent";
 import {
   createWorkspaceProject,
   deleteWorkspaceProject,
   diagnoseWorkspaceProject,
-  gcEmptyDraftWorkspaceProjects,
   listWorkspaceProjects,
   readWorkspaceProject,
   recoverWorkspaceProject,
@@ -42,8 +47,10 @@ export type ProjectRecord = {
   thumbnail?: string;
   thumbnailUrls?: string[];
   seedKey?: string;
-  /** 草稿态标记：新建空白零编辑项目，启动 GC 会回收。首次 save 即清除。见 workspaceRepository.gcEmptyDraftWorkspaceProjects。 */
+  /** 草稿态标记：新建空白零编辑项目。首次 save 即清除。列表照常返回它（读面不做展示上的取舍）。 */
   draft?: boolean;
+  /** 列表摘要专用：这一项的数据读不出来（见 WorkspaceProjectSummary.unreadableReason）。 */
+  unreadableReason?: "outside-workspace" | "unreadable";
   version: number;
   payload?: unknown;
   rootPath?: string;
@@ -60,6 +67,7 @@ export const SANITIZED_NAME_MAX_LENGTH = 90;
 export function sanitizeName(value: unknown, fallback = "Untitled"): string {
   const text = String(value || "").trim() || fallback;
   return text
+    // eslint-disable-next-line no-control-regex -- 文件名里不许留 U+0000–U+001F 这些控制字符（Windows 保留），这里就是要匹配它们
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_")
     .replace(/\s+/g, " ")
     .slice(0, SANITIZED_NAME_MAX_LENGTH)
@@ -123,16 +131,6 @@ function getInputRootPath(input: unknown): string | null {
   return typeof rootPath === "string" && rootPath.trim() ? rootPath.trim() : null;
 }
 
-// 启动 GC「一进程一次」guard（仿 discoverLegacyProjectsOnce）：首次列举 = App 启动加载库，
-// 此刻盘上任何 draft 必来自上一个进程（本进程还没新建过）→ 回收它们是安全的；本会话之后新建的
-// 草稿在 GC 之后才产生，guard 保证只跑一次 → 永不误删当前会话项目。挂在 listProjects 而非 main.ts，
-// 既守住「启动一次」语义，又不越界改 main.ts（范围外）。
-let emptyDraftGcDone = false;
-
-export function resetEmptyDraftGcGuard(): void {
-  emptyDraftGcDone = false;
-}
-
 /**
  * 项目列表摘要的**唯一读面**（异步）。渲染层、MCP / 外部 Agent 的项目列表都走它，没有同步版：
  * 同步版会让渲染层 sendSync 干等主进程扫完全库（41 个项目 ≈340ms，2026-10-16 追踪），
@@ -153,23 +151,10 @@ export async function listProjects(): Promise<Array<Omit<ProjectRecord, "payload
       origin: { source: "native", nativeRootPath: deps.defaultProjectsRoot } as const,
     })),
   );
-  // 全库列举一次，GC 与最终返回共用这一份快照。
-  // 曾经是「GC 自己列一遍 + 这里再列一遍」＝ 372 次 manifest 快照读做两遍，
-  // 实测占冷启动列举总耗时的 55-63%，而第一遍的结果用完即弃。
-  const listed = await listWorkspaceProjects(deps);
-  // 启动首次列举顺手回收上个进程遗留的空白草稿（默认根存在才跑，避免根被移走时雪崩）。
-  // 回收掉的项目目录已不在盘上，必须从这份快照里摘掉，否则它们会以「幽灵卡片」返回给渲染层。
-  let projects = listed;
-  if (!emptyDraftGcDone) {
-    emptyDraftGcDone = true;
-    if (fs.existsSync(deps.defaultProjectsRoot)) {
-      const { recycled } = gcEmptyDraftWorkspaceProjects(deps, listed);
-      if (recycled.length) {
-        const recycledIds = new Set(recycled);
-        projects = listed.filter((project) => !recycledIds.has(project.id));
-      }
-    }
-  }
+  // 列举只读项目、不删项目（N1，2026-10-22）：空白草稿回收曾挂在首次列举上，列举是异步的，
+  // 期间排队等锁的保存会被它删掉。列表返回所有登记过的项目，不藏也不删（读面不做展示上的取舍）；
+  // 删项目只有用户点删除这一扇门（check:read-path-writes 把 deleteWorkspaceProject 列为销毁门，读路径可达即红）。
+  const projects = await listWorkspaceProjects(deps);
   // 自愈对齐磁盘 ↔ registry:native 项目(Nomi 自管目录,~/Documents/Nomi Projects 内)
   // 若文件夹已不存在 = 真删(本地盘不会临时消失),从 registry 摘除引用,不再当幽灵卡片展示。
   // 防雪崩:仅当默认根本身仍存在时才清;根整体不可访问(被移走/同步中)则全部保留,等其回归。
@@ -256,13 +241,58 @@ export async function saveProject(projectId: string, input: unknown): Promise<Pr
   return record;
 }
 
-export function deleteProject(projectId: string): { id: string; deleted: boolean } {
+function readableWorkspaceDir(id: string, deps: ReturnType<typeof getWorkspaceRepositoryDeps>): string | null {
+  try {
+    return resolveWorkspaceProjectDir(id, deps);
+  } catch {
+    return null;
+  }
+}
+
+/** 只从项目库解除登记，不碰盘上任何文件（「从项目库移除」）。 */
+function unbindProject(id: string): { id: string; deleted: false } {
+  const deps = getWorkspaceRepositoryDeps();
+  if (findRecentWorkspace(deps.settingsRoot, id)) {
+    // 读得出来的目录要抑制下次启动的 legacy 重发现，否则它会自己回到库里：默认根内的项目（启动发现会扫默认根），
+    // 以及根目录还有旧版 project.json 的外部文件夹。读不出来的不往里写任何东西。
+    const workspaceDir = readableWorkspaceDir(id, deps); // 读不出来（越界 / 损坏）= null：不往那个目录里写任何东西
+    removeWorkspaceReference(deps.settingsRoot, id);
+    const insideDefaultRoot = workspaceDir !== null && path.resolve(workspaceDir).startsWith(`${path.resolve(deps.defaultProjectsRoot)}${path.sep}`);
+    if (workspaceDir && (insideDefaultRoot || fs.existsSync(path.join(workspaceDir, PROJECT_FILE)))) suppressLegacyProjectRediscovery(workspaceDir);
+    return { id, deleted: false };
+  }
+  const projectDir = legacyProjectDirById(id);
+  if (projectDir) suppressLegacyProjectRediscovery(projectDir);
+  return { id, deleted: false };
+}
+
+/**
+ * 删除项目：严格照用户在确认框里确认过的意图执行（electron/shared/projectDeleteIntent.ts）。
+ * 确认框按列表那一刻的卡片说话，这里在删除这一刻执行；两刻之间状态可能变了，所以这里**不自己判断该删多少**：
+ *   · unbind：只解除登记，绝不删盘——哪怕此刻项目又读得出来了（V-plibrary2：灰卡确认「只解绑」后 .nomi 被挪回，
+ *     旧写法在删除这一刻重读、读得出来就整目录删了）；
+ *   · delete-files：此刻读不出来 = 和确认时对不上，拒绝，让界面刷新后重新确认；锁忙照常报忙。
+ */
+export function deleteProject(projectId: string, intent: unknown): { id: string; deleted: boolean } {
   const id = String(projectId || "").trim();
   if (!id) throw new Error("projectId is required");
-  if (readWorkspaceProject(id, getWorkspaceRepositoryDeps())) {
-    const workspaceDir = resolveWorkspaceProjectDir(id, getWorkspaceRepositoryDeps());
+  if (!isProjectDeleteIntent(intent)) throw new Error(`Project delete intent is required (${PROJECT_DELETE_INTENTS.join(" / ")})`);
+  const deps = getWorkspaceRepositoryDeps();
+  if (intent === "unbind") return unbindProject(id);
+  let readable: ReturnType<typeof readWorkspaceProject>;
+  try {
+    readable = readWorkspaceProject(id, deps);
+  } catch (error) {
+    if (error instanceof WorkspaceManifestLockBusyError || !findRecentWorkspace(deps.settingsRoot, id)) throw error;
+    const changed = new Error(`${PROJECT_DELETE_STATE_CHANGED_ERROR_NAME}: project data is no longer readable; refresh and confirm again`);
+    changed.name = PROJECT_DELETE_STATE_CHANGED_ERROR_NAME;
+    Object.defineProperty(changed, "cause", { configurable: true, value: error });
+    throw changed;
+  }
+  if (readable) {
+    const workspaceDir = resolveWorkspaceProjectDir(id, deps);
     // 真删盘:native 项目整目录 fs.rmSync;外部「打开文件夹」绑定只解绑、绝不删用户内容。
-    const result = deleteWorkspaceProject(id, getWorkspaceRepositoryDeps());
+    const result = deleteWorkspaceProject(id, deps);
     // 仅外部文件夹(未真删、目录仍在)需抑制下次 list 的 legacy 重发现;native 已真删无需抑制。
     if (!result.deleted && workspaceDir && fs.existsSync(path.join(workspaceDir, PROJECT_FILE))) {
       suppressLegacyProjectRediscovery(workspaceDir);

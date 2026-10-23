@@ -153,10 +153,10 @@ async function queryOnce(mapping: Mapping) {
   const vendor = { key: "relay", name: "relay", enabled: true, baseUrlHint: `${base}/v1`, authType: "bearer", authHeader: "Authorization", createdAt: "", updatedAt: "" } as Vendor;
   const model = { modelKey: "doubao-seedance-2-0-fast-260128", vendorKey: "relay", labelZh: "Seedance", kind: "video", enabled: true, createdAt: "", updatedAt: "" } as Model;
   const request = { kind: "image_to_video", prompt: "cat", extras: { modelKey: model.modelKey, model: model.modelKey, ratio: "16:9", resolution: "720p", duration: 4 } } as never;
-  const created = await executeProfileOperation({ vendor, model, apiKey: "k", request, operation: mapping.create });
+  const created = await executeProfileOperation({ vendor, model, apiKey: "k", request, operation: mapping.create, stage: "create" });
   const accepted = await buildProfileTaskResult({ response: created.response, mapping, operation: mapping.create, request, taskIdFallback: "", wantedKind: "video", vendor, model });
   const providerMeta = { ...accepted.providerMeta, task_id: accepted.result.id, query_id: accepted.result.id };
-  const polled = await executeProfileOperation({ vendor, model, apiKey: "k", request, operation: mapping.query!, providerMeta });
+  const polled = await executeProfileOperation({ vendor, model, apiKey: "k", request, operation: mapping.query!, stage: "query", providerMeta });
   const normalized = await buildProfileTaskResult({ response: polled.response, mapping, operation: mapping.query!, request, taskIdFallback: accepted.result.id, wantedKind: "video", vendor, model });
   const missing = missingAsyncMediaOutput(normalized.result, "video", polled.response);
   if (missing) throw missing;

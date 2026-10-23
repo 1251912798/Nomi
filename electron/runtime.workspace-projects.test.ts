@@ -131,7 +131,7 @@ describe("runtime workspace project APIs", () => {
     const workspaceRoot = makeTempDir();
     const created = createProject({ rootPath: workspaceRoot, name: "Remove Reference", payload: {} });
 
-    const result = deleteProject(created.id);
+    const result = deleteProject(created.id, "delete-files");
 
     expect(result).toEqual({ id: created.id, deleted: false });
     expect(readProject(created.id)).toBeNull();
@@ -144,7 +144,7 @@ describe("runtime workspace project APIs", () => {
     const nativeRoot = String((created as { lastKnownRootPath?: string }).lastKnownRootPath || "");
     expect(nativeRoot.startsWith(path.join(mockedDocumentsRoot, "Nomi Projects"))).toBe(true);
 
-    const result = deleteProject(created.id);
+    const result = deleteProject(created.id, "delete-files");
 
     expect(result).toEqual({ id: created.id, deleted: true });
     expect(readProject(created.id)).toBeNull();
@@ -232,7 +232,7 @@ describe("runtime workspace project APIs", () => {
     expect((await listProjects())).toEqual([expect.objectContaining({ id: "delete-legacy-id" })]);
 
     // 迁移后该 legacy 项目位于默认根内 = native,真删盘:整目录消失,自然不会再被 list 重发现。
-    expect(deleteProject("delete-legacy-id")).toEqual({ id: "delete-legacy-id", deleted: true });
+    expect(deleteProject("delete-legacy-id", "delete-files")).toEqual({ id: "delete-legacy-id", deleted: true });
 
     expect(fs.existsSync(legacyRoot)).toBe(false);
     expect((await listProjects())).toEqual([]);
