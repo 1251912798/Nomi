@@ -1,26 +1,22 @@
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { test } from 'vitest'
 import { expect } from '@playwright/test'
 import { chromium } from 'playwright'
-import { createServer } from 'vite'
 import fs from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { assertTailwindApplied, freshTailwindCss } from './_freshTailwindCss.mjs'
+import { useBrowserFixture } from './_browserFixture.mjs'
 
 // 现编一次 Tailwind（收集阶段做完，不占用例自己的超时），后面各用例复用。
 freshTailwindCss()
+const HARNESS = 'tests/ux/fixtures/original-storyboard-editor-harness.html'
+const fixture = useBrowserFixture({ entries: [HARNESS], browserType: chromium })
 
 for (const locale of ['zh-CN', 'en']) for (const media of ['image', 'video']) test(`original storyboard ${locale}/${media} keeps loaded-model controls clickable at the established collapsed-sidebar editor width`, async () => {
   const en = locale === 'en'
-  const cacheDir = makeTempDir('nomi-storyboard-width-vite-')
-  const server = await createServer({ configFile: false, cacheDir, server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } })
-  let browser
+  const page = await fixture.browser.newPage({ viewport: { width: 1280, height: 1000 } })
   try {
-    await server.listen()
-    browser = await chromium.launch({ headless: true })
-    const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } })
-    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/original-storyboard-editor-harness.html?locale=${locale}&media=${media}`)
+    await page.goto(fixture.url(HARNESS, `?locale=${locale}&media=${media}`))
     await page.addStyleTag({ content: freshTailwindCss() })
     await assertTailwindApplied(page, 'original-storyboard-editor.test.mjs')
     await page.addStyleTag({ url: '/src/styles/index.css' })
@@ -87,5 +83,5 @@ for (const locale of ['zh-CN', 'en']) for (const media of ['image', 'video']) te
     expect(after.anchor.controls.find(control => control.label === (en ? 'Reference card actions' : '参考卡操作'))?.hit, 'Expanded reference actions menu must remain reachable').toBe(true)
     await editor.locator('[data-storyboard-anchor-row]').getByRole('button', { name: en ? 'Reference card actions' : '参考卡操作', exact: true }).click()
     await expect(page.getByRole('menuitem', { name: en ? 'Delete reference card' : '删除参考卡', exact: true })).toBeVisible()
-  } finally { await browser?.close(); await server.close(); fs.rmSync(cacheDir, { recursive: true, force: true }) }
+  } finally { await page.close() }
 })
