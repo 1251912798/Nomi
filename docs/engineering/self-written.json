@@ -2068,8 +2068,8 @@
       ],
       "alternativesChecked": [
         {
-          "name": "Tiptap UI Components（MarkButton 等）：以模板形式拷进项目、自带一套样式原语，不走我们的 token-only 设计系统；格式状态的订阅我们已直接用 Tiptap 官方 useEditorState",
-          "source": "https://tiptap.dev/docs/ui-components/getting-started/overview"
+          "name": "Tiptap UI Components（MarkButton 等）：用 Tiptap CLI 以模板形式拷进项目（npx @tiptap/cli add mark-button，2026-10-23 经 Context7 核对）、自带一套样式原语，不走我们的 token-only 设计系统；格式状态的订阅我们已直接用 Tiptap 官方 useEditorState",
+          "source": "https://tiptap.dev/docs/ui-components/components/mark-button"
         },
         {
           "name": "Radix Tooltip：已直接使用（src/design/tooltip.tsx），本组件只把它和按钮拼在一起",
