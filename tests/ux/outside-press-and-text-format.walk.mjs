@@ -12,7 +12,7 @@ import path from 'node:path'
 import { launchNomiApp } from './_launchApp.mjs'
 import { clickOrFail, expect, expectAbsent, proveProbe, readComputedColorChannels } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { CANVAS_ZOOM_BAR, openCanvasViewOptions, openRailDrawer, railDrawer, switchWorkspace } from './_shell.mjs'
+import { CANVAS_ZOOM_BAR, canvasViewOptionsButton, openCanvasViewOptions, openRailDrawer, railDrawer, switchWorkspace } from './_shell.mjs'
 import { findCanvasBlankPoint } from './_canvasHit.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 
@@ -80,8 +80,7 @@ try {
     await expect(win.locator('[data-canvas-view-options="true"]').first(), '点空白后「⋯」浮层还在 · board:TextFormatDismiss/dismiss.outside-press').toBeHidden()
     await expect(win.locator(CANVAS_ZOOM_BAR).first(), '缩放簇跟着没了').toBeVisible()
     // 点外面关掉的不把焦点还给「⋯」（还回去它的悬停提示会挂在那儿）；Esc 关闭才还（storyboard-popover-keyboard 管那条）。
-    await expect.poll(() => win.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? ''), { message: `点空白收起后焦点又落回「⋯」 · ${'board:TextFormatDismiss'}/dismiss.outside-press` })
-      .not.toBe(label('generationCommon.navigation.viewOptions'))
+    await expect(canvasViewOptionsButton(win), '点空白收起后焦点又落回「⋯」 · board:TextFormatDismiss/dismiss.outside-press').not.toBeFocused()
     if (shot) await win.screenshot({ path: path.join(output, `dismiss-after-${tag}.png`) })
   })
   await check('左栏素材抽屉：点画布空白处收起', async () => {
