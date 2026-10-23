@@ -1,0 +1,17 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-23T11:40:00Z" },
+  "title": "点外面收起与格式按钮 修前修后对照",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1360, "h": 860, "title": "总览：先查别人 + 六个元素" },
+    "C1-dismiss.dc.html": { "x": 0, "y": 980, "w": 1360, "h": 560, "title": "① 点外面就收起" },
+    "C2-canvas-format.dc.html": { "x": 0, "y": 1660, "w": 1360, "h": 500, "title": "② 画布文本节点格式条" },
+    "C3-creation-format.dc.html": { "x": 0, "y": 2280, "w": 1360, "h": 500, "title": "③ 创作区格式钮与选区浮条" },
+    "C4-en.dc.html": { "x": 0, "y": 2900, "w": 1360, "h": 500, "title": "④ 英文界面" }
+  },
+  "order": ["Main.dc.html", "C1-dismiss.dc.html", "C2-canvas-format.dc.html", "C3-creation-format.dc.html", "C4-en.dc.html"],
+  "notes": {},
+  "designSystems": []
+}

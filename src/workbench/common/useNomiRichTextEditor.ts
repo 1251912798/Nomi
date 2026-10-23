@@ -64,7 +64,7 @@ export function useNomiTiptapEditor(options: UseEditorOptions, deps?: React.Depe
  * and markdown-apply commands all live here so we never run two Tiptap configs.
  *
  * Each surface renders its own shell (full-height toolbar vs floating bar) but
- * shares this kernel + buildRichTextActions().
+ * shares this kernel + useRichTextActions().
  */
 export type RichTextApplyMode = 'insert' | 'replace' | 'append'
 
@@ -150,7 +150,10 @@ export function useNomiRichTextEditor(options: {
 
   const editorProps = React.useMemo(
     () => ({
-      attributes: { class: 'workbench-editor__content' },
+      // 列表的样式写在这里，不写全局 CSS：Tailwind 的 preflight 把 ul / ol 的 list-style 清成 none，
+      // 之前全局 CSS 只补了缩进没补符号——点「无序 / 有序列表」只看到整段右移，像没生效（2026-10-23 用户实测）。
+      // 待办列表（ul[data-type=taskList]）在 workbench.css 里以更高优先级去掉符号。
+      attributes: { class: 'workbench-editor__content [&_ul]:mb-3.5 [&_ul]:pl-6 [&_ul]:list-disc [&_ol]:mb-3.5 [&_ol]:pl-6 [&_ol]:list-decimal' },
       transformPastedHTML: sanitizePaste ? (html: string) => sanitizePastedHtml(html) : undefined,
     }),
     [sanitizePaste],
