@@ -23,6 +23,7 @@ import { cn } from '../../../utils/cn'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { resumeProductionBatch } from '../../production/productionShotActions'
 import { productionShotCornerText, stoppedCopyOf, useProductionShotState } from './productionShotCorner'
+import type { ProductionShotState } from '../../../../electron/shared/productionShotPhase'
 
 // 「阶段 → 小标说什么 / 已停说哪句话」与读阶段的 hook 住在 productionShotCorner.ts（2026-10-23）；
 // 小标的样子是下面这两个组件。聊天里的指向元素和画布节点挂同一份，不各抄一张表、不各画一枚。
