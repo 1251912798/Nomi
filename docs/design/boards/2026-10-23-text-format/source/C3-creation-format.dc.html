@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>③ 创作区格式钮与选区浮条</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:1360px;height:500px;box-sizing:border-box;padding:32px 40px;background:#fbfaf7;color:#2b2925;font-family:Inter,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;display:flex;flex-direction:column;gap:16px">
+  <h3 style="margin:0;font-size:18px;font-weight:600">③ 创作区：写一行、全选、加粗、改有序列表</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#8a3b2e;font-weight:600">修前 · 选区浮条盖住工具栏，「代码」等钮点不到</figcaption>
+      <img src="/_blob/f0f06f936677f47ba298c89ba4840536" alt="修前：选区浮条盖住顶部工具栏" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">修后 · 浮条在选区下方，悬停出名字，序号可见</figcaption>
+      <img src="/_blob/d203987b0f6e64f35ae96f708c9f3934" alt="修后：选区浮条在选区下方，悬停出「行内代码」提示，有序列表有序号" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">修后 · 暗色</figcaption>
+      <img src="/_blob/ce990fa1657eab5bed26df0624aa5140" alt="修后暗色：工具栏与选区浮条" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+  </div>
+  <p style="margin:0;font-size:13px;line-height:1.6;color:#5f5b54">按下态：光标在粗体里「加粗」就有设计系统 Pressed 底色，键盘取消后跟着弹起；选区整段滚出视野时浮条隐藏，滚回来再出。</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
