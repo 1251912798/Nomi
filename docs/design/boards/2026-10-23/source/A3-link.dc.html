@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>A3 联动与定位</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="nomi-ds.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,400&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="nm light" style="width:1700px;height:1260px;padding:32px 40px;display:flex;flex-direction:column;gap:30px">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="v" viewBox="0 0 24 24"><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z"/><path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"/></symbol>
+<symbol id="ph" viewBox="0 0 24 24"><path d="M15 8h.01"/><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5"/><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3"/></symbol>
+<symbol id="fc" viewBox="0 0 24 24"><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 3l0 2"/><path d="M3 12l2 0"/><path d="M12 19l0 2"/><path d="M19 12l2 0"/></symbol>
+</defs></svg>
+<div class="row g8"><span class="tag sch">A3</span><h2 class="h2">悬停：两边同时亮　·　点击：画布定位到节点并闪一下（中文 · 光色）</h2><span class="note">画布右下是没被点名的「参考图」，用来对比：只有被指的那个会亮。</span></div>
+
+<!-- ============ P1 ============ -->
+<div class="col g8">
+<div class="cap"><span class="tag sch">P1</span><b>镜像小卡</b><span>聊天里是节点的缩影；亮的是同一张脸</span></div>
+<div style="display:flex;gap:40px">
+<!-- hover -->
+<div class="col g4"><div class="note">① 悬停「镜 02」</div>
+<div style="display:flex;width:780px;height:300px">
+<div class="cv" style="width:420px;height:300px;border-radius:12px 0 0 12px">
+<div class="cn" style="left:24px;top:100px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn hot" style="left:156px;top:100px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:288px;top:100px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:156px;top:214px;width:112px;height:63px"><div class="lab"><span class="ttl" style="font-weight:500;color:var(--nomi-ink60)">参考 · 水洼</span></div><div class="card"><div class="th im3"></div></div></div>
+</div>
+<div class="panel" style="width:360px;height:300px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)">
+<div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button>
+<button class="p1 hot" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button></div>
+<p class="sum">镜 02 · Seedance 2.0 Fast · 16:9 · 5s</p></div></div>
+</div></div>
+<!-- click -->
+<div class="col g4"><div class="note">② 点击：画布滑到镜 02（缩放不超 100%），节点闪一下</div>
+<div style="display:flex;width:780px;height:300px">
+<div class="cv" style="width:420px;height:300px;border-radius:12px 0 0 12px">
+<div class="cn" style="left:-80px;top:100px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn flash" style="left:154px;top:96px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:290px;top:100px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:154px;top:214px;width:112px;height:63px"><div class="lab"><span class="ttl" style="font-weight:500;color:var(--nomi-ink60)">参考 · 水洼</span></div><div class="card"><div class="th im3"></div></div></div>
+<div class="cmp" style="left:96px;top:176px;width:228px;display:none"></div>
+</div>
+<div class="panel" style="width:360px;height:300px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)">
+<div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button>
+<button class="p1 hot" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span><span class="pl"><svg class="i i10"><use href="#fc"/></svg>已定位</span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button></div>
+<p class="sum">镜 02 · Seedance 2.0 Fast · 16:9 · 5s</p></div></div>
+</div></div>
+</div>
+</div>
+
+<!-- ============ P2 ============ -->
+<div class="col g8">
+<div class="cap"><span class="tag sch">P2</span><b>行内标签</b><span>亮的是同名同号的那一行 / 那一枚</span></div>
+<div style="display:flex;gap:40px">
+<div class="col g4"><div class="note">① 悬停「镜 02」</div>
+<div style="display:flex;width:780px;height:300px">
+<div class="cv" style="width:420px;height:300px;border-radius:12px 0 0 12px">
+<div class="cn" style="left:24px;top:100px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn hot" style="left:156px;top:100px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:288px;top:100px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:156px;top:214px;width:112px;height:63px"><div class="lab"><span class="ttl" style="font-weight:500;color:var(--nomi-ink60)">参考 · 水洼</span></div><div class="card"><div class="th im3"></div></div></div>
+</div>
+<div class="panel" style="width:360px;height:300px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)">
+<div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="p2list">
+<button class="p2row" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 Fast · 4s</span></span></button>
+<button class="p2row hot" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="sum">Seedance 2.0 Fast · 5s</span></span></button>
+<button class="p2row" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="sum">Seedance 2.0 Fast · 4s</span></span></button></div></div></div>
+</div></div>
+<div class="col g4"><div class="note">② 点击：画布滑到镜 02，节点闪一下；那一行出现「已定位」</div>
+<div style="display:flex;width:780px;height:300px">
+<div class="cv" style="width:420px;height:300px;border-radius:12px 0 0 12px">
+<div class="cn" style="left:-80px;top:100px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn flash" style="left:154px;top:96px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:290px;top:100px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:154px;top:214px;width:112px;height:63px"><div class="lab"><span class="ttl" style="font-weight:500;color:var(--nomi-ink60)">参考 · 水洼</span></div><div class="card"><div class="th im3"></div></div></div>
+</div>
+<div class="panel" style="width:360px;height:300px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)">
+<div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="p2list">
+<button class="p2row" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 Fast · 4s</span></span></button>
+<button class="p2row hot" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="sum">Seedance 2.0 Fast · 5s</span></span><span class="stt acc"><svg class="i i12"><use href="#fc"/></svg>已定位</span></button>
+<button class="p2row" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="sum">Seedance 2.0 Fast · 4s</span></span></button></div></div></div>
+</div></div>
+</div>
+</div>
+
+<!-- ============ P3 ============ -->
+<div class="col g8">
+<div class="cap"><span class="tag sch">P3</span><b>配对号标</b><span>画布节点角上挂同号小标；悬停时再拉一根虚线连到聊天那一行</span></div>
+<div style="display:flex;gap:40px">
+<div class="col g4"><div class="note">① 悬停「2 越过落叶」</div>
+<div style="display:flex;width:780px;height:300px;position:relative">
+<div class="cv" style="width:420px;height:300px;border-radius:12px 0 0 12px">
+<div class="cn" style="left:24px;top:100px;width:112px;height:63px"><span class="pm"><span class="mk s">1</span></span><div class="lab" style="padding-left:12px"><span class="ttl">纸船出发</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn hot" style="left:156px;top:100px;width:112px;height:63px"><span class="pm"><span class="mk s">2</span></span><div class="lab" style="padding-left:12px"><span class="ttl">越过落叶</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:288px;top:100px;width:112px;height:63px"><span class="pm"><span class="mk s">3</span></span><div class="lab" style="padding-left:12px"><span class="ttl">漂向远处</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:156px;top:214px;width:112px;height:63px"><div class="lab"><span class="ttl" style="font-weight:500;color:var(--nomi-ink60)">参考 · 水洼</span></div><div class="card"><div class="th im3"></div></div></div>
+</div>
+<div class="panel" style="width:360px;height:300px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)">
+<div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="p2list">
+<button class="p3" type="button"><span class="mk">1</span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 Fast · 4s</span></span></button>
+<button class="p3 hot" type="button"><span class="mk">2</span><span class="tx"><span class="l1"><span class="ttl">越过落叶</span></span><span class="sum">Seedance 2.0 Fast · 5s</span></span></button>
+<button class="p3" type="button"><span class="mk">3</span><span class="tx"><span class="l1"><span class="ttl">漂向远处</span></span><span class="sum">Seedance 2.0 Fast · 4s</span></span></button></div></div></div>
+<svg width="140" height="120" viewBox="0 0 140 120" style="position:absolute;left:300px;top:70px;overflow:visible" aria-hidden="true"><path d="M120 89 C 80 124, -40 124, -88 98" fill="none" stroke="var(--nomi-ink40)" stroke-width="1.5" stroke-dasharray="4 4"/><circle cx="-88" cy="98" r="3" fill="var(--nomi-ink40)"/></svg>
+</div></div>
+<div class="col g4"><div class="note">② 点击：画布滑到号 2，节点闪一下</div>
+<div style="display:flex;width:780px;height:300px">
+<div class="cv" style="width:420px;height:300px;border-radius:12px 0 0 12px">
+<div class="cn" style="left:-80px;top:100px;width:112px;height:63px"><span class="pm"><span class="mk s">1</span></span><div class="lab" style="padding-left:12px"><span class="ttl">纸船出发</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn flash" style="left:154px;top:96px;width:112px;height:63px"><span class="pm"><span class="mk s">2</span></span><div class="lab" style="padding-left:12px"><span class="ttl">越过落叶</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:290px;top:100px;width:112px;height:63px"><span class="pm"><span class="mk s">3</span></span><div class="lab" style="padding-left:12px"><span class="ttl">漂向远处</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:154px;top:214px;width:112px;height:63px"><div class="lab"><span class="ttl" style="font-weight:500;color:var(--nomi-ink60)">参考 · 水洼</span></div><div class="card"><div class="th im3"></div></div></div>
+</div>
+<div class="panel" style="width:360px;height:300px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)">
+<div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span></div>
+<div class="pbody"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="p2list">
+<button class="p3" type="button"><span class="mk">1</span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 Fast · 4s</span></span></button>
+<button class="p3 hot" type="button"><span class="mk">2</span><span class="tx"><span class="l1"><span class="ttl">越过落叶</span></span><span class="sum">Seedance 2.0 Fast · 5s</span></span><span class="stt acc"><svg class="i i12"><use href="#fc"/></svg>已定位</span></button>
+<button class="p3" type="button"><span class="mk">3</span><span class="tx"><span class="l1"><span class="ttl">漂向远处</span></span><span class="sum">Seedance 2.0 Fast · 4s</span></span></button></div></div></div>
+</div></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1700,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

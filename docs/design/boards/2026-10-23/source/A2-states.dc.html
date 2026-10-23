@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>A2 状态</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="nomi-ds.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,400&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="nm light" style="width:1240px;height:1330px;padding:32px 40px;display:flex;flex-direction:column;gap:28px">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="v" viewBox="0 0 24 24"><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z"/><path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"/></symbol>
+<symbol id="ck" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></symbol>
+<symbol id="al" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></symbol>
+<symbol id="lo" viewBox="0 0 24 24"><path d="M9 15l3 -3m2 -2l1 -1"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M3 3l18 18"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></symbol>
+<symbol id="cl" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></symbol>
+<symbol id="ld" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+</defs></svg>
+<div class="row g8"><span class="tag sch">A2</span><h2 class="h2">三种指向元素 × 六种状态 + 组指向（中文 · 光色）</h2><span class="note">示例：Agent 在画布起草的三个镜头；点击行为三种一致（见 A3）。「已删除」不可点。</span></div>
+
+<!-- P1 -->
+<div class="col g8">
+<div class="cap"><span class="tag sch">P1</span><b>镜像小卡</b><span>缩略图同节点比例，标题行同节点标题行</span></div>
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px">
+<div class="col g4"><div class="note">草稿</div><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i16"><use href="#v"/></svg></span><span class="pl">等你确认</span></span><span class="sum">Seedance 2.0 Fast · 16:9 · 4s</span></button></div>
+<div class="col g4"><div class="note">排队</div><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty"><span class="ct"><svg class="i i16"><use href="#v"/></svg></span><span class="pl"><svg class="i i10"><use href="#cl"/></svg>排队中 · 第 1/3</span></span><span class="sum">Seedance 2.0 Fast · 16:9 · 4s</span></button></div>
+<div class="col g4"><div class="note">生成中</div><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty gen"><span class="ct"><svg class="i i16"><use href="#v"/></svg></span><span class="sb acc"><svg class="i i10 spin"><use href="#ld"/></svg>生成中</span></span><span class="sum">Seedance 2.0 Fast · 16:9 · 4s</span></button></div>
+<div class="col g4"><div class="note">完成（结果缩略图）</div><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th im1"><span class="tp"><svg class="i i12"><use href="#v"/></svg></span></span><span class="sum">Seedance 2.0 Fast · 16:9 · 4s</span></button></div>
+<div class="col g4"><div class="note">失败</div><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th bad"><span class="ct bd"><svg class="i i16"><use href="#al"/></svg></span><span class="sb bad">服务暂时不可用</span></span><span class="sum bd">没有发出去</span></button></div>
+<div class="col g4"><div class="note">已删除（不可点）</div><button class="p1 gone" type="button" disabled style="opacity:1"><span class="lab"><span class="shot" style="color:var(--nomi-ink40)">镜 01</span><span class="ttl">纸船出发</span></span><span class="th gone"><span class="ct"><svg class="i i16"><use href="#lo"/></svg></span><span class="pl">已删除</span></span><span class="sum">画布上已没有这个节点 <span class="only">只在指向元素上</span></span></button></div>
+</div>
+<div class="sec" style="margin-top:6px">组指向（一次说多个对象）</div>
+<div style="display:flex;gap:40px">
+<div class="col g4" style="width:360px"><div class="note">3 个镜头 · 全是草稿</div><div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button></div></div>
+<div class="col g4" style="width:360px"><div class="note">混合状态：完成 · 生成中 · 失败</div><div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th im1"></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#ld"/></svg></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th bad"><span class="ct bd"><svg class="i i14"><use href="#al"/></svg></span><span class="sb bad">失败</span></span></button></div></div>
+<div class="col g4" style="width:360px"><div class="note">5 个镜头：露 3 张 + 「还有 2 个」，点它展开成全部</div><div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th im1"></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th im2"></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th" style="background:var(--nomi-ink05);box-shadow:inset 0 0 0 1px var(--nomi-line);display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--nomi-ink80)">还有 2 个</span></button></div></div>
+</div>
+<div class="sec" style="margin-top:10px">竖版 9:16（这次默认值问题的核心是比例）：缩略图槽固定高度，竖版按真比例居中，不裁、不拉伸</div>
+<div style="display:flex;gap:40px;align-items:flex-start">
+<div class="col g4" style="width:360px"><div class="note">一组里横竖混排：镜 01 横版 · 镜 02 竖版 · 镜 03 竖版</div><div class="strip">
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="slot t"><span class="th h im1"></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="slot t"><span class="th v im4"></span></span></button>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="slot t"><span class="th v draft"><span class="ct" style="width:22px;height:22px"><svg class="i i12"><use href="#v"/></svg></span></span></span></button></div></div>
+<div class="col g4" style="width:360px"><div class="note">单个竖版（一格的宽度不变，高度由比例定）</div><div class="one-p1" style="grid-template-columns:132px minmax(0,1fr)"><button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="slot t"><span class="th v im4"></span></span></button><div class="col g4" style="padding-top:26px"><span class="sum">Seedance 2.0 Fast</span><span class="sum">9:16 · 5s · 480p</span></div></div></div>
+<div class="col g4" style="width:360px"><div class="note">P2 / P3 的小缩略图是圆 / 圆角方块，按中心裁切，横竖都不变形，所以不需要为竖版另画。<br>竖版时 P1 的摘要里必须带「9:16」：比例是用户最容易看漏、又最会出错片的一项。</div></div>
+</div>
+</div>
+
+<!-- P2 -->
+<div class="col g8">
+<div class="cap"><span class="tag sch">P2</span><b>行内标签</b><span>只带标题行那一半 + 小缩略图；可以直接嵌进一句话里</span></div>
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px">
+<div class="col g4"><div class="note">草稿</div><button class="p2row" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 · 4s</span></span></button></div>
+<div class="col g4"><div class="note">排队</div><button class="p2row" type="button"><span class="th empty"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 · 4s</span></span><svg class="i i14" style="color:var(--nomi-ink60)"><use href="#cl"/></svg></button></div>
+<div class="col g4"><div class="note">生成中</div><button class="p2row" type="button"><span class="th empty gen"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 · 4s</span></span><svg class="i i14 spin" style="color:var(--nomi-accent)"><use href="#ld"/></svg></button></div>
+<div class="col g4"><div class="note">完成</div><button class="p2row" type="button"><span class="th im1"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 · 4s</span></span><svg class="i i14 ok"><use href="#ck"/></svg></button></div>
+<div class="col g4"><div class="note">失败</div><button class="p2row bad" type="button"><span class="th bad"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="sum bd">没有发出去</span></span><svg class="i i14 bd"><use href="#al"/></svg></button></div>
+<div class="col g4"><div class="note">已删除（不可点）</div><button class="p2row gone" type="button" disabled><span class="th gone"></span><span class="tx"><span class="l1"><span class="shot" style="color:var(--nomi-ink40)">镜 01</span><span class="ttl">纸船出发</span></span><span class="sum">已删除</span></span><svg class="i i14" style="color:var(--nomi-ink40)"><use href="#lo"/></svg></button></div>
+</div>
+<div style="display:flex;gap:40px">
+<div class="col g4" style="width:360px"><div class="note">组指向 A：嵌在 Agent 的话里（折行自然）</div>
+<p class="say" style="line-height:32px">已在画布上起草了 3 个镜头：<button class="p2" type="button"><span class="th im1"></span><span class="shot" style="height:18px">镜 01</span><span class="ttl">纸船出发</span></button> <button class="p2" type="button"><span class="th im2"></span><span class="shot" style="height:18px">镜 02</span><span class="ttl">越过落叶</span></button> <button class="p2" type="button"><span class="th im3"></span><span class="shot" style="height:18px">镜 03</span><span class="ttl">漂向远处</span></button></p></div>
+<div class="col g4" style="width:360px"><div class="note">组指向 B：列表（混合状态）</div><div class="p2list">
+<button class="p2row" type="button"><span class="th im1"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span></span><svg class="i i14 ok"><use href="#ck"/></svg></button>
+<button class="p2row" type="button"><span class="th empty gen"></span><span class="tx"><span class="l1"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span></span><svg class="i i14 spin" style="color:var(--nomi-accent)"><use href="#ld"/></svg></button>
+<button class="p2row bad" type="button"><span class="th bad"></span><span class="tx"><span class="l1"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span></span><svg class="i i14 bd"><use href="#al"/></svg></button></div></div>
+<div class="col g4" style="width:360px"><div class="note">5 个镜头：嵌句里 3 个 + 「+2」</div>
+<p class="say" style="line-height:32px"><button class="p2" type="button"><span class="th im1"></span><span class="shot" style="height:18px">镜 01</span><span class="ttl">纸船出发</span></button> <button class="p2" type="button"><span class="th im2"></span><span class="shot" style="height:18px">镜 02</span></button> <button class="p2" type="button"><span class="th im3"></span><span class="shot" style="height:18px">镜 03</span></button> <button class="p2" type="button" style="padding:0 10px"><span class="ttl">+2</span></button></p></div>
+</div>
+</div>
+
+<!-- P3 -->
+<div class="col g8">
+<div class="cap"><span class="tag sch">P3</span><b>配对号标</b><span>聊天里只放「号 + 名字 + 摘要」；画布节点上挂同号同色的标（见 A3）</span></div>
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px">
+<div class="col g4"><div class="note">草稿</div><button class="p3" type="button"><span class="mk">1</span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 · 4s</span></span></button></div>
+<div class="col g4"><div class="note">排队</div><button class="p3" type="button"><span class="mk">1</span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 · 4s</span></span><svg class="i i14" style="color:var(--nomi-ink60)"><use href="#cl"/></svg></button></div>
+<div class="col g4"><div class="note">生成中</div><button class="p3" type="button"><span class="mk">1</span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 · 4s</span></span><svg class="i i14 spin" style="color:var(--nomi-accent)"><use href="#ld"/></svg></button></div>
+<div class="col g4"><div class="note">完成（带小缩略图）</div><button class="p3" type="button"><span class="mk">1</span><span class="th im1" style="width:28px;height:28px"></span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum">Seedance 2.0 Fast · 4s</span></span><svg class="i i14 ok"><use href="#ck"/></svg></button></div>
+<div class="col g4"><div class="note">失败</div><button class="p3 bad" type="button"><span class="mk bad">1</span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum bd">没有发出去</span></span><svg class="i i14 bd"><use href="#al"/></svg></button></div>
+<div class="col g4"><div class="note">已删除（不可点）</div><button class="p3 gone" type="button" disabled><span class="mk off">1</span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum">已删除</span></span><svg class="i i14" style="color:var(--nomi-ink40)"><use href="#lo"/></svg></button></div>
+</div>
+<div style="display:flex;gap:40px">
+<div class="col g4" style="width:360px"><div class="note">组指向：3 行，号 1 / 2 / 3（混合状态）</div><div class="p2list">
+<button class="p3" type="button"><span class="mk">1</span><span class="tx"><span class="l1"><span class="ttl">纸船出发</span></span><span class="sum">4s · 480p</span></span><svg class="i i14 ok"><use href="#ck"/></svg></button>
+<button class="p3" type="button"><span class="mk">2</span><span class="tx"><span class="l1"><span class="ttl">越过落叶</span></span><span class="sum">5s · 480p</span></span><svg class="i i14 spin" style="color:var(--nomi-accent)"><use href="#ld"/></svg></button>
+<button class="p3 bad" type="button"><span class="mk bad">3</span><span class="tx"><span class="l1"><span class="ttl">漂向远处</span></span><span class="sum bd">没有发出去</span></span><svg class="i i14 bd"><use href="#al"/></svg></button></div></div>
+<div class="col g4" style="width:700px"><div class="note">要注意：号是「这一张卡里的第几个」，不是镜号；它只在被 Agent 点名的那一刻挂到画布节点上，卡处理完或被收起后，画布上的标自动撤掉。同一个节点被两张卡点名时要换号，这是 P3 的额外规则。</div></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":1330}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
