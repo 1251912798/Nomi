@@ -247,6 +247,9 @@ async function checkC19GroupUndoAndFocus() {
   await expect.poll(graph).toEqual(before)
   await expect.poll(diskGraph).toEqual(before)
   assert(isDeepStrictEqual(authority(), c19AuthorityBefore), 'Dismissed draft and approval ledger remain unchanged')
+  // 上面为了让 Ctrl+Z 落在画布上点了一下画布空白：左栏抽屉按「点空白收起」规矩收起了（2026-10-23 #1299 修好的行为；
+  // 修前 d3-zoom 吞掉 mousedown，抽屉收不起，这里曾隐式依赖那个 bug）。重新打开目录抽屉再看整组是否回来。
+  await openRailDrawer(getWin(), 'catalog', 'C19 撤销后重开分组列表')
   await expect(groupRow).toBeVisible()
   const restoredImage = getWin().locator('.generation-canvas-v2-node[data-node-id="c19-one"] img').first()
   await expect.poll(() => restoredImage.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true)
