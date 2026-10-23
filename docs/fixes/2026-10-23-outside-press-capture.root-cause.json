@@ -53,7 +53,7 @@
   "invariants": [
     "「点外面就收」只经 src/design/outsidePress.ts 的 listenOutsidePress 听：document 上 pointerdown 捕获阶段，在任何目标处理器之前",
     "src 里没有 document / window 上的 mousedown / touchstart 监听，也不用 Mantine useClickOutside",
-    "document / window 上冒泡阶段的 pointerdown 监听只许减不许增（基线 3 处）"
+    "document / window 上冒泡阶段的 pointerdown / click 监听只许减不许增（基线 4 处）"
   ],
   "doors": [
     {
@@ -205,10 +205,10 @@
   "prevention": {
     "kind": "static-gate",
     "enforcement_path": "src/design/outsidePress.ts",
-    "invariant": "src 非测试代码里没有 document / window 上的 mousedown / touchstart 监听、没有 Mantine useClickOutside；冒泡阶段的 document / window pointerdown 只许是基线里的 3 处；owner 本身听 document 捕获阶段 pointerdown。",
+    "invariant": "src 非测试代码里没有 document / window 上的 mousedown / touchstart 监听、没有 Mantine useClickOutside；冒泡阶段的 document / window pointerdown / click 只许是基线里的 4 处（识别不看处理器写法，认 ownerDocument 与 useWindowEvent）；owner 本身听 document 捕获阶段 pointerdown、并按捕获阶段解绑。",
     "failure_mode": "结构测试红，列出违规文件；新浮层只能经 listenOutsidePress。",
     "exception_policy": "none",
-    "strategy": "统一听法收进 src/design/outsidePress.ts 一处，存量 11 处里能安全迁的 8 处 + 3 处 mousedown 全部迁完；剩下 3 处冒泡 pointerdown 以基线冻结、只减不增。",
+    "strategy": "统一听法收进 src/design/outsidePress.ts 一处，存量 11 处里能安全迁的 8 处 + 3 处 mousedown 全部迁完；剩下 3 处冒泡 pointerdown 与 CategoryTree 的 1 处冒泡 click 以基线冻结、只减不增（独立验收 L-acc-sonnet-20261023 发现 3 后扩到 click）。",
     "artifacts": [
       "src/design/outsidePress.ts",
       "src/design/outsidePress.structure.test.ts"
@@ -242,7 +242,8 @@
   },
   "migration": "纯渲染层行为，没有持久化状态，不需要迁移。",
   "residual_risks": [
-    "useGenerationCanvasReactFlowMenus、DocumentListSidebar、useWhiteboardSelectionActions 三处冒泡 pointerdown 仍会被子树里的 stopPropagation 截断（画布空白不受影响）；迁移前要先给它们补「点在自己身上」的判据。",
+    "useGenerationCanvasReactFlowMenus、DocumentListSidebar、useWhiteboardSelectionActions 三处冒泡 pointerdown 与 CategoryTree 一处冒泡 click 仍会被子树里的 stopPropagation 截断（画布空白不受影响）；迁移前要先给它们补「点在自己身上」的判据。",
+    "结构测试是文本扫描：document 的变量别名、globalThis / self 上的监听、变量做事件名认不出来（仓库目前没有这类写法）；要彻底就换成 ESLint / AST 规则。",
     "没有 DOM 单测环境（vitest environment=node），行为证据来自生产构建真机走查，见 PR。"
   ],
   "invariant_owner_layer": {

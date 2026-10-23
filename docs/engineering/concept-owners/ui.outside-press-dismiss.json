@@ -29,5 +29,5 @@
     "src/workbench/generationCanvas/components/useCanvasFrameActions.ts"
   ],
   "since": "2026-10-23",
-  "notes": "用户 2026-10-23 实测：画布左下「⋯」点开后点画布中间不收（合同 docs/fixes/2026-10-23-outside-press-capture.root-cause.json）。画布平移面 d3-zoom 在 mousedown 上 stopImmediatePropagation，所以「点外面」只在 document 上 pointerdown 捕获阶段听（与 Floating UI useDismiss 默认值一致）；调用方只给「算不算点在自己身上」与收起动作。结构测试 src/design/outsidePress.structure.test.ts 拒绝 mousedown / touchstart 监听、Mantine useClickOutside 与新增冒泡 pointerdown（存量 3 处冻结在基线）。"
+  "notes": "用户 2026-10-23 实测：画布左下「⋯」点开后点画布中间不收（合同 docs/fixes/2026-10-23-outside-press-capture.root-cause.json）。画布平移面 d3-zoom 在 mousedown 上 stopImmediatePropagation，所以「点外面」只在 document 上 pointerdown 捕获阶段听（与 Floating UI useDismiss 默认值一致）；调用方只给「算不算点在自己身上」与收起动作。结构测试 src/design/outsidePress.structure.test.ts 拒绝 mousedown / touchstart 监听、Mantine useClickOutside 与新增冒泡 pointerdown / click（存量 4 处冻结在基线）。"
 }

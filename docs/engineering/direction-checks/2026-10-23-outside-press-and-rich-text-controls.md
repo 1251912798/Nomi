@@ -49,7 +49,7 @@
 | 选项 | 做什么 | 代价 | 风险 | 推荐 |
 |---|---|---|---|---|
 | 接入现成方案 | 11 处浮层全换 Radix Popover / Floating UI `useDismiss` | 每处浮层的开合、焦点、portal 都要重写，约 11 个组件 | 大：AnchoredPopover 已有焦点 / 让位规则（overlayLayers），换库要重新对齐 | 否（本次）；AnchoredPopover 以后整体换 Floating UI React 时，`listenOutsidePress` 一并删 |
-| 补（本 PR） | A：新增唯一听法 `listenOutsidePress`（pointerdown 捕获，与 Floating UI 默认一致），迁 9 个文件 12 处，余 3 处冻结在基线；B：`useRichTextActions`（TipTap `useEditorState`）+ `RichTextActionButton` 一份定义三个壳，画布壳进 `FloatingToolbarShell` | 2 个新文件 + 2 份结构测试 | 小：行为只差在「点外面」先于目标处理器触发，判据不变 | **推荐** |
+| 补（本 PR） | A：新增唯一听法 `listenOutsidePress`（pointerdown 捕获，与 Floating UI 默认一致），迁 9 个文件 12 处，余 4 处（3 处冒泡 pointerdown + 1 处冒泡 click）冻结在基线；B：`useRichTextActions`（TipTap `useEditorState`）+ `RichTextActionButton` 一份定义三个壳，画布壳进 `FloatingToolbarShell` | 2 个新文件 + 2 份结构测试 | 小：行为只差在「点外面」先于目标处理器触发，判据不变 | **推荐** |
 | 重写 | 浮层体系统一重写 | 大 | 大 | 否 |
 | 删 | 删掉选区浮条里重复的四颗格式钮 | 小 | 产品取舍（用户说过底部功能累赘，但没拍到这一条） | 另议，不在本 PR |
 

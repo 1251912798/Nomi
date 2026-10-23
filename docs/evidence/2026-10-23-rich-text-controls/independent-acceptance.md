@@ -66,3 +66,58 @@
 ## 三、没能验证的
 
 真机走查 zh / en 没能自己复跑（构建戳被另一会话对 `scripts/pre-push-scan-guards.mjs` 的未提交改动判陈旧，按约定不自己 build；我已证明 dist 本身与 HEAD 一致，所以实现线的截图与 10/10 结果可信，但不是我这条线复跑的）；因此「文本节点编辑完点空白后锁 / 复制条回来」「TaskCenterPanel 真实触发钮」「NomiBrowserDialog / 素材筛选 / 帧菜单 / TimelinePreview 文字菜单 / EditingLayoutMenu」这些只能靠读码和同类机制的测试页佐证，没有在整 App 里点过。
+
+## 复核（HEAD d20a4a1e1）
+
+- 验收线：L-acc-sonnet-20261023（同一条线）；复核范围 `git diff 59c836ee8..HEAD`（a8ca01d08、d20a4a1e1）。
+- 结论：**通过**。上一轮的应修项和全部建议项都已解决，真机走查这次能跑起来并全绿，没有发现新问题；只剩 3 条低优先级的新增建议（见下，不挡合并）。
+
+### 构建与走查（这次是我自己复跑的）
+
+构建戳 `dist/build-stamp.json` tree=`9f7699ab…`，等于当前工作树的 `sourceIdentity`（git status 干净），启动器没有拒跑，我没有 build。
+
+| 检查项 | 结果 | 证据 |
+|---|---|---|
+| `outside-press-and-text-format.walk.mjs --shot`（zh-CN） | 通过 | `RESULT 10/10 passed` |
+| `… --shot --locale en` | 通过 | `RESULT 10/10 passed`；另外不带 `--shot` 的 en 又跑两遍，都是 10/10（用来看 d20a4a1e1 修掉的英文轨偶发 1/4 还会不会复现，没有复现） |
+| `rich-editor-p1.walk.mjs` | 通过 | `全部 14 项通过`（第一遍完整结果；第二遍我只看了工具栏那几行，也都通过）；`工具栏·highlight / strike / table / task-list` 各「找到 1 个」（修前是定位器命中 0 个） |
+| 两份结构测试 + 另外 3 份 | 通过 | 5 个文件 / 21 条全过（上一轮 20 条，多出的是识别器自检用例） |
+| 相关单测 | 通过 | `src/design`、`src/workbench/{common,creation,generationCanvas/nodes}`、两个真 Chromium 的 `tests/ux/*.test.mjs`：271 个文件 / 2577 条全过 |
+| `tsc -p tsconfig.app.json --noEmit`、eslint（6 个改动文件） | 通过 | 无输出 / 0 error |
+| `check-concept-owners`、`check-self-written`、`check-file-sizes`、`check-boundaries`、`check-root-cause-contracts`、`check:escape-ledger` | 通过 | 全部 ✅（新增的两个概念、两条自写登记都过；`BaseGenerationNode.tsx` 合并注释后文件体积门岗通过） |
+| 截图亲眼读 | 一致 | 读了这次产出的 `creation-toolbar-zh-CN.png`、`canvas-text-node-en.png`：格式条夹在舞台顶边下、悬停出提示、选区浮条落在选区下方没盖工具栏 |
+
+### 逐条核上一轮发现
+
+| 发现 | 是否真解决 | 证据 |
+|---|---|---|
+| 1 应修：夜间走查按 `[title]` 找钮 | 已解决 | 改按 `data-rich-text-action`（`highlight/strike/table/task-list`，这些 id 在 `richTextActions.tsx` 里都有）；走查实跑 4 条都找到 1 个 |
+| 2 建议：换编辑器实例后格式钮消失 | 已解决 | selector 改读闭包里的 `editor`（`richTextActions.tsx:95`），结构测试正则钉住 `selector: () => readActionStates(editor,`。测试页（真源码 + 真 TipTap）：无事务派发时换实例，修前 17→**0**→17，修后 17→17→17；换完新实例上加粗 `aria-pressed=true`、键盘取消后 `false`、再换一次仍 17 颗；换实例后打 10 个字工具栏只多渲 1 次（没有每键重渲） |
+| 3 建议：结构测试只认具名处理器 | 已解决（有残余，见新增 a / b） | 识别改为取整个调用的括号内容；自检用例覆盖内联箭头、`function`、`ownerDocument`、`useWindowEvent`、`{ capture: true }`。我用测试里识别器的逐字副本验证：内联箭头 mousedown、`function` click、`ownerDocument`（含 `?.`）、`useWindowEvent`、多行调用都被认出；`click` 纳入「冒泡只许减不许增」，`CategoryTree.tsx` 的 `window` click 冻进基线 |
+| 4 建议：文档数字与注释 | 已解决（有残余，见新增 c） | direction-check 改成「修前 cad909708 上 1/10、只含第一个提交的中间构建 3/10」；`StoryboardShotRow.tsx:276` 注释改成 pointerdown 捕获 |
+| 6 存疑：选区滚出视野浮条钉在顶边 | 已解决 | `SelectionGeneratePopover.tsx:57` 选区整段在正文区上沿之上或根下沿之下时返回 `null`。测试页（真 `SelectionGeneratePopover`，修前版本取自 59c836ee8 对照）：选区滚到上方，修前浮条钉在 `relTop=58`（选区看不见浮条还在），修后隐藏；选区在下方，修前摆到 `relTop=721`（出了编辑器），修后隐藏；滚回选区修后重新出现（`relTop=193 / 121`，位置与修前一致）；第一行选区仍落在选区下方 `relTop=83`，没盖工具栏 |
+| 5 既有行为，本 PR 不改 | 认可 | 写进 PR 的「没做的」即可 |
+| `BaseGenerationNode.tsx` 合并注释 | 无行为变化 | diff 只动注释与一行尾注释，`textEditing` 状态与浮条逻辑不变 |
+
+### 上一轮没能点的路径，这次在整 App 里点了
+
+临时脚本放在 scratchpad（`acceptance/app-walk.mjs`，没进仓库），用仓库的启动器起真 Electron（生产构建、窗口挂屏幕外、隔离资料目录、零花费）：
+
+| 场景 | 结果 | 证据 |
+|---|---|---|
+| 选中文本节点（点头部，不进正文） | 节点浮条在 | 浮条标签 `["复制为变体"]` |
+| 点进正文 | 格式条顶替节点浮条 | `["文本格式"]`，不叠 |
+| 再点节点头部（编辑器失焦、节点仍选中） | 节点浮条回来，锁在 | `["复制为变体"]`，节点浮条里锁按钮 1 个，没有格式条 |
+| 编辑后点画布空白 | 浮条全部消失 | `[]` |
+| 编辑过一轮后重新选中 | 节点浮条正常回来 | `["复制为变体"]` |
+| 任务中心：点触发钮开、再点一下、再开后点画布空白 | 开 / 关（不再先关后开）/ 收 | `1 / 0 / 0` |
+
+### 新增建议（均低优先级，不挡合并）
+
+a. `src/design/outsidePress.structure.test.ts` 的 `lastTopLevelArgument` 不处理尾逗号：多行写法 `document.addEventListener('pointerdown', handler, { capture: true },\n)` 会把最后一个参数读成空串，合法的捕获监听被判成冒泡（假红，方向安全；仓库现在没有这种写法）。
+b. 仍认不出的写法（用逐字副本验证）：`const doc = document; doc.addEventListener(…)`、`globalThis` / `self` 上的监听、模板字符串或变量做事件名。比上一轮窄得多，不过这类别名写法是下一个绕过口。
+c. owner 的测试不再钉 `removeEventListener('pointerdown', fn, true)`（上一版有这条断言，现在只扫 `addEventListener`）：清理时漏写 `true` 会让监听泄漏，而测试仍绿。建议补回一条断言。另外「基线 3 处」的措辞在四处没跟着改成 4 处（`docs/fixes/2026-10-23-outside-press-capture.root-cause.json:56,245`、`direction-checks/…controls.md:52`、`concept-owners/ui.outside-press-dismiss.json:32`），因为 CategoryTree 的 click 也冻进了基线。
+
+### 仍没验证的
+
+整 App 里没点过的只剩：NomiBrowserDialog、素材筛选菜单、帧菜单、TimelinePreview 文字菜单、EditingLayoutMenu 这五处迁移点（只靠读码和同机制的测试页）；选区浮条的滚出隐藏只在测试页里点过，没在整 App 里点。

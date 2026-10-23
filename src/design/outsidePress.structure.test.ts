@@ -52,8 +52,9 @@ function callArguments(code: string, openParen: number): string {
   return code.slice(openParen + 1)
 }
 
-/** 最后一个顶层参数（捕获参数：`true` 或 `{ capture: true }`）。 */
-function lastTopLevelArgument(args: string): string {
+/** 最后一个顶层参数（捕获参数：`true` 或 `{ capture: true }`）。多行调用的尾逗号先去掉，否则最后一段是空串。 */
+function lastTopLevelArgument(rawArgs: string): string {
+  const args = rawArgs.replace(/,\s*$/, '')
   let depth = 0
   let start = 0
   for (let index = 0; index < args.length; index += 1) {
@@ -89,9 +90,10 @@ describe('「点外面就收」只有一种听法', () => {
       "useWindowEvent('mousedown', () => close())",
       "document.addEventListener('pointerdown', (event) => { close(event) }, { capture: true })",
       "document.addEventListener('pointerdown', onDown)",
+      "document.addEventListener(\n  'pointerdown',\n  onDown,\n  { capture: true },\n)",
     ].join('\n')
     expect(pressListeners('probe', probe).map(({ event, capture }) => `${event}:${capture}`)).toEqual([
-      'mousedown:false', 'click:false', 'touchstart:false', 'pointerdown:true', 'pointerdown:false', 'mousedown:false',
+      'mousedown:false', 'click:false', 'touchstart:false', 'pointerdown:true', 'pointerdown:false', 'pointerdown:true', 'mousedown:false',
     ])
   })
 
@@ -115,5 +117,7 @@ describe('「点外面就收」只有一种听法', () => {
   it('owner 听的是 document 上捕获阶段的 pointerdown', () => {
     const owner = listeners.filter(({ file }) => file === OWNER)
     expect(owner).toEqual([{ file: OWNER, event: 'pointerdown', capture: true }])
+    // 解绑也必须按捕获阶段，漏写 true 会解不掉、监听越积越多（复核建议 c）。
+    expect(sources.find(({ file }) => file === OWNER)?.code).toMatch(/document\.removeEventListener\('pointerdown',\s*\w+,\s*true\)/)
   })
 })
