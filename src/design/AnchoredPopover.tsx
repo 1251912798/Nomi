@@ -4,6 +4,7 @@ import { autoUpdate } from '@floating-ui/dom'
 import { FocusScope } from '@radix-ui/react-focus-scope'
 import { NOMI_OVERLAY_Z_INDEX, hasOpenDialogAbove, hasOpenPopupAbove, isInsidePopupAbove } from './overlayLayers'
 import { resolveAnchoredPopoverPlacement, type AnchoredPopoverAlign, type AnchoredPopoverSide } from './anchoredPopoverPlacement'
+import { listenOutsidePress } from './outsidePress'
 
 /**
  * 锚点浮层：Portal 到 body + fixed 贴锚点，**逃出祖先 overflow 的裁切**。
@@ -187,18 +188,16 @@ export function AnchoredPopover({
       if (event.target instanceof Node && popRef.current?.contains(event.target)) return
       dismissOnEscape(event)
     }
-    const onDown = (event: MouseEvent) => {
-      const target = event.target as globalThis.Node
+    const isInside = (target: EventTarget | null) => {
       const anchor = anchorRef?.current ?? fallbackAnchorRef.current
-      if (popRef.current?.contains(target) || anchor?.contains(target)) return
-      if (popRef.current && isInsidePopupAbove(popRef.current, event.target)) return
-      onClose()
+      if (target instanceof Node && (popRef.current?.contains(target) || anchor?.contains(target))) return true
+      return Boolean(popRef.current && isInsidePopupAbove(popRef.current, target))
     }
+    const stopListeningOutside = listenOutsidePress(isInside, () => onClose())
     document.addEventListener('keydown', onKey, true)
-    document.addEventListener('mousedown', onDown)
     return () => {
       document.removeEventListener('keydown', onKey, true)
-      document.removeEventListener('mousedown', onDown)
+      stopListeningOutside()
     }
   }, [anchorRef, dismissOnEscape, onClose])
 
