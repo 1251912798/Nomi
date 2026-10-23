@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>TextFormatDismiss 预览</title>
+<style>body{margin:0;background:#f1efea}section{margin:0 0 40px}</style>
+</head>
+<body>
+<section data-board-cell="Main.dc.html">
+<div style="width:1360px;height:860px;box-sizing:border-box;padding:48px 56px;background:#fbfaf7;color:#2b2925;font-family:Inter,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <h1 style="margin:0;font-size:28px;line-height:1.25;font-weight:600">点外面收起 + 格式按钮：修前 / 修后对照</h1>
+    <p style="margin:0;font-size:14px;line-height:1.6;color:#5f5b54">全部画面是生产构建上真机走查的截图，不是样张；修前 = 主线 cad909708，修后 = PR #1299。用户 2026-10-23 亲手试过开发版：「我试过了，可见变化 OK」。</p>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px">
+    <section style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font-size:16px;font-weight:600">先查别人（三条，每条写对哪个决定的影响）</h2>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid #e6e2da;border-radius:10px;background:#ffffff">
+        <p style="margin:0;font-size:13px;font-weight:600">Floating UI useDismiss</p>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#5f5b54">点外面默认听 pointerdown、捕获阶段。确认了：「点外面」统一这样听，画布的平移手势吞不掉。</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid #e6e2da;border-radius:10px;background:#ffffff">
+        <p style="margin:0;font-size:13px;font-weight:600">Radix DropdownMenu（hasInteractedOutsideRef）</p>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#5f5b54">因点外面关闭时不把焦点还给触发钮，Esc 关闭才还。改了：浮层点空白收起后，「⋯」不再挂着「视图选项」提示。</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid #e6e2da;border-radius:10px;background:#ffffff">
+        <p style="margin:0;font-size:13px;font-weight:600">TipTap 官方：自定义菜单的按下态</p>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#5f5b54">React 里 isActive() 不会自动响应，要用 useEditorState 订阅。确认了：格式钮按下态随光标刷新的做法。另参 LibTV：编辑时格式条在节点上方、恒定屏幕尺寸，顶替节点工具条。</p>
+      </div>
+    </section>
+    <section style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font-size:16px;font-weight:600">这张板上的六个元素</h2>
+      <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.6">
+        <li><b>点外面就收起</b>：画布「⋯」、左栏抽屉、任务中心点画布空白处收起；收起后焦点不回触发钮（①）</li>
+        <li><b>画布格式条外壳</b>：恒定屏幕尺寸、夹在可见画布里；编辑时顶替锁 / 复制条（②）</li>
+        <li><b>按下态</b>：光标处是粗体，「加粗」就亮；设计系统 Pressed 底色（②③）</li>
+        <li><b>悬停提示</b>：设计系统 Tooltip，悬停即出名字（②③）</li>
+        <li><b>列表符号</b>：无序有圆点、有序有序号（②③）</li>
+        <li><b>选区浮条位置</b>：选中第一行时落在选区下方、不盖工具栏；选区滚出视野就隐藏（③）</li>
+      </ol>
+      <p style="margin:0;font-size:13px;line-height:1.6;color:#5f5b54">没放的：格式钮的种类与顺序不变；选区浮条里重复的四颗格式钮照旧（删不删另议）。</p>
+    </section>
+  </div>
+</div>
+</section>
+<section data-board-cell="C1-dismiss.dc.html">
+<div style="width:1360px;height:560px;box-sizing:border-box;padding:32px 40px;background:#fbfaf7;color:#2b2925;font-family:Inter,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;display:flex;flex-direction:column;gap:16px">
+  <h3 style="margin:0;font-size:18px;font-weight:600">① 点外面就收起：画布「⋯」浮层打开后，点画布中间</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#8a3b2e;font-weight:600">修前 · 点了画布还挂在左下角</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/before-view-options-stays.png" alt="修前：点画布空白后「⋯」视图浮层仍打开" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">修后 · 收起，「⋯」不挂提示</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/after-dismiss-zh.png" alt="修后：点画布空白后浮层收起" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">修后 · 暗色</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/after-dismiss-zh-dark.png" alt="修后暗色：点画布空白后浮层收起" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+  </div>
+  <p style="margin:0;font-size:13px;line-height:1.6;color:#5f5b54">同一条规矩覆盖左栏抽屉、任务中心、素材筛选、帧菜单、预览区菜单等 9 处；按 Esc 关闭照旧把焦点还给触发钮。</p>
+</div>
+</section>
+<section data-board-cell="C2-canvas-format.dc.html">
+<div style="width:1360px;height:500px;box-sizing:border-box;padding:32px 40px;background:#fbfaf7;color:#2b2925;font-family:Inter,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;display:flex;flex-direction:column;gap:16px">
+  <h3 style="margin:0;font-size:18px;font-weight:600">② 画布文本节点：只有一张节点的项目打开即 300%，点进正文写字</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#8a3b2e;font-weight:600">修前 · 格式条放大三倍、被顶栏盖住，点不到</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/before-text-node-format-bar.png" alt="修前：格式条跟着画布缩放，被顶栏盖住" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">修后 · 恒定尺寸、在可见区，悬停出名字，列表有圆点</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/after-text-node-format-bar-zh.png" alt="修后：格式条恒定尺寸，悬停出「斜体」提示，列表有项目符号" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">修后 · 暗色</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/after-text-node-format-bar-zh-dark.png" alt="修后暗色：格式条与提示随主题变暗" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+  </div>
+  <p style="margin:0;font-size:13px;line-height:1.6;color:#5f5b54">编辑时格式条顶替节点上方的锁 / 复制条（同白板编辑条），点回节点头部它们就回来。</p>
+</div>
+</section>
+<section data-board-cell="C3-creation-format.dc.html">
+<div style="width:1360px;height:500px;box-sizing:border-box;padding:32px 40px;background:#fbfaf7;color:#2b2925;font-family:Inter,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;display:flex;flex-direction:column;gap:16px">
+  <h3 style="margin:0;font-size:18px;font-weight:600">③ 创作区：写一行、全选、加粗、改有序列表</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#8a3b2e;font-weight:600">修前 · 选区浮条盖住工具栏，「代码」等钮点不到</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/before-creation-toolbar.png" alt="修前：选区浮条盖住顶部工具栏" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">修后 · 浮条在选区下方，悬停出名字，序号可见</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/after-creation-toolbar-zh.png" alt="修后：选区浮条在选区下方，悬停出「行内代码」提示，有序列表有序号" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">修后 · 暗色</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/after-creation-toolbar-zh-dark.png" alt="修后暗色：工具栏与选区浮条" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+  </div>
+  <p style="margin:0;font-size:13px;line-height:1.6;color:#5f5b54">按下态：光标在粗体里「加粗」就有设计系统 Pressed 底色，键盘取消后跟着弹起；选区整段滚出视野时浮条隐藏，滚回来再出。</p>
+</div>
+</section>
+<section data-board-cell="C4-en.dc.html">
+<div style="width:1360px;height:500px;box-sizing:border-box;padding:32px 40px;background:#fbfaf7;color:#2b2925;font-family:Inter,'PingFang SC','Microsoft YaHei',system-ui,sans-serif;display:flex;flex-direction:column;gap:16px">
+  <h3 style="margin:0;font-size:18px;font-weight:600">④ 英文界面（修后）：提示文案随语言走</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">点空白后收起</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/after-dismiss-en.png" alt="英文：点画布空白后视图浮层收起" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">画布格式条 · Italic</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/after-text-node-format-bar-en.png" alt="英文：画布格式条悬停出 Italic 提示" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+    <figure style="margin:0;display:flex;flex-direction:column;gap:8px">
+      <figcaption style="font-size:13px;color:#2f6b3a;font-weight:600">创作区 · Inline code</figcaption>
+      <img src="../../../../evidence/2026-10-23-rich-text-controls/after-creation-toolbar-en.png" alt="英文：创作区工具栏悬停出行内代码提示" style="width:100%;height:auto;border:1px solid #e6e2da;border-radius:8px;display:block">
+    </figure>
+  </div>
+  <p style="margin:0;font-size:13px;line-height:1.6;color:#5f5b54">窄窗、Windows 没跑，PR 里记作未验证。</p>
+</div>
+</section>
+</body>
+</html>

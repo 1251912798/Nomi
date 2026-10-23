@@ -1,7 +1,7 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconChevronDown, IconCheck, IconLayoutDashboard } from '@tabler/icons-react'
-import { WorkbenchButton } from '../../design'
+import { WorkbenchButton, listenOutsidePress } from '../../design'
 import { cn } from '../../utils/cn'
 import type { EditingPanelPreset, EditingPanelVisibility } from './panelLayout'
 import { useWorkbenchStore } from '../workbenchStore'
@@ -33,14 +33,11 @@ export default function EditingLayoutMenu(): JSX.Element {
 
   React.useEffect(() => {
     if (!open) return undefined
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
-    }
+    const stopListeningOutside = listenOutsidePress((target) => target instanceof Node && Boolean(rootRef.current?.contains(target)), () => setOpen(false))
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
-    window.addEventListener('pointerdown', onPointerDown)
     window.addEventListener('keydown', onKeyDown)
     return () => {
-      window.removeEventListener('pointerdown', onPointerDown)
+      stopListeningOutside()
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [open])

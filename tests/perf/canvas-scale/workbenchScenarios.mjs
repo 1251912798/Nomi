@@ -22,6 +22,7 @@ export const WORKBENCH_SCENARIOS = Object.freeze([
   'switch-stages',
   'switch-canvas-list',
   'document-typing',
+  'text-node-typing',
   'creation-ai-rewrite-result',
   'timeline-play',
   'timeline-scrub',
@@ -38,6 +39,9 @@ const quantile = (values, q) => {
 }
 const GENERATING_NODES = 6
 const LONG_DOCUMENT_PARAGRAPHS = 400
+// 画布文本节点打字：一张写了 60 段（约 3000 字）的文本节点，和规模夹具里的媒体节点同画布。
+const TEXT_NODE_ID = 'perf-text-node'
+const TEXT_NODE_PARAGRAPHS = 60
 // 写作区 AI 编辑场景：2000 段文稿，选中 180 段（约 8000 字）。
 const REWRITE_DOCUMENT_PARAGRAPHS = 2000
 const REWRITE_SELECTED_PARAGRAPHS = 180
@@ -52,6 +56,10 @@ const STREAM_TEXT = '镜头缓缓推进，雨夜的街道上霓虹倒映在积�
 export async function prepareWorkbenchLaunch(scenario, { fixture, root, repoRoot }) {
   if (scenario === 'document-typing') {
     seedLongDocument(fixture)
+    return { launch: {}, close: async () => {} }
+  }
+  if (scenario === 'text-node-typing') {
+    seedTextNode(fixture)
     return { launch: {}, close: async () => {} }
   }
   if (scenario === 'creation-ai-rewrite-result') {
@@ -100,6 +108,22 @@ function seedLongDocument(fixture, paragraphCount = LONG_DOCUMENT_PARAGRAPHS) {
   fs.writeFileSync(manifest, JSON.stringify(record, null, 1))
 }
 
+/** 给夹具画布加一张长文本节点（约 3000 字），放在网格左侧：「画布文本节点里打字」量的就是它。 */
+function seedTextNode(fixture) {
+  const manifest = path.join(fixture.projectRoot, '.nomi', 'project.json')
+  const record = JSON.parse(fs.readFileSync(manifest, 'utf8'))
+  const paragraph = (index) => ({ type: 'paragraph', content: [{ type: 'text', text: `第 ${index + 1} 行：雨夜站台，她回头看了一眼，列车进站的灯扫过积水。` }] })
+  const canvas = record.payload.generationCanvas
+  const node = {
+    id: TEXT_NODE_ID, kind: 'text', categoryId: 'shots', title: 'Perf text', status: 'idle',
+    position: { x: -460, y: 80 }, exactPosition: true, size: { width: 360, height: 480 },
+    references: [], history: [], runs: [], meta: { userResized: true },
+    contentJson: { type: 'doc', content: Array.from({ length: TEXT_NODE_PARAGRAPHS }, (_, index) => paragraph(index)) },
+  }
+  record.payload = { ...record.payload, generationCanvas: { ...canvas, nodes: [...(canvas.nodes ?? []).filter((candidate) => candidate.id !== TEXT_NODE_ID), node] } }
+  fs.writeFileSync(manifest, JSON.stringify(record, null, 1))
+}
+
 // ——— 场景 ——————————————————————————————————————————————————————————————
 
 /**
@@ -114,6 +138,7 @@ export async function runWorkbenchScenario(page, scenario, ctx) {
   if (scenario === 'switch-stages') return switchStages(page, ctx)
   if (scenario === 'switch-canvas-list') return switchCanvasList(page, ctx)
   if (scenario === 'document-typing') return documentTyping(page, ctx)
+  if (scenario === 'text-node-typing') return textNodeTyping(page, ctx)
   if (scenario === 'creation-ai-rewrite-result') return creationAiRewriteResult(page, ctx)
   if (scenario === 'timeline-play') return timelinePlay(page, ctx)
   if (scenario === 'timeline-scrub') return timelineScrub(page, ctx)
@@ -292,6 +317,64 @@ async function documentTyping(page, ctx) {
   // 40 个字符里至少 30 个要量到「改了 DOM 再上屏」：少于这个数说明键没打进这份文稿（焦点跑了），数字不作数。
   if (keys.length < 30) return { skipped: `40 个字符只量到 ${keys.length} 次编辑器改动，键没打进文稿` }
   return { raw, responseMs: quantile(keys, 0.95), keyMaxMs: round(Math.max(...keys)), keys: keys.length, paragraphs, path: `creation document（${paragraphs} 段）` }
+}
+
+/**
+ * 画布文本节点里打字（2026-10-23 用户「文本节点感觉有点卡」）：同一个口径——每一键「keydown → 节点正文改完后再过两帧」，
+ * 连打 40 个字符（每 60ms 一个），主数取 p95。光标放进正文用编辑器自己的 focus 命令（适应视图下节点很小，点不准），
+ * 之后全是真键盘。
+ */
+async function textNodeTyping(page, ctx) {
+  const selector = `[data-node-id="${TEXT_NODE_ID}"] .ProseMirror`
+  const editor = page.locator(selector).first()
+  // 适应视图下 96 个节点走轻量渲染（canvasNodeLevelOfDetail：>80 个且缩放 <0.55），没有编辑器。
+  // 像人一样：指着这张文本节点滚轮放大到 ~1 倍，再写字。
+  const zoomOf = () => page.evaluate(() => {
+    const viewport = document.querySelector('.react-flow__viewport')
+    return viewport ? new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a : null
+  })
+  for (let tick = 0; tick < 40; tick += 1) {
+    const zoom = await zoomOf()
+    if (zoom !== null && zoom >= 0.95) break
+    const box = await page.locator(`.react-flow__node[data-id="${TEXT_NODE_ID}"]`).first().boundingBox()
+    if (!box) return { skipped: '画布上找不到长文本节点' }
+    await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, 120))
+    await page.mouse.wheel(0, -120)
+    await sleep(page, 60)
+  }
+  await editor.waitFor({ state: 'attached' })
+  const paragraphs = await editor.evaluate((element) => element.querySelectorAll(':scope > p').length)
+  if (paragraphs < TEXT_NODE_PARAGRAPHS) return { skipped: `文本节点正文只有 ${paragraphs} 段，夹具里的长文本节点没有载入（要 ${TEXT_NODE_PARAGRAPHS} 段）` }
+  await page.evaluate((query) => document.querySelector(query).editor.commands.focus('end'), selector)
+  await sleep(page, 300)
+  await page.evaluate((query) => {
+    const root = document.querySelector(query)
+    const rec = { keys: [], pending: null }
+    rec.onKey = (event) => { if (event.key.length === 1) rec.pending = event.timeStamp }
+    rec.mo = new MutationObserver(() => {
+      if (rec.pending === null) return
+      const t0 = rec.pending
+      rec.pending = null
+      requestAnimationFrame(() => requestAnimationFrame((ts) => rec.keys.push(ts - t0)))
+    })
+    rec.mo.observe(root, { childList: true, subtree: true, characterData: true })
+    document.addEventListener('keydown', rec.onKey, true)
+    window.__nomiTypingProbe = rec
+  }, selector)
+  await ctx.startWindow(page)
+  await page.keyboard.type('the rain keeps falling on the night street', { delay: 60 })
+  await sleep(page, 200)
+  const raw = await ctx.stopWindow(page)
+  const keys = await page.evaluate(() => {
+    const rec = window.__nomiTypingProbe
+    rec.mo.disconnect()
+    document.removeEventListener('keydown', rec.onKey, true)
+    return rec.keys
+  })
+  // 打完把光标挪出正文（失焦落盘），下一次采样从同样的「未编辑」状态开始。
+  await clearSelection(page)
+  if (keys.length < 30) return { skipped: `40 个字符只量到 ${keys.length} 次正文改动，键没打进文本节点` }
+  return { raw, responseMs: quantile(keys, 0.95), keyMaxMs: round(Math.max(...keys)), keys: keys.length, paragraphs, path: `canvas text node（${paragraphs} 段）` }
 }
 
 /**
