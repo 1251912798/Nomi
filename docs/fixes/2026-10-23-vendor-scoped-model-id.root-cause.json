@@ -1,0 +1,205 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-23-vendor-scoped-model-id",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-23",
+  "problem_type": "共享档案上的型号名（catalogModelKey / 变体 modelKey / 方式 modelEnum）被当成所有供应商的型号名用",
+  "symptom": "Runway Wan 3 的 Agent 路报 Unknown model: wan/3-0-video；Runway Seedance 2 / Veo 3.1 的发出型号与变体条是 KIE / APIMart 的名字；APIMart kling-v3、gpt-image-2*、seedream、nano-banana 与 fal、MiniMax 若干行的发出型号 / request.params.model 是 KIE 的方式型号名（R-runway-wan3 与 2026-10-23 全目录实测）",
+  "direct_cause": "videoCandidateForPlan 用档案 catalogModelKey 改写候选身份；videoTransportModelIdForPlan 取档案变体 / 方式型号名；buildArchetypeInputParams 无条件把它们写进 request.params.model；变体条读档案 variants——都不看这家供应商认不认这些名字",
+  "class_root": "型号名是供应商相关的，却住在供应商无关的共享档案上、以不带作用域的字符串存在，任何档案解析者都能把它用到别家头上；按名字比对判断归属也不成立（别家旧别名撞名、自家行名对不上档案 key）",
+  "affected_population": [
+    "共享档案被多家供应商使用的目录行（2026-10-23 内置目录 22 行：Runway 13、APIMart 6、fal 2、MiniMax 1）",
+    "用户自建中转：映射读 request.params.model 时按自己的映射对上，不读时不再收到别家的名字",
+    "存量草稿里已被改写成别家 key 的候选"
+  ],
+  "scope_paths": [
+    "electron/shared/modelArchetypes/modelNameSource.ts",
+    "electron/shared/modelArchetypes/index.ts",
+    "electron/shared/videoCapabilities/registry.ts",
+    "electron/catalog/modelNameSource.ts",
+    "electron/catalog/catalogStore.ts",
+    "electron/capabilityCore/mcpGenerationVideoResolve.ts",
+    "src/workbench/generationCanvas/model/modelNameSourceLookup.ts",
+    "src/config/modelOptionMappers.ts",
+    "src/config/models.ts",
+    "src/workbench/api/modelCatalogApi.ts",
+    "src/workbench/generationCanvas/nodes/nodeModelArchetype.ts",
+    "src/main.tsx"
+  ],
+  "entry_points": [
+    "宿主归一：normalizeVideoCandidate（多镜封印 / 预览 / 单镜与门禁 / normalizeAuthoredCandidate 的补丁与起草）→ videoCandidateForPlan → videoTransportModelIdForPlan",
+    "档案解析：resolveArchetypeForModel（画布、付费卡、分镜、准入、list_models 的全部读者）与 buildVideoModelCandidates（宿主视频候选表）",
+    "画布发出：buildArchetypeInputParams 写 request.params.model",
+    "变体条 / 方式条：从解析出的档案读 variants / modes"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "「哪家这一行发什么型号名」由我们自己的供应商映射（catalog mappings 的请求体模板）决定，判据读的是仓库内的数据；没有第三方文档能决定",
+  "invariants": [
+    "一行接不接受档案型号名，只由这家映射（与发送同一个 selectTaskMapping 选法）是否读 request.params.model 决定，计算只在 electron/catalog/modelNameSource.ts",
+    "两个档案解析口（resolveArchetypeForModel、buildVideoModelCandidates）共用 scopeArchetypeModelNames：不接受的行，档案上不留任何型号名",
+    "宿主归一后的 modelId 一定是这家目录里的一行；档案基础行 key 只在这家目录里有这一行时才用来折叠旧变体串",
+    "代码里不出现供应商 / 型号名特判"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/shared/modelArchetypes/modelNameSource.ts",
+      "symbol": "scopeArchetypeModelNames"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/modelNameSource.ts",
+      "symbol": "deriveModelNameSource"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/modelArchetypes/index.ts",
+      "symbol": "scopeArchetypeModelNames"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/videoCapabilities/registry.ts",
+      "symbol": "scopeArchetypeModelNames"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/catalogStore.ts",
+      "symbol": "installModelNameSourceLookup"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/model/modelNameSourceLookup.ts",
+      "symbol": "installModelNameSourceLookup"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/mcpGenerationVideoResolve.ts",
+      "symbol": "videoCandidateForPlan"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/api/modelCatalogApi.ts",
+      "symbol": "ModelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "src/config/models.ts",
+      "symbol": "ModelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "src/config/modelOptionMappers.ts",
+      "symbol": "isModelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/nodeModelArchetype.ts",
+      "symbol": "modelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "src/main.tsx",
+      "symbol": "installRendererModelNameSourceLookup"
+    }
+  ],
+  "door_reduction": {
+    "before": 12,
+    "after": 12,
+    "why_not": "这一刀不是合门，是给门加作用域：两个档案解析口（resolveArchetypeForModel 与宿主视频候选表 profileFor）历史上就是两扇，二者都改成调同一个 scopeArchetypeModelNames；合成一扇要把宿主视频候选表的档案匹配规则并进通用解析器，会改变匹配结果，另立。查询口两扇是两个进程各一个（主进程转述目录、渲染层转述目录随行下发的结果），计算只有 deriveModelNameSource 一处。videoCandidateForPlan 是宿主身份折叠的唯一处。五扇读门是同一个结果随目录下发到渲染层的路：DTO 类型（modelCatalogApi）、目录选项类型与映射（models / modelOptionMappers）、带选项的档案解析（nodeModelArchetype）、渲染进程启动装查询口（main.tsx）——都只转述，不计算"
+  },
+  "invariant_owner_layer": {
+    "layer": "electron/catalog/modelNameSource.ts",
+    "tests": [
+      "electron/parity/vendorScopedModelId.matrix.test.ts",
+      "electron/parity/variantResolutionParity.test.ts"
+    ],
+    "why": "「这一行接不接受档案型号名」只在 deriveModelNameSource 算；收窄只在 scopeArchetypeModelNames。矩阵遍历全部内置供应商 × 目录行 × 方式 × 变体，改动这条不变量必先让它红。"
+  },
+  "generality_proof": "判据是供应商映射本身（数据），不是名字比对也不是名单：任何供应商、任何档案、任何目录行（含用户自建中转）都由它自己的映射决定；两个档案解析口共用一个收窄函数，宿主归一、画布发出、变体条、准入、list_models 都从这两个口拿档案，所以同一个答案到处一样。矩阵按全部内置目录自动展开，新加供应商 / 档案 / 行自动纳入",
+  "shared_boundaries": [
+    {
+      "path": "electron/catalog/modelNameSource.ts",
+      "symbol": "deriveModelNameSource",
+      "responsibility": "一行发出的型号名由档案提供还是就是这一行的 key（按这家映射与发送同一个选法算）"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/modelNameSource.ts",
+      "symbol": "scopeArchetypeModelNames",
+      "responsibility": "按型号名来源收窄档案：不接受的行去掉变体轴、方式型号名、基础行 key，只留参数"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/capabilityCore/mcpGenerationVideoResolve.ts",
+      "entry_point": "videoCandidateForPlan / videoTransportModelIdForPlan / normalizeVideoCandidate",
+      "disposition": "enforced",
+      "evidence": "档案来自收窄后的视频候选表；身份折叠只认这家目录里的行；矩阵宿主归一段"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
+      "entry_point": "buildArchetypeInputParams",
+      "disposition": "enforced",
+      "evidence": "档案来自 resolveArchetypeForModel（收窄后），不接受的行没有变体 / modelEnum，不写 request.params.model；矩阵画布发出段"
+    },
+    {
+      "path": "electron/catalog/agentModelEntriesFromCatalog.ts",
+      "entry_point": "list_models 的变体投影",
+      "disposition": "enforced",
+      "evidence": "经 resolveArchetypeForModel，主进程查询口转述目录结果"
+    },
+    {
+      "path": "electron/catalog/archetypeWireDefaults.generated.ts",
+      "entry_point": "生成的发出缺省表",
+      "disposition": "not-affected",
+      "evidence": "生成脚本按档案拥有者那家生成（fixedParams 常量），不经运行时解析；运行时缺省只在发送映射命中后叠加"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "每接一家新供应商到已有共享档案，或用户自建中转，都会撞上；档案上的名字没有作用域",
+    "same_class_scan": [
+      "node scripts/door-map.mjs videoCandidateForPlan / videoTransportModelIdForPlan / normalizeVideoCandidate / normalizeAuthoredCandidate：10 扇，全部经同一个收窄后的候选表",
+      "node scripts/door-map.mjs resolveArchetypeForModel：24 扇读者，全部经同一个收窄",
+      "全目录实测：按名字比对判断归属会把 Runway seedance2 / veo3.1 判成拥有、把 Dreamina 判成不拥有，故改为读映射"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/modelArchetypes/modelNameSource.ts",
+    "invariant": "档案型号名只在这家映射声明接受时才出现在解析出的档案上",
+    "failure_mode": "不接受的行：没有变体可选、发出型号就是这一行的 key；说不清（目录没载入、没有供应商身份）：档案原样，与改前一致；存量草稿里别家的 key：这家目录里没有这一行 → 归一认不出 → 编译拒绝，Agent 改选",
+    "exception_policy": "none",
+    "strategy": "型号名的家改成供应商映射：目录层一处派生、两个解析口一个收窄函数、宿主身份只认这家目录行；全目录矩阵门岗",
+    "artifacts": [
+      "electron/catalog/modelNameSource.ts",
+      "electron/shared/modelArchetypes/modelNameSource.ts",
+      "electron/shared/modelArchetypes/index.ts",
+      "electron/shared/videoCapabilities/registry.ts",
+      "electron/capabilityCore/mcpGenerationVideoResolve.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/parity/vendorScopedModelId.matrix.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/parity/vendorScopedModelId.matrix.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "没有旧路径要删：两个解析口原样保留、各加同一个收窄；videoCandidateForPlan 里「无条件取 catalogModelKey」那一行改写为「只认这家目录里的行」"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及第三方运行时",
+    "exit_criteria": []
+  },
+  "migration": "不迁移存量数据。存量节点：解析时按目录结果收窄，不接受档案型号名的行上残留的 archetype.variantId 不再生效（没有变体轴）。存量草稿候选里已被改写成别家 key 的：这家目录里没有这一行，归一认不出，编译拒绝并让 Agent 改选（协调 10-23 确认，不猜回原行）",
+  "residual_risks": [
+    "渲染层查询口在模型目录还没载入时说不清 → 档案原样（与改前一致）；发送前目录一定已载入",
+    "映射用 request_transform 在代码里读 params.model 的情况，判据看不见（只看模板文本）；今天内置目录没有这种映射",
+    "宿主视频候选表与通用解析器仍是两个解析口（共用收窄函数），合并另立",
+    "electron/shared/modelArchetypes/anchorPolicy.structure.test.ts 在 Windows 上因路径分隔符误报（改前同样红），与本修复无关",
+    "真上游未验证：Runway 真请求未发（假上游已核请求体），不花钱"
+  ]
+}

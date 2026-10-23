@@ -1,4 +1,5 @@
 import { anchorsConsumedBy } from './anchorPolicy';
+import { modelNameSourceFor, scopeArchetypeModelNames, type ModelNameSource } from "./modelNameSource";
 import type { ModelParameterControl } from "../videoCapabilities/types";
 // Video archetypes are defined in electron/shared/videoCapabilities (canonical home,
 // shared with main-process planning). The renderer takes the whole video set from that
@@ -56,6 +57,8 @@ export {
   resolveArchetypeVariant,
 } from "./variantResolution";
 export type { VariantBearingArchetype } from "./variantResolution";
+export { installModelNameSourceLookup, isModelNameSource, modelNameSourceFor, scopeArchetypeModelNames } from "./modelNameSource";
+export type { ModelNameSource, ModelNameSourceLookup } from "./modelNameSource";
 
 export type { ModelArchetype, ArchetypeMode, ArchetypeReferenceSlot, ArchetypeReferenceSlotKind, ArchetypeExpressionChannel, ArchetypeIntent, ArchetypeTransportTaskKind, ModelArchetypeVariant } from "./types";
 export { combineChannelForMode, modeTransportFor, recommendVideoGeneration } from "../videoCapabilities";
@@ -156,6 +159,10 @@ export type ArchetypeModelLike = {
    */
   vendorKey: string | null | undefined;
   meta?: unknown;
+  /**
+   * 这一行接不接受档案的型号名（目录层按供应商映射算好的结果，见 modelNameSource.ts）。缺省 = 问本进程的查询口。
+   */
+  modelNameSource?: ModelNameSource;
 };
 
 function readArchetypeIdFromMeta(meta: unknown): string | null {
@@ -189,7 +196,8 @@ export function resolveArchetypeForModel(model: ArchetypeModelLike | null | unde
   if (!model) return null;
   const base = resolveBaseArchetype(model);
   if (!base) return null;
-  const resolved = specializeArchetypeForVendor(base, model.vendorKey);
+  // 型号名按供应商作用域解析：这家这一行不接受档案的型号名 → 档案只给参数（modelNameSource.ts，唯一一处）。
+  const resolved = scopeArchetypeModelNames(specializeArchetypeForVendor(base, model.vendorKey), modelNameSourceFor(model));
   return { ...resolved, modes: resolved.modes.map((mode) => ({ ...mode, consumesAnchors: anchorsConsumedBy(mode) })) };
 }
 
