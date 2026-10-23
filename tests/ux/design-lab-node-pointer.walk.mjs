@@ -2,6 +2,7 @@
 // 每一格截图（中英、光暗）+ 下面这些板断言。断言名就是 NodePointer.board.json 里各元素的 `assertion`（check:board-parity R4）。
 // 真画布那一头（投影 → 外壳上的 data-external-highlight、闪完清掉）由 canvas-focus-composer-visible.walk.mjs 在真 Electron 里钉。
 import { walkDesignLabScreen } from './design-lab/walkScreen.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const A = {
   p1: 'board:NodePointer/pointer.p1',
@@ -109,6 +110,17 @@ async function expectNodePointerState(page, state, record) {
         if (byId['np-not-here']?.text.includes('已删除')) record(`${state.id} ${A.deleted}: 宿主没说删就不许说已删除（D4）`)
         if (!byId['np-not-here']?.disabled) record(`${state.id} ${A.deleted}: 占位不可点`)
         if (!byId['np-failed']?.text.includes('没有发出去')) record(`${state.id} ${A.failed}: 失败摘要行没印宿主给的结局`)
+        // 失败的宿主结局行是红（danger-ink）：板 markup 本意是 .bd，渲成灰是样张里 CSS 优先级被 .sum 压过的意外（V-d2-pointer 偏差 5，保留红）。
+        const outcomeInk = await page.evaluate(() => {
+          const line = [...document.querySelectorAll('[data-node-pointer-id="np-failed"] span')].find((el) => el.children.length === 0 && el.textContent?.includes('没有发出去'))
+          const probe = document.createElement('span')
+          probe.className = 'text-nomi-danger-ink'
+          document.body.appendChild(probe)
+          const danger = getComputedStyle(probe).color
+          probe.remove()
+          return { line: line ? getComputedStyle(line).color : null, danger }
+        })
+        if (!outcomeInk.line || outcomeInk.line !== outcomeInk.danger) record(`${state.id} ${A.failed}: 失败的宿主结局行必须是红（danger-ink ${outcomeInk.danger}），实际 ${outcomeInk.line}`)
         const longTitle = await page.locator(`${pointer('np-long')} > span:first-child`).getAttribute('title')
         if (!longTitle || !longTitle.includes('河湾')) record(`${state.id} ${A.label}: 长名字没有悬停全名`)
         // 键盘：聚焦一个指向元素、Enter 定位 → 它标上「已定位」。
@@ -134,6 +146,18 @@ async function expectNodePointerState(page, state, record) {
           return { ratio: rect.width / rect.height, centred: Math.abs((rect.left - slot.left) - (slot.right - rect.right)) < 1.5 }
         })
         if (Math.abs(ratio.ratio - 9 / 16) > 0.03 || !ratio.centred) record(`${state.id} ${A.vertical}: 竖版框 ${JSON.stringify(ratio)}`)
+        // 真悬停一格（V-d2-pointer 建议 A）：组的高度一点不变——摘要那一行常驻，悬停 / 离开不把下面的东西（第③步的「生成」钮）顶下去；
+        // 摘要现算，带模型名（实验室里目录比悬停到得晚的那一类，原来拍成字符串存下来就缺模型名）。
+        const firstGroup = groups.first()
+        const heightIdle = (await firstGroup.boundingBox())?.height ?? 0
+        await firstGroup.locator('[data-node-pointer="card"]').nth(1).hover()
+        const summaryLine = firstGroup.locator('[data-node-pointer-hover-summary]')
+        await summaryLine.waitFor({ timeout: 3000 }).catch(() => record(`${state.id} ${A.hoverLink}: 悬停一格后组下方没有摘要行`))
+        const heightHover = (await firstGroup.boundingBox())?.height ?? 0
+        if (Math.abs(heightHover - heightIdle) > 0.5) record(`${state.id} ${A.hoverLink}: 悬停一格后组的高度变了 ${heightIdle} → ${heightHover}（摘要行要预留，不能把下面顶下去）`)
+        const hoverText = await summaryLine.first().textContent().catch(() => null)
+        if (!/Seedance/.test(hoverText ?? '')) record(`${state.id} ${A.hoverLink}: 悬停摘要行缺模型名：「${hoverText}」`)
+        await page.mouse.move(0, 0)
         await page.locator('[data-node-pointer-more="2"]').first().click()
         const expanded = await groups.nth(2).locator('[data-node-pointer="card"]').count()
         if (expanded !== 5) record(`${state.id} ${A.more}: 点「还有 2 个」后应全露 5 个，实际 ${expanded}`)
@@ -148,6 +172,22 @@ async function expectNodePointerState(page, state, record) {
         if (await chips.count() < 7) record(`${state.id} ${A.chip}: 句中小标签数量不对：${await chips.count()}`)
         await page.locator('[data-node-pointer-group="chip"] [data-node-pointer-more="2"]').click()
         if (await page.locator('[data-node-pointer-group="chip"]').nth(1).locator('[data-node-pointer="chip"]').count() !== 5) record(`${state.id} ${A.chip}: 点「+2」没展开`)
+        // 焦点环只留全局那一份（设计系统 §8；V-d2-pointer 建议 C）：键盘聚焦行 / 句中小标签 / 「+N」，各只有全局 2px outline，
+        // 自己不再带 ring（box-shadow 里没有环），不再叠成双环。先按一下 Tab 让页面进入键盘模式，再聚焦才会匹配 :focus-visible。
+        await page.keyboard.press('Tab')
+        for (const [name, target] of [
+          ['列表行', page.locator('[data-node-pointer="row"]').first()],
+          ['句中小标签', page.locator('[data-node-pointer="chip"]').first()],
+          ['「+N」', page.locator('[data-node-pointer-group="chip"] [data-node-pointer-more]').first()],
+        ]) {
+          await target.focus()
+          const ring = await target.evaluate((el) => {
+            const style = getComputedStyle(el)
+            return { outline: `${style.outlineStyle} ${style.outlineWidth}`, shadow: style.boxShadow }
+          })
+          if (ring.outline !== 'solid 2px') record(`${state.id} ${A.row}: ${name} 键盘聚焦没有全局 2px 焦点环：${ring.outline}`)
+          if (ring.shadow !== 'none') record(`${state.id} ${A.row}: ${name} 自己又画了一圈（box-shadow ${ring.shadow}），会和全局焦点环叠成双环`)
+        }
         await noAccentOutline(page, state, record)
         break
       }
@@ -160,6 +200,9 @@ async function expectNodePointerState(page, state, record) {
         const shadow = await page.locator('[data-lab-canvas-node="np-draft-2"] [data-external-highlight="hover"]').first().evaluate((el) => getComputedStyle(el).boxShadow)
         if (!shadow || shadow === 'none') record(`${state.id} ${A.canvasHighlight}: 悬停没有深色细线 + 阴影`)
         if (!(await page.locator('[data-node-pointer-hover-summary]').count())) record(`${state.id} ${A.hoverLink}: 组下方没显示被悬停那一镜的摘要`)
+        // 摘要行现算（V-d2-pointer 偏差 8）：实验室里自动悬停发生在模型目录载完之前，摘要仍要带上模型名。
+        const hoverSummary = await page.locator('[data-node-pointer-hover-summary]').first().textContent()
+        if (!/Seedance/.test(hoverSummary ?? '')) record(`${state.id} ${A.hoverLink}: 悬停摘要行缺模型名：「${hoverSummary}」`)
         await noAccentOutline(page, state, record)
         break
       }
@@ -175,6 +218,18 @@ async function expectNodePointerState(page, state, record) {
         if (await back.count() !== 2) record(`${state.id} ${A.narrowBack}: 「回到对话」应有 P1 / P2 两种，实际 ${await back.count()}`)
         const labelled = await back.nth(1).textContent()
         if (!/02/.test(labelled ?? '')) record(`${state.id} ${A.narrowBack}: P2 形态的「回到对话」没带那一枚标签：${labelled}`)
+        // 看得见的字守设计系统 §1.8 规则 3（V-d2-pointer 建议 D）：中文 ≤4 字、英文 ≤2 词；读屏名 / 悬停名写全（词典键 backToChatName）。
+        // 期望值一律从词典按键取（不在走查里再抄一份文案）。
+        const locale = state.id === 'np-narrow-en-dark' ? 'en' : 'zh-CN'
+        const visibleWord = uiText(locale, 'nodePointer.backToChat')
+        const fullName = uiText(locale, 'nodePointer.backToChatName')
+        const backFaces = await back.evaluateAll((list) => list.map((el) => ({ text: el.textContent?.trim() ?? '', name: el.getAttribute('aria-label') ?? '', title: el.getAttribute('title') ?? '' })))
+        for (const item of backFaces) {
+          const action = item.text.replace(/^.*·\s*/, '')
+          if (action !== visibleWord) record(`${state.id} ${A.narrowBack}: 「回到对话」可见文字应是词典里的「${visibleWord}」：「${item.text}」`)
+          if (locale === 'en' ? action.split(/\s+/).filter(Boolean).length > 2 : [...action].length > 4) record(`${state.id} ${A.narrowBack}: 「回到对话」可见文字超出 §1.8 规则 3（中文 ≤4 字 / 英文 ≤2 词）：「${item.text}」`)
+          if (!item.name.endsWith(fullName) || item.name !== item.title) record(`${state.id} ${A.narrowBack}: 读屏名 / 悬停名应写全「${fullName}」：${item.name} / ${item.title}`)
+        }
         if (!(await page.locator('[data-external-highlight="flash"]').count())) record(`${state.id} ${A.narrowCollapse}: 收起后画布目标没有闪一下`)
         if (!(await page.locator('[data-agent-ball]').count())) record(`${state.id} ${A.narrowCollapse}: 收起后的小球没画出来`)
         // Esc 也回到对话：「回到对话」那一颗消失（回去的形态写回 agentFormStore）。
