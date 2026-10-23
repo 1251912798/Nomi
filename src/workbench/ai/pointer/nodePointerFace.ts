@@ -9,7 +9,7 @@
 //   ④ 生成反馈是失败                           → 状态条红点 + 节点自己的那句原因
 //   ⑤ 可找回（已提交、没取回）                 → 中性「可找回」（节点上是 NodeRecoverableReport）
 //   ⑥ 有结果画面                               → 结果缩略图（画布轻量档同一个取图函数）
-//   ⑦ 制作流程还没开拍这一镜                   → 空卡 + 节点上同一枚左上小标（productionShotCorner）
+//   ⑦ 制作流程还没开拍这一镜（节点上有左上小标的那几段）→ 空卡 + 同一枚小标（判据 hasProductionShotCorner）
 //   ⑧ 制作流程停在这一镜                       → 节点上同一句停下原因（详细入口在节点上，聊天里不放动作）
 //   ⑨ 其余                                     → 空卡（NodeEmptyState 的圆托 + 种类图标）
 import type { GenerationFeedback } from '../../observability/generationFeedback'
@@ -17,6 +17,7 @@ import { resolveLightweightNodePreview, type LightweightNodePreview } from '../.
 import type { GenerationCanvasNode } from '../../generationCanvas/model/generationCanvasTypes'
 import { isLocalProcessingProgressPhase } from '../../generationCanvas/model/localProcessingPhase'
 import type { ProductionShotState } from '../../../../electron/shared/productionShotPhase'
+import { hasProductionShotCorner } from '../../generationCanvas/nodes/productionShotCorner'
 
 export type NodePointerFace =
   | Readonly<{ kind: 'removed' }>
@@ -31,8 +32,6 @@ export type NodePointerFace =
   | Readonly<{ kind: 'empty' }>
 
 export type NodePointerFaceKind = NodePointerFace['kind']
-
-const CORNER_PHASES = new Set<ProductionShotState['phase']>(['awaiting_confirmation', 'not_generated', 'removed', 'queued'])
 
 export function nodePointerFace(input: Readonly<{
   node: GenerationCanvasNode | undefined
@@ -52,7 +51,7 @@ export function nodePointerFace(input: Readonly<{
   if (node.status === 'recoverable') return { kind: 'recoverable' }
   const preview = resolveLightweightNodePreview(node)
   if (preview) return { kind: 'result', preview }
-  if (productionState && CORNER_PHASES.has(productionState.phase)) return { kind: 'production', state: productionState }
+  if (productionState && hasProductionShotCorner(productionState)) return { kind: 'production', state: productionState }
   if (productionState?.phase === 'stopped') return { kind: 'stopped', state: productionState }
   return { kind: 'empty' }
 }

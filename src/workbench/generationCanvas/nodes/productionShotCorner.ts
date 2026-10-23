@@ -1,13 +1,8 @@
-// 制作落到画布的一镜「此刻在哪一段」的读法 + 左上角那枚中性小标（2026-10-23 从 ProductionShotPlaceholder 抽出）。
+// 制作落到画布的一镜「此刻在哪一段」的读法，和「这一段左上角说什么 / 停下说哪句话」（2026-10-23 从 ProductionShotPlaceholder 抽出）。
 //
 // 为什么抽：聊天里的指向元素（`src/workbench/ai/pointer/`）要和节点长同一张脸（NodePointer 板 D3）。
-// 「阶段 → 小标说什么」「已停 → 说哪句话」只许有一份，节点和指向元素挂同一个函数 / 组件，不各抄一张表。
-// 小标的样子（NodeCornerPill）也只有一枚：节点上的「等你确认 / 排队中」、指向元素上的「已删除 / 已定位」都是它。
-// 走查定位用的 data-*（`data-shot-placeholder-state`、`data-production-shot-node`）只由节点那一侧传进来——
-// 指向元素不能带它们，否则全局 querySelectorAll 会把聊天里的指向元素也数成画布占位。
-import React, { type JSX } from 'react'
-import { IconClock } from '@tabler/icons-react'
-import { cn } from '../../../utils/cn'
+// 「阶段 → 小标说什么」「已停 → 说哪句话」只许有一份，节点和指向元素读同一个函数，不各抄一张表。
+// 小标的样子（NodeCornerPill / ProductionShotCornerLabel）在 ProductionShotPlaceholder.tsx，两边挂同一个组件。
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { useProductionCanvasLandingStore } from '../../production/productionCanvasLandingStore'
 import { deriveProductionShotState, productionShotIdForNode, type ProductionShotState } from '../../../../electron/shared/productionShotPhase'
@@ -78,42 +73,7 @@ export function productionShotCornerText(t: Translate, state: ProductionShotStat
   return null
 }
 
-type DataAttributes = { [key: `data-${string}`]: string | undefined }
-
-/** 左上角那枚中性小标（纸白 85% 底、ink-60 字、细阴影）。位置随宿主（节点 8px、指向元素 4px），样子只有这一份。 */
-export function NodeCornerPill({ label, icon, className, attributes }: {
-  label: string
-  icon?: React.ReactNode
-  className?: string
-  attributes?: DataAttributes
-}): JSX.Element {
-  return (
-    <div
-      className={cn('absolute left-2 top-2 z-[4] inline-flex max-w-[calc(100%-16px)] items-center gap-1 rounded-full bg-nomi-paper/85 px-2 py-0.5 text-micro text-nomi-ink-60 shadow-nomi-sm', className)}
-      aria-label={label}
-      {...attributes}
-    >
-      {icon}
-      <span className="min-w-0 truncate">{label}</span>
-    </div>
-  )
-}
-
-/** 制作小标：阶段有小标才画（排队带钟）。 */
-export function ProductionShotCornerLabel({ state, t, className, attributes }: {
-  state: ProductionShotState | null
-  t: Translate
-  className?: string
-  attributes?: DataAttributes
-}): JSX.Element | null {
-  const corner = productionShotCornerText(t, state)
-  if (!corner) return null
-  return (
-    <NodeCornerPill
-      label={corner.text}
-      icon={corner.queued ? <IconClock size={11} stroke={1.8} aria-hidden="true" className="shrink-0" /> : undefined}
-      className={className}
-      attributes={attributes}
-    />
-  )
+/** 这一段有没有左上小标（判据就是上面那一个函数，不另列一张阶段表）。 */
+export function hasProductionShotCorner(state: ProductionShotState | null): boolean {
+  return productionShotCornerText((key) => key, state) !== null
 }

@@ -55,14 +55,14 @@ function StatesBoard({ locale }: { locale: Locale }) {
 }
 
 /** A3：悬停两边同时亮 / 点击后画布闪一下、那一项「已定位」。画布节点是生产 BaseGenerationNode。 */
-function LinkBoard({ locale, phase }: { locale: Locale; phase: 'hover' | 'located' }) {
+function LinkBoard({ locale, located = false }: { locale: Locale; located?: boolean }) {
   const s = subjects(locale)
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-stretch gap-0">
         <LabCanvasBackdrop className="flex-1 rounded-r-none" style={{ height: 300 }}>
           <div className="absolute left-8 top-8 flex gap-6">
-            {s.drafts.map((subject, index) => <LabCanvasNode key={subject.nodeId} nodeId={subject.nodeId} width={180} flash={phase === 'located' && index === 1} />)}
+            {s.drafts.map((subject, index) => <LabCanvasNode key={subject.nodeId} nodeId={subject.nodeId} width={180} flash={located && index === 1} />)}
           </div>
         </LabCanvasBackdrop>
         <LabChatPanel text={SENTENCE(locale)} className="rounded-l-none border-l-0 shadow-none">
@@ -232,7 +232,7 @@ export const NODE_POINTER_STATES: readonly LabState[] = [
     coverage: 'component-only',
     render: () => (
       <NodePointerStage scene={{ hover: HOVER_TARGETS }}>
-        <LinkBoard locale="zh-CN" phase="hover" />
+        <LinkBoard locale="zh-CN" />
       </NodePointerStage>
     ),
   },
@@ -243,7 +243,7 @@ export const NODE_POINTER_STATES: readonly LabState[] = [
     coverage: 'component-only',
     render: () => (
       <NodePointerStage scene={{ located: 'np-draft-2' }}>
-        <LinkBoard locale="zh-CN" phase="located" />
+        <LinkBoard locale="zh-CN" located />
       </NodePointerStage>
     ),
   },
@@ -289,7 +289,7 @@ export const NODE_POINTER_STATES: readonly LabState[] = [
     scheme: 'dark',
     render: () => (
       <NodePointerStage locale="en" scene={{ hover: HOVER_TARGETS }}>
-        <LinkBoard locale="en" phase="hover" />
+        <LinkBoard locale="en" />
       </NodePointerStage>
     ),
   },

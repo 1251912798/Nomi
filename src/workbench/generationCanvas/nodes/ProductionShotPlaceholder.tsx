@@ -17,15 +17,60 @@
 // consent_expired，说「这镜还没开拍，需要你再确认一次」，那颗「继续」就是确认（付费卡① 第 13 条）。
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPlayerPause } from '@tabler/icons-react'
+import { IconClock, IconPlayerPause } from '@tabler/icons-react'
 
 import { cn } from '../../../utils/cn'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { resumeProductionBatch } from '../../production/productionShotActions'
-import { ProductionShotCornerLabel, stoppedCopyOf, useProductionShotState } from './productionShotCorner'
+import { productionShotCornerText, stoppedCopyOf, useProductionShotState } from './productionShotCorner'
 
-// 「阶段 → 小标 / 已停说哪句话」与读阶段的 hook 住在 productionShotCorner.tsx（2026-10-23）：
-// 聊天里的指向元素和这里挂同一份，不各抄一张表。
+// 「阶段 → 小标说什么 / 已停说哪句话」与读阶段的 hook 住在 productionShotCorner.ts（2026-10-23）；
+// 小标的样子是下面这两个组件。聊天里的指向元素和画布节点挂同一份，不各抄一张表、不各画一枚。
+// 走查定位用的 data-*（`data-shot-placeholder-state`、`data-production-shot-node`）只由节点这一侧传进去——
+// 指向元素不能带它们，否则全局 querySelectorAll 会把聊天里的指向元素也数成画布占位。
+
+/** 渲染层的翻译函数（`useTranslation().t` 能直接传进来）。 */
+type Translate = (key: string, options?: Record<string, unknown>) => string
+
+type DataAttributes = { [key: `data-${string}`]: string | undefined }
+
+/** 左上角那枚中性小标（纸白 85% 底、ink-60 字、细阴影）。位置随宿主（节点 8px、指向元素 4px），样子只有这一份。 */
+export function NodeCornerPill({ label, icon, className, attributes }: {
+  label: string
+  icon?: React.ReactNode
+  className?: string
+  attributes?: DataAttributes
+}): JSX.Element {
+  return (
+    <div
+      className={cn('absolute left-2 top-2 z-[4] inline-flex max-w-[calc(100%-16px)] items-center gap-1 rounded-full bg-nomi-paper/85 px-2 py-0.5 text-micro text-nomi-ink-60 shadow-nomi-sm', className)}
+      aria-label={label}
+      {...attributes}
+    >
+      {icon}
+      <span className="min-w-0 truncate">{label}</span>
+    </div>
+  )
+}
+
+/** 制作小标：阶段有小标才画（排队带钟）。 */
+export function ProductionShotCornerLabel({ state, t, className, attributes }: {
+  state: ProductionShotState | null
+  t: Translate
+  className?: string
+  attributes?: DataAttributes
+}): JSX.Element | null {
+  const corner = productionShotCornerText(t, state)
+  if (!corner) return null
+  return (
+    <NodeCornerPill
+      label={corner.text}
+      icon={corner.queued ? <IconClock size={11} stroke={1.8} aria-hidden="true" className="shrink-0" /> : undefined}
+      className={className}
+      attributes={attributes}
+    />
+  )
+}
 
 export function ProductionShotPlaceholder({ node, reportFeedback }: { reportFeedback: (message: string) => void; node: GenerationCanvasNode }): JSX.Element | null {
   const { t } = useTranslation()

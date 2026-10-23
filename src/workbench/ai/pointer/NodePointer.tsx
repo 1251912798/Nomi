@@ -9,7 +9,7 @@
 // 先不接进聊天：第②步只在设计实验室搭全状态，第③步（新付费卡）才有第一个宿主。
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconAlertTriangle, IconCheck, IconClock, IconClockSearch, IconFocus2, IconLinkOff, IconLoader2, IconMessageCircle, IconPlayerPause } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCheck, IconClock, IconClockSearch, IconFocus2, IconLinkOff, IconLoader2, IconMessage, IconPlayerPause } from '@tabler/icons-react'
 import { useOverlayEscape } from '../../../design'
 import { cn } from '../../../utils/cn'
 import type { GenerationCanvasNode } from '../../generationCanvas/model/generationCanvasTypes'
@@ -20,8 +20,10 @@ import { useNodeExternalHighlightStore } from '../../generationCanvas/store/node
 import { getGenerationNodeIcon } from '../../generationCanvas/nodes/renderRegistry'
 import { GenerationWaitingSurface } from '../../generationCanvas/nodes/GenerationWaitingSurface'
 import { GenerationStatusBar } from '../../generationCanvas/nodes/GenerationStatusBar'
-import { NodeCornerPill, ProductionShotCornerLabel, productionShotCornerText, stoppedCopyOf, useProductionShotState } from '../../generationCanvas/nodes/productionShotCorner'
+import { NodeCornerPill, ProductionShotCornerLabel } from '../../generationCanvas/nodes/ProductionShotPlaceholder'
+import { productionShotCornerText, stoppedCopyOf, useProductionShotState } from '../../generationCanvas/nodes/productionShotCorner'
 import { useGenerationFeedback } from '../../observability/useGenerationFeedback'
+import type { GenerationFeedback } from '../../observability/generationFeedback'
 import { NodeShotLabel, ShotNumberPill } from '../../generation/list/CanvasListLinks'
 import { formatStoryboardShotLabel, isAutoStoryboardShotTitle, useStoryboardShotLabel } from '../../generation/list/storyboardLabels'
 import { useModelLabels } from '../../generation/list/generationListModelLabels'
@@ -166,7 +168,7 @@ function PointerFaceArt({ model, size, located }: { model: PointerModel; size: '
   const circle = (icon: React.ReactNode, tone?: string) => (
     <span className={cn('absolute left-1/2 top-1/2 grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line', tone)} aria-hidden="true">{icon}</span>
   )
-  const statusBar = (feedback: Extract<NodePointerFace, { kind: 'generating' | 'failed' }>['feedback']) => (
+  const statusBar = (feedback: GenerationFeedback) => (
     <span className="absolute bottom-1 left-1 flex max-w-[calc(100%-8px)] [&_[data-generation-message]]:truncate [&_[data-generation-status]]:max-w-full [&_[data-generation-status]]:px-1.5 [&_[data-generation-status]]:py-0.5 [&_[data-generation-status]]:text-micro">
       <GenerationStatusBar feedback={feedback} overlay />
     </span>
@@ -474,7 +476,7 @@ export function NodePointerReturnToChat({ withLabel = false, className }: { with
       onClick={returnToChat}
       className={cn('inline-flex h-9 items-center gap-1.5 rounded-full bg-nomi-ink pl-3 pr-3.5 text-body-sm font-medium text-nomi-paper shadow-nomi-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink-40', withLabel && 'pl-1.5', className)}
     >
-      {withLabel ? <ReturnThumb nodeId={target.nodeId} /> : <IconMessageCircle size={16} stroke={1.8} aria-hidden="true" />}
+      {withLabel ? <ReturnThumb nodeId={target.nodeId} /> : <IconMessage size={16} stroke={1.8} aria-hidden="true" />}
       {text}
     </button>
   )
