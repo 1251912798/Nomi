@@ -160,10 +160,10 @@ async function runOnce() {
         return Boolean(board?.querySelector('canvas')) && [...document.images].every((image) => image.complete)
       }), { message: 'the big board is mounted and every image on the page has decoded' }).toBe(true)
       await page.waitForTimeout(1500)
-      await armResponse(page, { trigger: 'pointerdown', predicate: 'whiteboardResultVisible', arg: 'big-board', timeoutMs: 60_000 })
+      await armResponse(page, { trigger: 'pointerdown', predicate: 'whiteboardResultVisible', early: 'whiteboardSaving', arg: 'big-board', timeoutMs: 60_000 })
       await action('done').click()
       const finished = await takeResponse(page)
-      Object.assign(sample, { doneToVisibleMs: finished.ms, longTasks: finished.longTasks, board: '4096x4096, 12 photographs (6 distinct), 24 brush paths' })
+      Object.assign(sample, { doneToVisibleMs: finished.ms, doneToFeedbackMs: finished.earlyMs, longTasks: finished.longTasks, board: '4096x4096, 12 photographs (6 distinct), 24 brush paths' })
       await expect.poll(() => (project.readNode('big-board').history ?? []).length).toBe(1)
       sample.savedVersions = project.readNode('big-board').history.length
     }

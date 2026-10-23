@@ -264,6 +264,10 @@ try {
   await snap('editing')
   const beforeSave = readNode('image').meta.whiteboardState
   await action('done').click()
+  // Done on a drawn board exports and saves; until the picture lands the button itself says it is saving (no silent seconds).
+  await expect(action('done'), 'Done shows that it is saving').toHaveAttribute('aria-busy', 'true')
+  check('Done gives visible saving feedback while the picture is exported', true)
+  await page.screenshot({ path: path.join(output, 'done-saving.png') }) // taken mid-save on purpose: a settled shot would only show the end state
   await expectAbsent(editor, { provenBy: editorProbe })
   await expect.poll(() => readNode('image').history?.length ?? 0).toBe(2)
   check('Done creates exactly one saved raster version', true)

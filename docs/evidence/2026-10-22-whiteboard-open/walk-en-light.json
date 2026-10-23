@@ -52,6 +52,7 @@
     "live wheel -120: centered, disjoint and reachable: clears bottom docks",
     "live wheel -120: centered, disjoint and reachable",
     "Escape from size input closes only the size panel",
+    "Done gives visible saving feedback while the picture is exported",
     "Done creates exactly one saved raster version",
     "the exported image contains the long text up to its last characters",
     "saved result retains custom board dimensions",
@@ -71,7 +72,7 @@
     "no renderer exceptions"
   ],
   "performance": null,
-  "openToPersistedInitialImageMs": 2769.4775999999983,
+  "openToPersistedInitialImageMs": 2934.2317000000003,
   "rendererErrors": [],
   "generationInvokedByWalk": false
 }

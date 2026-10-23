@@ -26,9 +26,9 @@
     "noisy": true
   },
   "budgetDebt": {
-    "owner": "待协调派（共享落盘 importWorkbenchLocalAssetFile）",
-    "state": "unassigned",
-    "note": "最坏画板 ~3.2–4.5s：Leafer 导出 16MP PNG 约 0.8s，其余 2–2.8s 在共享落盘（写 9.8MB 文件 + 派生预览）；同一路径 1280×720 小画板也要 ~1.5s，固定开销在落盘这段，不在画板。修落盘边界，不在画板里绕。",
+    "owner": "P-asset-persist（协调 10-22 派）",
+    "state": "assigned",
+    "note": "最坏画板 ~3.2–4.5s：Leafer 导出 16MP PNG 约 0.8s，其余 2–2.8s 在共享落盘 importWorkbenchLocalAssetFile（写 9.8MB + 派生预览）；1280×720 小画板也要 ~1.5s，固定开销在落盘这段。修在共享落盘边界，不在画板里绕；期间「完成」钮当帧显示「保存中」（doneToFeedbackMs）。",
     "since": "2026-10-22"
   }
 }

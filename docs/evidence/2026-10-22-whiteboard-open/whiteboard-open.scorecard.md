@@ -1,14 +1,14 @@
 # 体验成绩单：画板打开就是画笔，完成后节点上显示画的那张图
 
 - 改动：画板打开就是画笔，完成后节点上显示画的那张图
-- 验收 head：`e26c56a65`（实现线本地提交（fix/whiteboard-open），未推送；数字在这个提交的构建和它的 Windows 打包版上测的）
+- 验收 head：`见提交说明（本次提交接在 10275c04b 之后）`（实现线本地提交（fix/whiteboard-open），未推送；数字在这个提交的构建和它的 Windows 打包版上测的）
 - 场景 id：`whiteboard-first-gesture-and-visible-result`
 - 谁验：R-whiteboard（实现线自测；独立验收线待协调指定）（实现线自测）
 - 日期：2026-10-22；成绩单整理：R-whiteboard，按本次走查和打包版创作者路径的记录填写
 
 **用户这次能完成：**打开画板直接拖就能画；按完成后，画板节点上看得见自己画的东西，能连下游当参考，点缩略图能接着画
 
-**能力变化：**新增：画板节点有图时显示缩略图（点开重开）、性能场景 inline-whiteboard-done-export；改变：打开画板默认工具：选择 → 画笔（两个入口）、画板「完成」：只存 state → 有内容就出一版图（推翻清单 O40）；去掉：载入原图时顺手切到「选择」并选中原图
+**能力变化：**新增：画板节点有图时显示缩略图（点开重开）、性能场景 inline-whiteboard-done-export、「完成」出图期间按钮显示「保存中」（复用 NomiLoadingMark）；改变：打开画板默认工具：选择 → 画笔（两个入口）、画板「完成」：只存 state → 有内容就出一版图（推翻清单 O40）；去掉：载入原图时顺手切到「选择」并选中原图
 
 ## 结果
 
@@ -20,8 +20,8 @@
 | 修复前（203886f10）开发版创作者路径 zh：打开后直接拖 | **失败** | 0 笔；图片入口里照片被拖走，完成后挪过的图存成了新主版本 | before-zh-image-drag-moved-photo.png |
 | 修复前（203886f10）开发版创作者路径 zh：画板节点完成后 | **失败** | 节点上只剩空启动器，画的内容看不见 | before-zh-board-done-empty.png |
 | 修复中：没改动重开再完成多出一个版本 | **失败** | 画板被取整成 1280×719 当成了改动；已修（差不到 1 个屏幕像素就当同一个尺寸） | docs/plan/2026-10-12-inline-whiteboard.md「Also fixed on the way」 |
-| whiteboard-refactor 走查 zh（57 项） | 通过 |  | walk-zh-CN-light.json |
-| whiteboard-refactor 走查 en（57 项） | 通过 |  | walk-en-light.json |
+| whiteboard-refactor 走查 zh（58 项） | 通过 |  | walk-zh-CN-light.json |
+| whiteboard-refactor 走查 en（58 项） | 通过 |  | walk-en-light.json |
 | Windows 打包版创作者路径 zh（三个入口） | 通过 |  | packaged-creator-zh-CN.log.txt |
 | Windows 打包版创作者路径 en（三个入口） | 通过 |  | packaged-creator-en.log.txt |
 
@@ -33,6 +33,7 @@
 | 主指标 / 指标 | 现状 → 当前 | 单位 | 样本数 | 口径 | 备注 |
 | --- | --- | --- | --- | --- | --- |
 | 打开画板后直接拖画出的笔数 | 0 → 1 | 笔 | 4 | 脚本计数（真事件，非采集器） | 两个入口 × 中英文，打包版；修复前 0 笔来自 203886f10 的开发版和打包版 |
+| 最坏画板「完成 → 可见反馈」（「完成」钮变成「保存中」） | null → 18.6 | ms | 5 | 实测（采集器） | 5 次：7.9 / 19.5 / 20.8 / 18.6 / 17.8，中位数；修改前按钮只是变灰，没有保存中状态 |
 | 最坏画板「完成 → 节点上看见图」 | null → 3436.7 | ms | 5 | 实测（采集器） | 新增操作，没有修复前的数；4096²、12 张图、24 笔，中位数，noisy；预算 3000，超了，已登记欠账（共享落盘占 2–2.8s） |
 | 1280×720 小画板「完成 → 节点上看见图」 | null → 1491 | ms | 3 | 实测（采集器） | 一次性测量（1483 / 1546 / 1491），中位数；没登记成场景 |
 
@@ -49,12 +50,12 @@
 | 图片入口完成仍然正好多一版、不改就完成不多版本 | 通过 | walk-zh-CN-light.json：Done creates exactly one saved raster version / unchanged reopen and Done does not duplicate result history |
 | 空画板不凭空出图 | 通过 | 单测 whiteboardProjectContext.test.ts board Done |
 | 老画板数据不丢、不被自动改写 | 通过 | 单测：只有 state 的老画板要等用户打开并完成才补图 |
-| 完成导出期间界面不冻住 | 未验证 | 最坏规模下导出 + 落盘有 1 个长任务、3–4s；按钮是禁用的，但没有进度提示 |
+| 完成导出期间有当帧可见反馈 | 通过 | after-zh-done-saving.png、after-en-done-saving.png；走查「Done gives visible saving feedback while the picture is exported」 |
 
 ## 最大摩擦点与决定
 
-- 摩擦：大画板按「完成」要等 3–4 秒，期间只是两个按钮变灰
-- 决定：这次不在画板里绕；已登记欠账，由协调派人修共享落盘（小画板也要约 1.5s，固定开销在那一段）
+- 摩擦：大画板按「完成」要等 3–4 秒才看到图
+- 决定：按钮当帧显示「保存中」（约 20ms）；慢的那段在共享落盘，协调 10-22 已派 P-asset-persist 去修
 - 协调决定：待协调验收
 
 ## 没验证的
@@ -63,7 +64,6 @@
 | --- | --- | --- |
 | 真人首次尝试：打开画板就画、完成后看到图 | 协调会话 | 下一次有人试用时补 SEQ |
 | 窄窗、深色主题截图 | 独立验收线 | 验收时补跑走查 --dark 和窄窗 |
-| 完成导出期间的进度提示 | 协调会话 | 共享落盘提速后复测，再决定要不要加提示 |
 
 ## 证据路径
 

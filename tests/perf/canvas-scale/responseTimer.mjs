@@ -67,6 +67,11 @@ const INSTALL_SOURCE = `(() => {
       const image = document.querySelector('article[data-node-id="' + CSS.escape(nodeId) + '"] [data-testid="whiteboard-open-preview"] img')
       return visible(image) && image.complete && image.naturalWidth > 0
     },
+    // 画板完成的第一眼反馈：「完成」钮变成「保存中」（aria-busy），或者图已经到位。
+    whiteboardSaving(nodeId) {
+      const done = document.querySelector('[data-nomi-inline-whiteboard="true"] [data-toolbar-action="whiteboard-done"][aria-busy="true"]')
+      return visible(done) || PREDICATES.whiteboardResultVisible(nodeId)
+    },
     // 内联画板打字：工具条里的文字框已经是 value（同一帧里画布按它重排，量到的是输入 → 画面的整段）。
     whiteboardTextValue({ label, value }) {
       const input = document.querySelector('[data-nomi-inline-whiteboard="true"] [role="toolbar"] input[aria-label="' + CSS.escape(label) + '"]')
