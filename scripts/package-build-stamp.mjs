@@ -54,7 +54,8 @@ export function verifyBuild(root) {
     try { stamp = JSON.parse(fs.readFileSync(path.join(root, output, stampName), 'utf8')) }
     catch { throw new Error(`${output}: ${hint}`) }
     if (stamp.version !== STAMP_VERSION || Object.keys(current).some(key => stamp[key] !== current[key])) {
-      throw new Error(`${output}: ${hint}`)
+      // 带上两个身份：CI 上失配时不用再猜是哪一边变了（再配合 git status 看是哪个文件）。
+      throw new Error(`${output}: ${hint}（构建时 tree=${stamp.tree ?? '无'}，当前 tree=${current.tree}）`)
     }
   }
   return current
