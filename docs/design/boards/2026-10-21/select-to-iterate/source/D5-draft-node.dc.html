@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Δ5 草稿节点</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+.light{--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink40:oklch(.68 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper))}
+.root{--nomi-radius:10px;box-sizing:border-box;background-color:var(--nomi-bg);color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.root *{box-sizing:border-box}
+.dots{background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px}
+.lbl{font-size:12px;color:var(--nomi-ink60);margin:0 0 8px 2px}
+.lbl b{color:var(--nomi-ink);font-weight:600;margin-right:6px}
+.shot{display:block;border:1px solid var(--nomi-line);border-radius:12px}
+.n{position:absolute}
+.n .tt{font-size:12px;color:var(--nomi-ink60);margin:0 0 4px 2px;white-space:nowrap}
+.n .card{position:relative;border-radius:8px;overflow:visible}
+.n .card svg.im{display:block;border-radius:8px}
+.n.sel .card{outline:1.5px solid var(--nomi-ink80);outline-offset:2px;border-radius:8px}
+.hd{position:absolute;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:var(--nomi-paper);border:1.5px solid var(--nomi-ink40)}
+.draft{width:240px;height:135px;border:1.5px dashed var(--nomi-accent);border-radius:8px;background:var(--nomi-paper);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--nomi-ink60);font-size:12px}
+.draft .t{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:var(--nomi-accent-soft);color:var(--nomi-accent);font-size:12px;font-weight:500}
+</style>
+</helmet>
+<div class="root light dots" style="width:1240px;height:400px;padding:28px 32px;display:flex;gap:44px;align-items:flex-start">
+  <div>
+    <div class="lbl"><b>现在</b>真实节点：标题在上、两侧连接点、选中是细深色边</div>
+    <img class="shot" src="/_blob/a0ca68829e2579654cc849964e3c038f" width="560" height="198" alt="现有画布节点：镜03 林夏回头（选中）、镜04 列车进站，下方选中工具条">
+  </div>
+  <div>
+    <div class="lbl"><b>新增</b>说「用这些做新的」：旁边建一张草稿节点，虚线连回参考，原节点不动</div>
+    <div style="position:relative;width:560px;height:300px">
+      <svg width="560" height="300" style="position:absolute;left:0;top:0" aria-hidden="true"><path d="M176 76 C 250 76, 250 150, 316 150" fill="none" stroke="oklch(.55 .13 250)" stroke-width="1.5" stroke-dasharray="5 4"/><path d="M176 226 C 250 226, 250 150, 316 150" fill="none" stroke="oklch(.55 .13 250)" stroke-width="1.5" stroke-dasharray="5 4"/></svg>
+      <div class="n sel" style="left:0;top:4px">
+        <div class="tt">角色 · 林夏</div>
+        <div class="card"><svg class="im" width="170" height="96" viewBox="0 0 170 96" aria-hidden="true"><rect width="170" height="96" fill="#ece3d6"/><circle cx="85" cy="30" r="13" fill="#e2c09e"/><path d="M72 27 Q85 8 98 27 Z" fill="#3a2e28"/><rect x="72" y="44" width="26" height="52" rx="10" fill="#e3b33c"/></svg><span class="hd" style="right:-6px"></span></div>
+      </div>
+      <div class="n sel" style="left:0;top:154px">
+        <div class="tt">场景 · 雨夜站台</div>
+        <div class="card"><svg class="im" width="170" height="96" viewBox="0 0 170 96" aria-hidden="true"><rect width="170" height="96" fill="#1f2c42"/><rect y="62" width="170" height="34" fill="#141d2c"/><rect y="56" width="170" height="6" fill="#3a4a66"/><rect x="40" y="16" width="44" height="12" rx="2" fill="#e05a8a"/><rect x="40" y="72" width="44" height="3" fill="#e05a8a" opacity=".5"/></svg><span class="hd" style="right:-6px"></span></div>
+      </div>
+      <div class="n" style="left:316px;top:60px">
+        <div class="tt">新 · 林夏走上站台</div>
+        <div class="card"><div class="draft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg><span>视频 · 5 秒</span><span class="t">待生成</span></div><span class="hd" style="left:-6px"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":400}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

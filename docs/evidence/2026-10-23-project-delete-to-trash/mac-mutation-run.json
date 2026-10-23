@@ -1,0 +1,97 @@
+[
+  {
+    "id": "M1 失败退回 rmSync",
+    "exit": 1,
+    "verdict": "红",
+    "summary": "Tests  6 failed | 50 passed (56)",
+    "failed": [
+      "进不了回收站（没有权限）：明确报错、什么都不删、项目还在库里 9ms",
+      "进不了回收站（这个位置没有回收站（Windows 回收站放弃操作））：明确报错、什么都不删、项目还在库里 10ms",
+      "进不了回收站（文件被别的程序占用）：明确报错、什么都不删、项目还在库里 10ms"
+    ]
+  },
+  {
+    "id": "M2 老格式换回 rmSync",
+    "exit": 1,
+    "verdict": "红",
+    "summary": "Tests  3 failed | 53 passed (56)",
+    "failed": [
+      "老格式项目（根目录 project.json、未登记）确认「删除文件」：同样进回收站，不是永久删除 5ms",
+      "老格式项目进不了回收站：明确报错，文件夹原样 28ms",
+      "repository.ts、workspaceRepository.ts、projectTrash.ts 里没有 rmSync / rmdirSync / unlinkSync 1ms"
+    ]
+  },
+  {
+    "id": "M3 先解绑再删",
+    "exit": 1,
+    "verdict": "红",
+    "summary": "Tests  5 failed | 51 passed (56)",
+    "failed": [
+      "进不了回收站（没有权限）：明确报错、什么都不删、项目还在库里 18ms",
+      "进不了回收站（这个位置没有回收站（Windows 回收站放弃操作））：明确报错、什么都不删、项目还在库里 14ms",
+      "进不了回收站（文件被别的程序占用）：明确报错、什么都不删、项目还在库里 14ms"
+    ]
+  },
+  {
+    "id": "M4 不核原路径",
+    "exit": 1,
+    "verdict": "红",
+    "summary": "Tests  1 failed | 55 passed (56)",
+    "failed": [
+      "回收站报成功、原路径却还在：当失败处理，不从项目库移除 12ms",
+      "electron/projects/projectDeleteToTrash.test.ts > 删项目进系统回收站 > 回收站报成功、原路径却还在：当失败处理，不从项目库移除"
+    ]
+  },
+  {
+    "id": "M5 去掉占用检查",
+    "exit": 1,
+    "verdict": "红",
+    "summary": "Tests  1 failed | 55 passed (56)",
+    "failed": [
+      "删除时别的写者正锁着这个项目：照常报「正被别处占用」，不进回收站、不删 35ms",
+      "electron/projects/projectDeleteToTrash.test.ts > 删项目进系统回收站 > 删除时别的写者正锁着这个项目：照常报「正被别处占用」，不进回收站、不删"
+    ]
+  },
+  {
+    "id": "M8 分类只认英文原文（去掉 macOS 中英「没有废纸篓」样本）",
+    "exit": 1,
+    "verdict": "红",
+    "summary": "Tests  3 failed | 53 passed (56)",
+    "failed": [
+      "macOS 中文系统 · 该位置没有废纸篓 4ms",
+      "macOS 英文系统 · 该位置没有废纸篓 0ms",
+      "项目文件夹名是用户起的，会出现在系统原文里：名字叫 permission / locked 不能把原因带偏 0ms"
+    ]
+  },
+  {
+    "id": "M9 分类不剔文件夹名（名字叫 permission 就带偏）",
+    "exit": 1,
+    "verdict": "红",
+    "summary": "Tests  1 failed | 55 passed (56)",
+    "failed": [
+      "项目文件夹名是用户起的，会出现在系统原文里：名字叫 permission / locked 不能把原因带偏 2ms",
+      "electron/projects/projectDeleteToTrash.test.ts > 回收站报错原文 → 三类原因（真机采样） > 项目文件夹名是用户起的，会出现在系统原文里：名字叫 permission / locked 不能把原因带偏"
+    ]
+  },
+  {
+    "id": "M6 流程一律传 delete-files",
+    "exit": 1,
+    "verdict": "红",
+    "summary": "Tests  4 failed | 14 passed (18)",
+    "failed": [
+      "项目库删除入口只用 projectDeleteChoice 的意图，不在调用点写死 5ms",
+      "灰卡（'outside-workspace'）点删除：确认框说「从项目库移除」，交给主进程的是 unbind，不进回收站 6ms",
+      "灰卡（'unreadable'）点删除：确认框说「从项目库移除」，交给主进程的是 unbind，不进回收站 0ms"
+    ]
+  },
+  {
+    "id": "M7 失败不回项目库",
+    "exit": 1,
+    "verdict": "红",
+    "summary": "Tests  1 failed | 17 passed (18)",
+    "failed": [
+      "删的是正打开的项目：先释放再删；没删成也回项目库（项目还在，卡片上显示原因） 5ms",
+      "src/workbench/library/projectDeleteFlow.test.ts > 项目库删除流程 > 删的是正打开的项目：先释放再删；没删成也回项目库（项目还在，卡片上显示原因）"
+    ]
+  }
+]
