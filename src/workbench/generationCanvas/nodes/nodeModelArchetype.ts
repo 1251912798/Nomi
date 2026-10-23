@@ -56,6 +56,7 @@ export function resolveArchetypeForOption(option: ModelOption | null) {
     modelAlias: option?.modelAlias,
     vendorKey: option?.vendor,
     meta: option?.meta,
+    ...(option?.modelNameSource ? { modelNameSource: option.modelNameSource } : {}),
   })
 }
 

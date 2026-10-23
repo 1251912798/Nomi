@@ -159,7 +159,13 @@ export function videoCandidateForPlan(candidate: PlanCandidate, candidates: read
   // 付费卡与画布问的是同一个函数、同一组输入（variantId + 模型名）。以前这里拿目录模型名反推，
   // 而 `doubao-seedance-2.0` 就是 standard 的 key——卡上写 Fast，派出去是 standard（2026-09-26）。
   const variantId = resolveArchetypeVariant(source.archetype, { variantId: requested, modelId: candidate.modelId })?.id;
-  const baseModelId = source.archetype.catalogModelKey?.trim() || source.modelKey;
+  // 身份永远是（供应商, 这家目录里的一行）。档案的基础行 key 只用来把旧的变体串折叠回**这家目录里确实有**的那一行；
+  // 这家目录里没有它（共享档案写的是别家的名字）就保留原行——以前直接取 catalogModelKey，把 Runway 的 wan3 改写成 KIE 的
+  // wan/3-0-video（R-runway-wan3）。型号名本身按供应商作用域解析（source.archetype 已经由 modelNameSource 收窄过）。
+  const declaredBase = source.archetype.catalogModelKey?.trim() ?? "";
+  const baseIsThisVendorsRow = Boolean(declaredBase) && candidates.some((item) => normalizedModelIdentity(item.provider) === provider
+    && normalizedModelIdentity(item.modelKey) === normalizedModelIdentity(declaredBase));
+  const baseModelId = baseIsThisVendorsRow ? declaredBase : source.modelKey;
   return {
     candidate: { ...candidate, modelId: baseModelId, ...(variantId ? { variantId } : {}) },
     videoCandidate: { ...source, ...(variantId ? { variantId } : {}) },
