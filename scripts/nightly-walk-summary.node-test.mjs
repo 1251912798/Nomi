@@ -1,7 +1,10 @@
+import { makeTempDir } from './_test-temp.mjs'
+import fs from 'node:fs'
+import path from 'node:path'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { BUILD_GATE_STATUS, BUILD_GATE_WALK } from './nightly-build-gate.mjs'
-import { ENV_SIGNATURES, ISSUE_TITLE, ISSUE_TITLE_RED, WAKE_FAIL_COUNT, WAKE_FAIL_RATE, classifyRow, summarizeRows, updateIssue, wakeVerdict } from './nightly-walk-summary.mjs'
+import { ENV_SIGNATURES, ISSUE_TITLE, ISSUE_TITLE_RED, WAKE_FAIL_COUNT, WAKE_FAIL_RATE, classifyRow, makeLogReader, summarizeRows, updateIssue, wakeVerdict } from './nightly-walk-summary.mjs'
 
 const row = (walk, status = 1, log = `${walk}.log`) => ({ walk, status, seconds: 3, log })
 const passing = (n) => Array.from({ length: n }, (_, i) => row(`p${i}.walk.mjs`, 0))
@@ -99,11 +102,7 @@ test('not red keeps the base title; no existing issue creates one; recovery only
   assert.deepEqual(c.calls.map((x) => x[1]), ['list', 'comment'])
 })
 
-test('makeLogReader finds flattened artifact logs by file name and returns null when absent', async () => {
-  const fs = await import('node:fs')
-  const path = await import('node:path')
-  const { makeTempDir } = await import('./_test-temp.mjs')
-  const { makeLogReader } = await import('./nightly-walk-summary.mjs')
+test('makeLogReader finds flattened artifact logs by file name and returns null when absent', () => {
   const root = makeTempDir('nomi-nightly-logs-')
   fs.writeFileSync(path.join(root, 'a.walk.mjs.log'), 'hello')
   const read = makeLogReader(root)
