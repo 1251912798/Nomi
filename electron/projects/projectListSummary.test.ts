@@ -5,6 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("electron", () => ({
   app: { getPath: () => os.tmpdir(), getAppPath: () => process.cwd() },
+  // 系统回收站用临时目录假扮（删项目进回收站，⑭；专门的用例在 projectDeleteToTrash.test.ts）。
+  shell: {
+    trashItem: async (target: string) => {
+      const bin = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-list-trash-"));
+      fs.renameSync(target, path.join(bin, path.basename(target)));
+    },
+  },
 }));
 
 import { createProject, deleteProject, listProjects, saveProject } from "./repository";
@@ -134,7 +141,7 @@ describe("项目列表摘要读面", () => {
       const card = (await listProjects()).find((item) => item.id === project.id);
       expect(card).toMatchObject({ unreadableReason: "outside-workspace" });
       restore(); // 界面还没刷新，用户点了「从项目库移除」
-      expect(deleteProject(project.id, "unbind")).toEqual({ id: project.id, deleted: false });
+      await expect(deleteProject(project.id, "unbind")).resolves.toEqual({ id: project.id, deleted: false });
       expect(fs.existsSync(path.join(inside, "assets", "imported", "user.png"))).toBe(true);
       expect(fs.existsSync(workspaceProjectFile(inside))).toBe(true);
       expect(findRecentWorkspace(settingsRoot, project.id)).toBeFalsy();
@@ -143,7 +150,7 @@ describe("项目列表摘要读面", () => {
     it("灰卡确认「只移除」：只解绑，盘上文件（含根外那份）一个不动", async () => {
       const { project, inside, source, destination } = nativeWithOutsideNomi("要移除的越界项目");
       try {
-        expect(deleteProject(project.id, "unbind")).toEqual({ id: project.id, deleted: false });
+        await expect(deleteProject(project.id, "unbind")).resolves.toEqual({ id: project.id, deleted: false });
         expect(findRecentWorkspace(settingsRoot, project.id)).toBeFalsy();
         expect(fs.existsSync(path.join(inside, "assets", "imported", "user.png"))).toBe(true);
         expect(fs.existsSync(path.join(destination, "project.json"))).toBe(true);
@@ -176,7 +183,7 @@ describe("项目列表摘要读面", () => {
         }
         try {
           expect((await listProjects()).find((item) => item.id === project.id)).toMatchObject({ unreadableReason: kind });
-          expect(deleteProject(project.id, "unbind")).toEqual({ id: project.id, deleted: false });
+          await expect(deleteProject(project.id, "unbind")).resolves.toEqual({ id: project.id, deleted: false });
           resetLegacyDiscoveryGuard(); // 模拟下次启动：发现会重新扫默认根
           const next = await listProjects();
           expect(next.some((item) => item.id === neighbour.id)).toBe(true);
@@ -191,7 +198,7 @@ describe("项目列表摘要读面", () => {
     it("确认的是「删除文件」，此刻却读不出来：拒绝（状态变了），什么都不删、登记还在", async () => {
       const { project, inside, source } = nativeWithOutsideNomi("确认删除后变坏了");
       try {
-        expect(() => deleteProject(project.id, "delete-files")).toThrow(/ProjectDeleteStateChangedError:/);
+        await expect(deleteProject(project.id, "delete-files")).rejects.toThrow(/ProjectDeleteStateChangedError:/);
         expect(fs.existsSync(path.join(inside, "assets", "imported", "user.png"))).toBe(true);
         expect(findRecentWorkspace(settingsRoot, project.id)).toBeTruthy();
       } finally {
@@ -207,7 +214,7 @@ describe("项目列表摘要读面", () => {
       fs.writeFileSync(workspaceProjectFile(root), JSON.stringify(raw));
       const lease = await acquireWorkspaceManifestLock(root);
       try {
-        expect(() => deleteProject(busy.id, "delete-files")).toThrow(WorkspaceManifestLockBusyError);
+        await expect(deleteProject(busy.id, "delete-files")).rejects.toThrow(WorkspaceManifestLockBusyError);
         expect(findRecentWorkspace(settingsRoot, busy.id)).toBeTruthy();
         expect(fs.existsSync(root)).toBe(true);
       } finally {
@@ -215,19 +222,19 @@ describe("项目列表摘要读面", () => {
       }
     });
 
-    it("没带意图 / 意图不认识：拒绝，什么都不动", () => {
+    it("没带意图 / 意图不认识：拒绝，什么都不动", async () => {
       const project = createProject({ name: "没带意图" });
       const root = (findRecentWorkspace(settingsRoot, project.id) as { rootPath: string }).rootPath;
-      expect(() => deleteProject(project.id, undefined)).toThrow(/intent is required/);
-      expect(() => deleteProject(project.id, "delete")).toThrow(/intent is required/);
+      await expect(deleteProject(project.id, undefined)).rejects.toThrow(/intent is required/);
+      await expect(deleteProject(project.id, "delete")).rejects.toThrow(/intent is required/);
       expect(fs.existsSync(root)).toBe(true);
       expect(findRecentWorkspace(settingsRoot, project.id)).toBeTruthy();
     });
 
-    it("读得出来的 native 项目确认「删除文件」：照旧整目录删", () => {
+    it("读得出来的 native 项目确认「删除文件」：整个文件夹进回收站（原路径不在了）", async () => {
       const project = createProject({ name: "正常删除" });
       const root = (findRecentWorkspace(settingsRoot, project.id) as { rootPath: string }).rootPath;
-      expect(deleteProject(project.id, "delete-files")).toEqual({ id: project.id, deleted: true });
+      await expect(deleteProject(project.id, "delete-files")).resolves.toEqual({ id: project.id, deleted: true });
       expect(fs.existsSync(root)).toBe(false);
     });
   });
