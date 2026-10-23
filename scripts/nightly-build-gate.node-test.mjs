@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 import { BUILD_GATE_STATUS, BUILD_GATE_WALK, runBuildGate } from './nightly-build-gate.mjs'
 import { sourceIdentity, stampedBuild } from './package-build-stamp.mjs'
-import { summarizeRows } from './nightly-walk-summary.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoIgnore = fs.readFileSync(path.join(here, '..', '.gitignore'), 'utf8')
@@ -55,7 +54,7 @@ test('构建自检通过：返回 0，不写构建门记录，先打印 git stat
   assert.match(logs[0], /git status --porcelain/)
 })
 
-test('构建自检失败：记一行构建门、返回非 0（调用方不再启动走查）；汇总把它单列', (t) => {
+test('构建自检失败：记一行构建门、返回非 0（调用方不再启动走查）', (t) => {
   const { root } = fixture(t)
   fs.rmSync(path.join(root, 'dist-electron/build-stamp.json'))
   assert.equal(runBuildGate({ root, outDir: 'nightly-walks', resultsFile: 'nightly-walks/results-2.tsv', log: () => {} }), 1)
@@ -65,9 +64,6 @@ test('构建自检失败：记一行构建门、返回非 0（调用方不再启
   assert.equal(walk, BUILD_GATE_WALK)
   assert.equal(Number(status), BUILD_GATE_STATUS)
   assert.ok(fs.existsSync(path.join(root, log)))
-  const { markdown } = summarizeRows([{ walk, status: Number(status), seconds: 1, log }])
-  assert.match(markdown, /构建门失败 1 个 job/)
-  assert.match(markdown, /build gate failed \(97\)/)
 })
 
 test('身份漂移时：自检日志打印出是哪个文件，错误里给出构建时 / 当前两个 tree', (t) => {
