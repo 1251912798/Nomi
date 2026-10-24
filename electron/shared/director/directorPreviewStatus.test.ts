@@ -6,6 +6,7 @@ import { DIRECTOR_PREVIEW_SPEND_BLOCK_REASONS, parseDirectorPreviewBlockReply } 
 describe('director preview block reply (main-process admission)', () => {
   it('passes every reason of the shared vocabulary through, including stale', () => {
     for (const reason of DIRECTOR_PREVIEW_SPEND_BLOCK_REASONS) expect(parseDirectorPreviewBlockReply({ blocks: [{ nodeId: 'n', reason }] })).toBe(reason)
+    expect(parseDirectorPreviewBlockReply({ blocks: [{ nodeId: 'n', reason: 'not_attached' }] })).toBe('not_attached')
     expect(parseDirectorPreviewBlockReply({ blocks: [{ nodeId: 'n', reason: 'stale' }] })).toBe('stale')
   })
 

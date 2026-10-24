@@ -1,0 +1,138 @@
+{
+  "name": "director-reference-attach",
+  "mode": "development",
+  "tempRoot": "/private/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-director-reference-attach-zRknZ9",
+  "outputDir": "/Users/aoqimin/Desktop/Nomi/.claude/worktrees/paid-director/.tmp/pi-director-reference-attach-development-1792878139110",
+  "launches": [
+    {
+      "packaged": false,
+      "appPath": "/Users/aoqimin/Desktop/Nomi/.claude/worktrees/paid-director",
+      "userData": "/private/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-director-reference-attach-zRknZ9/user-data",
+      "node": "24.18.1",
+      "electron": "43.4.1",
+      "pid": 72673
+    }
+  ],
+  "screenshots": [
+    "/Users/aoqimin/Desktop/Nomi/.claude/worktrees/paid-director/.tmp/pi-director-reference-attach-development-1792878139110/01-01-zh-before-spend-reference-attached.png",
+    "/Users/aoqimin/Desktop/Nomi/.claude/worktrees/paid-director/.tmp/pi-director-reference-attach-development-1792878139110/02-02-zh-confirm-dialog.png",
+    "/Users/aoqimin/Desktop/Nomi/.claude/worktrees/paid-director/.tmp/pi-director-reference-attach-development-1792878139110/03-03-zh-result-landed.png"
+  ],
+  "paidCalls": 1,
+  "networkAllowlist": [
+    "https://api.apimart.ai",
+    "*.getapib.org",
+    "https://nomi-asset-relay.2373272608.workers.dev"
+  ],
+  "hostedUploadRelayAllowed": "https://nomi-asset-relay.2373272608.workers.dev",
+  "credentialSource": "real-profile",
+  "seededModels": [
+    "apimart/doubao-seedance-2.0"
+  ],
+  "realProfileBefore": {
+    "model-catalog.json": "sha256:87d08e60364db1859ff9826859e4990126d12df27de55e60948011a6ea62bb5f:size:621959:mtime:1792757680967"
+  },
+  "round4SpendGateMarker": "director.agent.spendBlockedNotAttached",
+  "disabledUnauthorizedModels": 141,
+  "projectId": "project-1792878143492-f6eg9g",
+  "projectRoot": "/private/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-director-reference-attach-zRknZ9/projects/未命名项目 10_25 05_42-mvmxct8o-c55083ef",
+  "keptPreviewMp4": "/Users/aoqimin/Desktop/Nomi/.claude/worktrees/paid-director/.tmp/pi-director-reference-attach-development-1792878139110/preview.mp4",
+  "preCheck": {
+    "previewUrl": "nomi-local://asset/project-1792878143492-f6eg9g/assets/generated/2026-10-24/3D-BOX-gen-v2-director-mvmxcugq-zcp8-1792878148374.mp4",
+    "previewSeconds": 4,
+    "referenceVideoUrls": [
+      "nomi-local://asset/project-1792878143492-f6eg9g/assets/generated/2026-10-24/3D-BOX-gen-v2-director-mvmxcugq-zcp8-1792878148374.mp4"
+    ],
+    "promptHasMention": true
+  },
+  "generateButtonBeforeClick": {
+    "rect": {
+      "x": 903,
+      "y": 868,
+      "w": 30,
+      "h": 30
+    },
+    "viewport": {
+      "w": 1280,
+      "h": 933
+    },
+    "disabled": false,
+    "hitIsButton": true,
+    "hitElement": "path.[object SVGAnimatedString]",
+    "steps": [
+      "fit-view",
+      "zoom-out",
+      "zoom-out"
+    ],
+    "zoom": 142
+  },
+  "generateButtonAfterClick": {
+    "rect": {
+      "x": 903,
+      "y": 868,
+      "w": 30,
+      "h": 30
+    },
+    "viewport": {
+      "w": 1280,
+      "h": 933
+    },
+    "disabled": false,
+    "hitIsButton": true,
+    "hitElement": "path.[object SVGAnimatedString]"
+  },
+  "landed": {
+    "url": "nomi-local://asset/project-1792878143492-f6eg9g/assets/generated/2026-10-24/video-1792878284903.mp4",
+    "bytes": 930274,
+    "probe": {
+      "kind": "video",
+      "hasAudio": false,
+      "streamCount": 1,
+      "durationSeconds": 4.041667,
+      "width": 864,
+      "height": 496,
+      "fps": 24,
+      "videoCodec": "h264",
+      "pixelFormat": "yuv420p"
+    },
+    "previewUrl": "nomi-local://asset/project-1792878143492-f6eg9g/assets/generated/2026-10-24/3D-BOX-gen-v2-director-mvmxcugq-zcp8-1792878148374.mp4",
+    "note": "成片与预演放在一起肉眼对比：运镜是不是照预演（脚本不判画面）"
+  },
+  "keptResultMp4": "/Users/aoqimin/Desktop/Nomi/.claude/worktrees/paid-director/.tmp/pi-director-reference-attach-development-1792878139110/result.mp4",
+  "verified": [
+    "preview-reference-attached-before-spend",
+    "one-provider-task",
+    "result-landed-and-probed"
+  ],
+  "networkBlocked": [],
+  "backgroundFixtureCalls": [],
+  "spend": {
+    "media": [
+      {
+        "source": "production-run",
+        "nodeId": null,
+        "kind": "video",
+        "vendor": "canvas:apimart",
+        "model": "doubao-seedance-2.0",
+        "taskId": "task_01M5QXVJ7YQF5JHV7KBFCKDKMM",
+        "status": "ready",
+        "providerCost": null,
+        "runId": "canvas-run-gen-v2-video-mvmxcugr-zknv-1792878155017-5s73gs",
+        "jobId": "generation-canvas-run-gen-v2-video-mvmxcugr-zknv-1792878155017-5s73gs-cea88bfb0ee95fb5"
+      }
+    ],
+    "text": {
+      "replies": 0,
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "models": {}
+    }
+  },
+  "realProfileAfter": {
+    "model-catalog.json": "sha256:87d08e60364db1859ff9826859e4990126d12df27de55e60948011a6ea62bb5f:size:621959:mtime:1792757680967"
+  },
+  "credentialCopyRemoved": true,
+  "result": "passed"
+}

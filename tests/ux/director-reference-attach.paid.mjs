@@ -35,6 +35,8 @@ import { openCanvas, readProject } from './agent-runtime-walk-support.mjs'
 import { require as tsxRequire } from 'tsx/cjs/api'
 
 const SCRIPT = 'director-reference-attach.paid.mjs'
+// 第 4 轮产物标记：协调抽样必须确认这份脚本对应拆分后的“预演未挂上”原因。
+const ROUND4_SPEND_GATE_MARKER = 'director.agent.spendBlockedNotAttached'
 // 4 秒两镜预演（与节点上的 4 秒时长一致）。
 const PLAN = {
   scene: { environment: 'day', template: 'room', tags: ['书房'] },
@@ -61,6 +63,7 @@ const NODE_GENERATE = 'button[data-bar-segment="generate"]'
 
 const paid = await openPaidWalk(SCRIPT, 'director-reference-attach', [VIDEO], { hostedUploads: true, vendorNetwork: process.env.NOMI_PAID_PROBE_DIALOG !== '1' }) // 预演 mp4 要先经应用的托管上传中转：放行当前配置的那一个中转源（report.json 的 hostedUploadRelayAllowed）
 const { walk } = paid
+walk.report.round4SpendGateMarker = ROUND4_SPEND_GATE_MARKER
 let failure
 try {
   const { win } = await walk.start({ first: true })
