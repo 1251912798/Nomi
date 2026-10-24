@@ -20,6 +20,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveCacheDir } from './lib/intake-radar/store.mjs'
+import { killProcessTree, processTreeSpawnOptions } from './lib/processTree.mjs'
 
 const TRIAGE = '分诊只由协调会话做；其他会话看到不动手、不写待办。'
 const MODEL_TRIAGE_PLAN = 'docs/plan/2026-08-27-vendor-model-radar.md'
@@ -76,9 +77,9 @@ function defaultRun(root, radar) {
     const done = (result) => { if (!settled) { settled = true; clearTimeout(timer); resolve(result) } }
     let child
     try {
-      child = spawn(process.execPath, radar.argv, { cwd: root, windowsHide: true })
+      child = spawn(process.execPath, radar.argv, { cwd: root, windowsHide: true, ...processTreeSpawnOptions() })
     } catch (error) { return resolve({ status: null, stdout, stderr, error }) }
-    const timer = setTimeout(() => { child.kill(); done({ status: null, signal: 'SIGTERM', stdout, stderr, error: Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' }) }) }, TIMEOUT_MS)
+    const timer = setTimeout(() => { killProcessTree(child, 'SIGTERM'); done({ status: null, signal: 'SIGTERM', stdout, stderr, error: Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' }) }) }, TIMEOUT_MS)
     child.stdout.on('data', (chunk) => { stdout += chunk })
     child.stderr.on('data', (chunk) => { stderr += chunk })
     child.on('error', (error) => done({ status: null, stdout, stderr, error }))

@@ -1,0 +1,29 @@
+{
+  "id": "GT-20261024-tree-kill",
+  "since": "2026-10-24",
+  "source": "用户任务书：macOS 门岗超时后攒出 slow.node-test.mjs 孤儿",
+  "category": "performance-coverage",
+  "problem": "门岗超时只杀直接 runner，node:test 后代变成 ppid=1 孤儿，重复运行会吃掉交换空间和磁盘",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [
+    "macOS / Linux 门岗超时、整体截止或 Ctrl-C 收尾"
+  ],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "scripts/pre-push-structure.node-test.mjs 假慢测试 pid 回归",
+    "scripts/lib/processTree.node-test.mjs 进程组后代回归",
+    "docs/fixes/2026-10-24-gates-timeout-tree-kill.root-cause.json"
+  ],
+  "completionCommits": [
+    "68b10f82d"
+  ],
+  "rootCauseContract": "docs/fixes/2026-10-24-gates-timeout-tree-kill.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "scripts/pre-push-structure.node-test.mjs"
+  },
+  "fixedInPr": 1311
+}
