@@ -61,6 +61,6 @@
 ## 已知限制与后续
 
 - 全仓敏感数据扫描（`check:secrets --all`）从此只在 CI 上跑（它在 `scripts/pre-push-gate-table.mjs` 的 CI_ONLY 里），推送前只剩 pre-commit 对暂存区的扫描与 Claude 钩子对 `commit --no-verify` / `add -f` 的拒绝。用非 Claude 客户端 `commit --no-verify` 绕过 pre-commit 的内容，第一次被全仓扫描看到是在 CI 上，那时分支已在远端。要补，是往快检里加一道「只扫 origin/main..HEAD 改动文件」的敏感数据扫描——那要改快检门岗表，不在本线范围。
-- `scripts/run-gates-tests.mjs` 的档位记录（gitdir 里的 `nomi-gates-tier`，`writeTierRecord` / `readTierRecord`）原本只喂给签发脚本，现在没有读方；该文件在本线的禁碰清单里，没动，留给后续删。
+- `scripts/run-gates-tests.mjs` 的档位记录（gitdir 里的 `nomi-gates-tier`，`writeTierRecord` / `readTierRecord`）原本只喂给签发脚本，签发方删掉后全仓零读方：协调 10-24 在本 PR 补提交删掉（写的那一处调用连同三个定义一起删）。
 - 历史根因合同里两条「机器读不了」的边界（`2026-09-02-push-gate-stamp-identity` 里 push 闸的「戳的三项核验」、`2026-09-03-push-bypass-audit-trail` 里 `check-push-bypass.mjs` 的「main gate logic」）描述的不变量已经退役或改了，但边界主人台账只给「路径 / 符号不在了」的边界设退役桶，这两条只能留在 `unreadable_symbols` 普查里。
 - 快检比完整门岗少，分支上 CI 红的次数可能上升（不碰 main）；协调合并后用真实推送核一遍推送前等待与 main 收据。
