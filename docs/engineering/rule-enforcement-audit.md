@@ -61,7 +61,7 @@
 
 - 「动手写码前」行：删冗余 inline 控件层级规则 + R8 大括号展开（link 到 docs/design）
 - 「报完成前」行：删「眼见链四问」冗余细节（保留 P3 引用 + R13 引用）
-- 「push 前」行：保持一句「pnpm run gates」
+- 「push 前」行：保持一句「pnpm run gates」（2026-10-24 起改成「先并最新 origin/main；git 钩子自动跑快检，完整门岗以 CI 为准」，见 `self-check.sh` 的 ③ 与设计卡 `docs/plan/2026-10-24-push-gate-ci.md`）
 - violations.log 取前 2 条（从 3 改 2）
 
 ## 结论
@@ -74,6 +74,6 @@
 规则审计还发现，`git -c core.hooksPath=... push` 与 `git --no-verify push` 可以绕过 native pre-push hook；仅靠 push 前拦截无法为未安装 Claude hook 的 worktree 留证。PR #399 增加了两段式机器化补强：
 
 - `scripts/claude-hooks/pre-push-check.sh` 在绕过命令放行前写入 `.claude/push-bypass.log`，记录时间、分支、HEAD、worktree 与命令摘要。
-- `scripts/check-push-bypass.mjs` 及其行为测试把日志接入 `gates:contracts`：匹配本树、本 HEAD 的 gate stamp 可自动确认，否则必须人工 `--accept <sha>`，未确认记录保持红灯。
+- `scripts/check-push-bypass.mjs` 及其行为测试把日志接入 `gates:contracts` 和推送前快检（`scripts/pre-push-contracts.mjs` 每次都跑）：未确认记录一律保持红灯，只能人工 `--accept <sha>` 确认。最初版本里「匹配本树、本 HEAD 的 gate stamp 可自动确认」那条，2026-10-24 随本机门岗戳一起删除——本机不再有「完整门岗过了」的凭据。
 
-该补充是留痕与审计门，不取代既有的 worktree/HEAD gate stamp，也不把旧的文档瘦身审计报告重新复制到本文件。
+2026-10-24 用户拍板推送改由 CI 把关（推分支前本机只跑快检，完整门岗交给 CI，合并只认 CI 全绿和 main 上的收据；设计卡 `docs/plan/2026-10-24-push-gate-ci.md`）：worktree/HEAD 的本机门岗戳已删除，这道留痕与审计门是 push 闸剩下的唯一职责。本节不把旧的文档瘦身审计报告重新复制到本文件。

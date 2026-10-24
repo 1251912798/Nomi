@@ -206,11 +206,6 @@
       "count": 1
     }
   },
-  "scripts/check-hook-behavior.node-test.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "scripts/check-icon-semantics.node-test.mjs": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -264,7 +259,7 @@
   },
   "scripts/check-push-bypass.node-test.mjs": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 7
+      "count": 6
     }
   },
   "scripts/check-real-media-fixture.mjs": {
@@ -699,11 +694,6 @@
     }
   },
   "scripts/pr53-image-video-mode-walkthrough.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "scripts/pre-push-check.node-test.mjs": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
