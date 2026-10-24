@@ -1,7 +1,7 @@
 {
   "board": "NodePointer",
   "approvedOn": "2026-10-23",
-  "stage": "explored",
+  "stage": "built",
   "visualReview": "用户 10-23 在 Claude Design 画布「指向元素与付费确认卡 D2 样张」第二版（https://claude.ai/artifact/Y8E9jC8RNrKXVuwxUoWv2f，私有）上选 P1 + Q1（协调转述）；四条连带问题 10-23 由协调与用户定（见 decisions）。",
   "sourceBoundary": "板源 = 画布 A1–A5 五格（source/A1-anatomy.dc.html … A5-i18n-dark.dc.html 是原样副本，canvas.json 为画布布局，nomi-ds.css 为画布用的 token 抄本）。preview/NodePointer.html 是把五格去掉 <x-dc> 壳拼成的静态页：样式一字未改，每格样式加前缀隔离、图标 id 加前缀，停掉转圈动画（抽取才确定），用户没选的 P3 区块不进预览。候选由 board-extract 的抽取函数在拼页上抽出。画布里的 Q1–Q4 在 SpendCardQ1 板，Q2 / Q3 / Z / 00 不进清单。",
   "designIntent": "聊天里代表画布节点的通用零件：长得和节点一样、点一下去节点、悬停两边同亮；所有聊天卡共用一个生产组件（付费卡、以后的时间轴改动、任务卡等）。先在设计实验室搭全状态，不接进聊天。",
@@ -37,6 +37,16 @@
       "id": "D3",
       "text": "一张脸照真节点组件：标题行 / 镜号、空节点、排队、生成中等待面、失败、结果缩略图；「已删除」「一行摘要」只在指向元素上。",
       "source": "协调 10-22 反馈（D-pointer-d2「第二版修订」第 2 条）"
+    },
+    {
+      "id": "D4",
+      "text": "「已删除」只认宿主显式给的 removed（删除事件 / 制作脱离记录）；节点不在画布上、或画布还没载入完，指向元素显示中性占位（同一个框，不说已删除、不可点）。实验室有这一格（np-p1-states）。",
+      "source": "协调 10-23 代定（防载入 / 撤销瞬间误报已删除），事后报用户"
+    },
+    {
+      "id": "D5",
+      "text": "组指向超过 3 个：露 3 格，第 3 格（标题行仍是那一镜）的画面位置盖「还有 N 个」，N = 总数 − 3；4 个也折。P2 句中标签是 3 个 +「+N」。",
+      "source": "协调 10-23 定（I-d2 第②步 plan D-b：板文字「露 3 个 + 还有 N 个」与板图第 3 格的画法按板图读）"
     }
   ],
   "elements": [
@@ -92,9 +102,9 @@
         "633-button",
         "639-button"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）",
-      "note": "按钮可读名 = 镜号 + 名字 + 状态；Tab 可达、Enter / Space 定位。"
+      "status": "implemented",
+      "note": "按钮可读名 = 镜号 + 名字 + 状态；Tab 可达、Enter / Space 定位。 生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。",
+      "assertion": "board:NodePointer/pointer.p1"
     },
     {
       "id": "pointer.label",
@@ -251,9 +261,9 @@
         "729-span-Shot02",
         "730-span-Pasttheleave"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）",
-      "note": "英文「Shot 01」更宽，名字截断，全名靠悬停提示（A5）。"
+      "status": "implemented",
+      "note": "英文「Shot 01」更宽，名字截断，全名靠悬停提示（A5）。 生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。",
+      "assertion": "board:NodePointer/pointer.label"
     },
     {
       "id": "pointer.summary",
@@ -292,8 +302,9 @@
         "725-span-Seedance204s",
         "731-span-Seedance205s"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.summary",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     },
     {
       "id": "pointer.state.waiting",
@@ -329,8 +340,9 @@
         "642-svg",
         "643-span-Waitingforyo"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.state.waiting",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     },
     {
       "id": "pointer.state.queued",
@@ -349,8 +361,9 @@
         "203-span",
         "207-svg"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.state.queued",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     },
     {
       "id": "pointer.state.generating",
@@ -384,8 +397,9 @@
         "728-span",
         "732-svg"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.state.generating",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     },
     {
       "id": "pointer.state.done",
@@ -403,8 +417,9 @@
         "696-svg",
         "726-svg"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.state.done",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     },
     {
       "id": "pointer.state.failed",
@@ -458,8 +473,9 @@
         "736-span-Notsent",
         "737-svg"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.state.failed",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     },
     {
       "id": "pointer.deleted",
@@ -517,9 +533,9 @@
         "741-span-Deleted",
         "742-svg"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）",
-      "note": "读屏念出「已删除」；节点删除由显式事件驱动，不靠「找不到就猜」。"
+      "status": "implemented",
+      "note": "读屏念出「已删除」；节点删除由显式事件驱动，不靠「找不到就猜」。 生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。",
+      "assertion": "board:NodePointer/pointer.deleted"
     },
     {
       "id": "pointer.vertical",
@@ -548,8 +564,9 @@
         "190-span-Seedance20Fa",
         "191-span-9165s480p"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.vertical",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     },
     {
       "id": "pointer.group",
@@ -575,8 +592,9 @@
         "624-div",
         "638-div"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.group",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     },
     {
       "id": "pointer.group.more",
@@ -591,8 +609,9 @@
         "172-span-还有2个",
         "267-span-2"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.group.more",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     },
     {
       "id": "pointer.hover-link",
@@ -630,9 +649,9 @@
         "550-span-镜02",
         "551-span-越过落叶"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）",
-      "note": "硬要求：全组件不许出现 accent / 蓝色描边。"
+      "status": "implemented",
+      "note": "硬要求：全组件不许出现 accent / 蓝色描边。 生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。",
+      "assertion": "board:NodePointer/pointer.hover-link"
     },
     {
       "id": "canvas.node.highlight",
@@ -667,9 +686,9 @@
         "525-div",
         "526-svg"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）",
-      "note": "对画布节点唯一的改动；点击定位复用 #1277 的对焦（缩放封顶 100%，节点 + 生成框都在可见区）。"
+      "status": "implemented",
+      "note": "对画布节点唯一的改动；点击定位复用 #1277 的对焦（缩放封顶 100%，节点 + 生成框都在可见区）。 生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。",
+      "assertion": "board:NodePointer/canvas.node.highlight"
     },
     {
       "id": "pointer.located",
@@ -690,8 +709,9 @@
         "552-span-已定位",
         "553-svg"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.located",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     },
     {
       "id": "pointer.narrow.collapse",
@@ -705,8 +725,9 @@
       "candidates": [
         "461-svg"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.narrow.collapse",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     },
     {
       "id": "pointer.narrow.back",
@@ -724,9 +745,9 @@
         "530-span-镜02",
         "531-span"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）",
-      "note": "键盘：Esc 也回到对话。"
+      "status": "implemented",
+      "note": "键盘：Esc 也回到对话。 生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。",
+      "assertion": "board:NodePointer/pointer.narrow.back"
     },
     {
       "id": "pointer.p2.row",
@@ -764,9 +785,9 @@
         "722-button",
         "727-button"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）",
-      "note": "P2 是 P1 的窄屏 / 行内密度，同一个零件，不是第二套实现。"
+      "status": "implemented",
+      "note": "P2 是 P1 的窄屏 / 行内密度，同一个零件，不是第二套实现。 生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。",
+      "assertion": "board:NodePointer/pointer.p2.row"
     },
     {
       "id": "pointer.p2.chip",
@@ -793,8 +814,9 @@
         "715-button",
         "718-button"
       ],
-      "status": "missing",
-      "owner": "I-d2 第②步（指向元素生产组件，设计实验室搭全状态）"
+      "status": "implemented",
+      "assertion": "board:NodePointer/pointer.p2.chip",
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
     }
   ],
   "decor": [
