@@ -137,6 +137,9 @@ function FloatingToolbarFrame({ ariaLabel, lockNodeId, children, side = 'above',
       role="toolbar"
       aria-label={ariaLabel}
       onPointerDown={(event) => event.stopPropagation()}
+      // 浮条里的点击不是「点这个节点」：菜单是 portal，但 React 合成事件沿组件树冒泡，不拦就会一路冒到 React Flow 的
+      // 节点 onClick，把选中改回这个节点——「拆解 ▾ → 镜头表」刚选中新表，同一下点击又把视频选回来（2026-10-18 走查）。
+      onClick={(event) => event.stopPropagation()}
     >
       {lockNodeId ? (
         <>

@@ -1,0 +1,47 @@
+[
+  {
+    "selected": 1,
+    "idsInSelectionLine": 1,
+    "statesTotal": true,
+    "silentlyMissing": 0,
+    "reachableByPaging": 1,
+    "pagesNeeded": 1,
+    "chars": 152
+  },
+  {
+    "selected": 31,
+    "idsInSelectionLine": 31,
+    "statesTotal": true,
+    "silentlyMissing": 0,
+    "reachableByPaging": 31,
+    "pagesNeeded": 1,
+    "chars": 2366
+  },
+  {
+    "selected": 32,
+    "idsInSelectionLine": 32,
+    "statesTotal": true,
+    "silentlyMissing": 0,
+    "reachableByPaging": 32,
+    "pagesNeeded": 1,
+    "chars": 2440
+  },
+  {
+    "selected": 40,
+    "idsInSelectionLine": 32,
+    "statesTotal": true,
+    "silentlyMissing": 0,
+    "reachableByPaging": 40,
+    "pagesNeeded": 2,
+    "chars": 2866
+  },
+  {
+    "selected": 256,
+    "idsInSelectionLine": 32,
+    "statesTotal": true,
+    "silentlyMissing": 0,
+    "reachableByPaging": 256,
+    "pagesNeeded": 8,
+    "chars": 8505
+  }
+]
