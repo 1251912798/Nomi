@@ -8,9 +8,11 @@
 //   · 目录：同上，但只认「概念大小」的目录——近 14 天 fix 提交碰过的不同源码文件 ≤ DIR_MAX_FILES。
 //     忙碌的大目录（几十个文件、每天都有无关 fix）不当整体算，否则每个 fix 都命中、规则变噪音（2026-10-04 回测：
 //     origin/main 最近 15 个合并里，不设上限时 38 个 fix 提交几乎全命中）。
-// 例外：locale 词典（src/i18n/locales/*.ts）什么功能都要改它，按「文件」数一碰就响（2026-10-05 generationCommon.ts 近 14 天 30 个 fix），
-//   真正重复的那类反而被淹掉。词典文件改按「文件#顶层功能键」各数各的（中英两段同名键算同一个；一个提交改到几个键各计一次；
-//   落在键之外的行——文件头、export 行、顶层单句——归「文件#(根)」），阈值和窗口不变，且不再投目录那一票（词典目录不是一个概念）。
+// 例外：词典文件（登记表 DICTIONARY_FILES：渲染层 src/i18n/locales/*.ts、主进程 electron/desktopStrings.ts）什么功能都要改它，
+//   按「文件」数一碰就响（2026-10-05 generationCommon.ts 近 14 天 30 个 fix；2026-10-24 desktopStrings.ts 第 10 个），真正重复的那类反而被淹掉。
+//   词典文件改按「文件#功能键」各数各的（locale 取顶层键，主进程词典取点号键第一段；中英两段同名键算同一个；一个提交改到几个键各计一次；
+//   落在键之外的行——文件头、export 行、helper、语言段开头——归「文件#(根)」），阈值和窗口不变；
+//   词典不投目录票、不进概念 / 自写单位，只改词典的旧提交也不给它们记票（词典目录不是一个概念）。
 //   盲区：同一类错（例如「界面谈钱」）若散在不同功能键里，这里数不到一起——由 check:i18n 的文案扫描补。
 // 再加两种「按概念数」的单位（scripts/fix-churn-units.mjs 定义哪些单位、各含哪些文件）：
 //   · 自写登记条目（self-written.json 的一条 entry，paths 下的文件合起来）：status 为 under-review / to-replace，
@@ -91,12 +93,12 @@ export function namespaceLines(source) {
   return out
 }
 
-/** 主进程词典：按点号键第一段归族；非键行（头、helper、export）归 (根)。 */
+/** 主进程词典：按点号键第一段归族；非键行（头、helper、export、值是 { / [ 的语言段开头）归 (根)。 */
 export function desktopNamespaceLines(source) {
   const lines = String(source || '').split(/\r?\n/)
   const out = [null]
   for (const line of lines) {
-    const m = line.match(/^\s+"([^".]+)(?:\.[^"]+)?"\s*:/)
+    const m = line.match(/^\s+"([^".]+)(?:\.[^"]+)?"\s*:(?!\s*[{[])/)
     out.push(m ? m[1] : ROOT_NS)
   }
   return out
@@ -212,7 +214,8 @@ export function loadHistory(root, { ref = 'HEAD', since, days = FIX_WINDOW_DAYS,
 export function tally(history, afterIndex, nowMs, scope) {
   const isDir = !/\.[a-z0-9]+$/i.test(scope)
   const prefix = scope.replace(/\/?$/, '/')
-  const touches = (f) => (isDir ? f.startsWith(prefix) : f === scope)
+  // 目录票不收词典文件：只改词典的提交不给所在目录记票（词典按「文件#功能键」另数）
+  const touches = (f) => (isDir ? f.startsWith(prefix) && !isDictionaryFile(f) : f === scope)
   const cutoff = nowMs - FIX_WINDOW_DAYS * 86400000
   let fixes = 0
   let reverts = 0
@@ -255,7 +258,8 @@ export function tallyUnit(history, afterIndex, nowMs, unit) {
   for (let i = afterIndex + 1; i < history.length; i++) {
     const c = history[i]
     if (c.ms < cutoff) continue
-    const mine = c.files.filter((f) => unitMatches(unit, f))
+    // 词典不进单位：只改词典的旧提交也不给单位记票（否则含词典的概念把每条新文案都算一刀）
+    const mine = c.files.filter((f) => !isDictionaryFile(f) && unitMatches(unit, f))
     if (!mine.length) continue
     if (isFixSubject(c.subject)) { fixes++; for (const f of mine) if (isUnitSource(f)) fixFiles.add(f) }
     else if (isRevertOfFix(c.subject)) reverts++

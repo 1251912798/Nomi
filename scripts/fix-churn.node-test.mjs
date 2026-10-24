@@ -377,6 +377,7 @@ describe('桌面词典按点号键族计数', () => {
     assert.equal(isDictionaryFile(FILE), true)
     const map = desktopNamespaceLines(body('a', 'b'))
     assert.equal(map[1], ROOT_NS)
+    assert.equal(map[3], ROOT_NS, '语言段开头 "zh-CN": { 不是键')
     assert.equal(map[4], 'export')
     assert.equal(map[5], 'review')
     assert.equal(map[8], 'export')
@@ -405,6 +406,16 @@ describe('桌面词典按点号键族计数', () => {
       assert.equal(hits.length, 1)
       assert.match(hits[0].reasons[0], /desktopStrings\.ts#\(根\)/)
       assert.equal(hits[0].dirCounts.fixes, 0)
+    } finally { r.cleanup() }
+  })
+
+  test('只改词典的旧 fix 不给所在目录、也不给含词典的概念记票', () => {
+    const r = dictRepo([['feat: add', {}], ['fix: export one', { a: 'a1' }], ['fix: review one', { b: 'b1' }], ['fix: helper one', { helper: 'v1' }]])
+    try {
+      fs.writeFileSync(path.join(r.root, 'electron/other.ts'), 'export const other = 1\n'); r.git('add', '-A')
+      const units = conceptUnits({ concepts: [{ name: '谈钱文案', owner: { path: 'electron/other.ts' }, write_api: [{ path: FILE }] }] })
+      assert.equal(units.length, 1)
+      assert.equal(findHotspots(r.root, ['electron/other.ts'], { units }).length, 0, '3 个 fix 都只改词典：electron/ 目录与概念都不该命中')
     } finally { r.cleanup() }
   })
 })

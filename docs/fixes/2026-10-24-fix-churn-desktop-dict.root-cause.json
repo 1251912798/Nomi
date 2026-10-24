@@ -28,7 +28,7 @@
   "invariants": [
     "登记表中的每个词典都由路径规则和 lineNamespaces 提取键族；未知词典不进入词典专用计数。",
     "词典历史与暂存区都按同一文件#键族计数；点号键取第一段，键外行归 (根)，中英同名键合并。",
-    "词典文件不再投所在目录或 self-written/concept 单位的票。"
+    "词典文件不再投所在目录或 self-written/concept 单位的票——当前改动与只改词典的历史提交都不记。"
   ],
   "doors": [],
   "door_reduction": {
@@ -66,6 +66,12 @@
       "entry_point": "stagedFiles/hotspots",
       "disposition": "enforced",
       "evidence": "暂存区文件经 stagedNamespaces 与 findHotspots，桌面词典使用同一 stagedNamespaces 判法。"
+    },
+    {
+      "path": "scripts/fix-churn.mjs",
+      "entry_point": "tally / tallyUnit",
+      "disposition": "enforced",
+      "evidence": "目录票与概念 / 自写单位的历史计数都跳过登记表里的词典文件；只改词典的旧 fix 不再给 electron/ 目录或 delivery.money-copy-truth 记票（node-test「只改词典的旧 fix 不给所在目录、也不给含词典的概念记票」）。"
     }
   ],
   "recurrence": {
