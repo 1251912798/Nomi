@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import type { LibraryPrompt } from './promptLibraryTypes'
+import type { LibraryPrompt } from '../shared/contracts/promptLibrary'
 const mocks = vi.hoisted(() => ({ fetch: vi.fn(), read: vi.fn(), write: vi.fn() }))
 vi.mock('../hardenedFetch', () => ({ hardenedFetchText: mocks.fetch }))
 vi.mock('../runtimePaths', () => ({ getSettingsRoot: () => '/tmp/nomi-prompt-test', readJson: mocks.read }))

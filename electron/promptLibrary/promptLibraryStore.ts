@@ -9,7 +9,7 @@ import { writeJsonFileAtomic } from "../jsonFile";
 import { getSettingsRoot, readJson } from "../runtimePaths";
 import { PROMPT_SOURCES, type PromptSource } from "./promptSources";
 import { withBuiltinPrompts } from "./builtinPacks";
-import type { LibraryPrompt } from "./promptLibraryTypes";
+import type { LibraryPrompt } from "../shared/contracts/promptLibrary";
 import seedJson from "./promptLibrarySeed.json";
 import { testNetworkGuardEnabled } from "../testNetworkGuard";
 
