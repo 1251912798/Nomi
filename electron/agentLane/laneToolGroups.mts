@@ -27,7 +27,7 @@ export function laneRequestToolDefinition(groups: readonly { name: string }[]) {
   return {
     name: LANE_TOOL_REQUEST_TOOL_NAME,
     label: 'Tools',
-    description: 'Select a tool group without changing tools or approvals.',
+    description: 'Select a tool group for this task without removing other tools or approving actions.',
     promptSnippet: `Select a group: ${groups.map(group => group.name).join(', ')}. All tool schemas stay resident. Request coding before accessing project files; installed Skills remain readable. This does not approve actions.`,
     parameters: Type.Object({
       group: Type.String({ enum: groups.map(group => group.name) }),
