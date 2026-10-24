@@ -8,7 +8,9 @@
 //      「运镜」芯片 2026-09-12 已删）→ 常驻 CameraMoveCaptureHost 离屏采帧 → ffmpeg 拼 mp4（真 IPC）
 //      → director 节点 meta.cameraMoveVideo.url 出现、标志清掉、目标视频节点被喂入（video_ref 或提示词地板）
 //   ④ 用 E2E 桥往画布塞一个带 stagingAutoCapture 的 director 节点（模拟 create_staging_reference 的下半场）
-//      → StagingCaptureHost 离屏出图 → image 节点（stagingComposition）+ reference / composition_ref 两条边
+//      → StagingCaptureHost 离屏出图 → image 节点（stagingComposition）+ reference 边；接目标镜头分两支都走（2026-10-24 走查 ⑤）：
+//      ④a 目标是工具栏默认图片模型（只吃文字）→ 不留假的 composition_ref 边，提示「这个镜头的模型不接参考图…」+「定位节点」；
+//      ④b 目标换成能接参考图的模型（经桥写 meta.archetype，模拟用户在节点上换模型）→ composition_ref 边落盘、不再提示
 //   ⑤ 关闭 App → 同隔离目录冷启动 → 从项目库重开，核对导演场景、PNG/MP4 引用及连边
 // 证据 = 磁盘上的 .nomi/project.json（终态真相源，不信页面自述）+ 截图人眼核对（tests/ux/shots/director/electron/）。
 // 项目走真实「新建空白项目」而不是手播种 project.json：新架构下手播种的项目没有 project agent host，打不开（project_agent_unavailable）。
@@ -256,8 +258,24 @@ const moved = await expect.poll(() => {
 check('③ 运镜小片离屏出片 → mp4 落盘 → 喂进视频镜头（磁盘）', moved, moved ? '' : JSON.stringify(readCanvas().nodes.map((node) => [node.kind, Object.keys(node.meta || {})])))
 await snap('camera-move-done')
 
-// ④ 站位参考：塞一个带 stagingAutoCapture 的 director 节点（工程直接借运镜参考那份），Host 出图 + 连边
-const stagingNodeId = await win.evaluate((targetId) => {
+// ④ 站位参考：塞带 stagingAutoCapture 的 director 节点（工程直接借运镜参考那份），Host 出图 + 经 attachStagingReference 接目标镜头。
+// 目标 IMAGE_ID 是从工具栏加的图片节点，用的是默认模型（只有文生图、没有参考槽）：2026-10-24 前这里照连不误、被写边总闸静默拒掉，
+// 盘上没有 composition_ref 边，Agent 回执却说「已连到镜头」。现在两支都要对：只吃文字 → 不留假边 + 提示；能接 → 边落盘、不提示。
+// 提示是一条 8 秒的后台 toast：先在真实 DOM 上架通知观察者再塞节点，不和它的自动消失赛跑（与 agent-spend-confirm-executes.walk.mjs 同一手法）。
+await win.evaluate(() => {
+  window.__nomiToastLog = []
+  const record = () => {
+    for (const node of document.querySelectorAll('[class*="mantine-Notification-root"]')) {
+      const text = (node.textContent ?? '').trim()
+      if (text && !window.__nomiToastLog.includes(text)) window.__nomiToastLog.push(text)
+    }
+  }
+  record()
+  new MutationObserver(record).observe(document.body, { childList: true, subtree: true })
+})
+const stagingNotices = async () => (await win.evaluate(() => window.__nomiToastLog ?? []))
+  .filter((text) => text.includes(uiText('zh-CN', 'director.agent.stagingTextOnly')) || text.includes(uiText('zh-CN', 'director.agent.stagingNotConnected')))
+const injectStaging = (y) => win.evaluate(({ targetId, y: top, title }) => {
   const store = window.__nomiCanvasStore
   if (!store) return null
   const state = store.getState()
@@ -265,23 +283,48 @@ const stagingNodeId = await win.evaluate((targetId) => {
   if (!source) return null
   const created = state.addNode({
     kind: 'director',
-    title: '站位参考',
+    title,
     prompt: '',
-    position: { x: 120, y: 620 },
+    position: { x: 120, y: top },
     meta: { directorProject: source.meta.directorProject, stagingAutoCapture: { targetNodeId: targetId } },
   })
   return created.id
+}, { targetId: IMAGE_ID, y, title: uiText('zh-CN', 'director.agent.stagingReference') })
+/** 这个站位节点出的图（Host 给图打 sourceNodeId）落盘、标志清掉、director→图的 reference 边在；返回图节点 id。 */
+const stagedImageOf = (stagingId) => expect.poll(() => {
+  const { nodes, edges } = readCanvas()
+  const shot = nodes.find((node) => node.kind === 'image' && node.meta?.stagingComposition === true && node.meta?.sourceNodeId === stagingId)
+  const staging = nodes.find((node) => node.id === stagingId)
+  return shot && staging && !staging.meta?.stagingAutoCapture && hasEdge(edges, stagingId, shot.id, 'reference') ? shot.id : null
+}, { timeout: stationTimeout({ operations: 8 }), intervals: [2000] }).not.toBeNull().then(() => {
+  const { nodes } = readCanvas()
+  return nodes.find((node) => node.kind === 'image' && node.meta?.sourceNodeId === stagingId)?.id ?? null
+}, () => null)
+
+const textOnlyTarget = readCanvas().nodes.find((node) => node.id === IMAGE_ID)
+console.log(`  · ④ 目标镜头的模型：${JSON.stringify(textOnlyTarget?.meta?.archetype ?? textOnlyTarget?.meta?.modelKey ?? null)}`)
+const stagingTextOnly = await injectStaging(620)
+check('④ E2E 桥能塞入待出图的 director 节点', Boolean(stagingTextOnly))
+const notified = await expect.poll(async () => (await stagingNotices()).length, { timeout: stationTimeout({ operations: 8 }), intervals: [500] }).toBeGreaterThan(0).then(() => true, () => false)
+const [notice] = await stagingNotices()
+check('④a 目标只吃文字：提示「这个镜头的模型不接参考图…」并带「定位节点」', notified && notice.includes(uiText('zh-CN', 'director.agent.stagingTextOnly')) && notice.includes(uiText('zh-CN', 'generationCommon.node.locateNode')), notice ?? '（一个字都没说）')
+await snap('staging-text-only-notice')
+const textOnlyImage = await stagedImageOf(stagingTextOnly)
+check('④a 站位图照样落盘 + director→图 reference 边，图→镜头没有假的 composition_ref 边（磁盘）', Boolean(textOnlyImage) && !hasEdge(readCanvas().edges, textOnlyImage, IMAGE_ID))
+
+// ④b 用户把这个镜头换成能接参考图的模型（默认文生图模式、「改图」模式有参考图槽）→ 再出一张 → composition_ref 边落盘、不再提示
+await win.evaluate((targetId) => {
+  const state = window.__nomiCanvasStore.getState()
+  const target = state.nodes.find((node) => node.id === targetId)
+  state.updateNode(targetId, { meta: { ...(target?.meta ?? {}), modelKey: 'seedream-4-5', archetype: { id: 'seedream', modeId: 't2i' } } })
 }, IMAGE_ID)
-check('④ E2E 桥能塞入待出图的 director 节点', Boolean(stagingNodeId))
-const staged = stagingNodeId
-  ? await expect.poll(() => {
-    const { nodes, edges } = readCanvas()
-    const shot = nodes.find((node) => node.kind === 'image' && node.meta?.stagingComposition === true)
-    const staging = nodes.find((node) => node.id === stagingNodeId)
-    return Boolean(shot && staging && !staging.meta?.stagingAutoCapture && hasEdge(edges, stagingNodeId, shot.id, 'reference') && hasEdge(edges, shot.id, IMAGE_ID, 'composition_ref'))
-  }, { timeout: stationTimeout({ operations: 8 }), intervals: [2000] }).toBe(true).then(() => true, () => false)
+const stagingConnected = await injectStaging(860)
+const connectedImage = stagingConnected ? await stagedImageOf(stagingConnected) : null
+const wired = connectedImage
+  ? await expect.poll(() => hasEdge(readCanvas().edges, connectedImage, IMAGE_ID, 'composition_ref'), { timeout: stationTimeout({ operations: 2 }), intervals: [1000] }).toBe(true).then(() => true, () => false)
   : false
-check('④ 站位参考离屏出图 → image 节点 + reference / composition_ref 边（磁盘）', staged)
+check('④b 目标能接参考图：站位图 → 镜头 composition_ref 边落盘（磁盘）', wired)
+check('④b 接上了就不提示', (await stagingNotices()).length === 1, (await stagingNotices()).join(' | '))
 await snap('staging-done')
 
 // 真锁把保存保持在途；连续返回不能绕过第一次正在等待的持久化回执。

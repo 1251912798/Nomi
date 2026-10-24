@@ -591,15 +591,18 @@ export async function applyCanvasToolCall(
     }
 
     // 站位参考：词汇 spec → 导演台工程 → 建 director 节点(带 stagingAutoCapture)。
-    // 常驻 StagingCaptureHost 扫到标志就离屏出图 + 连 composition_ref 到目标镜头（director/agent）。
+    // 常驻 StagingCaptureHost 扫到标志就离屏出图，再经 attachStagingReference 接目标镜头（director/agent）。
+    // 接不接得上由同一个判据预判（stagingAttachForTarget），回执照它说：目标只吃文字时不许再说「连到镜头」。
     const spec = parseStagingSpec(record)
-    const { createStagingReferenceNode } = await import('../nodes/director/agent/createStagingReferenceNode')
-    const { stagingNodeId, issues: stagingIssues } = createStagingReferenceNode({ spec, targetNodeId, inCtx })
+    const { createStagingReferenceNode, stagingAttachReceipt } = await import('../nodes/director/agent/createStagingReferenceNode')
+    const { stagingNodeId, issues: stagingIssues, attach } = createStagingReferenceNode({ spec, targetNodeId, inCtx })
+    const receipt = stagingAttachReceipt(attach)
     const cam = spec.camera ?? {}
     return {
       stagingNodeId,
       targetNodeId: targetNodeId ?? null,
-      message: `已创建站位参考（${spec.characters.length} 角色 · ${spec.layout ?? '自动'} 站位 · ${cam.angle ?? 'three-quarter'}/${cam.height ?? 'eye'}/${cam.shot ?? 'medium'}）。正在离屏渲染出图${targetNodeId ? '并连到镜头作 composition_ref' : ''}。${stagingIssues.length ? ' ⚠️ ' + stagingIssues.join('；') : ''}`,
+      degraded: receipt.degraded,
+      message: `已创建站位参考（${spec.characters.length} 角色 · ${spec.layout ?? '自动'} 站位 · ${cam.angle ?? 'three-quarter'}/${cam.height ?? 'eye'}/${cam.shot ?? 'medium'}）。正在离屏渲染出图${receipt.clause}。${stagingIssues.length ? ' ⚠️ ' + stagingIssues.join('；') : ''}`,
     }
   }
 

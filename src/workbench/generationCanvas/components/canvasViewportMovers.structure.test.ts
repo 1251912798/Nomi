@@ -24,6 +24,7 @@ const FOCUS_DISPATCHERS: Record<string, string> = {
   'workbench/generationCanvas/nodes/BaseGenerationNode.tsx': '节点「定位来源」角标',
   'workbench/generationCanvas/components/BatchPlanOverlay.tsx': '批量条上点被卡住的那一镜',
   'workbench/generationCanvas/nodes/completeNodeConnection.ts': 'toast 上的「定位」动作',
+  'workbench/generationCanvas/nodes/director/agent/StagingCaptureHost.tsx': '站位图没连上镜头时提示上的「定位节点」动作：图常落在视口外，用户点了才对准它',
   'workbench/project/useProjectNotificationTarget.ts': '点系统通知 / 深链跳到节点',
   'workbench/generation/list/generationListSource.ts': '生成页列表检查器「在画布里看」/ 工具卡「在画布里打开」：用户点了才切回画布并对准那个节点',
   'workbench/generationCanvas/nodes/extractVideoFrameToNode.ts': '视频浮条点「首帧 / 尾帧」：用户点了才抽，新图片节点建好后对准它（之前落在视口外看不见）',

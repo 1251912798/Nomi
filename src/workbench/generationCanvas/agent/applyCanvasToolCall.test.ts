@@ -588,3 +588,36 @@ describe('applyCanvasToolCall create_staging_reference customBlocking 降级', (
     expect((target?.meta as Record<string, unknown>)?.stagingPromptApplied).toBeTruthy()
   })
 })
+
+// 2026-10-24 导演台走查 ⑤：回执曾无条件说「并连到镜头作 composition_ref」——目标是只吃文字的模型（工具栏默认图片模型）时，
+// 写边总闸拒了这条边，Agent 却照样告诉用户已经接上。现在回执和出图后的写边门问同一个判据（director/agent/stagingAttach.test.ts）。
+describe('applyCanvasToolCall create_staging_reference 回执照「接不接得上」说', () => {
+  beforeEach(() => {
+    resetCanvas()
+    resetClientIdRegistry()
+  })
+
+  const stage = (shotClientId: string) =>
+    applyCanvasToolCall('create_staging_reference', { shotClientId, characters: [{ name: 'A' }, { name: 'B' }], layout: 'facing' }) as Promise<{
+      stagingNodeId: string | null
+      degraded?: boolean
+      message: string
+    }>
+
+  it('目标镜头的模型只吃文字 → 照样出站位图，但回执标降级、不说「连到镜头」、给下一步', async () => {
+    const target = useGenerationCanvasStore.getState().addNode({ kind: 'image', title: '关键帧', prompt: '雨夜', meta: { archetype: { id: 'z-image-turbo', modeId: 't2i' } } })
+    const res = await stage(target.id)
+    expect(res.stagingNodeId).toBeTruthy()
+    expect(res.degraded).toBe(true)
+    expect(res.message).not.toContain('连到镜头作 composition_ref')
+    expect(res.message).toContain('不接参考图')
+  })
+
+  it('目标镜头的模型能接参考图 → 回执说连到镜头，不标降级', async () => {
+    const target = useGenerationCanvasStore.getState().addNode({ kind: 'image', title: '关键帧', prompt: '雨夜', meta: { archetype: { id: 'seedream', modeId: 't2i' } } })
+    const res = await stage(target.id)
+    expect(res.stagingNodeId).toBeTruthy()
+    expect(res.degraded).toBe(false)
+    expect(res.message).toContain('并连到镜头作 composition_ref')
+  })
+})
