@@ -73,6 +73,97 @@ function b3SceneNode() {
 }
 const B3_SCENE = { ...SCENE, localUrlOf: hosted }
 
+describe('托管地址按 WHATWG 形状对号', () => {
+  const filenameShapes = [
+    ['空格', 'first ref.png'],
+    ['中文', '首帧参考.png'],
+    ['#', 'first#frame.png'],
+    ['已编码 %20', 'first%20ref.png'],
+    ['+', 'first+ref.png'],
+  ]
+  const responseShapes = [
+    ['JSON', false],
+    ['JSON 斜杠转义', true],
+  ]
+  const queryShapes = [
+    ['无查询串', ''],
+    ['签名已打码', '?<redacted>'],
+  ]
+  it('响应里的空格地址与请求体的 new URL().href 应对回同一个本地文件', () => {
+    const remoteFirst = 'https://cdn.apimart.test/first ref.png?sig=SIGNED'
+    const remoteLast = 'https://cdn.apimart.test/last.png?sig=SIGNED'
+    const entries = [
+      { kind: 'allowed-request', seq: 1, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/uploads/images', body: { form: [{ fileName: 'first ref.png' }] } },
+      { kind: 'allowed-response', seq: 1, text: JSON.stringify({ data: { url: remoteFirst } }) },
+      { kind: 'allowed-request', seq: 2, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/uploads/images', body: { form: [{ fileName: 'last.png' }] } },
+      { kind: 'allowed-response', seq: 2, text: JSON.stringify({ data: { url: remoteLast } }) },
+      { kind: 'allowed-request', seq: 3, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/videos/generations', body: { text: JSON.stringify({ image_urls: [new URL(remoteFirst).href, new URL(remoteLast).href] }) } },
+    ]
+    const verdict = judgeReferenceWire(entries, { host: HOST, firstFile: 'first ref.png', lastFile: 'last.png', referenceFiles: [], localUrlOf: () => '' })
+    expect(verdict.problems).toEqual([])
+    expect(verdict.summary.imagesInBody.map((entry) => entry.file).sort()).toEqual(['first ref.png', 'last.png'])
+  })
+
+  it.each([
+    ['空格', 'first ref.png'],
+    ['中文', '首帧参考.png'],
+    ['#', 'first#frame.png'],
+    ['已编码 %20', 'first%20ref.png'],
+    ['+', 'first+ref.png'],
+  ])('%s 文件名 × JSON / 无查询串', (_label, file) => {
+    const lastFile = `last-${file}`
+    const firstRemote = `https://cdn.apimart.test/${file}`
+    const lastRemote = `https://cdn.apimart.test/${lastFile}`
+    const entries = [
+      { kind: 'allowed-request', seq: 1, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/uploads/images', body: { form: [{ fileName: file }] } },
+      { kind: 'allowed-response', seq: 1, text: JSON.stringify({ data: { url: firstRemote } }).replaceAll('/', '\\/') },
+      { kind: 'allowed-request', seq: 2, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/uploads/images', body: { form: [{ fileName: lastFile }] } },
+      { kind: 'allowed-response', seq: 2, text: JSON.stringify({ data: { url: lastRemote } }).replaceAll('/', '\\/') },
+      { kind: 'allowed-request', seq: 3, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/videos/generations', body: { text: JSON.stringify({ image_urls: [new URL(firstRemote).href, new URL(lastRemote).href] }) } },
+    ]
+    const verdict = judgeReferenceWire(entries, { host: HOST, firstFile: file, lastFile, referenceFiles: [] })
+    expect(verdict.problems).toEqual([])
+  })
+
+  it.each([
+    ['无查询串', ''],
+    ['签名已打码', '?<redacted>'],
+  ])('文件名 + %s 的 JSON 响应和请求体可比', (_label, query) => {
+    const file = '首帧 ref+%20#.png'
+    const lastFile = '尾帧.png'
+    const firstRemote = `https://cdn.apimart.test/${file}${query}`
+    const lastRemote = `https://cdn.apimart.test/${lastFile}${query}`
+    const entries = [
+      { kind: 'allowed-request', seq: 1, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/uploads/images', body: { form: [{ fileName: file }] } },
+      { kind: 'allowed-response', seq: 1, text: JSON.stringify({ data: { url: firstRemote } }) },
+      { kind: 'allowed-request', seq: 2, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/uploads/images', body: { form: [{ fileName: lastFile }] } },
+      { kind: 'allowed-response', seq: 2, text: JSON.stringify({ data: { url: lastRemote } }) },
+      { kind: 'allowed-request', seq: 3, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/videos/generations', body: { text: JSON.stringify({ image_urls: [new URL(firstRemote).href, new URL(lastRemote).href] }) } },
+    ]
+    const verdict = judgeReferenceWire(entries, { host: HOST, firstFile: file, lastFile, referenceFiles: [] })
+    expect(verdict.problems).toEqual([])
+  })
+
+  it.each(filenameShapes.flatMap(([filenameLabel, file]) => responseShapes.flatMap(([responseLabel, escapeSlashes]) => queryShapes.map(([queryLabel, query]) => ({ filenameLabel, file, responseLabel, escapeSlashes, queryLabel, query })))))('$filenameLabel × $responseLabel × $queryLabel', ({ file, escapeSlashes, query }) => {
+    const lastFile = `last-${file}`
+    const pathFor = (name) => name.replaceAll('#', '%23')
+    const firstRemote = `https://cdn.apimart.test/${pathFor(file)}${query}`
+    const lastRemote = `https://cdn.apimart.test/${pathFor(lastFile)}${query}`
+    const responseText = (url) => {
+      const json = JSON.stringify({ data: { url } })
+      return escapeSlashes ? json.replaceAll('/', '\\/') : json
+    }
+    const entries = [
+      { kind: 'allowed-request', seq: 1, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/uploads/images', body: { form: [{ fileName: file }] } },
+      { kind: 'allowed-response', seq: 1, text: responseText(firstRemote) },
+      { kind: 'allowed-request', seq: 2, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/uploads/images', body: { form: [{ fileName: lastFile }] } },
+      { kind: 'allowed-response', seq: 2, text: responseText(lastRemote) },
+      { kind: 'allowed-request', seq: 3, host: HOST, method: 'POST', url: 'https://api.apimart.ai/v1/videos/generations', body: { text: JSON.stringify({ image_urls: [new URL(firstRemote).href, new URL(lastRemote).href] }) } },
+    ]
+    expect(judgeReferenceWire(entries, { host: HOST, firstFile: file, lastFile, referenceFiles: [] }).problems).toEqual([])
+  })
+})
+
 /** 真 runTask 出站那一刻的请求 → 网络闸账本的形状（查询串照闸的规矩换成 `?<redacted>`），外加两条托管上传。 */
 async function ledgerFor(node, { uploads = ['first.png', 'last.png'], mutateBody } = {}) {
   const { vendor, request } = buildCatalogTaskRequest(node, { references: resolveGenerationReferences(node, { nodes: [node], edges: [] }) })

@@ -1,0 +1,32 @@
+{
+  "name": "走查账本 URL 的 WHATWG 可比形状与查询串脱敏",
+  "subject": "test-harness.walkthrough-url-shape",
+  "lifecycle": "delivery",
+  "authority_kind": "gateway",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/walkthrough-url-shape.cjs",
+    "symbol": "canonicalEvidenceUrl"
+  },
+  "write_api": [
+    {
+      "path": "scripts/walkthrough-url-shape.cjs",
+      "symbol": "canonicalEvidenceUrl"
+    },
+    {
+      "path": "scripts/walkthrough-url-shape.cjs",
+      "symbol": "scrubText"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "tests/ux/_referenceLeakWire.mjs",
+    "scripts/walkthrough-network-guard.cjs",
+    "tests/ux/_referenceLeakWire.test.mjs",
+    "scripts/walkthrough-network-guard.test.mjs"
+  ],
+  "since": "2026-10-25",
+  "notes": "走查账本中的公网 URL 统一由 WHATWG URL 解析，清掉 search 后再对号；JSON 正文按值递归脱敏查询串，避免路径中的空格、中文、#、%20、+ 被正则截断。"
+}

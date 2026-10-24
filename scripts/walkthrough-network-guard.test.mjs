@@ -63,6 +63,16 @@ describe('walkthrough network guard', () => {
     expect(recorded[1].body.form).toEqual([{ field: 'file', fileName: 'first.png', size: 4, type: 'image/png' }])
   })
 
+  it('scrubs a signed URL whose path contains a space instead of truncating before the query', () => {
+    const { entries } = runGuarded(`
+      fetch('https://allowed.invalid/v1/videos/generations', { method: 'POST',
+        body: JSON.stringify({ image_urls: ['https://cdn.invalid/first ref.png?sig=SECRET&exp=1'] }) }).catch(() => undefined)
+    `, { NOMI_WALK_ALLOW_ORIGINS: 'https://allowed.invalid', NOMI_WALK_NET_BODIES: '1', CI: '' })
+    const request = entries.find((entry) => entry.kind === 'allowed-request')
+    expect(JSON.parse(request.body.text).image_urls).toEqual(['https://cdn.invalid/first%20ref.png?<redacted>'])
+    expect(JSON.stringify(entries)).not.toContain('SECRET')
+  })
+
   it('without NOMI_WALK_NET_BODIES nothing about allowed requests is recorded (other walks unchanged)', () => {
     const { entries } = runGuarded(`
       fetch('https://allowed.invalid/v1/x', { method: 'POST', body: '{"a":1}' }).catch(() => undefined)

@@ -19,6 +19,7 @@
 'use strict'
 const fs = require('node:fs')
 const net = require('node:net')
+const { scrubText: scrubUrlText } = module.require('./walkthrough-url-shape.cjs')
 const { allowsHostPort, allowsUrl, parseAllowlist } = require('../electron/shared/walkAllowlist.cjs')
 
 const LOG = process.env.NOMI_WALK_NET_LOG || ''
@@ -118,21 +119,14 @@ const RECORD_BODIES = process.env.NOMI_WALK_NET_BODIES === '1'
 const BODY_LIMIT = 64 * 1024
 let recordSeq = 0
 
-function scrubText(text) {
-  return String(text)
-    .replace(/(https?:\/\/[^\s"'\\?#]+)\?[^\s"'\\#]*/g, '$1?<redacted>')
-    .replace(/Bearer\s+[^\s"'\\]+/gi, 'Bearer <redacted>')
-    .replace(/\bsk-[A-Za-z0-9_-]{8,}/g, 'sk-<redacted>')
-}
-
 function describeBody(body) {
   if (body === undefined || body === null) return null
-  if (typeof body === 'string') return { text: scrubText(body.slice(0, BODY_LIMIT)), truncated: body.length > BODY_LIMIT }
+  if (typeof body === 'string') return { text: scrubUrlText(body.slice(0, BODY_LIMIT)), truncated: body.length > BODY_LIMIT }
   if (typeof FormData === 'function' && body instanceof FormData) {
     const form = []
     for (const [field, value] of body.entries()) {
       form.push(typeof value === 'string'
-        ? { field, value: scrubText(value.slice(0, 200)) }
+        ? { field, value: scrubUrlText(value.slice(0, 200)) }
         : { field, fileName: value && value.name ? String(value.name) : null, size: value && value.size, type: value && value.type })
     }
     return { form }
@@ -150,7 +144,7 @@ function recordAllowed(target, init, responsePromise) {
   if (!body || !body.form) return responsePromise
   return responsePromise.then((response) => {
     try {
-      response.clone().text().then((text) => note({ kind: 'allowed-response', via: 'fetch', seq, status: response.status, text: scrubText(text.slice(0, 4096)) }), () => {})
+      response.clone().text().then((text) => note({ kind: 'allowed-response', via: 'fetch', seq, status: response.status, text: scrubUrlText(text.slice(0, 4096)) }), () => {})
     } catch {
       // 读不了响应不影响被测 App。
     }
