@@ -1,0 +1,36 @@
+{
+  "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+  "commit": "a50b7d70b",
+  "date": "2026-10-22",
+  "runs": 5,
+  "results": [
+    {
+      "id": "composer-open-params-refs-30",
+      "metrics": {
+        "response": {
+          "runs": 5,
+          "median": 45.6,
+          "p95": 46.8
+        },
+        "longTasks": {
+          "runs": 5,
+          "median": 0,
+          "p95": 0
+        }
+      },
+      "budget": 100,
+      "baseline": {
+        "median": 62.9,
+        "p95": 77.2,
+        "runs": 5,
+        "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+        "date": "2026-10-22",
+        "commit": "a50b7d70b"
+      },
+      "verdict": {
+        "status": "ok",
+        "note": ""
+      }
+    }
+  ]
+}

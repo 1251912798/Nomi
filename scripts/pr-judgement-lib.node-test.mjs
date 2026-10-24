@@ -305,6 +305,34 @@ test('端到端：临时 git 仓库里跑 CI 脚本——没勾分类 / 缺证�
   assert.notEqual(noBody.status, 0)
 })
 
+test('推送前判据：本机 color.ui / diff.noprefix / diff.mnemonicPrefix 配置不改变 AbortController 的可打断命中', (t) => {
+  const root = makeTempDir('pr-judgement-diff-config-')
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const write = (rel, content) => {
+    fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true })
+    fs.writeFileSync(path.join(root, rel), content)
+  }
+  git(root, 'init', '-q'); git(root, 'config', 'user.email', 't@t'); git(root, 'config', 'user.name', 't'); git(root, 'config', 'commit.gpgsign', 'false')
+  fs.mkdirSync(path.join(root, 'docs/engineering'), { recursive: true })
+  fs.copyFileSync(path.join(here, '..', 'docs/engineering/test-routing.json'), path.join(root, 'docs/engineering/test-routing.json'))
+  write('src/workbench/ai/stream.ts', 'export const stream = 1\n')
+  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'base')
+  const base = git(root, 'rev-parse', 'HEAD').trim()
+  write('src/workbench/ai/stream.ts', 'export const stream = 1\nexport const controller = new AbortController()\n')
+  git(root, 'commit', '-qam', 'add cancellation')
+  const run = () => spawnSync(process.execPath, [path.join(here, 'check-pr-judgement.mjs')], {
+    encoding: 'utf8',
+    env: { ...process.env, PR_JUDGEMENT_REPO_ROOT: root, PR_JUDGEMENT_BASE_REF: base, PR_JUDGEMENT_CREATED_AT: '2026-10-24T00:00:00Z', NOMI_PR_BODY: '## 设计卡\nx', GITHUB_EVENT_NAME: '' },
+  })
+  const clean = run()
+  assert.match(clean.stdout, /四类：命中（[^）]*可打断/)
+  for (const [key, value] of [['color.ui', 'always'], ['diff.noprefix', 'true'], ['diff.mnemonicPrefix', 'true']]) git(root, 'config', key, value)
+  const configured = run()
+  assert.match(configured.stdout, /四类：命中（[^）]*可打断/)
+  assert.equal(configured.stdout, clean.stdout, '推送前判据输出不能受本机 git diff 配置影响')
+  assert.equal(configured.stderr, clean.stderr)
+})
+
 test('端到端：逃逸账本一条一个文件——条目文件被删（base 有、HEAD 没有）→ 红并点名 id；只新增 / 改状态 → 不报删除', (t) => {
   const root = makeTempDir('pr-judgement-ledger-')
   t.after(() => fs.rmSync(root, { recursive: true, force: true }))

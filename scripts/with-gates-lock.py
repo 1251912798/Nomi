@@ -13,8 +13,10 @@ normal runs; killing its wrapper does not preserve a child-owned lock.
 import errno
 import json
 import os
-import signal
+import re
 import shlex
+import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -55,6 +57,7 @@ def metadata(file):
 
 
 def try_lock(file):
+    ensure_lock_byte(file)
     try:
         if os.name == 'nt':
             file.seek(0)
@@ -66,6 +69,169 @@ def try_lock(file):
         if error.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
             raise
         return False
+
+
+def lock_blocking(file):
+    ensure_lock_byte(file)
+    if os.name == 'nt':
+        # LK_LOCK retries only ten times (about ten seconds) before raising.
+        # Guard admission may scan an arbitrarily long live queue, so keep the
+        # same non-blocking primitive as the main lock and retry without a cap.
+        while not try_lock(file):
+            time.sleep(0.2)
+    else:
+        fcntl.flock(file, fcntl.LOCK_EX)
+
+
+def unlock(file):
+    if os.name == 'nt':
+        file.seek(0)
+        msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        fcntl.flock(file, fcntl.LOCK_UN)
+
+
+def ensure_lock_byte(file):
+    file.seek(0, os.SEEK_END)
+    if file.tell() == 0:
+        file.write('0')
+        file.flush()
+    file.seek(0)
+
+
+def open_lock_file(path, create=True):
+    flags = os.O_RDWR | getattr(os, 'O_NOFOLLOW', 0)
+    if create:
+        flags |= os.O_CREAT
+    fd = os.open(path, flags, 0o600)
+    file = os.fdopen(fd, 'r+', encoding='utf-8')
+    ensure_lock_byte(file)
+    return file
+
+
+def ensure_queue_dir(path):
+    try:
+        os.mkdir(path, 0o700)
+    except FileExistsError:
+        if stat.S_ISLNK(os.lstat(path).st_mode) or not stat.S_ISDIR(os.stat(path).st_mode):
+            raise RuntimeError(f'排队状态不是目录：{path}')
+    except OSError as error:
+        raise RuntimeError(f'排队状态打不开：{path}: {error}') from error
+
+
+def open_queue(lock_path):
+    queue_path = f'{lock_path}.queue'
+    ensure_queue_dir(queue_path)
+    try:
+        guard = open_lock_file(os.path.join(queue_path, 'guard.lock'))
+        counter_fd = os.open(
+            os.path.join(queue_path, 'counter'),
+            os.O_RDWR | os.O_CREAT | getattr(os, 'O_NOFOLLOW', 0),
+            0o600,
+        )
+        counter = os.fdopen(counter_fd, 'r+', encoding='utf-8')
+    except OSError as error:
+        raise RuntimeError(f'排队状态打不开：{queue_path}: {error}') from error
+    return queue_path, guard, counter
+
+
+TICKET_RE = re.compile(r'^ticket-(\d{20})\.lock$')
+
+
+def ticket_numbers(queue_path):
+    try:
+        names = os.listdir(queue_path)
+    except OSError as error:
+        raise RuntimeError(f'排队状态打不开：{queue_path}: {error}') from error
+    numbers = []
+    for name in names:
+        match = TICKET_RE.fullmatch(name)
+        if match:
+            numbers.append(int(match.group(1)))
+        elif name.startswith('ticket-'):
+            raise RuntimeError(f'排队状态损坏：{os.path.join(queue_path, name)}')
+    return sorted(numbers)
+
+
+def ticket_path(queue_path, number):
+    return os.path.join(queue_path, f'ticket-{number:020d}.lock')
+
+
+def ticket_file(queue_path, number, create=True):
+    return open_lock_file(ticket_path(queue_path, number), create=create)
+
+
+def remove_ticket(path):
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        # Windows can deny unlink while another handle still has the file
+        # open. The next guard admission will retry; cleanup is best effort.
+        pass
+
+
+def allocate_ticket(queue_path, counter):
+    counter.seek(0)
+    raw = counter.read().strip()
+    if raw and not raw.isdigit():
+        raise RuntimeError(f'排队计数器损坏：{os.path.join(queue_path, "counter")}')
+    number = int(raw or '0')
+    ticket = ticket_file(queue_path, number)
+    if not try_lock(ticket):
+        ticket.close()
+        raise RuntimeError(f'排队票号已被占用：{number}')
+    counter.seek(0)
+    counter.write(str(number + 1))
+    counter.truncate()
+    counter.flush()
+    os.fsync(counter.fileno())
+    return number, ticket, ticket_path(queue_path, number)
+
+
+def active_ticket_numbers(queue_path, before=None):
+    active = []
+    for number in ticket_numbers(queue_path):
+        if before is not None and number >= before:
+            continue
+        try:
+            ticket = ticket_file(queue_path, number, create=False)
+        except FileNotFoundError:
+            continue
+        try:
+            if try_lock(ticket):
+                unlock(ticket)
+            else:
+                active.append(number)
+        finally:
+            ticket.close()
+    return active
+
+
+def cleanup_dead_tickets(queue_path):
+    """Remove only unlocked ticket files, and only while the caller owns guard."""
+    for number in ticket_numbers(queue_path):
+        path = ticket_path(queue_path, number)
+        try:
+            ticket = ticket_file(queue_path, number, create=False)
+        except FileNotFoundError:
+            continue
+        try:
+            if try_lock(ticket):
+                remove_ticket(path)
+                unlock(ticket)
+        finally:
+            ticket.close()
+
+
+def queue_notice(owner, count):
+    minutes = max(0, (time.time() - owner.get('started', time.time())) / 60)
+    print(
+        f"前面还有 {count} 个（正在跑：pid={owner.get('pid', '?')} cwd={owner.get('cwd', '?')} 已跑 {minutes:.1f} 分钟）；排队等待",
+        file=sys.stderr,
+        flush=True,
+    )
 
 
 def alive(pid):
@@ -133,12 +299,14 @@ def execute(command, shell, file, token, owner=None):
     options = {'shell': shell, 'env': env}
     if os.name != 'nt':
         options.update(pass_fds=(file.fileno(),), start_new_session=owner is not None)
-    child = subprocess.Popen(command, **options)
-    if owner is not None and os.name != 'nt':
-        owner['pgid'] = child.pid
-        write_owner(file, owner)
+    child = None
+    pending_signal = None
 
     def cancel(signum, _frame):
+        nonlocal pending_signal
+        if child is None:
+            pending_signal = signum
+            return
         if child.poll() is None:
             try:
                 if os.name == 'nt' or owner is None:
@@ -150,6 +318,12 @@ def execute(command, shell, file, token, owner=None):
 
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, cancel)
+    child = subprocess.Popen(command, **options)
+    if owner is not None and os.name != 'nt':
+        owner['pgid'] = child.pid
+        write_owner(file, owner)
+    if pending_signal is not None:
+        cancel(pending_signal, None)
     code = child.wait()
     return code if code >= 0 else 128 - code
 
@@ -168,21 +342,77 @@ def main():
     # O_NOFOLLOW prevents accidentally opening a symlink in the shared tmp dir.
     fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, 'O_NOFOLLOW', 0), 0o600)
     with os.fdopen(fd, 'r+', encoding='utf-8') as file:
+        try:
+            queue_path, guard, counter = open_queue(lock_path)
+        except (OSError, RuntimeError) as error:
+            raise SystemExit(str(error)) from error
         token = os.environ.get('NOMI_GATES_LOCK_TOKEN', '')
         next_report = 0
-        while not try_lock(file):
-            owner = metadata(file)
-            if inherited_owner(owner, token):
+        last_ahead = None
+        ticket_number = None
+        ticket = None
+        ticket_pathname = None
+        try:
+            # The queue guard is acquired before every admission decision. This
+            # closes the gap in which a late caller could grab a just-released
+            # main lock while an earlier waiter was registering its ticket.
+            lock_blocking(guard)
+            try:
+                cleanup_dead_tickets(queue_path)
+                owner = metadata(file)
+                owns_lock = try_lock(file)
+                queued = active_ticket_numbers(queue_path)
+                if owns_lock and not queued:
+                    token = uuid.uuid4().hex
+                    owner = {'pid': os.getpid(), 'cwd': os.getcwd(), 'started': time.time(), 'token': token}
+                    write_owner(file, owner)
+                    direct = True
+                elif owns_lock:
+                    unlock(file)
+                    ticket_number, ticket, ticket_pathname = allocate_ticket(queue_path, counter)
+                    direct = False
+                elif inherited_owner(owner, token):
+                    direct = None
+                else:
+                    ticket_number, ticket, ticket_pathname = allocate_ticket(queue_path, counter)
+                    direct = False
+            finally:
+                unlock(guard)
+
+            if direct is None:
                 return execute(command, shell, file, token)
-            if time.monotonic() >= next_report:
-                minutes = max(0, (time.time() - owner.get('started', time.time())) / 60)
-                print(f"另一棵 worktree 在跑 gates（pid={owner.get('pid', '?')} cwd={owner.get('cwd', '?')} 已跑 {minutes:.1f} 分钟）；排队等待", file=sys.stderr, flush=True)
-                next_report = time.monotonic() + 30
-            time.sleep(0.2)
-        token = uuid.uuid4().hex
-        owner = {'pid': os.getpid(), 'cwd': os.getcwd(), 'started': time.time(), 'token': token}
-        write_owner(file, owner)
-        return execute(command, shell, file, token, owner)
+            if direct:
+                return execute(command, shell, file, token, owner)
+
+            def cancel_wait(signum, _frame):
+                raise SystemExit(128 + signum)
+
+            for sig in (signal.SIGTERM, signal.SIGINT):
+                signal.signal(sig, cancel_wait)
+            while True:
+                owner = metadata(file)
+                ahead = len(active_ticket_numbers(queue_path, before=ticket_number))
+                if ahead == 0 and try_lock(file):
+                    remove_ticket(ticket_pathname)
+                    unlock(ticket)
+                    ticket.close()
+                    ticket = None
+                    ticket_pathname = None
+                    token = uuid.uuid4().hex
+                    owner = {'pid': os.getpid(), 'cwd': os.getcwd(), 'started': time.time(), 'token': token}
+                    write_owner(file, owner)
+                    return execute(command, shell, file, token, owner)
+                if ahead != last_ahead or time.monotonic() >= next_report:
+                    queue_notice(owner, ahead)
+                    last_ahead = ahead
+                    next_report = time.monotonic() + 30
+                time.sleep(0.2)
+        finally:
+            if ticket is not None:
+                remove_ticket(ticket_pathname)
+                ticket.close()
+            counter.close()
+            guard.close()
 
 
 if __name__ == '__main__':
