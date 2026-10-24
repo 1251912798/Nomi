@@ -1,0 +1,56 @@
+{
+  "machine": "darwin arm64 Apple M5 x10 / 24GB",
+  "commit": "f20666e18",
+  "head": "f20666e183b72b445687c69d16fc5fb6aab8541b",
+  "dirty": true,
+  "sourceTree": "0479c4a477b64456c37ac66dd01c4120c2d99551",
+  "date": "2026-10-24",
+  "runs": 5,
+  "results": [
+    {
+      "id": "spend-card-node-edit-refresh",
+      "metrics": {
+        "response": {
+          "runs": 5,
+          "median": 23,
+          "p95": 23.1
+        },
+        "longTasks": {
+          "runs": 5,
+          "median": 0,
+          "p95": 0
+        }
+      },
+      "samples": {
+        "frameGapP95": [
+          15.9,
+          19.7,
+          16.8,
+          13.6,
+          14.1
+        ],
+        "longTasks": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "response": [
+          22.4,
+          17.3,
+          23.1,
+          23,
+          23.1
+        ],
+        "mainRoundTripMax": [],
+        "mediaRequests": []
+      },
+      "budget": 100,
+      "verdict": {
+        "status": "ok",
+        "note": ""
+      }
+    }
+  ]
+}
