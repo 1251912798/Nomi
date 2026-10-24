@@ -17,7 +17,28 @@ export type GenerationFlowNodeData = {
   readOnly: boolean
   primarySelection: boolean
   appear: boolean
-  focusFlash: boolean
+  /**
+   * 节点被画布外面的东西点名时的瞬时状态（2026-10-23 D2 指向元素 P1）：
+   * `hover` = 聊天里的指向元素正被悬停；`flash` = 刚被定位过去、闪一下。两样都是中性样式，不是选中、不改节点的脸。
+   * 以前只有一颗 `focusFlash` 布尔（只管闪一下），现在换成这一格两档——同一件事「外面点名了这个节点」只有一个字段。
+   */
+  externalHighlight: ExternalNodeHighlight | null
+}
+
+export type ExternalNodeHighlight = 'hover' | 'flash'
+
+/**
+ * 外部高亮画在节点**外壳**上的样子（NodePointer 板 `canvas.node.highlight`；D2：不许蓝色描边）：
+ * 悬停 = 1.5px 深色细线 + 阴影抬一级；闪一下 = 同一条细线 + 9px ink 12% 淡光晕；移开 / 闪完由 transition 淡出。
+ * 画在外壳上而不是卡面里：大画布的轻量卡和完整卡同一个样子，也不碰节点的脸。外壳与设计实验室共用这一个函数。
+ * 混 transparent 用 oklab：in oklch 会把中性色的色相判成 none（check:tokens 第 5b 类）。
+ */
+export function externalHighlightShellClass(highlight: ExternalNodeHighlight | null): string {
+  // 写成任意属性 [box-shadow:…]：Tailwind 的 shadow-[…] 碰上「多段阴影 + var()」会把整串当成阴影颜色（只出 --tw-shadow-color、
+  // 不出 box-shadow），样子静默消失——设计实验室走查读 computed box-shadow 抓到的。
+  if (highlight === 'hover') return 'rounded-nomi transition-shadow duration-300 [box-shadow:0_0_0_1.5px_var(--nomi-ink),var(--nomi-shadow-lg)]'
+  if (highlight === 'flash') return 'rounded-nomi transition-shadow duration-300 [box-shadow:0_0_0_1.5px_var(--nomi-ink),0_0_0_9px_color-mix(in_oklab,var(--nomi-ink)_12%,transparent),var(--nomi-shadow-lg)]'
+  return 'rounded-nomi transition-shadow duration-300'
 }
 
 export type GenerationFlowNode = FlowNode<GenerationFlowNodeData, 'generation'>
@@ -58,7 +79,7 @@ export function toGenerationFlowNode(
   selected: boolean,
   readOnly: boolean,
   primarySelection = selected,
-  visualState: { appear?: boolean; focusFlash?: boolean } = {},
+  visualState: { appear?: boolean; externalHighlight?: ExternalNodeHighlight | null } = {},
 ): GenerationFlowNode {
   const size = resolveNodeVisualSize(node)
   // 编组端口节点（model/groupPort.ts）只为挂连线把手而存在：不可选、不可拖、外壳不吃指针
@@ -73,7 +94,7 @@ export function toGenerationFlowNode(
       readOnly,
       primarySelection,
       appear: Boolean(visualState.appear),
-      focusFlash: Boolean(visualState.focusFlash),
+      externalHighlight: visualState.externalHighlight ?? null,
     },
     selected,
     // **不写 `draggable`**：节点上的这颗开关会覆盖 `<ReactFlow nodesDraggable>`，
@@ -100,6 +121,15 @@ export function toGenerationFlowNode(
 type FlowNodeVisualState = {
   appearingNodeIds?: ReadonlySet<string>
   focusFlashNodeId?: string | null
+  /** 聊天里正被悬停的指向元素指着的节点（`nodeExternalHighlightStore`）。 */
+  pointerHoverNodeId?: string | null
+}
+
+/** 闪一下压过悬停：刚定位过去的那一下最要紧。 */
+export function externalHighlightOf(nodeId: string, visualState: FlowNodeVisualState): ExternalNodeHighlight | null {
+  if (visualState.focusFlashNodeId === nodeId) return 'flash'
+  if (visualState.pointerHoverNodeId === nodeId) return 'hover'
+  return null
 }
 
 /** 一张卡的投影：输入没变就交回上一版同一个对象（React Flow 靠对象身份决定重不重渲）。全量与增量两条路共用这一个函数。 */
@@ -113,18 +143,18 @@ function projectOneFlowNode(
   const selected = selectedNodeIds.has(node.id)
   const primarySelection = selected && selectedNodeIds.size === 1
   const appear = Boolean(visualState.appearingNodeIds?.has(node.id))
-  const focusFlash = visualState.focusFlashNodeId === node.id
+  const externalHighlight = externalHighlightOf(node.id, visualState)
   if (
     previous?.data.generationNode === node &&
     previous.data.readOnly === readOnly &&
     previous.data.primarySelection === primarySelection &&
     previous.data.appear === appear &&
-    previous.data.focusFlash === focusFlash &&
+    previous.data.externalHighlight === externalHighlight &&
     Boolean(previous.selected) === selected
   ) {
     return previous
   }
-  return toGenerationFlowNode(node, selected, readOnly, primarySelection, { appear, focusFlash })
+  return toGenerationFlowNode(node, selected, readOnly, primarySelection, { appear, externalHighlight })
 }
 
 export function toGenerationFlowNodes(
@@ -273,6 +303,7 @@ export type FlowNodeProjection = {
   readonly readOnly: boolean
   readonly appearingNodeIds: ReadonlySet<string> | undefined
   readonly focusFlashNodeId: string | null | undefined
+  readonly pointerHoverNodeId: string | null | undefined
   readonly output: GenerationFlowNode[]
   /** id → 在 output 里的下标（结构不变时选区增量只靠它定位）。 */
   readonly indexById: ReadonlyMap<string, number>
@@ -286,12 +317,16 @@ export function projectGenerationFlowNodes(previous: FlowNodeProjection | null, 
     && previous.nodes === input.nodes
     && previous.readOnly === input.readOnly
     && previous.appearingNodeIds === input.appearingNodeIds
-    && previous.focusFlashNodeId === input.focusFlashNodeId
   ) {
-    if (previous.selected === input.selected) return previous
+    const highlightChanged = previous.focusFlashNodeId !== input.focusFlashNodeId || previous.pointerHoverNodeId !== input.pointerHoverNodeId
+    if (previous.selected === input.selected && !highlightChanged) return previous
     let output = previous.output
-    // 只有前后两次选区里的卡会变（selected / primarySelection 都只对选区里的卡为真）。
-    for (const id of new Set([...previous.selected, ...input.selected])) {
+    // 只有前后两次选区里的卡、以及前后被点名（闪 / 悬停）的那几张会变；其余交回同一个对象。
+    const touched = new Set([...previous.selected, ...input.selected])
+    if (highlightChanged) {
+      for (const id of [previous.focusFlashNodeId, input.focusFlashNodeId, previous.pointerHoverNodeId, input.pointerHoverNodeId]) if (id) touched.add(id)
+    }
+    for (const id of touched) {
       const index = previous.indexById.get(id)
       if (index === undefined) continue
       const next = projectOneFlowNode(input.nodes[index], input.selected, input.readOnly, input, previous.output[index])

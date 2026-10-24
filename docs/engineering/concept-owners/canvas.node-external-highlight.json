@@ -1,0 +1,37 @@
+{
+  "name": "画布节点的外部高亮（画布外面点名了这个节点：悬停 / 定位后闪一下）",
+  "subject": "canvas.node-external-highlight",
+  "lifecycle": "live-interaction",
+  "authority_kind": "projection",
+  "trust_domain": "renderer",
+  "fact_kind": "projection",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.ts",
+    "symbol": "externalHighlightOf"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/store/nodeExternalHighlightStore.ts",
+      "symbol": "useNodeExternalHighlightStore"
+    },
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.ts",
+      "symbol": "externalHighlightOf"
+    },
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.ts",
+      "symbol": "externalHighlightShellClass"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.test.ts",
+  "allowed_consumers": [
+    "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+    "src/workbench/generationCanvas/reactFlow/useGenerationCanvasReactFlowProjection.ts",
+    "src/workbench/ai/pointer/NodePointer.tsx",
+    "src/devlab/designLab/nodePointer/nodePointerLabKit.tsx"
+  ],
+  "since": "2026-10-23",
+  "notes": "投影数据里只有一格 externalHighlight：'hover' = 聊天里的指向元素正悬停 / 聚焦着它（nodeExternalHighlightStore，一摞认领：每个指向元素最多一条、亮最后到的那一条指着的节点，谁走了都只拿掉自己那一条；2026-10-24 由单槽改成这样，V-d2-pointer 建议 B）；'flash' = 定位后闪一下（对焦那条路 FOCUS_GENERATION_NODE_EVENT 管时长 1.4s，列表 / 通知 / 侧栏等 9 处入口都走它），闪压过悬停。样子只画在节点外壳上（externalHighlightShellClass：1.5px 深色细线 + 阴影抬一级 / 再加 9px ink 12% 淡光晕，in oklab），不许强调色描边；节点卡面只拿 focusFlash 布尔定预览优先级（悬停不升档）。以前是一颗 focusFlash 布尔 + 强调色 outline 脉冲，2026-10-23 换掉、同提交删光。NodePointer 板 canvas.node.highlight；方向检查 docs/engineering/direction-checks/2026-10-23-node-external-highlight.md。"
+}
