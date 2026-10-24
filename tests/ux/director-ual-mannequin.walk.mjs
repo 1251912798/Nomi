@@ -22,9 +22,8 @@ const { page, check } = lab
 try {
   if (!zh) {
     await page.evaluate(() => window.localStorage.setItem('nomi:locale:v1', 'en'))
-    await page.reload({ waitUntil: 'commit' })
-    await expectVisible(page.getByTestId('director-pip'), 'reload 后导演台没起来')
-    await page.waitForFunction(() => Boolean(window.__nomiDirectorE2E))
+    // 重开后落在导演视图：lab.reload 按英文词典点「Refine」进精修
+    await lab.reload()
   }
   await openAddMenu(lab, L.character)
   await clickOrFail(page.getByRole('button', { name: L.male }), `角色下拉·${L.male}`)

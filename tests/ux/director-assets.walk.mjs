@@ -2,7 +2,7 @@
 // 仓库不内置任何泼溅文件：示例场景由用户自备上传，这里用与 J5 相同的生成山谷走同一条上传通路。
 import path from 'node:path'
 import { expect } from './_assert.mjs'
-import { addCameraPreset, clickOrFail, launchDirectorLab, openAssets, repoRoot, writeValleyPly } from './_directorLab.mjs'
+import { addCameraPreset, clickOrFail, closeAssets, launchDirectorLab, openAssets, repoRoot, writeValleyPly } from './_directorLab.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
 const lab = await launchDirectorLab({ name: 'asset-tree' })
@@ -51,7 +51,9 @@ try {
   const valley = assets.locator('div.pl-6').filter({ hasText: 'valley' }).first()
   await expect(valley).toBeVisible()
   await valley.dblclick()
-  await lab.waitScene("s.objects.some(o => o.type === 'splat')", '上传的山谷入场')
+  // 双击后泼溅在页面主线程上解码：无界面软件渲染、机器忙时能占住主线程半分钟，2s 空闲自动保存跟着推迟（2026-10-24 本机实测落盘 +36s）。
+  // 上限和下面「显现完成」同一档，不用默认 20s。
+  await lab.waitScene("s.objects.some(o => o.type === 'splat')", '上传的山谷入场', stationTimeout({ operations: 4 }))
   const splat = (await lab.scene()).objects.find((object) => object.type === 'splat')
   await page.waitForFunction((id) => {
     const info = window.__nomiDirectorE2E?.splatInfo(id)
@@ -69,6 +71,9 @@ try {
   const renamed = await lab.bridge('splatInfo', splat.id)
   lab.check('重命名不重建泼溅或重启黑幕', renamed?.identity === info.identity && renamed.initialized && !renamed.revealing)
   await lab.snap('uploaded-valley')
+  // 重命名是在「▤ 图层名 ▾」浮层里做的：先像用户一样收起它（开着会盖住资产库抽屉的 ×），再关资产库露出左下预览小窗
+  await lab.closeOutliner()
+  await closeAssets(lab)
   await addCameraPreset(lab, '正面特写')
   await lab.waitScene('s.cameras.length === 1', '为山谷建立观察机位')
   await page.getByTestId('director-pip').getByRole('button', { name: '进入视角', exact: true }).click()
