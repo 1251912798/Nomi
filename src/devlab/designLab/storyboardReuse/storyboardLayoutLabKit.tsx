@@ -10,6 +10,7 @@ import { effectiveShotAspect, planDefaultAspect } from '../../../workbench/gener
 import { findModelOptionByIdentifier } from '../../../config/modelOptionResolvers'
 import { labExec, NOOP } from '../storyboard/storyboardFixtures'
 import { REUSE_IMAGE_MODELS, REUSE_VIDEO_MODELS } from './storyboardReuseFixtures'
+import { LabLocaleGate } from '../labLocaleGate'
 
 /**
  * 第二轮版面（视觉列 + 内容列）的取景台。**只用三个版本（main / 上一版 / 本版）都有的 API**：
@@ -24,11 +25,14 @@ function currentRefUrls(shot: PlanShot): string[] {
 }
 
 export function LayoutStage({ width, children }: { width: number; children: React.ReactNode }): JSX.Element {
-  return (
+  // 证据脚本用 ?lang=en 把同一格再截一遍英文（格子本身只登记中文一份；不带参数时原样，不动存量格的语言）。
+  const english = new URL(window.location.href).searchParams.get('lang') === 'en'
+  const rows = (
     <StoryboardRowsBox className="rounded-nomi border border-nomi-line bg-nomi-paper" style={{ width }} data-design-lab-stage="storyboard-layout">
       {children}
     </StoryboardRowsBox>
   )
+  return english ? <LabLocaleGate locale="en">{rows}</LabLocaleGate> : rows
 }
 
 export function LayoutRows({ plan, width, execs = {} }: { plan: StoryboardPlan; width: number; execs?: Partial<Record<number, Partial<ShotRowExec>>> }): JSX.Element {
