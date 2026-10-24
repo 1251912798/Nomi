@@ -44,7 +44,6 @@ describe('readModeChannelBody — 什么算「这家发不出这个模式」的�
     expect(read([T2I, EDIT], 'v', 'nano-banana', 'image_edit', 'edit')).toEqual({
       body: EDIT.create.body,
       wireParamKeys: ['image_urls'],
-      selectsArchetypeWireModel: false,
     })
   })
 
@@ -88,7 +87,7 @@ describe('readModeChannelBody — 什么算「这家发不出这个模式」的�
     const list = await loadChannelMappings()
     await loadChannelMappings()
     expect(listMappings).toHaveBeenCalledTimes(1)
-    expect(read(list, 'v', 'nano-banana', 'image_edit', 'edit')).toEqual({ body: EDIT.create.body, wireParamKeys: ['image_urls'], selectsArchetypeWireModel: false })
+    expect(read(list, 'v', 'nano-banana', 'image_edit', 'edit')).toEqual({ body: EDIT.create.body, wireParamKeys: ['image_urls'] })
     // 目录变了 → 作废 → 下次用到再载。
     notifyModelOptionsRefresh('all')
     await loadChannelMappings()

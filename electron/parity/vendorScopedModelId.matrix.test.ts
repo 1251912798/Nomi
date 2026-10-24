@@ -6,15 +6,19 @@
  * `wan/3-0-video`；Runway 的 `seedance2_fast` 发成 `bytedance/seedance-2`；APIMart `kling-v3` 的发出型号是 KIE 的
  * `kling-3.0/video`……）。型号名的家是供应商的映射（electron/catalog/modelNameSource.ts）。
  *
- * 这里不挑模型、不点名供应商：遍历**真实内置目录里全部供应商 × 全部带档案的目录行 × 档案每个方式 × 每个变体**，
- * 逐格核「这一格出去的每个型号名都在这家的作用域里」：
+ * 这里不挑模型、不点名供应商：遍历**真实内置目录里全部供应商 + 一条用户自建的 OpenAI 兼容中转 × 全部带档案的目录行 ×
+ * 档案每个方式 × 每个变体**，逐格核「这一格出去的每个型号名都在这家的作用域里」：
  *   · 宿主归一（Agent 起草 / 补丁 / 多镜封印 / 预览共用的 normalizeVideoCandidate）：providerId 不变，modelId 是这家目录里的一行；
  *     Agent 路的合同照样编得出来（不再报 Unknown model），宿主交给供应商的请求体里的 model（引擎 B 同一个投影 + 同一个 provider）
  *     在这家作用域里；
  *   · 画布发出（buildCatalogTaskRequest → 主进程按同一个选法挑映射 → templateContext 的 request.params.model，即线上模型名
  *     owner 的输出）：在这家作用域里；
- *   · 档案解析（resolveArchetypeForModel / buildVideoModelCandidates）：不接受档案型号名的行，解析出来的档案上一个型号名都没有。
- * 「这家的作用域」= 这家目录行自己的 key / 别名 ∪（这家映射声明接受档案型号名的那些行所用档案的型号名）。
+ *   · 档案解析（resolveArchetypeForModel / buildVideoModelCandidates）：不接受档案型号名的行，解析出来的档案上一个型号名都没有；
+ *   · Agent 能力清单（主进程 agentModelEntriesFromCatalog 与渲染层 buildAgentModelEntries）：变体只出现在接受档案型号名的行。
+ * 「这家的作用域」= 这家目录行自己的 key / 别名 ∪（内置家里、映射声明接受档案型号名的那些行所用档案的型号名）。
+ * 不是内置家的连接（用户自建中转）作用域只有它自己目录行的 key / 别名——这条是**独立于被测代码**的判据：档案上的型号名只有
+ * 内置目录契约认证过。以前作用域整个取自 deriveModelNameSource 自己的结论，它把每个自建中转判成「接受」时，矩阵跟着说
+ * 「档案名在作用域里」，对这一类是盲的（2026-10-24 实测：补进中转行 474 格照样全绿，而这些行在发别家的名字）。
  * 新加供应商 / 档案 / 目录行自动进格子。
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -48,11 +52,21 @@ import { createGenerationNode } from "../../src/workbench/generationCanvas/model
 import { buildCatalogTaskRequest } from "../../src/workbench/generationCanvas/runner/catalogTaskActions";
 import { resolveGenerationReferences } from "../../src/workbench/generationCanvas/runner/generationReferenceResolver";
 import type { GenerationCanvasNode } from "../../src/workbench/generationCanvas/model/generationCanvasTypes";
-import { installFetchCapture, seedParityCatalog, type FetchCapture } from "./generationParityTestUtils";
+import { builtinVendorSeed } from "../catalog/builtinVendorSeeds";
+import { builtinVendorKeyOfKey } from "../shared/builtinVendorIdentity";
+import { agentModelEntriesFromCatalog } from "../catalog/agentModelEntriesFromCatalog";
+import { installFetchCapture, seedParityCatalog, seedUserRelayConnection, type FetchCapture } from "./generationParityTestUtils";
 
 const capture: FetchCapture = installFetchCapture();
 const store = await import("../catalog/catalogStore");
 store.ensureBuiltinModelSeeds();
+// 用户自建的 OpenAI 兼容中转，配的模型名恰好就是共享档案的身份（自建中转上最常见的就是这些名字）。
+const RELAY_VENDOR_KEY = await seedUserRelayConnection([
+  { modelKey: "gpt-image-2", labelZh: "gpt-image-2", kind: "image" },
+  { modelKey: "gpt-image-2.5-sunburst", labelZh: "gpt-image-2.5-sunburst", kind: "image" },
+  { modelKey: "nano-banana", labelZh: "nano-banana", kind: "image" },
+  { modelKey: "seedance-2", labelZh: "seedance-2", kind: "video" },
+]);
 // 全部内置供应商都存一把（假）钥匙：宿主只把「可用」的行算进视频候选表，这里要每一行都在格子里。
 for (const vendor of store.readCatalog().vendors) {
   try { store.upsertModelCatalogVendorApiKey(vendor.key, { apiKey: `sk-parity-${vendor.key}` }); } catch { /* 不收钥匙的（本机 / 账号型）供应商照常列在目录里 */ }
@@ -78,14 +92,16 @@ const unscopedArchetypeOf = (row: Row) => {
   return (id ? getArchetypeById(id) : null) ?? resolveArchetypeForModel({ modelKey: row.modelKey, modelAlias: row.modelAlias, vendorKey: row.vendorKey, meta: row.meta, modelNameSource: "archetype" });
 };
 const sourceOf = (row: Row) => deriveModelNameSource(row, catalog.mappings);
+/** 内置家（含兄弟连接 `kie--x`）：只有它们的目录契约认证过档案上的型号名。 */
+const isBuiltinFamily = (vendorKey: string) => Boolean(builtinVendorSeed(builtinVendorKeyOfKey(vendorKey)));
 
-/** 这家的作用域：这家目录行自己的 key / 别名 ∪ 这家接受档案型号名的行所用档案的型号名。 */
+/** 这家的作用域：这家目录行自己的 key / 别名 ∪（内置家）接受档案型号名的行所用档案的型号名。 */
 const scopeByVendor = new Map<string, Set<string>>();
 for (const row of catalog.models) {
   const scope = scopeByVendor.get(row.vendorKey) ?? new Set<string>();
   scope.add(lower(row.modelKey));
   if (row.modelAlias) scope.add(lower(row.modelAlias));
-  if (sourceOf(row) === "archetype") for (const name of archetypeModelNames(unscopedArchetypeOf(row))) scope.add(name);
+  if (isBuiltinFamily(row.vendorKey) && sourceOf(row) === "archetype") for (const name of archetypeModelNames(unscopedArchetypeOf(row))) scope.add(name);
   scopeByVendor.set(row.vendorKey, scope);
 }
 /** 全部「型号名」：全部目录行的 key ∪ 全部档案上写着的型号名。不在这家作用域里的就是别家的。 */
@@ -117,6 +133,41 @@ describe("目录前提（否则下面的格子是空转）", () => {
     expect(shared.length).toBeGreaterThan(0);
     expect(new Set(rows.map((row) => row.vendorKey)).size).toBeGreaterThan(1);
   });
+
+  it("用户自建中转的行进了格子（图片、视频都有）", () => {
+    const relayKinds = new Set(rows.filter((row) => row.vendorKey === RELAY_VENDOR_KEY).map((row) => row.kind));
+    expect(isBuiltinFamily(RELAY_VENDOR_KEY), "夹具里的中转不该被认成内置家").toBe(false);
+    expect([...relayKinds].sort()).toEqual(["image", "video"]);
+  });
+
+  it("不是内置家的连接，一律不接受档案型号名（判据只认内置目录契约 op 上的声明）", () => {
+    const accepted = catalog.models.filter((row) => !isBuiltinFamily(row.vendorKey) && sourceOf(row) === "archetype")
+      .map((row) => `${row.vendorKey}/${row.modelKey}`);
+    expect(accepted).toEqual([]);
+  });
+});
+
+describe("Agent 能力清单：变体只出现在接受档案型号名的行，变体型号名在这家作用域里", () => {
+  const mainEntries = agentModelEntriesFromCatalog(store.readCatalog()).map((item) => item.entry);
+  const rendererEntries = buildAgentModelEntries(options);
+  it("自建中转的行在两侧清单里都列着（否则这组格子对中转是空转）", () => {
+    const relayRows = rows.filter((row) => row.vendorKey === RELAY_VENDOR_KEY);
+    for (const [side, entries] of [["主进程", mainEntries], ["渲染层", rendererEntries]] as const) {
+      const listed = relayRows.filter((row) => entries.some((item) => item.vendor === row.vendorKey && item.modelId === row.modelKey));
+      expect(listed.map((row) => row.modelKey).sort(), `${side}清单`).toEqual(relayRows.map((row) => row.modelKey).sort());
+    }
+  });
+  for (const row of rows) {
+    it(`${row.vendorKey}/${row.modelKey}（${sourceOf(row)}）`, () => {
+      for (const [side, entries] of [["主进程", mainEntries], ["渲染层", rendererEntries]] as const) {
+        const entry = entries.find((item) => item.vendor === row.vendorKey && item.modelId === row.modelKey);
+        if (!entry) continue; // 这一侧没列它（不可用 / 不是生成模型），就没有可选的变体
+        const variantNames = (entry.variants ?? []).map((variant) => variant.modelKey ?? "");
+        expect(foreignNames(row.vendorKey, variantNames), `${side}清单里的变体型号名是别家的`).toEqual([]);
+        if (sourceOf(row) === "row") expect(entry.variants ?? [], `${side}清单：这一行不接受档案型号名，不该列变体`).toEqual([]);
+      }
+    });
+  }
 });
 
 describe("档案解析：不接受档案型号名的行，解析出来的档案上没有任何型号名（两个解析口同一个收窄）", () => {

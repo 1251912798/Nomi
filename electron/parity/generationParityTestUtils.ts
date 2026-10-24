@@ -72,6 +72,48 @@ export async function seedParityCatalog(vendorKeys: readonly string[] = ["apimar
   return store.readCatalog();
 }
 
+export type UserRelayModel = { modelKey: string; labelZh: string; kind: "image" | "video" };
+
+/**
+ * 用户自建的 OpenAI 兼容中转：与设置里「接入」同一批生产函数落库（register → stage → 内置说明卡 → promote），
+ * 不手写 mapping——手写的就不是用户盘上那一份。baseUrl 默认是本机一个没人听的端口：只落库、不出网。
+ * 返回落库后的 vendorKey。
+ */
+export async function seedUserRelayConnection(
+  models: readonly UserRelayModel[],
+  options: { vendorName?: string; baseUrl?: string } = {},
+): Promise<string> {
+  const { registerProviderConnection } = await import("../providerAdapter/registration");
+  const { defaultCatalog } = await import("../providerAdapter/serviceCatalog");
+  const { buildOpenAiCompatibleDraft } = await import("../providerAdapter/builtinOpenAiCompatibleDraft");
+  const now = "2026-10-24T00:00:00.000Z";
+  const vendorName = options.vendorName ?? "Parity Relay";
+  const baseUrl = options.baseUrl ?? "http://127.0.0.1:9";
+  const selected = models.map((model) => ({ ...model }));
+  const connection = { vendorName, baseUrl, apiKey: "sk-parity-relay", authType: "bearer" as const, providerKind: "openai-compatible" as const, models: selected };
+  const { vendorKey } = registerProviderConnection({ rawInput: connection, catalog: defaultCatalog, now: () => now });
+  const runId = `run-parity-relay-${vendorKey}`;
+  defaultCatalog.stage({ ...connection, vendorKey, runId });
+  const draft = buildOpenAiCompatibleDraft({ baseUrl, authType: "bearer", providerKind: "openai-compatible", models: selected });
+  const verifiedModes = draft.models.flatMap((model) => model.modes.map((mode) => ({ modelKey: model.modelKey, taskKind: mode.taskKind })));
+  const result = defaultCatalog.promote({
+    run: {
+      id: runId, vendorKey, vendorName, connectionFingerprint: `parity-relay-${vendorKey}`, selectedModelKeys: selected.map((model) => model.modelKey),
+      stage: "completed", repairAttempt: 0,
+      models: draft.models.map((model) => ({
+        modelKey: model.modelKey, labelZh: model.labelZh, kind: model.kind,
+        modes: model.modes.map((mode) => ({ taskKind: mode.taskKind, state: "verified" as const, attempts: 1 })),
+      })),
+      sourceUrls: [], createdAt: now, updatedAt: now,
+    },
+    draft,
+    revision: { id: `revision-${runId}`, vendorKey, digest: `parity-relay-${vendorKey}`, draft, verifiedModes, createdAt: now },
+    verifiedModes,
+  });
+  if (result.status !== "committed") throw new Error(`自建中转没有落库（${result.status}）：${vendorKey}`);
+  return vendorKey;
+}
+
 function recordFromCall(call: CapturedCall | undefined, notes?: Record<string, unknown>): OutboundRecord {
   if (!call) return { failure: { code: "no_outbound_request", message: "no outbound request was made" }, ...(notes ? { notes } : {}) };
   const url = new URL(call.url);

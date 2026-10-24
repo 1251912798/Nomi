@@ -1,5 +1,10 @@
 # 方向检查：自定义中转线上模型名被档案名覆盖（2026-10-16）
 
+> **已被取代**：现行结论见 [`direction-checks/2026-10-24-custom-relay-wire-model.md`](direction-checks/2026-10-24-custom-relay-wire-model.md)
+> （用户 10-24 拍板判据合一：目录层与发送层用同一个谓词。§7 的结论不变，自建中转仍不摆变体栏；但 §3 第三行那种
+> 在 `channelModeReach` 里另判自建中转的拦法已删，变体在目录层的档案解析口就被剥掉）。
+> 这份留作 10-16 那几个提交的 `Direction-Check:` 去处，不再更新。
+
 > 触发：`node scripts/fix-churn.mjs` 命中 `src/workbench/generationCanvas/nodes/controls/`（14 天第 4 个 fix，archetypeMeta / channelModeReach / useChannelCreateBody）
 > 与 `electron/audioTaskRunner.ts`（14 天第 5 个 fix）。本刀在这几处**只删和改调用**，行为收口在新的共享 owner 里。
 > 来源：应用内反馈两条（0.23.1，mac + win），逃逸账本 `FB-20261012-custom-relay-wire-model`。

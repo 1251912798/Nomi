@@ -13,14 +13,14 @@ import { selectTaskMapping, type CatalogState, type Mapping } from '../../electr
 import { wireReferencedParamKeys } from '../../electron/catalog/paramTranslate'
 import { getArchetypeById } from '../../electron/shared/modelArchetypes'
 import { archetypeVariantAxisIsLive } from '../workbench/generationCanvas/nodes/controls/channelModeReach'
-import { operationSelectsArchetypeWireModel, resolveWireModel } from '../../electron/shared/modelArchetypes/wireModelIdentity'
-
-/** 与 useChannelCreateBody.readModeChannelBody 同形：变体栏看的那三样。 */
-function channelOf(mapping: Mapping) {
-  return { body: mapping.create.body, wireParamKeys: wireReferencedParamKeys(mapping.create), selectsArchetypeWireModel: operationSelectsArchetypeWireModel(mapping.create) }
-}
+import { resolveWireModel } from '../../electron/shared/modelArchetypes/wireModelIdentity'
 import { dedupeModelOptions, modelCatalogLifecycle, sortModelProviders, type DedupedModel, type ModelProviderRef } from './modelIdentity'
 import { toCatalogModelOptions } from './modelOptionMappers'
+
+/** 与 useChannelCreateBody.readModeChannelBody 同形：变体栏看的那两样。 */
+function channelOf(mapping: Mapping) {
+  return { body: mapping.create.body, wireParamKeys: wireReferencedParamKeys(mapping.create) }
+}
 
 type Kind = 'video' | 'image' | 'audio' | 'model3d'
 const KINDS: readonly Kind[] = ['video', 'image', 'audio', 'model3d']
