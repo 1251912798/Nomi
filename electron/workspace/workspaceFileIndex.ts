@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { MEDIA_TYPES, resolveContentType, type MediaKind } from "../assets/mediaTypes";
 import { isBrowserCaptureAssetKind } from "../assets/assetPaths";
+import { isStoredAssetPreviewPath } from "../assets/assetPreview";
 
 export type WorkspaceFileKind = "directory" | "text" | "image" | "video" | "audio" | "document" | "file";
 
@@ -98,6 +99,10 @@ function readAssetSidecarKind(absolutePath: string): string {
 
 function shouldSkipWorkspaceFile(absolutePath: string, name: string): boolean {
   if (name.endsWith(".meta")) return true;
+  // 画布预览（视频海报、大图缩小版）是源文件的派生物，不是素材：与素材库清单（listProjectAssets）
+  // 用同一个判定，owner 在 assetPreview。以前这里不滤，项目素材把视频海报当成一张图列出来；
+  // 删了它，那条视频的 sidecar 缩略图（thumbnailRelativePath）就指向一个不存在的文件（2026-10-24）。
+  if (isStoredAssetPreviewPath(absolutePath)) return true;
   // capture 族 kind 单一真相源在 assetPaths（原本地副本已收编）。
   return isBrowserCaptureAssetKind(readAssetSidecarKind(absolutePath));
 }

@@ -134,8 +134,9 @@ try {
   const EXPECTED_CLIP = [
     { label: '在播放头处分割', shortcut: 'S', danger: false },
     // 2026-09-08 用户裁决 C1：这一项做的是 ⌘D duplicate，而画布上同名的「复制」是 ⌘C 剪贴板，
-    // 同字不同义会让人点错 —— 改叫「创建副本」。⌘ 由 platformModifier derive（C10 修的 bug）。
-    { label: '创建副本', shortcut: '⌘D', danger: false },
+    // 同字不同义会让人点错 —— 改叫「创建副本」。⌘ 由 platformModifier derive（C10 修的 bug）：
+    // 期望值也按运行的机器取——以前写死 ⌘D，夜跑（Linux）上产品照规矩显示 CtrlD，这一项必红（run 40035294026）。
+    { label: '创建副本', shortcut: `${process.platform === 'darwin' ? '⌘' : 'Ctrl'}D`, danger: false },
     { label: '重新生成这个镜头', shortcut: '', danger: false },
     { label: '静音', shortcut: '', danger: false },
     { label: '删除', shortcut: '⌫', danger: true },

@@ -362,8 +362,6 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
       )}
       data-composer-host={host}
       style={{ cursor: 'default', userSelect: 'auto', touchAction: 'auto', ...(inFlow ? null : { zIndex: CANVAS_LAYER.nodeComposer }) }}
-      onPointerDown={(event) => event.stopPropagation()}
-      onWheel={(event) => event.stopPropagation()}
       {...(acceptsDrop ? dropHandlers : {})}
     >
       {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}

@@ -134,6 +134,10 @@ export const desktopTranslations = {
     "export.detail": "导出失败：{{detail}}",
     "export.mp4NotProduced": "导出失败：MP4 文件未生成",
     "export.mp4Empty": "导出失败：MP4 文件为空",
+    // 导出前的素材探测失败（electron/export/exportAssetProbe.ts）：停在编码之前，说清是哪一段、下一步怎么走。
+    // 组件不可用时不点名素材——不是哪一段的错，点名只会让人去换掉一段好素材。
+    "export.probeUnavailable": "导出失败：读取素材信息的组件不可用，没法确认片段里有没有声音，导出没有开始。下一步：重新安装 Nomi（不需要单独安装 FFmpeg）。",
+    "export.assetUnreadable": "导出失败：读不出素材「{{file}}」（文件可能损坏或不完整），导出没有开始。下一步：在时间轴上换掉用到它的片段，或重新导入这个文件后再导出。",
     "production.reconcile.noTaskId": "供应商任务标识尚未收到，不能自动对账",
     "production.export.mustBeRelative": "导出必须返回项目目录内的相对路径",
     "production.export.escapesProject": "导出路径不能离开项目目录",
@@ -351,6 +355,8 @@ export const desktopTranslations = {
     "export.detail": "Export failed: {{detail}}",
     "export.mp4NotProduced": "Export failed: no MP4 file was produced",
     "export.mp4Empty": "Export failed: the MP4 file is empty",
+    "export.probeUnavailable": "Export failed: the component that reads media info is unavailable, so Nomi can't tell whether your clips have sound. The export did not start. Next: reinstall Nomi (you don't need to install FFmpeg separately).",
+    "export.assetUnreadable": "Export failed: Nomi can't read the media \"{{file}}\" (the file may be damaged or incomplete). The export did not start. Next: replace the clips that use it on the timeline, or import the file again, then export.",
     "production.reconcile.noTaskId": "The provider task ID has not arrived yet, so automatic reconciliation is not possible",
     "production.export.mustBeRelative": "Export must return a path relative to the project directory",
     "production.export.escapesProject": "The export path cannot leave the project directory",

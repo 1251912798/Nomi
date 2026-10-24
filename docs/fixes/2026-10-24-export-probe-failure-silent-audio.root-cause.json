@@ -1,0 +1,181 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-export-probe-failure-silent-audio",
+  "change_kind": "corrective",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-24",
+  "problem_type": "探测失败被吞成一个确定的否定结论（「没有音轨」），产物照常报成功",
+  "symptom": "时间轴上有一段视频 / 音频 ffprobe 读不出（文件损坏、只下了一半、被删、ffprobe 超时或起不来）时，导出照样成功、给出 MP4，但这一段的声音没了；时间轴上全是这种素材时整片无声（编码器拿到的是 audioCodec none / audioMode mute）。用户打开成片才发现没声音，界面上没有任何一句话告诉他是哪一段、该怎么办。",
+  "direct_cause": "electron/export/exportJobs.ts（origin/main a56291a27）tryBuildFiltergraphExport 第 155–163 行：`probeMediaMetadata(absolutePath)` 外面包着 `catch { // 探测失败不致命：按无音频处理 }`，失败时素材不带 hasAudio，anyHasAudio 留在 false，profile 按「没有声音」写成 audioCodec none / audioMode mute，ffmpegFiltergraph.buildAudioGraph 又只认 `hasAudio === true`，于是整段（或整片）声音被静默丢掉。另外 mediaProbe.ts 把「ffprobe 起不来」和「这个文件读不出」都报成同一个 probe_failed，调用方就算想说清下一步也分不出两种情况。",
+  "class_root": "「没探到」和「探到了、真没声音」在调用方被压成同一个值（hasAudio 缺省 = 没声音），而导出侧调 ffprobe 的地方没有一个唯一入口来守「拿不到确定结果就失败」——谁在调用点写一个 try/catch 兜底，就能把能力缺口或坏文件变成一份「成功」的无声成片。失败分类也只有一个 probe_failed，导致即便想报错也给不出对的下一步（重装 vs 换素材）。",
+  "migration": "同一提交里删掉 exportJobs.ts 的 `catch { 按无音频处理 }` 与它对 probeMediaMetadata 的直接调用，改为调用新的唯一入口 electron/export/exportAssetProbe.ts#probeExportAssets：逐个探测视频 / 音频素材，写回显式的 hasAudio（true / false）；任一段失败抛 ExportAssetProbeError（probe_unavailable / asset_unreadable，带素材名与下一步的 zh / en 文案），停在建任务与编码之前；探测途中取消抛 ExportCancelledError（应用退出时 abortAllActiveExports 会中止准备阶段的探测）。mediaProbe.ts 两份内联 catch 合成一份 probeProcessError，新增码 probe_unavailable（拿不到 ffprobe 路径 / spawn 失败）。没有保留任何旧路径或 fallback；WebM 回退（素材不在本地等结构性不适用）原样不动。",
+  "affected_population": [
+    "预览顶栏「导出」：时间轴上任何一段视频 / 音频 ffprobe 读不出时，成片少了这一段的声音（全是这种素材时整片无声），导出仍报成功",
+    "画布 ClipNode 导出与 Agent 的 export_timeline 工具：都经 startExportJob，同一个形状",
+    "语义 production run 的导出（executeProductionRunExport）：同一个 tryBuildFiltergraphExport，成片同样被静默去声",
+    "ffprobe 找不到或起不来的安装（打包缺件、被安全软件拦掉）：所有带声音的导出都静默变成无声 MP4，而且没有任何提示指向「重新安装」"
+  ],
+  "scope_paths": [
+    "electron/export/"
+  ],
+  "entry_points": [
+    "electron/export/exportJobs.ts#startExportJob（预览顶栏导出、ClipNode 导出、Agent export_timeline、渲染层发起的 production run 导出）",
+    "electron/export/exportJobs.ts#executeProductionRunExport（主进程语义 production run 导出）",
+    "electron/export/exportJobs.ts#tryBuildFiltergraphExport（上面两个入口共用的 ffmpeg 计划构建，探测在这里发生）"
+  ],
+  "invariants": [
+    "进 ffmpeg 计划的每个视频 / 音频素材都带着确定的探测结果（hasAudio 显式 true / false）；拿不到就整次导出失败，编码器一次都不会被调用，也不会建出导出任务",
+    "ffprobe 找不到 / 起不来 → 报「能力不可用」，不点名素材，下一步是重新安装 Nomi；某一个文件读不出 → 点名这个文件，下一步是换掉用到它的片段或重新导入；两种文案 zh / en 都带下一步",
+    "导出探测途中被取消，报的是取消（ExportCancelledError），不是「读不出」",
+    "electron/export/ 下除 mediaProbe.ts 自己外，只有 exportAssetProbe.ts 可以调用 probeMediaMetadata / probeMediaBytes",
+    "只有图片可以不探测；以后新加的媒体类型默认要拿到确定的探测结果才能进计划"
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/export/exportAssetProbe.ts",
+    "tests": [
+      "electron/export/exportAssetProbe.test.ts",
+      "electron/export/exportJobs.probeFailure.test.ts"
+    ]
+  },
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/export/exportJobs.ts",
+      "symbol": "probeExportAssets"
+    },
+    {
+      "kind": "write",
+      "path": "electron/export/exportAssetProbe.ts",
+      "symbol": "probeMediaMetadata"
+    },
+    {
+      "kind": "write",
+      "path": "electron/export/mediaProbe.ts",
+      "symbol": "probeProcessError"
+    }
+  ],
+  "door_reduction": {
+    "before": 3,
+    "after": 3,
+    "why_not": "三扇门是同一条链上的三层，不是并行的三条路：exportJobs 只调唯一入口 probeExportAssets（不再直接碰 ffprobe，也不再自己兜底）→ exportAssetProbe 是导出侧唯一调用 probeMediaMetadata 的地方 → mediaProbe.probeProcessError 是 ffprobe 进程失败的唯一分类。修之前的三扇是：exportJobs 直接调 probeMediaMetadata 并吞错、mediaProbe 里 probeMediaMetadata 与 probeMediaBytes 各一份内联 catch（只会报 probe_failed）。两份分类合成了一份，导出侧的直接调用换成了唯一入口；再合就得把「导出要什么」塞进通用的 ffprobe 模块，非导出的十几个消费者会被迫接受导出的失败语义。"
+  },
+  "regression_tests": [
+    "electron/export/exportJobs.probeFailure.test.ts",
+    "electron/export/exportAssetProbe.test.ts",
+    "electron/export/mediaProbe.test.ts"
+  ],
+  "residual_risks": [
+    "单入口的静态门只扫 electron/export/：导出目录之外如果有人新写一条「探测 → 写导出计划」的路，门拦不住（今天没有：导出计划只在 exportJobs.tryBuildFiltergraphExport 里建）",
+    "一次只点名第一段读不出的素材：同时坏了几段时，用户换掉一段后再导出才会看到下一段",
+    "探测阶段没有用户可点的「取消」（导出任务在探测之后才建）；取消只来自应用退出时的 abortAllActiveExports。素材很多、ffprobe 很慢时，用户只能等它跑完或失败",
+    "失败停在建任务之前，所以任务中心里不会多一条「失败」记录；失败只出现在发起导出的那个界面（预览顶栏行内错误 / 后台通知、ClipNode 反馈、Agent 工具结果）",
+    "预览顶栏的错误文案前面仍带着 Electron 的 IPC 包装前缀（Error invoking remote method …），这是既有的显示问题，本次没动",
+    "WebM 回退那一类（素材不在本地、filtergraph 编译失败）仍是「静默换格式」，同类但不是探测问题，本次只列出、不改"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "纯内部问题：错误是在我们自己的调用方被吞掉的，失败分类依据是自家 runBoundedProcess 的 spawn_failed 码。这个判据用真进程验证过（mediaProbe.test.ts：给一个不存在的 ffprobe 路径真起一次 → probe_unavailable；用打包自带的 ffprobe 真读一个垃圾文件 → probe_failed），比查文档更直接。",
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "同一个形状（调用点 try/catch 把探测失败吞成一个确定值）在仓库里有多处：导出这一处丢了声音；非导出的消费者里也有 catch 兜底（素材预览、本地化时长、导入转码、剪辑时长、抽帧定位）。只要导出侧调 ffprobe 的地方没有唯一入口，下一个新入口（新的导出格式、新的媒体类型、新的调用方）就能把它带回来。",
+    "same_class_scan": [
+      "electron/export/exportJobs.ts:163（origin/main）catch { 按无音频处理 } —— 本次修掉",
+      "electron/assets/assetPreview.ts:151 catch → return {}（没有预览，源即预览；不涉及声音与导出成败）",
+      "electron/assets/localizedAsset.ts:40 catch → undefined（时长未知，不是 0）",
+      "electron/assets/videoImportNormalize.ts:97 catch → reason probe_failed → 转码（往安全的方向兜）",
+      "electron/video/trimVideo.ts:100 .catch(() => null) → 时长 0 时不夹裁剪范围；文件真坏时 ffmpeg 自己会失败",
+      "electron/video/extractVideoFrame.ts:100 指定秒数时 .catch(() => 0) → 不夹 seek；last / 胶片条不吞，直接报错",
+      "electron/review/technicalCheck.ts:48 探测失败 → 标成 undecodable（可疑），是明说不是吞",
+      "electron/video/deconstructVideo.ts:370、electron/video/detectShotCuts.ts:234、electron/video/extractAudioTrack.ts:102、electron/localSpeech/localSpeechTranscribe.ts:110、electron/settings/attentionSoundIpc.ts:24、electron/providerAdapter/certificationMedia.ts:497 —— 失败直接往上抛或转成该功能自己的失败，不吞",
+      "electron/export/ 下调用 probeMediaMetadata / probeMediaBytes 的文件：修完只剩 exportAssetProbe.ts（静态门 exportAssetProbe.test.ts 逐文件扫）"
+    ]
+  },
+  "generality_proof": "修在导出侧调 ffprobe 的唯一入口上，而不是在 exportJobs 的那个 catch 上：startExportJob 与 executeProductionRunExport 都只能经 probeExportAssets 拿探测结果，它对任何失败都抛错、不返回「没声音」；新的导出入口要么复用 tryBuildFiltergraphExport，要么自己调 ffprobe——后者会被静态门打红（electron/export/ 下只许 exportAssetProbe.ts 调 probeMedia*）。新的媒体类型默认被探测（只有 image 跳过），不会因为没写分支就被当成没声音。失败种类的判据在 ffprobe 这一侧（mediaProbe.probeProcessError）由机器码给出，两种探测函数共用一份，导出不解析报错原文，所以换平台、换 ffprobe 版本、报错措辞变了，也分得清「能力不可用」与「这个文件读不出」。",
+  "shared_boundaries": [
+    {
+      "path": "electron/export/exportAssetProbe.ts",
+      "symbol": "probeExportAssets",
+      "responsibility": "导出侧唯一的探测入口：给每个视频 / 音频素材写回确定的 hasAudio；任一段失败抛 ExportAssetProbeError（带素材名与下一步），取消抛 ExportCancelledError，绝不返回「没声音」来顶替失败"
+    },
+    {
+      "path": "electron/export/mediaProbe.ts",
+      "symbol": "probeProcessError",
+      "responsibility": "ffprobe 进程失败的唯一分类：拿不到 / 起不来 = probe_unavailable（能力不可用），其余（非 0 退出、超时、输出超限、被中止）= probe_failed（这个文件读不出）；probeMediaMetadata 与 probeMediaBytes 共用"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/export/exportJobs.ts",
+      "entry_point": "startExportJob",
+      "disposition": "enforced",
+      "evidence": "经 tryBuildFiltergraphExport → probeExportAssets；exportJobs.probeFailure.test.ts 覆盖视频 / 音频读不出、ffprobe 不可用、图片 + 视频 + 坏音频混排、真有声 / 真无声成功、探测中取消：失败时 startExportJob 拒绝、编码器未被调用、listExportJobs 为空"
+    },
+    {
+      "path": "electron/export/exportJobs.ts",
+      "entry_point": "executeProductionRunExport",
+      "disposition": "enforced",
+      "evidence": "同一个 tryBuildFiltergraphExport；exportJobs.probeFailure.test.ts 的 production 用例：读不出时抛 ExportAssetProbeError（code asset_unreadable、fileName 为素材文件名）、编码器未被调用；ffprobe 不可用时 code probe_unavailable"
+    },
+    {
+      "path": "electron/assets/assetPreview.ts",
+      "entry_point": "probeMediaMetadata",
+      "disposition": "not-affected",
+      "evidence": "assetPreview.ts:151 探测失败返回 {}（不派生预览，源即预览），不产出声音结论、不报导出成功；失败只影响缩略图"
+    },
+    {
+      "path": "electron/assets/videoImportNormalize.ts",
+      "entry_point": "transcodeFileToPlayableMp4IfNeeded",
+      "disposition": "not-affected",
+      "evidence": "videoImportNormalize.ts:97 探测失败按「未知即转」处理（reason = probe_failed → 转码），往安全方向兜，不会把失败变成「可播 / 没声音」"
+    },
+    {
+      "path": "electron/review/technicalCheck.ts",
+      "entry_point": "runTechnicalCheck",
+      "disposition": "not-affected",
+      "evidence": "technicalCheck.ts:48 探测失败进 catch，标一条 undecodable（suspect: true），是明说可疑，不是吞成「没问题」"
+    },
+    {
+      "path": "electron/video/extractAudioTrack.ts",
+      "entry_point": "probeMediaMetadata",
+      "disposition": "not-affected",
+      "evidence": "extractAudioTrack.ts:102 没有 catch：探测失败直接往上抛，只有探测成功且 hasAudio 为 false 时才返回「无音轨」"
+    },
+    {
+      "path": "electron/video/deconstructVideo.ts",
+      "entry_point": "probeMediaMetadata",
+      "disposition": "not-affected",
+      "evidence": "deconstructVideo.ts:370 只有 try/finally（清理临时文件），探测失败往上抛；sourceHasAudio 只在探测成功时取 meta.hasAudio === true"
+    }
+  ],
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/export/exportAssetProbe.ts",
+    "invariant": "导出要用的每个视频 / 音频素材，探测结果只来自 probeExportAssets：要么确定的 hasAudio，要么抛错停在编码之前；electron/export/ 下别的文件不许直接调 ffprobe",
+    "failure_mode": "有人在调用点重新吞掉探测失败 → exportJobs.probeFailure.test.ts / exportAssetProbe.test.ts 的失败用例变红（startExportJob 不再拒绝、编码器被调用）；有人在 electron/export/ 另开一个 probeMedia* 调用 → exportAssetProbe.test.ts 的单入口静态门列出多出来的文件并变红；有人把「起不来」又报成 probe_failed → mediaProbe.test.ts 的分类表变红",
+    "exception_policy": "none",
+    "strategy": "导出侧调 ffprobe 收成一个入口，失败只许抛、不许兜成没声音；失败种类由 ffprobe 这一侧给机器码；静态门守住入口不再分叉",
+    "artifacts": [
+      "electron/export/exportAssetProbe.ts",
+      "electron/export/mediaProbe.ts",
+      "electron/export/exportJobs.ts",
+      "electron/export/exportAssetProbe.test.ts",
+      "docs/engineering/concept-owners/export.asset-probe.json"
+    ]
+  },
+  "class_regression_tests": [
+    "electron/export/exportJobs.probeFailure.test.ts",
+    "electron/export/exportAssetProbe.test.ts",
+    "electron/export/mediaProbe.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/export/exportJobs.ts"
+    ],
+    "rationale": "旧实现是 exportJobs.ts 里 tryBuildFiltergraphExport 对 probeMediaMetadata 的直接调用加 `catch { 按无音频处理 }`，同一提交删掉（文件本身还在，删的是这段兜底与那条 import）；mediaProbe.ts 里两份内联 catch 同时合成 probeProcessError。没有并行版本、没有开关、没有 fallback。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及依赖升级或保留：ffprobe 仍是打包自带的 @ffprobe-installer/ffprobe，版本不变",
+    "exit_criteria": []
+  }
+}

@@ -55,17 +55,34 @@ function node(result: GenerationNodeResult, history: GenerationNodeResult[]): Ge
   }
 }
 
-function projectAsset(resultId: string, relativePath = 'assets/generated/a.png'): AssetRef {
+/** 删一版：画布上的一张结果（版本卡片、项目素材里画布那一格都由 canvasNodeToAssetRefs 造成这个样子）。 */
+function resultAsset(resultId: string, relativePath = 'assets/generated/a.png', nodeId = 'node-1'): AssetRef {
   return {
-    id: `node-1:${resultId}`,
+    id: `${nodeId}:${resultId}`,
     kind: 'image',
     name: '结果',
     renderUrl: `nomi-local://asset/project-1/${relativePath}`,
-    ownerNodeId: 'node-1',
     ownerResultId: resultId,
+    source: 'canvas',
+    origin: { source: 'canvas', nodeId, resultId },
+  }
+}
+
+/** 删一份落盘文件：项目素材 / 全部素材里的文件格子（workspaceNodeToAssetRef / assetRefFromDesktopAsset 的样子）。 */
+function fileAsset(relativePath = 'assets/generated/a.png'): AssetRef {
+  return {
+    id: relativePath,
+    kind: 'image',
+    name: relativePath.split('/').pop() ?? relativePath,
+    renderUrl: `nomi-local://asset/project-1/${relativePath}`,
     source: 'project',
     origin: { source: 'project', projectId: 'project-1', relativePath },
   }
+}
+
+/** 删除排队期间项目已经换掉：此刻它是关闭的项目。 */
+function stale(projectId: string): ProjectExecutionContext {
+  return { ...loaded(projectId), assertCurrent: () => { throw new Error('project switched') } }
 }
 
 describe('deleteAssetResult durability', () => {
@@ -90,7 +107,7 @@ describe('deleteAssetResult durability', () => {
       pendingAtSave = listPersistedAssetDeletions()
       return { id: 'project-1' }
     })
-    const outcome = await deleteAssetResult(projectAsset('a'), loaded('project-1'))
+    const outcome = await deleteAssetResult(resultAsset('a'), loaded('project-1'))
 
     expect(mocks.updateNode).toHaveBeenCalledOnce()
     expect(mocks.persistNow).toHaveBeenCalledOnce()
@@ -106,7 +123,7 @@ describe('deleteAssetResult durability', () => {
   it('does not delete the file, keep a pending entry, or leave an empty undo step when persistence fails', async () => {
     mocks.persistNow.mockRejectedValueOnce(new Error('disk full'))
 
-    await expect(deleteAssetResult(projectAsset('a'), loaded('project-1'))).rejects.toThrow('disk full')
+    await expect(deleteAssetResult(resultAsset('a'), loaded('project-1'))).rejects.toThrow('disk full')
     expect(mocks.deleteFiles).not.toHaveBeenCalled()
     expect(mocks.nodes[0].result?.id).toBe('a')
     expect(mocks.nodes[0].history?.map((result) => result.id)).toEqual(['a', 'b'])
@@ -124,9 +141,10 @@ describe('deleteAssetResult durability', () => {
       }] }],
     })
 
-    const outcome = await deleteAssetResult(projectAsset('a'), loaded('project-1'))
+    const outcome = await deleteAssetResult(resultAsset('a'), loaded('project-1'))
     expect(outcome.removedResultCount).toBe(1)
     expect(outcome.deferredFileCount).toBe(0)
+    expect(outcome.keptInUseCount).toBe(1)
     await releaseLoadedProjectAssetDeletions()
     expect(mocks.deleteFiles).not.toHaveBeenCalled()
   })
@@ -142,10 +160,11 @@ describe('deleteAssetResult durability', () => {
       },
     ]
 
-    await deleteAssetResult(projectAsset('a'), loaded('project-1'))
+    const outcome = await deleteAssetResult(resultAsset('a'), loaded('project-1'))
 
     expect(mocks.persistNow).toHaveBeenCalledOnce()
     expect(mocks.deleteFiles).not.toHaveBeenCalled()
+    expect(outcome).toMatchObject({ removedResultCount: 1, keptInUseCount: 1 })
   })
 
   it('serializes closed-project deletions so concurrent buttons cannot restore stale references', async () => {
@@ -164,8 +183,8 @@ describe('deleteAssetResult durability', () => {
       return storedProject
     })
 
-    const deleteA = deleteAssetResult(projectAsset('a'), loaded('another-project'))
-    const deleteB = deleteAssetResult(projectAsset('b', 'assets/generated/b.png'), loaded('another-project'))
+    const deleteA = deleteAssetResult(fileAsset('assets/generated/a.png'), loaded('another-project'))
+    const deleteB = deleteAssetResult(fileAsset('assets/generated/b.png'), loaded('another-project'))
     await Promise.resolve()
     await Promise.resolve()
     expect(mocks.readLocalProjectAsync).toHaveBeenCalledTimes(1)
@@ -198,12 +217,10 @@ describe('deleteAssetResult durability', () => {
       return storedProject
     })
 
-    const firstAsset = { ...projectAsset('a'), renderUrl: sharedUrl, origin: { source: 'project' as const, projectId: 'project-1', relativePath: 'assets/generated/shared.png' } }
-    await deleteAssetResult(firstAsset, loaded('another-project'))
+    await deleteAssetResult(resultAsset('a', 'assets/generated/shared.png'), stale('project-1'))
     expect(mocks.deleteFiles).not.toHaveBeenCalled()
 
-    const secondAsset = { ...firstAsset, id: 'node-2:b', ownerNodeId: 'node-2', ownerResultId: 'b' }
-    await deleteAssetResult(secondAsset, loaded('another-project'))
+    await deleteAssetResult(resultAsset('b', 'assets/generated/shared.png', 'node-2'), stale('project-1'))
     expect(mocks.deleteFiles).toHaveBeenCalledWith({ projectId: 'project-1', relativePaths: ['assets/generated/shared.png'] })
   })
 

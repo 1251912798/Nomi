@@ -28,8 +28,12 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { DEFAULT_TIMEOUT_MS, clickOrFail, expectVisible } from './_assert.mjs'
 
 import { openRailDrawer } from './_shell.mjs'
-const FIXTURE_DIR = process.env.NOMI_MEDIA_FIXTURE_DIR || '/Users/aoqimin/Desktop/nomi-media-fixtures'
-const HUGE_VIDEO = process.env.NOMI_HUGE_VIDEO || '/Users/aoqimin/Desktop/视频/9月12日(1)/9月12日(1).mov'
+import { requireRealMediaAssets } from './fixtures/realMedia.mjs'
+// 机器相关的位置只走环境变量，不写死在代码里（以前写死作者本机目录：别的机器读不到，本机读的是用户自己的文件）；
+// 大视频就是真实素材登记表里那件 4K HEVC。
+const FIXTURE_DIR = process.env.NOMI_MEDIA_FIXTURE_DIR
+if (!FIXTURE_DIR) throw new Error('缺 NOMI_MEDIA_FIXTURE_DIR：指向按文件头注释用 ffmpeg 造好的媒体夹具目录')
+const HUGE_VIDEO = process.env.NOMI_HUGE_VIDEO || requireRealMediaAssets(['video-4k-hevc-10bit']).assets.get('video-4k-hevc-10bit').file
 // 默认落仓库根 scratchpad/（已 .gitignore，只住 worktree）。要留档的那一轮用
 // NOMI_MATRIX_OUT=docs/evidence/<日期>-<主题> 指过去，别把中间产物提进树。
 const OUT_DIR = process.env.NOMI_MATRIX_OUT || path.join(process.cwd(), 'scratchpad/media-import')

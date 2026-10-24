@@ -33,7 +33,7 @@ export function spendReferenceKey(reference: GenerationReference): string {
 
 export type PendingSpendPrice = { known: true; amount: number } | { known: false };
 
-/** 一镜在付费卡上的全部事实。绝不含 transportModelId、密钥或供应商 URL。 */
+/** 一镜在付费卡上的全部事实。绝不含密钥或供应商 URL（发出的型号名不另存投影，发送时由 wireModelIdentity 解出）。 */
 export type PendingSpendShot = Readonly<{
   shotId: string;
   /** 已落地的画布占位节点。卡体那张生成框绑的就是它（同一份 meta、同一个 store）。 */

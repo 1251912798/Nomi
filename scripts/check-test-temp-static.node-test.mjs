@@ -3,6 +3,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { require as tsxRequire } from 'tsx/cjs/api'
+import ts from 'typescript'
 
 import { repoWriteViolations } from './lib/repoWriteScan.mjs'
 
@@ -169,4 +171,213 @@ test('变量别名也算：先把真仓库路径赋给变量、再写该变量�
     const scratch = path.join(repoRoot, '.tmp', 'x')
     fs.writeFileSync(scratch, '1')`
   assert.deepEqual(repoWriteViolations('x.test.mjs', greenTmp), [])
+})
+
+// ---- 走查 / 评测不碰用户真实资料（2026-10-24，夜跑 run 40035294026；N-nightly 第 2 轮并入）----
+// 两条，都只看代码里真正的字符串与路径表达式（注释里写一句跑法不算）。单元测试（*.test.* / *.node-test.*）注入的是
+// 假主目录或打桩的 os.homedir()，不在范围里。
+//   1. tests/ux 下的脚本不许写死某个用户主目录下的绝对路径（/Users/<名>/…、/home/<名>/…、C:\Users\<名>\…）。
+//      起因：三条参数栏 / 新模型走查把作者本机「文稿/Nomi Projects」里一个真实项目写死当模板——夜跑上 ENOENT，
+//      作者本机上读的是用户真实的项目。机器相关的位置走环境变量，真实资料目录只问 owner tests/ux/_realProfile.mjs。
+//   2. 不许读真实宿主配置：tests/、evals/ 下的脚本，以及 scripts/ 下起 App 的脚本（import 了 _launchApp.mjs /
+//      isoApp.mjs），不许从真实主目录（os.homedir()、HOME / USERPROFILE / APPDATA / XDG_CONFIG_HOME）或宿主自己的
+//      位置变量（CLAUDE_CONFIG_DIR / CODEX_HOME）拼出指进宿主配置位置的路径。宿主位置不在这里手抄：按注册表
+//      electron/shared/mcpClientRegistry.ts 的每一条（三平台、配置文件 + 安装痕迹）用哨兵根算出来，新宿主自动盖到。
+//      要宿主配置就在临时主目录里摆假的；真宿主上的核对归 tests/system/mcp-real-client.mjs（按指纹，不改写）。
+//      起因：隔离起的 App 读到真 ~/.claude.json（启动器那半由 tests/ux/_launchApp.test.mjs 守）；走查里还有拿真
+//      ~/.codex/generated_images 当素材、把真 ~/.workbuddy 链进假主目录写完再还原的。
+// 已知限制：语法层；跨函数传进来的路径看不到（同文件里由真实主目录赋值的变量会跟）。
+const UNIT_TEST_FILE = /\.(?:node-)?test\.|\.spec\./
+const HOME_PATH = /(?:^|[^A-Za-z0-9_])(?:\/Users\/|\/home\/)[^/\\\s'"`]+\/|(?:^|[^A-Za-z0-9_])[A-Za-z]:(?:\\|\/)+Users(?:\\|\/)+[^\\/\s'"`]+(?:\\|\/)/
+const isHomePath = (text) => HOME_PATH.test(text)
+
+/** 一份脚本里的全部字符串字面量（含模板串各段）。 */
+function stringLiterals(text, fileName) {
+  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true)
+  const strings = []
+  const visit = (node) => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+      strings.push({ text: node.text, line: source.getLineAndCharacterOfPosition(node.getStart()).line + 1 })
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return strings
+}
+
+const hostRegistry = tsxRequire('../electron/shared/mcpClientRegistry.ts', import.meta.url)
+/** 真实环境里的根换成哨兵：主目录、APPDATA、XDG_CONFIG_HOME、每个宿主变量各一个。 */
+const SENTINEL_HOME = '/HOME'
+const ENV_ROOTS = {
+  HOME: SENTINEL_HOME,
+  USERPROFILE: SENTINEL_HOME,
+  APPDATA: '/APPDATA',
+  XDG_CONFIG_HOME: '/XDG',
+  ...Object.fromEntries(hostRegistry.MCP_CLIENT_HOST_ENV_VARS.map((name) => [name, `/HOSTENV/${name}`])),
+}
+/** 注册表每一条宿主位置在哨兵根下的样子（不设变量的默认位置、APPDATA / XDG 下的、宿主变量下的）。 */
+const HOST_LOCATIONS = [...new Set(hostRegistry.mcpClientLocations().flatMap(({ platform, location }) =>
+  [{}, ENV_ROOTS].map((env) => hostRegistry.resolveMcpClientPath(location, { platform, env, homedir: SENTINEL_HOME, join: path.posix.join }))))]
+
+function envName(node) {
+  if (ts.isPropertyAccessExpression(node)) return node.name.text
+  if (ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression)) return node.argumentExpression.text
+  return null
+}
+const isProcessEnv = (node) => ts.isPropertyAccessExpression(node) && node.name.text === 'env' && ts.isIdentifier(node.expression) && node.expression.text === 'process'
+
+/** 这段表达式要是「真实环境里的某个根」，给出它的哨兵；否则 null。 */
+function realRoot(node, aliases) {
+  if (ts.isParenthesizedExpression(node)) return realRoot(node.expression, aliases)
+  if (ts.isIdentifier(node)) return aliases.get(node.text) ?? null
+  if (ts.isCallExpression(node) && node.arguments.length === 0) {
+    const callee = node.expression
+    if ((ts.isIdentifier(callee) && callee.text === 'homedir') || (ts.isPropertyAccessExpression(callee) && callee.name.text === 'homedir')) return SENTINEL_HOME
+  }
+  if (ts.isPropertyAccessExpression(node) && node.name.text === 'homedir' && ts.isCallExpression(node.expression)) return SENTINEL_HOME
+  if ((ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) && isProcessEnv(node.expression)) {
+    const name = envName(node)
+    return name && Object.hasOwn(ENV_ROOTS, name) ? ENV_ROOTS[name] : null
+  }
+  if (ts.isBinaryExpression(node) && [ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(node.operatorToken.kind)) {
+    return realRoot(node.left, aliases) ?? realRoot(node.right, aliases)
+  }
+  return null
+}
+
+/** 由真实根拼出来的路径（只取紧跟根的字面量段）；不是这种路径就 null。 */
+function rootedPath(node, aliases) {
+  const literal = (arg) => (ts.isStringLiteralLike(arg) ? arg.text : null)
+  if (ts.isCallExpression(node) && node.arguments.length > 0) {
+    const callee = node.expression
+    const name = ts.isIdentifier(callee) ? callee.text : ts.isPropertyAccessExpression(callee) ? callee.name.text : null
+    if (name !== 'join' && name !== 'resolve') return null
+    const root = realRoot(node.arguments[0], aliases)
+    if (!root) return null
+    const segments = []
+    for (const arg of node.arguments.slice(1)) {
+      const text = literal(arg)
+      if (text === null) break
+      segments.push(text)
+    }
+    return path.posix.join(root, ...segments.map((segment) => segment.replaceAll('\\', '/')))
+  }
+  if (ts.isTemplateExpression(node) && node.head.text === '') {
+    const root = realRoot(node.templateSpans[0].expression, aliases)
+    return root ? path.posix.join(root, node.templateSpans[0].literal.text.replaceAll('\\', '/')) : null
+  }
+  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken && ts.isStringLiteralLike(node.right)) {
+    const root = realRoot(node.left, aliases)
+    return root ? path.posix.join(root, node.right.text.replaceAll('\\', '/')) : null
+  }
+  return null
+}
+
+const insideHostLocation = (target) => HOST_LOCATIONS.some((location) => {
+  const relative = path.posix.relative(location, target)
+  return relative === '' || (!relative.startsWith('..') && !path.posix.isAbsolute(relative))
+})
+
+/** 一份脚本里指进真实宿主配置位置的路径表达式，和对宿主位置变量的直接读取。 */
+function realHostConfigReads(text, fileName) {
+  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true)
+  const aliases = new Map()
+  const collect = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const root = realRoot(node.initializer, aliases)
+      if (root) aliases.set(node.name.text, root)
+    }
+    ts.forEachChild(node, collect)
+  }
+  collect(source)
+  const hits = []
+  const lineOf = (node) => source.getLineAndCharacterOfPosition(node.getStart()).line + 1
+  const visit = (node) => {
+    const target = rootedPath(node, aliases)
+    if (target && insideHostLocation(target)) hits.push({ line: lineOf(node), detail: target })
+    else if ((ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) && isProcessEnv(node.expression)
+      && hostRegistry.MCP_CLIENT_HOST_ENV_VARS.includes(envName(node))) hits.push({ line: lineOf(node), detail: `process.env.${envName(node)}` })
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return hits
+}
+
+function scriptsUnder(relativeRoot, filter = () => true) {
+  const out = []
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === 'node_modules' || entry.name === 'shots' || entry.name === '__shots__' || entry.name.startsWith('.')) continue
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (/\.(?:mjs|cjs|js|ts|mts|cts)$/.test(entry.name) && !UNIT_TEST_FILE.test(entry.name)) {
+        const rel = path.relative(repoRoot, full).split(path.sep).join('/')
+        if (filter(rel)) out.push(rel)
+      }
+    }
+  }
+  walk(path.join(repoRoot, relativeRoot))
+  return out
+}
+
+test('tests/ux 下的脚本不写死用户主目录下的绝对路径', () => {
+  const violations = scriptsUnder('tests/ux', (rel) => /\.(?:mjs|cjs|js)$/.test(rel)).flatMap((rel) =>
+    stringLiterals(fs.readFileSync(path.join(repoRoot, rel), 'utf8'), rel)
+      .filter((entry) => isHomePath(entry.text))
+      .map((entry) => `${rel}:${entry.line} ${entry.text.slice(0, 120)}`))
+  assert.deepEqual(violations, [], '机器相关的位置走环境变量；真实资料目录只问 tests/ux/_realProfile.mjs')
+})
+
+test('写死的主目录路径：字符串和模板串里算，注释里不算', () => {
+  const flagged = (code) => stringLiterals(code, 'walk.mjs').some((entry) => isHomePath(entry.text))
+  assert.equal(flagged("const p = '/Users/aoqimin/Documents/Nomi Projects/x/.nomi/project.json'"), true)
+  assert.equal(flagged('const p = `/home/someone/${name}/a.json`'), true)
+  assert.equal(flagged("const p = 'C:\\\\Users\\\\me\\\\AppData\\\\Roaming\\\\nomi'"), true)
+  assert.equal(flagged('// 跑法：export NOMI_REAL_MEDIA_DIR="/Users/aoqimin/Desktop/视频/"\nconst dir = process.env.NOMI_REAL_MEDIA_DIR'), false)
+})
+
+test('走查 / 评测 / 起 App 的脚本不从真实主目录或宿主变量拼出宿主配置路径', () => {
+  const launchesApp = (rel) => /from\s+['"][^'"]*(?:_launchApp|isoApp)\.mjs['"]/.test(fs.readFileSync(path.join(repoRoot, rel), 'utf8'))
+  const files = [...scriptsUnder('tests'), ...scriptsUnder('evals'), ...scriptsUnder('scripts', launchesApp)]
+  const violations = files.flatMap((rel) => realHostConfigReads(fs.readFileSync(path.join(repoRoot, rel), 'utf8'), rel)
+    .map((hit) => `${rel}:${hit.line} → ${hit.detail}`))
+  assert.deepEqual(violations, [], '宿主配置在临时主目录里摆假的；真宿主上的核对归 tests/system/mcp-real-client.mjs')
+})
+
+test('宿主配置路径的认法：各种拼法都认得出，临时主目录、Nomi 自己的目录、注释和展示文案不算', () => {
+  const hits = (code) => realHostConfigReads(code, 'walk.mjs').map((hit) => hit.detail)
+  const red = [
+    "path.join(os.homedir(), '.codex', 'generated_images')",
+    "fs.symlinkSync(path.join(os.homedir(), '.workbuddy'), dir)",
+    "join(homedir(), '.claude.json')",
+    'const p = `${os.homedir()}/.cursor/mcp.json`',
+    "const p = os.homedir() + '/.claude'",
+    "path.join(process.env.APPDATA, 'Claude', 'claude_desktop_config.json')",
+    "path.join(os.homedir(), 'Library', 'Application Support', 'Claude')",
+    "const home = os.homedir()\nfs.readFileSync(path.join(home, '.codex', 'config.toml'))",
+    "path.resolve(process.env.HOME || os.homedir(), '.cursor')",
+    "path.join(os.userInfo().homedir, '.claude', 'settings.json')",
+    'const dir = process.env.CODEX_HOME',
+    "path.join(process.env['CLAUDE_CONFIG_DIR'], '.claude.json')",
+  ]
+  for (const code of red) assert.ok(hits(code).length > 0, code)
+  const green = [
+    "path.join(testHome, '.claude.json')",
+    "path.join(os.homedir(), 'Library', 'Application Support', 'nomi')",
+    "path.join(os.homedir(), '.claudex')",
+    "// 真机上是 path.join(os.homedir(), '.codex')\nconst shown = '~/.claude.json'",
+    'const home = os.homedir()',
+    "const env = { HOME: testHome, CODEX_HOME: path.join(tempRoot, 'codex') }",
+  ]
+  for (const code of green) assert.deepEqual(hits(code), [], code)
+})
+
+test('宿主位置按注册表算：注册表里每一条主目录下的位置（三平台、配置文件 + 安装痕迹），从 os.homedir() 拼过去都认得出', () => {
+  const homeLocations = hostRegistry.mcpClientLocations().filter(({ location }) => location.root === 'home')
+  assert.ok(homeLocations.length > 0)
+  for (const { client, location } of homeLocations) {
+    const code = `path.join(os.homedir(), ${location.segments.map((segment) => JSON.stringify(segment)).join(', ')})`
+    assert.ok(realHostConfigReads(code, 'walk.mjs').length > 0, `${client}: ${code}`)
+  }
+  for (const name of hostRegistry.MCP_CLIENT_HOST_ENV_VARS) assert.ok(realHostConfigReads(`process.env.${name}`, 'walk.mjs').length > 0, name)
 })

@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import type { JsonRecord } from "../jsonUtils";
 import { contentTypeFromPath } from "../assets/assetPaths";
+import { mcpClientPlatform, resolveMcpClientHostRoot } from "../shared/mcpClientRegistry";
 import type { ProcessResponse, WriteAsset } from "./processOperation";
 import { materializeAssetToPath, toUrlList } from "./dreaminaInputFiles";
 
@@ -121,7 +122,12 @@ export function buildCodexSpawnEnv(
 }
 
 function codexHome(): string {
-  return process.env.CODEX_HOME || path.join(os.homedir(), ".codex");
+  return resolveMcpClientHostRoot("codex", {
+    platform: mcpClientPlatform(process.platform),
+    env: process.env,
+    homedir: os.homedir(),
+    join: path.join,
+  });
 }
 
 function generatedImagesDir(threadId: string): string {

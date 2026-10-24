@@ -74,6 +74,10 @@ export function archetypeModeIsVisible(mode: ArchetypeMode, bodyResult: ModeChan
  * 判据故意**不是**「变体的 modelKey 在目录里有没有对应行」：apimart 的 veo 只有 `veo3.1-fast` 一行、
  * quality/lite 根本不是独立行，按那个判据会把 apimart 活着的变体轴也一起藏掉。
  *
+ * 自建中转不在这里判：它的 op 也参数化了 model，但没有「收档案所选型号名」的声明，目录层就把这一行判成不接受档案
+ * 型号名（electron/catalog/modelNameSource.ts，与发送时决定 model 串的 owner 同一个谓词），档案在解析口已经没有变体轴，
+ * 轮不到这里（2026-10-24 判据合一；再在这里加一条中转特判就是第二份判据）。
+ *
  * 三态与模式收窄同口径：`undefined`（查不到）与 `null`（这个模式没有自己的线缆）都 **fail-open 不收窄**，
  * 绝不因为查不到就把用户的变体藏掉。
  */

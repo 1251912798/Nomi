@@ -37,6 +37,15 @@ describe('常驻部分', () => {
     const out = inject(NEUTRAL)
     for (const anchor of ['P0', 'grill', 'P5', 'design-card', 'P3', 'R13', 'R11/R22', 'P2', 'P1', 'RW']) assert.ok(out.includes(anchor), anchor)
   })
+
+  // 2026-10-24 用户拍板「改成 CI 把关：推分支前本机只跑快检，完整门岗交给 CI」。③ 每轮都注入，
+  // 它要是还写着「push 前跑完整 gates」，每个会话都会照旧在本机排队跑完整门岗——规矩改了、提醒没改，等于没改。
+  test('③ push 前说的是「git 钩子跑快检、完整门岗以 CI 为准」，不再要求本机跑完整 gates', () => {
+    const third = inject(NEUTRAL).split('\n').find((line) => line.startsWith('③'))
+    assert.ok(third, '常驻段必须有 ③ 那一刻')
+    for (const anchor of ['origin/main', '快检', 'CI']) assert.ok(third.includes(anchor), `③ 缺「${anchor}」：${third}`)
+    assert.doesNotMatch(third, /pnpm run gates/, `③ 不该再要求推送前跑完整 gates：${third}`)
+  })
 })
 
 describe('关键词块：命中才注入', () => {

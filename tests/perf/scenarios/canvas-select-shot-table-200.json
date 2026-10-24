@@ -1,0 +1,30 @@
+{
+  "id": "canvas-select-shot-table-200",
+  "feature": "在画布上点一下 200 镜拆解表的卡头（选中节点），到上方浮条（显示列 / 行高）和下方拆解栏（读图 / 转写 chip + 拆解按钮）都可见再过两帧；工作缩放约 100%（适应视图后鼠标停在表上滚轮放大）",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "T200",
+    "--scenarios",
+    "select-shot-table",
+    "--warmup",
+    "1"
+  ],
+  "scale": "1 张 200 镜的拆解表（ready，每镜六格事实有字）+ 100 张图片卡 + 1 个视频节点，边 50 条",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 100,
+  "group": "① 选中节点 → 生成框出现",
+  "budgetStatus": "approved",
+  "budgetBasis": "与「选中节点 → 生成框出现」同一档：操作到可见反馈 ≤100ms（docs/engineering/perf-scenarios.md）；拆解表的浮条与下方栏是单张卡的东西，不该随 200 镜变慢——表行数只影响表身，不影响选中这一下",
+  "baseline": {
+    "median": 76.6,
+    "p95": 77.2,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-18",
+    "commit": "b44122651"
+  }
+}

@@ -36,7 +36,7 @@ function projectAsset(resultId: string): AssetRef {
   return {
     id: `node-1:${resultId}`, kind: 'image', name: 'result',
     renderUrl: `nomi-local://asset/project-1/assets/generated/${resultId}.png`,
-    ownerNodeId: 'node-1', ownerResultId: resultId, source: 'project',
+    source: 'project',
     origin: { source: 'project', projectId: 'project-1', relativePath: `assets/generated/${resultId}.png` },
   }
 }

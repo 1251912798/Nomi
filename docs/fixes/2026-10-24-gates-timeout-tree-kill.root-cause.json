@@ -1,0 +1,274 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-gates-timeout-tree-kill",
+  "change_kind": "corrective",
+  "detected_by": "user",
+  "recurrence_check_on": "2026-11-24",
+  "problem_type": "门岗超时后的进程树收尾，以及启动器脱离前台进程组导致关终端漏掉后代",
+  "symptom": "macOS 门岗的假慢 node:test 超时后留下 ppid=1 的 slow.node-test.mjs；重复运行门岗持续积累孤儿、交换空间上涨并使素材测试因磁盘不足拒收。",
+  "direct_cause": "上一轮把 dev-electron / start-electron 的 spawn 改成 detached 独立进程组，而 child-process-lifecycle 没有 SIGHUP 处理；终端关闭时前台启动器先死，Electron / Vite / Tailwind 留在独立会话。共享 killProcessTree 对非组长活进程把 ESRCH 当作已退出，也会把漏配 processTreeSpawnOptions 静默吞掉。",
+  "class_root": "自建子进程的生命周期必须按拥有者场景选定同一终止边界：门岗和可控超时子进程需要独立进程组并按组终止；直接附着终端的启动器必须留在前台进程组，让内核的 SIGINT / SIGHUP 覆盖后代；共享 helper 对活进程的组误用必须可见。",
+  "affected_population": [
+    "macOS / Linux 上运行 pre-push-contracts 相关单测或其它会再起子进程的 scripts 入口",
+    "node --test、pnpm、vite、npx、shell 或 Electron host 的超时与 Ctrl-C 收尾路径",
+    "重复门岗运行留下的 ppid=1 slow.node-test.mjs 及其占用的交换空间和磁盘"
+  ],
+  "scope_paths": [
+    "scripts/lib/processTree.mjs",
+    "scripts/lib/processTree.node-test.mjs",
+    "scripts/lib/nomiClient.mjs",
+    "scripts/child-process-lifecycle.mjs",
+    "scripts/daily-radar-session.mjs",
+    "scripts/dev-electron.mjs",
+    "scripts/start-electron.mjs",
+    "scripts/git-delivery.mjs",
+    "scripts/pre-push-contracts.mjs",
+    "scripts/pre-push-contracts.node-test.mjs",
+    "scripts/pre-push-gate-inputs.mjs",
+    "scripts/pre-push-structure.node-test.mjs",
+    "tests/ux/memory.e2e.mjs"
+  ],
+  "entry_points": [
+    "pre-push-contracts.runNode 的单门岗超时",
+    "pre-push-contracts.runWithDeadline 的 Ctrl-C / 整体超时收尾",
+    "pre-push-related-tests.runRelatedTests 注入的 node:test 与 vitest 子进程",
+    "nomiClient.callViaHost 的 headless Electron transport 超时",
+    "daily-radar-session.defaultRun 的雷达超时",
+    "git-delivery.runBoundedCommand 的 transport 超时",
+    "dev-electron / start-electron 的启动器生命周期收尾"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "不变量是 Nomi 脚本对自建 ChildProcess 生命周期的内部约定；本次使用 Node child_process 与操作系统进程组原语，不依赖第三方运行时版本或外部数据契约。",
+  "invariants": [
+    "非 Windows 上每个由门岗或其它脚本拥有、会在超时路径按组终止且可能派生后代的 spawn 都设置 detached=true，使 pid 成为进程组 id。",
+    "dev-electron / start-electron 启动器保留在终端前台进程组，不设置 detached；child-process-lifecycle 用 child.kill(signal) 收尾，终端的 SIGINT / SIGHUP 由内核整组送达。",
+    "超时、整体截止或其它独立进程组 owner 的收尾只调用 killProcessTree；POSIX 按负 pid 发信号，Windows 用 taskkill /PID /T /F。",
+    "进程组已经退出时终止操作按已退出处理；活子进程遇到 ESRCH 则报错并点名 processTreeSpawnOptions()，不静默返回。",
+    "scripts/ 除具名的启动器前台生命周期、Playwright 生命周期例外与锁生命周期单测外，不出现对自建子进程的直接 .kill()。"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "scripts/daily-radar-session.mjs",
+      "symbol": "killProcessTree"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/git-delivery.mjs",
+      "symbol": "killProcessTree"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/lib/nomiClient.mjs",
+      "symbol": "killProcessTree"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/lib/processTree.node-test.mjs",
+      "symbol": "killProcessTree"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/pre-push-contracts.mjs",
+      "symbol": "killProcessTree"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/pre-push-contracts.node-test.mjs",
+      "symbol": "killProcessTree"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/daily-radar-session.mjs",
+      "symbol": "processTreeSpawnOptions"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/git-delivery.mjs",
+      "symbol": "processTreeSpawnOptions"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/lib/nomiClient.mjs",
+      "symbol": "processTreeSpawnOptions"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/lib/processTree.node-test.mjs",
+      "symbol": "processTreeSpawnOptions"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/pre-push-contracts.mjs",
+      "symbol": "processTreeSpawnOptions"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/pre-push-contracts.node-test.mjs",
+      "symbol": "processTreeSpawnOptions"
+    }
+  ],
+  "door_reduction": {
+    "before": 5,
+    "after": 12,
+    "why_not": "本轮移除了 dev-electron / start-electron 的独立进程组入口，并恢复 child-process-lifecycle 的前台组 child.kill；门岗、雷达、交付、headless host 和它们的测试仍各自拥有独立的超时/收尾职责，但全部收敛到 processTree.mjs 的两个共享边界。启动器不能并入 detached 边界，因为终端关闭依赖内核向前台进程组发送 SIGHUP；生命周期 helper 作为具名前台组例外保留。"
+  },
+  "generality_proof": "同类问题由生命周期边界决定，而不是由命令名决定：可被门岗超时终止且可能派生后代的自建子进程统一通过 processTreeSpawnOptions + killProcessTree；终端启动器属于另一种 owner，必须留在前台进程组，避免 SIGHUP 漏后代；结构门岗扫描 scripts/，新增 direct .kill 会立即红，killProcessTree 对活的非组长误用会直接抛出。",
+  "shared_boundaries": [
+    {
+      "path": "scripts/lib/processTree.mjs",
+      "symbol": "processTreeSpawnOptions",
+      "responsibility": "统一声明 POSIX detached=true，保证自建子进程的 pid 是可终止的进程组。"
+    },
+    {
+      "path": "scripts/lib/processTree.mjs",
+      "symbol": "killProcessTree",
+      "responsibility": "统一按平台终止独立的自建进程树；已经退出的 ESRCH 按完成处理，活进程的非组长误用显式报错。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "scripts/pre-push-contracts.mjs",
+      "entry_point": "runNode / runWithDeadline",
+      "disposition": "enforced",
+      "evidence": "门岗单任务与 Ctrl-C / hook 截止都改用 processTreeSpawnOptions + killProcessTree；原 killTree 的直接 child.kill 分支已删除。"
+    },
+    {
+      "path": "scripts/pre-push-related-tests.mjs",
+      "entry_point": "runRelatedTests → 注入 runNode",
+      "disposition": "enforced",
+      "evidence": "node:test 与 vitest 两路均通过 runNode 注入，假慢测试的 pid 回归断言证明后代不会存活。"
+    },
+    {
+      "path": "scripts/lib/nomiClient.mjs",
+      "entry_point": "callViaHost transport timeout",
+      "disposition": "enforced",
+      "evidence": "headless Electron host 设置 detached 并在超时调用 killProcessTree。"
+    },
+    {
+      "path": "scripts/daily-radar-session.mjs",
+      "entry_point": "defaultRun timeout",
+      "disposition": "enforced",
+      "evidence": "雷达 node 入口设置独立进程组，超时由共享终止器收尾。"
+    },
+    {
+      "path": "scripts/git-delivery.mjs",
+      "entry_point": "runBoundedCommand timeout",
+      "disposition": "enforced",
+      "evidence": "原先的 process.kill(-pid) / child.kill fallback 收敛为共享终止器，spawn 选项也由同一边界提供。"
+    },
+    {
+      "path": "scripts/browser-live-capture-sweep.mjs",
+      "entry_point": "Playwright app.process() fallback",
+      "disposition": "not-affected",
+      "evidence": "该句柄由 Playwright launchNomiApp / app.close 拥有；8 秒兜底不是本脚本 spawn 的子进程，保留为具名生命周期例外。"
+    },
+    {
+      "path": "scripts/child-process-lifecycle.mjs",
+      "entry_point": "installChildProcessLifecycle → sendSignal",
+      "disposition": "not-affected",
+      "evidence": "启动器必须留在终端前台进程组；恢复 origin/main 的 child.kill(signal)，让终端关闭时内核对前台进程组发送的 SIGINT / SIGHUP 覆盖 Electron、Vite、Tailwind 后代；结构门岗以具名例外登记并要求理由。"
+    },
+    {
+      "path": "scripts/dev-electron.mjs",
+      "entry_point": "start",
+      "disposition": "not-affected",
+      "evidence": "恢复 origin/main：Electron 与 Tailwind watcher 不设置 detached，跟随终端前台进程组；child-process-lifecycle 的 SIGINT / SIGHUP 由内核整组送达，避免关终端留下会话孤儿。"
+    },
+    {
+      "path": "scripts/start-electron.mjs",
+      "entry_point": "main child launcher",
+      "disposition": "not-affected",
+      "evidence": "恢复 origin/main：Electron 启动进程不设置 detached，跟随终端前台进程组；终端 SIGHUP 覆盖主进程与后代。"
+    },
+    {
+      "path": "scripts/browser-mse-canvas-walkthrough.mjs",
+      "entry_point": "Playwright app.process() fallback",
+      "disposition": "not-affected",
+      "evidence": "同上，Playwright 管理 Electron 生命周期；结构门岗要求例外具名登记。"
+    },
+    {
+      "path": "scripts/with-gates-lock.node-test.mjs",
+      "entry_point": "lock wrapper signal fixtures",
+      "disposition": "not-affected",
+      "evidence": "这些直接 kill 是单测故意验证 wrapper 与继承子进程的不同信号语义；文件已在结构门岗中具名登记，不是生产超时 owner。"
+    },
+    {
+      "path": "tests/ux/memory.e2e.mjs",
+      "entry_point": "Electron 内存走查的收尾",
+      "disposition": "enforced",
+      "evidence": "原先自写了一份同名 killProcessTree（POSIX 只给根 pid 发 SIGTERM，后代可能留下）；改为 processTreeSpawnOptions 起 Electron、killProcessTree 按组收尾并删掉自写，独立进程组收不到的终端 Ctrl-C / SIGHUP 由脚本转交。"
+    },
+    {
+      "path": "tests/ux/",
+      "entry_point": "walkthrough / Electron / vite cleanup calls",
+      "disposition": "not-affected",
+      "evidence": "除 memory.e2e.mjs（自写同名 killProcessTree，已收敛，见上一条）外，普查发现超过 5 处，需要独立的 UX 生命周期任务；按任务书停在清单，不在本次产品文件范围内硬改。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "任何会再起 worker、shell、vite、pnpm、npx 或 Electron 后代的自建进程，只杀 runner 都可能再次留下 ppid=1 孤儿；换成 Linux、不同测试文件或另一个脚本仍会触发同一机制。",
+    "same_class_scan": [
+      "node scripts/door-map.mjs killTree --roots=scripts --include-tests：原写门为 scripts/pre-push-contracts.mjs::killTree；node scripts/door-map.mjs runNode --roots=scripts --include-tests：runNode 在 pre-push-contracts 与两个测试入口出现。",
+      "git grep -n \"kill('SIGKILL')\\|kill('SIGTERM')\" -- scripts tests/ux：发现 pre-push-contracts、nomiClient、浏览器走查、锁单测及 tests/ux 的直接信号调用，逐项按 owner / 后代能力分类。",
+      "结构门岗的 scripts/ 扫描：生产自建子进程的 direct .kill 已收敛为 processTree；仅保留两个 Playwright fallback 与 with-gates-lock 单测例外，且每个例外有理由。",
+      "tests/ux 普查：vite、Electron、MCP、ffmpeg、shell 等直接终止点超过 5 处，按任务书记录为未改动的独立边界，不将其误报成已修复。"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "scripts/lib/processTree.mjs",
+    "invariant": "每个本仓库拥有生命周期且可能派生后代的脚本进程都选择正确的共享边界：超时 owner 用独立进程组 + killProcessTree，终端启动器留在前台进程组 + child-process-lifecycle。",
+    "failure_mode": "POSIX 进程组不存在时，已退出 child 的 ESRCH 按完成处理；活 child 的 ESRCH 抛错并点名 processTreeSpawnOptions()；未登记的 scripts direct .kill 由 pre-push-structure 结构断言报红；Windows 使用 taskkill /T /F。",
+    "exception_policy": "none",
+    "strategy": "把门岗类 spawn/终止选项放进 processTree.mjs；恢复启动器的前台组语义并在结构门岗具名登记 child-process-lifecycle 例外；删除旧的直接子进程终止 fallback；用活的非 detached 子进程误用回归和 SIGHUP 子孙回归验证两个生命周期类别。",
+    "artifacts": [
+      "scripts/lib/processTree.mjs",
+      "scripts/lib/processTree.node-test.mjs",
+      "scripts/pre-push-contracts.mjs",
+      "scripts/pre-push-structure.node-test.mjs",
+      "scripts/pre-push-gate-inputs.mjs",
+      "scripts/git-delivery.mjs",
+      "scripts/daily-radar-session.mjs",
+      "scripts/lib/nomiClient.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/pre-push-structure.node-test.mjs",
+    "scripts/lib/processTree.node-test.mjs",
+    "scripts/pre-push-contracts.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/pre-push-structure.node-test.mjs",
+    "scripts/lib/processTree.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "scripts/pre-push-contracts.mjs",
+      "scripts/git-delivery.mjs",
+      "scripts/lib/nomiClient.mjs"
+    ],
+    "rationale": "旧的直接子进程终止路径在同一提交中删除；所有等价生产入口改用 processTree，不留并行 fallback。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不变量由 Node 内置 child_process、POSIX 进程组和 Windows taskkill 提供；没有第三方依赖需要升级或保留退出计划。",
+    "exit_criteria": []
+  },
+  "migration": "无用户数据迁移；旧脚本调用者无需改 API，只改变自建子进程的 detached 生命周期和收尾边界。已有孤儿由本次验证前人工清理，后续门岗按组终止。",
+  "residual_risks": [
+    "本机直接验证了 macOS POSIX 分支；Windows taskkill /T /F 分支依赖 CI / Windows 实机。",
+    "tests/ux 下超过 5 个独立生命周期点未在本任务修改，Playwright 管理的脚本例外已具名；其余 UX cleanup 需要单独任务才能完成全仓收敛。",
+    "SIGHUP 回归使用 macOS 的 kill 命令向实际启动器进程组发信号；node:test worker 可能继承忽略 SIGHUP，因此 fixture 给子孙安装等价退出处理器，仍验证进程组覆盖与 detached 变异。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/lib/processTree.mjs",
+    "tests": [
+      "scripts/lib/processTree.node-test.mjs",
+      "scripts/pre-push-structure.node-test.mjs"
+    ],
+    "why": "所有本次改动的 scripts 生命周期 owner 都可以共享同一进程组创建与终止实现，结构门岗再阻止新增 direct kill 绕过。"
+  }
+}

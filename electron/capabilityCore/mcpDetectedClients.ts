@@ -12,7 +12,14 @@ import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import { capabilityCoreDir } from './security'
-import { builtinMcpClientSpec, isBuiltinMcpClient, type BuiltinMcpClient, type McpClientPath } from '../shared/mcpClientRegistry'
+import {
+  isBuiltinMcpClient,
+  mcpClientConfigFile,
+  mcpClientInstallTraces,
+  mcpClientPlatform,
+  type BuiltinMcpClient,
+  type McpClientPathContext,
+} from '../shared/mcpClientRegistry'
 
 const PROFILES_FILE = 'mcp-client-profiles.json'
 
@@ -77,11 +84,11 @@ export function recordDetectedMcpClient(name: string): void {
 
 /**
  * 内置客户端的用户级配置路径 —— 按平台从注册表 derive；该平台没有这个客户端时返回 null。
- * `appData` 根：macOS ~/Library/Application Support、Windows %APPDATA%、Linux ~/.config（XDG）。
+ * 规则只在注册表（resolveMcpClientPath）：宿主的配置位置变量（CLAUDE_CONFIG_DIR / CODEX_HOME）设了就跟它走，
+ * `appData` 根是 macOS ~/Library/Application Support、Windows %APPDATA%、Linux ~/.config（XDG）。
  */
 export function builtinMcpClientConfigPath(client: BuiltinMcpClient): string | null {
-  const location = builtinMcpClientSpec(client).configPath[currentPlatform()]
-  return location ? resolveClientPath(location) : null
+  return mcpClientConfigFile(client, processPathContext())
 }
 
 /**
@@ -99,8 +106,7 @@ export function builtinMcpClientConfigPath(client: BuiltinMcpClient): string | n
  */
 export function isMcpClientAppInstalled(client: string): boolean {
   if (!isBuiltinMcpClient(client)) return false
-  const markers = builtinMcpClientSpec(client).installMarkers[currentPlatform()] ?? []
-  return markers.some((marker) => hasRealTrace(resolveClientPath(marker)))
+  return mcpClientInstallTraces(client, processPathContext()).some(hasRealTrace)
 }
 
 function hasRealTrace(target: string): boolean {
@@ -113,16 +119,7 @@ function hasRealTrace(target: string): boolean {
   }
 }
 
-function currentPlatform(): 'darwin' | 'win32' | 'linux' {
-  return process.platform === 'darwin' || process.platform === 'win32' ? process.platform : 'linux'
-}
-
-function appDataDir(): string {
-  if (process.platform === 'darwin') return path.join(os.homedir(), 'Library', 'Application Support')
-  if (process.platform === 'win32') return String(process.env.APPDATA || '').trim() || path.join(os.homedir(), 'AppData', 'Roaming')
-  return String(process.env.XDG_CONFIG_HOME || '').trim() || path.join(os.homedir(), '.config')
-}
-
-function resolveClientPath(location: McpClientPath): string {
-  return path.join(location.root === 'home' ? os.homedir() : appDataDir(), ...location.segments)
+/** 本进程此刻的环境：每次现取（测试与隔离实例会在运行中换 HOME / 宿主变量）。 */
+function processPathContext(): McpClientPathContext {
+  return { platform: mcpClientPlatform(process.platform), env: process.env, homedir: os.homedir(), join: path.join }
 }

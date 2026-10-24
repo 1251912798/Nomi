@@ -43,7 +43,16 @@ const sitemap = read('marketing/sitemap.xml')
 const headers = read('marketing/_headers')
 const readmeEn = read('README.md')
 const readmeZh = read('README.zh-CN.md')
-const releaseVersion = JSON.parse(read('package.json')).version
+const packageJson = JSON.parse(read('package.json'))
+const releaseVersion = packageJson.version
+// 官网写的最低 macOS 跟着 Electron 走（Electron docs/breaking-changes.md：38 起要 macOS 12，44 起要 13，已核到 46）。
+// 升 Electron 越过核过的版本就红：先查它去没去掉 macOS 版本，再改这张表、官网的「macOS N+」和第 3 步的 macOS 12 叫法。
+const MAC_FLOOR_BY_ELECTRON = [[44, 13], [38, 12]]
+const ELECTRON_CHECKED_THROUGH = 46
+const electronMajor = Number(/^\D*(\d+)/.exec(packageJson.devDependencies?.electron ?? packageJson.dependencies?.electron ?? '')?.[1])
+expect(electronMajor <= ELECTRON_CHECKED_THROUGH, `Electron ${electronMajor} is past the checked range: re-check its breaking changes for a dropped macOS, then update MAC_FLOOR_BY_ELECTRON and ELECTRON_CHECKED_THROUGH`)
+const macFloor = MAC_FLOOR_BY_ELECTRON.find(([major]) => electronMajor >= major)?.[1]
+expect(macFloor, `Electron ${electronMajor} predates MAC_FLOOR_BY_ELECTRON`)
 const film = '/assets/video/nomi-0.22-film.mp4'
 const files = [
   `marketing${film}`,
@@ -116,7 +125,7 @@ for (const html of [zh, en]) {
   expect(!html.includes('data-open-dialog="group'), 'group QR does not require a dialog trigger')
   expect(html.includes('/assets/qingyang-wechat.jpg'), 'maintainer QR destination exists')
   expect(html.includes('/assets/nomi-logo.svg'), 'official Nomi mark is used')
-  expect(html.includes('macOS 12+'), 'macOS minimum version is explicit')
+  expect(html.includes(`macOS ${macFloor}+`), `macOS minimum version matches what Electron ${electronMajor} requires`)
   expect(html.includes(`"softwareVersion":"${releaseVersion}"`), 'structured data matches the release version')
   expect(html.includes('navigator.languages') && html.includes('find(Boolean)'), 'browser locale priority logic is embedded')
   expectBefore(html, "if (location.pathname !== '/') return", '<link rel="stylesheet"', 'browser locale resolves before styles and body can paint')
@@ -142,10 +151,31 @@ for (const html of [zhQuickstart, enQuickstart]) {
   expect(html.includes('hreflang="zh-CN" href="https://nomiaqm.com/quickstart"') && html.includes('hreflang="en" href="https://nomiaqm.com/en/quickstart"'), 'quickstart pages point at each other')
   expect(html.includes(`data-latest-version>v${releaseVersion}<`), 'quickstart version matches the release')
   expect(html.includes(`"softwareVersion":"${releaseVersion}"`), 'quickstart structured data matches the release version')
-  expect(html.includes('macOS 12+'), 'quickstart states the macOS minimum version')
+  expect(html.includes(`macOS ${macFloor}+`), `quickstart states the macOS minimum version Electron ${electronMajor} requires`)
   expect(!html.includes("if (location.pathname !== '/') return"), 'quickstart does not redirect by browser language')
   expect(!html.includes('data-segment') && !html.includes('author-dialog') && !html.includes('.feature {'), 'quickstart carries no homepage-only markup, script, or styles')
   expect(!/<a[^>]+href="https:\/\/github\.com\/aqm857886159\/Nomi\/releases\/latest"/.test(html), 'quickstart never links to the Releases listing for downloads')
+}
+
+// macOS 第一次打开（2026-10-24）：macOS 15 起右键 →「打开」过不了 Gatekeeper，官网只给系统设置里的「仍要打开」。
+// 叫法钉系统原文：13 起取自 macOS 26.5.1 自带的本地化表（这个窗格只在「系统设置」里），12 取 Apple《Mac 使用手册》12.0 版；
+// 还支持 macOS 12 时才写 12 的叫法。
+const macFirstOpen = [
+  { locale: 'zh', home: zh, quickstart: zhQuickstart, names: ['隐私与安全性', '仍要打开'], monterey: ['系统偏好设置', '安全性与隐私', '通用'], rightClick: /右键/ },
+  { locale: 'en', home: en, quickstart: enQuickstart, names: ['Privacy &amp; Security', 'Open Anyway'], monterey: ['System Preferences', 'Security &amp; Privacy', 'General'], rightClick: /right-click|control-click/i },
+]
+for (const { locale, home, quickstart, names, monterey, rightClick } of macFirstOpen) {
+  const guides = [...home.matchAll(/<section class="mac-install-guide" data-mac-install-guide>([\s\S]*?)<\/section>/g)].map((match) => match[1])
+  const tip = /<p class="tip">([\s\S]*?)<\/p>/.exec(quickstart)?.[1] ?? ''
+  expect(guides.length === 2, `${locale} macOS guide renders in the dialog and the no-JS fallback`)
+  for (const [where, text] of [...guides.map((guide) => ['guide', guide]), ['quickstart tip', tip]]) {
+    expect(names.every((name) => text.includes(name)), `${locale} ${where} sends a blocked first launch to ${names.join(' → ')}`)
+    expect(!rightClick.test(text), `${locale} ${where} does not offer right-click → Open (blocked since macOS 15)`)
+  }
+  for (const guide of guides) {
+    if (macFloor <= 12) expect(monterey.every((name) => guide.includes(name)), `${locale} guide names the macOS 12 path while Electron ${electronMajor} still supports macOS 12`)
+    else expect(!guide.includes(monterey[0]), `${locale} guide drops the macOS 12 path once Electron ${electronMajor} requires macOS ${macFloor}`)
+  }
 }
 
 for (const html of [zh, en, zhQuickstart, enQuickstart]) {

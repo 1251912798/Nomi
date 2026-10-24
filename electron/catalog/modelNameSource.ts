@@ -1,20 +1,23 @@
-// 「这家这一行发出去的型号名，是不是由档案提供」——按供应商映射算，唯一的计算处（用户 2026-10-23 拍板方案 A）。
+// 「这家这一行发出去的型号名，是不是由档案提供」——按这家的映射算，唯一的计算处。
 //
-// 型号名的家是供应商的映射：请求体（或命令行参数、URL、自定义脚本）模板里读 `request.params.model` = 这家声明
-// 「型号名由档案的当前变体 / 当前方式提供」（APIMart 的变体模型、KIE 拆 id 的图片模型、Dreamina……）；
-// 写死型号或读 `{{model.modelKey}}` = 型号名就是这家目录里这一行自己的 key（Runway 的 `wan3`……）。
+// 判据只有一个，与发送时决定 model 串的 owner（electron/shared/modelArchetypes/wireModelIdentity.resolveWireModel）
+// 是**同一个谓词** `operationSelectsArchetypeWireModel`：这一行发送时会选中的 create op 声明了
+// `wireModel: "archetype-selection"` = 这家的 `{{request.params.model}}` 收档案所选的模式 / 变体型号名
+// （APIMart 的变体模型、KIE 拆 id 的图片模型、Dreamina……；声明只写在内置目录契约的 op 定义处，普查测试锁住）。
+// 没有声明 = 型号名就是这一行连接自己的名字（别名优先）：写死型号的映射（Runway 的 `wan3`……）、
+// 读 `{{model.modelKey}}` 的映射、用户自建中转（含旧数据里读 `request.params.model` 的参数化映射、AI 编译 / 手改的映射）都在这一档。
+//
+// 历史（别改回去）：2026-10-23 的判据是「模板文本里读 `request.params.model` 就算接受」。2026-09-03 起每个自建中转 op
+// 都读它，于是每个自建中转都被判成接受档案型号名——变体栏、Agent 能力清单照档案摆出别家的名字，发送时 owner 却只发
+// 连接名，同一个问题两个答案（2026-10-24 实测）。用户 2026-10-24 拍板：判据合一到 op 声明。
+//
 // 映射怎么选与发送时完全一样（selectTaskMapping：同一任务种类下精确绑定这一行的映射优先，没有才用这家的通用模板），
 // 所以这里说「接受」的行，发送时真会把档案型号名发出去；说「不接受」的行，档案型号名一个字都进不了请求。
-// 不写任何供应商名、型号名；用户自建中转按它自己的映射自动对上。结果随目录读出给渲染层（listModelCatalogModels），
+// 不写任何供应商名、型号名。结果随目录读出给渲染层（listModelCatalogModels），
 // 并装成本进程的查询口（catalogStore），两侧的档案解析（resolveArchetypeForModel / buildVideoModelCandidates）只认这个结果。
 import type { ModelNameSource } from "../shared/modelArchetypes/modelNameSource";
+import { operationSelectsArchetypeWireModel } from "../shared/modelArchetypes/wireModelIdentity";
 import { selectTaskMapping, type Mapping } from "./types";
-
-const ARCHETYPE_MODEL_REF = "request.params.model";
-
-function operationReadsArchetypeModel(mapping: Mapping): boolean {
-  return JSON.stringify(mapping.create ?? {}).includes(ARCHETYPE_MODEL_REF);
-}
 
 export function deriveModelNameSource(model: { vendorKey: string; modelKey: string }, mappings: readonly Mapping[]): ModelNameSource {
   const vendorMappings = mappings.filter((mapping) => mapping.enabled && mapping.vendorKey === model.vendorKey);
@@ -24,7 +27,7 @@ export function deriveModelNameSource(model: { vendorKey: string; modelKey: stri
     const modeIds = [...new Set(vendorMappings.filter((mapping) => mapping.taskKind === taskKind).map((mapping) => (mapping.modeId ?? "").trim()))];
     for (const modeId of modeIds) {
       const selected = selectTaskMapping(vendorMappings as Mapping[], model.vendorKey, taskKind, model.modelKey, modeId || undefined);
-      if (selected && operationReadsArchetypeModel(selected)) return "archetype";
+      if (selected && operationSelectsArchetypeWireModel(selected.create)) return "archetype";
     }
   }
   return "row";

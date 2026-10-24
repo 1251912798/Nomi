@@ -26,6 +26,7 @@ import {
   type RendererLogFieldValue,
   type RendererLogLevel,
 } from '../../electron/shared/contracts/rendererLog'
+import { ipcInvokeFailure } from '../../electron/shared/contracts/ipcInvokeFailure'
 import { getDesktopBridge } from './bridge'
 
 export type RendererLogFields = Record<string, RendererLogFieldValue | undefined>
@@ -48,26 +49,63 @@ function errorCode(error: unknown): string | undefined {
   return typeof code === 'string' || typeof code === 'number' ? clip(String(code)) : undefined
 }
 
+type Facts = { name: string; message: string; code?: string }
+
+/** V8 写进栈首部的那一份：`名字: 消息`（消息为空时只有名字）。 */
+function asWritten(error: Error): Facts {
+  return { name: error.name || 'Error', message: `${error.message}` }
+}
+
+/**
+ * 一个 Error 自己是什么。经 `ipcRenderer.invoke` 回来的失败，渲染层手里这个 Error 只是 Electron 的外壳
+ * （name 恒为 `Error`、消息是 `Error invoking remote method '…': <类名>: <信息>`）——真正的类名、Node 错误码与消息
+ * 从那句话的唯一读法里取回来，日志记的就是主进程那个错误（类名照写，消息到主进程照旧只给指纹）。
+ */
+function ownFacts(error: Error): Facts {
+  const written = asWritten(error)
+  const code = errorCode(error)
+  const failure = ipcInvokeFailure(written.message)
+  const own = failure ? { name: failure.name ?? written.name, message: failure.message, code: code ?? failure.code } : { ...written, code }
+  return own.code === undefined ? { name: own.name, message: own.message } : own
+}
+
+const header = ({ name, message }: Facts) => (message ? `${name}: ${message}` : name)
+
+/**
+ * 栈的首部换成摊平后的那一份，帧不动。主进程按首部切掉消息、只留帧（`electron/logging/redact.ts` stackFrames）；
+ * 首部对不上时它只能退回「去掉第一行」，跨行消息里长得像帧的那几行就会混进日志。
+ */
+function restack(error: Error, summary: Facts): string | undefined {
+  const stack = error.stack
+  if (typeof stack !== 'string' || !stack) return undefined
+  const written = header(asWritten(error))
+  return stack.startsWith(written) ? `${header(summary)}${stack.slice(written.length)}` : stack
+}
+
 /**
  * 错误 → 可跨 IPC 的平面结构。IPC 的结构化克隆会丢掉 Error 的类名与自定义字段（`code`），
  * 所以必须在这一侧先摊平。包装错误只展开一层 `cause`：包一层再抛的写法里，真因常在 cause 上。
+ * 不是 Error 的值没有类名可言：普通对象上的 `name` 是数据（项目名、素材名），一律记 `NonError`。
  */
 export function summarizeRendererError(error: unknown): RendererLogError {
   if (error instanceof Error) {
+    const own = ownFacts(error)
     const cause = (error as { cause?: unknown }).cause
-    const causeText = cause instanceof Error ? ` | cause: ${cause.name}: ${cause.message}` : ''
-    const code = errorCode(error) ?? errorCode(cause)
+    const causeFacts = cause instanceof Error ? ownFacts(cause) : null
+    const summary = { name: own.name, message: causeFacts ? `${own.message} | cause: ${header(causeFacts)}` : own.message }
+    const code = own.code ?? (causeFacts ? causeFacts.code : errorCode(cause))
+    const stack = restack(error, summary)
     return {
-      name: clip(error.name || 'Error'),
-      message: clip(`${error.message}${causeText}`),
+      name: clip(summary.name),
+      message: clip(summary.message),
       ...(code === undefined ? {} : { code }),
-      ...(error.stack ? { stack: clip(error.stack) } : {}),
+      ...(stack ? { stack: clip(stack) } : {}),
     }
   }
   const record = error && typeof error === 'object' ? (error as Record<string, unknown>) : null
   const code = errorCode(error)
   return {
-    name: typeof record?.name === 'string' && record.name ? clip(record.name) : 'NonError',
+    name: 'NonError',
     message: clip(typeof record?.message === 'string' ? record.message : describeNonError(error)),
     ...(code === undefined ? {} : { code }),
   }
