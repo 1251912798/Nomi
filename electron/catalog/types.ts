@@ -465,8 +465,9 @@ export type HttpOperation = {
   defaultParams?: Record<string, unknown>;
   /**
    * 这条 op 的 `{{request.params.model}}` 收**档案所选模式 / 变体的线上名**（"archetype-selection"）。
-   * 只由内置目录登记表（seedBuiltins）统一盖章；缺省 = 发连接自己的模型名（modelAlias || modelKey）。
-   * 判定只在 electron/shared/modelArchetypes/wireModelIdentity.resolveWireModel（2026-10-16 自建中转被套上 kie 线上名）。
+   * 只写在内置目录契约 op 的定义处（普查测试锁住）；兄弟连接里与 curated 报文逐字相同的映射由 seedBuiltins 启动对账补上；
+   * 缺省 = 发连接自己的模型名（modelAlias || modelKey）。谓词只有一个（wireModelIdentity.operationSelectsArchetypeWireModel）：
+   * 发送时的 resolveWireModel 与目录行判据 deriveModelNameSource 都问它（2026-10-16 自建中转被套上 kie 线上名；2026-10-24 判据合一）。
    */
   wireModel?: WireModelDeclaration;
   /**
