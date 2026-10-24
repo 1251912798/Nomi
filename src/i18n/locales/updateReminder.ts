@@ -44,7 +44,7 @@ export const zhUpdateReminder = {
     reopenDownload: '下载页',
     macSteps: {
       open: '下载完成后，打开 .dmg 文件',
-      replace: '把 Nomi 拖到「应用程序」，选择替换',
+      replace: '退出 Nomi，把新版拖到「应用程序」，选择替换',
       relaunch: '重新打开 Nomi，项目都在',
     },
   },
@@ -96,7 +96,7 @@ export const enUpdateReminder: typeof zhUpdateReminder = {
     reopenDownload: 'Download page',
     macSteps: {
       open: 'When the download finishes, open the .dmg file',
-      replace: 'Drag Nomi into Applications and choose Replace',
+      replace: 'Quit Nomi, drag the new version into Applications, and choose Replace',
       relaunch: 'Open Nomi again. Your projects are all there',
     },
   },
