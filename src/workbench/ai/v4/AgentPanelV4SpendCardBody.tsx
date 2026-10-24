@@ -56,7 +56,10 @@ function ExclusionToggle({ pointer, busy, onExclude, onRestore }: {
       disabled={busy}
       onClick={() => (restore ? onRestore(pointer.shotId) : onExclude(pointer.shotId))}
       data-spend-exclusion={pointer.exclusion}
-      className="inline-flex h-5 items-center gap-0.5 rounded-full bg-nomi-paper/85 px-1.5 text-micro text-nomi-ink-80 shadow-nomi-sm hover:bg-nomi-paper hover:text-nomi-ink disabled:opacity-40"
+      className={cn(
+        'inline-flex h-5 items-center gap-0.5 rounded-full bg-nomi-paper/85 px-1.5 text-micro text-nomi-ink-80 shadow-nomi-sm hover:bg-nomi-paper hover:text-nomi-ink disabled:opacity-40',
+        restore && 'pointer-events-none group-hover/pointer-cell:pointer-events-auto group-focus-within/pointer-cell:pointer-events-auto',
+      )}
     >
       {restore ? t('agentPanelV4.spendCard.restore') : null}
       {restore ? null : <IconX size={11} stroke={1.8} aria-hidden="true" />}

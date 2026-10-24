@@ -146,7 +146,7 @@ function useHoverLink(nodeId: string, enabled: boolean): { hot: boolean; on: () 
  * `tailFrom`（组给的，见 nodePointerTitleTails）：从这儿起是「和兄弟格不一样的那一截」——前面那截公共开头先截（带省略号），这一截不截。
  * 在组的格子里，小动作（付费卡「不生成 ×」/「恢复」）露出来时标题行右边让出它的宽，小动作不压标题。
  */
-function PointerLabel({ model, narrow, tailFrom = 0 }: { model: PointerModel; narrow: boolean; tailFrom?: number }): JSX.Element {
+function PointerLabel({ model, narrow, tailFrom = 0, reserveAccessory = false }: { model: PointerModel; narrow: boolean; tailFrom?: number; reserveAccessory?: boolean }): JSX.Element {
   const gone = model.face.kind === 'removed' || model.face.kind === 'unavailable'
   // 窄面板只留镜号（名字靠悬停提示）；没有镜号的节点照旧露名字。
   const hideTitle = narrow && Boolean(model.shotText)
@@ -165,6 +165,7 @@ function PointerLabel({ model, narrow, tailFrom = 0 }: { model: PointerModel; na
     <span
       className={cn(
         'flex h-[22px] min-w-0 items-center gap-1.5 text-caption',
+        reserveAccessory && 'max-w-[calc(100%-24px)]',
       )}
       title={model.name}
     >
@@ -287,9 +288,11 @@ export type NodePointerProps = {
   onTitle?: (title: string) => void
   /** 组给的：标题从这儿起是和兄弟格不一样的那一截（截中间，见 nodePointerTitleTails）。 */
   titleTail?: number
+  /** 组格挂右上角小动作时，标题留出同一格的安全边。 */
+  reserveAccessory?: boolean
 }
 
-export function NodePointer({ subject, density = 'card', frame = 'single', layout = 'auto', narrow = false, overflow, onHover, onTitle, titleTail }: NodePointerProps): JSX.Element {
+export function NodePointer({ subject, density = 'card', frame = 'single', layout = 'auto', narrow = false, overflow, onHover, onTitle, titleTail, reserveAccessory = false }: NodePointerProps): JSX.Element {
   const { t } = useTranslation()
   const model = usePointerModel(subject)
   // 绘制前报上去：组拿到名字就在同一帧里算好截法，不先画一帧「几格截成一样」再跳。
@@ -395,7 +398,7 @@ export function NodePointer({ subject, density = 'card', frame = 'single', layou
     : <PointerFaceArt model={model} size={frame === 'cell' ? 'cell' : 'card'} located={located} />
   return (
     <button {...common} className={cn('flex w-full min-w-0 flex-col gap-1 rounded-nomi text-left text-caption', gone && 'cursor-default')}>
-      <PointerLabel model={model} narrow={narrow} {...(titleTail ? { tailFrom: titleTail } : {})} />
+      <PointerLabel model={model} narrow={narrow} reserveAccessory={reserveAccessory} {...(titleTail ? { tailFrom: titleTail } : {})} />
       {side ? (
         <span className="flex min-w-0 items-start gap-3">
           <span className="relative shrink-0" style={{ height: SIDE_SLOT_HEIGHT, aspectRatio: String(model.aspect) }}>
@@ -467,8 +470,8 @@ function PointerCell({ pointer, accessory }: { pointer: React.ReactNode; accesso
       <span
         className={cn(
           accessory.pinned
-            ? 'absolute inset-x-0 top-[26px] z-[5] flex aspect-video items-center justify-center transition-opacity'
-            : 'absolute right-0 top-[20px] z-[5] flex h-[22px] items-center transition-opacity',
+            ? 'pointer-events-none absolute inset-x-0 top-[26px] z-[5] flex aspect-video items-center justify-center transition-opacity'
+            : 'absolute right-0 top-[18px] z-[5] flex h-[22px] items-center transition-opacity',
           !accessory.pinned && 'pointer-events-none opacity-0 group-focus-within/pointer-cell:pointer-events-auto group-focus-within/pointer-cell:opacity-100 group-hover/pointer-cell:pointer-events-auto group-hover/pointer-cell:opacity-100',
         )}
         data-node-pointer-cell-accessory=""
@@ -543,6 +546,7 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
         {shown.map((subject, index) => {
           const folded = Boolean(visible.hidden && index === visible.shown - 1)
           const key = keys[index]
+          const accessory = cellAccessory && !folded ? cellAccessory(subject, index) : null
           const pointer = (
             <NodePointer
               subject={subject}
@@ -552,9 +556,9 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
               onHover={(hovering) => setHovered((stack) => pointerHoverStack(stack, subject.nodeId, hovering))}
               onTitle={reporterFor(key)}
               titleTail={tails[index]}
+              reserveAccessory={Boolean(accessory)}
             />
           )
-          const accessory = cellAccessory && !folded ? cellAccessory(subject, index) : null
           return accessory
             ? <PointerCell key={key} pointer={pointer} accessory={accessory} />
             : <React.Fragment key={key}>{pointer}</React.Fragment>
