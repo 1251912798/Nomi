@@ -877,20 +877,6 @@ export default {
         'workbench-pop': 'var(--workbench-shadow-pop)',
       },
       keyframes: {
-        'generation-focus-pulse': {
-          '0%': {
-            filter: 'drop-shadow(0 0 0 rgba(80, 112, 255, 0))',
-            transform: 'scale(1)',
-          },
-          '18%': {
-            filter: 'drop-shadow(0 0 24px rgba(80, 112, 255, 0.42))',
-            transform: 'scale(1.018)',
-          },
-          '100%': {
-            filter: 'drop-shadow(0 0 0 rgba(80, 112, 255, 0))',
-            transform: 'scale(1)',
-          },
-        },
         // 收起角标的 settle 脉冲（09-01 定稿 §11.2：**单次** 420ms，不常闪）。
         // 只是「刚变过」的一下落定，不是一个持续的注意力索取——所以起点是小一圈的自己，
         // 冲过头一点点再回到 1，没有第二个来回。
@@ -909,7 +895,6 @@ export default {
         },
       },
       animation: {
-        'generation-focus-pulse': 'generation-focus-pulse 1.35s ease-out',
         'nomi-badge-settle': 'nomi-badge-settle 420ms ease-out 1',
         'remove-bg-pulse': 'remove-bg-pulse 1.2s ease-in-out infinite',
         'remove-bg-pulse-slow': 'remove-bg-pulse 1.5s ease-in-out infinite',

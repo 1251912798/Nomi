@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUILTIN_SOURCE_IDS, getBuiltinPrompts, withBuiltinPrompts } from "./builtinPacks";
-import type { LibraryPrompt } from "./promptLibraryTypes";
+import type { LibraryPrompt } from "../shared/contracts/promptLibrary";
 import { readSkillRecords } from "../skills/skillStore";
 import { discoverSkillRecords } from "../agentLane/laneSkillCatalog.mjs";
 

@@ -109,7 +109,7 @@ export const zhGenerationCommon = {
     splitCount: '拆成 {{count}} 条',
     longText: '共 {{count}} 字，在节点里滚动查看',
     tryLabel: '试试',
-    refKind: '引用',
+    refKind: '连入文字',
     refHint: '生成时接在提示词后面',
     refAria: '引用文本节点「{{title}}」',
     refUntitled: '文本',
@@ -403,6 +403,10 @@ export const zhGenerationCommon = {
       assetTooLarge: {
         reason: '这个素材太大，传不上去',
         hint: '本机素材要先换成公网地址才能给服务商用，而这个文件超过了所有可用上传通道的大小上限（HTTP 413），Nomi 每条通道都试过了。重试没用——同一个文件每次都会被同一个上限挡回来。请把它压缩或裁短一点再放进来（视频尤其常见），或在「模型接入」接一个上传上限更高的通道。具体是哪个素材、多大，见下方技术详情。',
+      },
+      referenceNotInUse: {
+        reason: '这次生成没发出去：请求里带了参考区没在用的图',
+        hint: 'Nomi 在发给服务商之前发现，这次请求里夹着参考区标「未用到」或当前方式用不上的图，于是在发出之前拦下了——这次请求一个字节都没离开你的电脑，服务商没被请求到。重新点一次生成即可：Nomi 会按参考区里正在用的图重新组一次请求。如果反复出现，请把下方技术详情反馈给我们，这说明有个入口没走统一的参考规则。',
       },
       assetInvalid: {
         reason: '参考素材本身有问题',
@@ -871,6 +875,20 @@ export const zhGenerationCommon = {
   },
   // 节点生成浮框底栏 v1（样张 docs/design/2026-09-10-node-composer-bar-v1.md，2026-09-10 拍板的三类归位）。
   // A 类（决定出什么/花多少）留底栏；B 类（帮我写提示词）收成提示词框右上角一簇纯 icon；锁回节点浮条。
+  composerB3: {
+    generateTip: '生成',
+    quantityImage: '{{count}} 张',
+    quantityVideo: '{{count}} 个',
+    quantity: '数量',
+    modeReference: '参考',
+    modeFirstLast: '首尾帧',
+    modeFirstFrame: '首帧',
+    modeLimit: '此模型最多：{{limits}}',
+    limitImages: '{{count}} 张图',
+    limitVideos: '{{count}} 段视频',
+    limitAudios: '{{count}} 段音频',
+    limitSeparator: '、',
+  },
   composerBarV1: {
     promptTools: '写提示词',
     effects: '提示词预设',
@@ -1841,7 +1859,7 @@ export const enGenerationCommon = {
     splitCount: 'Split into {{count}}',
     longText: '{{count}} characters — scroll inside the node',
     tryLabel: 'Try',
-    refKind: 'Reference',
+    refKind: 'Connected text',
     refHint: 'Added after the prompt when generating',
     refAria: 'Referenced text node “{{title}}”',
     refUntitled: 'Text',
@@ -2127,6 +2145,10 @@ export const enGenerationCommon = {
       assetTooLarge: {
         reason: 'This asset is too large to upload',
         hint: 'Local assets must first be turned into a publicly reachable URL, and this file exceeds the size limit of every available upload channel (HTTP 413) — Nomi tried them all. Retrying will not help: the same file hits the same ceiling every time. Compress or trim it (videos especially) and add it again, or connect a channel with a higher upload limit under Model Access. The technical details below name the asset and its size.',
+      },
+      referenceNotInUse: {
+        reason: 'This generation was not sent: the request carried references that are not in use',
+        hint: 'Before sending, Nomi found images in this request that the reference row marks as Unused, or that the current mode cannot take, so it stopped the request before sending. Not a single byte left your machine and the provider was never called. Just generate again: Nomi will rebuild the request from the references currently in use. If this keeps happening, please send us the technical details below — it means some entry point is not following the shared reference rule.',
       },
       assetInvalid: {
         reason: 'The reference asset itself is invalid',
@@ -2566,6 +2588,20 @@ export const enGenerationCommon = {
     formattingAria: 'Text formatting',
     dragAria: 'Drag text node',
     label: 'Text',
+  },
+  composerB3: {
+    generateTip: 'Generate',
+    quantityImage: '×{{count}}',
+    quantityVideo: '×{{count}}',
+    quantity: 'Quantity',
+    modeReference: 'Reference',
+    modeFirstLast: 'First / Last',
+    modeFirstFrame: 'First frame',
+    modeLimit: 'This model allows up to: {{limits}}',
+    limitImages: '{{count}} images',
+    limitVideos: '{{count}} videos',
+    limitAudios: '{{count}} audio clips',
+    limitSeparator: ', ',
   },
   composerBarV1: {
     promptTools: 'Prompt helpers',

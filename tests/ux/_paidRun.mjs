@@ -411,3 +411,58 @@ export function paidWalkCoverageProblems(files, readFile, exceptions = PAID_WALK
   }
   return problems
 }
+
+// ── 构建标记还在不在产品源码里（零花费结构核对，结构测试钉它）──────────────────────────────
+// 起因（2026-10-24）：B3 把主进程参考守从「只剥不拒」改成「拒发」，旧付费脚本 reference-leak-hotfix.paid.mjs 的构建标记
+// 'reference residue stripped before send' 随之从源码里消失。assertPaidBuildReady 只在付费那一刻搜产物，平时没有任何一道门
+// 看得见，直到要真付费那天才发现脚本跑不起来。这里把同一件事前移到单测：每个 `buildMarkers: [...]` 的值都要能静态读出来
+// （字符串字面量 / 同文件的 const 字面量 / uiText('语言', 'key')），且原样出现在产品源码里（不含测试文件）。
+export const PRODUCT_SOURCE_DIRS = Object.freeze(['src', 'electron'])
+
+const stripLineAndBlockComments = (source) => source.replace(/\r\n?/g, '\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+// 一项：'…' / "…" / `…`（不带插值）/ uiText('语言', 'key') / 标识符（可带一段调用，带了就读不出来、报问题）。
+const MARKER_ENTRY = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`([^`$\\]*)`|\buiText\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)|([A-Za-z_$][\w$]*(?:\([^)]*\))?)/g
+const QUOTED_VALUE = String.raw`(?:'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|` + '`([^`$\\\\]*)`)'
+const unescapeQuoted = (text) => text.replace(/\\(.)/g, '$1')
+
+/** `buildMarkers: [...]` 里的一项 → { value } 或 { error }。 */
+function resolveMarkerEntry(match, code, uiTextOf) {
+  const [whole, single, double, template, locale, key, identifier] = match
+  if (single !== undefined) return { value: unescapeQuoted(single) }
+  if (double !== undefined) return { value: unescapeQuoted(double) }
+  if (template !== undefined) return { value: template }
+  if (locale !== undefined) {
+    try { return { value: uiTextOf(locale, key) } } catch (error) { return { error: `uiText('${locale}', '${key}') 读不到（${String(error?.message ?? error).slice(0, 120)}）` } }
+  }
+  if (/^[A-Za-z_$][\w$]*$/.test(identifier)) {
+    const constant = new RegExp(String.raw`\bconst\s+` + identifier.replace(/\$/g, '\\$') + String.raw`\s*=\s*` + QUOTED_VALUE).exec(code)
+    if (constant) return { value: constant[3] ?? unescapeQuoted(constant[1] ?? constant[2]) }
+  }
+  return { error: `${whole} 读不出字面值（标记只认字符串字面量、同文件的 const 字面量、uiText('语言', 'key')）` }
+}
+
+/**
+ * 纯判据：files 里每个 `buildMarkers: [...]` 的每一项，读得出字面值、且 sourceIncludes(值) 为真；返回问题清单。
+ * @param {string[]} files 仓库相对路径
+ * @param {(file: string) => string} readFile
+ * @param {{ sourceIncludes: (text: string) => boolean, uiTextOf: (locale: string, key: string) => string }} deps
+ */
+export function paidBuildMarkerProblems(files, readFile, { sourceIncludes, uiTextOf }) {
+  const problems = []
+  for (const file of files) {
+    const code = stripLineAndBlockComments(readFile(file))
+    for (const list of code.matchAll(/\bbuildMarkers\s*:\s*\[([^\]]*)\]/g)) {
+      const entries = [...list[1].matchAll(MARKER_ENTRY)]
+      if (!entries.length) problems.push(`${file}：buildMarkers 是空的——要验修复就给一句会原样进产物的字面量，不验就别传`)
+      for (const entry of entries) {
+        const resolved = resolveMarkerEntry(entry, code, uiTextOf)
+        if (resolved.error) { problems.push(`${file}：构建标记 ${resolved.error}`); continue }
+        if (!resolved.value) { problems.push(`${file}：构建标记是空串`); continue }
+        if (!sourceIncludes(resolved.value)) {
+          problems.push(`${file}：构建标记 ${JSON.stringify(resolved.value)} 在产品源码（${PRODUCT_SOURCE_DIRS.join('/、')}/，不含测试）里找不到——被验的修复已改写或删掉，这条付费走查到付费那一刻会拒跑；同一提交换成新实现会进产物的字面量，或删掉这条走查`)
+        }
+      }
+    }
+  }
+  return problems
+}

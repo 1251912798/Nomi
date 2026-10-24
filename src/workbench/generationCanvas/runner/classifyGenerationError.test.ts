@@ -319,6 +319,20 @@ describe('classifyGenerationError — 已知分类', () => {
     expect(translated.kind).toBe('asset-invalid')
   })
 
+  // 主进程发送前的参考守拒发（#1269，协调 10-22 定）：请求没离开本机；不甩锅服务商，主动作重试。
+  it('参考没在用被主进程拒发:带 reference-not-in-use 码的错误归到它自己那一类，中英人话都来自词典', () => {
+    const coded = classifyGenerationError(
+      `Error invoking remote method 'nomi:tasks:run': Error: ${tagNomiError('reference-not-in-use', 'Request rejected before sending: reference keys carry images that are not in use (seedance-2/t2v: firstFrameUrl).')}`,
+    )
+    expect(coded.kind).toBe('reference-not-in-use')
+    expect(coded.reason).toBe(i18n.t('generationCommon.observability.error.referenceNotInUse.reason'))
+    expect(coded.hint).toBe(i18n.t('generationCommon.observability.error.referenceNotInUse.hint'))
+    expect(coded.primary).toBe('retry')
+    expect(coded.raw).not.toMatch(/NOMI_ERR/)
+    expect(coded.raw).toMatch(/firstFrameUrl/)
+    expect(i18n.t('generationCommon.observability.error.referenceNotInUse.reason', { lng: 'en' })).not.toBe(coded.reason)
+  })
+
   it('stripNomiErrorCode:剥掉码标记后只留人话（展示端不泄露机器信号）', () => {
     expect(stripNomiErrorCode(tagNomiError('asset-too-large', '文件太大了'))).toBe('文件太大了')
     expect(stripNomiErrorCode('没有标记的普通错误')).toBe('没有标记的普通错误')
@@ -528,7 +542,7 @@ describe('动作表：每类主 / 次动作都写在表里，改一类不许带�
     auth: true, balance: true, quota: true, 'poll-timeout': true, network: true, 'model-config': true,
     'model-kind-mismatch': true, 'model-not-open': true, 'model-unavailable-upstream': true, 'model-retired': true,
     'image-route-disabled': true, 'account-gate': true, 'content-policy': true, 'input-image-blocked': true,
-    'asset-upload-failed': true, 'asset-too-large': true, 'asset-invalid': true, 'outbound-blocked': true,
+    'asset-upload-failed': true, 'asset-too-large': true, 'asset-invalid': true, 'reference-not-in-use': true, 'outbound-blocked': true,
     'outbound-blocked-submit': true, 'outbound-blocked-credential-origin': true, 'credential-redirect': true, server: true, input: true,
     'output-truncated': true, 'output-unreadable': true, 'submission-unknown': true, 'submission-not-sent': true, 'output-retrieval-failed': true, 'retrieval-incomplete': true, 'local-processing': true, unknown: true,
   }

@@ -1,6 +1,6 @@
 import React, { type JSX } from 'react'
 import { cn } from '../../../../utils/cn'
-import { useStoryboardRowNarrow } from './storyboardRowDensity'
+import { useStoryboardRowDensity } from './storyboardRowDensity'
 
 /**
  * 行解剖的**唯一实现**（镜头行与参考卡共用）：`[行首 14 | 视觉列 | 内容列 1fr]`，从左往右读——
@@ -55,21 +55,23 @@ export default function StoryboardRowShell({
   dataAttributes,
   ...handlers
 }: Props): JSX.Element {
-  const narrow = useStoryboardRowNarrow()
-  const columnWidth = narrow ? Math.round(visualWidth * NARROW_SCALE) : visualWidth
+  const density = useStoryboardRowDensity()
+  const compact = density === 'compact'
+  const columnWidth = density === 'wide' ? visualWidth : Math.round(visualWidth * NARROW_SCALE)
   return (
     <div
       {...handlers}
       {...dataAttributes}
-      data-storyboard-row-density={narrow ? 'narrow' : 'wide'}
+      data-storyboard-row-density={density}
       className={cn('relative grid items-stretch gap-3 bg-nomi-paper p-3', className)}
-      style={{ gridTemplateColumns: `${ROW_GRIP_WIDTH}px ${columnWidth}px minmax(0,1fr)` }}
+      // 最窄档（E1a 的 400 / 320）：视觉列变成最上一行（缩略图 + 状态），内容列占满下面整行宽。
+      style={{ gridTemplateColumns: compact ? `${ROW_GRIP_WIDTH}px minmax(0,1fr)` : `${ROW_GRIP_WIDTH}px ${columnWidth}px minmax(0,1fr)` }}
     >
       {dropIndicator ? <div className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-nomi-accent" aria-hidden /> : null}
-      <div className="relative self-start justify-self-center text-nomi-ink-20">{grip}</div>
+      <div className={cn('relative self-start justify-self-center text-nomi-ink-20', compact && 'row-span-2')}>{grip}</div>
       <div className="min-w-0 self-start" data-storyboard-visual-column="true">{visual}</div>
       <div className={cn('flex min-w-0 flex-col gap-1.5', !contentStretch && 'self-start')} data-storyboard-content-column="true">{prompt}</div>
-      {footer ? <div className="col-start-2 col-span-2">{footer}</div> : null}
+      {footer ? <div className={cn('col-start-2', !compact && 'col-span-2')}>{footer}</div> : null}
     </div>
   )
 }
