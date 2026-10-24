@@ -19,6 +19,7 @@
     { "path": "tests/ux/director-3dbox-3c-agent.walk.mjs", "category": "B", "reason": "requires a local renderer dev server" },
     { "path": "tests/ux/director-model-import.walk.mjs", "category": "B", "reason": "requires a private Mixamo FBX fixture" },
     { "path": "tests/ux/draft-loop.walk.mjs", "category": "B", "reason": "spends real image credits through the developer machine's real profile (NOMI_R16_GEN=1); otherwise it exits as a skip that nightly counted as a pass; run by hand in the paid lane" },
+    { "path": "tests/ux/find-reference.walk.mjs", "category": "B", "reason": "requires a live TikHub API key and network; without it the walk exits as a skip that nightly counted as a pass; run by hand with TIKHUB_API_KEY" },
     { "path": "tests/ux/import-reveal.walk.mjs", "category": "B", "reason": "requires an external evidence directory with real media" },
     { "path": "tests/ux/integration-session-terminal.walk.mjs", "category": "B", "reason": "requires a separately authenticated integration profile" },
     { "path": "tests/ux/mcp-client-activation.walk.mjs", "category": "B", "reason": "requires an installed macOS Nomi.app" },
