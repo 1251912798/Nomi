@@ -6,6 +6,7 @@
 //   T2 把镜头 2 的机位（medium）改成 50mm 并进机位视角看构图
 //   T3 把青衣女子的走路动作推迟 1 秒，再加一盏灯
 // 每条任务数用户点了几下（拖动 / 输入另计），和设计卡里写的点击路径对账。
+// 开场先验时间轴纵向滚动（6 条轨道一屏放不下）：真滚轮滚片段区，左右两列一起走、刻度尺钉在顶上。
 // 真 App（Electron + 真 Agent 面板）那一遍不在这里：pending-real-app，等用户不用电脑时由协调会话安排。
 //
 // 用法：node tests/ux/director-refine-tasks.walk.mjs；截图在 tests/ux/shots/director/refine-tasks/，必须人眼 Read 过。
@@ -56,6 +57,60 @@ try {
   const woman0 = byName(scene0, '青衣女子')
   const gate = byName(scene0, 'gate')
   check('夹具里有侍卫 / 女子 / 院门', Boolean(guard0 && woman0 && gate))
+
+  // ── 时间轴纵向滚动（2026-10-24 走查 ③）：片段区 onScroll 写的是不会动的外层容器，左侧轨道名纹丝不动、刻度尺被滚走。
+  //    真滚轮滚片段区：左右两列 scrollTop 相同、第一行两边一起挪、刻度尺位置不变。滚完滚回顶，后面的任务照原样走。 ──
+  const timelineGeometry = () => page.evaluate(() => {
+    const lanes = document.querySelector('[data-testid="director-timeline-lanes"]')
+    const list = document.querySelector('[data-testid="director-timeline-tracks"]')
+    const ruler = document.querySelector('[data-testid="director-timeline-ruler"]')
+    const firstTrack = document.querySelector('[data-testid="director-timeline-track"]')
+    // 片段区 = 泳道往上第一个能滚的祖先；轨道列 = 轨道列表往上第一个内容溢出的祖先（它 overflow-hidden，由片段区带着滚）
+    const ancestor = (element, test) => {
+      for (let node = element?.parentElement; node; node = node.parentElement) if (test(node)) return node
+      return null
+    }
+    const lanesScroller = ancestor(lanes, (node) => /(auto|scroll)/.test(getComputedStyle(node).overflowY))
+    const listScroller = ancestor(list, (node) => node.scrollHeight > node.clientHeight + 1)
+    if (!lanes || !list || !ruler || !firstTrack || !lanesScroller || !listScroller) return null
+    return {
+      lanesScrollTop: lanesScroller.scrollTop,
+      listScrollTop: listScroller.scrollTop,
+      rulerTop: ruler.getBoundingClientRect().top,
+      leftRowTop: firstTrack.getBoundingClientRect().top,
+      rightRowTop: lanes.getBoundingClientRect().top,
+    }
+  })
+  const scrollBefore = await timelineGeometry()
+  const lanesBox = await page.getByTestId('director-timeline-lanes').boundingBox()
+  await page.mouse.move(lanesBox.x + 240, lanesBox.y + 20)
+  await page.mouse.wheel(0, 80)
+  await page.waitForFunction(() => {
+    const lanes = document.querySelector('[data-testid="director-timeline-lanes"]')
+    for (let node = lanes?.parentElement; node; node = node.parentElement) if (/(auto|scroll)/.test(getComputedStyle(node).overflowY)) return node.scrollTop > 0
+    return false
+  }, null, { timeout: 5_000 }).catch(() => {})
+  await page.waitForTimeout(200)
+  const scrollAfter = await timelineGeometry()
+  const scrollDetail = JSON.stringify({ before: scrollBefore, after: scrollAfter })
+  check('③ 滚轮真滚动了片段区', Boolean(scrollBefore && scrollAfter) && scrollAfter.lanesScrollTop > 0, scrollDetail)
+  check('③ 左右两列 scrollTop 相同', Boolean(scrollAfter) && scrollAfter.listScrollTop === scrollAfter.lanesScrollTop, scrollDetail)
+  check('③ 第一行左右一起挪（两边行顶的差不变）', Boolean(scrollBefore && scrollAfter)
+    && Math.abs((scrollAfter.leftRowTop - scrollAfter.rightRowTop) - (scrollBefore.leftRowTop - scrollBefore.rightRowTop)) < 1, scrollDetail)
+  check('③ 刻度尺位置不变', Boolean(scrollBefore && scrollAfter) && Math.abs(scrollAfter.rulerTop - scrollBefore.rulerTop) < 1, scrollDetail)
+  console.log(`  · 滚动前左右第一行行顶差 ${scrollBefore ? (scrollBefore.leftRowTop - scrollBefore.rightRowTop).toFixed(1) : '?'} px`)
+  await lab.snap('timeline-scrolled')
+  await page.mouse.wheel(0, -400)
+  await page.waitForTimeout(200)
+  // 在轨道名一列上滚：这一列自己不滚（由片段区带着走），滚轮要交给片段区，两列一起走
+  const listBox = await page.getByTestId('director-timeline-tracks').boundingBox()
+  await page.mouse.move(listBox.x + 60, listBox.y + 20)
+  await page.mouse.wheel(0, 80)
+  await page.waitForTimeout(300)
+  const listWheel = await timelineGeometry()
+  check('③ 在轨道名一列上滚滚轮，两列一起走', Boolean(listWheel) && listWheel.lanesScrollTop > 0 && listWheel.listScrollTop === listWheel.lanesScrollTop, JSON.stringify(listWheel))
+  await page.mouse.wheel(0, -400)
+  await page.waitForTimeout(200)
 
   // ── T1：侍卫朝女子挪近 1 米，转身面对她 ──
   await pickRow('T1', '黑衣侍卫')
