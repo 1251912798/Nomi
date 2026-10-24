@@ -3,16 +3,18 @@
 // 证据：工程落盘的实体数与名字、画中画有机位画面、空态文案在空工程里真的出现、截图人眼核对。
 // 用法：node tests/ux/director-j1-three-person-scene.walk.mjs
 import { expectHidden } from './_assert.mjs'
-import { addCameraPreset, clickOrFail, dragGround, expectVisible, launchDirectorLab, openAddMenu, placeCharacter } from './_directorLab.mjs'
+import { addCameraPreset, clickOrFail, directorText, dragGround, expectVisible, launchDirectorLab, openAddMenu, placeCharacter } from './_directorLab.mjs'
 
-const lab = await launchDirectorLab({ name: 'j1-three-person-scene' })
+const locale = process.env.NOMI_WALK_LANG === 'en' ? 'en' : 'zh-CN'
+const lab = await launchDirectorLab({ name: 'j1-three-person-scene', locale })
 const { page, check } = lab
 
 try {
   // 空工程的三处空态：视口正中提示（精修「选中才出」右边没卡、大纲收在浮层里）/ 时间轴提示 / 画中画「还没有机位」
   check('空工程·视口空态提示', (await page.getByTestId('director-refine-empty').count()) === 1)
   check('空工程·时间轴空态', (await page.getByTestId('director-timeline-empty').count()) === 1)
-  check('空工程·画中画无机位', (await page.getByTestId('director-pip').getByText('还没有机位').count()) === 1)
+  const noCamera = await directorText(page, 'camera.pipNoCamera')
+  check('空工程·画中画无机位', (await page.getByTestId('director-pip').getByText(noCamera, { exact: true }).count()) === 1)
   await lab.snap('empty-project')
 
   await placeCharacter(lab, 'female', -1.4, 0.4)
@@ -29,18 +31,18 @@ try {
 
   // 选中主角 → 相对它的正面中景机位
   await lab.pickInOutliner(characters[1].name, '大纲·主角行')
-  await addCameraPreset(lab, '正面中景')
+  await addCameraPreset(lab, 'cameraPreset.front_medium')
   await lab.waitScene('s.cameras.length === 1', '机位入场')
   const withCamera = await lab.scene()
   const camera = withCamera.cameras[0]
   check('正面中景机位在主角前方', camera.position.z > characters[1].position.z + 1 && Math.abs(camera.position.x - characters[1].position.x) < 1.5, `cam (${camera.position.x.toFixed(1)}, ${camera.position.z.toFixed(1)})`)
   await expectVisible(page.getByTestId('director-pip').getByText(camera.name), '画中画没显示新机位名')
-  await expectHidden(page.getByTestId('director-pip').getByText('还没有机位'), '有机位了画中画还显示「还没有机位」')
+  await expectHidden(page.getByTestId('director-pip').getByText(noCamera, { exact: true }), `有机位了画中画还显示「${noCamera}」`)
   check('画中画显示机位画面（不再是「还没有机位」）', true)
 
   // 主光
   await openAddMenu({ page }, '灯光')
-  await clickOrFail(page.getByRole('button', { name: '主光（平行光）' }), '灯光·主光')
+  await clickOrFail(page.getByRole('button', { name: await directorText(page, 'lightType.directional'), exact: true }), '灯光·主光')
   await lab.waitScene("s.lights.some(l => l.type === 'directional')", '主光入场')
 
   // 方块：拖底面 → 松开拉高 → 点击确认

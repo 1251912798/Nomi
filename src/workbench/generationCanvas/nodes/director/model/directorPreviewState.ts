@@ -18,6 +18,7 @@ import { synchronousSha256 } from '../../../../../../electron/shared/synchronous
 import type { GenerationCanvasNode } from '../../../model/generationCanvasTypes'
 import { productionMetaOf } from '../../../model/productionMeta'
 import { previewAttachIsCurrent } from '../agent/attachCameraMoveToTarget'
+import { isDirectorPreviewDismissed } from '../agent/directorPreviewReferenceLifecycle'
 import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from './directorNodeMeta'
 import { normalizeDirectorProject } from './directorProject'
 import { sceneContentEndSeconds } from './timeGrid'
@@ -157,8 +158,11 @@ export function directorPreviewSpendBlock(
     if (directorPreviewIsStale(latest.preview, project)) return { reason: 'stale', directorNodeId: latest.node.id }
     // 挂接是当前的才放行：换了模型 / 方式之后预演没跟着重挂（窗口关着、或没点出成片）= 付费请求会少带这份预演，挡到再点一次「出成片」
     const target = nodes.find((node) => node.id === nodeId)
-    if (target && latest.preview.videoUrl && !previewAttachIsCurrent(target as GenerationCanvasNode, latest.preview.videoUrl, { kind: 'preview', cuts: [], notes: latest.preview.notes ?? [] })) {
-      return { reason: 'stale', directorNodeId: latest.node.id }
+    if (target && latest.preview.videoUrl) {
+      if (isDirectorPreviewDismissed(target, latest.preview.videoUrl)) return null
+      if (!previewAttachIsCurrent(target as GenerationCanvasNode, latest.preview.videoUrl, { kind: 'preview', cuts: [], notes: latest.preview.notes ?? [] })) {
+        return { reason: 'not_attached', directorNodeId: latest.node.id }
+      }
     }
     return null
   }
@@ -232,7 +236,9 @@ export function directorPreviewBlocksForOperation(
       blocks.push({ nodeId: node.id, ...(shotId ? { shotId } : {}), reason: 'duration_mismatch', previewSeconds: ready.durationSeconds, shotSeconds })
       continue
     }
-    if (referenced && ready?.status === 'ready' && ready.attach === 'video_ref' && ready.assetId && !referenced.includes(ready.assetId)) {
+    const target = nodes.find((candidate) => candidate.id === node.id)
+    if (referenced && target && ready?.status === 'ready' && !isDirectorPreviewDismissed(target, ready.videoUrl)
+      && ready.attach === 'video_ref' && ready.assetId && !referenced.includes(ready.assetId)) {
       blocks.push({ nodeId: node.id, ...(shotId ? { shotId } : {}), reason: 'not_referenced', previewAssetId: ready.assetId })
     }
   }
@@ -267,11 +273,12 @@ export function directorPreviewIsStale(preview: DirectorPreviewMeta, project: un
 }
 
 /** 花钱闸挡住原因 → 给用户的一句话（i18n 键）。节点生成钮的悬停说明与 runner 的报错共用，不各写一份三元式。 */
-export type DirectorPreviewSpendBlockMessageKey = 'director.agent.spendBlockedRendering' | 'director.agent.spendBlockedFailed' | 'director.agent.spendBlockedStale' | 'director.agent.spendBlockedTooLong'
+export type DirectorPreviewSpendBlockMessageKey = 'director.agent.spendBlockedRendering' | 'director.agent.spendBlockedFailed' | 'director.agent.spendBlockedStale' | 'director.agent.spendBlockedNotAttached' | 'director.agent.spendBlockedTooLong'
 
 export function directorPreviewSpendBlockMessageKey(block: Pick<DirectorPreviewSpendBlock, 'reason' | 'failure'>): DirectorPreviewSpendBlockMessageKey {
   if (block.reason === 'rendering') return 'director.agent.spendBlockedRendering'
   if (block.reason === 'stale') return 'director.agent.spendBlockedStale'
+  if (block.reason === 'not_attached') return 'director.agent.spendBlockedNotAttached'
   return block.failure === 'too_long' ? 'director.agent.spendBlockedTooLong' : 'director.agent.spendBlockedFailed'
 }
 

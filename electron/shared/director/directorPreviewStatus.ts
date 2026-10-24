@@ -9,7 +9,7 @@ export type DirectorPreviewStatus = (typeof DIRECTOR_PREVIEW_STATUSES)[number];
  * 3D-BOX 花钱闸挡住一镜的原因（跨进程合同的唯一 owner：渲染端 directorPreviewState 判、主进程单镜 Run 准入与 Agent 回执消费）。
  * rendering = 预演还在渲染；failed = 预演失败；stale = 预演挂上之后导演工程又被改过（过期，要先重渲）。
  */
-export const DIRECTOR_PREVIEW_SPEND_BLOCK_REASONS = ["rendering", "failed", "stale"] as const;
+export const DIRECTOR_PREVIEW_SPEND_BLOCK_REASONS = ["rendering", "failed", "stale", "not_attached"] as const;
 export type DirectorPreviewSpendBlockReason = (typeof DIRECTOR_PREVIEW_SPEND_BLOCK_REASONS)[number];
 
 /**
