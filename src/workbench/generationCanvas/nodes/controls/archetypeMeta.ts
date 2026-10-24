@@ -288,6 +288,37 @@ export function readArchetypeArray(meta: Record<string, unknown> | undefined, me
   return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
 }
 
+const ARRAY_SLOT_ROUTES = Object.entries(ARRAY_SLOT_ROUTE) as Array<[ArchetypeReferenceSlotKind, ArraySlotRoute]>
+
+/**
+ * 还没挑模型的节点：把一组 URL 放进「图片 / 视频 / 声音参考」那一格的存储键（与手动上传同一个键，去重保序）。
+ * 不看模式、不夹上限——这时还没有档案；挑定模型后由档案的槽决定显示与发送（第一次定生成方式见 referenceDemandsBeforeFirstMode）。
+ */
+export function withUnplacedArrayReferences(
+  meta: Record<string, unknown>,
+  accept: ArraySlotRoute['accept'],
+  urls: readonly string[],
+): Record<string, unknown> {
+  const route = ARRAY_SLOT_ROUTES.find(([, candidate]) => candidate.accept === accept)?.[1]
+  if (!route) return meta
+  const next = [...new Set([...readArchetypeArray(meta, route.metaKey), ...urls.map((url) => url.trim()).filter(Boolean)])]
+  return { ...meta, [route.metaKey]: next }
+}
+
+/**
+ * 第一次定生成方式（节点还没有档案 meta）时，节点身上已经摆着的数组参考——出生就带着的（提示词库「放上画布」的参考图）——
+ * 每种素材要一个收得下它的槽：它们是「要用参考」的意图，定模式时和活边一起算。
+ * 已有档案 meta 时返回空：那时 meta 里的参考是用户手动切走后留下的残值，不构成意图（见 resolveModeForConnectedReferences）。
+ */
+export function referenceDemandsBeforeFirstMode(
+  meta: Record<string, unknown> | undefined,
+): Array<{ slots: ArchetypeReferenceSlotKind[]; asset: ArraySlotRoute['accept'] }> {
+  if (readArchetypeNodeMeta(meta)) return []
+  return ARRAY_SLOT_ROUTES
+    .filter(([, route]) => readArchetypeArray(meta, route.metaKey).length > 0)
+    .map(([kind, route]) => ({ slots: [kind], asset: route.accept }))
+}
+
 export type ArchetypeArrayAppend =
   | { status: 'added'; next: string[] }
   | { status: 'empty' }

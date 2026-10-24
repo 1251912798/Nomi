@@ -1,21 +1,17 @@
-// 技能库面板的数据 hook：列出技能（内置+用户合并）、当前可用模态、删除/导入/导出。
-// 列表与导出是异步 IPC（目录由 pi 的加载器给）；导入/删除仍是同步回执。可用模态是异步（读 catalog health）。
-// catalog 变了（接入新模型）监听 nomi-model-catalog-changed 重算可用模态，让「缺 provider」标记实时刷新。
+// 技能库面板的数据 hook：列出技能（内置+用户合并）、删除/导入/导出。
+// 列表与导出是异步 IPC（目录由 pi 的加载器给）；导入/删除仍是同步回执。
 import React from 'react'
 import {
   deleteWorkbenchSkill,
   exportWorkbenchSkill,
-  getAvailableSkillProviders,
   importWorkbenchSkill,
   listWorkbenchSkills,
   type SkillListItemDto,
-  type SkillProviderKind,
 } from '../api/skillApi'
 import { onSkillLibraryChanged } from './skillLibraryChanged'
 
 export type UseWorkbenchSkills = {
   items: SkillListItemDto[]
-  available: ReadonlySet<SkillProviderKind>
   reload: () => void
   remove: (dirName: string) => { ok: boolean; error?: string }
   importPackage: (payload: unknown) => { ok: boolean; skillName?: string; error?: string }
@@ -24,32 +20,18 @@ export type UseWorkbenchSkills = {
 
 export function useWorkbenchSkills(opened: boolean): UseWorkbenchSkills {
   const [items, setItems] = React.useState<SkillListItemDto[]>([])
-  const [available, setAvailable] = React.useState<ReadonlySet<SkillProviderKind>>(new Set())
 
   const reload = React.useCallback(() => {
     listWorkbenchSkills()
       .then(setItems)
       .catch(() => setItems([]))
-    getAvailableSkillProviders()
-      .then(setAvailable)
-      .catch(() => setAvailable(new Set()))
   }, [])
 
   React.useEffect(() => {
     if (!opened) return
     reload()
-    const onCatalogChanged = (): void => {
-      getAvailableSkillProviders()
-        .then(setAvailable)
-        .catch(() => setAvailable(new Set()))
-    }
-    window.addEventListener('nomi-model-catalog-changed', onCatalogChanged)
     // 别的面板（或本面板的另一个实例）写了技能盘就重读——列表只有一个真相源在盘上。
-    const offSkills = onSkillLibraryChanged(reload)
-    return () => {
-      window.removeEventListener('nomi-model-catalog-changed', onCatalogChanged)
-      offSkills()
-    }
+    return onSkillLibraryChanged(reload)
   }, [opened, reload])
 
   const remove = React.useCallback(
@@ -72,5 +54,5 @@ export function useWorkbenchSkills(opened: boolean): UseWorkbenchSkills {
 
   const exportPackage = React.useCallback((dirName: string) => exportWorkbenchSkill(dirName), [])
 
-  return { items, available, reload, remove, importPackage, exportPackage }
+  return { items, reload, remove, importPackage, exportPackage }
 }

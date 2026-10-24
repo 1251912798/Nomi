@@ -1,49 +1,48 @@
 import { libraryGroup, type LibraryCategory } from '../library/libraryGroups'
 import type { SkillListItemDto } from '../api/skillApi'
-import type { LibraryPrompt } from '../api/promptLibraryApi'
-import { promptDisplayTitle } from '../promptLibrary/promptDisplay'
 import { matchesLibraryQuery } from '../library/libraryDiscovery'
 import { skillDisplayTitle } from './skillDisplay'
 
+/**
+ * 技能库里的一条。技能库只列 `kind: skill`（用户 10-24 拍板 Q1：效果、提示词都回提示词库）——
+ * 效果的 SKILL.md 仍在技能目录里，但它唯一的出口是主进程 `curatedPrompts.ts` 投影进提示词库，这里把它滤掉。
+ */
 export type SkillGalleryEntry = {
   id: string
   group?: LibraryCategory
   title: string
   description: string
   body: string
-  kind: 'skill' | 'prompt' | 'effect'
   cover?: string
   preview?: SkillListItemDto['preview']
+  /** 封面是示意插画（暗色下换暗纸底 + 浅线，Q8）。 */
+  illustration: boolean
   source?: string
   author?: string
   license?: string
-  upstream?: boolean
-  skill?: SkillListItemDto
-  prompt?: LibraryPrompt
+  skill: SkillListItemDto
 }
-export function galleryEntries(skills: readonly SkillListItemDto[], prompts: readonly LibraryPrompt[], language: string): SkillGalleryEntry[] {
+
+export function galleryEntries(skills: readonly SkillListItemDto[], language: string): SkillGalleryEntry[] {
   const locale = language.startsWith('zh') ? 'zh-CN' : 'en'
-  return [
-    ...skills.filter(s => s.curation?.kind !== 'effect').map(skill => ({
-      id: `skill:${skill.name}`, group: libraryGroup(skill, language), title: skillDisplayTitle(skill, language),
-      description: skill.curation?.summary[locale] ?? skill.description ?? '', body: skill.body ?? '', kind: 'skill' as const,
-      cover: skill.cover, preview: skill.preview, source: skill.curation?.source.url,
-      author: skill.curation?.source.author ?? skill.author ?? undefined, license: skill.curation?.license,
-      upstream: skill.curation?.preview?.provenance === 'upstream-output', skill,
-    })),
-    ...prompts.map(prompt => ({
-      id: `prompt:${prompt.id}`, group: libraryGroup(prompt, language), title: prompt.curation?.title[locale] ?? promptDisplayTitle(prompt),
-      description: prompt.curation?.summary[locale] ?? prompt.prompt, body: prompt.prompt,
-      kind: prompt.curation?.kind === 'effect' ? 'effect' as const : 'prompt' as const,
-      cover: prompt.mediaType === 'image' ? prompt.mediaUrl : undefined,
-      preview: prompt.mediaUrl ? { url: prompt.mediaUrl, type: prompt.mediaType } : undefined,
-      source: prompt.sourceUrl, author: prompt.curation?.source.author, license: prompt.curation?.license,
-      upstream: prompt.curation?.preview?.provenance === 'upstream-output', prompt,
-    })),
-  ]
+  return skills.filter((skill) => skill.curation?.kind !== 'effect').map((skill) => ({
+    id: `skill:${skill.name}`,
+    group: libraryGroup(skill, language),
+    title: skillDisplayTitle(skill, language),
+    description: skill.curation?.summary[locale] ?? skill.description ?? '',
+    body: skill.body ?? '',
+    cover: skill.cover,
+    preview: skill.preview,
+    illustration: skill.curation?.preview?.provenance === 'illustration',
+    source: skill.curation?.source.url,
+    author: skill.curation?.source.author ?? skill.author ?? undefined,
+    license: skill.curation?.license,
+    skill,
+  }))
 }
+
+/** 详情正文：技能文件原文，去掉 frontmatter 和与标题、简介重复的开头两段。 */
 export function galleryBody(entry: SkillGalleryEntry): string {
-  if (entry.prompt) return entry.body.trim()
   const blocks = entry.body.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim().split(/\n\s*\n/)
   if (blocks[0] === `# ${entry.title}`) blocks.shift()
   if (blocks[0] === entry.description) blocks.shift()
@@ -59,7 +58,7 @@ const PROVIDER_SEARCH_ALIASES: Record<string, readonly string[]> = {
 
 export function matchesGalleryQuery(entry: SkillGalleryEntry, query: string): boolean {
   return matchesLibraryQuery({
-    title: entry.title, description: entry.description, tags: entry.prompt?.tags,
-    keywords: [entry.skill?.name ?? '', ...(entry.skill?.neededProviders ?? []).flatMap(provider => PROVIDER_SEARCH_ALIASES[provider] ?? [provider])],
+    title: entry.title, description: entry.description,
+    keywords: [entry.skill.name, entry.group?.label ?? '', ...entry.skill.neededProviders.flatMap(provider => PROVIDER_SEARCH_ALIASES[provider] ?? [provider])],
   }, query)
 }
