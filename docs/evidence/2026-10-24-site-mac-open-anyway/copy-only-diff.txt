@@ -1,0 +1,6 @@
+changed: 217 files (212 html)
+swap patterns per html file (zh tip, zh s1, zh s2, zh s3, en tip, en s1, en s2, en s3 → files): [0,0,0,0,0,2,2,2]×105  [0,0,0,0,1,2,2,2]×1  [0,2,2,2,0,0,0,0]×105  [1,2,2,2,0,0,0,0]×1
+page-dates routes moved: 212 (pages changed: 212)
+sitemap lastmod lines changed: 212
+marketing/data files changed: marketing/data/page-dates.json
+COPY-ONLY PASS
