@@ -192,6 +192,46 @@ describe('R8 PR 认领的拍板图元素必须有去处', () => {
     m.elements[1].userDecision = { quote: '先放着', date: '2026-10-10' }
     assert.deepEqual(checkPrBoardClaims('## 拍板图\n- Main: group.header', { Main: m }), [])
   })
+
+  it('正例：带数字的板名按同一认领行语法解析', () => {
+    const body = [
+      '## 拍板图',
+      '- IconsF1: icon.one',
+      '- ComposerB3: composer.one',
+      '- Director3dbox: director.one',
+    ].join('\n')
+    assert.deepEqual(parsePrBoardClaims(body), [
+      { board: 'IconsF1', ids: ['icon.one'] },
+      { board: 'ComposerB3', ids: ['composer.one'] },
+      { board: 'Director3dbox', ids: ['director.one'] },
+    ])
+  })
+
+  it('反例：非法字符的板名照旧不认，不扩大到文件名以外的语法', () => {
+    const body = '## 拍板图\n- Composer-B3: composer.one\n- ComposerB3: composer.two'
+    assert.deepEqual(parsePrBoardClaims(body), [{ board: 'ComposerB3', ids: ['composer.two'] }])
+  })
+
+  it('反例：不存在的带数字板名照旧由认领校验报不存在', () => {
+    const errors = checkPrBoardClaims('## 拍板图\n- Missing9: element.one', { Main: base() })
+    assert.match(errors.join('\n'), /拍板图 Missing9 不存在/)
+  })
+
+  it('普查：docs/design/boards/ 下每个真实板名都能被认领行解析', () => {
+    const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+    const names = []
+    const walk = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) walk(full)
+        else if (entry.name.endsWith('.board.json')) names.push(entry.name.slice(0, -'.board.json'.length))
+      }
+    }
+    walk(path.join(repoRoot, 'docs/design/boards'))
+    const unique = [...new Set(names)].sort()
+    const body = ['## 拍板图', ...unique.map((name) => `- ${name}: element.one`)].join('\n')
+    assert.deepEqual(parsePrBoardClaims(body).map((claim) => claim.board), unique)
+  })
 })
 
 describe('板源哈希：默认模式不起浏览器，靠哈希判断板改没改', () => {

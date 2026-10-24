@@ -1,0 +1,147 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-board-claim-digit-names",
+  "change_kind": "corrective",
+  "problem_type": "PR board-claim parser rejects real board filenames containing digits",
+  "symptom": "PR #1322 wrote a valid `## 拍板图` claim for a board with a digit, but merge-preflight reported that the UI change had no board claim because the claim line was discarded.",
+  "direct_cause": "scripts/check-board-parity.mjs:CLAIM_LINE used `([A-Za-z]+)` for the board token, so `IconsF1`, `ComposerB3`, and `Director3dbox` never reached checkPrBoardClaims.",
+  "class_root": "The shared claim-line parser did not encode the board-name invariant used by docs/design/boards filenames: an ASCII letter first, followed by ASCII letters or digits. Every consumer therefore inherited the same silent omission for any future digit-bearing board.",
+  "affected_population": [
+    "Any PR body claiming a real board whose filename contains one or more digits",
+    "Both check-board-parity and the PR-body / merge-preflight judgement path, which share parsePrBoardClaims"
+  ],
+  "scope_paths": [
+    "scripts/check-board-parity.mjs",
+    "scripts/check-board-parity.node-test.mjs",
+    "scripts/pr-body-criteria.mjs",
+    "docs/fixes/2026-10-24-board-claim-digit-names.root-cause.json"
+  ],
+  "entry_points": [
+    "scripts/check-board-parity.mjs parsePrBoardClaims: parses `## 拍板图` claim lines for board parity",
+    "scripts/pr-body-criteria.mjs checkBoardClaim: invokes the same parser for PR judgement and merge-preflight",
+    "scripts/pr-body-criteria.mjs checkPrBoardClaims: validates parsed claims against head manifests"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The invariant is repository-local: board names are the stems of docs/design/boards/*.board.json files and both consumers are in this repository. No third-party runtime decides this syntax.",
+  "invariants": [
+    "Every board claim line accepted by parsePrBoardClaims has a board token matching /^[A-Za-z][A-Za-z0-9]*$/.",
+    "Every current docs/design/boards/**/*.board.json stem is accepted by the same parser.",
+    "A syntactically valid but nonexistent board name still reaches checkPrBoardClaims and fails closed with a board-not-found error.",
+    "Board names containing illegal punctuation are not parsed as claims."
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "scripts/check-board-parity.mjs",
+      "symbol": "CLAIM_LINE"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/check-board-parity.mjs",
+      "symbol": "parsePrBoardClaims"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/pr-body-criteria.mjs",
+      "symbol": "parsePrBoardClaims"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/pr-body-criteria.mjs",
+      "symbol": "checkPrBoardClaims"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/pr-body-criteria.mjs",
+      "symbol": "checkBoardClaim"
+    }
+  ],
+  "door_reduction": {
+    "before": 5,
+    "after": 5,
+    "why_not": "The door map was run with `node scripts/door-map.mjs --read=CLAIM_LINE,parsePrBoardClaims,checkPrBoardClaims,checkBoardClaim --roots=scripts`. The five readers are distinct responsibilities that must remain: CLAIM_LINE and parsePrBoardClaims own syntax extraction; checkPrBoardClaims owns manifest validation; checkBoardClaim is the PR-judgement adapter; pr-body-criteria also calls the shared parser directly for its own empty-claim path. They now all converge on the one parser boundary, so none can be deleted without deleting a judgement surface."
+  },
+  "generality_proof": "The only production parser for a `## 拍板图` claim line is parsePrBoardClaims, and both board-parity and PR-body judgement call it. The corrected token rule accepts every current board stem, including all digit-bearing stems, while the census test will fail if a future board filename introduces a character outside the declared grammar. Validation remains separate and still rejects nonexistent boards, so broadening syntax cannot turn an unknown board into a pass.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/check-board-parity.mjs",
+      "symbol": "parsePrBoardClaims",
+      "responsibility": "Single syntax boundary for all PR board-claim consumers; recognizes the repository board-name grammar and returns structured claims."
+    },
+    {
+      "path": "scripts/check-board-parity.mjs",
+      "symbol": "checkPrBoardClaims",
+      "responsibility": "Shared semantic boundary that checks parsed claims against manifests and fails closed for missing or non-implemented elements."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "scripts/check-board-parity.mjs",
+      "entry_point": "parsePrBoardClaims",
+      "disposition": "enforced",
+      "evidence": "The parser now accepts IconsF1, ComposerB3, Director3dbox and every board stem discovered under docs/design/boards; illegal punctuation remains skipped."
+    },
+    {
+      "path": "scripts/pr-body-criteria.mjs",
+      "entry_point": "checkBoardClaim",
+      "disposition": "enforced",
+      "evidence": "PR judgement imports parsePrBoardClaims and checkPrBoardClaims from check-board-parity.mjs, so merge-preflight and CI use the corrected shared boundary."
+    },
+    {
+      "path": "scripts/pr-body-criteria.mjs",
+      "entry_point": "checkPrBoardClaims",
+      "disposition": "enforced",
+      "evidence": "The semantic validator still receives parsed digit-bearing claims and reports nonexistent names or invalid element status instead of silently losing the line."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any future board filename or PR body that adds a digit to an otherwise valid board name would reproduce the same silent omission, and every existing consumer shares this parser.",
+    "same_class_scan": [
+      "rg -n \"CLAIM_LINE|parsePrBoardClaims|checkPrBoardClaims|checkBoardClaim\" scripts",
+      "node scripts/door-map.mjs --read=CLAIM_LINE,parsePrBoardClaims,checkPrBoardClaims,checkBoardClaim --roots=scripts",
+      "scripts/check-board-parity.node-test.mjs now checks digit-bearing examples, illegal punctuation, nonexistent names, and a recursive docs/design/boards filename census",
+      "scripts/pr-body-criteria.mjs imports parsePrBoardClaims and checkPrBoardClaims; scripts/merge-preflight.mjs reaches that path through evaluatePrBody"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "scripts/check-board-parity.mjs",
+    "invariant": "parsePrBoardClaims is the sole board-claim syntax parser and accepts exactly an ASCII letter followed by ASCII letters or digits for the board token.",
+    "failure_mode": "Illegal board-name syntax is skipped; syntactically valid but unknown names are passed to checkPrBoardClaims and produce an explicit board-not-found error.",
+    "exception_policy": "none",
+    "strategy": "Keep syntax in one shared parser and pin the repository-wide filename population with a census test, so a new board-name shape cannot silently fall outside the parser.",
+    "artifacts": [
+      "scripts/check-board-parity.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/check-board-parity.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/check-board-parity.node-test.mjs"
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/check-board-parity.mjs",
+    "tests": [
+      "scripts/check-board-parity.node-test.mjs"
+    ]
+  },
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "No obsolete parser or fallback exists. The existing parser is tightened in place and all consumers continue to import it."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The failure is in repository-local regular-expression parsing; no third-party dependency controls the invariant.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted data migration is needed. Existing alphabetic claims keep their behavior; digit-bearing claims begin parsing; unknown names and punctuation continue to fail or be ignored under the existing contract.",
+  "residual_risks": [
+    "The grammar intentionally remains ASCII letter/digit because that is the character set of every current board stem; a future punctuation or non-ASCII board name will make the census test red and require an explicit syntax decision.",
+    "The requested merge-preflight run depends on live PR #1322 availability and gh authentication; local parser and class tests are independent of that network boundary."
+  ],
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-24"
+}
