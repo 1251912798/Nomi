@@ -40,3 +40,15 @@ pnpm exec tsx docs/evidence/2026-10-22-look-at-canvas-selection-truncation/probe
 ```
 
 修前的对照需要把 `canvasReadCompact.ts` 换回 `origin/main` 的版本再跑一次（修前该动词不收 `selectedFrom`，模型翻页会被拒收，预期只能说出前 32 个）。
+
+## 真模型（App 里配好的模型，`paid/`）
+
+R13.3 的三个数（工具写对率、翻页率、回合成功率）改由真 App 走查量：`tests/ux/look-at-canvas-selection-real.paid.mjs`。
+它用 `_paidRun.mjs` 的真实资料跑法（App 里配好的 BRAIN，不读 key），布 44 个节点、选中 40 个（20 首帧图 + 20 视频，另有 4 个不选的干扰），每轮新开对话问「我选中的这些里，哪几个是视频节点？把标题都列出来」，5 轮；场景与判分在 `tests/ux/_lookAtCanvasSelectionScore.mjs`。
+
+```
+pnpm build && node tests/ux/look-at-canvas-selection-real.rehearsal.walk.mjs      # 零花费演练，先过
+pnpm build && NOMI_SPEND_OK=1 node tests/ux/look-at-canvas-selection-real.paid.mjs # 真跑，写 paid/report.json
+```
+
+`paid/rehearsal.json` 是演练（夹具里的脚本化大脑，**不是模型分数**），证管道与判分；每轮还记了 `view`：答话那一刻、宿主发给模型的那份消息里（`transform_context` 之后）还看得见几个选中 id。
