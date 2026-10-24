@@ -20,7 +20,7 @@ try {
 
   // 截图（自由视角）→ 产出 1
   await page.mouse.move(600, 300)
-  await page.keyboard.press('Control+Shift+p')
+  await page.keyboard.press('ControlOrMeta+Shift+p')
   await lab.waitScene('(p.outputs && p.outputs.screenshots || []).length === 1', '截图进产物')
   const shot = (await lab.project()).outputs.screenshots[0]
   check('截图命名「自由漫游·全景-截图1」', /自由漫游.*截图1/.test(shot.name), shot.name)

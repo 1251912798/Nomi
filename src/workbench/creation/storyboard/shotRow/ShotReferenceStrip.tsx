@@ -71,8 +71,10 @@ type Props = {
    *   · `below`：横版 / 方图，排在预览框下面，宽 = 预览框宽，折行（窄档一行放不下折成 +N）；
    *   · `right`：竖版（2026-10-06 用户选 A「竖版参考挪右边」），排在预览框右边的那条窄带里，
    *     宽 = 视觉列宽 − 框宽 − 8，高 = 框高，竖着排、可多列，「+」在最后；放不下折成 +N。
+   *   · `above`：镜头行（B3 / E1a，2026-10-19）：参考在提示词**上面一行**，「+」后面跟 28px 小图 + 名字，
+   *     放不下就折行，不折「+N」；参考卡（锚点行）仍用上面两种。
    */
-  layout: { placement: 'below'; width: number } | { placement: 'right'; columnWidth: number; frameWidth: number; frameHeight: number }
+  layout: { placement: 'above' } | { placement: 'below'; width: number } | { placement: 'right'; columnWidth: number; frameWidth: number; frameHeight: number }
 }
 
 type Tile = { slot: ArchetypeReferenceSlot; slotKey: string; indexInSlot: number; number: number; url: string; name: string; kind: AssetKind }
@@ -92,11 +94,12 @@ export default function ShotReferenceStrip({
   const { t } = useTranslation()
   const projectId = useOpenProjectId()
   const narrow = useStoryboardRowNarrow()
-  const size = narrow ? 28 : 36
+  const above = layout.placement === 'above'
+  const size = narrow || above ? 28 : 36
   const scaled = (value: number): number => densityBox({ width: value, height: 0 }, narrow).width
   const right = layout.placement === 'right'
-  const width = right ? scaled(layout.columnWidth) - scaled(layout.frameWidth) - RIGHT_GAP : scaled(layout.width)
-  const height = right ? densityBox({ width: layout.frameWidth, height: layout.frameHeight }, narrow).height : 0
+  const width = layout.placement === 'right' ? scaled(layout.columnWidth) - scaled(layout.frameWidth) - RIGHT_GAP : layout.placement === 'below' ? scaled(layout.width) : 0
+  const height = layout.placement === 'right' ? densityBox({ width: layout.frameWidth, height: layout.frameHeight }, narrow).height : 0
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [overflowOpen, setOverflowOpen] = React.useState(false)
   const [uploading, setUploading] = React.useState(false)
@@ -160,16 +163,29 @@ export default function ShotReferenceStrip({
     })
   }
 
-  const tileClass = narrow ? 'w-7 h-7' : 'w-9 h-9'
-  const renderTile = (tile: Tile): JSX.Element => (
+  const tileClass = narrow || above ? 'w-7 h-7' : 'w-9 h-9'
+  const renderTile = (tile: Tile): JSX.Element => above ? renderChip(tile) : (
     <span key={`${tile.slotKey}-${tile.url}-${tile.indexInSlot}`} title={translateModelDisplayText(tile.slot.label)} data-storyboard-ref-thumb={tile.number}>
       <AssetTile
         className={tileClass}
         asset={{ id: tile.url, kind: tile.kind, name: tile.name, renderUrl: tile.url, source: 'project', origin: { source: 'project', projectId: '', relativePath: '' } }}
-        index={tile.number}
         onRemove={() => onRemove(tile.slotKey, tile.indexInSlot)}
         onClick={onInsertMention ? () => onInsertMention(tile.url) : undefined}
       />
+    </span>
+  )
+
+  // 镜头行的「小图 + 名字」：名字就是提示词里同一块的名字（绑定里存的），超长截断（和 @ 块一样不换行）。
+  const renderChip = (tile: Tile): JSX.Element => (
+    <span key={`${tile.slotKey}-${tile.url}-${tile.indexInSlot}`} title={translateModelDisplayText(tile.slot.label)} data-storyboard-ref-thumb={tile.number}
+      className="inline-flex h-7 max-w-[160px] items-center gap-1.5 rounded-pill bg-nomi-accent-soft pr-2.5">
+      <AssetTile
+        className="w-7 h-7"
+        asset={{ id: tile.url, kind: tile.kind, name: tile.name, renderUrl: tile.url, source: 'project', origin: { source: 'project', projectId: '', relativePath: '' } }}
+        onRemove={() => onRemove(tile.slotKey, tile.indexInSlot)}
+        onClick={onInsertMention ? () => onInsertMention(tile.url) : undefined}
+      />
+      <span className="min-w-0 truncate text-caption text-nomi-ink">{tile.name}</span>
     </span>
   )
 
@@ -178,16 +194,16 @@ export default function ShotReferenceStrip({
   const perColumn = right ? Math.max(1, Math.floor((height + GAP) / (size + GAP))) : 0
   const reserved = (canAdd ? 1 : 0) + (planned ? 1 : 0)
   // 放得下的格数：竖版 = 右边那条带的列数 × 行数；横版窄档 = 一行；横版宽档折行不限。
-  const capacity = right ? perRow * perColumn : narrow ? perRow : Number.POSITIVE_INFINITY
+  const capacity = above ? Number.POSITIVE_INFINITY : right ? perRow * perColumn : narrow ? perRow : Number.POSITIVE_INFINITY
   const fold = tiles.length + reserved > capacity
   const shown = fold ? tiles.slice(0, Math.max(0, capacity - reserved - 1)) : tiles
   const hidden = tiles.length - shown.length
 
   return (
-    <div className={cn('flex flex-col gap-1', !right && 'mt-1.5')} data-storyboard-refs={layout.placement} data-storyboard-refs-size={size}>
+    <div className={cn('flex flex-col gap-1', !right && !above && 'mt-1.5', above && 'px-2 pt-2')} data-storyboard-refs={layout.placement} data-storyboard-refs-size={size}>
       <div
-        className={right ? 'grid' : 'flex flex-wrap'}
-        style={right
+        className={right ? 'grid' : above ? 'flex flex-wrap items-center' : 'flex flex-wrap'}
+        style={above ? { gap: GAP + 2 } : right
           // 竖着排：先填满一列再换下一列（序号 1、2、3 从上往下读）。
           ? { gap: GAP, width, gridAutoFlow: 'column', gridTemplateRows: `repeat(${perColumn}, ${size}px)`, gridAutoColumns: `${size}px` }
           : { gap: GAP, width }}
@@ -254,7 +270,6 @@ export default function ShotReferenceStrip({
                 <AssetTile
                   className="w-9 h-9"
                   asset={{ id: tile.url, kind: tile.kind, name: tile.name, renderUrl: tile.url, source: 'project', origin: { source: 'project', projectId: '', relativePath: '' } }}
-                  index={tile.number}
                   onRemove={() => onRemove(tile.slotKey, tile.indexInSlot)}
                   onClick={onInsertMention ? () => onInsertMention(tile.url) : undefined}
                 />
@@ -263,7 +278,7 @@ export default function ShotReferenceStrip({
           </div>
         </AnchoredPopover>
       ) : null}
-      {error ? <span className="text-micro leading-tight text-workbench-danger" role="alert" style={{ maxWidth: width }}>{error}</span> : null}
+      {error ? <span className="text-micro leading-tight text-workbench-danger" role="alert" style={above ? undefined : { maxWidth: width }}>{error}</span> : null}
     </div>
   )
 }

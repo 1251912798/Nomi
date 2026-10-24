@@ -48,8 +48,8 @@ describe('NarrowedModeGuidanceNote', () => {
 
   it('沿用已有的「诚实说一句」视觉层级，不发明新的', () => {
     const html = render({ kind: 'none', hiddenModeTerms: ['全能参考'] })
-    expect(html).toContain('text-ink-40')
-    expect(html).toContain('text-micro')
+    expect(html).toContain('text-nomi-ink-60')
+    expect(html).toContain('text-caption')
   })
 
   it('模式名逐个走 i18n 包装 + 分隔符，代码里不拼标点', () => {

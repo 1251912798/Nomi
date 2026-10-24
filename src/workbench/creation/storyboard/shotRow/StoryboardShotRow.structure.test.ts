@@ -50,14 +50,16 @@ describe('分镜行：参数与参考复用画布那一套，不许再造第二�
     expect(strip).toContain("from '../../../assets/AssetPickerPopover'")
   })
 
-  it('参考在视觉列（预览框下面 / 竖版时右边），内容列里没有参考区', () => {
+  it('参考在提示词框上面一行（B3 / E1a），视觉列里没有参考条', () => {
     const visualAt = row.indexOf('const visual = (')
     const promptAt = row.indexOf('const prompt = (')
     const stripAt = row.indexOf('<ShotReferenceStrip')
+    const editorAt = row.indexOf('<PromptSkeletonSegments')
     expect(visualAt).toBeGreaterThan(-1)
-    expect(stripAt).toBeGreaterThan(visualAt)
-    expect(stripAt).toBeLessThan(promptAt)
-    expect(row.indexOf('<ShotReferenceStrip', promptAt)).toBe(-1)
+    expect(stripAt).toBeGreaterThan(promptAt)
+    expect(stripAt).toBeLessThan(editorAt)
+    expect(row.slice(visualAt, promptAt)).not.toContain('<ShotReferenceStrip')
+    expect(row).toContain("placement: 'above'")
   })
 
   it('旧的参考列 / 让位表 / 宽窄参考列整套已删，不许复活', () => {
@@ -100,8 +102,8 @@ describe('分镜行：对齐（预览框全表同一只、「生成」每行同�
     expect(composerBar).toContain('data-storyboard-generate-state')
   })
 
-  it('底栏永远一行', () => {
-    expect(composerBar).toContain('flex-nowrap')
+  it('底栏一行；窄到放不下时整颗参数换行、「生成」独占右下（E1a 最窄档），不是把内容挤出卡外', () => {
+    expect(composerBar).toContain('flex-wrap')
     expect(composerBar).not.toMatch(/grid-cols-\[/)
   })
 

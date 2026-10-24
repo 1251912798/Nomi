@@ -1,0 +1,99 @@
+{
+  "script": "composer-b3-reference.paid.mjs",
+  "mode": "paid",
+  "startedAt": "2026-10-24T00:48:51.941Z",
+  "model": "apimart/doubao-seedance-2.0 · fast · 480p · 4s · 无音频",
+  "sceneBeforeSpend": {
+    "modeId": "firstlast",
+    "referenceList": [
+      "first.png",
+      "last.png",
+      "ref-1.png",
+      "ref-2.png",
+      "ref-3.png"
+    ]
+  },
+  "composerBeforeSpend": {
+    "inUse": {
+      "firstFrameUrl": [
+        "first.png"
+      ],
+      "lastFrameUrl": [
+        "last.png"
+      ]
+    },
+    "slotLabels": [
+      "首帧",
+      "尾帧（可不填）"
+    ],
+    "arrayInUse": [],
+    "unused": [
+      "ref-1.png",
+      "ref-2.png",
+      "ref-3.png"
+    ],
+    "parked": [],
+    "problems": []
+  },
+  "rejection": null,
+  "request": {
+    "createRequests": 1,
+    "endpoint": "api.apimart.ai/v1/videos/generations",
+    "imageUrlOccurrences": 4,
+    "imagesInBody": [
+      {
+        "file": "first.png",
+        "urlSha256": "f3f7b2c78d34"
+      },
+      {
+        "file": "last.png",
+        "urlSha256": "2a6beace8896"
+      }
+    ],
+    "hostedUploads": [
+      "first.png",
+      "last.png"
+    ],
+    "problems": []
+  },
+  "providerTaskIds": [
+    "task_01M5NP483HH4PR5A2YM4SAQZK1"
+  ],
+  "landed": {
+    "durationSeconds": 4.041667,
+    "videoCodec": "h264",
+    "width": 864,
+    "height": 496,
+    "hasAudio": false,
+    "bytes": 1044925,
+    "keptAt": ".tmp/pi-composer-b3-reference-development-1792802931905/result.mp4"
+  },
+  "verified": [
+    "scene-armed-before-spend",
+    "mode-switched-through-parameter-panel",
+    "composer-shows-frames-in-use-and-3-unused-before-spend",
+    "apimart-body-only-first-and-last-frame",
+    "unused-references-never-uploaded",
+    "no-reference-not-in-use-rejection",
+    "one-provider-task",
+    "result-landed-and-probed"
+  ],
+  "finishedAt": "2026-10-24T00:51:14.785Z",
+  "paidCalls": 1,
+  "spend": [
+    {
+      "taskId": "task_01M5NP483HH4PR5A2YM4SAQZK1",
+      "status": "ready",
+      "model": "doubao-seedance-2.0",
+      "vendor": "canvas:apimart"
+    }
+  ],
+  "networkAllowlist": [
+    "https://api.apimart.ai",
+    "*.getapib.org",
+    "https://nomi-asset-relay.2373272608.workers.dev"
+  ],
+  "networkBlocked": [],
+  "walkOutputDir": ".tmp/pi-composer-b3-reference-development-1792802931905",
+  "failure": null
+}

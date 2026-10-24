@@ -22,6 +22,10 @@ import PromptEditor, { type PromptEditorProps } from '../../assets/PromptEditor'
 import type { Editor } from '@tiptap/react'
 import { SuggestionPluginKey } from '@tiptap/suggestion'
 import AssetReferenceButton from '../../assets/AssetReferenceButton'
+import { ReferenceNamesContext } from '../../assets/referenceNames'
+import { referenceNameKey, referenceNamesFromKey } from '../../generationCanvas/nodes/canvasReferenceNames'
+import { useGenerationCanvasStore } from '../../generationCanvas/store/generationCanvasStore'
+import { mentionUrlsInOrder } from '../../assets/promptMentions'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
@@ -149,6 +153,9 @@ export function AgentPanelV4Composer({
   inputRef, onEditorReady, mentionReferences, mentionSearch, onMentionSelect,
 }: AgentPanelV4ComposerProps): JSX.Element {
   const { t } = useTranslation()
+  const mentionUrls = React.useMemo(() => mentionUrlsInOrder(value), [value])
+  const referenceNameSignature = useGenerationCanvasStore((state) => referenceNameKey(mentionUrls, state.nodes))
+  const referenceNames = React.useMemo(() => referenceNamesFromKey(referenceNameSignature), [referenceNameSignature])
   const hardRows = Math.max(1, value.split('\n').length)
   const editorRef = React.useRef<Editor | null>(null)
   const [editorElement, setEditorElement] = React.useState<HTMLElement | null>(null)
@@ -225,6 +232,7 @@ export function AgentPanelV4Composer({
           ))}
         </div>
       ) : null}
+      <ReferenceNamesContext.Provider value={referenceNames}>
       <PromptEditor
         value={value} onChange={onValueChange ?? (() => undefined)} editable={Boolean(onValueChange)}
         onReady={handleEditorReady}
@@ -242,6 +250,7 @@ export function AgentPanelV4Composer({
         ariaLabel={t('agentPanelV4.message')}
         className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain bg-transparent px-3 pb-1.5 pt-2.5 [&_.ProseMirror]:min-h-[38px]"
       />
+      </ReferenceNamesContext.Provider>
       {/* 底栏是 composer 唯一**宽度随内容变**的一行：模型钮印的是真实模型名，
           从「选择模型」到 `moonshot-v1-128k-vision-preview` 差了三倍。原来这一行
           每个控件都是 `shrink-0` + `whitespace-nowrap`，唯一能伸缩的是一个宽度本来就是 0

@@ -1,6 +1,6 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconLoader2 } from '../../../../vendor/tablerIcons'
+import { IconArrowUp, IconLoader2 } from '../../../../vendor/tablerIcons'
 import { cn } from '../../../../utils/cn'
 import type { ModelOption } from '../../../../config/models'
 import type { DynamicModelControl } from '../../../generationCanvas/nodes/controls/parameterControlModel'
@@ -110,7 +110,7 @@ export default function ShotComposerBar({
 export function ComposerBarRow({ barId, params, action }: { barId: string; params: React.ReactNode; action: React.ReactNode }): JSX.Element {
   return (
     <div
-      className="mt-auto flex min-w-0 flex-nowrap items-center gap-2 border-t border-nomi-line-soft px-2 py-1.5"
+      className="mt-auto flex min-w-0 flex-wrap items-center gap-2 border-t border-nomi-line-soft px-2 py-1.5"
       data-storyboard-composer-bar={barId}
     >
       {params}
@@ -138,6 +138,7 @@ export function ComposerGenerateButton({ onGenerate, generating = false, ariaLab
     >
       {generating ? <IconLoader2 size={12} stroke={2} className="animate-spin" aria-hidden /> : null}
       {generating ? t('storyboardEditor.frame.generating') : t('storyboardEditor.frame.generate')}
+      {generating ? null : <IconArrowUp size={12} stroke={2} aria-hidden />}
     </button>
   )
 }

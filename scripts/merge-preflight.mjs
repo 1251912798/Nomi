@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 合并前扫描（协调会话的工具，2026-10-02）。输入 PR 号，用 gh 读 PR 正文和改动文件，只打印结论，**不合并**。
+// 合并前扫描（协调会话的工具，2026-10-02）。输入 PR 号，读 PR 正文、在本地 git 里算这个 PR 改了什么，只打印结论，**不合并**。
 // 它取代原来的交工前评审收据：不再问「有没有跑过评审」，而是问两个暂停点有没有真的发生——
 //   ① 暂停点①设计卡：PR 正文 `## 设计卡` 是否填全（四类 9 格，其余只查 ★ 格 1、2、3、4、9）；
 //   ② 暂停点②独立验收：四类的 PR 正文 `## 独立验收` 是否带报告链接，且验收线编号不同于实现线；
@@ -7,17 +7,23 @@
 //   ④ 路径推出「花钱」类的 PR，`## 验收证据` 里有没有 `spend-paid-sample：<运行号 / 报告链接>` 或 `spend-paid-sample：协调豁免：<理由>`（不接受「未验证」）。
 // 判四类的字符串规则与设计卡模板末尾那段一致（docs/engineering/design-card.md），宁可多报；误报由协调会话人工划掉。
 //
+// 取数（2026-10-24 起）：远程只剩两次——gh pr view 读正文 / head / 基线分支名 / 创建时间，git fetch 取基线分支末端与 pull/<n>/head。
+// 改了什么（文件表、新增行、package.json 被删行）、PR 头和基线上的文件内容、merge-base 都在本地对 fetch 到的提交算。
+// 原来这些走 GitHub API，各有上限：PR diff 超过 300 个文件就 406（#1269 改了 321 个，扫描只能打「取不到 PR diff」），
+// 文件表 3000 个、列目录 1000 个、GraphQL 大 Blob 截断——本地 git 没有这些上限。
+//
 // 用法：node scripts/merge-preflight.mjs <PR 号> [--repo owner/name] [--enforce]
+//   --repo 只给 gh pr view 用；本地 diff 永远从当前仓库的 origin fetch（origin 不是这个 PR 的仓库时 pull/<n>/head 对不上 head，判取数失败）。
+import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { ESCAPE_LEDGER_DIR, assembleEscapeLedger, escapeIdOfPath } from './escape-ledger-lib.mjs'
-import { execFileSync } from 'node:child_process'
-import fs from 'node:fs'
+import { ESCAPE_LEDGER_DIR, escapeIdOfPath, loadEscapeLedger } from './escape-ledger-lib.mjs'
 import { localApprovals } from './lib/coordApprovals.mjs'
+import { prChanges } from './lib/prChanges.mjs'
 import { boardsAtHead, checkHeadAncestry, isRepoRelativeRef, suppressionsAt } from './lib/prEvidenceInputs.mjs'
-import { META_FILE } from './lib/entryDirectory.mjs'
-import { execGhReadSync } from './lib/transientRetry.mjs'
+import { execGhReadSync, retryTransientSync } from './lib/transientRetry.mjs'
 import { RULES_INTRODUCED_BY_PR, evaluatePrBody, ledgerChanges, mergeReport, settledContracts } from './pr-body-criteria.mjs'
 import { SCENARIO_DIR, knownScenarios, scenarioEntriesFromReader } from './perf-scenarios-lib.mjs'
 import {
@@ -25,25 +31,13 @@ import {
   SCOPE_SECTION,
   checkProtectedScope,
   extractSection,
-  addedLinesByFile,
 } from './pr-judgement-lib.mjs'
 
 // 所有 PR 正文判据（设计卡 / 独立验收 / 逃逸合同 / 路由 / 规则与门岗范围）都在 scripts/pr-body-criteria.mjs 与
-// scripts/pr-judgement-lib.mjs；推送前的 check:pr-judgement 调同一份（2026-10-08，#1094：两边口径不一）。这里只留 gh 取数。
+// scripts/pr-judgement-lib.mjs；推送前的 check:pr-judgement 调同一份（2026-10-08，#1094：两边口径不一）。这里只留取数。
 export { PROTECTED_PATHS, SCOPE_SECTION, checkProtectedScope, extractSection }
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-
-/**
- * pulls/<n>/files 的分页输出（每行 filename\tstatus\tadditions\tdeletions[\tprevious_filename]）→ 文件表。纯函数、可测。
- * 改名（renamed）的行带上旧路径：逃逸账本一条一个文件以后，条目文件改名 = 旧 id 消失，必须看得见。
- */
-export function parsePullFileRows(text) {
-  return String(text || '').split('\n').filter(Boolean).map((row) => {
-    const [path, status, additions, deletions, previousPath] = row.split('\t')
-    return { path, status, additions: Number(additions) || 0, deletions: Number(deletions) || 0, ...(previousPath ? { previousPath } : {}) }
-  })
-}
 
 /**
  * 取数失败 = 没有结论。合并前扫描的每一个输入（文件表、diff、合同、账本）取不到都**不许**退到「少看一点」的口径继续判：
@@ -67,52 +61,20 @@ function must(what, run) {
   }
 }
 
-function makeGh(exec) {
-  const gh = (args, { repo } = {}) => {
-    const full = repo ? [...args, '--repo', repo] : args
-    return exec(full, { cwd: repoRoot, maxBuffer: 64 * 1024 * 1024 })
-  }
-  /** 文件内容：只有「这个 ref 上确实没有这个文件」（HTTP 404）才是 null；别的失败一律抛出，不当作「没有」。 */
-  const ghApiFile = (repoSlug, filePath, ref) => {
-    try {
-      const raw = exec(['api', `repos/${repoSlug}/contents/${filePath}?ref=${ref}`, '--jq', '.content'], { cwd: repoRoot })
-      return Buffer.from(raw.replace(/\s/g, ''), 'base64').toString('utf8')
-    } catch (error) {
-      if (/HTTP 404|Not Found/u.test(`${error?.message ?? ''}\n${error?.stderr ?? ''}`)) return null
-      throw new PreflightDataError(`${filePath}@${String(ref).slice(0, 9)} 的内容`, error)
-    }
-  }
-  /** 某个 ref 上一个目录里的文件名（contents API 列目录，一次请求，不取内容）。 */
-  const ghApiDirectoryNames = (repoSlug, dirPath, ref) => must(`${dirPath} 的文件列表`, () => exec(['api', `repos/${repoSlug}/contents/${dirPath}?ref=${ref}`, '--jq', '.[] | select(.type == "file") | .name'], { cwd: repoRoot }).split('\n').filter(Boolean))
-  return { gh, ghApiFile, ghApiDirectoryNames }
-}
-
 /**
- * GraphQL 取回的目录（Tree.entries：[{ name, object: { text } }]）→ 整本逃逸账本；走同一个 assembleEscapeLedger
- * （文件名 ↔ id 的规则只此一份）。缺 _meta.json / 内容坏了 → null。纯函数、可测。
+ * fetch 基线分支末端与 PR head，返回这次 fetch 拿到的两个提交号。从 FETCH_HEAD 按引用名认
+ * （「branch '<基线>' of …」「'refs/pull/<n>/head' of …」），不靠行序；认不出（同一工作树里并发的 fetch 把它覆盖了、
+ * 远端没有这个引用）就抛错 = 取数失败。--write-fetch-head 钉死：fetch.writeFetchHead=false 时不写，读到的会是上一次的旧内容。
+ * fetch 是网络调用，瞬断重试同 gh 的只读调用（scripts/lib/transientRetry.mjs）。
  */
-export function escapeLedgerFromTree(entries) {
-  if (!Array.isArray(entries)) return null
-  const texts = new Map(entries.filter((entry) => typeof entry?.object?.text === 'string').map((entry) => [entry.name, entry.object.text]))
-  if (!texts.has(META_FILE)) return null
-  try {
-    const names = [...texts.keys()].filter((file) => file !== META_FILE && file.endsWith('.json')).sort()
-    return assembleEscapeLedger({ meta: JSON.parse(texts.get(META_FILE)), entries: names.map((file) => ({ name: file, value: JSON.parse(texts.get(file)) })) })
-  } catch {
-    return null
-  }
-}
-
-/** 某个 ref 上的整本逃逸账本：一次 GraphQL 请求取回目录里所有文件的内容（不是几十次 REST）。只在「判已结账合同」时用；取不到或内容坏了就抛出。 */
-function ghEscapeLedger(exec, repoSlug, ref) {
-  const [owner, name] = String(repoSlug).split('/')
-  const query = 'query($owner:String!,$name:String!,$expr:String!){repository(owner:$owner,name:$name){object(expression:$expr){... on Tree{entries{name object{... on Blob{text}}}}}}}'
-  return must('基线上的整本逃逸账本', () => {
-    const raw = exec(['api', 'graphql', '-f', `query=${query}`, '-F', `owner=${owner}`, '-F', `name=${name}`, '-f', `expr=${ref}:${ESCAPE_LEDGER_DIR}`], { cwd: repoRoot, maxBuffer: 64 * 1024 * 1024 })
-    const ledger = escapeLedgerFromTree(JSON.parse(raw)?.data?.repository?.object?.entries)
-    if (!ledger) throw new Error('账本目录读不出来')
-    return ledger
-  })
+function fetchPrCommits(git, pr, baseBranch) {
+  retryTransientSync(() => git(['fetch', '--quiet', '--no-tags', '--write-fetch-head', 'origin', `refs/heads/${baseBranch}`, `refs/pull/${pr}/head`]), { retryTimeouts: true })
+  const rows = fs.readFileSync(git(['rev-parse', '--path-format=absolute', '--git-path', 'FETCH_HEAD']).trim(), 'utf8').split('\n').map((line) => line.split('\t'))
+  const shaOf = (name) => rows.find(([sha, , what]) => /^[0-9a-f]{40,64}$/.test(sha ?? '') && String(what ?? '').startsWith(`${name} of `))?.[0] ?? null
+  const baseSha = shaOf(`branch '${baseBranch}'`)
+  const headSha = shaOf(`'refs/pull/${pr}/head'`)
+  if (!baseSha || !headSha) throw new Error(`FETCH_HEAD 里认不出 ${[baseSha ? null : baseBranch, headSha ? null : `pull/${pr}/head`].filter(Boolean).join('、')}（同一工作树里有别的 fetch 同时在跑？）`)
+  return { baseSha, headSha }
 }
 
 /** 报告引用是仓库内相对路径（不是链接、不是绝对路径、不含 ..）。 */
@@ -127,23 +89,23 @@ export function readReportRef(ref, readRepoFile, readLocal = (file) => fs.readFi
   } catch { return null }
 }
 
-/** 对外入口：任何取数失败都收成一行「结论：✖」，退出码 1。exec 可注入（测试用）。 */
-/** 本机 git（读历史、读 PR 头上的文件）；测试可注入。 */
-const realGit = (args) => execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] })
+/** 本机 git（fetch、diff、读提交里的文件）；测试注入临时仓库。stderr 要接住：瞬断重试靠它认出网络错误。 */
+const realGit = (args) => execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] })
 
-export function main(argv = process.argv.slice(2), exec = execGhReadSync, git = realGit) {
+/** 对外入口：任何取数失败都收成一行「结论：✖」，退出码 1。exec（gh）、git 与仓库根（读整本逃逸账本用）可注入（测试用）。 */
+export function main(argv = process.argv.slice(2), exec = execGhReadSync, git = realGit, root = repoRoot) {
   try {
-    return run(argv, exec, git)
+    return run(argv, exec, git, root)
   } catch (error) {
     if (!(error instanceof PreflightDataError)) throw error
-    console.log(`✖ ${error.message}——取数不全就不下结论，重跑一次；反复失败再查网络 / gh 登录`)
+    console.log(`✖ ${error.message}——取数不全就不下结论，重跑一次；反复失败再查网络 / gh 登录 / 本机 git 仓库`)
     console.log('结论：✖ 有项没过，先别合（取数失败，不是 PR 的问题；脚本只打印结论，不合并）')
     return 1
   }
 }
 
-function run(argv, exec, git) {
-  const { gh, ghApiFile, ghApiDirectoryNames } = makeGh(exec)
+function run(argv, exec, git, root) {
+  const gh = (args, { repo } = {}) => exec(repo ? [...args, '--repo', repo] : args, { cwd: repoRoot, maxBuffer: 64 * 1024 * 1024 })
   const prArg = argv.find((arg) => /^\d+$/.test(arg))
   const repoIndex = argv.indexOf('--repo')
   const repo = repoIndex >= 0 ? argv[repoIndex + 1] : undefined
@@ -151,30 +113,44 @@ function run(argv, exec, git) {
     console.error('用法：node scripts/merge-preflight.mjs <PR 号> [--repo owner/name]')
     return 2
   }
-  const view = must('PR 基本信息', () => JSON.parse(gh(['pr', 'view', prArg, '--json', 'body,headRefOid,baseRefName,headRepository,headRepositoryOwner,createdAt'], { repo })))
-  const slug = repo ?? (view.headRepositoryOwner?.login && view.headRepository?.name ? `${view.headRepositoryOwner.login}/${view.headRepository.name}` : null)
-  const baseSlug = repo ?? slug
-  // 文件表只取一次、要全量：只走分页的 pulls/<n>/files。**没有备用口径**：gh pr view 的 files 最多 100 个、
-  // 超过静默截断（#1048 / #1166 都超过 100 个文件），取不到就整个扫描失败，不退回截断版。
-  if (!baseSlug) throw new PreflightDataError('PR 所在仓库（headRepository 为空）')
-  const apiRows = must('PR 文件表', () => parsePullFileRows(gh(['api', `repos/${baseSlug}/pulls/${prArg}/files`, '--paginate', '--jq', '.[] | [.filename, .status, .additions, .deletions, (.previous_filename // "")] | @tsv'])))
-  const files = apiRows.map((row) => ({ path: row.path, status: row.status === 'added' ? 'A' : 'M' }))
-  const diff = must('PR diff', () => gh(['pr', 'diff', prArg], { repo }))
-  const addedLines = diff.split('\n').filter((line) => line.startsWith('+') && !line.startsWith('+++')).join('\n')
-  const addedByFile = addedLinesByFile(diff)
+  const view = must('PR 基本信息', () => JSON.parse(gh(['pr', 'view', prArg, '--json', 'body,headRefOid,baseRefName,createdAt'], { repo })))
   const body = view.body ?? ''
-  let fetched = false
-  const fetchedGit = () => {
-    if (!fetched) {
-      must('PR head 与 main 的提交历史', () => git(['fetch', '--quiet', 'origin', 'main', `pull/${prArg}/head`]))
-      fetched = true
-    }
-    return git
+
+  // 「这个 PR 改了什么」只来自本地 git：fetch 基线分支末端和 PR head，本地算 merge-base 与 diff。
+  // 判据代码与政策表仍取本检出（main），数据取 PR 头 / 本 PR 的 diff（「政策取 main、数据取 PR 头」不变）。
+  const baseBranch = view.baseRefName || 'main'
+  const { baseSha, headSha } = must('PR head 与基线分支的提交（git fetch）', () => fetchPrCommits(git, prArg, baseBranch))
+  // fetch 到的必须就是正文对应的那一版：取数这几秒里 PR 又推了，就不拿新 head 去判旧正文
+  if (headSha !== view.headRefOid) {
+    throw new PreflightDataError('和正文同一版的 PR head', new Error(`fetch 到的 pull/${prArg}/head 是 ${headSha.slice(0, 12)}，gh pr view 给的是 ${String(view.headRefOid).slice(0, 12)}（取数这几秒里 PR 又推了？）`))
   }
+  // 浅克隆里 merge-base 可能算不出或算错，不能当真
+  if (must('本机仓库是不是浅克隆', () => git(['rev-parse', '--is-shallow-repository']).trim()) === 'true') {
+    throw new PreflightDataError('完整的提交历史', new Error('本机仓库是浅克隆，merge-base 算不准'))
+  }
+  const forkSha = must('merge-base', () => git(['merge-base', baseSha, headSha]).trim())
+  const { files, addedByFile, packageRemovedLines } = must('PR 改动（本地 git diff）', () => prChanges({ git, base: forkSha, head: headSha }))
+
+  /** 某个提交上的文件内容：这个提交上确实没有这个路径 → null；别的失败（对象缺失、是目录、读不出来）一律抛出，不当作「没有」。 */
+  const showAt = (sha, file) => {
+    const what = `${file}@${String(sha).slice(0, 9)} 的内容`
+    let oid
+    try {
+      oid = git(['rev-parse', '--verify', '--quiet', `${sha}:${file}`]).trim()
+    } catch (error) {
+      if (error?.status === 1) return null
+      throw new PreflightDataError(what, error)
+    }
+    return must(what, () => git(['cat-file', 'blob', oid]))
+  }
+  /** 某个提交上一个目录里这一层的文件名（不取内容）。 */
+  const fileNamesAt = (sha, dir) => must(`${dir} 的文件列表`, () => git(['ls-tree', '-z', sha, '--', `${dir}/`])
+    .split('\0').filter(Boolean).map((row) => row.split('\t'))
+    .filter(([meta]) => meta.split(' ')[1] === 'blob').map(([, file]) => file.slice(dir.length + 1)))
 
   const contracts = []
-  for (const file of files.filter((entry, index) => apiRows[index].status !== 'removed' && /^docs\/fixes\/.+\.root-cause\.json$/.test(entry.path))) {
-    const text = ghApiFile(slug, file.path, view.headRefOid)
+  for (const file of files.filter((entry) => entry.status !== 'D' && /^docs\/fixes\/.+\.root-cause\.json$/.test(entry.path))) {
+    const text = showAt(headSha, file.path)
     try {
       contracts.push({ file: file.path, added: file.status === 'A', detected_by: text ? JSON.parse(text).detected_by : undefined })
     } catch {
@@ -182,47 +158,41 @@ function run(argv, exec, git) {
     }
   }
 
-  // 逃逸账本（一条一个文件）：只有本 PR 动了条目文件，才去取那几个文件的 base / head 两版（base 取当前基线分支末端）
+  // 逃逸账本（一条一个文件）：只有本 PR 动了条目文件，才去取那几个文件的 base / head 两版
   const ledger = { transitions: [], ids: [], removed: [], settledContracts: [] }
-  const baseRef = view.baseRefName || 'main'
-  const ledgerRows = apiRows.map((row) => ({ path: row.path, status: row.status, previousPath: row.previousPath }))
-  if (ledgerRows.some((row) => escapeIdOfPath(row.path) || (row.previousPath && escapeIdOfPath(row.previousPath)))) {
+  if (files.some((file) => escapeIdOfPath(file.path))) {
     // 「转成 fixed」和「条目被删」都对本 PR 自己的起点（merge-base）比，不对 main 末端比（10-07 #1055 / #1065）：
-    // PR 文件表本来就是对 merge-base 算的，main 后来新加的条目根本不在表里；base 那一版也取 merge-base 上的。
-    // 取不到 merge-base 直接失败；返回的不是 40 位哈希（不该发生）才用 base 分支末端。
-    let forkRef = baseRef
-    const forkSha = must('merge-base', () => gh(['api', `repos/${slug}/compare/${baseRef}...${view.headRefOid}`, '--jq', '.merge_base_commit.sha']).trim())
-    if (/^[0-9a-f]{40}$/.test(forkSha)) forkRef = forkSha
-    const changes = ledgerChanges(ledgerRows, (file, side) => ghApiFile(slug, file, side === 'base' ? forkRef : view.headRefOid))
+    // main 后来新加的条目不在本 PR 的文件表里。条目文件改名在文件表里是「旧路径 D + 新路径 A」，旧 id 照样算被删。
+    const changes = ledgerChanges(files, (file, side) => showAt(side === 'base' ? forkSha : headSha, file))
     ledger.transitions = changes.transitions
     ledger.removed = changes.removed
     // 正文提到的条目 id（只做提示）：列一次 head 目录的文件名，不取内容
-    ledger.ids = (ghApiDirectoryNames(slug, ESCAPE_LEDGER_DIR, view.headRefOid)).map((name) => escapeIdOfPath(`${ESCAPE_LEDGER_DIR}/${name}`)).filter(Boolean)
+    ledger.ids = fileNamesAt(headSha, ESCAPE_LEDGER_DIR).map((name) => escapeIdOfPath(`${ESCAPE_LEDGER_DIR}/${name}`)).filter(Boolean)
   }
-  // 「修订已结账的合同」才需要知道 base 上哪些合同已结账：只在这时取一次 base 整本账（一次 GraphQL）
+  // 「修订已结账的合同」才需要知道基线上哪些合同已结账：只在这时读一次基线分支末端的整本账（唯一加载函数 loadEscapeLedger）
   const amendsUserContract = contracts.some((contract) => !contract.added && ['user', 'post-release'].includes(contract.detected_by))
-  if (amendsUserContract && ledger.transitions.length === 0) ledger.settledContracts = settledContracts(ghEscapeLedger(exec, slug, baseRef))
+  if (amendsUserContract && ledger.transitions.length === 0) {
+    ledger.settledContracts = settledContracts(must('基线上的整本逃逸账本', () => {
+      const whole = loadEscapeLedger(root, { ref: baseSha })
+      if (!whole) throw new Error('账本目录读不出来')
+      return whole
+    }))
+  }
 
   // 性能场景 id（G-perfreg，2026-10-15）：已知 = (基线登记表 − 本 PR 删掉的) ∪ 本 PR 新增 / 改动的文件（PR 头内容）。
   // 只核证据行的 id；场景文件结构以 CI 的 check:perf-scenarios（合并引用上）为准，这里不拿检出的 DRIVERS 校验 PR 文件。
   const scenarioRe = /^tests\/perf\/scenarios\/[^/]+\.json$/
-  const scenarioRows = apiRows.filter((row) => scenarioRe.test(row.path))
-  const baseScenarioNames = ghApiDirectoryNames(baseSlug, SCENARIO_DIR, baseRef).filter((name) => name.endsWith('.json'))
+  const scenarioRows = files.filter((row) => scenarioRe.test(row.path))
+  const baseScenarioNames = fileNamesAt(baseSha, SCENARIO_DIR).filter((name) => name.endsWith('.json'))
   const scenarios = knownScenarios({
-    baseEntries: scenarioEntriesFromReader(baseScenarioNames, (name) => ghApiFile(baseSlug, `${SCENARIO_DIR}/${name}`, baseRef)),
-    prFiles: scenarioRows.filter((row) => row.status !== 'removed').map((row) => ({ file: row.path, content: ghApiFile(slug, row.path, view.headRefOid) })),
-    removedFiles: scenarioRows.filter((row) => row.status === 'removed').map((row) => row.path),
+    baseEntries: scenarioEntriesFromReader(baseScenarioNames, (name) => showAt(baseSha, `${SCENARIO_DIR}/${name}`)),
+    prFiles: scenarioRows.filter((row) => row.status !== 'D').map((row) => ({ file: row.path, content: showAt(headSha, row.path) })),
+    removedFiles: scenarioRows.filter((row) => row.status === 'D').map((row) => row.path),
   })
-
-  // 规则与门岗的改动范围：要真实的文件状态（removed / modified）
-  const statusFiles = apiRows.map((row) => ({ path: row.path, status: row.status }))
-  const packageBlock = diff.split(/^diff --git /m).find((block) => block.startsWith('a/package.json b/package.json')) ?? ''
-  const packageRemovedLines = packageBlock.split('\n').filter((line) => line.startsWith('-') && !line.startsWith('---')).map((line) => line.slice(1))
 
   const report = mergeReport(prArg, evaluatePrBody({
     body,
-    files: statusFiles.map((file) => ({ path: file.path, status: file.status === 'added' ? 'A' : file.status })),
-    addedLines,
+    files,
     addedByFile,
     packageRemovedLines,
     contracts,
@@ -235,29 +205,23 @@ function run(argv, exec, git) {
     paidStrict: true,
     // 证据判「对不对」的输入（取数在这里，判据在 pr-body-criteria）：PR 当前 head、报告 / 原始结果怎么读、拍板图清单
     evidence: {
-      headSha: view.headRefOid,
+      headSha,
       // 协调目录的报告在本机读（读不到 = null = 红）；仓库内路径从 PR 头读；外部链接读不了
-      readReport: (ref) => readReportRef(ref, (file) => ghApiFile(slug, file, view.headRefOid)),
-      readRaw: (ref) => (isRepoRef(ref) ? ghApiFile(slug, ref, view.headRefOid) : null),
-      // 拍板图清单和提交历史都取 PR head（PR 自己新增的板在 main 检出里读不到）；规则与判据仍从 base 读。用到才 fetch，取不到 = 取数失败（红）
+      readReport: (ref) => readReportRef(ref, (file) => showAt(headSha, file)),
+      readRaw: (ref) => (isRepoRef(ref) ? showAt(headSha, ref) : null),
+      // 拍板图清单和提交历史都取 PR head（PR 自己新增的板在 main 检出里读不到）；规则与判据仍从 base 读。取不到 = 取数失败（红）
       headRelation: (accepted, head) => {
-        const result = checkHeadAncestry({ git: fetchedGit(), accepted, head })
+        const result = checkHeadAncestry({ git, accepted, head })
         // 本机必须算得出：算不了（浅克隆、没有历史）不能当通过
         return result.unknown ? { ok: false, reason: `读不到提交历史：${result.reason}` } : result
       },
       // 批准身份看 base（merge-base）或协调确认记录（NOMI_COORD_APPROVALS，本机、不进仓库）：PR 自己新增的板 / 元素 / 政策字段没有记录就红
       approvals: localApprovals({ pr: Number(prArg) }),
-      baseBoards: () => must('base 上的拍板图清单', () => {
-        const git = fetchedGit()
-        return boardsAtHead({ git, sha: String(git(['merge-base', 'origin/main', view.headRefOid])).trim() })
-      }),
-      boards: () => must('PR 头上的拍板图清单', () => boardsAtHead({ git: fetchedGit(), sha: view.headRefOid })),
+      baseBoards: () => must('base 上的拍板图清单', () => boardsAtHead({ git, sha: forkSha })),
+      boards: () => must('PR 头上的拍板图清单', () => boardsAtHead({ git, sha: headSha })),
       // ESLint 批量抑制的冻结数上涨：没有协调确认记录就红
-      suppressions: () => must('PR 头上的 eslint-suppressions.json', () => suppressionsAt({ git: fetchedGit(), sha: view.headRefOid })),
-      baseSuppressions: () => must('base 上的 eslint-suppressions.json', () => {
-        const git = fetchedGit()
-        return suppressionsAt({ git, sha: String(git(['merge-base', 'origin/main', view.headRefOid])).trim() })
-      }),
+      suppressions: () => must('PR 头上的 eslint-suppressions.json', () => suppressionsAt({ git, sha: headSha })),
+      baseSuppressions: () => must('base 上的 eslint-suppressions.json', () => suppressionsAt({ git, sha: forkSha })),
     },
   }))
   console.log(report.text)

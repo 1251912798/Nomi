@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNodeExternalHighlightStore } from '../store/nodeExternalHighlightStore'
 import type { GenerationCanvasEdge, GenerationCanvasNode } from '../model/generationCanvasTypes'
 import {
   projectGenerationFlowEdges,
@@ -79,6 +80,8 @@ export function useGenerationCanvasReactFlowProjection({
   }, [aggregateByEdgeId, aggregateStructureKey])
   // 选区是叠在结构投影上的一层：结构没变时，选区变化只换选中过 / 被选中的那几张卡（见 projectGenerationFlowNodes）。
   const nodeProjectionRef = React.useRef<FlowNodeProjection | null>(null)
+  // 聊天里的指向元素正悬停着哪个节点（D2 P1）：只有前后被指的两张卡重投，别的卡交回同一个对象。
+  const pointerHoverNodeId = useNodeExternalHighlightStore((state) => state.hoverNodeId)
   const flowNodes = React.useMemo(() => {
     nodeProjectionRef.current = projectGenerationFlowNodes(nodeProjectionRef.current, {
       nodes,
@@ -86,9 +89,10 @@ export function useGenerationCanvasReactFlowProjection({
       readOnly,
       appearingNodeIds,
       focusFlashNodeId,
+      pointerHoverNodeId,
     })
     return nodeProjectionRef.current.output
-  }, [appearingNodeIds, focusFlashNodeId, nodes, readOnly, selectedSet])
+  }, [appearingNodeIds, focusFlashNodeId, nodes, pointerHoverNodeId, readOnly, selectedSet])
   const edgeProjectionRef = React.useRef<FlowEdgeProjection | null>(null)
   const flowEdges = React.useMemo(() => {
     edgeProjectionRef.current = projectGenerationFlowEdges(edgeProjectionRef.current, {
