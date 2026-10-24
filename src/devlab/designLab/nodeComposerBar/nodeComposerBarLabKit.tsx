@@ -32,6 +32,7 @@ import BaseGenerationNode from '../../../workbench/generationCanvas/nodes/BaseGe
 import InlineParameterBar from '../../../workbench/generationCanvas/nodes/InlineParameterBar'
 import { resolveArchetypeForOption, resolveRenderedControls } from '../../../workbench/generationCanvas/nodes/nodeModelArchetype'
 import { toCatalogModelOptions } from '../../../config/modelOptionMappers'
+import { seedModelCatalogForTests } from '../../../config/modelCatalogCache'
 import type { ModelCatalogModelDto } from '../../../workbench/api/modelCatalogApi'
 import type { GenerationCanvasNode } from '../../../workbench/generationCanvas/model/generationCanvasTypes'
 import { useGenerationCanvasStore } from '../../../workbench/generationCanvas/store/generationCanvasStore'
@@ -104,6 +105,20 @@ const CATALOG_VENDORS = [
 ]
 
 export function installCatalogBridge(): void {
+  // 现役取数链只认缓存：只装桥，目录会在缓存没命中的那一帧退回「没有可用模型」（实验室的老基线就是这样烂的）。
+  // 种缓存只替掉最外面那一次取数，认档案 / 算参数 / 渲染仍是现役代码。
+  const rows = CATALOG_MODELS as unknown as ModelCatalogModelDto[]
+  const videoOptions = toCatalogModelOptions(rows.filter((model) => model.kind === 'video'))
+  const imageOptions = toCatalogModelOptions(rows.filter((model) => model.kind === 'image'))
+  seedModelCatalogForTests(
+    { ok: true, counts: { vendors: 1, enabledVendors: 1, models: rows.length, enabledModels: rows.length, mappings: 0, enabledMappings: 0, enabledApiKeys: 1 }, byKind: [], issues: [] },
+    [
+      { kind: 'video', requiredMode: 'text_to_video', options: videoOptions },
+      { kind: 'video', requiredMode: 'image_to_video', options: videoOptions },
+      { kind: 'image', requiredMode: 'text_to_image', options: imageOptions },
+      { kind: 'image', requiredMode: 'image_edit', options: imageOptions },
+    ],
+  )
   ;(window as unknown as { nomiDesktop: unknown }).nomiDesktop = {
     modelCatalog: {
       listVendors: () => CATALOG_VENDORS,

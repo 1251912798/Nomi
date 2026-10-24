@@ -447,6 +447,8 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
   const images = []
   /** 视频生成的 create 请求（apimart `/v1/videos/generations`）。 */
   const videos = []
+  /** APIMart 参考图上传（`/v1/uploads/images`），每笔带 multipart 里的文件名（uploadFileNames）。 */
+  const uploads = []
   // 真视频要跑**几分钟**：受理之后供应商一直回 `processing`，直到走查说「供应商那边出片了」。
   // 默认就压着——一条走查若不 release，它看到的正是用户看到的「还在生成」。
   let videosHeld = true
@@ -544,8 +546,12 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
     // APIMart 参考图上传（POST /v1/uploads/images，multipart）。上传端点现在跟着用户的 base 走，夹具口把 base
     // 指到本机，所以它会落到这里；收下字节、回一个本机取得到的图地址（走查据此证明「没出门」）。
     if (apimartMode && request.method === 'POST' && record.path === '/v1/uploads/images') {
-      for await (const chunk of request) void chunk
+      const parts = []
+      for await (const chunk of request) parts.push(chunk)
       record.upload = true
+      // 只留 multipart 头里的文件名（演练据此核「哪几张图被上传过」，如没在用的参考图一张都不该上传），字节不留。
+      record.uploadFileNames = [...Buffer.concat(parts).toString('latin1').matchAll(/filename="([^"]*)"/g)].map((match) => match[1])
+      uploads.push(record)
       jsonResponse(response, 200, { url: `${fixtureOrigin}/fixture/image.jpg` })
       return
     }
@@ -711,7 +717,7 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
     })
     await writeFile(path.join(settingsDir, 'model-catalog.json'), `${JSON.stringify(catalog, null, 2)}\n`, { flag: 'wx' })
     return {
-      baseURL, requests, images, videos, unexpected, modelListProbes, balanceProbes, close, generationProvider,
+      baseURL, requests, images, videos, uploads, unexpected, modelListProbes, balanceProbes, close, generationProvider,
       /** 已受理的 apimart 图片任务先停在 `processing`（true），放开后下一次轮询照常出图（false）。 */
       holdTasks(on) { holdTasks = Boolean(on) },
       /** apimart 图片 / 视频 create 先压着不回（true），放开后压着的那几笔照常受理（false）。 */

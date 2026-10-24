@@ -42,7 +42,7 @@ function counted<T>(items: readonly T[]): { list: readonly T[]; reads: () => num
 }
 
 function nodeInput(nodes: readonly GenerationCanvasNode[], selected: ReadonlySet<string>) {
-  return { nodes, selected, readOnly: false, appearingNodeIds: undefined, focusFlashNodeId: null }
+  return { nodes, selected, readOnly: false, appearingNodeIds: undefined, focusFlashNodeId: null, pointerHoverNodeId: null }
 }
 
 function edgeInput(

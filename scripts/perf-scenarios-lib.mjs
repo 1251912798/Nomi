@@ -62,6 +62,17 @@ export const DRIVERS = Object.freeze({
       return { frameGapP95: pick('frameP95Ms'), longTasks: pick('longTasks'), response: pick('responseMs'), mainRoundTripMax: pick('mainRoundTripMaxMs'), mediaRequests: pick('mediaRequests') }
     },
   },
+  // 生成框 B3 的最坏规模操作（tests/perf/composer-refs-bench.mjs：实验室里真组件 + 30 张参考，无头 Chromium 真鼠标，
+  // 共用 response 计时器；--op 选操作）。
+  'tests/perf/composer-refs-bench.mjs': {
+    supports: ['response', 'longTasks'],
+    buildArgs: (script, args, { runs, label }) => [script, ...args, '--runs', String(runs), '--label', label],
+    resultFile: (label) => `tests/perf/results/composer-refs-${label}.json`,
+    readRuns(payload) {
+      const samples = payload.samples ?? []
+      return { response: samples.map((sample) => sample.responseMs).filter(isNumber), longTasks: samples.map((sample) => sample.longTasks).filter(isNumber) }
+    },
+  },
   // Inline board: the existing real-media production journey, one fresh project per repetition.
   'tests/ux/whiteboard-refactor.walk.mjs': {
     supports: ['frameGapP95', 'longTasks'],

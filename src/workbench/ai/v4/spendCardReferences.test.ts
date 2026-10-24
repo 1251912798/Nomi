@@ -16,7 +16,8 @@ describe('existing canonical references drive candidate preview slots', () => {
       { assetId: 'last', contentHash: 'two', version: 2, kind: 'image', role: 'last_frame', url: 'nomi-local://asset/p/last.png' },
     ] } satisfies PendingSpendShot
     const displayed = placeReferenceInputs(node, pendingReferenceInputs(referencedShot))
-    expect(displayed.meta).toMatchObject({ firstFrameUrl: 'nomi-local://asset/p/first.png', lastFrameUrl: 'nomi-local://asset/p/last.png' })
+    // 首 / 尾帧住节点那一份有序参考列表（referenceList）：首帧在前、尾帧在后，按同一顺序落回两格。
+    expect(displayed.meta).toMatchObject({ referenceImageUrls: ['nomi-local://asset/p/first.png', 'nomi-local://asset/p/last.png'] })
     expect(referenceInputsFromNode(displayed, referencedShot)).toEqual(pendingReferenceInputs(referencedShot))
     expect(candidatePatchFromNode(displayed, referencedShot)).toBeUndefined()
   })

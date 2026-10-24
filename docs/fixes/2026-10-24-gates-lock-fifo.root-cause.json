@@ -1,0 +1,185 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-gates-lock-fifo",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-24",
+  "problem_type": "Unfair cross-worktree admission to the machine gates lock",
+  "symptom": "A later gates process can acquire the shared lock before an earlier waiter because each waiter polls LOCK_NB and races after release; the earliest waiter can remain blocked for hours.",
+  "direct_cause": "scripts/with-gates-lock.py repeatedly calls non-blocking flock/msvcrt acquisition without a shared arrival order, so the kernel scheduler decides which waiter wins.",
+  "class_root": "The shared machine lock had no admission invariant connecting arrival to ownership; its native lock protects mutual exclusion but does not provide FIFO ordering or dead-ticket reclamation.",
+  "affected_population": [
+    "Every independent local gates, test:e2e, test:unit:shard, and other package.json entrypoint using scripts/with-gates-lock.py",
+    "Nested callers that must inherit an existing owner without entering the external queue",
+    "POSIX and Windows developers sharing the machine lock"
+  ],
+  "scope_paths": [
+    "scripts/with-gates-lock.py",
+    "scripts/with-gates-lock.node-test.mjs"
+  ],
+  "entry_points": [
+    "scripts/with-gates-lock.py main() admission",
+    "package.json lock-protected validation scripts",
+    "scripts/with-gates-lock.node-test.mjs multi-process regression suite"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://docs.python.org/3/library/fcntl.html",
+      "checked_at": "2026-10-24",
+      "purpose": "fcntl.flock supports exclusive and non-blocking acquisition and reports contention, but the API does not promise FIFO waiter ordering; retain it for the main inode lock."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://py-filelock.readthedocs.io/en/latest/",
+      "checked_at": "2026-10-24",
+      "purpose": "filelock supplies a platform-aware FileLock, but its documented abstraction is mutual exclusion and it does not provide this queue's FIFO tickets, kernel-owned dead-ticket state, or fixed main inode contract."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://portalocker.readthedocs.io/en/latest/quickstart.html",
+      "checked_at": "2026-10-24",
+      "purpose": "portalocker supplies cross-platform file locking with timeout/retry and optional Windows extras, but its documented Lock has no FIFO admission queue and would add a dependency without solving ticket cleanup."
+    },
+    {
+      "kind": "source-code",
+      "url": "https://en.wikipedia.org/wiki/Ticket_lock",
+      "checked_at": "2026-10-24",
+      "purpose": "The ticket-lock pattern establishes FIFO by atomically assigning monotonically increasing tickets; this is the model used for the queue, adapted to per-ticket kernel locks so a killed process releases its number."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://docs.python.org/3/library/msvcrt.html",
+      "checked_at": "2026-10-24",
+      "purpose": "Windows msvcrt.locking provides LK_NBLCK/LK_UNLCK; the implementation retries LK_NBLCK in a loop for the short queue guard so it does not inherit LK_LOCK's ten-attempt cap."
+    }
+  ],
+  "invariants": [
+    "Independent callers allocate a strictly increasing ticket while holding the queue guard; ownership is granted only to the lowest active ticket.",
+    "The main lock inode is never unlinked; the kernel owns liveness for the main lock and each ticket lock.",
+    "A ticket file is unlinked only by its owner while holding its ticket lock, or by a guard holder after acquiring an unlocked dead ticket; probing never creates missing ticket files.",
+    "A caller with a matching inherited token and cwd executes immediately without allocating a ticket; a different cwd remains an independent queued caller.",
+    "Queue state failures exit nonzero instead of falling back to an unordered lock race."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "open_queue"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "allocate_ticket"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "active_ticket_numbers"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "cleanup_dead_tickets"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "main"
+    }
+  ],
+  "door_reduction": {
+    "before": 5,
+    "after": 5,
+    "why_not": "The door-map script only parses JavaScript/TypeScript and, when run as `node scripts/door-map.mjs alive inherited_owner --roots=scripts --include-tests`, reported the unrelated JavaScript test door `scripts/vitest-fair-share.node-test.mjs:alive`; it cannot enumerate this Python state. The five Python doors are the smallest shared boundary inventory: open_queue creates the one queue state, allocate_ticket assigns it, active_ticket_numbers reads live predecessors, cleanup_dead_tickets reclaims kernel-released numbers, and main admits direct/inherited/queued callers. Removing any one would move the invariant into a caller or leave a read/write path unguarded."
+  },
+  "generality_proof": "All package.json machine-gated entrypoints converge on main() in this wrapper. The queue guard serializes ticket allocation and dead-ticket cleanup, ticket locks make liveness kernel-owned, and the wait loop admits only the lowest active number. The inherited token/cwd branch remains before ticket allocation for every nested caller, so the same rule covers direct, nested, cancelled, killed, POSIX, and Windows paths without a caller-specific fallback.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "main",
+      "responsibility": "Own all machine-lock admission decisions: direct acquisition, inherited nested execution, ticket allocation, queue-depth reporting, cancellation cleanup, and FIFO handoff."
+    },
+    {
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "cleanup_dead_tickets",
+      "responsibility": "Under the queue guard, remove only ticket files whose kernel lock can be acquired; never infer liveness from timestamps or a missing main lock file."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "package.json",
+      "entry_point": "gates / gates:full / gates:contracts",
+      "disposition": "enforced",
+      "evidence": "Each command invokes scripts/with-gates-lock.py and nested gates:contracts reuses the inherited token path."
+    },
+    {
+      "path": "package.json",
+      "entry_point": "test:e2e / test:unit:shard / test:system:* / test:journeys",
+      "disposition": "enforced",
+      "evidence": "Repository scan shows these heavy local entrypoints invoke the same wrapper; no alternate queue implementation exists."
+    },
+    {
+      "path": "scripts/with-gates-lock.node-test.mjs",
+      "entry_point": "launch() multi-process fixtures",
+      "disposition": "enforced",
+      "evidence": "The class regression suite launches independent processes through the wrapper and exercises order, cancellation, SIGKILL, nested cwd, inode, and fail-closed behavior."
+    },
+    {
+      "path": "scripts/with-gates-lock.py",
+      "entry_point": "inherited_owner()",
+      "disposition": "enforced",
+      "evidence": "Nested callers with matching token and cwd return before ticket allocation; the different-cwd regression proves they remain external queue members."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any two worktrees can reach the same polling race, and a killed waiter can leave an unlocked ticket file. The mechanism is independent of command, cwd, provider, or number of worktrees.",
+    "same_class_scan": [
+      "rg -n 'with-gates-lock.py' package.json .github scripts: all lock-protected package entrypoints route through one Python wrapper; no second production admission path was found.",
+      "node scripts/door-map.mjs alive inherited_owner --roots=scripts --include-tests: the tool cannot parse Python and returned only the unrelated JavaScript test symbol; Python doors were verified by direct symbol search in scripts/with-gates-lock.py and recorded above.",
+      "Old implementation mutation: five arrivals at 0.3-second intervals produced actual acquisition order FIFO_3, FIFO_4, FIFO_0, FIFO_1, FIFO_2; the changed class test requires FIFO_0 through FIFO_4 and therefore proves the old polling shape red."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "scripts/with-gates-lock.py",
+    "invariant": "A live independent waiter owns a kernel-held ticket and only the lowest active ticket may take the main lock; missing or dead ticket files are never recreated by probes.",
+    "failure_mode": "Queue directory, counter, or ticket state errors exit nonzero; SIGINT/SIGTERM exits nonzero and releases the ticket; SIGKILL releases the ticket in the kernel and the next guard admission removes its file; no unordered polling fallback remains.",
+    "exception_policy": "none",
+    "strategy": "Add a short guard lock around admission and cleanup, allocate monotonic ticket files, use each ticket file's native lock as the liveness source, preserve inherited nested execution before allocation, and delete the old main-lock polling race in the same change.",
+    "artifacts": [
+      "scripts/with-gates-lock.py",
+      "scripts/with-gates-lock.node-test.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/with-gates-lock.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/with-gates-lock.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "scripts/with-gates-lock.py"
+    ],
+    "rationale": "The old LOCK_NB polling loop is deleted in place. No unordered fallback or second queue implementation remains."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "filelock and portalocker were inspected but are not installed and do not provide the required FIFO/dead-ticket/inode contract. The implementation uses the existing Python standard library and OS primitives, so no dependency upgrade is needed.",
+    "exit_criteria": []
+  },
+  "migration": "No user-data migration. Existing main lock files remain valid; the queue directory, guard, counter, and ticket files are created beside the same lock path. Existing stale unlocked ticket files are reclaimed only under the guard.",
+  "residual_risks": [
+    "Windows behavior is unverified on this macOS host: the repository has a manually dispatched Windows walkthrough that reaches test:e2e but no Windows job that runs check:gates-lock directly. The code uses msvcrt LK_NBLCK/LK_UNLCK and retries guard acquisition without LK_LOCK's ten-attempt limit; Windows-specific unlink failure is deliberately best effort and retried on the next admission.",
+    "The queue scans ticket filenames under the guard, so an unusually large number of simultaneously live waiters increases admission overhead; ticket files are removed on normal handoff/cancellation and dead files are reclaimed at the next admission."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/with-gates-lock.py",
+    "tests": [
+      "scripts/with-gates-lock.node-test.mjs"
+    ],
+    "why": "All lock-protected package entrypoints converge on main(), where queue admission, nested bypass, kernel liveness, cancellation, and cleanup are enforceable together."
+  }
+}

@@ -31,7 +31,8 @@ export default function NodeInputReferenceEntry({ nodeId, disabled, accept = ['i
   return <div className="flex flex-col gap-2">
     <div className="flex flex-wrap items-center gap-2">
       <AssetReferenceButton disabled={disabled || uploading} onClick={() => { setOpen(false); cancelPick.current = pickCanvasInputFor(nodeId) }} />
-      {inputs.map(({ edge, asset }, index) => <AssetTile key={edge.id} asset={asset} index={index + 1}
+      {inputs.map(({ edge, asset }) => <AssetTile key={edge.id} asset={asset} sourceLabel={t('assetLibrary.refRow.sourceCanvas')}
+          tipText={t('assetLibrary.refRow.tipConnected', { name: asset.name })} removeLabel={t('assetLibrary.refRow.disconnect')}
         onRemove={disabled ? undefined : () => useGenerationCanvasStore.getState().disconnectEdge(edge.id)} />)}
       <fieldset disabled={disabled || uploading} className="relative m-0 min-w-0 border-0 p-0 disabled:opacity-50">
         <AssetAddTile selected={open} onClick={() => setOpen(value => !value)} />
