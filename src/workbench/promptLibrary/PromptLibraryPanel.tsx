@@ -96,7 +96,7 @@ export function PromptLibraryContent({ host, toolbarHost, className }: PromptLib
   }, [category, sections])
 
   const spec = PROMPT_GRID[host]
-  const width = useElementWidth(scrollElementRef) ?? 0
+  const width = useElementWidth(scrollElementRef, 'content') ?? 0
   const columns = libraryColumns(width, { minCardWidth: spec.minCardWidth, gap: spec.columnGap, max: spec.maxColumns })
   const trimmedQuery = query.trim()
   const views = React.useMemo(() => librarySectionsView(sections, {
