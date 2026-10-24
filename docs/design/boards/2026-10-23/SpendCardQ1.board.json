@@ -60,9 +60,8 @@
         "long-text"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "assertion": "board:SpendCardQ1/card.title",
-      "owner": "I-d2-plan1",
       "note": "方案一：标题不再重复数量；数量交给主按钮。"
     },
     {
@@ -97,10 +96,9 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "note": "替掉旧卡体（整件生成框 + 翻页）。窄屏（≤320px）只留镜号 + 缩略图。",
-      "assertion": "board:SpendCardQ1/card.pointers",
-      "owner": "I-d2-plan1"
+      "assertion": "board:SpendCardQ1/card.pointers"
     },
     {
       "id": "card.pointer.exclude",
@@ -114,14 +112,13 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "userDecision": {
         "quote": "协调 10-23 转述用户「按推荐」：Q1 选 A——多段卡里每个指向元素悬停 / 聚焦时露一颗小「不生成 ×」，点了 N 跟着减，节点显示「已去掉，不生成」；可以撤回（再点一次恢复）",
         "date": "2026-10-23"
       },
       "note": "对样张的已批差异（样张没画）。全部去掉时主按钮置灰、卡留着（还能恢复），要关卡点「取消」。恢复这一镜是宿主动作 restoreSpendShot（D2 第③步补上，去掉与恢复都带卡的身份）。",
-      "assertion": "board:SpendCardQ1/card.pointer.exclude",
-      "owner": "I-d2-plan1"
+      "assertion": "board:SpendCardQ1/card.pointer.exclude"
     },
     {
       "id": "card.summary",
@@ -133,9 +130,8 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
-      "assertion": "board:SpendCardQ1/card.summary",
-      "owner": "I-d2-plan1"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.summary"
     },
     {
       "id": "card.total",
@@ -147,14 +143,13 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "userDecision": {
         "quote": "协调 10-23 转述用户「按推荐」：Q2 照 10-08「界面不谈钱」——合计行只写「N 段」，不印合计金额；只有各镜价格不同时折叠明细里印每镜价；价格算不出就不印",
         "date": "2026-10-23"
       },
       "note": "样张画了「3 段 · 合计 ¥2.10」，与 10-08 规则冲突，用户 10-23 定照 10-08。",
-      "assertion": "board:SpendCardQ1/card.total",
-      "owner": "I-d2-plan1"
+      "assertion": "board:SpendCardQ1/card.total"
     },
     {
       "id": "card.per-shot",
@@ -167,9 +162,8 @@
         "long-text"
       ],
       "candidates": [],
-      "status": "in-progress",
-      "assertion": "board:SpendCardQ1/card.per-shot",
-      "owner": "I-d2-plan1"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.per-shot"
     },
     {
       "id": "card.cancel",
@@ -196,10 +190,9 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "note": "动作在路上时置灰；⏎ 提示、最小宽 80 沿用。",
-      "assertion": "board:SpendCardQ1/card.generate",
-      "owner": "I-d2-plan1"
+      "assertion": "board:SpendCardQ1/card.generate"
     },
     {
       "id": "card.progress",
@@ -252,9 +245,8 @@
         "long-text"
       ],
       "candidates": [],
-      "status": "in-progress",
-      "assertion": "board:SpendCardQ1/card.failure",
-      "owner": "I-d2-plan1"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.failure"
     },
     {
       "id": "card.failure.decline",

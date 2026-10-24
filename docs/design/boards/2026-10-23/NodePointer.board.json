@@ -106,10 +106,9 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "assertion": "board:NodePointer/pointer.state.waiting",
-      "note": "出处：本画布 canvas.json 的 thumb 注记；组格不再印「等你确认」。",
-      "owner": "I-d2-plan1"
+      "note": "出处：本画布 canvas.json 的 thumb 注记；组格不再印「等你确认」。"
     },
     {
       "id": "pointer.state.queued",
@@ -121,10 +120,9 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "assertion": "board:NodePointer/pointer.state.queued",
-      "note": "出处：本画布 canvas.json 的 thumb 注记。",
-      "owner": "I-d2-plan1"
+      "note": "出处：本画布 canvas.json 的 thumb 注记。"
     },
     {
       "id": "pointer.state.generating",
@@ -136,10 +134,9 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "assertion": "board:NodePointer/pointer.state.generating",
-      "note": "出处：本画布 canvas.json 的 thumb 注记。",
-      "owner": "I-d2-plan1"
+      "note": "出处：本画布 canvas.json 的 thumb 注记。"
     },
     {
       "id": "pointer.state.done",
@@ -165,10 +162,9 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "assertion": "board:NodePointer/pointer.state.failed",
-      "note": "出处：本画布 canvas.json 的 thumb 注记。",
-      "owner": "I-d2-plan1"
+      "note": "出处：本画布 canvas.json 的 thumb 注记。"
     },
     {
       "id": "pointer.deleted",
@@ -264,10 +260,9 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "assertion": "board:NodePointer/pointer.located",
-      "note": "出处：本画布 canvas.json 的 thumb 注记；从左上角移到中间并和图标合成一个。",
-      "owner": "I-d2-plan1"
+      "note": "出处：本画布 canvas.json 的 thumb 注记；从左上角移到中间并和图标合成一个。"
     },
     {
       "id": "pointer.narrow.collapse",
