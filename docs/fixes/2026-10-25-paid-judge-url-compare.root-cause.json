@@ -1,0 +1,153 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-25-paid-judge-url-compare",
+  "problem_type": "URL normalization and query redaction in paid walkthrough evidence",
+  "symptom": "judgeReferenceWire cannot map hosted upload responses back to local filenames when a hosted URL path contains a space, and the network ledger can retain signed URL queries when a body is truncated before scrubbing or when the URL is embedded in non-JSON text.",
+  "direct_cause": "judgeReferenceWire extracted response URLs with /https?:\\/\\/[^\\s\"'\\\\]+/g; describeBody and response recording sliced before scrubText; scrubText only handled secrets in non-JSON text and only redacted JSON strings that started with http.",
+  "class_root": "The shared evidence boundary had no invariant that every string is scrubbed for embedded HTTP query strings before size bounds, while URL comparison separately uses WHATWG normalization after parsing structured JSON values.",
+  "detected_by": "walkthrough",
+  "detected_by_detail": "paid-run",
+  "affected_population": [
+    "Paid walkthrough uploads and creation requests whose remote paths contain spaces, Unicode, #, encoded %20, or +.",
+    "JSON request/response bodies whose URLs carry no query or a query already represented as ?<redacted>."
+  ],
+  "scope_paths": [
+    "scripts/walkthrough-url-shape.cjs",
+    "scripts/walkthrough-network-guard.cjs",
+    "scripts/walkthrough-network-guard.test.mjs",
+    "tests/ux/_referenceLeakWire.mjs",
+    "tests/ux/_referenceLeakWire.test.mjs",
+    "docs/engineering/concept-owners/test-harness.walkthrough-url-shape.json",
+    "docs/plan/2026-10-25-paid-judge-url-compare.md"
+  ],
+  "entry_points": [
+    "Allowed multipart upload response JSON consumed by judgeReferenceWire.",
+    "Allowed public request and upload response bodies scrubbed by walkthrough-network-guard.",
+    "Creation request JSON URLs compared against the upload ledger."
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This is an internal evidence-contract invariant; WHATWG URL behavior is provided by the Node runtime and the repository's existing URL construction, so no external source decides the ledger contract.",
+  "invariants": [
+    "Every HTTP URL used for evidence comparison is parsed by WHATWG URL, has search cleared, and is compared by the resulting href.",
+    "Structured JSON bodies are parsed before URL values are collected or redacted.",
+    "An invalid or missing response URL remains unmatched and keeps the judge red rather than falling back to a lossy regex.",
+    "Every string is query-scrubbed before its recording limit is applied; JSON is parsed and reserialized first, and truncated records retain truncated=true.",
+    "The same query scrubber handles JSON and non-JSON text, including URLs embedded in a sentence and paths containing spaces."
+  ],
+  "doors": [
+    { "kind": "read", "path": "scripts/walkthrough-network-guard.cjs", "symbol": "scrubText" },
+    { "kind": "read", "path": "scripts/walkthrough-url-shape.cjs", "symbol": "scrubText" },
+    { "kind": "write", "path": "tests/ux/_referenceLeakWire.test.mjs", "symbol": "judgeReferenceWire" },
+    { "kind": "write", "path": "tests/ux/composer-b3-reference.paid.mjs", "symbol": "judgeReferenceWire" }
+  ],
+  "door_reduction": {
+    "before": 4,
+    "after": 4,
+    "why_not": "The four generated consumers are evidence readers, not duplicate production state owners: the guard reads the shared scrubber, the unit tests exercise the judge matrix, and the paid walkthrough calls the judge. They must remain as distinct entry points while sharing the helper boundary."
+  },
+  "generality_proof": "The upload-response reader and the network-guard body recorder now share walkthrough-url-shape.cjs. All checked JSON URL values, independent of filename characters or query state, converge on the same WHATWG href shape; every string passed to the recorder uses one query scrubber before its caller's bound; unrelated origin-only text scanners were checked and remain outside this evidence contract.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/walkthrough-url-shape.cjs",
+      "symbol": "canonicalEvidenceUrl",
+      "responsibility": "Own the canonical HTTP URL href with search removed for every evidence comparison."
+    },
+    {
+      "path": "scripts/walkthrough-url-shape.cjs",
+      "symbol": "scrubText",
+      "responsibility": "Parse structured evidence JSON, apply the same embedded-URL query scrubber to every string, and redact key-shaped secrets before callers impose size bounds."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/_referenceLeakWire.mjs",
+      "entry_point": "judgeReferenceWire upload-response URL mapping",
+      "disposition": "enforced",
+      "evidence": "The paid-run failure and the new filename matrix exercise this entry; response text is parsed as JSON and values use comparableUrl."
+    },
+    {
+      "path": "scripts/walkthrough-network-guard.cjs",
+      "entry_point": "scrubText via describeBody and allowed-response recording",
+      "disposition": "enforced",
+      "evidence": "The network-guard tests cover a signed URL with a space, oversized JSON, FormData strings, plain text, and JSON sentence values; each asserts the query is redacted before the caller's bound."
+    },
+    {
+      "path": "tests/ux/_paidNetwork.mjs",
+      "entry_point": "originsIn catalog text scan",
+      "disposition": "not-affected",
+      "evidence": "This scan only extracts catalog origins from JSON text; truncating a path after the authority leaves the origin unchanged, and it does not compare upload URLs or redact queries."
+    },
+    {
+      "path": "tests/ux/full-walk/egress.mjs",
+      "entry_point": "mapping URL inventory",
+      "disposition": "not-affected",
+      "evidence": "This inventory records vendor keys for catalog mappings and never consumes upload response URLs or compares path identity."
+    },
+    {
+      "path": "tests/ux/agent-spend-long-output-name.walk.mjs",
+      "entry_point": "catalog output URL inventory",
+      "disposition": "not-affected",
+      "evidence": "This inventory identifies external catalog URLs and stores them for allowlisting; it is not the paid upload/request evidence reader."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any future hosted upload or provider that returns a URL with whitespace or other URL-normalized characters can reproduce the same mismatch, and any future body shape or size can independently leak a signed query if it bypasses the shared pre-bound scrubber.",
+    "same_class_scan": [
+      "grep/rg of tests/ux and scripts for URL text extraction found the judgeReferenceWire response regex and walkthrough-network-guard scrubText as the two affected entries.",
+      "The same scan checked _paidNetwork.mjs, full-walk/egress.mjs, and agent-spend-long-output-name.walk.mjs; they are origin/catalog inventories and were marked not-affected.",
+      "node scripts/door-map.mjs judgeReferenceWire scrubText returned the generated empty door list because the tool scans only src/electron; the script/test consumers above are recorded explicitly here."
+    ]
+  },
+  "recurrence_check_on": "2026-11-25",
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "scripts/walkthrough-url-shape.cjs",
+    "invariant": "All affected evidence URL values are parsed from JSON and normalized by WHATWG URL before comparison; every recorded string is query-scrubbed before its size bound, regardless of JSON shape.",
+    "failure_mode": "Invalid JSON still uses the same embedded-URL scrubber; invalid comparison URLs remain unmatched and keep the judge red. A sanitized body is truncated only after scrubbing and reports truncated=true.",
+    "exception_policy": "none",
+    "strategy": "Keep one helper for canonical href and structured scrubbing, and make both the judge and network guard consume it; class tests exercise every filename and query shape.",
+    "artifacts": [
+      "scripts/walkthrough-url-shape.cjs",
+      "tests/ux/_referenceLeakWire.mjs",
+      "scripts/walkthrough-network-guard.cjs",
+      "tests/ux/_referenceLeakWire.test.mjs",
+      "scripts/walkthrough-network-guard.test.mjs"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/_referenceLeakWire.test.mjs",
+    "scripts/walkthrough-network-guard.test.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/_referenceLeakWire.test.mjs",
+    "scripts/walkthrough-network-guard.test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/ux/_referenceLeakWire.mjs",
+      "scripts/walkthrough-network-guard.cjs"
+    ],
+    "rationale": "The lossy regex paths are deleted; JSON parsing and shared WHATWG normalization are the only paths for affected evidence."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency controls URL parsing or evidence shape; the fix uses the Node WHATWG URL implementation already used by the repository.",
+    "exit_criteria": []
+  },
+  "migration": "Existing JSONL evidence remains readable: old redacted query strings are parsed as URL values and normalized by clearing search. The ledger shape is preserved; no product data or user project state is migrated.",
+  "residual_risks": [
+    "The non-JSON scrubber intentionally stops a query at whitespace or a quote as the ledger contract requires; a query value containing literal whitespace is only partially represented by that contract, but its prefix is still redacted.",
+    "A response body truncated by the network guard can no longer be parsed by judgeReferenceWire; it remains fail-closed and is reported as unprovable rather than guessed.",
+    "The required door-map roots exclude scripts and tests, so its generated result is empty; the contract records the independently checked script/test consumers instead of inventing source-tree doors."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/walkthrough-url-shape.cjs",
+    "tests": [
+      "tests/ux/_referenceLeakWire.test.mjs",
+      "scripts/walkthrough-network-guard.test.mjs"
+    ],
+    "why": "走查 URL 可比形状和查询脱敏由共享 helper 单点持有，两条受影响的判定 / 记账测试分别覆盖对号矩阵和带空格签名地址。"
+  }
+}
