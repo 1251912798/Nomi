@@ -322,6 +322,24 @@ describe("deriveModelListing — 参考承载力真话（与 referenceReachabili
     expect(entry.references.multiImage).toBe(false); // 单图聚合位不是多图
     expect(entry.references.referenceModes).toEqual(["image_to_video"]);
   });
+
+  it("名字像参考的控制键不再点亮目录承载力", () => {
+    const s = state({
+      vendors: [vendor({ key: "relay", name: "Relay" })],
+      models: [model({ modelKey: "controls-only", vendorKey: "relay", kind: "video" })],
+      mappings: [mapping({ id: "controls", vendorKey: "relay", modelKey: "controls-only", taskKind: "text_to_video", create: { method: "POST", path: "/x", body: {
+        audio: "{{request.params.audio}}",
+        generateAudio: "{{request.params.generateAudio}}",
+        audio_setting: "{{request.params.audio_setting}}",
+        num_images: "{{request.params.num_images}}",
+        image_size: "{{request.params.image_size}}",
+        voice_id: "{{request.params.voice_id}}",
+      } } })],
+      apiKeysByVendor: { relay: { vendorKey: "relay", apiKey: b64("k"), enc: "safeStorage", enabled: true, createdAt: "t", updatedAt: "t" } },
+    });
+    const entry = deriveModelListing(s)[0];
+    expect(entry.references).toEqual({ image: false, video: false, audio: false, multiImage: false, referenceModes: [] });
+  });
 });
 
 // 这个模块的**导出面**是一条锁（2026-09-22）。

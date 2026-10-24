@@ -475,10 +475,10 @@ describe("投影不变量：全体内置 mapping 都不许同时发出帧键与�
   // 故这条不针对某个模型，而是遍历**全部**内置 mapping：只要一条 body 同时声明了真帧键与
   // 图族数组键，就断言「只给首帧」时投影绝不会两个都填。新增档案落进这个形状会被自动覆盖。
   it("遍历全部内置 mapping", async () => {
-    const [{ applyBuiltinSeeds }, { bodyReferencedParamKeys }, { classifyReferenceKeyDetailed }] = await Promise.all([
+    const [{ applyBuiltinSeeds }, { bodyReferencedParamKeys }, { referenceKeyDeclarationFor }] = await Promise.all([
       import("./seedBuiltins"),
       import("./paramTranslate"),
-      import("./referenceReachability"),
+      import("../shared/modelArchetypes/referenceKeys"),
     ]);
     const state = applyBuiltinSeeds(
       { version: 4, vendors: [], models: [], mappings: [], apiKeysByVendor: {} },
@@ -495,7 +495,7 @@ describe("投影不变量：全体内置 mapping 都不许同时发出帧键与�
       const keys = bodyReferencedParamKeys(body);
       // 真帧键：名字命中 first/last_frame **且**被分类器认作参考载体（排除 return_last_frame 这类开关）。
       const frameKeys = keys.filter(
-        (k) => /first_frame|last_frame/i.test(k) && !/with_roles|_contents?\b/i.test(k) && classifyReferenceKeyDetailed(k),
+        (k) => /first_frame|last_frame/i.test(k) && !/with_roles|_contents?\b/i.test(k) && referenceKeyDeclarationFor(k),
       );
       const arrayKeys = keys.filter((k) => /^(reference_)?image_urls$|^input_urls$|^reference_images$/i.test(k));
       if (frameKeys.length === 0 || arrayKeys.length === 0) continue;
@@ -533,8 +533,8 @@ describe("无 mapping 兜底：参考素材不得静默丢弃", () => {
     "%s 带参考图但没有任何 mapping → 拒发（而不是走兜底把参考丢掉）",
     (kind) => {
       const error = imageEditGuardError(kind, { extras: refs }, false, "我的中转模型");
-      expect(error).toContain("发不出");
-      expect(error).toContain("参考图");
+      expect(error).toContain("这个模型的请求体没有声明图片参考位");
+      expect(error).toContain("请在调用里写明参数名");
     },
   );
 
@@ -545,7 +545,7 @@ describe("无 mapping 兜底：参考素材不得静默丢弃", () => {
       false,
       "我的中转模型",
     );
-    expect(error).toContain("首帧");
+    expect(error).toContain("这个模型的请求体没有声明图片参考位");
   });
 
   it("没带参考时兜底路照常放行——纯文生是它的正当用途，不许误伤", () => {
@@ -578,5 +578,30 @@ describe("无 mapping 兜底：参考素材不得静默丢弃", () => {
     );
     // 关键不变量：这条 wire 一个参考族的位置都没有。
     expect(unreachableReferenceLabels({ extras: refs }, NO_MAPPING_FALLBACK_BODY)).toEqual(["参考图"]);
+  });
+});
+
+describe("声明驱动的 headless 拒发", () => {
+  it("没有声明的音频参考位时，在发出前要求调用方写明参数名", () => {
+    const error = imageEditGuardError(
+      "text_to_video",
+      { extras: { referenceAudioUrls: ["https://cdn.example.com/ref.mp3"] } },
+      true,
+      "自定义中转模型",
+      { prompt: "{{request.prompt}}", audio: "{{request.params.audio}}" },
+    );
+    expect(error).toBe("这个模型的请求体没有声明音频参考位，请在调用里写明参数名。");
+  });
+
+  it("显式写了非通用参数名的调用不被 headless 投影路径改写", () => {
+    const body = { prompt: "{{request.prompt}}", custom_reference: "{{request.params.custom_reference}}" };
+    expect(projectReferencesOntoBodyKeys({ custom_reference: "https://cdn.example.com/ref.png" }, body)).toEqual({});
+    expect(imageEditGuardError(
+      "text_to_image",
+      { extras: { custom_reference: "https://cdn.example.com/ref.png" } },
+      true,
+      "自定义中转模型",
+      body,
+    )).toBeNull();
   });
 });

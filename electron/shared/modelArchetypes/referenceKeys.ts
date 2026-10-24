@@ -18,18 +18,49 @@
 // 新请求体多读一个参考键而没进这张表，那里先红。
 import { MODEL_ARCHETYPES } from "./index";
 
-/** ① 主进程翻译读的标准参考输入键（referenceInputParams / firstReferenceImage / jsonImageEditInput / 旧的按槽存键与影子）。 */
-export const TRANSLATED_REFERENCE_INPUT_KEYS: readonly string[] = [
-  "image", "image_url", "imageUrl",
-  "referenceImages", "referenceImageUrl", "referenceImageUrls", "referenceImageRef", "referenceImageRefs",
-  "reference_images", "reference_image_urls",
-  "firstFrameUrl", "firstFrameRef", "firstFrameReference", "first_frame_url",
-  "lastFrameUrl", "lastFrameRef", "lastFrameReference", "last_frame_url",
-  "referenceVideoUrls", "reference_video_urls", "sourceVideoUrl", "source_video_url", "video_url",
-  "referenceAudioUrls", "reference_audio_urls",
-  "styleReferenceImages", "characterReferenceImages", "compositionReferenceImages",
-  "upstreamResultUrls",
+export type ReferenceFamily = "image" | "video" | "audio";
+
+export type ReferenceKeyDeclaration = Readonly<{
+  family: ReferenceFamily;
+  multiImage: boolean;
+}>;
+
+type DeclaredReferenceKey = { key: string; family: ReferenceFamily; multiImage?: boolean };
+
+const translatedReferenceKeyDeclarations: readonly DeclaredReferenceKey[] = [
+  { key: "image", family: "image" },
+  { key: "image_url", family: "image" },
+  { key: "imageUrl", family: "image" },
+  { key: "referenceImages", family: "image", multiImage: true },
+  { key: "referenceImageUrl", family: "image" },
+  { key: "referenceImageUrls", family: "image", multiImage: true },
+  { key: "referenceImageRef", family: "image" },
+  { key: "referenceImageRefs", family: "image", multiImage: true },
+  { key: "reference_images", family: "image", multiImage: true },
+  { key: "reference_image_urls", family: "image", multiImage: true },
+  { key: "firstFrameUrl", family: "image" },
+  { key: "firstFrameRef", family: "image" },
+  { key: "firstFrameReference", family: "image" },
+  { key: "first_frame_url", family: "image" },
+  { key: "lastFrameUrl", family: "image" },
+  { key: "lastFrameRef", family: "image" },
+  { key: "lastFrameReference", family: "image" },
+  { key: "last_frame_url", family: "image" },
+  { key: "referenceVideoUrls", family: "video" },
+  { key: "reference_video_urls", family: "video" },
+  { key: "sourceVideoUrl", family: "video" },
+  { key: "source_video_url", family: "video" },
+  { key: "video_url", family: "video" },
+  { key: "referenceAudioUrls", family: "audio" },
+  { key: "reference_audio_urls", family: "audio" },
+  { key: "styleReferenceImages", family: "image", multiImage: true },
+  { key: "characterReferenceImages", family: "image", multiImage: true },
+  { key: "compositionReferenceImages", family: "image", multiImage: true },
+  { key: "upstreamResultUrls", family: "image", multiImage: true },
 ];
+
+/** ① 主进程翻译读的标准参考输入键（referenceInputParams / firstReferenceImage / jsonImageEditInput / 旧的按槽存键与影子）。 */
+export const TRANSLATED_REFERENCE_INPUT_KEYS: readonly string[] = translatedReferenceKeyDeclarations.map(({ key }) => key);
 
 /**
  * ⑤ 节点上存着图、但不是请求输入的键：「先放一边」的旧工程残留（src/workbench/generationCanvas/nodes/controls/referenceList.ts
@@ -37,6 +68,13 @@ export const TRANSLATED_REFERENCE_INPUT_KEYS: readonly string[] = [
  * 所以同样进表：渲染层清掉，主进程见到就拒。
  */
 export const REFERENCE_PARKED_KEY = "referenceParkedUrls";
+
+const headlessReferenceKeyDeclarations: Readonly<Record<string, ReferenceKeyDeclaration>> = {
+  mask_url: { family: "image", multiImage: false },
+  audio_ids: { family: "audio", multiImage: false },
+  video_list: { family: "video", multiImage: false },
+  character_ids: { family: "image", multiImage: true },
+};
 
 /** ③ APIMart 引擎 B 的参考别名：请求体键 → 它认的同义参数键（原在 capabilityCore/apimartGenerationProjection）。 */
 export const APIMART_REFERENCE_PARAMETER_ALIASES = {
@@ -48,20 +86,112 @@ export const APIMART_REFERENCE_PARAMETER_ALIASES = {
   last_frame_image: ["last_frame_image", "lastFrameImage", "last_frame_url", "lastFrameUrl"],
 } as const;
 
-/** ② + ④ 档案声明出来的参考键：每个方式的槽 inputKey、合并键，和档案级的 headlessReferenceKeys。 */
-function archetypeDeclaredReferenceKeys(): string[] {
-  return MODEL_ARCHETYPES.flatMap((archetype) => [
-    ...(archetype.headlessReferenceKeys ?? []),
-    ...archetype.modes.flatMap((mode) => [
-      ...mode.slots.flatMap((slot) => (slot.inputKey ? [slot.inputKey] : [])),
-      ...(mode.combineSlotsInto ? [mode.combineSlotsInto.key] : []),
-    ]),
-  ]);
+const apimartReferenceKeyDeclarations: Readonly<Record<string, ReferenceKeyDeclaration>> = {
+  image_urls: { family: "image", multiImage: true },
+  imageUrls: { family: "image", multiImage: true },
+  input_urls: { family: "image", multiImage: true },
+  inputUrls: { family: "image", multiImage: true },
+  reference_image_urls: { family: "image", multiImage: true },
+  referenceImageUrls: { family: "image", multiImage: true },
+  image_with_roles: { family: "image", multiImage: true },
+  imageWithRoles: { family: "image", multiImage: true },
+  video_urls: { family: "video", multiImage: false },
+  videoUrls: { family: "video", multiImage: false },
+  reference_video_urls: { family: "video", multiImage: false },
+  referenceVideoUrls: { family: "video", multiImage: false },
+  audio_urls: { family: "audio", multiImage: false },
+  audioUrls: { family: "audio", multiImage: false },
+  reference_audio_urls: { family: "audio", multiImage: false },
+  referenceAudioUrls: { family: "audio", multiImage: false },
+  first_frame_image: { family: "image", multiImage: false },
+  firstFrameImage: { family: "image", multiImage: false },
+  first_frame_url: { family: "image", multiImage: false },
+  firstFrameUrl: { family: "image", multiImage: false },
+  last_frame_image: { family: "image", multiImage: false },
+  lastFrameImage: { family: "image", multiImage: false },
+  last_frame_url: { family: "image", multiImage: false },
+  lastFrameUrl: { family: "image", multiImage: false },
+};
+
+const SLOT_REFERENCE_FAMILY: Readonly<Record<string, ReferenceFamily>> = {
+  first_frame: "image",
+  last_frame: "image",
+  image_ref: "image",
+  video_ref: "video",
+  audio_ref: "audio",
+  source_video: "video",
+};
+
+function mergeDeclaration(
+  declarations: Map<string, ReferenceKeyDeclaration>,
+  key: string,
+  declaration: ReferenceKeyDeclaration,
+): void {
+  const normalized = key.trim();
+  if (!normalized) return;
+  const previous = declarations.get(normalized);
+  if (previous && previous.family !== declaration.family) {
+    // A combined key with mixed slots is represented by its first plain-media shape.
+    // Object-shaped combined values are never used by headless projection.
+    return;
+  }
+  declarations.set(normalized, {
+    family: previous?.family ?? declaration.family,
+    multiImage: Boolean(previous?.multiImage || declaration.multiImage),
+  });
 }
 
+function declaredArchetypeReferenceKeyDeclarations(): Map<string, ReferenceKeyDeclaration> {
+  const declarations = new Map<string, ReferenceKeyDeclaration>();
+  for (const archetype of MODEL_ARCHETYPES) {
+    for (const key of archetype.headlessReferenceKeys ?? []) {
+      const declaration = headlessReferenceKeyDeclarations[key];
+      if (!declaration) throw new Error(`headless reference key has no explicit media declaration: ${key}`);
+      mergeDeclaration(declarations, key, declaration);
+    }
+    for (const mode of archetype.modes) {
+      for (const slot of mode.slots) {
+        if (!slot.inputKey) continue;
+        const family = SLOT_REFERENCE_FAMILY[slot.kind];
+        if (!family) throw new Error(`reference slot kind has no explicit media declaration: ${slot.kind}`);
+        mergeDeclaration(declarations, slot.inputKey, {
+          family,
+          multiImage: slot.asArray === true,
+        });
+      }
+      if (mode.combineSlotsInto) {
+        const family = mode.slots
+          .map((slot) => SLOT_REFERENCE_FAMILY[slot.kind])
+          .find((candidate): candidate is ReferenceFamily => Boolean(candidate));
+        if (family) mergeDeclaration(declarations, mode.combineSlotsInto.key, {
+          family,
+          multiImage: mode.combineSlotsInto.flat === true || mode.slots.length > 1,
+        });
+      }
+    }
+  }
+  return declarations;
+}
+
+const REFERENCE_KEY_DECLARATIONS: ReadonlyMap<string, ReferenceKeyDeclaration> = (() => {
+  const declarations = new Map<string, ReferenceKeyDeclaration>();
+  for (const declaration of translatedReferenceKeyDeclarations) {
+    mergeDeclaration(declarations, declaration.key, {
+      family: declaration.family,
+      multiImage: declaration.multiImage === true,
+    });
+  }
+  for (const [key, declaration] of Object.entries(apimartReferenceKeyDeclarations)) mergeDeclaration(declarations, key, declaration);
+  for (const [key, declaration] of declaredArchetypeReferenceKeyDeclarations()) mergeDeclaration(declarations, key, declaration);
+  return declarations;
+})();
+
+export function referenceKeyDeclarationFor(key: string): ReferenceKeyDeclaration | null {
+  return REFERENCE_KEY_DECLARATIONS.get(key.trim()) ?? null;
+}
+
+/** 通用参考键全集由同一份带媒体类别的声明表派生。 */
 export const GENERIC_REFERENCE_KEYS: ReadonlySet<string> = new Set([
-  ...TRANSLATED_REFERENCE_INPUT_KEYS,
+  ...REFERENCE_KEY_DECLARATIONS.keys(),
   REFERENCE_PARKED_KEY,
-  ...archetypeDeclaredReferenceKeys(),
-  ...Object.values(APIMART_REFERENCE_PARAMETER_ALIASES).flat(),
 ]);

@@ -9,7 +9,8 @@ import { referenceInputParams } from "./archetypeInput";
 import { ARCHETYPE_WIRE_DEFAULTS, ARCHETYPE_SIZE_RATIO_SEMANTIC } from "./archetypeWireDefaults.generated";
 import { bodyReferencedParamKeys } from "./paramTranslate";
 import { hasMentions, numberPromptReferences, projectPromptForSend } from "../shared/storyboard/promptMentions";
-import { bodyReferenceSupport, classifyReferenceKey, classifyReferenceKeyDetailed, type ReferenceFamily } from "./referenceReachability";
+import { bodyReferenceSupport, classifyReferenceKey, type ReferenceFamily } from "./referenceReachability";
+import { referenceKeyDeclarationFor } from "../shared/modelArchetypes/referenceKeys";
 import { readSelectedComfyReferenceContract, type ParameterReferenceSelection } from "./parameterReferenceContract";
 import { resolveWireModel, WIRE_MODEL_PARAM } from "../shared/modelArchetypes/wireModelIdentity";
 import { comparableReferenceUrl, comparableReferenceValues, serializeReferenceParams } from "./outboundReferenceUrl";
@@ -262,7 +263,7 @@ const REF_URL_RE = /^(https?:\/\/|nomi-local:\/\/|data:|blob:|\/)/i;
 const OBJECT_SHAPE_REF_KEY = /with_roles|_contents\b|_content\b/i;
 
 // 数组形态键：复数 URL 键（image_urls / video_urls / audio_urls / input_urls / reference_*_urls / *_images / *_paths）。
-// classifyReferenceKeyDetailed 的 multiImage 只覆盖 image 族的多图信号，video/audio 复数键靠此补齐 → 塞数组不塞单串。
+// 声明表的 multiImage 只表达媒体键的数组形态；video/audio 复数键也由同一声明补齐 → 塞数组不塞单串。
 const ARRAY_SHAPE_REF_KEY = /_urls$|urls$|images$|audios$|videos$|_paths$|paths$/i;
 
 /**
@@ -465,6 +466,12 @@ function carriedReferenceFamilies(extras: JsonRecord, selected?: ParameterRefere
   return families;
 }
 
+const FAMILY_PARAMETER_LABEL: Record<ReferenceFamily, string> = {
+  image: "图片",
+  video: "视频",
+  audio: "音频",
+};
+
 /**
  * 拒发后附一句**可走的路**（交付4）：从**同一套 mapping 数据**（各模式 create body）derive——
  * 找出这个模型哪些模式的 body 真读得到我携带的参考族，点名它（"该模型 i2v 模式的 image_urls 支持多张参考图"）；
@@ -561,7 +568,7 @@ function archetypeReferenceUrlsByFamily(extras: JsonRecord): Record<ReferenceFam
  * first_frame_image …），headless 没有这一步——参考只落在标准键 reference_images，body 读的却是 image_urls
  * → 第三闸判「发不出」、护栏诚实拒绝，图生图/图生视频整条走不通（L3 三跑现场）。
  *
- * 投影判据**与护栏同一套**（P1）：目标键 = bodyReferencedParamKeys(createBody) 里被 classifyReferenceKeyDetailed
+ * 投影判据**与护栏同一套**（P1）：目标键 = bodyReferencedParamKeys(createBody) 里被共享声明表
  * 判为参考载体的键；按族匹配（image 键收图参考、video 收视频、audio 收音频）；多值键（image_urls/input_urls…）
  * 收整组、单值键（first_frame_image/单图聚合位）收首张（沿用 firstReferenceImage 优先级）。
  *
@@ -594,9 +601,11 @@ export function projectReferencesOntoBodyKeys(
   if (byFamily.image.length === 0 && byFamily.video.length === 0 && byFamily.audio.length === 0) return {};
 
   const hasNonEmpty = (value: unknown): boolean =>
-    (typeof value === "string" && value.trim() !== "") ||
-    (Array.isArray(value) && value.length > 0) ||
-    (value != null && typeof value === "object");
+    value !== null && typeof value !== "undefined" && (
+      (typeof value === "string" && value.trim() !== "") ||
+      (Array.isArray(value) && value.length > 0) ||
+      (typeof value !== "string" && !Array.isArray(value))
+    );
 
   const archetypeInput = isJsonRecord(src.archetypeInput) ? src.archetypeInput : {};
   const bodyKeys = bodyReferencedParamKeys(createBody);
@@ -619,7 +628,7 @@ export function projectReferencesOntoBodyKeys(
       (key) =>
         bodyKeyRe.test(key) &&
         !OBJECT_SHAPE_REF_KEY.test(key) &&
-        classifyReferenceKeyDetailed(key) &&
+        referenceKeyDeclarationFor(key) &&
         !hasNonEmpty(src[key]) &&
         !hasNonEmpty(archetypeInput[key]),
     );
@@ -638,7 +647,7 @@ export function projectReferencesOntoBodyKeys(
   const candidateByFamily: Partial<Record<ReferenceFamily, { key: string; wantsArray: boolean }>> = {};
   for (const key of bodyKeys) {
     if (frameOverlay[key] !== undefined) continue; // 已被帧意图占用
-    const detail = classifyReferenceKeyDetailed(key);
+    const detail = referenceKeyDeclarationFor(key);
     if (!detail) continue; // 非参考载体键（size/duration/seed…）不碰。
     if (OBJECT_SHAPE_REF_KEY.test(key)) continue; // 对象形态键（image_with_roles/*_contents）headless 不填，留空由模板丢。
     if (byFamily[detail.family].length === 0) continue; // 没有这个族的参考可填。
@@ -728,6 +737,13 @@ export function imageEditGuardError(
   const effectiveBody = typeof createBody !== "undefined" ? createBody
     : fallbackBodyApplies ? NO_MAPPING_FALLBACK_BODY : undefined;
   if (typeof effectiveBody !== "undefined") {
+    const carriedFamilies = carriedReferenceFamilies(request.extras || {}, selected);
+    const support = bodyReferenceSupport(effectiveBody);
+    const undeclaredFamilies = [...carriedFamilies].filter((family) => !support[family]);
+    if (undeclaredFamilies.length > 0) {
+      const missing = undeclaredFamilies.map((family) => FAMILY_PARAMETER_LABEL[family]).join(" / ");
+      return `这个模型的请求体没有声明${missing}参考位，请在调用里写明参数名。`;
+    }
     const unreachable = unreachableReferenceLabels(request, effectiveBody, selected);
     if (unreachable.length > 0) {
       const base = `模型「${modelLabel}」在这个接入方式下发不出：${unreachable.join(" / ")}。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。`;

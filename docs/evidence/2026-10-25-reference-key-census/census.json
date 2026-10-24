@@ -3,38 +3,18 @@
   "source": {
     "catalog": "electron/catalog/seedBuiltins.ts::applyBuiltinSeeds",
     "bodyKeyExtraction": "electron/catalog/paramTranslate.ts::bodyReferencedParamKeys",
-    "classifier": "electron/catalog/referenceReachability.ts::classifyReferenceKeyDetailed",
+    "classifier": "electron/shared/modelArchetypes/referenceKeys.ts::referenceKeyDeclarationFor",
     "declarationSet": "electron/shared/modelArchetypes/referenceKeys.ts::GENERIC_REFERENCE_KEYS"
   },
   "summary": {
     "seededVendors": 20,
     "seededModels": 156,
     "seededMappings": 246,
-    "rowsWithClassifiedKeys": 135,
-    "falsePositiveRows": 26,
-    "falsePositiveKeys": 12,
-    "falsePositiveKeyNames": [
-      "audio",
-      "audio_setting",
-      "frame_rate",
-      "generateAudio",
-      "image_size",
-      "num_frames",
-      "num_images",
-      "video_require_audio",
-      "video_start_seconds",
-      "voice",
-      "voice_id",
-      "voice_preset_id"
-    ],
-    "falsePositiveCategories": [
-      "boolean-switch",
-      "enum",
-      "number",
-      "quantity",
-      "size",
-      "voice"
-    ]
+    "rowsWithClassifiedKeys": 124,
+    "falsePositiveRows": 0,
+    "falsePositiveKeys": 0,
+    "falsePositiveKeyNames": [],
+    "falsePositiveCategories": []
   },
   "rows": [
     {
@@ -198,7 +178,7 @@
           "key": "reference_image",
           "classifier": {
             "family": "image",
-            "multiImage": true
+            "multiImage": false
           },
           "actual": {
             "role": "reference-input",
@@ -216,18 +196,6 @@
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
             "basis": "GENERIC_REFERENCE_KEYS"
-          }
-        },
-        {
-          "key": "audio_setting",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "enum",
-            "detail": "音频（select）",
-            "basis": "ModelParameterControl"
           }
         }
       ]
@@ -589,18 +557,6 @@
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
             "basis": "GENERIC_REFERENCE_KEYS"
           }
-        },
-        {
-          "key": "audio",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "生成音频（boolean）",
-            "basis": "ModelParameterControl"
-          }
         }
       ]
     },
@@ -669,18 +625,6 @@
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
             "basis": "GENERIC_REFERENCE_KEYS"
-          }
-        },
-        {
-          "key": "audio",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "生成音频（boolean）",
-            "basis": "ModelParameterControl"
           }
         }
       ]
@@ -918,6 +862,18 @@
           }
         },
         {
+          "key": "character_ids",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
           "key": "first_frame_url",
           "classifier": {
             "family": "image",
@@ -987,6 +943,18 @@
           }
         },
         {
+          "key": "character_ids",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
           "key": "first_frame_url",
           "classifier": {
             "family": "image",
@@ -1002,6 +970,48 @@
           "key": "last_frame_url",
           "classifier": {
             "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-suno-v5-5-extend",
+      "vendorKey": "kie",
+      "taskKind": "text_to_audio",
+      "modelKey": "suno-v5.5",
+      "archetypeId": "suno-v5.5",
+      "keys": [
+        {
+          "key": "uploadUrl",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-suno-v5-5-cover",
+      "vendorKey": "kie",
+      "taskKind": "text_to_audio",
+      "modelKey": "suno-v5.5",
+      "archetypeId": "suno-v5.5",
+      "keys": [
+        {
+          "key": "uploadUrl",
+          "classifier": {
+            "family": "audio",
             "multiImage": false
           },
           "actual": {
@@ -1409,27 +1419,6 @@
       ]
     },
     {
-      "id": "seed-apimart-kling-3.0-text_to_video",
-      "vendorKey": "apimart",
-      "taskKind": "text_to_video",
-      "modelKey": "kling-v3",
-      "archetypeId": "kling-3.0",
-      "keys": [
-        {
-          "key": "audio",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "生成音频开关",
-            "basis": "wire key semantics"
-          }
-        }
-      ]
-    },
-    {
       "id": "seed-apimart-kling-3.0-image_to_video",
       "vendorKey": "apimart",
       "taskKind": "image_to_video",
@@ -1446,18 +1435,6 @@
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
             "basis": "GENERIC_REFERENCE_KEYS"
-          }
-        },
-        {
-          "key": "audio",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "生成音频开关",
-            "basis": "wire key semantics"
           }
         }
       ]
@@ -1691,45 +1668,12 @@
       ]
     },
     {
-      "id": "seed-apimart-wan-3.0-apimart-text_to_video",
-      "vendorKey": "apimart",
-      "taskKind": "text_to_video",
-      "modelKey": "wan3.0-video",
-      "archetypeId": "wan-3.0-apimart",
-      "keys": [
-        {
-          "key": "audio",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "生成音频（boolean）",
-            "basis": "ModelParameterControl"
-          }
-        }
-      ]
-    },
-    {
       "id": "seed-apimart-wan-3.0-apimart-image_to_video",
       "vendorKey": "apimart",
       "taskKind": "image_to_video",
       "modelKey": "wan3.0-video",
       "archetypeId": "wan-3.0-apimart",
       "keys": [
-        {
-          "key": "audio",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "生成音频（boolean）",
-            "basis": "ModelParameterControl"
-          }
-        },
         {
           "key": "image_urls",
           "classifier": {
@@ -1823,27 +1767,6 @@
       ]
     },
     {
-      "id": "seed-apimart-nomi-audio-text_to_audio",
-      "vendorKey": "apimart",
-      "taskKind": "text_to_audio",
-      "modelKey": "nomi-audio",
-      "archetypeId": "nomi-audio",
-      "keys": [
-        {
-          "key": "voice",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "voice",
-            "detail": "音色（select）",
-            "basis": "ModelParameterControl"
-          }
-        }
-      ]
-    },
-    {
       "id": "seed-agnes-agnes-image-2.1-flash-image_edit",
       "vendorKey": "agnes",
       "taskKind": "image_edit",
@@ -1886,69 +1809,12 @@
       ]
     },
     {
-      "id": "seed-agnes-video-v2-text_to_video",
-      "vendorKey": "agnes",
-      "taskKind": "text_to_video",
-      "modelKey": "agnes-video-v2.0",
-      "archetypeId": "agnes-video",
-      "keys": [
-        {
-          "key": "num_frames",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "quantity",
-            "detail": "视频帧数",
-            "basis": "wire key semantics"
-          }
-        },
-        {
-          "key": "frame_rate",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "number",
-            "detail": "帧率（number）",
-            "basis": "ModelParameterControl"
-          }
-        }
-      ]
-    },
-    {
       "id": "seed-agnes-video-v2-image_to_video",
       "vendorKey": "agnes",
       "taskKind": "image_to_video",
       "modelKey": "agnes-video-v2.0",
       "archetypeId": "agnes-video",
       "keys": [
-        {
-          "key": "num_frames",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "quantity",
-            "detail": "视频帧数",
-            "basis": "wire key semantics"
-          }
-        },
-        {
-          "key": "frame_rate",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "number",
-            "detail": "帧率（number）",
-            "basis": "ModelParameterControl"
-          }
-        },
         {
           "key": "image",
           "classifier": {
@@ -2041,30 +1907,6 @@
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
             "basis": "GENERIC_REFERENCE_KEYS"
           }
-        },
-        {
-          "key": "video_start_seconds",
-          "classifier": {
-            "family": "video",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "number",
-            "detail": "参考视频起始秒（number）",
-            "basis": "ModelParameterControl"
-          }
-        },
-        {
-          "key": "video_require_audio",
-          "classifier": {
-            "family": "video",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "参考视频必须含音轨（boolean）",
-            "basis": "ModelParameterControl"
-          }
         }
       ]
     },
@@ -2133,30 +1975,6 @@
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
             "basis": "GENERIC_REFERENCE_KEYS"
-          }
-        },
-        {
-          "key": "video_start_seconds",
-          "classifier": {
-            "family": "video",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "number",
-            "detail": "参考视频起始秒（number）",
-            "basis": "ModelParameterControl"
-          }
-        },
-        {
-          "key": "video_require_audio",
-          "classifier": {
-            "family": "video",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "参考视频必须含音轨（boolean）",
-            "basis": "ModelParameterControl"
           }
         }
       ]
@@ -2427,7 +2245,7 @@
           "key": "volcengine_image_contents",
           "classifier": {
             "family": "image",
-            "multiImage": true
+            "multiImage": false
           },
           "actual": {
             "role": "reference-input",
@@ -2508,7 +2326,7 @@
           "key": "volcengine_image_contents",
           "classifier": {
             "family": "image",
-            "multiImage": true
+            "multiImage": false
           },
           "actual": {
             "role": "reference-input",
@@ -2606,45 +2424,12 @@
       ]
     },
     {
-      "id": "seed-rh-seedance-global-t2v",
-      "vendorKey": "runninghub",
-      "taskKind": "text_to_video",
-      "modelKey": "bytedance/seedance-2.0-global",
-      "archetypeId": "runninghub-seedance",
-      "keys": [
-        {
-          "key": "generateAudio",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "生成音频（boolean）",
-            "basis": "ModelParameterControl"
-          }
-        }
-      ]
-    },
-    {
       "id": "seed-rh-seedance-global-i2v",
       "vendorKey": "runninghub",
       "taskKind": "image_to_video",
       "modelKey": "bytedance/seedance-2.0-global",
       "archetypeId": "runninghub-seedance",
       "keys": [
-        {
-          "key": "generateAudio",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "生成音频（boolean）",
-            "basis": "ModelParameterControl"
-          }
-        },
         {
           "key": "firstFrameUrl",
           "classifier": {
@@ -2672,45 +2457,12 @@
       ]
     },
     {
-      "id": "seed-rh-veo31-t2v",
-      "vendorKey": "runninghub",
-      "taskKind": "text_to_video",
-      "modelKey": "rhart-video-v3.1-pro-official",
-      "archetypeId": "rh-veo-3.1",
-      "keys": [
-        {
-          "key": "generateAudio",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "生成音频（boolean）",
-            "basis": "ModelParameterControl"
-          }
-        }
-      ]
-    },
-    {
       "id": "seed-rh-veo31-i2v",
       "vendorKey": "runninghub",
       "taskKind": "image_to_video",
       "modelKey": "rhart-video-v3.1-pro-official",
       "archetypeId": "rh-veo-3.1",
       "keys": [
-        {
-          "key": "generateAudio",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "boolean-switch",
-            "detail": "生成音频（boolean）",
-            "basis": "ModelParameterControl"
-          }
-        },
         {
           "key": "imageUrl",
           "classifier": {
@@ -2835,7 +2587,7 @@
           "key": "imageUrls",
           "classifier": {
             "family": "image",
-            "multiImage": false
+            "multiImage": true
           },
           "actual": {
             "role": "reference-input",
@@ -2856,7 +2608,7 @@
           "key": "imageUrls",
           "classifier": {
             "family": "image",
-            "multiImage": false
+            "multiImage": true
           },
           "actual": {
             "role": "reference-input",
@@ -2877,7 +2629,7 @@
           "key": "imageUrls",
           "classifier": {
             "family": "image",
-            "multiImage": false
+            "multiImage": true
           },
           "actual": {
             "role": "reference-input",
@@ -2898,7 +2650,7 @@
           "key": "imageUrls",
           "classifier": {
             "family": "image",
-            "multiImage": false
+            "multiImage": true
           },
           "actual": {
             "role": "reference-input",
@@ -3047,48 +2799,6 @@
       ]
     },
     {
-      "id": "seed-minimax-speech-2.8-hd-text_to_audio",
-      "vendorKey": "minimax",
-      "taskKind": "text_to_audio",
-      "modelKey": "speech-2.8-hd",
-      "archetypeId": "minimax-speech-2.8",
-      "keys": [
-        {
-          "key": "voice_id",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "enum",
-            "detail": "音色 ID（text）",
-            "basis": "ModelParameterControl"
-          }
-        }
-      ]
-    },
-    {
-      "id": "seed-minimax-speech-2.8-turbo-text_to_audio",
-      "vendorKey": "minimax",
-      "taskKind": "text_to_audio",
-      "modelKey": "speech-2.8-turbo",
-      "archetypeId": "minimax-speech-2.8",
-      "keys": [
-        {
-          "key": "voice_id",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "enum",
-            "detail": "音色 ID（text）",
-            "basis": "ModelParameterControl"
-          }
-        }
-      ]
-    },
-    {
       "id": "seed-meshy-7-image-to-3d",
       "vendorKey": "meshy",
       "taskKind": "image_to_3d",
@@ -3110,27 +2820,6 @@
       ]
     },
     {
-      "id": "seed-fal-fal-ai-nano-banana-2-t2i",
-      "vendorKey": "fal",
-      "taskKind": "text_to_image",
-      "modelKey": "fal-ai/nano-banana-2",
-      "archetypeId": "nano-banana-2",
-      "keys": [
-        {
-          "key": "num_images",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "quantity",
-            "detail": "生成数量",
-            "basis": "wire key semantics"
-          }
-        }
-      ]
-    },
-    {
       "id": "seed-fal-fal-ai-nano-banana-2-edit-edit",
       "vendorKey": "fal",
       "taskKind": "image_edit",
@@ -3147,51 +2836,6 @@
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
             "basis": "GENERIC_REFERENCE_KEYS"
-          }
-        },
-        {
-          "key": "num_images",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "quantity",
-            "detail": "生成数量",
-            "basis": "wire key semantics"
-          }
-        }
-      ]
-    },
-    {
-      "id": "seed-fal-openai-gpt-image-2-t2i",
-      "vendorKey": "fal",
-      "taskKind": "text_to_image",
-      "modelKey": "openai/gpt-image-2",
-      "archetypeId": "gpt-image-2",
-      "keys": [
-        {
-          "key": "image_size",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "size",
-            "detail": "图像尺寸枚举",
-            "basis": "wire key semantics"
-          }
-        },
-        {
-          "key": "num_images",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "quantity",
-            "detail": "生成数量",
-            "basis": "wire key semantics"
           }
         }
       ]
@@ -3216,60 +2860,15 @@
           }
         },
         {
-          "key": "image_size",
+          "key": "mask_url",
           "classifier": {
             "family": "image",
             "multiImage": false
           },
           "actual": {
-            "role": "size",
-            "detail": "图像尺寸枚举",
-            "basis": "wire key semantics"
-          }
-        },
-        {
-          "key": "num_images",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "quantity",
-            "detail": "生成数量",
-            "basis": "wire key semantics"
-          }
-        }
-      ]
-    },
-    {
-      "id": "seed-fal-bytedance-seedream-v5-pro-text-to-image-t2i",
-      "vendorKey": "fal",
-      "taskKind": "text_to_image",
-      "modelKey": "bytedance/seedream/v5/pro",
-      "archetypeId": "seedream-5-pro",
-      "keys": [
-        {
-          "key": "image_size",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "size",
-            "detail": "图像尺寸枚举",
-            "basis": "wire key semantics"
-          }
-        },
-        {
-          "key": "num_images",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "quantity",
-            "detail": "生成数量",
-            "basis": "wire key semantics"
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
           }
         }
       ]
@@ -3291,30 +2890,6 @@
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
             "basis": "GENERIC_REFERENCE_KEYS"
-          }
-        },
-        {
-          "key": "image_size",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "size",
-            "detail": "图像尺寸枚举",
-            "basis": "wire key semantics"
-          }
-        },
-        {
-          "key": "num_images",
-          "classifier": {
-            "family": "image",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "quantity",
-            "detail": "生成数量",
-            "basis": "wire key semantics"
           }
         }
       ]
@@ -3855,48 +3430,6 @@
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
             "basis": "GENERIC_REFERENCE_KEYS"
-          }
-        }
-      ]
-    },
-    {
-      "id": "seed-runway-eleven_multilingual_v2-speech",
-      "vendorKey": "runway",
-      "taskKind": "text_to_audio",
-      "modelKey": "eleven_multilingual_v2",
-      "archetypeId": "eleven-multilingual-v2",
-      "keys": [
-        {
-          "key": "voice_preset_id",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "voice",
-            "detail": "音色（select）",
-            "basis": "ModelParameterControl"
-          }
-        }
-      ]
-    },
-    {
-      "id": "seed-runway-eleven_v3-speech",
-      "vendorKey": "runway",
-      "taskKind": "text_to_audio",
-      "modelKey": "eleven_v3",
-      "archetypeId": "eleven-v3",
-      "keys": [
-        {
-          "key": "voice_preset_id",
-          "classifier": {
-            "family": "audio",
-            "multiImage": false
-          },
-          "actual": {
-            "role": "voice",
-            "detail": "音色预设枚举",
-            "basis": "archetype parameter control / wire key"
           }
         }
       ]

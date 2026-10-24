@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { bodyReferencedParamKeys } from "../electron/catalog/paramTranslate";
-import { classifyReferenceKeyDetailed } from "../electron/catalog/referenceReachability";
+import { referenceKeyDeclarationFor } from "../electron/shared/modelArchetypes/referenceKeys";
 import { applyBuiltinSeeds } from "../electron/catalog/seedBuiltins";
 import type { CatalogState } from "../electron/catalog/types";
 import { GENERIC_REFERENCE_KEYS } from "../electron/shared/modelArchetypes/referenceKeys";
@@ -78,7 +78,7 @@ export function buildReferenceKeyCensus() {
   const modelByKey = new Map(state.models.map((model) => [`${model.vendorKey}:${model.modelKey}`, model]));
   const rows = state.mappings.flatMap((mapping) => {
     const referencedKeys = bodyReferencedParamKeys(mapping.create?.body)
-      .filter((key) => classifyReferenceKeyDetailed(key));
+      .filter((key) => referenceKeyDeclarationFor(key));
     if (referencedKeys.length === 0) return [];
     const model = mapping.modelKey ? modelByKey.get(`${mapping.vendorKey}:${mapping.modelKey}`) : undefined;
     const archetypeId = typeof (model?.meta as Record<string, unknown> | undefined)?.archetypeId === "string"
@@ -92,7 +92,7 @@ export function buildReferenceKeyCensus() {
       archetypeId: archetypeId ?? null,
       keys: referencedKeys.map((key) => ({
         key,
-        classifier: classifyReferenceKeyDetailed(key),
+        classifier: referenceKeyDeclarationFor(key),
         actual: actualClassification(archetypeId, key),
       })),
     }];
@@ -106,7 +106,7 @@ export function buildReferenceKeyCensus() {
     source: {
       catalog: "electron/catalog/seedBuiltins.ts::applyBuiltinSeeds",
       bodyKeyExtraction: "electron/catalog/paramTranslate.ts::bodyReferencedParamKeys",
-      classifier: "electron/catalog/referenceReachability.ts::classifyReferenceKeyDetailed",
+      classifier: "electron/shared/modelArchetypes/referenceKeys.ts::referenceKeyDeclarationFor",
       declarationSet: "electron/shared/modelArchetypes/referenceKeys.ts::GENERIC_REFERENCE_KEYS",
     },
     summary: {

@@ -8,6 +8,7 @@
 // 住在 electron/ 而非 src/：electron tsconfig 是 rootDir:"." 反向 import 不了 src；渲染层则本就 import
 // 得到 electron（bridge.ts 已在做），且本模块依赖链纯净（paramTranslate → jsonUtils，后者零 import）。
 import { bodyReferencedParamKeys } from "./paramTranslate";
+import { referenceKeyDeclarationFor, type ReferenceFamily as DeclaredReferenceFamily } from "../shared/modelArchetypes/referenceKeys";
 // 渲染层的变体轴收窄也要「这条 create op 引用了哪些参数键」（body ∪ 进程 args）。它的单一实现在
 // paramTranslate；从本模块转出一次，是因为 src→electron 的越界是棘轮门岗，渲染层已放行的入口只有
 // 本文件这一条（archetypeMeta 那条基线）。让渲染层再直连 paramTranslate 会被判成新增违规。
@@ -116,68 +117,31 @@ export type BodyReferenceSupport = {
   multiImage: boolean;
 };
 
-// body 里「一个被引用的 param 键属于哪个参考族」的判据——**与 modeSlotReach 同一套 key 词汇**（缺省
-// inputKey 表 + 单图聚合位 + 各 codec 原生数组/角色键），只是这里没有预声明 slot 列表、直接从 body 引用的
-// 键反推能带什么（list_models 阶段拿不到 renderer 的 slot 声明）。顺序有意义：先帧/源视频再通用图，
-// 避免 first_frame_image 被通用 image 规则先吞。数组/多角色键额外记进 multiImage。
-const REFERENCE_KEY_FAMILY: Array<{ re: RegExp; family: "image" | "video" | "audio"; multiImage?: boolean }> = [
-  { re: /video/i, family: "video" }, // *_video_* / video_urls / reference_video_urls / source_video_url
-  { re: /audio|voice/i, family: "audio" }, // audio_urls / reference_audio_urls / volcengine_audio_contents
-  // 多图信号：数组键（image_urls / input_urls / image_paths / reference_image(s) / *image_contents）与多角色键。
-  { re: /image_urls|input_urls|image_paths|reference_images?|image_contents|image_with_roles/i, family: "image", multiImage: true },
-  // 单图族：首/尾帧、单图聚合位（image / image_url / image_path / *_frame_url / *_frame_image / *role_image_content）。
-  { re: /image|img|frame/i, family: "image" },
-];
-
-// **动作/开关键前缀**——它们名字里虽含 audio/frame/image 等词，却是布尔控制而非参考载体，必须先排除，否则
-// 会把纯文生 body 误判成"能带参考"（真机 fixture 抓到：seedance 的 `generate_audio`(生成音频开关) 被 /audio/
-// 命中、`return_last_frame`(返回尾帧图开关) 被 /frame/ 命中 → t2v 被谎报有音频/图参考）。判据：**首个下划线
-// 段是动词/开关词**（generate/return/enable/disable/use/include/with/allow/need）→ 不是载体。载体键（image_with_roles /
-// first_frame_url / reference_image_urls…）首段都是名词性资产词，天然不落这张表。
-const CONTROL_KEY_PREFIX = /^(generate|return|enable|disable|use|include|with|allow|need|is|has|no)_/i;
-
-export type ReferenceFamily = "image" | "video" | "audio";
+export type ReferenceFamily = DeclaredReferenceFamily;
 
 /** 一个参考载体键的族 + 是否多值（数组/多角色键）。null = 不是参考载体。 */
-export type ReferenceKeyKind = { family: ReferenceFamily; multiImage: boolean };
-
-/**
- * 一个 param 键的参考分类明细（族 + 数组/单值），供「往这个键投影参考」时决定塞数组还是单串。
- * **与 classifyReferenceKey / bodyReferenceSupport 同一张表**（REFERENCE_KEY_FAMILY），不另写判据（P1）。
- * 动作/开关键（generate_audio / return_last_frame…）先被 CONTROL_KEY_PREFIX 排除 → 返回 null。
- */
-export function classifyReferenceKeyDetailed(key: string): ReferenceKeyKind | null {
-  if (CONTROL_KEY_PREFIX.test(key)) return null;
-  for (const rule of REFERENCE_KEY_FAMILY) if (rule.re.test(key)) return { family: rule.family, multiImage: rule.multiImage === true };
-  return null;
-}
-
 /**
  * 一个 param 键（或参考输入键）属于哪个参考族——image / video / audio / null（不是参考载体）。
  * **单一分类真相源**：body 承载力（bodyReferenceSupport）与「本次携带了哪些族」（拒发建议用）都用它，不各写一份。
- * 动作/开关键（generate_audio / return_last_frame…）先被 CONTROL_KEY_PREFIX 排除 → 返回 null。
+ * 未声明的键（包括名字像参考的控制键）直接返回 null。
  */
 export function classifyReferenceKey(key: string): ReferenceFamily | null {
-  return classifyReferenceKeyDetailed(key)?.family ?? null;
+  return referenceKeyDeclarationFor(key)?.family ?? null;
 }
 
 /**
  * 一条 create body 能承载哪些参考类别（纯函数）。**判据 derive 自 body 引用的 `{{request.params.X}}`**，
- * 与第三闸 / modeSlotReach 同源，不 hardcode 任何 vendor：把 body 引用键逐个归入 image/video/audio 族，
- * 数组/多角色键额外点亮 multiImage。body 不引用任何参数（纯静态）→ 判不出来，一律回全 false（诚实：
+ * 与第三闸 / modeSlotReach 同源，不 hardcode 任何 vendor：把 body 引用键逐个按共享声明归入 image/video/audio 族，
+ * 声明的多值键额外点亮 multiImage。body 不引用任何参数（纯静态）→ 判不出来，一律回全 false（诚实：
  * 与「判不出就不误伤」对称，list_models 不谎称有参考能力）。
  */
 export function bodyReferenceSupport(createBody: unknown): BodyReferenceSupport {
   const support: BodyReferenceSupport = { image: false, video: false, audio: false, multiImage: false };
   for (const key of bodyReferencedParamKeys(createBody)) {
-    if (CONTROL_KEY_PREFIX.test(key)) continue; // 动作/开关键（generate_audio / return_last_frame…）不是参考载体。
-    for (const rule of REFERENCE_KEY_FAMILY) {
-      if (rule.re.test(key)) {
-        support[rule.family] = true;
-        if (rule.multiImage) support.multiImage = true;
-        break; // 命中最靠前的族即停（帧/视频/音频优先于通用图）。
-      }
-    }
+    const declaration = referenceKeyDeclarationFor(key);
+    if (!declaration) continue;
+    support[declaration.family] = true;
+    if (declaration.multiImage) support.multiImage = true;
   }
   return support;
 }

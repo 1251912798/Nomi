@@ -1,0 +1,445 @@
+{
+  "generatedAt": "2026-10-25T00:00:00.000Z",
+  "summary": {
+    "cases": 26,
+    "sent": 8,
+    "rejectedBeforeSend": 18,
+    "fakeUpstreamRequests": 8
+  },
+  "cases": [
+    {
+      "id": "seed-kie-happyhorse-text_to_video",
+      "taskKind": "text_to_video",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "audio_setting": "keep-audio-setting"
+      }
+    },
+    {
+      "id": "seed-kie-wan3-0-text_to_video",
+      "taskKind": "text_to_video",
+      "family": "audio",
+      "declaredReferenceKeys": [
+        "reference_audio_urls"
+      ],
+      "wireReferenceKeys": [
+        "reference_audio_urls"
+      ],
+      "sentCount": 1,
+      "rejected": false,
+      "requestBody": {
+        "model": "headless-rehearsal-model",
+        "input": {
+          "prompt": "headless reference rehearsal",
+          "reference_audio_urls": [
+            "https://loopback.invalid/reference-audio.mp3"
+          ],
+          "duration": "",
+          "audio": false
+        }
+      },
+      "controlValues": {
+        "audio": false
+      }
+    },
+    {
+      "id": "seed-kie-wan3-0-image_to_video",
+      "taskKind": "image_to_video",
+      "family": "audio",
+      "declaredReferenceKeys": [
+        "reference_audio_urls"
+      ],
+      "wireReferenceKeys": [
+        "reference_audio_urls"
+      ],
+      "sentCount": 1,
+      "rejected": false,
+      "requestBody": {
+        "model": "headless-rehearsal-model",
+        "input": {
+          "prompt": "headless reference rehearsal",
+          "reference_audio_urls": [
+            "https://loopback.invalid/reference-audio.mp3"
+          ],
+          "duration": "",
+          "audio": false
+        }
+      },
+      "controlValues": {
+        "audio": false
+      }
+    },
+    {
+      "id": "seed-apimart-kling-3.0-text_to_video",
+      "taskKind": "text_to_video",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "audio": false
+      }
+    },
+    {
+      "id": "seed-apimart-kling-3.0-image_to_video",
+      "taskKind": "image_to_video",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "audio": false
+      }
+    },
+    {
+      "id": "seed-apimart-wan-3.0-apimart-text_to_video",
+      "taskKind": "text_to_video",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "audio": false
+      }
+    },
+    {
+      "id": "seed-apimart-wan-3.0-apimart-image_to_video",
+      "taskKind": "image_to_video",
+      "family": "audio",
+      "declaredReferenceKeys": [
+        "audio_urls"
+      ],
+      "wireReferenceKeys": [
+        "audio_urls"
+      ],
+      "sentCount": 1,
+      "rejected": false,
+      "requestBody": {
+        "model": "wan3.0-video",
+        "prompt": "headless reference rehearsal",
+        "duration": "",
+        "audio": false,
+        "audio_urls": [
+          "https://loopback.invalid/reference-audio.mp3"
+        ]
+      },
+      "controlValues": {
+        "audio": false
+      }
+    },
+    {
+      "id": "seed-apimart-nomi-audio-text_to_audio",
+      "taskKind": "text_to_audio",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "voice": "keep-voice"
+      }
+    },
+    {
+      "id": "seed-agnes-video-v2-text_to_video",
+      "taskKind": "text_to_video",
+      "family": "video",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明视频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "num_frames": 3,
+        "frame_rate": 24
+      }
+    },
+    {
+      "id": "seed-agnes-video-v2-image_to_video",
+      "taskKind": "image_to_video",
+      "family": "video",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明视频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "num_frames": 3,
+        "frame_rate": 24
+      }
+    },
+    {
+      "id": "seed-agnes-video-2.5-text_to_video",
+      "taskKind": "text_to_video",
+      "family": "video",
+      "declaredReferenceKeys": [
+        "videos"
+      ],
+      "wireReferenceKeys": [
+        "videos"
+      ],
+      "sentCount": 1,
+      "rejected": false,
+      "requestBody": {
+        "model": "agnes-video-2.5",
+        "prompt": "headless reference rehearsal",
+        "mode": "text",
+        "seconds": "5",
+        "size": "720P",
+        "aspect_ratio": "16:9",
+        "n": 1,
+        "videos": [
+          "https://loopback.invalid/reference-video.mp4"
+        ],
+        "video_start_seconds": 24,
+        "video_require_audio": false
+      },
+      "controlValues": {
+        "video_start_seconds": 24,
+        "video_require_audio": false
+      }
+    },
+    {
+      "id": "seed-agnes-video-2.5-image_to_video",
+      "taskKind": "image_to_video",
+      "family": "video",
+      "declaredReferenceKeys": [
+        "videos"
+      ],
+      "wireReferenceKeys": [
+        "videos"
+      ],
+      "sentCount": 1,
+      "rejected": false,
+      "requestBody": {
+        "model": "agnes-video-2.5",
+        "prompt": "headless reference rehearsal",
+        "seconds": "5",
+        "size": "720P",
+        "aspect_ratio": "16:9",
+        "n": 1,
+        "videos": [
+          "https://loopback.invalid/reference-video.mp4"
+        ],
+        "video_start_seconds": 24,
+        "video_require_audio": false
+      },
+      "controlValues": {
+        "video_start_seconds": 24,
+        "video_require_audio": false
+      }
+    },
+    {
+      "id": "seed-rh-seedance-global-t2v",
+      "taskKind": "text_to_video",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "generateAudio": false
+      }
+    },
+    {
+      "id": "seed-rh-seedance-global-i2v",
+      "taskKind": "image_to_video",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "generateAudio": false
+      }
+    },
+    {
+      "id": "seed-rh-veo31-t2v",
+      "taskKind": "text_to_video",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "generateAudio": false
+      }
+    },
+    {
+      "id": "seed-rh-veo31-i2v",
+      "taskKind": "image_to_video",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "generateAudio": false
+      }
+    },
+    {
+      "id": "seed-minimax-speech-2.8-hd-text_to_audio",
+      "taskKind": "text_to_audio",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "voice_id": "keep-voice"
+      }
+    },
+    {
+      "id": "seed-minimax-speech-2.8-turbo-text_to_audio",
+      "taskKind": "text_to_audio",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "voice_id": "keep-voice"
+      }
+    },
+    {
+      "id": "seed-fal-fal-ai-nano-banana-2-t2i",
+      "taskKind": "text_to_image",
+      "family": "image",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明图片参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "num_images": 3
+      }
+    },
+    {
+      "id": "seed-fal-fal-ai-nano-banana-2-edit-edit",
+      "taskKind": "image_edit",
+      "family": "image",
+      "declaredReferenceKeys": [
+        "image_urls"
+      ],
+      "wireReferenceKeys": [
+        "image_urls"
+      ],
+      "sentCount": 1,
+      "rejected": false,
+      "requestBody": {
+        "prompt": "headless reference rehearsal",
+        "image_urls": [
+          "https://loopback.invalid/reference-image.png"
+        ],
+        "num_images": 3
+      },
+      "controlValues": {
+        "num_images": 3
+      }
+    },
+    {
+      "id": "seed-fal-openai-gpt-image-2-t2i",
+      "taskKind": "text_to_image",
+      "family": "image",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明图片参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "image_size": "keep-image-size",
+        "num_images": 3
+      }
+    },
+    {
+      "id": "seed-fal-openai-gpt-image-2-edit-i2i",
+      "taskKind": "image_edit",
+      "family": "image",
+      "declaredReferenceKeys": [
+        "input_urls",
+        "mask_url"
+      ],
+      "wireReferenceKeys": [
+        "image_urls"
+      ],
+      "sentCount": 1,
+      "rejected": false,
+      "requestBody": {
+        "prompt": "headless reference rehearsal",
+        "image_urls": [
+          "https://loopback.invalid/reference-image.png"
+        ],
+        "image_size": "keep-image-size",
+        "num_images": 3
+      },
+      "controlValues": {
+        "image_size": "keep-image-size",
+        "num_images": 3
+      }
+    },
+    {
+      "id": "seed-fal-bytedance-seedream-v5-pro-text-to-image-t2i",
+      "taskKind": "text_to_image",
+      "family": "image",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明图片参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "image_size": "keep-image-size",
+        "num_images": 3
+      }
+    },
+    {
+      "id": "seed-fal-bytedance-seedream-v5-pro-edit-edit",
+      "taskKind": "image_edit",
+      "family": "image",
+      "declaredReferenceKeys": [
+        "image_urls"
+      ],
+      "wireReferenceKeys": [
+        "image_urls"
+      ],
+      "sentCount": 1,
+      "rejected": false,
+      "requestBody": {
+        "prompt": "headless reference rehearsal",
+        "image_urls": [
+          "https://loopback.invalid/reference-image.png"
+        ],
+        "image_size": "keep-image-size",
+        "num_images": 3
+      },
+      "controlValues": {
+        "image_size": "keep-image-size",
+        "num_images": 3
+      }
+    },
+    {
+      "id": "seed-runway-eleven_multilingual_v2-speech",
+      "taskKind": "text_to_audio",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "voice_preset_id": "keep-voice"
+      }
+    },
+    {
+      "id": "seed-runway-eleven_v3-speech",
+      "taskKind": "text_to_audio",
+      "family": "audio",
+      "declaredReferenceKeys": [],
+      "sentCount": 0,
+      "rejected": true,
+      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "controlValues": {
+        "voice_preset_id": "keep-voice"
+      }
+    }
+  ]
+}
