@@ -110,7 +110,8 @@ function check(id, hosts, detail) {
 async function shot(name, selectors, pad = 16) {
   const clip = await win.evaluate(({ list, margin }) => {
     const rects = list.flatMap((sel) => [...document.querySelectorAll(sel)].map((el) => el.getBoundingClientRect())).filter((rect) => rect.width > 0)
-    if (rects.length === 0) return null
+    // 取景要先找到元素：一个都没找到 → 返回 null → 下面的 expect 当场红（这是「必须存在」，不是「不存在」断言）。
+    if (!rects.length) return null
     const left = Math.max(0, Math.min(...rects.map((r) => r.left)) - margin), top = Math.max(0, Math.min(...rects.map((r) => r.top)) - margin)
     const right = Math.min(window.innerWidth, Math.max(...rects.map((r) => r.right)) + margin), bottom = Math.min(window.innerHeight, Math.max(...rects.map((r) => r.bottom)) + margin)
     return { x: left, y: top, width: right - left, height: bottom - top }
