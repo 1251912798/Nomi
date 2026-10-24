@@ -75,7 +75,7 @@ export const GATE_INPUTS = Object.freeze({
   // check-script-network-retry.mjs：扫 scripts 下所有 mjs / cjs / js / ts 源文件里的 gh / git 网络 / 控制面 fetch 调用；共用边界与两份单测一并算输入
   'check:script-network-retry': { roots: ['scripts'], exts: ['mjs','cjs','js','ts','mts','cts'], files: [], entries: ['scripts/check-script-network-retry.mjs', 'scripts/check-script-network-retry.node-test.mjs', 'scripts/lib/transientRetry.node-test.mjs'] },
   // pre-push-structure.node-test.mjs：钩子自己的契约 / 结构用例。读 package.json 的 gates:contracts、门表、输入声明、入口脚本（entries 的 import 闭包已含后三者），还有钩子分发表
-  'test:pre-push-structure': { roots: [], exts: [], files: ['package.json', 'scripts/git-hooks.json', 'scripts/install-git-hooks.cjs'], entries: ['scripts/pre-push-structure.node-test.mjs'] },
+  'test:pre-push-structure': { roots: [], exts: [], files: ['package.json', 'scripts/git-hooks.json', 'scripts/install-git-hooks.cjs'], entries: ['scripts/pre-push-structure.node-test.mjs', 'scripts/pre-push-tracked-scan.node-test.mjs'] },
   // check-scan-guard-census.mjs：扫描型守卫登记核对。被登记对象 = 全仓任何位置的测试文件（识别器认的 TEST_FILE：*.test.* / *.node-test.*，新增、改名、删除都算），
   // 所以用 match 全仓触发；package.json（gates:contracts 的门命令文本是核对的输入）与登记表（entries 闭包里的 pre-push-scan-guards.mjs）也算
   'check:scan-guard-census': { roots: [], exts: [], files: ['package.json'], entries: ['scripts/check-scan-guard-census.mjs'], match: TEST_FILE },

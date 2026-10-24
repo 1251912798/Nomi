@@ -39,6 +39,17 @@ export function gitPaths(args, { cwd = process.cwd(), maxBuffer } = {}) {
 }
 
 /**
+ * 返回工作树中会进入提交的文件：已跟踪文件 + 未跟踪且未被标准规则忽略的文件。
+ * 这是所有扫描型门岗的唯一文件清单来源；不在 git 仓库中直接抛错，禁止退回磁盘遍历。
+ */
+export function trackedFiles({ cwd = process.cwd(), roots = [], maxBuffer = 256 * 1024 * 1024 } = {}) {
+  return gitPaths(
+    ['ls-files', '--cached', '--others', '--exclude-standard', ...(roots.length ? ['--', ...roots] : [])],
+    { cwd, maxBuffer },
+  )
+}
+
+/**
  * `git diff --name-status` 的 `-z` 版本：记录之间用 NUL 分隔，而**重命名/复制**
  * （`R100` / `C75`）会多占一条记录——`status\0旧路径\0新路径\0`。
  * 按行 split 的老写法读到的是 `R100\t旧\t新`，一旦路径被转义就连状态字母都对不上。
