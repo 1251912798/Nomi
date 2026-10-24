@@ -89,7 +89,8 @@ export function SkillLibraryContent({ host, toolbarHost, className }: SkillLibra
   }, [items, i18n.language, t, usageVersion])
   const navGroups = React.useMemo(() => libraryNavGroups(sections, t('libraries.layout.all')), [sections, t])
   const spec = SKILL_GRID[host]
-  const columns = libraryColumns(useElementWidth(scrollElementRef) ?? 0, { minCardWidth: spec.minCardWidth, gap: spec.columnGap, max: spec.maxColumns })
+  const width = useElementWidth(scrollElementRef) ?? 0
+  const columns = libraryColumns(width, { minCardWidth: spec.minCardWidth, gap: spec.columnGap, max: spec.maxColumns })
   const trimmedQuery = query.trim()
   const views = React.useMemo(() => librarySectionsView(sections, {
     category,
@@ -295,6 +296,7 @@ export function SkillLibraryContent({ host, toolbarHost, className }: SkillLibra
   const list = (
     <LibrarySectionList
       views={nothing ? [] : views}
+      width={width}
       columns={columns}
       spec={spec}
       size={host}

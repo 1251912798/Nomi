@@ -96,7 +96,8 @@ export function PromptLibraryContent({ host, toolbarHost, className }: PromptLib
   }, [category, sections])
 
   const spec = PROMPT_GRID[host]
-  const columns = libraryColumns(useElementWidth(scrollElementRef) ?? 0, { minCardWidth: spec.minCardWidth, gap: spec.columnGap, max: spec.maxColumns })
+  const width = useElementWidth(scrollElementRef) ?? 0
+  const columns = libraryColumns(width, { minCardWidth: spec.minCardWidth, gap: spec.columnGap, max: spec.maxColumns })
   const trimmedQuery = query.trim()
   const views = React.useMemo(() => librarySectionsView(sections, {
     category,
@@ -259,6 +260,7 @@ export function PromptLibraryContent({ host, toolbarHost, className }: PromptLib
   const list = (
     <LibrarySectionList
       views={hasRows ? views : []}
+      width={width}
       columns={columns}
       spec={spec}
       size={host}

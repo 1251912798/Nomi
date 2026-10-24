@@ -21,8 +21,9 @@ export type LibraryGridSpec = Readonly<{
  * 分组的虚拟列表（两个库共用一份；替换原来技能库的原生 details 折叠 + 提示词库自带的那份虚拟网格，E-09 三套收一套）。
  * 收起的组、屏外的卡都不挂载 → 不发媒体请求（设计卡 ★7）。滚动容器归它，宿主只给尺寸。
  */
-export function LibrarySectionList<T>({ views, columns, spec, size, keyOf, renderItem, onShowAll, showCounts, scrollRef, className, children, footer }: {
+export function LibrarySectionList<T>({ views, width, columns, spec, size, keyOf, renderItem, onShowAll, showCounts, scrollRef, className, children, footer }: {
   views: readonly LibrarySectionView<T>[]
+  width: number
   columns: number
   spec: LibraryGridSpec
   size: LibraryFaceSize
