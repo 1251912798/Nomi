@@ -1,0 +1,26 @@
+# 独立验收 F1 / F2 回归测试——修之后
+ ✓ electron/ai/modelCallFetch.test.ts > 模型调用的失败留证 > key 在查询串里：事实里的地址去掉了查询串，日志与原话里都没有 key 46ms
+ ✓ electron/ai/modelCallFetch.test.ts > 模型调用的失败留证 > key 在请求头里（Bearer）：服务商把它回显进错误体，也被抹掉 8ms
+ ✓ electron/ai/modelCallFetch.test.ts > 模型调用的失败留证 > 调用方手里那把 key（knownSecrets）出现在任何位置都抹掉 5ms
+ ✓ electron/ai/modelCallFetch.test.ts > 模型调用的失败留证 > 成功的调用不留证：最后一次尝试只记「拿到了响应」 5ms
+ ✓ electron/ai/modelCallFetch.test.ts > 模型调用的失败留证 > 地址去查询串、去账号密码段 0ms
+ ✓ electron/ai/modelCallFetch.test.ts > 每次尝试一份事实（F1） > 429 → 重试拿到 200：最后一次尝试是「拿到了响应」，不再带着那次 429 2ms
+ ✓ electron/ai/modelCallFetch.test.ts > 每次尝试一份事实（F1） > 429 → 重试连不上：最后一次尝试是「没拿到响应」 2ms
+ ✓ electron/ai/modelCallFetch.test.ts > 秘密从实际发出去的请求里收（F2） > init 写法、头名混大小写：主 key 与网关自定义头的值，原样 / JSON 转义 / URL 编码的回显都抹掉；日志、事实、给用户看的文字都没有 10ms
+ ✓ electron/ai/modelCallFetch.test.ts > 秘密从实际发出去的请求里收（F2） > init 里放 Headers 对象：主 key 与网关自定义头的值，原样 / JSON 转义 / URL 编码的回显都抹掉；日志、事实、给用户看的文字都没有 7ms
+ ✓ electron/ai/modelCallFetch.test.ts > 秘密从实际发出去的请求里收（F2） > Request 写法（头在 Request 上）：主 key 与网关自定义头的值，原样 / JSON 转义 / URL 编码的回显都抹掉；日志、事实、给用户看的文字都没有 10ms
+ ✓ electron/ai/modelCallFetch.test.ts > 秘密从实际发出去的请求里收（F2） > SDK 自己的系统头（版本、重试计数）不当秘密：错误原话里的 0 / 600 不被抹花 0ms
+ ✓ electron/ai/modelCallSecrets.integration.test.ts > openai-compatible：自定义鉴权头的凭据不进日志、错误、错误卡 > 401 报文回显所有请求头（原样 / JSON 转义 / URL 编码） 874ms
+ ✓ electron/ai/modelCallSecrets.integration.test.ts > openai-responses：自定义鉴权头的凭据不进日志、错误、错误卡 > 401 报文回显所有请求头（原样 / JSON 转义 / URL 编码） 25ms
+ ✓ electron/ai/modelCallSecrets.integration.test.ts > anthropic：自定义鉴权头的凭据不进日志、错误、错误卡 > 401 报文回显所有请求头（原样 / JSON 转义 / URL 编码） 169ms
+ ✓ electron/ai/modelCallSecrets.integration.test.ts > 200 里 SSE 包着的错误回显凭据（没有状态码，原话直接进错误文案） > openai-compatible 11ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > #1 文本节点续写：真 IPC > 逐段写流式草稿、定稿；走文本流式门 673ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > #3 #4 #5 提示词优化 / 翻译 / AI 起草脚本：真 IPC > 三者共用的 runWorkbenchTextTaskStream 逐段收到正文、拿到结果；不走付费令牌闸 28ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > #2 文本节点改写选区：真 IPC + 真准入 > 拿到改写结果、交编辑器一次性替换选区；走文本流式门，不走付费令牌闸 62ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > #2 文本节点改写选区：真 IPC + 真准入 > 流式期间不往画布写增量草稿（选区只在编辑器里，数据层不碰正文） 45ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > #2 文本节点改写选区：真 IPC + 真准入 > 点停止：主进程那条 HTTP 真断，渲染层按取消收尾，选区不动 69ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > 重试事实不串台：真运行控制器 + 真 HTTP 次数 > 429 → 重试成功出字后断流：与只有断流时同一个结局（失败、不自动重提），上游一共 2 次 104ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > 重试事实不串台：真运行控制器 + 真 HTTP 次数 > 503 → 重试成功出字后断流：与只有断流时同一个结局（失败、不自动重提），上游一共 2 次 78ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > 重试事实不串台：真运行控制器 + 真 HTTP 次数 > 429 → 连接被重置：认成「连不上」，与只有连接重置时的结局与请求次数一样（不是额度问题） 2360ms
+ ✓ electron/ai/textEntries.ipc.integration.test.ts > 重试事实不串台：真运行控制器 + 真 HTTP 次数 > 429 → 重试成功：拿到结果，上游一共 2 次，只进一次文本流式门 15ms
+      Tests  24 passed (24)

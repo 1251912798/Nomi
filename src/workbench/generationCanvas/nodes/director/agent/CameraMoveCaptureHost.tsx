@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 react、react-i18next、../../../../../ui/toast、../../../store/generationCanvasStore、../../../model/generationCanvasTypes、../bridge/persistOutputs 的 persistDirectorFramesVideo、
  *          ../model/directorProject 的 normalizeDirectorProject、../model/directorIds 的 createOutputId、../model/directorNodeMeta 的 meta 键、../model/timeGrid 的 sceneContentEndSeconds、
- *          ./createCameraMoveReferenceNode（readCameraMoveAutoCapture / CAMERA_MOVE_CAPTURE_FPS）、./cameraMoveSchedule 的 frameTimes、./cameraMoveCaptureRetry、./attachCameraMoveToTarget 的 computeAttachCameraMove、./DirectorHeadlessCapture
+ *          ./createCameraMoveReferenceNode（readCameraMoveAutoCapture / CAMERA_MOVE_CAPTURE_FPS）、./cameraMoveSchedule 的 frameTimes、./cameraMoveCaptureRetry、./attachCameraMoveForNode 的 attachCameraMoveForNode、./DirectorHeadlessCapture
  * [OUTPUT]: 对外提供 CameraMoveCaptureHost（常驻：扫到带 cameraMoveAutoCapture 的 director 节点 → 离屏沿机位 1 的路径片段采 N 帧 → 帧转视频桥拼 mp4 →
  *          写回节点 meta.cameraMoveVideo + 工程 outputs.videos → 喂目标镜头 video_ref → 清标志）、CameraMoveVideoResult
  * [POS]: director/agent 的 create_camera_move 执行下半场（手动运镜控件同一条路）。看门狗 + 重试：一次上下文丢失不判死，attempt 当挂载 key 整棵重挂；
@@ -23,7 +23,7 @@ import { CAMERA_MOVE_AUTO_CAPTURE_META_KEY, DIRECTOR_NODE_KIND, DIRECTOR_PROJECT
 import { normalizeDirectorProject } from '../model/directorProject'
 import type { DirectorProject } from '../model/directorTypes'
 import { sceneContentEndSeconds } from '../model/timeGrid'
-import { computeAttachCameraMove } from './attachCameraMoveToTarget'
+import { attachCameraMoveForNode } from './attachCameraMoveForNode'
 import { decideCameraMoveRetry, DEFAULT_CAMERA_MOVE_RETRY, type CameraMoveCaptureOutcome } from './cameraMoveCaptureRetry'
 import { frameTimes } from './cameraMoveSchedule'
 import type { CameraMove } from '../../../../../../electron/shared/director/vocab'
@@ -91,7 +91,7 @@ function captureWindow(project: DirectorProject): { start: number; end: number }
 
 function attachToTarget(targetNodeId: string, mp4Url: string, move: CameraMove | undefined): void {
   const store = useGenerationCanvasStore.getState()
-  const outcome = computeAttachCameraMove(store.nodes.find((node) => node.id === targetNodeId), mp4Url, move)
+  const outcome = attachCameraMoveForNode(targetNodeId, mp4Url, move)
   if (outcome.toast) toast(outcome.toast.message, outcome.toast.level)
   if (outcome.kind === 'patch') store.updateNode(targetNodeId, outcome.patch)
 }
@@ -120,11 +120,11 @@ async function persistAndAttach(nodeId: string, fps: number, title: string, capt
 }
 
 /** 3D-BOX 预演：拼片落盘（只认原项目）→ 挂接 + 写回 ready；修订已变 = 迟到结果，当成完成丢弃（新修订会另起一轮）。 */
-async function persistPreview(nodeId: string, revision: string, fps: number, title: string, capture: HeadlessCaptureResult, originProject: ProjectExecutionContext | null): Promise<boolean> {
+async function persistPreview(nodeId: string, revision: string, sourceFingerprint: string, fps: number, title: string, capture: HeadlessCaptureResult, originProject: ProjectExecutionContext | null): Promise<boolean> {
   const persisted = await persistDirectorFramesVideo(capture.frames, nodeId, title, fps, originProject)
   if (!persisted.url || (originProject && !isProjectExecutionContextCurrent(originProject))) return false
   const createdAt = Date.now()
-  const outcome = applyPreviewCaptured(nodeId, revision, persisted.url, persisted.assetId, { id: createOutputId(), name: title, width: capture.width, height: capture.height, duration: capture.frames.length / fps, createdAt })
+  const outcome = applyPreviewCaptured(nodeId, revision, persisted.url, persisted.assetId, { id: createOutputId(), name: title, width: capture.width, height: capture.height, duration: capture.frames.length / fps, createdAt }, sourceFingerprint)
   if (outcome?.toast) toast(outcome.toast.message, outcome.toast.level)
   return true
 }
@@ -175,7 +175,7 @@ export function CameraMoveCaptureHost(): JSX.Element | null {
 
   // 某次尝试的结局（ok / null / timeout）→ 纯逻辑决定 done / retry / giveUp；只有 done / giveUp 才清标志
   const settleAttempt = React.useCallback(
-    (nodeId: string, key: string, attempt: number, fps: number, outcome: CameraMoveCaptureOutcome, capture: HeadlessCaptureResult | null, revision: string | null) => {
+    (nodeId: string, key: string, attempt: number, fps: number, outcome: CameraMoveCaptureOutcome, capture: HeadlessCaptureResult | null, revision: string | null, sourceFingerprint?: string) => {
       if (settledRef.current) return // watchdog 与 onResult 竞态：先到者定结局
       settledRef.current = true
       clearTimers()
@@ -188,7 +188,7 @@ export function CameraMoveCaptureHost(): JSX.Element | null {
           try {
             done = revision === null
               ? await persistAndAttach(nodeId, fps, t('director.agent.cameraMoveReference'), capture, originProject)
-              : await persistPreview(nodeId, revision, fps, t('director.agent.boxPreview'), capture, originProject)
+              : sourceFingerprint ? await persistPreview(nodeId, revision, sourceFingerprint, fps, t('director.agent.boxPreview'), capture, originProject) : false // 预演的采帧计划一定带渲染源指纹；没有 = 计划坏了，当失败走重试
           } catch {
             done = false // 落盘 / 喂入抛错也当失败，走重试兜底
           }
@@ -253,14 +253,14 @@ export function CameraMoveCaptureHost(): JSX.Element | null {
     const fps = clampFps(config?.fps)
     const window = captureWindow(project)
     const frameCount = clampFrameCount(config?.frameCount, Math.round((window.end - window.start) * fps) || DEFAULT_FRAME_COUNT)
-    return { project, fps, times: frameTimes(window.start, window.end, frameCount), revision: null, cameraIdAt: undefined, waitForActionClips: false }
+    return { project, fps, times: frameTimes(window.start, window.end, frameCount), revision: null, sourceFingerprint: undefined, cameraIdAt: undefined, waitForActionClips: false }
     // 只在换请求 / 换轮次时重建：出片期间节点 meta 的其它写入不该重挂离屏画布
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingKey, attempt])
   const onResult = React.useCallback(
     (result: HeadlessCaptureResult | null) => {
       if (!nodeId || !plan || !processing) return
-      settleAttempt(nodeId, processing.key, attempt, plan.fps, result && result.frames.length >= MIN_FRAME_COUNT ? 'ok' : 'null', result, plan.revision)
+      settleAttempt(nodeId, processing.key, attempt, plan.fps, result && result.frames.length >= MIN_FRAME_COUNT ? 'ok' : 'null', result, plan.revision, plan.sourceFingerprint)
     },
     [attempt, nodeId, plan, processing, settleAttempt],
   )

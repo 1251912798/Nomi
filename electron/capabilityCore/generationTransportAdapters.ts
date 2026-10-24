@@ -16,7 +16,9 @@ import type { ProjectLeaseV2 } from "./projectLease";
 import type { DispatchContext } from "./dispatcher";
 import type { ApprovalReceiptAuthority, HumanApprovalReceiptV1 } from "./approvalReceipt";
 import { decideGenerationSpend, generationChallengeTokenOf } from "./generationSpendDecision";
-import { spendDecidedByPolicy, type ProjectAgentApprovalPolicy } from "../shared/agentCapabilities/capabilityApprovalPolicy";
+import type { ProjectAgentApprovalPolicy } from "../shared/agentCapabilities/capabilityApprovalPolicy";
+import { spendDecisionByPolicy, type SpendDecisionByPolicy } from "../shared/agentCapabilities/directGenerationBrakes";
+import type { ProductionRun } from "../productionRun/productionRunTypes";
 import { sealedOutcome } from "./spendOperationArbiter";
 import type { GenerationInvocationContext } from "../shared/agentCapabilities/generationInvocationContext";
 import { shotDurationSeconds } from "./mcpGenerationVideoResolve";
@@ -73,10 +75,15 @@ export type GenerationTransportAdapterDependencies = Readonly<{
    * 用户此刻选的审批档位（宿主自己持有的那一份快照，`laneDesktopRuntime` 的 `composer.approvalPolicy`）。
    *
    * 只有一件事读它：草稿预检完之后，「全自动」档要不要在这里就把付费门决掉（2026-09-12 用户拍板）。
-   * 判据不在这个文件里，在 `capabilityApprovalPolicy.spendDecidedByPolicy`——同一个问题只有一个答案。
-   * 缺席按默认档（`safe-auto`）走，也就是照旧弹卡：不知道档位时**不许**替用户花钱。
+   * 判据不在这个文件里，在 `directGenerationBrakes.spendDecisionByPolicy`（档位 + 两个刹车，带 Run 的入口只问它）——同一个问题只有一个答案。
+   * 缺席按默认档（`request`）走，也就是照旧弹卡：不知道档位时**不许**替用户花钱。
    */
   approvalPolicy?: () => ProjectAgentApprovalPolicy | undefined;
+  /**
+   * 只读：这份草稿此刻在盘上的 Run。`direct` 档代批前读它判两个刹车（同一镜连续失败 / 计划外的镜）。
+   * 缺席 = 没有 Run 可看，刹车无从判，只剩档位那一问（外部宿主 / 夹具）。读不出来就抛——抛了草稿仍是草稿、报价卡照旧等人。
+   */
+  readRun?: (projectId: string, operationId: string) => ProductionRun | undefined;
   /**
    * 草稿建好 / 改完之后问宿主：落地落完了没有、这份草稿此刻在画布上吗（`canvasLandingHost.draftLandingOutcome`）。
    * 结果写进草稿结果的 `canvasLanding` 格，`draft_shots` 的回执只渲染它；缺席（外部宿主 / 夹具）= 不报，回执就不提画布。
@@ -141,6 +148,8 @@ function safeFailure(error: unknown): Extract<RuntimeToolDecision, { ok: false }
           // 说不出拒了什么，于是同一份参数原样重试（铁律 ⑩ 宿主矩阵首跑抓到）。
           : value instanceof ContractCompilationError ? GENERATION_ARGUMENT_REFUSAL : undefined,
     ownMessage: (value) => (value instanceof ContractCompilationError ? value.message : undefined),
+    // 粗码 `generation_input_invalid` 说不清是哪一种拒绝；具体码（unknown_parameter……）随失败带出去，lane 据它给按码的下一步。
+    admission: (value) => (value instanceof ContractCompilationError ? value.rejection?.code : undefined),
     // 收敛成码挡住的应当只有**供应商 / 凭据的原始文本**。连我们自己 schema 的字段级理由一起抹掉，
     // 模型拿到的就是一个说不出拒了什么的裸码，于是同一份载荷原样重试到回合超时——那正是
     // 2026-09-18 那份根因合同修掉的失效方式（`generation_input_invalid — shots.0.prompt: Required`）。
@@ -398,13 +407,18 @@ export function createPiGenerationTransportAdapter(
    *   · **不猜档位**：`approvalPolicy` 缺席按默认档走，也就是照旧弹卡。外部 MCP 宿主那条路
    *     从来不传它，所以它们的确认语义一个字没变（那条路自己有 elicitation 与收据门）。
    */
+  /** 这一次决定归不归档位：档位 + 刹车，带 Run 的入口只问这一处（刹车成立 = 退回报价卡，由真人点）。 */
+  const policyVerdict = (drafted: unknown, args: Record<string, unknown>, currentLease: ProjectLeaseV2): SpendDecisionByPolicy => {
+    const policy = deps.approvalPolicy?.();
+    return spendDecisionByPolicy(policy, () => deps.readRun?.(currentLease.projectId, draftedOperationId(drafted, args)));
+  };
+
   const decideByPolicyAfterDraft = async (
     args: Record<string, unknown>,
     drafted: unknown,
     currentLease: ProjectLeaseV2,
     signal: AbortSignal,
   ): Promise<unknown> => {
-    if (!spendDecidedByPolicy(deps.approvalPolicy?.())) return undefined;
     if (!deps.requestGenerationGate || !deps.authorizeGeneration || !deps.approvalReceiptAuthority) {
       throw Object.assign(new Error("generation_approval_unavailable"), { code: "generation_approval_unavailable" });
     }
@@ -554,7 +568,19 @@ export function createPiGenerationTransportAdapter(
           // 卡本来就没藏着（`cardHidden` 不为 true：外部 MCP 宿主与面板自己的路径）。「全自动」档在这里替用户决门（见上）。
           const cardShown = capability === "present"
             || ((capability === "create" || capability === "plan") && !planCardHidden(result));
-          if (cardShown && spendDecidedByPolicy(deps.approvalPolicy?.())) {
+          const verdict = cardShown ? policyVerdict(result, args, currentLease) : undefined;
+          if (verdict && !verdict.decided && verdict.brake && deps.markPolicyDecisionFailed) {
+            // 刹车成立：这一次不代答。把这份出价标成「要人工决定」，报价卡立刻摆出来（否则它会一直藏到代答期限过完），
+            // 卡上多一行说明为什么停（`PendingSpendConfirm.brake`，由 Run 现派生）。用户在卡上点的就是正常的人为手势确认。
+            // 标记写失败（如版本冲突）不改结论：这一次照样不代答；出价的代答期限一过，卡同样以「要人工决定」摆出来
+            // （`awaitingSpendDecision` 的期限判据），所以这里只记一笔，不把草稿结果改成失败。
+            try {
+              await deps.markPolicyDecisionFailed({ params: { ...args, operationId: draftedOperationId(result, args) }, lease: currentLease });
+            } catch (markError) {
+              logWarn("production-run", "direct-generation-brake-marker-failed", undefined, markError);
+            }
+          }
+          if (verdict?.decided) {
             policyDecisionAttempt = { params: { ...args, operationId: draftedOperationId(result, args) }, lease: currentLease };
             const decided = await decideByPolicyAfterDraft(args, result, currentLease, signal);
             if (decided) return { ok: true, result: decided };

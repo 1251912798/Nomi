@@ -9,6 +9,7 @@ import { resolveGenerationShotScope } from "../shared/agentCapabilities/generati
 import crypto from "node:crypto";
 import { hasMentions } from "../shared/storyboard/promptMentions";
 import {
+  admitPlanCandidate,
   compileExecutionContract,
   type ExecutionContractV1,
   type PlanCandidate,
@@ -275,7 +276,16 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
     ...(deps.resolveStoryboardReferenceUrl ? { resolveStoryboardReferenceUrl: deps.resolveStoryboardReferenceUrl } : {}),
   });
 
-  /** 起草的每一镜：同一套准入（候选合成 → 归一 → 身份核对）。首建与补镜头都过这一处，不另写一台。 */
+  /**
+   * 起草那一刻就过**确认时用的同一个** `compileParameters`（经 `admitPlanCandidate`，不另写一份校验）。
+   * 2026-10-18：起草只核了「模型 + 模式」、不核参数值，坏参数（`seed: "abc"`）照样进草稿、出付费卡，
+   * 点「生成」才在合同编译口被拒。现在草稿落库之前就判，拒绝是现有的结构化 ParameterRejection，模型当场能改对再交。
+   */
+  const admitDraftParameters = (candidate: PlanCandidate, registry: GenerationPlanningHandlerDependencies["registry"]): void => {
+    admitPlanCandidate(candidate, registry, videoCompileOptions(candidate, deps.videoModelCandidates));
+  };
+
+  /** 起草的每一镜：同一套准入（候选合成 → 归一 → 身份核对 → 参数值）。首建与补镜头都过这一处，不另写一台。 */
   const admitDraftShots = async (
     projectId: string,
     params: Record<string, unknown>,
@@ -285,7 +295,10 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
     if (!draftShots) return undefined;
     const normalizedShots = draftShots.map((shot) => ({ ...shot, candidate: normalizeAuthoredCandidate(shot.candidate, registry, deps.videoModelCandidates) }));
     // 每一镜的「模型 + 模式」落盘前就对过账：矛盾的镜头当场拒绝，不留到付费卡上点下去才发现（第 9 条）。
-    for (const shot of normalizedShots) admitShotIdentity(shot.candidate, registry, shot.role);
+    for (const shot of normalizedShots) {
+      admitShotIdentity(shot.candidate, registry, shot.role);
+      admitDraftParameters(shot.candidate, registry);
+    }
     return normalizedShots;
   };
 
@@ -317,6 +330,7 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
     }
     const normalizedSingle = normalizeAuthoredCandidate(singleCandidate, registry, deps.videoModelCandidates);
     admitShotIdentity(normalizedSingle, registry);
+    admitDraftParameters(normalizedSingle, registry);
     return normalizedSingle;
   };
 

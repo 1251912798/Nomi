@@ -117,8 +117,8 @@ export type WorkbenchProjectSummary = {
   seedKey?: string
   /**
    * 草稿态：新建空白零编辑项目的标记。首次真实保存即清除（promote 为持久态）。
-   * 启动 GC 只回收带此标记且 revision===0 的 native 空壳 → 库不再堆「未命名」垃圾（审计 P0-3）。
-   * example（有 seedKey）/打开文件夹（有 rootPath）/老项目都无此字段，GC 永不碰。
+   * 列表照常返回带此标记的项目（读面不做展示上的取舍，2026-10-22）；零编辑空壳的整理并进「离开只写欠着的」那条线。
+   * example（有 seedKey）/打开文件夹（有 rootPath）/老项目都无此字段。
    */
   draft?: boolean
   /** 仅桌面端有；Web 端无文件夹概念，缺省按 native 处理。 */
@@ -127,6 +127,8 @@ export type WorkbenchProjectSummary = {
   rootPath?: string
   /** 仅桌面端有；最近项目指向的文件夹已不存在。 */
   missing?: boolean
+  /** 仅桌面端有；这一项的数据读不出来（越界 / 其余读不出），卡片置灰不可打开，删除只解绑不删盘。 */
+  unreadableReason?: 'outside-workspace' | 'unreadable'
 }
 
 export type WorkbenchProjectPayload = {

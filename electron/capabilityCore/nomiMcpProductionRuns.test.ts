@@ -164,7 +164,7 @@ describe('production run MCP tools', () => {
       playbookVersion: undefined,
       actorId: 'codex',
       brief: { goal: '介绍 Nomi', durationSeconds: 60, sellingPoints: ['本地保存'] },
-    })
+    }, expect.anything())
     const result = response.result as { content: Array<{ text: string }> }
     expect(result.content[0].text).toContain('草稿')
     expect(result.content[0].text).toContain('nomi://project/project-1/run/run-1')
@@ -178,7 +178,7 @@ describe('production run MCP tools', () => {
     })
     expect(harness.invoke).toHaveBeenCalledWith('production.events', {
       projectId: 'project-1', runId: 'run-1', afterCursor: 2, waitMs: 25_000,
-    })
+    }, expect.anything())
     const result = response.result as { content: Array<{ text: string }> }
     expect(result.content[0].text).toContain('cursor 4')
     expect(result.content[0].text).toContain('storyboard')

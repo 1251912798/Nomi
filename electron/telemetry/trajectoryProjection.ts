@@ -93,9 +93,16 @@ function approvalDecisions(approvals: readonly unknown[]): string[] {
   return approvals.slice(0, 20).filter(isLaneApprovalNote).map((note) => note.decision)
 }
 
-/** 错误原文 → 认得出的类别（闭合词表）；原文本身不出门。 */
+/** 出门的错误类别只有这一张闭合词表（与 `laneTrace.laneErrorKind` 产出的同名类别对齐）。 */
+const OUTBOUND_ERROR_KIND = /^(?:context-overflow|stream-cut|model-timeout:(?:first-response|first-token|idle))$/
+
+/**
+ * 轨迹里的错误 → 认得出的类别（闭合词表）；其余不出门。
+ * 2026-10-22 起派生轨迹本身只存类别（`laneErrorKind`）；还没重建的旧轨迹存的是原文，照旧按原文认。
+ */
 function errorKinds(errors: readonly string[]): string[] {
   return errors.slice(0, 20).flatMap((text) => {
+    if (OUTBOUND_ERROR_KIND.test(text)) return [text]
     const fault = laneAssistantFaultOf(text)
     if (!fault) return []
     return [fault.kind === 'model-timeout' ? `model-timeout:${fault.phase}` : fault.kind]

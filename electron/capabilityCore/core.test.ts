@@ -60,7 +60,7 @@ describe('capabilityCore/core (磁盘网关：直写 project.json)', () => {
   it('建项目 → 加节点 → 连线 → 改提示词 → 读画布，全程落盘且重读一致', async () => {
     const project = createNamedProject('能力核测试项目')
     expect(project.id).toBeTruthy()
-    expect(listAllProjects().some((item) => item.id === project.id)).toBe(true)
+    expect((await listAllProjects()).some((item) => item.id === project.id)).toBe(true)
     const gateway = createDiskGateway(project.id)
 
     const { ids } = await addProjectNodes(gateway, [

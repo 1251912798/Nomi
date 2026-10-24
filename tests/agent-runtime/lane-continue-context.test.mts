@@ -27,7 +27,7 @@ for (const kind of ['openai-compatible', 'openai-responses', 'anthropic'] as con
       { type: 'text', text: 'An unrelated answer.' },
       { type: 'text', text: 'Continued from the actual prose.' },
     ])
-    let draft: LaneComposerContext = { approvalPolicy: { mode: 'safe-auto', spend: 'confirm' } }
+    let draft: LaneComposerContext = { approvalPolicy: { mode: 'request' } }
     const options = { ...fixture.options, model: { ...fixture.options.model, kind }, input: {
       capture: () => draft, activate: () => undefined, rewritePayload: (payload: unknown) => payload,
       providerContent: async (message: { content: string }) => message.content,

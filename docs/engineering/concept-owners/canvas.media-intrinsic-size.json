@@ -37,7 +37,7 @@
     "src/workbench/generationCanvas/nodes/useNodeImageEditing.ts",
     "src/workbench/generationCanvas/nodes/useNodeMediaMeasurement.ts",
     "src/workbench/generationCanvas/nodes/useNodePanoramaHandlers.ts",
-    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardModal.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
     "src/workbench/generationCanvas/runner/projectAssetHealthCheck.ts",
     "src/workbench/generationCanvas/runner/runProjectDelivery.ts",
     "src/workbench/generationCanvas/runner/textActions.ts",

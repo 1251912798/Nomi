@@ -204,10 +204,10 @@ function createContext({ id, win, walk, projectId, projectRoot }) {
   async function switchToFullAuto() {
     await clickOrFail(win.locator(`${CANVAS_PANEL} ${COMPOSER_PERMISSION}`), '权限档选择器')
     await expect(win.locator(`${CANVAS_PANEL} ${PERMISSION_POPOVER}`)).toBeVisible()
-    await clickOrFail(win.locator(`${CANVAS_PANEL} ${permissionTier('project')}`), '切到「全自动」')
+    await clickOrFail(win.locator(`${CANVAS_PANEL} ${permissionTier('direct')}`), '切到「直接生成」')
     const switchCard = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="approval-reversible"]`)
     await expect(switchCard, '切档仍然要问一次').toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
-    await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), '确认切到全自动')
+    await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), '确认切到直接生成')
     await expect(win.locator(`${CANVAS_PANEL} [data-v4-block="auto-mode"]`), '全自动档的常驻提醒出现').toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
   }
 

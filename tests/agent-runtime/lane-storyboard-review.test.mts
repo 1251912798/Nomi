@@ -14,7 +14,7 @@ test('safe-auto saves draft_shots without a review card or a generation-start cl
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'fixture-draft', name: 'draft_shots', arguments: { shots } }] },
     { type: 'text', text: 'Fixture complete.' },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) });
+  ], { hasUserInterface: true, policy: () => ({ mode: 'request' }) });
   let writes = 0, cards = 0;
   const lane = await openLane({ ...fixture.options, tools: createExtendedLaneTools({
     execute: async (call) => { writes += 1; assert.equal(call.toolName, 'draft_shots');
@@ -39,7 +39,7 @@ test('generate with no recorded user decision never claims generation started', 
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'fixture-generate', name: 'generate', arguments: { operationId: 'op-1' } }] },
     { type: 'text', text: 'The card is in front of you.' },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) });
+  ], { hasUserInterface: true, policy: () => ({ mode: 'request' }) });
   const lane = await openLane({ ...fixture.options, tools: createExtendedLaneTools({
     execute: async (call) => { assert.equal(call.toolName, 'generate');
       return { ok: true, result: { operation: { operationId: 'op-1', state: 'draft' }, shots: ['shot-1', 'shot-2'], nextAction: 'await_user' } }; },
@@ -65,7 +65,7 @@ test('safe-auto still executes an ordinary local canvas write without a review c
     { type: 'tool', calls: [{ id: 'fixture-local-write', name: 'make_artifact',
       arguments: { fileType: 'text', title: 'Fixture note', content: 'Fixture local edit.' } }] },
     { type: 'text', text: 'Fixture complete.' },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) });
+  ], { hasUserInterface: true, policy: () => ({ mode: 'request' }) });
   let writes = 0, cards = 0;
   const lane = await openLane({ ...fixture.options, tools: createCanvasLaneTools({
     read: async () => { throw new Error('Fixture does not read.'); },
@@ -77,4 +77,39 @@ test('safe-auto still executes an ordinary local canvas write without a review c
     assert.equal(writes, 1);
     assert.equal(cards, 0);
   } finally { await lane.close(); }
+});
+
+// 2026-10-16：真实模型（deepseek-v4-flash）用户要生成时只调 draft_shots 就收尾，因为回执只说「没生成、没花钱」。
+// 回环假模型：只在上一条工具回执里读到「下一步 generate + operationId」时才调 generate（回执没说就收尾，复现原故障）。
+// 「只要草稿」那条：假模型照回执的条件句，用户没要生成就不调——回执不能把这种请求诱导去生成。
+type Reactive = { requests: Array<{ body: Record<string, unknown> }> };
+const lastToolResultText = (http: Reactive) => JSON.stringify(http.requests.at(-1)?.body ?? {});
+const draftThenModel = async (t: test.TestContext, prompt: string, wantsGeneration: boolean) => {
+  const fixture = await createLaneFixture(t, [{ type: 'tool', calls: [{ id: 'fixture-draft', name: 'draft_shots', arguments: { shots } }] }],
+    { hasUserInterface: true, policy: () => ({ mode: 'request' }) });
+  fixture.http.push({ type: 'deferred', beforeReply: async () => {
+    const receipt = lastToolResultText(fixture.http);
+    return wantsGeneration && /next tool call is generate with operationId=op-1/.test(receipt)
+      ? { type: 'tool', calls: [{ id: 'fixture-generate', name: 'generate', arguments: { operationId: 'op-1' } }] }
+      : { type: 'text', text: 'Draft saved.' };
+  } }, { type: 'text', text: 'Done.' });
+  const calls: string[] = [];
+  const lane = await openLane({ ...fixture.options, tools: createExtendedLaneTools({
+    execute: async (call) => { calls.push(call.toolName);
+      return call.toolName === 'draft_shots'
+        ? { ok: true, result: { operation: { operationId: 'op-1', state: 'draft', cardHidden: true } } }
+        : { ok: true, result: { operation: { operationId: 'op-1', state: 'draft' }, nextAction: 'await_user' } }; },
+  }) });
+  try { await lane.execute({ kind: 'prompt', text: prompt }); return { calls, receipt: lastToolResultText(fixture.http) }; } finally { await lane.close(); }
+};
+
+test('user asked to generate: the draft receipt names generate + operationId so the model follows through', async (t) => {
+  const { calls } = await draftThenModel(t, 'Generate 2 reference images.', true);
+  assert.deepEqual(calls.slice(0, 2), ['draft_shots', 'generate']);
+});
+
+test('user only wants a draft: a model reading the receipt is not pushed into generate', async (t) => {
+  const { calls, receipt } = await draftThenModel(t, 'Just draft the shots, do not generate.', false);
+  assert.deepEqual(calls, ['draft_shots']);
+  assert.match(receipt, /only asked for a draft or plan, stop here and do not call generate/);
 });

@@ -65,10 +65,10 @@ describe('external MCP production artifact revisions', () => {
 
     expect(invoke).toHaveBeenNthCalledWith(1, 'production.artifact.revise', expect.objectContaining({
       projectId: 'project-1', runId: 'run-1', artifactId: 'artifact-script-v2', expectedVersion: 2, kind: 'script',
-    }))
+    }), expect.anything())
     expect(invoke).toHaveBeenNthCalledWith(2, 'production.artifact.revise', expect.objectContaining({
       projectId: 'project-1', runId: 'run-1', artifactId: 'artifact-storyboard-v2', expectedVersion: 2, kind: 'storyboard',
-    }))
+    }), expect.anything())
     for (const id of [1, 2]) {
       const result = response(frames, id).result as { content: Array<{ text: string }>; structuredContent?: { nomiOutcome?: Record<string, unknown> } }
       expect(result.content[0].text).toMatch(/candidate|候选/i)
@@ -90,7 +90,7 @@ describe('external MCP production artifact revisions', () => {
 
     expect(invoke).toHaveBeenCalledWith('production.artifact.review', {
       projectId: 'project-1', runId: 'run-1', artifactId: 'artifact-script-v2', expectedVersion: 2, decision: 'approved',
-    })
+    }, expect.anything())
     const result = response(frames, 3).result as { content: Array<{ text: string }>; structuredContent?: { nomiOutcome?: Record<string, unknown> } }
     expect(result.content[0].text).toMatch(/adopted|批准/i)
     expect(result.structuredContent?.nomiOutcome).toMatchObject({ artifactId: 'artifact-script-v2', version: 2 })

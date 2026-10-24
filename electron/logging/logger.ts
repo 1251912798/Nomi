@@ -26,7 +26,7 @@ import {
   pruneExpiredLogs,
   type LogFileSink,
 } from "./logFiles";
-import { capLogLine, redactError, redactField, redactLogValue } from "./redact";
+import { capLogLine, describeErrorForDevTerminal, redactError, redactField, redactLogValue } from "./redact";
 
 /**
  * 模块域。刻意是**闭合**的：开放的 string 会让日志里长出 30 个拼法各异的同义域
@@ -173,6 +173,8 @@ function write(level: LogLevel, scope: LogScope, event: string, fields?: LogFiel
   const detail = `${redactLogValue(event)}${formatLogFields(fields)}${error === undefined ? "" : ` ${redactError(error)}`}`;
   ensureSink().append(capLogLine(`${level.padEnd(5)} ${scope.padEnd(14)} ${detail}`));
   mirrorToStderr(`[nomi:${scope}] ${detail}`);
+  // 错误原文（可能是上游原话）只给开发态终端，不落盘、不进 MCP 宿主的 stderr 日志（redactError 的文件头）。
+  if (error !== undefined) logDevDetail(scope, `${redactLogValue(event)} ${describeErrorForDevTerminal(error)}`);
 }
 
 export function logInfo(scope: LogScope, event: string, fields?: LogFields): void {

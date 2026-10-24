@@ -3,7 +3,7 @@
 import { ipcMain } from "electron";
 import { assertTrustedSender } from "../ipcSenderGuard";
 import { getPromptLibrary } from "./promptLibraryStore";
-import { addUserPrompt, deleteUserPrompt, listUserPrompts, updateUserPrompt } from "./userPromptStore";
+import { addUserPrompt, deleteUserPrompt, listUserPrompts, restoreUserPrompt, updateUserPrompt } from "./userPromptStore";
 
 export function registerPromptLibraryIpc(): void {
   ipcMain.handle("nomi:prompt-library:list", async (event) => {
@@ -37,6 +37,15 @@ export function registerPromptLibraryIpc(): void {
     }
   });
 
+  ipcMain.handle("nomi:prompt-library:user-restore", async (event, snapshot: unknown) => {
+    assertTrustedSender(event);
+    try {
+      return { ok: true, prompts: restoreUserPrompt(snapshot) };
+    } catch (error) {
+      return { ok: false, prompts: listUserPrompts(), error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
   ipcMain.handle("nomi:prompt-library:user-update", async (event, payload: { id: string; patch: { title?: string; prompt?: string; promptType?: "image" | "video" } }) => {
     assertTrustedSender(event);
     try {
@@ -49,11 +58,13 @@ export function registerPromptLibraryIpc(): void {
   ipcMain.handle("nomi:prompt-library:user-delete", async (event, payload: { id: string }) => {
     assertTrustedSender(event);
     try {
-      return { ok: true, prompts: deleteUserPrompt(payload.id) };
+      const result = deleteUserPrompt(payload.id);
+      return { ok: true, prompts: result.prompts, deleted: result.deleted };
     } catch (error) {
       return { ok: false, prompts: listUserPrompts(), error: error instanceof Error ? error.message : String(error) };
     }
   });
+
 
   // 节点提示词优化用的文本大脑(vendor/modelKey,不含 apiKey)。这里只回答 catalog 是否已配置，
   // 不为首屏 readiness 解密；locked 由首次真实文本请求以结构化错误报告。

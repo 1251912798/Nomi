@@ -317,7 +317,9 @@ export async function openProcess(process, label = '展开运行过程') {
 }
 
 export async function openCanvas(win) {
-  await clickOrFail(win.getByRole('button', { name: '生成', exact: true }), '生成工作区')
+  // 导航钮的可见名跟界面语言走（i18n 把当前语言同步到 document 的 lang）：只认中文「生成」的话，切到英文再开画布就点不到。
+  const lang = await win.evaluate(() => document.documentElement.lang)
+  await clickOrFail(win.getByRole('button', { name: String(lang).startsWith('en') ? 'Generate' : '生成', exact: true }), '生成工作区')
   await expect(win.locator('.generation-canvas-v2__stage')).toBeVisible()
   // Host cutover retired the in-canvas assistant panel; the project Agent now lives in the
   // ResidentShell dock, resident by default since 2026-09-05.
@@ -393,7 +395,7 @@ export async function approvePendingIntervention(win, panel) {
  *   `videoResultPath` 透传给夹具（出片地址的路径段）；`env` 追加到被测 App 的进程环境（如把公网出口指到一个
  *   只记账不放行的本地代理，证明走查碰不到真供应商）。都不传 = 老样子。
  */
-export async function createRuntimeWalk(name, { generationProvider = 'loopback', videoResultPath, env: extraEnv = {}, profileDir, mainRequire } = {}) {
+export async function createRuntimeWalk(name, { generationProvider = 'loopback', videoResultPath, env: extraEnv = {}, profileDir, mainRequire, seedApimartKey } = {}) {
   const args = process.argv.slice(2)
   if (args.length && (args.length !== 2 || args[0] !== '--packaged' || !path.isAbsolute(args[1]))) {
     throw new Error('Usage: node <walk.mjs> [--packaged /absolute/Nomi.app/Contents/MacOS/Nomi]')
@@ -416,6 +418,7 @@ export async function createRuntimeWalk(name, { generationProvider = 'loopback',
   const fixture = await createAgentRuntimeFixture({
     rootDir: repoRoot, settingsDir, generationProvider,
     ...(videoResultPath ? { videoResultPath } : {}),
+    ...(seedApimartKey === false ? { seedApimartKey: false } : {}),
     ...(generationProvider === 'apimart' || generationProvider === 'higgsfield'
       ? { userDataDir, appName: executablePath ? 'Nomi' : 'nomi' }
       : {}),

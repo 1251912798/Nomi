@@ -426,6 +426,8 @@ export type ProductionArtifact = {
   skillEvidence?: Array<{ name: string; version: string; stageId: string }>;
   projectRelativePath?: string;
   thumbnailRelativePath?: string;
+  /** 画布预览事实（落盘回执给的，见 shared/canvas/canvasMediaPreview）。旧产物没有这一栏 = 未知。 */
+  previewState?: import("../shared/canvas/canvasMediaPreview").CanvasPreviewState;
   width?: number;
   height?: number;
   createdAt: string;
@@ -471,7 +473,7 @@ export type ProductionRun = {
  * 所以一份 agent 刚建的草稿在任务面板上只能显示「等待开始」——用户看不到模型、看不到提示词，
  * 也就无从判断 agent 定的对不对。
  *
- * 只投影**展示**用的身份与文本，绝不含 transportModelId、参数全集或任何凭据。
+ * 只投影**展示**用的身份与文本，绝不含参数全集或任何凭据（发出的型号名不存投影，发送时由 wireModelIdentity 解出）。
  */
 export type ProductionRunDraftSummary = {
   candidateId: string;
@@ -543,6 +545,7 @@ export type ProductionShotActionFailure =
   | "plan_not_submitted" // 方案还没开拍
   | "ledger_write_failed" // 写不进项目记录（磁盘满 / 没有写入权限）
   | "canvas_landing_failed" // 没放到画布上，这次没有发出生成请求（先落节点、再发请求）
+  | "parameter_rejected" // 合同编译口拒了这一镜的某个参数（类型 / 取值 / 范围 / 缺必填）：没发起，参数名随结果的 `field` 带出
   | "nothing_to_resume" // 剩下没发的镜，节点都已从画布上删掉：这一批没有可以继续的
   | "internal_error"; // Nomi 自己的 bug（不变量断言没过）
 
@@ -583,6 +586,8 @@ export type ProductionActionResult = {
    * 只放 Nomi 自己的码，供应商与凭据文本照旧只进主进程日志。
    */
   reason?: string;
+  /** `failure === "parameter_rejected"` 时被拒的参数名（`seed`）；只放目录里的参数键，不放取值。 */
+  field?: string;
   /**
    * **没发起的那一档是哪一种**（2026-09-30 付费卡① 第 11 条）：窗口弹不出确认、供应商没接好、项目刚变了……
    * 与重做 / 续拍同一个闭集（`productionShotActionFailureOf` 按错误类型认，不读原话），渲染层照它说人话。

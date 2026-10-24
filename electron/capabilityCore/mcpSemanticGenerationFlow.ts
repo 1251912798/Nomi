@@ -1,4 +1,5 @@
 import type { GenerationGateChallengeProjection, GenerationGateConfirmation } from "./mcpProtocol";
+import { generationDenialOutcome } from "./mcpGateConfirmation";
 
 export type SemanticGenerationFlowDependencies = {
   invoke: (method: string, params: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown>;
@@ -19,6 +20,11 @@ export async function handleSemanticGenerationGate(
 ): Promise<void> {
   const challenge = await deps.invoke("nomi_request_generation_gate", built, signal) as GenerationGateChallengeProjection;
   const confirmation = await deps.requestConfirmation(challenge, signal);
+  if (!confirmation.confirmed && confirmation.denial) {
+    const denied = generationDenialOutcome(confirmation.denial, deps.locale());
+    deps.reply(id, { content: [{ type: "text", text: denied.text }], isError: true, structuredContent: denied.structuredContent });
+    return;
+  }
   if (!confirmation.confirmed || (!confirmation.receiptId && !confirmation.receiptToken)) {
     deps.reply(id, {
       content: [{ type: "text", text: deps.locale() === "en"

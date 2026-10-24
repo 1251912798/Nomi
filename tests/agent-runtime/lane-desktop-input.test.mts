@@ -13,7 +13,7 @@ test('desktop input follows consumed messages, including after a queued selectio
     { type: 'tool', calls: [{ id: 'second', name: 'read_document', arguments: {} }] },
     { type: 'text', text: 'Done.' },
   ]);
-  let draft: LaneComposerContext = { documentId: 'first-document', approvalPolicy: { mode: 'safe-auto', spend: 'confirm' } };
+  let draft: LaneComposerContext = { documentId: 'first-document', approvalPolicy: { mode: 'request' } };
   let active: LaneComposerContext | undefined;
   const visited: string[] = [];
   let entered!: () => void;

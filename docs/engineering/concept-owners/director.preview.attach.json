@@ -1,0 +1,35 @@
+{
+  "name": "预演 / 运镜小片挂到视频镜头",
+  "subject": "director.preview.attach",
+  "lifecycle": "execution",
+  "authority_kind": "projection",
+  "trust_domain": "renderer",
+  "fact_kind": "projection",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+    "symbol": "computeAttachCameraMove"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+      "symbol": "computeAttachCameraMove"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveForNode.ts",
+      "symbol": "attachCameraMoveForNode"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "symbol": "directorPreviewIsStale"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "src/workbench/generationCanvas/nodes/director/agent/directorProduce.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/directorPreviewCapture.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/CameraMoveCaptureHost.tsx"
+  ],
+  "since": "2026-10-21",
+  "notes": "预演在目标镜头上是否已挂好、挂在第几号：按当前模型实际槽 + 实际发送的参考列表 + 网址 + 提示词引用对账，唯一入口 attachCameraMoveForNode（attachDoors.guard.test.ts 守）；提示词编号走 promptMentions 的引用标记投影。预演新鲜度唯一判据 directorPreviewIsStale（无指纹 = 过期）。"
+}

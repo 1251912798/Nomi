@@ -1,0 +1,521 @@
+{
+  "board": "InlineWhiteboard",
+  "approvedOn": "2026-10-12",
+  "stage": "built",
+  "referenceKind": "Approved exploration is archived separately; the production component owners and real Electron journey define this contract. Reference image pixels and executable preview bundles are intentionally omitted.",
+  "elements": [
+    {
+      "id": "frame",
+      "label": "节点内画板与独立范围",
+      "candidates": [
+        "013-section-镜头03图片节点",
+        "014-div",
+        "015-span-镜头03走进光里",
+        "017-div-图片编辑区域"
+      ],
+      "status": "implemented",
+      "assertion": "image moves independently from the node frame",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "componentDecision": {
+        "kind": "reuse-with-adaptation",
+        "owner": "BaseGenerationNode + ReactFlow NodeResizer"
+      }
+    },
+    {
+      "id": "history",
+      "label": "复用版本卡片",
+      "candidates": [
+        "016-button-2"
+      ],
+      "status": "implemented",
+      "assertion": "existing version cards remain available",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "componentDecision": {
+        "kind": "reuse-with-adaptation",
+        "owner": "NodeVersionCardsHost"
+      }
+    },
+    {
+      "id": "tools",
+      "label": "同一行主工具栏与上下文动作",
+      "candidates": [
+        "018-section-画板编辑工具",
+        "019-div-画板工具",
+        "020-button-选择",
+        "021-button-画笔",
+        "022-button-橡皮",
+        "023-button-文字",
+        "025-button-撤销",
+        "026-button-重做",
+        "027-button-导入图片",
+        "028-button-素材库",
+        "029-button-图层",
+        "030-button-169",
+        "031-button-完成"
+      ],
+      "status": "implemented",
+      "assertion": "complete direct editing toolbar remains available",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "componentDecision": {
+        "kind": "reuse-with-adaptation",
+        "owner": "FloatingToolbarShell + ToolbarButton + AnchoredPopover"
+      }
+    },
+    {
+      "id": "materials",
+      "label": "复用素材库与图层列表",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "expanded materials panel stays centered",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "componentDecision": {
+        "kind": "reuse-with-adaptation",
+        "owner": "WhiteboardLibraryPanel"
+      }
+    },
+    {
+      "id": "document",
+      "label": "绘画文字和变换持久化",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "reopen restores text and transforms",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "componentDecision": {
+        "kind": "reuse-with-adaptation",
+        "owner": "LeaferCanvas + Mantine useStateHistory"
+      }
+    },
+    {
+      "id": "annotations",
+      "label": "版本绑定的修改标注（标注工具 + 「用这些意见修改」入口）——已拿掉",
+      "candidates": [
+        "024-button-标注"
+      ],
+      "status": "dropped",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "componentDecision": {
+        "kind": "drop",
+        "owner": "none — superseded by the global annotation layer planned for 0.24; legacy meta.whiteboardAnnotations is ignored on read and left in the file"
+      },
+      "userDecision": {
+        "quote": "1189 的标注工具先拿掉",
+        "date": "2026-10-17"
+      }
+    },
+    {
+      "id": "export",
+      "label": "复用图片保存与派生截图事务",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "standalone screenshot creates derived image with source edge",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "componentDecision": {
+        "kind": "reuse-with-adaptation",
+        "owner": "persistNodeImageFile + appendNodeResultVersion + addDerivedOutput"
+      }
+    }
+  ],
+  "decor": [
+    "001-div-Nomi原地画板紧凑交互",
+    "002-span-Nomi",
+    "003-span-N",
+    "004-span-项目库小小的勇气",
+    "005-span-创作",
+    "006-span-生成",
+    "007-span-预览",
+    "008-aside-工作区导航",
+    "009-div-素材库",
+    "010-div-分组",
+    "011-div-提示词",
+    "012-div-技能"
+  ],
+  "functionCensus": [
+    {
+      "function": "O01: 连续画笔、平滑、压力采样",
+      "before": "useWhiteboardDrawing.ts、lib/stroke.ts",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O02: 白黑红蓝绿橙六色",
+      "before": "lib/canvas.ts COMMON_COLORS",
+      "after": "tools",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O03: 自定义画笔颜色",
+      "before": "WhiteboardDrawingTool.tsx",
+      "after": "tools",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O04: 画笔／橡皮大小 4–96",
+      "before": "clampBrushSize",
+      "after": "tools",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O05: 局部橡皮，命中图层，包括图片",
+      "before": "useWhiteboardDrawing.ts、whiteboardCanvasNodeOps.ts",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O06: 橡皮大小光标／即时擦除预览",
+      "before": "WhiteboardLeaferCanvas.tsx",
+      "after": "tools",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O07: 选择图片／笔画／组合",
+      "before": "WhiteboardLeaferCanvas、useWhiteboardBoxSelection",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O08: 空白框选／多选",
+      "before": "useWhiteboardBoxSelection",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O09: 多对象整体移动",
+      "before": "useWhiteboardBoxSelection",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O10: 图片等比缩放、最小尺寸限制",
+      "before": "whiteboardSceneRender、whiteboardCanvasGeometry",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O11: 移动吸附／对齐参考线",
+      "before": "WhiteboardLeaferCanvas、whiteboardCanvasGeometry",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O12: 多选组合，组合后整体操作",
+      "before": "useWhiteboardSelectionActions、groupTargetsIntoLayer",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O13: 水平／垂直翻转",
+      "before": "useWhiteboardSelectionActions",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O14: 图片抠图、阶段、进度、失败反馈",
+      "before": "WhiteboardDrawingTool、removeBackgroundBlob",
+      "after": "tools",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O15: 删除选中对象",
+      "before": "deleteTargetFromState、assessDeleteTarget",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O16: 原图可选、可移、可缩、可显隐、可删",
+      "before": "addImageToCanvas",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O17: 五种比例 16:9／4:3／1:1／3:4／9:16",
+      "before": "AspectRatioPopover、getCanvasDimensions",
+      "after": "tools",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O18: 导入图片、适配、居中、成为选中对象",
+      "before": "WhiteboardDrawingTool、createImageAssetForCanvas",
+      "after": "tools",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O19: 导入类型检查／忙态／失败",
+      "before": "WhiteboardDrawingTool",
+      "after": "tools",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O20: 画板／结果页签与数量",
+      "before": "WhiteboardLibraryPanel",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O21: 画板库仅列板上的图片资产",
+      "before": "getAssetPanelItems",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O22: 资产缩略图、名字、像素尺寸、选中态",
+      "before": "WhiteboardLibraryPanel",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O23: 从库选中资产，切到选择工具",
+      "before": "selectAssetPanelItem",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O24: 图层显隐、隐藏缩略图变淡",
+      "before": "toggleLayerVisibility",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O25: 从库删除素材、锁定时禁用",
+      "before": "WhiteboardLibraryPanel",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O26: 拖板上资产到指定点复制",
+      "before": "handleCanvasAssetDrop",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O27: 结果 = 本板下游截图 + 其他画布图片，按节点去重",
+      "before": "WhiteboardModal、mergeResultLibraryItems",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O28: 结果来源“来自画布”",
+      "before": "WhiteboardLibraryPanel",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O29: 拖结果到指定点加入",
+      "before": "parseLibraryDragPayload、clampCanvasPosition",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O30: 拖入时可落区域反馈",
+      "before": "WhiteboardDrawingTool",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O31: 库空态和长列表滚动",
+      "before": "WhiteboardLibraryPanel",
+      "after": "materials",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O32: 截图不含编辑手柄",
+      "before": "whiteboardCanvasExport",
+      "after": "export",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O33: 图片节点截图保存新版、设主图",
+      "before": "WhiteboardModal、appendNodeResultVersion",
+      "after": "export",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O34: 独立画板截图派生图片＋来源边、原板追加结果",
+      "before": "WhiteboardModal",
+      "after": "export",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O35: 独立画板截图后切结果库",
+      "before": "handleScreenshotClick",
+      "after": "export",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O36: 保存／截图忙态防重复、失败保留编辑器",
+      "before": "WhiteboardModal",
+      "after": "export",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O37: 方向键 1px；Shift 10px",
+      "before": "getKeyboardMoveDelta",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O38: 输入框内不误删／微移；中文输入不拦截",
+      "before": "isEditableKeyboardTarget",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O39: Esc／完成：图片内容变化则保存新版并设主图",
+      "before": "WhiteboardModal requestClose",
+      "after": "export",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O40: 独立画板完成只保存 state，不截图 —— 用户 2026-10-22 拍板推翻（A）：画板上有内容时，「完成」即导出一张图作为节点结果（节点显示缩略图，可连下游当参考，点缩略图重开）；从没出过图且是空画板才只存 state、显示「打开画板」",
+      "before": "WhiteboardModal",
+      "after": "export",
+      "verification": "tests/ux/whiteboard-refactor.walk.mjs: standalone Done leaves the drawn content visible on the board node; the board reopens from its picture with the drawing intact",
+      "userDecision": {
+        "quote": "按推荐（Q1 = A：有内容显示缩略图，作为节点结果可连下游；没内容才显示启动器）",
+        "date": "2026-10-22"
+      }
+    },
+    {
+      "function": "O41: 重新打开恢复节点可编辑 state",
+      "before": "whiteboardState、node meta.whiteboardState",
+      "after": "document",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O42: 版本数量／展开收起",
+      "before": "NodeVersionCountBadge、NodeVersionCardsHost",
+      "after": "history",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O43: 点击版本预览",
+      "before": "NodeVersionCardsHost",
+      "after": "history",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O44: 设为主图，影响下游提示，可撤销",
+      "before": "setNodeMainResultPatch、NodeVersionCardsHost",
+      "after": "history",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O45: 下载某版",
+      "before": "NodeVersionCardsHost",
+      "after": "history",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O46: 删版本、删主图选最新剩余、可撤销",
+      "before": "removeNodeResult、NodeVersionCardsHost",
+      "after": "history",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O47: Alt 拖版本复制；普通拖动整组",
+      "before": "NodeVersionCards",
+      "after": "history",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O48: 版本多时更多／查看全部；生成中 pending 卡",
+      "before": "NodeVersionCards",
+      "after": "history",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O49: 主图指针、固定版本编号、删后不复用编号",
+      "before": "nodeResultLifecycle.ts",
+      "after": "history",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O50: 原图片工具栏所有常驻／条件动作",
+      "before": "ImageQuickActionsToolbar.tsx",
+      "after": "tools",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    },
+    {
+      "function": "O51: 形状工具",
+      "before": "TOOL_ITEMS",
+      "after": "tools",
+      "verification": "See independent evidence ledger; implemented/reused is distinct from runtime coverage."
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "/": {
-    "hash": "b1eb7dec514d32e6",
-    "date": "2026-10-09"
+    "hash": "8d021e486b012c9d",
+    "date": "2026-10-18"
   },
   "/docs": {
     "hash": "5bdf19870c46fe87",
@@ -28,8 +28,8 @@
     "date": "2026-10-12"
   },
   "/en/": {
-    "hash": "7ae8eebe4d909784",
-    "date": "2026-10-09"
+    "hash": "053c78ccd6f9d304",
+    "date": "2026-10-18"
   },
   "/en/docs": {
     "hash": "d159009a7976c4e7",
@@ -56,8 +56,8 @@
     "date": "2026-10-12"
   },
   "/en/features": {
-    "hash": "a6a0dac9a8c40700",
-    "date": "2026-10-02"
+    "hash": "c7098965319b99bc",
+    "date": "2026-10-18"
   },
   "/en/models": {
     "hash": "b2d277150a85a2db",
@@ -276,8 +276,8 @@
     "date": "2026-10-05"
   },
   "/en/quickstart": {
-    "hash": "d2e3db2402eb0e65",
-    "date": "2026-10-08"
+    "hash": "f9419b89f2058e16",
+    "date": "2026-10-18"
   },
   "/en/skills": {
     "hash": "eacbaf8cd45131d0",
@@ -476,8 +476,8 @@
     "date": "2026-10-02"
   },
   "/features": {
-    "hash": "e36bafbf4775590f",
-    "date": "2026-10-02"
+    "hash": "20b4a025bf079ce7",
+    "date": "2026-10-18"
   },
   "/models": {
     "hash": "724c7ab062e1070e",
@@ -696,8 +696,8 @@
     "date": "2026-10-05"
   },
   "/quickstart": {
-    "hash": "797bbcde39c7df7d",
-    "date": "2026-10-08"
+    "hash": "68f6ca65c3898799",
+    "date": "2026-10-18"
   },
   "/skills": {
     "hash": "8bcd15eccf2af8cf",

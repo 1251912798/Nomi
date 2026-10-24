@@ -167,16 +167,19 @@ app.whenReady().then(async () => {
     websocket.close();
     console.log('PASS websocket-handshake-shares-app-route');
 
-    const { buildAiSdkModel } = require(path.join(buildRoot, 'ai/buildAiSdkModel.js'));
-    const { generateText } = require('ai');
+    // 文本任务 / 接入说明卡编译器的「调一次模型」核心（2026-10-21 起取代 ai@4）：三条协议都走应用当前的出网路由。
+    const { callModelOnce } = require(path.join(buildRoot, 'agentLane/laneNativeLoader.cjs'));
     for (const kind of ['openai-compatible', 'openai-responses', 'anthropic']) {
-      const model = buildAiSdkModel({ kind, baseURL: `${target}/v1`, apiKey: 'synthetic-literal-key', modelId: 'fixture-model' });
-      await assert.rejects(generateText({ model, prompt: 'Local route check.', maxRetries: 0 }), (error) => error.statusCode === 401);
+      const observedBefore = observed.length;
+      const { message } = await callModelOnce({ fetch: appFetch, content: 'Local route check.', signal: new AbortController().signal,
+        model: { kind, providerId: 'network-fixture', modelId: 'fixture-model', baseURL: `${target}/v1`, authType: 'api-key', apiKey: 'synthetic-literal-key' } });
+      assert.equal(message.stopReason, 'error', `${kind}: 401 must surface as a failed call`);
+      assert.equal(observed.length, observedBefore + 1);
       assert.equal(observed.at(-1).route, 'proxy-b');
       const authHeader = kind === 'anthropic' ? 'x-api-key' : 'authorization';
       assert.equal(observed.at(-1).headers[authHeader], kind === 'anthropic' ? 'synthetic-literal-key' : 'Bearer synthetic-literal-key');
     }
-    console.log('PASS existing-ai4-protocols-share-app-route');
+    console.log('PASS text-task-model-call-shares-app-route');
 
     const { runLaneSingleShot } = require(path.join(buildRoot, 'agentLane/laneNativeLoader.cjs'));
     const { openLane } = await import(pathToFileURL(path.join(buildRoot, 'agentLane/laneHost.mjs')).href);

@@ -15,6 +15,7 @@
 
 import { VENDOR_CONNECTION_PILL_LABEL_MEMBERS } from '../../src/ui/onboarding/vendorConnectionView'
 import { MISSING_CARD_REASONS } from '../../src/workbench/ai/v4/missingInterventionCard'
+import { REWRITE_PRESET_INSTRUCTIONS, REWRITE_TONE_INSTRUCTIONS, REWRITE_TRANSLATE_INSTRUCTIONS } from '../../src/workbench/creation/aiRewrite/rewritePrompt'
 
 export type DynamicPrefix =
   | { prefix: string; why: string; kind?: 'subtree'; members?: readonly string[] }
@@ -38,9 +39,12 @@ export const DYNAMIC_KEY_PREFIXES: DynamicPrefix[] = [
   { prefix: 'shotTable.facts', members: ['shotSize', 'motion', 'visual', 'dialogue', 'onScreenText', 'mood'], why: '动态：事实表按持久列顺序展示内置列；枚举来源 shotTableFacts.ts 的事实列集，自定义列直接显示用户标签。' },
   { prefix: 'shotTable.status', members: ['ready', 'anchor-ignored', 'missing-required', 'generating', 'failed', 'recoverable', 'done', 'locked'], why: '动态：表投影现役执行状态；枚举来源 storyboardRowStatus.ts 的 ShotRowExec.status，未另建状态机。' },
   // ── creationAi ──
+  { prefix: 'creationAi.rewrite.preset', members: Object.keys(REWRITE_PRESET_INSTRUCTIONS), why: '动态: 写作区 AI 编辑条的常用改法按钮（改写 / 缩短 / 扩写）按 id 取标签;枚举来源: rewritePrompt.ts 的 REWRITE_PRESET_INSTRUCTIONS 的键（改语气 / 翻译两个带 ▾ 的标签是静态键）' },
+  { prefix: 'creationAi.rewrite.tone', members: Object.keys(REWRITE_TONE_INSTRUCTIONS), why: '动态: 「改语气 ▾」展开的语气选项按 id 取标签;枚举来源: rewritePrompt.ts 的 REWRITE_TONE_INSTRUCTIONS 的键' },
+  { prefix: 'creationAi.rewrite.language', members: Object.keys(REWRITE_TRANSLATE_INSTRUCTIONS), why: '动态: 「翻译 ▾」展开的目标语言选项按 id 取标签;枚举来源: rewritePrompt.ts 的 REWRITE_TRANSLATE_INSTRUCTIONS 的键' },
   // ── agentPanelV4 ──
-  { prefix: 'agentPanelV4.permission', why: "动态: Agent 面板 v4 的权限三档;枚举来源: PermissionTier = ProjectAgentApprovalPolicy['mode'] 的 step/safe-auto/project(permission.* 词条)" },
-  { prefix: 'agentPanelV4.permissionWhy', why: "动态: 权限三档各自的一句话解释;枚举来源: 同上三档(permissionWhy.* 词条)" },
+  { prefix: 'agentPanelV4.permission', why: "动态: Agent 面板 v4 的权限两档;枚举来源: PermissionTier = ProjectAgentApprovalPolicy['mode'] 的 request/direct(permission.* 词条)" },
+  { prefix: 'agentPanelV4.permissionWhy', why: "动态: 权限两档各自的一行灰字;枚举来源: 同上两档(permissionWhy.* 词条)" },
   { prefix: 'creationAi.mode', why: '动态: 创作助手模式 id;枚举来源: listCreationAiModes() 的内置 mode.id(CreationPromptPicker 用 `creationAi.mode.${id}` 再接 .label/.short/.title/.description)' },
   // ── antigravity ──
   { prefix: 'antigravity.state', why: '动态: Antigravity 连接状态;枚举来源: AntigravityConnectionStatus["state"] 六态(antigravity.state.* 词条)' },
@@ -104,13 +108,6 @@ export const DYNAMIC_KEY_PREFIXES: DynamicPrefix[] = [
   { prefix: 'onboardingProviders.splash.nodes', why: '动态: 开屏动画节点标签;枚举来源: SplashIntro 的 labelKeys 数组(splash.nodes.* 词条)' },
   // ── runtime ──
   { prefix: 'runtime.capability.intent', why: '动态: 能力应用意图;枚举来源: capabilityApplyHandler 归一化后的 intent(capability.intent.* 词条)' },
-  // ── agentResident ──
-  {
-    prefix: 'agentResident.spendPolicy',
-    kind: 'concat',
-    suffixes: ['WithinBudget', 'Confirm'],
-    why: '动态-拼接: 花费策略 `agentResident.spendPolicy${WithinBudget|Confirm}` 标签;枚举来源: ProjectAgentSpendPolicy 二态(within-budget/confirm)',
-  },
   // ── generationCommon ──
   { prefix: 'generationCommon.assistant.toolCall', why: "动态: 工具调用的人话摘要;枚举来源: toolCallSummary.ts 的 tt(key)——键先存进 const T 再 `${T}.${key}` 拼,模板 head 为空、正反两道门岗都看不见,故必须在册(该文件里 summarizeToolCall/buildStepDetailLabels 传入的字面量 key)" },
   { prefix: 'generationCommon.canvas.controlsHelp.sections', why: '动态: 画布控件帮助分节;枚举来源: CanvasControlsHelpPopover 的 section.id(controlsHelp.sections.* 词条)' },

@@ -1,0 +1,27 @@
+{
+  "name": "Vitest 里 process.env 的覆盖与恢复（只许 vi.stubEnv，每个测试后还原）",
+  "subject": "delivery.vitest-env-restore",
+  "lifecycle": "delivery",
+  "authority_kind": "gateway",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "vitest.config.ts",
+    "symbol": "test.unstubEnvs"
+  },
+  "write_api": [
+    {
+      "path": "vitest.config.ts",
+      "symbol": "test.unstubEnvs"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "symbol": "no-restricted-syntax"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-07",
+  "notes": "合同 docs/fixes/2026-10-07-model-listing-parity-fixture.root-cause.json：复用的 forks worker 里环境变量跨文件泄漏。vitest.config.ts 的 test.unstubEnvs 对所有 Vitest 车道还原；eslint 的 no-restricted-syntax 拒绝测试里直接给 process.env 赋值 / 删除。"
+}

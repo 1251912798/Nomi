@@ -79,13 +79,8 @@
         "zh-TW"
       ],
       "packages": [
-        "@ai-sdk/anthropic",
-        "@ai-sdk/openai",
-        "@ai-sdk/openai-compatible",
         "@ai-sdk/provider",
         "@ai-sdk/provider-utils",
-        "@ai-sdk/react",
-        "@ai-sdk/ui-utils",
         "@anthropic-ai/sandbox-runtime",
         "@anthropic-ai/sdk",
         "@aws-crypto/sha256-browser",
@@ -172,7 +167,6 @@
         "@xmldom/xmldom",
         "adler-32",
         "agent-base",
-        "ai",
         "ajv",
         "ansi-regex",
         "ansi-styles",

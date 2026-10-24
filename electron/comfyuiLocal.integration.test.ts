@@ -152,7 +152,7 @@ describe("本地 ComfyUI 传输链（真 HTTP 端到端）", () => {
     const request = { prompt: "a red cube on green grass", extras: { ...extras, comfyPromptId: REQUEST_PROMPT_ID } } as never;
 
     // ── 1) 提交 POST /prompt ──
-    const created = await executeProfileOperation({ vendor, model, apiKey: "", request, operation: mapping.create });
+    const created = await executeProfileOperation({ vendor, model, apiKey: "", request, operation: mapping.create, stage: "create" });
     const createNorm = await buildProfileTaskResult({
       response: created.response, mapping, operation: mapping.create, request,
       taskIdFallback: "", wantedKind: "image", vendor, model,
@@ -189,7 +189,7 @@ describe("本地 ComfyUI 传输链（真 HTTP 端到端）", () => {
     let assetUrl = "";
     let providerUrl = "";
     for (let tries = 0; status !== "succeeded" && status !== "failed" && tries < 6; tries += 1) {
-      const polled = await executeProfileOperation({ vendor, model, apiKey: "", request, operation: mapping.query, providerMeta });
+      const polled = await executeProfileOperation({ vendor, model, apiKey: "", request, operation: mapping.query, stage: "query", providerMeta });
       const norm = await buildProfileTaskResult({
         response: polled.response, mapping, operation: mapping.query, request,
         taskIdFallback: REQUEST_PROMPT_ID, wantedKind: "image", projectId: project.id, vendor, model,

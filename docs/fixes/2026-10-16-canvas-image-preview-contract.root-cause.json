@@ -1,0 +1,486 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-16-canvas-image-preview-contract",
+  "problem_type": "交给画布的图片没有可验证的有界预览：原图（或冒充预览的原图地址）直接上画布",
+  "symptom": "大画布内容多时卡顿、部分卡片显示截断 / 缺块；制作流程产物、上传 / 裁剪 / 切图 / 抠图出来的图片在画布上挂 2048x3072 级原图（像素约为 682x1024 预览的 9 倍），旧项目图片永不补预览。",
+  "direct_cause": "预览派生只在部分落盘入口调用（普通生成本地化、拖拽导入）；制作流程物化用同步 writeDeterministicAsset，回执没有预览；persistNodeImageFile/Blob 包装只回 url，把回执里的小图丢掉；localizeTaskAsset / unlocalizedTaskAsset / 补救本地化在没有小图时把源地址写进 thumbnailUrl；补预览桥只接受视频；画布上画图的地方各自写 thumbnailUrl || url 或直接 result.url。",
+  "class_root": "「成功交给画布的图片带有界预览，或带明确的预览缺失事实」这一不变式没有 owner：落盘回执不带预览事实、画布结果的 thumbnailUrl 可选且可以等于原图、画图组件接受任意字符串，于是每个入口都得自己记得，新入口一忘原图就悄悄上了画布，也没人计数。",
+  "affected_population": [
+    "main(97f612009) 及之前所有桌面版：制作流程 / Agent / MCP 落图、卡片上传、裁剪 / 切图 / 变换 / 抠图 / 联系表 / 全景截图出来的图片",
+    "升级前生成或导入、结果里没有缩略图（或 thumbnailUrl 等于原图）的旧项目图片",
+    "图多、显存紧（集显 / 同机跑其他 GPU 程序）的 Windows / macOS 机器"
+  ],
+  "scope_paths": [
+    "electron/shared/canvas/canvasMediaPreview.ts",
+    "electron/assets/assetPreview.ts",
+    "electron/assets/localFileImport.ts",
+    "electron/assets/localizeTaskAsset.ts",
+    "electron/tasks/unlocalizedTaskAsset.ts",
+    "electron/capabilityCore/generationOutputMaterializer.ts",
+    "electron/productionRun/multiShotCanvasLanding.ts",
+    "electron/productionRun/productionGenerationSubmission.ts",
+    "electron/productionRun/productionRunDriverOps.ts",
+    "electron/productionRun/productionRunTypes.ts",
+    "electron/runtime.ts",
+    "src/workbench/api/assetUploadApi.ts",
+    "src/workbench/generationCanvas/adapters/persistNodeImage.ts",
+    "src/workbench/generationCanvas/adapters/assetImportAdapter.ts",
+    "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
+    "src/workbench/generationCanvas/runner/catalogTaskResultParse.ts",
+    "src/workbench/generationCanvas/nodes/canvasImageSource.ts",
+    "src/workbench/generationCanvas/nodes/deferredNodeMediaQueue.ts",
+    "electron/assets/previewRequests.ts",
+    "electron/assets/assetsIpc.ts",
+    "electron/preload/mediaBridge.ts"
+  ],
+  "entry_points": [
+    "普通生成：runtime / customCallDispatch / taskResultQuery -> localizeTaskAsset -> importRemoteAsset -> attachStoredAssetPreview -> catalogTaskResultParse",
+    "远程补救本地化：resultMediaBackfillBridge.relocalizeNode -> importRemoteAsset",
+    "拖拽 / 文件导入：assetImportAdapter -> importLocalFile -> copyAssetFile / writeAsset -> attachStoredAssetPreview",
+    "制作流程 / Agent / MCP 落图：generationOutputMaterializer -> writeDeterministicAsset -> ProductionArtifact -> multiShotCanvasLanding",
+    "卡片上传 / 全景上传：useNodeImageUpload / useNodePanoramaHandlers -> persistNodeMediaFile",
+    "裁剪 / 切图 / 变换 / 抠图 / 联系表 / 全景截图：useNodeImageEditing / buildContactSheetNode / useNodePanoramaHandlers -> persistNodeImageBlob",
+    "只交 URL 的入口（白板、截图热键、抽帧、剪辑导出、引导示例）与旧数据：resultMediaBackfillBridge 补预览",
+    "历史版本：版本卡片 nodeVersionEntries；补预览同时补 history 里同一地址的条目"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://github.com/electron/electron/blob/main/docs/api/native-image.md",
+      "checked_at": "2026-10-16",
+      "purpose": "核对 nativeImage.createThumbnailFromPath 能否替代 ffmpeg 派生：只支持 macOS / Windows，Windows 忽略高度，做不出长边 <= 1024、alpha 与视频首帧，留用现有 ffmpeg owner"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://html.spec.whatwg.org/multipage/embedded-content.html#dom-img-decode",
+      "checked_at": "2026-10-16",
+      "purpose": "补预览写回前用 HTMLImageElement.decode() 在内存里解码完小图，换 src 时不出现空白帧"
+    }
+  ],
+  "invariants": [
+    "成功交给画布的图 / 视频结果：thumbnailUrl 若存在必须是独立小图（不等于 url，长边 <= 1024，文件存在）；否则 previewState 明确为 source（源已有界）或 missing（派生不出来）",
+    "thumbnailUrl 永不等于 url",
+    "画布图片组件只接受 CanvasImageSource；原图只能经 resolveCanvasImageSource 的预览缺失分支上画布，并按地址计数",
+    "没有预览事实的本地图 / 视频结果在项目打开后被补成 ready / source / missing 之一，写回项目数据；missing 不重试",
+    "补预览是可打断的长活：发起项目关了 / 换了、发起窗口没了、渲染层撤回（换项目、dispose），在途派生的取消信号一路传到 ffprobe / ffmpeg 子进程（杀进程、删产物、不写 sidecar、不给事实）；排队没执行就被撤的不记「试过」，同一项目再打开照样补"
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "electron/assets/assetPreview.ts",
+      "symbol": "CanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "electron/assets/previewRequests.ts",
+      "symbol": "isAssetPreviewCancelled"
+    },
+    {
+      "kind": "read",
+      "path": "electron/capabilityCore/generationOutputMaterializer.ts",
+      "symbol": "CanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "electron/capabilityCore/generationOutputMaterializer.ts",
+      "symbol": "isCanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "electron/productionRun/multiShotCanvasLanding.ts",
+      "symbol": "CanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "electron/productionRun/productionRunDriverOps.ts",
+      "symbol": "isCanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "electron/productionRun/productionRunTypes.ts",
+      "symbol": "CanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "electron/runtime.ts",
+      "symbol": "TaskAssetPreviewFields"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/canvas/canvasMediaPreview.ts",
+      "symbol": "CanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/canvas/canvasMediaPreview.ts",
+      "symbol": "isCanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "electron/tasks/unlocalizedTaskAsset.ts",
+      "symbol": "CanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/canvasNodeLevelOfDetail.ts",
+      "symbol": "canvasImageSourceOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/canvasNodeLevelOfDetail.ts",
+      "symbol": "canvasVideoPosterOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/CollapsedGroupCard.tsx",
+      "symbol": "canvasImageSourceOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/CollapsedGroupCard.tsx",
+      "symbol": "canvasVideoPosterOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/model/generationCanvasTypes.ts",
+      "symbol": "CanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "symbol": "canvasImageSourceOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/canvasImageSource.ts",
+      "symbol": "resolveCanvasImageSource"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoPlaybackGuard.tsx",
+      "symbol": "canvasVideoPosterOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/CharacterCardNode.tsx",
+      "symbol": "canvasImageSourceOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/PropCardNode.tsx",
+      "symbol": "canvasImageSourceOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/SceneCardNode.tsx",
+      "symbol": "canvasImageSourceOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/versionCards/nodeVersionEntries.ts",
+      "symbol": "canvasImageSourceOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/versionCards/nodeVersionEntries.ts",
+      "symbol": "canvasVideoPosterOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
+      "symbol": "deferredNodeMediaQuietForMs"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/assetPreview.ts",
+      "symbol": "createStoredAssetPreview"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/assetsIpc.ts",
+      "symbol": "createPreviewRequestRegistry"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/assetsIpc.ts",
+      "symbol": "ensureLocalAssetPreview"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/localFileImport.ts",
+      "symbol": "createStoredAssetPreview"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/localFileImport.ts",
+      "symbol": "attachStoredAssetPreview"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/localizeTaskAsset.ts",
+      "symbol": "canvasPreviewFieldsFromReceipt"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/previewRequests.ts",
+      "symbol": "createPreviewRequestRegistry"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "attachStoredAssetPreview"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/generationOutputMaterializer.ts",
+      "symbol": "attachStoredAssetPreview"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/customCallDispatch.ts",
+      "symbol": "unlocalizedTaskAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/productionRun/multiShotCanvasLanding.ts",
+      "symbol": "canvasPreviewFieldsFromReceipt"
+    },
+    {
+      "kind": "write",
+      "path": "electron/runtime.ts",
+      "symbol": "unlocalizedTaskAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/tasks/taskResultQuery.ts",
+      "symbol": "unlocalizedTaskAsset"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/api/assetUploadApi.ts",
+      "symbol": "canvasPreviewFieldsFromReceipt"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/adapters/assetImportAdapter.ts",
+      "symbol": "hostedAssetCanvasPreview"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/adapters/persistNodeImage.ts",
+      "symbol": "hostedAssetCanvasPreview"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/adapters/persistNodeImage.ts",
+      "symbol": "persistNodeMediaFile"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/adapters/useNodeImageUpload.ts",
+      "symbol": "persistNodeMediaFile"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/ScreenshotCropOverlay.tsx",
+      "symbol": "persistNodeImageFile"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/buildContactSheetNode.ts",
+      "symbol": "persistNodeImageBlob"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/render/AudioStripNode.tsx",
+      "symbol": "persistNodeMediaFile"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/useNodeImageEditing.ts",
+      "symbol": "persistNodeImageBlob"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/useNodePanoramaHandlers.ts",
+      "symbol": "persistNodeMediaFile"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/useNodePanoramaHandlers.ts",
+      "symbol": "persistNodeImageBlob"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+      "symbol": "persistNodeImageFile"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardModal.tsx",
+      "symbol": "persistNodeImageFile"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
+      "symbol": "canvasPreviewFieldsFromReceipt"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
+      "symbol": "hostedAssetCanvasPreview"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/runner/catalogTaskResultParse.ts",
+      "symbol": "canvasPreviewFieldsFromReceipt"
+    }
+  ],
+  "door_reduction": {
+    "before": 34,
+    "after": 54,
+    "why_not": "每扇门是一个不同的用户动作（生成、导入、上传、编辑、制作流程落地、补齐）或一处画图位置，必须各自存在；本刀不合并入口，而是让它们全部经过三个共享边界：主进程落盘回执 attachStoredAssetPreview（写 previewState）、两侧共用投影 canvasPreviewFieldsFromReceipt（回执到结果两栏）、渲染层 resolveCanvasImageSource（画布只吃预览）。白板 4 扇门与截图裁剪 1 扇门暂留旧包装 persistNodeImageFile（它们的契约测试在白板目录，归草稿 #1189），其结果由补预览边界兜住。"
+  },
+  "generality_proof": "新入口无论来自哪个调用者、供应商、版本或旧数据，进画布都要过三道：(1) 落盘回执：attachStoredAssetPreview 对任何图 / 视频记录都写出 previewState；(2) 回执到结果只有 canvasPreviewFieldsFromReceipt 一个投影，它在没有与源不同的小图时只会给 source / missing 或不写，结构上写不出 thumbnailUrl = url；(3) 画图组件经 resolveCanvasImageSource，原图只能走被计数的缺失分支。只交 URL（不带事实）的入口由补预览桥在项目打开或结果变更时补齐；入口普查测试钉住「thumbnailUrl 写成源地址」「DeferredNodeImage 直接挂 .url」「只回 url 的包装」三种写法。",
+  "shared_boundaries": [
+    {
+      "path": "electron/assets/assetPreview.ts",
+      "symbol": "attachStoredAssetPreview",
+      "responsibility": "落盘回执的预览 owner：派生长边 <= 1024 的小图或判定源已有界 / 派生失败，写 previewState。"
+    },
+    {
+      "path": "electron/shared/canvas/canvasMediaPreview.ts",
+      "symbol": "canvasPreviewFieldsFromReceipt",
+      "responsibility": "回执到画布结果预览两栏的唯一投影；拒绝 thumbnailUrl = url。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/canvasImageSource.ts",
+      "symbol": "resolveCanvasImageSource",
+      "responsibility": "画布图片组件的地址只来自这里：预览 / 有界源 / 被计数的预览缺失分支。"
+    },
+    {
+      "path": "electron/assets/previewRequests.ts",
+      "symbol": "createPreviewRequestRegistry",
+      "responsibility": "补预览在途请求的取消边界：发起窗口销毁、项目上下文失效、渲染层按请求号撤回，汇成一个 AbortSignal 交给预览 owner。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/capabilityCore/generationOutputMaterializer.ts",
+      "entry_point": "createGenerationOutputMaterializer",
+      "disposition": "enforced",
+      "evidence": "字节提交后经 attachPreview（缺省 attachStoredAssetPreview）出回执；canvasPreviewContract.test 的制作流程行验证 2048x3072 产物回执带 .preview.jpg 且 previewState=ready。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/adapters/persistNodeImage.ts",
+      "entry_point": "persistNodeImageBlob",
+      "disposition": "enforced",
+      "evidence": "返回 { media: { url, ...hostedAssetCanvasPreview }, localOnly }，调用方整段展开；persistNodeImage.test 与普查测试第 4 条锁住。"
+    },
+    {
+      "path": "electron/assets/localizeTaskAsset.ts",
+      "entry_point": "localizeTaskAsset",
+      "disposition": "enforced",
+      "evidence": "thumbnailUrl / previewState 来自 canvasPreviewFieldsFromReceipt；小图不再回落成 thumbnailUrl = url（canvasPreviewContract.test 普通生成行）。"
+    },
+    {
+      "path": "electron/tasks/unlocalizedTaskAsset.ts",
+      "entry_point": "unlocalizedTaskAsset",
+      "disposition": "enforced",
+      "evidence": "不落盘的远端结果 thumbnailUrl=null、previewState=missing。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
+      "entry_point": "initResultMediaBackfillBridge",
+      "disposition": "enforced",
+      "evidence": "补救本地化与补预览都只经 canvasPreviewFieldsFromReceipt；图片也补，并发 2、视口优先、decode 后写回、missing 不重试（resultMediaBackfillBridge.test）。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/CharacterCardNode.tsx",
+      "entry_point": "CharacterCardNodeImpl",
+      "disposition": "enforced",
+      "evidence": "以前直接 src={node.result.url}；现在经 canvasImageSourceOf（Prop / Scene 卡同）。"
+    },
+    {
+      "path": "electron/screenshot/screenshotHotkey.ts",
+      "entry_point": "writeAsset",
+      "disposition": "enforced",
+      "evidence": "只交 URL，不带事实：画布结果为未知，由 resultMediaBackfillBridge 在结果出现后补齐；期间走被计数的缺失分支。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "制作流程与本地图片编辑两个独立入口、三处 thumbnailUrl = url 的回落和三张卡片直接挂原图都能各自重入；旧数据长期留在用户项目里；任何新的出图入口只要忘了带小图就会再来。",
+    "same_class_scan": [
+      "node scripts/door-map.mjs writeAsset writeDeterministicAsset moveAssetFile copyAssetFile importRemoteAsset attachStoredAssetPreview：26 扇写门，其中只有 copyAssetFile / importRemoteAsset / importLocalFile 经过 attachStoredAssetPreview",
+      "grep thumbnailUrl 写法：localizeTaskAsset、unlocalizedTaskAsset、resultMediaBackfillBridge 三处把源地址写进 thumbnailUrl",
+      "grep DeferredNodeImage src：Character / Prop / Scene 卡直接挂 result.url，BaseGenerationNode 挂 thumbnailUrl || url",
+      "persistNodeImageFile / Blob 9 处调用，全部只拿 url"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/canvas/canvasMediaPreview.ts",
+    "invariant": "画布结果的预览两栏只能由 canvasPreviewFieldsFromReceipt 从落盘回执投影；画布图片组件的地址只能由 resolveCanvasImageSource 给出。",
+    "failure_mode": "派生不出来 -> previewState=missing（画布走被计数的缺失分支，原图照常显示）；回执没有事实 -> 不写，交给补预览边界；thumbnailUrl = url 被投影拒掉。",
+    "exception_policy": "none",
+    "strategy": "在落盘回执与画布显示两端各立一个共享边界，中间唯一投影；入口普查测试把三种旧写法钉成红线；补预览桥兜住只交 URL 的入口与旧数据。",
+    "artifacts": [
+      "electron/shared/canvas/canvasMediaPreview.ts",
+      "electron/assets/assetPreview.ts",
+      "electron/capabilityCore/generationOutputMaterializer.ts",
+      "src/workbench/generationCanvas/adapters/persistNodeImage.ts",
+      "src/workbench/generationCanvas/nodes/canvasImageSource.ts",
+      "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
+      "electron/assets/previewRequests.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/assets/canvasPreviewContract.test.ts",
+    "src/workbench/generationCanvas/canvasPreviewDoors.test.ts",
+    "src/workbench/generationCanvas/resultMediaBackfillBridge.test.ts",
+    "src/workbench/generationCanvas/adapters/persistNodeImage.test.ts",
+    "src/workbench/generationCanvas/nodes/canvasImageSource.test.ts",
+    "src/workbench/generationCanvas/runner/catalogTaskResultParse.test.ts",
+    "electron/assets/previewRequests.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/assets/canvasPreviewContract.test.ts",
+    "src/workbench/generationCanvas/canvasPreviewDoors.test.ts",
+    "electron/assets/previewRequests.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/api/assetUploadApi.ts",
+      "electron/assets/localizeTaskAsset.ts",
+      "electron/tasks/unlocalizedTaskAsset.ts",
+      "src/workbench/generationCanvas/resultMediaBackfillBridge.ts"
+    ],
+    "rationale": "删掉 hostedAssetThumbnailUrl（各入口自己读 thumbnailUrl 的旧形状）与三处「没有小图就把源地址填进 thumbnailUrl」的回落；补预览桥「图片不补」的旧取舍换成 decode 后写回。persistNodeImageFile 只回 url 的包装仅为白板保留（白板目录归草稿 #1189），合入后删。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "预览派生沿用已打包的 ffmpeg / ffprobe（resolveFfmpegPath）与浏览器内建 HTMLImageElement.decode()，不新增或升级依赖；Electron nativeImage.createThumbnailFromPath 只支持 macOS / Windows 且 Windows 忽略高度，不能替代。",
+    "exit_criteria": []
+  },
+  "migration": "旧项目里没有预览事实（含 thumbnailUrl = url）的本地图 / 视频结果：项目打开后由 resultMediaBackfillBridge 后台补——只补当前项目、空闲时、并发 2、视口内和近视口优先；ready 先 img.decode() 再写回（不出空白帧），source / missing 只写事实（画面不变）；写回项目数据不进撤销，下次打开不再补；派生失败记 missing 不重试。每张约 40KB 磁盘、一次 ffmpeg 缩放。",
+  "residual_risks": [
+    "群友截图的缺块是否由原图负载触发未证实：C-dense 在 16 MiB 合成预算下预览组同样缺块，合成层削减归性能线第 2 步。",
+    "BaseGenerationNode 的一行 src 与 DeferredNodeImage 的品牌类型收口在单独提交里（该文件归草稿 #1189 / P-compose，需协调放行）；在此之前普查测试对它留名单。",
+    "白板、截图热键、抽帧、剪辑导出、引导示例只交 URL，出生时没有预览事实，靠补预览桥在结果出现后补齐（期间原图被计数）。",
+    "剪辑节点 / 时间轴片段的图片仍按 clip.thumbnailUrl || clip.url 直接画 <img>（片段模型属时间轴），不经 CanvasImageSource。",
+    "missing 不自动重试：ffmpeg 一时不可用的那批图要等「整理项目」类入口（未做）才会再试。",
+    "主进程侧「项目上下文失效」按 200ms 周期复核发起时签发的 assertCurrent，不是事件驱动：失效后最多约 200ms 才杀进程（窗口销毁与渲染层撤回是立即的）。"
+  ],
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-16",
+  "invariant_owner_layer": {
+    "layer": "electron/shared/canvas/canvasMediaPreview.ts",
+    "tests": [
+      "electron/assets/canvasPreviewContract.test.ts",
+      "src/workbench/generationCanvas/canvasPreviewDoors.test.ts",
+      "src/workbench/generationCanvas/nodes/canvasImageSource.test.ts"
+    ]
+  }
+}

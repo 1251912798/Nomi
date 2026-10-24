@@ -1,4 +1,4 @@
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
+import { cleanupTestTemp, makeTempDir } from '../../scripts/_test-temp.mjs'
 // 真实规模性能跑器：打开项目分阶段计时（路由表 scale 类 perf-real-scale 的底座，docs/engineering/test-routing.json）。
 //
 // 量什么：点项目卡 → 画布出现 → 第一张图解码，拆成阶段（产品代码里的 User Timing 打点，开关见
@@ -9,11 +9,14 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 两种打开：cold = 新起 App 后第一次打开（用户每天早上那一下）；reopen = 回项目库再打开同一个项目。
 // 项目先用一次「迁移打开」落成稳定态（像用户自己的老项目），之后每轮都是稳定态，不把一次性迁移算进去。
 //
+// 项目库列表（--library-projects N）：库里另放 N 个小项目（每个 4 张图当封面），cold 打开后「回项目库」那一下
+// 从点菜单项（捕获阶段）起表、到 N+1 张卡全部可见再过两帧停表，记成 backToLibraryMs（性能场景表的 response）。
+//
 // 用法（先 pnpm run build）：
-//   node tests/ux/project-open-stages.e2e.mjs <label> [--scale I300] [--runs 5] [--warmup 1] [--exe <打包好的 Nomi.exe>] [--onscreen] [--assert-read-only]
+//   node tests/ux/project-open-stages.e2e.mjs <label> [--scale I300] [--runs 5] [--warmup 1] [--exe <打包好的 Nomi.exe>] [--onscreen] [--assert-read-only] [--library-projects 40] [--diag-out <目录>] [--cold-click-at-ms 4000]
+// --cold-click-at-ms N：cold 那一下在 App 起来（launchNomiApp 返回）后第 N 毫秒点，用来量「启动后几秒内打开项目」撞上后台装载时的样子。
 // 结果：tests/ux/perf-results/project-open-<label>.json，终端打印中位数 / p95 表。
 // 窗口默认挂屏幕外、不抢焦点；只用临时目录，不碰真实 profile；零花费（不发任何生成请求）。
-import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -22,6 +25,8 @@ import { launchNomiApp, closeNomiApp } from './_launchApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { createCanvasPerformanceFixture } from './fixtures/canvas-performance-fixture.mjs'
 import { backToLibrary } from './_shell.mjs'
+import { armResponse, takeResponse } from '../perf/canvas-scale/responseTimer.mjs'
+import { IPC_PROBE_MODULE, startDiagnostics } from '../perf/canvas-scale/diagnostics.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '../..')
@@ -38,6 +43,9 @@ const assertNoCliEntry = args.includes('--assert-no-cli-entry')
 // 第一次在 Agent 面板发消息时主进程要装的那张图（本机能力：bash / 沙箱 / pi-coding-agent 入口）。不发真消息（零花费）：
 // 项目打开之后，在真 App 的主进程里装同一个模块（laneHost.loadLaneNativeDesktop 装的就是它），计时并数新装文件。
 const measureFirstSendLoad = args.includes('--first-send-load')
+const libraryProjects = Math.max(0, Number(argValue('--library-projects') || 0))
+const diagOut = argValue('--diag-out')
+const coldClickAtMs = argValue('--cold-click-at-ms') === undefined ? null : Number(argValue('--cold-click-at-ms'))
 const OPEN_TIMEOUT_MS = 90_000
 const SETTLE_AFTER_MEDIA_MS = 3_000
 
@@ -49,20 +57,39 @@ const root = makeTempDir('nomi-open-stages-')
 const projectsDir = path.join(root, 'projects')
 const userDataDir = path.join(root, 'user-data')
 fs.mkdirSync(userDataDir, { recursive: true })
-const fixture = createCanvasPerformanceFixture({ projectsDir, scale, projectId: `project-open-stages-${scale.toLowerCase()}`, projectName: `ZZ 打开分阶段 ${scale}` })
-// 夹具是测试直接写的盘，没有 App 建项目时就会落下的项目身份（主清单 + 备份）。不补的话，启动时后台补身份会改写清单，
+// 项目库列表场景的陪衬项目：先建，主项目最后建（夹具每建一个就把 recent-workspaces.json 写成只有它自己，下面统一重写）。
+// 夹具是测试直接写的盘：带上 App 建项目时就会落下的项目身份（withProjectIdentity，主清单 + 备份）。不带的话，启动时后台补身份会改写清单，
 // 和项目库首次核对同步基线撞车，卡片显示「发现另一台电脑的项目更新」、点了不打开。用户的真实项目生来就有身份。
-{
-  const manifestPath = path.join(fixture.projectRoot, '.nomi', 'project.json')
-  const settled = { ...JSON.parse(fs.readFileSync(manifestPath, 'utf8')), immutableProjectUuid: crypto.randomUUID(), projectGeneration: 1 }
-  fs.writeFileSync(manifestPath, `${JSON.stringify(settled, null, 1)}
-`)
-  fs.writeFileSync(path.join(fixture.projectRoot, '.nomi', 'project.backup.json'), `${JSON.stringify(settled, null, 1)}
-`)
+const libraryFixtures = Array.from({ length: libraryProjects }, (_, index) => createCanvasPerformanceFixture({
+  projectsDir, scale: 'REALIMG', projectId: `project-library-${index + 1}`, projectName: `ZZ 项目库 ${index + 1}`, projectDirName: `ZZ-library-${index + 1}`, withProjectIdentity: true,
+}))
+const fixture = createCanvasPerformanceFixture({ projectsDir, scale, projectId: `project-open-stages-${scale.toLowerCase()}`, projectName: `ZZ 打开分阶段 ${scale}`, withProjectIdentity: true })
+if (libraryFixtures.length) {
+  const now = Date.now()
+  const entries = [...libraryFixtures, fixture].map((project, index) => ({
+    id: project.record.id, name: project.record.name, rootPath: path.resolve(project.projectRoot), lastOpenedAt: now - index * 1000, missing: false,
+  }))
+  fs.writeFileSync(path.join(projectsDir, 'recent-workspaces.json'), JSON.stringify(entries, null, 2))
+}
+
+/** 回项目库并计时：菜单项的 click（捕获阶段）起表，到库里 N+1 张卡都可见再过两帧（tests/perf/canvas-scale/responseTimer.mjs）。 */
+async function timedBackToLibrary(app, page, { diag = false } = {}) {
+  if (!libraryFixtures.length) { await backToLibrary(page); return null }
+  let stopDiagnostics = null
+  await backToLibrary(page, {
+    beforeItemClick: async () => {
+      // 诊断腿（--diag-out）：回项目库这一下的 trace / 两个进程的 profile / IPC 计时（tests/perf/canvas-scale/diagnostics.mjs）。
+      if (diag) stopDiagnostics = await startDiagnostics({ page, app, cdp: await app.context().newCDPSession(page), outDir: path.resolve(diagOut), label: `library-${libraryFixtures.length + 1}` })
+      await armResponse(page, { trigger: 'click', predicate: 'libraryReady', arg: libraryFixtures.length + 1, timeoutMs: OPEN_TIMEOUT_MS })
+    },
+  })
+  const ms = (await takeResponse(page)).ms
+  if (stopDiagnostics) await stopDiagnostics()
+  return ms
 }
 
 async function launch() {
-  return launchNomiApp({
+  const launched = await launchNomiApp({
     name: 'project-open-stages',
     ...(executablePath ? { executablePath } : {}),
     userDataDir,
@@ -70,11 +97,12 @@ async function launch() {
     projectsDir,
     // Windows 把屏幕外窗口判成被遮挡、停掉渲染帧；关掉遮挡判定，量到的才是真的。
     args: ['--no-proxy-server', ...(onscreen ? [] : ['--disable-features=CalculateNativeWinOcclusion'])],
-    mainRequire: [path.join(here, 'perf', 'openWriteProbe.cjs'), path.join(here, 'perf', 'openModuleProbe.cjs'), ...(onscreen ? [] : [path.join(here, '_offscreenWindows.cjs')])],
+    mainRequire: [path.join(here, 'perf', 'openWriteProbe.cjs'), path.join(here, 'perf', 'openModuleProbe.cjs'), ...(onscreen ? [] : [path.join(here, '_offscreenWindows.cjs')]), ...(diagOut ? [IPC_PROBE_MODULE] : [])],
     initialLocalStorage: { ...FIRST_RUN_SEEN, 'nomi:perf-marks': '1' },
     env: { NOMI_PERF_MARKS: '1' },
     settleMs: 900,
   })
+  return { ...launched, launchedAt: Date.now() }
 }
 
 async function pollUntil(page, predicate, arg, timeoutMs) {
@@ -91,10 +119,14 @@ async function pollUntil(page, predicate, arg, timeoutMs) {
   }
 }
 
-async function openOnce(app, page, kind) {
+async function openOnce(app, page, kind, launchedAt) {
   const card = page.locator(`[data-project-card][data-project-id="${fixture.record.id}"]`).first()
   await card.waitFor({ timeout: stationTimeout({ operations: 2 }) })
   await new Promise((resolve) => setTimeout(resolve, 1_000))
+  if (kind === 'cold' && coldClickAtMs !== null && launchedAt) {
+    const wait = launchedAt + coldClickAtMs - Date.now()
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
+  }
   await page.evaluate(() => {
     window.__openLongTasks = []
     window.__openLongTaskObserver?.disconnect()
@@ -163,9 +195,9 @@ function percentile(sorted, p) {
 }
 
 function summarize(samples) {
-  const keys = new Set(['clickToMediaMs', 'longTaskMs', 'writes.total', 'writes.fsync', 'workingSetMB', 'modules.count'])
+  const keys = new Set(['clickToMediaMs', 'longTaskMs', 'writes.total', 'writes.fsync', 'workingSetMB', 'modules.count', ...(libraryProjects ? ['backToLibraryMs'] : [])])
   for (const sample of samples) for (const key of Object.keys(sample.stages)) keys.add(`stages.${key}`)
-  const read = (sample, key) => key.split('.').reduce((value, part) => value?.[part], sample) ?? (key.startsWith('stages.') ? null : 0)
+  const read = (sample, key) => key.split('.').reduce((value, part) => value?.[part], sample) ?? (key.startsWith('stages.') || key === 'backToLibraryMs' ? null : 0)
   const out = {}
   for (const key of keys) {
     const values = samples.map((sample) => read(sample, key)).filter((value) => typeof value === 'number').sort((a, b) => a - b)
@@ -174,7 +206,7 @@ function summarize(samples) {
   return out
 }
 
-const results = { label, scale, runs, warmup, executable: executablePath || 'dev-electron', platform: process.platform, startedAt: new Date().toISOString(), fixture: fixture.summary, samples: [] }
+const results = { label, scale, runs, warmup, coldClickAtMs, executable: executablePath || 'dev-electron', platform: process.platform, startedAt: new Date().toISOString(), fixture: fixture.summary, samples: [] }
 try {
   // 迁移打开：夹具是测试写的，第一次打开会走一次性迁移（补身份、补字段）。用户自己的老项目早就是稳定态。
   {
@@ -182,10 +214,10 @@ try {
     try { results.migrationOpen = await openOnce(app, win, 'migration') } finally { await closeNomiApp(app) }
   }
   for (let index = 0; index < warmup + runs; index += 1) {
-    const { app, win } = await launch()
+    const { app, win, launchedAt } = await launch()
     try {
-      const cold = await openOnce(app, win, 'cold')
-      await backToLibrary(win)
+      const cold = await openOnce(app, win, 'cold', launchedAt)
+      cold.backToLibraryMs = await timedBackToLibrary(app, win, { diag: Boolean(diagOut) && index === warmup })
       const reopen = await openOnce(app, win, 'reopen')
       if (index >= warmup) results.samples.push(cold, reopen)
       if (measureFirstSendLoad) {
@@ -201,13 +233,14 @@ try {
         if (index >= warmup) results.firstSend = [...(results.firstSend || []), firstSend]
         console.log(`  首发装载：${Math.round(firstSend.ms)}ms，新装模块 ${firstSend.modules.count}${firstSend.modules.piCodingAgentEntry ? '（含 pi-coding-agent 入口）' : ''}`)
       }
-      console.log(`run ${index + 1}/${warmup + runs}${index < warmup ? '（预热，不计）' : ''}: cold ${cold.clickToMediaMs}ms（写盘 ${cold.writes.total}，fsync ${cold.writes.fsync}，新装模块 ${cold.modules.count}${cold.modules.piCodingAgentEntry ? '，含 pi-coding-agent 入口' : ''}） · reopen ${reopen.clickToMediaMs}ms（写盘 ${reopen.writes.total}，fsync ${reopen.writes.fsync}，新装模块 ${reopen.modules.count}）`)
+      console.log(`run ${index + 1}/${warmup + runs}${index < warmup ? '（预热，不计）' : ''}: cold ${cold.clickToMediaMs}ms${cold.backToLibraryMs !== null ? `（回项目库 ${cold.backToLibraryMs}ms）` : ""}（写盘 ${cold.writes.total}，fsync ${cold.writes.fsync}，新装模块 ${cold.modules.count}${cold.modules.piCodingAgentEntry ? '，含 pi-coding-agent 入口' : ''}） · reopen ${reopen.clickToMediaMs}ms（写盘 ${reopen.writes.total}，fsync ${reopen.writes.fsync}，新装模块 ${reopen.modules.count}）`)
     } finally {
       await closeNomiApp(app)
     }
   }
 } finally {
-  fs.rmSync(root, { recursive: true, force: true })
+  // Windows 上 App 刚退出时项目目录里可能还有句柄（封面 / 缩略图），交给带重试的统一清理，别让清理失败吞掉这一轮的结果。
+  try { cleanupTestTemp(root) } catch (error) { console.warn(`临时目录没删干净（不影响这一轮的数）：${root}：${error.message}`) }
 }
 
 if (results.firstSend?.length) {

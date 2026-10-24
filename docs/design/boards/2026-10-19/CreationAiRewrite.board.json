@@ -1,0 +1,626 @@
+{
+  "board": "CreationAiRewrite",
+  "approvedOn": "2026-10-18",
+  "stage": "built",
+  "visualReview": "用户 10-18 在画布评论里确认了 WD1 的交互（任务书 I-rewrite 转述：AI 图标用 Nomi 标记；结果就地显示，段尾只留 ✓ ✕）。实现后的真组件截图与样张并排对账见 docs/evidence/2026-10-19-creation-ai-rewrite/compare-WD1.png，不一致处逐条写在 PR 正文与 docs/plan/2026-10-19-creation-ai-rewrite.md。",
+  "sourceBoundary": "板源 = Claude Design 画布「Nomi 0.24 交互方案」里的 WD1 一格（source/CreationAiRewrite.dc.html 是它的原样副本，取自 docs/design/proposals/2026-10-18/source/WD1-ai-menu.dc.html）。preview/CreationAiRewrite.html 是把画布运行时的 <x-dc> 包装拆掉的静态页（样式一字未改，不联网），candidates 由 board-extract 的抽取函数在它上面抽出。WD2（空行按空格续写）、WA3 以及画布里其它格不在本板。",
+  "designIntent": "写作区结构一概不动，只加「选中文字 → AI 编辑 → 就地出结果」这一件事：浮条多一颗「AI 编辑」；点开是输入框 + 常用改法 + 用户的写作 Skill；结果直接叠在原文里，段尾只有 ✓ ✕；输入框保留上一次要求、右端 ↻ 重来。不要「候选 1/3」、不要三视图、不要一排四个按钮。",
+  "priorArt": [
+    {
+      "url": "https://www.notion.com/help/guides/notion-ai-for-docs",
+      "takeaway": "Notion AI 选中文字出菜单（改善写作 / 缩短 / 扩写 / 改语气 / 翻译），结果就地出，接受 / 放弃 / 重试。",
+      "decisionImpact": "确认了「常用改法一行 + 输入框」的菜单形状；改了：不做候选 / 重试三件套，只留 ✓ ✕ 和输入框右端 ↻（用户「太冗余了，要优雅，简化」）。"
+    },
+    {
+      "url": "https://docs.cursor.com/en/cmdk/overview",
+      "takeaway": "Cursor 行内编辑把改动以新旧对比叠在原文上，Enter 接受、Esc 放弃，输入框里可追加要求。",
+      "decisionImpact": "确认了 Enter / Esc 键位与「追加要求 = 改输入框再回车」；改了：追加要求仍从同一段原文出发，不叠在上一版结果上。"
+    },
+    {
+      "url": "https://github.com/kpdecker/jsdiff",
+      "takeaway": "jsdiff 的 diffWords 有 intlSegmenter 选项，专门给中文这类无空格文字按词切。",
+      "decisionImpact": "确认了不自写比较算法、中文走 Intl.Segmenter；改了：不按字比（按字比的删加碎成一地读不了），所以新旧对比粒度比样张细。"
+    },
+    {
+      "url": "https://prosemirror.net/docs/ref/#view.Decoration",
+      "takeaway": "ProseMirror 装饰是叠在文档上的「画」，不进文档、不进历史。",
+      "decisionImpact": "确认了「接受之前文档一字不动、接受 = 单事务一条撤销」；改了：不先写进文档再让用户回滚。"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "text": "AI 入口的图标用 Nomi 标记（NomiLogoMark 带底），不用闪光图标；浮条上原有的加粗、标题、生图、生视频、拆成镜头都不动。",
+      "appliesTo": [
+        "popover.ai",
+        "bar.logo",
+        "popover.bold",
+        "popover.italic",
+        "popover.h1",
+        "popover.h2",
+        "popover.image",
+        "popover.video",
+        "popover.storyboard"
+      ],
+      "source": "用户 10-18 在画布评论里确认（任务书 I-rewrite 交互 1：「图标用 Nomi 标记，NomiLogoMark 带底，不要闪光图标」）"
+    },
+    {
+      "id": "D2",
+      "text": "结果就地显示在原文里（删掉的划线、新加的标出来），改动段落末尾只跟 ✓ 接受（Enter）、✕ 放弃（Esc）两个小图标；不要「候选 1/3」、不要三视图、不要一排四个按钮。",
+      "appliesTo": [
+        "result.del",
+        "result.add",
+        "result.accept",
+        "result.discard",
+        "result.tip"
+      ],
+      "source": "用户 10-18 在画布评论里确认，原话「太冗余了，要优雅，简化」（任务书 I-rewrite 交互 3）"
+    }
+  ],
+  "elements": [
+    {
+      "id": "popover.shell",
+      "label": "选区浮条外壳（原有；加一颗「AI 编辑」后加宽到 344px）",
+      "change": "restyle",
+      "candidates": [
+        "004-div"
+      ],
+      "status": "implemented",
+      "assertion": "浮条上原有的加粗 / 斜体 / 标题等按钮被挤没了",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "popover.bold",
+      "label": "浮条 · 加粗（原有，不动）",
+      "change": "keep",
+      "candidates": [
+        "005-button-Bold",
+        "006-svg"
+      ],
+      "status": "implemented",
+      "assertion": "浮条上原有的加粗 / 斜体 / 标题等按钮被挤没了",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "popover.italic",
+      "label": "浮条 · 斜体（原有，不动）",
+      "change": "keep",
+      "candidates": [
+        "007-button-Italic",
+        "008-svg"
+      ],
+      "status": "implemented",
+      "assertion": "浮条上原有的加粗 / 斜体 / 标题等按钮被挤没了",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "popover.h1",
+      "label": "浮条 · 一级标题（原有，不动）",
+      "change": "keep",
+      "candidates": [
+        "009-button-H1",
+        "010-svg"
+      ],
+      "status": "implemented",
+      "assertion": "浮条上原有的加粗 / 斜体 / 标题等按钮被挤没了",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "popover.h2",
+      "label": "浮条 · 二级标题（原有，不动）",
+      "change": "keep",
+      "candidates": [
+        "011-button-H2",
+        "012-svg"
+      ],
+      "status": "implemented",
+      "assertion": "浮条上原有的加粗 / 斜体 / 标题等按钮被挤没了",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "popover.ai",
+      "label": "浮条 · 「AI 编辑」（Nomi 标记带底 + 字，强调色字）",
+      "change": "new",
+      "candidates": [
+        "013-button-AI编辑",
+        "014-svg"
+      ],
+      "status": "implemented",
+      "assertion": ".workbench-selection-popover__tool--ai",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "popover.image",
+      "label": "浮条 · 生成图片（原有，不动）",
+      "change": "keep",
+      "candidates": [
+        "015-button-生成图片",
+        "016-svg"
+      ],
+      "status": "implemented",
+      "assertion": "浮条上原有的加粗 / 斜体 / 标题等按钮被挤没了",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "popover.video",
+      "label": "浮条 · 生成视频（原有，不动）",
+      "change": "keep",
+      "candidates": [
+        "017-button-生成视频",
+        "018-svg"
+      ],
+      "status": "implemented",
+      "assertion": "浮条上原有的加粗 / 斜体 / 标题等按钮被挤没了",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "popover.storyboard",
+      "label": "浮条 · 拆成镜头（原有，不动；没有分镜入口时灰）",
+      "change": "keep",
+      "candidates": [
+        "019-button-拆成镜头",
+        "020-svg"
+      ],
+      "status": "implemented",
+      "assertion": "浮条上原有的加粗 / 斜体 / 标题等按钮被挤没了",
+      "states": [
+        "selected",
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "selection.pending",
+      "label": "待改的那段字：淡蓝底标记（选中后到出结果前）",
+      "change": "new",
+      "candidates": [
+        "021-span-她盯着纸条看了很久才慢慢",
+        "026-span-她盯着纸条看了很久才慢慢"
+      ],
+      "status": "implemented",
+      "assertion": "待改的字没有被标出来",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "bar.logo",
+      "label": "AI 编辑条 · 输入框前的 Nomi 标记（带底，16px）",
+      "change": "new",
+      "candidates": [
+        "027-svg",
+        "051-svg"
+      ],
+      "status": "implemented",
+      "assertion": "输入框前没有 Nomi 标记",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "bar.input",
+      "label": "AI 编辑条 · 输入框「告诉 Nomi 怎么改…」",
+      "change": "new",
+      "candidates": [
+        "028-span-告诉Nomi怎么改"
+      ],
+      "status": "implemented",
+      "assertion": "输入框占位文字不对",
+      "states": [
+        "empty",
+        "selected",
+        "zh-en",
+        "dark",
+        "long-text"
+      ]
+    },
+    {
+      "id": "bar.send",
+      "label": "AI 编辑条 · ↑ 发送钮（菜单态；输入为空时灰）",
+      "change": "new",
+      "candidates": [
+        "029-svg"
+      ],
+      "status": "implemented",
+      "assertion": "菜单态没有发送钮",
+      "states": [
+        "empty",
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "bar.chip.rewrite",
+      "label": "常用改法 · 改写",
+      "change": "new",
+      "candidates": [
+        "030-button-改写"
+      ],
+      "status": "implemented",
+      "assertion": "常用改法缺",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "bar.chip.shorter",
+      "label": "常用改法 · 缩短",
+      "change": "new",
+      "candidates": [
+        "031-button-缩短"
+      ],
+      "status": "implemented",
+      "assertion": "常用改法缺",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "bar.chip.longer",
+      "label": "常用改法 · 扩写",
+      "change": "new",
+      "candidates": [
+        "032-button-扩写"
+      ],
+      "status": "implemented",
+      "assertion": "常用改法缺",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "bar.chip.tone",
+      "label": "常用改法 · 改语气 ▾（点开一行：更正式 / 更口语 / 更克制 / 更温暖）",
+      "change": "new",
+      "candidates": [
+        "033-button-改语气",
+        "034-svg"
+      ],
+      "status": "implemented",
+      "assertion": "常用改法缺",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "bar.chip.translate",
+      "label": "常用改法 · 翻译 ▾（点开一行：英文 / 中文 / 日文）",
+      "change": "new",
+      "candidates": [
+        "035-button-翻译",
+        "036-svg"
+      ],
+      "status": "implemented",
+      "assertion": "常用改法缺",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "bar.chip.skill",
+      "label": "用户已有的写作 Skill（可多个，强调色字 + 技能库同款图标）",
+      "change": "new",
+      "candidates": [
+        "037-button-编剧Kasdan",
+        "038-svg"
+      ],
+      "status": "implemented",
+      "assertion": "用户的写作 Skill 没出现在常用改法后面",
+      "states": [
+        "empty",
+        "long-text",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "result.del",
+      "label": "结果 · 删掉的字：划线 + 红淡底",
+      "change": "new",
+      "candidates": [
+        "044-span-盯着纸条看了很久才慢慢展"
+      ],
+      "status": "implemented",
+      "assertion": "结果里有划线的删除部分",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "result.add",
+      "label": "结果 · 新加的字：绿淡底 + 下划线",
+      "change": "new",
+      "candidates": [
+        "045-span-慢慢展开纸条"
+      ],
+      "status": "implemented",
+      "assertion": "结果态没有标出来的新增部分",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "result.tip",
+      "label": "结果 · 悬停 ✓ 的提示「接受 Enter」（✕ 同理「放弃 Esc」）",
+      "change": "new",
+      "candidates": [
+        "046-span-接受Enter"
+      ],
+      "status": "implemented",
+      "assertion": "悬停 ✓ 没有「接受 Enter」提示",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "result.accept",
+      "label": "结果 · 段尾 ✓ 接受（Enter）",
+      "change": "new",
+      "candidates": [
+        "047-button-接受",
+        "048-svg"
+      ],
+      "status": "implemented",
+      "assertion": "段尾应当只有 ✓ ✕ 两个小图标",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "result.discard",
+      "label": "结果 · 段尾 ✕ 放弃（Esc）",
+      "change": "new",
+      "candidates": [
+        "049-button-放弃",
+        "050-svg"
+      ],
+      "status": "implemented",
+      "assertion": "段尾应当只有 ✓ ✕ 两个小图标",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "result.requirement",
+      "label": "结果态输入框：保留上一次的要求（改了再回车 = 追加要求）",
+      "change": "new",
+      "candidates": [
+        "052-span-更短一点保留原意"
+      ],
+      "status": "implemented",
+      "assertion": "输入框没有保留这一次的要求",
+      "states": [
+        "long-text",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "result.retry",
+      "label": "结果态输入框右端 ↻：用原要求重来",
+      "change": "new",
+      "candidates": [
+        "053-button-用原要求重来",
+        "054-svg"
+      ],
+      "status": "implemented",
+      "assertion": "输入框右端没有 ↻",
+      "states": [
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    }
+  ],
+  "decor": [
+    "001-div-①选中一段浮条上点AI编",
+    "002-h2-第3场林薇家夜",
+    "003-p-林薇回到家没开大灯台灯下",
+    "022-p-纸上的字被潮气洇开只认得",
+    "023-div-②输入要求或点一项",
+    "024-h2-第3场林薇家夜",
+    "025-p-林薇回到家没开大灯台灯下",
+    "039-p-纸上的字被潮气洇开只认得",
+    "040-div-③结果就地出现",
+    "041-h2-第3场林薇家夜",
+    "042-p-林薇回到家没开大灯台灯下",
+    "043-p-她",
+    "055-p-纸上的字被潮气洇开只认得"
+  ],
+  "functionCensus": [
+    {
+      "censusId": "FUN-01",
+      "function": "选区浮条 · 加粗",
+      "before": "选中文字后点 B 加粗 / 取消",
+      "after": "popover.bold",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ① 原样保留。"
+    },
+    {
+      "censusId": "FUN-02",
+      "function": "选区浮条 · 斜体",
+      "before": "选中文字后点 I",
+      "after": "popover.italic",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ① 原样保留。"
+    },
+    {
+      "censusId": "FUN-03",
+      "function": "选区浮条 · 一级标题",
+      "before": "选中文字后点 H1",
+      "after": "popover.h1",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ① 原样保留。"
+    },
+    {
+      "censusId": "FUN-04",
+      "function": "选区浮条 · 二级标题",
+      "before": "选中文字后点 H2",
+      "after": "popover.h2",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ① 原样保留。"
+    },
+    {
+      "censusId": "FUN-05",
+      "function": "选区浮条 · 生成图片",
+      "before": "把选中文字建成图片节点并切到生成画布",
+      "after": "popover.image",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ① 原样保留。"
+    },
+    {
+      "censusId": "FUN-06",
+      "function": "选区浮条 · 生成视频",
+      "before": "把选中文字建成视频节点并切到生成画布",
+      "after": "popover.video",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ① 原样保留。"
+    },
+    {
+      "censusId": "FUN-07",
+      "function": "选区浮条 · 拆成镜头",
+      "before": "选中文字交给分镜规划（没有入口时灰）",
+      "after": "popover.storyboard",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ① 原样保留；灰态是原有行为。"
+    },
+    {
+      "censusId": "NEW-01",
+      "function": "选中文字 → AI 编辑入口（新增）",
+      "before": "（没有）",
+      "after": "popover.ai",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ①。"
+    },
+    {
+      "censusId": "NEW-02",
+      "function": "告诉 Nomi 怎么改的输入框（新增）",
+      "before": "（没有）",
+      "after": "bar.input",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ②。"
+    },
+    {
+      "censusId": "NEW-03",
+      "function": "常用改法：改写 / 缩短 / 扩写（新增）",
+      "before": "（没有）",
+      "after": "bar.chip.shorter",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ②；改写、扩写同形。"
+    },
+    {
+      "censusId": "NEW-04",
+      "function": "常用改法：改语气 ▾ / 翻译 ▾（新增）",
+      "before": "（没有）",
+      "after": "bar.chip.tone",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ②；展开态样张没画，实现为条内多一行选项，见 PR「和样张不一致」。"
+    },
+    {
+      "censusId": "NEW-05",
+      "function": "用户已有的写作 Skill 作为改法（新增）",
+      "before": "（没有）",
+      "after": "bar.chip.skill",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ②。只收用户自己导入的单段、只要文本模型的 Skill。"
+    },
+    {
+      "censusId": "NEW-06",
+      "function": "结果就地显示：删线 / 新字标出（新增）",
+      "before": "（没有）",
+      "after": "result.del",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ③；实现按词比对，粒度比样张细，见 PR。"
+    },
+    {
+      "censusId": "NEW-07",
+      "function": "接受（Enter / ✓）进撤销栈（新增）",
+      "before": "（没有）",
+      "after": "result.accept",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ③；Ctrl+Z 一步撤回，接受自成一步（V-rewrite B2）。"
+    },
+    {
+      "censusId": "NEW-08",
+      "function": "放弃（Esc / ✕）（新增）",
+      "before": "（没有）",
+      "after": "result.discard",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ③。"
+    },
+    {
+      "censusId": "NEW-09",
+      "function": "保留上一次的要求 / 追加要求（新增）",
+      "before": "（没有）",
+      "after": "result.requirement",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ③；追加要求与 ↻ 都从打开时的原文出发。"
+    },
+    {
+      "censusId": "NEW-10",
+      "function": "↻ 用原要求重来（新增）",
+      "before": "（没有）",
+      "after": "result.retry",
+      "landing": "drawn",
+      "afterNote": "样张 WD1 ③。"
+    }
+  ]
+}

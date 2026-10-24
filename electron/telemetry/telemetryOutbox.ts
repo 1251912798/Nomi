@@ -3,7 +3,7 @@ import path from 'node:path'
 import { readJsonFile, writeJsonFileAtomic } from '../jsonFile'
 import { getSettingsRoot } from '../settings/settingsRoot'
 import { intakeConfigured, postIntake } from './intakeClient'
-import { buildTelemetryEnvelope, isTelemetryEnvelope, type TelemetryEnvelope, type TelemetryProps } from './telemetryEvents'
+import { buildTelemetryEnvelope, isTelemetryEnvelope, TELEMETRY_EVENT_MIN_SCOPE, type TelemetryEnvelope, type TelemetryProps } from './telemetryEvents'
 import { getTelemetrySessionId, readTelemetrySettings } from './telemetrySettings'
 import type { TelemetrySummary } from '../shared/contracts/telemetry'
 
@@ -33,6 +33,8 @@ function prune(store: OutboxStore, now = Date.now()): void {
 export function enqueueTelemetryEvent(event: TelemetryEnvelope): boolean {
   const settings = readTelemetrySettings()
   if (!settings.enabled || !isTelemetryEnvelope(event)) return false
+  // 告知范围门：用户只同意过旧版范围时，新范围的事件一条都不入队（重新确认前扩展字段一律不发）。
+  if (settings.scopeVersion < TELEMETRY_EVENT_MIN_SCOPE[event.eventName]) return false
   const store = readStore()
   prune(store)
   store.pending.push(event)

@@ -1,6 +1,7 @@
 // Original text editor, generation action and graph schema. Only the supplier is controlled.
 import React from 'react'
 import { createRoot } from 'react-dom/client'
+import type { Editor } from '@tiptap/react'
 import { NomiPreviewHost } from '../../../src/design/previewHost'
 import TextDocumentNode from '../../../src/workbench/generationCanvas/nodes/render/TextDocumentNode'
 import { useGenerationCanvasStore } from '../../../src/workbench/generationCanvas/store/generationCanvasStore'
@@ -44,6 +45,25 @@ function snapshot() {
 
 Object.assign(window, { textOwnership: {
   snapshot,
+  /**
+   * Select a phrase through the editor's own selection command, the same path the product uses to place a
+   * selection. Native keyboard selection is not used here: right after focus ProseMirror writes its remembered
+   * selection back to the screen from a setTimeout(…, 20), and it only reads native caret moves on the
+   * asynchronous selectionchange event, so under load that timer lands between a key press and its read and
+   * erases the keys (2026-10-24 trace: three Shift+ArrowRight moves undone, selection "" / "eep" instead of "OLD").
+   */
+  select(phrase: string) {
+    const editor = (document.querySelector('.ProseMirror') as (HTMLElement & { editor?: Editor }) | null)?.editor
+    if (!editor) throw new Error('text editor is not mounted')
+    const ranges: Array<{ from: number; to: number }> = []
+    editor.state.doc.descendants((child, pos) => {
+      const index = child.isText ? (child.text ?? '').indexOf(phrase) : -1
+      if (index >= 0) ranges.push({ from: pos + index, to: pos + index + phrase.length })
+    })
+    if (ranges.length !== 1) throw new Error(`expected exactly one "${phrase}" in the text node, found ${ranges.length}`)
+    editor.commands.setTextSelection(ranges[0])
+    return { screen: window.getSelection()?.toString() ?? '', stored: snapshot().selection }
+  },
   prepare() {
     check = captureApprovedGenerationInputs([text.id, image.id])
     useGenerationCanvasStore.getState().appendNodeRun(text.id, {

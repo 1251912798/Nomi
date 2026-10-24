@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>3a 请求批准档报价卡</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{--nomi-bg:oklch(.985 .003 90);--nomi-paper:#fff;--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink40:oklch(.68 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-radius-sm:6px;--nomi-radius:10px;--nomi-radius-lg:16px;--nomi-shadow-sm:0 1px 2px oklch(0 0 0/.04),0 1px 1px oklch(0 0 0/.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/.04),0 8px 24px oklch(0 0 0/.06)}
+:root[data-theme="dark"]{--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink40:oklch(.62 .006 85);--nomi-ink20:oklch(.42 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-warning-ink:oklch(.82 .085 72);--nomi-warning-soft:oklch(.295 .04 72);--nomi-warning-edge:oklch(.395 .058 72);--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32)}
+body{margin:0;font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5;color:var(--nomi-ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--nomi-line);background:var(--nomi-paper);color:var(--nomi-ink);font:inherit;font-weight:500}
+.btn-primary{background:var(--nomi-ink);border-color:var(--nomi-ink);color:var(--nomi-paper)}
+.btn-text{border-color:transparent;background:transparent;color:var(--nomi-ink60)}
+.chip{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px}
+.pill{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 10px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px}
+.icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:999px;background:transparent;color:var(--nomi-ink60)}
+.row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--nomi-line)}
+.row input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:var(--nomi-ink)}
+.step{display:inline-flex;align-items:center;height:26px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);font-size:12px;color:var(--nomi-ink80)}
+.step span{padding:0 6px;color:var(--nomi-ink60)}
+</style>
+</helmet>
+<div style="width:440px;height:760px;box-sizing:border-box;padding:16px;background:var(--nomi-bg);display:flex">
+  <div style="flex:1;display:flex;flex-direction:column;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius-lg);box-shadow:var(--nomi-shadow-md);overflow:hidden">
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--nomi-line);font-weight:600">Nomi <span class="pill">默认 Agent</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:14px;padding:14px;overflow:hidden">
+      <div style="align-self:flex-end;padding:8px 12px;background:var(--nomi-ink05);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius)">按文稿方案生成前 2 镜</div>
+      <div>文稿方案共 3 镜，我先排前 2 镜。确认后才会开始生成。</div>
+
+      <div style="border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-sm);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px">
+          <div style="font-weight:600">确认生成</div>
+          <div style="font-size:12px;color:var(--nomi-ink60)">按文稿方案 · 共 2 镜</div>
+        </div>
+
+        <div class="row">
+          <input type="checkbox" checked aria-label="镜头 1">
+          <svg width="56" height="36" viewBox="0 0 56 36" role="img" aria-label="镜头 1 画面" style="flex:none;border-radius:4px"><rect width="56" height="36" fill="#d9e6ee"/><circle cx="40" cy="14" r="5" fill="#f2d9a8"/><rect y="21" width="56" height="15" fill="#86a9bd"/></svg>
+          <div style="flex:1;min-width:0"><div style="font-weight:500">镜头 1</div><div style="font-size:12px;color:var(--nomi-ink60)">清晨的海边小镇，薄雾</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:0 12px 10px 38px">
+          <button class="chip">Seedance 2.0 快速 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+          <span style="font-size:12px;color:var(--nomi-ink60)">份数</span>
+          <span class="step"><span>−</span><b style="font-weight:500;padding:0 4px">1</b><span>+</span></span>
+        </div>
+
+        <div class="row">
+          <input type="checkbox" checked aria-label="镜头 2">
+          <svg width="56" height="36" viewBox="0 0 56 36" role="img" aria-label="镜头 2 画面" style="flex:none;border-radius:4px"><rect width="56" height="36" fill="#b9a7b8"/><circle cx="40" cy="20" r="5" fill="#e9a77c"/><rect y="22" width="56" height="14" fill="#5c6f8c"/></svg>
+          <div style="flex:1;min-width:0"><div style="font-weight:500">镜头 2</div><div style="font-size:12px;color:var(--nomi-ink60)">傍晚的码头，渔船归港</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:0 12px 10px 38px">
+          <button class="chip">Seedance 2.0 快速 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+          <span style="font-size:12px;color:var(--nomi-ink60)">份数</span>
+          <span class="step"><span>−</span><b style="font-weight:500;padding:0 4px">1</b><span>+</span></span>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-top:1px solid var(--nomi-line);background:var(--nomi-ink05)">
+          <span style="font-size:12px;color:var(--nomi-ink60)">已选 2 镜 · 共 2 份</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-text">取消</button>
+            <button class="btn btn-primary">开始生成</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin:0 12px 12px;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius)">
+      <div style="padding:10px 14px;color:var(--nomi-ink60)">继续告诉 Nomi 要改什么…</div>
+      <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-top:1px solid var(--nomi-line)">
+        <button class="icon" aria-label="添加素材"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="pill">选择模型</button>
+        <button class="pill">请求批准</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-primary" style="height:30px">发送</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":440,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

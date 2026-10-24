@@ -179,6 +179,10 @@
       "reason": "项目绑定：对话与创作项目的归属"
     },
     {
+      "path": "electron/shared/projectDeleteIntent*",
+      "reason": "项目删除意图：用户在确认框里确认的是「从项目库移除」还是「删除文件」，主进程只照它执行——项目目录生命周期的领域语义（V-plibrary2，2026-10-22）；放中立契约层是因为渲染层确认框和主进程删除口共读这一份"
+    },
+    {
       "path": "electron/shared/model*",
       "reason": "模型发布、可用性与上下文窗口目录"
     },
@@ -402,6 +406,10 @@
       "reason": "Agent 对话投影的渲染层：视图模型、回执撤销、任务候选动作、失败话术——把 lane 的快照画成面板"
     },
     {
+      "path": "src/workbench/ai/pointer/",
+      "reason": "聊天里的指向元素（2026-10-23 D2 P1）：代表一个画布节点、长得和节点一样、点了定位过去——一个东西一个家的聊天端，所有聊天卡共用"
+    },
+    {
       "path": "src/workbench/ai/v4/agentPanelSpendCard*",
       "reason": "付费确认卡的领域呈现：报价、范围、逐镜修订"
     },
@@ -459,7 +467,7 @@
     },
     {
       "path": "src/workbench/ai/v4/AgentPanelV4AutoMode*",
-      "reason": "Agent 审批档位（自动改 / 逐步确认）的界面"
+      "reason": "Agent 审批档位（请求批准 / 直接生成）的界面"
     },
     {
       "path": "src/workbench/ai/v4/agentPanelV4ModelRows*",
@@ -842,6 +850,43 @@
       "revisitBy": "2026-11-15"
     },
     {
+      "id": "model-call-boundary",
+      "capability": "「调一次模型」接 pi-ai 的 Nomi 边界：唯一调用入口（文本任务 / 编译器 / lane 一次性提问共用）、CJS→ESM 桥与有意图时预热、失败留证（去密钥）、远程图按出站授权本机取回",
+      "status": "justified",
+      "paths": [
+        "electron/agentLane/laneModelCall.mts",
+        "electron/shared/agentLane/modelCallPort.ts",
+        "src/workbench/api/textActionIntent.ts",
+        "electron/ai/modelCallBridge.ts",
+        "electron/ai/modelCallFetch.ts",
+        "electron/ai/modelImageInput.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "pi-ai 的 Models.streamSimple（一次调用本身：协议、SSE 解析、可打断重试都用它，不自写）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/models.d.ts:141"
+        },
+        {
+          "name": "pi-ai 的 provider 重试（retryProviderRequest，认 Retry-After、可打断）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/utils/provider-retry.js:75"
+        },
+        {
+          "name": "pi-ai 的错误展示格式 formatProviderError（\"<status>: <body>\"，只是展示串，没有结构化事实）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/utils/error-body.js:111"
+        },
+        {
+          "name": "pi-ai 的图片入参 ImageContent（只收 base64，不取 URL）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/types.d.ts:251"
+        },
+        {
+          "name": "pi-ai 的子路径导出（createModels / createProvider / InMemoryCredentialStore 只在入口 index 导出，冷装约 2s，无法按需只装用得到的部分）",
+          "source": "node_modules/@earendil-works/pi-ai/package.json"
+        }
+      ],
+      "whyNotIntegrated": "不是自写一份调用栈（调用、协议、重试全是 pi-ai 的），是 Nomi 独有约束的接入面：主进程是 CommonJS 而 pi 只发 ESM（桥）；凭据目录、出站授权（取图必须过 hardenedFetch 的每跳授权）、IPC 契约与按状态码分类的错误表是 Nomi 的（pi 只给展示串，日志不许带密钥）；pi 入口冷装约 2s，首个可见反馈的预算要求预热。",
+      "revisitWhen": "主进程改成 ESM（桥可删）；或 pi-ai 提供结构化的 HTTP 失败事实 / 按需的子路径导出（留证与预热可删）；或 pi 的图片入参接受 URL"
+    },
+    {
       "id": "lane-repeated-failure",
       "capability": "同一个工具连着撞同一堵墙的计数与止损",
       "status": "justified",
@@ -1087,35 +1132,12 @@
       "revisitWhen": "pi 的压缩提示词可按领域注入字段，或提供附件 / 默认模型的宿主原语时"
     },
     {
-      "id": "ai-sdk-text-stack",
-      "capability": "文本任务的第二台 LLM 调用栈（AI SDK ai@4）",
-      "status": "to-replace",
-      "plan": "docs/plan/2026-10-01-tech-stack-line-0.24.md",
-      "paths": [
-        "electron/ai/streamTextTask.ts",
-        "electron/ai/buildAiSdkModel.ts",
-        "electron/ai/vendorLanguageModel.ts",
-        "electron/ai/aiSdkVendorError.ts"
-      ],
-      "alternativesChecked": [
-        {
-          "name": "lane 已走的 pi-ai 单次调用（laneSingleShot：一次 provider 调用，无循环无会话）",
-          "source": "electron/agentLane/laneSingleShot.mts:1"
-        },
-        {
-          "name": "pi 九层对照问 3：文本任务改走 pi-ai，删掉 AI SDK 栈与 ai@4 钉死",
-          "source": "docs/research/2026-10-01-pi-coding-agent-reference-conformance/report.md"
-        }
-      ],
-      "whyNotIntegrated": "没有领域理由：这是历史上先接入的栈，lane 后来走了 pi-ai，于是出现两台调用栈。归 0.24「两台发动机收敛」（S4），也是 AI SDK 版本裁决（S5）的前置。",
-      "revisitWhen": "0.24 S4 开工时按 plan 迁移；迁完整体删除"
-    },
-    {
       "id": "telemetry-pipeline",
       "capability": "用量事件与 Agent 轨迹的出站管线：白名单事件、同意合同、发件箱、自建接收端",
       "status": "justified",
       "paths": [
         "electron/telemetry/",
+        "electron/shared/contracts/perfTelemetry.ts",
         "electron/settings/telemetryIpc.ts",
         "infra/feedback-worker/"
       ],
@@ -1127,6 +1149,10 @@
         {
           "name": "OpenTelemetry error.type 等通行字段（字段命名已对齐，未引入 SDK）",
           "source": "docs/plan/2026-10-01-generation-result-reasons.md"
+        },
+        {
+          "name": "浏览器标准 Event Timing（INP 同口径）与 Long Animation Frames：采集直接用，没有自写剖析器；分档表与告知范围版本是我们的领域约束",
+          "source": "src/workbench/observability/perfCollector.ts:1"
         }
       ],
       "whyNotIntegrated": "领域约束：对用户的承诺是「数据只去我们的端点」。第三方 SDK 的代价不是钱，是这句承诺无法自证——只要它在进程里，「不收别的」就只能靠对方文档。传输自建，白名单 / 同意合同 / 脱敏沿用仓库里已有的一套。",
@@ -1217,7 +1243,8 @@
         "electron/capabilityCore/mcpHostMigration.ts",
         "electron/capabilityCore/hostConfigWrite.ts",
         "electron/capabilityCore/mcpHostEntries.ts",
-        "electron/capabilityCore/mcpVerifyHttp.ts"
+        "electron/capabilityCore/mcpVerifyHttp.ts",
+        "electron/capabilityCore/mcpHttpListenState.ts"
       ],
       "alternativesChecked": [
         {
@@ -1243,6 +1270,10 @@
         {
           "name": "平台独占打开 / 文件锁：Node fs.constants 不暴露 UV_FS_O_EXLOCK（本机 Node 22 只有 UV_FS_O_FILEMAP），flock/LockFileEx 要 fs-ext / os-lock 这类原生模块",
           "source": "https://nodejs.org/api/fs.html#fs-constants"
+        },
+        {
+          "name": "mcp-remote 0.15.1（2026-10-14，MIT；stdio-only 宿主接远端 Streamable HTTP 的社区标准代理，支持 --header / --header-file）——可替代转发口 mcpHttpBridge / mcpHttpForwarder；会话 404 重握手、同端口重启、错误文案区分未实测，评估见 docs/fixes/2026-10-18-mcp-bridge-direction-check.md",
+          "source": "https://github.com/geelen/mcp-remote"
         }
       ],
       "whyNotIntegrated": "第 2 段（2026-10-05）本机 HTTP 同样接 SDK：Streamable HTTP 服务端传输、Host / Origin 防重绑定用 @modelcontextprotocol/node，转发口的 HTTP 客户端传输用 @modelcontextprotocol/client；Nomi 只写「谁能连（签名身份头，与回环 RPC 同一套）、按会话分配协议实例、会话里的领域调用走回环 RPC 同一扇门」，以及转发桥里两件传输本身要的事（把协商出的协议版本告诉 HTTP 传输、Nomi 没开时给宿主回一句）。第 1 段：（2026-10-05）手写的握手 / 路由 / 取消 / 在飞账本 / stdio 分帧 / Ajv 校验器已删，协议由 SDK 承担。剩下的是领域：tools/list 投影（zod v3 契约 → 对外 schema 的扁平超集，mcpTransportSchemaFromZod.ts；SDK 只认 zod v4 且字节必变）、审批只有 tools/call 一个入口、未验证客户端的判据。两个 stdio 启动器本版不改行为（隐藏实例冷启还靠它，见 docs/plan/2026-10-09-mcp-host-migration.md），删旧启动器那一版再收口。第 3 段（2026-10-09）宿主配置迁移（mcpHostMigration.ts）与 HTTP 条目验证（mcpVerifyHttp.ts）：往别家宿主配置里写 Nomi 自己那一条、迁移前备份与恢复、按稳定地址存活判断拒绝，这是「Nomi 与外部 AI 宿主的接入」领域，没有现成库管别家的配置文件；握手验证本身用 SDK Client。宿主配置写盘门（hostConfigWrite.ts）的互斥锁复用仓库已有的租约设施 productionRun/productionRunLock（带 nonce 的所有权核验 + 续租），不接 proper-lockfile：写盘门是同步的（启动修复与 IPC 里一次完成），proper-lockfile 的续租靠异步定时器、同步写期间跑不了，也没有同步的所有权核验，满足不了「锁丢了必须在换名之前失败」；平台文件锁要原生模块（每个架构的 Electron ABI 重编）且 Linux 没有对应的独占打开。普通文件系统上对外部写者没有 compare-and-swap，提交协议（挂链接 + 事后核对 + 放回）是 Nomi 往别家文件里写这一领域自己的部分。",
@@ -1476,32 +1507,6 @@
       ],
       "whyNotIntegrated": "Esc 那颗是导演台 Esc 归属协议（DirectorEditor 见到 data-nomi-escape-layer 就让路）里「按需面板」这一层；工具切换那颗是创建模式 / 画路径模式 / gizmo 三者互斥的领域规则。都只有导演台用。",
       "revisitWhen": "导演台 Esc 归属改由统一的分层快捷键作用域承担时，删掉 useDismissOnEscape"
-    },
-    {
-      "id": "director3dbox-build-flag",
-      "capability": "3D-BOX 构建期功能开关：进程引导模块 + 共享层只读视图（工具注册表在导入期按它装配）",
-      "status": "justified",
-      "paths": [
-        "electron/shared/featureFlags/director3dbox.ts",
-        "electron/shared/featureFlags/director3dboxFace.ts"
-      ],
-      "alternativesChecked": [
-        {
-          "name": "OpenFeature JS SDK（运行时求值 + provider）",
-          "source": "https://openfeature.dev/docs/reference/technologies/client/web/"
-        },
-        {
-          "name": "Vite define 把构建变量烤进渲染端 bundle（已在用，只覆盖渲染端）",
-          "source": "vite.config.ts:197"
-        },
-        {
-          "name": "Electron app.isPackaged 区分打包与开发",
-          "source": "https://www.electronjs.org/docs/latest/api/app#appispackaged-readonly"
-        }
-      ],
-      "whyNotIntegrated": "领域约束：同一张 Agent 工具面在主进程、preload、pi 岛、MCP 进程、门岗与 vitest 六处于导入期装配成常量，开关必须在每个进程首个导入时就定死且彼此一致（打包只认烤进去的值）；运行时求值的 SDK 回答不了「导入那一刻是哪张面」，渲染端 define 也到不了主进程。两个文件合计不到 120 行，且随开关 2026-11-15 到期整体删除。",
-      "revisitWhen": "切换 PR（门槛达标后）同 commit 删开关与这两个文件；或出现第二个需要跨进程一致的构建开关时改接现成方案",
-      "revisitBy": "2026-11-15"
     },
     {
       "id": "director-shot-focus-and-patch-notices",
@@ -1957,6 +1962,30 @@
       "revisitWhen": "React Flow 提供跨 ViewportPortal 的统一 z 管理接口时复查"
     },
     {
+      "id": "whiteboard-canvas-document-adapter",
+      "capability": "单一 Leafer 场景与 Nomi 可编辑白板文档的领域适配：提交/恢复 offsets、assetTransforms、flips，并把截图和局部键盘动作接回同一 editor lease。",
+      "status": "justified",
+      "paths": [
+        "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "已有 Leafer UI/editor/export 2.1.7 继续拥有绘制、对象操作与导出；适配层调用现有 App/export API，不新造渲染器。",
+          "source": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx"
+        },
+        {
+          "name": "已有 Mantine useStateHistory 继续拥有撤销/重做；适配层只在动作完成时提交 Nomi SceneTransforms。",
+          "source": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx"
+        },
+        {
+          "name": "现有 captureSceneTransforms / restoreSceneTransforms 是唯一领域映射；React useRef/useImperativeHandle 管会话句柄，不新造 store、事件系统或通用序列化库。",
+          "source": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasTypes.ts"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：Nomi 项目文件、历史版本快照和素材引用只存 WhiteboardState，而 Leafer 运行时交互修改三种引擎映射。现成绘图库不知道 Nomi 版本身份、历史文档与节点 frame 的独立几何，必须有这一份薄适配把动作完成后的领域状态交给既有文档 writer；不替代 Leafer、Mantine 或 React Flow。只豁免这一精确文件，不扩大 hooks/领域目录范围。",
+      "revisitWhen": "Leafer 场景可直接无损导入/导出 Nomi WhiteboardState 且保持资产引用、分组/文本变换、版本恢复和节点 frame 独立时，删除这份映射适配；通用生命周期仍优先用框架。"
+    },
+    {
       "id": "agent-inline-reference-admission",
       "capability": "常驻 Agent 的句中媒体引用：把共享 PromptEditor 的原件缩略图与现有项目附件准入、会话寿命和 canonical claim 对齐",
       "status": "justified",
@@ -1979,6 +2008,80 @@
       ],
       "whyNotIntegrated": "领域约束：Nomi 的节点来源 resultId、项目原件 claim 与指令句中引用必须一一对应；删除最后一处引用才释放附件，项目/会话切换及在途准入不得把原件插入另一个草稿。编辑、@ 弹层、光标映射、文件导入和身份校验已全部复用现有 owner；该 hook 只连接这些 Nomi 领域身份与寿命，没有新增通用编辑器、上传器、选择器或参考 store。方案查证：docs/plan/2026-10-12-reference-entry.md。",
       "revisitWhen": "现有项目附件 owner 原生拥有句中引用的准入/删除/会话寿命接口时，把本 hook 的接线收回该 owner 并删除此登记；不得并存第二套引用身份。"
+    },
+    {
+      "id": "mcp-client-usage-status",
+      "capability": "AI 助手连接卡的「谁在用 Nomi」：主进程内存里按助手记工具调用与握手（账本）、把变化推给设置卡、卡上的订阅读取，以及工具展示名（中英）",
+      "status": "justified",
+      "plan": "docs/plan/2026-10-05-mcp-official-sdk.md",
+      "paths": [
+        "electron/capabilityCore/mcpUsageRegistry.ts",
+        "electron/capabilityCore/mcpUsageIpc.ts",
+        "electron/shared/mcpToolDisplayTitles.ts",
+        "src/ui/onboarding/useMcpUsage.ts",
+        "src/devlab/designLab/hostConfig/useLabLocale.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "官方 MCP SDK v2：Server 只给协议层事件（initialize / tools/call 回调），不记「哪个助手、哪个工具、几次、在途」，也没有跨传输的账本；而且三条传输里两条跑在别的进程，主进程内存只能由主进程自己记",
+          "source": "https://ts.sdk.modelcontextprotocol.io/v2/"
+        },
+        {
+          "name": "Electron ipcMain / webContents.send：平台自带的推送，已直接使用（不自写通道，只写节流）",
+          "source": "https://www.electronjs.org/docs/latest/api/web-contents#contentssendchannel-args"
+        },
+        {
+          "name": "相对时间（刚刚 / N 小时前）：平台自带 Intl.RelativeTimeFormat，已直接使用，没有自写格式化",
+          "source": "https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Intl/RelativeTimeFormat"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：「这个助手这次运行里用了哪个 Nomi 工具、几次、还有几个没跑完」是 Nomi 工具面的事实，只有 Nomi 的工具目录与回环 RPC 边界知道；通用的部分（推送、相对时间、协议）都已接现成能力，自写的只剩一本几十行的账与一张展示名表。",
+      "revisitWhen": "MCP SDK 提供跨传输的会话 / 调用观测钩子，或要把使用情况持久化成审计账时（审计走收据，不走这本账）"
+    },
+    {
+      "id": "outside-press-listener",
+      "capability": "「点外面就收起」的唯一听法：document 上 pointerdown 捕获阶段，调用方只给「算不算点在自己身上」与收起动作",
+      "status": "to-replace",
+      "plan": "docs/engineering/direction-checks/2026-10-23-outside-press-and-rich-text-controls.md",
+      "paths": [
+        "src/design/outsidePress.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "Floating UI useDismiss：outsidePressEvent 默认 pointerdown、capture.outsidePress 默认 true——本文件的听法就是照它的默认值写的；但它要求浮层由 useFloating 管开合并铺 getFloatingProps，我们只装了 @floating-ui/dom（AnchoredPopover 用它的 autoUpdate 定位），9 个消费者没有一个在 @floating-ui/react 的上下文里",
+          "source": "https://floating-ui.com/docs/useDismiss"
+        },
+        {
+          "name": "Radix DismissableLayer（Popover / DropdownMenu 自带 onPointerDownOutside）：只随 Radix 的浮层组件一起用，不单独暴露给自管开合的面板；我们的菜单族已经在用它（src/design/menu.tsx）",
+          "source": "https://www.radix-ui.com/primitives/docs/components/popover#content"
+        },
+        {
+          "name": "Mantine useClickOutside：默认事件 mousedown + touchstart、冒泡阶段，画布平移面（d3-zoom）在 mousedown 上 stopImmediatePropagation，正是本次 bug 的来源，删掉了它的用法",
+          "source": "https://mantine.dev/hooks/use-click-outside/"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：所有浮在画布上的面板都必须在任何画布手势处理器之前听到按下（画布平移面吞 mousedown），而现有 9 个面各自管开合、焦点与 overlayLayers 让位规则，不在 Floating UI React 的上下文里；本文件只有一个十几行的注册函数，听法与 useDismiss 默认值一致，等浮层整体换到 @floating-ui/react 时整体删除。",
+      "revisitWhen": "AnchoredPopover 换到 @floating-ui/react（useFloating + useDismiss）时删除本文件，其余消费者随之迁移"
+    },
+    {
+      "id": "rich-text-action-button",
+      "capability": "富文本格式钮的画法：设计系统 Tooltip 名字、aria-pressed + 设计系统 §5.5 Pressed 底色、mousedown 不抢编辑器焦点；创作区顶栏、选区浮条、画布文本节点格式条三个壳共用",
+      "status": "justified",
+      "paths": [
+        "src/workbench/common/RichTextActionButton.tsx"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "Tiptap UI Components（MarkButton 等）：用 Tiptap CLI 以模板形式拷进项目（npx @tiptap/cli add mark-button，2026-10-23 经 Context7 核对）、自带一套样式原语，不走我们的 token-only 设计系统；格式状态的订阅我们已直接用 Tiptap 官方 useEditorState",
+          "source": "https://tiptap.dev/docs/ui-components/components/mark-button"
+        },
+        {
+          "name": "Radix Tooltip：已直接使用（src/design/tooltip.tsx），本组件只把它和按钮拼在一起",
+          "source": "https://www.radix-ui.com/primitives/docs/components/tooltip"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：格式钮要同时服从 Nomi 设计系统的按下态与 Tooltip 规范，并在三处 Nomi 独有的编辑表面（创作文稿、选区生成浮条、画布文本节点）保住编辑器选区；通用部分（Tooltip、编辑器状态订阅）都已接现成能力，自写的只剩一颗按钮的组合。",
+      "revisitWhen": "设计系统出了通用的「带提示的开关图标钮」原语时，改用它并删掉本文件"
     }
   ]
 }

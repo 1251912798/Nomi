@@ -38,18 +38,18 @@ function draft(service: ReturnType<typeof makeService>, runId: string) {
 afterEach(() => { for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true }) })
 
 describe('Run 的信任档来自用户的权限档', () => {
-  it('用户选「全自动」→ 新 Run 就是 budget_only（不用任何人在请求体里自报）', () => {
+  it('用户选「直接生成」→ 新 Run 就是 budget_only（不用任何人在请求体里自报）', () => {
     const service = makeService()
-    writeAgentApprovalPolicy({ mode: 'project', spend: 'confirm' })
+    writeAgentApprovalPolicy({ mode: 'direct' })
     draft(service, 'run-full-auto')
     expect(service.readFull('project-1', 'run-full-auto')!.policy.trustLevel).toBe('budget_only')
   })
 
-  it('用户选「每步都问」→ 新 Run 是 confirm_all，且外部入口再要 budget_only 会被拒', () => {
+  it('用户选「请求批准」→ 新 Run 是 key_confirm，且外部入口再要 budget_only 会被拒', () => {
     const service = makeService()
-    writeAgentApprovalPolicy({ mode: 'step', spend: 'confirm' })
+    writeAgentApprovalPolicy({ mode: 'request' })
     draft(service, 'run-step')
-    expect(service.readFull('project-1', 'run-step')!.policy.trustLevel).toBe('confirm_all')
+    expect(service.readFull('project-1', 'run-step')!.policy.trustLevel).toBe('key_confirm')
     expect(() => service.createDraft({
       runId: 'run-step-2',
       projectId: 'project-1',

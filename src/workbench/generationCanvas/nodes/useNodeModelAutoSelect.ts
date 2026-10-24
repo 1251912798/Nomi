@@ -38,6 +38,7 @@ import {
   resolveDefaultModelOption,
 } from './defaultNodeModelSelection'
 import { readCandidateNodeIdentity } from '../agent/candidateNodeMeta'
+import { videoAspectSeedPatch } from './videoAspectSeed'
 import {
   candidateNoticeStillHolds,
   disconnectionNoticeStillHolds,
@@ -49,6 +50,23 @@ import {
   providerFailedValues,
   vendorLabelFor,
 } from './nodeRecoveryNotice'
+
+/**
+ * 档案命名空间 meta 的初始化（落到默认模式；已连着参考就顺手促到收得下的模式）。幂等：已是该档案 → null。
+ * 「选默认模型」和「选到一个有档案的模型」两处共用：默认模型那一笔写里就把档案一起初始化好，
+ * 不再先写模型、重渲、再写档案（2026-10-16 可疑点 i：新卡第一次挂载的级联写）。
+ */
+function initializedArchetypeMeta(
+  node: GenerationCanvasNode,
+  meta: Record<string, unknown>,
+  archetype: NonNullable<ReturnType<typeof resolveArchetypeForOption>>,
+): Record<string, unknown> | null {
+  const patch = ensureArchetypeNodeMeta(meta, archetype)
+  if (!patch) return null
+  const state = useGenerationCanvasStore.getState()
+  const promotedModeId = resolveModeForConnectedReferences({ ...node, meta: patch }, state.nodes, state.edges)
+  return promotedModeId ? applyArchetypeModeSwitch(patch, archetype, promotedModeId) : patch
+}
 
 type UseNodeModelAutoSelectArgs = {
   node: GenerationCanvasNode
@@ -161,21 +179,31 @@ export function useNodeModelAutoSelect({
     const preferred = resolveDefaultModelOption(modelOptions, getGenerationModelDefaults(), taskKind)
     const firstOption = preferred ?? chooseDefaultModelOption(modelOptions, isImageLike, isVideoLike)
     if (!firstOption?.value) return
-    const defaultPatch = defaultPatchForControls(buildModelControls(firstOption.meta, isImageLike, isVideoLike))
+    const firstControls = buildModelControls(firstOption.meta, isImageLike, isVideoLike)
+    const defaultPatch = defaultPatchForControls(firstControls)
+    // 视频比例的产品默认（首选 16:9、已连输入全竖 9:16）与模型默认值同一笔写进去——只问唯一出处。
+    // 以前它要等生成框挂载 effect 再「纠正」一次：多一笔写，而且那个 effect 连 Agent 写的比例也改。
+    const canvas = useGenerationCanvasStore.getState()
+    const aspectPatch = isVideoLike
+      ? videoAspectSeedPatch({ nodeId: node.id, nodes: canvas.nodes, edges: canvas.edges, controls: firstControls, meta: latestMeta, respectExplicit: false })
+      : {}
     const modelMeta = replaceCustomCapabilityContractMeta(latestMeta, firstOption.meta)
+    const defaultMeta = projectParameterReferenceSlots({
+      ...modelMeta,
+      modelKey: firstOption.modelKey || firstOption.value,
+      modelAlias: firstOption.modelAlias || firstOption.value,
+      modelVendor: firstOption.vendor || null,
+      vendor: firstOption.vendor || null,
+      modelLabel: firstOption.label,
+      ...defaultPatch,
+      ...aspectPatch,
+      ...(isVideoLike
+        ? { videoModel: firstOption.value, videoModelVendor: firstOption.vendor || null }
+        : { imageModel: firstOption.value, imageModelVendor: firstOption.vendor || null }),
+    }, firstOption.meta)
+    const firstArchetype = resolveArchetypeForOption(firstOption)
     writeDerivedMeta(node.id, {
-      meta: projectParameterReferenceSlots({
-        ...modelMeta,
-        modelKey: firstOption.modelKey || firstOption.value,
-        modelAlias: firstOption.modelAlias || firstOption.value,
-        modelVendor: firstOption.vendor || null,
-        vendor: firstOption.vendor || null,
-        modelLabel: firstOption.label,
-        ...defaultPatch,
-        ...(isVideoLike
-          ? { videoModel: firstOption.value, videoModelVendor: firstOption.vendor || null }
-          : { imageModel: firstOption.value, imageModelVendor: firstOption.vendor || null }),
-      }, firstOption.meta),
+      meta: (firstArchetype && initializedArchetypeMeta(latestNode, defaultMeta, firstArchetype)) || defaultMeta,
     })
   }, [defaultsReady, getLatestNode, isGenerationNode, isImageLike, isVideoLike, modelOptions, node.id, selectedModelValue, t, writeDerivedMeta])
 
@@ -349,14 +377,7 @@ export function useNodeModelAutoSelect({
   React.useEffect(() => {
     if (!isGenerationNode || !archetype) return
     const latestNode = getLatestNode()
-    const latestMeta = latestNode.meta || {}
-    const patch = ensureArchetypeNodeMeta(latestMeta, archetype)
-    if (!patch) return
-    const state = useGenerationCanvasStore.getState()
-    const promotedModeId = resolveModeForConnectedReferences({ ...latestNode, meta: patch }, state.nodes, state.edges)
-    writeDerivedMeta(
-      node.id,
-      { meta: promotedModeId ? applyArchetypeModeSwitch(patch, archetype, promotedModeId) : patch },
-    )
+    const initialized = initializedArchetypeMeta(latestNode, latestNode.meta || {}, archetype)
+    if (initialized) writeDerivedMeta(node.id, { meta: initialized })
   }, [archetype, getLatestNode, isGenerationNode, node.id, writeDerivedMeta])
 }

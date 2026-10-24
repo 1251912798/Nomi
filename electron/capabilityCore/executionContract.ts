@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import type { ResolvedModule } from "./moduleRegistry";
 import type { ParameterField } from "./moduleManifest";
 import { generationPlanningHintType } from "./generationPlanningParameters";
+import { draftFieldForMisplacedParameter } from "../shared/agentCapabilities/draftFieldAliases";
 import { hasMentions, numberPromptReferences, projectPromptForSend } from "../shared/storyboard/promptMentions";
 
 export const EXECUTION_CONTRACT_SCHEMA_VERSION = 1 as const;
@@ -64,6 +65,8 @@ export type ParameterRejection = {
   max?: number;
   /** 该模型声明过的变体 id；空数组 = 这个模型没有变体，不是「随便填」。 */
   allowedVariantIds?: string[];
+  /** 写错位置的字段：这个键其实是起草（draft）的顶层字段，该放到那个字段（`draftFieldAliases.ts`）。 */
+  useField?: string;
 };
 
 export type ExecutionContractV1 = {
@@ -102,6 +105,7 @@ function rejectionDetails(rejection: ParameterRejection): Record<string, string 
     ...(rejection.min !== undefined ? { min: rejection.min } : {}),
     ...(rejection.max !== undefined ? { max: rejection.max } : {}),
     ...(rejection.allowedVariantIds ? { allowedVariantIds: rejection.allowedVariantIds.join(",") || "(none)" } : {}),
+    ...(rejection.useField ? { useField: rejection.useField } : {}),
   };
 }
 
@@ -223,13 +227,24 @@ export { GENERATION_PLANNING_HINTS, GENERATION_PLANNING_HINT_KEYS } from "./gene
  * 外部宿主猜错一个键名，计划照样成功，用户拿到的是按默认值跑出来的片子。
  * 现在五种填错方式一律当场拒，并在 `ParameterRejection` 里带上模型下一次写对所需的全部事实。
  */
-function compileParameters(candidate: PlanCandidate, module: ResolvedModule): { parameters: Record<string, unknown>; warnings: string[] } {
+function compileParameters(candidate: PlanCandidate, module: ResolvedModule, allowedVariantIds?: readonly string[]): { parameters: Record<string, unknown>; warnings: string[] } {
   const parameters: Record<string, unknown> = {};
   const warnings: string[] = [];
   const allowedKeys = Object.keys(module.parameterSchema).sort();
   const model = `${module.providerId}/${module.modelId}`;
+  // 写成 null / undefined 的键：大模型惯用 null 表示「不设」（2026-10-18 真走查：deepseek-v4-pro 写了 `seed: null`，
+  // 起草放行、点「生成」才在这里被 `typeof null === "object"` 拒掉）。**只放宽空值这一件事**：
+  // 空值 = 没填，不进合同、留一条 warning 供追查；必填参数写空 = 缺必填（下面那一趟点名）；
+  // 字符串冒充数字、"false" 冒充布尔照旧按类型拒。
+  const unsetKeys = new Set<string>();
   for (const [key, value] of Object.entries(candidate.parameters)) {
     const field = module.parameterSchema[key];
+    // 键认不认识都一样：空值不带任何意图，丢掉不会让谁的话被吞（拼错键名 + 真值才是要拦的，下面照拒）。
+    if (value === null || value === undefined) {
+      unsetKeys.add(key);
+      warnings.push(`${model} 的参数 ${key} 为空，按不设处理`);
+      continue;
+    }
     // 选型意图键：Nomi 的推荐器读它，供应商请求里没有它。不进合同，也不算「填错」——
     // 但**类型照判**：垃圾值无声吞掉与静默丢弃是同一个毛病。
     const hintType = generationPlanningHintType(key);
@@ -252,11 +267,19 @@ function compileParameters(candidate: PlanCandidate, module: ResolvedModule): { 
     }
     if (!field) {
       const closestKey = closestParameterKey(key, allowedKeys);
+      // 键认得出是起草的顶层字段（variant → variantId……），而这个模型的参数表里本来没有它：直说它的家在哪，
+      // variantId 还把这个模型真实的变体词列出来。
+      const useField = draftFieldForMisplacedParameter(key);
+      const variants = useField === "variantId" && allowedVariantIds ? [...allowedVariantIds] : undefined;
       throw new ContractCompilationError(
         `${model} 不接受参数 ${key}。`
-        + (closestKey ? `最接近的合法键是 ${closestKey}。` : "")
+        + (useField
+          ? `${key} 不是这个模型的参数，是起草（draft）的顶层字段：请放到 draft 的 ${useField} 字段，不要放进 parameters。`
+            + (variants ? `该模型的变体：${variants.length ? variants.join("、") : "（这个模型没有变体，不用传 variantId）"}。` : "")
+          : "")
+        + (!useField && closestKey ? `最接近的合法键是 ${closestKey}。` : "")
         + `该模型此刻接受的参数键：${allowedKeys.length ? allowedKeys.join("、") : "（无）"}。`,
-        { code: "unknown_parameter", path: `parameters.${key}`, allowedKeys, ...(closestKey ? { closestKey } : {}) },
+        { code: "unknown_parameter", path: `parameters.${key}`, allowedKeys, ...(closestKey && !useField ? { closestKey } : {}), ...(useField ? { useField } : {}), ...(variants ? { allowedVariantIds: variants } : {}) },
       );
     }
     if (!parameterMatches(field.type, value)) {
@@ -291,7 +314,7 @@ function compileParameters(candidate: PlanCandidate, module: ResolvedModule): { 
   for (const [key, field] of Object.entries(module.parameterSchema)) {
     if (field.required && !(key in parameters)) {
       throw new ContractCompilationError(
-        `缺少必填参数 parameters.${key}（${model}）。该模型接受的参数键：${allowedKeys.join("、")}。`,
+        `缺少必填参数 parameters.${key}（${model}）${unsetKeys.has(key) ? "：你写的是空值（null），必填参数不能留空" : ""}。该模型接受的参数键：${allowedKeys.join("、")}。`,
         { code: "missing_required_parameter", path: `parameters.${key}`, allowedKeys },
       );
     }
@@ -356,7 +379,7 @@ export function admitPlanCandidate(
     throw new ContractCompilationError("参考素材数量超过当前模式支持的上限");
   }
   const effectiveModule = options.parameterSchema ? { ...module, parameterSchema: options.parameterSchema } : module;
-  return { module, ...compileParameters(candidate, effectiveModule) };
+  return { module, ...compileParameters(candidate, effectiveModule, options.allowedVariantIds) };
 }
 
 /**

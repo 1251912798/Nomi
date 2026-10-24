@@ -1,0 +1,160 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-17-mcp-host-reliability",
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-17",
+  "problem_type": "MCP 宿主连接线上的生命周期 / 投影 / 终态没有单一 owner：会话创建方不负责结束、失败原因被抹平、「价格未知」三处各写判据、拒绝没有终态、服务没起来只有日志",
+  "symptom": "真 Codex 宿主实测（C 线 10-16）：连续连接检查后真实工作会话失效且项目授权丢；Desktop 转发口在 Nomi 重启或会话被挤掉后一直说「请先打开 Nomi」；价格未知时 Nomi 确认卡显示 CNY0；用户拒绝后工具仍返回「需要确认」；HTTP 端口被占只见日志",
+  "direct_cause": "C-1 verifyHttpEntry 只 close() 本地传输、不发 HTTP DELETE，服务端会话上限 32 按 lastSeen 淘汰不分轻重；C-2 bridgeStdioToHttp 把所有上游错误翻成同一句且 404 后不重握手；C-3 appIntegrationAuthorities 把挑战里的占位 0 当已知金额投给渲染端；C-4 拒绝只是 confirmed:false，与「还没确认」不可区分；C-5 mcpHttpDesktop 起服务失败只 logWarn",
+  "class_root": "连接线上每个「谁拥有这件事」都没有唯一答案：会话的创建方不负责结束且服务端淘汰策略不区分探针与工作会话；上游失败原因在桥里被抹平成一句；预算预览的金额投影有三个各写各的实现；确认结果只有布尔，缺「被拒绝 / 超时」的终态；服务监听结果没有可被状态卡读取的记录",
+  "migration": "无数据迁移：新增字段（denial / declined）与新增验证结论（http-not-listening）对旧客户端是可忽略的增量；唯一有意变更的外部契约是「用户拒绝」的工具结果由 human_approval_required/confirm 改为 denied/reason/nextAction，mcpWireContract.test.ts 四种连接器同步更新",
+  "affected_population": [
+    "用 Codex / Claude Code / Cursor 等经 HTTP 直连的宿主用户，连接检查与真实工作会话并存",
+    "用 Claude Desktop 转发口的用户，Nomi 重启或会话被挤掉之后",
+    "价格目录没有报价的模型（现在走中转时是常态）上从任一入口发起生成的用户",
+    "被外部 Agent 要求确认生成 / 降档后选择拒绝的用户",
+    "默认端口被别的程序或另一份 Nomi 占用的用户"
+  ],
+  "scope_paths": [
+    "electron/capabilityCore/approvalReceipt.ts",
+    "electron/capabilityCore/appIntegrationAuthorities.ts",
+    "electron/capabilityCore/generationDispatcher.ts",
+    "electron/capabilityCore/runOwnedGenerationGateAuthority.ts",
+    "electron/capabilityCore/mcpVerifyHttp.ts",
+    "electron/capabilityCore/mcpHttpServer.ts",
+    "electron/capabilityCore/mcpHttpBridge.ts",
+    "electron/capabilityCore/mcpHttpDesktop.ts",
+    "electron/capabilityCore/mcpHttpListenState.ts",
+    "electron/capabilityCore/mcpGateConfirmation.ts",
+    "electron/capabilityCore/mcpSemanticGenerationFlow.ts",
+    "electron/capabilityCore/mcpTrustDowngrade.ts",
+    "electron/shared/mcpConnectionContract.ts",
+    "src/ui/onboarding/ConnectAssistantCard.tsx"
+  ],
+  "entry_points": [
+    "electron/capabilityCore/mcpVerify.ts verifyMcp → verifyHttpEntry（连接状态卡「测试连接」与打开面板的自动验证）",
+    "electron/capabilityCore/mcpHttpForwarder.ts bridgeStdioToHttp（Claude Desktop 转发口）",
+    "electron/capabilityCore/appIntegrationAuthorities.ts confirmGenerationInNomi（Nomi 内确认卡）与 generationDispatcher / runOwnedGenerationGateAuthority（MCP 表单）",
+    "electron/capabilityCore/mcpSemanticGenerationFlow.ts handleSemanticGenerationGate 与 mcpTrustDowngrade.ts handleTrustDowngrade（两个付费确认入口）"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://ts.sdk.modelcontextprotocol.io/v2/",
+      "checked_at": "2026-10-17",
+      "purpose": "官方 SDK v2 StreamableHTTPClientTransport：close() 只关本地传输，terminateSession() 才发 HTTP DELETE；initialize 会清掉旧 session id 重新取（node_modules/@modelcontextprotocol/client 2.3.0 index.mjs）"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#session-management",
+      "checked_at": "2026-10-17",
+      "purpose": "Streamable HTTP 会话管理：服务端对已作废的会话号回 404，客户端必须重新 initialize 开新会话；客户端不再需要会话时应发 DELETE"
+    }
+  ],
+  "invariants": [
+    "凡是 Nomi 自己开的 HTTP 探针会话，用完必须由创建方发 DELETE 结束；服务端遇到上限时先挤探针，真实工作会话最后才轮到",
+    "桥只在 404（受理之前被拒）时无条件重发；没拿到状态码的失败先 ping 探活，写入 / 生成类请求在状态不明时绝不重发",
+    "失败文案按原因区分：没开 / 会话失效 / 身份没过 / 可能已执行 / 其它，只有「连接被拒且 ping 不通」才说请先打开 Nomi",
+    "预算预览的金额只有一个出口 reservationMaximumForDisplay：已知部分为 0 且有未知项 ⇒ null（费用未知），任何界面 / 客户端都不会收到占位 0",
+    "确认结果带 denial（declined | timeout）时，工具结果是 denied 终态且 nextAction 为 stop / ask_user，不再要求确认",
+    "本进程 HTTP 服务明确没起来时，连接状态卡的实连结论是 http-not-listening 并带原因码，不去握手别的进程"
+  ],
+  "doors": [
+    { "kind": "write", "path": "electron/capabilityCore/mcpVerify.ts", "symbol": "verifyHttpEntry" },
+    { "kind": "write", "path": "electron/capabilityCore/mcpHttpForwarder.ts", "symbol": "bridgeStdioToHttp" },
+    { "kind": "write", "path": "electron/capabilityCore/mcpHttpDesktop.ts", "symbol": "startMcpHttpServer" },
+    { "kind": "read", "path": "electron/capabilityCore/appIntegrationAuthorities.ts", "symbol": "reservationPreview" },
+    { "kind": "read", "path": "electron/capabilityCore/approvalReceipt.ts", "symbol": "reservationPreview" },
+    { "kind": "read", "path": "electron/capabilityCore/generationDispatcher.ts", "symbol": "reservationPreview" },
+    { "kind": "write", "path": "electron/capabilityCore/mcpProtocol.ts", "symbol": "requestGenerationConfirmation" },
+    { "kind": "write", "path": "electron/capabilityCore/mcpTrustDowngrade.ts", "symbol": "requestGenerationConfirmation" }
+  ],
+  "door_reduction": {
+    "before": 8,
+    "after": 8,
+    "why_not": "每个入口各是一条独立的产品路径：连接状态卡的实连检查、Claude Desktop 转发口、桌面 HTTP 服务装配，是三条不同的连接面；金额投影三处读入口现在都经同一个 reservationMaximumForDisplay（没有可删的入口）；两个付费确认入口（生成门、降档）分别服务不同工具，现在共用 generationDenialOutcome 说终态。本次收的是各入口之后的判据，不是入口本身。"
+  },
+  "generality_proof": "每一类问题都在最早的共享边界上收口：会话由创建方（verifyHttpEntry）结束，且服务端淘汰策略（evictIfFull）按探针优先，所以任何忘了结束的新探针入口都挤不掉工作会话；桥的失败归类对所有上游请求生效，不区分工具；金额投影收成 approvalReceipt.reservationMaximumForDisplay，三个投影点（GUI、MCP 单镜、MCP 批）同用一个判据；拒绝终态在 mcpGateConfirmation 的确认流里产生、由两个付费入口共用的 generationDenialOutcome 翻成说明；服务起不来的原因由 mcpHttpDesktop 一处记录、验证一处读取。",
+  "shared_boundaries": [
+    { "path": "electron/capabilityCore/mcpVerifyHttp.ts", "symbol": "verifyHttpEntry", "responsibility": "探针会话的创建方负责结束它；本进程服务明确没起来时不握手而如实回 http-not-listening" },
+    { "path": "electron/capabilityCore/mcpHttpServer.ts", "symbol": "evictIfFull", "responsibility": "会话满时探针优先被淘汰，真实工作会话最后" },
+    { "path": "electron/capabilityCore/mcpHttpBridge.ts", "symbol": "bridgeStdioToHttp", "responsibility": "上游失败归类、404 重握手、状态不明时不重放写入" },
+    { "path": "electron/capabilityCore/approvalReceipt.ts", "symbol": "reservationMaximumForDisplay", "responsibility": "预算预览金额投给界面 / 客户端的唯一判据，未知不是 0" },
+    { "path": "electron/capabilityCore/mcpGateConfirmation.ts", "symbol": "generationDenialOutcome", "responsibility": "确认被拒绝 / 超时的终态说明，生成门与降档共用" },
+    { "path": "electron/capabilityCore/mcpHttpListenState.ts", "symbol": "recordMcpHttpStartFailure", "responsibility": "本进程 HTTP 服务起失败的原因记录，供连接状态卡读取" }
+  ],
+  "same_class_entry_points": [
+    { "path": "electron/capabilityCore/runOwnedGenerationGateAuthority.ts", "entry_point": "requestGenerationGate", "disposition": "enforced", "evidence": "原来用「未知镜数 === 镜数」判全未知，与另外两处不同；现在同样调 reservationMaximumForDisplay" },
+    { "path": "electron/capabilityCore/mcpGenerationTools.ts", "entry_point": "gate_request 的 maximumCost", "disposition": "not-affected", "evidence": "它从每镜的 price.known 直接算 null / 小计，不经挑战里的占位 0；源头已是类型 number | null" },
+    { "path": "electron/capabilityCore/mcpTrustDowngrade.ts", "entry_point": "handleTrustDowngrade", "disposition": "enforced", "evidence": "降档确认被拒绝同样用 generationDenialOutcome，mcpGenerationDenial.test.ts 覆盖" },
+    { "path": "electron/capabilityCore/mcpVerify.ts", "entry_point": "verifyMcp 的转发口分支", "disposition": "enforced", "evidence": "转发口条目同样走 verifyHttpEntry（mcpVerify.ts 两处调用），因此同样结束探针会话并反映服务没起来" }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "mcp-protocol 登记同线 29 次 fix；新增任何探针 / 检查入口、桥上新的失败场景、新的展示金额的入口、新的确认入口，都会撞同一类",
+    "same_class_scan": [
+      "rg reservationPreview|maximumCost electron src：投影点三处（appIntegrationAuthorities / generationDispatcher / runOwnedGenerationGateAuthority）已统一；mcpGenerationTools 从源头算 null；渲染端 capabilityApplyHandler 只认 number",
+      "rg requestGenerationConfirmation electron/capabilityCore：生成门与降档两处消费确认结果，均改用共享终态",
+      "rg StreamableHTTPClientTransport electron：mcpVerifyHttp（已修）、mcpHttpForwarder（bridge 的 closeBoth 本来就 terminateSession）"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/capabilityCore/approvalReceipt.ts",
+    "invariant": "金额投影只有 reservationMaximumForDisplay 一个出口；探针会话的结束与淘汰优先级在连接层；拒绝终态与服务状态各只有一个记录点",
+    "failure_mode": "未知价显示为「费用未知」，从不为 0；失效会话不能恢复时明说「会话已失效」；服务没起来时状态卡明说原因",
+    "exception_policy": "none",
+    "strategy": "把三处各写的判据收成一个函数，把会话生命周期的两端（创建方结束、服务端淘汰探针优先）都封死，把「被拒绝」做成确认流产生的类型字段由共享函数翻译，把服务状态做成单一记录点",
+    "artifacts": [
+      "electron/capabilityCore/approvalReceipt.ts",
+      "electron/capabilityCore/mcpHttpServer.ts",
+      "electron/capabilityCore/mcpHttpBridge.ts",
+      "electron/capabilityCore/mcpGateConfirmation.ts",
+      "electron/capabilityCore/mcpHttpListenState.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/capabilityCore/mcpHostReliability.test.ts",
+    "electron/capabilityCore/unknownPriceGateProjection.test.ts",
+    "src/workbench/capability/generationGateCapability.test.ts",
+    "electron/capabilityCore/mcpGenerationDenial.test.ts",
+    "electron/capabilityCore/mcpHttpPortConflict.test.ts",
+    "electron/capabilityCore/mcpWireContract.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/capabilityCore/mcpHostReliability.test.ts",
+    "electron/capabilityCore/unknownPriceGateProjection.test.ts",
+    "electron/capabilityCore/mcpGenerationDenial.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/capabilityCore/generationDispatcher.ts",
+      "electron/capabilityCore/runOwnedGenerationGateAuthority.ts"
+    ],
+    "rationale": "两处各写的金额投影判据（内联三元式）已在同一提交删除，改调共享函数；桥里「一律说请先打开 Nomi」的分支被分类取代"
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "rationale": "官方 SDK v2（client / server 2.3.0）已提供 terminateSession 与 initialize 重置会话；保留版本，不升级。桥的重握手是规范 404 语义的最小实现，等旧 stdio 启动器那一版收成薄转发口时再评估换成 SDK 中继。",
+    "current": "@modelcontextprotocol/client 2.3.0",
+    "target": "随 mcp-protocol 登记的 revisitWhen：第 3 段完成、旧启动器收成薄转发口时重估",
+    "exit_criteria": [
+      "旧 stdio 启动器删除后，转发口只剩 bridgeStdioToHttp 一条路径",
+      "Claude Desktop GUI 真机走查确认重握手在真实宿主下成立"
+    ]
+  },
+  "invariant_owner_layer": {
+    "layer": "electron/capabilityCore/mcpHttpServer.ts",
+    "tests": [
+      "electron/capabilityCore/mcpHostReliability.test.ts",
+      "electron/capabilityCore/mcpHttpServer.test.ts",
+      "electron/capabilityCore/mcpWireContract.test.ts"
+    ]
+  },
+  "residual_risks": [
+    "Claude Desktop GUI 与其真实的转发进程管理仍 unverified（只测了生产转发组件的同一份代码）",
+    "真实 Claude 模型驱动的工具执行、数小时 / 睡眠恢复仍 unverified",
+    "连接状态卡在端口冲突时按钮仍写「修复接入」（该动作不能解决端口占用）；改按钮需要新元素，已停下，待设计卡"
+  ]
+}

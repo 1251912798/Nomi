@@ -1,0 +1,26 @@
+{
+  "id": "inline-whiteboard-type",
+  "feature": "Inline whiteboard: typing into a text object (key to repainted board)",
+  "script": "tests/ux/whiteboard-perf.probe.mjs",
+  "args": [
+    "--scene",
+    "open-type",
+    "--repo-media"
+  ],
+  "scale": "2 nodes, 1 editor, one 12-character text object typed key by key; the repository real AI shot (640x360), not the 4K library clip; p95 of the 12 key latencies per run",
+  "metrics": [
+    "response"
+  ],
+  "budget": 100,
+  "budgetStatus": "proposed",
+  "budgetBasis": "Default response budget (<=100 ms, near-instant feedback) from docs/engineering/perf-scenarios.md; the primary number is the per-run p95 of 12 keys.",
+  "baseline": {
+    "median": 15.5,
+    "p95": 18.1,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-17",
+    "commit": "a7cdc4664",
+    "noisy": true
+  }
+}

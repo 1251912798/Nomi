@@ -1,0 +1,32 @@
+{
+  "name": "一次模型调用的传输留证：每次尝试一份事实、从实际请求收秘密、统一抹密",
+  "subject": "model-call.transport-evidence",
+  "lifecycle": "provider-observation",
+  "authority_kind": "gateway",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/ai/modelCallFetch.ts",
+    "symbol": "observeModelFetch"
+  },
+  "write_api": [
+    {
+      "path": "electron/ai/modelCallFetch.ts",
+      "symbol": "observeModelFetch"
+    },
+    {
+      "path": "electron/ai/modelCallFetch.ts",
+      "symbol": "modelCallTransport"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/ai/modelCallSecrets.integration.test.ts",
+  "allowed_consumers": [
+    "electron/textTaskRunner.ts",
+    "electron/providerAdapter/compiler.ts",
+    "electron/agentLane/laneDesktopRuntime.ts"
+  ],
+  "since": "2026-10-21",
+  "notes": "合同 docs/fixes/2026-10-21-model-call-attempt-facts-and-request-secrets.root-cause.json（独立验收 V-textmigrate F1 / F2）：每次尝试开头清掉上一次的事实，只给最后一次（lastAttempt）；秘密从每次尝试真正发出去的请求头 / 查询串收（复用 requestPipeline 的公开系统头规则，另排除 SDK 自己的系统头），redact 认 JSON 转义与 URL 编码回显。modelCallFailure 只接它给的 attempt 与 redact。 第 3 轮收敛（10-21）：日志只记主机 / 模型 / 状态码 / 耗时，不记正文；redact 是尽力而为，单一抹密主人转 G-redact-owner。2xx 后读响应体对端断了记 bodyBroken（N1）。"
+}

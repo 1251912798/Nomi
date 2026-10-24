@@ -135,15 +135,35 @@ describe("catalog precedence (S9)", () => {
 });
 
 
+// 文件符号链接在 Windows 上要 SeCreateSymbolicLinkPrivilege（开发者模式 / 管理员）；没有就报 EPERM。
+// 约定同 electron/ai/antigravityMedia.test.ts：只在 Windows 的 EPERM 上放过「建链接」这一步，别的错照抛；
+// 逃逸那几条断言单列一条用例，建不了链接时明说跳过原因，Linux CI 上照样真测。
+async function completeSkillPackage(): Promise<{ root: string; skillDir: string }> {
+  const root = await mkdtemp(join(tmpdir(), 'nomi-mcp-content-'));
+  const skillDir = join(root, 'complete');
+  await mkdir(join(skillDir, 'references'), { recursive: true });
+  await writeFile(join(skillDir, 'SKILL.md'), '---\nname: complete\ndescription: Complete package\n---\nRead references/full.md.');
+  await writeFile(join(skillDir, 'references/full.md'), 'Full reference body.');
+  await writeFile(join(root, 'outside.md'), 'Outside package.');
+  return { root, skillDir };
+}
+
+const SYMLINK_UNAVAILABLE = 'Windows 没有建文件符号链接的权限（EPERM，未开开发者模式）：符号链接逃逸只在能建链接的机器上真测，Linux CI 照测';
+
+/** 建文件符号链接；只有 Windows 上的 EPERM 返回 false，其余错误照抛。 */
+async function trySymlink(target: string, link: string): Promise<boolean> {
+  try {
+    await symlink(target, link);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EPERM' && process.platform === 'win32') return false;
+    throw error;
+  }
+}
+
 describe('MCP complete skill content', () => {
   it('keeps references discoverable and hash-bound, with visibility and path checks', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nomi-mcp-content-'));
-    const skillDir = join(root, 'complete');
-    await mkdir(join(skillDir, 'references'), { recursive: true });
-    await writeFile(join(skillDir, 'SKILL.md'), '---\nname: complete\ndescription: Complete package\n---\nRead references/full.md.');
-    await writeFile(join(skillDir, 'references/full.md'), 'Full reference body.');
-    await writeFile(join(root, 'outside.md'), 'Outside package.');
-    await symlink(join(root, 'outside.md'), join(skillDir, 'references/escape.md'));
+    const { root, skillDir } = await completeSkillPackage();
     try {
       const records = (await discoverSkillRecords([{ path: root, origin: 'user' }])).records;
       expect(records.map((item) => item.directoryName)).toEqual(['complete']);
@@ -152,30 +172,22 @@ describe('MCP complete skill content', () => {
       expect(readSkillContentForMcp('complete', 'local-authenticated', records, identity, 'references/full.md')?.body).toBe('Full reference body.');
       expect(listSkillSummariesForMcp('public', records)).toEqual([]);
       expect(readSkillContentForMcp('complete', 'public', records, identity, 'references/full.md')).toBeNull();
-      expect(readSkillContentForMcp('complete', 'local-authenticated', records, identity, 'references/escape.md')).toBeNull();
       expect(readSkillContentForMcp('complete', 'local-authenticated', records, identity, '../SKILL.md')).toBeNull();
       expect(readSkillContentForMcp('complete', 'local-authenticated', records, identity, 'references/missing.md')).toBeNull();
       await writeFile(join(skillDir, 'references/full.md'), 'Changed reference.');
       expect(readSkillContentForMcp('complete', 'local-authenticated', records, identity, 'references/full.md')).toBeNull();
     } finally { await rm(root, { recursive: true, force: true }); }
   });
+
+  it('never lists or serves a reference that is a symlink escaping the package', async (context) => {
+    const { root, skillDir } = await completeSkillPackage();
+    try {
+      if (!(await trySymlink(join(root, 'outside.md'), join(skillDir, 'references/escape.md')))) context.skip(SYMLINK_UNAVAILABLE);
+      const records = (await discoverSkillRecords([{ path: root, origin: 'user' }])).records;
+      const identity = { packageVersion: records[0].packageVersion, contentHash: records[0].contentHash };
+      expect(listSkillSummariesForMcp('local-authenticated', records)[0]).toMatchObject({ filePaths: ['SKILL.md', 'references/full.md'] });
+      expect(readSkillContentForMcp('complete', 'local-authenticated', records, identity, 'references/escape.md')).toBeNull();
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
 });
 
-describe('flag-bound Skill selectability (3D-BOX)', () => {
-  it('a Skill that requires the 3D-BOX flag is selectable only when the shared face is on', async () => {
-    const { installDirector3DBoxFace, resetDirector3DBoxFaceForTests } = await import('../shared/featureFlags/director3dboxFace')
-    const { isSkillSelectableInWorkbench } = await import('./skillStore')
-    const record = { name: 'director-3dbox', origin: 'builtin' as const, manifest: { version: '1.0.0', tools: [], requiredProviders: [], selectableInWorkbench: true, requiresFlag: 'director3dbox' as const } }
-    try {
-      resetDirector3DBoxFaceForTests()
-      installDirector3DBoxFace(false)
-      expect(isSkillSelectableInWorkbench(record)).toBe(false)
-      resetDirector3DBoxFaceForTests()
-      installDirector3DBoxFace(true)
-      expect(isSkillSelectableInWorkbench(record)).toBe(true)
-      expect(isSkillSelectableInWorkbench({ ...record, manifest: { ...record.manifest, requiresFlag: undefined } })).toBe(true)
-    } finally {
-      resetDirector3DBoxFaceForTests()
-    }
-  })
-})

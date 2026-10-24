@@ -1,0 +1,3389 @@
+{
+  "board": "ComposerB3",
+  "approvedOn": "2026-10-18",
+  "stage": "explored",
+  "visualReview": "用户 10-18 看 B3k / B3m 后确认 B3a–B3m，按协调推荐定稿（底栏 A、「生成」字钮、优化钮保留 N 标、数量只在模型声明时显示、锁语义不变、粘贴图片和拖画布结果本轮不新增）。",
+  "sourceBoundary": "板源 = Claude Design 画布「Nomi 0.24 交互方案」第二组 B3a–B3m 十三格（source/ 下每格一个 .dc.html，canvas.json 为画布布局）。preview/ComposerB3.html 是把十三格按原宽展开成的静态拼页（亮暗两套展开，样式按格加前缀隔离），candidates 由 board-extract 的抽取函数在该拼页上抽出。画布里的 A1 / C3 组不在本板（Agent 标注与付费卡另有板）。",
+  "designIntent": "生成框 0.24：生成方式进参数条（默认参考，图片不选方式）；参考入口改 40×40 方块 + 缩略图一行；提示词引用用名字；底栏左模型 + 参数、右三钮 + 数量 + 生成钮。清单是实现合同：先清单、后实现；实现线要等 D 组付费卡、E 组复用宿主样张确认后再开。",
+  "decisions": [
+    {
+      "id": "D1",
+      "text": "数量语义按模型声明：数量钮只在模型声明数量类参数时显示；应用层多版本另列新增合同，不恢复旧注释。",
+      "appliesTo": [
+        "bar.quantity"
+      ],
+      "source": "用户 10-18 原话「按推荐走 但其实最好先给我画一下样张再做」（确认 B3a–B3m 按推荐）"
+    },
+    {
+      "id": "D2",
+      "text": "底栏选 A（左模型 + 参数，右三个提示词钮 + 分隔 + 数量 + 生成钮）；生成钮用「生成」字钮；优化钮保留 N 标。",
+      "appliesTo": [
+        "bar.layout.a",
+        "bar.send",
+        "bar.send.text",
+        "bar.tool.optimize",
+        "bar.optimize.mark"
+      ],
+      "source": "用户 10-18 原话「按推荐走 但其实最好先给我画一下样张再做」（确认 B3a–B3m 按推荐）"
+    },
+    {
+      "id": "D3",
+      "text": "锁语义不变：锁定节点的范围按现状保留，不静默扩大或缩小。",
+      "appliesTo": [
+        "keep.host.locked"
+      ],
+      "source": "用户 10-18 原话「按推荐走 但其实最好先给我画一下样张再做」（确认 B3a–B3m 按推荐）"
+    },
+    {
+      "id": "D4",
+      "text": "粘贴图片和拖画布结果本轮不新增。",
+      "appliesTo": [
+        "boundary.not-added"
+      ],
+      "source": "用户 10-18 原话「按推荐走 但其实最好先给我画一下样张再做」（确认 B3a–B3m 按推荐）"
+    },
+    {
+      "id": "R1",
+      "text": "图标尺寸与线宽：待 F 组真实场景对比确认（R-icons 推荐的四个尺寸角色方案：角标 13 / 1.8、按钮 16 / 2、顶栏 18 / 1.8、空态 24 / 1.5）。用户 10-18 对图标调研说「按推荐走」，推荐要求先出一张真实场景对比再定，所以本条未定稿；样张里的 12 / 16 / 20 三档只是画布临时画法，不是合同。不变的部分：全部取自产品图标源（Tabler 与 Nomi 标记），不手画近似；优化钮保留 N 标。",
+      "appliesTo": [
+        "icons.size-and-stroke",
+        "ref.tool.canvas-pick",
+        "ref.tool.add",
+        "bar.tool.presets",
+        "bar.tool.translate",
+        "bar.tool.optimize",
+        "bar.send"
+      ],
+      "source": "用户 10-18「按推荐走 但其实最好先给我画一下样张再做」（对图标调研）；F 组真实场景对比待出",
+      "pending": true
+    },
+    {
+      "id": "R2",
+      "text": "模型菜单只列模型本身（28px 行、底部「隐藏模型」）；版本（标准 / Fast）进参数弹层第一组；菜单里不写任何说明。",
+      "appliesTo": [
+        "modelmenu.row",
+        "modelmenu.footer-hide",
+        "params.group.variant"
+      ],
+      "source": "用户 10-18 评论 B3j 模型菜单 → 协调定稿"
+    },
+    {
+      "id": "R3",
+      "text": "生成框里不放彩色提示条；有后果且一眼可见的说明只作参考行尾小字（--nomi-ink60 + 文字链接）。",
+      "appliesTo": [
+        "ref.tail.ambiguity-hint",
+        "ref.tail.unused-note",
+        "ref.tail.unsupported-note",
+        "keep.params.channel-guidance"
+      ],
+      "source": "用户 10-18 评论 B3j 橙色条 → 协调定稿"
+    },
+    {
+      "id": "R4",
+      "text": "换模型不加说明：状态靠界面本身变化交代，不出「换回原模型」。",
+      "appliesTo": [
+        "swap.after"
+      ],
+      "source": "用户 10-18 评论 B3j → 协调定稿"
+    },
+    {
+      "id": "R5",
+      "text": "发送按钮保持现在的样子，不带任何数字角标，生成框内不出现与花费有关的字样（价格未知是常态）。",
+      "appliesTo": [
+        "bar.send"
+      ],
+      "source": "协调任务书 B3（样张规则 10）"
+    }
+  ],
+  "elements": [
+    {
+      "id": "node.card",
+      "label": "生成框外壳（按真实节点宽，圆角 10px，--nomi-shadow-md；单选才挂）",
+      "change": "restyle",
+      "candidates": [
+        "003-div",
+        "028-div",
+        "053-div",
+        "117-div",
+        "160-div",
+        "192-div",
+        "225-div",
+        "261-div",
+        "296-div",
+        "338-div",
+        "381-div",
+        "416-div"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "narrow",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "ref.tool.canvas-pick",
+      "label": "参考行 · 画布点选钮（40×40 浅底方块，IconPointer 20px，无虚线）",
+      "change": "restyle",
+      "candidates": [
+        "004-button-画布点选",
+        "005-svg",
+        "029-button-画布点选",
+        "030-svg",
+        "054-button-画布点选",
+        "055-svg",
+        "118-button-画布点选",
+        "119-svg",
+        "161-button-画布点选",
+        "162-svg",
+        "193-button-画布点选",
+        "194-svg",
+        "226-button-画布点选",
+        "227-svg",
+        "262-button-画布点选",
+        "263-svg",
+        "297-button-画布点选",
+        "298-svg",
+        "339-button-画布点选",
+        "340-svg",
+        "382-button-画布点选",
+        "383-svg",
+        "417-button-画布点选这个模型用不了",
+        "418-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "selected",
+        "disabled",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "「selected」= 点选进行中；disabled 见 B3i 模型不收参考图"
+    },
+    {
+      "id": "ref.tool.add",
+      "label": "参考行 · 「+」添加参考钮（40×40，点开菜单：上传 / 从素材库选）",
+      "change": "restyle",
+      "candidates": [
+        "006-button-添加参考上传或从素材库选",
+        "007-svg",
+        "031-button-添加参考上传或从素材库选",
+        "032-svg",
+        "056-button-添加参考上传或从素材库选",
+        "057-svg",
+        "120-button-添加参考上传或从素材库选",
+        "121-svg",
+        "163-button-添加参考上传或从素材库选",
+        "164-svg",
+        "195-button-添加参考上传或从素材库选",
+        "196-svg",
+        "228-button-添加参考上传或从素材库选",
+        "229-svg",
+        "264-button-添加参考上传或从素材库选",
+        "265-svg",
+        "299-button-添加参考上传或从素材库选",
+        "300-svg",
+        "341-button-添加参考上传或从素材库选",
+        "342-svg",
+        "384-button-添加参考上传或从素材库选",
+        "385-svg",
+        "419-button-添加参考这个模型用不了",
+        "420-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "selected",
+        "disabled",
+        "loading",
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "note": "「loading / error」= 上传中 / 上传失败，样张没画，按现状保留（REF-07）"
+    },
+    {
+      "id": "ref.thumb",
+      "label": "参考行 · 参考缩略图 40×40（平时无序号、无 ×、无连线角标；图 / 视频 / 音频）",
+      "change": "restyle",
+      "candidates": [
+        "122-svg-女主肖像画布节点来自连线",
+        "126-svg-海边小镇素材库",
+        "127-svg-树林上传",
+        "230-svg-海边清晨",
+        "231-svg-海边傍晚",
+        "386-svg-女主肖像",
+        "387-svg-海边小镇",
+        "388-svg-树林",
+        "421-svg-女主肖像不会发出去",
+        "422-svg-海边小镇不会发出去"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "loading",
+        "error",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "序号不再画在缩略图上；失效图、视频封面、音频波形、混合媒体计数样张没画，按现状保留（REF-14 / REF-15）"
+    },
+    {
+      "id": "ref.thumb.remove",
+      "label": "缩略图 · 悬停才出的 ×（来自连线的图，提示写「断开连线」）",
+      "change": "restyle",
+      "candidates": [
+        "123-button-断开连线",
+        "124-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "ref.thumb.tooltip",
+      "label": "缩略图 · 悬停小提示（名字 + 来源：画布节点 / 素材库 / 上传）",
+      "change": "new",
+      "candidates": [
+        "125-div-画布节点女主肖像点断开连"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "现状还有 450ms 参考图大预览（REF-13），样张没画；两者同屏的关系要实现线回协调定，不许丢大预览"
+    },
+    {
+      "id": "ref.count-label",
+      "label": "参考行 · 行尾小字「参考图 N 张」（12px，--nomi-ink60）",
+      "change": "new",
+      "candidates": [
+        "128-span-参考图3张",
+        "389-span-参考图3张"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "按媒体分类计数样张没画（REF-15）；总量满额态按现状保留（REF-17）"
+    },
+    {
+      "id": "ref.tail.ambiguity-hint",
+      "label": "参考行尾 · 歧义提示「要当首尾帧用？改成首尾帧 ×」（参考方式放 1–2 张、模型同时有参考与首帧能力才出；× 关掉后该节点不再提示）",
+      "change": "new",
+      "candidates": [
+        "232-span-参考图2张要当首尾帧用",
+        "233-button-改成首尾帧",
+        "234-button-不再提示",
+        "235-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "行尾小字 + 文字链接，不是彩色条（用户 10-18 规则：生成框里不放彩色提示条）"
+    },
+    {
+      "id": "ref.tail.unused-note",
+      "label": "参考行尾 · 小字「首尾帧用不到，切回参考还在」",
+      "change": "new",
+      "candidates": [
+        "274-span-首尾帧用不到切回参考还在"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "note": "状态靠界面本身变化（多出的图变淡）交代，这行是少数有后果且规律一眼可见的说明"
+    },
+    {
+      "id": "ref.tail.unsupported-note",
+      "label": "参考行尾 · 小字「这个模型用不上，不会发出去」（连线带来的图变淡）",
+      "change": "new",
+      "candidates": [
+        "423-span-参考图2张这个模型用不上"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "ref.disabled-reason",
+      "label": "模型不收参考图 · 灰化入口的悬停原因",
+      "change": "new",
+      "candidates": [
+        "424-div-这个模型只能用文字生成换"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "disabled",
+        "hover",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "ref.slot.first",
+      "label": "首尾帧方式 · 「首帧」格（40×40，名字在格下，顶边对齐）",
+      "change": "restyle",
+      "candidates": [
+        "165-svg-首帧海边小镇",
+        "166-span-首帧",
+        "197-svg-首帧海边小镇",
+        "198-span-首帧",
+        "266-svg-首帧海边清晨",
+        "267-span-首帧"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "empty",
+        "selected",
+        "hover",
+        "narrow",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "ref.slot.swap",
+      "label": "首尾帧方式 · 中间 ⇄ 对调钮（IconArrowsLeftRight）",
+      "change": "new",
+      "candidates": [
+        "167-button-对调首帧和尾帧",
+        "168-svg",
+        "199-button-对调首帧和尾帧",
+        "200-svg",
+        "268-button-对调首帧和尾帧",
+        "269-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "note": "新增行为：必须交换真实边 / 上传来源，不能只换图（BOUND-05）"
+    },
+    {
+      "id": "ref.slot.last",
+      "label": "首尾帧方式 · 「尾帧（可不填）」格",
+      "change": "restyle",
+      "candidates": [
+        "169-button-尾帧可不填点击添加",
+        "170-svg",
+        "171-span-尾帧可不填",
+        "201-button-尾帧可不填点击添加",
+        "202-svg",
+        "203-span-尾帧可不填",
+        "270-svg-尾帧海边傍晚",
+        "271-span-尾帧"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "empty",
+        "selected",
+        "hover",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "尾帧空则按首帧生成；点「画布点选」或「+」填进第一个空格"
+    },
+    {
+      "id": "ref.slot.unused",
+      "label": "首尾帧方式 · 「未用到」淡格（多出的参考，切回参考方式还在）",
+      "change": "new",
+      "candidates": [
+        "272-svg-树林暂时用不到",
+        "273-span-未用到"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "prompt.editor",
+      "label": "提示词编辑区（Tiptap；占位文案、正文；右上展开钮）",
+      "change": "restyle",
+      "candidates": [
+        "008-span-写下画面和镜头输入可以引",
+        "033-span-写下画面和镜头输入可以引",
+        "058-span-写下画面和镜头输入可以引",
+        "129-div-的人物走进树影按镜头缓慢",
+        "172-div-镜头缓慢推近薄雾散开海面",
+        "204-div-镜头缓慢推近薄雾散开海面",
+        "236-div-慢慢过渡到的暖光镜头缓慢",
+        "275-div-镜头缓慢推近海面从清晨的",
+        "301-span-写下想要的画面加了参考图",
+        "343-span-写下想要的画面加了参考图",
+        "390-div-让的人物站在背景树影按逆",
+        "425-div-清晨的海边小镇薄雾柔和的"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "empty",
+        "selected",
+        "disabled",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "长文本内滚、粘贴文字、撤销按现状保留；锁定 / 只读见 keep.host.locked / keep.host.readonly"
+    },
+    {
+      "id": "prompt.expand",
+      "label": "提示词区 · 右上「展开」钮",
+      "change": "restyle",
+      "candidates": [
+        "009-button-展开提示词",
+        "010-svg",
+        "034-button-展开提示词",
+        "035-svg",
+        "059-button-展开提示词",
+        "060-svg",
+        "136-button-展开提示词",
+        "137-svg",
+        "173-button-展开提示词",
+        "174-svg",
+        "205-button-展开提示词",
+        "206-svg",
+        "241-button-展开提示词",
+        "242-svg",
+        "276-button-展开提示词",
+        "277-svg",
+        "302-button-展开提示词",
+        "303-svg",
+        "344-button-展开提示词",
+        "345-svg",
+        "397-button-展开提示词",
+        "398-svg",
+        "426-button-展开提示词",
+        "427-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "note": "仅溢出才出，展开后正文最大 360px 内滚（PROMPT-03）"
+    },
+    {
+      "id": "prompt.ref-chip",
+      "label": "提示词里的引用小块（16px 小图 + 名字，最多 8 字，重名加「·2」）",
+      "change": "restyle",
+      "candidates": [
+        "130-span-女主肖像",
+        "131-svg",
+        "132-span-海边小镇",
+        "133-svg",
+        "134-span-树林",
+        "135-svg",
+        "237-span-海边清晨",
+        "238-svg",
+        "239-span-海边傍晚",
+        "240-svg",
+        "391-span-女主肖像",
+        "392-svg",
+        "393-span-海边小镇",
+        "394-svg",
+        "395-span-树林",
+        "396-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "selected",
+        "error",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "发给模型时按顺序对应第几张，名字只给人看；原子删除、重排同步按现状保留"
+    },
+    {
+      "id": "prompt.text-chip",
+      "label": "提示词下 · 「连入文字 · 名字」签 + 断开 ×",
+      "change": "restyle",
+      "candidates": [
+        "138-span-连入文字开场白",
+        "139-svg",
+        "140-button-断开连线",
+        "141-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "note": "与发送使用同一文本投影；悬停 / 聚焦出正文预览按现状保留（PROMPT-09）"
+    },
+    {
+      "id": "bar.container",
+      "label": "底栏容器（左：模型 + 参数；右：三个提示词钮 + 分隔线 + 数量 + 生成钮）",
+      "change": "new",
+      "candidates": [
+        "011-div",
+        "036-div",
+        "061-div",
+        "142-div",
+        "175-div",
+        "207-div",
+        "243-div",
+        "278-div",
+        "304-div",
+        "346-div",
+        "399-div",
+        "428-div"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "用户 10-18 定：底栏 A。参数条中英文都必须一行放下，不换行、不截断"
+    },
+    {
+      "id": "bar.model",
+      "label": "底栏 · 模型钮（只显示模型名；版本在参数弹层第一组）",
+      "change": "restyle",
+      "candidates": [
+        "012-button-Seedance20Fa",
+        "013-svg",
+        "037-button-Seedance20Fa",
+        "038-svg",
+        "062-button-Seedance20Fa",
+        "063-svg",
+        "143-button-Seedance20Fa",
+        "144-svg",
+        "176-button-Seedance20Fa",
+        "177-svg",
+        "208-button-Seedance20Fa",
+        "209-svg",
+        "244-button-Seedance20Fa",
+        "245-svg",
+        "279-button-Seedance20Fa",
+        "280-svg",
+        "305-button-GPTImage2",
+        "306-svg",
+        "347-button-GPTImage2",
+        "348-svg",
+        "400-button-GPTImage2",
+        "401-svg",
+        "429-button-Imagen4",
+        "430-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "selected",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "模型钮点开是 modelmenu；加载 / 无模型配置入口按现状保留（MODEL-04）"
+    },
+    {
+      "id": "bar.params",
+      "label": "底栏 · 参数摘要钮（第一项是生成方式，如「参考 · 16:9 · 720p · 5s」，点开参数弹层）",
+      "change": "restyle",
+      "candidates": [
+        "014-button-参考169720p5s",
+        "015-svg-有声",
+        "016-svg",
+        "039-button-参考169720p5s",
+        "040-svg-有声",
+        "041-svg",
+        "064-button-参考169720p5s",
+        "065-svg-有声",
+        "066-svg",
+        "145-button-参考169720p5s",
+        "146-svg-有声",
+        "147-svg",
+        "178-button-首尾帧169720p5s",
+        "179-svg-有声",
+        "180-svg",
+        "210-button-首尾帧169720p5s",
+        "211-svg-有声",
+        "212-svg",
+        "246-button-参考169720p5s",
+        "247-svg-有声",
+        "248-svg",
+        "281-button-首尾帧169720p5s",
+        "282-svg-有声",
+        "283-svg",
+        "307-button-112K中",
+        "308-svg",
+        "349-button-112K中",
+        "350-svg",
+        "402-button-112K中",
+        "403-svg",
+        "431-button-112K",
+        "432-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "long-text",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "图片摘要没有生成方式；摘要精简不代表删长尾参数"
+    },
+    {
+      "id": "bar.tool.presets",
+      "label": "底栏右 · 提示词预设钮（IconFileText）",
+      "change": "restyle",
+      "candidates": [
+        "017-button-提示词预设",
+        "018-svg",
+        "042-button-提示词预设",
+        "043-svg",
+        "067-button-提示词预设",
+        "068-svg",
+        "148-button-提示词预设",
+        "149-svg",
+        "181-button-提示词预设",
+        "182-svg",
+        "213-button-提示词预设",
+        "214-svg",
+        "249-button-提示词预设",
+        "250-svg",
+        "284-button-提示词预设",
+        "285-svg",
+        "309-button-提示词预设",
+        "310-svg",
+        "351-button-提示词预设",
+        "352-svg",
+        "404-button-提示词预设",
+        "405-svg",
+        "433-button-提示词预设",
+        "434-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "selected",
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "bar.tool.translate",
+      "label": "底栏右 · 翻译提示词钮（IconLanguage；选中一段只翻那段）",
+      "change": "restyle",
+      "candidates": [
+        "019-button-翻译提示词中英互译选中一",
+        "020-svg",
+        "044-button-翻译提示词中英互译选中一",
+        "045-svg",
+        "069-button-翻译提示词中英互译选中一",
+        "070-svg",
+        "150-button-翻译提示词中英互译选中一",
+        "151-svg",
+        "183-button-翻译提示词中英互译选中一",
+        "184-svg",
+        "215-button-翻译提示词中英互译选中一",
+        "216-svg",
+        "251-button-翻译提示词中英互译选中一",
+        "252-svg",
+        "286-button-翻译提示词中英互译选中一",
+        "287-svg",
+        "311-button-翻译提示词中英互译选中一",
+        "312-svg",
+        "353-button-翻译提示词中英互译选中一",
+        "354-svg",
+        "406-button-翻译提示词中英互译选中一",
+        "407-svg",
+        "435-button-翻译提示词中英互译选中一",
+        "436-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "loading",
+        "error",
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "bar.tool.optimize",
+      "label": "底栏右 · 用 Nomi 优化提示词钮（保留 N 标）",
+      "change": "restyle",
+      "candidates": [
+        "021-button-用Nomi优化提示词",
+        "022-svg",
+        "046-button-用Nomi优化提示词",
+        "047-svg",
+        "071-button-用Nomi优化提示词",
+        "072-svg",
+        "152-button-用Nomi优化提示词",
+        "153-svg",
+        "185-button-用Nomi优化提示词",
+        "186-svg",
+        "217-button-用Nomi优化提示词",
+        "218-svg",
+        "253-button-用Nomi优化提示词",
+        "254-svg",
+        "288-button-用Nomi优化提示词",
+        "289-svg",
+        "313-button-用Nomi优化提示词",
+        "314-svg",
+        "355-button-用Nomi优化提示词",
+        "356-svg",
+        "408-button-用Nomi优化提示词",
+        "409-svg",
+        "437-button-用Nomi优化提示词",
+        "438-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "loading",
+        "error",
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "note": "用户 10-18：优化钮保留 N 标；R-icons 另议的图标统一不在本条"
+    },
+    {
+      "id": "bar.quantity",
+      "label": "底栏右 · 数量钮（紧挨生成钮左边；视频「N 个」/ 图片「N 张」）",
+      "change": "restyle",
+      "candidates": [
+        "023-button-1个",
+        "024-svg",
+        "048-button-1个",
+        "049-svg",
+        "073-button-1个",
+        "074-svg",
+        "154-button-1个",
+        "155-svg",
+        "187-button-1个",
+        "188-svg",
+        "219-button-1个",
+        "220-svg",
+        "255-button-1个",
+        "256-svg",
+        "290-button-1个",
+        "291-svg",
+        "315-button-1张",
+        "316-svg",
+        "357-button-1张",
+        "358-svg",
+        "410-button-1张",
+        "411-svg",
+        "439-button-1张",
+        "440-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "selected",
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "decision": "D1",
+      "note": "用户 10-18：数量只在模型声明时显示（PARAM-12）；应用层多版本另列新增合同，不按旧注释恢复"
+    },
+    {
+      "id": "bar.send",
+      "label": "底栏右 · 生成钮（拍板：「生成」字钮 pill，可带 ↑；B3a–l 里的 ↑ 圆钮是占位）",
+      "change": "restyle",
+      "candidates": [
+        "025-button-生成",
+        "026-svg",
+        "050-button-生成",
+        "051-svg",
+        "075-button-生成",
+        "076-svg",
+        "156-button-生成",
+        "157-svg",
+        "189-button-生成",
+        "190-svg",
+        "221-button-生成",
+        "222-svg",
+        "257-button-生成",
+        "258-svg",
+        "292-button-生成",
+        "293-svg",
+        "317-button-生成",
+        "318-svg",
+        "359-button-生成",
+        "360-svg",
+        "412-button-生成",
+        "413-svg",
+        "441-button-生成",
+        "442-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "loading",
+        "disabled",
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "decision": "D2",
+      "note": "一次提交、运行中 ···、禁止重复提交、aria「生成」按现状保留（RUN-01）"
+    },
+    {
+      "id": "params.popover",
+      "label": "参数弹层容器（上方优先、不足翻下；多组选后不关；Esc 内层先消费）",
+      "change": "restyle",
+      "candidates": [
+        "077-div",
+        "319-div",
+        "361-div"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "params.mode.limit-tip",
+      "label": "生成方式「参考」旁 ⓘ 的悬停上限提示（「此模型最多：9 张图、3 段视频、3 段音频」）",
+      "change": "new",
+      "candidates": [
+        "078-div-此模型最多9张图3段视频"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "long-text",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "params.group.variant",
+      "label": "弹层第一组 · 变体（标准 / Fast 等）",
+      "change": "new",
+      "candidates": [
+        "079-div-变体",
+        "080-div",
+        "081-button-标准",
+        "082-button-Fast"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "disabled",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "版本从模型菜单挪进这里；单 tier 固定值禁用；保存精确 ID（MODEL-03）"
+    },
+    {
+      "id": "params.group.mode",
+      "label": "弹层 · 生成方式分段（参考 / 首尾帧；模型只有首帧时叫「首帧」；只在有两种以上带图方式时出现；永远没有「文生视频」）",
+      "change": "new",
+      "candidates": [
+        "083-div-生成方式",
+        "084-div",
+        "085-button-参考",
+        "086-svg-参考的模型上限",
+        "087-button-首尾帧"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "note": "默认：有「参考」就参考，没有就首尾帧 / 首帧；图片节点没有这一组，没放图是文生图、放了图是参考 / 改图"
+    },
+    {
+      "id": "params.group.aspect",
+      "label": "弹层 · 比例组（比例图形、自动最前、16:9 / 9:16 优先）",
+      "change": "restyle",
+      "candidates": [
+        "088-div-比例",
+        "089-div",
+        "090-button-169",
+        "091-button-916",
+        "092-button-11",
+        "093-button-43",
+        "094-button-34",
+        "095-button-219",
+        "320-div-比例",
+        "321-div",
+        "322-button-11",
+        "323-button-169",
+        "324-button-916",
+        "325-button-43",
+        "326-button-34",
+        "362-div-比例",
+        "363-div",
+        "364-button-11",
+        "365-button-169",
+        "366-button-916",
+        "367-button-43",
+        "368-button-34"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "disabled",
+        "narrow",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "params.group.resolution",
+      "label": "弹层 · 清晰度组",
+      "change": "restyle",
+      "candidates": [
+        "096-div-清晰度",
+        "097-div",
+        "098-button-480p",
+        "099-button-720p",
+        "327-div-清晰度",
+        "328-div",
+        "329-button-1K",
+        "330-button-2K",
+        "331-button-4K",
+        "369-div-清晰度",
+        "370-div",
+        "371-button-1K",
+        "372-button-2K",
+        "373-button-4K"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "params.group.quality",
+      "label": "弹层 · 画质组（图片）",
+      "change": "restyle",
+      "candidates": [
+        "332-div-画质",
+        "333-div",
+        "334-button-低",
+        "335-button-中",
+        "336-button-高",
+        "374-div-画质",
+        "375-div",
+        "376-button-低",
+        "377-button-中",
+        "378-button-高"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "params.group.duration",
+      "label": "弹层 · 生成时长组（视频）",
+      "change": "restyle",
+      "candidates": [
+        "100-div-生成时长",
+        "101-div",
+        "102-button-4s",
+        "103-button-5s",
+        "104-button-6s",
+        "105-button-7s",
+        "106-button-8s",
+        "107-button-9s",
+        "108-button-10s",
+        "109-button-11s",
+        "110-button-12s"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "disabled",
+        "narrow",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "params.group.audio",
+      "label": "弹层 · 生成音频开关（布尔项，模型声明才有）",
+      "change": "restyle",
+      "candidates": [
+        "111-div-生成音频",
+        "112-div",
+        "113-button-开启",
+        "114-button-关闭"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "modelmenu.row",
+      "label": "模型菜单 · 模型行（28px，只列模型本身，不写说明；当前行带勾）",
+      "change": "restyle",
+      "candidates": [
+        "475-div-Seedance20",
+        "476-svg-当前模型",
+        "477-div-Wan27",
+        "478-div-Veo31"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "hover",
+        "disabled",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "用户 10-18：模型菜单只列模型、版本进弹层、换模型不加说明；失败项变淡沉底仍可选（MODEL-06）、同模型供应商直选（MODEL-02）样张没画，按现状保留"
+    },
+    {
+      "id": "modelmenu.footer-hide",
+      "label": "模型菜单 · 底部「隐藏模型」",
+      "change": "restyle",
+      "candidates": [
+        "479-div-隐藏模型",
+        "480-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "note": "「更多旧模型」折叠、隐藏数量脚注按现状保留（MODEL-05）"
+    },
+    {
+      "id": "swap.before",
+      "label": "B3j 换之前：首尾帧方式 + 模型菜单展开（状态演示）",
+      "change": "new",
+      "candidates": [
+        "445-div",
+        "446-button-画布点选",
+        "447-svg",
+        "448-button-添加参考上传或从素材库选",
+        "449-svg",
+        "450-svg-首帧海边清晨",
+        "451-span-首帧",
+        "452-button-对调首帧和尾帧",
+        "453-svg",
+        "454-svg-尾帧海边傍晚",
+        "455-span-尾帧",
+        "456-div-镜头缓慢推近海面从清晨的",
+        "457-button-展开提示词",
+        "458-svg",
+        "459-div",
+        "460-button-Seedance20Fa",
+        "461-svg",
+        "462-button-首尾帧169720p5s",
+        "463-svg-有声",
+        "464-svg",
+        "465-button-提示词预设",
+        "466-svg",
+        "467-button-翻译提示词中英互译选中一",
+        "468-svg",
+        "469-button-用Nomi优化提示词",
+        "470-svg",
+        "471-button-1个",
+        "472-svg",
+        "473-button-生成",
+        "474-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "note": "状态演示格，元素本体见 ref.slot.* / modelmenu.*"
+    },
+    {
+      "id": "swap.after",
+      "label": "B3j 换之后：换成没有首尾帧的模型，两格变成两张缩略图 + 「参考图 2 张」，不加任何说明（状态演示）",
+      "change": "new",
+      "candidates": [
+        "482-div",
+        "483-button-画布点选",
+        "484-svg",
+        "485-button-添加参考上传或从素材库选",
+        "486-svg",
+        "487-svg-海边清晨",
+        "488-svg-海边傍晚",
+        "489-span-参考图2张",
+        "490-div-镜头缓慢推近海面从清晨的",
+        "491-button-展开提示词",
+        "492-svg",
+        "493-div",
+        "494-button-Wan27",
+        "495-svg",
+        "496-button-参考169720p5s",
+        "497-svg",
+        "498-button-提示词预设",
+        "499-svg",
+        "500-button-翻译提示词中英互译选中一",
+        "501-svg",
+        "502-button-用Nomi优化提示词",
+        "503-svg",
+        "504-button-1个",
+        "505-svg",
+        "506-button-生成",
+        "507-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "note": "用户 10-18：换模型不加说明；换模型后新参数 / default 生效、清旧参数（MODEL-07）按现状保留"
+    },
+    {
+      "id": "compare.new-state",
+      "label": "B3k「新」：同一视频节点（首尾帧）的新设计（对比演示）",
+      "change": "new",
+      "candidates": [
+        "539-div",
+        "540-button-画布点选",
+        "541-svg",
+        "542-button-添加参考上传或从素材库选",
+        "543-svg",
+        "544-svg-首帧海边清晨",
+        "545-span-首帧",
+        "546-button-对调首帧和尾帧",
+        "547-svg",
+        "548-svg-尾帧海边傍晚",
+        "549-span-尾帧",
+        "550-div-镜头缓慢推近薄雾散开海面",
+        "551-button-展开提示词",
+        "552-svg",
+        "553-div",
+        "554-button-Seedance20Fa",
+        "555-svg",
+        "556-button-首尾帧169720p5s",
+        "557-svg-有声",
+        "558-svg",
+        "559-button-提示词预设",
+        "560-svg",
+        "561-button-翻译提示词中英互译选中一",
+        "562-svg",
+        "563-button-用Nomi优化提示词",
+        "564-svg",
+        "565-button-1个",
+        "566-svg",
+        "567-button-生成",
+        "568-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "note": "元素本体见 ref.* / bar.*"
+    },
+    {
+      "id": "en.reference-state",
+      "label": "B3l 英文：参考 3 张含连线（英文演示）",
+      "change": "new",
+      "candidates": [
+        "571-div",
+        "572-button-Pickoncanvas",
+        "573-svg",
+        "574-button-Addreference",
+        "575-svg",
+        "576-svg-Portraitcanv",
+        "577-button-Disconnect",
+        "578-svg",
+        "579-div-CanvasnodePo",
+        "580-svg-Seasidelibra",
+        "581-svg-Forestupload",
+        "582-span-3references",
+        "583-div-walksintosha",
+        "584-span-Portrait",
+        "585-svg",
+        "586-span-Seaside",
+        "587-svg",
+        "588-span-Forest",
+        "589-svg",
+        "590-button-Expandprompt",
+        "591-svg",
+        "592-span-Connectedtex",
+        "593-svg",
+        "594-button-Disconnect",
+        "595-svg",
+        "596-div",
+        "597-button-Seedance20Fa",
+        "598-svg",
+        "599-button-Reference169",
+        "600-svg",
+        "601-button-Promptpreset",
+        "602-svg",
+        "603-button-Translatepro",
+        "604-svg",
+        "605-button-Optimizeprom",
+        "606-svg",
+        "607-button-1",
+        "608-svg",
+        "609-button-Generate",
+        "610-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "zh-en",
+        "long-text",
+        "dark"
+      ],
+      "note": "英文参数条写 Reference · 16:9 · 720p · 5s，数量写 ×1"
+    },
+    {
+      "id": "en.first-last-state",
+      "label": "B3l 英文：首尾帧，尾帧可不填（英文演示）",
+      "change": "new",
+      "candidates": [
+        "612-div",
+        "613-button-Pickoncanvas",
+        "614-svg",
+        "615-button-Addreference",
+        "616-svg",
+        "617-svg-Firstframemo",
+        "618-span-First",
+        "619-button-Swapfirstand",
+        "620-svg",
+        "621-button-Lastframeopt",
+        "622-svg",
+        "623-span-Lastoptional",
+        "624-div-Slowpushinas",
+        "625-button-Expandprompt",
+        "626-svg",
+        "627-div",
+        "628-button-Seedance20Fa",
+        "629-svg",
+        "630-button-FirstLast169",
+        "631-svg",
+        "632-button-Promptpreset",
+        "633-svg",
+        "634-button-Translatepro",
+        "635-svg",
+        "636-button-Optimizeprom",
+        "637-svg",
+        "638-button-1",
+        "639-svg",
+        "640-button-Generate",
+        "641-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "zh-en",
+        "long-text",
+        "dark"
+      ],
+      "note": "英文首尾帧写 First / Last (optional)"
+    },
+    {
+      "id": "bar.layout.a",
+      "label": "B3m 底栏 A（拍板）：左模型 + 参数；右三个提示词钮 + 数量 + 生成钮",
+      "change": "new",
+      "candidates": [
+        "643-div",
+        "644-button-画布点选",
+        "645-svg",
+        "646-button-添加参考上传或从素材库选",
+        "647-svg",
+        "648-svg-海边清晨",
+        "649-svg-海边傍晚",
+        "650-span-参考图2张",
+        "651-div-镜头缓慢推近海面从清晨过",
+        "652-div",
+        "653-button-Seedance20Fa",
+        "654-svg",
+        "655-button-参考169720p5s",
+        "656-svg",
+        "657-button-提示词预设",
+        "658-svg",
+        "659-button-翻译提示词中英互译选中一",
+        "660-svg",
+        "661-button-用Nomi优化提示词",
+        "662-svg",
+        "663-button-1个",
+        "664-svg",
+        "665-button-生成",
+        "666-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "decision": "D2",
+      "note": "落在 bar.container 等元素上；这里是对比演示格"
+    },
+    {
+      "id": "bar.send.text",
+      "label": "B3m「生成」字钮（拍板）：带文字的 pill，不容易被当成「上传」",
+      "change": "new",
+      "candidates": [
+        "718-div",
+        "719-button-画布点选",
+        "720-svg",
+        "721-button-添加参考上传或从素材库选",
+        "722-svg",
+        "723-svg-海边清晨",
+        "724-svg-海边傍晚",
+        "725-span-参考图2张",
+        "726-div-镜头缓慢推近海面从清晨过",
+        "727-div",
+        "728-button-Seedance20Fa",
+        "729-svg",
+        "730-button-参考169720p5s",
+        "731-svg",
+        "732-button-提示词预设",
+        "733-svg",
+        "734-button-翻译提示词中英互译选中一",
+        "735-svg",
+        "736-button-用Nomi优化提示词",
+        "737-svg",
+        "738-button-1个",
+        "739-svg",
+        "740-button-生成",
+        "741-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "loading",
+        "disabled",
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "decision": "D2",
+      "note": "即 bar.send 的最终样子"
+    },
+    {
+      "id": "bar.optimize.mark",
+      "label": "B3m 优化钮 Nomi 标记（拍板保留）：品牌标记，实心",
+      "change": "restyle",
+      "candidates": [
+        "743-div",
+        "744-button-画布点选",
+        "745-svg",
+        "746-button-添加参考上传或从素材库选",
+        "747-svg",
+        "748-svg-海边清晨",
+        "749-svg-海边傍晚",
+        "750-span-参考图2张",
+        "751-div-镜头缓慢推近海面从清晨过",
+        "752-div",
+        "753-button-Seedance20Fa",
+        "754-svg",
+        "755-button-参考169720p5s",
+        "756-svg",
+        "757-button-提示词预设",
+        "758-svg",
+        "759-button-翻译提示词中英互译选中一",
+        "760-svg",
+        "761-button-用Nomi优化提示词",
+        "762-svg",
+        "763-button-1个",
+        "764-svg",
+        "765-button-生成",
+        "766-svg"
+      ],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "decision": "D2",
+      "note": "即 bar.tool.optimize 的最终图标"
+    },
+    {
+      "id": "bar.layout.b",
+      "label": "B3m 底栏 B（未选）：三个提示词钮留左边、只把数量挪到生成钮左边",
+      "change": "dropped",
+      "candidates": [
+        "668-div",
+        "669-button-画布点选",
+        "670-svg",
+        "671-button-添加参考上传或从素材库选",
+        "672-svg",
+        "673-svg-海边清晨",
+        "674-svg-海边傍晚",
+        "675-span-参考图2张",
+        "676-div-镜头缓慢推近海面从清晨过",
+        "677-div",
+        "678-button-Seedance20Fa",
+        "679-svg",
+        "680-button-参考169720p5s",
+        "681-svg",
+        "682-button-提示词预设",
+        "683-svg",
+        "684-button-翻译提示词中英互译选中一",
+        "685-svg",
+        "686-button-用Nomi优化提示词",
+        "687-svg",
+        "688-button-1个",
+        "689-svg",
+        "690-button-生成",
+        "691-svg"
+      ],
+      "status": "dropped",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "userDecision": {
+        "quote": "按推荐走 但其实最好先给我画一下样张再做",
+        "date": "2026-10-18"
+      }
+    },
+    {
+      "id": "bar.send.circle",
+      "label": "B3m「↑ 圆钮」（未选）：和现在一样的生成钮",
+      "change": "dropped",
+      "candidates": [
+        "693-div",
+        "694-button-画布点选",
+        "695-svg",
+        "696-button-添加参考上传或从素材库选",
+        "697-svg",
+        "698-svg-海边清晨",
+        "699-svg-海边傍晚",
+        "700-span-参考图2张",
+        "701-div-镜头缓慢推近海面从清晨过",
+        "702-div",
+        "703-button-Seedance20Fa",
+        "704-svg",
+        "705-button-参考169720p5s",
+        "706-svg",
+        "707-button-提示词预设",
+        "708-svg",
+        "709-button-翻译提示词中英互译选中一",
+        "710-svg",
+        "711-button-用Nomi优化提示词",
+        "712-svg",
+        "713-button-1个",
+        "714-svg",
+        "715-button-生成",
+        "716-svg"
+      ],
+      "status": "dropped",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "userDecision": {
+        "quote": "按推荐走 但其实最好先给我画一下样张再做",
+        "date": "2026-10-18"
+      },
+      "note": "B3a–l 里的 ↑ 圆钮只是样张占位"
+    },
+    {
+      "id": "bar.optimize.sparkles",
+      "label": "B3m 优化钮 Sparkles 线条版（未选）",
+      "change": "dropped",
+      "candidates": [
+        "768-div",
+        "769-button-画布点选",
+        "770-svg",
+        "771-button-添加参考上传或从素材库选",
+        "772-svg",
+        "773-svg-海边清晨",
+        "774-svg-海边傍晚",
+        "775-span-参考图2张",
+        "776-div-镜头缓慢推近海面从清晨过",
+        "777-div",
+        "778-button-Seedance20Fa",
+        "779-svg",
+        "780-button-参考169720p5s",
+        "781-svg",
+        "782-button-提示词预设",
+        "783-svg",
+        "784-button-翻译提示词中英互译选中一",
+        "785-svg",
+        "786-button-用Nomi优化提示词",
+        "787-svg",
+        "788-button-1个",
+        "789-svg",
+        "790-button-生成",
+        "791-svg"
+      ],
+      "status": "dropped",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "userDecision": {
+        "quote": "按推荐走 但其实最好先给我画一下样张再做",
+        "date": "2026-10-18"
+      }
+    },
+    {
+      "id": "legacy.mode-bar",
+      "label": "B3k「现在」：顶部生成方式栏（文生视频 / 图生视频 / 全能参考 / 首尾帧）",
+      "change": "dropped",
+      "candidates": [
+        "511-div-生成方式",
+        "512-button-文生视频",
+        "513-button-图生视频",
+        "514-button-全能参考",
+        "515-button-首尾帧"
+      ],
+      "status": "dropped",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "userDecision": {
+        "quote": "没啥问题；注意功能不能缺失，不能因为设计随意调整以前的东西（小细节如鼠标悬停预览、文字框放大），最后要做功能对比验收",
+        "date": "2026-10-18"
+      },
+      "note": "功能去处：params.group.mode（生成方式进参数条；无文生选项，没放图就是文生）"
+    },
+    {
+      "id": "legacy.mode-hint",
+      "label": "B3k「现在」：生成方式栏下的说明行（「首帧 + 尾帧，自动补间过渡」）",
+      "change": "dropped",
+      "candidates": [
+        "516-div-首帧尾帧自动补间过渡"
+      ],
+      "status": "dropped",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "userDecision": {
+        "quote": "没啥问题；注意功能不能缺失，不能因为设计随意调整以前的东西（小细节如鼠标悬停预览、文字框放大），最后要做功能对比验收",
+        "date": "2026-10-18"
+      },
+      "note": "原上限 / 限制说明转移到 params.mode.limit-tip（ⓘ）"
+    },
+    {
+      "id": "legacy.dashed-slots",
+      "label": "B3k「现在」：虚线框参考入口（56px，首帧 / 尾帧带标签）",
+      "change": "dropped",
+      "candidates": [
+        "517-svg",
+        "518-div-首帧",
+        "519-svg",
+        "520-div-尾帧",
+        "521-svg"
+      ],
+      "status": "dropped",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "userDecision": {
+        "quote": "没啥问题；注意功能不能缺失，不能因为设计随意调整以前的东西（小细节如鼠标悬停预览、文字框放大），最后要做功能对比验收",
+        "date": "2026-10-18"
+      },
+      "note": "功能去处：ref.tool.* / ref.thumb / ref.slot.*；新增 / 删除 / 拖放 / 选择器按现状保留"
+    },
+    {
+      "id": "legacy.composer-now",
+      "label": "B3k「现在」：旧生成框其余部分（外壳、提示词、底栏）",
+      "change": "dropped",
+      "candidates": [
+        "510-div",
+        "522-div-镜头缓慢推近薄雾散开海面",
+        "523-div",
+        "524-button-Seedance20Fa",
+        "525-svg",
+        "526-button-169720p5s",
+        "527-svg",
+        "528-button-提示词预设",
+        "529-svg",
+        "530-button-翻译提示词中英互译选中一",
+        "531-svg",
+        "532-button-用Nomi优化提示词",
+        "533-svg",
+        "534-button-1个",
+        "535-svg",
+        "536-button-生成",
+        "537-svg"
+      ],
+      "status": "dropped",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "userDecision": {
+        "quote": "没啥问题；注意功能不能缺失，不能因为设计随意调整以前的东西（小细节如鼠标悬停预览、文字框放大），最后要做功能对比验收",
+        "date": "2026-10-18"
+      },
+      "note": "对比参照；功能逐项去处见 functionCensus"
+    },
+    {
+      "id": "host.agent-paycard",
+      "label": "宿主：Agent 付费确认卡（卡内编辑生成内容；主行动归卡底，不复制右侧工具与发送钮）",
+      "change": "host-pending",
+      "candidates": [],
+      "status": "missing",
+      "owner": "host-pending：等 D / E 组样张确认；实现线 I-B3impl 之后接",
+      "hostPending": true,
+      "states": [
+        "empty",
+        "error",
+        "selected",
+        "disabled",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "等 D 组付费卡样张确认；含文本节点的确认卡（TEXT-07）"
+    },
+    {
+      "id": "host.storyboard-row",
+      "label": "宿主：分镜行内嵌生成框",
+      "change": "host-pending",
+      "candidates": [],
+      "status": "missing",
+      "owner": "host-pending：等 D / E 组样张确认；实现线 I-B3impl 之后接",
+      "hostPending": true,
+      "states": [
+        "empty",
+        "selected",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "等 E 组复用宿主样张确认；与列表详情同属 inline 宿主"
+    },
+    {
+      "id": "host.list-detail",
+      "label": "宿主：列表详情展开镜头的内嵌生成框（HOST-06）",
+      "change": "host-pending",
+      "candidates": [],
+      "status": "missing",
+      "owner": "host-pending：等 D / E 组样张确认；实现线 I-B3impl 之后接",
+      "hostPending": true,
+      "states": [
+        "empty",
+        "selected",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "等 E 组复用宿主样张确认；inline 宿主有卡壳 / 工具 / 生成钮，普通内容流，不随画布拖动隐藏"
+    },
+    {
+      "id": "host.error-report",
+      "label": "宿主：错误报告里复用的生成框 / 参考区",
+      "change": "host-pending",
+      "candidates": [],
+      "status": "missing",
+      "owner": "host-pending：等 D / E 组样张确认；实现线 I-B3impl 之后接",
+      "hostPending": true,
+      "states": [
+        "error",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "等 E 组复用宿主样张确认"
+    },
+    {
+      "id": "host.agent-input-ref-button",
+      "label": "宿主：Agent 输入框的参考钮（「加参考」与句中引用）",
+      "change": "host-pending",
+      "candidates": [],
+      "status": "missing",
+      "owner": "host-pending：等 D / E 组样张确认；实现线 I-B3impl 之后接",
+      "hostPending": true,
+      "states": [
+        "empty",
+        "hover",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "等 E 组样张确认；与 ReferenceEntry 清单的 agent.* 元素对齐，不在本板重画"
+    },
+    {
+      "id": "keep.canvas-pick.mode",
+      "label": "保留：画布点选进行态（可选卡描边、其余变灰、顶部 Esc 提示、选一次退出；Esc / 点空白取消）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "selected",
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.picker.surface",
+      "label": "保留：「+」菜单后的素材选择器（搜索、画布候选横滚、最近素材网格、浏览全部、loading / 空库 / 无匹配、拖文件进选择器、Esc / 外部关闭 / 焦点）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "hover",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "选择器内部样张没画（REF-04/05/06/10/19）；复用共享浮层，不被裁切"
+    },
+    {
+      "id": "keep.reference.import-feedback",
+      "label": "保留：上传中禁用、转圈、类型错误 role=alert 与重试入口",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "loading",
+        "error",
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.reference.drop-in",
+      "label": "保留：整卡拖放（桌面多文件、素材库 / 项目文件树 MIME 拖入）与逐文件反馈",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "hover",
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "note": "只有当前模式有数组槽时生效；不宣称单帧也支持整卡 drop"
+    },
+    {
+      "id": "keep.reference.hover-preview",
+      "label": "保留：参考图悬停放大（450ms，最大 320×320，右侧优先、翻左 / 夹视口，离开关闭）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "hover",
+        "narrow",
+        "dark"
+      ],
+      "note": "用户 10-18 点名「鼠标悬停预览」不许丢；样张只画名字 / 来源提示，两者关系待实现线回协调"
+    },
+    {
+      "id": "keep.reference.reorder",
+      "label": "保留：同媒体数组内拖动排序（跨媒体槽不重排）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "hover",
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "note": "连线 + 上传混合行的重排缺完整证据，实现线另验"
+    },
+    {
+      "id": "keep.reference.capacity",
+      "label": "保留：单类 / 总量上限与 pending 边占位（满额「+」隐藏、候选类型变淡、总满 role=status）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "disabled",
+        "error",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.reference.dedupe",
+      "label": "保留：重复参考去重（点选、上传、@ 三处结果一致，不占新序号）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "selected",
+        "zh-en"
+      ]
+    },
+    {
+      "id": "keep.prompt.at-mention",
+      "label": "保留：@ 三来源搜索（当前参考 / 画布 / 素材库）与真实引用落地、键盘 ↑↓ Enter Esc、空态、hover 高亮、容量 / 能力拒绝、跨项目复制",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "selected",
+        "hover",
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "note": "候选面板样张没画"
+    },
+    {
+      "id": "keep.prompt.tile-insert",
+      "label": "保留：点击数组参考缩略图在光标处插入引用（focus 后 Enter / Space）；悬停 × 不能吞点击",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "hover",
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.prompt.chip-preview",
+      "label": "保留：提示词引用块悬停 280ms 预览、双击大预览（现状核验：画布侧接收与裁切风险待实现线查实，不当已接通能力）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "hover",
+        "error",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.prompt.empty-suggest",
+      "label": "保留：空提示词时的推荐效果 pill、应用后可撤销、附带图落槽不支持时诚实反馈",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "error",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.prompt.save-selection",
+      "label": "保留：选中文字保存到提示词库（浮动入口 + 弹窗：改文字、选图片 / 视频类型、移除附带结果图；readOnly 不启用）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "selected",
+        "loading",
+        "error",
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "note": "重排 / portal 后须验入口仍能出现；不与右键菜单混为一项"
+    },
+    {
+      "id": "keep.presets.library",
+      "label": "保留：效果 / 提示词库弹层（全部 / 效果 / 公共库 / 我的、分类搜索、条目悬停 180ms 预览、加载失败重试、选后应用并关闭）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "hover",
+        "selected",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "不缩成固定三条推荐"
+    },
+    {
+      "id": "keep.bar.tool-tooltips",
+      "label": "保留：三个提示词钮的名称提示（120ms）、aria-label、禁用原因与运行状态点",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "hover",
+        "disabled",
+        "loading",
+        "zh-en"
+      ]
+    },
+    {
+      "id": "keep.optimize.popover",
+      "label": "保留：优化弹层（280px、想法输入、Cmd/Ctrl+Enter、流式预览、再点取消）与结果 diff（新增词高亮、点应用才写正文、重试、错误出口）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "note": "不自动覆盖正文"
+    },
+    {
+      "id": "keep.model.provider-pick",
+      "label": "保留：同模型供应商直选（模型行供应商 chip，最多三个 + N；参数里的供应商项；记忆所选供应商）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "selected",
+        "hover",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "B3j 模型菜单只列模型本身，供应商入口落在哪（菜单行 chip 或参数弹层）实现线对照真实 NomiSelect 后回协调"
+    },
+    {
+      "id": "keep.model.catalog-states",
+      "label": "保留：模型目录加载 skeleton / 确实为空时的「配置模型」入口 / 失败保留上一份",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "loading",
+        "empty",
+        "error",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.model.row-health",
+      "label": "保留：模型健康与接入证据提示（失败项变淡沉底仍可选、单供应商限定语；灰化不等于禁用）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "error",
+        "disabled",
+        "hover",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.model.menu-more",
+      "label": "保留：模型菜单「更多旧模型」折叠、当前旧项仍显示",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.params.interaction",
+      "label": "保留：多参数连续调整（选后不关）与单参数直出列表（两步、选后关、宽度贴内容），不恢复嵌套下拉",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.params.control-kinds",
+      "label": "保留：参数控件全种类（连续数值滑杆 + 方向键、结束时一次提交；自由文本与数字草稿；长枚举搜索、当前值保留、无匹配提示）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "selected",
+        "error",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "不能只保枚举"
+    },
+    {
+      "id": "keep.params.conditional",
+      "label": "保留：条件参数联动（切模式 / 变体收窄可用选项、存量无效值归一化），继续按档案 / 渠道派生，不硬编码单个模型示例",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "selected",
+        "zh-en"
+      ]
+    },
+    {
+      "id": "keep.params.popover-behavior",
+      "label": "保留：参数弹层定位（上方优先、不足翻下、打开后固定）、内部滚动、Esc 与外部关闭顺序、视口可达",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "narrow",
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.params.channel-guidance",
+      "label": "保留：当前渠道缺少档案模式时的指路（说明、可换家时给动作、× 关闭）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "note": "须改成参考行尾小字 + 文字链接，不用彩色提示条（用户 10-18 规则）；与换模型无关，勿混"
+    },
+    {
+      "id": "keep.params.custom-workflow",
+      "label": "保留：自定义 / ComfyUI 工作流模型的多媒体槽、自由参数（工作流参数 N 项）、不接 prompt 时移除正文与工具并说明",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "note": "不套固定两图结构"
+    },
+    {
+      "id": "keep.run.regenerate",
+      "label": "保留：已有结果再点生成 = 重新生成（确认后原地加版本，不复制节点）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "note": "样张没画已有结果态"
+    },
+    {
+      "id": "keep.run.upstream-first",
+      "label": "保留：依赖上游参考未生成时先备齐（依赖波次批量确认，先上游后本节点），不把所有缺 URL 都禁用",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "loading",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.run.disabled-reason",
+      "label": "保留：必需参考 / 跨槽伴随依赖不足时生成钮禁用 + 具体原因（与发送校验同源）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "disabled",
+        "error",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.run.production-guard",
+      "label": "保留：制作占用 / 导演预演过期或失败阻止生成与重渲（给原因，可恢复预演给刷新钮）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "disabled",
+        "error",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.host.canvas-mount",
+      "label": "保留：画布单选才挂生成框、多选不挂；拖节点 / 拖画布 / 开版本网格时 visibility 隐身不卸载，输入不丢",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "selected",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.host.locked",
+      "label": "保留：锁定节点的真实范围（通用 prompt 只读、推荐禁用、翻译 / 优化隐藏；参数 / 参考 / 生成未统一检查 locked）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "decision": "D3",
+      "note": "用户 10-18：锁语义不变；按现状记录，不静默扩大或缩小"
+    },
+    {
+      "id": "keep.host.readonly",
+      "label": "保留：只读宿主（prompt 不可编辑，模式 / 参考 / 底栏隐藏并显示只读；区分 readOnly 与 locked，保留写口防护）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.image.upscale",
+      "label": "保留：图片放大 / 超清（必须一张图、倍率 1/2/4× 或无倍率两型；缺图禁用，不误走文生）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "disabled",
+        "error",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.video.multimodal-ref",
+      "label": "保留：视频多模态参考（图 / 视频 / 音频分类型数组、音频伴随条件校验、仅音频错误）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "error",
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "note": "不能统称「参考图 N 张」"
+    },
+    {
+      "id": "keep.video.source-edit",
+      "label": "保留：视频编辑方式的 source_video 独立单槽（上传 / 选择 / 连线）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "note": "不被参考 / 首尾帧两项吞掉"
+    },
+    {
+      "id": "keep.audio.speech-transcribe",
+      "label": "保留：音频配音 / 转写模式栏、台词 + 音色 + 语速、转写单音频槽 + 语言；无图片 / 视频翻译优化",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "note": "音频暂保现有模式，勿套视频两分法"
+    },
+    {
+      "id": "keep.audio.music",
+      "label": "保留：音乐生成动态参数（纯音乐、自定义模式、风格、标题、歌词、时长）与上传续写 / 翻唱（必需原音频、continueAt）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "error",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.audio.sfx-voice-local",
+      "label": "保留：音效（时长 / 循环 / 强度）、精细语音（音色 ID / 音量 / 音调）、转写（说话人 / 时间戳）、本地音频槽",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.model3d",
+      "label": "保留：3D 生成框（文生 / 图生与仅图生模型、拓扑 / 面数 / 对称 / 重网格 / PBR / 纹理 / 风格参数、图生缺图原因；提示词库有、翻译优化无）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "disabled",
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "note": "不硬套比例和时长摘要"
+    },
+    {
+      "id": "keep.text.processing-box",
+      "label": "保留：文本节点独立加工框（宽匹配节点、NodeInputReferenceEntry、四个加工预设 + 阻塞原因、续写 / 改写 / 重写菜单、两行指令框 + 快捷发送 + IME）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "empty",
+        "disabled",
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "note": "不是通用媒体卡；不套媒体三个提示词工具"
+    },
+    {
+      "id": "keep.text.model-follow",
+      "label": "保留：文本模型默认跟随 Agent、可手选、可清绑定回跟随",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.text.state-matrix",
+      "label": "保留：文本自己的状态矩阵（预设模式模型禁用；locked 指令不可编辑；运行中可输入；发送禁用）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "disabled",
+        "loading",
+        "zh-en",
+        "dark"
+      ]
+    },
+    {
+      "id": "keep.a11y.contract",
+      "label": "保留：中英文案与无障碍合同（aria-label / expanded / pressed / status / alert；prompt 可访问名补全；全状态英文）",
+      "change": "keep-as-is",
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-B3impl（实现线待开，等 D 组付费卡 / E 组复用宿主样张确认后开）",
+      "retained": true,
+      "states": [
+        "zh-en",
+        "narrow",
+        "long-text"
+      ],
+      "note": "通用 PromptEditor 现状未传 ariaLabel，实现线补"
+    },
+    {
+      "id": "icons.size-and-stroke",
+      "label": "图标尺寸与线宽：待 F 组真实场景对比确认（R-icons 四个尺寸角色方案）",
+      "change": "pending",
+      "candidates": [],
+      "status": "missing",
+      "owner": "icons-pending：待 F 组真实场景对比确认后再定；实现线 I-B3impl 之后接",
+      "iconsPending": true,
+      "states": [
+        "hover",
+        "selected",
+        "disabled",
+        "dark"
+      ],
+      "note": "样张里的 12 / 16 / 20 三档是临时画法；定稿前实现线不许按它固化尺寸或线宽"
+    },
+    {
+      "id": "boundary.not-added",
+      "label": "本轮不新增：粘贴图片成为当前参考、直接拖画布节点 / 结果进参考框（现状没有接线）；普通媒体框 Cmd/Ctrl+Enter 生成、生成框专属右键菜单（现状同样没有，不虚构）",
+      "change": "deferred",
+      "candidates": [],
+      "status": "deferred",
+      "states": [
+        "zh-en"
+      ],
+      "decision": "D4",
+      "userDecision": {
+        "quote": "按推荐走 但其实最好先给我画一下样张再做",
+        "date": "2026-10-18"
+      },
+      "note": "粘贴图 / 拖结果是用户 10-18 明确的两项；BOUND-03/04 沿用同一「现状没有就不当已保留、不虚构」口径，协调确认"
+    }
+  ],
+  "decor": [
+    "001-h2-B3a视频空默认参考浅暗",
+    "002-div-视频生成框",
+    "027-div-视频生成框",
+    "052-h2-B3b视频参数弹层生成方",
+    "115-h2-B3c视频参考3张含连线",
+    "116-div-视频生成框",
+    "158-h2-B3d视频首尾帧尾帧可不",
+    "159-div-视频生成框",
+    "191-div-视频生成框",
+    "223-h2-B3e视频参考2张有歧义",
+    "224-div-视频生成框",
+    "259-h2-B3f视频3张参考切到首",
+    "260-div-视频生成框",
+    "294-h2-B3g图片空弹层没有生成",
+    "295-div-图片生成框",
+    "337-div-图片生成框",
+    "379-h2-B3h图片放3张图",
+    "380-div-图片生成框",
+    "414-h2-B3i图片模型不收参考图",
+    "415-div-图片生成框",
+    "443-h2-B3j换模型菜单不加说明",
+    "444-div-换之前",
+    "481-div-换之后",
+    "508-h2-B3k现在vs新",
+    "509-div-现在",
+    "538-div-新",
+    "569-h2-B3lEnglish",
+    "570-div-Videocompose",
+    "611-div-Videocompose",
+    "642-h2-B3m底栏两种排法",
+    "667-div-A左边只放模型和参数右边",
+    "692-div-B三个提示词按钮留在左边",
+    "717-div-圆钮和现在一样",
+    "742-div-生成字钮带文字不容易当成",
+    "767-div-Nomi标记品牌标记实心",
+    "792-div-Sparkles和旁边两"
+  ],
+  "functionCensus": [
+    {
+      "censusId": "REF-01",
+      "function": "画布点选参考入口",
+      "before": "56px 虚线方块；取可见主版本，视频海报不作为原始输入",
+      "after": "ref.tool.canvas-pick",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3a/c/d/g/h；r2 §1：40×40 浅底方块；保留候选过滤和原媒体来源，仅按 B3r2 改入口外观。"
+    },
+    {
+      "censusId": "REF-02",
+      "function": "画布点选进行态与取消",
+      "before": "可选卡描边、其余变灰；顶部提示 Esc，选一次退出",
+      "after": "keep.canvas-pick.mode",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.canvas-pick.mode；补点选态，保留可选描边、不可选变灰、Esc/空白取消。"
+    },
+    {
+      "censusId": "REF-03",
+      "function": "添加参考与本地上传",
+      "before": "56px 虚线 +；选择器文件 accept 按槽类型限定",
+      "after": "ref.tool.add",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3a/c/d/g/h；r2 §1：40×40 +，菜单含上传；保留类型过滤、导入落槽和取消行为。"
+    },
+    {
+      "censusId": "REF-04",
+      "function": "素材选择器搜索、画布结果与最近素材",
+      "before": "300px 浮层、搜索框、画布横滚行、最近素材五列网格",
+      "after": "keep.picker.surface",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.picker.surface；菜单后保留现有选择器、搜索、画布候选和最近素材分组。"
+    },
+    {
+      "censusId": "REF-05",
+      "function": "浏览全部素材",
+      "before": "文字按钮关闭 picker，打开素材面板",
+      "after": "keep.picker.surface",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.picker.surface；保留浏览全部，不能把最近网格当全量库。"
+    },
+    {
+      "censusId": "REF-06",
+      "function": "素材加载、空库与无匹配",
+      "before": "五格 skeleton；空库和无匹配两种文案",
+      "after": "keep.picker.surface",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.picker.surface；补 loading、empty、noMatches 三态。"
+    },
+    {
+      "censusId": "REF-07",
+      "function": "上传中禁用、上传与类型错误",
+      "before": "转圈，文件/素材项禁用；参考区 role=alert 显示错误",
+      "after": "keep.reference.import-feedback",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.reference.import-feedback；保留转圈、重复交互拦截、类型错误和重试入口。"
+    },
+    {
+      "censusId": "REF-08",
+      "function": "桌面多文件拖入生成框",
+      "before": "描边、半透明落区；逐个导入，按图/视频/音频分桶",
+      "after": "keep.reference.drop-in",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.reference.drop-in；保留数组模式整卡拖放与逐文件反馈；不要宣称单帧也支持整卡 drop。"
+    },
+    {
+      "censusId": "REF-09",
+      "function": "素材库/项目文件树拖入",
+      "before": "现有 workspace MIME 直接引用项目文件地址",
+      "after": "keep.reference.drop-in",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.reference.drop-in；保留文件 MIME 入口；跨项目复制走现有素材边界，不等同拖画布节点。"
+    },
+    {
+      "censusId": "REF-10",
+      "function": "拖文件到展开的选择器",
+      "before": "picker 截住 drop，导入当前槽，不冒泡新建画布节点",
+      "after": "keep.picker.surface",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.picker.surface；保留独立 drop 区和上传中拒绝重复 drop。"
+    },
+    {
+      "censusId": "REF-11",
+      "function": "连线参考回显及按来源删除",
+      "before": "边与上传共同解析；边来源断边，上传来源删数组",
+      "after": "ref.thumb.remove",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3c；r2 §2：平时干净，hover ×，边来源提示断开连线；保留边优先、源结果更新、删除分流，来源改为 hover 说明。"
+    },
+    {
+      "censusId": "REF-12",
+      "function": "删除图片参考同步清理提示词 chip",
+      "before": "清理指向该 URL 的标记；视频/音频没有同一清理分支",
+      "after": "ref.thumb.remove",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3c/h 只画删除外观；保留图片删除与 chip 清理；视频音频单独验，不宣称全媒体一致。"
+    },
+    {
+      "censusId": "REF-13",
+      "function": "参考图悬停放大",
+      "before": "body 浮层最大 320×320，右侧优先、翻左/夹视口，离开关闭；视频仅在 asset.thumbUrl 存在时放大；AssetReference 的 displayRef 未带 thumbUrl，不能保证该行视频也有大预览。",
+      "after": "keep.reference.hover-preview",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.reference.hover-preview；补 B3c/h 大图态，保留 450ms、离开关闭和视口避让。"
+    },
+    {
+      "censusId": "REF-14",
+      "function": "参考图失效占位",
+      "before": "图已失效；title 指明移除重加或重新生成源节点",
+      "after": "ref.thumb",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3 未画失效图；40px tile 保留失效原因及处理办法，不伪装成普通空格。"
+    },
+    {
+      "censusId": "REF-15",
+      "function": "视频和音频参考形态",
+      "before": "视频封面＋播放三角、音频波形；tile 不是点击播放控件",
+      "after": "ref.thumb",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3b 上限提到三种媒体，未画填充态；补混合媒体 tile 与分类型计数，不能统称参考图 N 张。"
+    },
+    {
+      "censusId": "REF-16",
+      "function": "同媒体数组内拖动排序",
+      "before": "目标描边；跨媒体槽不重排；handler 只写上传 meta 数组",
+      "after": "keep.reference.reorder",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.reference.reorder；保留上传同槽重排；另验连线＋上传混合行，当前没有完整重排边的证据。"
+    },
+    {
+      "censusId": "REF-17",
+      "function": "单类/总量上限与 pending 边占位",
+      "before": "满后 + 隐藏，候选类型变淡；最多 N 含连线，总满 role=status",
+      "after": "keep.reference.capacity",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.reference.capacity；保留分类型＋合计＋pending 计数，补满额操作反馈和无可选态。"
+    },
+    {
+      "censusId": "REF-18",
+      "function": "重复参考去重",
+      "before": "已有 URL 不追加、不占新序号",
+      "after": "keep.reference.dedupe",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.reference.dedupe；保持点选、上传、@ 的去重结果一致。"
+    },
+    {
+      "censusId": "REF-19",
+      "function": "选择器 Esc、外部关闭、焦点与避让",
+      "before": "AnchoredPopover portal/避让；FocusScope 管理焦点",
+      "after": "keep.picker.surface",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.picker.surface；复用共享浮层，保留关闭、Tab、还焦点和不被裁切。"
+    },
+    {
+      "censusId": "PROMPT-01",
+      "function": "文字输入、换行、粘贴与撤销",
+      "before": "Tiptap 区最少 72px，外部旧回声不覆盖正在输入的内容",
+      "after": "prompt.editor",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3a/c/g/h 基础提示词区；保留编辑器、文字粘贴、撤销；普通媒体框无快捷发送绑定。"
+    },
+    {
+      "censusId": "PROMPT-02",
+      "function": "长文本内滚与固定底栏",
+      "before": "overflow-auto，底栏不被正文顶出",
+      "after": "prompt.editor",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3 未画长提示词；补长文本格，保留最小高度、内部滚动、底栏可达和 Ctrl/Cmd+滚轮归画布。"
+    },
+    {
+      "censusId": "PROMPT-03",
+      "function": "提示词展开/收起",
+      "before": "仅溢出才给钮；展开取消卡高上限，正文最大 360px 内滚；panel 无此钮",
+      "after": "prompt.expand",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3a–m 未明确展开态；补 B3c/h 展开/收起；保留右上钮、aria-expanded 和会话态复位。"
+    },
+    {
+      "censusId": "PROMPT-04",
+      "function": "@ 三来源搜索并建立真实引用",
+      "before": "当前参考/画布/素材库；先连边或落槽，再插 chip；能力不符给原因",
+      "after": "keep.prompt.at-mention",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.prompt.at-mention；保留三来源搜索、真实引用落地、容量/能力拒绝与跨项目复制。"
+    },
+    {
+      "censusId": "PROMPT-05",
+      "function": "@ 键盘、空态与 hover 选中",
+      "before": "滚动候选列表，hover 改高亮，空态文字",
+      "after": "keep.prompt.at-mention",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.prompt.at-mention；补键盘验收；Esc 扩展只 return true，实际关闭须夹具复核。"
+    },
+    {
+      "censusId": "PROMPT-06",
+      "function": "点击参考 tile 插入引用",
+      "before": "在编辑器光标处插入媒体 chip；单帧 tile 未接同样 onClick",
+      "after": "keep.prompt.tile-insert",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.prompt.tile-insert；保留数组 tile 插入主路径；hover 删除钮不能吞点击。"
+    },
+    {
+      "censusId": "PROMPT-07",
+      "function": "内联 chip 展示、顺序同步和整块删除",
+      "before": "22px 图＋图片/视频/音频 N，URL 持久化，编号实时派生",
+      "after": "prompt.ref-chip",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3c/e/h/l r2 §3：16px 图＋最多八字名字，重名·2；按 r2 改显示名；发送仍按真实顺序，保留原子删除/重排同步。"
+    },
+    {
+      "censusId": "PROMPT-08",
+      "function": "内联 chip 悬停/双击预览边界",
+      "before": "组件有 160px 内嵌预览和全局事件；画布未找到事件接收，且预览有裁切风险",
+      "after": "keep.prompt.chip-preview",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.prompt.chip-preview；核验 hover 是否可见；双击大预览不得算现有已接通能力。"
+    },
+    {
+      "censusId": "PROMPT-09",
+      "function": "连入文本提示签及正文预览",
+      "before": "引用·文本名；浮层说明生成时追加正文并展示文字",
+      "after": "prompt.text-chip",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3 未画文本输入签；保留提示词下 ConnectedTextChips，与发送使用同一文本投影。"
+    },
+    {
+      "censusId": "PROMPT-10",
+      "function": "空提示词推荐与应用撤销",
+      "before": "推荐 pill；替换正文后可撤销，附带图也尝试落槽",
+      "after": "keep.prompt.empty-suggest",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.prompt.empty-suggest；保留快捷推荐、撤销及附图不支持时的诚实反馈。"
+    },
+    {
+      "censusId": "PROMPT-11",
+      "function": "效果/提示词库分类搜索与应用",
+      "before": "全部/效果/公共库/我的，分组列表，选后应用关闭",
+      "after": "keep.presets.library",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.presets.library；保留完整分类搜索能力，不缩成固定三条推荐。"
+    },
+    {
+      "censusId": "PROMPT-12",
+      "function": "库条目悬停预览及失败重试",
+      "before": "图/视频＋完整提示词；loading/alert/retry/noMatch",
+      "after": "keep.presets.library",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.presets.library；保留媒体预览、完整说明、重试和关闭还焦点。"
+    },
+    {
+      "censusId": "PROMPT-13",
+      "function": "工具名称提示与无障碍/禁用原因",
+      "before": "28px icon，120ms Tooltip，label 同时作 aria-label，运行有状态点",
+      "after": "keep.bar.tool-tooltips",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.bar.tool-tooltips；保留名称可发现性、aria-label、禁用原因与运行状态。"
+    },
+    {
+      "censusId": "MODEL-01",
+      "function": "模型选择、当前值和全名",
+      "before": "最大 150px 可省略，title 全名；菜单按模型身份折叠",
+      "after": "bar.model",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3 图片/视频格左下模型；保留身份＋供应商双键及全名 tooltip。"
+    },
+    {
+      "censusId": "MODEL-02",
+      "function": "同模型供应商直选与记忆",
+      "before": "多家 chip，单家短名；最多三个 chip＋N；记忆所选供应商",
+      "after": "keep.model.provider-pick",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.model.provider-pick；保留两种供应商入口及记忆，剩余供应商仍可达。"
+    },
+    {
+      "censusId": "MODEL-03",
+      "function": "变体/型号选择",
+      "before": "多变体可选；单 tier 固定值禁用；保存精确 ID",
+      "after": "params.group.variant",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3 未明确单独变体控件；保留模型与摘要之间的变体；窄宽/英文不能吞掉。"
+    },
+    {
+      "censusId": "MODEL-04",
+      "function": "模型加载与无模型配置入口",
+      "before": "skeleton 与配置模型按钮两种状态",
+      "after": "keep.model.catalog-states",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.model.catalog-states；保留加载/空区别和设置出口。"
+    },
+    {
+      "censusId": "MODEL-05",
+      "function": "更多旧模型、隐藏管理与找回",
+      "before": "旧项折叠，当前旧项仍显示；底部动作、隐藏数量脚注",
+      "after": "modelmenu.footer-hide",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3 未画模型菜单尾部；保留更多旧模型、管理可见性、找回提示。"
+    },
+    {
+      "censusId": "MODEL-06",
+      "function": "模型健康及接入证据提示",
+      "before": "失败项变淡沉底仍可选；单供应商附限定语",
+      "after": "keep.model.row-health",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.model.row-health；保留诚实限定语和手动选择，灰化不等于禁用。"
+    },
+    {
+      "censusId": "MODEL-07",
+      "function": "换模型更新参数与引用方式",
+      "before": "新参数/default 生效，清旧参数；连线可促到支持的模式",
+      "after": "swap.after",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3j：用途变化说明＋换回原模型；保留真实参数投影，新增说明和换回动作须实际生效。"
+    },
+    {
+      "censusId": "PARAM-01",
+      "function": "参数摘要与统一弹层",
+      "before": "图=比例/清晰度；视频=比例/时长；110px，展开时摘要冻结",
+      "after": "params.popover",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3b：视频首项方式，图片无方式；按 B3 扩充摘要，全部参数仍在同一面板；中英不截断另验。"
+    },
+    {
+      "censusId": "PARAM-02",
+      "function": "多参数连续调整与单参数直出",
+      "before": "多组选后不关；单组直出列表、选后关、宽度贴内容",
+      "after": "keep.params.interaction",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.params.interaction；保留单参数两步直出和多参数连改，不恢复嵌套下拉。"
+    },
+    {
+      "censusId": "PARAM-03",
+      "function": "比例图形、常用序和自动值",
+      "before": "比例图形；自动最前、16:9/9:16 优先；改变节点尺寸",
+      "after": "params.group.aspect",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3b 比例组；保留图形、排序、用户显式比例优先和自动本地化。"
+    },
+    {
+      "censusId": "PARAM-04",
+      "function": "连续数值滑杆和方向键",
+      "before": "当前值反馈，结束时一次提交",
+      "after": "keep.params.control-kinds",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.params.control-kinds；保留连续参数及结束提交语义，不能只保枚举。"
+    },
+    {
+      "censusId": "PARAM-05",
+      "function": "自由文本与数字草稿",
+      "before": "数字完整才写，失焦未完成回退；文字逐键写",
+      "after": "keep.params.control-kinds",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.params.control-kinds；保留数值草稿、范围、step 和自由文本。"
+    },
+    {
+      "censusId": "PARAM-06",
+      "function": "布尔开关",
+      "before": "左标题、右 Switch",
+      "after": "params.group.audio",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3b 有声组；其他种类未画；保留全部模型声明的布尔项。"
+    },
+    {
+      "censusId": "PARAM-07",
+      "function": "长枚举搜索、当前值及空态",
+      "before": "默认展开一列，当前选项即使不匹配仍保留",
+      "after": "keep.params.control-kinds",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.params.control-kinds；保留搜索列表、当前值和无匹配提示，不改为额外下拉。"
+    },
+    {
+      "censusId": "PARAM-08",
+      "function": "条件参数与模式/变体收窄",
+      "before": "只提供当前可用选项，存量无效值归一化",
+      "after": "keep.params.conditional",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.params.conditional；继续按档案/渠道派生，不把单个 Seedance 示例硬编码。"
+    },
+    {
+      "censusId": "PARAM-09",
+      "function": "参数弹层位置、Esc 和外部关闭",
+      "before": "上方优先，不足翻下；打开后固定；内层先消费 Esc",
+      "after": "keep.params.popover-behavior",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.params.popover-behavior；保留定位、内部滚动、关闭顺序和视口可达。"
+    },
+    {
+      "censusId": "PARAM-10",
+      "function": "渠道缺少模式的指路与关闭",
+      "before": "说明文字、可换家时给动作、× 关闭",
+      "after": "keep.params.channel-guidance",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.params.channel-guidance；保留现有渠道指路，在参考行下明确区分原因。"
+    },
+    {
+      "censusId": "PARAM-11",
+      "function": "自定义/ComfyUI 参数、多媒体槽与无 prompt",
+      "before": "按声明出多个槽；工作流参数 N 项；不接 prompt 时移除正文与工具并说明",
+      "after": "keep.params.custom-workflow",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.params.custom-workflow；补多槽、自由参数、无提示词三类，不套固定两图结构。"
+    },
+    {
+      "censusId": "PARAM-12",
+      "function": "数量参数与独立 ×N 控件的区别",
+      "before": "现底栏无独立 ×N；通用控件识别 output_count/batch_size/n 等",
+      "after": "bar.quantity",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3r2 §4 数量在生成钮左；B3m 比较排法；协调确认数量语义：推荐按模型真实声明保留；应用层多版本另列新增合同，不按旧注释恢复。"
+    },
+    {
+      "censusId": "RUN-01",
+      "function": "生成主按钮与运行态",
+      "before": "深色圆钮；运行 ···，禁止重复提交；aria 生成素材",
+      "after": "bar.send",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3a–l 发送钮；B3m ↑/生成文字比较；保留一次提交、运行状态及 aria；按钮文案待协调确认。"
+    },
+    {
+      "censusId": "RUN-02",
+      "function": "已生成结果重新生成",
+      "before": "title/aria 重新生成；确认后原地加版本，不复制节点",
+      "after": "keep.run.regenerate",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.run.regenerate；补重新生成格，保留确认和版本回填。"
+    },
+    {
+      "censusId": "RUN-03",
+      "function": "先备齐未生成上游参考",
+      "before": "先生成参考提示，依赖波次批量确认，先上游后本节点",
+      "after": "keep.run.upstream-first",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.run.upstream-first；保留依赖确认入口，不能把所有缺 URL 情形都禁用。"
+    },
+    {
+      "censusId": "RUN-04",
+      "function": "必需参考/跨槽依赖不足的禁用原因",
+      "before": "disabled 按钮，外层 title 给具体原因",
+      "after": "keep.run.disabled-reason",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.run.disabled-reason；补缺输入/缺伴随项状态，原因与发送校验同源。"
+    },
+    {
+      "censusId": "RUN-05",
+      "function": "制作占用与导演预演阻止生成/重渲",
+      "before": "生成禁用并给原因；可恢复预演给刷新钮",
+      "after": "keep.run.production-guard",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.run.production-guard；保留占用门槛、说明和可重渲入口。"
+    },
+    {
+      "censusId": "HOST-01",
+      "function": "画布单选出现与拖动保输入",
+      "before": "单选才挂，多选不挂；拖动 visibility 隐身不卸载",
+      "after": "keep.host.canvas-mount",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.host.canvas-mount；保留显示条件与拖动输入不丢。"
+    },
+    {
+      "censusId": "HOST-02",
+      "function": "付费卡宿主外壳和主行动",
+      "before": "panel 无双重描边/定位/阴影；无推荐翻译优化和 ↑，由卡底生成/不要接替",
+      "after": "host.agent-paycard",
+      "landing": "host-pending",
+      "afterNote": "保留：落在宿主 host.agent-paycard（host-pending，等 D / E 组样张确认）；补确认卡，保留主行动归宿主，不复制右侧工具和发送钮。"
+    },
+    {
+      "censusId": "HOST-03",
+      "function": "付费卡逐参数 chip 与长尾",
+      "before": "主参数可见；窄时整颗换行；长尾进更多；旧恒一行注释过时",
+      "after": "host.agent-paycard",
+      "landing": "host-pending",
+      "afterNote": "保留：落在宿主 host.agent-paycard（host-pending，等 D / E 组样张确认）；保留逐项 chips 和主参数不隐藏合同，补窄宽中英文。"
+    },
+    {
+      "censusId": "HOST-04",
+      "function": "付费卡草稿与画布隔离",
+      "before": "写宿主草稿；无 connect 权能时画布候选落卡内槽",
+      "after": "host.agent-paycard",
+      "landing": "host-pending",
+      "afterNote": "保留：落在宿主 host.agent-paycard（host-pending，等 D / E 组样张确认）；保留未确认不回写；删除现有参考含直接 store 断边调用，须专项核验，不能只信注释。"
+    },
+    {
+      "censusId": "HOST-05",
+      "function": "付费卡参数面板跟随滚动",
+      "before": "下拉进卡内，整幅参数面板放底栏下方",
+      "after": "host.agent-paycard",
+      "landing": "host-pending",
+      "afterNote": "保留：落在宿主 host.agent-paycard（host-pending，等 D / E 组样张确认）；保留卡内浮层和下方整幅面板，不能滚动后悬空。"
+    },
+    {
+      "censusId": "HOST-06",
+      "function": "列表内嵌宿主同排版",
+      "before": "inline 有卡壳/工具/↑，普通内容流，不随画布拖动隐藏",
+      "after": "host.list-detail",
+      "landing": "host-pending",
+      "afterNote": "保留：落在宿主 host.list-detail（host-pending，等 D / E 组样张确认）；补内嵌格，只改定位，保留画布功能与展开。"
+    },
+    {
+      "censusId": "HOST-07",
+      "function": "锁定节点的真实范围",
+      "before": "通用 prompt 只读，推荐禁用，翻译优化隐藏；参数/参考/生成未统一检查 locked",
+      "after": "keep.host.locked",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.host.locked；先确认锁合同；按现状记录，不静默扩大/缩小；冻结全部配置需协调裁决。"
+    },
+    {
+      "censusId": "HOST-08",
+      "function": "只读宿主",
+      "before": "prompt 不可编辑，模式/参考/底栏隐藏并显示只读；画布通常不挂框",
+      "after": "keep.host.readonly",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.host.readonly；区分 readOnly/locked，保留写口防护和说明。"
+    },
+    {
+      "censusId": "TOOL-01",
+      "function": "选中段/整段中英翻译与撤销",
+      "before": "自动中英方向，原地替换、保护引用；空文本禁用",
+      "after": "bar.tool.translate",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3r2 翻译图标，详细行为未画；保留选区/整段、引用保护和一步撤销，不加确认窗。"
+    },
+    {
+      "censusId": "TOOL-02",
+      "function": "翻译取消与错误",
+      "before": "状态点；再次点击 abort；缺模型、空结果、引用错、正文已改给反馈",
+      "after": "bar.tool.translate",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3 未画翻译中/失败；补进行态与失败；不覆盖等待期间的新输入。"
+    },
+    {
+      "censusId": "TOOL-03",
+      "function": "优化想法输入与流式预览",
+      "before": "280px 弹层、想法输入、流式文字；再点可取消",
+      "after": "keep.optimize.popover",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.optimize.popover；保留输入、快捷键、流式和取消，不自动覆盖正文。"
+    },
+    {
+      "censusId": "TOOL-04",
+      "function": "优化 diff、应用与重试",
+      "before": "新增词高亮，应用才写 prompt；重试重跑，错误在弹层",
+      "after": "keep.optimize.popover",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.optimize.popover；保留差异、明确应用、重试与错误出口。"
+    },
+    {
+      "censusId": "IMG-01",
+      "function": "文生图/参考改图模式与输入变化",
+      "before": "多模式图片有顶部 ModeBar，纯文生可经共享入口加引用",
+      "after": "params.group.mode",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3g/h：图片不选方式，无图文生/有图改图；按获批调整自动路由，不能只删模式栏而不改变实际路由。"
+    },
+    {
+      "censusId": "IMG-02",
+      "function": "模型完全不收参考图",
+      "before": "入口按潜在槽/渠道能力推导，现状不是完整 B3i 说明设计",
+      "after": "ref.disabled-reason",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3i：Imagen4，入口灰＋原因、连线图淡且不发；按 B3i 补诚实禁用与原因，保持真实能力边界。"
+    },
+    {
+      "censusId": "IMG-03",
+      "function": "图片单图/数组及来源",
+      "before": "现有单槽与数组两类；数组有编号和点击引用",
+      "after": "ref.thumb",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3h 统一 40px 行、名字引用；保留模型真实单图/多图上限，三张示意不是统一能力。"
+    },
+    {
+      "censusId": "IMG-04",
+      "function": "图片放大/超清必需输入与倍率",
+      "before": "Topaz 1/2/4×，Recraft 无倍率；缺图禁用",
+      "after": "keep.image.upscale",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.image.upscale；补放大格有/无倍率两型，不能无图误走文生。"
+    },
+    {
+      "censusId": "IMG-05",
+      "function": "图片全量参数与摘要",
+      "before": "比例、清晰度、画质、格式、种子等按档案实际声明",
+      "after": "params.popover",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3g/h 参数入口，图片无方式；保持全参数可达，摘要精简不代表删除长尾。"
+    },
+    {
+      "censusId": "VID-01",
+      "function": "视频方式、真名与 hint",
+      "before": "文生/首帧/首尾/全能参考等，下面 hint 说明能力",
+      "after": "params.group.mode",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3a/b：方式进参数，统一参考，无文生选项；按新命名默认规则改，原上限与限制转移 ⓘ。"
+    },
+    {
+      "censusId": "VID-02",
+      "function": "首帧/首尾帧输入与约束",
+      "before": "两个有标签的 56px 槽或单帧一槽，依模式校验",
+      "after": "ref.slot.first",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3d/l：40px 首/尾、尾可不填、中间 ⇄；保留槽来源；尾可选必须正确路由首帧模式，对调见边界项。"
+    },
+    {
+      "censusId": "VID-03",
+      "function": "切方式保参考与互斥发送",
+      "before": "现只改 modeId，参考值保留但不自动搬槽",
+      "after": "ref.slot.unused",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3f：前二张进首尾，多余变淡，切回仍在；补真实槽角色映射；不搬不清不能当已完成自动映射。"
+    },
+    {
+      "censusId": "VID-04",
+      "function": "视频多模态参考与伴随依赖",
+      "before": "合并行分类型数组，音频伴随条件按声明校验",
+      "after": "keep.video.multimodal-ref",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.video.multimodal-ref；补混合参考及仅音频错误，保留原视频/音频 URL。"
+    },
+    {
+      "censusId": "VID-05",
+      "function": "源视频编辑单槽",
+      "before": "source_video 独立单槽，上传/选择/连线解析",
+      "after": "keep.video.source-edit",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.video.source-edit；补视频编辑格，不被参考/首尾两项吞掉。"
+    },
+    {
+      "censusId": "VID-06",
+      "function": "视频比例自动联动与手选优先",
+      "before": "默认16:9，全竖9:16，手选后不自动改",
+      "after": "params.group.aspect",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3b 比例未展示联动；保留规则，验换模型和连线前后值。"
+    },
+    {
+      "censusId": "VID-07",
+      "function": "一两张参考用途歧义提示",
+      "before": "当前没有 B3 专用用途提示；渠道指路是另一项",
+      "after": "ref.tail.ambiguity-hint",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3e：要当首帧用？改方式、× 关闭本节点不再提示；作为新增验收，保留三个条件及节点级关闭记忆。"
+    },
+    {
+      "censusId": "AUD-01",
+      "function": "声音配音/转写模式",
+      "before": "配音生成/转写音频 ModeBar",
+      "after": "keep.audio.speech-transcribe",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.audio.speech-transcribe；暂保音频现有模式，补格后再定是否移参数，勿套视频两分法。"
+    },
+    {
+      "censusId": "AUD-02",
+      "function": "配音台词、音色和语速",
+      "before": "Tiptap 台词＋提示词库；无图片/视频翻译优化",
+      "after": "keep.audio.speech-transcribe",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.audio.speech-transcribe；保留台词、参数、按类型筛选的库与双语标签。"
+    },
+    {
+      "censusId": "AUD-03",
+      "function": "转写音频与隐藏台词框",
+      "before": "audio_ref max1；无 prompt/推荐，自动语言可选",
+      "after": "keep.audio.speech-transcribe",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.audio.speech-transcribe；保留音频单槽、无台词、语言及缺输入门槛。"
+    },
+    {
+      "censusId": "AUD-04",
+      "function": "音乐生成参数",
+      "before": "纯音乐、自定义模式、风格、标题、歌词、时长按档案声明",
+      "after": "keep.audio.music",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.audio.music；保留全部动态参数，至少验歌词、时长和纯音乐开关。"
+    },
+    {
+      "censusId": "AUD-05",
+      "function": "音频上传续写/翻唱",
+      "before": "必需原音频单槽；续写起点/风格/标题随模式变",
+      "after": "keep.audio.music",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.audio.music；保留独立能力、原音频和 continueAt，不统一成参考。"
+    },
+    {
+      "censusId": "AUD-06",
+      "function": "音效、精细语音和本地转写",
+      "before": "音效时长/循环/强度，TTS音色ID/音量/音调，Scribe说话人/时间戳，本地音频槽",
+      "after": "keep.audio.sfx-voice-local",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.audio.sfx-voice-local；音频验收覆盖配音、音乐、音效、转写、上传续写的动态字段。"
+    },
+    {
+      "censusId": "3D-01",
+      "function": "文生/图生3D与仅图生模型",
+      "before": "多模式显示栏；仅图生没有假切换，图槽上传/连接",
+      "after": "keep.model3d",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.model3d；保留模型差异，补文生、缺图、填图三态。"
+    },
+    {
+      "censusId": "3D-02",
+      "function": "3D动态参数",
+      "before": "拓扑、面数、对称、重网格、PBR、纹理、风格；输出/精度/生成类型",
+      "after": "keep.model3d",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.model3d；保留数值/枚举/开关，不硬套比例和时长摘要。"
+    },
+    {
+      "censusId": "3D-03",
+      "function": "3D生成门槛与工具范围",
+      "before": "共享生成钮，缺图准确原因；提示词库有，翻译优化无",
+      "after": "keep.model3d",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.model3d；保留图生3D缺参考文案和现有工具范围。"
+    },
+    {
+      "censusId": "TEXT-01",
+      "function": "文本独立加工框与参考入口",
+      "before": "宽匹配节点，NodeInputReferenceEntry，非通用媒体卡",
+      "after": "keep.text.processing-box",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.text.processing-box；保留独立加工框及文本输入合同。"
+    },
+    {
+      "censusId": "TEXT-02",
+      "function": "四个加工预设及阻塞原因",
+      "before": "一排按钮，缺图/正文禁用＋title；点击共同生成确认",
+      "after": "keep.text.processing-box",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.text.processing-box；保留四预设和原因，不替成媒体三个工具。"
+    },
+    {
+      "censusId": "TEXT-03",
+      "function": "续写/改写/重写菜单",
+      "before": "radio，选后聚焦指令框，placeholder 变化",
+      "after": "keep.text.processing-box",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.text.processing-box；保留三种写法，勿与媒体重新生成混淆。"
+    },
+    {
+      "censusId": "TEXT-04",
+      "function": "加工指令及快捷发送",
+      "before": "两行 textarea；Enter换行、IME不发；未选模式默认整篇重写",
+      "after": "keep.text.processing-box",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.text.processing-box；保留快捷键、IME、空指令/运行门槛，不推断媒体框也有。"
+    },
+    {
+      "censusId": "TEXT-05",
+      "function": "跟随 Agent 模型与手选",
+      "before": "默认跟随，可手选，也可清绑定回跟随",
+      "after": "keep.text.model-follow",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.text.model-follow；保留跟随选项，不能套媒体必选模型。"
+    },
+    {
+      "censusId": "TEXT-06",
+      "function": "文本锁定、运行与只读",
+      "before": "预设模式模型禁用；locked 指令不可编辑，运行中可输入；发送禁用",
+      "after": "keep.text.state-matrix",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.text.state-matrix；保留文本自己的状态矩阵，不照媒体部分锁定处理。"
+    },
+    {
+      "censusId": "TEXT-07",
+      "function": "文本 panel 分流",
+      "before": "走 Generic composer；prompt/模型参数，无媒体参考区",
+      "after": "host.agent-paycard",
+      "landing": "host-pending",
+      "afterNote": "保留：落在宿主 host.agent-paycard（host-pending，等 D / E 组样张确认）；补文本确认卡，不把画布预设塞进卡里。"
+    },
+    {
+      "censusId": "BOUND-01",
+      "function": "粘贴图片成为当前参考：未找到接线",
+      "before": "PromptEditor无image paste，画布paste避开编辑器并创建素材节点",
+      "after": "boundary.not-added",
+      "landing": "deferred",
+      "afterNote": "本轮不新增：落在 boundary.not-added（用户 10-18）；标为未接通候选，不能称已保留；要补需新增归当前槽合同。"
+    },
+    {
+      "censusId": "BOUND-02",
+      "function": "从画布拖节点/结果进参考框：未找到接线",
+      "before": "节点拖动属画布；结果 MIME 与 composer 接收的两类不同",
+      "after": "boundary.not-added",
+      "landing": "deferred",
+      "afterNote": "本轮不新增：落在 boundary.not-added（用户 10-18）；保留点选/连线；直接拖结果若要支持另列新增，勿等同素材拖入。"
+    },
+    {
+      "censusId": "BOUND-03",
+      "function": "普通媒体框 Cmd/Ctrl+Enter 生成：未绑定",
+      "before": "通用未传发送按键；文本加工/优化想法各有独立绑定",
+      "after": "boundary.not-added",
+      "landing": "deferred",
+      "afterNote": "本轮不新增：落在 boundary.not-added（用户 10-18）；不得从文本节点推断所有节点已有快捷发送。"
+    },
+    {
+      "censusId": "BOUND-04",
+      "function": "生成框专属右键菜单：未找到",
+      "before": "相关组件无 onContextMenu；原生编辑/外层菜单不等于专属菜单",
+      "after": "boundary.not-added",
+      "landing": "deferred",
+      "afterNote": "本轮不新增：落在 boundary.not-added（用户 10-18）；不虚构功能；实施检查原生编辑与画布菜单不互抢。"
+    },
+    {
+      "censusId": "BOUND-05",
+      "function": "首尾对调及优先填空：设计新增",
+      "before": "当前单槽选择取首个类型匹配槽，未按空槽过滤；未见交换 handler",
+      "after": "ref.slot.swap",
+      "landing": "drawn",
+      "afterNote": "样张已画：B3d/l ⇄，规则5要求第一个空格；新增验收必须交换真实边/上传来源、优先填空、尾可选，不能只换图片。"
+    },
+    {
+      "censusId": "BOUND-06",
+      "function": "中英文案与无障碍合同",
+      "before": "多数用 t()/翻译映射；通用 PromptEditor 调用未传 ariaLabel",
+      "after": "keep.a11y.contract",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.a11y.contract；保留现有 aria-label/expanded/pressed/status/alert；补全状态英文及 prompt 可访问名。"
+    },
+    {
+      "censusId": "PROMPT-14",
+      "function": "选中文字保存到提示词库",
+      "before": "弹窗可改文字、选图片/视频类型、移除附带结果图；保存/取消，保存中禁用，失败提示；readOnly 不启用",
+      "after": "keep.prompt.save-selection",
+      "landing": "retained",
+      "afterNote": "保留：落在 keep.prompt.save-selection；保留当前按节点 DOM 归属的选区保存；重排/portal 后验收入口仍能出现，不能与右键菜单混为一项。"
+    }
+  ]
+}

@@ -6,7 +6,7 @@ import { generationNodeStatusSchema, parseGenerationNodeStatus } from "../canvas
 import { DIRECTOR_PREVIEW_STATUSES } from "../director/directorPreviewStatus";
 import type { CapabilityContract } from "./capabilityContract";
 import { textNodeBody } from "../canvas/textNodeBody";
-import { director3dBoxFaceEnabled } from "../featureFlags/director3dboxFace";
+import { canvasReadShotTableSchema, projectShotTableForAgent } from "./canvasReadShotTable";
 
 const URI_SCHEME_RESULT_ID = /^[a-z][a-z0-9+.-]*:/i;
 const trimmedNonEmptyStringSchema = z.string().trim().min(1);
@@ -60,6 +60,8 @@ const canvasReadNodeSchema = z
     /** 文本节点的正文（纯文本，和下游拼进提示词的是同一份）；超长截断并带 textTruncated。 */
     text: z.string().optional(),
     textTruncated: z.literal(true).optional(),
+    /** 分镜表节点的行 / 列 / 勾选（有上限，见 `canvasReadShotTable.ts`）。只有 kind=shot_table 且表读得出来时才有。 */
+    shotTable: canvasReadShotTableSchema.optional(),
     hasResult: z.boolean(),
     currentResultId: opaqueResultIdSchema.optional(),
     resultIds: z.array(opaqueResultIdSchema).optional(),
@@ -72,7 +74,7 @@ const canvasReadNodeSchema = z
      * modelKey，既拦不住也读不回来——错误完全不可观测。
      */
     /**
-     * 3D-BOX 节点（开关开的构建才有）：补丁要用的修订号与名字。完整计划在每次 `stage_shot` 的结果里，
+     * 3D-BOX 节点：补丁要用的修订号与名字。完整计划在每次 `stage_shot` 的结果里，
      * 这里只放一行能装下的东西——整张画布共用一份摘要预算，不让一个预演挤掉别的节点。
      */
     director: z
@@ -282,10 +284,9 @@ function namesOf(value: unknown, key: "id"): string[] {
 
 /**
  * 3D-BOX 节点摘要。读的键与写的键同一组（导演节点 meta 的 `directorPlan` / `directorPreview`，
- * 写者是 `stage_shot` 的渲染端执行体）。开关关的构建一个字不多。
+ * 写者是 `stage_shot` 的渲染端执行体）。
  */
 function projectDirectorBox(meta: UnknownRecord | undefined): CanvasReadNode["director"] | undefined {
-  if (!director3dBoxFaceEnabled()) return undefined;
   const planMeta = asRecord(meta?.directorPlan);
   const revision = nonEmptyString(planMeta?.revision);
   const plan = asRecord(planMeta?.plan);
@@ -332,6 +333,7 @@ function projectNode(value: unknown, seen: Set<string>): CanvasReadNode | undefi
   const body = kind === "text" ? textNodeBody(node as Parameters<typeof textNodeBody>[0]) : "";
   const textTruncated = body.length > MAX_CANVAS_TEXT_NODE_CHARACTERS;
   const director = kind === "director" ? projectDirectorBox(asRecord(node.meta)) : undefined;
+  const shotTable = kind === "shot_table" ? projectShotTableForAgent(node.meta) : undefined;
 
   return {
     id,
@@ -349,6 +351,7 @@ function projectNode(value: unknown, seen: Set<string>): CanvasReadNode | undefi
     ...(runId ? { taskRef: { domain: 'generation' as const, jobId: runId } } : {}),
     ...(model ? { model } : {}),
     ...(director ? { director } : {}),
+    ...(shotTable ? { shotTable } : {}),
   };
 }
 

@@ -1,8 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps -- Migrated Leafer canvas keeps imperative renderer state in refs (stable identities), intentionally omitted from dep arrays. */
 import { useEffect } from 'react'
-import type { CanvasAsset, LayerItem } from './lib/canvas'
+import type { CanvasAsset, CanvasText, LayerItem } from './lib/canvas'
 import type {
   CanvasAssetTransform,
+  SceneTransforms,
   CanvasNodeInteractionState,
   CanvasObjectKind,
   CanvasObjectOffset,
@@ -47,6 +48,7 @@ export type WhiteboardSceneSyncRefs = {
     targets: CanvasObjectTarget[]
   } | null>
   objectOffsetsRef: RefLike<Map<string, CanvasObjectOffset>>
+  textsRef: RefLike<CanvasText[]>
   assetsRef: RefLike<CanvasAsset[]>
   assetTransformsRef: RefLike<Map<string, CanvasAssetTransform>>
   strokesRef: RefLike<CanvasStroke[]>
@@ -60,9 +62,11 @@ export type WhiteboardSceneSyncProps = {
   activeObjectTarget: CanvasObjectTarget | null | undefined
   contextMenu: { targets: CanvasObjectTarget[] } | null
   selectedObjectTargets: CanvasObjectTarget[]
+  sceneTransforms?: SceneTransforms
   renderReadyVersion: number
   assets: CanvasAsset[]
   layers: LayerItem[]
+  texts: CanvasText[]
   strokes: CanvasStroke[]
   updateSelectedObjectTargets: (targets: CanvasObjectTarget[]) => void
   setContextMenu: (value: null) => void
@@ -83,6 +87,7 @@ export function useWhiteboardSceneSync(refs: WhiteboardSceneSyncRefs, props: Whi
     multiSelectionDragRef,
     objectOffsetsRef,
     assetsRef,
+    textsRef,
     assetTransformsRef,
     strokesRef,
     onLayerSelectRef,
@@ -95,9 +100,11 @@ export function useWhiteboardSceneSync(refs: WhiteboardSceneSyncRefs, props: Whi
     contextMenu,
     selectedObjectTargets,
     renderReadyVersion,
+    sceneTransforms,
     assets,
     layers,
     strokes,
+    texts,
     updateSelectedObjectTargets,
     setContextMenu,
     setSelectionBox,
@@ -130,7 +137,7 @@ export function useWhiteboardSceneSync(refs: WhiteboardSceneSyncRefs, props: Whi
     } else {
       editor.cancel?.()
     }
-  }, [activeLayerId, activeObjectTarget, activeTool, assets, layers, renderReadyVersion, selectedObjectTargets, strokes])
+  }, [activeLayerId, activeObjectTarget, activeTool, assets, layers, renderReadyVersion, selectedObjectTargets, strokes, texts, sceneTransforms])
 
   useEffect(() => {
     const menuTargets = contextMenu?.targets ?? []
@@ -215,7 +222,7 @@ export function useWhiteboardSceneSync(refs: WhiteboardSceneSyncRefs, props: Whi
         hitFill: 'none'
       })
     }
-  }, [activeTool, assets, layers, renderReadyVersion, selectedObjectTargets, strokes])
+  }, [activeTool, assets, layers, renderReadyVersion, selectedObjectTargets, strokes, texts, sceneTransforms])
 
   useEffect(() => {
     const editor = renderContextRef.current?.app.editor
@@ -301,7 +308,7 @@ export function useWhiteboardSceneSync(refs: WhiteboardSceneSyncRefs, props: Whi
       const selectedTarget = Array.isArray(selectEvent.value) ? selectEvent.value[0] : selectEvent.value
       const objectTarget = getCanvasObjectTarget(selectedTarget ?? selectEvent.target)
       const layerId = objectTarget
-        ? getLayerIdForCanvasObject(objectTarget, assetsRef.current, strokesRef.current)
+        ? getLayerIdForCanvasObject(objectTarget, assetsRef.current, strokesRef.current, textsRef.current)
         : null
 
       if (

@@ -10,6 +10,7 @@ import { markdownToTiptapContent } from '../creation/markdownToTiptap'
 import { sanitizePastedHtml } from './sanitizePastedHtml'
 import { PersistentSelectionExtension } from './persistentSelection'
 import { createControlledEditorSync } from './controlledEditorSync'
+import { AiRewriteExtension } from '../creation/aiRewrite/rewriteSession'
 
 // ==高亮== 输入/粘贴规则：Tiptap 默认规则要求 `==` 前是行首或空白，中文「这是==重点==」
 // 无空格场景会失效；这里放宽为任意位置触发，对齐 ColaMD 的 `/==([^=]+)==/`。
@@ -29,6 +30,8 @@ export const RICH_TEXT_FEATURE_EXTENSIONS: AnyExtension[] = [
   TaskList,
   TaskItem,
   TableKit,
+  // 选中文字 → AI 编辑 → 就地出结果（只有创作编辑器挂；画布文字节点不挂）。
+  AiRewriteExtension,
 ]
 
 const EMPTY_EXTENSIONS: AnyExtension[] = []
@@ -61,7 +64,7 @@ export function useNomiTiptapEditor(options: UseEditorOptions, deps?: React.Depe
  * and markdown-apply commands all live here so we never run two Tiptap configs.
  *
  * Each surface renders its own shell (full-height toolbar vs floating bar) but
- * shares this kernel + buildRichTextActions().
+ * shares this kernel + useRichTextActions().
  */
 export type RichTextApplyMode = 'insert' | 'replace' | 'append'
 
@@ -147,7 +150,10 @@ export function useNomiRichTextEditor(options: {
 
   const editorProps = React.useMemo(
     () => ({
-      attributes: { class: 'workbench-editor__content' },
+      // 列表的样式写在这里，不写全局 CSS：Tailwind 的 preflight 把 ul / ol 的 list-style 清成 none，
+      // 之前全局 CSS 只补了缩进没补符号——点「无序 / 有序列表」只看到整段右移，像没生效（2026-10-23 用户实测）。
+      // 待办列表（ul[data-type=taskList]）在 workbench.css 里以更高优先级去掉符号。
+      attributes: { class: 'workbench-editor__content [&_ul]:mb-3.5 [&_ul]:pl-6 [&_ul]:list-disc [&_ol]:mb-3.5 [&_ol]:pl-6 [&_ol]:list-decimal' },
       transformPastedHTML: sanitizePaste ? (html: string) => sanitizePastedHtml(html) : undefined,
     }),
     [sanitizePaste],

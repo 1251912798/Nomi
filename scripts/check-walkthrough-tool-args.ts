@@ -55,10 +55,13 @@ if (result.violations.length > 0) {
   process.exit(1);
 }
 
+const allowedNote = result.allowed.length > 0
+  ? `；${result.allowed.length} 处是登记过的「故意给错」（${result.allowed.map((item) => `${item.filePath}:${item.line} ${item.key}`).join("、")}）`
+  : "";
 const skippedNote = result.skipped.length > 0
   ? `；${result.skipped.length} 处查不了（变量/展开/计算键），如实记账不算绿`
   : "";
 console.log(
   `✅ 走查模型面调用：${result.sites} 处调用、${result.checked} 个键全部在 schema 里` +
-  `（${Object.keys(schemasByVerb).length} 个动词的发布 schema）${skippedNote}。`,
+  `（${Object.keys(schemasByVerb).length} 个动词的发布 schema）${skippedNote}${allowedNote}。`,
 );

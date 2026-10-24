@@ -77,6 +77,7 @@ test('scope exposes every independent validation surface from the shared classif
     canvas: '${{ steps.profile.outputs.canvas }}',
     performance: '${{ steps.profile.outputs.performance }}',
     package: '${{ steps.profile.outputs.package }}',
+    visual: '${{ steps.profile.outputs.visual }}',
     release: '${{ steps.profile.outputs.release }}',
     fail_closed: '${{ steps.profile.outputs.fail_closed }}',
     reason: '${{ steps.profile.outputs.reason }}',
@@ -363,6 +364,26 @@ test('macOS package is selected independently and retains build, package, and si
   ])
 })
 
+test('design lab visual baselines run only on the pinned macOS runner and hand evidence back without repo writes', () => {
+  const lab = workflow.jobs['design-lab-macos']
+  assert.equal(lab.name, 'Design Lab (macOS)')
+  assert.equal(lab.needs, 'scope')
+  assert.equal(lab.if, "needs.scope.outputs.visual == 'true'")
+  // 固定镜像：macos-latest 会被 GitHub 挪到新系统，字体一变整片基线红。
+  assert.equal(lab['runs-on'], 'macos-26')
+  assert.deepEqual(runCommands(lab), [
+    'pnpm install --frozen-lockfile',
+    'bash scripts/ci-install-chromium.sh',
+    'pnpm run check:design-lab',
+  ])
+  const evidence = lab.steps.find((step) => step.uses === 'actions/upload-artifact@v7')
+  assert.equal(evidence.if, 'failure()')
+  assert.equal(evidence.with.name, 'design-lab-evidence')
+  assert.match(evidence.with.path, /test-results\/\*\*/)
+  assert.match(evidence.with.path, /outputs\/design-lab\/runner\.json/)
+  assert.equal(lab.permissions, undefined, 'the visual job must not be granted extra repository permissions')
+})
+
 test('system profiles expose separated surfaces and explicit full/release still include performance', () => {
   assert.deepEqual(PROFILES['ci-contracts'], ['contracts'])
   assert.deepEqual(PROFILES['ci-unit'], ['unit'])
@@ -401,7 +422,9 @@ test('package scripts expose canonical separated profiles and classifier contrac
   assert.equal(scripts['test:canvas:performance'], 'python3 scripts/with-gates-lock.py -- node tests/ux/canvas-real-suite.mjs performance')
   // 棘轮只减不增：2026-09-06 v4 接线删掉旧面板后降到 81；2026-09-22 总合并清完合并带来的
   // 未用 import 与两处 prefer-const 后降到 79。调高需要理由，调低直接改这一行。
-  assert.equal(scripts['lint:ci'], 'eslint . --max-warnings=79')
+  // 2026-10-22 scripts / tests/ux / evals 进 ESLint：带进来 16 条存量警告（TS 脚本里的 any / 未用变量等，批量抑制只冻结错误、冻不了警告），79 → 95。
+  // --cache（按内容判，检出会改 mtime）：本机重跑走缓存；CI 上没有恢复缓存时每次冷跑、结果不变。警告上限不受缓存影响。
+  assert.equal(scripts['lint:ci'], 'eslint . --max-warnings=95 --cache --cache-location .tmp/eslintcache --cache-strategy content')
   assert.match(scripts['check:quality-gate-workflow'], /validation-policy\.node-test\.mjs/)
   assert.match(scripts['check:quality-gate-workflow'], /real-user-test-gates\.node-test\.mjs/)
 })
@@ -411,13 +434,13 @@ test('Quality Gate requires mandatory jobs and every risk-selected optional surf
   assert.deepEqual(quality.needs, [
     'scope',
     'contracts',
-    'director3dbox-face',
     'unit',
     'core-smoke',
     'desktop-linux',
     'canvas-acceptance',
     'canvas-performance',
     'mac-package',
+    'design-lab-macos',
   ])
   assert.equal(quality.if, '${{ always() }}')
   assert.equal(quality.name, 'Quality Gate')
@@ -436,7 +459,7 @@ test('Quality Gate requires mandatory jobs and every risk-selected optional surf
   for (const jobId of ['scope', 'contracts', 'unit']) {
     assert.match(command, new RegExp(`needs\\.${jobId}\\.result`))
   }
-  for (const output of ['desktop', 'journeys', 'canvas', 'performance', 'package']) {
+  for (const output of ['desktop', 'journeys', 'canvas', 'performance', 'package', 'visual']) {
     assert.match(command, new RegExp(`needs\\.scope\\.outputs\\.${output}`))
   }
   // 每个风险面独立聚合：full 走查、perf 预算拆成并行 job 后仍必须逐面要求 success，
@@ -444,17 +467,10 @@ test('Quality Gate requires mandatory jobs and every risk-selected optional surf
   assert.match(command, /"\$\{\{ needs\.scope\.outputs\.canvas \}\}" = "critical"/)
   assert.match(command, /"\$\{\{ needs\.scope\.outputs\.canvas \}\}" = "full"/)
   assert.match(command, /needs\['desktop-linux'\]\.result/)
-  // 3D-BOX 开关开的那张工具面：每次都要验（便宜、只看声明），开关真的开着由 job 第一步自证。
-  assert.match(command, /needs\['director3dbox-face'\]\.result \}\}" = "success"/)
-  const flagFace = workflow.jobs['director3dbox-face']
-  const flagStep = flagFace.steps.find((step) => step.run === 'pnpm run check:director3dbox-face')
-  assert.equal(flagStep.env.NOMI_DESKTOP_DEV, '1')
-  assert.equal(flagStep.env.NOMI_DIRECTOR_3DBOX, 'true')
-  assert.ok(runCommands(flagFace).includes('pnpm run check:director3dbox-face'))
-  assert.match(packageJson.scripts['check:director3dbox-face'], /^pnpm exec tsx scripts\/check-director3dbox-face-on\.ts && /)
   assert.match(command, /needs\['canvas-acceptance'\]\.result/)
   assert.match(command, /needs\['canvas-performance'\]\.result/)
   assert.match(command, /needs\['mac-package'\]\.result/)
+  assert.match(command, /needs\['design-lab-macos'\]\.result/)
   // 核心冒烟 fail-closed：skipped 只在 core_smoke=false 且 reason=docs_only 时放行，其余一律要 success。
   const coreSmokeBlock = /if \[ "\$\{\{ needs\.scope\.outputs\.core_smoke \}\}" = "false" \]; then\n\s*test "\$\{\{ needs\.scope\.outputs\.reason \}\}" = "docs_only"\n\s*test "\$\{\{ needs\['core-smoke'\]\.result \}\}" = "skipped"\n\s*else\n\s*test "\$\{\{ needs\['core-smoke'\]\.result \}\}" = "success"\n\s*fi/
   assert.match(command, coreSmokeBlock)
@@ -574,6 +590,16 @@ test('spending and nightly workflows use shared routing, browser setup, timeouts
   assert.equal(nightly.jobs.walks.steps.find((step) => step.name === 'Install Chromium').run, PLAYWRIGHT_INSTALL_STEP)
   assert.match(nightly.jobs.walks.steps.find((step) => step.name === 'Run non-paid walkthrough batch').run, /timeout 600/)
   assert.match(nightly.jobs.report.steps.find((step) => step.name === 'Publish summary and update issue').run, /nightly-walk-summary\.mjs/)
+  // 打包冒烟每夜一跑（R-mac-smoke-flake）：PR 上的 Mac Package 只在打包文件变动时才跑，夜跑是它唯一的定时兜底。
+  // 跑的必须是同一条 dist:mac:dir（不另抄一份冒烟命令），结果必须进同一张汇总表（report 依赖它、行写进 nightly-walks-*）。
+  const packaged = nightly.jobs['packaged-mac']
+  assert.ok(packaged, '夜跑缺 packaged-mac：打包冒烟又只剩「碰打包文件才跑」')
+  assert.match(String(packaged['runs-on']), /^macos-/)
+  const packagedRun = packaged.steps.find((step) => step.name === 'Package macOS app and run packaged smoke').run
+  assert.match(packagedRun, /pnpm run dist:mac:dir/)
+  assert.match(packagedRun, /nightly-walks\/results-packaged-mac\.tsv/)
+  assert.match(packaged.steps.find((step) => step.name === 'Upload packaged smoke evidence').with.name, /^nightly-walks-/)
+  assert.deepEqual([nightly.jobs.report.needs].flat().sort(), ['packaged-mac', 'walks'])
 })
 
 test('workflows delegate Chromium installation to the shared script', () => {

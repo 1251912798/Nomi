@@ -11,6 +11,7 @@ import { asTrimmedString, resolveTaskKind, selectedModelKey, selectedVendor } fr
 import { normalizeCatalogTaskResult } from './catalogTaskResultParse'
 import i18n from '../../../i18n'
 import { describeOpaqueFailure } from '../../observability/opaqueFailure'
+import { isRetrievalStageCode, matchNomiErrorCode, tagNomiError } from '../../../../electron/shared/nomiErrorCodes'
 import type { MediaDimensions } from '../nodes/nodeSizing'
 import { awaitMediaTransfer, describePhaseSilence } from './generationPhaseDeadline'
 import { isTerminalTaskStatus } from '../../../../electron/shared/taskStatus'
@@ -130,7 +131,7 @@ export async function recoverNodeResult(nodeId: string, project: ProjectExecutio
       if (isTerminalTaskStatus(current.status)) break
       if (Date.now() - startedAt > RECOVER_POLL_TIMEOUT_MS) {
         // 仍没出来 → 退回可找回态，按钮重现，稍后可再拉。
-        await deliverRunOutcome(target, id, { kind: 'status', status: 'recoverable', error: i18n.t('generationCommon.recoverable.stillUpstream') })
+        await deliverRunOutcome(target, id, { kind: 'status', status: 'recoverable', error: tagNomiError('retrieval-timeout', i18n.t('generationCommon.recoverable.stillUpstream')) })
         return
       }
       // 进度只给前台看：原项目不在画布上时不写（那是别的项目的 store），也不为一句进度去写盘。
@@ -163,8 +164,25 @@ export async function recoverNodeResult(nodeId: string, project: ProjectExecutio
     if (landedInOpenProject) await persistActiveWorkbenchProjectNow().catch(() => {})
   } catch (error) {
     // 终态是 failed（normalizeCatalogTaskResult 对 failed 抛错）→ 这才是真失败，落 error 桶。
-    await deliverRunOutcome(target, id, { kind: 'status', status: 'error', error: describeOpaqueFailure(error) })
+    // 「结果取回」族（上游说成了却没地址等，带 retrieval-* 码）不是失败：留在可找回（#1213 原则 1）。
+    const message = describeOpaqueFailure(error)
+    const status = isRetrievalStageCode(matchNomiErrorCode(message)) ? 'recoverable' : 'error'
+    await deliverRunOutcome(target, id, { kind: 'status', status, error: message })
   }
+}
+
+/**
+ * 回到可找回面板：画布任务（不是制作 Run）在错误卡上显示「已提交、没取回」那一类时，主按钮「去重新取回」走这里。
+ * 只有节点记着这次运行的 taskId 才回得去（免费续查靠它无状态重建查询）；没有就返回 false，调用方退回原动作。
+ * 错误原话留着：可找回面板照样给出服务商原话 / 技术详情。
+ */
+export function reopenRecoverableNode(nodeId: string): boolean {
+  const id = String(nodeId || '').trim()
+  const store = useGenerationCanvasStore.getState()
+  const node = store.nodes.find((item) => item.id === id)
+  if (!node || !String(node.runs?.[0]?.taskId || '').trim()) return false
+  store.setNodeStatus(id, 'recoverable', node.error)
+  return true
 }
 
 /** 放弃找回：用户明确把这个超时节点标为失败（进红色错误桶，可重试生成）。 */

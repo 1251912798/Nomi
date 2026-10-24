@@ -1,3 +1,4 @@
+import { directGenerationBrakeForRun } from "../shared/agentCapabilities/directGenerationBrakes";
 import { sumBudgetAmounts } from "./budgetLedger";
 import { generationShotKind } from "../shared/generationShotKind";
 import { createHash } from "node:crypto";
@@ -132,11 +133,11 @@ export function awaitingSpendDecision(
   // in flight. Once a card was opened under another policy it remains visible even
   // if the user changes settings later.
   const projectPolicyPending = plan.state === "draft"
-    && presentation?.policySnapshot?.mode === "project"
+    && presentation?.policySnapshot?.mode === "direct"
     && presentation.policyDecisionState !== "failed";
   const deadlineMs = presentation?.policyDecisionDeadlineAt ? Date.parse(presentation.policyDecisionDeadlineAt) : Number.NaN;
   if (projectPolicyPending && Number.isFinite(deadlineMs) && deadlineMs > Date.now()) return undefined;
-  const manualDecisionRequired = presentation?.policySnapshot?.mode === "project"
+  const manualDecisionRequired = presentation?.policySnapshot?.mode === "direct"
     && (presentation.policyDecisionState === "failed" || projectPolicyPending);
   const waiting = waitingAuthorizationGates(run).at(-1);
   return {
@@ -171,6 +172,9 @@ export function projectPendingSpendConfirm(
   const awaiting = awaitingSpendDecision(run);
   if (!awaiting) return undefined;
   const { plan, gateId, undecided, manualDecisionRequired } = awaiting;
+  // 刹车是 Run 的派生事实：只在「直接生成」档的出价因为人工决定而摆出来时才可能有（其它档 `directGenerationBrakeForRun` 恒不报计划 / 重试刹车）。
+  const snapshot = currentPresentation(plan)?.policySnapshot;
+  const brake = manualDecisionRequired && snapshot?.mode === "direct" ? directGenerationBrakeForRun(snapshot, run) : undefined;
   const shots = shotsOf(plan, undecided, resolvePricing);
   // 走到这里意味着**这一笔确实在等人点头**（draft，或封印后那道门还 `waiting`），却一镜都投影不出来。
   // 那不是「没有要确认的东西」，是「我知道有，但我画不出来」——写成 `undefined` 的后果是：
@@ -193,6 +197,7 @@ export function projectPendingSpendConfirm(
     ...(currentPresentation(plan)?.presentationEpoch !== undefined ? { presentationEpoch: currentPresentation(plan)!.presentationEpoch } : {}),
     ...(currentPresentation(plan)?.policySnapshot ? { policySnapshot: structuredClone(currentPresentation(plan)!.policySnapshot) } : {}),
     ...(manualDecisionRequired ? { manualDecisionRequired: true as const } : {}),
+    ...(brake ? { brake: Object.freeze({ ...brake }) } : {}),
     quoteId: createHash("sha256").update(JSON.stringify({
       projectId: run.projectId, operationId: plan.operationId, planVersion: run.planVersion,
       presentationId: currentPresentation(plan)?.presentationId,

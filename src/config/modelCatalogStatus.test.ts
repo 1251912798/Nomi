@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveCatalogKind } from './modelCatalogStatus'
+import { deriveModelCatalogStatus, resolveCatalogKind } from './modelCatalogStatus'
 
 describe('resolveCatalogKind', () => {
   it('maps each node kind to its own catalog bucket (never silently to text)', () => {
@@ -17,5 +17,19 @@ describe('resolveCatalogKind', () => {
   it('defaults unknown/text kinds to the text bucket', () => {
     expect(resolveCatalogKind('text')).toBe('text')
     expect(resolveCatalogKind(undefined)).toBe('text')
+  })
+})
+
+describe('deriveModelCatalogStatus when a read fails', () => {
+  const option = { value: 'm', label: 'M' } as never
+  it('keeps saying why while the last list is still on screen', () => {
+    const derived = deriveModelCatalogStatus({ options: [option], health: null, error: new Error('boom'), loading: false })
+    expect(derived.status).toBe('stale_kept')
+    expect(derived.message).toContain('boom')
+  })
+  it('with nothing to keep it is the plain failure empty state, also with the reason', () => {
+    const derived = deriveModelCatalogStatus({ options: [], health: null, error: new Error('boom'), loading: false })
+    expect(derived.status).toBe('api_unreachable')
+    expect(derived.message).toContain('boom')
   })
 })

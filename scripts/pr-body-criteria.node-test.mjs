@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { englishHeadingHint, evaluatePrBody, isGrandfathered, mergeReport } from './pr-body-criteria.mjs'
+import { checkEscapeContract, englishHeadingHint, evaluatePrBody, isGrandfathered, mergeReport } from './pr-body-criteria.mjs'
 
 const STAR = [
   '## 设计卡',
@@ -15,6 +15,21 @@ const STAR = [
 ].join('\n')
 
 const docsChange = [{ path: 'docs/engineering/x.md', status: 'M' }]
+
+test('reviewed push admission is exact for every new contract and leaves all settlement/default branches strict', () => {
+  const file = 'docs/fixes/2026-10-12-a.root-cause.json'
+  const contract = { file, added: true, detected_by: 'user' }
+  const options = { stage: 'push', reviewed: [file] }
+  assert.equal(checkEscapeContract('', [contract], [], [], [], options).ok, true)
+  for (const [contracts, admission] of [
+    [[contract], {}], [[contract], { ...options, stage: 'merge' }],
+    [[contract], { ...options, stage: 'unknown' }], [[contract], { stage: 'push', reviewed: [] }],
+    [[{ ...contract, added: false }], options],
+    [[contract, { ...contract, file: 'docs/fixes/2026-10-12-b.root-cause.json' }], options],
+  ]) assert.equal(checkEscapeContract('', contracts, [], [], [], admission).ok, false)
+  assert.equal(checkEscapeContract('', [], ['FB-fixed'], [], [], options).ok, false, 'fixed transition still requires its contract')
+  assert.equal(checkEscapeContract('', [{ ...contract, added: false }], [], [], [file]).ok, true, 'settled revision behavior retained')
+})
 
 test('同一份正文、同一份改动 → 总入口只给一个结论（推送前与合并前调的就是它）', () => {
   const good = evaluatePrBody({ body: STAR, files: docsChange, createdAt: '2026-10-08T00:00:00Z' })

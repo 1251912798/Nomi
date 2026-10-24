@@ -25,7 +25,7 @@ describe("卡开着时关窗：已批的照发，没点的不发", () => {
       expect(await built.withWindow.confirmPendingSpend({ projectId: PROJECT_ID, operationId: OPERATION_ID, quoteId: card.quoteId, shotId: "shot-1" }))
         .toMatchObject({ ok: true });
       // lane 关窗那一支做的事（`laneExtendedDesktopPorts.preflightGenerate` 的 cancelled 分支）。
-      await built.transport("step").withdrawPresentation(OPERATION_ID, "stopped");
+      await built.transport("request").withdrawPresentation(OPERATION_ID, "stopped");
       expect(shotsSent(submits), "已批的那一张照发，没点的不发").toEqual(["shot-1"]);
       expect(built.withWindow.listPendingSpend(PROJECT_ID), "卡跟着收回").toEqual([]);
       expect(generationPresentationOutcome(base.repository.read(PROJECT_ID, OPERATION_ID)!)).toEqual({
@@ -36,7 +36,7 @@ describe("卡开着时关窗：已批的照发，没点的不发", () => {
         takenByCanvas: [],
         undecided: [{ shotId: "shot-2", reason: "stopped" }, { shotId: "shot-3", reason: "stopped" }],
       });
-      expect(await built.transport("step").readPresentationOutcome(OPERATION_ID), "回合读到的就是这一份").toEqual(
+      expect(await built.transport("request").readPresentationOutcome(OPERATION_ID), "回合读到的就是这一份").toEqual(
         generationPresentationOutcome(base.repository.read(PROJECT_ID, OPERATION_ID)!),
       );
     } finally {

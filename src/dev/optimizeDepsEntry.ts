@@ -4,6 +4,8 @@ import 'react/jsx-dev-runtime';
 import 'react-dom';
 import 'react-dom/client';
 import 'react-router-dom';
+import 'diff';
+import '@floating-ui/dom';
 import '@mantine/core';
 import '@mantine/modals';
 import '@mantine/notifications';

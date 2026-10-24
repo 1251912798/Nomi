@@ -4,6 +4,8 @@ export const TYPECHECK_PROJECTS = Object.freeze({
   app: 'tsconfig.app.json',
   electron: 'electron/tsconfig.json',
   electronPi: 'electron/tsconfig.pi.json',
+  // 浏览器测试夹具（tests/ux/fixtures/*.tsx）：vite 直接加载、不在任何 import 图里（2026-10-18，#1231 × #1241 合并后 main 红）
+  fixtures: 'tsconfig.fixtures.json',
   // check:test-types 的两份：全部测试文件 / agent-runtime 原生测试
   test: 'tsconfig.test.json',
   nativeTest: 'tests/agent-runtime/tsconfig.json',

@@ -33,7 +33,7 @@ export function spendReferenceKey(reference: GenerationReference): string {
 
 export type PendingSpendPrice = { known: true; amount: number } | { known: false };
 
-/** 一镜在付费卡上的全部事实。绝不含 transportModelId、密钥或供应商 URL。 */
+/** 一镜在付费卡上的全部事实。绝不含密钥或供应商 URL（发出的型号名不另存投影，发送时由 wireModelIdentity 解出）。 */
 export type PendingSpendShot = Readonly<{
   shotId: string;
   /** 已落地的画布占位节点。卡体那张生成框绑的就是它（同一份 meta、同一个 store）。 */
@@ -77,6 +77,11 @@ export type PendingSpendConfirm = Readonly<{
   policySnapshot?: ProjectAgentApprovalPolicy;
   /** Read-side deadline or durable failure marker requires an explicit user decision. */
   manualDecisionRequired?: true;
+  /**
+   * 「直接生成」档本来会代答、但刹车成立所以退回这张卡的原因（只多一行说明为什么停，卡本身和请求批准档一模一样）。
+   * 由 `directGenerationBrakes.directGenerationBrakeForRun` 按 Run 现派生，不落盘；没有刹车 = 缺席。
+   */
+  brake?: Readonly<{ reason: "stopped" | "retry-limit" | "out-of-plan"; shotId?: string }>;
   /**
    * 付费门已经开着时它就是那道门的 id；还是草稿（没封印）时缺席。
    *

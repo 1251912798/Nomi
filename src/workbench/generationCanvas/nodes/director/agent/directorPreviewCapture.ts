@@ -1,11 +1,12 @@
 /**
  * [INPUT]: 依赖 ../model/directorPreviewState、../model/programCamera 的 programCameraIdAt、../model/timeGrid 的 sceneContentEndSeconds、
- *          ../model/directorShotSummaries、../model/directorProject、./cameraMoveSchedule 的 frameTimes、./attachCameraMoveToTarget 的 computeAttachCameraMove、
+ *          ../model/directorShotSummaries、../model/directorProject、./cameraMoveSchedule 的 frameTimes、./attachCameraMoveForNode 的 attachCameraMoveForNode、
  *          画布 store、../../../events/canvasGestureContext
- * [OUTPUT]: 对外提供 previewCapturePlan（整段预演的采帧计划）、applyPreviewCaptured（挂到视频节点 + 写回 ready）、markPreviewFailed、
+ * [OUTPUT]: 对外提供 previewCapturePlan（整段预演的采帧计划，带渲染源工程指纹）、applyPreviewCaptured（挂到视频节点 + 写回 ready）、markPreviewFailed、
+ *           requestDirectorPreviewRender（请求重渲：节点卡「重试」与导演视图「出成片」共用的唯一写口）、
  *           previewAttemptTimeoutMs
  * [POS]: 3D-BOX 预演出片的纯逻辑那一半（常驻 CameraMoveCaptureHost 的预演请求调它；React / 计时器 / 落盘留在 Host）。
- *        按时刻取节目机位（programCameraIdAt）、等动作片段就绪；挂接只走唯一核心 computeAttachCameraMove。
+ *        按时刻取节目机位（programCameraIdAt）、等动作片段就绪；挂接只走唯一入口 attachCameraMoveForNode。
  *        Host 事后的写入沿用写下这次预演的那笔提议的事务身份（txn_<proposalId>）：撤销 stage_shot 时它们算同一笔改动，
  *        不算「别人的后续改动」。修订号对不上（预演渲染期间计划又被改了）= 迟到结果，整份丢弃。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -14,13 +15,13 @@ import type { GenerationCanvasNode } from '../../../model/generationCanvasTypes'
 import { withCanvasGestureContext } from '../../../events/canvasGestureContext'
 import { useGenerationCanvasStore } from '../../../store/generationCanvasStore'
 import { DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from '../model/directorNodeMeta'
-import { DIRECTOR_PREVIEW_FPS, DIRECTOR_PREVIEW_MAX_SECONDS, readDirectorPreview, type DirectorPreviewMeta } from '../model/directorPreviewState'
+import { DIRECTOR_PREVIEW_FPS, DIRECTOR_PREVIEW_MAX_SECONDS, directorPreviewSourceFingerprint, directorProjectTooLong, readDirectorPlanMeta, readDirectorPreview, type DirectorPreviewMeta } from '../model/directorPreviewState'
 import { normalizeDirectorProject } from '../model/directorProject'
 import { summarizeDirectorShots } from '../model/directorShotSummaries'
 import type { DirectorProject } from '../model/directorTypes'
 import { programCameraIdAt } from '../model/programCamera'
 import { sceneContentEndSeconds } from '../model/timeGrid'
-import { computeAttachCameraMove } from './attachCameraMoveToTarget'
+import { attachCameraMoveForNode } from './attachCameraMoveForNode'
 import { frameTimes } from './cameraMoveSchedule'
 
 const MAX_PREVIEW_FRAMES = DIRECTOR_PREVIEW_FPS * DIRECTOR_PREVIEW_MAX_SECONDS
@@ -31,6 +32,8 @@ export type PreviewCapturePlan = Readonly<{
   times: number[]
   cameraIdAt: (time: number) => string | null
   revision: string
+  /** 采帧用的这份工程的指纹：写回 ready 时记进预演，之后工程被改过就判过期（出片前先重渲）。 */
+  sourceFingerprint: string
 }>
 
 /** 整段预演：0 → 内容末，24fps，最后一帧落在末尾前一帧（镜头片段在末尾是开区间，取到末尾会是黑帧）。 */
@@ -45,7 +48,7 @@ export function previewCapturePlan(node: Pick<GenerationCanvasNode, 'meta'>): Pr
   const frameCount = Math.min(MAX_PREVIEW_FRAMES, Math.max(2, Math.round(duration * fps)))
   const times = frameTimes(0, Math.max(0, duration - 1 / fps), frameCount)
   return {
-    project, fps, times, revision: preview.revision,
+    project, fps, times, revision: preview.revision, sourceFingerprint: directorPreviewSourceFingerprint(project),
     cameraIdAt: (time) => programCameraIdAt(time, scene.cameras, scene.timelineTrackOrder),
   }
 }
@@ -71,16 +74,14 @@ function inProposal<T>(preview: DirectorPreviewMeta, fn: () => T): T {
  * 预演 mp4 已落盘 → 挂到它的视频节点（唯一挂接核心）→ 导演节点预演写回 ready（含挂法：参考视频 / 只写进提示词）。
  * 返回挂接给出的提示（模型不接参考视频时那句「精度会低」由调用方 toast）。修订已变 = 丢弃，返回 null。
  */
-export function applyPreviewCaptured(nodeId: string, revision: string, videoUrl: string, assetId: string | undefined, output: Readonly<{ id: string; name: string; width: number; height: number; duration: number; createdAt: number }>):
+export function applyPreviewCaptured(nodeId: string, revision: string, videoUrl: string, assetId: string | undefined, output: Readonly<{ id: string; name: string; width: number; height: number; duration: number; createdAt: number }>, sourceFingerprint: string):
   { toast?: { message: string; level: 'warning' } } | null {
   const node = sameRevision(nodeId, revision)
   if (!node) return null
   const preview = readDirectorPreview(node)!
-  const store = useGenerationCanvasStore.getState()
-  const target = preview.targetNodeId ? store.nodes.find((candidate) => candidate.id === preview.targetNodeId) : undefined
   const project = normalizeDirectorProject(node.meta?.[DIRECTOR_PROJECT_META_KEY])
   const cuts = summarizeDirectorShots(project).map((cut) => ({ start: cut.start, end: cut.end, shotSize: cut.shotSize, move: cut.move }))
-  const outcome = computeAttachCameraMove(target, videoUrl, { kind: 'preview', cuts, notes: preview.notes ?? [] })
+  const outcome = attachCameraMoveForNode(preview.targetNodeId, videoUrl, { kind: 'preview', cuts, notes: preview.notes ?? [] })
   return inProposal(preview, () => {
     if (outcome.kind === 'patch' && preview.targetNodeId) useGenerationCanvasStore.getState().updateNode(preview.targetNodeId, outcome.patch)
     const fresh = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === nodeId)
@@ -92,6 +93,7 @@ export function applyPreviewCaptured(nodeId: string, revision: string, videoUrl:
       ...(assetId ? { assetId } : {}),
       durationSeconds: output.duration,
       ...(outcome.kind === 'patch' ? { attach: outcome.mode } : {}),
+      sourceFingerprint,
       updatedAt: Date.now(),
     }
     useGenerationCanvasStore.getState().updateNode(nodeId, {
@@ -113,4 +115,32 @@ export function markPreviewFailed(nodeId: string, revision: string): void {
   inProposal(preview, () => useGenerationCanvasStore.getState().updateNode(nodeId, {
     meta: { ...(node.meta ?? {}), [DIRECTOR_PREVIEW_META_KEY]: { ...preview, status: 'failed', reason: 'capture_failed', updatedAt: Date.now() } },
   }))
+}
+
+/**
+ * 请求（重新）渲染这个导演节点的预演：把它标成「渲染中」，常驻 Host 扫到即按节点上此刻的工程重渲。
+ * 节点卡的「重试」与导演视图「出成片」（预演过期 / 没出过）共用这一个写口。当前工程超长：不渲（要改短）；已在渲染中 = 什么都不写。
+ * 没有 3D-BOX 计划的工程（手搭的）也能出预演：修订号用工程指纹，迟到结果照样按它丢弃。返回是否已在渲染中。
+ */
+export function requestDirectorPreviewRender(nodeId: string): boolean {
+  const node = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === nodeId)
+  if (!node) return false
+  const preview = readDirectorPreview(node)
+  if (preview?.status === 'rendering') return true
+  // 坏掉的记录读不出 preview，但它写的目标镜头要留着：重渲后仍挂回原镜头
+  const salvagedTarget = preview ? undefined : (node.meta?.[DIRECTOR_PREVIEW_META_KEY] as { targetNodeId?: unknown } | undefined)?.targetNodeId
+  // 超长按当前工程判（改短了就能重渲；拉长了就不渲——离屏录制只有 10 秒，硬渲会把整段压进 10 秒）。
+  // 不改写节点上的预演：已挂好的那份照旧留着，花钱闸与「出成片」按当前工程判超长挡住。
+  if (directorProjectTooLong(node.meta?.[DIRECTOR_PROJECT_META_KEY])) return false
+  const revision = preview?.revision ?? readDirectorPlanMeta(node)?.revision ?? `manual:${directorPreviewSourceFingerprint(node.meta?.[DIRECTOR_PROJECT_META_KEY])}`
+  const next: DirectorPreviewMeta = {
+    status: 'rendering',
+    revision,
+    ...(preview?.targetNodeId ? { targetNodeId: preview.targetNodeId } : typeof salvagedTarget === 'string' ? { targetNodeId: salvagedTarget } : {}),
+    ...(preview?.proposalId ? { proposalId: preview.proposalId } : {}),
+    ...(preview?.notes ? { notes: preview.notes } : {}),
+    updatedAt: Date.now(),
+  }
+  useGenerationCanvasStore.getState().updateNode(nodeId, { meta: { ...(node.meta ?? {}), [DIRECTOR_PREVIEW_META_KEY]: next } })
+  return true
 }

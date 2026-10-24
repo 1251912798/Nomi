@@ -1,6 +1,7 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../utils/cn'
+import { listenOutsidePress } from '../../design/outsidePress'
 import { usePointerSession } from '../timeline/timelineGesture'
 import { useWorkbenchStore } from '../workbenchStore'
 import type { TimelineClip, TimelineState } from '../timeline/timelineTypes'
@@ -227,11 +228,10 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
   // 文字预设菜单：点外部关闭
   React.useEffect(() => {
     if (!textMenuOpen) return
-    const onDown = (event: PointerEvent) => {
-      if (textMenuRef.current && !textMenuRef.current.contains(event.target as globalThis.Node | null)) setTextMenuOpen(false)
-    }
-    window.addEventListener('pointerdown', onDown)
-    return () => window.removeEventListener('pointerdown', onDown)
+    return listenOutsidePress(
+      (target) => !textMenuRef.current || (target instanceof globalThis.Node && textMenuRef.current.contains(target)),
+      () => setTextMenuOpen(false),
+    )
   }, [textMenuOpen])
 
   const beginEditText = React.useCallback((id: string, text: string) => {

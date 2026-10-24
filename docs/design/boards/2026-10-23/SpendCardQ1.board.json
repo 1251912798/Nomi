@@ -1,0 +1,1171 @@
+{
+  "board": "SpendCardQ1",
+  "approvedOn": "2026-10-23",
+  "stage": "explored",
+  "visualReview": "用户 10-23 在 Claude Design 画布「指向元素与付费确认卡 D2 样张」第二版（https://claude.ai/artifact/Y8E9jC8RNrKXVuwxUoWv2f，私有）上选 P1 + Q1（协调转述）；四条连带问题 10-23 由协调与用户定（见 decisions）。",
+  "sourceBoundary": "板源 = 画布 Q1-states、Q1-flow 两格 + Q4 的 Q1 行（source/ 下原样副本）。preview/SpendCardQ1.html 是去壳拼页（规则同 NodePointer 板），Q4 里 Q2 / Q3 两行不进预览。样张上的价格、型号、时长是占位示例，不是真实报价。卡里的指向元素复用 NodePointer 板的组件，这里只认领「卡里怎么摆」。",
+  "designIntent": "内嵌 Agent 的付费请示卡只问一件事：花不花。卡 = 指向元素 + 一句话 + 「生成」；想改点指向去节点里改；确认只按节点当前参数花钱。功能全表 43 行见 functionCensus 与 docs/plan/2026-10-23-d2-pointer-spend-card.md §二。",
+  "priorArt": [
+    {
+      "url": "https://en.wikipedia.org/wiki/Brushing_and_linking",
+      "takeaway": "联动高亮（Becker & Cleveland 1987）：同一份数据的两个视图，一边选中，另一边同步高亮。",
+      "decisionImpact": "确认了「悬停指向元素 ↔ 画布节点同亮」；改了：它要求两边同时可见，所以窄屏另走「先露出目标再回到对话」（A4）。"
+    },
+    {
+      "url": "https://www.nngroup.com/articles/ten-usability-heuristics/",
+      "takeaway": "识别优于回忆（Nielsen 十条之六）：把元素、动作做成看得见的，降低记忆负担。",
+      "decisionImpact": "确认了选 P1（认脸）而不是 P2（认名字）、P3（认号）；P2 只作窄屏 / 行内形态。"
+    },
+    {
+      "url": "https://doi.org/10.1145/3290605.3300233",
+      "takeaway": "人机 AI 交互准则（Amershi 等 CHI 2019）G9「支持高效纠错」：改错的路径要短。",
+      "decisionImpact": "确认了「想改就点指向去节点里改」，改的路只有一条；改了：旧 D2 卡里嵌整件生成框的做法作废。"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "text": "指向元素用 P1 镜像小卡，P2 行内标签作 P1 的窄屏 / 行内形态（同一个零件两种密度）；P3 配对号标不做。付费请示卡用 Q1 一张卡一颗「生成」；Q2、Q3 不做。",
+      "source": "用户 10-23 在 D2 样张第二版上选 P1 镜像小卡 + Q1 一张卡一颗「生成」，P2 作 P1 的窄屏 / 行内形态（协调转述）"
+    },
+    {
+      "id": "D4",
+      "text": "「去掉这段」：多段卡里每个指向元素悬停 / 聚焦露一颗小「不生成 ×」，可撤回（对样张的已批差异）。",
+      "source": "协调 10-23 转述用户「按推荐」：Q1 选 A——多段卡里每个指向元素悬停 / 聚焦时露一颗小「不生成 ×」，点了 N 跟着减，节点显示「已去掉，不生成」；可以撤回（再点一次恢复）"
+    },
+    {
+      "id": "D5",
+      "text": "钱：照 10-08「界面不谈钱」，合计行只写「N 段」，样张上的 ¥ 是占位；逐镜价格不同时折叠明细印每镜价；算不出不印。",
+      "source": "协调 10-23 转述用户「按推荐」：Q2 照 10-08「界面不谈钱」——合计行只写「N 段」，不印合计金额；只有各镜价格不同时折叠明细里印每镜价；价格算不出就不印"
+    },
+    {
+      "id": "D6",
+      "text": "一台发动机：点「生成」逐节点走画布单节点提交，Agent 出价按「已交给画布」关闭，逐镜结局读回回合；「直接生成」档同一条路。",
+      "source": "协调 10-23 转述用户「按推荐」：Q3 一台发动机——点「生成」逐节点走画布单节点提交，Agent 出价按「已交给画布」关闭，逐镜结局从各单镜 Run 读回回合"
+    },
+    {
+      "id": "D7",
+      "text": "完成态：卡离开槽，对话流留一条带组指向的收据；面板收起时小球也数付费卡；旧卡账本键只停读不清盘。",
+      "source": "协调 10-23 定（Q4 / Q5 / Q8）"
+    }
+  ],
+  "elements": [
+    {
+      "id": "card.title",
+      "label": "卡标题一句问话「生成这 N 段视频？」/「张图片」（复数中英；张 / 段跟视频图片走）",
+      "change": "keep",
+      "states": [
+        "zh-en",
+        "dark",
+        "long-text"
+      ],
+      "candidates": [
+        "011-span-生成这1段视频",
+        "029-span-生成这3段视频",
+        "161-span-生成这3段视频",
+        "188-span-生成这3段视频",
+        "241-span-生成这3段视频",
+        "279-span-生成这3段视频",
+        "349-span-生成这2段视频",
+        "380-span-Generatethes",
+        "451-span-生成这3段视频"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "card.badge",
+      "label": "标题旁小字「生成 · Nomi 选的」（节点里换过模型就不再说「Nomi 选的」）",
+      "change": "keep",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "012-span-生成Nomi选的",
+        "030-span-生成Nomi选的",
+        "162-span-生成Nomi选的",
+        "189-span-生成Nomi选的",
+        "242-span-生成Nomi选的",
+        "280-span-生成Nomi选的",
+        "350-span-生成Nomi选的",
+        "381-span-GenerationNo",
+        "452-span-生成Nomi选的"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "card.pointers",
+      "label": "卡里的指向元素 / 组指向（复用 NodePointer 板的生产组件）：点了去节点里改；进行中 / 失败时每个指向元素显示那一镜的状态",
+      "change": "new",
+      "states": [
+        "hover",
+        "selected",
+        "loading",
+        "error",
+        "disabled",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "013-button",
+        "014-span-镜01",
+        "015-span-纸船出发",
+        "016-svg",
+        "017-span-等你确认",
+        "031-div",
+        "032-button",
+        "033-span-镜01",
+        "034-span-纸船出发",
+        "035-svg",
+        "036-button",
+        "037-span-镜02",
+        "038-span-越过落叶",
+        "039-svg",
+        "040-button",
+        "041-span-镜03",
+        "042-span-漂向远处",
+        "043-svg",
+        "056-div",
+        "057-button",
+        "058-span-镜01",
+        "059-span-纸船出发",
+        "060-span",
+        "061-span-生成中",
+        "062-button",
+        "063-span-镜02",
+        "064-span-越过落叶",
+        "065-span",
+        "066-span-发出中",
+        "067-button",
+        "068-span-镜03",
+        "069-span-漂向远处",
+        "070-span",
+        "071-svg",
+        "072-span-排队中",
+        "073-svg",
+        "085-div",
+        "086-button",
+        "087-span-镜01",
+        "088-span-纸船出发",
+        "089-button",
+        "090-span-镜02",
+        "091-span-越过落叶",
+        "092-button",
+        "093-span-镜03",
+        "094-span-漂向远处",
+        "104-div",
+        "105-button",
+        "106-span-镜01",
+        "107-span-纸船出发",
+        "108-span",
+        "109-span-生成中",
+        "110-button",
+        "111-span-镜02",
+        "112-span-越过落叶",
+        "113-svg",
+        "114-span-失败",
+        "115-button",
+        "116-span-镜03",
+        "117-span-漂向远处",
+        "118-svg",
+        "119-span-还没生成",
+        "133-div",
+        "134-button",
+        "135-span-镜01",
+        "136-span-纸船出发",
+        "137-span",
+        "138-span-生成中",
+        "139-button",
+        "140-span-镜02",
+        "141-span-越过落叶",
+        "142-svg",
+        "143-span-失败",
+        "144-button",
+        "145-span-镜03",
+        "146-span-漂向远处",
+        "147-svg",
+        "148-span-还没生成",
+        "163-div",
+        "164-button",
+        "165-span-镜01",
+        "166-span-纸船出发",
+        "167-svg",
+        "168-span-等你确认",
+        "169-button",
+        "170-span-镜02",
+        "171-span-越过落叶",
+        "172-svg",
+        "173-span-等你确认",
+        "174-button",
+        "175-span-镜03",
+        "176-span-漂向远处",
+        "177-svg",
+        "178-span-等你确认",
+        "190-div",
+        "191-button",
+        "192-span-镜01",
+        "193-span-纸船出发",
+        "194-svg",
+        "195-button",
+        "196-span-镜02",
+        "197-span-越过落叶",
+        "198-svg",
+        "199-button",
+        "200-span-镜03",
+        "201-span-漂向远处",
+        "202-svg",
+        "243-div",
+        "244-button",
+        "245-span-镜01",
+        "246-span-纸船出发",
+        "247-svg",
+        "248-button",
+        "249-span-镜02",
+        "250-span-越过落叶",
+        "251-svg",
+        "252-button",
+        "253-span-镜03",
+        "254-span-漂向远处",
+        "255-svg",
+        "281-div",
+        "282-button",
+        "283-span-镜01",
+        "284-span-纸船出发",
+        "285-svg",
+        "286-button",
+        "287-span-镜02",
+        "288-span-越过落叶",
+        "289-svg",
+        "290-button",
+        "291-span-镜03",
+        "292-span-漂向远处",
+        "293-svg",
+        "316-div",
+        "317-button",
+        "318-span-镜01",
+        "319-span-纸船出发",
+        "320-span",
+        "321-span-发出中",
+        "322-button",
+        "323-span-镜02",
+        "324-span-越过落叶",
+        "325-span",
+        "326-span-排队中",
+        "327-svg",
+        "328-button",
+        "329-span-镜03",
+        "330-span-漂向远处",
+        "331-span",
+        "332-span-排队中",
+        "333-svg",
+        "351-div",
+        "352-button",
+        "353-span-镜01",
+        "354-span-纸船出发",
+        "355-svg",
+        "356-button",
+        "357-span-镜02",
+        "358-span-越过落叶",
+        "359-span",
+        "360-span-生成中",
+        "361-button",
+        "362-span-镜03",
+        "363-span-漂向远处",
+        "364-svg",
+        "382-div",
+        "383-button",
+        "384-span-Shot01",
+        "385-svg",
+        "386-button",
+        "387-span-Shot02",
+        "388-svg",
+        "389-button",
+        "390-span-Shot03",
+        "391-svg",
+        "403-div",
+        "404-button",
+        "405-span-镜01",
+        "406-span-纸船出发",
+        "407-span",
+        "408-span-生成中",
+        "409-button",
+        "410-span-镜02",
+        "411-span-越过落叶",
+        "412-svg",
+        "413-span-失败",
+        "414-button",
+        "415-span-镜03",
+        "416-span-漂向远处",
+        "417-span-还没生成",
+        "430-div",
+        "431-button",
+        "432-span-Shot01",
+        "433-span",
+        "434-span-Generating",
+        "435-button",
+        "436-span-Shot02",
+        "437-span",
+        "438-span-Sending",
+        "439-button",
+        "440-span-Shot03",
+        "441-span",
+        "442-span-Queued",
+        "443-svg",
+        "453-div",
+        "454-button",
+        "455-span-镜01",
+        "456-svg",
+        "457-button",
+        "458-span-镜02",
+        "459-svg",
+        "460-button",
+        "461-span-镜03",
+        "462-svg"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
+      "note": "替掉旧卡体（整件生成框 + 翻页）。窄屏（≤320px）只留镜号 + 缩略图。"
+    },
+    {
+      "id": "card.pointer.exclude",
+      "label": "多段卡里每个指向元素悬停 / 聚焦时露一颗小「不生成 ×」：点了这一镜退出这次出价、节点显示「已去掉，不生成」、「全部生成（N）」的 N 跟着减；再点一次恢复",
+      "change": "new",
+      "states": [
+        "hover",
+        "selected",
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
+      "userDecision": {
+        "quote": "协调 10-23 转述用户「按推荐」：Q1 选 A——多段卡里每个指向元素悬停 / 聚焦时露一颗小「不生成 ×」，点了 N 跟着减，节点显示「已去掉，不生成」；可以撤回（再点一次恢复）",
+        "date": "2026-10-23"
+      },
+      "note": "对样张的已批差异（样张没画）。全部去掉时主按钮置灰、卡留着（还能恢复），要关卡点「取消」。今天的「去掉」不可撤回，第③步要补「恢复这一镜」的宿主动作。"
+    },
+    {
+      "id": "card.summary",
+      "label": "一行只读摘要：读节点当前参数（模型 · 比例 · 清晰度 · 共 Ns；逐镜不同时「N 镜 · 逐镜不同：16:9 ×1 · 9:16 ×2」）；节点里一改，卡上跟着变",
+      "change": "new",
+      "states": [
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "018-span-Seedance20Fa",
+        "019-span-1694s480p",
+        "044-span-Seedance20Fa",
+        "179-span-Seedance20Fa",
+        "203-span-3镜逐镜不同169191",
+        "256-span-Seedance20Fa",
+        "294-span-Seedance20Fa",
+        "295-span-共16s",
+        "365-span-镜02已发出其余Seed",
+        "392-span-Seedance20Fa",
+        "463-span-Seedance20Fa"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "card.total",
+      "label": "页脚「N 段」（按 10-08「界面不谈钱」不印合计金额；样张上的 ¥ 数字是占位）；价格算不出整行不印",
+      "change": "restyle",
+      "states": [
+        "empty",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "020-span-合计070",
+        "045-span-3段合计210",
+        "215-span-3段合计228",
+        "257-span-3段合计210",
+        "296-span-3段合计294",
+        "366-span-2段合计140",
+        "393-span-3videosTotal",
+        "464-span-3段合计210"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
+      "userDecision": {
+        "quote": "协调 10-23 转述用户「按推荐」：Q2 照 10-08「界面不谈钱」——合计行只写「N 段」，不印合计金额；只有各镜价格不同时折叠明细里印每镜价；价格算不出就不印",
+        "date": "2026-10-23"
+      },
+      "note": "样张画了「3 段 · 合计 ¥2.10」，与 10-08 规则冲突，用户 10-23 定照 10-08。"
+    },
+    {
+      "id": "card.per-shot",
+      "label": "逐镜折叠「逐镜 · N 镜」：只在各镜价格不同时出现，展开每镜一行（镜头 k · 模型 · 比例 · 时长 + 每镜价）",
+      "change": "keep",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark",
+        "long-text"
+      ],
+      "candidates": [
+        "204-span-逐镜3镜",
+        "205-svg",
+        "206-div",
+        "207-span-镜头1Seedance2",
+        "208-span-070",
+        "209-div",
+        "210-span-镜头2Seedance2",
+        "211-span-088",
+        "212-div",
+        "213-span-镜头3Seedance2",
+        "214-span-070"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "card.cancel",
+      "label": "「取消」：收回这一次出价，节点与参数都留着",
+      "change": "keep",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "021-button-取消",
+        "046-button-取消",
+        "180-button-取消",
+        "216-button-取消",
+        "258-button-取消",
+        "297-button-取消",
+        "367-button-取消",
+        "394-button-Cancel",
+        "465-button-取消"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "card.generate",
+      "label": "主按钮「生成」（单段）/「全部生成（N）」（多段）/「生成剩下 N 段」（节点上已点 ↑ 后）：按节点当前参数逐节点走画布单节点提交",
+      "change": "restyle",
+      "states": [
+        "hover",
+        "disabled",
+        "loading",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "022-button-生成",
+        "047-button-全部生成3",
+        "181-button-全部生成3",
+        "217-button-全部生成3",
+        "259-button-全部生成3",
+        "298-button-全部生成3",
+        "368-button-生成剩下2段",
+        "395-button-Generateall3",
+        "466-button-全部生成3"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
+      "note": "动作在路上时置灰；⏎ 提示、最小宽 80 沿用。"
+    },
+    {
+      "id": "card.progress",
+      "label": "进行中：标题「正在发出 k/N 段」+ 转圈，动作行说「点『取消』停下剩下的」；正在停下…/已经发出的照常生成",
+      "change": "keep",
+      "states": [
+        "loading",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "054-svg",
+        "055-span-正在发出23段",
+        "074-span-点取消停下剩下的",
+        "314-svg",
+        "315-span-正在发出13段",
+        "428-svg",
+        "429-span-Sending2of3v",
+        "444-span-Canceltostop"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "card.progress.stop",
+      "label": "进行中的「取消」：立即生效（不排队），已发出的照常生成；停下后 toast「发出了 K 段，剩下 N−K 段没发」",
+      "change": "keep",
+      "states": [
+        "loading",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "075-button-取消",
+        "334-button-取消",
+        "445-button-Cancel"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "card.done",
+      "label": "完成：卡离开输入框上方那一格，对话流留一条收据「✓ 已生成 N 段」+ 组指向（实时读节点状态，点了照样定位）；画布对应节点各亮一下",
+      "change": "new",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "082-svg",
+        "083-span-已生成3段",
+        "084-span-3段合计210"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
+      "note": "协调 10-23 定（Q4）。收据上的「N 段」同样不印金额。"
+    },
+    {
+      "id": "card.failure",
+      "label": "失败留在卡里：⚠ 标题「镜 N 没有发出去 / 参数被拒」+ 原因 + 哪几镜已发 / 未发；结果未知时说先去核对，不说没花钱",
+      "change": "new",
+      "states": [
+        "error",
+        "zh-en",
+        "dark",
+        "long-text"
+      ],
+      "candidates": [
+        "102-svg",
+        "103-span-镜02没有发出去",
+        "120-svg",
+        "121-span-服务暂时不可用",
+        "122-small-镜01已发出并在生成镜0",
+        "131-svg",
+        "132-span-镜02参数被拒",
+        "149-svg",
+        "150-span-时长5s超出这个模型的上",
+        "151-small-镜01已发出镜03未发",
+        "401-svg",
+        "402-span-镜02没有发出去",
+        "418-svg",
+        "419-span-服务暂时不可用",
+        "420-small-镜01已发出并在生成镜0"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "card.failure.decline",
+      "label": "失败时「先不发了」：收回剩下的出价",
+      "change": "new",
+      "states": [
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "123-button-先不发了",
+        "152-button-先不发了",
+        "421-button-先不发了"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "card.failure.retry",
+      "label": "没发出去时「再试一次」：只重发失败那一镜",
+      "change": "new",
+      "states": [
+        "error",
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "124-button-再试一次",
+        "422-button-再试一次"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "card.failure.go-edit",
+      "label": "参数被拒时「去改镜 N」：点了定位到那个节点（和点指向元素同一个动作）",
+      "change": "new",
+      "states": [
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "153-button-去改镜02",
+        "154-svg"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "canvas.node.highlight",
+      "label": "画布节点被外部高亮 / 闪一下（与 NodePointer 板同一条，这里是卡上点指向、完成时各亮一下的画布侧）",
+      "change": "restyle",
+      "states": [
+        "hover",
+        "selected",
+        "dark"
+      ],
+      "candidates": [
+        "230-span-镜02",
+        "231-span-越过落叶",
+        "232-div",
+        "233-svg",
+        "264-span-镜02",
+        "265-span-越过落叶",
+        "266-div",
+        "267-svg",
+        "339-span-镜02",
+        "340-span-越过落叶",
+        "341-div",
+        "342-div",
+        "343-span-生成中"
+      ],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "node.composer",
+      "label": "节点生成框（改参数的家）：节点里改时长，卡上摘要跟着变（Q1-flow ②）",
+      "change": "keep",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "270-div-雨后清晨落叶随水流缓缓漂",
+        "271-span-Seedance20Fa",
+        "272-span-169",
+        "273-span-8s",
+        "274-span-480p",
+        "275-svg"
+      ],
+      "status": "missing",
+      "owner": "#1269（生成框 B3 新排法）；本线只读它"
+    },
+    {
+      "id": "card.brake-note",
+      "label": "刹车说明一行（连续失败 / 计划外 / 你点过停止），标题下（样张没画，沿用现行）",
+      "change": "keep",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "card.unreadable",
+      "label": "读不到待决时那张会说话的缺卡（missingInterventionCard，样张没画，沿用现行）",
+      "change": "keep",
+      "states": [
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+    },
+    {
+      "id": "dock.pending-count",
+      "label": "面板收起后小球的待确认计数也数付费卡（读同一份 spend）",
+      "change": "new",
+      "states": [
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
+      "note": "协调 10-23 定（Q5），今天的缺口。"
+    },
+    {
+      "id": "host.one-engine",
+      "label": "确认路径：点「生成」逐节点走画布单节点提交（和节点 ↑ 同一条路），Agent 出价按「已交给画布」关闭，逐镜结局从各单镜 Run 读回回合；「直接生成」档同一条路不出卡、刹车时出卡；卡与节点 ↑ 争同一镜只成一次",
+      "change": "new",
+      "states": [
+        "loading",
+        "error"
+      ],
+      "candidates": [],
+      "status": "missing",
+      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
+      "userDecision": {
+        "quote": "协调 10-23 转述用户「按推荐」：Q3 一台发动机——点「生成」逐节点走画布单节点提交，Agent 出价按「已交给画布」关闭，逐镜结局从各单镜 Run 读回回合",
+        "date": "2026-10-23"
+      },
+      "note": "看不见的宿主行为，进清单是为了让功能全表第 6、20、32–38 行有去处。"
+    },
+    {
+      "id": "legacy.card-draft-ledger",
+      "label": "旧卡自己的一套：卡账本（localStorage nomi:spend-draft:*）、卡上写口、确认前逐镜 revise 落候选、本地重算报价、候选变新时重绑定节点（rebindLandedShots）",
+      "change": "remove",
+      "states": [
+        "empty"
+      ],
+      "candidates": [],
+      "status": "dropped",
+      "userDecision": {
+        "quote": "D2 付费卡新方向：按默认值先在画布建节点，聊天里指向元素加「确认」只管花钱；想改点指向去节点里改（用户 10-22 拍板，docs/design/2026-10-08-approved-designs.md §⑪ 第 4 条）",
+        "date": "2026-10-22"
+      },
+      "note": "第③步同一个 PR 删；旧键只停读不清盘（协调 10-23 定 Q8），下个版本再删键。"
+    }
+  ],
+  "decor": [
+    "001-h3-Q1一张卡一颗生成状态",
+    "002-div",
+    "003-span-Q1",
+    "004-h2-一张卡一颗确认指向元素一",
+    "005-span-卡里只有标题指向元素一行",
+    "006-b-①单段确认前",
+    "007-div",
+    "008-span-Noi",
+    "009-b-m",
+    "010-p-已在画布上起草了1个镜头",
+    "023-div-可继续输入将排队发送",
+    "024-b-②三段确认前",
+    "025-div",
+    "026-span-Noi",
+    "027-b-m",
+    "028-p-已在画布上起草了3个镜头",
+    "048-div-可继续输入将排队发送",
+    "049-b-③生成中哪段在发可停止",
+    "050-div",
+    "051-span-Noi",
+    "052-b-m",
+    "053-p-已在画布上起草了3个镜头",
+    "076-div-可继续输入将排队发送",
+    "077-b-④完成",
+    "078-div",
+    "079-span-Noi",
+    "080-b-m",
+    "081-p-已在画布上起草了3个镜头",
+    "095-span-完成时画布上这三个节点各",
+    "096-div-继续告诉我下一步",
+    "097-b-⑤失败没发出去服务暂不可",
+    "098-div",
+    "099-span-Noi",
+    "100-b-m",
+    "101-p-已在画布上起草了3个镜头",
+    "125-div-可继续输入将排队发送",
+    "126-b-⑥失败参数被拒下一步去节",
+    "127-div",
+    "128-span-Noi",
+    "129-b-m",
+    "130-p-已在画布上起草了3个镜头",
+    "155-div-可继续输入将排队发送",
+    "156-b-⑦价格算不出多数模型的常",
+    "157-div",
+    "158-span-Noi",
+    "159-b-m",
+    "160-p-已在画布上起草了3个镜头",
+    "182-div-可继续输入将排队发送",
+    "183-b-⑧逐镜不同含竖版逐镜单价",
+    "184-div",
+    "185-span-Noi",
+    "186-b-m",
+    "187-p-已在画布上起草了3个镜头",
+    "218-div-可继续输入将排队发送",
+    "219-h3-Q1想改的路径",
+    "220-div",
+    "221-span-Q1",
+    "222-h2-想改参数点指向在节点里改",
+    "223-span-卡上的摘要和合计读节点所",
+    "224-div-不想改的人直接点全部生成",
+    "225-b-①点镜02",
+    "226-span-镜01",
+    "227-span-纸船出发",
+    "228-div",
+    "229-svg",
+    "234-span-镜03",
+    "235-span-漂向远处",
+    "236-div",
+    "237-svg",
+    "238-div",
+    "239-span-Noi",
+    "240-b-m",
+    "260-div-把5s改成8s卡上的共1",
+    "261-b-②画布滑到镜02生成框就",
+    "262-span-镜01",
+    "263-div",
+    "268-span-镜03",
+    "269-div",
+    "276-div",
+    "277-span-Noi",
+    "278-b-m",
+    "299-div-按节点当前的参数发出画布",
+    "300-b-③回到聊天点全部生成",
+    "301-span-镜01",
+    "302-div",
+    "303-div",
+    "304-span-镜02",
+    "305-span-越过落叶",
+    "306-div",
+    "307-div",
+    "308-span-镜03",
+    "309-div",
+    "310-div",
+    "311-div",
+    "312-span-Noi",
+    "313-b-m",
+    "335-div-卡自己认出镜02已经发了",
+    "336-b-④或者在节点上直接点",
+    "337-span-镜01",
+    "338-div",
+    "344-span-镜03",
+    "345-div",
+    "346-div",
+    "347-span-Noi",
+    "348-b-m",
+    "369-h3-Q4英文暗色窄屏Q1行",
+    "370-div",
+    "371-span-Q4",
+    "372-h2-三种请示卡的英文暗色窄屏",
+    "373-span-窄屏面板320px指向元",
+    "374-span-Q1",
+    "375-b-一张卡一颗确认",
+    "376-div",
+    "377-span-Noi",
+    "378-b-m",
+    "379-p-Drafted3shot",
+    "396-div-Youcankeepty",
+    "397-div",
+    "398-span-Noi",
+    "399-b-m",
+    "400-p-已在画布上起草了3个镜头",
+    "423-div-可继续输入将排队发送",
+    "424-div",
+    "425-span-Noi",
+    "426-b-m",
+    "427-p-Drafted3shot",
+    "446-div-Youcankeepty",
+    "447-div",
+    "448-span-Noi",
+    "449-b-m",
+    "450-p-已在画布上起草了3个镜头"
+  ],
+  "functionCensus": [
+    {
+      "censusId": "SC-01",
+      "function": "卡的位置与优先序（换档 > 付费 > 工具审批）",
+      "before": "Agent 面板输入框上方那一格",
+      "after": "card.generate",
+      "afterNote": "位置与优先序不变"
+    },
+    {
+      "censusId": "SC-02",
+      "function": "单段 / 单张（无翻页、无生成剩下）",
+      "before": "一镜一张框",
+      "after": "card.generate",
+      "afterNote": "单段 = 一个指向元素 + 「生成」"
+    },
+    {
+      "censusId": "SC-03",
+      "function": "标题一句问话，复数中英，张 / 段",
+      "before": "orderWording",
+      "after": "card.title",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-04",
+      "function": "徽章「生成 · Nomi 选的」",
+      "before": "按最初模型集合判",
+      "after": "card.badge",
+      "afterNote": "判据改读节点当前模型"
+    },
+    {
+      "censusId": "SC-05",
+      "function": "多段翻页 ‹ k/N ›，← → 翻页",
+      "before": "V4Pager + handleKeyDown",
+      "after": "card.pointers",
+      "afterNote": "组指向全部同时摆出；键盘改为 Tab 在指向元素间走"
+    },
+    {
+      "censusId": "SC-06",
+      "function": "生成这张 / 这段（只生成当前一镜）",
+      "before": "confirm → confirmPendingSpendConfirmation",
+      "after": "card.pointers",
+      "afterNote": "点指向去节点，节点上点 ↑；卡认出后变「生成剩下 N 段」"
+    },
+    {
+      "censusId": "SC-07",
+      "function": "生成剩下 N 张 / 段（逐张各一份授权）",
+      "before": "confirmRemaining → confirmRemainingSpendShots",
+      "after": "card.generate",
+      "afterNote": "「全部生成（N）」/「生成剩下 N 段」"
+    },
+    {
+      "censusId": "SC-08",
+      "function": "去掉这张 / 这段（不生成、节点留着）",
+      "before": "remove → removePendingSpendShot",
+      "after": "card.pointer.exclude",
+      "afterNote": "用户 10-23 选 A：每个指向元素悬停 / 聚焦露「不生成 ×」，可撤回"
+    },
+    {
+      "censusId": "SC-09",
+      "function": "取消（收回这一次出价，节点与草稿留着）",
+      "before": "discard",
+      "after": "card.cancel",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-10",
+      "function": "正在发出 k/N + 正在停下",
+      "before": "projectSpendCard batch 分支",
+      "after": "card.progress",
+      "afterNote": "保留，指向元素上显示每镜状态"
+    },
+    {
+      "censusId": "SC-11",
+      "function": "取消立即打断（不排队）",
+      "before": "discard batchRef / stoppedDuringAction",
+      "after": "card.progress.stop",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-12",
+      "function": "停下后 8 秒 toast「发出了 K 段，剩下 N−K 段没发」",
+      "before": "sayStopped",
+      "after": "card.progress.stop",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-13",
+      "function": "卡体：提示词编辑（可 @）",
+      "before": "NodeGenerationComposer host=\"panel\"",
+      "after": "card.pointers",
+      "afterNote": "点指向去节点里改"
+    },
+    {
+      "censusId": "SC-14",
+      "function": "卡体：模型 / 变体切换",
+      "before": "同上",
+      "after": "card.pointers",
+      "afterNote": "去节点里改"
+    },
+    {
+      "censusId": "SC-15",
+      "function": "卡体：参数 chip 直接改",
+      "before": "同上",
+      "after": "card.summary",
+      "afterNote": "卡上只留一行只读摘要；改去节点"
+    },
+    {
+      "censusId": "SC-16",
+      "function": "卡体：生成方式",
+      "before": "同上",
+      "after": "card.pointers",
+      "afterNote": "去节点里改"
+    },
+    {
+      "censusId": "SC-17",
+      "function": "卡体：参考图 / 首尾帧（卡上拿掉不断画布边）",
+      "before": "placeSpendReferences / keptReferenceUrls",
+      "after": "card.pointers",
+      "afterNote": "参考只在节点上（#1269）"
+    },
+    {
+      "censusId": "SC-18",
+      "function": "卡上异步写口归属",
+      "before": "writeScope / writeAccess",
+      "after": "legacy.card-draft-ledger",
+      "afterNote": "删：卡不再有写口"
+    },
+    {
+      "censusId": "SC-19",
+      "function": "未确认改动进卡账本，可恢复（localStorage）",
+      "before": "spendDraftKey / restoreSpendDraft",
+      "after": "legacy.card-draft-ledger",
+      "afterNote": "删：节点是唯一数据"
+    },
+    {
+      "censusId": "SC-20",
+      "function": "确认前逐镜 revise 落候选再封印",
+      "before": "persistShown / persistEdits",
+      "after": "host.one-engine",
+      "afterNote": "删：确认只按节点当前参数走画布单节点提交"
+    },
+    {
+      "censusId": "SC-21",
+      "function": "候选变新时重绑定节点（冲掉用户改动）",
+      "before": "rebindLandedShots",
+      "after": "legacy.card-draft-ledger",
+      "afterNote": "删"
+    },
+    {
+      "censusId": "SC-22",
+      "function": "本地重算价格 / 与正式报价不一致留卡",
+      "before": "repricePendingSpend / priceDisagreements",
+      "after": "card.total",
+      "afterNote": "价格读节点；按下前节点又变了 → 「卡上的内容刚变了」"
+    },
+    {
+      "censusId": "SC-23",
+      "function": "已知价：主按钮与合计不印金额",
+      "before": "spendTotalLead*",
+      "after": "card.total",
+      "afterNote": "照 10-08（用户 10-23 再确认）"
+    },
+    {
+      "censusId": "SC-24",
+      "function": "逐镜不同：逐镜折叠印每镜金额",
+      "before": "perItem / V4PriceRow",
+      "after": "card.per-shot",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-25",
+      "function": "价格算不出：整行不印、不写 0",
+      "before": "total === undefined 分支",
+      "after": "card.total",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-26",
+      "function": "刹车说明",
+      "before": "BRAKE_COPY",
+      "after": "card.brake-note",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-27",
+      "function": "动作在路上时置灰，取消仍可点",
+      "before": "actionsDisabled",
+      "after": "card.generate",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-28",
+      "function": "动作失败 toast（按事实分）",
+      "before": "spendActionFailureCopy",
+      "after": "card.failure",
+      "afterNote": "失败留在卡里 + 对应按钮"
+    },
+    {
+      "censusId": "SC-29",
+      "function": "进行中取消失败的可见性",
+      "before": "discard 分支",
+      "after": "card.failure",
+      "afterNote": "停下失败也写在卡里"
+    },
+    {
+      "censusId": "SC-30",
+      "function": "读不到 → 会说话的缺卡",
+      "before": "missingInterventionCard / assertAnnouncedCardRendered",
+      "after": "card.unreadable",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-31",
+      "function": "画布占位小标（等你确认 / 已去掉 / 还没生成 / 排队）",
+      "before": "ProductionShotPlaceholder",
+      "after": "card.pointers",
+      "afterNote": "节点侧不变，指向元素照抄同一份状态"
+    },
+    {
+      "censusId": "SC-32",
+      "function": "报价 / 计划 / 出价身份核对",
+      "before": "cardIdentity / assertPendingSpendIdentity",
+      "after": "host.one-engine",
+      "afterNote": "保留，加节点版本"
+    },
+    {
+      "censusId": "SC-33",
+      "function": "等候无倒计时；另发一句话收回出价",
+      "before": "productionPendingSpend",
+      "after": "host.one-engine",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-34",
+      "function": "「直接生成」档不出卡，刹车 / 失败回同一张卡",
+      "before": "awaitingSpendDecision",
+      "after": "host.one-engine",
+      "afterNote": "同一条路不出卡，刹车时出卡"
+    },
+    {
+      "censusId": "SC-35",
+      "function": "重启后收回上一个进程摆出的出价",
+      "before": "stalePresentationSweep",
+      "after": "host.one-engine",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-36",
+      "function": "回合等卡关，读逐镜结局",
+      "before": "watchSpendCardClose",
+      "after": "host.one-engine",
+      "afterNote": "逐镜结局从各单镜 Run 读回"
+    },
+    {
+      "censusId": "SC-37",
+      "function": "同一项目多笔待决只出一张",
+      "before": "listPendingSpendConfirms",
+      "after": "host.one-engine",
+      "afterNote": "保留"
+    },
+    {
+      "censusId": "SC-38",
+      "function": "落地准入：镜头先落画布才派发",
+      "before": "admitShotsForDispatch",
+      "after": "host.one-engine",
+      "afterNote": "节点是 owner 后天然满足"
+    },
+    {
+      "censusId": "SC-39",
+      "function": "待答态外框（accent 发丝线）",
+      "before": "V4SlotShell waiting",
+      "after": "card.generate",
+      "afterNote": "卡外框不变；指向元素不用蓝色描边"
+    },
+    {
+      "censusId": "SC-40",
+      "function": "主按钮最小宽、⏎ 提示、折行、走查锚点",
+      "before": "V4Intervention",
+      "after": "card.generate",
+      "afterNote": "保留，锚点按新卡改名并同步走查"
+    },
+    {
+      "censusId": "SC-41",
+      "function": "收起后小球不数付费卡（缺口）",
+      "before": "dockPendingCount",
+      "after": "dock.pending-count",
+      "afterNote": "协调 10-23 定：做"
+    },
+    {
+      "censusId": "SC-42",
+      "function": "全套中英键",
+      "before": "agentPanelV4.ts",
+      "after": "card.title",
+      "afterNote": "保留；新文案中英成对"
+    },
+    {
+      "censusId": "SC-43",
+      "function": "完成态（今天卡点完就消失）",
+      "before": "—",
+      "after": "card.done",
+      "afterNote": "对话流留一条带组指向的收据"
+    }
+  ]
+}

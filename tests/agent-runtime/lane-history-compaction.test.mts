@@ -63,7 +63,7 @@ test('R02 actual SDK compaction retains original branch IDs and visible skill hi
     { type: 'text', text: 'summary' },
     { type: 'text', text: 'continued' },
   ]);
-  const input = { capture: () => ({ approvalPolicy: { mode: 'safe-auto' as const, spend: 'confirm' as const }, skillKey: 'storyboard' }),
+  const input = { capture: () => ({ approvalPolicy: { mode: 'request' as const }, skillKey: 'storyboard' }),
     activate: () => {}, providerContent: async (m: { content: string }) => m.content, rewritePayload: (p: unknown) => p };
   const lane = await f.openLane({ ...f.options, input, model: { ...f.options.model, contextWindow: 1000000 } });
   await lane.execute({ kind: 'prompt', text: 'Only three characters' });
@@ -128,7 +128,7 @@ test('R04 active run intent and skill survive two summaries that omit both', asy
     { type: 'text', text: 'finished' },
   ]);
   const skill = { name: 'Storyboard', contentHash: 'hash-original', content: 'EXACT_PREPARED_SKILL' } as SkillRecord;
-  const input = { capture: () => ({ approvalPolicy: { mode: 'safe-auto' as const, spend: 'confirm' as const },
+  const input = { capture: () => ({ approvalPolicy: { mode: 'request' as const },
     skillKey: 'storyboard', systemPrompt: 'EXACT_ORIGINAL_TEMPLATE' }),
     prepare: (context: LaneComposerContext) => prepareLaneSkillContext(context,
       { resolve: async () => skill, render: async resolved => resolved.content }),
@@ -168,7 +168,7 @@ test('S25 explicit Continue still addresses the original stopped entry after com
     { type: 'text', text: 'continued' },
   ]);
   let reference: string | undefined;
-  const input = { capture: () => ({ approvalPolicy: { mode: 'safe-auto' as const, spend: 'confirm' as const }, continueFromEntryId: reference }),
+  const input = { capture: () => ({ approvalPolicy: { mode: 'request' as const }, continueFromEntryId: reference }),
     activate: () => {}, providerContent: async (m: { content: string }) => m.content, rewritePayload: (p: unknown) => p };
   const host = await f.openLane({ ...f.options, input, model: { ...f.options.model, contextWindow: 1000000 } });
   const lane = await harness.lane('main', BACKGROUND_CONTEXT);
@@ -194,7 +194,7 @@ test('independent R04 live lifecycle: short steer survives two lossy SDK compact
     { type: 'text', text: 'summary deliberately omits task' },
     { type: 'text', text: 'finished' },
   ]);
-  const input = { capture: () => ({ approvalPolicy: { mode: 'safe-auto' as const, spend: 'confirm' as const }, skillKey: 'storyboard' }), activate: () => {}, providerContent: async (m: { content: string }) => m.content, rewritePayload: (p: unknown) => p };
+  const input = { capture: () => ({ approvalPolicy: { mode: 'request' as const }, skillKey: 'storyboard' }), activate: () => {}, providerContent: async (m: { content: string }) => m.content, rewritePayload: (p: unknown) => p };
   const host = await f.openLane({ ...f.options, input, model: { ...f.options.model, contextWindow: 1000000 } });
   let queued: ReturnType<typeof host.execute> | undefined;
   await host.execute({ kind: 'prompt', text: 'ORIGINAL_LONG_MANUSCRIPT ' + 'x'.repeat(17000) }, { onAccepted: () => { queued = host.execute({ kind: 'steer', text: 'LATEST_SCOPE_ONLY_THREE_CHARACTERS' }); } });

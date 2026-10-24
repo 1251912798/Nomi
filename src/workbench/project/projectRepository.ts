@@ -1,4 +1,5 @@
 import { sameProjectAgentBinding, type ProjectBinding } from '../../../electron/shared/projectBinding'
+import type { ProjectDeleteIntent } from '../../../electron/shared/projectDeleteIntent'
 import {
   workbenchProjectRecordSchema,
   type WorkbenchProjectPayload,
@@ -34,6 +35,7 @@ import {
 } from './projectNormalize'
 import { deriveProjectCoverFromNodes, deriveProjectCoverFromRaw, type ProjectCover } from './projectCoverDerive'
 import i18n, { getAppLocale } from '../../i18n'
+import { invalidateAllProjectAssets } from '../assets/useAllProjectAssets'
 
 // 重导出：实现已拆到 projectStorage（localStorage 原语 + 配额错误），
 // 但 projectRepository 对外公共导出面保持不变。
@@ -112,10 +114,14 @@ function summaryCoverFields(cover: ProjectCover): Pick<WorkbenchProjectSummary, 
   }
 }
 
-export function listLocalProjects(): WorkbenchProjectSummary[] {
+/**
+ * 项目列表摘要的唯一读面（异步）。桌面端走主进程的异步摘要读口，渲染层不再 sendSync 干等主进程扫完全库。
+ * 浏览器预览（无桌面桥）读 localStorage，同样以 Promise 返回，调用方只有一种写法。
+ */
+export async function listLocalProjects(): Promise<WorkbenchProjectSummary[]> {
   const desktop = getDesktopBridge()
   if (desktop) {
-    return (desktop.projects.list() as WorkbenchProjectSummary[]).sort((a, b) => b.updatedAt - a.updatedAt)
+    return ((await desktop.projects.listAsync()) as WorkbenchProjectSummary[]).sort((a, b) => b.updatedAt - a.updatedAt)
   }
   // 封面永远从 record 内容现场派生（与桌面 main list 同语义）；持久化 summary 里的缩略图
   // 字段只在 record 读不出来时兜底——避免陈旧封面 URL（尤其视频 url 混进 <img>）钉死在列表里。
@@ -140,7 +146,7 @@ export function createLocalProject(
 ): WorkbenchProjectRecordV1 {
   const now = Date.now()
   const template = getProjectTemplate(templateId || null)
-  // 草稿态：用户手动「新建空白」（无 seedKey 播种、无 rootPath 外部绑定）零编辑会被启动 GC 回收。
+  // 草稿态：用户手动「新建空白」（无 seedKey 播种、无 rootPath 外部绑定）。列表照常返回它；零编辑空壳的整理并进「离开只写欠着的」那条线（2026-10-22）。
   // example（seedKey）/打开文件夹（rootPath）不打标记，永不被回收。
   const isDraft = !options.seedKey?.trim() && !options.rootPath?.trim()
   const summary: WorkbenchProjectSummary = {
@@ -321,12 +327,21 @@ export async function renameLocalProject(projectId: string, name: string): Promi
   return next
 }
 
-export function deleteLocalProject(projectId: string): void {
+/**
+ * 桌面端：等主进程把项目文件夹移进回收站（或只解绑）成功后，才清本地缓存；失败原样抛出，什么都不清。
+ * 返回主进程说的结果：`deleted: true` 才是「文件夹真进了回收站」；false = 只摘了登记（「只移除」、外部文件夹、文件夹已不在
+ * 原位置…）。调用方据此决定提示说什么，不能按「用户点了删除」就说成功（V-library-trash 建议 2）。
+ * 没有桌面桥（浏览器预览）没有回收站这回事，只清本地缓存，恒为 false。
+ */
+export async function deleteLocalProject(projectId: string, intent: ProjectDeleteIntent): Promise<{ id: string; deleted: boolean }> {
   const id = String(projectId || '').trim()
   if (!id) throw new Error('projectId is required')
   const desktop = getDesktopBridge()
+  let deleted = false
   if (desktop) {
-    desktop.projects.delete(id)
+    deleted = (await desktop.projects.delete(id, intent)).deleted === true
+    // 「所有项目的素材」那一份清单里还有这个项目的素材：删项目不经过素材写入层的广播，这里显式作废。
+    invalidateAllProjectAssets()
   }
   removeStorageKey(projectRecordKey(id))
   removeStorageKey(projectBackupKey(id))
@@ -340,4 +355,5 @@ export function deleteLocalProject(projectId: string): void {
     }
   }
   writeIndex(readMergedProjectSummaries().filter((item) => item.id !== id))
+  return { id, deleted }
 }

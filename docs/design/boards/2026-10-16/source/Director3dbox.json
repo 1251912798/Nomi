@@ -1,0 +1,37 @@
+{
+  "approvedMockup": "docs/design/director-3dbox-mockup.html",
+  "approvedMockupNote": "10-03 样张（布局 A + v2，用户 10-04 拍板 A + v2）；10-04 追加拍板：主按钮文案「出成片 ▾」、小窗左下显示正在播哪一镜；10-06 Claude Design 画布「正在改：镜头 N」七态；精修走 #991「选中才出」。",
+  "reconciliationTable": "docs/plan/2026-10-04-director-3dbox-phase3a-shell.md（3a 整张对账表 33 行，本清单按它逐行更新到 2026-10-16 main）",
+  "sources": [
+    {
+      "path": "docs/design/director-3dbox-mockup.html",
+      "sha256": "db3db1757f77cc2c22946cf41467b061d32fa49f2a9935349033adee1c3ecc4e"
+    },
+    {
+      "path": "src/devlab/designLab/director3dbox/director3dboxLabKit.tsx",
+      "sha256": "bebc9364567c178f05540853de35be21ba0f1ece9a77be794b609c10eec0597b"
+    },
+    {
+      "path": "src/devlab/designLab/director3dbox/states/01-director-view.tsx",
+      "sha256": "158cc9c53e18a2111e92ca91758d4bf90f83a51c86b6a85446f89235638fb4e5"
+    },
+    {
+      "path": "src/devlab/designLab/director3dbox/states/02-shot-focus.tsx",
+      "sha256": "bf5646736b702682d6d906faff5d3cc65818f27e0dd25ae2c0acc18c7a49f72d"
+    },
+    {
+      "path": "src/devlab/designLab/director3dbox/states/03-switch-review.tsx",
+      "sha256": "46597e149c7ea68c946868a3764f8e46976a08ec852d5ca898057588e2e6458f"
+    },
+    {
+      "path": "src/devlab/designLab/directorRefine/states/01-refine-select-to-show.tsx",
+      "sha256": "1e05ecb9bd98cef444538231dc10ecfa00186610e3bb8bcced059fcaceb1eecc"
+    },
+    {
+      "path": "src/devlab/designLab/director3dbox/states/04-produce.tsx",
+      "sha256": "329092e7a54395cc8bc19f97305d19444a132a6b57227a0ff38488ab639ad30a"
+    }
+  ],
+  "preview": "design-lab.html?screen=director-3dbox（01/02/03 状态文件）+ ?screen=director-refine",
+  "evidence": "docs/design/boards/2026-10-16/preview/"
+}

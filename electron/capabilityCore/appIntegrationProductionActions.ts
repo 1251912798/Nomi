@@ -1,7 +1,7 @@
 import { HumanApprovalRequiredError, ReceiptExpiredError, ReceiptScopeError, type ApprovalReceiptAuthority } from './approvalReceipt'
 import { decideRunOwnedGenerationGate } from './runOwnedGenerationGateAuthority'
 import type { GenerationProviderBootstrap } from './generationProviderBootstrap'
-import type { ExecutionContractV1 } from './executionContract'
+import { ContractCompilationError, type ExecutionContractV1 } from './executionContract'
 import { GenerationProviderCapabilityError } from './generationRuntimeAdapter'
 import type { ProductionRunService } from '../productionRun/productionRunService'
 import {
@@ -61,6 +61,8 @@ export function productionShotActionFailureOf(error: unknown): ProductionShotAct
   if (error instanceof HumanApprovalRequiredError) return 'confirmation_unavailable'
   if (error instanceof GenerationProviderCapabilityError) return 'provider_unavailable'
   if (error instanceof ProductionRunParseError) return 'run_unreadable'
+  // 合同编译口拒了某个参数：用户改得了（或让 Agent 重新起草），不是 Nomi 的 bug，别落进 internal_error。
+  if (error instanceof ContractCompilationError && error.rejection) return 'parameter_rejected'
   const errno = error && typeof error === 'object' ? (error as { code?: unknown }).code : undefined
   if (typeof errno === 'string' && LEDGER_WRITE_ERRNO.has(errno)) return 'ledger_write_failed'
   return 'internal_error'

@@ -56,10 +56,10 @@ function record(id, ok, detail, shots = [], { knownGap = false } = {}) {
   console.log(`  ${ok ? '✓' : knownGap ? '△' : '✗'} ${id} ${detail}${shots.length ? `  [${shots.join(', ')}]` : ''}`)
 }
 
-function readCatalog(settingsDir) {
+function readCatalogFromDisk(settingsDir) {
   return JSON.parse(fs.readFileSync(path.join(settingsDir, 'model-catalog.json'), 'utf8'))
 }
-const apimartRow = (settingsDir) => readCatalog(settingsDir).vendors.find((vendor) => vendor.key === 'apimart')
+const apimartRow = (settingsDir) => readCatalogFromDisk(settingsDir).vendors.find((vendor) => vendor.key === 'apimart')
 
 /** 一个场景一份临时资料目录；同一场景的多次启动共用它（「重开 App」就是重启同一份资料）。 */
 function profile(name) {
@@ -300,7 +300,7 @@ async function keyFirst() {
     await win.locator('[data-model-home-available="apimart"]').click()
     await saveKeyOnConnectPage(win, t)
     const pendingShot = await shot(win, p, '01-key-pending.png')
-    const pending = readCatalog(p.settingsDir).apiKeysByVendor.apimart
+    const pending = readCatalogFromDisk(p.settingsDir).apiKeysByVendor.apimart
     record('keyfirst-zh/主域被墙时key存成未验证', pending?.verificationPending === true && apimartRow(p.settingsDir).enabled === false,
       '显示「已保存 · 未验证」，APIMart 还没接上（验证请求只发去了被墙的主域）', [pendingShot])
     await win.getByRole('button', { name: t.back }).first().click()
@@ -332,7 +332,7 @@ async function selfCheckTrap() {
     await manual.press('Enter')
     await win.getByRole('button', { name: /自检 1 个/ }).click()
     await win.getByText('自检没有通过').first().waitFor({ timeout: 30_000 })
-    const marked = readCatalog(p.settingsDir).models.some((model) => model.vendorKey === 'apimart' && model.meta && 'adapter' in model.meta)
+    const marked = readCatalogFromDisk(p.settingsDir).models.some((model) => model.vendorKey === 'apimart' && model.meta && 'adapter' in model.meta)
     for (let i = 0; i < 4 && await win.locator('[data-model-home-connection="apimart"]').count() === 0; i += 1) {
       await win.getByRole('button', { name: t.back }).first().click()
     }
@@ -377,7 +377,7 @@ async function selfCheckTrap() {
     await win.getByRole('button', { name: '删除模型', exact: true }).click()
     const confirmDelete = win.getByRole('dialog').getByRole('button', { name: '删除', exact: true })
     if (await confirmDelete.count()) await confirmDelete.last().click()
-    const unmarked = await until(win, async () => !readCatalog(p.settingsDir).models.some((model) => model.vendorKey === 'apimart' && model.meta && 'adapter' in model.meta), 15_000)
+    const unmarked = await until(win, async () => !readCatalogFromDisk(p.settingsDir).models.some((model) => model.vendorKey === 'apimart' && model.meta && 'adapter' in model.meta), 15_000)
     const deletedShot = await shot(win, p, '04-self-check-model-deleted.png')
     await closeSettings(win)
     const again = await agentGenerateOnce(win, p, '05')

@@ -129,8 +129,8 @@ export async function runCustomCallTask(input: CustomCallDispatchInput): Promise
     }
     throw error;
   }
-  // 文本：脚本 return { text }。**raw 合成成与 streamTextTask 完全相同的 OpenAI choices 形状**
-  // （streamTextTask.ts:126），这样下游解析一行都不用改——文本产出只有一种形状，不是两种。
+  // 文本：脚本 return { text }。**raw 合成成与文本任务执行器完全相同的 OpenAI choices 形状**
+  // （textTaskRunner.ts 的 executeTextTask），这样下游解析一行都不用改——文本产出只有一种形状，不是两种。
   if (executed.text !== undefined) {
     const textResult: TaskResult = {
       id: taskId,

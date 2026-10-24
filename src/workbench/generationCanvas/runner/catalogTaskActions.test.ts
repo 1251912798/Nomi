@@ -648,6 +648,23 @@ describe('runCatalogGenerationTask — 轮询查询失败绝不重新提交付�
     expect(submitCount).toBe(1) // ★持续失败也绝不二次提交
   })
 
+  // C7（⑬）：查询被 Nomi 自己挂了提交前的码（出站守卫按提交挂码、#1285 修前的参考重传失败）——
+  // 照样只落可找回，绝不冒泡成「没发出去、可以重新生成」触发再提交。
+  it('轮询持续报提交前的码（outbound-blocked-submit / asset-upload-failed）→ 仍落可找回，runTask 只一次', async () => {
+    const { isRecoverableTimeoutError } = await import('./recoverableTimeout')
+    for (const code of ['outbound-blocked-submit', 'asset-upload-failed']) {
+      let submitCount = 0
+      const error = await runCatalogGenerationTask(videoNode, { projectTarget: TEST_TARGET,
+        runTask: async (_v, req) => { submitCount += 1; return { id: 'up-pre', kind: req.kind, status: 'queued' as const, assets: [], raw: {} } },
+        fetchTaskResult: async () => { throw new Error(`NOMI_ERR::${code}:: 还没请求这次选的服务商`) },
+        pollIntervalMs: 1,
+        pollTimeoutMs: 4,
+      }).catch((e) => e)
+      expect(isRecoverableTimeoutError(error), code).toBe(true)
+      expect(submitCount, code).toBe(1)
+    }
+  })
+
   // 2026-07-31：厂商文档（Seedance 2.0 交付文档 §5.1）要求「查询间隔分散到 3-5 秒以上」+
   // 「429 时指数退避并加入随机抖动」。以前是固定 1500ms、零抖动、429 被空 catch 吞掉照原节奏再敲。
   it('轮询撞 429 → 等待指数退避；不是限流的失败不退避', async () => {

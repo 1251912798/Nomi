@@ -27,7 +27,9 @@ function assert(cond, label) {
   console.log(`  ✓ ${label}`);
 }
 
-const { app, win } = await launchNomiApp({ name: "seedance-apimart" });
+// 隔离 profile：临时项目都建在这次运行自己的临时根里。收尾用 close() 连临时根一起删（测试自己的 fs.rm），
+// 不走产品的「删除项目」——那条现在会把文件夹放进运行者电脑的系统回收站（⑭），走查不许往用户回收站塞测试垃圾。
+const { win, close } = await launchNomiApp({ name: "seedance-apimart" });
 
 try {
 
@@ -35,9 +37,9 @@ try {
   //    变体合并（2026-06-16）后：fast/face/fast-face 不再是独立 catalog 行，而是档案 variants
   //    （逐变体能力/清晰度由 archetypeMeta.test.ts / index.test.ts 单测钉死）→ 这里只核 catalog 真相：
   //    唯一基础行在 + 旧 3 独立变体行已退役 + 带正确 archetypeId。
-  const models = await win.evaluate(() => {
+  const models = await win.evaluate(async () => {
     const mc = window.nomiDesktop?.modelCatalog;
-    const list = mc?.listModels({ kind: "video" }) || [];
+    const list = (await mc?.listModels({ kind: "video" })) || [];
     const keys = list.map((m) => m.modelKey);
     const std = list.find((m) => m.modelKey === "doubao-seedance-2.0");
     const retired = ["doubao-seedance-2.0-fast", "doubao-seedance-2.0-face", "doubao-seedance-2.0-fast-face"];
@@ -61,7 +63,7 @@ try {
     const hasKey = Boolean(apimart && (apimart.hasApiKey || apimart.enabledApiKey));
     if (!hasKey) {
       console.log("SKIP seedance-apimart.e2e: apimart 未配 API key（在 app「模型接入」里配，或设 APIMART_API_KEY）。");
-      await app.close();
+      await close();
       process.exit(0);
     }
     assert(true, "apimart 已配 key（用已存的，自解密）");
@@ -139,7 +141,6 @@ try {
       return await window.nomiDesktop.video.extractFrame({ videoUrl: a.url, which: "last", projectId: a.pid });
     }, { url: video.url, pid: projectId });
     assert(frame?.url && frame.url.startsWith("nomi-local://"), `M-A 抽帧：从真实视频抽出尾帧 → nomi-local 素材（${(frame?.url || "").slice(0, 56)}…）`);
-    await win.evaluate((pid) => window.nomiDesktop.projects.delete(pid), projectId).catch(() => undefined);
   } else {
     console.log("  (跳过 M-A 抽帧验证：临时项目创建失败)");
   }
@@ -147,8 +148,8 @@ try {
   console.log(`\nSEEDANCE-APIMART E2E PASS: ${passed} assertions`);
 } catch (error) {
   console.error(`\n${error?.message || error}`);
-  await app.close().catch(() => undefined);
+  await close().catch(() => undefined);
   process.exit(1);
 } finally {
-  await app.close().catch(() => undefined);
+  await close().catch(() => undefined);
 }

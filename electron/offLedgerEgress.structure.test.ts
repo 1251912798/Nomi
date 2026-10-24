@@ -19,7 +19,6 @@ type Primitive = "child-process" | "child-process-sync" | "websocket" | "chromiu
 type Entry = { disposition: "ledger" | "outside-paid-dispatch"; reason: string };
 
 const CHILD_ASYNC: Entry = { disposition: "ledger", reason: "异步子进程：每个 ChildProcess 都经 child_process 诊断通道进派发账" };
-const LOCAL_MEDIA = (what: string): Entry => ({ disposition: "outside-paid-dispatch", reason: `本机媒体处理（${what}），不出网，也不在付费派发里` });
 
 /** key = `相对路径#出网口`。 */
 const REGISTRY: Record<string, Entry> = {
@@ -49,13 +48,11 @@ const REGISTRY: Record<string, Entry> = {
   "electron/productionRun/productionRunE2eFixture.ts#child-process": CHILD_ASYNC,
   "electron/productionRun/productionRunE2eFixture.ts#child-process-sync": { disposition: "outside-paid-dispatch", reason: "测试夹具里同步跑 ffmpeg 造片源，不进生产包的付费路径" },
   "electron/assets/generatedMediaDecode.ts#child-process": CHILD_ASYNC,
-  "electron/assets/generatedMediaDecode.ts#child-process-sync": LOCAL_MEDIA("产物落盘前用 ffprobe 同步解码校验，发生在受理之后的取回里"),
   "electron/ai/fixtures/antigravity.mjs#child-process": { disposition: "outside-paid-dispatch", reason: "测试用的 Antigravity CLI 替身脚本（它自己就是被 spawn 的那个进程），不进生产付费路径" },
   "electron/ai/fixtures/antigravity.mjs#child-process-sync": { disposition: "outside-paid-dispatch", reason: "同上：替身脚本内部同步探环境，不是 Nomi 主进程的出网口" },
   "electron/comfyuiProgressSocket.ts#websocket": { disposition: "outside-paid-dispatch", reason: "本机 ComfyUI 的进度推送（只听不交）；本机 ComfyUI 不进制作 Run（登记的例外），提交走 HTTP" },
   "electron/director/mobileBridgeServer.ts#websocket": { disposition: "outside-paid-dispatch", reason: "手机遥控的本机 WebSocket 服务端，只收不发付费请求" },
   "electron/browser/media/browserViewMedia.ts#chromium-net": { disposition: "outside-paid-dispatch", reason: "内置浏览器里下载网页媒体（用户在浏览器里点的），不是生成提交" },
-  "electron/ai/buildAiSdkModel.ts#ai-sdk": { disposition: "outside-paid-dispatch", reason: "AI SDK 的 fetch 全部注入为 appFetch（buildProfiledFetch / 显式 fetch 参数），本身不另起出网口" },
 };
 
 const CHILD_MODULES = new Set(["child_process", "node:child_process"]);

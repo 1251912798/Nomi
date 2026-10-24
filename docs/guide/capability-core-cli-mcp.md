@@ -1,6 +1,6 @@
-# 用户指南：用 Claude Code / Codex / Cursor / Pi / WorkBuddy 在本地驱动 Nomi（CLI + MCP）
+# 用户指南：用 Claude Code / Claude Desktop / Codex / Cursor / WorkBuddy 在本地驱动 Nomi（CLI + MCP）
 
-> 让你电脑上的 AI 编程助手（Claude Code、Codex、Cursor、Pi、WorkBuddy…）直接操作你的 Nomi：建项目、往画布加镜头、改提示词、用你配好的模型**真生成图 / 视频 / 文本**，结果落进 Nomi 项目，打开就能看。
+> 让你电脑上的 AI 编程助手（Claude Code、Claude Desktop、Codex、Cursor、WorkBuddy…）直接操作你的 Nomi：建项目、往画布加镜头、改提示词、用你配好的模型**真生成图 / 视频 / 文本**，结果落进 Nomi 项目，打开就能看。
 >
 > 这份是「照着走得通」的完整使用指南。实现原理见 `docs/plan/2026-06-20-capability-core-headless-exposure.md`。
 
@@ -117,9 +117,9 @@ node scripts/nomi.mjs generate workspace-xxxx modelscope "Tongyi-MAI/Z-Image-Tur
 
 **① 一键接入（推荐）**
 
-打开 Nomi 的「模型接入」→「接入 AI 编程助手」，选择 Claude Code、Codex、Cursor、Pi 或 WorkBuddy，点击接入。Nomi 会只合并自己的 `nomi` 条目、保留其它 MCP server，并在改写前留下 `.nomi-backup`。接入卡会真正启动配置中的命令做握手，不会只凭“配置里有一行”显示成功。
+打开 Nomi 的「模型接入」→「接入 AI 编程助手」，选择 Claude Code、Claude Desktop、Codex、Cursor 或 WorkBuddy，点击接入。其他客户端（Cline、Windsurf、Pi 等）没有一键接入，见下面的「其他客户端」。Nomi 会只合并自己的 `nomi` 条目、保留其它 MCP server，并在改写前留下 `.nomi-backup`。接入卡会真正启动配置中的命令做握手，不会只凭“配置里有一行”显示成功。
 
-不要照文档手写一份只有 `NOMI_MCP_STDIO=1` 的配置。当前版本还会为 Claude Code、Codex、Cursor、Pi、WorkBuddy 分别生成本机签名的 `NOMI_MCP_CLIENT` 与 `NOMI_MCP_CLIENT_PROOF`；证明绑定当前电脑和具体客户端，不能写死在公开文档，也不能跨客户端复用。缺少证明的配置可以列工具，但正式 Production Run 会被安全地视为 `external`，无法越过 Nomi 的可信宿主门。
+不要照文档手写一份只有 `NOMI_MCP_STDIO=1` 的配置。当前版本还会为 Claude Code、Claude Desktop、Codex、Cursor、WorkBuddy 分别生成本机签名的 `NOMI_MCP_CLIENT` 与 `NOMI_MCP_CLIENT_PROOF`；证明绑定当前电脑和具体客户端，不能写死在公开文档，也不能跨客户端复用。缺少证明的配置可以列工具，但正式 Production Run 会被安全地视为 `external`，无法越过 Nomi 的可信宿主门。
 
 需要手工接入时，先在卡片里选择目标客户端，再点「复制配置」，把 **Nomi 当机生成的完整片段** 合并到对应客户端。不要使用旧版 `scripts/nomi-mcp.mjs`，也不要从另一个客户端复制 proof。Codex 的生成片段已经包含 Electron 冷启动、长视频任务和写操作审批所需的超时与审批配置。
 
@@ -131,11 +131,17 @@ node scripts/nomi.mjs generate workspace-xxxx modelscope "Tongyi-MAI/Z-Image-Tur
 
 - Claude Code / Codex：卡片真实握手成功后，确认 `nomi` 的工具出现（数量以 `tools/list` 为准）。
 - Cursor：先在 Nomi「设置 → 自动化与权限」允许 Cursor 发起草稿；首次在 Cursor 调用 Nomi 时，Cursor 自己仍可能要求你批准本地 MCP。Nomi 不会代替你静默批准 Cursor。
-- Pi：pi coding agent **自己不带 MCP**（官方 usage.md 明写）。Nomi 把 `nomi` 条目写进 pi 生态通用的标准共享配置 `~/.config/mcp/mcp.json`；pi 侧还需装一次社区适配器 `pi install npm:pi-mcp-adapter`（接入卡上给了可复制命令，Nomi **不代跑**），装完重开 pi，用 `/mcp` 即可看到 `nomi` 的工具。Nomi 不会写 `~/.pi/agent/mcp.json`——那是适配器自己的覆盖层。同样要先在「设置 → 自动化与权限」允许 Pi 发起草稿。
+- Claude Desktop / WorkBuddy：重启对应客户端后，在它自己的 MCP 页面确认 `nomi` 出现。
+
+### 其他客户端（Cline、Windsurf、Pi 等，手工接入）
+
+这些客户端不在 Nomi 的一键接入名单里，Nomi 不会替它们写任何配置文件，也不会替它们装插件。做法：在接入卡末尾的「其他客户端」里点「复制配置」，粘进该客户端自己的 MCP 配置。这份通用配置**不带客户端身份**，Nomi 会把它当作 `external`：能列工具，但正式制作（Production Run）按 `external` 处理，越不过可信宿主门。
+
+以 Pi 为例：pi coding agent 自己不带 MCP（官方 usage.md 明写），要靠社区适配器 `pi-mcp-adapter`（`pi install npm:pi-mcp-adapter`，需要你自己装一次）。装好后把复制的通用配置粘进适配器读取的配置文件，重开 pi，用 `/mcp` 查看 `nomi` 的工具。Nomi 不会写 `~/.config/mcp/mcp.json`，也不会写 `~/.pi/agent/mcp.json`，那两个文件归适配器和你自己管。
 
 ### WorkBuddy
 
-在 Nomi 的 MCP 连接页选择 **WorkBuddy**，点击「一键接入」。重启 WorkBuddy，在侧栏 → 插件 → 右上 MCP Servers → 配置 MCP 查看 `nomi`。也可以直接粘贴接入卡复制的 JSON。WorkBuddy 原生支持 MCP stdio，无需 Pi 的适配器。
+在 Nomi 的 MCP 连接页选择 **WorkBuddy**，点击「一键接入」。重启 WorkBuddy，在侧栏 → 插件 → 右上 MCP Servers → 配置 MCP 查看 `nomi`。也可以直接粘贴接入卡复制的 JSON。WorkBuddy 原生支持 MCP stdio，无需任何适配器。
 
 [WorkBuddy 官方 MCP 指南](https://www.workbuddy.ai/docs/zh/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/MCP-Guide) 规定用户级 `~/.workbuddy/mcp.json`、项目级 `<项目>/.workbuddy/mcp.json`，形状为 `mcpServers.<name>.{command,args,env}`。**我们的偏差 / 理由：无偏差。** Nomi 只合并用户级文件的 `mcpServers.nomi`，保留 ChatCut 等已有条目；因为无法知道 WorkBuddy 当前项目，不写项目级文件。内部文件 `~/.workbuddy/.mcp.json` 不在写入范围。
 
@@ -247,7 +253,7 @@ Claude Code 会依次调 `nomi_project_create` → `nomi_read`（target=models�
 ## 7. 安全
 
 - 本地服务**只监听 `127.0.0.1`**（外网 / 局域网够不着）+ **token 校验**。
-- Nomi 生成的 MCP 客户端证明按 Claude Code / Codex / Cursor / Pi / WorkBuddy 隔离；自报客户端名、伪造证明和跨客户端复用都只获得 `external` 权限。
+- Nomi 生成的 MCP 客户端证明按 Claude Code / Claude Desktop / Codex / Cursor / WorkBuddy 隔离；自报客户端名、伪造证明和跨客户端复用都只获得 `external` 权限。
 - **付费生成不能只凭 token 启动**——方向/样片可由 Nomi 服务端向支持 elicitation 的客户端再次询问真人；预算、逐镜头提交、粗剪采用和导出仍在 Nomi。支出上限、模型和任务集合绑定本次授权，外部 MCP 客户端不能伪造批准。
 - 外部调用只能做 Nomi 的领域操作（建工程 / 改画布 / 生成），**不是**任意文件读写。
 - 项目、素材、提示词、密钥和编排状态保存在本机。使用外部模型 API 时，完成任务所需的输入仍会发送给你配置的供应商；“本地优先”不等于“所有推理都离线”。

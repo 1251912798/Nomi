@@ -36,7 +36,7 @@ export interface RuntimeToolCall<TArgs = unknown> {
 
 export type RuntimeToolDecision =
   | { ok: true; result?: unknown; effectiveArgs?: Record<string, unknown>; overridesDelta?: Record<string, unknown>; silent?: boolean; proposalId?: string; approvalScope?: 'once' | 'session' | 'always' }
-  | { ok: false; message?: string; code?: string; reason?: MediaImportRejection['reason']; denied?: boolean }
+  | { ok: false; message?: string; code?: string; reason?: MediaImportRejection['reason']; denied?: boolean; /** 准入层拒绝的具体码（`unknown_parameter` 等）：lane 据它给按码的下一步，而不是一句通用话。 */ admission?: string }
 
 export interface RuntimeToolCallRecord extends RuntimeToolCall {
   status: 'ok' | 'denied' | 'cancelled' | 'error'

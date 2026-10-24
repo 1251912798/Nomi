@@ -247,6 +247,8 @@ function buildActions(base: ReturnType<typeof harness>, vendorOrigin: string, su
   registry?: ReturnType<typeof createModuleRegistry>;
   /** 换了目录就要有对应家的 loopback 供应商（缺省只有 apimart）。 */
   providerIds?: readonly string[];
+  /** 视频档案候选（变体清单、参数表都从它来）。缺省 = 不接，和老夹具一样走通用判据。 */
+  videoModelCandidates?: Parameters<typeof createGenerationPlanningHandler>[0]["videoModelCandidates"];
   /** 项目素材库的身份解析（生产装配点绑 `resolveProjectAssetReferenceIdentity`）。缺省 = 不接，带 assetId 的参考当场被拒。 */
   resolveAssetReferenceIdentity?: (projectId: string, assetId: string) => { contentHash: string; version: number; kind?: "image" | "video" | "audio" } | undefined;
   /** 换一台执行器（缺省 = 本文件的 loopbackProvider）。「没发出去」矩阵用它接真的目录执行器（引擎 B 的 send）。 */
@@ -289,6 +291,7 @@ function buildActions(base: ReturnType<typeof harness>, vendorOrigin: string, su
   const handler = createGenerationPlanningHandler({
     registry: moduleRegistry,
     operations,
+    ...(hooks.videoModelCandidates ? { videoModelCandidates: hooks.videoModelCandidates } : {}),
     resolveModelPricing: () => (hooks.unpriced ? undefined : PRICING),
     ...(hooks.resolveAssetReferenceIdentity ? { resolveAssetReferenceIdentity: hooks.resolveAssetReferenceIdentity } : {}),
     now,
@@ -380,7 +383,7 @@ function buildActions(base: ReturnType<typeof harness>, vendorOrigin: string, su
       authorizeGeneration: authority.authorizeGeneration,
       approvalReceiptAuthority: receipts,
       leaseFor: () => lease,
-      approvalPolicy: () => ({ mode, spend: "confirm" }),
+      approvalPolicy: () => ({ mode }),
       // 与生产同一条接线（appIntegration）：草稿落地之后回「此刻在画布上吗」，回执据它说话。
       draftLanding: base.canvasLanding.draftLandingOutcome,
     },

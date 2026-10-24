@@ -1,0 +1,35 @@
+{
+  "id": "project-library-list",
+  "feature": "库里 41 个项目（40 个各带 4 张图的小项目 + 1 个 96 图项目），打开大项目后「回项目库」：点菜单项 → 41 张卡全部可见再过两帧",
+  "script": "tests/ux/project-open-stages.e2e.mjs",
+  "args": [
+    "--scale",
+    "MIMG",
+    "--library-projects",
+    "40",
+    "--warmup",
+    "1"
+  ],
+  "scale": "项目库 41 个项目",
+  "metrics": [
+    "response"
+  ],
+  "budget": 300,
+  "group": "⑥ 项目库",
+  "budgetStatus": "approved",
+  "budgetBasis": "换页类操作：RAIL 认为 100ms 内即时、1 秒内不打断思路；回项目库只是把本地列表画出来（封面可以晚到），提议 300ms；现有同类 project-open-100-nodes（打开项目到能操作）预算 1000ms",
+  "baseline": {
+    "median": 799.8,
+    "p95": 837.1,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  },
+  "budgetDebt": {
+    "owner": "P-library",
+    "state": "unassigned",
+    "note": "10-21 结构改动（列表摘要异步 + 状态检查批量限并发 + 删同步通道）后，最终 HEAD 干净树 5 次量到中位 231.1 / p95 260（noisy，已在预算内）；基线与欠账登记保持原样，以协调安静窗口复测为准，复测达标后再更新基线并清掉本欠账。过程数字与诊断见 PR 正文",
+    "since": "2026-10-16"
+  }
+}

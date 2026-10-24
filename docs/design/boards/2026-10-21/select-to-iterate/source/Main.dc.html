@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Δ1 输入框 chip：选中的节点</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+.light{--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink40:oklch(.68 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-warning-ink:oklch(.45 .085 72);--nomi-warning-soft:oklch(.968 .024 72);--nomi-bubble:oklch(.22 .01 80);--nomi-bubble-ink:oklch(.985 .003 90);--nomi-bubble-chip:oklch(.32 .01 80)}
+.root{--nomi-radius-sm:6px;--nomi-radius:10px;box-sizing:border-box;background-color:var(--nomi-bg);color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.root *{box-sizing:border-box}
+.lbl{font-size:12px;color:var(--nomi-ink60);margin:0 0 8px 2px}
+.lbl b{color:var(--nomi-ink);font-weight:600;margin-right:6px}
+.shot{display:block;border:1px solid var(--nomi-line);border-radius:12px}
+.comp{width:390px;border:1px solid var(--nomi-line);border-radius:12px;background:var(--nomi-paper);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.cc{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 4px 0 4px;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius-sm);background:var(--nomi-paper);font-size:12px;color:var(--nomi-ink80);white-space:nowrap}
+.cc .v{color:var(--nomi-ink60)}
+.cc .x{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--nomi-ink40)}
+.cc.hover{background:var(--nomi-ink05)}
+.cc.hover .x{color:var(--nomi-ink80)}
+.cc.gone{border-style:dashed;color:var(--nomi-warning-ink);background:var(--nomi-warning-soft);border-color:transparent}
+.cc svg.t{display:block;border-radius:3px;flex:none}
+.txt{font-size:13px;line-height:20px;color:var(--nomi-ink)}
+.st{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.st .k{font-size:12px;color:var(--nomi-ink60)}
+.ub{padding:8px 12px;border-radius:12px;background:var(--nomi-bubble);color:var(--nomi-bubble-ink);display:flex;flex-direction:column;gap:6px;max-width:300px}
+.ub .bc{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px 0 3px;border-radius:var(--nomi-radius-sm);background:var(--nomi-bubble-chip);font-size:12px}
+.ub svg{display:block;border-radius:3px}
+</style>
+</helmet>
+<div class="root light" style="width:1040px;height:420px;padding:28px 32px;display:flex;gap:48px;align-items:flex-start">
+  <div>
+    <div class="lbl"><b>现在</b>真实组件：文件 / Skill / 片段三种 chip</div>
+    <img class="shot" src="/_blob/20fa75be5303581a742c72884ced2ad3" width="390" height="180" alt="现有输入框里的三种 chip：参考.png、编剧 · Kasdan、推门近景 · 0:03–0:06">
+  </div>
+  <div style="display:flex;flex-direction:column;gap:18px">
+    <div>
+      <div class="lbl"><b>新增</b>选中的节点：灰色引用，自动出现，× 去掉</div>
+      <div class="comp">
+        <div class="chips">
+          <span class="cc"><svg class="t" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect width="18" height="18" fill="#2d4a48"/><rect x="7" y="5" width="4" height="10" rx="2" fill="#e3b33c"/></svg>镜头 03 <span class="v">第 2 版</span><button class="x" type="button" aria-label="去掉镜头 03"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+          <span class="cc"><svg class="t" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect width="18" height="18" fill="#30514e"/><rect x="9" y="4" width="4" height="11" rx="2" fill="#e3b33c"/></svg>镜头 04 <span class="v">第 1 版</span><button class="x" type="button" aria-label="去掉镜头 04"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+        </div>
+        <div class="txt">都换成雨夜，人物动作不变</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:28px;align-items:flex-start">
+      <div class="st"><span class="k">悬停</span><span class="cc hover"><svg class="t" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect width="18" height="18" fill="#2d4a48"/><rect x="7" y="5" width="4" height="10" rx="2" fill="#e3b33c"/></svg>镜头 03 <span class="v">第 2 版</span><button class="x" type="button" aria-label="去掉镜头 03"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span></div>
+      <div class="st"><span class="k">节点被删了</span><span class="cc gone">镜头 05 <span>已删除</span><button class="x" type="button" aria-label="去掉镜头 05" style="color:var(--nomi-warning-ink)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span></div>
+      <div class="st"><span class="k">发出后，气泡里保留</span>
+        <div class="ub"><span class="bc"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect width="18" height="18" fill="#2d4a48"/><rect x="7" y="5" width="4" height="10" rx="2" fill="#e3b33c"/></svg>镜头 03 · 第 2 版</span><span>都换成雨夜，人物动作不变</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1040,"height":420}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

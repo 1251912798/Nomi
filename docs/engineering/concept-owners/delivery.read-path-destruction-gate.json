@@ -1,0 +1,23 @@
+{
+  "name": "读路径不许可达销毁门（check:read-path-writes 的写盘门名单，含删项目目录）",
+  "subject": "delivery.read-path-destruction-gate",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/check-read-path-writes.mjs",
+    "symbol": "READ_PATH_WRITE_DOORS"
+  },
+  "write_api": [
+    {
+      "path": "scripts/check-read-path-writes.mjs",
+      "symbol": "READ_PATH_WRITE_DOORS"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-22",
+  "notes": "合同 docs/fixes/2026-10-22-project-library-gc-race.root-cause.json：READ_PATH_WRITE_DOORS（原名 WRITE_DOORS，与 check-no-default-overwrite 同名，改名以免两份同名门表）加 deleteWorkspaceProject，任何 read / list / resolve / get 前缀的函数沿调用链可达即红。这是门岗自动拦，不是结构保证：按唯一函数名连边、只认这四个前缀，直接 fs.rmSync 或别的前缀走到删除不在图上（V-plibrary2 变异 C），那一层靠测试兜。"
+}

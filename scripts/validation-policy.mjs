@@ -29,6 +29,7 @@ const FULL_POLICY = Object.freeze({
   canvas: 'full',
   performance: true,
   package: true,
+  visual: true,
 })
 
 // Validation infrastructure changes exercise the gate itself. They still run
@@ -43,6 +44,7 @@ const VALIDATION_INFRASTRUCTURE_POLICY = Object.freeze({
   canvas: 'full',
   performance: false,
   package: false,
+  visual: false,
 })
 
 const VALIDATION_INFRASTRUCTURE_PATTERNS = [
@@ -142,6 +144,18 @@ export function isSpendSourcePath(path) {
   return SPEND_PATH_RULES.some(({ pattern, scope }) => (!scope || scope.test(normalized)) && pattern.test(normalized))
 }
 export const SPEND_WALK_PATHS = new Set(SPEND_WALK_FILES)
+
+// 视觉道（2026-10-18）：设计实验室截图在 CI 的 macOS 机器上比对（Design Lab (macOS)）。
+// 实验室舞台挂的是生产组件，src/ 下任何文件（含 .ts 的布局 / 文案 / store）都可能改变一格的样子，
+// 所以按整个 src/ 认领，不去猜哪些 .ts「不影响外观」；再加上实验室自己的页面、注册表、基线与门岗。
+// 视觉门岗自己的文件也在这里，并且在「验证基础设施跳过」之前判（同 PERFORMANCE_INSTRUMENT）：
+// 改门岗的 PR 必须真的跑一次门岗。
+const VISUAL_PATTERNS = [
+  /^src\//,
+  /^(?:tailwind\.config\.ts|postcss\.config\.js|design-lab\.html)$/,
+  /^tests\/ux\/design-lab\//,
+  /^scripts\/(?:check-design-lab|design-lab-accept)\.mjs$/,
+]
 
 const DESKTOP_PATTERNS = [/^src\/desktop\/bridge\.(?:ts|tsx|js|jsx)$/]
 
@@ -298,6 +312,7 @@ export function classifyValidationPolicy(changedFiles, options = {}) {
         canvas: 'none',
         performance: false,
         package: false,
+        visual: false,
         release: false,
         failClosed: false,
         reason: docsOnly ? 'docs_only' : 'isolated_change',
@@ -313,6 +328,9 @@ export function classifyValidationPolicy(changedFiles, options = {}) {
       policy.performance = true
       policy.reasons.push(`performance-instrument:${path}`)
     }
+    // 视觉道是并行的一条，不进 reasons：reason 取 reasons[0]，下游（核心冒烟的 docs_only 判据等）读它，
+    // 普通 src 改动的 reason 仍应是 isolated_change。
+    if (matchesAny(path, VISUAL_PATTERNS)) policy.visual = true
     if (matchesAny(path, VALIDATION_INFRASTRUCTURE_PATTERNS)) continue
     if (path.startsWith('electron/')) {
       policy.unit = 'full'
@@ -369,6 +387,7 @@ export const VALIDATION_POLICY_OUTPUTS = Object.freeze([
   'canvas',
   'performance',
   'package',
+  'visual',
   'release',
   'failClosed',
 ])

@@ -238,20 +238,15 @@ export async function driveEngineB(capture: FetchCapture, input: EngineBTaskInpu
     contractParameters: contract.parameters,
   };
   try {
-    const request = provider.buildRequest({
-      moduleId: contract.moduleId,
-      providerId: contract.providerId,
-      modelId: contract.modelId,
-      mode: contract.mode,
-      ...(contract.modeId ? { modeId: contract.modeId } : {}),
-      prompt: contract.prompt,
-      parameters: contract.parameters,
-      references: contract.references,
-      contractHash: contract.contractHash,
-      idempotencyKey: "parity-idempotency-key",
+    // 合同 → provider 输入用宿主同一个投影（运行时适配器的 prepareAuthorization），不在夹具里手抄字段表：
+    // 手抄的那份漏过 variantId（宿主 resolveExecutionContract 一直带着它，线上模型名 owner 靠它选变体，2026-10-24）。
+    const { createGenerationRuntimeAdapter } = await import("../capabilityCore/generationRuntimeAdapter");
+    const { providerRequest } = createGenerationRuntimeAdapter({ providers: [provider] }).prepareAuthorization({
+      contract,
+      providerIdempotencyKey: "parity-idempotency-key",
       ...(input.referenceUrls ? { referenceUrls: input.referenceUrls } : {}),
     });
-    await provider.submit(request, "parity-idempotency-key");
+    await provider.submit(providerRequest, "parity-idempotency-key");
   } catch (error) {
     if (!capture.calls.length) return { failure: { code: failureCode(error), message: String((error as Error)?.message ?? error) }, notes };
   }

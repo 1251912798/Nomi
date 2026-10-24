@@ -473,7 +473,9 @@ function defineMcpWireContract(label: string, connector: McpWireConnector, signa
         client.answer = () => ({ action: 'decline' })
         const frame = await client.call('nomi_operation_gate', gateArgs)
         expect(resultOf(frame).isError).toBe(true)
-        expect(outcomeOf(frame)).toMatchObject({ errorCode: 'human_approval_required' })
+        // C-4：用户明确拒绝是终态——不再回「请确认」（human_approval_required / confirm），Agent 该停下等新指令。
+        expect(outcomeOf(frame)).toMatchObject({ denied: true, reason: 'declined', nextAction: 'stop' })
+        expect(outcomeOf(frame)).not.toMatchObject({ errorCode: 'human_approval_required' })
         expect(calls.map((call) => call.method)).toEqual(['nomi_request_generation_gate'])
       })
 

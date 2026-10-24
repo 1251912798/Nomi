@@ -5,7 +5,7 @@ import type { JsonlSessionMetadata } from '@earendil-works/pi-agent-core/harness
 import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/context';
 import type { NomiPricingBasis } from '../shared/agentLane/laneModelConfig.js';
 import { logError } from '../logging/logger.js';
-import { LANE_TRACE_NOTE, traceSafeValue, writeLaneTrace, type LaneTraceRun } from './laneTrace.mjs';
+import { LANE_RUN_FAILED, LANE_TRACE_NOTE, traceSafeValue, writeLaneTrace, type LaneTraceRun } from './laneTrace.mjs';
 
 // Only transient timings live here; durable facts use pi's standard custom entry.
 const liveViews = new Map<string, () => Promise<string>>();
@@ -58,7 +58,8 @@ export function attachLaneTrace(input: {
       const note: LaneTraceRun = {
         runId: event.runId, fromTipId: event.fromTipId, tipId: event.tipId,
         startedAt: starts.get(event.runId) ?? null, endedAt: event.endedAt, status: event.status, pricing, model,
-        error: event.status === 'failed' ? JSON.stringify(event.error) : null,
+        // 这条记录写进 pi 会话（项目目录）：只记「失败了」，不记 pi 给的错误对象（可能带上游原话）。
+        error: event.status === 'failed' ? LANE_RUN_FAILED : null,
         tools: observations.flatMap(([toolCallId, tool]) => tool.durationMs === undefined ? [] : [{ toolCallId, durationMs: tool.durationMs }]),
       };
       starts.delete(event.runId);

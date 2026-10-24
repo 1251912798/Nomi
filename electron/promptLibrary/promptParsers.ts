@@ -1,7 +1,7 @@
 // 公开提示词仓库的 markdown 解析器(纯函数,无 electron 依赖 → 可独立单测)。
 // 解析锚点来自 2026-06-21 实查(docs/plan/2026-06-21-prompt-library.md §3)。
 // 容错铁律:任一 block 缺 prompt/媒体就跳过这条,不让坏数据污染;一个源解析失败上层兜回旧缓存。
-import type { ParsedPrompt } from "./promptLibraryTypes";
+import type { ParsedPrompt } from "../shared/contracts/promptLibrary";
 
 /** 按「行首标题」把文档切成块,每块从一个标题到下一个标题之前。 */
 export function splitBlocks(markdown: string, headingSource: string): string[] {

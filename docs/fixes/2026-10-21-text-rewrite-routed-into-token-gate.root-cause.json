@@ -1,0 +1,137 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-21-text-rewrite-routed-into-token-gate",
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-21",
+  "problem_type": "走哪扇门由「调用方要不要逐字」决定而不是由任务种类决定，不要授权的文本调用落进了要令牌的付费门",
+  "symptom": "画布文本节点「改写选区」每次都失败：节点错误卡归 unknown，原话 SpendNotAuthorizedError: Authorization expired or does not cover this target; confirm again（Electron 零花费演练截图 docs/evidence/2026-10-21-text-tasks-pi-ai/walk/04-zh-04-rewrite-blocked-by-spend-gate.png）",
+  "direct_cause": "runCatalogGenerationTask 只在调用方传了 onTextDelta 时走文本流式门；改写替换的是编辑器选区、不往画布写增量，所以不传 onTextDelta，落到 runWorkbenchTaskByVendor → nomi:tasks:run → runtime.runTask 文本分支的 TOKEN_ADMISSION 付费闸；画布自「发动机收敛第一刀」起不再铸令牌，闸当场抛 SpendNotAuthorizedError",
+  "class_root": "花钱语义（文本不进 Run、不要授权，paidNodeLedger）住在一处，路由判据（有没有 onTextDelta）住在另一处，两者没有绑在一起；而调用方矩阵从执行器往下测（注释明写「闸不在本测试范围」），入口之上的准入整层没有任何测试看得见，所以一种显示偏好就能把调用送进错误的花钱门而全绿",
+  "affected_population": [
+    "画布文本节点用「改写」模式改选区的所有用户（发动机收敛第一刀之后每一次）",
+    "同一路由判据下任何今后不传 onTextDelta 的文本节点调用"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+    "src/workbench/generationCanvas/runner/catalogTaskResolve.ts",
+    "src/workbench/generationCanvas/runner/textActions.ts"
+  ],
+  "entry_points": [
+    "画布文本节点续写 / 重写 / 预设 / 改写：generateText → runCatalogGenerationTask → runWorkbenchTextTaskStream → nomi:tasks:text:stream"
+  ],
+  "external_sources": [],
+  "invariants": [
+    "画布文本 kind（chat / prompt_refine / image_to_prompt）在 runCatalogGenerationTask 里一律走文本流式门；onTextDelta 只决定增量给不给调用方看，不决定门",
+    "渲染层发起的文本调用方都有一份从真入口经真 IPC、真准入走到 HTTP 的测试（例外只登记 #7，另线）"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/runner/audioActions.ts",
+      "symbol": "runCatalogGenerationTask"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/runner/imageActions.ts",
+      "symbol": "runCatalogGenerationTask"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/runner/model3dActions.ts",
+      "symbol": "runCatalogGenerationTask"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/runner/textActions.ts",
+      "symbol": "runCatalogGenerationTask"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/runner/videoActions.ts",
+      "symbol": "runCatalogGenerationTask"
+    }
+  ],
+  "door_reduction": {
+    "before": 5,
+    "after": 5,
+    "why_not": "五扇门是五种节点（音频 / 图片 / 3D / 文本 / 视频）各自的生成动作，汇在同一个 runCatalogGenerationTask；只有文本节点会产出文本 kind（catalogTaskResolve.ts:303），修在这个共享函数里按 kind 选门，五扇门不用动，也不该合并"
+  },
+  "generality_proof": "判据从「调用方给没给 onTextDelta」换成「请求是不是文本 kind」：文本节点的任何模式、今后任何不要增量的文本调用都不可能再落到 nomi:tasks:run 的令牌闸；文本 kind 只由文本节点产出，图片 / 视频 / 音频 / 3D 的付费路不受影响（runner 目录 46 个测试文件 1025 条照旧绿）",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "symbol": "runCatalogGenerationTask",
+      "responsibility": "画布节点一次生成的唯一入口：按 kind 选门（文本 → 流式门；其余 → 单镜 Run / 任务门）"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/runner/textActions.ts",
+      "entry_point": "generateText",
+      "disposition": "enforced",
+      "evidence": "续写 / 重写 / 预设 / 改写四种模式都经 runCatalogGenerationTask 按 kind 进流式门；electron/ai/textEntries.ipc.integration.test.ts 从 generateText 走真 IPC、真准入"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodePromptOptimizer.tsx",
+      "entry_point": "runWorkbenchTextTaskStream",
+      "disposition": "not-affected",
+      "evidence": "提示词优化 / 翻译 / AI 起草脚本本来就直接调流式门；electron/ai/textEntries.ipc.integration.test.ts 从 runWorkbenchTextTaskStream 经真 IPC 走到 HTTP"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "只要路由判据和花钱语义分住两处、测试又只从执行器往下看，任何一个新的显示偏好或新调用方都能把调用送错门而全绿",
+    "same_class_scan": [
+      "node scripts/door-map.mjs runCatalogGenerationTask：5 扇门，只有文本节点产出文本 kind",
+      "git grep runWorkbenchTaskByVendor：渲染层仍走 nomi:tasks:run 的文本调用只剩浏览器提取（#7，另线）"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+    "invariant": "每个文本调用方登记真入口测试或缺口；渲染层发起的必须有真入口测试（例外表只有 #7）",
+    "failure_mode": "把选门改回「看 onTextDelta」：改写选区的真入口测试抛 SpendNotAuthorizedError 而红；新增调用方不填真入口、渲染层调用方只写缺口——textTaskCallers.integration.test.ts「真入口登记」红",
+    "exception_policy": "none",
+    "strategy": "门的选择改为只看 kind（结构上不再由显示偏好决定花钱门）；真入口测试从渲染层 generateText / runWorkbenchTextTaskStream 经真 preload 桥、真 IPC handler、真 runtime 准入走到本机假上游；矩阵登记把「入口之上看不见」这件事变成必须填的一栏。例外表 RENDERER_ENTRY_GAP_EXCEPTIONS 只放有另线和到期的缺口，补上测试即删",
+    "artifacts": [
+      "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "electron/ai/textEntries.ipc.integration.test.ts",
+      "tests/fixtures/textTasks/textTaskCallerHarness.ts",
+      "electron/ai/textTaskCallers.integration.test.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/ai/textEntries.ipc.integration.test.ts",
+    "electron/ai/textTaskCallers.integration.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/ai/textTaskCallers.integration.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/runner/catalogTaskActions.ts"
+    ],
+    "rationale": "「没给 onTextDelta 的文本走一次性 nomi:tasks:run」那条分支判据删掉，文本 kind 只剩流式门一条路；没有开关"
+  },
+  "migration": "不改落盘格式与 IPC 契约；改写结果照旧经 textPendingSelectionApply 交编辑器替换选区。",
+  "residual_risks": [
+    "浏览器提取提示词（#7，src/ui/browser/prompt/browserPromptExtractionRunner.ts）同样走 nomi:tasks:run 的令牌闸却无人铸令牌：附属付费口 M9（2026-11-15 到期），协调另线真机核实后交用户定；矩阵 RENDERER_ENTRY_GAP_EXCEPTIONS 记着",
+    "浏览器提取提示词（#7）仍会撞同一个令牌闸：另线处理",
+    "真模型上的改写未跑：由协调带 key 的真模型走查覆盖"
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+    "tests": [
+      "electron/ai/textEntries.ipc.integration.test.ts",
+      "electron/ai/textTaskCallers.integration.test.ts"
+    ],
+    "why": "按 kind 选门只在 runCatalogGenerationTask 一处；真入口测试从它上面的 generateText 一路走到准入与 HTTP，改回「看 onTextDelta 选门」改写那条会当场抛 SpendNotAuthorizedError 而红"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及依赖：只改画布选门判据与测试",
+    "exit_criteria": []
+  },
+  "internal_only_reason": "纯内部路由判据：选门规则与 paidNodeLedger 都是 Nomi 自己的花钱语义，没有外部文档可查"
+}

@@ -19,7 +19,7 @@ import {
 import { cn } from '../../../../utils/cn'
 import { AnchoredPopover } from '../../../../design'
 import type { MentionSuggestionItem, MentionUploadControls } from '../../../assets/AssetMentionSuggestionList'
-import type { PlanAnchor, PlanShot } from '../../../generationCanvas/agent/storyboardPlan'
+import { stableShotId, type PlanAnchor, type PlanShot } from '../../../generationCanvas/agent/storyboardPlan'
 import { NO_SCENE_VALUE, type PlanShotPatch } from '../../../generationCanvas/agent/storyboardPlanEdits'
 import { findModelOptionByIdentifier } from '../../../../config/modelOptionResolvers'
 import { useVendorPreferenceOrder } from '../../../common/useVendorPreference'
@@ -40,6 +40,7 @@ import { droppedMentionUrls } from '../../../assets/promptMentions'
 import ShotComposerBar from './ShotComposerBar'
 import PromptSkeletonSegments from './PromptSkeletonSegments'
 import type { ShotVariant } from './shotVariants'
+import { usePromptHistoryCarry } from './promptHistoryCarry'
 
 /**
  * 分镜表的一行：`[行首 | 视觉列 | 内容列]`（2026-10-06 第二轮，版面由协调会话定；行网格在 `StoryboardRowShell`）。
@@ -178,6 +179,8 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
   const actionsTriggerRef = React.useRef<HTMLButtonElement | null>(null)
   const [variantsOpen, setVariantsOpen] = React.useState(false)
   const editorRef = React.useRef<Editor | null>(null)
+  // 窗口化后这一行会随滚动卸载 / 重挂：编辑器的撤销历史按镜头 id 存在表里，重挂时接回（promptHistoryCarry）。
+  const carryPromptHistory = usePromptHistoryCarry(stableShotId(shot))
   // 点参考缩略图 = 在提示词光标处插一枚指向它的 @（画布节点同一手势、同一条 editor 命令）。
   const insertMention = React.useCallback((url: string) => {
     const editor = editorRef.current
@@ -270,7 +273,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
       {/* 行菜单贴着「⋯」开，点外面 / Esc 关：开合交给 AnchoredPopover（同一行底栏 ⋯ 弹层用的就是它），这里不另写监听。
           以前是原地 absolute、只有再点一次「⋯」才收：点别处它一直开着，盖住本镜和下一镜的画面格，
           用户以为在点缩略图，实际点进了「复制镜头」（铁律 ⑫ 走查 LAW12-sb-row-more）。
-          点外面那一下是 mousedown 关菜单、不吞事件，所以同一下照样落到被点的东西上。 */}
+          点外面那一下是 pointerdown 捕获阶段关菜单（listenOutsidePress）、不吞事件，所以同一下照样落到被点的东西上。 */}
       {actionsOpen ? (
         // Portal 贴锚点：行在表格的 overflow-hidden 里，原地 absolute 的菜单在最后一行会被裁成一条边。
         <AnchoredPopover anchorRef={actionsTriggerRef} align="start" gap={4} onClose={closeMenus}>
@@ -456,7 +459,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
             mentionSearch,
             onMentionSelect,
             mentionUpload,
-            onReady: (editor) => { editorRef.current = editor },
+            onReady: (editor) => { editorRef.current = editor; carryPromptHistory(editor) },
           }}
         />
         <ShotComposerBar

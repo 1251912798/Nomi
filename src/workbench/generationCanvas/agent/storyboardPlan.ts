@@ -9,7 +9,7 @@ import {
 } from './storyboardPromptCompiler'
 import { resolveKeyframeParams, resolveShotParams } from './storyboardShotScope'
 
-import type { PlanAnchorKind, PlanAnchor, PlanShot, StoryboardPlan } from '../../../../electron/shared/storyboard/storyboardPlan'
+import { LEGACY_OMITTED_SHOT_KIND, type PlanAnchorKind, type PlanAnchor, type PlanShot, type StoryboardPlan } from '../../../../electron/shared/storyboard/storyboardPlan'
 import { stableShotId } from '../../../../electron/shared/storyboard/storyboardSubjectIdentity'
 export type { PlanAnchorKind, PlanAnchorCarrier, StoryboardPromptSkeletonSegment, StoryboardProfile, PromptSegmentRange, PlanAnchor, PlanReferenceBinding, PlanShot, StoryboardPlan } from '../../../../electron/shared/storyboard/storyboardPlan'
 
@@ -50,7 +50,7 @@ export function isEmptyStoryboardPlan(plan: StoryboardPlan): boolean {
  * 视频镜：durationSec 原值。方案卡合计、场组头小结、行角标全走这里（P1 单一真相源）。
  */
 export function effectiveShotDurationSec(shot: PlanShot): number {
-  if (shot.shotKind === 'image') {
+  if ((shot.shotKind ?? LEGACY_OMITTED_SHOT_KIND) === 'image') {
     return Number.isFinite(shot.durationSec) && shot.durationSec > 0 ? shot.durationSec : DEFAULT_IMAGE_SECONDS
   }
   return Number.isFinite(shot.durationSec) && shot.durationSec > 0 ? shot.durationSec : 0
@@ -257,7 +257,7 @@ function buildShotRowNodes(
   const edges: PlanCreatedEdge[] = []
   const id = shotClientId(shot)
   // 镜头种类分支（用户拍板：拆镜头默认图片分镜）。缺省无 shotKind → 按 video 兜底（旧草稿兼容）。
-  const isImageShot = shot.shotKind === 'image'
+  const isImageShot = (shot.shotKind ?? LEGACY_OMITTED_SHOT_KIND) === 'image'
   const hasKeyframe = !isImageShot && shot.keyframe?.enabled === true
   const keyframeTargetId = hasKeyframe ? (options.existingKeyframeNodeId || shotKeyframeClientId(shot)) : id
   // 图片镜头绑图片模型默认、视频镜头绑视频模型默认；用户在编辑器为该镜选的 modelKey 永远优先。

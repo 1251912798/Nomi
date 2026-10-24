@@ -1,0 +1,207 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-22-project-library-gc-race",
+  "problem_type": "A read path (project list) owns a destructive side effect and races with queued writers; one unreadable item aborts the whole list",
+  "symptom": "V-plibrary case C: a blank draft whose save is queued behind another writer's manifest lock is deleted by the first library listing; the save then fails with 'Workspace project not found' and the lock retry recreates an orphan project folder without manifest or registry entry. Separately, one project whose .nomi points outside its folder makes listProjects throw, so the whole library (all neighbours) fails to load.",
+  "direct_cause": "gcEmptyDraftWorkspaceProjects ran inside listProjects and authorised deletion from the on-disk manifest only (lock free, still draft rev 0), blind to in-process writers waiting in acquireWorkspaceManifestLock's retry loop; tryAcquireCanonicalWorkspaceManifestLock created .nomi with mkdirSync(recursive) on every retry, recreating a deleted root. listWorkspaceProjects had no per-item error boundary, so the locked fallback read's boundary error rejected Promise.all.",
+  "class_root": "Destruction of project folders was owned by a read path (listing) instead of an explicit user action, so its timing raced with every writer; the lock layer could create project roots; and list items shared one failure domain.",
+  "affected_population": [
+    "Desktop users whose library listing overlaps a queued save of a zero-edit draft (crash / OS session end leftovers re-opened while the library loads)",
+    "Any writer waiting for the manifest lock while its project folder is removed (user deletes it in Explorer, sync drive moves it)",
+    "Libraries containing one project whose metadata is unreadable or links outside its folder"
+  ],
+  "scope_paths": [
+    "electron/projects/repository.ts",
+    "electron/workspace/workspaceRepository.ts",
+    "electron/workspace/workspaceManifestLock.ts",
+    "electron/workspace/workspaceManifest.ts",
+    "scripts/check-read-path-writes.mjs",
+    "electron/projects/projectsIpc.ts",
+    "electron/workspace/legacyProjectMigration.ts"
+  ],
+  "entry_points": [
+    "listProjects (renderer library, MCP / Agent project list) — the only caller of the former GC",
+    "every async manifest writer reaching acquireWorkspaceManifestLock (staged saves, async mutations)",
+    "deleteProject (user delete) — the only remaining caller of deleteWorkspaceProject"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The invariants concern Nomi's own project registry, manifest lock and library list; no third-party library or platform document decides them.",
+  "invariants": [
+    "No list / read / resolve / get function can reach deleteWorkspaceProject; project folders are deleted only by the user's delete action.",
+    "Taking the manifest lock never creates a project root; a missing root fails with WorkspaceRootMissingError and is not retried.",
+    "A read failure of one listed project affects only that project's card (busy -> plain registry card, anything else -> unreadable card); listProjects never rejects because of one item — including the start-up discovery of unregistered directories in the default root (discoverLegacyProjects skips an unreadable directory).",
+    "Deleting a project follows the intent the user confirmed in the dialog: 'unbind' only removes the registry entry and never touches files even if the project became readable again; 'delete-files' refuses with ProjectDeleteStateChangedError when the project is no longer readable; a missing or unknown intent is refused.",
+    "The list read face returns every registered project and applies no display policy (no hiding of blank drafts): the library page, all-project assets, the MCP project list, workflow source names and walkthroughs all read it as 'every registered project' (V-plibrary2 r3; user chose option B on 2026-10-22)."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/projects/repository.ts",
+      "symbol": "deleteWorkspaceProject"
+    },
+    {
+      "kind": "read",
+      "path": "electron/projects/repository.ts",
+      "symbol": "listWorkspaceProjects"
+    },
+    {
+      "kind": "write",
+      "path": "electron/workspace/workspaceRepository.ts",
+      "symbol": "deleteWorkspaceProject"
+    },
+    {
+      "kind": "read",
+      "path": "electron/workspace/workspaceRepository.ts",
+      "symbol": "listWorkspaceProjects"
+    },
+    {
+      "kind": "write",
+      "path": "electron/workspace/workspaceManifestLock.ts",
+      "symbol": "tryAcquireCanonicalWorkspaceManifestLock"
+    },
+    {
+      "kind": "read",
+      "path": "electron/workspace/workspaceManifest.ts",
+      "symbol": "readWorkspaceManifest"
+    },
+    {
+      "kind": "write",
+      "path": "electron/projects/projectsIpc.ts",
+      "symbol": "deleteProject"
+    },
+    {
+      "kind": "read",
+      "path": "electron/workspace/legacyProjectMigration.ts",
+      "symbol": "discoverLegacyProjects"
+    }
+  ],
+  "door_reduction": {
+    "before": 9,
+    "after": 8,
+    "why_not": "少掉的一扇是 gcEmptyDraftWorkspaceProjects（列举里的第二个删除调用方）。剩下的：deleteWorkspaceProject 的定义与唯一调用方（用户删除）；listWorkspaceProjects 的定义与唯一调用方（#1268 的唯一异步读面）；所有写者共用的唯一取锁函数；列表每项回落用的加锁清单读。各自是同一状态的不同必要入口，不能再合。 projectsIpc.ts 的 deleteProject 是用户删除走的唯一 IPC 口，它把确认框的意图原样交给主进程 deleteProject。 discoverLegacyProjects 是启动发现：扫默认根里没登记的目录，和列表读面是两件事（一个对账新目录、一个读已登记项目），两处都逐项隔离读取错误。"
+  },
+  "generality_proof": "The race existed because a read path could destroy. Removing the GC from listProjects leaves exactly one caller of deleteWorkspaceProject (the user delete IPC), and check:read-path-writes now treats deleteWorkspaceProject as a write door, so any future list/read/resolve/get function that reaches it fails CI. No in-process or cross-process writer can be raced by a deleter that does not exist. The orphan-root half is closed in the single lock acquisition function every writer goes through (door-map: acquireWorkspaceManifestLock has one owner file). The list failure domain is closed in the single list read face, per item, for every error type.",
+  "shared_boundaries": [
+    {
+      "path": "electron/workspace/workspaceRepository.ts",
+      "symbol": "listWorkspaceProjects",
+      "responsibility": "Single list read face: read-only, returns every registered project with no display policy, isolates each item's read failure to its own card."
+    },
+    {
+      "path": "electron/workspace/workspaceManifestLock.ts",
+      "symbol": "tryAcquireCanonicalWorkspaceManifestLock",
+      "responsibility": "Creates only .nomi under an existing root; a missing root throws WorkspaceRootMissingError (not retryable)."
+    },
+    {
+      "path": "scripts/check-read-path-writes.mjs",
+      "symbol": "READ_PATH_WRITE_DOORS",
+      "responsibility": "Static gate: no read-named function may reach deleteWorkspaceProject."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/projects/repository.ts",
+      "entry_point": "listProjects",
+      "disposition": "enforced",
+      "evidence": "GC call and once-guard removed; it now only reads listWorkspaceProjects. check:read-path-writes passes with 0 reachable doors and fails on the pre-change code (mutation in PR body)."
+    },
+    {
+      "path": "electron/projects/repository.ts",
+      "entry_point": "deleteProject",
+      "disposition": "enforced",
+      "evidence": "Executes exactly the intent confirmed in the renderer dialog (electron/shared/projectDeleteIntent.ts): unbind never reaches deleteWorkspaceProject; delete-files reaches it only when readWorkspaceProject succeeds and refuses otherwise. projectListSummary.test.ts reproduces V-plibrary2's gray-at-list / readable-at-delete case."
+    },
+    {
+      "path": "electron/workspace/workspaceManifestTransaction.ts",
+      "entry_point": "withWorkspaceManifestStagedTransaction / withWorkspaceManifestTransaction",
+      "disposition": "enforced",
+      "evidence": "Both reach acquireWorkspaceManifestLock -> tryAcquireCanonicalWorkspaceManifestLock; workspaceManifestTransaction.test.ts covers staged and immediate writers whose root disappears while queued."
+    },
+    {
+      "path": "electron/workspace/workspaceManifestTransaction.ts",
+      "entry_point": "withWorkspaceManifestTransactionSync",
+      "disposition": "enforced",
+      "evidence": "Uses tryAcquireWorkspaceManifestLock, the same canonical acquisition function; a missing root throws instead of being recreated."
+    },
+    {
+      "path": "electron/workspace/legacyProjectMigration.ts",
+      "entry_point": "discoverLegacyProjects",
+      "disposition": "enforced",
+      "evidence": "V-plibrary2 r2：从库移除读不出的灰卡后目录仍在默认根，下次启动发现读它抛边界 / 身份错，整次 listProjects reject。每项读取包 try、跳过并记 warn；projectListSummary.test.ts「移除 outside-workspace / unreadable 灰卡后下次启动」两条钉住，去掉 try 即红。"
+    },
+    {
+      "path": "electron/projects/repository.ts",
+      "entry_point": "legacyProjectDirById",
+      "disposition": "not-affected",
+      "evidence": "逐目录用 readJson（runtimePaths.ts，读失败返回 fallback）比对 id，单个目录读不出不会抛到整体。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "F1 (#1268) already fixed one interleaving of the same deleter; N1 is a second interleaving (queued writer). Any new writer path or new timing would reopen it while a read path owns deletion.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs deleteWorkspaceProject: before 2 callers (deleteProject, gcEmptyDraftWorkspaceProjects), after 1",
+      "node scripts/door-map.mjs acquireWorkspaceManifestLock: single owner file workspaceManifestTransaction.ts",
+      "git grep fs.mkdirSync in electron/workspace: ensureWorkspaceFolders (explicit initialization, intended to create the root) and lock acquisition (fixed)",
+      "check:read-path-writes with deleteWorkspaceProject as a door: 0 reachable read paths after the change"
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/check-read-path-writes.mjs",
+    "invariant": "No function named read*/resolve*/list*/get* can statically reach deleteWorkspaceProject.",
+    "failure_mode": "CI gate check:read-path-writes fails and names the chain.",
+    "exception_policy": "none",
+    "strategy": "Delete the deleter from the read path, then make reintroducing it a red gate; enforce no-root-creation inside the single lock acquisition function; isolate list item failures inside the single list read face.",
+    "artifacts": [
+      "scripts/check-read-path-writes.mjs",
+      "electron/projects/repository.ts",
+      "electron/workspace/workspaceRepository.ts",
+      "electron/workspace/workspaceManifestLock.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/projects/draftGcInterleave.test.ts",
+    "electron/projects/projectListSummary.test.ts",
+    "electron/projects/repository.test.ts",
+    "electron/workspace/workspaceManifestTransaction.test.ts",
+    "electron/workspace/workspaceRepository.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/projects/draftGcInterleave.test.ts",
+    "electron/workspace/workspaceManifestTransaction.test.ts",
+    "electron/projects/projectListSummary.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/workspace/workspaceRepository.ts",
+      "electron/projects/repository.ts"
+    ],
+    "rationale": "gcEmptyDraftWorkspaceProjects, isStillEmptyNativeDraft, the emptyDraftGcDone once-guard and resetEmptyDraftGcGuard are deleted in the same change; no fallback deleter remains."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency controls listing, locking or deletion here.",
+    "exit_criteria": []
+  },
+  "migration": "No data migration. Zero-edit drafts left by crash / OS session end / kill stay on disk and show in the library as ordinary 'untitled' cards (on main they were deleted at next start); the user can delete them. Collecting them belongs to the library-membership owner + 'leave only writes what is owed' line (option C), not to the list read face.",
+  "residual_risks": [
+    "Zero-edit blank drafts left by a crash / OS session end / kill now show as 'untitled' cards until the user deletes them (previously the start-up GC deleted them); tidying moves to the option-C line.",
+    "Cross-process writers (legacy isMcpStdio mode, another machine through a sync drive) can still find the root gone if the user deletes the project; they now fail with an explicit WorkspaceRootMissingError instead of recreating an orphan.",
+    "check:read-path-writes is a gate, not a structural guarantee: it links calls by unique function name and only treats read/list/resolve/get prefixes as read paths. A read path that calls fs.rmSync directly, or reaches deletion from a differently prefixed function (bootstrap*/refresh*/sync*), is not on its graph (V-plibrary2 mutation C); tests are the backstop there.",
+    "electron/assets/projectAssetStore.ts ensureDir(assetDir) creates directories recursively; if a project root is deleted between path resolution and the write, it can recreate an orphan root (same class, pre-existing, narrow window; tracked as follow-up, not fixed here)."
+  ],
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-22",
+  "invariant_owner_layer": {
+    "layer": "electron/workspace/workspaceRepository.ts",
+    "tests": [
+      "electron/projects/draftGcInterleave.test.ts",
+      "electron/projects/projectListSummary.test.ts",
+      "electron/workspace/workspaceRepository.test.ts",
+      "electron/workspace/workspaceManifestTransaction.test.ts"
+    ],
+    "why": "列表读面 listWorkspaceProjects 单点持有「只读、返回所有登记过的项目（不做展示取舍）、每项错误只落在这一张卡」；取锁不造根由 workspaceManifestLock 的唯一取锁函数持有，tests 覆盖排队写者遇到根被删；check:read-path-writes 静态守住「读路径不可达 deleteWorkspaceProject」。"
+  }
+}

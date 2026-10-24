@@ -95,11 +95,11 @@ try {
   // 两条链各自都可能长出「announce 了却没画」，所以两条都要看一眼。
   await clickOrFail(win.locator(`${CANVAS_PANEL} ${COMPOSER_PERMISSION}`), '权限档选择器')
   await expect(win.locator(`${CANVAS_PANEL} ${PERMISSION_POPOVER}`)).toBeVisible()
-  await clickOrFail(win.locator(`${CANVAS_PANEL} ${permissionTier('project')}`), '切到「全自动」')
+  await clickOrFail(win.locator(`${CANVAS_PANEL} ${permissionTier('direct')}`), '切到「直接生成」')
   const switchCard = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="approval-reversible"]`)
   await expect(switchCard, 'lane 那条链上的待决同样必须画得出来').toBeVisible()
   await walk.snap('missing-card-02-second-announce-surface')
-  await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), '确认切到全自动')
+  await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), '确认切到直接生成')
   await expect(panelError, '答完一张卡之后面板仍然不该是错误态').toHaveCount(0)
 
   // ④ 答掉之后两边一起归零。「没有」如果只有一边知道，用户就会盯着一个答不掉的计数。

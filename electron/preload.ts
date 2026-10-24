@@ -1,5 +1,4 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
-import { director3dBoxProof } from './shared/featureFlags/director3dbox';
 import { createCanvasReadSurfacePreloadBridge } from './surfacePortPreloadBridge';
 import { getSetChannels, invokeSync } from "./preload/ipcCall";
 // 四族桥面各自成模块（R9：preload.ts 是组装层，桥面本身不占它的额度）。形状逐字节不变。
@@ -7,37 +6,10 @@ import { creationBridge } from "./preload/creationBridge";
 import { mediaBridge } from "./preload/mediaBridge";
 import { modelOnboardingBridge } from "./preload/modelOnboardingBridge";
 import { runtimeBridge } from "./preload/runtimeBridge";
+import type { ProjectDeleteIntent } from "./shared/projectDeleteIntent";
+import type { UserPromptRestoreSnapshot } from "./shared/contracts/promptLibrary";
 
 type ProductionDeepLinkPayload = { projectId: string; runId?: string; nodeId?: string; artifactId?: string };
-const localDirector3dBox = director3dBoxProof();
-const reportDirector3dBoxWarning = (event: string, fields: Record<string, string>): void => ipcRenderer.send("nomi:log:renderer", { level: "warn", event, fields });
-const proofArgument = process.argv.find((argument) => argument.startsWith("--nomi-director3dbox-proof="));
-const argumentDirector3dBox = (() => {
-  if (!proofArgument) return null;
-  try {
-    return JSON.parse(decodeURIComponent(proofArgument.slice("--nomi-director3dbox-proof=".length))) as typeof localDirector3dBox;
-  } catch {
-    return null;
-  }
-})();
-let pendingDirector3dBoxWarning: { event: string; fields: Record<string, string> } | null = null;
-const reportPendingDirector3dBoxWarning = (): void => {
-  if (!pendingDirector3dBoxWarning) return;
-  reportDirector3dBoxWarning(pendingDirector3dBoxWarning.event, pendingDirector3dBoxWarning.fields);
-  pendingDirector3dBoxWarning = null;
-};
-window.addEventListener("DOMContentLoaded", reportPendingDirector3dBoxWarning, { once: true });
-const director3dBox = (() => {
-  if (!argumentDirector3dBox) {
-    pendingDirector3dBoxWarning = { event: "director3dbox-main-proof-unavailable", fields: { reason: "missing-additional-argument" } };
-    return { ...localDirector3dBox, enabled: false, source: 'default' as const, fingerprint: 'director3dbox:off:2026-11-15' };
-  }
-  if (argumentDirector3dBox.fingerprint !== localDirector3dBox.fingerprint) {
-    pendingDirector3dBoxWarning = { event: "director3dbox-fingerprint-mismatch", fields: { preload: localDirector3dBox.fingerprint, main: argumentDirector3dBox.fingerprint } };
-    return { ...argumentDirector3dBox, enabled: false, source: 'default' as const, fingerprint: 'director3dbox:off:2026-11-15' };
-  }
-  return argumentDirector3dBox;
-})();
 let queuedProductionDeepLink: ProductionDeepLinkPayload | null = null;
 const productionDeepLinkListeners = new Set<(payload: ProductionDeepLinkPayload) => void>();
 ipcRenderer.on("nomi:production-deep-link", (_event, payload: ProductionDeepLinkPayload) => {
@@ -48,7 +20,6 @@ ipcRenderer.on("nomi:production-deep-link", (_event, payload: ProductionDeepLink
 
 contextBridge.exposeInMainWorld("nomiDesktop", {
   platform: process.platform,
-  featureFlags: { director3dbox: director3dBox },
   i18n: {
     setLocale: (locale: "zh-CN" | "en") => ipcRenderer.send("nomi:i18n:set-locale", locale),
     // 首启探测系统语言用；拿不到就返回 ""（渲染层据此回落默认语言，绝不抛断首帧）。
@@ -169,6 +140,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     deleteFiles: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:delete-files", payload),
     revealProjectFolder: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:reveal-project-folder", payload),
     syncInspect: (payload: string | { projectId: string; adopt?: boolean }) => ipcRenderer.invoke("nomi:workspace:sync-inspect", payload),
+    syncInspectMany: (projectIds: string[]) => ipcRenderer.invoke("nomi:workspace:sync-inspect-many", projectIds),
     syncReveal: (projectId: string) => ipcRenderer.invoke("nomi:workspace:sync-reveal", projectId),
     syncCopyConflict: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:sync-copy-conflict", payload),
   },
@@ -177,7 +149,6 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     show: (payload: unknown) => ipcRenderer.invoke("nomi:notifications:show", payload),
   },
   projects: {
-    list: () => invokeSync("nomi:projects:list"),
     listAsync: () => ipcRenderer.invoke("nomi:projects:list-async"),
     create: (record: unknown) => invokeSync("nomi:projects:create", record),
     read: (projectId: string) => invokeSync("nomi:projects:read", projectId),
@@ -188,7 +159,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       ipcRenderer.invoke("nomi:projects:save-async", projectId, record),
     applyCanvasNodePatch: (input: { projectId: string; nodeId: string; patch: Record<string, unknown>; expectedBinding?: unknown }) =>
       ipcRenderer.invoke("nomi:projects:apply-canvas-node-patch", input),
-    delete: (projectId: string) => invokeSync("nomi:projects:delete", projectId),
+    delete: (projectId: string, intent: ProjectDeleteIntent) => ipcRenderer.invoke("nomi:projects:delete", projectId, intent),
   },
   clipboard: {
     readFilePaths: () => ipcRenderer.invoke("nomi:clipboard:read-file-paths") as Promise<string[]>,
@@ -291,6 +262,13 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       ipcRenderer.invoke("nomi:prompt-library:user-delete", { id }) as Promise<{
         ok: boolean;
         prompts: unknown[];
+        deleted?: unknown;
+        error?: string;
+      }>,
+    userRestore: (snapshot: UserPromptRestoreSnapshot) =>
+      ipcRenderer.invoke("nomi:prompt-library:user-restore", snapshot) as Promise<{
+        ok: boolean;
+        prompts: unknown[];
         error?: string;
       }>,
   },
@@ -308,7 +286,5 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       },
       send: (channel, payload) => ipcRenderer.send(channel, payload),
     },
-    // 3D-BOX：取证白名单只在核对过指纹的开关为开时追加 `director.write` 的两个操作。
-    { director3dbox: director3dBox.enabled },
   ),
 });

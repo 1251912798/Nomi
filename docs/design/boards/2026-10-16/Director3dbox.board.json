@@ -1,0 +1,489 @@
+{
+  "board": "Director3dbox",
+  "approvedOn": "2026-10-04",
+  "stage": "built",
+  "scope": "3D-BOX 成为唯一的导演台（用户 10-16「我觉得可以打开给大家用吧」；同日「为什么要切回旧导演台？」→ 开关与旧导演台同一个 PR 删除，不留切回入口）的样张对账：元素清单 + 旧导演台功能普查。普查 22 项由 src/workbench/generationCanvas/nodes/director/directorFunctionCensus.test.ts 逐项钉住。in-progress = 现役已在、待独立验收线 V-3dbox 真机走查补 board: 断言；missing = 现役没有，排到打开后。",
+  "userDecision": {
+    "quote": "我觉得可以打开给大家用吧 因为本身这部分也是提升用户价值的",
+    "date": "2026-10-16"
+  },
+  "source": "source/Director3dbox.json",
+  "elements": [
+    {
+      "id": "layout.docked",
+      "label": "导演台占画布区，右侧 Agent 面板可见（布局 A）",
+      "candidates": [
+        "001-layout.docked"
+      ],
+      "status": "in-progress",
+      "states": [
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "唯一的导演台就是这样（DirectorEditor 外壳右缘让出 Agent 面板宽）；仍是挂在 body 上的 fixed 覆盖层。窄窗 728 见 d3-switch-narrow-*。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "topbar.back-title",
+      "label": "顶栏左：‹ 返回画布 + 工程名 · 镜头 N",
+      "candidates": [
+        "002-topbar.back-title"
+      ],
+      "status": "in-progress",
+      "states": [
+        "selected",
+        "long-text",
+        "narrow",
+        "zh-en",
+        "dark",
+        "empty"
+      ],
+      "note": "空工程显示「导演台」；选中镜头时跟第一个选中的那一镜。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "topbar.mode",
+      "label": "顶栏中：导演 / 精修 切换",
+      "candidates": [
+        "003-topbar.mode"
+      ],
+      "status": "in-progress",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "note": "默认「导演」（DirectorEditor.tsx:180）。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "topbar.history",
+      "label": "顶栏右：撤销 / 重做",
+      "candidates": [
+        "004-topbar.history"
+      ],
+      "status": "in-progress",
+      "states": [
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "note": "差异：样张提示「每次 AI 修改 = 一步」；现役编辑器里的撤销只撤手改（导演 store 自己的栈），AI 的修改由 Agent「撤销」或退出后画布 ⌘Z 回退；外部写入重载时编辑器栈清空（directorStore.ts:385-386），撤不过 AI 的改动。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "topbar.produce",
+      "label": "顶栏右：主按钮「出成片」",
+      "candidates": [
+        "005-topbar.produce"
+      ],
+      "status": "in-progress",
+      "states": [
+        "disabled",
+        "loading",
+        "error",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "S5 接线（选项 A：只准备不花钱）：状态 = 可点 / 预演渲染中 / 重试预演 / 超长置灰 / 没有镜头置灰，判据住 directorPreviewState；点了挂预演并回画布选中视频镜头。实验室 d3-produce-*。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "topbar.produce-menu",
+      "label": "主按钮旁 ▾：只导出预演 MP4 / 截图 / 打开产出",
+      "candidates": [
+        "006-topbar.produce-menu"
+      ],
+      "status": "in-progress",
+      "states": [
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "note": "▾ = 截图 + 产出浮层正文（录制 MP4 与已有产出，与精修顶栏同一份 OutputsMenuBody）。实验室 d3-produce-menu-*。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "viewport.scene",
+      "label": "视口：白模场景 + 网格 + 角色名牌（编辑辅助物收起）",
+      "candidates": [
+        "007-viewport.scene"
+      ],
+      "status": "in-progress",
+      "states": [
+        "empty",
+        "loading",
+        "narrow",
+        "dark"
+      ],
+      "note": "差异：俯视全景里两人名牌上下压在一起（黑衣侍卫 / 青衣女子），样张里分开。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "viewport.camera-markers",
+      "label": "视口：编号机位 1–N、选中镜头高亮、走位虚线",
+      "candidates": [
+        "008-viewport.camera-markers"
+      ],
+      "status": "missing",
+      "states": [
+        "selected",
+        "hover",
+        "dark"
+      ],
+      "note": "3a 对账第 6 行推迟到 3c，3c 没做。导演视图现在看不到机位和走位线。",
+      "owner": "打开后再做（D-3dbox 切片）"
+    },
+    {
+      "id": "viewport.identity-color",
+      "label": "视口：角色按身份配色、主体与布景明暗分开",
+      "candidates": [
+        "009-viewport.identity-color"
+      ],
+      "status": "missing",
+      "states": [
+        "dark"
+      ],
+      "note": "3a 对账第 10/11 行：要编译器写颜色（盲评与预览同一 owner）。编译器是热点，先方向检查。",
+      "owner": "打开后再做（D-3dbox S6）"
+    },
+    {
+      "id": "viewport.pip",
+      "label": "视口左下预览小窗：▷ 镜头 N · 景别 · 运镜 + 画幅；空态「还没有机位 / 节目预览」",
+      "candidates": [
+        "010-viewport.pip"
+      ],
+      "status": "in-progress",
+      "states": [
+        "empty",
+        "loading",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "10-04 拍板放左下、显示正在播哪一镜。▷ 是指示不是按钮（播放只留播放行一个入口）。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "shotstrip.head",
+      "label": "镜头条头：▷ 播放 + 时间 +「景别和运镜是实测值」",
+      "candidates": [
+        "011-shotstrip.head"
+      ],
+      "status": "in-progress",
+      "states": [
+        "empty",
+        "zh-en",
+        "dark"
+      ],
+      "note": "空工程：「还没有可播放的镜头，先让 Agent 搭一段预演」。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "shotstrip.card",
+      "label": "镜头卡：序号 · 实测时间窗 / 实测景别 · 运镜 / 第三行说明",
+      "candidates": [
+        "012-shotstrip.card"
+      ],
+      "status": "in-progress",
+      "states": [
+        "selected",
+        "hover",
+        "long-text",
+        "narrow",
+        "zh-en",
+        "dark",
+        "empty"
+      ],
+      "note": "差异：第三行读的是工程里的动作片段（「青衣女子走路 · 黑衣侍卫待机」），样张是计划语义（「侍卫横步挡门 · 女子藏信」）；窄卡英文截断（悬停看全名）。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "shotstrip.issue-chip",
+      "label": "镜头卡上的问题徽标（「已修：出画 → 拉近」）",
+      "candidates": [
+        "013-shotstrip.issue-chip"
+      ],
+      "status": "missing",
+      "states": [
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "note": "3a 对账第 25 行推迟 3b，3b 没做；问题清单只在 stage_shot 结果里给模型看。",
+      "owner": "打开后再做（D-3dbox 切片）"
+    },
+    {
+      "id": "shotstrip.playhead",
+      "label": "播放指针穿过当前卡",
+      "candidates": [
+        "014-shotstrip.playhead"
+      ],
+      "status": "in-progress",
+      "states": [
+        "dark"
+      ],
+      "note": "",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "shotstrip.select",
+      "label": "点卡跳到该镜开头；Ctrl 加选多镜",
+      "candidates": [
+        "015-shotstrip.select"
+      ],
+      "status": "in-progress",
+      "states": [
+        "selected",
+        "zh-en"
+      ],
+      "note": "见 d3-focus-3 / d3-focus-4。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "agent.focus-tag",
+      "label": "Agent 输入框上的「正在改：镜头 N」标签（七态）",
+      "candidates": [
+        "016-agent.focus-tag"
+      ],
+      "status": "in-progress",
+      "states": [
+        "selected",
+        "empty",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "10-06 画布拍板七态，实验室 d3-focus-* 逐态对账过（#1002）。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "agent.tool-trace",
+      "label": "对话里的 stage_shot 过程与检查结果",
+      "candidates": [
+        "017-agent.tool-trace"
+      ],
+      "status": "in-progress",
+      "states": [
+        "loading",
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "note": "差异：样张画了两行工具卡（提交导演计划 / 检查出画→拉近）；现役 Agent 面板统一折叠成「用了 1 个工具 ›」，点开看详情。按 Agent 面板设计系统，不为导演台另做一种。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "agent.composer",
+      "label": "在右侧 Agent 面板里说话搭场景、改某一镜（同一个会话，退出导演台也在）",
+      "candidates": [
+        "018-agent.composer"
+      ],
+      "status": "in-progress",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "note": "差异：样张面板头写「同一个会话 · 退出导演台也在」，现役面板头是工作台统一头部，不加这句。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "empty.examples",
+      "label": "空态给 3 个示例句（一句话就能搭预演）",
+      "candidates": [
+        "019-empty.examples"
+      ],
+      "status": "missing",
+      "states": [
+        "empty",
+        "zh-en",
+        "dark"
+      ],
+      "note": "样张卡点①写的去处，标「未做」。现役导演台空态只有一句提示，Agent 空态是通用建议（拆参考片 / 检查画布），不是 3D-BOX 示例。",
+      "owner": "待拍板：打开前要不要补"
+    },
+    {
+      "id": "mode.refine",
+      "label": "精修：今天整套专业工具原样（#991「选中才出」）",
+      "candidates": [
+        "020-mode.refine"
+      ],
+      "status": "in-progress",
+      "states": [
+        "selected",
+        "empty",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "精修面：整套专业工具原样（#991「选中才出」）；旧导演台底部「描述场景…」AI 胶囊随旧导演台删除。实验室 director-refine 屏 d3a-* 全套。",
+      "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "switch.legacy",
+      "label": "切回旧导演台的入口（默认开 3D-BOX，用户可退回旧导演台：全屏 + 底部「描述场景…」）",
+      "candidates": [
+        "021-switch.legacy"
+      ],
+      "status": "dropped",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "note": "用户 10-16 否决切回入口（协调转达）。样张提交 fe164fc0b、fc38574cb 已用 06324c56b 撤回；开关与旧导演台在切换 PR 里删除。",
+      "userDecision": {
+        "quote": "为什么要切回旧导演台？功能完全一致、还优化了交互，它为什么要去切换呢？",
+        "date": "2026-10-16"
+      }
+    },
+    {
+      "id": "external.mcp-face",
+      "label": "对外 MCP 面不变：nomi_canvas_edit 的摆位参考 / 运镜参考照旧",
+      "candidates": [
+        "022-external.mcp-face"
+      ],
+      "status": "in-progress",
+      "states": [
+        "zh-en"
+      ],
+      "note": "对外 MCP 的工具与参数 schema 不变（electron/capabilityCore/director3dboxToolFace.test.ts）；这两个操作建出的导演节点在唯一的 3D-BOX 导演台里打开（directorFunctionCensus.test.ts 真跑建节点）。director.write 仅内部。",
+      "owner": "feat/director-3dbox-switch"
+    }
+  ],
+  "decor": [
+    "d01-mockup-title",
+    "d02-mockup-subtitle",
+    "d03-taskcard",
+    "d04-controls-layout",
+    "d05-controls-gradient",
+    "d06-hint",
+    "d07-layout-b-chatfloat",
+    "d08-v1-empty-hint",
+    "d09-v3-pro-left",
+    "d10-v3-pro-right",
+    "d11-v3-tracks",
+    "d12-notes-ab",
+    "d13-notes-delete-table",
+    "d14-notes-checkpoints",
+    "d15-notes-old-decisions",
+    "d16-agent-header-dot"
+  ],
+  "functionCensus": [
+    {
+      "function": "退出 / 返回画布（含退出确认 + 自动保存）",
+      "before": "旧导演台顶栏 ‹",
+      "after": "topbar.back-title"
+    },
+    {
+      "function": "打开导演台默认进入全套编辑器 → 默认进导演视图，「精修」一键进全套编辑器",
+      "before": "旧导演台",
+      "after": "topbar.mode"
+    },
+    {
+      "function": "导演台盖住整个窗口（全屏覆盖层）→ 改为占画布区、右侧 Agent 面板可见（布局 A）",
+      "before": "旧导演台",
+      "after": "layout.docked"
+    },
+    {
+      "function": "场景 ▾：图层切换 / 新建图层 / 对象大纲（隐藏、锁定、删除）/ 场景设置",
+      "before": "精修顶栏「▤ 图层名 ▾」",
+      "after": "mode.refine"
+    },
+    {
+      "function": "工具：选择 / 移动 / 旋转 / 缩放（快捷键 Esc、1–3，两个视图都有效）",
+      "before": "精修顶栏工具簇",
+      "after": "mode.refine"
+    },
+    {
+      "function": "画线 / 逐点路标（快捷键 4、5）",
+      "before": "精修属性卡头",
+      "after": "mode.refine"
+    },
+    {
+      "function": "＋ 添加：男 / 女角色、群众（行列间距与动作）、机位、灯光、方块、全景导入、资产库",
+      "before": "精修顶栏 ＋",
+      "after": "mode.refine"
+    },
+    {
+      "function": "视图 ▾：重置视角（快捷键 0）、显示模式、骨骼显示、角色名牌、画幅比例 / 分辨率 / 三分线、偏好、帮助",
+      "before": "精修顶栏「视图 ▾」",
+      "after": "mode.refine"
+    },
+    {
+      "function": "撤销 / 重做（⌘Z / ⌘⇧Z）",
+      "before": "精修顶栏",
+      "after": "topbar.history"
+    },
+    {
+      "function": "截图（⌘⇧P）",
+      "before": "精修顶栏截图钮 / 快捷键",
+      "after": "mode.refine"
+    },
+    {
+      "function": "产出：录制 MP4、截图与视频列表、删除、发送到画布",
+      "before": "精修右上「产出」菜单",
+      "after": "mode.refine"
+    },
+    {
+      "function": "选中才出的属性卡：角色基础 / 姿态 / 骨骼（IK / FK）、机位、灯、物体、片段、路标",
+      "before": "精修右侧属性卡",
+      "after": "mode.refine"
+    },
+    {
+      "function": "小窗：机位下拉、焦距 / FOV、进入视角、拖动、选中机位小窗跟随",
+      "before": "精修小窗",
+      "after": "mode.refine"
+    },
+    {
+      "function": "关键帧时间轴：播放 / 停 / 帧号 / 自动帧 / 吸附 / 倍速 / 缩放 / 适配 / 加关键帧 / 加轨道 / 轨道行操作 / 折叠 / 剪切拆分",
+      "before": "精修底部时间轴",
+      "after": "mode.refine"
+    },
+    {
+      "function": "播放 / 暂停（空格）",
+      "before": "时间轴 / 快捷键",
+      "after": "shotstrip.head"
+    },
+    {
+      "function": "其余快捷键（键位表共 32 个动作，model/hotkeys.ts；挂在编辑器层 EditorBody，两个视图都在）",
+      "before": "全局",
+      "after": "mode.refine"
+    },
+    {
+      "function": "手机虚拟相机（连接对话框）",
+      "before": "精修",
+      "after": "mode.refine"
+    },
+    {
+      "function": "设置 / 帮助对话框",
+      "before": "视图 ▾",
+      "after": "mode.refine"
+    },
+    {
+      "function": "视口底部「描述场景…」AI 搭场景胶囊（AiSceneBar）——随旧导演台删除，去处 = 右侧 Agent 面板（stage_shot / director.write 一句话搭场景，10-03 样张删除表）",
+      "before": "旧导演台视口底部（开关关才有）",
+      "after": "agent.composer"
+    },
+    {
+      "function": "Agent 旧 stage_shot：给镜头挂一张灰模摆位参考图 / 一段运镜参考小片 → 内部 stage_shot 换成 director.write（计划 / 补丁 + 预演）",
+      "before": "右侧 Agent（canvas.write 的两个操作）",
+      "after": "agent.composer"
+    },
+    {
+      "function": "已有工程里的旧「摆位参考 / 运镜参考」导演节点：照常打开、已出的参考图 / 小片照常在",
+      "before": "画布上的导演节点",
+      "after": "viewport.scene"
+    },
+    {
+      "function": "对外 MCP 工具 nomi_canvas_edit 的 create_staging_reference / create_camera_move（外部 Agent 给镜头挂摆位 / 运镜参考）",
+      "before": "外部 Agent（Claude Code / Codex 等）经 MCP",
+      "after": "external.mcp-face"
+    }
+  ]
+}

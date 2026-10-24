@@ -2,7 +2,7 @@ import React, { type JSX } from 'react'
 import { GenerationStatusBar } from './GenerationStatusBar'
 import { MODEL_ACCESS_ENTRY } from '../../../../electron/shared/contracts/modelAccessCapabilities'
 import { useTranslation } from 'react-i18next'
-import { IconChevronDown, IconChevronRight, IconListCheck, IconListDetails, IconRefresh, IconReplace, IconSettings, IconWand, IconX } from '@tabler/icons-react'
+import { IconListCheck, IconListDetails, IconRefresh, IconReplace, IconSettings, IconWand, IconX } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
 import { DecisionBar, WorkbenchButton } from '../../../design'
 import { isKnownVendor } from '../../../config/knownVendors'
@@ -16,12 +16,14 @@ import { releaseUnknownSubmissionForNode } from '../../production/releaseUnknown
 import { productionRunApi } from '../../production/productionRunApi'
 import { narrateErrorActionLabel, narrateModelKind, type GenerationErrorAction } from '../../observability/narrate'
 import { NODE_SCROLL_REGION_CLASS_NAME } from './nodeScrollRegionClassName'
+import { CopyDetailsButton, ProviderMessageNote, TechnicalDetailsBlock, TechnicalDetailsToggle } from './NodeFailureDetails'
 import { stageForGenerationError } from '../../../ui/community/feedbackTypes'
 import { builtinVendorKeyOfKey } from '../../../../electron/shared/builtinVendorIdentity'
 import { revealNotificationTarget } from '../../../ui/notificationPolicy'
 import { useSameCapabilityAlternative } from './useSameCapabilityAlternative'
 import { productionMetaOf } from '../model/productionMeta'
 import { withProjectAction } from '../../project/projectCanvasReadSurface'
+import { reopenRecoverableNode } from '../runner/recoverTaskActions'
 
 const ACTION_ICON: Record<GenerationErrorAction, typeof IconRefresh> = {
   retry: IconRefresh,
@@ -32,6 +34,7 @@ const ACTION_ICON: Record<GenerationErrorAction, typeof IconRefresh> = {
   // 「查看任务」去的是任务中心：和任务中心按钮同一个动作，用同一个图标。
   reconcile: IconListCheck,
   'view-task': IconListDetails,
+  'open-recoverable': IconRefresh,
   'release-regenerate': IconRefresh,
 }
 
@@ -54,9 +57,12 @@ export function NodeErrorReport({
   onDismiss,
   meta,
   nodeId,
+  taskId,
   summaryVisible = true,
 }: {
   message: string
+  /** 这次运行在服务商那边的任务号（节点 runs[0].taskId）。画布任务有它，「已提交、没取回」那一类才能回到可找回面板。 */
+  taskId?: string
   /** False when the owning node already displays this same failure summary inline. */
   summaryVisible?: boolean
   onRetry?: () => void
@@ -96,7 +102,6 @@ export function NodeErrorReport({
   const [confirmingRelease, setConfirmingRelease] = React.useState(false)
   const [releaseBusy, setReleaseBusy] = React.useState(false)
   const [releaseFailed, setReleaseFailed] = React.useState(false)
-  const [copied, setCopied] = React.useState(false)
   const rootRef = React.useRef<HTMLDivElement>(null)
 
   const handleRetry = React.useCallback(
@@ -166,6 +171,13 @@ export function NodeErrorReport({
     })
   }, [releaseBusy, releaseRunId])
 
+  // 画布任务（不是制作 Run）且节点记着这次的 taskId：才回得到可找回面板。
+  const canvasRetrievable = Boolean(nodeId && taskId?.trim() && !productionMetaOf({ meta })?.runId)
+  const handleOpenRecoverable = React.useCallback((event: React.MouseEvent) => {
+    event.stopPropagation()
+    if (nodeId) reopenRecoverableNode(nodeId)
+  }, [nodeId])
+
   const handleReconcile = React.useCallback((event: React.MouseEvent) => {
     event.stopPropagation()
     const runId = productionMetaOf({ meta })?.runId
@@ -224,28 +236,18 @@ export function NodeErrorReport({
     'fix-model-kind': kindFixTarget ? handleFixModelKind : undefined,
     reconcile: handleReconcile,
     'view-task': handleReconcile,
+    'open-recoverable': canvasRetrievable ? handleOpenRecoverable : undefined,
     // 只有制作里的镜（有 runId）才放得了行；放行是把 Run 里那次未知尝试记掉，没有 Run 就没东西可记。
     'release-regenerate': releaseRunId ? (event: React.MouseEvent) => { event.stopPropagation(); setConfirmingRelease(true) } : undefined,
   }
   // 主动作点不了（例：同能力里没有另一个）时退到次动作，再不行才去模型接入。
-  const primaryAction = actionHandlers[report.primary] ? report.primary : report.secondary && actionHandlers[report.secondary] ? report.secondary : 'open-model-access'
+  // 「已提交、没取回」那一类的去处按任务来源分：制作 Run 去「查看制作任务」（任务中心里那一笔）；画布任务回到可找回面板
+  // 「去重新取回」——画布任务上写「查看制作任务」会误导（那是 Agent 制作任务的说法），而任务中心也不是重新取回的地方。
+  const sourcePrimary: GenerationErrorAction = report.primary === 'view-task' && canvasRetrievable ? 'open-recoverable' : report.primary
+  const primaryAction = actionHandlers[sourcePrimary] ? sourcePrimary : report.secondary && actionHandlers[report.secondary] ? report.secondary : 'open-model-access'
   const secondaryAction = report.secondary && report.secondary !== primaryAction && actionHandlers[report.secondary] ? report.secondary : null
   // 「改成图片」要点出改成**哪个**类型，否则按钮只是「改类型」——用户还得自己再想一步。
   const actionLabelParams: Record<string, string> | undefined = kindFixTarget ? { kind: narrateModelKind(kindFixTarget.requested) } : sameCapability ? { model: sameCapability.option.label } : undefined
-
-  const handleCopy = React.useCallback(
-    async (event: React.MouseEvent) => {
-      event.stopPropagation()
-      try {
-        await navigator.clipboard.writeText(report.raw)
-        setCopied(true)
-        window.setTimeout(() => setCopied(false), 1200)
-      } catch {
-        /* read-only env */
-      }
-    },
-    [report.raw],
-  )
 
   const handleFeedback = React.useCallback((event: React.MouseEvent) => {
     event.stopPropagation()
@@ -329,22 +331,10 @@ export function NodeErrorReport({
             break-words 不能省：上游原话常是一整串没有空格的 JSON/URL（如方舟的
             `{"code":"InputImageSensitiveContentDetected.PrivacyInformation",…}`），窄节点上会横向
             溢出被切掉右半截（同一次走查截图抓到）。 */}
-        {report.providerMessage ? (
-          <p className="mt-2 select-text cursor-text break-words rounded-nomi-sm bg-nomi-ink-05 p-2 text-caption leading-relaxed text-nomi-ink-60">
-            <span className="text-nomi-ink-40">{t('generationCommon.error.providerMessage')}</span>
-            {report.providerMessage}
-          </p>
-        ) : null}
+        {report.providerMessage ? <ProviderMessageNote text={report.providerMessage} /> : null}
       </div>
 
-      {showRaw ? (
-        <pre
-          className={cn(NODE_SCROLL_REGION_CLASS_NAME, 'mb-2 max-h-[88px] select-text overflow-auto whitespace-pre-wrap break-all rounded-nomi-sm bg-nomi-ink-05 p-2 font-nomi-mono text-micro text-nomi-ink-60')}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          {report.raw}
-        </pre>
-      ) : null}
+      {showRaw ? <TechnicalDetailsBlock raw={report.raw} /> : null}
 
       {/* 主动作按类型走（narrate 的 ACTION_BY_KIND）：确定性失败给「换个模型/去模型接入」，
           偶发失败才给「重试」。以前一律红「重试」，和「重试还会是同样结果」的文案自相矛盾。
@@ -392,25 +382,12 @@ export function NodeErrorReport({
             {narrateErrorActionLabel(secondaryAction, 'secondary', actionLabelParams)}
           </button>
         ) : null}
-        <button type="button" onClick={handleCopy} className="shrink-0 whitespace-nowrap text-caption text-nomi-ink-40 hover:text-nomi-ink">
-          {copied ? t('generationCommon.error.copied') : t('generationCommon.error.copyDetails')}
-        </button>
+        <CopyDetailsButton raw={report.raw} />
         <button type="button" onClick={handleFeedback} className="shrink-0 whitespace-nowrap text-caption text-nomi-ink-40 hover:text-nomi-ink">
           {t('generationCommon.error.feedback')}
         </button>
         <div className="min-w-0 flex-1" />
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            setShowRaw((value) => !value)
-          }}
-          aria-expanded={showRaw}
-          className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap text-micro text-nomi-ink-40 hover:text-nomi-ink-60"
-        >
-          {t('generationCommon.error.technicalDetails')}
-          {showRaw ? <IconChevronDown size={13} stroke={1.6} /> : <IconChevronRight size={13} stroke={1.6} />}
-        </button>
+        <TechnicalDetailsToggle open={showRaw} onToggle={() => setShowRaw((value) => !value)} />
       </div>
     </div>
   )

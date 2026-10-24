@@ -1,7 +1,7 @@
 /**
  * 「本地模型」接入卡（无鉴权本地文本端点的「发现 + 一键连」，仿 ComfyuiLocalCard / CodexLocalImageCard）。
  *
- * 解决的真实摩擦（可发现性缺口，非能力缺口）：buildAiSdkModel 早就能连任意 OpenAI-兼容端点（含免鉴权，
+ * 解决的真实摩擦（可发现性缺口，非能力缺口）：the model-call core (nomiModelConfigFor) 早就能连任意 OpenAI-兼容端点（含免鉴权，
  * authType:'none'），但普通用户根本不知道「自定义供应商」能填 http://localhost:11434/v1。这张卡把已有原语
  * 接到用户摸得着的地方——自动探常见端口（Ollama 11434 / LM Studio 1234 / LocalAI 8080），一键连、拉模型列表、
  * 建档，并**诚实**告诉用户每个模型带不带得动 Agent（能力预检）。
@@ -108,7 +108,7 @@ export function LocalModelCard({ enabled, models, onChanged, onOpenDetails, deta
     try {
       // ① vendor 指向探到的端口（authType none = 本地无鉴权，运行时不发空 Authorization 头）。
       catalog.upsertVendor({ key: LOCAL_TEXT_VENDOR_KEY, enabled: true, baseUrlHint: hit.baseUrl, authType: 'none', providerKind: 'openai-compatible' })
-      // ② 建档该模型（kind text；无 mapping → 运行时走 buildLanguageModelForVendor 直连 chat）。
+      // ② 建档该模型（kind text；无 mapping → 运行时走 nomiModelConfigFor 直连 chat）。
       catalog.upsertModel({ vendorKey: LOCAL_TEXT_VENDOR_KEY, modelKey: modelId, labelZh: modelId, kind: 'text', enabled: true })
       onChanged()
       // ③ 能力预检（诚实交付）：当场探这个模型带不带得动工具调用。

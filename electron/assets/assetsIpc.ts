@@ -5,12 +5,13 @@ import path from "node:path";
 import { assertTrustedSender, assertTrustedUiSender } from "../ipcSenderGuard";
 import { getAutoSavePrefs, setAutoSavePrefs, type AutoSavePrefs } from "./downloadPrefs";
 import { CLIPBOARD_FILE_PATH_FORMATS, parseClipboardFilePaths } from "./clipboardFilePaths";
-import { copyProjectAsset, importRemoteAsset } from "./projectAssetStore";
+import { copyProjectAsset, importRemoteAsset, type RemoteAssetImportPayload } from "./projectAssetStore";
 import type { AssetImportResult } from '../shared/contracts/assetImportResult';
 import type { AssetImportFailure } from '../shared/contracts/assetImportResult';
 import type { ProjectInteractionCapture } from './projectInteractionCapture';
 import { surfacePortFailure } from '../shared/surfacePortBinding';
 import { registerOnboardingDemoAssetSourceDir } from '../onboarding/demoAssetSource';
+import { createPreviewRequestRegistry } from './previewRequests';
 
 function importFailure(error: unknown, reason: AssetImportFailure['reason'] = 'import-failed'): AssetImportResult<never> {
   return { ok: false, failure: { code: surfacePortFailure(error).code, reason } };
@@ -136,7 +137,8 @@ export function registerAssetsIpc(captureInteraction: ProjectInteractionCapture)
     assertTrustedSender(event);
     try {
       const assertCurrent = captureInteraction(event, payload);
-      return { ok: true, asset: await importRemoteAsset(payload, { assertCurrent }) };
+      // 渲染层载荷不可信：expectedKind 由 importRemoteAsset 自己再读一遍，生成产物说不清就拒。
+      return { ok: true, asset: await importRemoteAsset(payload as RemoteAssetImportPayload, { assertCurrent }) };
     } catch (error) { return importFailure(error); }
   });
   ipcMain.handle("nomi:assets:ensure-playable", async (event, payload) => {
@@ -144,10 +146,21 @@ export function registerAssetsIpc(captureInteraction: ProjectInteractionCapture)
     const { ensurePlayableAsset } = await import("./localFileImport");
     return ensurePlayableAsset(payload);
   });
+  // 补预览：带发起项目的绑定与请求号，项目关了 / 换了 / 窗口没了 / 渲染层撤了就杀掉在途 ffmpeg（previewRequests）。
+  const previewRequests = createPreviewRequestRegistry();
   ipcMain.handle("nomi:assets:ensure-preview", async (event, payload) => {
     assertTrustedSender(event);
+    const raw = (payload || {}) as Record<string, unknown>;
+    let assertCurrent: (() => void) | undefined;
+    try { assertCurrent = captureInteraction(event, raw); } catch { return null; }
+    const requestId = typeof raw.requestId === "string" ? raw.requestId.trim() : "";
     const { ensureLocalAssetPreview } = await import("./localFileImport");
-    return ensureLocalAssetPreview(payload);
+    return previewRequests.run(event.sender, requestId, assertCurrent, (signal) => ensureLocalAssetPreview(raw, { signal }));
+  });
+  ipcMain.handle("nomi:assets:cancel-preview", (event, payload) => {
+    assertTrustedSender(event);
+    const requestId = typeof (payload as { requestId?: unknown } | null)?.requestId === "string" ? String((payload as { requestId: string }).requestId).trim() : "";
+    return previewRequests.cancel(event.sender.id, requestId);
   });
   // 引导示例项目的预置成图 → 真项目资产（拿稳定 nomi-local URL；构建产物 URL 不配写进用户数据）。
   ipcMain.handle("nomi:assets:seed-onboarding-demo", async (event, payload) => {

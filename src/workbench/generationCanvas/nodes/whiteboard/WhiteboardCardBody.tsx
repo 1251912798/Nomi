@@ -4,18 +4,20 @@ import { IconBrush } from '@tabler/icons-react'
 import { cn } from '../../../../utils/cn'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
-import { EmptyStateLauncher } from '../render/CardCommon'
-import WhiteboardModal from './WhiteboardModal'
-import { readWhiteboardState } from './whiteboardState'
+import { CardActivationButton, EmptyStateLauncher } from '../render/CardCommon'
+import { DeferredNodeImage } from '../DeferredNodeMedia'
+import { canvasImageSourceOf } from '../canvasImageSource'
+import { openWhiteboard } from './whiteboardSession'
 import { resolveNodeVisualSize } from '../nodeSizing'
 
 /**
- * 画板节点的 body —— 只画「毛笔启动器」，外壳(header/ring/把手/缩放/聚焦闪光)全由 BaseGenerationNode 提供，
+ * 画板节点的 body —— 有画出来的结果就显示那张图（和角色卡一样走画布预览），没有才画「毛笔启动器」
+ * （用户 2026-10-22 拍板，推翻清单 O40「完成只保存 state」：画完按完成，节点上要看得见画的东西）。外壳(header/ring/把手/缩放/聚焦闪光)全由 BaseGenerationNode 提供，
  * 和角色卡/场景卡/音频条同一套机制（resolveRenderKind=whiteboard-card → 共享外壳的 card 分发块）。
  * 删了旧 WhiteboardCardNode 那 270 行平行外壳(双描边/无 header/重复把手)，根治「画板和别的节点不一致」。
  *
  * 「点击打开」做成显式按钮：外壳拖拽在 article 上 setPointerCapture(useNodeDragResize)，子元素收不到
- * pointerup，故不能靠「卡片点击+位移守卫」开 modal；按钮 onPointerDown stopPropagation 不触发拖拽，
+ * pointerup，故不能靠「卡片点击+位移守卫」开启原地会话；按钮 onPointerDown stopPropagation 不触发拖拽，
  * 卡片其余区域照常可拖。
  */
 function WhiteboardCardBodyImpl({
@@ -26,14 +28,31 @@ function WhiteboardCardBodyImpl({
   readOnly?: boolean
 }): JSX.Element {
   const { t } = useTranslation()
-  const [open, setOpen] = React.useState(false)
   const selectNode = useGenerationCanvasStore((state) => state.selectNode)
 
   const handleOpen = React.useCallback(() => {
     if (readOnly) return
     selectNode(node.id)
-    setOpen(true)
+    void openWhiteboard(node.id)
   }, [node.id, readOnly, selectNode])
+
+  // 卡片图只挂画布预览（原图只经被计数的缺失分支，见 canvasImageSource）。
+  const imageSource = canvasImageSourceOf(node.result)
+  if (imageSource) {
+    return (
+      <div className={cn('h-full w-full bg-nomi-paper')}>
+        <CardActivationButton
+          testId="whiteboard-open-preview"
+          ariaLabel={t('generationCommon.whiteboard.openAria')}
+          title={t('generationCommon.nodeEmpty.whiteboard.action')}
+          onActivate={handleOpen}
+          className="relative overflow-hidden p-0"
+        >
+          <DeferredNodeImage src={imageSource} alt={node.title || ''} className="h-full w-full object-contain object-center select-none pointer-events-none" />
+        </CardActivationButton>
+      </div>
+    )
+  }
 
   return (
     <div className={cn('flex h-full w-full flex-col bg-nomi-paper')}>
@@ -49,15 +68,7 @@ function WhiteboardCardBodyImpl({
           onActivate={handleOpen}
         />
       </div>
-      {open ? (
-        <WhiteboardModal
-          nodeId={node.id}
-          sourceKind="whiteboard"
-          nodeTitle={node.title || t('generationCommon.whiteboard.title')}
-          initialState={readWhiteboardState(node)}
-          onClose={() => setOpen(false)}
-        />
-      ) : null}
+
     </div>
   )
 }

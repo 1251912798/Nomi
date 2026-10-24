@@ -4,6 +4,7 @@ import { IconRefresh } from '@tabler/icons-react'
 import { WorkbenchButton } from '../../../design'
 import { NomiImage, type NomiImageProps } from '../../../design/media'
 import { cn } from '../../../utils/cn'
+import type { CanvasImageSource } from './canvasImageSource'
 import {
   isDeferredVideoFrameReady,
   type DeferredNodeMediaState,
@@ -70,7 +71,11 @@ function DeferredNodeMediaFailure({
 }
 
 export type DeferredNodeImageProps = Omit<NomiImageProps, 'src'> & {
-  src: string
+  /**
+   * 画布图片组件只吃预览：src 是品牌类型，只能由 canvasImageSource（canvasImageSourceOf / canvasVideoPosterOf）造。
+   * 裸字符串传不进来——原图上画布只有那里的「预览缺失」分支，并且被计数。
+   */
+  src: CanvasImageSource
   priority?: boolean
   placeholderClassName?: string
 }

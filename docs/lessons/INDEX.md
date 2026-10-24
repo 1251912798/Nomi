@@ -53,6 +53,7 @@
 - [走查断言必须有真信号](walkthrough-assertions-need-a-real-signal.md) — 写/改走查前必读：用 `tests/ux/_assert.mjs`，假绿是框架缺陷不是手滑
 - [走查取点只信真实光标到位后的那一次](walkthrough-geometry-must-reverify-under-the-real-cursor.md) — stage 一变窄「点空白被磁性 + 吃掉 / 框选 autoPan 永不安定 / 连线点中心被卡拦」一起来；判据是白名单（最顶层元素就是 pane），单一 owner `tests/ux/_canvasHit.mjs`
 - [`waitForFunction` 配 async 判据 = 一个从不等待的等待](wait-for-function-with-async-predicate-never-waits.md) — 判据里有 `await` 就等于没等：Promise 被当 truthy，0ms 返回 null；下游那句 `Cannot read properties of null` 长得像业务 bug。换 `expect.poll`
+- [「Execution context was destroyed」不一定是导航](execution-context-destroyed-is-not-always-a-navigation.md) — 主进程 `app.evaluate` / `browserWindow` 偶发报这句时读：先抓原始协议消息，原文常是 `Promise was collected`（主进程忙时结果被 GC 收掉），已由 Playwright 补丁 + 类回归测试固化
 - [expectAbsent 会通过得太早](expect-absent-passes-too-early.md) — 「元素不存在」断言在计数本来就是 0 时首次采样即过
 - [gates 全绿 ≠ 走查真的跑过](gates-green-does-not-mean-walkthrough-ran.md) — `check:walkthroughs` 是静态检查；旧截图不会自动失效
 - [hook 指向的技能可以根本不存在，而且没有任何东西会发现](hook-pointed-at-a-skill-that-never-existed.md) — 「我们明明有规则为什么没照做」；任何 hook/文档说「走 XX 技能」时先 ls 那个文件；.claude/* 是 gitignore 的本机数据、技能没有仓内真相源也没门岗
@@ -114,6 +115,8 @@
 - [文档级对照拦不住代码级硬写](doc-level-conformance-misses-field-level-hardcoding.md) — 刚交完四列表/逐层对照就想说「这个框架接好了」；框架某个字段逐项可选而我们对所有实例写了同一个值，两份文档都看不见（字段裁决要机器化、门岗不许绑死某个框架）
 - [参考实现不拆开逐层对照 = 没研究](reference-implementation-not-dissected-is-not-research.md) — 上一条的第二半：四列表只覆盖「已经想到的能力」，照不出「压根没想到还有这一层」；框架自带 coding agent/官方 example 必须按九层拆开并排，判定 `一致`/`有意不同(理由须是领域约束)`/`没想到`，「没想到」清单是实施阶段前置门
 - [写死的墙钟上限会在工作量长大时把 CI 砍在半路](fixed-wall-clock-caps-break-when-work-grows.md) — `exceeded <N>ms and was terminated` 而每条断言都有结果 = 进程被砍不是断言红；上限要从「有多少活」派生，别把 20 改成 40
+- [夹具页的第一次 goto 是一次冷编译，不是一次界面操作](fixture-first-goto-is-a-cold-build.md) — ✅ 已固化（`useBrowserFixture` + ESLint `browser-fixture/no-restricted-imports` + 夹具合同测试）；浏览器夹具测试 goto / 钩子超时、单跑能过、想把 goto 调到 90 秒时读；共享 helper 想自己起浏览器时也读（浏览器由调用方传入）
+- [机器速度的键盘选区，会被 ProseMirror 的聚焦收尾吃掉](prosemirror-focus-restore-eats-robot-speed-selection.md) — 点进编辑器立刻按方向键 / Shift+方向键，忙机上选区变空、变全选或偏几个字；测试要选区就用编辑器命令落下
 - [门岗的 scope 指到不存在的目录，会安静地报绿](gate-scope-pointing-nowhere-passes-silently.md) — 依赖「登记表+scope+禁令」式门岗、刚搬过目录、或在给新禁令做阳性对照时；附「探针写成注释会被 stripComments 吃掉」一坑
 
 - [技能里的指令会跨代累积，模型服从的是过期那条](stale-directives-outlive-tool-renames.md) — Agent「只回文字不调工具」先翻这条；工具**名**过期有门岗，「该不该调用它」的祈使句过期没有任何机器看得见；删过期禁令要只删过期那半（「不许写画布」作废时「不许花钱」仍成立）
@@ -140,6 +143,8 @@
 - [RC 必须在 release 分支上触发，不能只把分支名填进 `ref` 输入](rc-must-be-dispatched-on-the-release-branch.md) — 手动触发 `Desktop Release Candidate` 时；漏了 `--ref`，RC 全绿、验收做完，发布却在最后一步报 `RC commit mismatch`
 
 - [Windows 上删 worktree 会顺着 junction 删掉目标](windows-worktree-remove-follows-junctions.md) — 删 / 归档任何含 mklink /J 的工作树前；先 rmdir 链接本身；测试成片「Cannot find package」时先看包目录是不是空的
+- [登记类核对必须由「新增被登记对象」触发](registry-checks-must-fire-on-the-registered-object-being-added.md) — ✅ 已固化；本机推送前全绿、CI 才红在「X 要在表里登记」的全集核对时读；`check:scan-guard-census` + GATE_INPUTS 的 `match`
+
 ## D. 排查与平台故障
 
 - [程序自己的簿记不许冒充「用户留下的事实」](program-bookkeeping-must-not-pose-as-user-facts.md) — 一个判断「有时生效、有时不生效」、换条路径复现结果就变时读；先数它读的每个事实的全部写口，挡掉同步回声 / 挂载 / 默认值兜底

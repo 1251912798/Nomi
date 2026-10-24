@@ -231,11 +231,11 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
       }
   const autoModeBanner = autoMode.bannerVisible ? (
     <V4AutoModeBanner
-      label={t('agentPanelV4.permission.project')}
+      label={t('agentPanelV4.permission.direct')}
       note={t('agentPanelV4.autoModeBannerNote')}
       revertLabel={t('agentPanelV4.autoModeBannerRevert')}
       dismissLabel={t('agentPanelV4.autoModeBannerDismiss')}
-      onRevert={() => actions.setPermission('safe-auto')}
+      onRevert={() => actions.setPermission('request')}
       onDismiss={autoMode.dismissBanner}
     />
   ) : null
@@ -265,7 +265,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
   const [pendingReferencePick, setPendingReferencePick] = React.useState<{ projectId:string | null; threadId:string | null } | null>(null)
   const [referenceError, setReferenceError] = React.useState('')
   const [popover, setPopover] = React.useState<ComposerPopover | null>(null)
-  // 3D-BOX：导演台里选中了计划镜头 → 输入框上「正在改：镜头 N」（画布面才有导演台；开关关时恒为 null）
+  // 3D-BOX：导演台里选中了计划镜头 → 输入框上「正在改：镜头 N」（画布面才有导演台）
   const shotFocusTag = useShotFocusTag()
   // 3D-BOX：补丁覆盖了用户手调的那一笔，工具行下面确定性地说一句（不靠模型复述）
   const flow = useDirectorPatchNotices(data.flow, data.snapshot.active.parts)

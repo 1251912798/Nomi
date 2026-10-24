@@ -3,9 +3,10 @@ import type { UpdateEvent, UpdateReminderMemory, UpdateSnapshot } from '../../el
 import type { WorkspaceFileListResult } from '../../electron/workspace/workspaceFileIndex'
 import type { WorkspaceSyncInspection } from '../../electron/shared/workspaceSyncContracts'
 import type { ProviderKind } from './providerKind'
+import type { ProjectDeleteIntent } from '../../electron/shared/projectDeleteIntent'
 import type { DesktopMediaBridge, DesktopVideoDepthBridge } from './bridgeMedia'
 import type { DesktopConnectorBridge } from './bridgeConnector'
-import type { McpClientProfile, McpInfo, McpInstallResult, McpMigrationResult, McpMigrationState, McpUninstallResult, McpVerifyResult } from './mcpBridgeTypes'
+import type { McpClientProfile, McpClientUsage, McpInfo, McpInstallResult, McpMigrationResult, McpMigrationState, McpUninstallResult, McpVerifyResult } from './mcpBridgeTypes'
 import type { DesktopSettingsBridge } from './settingsBridge'
 import type { DesktopOnboardingBridge } from './onboardingBridgeTypes'
 import type { DesktopProductionRunBridge } from './productionRunBridgeTypes'
@@ -13,6 +14,7 @@ import type { ComfyCandidateTestPayload, ComfyCandidateTestResult } from './comf
 import type { CanvasReadSurfaceBridge } from '../../electron/shared/surfacePortBinding'
 import type { LaneBridge } from '../workbench/ai/lane/laneClient'
 import type { GenerationResolvePlanEnvelope, GenerationResolvePlanRequest } from '../../electron/shared/videoCapabilities/planResolutionContracts'
+import type { UserPromptRestoreSnapshot } from '../../electron/shared/contracts/promptLibrary'
 export type { AssetLocalizationEvent } from '../../electron/shared/assets/assetLocalizationEvent'
 export type { ProviderKind }
 export type { DesktopAdapterModeResult, DesktopProviderAdapterRun, DesktopProviderRegistration } from './onboardingBridgeTypes'
@@ -148,9 +150,6 @@ export type DesktopUpdateEvent = UpdateEvent
 export type DesktopBridge = DesktopMediaBridge &
   DesktopVideoDepthBridge & DesktopConnectorBridge & {
   platform: string
-  featureFlags?: {
-    director3dbox?: { enabled: boolean; source: 'baked' | 'env' | 'default'; fingerprint: string; expiresOn: string }
-  }
   i18n?: {
     setLocale: (locale: 'zh-CN' | 'en') => void
     /** OS 原生 locale（如 'en-US' / 'zh-CN'）；仅真 Electron 有，jsdom/测试无 → 首启回落默认语言。老 preload 可能无此口。 */
@@ -210,6 +209,8 @@ export type DesktopBridge = DesktopMediaBridge &
     }) => Promise<{ ok: boolean; deletedCount: number; failedCount: number }>
     revealProjectFolder: (payload: { projectId: string }) => Promise<{ ok: boolean }>
     syncInspect?: (payload: string | { projectId: string; adopt?: boolean }) => Promise<WorkspaceSyncInspection>
+    /** 项目库卡片批量检查：一次一批、主进程限并发；查不了的项目值是 null。 */
+    syncInspectMany?: (projectIds: string[]) => Promise<Record<string, WorkspaceSyncInspection | null>>
     syncReveal?: (projectId: string) => Promise<{ ok: boolean }>
     syncCopyConflict?: (payload: { projectId: string; source?: 'local' | 'remote' }) => Promise<{ path: string }>
   }
@@ -218,8 +219,8 @@ export type DesktopBridge = DesktopMediaBridge &
     show: (payload: { title: string; body?: string; event?: import("../../electron/shared/contracts/attentionSound").AttentionSoundEvent }) => Promise<{ ok: boolean; reason?: string }>
   }
   projects: {
-    list: () => unknown[]
-    listAsync?: () => Promise<unknown[]>
+    /** 项目列表摘要：唯一读口，异步（没有同步版）。 */
+    listAsync: () => Promise<unknown[]>
     create: (record: unknown) => unknown
     read: (projectId: string) => unknown | null
     readAsync?: (projectId: string) => Promise<unknown | null>
@@ -227,7 +228,8 @@ export type DesktopBridge = DesktopMediaBridge &
     recover?: (projectId: string) => Promise<unknown>
     save: (projectId: string, record: unknown) => Promise<unknown>
     applyCanvasNodePatch?: (input: { projectId: string; nodeId: string; patch: Record<string, unknown>; expectedBinding?: unknown }) => Promise<{ applied: boolean }>
-    delete: (projectId: string) => { id: string; deleted: boolean }
+    /** intent = 用户在确认框里确认的那一种；主进程只照它执行（electron/shared/projectDeleteIntent.ts）。 */
+    delete: (projectId: string, intent: ProjectDeleteIntent) => Promise<{ id: string; deleted: boolean }>
   }
   assets: DesktopAssetsSurface
   browser?: DesktopBrowserSurface
@@ -264,6 +266,7 @@ export type DesktopBridge = DesktopMediaBridge &
     grantSpend: (payload: { nodeIds: string[]; maxAttemptsPerNode?: number }) => Promise<{ grantId: string }>
     runTextStream: (payload: unknown) => Promise<{ streamId: string }>
     cancelTextStream: (streamId: string) => Promise<unknown>
+    prewarmTextModel?: () => Promise<{ ok: boolean }>
     onTextEvent: (streamId: string, callback: (event: unknown) => void) => () => void
     /** ComfyUI ws 进度桥（P 轨）。旧 preload 可能没有 → 全部可选。 */
     comfyuiWatch?: (payload: { promptId: string; nodeId: string; projectId?: string; taskKind?: string; modelKey?: string | null; vendorKey?: string }) => Promise<{ ok: boolean }>
@@ -307,6 +310,7 @@ export type DesktopBridge = DesktopMediaBridge &
       patch: { title?: string; prompt?: string; promptType?: 'image' | 'video' },
     ) => Promise<{ ok: boolean; prompts: unknown[]; error?: string }>
     userDelete: (id: string) => Promise<{ ok: boolean; prompts: unknown[]; error?: string }>
+    userRestore: (snapshot: UserPromptRestoreSnapshot) => Promise<{ ok: boolean; prompts: unknown[]; error?: string }>
   }
   /** S4-2b 技术自检结果广播(主进程异步旁路 → 节点 ⚠ 投影)。 */
   review?: {
@@ -384,6 +388,9 @@ export type DesktopBridge = DesktopMediaBridge &
     registerCustomMcpProfile?: (profile: unknown) => Promise<McpClientProfile | null>
     removeCustomMcpProfile?: (key: string) => Promise<boolean>
     onMcpProfilesChanged?: (cb: () => void) => () => void
+    /** 助手使用情况（主进程内存里的账）：初次读取 + 变化订阅；老 preload 无此口。 */
+    mcpUsage?: () => Promise<Record<string, McpClientUsage>>
+    onMcpUsage?: (cb: (usage: Record<string, McpClientUsage>) => void) => () => void
     /** 实连验证：真起一次配置里那条命令握手（老 preload 无此口）。「配置里有这行字」≠「还连得上」。 */
     verifyMcp?: (client?: string) => Promise<McpVerifyResult>
     /** A 模式实时桥：注册处理器，接主进程转发来的外部 MCP 画布读/写/付费确认。返回反注册函数。 */

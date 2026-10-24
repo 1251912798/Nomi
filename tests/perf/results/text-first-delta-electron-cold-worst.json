@@ -1,0 +1,39 @@
+{
+  "mode": "cold",
+  "results": [
+    {
+      "samples": [
+        {
+          "responseMs": 171
+        },
+        {
+          "responseMs": 173.5
+        },
+        {
+          "responseMs": 170.4
+        },
+        {
+          "responseMs": 165.8
+        },
+        {
+          "responseMs": 174.6
+        },
+        {
+          "responseMs": 181.7
+        },
+        {
+          "responseMs": 214.5
+        },
+        {
+          "responseMs": 169
+        },
+        {
+          "responseMs": 197.7
+        },
+        {
+          "responseMs": 178.7
+        }
+      ]
+    }
+  ]
+}

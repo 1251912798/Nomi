@@ -1,9 +1,28 @@
+import { isPerfSummaryProps, type PerfSummaryProps } from '../shared/contracts/perfTelemetry'
 import { TELEMETRY_ERROR_TYPE_PATTERN, TELEMETRY_RESULT_VALUES, type CapabilitySlot, type DurationBucket, type TelemetryResult } from '../shared/contracts/telemetry'
 
 export type { CapabilitySlot, DurationBucket }
 export const TELEMETRY_SCHEMA_VERSION = 1 as const
-export const TELEMETRY_EVENT_NAMES = ['app.started', 'feature.used', 'generation.completed', 'export.completed', 'update.action', 'agent.turn.completed'] as const
+export const TELEMETRY_EVENT_NAMES = ['app.started', 'feature.used', 'generation.completed', 'export.completed', 'update.action', 'agent.turn.completed', 'perf.session.summary'] as const
 export type TelemetryEventName = typeof TELEMETRY_EVENT_NAMES[number]
+/**
+ * 告知范围的版本号。用户在设置页 / 同意卡上看到并同意的是哪一版文字，就记哪一版。
+ *   1 = 功能使用、耗时区间、成败、失败类别、Agent 工具轨迹
+ *   2 = 在 1 之上加「界面流畅度分档数字 + 粗略场景与设备档位」（perf.session.summary）
+ * 加新类数据 = 改告知文字 + 这里 +1 + 在下面的表里给新事件标上它需要的版本。
+ */
+export const TELEMETRY_SCOPE_VERSION = 2 as const
+export type TelemetryScopeVersion = 1 | 2
+/** 每个事件至少要用户同意过哪一版告知范围才能入队。Record 是穷举的：新增事件名不标版本就编译不过。 */
+export const TELEMETRY_EVENT_MIN_SCOPE: Record<TelemetryEventName, TelemetryScopeVersion> = {
+  'app.started': 1,
+  'feature.used': 1,
+  'generation.completed': 1,
+  'export.completed': 1,
+  'update.action': 1,
+  'agent.turn.completed': 1,
+  'perf.session.summary': 2,
+}
 export type AttemptCountBucket = '1' | '2-3' | '4+'
 export type FeatureId = 'generation' | 'export' | 'storyboard' | 'timeline' | 'asset-import' | 'agent'
 export type ExportFormat = 'mp4' | 'webm' | 'gif' | 'unknown'
@@ -28,6 +47,7 @@ export type TelemetryProps =
   | { eventName: 'export.completed'; props: { format: ExportFormat; durationBucket: DurationBucket; result: TelemetryResult } }
   | { eventName: 'update.action'; props: { action: UpdateAction; result: TelemetryResult; reason?: UpdateFailureReason } }
   | { eventName: 'agent.turn.completed'; props: { result: TelemetryResult; toolCallBucket: ToolCallBucket; modelClass: ModelClass } }
+  | { eventName: 'perf.session.summary'; props: PerfSummaryProps }
 
 export type TelemetryEnvelope = {
   schemaVersion: typeof TELEMETRY_SCHEMA_VERSION
@@ -114,6 +134,7 @@ export function isTelemetryProps(value: unknown, eventName: TelemetryEventName):
   if (eventName === 'export.completed') return hasExactKeys(props, ['format', 'durationBucket', 'result']) && EXPORT_SET.has(props.format as ExportFormat) && DURATION_SET.has(props.durationBucket as DurationBucket) && RESULT_SET.has(props.result as TelemetryResult)
   if (eventName === 'update.action') return hasUpdateKeys(props) && UPDATE_SET.has(props.action as UpdateAction) && RESULT_SET.has(props.result as TelemetryResult)
   if (eventName === 'agent.turn.completed') return hasExactKeys(props, ['result', 'toolCallBucket', 'modelClass']) && RESULT_SET.has(props.result as TelemetryResult) && TOOL_CALL_SET.has(props.toolCallBucket as ToolCallBucket) && MODEL_CLASS_SET.has(props.modelClass as ModelClass)
+  if (eventName === 'perf.session.summary') return isPerfSummaryProps(props)
   return false
 }
 

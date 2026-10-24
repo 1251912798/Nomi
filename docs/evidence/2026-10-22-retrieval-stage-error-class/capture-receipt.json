@@ -1,0 +1,50 @@
+[
+  {
+    "filename": "panel-before-zh.png",
+    "lang": "zh-CN",
+    "specimen": "panel-before",
+    "text": "任务可能已在上游完成\n\n等待已超上限，但上游可能仍出了片。点下面的「重新取回」直接拉回，不用去服务商后台下载。\n\nProvider request refused by outbound policy at apimart GET https://api.apimart.ai/v1/tasks/task_01M5HV: 这次生成**没有发出去**：api.apimart.ai 解析到 198.18.0.7（RFC 2544 段，本地代理 fake-ip 常用它做合成地址），Nomi 无法确认这是代理而不是内网，于是在请求发出前就拦下了。请到「模型接入 → 网络」确认本地代理已开启（那一行会写「检测到本地代理」），然后重新生成。\n重新取回\n复制详情\n技术详情\n标记失败"
+  },
+  {
+    "filename": "panel-after-zh.png",
+    "lang": "zh-CN",
+    "specimen": "panel-after",
+    "text": "任务可能已在上游完成\n\n等待已超上限，但上游可能仍出了片。点下面的「重新取回」直接拉回，不用去服务商后台下载。\n\n取回卡在「查询任务」这一步：这次请求是 Nomi 在本机做的检查拦下的，不是服务商返回的（原始码 outbound-blocked-submit）。任务已经提交给服务商；处理好原因后用「重新取回」再查一次。 Provider request refused by outbound policy at apimart GET https://api.apimart.ai/v1/tasks/task_01M5HV\n重新取回\n复制详情\n技术详情\n标记失败"
+  },
+  {
+    "filename": "card-after-zh.png",
+    "lang": "zh-CN",
+    "specimen": "card-after",
+    "text": "任务已提交，这次没能取回结果\n\n这一镜已经交给服务商了，是 Nomi 这一次查结果、读结果或下载结果没成（常见原因：本机网络或代理一时不通、服务商的查询接口报错）。不要重新生成，那会另做一份新的。点「重新取回」，Nomi 只会再查一次、再下载一次。具体原因见下方技术详情。\n\n取回卡在「查询任务」这一步：这次请求是 Nomi 在本机做的检查拦下的，不是服务商返回的（原始码 outbound-blocked-submit）。任务已经提交给服务商；处理好原因后用「重新取回」再查一次。 Provider request refused by outbound policy at apimart GET https://api.apimart.ai/v1/tasks/task_01M5HV\n去重新取回\n复制详情\n反馈问题\n技术详情"
+  },
+  {
+    "filename": "card-after-production-zh.png",
+    "lang": "zh-CN",
+    "specimen": "card-after-production",
+    "text": "任务已提交，这次没能取回结果\n\n这一镜已经交给服务商了，是 Nomi 这一次查结果、读结果或下载结果没成（常见原因：本机网络或代理一时不通、服务商的查询接口报错）。不要重新生成，那会另做一份新的。点「重新取回」，Nomi 只会再查一次、再下载一次。具体原因见下方技术详情。\n\n取回卡在「查询任务」这一步：这次请求是 Nomi 在本机做的检查拦下的，不是服务商返回的（原始码 outbound-blocked-submit）。任务已经提交给服务商；处理好原因后用「重新取回」再查一次。 Provider request refused by outbound policy at apimart GET https://api.apimart.ai/v1/tasks/task_01M5HV\n查看制作任务\n复制详情\n反馈问题\n技术详情"
+  },
+  {
+    "filename": "panel-before-en.png",
+    "lang": "en",
+    "specimen": "panel-before",
+    "text": "The upstream task may have completed\n\nThe wait timed out, but the provider may still have produced the result. Click “Retrieve again” to get it back without downloading it from the provider dashboard.\n\nProvider request refused by outbound policy at apimart GET https://api.apimart.ai/v1/tasks/task_01M5HV: This generation **was never sent**: api.apimart.ai resolved to 198.18.0.7 (the RFC 2544 range local fake-IP proxies use for synthetic addresses), and Nomi could not confirm a proxy is running, so it stopped the request before it left your machine. Confirm your local proxy under Model Access > Network (that row reads \"Local proxy detected\"), then generate again.\nRetrieve again\nCopy details\nTechnical details\nMark Failed"
+  },
+  {
+    "filename": "panel-after-en.png",
+    "lang": "en",
+    "specimen": "panel-after",
+    "text": "The upstream task may have completed\n\nThe wait timed out, but the provider may still have produced the result. Click “Retrieve again” to get it back without downloading it from the provider dashboard.\n\nRetrieval stopped while querying the task: Nomi's own local check stopped this request; the provider did not return this (original code outbound-blocked-submit). The task was already submitted to the provider — once the cause is fixed, use “Retrieve again” to check it once more. Provider request refused by outbound policy at apimart GET https://api.apimart.ai/v1/tasks/task_01M5HV\nRetrieve again\nCopy details\nTechnical details\nMark Failed"
+  },
+  {
+    "filename": "card-after-en.png",
+    "lang": "en",
+    "specimen": "card-after",
+    "text": "Submitted, but the result could not be retrieved this time\n\nThis shot was already handed to the provider; what failed is Nomi checking the task, reading its result or downloading it this time (usually the local network or proxy dropped for a moment, or the provider’s status endpoint returned an error). Do not generate again — that makes a brand-new one. Use “Retrieve again”: Nomi only checks the task and downloads it once more. The technical details below give the exact reason.\n\nRetrieval stopped while querying the task: Nomi's own local check stopped this request; the provider did not return this (original code outbound-blocked-submit). The task was already submitted to the provider — once the cause is fixed, use “Retrieve again” to check it once more. Provider request refused by outbound policy at apimart GET https://api.apimart.ai/v1/tasks/task_01M5HV\nRetrieve again\nCopy details\nReport Issue\nTechnical details"
+  },
+  {
+    "filename": "card-after-production-en.png",
+    "lang": "en",
+    "specimen": "card-after-production",
+    "text": "Submitted, but the result could not be retrieved this time\n\nThis shot was already handed to the provider; what failed is Nomi checking the task, reading its result or downloading it this time (usually the local network or proxy dropped for a moment, or the provider’s status endpoint returned an error). Do not generate again — that makes a brand-new one. Use “Retrieve again”: Nomi only checks the task and downloads it once more. The technical details below give the exact reason.\n\nRetrieval stopped while querying the task: Nomi's own local check stopped this request; the provider did not return this (original code outbound-blocked-submit). The task was already submitted to the provider — once the cause is fixed, use “Retrieve again” to check it once more. Provider request refused by outbound policy at apimart GET https://api.apimart.ai/v1/tasks/task_01M5HV\nView production task\nCopy details\nReport Issue\nTechnical details"
+  }
+]

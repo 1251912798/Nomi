@@ -13,7 +13,7 @@
 //
 // 文案就地写、不走 desktopT：与 mcpCredentialElicitation.ts 同因——electron/i18n.ts 会 value-import
 // `electron`，裸 Node 的 MCP launcher 导入闭包里不允许。
-import type { GenerationGateChallengeProjection, GenerationGateConfirmation } from './mcpGateConfirmation'
+import { generationDenialOutcome, type GenerationGateChallengeProjection, type GenerationGateConfirmation } from './mcpGateConfirmation'
 import type { ResultLocale } from './mcpToolResults'
 
 export type TrustDowngradeDependencies = {
@@ -63,6 +63,11 @@ export async function handleTrustDowngrade(
     throw error
   }
   const confirmation = await deps.requestGenerationConfirmation(challenge, input.requestSignal)
+  if (!confirmation.confirmed && confirmation.denial) {
+    const denied = generationDenialOutcome(confirmation.denial, deps.locale())
+    deps.reply(input.id, { content: [{ type: 'text', text: denied.text }], isError: true, structuredContent: denied.structuredContent })
+    return true
+  }
   if (!confirmation.confirmed) {
     errorReply(deps, input.id, confirmation.surface === 'none' ? COPY.noSurface(deps.locale()) : COPY.denied(deps.locale()))
     return true

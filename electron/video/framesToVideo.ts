@@ -12,7 +12,7 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { ensureExecutable } from "../export/ensureExecutable";
-import { writeAsset } from "../runtime";
+import { writeGeneratedAsset } from "../runtime";
 import { captureAssetWriteContext } from "../assets/assetWriteContext";
 import type { ProjectBinding } from "../shared/projectBinding";
 import { buildFramesToVideoArgs } from "./framesToVideoArgs";
@@ -95,11 +95,11 @@ export async function framesToVideoAsset(payload: FramesToVideoPayload, options:
     const bytes = fs.readFileSync(outPath);
     const baseName = fileSafePart(payload.fileName || "camera-move");
     const fileName = baseName.endsWith(".mp4") ? baseName : `${baseName}-${crypto.randomUUID().slice(0, 8)}.mp4`;
-    const record = writeAsset(projectId, bytes, fileName, "video/mp4", {
+    const record = await writeGeneratedAsset(projectId, bytes, fileName, "video/mp4", {
       kind: "generated",
       source: "camera-move",
       ownerNodeId: payload.ownerNodeId || null,
-    }, context) as { id?: string; data?: { url?: string } };
+    }, "video", context) as { id?: string; data?: { url?: string } };
     const url = record?.data?.url;
     if (!url) throw new FramesToVideoError("拼好的 mp4 写盘失败");
     return { url, assetId: record.id };

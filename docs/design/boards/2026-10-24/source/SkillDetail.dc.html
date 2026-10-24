@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>技能详情 · 修后</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Fraunces:opsz,wght@9..144,500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.nd{--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--scrim:oklch(0.2 0.01 80 / 0.42);--shlg:0 4px 8px oklch(0 0 0 / 0.05),0 20px 50px oklch(0 0 0 / 0.08);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.nd.dark{--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--scrim:oklch(0.08 0.004 80 / 0.58);--shlg:0 4px 10px oklch(0 0 0 / 0.35),0 24px 60px oklch(0 0 0 / 0.45)}
+.nd .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nd button{font-family:inherit}
+</style>
+</helmet>
+<div class="nd {{themeClass}}" style="width: 1440px; height: 900px; position: relative; overflow: hidden;">
+  <dc-import name="Main" theme="{{theme}}" lang="{{lang}}" hint-size="1440px,900px"></dc-import>
+  <div style="position: absolute; inset: 0; background: var(--scrim);"></div>
+  <div role="dialog" aria-label="{{s.dialog}}" style="position: absolute; top: 48px; right: 24px; width: 720px; height: 760px; background: var(--paper); border-radius: 14px; box-shadow: var(--shlg); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; gap: 20px; padding: 24px 24px 20px 24px; position: relative;">
+      <img src="/_blob/f908107911feee63b489dd2e84526f6a" alt="" style="width: 192px; height: 120px; object-fit: cover; border-radius: 8px; display: block; flex: none;">
+      <div style="min-width: 0; display: flex; flex-direction: column; gap: 8px; padding-right: 32px;">
+        <h1 style="margin: 0; font-family: Fraunces, 'Songti SC', serif; font-size: 26px; line-height: 32px; font-weight: 500;">{{s.title}}</h1>
+        <p style="margin: 0; font-size: 13px; line-height: 20px; color: var(--ink60);">{{s.summary}}</p>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--ink60);">
+          <span>{{s.group}}</span><span aria-hidden="true">·</span><span>{{s.builtin}}</span><span aria-hidden="true">·</span>
+          <a href="#" style="color: var(--ink60); text-decoration: underline; text-underline-offset: 3px; display: inline-flex; align-items: center; gap: 3px;">{{s.source}}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"></path><path d="M11 13l9-9"></path><path d="M15 4h5v5"></path></svg></a>
+          <span aria-hidden="true">·</span><span>CC-BY-4.0</span><span aria-hidden="true">·</span><span>LichAmnesia</span>
+        </div>
+      </div>
+      <button type="button" aria-label="{{s.close}}" style="position: absolute; top: 16px; right: 16px; width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+    </div>
+    <div style="height: 1px; background: var(--line); flex: none;"></div>
+    <div style="flex: 1; min-height: 0; overflow: hidden; padding: 20px 24px; font-size: 14px; line-height: 23px; color: var(--ink80);">
+      <div style="max-width: 640px;">
+        <p style="margin: 0 0 14px 0;">{{s.p1}}</p>
+        <h2 style="margin: 0 0 8px 0; font-size: 15px; font-weight: 600; color: var(--ink);">{{s.h1}}</h2>
+        <p style="margin: 0 0 14px 0;">A frosted-glass serum bottle stands on wet black slate, half-buried in low-rolling cold fog, a single cool key light raking from camera-left. 0-2s: extreme macro push-in across the condensation field, beads trembling and sliding, dewy texture razor-sharp at f2.8 with creamy fall-off. 2-4s: the mist thins on a slow exhale, the glass pipette lifts and one amber drop releases in slow motion…</p>
+        <h2 style="margin: 0 0 8px 0; font-size: 15px; font-weight: 600; color: var(--ink);">{{s.h2}}</h2>
+        <p style="margin: 0;">{{s.p2}}</p>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 14px 24px; border-top: 1px solid var(--line); flex: none;">
+      <span style="flex: 1;"></span>
+      <button type="button" aria-label="{{s.export}}" title="{{s.export}}" style="width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink80); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path><path d="M7 11l5 5 5-5"></path><path d="M12 4v12"></path></svg></button>
+      <button type="button" style="height: 32px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 13px; font-weight: 600;">{{s.primary}}</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"lang":{"editor":"enum","options":["zh","en"],"default":"zh"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const theme = this.props.theme ?? 'light';
+    const lang = this.props.lang ?? 'zh';
+    const en = lang === 'en';
+    const T = (zh, e) => (en ? e : zh);
+    const s = {
+      dialog: T('技能详情', 'Skill details'), title: T('凝露产品广告', 'Frost-Glass Serum, Condensation Macro'),
+      summary: T('用微距、水滴和环绕镜头展示产品质感。', 'Adapt Frost-Glass Serum, Condensation Macro to the supplied references and check continuity.'),
+      group: T('广告', 'Advertising'), builtin: T('内置', 'Built-in'), source: T('来源', 'Source'), close: T('关闭', 'Close'),
+      p1: '确认已有参考素材与目标尺寸。缺少决定人物身份、产品外观或故事内容的输入时，先让用户补齐。按下面的原仓配方组织生成描述；把显式槽位替换成用户内容，不虚构品牌。',
+      h1: '配方', h2: '验收',
+      p2: '核对主体身份、数量、结构、光影和镜头连续性。原仓媒体是配方来源证据，不是 Nomi 本次实测结果。多视角图不保证真实三维几何；生成式修复可能重新绘制细节。',
+      export: T('导出技能包', 'Export skill package'), primary: T('放进对话', 'Add to chat'),
+    };
+    return { themeClass: theme === 'dark' ? 'dark' : '', theme, lang, s };
+  }
+}
+</script>
+</body>
+</html>

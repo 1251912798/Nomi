@@ -42,8 +42,9 @@ export async function generateText(
     ? node.contentJson!.content
     : []
 
+  // 三种模式都走同一扇文本流式门（可停、不要授权，见 paidNodeLedger）。
   // 续写/重写：数据层逐 token 增量重渲染（persist:false 草稿）。
-  // 改写：替换的是 ProseMirror 选区，数据层拿不到位置 → 不流式，完成时交编辑器一次性替换。
+  // 改写：替换的是 ProseMirror 选区，数据层拿不到位置 → 增量不往画布写，完成时交编辑器一次性替换。
   let streamBuffer = ''
   // 流式草稿只给前台看：运行所属项目不在画布上时不写 store（那是别的项目）。
   const target = options.projectTarget

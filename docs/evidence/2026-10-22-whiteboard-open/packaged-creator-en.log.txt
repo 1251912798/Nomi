@@ -1,0 +1,30 @@
+INFO 页面环境 {"href":"file:///<win-unpacked>/resources/app.asar/dist/index.html#/studio","crossOriginIsolated":false,"sab":"undefined"}
+PASS 从添加条（more）新建画板节点 gen-v2-whiteboard-mvk5miu4-ct54
+PASS 新画板节点点一次启动器就打开（实际：打开了）
+PASS 画板编辑器挂上了（Leafer canvas 可见）
+INFO 新画板: 直接在画板上拖一笔（不先选工具）
+PASS 新画板默认工具直接拖就能画（笔画数 1）
+PASS 画一笔后落盘（笔画数 1）
+INFO 完成后节点：result=image，history=1，strokes=1
+PASS 完成后节点上看得到画的内容（启动器仍显示=false，节点内 img/canvas 数=1）
+INFO 从缩略图重开
+PASS 再打开后笔画还在（1）
+PASS 再打开能接着画（2）
+INFO 截图后盘上：节点数=4，board.history=2，边=[{"id":"edge-gen-v2-whiteboard-mvk5miu4-ct54::gen-v2-image-mvk5mzyn-7dev::0","source":"gen-v2-whiteboard-mvk5miu4-ct54","target":"gen-v2-image-mvk5mzyn-7dev","mode":"reference","order":0}]，store边=1
+PASS 截图生成派生图片节点并连线（边 0→1）
+PASS 选中图片后浮条上有「Whiteboard」按钮
+PASS 画板是在图片节点原地展开（编辑器在图片节点里）
+INFO 图片画板: 直接在画板上拖一笔（不先选工具）
+PASS 图片画板直接拖后照片没被挪动
+PASS 图片画板默认工具直接拖就能画（笔画数 1）
+PASS 完成后图片节点多一个版本（history=2，主图=whiteboard-snapshot-image-1792710675428）
+PASS 渲染层无异常（0）
+
+--- pageerror
+
+--- console error/warn
+[warning] [nomi:storyboard-plan-migration-skipped] {documentId: doc-b12995b6-353c-4f15-baac-baefafe51e62, issues: (root): Expected object, received null}
+
+--- requestfailed
+
+--- main stdout/stderr (tail)

@@ -21,15 +21,20 @@
 //
 // 超时随文件大小放宽：以前固定 12 秒，一张大图在忙的机器上（杀毒实时扫描、同时别的进程占满磁盘）就会被判失败。
 // 判决不再拿超时当「文件有问题」的证据——超时是「没验证成」，且有随大小放宽的余量。
-import { spawnSync, type SpawnSyncReturns } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+//
+// 校验是**异步**的（2026-10-16，0.23.1 用户反馈「卡的时候点什么都没反应，点设置也不立即响应」）：以前用 spawnSync，
+// 主进程在等 ffmpeg 的整段时间里一个事件都处理不了——同步 IPC 把渲染层一起卡住，窗口不动。Electron 官方性能指南
+// 要求主进程不做阻塞的子进程等待。现在 ffmpeg 是受控的异步子进程（execFile：自带超时击杀与输出上限），
+// 判决、超时上限、「先校验、通过才发布」都不变。
+//
+// 它校验的是**暂存件**（2026-10-16 方向 B）：生成产物先由 generatedAssetStaging 异步写进本项目根下的私有暂存，
+// 在那份文件上校验，通过后同步 rename 发布——校验的就是发布的那一份。这里不收调用方的字节、也不另拷临时文件。
+import { execFile } from "node:child_process";
 import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { MEDIA_DECODER_PROTOCOL_WHITELIST } from "../export/mediaProbe";
 import { logInfo, logWarn } from "../logging/logger";
 import { tagNomiError } from "../shared/nomiErrorCodes";
-import { removeScratchAfterUseSync } from "./scratchCleanup";
+import { desktopT } from "../desktopStrings";
 
 export type GeneratedMediaKind = "image" | "video" | "audio";
 
@@ -43,7 +48,7 @@ export type DecodeVerdict =
 export const DECODE_TIMEOUT_BASE_MS = 12_000;
 /** 每 MiB 多给 1 秒——随包 ffmpeg 4.1 单线程解码大 PNG 也远快于此，余量留给杀毒扫描与磁盘排队。 */
 export const DECODE_TIMEOUT_PER_MIB_MS = 1_000;
-/** 主进程这一步是同步的（`spawnSync`），所以要有天花板：再大的文件也不许把主进程冻住超过两分钟。 */
+/** 天花板：再大的文件，「没验证成」也要在两分钟内给出结论（等待是异步的，不冻主进程；但产物不能无限期挂着不落盘）。 */
 export const DECODE_TIMEOUT_CAP_MS = 120_000;
 
 export function decodeTimeoutMs(byteLength: number): number {
@@ -67,7 +72,11 @@ export function decodeInvocation(kind: GeneratedMediaKind, inputPath: string): s
   ];
 }
 
-type DecodeRun = Pick<SpawnSyncReturns<string>, "status" | "signal" | "stdout" | "stderr"> & {
+type DecodeRun = {
+  status: number | null;
+  signal: NodeJS.Signals | null;
+  stdout: string;
+  stderr: string;
   error?: { code?: string; message?: string };
 };
 
@@ -103,8 +112,8 @@ export function interpretDecodeRun(kind: GeneratedMediaKind, run: DecodeRun): De
 export class GeneratedMediaValidationError extends Error {
   readonly reason: string;
 
-  constructor(reason: string) {
-    super(tagNomiError("output-unreadable", `Generated media validation failed (${reason})`));
+  constructor(reason: string, tagged = tagNomiError("output-unreadable", `Generated media validation failed (${reason})`)) {
+    super(tagged);
     this.name = "GeneratedMediaValidationError";
     this.reason = reason;
   }
@@ -115,26 +124,65 @@ export function generatedMediaValidationError(reason: string): GeneratedMediaVal
   return new GeneratedMediaValidationError(reason);
 }
 
+/**
+ * 字节是能解码的媒体，但不是这笔任务要的那一类（V-1213：视频任务取回一张参考图）。仍是校验失败（取回器照旧
+ * 判「确定性、别重下」），但码是 retrieval-download：钱已经付了、任务还在，节点落「可找回」，不是付费重试。
+ */
+const OUTPUT_KIND_LABEL = {
+  image: "tasks.outputKind.image", video: "tasks.outputKind.video", audio: "tasks.outputKind.audio", model3d: "tasks.outputKind.model3d",
+} as const;
+const outputKindLabel = (kind: string): string => kind in OUTPUT_KIND_LABEL ? desktopT(OUTPUT_KIND_LABEL[kind as keyof typeof OUTPUT_KIND_LABEL]) : kind;
+
+export function generatedMediaKindMismatchError(expected: string, got: string): GeneratedMediaValidationError {
+  return new GeneratedMediaValidationError("task_kind_mismatch", tagNomiError("retrieval-download",
+    desktopT("tasks.retrievalStage.download") + desktopT("tasks.outputKindMismatch", { expected: outputKindLabel(expected), got: outputKindLabel(got) })));
+}
+
 export type GeneratedMediaDecodeInput = {
   kind: GeneratedMediaKind;
-  bytes: Uint8Array;
-  /** 调用方已有的、Nomi 自己拥有的文件路径（MP4 的 moov 常在尾部，管道读不了，必须给可 seek 的文件）。 */
-  sourcePath?: string;
+  /**
+   * 要校验的文件：只能是 generatedAssetStaging 的私有暂存件（MP4 的 moov 常在尾部，管道读不了，必须是可 seek 的文件）。
+   * 不收调用方自己的路径——校验是异步的，调用方的文件在等待期间可能被改写（V-1208-1）。
+   */
+  stagedPath: string;
+  byteLength: number;
+  /** 受控退出 / 取消：中止时击杀解码子进程，抛中止（不是判决，不记「拒收」）。 */
+  signal?: AbortSignal;
   contentType: string;
 };
 
 export type GeneratedMediaDecodeDeps = {
-  run?: (command: string, args: string[], options: { timeout: number }) => DecodeRun;
+  run?: (command: string, args: string[], options: { timeout: number; signal?: AbortSignal }) => Promise<DecodeRun>;
   resolveFfmpeg?: () => string;
 };
 
-function defaultRun(command: string, args: string[], options: { timeout: number }): DecodeRun {
-  return spawnSync(command, args, {
-    encoding: "utf8",
-    timeout: options.timeout,
-    // stdout 只有几行 framehash；stderr 给足空间（一个糟糕的文件可以逐包报错），爆了算「一团糟」，见 interpretDecodeRun。
-    maxBuffer: 1024 * 1024,
-    windowsHide: true,
+/** stdout 只有几行 framehash；stderr 给足空间（一个糟糕的文件可以逐包报错），爆了算「一团糟」，见 interpretDecodeRun。 */
+const DECODE_OUTPUT_MAX_BYTES = 1024 * 1024;
+
+/**
+ * 跑一次解码器，把异步子进程的结局翻成事实（DecodeRun），不在这里下判决。execFile 里「我们自己结束了它」的两种：
+ * 超时（killed）→ ETIMEDOUT；输出超上限 → ENOBUFS。起不来（ENOENT 等字符串码）原样带上；
+ * 正常退出码、被外部信号杀掉，按 status / signal 交给 interpretDecodeRun。
+ */
+export function runDecoder(command: string, args: string[], options: { timeout: number; signal?: AbortSignal }): Promise<DecodeRun> {
+  return new Promise((resolve) => {
+    execFile(command, args, {
+      encoding: "utf8",
+      timeout: options.timeout,
+      maxBuffer: DECODE_OUTPUT_MAX_BYTES,
+      windowsHide: true,
+      ...(options.signal ? { signal: options.signal } : {}),
+    }, (error, stdout, stderr) => {
+      const out = { stdout: String(stdout ?? ""), stderr: String(stderr ?? "") };
+      if (!error) return resolve({ status: 0, signal: null, ...out });
+      const failure = error as Error & { code?: unknown; killed?: boolean; signal?: NodeJS.Signals | null };
+      const message = failure.message;
+      if (failure.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") return resolve({ status: null, signal: null, ...out, error: { code: "ENOBUFS", message } });
+      if (failure.killed) return resolve({ status: null, signal: failure.signal ?? null, ...out, error: { code: "ETIMEDOUT", message } });
+      if (typeof failure.code === "number") return resolve({ status: failure.code, signal: null, ...out });
+      if (typeof failure.code === "string") return resolve({ status: null, signal: null, ...out, error: { code: failure.code, message } });
+      return resolve({ status: null, signal: failure.signal ?? null, ...out });
+    });
   });
 }
 
@@ -146,7 +194,7 @@ function recordDecode(input: GeneratedMediaDecodeInput, verdict: DecodeVerdict, 
   const fields = {
     kind: input.kind,
     contentType: input.contentType,
-    bytes: input.bytes.byteLength,
+    bytes: input.byteLength,
     verdict: verdict.verdict,
     ms: elapsedMs,
     timeoutMs,
@@ -165,30 +213,19 @@ function recordDecode(input: GeneratedMediaDecodeInput, verdict: DecodeVerdict, 
  * 校验一份**生成产物**的字节能不能被解码。不能 → 抛带机器码的错（渲染层说「生成的文件没能读出来」，
  * 不说「服务商失败了」、不劝换一家）。能 → 静默返回。
  */
-export function verifyGeneratedMediaDecodes(input: GeneratedMediaDecodeInput, deps: GeneratedMediaDecodeDeps = {}): DecodeVerdict {
-  // MP4/MOV 的索引（moov）常在文件尾：走管道的话 ffmpeg 会报 partial file（管道不能 seek）。
-  // 所以字节要落在一个 0600 的临时文件里再读——除非调用方已经有一个 Nomi 自己拥有的路径。
-  let validationPath = input.sourcePath;
-  let validationDir = "";
-  if (!validationPath || !fs.existsSync(validationPath)) {
-    validationDir = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-generated-validation-"));
-    validationPath = path.join(validationDir, "artifact.media");
-    fs.writeFileSync(validationPath, Buffer.from(input.bytes), { mode: 0o600, flag: "wx" });
+export async function verifyGeneratedMediaDecodes(input: GeneratedMediaDecodeInput, deps: GeneratedMediaDecodeDeps = {}): Promise<DecodeVerdict> {
+  input.signal?.throwIfAborted();
+  const timeoutMs = decodeTimeoutMs(input.byteLength);
+  const ffmpeg = (deps.resolveFfmpeg ?? resolveFfmpegPath)();
+  const startedAt = Date.now();
+  const run = ffmpeg
+    ? await (deps.run ?? runDecoder)(ffmpeg, decodeInvocation(input.kind, input.stagedPath), { timeout: timeoutMs, ...(input.signal ? { signal: input.signal } : {}) })
+    : ({ status: null, signal: null, stdout: "", stderr: "", error: { code: "ENOENT", message: "ffmpeg not found" } } satisfies DecodeRun);
+  input.signal?.throwIfAborted();
+  const verdict = interpretDecodeRun(input.kind, run);
+  recordDecode(input, verdict, timeoutMs, Date.now() - startedAt);
+  if (verdict.verdict !== "decodable") {
+    throw generatedMediaValidationError(verdict.verdict === "unverified" ? "decode_unverified" : "decode_failed");
   }
-  try {
-    const timeoutMs = decodeTimeoutMs(input.bytes.byteLength);
-    const ffmpeg = (deps.resolveFfmpeg ?? resolveFfmpegPath)();
-    const startedAt = Date.now();
-    const run = ffmpeg
-      ? (deps.run ?? defaultRun)(ffmpeg, decodeInvocation(input.kind, validationPath), { timeout: timeoutMs })
-      : ({ status: null, signal: null, stdout: "", stderr: "", error: { code: "ENOENT", message: "ffmpeg not found" } } satisfies DecodeRun);
-    const verdict = interpretDecodeRun(input.kind, run);
-    recordDecode(input, verdict, timeoutMs, Date.now() - startedAt);
-    if (verdict.verdict !== "decodable") {
-      throw generatedMediaValidationError(verdict.verdict === "unverified" ? "decode_unverified" : "decode_failed");
-    }
-    return verdict;
-  } finally {
-    if (validationDir) removeScratchAfterUseSync(validationDir);
-  }
+  return verdict;
 }

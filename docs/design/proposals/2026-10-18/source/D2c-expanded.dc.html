@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>D2c 点开以后：复用画布生成框，参数原地展开、盖住提示词框</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,400&amp;display=swap">
+<style>
+
+
+body{margin:0}
+.light{--nomi-logo-ground:oklch(.22 .01 80);--nomi-bg:oklch(.985 .003 90);--nomi-paper:oklch(1 0 0);--nomi-ink:oklch(.22 .01 80);--nomi-ink80:oklch(.32 .01 80);--nomi-ink60:oklch(.5 .01 80);--nomi-ink40:oklch(.68 .01 80);--nomi-ink10:oklch(.94 .003 80);--nomi-ink05:oklch(.97 .003 80);--nomi-line:oklch(.91 .004 80);--nomi-line-soft:oklch(.95 .003 80);--nomi-accent:oklch(.55 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 12%,var(--nomi-paper));--nomi-danger:oklch(.55 .13 25);--nomi-danger-ink:oklch(.45 .13 25);--nomi-danger-soft:oklch(.955 .021 25);--nomi-danger-edge:oklch(.895 .052 25);--nomi-warning-ink:oklch(.45 .085 72);--nomi-warning-soft:oklch(.968 .024 72);--nomi-success-ink:oklch(.45 .09 145);--nomi-success-soft:oklch(.962 .033 145);--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.04),0 1px 1px oklch(0 0 0/0.03);--nomi-shadow-md:0 2px 4px oklch(0 0 0/0.04),0 8px 24px oklch(0 0 0/0.06);--nomi-shadow-lg:0 4px 8px oklch(0 0 0/0.05),0 20px 50px oklch(0 0 0/0.08)}
+.dark{--nomi-logo-ground:oklch(.30 .01 80);--nomi-bg:oklch(.18 .006 80);--nomi-paper:oklch(.235 .007 80);--nomi-ink:oklch(.93 .006 85);--nomi-ink80:oklch(.84 .006 85);--nomi-ink60:oklch(.7 .006 85);--nomi-ink40:oklch(.62 .006 85);--nomi-ink10:oklch(.34 .006 85);--nomi-ink05:oklch(.3 .006 85);--nomi-line:oklch(.36 .007 80);--nomi-line-soft:oklch(.31 .007 80);--nomi-accent:oklch(.7 .13 250);--nomi-accent-soft:color-mix(in srgb,var(--nomi-accent) 26%,var(--nomi-paper));--nomi-danger:oklch(.72 .13 25);--nomi-danger-ink:oklch(.82 .13 25);--nomi-danger-soft:oklch(.3 .048 25);--nomi-danger-edge:oklch(.4 .07 25);--nomi-warning-ink:oklch(.82 .085 72);--nomi-warning-soft:oklch(.295 .04 72);--nomi-success-ink:oklch(.82 .09 145);--nomi-success-soft:oklch(.295 .042 145);--nomi-shadow-sm:0 1px 2px oklch(0 0 0/0.32),0 1px 1px oklch(0 0 0/0.22);--nomi-shadow-md:0 2px 5px oklch(0 0 0/0.30),0 14px 34px oklch(0 0 0/0.32);--nomi-shadow-lg:0 4px 10px oklch(0 0 0/0.30),0 24px 64px oklch(0 0 0/0.40)}
+.root{--nomi-radius-sm:6px;--nomi-radius:10px;--nomi-radius-lg:16px;box-sizing:border-box;background-color:var(--nomi-bg);color:var(--nomi-ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:13px;line-height:1.5}
+.root *{box-sizing:border-box}
+.dots{background-image:radial-gradient(var(--nomi-ink10) 1px,transparent 1px);background-size:18px 18px}
+.row{display:flex;align-items:flex-start}
+.cap{font-size:12px;color:var(--nomi-ink60);margin:0 0 8px 4px}
+.note{margin:10px 0 0 4px;font-size:12px;line-height:1.5;color:var(--nomi-ink60)}
+button{font-family:inherit;cursor:default}
+.ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80)}
+.ib.bare{border-color:transparent;background:transparent}
+.tb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;border-radius:var(--nomi-radius-sm);background:var(--nomi-ink05);color:var(--nomi-ink80)}
+.vsep{flex:none;width:1px;height:20px;background:var(--nomi-line)}
+.chip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.chip.open{background:var(--nomi-accent-soft);color:var(--nomi-ink);border-color:transparent}
+.chip.bad{color:var(--nomi-danger-ink);border-color:var(--nomi-danger-edge)}
+.send{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);display:flex;align-items:center;justify-content:center}
+.sendtxt{flex:none;height:30px;padding:0 12px 0 14px;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);font:inherit;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--nomi-line);background:var(--nomi-paper);color:var(--nomi-ink);font:inherit;font-size:13px;font-weight:500;white-space:nowrap}
+.btn.pri{background:var(--nomi-ink);border-color:var(--nomi-ink);color:var(--nomi-paper)}
+.btn.txt{border-color:transparent;background:transparent;color:var(--nomi-ink60)}
+.btn.danger{background:var(--nomi-danger);border-color:var(--nomi-danger);color:var(--nomi-paper)}
+.lk{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 6px;border:0;border-radius:999px;background:transparent;color:var(--nomi-accent);font:inherit;font-size:12px;white-space:nowrap}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:var(--nomi-ink05);color:var(--nomi-ink60);font-size:12px;white-space:nowrap}
+.sp{flex:1;min-width:0}
+/* 节点卡 */
+.node{position:relative;box-sizing:border-box;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md)}
+.refs{display:flex;align-items:flex-start;gap:8px;min-height:40px}
+.t{position:relative;flex:none;width:40px;height:40px}
+.t svg.img{display:block;border-radius:var(--nomi-radius-sm)}
+.cnt{margin-left:auto;align-self:center;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.prompt{position:relative;padding:8px 36px 8px 4px;min-height:36px;font-size:14px;line-height:1.9}
+.prompt .ib{position:absolute;right:0;top:4px}
+.m{display:inline-flex;align-items:center;gap:4px;padding:0 8px 0 3px;border-radius:999px;background:var(--nomi-accent-soft);color:var(--nomi-ink);font-weight:500;font-size:13px;line-height:1.5;vertical-align:baseline}
+.m svg{display:block;border-radius:4px}
+.bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;padding-top:4px}
+/* Agent 面板 */
+.panel{width:360px;display:flex;flex-direction:column;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius-lg);background:var(--nomi-paper);box-shadow:var(--nomi-shadow-lg);overflow:hidden}
+.ph{display:flex;align-items:center;gap:8px;height:44px;padding:0 10px 0 12px;border-bottom:1px solid var(--nomi-line-soft);flex:none}
+.wm{font-family:Fraunces,Georgia,serif;font-size:16px;letter-spacing:-.02em;color:var(--nomi-ink)}
+.wm b{font-weight:400;color:var(--nomi-accent)}
+.pmsg{padding:10px 14px;font-size:13px;color:var(--nomi-ink60)}
+.pslot{padding:0 12px 12px}
+.pin{margin:0 12px 12px;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);padding:0 12px;display:flex;align-items:center;height:44px;color:var(--nomi-ink60);font-size:13px}
+/* 付费确认卡 */
+.sc{border:1px solid var(--nomi-ink40);border-radius:var(--nomi-radius);background:var(--nomi-paper);padding:12px;display:flex;flex-direction:column;gap:6px}
+.sc-h{display:flex;align-items:center;gap:8px;min-height:22px}
+.sc-t{font-size:14px;font-weight:600;color:var(--nomi-ink)}
+.sc-s{display:flex;align-items:center;gap:6px;min-height:24px;font-size:13px;color:var(--nomi-ink80)}
+.sc-s .nm{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-s .idx,.li .idx{font-variant-numeric:tabular-nums;color:var(--nomi-ink60);font-size:12px}
+.sc-p{display:flex;align-items:flex-start;gap:6px}
+.pt{flex:1;min-width:0;margin:0;font-size:13px;line-height:20px;color:var(--nomi-ink80);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sc-c{display:flex;flex-wrap:wrap;gap:4px}
+.sc-d{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding-top:2px}
+.sc-d .btn{height:32px;padding:0 12px}
+.sc-d .btn.txt{padding:0 8px}
+.li{display:flex;align-items:center;gap:8px;min-height:28px;padding:0 8px;border-radius:var(--nomi-radius-sm);font-size:13px;color:var(--nomi-ink80)}
+.li .nm{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .st{margin-left:auto;font-size:12px;color:var(--nomi-ink60);white-space:nowrap}
+.li.cur{background:var(--nomi-accent-soft);color:var(--nomi-ink)}
+.li.fin{color:var(--nomi-ink60)}
+.lst{display:flex;flex-direction:column;gap:2px}
+.ok{color:var(--nomi-success-ink)}
+.bad-i{color:var(--nomi-danger-ink)}
+.warn-i{color:var(--nomi-warning-ink)}
+.fact{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:20px;color:var(--nomi-ink)}
+.fact svg{flex:none;margin-top:2px}
+.fact small{display:block;font-size:12px;line-height:18px;color:var(--nomi-ink60)}
+.spin{animation:none}
+
+
+
+.light{--nomi-ink40:oklch(.68 .01 80)}
+.dark{--nomi-ink40:oklch(.62 .006 85)}
+.rp{position:absolute;z-index:5;box-sizing:border-box;width:320px;border:1px solid var(--nomi-line);background:var(--nomi-paper);border-radius:16px;box-shadow:var(--nomi-shadow-md)}
+.rp .rpi{display:flex;flex-direction:column;gap:12px;padding:12px;max-height:420px;overflow-y:auto;border-radius:16px}
+.rp .rg{display:flex;flex-direction:column;gap:6px}
+.rp .rtt{font-size:11px;font-weight:600;line-height:1;color:var(--nomi-ink40)}
+.rp .sgm{display:grid;grid-template-columns:repeat(auto-fit,minmax(56px,1fr));gap:4px;padding:4px;border-radius:10px;background:var(--nomi-ink05)}
+.rp .sgm button{min-height:28px;padding:4px 8px;border:0;border-radius:6px;background:transparent;color:var(--nomi-ink60);font:inherit;font-size:12px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0}
+.rp .sgm button.on{background:var(--nomi-paper);color:var(--nomi-ink);font-weight:600;box-shadow:var(--nomi-shadow-sm)}
+.rp .sgm button.dis{color:var(--nomi-ink40);opacity:.6}
+.rp .shp{display:block;height:18px}
+.rp .sl{display:flex;align-items:center;gap:12px;min-width:0}
+.rp .sl .tr{position:relative;flex:1;min-width:0;height:6px;border-radius:3px;background:var(--nomi-ink10)}
+.rp .sl .tr i{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:var(--nomi-accent)}
+.rp .sl .tr u{position:absolute;top:-5px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--nomi-paper);border:2px solid var(--nomi-accent);box-sizing:border-box;text-decoration:none}
+.rp .sl b{flex:none;min-width:28px;text-align:right;font-size:12px;font-weight:400;color:var(--nomi-ink80);font-variant-numeric:tabular-nums}
+.rp .swr{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px}
+.rp .sw{position:relative;flex:none;width:28px;height:16px;border-radius:8px;background:var(--nomi-ink10)}
+.rp .sw.on{background:var(--nomi-accent)}
+.rp .sw::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--nomi-paper)}
+.rp .sw.on::after{left:14px}
+.chip.sum{background:var(--nomi-ink05);padding:0 8px 0 10px}
+
+.rp.fit{left:12px;right:12px;top:12px;bottom:96px;width:auto}
+.rp.fit .rpi{height:100%;max-height:none}
+
+.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
+.i12{width:12px;height:12px}.i14{width:14px;height:14px}.i16{width:16px;height:16px}
+.gen,.lk,.par{white-space:nowrap}
+.sg{border-radius:4px;padding:1px 3px;margin:0 -3px}
+.sg.open{background:var(--nomi-accent-soft);color:var(--nomi-ink);font-weight:600}
+.cmpw{position:relative}
+.cchips{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.cchip{flex:none;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--nomi-line);border-radius:999px;background:var(--nomi-paper);color:var(--nomi-ink80);font:inherit;font-size:12px;white-space:nowrap}
+.cchip.open{background:var(--nomi-accent-soft);color:var(--nomi-ink);border-color:transparent}
+.cchip.ico{width:28px;padding:0;justify-content:center}
+.pnl{position:absolute;left:0;right:0;top:0;height:var(--ph,168px);z-index:3;overflow-y:auto;box-sizing:border-box;padding:12px;display:flex;flex-direction:column;gap:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:16px;box-shadow:var(--nomi-shadow-md)}
+.pnl .pg{display:flex;flex-direction:column;gap:6px}
+.pnl .gl3{font-size:12px;font-weight:600;color:var(--nomi-ink60);line-height:1}
+.pnl .seg{display:flex}
+.pop2{position:absolute;z-index:3;width:max-content;box-sizing:border-box;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-lg)}
+.pop2 .pg{display:flex;flex-direction:column;gap:6px}
+.pop2 .gl2{font-size:12px;font-weight:600;color:var(--nomi-ink60)}
+.pop2 .og{display:flex;flex-wrap:wrap;gap:4px}
+.pop2 .og span{display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;border:1px solid var(--nomi-line);font-size:12px;color:var(--nomi-ink80)}
+.pop2 .og span.on{background:var(--nomi-ink);border-color:var(--nomi-ink);color:var(--nomi-paper)}
+.dm{position:absolute;z-index:3;min-width:92px;padding:4px 0;border-radius:6px;background:var(--nomi-paper);box-shadow:var(--nomi-shadow-md),0 0 0 1px var(--nomi-line)}
+.dm div{height:28px;padding:0 12px;font-size:12px;display:flex;align-items:center;color:var(--nomi-ink80)}
+.dm div.on{background:var(--nomi-ink05);color:var(--nomi-ink);font-weight:600}
+.sc2{position:relative;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);background:var(--nomi-paper);padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:none}
+.xtop{position:absolute;right:8px;top:8px}
+.pri2{flex:none;height:32px;padding:0 14px;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);font:inherit;font-size:13px;font-weight:500;display:inline-flex;align-items:center;white-space:nowrap}
+.tbtn{flex:none;height:32px;padding:0 8px;border:0;background:transparent;color:var(--nomi-ink60);font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.rt32{width:32px;height:32px;border-radius:6px;flex:none;box-shadow:0 0 0 1px var(--nomi-line)}
+.rrow{display:flex;align-items:center;gap:8px;min-height:32px;padding-right:32px}
+.nm13{font-size:13px;font-weight:600;color:var(--nomi-ink);display:flex;align-items:baseline;gap:8px;min-width:0}
+.nm13 .idx{font-size:12px;font-weight:400;color:var(--nomi-ink60);font-variant-numeric:tabular-nums}
+.last{display:flex;align-items:center;gap:8px;min-height:32px;min-width:0}
+.last .par{padding:0 2px;margin-left:0;gap:2px;flex:0 1 auto;min-width:0}
+.last .pri2{padding:0 12px}
+.last .par + .par{margin-left:2px}
+.r1{display:flex;align-items:center;gap:8px;min-height:32px}
+.r1 .idx{font-size:12px;color:var(--nomi-ink60);font-variant-numeric:tabular-nums}
+.r1 .nm{font-size:14px;font-weight:600;color:var(--nomi-ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.r1 .ico{color:var(--nomi-ink60)}
+.rt{width:28px;height:28px;border-radius:6px;overflow:hidden;flex:none;box-shadow:0 0 0 1px oklch(0 0 0/0.06)}
+.gen{flex:none;height:30px;padding:0 12px 0 14px;border:0;border-radius:999px;background:var(--nomi-ink);color:var(--nomi-paper);font:inherit;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.gen.alt{background:var(--nomi-paper);color:var(--nomi-ink);box-shadow:inset 0 0 0 1px var(--nomi-line)}
+.xb{flex:none;width:28px;height:28px;border-radius:999px;display:grid;place-items:center;color:var(--nomi-ink40);border:0;background:transparent;padding:0}
+.par{display:inline-flex;align-items:center;gap:4px;height:24px;font-size:12px;color:var(--nomi-ink60);align-self:flex-start;padding:0 6px;margin-left:-6px;border-radius:6px;white-space:nowrap}
+.par.open{background:var(--nomi-accent-soft);color:var(--nomi-ink)}
+.par .bd2{color:var(--nomi-danger-ink);font-weight:600;box-shadow:inset 0 -1.5px 0 var(--nomi-danger-edge)}
+.pr1{font-size:13px;line-height:20px;color:var(--nomi-ink60);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.edit{border:1px solid var(--nomi-accent);border-radius:6px;padding:8px 10px;font-size:13px;line-height:24px;color:var(--nomi-ink);background:var(--nomi-paper)}
+.refs2{display:flex;flex-wrap:wrap;gap:6px}
+.rf{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px 0 4px;border-radius:999px;background:var(--nomi-ink05);font-size:12px;color:var(--nomi-ink80)}
+.rf .rt{width:24px;height:24px;border-radius:999px}
+.rowlist{display:flex;flex-direction:column;gap:2px}
+.rw{display:flex;align-items:center;gap:8px;min-height:36px;padding:0 4px 0 8px;border-radius:var(--nomi-radius-sm);font-size:13px;color:var(--nomi-ink)}
+.rw .idx{font-size:12px;color:var(--nomi-ink60);font-variant-numeric:tabular-nums}
+.rw .nm{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rw .du{font-size:12px;color:var(--nomi-ink60);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rw.cur{background:var(--nomi-accent-soft)}
+.rw.fin{color:var(--nomi-ink60)}
+.rw.bad{background:var(--nomi-danger-soft)}
+.stat{font-size:12px;color:var(--nomi-ink60);white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.stat.ok{color:var(--nomi-success-ink)}
+.stat.bad{color:var(--nomi-danger-ink)}
+.foot{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding-top:4px}
+.pop{position:absolute;z-index:3;box-sizing:border-box;width:340px;padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-lg)}
+.gl{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--nomi-ink60);margin:10px 0 4px}
+.gl.first{margin-top:0}
+.seg{display:flex;padding:2px;background:var(--nomi-ink05);border-radius:999px}
+.seg button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:28px;padding:0;border:0;border-radius:999px;background:transparent;color:var(--nomi-ink60);font:inherit;font-size:12px}
+.seg button.on{background:var(--nomi-paper);color:var(--nomi-ink);font-weight:600;box-shadow:var(--nomi-shadow-sm)}
+.msgt{padding:6px 14px 10px;font-size:13px;line-height:21px;color:var(--nomi-ink80)}
+.msgb{display:flex;gap:6px;padding:0 14px 12px}
+.convo{min-height:28px}
+.mini{width:360px}
+
+</style>
+</helmet>
+<div class="root light" style="width:920px;min-height:700px;padding:24px 40px 28px;"><div style="display:flex;gap:40px;align-items:flex-start"><div><div class="cap"><b>点开以后</b>卡里就是画布那件生成框：提示词在上，参数条在下</div><div class="panel mini"><div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span><span class="tag" style="margin-left:2px">3%</span><span class="sp"></span><button class="ib bare" aria-label="历史会话"><svg class="i i16 " viewBox="0 0 24 24" style="stroke-width:2;" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></svg></button></div><div class="convo"><div style="height:24px"></div></div><div class="pslot" style="position:relative"><div class="sc2"><span class="xtop"><button class="xb" type="button" aria-label="不生成"><svg class="i i16 " viewBox="0 0 24 24" style="stroke-width:2;" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button></span><div class="rrow"><span class="rf" style="height:32px"><span class="rt" style="background:linear-gradient(160deg,#e9e4dc,#9bb7c9)"></span>纸船</span><span class="rf" style="height:32px"><span class="rt" style="background:linear-gradient(160deg,#41576a,#c8b48a)"></span>水洼</span></div><div style="display:flex;align-items:center"><div class="nm13"><span class="idx">01</span>纸船出发</div><span class="sp"></span><button class="tbtn" type="button">收起</button></div><div class="cmpw"><div class="edit" style="height:198px;overflow:auto;border-color:var(--nomi-line)">雨后清晨，路面一滩积水形成的小水洼，水面倒映着微亮的天空。一只手工折成的白色<span class="m"><span class="rt" style="width:16px;height:16px;border-radius:4px;display:inline-block;background:linear-gradient(160deg,#e9e4dc,#9bb7c9)"></span>纸船</span>在水洼中央缓缓漂浮，船身随微波轻轻摇晃。晨光从侧面斜照，水面泛着柔和的暖金色光斑。镜头固定，纸船从左向右慢慢漂过画面。<span style="display:inline-block;width:1px;height:16px;background:var(--nomi-ink);vertical-align:-3px;margin-left:1px"></span></div></div><div class="cchips" style="flex-wrap:nowrap;gap:6px"><button class="cchip" type="button">Seedance 2.0<svg class="i i12 " viewBox="0 0 24 24" style="stroke-width:2.67;" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button><button class="cchip" type="button">Fast<svg class="i i12 " viewBox="0 0 24 24" style="stroke-width:2.67;" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button><button class="cchip sum" type="button" style="background:var(--nomi-ink05)">16:9 · 4s · 480p<svg class="i i12 " viewBox="0 0 24 24" style="stroke-width:2.67;" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button></div><div class="last"><span class="sp"></span><button class="pri2" type="button">生成</button></div></div></div><div class="pin">可继续输入，将排队发送…</div></div></div><div><div class="cap"><b>点参数</b>在生成框里原地展开，盖住提示词框，选完收起；卡片高度不变</div><div class="panel mini"><div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span><span class="tag" style="margin-left:2px">3%</span><span class="sp"></span><button class="ib bare" aria-label="历史会话"><svg class="i i16 " viewBox="0 0 24 24" style="stroke-width:2;" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></svg></button></div><div class="convo"><div style="height:24px"></div></div><div class="pslot" style="position:relative"><div class="sc2"><span class="xtop"><button class="xb" type="button" aria-label="不生成"><svg class="i i16 " viewBox="0 0 24 24" style="stroke-width:2;" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button></span><div class="rrow"><span class="rf" style="height:32px"><span class="rt" style="background:linear-gradient(160deg,#e9e4dc,#9bb7c9)"></span>纸船</span><span class="rf" style="height:32px"><span class="rt" style="background:linear-gradient(160deg,#41576a,#c8b48a)"></span>水洼</span></div><div style="display:flex;align-items:center"><div class="nm13"><span class="idx">01</span>纸船出发</div><span class="sp"></span><button class="tbtn" type="button">收起</button></div><div class="cmpw"><div class="edit" style="height:198px;overflow:auto;border-color:var(--nomi-line)">雨后清晨，路面一滩积水形成的小水洼，水面倒映着微亮的天空。一只手工折成的白色<span class="m"><span class="rt" style="width:16px;height:16px;border-radius:4px;display:inline-block;background:linear-gradient(160deg,#e9e4dc,#9bb7c9)"></span>纸船</span>在水洼中央缓缓漂浮，船身随微波轻轻摇晃。晨光从侧面斜照，水面泛着柔和的暖金色光斑。镜头固定，纸船从左向右慢慢漂过画面。<span style="display:inline-block;width:1px;height:16px;background:var(--nomi-ink);vertical-align:-3px;margin-left:1px"></span></div></div><div class="cchips" style="flex-wrap:nowrap;gap:6px"><button class="cchip" type="button">Seedance 2.0<svg class="i i12 " viewBox="0 0 24 24" style="stroke-width:2.67;" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button><button class="cchip" type="button">Fast<svg class="i i12 " viewBox="0 0 24 24" style="stroke-width:2.67;" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button><button class="cchip sum" type="button" style="background:var(--nomi-ink05)">16:9 · 4s · 480p<svg class="i i12 " viewBox="0 0 24 24" style="stroke-width:2.67;" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button></div><div class="last"><span class="sp"></span><button class="pri2" type="button">生成</button></div><div class="rp fit" style="" role="group" aria-label="生成参数面板"><div class="rpi"><div class="rg"><div class="rtt">生成方式</div><div class="sgm" role="radiogroup"><button type="button" class="on"><span>参考</span></button><button type="button" class=""><span>首尾帧</span></button></div></div><div class="rg"><div class="rtt">比例</div><div class="sgm" role="radiogroup"><button type="button" class="on"><svg class="shp" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="1.0" y="4.5" width="16" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span>16:9</span></button><button type="button" class=""><svg class="shp" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="4.5" y="1.0" width="9" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span>9:16</span></button><button type="button" class=""><svg class="shp" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="3.0" y="3.0" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span>1:1</span></button><button type="button" class=""><svg class="shp" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2.0" y="3.75" width="14" height="10.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span>4:3</span></button><button type="button" class=""><svg class="shp" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="3.75" y="2.0" width="10.5" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span>3:4</span></button><button type="button" class=""><svg class="shp" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="0.0" y="5.15" width="18" height="7.7" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span>21:9</span></button></div></div><div class="rg"><div class="rtt">清晰度</div><div class="sgm" role="radiogroup"><button type="button" class=""><span>480p</span></button><button type="button" class="on"><span>720p</span></button></div></div><div class="rg"><div class="rtt">时长</div><div class="sl"><div class="tr"><i style="width:9.1%"></i><u style="left:9.1%"></u></div><b>5</b></div></div><div class="swr"><div class="rtt">生成音频</div><span class="sw on" role="switch" aria-checked="true"></span></div></div></div></div></div><div class="pin">可继续输入，将排队发送…</div></div></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":920,"height":700}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

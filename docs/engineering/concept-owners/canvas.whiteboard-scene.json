@@ -1,0 +1,34 @@
+{
+  "name": "画板 Leafer 引擎租约与变换提交",
+  "subject": "canvas.whiteboard-scene",
+  "lifecycle": "live-interaction",
+  "authority_kind": "lease",
+  "trust_domain": "renderer",
+  "fact_kind": "state-machine",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+    "symbol": "LeaferCanvas"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+      "symbol": "LeaferCanvas"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
+      "symbol": "useWhiteboardCanvasDocument"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardDocument.test.ts",
+  "allowed_consumers": [
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardDrawing.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardBoxSelection.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSelectionActions.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSceneSync.ts"
+  ],
+  "since": "2026-10-12",
+  "notes": "LeaferCanvas 唯一创建/销毁 Leafer App。useWhiteboardCanvasDocument 是其内部 imperative document/selection/export 接口与可变映射提交边界；鼠标结束和选择动作提交一次序列化变换，不增加第二个渲染器。选择 hook 返回局部键盘动作，活动编辑器宿主拥有事件准入。纯文档测试仅证明表示转换，鼠标/键盘/IME/截图租约仍须真实交互验收。"
+}

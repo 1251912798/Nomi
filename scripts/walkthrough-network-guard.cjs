@@ -107,6 +107,57 @@ function callerStack() {
     .join(' | ')
 }
 
+/**
+ * 付费走查要核「App 真正发给供应商的是什么」（2026-10-22 参考图错发热修的真付费样本）：设 NOMI_WALK_NET_BODIES=1，
+ * fetch 层对**放行名单上的公网请求**（本机回环不记）把请求体记一笔 `allowed-request`，multipart 上传的响应文本也记一笔
+ * `allowed-response`（托管中转回的公网地址，用来把请求体里的地址对回本地文件名）。只记账、不改请求。
+ * 先脱敏再落盘：不记请求头（key 在头里）；正文里形如 Bearer / sk- 的串打码；URL 的查询串（签名参数）整段换成 `?<redacted>`。
+ * 没设 = 一个字不记，别的走查行为不变。
+ */
+const RECORD_BODIES = process.env.NOMI_WALK_NET_BODIES === '1'
+const BODY_LIMIT = 64 * 1024
+let recordSeq = 0
+
+function scrubText(text) {
+  return String(text)
+    .replace(/(https?:\/\/[^\s"'\\?#]+)\?[^\s"'\\#]*/g, '$1?<redacted>')
+    .replace(/Bearer\s+[^\s"'\\]+/gi, 'Bearer <redacted>')
+    .replace(/\bsk-[A-Za-z0-9_-]{8,}/g, 'sk-<redacted>')
+}
+
+function describeBody(body) {
+  if (body === undefined || body === null) return null
+  if (typeof body === 'string') return { text: scrubText(body.slice(0, BODY_LIMIT)), truncated: body.length > BODY_LIMIT }
+  if (typeof FormData === 'function' && body instanceof FormData) {
+    const form = []
+    for (const [field, value] of body.entries()) {
+      form.push(typeof value === 'string'
+        ? { field, value: scrubText(value.slice(0, 200)) }
+        : { field, fileName: value && value.name ? String(value.name) : null, size: value && value.size, type: value && value.type })
+    }
+    return { form }
+  }
+  if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) return { bytes: body.byteLength }
+  return { type: Object.prototype.toString.call(body) }
+}
+
+function recordAllowed(target, init, responsePromise) {
+  if (!RECORD_BODIES || !/^https?:/i.test(String(target)) || isLocalHost(hostOf(target))) return responsePromise
+  recordSeq += 1
+  const seq = recordSeq
+  const body = describeBody(init && init.body)
+  note({ kind: 'allowed-request', via: 'fetch', seq, method: String((init && init.method) || 'GET').toUpperCase(), url: redact(target), host: hostOf(target), body })
+  if (!body || !body.form) return responsePromise
+  return responsePromise.then((response) => {
+    try {
+      response.clone().text().then((text) => note({ kind: 'allowed-response', via: 'fetch', seq, status: response.status, text: scrubText(text.slice(0, 4096)) }), () => {})
+    } catch {
+      // 读不了响应不影响被测 App。
+    }
+    return response
+  })
+}
+
 const layers = []
 
 const realFetch = globalThis.fetch
@@ -125,7 +176,7 @@ if (typeof realFetch === 'function') {
       )
       return Promise.reject(Object.assign(new TypeError('fetch failed (blocked by walkthrough network guard)'), { cause }))
     }
-    return realFetch.call(this, input, init)
+    return recordAllowed(target, init, realFetch.call(this, input, init))
   }
   layers.push('fetch')
 }

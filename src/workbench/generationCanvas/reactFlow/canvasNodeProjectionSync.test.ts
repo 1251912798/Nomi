@@ -19,7 +19,7 @@ function flowNode(id: string, x: number, title = id): GenerationFlowNode {
       readOnly: false,
       primarySelection: false,
       appear: false,
-      focusFlash: false,
+      externalHighlight: null,
     },
     selected: false,
     draggable: true,

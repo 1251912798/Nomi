@@ -31,5 +31,24 @@ export const MCP_VERIFY_REASONS = [
   'timeout',
   'handshake-failed',
   'client-auth-missing',
+  // 本机 HTTP 服务没起来（多为端口被占）：配置和身份都对，但没有服务可连。C-5。
+  'http-not-listening',
 ] as const
 export type McpVerifyReason = (typeof MCP_VERIFY_REASONS)[number]
+
+/**
+ * 一个助手这一次 Nomi 运行里的使用情况（第 4 段）。只存在主进程内存里，Nomi 重启即清零；
+ * 自报名只作展示，身份以签名口令认出的 key 为准。账本在 capabilityCore/mcpUsageRegistry.ts。
+ */
+export type McpClientUsage = {
+  /** 助手自报的名字（initialize 里的 clientInfo.name），只作展示；只有握手能看到它的那条传输才有。 */
+  reportedName: string | null
+  /** 最近一次连上或调用的时间。 */
+  lastSeenAt: number | null
+  /** 最近一次调用的工具（内部名，界面按语言取展示名）与时间。 */
+  lastCall: { tool: string; at: number } | null
+  /** 这次 Nomi 运行里它调用工具的次数（一次调用只算一次）。 */
+  callCount: number
+  /** 此刻还没跑完的调用数。 */
+  inFlight: number
+}

@@ -1,25 +1,20 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  IconBrush,
-  IconCamera,
-  IconCheck,
-  IconPhotoPlus,
-  IconTrash,
-} from '@tabler/icons-react'
+import { IconEye, IconEyeOff, IconTrash } from '@tabler/icons-react'
+import { useStateHistory } from '@mantine/hooks'
 import { cn } from '../../../../utils/cn'
 import { notify } from '../../../../ui/notificationPolicy'
 import { persistNodeImageFile } from '../../adapters/persistNodeImage'
 import { isProjectImportCancellation } from '../../adapters/assetImportAdapter'
 import { withProjectAction, type ProjectExecutionContext } from '../../../project/projectCanvasReadSurface'
-import { COMMON_COLORS, clampBrushSize, getCanvasDimensions, type AspectRatioKey, type ToolKey } from './lib/canvas'
+import { clampBrushSize, getCanvasDimensions, type CanvasDimensions, type AspectRatioKey, type ToolKey } from './lib/canvas'
 import {
   LeaferCanvas,
   type CanvasObjectTarget,
   type CanvasStroke,
   type LeaferCanvasHandle,
 } from './WhiteboardLeaferCanvas'
-import type { WhiteboardInitialImage, WhiteboardResultLibraryItem, WhiteboardState } from './whiteboardTypes'
+import type { WhiteboardInitialImage, WhiteboardInitialImageStatus, WhiteboardResultLibraryItem, WhiteboardState } from './whiteboardTypes'
 import {
   createDefaultWhiteboardState,
   createImageAssetForCanvas,
@@ -27,7 +22,8 @@ import {
   loadImageSize,
   serializeWhiteboardState,
 } from './whiteboardState'
-import { AspectRatioPopover, TOOL_ITEMS, ToolIconButton } from './WhiteboardToolbarControls'
+import { applyTextChanges, createWhiteboardText, type TextMeasure } from './whiteboardTextMetrics'
+import { WhiteboardEditingToolbar } from './WhiteboardEditingToolbar'
 import { WhiteboardLibraryPanel, type WhiteboardLibraryTabKey } from './WhiteboardLibraryPanel'
 import { blobToDataUrl, removeBackgroundBlob } from '../../../../lib/removeBackground'
 import { removeBackgroundFailureMessage, removeBackgroundProgressMessage } from '../localImageOpPhase'
@@ -47,10 +43,18 @@ import {
 
 export type WhiteboardDrawingToolHandle = {
   captureViewportFile: (filename?: string) => Promise<File>
+  initialImageStatus: () => WhiteboardInitialImageStatus
+  isBusy: () => boolean
   getState: () => WhiteboardState
 }
 
 type WhiteboardDrawingToolProps = {
+  onDone?: () => void
+  onAbort?: () => void
+  feedback?: string | null
+  onRasterBaseline?: (state: WhiteboardState) => void
+  onDraftChange?: () => void
+  onBoardDimensionsChange?: (dimensions: CanvasDimensions) => void
   ownerNodeId: string
   initialState?: WhiteboardState
   initialImage?: WhiteboardInitialImage
@@ -86,25 +90,16 @@ function getInitialState(
     : createDefaultWhiteboardState(initialImage?.aspectRatio || '16:9')
 }
 
-function normalizeHexColor(value: string): string {
-  return value.trim().toLowerCase()
-}
-
-function getSwatchForeground(hexColor: string): string {
-  const match = /^#([0-9a-f]{6})$/i.exec(hexColor)
-  if (!match) return '#ffffff'
-  const value = match[1]
-  const red = Number.parseInt(value.slice(0, 2), 16)
-  const green = Number.parseInt(value.slice(2, 4), 16)
-  const blue = Number.parseInt(value.slice(4, 6), 16)
-  const luminance = (red * 299 + green * 587 + blue * 114) / 1000
-  return luminance > 170 ? '#111827' : '#ffffff'
-}
-
 const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, WhiteboardDrawingToolProps>(
   function WhiteboardDrawingTool(
     {
       ownerNodeId,
+      onDone,
+      onAbort,
+      feedback: externalFeedback,
+      onDraftChange,
+      onRasterBaseline,
+      onBoardDimensionsChange,
       initialState,
       initialImage,
       canvasImageItems = [],
@@ -122,11 +117,45 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
       notify({ identity: `whiteboard:${ownerNodeId}`, reason: 'editing', message, level: 'inline', present: setFeedback })
     }, [ownerNodeId])
     const effectiveScreenshotLabel = screenshotLabel ?? t('generationCommon.whiteboard.screenshotAndCreateNode')
+    // Opening a board is for drawing: the first drag draws (0.23.0 behaviour, restored 2026-10-22 after #1189 made it select).
     const [activeTool, setActiveTool] = React.useState<ToolKey>('brush')
     const [selectedColor, setSelectedColor] = React.useState('#2563eb')
     const [brushSize, setBrushSize] = React.useState(10)
-    const [state, setState] = React.useState<WhiteboardState>(() => getInitialState(initialState, initialImage))
+    const [initialDocument] = React.useState(() => ({ state: getInitialState(initialState, initialImage) }))
+    const initialDocumentRef = React.useRef(initialDocument)
+    const snapshotsRef = React.useRef(new Map([[0, initialDocumentRef.current]]))
+    const revisionRef = React.useRef(0)
+    const [revision, history, historyState] = useStateHistory(0)
+    const historySet = history.set
+    const document = snapshotsRef.current.get(revision) ?? initialDocumentRef.current
+    const documentRef = React.useRef(document)
+    documentRef.current = document
+    const storeDocument = React.useCallback((value: typeof document) => {
+      const id = ++revisionRef.current
+      snapshotsRef.current.set(id, value)
+      while (snapshotsRef.current.size > 50) snapshotsRef.current.delete(snapshotsRef.current.keys().next().value!)
+      documentRef.current = value
+      historySet(id)
+    }, [historySet])
+    const [activeLayerId, setActiveLayerId] = React.useState(document.state.activeLayerId)
+    const [liveDimensions, setLiveDimensions] = React.useState<CanvasDimensions | null>(null)
+    const state = React.useMemo(() => ({ ...document.state, activeLayerId }), [document.state, activeLayerId])
+    const setState = React.useCallback((updater: React.SetStateAction<WhiteboardState>) => {
+      const previous = documentRef.current
+      const current = { ...previous.state, sceneTransforms: leaferCanvasRef.current?.getSceneTransforms() ?? previous.state.sceneTransforms }
+      const next = typeof updater === 'function' ? updater(current) : updater
+      setActiveLayerId(next.activeLayerId)
+      if (previous.state === next) return
+      storeDocument({ ...previous, state: next })
+    }, [storeDocument])
+    const [panel, setPanel] = React.useState<import('./WhiteboardEditingToolbar').WhiteboardPanel>(null)
+    const [selectedTargets, setSelectedTargets] = React.useState<CanvasObjectTarget[]>([])
+    const [textSize, setTextSize] = React.useState(32)
+    const frameRef = React.useRef<HTMLDivElement | null>(null)
+    const viewScaleRef = React.useRef<number | null>(null)
     const [activeCanvasObject, setActiveCanvasObject] = React.useState<CanvasObjectTarget | null>(null)
+    const [initialImageStatus, setInitialImageStatus] = React.useState<WhiteboardInitialImageStatus>(initialImage?.url && !initialState ? 'loading' : 'ready')
+    const [initialImportAttempt, setInitialImportAttempt] = React.useState(0)
     const [uploading, setUploading] = React.useState(false)
     const [removeBgBusy, setRemoveBgBusy] = React.useState(false)
     const [removeBgTargetId, setRemoveBgTargetId] = React.useState<string | null>(null)
@@ -140,7 +169,9 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
     const fileInputRef = React.useRef<HTMLInputElement | null>(null)
     const importedInitialImageRef = React.useRef('')
 
-    const canvasDimensions = React.useMemo(() => getCanvasDimensions(state.activeRatio, 1280), [state.activeRatio])
+    const canvasDimensions = React.useMemo(() => liveDimensions ?? state.canvasDimensions ?? getCanvasDimensions(state.activeRatio, 1280), [liveDimensions, state.canvasDimensions, state.activeRatio])
+    const canvasDimensionsRef = React.useRef(canvasDimensions)
+    canvasDimensionsRef.current = canvasDimensions
     const assetPanelItems = React.useMemo(
       () => getAssetPanelItems(state.layers, state.canvasAssets).reverse(),
       [state.canvasAssets, state.layers],
@@ -157,14 +188,18 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
           if (!leaferCanvasRef.current) throw new Error(t('generationCommon.whiteboard.canvasNotReady'))
           return leaferCanvasRef.current.captureViewportFile(filename)
         },
-        getState: () => serializeWhiteboardState(state),
+        initialImageStatus: () => initialImageStatus,
+        isBusy: () => initialImageStatus !== 'ready' || uploading || removeBgBusy,
+        getState: () => serializeWhiteboardState({ ...documentRef.current.state, canvasDimensions, activeLayerId, sceneTransforms: leaferCanvasRef.current?.getSceneTransforms() ?? documentRef.current.state.sceneTransforms }),
       }),
-      [state, t],
+      [canvasDimensions, activeLayerId, initialImageStatus, uploading, removeBgBusy, t],
     )
 
     const setActiveRatio = React.useCallback((activeRatio: AspectRatioKey) => {
-      setState((current) => ({ ...current, activeRatio }))
-    }, [])
+      const dimensions = getCanvasDimensions(activeRatio, canvasDimensions.width)
+      setState((current) => ({ ...current, activeRatio, canvasDimensions: dimensions }))
+      onBoardDimensionsChange?.(dimensions)
+    }, [canvasDimensions.width, onBoardDimensionsChange, setState])
 
     const commitStroke = React.useCallback(
       (stroke: CanvasStroke) => {
@@ -195,7 +230,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
         })
         setActiveCanvasObject({ kind: 'stroke', id: stroke.id })
       },
-      [t],
+      [t, setState],
     )
 
     const addImageToCanvas = React.useCallback(
@@ -203,10 +238,12 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
         project.assertCurrent()
         const imageSize = await loadImageSize(url)
         project.assertCurrent()
+        if (!imageSize) throw new Error(t('generationCommon.whiteboard.imageReadFailed'))
         const { asset, layer } = createImageAssetForCanvas({
           url,
           name: name ?? t('generationCommon.whiteboard.importedImage'),
           ratio: state.activeRatio,
+          dimensions: canvasDimensionsRef.current,
           imageSize,
         })
         setState((current) => ({
@@ -215,24 +252,28 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
           layers: [...current.layers, layer],
           activeLayerId: layer.id,
         }))
-        setActiveCanvasObject({ kind: 'asset', id: asset.id })
-        setActiveTool('select')
+        return asset.id
       },
-      [state.activeRatio, t],
+      [state.activeRatio, t, setState],
     )
 
     React.useEffect(() => {
       if (!initialImage?.url || importedInitialImageRef.current === initialImage.url || initialState) return
       importedInitialImageRef.current = initialImage.url
+      setInitialImageStatus('loading')
       void withProjectAction(async (project) => {
         try {
           await addImageToCanvas(initialImage.url, t('generationCommon.whiteboard.originalImage'), project)
+          project.assertCurrent()
+          onRasterBaseline?.(serializeWhiteboardState(documentRef.current.state))
+          setInitialImageStatus('ready')
         } catch (error) {
           if (project.signal.aborted || isProjectImportCancellation(error)) return
+          setInitialImageStatus('failed')
           reportFeedback(t('generationCommon.whiteboard.importFailed'))
         }
       })
-    }, [addImageToCanvas, initialImage?.url, initialState, reportFeedback, t])
+    }, [initialImportAttempt, onRasterBaseline, addImageToCanvas, initialImage?.url, initialState, reportFeedback, t])
 
     const handleUploadImage = React.useCallback(
       async (file: File | null | undefined) => {
@@ -249,7 +290,10 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
             project.assertCurrent()
             const url = localUrl || (await fileToDataUrl(file, t('generationCommon.whiteboard.imageReadFailed')))
             project.assertCurrent()
-            await addImageToCanvas(url, file.name || t('generationCommon.whiteboard.importedImage'), project)
+            const assetId = await addImageToCanvas(url, file.name || t('generationCommon.whiteboard.importedImage'), project)
+            // A picture the creator imports is picked up for placing; the source image seeded on open is not (the brush stays active).
+            setActiveCanvasObject({ kind: 'asset', id: assetId })
+            setActiveTool('select')
           } catch (error) {
             if (project.signal.aborted || isProjectImportCancellation(error)) return
             reportFeedback(
@@ -265,7 +309,6 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
 
     const handleColorSelect = React.useCallback((color: string) => {
       setSelectedColor(color)
-      setActiveTool('brush')
     }, [])
 
     const toggleLayerVisibility = React.useCallback((layerId: string) => {
@@ -273,10 +316,10 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
         ...current,
         layers: current.layers.map((layer) => (layer.id === layerId ? { ...layer, visible: !layer.visible } : layer)),
       }))
-    }, [])
+    }, [setState])
 
     const selectAssetPanelItem = React.useCallback((item: AssetPanelItem) => {
-      setState((current) => ({ ...current, activeLayerId: item.layerId }))
+      setActiveLayerId(item.layerId)
       setActiveCanvasObject(item.target)
       setActiveTool('select')
     }, [])
@@ -338,7 +381,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
         setActiveCanvasObject({ kind: 'asset', id: assetIdCopy })
         setActiveTool('select')
       },
-      [canvasDimensions.height, canvasDimensions.width, t],
+      [canvasDimensions.height, canvasDimensions.width, t, setState],
     )
 
     const duplicateAssetToCanvasPoint = React.useCallback(
@@ -404,7 +447,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
 
     const groupCanvasObjects = React.useCallback((targets: CanvasObjectTarget[]) => {
       setState((current) => groupTargetsIntoLayer(current, targets))
-    }, [])
+    }, [setState])
 
     const deleteCanvasObject = React.useCallback((target: CanvasObjectTarget) => {
       // 静默 no-op 根治：锁定/背景层删除给明确反馈（此前 deleteTargetFromState 无声吞掉，
@@ -415,7 +458,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
       if (verdict === 'background') { reportFeedback(t('generationCommon.whiteboard.deleteBlockedBackground')); return }
       setState((current) => deleteTargetFromState(current, target))
       setActiveCanvasObject(null)
-    }, [state, t, reportFeedback])
+    }, [state, t, reportFeedback, setState])
 
     const handleScreenshotClick = React.useCallback(() => {
       if (focusResultsOnScreenshot) setActiveLibraryTab('results')
@@ -467,275 +510,145 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
           }
         })
       },
-      [ownerNodeId, removeBgBusy, state.canvasAssets, reportFeedback],
+      [ownerNodeId, removeBgBusy, state.canvasAssets, reportFeedback, setState],
     )
 
+    const selectedText = activeCanvasObject?.kind === 'text' ? state.texts?.find((item) => item.id === activeCanvasObject.id) : undefined
+    const measureText: TextMeasure = (content, fontSize) => leaferCanvasRef.current?.measureText(content, fontSize) ?? null
+    const editText = (changes: Parameters<typeof applyTextChanges>[1]) => {
+      if (!selectedText) return
+      setState((current) => ({ ...current, texts: current.texts?.map((item) => item.id === selectedText.id ? applyTextChanges(item, changes, measureText) : item) }))
+    }
+    const placeText = (point: { x: number; y: number }) => {
+      const id = createWhiteboardId('text')
+      const layerId = createWhiteboardId('text-layer')
+      const text: string = t('generationCommon.whiteboard.textPlaceholder')
+      const created = createWhiteboardText({ id, layerId, text, x: point.x, y: point.y, fontSize: textSize, color: selectedColor }, measureText)
+      if (!created) return
+      setState((current) => ({ ...current, activeLayerId: layerId,
+        texts: [...(current.texts ?? []), created],
+        layers: [...current.layers, { id: layerId, name: text, visible: true, locked: false, opacity: 1, kind: 'text', thumbnail: 'checker' }],
+      }))
+      setActiveCanvasObject({ kind: 'text', id })
+      setActiveTool('select')
+    }
+    const handleDimensionsChange = (dimensions: CanvasDimensions) => {
+      const safe = { width: Math.round(Math.max(64, Math.min(4096, dimensions.width))), height: Math.round(Math.max(64, Math.min(4096, dimensions.height))) }
+      setState((current) => ({ ...current, canvasDimensions: safe }))
+      onBoardDimensionsChange?.(safe)
+    }
+
+    React.useEffect(() => { if (initialImageStatus === 'ready') onDraftChange?.() }, [revision, initialImageStatus, onDraftChange])
+    const canUndo = historyState.current > 0 && snapshotsRef.current.has(historyState.history[historyState.current - 1])
+    const canRedo = historyState.current < historyState.history.length - 1 && snapshotsRef.current.has(historyState.history[historyState.current + 1])
+    const moveHistory = (direction: 'back' | 'forward') => {
+      if (direction === 'back' ? !canUndo : !canRedo) return
+      const target = snapshotsRef.current.get(historyState.history[historyState.current + (direction === 'back' ? -1 : 1)])!
+      setLiveDimensions(null)
+      setActiveLayerId(target.state.activeLayerId)
+      onBoardDimensionsChange?.(target.state.canvasDimensions ?? getCanvasDimensions(target.state.activeRatio, 1280))
+      history[direction]()
+    }
+    React.useLayoutEffect(() => {
+      const frame = frameRef.current
+      if (!frame) return
+      const initialStyle = window.getComputedStyle(frame)
+      const initialBounds = { width: Number.parseFloat(initialStyle.width), height: Number.parseFloat(initialStyle.height) }
+      viewScaleRef.current ??= initialBounds.width / (initialDocumentRef.current.state.canvasDimensions?.width ?? getCanvasDimensions(initialDocumentRef.current.state.activeRatio, 1280).width)
+      let scheduled: number | null = null
+      let commitTimer: ReturnType<typeof setTimeout> | null = null
+      const observer = new ResizeObserver(() => {
+        if (scheduled !== null) cancelAnimationFrame(scheduled)
+        scheduled = requestAnimationFrame(() => {
+          const style = window.getComputedStyle(frame)
+          const bounds = { width: Number.parseFloat(style.width), height: Number.parseFloat(style.height) }
+          const scale = viewScaleRef.current
+          if (!scale || bounds.width < 1 || bounds.height < 1) return
+          const current = documentRef.current.state
+          // A frame within one screen pixel of the document is the same frame: stored node sizes are rounded, and reading the
+          // rounding back as a resize turned an untouched reopen into a 1280x719 board and a new version (2026-10-22).
+          const currentDimensions = current.canvasDimensions
+          if (currentDimensions && Math.abs(bounds.width - currentDimensions.width * scale) < 1 && Math.abs(bounds.height - currentDimensions.height * scale) < 1) return
+          const dimensions = { width: Math.round(bounds.width / scale), height: Math.round(bounds.height / scale) }
+          if (currentDimensions?.width === dimensions.width && currentDimensions?.height === dimensions.height) return
+          setLiveDimensions(dimensions)
+          if (commitTimer !== null) clearTimeout(commitTimer)
+          commitTimer = setTimeout(() => {
+            setState((value) => ({ ...value, canvasDimensions: dimensions }))
+            setLiveDimensions(null)
+          }, 250)
+        })
+      })
+      observer.observe(frame)
+      return () => { observer.disconnect(); if (scheduled !== null) cancelAnimationFrame(scheduled); if (commitTimer !== null) clearTimeout(commitTimer) }
+    }, [setState])
+
+    const panelContent = panel === 'materials' ? (
+      <div className="w-[360px] overflow-hidden">
+        <WhiteboardLibraryPanel compact activeObject={activeCanvasObject} activeTab={activeLibraryTab} assetPanelItems={assetPanelItems}
+          canvasImageItems={canvasImageItems} resultItems={resultItems} onActiveTabChange={setActiveLibraryTab}
+          onAssetDragEnd={() => setAssetDragOver(false)} onAssetDragStart={handleAssetDragStart} onDeleteTarget={deleteCanvasObject}
+          onSelectAsset={selectAssetPanelItem} onToggleLayerVisibility={toggleLayerVisibility} />
+      </div>
+    ) : panel === 'layers' ? (
+      <div className="max-h-[320px] w-[300px] nowheel overflow-y-auto p-1">
+        {[...state.layers].reverse().map((layer) => {
+          const target: CanvasObjectTarget | undefined = layer.kind === 'group' ? { kind: 'group', id: layer.id }
+            : state.canvasAssets.find((item) => item.layerId === layer.id) ? { kind: 'asset', id: state.canvasAssets.find((item) => item.layerId === layer.id)!.id }
+            : state.texts?.find((item) => item.layerId === layer.id) ? { kind: 'text', id: state.texts.find((item) => item.layerId === layer.id)!.id }
+            : state.strokes.find((item) => item.layerId === layer.id && item.tool !== 'eraser') ? { kind: 'stroke', id: state.strokes.find((item) => item.layerId === layer.id && item.tool !== 'eraser')!.id } : undefined
+          return <div key={layer.id} className="flex h-8 items-center gap-1 rounded-nomi-sm px-1 hover:bg-nomi-ink-05">
+            <button type="button" className="min-w-0 flex-1 truncate text-left text-caption" onClick={() => { setActiveLayerId(layer.id); setActiveCanvasObject(target ?? null); setActiveTool('select') }}>{layer.name}</button>
+            <button type="button" className="grid size-7 place-items-center" aria-label={t(layer.visible ? 'generationCommon.whiteboard.library.hide' : 'generationCommon.whiteboard.library.show', { name: layer.name })} onClick={() => toggleLayerVisibility(layer.id)}>{layer.visible ? <IconEye size={15} /> : <IconEyeOff size={15} />}</button>
+            {target && !layer.locked ? <button type="button" className="grid size-7 place-items-center text-nomi-ink-40 hover:text-workbench-danger" aria-label={t('generationCommon.whiteboard.deleteSelected')} onClick={() => deleteCanvasObject(target)}><IconTrash size={15} /></button> : null}
+          </div>
+        })}
+      </div>
+    ) : null
+
     return (
-      <div
-        className={cn(
-          'whiteboard-tool grid h-full min-h-0 w-full overflow-hidden',
-          'bg-nomi-bg text-nomi-ink',
-          '[--accent:var(--nomi-accent)] [--accent-strong:var(--nomi-accent)] [--canvas:var(--nomi-paper)]',
-          '[--danger:var(--workbench-danger)] [--muted:var(--nomi-ink-60)] [--text:var(--nomi-ink)]',
-        )}
-      >
-        <div className="flex h-full min-h-0 w-full overflow-hidden">
-          <section className="grid min-h-0 min-w-0 flex-[1_1_0] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border-r border-nomi-line-soft bg-nomi-ink-05">
-            <header className="flex min-h-[54px] shrink-0 items-center gap-3 border-b border-nomi-line-soft bg-nomi-paper px-4 shadow-nomi-sm">
-              <div className="flex min-w-0 items-center gap-2">
-                <div className="truncate text-title font-semibold text-nomi-ink">
-                  {t('generationCommon.whiteboard.title')}
-                </div>
-                <span className="rounded-full border border-nomi-line bg-nomi-ink-05 px-2.5 py-1 text-caption font-medium tabular-nums text-nomi-ink-60">
-                  {state.activeRatio}
-                </span>
-                {removeBgBusy ? (
-                  <span
-                    className="rounded-full bg-nomi-ink-10 px-2.5 py-1 text-caption font-medium text-nomi-ink-60"
-                    role="status"
-                    aria-label={t('generationCommon.whiteboard.removingBackgroundAria')}
-                    aria-busy="true"
-                    data-testid="whiteboard-remove-bg-status"
-                  >
-                    {removeBgPhase ?? t('generationCommon.whiteboard.removingBackground')}
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="ml-auto flex shrink-0 items-center gap-1">
-                <ToolIconButton
-                  title={effectiveScreenshotLabel}
-                  aria-label={effectiveScreenshotLabel}
-                  disabled={!onScreenshot || screenshotBusy}
-                  onClick={handleScreenshotClick}
-                >
-                  <IconCamera size={17} stroke={1.7} />
-                </ToolIconButton>
-              </div>
-            </header>
-
-            <main
-              className={cn(
-                'relative grid min-h-0 place-items-center overflow-hidden bg-nomi-ink-05 [container-type:size] p-4',
-                assetDragOver &&
-                  'after:pointer-events-none after:absolute after:inset-3 after:rounded-nomi after:border after:border-dashed after:border-nomi-ink-40 after:bg-nomi-accent-soft/40',
-              )}
-              onDragOver={handleCanvasAssetDragOver}
-              onDragLeave={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setAssetDragOver(false)
-              }}
-              onDrop={handleCanvasAssetDrop}
-            >
-              <LeaferCanvas
-                ref={leaferCanvasRef}
-                ratio={state.activeRatio}
-                dimensions={canvasDimensions}
-                fitMode="natural"
-                activeTool={activeTool}
-                activeLayerId={state.activeLayerId}
-                layers={state.layers}
-                assets={state.canvasAssets}
-                color={selectedColor}
-                brushSize={brushSize}
-                strokes={state.strokes}
-                activeObjectTarget={activeCanvasObject}
-                removingBackgroundTargetId={removeBgTargetId}
-                removingBackgroundProgress={removeBgProgress}
-                onStrokeCommit={commitStroke}
-                onLayerSelect={(layerId) => setState((current) => ({ ...current, activeLayerId: layerId }))}
-                onObjectSelect={(target, layerId) => {
-                  setState((current) => ({ ...current, activeLayerId: layerId }))
-                  setActiveCanvasObject(target)
-                }}
-                onObjectsGroup={groupCanvasObjects}
-                onObjectDelete={deleteCanvasObject}
-                onRemoveBackground={handleRemoveBackground}
-              />
-            </main>
-
-            <footer className="shrink-0 border-t border-nomi-line-soft bg-nomi-paper px-3 py-2 shadow-nomi-sm">
-              {feedback ? <p role="status" className="m-0 pb-2 text-caption text-workbench-danger">{feedback}</p> : null}
-              <div className="flex min-h-11 flex-wrap items-center justify-center gap-2">
-                <div className="flex items-center gap-1 rounded-nomi border border-nomi-line bg-nomi-ink-05 p-1">
-                  {TOOL_ITEMS.map((item) => (
-                    <ToolIconButton
-                      key={item.key}
-                      active={activeTool === item.key}
-                      title={t(`generationCommon.whiteboard.${item.labelKey}` as 'generationCommon.whiteboard.brush')}
-                      aria-label={t(
-                        `generationCommon.whiteboard.${item.labelKey}` as 'generationCommon.whiteboard.brush',
-                      )}
-                      disabled={item.disabled}
-                      onClick={() => {
-                        if (!item.disabled) setActiveTool(item.key)
-                      }}
-                    >
-                      {item.icon}
-                    </ToolIconButton>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  className={cn(
-                    'grid size-9 shrink-0 place-items-center rounded-nomi-sm border border-nomi-line bg-nomi-paper text-nomi-ink-60',
-                    'transition-colors hover:bg-nomi-ink-05 hover:text-nomi-ink disabled:cursor-not-allowed disabled:opacity-40',
-                  )}
-                  title={t('generationCommon.whiteboard.importImage')}
-                  aria-label={t('generationCommon.whiteboard.importImage')}
-                  disabled={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <IconPhotoPlus size={17} stroke={1.7} />
-                </button>
-
-                <div className="flex items-center gap-1.5 rounded-nomi border border-nomi-line bg-nomi-ink-05 p-1">
-                  <label
-                    className={cn(
-                      'relative grid size-9 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-nomi-sm border border-nomi-line bg-nomi-paper shadow-nomi-sm',
-                      'transition-colors hover:border-nomi-ink-20 hover:bg-nomi-paper focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-nomi-ink',
-                    )}
-                    title={t('generationCommon.whiteboard.customBrushColor')}
-                    aria-label={t('generationCommon.whiteboard.customBrushColor')}
-                  >
-                    <span
-                      className="pointer-events-none absolute inset-1 rounded-nomi-sm border"
-                      style={{
-                        backgroundColor: selectedColor,
-                        borderColor:
-                          normalizeHexColor(selectedColor) === '#ffffff'
-                            ? 'rgba(17, 24, 39, 0.28)'
-                            : 'rgba(255, 255, 255, 0.28)',
-                      }}
-                      aria-hidden
-                    />
-                    <IconBrush
-                      size={14}
-                      stroke={2}
-                      className="pointer-events-none relative z-[1]"
-                      style={{
-                        color: getSwatchForeground(selectedColor),
-                        filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35))',
-                      }}
-                      aria-hidden
-                    />
-                    <input
-                      className="absolute inset-0 z-[2] h-full w-full cursor-pointer opacity-0"
-                      type="color"
-                      value={selectedColor}
-                      aria-label={t('generationCommon.whiteboard.customBrushColor')}
-                      onChange={(event) => handleColorSelect(event.currentTarget.value)}
-                    />
-                  </label>
-                  <span className="h-7 w-px bg-nomi-line-soft" aria-hidden />
-                  {COMMON_COLORS.map((color) => {
-                    const active = normalizeHexColor(selectedColor) === normalizeHexColor(color)
-                    return (
-                      <button
-                        key={color}
-                        type="button"
-                        className={cn(
-                          'relative grid size-8 shrink-0 place-items-center rounded-full border bg-nomi-paper p-[3px] shadow-nomi-sm transition-transform',
-                          'hover:scale-105 hover:border-nomi-ink-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomi-ink',
-                          active ? 'border-nomi-ink' : 'border-nomi-line-soft',
-                        )}
-                        data-active={active ? 'true' : 'false'}
-                        title={color}
-                        aria-label={t('generationCommon.whiteboard.colorAria', { color })}
-                        aria-pressed={active}
-                        style={{
-                          boxShadow: active
-                            ? '0 0 0 2px var(--nomi-accent), 0 1px 4px rgba(15, 23, 42, 0.16)'
-                            : undefined,
-                        }}
-                        onClick={() => handleColorSelect(color)}
-                      >
-                        <span
-                          className="absolute inset-[3px] rounded-full border"
-                          style={{
-                            backgroundColor: color,
-                            borderColor:
-                              normalizeHexColor(color) === '#ffffff'
-                                ? 'rgba(17, 24, 39, 0.28)'
-                                : 'rgba(255, 255, 255, 0.18)',
-                          }}
-                          aria-hidden
-                        />
-                        {active ? (
-                          <IconCheck
-                            size={15}
-                            stroke={2.5}
-                            className="relative z-[1]"
-                            style={{
-                              color: getSwatchForeground(color),
-                              filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45))',
-                            }}
-                            aria-hidden
-                          />
-                        ) : null}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <label className="flex min-w-[168px] items-center gap-2 rounded-nomi border border-nomi-line bg-nomi-ink-05 px-2.5 py-1.5 text-caption text-nomi-ink-60">
-                  <span className="w-8 shrink-0 tabular-nums">{brushSize}</span>
-                  <input
-                    className="h-5 min-w-0 flex-1 cursor-pointer accent-nomi-accent"
-                    type="range"
-                    min={4}
-                    max={96}
-                    value={brushSize}
-                    onChange={(event) => setBrushSize(clampBrushSize(Number(event.currentTarget.value)))}
-                  />
-                </label>
-
-                <AspectRatioPopover value={state.activeRatio} onChange={setActiveRatio} />
-
-                <button
-                  type="button"
-                  className={cn(
-                    'grid size-9 shrink-0 place-items-center rounded-nomi-sm border border-nomi-line bg-nomi-paper text-nomi-ink-60',
-                    'transition-colors hover:bg-workbench-danger-soft hover:text-workbench-danger disabled:cursor-not-allowed disabled:opacity-40',
-                  )}
-                  title={t('generationCommon.whiteboard.deleteSelected')}
-                  aria-label={t('generationCommon.whiteboard.deleteSelected')}
-                  disabled={!activeCanvasObject}
-                  onClick={() => {
-                    if (activeCanvasObject) deleteCanvasObject(activeCanvasObject)
-                  }}
-                >
-                  <IconTrash size={17} stroke={1.7} />
-                </button>
-              </div>
-            </footer>
-          </section>
-
-          <WhiteboardLibraryPanel
-            activeObject={activeCanvasObject}
-            activeTab={activeLibraryTab}
-            assetPanelItems={assetPanelItems}
-            canvasImageItems={canvasImageItems}
-            resultItems={resultItems}
-            onActiveTabChange={setActiveLibraryTab}
-            onAssetDragEnd={() => setAssetDragOver(false)}
-            onAssetDragStart={handleAssetDragStart}
-            onDeleteTarget={deleteCanvasObject}
-            onSelectAsset={selectAssetPanelItem}
-            onToggleLayerVisibility={toggleLayerVisibility}
-          />
+      <div ref={frameRef} tabIndex={-1} className={cn('whiteboard-tool nodrag nopan nokey nowheel absolute inset-0 overflow-visible text-nomi-ink', screenshotBusy && 'pointer-events-none',
+        '[--accent:var(--nomi-accent)] [--accent-strong:var(--nomi-accent)] [--canvas:var(--nomi-paper)]')}
+        onKeyDownCapture={(event) => {
+          if (screenshotBusy) { event.preventDefault(); event.stopPropagation(); return }
+          if (event.nativeEvent.isComposing || event.keyCode === 229) return
+          const target = event.target as HTMLElement
+          if (event.key === 'Escape' && panel) { event.preventDefault(); event.stopPropagation(); setPanel(null); return }
+          if (target.closest('input,textarea,select,[contenteditable=true]')) { event.stopPropagation(); return }
+          if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.stopPropagation(); moveHistory(event.shiftKey ? 'forward' : 'back'); return }
+          if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (panel) setPanel(null); else if (initialImageStatus === 'failed') onAbort?.(); else if (initialImageStatus === 'ready' && !uploading && !removeBgBusy) onDone?.(); return }
+          if (leaferCanvasRef.current?.handleKeyDown(event.nativeEvent)) { event.preventDefault(); event.stopPropagation() }
+        }}
+        onPointerDownCapture={(event) => { if ((event.target as HTMLElement).closest('[data-whiteboard-stage]')) event.currentTarget.focus({ preventScroll: true }) }}>
+        <div data-whiteboard-stage="true" className={cn('absolute inset-0 overflow-hidden rounded-nomi bg-nomi-paper', assetDragOver && 'ring-2 ring-inset ring-nomi-ink-40', initialImageStatus !== 'ready' && 'pointer-events-none')}
+          onDragOver={handleCanvasAssetDragOver} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setAssetDragOver(false) }} onDrop={handleCanvasAssetDrop}>
+          <LeaferCanvas ref={leaferCanvasRef} ratio={state.activeRatio} dimensions={canvasDimensions} fitMode="inline"
+            activeTool={activeTool} activeLayerId={activeLayerId} layers={state.layers} assets={state.canvasAssets} texts={state.texts}
+            sceneTransforms={state.sceneTransforms} onSceneTransformsChange={(sceneTransforms) => setState((current) => ({ ...current, sceneTransforms }))}
+            onSelectionChange={setSelectedTargets} color={selectedColor} brushSize={brushSize} strokes={state.strokes} activeObjectTarget={activeCanvasObject}
+            removingBackgroundTargetId={removeBgTargetId} removingBackgroundProgress={removeBgProgress} onStrokeCommit={commitStroke}
+            onLayerSelect={setActiveLayerId} onObjectSelect={(target, layerId) => { setActiveLayerId(layerId); setActiveCanvasObject(target) }}
+            onObjectsGroup={groupCanvasObjects} onObjectDelete={deleteCanvasObject} onRemoveBackground={handleRemoveBackground}
+            onTextPlace={placeText} />
         </div>
-        <input
-          ref={fileInputRef}
-          className="hidden"
-          type="file"
-          accept="image/*"
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0]
-            event.currentTarget.value = ''
-            void handleUploadImage(file)
-          }}
-        />
+        {initialImageStatus === 'failed' ? <div role="alert" className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-nomi bg-nomi-paper px-4 text-body-sm">
+          <p className="m-0 text-nomi-ink-60">{t('generationCommon.whiteboard.importFailed')}</p>
+          <div className="flex items-center gap-2">
+            <button type="button" className="rounded-nomi-sm border border-nomi-line px-3 py-1.5 text-nomi-ink" onClick={onAbort}>{t('common.cancel')}</button>
+            <button type="button" className="rounded-nomi-sm bg-nomi-accent px-3 py-1.5 text-nomi-paper" onClick={() => { importedInitialImageRef.current = ''; setFeedback(null); setInitialImageStatus('loading'); setInitialImportAttempt((attempt) => attempt + 1) }}>{t('generationCommon.whiteboard.retryImport')}</button>
+          </div>
+        </div> : null}
+        <WhiteboardEditingToolbar activeTool={activeTool} onToolChange={setActiveTool} color={selectedText?.color ?? selectedColor}
+          onColorChange={(color) => { handleColorSelect(color); if (selectedText) editText({ color }) }} brushSize={brushSize} onBrushSizeChange={(size) => setBrushSize(clampBrushSize(size))}
+          textValue={selectedText?.text} onTextValueChange={(text) => editText({ text })} textSize={selectedText?.fontSize ?? (activeTool === 'text' ? textSize : undefined)} onTextSizeChange={(size) => { setTextSize(size); if (selectedText) editText({ fontSize: size }) }}
+          canUndo={canUndo} canRedo={canRedo} onUndo={() => moveHistory('back')} onRedo={() => moveHistory('forward')}
+          onUpload={() => fileInputRef.current?.click()} uploading={uploading || initialImageStatus !== 'ready'} panel={panel} onPanelChange={setPanel} panelContent={panelContent}
+          selectedTargets={selectedTargets} onFlip={(axis) => leaferCanvasRef.current?.flipSelection(axis)} onGroup={() => leaferCanvasRef.current?.groupSelection()}
+          onDelete={() => leaferCanvasRef.current?.deleteSelection()} onRemoveBackground={() => { if (activeCanvasObject) void handleRemoveBackground(activeCanvasObject) }} removeBgBusy={removeBgBusy}
+          ratio={state.activeRatio} onRatioChange={setActiveRatio} dimensions={canvasDimensions} onDimensionsChange={handleDimensionsChange}
+          onScreenshot={onScreenshot && initialImageStatus === 'ready' ? handleScreenshotClick : undefined} screenshotBusy={screenshotBusy} screenshotLabel={effectiveScreenshotLabel} onDone={() => { if (initialImageStatus === 'ready' && !uploading && !removeBgBusy) onDone?.() }}
+          feedback={externalFeedback ?? feedback ?? (removeBgBusy ? removeBgPhase ?? t('generationCommon.whiteboard.removingBackground') : null)} />
+        <input ref={fileInputRef} className="hidden" type="file" accept="image/*" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void handleUploadImage(file) }} />
       </div>
     )
   },

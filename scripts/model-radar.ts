@@ -489,7 +489,7 @@ export function coverageTokens(vendorKey?: string): Set<string> {
  * 生成端点**的行（提示词增强，POST /v1/videos/generations），它本来就不在 chat 目录里，
  * 拿它比对会天天报一条假的「没列」——几次之后这个 ⚠️ 就没人看了。
  * 判据用代码里已有的不变量（seedBuiltins.test.ts 断言过）：**聊天大脑不挂任何 mapping**
- * （走 buildLanguageModelForVendor 直连 /chat/completions），挂了 mapping 的就不是聊天大脑。
+ * （走 nomiModelConfigFor 直连 /chat/completions），挂了 mapping 的就不是聊天大脑。
  */
 export function seededModelKeys(vendorKey: string, kind: "text"): string[] {
   const state = seededCatalogState();

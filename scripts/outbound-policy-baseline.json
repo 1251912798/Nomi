@@ -1,7 +1,7 @@
 {
   "appFetchImporters": [
     "electron/agentLane/laneDesktopRuntime.ts",
-    "electron/ai/buildAiSdkModel.ts",
+    "electron/ai/modelCallFetch.ts",
     "electron/ai/onboarding/modelListProbe.ts",
     "electron/ai/onboarding/onboardingIpc.ts",
     "electron/assets/localAssetFile.ts",

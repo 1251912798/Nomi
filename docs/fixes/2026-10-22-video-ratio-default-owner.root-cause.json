@@ -1,0 +1,303 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-22-video-ratio-default-owner",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-22",
+  "problem_type": "同一条产品默认值（视频首选 16:9、已连输入全竖 9:16）有两个 owner，其中一个在「打开节点」时改数据",
+  "symptom": "Agent 起草 9:16（或 21:9）的视频镜头：卡上、Agent 路发出都是 9:16；画布节点一点开就变 16:9，在节点上点生成发出的是 16:9（R-d2-defaults #1，真组件挂载 + 真请求体实测 Kling / Veo 9:16→16:9、Seedance 2.5 21:9→16:9）。Agent 没写比例时，节点也被从档案默认（adaptive）改成 16:9",
+  "direct_cause": "NodeParameterControls 的挂载 effect 在挂载 / 换模型 / 输入边变化时按 preferredVideoAspect 写比例，只跳过带 aspect_ratio_user_set（用户手选）的节点，不认 Agent / 分镜写的比例",
+  "class_root": "产品默认值写在组件 effect 里：「打开节点」这个不是改参数的时刻也会触发它；数据来源（用户手建、Agent 落地、分镜、旧项目）有多种，effect 只有一个判据。缺的不变量：默认值只在用户（或 Agent）做选择的手势里铺，且由唯一出处铺；打开节点不改数据",
+  "affected_population": [
+    "用 Agent 起草非 16:9 视频镜头、再在画布节点上生成的创作者（出错片 / 按另一规格扣费）",
+    "全部带比例控件的视频模型（APIMart 9 个视频模型实测；别家同一个 effect）",
+    "旧项目里比例不是 16:9、没有用户手选标记的视频节点（打开即被改）"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/videoAspectSeed.ts",
+    "src/workbench/generationCanvas/nodes/aspectExplicit.ts",
+    "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+    "src/workbench/generationCanvas/nodes/buildNodeModelChangePatch.ts",
+    "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+    "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+    "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+    "src/workbench/generationCanvas/agent/plannedNodeMeta.ts",
+    "src/workbench/creation/storyboard/exec/storyboardProjection.ts",
+    "src/workbench/generationCanvas/adapters/modelOptionsAdapter.ts",
+    "src/workbench/generationCanvas/nodes/aspectRatio.ts",
+    "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+    "electron/shared/canvas/externalCanvasWrite.ts"
+  ],
+  "entry_points": [
+    "选模型：buildNodeModelChangePatch（单节点选择器与批量换模型共用）",
+    "新卡自动选模型：useNodeModelAutoSelect（用户手建的卡第一次拿到模型）",
+    "连线手势：connectToNode（单连 / 多选成组连）、connectToGroup（组连线）、节点进组物化组连线（moveNodeToGroup）、writeCanvasEdge（进程内 Agent 计划 / 3D 站位 / @提及 / 自动引用 / 派生节点）、外部 MCP 连线（项目开着时 connect_canvas_edges / create_canvas_nodes(edges) 经 canvas.apply → applyExternalGraph，过连线总闸收下的新边）——边建上之后都调 deriveTargetAfterConnect",
+    "落地记明确选过：buildPlannedNodeMeta（Agent 落地 / Agent 直写画布 / 分镜换模型）、storyboardProjection（分镜写回）；用户在比例控件上选：NodeParameterControls（档案控件 / 目录控件）",
+    "挂载 effect（删除）"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "「视频首选 16:9、已连输入全竖 9:16」是用户 2026-07-17 拍板的产品规则，判据复用仓库已有的 preferredVideoAspect / videoAspectDefaultPatch；没有第三方库或官方文档决定它",
+  "invariants": [
+    "videoAspectDefaultPatch 与 preferredVideoAspect 只被 videoAspectSeedPatch 调用（唯一出处）",
+    "videoAspectSeedPatch 只在选模型、新卡自动选模型、连线三个手势里调；组件挂载不写比例",
+    "连线时只改没被明确选过（aspect_ratio_user_set）的视频节点，且只在新边属于比例规则会数的输入（首帧 / 尾帧 / 参考，唯一判据 isAspectInputEdgeMode）时重算；断线、删上游、粘贴、模板、恢复、撤销 / 放回不重算",
+    "连线派生口查模型目录与生成框同一个取法（按节点当前生成方式取清单：peekGenerationNodeModelOptions），不另取一份",
+    "连线手势的每一扇入口（单连、多选成组连、组连线、进组物化、writeCanvasEdge、外部 MCP 连线）各有一条测试，删掉对应的 deriveTargetAfterConnect 调用必红",
+    "「明确选过」标记的每个写口（比例控件档案 / 目录两处、Agent 落地、分镜写回）各有一条测试；Agent / 分镜写口按控件语义（aspectRatioControlKey）判哪个键是比例，不按键名"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/buildNodeModelChangePatch.ts",
+      "symbol": "videoAspectSeedPatch"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+      "symbol": "videoAspectSeedPatch"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "videoAspectSeedPatch"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/videoAspectSeed.ts",
+      "symbol": "videoAspectDefaultPatch"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "symbol": "deriveTargetAfterConnect"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+      "symbol": "deriveTargetAfterConnect"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/aspectExplicit.ts",
+      "symbol": "ASPECT_EXPLICIT_META_KEY"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "ASPECT_EXPLICIT_META_KEY"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/agent/plannedNodeMeta.ts",
+      "symbol": "ASPECT_EXPLICIT_META_KEY"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/exec/storyboardProjection.ts",
+      "symbol": "ASPECT_EXPLICIT_META_KEY"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/videoAspectSeed.ts",
+      "symbol": "ASPECT_EXPLICIT_META_KEY"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "peekGenerationNodeModelOptions"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "isAspectInputEdgeMode"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/canvas/externalCanvasWrite.ts",
+      "symbol": "onAdmittedEdges"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/aspectRatio.ts",
+      "symbol": "isAspectInputEdgeMode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/adapters/modelOptionsAdapter.ts",
+      "symbol": "requiredModeForGenerationNode"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 16,
+    "why_not": "比例默认值的规则出处从 2 处（buildNodeModelChangePatch 内联、NodeParameterControls 挂载 effect 内联，各算一遍 preferredVideoAspect + videoAspectDefaultPatch）收成 1 处（videoAspectSeed.ts 调 videoAspectDefaultPatch 的那一扇），挂载 effect 那一扇删除。其余门各有必须存在的理由：videoAspectSeedPatch 的三扇是三个手势（选模型重铺全部默认值、新卡第一次拿到模型、连线按新输入铺——用户 2026-10-22 Q2 拍板）；canvasGraphActions 的 deriveTargetAfterConnect 是连线手势所有入口共用的那一个派生口（原来就有的 autoPromoteTargetModeForEdge 换成它）；「明确选过」标记的键只在 aspectExplicit.ts 定义一次，写它的三处是三种「做了选择」的来源（用户在比例控件上选、Agent / 分镜落地 buildPlannedNodeMeta、分镜写回 storyboardProjection），读它的只有 videoAspectSeed。第 2 轮（V-ratio 条件）新增的门都不是第二个出处：deriveTargetAfterConnect 多了 canvasDocumentCommit 一扇（外部 MCP 连线进来的新边，口径同进程内 Agent 连线，协调 10-23 裁定，调用的仍是同一个函数）；peekGenerationNodeModelOptions / isAspectInputEdgeMode 是派生口的两个读（模型清单取法与生成框同一个——requiredModeForGenerationNode 本来就有生成框等 3 处在用，这里是第 4 处同步版；「哪种边算输入」与比例采集同一个判据，各自只有一个定义）；onAdmittedEdges 是外部写合并函数报出「真正连了线的边」的回调（盘上外部写不传）"
+  },
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/videoAspectSeed.ts",
+    "tests": [
+      "src/workbench/generationCanvas/nodes/composerKeepsAspect.test.tsx",
+      "src/workbench/generationCanvas/store/canvasConnectVideoAspect.test.ts",
+      "src/workbench/generationCanvas/nodes/composerMountBudget.test.tsx"
+    ],
+    "why": "规则只在 videoAspectSeedPatch；三个手势只调它，挂载不调。tests 是这一层的类级与回归测试（真组件挂载 + store 连线手势），改动这条不变量必先让它们红。"
+  },
+  "generality_proof": "不按模型或数据来源修：删掉「打开节点」这个触发点本身，任何来源（用户手建、Agent 落地、Agent 直写画布、分镜、旧项目）的节点打开都不再被改；默认值只剩一个出处，三个手势都调它，连线手势的所有入口（单连、成组连、组连线、进组物化、Agent 计划、派生节点）在边建上之后共用 deriveTargetAfterConnect 一个口，不是逐个入口加判断；第 2 轮把「连线」补成真正的每一扇入口：外部 MCP 连线（项目开着）也走同一个口，连线查模型目录与生成框同一个取法，新边种类与比例采集同一个判据，标记写口各有测试",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/videoAspectSeed.ts",
+      "symbol": "videoAspectSeedPatch",
+      "responsibility": "视频比例产品默认值的唯一出处：读输入比例算首选、对得上模型的比例档才写、连线时让明确选过的"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "deriveTargetAfterConnect",
+      "responsibility": "连线手势建上边之后目标节点跟着变的唯一一处（切生成方式 + 铺视频比例默认值），history:false 与连线同一个撤销步"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "entry_point": "挂载 effect（连边联动）",
+      "disposition": "enforced",
+      "evidence": "删除；composerKeepsAspect.test.tsx 修前 5 格红、修后全绿"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "entry_point": "connectToNode 单连",
+      "disposition": "enforced",
+      "evidence": "边建上之后调 deriveTargetAfterConnect；canvasConnectVideoAspect.test.ts 连竖图 → 9:16 / 一次 ⌘Z 全撤；删调用 4 格红"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "entry_point": "connectToNode 多选成组连",
+      "disposition": "enforced",
+      "evidence": "canvasConnectVideoAspect.test.ts「多选成组连」格；删掉这处调用 1 格红（V-ratio 测得改前整套 501 文件 5514 格全绿）"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "entry_point": "connectToGroup",
+      "disposition": "enforced",
+      "evidence": "组连线边建上之后调 deriveTargetAfterConnect；canvasConnectVideoAspect.test.ts 组连线格；删调用 1 格红"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "entry_point": "moveNodeToGroup",
+      "disposition": "enforced",
+      "evidence": "canvasConnectVideoAspect.test.ts「节点进组物化组连线」格；删掉这处调用 1 格红（V-ratio 测得改前整套 501 文件 5514 格全绿）"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "entry_point": "writeCanvasEdge（进程内 Agent 计划 / 3D 站位 / @提及 / 自动引用 / 派生节点）",
+      "disposition": "enforced",
+      "evidence": "canvasConnectVideoAspect.test.ts「store.connectNodes（不带 mode）」格，传落库后的 mode；删调用 1 格红、传请求 mode 1 格红（V-ratio 测得改前整套 501 文件 5514 格全绿）"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+      "entry_point": "applyExternalGraph（外部 MCP 连线，项目开着）",
+      "disposition": "enforced",
+      "evidence": "协调 10-23 裁定外部 MCP 连线算连线手势，口径同进程内 Agent：mergeExternalCanvasWrite.onAdmittedEdges 报出过总闸的新边，commit 对它们各调一次 deriveTargetAfterConnect，撤销沿用 applyExternalGraph 的一个撤销步；canvasConnectVideoAspect.test.ts「外部 MCP 连线」3 格 + externalCanvasWrite.test.ts 4 格；删 derive 循环 1 格红，把放回的边也报出来 4 格红"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+      "entry_point": "restoreSnapshot / 撤销 / 重做 / 放回（restoreGraph、restoreNodeFields）",
+      "disposition": "not-affected",
+      "evidence": "整图提交或重放已记录的结果，不是连线手势，不重算；放回的边（restoredEdgeIds）测试钉住不重算"
+    },
+    {
+      "path": "electron/capabilityCore/gateway.ts",
+      "entry_point": "writeDiskSnapshot（项目没打开，主进程直接写盘的外部连线）",
+      "disposition": "not-affected",
+      "evidence": "本次不做：主进程读不到渲染端的模型目录缓存，也没有手势。打开项目后生成框显示的就是会发的比例（挂载不改数据），不会「显示 ≠ 发出」，只是 07-17 规则在这条路上不生效；已写进 residual_risks，交协调立账"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasEdgeWrite.ts",
+      "entry_point": "appendAdmittedEdges",
+      "disposition": "not-affected",
+      "evidence": "粘贴 / 拖动复制 / 组复制 / 模板实例化带着节点自己的 meta 进来，不是连线手势（协调 10-22 拍板：不重算）"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "entry_point": "用户在比例控件上选（档案控件 / 目录控件）写明确选过标记",
+      "disposition": "enforced",
+      "evidence": "composerKeepsAspect.test.tsx 两格（真组件交给底栏的回调选 9:16，再连横图不被改）；删档案控件写口 1 格红、删目录控件写口 1 格红（V-ratio 测得改前整套 501 文件 5514 格全绿）"
+    },
+    {
+      "path": "src/workbench/creation/storyboard/exec/storyboardProjection.ts",
+      "entry_point": "分镜写回写明确选过标记",
+      "disposition": "enforced",
+      "evidence": "storyboardProjection.test.ts 4 格（整片默认 / 行覆盖 / 没定画幅 / 只写清晰度不记）；删写口 2 格红，退回按键名判 1 格红（V-ratio 测得改前整套 501 文件 5514 格全绿）"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/plannedNodeMeta.ts",
+      "entry_point": "buildPlannedNodeMeta 落地写明确选过标记",
+      "disposition": "enforced",
+      "evidence": "plannedNodeMeta.test.ts 6 格（按控件语义判，Agnes Video 2.5 只写清晰度 size 不记）；删写口 4 格红，退回按键名判 1 格红"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "任何新的节点来源（外部 Agent、模板、D2 的聊天元素）都会被挂载 effect 按它自己的判据改写；只要「打开节点」还能写数据，这一类就会换个来源回来",
+    "same_class_scan": [
+      "node scripts/door-map.mjs videoAspectDefaultPatch / preferredVideoAspect：改前各 2 扇（buildNodeModelChangePatch、NodeParameterControls），改后各 1 扇（videoAspectSeed.ts）",
+      "node scripts/door-map.mjs autoPromoteTargetModeForEdge：5 处调用全在 canvasGraphActions.ts（单连、成组连、组连线、进组物化、writeCanvasEdge），全部换成 deriveTargetAfterConnect",
+      "git grep aspect_ratio_user_set：读写点逐一核过（比例控件两处、挂载 effect 一处已删），键名收进 aspectExplicit.ts",
+      "node scripts/door-map.mjs deriveTargetAfterConnect（第 2 轮）：2 个文件 6 处调用（canvasGraphActions 5 处、canvasDocumentCommit 1 处），每一处各有一条测试，删掉任一处必红（变异红格见设计卡「变异复核」）",
+      "node scripts/door-map.mjs ASPECT_RATIO_KEY_SET（第 2 轮）：Agent 落地和分镜写回两处按键名判标记的已删，改按控件语义；只剩 NodeParameterControls 用户选比例那两处（改前就有，见 residual_risks）"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/videoAspectSeed.ts",
+    "invariant": "视频比例默认值只由 videoAspectSeedPatch 算，只在选模型 / 新卡自动选模型 / 连线手势里调；组件挂载不写比例",
+    "failure_mode": "打开节点、断线、删上游、粘贴、模板、恢复都不改比例；连线时节点明确选过比例则不改；模型没有对应的比例档则不改（不猜）",
+    "exception_policy": "none",
+    "strategy": "删掉挂载 effect（「打开节点」从触发点里消失，结构上做不出来）；默认值规则收成一个出处，连线派生收成一个口；落地记明确选过",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/videoAspectSeed.ts",
+      "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "src/workbench/generationCanvas/agent/plannedNodeMeta.ts",
+      "src/workbench/generationCanvas/adapters/modelOptionsAdapter.ts",
+      "src/workbench/generationCanvas/nodes/aspectRatio.ts",
+      "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+      "electron/shared/canvas/externalCanvasWrite.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/composerKeepsAspect.test.tsx",
+    "src/workbench/generationCanvas/store/canvasConnectVideoAspect.test.ts",
+    "tests/ux/_ratioVariantWire.test.mjs",
+    "src/workbench/generationCanvas/nodes/aspectRatio.test.ts",
+    "src/workbench/generationCanvas/agent/plannedNodeMeta.test.ts",
+    "src/workbench/creation/storyboard/exec/storyboardProjection.test.ts",
+    "electron/shared/canvas/externalCanvasWrite.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/nodes/composerKeepsAspect.test.tsx",
+    "src/workbench/generationCanvas/store/canvasConnectVideoAspect.test.ts",
+    "electron/shared/canvas/externalCanvasWrite.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "src/workbench/generationCanvas/store/canvasGraphActions.ts"
+    ],
+    "rationale": "NodeParameterControls 的比例挂载 effect 删除；canvasGraphActions 里的 autoPromoteTargetModeForEdge 搬进 canvasConnectDerivations（与比例派生同一个口），旧处删除"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及第三方运行时",
+    "exit_criteria": []
+  },
+  "migration": "不迁移存量节点：比例值原样保留（以前打开会被改，现在不改）；旧项目没有「明确选过」标记的节点，连线时照常按输入铺默认，与改前连线行为一致",
+  "residual_risks": [
+    "Agent 没写比例时落地是档案默认（如 adaptive），不是 07-17 的 16:9——用户 10-22 Q1 拍板为保持节点 = 卡 = Agent 路三处一致；D2 节点成唯一数据源时再统一",
+    "断线 / 删上游不再回头改比例（用户 10-22 Q2 拍板接受）",
+    "连线派生读的是同步模型目录缓存；目录还没载入时不改比例（不猜）",
+    "比例规则只认首帧 / 尾帧 / 参考三种输入边（2026-07-17 原样）：Seedance 2.0 全能参考连进来的是角色参考边，不触发 9:16——与改前相同",
+    "真付费未跑：脚本 tests/ux/agent-ratio-variant-landing.paid.mjs 已写，由协调跑",
+    "项目没打开、主进程直接写盘（gateway.writeDiskSnapshot）的外部连线不重算：打开项目后生成框显示的就是会发的比例（挂载不改数据），不会「显示 ≠ 发出」，只是 07-17 规则在这条路上不生效；协调 10-23 裁定本次只做项目开着的那条路，盘上这条交协调立账",
+    "比例档是像素串的模型（Runway 家：Gen-4 Turbo、Runway 上的 Seedance 2 / Veo 3.1 等）：07-17 规则的等价档判据是 W:H 字符串相等，对不上 `720:1280`，规则对它们从来没生效（改前挂载 effect 同样）；是否让规则按数值比认像素串档会同时改选模型 / 新卡的行为，不在本 PR，待拍板",
+    "用户在比例控件上选「清晰度」（如 Agnes Video 2.5 的 `size`）时，NodeParameterControls.handleParameterControlChange 按键名把 aspect_ratio 写成 null 并记明确选过——改前就有（本 PR 只把裸字符串换成 ASPECT_EXPLICIT_META_KEY），第 2 轮真组件复现确认，未在本 PR 修，待立账"
+  ]
+}

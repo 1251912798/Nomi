@@ -60,6 +60,7 @@ import {
 import { parseVendorErrorFromMessage } from './vendorErrorIpc'
 import { collectLocalAssetUrls } from '../../../../electron/catalog/assetLocalization'
 import { readParameterReferenceContract } from '../../../../electron/catalog/parameterReferenceContract'
+import { GENERIC_REFERENCE_KEYS } from '../../../../electron/shared/modelArchetypes/referenceKeys'
 import { isTerminalTaskStatus } from '../../../../electron/shared/taskStatus'
 
 // 重导出：实现已拆到 catalogTaskResolve（节点→vendor/model/kind 选择）与
@@ -72,24 +73,16 @@ export { normalizeCatalogTaskResult } from './catalogTaskResultParse'
 // 短于此 = 网络抖动，免费重试查询；长于此 = 上游/网络持续不可达，没必要干等到硬超时(视频 20min)空耗。
 const POLL_FAILURE_GRACE_MS = 45000
 
-// 走流式文本通道的 kind(与 catalogTaskResultParse 的 TEXT_TASK_KINDS 同语义)。
+// 文本 kind(与 catalogTaskResultParse 的 TEXT_TASK_KINDS 同语义):一律走文本流式门(nomi:tasks:text:*)。
+// 画布文本不进 Run、不要授权(paidNodeLedger):走哪扇门只看 kind,不看调用方要不要逐字——
+// 2026-10-21 之前「没给 onTextDelta 就走一次性 nomi:tasks:run」,改写选区因此撞上令牌付费闸、每次都失败。
 const TEXT_STREAM_KINDS = new Set<TaskKind>(['chat', 'prompt_refine', 'image_to_prompt'])
 
 // Imported Comfy media inputs are exact keyed parameters. Unique-slot uploads
 // still persist these generic aliases for old projects/non-Comfy consumers, but
 // none of them may cross the Comfy request boundary and become a second wire.
 // A declared slot key always wins even if it happens to share a legacy name.
-const COMFY_PARAMETER_GENERIC_REFERENCE_KEYS = new Set([
-  'image', 'image_url', 'imageUrl',
-  'referenceImages', 'referenceImageUrl', 'referenceImageUrls', 'referenceImageRef', 'referenceImageRefs',
-  'reference_images', 'reference_image_urls',
-  'firstFrameUrl', 'firstFrameRef', 'firstFrameReference', 'first_frame_url',
-  'lastFrameUrl', 'lastFrameRef', 'lastFrameReference', 'last_frame_url',
-  'referenceVideoUrls', 'reference_video_urls', 'sourceVideoUrl', 'source_video_url', 'video_url',
-  'referenceAudioUrls', 'reference_audio_urls',
-  'styleReferenceImages', 'characterReferenceImages', 'compositionReferenceImages',
-  'upstreamResultUrls', 'archetypeInput', 'activeAssetUrls',
-])
+const COMFY_PARAMETER_GENERIC_REFERENCE_KEYS = new Set([...GENERIC_REFERENCE_KEYS, 'archetypeInput', 'activeAssetUrls'])
 
 function comfyParameterContract(meta: Record<string, unknown>) {
   const contract = readParameterReferenceContract(meta)
@@ -236,30 +229,53 @@ function buildReferenceExtras(
     // M2 互斥同样约束标准面：首/尾帧只在**当前模式声明了对应槽**时才带（活边优先、meta 兜底），
     // 否则「首帧模式残留尾帧」的 §2 坑2 会从标准键复活（kie 同名 token 渲进 body）。
     const mode = currentArchetypeMode(archetype, meta)
-    const modeHasFirst = (mode.slots || []).some((slot) => slot.kind === 'first_frame')
-    const modeHasLast = (mode.slots || []).some((slot) => slot.kind === 'last_frame')
-    const firstFrameUrl = modeHasFirst
+    const declared = new Set((mode.slots || []).map((slot) => slot.kind))
+    const firstFrameUrl = declared.has('first_frame')
       ? asTrimmedString(references.firstFrameUrl) || asTrimmedString(meta.firstFrameUrl)
       : ''
-    const lastFrameUrl = modeHasLast
+    const lastFrameUrl = declared.has('last_frame')
       ? asTrimmedString(references.lastFrameUrl) || asTrimmedString(meta.lastFrameUrl)
       : ''
-    // 档案图槽的上传住 meta.referenceImageUrls（ARRAY_SLOT_ROUTE.image_ref.metaKey）——它同样必须进
-    // 标准面，否则中转 multipart 的 params.reference_images 恒空、0 张图被诚实抛（走查 B 段抓出的
-    // 第二个吞点）。同样按当前模式门控（声明了 image_ref 槽才带，防 t2i 残留复活进 chat 回退 body）。
-    const modeHasImageArray = (mode.slots || []).some((slot) => slot.kind === 'image_ref')
-    const standardReferenceImages = uniqueStrings([
-      ...referenceImages,
-      ...(modeHasImageArray ? readStringArray(meta.referenceImageUrls) : []),
-    ])
+    const sourceVideoUrl = declared.has('source_video')
+      ? asTrimmedString(references.referenceVideos?.[0]) || asTrimmedString(meta.sourceVideoUrl)
+      : ''
+    // 数组参考（图 / 视频 / 音频）的标准面 = archetypeInput 那几个数组槽**同一份**有序列表（连线在前、上传在后、
+    // 截到槽上限，orderedSentMediaReferenceUrls 单源）。当前方式没有这种槽 → 空 → 下面整键置 undefined。
+    // 档案图槽的上传住 meta.referenceImageUrls——它同样必须进标准面，否则中转 multipart 的
+    // params.reference_images 恒空（走查 B 段抓出的第二个吞点）。
+    const sent: Record<'image' | 'video' | 'audio', string[]> = { image: [], video: [], audio: [] }
+    for (const ref of orderedSentMediaReferenceUrls(meta, archetype, {
+      image: referenceImages,
+      video: references.referenceVideos || [],
+      audio: references.referenceAudios || [],
+    })) sent[ref.kind].push(ref.url)
+    const within = (values: unknown, allowed: readonly string[]) => {
+      const kept = uniqueStrings(readStringArray(values).filter((url) => allowed.includes(url)))
+      return kept.length ? kept : undefined
+    }
+    // 界面标的 = 发出去的（2026-10-22 线上错花钱热修）：节点 meta 会带着别的方式 / 旧工程 / MCP metadata 留下的
+    // 参考键，而 buildCatalogTaskRequest 先整包 `...meta`。所以这里对**通用参考键全集**先一律置 undefined、
+    // 再只填当前方式声明了的那几项——漏写的键默认是「不发」，不是「原样带出去」。
+    // 显式参数参考槽（参数契约声明的键）是另一条通道，不在这里清。
+    const declaredParameterKeys = new Set(Object.keys(parameterInputs))
+    const cleared = Object.fromEntries([...GENERIC_REFERENCE_KEYS]
+      .filter((key) => !declaredParameterKeys.has(key))
+      .map((key) => [key, undefined]))
     const derived = {
-      ...(standardReferenceImages.length ? { referenceImages: standardReferenceImages } : {}),
-      ...(firstFrameUrl ? { firstFrameUrl } : {}),
-      ...(lastFrameUrl ? { lastFrameUrl } : {}),
+      ...cleared,
+      // 上传白名单由 buildCatalogTaskRequest 按清过的 extras 重算；meta 里若躺着旧的一份，不许它顶替。
+      activeAssetUrls: undefined,
+      referenceImages: sent.image.length ? sent.image : undefined,
+      referenceImageUrls: within(meta.referenceImageUrls, sent.image),
+      referenceVideoUrls: within(meta.referenceVideoUrls, sent.video),
+      referenceAudioUrls: within(meta.referenceAudioUrls, sent.audio),
+      firstFrameUrl: firstFrameUrl || undefined,
+      lastFrameUrl: lastFrameUrl || undefined,
+      sourceVideoUrl: sourceVideoUrl || undefined,
       archetypeInput,
-      ...(styleReferenceImages.length ? { styleReferenceImages } : {}),
-      ...(characterReferenceImages.length ? { characterReferenceImages } : {}),
-      ...(compositionReferenceImages.length ? { compositionReferenceImages } : {}),
+      styleReferenceImages: within(styleReferenceImages, sent.image),
+      characterReferenceImages: within(characterReferenceImages, sent.image),
+      compositionReferenceImages: within(compositionReferenceImages, sent.image),
     }
     return exactComfyParameters ? { ...derived, ...parameterInputs } : { ...parameterInputs, ...derived }
   }
@@ -553,10 +569,10 @@ async function runCatalogGenerationTaskWithFeedback(
   }
   const { vendor, request } = buildCatalogTaskRequest(executableNode, currentOptions)
 
-  // 文本任务 + 调用方要逐字 → 走流式通道:逐 token 回调 onTextDelta,终态直接返回
-  // (文本无轮询,流 resolve 即 succeeded),不走下面的 runTask + 轮询。runTask 覆盖项
+  // 文本任务 → 走流式通道:逐 token 回调 onTextDelta(调用方要显示才给;改写选区不给、完成后一次性替换),
+  // 终态直接返回(文本无轮询,流 resolve 即 succeeded),不走下面的 runTask + 轮询。runTask 覆盖项
   // (测试注入)优先,保持单测可控。
-  if (options.onTextDelta && TEXT_STREAM_KINDS.has(request.kind) && !options.runTask) {
+  if (TEXT_STREAM_KINDS.has(request.kind) && !options.runTask) {
     const runTextStream = options.runTextStream || runWorkbenchTextTaskStream
     const onTextDelta = options.onTextDelta
     report('requesting')
@@ -569,7 +585,7 @@ async function runCatalogGenerationTaskWithFeedback(
       streamed = await awaitWithinPhase(runTextStream(vendor, request, projectId, {
         onDelta: (delta) => {
           clock.heartbeat()
-          onTextDelta(delta)
+          onTextDelta?.(delta)
         },
         signal: abort.signal,
       }), guard)

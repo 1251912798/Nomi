@@ -1,0 +1,30 @@
+{
+  "id": "workbench-switch-canvas-list",
+  "feature": "生成页顶栏的视图切换钮：画布 → 列表 → 画布，每一下「点击 → 那一面到位再过两帧」，主数取两向里慢的那一向",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "L",
+    "--scenarios",
+    "switch-canvas-list",
+    "--warmup",
+    "1"
+  ],
+  "scale": "96 图 + 96 视频节点（列表里约 190 行）",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 100,
+  "group": "⑤ 画布和列表互切",
+  "budgetStatus": "approved",
+  "budgetBasis": "人对「点了有反应」的感知阈值约 100ms（RAIL / Nielsen：100ms 内觉得是即时的，100–300ms 能察觉到慢）；仓库默认预算「操作到可见反馈 ≤100ms」（docs/engineering/perf-scenarios.md）",
+  "baseline": {
+    "median": 53.3,
+    "p95": 55.2,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
+}

@@ -311,6 +311,7 @@ export const zhGenerationCommon = {
     action: {
       reconcile: { main: '在任务中心查看', alt: '先在任务中心查看' },
       viewTask: { main: '查看制作任务', alt: '去看制作任务' },
+      openRecoverable: { main: '去重新取回', alt: '去重新取回' },
       releaseRegenerate: { main: '我核对过了，重新生成', alt: '我核对过了，重新生成' },
       retry: { main: '重试', alt: '仍要重试' },
       switchModel: { main: '换个模型', alt: '换个模型' },
@@ -450,6 +451,12 @@ export const zhGenerationCommon = {
       outputRetrievalFailed: {
         reason: '已经生成，但结果没能取回到本机',
         hint: '服务商那边这一镜已经做完了，是 Nomi 把结果下载回项目这一步没成（地址不让访问、对方拒绝了下载，或者返回的不是能用的文件）。不要重新生成，那会另做一份新的。到任务面板点「重新取回」，Nomi 只会再查一次、再下载一次。具体原因见下方技术详情。',
+      },
+      // 已提交、这次没取回（⑬）：查结果 / 读结果 / 下载结果这一次没成，不知道服务商那边做完没有——不说「已经生成」。
+      // 只给「去任务面板重新取回」，绝不给重试：重试 = 再生成一份新的。
+      retrievalIncomplete: {
+        reason: '任务已提交，这次没能取回结果',
+        hint: '这一镜已经交给服务商了，是 Nomi 这一次查结果、读结果或下载结果没成（常见原因：本机网络或代理一时不通、服务商的查询接口报错）。不要重新生成，那会另做一份新的。点「重新取回」，Nomi 只会再查一次、再下载一次。具体原因见下方技术详情。',
       },
       // 本机处理失败（截帧 / 提取深度 / 本地素材复制）：没有服务商、没有模型参与——不说「换模型」，只留重试。
       localProcessing: {
@@ -904,6 +911,20 @@ export const zhGenerationCommon = {
     dropToAddReference: '松手添加为参考',
   },
   whiteboard: {
+    operationInProgress: '当前操作完成后即可保存',
+    text: '文字',
+    materials: '素材',
+    layers: '图层',
+    undo: '撤销',
+    redo: '重做',
+    width: '宽',
+    height: '高',
+    canvasSize: '画板尺寸',
+    fontSize: '字号',
+    textPlaceholder: '输入文字',
+    capture: '保存快照',
+    brushSize: '画笔粗细',
+
     imageReadFailed: '图片读取失败',
     screenshotAndCreateNode: '截图并创建图片节点',
     canvasNotReady: '画布还未准备好',
@@ -912,6 +933,7 @@ export const zhGenerationCommon = {
     originalImage: '原图',
     selectImageFile: '请选择图片文件',
     importFailed: '导入图片失败',
+    retryImport: '重新导入',
     asset: '素材',
     copyName: '{{name}} 副本',
     resultImage: '结果图片',
@@ -943,6 +965,7 @@ export const zhGenerationCommon = {
     close: '关闭',
     closeAria: '关闭画板',
     done: '完成',
+    doneSaving: '保存中…',
     doneAria: '完成并保存画板',
     savePrimary: '保存为主图',
     imageResult: '图片结果',
@@ -1636,6 +1659,7 @@ export const zhGenerationCommon = {
         planNotSubmitted: '这份方案还没开拍，先在 Agent 面板里确认生成。',
         ledgerWriteFailed: '没能把这一步写进项目记录（磁盘满了，或项目文件夹不能写入），这次没做成。腾出空间或检查权限后再点一次。',
         canvasLandingFailed: '这一镜没放到画布上，没有发出生成请求。再点一次重试。',
+        parameterRejected: '这一镜有个参数没通过核对，没有发出生成请求。改掉它再点一次，或让 Nomi 重新起草。',
         nothingToResume: '这一批没有可以继续发出的镜头：剩下没完成的那几镜，节点已经从画布上删掉、已经在画布上直接生成，或者已经失败、要在那一镜上单独重做。这次没有发出生成请求。',
         internalError: '这是 Nomi 自己的问题：这一步没做成，错误已记进日志。可以从「反馈与分享」把它发给我们。',
       },
@@ -1682,6 +1706,7 @@ export const zhGenerationCommon = {
     otherProjectTask: '无法在这里找回：这条任务属于另一个项目，请回到发起它的项目里重新拉取。',
     retrievingResult: '正在重新拉取结果…',
     stillUpstream: '任务仍在上游进行，请稍后再次拉取。',
+    timedOut: '取回卡在「等待结果」这一步：等到上限还没有结果（任务号 {{taskId}}）。',
   },
   // 生成的某一步等不到回音、到点收场时的说法（runner/generationPhaseDeadline）。每句都说清钱在哪、下一步是什么。
   phaseDeadline: {
@@ -2012,6 +2037,7 @@ export const enGenerationCommon = {
     action: {
       reconcile: { main: 'View in task center', alt: 'View in task center first' },
       viewTask: { main: 'View production task', alt: 'Open task center' },
+      openRecoverable: { main: 'Retrieve again', alt: 'Retrieve again' },
       releaseRegenerate: { main: "I've checked, generate again", alt: "I've checked, generate again" },
       retry: { main: 'Retry', alt: 'Retry anyway' },
       switchModel: { main: 'Switch model', alt: 'Switch model' },
@@ -2149,6 +2175,10 @@ export const enGenerationCommon = {
       outputRetrievalFailed: {
         reason: 'Generated, but the result could not be retrieved',
         hint: 'The provider finished this shot; the step that failed is Nomi downloading the result into your project (the address was not allowed, the download was refused, or what came back was not a usable file). Do not generate again — that makes a brand-new one. Open the task panel and click “Retrieve again”: Nomi only checks the task and downloads it once more. The technical details below give the exact reason.',
+      },
+      retrievalIncomplete: {
+        reason: 'Submitted, but the result could not be retrieved this time',
+        hint: 'This shot was already handed to the provider; what failed is Nomi checking the task, reading its result or downloading it this time (usually the local network or proxy dropped for a moment, or the provider’s status endpoint returned an error). Do not generate again — that makes a brand-new one. Use “Retrieve again”: Nomi only checks the task and downloads it once more. The technical details below give the exact reason.',
       },
       localProcessing: {
         reason: 'Local processing failed',
@@ -2577,6 +2607,20 @@ export const enGenerationCommon = {
     dropToAddReference: 'Drop to add as a reference',
   },
   whiteboard: {
+    operationInProgress: 'Finish the current operation before saving',
+    text: 'Text',
+    materials: 'Materials',
+    layers: 'Layers',
+    undo: 'Undo',
+    redo: 'Redo',
+    width: 'W',
+    height: 'H',
+    canvasSize: 'Board size',
+    fontSize: 'Font size',
+    textPlaceholder: 'Type text',
+    capture: 'Save snapshot',
+    brushSize: 'Brush size',
+
     imageReadFailed: 'Failed to read the image',
     screenshotAndCreateNode: 'Capture and create an image node',
     canvasNotReady: 'The canvas is not ready yet',
@@ -2585,6 +2629,7 @@ export const enGenerationCommon = {
     originalImage: 'Original image',
     selectImageFile: 'Select an image file',
     importFailed: 'Failed to import the image',
+    retryImport: 'Retry import',
     asset: 'Asset',
     copyName: '{{name}} copy',
     resultImage: 'Result image',
@@ -2616,6 +2661,7 @@ export const enGenerationCommon = {
     close: 'Close',
     closeAria: 'Close whiteboard',
     done: 'Done',
+    doneSaving: 'Saving…',
     doneAria: 'Finish and save whiteboard',
     savePrimary: 'Save as primary image',
     imageResult: 'Image result',
@@ -3307,6 +3353,7 @@ export const enGenerationCommon = {
         planNotSubmitted: 'This plan hasn\'t started yet. Confirm it in the Agent panel first.',
         ledgerWriteFailed: 'Couldn\'t save this step to the project record (the disk is full or the project folder isn\'t writable). Nothing was done. Free up space or check permissions, then try again.',
         canvasLandingFailed: 'This shot was not placed on the canvas, so no generation request was sent for it. Click again to retry.',
+        parameterRejected: 'One parameter on this shot did not pass the check, so no generation request was sent. Change it and click again, or ask Nomi to draft it again.',
         nothingToResume: 'Nothing in this batch can be continued: the remaining shots were deleted from the canvas, are being generated directly on the canvas, or already failed and must be redone on that shot. No generation request was sent.',
         internalError: 'This is a problem in Nomi itself: the step didn\'t go through. The error is in the log - you can send it to us from Feedback & share.',
       },
@@ -3352,6 +3399,7 @@ export const enGenerationCommon = {
     otherProjectTask: 'This task belongs to another project. Open the project that started it to retrieve the result.',
     retrievingResult: 'Retrieving the result again…',
     stillUpstream: 'The task is still running upstream. Try retrieving it again later.',
+    timedOut: 'Retrieval stopped while waiting for the result: the wait limit was reached (task {{taskId}}).',
   },
   phaseDeadline: {
     resultSilent:

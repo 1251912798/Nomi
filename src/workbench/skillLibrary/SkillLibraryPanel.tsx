@@ -22,6 +22,7 @@ import { SkillCard } from './SkillCard'
 import { markLibraryUsed, sortByLibraryUsage, useLibraryUsageVersion } from '../library/libraryDiscovery'
 import { galleryEntries, matchesGalleryQuery, type SkillGalleryEntry } from './skillGallery'
 import { SkillDetail } from './SkillDetail'
+import { deleteSkillWithUndo } from './deleteSkillWithUndo'
 import { usePromptLibrary } from '../promptLibrary/usePromptLibrary'
 import { useUserPrompts } from '../promptLibrary/useUserPrompts'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
@@ -136,18 +137,17 @@ export function SkillLibraryContent({
   const handleDelete = React.useCallback(
     async (skill: SkillListItemDto) => {
       setFeedback({})
-      // 撤销要的包必须在删之前抓到手（导出走 async 目录，等它落定再删）。
-      const snapshot = await exportPackage(skill.directoryName)
-      const res = remove(skill.directoryName)
-      if (!res.ok) {
-        report(skill.directoryName, res.error ?? t('libraries.skill.deleteFailed'))
-        return
-      }
-      showUndoToast({
-        message: t('libraries.skill.deleted', { name: skill.label }),
-        onUndo: () => {
-          if (snapshot) importPackage(snapshot)
-        },
+      await deleteSkillWithUndo({
+        directoryName: skill.directoryName,
+        label: skill.label,
+        exportPackage,
+        remove,
+        importPackage,
+        report,
+        showUndoToast,
+        backupFailedMessage: t('libraries.skill.deleteBackupFailed'),
+        deleteFailedMessage: t('libraries.skill.deleteFailed'),
+        deletedMessage: t('libraries.skill.deleted', { name: skill.label }),
       })
     },
     [exportPackage, remove, importPackage, report, t],

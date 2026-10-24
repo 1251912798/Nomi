@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Z 对比与推荐</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="nomi-ds.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,400&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="nm light" style="width:1240px;height:1090px;padding:32px 40px;display:flex;flex-direction:column;gap:20px">
+<div class="row g8"><span class="tag sch">Z</span><h2 class="h2">对比表 + 推荐</h2><span class="note">实现代价按「改动几处、碰不碰热点文件、要不要新数据」粗估，不是工时。</span></div>
+
+<div class="col g8">
+<div class="sec">A. 指向元素（聊天里代表画布节点的那个零件）</div>
+<table class="cmpt">
+<tr><th style="width:90px"></th><th>一眼认得出吗</th><th>点几下能改</th><th>窄屏怎么办</th><th>实现代价</th><th>主要风险</th><th>对画布节点要求改动吗</th></tr>
+<tr class="rec"><td>P1 镜像小卡</td><td><span class="pill-ok">最强</span>　缩略图同比例、镜号角标和标题行同节点。有结果时是同一张图；草稿时是同一个空框 + 镜号 + 名字，不用读字也能对上</td><td>1 下：点它 = 画布定位并闪一下，节点生成框就在那里改；改完回对话再点「确认」</td><td>只留镜号 + 缩略图，名字靠悬停；点了收成小球，露出目标，底部「回到对话」</td><td><span class="pill-mid">中</span>　新零件一个；读节点的结果图和比例（竖版 9:16 要多一档）；不动画布节点</td><td>竖版 / 多于 6 个镜头时占高；组指向要折成「还有 N 个」</td><td><span class="pill-mid">一处小改</span>　节点要能被「外部高亮」：悬停 / 闪一下 = 中性深色细线 + 阴影的一个瞬时状态，不新增任何元素，不改节点的脸。其余只读节点现有数据</td></tr>
+<tr><td>P2 行内标签</td><td><span class="pill-mid">中</span>　靠「镜号 + 名字」认，圆形小缩略图只是辅助；草稿阶段三个都是空圈，只能读字</td><td>1 下，同上</td><td>最好：一行就够；回到对话按钮上还能带这一枚</td><td><span class="pill-ok">小</span>　新零件一个，不依赖结果图比例，可直接嵌进一句话</td><td>认的是「文字」而不是「脸」，和「一眼认出」的要求差一档</td><td><span class="pill-mid">一处小改</span>　同 P1：只要节点能被外部高亮</td></tr>
+<tr><td>P3 配对号标</td><td><span class="pill-mid">中</span>　认的是「号」不是「脸」：聊天里的 2 = 画布角上的 2。要多一步读号，但完全不靠名字，改名也不乱</td><td>1 下，同上</td><td>号小、占地最少；回到对话按钮带号</td><td><span class="pill-bad">大</span>　要在画布节点上新增临时小标（碰节点外壳这个热点）+ 号的分配 / 清理规则</td><td>违背「画布上不多东西」；同一节点被两张卡点名时要换号；Agent 点名的东西会在画布上留痕</td><td><span class="pill-bad">要改节点外壳</span>　除外部高亮外，节点角上要长出临时号标（BaseGenerationNode 热点文件）+ 号的分配 / 清理</td></tr>
+</table>
+</div>
+
+<div class="col g8">
+<div class="sec">B. 付费请示卡（建在指向元素上）</div>
+<table class="cmpt">
+<tr><th style="width:90px"></th><th>一眼知道确认的是哪几个</th><th>点几下能改</th><th>想先试一段</th><th>窄屏怎么办</th><th>实现代价</th><th>对画布节点要求改动吗</th></tr>
+<tr class="rec"><td>Q1 一张卡一颗确认</td><td><span class="pill-ok">最强</span>　指向元素和「确认」在同一张卡里，眼睛不用来回</td><td>点镜头 → 节点里改 → 回来点「确认」（3 步；不想改的人 1 步）</td><td>在节点上点 ↑ 即可；卡自己认出，变成「生成其余 2 段」</td><td>三格缩成号 + 缩略图；按钮折到第二行</td><td><span class="pill-ok">小</span>　卡本体最少：标题 + 指向 + 一行摘要 + 合计 + 取消 / 确认</td><td><span class="pill-ok">无额外</span>　沿用 A 的外部高亮；卡只读节点的状态和参数；节点上点 ↑ 发的，卡要能订阅到</td></tr>
+<tr><td>Q2 一段一行</td><td><span class="pill-ok">强</span>　每行自带指向和单价</td><td>点那一行 → 改 → 回来点「全部生成」或该行的「生成」</td><td><span class="pill-ok">最顺</span>　每行自带「生成」</td><td>行里去掉摘要，只留号 + 单价 + 生成钮</td><td><span class="pill-mid">中</span>　行内按钮 N 个 + 全部生成，状态组合多（部分已发、剩余再确认）</td><td><span class="pill-ok">无额外</span>　同 Q1</td></tr>
+<tr><td>Q3 流里留指向 + 细栏</td><td><span class="pill-mid">中</span>　指向在上、钱在下，隔了一段，要对照着看</td><td>同 Q1</td><td>同 Q1</td><td>细栏一条，最省高度；按钮折行</td><td><span class="pill-mid">中</span>　要把「指向」和「请示」拆成两个零件、两处挂载；多张请示并存时细栏要排队</td><td><span class="pill-ok">无额外</span>　同 Q1</td></tr>
+</table>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:4px">
+<div class="col g8" style="padding:16px 18px;border:1px solid var(--nomi-ink40);border-radius:12px;background:var(--nomi-ink05)">
+<div class="h2">我的推荐：指向元素用 P1，请示卡用 Q1</div>
+<p class="say">理由（从创作者那一刻出发）：<br>① 这一刻他卡在「聊天里的东西是画布上的哪个」。P1 是唯一把「脸」整个搬过来的：同一个镜号、同一个名字、同一张图，不用读，扫一眼就对上。<br>② Q1 把「指向」和「确认」放在同一张卡，确认的对象就在眼前；用户原话「只留一个确认」也正是它。<br>③ Q2 的价值是「先试一段」，Q1 已经用「在节点上点 ↑，卡自动变成其余 N 段」覆盖了，不必为它多付一排按钮。<br>④ P2 不丢：它就是 P1 的「窄 / 行内形态」（句子里、窄窗口、收据里），同一个零件两种密度，不是另一套。</p>
+</div>
+<div class="col g8" style="padding:16px 18px;border:1px solid var(--nomi-line);border-radius:12px">
+<div class="h2">要你权衡的核心一句话</div>
+<p class="say"><b>想改参数时，是愿意「跳到画布改完再回来点一下」（换来：聊天里永远只有一份、没有第二套参数），还是想「不离开聊天就改」（旧版 D2 的做法，已被「一个东西一个家」取代）？</b></p>
+<div class="sec" style="margin-top:6px">我替你定的、你可以反驳的</div>
+<p class="say" style="font-size:12.5px;line-height:20px">· 点指向 = 去改（不花钱）；「确认」= 按节点当前参数花钱。两个意图不并成一颗按钮。<br>· 花完以后画布上对应节点各亮一下，聊天里卡变成结果。<br>· 价格行沿用现在付费卡：算得出才印，算不出整行不印；样张里的数字只是占位。<br>· P3 不推荐：它要在画布上多挂东西，和「画布是唯一家」反着走。</p>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":1090}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

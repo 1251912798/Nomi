@@ -17,11 +17,12 @@ import {
 import { SKILL_URI_PREFIX, skillResourceUri, parseSkillResourceUri, skillFileMimeType, type SkillSummaryFrame, type SkillContentFrame } from './mcpSkillResources'
 import { buildSkillPrompts, buildSkillResources } from './mcpPassiveDiscovery'
 import { McpConnectionAuthenticationError } from './mcpConnectionContext'
+import { randomUUID } from 'node:crypto'
 import { NOMI_LIVE_DRAFT_UI_URI, MCP_APP_MIME_TYPE, NOMI_LIVE_DRAFT_WIDGET_HTML, buildNomiRunFromProjection } from './mcpAppWidget'
 import { buildToolErrorOutcome, buildProgressStartMessage, sanitizeArtifactResource, type ResultLocale } from './mcpToolResults'
 import { buildCanonicalMcpToolResult } from './mcpCanonicalToolResult'
 import { canvasReadResultSchema } from '../shared/agentCapabilities/canvasRead'
-import { CANVAS_WRITE_CAPABILITY } from '../shared/agentCapabilities/canvasWrite' // 画布写只此一个 method
+import { CANVAS_WRITE_CAPABILITY, isCanvasWriteElicitFirstOperation } from '../shared/agentCapabilities/canvasWrite' // 画布写只此一个 method
 import { assembleToolResultContent } from './mcpResultPayload'
 import { stripInternalEnrichFields } from './mcpResultEnrich'
 import { createProgressReporter } from './mcpProgress'
@@ -46,6 +47,11 @@ export type McpInvokeOptions = {
   planConfirmed?: boolean
   documentConfirmed?: boolean
   signal?: AbortSignal
+  /**
+   * 这一跳属于哪一次工具调用（工具名 + 本次调用号）。随回环请求头带到主进程，
+   * 「AI 助手连接」卡的使用情况（mcpUsageRegistry）靠它记账；三条传输都原样转发，不各自再记一份。
+   */
+  call?: { tool: string; id: string }
 }
 /** 请求的取消信号挂在 params 上递给领域（不进 JSON：不可枚举的 symbol 键）。 */
 export const MCP_REQUEST_SIGNAL = Symbol('nomi.mcp.request-signal')
@@ -400,12 +406,11 @@ export function createNomiMcpServer(host: McpHost) {
       if (!replied) throw new Error('MCP confirmation flow finished without a result')
       return replied
     }
+    const callRef = { tool: tool.name, id: randomUUID() }
     const invokeForRequest = (methodName: string, paramsValue: Record<string, unknown>, options?: McpInvokeOptions) => {
       const forwardedParams = withRequestSignal(paramsValue, requestSignal)
       const { signal: _signal, ...forwardedOptions } = options ?? {}
-      return Object.keys(forwardedOptions).length
-        ? host.invoke(methodName, forwardedParams, forwardedOptions)
-        : host.invoke(methodName, forwardedParams)
+      return host.invoke(methodName, forwardedParams, { ...forwardedOptions, call: callRef })
     }
     // 领域确认流的 reply(id, result) 签名沿用旧协议层；请求 id 由 SDK 关联，这里不需要，传空。
     const id = undefined
@@ -437,16 +442,19 @@ export function createNomiMcpServer(host: McpHost) {
       }
       return buildToolResultPayload(tool.name, args, await invokeForRequest(tool.method, { ...built, confirmation: true }))
     }
-    // 分镜补丁是可逆写，但仍是用户的活：客户端能问且 App 开着时，在协议边界先问一次再进租约 / 渲染层。
-    if (tool.method === CANVAS_WRITE_CAPABILITY.id && built.operation === 'patch_shots' && elicitationModes().form && host.isAppOpen()) {
+    // 分镜 / 时间轴写是可逆写，但仍是用户的活（名单 CANVAS_WRITE_ELICIT_FIRST_OPERATIONS）：客户端能问且 App 开着时，在协议边界先问一次再进租约 / 渲染层。
+    if (tool.method === CANVAS_WRITE_CAPABILITY.id && isCanvasWriteElicitFirstOperation(built.operation) && elicitationModes().form && host.isAppOpen()) {
+      const operation = built.operation
       const confirm = await elicitBooleanConfirm({
-        message: 'Apply the selected storyboard shot patch?\nOnly the named rows and fields will change; the operation is reversible.',
-        title: 'Confirm storyboard patch',
-        description: 'Approve to apply the canonical patch_shots task. Decline or timeout leaves the project unchanged.',
+        message: operation === 'patch_shots'
+          ? 'Apply the selected storyboard shot patch?\nOnly the named rows and fields will change; the operation is reversible.'
+          : `Apply this ${operation === 'arrange_storyboard_to_timeline' ? 'storyboard-to-timeline arrangement' : 'storyboard plan'}?\nIt changes the storyboard / timeline of the open project; the operation is reversible.`,
+        title: operation === 'patch_shots' ? 'Confirm storyboard patch' : 'Confirm storyboard change',
+        description: `Approve to apply the canonical ${operation} task. Decline or timeout leaves the project unchanged.`,
       }, requestSignal)
       if (!confirm.confirmed) {
-        return refusal('未生效：这次分镜修改没有获得批准。', 'Not applied: the storyboard patch was not approved.', {
-          nomiOutcome: { operation: 'patch_shots', applied: false, denied: true, reason: confirm.action === 'timeout' ? 'timeout' : 'declined' },
+        return refusal('未生效：这次分镜修改没有获得批准。', 'Not applied: the storyboard change was not approved.', {
+          nomiOutcome: { operation, applied: false, denied: true, reason: confirm.action === 'timeout' ? 'timeout' : 'declined' },
         })
       }
     }

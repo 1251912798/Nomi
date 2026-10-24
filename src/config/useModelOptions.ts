@@ -9,7 +9,9 @@ import {
 import {
   MODEL_REFRESH_EVENT,
   getCatalogHealth,
+  peekCatalogHealth,
   peekCatalogModelOptions,
+  optionsAfterReadFailure,
   preloadModelOptions,
   type ModelQueryMode,
 } from './modelCatalogCache'
@@ -56,7 +58,8 @@ export function useModelOptionsState(kind?: NodeKind, requiredMode?: ModelQueryM
   const [options, setOptions] = useState<ModelOption[]>(() => peekCatalogModelOptions(kind, requiredMode) ?? [])
   const [error, setError] = useState<Error | null>(null)
   const [healthError, setHealthError] = useState<Error | null>(null)
-  const [health, setHealth] = useState<ModelCatalogHealthDto | null>(null)
+  // 健康度同理取内存首值：否则缓存全命中时也要多一轮「null → 对象」的重渲（每挂一次生成框就多一次提交）。
+  const [health, setHealth] = useState<ModelCatalogHealthDto | null>(() => peekCatalogHealth())
   const [loading, setLoading] = useState(() => peekCatalogModelOptions(kind, requiredMode) === null)
   const [refreshSeq, setRefreshSeq] = useState(0)
 
@@ -94,12 +97,12 @@ export function useModelOptionsState(kind?: NodeKind, requiredMode?: ModelQueryM
           setOptions(catalogOptions)
         }
       } catch (caught: unknown) {
-      if (!canceled) {
-        setError(normalizeCatalogLoadError(caught))
-        setOptions([])
-        setHealthError(null)
-        setHealth(null)
-      }
+        if (!canceled) {
+          // 读失败不许把选项清空：留住上一份读成功的清单，把原因交给 error（界面说得出为什么）。
+          // 从没读成功过才是空态——那时空态也带着原因，不假装有选项。
+          setError(normalizeCatalogLoadError(caught))
+          setOptions((current) => optionsAfterReadFailure(current, kind, requiredMode) as ModelOption[])
+        }
       }
       try {
         const catalogHealth = await getCatalogHealth()
@@ -137,7 +140,8 @@ export function useModelOptionsState(kind?: NodeKind, requiredMode?: ModelQueryM
 
 export function useModelOptions(kind?: NodeKind, requiredMode?: ModelQueryMode): ModelOption[] {
   const state = useModelOptionsState(kind, requiredMode)
-  if (state.error) throw state.error
+  // 读失败但手里还有上一份清单时不抛：界面照常用，原因由 status 交出去。
+  if (state.error && state.options.length === 0) throw state.error
 
   return state.options
 }

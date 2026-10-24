@@ -50,7 +50,7 @@ describe('external storyboard materialization MCP seam', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(invoke).toHaveBeenCalledWith('production.storyboard.materialize', {
       projectId: 'project-1', runId: 'run-1', artifactId: 'artifact-storyboard-v1', expectedVersion: 1,
-    })
+    }, expect.anything())
     const result = response(frames, 2).result as { content: Array<{ type: string; text: string }>; structuredContent?: { nomiOutcome?: Record<string, unknown> } }
     expect(result.content[0].text).toContain('分镜已落到 Nomi 画布')
     expect(result.content[0].text).toContain('node-shot-1')

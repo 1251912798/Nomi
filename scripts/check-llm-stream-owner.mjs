@@ -1,90 +1,74 @@
 #!/usr/bin/env node
-// LLM 流式调用单一 owner 门岗（2026-10-09；复审后改为语法树判定）。
+// 「调一次模型」单一主人门岗（2026-10-09 立，2026-10-21 随文本任务迁 pi-ai 改写）。
 //
-// 起因：ai@4 的 streamText 在请求发不出去（网闸拦 / DNS / 断网，fetch 本身抛）或用户点停止时，既不抛也不关——
-// textStream 静默结束、finishReason 永不 settle，错误只通过 onError 交出来。哪个调用点没接对，就是一个会让界面
-// 永远停在「提交中」、让主进程任务永久悬挂的洞（真模型走查 2026-10-09 实测）。接对一次（electron/ai/streamTextTask.ts），
-// 就不该再有第二个拿到这些函数的地方：任何要跑文本流的代码一律走 streamTextTask。
+// 起因：主进程曾有两台各自实现的模型调用栈——Agent 走 pi-ai，文本任务走 ai@4（streamTextTask）。判活、超时、
+// 重试、取消、错误分类各写一份，ai@4 那一份判活只数正文 token，思考型模型 30 秒就被当死连接掐掉；同一个文件
+// 14 天修了 5 刀（docs/audit/2026-10-21-text-stream-first-token-gate.md）。迁移把第二台整台删掉之后，这道门守两件事：
 //
-// 规则：任何文件（除 OWNER 外）**不管怎么拿**，只要从 "ai" 拿到 streamText / generateText / streamObject 就红：
-//   · 具名导入（含 `as` 改名）；`import * as ns` 之后取这些成员、或让 ns 整个流出去（赋值 / 传参 / 导出）；
-//   · 默认导入、`import x = require('ai')`、`require('ai')`、动态 `import('ai')`（拿到的是整个模块，追不住就当违规）；
-//   · 重导出：`export { streamText } from 'ai'`、`export * from 'ai'`、`export * as ns from 'ai'`。
-// 只引类型 / 错误类（APICallError 等）/ generateObject 不算。零基线，新增即红。
+// ① 第二台发动机回不来：任何文件（含 .mjs / .cjs、动态 import、require、重导出、类型位置）引用 `ai` 或 `@ai-sdk/*` 即红；
+//    package.json 的依赖里出现它们也红（依赖都不在，代码就写不出来——这是比扫描更硬的一层，扫描是给它看门）。
+// ② 一次模型调用只有一个主人：`.streamSimple(` / `.completeSimple(` 这类「直接对模型发一次」的调用只许出现在
+//    OWNER（electron/agentLane/laneModelCall.mts）与 provider 装配的两层包装里（它们是传输，不是调用方）。
+//    文本任务、编译器、lane 的一次性提问都经 OWNER；Agent 多轮由 pi-agent-core 的 AgentHarness 自己调，不在这里。
 //
-// 管什么 / 不管什么（2026-10-09 复审 2 裁定）：管**不小心**直接用——上面每一种写得出来的拿法都拦。
-// 不管**故意**绕：`import(变量)`、`import("a" + "i")`、`const load = require; load("ai")` 这类非字面量的模块加载，
-// 静态扫描追不住，也不追（追了就是无止境的猫鼠游戏），靠评审抓；残留风险写在 PR 正文「## 自审」。
+// 管什么 / 不管什么：管**不小心**直接用；不管**故意**绕（`import(变量)`、拼字符串），那靠评审。测试文件不算。
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 
-export const OWNER = 'electron/ai/streamTextTask.ts'
-export const BANNED = new Set(['streamText', 'generateText', 'streamObject'])
-const PACKAGE = 'ai'
+export const OWNER = 'electron/agentLane/laneModelCall.mts'
+/** provider 装配的两层包装：把 pi 的协议实现包成带看门狗 / 鉴权 / 请求体规矩的 ProviderStreams。它们转发调用，不发起调用。 */
+export const TRANSPORT_WRAPPERS = new Set(['electron/agentLane/laneModelProvider.mts', 'electron/agentLane/laneProviderGuard.mts'])
+export const isBannedPackage = (name) => name === 'ai' || name.startsWith('@ai-sdk/')
+const ONE_SHOT_METHODS = new Set(['streamSimple', 'completeSimple'])
 
-const isAi = (node) => Boolean(node) && ts.isStringLiteralLike(node) && node.text === PACKAGE
+const isBannedModule = (node) => Boolean(node) && ts.isStringLiteralLike(node) && isBannedPackage(node.text)
 
-/** 一个文件里，以哪些方式拿到了被禁函数。返回人话列表。 */
-export function bannedAccesses(source, fileName = 'file.ts') {
+/** 一个文件里引用了被删掉的那台发动机的哪些地方。返回人话列表。 */
+export function bannedImports(source, fileName = 'file.ts') {
   const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true)
   const hits = []
-  const namespaces = new Set()
   const note = (node, text) => hits.push(`${sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1}: ${text}`)
-
   const visit = (node) => {
-    if (ts.isImportDeclaration(node) && isAi(node.moduleSpecifier)) {
-      const clause = node.importClause
-      if (clause && !clause.isTypeOnly) {
-        if (clause.name) note(node, '默认导入 ai（拿到整个模块）')
-        const bindings = clause.namedBindings
-        if (bindings && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text)
-        if (bindings && ts.isNamedImports(bindings)) {
-          for (const element of bindings.elements) {
-            const imported = (element.propertyName ?? element.name).text
-            if (!element.isTypeOnly && BANNED.has(imported)) note(element, `具名导入 ${imported}`)
-          }
-        }
-      }
-    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) && isAi(node.moduleReference.expression)) {
-      note(node, 'import x = require("ai")')
-    } else if (ts.isExportDeclaration(node) && isAi(node.moduleSpecifier) && !node.isTypeOnly) {
-      if (!node.exportClause) note(node, 'export * from "ai"')
-      else if (ts.isNamespaceExport(node.exportClause)) note(node, 'export * as ns from "ai"')
-      else {
-        for (const element of node.exportClause.elements) {
-          const exported = (element.propertyName ?? element.name).text
-          if (!element.isTypeOnly && BANNED.has(exported)) note(element, `重导出 ${exported}`)
-        }
-      }
-    } else if (ts.isCallExpression(node) && node.arguments.length > 0 && isAi(node.arguments[0])) {
-      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) note(node, '动态 import("ai")')
-      else if (ts.isIdentifier(node.expression) && node.expression.text === 'require') note(node, 'require("ai")')
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && isBannedModule(node.moduleSpecifier)) {
+      note(node, `${ts.isImportDeclaration(node) ? 'import' : 'export … from'} "${node.moduleSpecifier.text}"`)
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)
+      && isBannedModule(node.moduleReference.expression)) {
+      note(node, `import = require("${node.moduleReference.expression.text}")`)
+    } else if (ts.isCallExpression(node) && node.arguments.length && isBannedModule(node.arguments[0])
+      && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require'))) {
+      note(node, `${node.expression.kind === ts.SyntaxKind.ImportKeyword ? 'import' : 'require'}("${node.arguments[0].text}")`)
+    } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && isBannedModule(node.argument.literal)) {
+      note(node, `import("${node.argument.literal.text}") 类型`)
     }
     ts.forEachChild(node, visit)
   }
   visit(sf)
-
-  // 命名空间导入：只许 ns.<非禁名> 这种成员访问；取禁名、或让 ns 整个流出去都算违规。
-  if (namespaces.size) {
-    const scanUses = (node) => {
-      if (ts.isImportDeclaration(node)) return
-      if (ts.isIdentifier(node) && namespaces.has(node.text)) {
-        const parent = node.parent
-        const member = ts.isPropertyAccessExpression(parent) && parent.expression === node
-          ? parent.name.text
-          : ts.isElementAccessExpression(parent) && parent.expression === node && ts.isStringLiteralLike(parent.argumentExpression)
-            ? parent.argumentExpression.text
-            : null
-        if (member === null) note(node, `命名空间 ${node.text} 整个流出去 / 动态取成员`)
-        else if (BANNED.has(member)) note(node, `命名空间取 ${node.text}.${member}`)
-      }
-      ts.forEachChild(node, scanUses)
-    }
-    scanUses(sf)
-  }
   return hits
+}
+
+/** 一个文件里「直接对模型发一次」的调用（`x.streamSimple(` / `x.completeSimple(` / `x["streamSimple"](`）。 */
+export function oneShotCalls(source, fileName = 'file.ts') {
+  const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true)
+  const hits = []
+  const visit = (node) => {
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression
+      const name = ts.isPropertyAccessExpression(callee) ? callee.name.text
+        : ts.isElementAccessExpression(callee) && ts.isStringLiteralLike(callee.argumentExpression) ? callee.argumentExpression.text : null
+      if (name && ONE_SHOT_METHODS.has(name)) hits.push(`${sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1}: .${name}(…)`)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sf)
+  return hits
+}
+
+/** package.json 的依赖里出现被删掉的包。 */
+export function bannedDependencies(pkg) {
+  return ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']
+    .flatMap((field) => Object.keys(pkg?.[field] ?? {}).filter(isBannedPackage).map((name) => `${field}.${name}`))
 }
 
 export function scan(root) {
@@ -92,17 +76,23 @@ export function scan(root) {
   const walk = (dir) => {
     if (!fs.existsSync(dir)) return
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (['node_modules', 'dist', 'dist-electron', '.git', '.tmp'].includes(entry.name)) continue
+      if (['node_modules', 'dist', 'dist-electron', '.git', '.tmp', 'release'].includes(entry.name)) continue
       const full = path.join(dir, entry.name)
       if (entry.isDirectory()) { walk(full); continue }
       if (!/\.(tsx?|mts|cts|mjs|cjs|jsx?)$/.test(entry.name) || /\.(test|node-test)\.[cm]?[jt]sx?$/.test(entry.name)) continue
       const rel = path.relative(root, full).split(path.sep).join('/')
-      if (rel === OWNER) continue
-      const accesses = bannedAccesses(fs.readFileSync(full, 'utf8'), rel)
+      const source = fs.readFileSync(full, 'utf8')
+      const accesses = bannedImports(source, rel)
+      if (rel !== OWNER && !TRANSPORT_WRAPPERS.has(rel) && (rel.startsWith('electron/') || rel.startsWith('src/'))) accesses.push(...oneShotCalls(source, rel))
       if (accesses.length) found.push({ file: rel, accesses })
     }
   }
-  for (const dir of ['src', 'electron', 'workers', 'scripts']) walk(path.join(root, dir))
+  for (const dir of ['src', 'electron', 'workers', 'scripts', 'tests']) walk(path.join(root, dir))
+  const pkgFile = path.join(root, 'package.json')
+  if (fs.existsSync(pkgFile)) {
+    const deps = bannedDependencies(JSON.parse(fs.readFileSync(pkgFile, 'utf8')))
+    if (deps.length) found.push({ file: 'package.json', accesses: deps })
+  }
   return found
 }
 
@@ -110,10 +100,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
   const hits = scan(root)
   if (hits.length) {
-    console.error(`✖ ${hits.length} 个文件从 ai 里拿到了流式调用（只许 ${OWNER}）：`)
+    console.error(`✖ ${hits.length} 处违反「调一次模型只有一个主人」（${OWNER}）：`)
     for (const hit of hits) for (const access of hit.accesses) console.error(`  ${hit.file}:${access}`)
-    console.error('  → 改走 streamTextTask（它接了 onError、并保证停止 / 出错 / 超时都让 await 收口；裸 streamText 会让调用永远挂住）')
+    console.error('  → ai / @ai-sdk/* 已整体删除（2026-10-21）；要调模型一律经 callModelOnce（CJS 侧 electron/ai/modelCallBridge.ts）')
     process.exit(1)
   }
-  console.log(`✅ LLM 流式调用单一 owner：只有 ${OWNER} 拿得到 streamText / generateText / streamObject`)
+  console.log(`✅ 调一次模型单一主人：没有 ai / @ai-sdk/*，直接调模型只在 ${OWNER}`)
 }

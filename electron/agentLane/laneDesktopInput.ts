@@ -6,14 +6,13 @@ import { z } from 'zod'
 import type { Model } from '../catalog/types'
 import type { LaneComposerContext } from '../shared/agentLane/laneDesktopContracts'
 import type { OpenLaneOptions } from './laneRuntimePort'
-import { PROJECT_AGENT_APPROVAL_MODES, PROJECT_AGENT_SPEND_POLICIES } from '../shared/agentCapabilities/capabilityApprovalPolicy';
+import { PROJECT_AGENT_APPROVAL_MODES } from '../shared/agentCapabilities/capabilityApprovalPolicy';
 import { AGENT_CONTEXT_SNAPSHOT_VERSION, formatAgentContextSnapshot } from '../shared/agentContextSnapshot'
 import { resolveProjectAgentAttachmentClaims } from '../assets/projectAssetStore'
 import { readNomiLocalAsset } from '../assets/localAssetFile'
 import { extractTextFromLocalAsset } from '../files/extractText'
 import { buildAgentUserContent, projectAgentPromptForSend, modelSupportsImageInput, modelSupportsPdfInput } from '../ai/agentUserContent'
 import { rewritePdfPayload, type NativePdf } from '../ai/nativePdfPayload'
-import { applyProfileToRequestBody, getModelProfile } from '../ai/modelProfiles'
 
 const text = z.string().max(128 * 1024)
 const intentSchema = z.object({
@@ -39,7 +38,7 @@ const intentSchema = z.object({
 }).strict()
 const composerSchema = intentSchema.extend({
   model: z.object({ vendorKey: z.string().min(1).max(256), modelKey: z.string().min(1).max(256) }).strict().optional(),
-  approvalPolicy: z.object({ mode: z.enum(PROJECT_AGENT_APPROVAL_MODES), spend: z.enum(PROJECT_AGENT_SPEND_POLICIES) }).strict(),
+  approvalPolicy: z.object({ mode: z.enum(PROJECT_AGENT_APPROVAL_MODES) }).strict(),
   availableModels: z.array(agentModelEntrySchema).max(2048).optional(),
   attachments: z.array(z.object({ assetId: z.string().min(1).max(256), version: z.number().int().positive() }).strict()).max(64).optional(),
   displayText: text.optional(),
@@ -107,11 +106,9 @@ export function createDesktopLaneInput(input: {
       })
     },
     rewritePayload: (payload, api) => {
-      const selected = input.model()
       if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid provider payload')
-      const profiled = selected && api !== 'anthropic-messages'
-        ? applyProfileToRequestBody(payload as Record<string, unknown>, getModelProfile(selected.model.modelAlias || selected.model.modelKey)) : payload
-      const rewritten = rewritePdfPayload(profiled, api, [...pdfs.values()])
+      // 模型怪癖（modelProfiles）已在 createNomiProvider 的 onPayload 里套过（唯一一处），这里只管 PDF。
+      const rewritten = rewritePdfPayload(payload, api, [...pdfs.values()])
       if ([...pdfs.keys()].some((marker) => !rewritten.applied.has(marker))) {
         throw new Error('Native PDF was not preserved by the provider payload adapter')
       }

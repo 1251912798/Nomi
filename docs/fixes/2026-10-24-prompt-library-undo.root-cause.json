@@ -1,0 +1,267 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-prompt-library-undo",
+  "change_kind": "corrective",
+  "detected_by": "user",
+  "recurrence_check_on": "2026-11-24",
+  "problem_type": "删除后的撤销没有独立、完整且删除前已保证的恢复快照",
+  "symptom": "我的库提示词撤销会丢失 id、参考图、标签、更新时间及未来字段；技能导出备份为空或抛错时仍删除技能，撤销提示却没有可恢复内容。",
+  "direct_cause": "提示词恢复借用 user-add IPC 并在 API 用 as never 绕过类型；技能 SkillLibraryPanel.handleDelete 在 exportPackage 返回空或抛错后仍调用 remove。",
+  "class_root": "所有可撤销删除都没有在共享删除边界强制‘先拿到完整快照，再执行删除，再提供恢复’；恢复通道与新增通道混用还允许调用方按已知字段重建，导致数据丢失或空撤销。",
+  "affected_population": [
+    "所有在 Electron 我的库删除后使用 5 秒撤销的用户提示词",
+    "带 referenceImages、tags 或历史/未来扩展字段的用户提示词记录",
+    "从旧 JSON 水合后经过渲染层映射再撤销的记录",
+    "用户技能导出为空或抛错时尝试删除的技能包"
+  ],
+  "scope_paths": [
+    "electron/promptLibrary/userPromptStore.ts",
+    "electron/promptLibrary/promptLibraryIpc.ts",
+    "electron/preload.ts",
+    "src/workbench/api/promptLibraryApi.ts",
+    "src/desktop/bridge.ts",
+    "src/workbench/promptLibrary/useUserPrompts.ts",
+    "src/workbench/promptLibrary/PromptLibraryPanel.tsx",
+    "src/workbench/skillLibrary/deleteSkillWithUndo.ts",
+    "src/workbench/skillLibrary/SkillLibraryPanel.tsx",
+    "src/i18n/locales/libraries.ts",
+    "electron/shared/contracts/promptLibrary.ts"
+  ],
+  "entry_points": [
+    "我的库卡片删除按钮 → PromptLibraryContent.handleDelete",
+    "渲染层 useUserPrompts.remove/restore → promptLibrary:user-delete/user-restore",
+    "主进程 userPromptStore.deleteUserPrompt/restoreUserPrompt → prompt-library-user.json"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "删除快照、用户提示词字段完整性和 nomi-local 参考素材归属是 Nomi 的内部存储契约；本次没有第三方运行时行为需要决定不变量。",
+  "invariants": [
+    "删除操作必须返回删除前的完整用户提示词对象，包含原 id、所有已知字段和未知未来字段。",
+    "撤销只能把同一份快照交回存储层恢复；恢复不得按字段重建或生成新 id。",
+    "渲染层映射已知字段时必须保留记录中的未知字段，才能把完整快照跨 IPC 往返。",
+    "撤销窗口结束且没有恢复调用时，用户提示词记录保持删除状态；该存储不拥有 referenceImages 指向的素材文件。"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/promptLibrary/userPromptStore.ts",
+      "symbol": "deleteUserPrompt"
+    },
+    {
+      "kind": "write",
+      "path": "electron/promptLibrary/userPromptStore.ts",
+      "symbol": "restoreUserPrompt"
+    },
+    {
+      "kind": "write",
+      "path": "electron/promptLibrary/promptLibraryIpc.ts",
+      "symbol": "registerPromptLibraryIpc"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/api/promptLibraryApi.ts",
+      "symbol": "deleteUserPromptWithSnapshot"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/api/promptLibraryApi.ts",
+      "symbol": "restoreUserPrompt"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/promptLibrary/useUserPrompts.ts",
+      "symbol": "useUserPrompts"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/promptLibrary/PromptLibraryPanel.tsx",
+      "symbol": "PromptLibraryContent"
+    },
+    {
+      "kind": "write",
+      "path": "electron/preload.ts",
+      "symbol": "userRestore"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/api/promptLibraryApi.ts",
+      "symbol": "userRestore"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/skillLibrary/deleteSkillWithUndo.ts",
+      "symbol": "deleteSkillWithUndo"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/skillLibrary/SkillLibraryPanel.tsx",
+      "symbol": "SkillLibraryContent"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/contracts/promptLibrary.ts",
+      "symbol": "UserPromptRestoreSnapshot"
+    },
+    {
+      "kind": "read",
+      "path": "electron/preload.ts",
+      "symbol": "UserPromptRestoreSnapshot"
+    },
+    {
+      "kind": "read",
+      "path": "src/desktop/bridge.ts",
+      "symbol": "UserPromptRestoreSnapshot"
+    },
+    {
+      "kind": "read",
+      "path": "src/i18n/locales/libraries.ts",
+      "symbol": "zhLibraries"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 15,
+    "why_not": "删除与恢复必须分别存在于主进程存储边界；IPC、preload、渲染 API、hook、提示词面板和技能删除安全边界分别拥有跨层传递、缓存、toast 与备份前置责任，合并会把不变量重新放回调用方。"
+  },
+  "generality_proof": "提示词删除统一经过 userPromptStore 的完整快照和 user-restore IPC；promptLibraryApi.toPrompt 先展开原始记录再规范化已知字段，因此未知字段保留。技能删除统一经过 deleteSkillWithUndo，只有 exportPackage 得到非空快照才允许 remove 并显示撤销；同类的方案、画布和生成结果入口均在删除前保存领域快照或由统一 undo journal 记录。",
+  "shared_boundaries": [
+    {
+      "path": "electron/promptLibrary/userPromptStore.ts",
+      "symbol": "deleteUserPrompt",
+      "responsibility": "持有用户提示词 JSON 的唯一删除/恢复语义：删除返回完整快照，restoreUserPrompt 只接受完整用户记录并保持原 id。"
+    },
+    {
+      "path": "src/workbench/api/promptLibraryApi.ts",
+      "symbol": "deleteUserPromptWithSnapshot",
+      "responsibility": "跨 IPC 传递删除后的全量列表和完整快照，并在规范化已知字段时保留未知字段。"
+    },
+    {
+      "path": "src/workbench/skillLibrary/deleteSkillWithUndo.ts",
+      "symbol": "deleteSkillWithUndo",
+      "responsibility": "技能删除的唯一安全边界：备份为空或抛错时 fail closed，不调用 remove，也不显示空撤销；成功后把同一包交给恢复。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/promptLibrary/PromptLibraryPanel.tsx",
+      "entry_point": "PromptLibraryContent.handleDelete",
+      "disposition": "enforced",
+      "evidence": "唯一现有提示词删除入口现在等待存储返回 deleted 快照，撤销回调只调用 user.restore(deleted)，不再调用按字段 user.add。"
+    },
+    {
+      "path": "src/workbench/skillLibrary/SkillLibraryPanel.tsx",
+      "entry_point": "SkillLibraryContent.handleDelete",
+      "disposition": "enforced",
+      "evidence": "删除现在委托 deleteSkillWithUndo；exportPackage 空或抛错时只走现有 report 出口，只有非空快照才 remove 并显示撤销。"
+    },
+    {
+      "path": "src/workbench/assets/assetSurfaceMigration.ts",
+      "entry_point": "migrateLegacyPromptCards",
+      "disposition": "not-affected",
+      "evidence": "该入口只把旧 localStorage 提示词卡一次性新增到用户库，没有删除或撤销路径；新增仍收敛到同一 addUserPrompt。"
+    },
+    {
+      "path": "src/workbench/creation/DocumentListSidebar.tsx",
+      "entry_point": "onDeleteStoryboard",
+      "disposition": "not-affected",
+      "evidence": "同类形状已在删除前保存 removed 与原 index，再调用 restoreStoryboardDesign；已有 isUndoable 防止重复恢复，本轮没有结构缺口。"
+    },
+    {
+      "path": "src/workbench/creation/storyboard/StoryboardPlanEditor.tsx",
+      "entry_point": "deletedPlanUndoRef",
+      "disposition": "not-affected",
+      "evidence": "deleteStoryboardRows 同步返回完整 StoryboardDeletion，键盘撤销只在项目/文档/方案身份仍匹配时 restoreStoryboardDeletion。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
+      "entry_point": "Delete → undo",
+      "disposition": "not-affected",
+      "evidence": "批量删除先由 canvas store 的 deleteSelectedNodes 记录统一 undo snapshot，showUndoToast 只调用已有 undo；不重建记录。"
+    },
+    {
+      "path": "src/workbench/assets/deleteAssetResult.ts",
+      "entry_point": "deleteAssetResult",
+      "disposition": "not-affected",
+      "evidence": "已加载项目先 pushUndoSnapshot，持久化失败回滚并清理 undo barrier；文件删除延后到撤销日志到期，恢复由统一画布历史负责。"
+    },
+    {
+      "path": "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "entry_point": "useUserPrompts",
+      "disposition": "not-affected",
+      "evidence": "该入口只读取/选择用户提示词，没有删除或撤销动作。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeEffectChips.tsx",
+      "entry_point": "useUserPrompts",
+      "disposition": "not-affected",
+      "evidence": "该入口只读取用户提示词用于效果选择，没有删除或撤销动作。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "只要任何删除入口继续把记录投影成部分字段再新增，就会对现有参考图、标签、时间或未来字段造成同样的数据丢失；字段扩展也会自动触发。",
+    "same_class_scan": [
+      "node scripts/door-map.mjs restoreUserPrompt：确认主进程恢复唯一落到 promptLibraryIpc，再由 userPromptStore 写回 JSON。",
+      "node scripts/door-map.mjs deleteSkillWithUndo：确认技能删除只由 SkillLibraryPanel 进入共享备份前置边界。",
+      "rg -n \"showUndoToast|onUndo|restore|undo|delete\" src/workbench src/api electron/promptLibrary：逐个核对提示词、技能、方案、画布、版本和资产删除撤销入口；没有发现另一条按字段重建提示词的路径。",
+      "node scripts/door-map.mjs useUserPrompts：确认 ProjectAgentResidentShell、NodeEffectChips、PromptLibraryPanel、SkillLibraryPanel 四个 hook 使用者，只有后两者拥有写操作，且技能删除已纳入安全边界。"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/promptLibrary/userPromptStore.ts",
+    "invariant": "提示词恢复只走 user-restore 并写回完整用户记录；技能删除只有导出包非空时才允许 remove（导出包只收文本文件，技能里的非文本文件撤销后回不来，是既有缺口，见 residual_risks）。",
+    "failure_mode": "无效提示词恢复快照在主进程存储层抛错并返回失败 IPC 响应；技能备份为空或抛错时报告本地化错误，不删除且不显示撤销。",
+    "exception_policy": "none",
+    "strategy": "把提示词删除和恢复成对固定在 JSON 存储 owner，独立 IPC 只传递完整快照；API 展开原始记录保留未知字段。把技能删除的备份→删除→撤销顺序固定在共享 helper，未来调用方不能绕过备份前置。",
+    "artifacts": [
+      "electron/promptLibrary/userPromptStore.ts",
+      "electron/promptLibrary/promptLibraryIpc.ts",
+      "src/workbench/api/promptLibraryApi.ts",
+      "src/workbench/promptLibrary/useUserPrompts.ts",
+      "src/workbench/promptLibrary/PromptLibraryPanel.tsx",
+      "electron/shared/contracts/promptLibrary.ts",
+      "electron/preload.ts",
+      "src/desktop/bridge.ts",
+      "src/workbench/skillLibrary/deleteSkillWithUndo.ts",
+      "src/workbench/skillLibrary/SkillLibraryPanel.tsx"
+    ]
+  },
+  "regression_tests": [
+    "electron/promptLibrary/userPromptStore.test.ts",
+    "electron/promptLibrary/promptLibraryIpc.test.ts",
+    "src/workbench/api/promptLibraryApi.test.ts",
+    "src/workbench/skillLibrary/deleteSkillWithUndo.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/promptLibrary/userPromptStore.test.ts",
+    "electron/promptLibrary/promptLibraryIpc.test.ts",
+    "src/workbench/api/promptLibraryApi.test.ts",
+    "src/workbench/skillLibrary/deleteSkillWithUndo.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/promptLibrary/promptLibraryTypes.ts"
+    ],
+    "rationale": "提示词库跨 IPC 契约类型已迁入 electron/shared/contracts/promptLibrary.ts；旧主进程位置的整个文件删除（类型定义随门岗收尾提交删除，剩下无人引用的转出口由协调随后删掉，不留兼容层），renderer 与主进程都直接引用契约层，没有第二份定义。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不变量由 Nomi 自己的主进程 JSON 存储和 IPC 契约决定，不涉及第三方依赖版本。",
+    "exit_criteria": []
+  },
+  "migration": "现有 prompt-library-user.json 记录无需迁移；删除前仍按原记录形状读取，新增字段会随快照保留。旧版本已经删除的记录无法恢复，因为旧版本没有保存快照。",
+  "residual_risks": [
+    "本地 referenceImages 指向的项目素材由项目素材 owner 管理，用户提示词删除路径不删除文件；本次用测试证明删除不会误删引用文件，素材 GC 仍由资产生命周期另行负责。",
+    "真实 Electron 走查由协调线 V-prompt-undo 完成（2026-10-24，有条件通过）：用户报的路径（带参考图 + 标签的提示词删除 → 撤销）逐字段一致、重启仍在；技能备份失败不删并提示（中英）。",
+    "技能撤销仍走「导出文本包 → 再导入」：导出只收文本白名单、删除是整目录，带图片 / 未知扩展名文件的技能撤销后少文件、脚本权限位不保留，界面不提示（改前同样，真 App 实测）。改成主进程留原件、撤销原样挪回，另立任务。",
+    "提示词撤销送回的是渲染层规范化后的副本：无标签记录撤销后多出空 tags（语义等价）；删除 / 撤销失败界面不提示。与上一条同一类，同一任务处理。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/promptLibrary/userPromptStore.ts",
+    "tests": [
+      "electron/promptLibrary/userPromptStore.test.ts"
+    ],
+    "why": "用户提示词 JSON 的删除与恢复在主进程存储层拥有，任何 renderer 入口都只能通过 IPC 得到完整快照并回传，不能自行生成恢复记录。"
+  }
+}

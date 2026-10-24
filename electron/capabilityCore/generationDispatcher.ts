@@ -10,9 +10,9 @@ import { type McpGenerationCapability } from './mcpGenerationPolicy'
  * 或人证。所以下一步动作换成真正能照做的那一句。
  */
 const OPEN_PROJECT_SESSION_NEXT_ACTION = 'Open a new project session and retry'
-import type { HumanApprovalReceiptV1 } from './approvalReceipt'
+import { reservationMaximumForDisplay, type HumanApprovalReceiptV1 } from './approvalReceipt'
 import type { ProjectLeaseV2 } from './projectLease'
-import { spendDecidedByPolicy } from '../shared/agentCapabilities/capabilityApprovalPolicy'
+import { spendDecisionByPolicy } from '../shared/agentCapabilities/directGenerationBrakes'
 import type { DispatchContext } from './dispatcher'
 import { RpcError, type RpcPolicyErrorCode, type RpcPolicyErrorDetails } from './rpcError'
 
@@ -268,9 +268,11 @@ async function dispatchSemanticStub(
       //
       // 闸一步都没少，也没有第二条链：同一张挑战、同一个收据铸造口，只是那张 attestation 来自
       // **用户此前选的档位**而不是他这一刻的手势（`generationSpendDecision.ts` 文档里的两种来源）。
-      // 判据仍只有一个 owner：`spendDecidedByPolicy`。宿主没递档位 → 读到 undefined → 按默认走，
+      // 判据仍只有一个 owner：`spendDecisionByPolicy`（档位 + 刹车）。宿主没递档位 → 读到 undefined → 按默认走，
       // 绝不替用户花钱（下面那条 `policyDecided` 为 false 的路与改动前逐字相同）。
-      const policyDecided = spendDecidedByPolicy(ctx.approvalPolicy?.())
+      // 这条是没有 requestGenerationGate 的旧挑战路：它不落任何 Run，刹车要看的 job 事实根本不存在，所以只剩档位那一问
+      // （两个宿主——应用内与 MCP stdio——都递了 requestGenerationGate，不走这里；带 Run 的路在 generationTransportAdapters）。
+      const policyDecided = spendDecisionByPolicy(ctx.approvalPolicy?.(), undefined).decided
       const policyReceipt = policyDecided
         ? authority.mintReceipt(
             challenge.token,
@@ -287,7 +289,7 @@ async function dispatchSemanticStub(
         expiresAt: challenge.challenge.expiresAt,
         model,
         costScope: challenge.challenge.costScope,
-        maximumCost: unknownShotCount > 0 && maximumCost === 0 ? null : challenge.challenge.reservationPreview.maximum,
+        maximumCost: reservationMaximumForDisplay(challenge.challenge.reservationPreview),
         ...(unknownShotCount > 0 ? { unknownShotCount } : {}),
         currency: challenge.challenge.reservationPreview.currency,
         handoff: {

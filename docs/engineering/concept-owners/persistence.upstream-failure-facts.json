@@ -1,0 +1,45 @@
+{
+  "name": "失败落盘的样子（上游原话不落盘：项目事件、日志 / 崩溃日志、Agent 派生轨迹只收结构事实）",
+  "subject": "persistence.upstream-failure-facts",
+  "lifecycle": "host",
+  "authority_kind": "gateway",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/logging/diskSafeFailure.ts",
+    "symbol": "vendorFailureFacts"
+  },
+  "write_api": [
+    {
+      "path": "electron/logging/diskSafeFailure.ts",
+      "symbol": "vendorFailureFacts"
+    },
+    {
+      "path": "electron/logging/diskSafeFailure.ts",
+      "symbol": "diskSafePayload"
+    },
+    {
+      "path": "electron/logging/diskSafeFailure.ts",
+      "symbol": "diskSafeErrorFacts"
+    },
+    {
+      "path": "electron/logging/redact.ts",
+      "symbol": "redactError"
+    },
+    {
+      "path": "electron/agentLane/laneTrace.mts",
+      "symbol": "laneErrorKind"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "electron/events/vendorCallTrace.ts",
+    "electron/logging/logger.ts",
+    "electron/crashLog.ts",
+    "electron/agentLane/laneTraceRecorder.mts",
+    "electron/telemetry/trajectoryProjection.ts"
+  ],
+  "since": "2026-10-22",
+  "notes": "G-redact-owner 第 1 步（docs/audit/2026-10-22-redact-owner-direction.md，用户 10-22 拍板删 > 脱敏）。供应商失败落盘只有 VendorFailureFacts（无自由文本位、无 URL）；事件唯一写者 appendEvents 与读者 readEvents 都过 diskSafePayload；日志与崩溃日志的错误只经 redactError（类名 / 码 / 码形 message 或 msg#指纹 / cause 链供应商事实 / 栈帧，不写原文）；派生轨迹的错误只经 laneErrorKind 记闭合类别。原文只给开发态终端（logDevDetail）。界面那份原话归第 2 步的唯一出口，不在这里。 范围仅限上面四个出口（项目事件、日志 / 崩溃日志、Agent 派生轨迹）：制作运行账本 .nomi/runs（run.json / events.ndjson，且 run.json 随诊断包出机）、pi 会话存档 .nomi/agent-sessions、画布节点 error / runs[].error / runs[].raw、镜头表 failureReason 都不在本概念内，仍存上游原话，归第 2 步；converged 只指这四个出口收敛。"
+}

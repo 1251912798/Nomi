@@ -1,0 +1,28 @@
+{
+  "name": "外部 AI 助手这次 Nomi 运行里的使用情况（谁来过、最近调了哪个工具、几次、几个没跑完）",
+  "subject": "mcp.client-usage",
+  "lifecycle": "host",
+  "authority_kind": "writer",
+  "trust_domain": "main",
+  "fact_kind": "state-machine",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/capabilityCore/mcpUsageRegistry.ts",
+    "symbol": "createMcpUsageRegistry"
+  },
+  "write_api": [
+    {
+      "path": "electron/capabilityCore/mcpUsageRegistry.ts",
+      "symbol": "createMcpUsageRegistry"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/capabilityCore/mcpUsageRegistry.test.ts",
+  "allowed_consumers": [
+    "electron/capabilityCore/rpcServer.ts",
+    "electron/capabilityCore/mcpHttpDesktop.ts",
+    "electron/capabilityCore/mcpUsageIpc.ts"
+  ],
+  "since": "2026-10-16",
+  "notes": "「AI 助手连接」卡的连接状态读它。只存主进程内存，Nomi 重启清零；身份只认口令验过的 key，助手自报名只作展示。记账只在三条传输汇合后的主进程边界（rpcServer 记工具调用，HTTP 服务端经 mcpHttpDesktop 记握手）。"
+}

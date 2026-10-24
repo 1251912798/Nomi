@@ -3,7 +3,7 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { LanguageModelV1 } from "ai";
+import type { CompilerLanguageModel } from "./compiler";
 import type { Model, Vendor } from "../catalog/types";
 import { ProviderAdapterStore, isTerminalAdapterStage } from "./store";
 import { ProviderAdapterService, type ProviderAdapterCatalogPort, type ProviderAdapterServiceDependencies } from "./service";
@@ -84,7 +84,7 @@ describe("a model that really hangs", () => {
       catalog: catalogPort(provider.baseUrl),
       schedule: () => {},
       discover: async () => ({ sources: [], corpus: "" }),
-      resolveLanguageModels: () => [{} as LanguageModelV1],
+      resolveLanguageModels: () => [{} as CompilerLanguageModel],
       compile: async () => ({ draft: draft(), failures: [] }),
       repair: async () => draft(),
       // 真的去打那台不回复的服务器；除非被 abort，否则这个 promise 永不 settle。
@@ -178,7 +178,7 @@ describe("a model that really hangs", () => {
       catalog: catalogPort("http://127.0.0.1/v1"),
       schedule: () => {},
       discover: async () => ({ sources: [], corpus: "" }),
-      resolveLanguageModels: () => [{} as LanguageModelV1],
+      resolveLanguageModels: () => [{} as CompilerLanguageModel],
       compile: async () => ({ draft: draft(), failures: [] }),
       verify: async () => { throw new Error("must not be called: this test never calls executeRun"); },
       now: () => new Date().toISOString(),
@@ -214,7 +214,7 @@ describe("a model that really hangs", () => {
       catalog: catalogPort(provider.baseUrl),
       schedule: () => {},
       discover: async () => ({ sources: [], corpus: "" }),
-      resolveLanguageModels: () => [{} as LanguageModelV1],
+      resolveLanguageModels: () => [{} as CompilerLanguageModel],
       compile: async () => ({ draft: draft(), failures: [] }),
       // 凭据自检必须放行，否则这条 run 在**够到**那个挂死的模型自检之前就先失败终态化了，
       // 用例断言的「挂住 → executeRun 自己收尾」根本没发生过（假绿）。这台假服务器是

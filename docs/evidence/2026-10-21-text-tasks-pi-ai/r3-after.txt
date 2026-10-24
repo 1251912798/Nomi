@@ -1,0 +1,15 @@
+# 第 3 轮收敛：修之后
+ ✓ electron/ai/modelCallSecrets.integration.test.ts > 开发诊断出口不记正文（F2-A / F2-B 四种夹具） > SDK_PREFIX 8ms
+ ✓ electron/ai/modelCallSecrets.integration.test.ts > 开发诊断出口不记正文（F2-A / F2-B 四种夹具） > USER_AGENT 6ms
+ ✓ electron/ai/modelCallSecrets.integration.test.ts > 开发诊断出口不记正文（F2-A / F2-B 四种夹具） > LOWER_PERCENT 7ms
+ ✓ electron/ai/modelCallSecrets.integration.test.ts > 开发诊断出口不记正文（F2-A / F2-B 四种夹具） > UPPER_UNICODE 6ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#1 文本节点续写/重写/预设' > 出字中途断连：失败，不把半截字当成功；带结构化 network 与现有「中途断了」人话，不是裸 terminated（独立验收 N1） 32ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#2 文本节点改写选区' > 出字中途断连：失败，不把半截字当成功；带结构化 network 与现有「中途断了」人话，不是裸 terminated（独立验收 N1） 37ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#3 提示词优化' > 出字中途断连：失败，不把半截字当成功；带结构化 network 与现有「中途断了」人话，不是裸 terminated（独立验收 N1） 38ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#4 提示词翻译' > 出字中途断连：失败，不把半截字当成功；带结构化 network 与现有「中途断了」人话，不是裸 terminated（独立验收 N1） 40ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#5 AI 起草脚本' > 出字中途断连：失败，不把半截字当成功；带结构化 network 与现有「中途断了」人话，不是裸 terminated（独立验收 N1） 36ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#6 视频拆解读图' > 出字中途断连：失败，不把半截字当成功；带结构化 network 与现有「中途断了」人话，不是裸 terminated（独立验收 N1） 30ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#7 浏览器提取提示词' > 出字中途断连：失败，不把半截字当成功；带结构化 network 与现有「中途断了」人话，不是裸 terminated（独立验收 N1） 38ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#8 MCP 试跑文本模型' > 出字中途断连：失败，不把半截字当成功；带结构化 network 与现有「中途断了」人话，不是裸 terminated（独立验收 N1） 24ms
+ ✓ electron/ai/textTaskCallers.integration.test.ts > '#9 画布单镜 Run 文本' > 出字中途断连：失败，不把半截字当成功；带结构化 network 与现有「中途断了」人话，不是裸 terminated（独立验收 N1） 39ms
+      Tests  170 passed | 9 skipped (179)

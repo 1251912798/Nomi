@@ -61,7 +61,7 @@ async function inspect() {
 async function screenshot(name) {
   const file = path.join(out, name + '.png'); await win.screenshot({ path: file }); return file
 }
-const catalog = () => win.evaluate(() => window.nomiDesktop.modelCatalog.listModels().filter((m) => m.vendorKey === 'antigravity-cli').map((m) => ({modelKey:m.modelKey,kind:m.kind,enabled:m.enabled,meta:m.meta})))
+const catalog = () => win.evaluate(async () => (await window.nomiDesktop.modelCatalog.listModels()).filter((m) => m.vendorKey === 'antigravity-cli').map((m) => ({modelKey:m.modelKey,kind:m.kind,enabled:m.enabled,meta:m.meta})))
 console.log(JSON.stringify({ ready:true, tempRoot, initial:await inspect(), screenshot:await screenshot('01-initial') })); save()
 const input = readline.createInterface({ input:process.stdin, crlfDelay:Infinity })
 try {
@@ -114,7 +114,7 @@ try {
         window.nomiDesktop.modelCatalog.upsertModel({vendorKey:'antigravity-cli',modelKey,enabled:true})
         window.nomiDesktop.modelCatalog.upsertVendor({key:'antigravity-cli',enabled:true}); return {enabled:modelKey}
       },command.modelKey)
-      else if (command.action === 'projects') result = await win.evaluate(() => window.nomiDesktop.projects.list().map((p) => ({id:p.id,name:p.name})))
+      else if (command.action === 'projects') result = await win.evaluate(async () => (await window.nomiDesktop.projects.listAsync()).map((p) => ({id:p.id,name:p.name})))
       else if (command.action === 'assets') result = await win.evaluate(async (projectId) => window.nomiDesktop.assets.list({projectId}),command.projectId)
       else if (command.action === 'task') result = await win.evaluate(async (value) => {
         const b = window.nomiDesktop; const nodeId = 'agy-walk-' + crypto.randomUUID()

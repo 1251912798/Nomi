@@ -172,9 +172,15 @@ try {
     // 按身份定位（改名时名字变成输入框的值，按文字找会丢）。
     const other = win.locator('[data-project-card][data-project-id="shell-redesign-other"]')
     await other.hover()
-    await clickOrFail(other.getByRole('button', { name: T('删除项目 天台', 'Delete project Rooftop'), exact: false }).first(), '#47 项目卡悬停出删除钮')
+    // 板 Library：library.card.delete（卡片上的删除钮）+ library.delete.confirm（确认框正文）。名字和正文都从词典读，不在走查里另抄一份原话。
+    const deleteName = uiText(locale, 'library.deleteNamedProject').replace('{{name}}', T('天台', 'Rooftop'))
+    await clickOrFail(other.getByRole('button', { name: deleteName, exact: false }).first(), '#47 项目卡悬停出删除钮 · board:Library/library.card.delete')
     const confirmCancel = win.locator('[data-confirm-dialog-cancel]').first()
     await expect(confirmCancel, '#47 删除要先出确认卡').toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
+    // ⑭ 起确认框说「移到这台电脑的回收站 / 废纸篓、可还原」：正文 = 词典里的那句。只看、不点「删除」——走查不往真回收站里放东西。
+    const trashBin = uiText(locale, { win32: 'studio.trashBinWindows', darwin: 'studio.trashBinMac' }[process.platform] ?? 'studio.trashBinLinux')
+    const deleteMessage = uiText(locale, 'studio.deleteProjectMessage').replaceAll('{{name}}', T('天台', 'Rooftop')).replaceAll('{{bin}}', trashBin)
+    await expect(win.locator('[data-confirm-dialog-surface]').first(), '#47 删除确认框正文不是词典里那句（回收站叫法 / 还原说明） · board:Library/library.delete.confirm').toContainText(deleteMessage, { timeout: DEFAULT_TIMEOUT_MS })
     await clickOrFail(confirmCancel, '#47 确认卡取消（不真删）')
     await other.getByText(T('天台', 'Rooftop'), { exact: true }).dblclick()
     const renameInput = other.locator('input[type="text"]').first()

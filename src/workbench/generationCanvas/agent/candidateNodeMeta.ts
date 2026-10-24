@@ -6,6 +6,10 @@
 // 正是后者被前者的自愈逻辑改写的结果。
 //
 // 戳只记身份与版本，不记参数：参数的唯一 owner 仍是 `buildPlannedNodeMeta`。
+// 「落地报文里的候选 → buildPlannedNodeMeta 入参」这一步也住这里（`plannedInputFromCandidate`，首落与重绑定共用）。
+import type { MaterializeShotCandidateWire } from '../../../../electron/shared/canvas/materializeShotCandidate'
+import type { PlannedNodeModelInput } from './plannedNodeMeta'
+
 export const CANDIDATE_META_KEYS = {
   /** PlanCandidate.candidateId。 */
   candidateId: 'productionCandidateId',
@@ -41,4 +45,46 @@ export function readCandidateNodeIdentity(
     modelKey: text(meta[CANDIDATE_META_KEYS.candidateModelKey]),
     modelVendor: text(meta[CANDIDATE_META_KEYS.candidateModelVendor]),
   }
+}
+
+/**
+ * 落地报文里的候选（`MaterializeShotCandidateWire`）的渲染半：主进程线类型的同一份，只是渲染层收到时
+ * 除了身份与版本，其余键都可能缺（旧报文 / 只动已有节点的重放），所以放宽成可选——**不另写第二份类型**。
+ */
+export type LandedShotCandidate =
+  Pick<MaterializeShotCandidateWire, 'candidateId' | 'revision'>
+  & Partial<Omit<MaterializeShotCandidateWire, 'candidateId' | 'revision'>>
+
+/** 这个线字段渲染层不喂给节点模型，以及为什么。 */
+type NotNodeModel = { readonly notNodeModel: string }
+
+/**
+ * 每一个线字段在渲染层落到哪——穷举表：主进程给线上加一个字段而这里没归类，typecheck 就红
+ * （变体就是「线上有、渲染层没喂给节点」那一类，2026-10-22 R-d2-defaults #2）。
+ * 值是 `buildPlannedNodeMeta` 入参的键，或者一句「不喂」的理由。
+ */
+const LANDED_CANDIDATE_FIELDS: { readonly [K in keyof Required<MaterializeShotCandidateWire>]: keyof PlannedNodeModelInput | NotNodeModel } = {
+  candidateId: { notNodeModel: '来源戳（candidateStamp），不是模型参数' },
+  revision: { notNodeModel: '来源戳（candidateStamp），据它判断要不要重绑定' },
+  vendor: 'vendor',
+  modelKey: 'modelKey',
+  modeId: 'modeId',
+  variantId: 'variantId',
+  parameters: 'params',
+  mode: { notNodeModel: '任务种类；节点的方式由 modeId 定，任务种类在节点路由方式推出' },
+}
+
+/**
+ * 落地报文里的候选 → 节点 meta 唯一构造器（`buildPlannedNodeMeta`）的入参。首次落地（新建节点）与重绑定
+ * （已落节点、候选 revision 变新）**共用这一个**——以前两处各手写一份，变体两处都没写，节点停在默认变体。
+ * 候选没有模型身份 → null（不知道是哪个模型就不假装知道它的参数）。
+ */
+export function plannedInputFromCandidate(candidate: LandedShotCandidate | undefined): PlannedNodeModelInput | null {
+  if (!candidate?.modelKey) return null
+  const input: Record<string, unknown> = {}
+  for (const [field, target] of Object.entries(LANDED_CANDIDATE_FIELDS)) {
+    const value = candidate[field as keyof LandedShotCandidate]
+    if (typeof target === 'string' && value !== undefined) input[target] = value
+  }
+  return input as PlannedNodeModelInput
 }

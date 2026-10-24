@@ -258,7 +258,7 @@ describe("MCP semantic generation planning journey", () => {
     expect(repository.read("project-1", operationId!)!.generationPlan).toMatchObject({ state: "draft", candidate: { revision: 2, mode: "image-to-image" } });
     expect(runTask).not.toHaveBeenCalled();
     // 面收敛：nomi_operation_preview 工具在 catalog 层路由到原内部 method 字面量 nomi_preview_execution（handler 不变）。
-    expect(harness.invoke).toHaveBeenCalledWith("nomi_preview_execution", expect.objectContaining({ operationId }));
+    expect(harness.invoke).toHaveBeenCalledWith("nomi_preview_execution", expect.objectContaining({ operationId }), expect.anything());
   });
 
   it("keeps real-page freedom across provider/model/mode/parameter/reference edits", async () => {

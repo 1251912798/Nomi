@@ -20,6 +20,7 @@ const SCANNED = [
   'src/ui/onboarding/workflowPage/useWorkflowCatalog.ts',
   'src/workbench/settings/AiModelsSection.tsx',
   'src/workbench/ai/v4/useAgentPanelV4Data.ts',
+  'src/config/useModelOptions.ts',
 ]
 
 /**

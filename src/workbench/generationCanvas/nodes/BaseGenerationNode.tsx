@@ -1,6 +1,8 @@
 import NodeGenerationComposer from './LazyNodeGenerationComposer'
 import { notify } from '../../../ui/notificationPolicy'
 import React, { type JSX } from 'react'
+import { useWhiteboardSession } from './whiteboard/whiteboardSession'
+import { NodeInlineWhiteboardHost } from './whiteboard/NodeInlineWhiteboardHost'
 import type { ImageGenerationPreset } from 'img-fx'
 import { useTranslation } from 'react-i18next'
 import { IconCopy } from '@tabler/icons-react'
@@ -28,6 +30,7 @@ import { previewBackgroundClass } from './render/previewBackground'
 import PanoramaUploadFallback from './PanoramaUploadFallback'
 import { cn } from '../../../utils/cn'
 import { DeferredNodeImage } from './DeferredNodeMedia'
+import { canvasImageSourceOf } from './canvasImageSource'
 import { NodeVideoSessionProvider } from './NodeVideoSession'
 import { NodeVideoPlaybackGuard } from './NodeVideoPlaybackGuard'
 import { useNodePanoramaHandlers } from './useNodePanoramaHandlers'
@@ -52,7 +55,7 @@ import { TechnicalReviewBadge } from './TechnicalReviewBadge'
 import { DerivedReadyBadge } from '../quickActions/DerivedReadyBadge'
 import { isDerivedPromptReady } from '../quickActions/deriveFromNode'
 import { useArtifactNodeSlots } from './artifact/artifactNodeSlots'
-import { RESIZE_DIRECTIONS, getNodeSizeBounds, FOCUS_GENERATION_NODE_EVENT, resolveNodeVisualSize } from './nodeSizing'
+import { RESIZE_DIRECTIONS, getNodeResizeBounds, FOCUS_GENERATION_NODE_EVENT, resolveNodeVisualSize } from './nodeSizing'
 import { NodeLabelRow } from './NodeLabelRow'
 import { NodeShotLabel } from '../../generation/list/CanvasListLinks'
 import { NodeInlineImageTitle } from './NodeImagePreviewActions'
@@ -72,7 +75,6 @@ export type BaseGenerationNodeProps = {
 const Model3DViewer = lazyWithChunkBoundary('3D 模型预览', () => import('./model3d/Model3DViewer')) // 生成出的 .glb 卡内可旋转预览（R3F）
 const TextDocumentNode = lazyWithChunkBoundary('文本节点编辑器', () => import('./render/TextDocumentNode'))
 const PanoramaViewer = lazyWithChunkBoundary('全景预览', () => import('./PanoramaViewer'))
-
 function NodeBodyLoading(): JSX.Element {
   return <div className="h-full w-full rounded-nomi bg-nomi-paper shadow-nomi-md ring-1 ring-inset ring-nomi-line" />
 }
@@ -89,7 +91,6 @@ function BaseGenerationNodeImpl({
   const reportFeedback = React.useCallback((message: string) => {
     notify({ identity: `BaseGenerationNodeImpl:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
   }, [node.id])
-
   const { t } = useTranslation()
   const productionRetry = useProductionNodeRetry(node, reportFeedback) // P4 S6：多镜节点失败→返工链；非多镜/项目没开→null 退回本地重跑（回归门）
   const selectNode = useGenerationCanvasStore((state) => state.selectNode)
@@ -116,7 +117,7 @@ function BaseGenerationNodeImpl({
   const [provenanceOpen, setProvenanceOpen] = React.useState(false)
   const showVersionCards = React.useMemo(() => nodeHasVersionCards(node), [node])
   const { openMediaPreview, mediaPreviewControls, mediaPreviewDoubleClick } = useNodeMediaPreview(node, selected && !isMultiSelectActive && !readOnly, () => setProvenanceOpen(true), reportFeedback)
-  const sizeBounds = getNodeSizeBounds(node.kind)
+  const sizeBounds = getNodeResizeBounds(node)
 
   const mediaMeasurement = useNodeMediaMeasurement(node)
 
@@ -185,12 +186,13 @@ function BaseGenerationNodeImpl({
   const { handlePanoramaFileChange, handlePanoramaScreenshot } = useNodePanoramaHandlers(node, visualSize, reportFeedback)
   const artifactSlots = useArtifactNodeSlots(node, { reportFeedback, selected, isMultiSelectActive, readOnly }) // 手艺产物的正文/浮条归 artifact 目录
 
-  // 图片本地编辑（切图 / 裁剪 / 旋转翻转）—— A1.5 抽进 useNodeImageEditing。
-  // 图片类与素材类共用；编辑产物进入当前节点历史堆叠，并切换为主图。
+  // 图片本地编辑（切图 / 裁剪 / 旋转翻转，A1.5 抽进 useNodeImageEditing）：图片类与素材类共用，编辑产物进当前节点历史堆叠并切为主图。
   const imageEditing = useNodeImageEditing(node, visualSize, reportFeedback)
   // 面板挂载走可打断的低优先级渲染（按下即选中时同步挂面板，拖动起手实测顿 70–95 ms）：高亮与拖动先出，面板随后到，取消选中立即卸载。
   // 版本宫格铺开时不挂生成浮框（V-1054）：浮框钉在节点正下方、定宽 560，会盖住宫格下面几行；铺开 = 正在挑版本，
   // 和 09-21 结果托盘展开时卸载浮框是同一条约定（不挂才不跑）。收起宫格浮框就回来。
+  const whiteboardOpen = useWhiteboardSession((state) => state.nodeId === node.id) && !readOnly
+  const [textEditing, setTextEditing] = React.useState(false) // 文本正文在编辑：格式条顶替节点浮条（同白板编辑条），两条不叠
   const versionGridOpen = showVersionCards && Boolean(node.resultStackOpen)
   const attachedPanelOpen = useHasNodeAttachedPanel(node.id) // 贴着本节点的面板（剪辑面板……）开着时生成面板收起，规矩在 nodeAttachedPanel
   const composerWanted = selected && !isMultiSelectActive && !readOnly && !versionGridOpen && !attachedPanelOpen && nodeHasGenerationComposer(node.kind)
@@ -229,7 +231,7 @@ function BaseGenerationNodeImpl({
     >
 {feedback ? <p role="status" className="absolute inset-x-0 bottom-0 z-[15] m-0 bg-nomi-paper px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
 
-      <EmptyNodeVariantToolbar nodeId={node.id} visible={selected && !isMultiSelectActive && !readOnly && !hasResult} />
+      <EmptyNodeVariantToolbar nodeId={node.id} visible={selected && !isMultiSelectActive && !readOnly && !hasResult && !whiteboardOpen && !textEditing} />
       {node.kind === 'panorama' && selected && !isMultiSelectActive && !readOnly && node.result?.url ? (
         <PanoramaNodeToolbar
           node={node}
@@ -245,6 +247,7 @@ function BaseGenerationNodeImpl({
       selected &&
       !isMultiSelectActive &&
       !readOnly &&
+      !whiteboardOpen &&
       node.result?.type === 'image' &&
       node.result.url ? (
         <ImageQuickActionsToolbarHost
@@ -261,6 +264,7 @@ function BaseGenerationNodeImpl({
           onOpenProvenance={() => setProvenanceOpen(true)}
         />
       ) : null}
+      {whiteboardOpen ? <NodeInlineWhiteboardHost node={node} /> : null}
       {mediaPreviewControls}
       <NodeLabelRow>
         <NodeShotLabel node={node} shotRole={shotIdentity.shotRole}>{(!isCardKind && !isTextKind) || hasEmptyCardLabel({ isCardKind, isTextKind, hasResult, contentJson: node.contentJson }) ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}</NodeShotLabel>
@@ -298,7 +302,7 @@ function BaseGenerationNodeImpl({
       {/* 失败态：错误卡铺满节点正文（absolute inset-0 z-[5]），盖占位底纹但不挡 composer/resize/handles。 */}
       {status === 'error' && node.error ? (
         <NodeErrorReport summaryVisible={false}
-          message={node.error} meta={node.meta} nodeId={node.id}
+          message={node.error} meta={node.meta} nodeId={node.id} taskId={node.runs?.[0]?.taskId}
           onDismiss={() => useGenerationCanvasStore.getState().dismissNodeError(node.id)}
           onRetry={
             isAssetKind && node.meta?.source === 'clipboard-url'
@@ -325,13 +329,13 @@ function BaseGenerationNodeImpl({
       ) : null}
 
       {/* [DESIGN-CARDS-07] 卡片分发抽到 NodeCardBody（R9 治巨壳）：非 shots 分类共用外壳只换 body。 */}
-      {isCardKind ? <NodeCardBody renderKind={renderKind} node={node} readOnly={readOnly} /> : null}
+      {isCardKind && !whiteboardOpen ? <NodeCardBody renderKind={renderKind} node={node} readOnly={readOnly} /> : null}
 
       {/* C5: 文本节点。外层不裁剪让浮动格式条浮到节点上方（圆角/阴影/裁剪在 TextDocumentNode 内层 body）。 */}
       {isTextKind ? (
         <div className="w-full h-full">
           <React.Suspense fallback={<NodeBodyLoading />}>
-            <TextDocumentNode node={node} />
+            <TextDocumentNode node={node} onEditingChange={setTextEditing} />
           </React.Suspense>
         </div>
       ) : null}
@@ -347,7 +351,7 @@ function BaseGenerationNodeImpl({
             node.progress?.phase === 'clipboard-import' &&
             'ring-nomi-accent/50 animate-remove-bg-pulse',
           // [DESIGN-CARDS-07] 卡片模式隐藏 preview div；C5 文本节点同理。
-          (isCardKind || isTextKind) && 'hidden',
+          (isCardKind || isTextKind || whiteboardOpen) && 'hidden',
         )}
         draggable={false}
         {...mediaPreviewDoubleClick}
@@ -397,8 +401,9 @@ function BaseGenerationNodeImpl({
                 localImageOpPending && 'blur-sm scale-[1.02] transition-[filter,opacity]',
                 localImageOpPending && 'animate-remove-bg-pulse-slow',
               )}
-              // 画布只挂落盘边界派生的预览；源 URL 留给编辑/导出/大图预览，画布不为每个节点解码 4K/8K 原图。
-              src={node.result.thumbnailUrl || node.result.url}
+              // 画布只挂落盘边界派生的预览（canvasImageSource 唯一判定；原图只经被计数的缺失分支）；
+              // 源 URL 留给编辑/导出/大图预览。这一支只在结果有地址且不是视频 / 3D 时进来，按图片取。
+              src={canvasImageSourceOf({ ...node.result, type: 'image' })!}
               priority={mediaPreviewPriority}
               alt=""
               onLoad={mediaMeasurement.onImageLoad}
@@ -480,8 +485,6 @@ function BaseGenerationNodeImpl({
   )
 }
 
-// v0.7.1 perf: memo wrap — node 引用稳定时跳过 rerender。
-// 父级 GenerationCanvas 须保证 node 是 zustand store 里同一引用（zustand immer 默认就是）。
 const BaseGenerationNode = React.memo(
   (props: BaseGenerationNodeProps) => props.node.result?.type === 'video'
     ? <NodeVideoSessionProvider key={`${props.node.id}:${props.node.result?.url}`} node={props.node} writable={!props.readOnly}><BaseGenerationNodeImpl {...props} /></NodeVideoSessionProvider>

@@ -10,42 +10,12 @@
 import { generationShotKind, type GenerationShotKind } from "../shared/generationShotKind";
 import { resolveOwnedArtifactFile, safeProjectRelativePath } from "./artifactProjection";
 import { localAssetUrl } from "../assets/assetPaths";
+import { canvasPreviewFieldsFromReceipt, type CanvasPreviewState } from "../shared/canvas/canvasMediaPreview";
 import type { ProductionRun, ProductionGenerationShot } from "./productionRunTypes";
+import type { PlanCandidate } from "../capabilityCore/executionContract";
+import type { MaterializeShotCandidateWire } from "../shared/canvas/materializeShotCandidate";
 import { logInfo, logWarn } from "../logging/logger";
 import { deriveProductionShotState, productionRunRecordId } from "../shared/productionShotPhase";
-
-/**
- * 一镜候选的**模型身份**，随落地报文过 RPC。它是画布节点模型的唯一来源：带上它，渲染层就不再
- * 自己另挑一个默认模型（那正是「agent 说的模型」与「节点上的模型」对不上的直接原因）。
- *
- * 只带身份，**绝不带 transportModelId、密钥或任何供应商凭据**：transportModelId 是内部投影，
- * 渲染层不需要也不许知道；节点 `meta.modelKey` 与候选 `modelId` 本来就是同一个串
- * （generationDefaultModelResolver 的 `modelId: model.modelKey`），故不造转换层。
- *
- * `revision` = PlanCandidate.revision。渲染层据它判断「这镜的意图变了没有」：变了才重绑定
- * prompt/模型，没变一个字不动——这样 `generation.patch` 能同步下去，而「打开项目补齐」这条
- * 幂等重放不会覆盖用户之后在画布上的手改。
- */
-export type MaterializeShotCandidateWire = {
-  candidateId: string;
-  revision: number;
-  vendor: string;
-  modelKey: string;
-  modeId?: string;
-  mode: string;
-  /**
-   * 候选**选中的那些参数**（画质 / 时长 / 尺寸 / 声效……）。
-   *
-   * 为什么必须过这条线：渲染层重绑定时走 `buildPlannedNodeMeta`，而它按模型档案铺的是**默认值**。
-   * 不把候选真正选的参数带过来，每一次重绑定都会把用户（或 agent）挑过的值悄悄改回档案默认——
-   * 2026-09-11 实测：付费卡上把尺寸从 1024x1024 改成 1536x1024，落地链下一拍就把它按回去，
-   * 价格跟着弹回原价。这不是显示问题：**节点是候选的投影，投影漏掉了参数**。
-   *
-   * 只带标量（字符串/数字/布尔）：参数面上真正能选的就是这些，而这条线不该变成一个任意 JSON 通道。
-   * 绝不含 transportModelId、密钥或供应商 URL。
-   */
-  parameters?: Record<string, string | number | boolean>;
-};
 
 /**
  * 这一镜此刻在节点上该是什么运行状态——**写进节点自己的运行记录**，与普通生成同一份状态、同一套画法
@@ -73,7 +43,7 @@ export type MaterializeShotWire = {
   title?: string;
   prompt?: string;
   candidate?: MaterializeShotCandidateWire;
-  result?: { id: string; type: "image" | "video"; url: string; createdAt: number; thumbnailUrl?: string; providerUrl?: string; model?: string };
+  result?: { id: string; type: "image" | "video"; url: string; createdAt: number; thumbnailUrl?: string; previewState?: CanvasPreviewState; providerUrl?: string; model?: string };
   mediaDimensions?: { width: number; height: number };
   /** 没有 result 时，这一镜在节点上的运行状态（见 MaterializeShotGenerationWire）。 */
   generation?: MaterializeShotGenerationWire;
@@ -177,10 +147,6 @@ function shotLabel(shot: ProductionGenerationShot): string {
   return isStill ? (shot.candidate?.prompt?.trim().slice(0, 24) ?? "") : "";
 }
 
-/**
- * 候选 → 落地报文里的模型身份。**逐字段列举**（不是 spread），这样 PlanCandidate 以后新增
- * transportModelId 之类的内部字段时，绝不会顺着这条 RPC 悄悄流到渲染层。
- */
 /** 候选参数里能过线的那一半：标量。非标量（引用、嵌套对象）由参考槽那条路自己走。 */
 function scalarParameters(parameters: Record<string, unknown> | undefined): Record<string, string | number | boolean> | undefined {
   if (!parameters) return undefined;
@@ -191,16 +157,41 @@ function scalarParameters(parameters: Record<string, unknown> | undefined): Reco
   return Object.keys(scalars).length > 0 ? scalars : undefined;
 }
 
-function candidateWire(candidate: ProductionGenerationShot["candidate"]): MaterializeShotCandidateWire {
-  return {
-    candidateId: candidate.candidateId,
-    revision: candidate.revision,
-    vendor: candidate.providerId,
-    modelKey: candidate.modelId,
-    ...(candidate.modeId ? { modeId: candidate.modeId } : {}),
-    mode: candidate.mode,
-    ...(scalarParameters(candidate.parameters) ? { parameters: scalarParameters(candidate.parameters)! } : {}),
-  };
+/** 这个键不过线，以及为什么（写给下一个想把它加上线的人）。 */
+type StaysInHost = { readonly staysInHost: string };
+
+/**
+ * 候选的**每一个键**过不过落地这条线——穷举表，`PlanCandidate` 新增一个键而这里没归类，typecheck 就红。
+ *
+ * 为什么是表、不是 spread 也不是手写对象字面量：spread 会把 `sealedContractHash` 这类内部凭据顺着 RPC 漏给渲染层；
+ * 手写字面量里「故意不传」和「忘了传」长得一样（都是没出现），变体就是这样漏的（R-d2-defaults #2，2026-10-22）。
+ * 表把「不传」变成一句必须写出来的理由。
+ */
+const CANDIDATE_LANDING_FIELDS: { readonly [K in keyof Required<PlanCandidate>]: ((candidate: PlanCandidate) => Partial<MaterializeShotCandidateWire>) | StaysInHost } = {
+  candidateId: (candidate) => ({ candidateId: candidate.candidateId }),
+  revision: (candidate) => ({ revision: candidate.revision }),
+  moduleId: { staysInHost: "宿主编排模块身份；节点不按它做任何事" },
+  providerId: (candidate) => ({ vendor: candidate.providerId }),
+  modelId: (candidate) => ({ modelKey: candidate.modelId }),
+  variantId: (candidate) => (candidate.variantId ? { variantId: candidate.variantId } : {}),
+  modeId: (candidate) => (candidate.modeId ? { modeId: candidate.modeId } : {}),
+  mode: (candidate) => ({ mode: candidate.mode }),
+  prompt: { staysInHost: "提示词随镜走（MaterializeShotWire.prompt），不属于候选身份" },
+  parameters: (candidate) => {
+    const scalars = scalarParameters(candidate.parameters);
+    return scalars ? { parameters: scalars } : {};
+  },
+  references: { staysInHost: "参考图落节点归 D2（R-d2-defaults #3）；今天节点经连线 / 参考槽拿参考" },
+  sealedContractHash: { staysInHost: "封印合同哈希是付费授权的内部凭据" },
+};
+
+/** 候选 → 落地报文里的候选身份（只此一处；逐键规则见上表）。 */
+function candidateWire(candidate: PlanCandidate): MaterializeShotCandidateWire {
+  const wire: Partial<MaterializeShotCandidateWire> = {};
+  for (const rule of Object.values(CANDIDATE_LANDING_FIELDS)) {
+    if (typeof rule === "function") Object.assign(wire, rule(candidate));
+  }
+  return wire as MaterializeShotCandidateWire;
 }
 
 /** 镜 → 画布节点 kind：和付费卡标题、卡体、派发读同一个答案（`generationShotKind`，第 9 条）。 */
@@ -254,14 +245,21 @@ export function buildMaterializeShotsPayload(
         resolveOwnedArtifactFile(deps.projectRoot, mediaPath);
         const posterPath = safeProjectRelativePath(artifact.thumbnailRelativePath);
         const createdAt = Date.parse(artifact.createdAt);
+        const type = artifact.kind === "image" ? "image" : "video";
+        // 节点结果用素材库那条**永久**地址（与普通生成落地的 nomi-local://asset 同一种）。
+        // 以前这里用的是 production-preview 签名链：5 分钟过期，而且优先指向缩略图——
+        // 视频节点的 result.url 是一张封面图，过 5 分钟连封面也打不开。
+        const url = localAssetUrl(run.projectId, mediaPath);
+        // 预览两栏只走落盘回执的那一个投影：小图 + 事实；旧产物没有事实时只带独立小图（由打开后补预览补齐）。
+        const preview = canvasPreviewFieldsFromReceipt(type, {
+          thumbnailUrl: posterPath ? localAssetUrl(run.projectId, posterPath) : undefined,
+          previewState: artifact.previewState,
+        }, url);
         resultByShot.set(shotId, {
           id: productionRunRecordId(jobId),
-          type: artifact.kind === "image" ? "image" : "video",
-          // 节点结果用素材库那条**永久**地址（与普通生成落地的 nomi-local://asset 同一种）。
-          // 以前这里用的是 production-preview 签名链：5 分钟过期，而且优先指向缩略图——
-          // 视频节点的 result.url 是一张封面图，过 5 分钟连封面也打不开。
-          url: localAssetUrl(run.projectId, mediaPath),
-          ...(posterPath ? { thumbnailUrl: localAssetUrl(run.projectId, posterPath) } : {}),
+          type,
+          url,
+          ...preview,
           // 用产物自己的时刻：同一份产物每次投影都是同一个结果（幂等），「已保存」回执也不会在重开项目时再冒一次。
           createdAt: Number.isFinite(createdAt) ? createdAt : 0,
         });

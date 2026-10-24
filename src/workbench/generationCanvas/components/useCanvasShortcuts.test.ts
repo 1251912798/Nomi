@@ -321,3 +321,23 @@ describe('Delete 键与选中的连线（用户 10-08「删掉连线中间的标
     expect(deleteActiveEdge).not.toHaveBeenCalled()
   })
 })
+
+describe('nested whiteboard command ownership', () => {
+  it.each(['Delete', 'Backspace', 'x', 'g', 'z', 'd'])('does not dispatch %s from an inline board or its portal to the outer canvas', key => {
+    globalThis.window = Object.assign(new EventTarget(), { getSelection: () => ({ isCollapsed: true }) }) as unknown as Window & typeof globalThis
+    globalThis.document = { activeElement: null, querySelector: () => null } as unknown as Document
+    const mutate = vi.fn()
+    const handler = createCanvasKeydownHandler({
+      stageRef: { current: { offsetParent: {} } } as RefObject<HTMLDivElement>, selectedNodeCount: 1, selectedGroupCount: 0,
+      activeCategoryId: 'shots', setActiveEdge: mutate, cancelConnection: mutate, deleteSelectedNodes: mutate,
+      groupSelectedNodes: mutate, ungroupSelectedNodes: mutate, copySelectedNodes: mutate, cutSelectedNodes: mutate,
+      pasteNodes: mutate, zoomByStep: mutate, undo: mutate, redo: mutate, duplicateSelectedNodes: mutate,
+      connectSelectedNodes: mutate, openAddNodeMenu: mutate, tidyCanvas: mutate,
+    })
+    for (const marker of ['data-nomi-inline-whiteboard', 'data-whiteboard-panel']) {
+      const target = { closest: (selector: string) => selector.includes(marker) ? {} : null } as unknown as EventTarget
+      handler(keyboardEvent(target, { key, code: key.length === 1 ? `Key${key.toUpperCase()}` : key, metaKey: key.length === 1 }))
+    }
+    expect(mutate).not.toHaveBeenCalled()
+  })
+})
