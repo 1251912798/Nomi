@@ -51,9 +51,14 @@
         "evidence": "tests/ux/library-layout.walk.mjs"
       },
       {
-        "label": "library-layout 走查第 3 次（最终构建，37 张截图）",
+        "label": "library-layout 走查第 3 次（最终产品代码，35 张截图）",
         "result": "pass",
         "evidence": "tests/ux/library-layout.walk.mjs（NOMI_LIBRARY_LAYOUT_SHOTS 指定落盘目录）"
+      },
+      {
+        "label": "library-layout 走查第 4 次（补拍技能详情英·暗，36 张截图）",
+        "result": "pass",
+        "evidence": "tests/ux/library-layout.walk.mjs（产品代码没变，只多一张截图）"
       },
       {
         "label": "skill-library-cards 走查第 1 次",
