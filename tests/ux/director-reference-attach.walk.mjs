@@ -1,8 +1,10 @@
 // I-3d-ref · 「出成片」之后付费请求里到底带不带预演参考、编号对不对 —— Electron 真机取证（免费）。
 //
 // 用法（渲染端走构建产物 dist，主进程走 dist-electron；先 `pnpm run build:electron && pnpm run build:renderer`）：
-//   NOMI_WALK_OFFSCREEN=1 NOMI_WALK_LANG=zh-CN pnpm exec tsx tests/ux/director-reference-attach.walk.mjs
-//   NOMI_WALK_OFFSCREEN=1 NOMI_WALK_LANG=en    pnpm exec tsx tests/ux/director-reference-attach.walk.mjs
+//   NOMI_WALK_OFFSCREEN=1 NOMI_WALK_LANG=zh-CN node tests/ux/director-reference-attach.walk.mjs
+//   NOMI_WALK_OFFSCREEN=1 NOMI_WALK_LANG=en    node tests/ux/director-reference-attach.walk.mjs
+// 编译器 / Seedance mapping 是 TS 源码：经 tsx/cjs/api 的 require 加载，裸 `node` 就能跑（夜跑就是裸 node；
+// 静态 import .ts 会在 Node 自带的类型剥离里栽在无扩展名的相对 import 上，2026-10-24 夜跑红过）。
 //
 // 走的是真实用户路径：隔离资料目录（不碰用户真实资料 / 项目）→ 新建项目 → 生成页 → 画布上的导演台节点 →
 // 常驻 Host 离屏渲染整段预演 → 进导演台点「出成片」→ 回画布选中视频节点 → 点节点 ↑ →「开始生成」确认。
@@ -17,15 +19,18 @@
 // 证据落 tests/ux/shots/director-reference-attach/<语言>/：每个场景一张截图 + wire-requests.json（抓到的请求体）。
 import fs from 'node:fs'
 import http from 'node:http'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { require as tsxRequire } from 'tsx/cjs/api'
 import { launchNomiApp, currentCatalogVersion } from './_launchApp.mjs'
 import { createBlankProject } from '../../evals/lib/isoApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { ensureAgentPanelOpen, newProjectEntry } from './_shell.mjs'
 import { bringButtonIntoReach } from './_generateReach.mjs'
-import { compileDirectorPlan } from '../../src/workbench/generationCanvas/nodes/director/model/compiler/directorPlanCompiler.ts'
-import { SEEDANCE_2_CREATE_OP, SEEDANCE_2_QUERY_OP } from '../../electron/catalog/kieSeedance.ts'
+
+const { compileDirectorPlan } = tsxRequire('../../src/workbench/generationCanvas/nodes/director/model/compiler/directorPlanCompiler.ts', import.meta.url)
+const { SEEDANCE_2_CREATE_OP, SEEDANCE_2_QUERY_OP } = tsxRequire('../../electron/catalog/kieSeedance.ts', import.meta.url)
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 // NOMI_WALK_PAID_LIKE=1：照付费脚本的样子走——Agent 面板开着、点 ↑ 只用真鼠标（不退到 DOM 点击），并量「点击 → 确认框可见」的毫秒数与按钮被谁盖着（协调 10-22 查付费样本点 ↑ 没反应）。
@@ -35,7 +40,8 @@ const langDir = lang === 'en' ? 'en' : 'zh'
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/director-reference-attach', langDir)
 fs.rmSync(shotsDir, { recursive: true, force: true })
 fs.mkdirSync(shotsDir, { recursive: true })
-const tempRoot = path.join(process.env.TEMP || repoRoot, `nomi-ref-attach-${langDir}`)
+// 隔离资料放系统临时目录（不能落回仓库根：macOS / Linux 没有 TEMP，旧写法会在工作树根建 nomi-ref-attach-*）
+const tempRoot = path.join(process.env.TEMP || os.tmpdir(), `nomi-ref-attach-${langDir}`)
 fs.rmSync(tempRoot, { recursive: true, force: true })
 const userDataDir = path.join(tempRoot, 'user-data')
 const settingsDir = path.join(tempRoot, 'settings')
