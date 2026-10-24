@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_SCENE_CONFIG } from './directorProject'
 import { createDirectorStore } from './directorStore'
-import type { DirectorObject } from './directorTypes'
+import type { DirectorObject, DirectorSceneConfig } from './directorTypes'
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three'
 
 function worldMatrix(store: ReturnType<typeof createDirectorStore>, id: string): Matrix4 {
@@ -247,5 +248,95 @@ describe('director project transactions', () => {
     expect(copiedA.motionTrajectory!.find(point => point.time === 1)!.lookAtObjectId).toBe(copiedB.id)
     api.deleteObject(copiedB.id)
     expect(api.findObject(copiedA.id)!.motionTrajectory!.find(point => point.time === 1)!.lookAtObjectId).toBeUndefined()
+  })
+})
+
+// 2026-10-24 走查 ②：「视图 ▾」的三分线 / 骨骼 / 角色头部标签 / 显示模式直接调 patchSceneConfig、前面没存快照，
+// ⌘Z 恢复的是更早那张快照——开关和上一步真编辑一起被撤掉。类根因在写口：sceneConfig 只有 patchSceneConfig 一扇门，
+// 这扇门自己记撤销步（一次调用 = 一步；滑条这类连续手势由开头的 saveState 起锚，后面同一组键的写入并进这一步）。
+describe('sceneConfig has one write door and it records its own undo step', () => {
+  const CHANGED: DirectorSceneConfig = {
+    scale: 2, position: { x: 1, y: 2, z: 3 }, rotation: { x: 0, y: 45, z: 0 }, skyColor: '#123456',
+    gridSnapEnabled: true, gridVisible: false, gridHeight: 1.5, groundOpacity: 0.7,
+    showSkeleton: true, showCharacterLabels: false, showRuleOfThirds: false, modelDisplayMode: 'clay',
+  }
+  const KEYS = Object.keys(DEFAULT_SCENE_CONFIG) as (keyof DirectorSceneConfig)[]
+
+  it('the changed-value table covers every sceneConfig key with a value different from the default', () => {
+    expect(Object.keys(CHANGED).sort()).toEqual([...KEYS].sort())
+    for (const key of KEYS) expect(CHANGED[key], key).not.toEqual(DEFAULT_SCENE_CONFIG[key])
+  })
+
+  it.each(['showRuleOfThirds', 'showSkeleton', 'showCharacterLabels', 'modelDisplayMode'] as const)('view menu %s: undo reverts only the toggle, the previous edit survives', (key) => {
+    const store = setup(), api = store.getState()
+    api.addLight('point', 'Light')
+    const afterEdit = api.exportProject()
+    api.patchSceneConfig({ [key]: CHANGED[key] })
+    expect(store.getState().activeScene().sceneConfig[key]).toEqual(CHANGED[key])
+    api.undo()
+    expect(store.getState().exportProject()).toEqual(afterEdit)
+  })
+
+  it.each(KEYS)('every sceneConfig key is its own undo step: %s', (key) => {
+    const store = setup(), api = store.getState()
+    api.addObject(object('A'))
+    const afterEdit = api.exportProject()
+    api.patchSceneConfig({ [key]: CHANGED[key] })
+    api.undo()
+    expect(store.getState().exportProject()).toEqual(afterEdit)
+    api.redo()
+    expect(store.getState().activeScene().sceneConfig[key]).toEqual(CHANGED[key])
+  })
+
+  it('a slider drag (snapshot at onChangeStart, then many ticks) is exactly one undo step', () => {
+    const store = setup(), api = store.getState()
+    api.addLight('point', 'Light')
+    const afterEdit = api.exportProject()
+    const depth = store.getState().undoStack.length
+    api.saveState()
+    for (const gridHeight of [0.1, 0.2, 0.3, 0.4]) api.patchSceneConfig({ gridHeight })
+    expect(store.getState().undoStack).toHaveLength(depth + 1)
+    api.undo()
+    expect(store.getState().exportProject()).toEqual(afterEdit)
+  })
+
+  it('a toggle right after a drag is its own step; undo peels them one at a time', () => {
+    const store = setup(), api = store.getState()
+    api.addLight('point', 'Light')
+    const afterEdit = api.exportProject()
+    api.saveState()
+    for (const gridHeight of [0.5, 1]) api.patchSceneConfig({ gridHeight })
+    const afterDrag = api.exportProject()
+    api.patchSceneConfig({ showSkeleton: true })
+    api.undo()
+    expect(store.getState().exportProject()).toEqual(afterDrag)
+    api.undo()
+    expect(store.getState().exportProject()).toEqual(afterEdit)
+  })
+
+  it("another action's snapshot is not a gesture the next toggle can join", () => {
+    const store = setup(), api = store.getState()
+    api.createSceneLayer('Layer 2')
+    const afterLayer = api.exportProject()
+    api.patchSceneConfig({ showCharacterLabels: false })
+    api.undo()
+    expect(store.getState().exportProject()).toEqual(afterLayer)
+  })
+
+  it('toggling twice is two steps (a discrete click never joins the previous click)', () => {
+    const store = setup(), api = store.getState()
+    api.patchSceneConfig({ showRuleOfThirds: false })
+    api.patchSceneConfig({ showRuleOfThirds: true })
+    api.undo()
+    expect(store.getState().activeScene().sceneConfig.showRuleOfThirds).toBe(false)
+    api.undo()
+    expect(store.getState().activeScene().sceneConfig.showRuleOfThirds).toBe(true)
+    expect(store.getState().undoStack).toHaveLength(0)
+  })
+
+  it('inside a composed withHistory action the door adds no step of its own', () => {
+    const store = setup(), api = store.getState()
+    api.withHistory(() => { api.addObject(object('A')); api.patchSceneConfig({ showSkeleton: true }) })
+    expect(store.getState().undoStack).toHaveLength(1)
   })
 })
