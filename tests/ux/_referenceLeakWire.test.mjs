@@ -9,6 +9,7 @@
 // 参考地址用 https 假域名，免得触发本机托管上传；付费那一场里两帧是先托管上传、再按返回地址发的——这里照那个形状
 // 补两条「托管上传」账本（文件名 + 返回地址），判定靠它把地址对回 first.png / last.png。
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { scrubText } from '../../scripts/walkthrough-url-shape.cjs'
 
 vi.mock('electron', async () => {
   const nodeFs = await import('node:fs')
@@ -170,7 +171,7 @@ async function ledgerFor(node, { uploads = ['first.png', 'last.png'], mutateBody
   const record = await driveEngineA(capture, { vendorKey: vendor, kind: request.kind, prompt: request.prompt, extras: { ...request.extras, nodeId: node.id } })
   expect(record.failure, JSON.stringify(record.failure)).toBeUndefined()
   const body = mutateBody ? mutateBody(structuredClone(record.request.body)) : record.request.body
-  const scrub = (text) => text.replace(/(https?:\/\/[^\s"'\\?#]+)\?[^\s"'\\#]*/g, '$1?<redacted>')
+  const scrub = scrubText
   const entries = uploads.flatMap((file, index) => [
     { kind: 'allowed-request', via: 'fetch', seq: index + 1, method: 'POST', url: 'https://api.apimart.ai/v1/uploads/images', host: HOST, body: { form: [{ field: 'file', fileName: file, size: 15237, type: 'image/png' }] } },
     { kind: 'allowed-response', via: 'fetch', seq: index + 1, status: 200, text: scrub(JSON.stringify({ code: 200, data: { url: hosted(file) } })) },
