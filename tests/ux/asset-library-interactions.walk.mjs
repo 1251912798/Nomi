@@ -9,7 +9,9 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 //   ③ 项目素材：点两张卡的对勾 → 两张都选中；再点其中一张的对勾 → 取消
 //   ④ 项目素材：拖一张到画布 → 多一张卡（复制）；拖到文件夹 → 归进文件夹
 //   ⑤ 项目素材：点对勾选两张 → 删除按钮计数 2 → 确认 → 两张都没了
-// 用法: pnpm build && node tests/ux/asset-library-interactions.walk.mjs [--locale en]
+//   ⑥ 项目素材：删画布上那张卡的素材 → 两个页签都不再列（文件等撤销窗口过去才进回收站，这期间也不许换个名字列回来）
+//   ⑦ 项目素材：删一张只被时间轴片段用着的图 → 留着，顶上说还在用、先从那里移除（2026-10-24 之前说「暂时无法删除」）
+// 用法: pnpm build && node tests/ux/asset-library-interactions.walk.mjs [--locale en] [--scheme dark]
 // 判据 = 断言 + 截图（tests/ux/shots/asset-library-interactions-<locale>/）人眼过。
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -18,17 +20,23 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { expectAbsent, proveProbe } from './_assert.mjs'
+import { expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { requireRealMediaAssets } from './fixtures/realMedia.mjs'
 import { canvasFitViewButton, openRailDrawer, switchWorkspace } from './_shell.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const require = createRequire(import.meta.url)
 const FFMPEG = require('@ffmpeg-installer/ffmpeg').path
 
 const locale = process.argv.includes('--locale') ? process.argv[process.argv.indexOf('--locale') + 1] : 'zh-CN'
-// 「项目素材」页签的名字（zh / en）：只在这一处写，走查里两处都点它。
-const PROJECT_TAB = locale === 'en' ? 'Project assets' : '项目素材'
-const shotsDir = path.join(repoRoot, `tests/ux/shots/asset-library-interactions-${locale}`)
+// 两个页签的名字按键从词典取（不抄文案）。
+const PROJECT_TAB = uiText(locale, 'assetLibrary.projectAssets')
+const ALL_TAB = uiText(locale, 'assetLibrary.allAssets')
+// 明 / 暗：走生产路径（用户偏好 nomi-color-scheme），默认明；暗色截图另放一个目录。
+const scheme = process.argv.includes('--scheme') ? process.argv[process.argv.indexOf('--scheme') + 1] : 'light'
+if (scheme !== 'light' && scheme !== 'dark') throw new Error(`--scheme 只认 light / dark，收到 ${scheme}`)
+const runName = `asset-library-interactions-${locale}${scheme === 'dark' ? '-dark' : ''}`
+const shotsDir = path.join(repoRoot, `tests/ux/shots/${runName}`)
 fs.rmSync(shotsDir, { recursive: true, force: true })
 fs.mkdirSync(shotsDir, { recursive: true })
 
@@ -41,8 +49,11 @@ const localUrl = (projectId, relative) =>
 const { assets: realMedia } = requireRealMediaAssets(['video-ai-shot-640x360', 'image-ai-shot-frame-png'])
 const realVideo = realMedia.get('video-ai-shot-640x360').file
 
-/** 写一个项目：真实镜头 + 若干抽帧进 assets/imported；可选在画布上放一张引用第一帧的卡。 */
-function writeProject({ id, name, frames, withCanvasNode }) {
+/**
+ * 写一个项目：真实镜头 + 若干抽帧进 assets/imported；可选在画布上放一张引用第一帧的卡；
+ * 可选把某一帧放上时间轴图片轨（和从素材库加到时间轴同款：sourceNodeId = asset:<相对路径>），画布上不放它。
+ */
+function writeProject({ id, name, frames, withCanvasNode, onTimeline }) {
   const root = path.join(projectsDir, `walk-${id}`)
   const importedDir = path.join(root, 'assets', 'imported')
   fs.mkdirSync(path.join(root, '.nomi'), { recursive: true })
@@ -62,11 +73,21 @@ function writeProject({ id, name, frames, withCanvasNode }) {
         meta: { imageWidth: 640, imageHeight: 360, imageAspectRatio: 640 / 360 },
       }]
     : []
+  const timelineFile = onTimeline ? files.find((file) => file.relative.endsWith(`/${onTimeline}`)) : null
+  const tracks = timelineFile
+    ? [{
+        id: 'imageTrack', type: 'image', label: 'image',
+        clips: [{
+          id: `clip-asset:${timelineFile.relative}-image-0`, type: 'image', sourceNodeId: `asset:${timelineFile.relative}`, label: onTimeline,
+          startFrame: 0, endFrame: 90, frameCount: 90, offsetStartFrame: 0, offsetEndFrame: 0, url: timelineFile.url,
+        }],
+      }]
+    : []
   const now = Date.now()
   const record = {
     id, name, version: 2, createdAt: now, updatedAt: now, savedAt: now, revision: 1, lastKnownRootPath: path.resolve(root),
     payload: {
-      timeline: { version: 1, fps: 30, scale: 1, playheadFrame: 0, tracks: [] },
+      timeline: { version: 1, fps: 30, scale: 1, playheadFrame: 0, tracks },
       generationCanvas: { nodes, edges: [], groups: [], selectedNodeIds: [] },
     },
   }
@@ -80,8 +101,9 @@ const projectB = writeProject({ id: 'walk-asset-b', name: locale === 'en' ? 'Las
 const projectA = writeProject({
   id: 'walk-asset-a',
   name: locale === 'en' ? 'Asset interactions' : '素材交互验收',
-  frames: [{ name: 'a-hero.png', at: '0.5' }, { name: 'a-street.png', at: '1.3' }, { name: 'a-night.png', at: '2.1' }, { name: 'a-spare.png', at: '2.9' }],
+  frames: [{ name: 'a-hero.png', at: '0.5' }, { name: 'a-street.png', at: '1.3' }, { name: 'a-night.png', at: '2.1' }, { name: 'a-spare.png', at: '2.9' }, { name: 'a-onclip.png', at: '1.7' }],
   withCanvasNode: true,
+  onTimeline: 'a-onclip.png',
 })
 
 const results = []
@@ -116,13 +138,14 @@ let app
 let win
 try {
   ;({ app, win } = await launchNomiApp({
-    name: `asset-library-interactions-${locale}`,
+    name: runName,
     tempRoot,
     projectsDir,
     settleMs: 0,
     viewportSize: { width: 1440, height: 900 },
     initialLocalStorage: {
       'nomi:locale:v1': locale,
+      'nomi-color-scheme': scheme,
       'nomi:splash:v1': 'seen',
       'nomi:journey-tour:v1': 'seen',
       'nomi:canvas-gesture-hint:v1': 'seen',
@@ -239,6 +262,57 @@ try {
   await checkAbsent('⑤ 删两张：a-spare.png 没了', tile('a-spare.png'), spareProof, '确认删除后 a-spare.png 不该还在')
   await checkAbsent('⑤ 删两张：视频也没了', tile(VIDEO), videoProof, '确认删除后这条视频不该还在')
   await snap(win, '10-after-delete-two')
+
+  const confirmDelete = () => win.locator('[role="dialog"] button, [role="alertdialog"] button', { hasText: locale === 'en' ? 'Delete' : '删除' }).last().click()
+  const feedbackLine = win.locator('[data-asset-library-feedback]').first()
+
+  // ⑥ 删画布上那张卡的素材：画布结果摘掉（⌘Z 能撤），文件等撤销窗口过去才进回收站——这期间两个页签都不许把它列回来。
+  const CANVAS_CARD = '画布上的卡'
+  const HERO = 'a-hero.png'
+  await win.locator('[role="tab"]', { hasText: ALL_TAB }).first().click()
+  const heroProof = await proveProbe(tile(HERO), '删除前全部素材里有 a-hero.png')
+  await win.locator('[role="tab"]', { hasText: PROJECT_TAB }).first().click()
+  const cardProof = await proveProbe(tile(CANVAS_CARD), '删除前项目素材里有画布上那张卡')
+  await tile(CANVAS_CARD).hover()
+  await clickTick(CANVAS_CARD)
+  await win.waitForTimeout(300)
+  check('⑥ 只选中画布上那张卡', (await selectedCount()) === 1, `selected=${await selectedCount()}`)
+  await deleteButton.click()
+  await win.waitForTimeout(500)
+  await confirmDelete()
+  await checkAbsent('⑥ 删画布上的卡：项目素材里没了', tile(CANVAS_CARD), cardProof, '确认删除后画布那张卡的素材不该还在')
+  await checkAbsent('⑥ 文件没有换成文件名回到项目素材', tile(HERO), heroProof, '删掉的素材不该以文件名 a-hero.png 回到项目素材')
+  await snap(win, '11-after-delete-canvas-card')
+  await win.locator('[role="tab"]', { hasText: ALL_TAB }).first().click()
+  await checkAbsent('⑥ 全部素材里也没了', tile(HERO), heroProof, '删掉的素材不该还在全部素材里')
+  await snap(win, '12-all-tab-after-delete-canvas-card')
+
+  // ⑦ 只被时间轴片段用着的图：不删、格子留着，顶上说还在用、先从那里移除。
+  const ON_CLIP = 'a-onclip.png'
+  await win.locator('[role="tab"]', { hasText: PROJECT_TAB }).first().click()
+  await proveProbe(tile(ON_CLIP), '删除前项目素材里有 a-onclip.png')
+  await tile(ON_CLIP).hover()
+  await clickTick(ON_CLIP)
+  await win.waitForTimeout(300)
+  check('⑦ 只选中时间轴上那张图', (await selectedCount()) === 1, `selected=${await selectedCount()}`)
+  await deleteButton.click()
+  await win.waitForTimeout(500)
+  await confirmDelete()
+  const keptMessage = uiText(locale, 'assetLibrary.keptInUse_one')
+  try {
+    await expect(feedbackLine, '删一张时间轴在用的图，顶上要说还在用').toContainText(keptMessage, { timeout: stationTimeout() })
+    check('⑦ 顶上说还在时间轴上用着', true, keptMessage)
+  } catch (error) {
+    check('⑦ 顶上说还在时间轴上用着', false, String(error?.message || error).split('\n')[0])
+  }
+  try {
+    await expect(tile(ON_CLIP), '时间轴在用的图不该被删掉').toBeVisible({ timeout: stationTimeout() })
+    check('⑦ 时间轴在用的图留着', true)
+  } catch (error) {
+    check('⑦ 时间轴在用的图留着', false, String(error?.message || error).split('\n')[0])
+  }
+  check('⑦ 文件还在盘上', fs.existsSync(path.join(projectA.root, 'assets', 'imported', ON_CLIP)))
+  await snap(win, '13-kept-in-use')
 } catch (error) {
   console.log(`  FAIL walk crashed: ${error?.stack || error}`)
   results.push({ name: 'crash', ok: false })

@@ -1,10 +1,11 @@
 // 类测试：素材库列出来的每一种素材 × 每扇删除门 × 项目开着 / 关着，删了必须有确定的结果——
-// 要么「删掉」（结果从卡上摘掉 / 文件进回收站或延后真删），要么「留着」并计入 keptInUseCount（还被别处用着）。
+// 要么「删掉」（结果从卡上摘掉 / 文件进回收站或延后真删，并且这扇门的列表里不再有它），
+// 要么「留着」并计入 keptInUseCount（还被别处用着，列表里照样在）。
 // 不许出现四个计数全 0 的格：那就是 2026-10-24 夜跑 asset-library-interactions ⑤ 的样子
 // （删除口一张都没认出来，面板只能说「暂时无法删除」）。
 //
 // 素材不手写：三扇门的素材都由列表的真产出口造（canvasNodeToAssetRefs / workspaceNodeToAssetRef /
-// assetRefFromDesktopAsset），项目素材页签再走一遍面板同款的合流去重——以后列表多一种素材，这张表跟着多一格。
+// assetRefFromDesktopAsset），两个页签再走一遍面板同款的合流去重、待删过滤——以后列表多一种素材，这张表跟着多一格。
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GenerationCanvasNode, GenerationNodeResult } from '../generationCanvas/model/generationCanvasTypes'
 import type { ProjectExecutionContext } from '../project/projectCanvasReadSurface'
@@ -34,7 +35,15 @@ import { deleteAssetResult, type DeleteAssetResultOutcome } from './deleteAssetR
 import { canvasNodeToAssetRefs, workspaceNodeToAssetRef, type AssetRef } from './assetTypes'
 import { assetRefFromDesktopAsset, mergeAssetRefs } from './useAllProjectAssets'
 import { filterCanvasLibraryAssets } from './assetLibrarySources'
-import { __resetPendingAssetDeletionsForTests, listPersistedAssetDeletions } from './pendingAssetDeletions'
+import {
+  __resetPendingAssetDeletionsForTests,
+  isAssetFileAwaitingTrash,
+  listPersistedAssetDeletions,
+  readPendingAssetDeletionsVersion,
+  releaseLoadedProjectAssetDeletions,
+  subscribePendingAssetDeletions,
+  withoutFilesAwaitingTrash,
+} from './pendingAssetDeletions'
 import { __resetCanvasUndoJournalForTests } from '../generationCanvas/events/canvasUndoJournal'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
 import { useWorkbenchStore } from '../workbenchStore'
@@ -107,17 +116,19 @@ function desktopAsset(relativePath: string, ownerNodeId?: string): DesktopAssetD
   }
 }
 
-/** 「项目素材」页签：画布结果 + 落盘文件，和面板同款合流去重（画布优先）。 */
-function projectTabAssets(nodes: readonly GenerationCanvasNode[]): AssetRef[] {
+const ALL_FILES: readonly string[] = Object.values(FILES)
+
+/** 「项目素材」页签：画布结果 + 落盘文件，和面板同款合流去重（画布优先）、不列待删的文件。 */
+function projectTabAssets(nodes: readonly GenerationCanvasNode[], onDisk: readonly string[] = ALL_FILES): AssetRef[] {
   const canvas = nodes.flatMap(canvasNodeToAssetRefs)
-  const files = Object.values(FILES).flatMap((relativePath) => workspaceNodeToAssetRef(workspaceFile(relativePath), PROJECT) ?? [])
-  return filterCanvasLibraryAssets(mergeAssetRefs(canvas, files))
+  const files = onDisk.flatMap((relativePath) => workspaceNodeToAssetRef(workspaceFile(relativePath), PROJECT) ?? [])
+  return filterCanvasLibraryAssets(mergeAssetRefs(canvas, withoutFilesAwaitingTrash(files)))
 }
 
-/** 「全部素材」页签：项目落盘素材清单（sidecar 里可能带着生成它的节点）。 */
-function allTabAssets(): AssetRef[] {
+/** 「全部素材」页签：项目落盘素材清单（sidecar 里可能带着生成它的节点），不列待删的文件。 */
+function allTabAssets(onDisk: readonly string[] = ALL_FILES): AssetRef[] {
   const owners: Partial<Record<string, string>> = { [FILES.gen]: 'n-gen', [FILES.shared]: 'n-shared-a', [FILES.video]: 'n-video', [FILES.boardOut]: 'n-board' }
-  return Object.values(FILES).flatMap((relativePath) => assetRefFromDesktopAsset(desktopAsset(relativePath, owners[relativePath])) ?? [])
+  return filterCanvasLibraryAssets(withoutFilesAwaitingTrash(onDisk.flatMap((relativePath) => assetRefFromDesktopAsset(desktopAsset(relativePath, owners[relativePath])) ?? [])))
 }
 
 /** 版本卡片：只删某一张卡上的某一版。 */
@@ -169,10 +180,28 @@ const CELLS: Cell[] = [
   { door: 'version-card', label: '删一版视频', pick: byFile(FILES.video), removed: 1, file: 'trash' },
 ]
 
-function populationFor(door: Cell['door'], nodes: readonly GenerationCanvasNode[]): AssetRef[] {
-  if (door === 'multi-select') return projectTabAssets(nodes)
-  if (door === 'single') return allTabAssets()
+function populationFor(door: Cell['door'], nodes: readonly GenerationCanvasNode[], onDisk: readonly string[] = ALL_FILES): AssetRef[] {
+  if (door === 'multi-select') return projectTabAssets(nodes, onDisk)
+  if (door === 'single') return allTabAssets(onDisk)
   return versionCardAssets(nodes)
+}
+
+/** 删完以后盘上还剩哪些文件（进了回收站的就没了；延后真删的还在盘上，由待删过滤藏起来）。 */
+function filesStillOnDisk(): string[] {
+  const trashed = new Set(mocks.deleteFiles.mock.calls.flatMap(([payload]) => (payload as { relativePaths: string[] }).relativePaths))
+  return ALL_FILES.filter((relativePath) => !trashed.has(relativePath))
+}
+
+/** 这扇门的列表里还认不认得出这一张：项目素材按地址合流（同一份文件只一格），另两扇门按身份。 */
+function stillListed(door: Cell['door'], asset: AssetRef, listed: readonly AssetRef[]): boolean {
+  return door === 'multi-select'
+    ? listed.some((candidate) => candidate.renderUrl === asset.renderUrl)
+    : listed.some((candidate) => candidate.id === asset.id)
+}
+
+/** 删掉的不该再列；留着的（还被用着）照样列。版本卡片删的是这一版，删了就一定不在这张卡上了。 */
+function expectListedAfter(cell: Cell): boolean {
+  return cell.door !== 'version-card' && cell.file === 'keep'
 }
 
 function expectedOutcome(cell: Cell, mode: 'loaded' | 'closed'): DeleteAssetResultOutcome {
@@ -234,9 +263,56 @@ describe('素材库删除：每种素材 × 每扇门 × 项目开着 / 关着',
           expect(liveNodes(mode).map((candidate) => candidate.result?.id)).toEqual(fixtureNodes().map((candidate) => candidate.result?.id))
         }
         if (cell.label.includes('封面')) expect(liveNodes(mode).find((candidate) => candidate.id === 'n-video')?.result?.id).toBe(videoBefore)
+        // 删完以后这扇门的列表：删掉的不再列（延后真删的文件也不列），留着的照样在。
+        const listedAfter = populationFor(cell.door, liveNodes(mode), filesStillOnDisk())
+        expect(stillListed(cell.door, asset!, listedAfter), '删完以后列表里还在不在').toBe(expectListedAfter(cell))
       })
     }
   }
+
+  it('已加载项目删画布卡的素材：等撤销窗口的文件两个页签都不列，⌘Z 撤回后回来', async () => {
+    const asset = byFile(FILES.gen)(projectTabAssets(fixtureNodes()))!
+    const notifications = vi.fn()
+    const unsubscribe = subscribePendingAssetDeletions(notifications)
+    const versionBefore = readPendingAssetDeletionsVersion()
+
+    const outcome = await deleteAssetResult(asset, loadedContext())
+
+    expect(outcome.deferredFileCount).toBe(1)
+    expect(readPendingAssetDeletionsVersion()).toBeGreaterThan(versionBefore)
+    expect(notifications).toHaveBeenCalled()
+    // 文件还在盘上（等撤销窗口），但已经删了：两个页签都不列。
+    expect(filesStillOnDisk()).toContain(FILES.gen)
+    expect(isAssetFileAwaitingTrash({ projectId: PROJECT, relativePath: FILES.gen })).toBe(true)
+    expect(stillListed('multi-select', asset, projectTabAssets(liveNodes('loaded')))).toBe(false)
+    expect(allTabAssets().some((candidate) => candidate.origin.source === 'project' && candidate.origin.relativePath === FILES.gen)).toBe(false)
+
+    // ⌘Z：那一版回到卡上 = 又有人用，照常列；到点也只销账、不删。
+    useGenerationCanvasStore.getState().undo()
+    expect(isAssetFileAwaitingTrash({ projectId: PROJECT, relativePath: FILES.gen })).toBe(false)
+    expect(stillListed('multi-select', asset, projectTabAssets(liveNodes('loaded')))).toBe(true)
+    expect(allTabAssets().some((candidate) => candidate.origin.source === 'project' && candidate.origin.relativePath === FILES.gen)).toBe(true)
+    await releaseLoadedProjectAssetDeletions()
+    expect(mocks.deleteFiles).not.toHaveBeenCalled()
+    unsubscribe()
+  })
+
+  it('延后真删到点、正在进回收站时照样不列；进完以后待删清单放手（列表由删除广播刷新）', async () => {
+    const asset = byFile(FILES.gen)(projectTabAssets(fixtureNodes()))!
+    await deleteAssetResult(asset, loadedContext())
+    let finishTrash: (value: { deletedCount: number; failedCount: number }) => void = () => undefined
+    mocks.deleteFiles.mockImplementationOnce(() => new Promise((resolve) => { finishTrash = resolve }))
+
+    const releasing = releaseLoadedProjectAssetDeletions()
+
+    expect(mocks.deleteFiles).toHaveBeenCalledWith({ projectId: PROJECT, relativePaths: [FILES.gen] })
+    expect(isAssetFileAwaitingTrash({ projectId: PROJECT, relativePath: FILES.gen })).toBe(true)
+    expect(allTabAssets().some((candidate) => candidate.origin.source === 'project' && candidate.origin.relativePath === FILES.gen)).toBe(false)
+    finishTrash({ deletedCount: 1, failedCount: 0 })
+    await releasing
+    expect(isAssetFileAwaitingTrash({ projectId: PROJECT, relativePath: FILES.gen })).toBe(false)
+    expect(listPersistedAssetDeletions()).toBeUndefined()
+  })
 
   it('列表里的每一张素材删了都有结果（没有四个计数全 0 的格）', async () => {
     for (const mode of ['loaded', 'closed'] as const) {

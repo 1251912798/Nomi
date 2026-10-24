@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { assertTrustedUiSender } from "../ipcSenderGuard";
 import { resolveWorkspaceFilePath } from "./workspaceFileIndex";
+import { broadcastAssetsUpdated } from "../assets/assetEvents";
 import type { ChildWindowProjectIssuer } from "../assets/projectInteractionCapture";
 
 type ProjectReader = (projectId: string) => unknown | null;
@@ -47,6 +48,10 @@ export function registerWorkspaceFileDeleteIpc({ readProject, childWindowProject
       }
     }
 
+    // 删文件也是素材写入：和落盘一样广播，素材库两个页签、「所有项目」那份清单都靠这一个信号刷新。
+    // 以前只有写入广播、删除不广播，各调用方删完自己手动重拉；延后真删（撤销窗口过后）没人重拉，
+    // 列表就一直挂着一个已经进了回收站的文件（2026-10-24）。
+    if (deletedCount > 0) broadcastAssetsUpdated(projectId);
     return { ok: failedCount === 0, deletedCount, failedCount };
   });
 }
