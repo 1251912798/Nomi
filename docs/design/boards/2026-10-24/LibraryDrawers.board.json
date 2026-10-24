@@ -1,7 +1,7 @@
 {
   "board": "LibraryDrawers",
   "approvedOn": "2026-10-24",
-  "stage": "explored",
+  "stage": "built",
   "approval": {
     "quote": "技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。",
     "date": "2026-10-24",
@@ -119,8 +119,9 @@
         "128-aside-提示词库",
         "187-aside-Promptlibrar"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.panel"
     },
     {
       "id": "drawer.title",
@@ -136,8 +137,9 @@
         "129-span-提示词",
         "188-span-Prompts"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.title"
     },
     {
       "id": "drawer.import",
@@ -154,8 +156,9 @@
         "067-button-导入技能SKILLmdz",
         "068-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.import"
     },
     {
       "id": "drawer.new",
@@ -176,8 +179,9 @@
         "189-button-Newprompt",
         "190-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.new"
     },
     {
       "id": "drawer.search",
@@ -204,8 +208,9 @@
         "192-svg",
         "193-input-Searchprompt"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.search"
     },
     {
       "id": "drawer.filter",
@@ -231,8 +236,9 @@
         "195-span-All",
         "196-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.filter"
     },
     {
       "id": "drawer.group",
@@ -283,8 +289,9 @@
         "234-section-Composition",
         "235-span-Composition"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.group"
     },
     {
       "id": "drawer.group-more",
@@ -346,8 +353,9 @@
         "237-span-All8",
         "238-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.group-more"
     },
     {
       "id": "drawer.skill-card",
@@ -383,8 +391,9 @@
         "121-button",
         "124-button"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.skill-card"
     },
     {
       "id": "drawer.skill-card.title",
@@ -416,8 +425,9 @@
         "122-span-凝露产品广告",
         "125-span-咖啡倾注特写"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.skill-card.title"
     },
     {
       "id": "drawer.skill-card.summary",
@@ -449,8 +459,9 @@
         "123-span-用微距水滴和环绕镜头展示",
         "126-span-把注入油脂和蒸汽拆成清楚"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.skill-card.summary"
     },
     {
       "id": "drawer.prompt-card",
@@ -481,8 +492,9 @@
         "239-button",
         "242-button"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.prompt-card"
     },
     {
       "id": "drawer.prompt-card.text-cover",
@@ -497,8 +509,9 @@
         "147-span-Astylishwoma",
         "206-span-Astylishwoma"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.prompt-card.text-cover"
     },
     {
       "id": "drawer.prompt-card.title",
@@ -528,8 +541,9 @@
         "240-span-Framewithinf",
         "243-span-Diagonaldyna"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.prompt-card.title"
     },
     {
       "id": "drawer.prompt-card.meta",
@@ -564,8 +578,9 @@
         "241-span-Image",
         "244-span-Image"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.prompt-card.meta"
     }
   ],
   "decor": [

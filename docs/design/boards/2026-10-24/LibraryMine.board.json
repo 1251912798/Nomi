@@ -1,7 +1,7 @@
 {
   "board": "LibraryMine",
   "approvedOn": "2026-10-24",
-  "stage": "explored",
+  "stage": "built",
   "approval": {
     "quote": "技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。",
     "date": "2026-10-24",
@@ -130,8 +130,9 @@
         "150-button-设置",
         "151-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/shell.topbar"
     },
     {
       "id": "library.tabs",
@@ -164,8 +165,9 @@
         "157-button",
         "158-span-提示词"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/library.tabs"
     },
     {
       "id": "mine.search",
@@ -186,8 +188,9 @@
         "160-svg",
         "161-input-搜技能"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.search"
     },
     {
       "id": "mine.import",
@@ -203,8 +206,9 @@
         "162-button-导入技能SKILLmdz",
         "163-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.import"
     },
     {
       "id": "mine.new",
@@ -225,8 +229,9 @@
         "165-svg",
         "166-span-新建"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.new"
     },
     {
       "id": "mine.type-segment",
@@ -245,8 +250,10 @@
         "071-button",
         "072-span-视频"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.type-segment",
+      "note": "同 PromptLibrary/prompt-lib.type-segment：整段高 32（NomiSegmented compact），样张 28。"
     },
     {
       "id": "mine.category-nav",
@@ -352,8 +359,9 @@
         "188-span-角色与场景",
         "189-span-7"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.category-nav"
     },
     {
       "id": "mine.group",
@@ -368,8 +376,9 @@
         "127-span-我的",
         "128-span-3"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.group"
     },
     {
       "id": "mine.skill-card",
@@ -384,8 +393,9 @@
         "048-button",
         "049-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.skill-card"
     },
     {
       "id": "mine.skill-card.title",
@@ -398,8 +408,9 @@
       "candidates": [
         "050-strong-improvscenem"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.skill-card.title"
     },
     {
       "id": "mine.skill-card.summary",
@@ -412,8 +423,9 @@
       "candidates": [
         "051-span-即兴生台词让角色在设定好"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.skill-card.summary"
     },
     {
       "id": "mine.prompt-card",
@@ -432,8 +444,9 @@
         "141-button-未命名提示词",
         "142-span-Prompt1Creat"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.prompt-card"
     },
     {
       "id": "mine.prompt-card.title",
@@ -448,8 +461,9 @@
         "138-span-TokyoWalk",
         "143-span-未命名提示词"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.prompt-card.title"
     },
     {
       "id": "mine.prompt-card.actions",
@@ -466,8 +480,9 @@
         "133-button-删除",
         "134-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.prompt-card.actions"
     },
     {
       "id": "mine.prompt-card.meta",
@@ -482,8 +497,9 @@
         "140-span-视频",
         "144-span-图片"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.prompt-card.meta"
     },
     {
       "id": "mine.empty",
@@ -498,8 +514,9 @@
         "191-span-你还没有自己的技能",
         "192-span-点右上新建让AI帮你写一"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryMine/mine.empty"
     }
   ],
   "decor": [

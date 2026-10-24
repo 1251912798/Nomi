@@ -95,33 +95,29 @@ try {
   await expectVisible(getWin().getByRole('region', { name: '流程库' }).first(), '流程库面板名应本地化为「流程库」')
   await screenshotSettled(getWin(), { path: path.join(shotsDir, '01-workflow-library-i18n.png') })
 
-  // ── 问题 4①：提示词库精选按来源分类导航 ──
+  // ── 问题 4①：提示词库按来源分类导航 ──
+  // 2026-10-24 改版（拍板图 LibraryDrawers）：来源 chip 那一长排删了，并进抽屉里那颗「分类 ▾」——菜单的「公开库」段按来源列。
   await openRailDrawer(getWin(), 'prompts', '提示词库 rail 按钮')
-  await getWin().waitForTimeout(1000)
-  await clickOrFail(getWin().getByRole('tab', { name: 'Nomi 精选' }).first(), 'Nomi 精选来源标签')
-  // 精选是网络拉取——等来源分类 chip 行出现（「全部来源」这颗一定在，只要来源数 > 1）。
-  const allSourcesChip = getWin().getByRole('tab', { name: '全部来源' })
-  await expectVisible(allSourcesChip.first(), '精选列表应出现「来源」分类导航（治「一大片无分类」）', 30_000)
-  // 至少还有一个真实来源 chip（从数据派生，非硬编码）。
-  const sourceTablist = getWin().locator('[role="tablist"][aria-label="按来源筛选"]')
-  await expectVisible(sourceTablist.first(), '来源分类 chip 行应渲染')
+  const promptsDrawer = getWin().locator('[data-shell-drawer="prompts"]')
+  await clickOrFail(promptsDrawer.locator('[data-library-category-menu]'), '提示词库的「分类 ▾」')
+  const categoryMenu = getWin().getByTestId('library-category-menu')
+  // 至少一个真实来源（从数据派生，非硬编码）：公开库离线也有打包快照兜底。
+  await expectVisible(categoryMenu.getByRole('menuitemradio').filter({ hasText: /GPT|Sora|Nano|4o/ }).first(), '分类菜单里应按来源列出公开库（治「一大片无分类」）', 30_000)
   await screenshotSettled(getWin(), { path: path.join(shotsDir, '02-prompt-source-nav.png') })
+  // 收菜单：点回当前选着的「全部」（不改筛选）。不按 Esc——抽屉里的菜单按 Esc 会连抽屉一起收起
+  // （左栏抽屉的 Esc 判据在菜单已卸载后才查「还有没有别的层」；那处是热点，交协调另立账）。
+  await clickOrFail(categoryMenu.getByRole('menuitemradio', { name: /^全部/ }).first(), '菜单里点回「全部」收起菜单')
 
-  // ── 问题 4②③④：提示词卡标题/来源 + 暗色徽标遮罩托得住白字 ──
-  // 卡片是带 role=tab 类型角标的 button.group；取第一张真实卡。
-  const firstPromptCard = getWin().locator('div[style*="translateY"] button.group').first()
-  await expectVisible(firstPromptCard, '精选至少有一张提示词卡')
-  // 暗色：读徽标底色 + 标题遮罩起始色，确认非透明（能托白字）。
+  // ── 问题 4②③④：提示词卡标题 / 类型在封面下，暗色下照样看得清 ──
+  // 改版后封面上不再压任何字和角标（P-09），标题和「类型」移到封面下的卡面上——这一类「暗色角标托不住白字」不再有。
+  const firstPromptCard = promptsDrawer.locator('[data-prompt-card]').first()
+  await expectVisible(firstPromptCard, '提示词库至少有一张提示词卡')
   await applyColorSchemeForShot(getWin(), 'dark')
   await getWin().waitForTimeout(250)
-  const badge = firstPromptCard.locator('span').filter({ hasText: /图片|视频/ }).first()
-  await expectVisible(badge, '暗色下类型徽标（图片/视频）应可见')
-  const badgeBg = await readComputedColorChannels(badge, 'background-color')
-  // oklch 解析出 alpha 通道（第 4 个数）；徽标底色 alpha 应明显 > 0（不透明才托得住白字）。
-  const badgeAlpha = badgeBg.channels[3] ?? 1
-  if (!(badgeAlpha >= 0.6)) {
-    throw new Error(`暗色徽标底色太透明（alpha=${badgeAlpha}，raw=${badgeBg.raw}）——会「黑底黑字」和媒体融为一体`)
-  }
+  await expectVisible(firstPromptCard.locator('[data-prompt-card-title]'), '暗色下卡下标题应可见')
+  await expectVisible(firstPromptCard.locator('[data-prompt-card-meta]').filter({ hasText: /图片|视频/ }), '暗色下卡下类型（图片/视频）应可见')
+  const coverText = await firstPromptCard.locator('[data-prompt-cover]').evaluate((cover) => cover.innerText.trim())
+  if (coverText) throw new Error(`封面上又压了字：「${coverText}」——角标 / 标题应在封面下`)
   await screenshotSettled(getWin(), { path: path.join(shotsDir, '03-prompt-card-dark.png') })
   await applyColorSchemeForShot(getWin(), 'light')
   await screenshotSettled(getWin(), { path: path.join(shotsDir, '03-prompt-card-light.png') })

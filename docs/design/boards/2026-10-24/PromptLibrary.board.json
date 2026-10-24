@@ -1,7 +1,7 @@
 {
   "board": "PromptLibrary",
   "approvedOn": "2026-10-24",
-  "stage": "explored",
+  "stage": "built",
   "approval": {
     "quote": "技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。",
     "date": "2026-10-24",
@@ -131,9 +131,10 @@
         "334-button-Settings",
         "335-svg"
       ],
-      "status": "missing",
+      "status": "implemented",
       "owner": "I-libraries",
-      "note": "只核位置与样子，不在本线改。"
+      "note": "只核位置与样子，不在本线改。",
+      "assertion": "board:PromptLibrary/shell.topbar"
     },
     {
       "id": "library.tabs",
@@ -167,8 +168,9 @@
         "341-button",
         "342-span-Prompts"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptLibrary/library.tabs"
     },
     {
       "id": "prompt-lib.type-segment",
@@ -202,8 +204,10 @@
         "348-button",
         "349-span-Video"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptLibrary/prompt-lib.type-segment",
+      "note": "实现用现成 NomiSegmented（设计卡 ★3：分段只用在图片 / 视频、fit=content）；它 compact 档每格 minHeight 28 + 外圈 2px 内边距，整段高 32，样张 28——为复用不另写一份分段。"
     },
     {
       "id": "prompt-lib.search",
@@ -226,8 +230,9 @@
         "351-svg",
         "352-input-Searchprompt"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptLibrary/prompt-lib.search"
     },
     {
       "id": "prompt-lib.new",
@@ -249,8 +254,9 @@
         "354-svg",
         "355-span-New"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptLibrary/prompt-lib.new"
     },
     {
       "id": "prompt-lib.category-nav",
@@ -409,8 +415,9 @@
         "402-span-Soraofficial",
         "403-span-30"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptLibrary/prompt-lib.category-nav"
     },
     {
       "id": "prompt-lib.group",
@@ -443,8 +450,9 @@
         "405-span-Expressionpr",
         "406-span-25"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptLibrary/prompt-lib.group"
     },
     {
       "id": "prompt-lib.group-more",
@@ -475,8 +483,9 @@
         "309-span-全部8",
         "310-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptLibrary/prompt-lib.group-more"
     },
     {
       "id": "prompt-lib.card",
@@ -559,8 +568,9 @@
         "476-button",
         "479-button"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptLibrary/prompt-lib.card"
     },
     {
       "id": "prompt-lib.card.text-cover",
@@ -577,8 +587,9 @@
         "246-span-Astylishwoma",
         "251-span-Prompt1Creat"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptLibrary/prompt-lib.card.text-cover"
     },
     {
       "id": "prompt-lib.card.title",
@@ -659,8 +670,9 @@
         "477-span-恐惧45惊恐后缩",
         "480-span-恐惧55魂飞魄散"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptLibrary/prompt-lib.card.title"
     },
     {
       "id": "prompt-lib.card.meta",
@@ -753,8 +765,10 @@
         "478-span-Image",
         "481-span-Image"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptLibrary/prompt-lib.card.meta",
+      "note": "卡下只写类型（样张画的就是「图片」「视频」）；分类在组头。我的条目前面是来源标签——标签是数据里存的中文串（如「网页提取」），英文界面也显示中文，归「英文界面分组名 / 来源名只有中文」那条另修。"
     },
     {
       "id": "prompt-lib.composer-form",
@@ -767,9 +781,10 @@
         "dark"
       ],
       "candidates": [],
-      "status": "missing",
+      "status": "implemented",
       "owner": "I-libraries",
-      "note": "样张不画，行为照旧。"
+      "note": "样张不画，行为照旧。",
+      "assertion": "board:PromptLibrary/prompt-lib.composer-form"
     },
     {
       "id": "prompt-lib.public-fallback",
@@ -780,9 +795,10 @@
         "error"
       ],
       "candidates": [],
-      "status": "missing",
+      "status": "implemented",
       "owner": "I-libraries",
-      "note": "无界面变化。"
+      "note": "无界面变化。",
+      "assertion": "board:PromptLibrary/prompt-lib.public-fallback"
     },
     {
       "id": "prompt-lib.source-chips",
