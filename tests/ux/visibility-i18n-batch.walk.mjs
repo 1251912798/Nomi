@@ -18,6 +18,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { openRailDrawer, setAppLanguage } from './_shell.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 import {
   expectVisible,
   clickOrFail,
@@ -102,7 +103,7 @@ try {
   await clickOrFail(promptsDrawer.locator('[data-library-category-menu]'), '提示词库的「分类 ▾」')
   const categoryMenu = getWin().getByTestId('library-category-menu')
   // 至少一个真实来源（从数据派生，非硬编码）：公开库离线也有打包快照兜底。
-  await expectVisible(categoryMenu.getByRole('menuitemradio').filter({ hasText: /GPT|Sora|Nano|4o/ }).first(), '分类菜单里应按来源列出公开库（治「一大片无分类」）', 30_000)
+  await expectVisible(categoryMenu.getByRole('menuitemradio').filter({ hasText: /GPT|Sora|Nano|4o/ }).first(), '分类菜单里应按来源列出公开库（治「一大片无分类」）', stationTimeout({ operations: 2 }))
   await screenshotSettled(getWin(), { path: path.join(shotsDir, '02-prompt-source-nav.png') })
   // 收菜单：点回当前选着的「全部」（不改筛选）。不按 Esc——抽屉里的菜单按 Esc 会连抽屉一起收起
   // （左栏抽屉的 Esc 判据在菜单已卸载后才查「还有没有别的层」；那处是热点，交协调另立账）。

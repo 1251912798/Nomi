@@ -16,6 +16,7 @@ import { expect, clickOrFail, proveProbe, expectAbsent, applyColorSchemeForShot,
 import { stationTimeout } from './_station-budget.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 import { newProjectEntry, openRailDrawer, closeRailDrawer, railDrawer, switchWorkspace, setAppLanguage, backToLibrary } from './_shell.mjs'
+import { cleanupTestTemp, makeTempDir } from '../../scripts/_test-temp.mjs'
 
 // 界面文案按键从词典取（check:test-copy-literals：测试不手抄文案）。
 const zh = (key) => uiText('zh-CN', key)
@@ -23,7 +24,7 @@ const en = (key) => uiText('en', key)
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..')
 const out = process.env.NOMI_LIBRARY_LAYOUT_SHOTS || path.join(os.tmpdir(), 'nomi-library-layout-walk')
 fs.mkdirSync(out, { recursive: true })
-const settingsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-library-layout-settings-'))
+const settingsDir = makeTempDir('nomi-library-layout-settings-')
 
 // 「我的」提示词预埋：一条带参考图（卡上显示参考图、来源标签「网页提取」），一条没有媒体（文字封面）。
 const referenceImage = `data:image/jpeg;base64,${fs.readFileSync(path.join(repoRoot, 'src/devlab/designLab/videoNodeNext/fixtures/frame-current.jpg')).toString('base64')}`
@@ -41,7 +42,7 @@ fs.writeFileSync(path.join(settingsDir, 'prompt-library-user.json'), JSON.string
 ], null, 2))
 
 // 我的技能：一份正常的（拖进来导入），一份扩展块写坏的（选文件导入，详情里要报「包有问题」并禁用主按钮），外加一个不是技能的文件。
-const skillFiles = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-library-layout-skills-'))
+const skillFiles = makeTempDir('nomi-library-layout-skills-')
 const goodSkill = '---\nname: walk-improv-scene\ndescription: 即兴生台词——让角色在设定好的世界里即兴对戏，长出编剧预设不出的真实口语。\n---\n# walk-improv-scene\n\n把即兴原料按「剪水 → 留金 → 上结构」整理成可拍的台词。\n'
 const brokenSkillPath = path.join(skillFiles, 'SKILL.md')
 fs.writeFileSync(brokenSkillPath, '---\nname: walk-broken-manifest\ndescription: 扩展块写坏的技能（走查用）。\nmetadata:\n  nomi:\n    tools: not-a-list\n---\n# walk-broken-manifest\n\n正文。\n')
@@ -656,5 +657,5 @@ try {
   throw error
 } finally {
   await run.close()
-  fs.rmSync(skillFiles, { recursive: true, force: true })
+  cleanupTestTemp(skillFiles)
 }

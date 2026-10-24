@@ -5,10 +5,10 @@
 // 截图进 .expr-walk/ 人眼判断。用法：pnpm build 后 node scripts/expression-pack-walkthrough.mjs
 import { launchNomiApp } from '../tests/ux/_launchApp.mjs'
 import { newProjectEntry } from '../tests/ux/_shell.mjs'
+import { cleanupTestTemp, makeTempDir } from './_test-temp.mjs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
-import os from 'node:os'
+import { mkdirSync } from 'node:fs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const outDir = path.join(repoRoot, '.expr-walk')
@@ -17,8 +17,8 @@ const shot = async (win, name) => { await win.screenshot({ path: path.join(outDi
 
 // 隔离档案：每次一份全新的临时 settings + 项目根（无提示词库磁盘缓存 → 真实冷启动路径；垃圾项目不进用户库）。
 // 以前是写死的两个临时目录，跑第二次时上一次建的项目还在，项目库不再是首次空库、「新建空白项目」大卡不出现，走查卡在第一步（2026-10-24 实测）。
-const isolatedSettings = mkdtempSync(path.join(os.tmpdir(), 'nomi-expr-walk-settings-'))
-const isolatedProjects = mkdtempSync(path.join(os.tmpdir(), 'nomi-expr-walk-projects-'))
+const isolatedSettings = makeTempDir('nomi-expr-walk-settings-')
+const isolatedProjects = makeTempDir('nomi-expr-walk-projects-')
 
 const { app, win } = await launchNomiApp({
   name: 'expression-pack',
@@ -110,8 +110,8 @@ try {
 } finally {
   await app.close().catch(() => {})
   // 每次一份新档案，用完就删，不在系统临时目录里越积越多（截图在 .expr-walk/，档案不留证据）。
-  rmSync(isolatedSettings, { recursive: true, force: true })
-  rmSync(isolatedProjects, { recursive: true, force: true })
+  cleanupTestTemp(isolatedSettings)
+  cleanupTestTemp(isolatedProjects)
 }
 if (failed) { console.log('WALKTHROUGH: FAIL'); process.exit(1) }
 console.log('WALKTHROUGH: PASS')
