@@ -1,15 +1,18 @@
 /**
  * [INPUT]: 依赖 ./directorTypes（DirectorObject / Vec3）、./rigs（RIG_BONE_MAPS / SEMANTIC_BONES / isBuiltinCharacterModel）、
- *          ./actionLibrary（findActionEntry / resolveActionAlias / LEGACY_APPROXIMATE_ACTIONS）
+ *          ./actionLibrary（resolveActionAlias / LEGACY_APPROXIMATE_ACTIONS）
  * [OUTPUT]: 对外提供 UalMigrationNote、createUalMigrationNote、migrateCharacterToUal
  * [POS]: director/model 的「角色 → UAL」读时迁移（2026-10-07 默认人偶换 UAL，不留并行版）：只由 directorProject.normalizeObject 调用，
  *        所以编辑器、Agent 写口、预演截帧、出片、导入图层读到的都是同一份迁移结果；纯函数、幂等、只改内存里那份。
- *        内置人偶（modelPath 缺省或 builtin:*，rig 缺省或 'mixamo'）整个迁；用户上传的角色只换动作 id（10-07 协调拍板 B），骨架 / 模型 / 手调骨骼不碰。
- *        动作 id 按动作库别名表换（一张表，施工计划 §3），boneRotations 的键 mixamorig* → UAL 骨名、值原样（值是规范轴度数，
- *        scene/character/canonicalBoneFrame 保证语义不变）；没有对应骨的键（手指 / 末端）丢掉并计数。迁移说明只回给调用方，不进工程。
+ *        内置 Mixamo 人偶（modelPath 缺省或 builtin:*，rig 缺省或 'mixamo'）整个迁；其余角色（上传的、已是 UAL 的）只换动作 id（10-07 协调拍板 B），
+ *        骨架 / 模型 / 手调骨骼不碰。动作 id 一律换成动作库正名（别名表一张，施工计划 §3）：工程里只存正名，姿态采样只按正名查。
+ *        已是 UAL 的人偶也换——2026-10-24 前加人 / 群众 / 套姿态的写口把别名原样存进了工程（群众站成 T 字），重开不换就一直是 T 字（协调 10-24 定：
+ *        别名本来就是正名的同义词，换成正名不改含义，旧版 App 采样也只认正名）。认不出的 id 原样留着：可能是更新版本动作库里的 id，改写了就毁了它。
+ *        boneRotations 的键 mixamorig* → UAL 骨名、值原样（值是规范轴度数，scene/character/canonicalBoneFrame 保证语义不变）；
+ *        没有对应骨的键（手指 / 末端）丢掉并计数。迁移说明只回给调用方，不进工程。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
-import { ACTION_ALIASES, findActionEntry, LEGACY_APPROXIMATE_ACTIONS, resolveActionAlias } from './actionLibrary'
+import { LEGACY_APPROXIMATE_ACTIONS, resolveActionAlias } from './actionLibrary'
 import type { DirectorObject, Vec3 } from './directorTypes'
 import { isBuiltinCharacterModel, RIG_BONE_MAPS, SEMANTIC_BONES } from './rigs'
 
@@ -45,13 +48,13 @@ function migrateBoneRotations(rotations: Record<string, Vec3>, note: UalMigratio
   return out
 }
 
-/** 动作 id：库里有 → 原样；旧 id / 别名 → 库里的 UAL id（近似的记一次）；认不出 → 原样（保持「找不到条目 = 静止」） */
+/**
+ * 动作 id → 动作库正名：正名原样；旧 Mixamo id / 别名 / 大小写不同 → 正名（换成相近动作的记一次）；
+ * 认不出 → 原样（可能是更新版本动作库里的 id；采样照旧当「找不到条目 = 静止」）。
+ */
 function migrateActionId(id: string, note: UalMigrationNote): string {
-  // Legacy aliases (for example standing_idle) must still be rewritten even though
-  // findActionEntry accepts aliases for callers that validate user input.
-  if (findActionEntry(id) && !Object.prototype.hasOwnProperty.call(ACTION_ALIASES, id)) return id
   const entry = resolveActionAlias(id)
-  if (!entry) return id
+  if (!entry || entry.id === id) return id
   if (LEGACY_APPROXIMATE_ACTIONS.has(id)) note.approximatedActions += 1
   return entry.id
 }
@@ -76,22 +79,21 @@ function migrateActionIds(object: DirectorObject, note: UalMigrationNote): boole
 }
 
 /**
- * 内置人偶：整个换成 UAL（rig、动作 id、手调骨骼键）。
- * 用户上传的 Mixamo 角色：只换动作 id——骨架、模型路径、手调骨骼一概不动（它们的骨就是 Mixamo 骨，UAL 动作经 poseSnapshot 按基名重定向套上去）；
- * 不换的话旧的 9 个动作 id 在新动作库里查不到，角色全部停在 T 字。
+ * 每个角色：动作 id 一律换成正名（静止姿态、动作片段、编译器写成动作 id 的片段名）。
+ * 内置 Mixamo 人偶另外整个换成 UAL（rig、手调骨骼键）。用户上传的 Mixamo 角色骨架、模型路径、手调骨骼一概不动
+ * （它们的骨就是 Mixamo 骨，UAL 动作经 poseSnapshot 按基名重定向套上去）；不换动作 id 的话旧的 9 个 id 在新动作库里查不到，角色全部停在 T 字。
+ * 已是 UAL 的人偶同理：别名查不到 clip，停在 T 字。
  */
 export function migrateCharacterToUal(object: DirectorObject, note: UalMigrationNote): void {
   if (object.type !== 'character') return
-  if (!isBuiltinCharacterModel(object.modelPath)) {
-    if (migrateActionIds(object, note)) note.characters += 1
-    return
+  const renamed = migrateActionIds(object, note)
+  const builtinMixamo = isBuiltinCharacterModel(object.modelPath) && (object.rig === undefined || object.rig === 'mixamo')
+  if (builtinMixamo) {
+    object.rig = 'ual'
+    if (object.boneRotations) object.boneRotations = migrateBoneRotations(object.boneRotations, note)
+    for (const clip of object.actionClips ?? []) {
+      for (const keyframe of clip.keyframes ?? []) keyframe.boneRotations = migrateBoneRotations(keyframe.boneRotations, note)
+    }
   }
-  if (object.rig !== undefined && object.rig !== 'mixamo') return
-  object.rig = 'ual'
-  note.characters += 1
-  migrateActionIds(object, note)
-  if (object.boneRotations) object.boneRotations = migrateBoneRotations(object.boneRotations, note)
-  for (const clip of object.actionClips ?? []) {
-    for (const keyframe of clip.keyframes ?? []) keyframe.boneRotations = migrateBoneRotations(keyframe.boneRotations, note)
-  }
+  if (renamed || builtinMixamo) note.characters += 1
 }
