@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { findActionEntry } from './actionLibrary'
-import { CHARACTER_MODEL_BY_GENDER, DEFAULT_CROWD_ACTION_ID } from './defaultCharacter'
+import { ACTION_ALIASES, ACTION_LIBRARY, findActionEntry, resolveActionAlias, T_POSE_ACTION_ID } from './actionLibrary'
+import { CHARACTER_MODEL_BY_GENDER, DEFAULT_CROWD_ACTION_ID, defaultCharacterInput } from './defaultCharacter'
 import { createDirectorStore } from './directorStore'
 import type { CrowdSpec } from './storeEntityActions'
 
@@ -50,13 +50,31 @@ describe('crowd = one group built from the default character (same template as a
     expect(membersOf(store, groupId)[0].position).toEqual({ x: 0, y: 0, z: 0 })
   })
 
-  it('default action is the library standing idle; a chosen action lands on every member', () => {
+  // 2026-10-24 走查 ①：群众默认动作曾是别名 standing_idle，原样写进 posePreset；姿态采样只认动作库正名，查不到就退回
+  // 绑定姿态——放下的群众站成 T 字。posePreset 只存正名，在加人 / 群众共用的写入口 defaultCharacterInput 解析一次。
+  it('default action is the library standing idle by its canonical id; a chosen action lands on every member as its canonical id', () => {
     const store = createDirectorStore({ defaultSceneName: 'S1' })
+    expect(DEFAULT_CROWD_ACTION_ID).toBe('Idle_Loop')
+    expect(findActionEntry(DEFAULT_CROWD_ACTION_ID)!.id).toBe(DEFAULT_CROWD_ACTION_ID)
     const first = store.getState().batchCreateCrowd(spec())!
-    expect(findActionEntry(DEFAULT_CROWD_ACTION_ID)).toBeTruthy()
-    expect(new Set(membersOf(store, first).map((item) => item.posePreset))).toEqual(new Set([DEFAULT_CROWD_ACTION_ID]))
+    expect(new Set(membersOf(store, first).map((item) => item.posePreset))).toEqual(new Set(['Idle_Loop']))
     const second = store.getState().batchCreateCrowd(spec({ actionId: 'running' }))!
-    expect(new Set(membersOf(store, second).map((item) => item.posePreset))).toEqual(new Set(['running']))
+    expect(new Set(membersOf(store, second).map((item) => item.posePreset))).toEqual(new Set(['Jog_Fwd_Loop']))
+  })
+
+  it.each(Object.keys(ACTION_ALIASES))('the crowd door stores alias %s as its canonical library id', (alias) => {
+    const store = createDirectorStore({ defaultSceneName: 'S1' })
+    const groupId = store.getState().batchCreateCrowd(spec({ actionId: alias, rows: 1, cols: 1 }))!
+    const canonical = resolveActionAlias(alias)!.id
+    expect(ACTION_LIBRARY.some((entry) => entry.id === canonical)).toBe(true)
+    expect(membersOf(store, groupId)[0].posePreset).toBe(canonical)
+  })
+
+  it('the add-character door keeps T-Pose by default and also stores canonical ids; an unknown id cannot be written', () => {
+    expect(defaultCharacterInput('male', 'P', IDENTITY).posePreset).toBe(T_POSE_ACTION_ID)
+    expect(defaultCharacterInput('male', 'P', IDENTITY, 'standing').posePreset).toBe('Idle_Loop')
+    expect(defaultCharacterInput('female', 'P', IDENTITY, 'Walk_Loop').posePreset).toBe('Walk_Loop')
+    expect(() => defaultCharacterInput('female', 'P', IDENTITY, 'no_such_action')).toThrow()
   })
 
   it('refuses an unknown action and clamps absurd sizes', () => {
