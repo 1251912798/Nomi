@@ -299,12 +299,14 @@ def execute(command, shell, file, token, owner=None):
     options = {'shell': shell, 'env': env}
     if os.name != 'nt':
         options.update(pass_fds=(file.fileno(),), start_new_session=owner is not None)
-    child = subprocess.Popen(command, **options)
-    if owner is not None and os.name != 'nt':
-        owner['pgid'] = child.pid
-        write_owner(file, owner)
+    child = None
+    pending_signal = None
 
     def cancel(signum, _frame):
+        nonlocal pending_signal
+        if child is None:
+            pending_signal = signum
+            return
         if child.poll() is None:
             try:
                 if os.name == 'nt' or owner is None:
@@ -316,6 +318,12 @@ def execute(command, shell, file, token, owner=None):
 
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, cancel)
+    child = subprocess.Popen(command, **options)
+    if owner is not None and os.name != 'nt':
+        owner['pgid'] = child.pid
+        write_owner(file, owner)
+    if pending_signal is not None:
+        cancel(pending_signal, None)
     code = child.wait()
     return code if code >= 0 else 128 - code
 
