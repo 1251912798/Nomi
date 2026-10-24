@@ -2,7 +2,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
-import { launchNomiApp, repoRoot } from './_launchApp.mjs'
+import { launchNomiApp, repoRoot, seedSavedFixtureCredentials } from './_launchApp.mjs'
+import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { expect, expectAbsent, proveProbe } from './_assert.mjs'
 
 const out = path.join(repoRoot, 'artifacts/chip-contract-limits')
@@ -15,7 +16,12 @@ try {
   await expect.poll(async () => {
     try { return (await fetch(url)).ok } catch { return false }
   }, { timeout: 30_000 }).toBe(true)
-  const launched = await launchNomiApp({ name: 'model-contract-limits', env: { NOMI_DESKTOP_DEV: '1', VITE_DEV_SERVER_URL: url }, syntheticCredentialStorage: true, settleMs: 0 })
+  // APIMart 的占位 key 起 App 前备好（先经保存口存成密文、再在盘上翻成已启用，见 seedSavedFixtureCredentials）；
+  // harness 里不再存 key：保存即真验证，开网 401、关网存成「未验证、停用」，模型都进不了选择器（夜跑 run 40035294026）。
+  const profileRoot = makeTempDir('nomi-contract-limits-')
+  const launchOptions = { name: 'model-contract-limits', userDataDir: path.join(profileRoot, 'user-data'), settingsDir: path.join(profileRoot, 'settings'), env: { NOMI_DESKTOP_DEV: '1', VITE_DEV_SERVER_URL: url }, syntheticCredentialStorage: true, settleMs: 0 }
+  await seedSavedFixtureCredentials(launchOptions, ['apimart'])
+  const launched = await launchNomiApp(launchOptions)
   app = launched.app
   const win = launched.win
   win.on('pageerror', error => console.error(error.message))

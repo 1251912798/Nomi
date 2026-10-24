@@ -252,9 +252,14 @@ async function freeLoopbackPort() {
  * 拼一套「窗口一定能起来」的 env。抽成纯函数是为了让那条不变量能被单测钉住
  * （见 _launchApp.test.mjs）：**必需 env 排在 extraEnv 之后，调用方覆盖不掉**。
  */
-export function buildNomiLaunchEnv({ extraEnv = {}, userDataDir, settingsDir, projectsDir, capabilityDir, baseEnv = process.env }) {
+export function buildNomiLaunchEnv({ extraEnv = {}, userDataDir, settingsDir, projectsDir, capabilityDir, fixtureCredentials = false, baseEnv = process.env }) {
   const env = {
     ...baseEnv,
+    // 假凭据（syntheticCredentialStorage: true = 隔离目录里的非秘密测试 key）不许出这台机器：默认打开产品自带的
+    // 测试网闸（electron/testNetworkGuard.ts，只放行本机与登记的重定向）。以前不开——保存占位 key 时产品的免费验证
+    // （credentialProbePolicy）把它发给真供应商，401 →「密钥验证失败」，走查当场红（夜跑 run 40035294026 四条），
+    // 而且每跑一次都往真供应商发一把假 key。走查真要放行，就在 extraEnv 里显式写 NOMI_TEST_NETWORK_GUARD: ''。
+    ...(fixtureCredentials ? { NOMI_TEST_NETWORK_GUARD: '1' } : {}),
     ...extraEnv,
     // ↓ 放在 extraEnv **之后**：这两条是「窗口能不能起来」的前提，调用方不该、也不能覆盖掉。
     //   不变量靠代码成立，不靠每个脚本作者自觉抄全（抄漏就是静默超时）。
@@ -443,7 +448,8 @@ export async function launchNomiApp(options = {}) {
       syntheticCredentialStorage,
     )),
     cwd: repoRoot,
-    env: buildNomiLaunchEnv({ extraEnv, userDataDir, settingsDir, projectsDir, capabilityDir }),
+    // 只认显式的 syntheticCredentialStorage: true：盘上推出来的那一档也可能是拷进来的真实资料（core-smoke 那种），不能替它关网。
+    env: buildNomiLaunchEnv({ extraEnv, userDataDir, settingsDir, projectsDir, capabilityDir, fixtureCredentials: options.syntheticCredentialStorage === true }),
     timeout,
   }
 
@@ -634,4 +640,40 @@ export async function closeNomiApp(app) {
     try { processHandle.kill('SIGKILL') } catch { /* already exited */ }
   }
   await new Promise((resolve) => setTimeout(resolve, 100))
+}
+
+/**
+ * 给隔离 profile 备好「这几家各有一把可用的测试 key」：先起一次 App，经产品自己的保存口把占位 key 存成密文，
+ * 关掉后在盘上把这几家的凭据和供应商翻成已启用，调用方再用同一组 options 正式起 App。
+ *
+ * 为什么不在正式那次里直接调 upsertVendorApiKey：保存即验证（credentialProbePolicy，APIMart / Runway 有免费探测）。
+ * 开着网，占位 key 真发给供应商、401（夜跑 run 40035294026）；假凭据默认关网（见 buildNomiLaunchEnv），验证打不出去，
+ * 产品照语义存成「未验证、停用」，这家的模型进不了下拉。也不能在盘上直接种明文 key：自 019d80f1d 起明文不算可用凭据。
+ * 这里只翻「验证通过」会翻的标志（凭据 enabled、去掉 verificationPending；供应商 enabled），密文由产品自己写——
+ * 和 credential-connect-honesty 态②同一个做法。只给隔离目录里的非秘密测试 key 用。
+ */
+export async function seedSavedFixtureCredentials(options, vendorKeys, apiKey = 'nomi-e2e-placeholder') {
+  // 两次起 App 必须同一组目录：密文由 userDataDir 里的加密身份解（Windows 的 DPAPI 密钥只在它的 Local State 里）。
+  if (options.syntheticCredentialStorage !== true || !options.settingsDir || !options.userDataDir) {
+    throw new Error('seedSavedFixtureCredentials 只给隔离目录里的非秘密测试 key 用：要显式 syntheticCredentialStorage: true、settingsDir 和 userDataDir')
+  }
+  const { app, win } = await launchNomiApp({ ...options, name: `${options.name ?? 'nomi-walk'}-seed-credentials`, settleMs: 0 })
+  try {
+    for (const vendorKey of vendorKeys) {
+      await win.evaluate(({ key, value }) => window.nomiDesktop.modelCatalog.upsertVendorApiKey(key, { apiKey: value, enabled: true }), { key: vendorKey, value: apiKey })
+    }
+  } finally {
+    await app.close()
+  }
+  const catalogPath = path.join(options.settingsDir, 'model-catalog.json')
+  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'))
+  for (const vendorKey of vendorKeys) {
+    const record = catalog.apiKeysByVendor?.[vendorKey]
+    if (!record?.apiKey || record.enc !== 'safeStorage') throw new Error(`${vendorKey} 的测试 key 没以密文落盘（保存口没写下它）`)
+    record.enabled = true
+    delete record.verificationPending
+    const vendor = catalog.vendors?.find((item) => item.key === vendorKey)
+    if (vendor) vendor.enabled = true
+  }
+  fs.writeFileSync(catalogPath, JSON.stringify(catalog, null, 2))
 }

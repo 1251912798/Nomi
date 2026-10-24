@@ -26,6 +26,7 @@ import {
   withLinuxNoSandbox,
   withLinuxSyntheticCredentialStorage,
   withPackagedPlaywrightOrigin,
+  seedSavedFixtureCredentials,
 } from './_launchApp.mjs'
 
 describe('shared Electron temp-root lifecycle', () => {
@@ -199,6 +200,25 @@ describe('buildNomiLaunchEnv', () => {
     const env = buildNomiLaunchEnv({ ...dirs, baseEnv: { PATH: '/usr/bin' }, extraEnv: { NOMI_TEST_SYSTEM_LOCALE: '1' } })
     expect(env.NOMI_TEST_SYSTEM_LOCALE).toBe('1')
     expect(env.PATH).toBe('/usr/bin')
+  })
+
+  test('假凭据（syntheticCredentialStorage: true）默认关在本机：产品测试网闸打开，走查要放行只能显式覆盖', () => {
+    // 夜跑 run 40035294026：占位 key 保存时被产品的免费验证发到真供应商，401 →「密钥验证失败」，四条走查当场红。
+    expect(buildNomiLaunchEnv({ ...dirs, baseEnv: {}, fixtureCredentials: true }).NOMI_TEST_NETWORK_GUARD).toBe('1')
+    expect(buildNomiLaunchEnv({ ...dirs, baseEnv: {} }).NOMI_TEST_NETWORK_GUARD).toBeUndefined()
+    expect(buildNomiLaunchEnv({ ...dirs, baseEnv: {}, fixtureCredentials: true, extraEnv: { NOMI_TEST_NETWORK_GUARD: '' } }).NOMI_TEST_NETWORK_GUARD).toBe('')
+  })
+
+  test('启动器把显式的 syntheticCredentialStorage: true（且只有它）接成假凭据', () => {
+    const source = fs.readFileSync(path.join(repoRoot, 'tests/ux/_launchApp.mjs'), 'utf8')
+    expect(source).toMatch(/buildNomiLaunchEnv\(\{[^}]*fixtureCredentials: options\.syntheticCredentialStorage === true/)
+  })
+
+  test('seedSavedFixtureCredentials 只给显式的隔离假凭据用，且两次起 App 必须同一组目录，否则当场拒绝', async () => {
+    const root = makeTempDir('nomi-seed-guard-')
+    const dirs = { settingsDir: path.join(root, 'settings'), userDataDir: path.join(root, 'user-data') }
+    await expect(seedSavedFixtureCredentials(dirs, ['apimart'])).rejects.toThrow(/syntheticCredentialStorage: true/)
+    await expect(seedSavedFixtureCredentials({ syntheticCredentialStorage: true, settingsDir: dirs.settingsDir }, ['apimart'])).rejects.toThrow(/userDataDir/)
   })
 
   test('隔离能力核目录也随 env 传入且不与 settings 混用', () => {
