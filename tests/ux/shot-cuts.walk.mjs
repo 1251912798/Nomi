@@ -103,8 +103,11 @@ if (!nodeId || !hasVideo) { await app.close(); process.exit(1) }
 // 点「按镜头拆」
 await win.locator(`[data-node-id="${nodeId}"]`).first().click({ timeout: 4000 })
 await win.waitForTimeout(900)
-const splitBtn = win.locator('button', { hasText: '按镜头拆' }).first()
-check('浮条上有「按镜头拆」', await splitBtn.count() > 0)
+// 10-11 起视频浮条把它收进「拆解▾」菜单（截帧▾ · 拆解▾〔按镜头拆 / 镜头表〕，NodeVideoFrameToolbar.tsx）：先开菜单再点项。
+// 认数据属性不认文案，和 derived-node-placement 走同一个入口。
+await win.locator('button[data-toolbar-action-menu="break-down"]').first().click({ timeout: 5000 })
+const splitBtn = win.locator('[data-menu-item="shot-cuts"]').first()
+check('浮条「拆解」菜单里有「按镜头拆」', await splitBtn.count() > 0)
 await splitBtn.click({ timeout: 5000 })
 await win.waitForTimeout(1200)
 await snap(win, 'panel-detecting')
