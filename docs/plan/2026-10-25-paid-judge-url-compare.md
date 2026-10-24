@@ -12,7 +12,7 @@
 
 ## ★3 一致与复用
 
-复用 WHATWG `URL` 的标准解析、规范化和 `search` 清空语义；两处判定都走同一个共享 helper，不保留旧的“遇空格即截断”正则或备用对号路径。URL 文本抽取只在 JSON 边界解析字符串值；网络闸对 JSON 结构递归脱敏。其它只需取 catalog origin 的文本扫描不比较上传地址，保持不变。
+复用 WHATWG `URL` 的标准解析、规范化和 `search` 清空语义；对号继续走同一个共享 helper，不保留旧的“遇空格即截断”正则或备用对号路径。打码再收成同一个 `scrubString`：JSON 先整体解析、递归打码、序列化，非 JSON 也走同一字符串函数；调用方再截断并记录 `truncated`。任何字符串中出现 `http(s)://`，从第一个 `?` 到空白 / 引号都换成 `?<redacted>`。其它只需取 catalog origin 的文本扫描不比较上传地址，保持不变。
 
 ## ★4 全状态
 
@@ -27,7 +27,7 @@
 
 ## ★9 验收与回滚
 
-验收线编号：`I-paid-judge-url-compare-acceptance`。先运行 `pnpm exec vitest run tests/ux/_referenceLeakWire.test.mjs scripts/walkthrough-network-guard.test.mjs`，再核合同和静态门岗。矩阵覆盖文件名 × {空格、中文、`#`、已编码 `%20`、`+`}；响应形状 × {JSON、JSON 中 `\\/`}；查询串 × {无、签名已打码}；每格使用 `new URL(x).href` 作为请求体地址并要求对号成功。网络闸反例是路径带空格的签名地址必须保留 `%20` 路径并把查询改成 `?<redacted>`。其它反例：响应无效 JSON、缺 URL、请求体被截断、上传没记到、残留参考混入，均保持判红；在 git archive 副本恢复旧正则后，矩阵中空格 / 中文 / 已编码 / 查询形状应重新变红并记录红格数。快检命令还包括改动文件 eslint、`node scripts/typecheck.mjs --incremental`、`pnpm run check:root-cause-contracts`、`node scripts/check-concept-owners.mjs`、`node scripts/check-test-copy-literals.mjs`；不跑真付费、不起 App。回滚为 revert 本提交，产品 `electron/` 与 `src/` 不受影响。
+验收线编号：`I-paid-judge-url-compare-acceptance`。先运行 `pnpm exec vitest run tests/ux/_referenceLeakWire.test.mjs scripts/walkthrough-network-guard.test.mjs`，再核合同和静态门岗。矩阵覆盖文件名 × {空格、中文、`#`、已编码 `%20`、`+`}；响应形状 × {JSON、JSON 中 `\\/`}；查询串 × {无、签名已打码}；每格使用 `new URL(x).href` 作为请求体地址并要求对号成功。打码类级清单：① 超过 64KB 的 JSON 请求体，签名 URL 路径含空格，先打码后截断且 `truncated=true`；② FormData 字符串签名 URL，路径有空格 / 无空格；③ 纯文本正文中的签名 URL；④ JSON 句子中间的签名 URL；⑤ Bearer / `sk-` 继续打码；⑥ 4096 字节响应上限前也先打码。对号反例是响应截断后 JSON 无法解析时保持 fail-closed 判红。其它反例：响应无效 JSON、缺 URL、请求体被截断、上传没记到、残留参考混入，均保持判红；在 git archive 副本恢复第一轮旧 `scrubText` 后，新打码测试必须重新变红并记录红格数。快检命令还包括改动文件 eslint、`node scripts/typecheck.mjs --incremental`、`pnpm run check:root-cause-contracts`、`node scripts/check-concept-owners.mjs`、`node scripts/check-test-copy-literals.mjs`；不跑真付费、不起 App。回滚为 revert 本提交，产品 `electron/` 与 `src/` 不受影响。
 
 ### 功能分类
 

@@ -4,34 +4,22 @@ function canonicalEvidenceUrl(value) {
   return url.href
 }
 
-function redactUrlQuery(value) {
-  const raw = String(value)
-  try {
-    const url = new URL(raw)
-    if (!url.search) return raw
-    url.search = ''
-    return `${url.href}?<redacted>`
-  } catch {
-    return raw
-  }
-}
-
 function redactSecrets(value) {
   return String(value)
     .replace(/Bearer\s+[^\s"'\\]+/gi, 'Bearer <redacted>')
     .replace(/\bsk-[A-Za-z0-9_-]{8,}/g, 'sk-<redacted>')
 }
 
+function redactUrlQueries(value) {
+  return String(value).replace(/(https?:\/\/[^\r\n"']*?)\?[^\s"']*/gi, '$1?<redacted>')
+}
+
+function scrubString(value) {
+  return redactSecrets(redactUrlQueries(value))
+}
+
 function scrubValue(value) {
-  if (typeof value === 'string') {
-    let scrubbed = value
-    try {
-      if (/^https?:/i.test(scrubbed)) scrubbed = redactUrlQuery(scrubbed)
-    } catch {
-      // Keep malformed text for the caller's existing fail-closed handling.
-    }
-    return redactSecrets(scrubbed)
-  }
+  if (typeof value === 'string') return scrubString(value)
   if (Array.isArray(value)) return value.map(scrubValue)
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, scrubValue(item)]))
   return value
@@ -42,7 +30,7 @@ function scrubText(text) {
   try {
     return JSON.stringify(scrubValue(JSON.parse(raw)))
   } catch {
-    return redactSecrets(raw)
+    return scrubString(raw)
   }
 }
 

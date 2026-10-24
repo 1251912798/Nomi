@@ -2,9 +2,9 @@
   "schema_version": 3,
   "id": "2026-10-25-paid-judge-url-compare",
   "problem_type": "URL normalization and query redaction in paid walkthrough evidence",
-  "symptom": "judgeReferenceWire cannot map hosted upload responses back to local filenames when a hosted URL path contains a space, so a correct first/last-frame request is reported as two unknown images.",
-  "direct_cause": "judgeReferenceWire extracted response URLs with /https?:\\/\\/[^\\s\"'\\\\]+/g and scrubText stopped at whitespace before the query; the response-side truncated URL did not equal the JSON request body's WHATWG-normalized URL.",
-  "class_root": "The shared evidence boundary had no invariant that every URL comparison and query redaction uses WHATWG URL normalization after parsing structured JSON values.",
+  "symptom": "judgeReferenceWire cannot map hosted upload responses back to local filenames when a hosted URL path contains a space, and the network ledger can retain signed URL queries when a body is truncated before scrubbing or when the URL is embedded in non-JSON text.",
+  "direct_cause": "judgeReferenceWire extracted response URLs with /https?:\\/\\/[^\\s\"'\\\\]+/g; describeBody and response recording sliced before scrubText; scrubText only handled secrets in non-JSON text and only redacted JSON strings that started with http.",
+  "class_root": "The shared evidence boundary had no invariant that every string is scrubbed for embedded HTTP query strings before size bounds, while URL comparison separately uses WHATWG normalization after parsing structured JSON values.",
   "detected_by": "walkthrough",
   "detected_by_detail": "paid-run",
   "affected_population": [
@@ -30,7 +30,9 @@
   "invariants": [
     "Every HTTP URL used for evidence comparison is parsed by WHATWG URL, has search cleared, and is compared by the resulting href.",
     "Structured JSON bodies are parsed before URL values are collected or redacted.",
-    "An invalid or missing response URL remains unmatched and keeps the judge red rather than falling back to a lossy regex."
+    "An invalid or missing response URL remains unmatched and keeps the judge red rather than falling back to a lossy regex.",
+    "Every string is query-scrubbed before its recording limit is applied; JSON is parsed and reserialized first, and truncated records retain truncated=true.",
+    "The same query scrubber handles JSON and non-JSON text, including URLs embedded in a sentence and paths containing spaces."
   ],
   "doors": [
     { "kind": "read", "path": "scripts/walkthrough-network-guard.cjs", "symbol": "scrubText" },
@@ -43,7 +45,7 @@
     "after": 4,
     "why_not": "The four generated consumers are evidence readers, not duplicate production state owners: the guard reads the shared scrubber, the unit tests exercise the judge matrix, and the paid walkthrough calls the judge. They must remain as distinct entry points while sharing the helper boundary."
   },
-  "generality_proof": "The upload-response reader and the network-guard body recorder now share walkthrough-url-shape.cjs. All checked JSON URL values, independent of filename characters or query state, converge on the same WHATWG href shape; unrelated origin-only text scanners were checked and remain outside this evidence contract.",
+  "generality_proof": "The upload-response reader and the network-guard body recorder now share walkthrough-url-shape.cjs. All checked JSON URL values, independent of filename characters or query state, converge on the same WHATWG href shape; every string passed to the recorder uses one query scrubber before its caller's bound; unrelated origin-only text scanners were checked and remain outside this evidence contract.",
   "shared_boundaries": [
     {
       "path": "scripts/walkthrough-url-shape.cjs",
@@ -53,7 +55,7 @@
     {
       "path": "scripts/walkthrough-url-shape.cjs",
       "symbol": "scrubText",
-      "responsibility": "Parse structured evidence JSON and redact URL queries and key-shaped secrets without truncating paths containing whitespace."
+      "responsibility": "Parse structured evidence JSON, apply the same embedded-URL query scrubber to every string, and redact key-shaped secrets before callers impose size bounds."
     }
   ],
   "same_class_entry_points": [
@@ -67,7 +69,7 @@
       "path": "scripts/walkthrough-network-guard.cjs",
       "entry_point": "scrubText via describeBody and allowed-response recording",
       "disposition": "enforced",
-      "evidence": "The network-guard test sends a signed URL whose path contains a space and asserts the path is preserved and the query is redacted."
+      "evidence": "The network-guard tests cover a signed URL with a space, oversized JSON, FormData strings, plain text, and JSON sentence values; each asserts the query is redacted before the caller's bound."
     },
     {
       "path": "tests/ux/_paidNetwork.mjs",
@@ -90,7 +92,7 @@
   ],
   "recurrence": {
     "classification": "recurring",
-    "reason": "Any future hosted upload or provider that returns a URL with whitespace or other URL-normalized characters can reproduce the same mismatch, and the network guard can independently leak a signed query in the same shape.",
+    "reason": "Any future hosted upload or provider that returns a URL with whitespace or other URL-normalized characters can reproduce the same mismatch, and any future body shape or size can independently leak a signed query if it bypasses the shared pre-bound scrubber.",
     "same_class_scan": [
       "grep/rg of tests/ux and scripts for URL text extraction found the judgeReferenceWire response regex and walkthrough-network-guard scrubText as the two affected entries.",
       "The same scan checked _paidNetwork.mjs, full-walk/egress.mjs, and agent-spend-long-output-name.walk.mjs; they are origin/catalog inventories and were marked not-affected.",
@@ -101,8 +103,8 @@
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "scripts/walkthrough-url-shape.cjs",
-    "invariant": "All affected evidence URL values are parsed from JSON and normalized by WHATWG URL before comparison or query redaction.",
-    "failure_mode": "Invalid JSON or URL values remain unmatched / unredacted only in the non-JSON fallback and are surfaced by the judge or preserved without pretending to be a canonical URL; no lossy extraction fallback remains for JSON evidence.",
+    "invariant": "All affected evidence URL values are parsed from JSON and normalized by WHATWG URL before comparison; every recorded string is query-scrubbed before its size bound, regardless of JSON shape.",
+    "failure_mode": "Invalid JSON still uses the same embedded-URL scrubber; invalid comparison URLs remain unmatched and keep the judge red. A sanitized body is truncated only after scrubbing and reports truncated=true.",
     "exception_policy": "none",
     "strategy": "Keep one helper for canonical href and structured scrubbing, and make both the judge and network guard consume it; class tests exercise every filename and query shape.",
     "artifacts": [
@@ -134,9 +136,10 @@
     "rationale": "No third-party dependency controls URL parsing or evidence shape; the fix uses the Node WHATWG URL implementation already used by the repository.",
     "exit_criteria": []
   },
-  "migration": "Existing JSONL evidence remains readable: old redacted query strings are parsed as URL values and normalized by clearing search. No product data or user project state is migrated.",
+  "migration": "Existing JSONL evidence remains readable: old redacted query strings are parsed as URL values and normalized by clearing search. The ledger shape is preserved; no product data or user project state is migrated.",
   "residual_risks": [
-    "Non-JSON free-form text containing an embedded URL with spaces cannot be safely tokenized without a delimiter contract; affected request and response bodies are JSON, and malformed JSON remains a visible fail-closed judge result.",
+    "The non-JSON scrubber intentionally stops a query at whitespace or a quote as the ledger contract requires; a query value containing literal whitespace is only partially represented by that contract, but its prefix is still redacted.",
+    "A response body truncated by the network guard can no longer be parsed by judgeReferenceWire; it remains fail-closed and is reported as unprovable rather than guessed.",
     "The required door-map roots exclude scripts and tests, so its generated result is empty; the contract records the independently checked script/test consumers instead of inventing source-tree doors."
   ],
   "invariant_owner_layer": {

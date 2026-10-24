@@ -121,12 +121,16 @@ let recordSeq = 0
 
 function describeBody(body) {
   if (body === undefined || body === null) return null
-  if (typeof body === 'string') return { text: scrubUrlText(body.slice(0, BODY_LIMIT)), truncated: body.length > BODY_LIMIT }
+  if (typeof body === 'string') {
+    const scrubbed = scrubUrlText(body)
+    return { text: scrubbed.slice(0, BODY_LIMIT), truncated: scrubbed.length > BODY_LIMIT }
+  }
   if (typeof FormData === 'function' && body instanceof FormData) {
     const form = []
     for (const [field, value] of body.entries()) {
+      const scrubbed = typeof value === 'string' ? scrubUrlText(value) : null
       form.push(typeof value === 'string'
-        ? { field, value: scrubUrlText(value.slice(0, 200)) }
+        ? { field, value: scrubbed.slice(0, 200) }
         : { field, fileName: value && value.name ? String(value.name) : null, size: value && value.size, type: value && value.type })
     }
     return { form }
@@ -144,7 +148,10 @@ function recordAllowed(target, init, responsePromise) {
   if (!body || !body.form) return responsePromise
   return responsePromise.then((response) => {
     try {
-      response.clone().text().then((text) => note({ kind: 'allowed-response', via: 'fetch', seq, status: response.status, text: scrubUrlText(text.slice(0, 4096)) }), () => {})
+      response.clone().text().then((text) => {
+        const scrubbed = scrubUrlText(text)
+        note({ kind: 'allowed-response', via: 'fetch', seq, status: response.status, text: scrubbed.slice(0, 4096) })
+      }, () => {})
     } catch {
       // 读不了响应不影响被测 App。
     }
