@@ -23,8 +23,10 @@ const SCRIPT = 'look-at-canvas-selection-real.paid.mjs'
 const ROUNDS = Number(process.env.NOMI_REAL_ROUNDS || 5)
 if (!Number.isInteger(ROUNDS) || ROUNDS < 1) throw new Error(`NOMI_REAL_ROUNDS 要是正整数，拿到 ${process.env.NOMI_REAL_ROUNDS}`)
 const startedAt = new Date().toISOString()
+// F-1 build marker: the paid walk must run a build containing the sequence-aware omission fix.
+const F1_SUPERSEDED_READ_MARKER = '[Earlier look_at_canvas result omitted: the same thing was read again later'
 
-const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-real', [BRAIN], { buildMarkers: [SELECTION_PAGING_MARKER] })
+const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-real', [BRAIN], { buildMarkers: [SELECTION_PAGING_MARKER, F1_SUPERSEDED_READ_MARKER] })
 const { walk } = paid
 const journey = { rounds: [] }
 let failure

@@ -1,0 +1,173 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-look-at-canvas-paging",
+  "change_kind": "corrective",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-23",
+  "problem_type": "A paged read is mistaken for a replacement snapshot, so earlier pages disappear from model context",
+  "symptom": "After look_at_canvas reads the first page and one or more continuation pages, the message sent for the answer replaces the first page and earlier continuation pages with an omission note; the model can see only the last page.",
+  "direct_cause": "omitSupersededReads keyed reads only by contractId plus semantic input. look_at_canvas intentionally removes selectedFrom from semantic input, so page one and every continuation shared one replacement key.",
+  "class_root": "The shared read replacement boundary had no declared distinction between semantic inputs and presentation inputs, and no sequence invariant saying that continuation pages belong to the latest page-one snapshot without replacing one another.",
+  "affected_population": [
+    "Resident Agent turns that page a large canvas selection through look_at_canvas",
+    "Any future read verb whose output changes by a presentation-only window or segment parameter",
+    "Different canvas resources or read scopes that must remain independently replaceable"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneSupersededReads.mts",
+    "electron/shared/agentCapabilities/verbDeclaration.ts",
+    "electron/shared/agentCapabilities/verbs/readVerbs.ts",
+    "electron/shared/agentCapabilities/canvasReadCompact.ts"
+  ],
+  "entry_points": [
+    "laneHost transform_context calls omitSupersededReads before each model request",
+    "read verb declarations provide semantic and presentation parameter ownership",
+    "look_at_canvas compact projection emits the first page or a continuation page"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This is Nomi’s internal model-context and canvas presentation invariant; no dependency or platform decides whether a continuation replaces a snapshot.",
+  "invariants": [
+    "A successful continuation with selectedFrom > 0 is in the current resource’s latest page-one sequence and does not supersede page one or another continuation.",
+    "A new successful page-one read (selectedFrom absent or zero) supersedes every successful page in the prior sequence for the same semantic resource, while other resources remain untouched.",
+    "Every read-verb schema parameter is either present in its semantic input or explicitly declared as a presentation input; presentation inputs never leak into MCP semantic input.",
+    "A continuation canvas projection contains only the current selected window and its node details; the first page retains the full canvas projection."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneHost.mts",
+      "symbol": "omitSupersededReads"
+    },
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneSupersededReads.mts",
+      "symbol": "supersededReadNote"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/verbDeclaration.ts",
+      "symbol": "VerbDeclaration"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/verbs/readVerbs.ts",
+      "symbol": "readVerbs"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/agentCapabilities/verbs/readVerbs.ts",
+      "symbol": "readVerbs"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "symbol": "projectCanvasForAgent"
+    }
+  ],
+  "door_reduction": {
+    "before": 6,
+    "after": 6,
+    "why_not": "These doors are distinct shared boundaries: laneHost is the request transform caller; laneSupersededReads owns replacement; VerbDeclaration owns the declaration shape; readVerbs owns read parameter declarations; and projectCanvasForAgent owns the first-page versus continuation projection. The fix preserves each boundary and makes them agree through the declaration metadata and shared transform."
+  },
+  "generality_proof": "The host invokes one transform for every model request, and the transform derives keys from every read declaration rather than a hand-maintained tool list. The declaration gate checks every read schema parameter, while the sequence algorithm applies uniformly to each semantic resource key; therefore a second read verb or caller cannot silently reintroduce an unclassified presentation parameter or page replacement.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneSupersededReads.mts",
+      "symbol": "omitSupersededReads",
+      "responsibility": "Keep the latest page-one sequence for each semantic resource and omit only reads from older sequences."
+    },
+    {
+      "path": "electron/shared/agentCapabilities/verbs/readVerbs.ts",
+      "symbol": "readVerbs",
+      "responsibility": "Declare which model-facing read parameters are semantic and which are presentation-only."
+    },
+    {
+      "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "symbol": "projectCanvasForAgent",
+      "responsibility": "Render page one as the full canvas and continuations as only the selected window with its node details."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "entry_point": "transform_context → omitSupersededReads",
+      "disposition": "enforced",
+      "evidence": "The host is the shared pre-request transform for resident model turns, queued inputs, and restored histories."
+    },
+    {
+      "path": "electron/agentLane/laneSupersededReads.mts",
+      "entry_point": "omitSupersededReads",
+      "disposition": "enforced",
+      "evidence": "The replacement algorithm is centralized here and is driven by the declarations passed by the host."
+    },
+    {
+      "path": "electron/agentLane/laneCanvasTools.ts",
+      "entry_point": "canvas.read → projectCanvasForAgent",
+      "disposition": "enforced",
+      "evidence": "The lane supplies the complete canonical canvas result and invokes the shared projection for both page one and continuations."
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/runStoryboardPlanner.ts",
+      "entry_point": "formatCanvasForAgent",
+      "disposition": "not-affected",
+      "evidence": "The single-shot planner cannot page and calls the same projection without selectedFrom; its full-canvas presentation remains the page-one path."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any large selection can produce a continuation, and any future read verb can add a presentation-only window unless the declaration boundary rejects the omission.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs electron/agentLane/laneSupersededReads.mts: host transform and replacement owner checked.",
+      "rg -n \"semanticInputOf|schema:\" electron/shared/agentCapabilities/verbs: all read and write declarations checked; readVerbs is the only read declaration owner.",
+      "node scripts/door-map.mjs electron/shared/agentCapabilities/canvasReadCompact.ts: lane and storyboard planner projection consumers checked.",
+      "electron/capabilityCore/mcpCapabilityProjection.test.ts: external MCP canvas read remains canonical and does not publish selectedFrom."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneSupersededReads.mts",
+    "invariant": "Only a later page-one read replaces an earlier sequence; continuation pages of the current sequence are all retained.",
+    "failure_mode": "A malformed or unknown read call is left unchanged; a successful continuation cannot replace a prior page, and a later page-one read replaces the entire prior sequence for that resource.",
+    "exception_policy": "none",
+    "strategy": "Derive the semantic resource key from the declaration, classify selectedFrom continuations from declared presentation metadata, and group successful results into page-one epochs before applying omission notes.",
+    "artifacts": [
+      "electron/agentLane/laneSupersededReads.mts",
+      "electron/shared/agentCapabilities/verbDeclaration.ts",
+      "electron/shared/agentCapabilities/verbs/readVerbs.ts",
+      "electron/shared/agentCapabilities/canvasReadCompact.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/agentLane/laneSupersededReads.test.ts",
+    "electron/shared/agentCapabilities/verbs/readVerbs.test.ts",
+    "electron/shared/agentCapabilities/canvasReadSelection.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/agentLane/laneSupersededReads.test.ts",
+    "electron/shared/agentCapabilities/verbs/readVerbs.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "No legacy caller or stored data path exists. The old single-key replacement behavior is replaced in place by sequence-aware omission; the old repeated full continuation projection is removed in the same canvas projection function."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The invariant is owned by Nomi’s declaration, host transform, and canvas projection; no third-party runtime controls it.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data or MCP contract input changes. Existing transcripts retain their original tool results; the next request applies the new sequence-aware transform. selectedFrom remains a presentation-only internal lane parameter and is not added to canvas.read semantic input.",
+  "residual_risks": [
+    "The real paid model walk remains with the coordinator; this branch runs only the zero-cost rehearsal as required.",
+    "If a future read verb has a multi-dimensional continuation shape, it must declare the presentation field and add a class test for its sequence semantics; the current gate catches an unclassified parameter but does not infer arbitrary continuation rules.",
+    "A selection changed between pages is still an offset read of the current selection; each page reports its current total, but no cursor pins the selection snapshot."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneSupersededReads.mts",
+    "tests": [
+      "electron/agentLane/laneSupersededReads.test.ts",
+      "electron/shared/agentCapabilities/verbs/readVerbs.test.ts"
+    ],
+    "why": "The lane transform is the earliest shared boundary that controls what the model receives, and the declaration gate proves all read parameters have an explicit owner."
+  }
+}

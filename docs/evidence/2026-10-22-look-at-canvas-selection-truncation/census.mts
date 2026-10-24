@@ -1,5 +1,5 @@
 // 零花费量具：生产的 look_at_canvas 文本投影，数「模型收到的文本里到底有几个选中节点的 id、有没有明说总数、
-// 顺着提示翻页能不能读全」。修前修后各跑一次，对照同一份 N 档；这不是模型分数（模型分数见 probe.mts）。
+// 顺着提示翻页能不能读全」。修前修后各跑一次，对照同一份 N 档；这不是模型分数（模型分数由 App 走查负责）。
 //
 //   pnpm exec tsx docs/evidence/2026-10-22-look-at-canvas-selection-truncation/census.mts [--module <canvasReadCompact 路径>] [--out <file.json>]
 //

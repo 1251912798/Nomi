@@ -17,6 +17,7 @@ import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import { toSemanticInput, type ModelFacingToolSpec } from '../shared/agentCapabilities/modelFacingTools.js';
 
 type ToolCallPart = { type: 'toolCall'; id: string; name: string; arguments: unknown };
+type ReadCall = { resourceKey: string; continuation: boolean };
 
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
@@ -27,12 +28,17 @@ function stableJson(value: unknown): string {
   return JSON.stringify(value) ?? 'null';
 }
 
-/** 读动词的资源键；不是读动词（或参数形状认不出）就 `undefined`——那条结果原样保留。 */
-function readResourceKey(spec: ModelFacingToolSpec | undefined, args: unknown): string | undefined {
+/** 读动词的资源键与翻页身份；不是读动词（或参数形状认不出）就 `undefined`。 */
+function readCall(spec: ModelFacingToolSpec | undefined, args: unknown): ReadCall | undefined {
   if (!spec || spec.effect !== 'read') return undefined;
   if (args !== undefined && (args === null || typeof args !== 'object' || Array.isArray(args))) return undefined;
   try {
-    return `${spec.contractId}:${stableJson(toSemanticInput(spec, (args ?? {}) as Record<string, unknown>))}`;
+    const input = (args ?? {}) as Record<string, unknown>;
+    const selectedFrom = spec.presentationInputFields?.includes('selectedFrom') ? input.selectedFrom : undefined;
+    return {
+      resourceKey: `${spec.contractId}:${stableJson(toSemanticInput(spec, input))}`,
+      continuation: typeof selectedFrom === 'number' && selectedFrom > 0,
+    };
   } catch {
     return undefined;
   }
@@ -49,28 +55,42 @@ export function supersededReadNote(toolName: string, laterToolCallId: string): s
  */
 export function omitSupersededReads(messages: readonly AgentMessage[], specs: readonly ModelFacingToolSpec[]): AgentMessage[] {
   const byName = new Map(specs.map((spec) => [spec.name, spec]));
-  const keyByCall = new Map<string, string>();
+  const readByCall = new Map<string, ReadCall>();
   for (const message of messages) {
     if (message.role !== 'assistant') continue;
     for (const part of message.content as readonly unknown[]) {
       const call = part as ToolCallPart;
       if (call?.type !== 'toolCall') continue;
-      const key = readResourceKey(byName.get(call.name), call.arguments);
-      if (key) keyByCall.set(call.id, key);
+      const read = readCall(byName.get(call.name), call.arguments);
+      if (read) readByCall.set(call.id, read);
     }
   }
-  const latest = new Map<string, string>();
+
+  // A successful page-one read starts a sequence. Continuations belong to that
+  // sequence and remain visible beside one another. The next page-one read
+  // replaces the complete prior sequence for that resource.
+  const epochByResource = new Map<string, number>();
+  const epochByCall = new Map<string, number>();
+  const latestPageOneByResource = new Map<string, string>();
   for (const message of messages) {
     if (message.role !== 'toolResult' || message.isError) continue;
-    const key = keyByCall.get(message.toolCallId);
-    if (key) latest.set(key, message.toolCallId);
+    const read = readByCall.get(message.toolCallId);
+    if (!read) continue;
+    const currentEpoch = epochByResource.get(read.resourceKey) ?? 0;
+    const epoch = read.continuation ? currentEpoch : currentEpoch + 1;
+    epochByResource.set(read.resourceKey, epoch);
+    epochByCall.set(message.toolCallId, epoch);
+    if (!read.continuation) latestPageOneByResource.set(read.resourceKey, message.toolCallId);
   }
   let changed = false;
   const next = messages.map((message) => {
     if (message.role !== 'toolResult' || message.isError) return message;
-    const key = keyByCall.get(message.toolCallId);
-    const winner = key ? latest.get(key) : undefined;
-    if (!winner || winner === message.toolCallId) return message;
+    const read = readByCall.get(message.toolCallId);
+    const epoch = epochByCall.get(message.toolCallId);
+    const winner = read && epoch !== undefined && epoch < (epochByResource.get(read.resourceKey) ?? epoch)
+      ? latestPageOneByResource.get(read.resourceKey)
+      : undefined;
+    if (!winner) return message;
     changed = true;
     return { ...message, content: [{ type: 'text' as const, text: supersededReadNote(message.toolName, winner) }] };
   });

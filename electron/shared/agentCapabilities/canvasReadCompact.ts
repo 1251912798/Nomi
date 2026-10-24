@@ -149,8 +149,19 @@ export function formatCanvasForAgent(result: CanvasReadResult, options?: CanvasP
 export function projectCanvasForAgent(result: CanvasReadResult, options: CanvasProjectionOptions = {}): CanvasAgentProjection {
   if (result.nodes.length === 0) return { text: "画布当前为空。", selection: EMPTY_SELECTION };
 
+  const selectedAll = result.selectedNodeIds ?? [];
+  const requestedFrom = Number.isFinite(options.selectedFrom) ? Math.max(0, Math.floor(options.selectedFrom!)) : 0;
+  const from = Math.min(requestedFrom, selectedAll.length);
+  const listedSlice = selectionWindow(selectedAll, from);
+  const selection: CanvasSelectionAccount = selectedAll.length === 0
+    ? EMPTY_SELECTION
+    : { total: selectedAll.length, from, listed: listedSlice.listed, omitted: selectedAll.length - listedSlice.listed };
+  const selectedIds = new Set(selectedAll.slice(from, from + listedSlice.listed));
+  const continuation = requestedFrom > 0;
+
   const titleById = new Map(result.nodes.map((node) => [node.id, compactHead(node.title, 80)]));
-  const nodes = boundedJoin(result.nodes, NODE_SUMMARY_BUDGET, "\n", (node) => {
+  const nodesForPage = continuation ? result.nodes.filter((node) => selectedIds.has(node.id)) : result.nodes;
+  const nodes = boundedJoin(nodesForPage, NODE_SUMMARY_BUDGET, "\n", (node) => {
     const storyboardDesignId = (node as unknown as { meta?: { storyboardDesignId?: unknown } }).meta?.storyboardDesignId;
     const flags = [
       node.locked ? "已锁定" : null,
@@ -181,22 +192,15 @@ export function projectCanvasForAgent(result: CanvasReadResult, options: CanvasP
   });
   const edges = boundedJoin(result.edges, EDGE_SUMMARY_BUDGET, ", ", (edge) =>
     `${titleById.get(edge.source) || compactHead(edge.source, 120)}→${titleById.get(edge.target) || compactHead(edge.target, 120)}`);
-  const selectedAll = result.selectedNodeIds ?? [];
-  const requestedFrom = Number.isFinite(options.selectedFrom) ? Math.max(0, Math.floor(options.selectedFrom!)) : 0;
-  const from = Math.min(requestedFrom, selectedAll.length);
-  const listedSlice = selectionWindow(selectedAll, from);
-  const selection: CanvasSelectionAccount = selectedAll.length === 0
-    ? EMPTY_SELECTION
-    : { total: selectedAll.length, from, listed: listedSlice.listed, omitted: selectedAll.length - listedSlice.listed };
   const writer = createPromptWriter(MAX_CANVAS_PROMPT_CHARACTERS);
   writer.appendLine(`画布节点 ${result.nodes.length} 个(id | 类型 | 镜头号与角色 | 归属节点 | 标题 | 状态 | prompt 摘要 | 结果身份):`);
   for (const line of selectionLines(selection, requestedFrom, listedSlice.text, options.selectedFrom !== undefined)) writer.appendLine(line);
   writer.appendLine(nodes.text);
-  writer.appendLine(`引用边: ${edges.text || "无"}`);
+  if (!continuation) writer.appendLine(`引用边: ${edges.text || "无"}`);
 
   // 分镜表的行：排在选中节点的完整提示词之前（用户说「照第 2 镜复刻」时，那一镜的提示词就是要读的正文）。
   // 每张表分到「剩余预算 / 剩下几张表」与单表上限中的小者；表内的取舍（勾选的先、没放下的镜号明列）归 formatShotTableForAgent。
-  const tables = result.nodes.filter((node) => node.shotTable);
+  const tables = continuation ? [] : result.nodes.filter((node) => node.shotTable);
   let tableBudgetTruncated = false;
   tables.forEach((node, index) => {
     const share = Math.floor((writer.remaining() - 2) / (tables.length - index)) - 1;
@@ -206,10 +210,9 @@ export function projectCanvasForAgent(result: CanvasReadResult, options: CanvasP
   });
 
   // 完整提示词 / 正文只跟本次列出的选中节点走：读后面一页，才读得到后面那些节点的完整内容。
-  const selectedIds = new Set(selectedAll.slice(from, from + listedSlice.listed));
   let promptTruncated = false;
   let promptsOmitted = false;
-  const coreTruncated = nodes.truncated || edges.truncated || tableBudgetTruncated;
+  const coreTruncated = nodes.truncated || (!continuation && edges.truncated) || tableBudgetTruncated;
   for (const node of result.nodes) {
     if (!selectedIds.has(node.id) || node.prompt.length <= 60) continue;
     const heading = `「${compactHead(node.title, 80)}」(${compactHead(node.id, 120)}) 完整提示词:`;

@@ -66,6 +66,7 @@ export function readVerbs(): VerbDeclaration[] {
     promptGuidelines: READ_GUIDELINES,
     // 翻页只改「选区这一块怎么列」，不改宿主读到什么：契约 `canvas.read` 仍不收参数、仍返回完整 `selectedNodeIds`
     // （对外 MCP 拿到的就是整份），所以 `selectedFrom` 不翻译进语义输入——由 `laneCanvasTools` 在排版时消费。
+    presentationInputFields: ["selectedFrom"],
     schema: z.object({
       selectedFrom: z.number().int().min(0).optional().describe("Index from 0 of the first selected node to list."),
     }).strict(),

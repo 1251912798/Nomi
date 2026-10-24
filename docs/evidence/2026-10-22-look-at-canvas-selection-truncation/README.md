@@ -24,23 +24,6 @@ rm electron/shared/agentCapabilities/canvasReadCompact.before.tmp.ts
 pnpm exec tsx docs/evidence/2026-10-22-look-at-canvas-selection-truncation/census.mts
 ```
 
-## 真模型（`probe.mts`）：unverified
-
-量具已备好：走生产的 `createCanvasLaneTools`（真 look_at_canvas 说明书与排版）→ 真 `openLane` → 真 OpenAI 兼容端点，让模型把选中的每个 id 都说出来，数说对几个、调了几次 look_at_canvas、有没有翻页。
-
-**没有真模型数字，原因：本机唯一的凭据 `DEEPSEEK_API_KEY` 返回 402 Insufficient Balance（2026-10-22 复测仍是 402）。** 没有拿脚本化模型的结果顶替。
-
-`probe-selftest.json` 只是量具接线的自检（脚本化模型，不是模型分数）：它证明生产的 look_at_canvas 在真 lane 里收得下 `selectedFrom: 32`、两次调用读完 40 个。
-
-有额度之后：
-
-```
-NOMI_EVAL_AGENT_SPEND_OK=1 NOMI_EVAL_AGENT_BASE_URL=https://api.deepseek.com/v1 NOMI_EVAL_AGENT_MODEL=deepseek-chat NOMI_EVAL_AGENT_API_KEY=… \
-pnpm exec tsx docs/evidence/2026-10-22-look-at-canvas-selection-truncation/probe.mts --count 40 --trials 3 --out <file.json>
-```
-
-修前的对照需要把 `canvasReadCompact.ts` 换回 `origin/main` 的版本再跑一次（修前该动词不收 `selectedFrom`，模型翻页会被拒收，预期只能说出前 32 个）。
-
 ## 真模型（App 里配好的模型，`paid/`）
 
 R13.3 的三个数（工具写对率、翻页率、回合成功率）改由真 App 走查量：`tests/ux/look-at-canvas-selection-real.paid.mjs`。

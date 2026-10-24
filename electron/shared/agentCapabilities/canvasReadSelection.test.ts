@@ -142,6 +142,19 @@ describe("look_at_canvas 的选区：列全，或明说少了几个", () => {
     expect(first.text).not.toContain("尾标39尾");
     expect(last.text).toContain("尾标39尾");
   });
+
+  it("续页只带本页选中的节点段，不重复第一页的节点清单", () => {
+    const result = canvasOf(40, { extraNodes: 2 });
+    const first = projectCanvasForAgent(result, { selectedFrom: 0 });
+    const next = projectCanvasForAgent(result, { selectedFrom: first.selection.listed });
+    const firstPageId = selectedIdsOf(result)[0]!;
+    const nextPageId = selectedIdsOf(result)[first.selection.listed]!;
+
+    expect(first.text).toContain(firstPageId);
+    expect(next.text).not.toContain(firstPageId);
+    expect(next.text).toContain(nextPageId);
+    expect(next.text).not.toContain("引用边:");
+  });
 });
 
 describe("look_at_canvas 的模型面：selectedFrom 只是翻页，不进宿主契约", () => {
