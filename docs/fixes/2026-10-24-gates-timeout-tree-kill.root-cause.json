@@ -25,7 +25,8 @@
     "scripts/pre-push-contracts.mjs",
     "scripts/pre-push-contracts.node-test.mjs",
     "scripts/pre-push-gate-inputs.mjs",
-    "scripts/pre-push-structure.node-test.mjs"
+    "scripts/pre-push-structure.node-test.mjs",
+    "tests/ux/memory.e2e.mjs"
   ],
   "entry_points": [
     "pre-push-contracts.runNode 的单门岗超时",
@@ -123,11 +124,6 @@
       "path": "scripts/lib/processTree.mjs",
       "symbol": "killProcessTree",
       "responsibility": "统一按平台终止独立的自建进程树；已经退出的 ESRCH 按完成处理，活进程的非组长误用显式报错。"
-    },
-    {
-      "path": "scripts/pre-push-contracts.mjs",
-      "symbol": "runNode",
-      "responsibility": "门岗单进程的启动、硬超时、整体截止和 running 注册都经过共享进程树边界。"
     }
   ],
   "same_class_entry_points": [
@@ -198,10 +194,16 @@
       "evidence": "这些直接 kill 是单测故意验证 wrapper 与继承子进程的不同信号语义；文件已在结构门岗中具名登记，不是生产超时 owner。"
     },
     {
+      "path": "tests/ux/memory.e2e.mjs",
+      "entry_point": "Electron 内存走查的收尾",
+      "disposition": "enforced",
+      "evidence": "原先自写了一份同名 killProcessTree（POSIX 只给根 pid 发 SIGTERM，后代可能留下）；改为 processTreeSpawnOptions 起 Electron、killProcessTree 按组收尾并删掉自写，独立进程组收不到的终端 Ctrl-C / SIGHUP 由脚本转交。"
+    },
+    {
       "path": "tests/ux/",
       "entry_point": "walkthrough / Electron / vite cleanup calls",
       "disposition": "not-affected",
-      "evidence": "普查发现超过 5 处，需要独立的 UX 生命周期任务；按任务书停在清单，不在本次产品文件范围内硬改。"
+      "evidence": "除 memory.e2e.mjs（自写同名 killProcessTree，已收敛，见上一条）外，普查发现超过 5 处，需要独立的 UX 生命周期任务；按任务书停在清单，不在本次产品文件范围内硬改。"
     }
   ],
   "recurrence": {
