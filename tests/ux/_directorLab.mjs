@@ -100,7 +100,7 @@ export async function pinCanvasImageModelByCapability(page, nodeId, capability) 
   await page.evaluate(({ id, model }) => {
     const store = window.__nomiCanvasStore
     const target = store?.getState().nodes.find((node) => node.id === id)
-    if (!store || !target) throw new Error(`前置不满足：目标节点不存在，无法钉${model.capabilityLabel}图片模型`)
+    if (!store || !target) throw new Error(`前置不满足：目标节点不存在，无法钉${model.capabilityLabel}的图片模型`)
     store.getState().updateNode(id, {
       meta: {
         ...(target.meta ?? {}),
