@@ -7,11 +7,11 @@
     "date": "2026-10-24",
     "source": "用户原话（协调转述）",
     "canvas": "https://claude.ai/artifact/HMWbBktUXkfi7DvsTLwBk6",
-    "canvasVersion": "用户在第 7 版（A 连线 / B 镜头飞入 / C 取景框三个方向）上选 B，并定「只用三种媒体色」；第 8 版按拍板改 B：只留文本 / 图片 / 视频三张卡，换成画布节点同款 Tabler 图标，板上的背景直接取自实现渲染；第 9 版只更正先例便签里 DropDMG 答复的日期。入库的是第 9 版"
+    "canvasVersion": "用户在第 7 版（A 连线 / B 镜头飞入 / C 取景框三个方向）上选 B，并定「只用三种媒体色」；第 8 版按拍板改 B：只留文本 / 图片 / 视频三张卡，换成画布节点同款 Tabler 图标，板上的背景直接取自实现渲染；第 9 版只更正先例便签里 DropDMG 答复的日期；第 10 版只在拍板便签里记下 Q2 / Q5 的结论（画面不变）。入库的是第 10 版"
   },
-  "visualReview": "协调会话 2026-10-24 逐张对过画布（A / B / C），B 要改两处：不用 --nomi-snap（橙）和 --workbench-text（紫），小图标换成 Tabler 真图标；用户随后拍板 B 并定只用三种媒体色。画布 https://claude.ai/artifact/HMWbBktUXkfi7DvsTLwBk6 私有，只有仓库主人能开。",
+  "visualReview": "协调会话 2026-10-24 逐张对过画布（A / B / C），B 要改两处：不用 --nomi-snap（橙）和 --workbench-text（紫），小图标换成 Tabler 真图标；用户随后拍板 B 并定只用三种媒体色。改完后协调对过真 DMG 截图和卷图标：暖白底、三张卡只用三条媒体轨颜色和注册表里的 Tabler 图标、卷图标角标是墨底白笔画没加强调色（§3.9.0）、文件名在浅底上清楚、提示路径对，通过。画布 https://claude.ai/artifact/HMWbBktUXkfi7DvsTLwBk6 私有，只有仓库主人能开。",
   "designCard": "docs/plan/2026-10-24-dmg-install-window.md",
-  "sourceBoundary": "板源 = Claude Design 画布第 9 版「B · 镜头飞入」画板的原样副本（source/DmgInstallWindow.dc.html；画布里叫 B.dc.html，入库改成板名，好让板源哈希盖住它）+ 画布索引公开版（source/canvas.json：只留这张画板和四张便签：卡点、先例、骨架、拍板；A / C 方向、现状和细节画板、真机原型画板不入库，看画布）。画板上的背景（弧线、三张媒体卡、提示）是第 8 版直接取自 build/dmg/background.html 的渲染（token 解析成浅色值），和入库的背景图同源；图标和文件名是 Finder 画的，画板上用画布素材摆位。preview/DmgInstallWindow.html 是去掉画布外壳（运行时脚本、外网字体）的静态页：图片去掉 src（画布素材不进仓库），图标位置画成虚线框，两半各加一行说明（decor）。候选由 scripts/board-extract.mjs 的抽取函数（extractBoard + renderCandidatesFile，同样的浏览器设置）在静态页上抽出，两次抽取逐字节一致。",
+  "sourceBoundary": "板源 = Claude Design 画布第 10 版「B · 镜头飞入」画板的原样副本（source/DmgInstallWindow.dc.html；画布里叫 B.dc.html，入库改成板名，好让板源哈希盖住它）+ 画布索引公开版（source/canvas.json：只留这张画板和四张便签：卡点、先例、骨架、拍板；A / C 方向、现状和细节画板、真机原型画板不入库，看画布）。画板上的背景（弧线、三张媒体卡、提示）是第 8 版直接取自 build/dmg/background.html 的渲染（token 解析成浅色值），和入库的背景图同源；图标和文件名是 Finder 画的，画板上用画布素材摆位。preview/DmgInstallWindow.html 是去掉画布外壳（运行时脚本、外网字体）的静态页：图片去掉 src（画布素材不进仓库），图标位置画成虚线框，两半各加一行说明（decor）。候选由 scripts/board-extract.mjs 的抽取函数（extractBoard + renderCandidatesFile，同样的浏览器设置）在静态页上抽出，两次抽取逐字节一致。",
   "designIntent": "安装窗口只讲两件事：往哪拖（Nomi → 应用程序，文本 / 图片 / 视频三张媒体卡沿弧线飞过去），第一次打开被拦去哪放行（中英两行提示）。卷名带版本、卷图标是磁盘加 Nomi 角标，桌面上的盘不会被当成已经装好的应用。",
   "artboards": [
     "DmgInstallWindow"
@@ -42,8 +42,8 @@
     },
     {
       "id": "Q2",
-      "text": "Apple Developer ID 签名 + 公证不在本 PR，单独立项；做了以后窗口里那两行提示可以删。",
-      "source": "协调 2026-10-24 转达"
+      "text": "Apple Developer ID 签名 + 公证先不做，也不另立项；窗口里的中英「第一次打开被拦」提示照 Q1 = A 保留。",
+      "source": "用户 2026-10-24（原话「先不做了」，协调转述）"
     },
     {
       "id": "Q3",
@@ -57,8 +57,8 @@
     },
     {
       "id": "Q5",
-      "text": "只做浅底背景；深色外观下的样子等用户切一次系统外观后真机核实，之前记 unverified。",
-      "source": "协调 2026-10-24 转达"
+      "text": "只做浅底背景，不做深色外观实测。已知限制：深色外观下 Finder 图标标签可能变成白字、在浅底上偏淡；未实测（用户 10-24 判定不需要）。",
+      "source": "用户 2026-10-24（原话「没必要」，协调转述）"
     },
     {
       "id": "Q6",
@@ -137,7 +137,8 @@
         "033-div-Nomi"
       ],
       "status": "implemented",
-      "assertion": "board:DmgInstallWindow/dmg.app-icon"
+      "assertion": "board:DmgInstallWindow/dmg.app-icon",
+      "note": "深色外观：Finder 画的文件名可能变成白字、在浅底上偏淡；未实测（用户 10-24 判定不需要），见 knownLimitations。"
     },
     {
       "id": "dmg.applications",
@@ -152,7 +153,8 @@
         "034-div-Applications"
       ],
       "status": "implemented",
-      "assertion": "board:DmgInstallWindow/dmg.applications"
+      "assertion": "board:DmgInstallWindow/dmg.applications",
+      "note": "深色外观：Finder 画的文件名可能变成白字、在浅底上偏淡；未实测（用户 10-24 判定不需要），见 knownLimitations。"
     },
     {
       "id": "dmg.flight-arc",
@@ -270,10 +272,12 @@
     }
   ],
   "unverified": [
-    "深色外观（Q5）：等用户切一次系统外观后真机截图",
     "英文系统（Q9）：窗口里没有随系统语言变的字，没切系统语言实测",
     "Intel 版 DMG（x64）：同一份配置，没单独打包截图",
     "macOS 14 及更早（标题栏不占窗口高度，底部 32pt 会露出来，只铺了底色）：没有真机",
     "真拖装：本机没拖（会覆盖本机已装的 Nomi），拖拽复制本身由 Finder 完成，本 PR 不改"
+  ],
+  "knownLimitations": [
+    "深色外观下 Finder 图标标签可能变成白字、在浅底上偏淡；未实测（用户 10-24 判定不需要）"
   ]
 }

@@ -52,7 +52,7 @@
       "w": 520,
       "fill": "green",
       "size": "s",
-      "text": "拍板（2026-10-24，用户原话，协调转述）：「安装窗口用 B 镜头飞入（按你说的只用三种媒体色）。」\n\n实现对齐：\n· 三张卡 = 文本 / 图片 / 视频，按制作顺序排在弧上，越靠近「应用程序」越小\n· 颜色只用三条媒体轨 token：--nomi-track-text（= 强调色）/ --nomi-track-image / --nomi-track-video；去掉橙（snap）、紫（workbench-text）\n· 卡上图标 = 画布节点同款 Tabler（IconTypography / IconPhoto / IconVideo），渲染时从节点注册表取\n· 背景 = build/dmg/background.html 按 token 渲染；坐标只存在 package.json build.dmg 一处\n· A 板去掉了 55% 的 Nomi 标志拖影（标志只许墨底白笔画）\n\n深色外观：待用户切换外观后真机核实（未验证）。"
+      "text": "拍板（2026-10-24，用户原话，协调转述）：「安装窗口用 B 镜头飞入（按你说的只用三种媒体色）。」\n\n实现对齐：\n· 三张卡 = 文本 / 图片 / 视频，按制作顺序排在弧上，越靠近「应用程序」越小\n· 颜色只用三条媒体轨 token：--nomi-track-text（= 强调色）/ --nomi-track-image / --nomi-track-video；去掉橙（snap）、紫（workbench-text）\n· 卡上图标 = 画布节点同款 Tabler（IconTypography / IconPhoto / IconVideo），渲染时从节点注册表取\n· 背景 = build/dmg/background.html 按 token 渲染；坐标只存在 package.json build.dmg 一处\n· A 板去掉了 55% 的 Nomi 标志拖影（标志只许墨底白笔画）\n\n已知限制：深色外观下 Finder 图标标签可能变成白字、在浅底上偏淡；未实测（用户 10-24 判定不需要）。\n签名公证：用户 10-24「先不做了」，窗口里的中英提示保留。"
     }
   },
   "designSystems": []
