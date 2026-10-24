@@ -6,7 +6,7 @@
 // eval:score 兜底断言 zeroVendorCalls(评测环境绝不烧生成额度)。
 import fs from "node:fs";
 import path from "node:path";
-import { buildNomiLaunchEnv, launchNomiApp, prepareIsolatedCatalog } from "../../tests/ux/_launchApp.mjs";
+import { buildNomiLaunchEnv, launchNomiApp, prepareHostConfigDir, prepareIsolatedCatalog } from "../../tests/ux/_launchApp.mjs";
 import { realNomiProfile, seedRealCredentials } from "../../tests/ux/_realProfile.mjs";
 import { ensureAgentPanelOpen, newProjectEntry } from "../../tests/ux/_shell.mjs";
 
@@ -29,6 +29,8 @@ export const TOOL_WHITELIST = new Set([
 export function prepareIsolation(isoDir, { requireCatalog = true } = {}) {
   fs.rmSync(isoDir, { recursive: true, force: true });
   for (const d of ["settings", "projects", "chromium", "capability"]) fs.mkdirSync(path.join(isoDir, d), { recursive: true });
+  // 宿主配置（Claude Code / Codex …）也隔离：怎么隔离只问启动器那一处（isolatedHostConfigEnv），这里只给目录。
+  prepareHostConfigDir(path.join(isoDir, "host-config"));
   const profile = realNomiProfile();
   if (requireCatalog && !fs.existsSync(profile.catalogPath)) {
     throw new Error(`真实 model-catalog.json 不存在(${profile.catalogPath})——被测 agent 需要已配置的模型与 key`);
@@ -45,6 +47,7 @@ export function prepareIsolation(isoDir, { requireCatalog = true } = {}) {
     settingsDir: path.join(isoDir, "settings"),
     chromiumDir: path.join(isoDir, "chromium"),
     capabilityDir: path.join(isoDir, "capability"),
+    hostConfigDir: path.join(isoDir, "host-config"),
   };
 }
 
@@ -56,6 +59,7 @@ export function isolatedAppEnv(iso, baseEnv = process.env) {
     projectsDir: iso.projectsDir,
     settingsDir: iso.settingsDir,
     capabilityDir: iso.capabilityDir,
+    hostConfigDir: iso.hostConfigDir,
   });
 }
 
@@ -67,6 +71,7 @@ export async function launchIsolatedApp(repoRoot, iso) {
     projectsDir: iso.projectsDir,
     settingsDir: iso.settingsDir,
     capabilityDir: iso.capabilityDir,
+    hostConfigDir: iso.hostConfigDir,
   });
   return { app, win };
 }

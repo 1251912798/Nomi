@@ -23,6 +23,19 @@ describe('eval isolation catalog boundary', () => {
     expect(env.NOMI_SETTINGS_DIR).toBe(iso.settingsDir)
   })
 
+  test('isolates the host configs too: every host location variable points at an existing dir under the isolation root', () => {
+    // 2026-10-24：只隔离 Nomi 自己的目录时，评测起的 App 读的是本机真实的 ~/.claude.json。
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-iso-app-'))
+    roots.push(root)
+    const iso = prepareIsolation(root, { requireCatalog: false })
+    const env = isolatedAppEnv(iso, { CLAUDE_CONFIG_DIR: '/developer/real/claude', CODEX_HOME: '/developer/real/codex' })
+    expect(iso.hostConfigDir).toBe(path.join(root, 'host-config'))
+    for (const name of ['CLAUDE_CONFIG_DIR', 'CODEX_HOME']) {
+      expect(env[name], name).toBe(path.join(iso.hostConfigDir, name))
+      expect(fs.statSync(env[name]).isDirectory(), name).toBe(true)
+    }
+  })
+
   test('requireCatalog: false never copies the real profile, even when this machine has one', () => {
     const real = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-iso-real-profile-'))
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-iso-app-'))

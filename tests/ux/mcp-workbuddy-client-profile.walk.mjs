@@ -57,7 +57,8 @@ async function openMcpPanel(win) {
 try {
   launched = await launchNomiApp({
     name: 'mcp-workbuddy-client-profile', tempRoot,
-    env: { HOME: testHome }, settleMs: 0,
+    // Windows 的主目录看 USERPROFILE 不看 HOME（同 mcp-connection-status）：只换 HOME，App 在 Windows 上读写的是真机配置。
+    env: { HOME: testHome, USERPROFILE: testHome, APPDATA: path.join(testHome, 'AppData', 'Roaming') }, settleMs: 0,
     initialLocalStorage: {
       'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen',
       'nomi:canvas-gesture-hint:v1': 'seen', 'nomi.onboarding.scene3dCoach.v1': 'seen',

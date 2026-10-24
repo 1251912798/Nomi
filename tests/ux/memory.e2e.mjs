@@ -15,7 +15,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { WebSocket } from "undici";
-import { withLinuxNoSandbox } from "./_launchApp.mjs";
+import { prepareHostConfigDir, withIsolatedHostConfig, withLinuxNoSandbox } from "./_launchApp.mjs";
 import { assertFreshBuild } from "../../scripts/package-build-stamp.mjs";
 
 const require = createRequire(import.meta.url);
@@ -295,14 +295,17 @@ function prepareFixtureEnvironment() {
       2,
     ),
   );
+  // 宿主配置（Claude Code / Codex …）和 Nomi 自己的目录一起隔离；规则只在启动器那一处。
+  const hostConfigDir = path.join(root, "host-config");
+  prepareHostConfigDir(hostConfigDir);
   return {
-    env: {
+    env: withIsolatedHostConfig({
       ...process.env,
       NOMI_ELECTRON_USER_DATA_DIR: settingsDir,
       NOMI_SETTINGS_DIR: settingsDir,
       NOMI_PROJECTS_DIR: projectsDir,
       NOMI_E2E_ALLOW_MULTI_INSTANCE: "1",
-    },
+    }, { hostConfigDir }),
     projectName: materialized.name,
     userDataDir: settingsDir,
   };

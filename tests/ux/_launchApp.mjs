@@ -18,6 +18,7 @@ import { cleanupTestTemp, makeTempDir, registerTestTemp } from '../../scripts/_t
 //   import { launchNomiApp } from './_launchApp.mjs'
 //   const { app, win, projectsDir } = await launchNomiApp({ name: 'my-walk' })
 import { _electron as electron } from 'playwright'
+import { require as tsxRequire } from 'tsx/cjs/api'
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import net from 'node:net'
@@ -249,11 +250,98 @@ async function freeLoopbackPort() {
   })
 }
 
+// ── 宿主配置（Claude Code / Codex / Cursor …）的隔离 ──────────────────────────────────────────────
+// 2026-10-24：隔离起的 App 显示「Claude Code 的配置里已有 Nomi」——读到的是本机真实的 ~/.claude.json。
+// 三个 NOMI_*_DIR 只管 Nomi 自己的目录；宿主配置在哪由宿主自己的规则定（主目录，或 CLAUDE_CONFIG_DIR / CODEX_HOME），
+// 以前这里一条都没管。路径规则只有一份（electron/shared/mcpClientRegistry.ts，主进程算路径也用它），这里不抄。
+const HOME_ENV = ['HOME', 'USERPROFILE']
+
+function hostRegistry() {
+  return tsxRequire('../../electron/shared/mcpClientRegistry.ts', import.meta.url)
+}
+
+/**
+ * 隔离起 App 时宿主配置位置怎么定——唯一一处（launchNomiApp、evals 的 isoApp、memory.e2e 都经这里）：
+ *  · 调用方在自己的 env 里给了某个宿主变量：照用（它在自己的临时目录里摆好了配置）；
+ *  · 调用方换了 HOME / USERPROFILE（假主目录里摆好了 ~/.claude.json 一类）：继承来的宿主变量一律摘掉，
+ *    让宿主的默认位置落在那个假主目录下——不摘的话，开发者 shell 里的 CLAUDE_CONFIG_DIR 会把 App 引回真配置；
+ *  · 其余：每个宿主变量指到 <hostConfigDir>/<变量名>（调用方先建好：Codex 要求 CODEX_HOME 是已存在的目录）。
+ */
+export function isolatedHostConfigEnv({ hostConfigDir, callerEnv = {} }) {
+  const { MCP_CLIENT_HOST_ENV_VARS } = hostRegistry()
+  const redirectsHome = HOME_ENV.some((name) => Object.hasOwn(callerEnv, name))
+  const set = {}
+  const unset = []
+  for (const name of MCP_CLIENT_HOST_ENV_VARS) {
+    if (Object.hasOwn(callerEnv, name)) continue
+    if (redirectsHome) unset.push(name)
+    else set[name] = path.join(hostConfigDir, name)
+  }
+  return { set, unset }
+}
+
+/** 隔离目录里给每个宿主变量建好空目录（宿主要求它存在）；返回建了哪些。 */
+export function prepareHostConfigDir(hostConfigDir, callerEnv = {}) {
+  const dirs = Object.values(isolatedHostConfigEnv({ hostConfigDir, callerEnv }).set)
+  for (const dir of dirs) fs.mkdirSync(dir, { recursive: true })
+  return dirs
+}
+
+function isInside(root, target) {
+  const relative = path.relative(root, target)
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+}
+
+/**
+ * 隔离实例的宿主配置逐条核（门岗）。按注册表每一条路径（本平台的配置文件 + 安装痕迹），分别用「要传给 App 的 env」和
+ * 「用户自己的 env」（含不设宿主变量时的默认位置）解析，App 那一份落进用户真实宿主位置里的：
+ *   · 能重定向的（宿主有位置变量，或调用方换了主目录）→ leaks：隔离漏了，App 会读写真配置；
+ *   · 只能靠主目录、调用方又没换主目录的（Cursor / WorkBuddy / Claude Desktop）→ residual：启动器挡不住，
+ *     名单由 _launchApp.test.mjs 钉住，要挡得产品侧「隔离实例不读真主目录」（交协调拍板）。
+ * App 的主目录按 Node 的 os.homedir() 规则推：POSIX 看 HOME，Windows 看 USERPROFILE，都没有就是账户主目录。
+ */
+export function isolatedHostConfigLeaks(env, { baseEnv = process.env, platform = process.platform, accountHome = os.userInfo().homedir } = {}) {
+  const { MCP_CLIENT_HOST_ENV_VARS, mcpClientLocations, mcpClientPlatform, resolveMcpClientPath } = hostRegistry()
+  const target = mcpClientPlatform(platform)
+  const homeOf = (values) => (target === 'win32' ? values.USERPROFILE : values.HOME) || accountHome
+  const context = (values) => ({ platform: target, env: values, homedir: homeOf(values), join: path.join })
+  const withoutHostVars = Object.fromEntries(Object.entries(baseEnv).filter(([name]) => !MCP_CLIENT_HOST_ENV_VARS.includes(name)))
+  const locations = mcpClientLocations().filter((entry) => entry.platform === target)
+  const realRoots = locations.flatMap(({ location }) => [resolveMcpClientPath(location, context(baseEnv)), resolveMcpClientPath(location, context(withoutHostVars))])
+  const callerRedirectedHome = homeOf(env) !== homeOf(baseEnv)
+  const leaks = []
+  const residual = new Set()
+  for (const { client, location } of locations) {
+    const resolved = resolveMcpClientPath(location, context(env))
+    if (!realRoots.some((root) => isInside(root, resolved))) continue
+    if (location.hostEnv || callerRedirectedHome) leaks.push({ client, path: resolved })
+    else residual.add(client)
+  }
+  return { leaks, residual: [...residual].sort() }
+}
+
+/** 隔离 env 收尾：宿主变量按 isolatedHostConfigEnv 定，再逐条核；漏一条就当场抛，不让 App 起来读真配置。 */
+export function withIsolatedHostConfig(env, { hostConfigDir, callerEnv = {}, baseEnv = process.env }) {
+  const { set, unset } = isolatedHostConfigEnv({ hostConfigDir, callerEnv })
+  const isolated = { ...env, ...set }
+  for (const name of unset) delete isolated[name]
+  const { leaks } = isolatedHostConfigLeaks(isolated, { baseEnv })
+  if (leaks.length) {
+    throw new Error(`隔离起 App 却会读写用户真实的宿主配置：${leaks.map((leak) => `${leak.client} → ${leak.path}`).join('；')}。`
+      + '宿主变量要指到临时目录（见 isolatedHostConfigEnv），换了主目录就别再带宿主变量。')
+  }
+  return isolated
+}
+
 /**
  * 拼一套「窗口一定能起来」的 env。抽成纯函数是为了让那条不变量能被单测钉住
  * （见 _launchApp.test.mjs）：**必需 env 排在 extraEnv 之后，调用方覆盖不掉**。
+ * 隔离起 App（给了任一 Nomi 目录）就必须同时给 hostConfigDir：宿主配置不隔离，App 读到的是本机真配置。
  */
-export function buildNomiLaunchEnv({ extraEnv = {}, userDataDir, settingsDir, projectsDir, capabilityDir, fixtureCredentials = false, baseEnv = process.env }) {
+export function buildNomiLaunchEnv({ extraEnv = {}, userDataDir, settingsDir, projectsDir, capabilityDir, hostConfigDir, fixtureCredentials = false, baseEnv = process.env }) {
+  if ((userDataDir || settingsDir || projectsDir) && !hostConfigDir) {
+    throw new Error('隔离起 App 要给 hostConfigDir（宿主配置的隔离目录）：只隔离 Nomi 自己的目录，App 照样读写本机真实的 Claude Code / Codex 配置')
+  }
   const env = {
     ...baseEnv,
     // 假凭据（syntheticCredentialStorage: true = 隔离目录里的非秘密测试 key）不许出这台机器：默认打开产品自带的
@@ -282,7 +370,7 @@ export function buildNomiLaunchEnv({ extraEnv = {}, userDataDir, settingsDir, pr
   // 「干等到超时」。它常被别的工具链顺手塞进环境里（我们自己 spawn MCP 子进程时也会用），
   // 继承过来纯属误伤——统一摘掉，同一类死法不留第二个入口。
   delete env.ELECTRON_RUN_AS_NODE
-  return env
+  return hostConfigDir ? withIsolatedHostConfig(env, { hostConfigDir, callerEnv: extraEnv, baseEnv }) : env
 }
 
 /**
@@ -353,6 +441,7 @@ export function withPackagedPlaywrightOrigin(args, isPackaged) {
  * @param {string} [options.settingsDir]    单独指定（默认 <tempRoot>/settings）
  * @param {string} [options.projectsDir]    单独指定（默认 <tempRoot>/projects）
  * @param {string} [options.capabilityDir]  优先于 env.NOMI_CAPABILITY_DIR；均未设时隔离实例派生 <tempRoot>/capability
+ * @param {string} [options.hostConfigDir]  宿主配置（CLAUDE_CONFIG_DIR / CODEX_HOME …）的隔离目录；默认 <tempRoot>/host-config
  * @param {number} [options.testedCatalogVersion]  被测构建的 catalog 版本；默认读取仓库 canonical manifest
  * @param {{width: number, height: number}} [options.viewportSize] Content viewport; defaults to ACCEPTANCE_VIEWPORT.
  * @param {number} [options.timeout]        等窗口上限（ms）
@@ -363,7 +452,7 @@ export function withPackagedPlaywrightOrigin(args, isPackaged) {
  * @param {boolean} [options.syntheticCredentialStorage]  仅供隔离目录里的非秘密测试凭据；Linux CI 使用 basic 后端。
  *   不传 = 隔离 catalog 里有 safeStorage 加密凭据就开（夹具加密时用的就是它）；显式 false 用于用户真实资料的拷贝
  * @returns {Promise<{app: import('playwright').ElectronApplication, win: import('playwright').Page,
- *   tempRoot: string, userDataDir: string, settingsDir: string, projectsDir: string, close: () => Promise<void>}>}
+ *   tempRoot: string, userDataDir: string, settingsDir: string, projectsDir: string, hostConfigDir: string | null, close: () => Promise<void>}>}
  */
 export async function launchNomiApp(options = {}) {
   const {
@@ -416,11 +505,14 @@ export async function launchNomiApp(options = {}) {
     ?? extraEnv.NOMI_CAPABILITY_DIR
     ?? process.env.NOMI_CAPABILITY_DIR
     ?? (isolate ? path.join(tempRoot, 'capability') : null)
+  // isolate:false 用的就是真实 profile 与真实宿主配置（ui-driver / --real-connect 的既定设计），不动宿主变量。
+  const hostConfigDir = isolate ? (options.hostConfigDir ?? path.join(tempRoot, 'host-config')) : null
 
   // 只建目录，**绝不清空**：不少走查会在起飞前往 projectsDir/settingsDir 里预埋工程或 catalog
   //（如 toolbar-order.walk.mjs 先写好 project.json 再启动）。启动器擅自 rm 会把它们的前置条件擦掉。
   // 想要干净 profile 的脚本自己在调用前 rmSync——语义留在看得见的地方。
   if (isolate) for (const dir of [userDataDir, settingsDir, projectsDir, capabilityDir]) fs.mkdirSync(dir, { recursive: true })
+  if (isolate) prepareHostConfigDir(hostConfigDir, extraEnv)
   if (isolate) prepareIsolatedCatalog(settingsDir, { testedCatalogVersion: options.testedCatalogVersion })
   // 显式声明优先（core-smoke 的 profile-copy 刻意传 false：那份 catalog 是用户真实钥匙串加密的）；
   // 没声明时由盘上的 catalog 决定，见 isolatedCatalogHasSafeStorageCredentials。
@@ -450,7 +542,7 @@ export async function launchNomiApp(options = {}) {
     )),
     cwd: repoRoot,
     // 只认显式的 syntheticCredentialStorage: true：盘上推出来的那一档也可能是拷进来的真实资料（core-smoke 那种），不能替它关网。
-    env: buildNomiLaunchEnv({ extraEnv, userDataDir, settingsDir, projectsDir, capabilityDir, fixtureCredentials: options.syntheticCredentialStorage === true }),
+    env: buildNomiLaunchEnv({ extraEnv, userDataDir, settingsDir, projectsDir, capabilityDir, hostConfigDir, fixtureCredentials: options.syntheticCredentialStorage === true }),
     timeout,
   }
 
@@ -571,6 +663,7 @@ export async function launchNomiApp(options = {}) {
     settingsDir,
     projectsDir,
     capabilityDir,
+    hostConfigDir,
     /** 主进程 stdout+stderr 的尾巴（最多 400 行）。断言红时给调用方看，不必只在启动失败时才有。 */
     mainLogTail: () => logTail.slice(),
     close,
