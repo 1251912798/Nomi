@@ -3,6 +3,8 @@
 import { laneMessageText, laneMessages } from './agent-lane-observer.mjs'
 
 export const SELECTION_ASK = '我选中的这些里，哪几个是视频节点？把标题都列出来'
+// 快照专用档：禁止调用 look_at_canvas，只有每条消息随附的 ContextSnapshot 能提供选区事实。
+export const SNAPSHOT_ONLY_ASK = '只根据当前消息里的选区快照作答，不要调用任何工具。请列出我当前选中的所有视频节点标题，一行一个，只列标题。'
 export const LOOK_AT_CANVAS = 'look_at_canvas'
 
 const SELECTED_SHOTS = Object.freeze([
@@ -153,6 +155,27 @@ export function scoreSelectionRound({ scene, transcript }) {
     selectionRead: read.size, selectionTotal: scene.selectedIds.length,
     otherTools: transcript.calls.filter((call) => call.name !== LOOK_AT_CANVAS).map((call) => call.name),
     answeredCount: answered.length, missing, extra, success: answered.length > 0 && missing.length === 0 && extra.length === 0,
+  }
+}
+
+/** 快照专用档：没有工具调用；provider-expanded 快照是否完整由夹具/快照规模另行核对。 */
+export function scoreSnapshotOnlyRound({ scene, transcript }) {
+  const looks = transcript.calls.filter((call) => call.name === LOOK_AT_CANVAS)
+  const truth = groundTruthKeys(scene)
+  const answered = answeredKeys(transcript.finalAnswer, scene)
+  const missing = truth.filter((key) => !answered.includes(key)).map((key) => scene.nodes.find((node) => node.key === key)?.title)
+  const extra = answered.filter((key) => !truth.includes(key)).map((key) => {
+    const node = scene.nodes.find((item) => item.key === key); return { title: node?.title, kind: node?.kind, selected: node?.selected }
+  })
+  const snapshotMessages = transcript.userTexts.filter((text) => truth.every((key) => text.includes(key)))
+  return {
+    lookAtCanvasCalls: looks.length, legalCalls: 0, selectionRead: 0, selectionTotal: scene.selectedIds.length,
+    otherTools: transcript.calls.map((call) => call.name), answeredCount: answered.length, missing, extra,
+    snapshotMessagesWithWholeSelection: snapshotMessages.length,
+    // Persisted lane user entries retain the original prompt, not the provider-expanded snapshot;
+    // the rehearsal brain separately proves the sent expanded message by extracting its titles.
+    success: looks.length === 0 && transcript.calls.length === 0
+      && answered.length > 0 && missing.length === 0 && extra.length === 0,
   }
 }
 

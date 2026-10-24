@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest'
 import { projectCanvasRead } from '../../electron/shared/agentCapabilities/canvasRead'
 import { projectCanvasForAgent } from '../../electron/shared/agentCapabilities/canvasReadCompact'
 import {
-  LOOK_AT_CANVAS, SELECTION_ASK, answeredKeys, lookAtCanvasCallLegality, roundSettled, roundTranscript,
-  sceneFromIds, sceneProblems, sceneProjectionFacts, scoreSelectionRound, selectionSceneSpec, summarizeSelectionRounds,
+  LOOK_AT_CANVAS, SELECTION_ASK, SNAPSHOT_ONLY_ASK, answeredKeys, lookAtCanvasCallLegality, roundSettled, roundTranscript,
+  sceneFromIds, sceneProblems, sceneProjectionFacts, scoreSelectionRound, scoreSnapshotOnlyRound, selectionSceneSpec, summarizeSelectionRounds,
 } from './_lookAtCanvasSelectionScore.mjs'
 import { SELECTION_MARKER } from './_lookAtCanvasSelectionSteps.mjs'
 
@@ -73,6 +73,14 @@ describe('一轮判分', () => {
   it('没有最终回答的回合算失败', () => {
     expect(score(scene, [{ args: {} }], null).success).toBe(false)
     expect(answeredKeys('', scene)).toEqual([])
+  })
+
+  it('快照专用档拒绝工具，并确认用户消息本身带齐选中标题', () => {
+    const messages = [{ role: 'user', content: [{ type: 'text', text: `${SNAPSHOT_ONLY_ASK}\n${allTruth}` }] }, {
+      role: 'assistant', provider: 'apimart', model: 'deepseek-v4-pro', stopReason: 'stop', content: [{ type: 'text', text: allTruth }],
+    }]
+    const transcript = roundTranscript([{ entries: messages.map((message) => ({ type: 'message', message })) }])
+    expect(scoreSnapshotOnlyRound({ scene, transcript })).toMatchObject({ lookAtCanvasCalls: 0, otherTools: [], snapshotMessagesWithWholeSelection: 1, missing: [], extra: [], success: true })
   })
 })
 

@@ -23,8 +23,8 @@ import {
   chooseAssistantModel, composerText, newConversation, openCanvas, sendCanvas,
 } from './agent-runtime-walk-support.mjs'
 import {
-  LOOK_AT_CANVAS, SELECTION_ASK, answerTimeView, groundTruthKeys, roundSettled, roundTranscript, sceneFromIds, sceneProblems, sceneProjectionFacts,
-  scoreSelectionRound, selectionLinesOf, selectionSceneSpec, summarizeSelectionRounds,
+  LOOK_AT_CANVAS, SELECTION_ASK, SNAPSHOT_ONLY_ASK, answerTimeView, groundTruthKeys, roundSettled, roundTranscript, sceneFromIds, sceneProblems, sceneProjectionFacts,
+  scoreSelectionRound, scoreSnapshotOnlyRound, selectionLinesOf, selectionSceneSpec, summarizeSelectionRounds,
 } from './_lookAtCanvasSelectionScore.mjs'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -162,7 +162,7 @@ function callEvidence(call) {
 }
 
 /** 一轮：新对话 → 重设选区 → 发话 → 等落地 → 读这一轮新出现的转录 → 判分。量具自己出的错记在 harnessError，不算模型的。 */
-export async function runSelectionRound({ win, projectRoot, scene, round, transform, ask = SELECTION_ASK }) {
+export async function runSelectionRound({ win, projectRoot, scene, round, transform, ask = SELECTION_ASK, score = scoreSelectionRound }) {
   const record = { round, startedAt: new Date().toISOString(), harnessError: null }
   const startedAt = Date.now()
   const before = new Set(readLaneTranscripts(projectRoot).map((session) => session.path))
@@ -186,9 +186,19 @@ export async function runSelectionRound({ win, projectRoot, scene, round, transf
   record.calls = transcript.calls.map(callEvidence)
   record.finalAnswer = transcript.finalAnswer
   if (transcript.assistantTexts.length > 1) record.assistantTexts = transcript.assistantTexts
-  record.score = scoreSelectionRound({ scene, transcript })
+  record.score = score({ scene, transcript })
   record.view = answerTimeView({ scene, sessions, transform })
   return record
+}
+
+/** 快照专用档选 12 个节点：该规模在 #1263 的 6000 字投影预算内可列全，避免把 omitted 档误当成模型失败。 */
+function snapshotOnlyScene(scene) {
+  const selectedIds = scene.nodes.filter((node) => node.selected).slice(0, 12).map((node) => node.id)
+  const selected = new Set(selectedIds)
+  return Object.freeze({
+    nodes: Object.freeze(scene.nodes.map((node) => Object.freeze({ ...node, selected: selected.has(node.id) }))),
+    selectedIds: Object.freeze(selectedIds),
+  })
 }
 
 /** 量具自己的问题（不是模型的）：哪一轮量具出了错、哪一轮答话的不是被授权的那个模型、哪一轮没落地。空 = 这一场的数可以用。 */
@@ -208,7 +218,7 @@ export function gaugeProblems(rounds, { expectedModelKey }) {
  * 整条旅程。`journey` 由调用方传入并就地填写：中途出错时调用方手里仍有已跑完的那几轮（证据照写）。
  * `beforeRound(round, scene)`：演练在这里给夹具大脑换剧本；真付费不传。
  */
-export async function runSelectionJourney(journey, { walk, modelLabel, expectedModelKey, rounds, beforeRound = async () => {} }) {
+export async function runSelectionJourney(journey, { walk, modelLabel, expectedModelKey, rounds, beforeRound = async () => {}, includeSnapshotOnly = false }) {
   journey.rounds ??= []
   const { win } = await walk.start({ first: true })
   // 画布 store 的走查桥（localStorage.__nomiE2E，开项目之前置上）：布场景、设选区都走 store 的真动作。
@@ -240,8 +250,24 @@ export async function runSelectionJourney(journey, { walk, modelLabel, expectedM
     const { score, view } = record
     console.log(`[selection] 第 ${round} 轮 ${Math.round(record.ms / 1000)}s：look_at_canvas ${score.legalCalls}/${score.lookAtCanvasCalls} 合法 · 读到选区 ${score.selectionRead}/${score.selectionTotal} · 答话时眼里 ${view?.selectedIdsVisible ?? '-'}/${score.selectionTotal} · 少列 ${score.missing.length} · 多列 ${score.extra.length} · 成功=${score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
   }
-  journey.numbers = summarizeSelectionRounds(journey.rounds)
-  journey.gaugeProblems = gaugeProblems(journey.rounds, { expectedModelKey })
+  if (includeSnapshotOnly) {
+    const round = rounds + 1
+    await beforeRound(round, scene)
+    const snapshotScene = snapshotOnlyScene(scene)
+    const record = await runSelectionRound({
+      win, projectRoot, scene: snapshotScene, round, transform, ask: SNAPSHOT_ONLY_ASK, score: scoreSnapshotOnlyRound,
+    })
+    record.kind = 'snapshot-only'
+    record.selectionTotal = snapshotScene.selectedIds.length
+    journey.snapshotOnly = record
+    await walk.snap('snapshot-only-answer').catch(() => {})
+    console.log(`[selection] 快照专用档 ${Math.round(record.ms / 1000)}s：无工具调用=${record.score.lookAtCanvasCalls === 0 && record.score.otherTools.length === 0} · 快照含完整选区=${record.score.snapshotMessagesWithWholeSelection} · 成功=${record.score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
+  }
+  journey.numbers = {
+    ...summarizeSelectionRounds(journey.rounds),
+    ...(journey.snapshotOnly ? { snapshotOnlySuccess: journey.snapshotOnly.score.success ? '1/1' : '0/1' } : {}),
+  }
+  journey.gaugeProblems = gaugeProblems([...journey.rounds, ...(journey.snapshotOnly ? [journey.snapshotOnly] : [])], { expectedModelKey })
   journey.canvasIntactAfter = await win.evaluate(() => window.__nomiCanvasStore.getState().nodes.length)
   return journey
 }
@@ -275,6 +301,7 @@ export function selectionEvidence({ script, mode, startedAt, journey, walk, fail
     canvasNodesAfter: journey.canvasIntactAfter ?? null,
     scene: journey.scene ?? null,
     rounds: journey.rounds ?? [],
+    snapshotOnly: journey.snapshotOnly ?? null,
     spend: { text: walk.report.spend?.text ?? null, mediaCalls: walk.report.spend?.media?.length ?? null },
     networkBlocked: walk.report.networkBlocked ?? [],
     walkOutputDir: walk.report.outputDir ? path.relative(REPO_ROOT, walk.report.outputDir) : null,

@@ -30,7 +30,7 @@ const journey = { rounds: [] }
 let failure
 try {
   await runSelectionJourney(journey, {
-    walk, rounds: ROUNDS, expectedModelKey: BRAIN.modelKey, modelLabel: () => paid.label(BRAIN.vendorKey, BRAIN.modelKey),
+    walk, rounds: ROUNDS, expectedModelKey: BRAIN.modelKey, modelLabel: () => paid.label(BRAIN.vendorKey, BRAIN.modelKey), includeSnapshotOnly: true,
   })
   walk.report.numbers = journey.numbers
   console.log(`[selection] ${JSON.stringify(journey.numbers)}`)

@@ -32,6 +32,15 @@ function installMarkedRowBrain(fixture) {
       return { type: 'text', text: `你选中的节点里，视频节点有这些：\n${visible.filter((node) => node.kind === 'video').map((node) => node.title).join('\n')}` }
     },
   })
+  fixture.respond({
+    label: 'rehearsal brain · snapshot-only selection',
+    match: (body) => !body.messages.some((message) => message.role === 'tool') && !lastUserText(body).includes(SELECTION_ASK),
+    reply: (body) => {
+      // 只从本次 user 消息里的 ContextSnapshot 读标题；不闭包读取 scene，避免夹具替模型作答。
+      const titles = [...lastUserText(body).matchAll(/"title":"(视频·[^"]+)"/g)].map((match) => match[1])
+      return { type: 'text', text: titles.length ? titles.join('\n') : '快照中没有视频节点标题' }
+    },
+  })
   fixture.respond({ label: 'rehearsal fallback · non-brain text call', match: () => true, reply: { type: 'text', text: '好的。' } })
   return { play(round, scene) { current = { round, scene } } }
 }
@@ -50,16 +59,19 @@ let failure
 try {
   await runSelectionJourney(journey, {
     walk, rounds: 5, expectedModelKey: BRAIN.modelKey, modelLabel: () => paid.label(BRAIN.vendorKey, BRAIN.modelKey),
+    includeSnapshotOnly: true,
     beforeRound: async (round, scene) => brain.play(round, scene),
   })
   expect(journey.gaugeProblems, '量具本身没出错').toEqual([])
   expect(journey.rounds.map((record) => record.harnessError), '每一轮都正常落地').toEqual([null, null, null, null, null])
+  expect(journey.snapshotOnly?.harnessError, '快照专用档正常落地').toBeNull()
+  expect(journey.snapshotOnly?.score, '快照专用档只靠消息快照答对').toMatchObject({ lookAtCanvasCalls: 0, selectionTotal: 12, otherTools: [], missing: [], extra: [], success: true })
   for (const record of journey.rounds) {
     expect(record.calls[0]?.selectionLines?.[0] ?? '', `第 ${record.round} 轮的选区账`).toContain(SELECTION_MARKER)
     expect(record.score, `第 ${record.round} 轮按节点行标记答对`).toMatchObject({ lookAtCanvasCalls: 1, legalCalls: 1, selectionRead: 40, selectionTotal: 40, missing: [], extra: [], success: true })
     expect(record.view, `第 ${record.round} 轮答话时看全选中行`).toMatchObject({ lookResults: 1, lookResultsOmitted: 0, selectedIdsVisible: 40 })
   }
-  expect(journey.numbers).toMatchObject({ rounds: 5, toolWriteCorrect: '5/5', turnSuccess: '5/5', roundsReadWholeSelection: '5/5', roundsSawWholeSelectionAtAnswer: '5/5', harnessErrors: 0 })
+  expect(journey.numbers).toMatchObject({ rounds: 5, toolWriteCorrect: '5/5', turnSuccess: '5/5', snapshotOnlySuccess: '1/1', roundsReadWholeSelection: '5/5', roundsSawWholeSelectionAtAnswer: '5/5', harnessErrors: 0 })
   expect(journey.canvasIntactAfter).toBe(44)
 } catch (error) {
   failure = error
