@@ -516,7 +516,8 @@
       ],
       "status": "implemented",
       "owner": "I-libraries",
-      "assertion": "board:LibraryMine/mine.empty"
+      "assertion": "board:LibraryMine/mine.empty",
+      "note": "说明句照样张，只在「新建」后补「（要先打开项目）」：项目库页上没开项目时「新建」（用 AI 写）禁用（真机 J-01，见 SkillLibrary/skill-lib.new-ai），不补这句就是叫人去点一颗点不了的钮；抽屉在项目里，这句多余但不错。"
     }
   ],
   "decor": [

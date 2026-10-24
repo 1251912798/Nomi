@@ -25,7 +25,8 @@ export type SkillGalleryEntry = {
 
 export function galleryEntries(skills: readonly SkillListItemDto[], language: string): SkillGalleryEntry[] {
   const locale = language.startsWith('zh') ? 'zh-CN' : 'en'
-  return skills.filter((skill) => skill.curation?.kind !== 'effect').map((skill) => ({
+  // 只认 kind: skill（没有策展信息的外部技能也是技能）；以后多出别的 kind，默认不进技能库（Q1，反例「新源没过滤 kind」）。
+  return skills.filter((skill) => (skill.curation?.kind ?? 'skill') === 'skill').map((skill) => ({
     id: `skill:${skill.name}`,
     group: libraryGroup(skill, language),
     title: skillDisplayTitle(skill, language),

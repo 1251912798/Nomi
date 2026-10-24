@@ -41,4 +41,10 @@ describe('skill gallery projection', () => {
     expect(entries[0]).toMatchObject({ title: '镜头语言', description: '统一景别', illustration: true, group: { label: '导演' } })
     expect(matchesGalleryQuery(entries[0], '导演')).toBe(true)
   })
+  it('keeps any future non-skill kind out by default — only kind: skill (and uncurated external skills) get in', () => {
+    const builtin = { ...skill, origin: 'builtin' as const }
+    const future = { ...curation('skill', 'illustration'), kind: 'prompt' } as unknown as SkillCuration
+    const entries = galleryEntries([{ ...builtin, name: 'future', curation: future }, skill], 'en')
+    expect(entries.map((entry) => entry.skill.name)).toEqual(['external'])
+  })
 })
