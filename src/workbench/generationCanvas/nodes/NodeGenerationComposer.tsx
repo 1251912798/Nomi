@@ -35,9 +35,8 @@ import {
   isVideoLikeGenerationNodeKind,
 } from '../model/generationNodeKinds'
 import { resolveArchetypeForModel } from '../../../../electron/shared/modelArchetypes'
-import { applyArchetypeModeSwitch, currentArchetypeMode } from './controls/archetypeMeta'
-import { archetypeForNode, resolveModeForReferenceDemand } from '../agent/referenceEdgeCapability'
-import { addAssetUrlToNode } from './nodeAssetWrite'
+import { currentArchetypeMode } from './controls/archetypeMeta'
+import { applyPromptReferenceImages } from './promptReferenceImages'
 import { useComposerPromptExpand } from './useComposerPromptExpand'
 import { COMPOSER_MIN_USABLE_HEIGHT, NODE_COMPOSER_WIDTH } from './nodeSizing'
 import { ComposerAnchor } from './composerAnchor'
@@ -297,34 +296,15 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
         updateNode(node.id, { prompt: before })
         if (promptEditor && !promptEditor.isDestroyed) promptEditor.commands.setContent(promptToContent(before, mentionCandidates))
       } })
-      // 库 prompt 自带的参考图一并落地（此前只写 prompt，item.referenceImages 被静默丢弃——
-      // 2026-07-28 群反馈「参考被丢」家族）。当前生成方式收不下 image_ref 先促到能收的模式
-      // （与建边 auto-promote 同一把尺子），再走 addAssetUrlToNode 单源写入（去重/上限同一处）；
-      // 模型任何模式都不吃图参考 → 诚实提示只应用了文本，不写死数据。
       const referenceUrls = (item.referenceImages ?? []).map((reference) => reference.url).filter(Boolean)
       if (referenceUrls.length) {
-        const target = latestNode(node.id)
-        const archetype = target ? archetypeForNode(target) : null
-        if (target && archetype) {
-          const promotedModeId = resolveModeForReferenceDemand(
-            archetype,
-            (target.meta || {}) as Record<string, unknown>,
-            [{ slots: ['image_ref'], asset: 'image' }],
-          )
-          if (promotedModeId) {
-            updateNode(node.id, {
-              meta: applyArchetypeModeSwitch((target.meta || {}) as Record<string, unknown>, archetype, promotedModeId),
-            })
-          }
-        }
-        const outcomes = referenceUrls.map((url) => addAssetUrlToNode(node.id, 'image', url, writeAccess))
-        if (outcomes.every((outcome) => outcome.status === 'no-slot')) {
+        if (applyPromptReferenceImages(node.id, referenceUrls, writeAccess) === 'unsupported') {
           reportFeedback(t('generationCommon.composer.promptReferenceUnsupported'))
         }
       }
       if (!inPanel) void persistActiveWorkbenchProjectNow().catch(() => {})
     },
-    [mentionCandidates, node.id, node.locked, node.prompt, promptEditor, reportFeedback, t, updateNode, latestNode, writeAccess, inPanel],
+    [mentionCandidates, node.id, node.locked, node.prompt, promptEditor, reportFeedback, t, updateNode, writeAccess, inPanel],
   )
 
   const handleGenerate = async (event: React.MouseEvent<HTMLButtonElement>) => {
