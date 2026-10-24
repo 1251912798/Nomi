@@ -14,6 +14,7 @@ import { parseVendorErrorFromMessage, stripVendorErrorMarker, type VendorErrorSt
 import { parseTaskFailureMessage } from '../generationCanvas/runner/taskFailureMessage'
 import { shotClaimCopy } from './shotClaimCopy'
 import { matchNomiErrorCode, stripNomiErrorCode } from '../../../electron/shared/nomiErrorCodes'
+import { withoutIpcInvokeWrapper } from '../../../electron/shared/contracts/ipcInvokeFailure'
 import i18n from '../../i18n'
 
 export type GenerationErrorReport = {
@@ -96,11 +97,9 @@ function jsonErrorMessage(source: string): string | null {
  * message/error 字段，否则取第一行非空文本并截断。抠不出可读内容才返回 ''。
  */
 function extractReadableErrorLine(raw: string): string {
-  const source = stripNomiErrorCode(
-    String(raw || '')
-      .trim()
-      .replace(IPC_WRAPPER_PREFIX, ''),
-  ).trim()
+  // IPC 外壳（`Error invoking remote method '…': Error: …`）是我们自己的管道细节，对用户零信息，却正好占住
+  // 错误卡最显眼的那一行。只从展示用的首行剥掉，`report.raw`（技术详情折叠区）保留原样，排查线索不丢。
+  const source = stripNomiErrorCode(withoutIpcInvokeWrapper(String(raw || '').trim())).trim()
   if (!source) return ''
   // 1) provider 常把报错塞进 JSON（与 pickProviderMessage 共用同一个剥壳器，两处不许各写一份）
   const fromJson = jsonErrorMessage(source)
@@ -112,14 +111,6 @@ function extractReadableErrorLine(raw: string): string {
     .find(Boolean)
   return firstLine ? truncateLine(firstLine) : ''
 }
-
-/**
- * Electron 的 `ipcRenderer.invoke` 会把主进程抛的错重新包一层
- * `Error invoking remote method 'nomi:tasks:run': Error: …`。这层是**我们自己的管道细节**，
- * 对用户零信息——却正好占住错误卡最显眼的那一行（未识别错误的 reason 就取 raw 首行）。
- * 只从展示用的首行剥掉，`report.raw`（技术详情折叠区）保留原样，排查线索不丢。
- */
-const IPC_WRAPPER_PREFIX = /^Error invoking remote method '[^']*':\s*(?:Error:\s*)?/
 
 /**
  * 这句话是不是界面当前语言的话。判据只有一条：中文界面要有汉字，英文界面不能有。
