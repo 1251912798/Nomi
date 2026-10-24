@@ -67,6 +67,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'src/workbench/generationCanvas/canvasPreviewDoors.test.ts', roots: ['src', 'electron'] }, // 画布预览入口普查：遍历 src 与 electron 生产代码（9 秒）
   { file: 'src/workbench/generationCanvas/components/lightweightFallbackCensus.test.ts', roots: ['src/workbench'] }, // 兜底节点必须带 loading：遍历 workbench 找 fallback=<LightweightGenerationNode>（<1 秒）
   { file: 'src/workbench/generationCanvas/nodes/director/agent/attachDoors.guard.test.ts', roots: SRC }, // 预演 / 运镜挂接只有一个入口：遍历 src 生产代码，调核的只有 attachCameraMoveForNode、网址标记只有核自己读（5 秒）
+  { file: 'src/workbench/generationCanvas/nodes/director/model/actionIds.test.ts', roots: SRC }, // 动作 id 只存正名：遍历 src 生产代码（跳过 src/i18n），写 posePreset / actionPose 的文件必须在名单里（Mac 本机单跑 2.5 秒）
   { file: 'src/workbench/generationCanvas/nodes/textNodeIconSource.test.ts', roots: ['src/workbench/generationCanvas'] }, // 文字节点图标唯一来源：遍历 generationCanvas 找直接引用 IconWriting 的文件（<2 秒）
   { file: 'src/customEventWiring.test.ts', roots: SRC },
   { file: 'src/design/mediaOverlayInk.test.ts', roots: SRC },
@@ -98,6 +99,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'src/workbench/generationCanvas/quickActions/deriveFromNode.noMoneyDoor.test.ts', roots: ['src/workbench/generationCanvas/quickActions'] },
   { file: 'src/workbench/generationCanvas/nodes/director/model/planOverrides.guard.test.ts', roots: ['src/workbench/generationCanvas/nodes/director/model'] },
   { file: 'src/workbench/generationCanvas/nodes/director/panels/inspector/crowdEntry.structure.test.ts', roots: ['src/workbench/generationCanvas/nodes/director/panels/inspector'] },
+  { file: 'src/workbench/generationCanvas/nodes/director/panels/viewport/PipViewport.test.ts', roots: ['src/workbench/generationCanvas/nodes/director/panels/viewport'], files: ['src/workbench/generationCanvas/nodes/director/panels/context/ContextCard.tsx', 'src/workbench/generationCanvas/nodes/director/panels/side/AssetsDrawer.tsx'] }, // 浮在视口之上的面板不写死顶部：遍历 viewport 目录 + 属性卡、资产抽屉两个文件（Mac 本机单跑 1.3 秒）
   { file: 'src/workbench/creation/storyboard/StoryboardShotTable.windowing.test.ts', roots: ['src/workbench/creation/storyboard'] }, // 分镜表窗口化结构：遍历分镜目录找 useElementWidth / useAssetPool 调用点（19 秒）
   { file: 'src/workbench/creation/storyboard/storyboardTableReach.structure.test.ts', roots: ['src/workbench/creation/storyboard'] },
   { file: 'src/workbench/timeline/timelineGesture.structure.test.ts', roots: ['src/workbench/timeline', 'src/workbench/generationCanvas/nodes', 'src/workbench/preview'] },
