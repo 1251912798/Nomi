@@ -1,0 +1,153 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-25-outbound-ref-url",
+  "problem_type": "Outbound reference media URLs are sent without URL-standard serialization",
+  "symptom": "APIMart MiniMax-H3 rejects image_urls[0] with invalid reference image URL: URL contains unescaped whitespace",
+  "direct_cause": "Remote reference URLs already present in request extras are passed through unchanged when no local asset upload occurs; the rendered provider body therefore retains raw spaces or controls.",
+  "class_root": "The application has no single invariant-enforcing boundary that serializes every reference media URL immediately before an outbound request is written.",
+  "affected_population": [
+    "Remote image, video, and audio references",
+    "Windows filenames and imported URLs containing spaces or non-ASCII characters",
+    "Profile mappings, fallback JSON, custom-call JSON, multipart reference sources, Agent/MCP generation, and productionRun callers"
+  ],
+  "scope_paths": [
+    "electron/catalog/outboundReferenceUrl.ts",
+    "electron/catalog/assetLocalization.ts",
+    "electron/catalog/profileHttpRequest.ts",
+    "electron/catalog/multipartOperation.ts",
+    "electron/catalog/customCallRunner.ts",
+    "electron/vendor/vendorHttp.ts",
+    "electron/runtime.ts",
+    "electron/desktopStrings.ts",
+    "electron/catalog/outboundReferenceUrl.test.ts",
+    "electron/catalog/profileHttpRequest.test.ts",
+    "electron/catalog/multipartOperation.test.ts",
+    "electron/vendor/vendorHttp.test.ts"
+  ],
+  "entry_points": [
+    "runtime profile create and fallback JSON",
+    "custom-call and Agent/MCP request JSON",
+    "APIMart generation provider JSON",
+    "multipart reference source resolution",
+    "productionRun through runtime"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://url.spec.whatwg.org/",
+      "checked_at": "2026-10-25",
+      "purpose": "URL parsing and parse-then-serialize idempotence; the standard defines URL serialization and percent-encoding sets."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://docs.apimart.ai/en/api-reference/videos/minimax-h3/generation.md",
+      "checked_at": "2026-10-25",
+      "purpose": "APIMart MiniMax-H3 generation contract and its image reference input."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://docs.apimart.ai/en/api-reference/uploads/images.md",
+      "checked_at": "2026-10-25",
+      "purpose": "APIMart image upload contract used by the local asset path."
+    }
+  ],
+  "invariants": [
+    "Every outbound reference media URL is passed through the WHATWG URL parser and serialized before it leaves the process.",
+    "Already percent-encoded URLs and signed query strings are idempotent and remain byte-for-byte unchanged.",
+    "data: values, nomi-local:// values, and ComfyUI local filenames remain under their existing transport rules.",
+    "An unparseable absolute reference URL fails before the network writer is called, with the reference field identified."
+  ],
+  "doors": [
+    {"kind":"write","path":"electron/capabilityCore/productionReferenceUrls.ts","symbol":"localizeAssetsForVendor"},
+    {"kind":"write","path":"electron/catalog/customCallDispatch.ts","symbol":"localizeAssetsForVendor"},
+    {"kind":"write","path":"electron/runtime.ts","symbol":"localizeAssetsForVendor"},
+    {"kind":"read","path":"electron/capabilityCore/apimartGenerationProvider.ts","symbol":"buildProfileHttpRequest"},
+    {"kind":"write","path":"electron/audio/synchronousAudioResponse.ts","symbol":"buildProfileHttpRequest"},
+    {"kind":"write","path":"electron/audioTaskRunner.ts","symbol":"buildProfileHttpRequest"},
+    {"kind":"write","path":"electron/capabilityCore/apimartGenerationProvider.ts","symbol":"buildProfileHttpRequest"},
+    {"kind":"write","path":"electron/catalog/catalogCommit.ts","symbol":"buildProfileHttpRequest"},
+    {"kind":"write","path":"electron/catalog/multipartOperation.ts","symbol":"buildProfileHttpRequest"},
+    {"kind":"write","path":"electron/catalog/profileHttpRequest.ts","symbol":"buildProfileHttpRequest"},
+    {"kind":"write","path":"electron/runtime.ts","symbol":"buildProfileHttpRequest"},
+    {"kind":"write","path":"electron/capabilityCore/apimartGenerationProvider.ts","symbol":"requestJson"},
+    {"kind":"write","path":"electron/catalog/customCallRunner.ts","symbol":"requestJson"},
+    {"kind":"write","path":"electron/runtime.ts","symbol":"requestJson"},
+    {"kind":"write","path":"electron/catalog/multipartOperation.ts","symbol":"runMultipartProfileOperation"},
+    {"kind":"write","path":"electron/catalog/assetLocalization.ts","symbol":"normalizeOutboundReferenceUrl"},
+    {"kind":"write","path":"electron/catalog/multipartOperation.ts","symbol":"normalizeOutboundReferenceUrl"},
+    {"kind":"write","path":"electron/catalog/outboundReferenceUrl.ts","symbol":"normalizeOutboundReferenceUrl"},
+    {"kind":"write","path":"electron/catalog/outboundReferenceUrl.ts","symbol":"normalizeOutboundReferenceMediaUrls"},
+    {"kind":"write","path":"electron/catalog/profileHttpRequest.ts","symbol":"normalizeOutboundReferenceMediaUrls"},
+    {"kind":"write","path":"electron/vendor/vendorHttp.ts","symbol":"normalizeOutboundReferenceMediaUrls"},
+    {"kind":"write","path":"electron/vendor/vendorHttp.ts","symbol":"normalizeOutboundReferenceFormData"},
+    {"kind":"read","path":"electron/desktopStrings.ts","symbol":"desktopTranslations"}
+  ],
+  "door_reduction": {
+    "before": 23,
+    "after": 23,
+    "why_not": "The doors remain distinct because profile construction, generic JSON writing, multipart source resolution, and local asset localization are separate callers with different request contracts. They all call the same outbound URL serializer; merging them would either move the rule after a request has already been rendered or make binary multipart transport depend on JSON transport."
+  },
+  "generality_proof": "The serializer is keyed by the provider request's reference-media field shapes rather than vendor/model/platform names. Every checked JSON writer and multipart source path calls the same helper, so remote URLs, uploaded URLs, Agent/MCP params, and productionRun requests share the invariant.",
+  "shared_boundaries": [
+    {"path":"electron/catalog/outboundReferenceUrl.ts","symbol":"normalizeOutboundReferenceMediaUrls","responsibility":"Recursively serialize reference-media URL values with WHATWG URL and fail closed on unparseable absolute URLs."},
+    {"path":"electron/vendor/vendorHttp.ts","symbol":"requestJson","responsibility":"Apply the serializer immediately before JSON bytes are written for every JSON provider call."},
+    {"path":"electron/catalog/multipartOperation.ts","symbol":"executeMultipartOperation","responsibility":"Serialize reference source URLs before fetching bytes for multipart requests."}
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/catalog/outboundReferenceUrl.ts",
+    "tests": ["electron/catalog/outboundReferenceUrl.test.ts"]
+  },
+  "detected_by": "user",
+  "recurrence_check_on": "2026-11-25",
+  "same_class_entry_points": [
+    {"path":"electron/runtime.ts","entry_point":"executeProfileOperation","disposition":"enforced","evidence":"Profile requests render through buildProfileHttpRequest and are serialized again at requestJson; local references are localized before rendering."},
+    {"path":"electron/runtime.ts","entry_point":"runTask fallback requestJson","disposition":"enforced","evidence":"The no-mapping image/video fallback passes its body through the same requestJson boundary."},
+    {"path":"electron/catalog/customCallRunner.ts","entry_point":"doRequest","disposition":"enforced","evidence":"Agent/MCP custom-call JSON reaches requestJson, which applies the shared serializer."},
+    {"path":"electron/catalog/multipartOperation.ts","entry_point":"executeMultipartOperation","disposition":"enforced","evidence":"Multipart fileSource values are normalized before resolveFile fetches them."},
+    {"path":"electron/capabilityCore/apimartGenerationProvider.ts","entry_point":"send","disposition":"enforced","evidence":"APIMart capability generation sends JSON through requestJson."}
+  ],
+  "recurrence": {
+    "classification":"recurring",
+    "reason":"Any remote reference imported from a Windows path, a previous result, a user URL, or a future provider mapping can carry whitespace or other URL characters; the existing local-only upload path does not see these values.",
+    "same_class_scan":[
+      "node scripts/door-map.mjs localizeAssetsForVendor: three localization callers",
+      "node scripts/door-map.mjs buildProfileHttpRequest: eight profile construction doors across runtime, catalog, audio, and APIMart",
+      "node scripts/door-map.mjs requestJson: runtime, customCallRunner, and APIMart JSON writers",
+      "git grep for image_urls, first_frame_image, image_with_roles, reference_image_urls, video_urls, audio_urls, input_urls, and multipart fileSource"
+    ]
+  },
+  "prevention": {
+    "kind":"centralized-boundary",
+    "enforcement_path":"electron/catalog/outboundReferenceUrl.ts",
+    "invariant":"Every reference media URL value in an outbound body or multipart source is WHATWG URL-serialized, with no raw whitespace or control characters.",
+    "failure_mode":"Throw the localized outbound.referenceUrlInvalid error before requestJson/appFetch is invoked; no provider request or paid submission is written.",
+    "exception_policy":"none",
+    "strategy":"Normalize at the last shared in-process boundary before JSON bytes or multipart source fetches are written, while preserving data/local/ComfyUI forms under their existing contracts.",
+    "artifacts":["electron/catalog/outboundReferenceUrl.ts","electron/vendor/vendorHttp.ts","electron/catalog/multipartOperation.ts","electron/catalog/profileHttpRequest.ts"]
+  },
+  "regression_tests":[
+    "electron/catalog/outboundReferenceUrl.test.ts",
+    "electron/catalog/profileHttpRequest.test.ts",
+    "electron/vendor/vendorHttp.test.ts",
+    "electron/catalog/multipartOperation.test.ts"
+  ],
+  "class_regression_tests":[
+    "electron/catalog/outboundReferenceUrl.test.ts"
+  ],
+  "legacy_paths": {
+    "status":"not-applicable",
+    "removed_paths":[],
+    "rationale":"There was no named legacy implementation to delete; the old behavior was an implicit direct passthrough at several request boundaries. Those boundaries are changed in this remediation, while local/data/ComfyUI exceptions remain explicit existing transport forms."
+  },
+  "dependency_lifecycle": {
+    "decision":"not-applicable",
+    "rationale":"WHATWG URL is the platform URL parser already available in the supported Node/Electron runtime; no third-party dependency controls this invariant.",
+    "exit_criteria":[]
+  },
+  "migration":"No persisted data migration is needed. Existing task/cache values keep their original provenance; serialization is applied only to the outbound copy at submission time.",
+  "residual_risks":[
+    "A producer that constructs a URL with an unescaped # or ? inside a filename has already changed URL semantics before this boundary; the serializer cannot recover the intended filename. Such producers must encode path segments at creation time.",
+    "Multipart endpoints transmit bytes rather than URL strings; this change normalizes the source URL used to fetch bytes, while the multipart filename remains governed by its existing asset filename contract.",
+    "Direct non-JSON vendor transports outside the enumerated doors require a future door-map update before they can claim coverage."
+  ]
+}

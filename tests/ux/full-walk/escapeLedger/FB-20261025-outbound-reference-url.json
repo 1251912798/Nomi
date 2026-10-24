@@ -1,0 +1,24 @@
+{
+  "id": "FB-20261025-outbound-reference-url",
+  "since": "2026-10-25",
+  "source": "用户反馈（0.23.1 Windows，APIMart MiniMax-H3 图生视频）",
+  "category": "reference-integrity",
+  "problem": "参考图文件名或远端链接带空格时，出站 image_urls / first_frame_image / image_with_roles / video_urls / audio_urls 等字段原样透传，服务商拒绝未转义的 URL。",
+  "existingInvariants": [],
+  "ironLaws": ["⑩", "⑪"],
+  "useCases": ["reference-url-whitespace"],
+  "fullWalkJourneys": [],
+  "status": "candidate",
+  "manualReview": "reviewed",
+  "evidence": [
+    "改前确定性红测：electron/catalog/profileHttpRequest.test.ts 的 MiniMax-H3 image_urls[0] 保留原样空格",
+    "类级结构测试：electron/catalog/outboundReferenceUrl.test.ts 遍历播种 mapping body，验证所有参考媒体字段经统一边界后不含原始空格",
+    "变异计划：从 git archive 副本删除 requestJson / profile / multipart 的统一序列化调用，记录红格数"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-25-outbound-ref-url.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "electron/catalog/outboundReferenceUrl.test.ts"
+  }
+}

@@ -33,6 +33,7 @@ import {
 import { readAssetRelayRuntimeConfig, readDefaultAssetRelayRuntimeConfig } from "./assetRelayRuntimeConfig";
 import { isVendorOfBuiltin } from "../shared/builtinVendorIdentity";
 import { APIMART_VENDOR_SEED } from "./apimartVendor";
+import { normalizeOutboundReferenceUrl } from "./outboundReferenceUrl";
 
 export {
   ingestionAccepts,
@@ -644,7 +645,10 @@ export async function localizeAssetsForVendor(
         continue;
       }
       try {
-        resolvedValue = await resolveLocalAsset(url, candidate.ingestion, candidate.uploadApiKey, read, postJson, postMultipart, putBinary);
+        resolvedValue = normalizeOutboundReferenceUrl(
+          await resolveLocalAsset(url, candidate.ingestion, candidate.uploadApiKey, read, postJson, postMultipart, putBinary),
+          `参考素材 ${asset?.fileName || describeAssetValue(url)}`,
+        );
         break;
       } catch (error) {
         failures.push(`${channelLabel(candidate)}: ${error instanceof Error ? error.message : String(error)}`);

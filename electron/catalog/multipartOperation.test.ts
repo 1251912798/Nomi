@@ -136,6 +136,20 @@ describe("multipart 图生图（/v1/images/edits）请求装配", () => {
     expect(JSON.stringify(req)).not.toContain("bytes:"); // 字节内容不进 preview
   });
 
+  it("multipart reference source is serialized before byte resolution", async () => {
+    const seen: string[] = [];
+    await executeMultipartOperation({
+      multipart: spec,
+      context: contextFor("改图", { referenceImages: ["https://cdn.example.com/Windows ref.png"] }),
+      resolveFile: async (url) => {
+        seen.push(url);
+        return { bytes: Buffer.from([1]), contentType: "image/png", fileName: "ref.png" };
+      },
+      send: async () => ({}),
+    });
+    expect(seen).toEqual(["https://cdn.example.com/Windows%20ref.png"]);
+  });
+
   it("generic file declaration supports audio multipart fields without image aliases", async () => {
     let sent: FormData | null = null;
     await executeMultipartOperation({

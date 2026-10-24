@@ -10,6 +10,7 @@ import { templateContext, buildProfileHttpRequest } from "./profileHttpRequest";
 import type { HttpOperation, Model, Vendor } from "./types";
 import type { TaskRequest } from "../runtime";
 import type { LocalAssetReader } from "./assetLocalization";
+import { normalizeOutboundReferenceUrl } from "./outboundReferenceUrl";
 
 type MultipartSpec = NonNullable<HttpOperation["multipart"]>;
 
@@ -75,7 +76,7 @@ export async function executeMultipartOperation(input: {
   const urls = (Array.isArray(source) ? source : [source]).filter(
     (u): u is string => typeof u === "string" && REF_URL_RE.test(u.trim()),
   );
-  const picked = spec.multiple ? urls : urls.slice(0, 1);
+  const picked = (spec.multiple ? urls : urls.slice(0, 1)).map((url, index) => normalizeOutboundReferenceUrl(url, `${fileKind} reference[${index}]`));
   if (picked.length === 0) {
     throw new Error(`${fileKind === "image" ? "图生图缺参考图" : "缺少待上传媒体"}：multipart 端点需要至少一个文件`);
   }
