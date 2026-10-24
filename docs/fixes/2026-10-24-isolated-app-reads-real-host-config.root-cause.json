@@ -15,6 +15,7 @@
   "scope_paths": [
     "electron/shared/mcpClientRegistry.ts",
     "electron/capabilityCore/mcpDetectedClients.ts",
+    "electron/catalog/codexCli.ts",
     "tests/ux/_launchApp.mjs",
     "evals/lib/isoApp.mjs",
     "tests/ux/memory.e2e.mjs",
