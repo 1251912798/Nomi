@@ -57,6 +57,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'electron/update/installGate.structure.test.ts', roots: ELECTRON }, // 2 秒
   { file: 'electron/durability.test.ts', roots: ['electron', 'src', 'scripts', 'tests'] }, // 只有测试 harness 能翻成 ephemeral：四个根目录都扫（9 秒）
   { file: 'electron/providerAdapter/architecture.test.ts', roots: ['electron/providerAdapter'] }, // 2 秒
+  { file: 'electron/export/exportAssetProbe.test.ts', roots: ['electron/export'] }, // 2026-10-24：导出目录里只有 exportAssetProbe.ts 调 ffprobe（probeMediaMetadata / probeMediaBytes）；只遍历 electron/export 一层（<1 秒）
   { file: 'electron/capabilityCore/projectAgentProposalReceiptStore.test.ts', roots: ['electron/capabilityCore/__fixtures__/published-receipts'], exts: '*' }, // 回放已发布收据夹具目录（2 秒）
   { file: 'tests/ux/model-access-journeys/inventory.test.mjs', roots: ['electron/shared/modelArchetypes'] }, // 模型接入生产清单（2 秒）
   { file: 'electron/skills/builtinSkills.test.ts', roots: ['skills'], exts: '*', files: ['package.json'] }, // 4 秒
