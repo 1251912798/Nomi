@@ -335,9 +335,9 @@ describe('closeElectronWithin', () => {
     await new Promise((resolve) => { let seen = ''; child.stdout.on('data', (chunk) => { seen += chunk; if (seen.includes('grandchild-ready')) resolve() }) })
     const tree = descendantPids(child.pid)
     expect(tree.length).toBeGreaterThan(0)
-    const started = Date.now()
+    // 关闭永远不回（new Promise(() => {})）：closeElectronWithin 照样返回，上限就生效了；挂住的话这条测试自己超时变红。
+    // 不量墙钟（check:test-waits 的 wallclock-budget-assertion：判据要和机器快慢无关）。
     await closeElectronWithin({ process: () => child }, () => new Promise(() => {}), 300)
-    expect(Date.now() - started).toBeLessThan(3000)
     await expect.poll(() => [child.pid, ...tree].filter(alive).length, { timeout: 5000 }).toBe(0)
     expect(child.stdout.destroyed && child.stderr.destroyed).toBe(true)
   })

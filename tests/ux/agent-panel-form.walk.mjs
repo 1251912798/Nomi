@@ -29,7 +29,7 @@ const viteServer = spawn(process.execPath, [path.join(repoDir, 'node_modules/vit
 viteServer.unref() // 不让这个子进程撑着走查进程不退（否则断言跑完照样挂到超时）；退出时由下面这行收掉它
 process.on('exit', () => viteServer.kill())
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { viteServer.kill(); process.exit(1) })
-await expect.poll(async () => { try { return (await fetch(`${VITE_ORIGIN}/`)).ok } catch { return false } }, { timeout: 60_000 }).toBe(true)
+await expect.poll(async () => { try { return (await fetch(`${VITE_ORIGIN}/`)).ok } catch { return false } }, { timeout: stationTimeout({ operations: 4 }) }).toBe(true)
 const application = await launchNomiApp({ name: 'b2c-form', tempRoot, settingsDir, settleMs: 0,
   initialLocalStorage: { 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen', 'nomi:canvas-gesture-hint:v1': 'seen', 'nomi-color-scheme': 'light', 'nomi.assistantModel': JSON.stringify({ vendorKey: 'b2c-catalog', modelKey: 'deepseek-v4-pro' }) },
   env: { VITE_DEV_SERVER_URL: VITE_ORIGIN, NOMI_DISABLE_AUTO_UPDATE: '1' } })

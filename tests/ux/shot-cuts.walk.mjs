@@ -12,6 +12,7 @@ import { createRequire } from 'node:module'
 import { screenshotSettled } from './_assert.mjs'
 import { canvasFitViewButton } from './_shell.mjs'
 import { GROUP_FRAME_HEADER_SELECTOR } from './_groupFrame.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const require = createRequire(import.meta.url)
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -105,7 +106,7 @@ await win.locator(`[data-node-id="${nodeId}"]`).first().click({ timeout: 4000 })
 await win.waitForTimeout(900)
 // 10-11 起视频浮条把它收进「拆解▾」菜单（截帧▾ · 拆解▾〔按镜头拆 / 镜头表〕，NodeVideoFrameToolbar.tsx）：先开菜单再点项。
 // 认数据属性不认文案，和 derived-node-placement 走同一个入口。
-await win.locator('button[data-toolbar-action-menu="break-down"]').first().click({ timeout: 5000 })
+await win.locator('button[data-toolbar-action-menu="break-down"]').first().click({ timeout: stationTimeout() })
 const splitBtn = win.locator('[data-menu-item="shot-cuts"]').first()
 check('浮条「拆解」菜单里有「按镜头拆」', await splitBtn.count() > 0)
 await splitBtn.click({ timeout: 5000 })

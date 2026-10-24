@@ -15,7 +15,7 @@ const viteServer = spawn(process.execPath, [path.join(repoDir, 'node_modules/vit
 viteServer.unref() // 不让这个子进程撑着走查进程不退（否则断言跑完照样挂到超时）；退出时由下面这行收掉它
 process.on('exit', () => viteServer.kill())
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { viteServer.kill(); process.exit(1) })
-await expect.poll(async () => { try { return (await fetch(`${VITE_ORIGIN}/tests/ux/fixtures/agent-panel-mechanics/`)).ok } catch { return false } }, { timeout: 60_000 }).toBe(true)
+await expect.poll(async () => { try { return (await fetch(`${VITE_ORIGIN}/tests/ux/fixtures/agent-panel-mechanics/`)).ok } catch { return false } }, { timeout: stationTimeout({ operations: 4 }) }).toBe(true)
 const browser = await chromium.launch({ headless: true })
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 page.setDefaultTimeout(stationTimeout())
