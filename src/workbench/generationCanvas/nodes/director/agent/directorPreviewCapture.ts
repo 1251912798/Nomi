@@ -23,6 +23,7 @@ import { programCameraIdAt } from '../model/programCamera'
 import { sceneContentEndSeconds } from '../model/timeGrid'
 import { attachCameraMoveForNode } from './attachCameraMoveForNode'
 import { frameTimes } from './cameraMoveSchedule'
+import { DIRECTOR_PREVIEW_DISMISSED_URL_KEY } from './directorPreviewReferenceLifecycle'
 
 const MAX_PREVIEW_FRAMES = DIRECTOR_PREVIEW_FPS * DIRECTOR_PREVIEW_MAX_SECONDS
 
@@ -81,7 +82,14 @@ export function applyPreviewCaptured(nodeId: string, revision: string, videoUrl:
   const preview = readDirectorPreview(node)!
   const project = normalizeDirectorProject(node.meta?.[DIRECTOR_PROJECT_META_KEY])
   const cuts = summarizeDirectorShots(project).map((cut) => ({ start: cut.start, end: cut.end, shotSize: cut.shotSize, move: cut.move }))
-  const outcome = attachCameraMoveForNode(preview.targetNodeId, videoUrl, { kind: 'preview', cuts, notes: preview.notes ?? [] })
+  const target = preview.targetNodeId
+    ? useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === preview.targetNodeId)
+    : undefined
+  // 用户显式删掉旧预演后，重渲出的新 URL 只是新的、尚未挂接的产物；只有导演台「出成片」这条显式入口才恢复挂接。
+  const dismissed = target?.meta?.[DIRECTOR_PREVIEW_DISMISSED_URL_KEY]
+  const outcome = typeof dismissed === 'string' && dismissed.trim()
+    ? { kind: 'noop' as const }
+    : attachCameraMoveForNode(preview.targetNodeId, videoUrl, { kind: 'preview', cuts, notes: preview.notes ?? [] })
   return inProposal(preview, () => {
     if (outcome.kind === 'patch' && preview.targetNodeId) useGenerationCanvasStore.getState().updateNode(preview.targetNodeId, outcome.patch)
     const fresh = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === nodeId)

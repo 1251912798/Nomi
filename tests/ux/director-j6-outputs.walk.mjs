@@ -3,10 +3,11 @@
 //           进机位录一段运镜 → 再录 MP4 → devlab 没有 ffmpeg 桥：采满帧后明说「无法编码」而不是假成功。
 // 证据：产物落进工程（只存句柄）、弹层文案、两句诚实的降级提示、录制进度按钮出现过、截图。
 // 用法：node tests/ux/director-j6-outputs.walk.mjs
-import { addCameraPreset, clickOrFail, expectVisible, launchDirectorLab, placeCharacter } from './_directorLab.mjs'
+import { addCameraPreset, clickOrFail, directorText, expectVisible, launchDirectorLab, placeCharacter } from './_directorLab.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
-const lab = await launchDirectorLab({ name: 'j6-outputs' })
+const locale = process.env.NOMI_WALK_LANG === 'en' ? 'en' : 'zh-CN'
+const lab = await launchDirectorLab({ name: 'j6-outputs', locale })
 const { page, check } = lab
 
 try {
@@ -14,7 +15,7 @@ try {
   await lab.waitScene("s.objects.filter(o => o.type === 'character').length === 1", '主角落地')
   const hero = (await lab.scene()).objects[0]
   await lab.pickInOutliner(hero.name, '大纲·主角')
-  await addCameraPreset(lab, '正面特写')
+  await addCameraPreset(lab, 'cameraPreset.front_closeup')
   await lab.waitScene('s.cameras.length === 1', '机位入场')
   const camera = (await lab.scene()).cameras[0]
 
@@ -23,32 +24,35 @@ try {
   await page.keyboard.press('ControlOrMeta+Shift+p')
   await lab.waitScene('(p.outputs && p.outputs.screenshots || []).length === 1', '截图进产物')
   const shot = (await lab.project()).outputs.screenshots[0]
-  check('截图命名「自由漫游·全景-截图1」', /自由漫游.*截图1/.test(shot.name), shot.name)
+  const freeScreenshotName = (await directorText(page, 'timeline.screenshotNameFree')).replace('{{index}}', '1')
+  check(`截图命名「${freeScreenshotName}」`, shot.name === freeScreenshotName, shot.name)
   check('产物只存句柄，不存 base64', typeof shot.assetUrl === 'string' && !shot.assetUrl.startsWith('data:'), shot.assetUrl.slice(0, 40))
-  check('无桌面运行时明说截图未落盘', (await lab.toasts()).some((text) => /未落盘|仅本次会话/.test(text)))
-  const outputsButton = page.getByTestId('director-topbar').getByRole('button', { name: /^产出 1$/ })
+  const screenshotTemporaryHint = await directorText(page, 'timeline.screenshotTemporary')
+  check('无桌面运行时明说截图未落盘', (await lab.toasts()).some((text) => text.includes(screenshotTemporaryHint)))
+  const outputsButton = page.getByTestId('director-topbar').getByRole('button', { name: (await directorText(page, 'timeline.outputsButton')).replace('{{count}}', '1'), exact: true })
   await clickOrFail(outputsButton, '顶栏·产出 1')
   const popover = page.locator('[data-nomi-escape-layer="director-popover"]').first()
   await expectVisible(popover, '产出弹层没打开')
   check('弹层列出截图', (await popover.getByText(shot.name).count()) === 1)
-  const send = popover.getByRole('button', { name: '发送到画布' }).first()
+  const send = popover.getByRole('button', { name: await directorText(page, 'timeline.outputSendToCanvas'), exact: true }).first()
   // 原因挂在包着按钮的 span 的 title 上（禁用按钮自身收不到 hover）
   const sendReason = await send.locator('xpath=..').getAttribute('title')
-  check('开发入口「发送到画布」禁用并说明原因', (await send.isDisabled()) && String(sendReason).includes('开发入口没有画布'), String(sendReason))
+  check('开发入口发送到画布禁用并说明原因', (await send.isDisabled()) && String(sendReason).includes(await directorText(page, 'timeline.outputSendUnavailable')), String(sendReason))
   await lab.snap('outputs-popover')
   await page.keyboard.press('Escape')
 
   // 录制 MP4（2026-10-04 起住顶栏「产出」菜单首行）：没片段 → 明说
   await clickOrFail(page.getByTestId('director-outputs'), '顶栏·产出')
   await clickOrFail(page.getByTestId('director-record-video'), '产出菜单·录制 MP4')
-  check('没片段时明说原因', (await lab.toasts()).some((text) => /没有片段/.test(text)))
+  const noClipsHint = (await directorText(page, 'timeline.recordVideoNeedsClips')).split(/[，.]/)[0]
+  check('没片段时明说原因', (await lab.toasts()).some((text) => text.includes(noClipsHint)))
 
   // 进机位录一段运镜 → 机位有路径片段
-  await clickOrFail(page.getByTestId('director-pip').getByRole('button', { name: '进入视角' }), '画中画·进入视角')
+  await clickOrFail(page.getByTestId('director-pip').getByRole('button', { name: await directorText(page, 'camera.enterPov'), exact: true }), '画中画·进入视角')
   await expectVisible(page.getByTestId('director-pov-hud'), '没进入机位视角')
   await page.mouse.move(600, 300)
   await page.keyboard.press('r')
-  await expectVisible(page.getByText(/录制中/), '按 R 没开始录制')
+  await expectVisible(page.getByTestId('director-pov-hud').getByRole('status'), '按 R 没开始录制')
   await page.mouse.move(600, 300)
   await page.mouse.down()
   for (let i = 1; i <= 10; i += 1) await page.mouse.move(600 + i * 10, 300)
@@ -56,7 +60,7 @@ try {
   await page.waitForTimeout(700)
   await page.keyboard.press('r')
   await lab.waitScene(`(s.cameras.find(c => c.id === '${camera.id}').trajectoryClips || []).length === 1`, '运镜片段')
-  await clickOrFail(page.getByTestId('director-pov-hud').getByRole('button', { name: '退出机位' }), 'HUD·退出机位')
+  await clickOrFail(page.getByTestId('director-pov-hud').getByRole('button', { name: await directorText(page, 'camera.exitPov'), exact: true }), 'HUD·退出机位')
 
   // 再录 MP4：逐帧采样 → 无桥 → 诚实降级
   await clickOrFail(page.getByTestId('director-outputs'), '顶栏·产出（第二次）')
@@ -64,7 +68,8 @@ try {
   await expectVisible(page.getByTestId('director-recording-progress').getByText(/\d+\/\d+/), '产出图标没换成录制进度「■ k/N」')
   await lab.snap('recording-progress')
   // headless 走 SwiftShader，1080p 逐帧离屏渲染比真机慢一个量级：上限给到 5 分钟
-  await expectVisible(page.getByText(/采到 \d+ 帧但无法编码/), '无桌面运行时应明说无法编码 MP4', stationTimeout({ operations: 20 }))
+  const noBridgePrefix = (await directorText(page, 'timeline.recordVideoNoBridge')).split('{{frames}}')[0]
+  await expectVisible(page.getByText(noBridgePrefix, { exact: false }), '无桌面运行时应明说无法编码 MP4', stationTimeout({ operations: 20 }))
   const videos = (await lab.project()).outputs.videos || []
   check('没有假装生成视频（videos 仍为空）', Array.isArray(videos) && videos.length < 1, `${videos.length} 条`)
   check('截图产物仍在', ((await lab.project()).outputs.screenshots || []).length === 1)

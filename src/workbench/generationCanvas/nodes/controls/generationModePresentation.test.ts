@@ -64,6 +64,11 @@ describe('输入没了回到文生', () => {
   it('首尾帧是用户特意选的，空了也不收回', () => expect(back('seedance-2', 'firstlast', false)).toBeNull())
   it('图片改图方式没图 → 回文生图', () => expect(back('gpt-image-2', 'i2i', false)).toBe('t2i'))
   it('没有文生方式的模型不动', () => expect(back('happyhorse', 'edit', false)).toBe('t2v'))
+  it('删掉预演参考后仍按 B3 回到文生，即使 attached 标记还在', () => {
+    const spec = archetype('seedance-2')
+    const mode = currentArchetypeMode(spec, { archetype: { id: spec.id, modeId: 'omni' } })
+    expect(textModeToReturnTo(spec, mode, false)).toBe('t2v')
+  })
 })
 
 describe('方式名按槽的实际能力标（遍历全部档案）', () => {
