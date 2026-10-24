@@ -11,7 +11,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 花钱面收窄到被授权的这一个模型。主进程出站只记账不拦截（apimart-line-netsim.cjs 的 RECORD_ONLY 档）。
 //
 // 用法：NOMI_SPEND_OK=1 node tests/ux/apimart-domestic-line.paid.mjs --packaged <Nomi.exe>
-//       截图与记录写到 NOMI_WALK_OUT（默认仓库根 .apimart-line-paid/）。
+//       截图与记录写到 NOMI_WALK_OUT（默认 tests/ux/shots/apimart-domestic-line/，被忽略、不进构建身份）。
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -29,7 +29,7 @@ const PACKAGED = takePackagedFlag(argv)
 if (!PACKAGED) throw new Error('这条核对只在打好的安装包上跑：--packaged <Nomi 可执行文件>')
 
 const guard = assertPaidRunAllowed(SCRIPT)
-const out = path.resolve(process.env.NOMI_WALK_OUT || path.join(repoRoot, '.apimart-line-paid'))
+const out = path.resolve(process.env.NOMI_WALK_OUT || path.join(repoRoot, 'tests/ux/shots/apimart-domestic-line'))
 fs.rmSync(out, { recursive: true, force: true })
 fs.mkdirSync(out, { recursive: true })
 const log = path.join(out, 'network.jsonl')

@@ -954,9 +954,6 @@
     }
   },
   "tests/ux/_launchApp.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
     "preserve-caught-error": {
       "count": 3
     }

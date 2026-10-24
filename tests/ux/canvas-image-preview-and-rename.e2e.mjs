@@ -17,7 +17,7 @@ const settingsDir = path.join(root, 'settings')
 const projectsDir = path.join(root, 'projects')
 const projectId = 'canvas-image-preview-e2e'
 const projectRoot = path.join(projectsDir, `canvas-image-preview-${projectId}`)
-const outDir = path.join(repoRoot, '.canvas-image-preview-lab')
+const outDir = path.join(repoRoot, 'tests/ux/shots/canvas-image-preview-and-rename')
 fs.mkdirSync(path.join(projectRoot, '.nomi'), { recursive: true })
 fs.mkdirSync(outDir, { recursive: true })
 

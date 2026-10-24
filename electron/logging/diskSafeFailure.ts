@@ -3,13 +3,15 @@
 // 落盘出口（项目事件 `.nomi/events`、主进程日志与崩溃日志、Agent 派生轨迹）从这里拿失败的样子，
 // 而这里**只给结构事实，不给任何自由文本**：
 //   · 供应商失败：类别、HTTP 状态、上游自己的码、是否可重试——不给 `upstreamMsg`，也不给 URL（query 里可能带 key）；
-//   · 任意错误：类名、错误码、我们自己的码形 message；其余 message 只给 8 位指纹（同一句话同一个指纹，能归并重复失败）。
+//   · 任意错误：类名（只认代码里定义的类名那种形状）、错误码、我们自己的码形 message；其余 message 只给 8 位指纹
+//     （同一句话同一个指纹，能归并重复失败）。
 //
 // 为什么不是「擦干净再写」：上游原话会被任意一层拼进新错误的 message（有的带 cause，有的不带），
 // 落盘那一刻只剩一段来源不明的字符串；「按头名猜秘密 + 枚举编码变体」已被独立验收 F2-A / F2-B 证明擦不干净。
 // 落盘出口不收自由文本，这一类泄漏就从结构上做不出来（删 > 脱敏，用户 2026-10-22 拍板）。
 // 原话要看：开发态终端（`logger.logDevDetail`，打包版是空操作）；界面那份由第 2 步的唯一出口决定。
 import crypto from "node:crypto";
+import { isCodeClassName } from "../shared/contracts/ipcInvokeFailure";
 
 /**
  * 供应商失败类别。与 `vendorHttp.VendorErrorCategory` 是同一张表：这里不 import 它，因为本模块要被
@@ -148,8 +150,10 @@ export function diskSafeErrorFacts(error: unknown): DiskSafeErrorFacts {
       if (typeof error === "number" || typeof error === "boolean" || error == null) return { name: "Error", message: String(error) };
       return { name: "NonError", message: "" };
     }
+    // 类名是代码里定义的名字，不是用户数据，照写；只认「代码里定义的类名」这一种形状（判据唯一一处，
+    // 渲染层摊平 invoke 回来的失败时读的是同一份），name 里装着别的东西（凭据形状、项目名、一句话）就只记 Error。
     const rawName = readField(error, "name");
-    const name = typeof rawName === "string" && /^[A-Za-z_$][\w$]{0,63}$/.test(rawName) ? rawName : "Error";
+    const name = isCodeClassName(rawName) ? rawName : "Error";
     const code = codeOf(error);
     const errno = integerField(readField(error, "errno"));
     const exitCode = integerField(readField(error, "exitCode"));

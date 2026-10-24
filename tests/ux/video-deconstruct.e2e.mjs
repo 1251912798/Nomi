@@ -19,9 +19,10 @@ if (!process.env.DECONSTRUCT_E2E) {
   process.exit(0);
 }
 
-const VIDEO = process.argv[2] || "/Users/aoqimin/Desktop/教nomi学新功能/Custom recording 2026-08-03 01-29-20.mp4";
-if (!fs.existsSync(VIDEO)) {
-  console.log(`SKIP: 找不到测试视频 ${VIDEO}`);
+// 测试视频由跑的人给（命令行第一个参数或 NOMI_DECONSTRUCT_VIDEO），不写死某台机器上的路径。
+const VIDEO = process.argv[2] || process.env.NOMI_DECONSTRUCT_VIDEO;
+if (!VIDEO || !fs.existsSync(VIDEO)) {
+  console.log(`SKIP: 找不到测试视频 ${VIDEO ?? "（未给：node tests/ux/video-deconstruct.e2e.mjs <视频路径>）"}`);
   process.exit(0);
 }
 

@@ -61,8 +61,11 @@ function waitForServer(url, timeoutMs = 60000) {
   })
 }
 
-const vite = spawn('npx', ['vite', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], {
-  cwd: REPO_ROOT, stdio: ['ignore', 'ignore', 'pipe'], shell: process.platform === 'win32',
+// 直接用 node 起 vite 本体（不经 npx 垫片，和 design-lab/walkScreen.mjs、design-lab-ask-card-in-panel 一样）：
+// kill 只杀到垫片，vite 成孤儿还攥着 stderr 管道，本进程就退不出去——夜跑 run 40035294026 里这条
+// 打完「failures: none」一直挂到 600 秒被判超时。
+const vite = spawn(process.execPath, [path.join(REPO_ROOT, 'node_modules', 'vite', 'bin', 'vite.js'), '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], {
+  cwd: REPO_ROOT, stdio: ['ignore', 'ignore', 'pipe'],
 })
 vite.stderr?.on('data', (chunk) => process.stderr.write(`[vite] ${chunk}`))
 await waitForServer(`${BASE}/design-lab.html`)

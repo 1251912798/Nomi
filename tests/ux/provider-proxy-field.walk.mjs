@@ -14,6 +14,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { screenshotSettled, proveProbe, expectVisible, expectHidden, clickOrFail } from './_assert.mjs'
 import { modelSettingsEntry, openCustomApiWizard, openModelSettings } from './_shell.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/provider-proxy')
@@ -126,19 +127,13 @@ try {
   //    与 API Key 的「加密保存」承诺对齐——因为 proxyUrl 的 user:pass 与 extraHeaders 的 Authorization
   //    现已升到同一 safeStorage 加密落盘层。断言真实文案在屏，不是空点。
   console.log('— 代理提示应含「加密保存」文案 —')
-  await expectVisible(
-    win.getByText('只影响这个 API，不会改变其他厂商；支持 HTTP / HTTPS / SOCKS。只存在你的电脑上，加密保存', { exact: true }),
-    '代理字段提示应说明加密保存',
-  )
+  // 文案从界面词典读（唯一真相源）：以前写死「添加请求头」，09-11 按钮文案清扫改成「添加 Header」后这里就再也找不到。
+  const copy = (key) => uiText('zh-CN', `modelSetup.${key}`)
+  await expectVisible(win.getByText(copy('proxyUrlHint'), { exact: true }), '代理字段提示应说明加密保存')
   // 加一行自定义请求头 → 标题「自定义请求头（…加密保存）」应出现。
   console.log('— 加一行自定义请求头，标题应含「加密保存」文案 —')
-  const addHeader = win.locator('button, [role="button"], a', { hasText: /添加请求头/ }).first()
-  await clickOrFail(addHeader, '添加请求头按钮')
-  await win.waitForTimeout(400)
-  await expectVisible(
-    win.getByText('自定义请求头（只存在你的电脑上，加密保存）', { exact: true }),
-    '自定义请求头标题应说明加密保存',
-  )
+  await clickOrFail(win.getByRole('button', { name: copy('addHeader'), exact: true }).first(), '添加请求头按钮')
+  await expectVisible(win.getByText(copy('customHeaders'), { exact: true }), '自定义请求头标题应说明加密保存')
   await snap(win, 'credential-config-encrypted-copy')
 
   console.log(`\nDone. ${n} shots → ${path.relative(repoRoot, shotsDir)}`)

@@ -53,7 +53,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { launchNomiApp } from './_launchApp.mjs'
+import { launchNomiApp, seedSavedFixtureCredentials } from './_launchApp.mjs'
 import { expect, expectVisible, expectAbsent, proveProbe, clickOrFail } from './_assert.mjs'
 import { canvasAddBar, newProjectEntry } from './_shell.mjs'
 
@@ -69,7 +69,7 @@ const projectsDir = path.join(tempRoot, 'projects')
 const capabilityDir = path.join(tempRoot, 'capability')
 fs.mkdirSync(projectsDir, { recursive: true })
 
-const { app, win } = await launchNomiApp({
+const launchOptions = {
   name: 'runway-vendor-honest-modes',
   userDataDir,
   settingsDir: userDataDir,
@@ -78,7 +78,11 @@ const { app, win } = await launchNomiApp({
   syntheticCredentialStorage: true,
   args: ['--no-proxy-server'],
   settleMs: 0,
-})
+}
+// 占位 key 先经产品保存口存成密文、再在盘上翻成已启用（见 seedSavedFixtureCredentials）：直接在页面里存，
+// 开网会把假 key 发给供应商（401），关网则存成「未验证、停用」，模型都进不了下拉（夜跑 run 40035294026）。
+await seedSavedFixtureCredentials(launchOptions, ['runway', 'apimart'])
+const { app, win } = await launchNomiApp(launchOptions)
 
 let passed = 0
 function record(label, detail = '') {
@@ -195,10 +199,9 @@ try {
   await win.waitForLoadState('domcontentloaded')
   await win.waitForTimeout(1500)
 
-  // 占位 key + 启用供应商：只为让 Runway / APIMart 的视频模型进下拉。全程不点生成 → 零额度。
+  // 启用供应商（占位 key 起 App 前已备好）：只为让 Runway / APIMart 的视频模型进下拉。全程不点生成 → 零额度。
   await win.evaluate(async () => {
     for (const vendor of ['runway', 'apimart']) {
-      await window.nomiDesktop.modelCatalog.upsertVendorApiKey(vendor, { apiKey: 'nomi-e2e-placeholder', enabled: true })
       await window.nomiDesktop.modelCatalog.upsertVendor({ key: vendor, enabled: true })
     }
   })

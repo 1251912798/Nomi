@@ -57,7 +57,8 @@ const launchOptions = tempRoot
       userDataDir: settingsDir,
       settingsDir,
       projectsDir,
-      env: { HOME: testHome, NOMI_CAPABILITY_DIR: capabilityDir },
+      // Windows 的主目录看 USERPROFILE 不看 HOME：两个都换，否则 Windows 上读写的是真机配置。
+      env: { HOME: testHome, USERPROFILE: testHome, APPDATA: path.join(testHome, 'AppData', 'Roaming'), NOMI_CAPABILITY_DIR: capabilityDir },
     }
   : { isolate: false }
 
