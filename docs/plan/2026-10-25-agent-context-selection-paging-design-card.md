@@ -46,7 +46,7 @@
 1. 用户在画布 / 时间轴 / 文稿上选择对象。
 2. 输入真实请求并发送；Host 冻结并附上这一刻的 `contextSnapshot`。
 3. 投影能列全就列全；放不下则列 0 行，给 `total`、`omittedByKind` 和固定 `omittedNote`。
-4. Agent 看到 omitted 后调用 `read_selection({})`，之后每页原样回传 `nextCursor`。
+4. Agent 看到 omitted 后调用 `read_selection({})`，之后先用常驻 `nomi_request_tools({group:"context"})` 解锁 context 组（若 `read_selection` 尚未列出），再原样回传每页 `nextCursor`。
 5. 需要时用 `kind` 过滤，但仍从头开始；每页按原快照顺序、不重不漏。
 6. 读完后再调用领域读/写动词；发送后 UI 选择改变不影响这次快照。
 
@@ -81,11 +81,11 @@
 
 ## ★1b 连带界面
 
-模型可见：投影账的固定英文 `omittedNote`、`omittedByKind` 中的 `read_selection`、分页 JSON 的 `total/handles/nextCursor`。工具失败正文必须同时包含机器码对应的可执行下一步：无快照 → 从 desktop Agent 重新发送；坏 cursor → 不带 cursor 重新读第一页。渲染层只读 `projectAgentContextSnapshot` 的事实，chip 仍不在本 PR 范围。
+模型可见：投影账的固定英文 `omittedNote`、`omittedByKind` 中的 `read_selection`、分页 JSON 的 `total/handles/nextCursor`。工具失败正文必须同时包含机器码对应的可执行下一步：无快照 → 从 desktop Agent 重新发送；坏 cursor → 不带 cursor 重新读第一页；未列出工具 → 先请求 context 组。渲染层只读 `projectAgentContextSnapshot` 的事实，chip 仍不在本 PR 范围。
 
 ## ★2 谁说了算
 
-概念 `agent.context-snapshot-projection` 的 owner 仍是 `electron/shared/agentContextSnapshot.ts:projectAgentContextSnapshot`；新增同一 owner 文件里的 `readAgentContextSnapshotPage` 作为快照读口。唯一事实是 Host 当前已消费输入的 `contextSnapshot` 对象；`laneDesktopTools` 通过 `input.context().contextSnapshot` 读取，不能从实时 renderer/UI 推导。投影、分页和测试共享 `compactHandle` 行形状；没有第二份快照。门表由 `node scripts/door-map.mjs` 生成并在报告登记，新增 lane 注册门与声明/注册表门；只允许 desktop internal profile。
+概念 `agent.context-snapshot-projection` 的 owner 仍是 `electron/shared/agentContextSnapshot.ts:projectAgentContextSnapshot`；新增同一 owner 文件里的 `readAgentContextSnapshotPage` 作为快照读口。唯一事实是 Host 当前已消费输入的 `contextSnapshot` 对象；`laneDesktopTools` 通过 `input.context().contextSnapshot` 读取，不能从实时 renderer/UI 推导。投影、分页和测试共享 `compactHandle` 行形状；没有第二份快照。门表由 `node scripts/door-map.mjs` 生成并在报告登记，新增 lane 注册门与声明/注册表门；只允许 desktop internal profile；为守住现有 12 工具 / 10000 token 门槛，read_selection 延迟在 `context` 组，由常驻 `nomi_request_tools` 解锁。
 
 ## ★3 一致与复用
 
@@ -100,7 +100,7 @@
 - 错误：无快照返回 `selection_snapshot_unavailable` 并说明从桌面 Agent 重发；坏或跨快照 cursor 返回 `selection_cursor_invalid` 并要求无 cursor 重读。
 - 取消中：工具被 abort 时沿用 lane 的取消语义，不写猜测结果；下一次用户消息重新从头读取。
 - 过期：旧消息 cursor 在新消息上视为 invalid；不把实时 UI 选择当替代品。
-- 能力不可用：没有桌面消息快照的面不暴露工具；模型收到的 omitted 账只能来自 desktop lane。
+- 能力不可用：没有桌面消息快照的面不暴露工具；模型收到的 omitted 账只能来自 desktop lane。context 组未解锁时先请求该组，不把未列出误判成能力缺失。
 
 ## ★7 性能
 
@@ -115,7 +115,7 @@
 - 错误：坏 cursor、跨快照 cursor、无快照均为机器可读且给下一步；不读实时状态。
 - KV 稳定：同一对象投影两次逐字相同。
 - 生产构造器测试；`node scripts/door-map.mjs read_selection` 门表闭合。
-- `check:model-schema`、`check:mcp-tool-refs`、`check:walkthrough-tool-args` 通过；只进 internal profile，MCP 面无此工具。
+- `check:model-schema`、`check:mcp-tool-refs`、`check:walkthrough-tool-args` 通过；只进 internal profile，MCP 面无此工具；context 组解锁后仍不超过现有预算。
 - 量具 ≥20 条自然 prompt，分 `read_selection` / `look_at_canvas` / 无读工具；零花费演练通过，真模型 `unverified` 由协调抽样。
 - 变异：git archive 副本退回第 2 轮“类→工具 + 无读工具最长前缀”，分页 / 40 或 256 全部性断言必须红；记录失败格数。
 - perf 场景 5000 句柄跑 ≥5 次，p95 在预算内，原始结果入仓。
