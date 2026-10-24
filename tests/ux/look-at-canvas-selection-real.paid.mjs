@@ -23,10 +23,11 @@ const SCRIPT = 'look-at-canvas-selection-real.paid.mjs'
 const ROUNDS = Number(process.env.NOMI_REAL_ROUNDS || 5)
 if (!Number.isInteger(ROUNDS) || ROUNDS < 1) throw new Error(`NOMI_REAL_ROUNDS 要是正整数，拿到 ${process.env.NOMI_REAL_ROUNDS}`)
 const startedAt = new Date().toISOString()
-// F-1 build marker: the paid walk must run a build containing the sequence-aware omission fix.
-const F1_SUPERSEDED_READ_MARKER = '[Earlier look_at_canvas result omitted: the same thing was read again later'
+// F-1 构建标记：选这句是因为它只在本 PR 的续页排版产物里出现，并且原样进入产物。
+// 不用旧句：旧句是带 `${toolName}` 的模板串，产物里没有拼好的整句，而且 main 上本来就有。
+const PAGING_SEQUENCE_MARKER = '，其余节点和引用边见第 1 页。'
 
-const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-real', [BRAIN], { buildMarkers: [SELECTION_PAGING_MARKER, F1_SUPERSEDED_READ_MARKER] })
+const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-real', [BRAIN], { buildMarkers: [SELECTION_PAGING_MARKER, PAGING_SEQUENCE_MARKER] })
 const { walk } = paid
 const journey = { rounds: [] }
 let failure
