@@ -2,6 +2,7 @@ import { ActionIcon, Button, type ActionIconProps, type ButtonProps } from '@man
 import { type JSX, forwardRef, type ButtonHTMLAttributes, type ComponentPropsWithoutRef, type ReactNode } from 'react'
 import { cn } from '../utils/cn'
 import { NomiLoadingMark } from './identity'
+import { WORKBENCH_BUTTON_PRIMARY_CLASS } from './tokens'
 
 export type IconActionButtonProps = Omit<ActionIconProps, 'children'> & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'color'> & {
   icon: ReactNode
@@ -246,10 +247,7 @@ const WORKBENCH_BUTTON_VARIANT = {
     'hover:bg-workbench-hover active:bg-workbench-pressed',
   ),
   // 主操作:深底反白,hover 转 accent(确认/撤销这次改动等强动作)。
-  primary: cn(
-    'border-0 bg-nomi-ink text-nomi-paper',
-    'hover:bg-nomi-accent',
-  ),
+  primary: WORKBENCH_BUTTON_PRIMARY_CLASS,
   // 强调文字:幽灵底 + accent 字(「让 AI 修一下」这类引导操作)。
   accent: cn(
     'border border-workbench-border-soft bg-workbench-surface text-nomi-accent',

@@ -26,6 +26,7 @@ import {
 } from "./lib/colorMixHue.mjs";
 import { scanScopedTokenDefinitions } from "./lib/scopedTokenScan.mjs";
 import { countAccentOutlineInText, findAccentAliasedTokens } from "./lib/accentOutlineScan.mjs";
+import { countAccentWhitePrimaries, countTextWhiteInSource } from "./lib/primaryColorScan.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -216,6 +217,18 @@ for (const rel of aliasFiles) {
   }
 }
 
+// ---- 第 8 类：主按钮颜色回潮（棘轮，存量只减不增）----
+// 主按钮平时必须是 ink/paper；accent + white 的存量是历史标签/徽标，不能再新增。
+// text-white 也只保留存量，新增生产 UI 一律使用语义 paper / overlay token。
+const textWhiteCount = files.reduce((sum, rel) => sum + countTextWhiteInSource(fs.readFileSync(path.join(ROOT, rel), "utf8")), 0);
+const accentWhiteCount = files.reduce((sum, rel) => sum + countAccentWhitePrimaries(fs.readFileSync(path.join(ROOT, rel), "utf8")), 0);
+const primaryColorBaselines = { textWhite: 10, accentWhite: 2 };
+for (const [key, count] of Object.entries({ textWhite: textWhiteCount, accentWhite: accentWhiteCount })) {
+  const baseline = primaryColorBaselines[key];
+  if (count > baseline) errors.push(`✗ 主按钮颜色回潮 ${key}：${count} 处 > 存量基线 ${baseline}（主按钮平时用 nomi-ink / nomi-paper；新增文字用语义 token）`);
+  else if (count < baseline) warnings.push(`↓ 主按钮颜色回潮 ${key}：${count} 处 < 存量基线 ${baseline}（已清理，请下调基线锁定）`);
+}
+
 for (const w of warnings) console.warn(w);
 
 if (errors.length > 0) {
@@ -229,5 +242,6 @@ console.log(
     `\n✓ color-mix(in oklch, …, transparent) 零容忍：无一处（混 transparent 一律 in oklab）。` +
     `
 ✓ 强调色描边棘轮：${accentTotal} 处（白名单 ${Object.keys(accentBaseline).length} 个文件，只减不增）；--nomi-focus / --nomi-info 不别名到强调色。` +
+    `\n✓ 主按钮颜色棘轮：text-white ${textWhiteCount} 处、accent+white ${accentWhiteCount} 处（存量只减不增）。` +
     `\n✓ 语义 token 作用域零容忍：--nomi-*/--workbench-* 定义全部在 :root 层（portal/浮层任意挂载点都解析得到）。`,
 );
