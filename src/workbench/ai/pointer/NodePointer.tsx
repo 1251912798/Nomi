@@ -138,9 +138,6 @@ function useHoverLink(nodeId: string, enabled: boolean): { hot: boolean; on: () 
   return { hot, on, off }
 }
 
-/** 格子标题行在小动作露出来时右边让出的宽（组量出来写在格子上）；标题的尾巴永远不被它盖住。 */
-const CELL_ACCESSORY_INSET = '--node-pointer-cell-accessory'
-
 /**
  * 标题行：节点在就挂节点自己的 NodeShotLabel（改名两边一起变）；节点不在就用宿主的名字快照（已删除划线）。
  * `tailFrom`（组给的，见 nodePointerTitleTails）：从这儿起是「和兄弟格不一样的那一截」——前面那截公共开头先截（带省略号），这一截不截。
@@ -459,7 +456,9 @@ function PointerCell({ pointer, accessory }: { pointer: React.ReactNode; accesso
       className="group/pointer-cell relative min-w-0"
       data-node-pointer-cell=""
       data-accessory-pinned={accessory.pinned ? 'true' : undefined}
-      style={width === null ? undefined : { [CELL_ACCESSORY_INSET]: `${width + CELL_ACCESSORY_GAP}px` } as React.CSSProperties}
+      // 格子标题行在小动作露出来时右边让出的宽（组量出来写在格子上，标题行读它）；标题的尾巴永远不被它盖住。
+      // 键名照字面写：check:dangling-tokens 只认得内联 style 里字面的 '--x': 定义。
+      style={width === null ? undefined : { '--node-pointer-cell-accessory': `${width + CELL_ACCESSORY_GAP}px` } as React.CSSProperties}
     >
       {pointer}
       {accessory.dimmed ? <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 top-[26px] rounded-nomi-sm bg-nomi-paper/60" data-node-pointer-cell-dimmed="true" /> : null}
