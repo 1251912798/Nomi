@@ -87,9 +87,6 @@ export function assetRefFromDesktopAsset(asset: DesktopAssetDto, sourceProjectNa
     ...(dimensions ? { dimensions } : {}),
     ...(aspectRatio !== undefined ? { aspectRatio } : {}),
     ...(sourceProjectName?.trim() ? { sourceProjectName: sourceProjectName.trim() } : {}),
-    ownerNodeId: typeof asset.data.ownerNodeId === 'string' && asset.data.ownerNodeId.trim()
-      ? asset.data.ownerNodeId.trim()
-      : undefined,
     source: 'project',
     origin: { source: 'project', projectId, relativePath },
   }

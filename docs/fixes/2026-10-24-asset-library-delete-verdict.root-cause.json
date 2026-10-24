@@ -1,0 +1,231 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-asset-library-delete-verdict",
+  "change_kind": "corrective",
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-24",
+  "problem_type": "素材库列表和删除口各认一套「素材」，没有唯一的删除判定，认不出的那种被静默放过",
+  "symptom": "夜跑走查 asset-library-interactions ⑤：在「项目素材」里勾两张只在项目文件夹里的文件（一条视频、一张图）删除，确认后顶上出「选中的素材暂时无法删除」，两张都还在。10-08 第一次夜跑的分诊里就已红；分诊线只读得到 10-18 起的 artifact，所以报成「10-18 起红」。",
+  "direct_cause": "src/workbench/assets/deleteAssetResult.ts 已加载项目分支：67e76afd9（10-06 版本卡片 V1）在隐式计划的 matches 为空时直接 return 三个 0；在那之前 66d930816（09-28 版本卡片数据生命周期）把文件挂进撤销日志待删，只有文件的素材没有撤销步可挂，同样返回三个 0。AssetLibraryPanel.tsx 把「三个计数全 0」统一说成「选中的素材暂时无法删除」。",
+  "class_root": "「项目素材」列的是画布结果 ∪ 项目文件夹里的媒体文件（两种 AssetOrigin），删除侧只有隐式计划 { matches, fileTarget }（buildAssetResultDeletionPlan），已加载 / 关闭两条执行路径各自解读：关闭路径「没结果有文件 → 删文件」，已加载路径「没结果 → 什么都不做」。没有一个函数回答「列出来的这一张删了会怎样」，所以为版本卡片加撤销的两次改动看不到列表里还有哪几种受影响；兜底文案又把「认不出」说成「暂时」。同一形状还带出三处潜伏：按 thumbnailUrl 匹配，删视频封面文件会把视频结果摘掉；关闭项目里删一个指向别的项目文件的结果，会把别的项目的文件扔进回收站；sidecar 上的 ownerNodeId 把共享文件的匹配收窄到一张卡，只摘一处、文件留下。",
+  "migration": "删除旧实现：buildAssetResultDeletionPlan（隐式计划）、已加载分支的早退、面板「暂时无法删除」文案 cannotDeleteSelected、只喂收窄逻辑的 AssetRef.ownerNodeId（含两个产出口的赋值）。换成唯一判定 planAssetDeletion：按 AssetOrigin 穷举（canvas → 只摘这一版；project → 摘所有「地址就是它」的结果，拿它当封面 / 白板图层 / 时间轴片段的算「被用着」、一张不摘），文件只认本项目的、去向 trash / keep。两条执行路径照同一判定分派，「画布上没有要摘的结果」两条路都当场进回收站。面板两扇门共用一个回报函数，只说没删成的（留着几个、为什么、下一步；失败几个）。没有持久数据迁移：判定只读画布 / 时间轴，不改存盘格式；已存的待删清单照旧清扫。",
+  "affected_population": [
+    "已打开的项目里，从「项目素材」多选删除只在项目文件夹里的文件（导入的图 / 视频 / 音频、拖进来的文件、生成后已从画布摘掉的文件）：一张都删不掉，提示「暂时无法删除」",
+    "「全部素材」页签格子上的单张删除（deleteOneAsset）删当前项目里同类文件：同上",
+    "删一个同时是视频封面的文件：那条视频结果被一起从卡上摘掉",
+    "关闭项目路径：画布结果指向别的项目的文件时，别的项目的文件被扔进回收站",
+    "同一份文件是两张卡的结果、从全部素材删它：只摘带 ownerNodeId 的那张，文件留着，提示全 0 或只删一半"
+  ],
+  "scope_paths": [
+    "src/i18n/locales/assetLibrary.ts",
+    "src/ui/browser/popover/useBrowserAssetActions.ts",
+    "src/workbench/assets/AssetLibraryPanel.tsx",
+    "src/workbench/assets/assetResultDeletion.ts",
+    "src/workbench/assets/assetTypes.ts",
+    "src/workbench/assets/deleteAssetResult.ts",
+    "src/workbench/assets/pendingAssetDeletions.ts",
+    "src/workbench/assets/useAllProjectAssets.ts",
+    "src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx"
+  ],
+  "entry_points": [
+    "项目素材多选删除 → AssetLibraryPanel.deleteSelectedProjectAssets → deleteAssetResult",
+    "全部素材格子删除钮 → AssetLibraryPanel.deleteOneAsset → deleteAssetResult",
+    "版本卡片删一版 → NodeVersionCardsHost remove → deleteAssetResult",
+    "撤销日志挤出 / 换项目 / 打开项目清扫 → pendingAssetDeletions.release → isProjectFileReferenced → workspace.deleteFiles",
+    "素材盒浮层（浏览器托盘）右键 / Delete 键 / 删除钮 → useBrowserAssetActions.deleteSelectedAssets → workspace.deleteFiles（未收进同一判定，见 residual_risks）"
+  ],
+  "invariants": [
+    "列表里出现的每一张素材，planAssetDeletion 都给出确定判定：摘哪些结果 + 本项目文件的去向（trash / keep / 没有本项目文件）；执行口对每个组合都有确定结果并计数，不存在「三个计数全 0、界面只能猜」的格。",
+    "文件只认本项目的：parseNomiLocalAssetUrl 解出的 projectId 必须等于删除作用的那个项目，别的项目的文件绝不 defer、绝不进回收站。",
+    "只拿文件当封面 / 白板图层 / 时间轴片段的引用算「被用着」：一张结果都不摘，文件留下，keptInUseCount 计数，界面说留了几个、为什么、下一步。",
+    "画布结果删除只摘那一版（按 resultId，回落 url / thumbnailUrl 匹配），同卡别的结果、卡本身都保留；已加载项目一次删除 = 一个 ⌘Z。",
+    "AssetOrigin 多一个成员而 planAssetDeletion 没认它：switch 的 never 穷举编译不过，不会落进「什么都不删」。"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/assets/AssetLibraryPanel.tsx",
+      "symbol": "deleteAssetResult"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx",
+      "symbol": "deleteAssetResult"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/assets/deleteAssetResult.ts",
+      "symbol": "planAssetDeletion"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/assets/assetResultDeletion.ts",
+      "symbol": "planAssetDeletion"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/assets/assetTypes.ts",
+      "symbol": "canvasNodeToAssetRefs"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/assets/assetTypes.ts",
+      "symbol": "workspaceNodeToAssetRef"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/assets/useAllProjectAssets.ts",
+      "symbol": "assetRefFromDesktopAsset"
+    },
+    {
+      "kind": "read",
+      "path": "src/i18n/locales/assetLibrary.ts",
+      "symbol": "zhAssetLibrary"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/assets/deleteAssetResult.ts",
+      "symbol": "deleteFiles"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/assets/deleteAssetResult.ts",
+      "symbol": "deleteFiles"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/assets/pendingAssetDeletions.ts",
+      "symbol": "deleteFiles"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/assets/pendingAssetDeletions.ts",
+      "symbol": "deleteFiles"
+    },
+    {
+      "kind": "read",
+      "path": "src/ui/browser/popover/useBrowserAssetActions.ts",
+      "symbol": "deleteFiles"
+    },
+    {
+      "kind": "write",
+      "path": "src/ui/browser/popover/useBrowserAssetActions.ts",
+      "symbol": "deleteFiles"
+    }
+  ],
+  "door_reduction": {
+    "before": 14,
+    "after": 14,
+    "why_not": "判定门本来就只剩一扇（deleteAssetResult 里调 planAssetDeletion，取代 buildAssetResultDeletionPlan），收敛的是「判定」而不是门数：素材库面板与版本卡片是两个不同界面，都只经 deleteAssetResult；列表的三个产出口（canvasNodeToAssetRefs、workspaceNodeToAssetRef、assetRefFromDesktopAsset）是判定的输入，各管一种来源，只产出两种 AssetOrigin；deleteFiles 的三处写各管一个时机——当场进回收站（deleteAssetResult）、撤销窗口过后再删（pendingAssetDeletions，删前用同一个 isProjectFileReferenced 再判）、素材盒浮层（独立窗口，没有画布 store，收进同一判定要跨窗口转交，属架构岔路，交协调定，见 residual_risks）。"
+  },
+  "regression_tests": [
+    "src/workbench/assets/assetDeletionMatrix.test.ts",
+    "src/workbench/assets/assetResultDeletion.test.ts",
+    "src/workbench/assets/deleteAssetResult.test.ts",
+    "src/workbench/assets/deleteAssetResult.realStore.test.ts",
+    "src/workbench/assets/assetTypes.test.ts",
+    "src/workbench/assets/assetLibrarySources.test.ts"
+  ],
+  "residual_risks": [
+    "素材盒浮层（浏览器托盘，独立 BrowserWindow）的右键 / Delete 键 / 删除钮直接调 workspace.deleteFiles，不经 planAssetDeletion：删掉画布 / 时间轴在用的文件会让它们变黑（改前同样，进的是系统回收站、可恢复）。收进同一判定要让浮层把删除转交主窗口，属架构岔路，交协调定。",
+    "已打开项目里删画布卡的素材：结果当场摘掉（⌘Z 可撤），文件按 09-28 的撤销设计延后到撤销日志退不回这一步才进回收站；这期间列表按文件把它列回来（换成文件名）——本分支第二个提交让两个列表不列「待删」并在真删后刷新。",
+    "工作区列表不滤 .preview. 派生预览，视频海报被当成一张图列出——本分支第二个提交改用素材库同一个预览判定。",
+    "同一份文件是两张卡的结果时，项目素材里那一格按画布优先只显示其中一张卡；从这一格删只摘这一张的结果，文件留着、格子换成另一张卡的名字，顶上说「还在画布上用着」（确认框原话「其他结果都会保留」，既有语义不动）。",
+    "真 App 里只有走查 ⑤ 覆盖「只在项目里的文件」两格；其余格由表测试按真产出口覆盖执行结果。"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "「这张素材在画布 / 版本 / 时间轴 / 白板里被谁用着、删了摘哪些结果、文件何时进回收站」是 Nomi 素材领域的内部判定；进系统回收站仍用 Electron shell.trashItem，本次没改它的用法，不需要外部依据决定不变量。",
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "任何给删除加新语义（撤销、延后）或新增一种素材来源的改动，只要「删了会怎样」不是唯一函数，就会再让列表里的某一种落进「什么都不做」：09-28、10-06 已经两次；封面误摘、跨项目误删、共享文件只删一半是同一形状的另外三处。",
+    "same_class_scan": [
+      "node scripts/door-map.mjs deleteAssetResult：写入口 2 扇（AssetLibraryPanel 两处调用、NodeVersionCardsHost），都改由 planAssetDeletion 判定。",
+      "node scripts/door-map.mjs planAssetDeletion：只有 deleteAssetResult.ts 两处（已加载 / 关闭两条执行路径）。",
+      "node scripts/door-map.mjs deleteFiles：deleteAssetResult、pendingAssetDeletions、useBrowserAssetActions 三处写；前两处删前都过 isProjectFileReferenced，素材盒那处没过（residual_risks 第一条）。",
+      "grep -rn ownerNodeId src：渲染层再无读 AssetRef.ownerNodeId 的地方；剩下的是写 sidecar / 导演台 / 白板的同名参数，与删除判定无关。",
+      "grep -rn \"buildAssetResultDeletionPlan\\|cannotDeleteSelected\" src electron：0 处（docs/fixes/2026-09-02-cross-device-sync-ux.root-cause.json 是历史记录）。",
+      "列表三个产出口逐个核对：canvasNodeToAssetRefs → origin canvas；workspaceNodeToAssetRef、assetRefFromDesktopAsset → origin project。AssetOrigin 只有这两种，planAssetDeletion 的 switch 都认。"
+    ]
+  },
+  "generality_proof": "判定 planAssetDeletion 按 AssetOrigin 穷举（default 分支是 never，加成员不认就编译不过），列表的三个产出口只产出这两种 origin；执行口 deleteAssetResultUnlocked 对（要摘的结果有 / 无）×（文件 trash / keep / 无本项目文件）×（已加载 / 关闭）的每个组合都有确定分支并计数；面板只按计数回报（keptInUse / failedFiles），删掉了「全 0 → 暂时无法删除」的兜底。表测试 assetDeletionMatrix 用真产出口造素材、铺「种类 × 删除门 × 项目开没开」共 21 格 × 2，并断言列表里没有一张素材会得到全 0 结果——以后新加一种素材或新加一种删除语义，先在这张表上红。",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/assets/assetResultDeletion.ts",
+      "symbol": "planAssetDeletion",
+      "responsibility": "素材库里一张素材删了会怎样的唯一判定：摘哪些结果、本项目文件进回收站还是留着；只认本项目文件；按 AssetOrigin 穷举。"
+    },
+    {
+      "path": "src/workbench/assets/deleteAssetResult.ts",
+      "symbol": "deleteAssetResult",
+      "responsibility": "删素材的唯一执行口：照判定在已加载 store（一个撤销步 + 延后真删）或关闭项目 payload 上执行，按项目串行，每个结果都计数返回。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/assets/AssetLibraryPanel.tsx",
+      "entry_point": "deleteSelectedProjectAssets",
+      "disposition": "enforced",
+      "evidence": "项目素材多选删除逐张串行调 deleteAssetResult，结果交 reportDeletion；表测试 multi-select 门 11 格（已加载 / 关闭各一遍）覆盖画布结果、共享文件、视频、远程地址、别的项目地址、白板产出、只在项目里的图 / 视频、时间轴在用、白板图层、封面。"
+    },
+    {
+      "path": "src/workbench/assets/AssetLibraryPanel.tsx",
+      "entry_point": "deleteOneAsset",
+      "disposition": "enforced",
+      "evidence": "全部素材格子删除钮（只对当前项目素材）调 deleteAssetResult，结果交同一个 reportDeletion；表测试 single 门 7 格用 assetRefFromDesktopAsset 造素材（含 sidecar ownerNodeId 数据，证明不再收窄）。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx",
+      "entry_point": "remove",
+      "disposition": "enforced",
+      "evidence": "版本卡片删一版用 canvasNodeToAssetRefs 找到这一版的 AssetRef 再调 deleteAssetResult；planResultDeletion 只摘这一版。表测试 version-card 门 3 格 + deleteAssetResult.realStore.test.ts 的撤销 / 挤出 / 清扫用例不变绿。"
+    },
+    {
+      "path": "src/workbench/assets/pendingAssetDeletions.ts",
+      "entry_point": "release",
+      "disposition": "not-affected",
+      "evidence": "延后真删到点时逐条用 isProjectFileReferenced（与 planAssetDeletion 的 fileFate 同一个引用判定）再判，有人用只销账；它只处理 deleteAssetResult 记过账的路径，不自己判「素材是什么」。"
+    }
+  ],
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/assets/assetResultDeletion.ts",
+    "invariant": "素材库删一张素材的结果只由 planAssetDeletion 判，按 AssetOrigin 穷举；执行口对判定的每个组合都有确定结果并计数，界面只按计数回报。",
+    "failure_mode": "AssetOrigin 加成员不认 → TypeScript 编译失败（never）；某种列出来的素材落进「全 0」或删错文件 → assetDeletionMatrix.test.ts 对应格红（格名写明种类 × 门 × 项目开没开）。",
+    "exception_policy": "none",
+    "strategy": "隐式计划换成显式判定，两条执行路径照同一判定分派；表测试用真产出口铺格，新加种类 / 删除语义先在表上红。",
+    "artifacts": [
+      "src/workbench/assets/assetResultDeletion.ts",
+      "src/workbench/assets/deleteAssetResult.ts",
+      "src/workbench/assets/AssetLibraryPanel.tsx",
+      "src/workbench/assets/assetDeletionMatrix.test.ts",
+      "docs/engineering/concept-owners/asset.library-deletion.json"
+    ]
+  },
+  "class_regression_tests": [
+    "src/workbench/assets/assetDeletionMatrix.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/assets/assetResultDeletion.ts",
+      "src/workbench/assets/deleteAssetResult.ts",
+      "src/i18n/locales/assetLibrary.ts",
+      "src/workbench/assets/assetTypes.ts",
+      "src/workbench/assets/useAllProjectAssets.ts"
+    ],
+    "rationale": "同一提交删掉：assetResultDeletion.ts 的 buildAssetResultDeletionPlan（隐式 { matches, fileTarget } 计划）；deleteAssetResult.ts 已加载分支「matches 为空就 return 三个 0」的早退和关闭分支自己那份「只有文件」解读；assetLibrary.ts 的 cannotDeleteSelected（把认不出说成「暂时无法删除」）；assetTypes.ts 的 AssetRef.ownerNodeId 字段与 canvasNodeToAssetRefs 的赋值、useAllProjectAssets.ts 把 sidecar ownerNodeId 抄进 AssetRef 的那一行（只喂收窄逻辑）。没有兼容层、没有并行版本。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不变量由 Nomi 自己的素材判定与画布 / 时间轴数据决定，不涉及第三方依赖版本。",
+    "exit_criteria": []
+  },
+  "invariant_owner_layer": {
+    "layer": "src/workbench/assets/assetResultDeletion.ts",
+    "tests": [
+      "src/workbench/assets/assetDeletionMatrix.test.ts",
+      "src/workbench/assets/assetResultDeletion.test.ts"
+    ],
+    "why": "「列出来的这一张删了会怎样」只在 planAssetDeletion 判；执行口与界面都只消费它的判定，表测试直接钉在这一层。"
+  }
+}
