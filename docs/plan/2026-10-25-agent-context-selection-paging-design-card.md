@@ -135,3 +135,15 @@
 | 20+ 真实 prompt | 三类路径分档，不能只看一次工具调用 | selection walk evidence |
 
 回滚：revert 本 PR 提交；快照格式和存量转录不变，投影与 read page 均同步纯函数/当前 lane context 重算，无数据迁移。
+
+## r4 门岗复现与预算处置方案（先于代码变更）
+
+合并 `origin/main` 后在本树复现：`check:model-schema` 报全部组常驻 31 个工具、约 10003 token；逐工具账中 `read_selection` 为 67 token，`stage_shot` 为 3377 token。`origin/main` 同样三道门岗全绿，22 个 internal 动词、30 个工具、约 9961 token，`stage_shot` 为 3404 token。因此超限不是 main 自带：本 PR 新增 `read_selection` 是直接增量；本 PR 又把 `stage_shot` 的四个描述槽压成短句，虽然少了 27 token，却同时删除了 `arrange_canvas` 与 `make_artifact` 的互斥裁决，造成另外两道门岗各一处硬红。恢复 main 描述后，预算预计为约 10030 token，不能靠删描述解决。
+
+门岗规定的候选处置是把 `coding` 组拆成两个子组：只读 `read/grep/find/ls` 与写入 `edit/write/bash`，并按需分别解锁。要真正让完整组合回到 10000 以下，不能只改标签（当前 B1c 仍把所有组 schema 常驻并计入完整组合）；还必须改变 residency / 解锁策略，使两个子组不再同时进入同一模型可见组合。代价是某些任务回合看不到另一半 coding 工具，模型需再次请求另一个子组，工具菜单与 prompt/KV-cache 前缀也会改变。此处命中任务书停点，先交协调选择：
+
+1. **拆 coding 并接受可见面变化（推荐由协调拍板）**：实现 read/write 两个组，调整一次只亮一个子组；预算可降回阈值，但需要补齐工具可见性、顺序、授权和真实任务评测。
+2. **不拆组，暂缓 `read_selection` 的模型面变更**：保持 B1c 和现有 coding 组不变，回滚本 PR 的新增动词及其恢复链路；预算与三道门岗恢复，但原始静默截断问题继续存在，不能作为 #1263 的完成方案。
+3. **保持所有 schema 常驻并另找减量**：只允许删掉或合并领域能力；本任务明确禁止删描述凑数，且 `read_selection` 是独立恢复边界，当前没有不改变语义的减量证据。
+
+在协调选项前不改生产预算 / residency 代码；本节单独提交，后续代码提交必须以拍板方案为前提。
