@@ -1,0 +1,128 @@
+{
+  "locale": "zh-CN",
+  "scheme": "light",
+  "mode": "visual-matrix",
+  "boundary": "built macOS Electron; isolated fixture matrix; full mode additionally uses original toolbar/text/upload/whiteboard journeys; no generation requested",
+  "checks": [
+    {
+      "id": "guidance.group.icon-only",
+      "pass": true,
+      "detail": "six empty nodes have type marks and external names; zero instructional rows"
+    },
+    {
+      "id": "guidance.single.next-step",
+      "pass": true,
+      "detail": "only the current node expands its original guidance and composer"
+    },
+    {
+      "id": "guidance.group.selection",
+      "pass": true,
+      "detail": "selecting the entire real group keeps all six members icon-only"
+    },
+    {
+      "id": "guidance.kind.image",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.video",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.text",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.character",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.scene",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.audio",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.whiteboard",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.panorama",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.model3d",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.keyframe",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.shot",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.output",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.clip",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.director",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.prop",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.lod.type-marks",
+      "pass": true,
+      "detail": "81-node canvas at 51% via original zoom controls retains canonical type marks across all fourteen kinds"
+    },
+    {
+      "id": "guidance.operational.audio.queued",
+      "pass": true,
+      "detail": "original operational status remains visible and the empty card keeps its external name"
+    },
+    {
+      "id": "guidance.operational.audio.running",
+      "pass": true,
+      "detail": "original operational status remains visible and the empty card keeps its external name"
+    },
+    {
+      "id": "guidance.operational.audio.error",
+      "pass": true,
+      "detail": "original operational status remains visible and the empty card keeps its external name"
+    },
+    {
+      "id": "guidance.legacy.status-omitted",
+      "pass": true,
+      "detail": "legacy node with omitted status uses normalized idle state and retains its external name"
+    }
+  ],
+  "limitations": [
+    "Windows, installed package and paid generation unverified"
+  ],
+  "status": "passed",
+  "note": "Run on feat/f1-icon-tiers (I-F1-icons-r3) with --visual-only; the walk writes its screenshots into docs/evidence/2026-10-11-node-guidance, which belong to another PR and were restored, so only the check results are kept here."
+}

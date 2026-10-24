@@ -33,7 +33,7 @@ export function NodeVideoControls({ reportFeedback }: { reportFeedback: (message
         markNodeVideoUserPlayback(player)
         void player.play().catch(() => undefined)
       }
-    }} icon={clock.playing ? <IconPlayerPause size={16} /> : <IconPlayerPlay size={16} />} />
+    }} icon={clock.playing ? <IconPlayerPause /> : <IconPlayerPlay />} />
     <input type="range" aria-label={labels.seek} min={0} max={clock.duration || 1} step={0.01} value={clock.time} disabled={clock.duration <= 0} className="h-5 min-w-0 flex-1 cursor-pointer accent-nomi-media-ink" onChange={(event) => {
       const range = session.selection.current
       const time = Number(event.target.value)
@@ -41,12 +41,12 @@ export function NodeVideoControls({ reportFeedback }: { reportFeedback: (message
       clock.refresh()
     }} />
     {zoom >= 0.75 && <span className="pointer-events-none font-mono text-micro tabular-nums" data-node-video-time>{frameTimecode(clock.time)}</span>}
-    <WorkbenchIconButton size="sm" className={BUTTON} disabled={!player} label={clock.muted ? labels.unmute : labels.mute} onClick={() => { if (player) player.muted = !player.muted }} icon={clock.muted ? <IconVolumeOff size={16} /> : <IconVolume size={16} />} />
+    <WorkbenchIconButton size="sm" className={BUTTON} disabled={!player} label={clock.muted ? labels.unmute : labels.mute} onClick={() => { if (player) player.muted = !player.muted }} icon={clock.muted ? <IconVolumeOff /> : <IconVolume />} />
     {session.writable && <WorkbenchIconButton size="sm" className={BUTTON} disabled={!clock.ready || session.busy} label={t('generationCommon.videoToolbar.currentFrame')} title={t('generationCommon.videoToolbar.currentFrame')} onClick={() => {
       if (!player || player.readyState < 2 || player.seeking || session.busy) return
       const atSeconds = player.currentTime
       session.seek(atSeconds)
       session.capture({ atSeconds }, reportFeedback)
-    }} icon={session.busy ? <NomiLoadingMark size={16} /> : <IconCamera size={16} />} />}
+    }} icon={session.busy ? <NomiLoadingMark size={16} /> : <IconCamera />} />}
   </div>
 }
