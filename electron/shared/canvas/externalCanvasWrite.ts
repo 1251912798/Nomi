@@ -66,6 +66,11 @@ export function mergeExternalCanvasWrite<T extends CanvasDocLike>(input: Readonl
   current: T
   /** 外部新增、但过不了连线总闸的边（调用方想告诉用户 / 模型就接这个）。 */
   onRejectedEdges?: (rejected: readonly RejectedEdge[]) => void
+  /**
+   * 外部新增、且过了连线总闸的边——也就是这次写入里真正「连了线」的那几条（已在画布上没动过的旧边、明确标成「放回」的边都不算）。
+   * 渲染层据此对目标节点做「连线手势之后跟着变的东西」（store/canvasConnectDerivations）；盘上外部写不传它。
+   */
+  onAdmittedEdges?: (admitted: readonly EdgeRecord[]) => void
   /** 撤销 / 放回：这些边是把原来就有的边放回来（恢复语义，与 UI 的 restoreGraph 一致），不当「外部新增」过闸。 */
   restoredEdgeIds?: readonly string[]
 }>): T {
@@ -92,6 +97,8 @@ export function mergeExternalCanvasWrite<T extends CanvasDocLike>(input: Readonl
     next: connected as unknown as EdgeRecord[],
   })
   if (verdict.rejected.length) input.onRejectedEdges?.(verdict.rejected)
+  const admitted = verdict.edges.filter((edge) => !known.has(edge.id))
+  if (admitted.length) input.onAdmittedEdges?.(admitted)
   // 被拒的边若原本就在画布上（外部想把它改成非法），回到画布上的原样，不整条丢掉。
   const edges = verdict.rejected.length
     ? connected.flatMap((edge) => {

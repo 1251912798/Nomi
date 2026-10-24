@@ -1,0 +1,243 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-23-nightly-build-gate",
+  "problem_type": "CI workflow writes untracked output into the repository tree after the build stamp was taken, so the stamp's source identity drifts",
+  "symptom": "Nightly Walkthroughs on 2026-10-22 failed 307 of 335 walks; 292 of them died within 1-2 seconds in assertFreshBuild before Electron launched. The workflow had never been green since 2026-10-08.",
+  "direct_cause": "The nightly batch step ran `pnpm run build` (stamping the source identity), then created nightly-walks/ and wrote result/log files into the repository root. nightly-walks/ was not ignored, and sourceIdentity hashes `git add -A`, so the identity no longer matched the stamp as soon as the first walk started.",
+  "class_root": "Any CI step that writes into the repository tree after the build changes the build-stamp source identity, and nothing forced workflow outputs into ignored paths or ran the runner's own freshness check before starting hundreds of walks.",
+  "affected_population": [
+    "Nightly walks job (4 batches)",
+    "Nightly packaged-mac job (dist:mac:dir verifies the stamp)",
+    "Any future workflow job that builds, then writes outputs into the repository root"
+  ],
+  "scope_paths": [
+    ".github/workflows/nightly-walkthroughs.yml",
+    ".gitignore",
+    "scripts/nightly-build-gate.mjs",
+    "scripts/nightly-build-gate.node-test.mjs",
+    "scripts/nightly-walk-summary.mjs",
+    "scripts/nightly-workflow-outputs.node-test.mjs",
+    "scripts/package-build-stamp.mjs"
+  ],
+  "entry_points": [
+    "nightly walks batch job",
+    "nightly packaged-mac job",
+    "nightly report summary"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The build stamp and its source identity are Nomi's own build-freshness invariant; no third-party behavior decides which untracked files count.",
+  "detected_by": "ci",
+  "recurrence_check_on": "2026-11-23",
+  "invariants": [
+    "Every file or directory the nightly workflow writes into the repository tree is ignored by .gitignore and does not change sourceIdentity.",
+    "Each nightly job runs the same package-build-stamp verify as walk launch before starting walks, and a failure is recorded as a build-gate failure without launching any walk."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/nightly-workflow-outputs.node-test.mjs",
+    "tests": [
+      "scripts/nightly-workflow-outputs.node-test.mjs",
+      "scripts/nightly-build-gate.node-test.mjs"
+    ],
+    "why": "The outputs test extracts every write target from the workflow YAML and checks it against the real .gitignore, so a new output directory added without ignoring it fails before merge."
+  },
+  "doors": [
+    {
+      "kind": "read",
+      "path": "scripts/launch-build-gate.node-test.mjs",
+      "symbol": "verifyBuild"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/nightly-build-gate.node-test.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/nightly-workflow-outputs.node-test.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "verifyBuild"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/package-build-stamp.node-test.mjs",
+      "symbol": "verifyBuild"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/package-build-stamp.node-test.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/package-build-stamp.node-test.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/perf-scenarios.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "tests/system/mcp-real-client.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/_launchApp.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/_mcpJourney.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/_modelIntegrationHarness.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/_paidRun.mjs",
+      "symbol": "verifyBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/mcp-apps-host-render.e2e.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/memory.e2e.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/build-electron.mjs",
+      "symbol": "invalidateBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/nightly-build-gate.node-test.mjs",
+      "symbol": "stampedBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/nightly-workflow-outputs.node-test.mjs",
+      "symbol": "stampedBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "invalidateBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "stampedBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/package-build-stamp.node-test.mjs",
+      "symbol": "stampedBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/package-build-stamp.node-test.mjs",
+      "symbol": "invalidateBuild"
+    }
+  ],
+  "door_reduction": {
+    "before": 19,
+    "after": 23,
+    "why_not": "Counted with `node scripts/door-map.mjs --write=stampedBuild,invalidateBuild --read=sourceIdentity,verifyBuild,assertFreshBuild --roots=src,electron,scripts,tests,.github --include-tests`: src and electron have no doors; origin/main had 19 doors in scripts and tests and this change adds 4, all inside the two new regression tests, which exercise stampedBuild and sourceIdentity on a throwaway fixture repository rather than on the real stamp. No production door is added or removed: the nightly self-check reaches the stamp through the existing `package-build-stamp.mjs verify` command line (the same entry dist and dist:mac:dir use), and the shared launch boundary tests/ux/_launchApp.mjs is unchanged. The remaining doors (the stamp module, the build wrapper, the perf driver and the walk and e2e launch helpers that call assertFreshBuild) run in separate processes and must stay independently callable."
+  },
+  "generality_proof": "The test derives write targets from the workflow itself (mkdir, redirects, tee, log assignments, summary arguments, artifact paths), so adding an output directory to either job without ignoring it turns the test red; mutation check: removing the .gitignore entries fails it.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/nightly-build-gate.mjs",
+      "symbol": "runBuildGate",
+      "responsibility": "Run the same package-build-stamp verify as walk launch before any nightly walk or packaged smoke starts; on failure append one build-gate row and return non-zero so the job stops without launching a walk."
+    },
+    {
+      "path": "scripts/nightly-workflow-outputs.node-test.mjs",
+      "symbol": "夜跑工作流写文件的每个目标都被 .gitignore 忽略，写进去后 sourceIdentity 不变（防输出目录漂移身份）",
+      "responsibility": "Reject any nightly workflow output path that is not ignored by .gitignore, and prove that writing into the ignored paths leaves sourceIdentity unchanged."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": ".github/workflows/nightly-walkthroughs.yml",
+      "entry_point": "jobs.walks.steps.Run non-paid walkthrough batch",
+      "disposition": "enforced",
+      "evidence": "nightly-walks/ is ignored and a build self-check runs before the loop."
+    },
+    {
+      "path": ".github/workflows/nightly-walkthroughs.yml",
+      "entry_point": "jobs.packaged-mac.steps.Package macOS app and run packaged smoke",
+      "disposition": "enforced",
+      "evidence": "Same output directory, now ignored; same build self-check runs first."
+    },
+    {
+      "path": ".github/workflows/nightly-walkthroughs.yml",
+      "entry_point": "jobs.report.steps.Publish summary and update issue",
+      "disposition": "enforced",
+      "evidence": "nightly-results and nightly-summary.md are ignored. This PR leaves the summary script unchanged (PR-2 gives build-gate failures their own column); until then a build-gate failure is listed there as a failed row named build-gate with exit 97 and its log path."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any workflow job that writes outputs into the repository root after the build can reproduce the same stamp mismatch.",
+    "same_class_scan": [
+      "Read every run step of .github/workflows/nightly-walkthroughs.yml for mkdir, redirect, tee and artifact paths.",
+      "Ran node scripts/door-map.mjs assertFreshBuild and nightly-walk-summary; no src or electron doors.",
+      "Ran node scripts/door-map.mjs --write=stampedBuild,invalidateBuild --read=sourceIdentity,verifyBuild,assertFreshBuild --roots=src,electron,scripts,tests,.github --include-tests: no src or electron doors, 23 doors in scripts and tests (origin/main: 19), recorded in doors."
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/nightly-workflow-outputs.node-test.mjs",
+    "invariant": "Nightly workflow outputs are ignored by .gitignore and never change sourceIdentity.",
+    "failure_mode": "node:test fails listing the unignored output targets before merge.",
+    "exception_policy": "none",
+    "strategy": "Ignore the output roots (structure), assert them from the workflow itself (gate), and self-check the build before walks start (detection with git status printed).",
+    "artifacts": [
+      ".github/workflows/nightly-walkthroughs.yml",
+      ".gitignore",
+      "scripts/nightly-build-gate.mjs",
+      "scripts/nightly-workflow-outputs.node-test.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/nightly-build-gate.node-test.mjs",
+    "scripts/nightly-workflow-outputs.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/nightly-workflow-outputs.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The nightly workflow had no build self-check and no output-ignore rule before this change, so there is no old implementation to delete; nothing parallel was added, and outputs are ignored through .gitignore rather than special-cased in the stamp."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency is involved.",
+    "exit_criteria": []
+  },
+  "migration": "None.",
+  "residual_risks": [
+    "Whether the fix clears the CI failures is only confirmed by a workflow_dispatch run; local reproduction is at the sourceIdentity level.",
+    "About 150 long-standing red walks (product and environment) are untouched; PR-3 triages them."
+  ]
+}

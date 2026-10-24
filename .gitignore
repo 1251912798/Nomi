@@ -192,3 +192,10 @@ docs/evidence/**/FAIL-*.png
 
 # Astro 教程站（marketing-docs）
 .astro/
+
+# 夜跑工作流的输出（走查日志 / 结果表 / 汇总）。构建戳的源码身份用 `git add -A` 算，未忽略的输出目录会在
+# build 之后让身份漂移，把整夜走查拦在 assertFreshBuild（10-22：335 条挂 292）。工作流新增输出目录必须在这里登记，
+# scripts/nightly-workflow-outputs.node-test.mjs 会核。
+/nightly-walks/
+/nightly-results/
+/nightly-summary.md

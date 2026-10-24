@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { commonRatioSortKey, preferredVideoAspect, readNodeAspectRatio } from "./aspectRatio";
+import { collectInputAspectRatios, commonRatioSortKey, isAspectInputEdgeMode, preferredVideoAspect, readNodeAspectRatio } from "./aspectRatio";
 import { normalizeAspectRatioToWH, parseAspectRatioValue } from "../../../../electron/shared/aspectRatioValue";
-import type { GenerationCanvasNode } from "../model/generationCanvasTypes";
+import type { GenerationCanvasEdge, GenerationCanvasEdgeMode, GenerationCanvasNode } from "../model/generationCanvasTypes";
 
 describe("parseAspectRatioValue", () => {
   it("解析标准 W:H 比例", () => {
@@ -118,5 +118,24 @@ describe("commonRatioSortKey（常用比例排最前）", () => {
       { v: "1024x1536", l: "9:16" },
     ];
     expect(sort(items)).toEqual(["9:16", "1:1", "3:2"]);
+  });
+});
+
+// 比例规则「看哪些输入」只有一个判据：采集上游比例（collectInputAspectRatios）和连线时要不要重算（store/canvasConnectDerivations）
+// 都问 isAspectInputEdgeMode。两边不许各列一张清单——这里逐个边语义核它们数的是同一批。
+describe("isAspectInputEdgeMode（比例规则会数的输入边：首帧 / 尾帧 / 参考）", () => {
+  const MODES: ReadonlyArray<GenerationCanvasEdgeMode | undefined> = [
+    "reference", "first_frame", "last_frame", "style_ref", "character_ref", "composition_ref", undefined,
+  ];
+  const src = { id: "src", kind: "image", meta: { aspect_ratio: "9:16" } } as unknown as GenerationCanvasNode;
+  const dst = { id: "dst", kind: "video", meta: {} } as unknown as GenerationCanvasNode;
+
+  it.each(MODES.map((mode) => [mode ?? "(没有 mode)", mode] as const))("边语义 %s：collectInputAspectRatios 数它 ⟺ isAspectInputEdgeMode 认它", (_label, mode) => {
+    const edge = { id: "e", source: "src", target: "dst", ...(mode ? { mode } : {}) } as GenerationCanvasEdge;
+    expect(collectInputAspectRatios("dst", [edge], [src, dst]).length === 1).toBe(isAspectInputEdgeMode(mode));
+  });
+
+  it("认的恰好是首帧 / 尾帧 / 参考；角色参考、风格参考、构图参考、没有 mode 都不认", () => {
+    expect(MODES.filter((mode) => isAspectInputEdgeMode(mode))).toEqual(["reference", "first_frame", "last_frame"]);
   });
 });
