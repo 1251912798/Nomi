@@ -1,0 +1,36 @@
+{
+  "name": "库条目删除前取完整快照、撤销按同一份快照原样恢复",
+  "subject": "library.entry-delete-undo",
+  "lifecycle": "session",
+  "authority_kind": "gateway",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/promptLibrary/userPromptStore.ts",
+    "symbol": "deleteUserPrompt"
+  },
+  "write_api": [
+    {
+      "path": "electron/promptLibrary/userPromptStore.ts",
+      "symbol": "deleteUserPrompt"
+    },
+    {
+      "path": "src/workbench/api/promptLibraryApi.ts",
+      "symbol": "deleteUserPromptWithSnapshot"
+    },
+    {
+      "path": "src/workbench/skillLibrary/deleteSkillWithUndo.ts",
+      "symbol": "deleteSkillWithUndo"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "electron/promptLibrary/promptLibraryIpc.ts",
+    "src/workbench/promptLibrary/useUserPrompts.ts",
+    "src/workbench/promptLibrary/PromptLibraryPanel.tsx",
+    "src/workbench/skillLibrary/SkillLibraryPanel.tsx"
+  ],
+  "since": "2026-10-24",
+  "notes": "提示词和技能的可撤销删除都必须先取得非空、完整、可回传的删除前快照，再执行删除；撤销只能把同一份快照交回各自 owner。按 R33.4，write_api 只登记合同声明的三个共享边界；恢复侧 restoreUserPrompt 虽在主进程 owner 文件内写回状态，但不是合同新增的独立共享边界，渲染层同名函数只是 IPC/API 适配器，若另列会被形状门岗误判为第二写口。合同 docs/fixes/2026-10-24-prompt-library-undo.root-cause.json。"
+}
