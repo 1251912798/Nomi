@@ -436,9 +436,11 @@ export const zhAgentPanelV4 = {
   // 复数走 i18next 的 `_one` / `_other`。zh 两条同文，键必须成对存在——key-parity 门岗要求 zh/en 键集相同。
   spendParamsTitle_one: '生成这段视频？',
   spendParamsTitle_other: '生成这些视频？',
+  spendParamsTitleSingle: '生成这段视频？',
   // 同一张卡也用来确认图片生成。标题不许一律写「视频」——用户看着一张图片草稿被说成视频，正要付钱时会以为它搞错了。
   spendParamsTitleImage_one: '生成这张图片？',
   spendParamsTitleImage_other: '生成这些图片？',
+  spendParamsTitleImageSingle: '生成这张图片？',
   /** 标题旁小字：这几段的模型是 Nomi 替你挑的（节点里换过模型就不再这么说）。 */
   spendParamsModelPicked: 'Nomi 选的',
   /** 逐镜折叠口（只在各镜价格不同时出现，D5）。 */
@@ -995,8 +997,10 @@ export const enAgentPanelV4 = {
   slotDeviationSkip: 'Skip',
   spendParamsTitle_one: 'Generate this video?',
   spendParamsTitle_other: 'Generate these videos?',
+  spendParamsTitleSingle: 'Generate this video?',
   spendParamsTitleImage_one: 'Generate this image?',
   spendParamsTitleImage_other: 'Generate these {{count}} images?',
+  spendParamsTitleImageSingle: 'Generate this image?',
   spendParamsModelPicked: 'Nomi picked',
   spendParamsPerItem: 'Per shot',
   spendConfirmRemainingImage_one: 'Generate {{count}} images',

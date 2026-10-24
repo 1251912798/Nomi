@@ -43,7 +43,7 @@ describe('付费卡投影 · 等人决定', () => {
   it('单段：一张指向元素 + 「生成」；页脚「1 段」（板 ① 那一行在，只是不印金额），不挂「不生成 ×」', () => {
     const card = project([shot(1)], [facts(1)])
     expect(card.single).toBe(true)
-    expect(card.slot.title).toBe('agentPanelV4.spendParamsTitle(count=1)')
+    expect(card.slot.title).toBe('agentPanelV4.spendParamsTitleSingle(count=1)')
     expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.generate')
     expect(card.slot.totalLead).toBe('agentPanelV4.spendCard.totalVideo(count=1)')
     expect(card.slot.price).toBeUndefined()
@@ -278,7 +278,7 @@ describe('付费卡投影 · 托管披露、刹车、空卡', () => {
     for (const [reason, key] of [['retry-limit', 'brakeRetry'], ['out-of-plan', 'brakeOutOfPlan'], ['stopped', 'brakeStopped']] as const) {
       const card = project([shot(1)], [facts(1)], {}, { brake: { reason } })
       expect(card.slot.summary).toBe(`agentPanelV4.${key}.title`)
-      expect(card.slot.title).toBe('agentPanelV4.spendParamsTitle(count=1)')
+      expect(card.slot.title).toBe('agentPanelV4.spendParamsTitleSingle(count=1)')
     }
     const failed = project([shot(1, { offer: 'unknown' })], [facts(1)], {}, { brake: { reason: 'retry-limit' } })
     expect(failed.slot.summary).toBe('agentPanelV4.brakeRetry.title')

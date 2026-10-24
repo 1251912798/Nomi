@@ -57,7 +57,9 @@ export const MONEY = /[¥￥$€£]|\d+\.\d{2}/
 export const say = (locale, key, values = {}) => uiTextWith(locale, key, values)
 
 /** 卡的标题那一句（「生成这 N 段视频？」/「生成这 N 张图片？」）。 */
-export const cardTitle = (locale, count, kind) => say(locale, kind === 'video' ? 'agentPanelV4.spendParamsTitle' : 'agentPanelV4.spendParamsTitleImage', { count })
+export const cardTitle = (locale, count, kind) => say(locale, count === 1
+  ? (kind === 'video' ? 'agentPanelV4.spendParamsTitleSingle' : 'agentPanelV4.spendParamsTitleImageSingle')
+  : (kind === 'video' ? 'agentPanelV4.spendParamsTitle' : 'agentPanelV4.spendParamsTitleImage'), { count })
 /** 主按钮那一句：单段「生成」，多段「全部生成（N）」，节点上点过 ↑ 之后「生成剩下 N 段 / 张」。 */
 export function primaryLabel(locale, { count, kind, remaining = false, single = false }) {
   if (single || count === 0) return say(locale, 'agentPanelV4.spendCard.generate')

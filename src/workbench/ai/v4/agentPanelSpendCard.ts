@@ -289,6 +289,7 @@ export function projectSpendCard(
   const count = sendable.length
   const asked = count + pick('blocked', 'absent').filter((entry) => entry.shot.offer === 'undecided').length
   const titleKey = saysVideo ? 'agentPanelV4.spendParamsTitle' : 'agentPanelV4.spendParamsTitleImage'
+  const singleTitleKey = saysVideo ? 'agentPanelV4.spendParamsTitleSingle' : 'agentPanelV4.spendParamsTitleImageSingle'
   // 「Nomi 选的」只说这一下要交的那几镜（还没决定、节点在画布上）：每一镜节点此刻选的模型都还是 Agent 起草时选的那个。
   const about = pick('sendable', 'blocked')
   const pickedByNomi = about.length > 0 && about.every((entry) => entry.facts.selected
@@ -316,7 +317,7 @@ export function projectSpendCard(
   return {
     slot: Object.freeze({
       kind: 'spend' as const,
-      title: asked > 0 ? t(titleKey, { count: asked }) : t('agentPanelV4.spendCard.titleNothing'),
+      title: asked > 0 ? t(asked === 1 ? singleTitleKey : titleKey, { count: asked }) : t('agentPanelV4.spendCard.titleNothing'),
       ...brake,
       ...(allKnown ? { totalLead: t(saysVideo ? 'agentPanelV4.spendCard.totalVideo' : 'agentPanelV4.spendCard.totalImage', { count }) } : {}),
       ...(allKnown && !uniform
