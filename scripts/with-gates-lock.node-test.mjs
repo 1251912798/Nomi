@@ -284,6 +284,88 @@ test('termination reaches the foreground process group and releases the lock', {
   assert.match(second.lines.join(''), /RELEASED/)
 })
 
+test('execute installs SIGTERM handling before spawning the child', { timeout: 15000 }, async () => {
+  const observed = await probe(`${loadWrapper}
+import sys, tempfile
+
+fd, path = tempfile.mkstemp()
+os.close(fd)
+try:
+    with open(path, 'w+') as file:
+        lock.ensure_lock_byte(file)
+        real_popen = lock.subprocess.Popen
+        observed = {}
+
+        def hooked_popen(*args, **kwargs):
+            child = real_popen(*args, **kwargs)
+            observed['handler_installed'] = signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
+            return child
+
+        lock.subprocess.Popen = hooked_popen
+        owner = {'pid': os.getpid(), 'cwd': os.getcwd(), 'token': 'probe'}
+        observed['code'] = lock.execute([sys.executable, '-c', 'pass'], False, file, 'probe', owner)
+finally:
+    os.unlink(path)
+print(json.dumps(observed))`)
+  assert.deepEqual(observed, { handler_installed: true, code: 0 })
+})
+
+test('a SIGTERM during Popen is deferred until the child group can be killed', { timeout: 15000 }, async () => {
+  const observed = await probe(`${loadWrapper}
+import sys, tempfile
+
+fd, path = tempfile.mkstemp()
+os.close(fd)
+try:
+    with open(path, 'w+') as file:
+        lock.ensure_lock_byte(file)
+        assert lock.try_lock(file)
+        real_popen = lock.subprocess.Popen
+        observed = {}
+
+        def hooked_popen(*args, **kwargs):
+            child = real_popen(*args, **kwargs)
+            observed['pid'] = child.pid
+            os.kill(os.getpid(), signal.SIGTERM)
+            return child
+
+        lock.subprocess.Popen = hooked_popen
+        owner = {'pid': os.getpid(), 'cwd': os.getcwd(), 'token': 'probe'}
+        observed['code'] = lock.execute(
+            [sys.executable, '-c', 'import time; time.sleep(2)'],
+            False,
+            file,
+            'probe',
+            owner,
+        )
+        observed['child_alive'] = lock.alive(observed['pid'])
+        try:
+            os.killpg(observed['pid'], 0)
+        except ProcessLookupError:
+            observed['group_alive'] = False
+        else:
+            observed['group_alive'] = True
+        lock.unlock(file)
+    takeover = real_popen(
+        [sys.executable, ${JSON.stringify(wrapper)}, '--', sys.executable, '-c', "print('TAKEOVER', flush=True)"],
+        env={**os.environ, 'NOMI_GATES_LOCK_PATH': path, 'NOMI_GATES_LOCK_TOKEN': ''},
+        stdout=lock.subprocess.PIPE,
+        stderr=lock.subprocess.PIPE,
+        text=True,
+    )
+    stdout, stderr = takeover.communicate(timeout=10)
+    observed['takeover_code'] = takeover.returncode
+    observed['takeover_output'] = stdout
+finally:
+    os.unlink(path)
+print(json.dumps(observed))`)
+  assert.equal(observed.code, 143)
+  assert.equal(observed.child_alive, false)
+  assert.equal(observed.group_alive, false)
+  assert.equal(observed.takeover_code, 0, observed.takeover_output)
+  assert.match(observed.takeover_output, /TAKEOVER/)
+})
+
 // Liveness is a read. It answers for real pids and refuses anything that is not
 // one, because pid 0 means "my own group" to both kill(2) and the Windows
 // console API — the blast radius of a typo is the caller's own session.
