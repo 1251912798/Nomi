@@ -9,6 +9,9 @@
 //
 // 用它的走查：agent-spend-card / -generate-remaining / -stop-midway / -confirm-then-close / -confirm-executes / -per-shot /
 // -priced-card / -unknown-price / -full-auto / -video-landing，以及 _agentSpendScopeJourney、_spendStopRounds、_agentVideoLandingSteps。
+import fs from 'node:fs'
+import path from 'node:path'
+
 import { clickOrFail, expect } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { flattenRequestText } from './agent-runtime-fixture.mjs'
@@ -28,8 +31,8 @@ export const CARD_PER_SHOT = '[data-v4-block="price-per-item"]'
 export const POINTER = '[data-node-pointer]'
 export const pointerOf = (nodeId) => `[data-node-pointer-id="${nodeId}"]`
 /**
- * 像人那样指着这一镜的缩略图（画面框正中）。不用整个指向元素的几何中心：那一点落在标题行和画面之间，
- * 正压着悬停才露出来的「不生成 ×」上沿（它挂在画面框右上角）——人眼看着缩略图点，点的是画面中间。
+ * 像人那样指着这一镜的缩略图（画面框正中）。不用整个指向元素的几何中心：那一点落在标题行和画面之间的缝上，
+ * 不是人会点的地方（悬停才露出来的「不生成 ×」归组、挂在标题行右端）——人眼看着缩略图点，点的是画面中间。
  */
 export const pointerFace = (scope, nodeId) => scope.locator(`${pointerOf(nodeId)} [data-node-pointer-frame]`).first()
 export const GROUP_SUMMARY = '[data-node-pointer-group-summary]'
@@ -148,6 +151,41 @@ export function readRun(win, projectId, runId) {
     const read = await window.nomiDesktop.productionRuns.read(pid, rid)
     return read?.run ?? read ?? null
   }, { pid: projectId, rid: runId })
+}
+
+function readJsonFile(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch { return null }
+}
+
+function readJsonLinesFile(file) {
+  if (!fs.existsSync(file)) return []
+  return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).flatMap((line) => {
+    try { return [JSON.parse(line)] } catch { return [] }
+  })
+}
+
+/**
+ * 这一次出价每一镜的画布单镜 Run 上，批准用的那张收据：谁决定的（`decidedBy`）、哪个窗口哪个 frame 点的（`humanActor`）。
+ * 设计卡 §四 第 3 条：卡上「生成」和节点 ↑ 走同一个签发口（`nomi:tasks:canvas-submit` 按发送方铸手势），同一个窗口、
+ * 同一个 frame——两边收据的 `humanActor` 应逐字相同，这一条要在真 App 里对照，不靠读码。
+ * 认领记录（`shots[].claim`：`via` 是节点上点的还是卡交出去的、`canvasRunId` 是哪一份画布单镜 Run）走只读桥；
+ * 收据只读盘：项目 `.nomi/runs/<canvasRunId>/approvals.ndjson` 的 receiptId → 能力核收据库 `<capabilityDir>/approval-receipts.json`。
+ */
+export async function shotGestureReceipts(win, { projectId, projectRoot, capabilityDir, operationId }) {
+  const run = await readRun(win, projectId, operationId)
+  const store = readJsonFile(path.join(capabilityDir, 'approval-receipts.json'))
+  const receipts = new Map(Object.entries(store?.receipts ?? {}).map(([key, record]) => [record?.receipt?.receiptId ?? key, record?.receipt ?? null]))
+  return (run?.generationPlan?.shots ?? []).map((shot) => {
+    const canvasRunId = shot.claim?.canvasRunId ?? null
+    const approvals = canvasRunId ? readJsonLinesFile(path.join(projectRoot, '.nomi', 'runs', canvasRunId, 'approvals.ndjson')) : []
+    return {
+      shotId: shot.shotId, via: shot.claim?.via ?? null, canvasRunId,
+      receipts: approvals.filter((approval) => approval.receiptId).map((approval) => {
+        const receipt = receipts.get(approval.receiptId)
+        return { decidedBy: receipt?.decidedBy ?? 'unknown', humanActor: receipt?.humanActor ?? null }
+      }),
+    }
+  })
 }
 
 /** 这一份计划的镜头（宿主的 shotId、标题、提示词，按计划顺序）。 */

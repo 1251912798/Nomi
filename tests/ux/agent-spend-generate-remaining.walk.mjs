@@ -7,17 +7,21 @@
 //   · 卡上「不生成 ×」去掉一段 → 「生成剩下 1 段」；再点「恢复」→ 回到 2（去掉的不算在 N 里，board:SpendCardQ1/card.pointer.exclude）；
 //   · 「生成剩下 2 段」：只交那两段（第 1 段不再发一次），供应商一共收到三笔、各一次；卡收起来，出价按「已交给画布」关，
 //     回执照实说：两段是卡上交出去的、第 1 段是画布上接走的；对话流那一行指着三段（画布接走的也是这一次生成的）。
-//   · 中英各一遍；每一遍都核「卡上摘要 = 节点参数 = 假上游收到的请求体」。
+//   · 中英各一遍；每一遍都核「卡上摘要 = 节点参数 = 假上游收到的请求体」；
+//   · 节点 ↑ 那一段和卡上交出去的两段，批准收据都是人点的手势、`humanActor` 逐字相同（同一个窗口、同一个 frame 铸的，
+//     设计卡 §四 第 3 条要在真 App 里对照）。
 //
 // 「正在发出 k/N」与中途「先不发了」在 agent-spend-stop-midway.walk.mjs；卡本身每一态的长相在 design-lab-spend-card.walk.mjs。
 // 只有远端供应商是 loopback 夹具（零额度）；SDK、IPC、ProductionRun、渲染层、落盘全是真的。不灌 store、不直调桥。
+import path from 'node:path'
+
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   CARD_TITLE, EXCLUDE, RECEIPT_POINTERS, RESTORE,
   armCanvasBridges, canvasRunsOf, cardFacts, cardTitle, createPresenter, generateOnNode, nodeParams, offerFacts, pointerAway,
-  pointerFace, pointerOf, pressPrimary, primaryLabel, say, shotNodes, wireParams,
+  pointerFace, pointerOf, pressPrimary, primaryLabel, say, shotGestureReceipts, shotNodes, wireParams,
 } from './_spendCardWalk.mjs'
 import { CANVAS_PANEL, createRuntimeWalk, openCanvas, recorded } from './agent-runtime-walk-support.mjs'
 
@@ -49,7 +53,7 @@ async function snapCard(walk, win, card, label) {
   await card.screenshot({ path: file.replace(/\.png$/, '-card.png') })
 }
 
-async function remainingRound(walk, win, projectId, locale) {
+async function remainingRound(walk, win, { projectId, projectRoot }, locale) {
   const tag = locale === 'en' ? 'en' : 'zh'
   const round = await present(walk, win, {
     locale, kind: 'video',
@@ -108,6 +112,14 @@ async function remainingRound(walk, win, projectId, locale) {
   expect(offer.handOvers.map((entry) => entry.shotId).sort(), `${tag}：卡上交出去的只有第 2、3 段`).toEqual([after[1].shotId, after[2].shotId].sort())
   expect(offer.productionJobs, `${tag}：制作 Run 自己一笔作业都没派`).toBe(0)
   expect((await canvasRunsOf(win, projectId, round.operationId)).every((run) => run.jobs.length === 1), `${tag}：交出去的每一段一个画布单镜 Run、一笔作业`).toBe(true)
+  // 设计卡 §四 第 3 条（真 App 对照，不靠读码）：节点上点 ↑ 的第 1 段和卡上交出去的第 2、3 段，收据是同一个窗口、同一个 frame 铸的。
+  const gestures = await shotGestureReceipts(win, { projectId, projectRoot, capabilityDir: path.join(walk.report.tempRoot, 'capability'), operationId: round.operationId })
+  expect(gestures.map((entry) => entry.via), `${tag}：第 1 段是节点上点的，第 2、3 段是卡上交出去的`).toEqual(['node', 'handover', 'handover'])
+  expect(gestures.map((entry) => entry.receipts.length), `${tag}：三段各一张收据`).toEqual([1, 1, 1])
+  expect(gestures.flatMap((entry) => entry.receipts.map((receipt) => receipt.decidedBy)), `${tag}：三张都是人点的手势`).toEqual(['human:gesture', 'human:gesture', 'human:gesture'])
+  const actors = [...new Set(gestures.flatMap((entry) => entry.receipts.map((receipt) => receipt.humanActor)))]
+  expect(actors, `${tag}：节点 ↑ 和卡上「生成」铸的收据，humanActor 逐字相同`).toHaveLength(1)
+  expect(actors[0], `${tag}：humanActor 是这个窗口里的手势`).toMatch(/^web_contents:\d+:\d+:/)
   const receiptRow = win.locator(`${CANVAS_PANEL} ${RECEIPT_POINTERS}`).last()
   await expect(receiptRow, `${tag}：对话流那一行指着这一次生成的三段（画布接走的也算）`).toContainText(say(locale, 'agentPanelV4.spendCard.receiptSentVideo', { count: 3 }), { timeout: stationTimeout() })
   walk.fixture.releaseVideos()
@@ -116,7 +128,10 @@ async function remainingRound(walk, win, projectId, locale) {
     message: `${tag}：三段都出了结果`, timeout: stationTimeout({ operations: 8 }),
   }).toEqual(after.map((shot) => `${shot.title}=success`))
   await expect(receiptRow, `${tag}：三段都出了结果，那一行说「已生成」`).toContainText(say(locale, 'agentPanelV4.spendCard.receiptGeneratedVideo', { count: 3 }), { timeout: stationTimeout() })
-  return { requests: requests.map(({ shotId, aspect, duration, resolution }) => ({ shotId, aspect, duration, resolution })), handOvers: offer.handOvers }
+  return {
+    requests: requests.map(({ shotId, aspect, duration, resolution }) => ({ shotId, aspect, duration, resolution })), handOvers: offer.handOvers,
+    gestureReceipts: gestures.map((entry) => ({ shotId: entry.shotId, via: entry.via, receipts: entry.receipts })),
+  }
 }
 
 function escape(text) {
@@ -128,20 +143,21 @@ let failure
 try {
   const { win } = await walk.start({ first: true })
   await armCanvasBridges(win)
-  const { projectId } = await walk.newProject()
+  const project = await walk.newProject()
   await openCanvas(win)
-  walk.report.zh = await remainingRound(walk, win, projectId, 'zh-CN')
+  walk.report.zh = await remainingRound(walk, win, project, 'zh-CN')
 
   await win.evaluate(() => localStorage.setItem('nomi:locale:v1', 'en'))
   await win.reload()
   await expect(win.locator(`${CANVAS_PANEL} [data-v4-control="input"]`), '换成英文之后回到画布、Agent 面板的输入框在').toBeVisible({ timeout: stationTimeout({ operations: 8 }) })
-  walk.report.en = await remainingRound(walk, win, projectId, 'en')
+  walk.report.en = await remainingRound(walk, win, project, 'en')
 
   expect(walk.fixture.videos.length, '整个过程两轮各三笔：节点上点 ↑ 一笔 + 「生成剩下 2 段」两笔').toBe(6)
   walk.report.verified = [
     'node-up-takes-the-shot-card-says-generate-remaining', 'excluded-shot-not-counted-restore-brings-it-back',
     'generate-remaining-sends-only-the-rest-each-once', 'card-summary-node-wire-equal', 'offer-closes-handed-to-canvas',
     'receipt-says-taken-on-canvas-and-generating', 'receipt-row-points-at-all-three',
+    'node-up-and-card-generate-mint-the-same-human-actor',
   ]
 } catch (error) {
   failure = error

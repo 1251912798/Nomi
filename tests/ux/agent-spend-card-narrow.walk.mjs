@@ -15,7 +15,7 @@
 // 中文 · 浅色一轮，英文 · 暗色一轮（截图两轨）。只有远端供应商是 loopback 夹具（零额度）；这条走查一笔都不发（最后取消卡）。
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { AGENT_PANEL, COLLAPSE_BUTTON } from './_shell.mjs'
+import { AGENT_PANEL, CANVAS_ADD_BAR, COLLAPSE_BUTTON } from './_shell.mjs'
 import {
   CARD_BODY, POINTER, armCanvasBridges, canvasHighlightOf, canvasNode, cardTitle, createPresenter, pointerAway, pointerFace,
   pointerOf, say, seenHighlights, shotNodes, watchCanvasHighlights,
@@ -34,7 +34,6 @@ const A = {
 const CANVAS_CELL = '.workbench-generation__canvas'
 const STAGE = '.generation-canvas-v2__stage'
 const FLOAT = '[data-agent-float="generation"]'
-const ADD_NODE_BAR = '.generation-canvas-v2-toolbar'
 const RETURN_PILL = '[data-node-pointer-return-dock="generation"] [data-node-pointer-return]'
 /** 「回到对话」和正下方那块停靠区之间留的缝（NodePointerReturnDock 的 RETURN_DOCK_CLEARANCE）。 */
 const CLEARANCE = 12
@@ -187,7 +186,7 @@ async function expectLocatedClear(card, nodeId, label) {
 async function expectPillPlacement(win, label) {
   const pill = await rectOf(win, RETURN_PILL)
   const cell = await rectOf(win, CANVAS_CELL)
-  const bar = await rectOf(win, ADD_NODE_BAR)
+  const bar = await rectOf(win, CANVAS_ADD_BAR)
   expect(pill, `${label}：「回到对话」量得到`).toBeTruthy()
   expect(Math.abs((pill.left + pill.right) / 2 - (cell.left + cell.right) / 2), `${A.back}：「回到对话」在画布那一格的正中`).toBeLessThanOrEqual(2)
   if (bar && bar.right > pill.left && bar.left < pill.right) {
