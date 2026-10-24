@@ -406,6 +406,10 @@
       "reason": "Agent 对话投影的渲染层：视图模型、回执撤销、任务候选动作、失败话术——把 lane 的快照画成面板"
     },
     {
+      "path": "src/workbench/ai/pointer/",
+      "reason": "聊天里的指向元素（2026-10-23 D2 P1）：代表一个画布节点、长得和节点一样、点了定位过去——一个东西一个家的聊天端，所有聊天卡共用"
+    },
+    {
       "path": "src/workbench/ai/v4/agentPanelSpendCard*",
       "reason": "付费确认卡的领域呈现：报价、范围、逐镜修订"
     },

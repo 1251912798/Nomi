@@ -141,6 +141,7 @@ export { default as IconZoomScan } from '@tabler/icons-react/dist/esm/icons/Icon
 export { default as IconLayoutRows } from '@tabler/icons-react/dist/esm/icons/IconLayoutRows.mjs'
 export { default as IconLetterCase } from '@tabler/icons-react/dist/esm/icons/IconLetterCase.mjs'
 export { default as IconLink } from '@tabler/icons-react/dist/esm/icons/IconLink.mjs'
+export { default as IconLinkOff } from '@tabler/icons-react/dist/esm/icons/IconLinkOff.mjs'
 export { default as IconList } from '@tabler/icons-react/dist/esm/icons/IconList.mjs'
 export { default as IconListCheck } from '@tabler/icons-react/dist/esm/icons/IconListCheck.mjs'
 export { default as IconListDetails } from '@tabler/icons-react/dist/esm/icons/IconListDetails.mjs'

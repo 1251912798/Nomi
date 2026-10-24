@@ -1,0 +1,23 @@
+{
+  "id": "chat-node-pointer-hover-focus",
+  "feature": "聊天里的指向元素：悬停一个指向元素到画布上那个节点亮起（外壳 data-external-highlight=hover），点它到画布对焦完、节点闪一下；最坏 200 个节点的画布、一张卡 12 个指向元素",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "I200",
+    "--scenarios",
+    "pointer-hover-focus"
+  ],
+  "scale": "200 个有图节点的画布 + 一张卡 12 个指向元素（组指向露 3 格、展开后全露）",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 100,
+  "budgetStatus": "proposed",
+  "budgetBasis": "人对「指一下就亮」的感知阈值约 100ms（RAIL / Nielsen）；仓库默认「操作到可见反馈 ≤100ms，p95 ≤150ms」（docs/engineering/perf-scenarios.md）。悬停只重投前后被点名的两张卡（generationCanvasReactFlowAdapter.test 钉住对象身份），指向元素只订自己那一个节点（NodePointer.test 钉住改别的节点 0 次重渲），所以和画布总节点数无关，同一个预算；同类的「选中出生成框」200 节点基线 37ms",
+  "measurement": {
+    "state": "pending",
+    "reason": "第②步指向元素只在设计实验室，真 App 的聊天里还没有宿主可悬停 / 可点；第③步新付费卡接进聊天后，在 workbenchScenarios 里加 pointer-hover-focus（悬停卡上的指向元素 → 外壳亮、点它 → 对焦 + 闪）再量基线"
+  }
+}
