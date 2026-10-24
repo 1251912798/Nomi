@@ -1,0 +1,174 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-25-canvas-mode-follows-inputs",
+  "problem_type": "A generation node keeps a reference or edit mode after its last reference input is removed through a store or document write.",
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-25",
+  "symptom": "With the generation composer closed, disconnecting the last reference edge, deleting its source, or removing the last uploaded reference leaves the target in a reference/edit mode until the composer is mounted; submit-time readers can therefore see a mode that has no input.",
+  "direct_cause": "useRevertToTextMode ran only from a React effect in NodeParameterControls, while edge, node, Agent, import, recovery, undo and redo writes bypassed that component.",
+  "class_root": "The mode is a persisted projection of nodes, edges and reference slots but had no store-level invariant that reconciled every write boundary; promotion and empty-input reversion were split across different callers.",
+  "affected_population": [
+    "Image and video generation nodes in reference, character or edit modes whose last input is removed while the composer is closed",
+    "Projects restored from snapshots or document edits made by Agent, undo/redo, import or recovery paths"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/agent/referenceEdgeCapability.ts",
+    "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+    "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+    "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+    "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+    "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts",
+    "tests/ux/group-reference-direction.walk.mjs"
+  ],
+  "entry_points": [
+    "Canvas store writes: edge disconnect, node deletion, reference meta writes, Agent edits, document restore, external graph merge, undo/redo and event-tail recovery",
+    "Generation composer presentation and submit readers"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://react.dev/learn/you-might-not-need-an-effect",
+      "checked_at": "2026-10-25",
+      "purpose": "React recommends calculating derived state from existing state and moving event-caused writes to event/shared boundaries instead of an Effect."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://github.com/Comfy-Org/docs/blob/main/basic-concepts/nodes.mdx",
+      "checked_at": "2026-10-25",
+      "purpose": "ComfyUI documents connect and disconnect as graph operations on node inputs."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://docs.blender.org/manual/en/latest/interface/controls/nodes/editing.html",
+      "checked_at": "2026-10-25",
+      "purpose": "Blender documents dragging a link away as disconnecting the socket and restoring an unconnected input."
+    }
+  ],
+  "invariants": [
+    "After every store or document write, a target with live reference input is in a mode that can consume that input when the archetype provides one.",
+    "After every store or document write, a target in character, single or edit intent with no live reference input is in its text intent when the archetype provides one.",
+    "Mode correction is idempotent, uses the same archetype and slot rules for promotion and reversion, and does not create a second undo barrier."
+  ],
+  "doors": [
+    { "kind": "write", "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts", "symbol": "disconnectEdge" },
+    { "kind": "write", "path": "src/workbench/generationCanvas/agent/generationCanvasTools.ts", "symbol": "deleteNode" },
+    { "kind": "write", "path": "src/workbench/generationCanvas/agent/proposalUndo.ts", "symbol": "disconnectEdge" },
+    { "kind": "write", "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts", "symbol": "ReferenceWriteContext" },
+    { "kind": "write", "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx", "symbol": "updateNode" },
+    { "kind": "write", "path": "src/workbench/generationCanvas/agent/generationCanvasTools.ts", "symbol": "updateNode" },
+    { "kind": "write", "path": "src/workbench/capability/capabilityApplyHandler.ts", "symbol": "applyExternalGraph" },
+    { "kind": "write", "path": "src/workbench/project/workbenchProjectSession.ts", "symbol": "restoreSnapshot" },
+    { "kind": "write", "path": "src/workbench/generationCanvas/store/canvasDocumentCommit.ts", "symbol": "commit" },
+    { "kind": "write", "path": "src/workbench/generationCanvas/store/generationCanvasStore.ts", "symbol": "reconcileTargetModeForInputs" },
+    { "kind": "read", "path": "src/workbench/generationCanvas/agent/referenceEdgeCapability.ts", "symbol": "resolveModeForConnectedReferences" },
+    { "kind": "read", "path": "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts", "symbol": "textModeToReturnTo" },
+    { "kind": "read", "path": "src/workbench/generationCanvas/runner/generationRunController.ts", "symbol": "resolveModeForConnectedReferences" },
+    { "kind": "read", "path": "src/workbench/ai/v4/spendCardReferences.ts", "symbol": "resolveModeForConnectedReferences" },
+    { "kind": "read", "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts", "symbol": "reconcileTargetModeForInputs" }
+  ],
+  "door_reduction": {
+    "before": 13,
+    "after": 15,
+    "why_not": "The input-reducing doors remain required user, Agent and document entry points: canvasGraphActions.disconnectEdge owns graph gestures; generationCanvasTools and proposalUndo own Agent/proposal mutations; referenceWrites and NodeParameterControls own uploads/removals; capabilityApplyHandler and canvasDocumentCommit own external/restore/undo/recovery writes; workbenchProjectSession owns project load; existing submit and paid-card readers remain separate consumers. They now all converge through the store subscription and reconcileTargetModeForInputs, so no caller-specific mode branch survives."
+  },
+  "generality_proof": "The subscription observes the store's nodes/edges identity after every edit or document replacement and invokes the same reconciliation function for every node. That function derives promotion from live edge capabilities, reversion from resolved reference slots plus live reference intent edges, and applies one archetype switch with history:false. Therefore the result does not depend on which caller, UI mount, Agent tool, import format, undo direction or platform produced the write.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+      "symbol": "useGenerationCanvasStore.subscribe",
+      "responsibility": "Observe every nodes/edges store write, including document replacement, and run the mode invariant without requiring a mounted composer."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "reconcileTargetModeForInputs",
+      "responsibility": "Use the shared edge capability, reference-slot and text-mode rules to promote or revert a target idempotently."
+    }
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+    "tests": [
+      "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts"
+    ],
+    "why": "reconcileTargetModeForInputs owns the combined promotion and empty-input reversion rule; the store subscription is the all-writes trigger."
+  },
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "entry_point": "disconnectEdge",
+      "disposition": "enforced",
+      "evidence": "The store subscription runs after the edge array changes and the class test verifies the last edge removal reverts the mode."
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/generationCanvasTools.ts",
+      "entry_point": "Agent updateNode/deleteNode",
+      "disposition": "enforced",
+      "evidence": "Agent writes use the same store actions; the subscription covers meta changes and source deletion without a composer."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+      "entry_point": "commit",
+      "disposition": "enforced",
+      "evidence": "Restore, external merge, event-tail and rewind replace nodes/edges in the store and are observed by the same subscription."
+    },
+    {
+      "path": "src/workbench/generationCanvas/runner/generationRunController.ts",
+      "entry_point": "reconcileNodeModeWithConnectedReferences",
+      "disposition": "not-affected",
+      "evidence": "Submit-time reconciliation remains a defensive reader-side fallback and is unchanged; the store now makes the durable projection current earlier."
+    },
+    {
+      "path": "src/workbench/ai/v4/spendCardReferences.ts",
+      "entry_point": "placeSpendReferences",
+      "disposition": "not-affected",
+      "evidence": "The paid card reads its own projection and is explicitly outside this canvas line; no card code is changed."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "The same stale projection can be produced by any current or future input-reducing caller that bypasses a mounted React composer.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs --write=disconnectEdge,deleteNode,restoreSnapshot,applyExternalGraph,restoreGraph,updateNode,updateNodes --read=resolveModeForConnectedReferences,textModeToReturnTo,reconcileTargetModeForInputs",
+      "rg -n \"useRevertToTextMode|resolveModeForConnectedReferences|referenceWrites|disconnectEdge|deleteNode|restoreSnapshot|applyExternalGraph\" src/workbench/generationCanvas src/workbench/capability src/workbench/project",
+      "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts covers disconnect, source deletion, reference meta removal, snapshot load and atomic undo"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+    "invariant": "Every nodes/edges write leaves each archetyped generation node in a mode consistent with its live reference inputs or its text intent when inputs are empty.",
+    "failure_mode": "If no archetype or no compatible text mode exists, the function makes no speculative switch; existing capability and submit gates remain responsible for reporting unusable generation.",
+    "exception_policy": "none",
+    "strategy": "Observe the store after all graph/document writes, call one idempotent function, use history:false so the correction belongs to the triggering write's undo snapshot, and remove the component effect that could only cover mounted UI.",
+    "artifacts": [
+      "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+      "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+      "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts",
+    "tests/ux/group-reference-direction.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+      "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx"
+    ],
+    "rationale": "The React effect was the stale component-only write path; the pure text-mode rule moved to the shared capability module and the store reconciliation boundary now owns both promotion and reversion."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency decides Nomi's archetype modes or reference slots; React guidance informed removal of the effect but no dependency change is needed.",
+    "exit_criteria": []
+  },
+  "migration": "No stored schema migration is needed. Existing snapshots are reconciled on restore and event-tail/document replacement, and the resulting mode meta is persisted through the normal store mutation path.",
+  "residual_risks": [
+    "Real Electron bilingual walks and screenshot review still need to run in the isolated profile; unit tests prove the store invariant but not the packaged UI rendering.",
+    "A mode intentionally selected for an empty first/last-frame workflow remains unchanged by textModeToReturnTo, matching the existing product rule."
+  ]
+}

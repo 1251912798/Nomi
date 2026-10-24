@@ -1,0 +1,38 @@
+{
+  "name": "画布生成方式随当前参考输入升格或在输入全空时回到文生",
+  "subject": "canvas.generation-mode-inputs",
+  "lifecycle": "projection",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+    "symbol": "reconcileTargetModeForInputs"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "reconcileTargetModeForInputs"
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+      "symbol": "useGenerationCanvasStore.subscribe"
+    }
+  ],
+  "forbidden_derivations": [
+    {
+      "symbol": "useRevertToTextMode",
+      "kind": "definition",
+      "why": "生成框 effect 只能覆盖挂载节点，不能成为 store 输入写口的第二主人。"
+    }
+  ],
+  "allowed_consumers": [
+    "src/workbench/generationCanvas/runner/generationRunController.ts",
+    "src/workbench/generationCanvas/runner/runProjectDelivery.ts",
+    "src/workbench/generationCanvas/model/referenceInputSlots.ts"
+  ],
+  "parity_test": "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts",
+  "since": "2026-10-25",
+  "notes": "模式是 nodes + edges + reference slots 的持久投影。所有 store/document 写入由订阅触发同一收口；生成框只读，不再用 React effect 写回。"
+}

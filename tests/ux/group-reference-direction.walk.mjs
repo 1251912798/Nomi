@@ -224,14 +224,31 @@ try {
     return {
       edgeCount: current.edges.length,
       outputLinks: current.groups.find((group) => group.id === 'reference-group')?.outputLinks,
+      modeId: current.nodes.find((node) => node.id === 'target')?.meta?.archetype?.modeId,
     }
   })
   check('断开编组连接会撤掉全部展开边', disconnected.edgeCount === 0, JSON.stringify(disconnected))
   check('断开同时清掉编组声明，不会后续复活', disconnected.outputLinks == null, JSON.stringify(disconnected.outputLinks))
+  check('生成框未挂载时断开最后参考线立即回到文生图', disconnected.modeId === 't2i', String(disconnected.modeId))
   await referenceImages.first().waitFor({ state: 'detached', timeout: 10_000 })
   const disconnectedReferenceImageCount = await referenceImages.count()
   check('目标顶部参考图随断开实时清空', disconnectedReferenceImageCount === 0, String(disconnectedReferenceImageCount))
   await screenshotSettled(win, { path: path.join(shotsDir, '05-after-disconnected.png') })
+
+  // 复用同一 store 写口重连一张真实出图参考；生成框仍未打开，模式应立即升格。
+  await win.evaluate(() => window.__nomiCanvasStore.getState().connectNodes('source-a', 'target', 'reference'))
+  await win.waitForTimeout(700)
+  const reconnected = await win.evaluate(async () => {
+    const { useGenerationCanvasStore } = await import('/src/workbench/generationCanvas/store/generationCanvasStore.ts')
+    const current = useGenerationCanvasStore.getState()
+    const target = current.nodes.find((node) => node.id === 'target')
+    return {
+      edgeCount: current.edges.filter((edge) => edge.target === 'target').length,
+      modeId: target?.meta?.archetype?.modeId,
+    }
+  })
+  check('生成框未挂载时重新连参考立即升格到改图', reconnected.edgeCount === 1 && reconnected.modeId === 'edit', JSON.stringify(reconnected))
+  await screenshotSettled(win, { path: path.join(shotsDir, '06-after-reconnected.png') })
 } catch (error) {
   failures.push(String(error))
   console.error(error)

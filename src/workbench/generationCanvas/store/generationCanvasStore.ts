@@ -26,6 +26,7 @@ import { createCanvasDocumentActions } from './canvasDocumentCommit'
 import { reconcileTimelineForDeletedNodes } from './canvasTimelineBridge'
 import { appendAdmittedEdges, reportSkippedEdges, type AppendedEdges } from './canvasEdgeWrite'
 import { assertProductionCanvasProjectIdentity, emitProductionCanvasSignal } from '../../production/productionCanvasSignals'
+import { reconcileTargetModeForInputs } from './canvasConnectDerivations'
 
 export { __resetCanvasUndoJournalForTests as __resetGenerationCanvasHistoryForTests } from '../events/canvasUndoJournal'
 
@@ -221,6 +222,22 @@ export const useGenerationCanvasStore = create<GenerationCanvasState>()(subscrib
   ...createCanvasRunActions(set, get, store),
   ...createCanvasDocumentActions(set, get, store),
 }))))
+
+// Mode is a persisted projection of the current graph inputs. Keeping this at
+// the store boundary covers edge/node writes, Agent edits, imports, recovery,
+// undo and redo even when no generation composer is mounted.
+let reconcilingInputModes = false
+useGenerationCanvasStore.subscribe((state, previous) => {
+  if (reconcilingInputModes || (state.nodes === previous.nodes && state.edges === previous.edges)) return
+  reconcilingInputModes = true
+  try {
+    for (const node of useGenerationCanvasStore.getState().nodes) {
+      reconcileTargetModeForInputs(useGenerationCanvasStore.getState(), node.id)
+    }
+  } finally {
+    reconcilingInputModes = false
+  }
+})
 
 /**
  * C1 寿命声明 + 释放（原来是 `releaseWorkbenchProjectSession.ts` 里那份 10/13 的手写清单）。

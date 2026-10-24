@@ -16,8 +16,17 @@
 // updateNode 默认会给 `meta` patch 打一个自己的 undo barrier，于是连完一条线后日志里叠了两个 barrier——第一下 ⌘Z
 // 只把模式 / 比例切回去（用户眼里画布毫无变化），得按第二下才撤掉那条边。关掉的只是 barrier：这条 meta 变更照常入日志、
 // 照常落盘，撤到连线那个 barrier 时它跟着回退。
-import { archetypeForNode, resolveTargetModeForEdge } from '../agent/referenceEdgeCapability'
+import {
+  archetypeForNode,
+  isTextPromptEdge,
+  referenceAssetKindForNode,
+  resolveModeForConnectedReferences,
+  resolveTargetModeForEdge,
+  textModeToReturnTo,
+} from '../agent/referenceEdgeCapability'
 import { applyArchetypeModeSwitch } from '../nodes/controls/archetypeMeta'
+import { currentArchetypeMode } from '../nodes/controls/archetypeMeta'
+import { resolveReferenceSlots } from '../runner/referenceSlots'
 import { findModelOptionByIdentifier, peekGenerationNodeModelOptions } from '../adapters/modelOptionsAdapter'
 import { isAspectInputEdgeMode } from '../nodes/aspectRatio'
 import { resolveRenderedControls } from '../nodes/nodeModelArchetype'
@@ -32,15 +41,29 @@ type ConnectDerivationStore = {
   updateNode: (nodeId: string, patch: { meta: Record<string, unknown> }, options?: { history?: boolean }) => void
 }
 
-/** ① 生成方式跟着参考走。 */
-function promoteTargetMode(store: ConnectDerivationStore, sourceNodeId: string, targetNodeId: string, mode: GenerationCanvasEdgeMode | undefined): void {
-  const source = store.nodes.find((n) => n.id === sourceNodeId)
-  const target = store.nodes.find((n) => n.id === targetNodeId)
-  if (!source || !target) return
-  const nextModeId = resolveTargetModeForEdge(source, target, mode)
-  if (!nextModeId) return
+/** 生成方式跟着输入走：所有 store 写入口都复用这一处，先升格再在输入全空时回文生。 */
+export function reconcileTargetModeForInputs(store: ConnectDerivationStore, targetNodeId: string): void {
+  const target = store.nodes.find((node) => node.id === targetNodeId)
+  if (!target) return
   const archetype = archetypeForNode(target)
   if (!archetype) return
+  const activeMode = currentArchetypeMode(archetype, (target.meta || {}) as Record<string, unknown>)
+  const promotedModeId = store.edges
+    .filter((edge) => edge.target === target.id)
+    .map((edge) => {
+      const source = store.nodes.find((node) => node.id === edge.source)
+      return source ? resolveTargetModeForEdge(source, target, edge.mode) : null
+    })
+    .find((modeId): modeId is string => Boolean(modeId))
+    ?? resolveModeForConnectedReferences(target, store.nodes, store.edges)
+  const hasAnyInput = resolveReferenceSlots(target, store.nodes, store.edges).some((slot) => slot.fills.length > 0)
+    || store.edges.some((edge) => {
+      if (edge.target !== target.id) return false
+      const source = store.nodes.find((node) => node.id === edge.source)
+      return Boolean(source && referenceAssetKindForNode(source) && !isTextPromptEdge(source, target, edge.mode))
+    })
+  const nextModeId = promotedModeId ?? textModeToReturnTo(archetype, activeMode, hasAnyInput)
+  if (!nextModeId || nextModeId === activeMode.id) return
   store.updateNode(
     targetNodeId,
     { meta: applyArchetypeModeSwitch((target.meta || {}) as Record<string, unknown>, archetype, nextModeId) },
@@ -78,6 +101,10 @@ export function deriveTargetAfterConnect(
   targetNodeId: string,
   mode: GenerationCanvasEdgeMode | undefined,
 ): void {
-  promoteTargetMode(getStore(), sourceNodeId, targetNodeId, mode)
+  // The store subscription also covers external/restore writes; this call keeps the
+  // direct connect path explicit and uses the same reconciliation function.
+  void sourceNodeId
+  void mode
+  reconcileTargetModeForInputs(getStore(), targetNodeId)
   seedTargetVideoAspect(getStore(), targetNodeId, mode)
 }
