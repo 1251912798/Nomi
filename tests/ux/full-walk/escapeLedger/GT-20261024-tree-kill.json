@@ -10,7 +10,7 @@
     "macOS / Linux 门岗超时、整体截止或 Ctrl-C 收尾"
   ],
   "fullWalkJourneys": [],
-  "status": "reviewed",
+  "status": "fixed",
   "manualReview": "reviewed",
   "evidence": [
     "scripts/pre-push-structure.node-test.mjs 假慢测试 pid 回归",
@@ -24,5 +24,6 @@
   "classCheck": {
     "kind": "matrix",
     "file": "scripts/pre-push-structure.node-test.mjs"
-  }
+  },
+  "fixedInPr": 1311
 }
