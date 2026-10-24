@@ -13,10 +13,11 @@
 //     直接数会数成 4 张；按去掉查询串后的地址去重，再断言集合恰好是首帧、尾帧两张（对回本地文件名）。
 //   · **残留参考的任何形态都不许出现**：文件名、本地地址、托管上传后的公网地址（地址哈希），在请求体里和托管上传里都不许有。
 import crypto from 'node:crypto'
+import { canonicalEvidenceUrl } from '../../scripts/walkthrough-url-shape.cjs'
 
 /** URL 去掉查询串（签名参数）后的样子；闸已经把查询串换成 `?<redacted>`。 */
 export function bareUrl(url) {
-  return String(url).split('?')[0].split('#')[0]
+  try { return canonicalEvidenceUrl(url) } catch { return null }
 }
 
 export function shortHash(text) {
@@ -53,13 +54,25 @@ export function judgeReferenceWire(entries, { host, firstFile, lastFile, referen
   const fileByRemote = new Map()
   for (const upload of uploads) {
     const response = entries.find((entry) => entry.kind === 'allowed-response' && entry.seq === upload.seq)
-    for (const url of String(response?.text ?? '').match(/https?:\/\/[^\s"'\\]+/g) ?? []) fileByRemote.set(bareUrl(url), upload.fileName)
+    const responseValue = (() => {
+      try { return response?.text ? JSON.parse(String(response.text)) : null } catch { return null }
+    })()
+    for (const url of urlsIn(responseValue).filter((value) => /^https?:/i.test(value))) {
+      const canonical = bareUrl(url)
+      if (canonical) fileByRemote.set(canonical, upload.fileName)
+    }
   }
-  for (const file of [...referenceFiles, firstFile, lastFile]) if (localUrlOf) fileByRemote.set(bareUrl(localUrlOf(file)), file)
+  for (const file of [...referenceFiles, firstFile, lastFile]) if (localUrlOf) {
+    const canonical = bareUrl(localUrlOf(file))
+    if (canonical) fileByRemote.set(canonical, file)
+  }
 
   // 去重：同一张图在 image_urls 和 image_with_roles 里各出现一次，算一张。
-  const rawImageUrls = body ? urlsIn(body).filter((url) => !MEDIA_NOT_IMAGE.test(bareUrl(url))) : []
-  const uniqueImageUrls = [...new Set(rawImageUrls.map(bareUrl))]
+  const rawImageUrls = body ? urlsIn(body).filter((url) => {
+    const canonical = bareUrl(url)
+    return canonical && !MEDIA_NOT_IMAGE.test(canonical)
+  }) : []
+  const uniqueImageUrls = [...new Set(rawImageUrls.map(bareUrl).filter(Boolean))]
   const sent = uniqueImageUrls.map((url) => ({ file: fileByRemote.get(url) ?? null, urlSha256: shortHash(url) }))
   const sentFiles = sent.map((entry) => entry.file)
   if (sentFiles.some((file) => file === null)) problems.push(`请求体里有 ${sentFiles.filter((file) => file === null).length} 张图对不回本地文件名（托管上传没记到，或换了别的上传形状）——证明不了只发了首帧、尾帧`)
