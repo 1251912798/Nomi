@@ -205,6 +205,36 @@
       "entry_point": "isAspectRatioControl",
       "disposition": "enforced",
       "evidence": "Renderer adapter over the shared boundary: it calls aspectRatioControlsOf / aspectRatioControlKey and keeps no key-name rule of its own (covered by parameterControlModel.test.ts and the catalog census)."
+    },
+    {
+      "path": "electron/shared/storyboard/storyboardShotScope.ts",
+      "entry_point": "unsupportedFilmDefaultKeys",
+      "disposition": "enforced",
+      "evidence": "It reads ratio controls through aspectRatioControlsOf, so a resolution-only size control (Agnes 960P) is never treated as the film-default ratio slot."
+    },
+    {
+      "path": "electron/shared/storyboard/storyboardShotScope.ts",
+      "entry_point": "foldRatioIntoSlot",
+      "disposition": "enforced",
+      "evidence": "The real ratio key comes from aspectRatioControlKey(aspectRatioControlsOf(controls)); no key-name list of its own."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/storyboardComposerModel.ts",
+      "entry_point": "storyboardComposerChange",
+      "disposition": "enforced",
+      "evidence": "Control-to-shot-field mapping picks the ratio control with aspectRatioControlKey(aspectRatioControlsOf(...)), the same shared answer as the canvas parameter panel."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/StoryboardBulkParams.tsx",
+      "entry_point": "StoryboardBulkParams",
+      "disposition": "enforced",
+      "evidence": "Bulk storyboard params find the ratio control with aspectRatioControlKey(aspectRatioControlsOf(...)); no key-name rule of its own."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/videoAspectSeed.ts",
+      "entry_point": "videoAspectSeedPatch",
+      "disposition": "enforced",
+      "evidence": "hasCurrentAspect reads the first parseable key in ASPECT_RATIO_META_KEYS priority order and compares with sameAspectRatio; covered by videoAspectSeed.test.ts (stale portrait image_size no longer blocks the 9:16 switch; 720:1280 is not re-seeded)."
     }
   ],
   "recurrence": {
