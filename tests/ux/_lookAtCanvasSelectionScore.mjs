@@ -204,22 +204,30 @@ export function scoreSnapshotOnlyRound({ scene, transcript }) {
   }
 }
 
+// 答话那一刻还看得见的选区，两种读法都算：look_at_canvas 节点行上的「选中」标记，read_selection 按页读回的句柄。
+// 只数前一种时，走 read_selection 的回合永远记成「眼里 0 个」（#1263 付费抽样 8 轮都是 0/40，答对却是 8/8）。
+const SELECTION_IDS_BY_TOOL = Object.freeze({
+  [LOOK_AT_CANVAS]: (text, scene) => markedIdsFromText(text, scene),
+  [READ_SELECTION]: (text, scene) => selectionIdsFromResult(text, scene),
+})
+const readsSelection = (message) => message?.role === 'toolResult' && Object.hasOwn(SELECTION_IDS_BY_TOOL, message.toolName)
+
 export function answerTimeView({ scene, sessions, transform }) {
   const messages = sessions.flatMap((session) => laneMessages(session))
   const answerAt = messages.findLastIndex((message) => message.role === 'assistant')
   if (answerAt < 0) return null
   const context = messages.slice(0, answerAt)
   const sent = transform(context)
-  const originalResults = context.filter((message) => message?.role === 'toolResult' && message.toolName === LOOK_AT_CANVAS)
+  const originalResults = context.filter(readsSelection)
   let resultIndex = 0
   const visible = new Set(); let lookResults = 0; let omitted = 0
   for (const message of sent) {
-    if (message?.role !== 'toolResult' || message.toolName !== LOOK_AT_CANVAS) continue
+    if (!readsSelection(message)) continue
     const original = originalResults[resultIndex++]
     lookResults += 1
     const text = textOf(message.content)
-    if (!original || text !== textOf(original.content)) { omitted += 1; continue }
-    for (const id of markedIdsFromText(text, scene)) visible.add(id)
+    if (!original || original.toolName !== message.toolName || text !== textOf(original.content)) { omitted += 1; continue }
+    for (const id of SELECTION_IDS_BY_TOOL[message.toolName](text, scene)) visible.add(id)
   }
   const before = messages.slice(0, answerAt).filter((message) => message.role === 'assistant')
   const spoken = before.flatMap((message) => [textOf(message.content), thinkingOf(message.content)]).join('\n')

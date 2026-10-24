@@ -44,9 +44,9 @@ export const SELECTION_METRICS = Object.freeze({
 })
 /** 诊断计数的定义（不进三个数；回合失败时用来分原因）。 */
 export const SELECTION_DIAGNOSTICS = Object.freeze({
-  roundsReadWholeSelection: '转录里节点行标了「选中」的行覆盖全部选中 id 的轮数',
-  roundsSawWholeSelectionAtAnswer: '答话那一刻、发给模型的那份消息里仍看得见全部带「选中」标记的节点行的轮数',
-  view: 'rounds[].view：答话那一刻看得见几个带「选中」的节点行、有没有被旧读结果替换、答话前模型自己记下了几个真值视频',
+  roundsReadWholeSelection: '转录里读回的选区（look_at_canvas 节点行的「选中」标记，或 read_selection 按页读回的句柄）覆盖全部选中 id 的轮数',
+  roundsSawWholeSelectionAtAnswer: '答话那一刻、发给模型的那份消息里仍看得见全部选中 id 的轮数（两种读法的结果都算，被旧读结果替换掉的那一份不算）',
+  view: 'rounds[].view：答话那一刻看得见几个选中 id、有几份读结果被旧读结果替换、答话前模型自己记下了几个真值视频',
   prompts: `量具预置 ${SELECTION_PROMPTS.length} 句不同的用户说法，实际回合默认抽样其中前 rounds 句`,
 })
 
