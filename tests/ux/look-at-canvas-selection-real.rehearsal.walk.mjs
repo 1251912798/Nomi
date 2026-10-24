@@ -64,14 +64,17 @@ try {
   })
   expect(journey.gaugeProblems, '量具本身没出错').toEqual([])
   expect(journey.rounds.map((record) => record.harnessError), '每一轮都正常落地').toEqual([null, null, null, null, null])
-  expect(journey.snapshotOnly?.harnessError, '快照专用档正常落地').toBeNull()
-  expect(journey.snapshotOnly?.score, '快照专用档只靠消息快照答对').toMatchObject({ lookAtCanvasCalls: 0, selectionTotal: 12, otherTools: [], missing: [], extra: [], success: true })
+  expect(journey.snapshotOnly, '快照专用档轮数与主档一致').toHaveLength(5)
+  for (const record of journey.snapshotOnly) {
+    expect(record.harnessError, '快照专用档正常落地').toBeNull()
+    expect(record.score, '快照专用档只靠消息快照答对').toMatchObject({ lookAtCanvasCalls: 0, selectionTotal: 12, otherTools: [], missing: [], extra: [], success: true })
+  }
   for (const record of journey.rounds) {
     expect(record.calls[0]?.selectionLines?.[0] ?? '', `第 ${record.round} 轮的选区账`).toContain(SELECTION_MARKER)
     expect(record.score, `第 ${record.round} 轮按节点行标记答对`).toMatchObject({ lookAtCanvasCalls: 1, legalCalls: 1, selectionRead: 40, selectionTotal: 40, missing: [], extra: [], success: true })
     expect(record.view, `第 ${record.round} 轮答话时看全选中行`).toMatchObject({ lookResults: 1, lookResultsOmitted: 0, selectedIdsVisible: 40 })
   }
-  expect(journey.numbers).toMatchObject({ rounds: 5, toolWriteCorrect: '5/5', turnSuccess: '5/5', snapshotOnlySuccess: '1/1', roundsReadWholeSelection: '5/5', roundsSawWholeSelectionAtAnswer: '5/5', harnessErrors: 0 })
+  expect(journey.numbers).toMatchObject({ rounds: 5, toolWriteCorrect: '5/5', turnSuccess: '5/5', snapshotOnlySuccess: '5/5', roundsReadWholeSelection: '5/5', roundsSawWholeSelectionAtAnswer: '5/5', harnessErrors: 0 })
   expect(journey.canvasIntactAfter).toBe(44)
 } catch (error) {
   failure = error

@@ -53,27 +53,41 @@
   },
   {
     "selected": 40,
-    "nodesNamedInProjection": 33,
-    "titlesNamedInProjection": 33,
-    "chars": 5989,
+    "nodesNamedInProjection": 0,
+    "titlesNamedInProjection": 0,
+    "chars": 399,
     "silentlyMissing": 0,
+    "omittedByKind": [
+      {
+        "kind": "canvasNode",
+        "count": 40,
+        "readTool": "look_at_canvas"
+      }
+    ],
     "projection": {
       "total": 40,
-      "listed": 33,
-      "omitted": 7,
+      "listed": 0,
+      "omitted": 40,
       "truncated": true
     }
   },
   {
     "selected": 256,
-    "nodesNamedInProjection": 33,
-    "titlesNamedInProjection": 33,
-    "chars": 5992,
+    "nodesNamedInProjection": 0,
+    "titlesNamedInProjection": 0,
+    "chars": 402,
     "silentlyMissing": 0,
+    "omittedByKind": [
+      {
+        "kind": "canvasNode",
+        "count": 256,
+        "readTool": "look_at_canvas"
+      }
+    ],
     "projection": {
       "total": 256,
-      "listed": 33,
-      "omitted": 223,
+      "listed": 0,
+      "omitted": 256,
       "truncated": true
     }
   }

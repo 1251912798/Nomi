@@ -34,6 +34,7 @@ type Payload = {
   total: number
   listed: number
   omitted?: number
+  omittedByKind?: Array<{ kind: string; count: number; readTool: string }>
   omittedNote?: string
   handles: Array<{ targetId: string; display: { title: string } }>
 }
@@ -48,10 +49,12 @@ function expectBalanced(snapshot: AgentContextSnapshot, text: string): Payload {
   expect(payload.total).toBe(snapshot.handles.length)
   expect(payload.handles).toHaveLength(payload.listed)
   expect(payload.listed + (payload.omitted ?? 0)).toBe(snapshot.handles.length)
-  expect(payload.handles.map((handle) => handle.targetId)).toEqual(snapshot.handles.slice(0, payload.listed).map((handle) => handle.targetId))
+  if (payload.listed === payload.total) {
+    expect(payload.handles.map((handle) => handle.targetId)).toEqual(snapshot.handles.map((handle) => handle.targetId))
+  }
   if (payload.listed < payload.total) {
     expect(payload.omitted, '少了就必须明说少了几个').toBe(payload.total - payload.listed)
-    expect(payload.omittedNote, '少了就必须告诉模型去哪补读').toEqual(expect.stringContaining('look_at_canvas'))
+    expect(payload.omittedNote, '少了就必须告诉模型去哪补读').toEqual(expect.stringContaining('omittedByKind'))
   } else {
     expect(payload.omitted, '没少就不出 omitted').toBeUndefined()
     expect(payload.omittedNote).toBeUndefined()
@@ -65,8 +68,8 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     const snapshot = canvasSnapshot(count)
     const text = formatAgentContextSnapshot(snapshot)
     const payload = expectBalanced(snapshot, text)
-    // 不比旧版差：旧版固定只给前 16 条的上限，现在任何规模都至少给到这个数。
-    expect(payload.listed).toBeGreaterThanOrEqual(Math.min(count, 16))
+    if (count <= 24) expect(payload.listed).toBe(count)
+    else expect(payload.listed).toBe(0)
   })
 
   it.each([1, 12, 16])('选 %i 个节点：一个不少（事故里 12 个只收到 7 个、16 个只收到 6 个）', (count) => {
@@ -74,6 +77,14 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
     expect(payload.listed).toBe(count)
     expect(payload.omitted).toBeUndefined()
+  })
+
+  it.each([40, 256])('选 %i 个有实时读工具的节点放不下：一个节点句柄都不列，账里列出总数和工具', (count) => {
+    const snapshot = canvasSnapshot(count)
+    const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
+    expect(payload.listed).toBe(0)
+    expect(payload.handles).toEqual([])
+    expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count, readTool: 'look_at_canvas' }])
   })
 
   it('不再把整份选区抄进每一条句柄：每个节点 id 在文本里至多出现两次（句柄 id + targetId）', () => {
@@ -150,7 +161,7 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(text.split(first!.targetId).length - 1).toBe(2)
   })
 
-  it('混合句柄超过预算时同样明说：截的是尾巴，账照平', () => {
+  it('混合句柄超过预算时有实时读工具的类整类不列，账照平', () => {
     const clips = Array.from({ length: 200 }, (_, index): AgentContextHandle => ({
       id: `timeline-clip:clip-${index}`, kind: 'timelineClip', targetId: `clip-${index}`, revision: 'timeline-abc',
       locator: { type: 'timeRange', startMs: index * 1000, endMs: index * 1000 + 900 },
@@ -159,7 +170,28 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     const snapshot: AgentContextSnapshot = { version: 1, handles: [...canvasSnapshot(20).handles, ...clips] }
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
     expect(payload.total).toBe(220)
-    expect(payload.omitted).toBeGreaterThan(0)
+    expect(payload.listed).toBe(0)
+    expect(payload.omittedByKind).toEqual([
+      { kind: 'canvasNode', count: 20, readTool: 'look_at_canvas' },
+      { kind: 'timelineClip', count: 200, readTool: 'read_timeline' },
+    ])
+  })
+
+  it('混选时没有实时读工具的类仍保留最长前缀，实时可读类一个不列', () => {
+    const snapshot: AgentContextSnapshot = {
+      version: 1,
+      handles: [
+        ...canvasSnapshot(40).handles,
+        ...Array.from({ length: 80 }, (_, index): AgentContextHandle => ({
+          id: `web-selection:${index}`, kind: 'webSelection', targetId: `web-${index}`, revision: '1',
+          locator: { type: 'custom', key: 'web', value: 'x'.repeat(400) }, display: { title: `网页选择 ${index}` }, intentRole: 'source',
+        })),
+      ],
+    }
+    const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
+    expect(payload.listed).toBeGreaterThan(0)
+    expect(payload.handles.every((handle) => handle.targetId.startsWith('web-'))).toBe(true)
+    expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count: 40, readTool: 'look_at_canvas' }])
   })
 
   it('病态输入（每个字段 5 万字、256 条）：硬上限不破、仍是合法 JSON、账照平', () => {

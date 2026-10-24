@@ -21,12 +21,14 @@ const rows = COUNTS.map((count) => {
   // `镜头标题1` 是 `镜头标题10` 的前缀，所以按「标题加引号」数。
   const idsInText = ids.filter((id) => text.includes(`"targetId":"${id}"`)).length
   const titlesInText = titles.filter((title) => text.includes(`"title":"${title}"`)).length
+  const payload = JSON.parse(text.slice(text.indexOf('\n') + 1)) as { omittedByKind?: unknown }
   const facts = (snapshotModule as Record<string, unknown>).projectAgentContextSnapshot as undefined | ((s: unknown) => Record<string, unknown>)
   const projection = facts?.(snapshot)
   const statesTotal = /"total":\d+/.test(text) || /共\s*\d+/.test(text)
   return {
     selected: count, nodesNamedInProjection: idsInText, titlesNamedInProjection: titlesInText, chars: text.length,
     silentlyMissing: count - idsInText > 0 && !statesTotal ? count - idsInText : 0,
+    ...(payload.omittedByKind ? { omittedByKind: payload.omittedByKind } : {}),
     ...(projection ? { projection: { total: projection.total, listed: projection.listed, omitted: projection.omitted, truncated: projection.truncated } } : {}),
   }
 })

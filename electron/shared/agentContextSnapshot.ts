@@ -156,7 +156,23 @@ function contextHeader(version: AgentContextSnapshot['version']): string {
  * fields, so the same truncation always produces the same text (KV cache), and the model is never
  * left to assume the list it was given is the whole selection.
  */
-const OMITTED_NOTE = 'The omitted handles are still part of the current selection, so the listed handles are not all of it. Do not guess the rest; read the live state first (canvas nodes: look_at_canvas).'
+const OMITTED_NOTE = 'The omitted handles are still part of the current selection. Read live state with the tool named in omittedByKind before acting; handles without a listed tool cannot be recovered from this snapshot.'
+
+/** Read faces that the Agent can call to recover a handle's current state. */
+const LIVE_READ_TOOLS: Readonly<Partial<Record<AgentContextKind, string>>> = Object.freeze({
+  image: 'look_at_media',
+  video: 'look_at_media',
+  audio: 'look_at_media',
+  document: 'read_script',
+  canvasNode: 'look_at_canvas',
+  timelineClip: 'read_timeline',
+})
+
+type OmittedLiveReadKind = Readonly<{
+  kind: AgentContextKind
+  count: number
+  readTool: string
+}>
 
 type CompactContextHandle = {
   id: string
@@ -230,21 +246,25 @@ function compactHandle(prepared: PreparedHandle, detail: ProjectionDetail): Comp
 }
 
 /** The accounting travels with the data: total = listed + omitted, always written, never inferred. */
-function encodeProjection(total: number, rows: readonly CompactContextHandle[]): string {
+function encodeProjection(total: number, rows: readonly CompactContextHandle[], omittedByKind: readonly OmittedLiveReadKind[] = []): string {
   const omitted = total - rows.length
   return JSON.stringify({
     total,
     listed: rows.length,
-    ...(omitted > 0 ? { omitted, omittedNote: OMITTED_NOTE } : {}),
+    ...(omitted > 0 ? {
+      omitted,
+      ...(omittedByKind.length ? { omittedByKind } : {}),
+      omittedNote: OMITTED_NOTE,
+    } : {}),
     handles: rows,
   })
 }
 
 /**
- * Encode the snapshot inside the hard budget.  Preference order: list every handle at the richest
- * detail that fits; otherwise list the longest prefix (snapshot order, deterministic) of the leanest
- * rows and state how many were left out.  The returned block (header included) never exceeds
- * MAX_TRANSIENT_CONTEXT_CHARS and is always valid JSON after the header.
+ * Encode the snapshot inside the hard budget. Preference order: list every handle at the richest
+ * detail that fits. When no detail level can list every handle, omit every handle kind that has a
+ * live read face and put its count/tool in the ledger. Only kinds without a live read face keep the
+ * old longest-prefix fallback. The returned block (header included) never exceeds the hard bound.
  */
 function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLength: number): { body: string; listed: number } {
   const budget = Math.max(256, MAX_TRANSIENT_CONTEXT_CHARS - headerLength)
@@ -255,31 +275,42 @@ function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLeng
     const body = encodeProjection(total, prepared.map((item) => compactHandle(item, detail)))
     if (body.length <= budget) return { body, listed: total }
   }
-  // Nothing fits whole: take the leanest rows and the longest prefix that fits.  Size grows with the
-  // prefix (a row is far larger than the digits the omitted count can save), so bisecting is exact.
+  // Nothing fits whole: live-readable kinds are deliberately all-or-nothing. They have a current
+  // read face, so a partial list is more likely to be mistaken for the whole selection than to help.
+  // Kinds without a read face retain a deterministic longest-prefix fallback.
   const leanest = PROJECTION_LADDER[PROJECTION_LADDER.length - 1]!
-  const rows = prepared.map((item) => compactHandle(item, leanest))
+  const liveReadCounts = new Map<AgentContextKind, number>()
+  for (const item of prepared) {
+    if (LIVE_READ_TOOLS[item.handle.kind]) liveReadCounts.set(item.handle.kind, (liveReadCounts.get(item.handle.kind) ?? 0) + 1)
+  }
+  const omittedByKind = AGENT_CONTEXT_KINDS.flatMap((kind) => {
+    const count = liveReadCounts.get(kind) ?? 0
+    const readTool = LIVE_READ_TOOLS[kind]
+    return count > 0 && readTool ? [{ kind, count, readTool }] : []
+  })
+  const fallback = prepared.filter((item) => !LIVE_READ_TOOLS[item.handle.kind])
+  const rows = fallback.map((item) => compactHandle(item, leanest))
   let low = 0
-  let high = total - 1
+  let high = rows.length
   while (low < high) {
     const middle = Math.ceil((low + high) / 2)
-    if (encodeProjection(total, rows.slice(0, middle)).length <= budget) low = middle
+    if (encodeProjection(total, rows.slice(0, middle), omittedByKind).length <= budget) low = middle
     else high = middle - 1
   }
-  return { body: encodeProjection(total, rows.slice(0, low)), listed: low }
+  return { body: encodeProjection(total, rows.slice(0, low), omittedByKind), listed: low }
 }
 
 /**
- * What the model is shown for a snapshot, plus the facts about it.  The `listed` handles are always
- * the first `listed` of `snapshot.handles`; the rest are counted in `omitted` and the text says so,
- * so a caller (the composer chip, a test) can tell whether the model saw the whole selection.
+ * What the model is shown for a snapshot, plus the facts about it. When a full projection does not
+ * fit, live-readable kinds are omitted wholesale and no-read kinds are listed in snapshot order as
+ * far as the leanest budget allows; the text carries that ledger instead of implying completeness.
  */
 export type AgentContextProjection = Readonly<{
   /** Transient model context; empty when nothing is selected. */
   text: string
   /** Handles in the snapshot. */
   total: number
-  /** Handles written into `text`. */
+  /** Number of handles written into `text` (readable kinds may be omitted wholesale). */
   listed: number
   /** `total - listed`: handles the model was told about but not shown. */
   omitted: number

@@ -177,12 +177,21 @@ describe('resident ContextSnapshot', () => {
       canvas: { revision: 8, nodes, selectedNodeIds: nodes.map((node) => node.id) },
     })
     const context = formatAgentContextSnapshot(snapshot)
-    const payload = JSON.parse(context.slice(context.indexOf('\n') + 1)) as { total: number; listed: number; omitted?: number; handles: Array<{ targetId: string }> }
+    const payload = JSON.parse(context.slice(context.indexOf('\n') + 1)) as {
+      total: number
+      listed: number
+      omitted?: number
+      omittedByKind?: Array<{ kind: string; count: number; readTool: string }>
+      handles: Array<{ targetId: string }>
+    }
     expect(payload.total).toBe(count)
     expect(payload.handles).toHaveLength(payload.listed)
     expect(payload.listed + (payload.omitted ?? 0)).toBe(count)
-    expect(payload.handles.map((handle) => handle.targetId)).toEqual(nodes.slice(0, payload.listed).map((node) => node.id))
-    if (count <= 16) expect(payload.listed).toBe(count)
+    if (count <= 24) expect(payload.listed).toBe(count)
+    if (count > 24) {
+      expect(payload.listed).toBe(0)
+      expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count, readTool: 'look_at_canvas' }])
+    }
     expect(context.length).toBeLessThanOrEqual(6000)
   })
 

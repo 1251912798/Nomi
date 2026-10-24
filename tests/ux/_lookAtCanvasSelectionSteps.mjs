@@ -251,23 +251,27 @@ export async function runSelectionJourney(journey, { walk, modelLabel, expectedM
     console.log(`[selection] 第 ${round} 轮 ${Math.round(record.ms / 1000)}s：look_at_canvas ${score.legalCalls}/${score.lookAtCanvasCalls} 合法 · 读到选区 ${score.selectionRead}/${score.selectionTotal} · 答话时眼里 ${view?.selectedIdsVisible ?? '-'}/${score.selectionTotal} · 少列 ${score.missing.length} · 多列 ${score.extra.length} · 成功=${score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
   }
   if (includeSnapshotOnly) {
-    const round = rounds + 1
-    await beforeRound(round, scene)
+    const snapshotRecords = []
     const snapshotScene = snapshotOnlyScene(scene)
-    const record = await runSelectionRound({
-      win, projectRoot, scene: snapshotScene, round, transform, ask: SNAPSHOT_ONLY_ASK, score: scoreSnapshotOnlyRound,
-    })
-    record.kind = 'snapshot-only'
-    record.selectionTotal = snapshotScene.selectedIds.length
-    journey.snapshotOnly = record
-    await walk.snap('snapshot-only-answer').catch(() => {})
-    console.log(`[selection] 快照专用档 ${Math.round(record.ms / 1000)}s：无工具调用=${record.score.lookAtCanvasCalls === 0 && record.score.otherTools.length === 0} · 快照含完整选区=${record.score.snapshotMessagesWithWholeSelection} · 成功=${record.score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
+    for (let round = 1; round <= rounds; round += 1) {
+      const journeyRound = rounds + round
+      await beforeRound(journeyRound, scene)
+      const record = await runSelectionRound({
+        win, projectRoot, scene: snapshotScene, round: journeyRound, transform, ask: SNAPSHOT_ONLY_ASK, score: scoreSnapshotOnlyRound,
+      })
+      record.kind = 'snapshot-only'
+      record.selectionTotal = snapshotScene.selectedIds.length
+      snapshotRecords.push(record)
+      await walk.snap(`snapshot-only-r${round}-answer`).catch(() => {})
+      console.log(`[selection] 快照专用档 ${round}/${rounds} ${Math.round(record.ms / 1000)}s：无工具调用=${record.score.lookAtCanvasCalls === 0 && record.score.otherTools.length === 0} · 快照含完整选区=${record.score.snapshotMessagesWithWholeSelection} · 成功=${record.score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
+    }
+    journey.snapshotOnly = snapshotRecords
   }
   journey.numbers = {
     ...summarizeSelectionRounds(journey.rounds),
-    ...(journey.snapshotOnly ? { snapshotOnlySuccess: journey.snapshotOnly.score.success ? '1/1' : '0/1' } : {}),
+    ...(journey.snapshotOnly ? { snapshotOnlySuccess: `${journey.snapshotOnly.filter((record) => record.score.success).length}/${journey.snapshotOnly.length}` } : {}),
   }
-  journey.gaugeProblems = gaugeProblems([...journey.rounds, ...(journey.snapshotOnly ? [journey.snapshotOnly] : [])], { expectedModelKey })
+  journey.gaugeProblems = gaugeProblems([...journey.rounds, ...(journey.snapshotOnly ?? [])], { expectedModelKey })
   journey.canvasIntactAfter = await win.evaluate(() => window.__nomiCanvasStore.getState().nodes.length)
   return journey
 }

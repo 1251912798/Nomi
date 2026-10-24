@@ -6,8 +6,8 @@
   "recurrence_check_on": "2026-11-20",
   "problem_type": "A bounded model-facing projection drops entries without accounting for them",
   "symptom": "Selecting 12 canvas nodes gives the model 7 of them (10 with short ids), selecting 16 or more gives 6 (8 with short ids), and nothing in the text or the UI says anything is missing; the model answers about 'the selection' as if it were whole.",
-  "direct_cause": "formatAgentContextSnapshot took only the first 16 handles, every canvasNode handle's locator repeated the entire selection (O(N^2) bytes), and encodeBoundedHandles kept the richest detail level and cut the tail one handle at a time to fit 6000 chars, so the full-detail prefix always beat a leaner list of everyone. No total, listed or omitted count was ever written.",
-  "class_root": "The projection owner had no accounting invariant: it could return fewer handles than the snapshot held and was free to say nothing. Budget pressure was resolved by deleting entries instead of by shedding optional detail, and the repeated-selection redundancy that created the pressure was never removed.",
+  "direct_cause": "formatAgentContextSnapshot took only the first 16 handles, every canvasNode handle's locator repeated the entire selection (O(N^2) bytes), and encodeBoundedHandles kept the richest detail level and cut the tail one handle at a time to fit 6000 chars. The old fallback could therefore present a plausible partial list without a structural rule that preferred a live read face.",
+  "class_root": "The projection owner had no accounting invariant that distinguished recoverable from non-recoverable handles: budget pressure deleted entries uniformly, even when a live read tool could recover the current state, and the repeated-selection redundancy that created the pressure was never removed.",
   "affected_population": [
     "Any canvas multi-selection of 12 or more nodes sent to the resident Agent",
     "Mixed selections (document + canvas nodes + timeline clips + director shots + @ references) whose combined handles exceed the budget",
@@ -103,10 +103,10 @@
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "electron/shared/agentContextSnapshot.ts",
-    "invariant": "A bounded projection of a snapshot writes total/listed/omitted and lists a prefix of the snapshot; total = listed + omitted and listed < total implies an explicit omitted count and note.",
-    "failure_mode": "When even the leanest rows do not all fit, the longest prefix that fits is listed and the omission is stated in the text and in the returned facts; the block stays within 6000 chars and valid JSON.",
+    "invariant": "A bounded projection writes total/listed/omitted and lists only a complete detail rung; if no rung fits, every handle kind with a declared live read tool is omitted wholesale and recorded in omittedByKind with its count and tool, while kinds without a live read tool retain a bounded prefix. total = listed + omitted and listed < total always carries the fixed omitted note.",
+    "failure_mode": "When even the leanest rows do not all fit, readable kinds contribute zero rows and their counts/tools are written to omittedByKind; only no-read kinds may contribute the longest prefix that fits. The block stays within 6000 chars and valid JSON.",
     "exception_policy": "none",
-    "strategy": "Compute the accounting in the same encoder that enforces the budget, pick the richest detail rung that lists every handle before ever cutting entries, remove the selection redundancy that caused the pressure, and expose the same counts to the renderer so a UI can show them.",
+    "strategy": "Compute the accounting in the same encoder that enforces the budget, pick the richest detail rung that lists every handle before ever cutting entries, then fail closed for recoverable kinds by pointing to their live read tool. Keep the longest-prefix fallback only for kinds with no read face, remove selection redundancy, and expose the existing total/listed/omitted facts to the renderer.",
     "artifacts": [
       "electron/shared/agentContextSnapshot.ts"
     ]
@@ -123,7 +123,7 @@
     "removed_paths": [
       "electron/shared/agentContextSnapshot.ts"
     ],
-    "rationale": "The fixed 16-handle first page, the per-handle repeated selection ids and the richest-level tail cutting are deleted in the same change; there is no second encoder and no fallback to the old shape."
+    "rationale": "The fixed 16-handle first page, the per-handle repeated selection ids and the uniform longest-prefix fallback for readable kinds are deleted in the same change; there is no second encoder and no fallback that partially lists a recoverable kind."
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
@@ -132,8 +132,8 @@
   },
   "migration": "No stored data changes: the snapshot on the Host request and in transcripts is untouched and the projection is recomputed from it on every provider request. Messages already in a transcript simply project in the new shape the next time they are sent (one KV-cache miss per existing session, no semantic change).",
   "residual_risks": [
-    "look_at_canvas (canvasReadCompact) lists at most about 31 selected ids and marks the cut with an ellipsis but no count and the verb takes no arguments, so for selections above that the model cannot enumerate the rest through the recovery tool the omitted note points at. Needs its own owner-level fix (count in the line, or a paging argument).",
-    "Handles are listed in snapshot order, and explicit @ references / director shots are appended after the ambient selection, so under budget pressure they are the first to be omitted. Their media still reaches the model through attachments; only the locator hint is lost. A priority order would need a field on the handle to tell explicit references from ambient selection.",
+    "look_at_canvas (canvasReadCompact) lists at most about 31 selected ids and marks the cut with an ellipsis but no count and the verb takes no arguments. The snapshot projection now omits oversized canvasNode handles wholesale and records look_at_canvas in omittedByKind, but the separate live-read owner still needs its own count or paging fix.",
+    "Handles are listed in snapshot order among kinds without a live read face. Explicit @ references and director shots are canvasNode handles with live read via look_at_canvas, so under budget pressure they are omitted wholesale and recoverable through that tool rather than presented as a partial list.",
     "The real-model write-correctness number is unverified: the only credential in the environment (DEEPSEEK_API_KEY) returned 402 Insufficient Balance. docs/evidence/2026-10-21-agent-selection-truncation has the probe and the zero-cost before/after census.",
     "The composer chip does not show the omitted count yet; projectAgentContextSnapshot returns the facts for that follow-up line."
   ],
