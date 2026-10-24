@@ -267,7 +267,7 @@ async function dispatchSemanticStub(
       // ── 「全自动」档：宿主当场替用户决门（2026-09-12 拍板的那一档，外部 MCP 这一侧 2026-09-21 补上）──
       //
       // 闸一步都没少，也没有第二条链：同一张挑战、同一个收据铸造口，只是那张 attestation 来自
-      // **用户此前选的档位**而不是他这一刻的手势（`generationSpendDecision.ts` 文档里的两种来源）。
+      // **用户此前选的档位**而不是他这一刻的手势（收据的两种来源：手势 | 策略，`approvalReceipt.ts`）。
       // 判据仍只有一个 owner：`spendDecisionByPolicy`（档位 + 刹车）。宿主没递档位 → 读到 undefined → 按默认走，
       // 绝不替用户花钱（下面那条 `policyDecided` 为 false 的路与改动前逐字相同）。
       // 这条是没有 requestGenerationGate 的旧挑战路：它不落任何 Run，刹车要看的 job 事实根本不存在，所以只剩档位那一问

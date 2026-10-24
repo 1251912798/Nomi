@@ -88,5 +88,7 @@ export function setupCanvasShots(options: {
     shots: shots.map((shot) => ({ ...shot, vendor: "acme", modelKey: "img-model", kind: "image" })),
   });
   const withdraw = (runRecordIds: string[], by: "removed" | "user_closed" | "stopped") => runs.withdraw({ projectId: CANVAS_TEST_PROJECT, runRecordIds, by });
-  return { root, repository, runs, vendor, observed, previewCalls, submit, consent, withdraw, receipts };
+  /** 这一下点击来自哪个窗口（节点 ↑、批量卡、付费卡交给画布的那几镜都是同一个渲染层窗口）。 */
+  const senderId = 7;
+  return { root, repository, runs, vendor, observed, previewCalls, submit, consent, withdraw, receipts, gesture, senderId };
 }

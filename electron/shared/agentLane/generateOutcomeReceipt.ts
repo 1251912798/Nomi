@@ -19,6 +19,8 @@ const UNDECIDED_BECAUSE: Readonly<Record<GenerationPresentationCloser | "open", 
   user_wrote: "the user wrote a message instead of deciding them",
   stopped: "the conversation was stopped before he decided them",
   resolved: "they were not decided on the card",
+  // 卡交给画布的那一次出价只在每一镜都定了时才这样关，留不下没决定的镜；为了表全，和 resolved 同一句。
+  handed_to_canvas: "they were not decided on the card",
   open: "they are still waiting on the card",
 };
 

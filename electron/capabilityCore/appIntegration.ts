@@ -26,7 +26,7 @@ import { unknownSubmissionShotLabels } from '../shared/productionShotPhase'
 import type { ApprovalReceiptAuthority } from './approvalReceipt'
 import { readWorkspaceProject, resolveWorkspaceProjectDir } from '../workspace/workspaceRepository'
 import type { DispatchContext } from './dispatcher'
-import { requestRenderer, requestRendererDecision, rendererTargetIdentity } from './rendererBridge'
+import { requestRenderer, requestRendererDecision } from './rendererBridge'
 import { resolveIndexedReferencePreview } from './pendingSpendReferences'
 import { resolveProjectAssetReferenceIdentity } from '../assets/projectAssetStore'
 import { createGenerationPlanningHandler } from './mcpGenerationTools'
@@ -53,7 +53,6 @@ import { readGenerationDefaultModelResolver } from './generationDefaultModelReso
 import { readCatalog } from '../catalog/catalogStore'
 import { recommendVideoGeneration } from '../shared/videoCapabilities'
 import { deriveUsableVideoModelCandidates } from './usableVideoModelCandidates'
-import { resolvePlanPatch } from './generationPlanPatch'
 import { installCatalogRowLookup } from './modelSpecRead'
 import { canvasReadSurfaceRuntime } from './canvasReadSurfaceRuntime'
 import type { CanvasReadExecutionRuntime } from './canvasReadExecutionRuntime'
@@ -70,12 +69,13 @@ import { createGenerationProviderBootstrap } from './generationProviderBootstrap
 import { createDefaultAuthorities } from './appIntegrationAuthorities'
 import { createProductionActionHooks } from './appIntegrationProductionActions'
 import { installPendingSpendActions, pendingSpendDependencies, readInstalledPendingSpend } from './appIntegrationSpendConfirm'
-import { canvasLocalArtifactReceipt, createCanvasShotRuns, installCanvasShotRuns } from './appIntegrationCanvasShot'
+import { canvasLocalArtifactReceipt, createCanvasShotRuns, installCanvasShotRuns, withdrawQueuedHandOvers } from './appIntegrationCanvasShot'
+import { createCanvasHandOver } from './canvasHandOver'
 import { canvasTransportProviders, isCanvasProviderId, lazyCanvasTransport } from './canvasTransportProvider'
 import { quoteSpendLine } from '../spendQuote'
 export { consentCanvasShots, submitCanvasShot, pollCanvasShot, releaseCanvasShot, withdrawCanvasShots, releaseCanvasShotSender } from './appIntegrationCanvasShot'
-// 付费确认卡的四个动作住在它自己的模块里（这里只装配）。main.ts 的 IPC 经能力核门面转调，所以门面要露出这四个名字。
-export { revisePendingSpendConfirmation, discardPendingSpendConfirmation, confirmPendingSpendConfirmation, removePendingSpendShot, confirmRemainingSpendShots } from './appIntegrationSpendConfirm'
+// 付费卡的四个动作住在它自己的模块里（这里只装配）。main.ts 的 IPC 经能力核门面转调，所以门面要露出这四个名字。
+export { handOverPendingSpendShots, discardPendingSpendConfirmation, removePendingSpendShot, restorePendingSpendShot } from './appIntegrationSpendConfirm'
 import { repairStaleMcpConfigs } from './mcpConfig'
 import { logDevDetail, logError, logInfo, logWarn } from '../logging/logger'
 import { markResidentSurfaceInstallFailed, markResidentSurfaceReady, markResidentSurfaceStarting, markResidentSurfaceStopped, readResidentSurfaceLifecycle } from './residentSurfaceLifecycle'
@@ -238,8 +238,9 @@ export async function startCapabilityCore(
     // 画布节点跟着 Run 走：每一次耐久变化（派发 / 受理 / 出片落盘 / 失败 / 停）都经过仓库 execute 的事件旁路，
     // 跟随者据此把「生成中 / 结果 / 失败」写进节点自己的运行记录——与普通生成同一份状态、同一套画法。
     // 它取代了以前只在「出片」那一下投递结果的专用通道（一件事一个 owner：Run → 画布只有落地这一条路）。
+    // 同一个订阅里收排队的交接：Agent 那一次出价从哪条路关的（取消 / 停 / 打字 / 重启清扫 / 被顶掉），交给画布、还没轮到的那几镜都当场收回同意。
     unsubscribeRunChanges?.()
-    unsubscribeRunChanges = subscribeProductionRunChanges((run) => canvasLanding.followRunChange(run))
+    unsubscribeRunChanges = subscribeProductionRunChanges((run) => { canvasLanding.followRunChange(run); withdrawQueuedHandOvers(run) })
     // P4 S4/S5：构造一个 Run 的提交门面（submission）。lease 身份（immutableProjectUuid/projectGeneration）
     // 从工作区记录读——**耐久 binding 已冻住这些值**，恢复时无需新 lease。provider 集合按所有镜头合同和已有 job 推导。
     // 返回 null = provider 未配置 / 工程根不可达（调用方跳过，不驱动）。start 与恢复调度共用同一门槛（P1）。
@@ -330,6 +331,13 @@ export async function startCapabilityCore(
       observe: observeSingleShotRun,
     })
     installCanvasShotRuns(canvasShots)
+    // 付费卡上点「生成」与「直接生成」档的策略共用这一台：把 Agent 那一次出价里的几镜交给画布（逐镜走上面那条画布单节点提交）。
+    const canvasHandOver = createCanvasHandOver({
+      runs: generationService.repository,
+      landShots: canvasLanding.landBeforeDispatch,
+      requestRenderer,
+      subscribe: subscribeProductionRunChanges,
+    })
     // P4 §3.2：所有 gate 入口共用 post-decide 重踢。
     registerBatchSchedulerKicker(kickSchedulerForRun)
     const generationPlanning = authorities.generationPlanning
@@ -492,17 +500,11 @@ export async function startCapabilityCore(
       const authorizeGeneration = authorities.authorizeGeneration ?? runOwnedGenerationAuthority.authorizeGeneration
       // P1 单轨化（2026-09-11）：这条 lane 不再注入 `confirmGenerationInNomi`（居中弹窗的入口），
       // 于是「agent 代发的付费确认弹居中卡」结构上不可能；真被走到会 fail-closed。面板那条走 appIntegrationSpendConfirm。
-      const residentGeneration = installResidentGenerationAdapter({ planning: generationPlanning, requestGenerationGate, authorizeGeneration, approvalReceiptAuthority: defaults.approvalReceiptAuthority!, projectSessionAuthority: defaults.projectSessionAuthority, owner: generationService, draftLanding: canvasLanding.draftLandingOutcome })
+      const residentGeneration = installResidentGenerationAdapter({ planning: generationPlanning, requestGenerationGate, authorizeGeneration, approvalReceiptAuthority: defaults.approvalReceiptAuthority!, projectSessionAuthority: defaults.projectSessionAuthority, owner: generationService, draftLanding: canvasLanding.draftLandingOutcome, handOverToCanvas: canvasHandOver })
       disposeResidentGenerationAdapter = residentGeneration.dispose
-      // 付费确认卡的编排：租约与 resident 适配器共用同一个 `leaseFor`（不另起一份续期逻辑）。
+      // 付费卡的编排：卡上的四个动作都是 Run 账本里的一条命令，「生成」交给上面那一台画布交接。
       installPendingSpendActions(pendingSpendDependencies({
-        isProjectOpen, repository: generationService.repository, operations: operationStore, planning: generationPlanning,
-        requestGenerationGate, authorizeGeneration, receipts: defaults.approvalReceiptAuthority!,
-        rendererTarget: rendererTargetIdentity, committedSelection: canvasReadSurfaceRuntime.getCommittedProjectSelection,
-        leaseFor: residentGeneration.leaseFor, resolvePricing: resolveModelPricing,
-        // 卡上改一下与 Agent 改草稿走同一条并入规则（同一个目录、同一份视频候选）。
-        landShots: canvasLanding.landBeforeDispatch,
-        normalizePatch: (base, patch) => resolvePlanPatch({ baseCandidate: base, userPatch: patch, registry: generationRegistry, videoModelCandidates: deriveUsableVideoModelCandidates() }).normalizedPatch,
+        isProjectOpen, repository: generationService.repository, operations: operationStore, handOver: canvasHandOver.handOver,
       }))
       // 两条面（lane 的生成适配器、面板的付费卡）装齐了才算 ready：它们由同一份相回答。
       markResidentSurfaceReady(residentGeneration.factory, readInstalledPendingSpend)

@@ -6,7 +6,7 @@
 //
 // 这里的「模型」是一个脚本：每一回合只读上一回合**工具结果的文本**（和真模型同样看得到的那一份：message + Next），
 // 照里面的话改草稿再交。文本里没有指路，它就停下（和真 Agent 一样）。链路是真的：lane 工具 → 传输适配器 → 起草准入 →
-// 草稿落库 → 摆出付费卡（真 durable Run、真封印）。零额度。
+// 草稿落库 → 落到画布 → 摆出付费卡（真 durable Run、真落地宿主、真卡投影）。零额度。
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createExtendedLaneTools } from "./laneExtendedTools";
@@ -14,9 +14,7 @@ import { verbToTransportCall } from "./laneVerbTransport";
 import { renderLaneToolFailure } from "../shared/agentLane/laneToolContract";
 import { createModuleRegistry } from "../capabilityCore/moduleRegistry";
 import { buildVideoModelCandidates } from "../shared/videoCapabilities";
-import {
-  PROJECT_ID, buildActions, harness, lease, resetSpendFixture, startLoopbackVendor, advanceClock,
-} from "../capabilityCore/agentPanelSpendConfirmTestUtils";
+import { PROJECT_ID, advanceClock, lease, resetSpendFixture, spendWorld } from "../capabilityCore/agentPanelSpendConfirmTestUtils";
 
 afterEach(resetSpendFixture);
 
@@ -88,38 +86,32 @@ function reviseFromFailureText(text: string, shot: Shot): Shot | undefined {
 }
 
 async function runAgentTurns(first: Shot, expectOutcome: "card" | "stopped") {
-  const vendor = await startLoopbackVendor();
-  const base = harness();
-  const { withWindow, transport, handler } = buildActions(base, vendor.origin, [], { registry, videoModelCandidates });
-  try {
-    const adapter = transport("request");
-    const tools = createExtendedLaneTools({
-      execute: async (call, signal) => adapter.tryExecute(verbToTransportCall(call)!.call, signal) as never,
-    });
-    const draftTool = tools.find((tool) => tool.name === "draft_shots")!;
-    const signal = new AbortController().signal;
-    const rejections: string[] = [];
-    let shot = first;
-    let operationId: string | undefined;
-    for (let turn = 1; turn <= 4; turn += 1) {
-      const result = await draftTool.execute(draftTool.schema.parse({ shots: [shot] }), { toolCallId: `turn-${turn}`, signal }) as
-        { ok: boolean; text?: string; failure?: Parameters<typeof renderLaneToolFailure>[0] };
-      if (result.ok) { operationId = /"operationId":"([^"]+)"/.exec(String(result.text))?.[1]; break; }
-      const seen = renderLaneToolFailure(result.failure!);
-      rejections.push(seen);
-      const revised = reviseFromFailureText(seen, shot);
-      if (!revised) break;
-      shot = revised;
-    }
-    if (expectOutcome === "stopped") return { rejections, card: false, operationId };
-    expect(operationId, `草稿没交成。看到的拒绝：\n${rejections.join("\n---\n")}`).toBeTruthy();
-    // 最后一步：把草稿摆到用户面前 → 出付费卡。
-    await handler({ capability: "present", params: { operationId }, lease });
-    advanceClock(1000);
-    return { rejections, card: withWindow.listPendingSpend(PROJECT_ID).length === 1, operationId };
-  } finally {
-    await vendor.close();
+  const world = spendWorld({ registry, videoModelCandidates });
+  const adapter = world.transport("request");
+  const tools = createExtendedLaneTools({
+    execute: async (call, signal) => adapter.tryExecute(verbToTransportCall(call)!.call, signal) as never,
+  });
+  const draftTool = tools.find((tool) => tool.name === "draft_shots")!;
+  const signal = new AbortController().signal;
+  const rejections: string[] = [];
+  let shot = first;
+  let operationId: string | undefined;
+  for (let turn = 1; turn <= 4; turn += 1) {
+    const result = await draftTool.execute(draftTool.schema.parse({ shots: [shot] }), { toolCallId: `turn-${turn}`, signal }) as
+      { ok: boolean; text?: string; failure?: Parameters<typeof renderLaneToolFailure>[0] };
+    if (result.ok) { operationId = /"operationId":"([^"]+)"/.exec(String(result.text))?.[1]; break; }
+    const seen = renderLaneToolFailure(result.failure!);
+    rejections.push(seen);
+    const revised = reviseFromFailureText(seen, shot);
+    if (!revised) break;
+    shot = revised;
   }
+  if (expectOutcome === "stopped") return { rejections, card: false, operationId };
+  expect(operationId, `草稿没交成。看到的拒绝：\n${rejections.join("\n---\n")}`).toBeTruthy();
+  // 最后一步：把草稿摆到用户面前 → 出付费卡。
+  await world.handler({ capability: "present", params: { operationId }, lease });
+  advanceClock(1000);
+  return { rejections, card: world.card.listPendingSpend(PROJECT_ID).length === 1, operationId };
 }
 
 describe("起草被拒 → Agent 只凭工具结果当场改对再交 → 出付费卡", () => {

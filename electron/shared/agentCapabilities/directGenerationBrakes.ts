@@ -61,7 +61,47 @@ export function directGenerationBrake(input: DirectGenerationBrakeInput): Direct
   return { allow: true };
 }
 
-type RunFacts = Pick<ProductionRun, "generationPlan" | "jobs"> & Partial<Pick<ProductionRun, "status" | "gates">>;
+/**
+ * 交给画布的那几镜在画布单镜 Run 里的尝试（D2 第③步：一台发动机）。卡 / 策略交出去的镜，制作 Run 自己没有 job——
+ * 它的尝试住在画布那一个单镜 Run 里。`byHuman` = 那一笔交接是人点的（卡上的「生成」/「再试一次」）。
+ * 键 = shotId。由 `withHandedOverAttempts` 按交接记录读出来，不另存。
+ */
+export type HandedOverAttempt = Readonly<{ job: ProductionJob; byHuman: boolean }>;
+
+type RunFacts = Pick<ProductionRun, "generationPlan" | "jobs"> & Partial<Pick<ProductionRun, "status" | "gates">> & Readonly<{
+  handedOverAttempts?: ReadonlyMap<string, readonly HandedOverAttempt[]>;
+}>;
+
+/**
+ * 刹车要看的事实：制作 Run 本身 + 它交给画布的那几镜在画布单镜 Run 里的尝试。读不到的画布 Run 跳过（只会让刹车少看一次失败，
+ * 那一镜的交接记录本身仍在——它算进「说好的计划」）。
+ */
+export function withHandedOverAttempts<T extends RunFacts>(run: T, readCanvasRun: (runId: string) => Pick<ProductionRun, "jobs"> | null | undefined): T {
+  const attempts = new Map<string, HandedOverAttempt[]>();
+  for (const presentation of run.generationPlan?.presentations ?? []) {
+    for (const handOver of presentation.handOvers ?? []) {
+      if (!handOver.canvasRunId) continue;
+      const canvas = readCanvasRun(handOver.canvasRunId);
+      const list = attempts.get(handOver.shotId) ?? [];
+      for (const job of canvas?.jobs ?? []) if (job.stageId === "generate") list.push({ job, byHuman: handOver.by === "gesture" });
+      attempts.set(handOver.shotId, list);
+    }
+  }
+  return attempts.size > 0 ? { ...run, handedOverAttempts: attempts } : run;
+}
+
+type Attempt = HandedOverAttempt;
+
+/** 这一镜的全部尝试（制作 Run 的 job + 交给画布的那几次），从早到晚。没有交给画布过的镜与改动前逐字相同。 */
+function attemptsOf(run: RunFacts, shotId: string): Attempt[] {
+  const own = jobsForShot(run as ProductionRun, shotId)
+    .slice()
+    .sort((a, b) => (a.attempt - b.attempt) || (Date.parse(a.createdAt) - Date.parse(b.createdAt)))
+    .map((job) => ({ job, byHuman: attemptApprovedByHuman(run, job) }));
+  const handed = run.handedOverAttempts?.get(shotId) ?? [];
+  if (handed.length === 0) return own;
+  return [...own, ...handed].sort((a, b) => Date.parse(a.job.createdAt) - Date.parse(b.job.createdAt));
+}
 
 /** 这次尝试结束在失败上（含提交结果未知）——不管有没有到过供应商。 */
 function endedInFailure(job: ProductionJob): boolean {
@@ -94,20 +134,18 @@ function attemptApprovedByHuman(run: RunFacts, job: ProductionJob): boolean {
  * （含它本身）——那就是用户拍板的「点继续之后从这次确认重新数」，读的是事实，不靠失败数取模去猜人点过没有。
  */
 export function consecutiveFailedAttempts(run: RunFacts, shotId: string): number {
-  const jobs = jobsForShot(run as ProductionRun, shotId)
-    .slice()
-    .sort((a, b) => (a.attempt - b.attempt) || (Date.parse(a.createdAt) - Date.parse(b.createdAt)));
+  const attempts = attemptsOf(run, shotId);
   let count = 0;
-  for (let index = jobs.length - 1; index >= 0; index -= 1) {
-    const job = jobs[index];
+  for (let index = attempts.length - 1; index >= 0; index -= 1) {
+    const { job, byHuman } = attempts[index];
     // 没写出去的失败不计也不重置——但如果这次尝试是人批的，人批这件事本身就是计数的起点（V-1203 复验 R2）。
     if (endedInFailure(job) && !jobMayHaveReachedProvider(job)) {
-      if (attemptApprovedByHuman(run, job)) break;
+      if (byHuman) break;
       continue;
     }
     if (!failedForBrake(job)) break;
     count += 1;
-    if (attemptApprovedByHuman(run, job)) break;
+    if (byHuman) break;
   }
   return count;
 }
@@ -134,7 +172,7 @@ function everyUnitOf(run: RunFacts): string[] {
  * 否则「去掉旧镜 → 计划变空 → 同一 Run 里补的新镜被当成第一次代批放行」（独立验收 V-1203 F1）。
  */
 export function plannedShotIdsFromJobs(run: RunFacts): string[] {
-  return everyUnitOf(run).filter((shotId) => jobsForShot(run as ProductionRun, shotId).length > 0);
+  return everyUnitOf(run).filter((shotId) => attemptsOf(run, shotId).length > 0);
 }
 
 /**
@@ -161,10 +199,9 @@ export function directGenerationBrakeForRun(
   const stopped = run.status !== undefined && isStoppedRunStatus(run.status);
   const planned = plannedShotIdsFromJobs(run);
   for (const shotId of unitsInDecision(run)) {
-    const jobs = jobsForShot(run as ProductionRun, shotId);
     // 只有「还没被批过的新镜」和「最近一次尝试失败了、等着重试的镜」需要这一次代答；在跑 / 已完成 / 已批待派的不需要。
     // 最近一次失败没到过供应商也算等着重试（V-1203：原来按「到过供应商的失败」判，这种镜被跳过，刹车失明）。
-    const latest = jobs.slice().sort((a, b) => (b.attempt - a.attempt) || (Date.parse(b.createdAt) - Date.parse(a.createdAt)))[0];
+    const latest = attemptsOf(run, shotId).at(-1)?.job;
     if (latest && !endedInFailure(latest)) continue;
     const verdict = directGenerationBrake({
       tier, plannedShotIds: planned, stopped, shotId, consecutiveFailures: consecutiveFailedAttempts(run, shotId),

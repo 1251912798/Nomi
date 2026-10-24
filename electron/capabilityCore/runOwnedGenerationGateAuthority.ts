@@ -11,6 +11,7 @@ import type {
   ApprovalReceiptAuthority,
   HumanApprovalDisplay,
   HumanApprovalReceiptV1,
+  MainProcessDecision,
 } from "./approvalReceipt";
 import type { DispatchContext } from "./dispatcher";
 import type { GenerationOperationStore } from "./mcpGenerationTools";
@@ -234,23 +235,23 @@ function gateChallengeInput(
 }
 
 /**
- * 主进程这一次受信调用本身就是手势（画布 ↑、批量卡确认之后的派发）：一次写完收据（`issueGestureReceipt`），回一条
- * 「这道门批了」的命令，由调用方和封印放进**同一次落盘**（`repository.executeBatch`）。收据仍逐字核对信封，
- * 和要人在卡上点的那条路（`decideRunOwnedGenerationGate`）批的是同一份东西。
+ * 主进程这一次受信调用本身就是决定（画布 ↑、卡上点了「生成」之后的派发是那一下手势；「直接生成」档交给画布的那一镜是策略）：
+ * 一次写完收据（`issueDecisionReceipt`），回一条「这道门批了」的命令，由调用方和封印放进**同一次落盘**（`repository.executeBatch`）。
+ * 收据仍逐字核对信封，和要人在卡上点的那条路（`decideRunOwnedGenerationGate`）批的是同一份东西。
  */
-export function gestureGateApproval(input: Readonly<{
+export function mainProcessGateApproval(input: Readonly<{
   receipts: ApprovalReceiptAuthority;
   lease: GenerationAuthorizationProjectIdentity;
   operationId: string;
   authorization: PreparedProductionGenerationAuthorization;
-  gesture: { webContentsId: number; frameId: number; origin: string };
+  decision: MainProcessDecision;
   display: HumanApprovalDisplay;
   commandPrefix: string;
   issuedAt: string;
 }>): Omit<RunCommand, "expectedRevision"> {
   const { envelope } = input.authorization;
   const digest = input.authorization.authorizationDigest;
-  const receipt = input.receipts.issueGestureReceipt(gateChallengeInput(input.authorization, input.lease, input.display), input.gesture);
+  const receipt = input.receipts.issueDecisionReceipt(gateChallengeInput(input.authorization, input.lease, input.display), input.decision);
   assertReceiptMatchesAuthorization(receipt, input.lease, input.operationId, envelope, digest, envelope.gateId);
   return {
     commandId: `${input.commandPrefix}-decide:${envelope.gateId}:${receipt.receiptId}`,

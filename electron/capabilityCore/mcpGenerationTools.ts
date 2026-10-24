@@ -88,7 +88,7 @@ export function coldstartEtaForGate(outputKinds: readonly string[], shotCount: n
  */
 
 export type { GenerationOperationDraftShot, GenerationSealMultiShot, StoryboardShotDraft, StoryboardPlanResult } from "./mcpGenerationMultiShot";
-export type { GenerationOperationState, GenerationOperationShot, GenerationOperation, GenerationAuthorizationPreparation, GenerationOperationStore, GenerationReviseInput } from "./generationOperationTypes";
+export type { GenerationOperationState, GenerationOperationShot, GenerationOperation, GenerationAuthorizationPreparation, GenerationOperationStore } from "./generationOperationTypes";
 import type { GenerationAuthorizationPreparation, GenerationOperation, GenerationOperationStore } from "./generationOperationTypes";
 
 

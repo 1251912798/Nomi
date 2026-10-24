@@ -5,71 +5,47 @@
 // 渲染层不许 import `electron/` 的实现层（`check:boundaries` 的 `src-no-import-electron`），
 // 而两侧各写一份类型就得再写一张两份之间的映射表，那正是 R14.1 要横扫的「同一语义两份定义」。
 // 中立契约层是两边都认识、谁也不拥有实现的那一层。
-/**
- * 一镜的价格。`known:false` = **这次算不出**（中转/自建端点没有价目是常态），
- * 卡上印的是「暂时算不出价格」而不是 `¥0` —— 三种可能（免费 / 算不出 / 真的零元）里，
- * 印 0 恰好是唯一会被读成「这次不花钱」的那一种。与 `productionRun/shotPricing.ts`
- * 的 `ShotPrice` 同形，那边是求值的家，这里是过线的形状。
- */
 import type { ResidentSurfaceDisabledReason, ResidentSurfaceOffPhase } from "./residentSurfaceLifecycle";
 import type { GenerationShotKind } from "../generationShotKind";
 import type { ProjectAgentApprovalPolicy } from "../agentCapabilities/capabilityApprovalPolicy";
+import type { GenerationReference } from '../agentCapabilities/generationPlanSchemas';
+import type { GenerationHandOverFailure } from "../../productionRun/productionRunTypes";
+import type { OfferShotState } from "../productionGenerationPresentation";
 
-import { z } from 'zod';
-import { generationReferenceSchema, type GenerationReference } from '../agentCapabilities/generationPlanSchemas';
-
-export type PendingSpendReference = GenerationReference & Readonly<{ url?: string }>;
-/** Semantic renderer edit; pinned identities are accepted only when already in this candidate. */
-export const spendReferenceInputSchema = z.union([
-  z.object({ reference: generationReferenceSchema, url: z.string().min(1).optional() }).strict(),
-  generationReferenceSchema.omit({ assetId: true, contentHash: true, version: true })
-    .extend({ url: z.string().trim().min(1) }).required({ kind: true }).strict(),
-]);
-export type SpendReferenceInput = z.infer<typeof spendReferenceInputSchema>;
-
+/** 一条参考在派发那一刻的键（供应商适配层按它找上传后的地址；与卡无关，只是住在这份契约里）。 */
 export function spendReferenceKey(reference: GenerationReference): string {
   return JSON.stringify([reference.assetId, reference.contentHash, reference.version, reference.kind ?? null, reference.role ?? null]);
 }
 
-export type PendingSpendPrice = { known: true; amount: number } | { known: false };
-
-/** 一镜在付费卡上的全部事实。绝不含 transportModelId、密钥或供应商 URL。 */
+/**
+ * 付费卡上的一镜（D2 第③步）。卡**不**带这一镜要发什么（提示词、参数、参考、价格）——那些只住在画布节点上，
+ * 卡上的指向元素和那一行只读摘要都读节点本身（一个东西一个家）。这里只有节点读不到的事实：它是出价里的第几镜、
+ * 指向哪个节点、Agent 起草时选的模型（「Nomi 选的」判据）、在这一次出价里走到了哪一步。
+ */
 export type PendingSpendShot = Readonly<{
   shotId: string;
-  /** 已落地的画布占位节点。卡体那张生成框绑的就是它（同一份 meta、同一个 store）。 */
+  /** 已落地的画布节点（指向元素指的就是它）。缺席 = 这一镜还没放到画布上：卡不算它、不交它。 */
   nodeId?: string;
-  /** 1 基的镜序，翻页器上印的那个数。 */
+  /** 1 基的镜序（按计划顺序），指向元素与「去改镜 N」印的那个数。 */
   index: number;
-  prompt: string;
-  providerId: string;
-  modelId: string;
-  /**
-   * 这一镜出来的是图片还是视频（宿主按 `generationShotKind` 算，和画布节点、派发同一个答案）。
-   * 卡标题说「张 / 段」、卡体那张生成框的种类都只读它，不再各自去解读 `mode` 或模型目录（2026-09-30 第 9 条）。
-   */
+  /** 图片还是视频（宿主按 `generationShotKind` 算，和画布节点、派发同一个答案）。卡标题说「张 / 段」只读它。 */
   kind: GenerationShotKind;
-  mode?: string;
-  modeId?: string;
-  /**
-   * 候选上显式写着的变体（没写 = 缺席）。卡上那张生成框拿它和 `modelId` 问唯一 owner
-   * `resolveArchetypeVariant`——与宿主派发问的是同一个函数、同一组输入，卡上写哪个就派哪个（2026-09-26）。
-   */
-  variantId?: string;
-  parameters: Readonly<Record<string, unknown>>;
-  references?: readonly PendingSpendReference[];
-  price: PendingSpendPrice;
+  /** Agent 起草时这一镜选的模型。节点当前的模型在这里面 → 卡上说「Nomi 选的」。 */
+  draftedModel: Readonly<{ providerId: string; modelId: string }>;
+  /** 这一镜在这一次出价里的样子（`productionGenerationPresentation.offerShots`；制作流程批过的旧镜读作 `sent`）。 */
+  offer: Exclude<OfferShotState, "approved">;
+  /** `not_sent` 时为什么没发出去：卡据此给「再试一次」还是「去改镜 N」。 */
+  failure?: GenerationHandOverFailure;
 }>;
 
 export type PendingSpendConfirm = Readonly<{
   projectId: string;
   runId: string;
   operationId: string;
-  /** 幂等键的一半：改参数把它推进一版（`generation.revise` 的 commandId 用它）。 */
   planVersion: number;
-  /** Host identity of the exact displayed candidates, scope and quote. */
+  /** 这张卡此刻的身份（出价、摆着哪几镜、每镜候选的版本、指向哪个节点；不含交接走到哪一步）。卡上的动作带着它来，对不上就拒。 */
   quoteId: string;
-  candidateRevision: number;
-  /** Durable identity of the exact presentation that produced this quote. */
+  /** Durable identity of the exact presentation that produced this card. */
   presentationId?: string;
   /** Conditional-write epoch for actions originating from this card. */
   presentationEpoch?: number;
@@ -82,18 +58,9 @@ export type PendingSpendConfirm = Readonly<{
    * 由 `directGenerationBrakes.directGenerationBrakeForRun` 按 Run 现派生，不落盘；没有刹车 = 缺席。
    */
   brake?: Readonly<{ reason: "stopped" | "retry-limit" | "out-of-plan"; shotId?: string }>;
-  /**
-   * 付费门已经开着时它就是那道门的 id；还是草稿（没封印）时缺席。
-   *
-   * 卡**不看它**——用户在两档下看到的是同一张卡，改参数时价格照样原地刷新。
-   * 它只在命令那一层有意义：有门就得先撤门再改，没门直接改。
-   */
-  gateId?: string;
+  /** 卡上逐镜价格（节点按画布批量估价同一个函数算出来的数）用哪种币种印。 */
   currency: string;
   shots: readonly PendingSpendShot[];
-  /** 已知价格之和。`unknownShotCount > 0` 时它**不是**合计，卡上必须走「算不出」那一档。 */
-  knownSubtotal: number;
-  unknownShotCount: number;
   /** Projection failure card; identity remains tied to the same presentation. */
   error?: Readonly<{ code: string; message: string }>;
 }>;
@@ -117,9 +84,3 @@ export type PendingSpendRead =
   | Readonly<{ surface: "ready"; rows: readonly PendingSpendConfirm[] }>
   | Readonly<{ surface: "off"; phase: ResidentSurfaceOffPhase; reason?: ResidentSurfaceDisabledReason }>
   | Readonly<{ surface: "unreadable"; reason: "surface-unavailable" | "projection-failed"; card?: PendingSpendConfirm }>;
-
-/**
- * 卡上「改参数」那一下的回包：宿主落完改动之后**现算的那张卡**（正式报价）就在回包里。
- * 卡点下去那一刻要拿它和本地估算对账、拿它的报价去封印——不再为此另读一次（读口只有对话投影那一条）。
- */
-export type PendingSpendRevised = Readonly<{ pending?: PendingSpendConfirm }>;

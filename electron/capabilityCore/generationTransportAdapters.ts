@@ -1,5 +1,5 @@
 import { DRAFT_CANVAS_LANDING_KEY, type DraftCanvasLanding } from "../shared/agentLane/draftCanvasLanding";
-import type { GeneratePresentationOutcome } from "../shared/productionGenerationPresentation";
+import { undecidedShotIds, type GeneratePresentationOutcome } from "../shared/productionGenerationPresentation";
 import { resolveGenerationShotScope } from '../shared/agentCapabilities/generationShotScope';
 import { productionTaskAbsenceCode } from '../productionRun/productionRunErrors';
 import { GenerationProviderCapabilityError, GenerationProviderObservationError, GenerationRuntimeBindingError } from './generationRuntimeAdapter';
@@ -15,11 +15,11 @@ import type { ProjectBinding } from "../shared/projectBinding";
 import type { ProjectLeaseV2 } from "./projectLease";
 import type { DispatchContext } from "./dispatcher";
 import type { ApprovalReceiptAuthority, HumanApprovalReceiptV1 } from "./approvalReceipt";
-import { decideGenerationSpend, generationChallengeTokenOf } from "./generationSpendDecision";
+import { generationChallengeTokenOf } from "./generationSpendDecision";
 import type { ProjectAgentApprovalPolicy } from "../shared/agentCapabilities/capabilityApprovalPolicy";
 import { spendDecisionByPolicy, type SpendDecisionByPolicy } from "../shared/agentCapabilities/directGenerationBrakes";
 import type { ProductionRun } from "../productionRun/productionRunTypes";
-import { sealedOutcome } from "./spendOperationArbiter";
+import { POLICY_SETTLEMENT_TIMEOUT_MS, type CanvasHandOver } from "./canvasHandOver";
 import type { GenerationInvocationContext } from "../shared/agentCapabilities/generationInvocationContext";
 import { shotDurationSeconds } from "./mcpGenerationVideoResolve";
 
@@ -89,6 +89,11 @@ export type GenerationTransportAdapterDependencies = Readonly<{
    * 结果写进草稿结果的 `canvasLanding` 格，`draft_shots` 的回执只渲染它；缺席（外部宿主 / 夹具）= 不报，回执就不提画布。
    */
   draftLanding?: (projectId: string, operationId: string) => Promise<DraftCanvasLanding | undefined>;
+  /**
+   * 「直接生成」档的代答（D2 第③步：一台发动机）：把出价里还没决定的那几镜交给画布（`canvasHandOver`，和付费卡上点「生成」
+   * 同一台），再等它们落定。缺席（外部宿主 / 夹具）= 这一档没法代答：出价标成要人工决定，卡照旧摆在原处。
+   */
+  handOverToCanvas?: Pick<CanvasHandOver, "handOver" | "waitForSettlement">;
 }>;
 
 // 路由白名单**只有一个来源**：契约层的方法词表（`GENERATION_METHODS`）。模型可见的动词名
@@ -316,9 +321,6 @@ function trialFirst(value: unknown): boolean {
     && (value as { trialFirst?: unknown }).trialFirst === true);
 }
 
-/** 「全自动」代答时写进收据的宿主面名字。 */
-const FULL_AUTO_POLICY_SURFACE = "agent-lane";
-
 /**
  * 刚建好的这份草稿是哪一笔。`create` 的 id 由宿主生成、只在结果里（模型没法先知道它），
  * `patch` 的在入参里。两处都读不到就抛——**不许拿一个猜出来的 id 去开付费门**。
@@ -395,15 +397,16 @@ export function createPiGenerationTransportAdapter(
    * 草稿一建好，`projectPendingSpendConfirm` 就会把它投影成面板上那张报价卡——
    * **那一刻就是用户点下去的那一刻**。另外两档里宿主的回应是在介入槽里摆一张卡等人点，
    * 「全自动」档里宿主的回应就是在同一个边界上自己决。不是绕过闸，是同一道闸换了个决定者：
-   * 封印照做、收据照铸照签、一次性消费照旧（`generationSpendDecision.ts` 那一条链）。
+   * 和卡上点「生成」走同一条路（D2 第③步）——出价上记一笔策略交接、逐镜走画布单节点提交，每一镜派发时主进程按策略
+   * 铸那一张收据（`appIntegrationCanvasShot.decisionFor`），一次性消费照旧。
    *
    * ── 三个「不」──
    *
    *   · **不新增预算**：这里没有任何金额判断。用户拍板的是「全自动 = 不再逐次问」，
    *     不是「¥X 以内不问」——设置里那条硬预算上限 2026-09-10 已经删掉，不许在这里长回来。
-   *   · **不吞错**：决门失败就把错抛回去（`safeFailure` 会把它变成模型看得见的失败），
-   *     而草稿仍是草稿，报价卡照旧在原处等用户——**这不是兜底**，是「没决成，所以它仍然待决」
-   *     的真实状态。
+   *   · **不吞错**：交不出去的那几镜（节点不在 / 本机判定发不出去 / 素材托管要先问人 / 刹车）由账本把这一次出价退回给人
+   *     （`policyDecisionState: failed`），卡带着每一镜的原因出现在原处，回合照「请求批准」档等卡——**这不是兜底**，
+   *     是「没决成，所以它仍然待决」的真实状态。
    *   · **不猜档位**：`approvalPolicy` 缺席按默认档走，也就是照旧弹卡。外部 MCP 宿主那条路
    *     从来不传它，所以它们的确认语义一个字没变（那条路自己有 elicitation 与收据门）。
    */
@@ -413,27 +416,29 @@ export function createPiGenerationTransportAdapter(
     return spendDecisionByPolicy(policy, () => deps.readRun?.(currentLease.projectId, draftedOperationId(drafted, args)));
   };
 
+  /**
+   * 代答：这一次出价里还没决定的那几镜交给画布，等它们落定（交到 / 没交到；等满了还在交的照「在交」算，它们已经绑上画布）。
+   * 全交到了 → 回「已开始」那一份结果（回执照旧只读 `spendDecision.decidedBy`）。有一镜没交到 → 账本已把这一次出价退回给人，
+   * 回 `undefined`：调用方照常交出 present 的结果（`nextAction: await_user`），回合等卡。
+   */
   const decideByPolicyAfterDraft = async (
     args: Record<string, unknown>,
     drafted: unknown,
     currentLease: ProjectLeaseV2,
     signal: AbortSignal,
-  ): Promise<unknown> => {
-    if (!deps.requestGenerationGate || !deps.authorizeGeneration || !deps.approvalReceiptAuthority) {
-      throw Object.assign(new Error("generation_approval_unavailable"), { code: "generation_approval_unavailable" });
-    }
-    const outcome = await abortable(decideGenerationSpend({
-      requestGenerationGate: deps.requestGenerationGate,
-      authorizeGeneration: deps.authorizeGeneration,
-      planning: deps.planning,
-      receipts: deps.approvalReceiptAuthority,
-    }, {
-      operationId: draftedOperationId(drafted, args),
-      lease: currentLease,
-      decision: { kind: "policy-full-auto", surface: FULL_AUTO_POLICY_SURFACE },
-      actorId: FULL_AUTO_POLICY_SURFACE,
-    }), signal);
-    return { drafted, spendDecision: { decidedBy: outcome.decidedBy, receiptId: outcome.receiptId }, started: outcome.started };
+  ): Promise<unknown | undefined> => {
+    const handOver = deps.handOverToCanvas;
+    if (!handOver || !deps.readRun) throw Object.assign(new Error("generation_approval_unavailable"), { code: "generation_approval_unavailable" });
+    const runId = draftedOperationId(drafted, args);
+    const projectId = currentLease.projectId;
+    const run = deps.readRun(projectId, runId);
+    const shotIds = run ? undecidedShotIds(run) : [];
+    if (shotIds.length === 0) return undefined;
+    await abortable(handOver.handOver({ projectId, runId, shotIds, by: "policy", hostingAllowed: false }), signal);
+    const settled = await handOver.waitForSettlement(projectId, runId, shotIds, POLICY_SETTLEMENT_TIMEOUT_MS, signal);
+    if (signal.aborted) throw abortError();
+    if (settled.failed.length > 0) return undefined;
+    return { drafted, spendDecision: { decidedBy: "policy:full_auto" }, started: { handedToCanvas: [...settled.accepted, ...settled.pending] } };
   };
 
   const reject = async (args: Record<string, unknown>, currentLease: ProjectLeaseV2, signal: AbortSignal): Promise<void> => {
@@ -583,8 +588,8 @@ export function createPiGenerationTransportAdapter(
           if (verdict?.decided) {
             policyDecisionAttempt = { params: { ...args, operationId: draftedOperationId(result, args) }, lease: currentLease };
             const decided = await decideByPolicyAfterDraft(args, result, currentLease, signal);
-            if (decided) return { ok: true, result: decided };
             policyDecisionAttempt = undefined;
+            if (decided) return { ok: true, result: decided };
           }
           // 草稿写（建 / 改）成功：等落地落完，把「此刻在画布上吗」随结果交出去（回执据它说话）。
           if ((capability === "create" || capability === "plan") && deps.draftLanding && addressed) {
@@ -601,12 +606,10 @@ export function createPiGenerationTransportAdapter(
           }
         }
         const failure = safeFailure(error);
-        // 「结果可能未知」只有在真的有提交意图落过盘时才是真的。认不出的异常先落到兜底码，这里问账本一句：
-        // 这份计划（没有计划就更没有）有没有任何一笔走到过提交意图——没有就是「没发出去、没扣费」，
-        // 模型和面板据此都说真话，不让用户去核对一笔根本不存在的扣费（23:30 第 3 点）。
-        if (failure.code === "generation_execution_failed" && !(await submissionStarted(addressed))) {
-          return { ...failure, code: "generation_not_started", message: (failure.message ?? "generation_execution_failed").replace("generation_execution_failed", "generation_not_started") };
-        }
+        // 「结果可能未知」只有在真的有一笔可能到过供应商时才是真的。认不出的异常先落到兜底码，这里把账本的那一句事实
+        // 随失败带出去：这份计划（没有计划就更没有）有没有任何一笔可能到过供应商（制作作业 + 交给画布的那几镜）。
+        // 措辞只由 lane 的 `laneFailureFromDecision` 按它定（两个出口同一份判断），不让用户去核对一笔根本不存在的扣费。
+        if (failure.code === "generation_execution_failed") return { ...failure, submissionStarted: await submissionStarted(addressed) };
         return failure;
       }
     },
@@ -618,11 +621,11 @@ export function createPiGenerationTransportAdapter(
     },
     async readPresentationOutcome(operationIdToRead) {
       if (disposed) return undefined;
-      // 卡可能在一镜批到一半时关掉（×、在卡开着时打字）：授权已落账的那一镜照样发出、花钱。回执从仲裁器的封存终态读
-      // （先等卡上的动作落定），说的才是宿主最终批下的那一份——和 × 回给卡的是同一个口（`spendOperationArbiter`）。
+      // 卡可能在一镜交到一半时关掉（×、在卡开着时打字）：已经在交的那一镜照常交完、算「交出去了」。回执读账本里这一次出价的
+      // 结局（`generationPresentationOutcome`，和 × 回给卡的是同一个读口）；调用方先等交出去的那几镜落定（`watchSpendCardClose`）。
       const signal = new AbortController().signal;
       try {
-        const read = await sealedOutcome(binding.projectId, operationIdToRead, async () => plan("read", { operationId: operationIdToRead }, await lease(signal), signal)) as { operation?: { presentationOutcome?: GeneratePresentationOutcome } };
+        const read = await plan("read", { operationId: operationIdToRead }, await lease(signal), signal) as { operation?: { presentationOutcome?: GeneratePresentationOutcome } };
         return read?.operation?.presentationOutcome;
       } catch {
         return undefined;

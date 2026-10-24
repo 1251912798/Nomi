@@ -16,8 +16,15 @@ import { OUTPUT_RETRIEVAL_FAILED, type ProductionJob, type ProductionJobStatus, 
 import { runStopReason } from "./productionRunStop";
 import { tagNomiError } from "./nomiErrorCodes";
 export { decideShotClaim } from "./decideShotClaim";
-import { shotCountsTowardBatch, shotIncluded } from "./productionShotJobs";
-import { removedShotIds, undecidedShotIds } from "./productionGenerationPresentation";
+import { currentShotAttempt, shotCountsTowardBatch, shotIncluded } from "./productionShotJobs";
+import { handingOverShotIds, removedShotIds, undecidedShotIds } from "./productionGenerationPresentation";
+
+/** 画布认领了这一镜的当前这一次尝试（付费卡交出去的 / 用户在节点上点的）：制作流程不再拥有它。 */
+function canvasOwnsCurrentAttempt(run: ProductionRun, shotId: string): boolean {
+  const plan = run.generationPlan;
+  const claim = plan?.shots?.length ? plan.shots.find((shot) => shot.shotId === shotId)?.claim : plan?.claim;
+  return claim?.by === "canvas" && claim.attempt === currentShotAttempt(run, shotId);
+}
 
 /**
  * - `awaiting_confirmation`：卡正摆着它 / 它那道付费门在等人——在等**用户**，不是在排队；
@@ -223,11 +230,15 @@ export function deriveProductionShotState(run: ProductionRun | null | undefined,
   }
   if (job && jobPhase === "generating") return { phase: "generating", job };
 
-  // 一次任务都没有 = 从没被批过：不在任何队列里。卡正摆着它就是在等用户；用户去掉过它就说去掉了；否则就是还没生成。
-  // 「卡摆着哪几镜」只问这一次出价（`productionGenerationPresentation`），不从计划状态猜。
+  // 一次任务都没有 = 制作流程从没批过它。卡 / 策略正把它交给画布 → 排队中（不再是「等你确认」：宿主的同一个状态，
+  // 卡上的指向元素与画布占位都读这里）；卡正摆着它 → 在等用户；用户去掉过它 → 去掉了；画布已经认领了它的这一次尝试
+  // （卡交出去的 / 节点上点的）→ 制作不再拥有它，节点自己的运行记录说话；否则就是还没生成。
+  // 「卡摆着哪几镜、交到哪一步」只问这一次出价（`productionGenerationPresentation`），不从计划状态猜。
   if (!job) {
+    if (handingOverShotIds(run).includes(shotId)) return { phase: "queued" };
     if (undecidedShotIds(run).includes(shotId)) return { phase: "awaiting_confirmation" };
     if (removedShotIds(run).includes(shotId)) return { phase: "removed" };
+    if (canvasOwnsCurrentAttempt(run, shotId)) return null;
     return { phase: "not_generated" };
   }
   // 有任务、还在派发前的档（批过了，等轮到它）：run 停着 → 显「已停」，原因照 Run 记下的说；否则「排队中（第 n/N）」。

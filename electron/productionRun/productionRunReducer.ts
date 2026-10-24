@@ -1,6 +1,7 @@
 import type { ArtifactReviewDecision } from "../shared/agentCapabilities/productionRun";
 import { transitionJob, transitionRun } from "./productionRunState";
 import { decideShotClaim } from "../shared/decideShotClaim";
+import { currentPresentation, latestHandOver } from "../shared/productionGenerationPresentation";
 import { currentShotAttempt, jobsForShot } from "../shared/productionShotJobs";
 import { applyOwedLifecycleStep, applyRunStatus } from "./productionRunLifecycle";
 import { bindShotNodes, detachShotNodes } from "./productionRunCanvasLandingReducer";
@@ -12,6 +13,7 @@ import type {
   ProductionJob,
   ProductionJobStatus,
   ProductionRun,
+  ProductionShotClaim,
   ProductionStage,
   RunCommand,
 } from "./productionRunTypes";
@@ -26,16 +28,19 @@ import { applyDispatchConsentRenewal } from "./productionDispatchConsentEdits";
 import { budgetExceeds, sumBudgetAmounts } from "./budgetLedger";
 import {
   applyGenerationCandidatePatch,
-  applyGenerationRevise,
   revokeWaitingAndUnseal,
   revokeWaitingGenerationAuthorization,
   unsealedGenerationPlanFields,
 } from "./productionGenerationPlanEdits";
 import {
+  bindHandOvers,
+  handOverPresentedShots,
   parsePresentationCloser,
   presentGenerationPlan,
   markGenerationPolicyDecisionFailed,
   removePresentedShot,
+  restorePresentedShot,
+  settleHandOver,
   withdrawGenerationPresentation,
 } from "./productionGenerationPresentationEdits";
 
@@ -238,6 +243,15 @@ export function applyProductionCommand(
     }
     case "generation.shot.remove":
       return { run: removePresentedShot(current, text(command.payload, "shotId"), now), eventType: "generation.shot.removed", message: text(command.payload, "shotId") };
+    case "generation.shot.restore":
+      return { run: restorePresentedShot(current, text(command.payload, "shotId"), now), eventType: "generation.shot.restored", message: text(command.payload, "shotId") };
+    // 付费卡 / 「直接生成」档把这几镜交给画布（D2 第③步）：决定 → 画布开好同意时绑上画布 Run → 画布写回派发结论。
+    case "generation.handover":
+      return { run: handOverPresentedShots(current, command.payload.shotIds, command.payload.by, now), eventType: "generation.shots.handed_over", message: current.generationPlan?.operationId ?? current.runId };
+    case "generation.handover.bind":
+      return { run: bindHandOvers(current, command.payload.bindings, now), eventType: "generation.handover.bound", message: current.generationPlan?.operationId ?? current.runId };
+    case "generation.handover.settle":
+      return { run: settleHandOver(current, command.payload, now), eventType: "generation.handover.settled", message: text(command.payload, "shotId") };
     case "generation.seal":
       return applyGenerationSeal(current, command, now);
     // 一次点击没点完（封了门、还没决）留下的那份等人的授权：下一次点击之前由调用方先撤掉，只解封它盖着的那几镜。
@@ -280,8 +294,6 @@ export function applyProductionCommand(
         message: currentPlan.operationId,
       };
     }
-    case "generation.revise":
-      return applyGenerationRevise(current, command, now);
     // **计划级终态**：用户不要这份草稿了（左侧栏删草稿 / 外部宿主撤草稿）。报价卡上的 × 不走这里
     // ——它收回的只是这一次出价，走 `generation.withdraw`（2026-09-22 下午用户拍板改窄裁决 D）。
     case "generation.cancel": {
@@ -319,7 +331,8 @@ export function applyProductionCommand(
       const by = text(command.payload, "by");
       if (by !== "canvas" && by !== "production") throw new Error("Invalid shot claim owner");
       const shotId = text(command.payload, "shotId");
-      const decision = decideShotClaim(current, shotId, by);
+      const canvasRunId = typeof command.payload.canvasRunId === "string" && command.payload.canvasRunId.trim() ? command.payload.canvasRunId.trim() : undefined;
+      const decision = decideShotClaim(current, shotId, by, { ...(canvasRunId ? { canvasRunId } : {}) });
       if (!decision.granted) {
         throw Object.assign(new Error(`production_shot_claimed: ${decision.reason}`), {
           code: "production_shot_claimed",
@@ -334,7 +347,16 @@ export function applyProductionCommand(
       // shot IDs and must remain a no-op, especially for single-shot plans.
       if (decision.holder !== "canvas") return { run: current, eventType: "shot.claimed", message: shotId };
       const pending = new Set<ProductionJob["status"]>(["planned", "authorization_required", "authorized"]);
-      const claim = { by: "canvas" as const, attempt: currentShotAttempt(current, shotId), claimedAt: now };
+      // 从哪来、哪一次出价，由账本派生（不信载荷）：交接绑着的那个画布 Run 来认领 = 卡交出去的；别的都是节点上点的。
+      const presentation = currentPresentation(current.generationPlan);
+      const handOver = latestHandOver(presentation, shotId);
+      const viaHandOver = Boolean(canvasRunId && handOver?.canvasRunId === canvasRunId);
+      const claim: ProductionShotClaim = {
+        by: "canvas", attempt: currentShotAttempt(current, shotId), claimedAt: now,
+        via: viaHandOver ? "handover" : "node",
+        ...(presentation?.presentationId && (viaHandOver || !presentation.closed) ? { presentationId: presentation.presentationId } : {}),
+        ...(canvasRunId ? { canvasRunId } : {}),
+      };
       const jobs = current.jobs.map((job) => {
         const matches = jobsForShot(current, shotId).some((candidate) => candidate.jobId === job.jobId);
         return matches && pending.has(job.status)

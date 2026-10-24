@@ -1,478 +1,445 @@
-import { hardenedFetch } from '../hardenedFetch';
 import fs from "node:fs";
-import { createMultiShotBatchScheduler } from "../productionRun/multiShotBatchScheduler";
-import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 
-import { createApprovalReceiptAuthority } from "./approvalReceipt";
 import { createModuleRegistry } from "./moduleRegistry";
-import { createGenerationRuntimeAdapter, type GenerationProvider } from "./generationRuntimeAdapter";
-import { createGenerationPlanningHandler, type GenerationOperation, type GenerationOperationStore } from "./mcpGenerationTools";
+import { createGenerationPlanningHandler, type GenerationOperationStore } from "./mcpGenerationTools";
 import { PROJECT_LEASE_ALGORITHM, PROJECT_LEASE_AUDIENCE, PROJECT_LEASE_VERSION, type ProjectLeaseV2 } from "./projectLease";
-import { createRunOwnedGenerationGateAuthority } from "./runOwnedGenerationGateAuthority";
 import { createPendingSpendActions } from "./appIntegrationSpendConfirm";
-import { resolvePlanPatch } from "./generationPlanPatch";
 import { createPiGenerationTransportAdapter } from "./generationTransportAdapters";
+import { residentRunFacts } from "./residentGenerationAdapterFactory";
+import { installCanvasShotRuns, withdrawQueuedHandOvers, type CanvasConsentShot } from "./appIntegrationCanvasShot";
+import { createCanvasHandOver, HAND_OVER_RENDERER_OP } from "./canvasHandOver";
+import { setupCanvasShots } from "./canvasShotTestUtils";
+import type { CanvasTransport } from "./canvasTransportProvider";
 import type { ProjectAgentApprovalPolicy } from "../shared/agentCapabilities/capabilityApprovalPolicy";
+import type { DirectorPreviewSpendBlockReason } from "../shared/director/directorPreviewStatus";
+import type { PendingSpendConfirm } from "../shared/contracts/pendingSpendConfirm";
 import { createCanvasLandingHost } from "../productionRun/canvasLandingHost";
-import { startSingleShotProduction } from "../productionRun/singleShotProductionStart";
-import { type MaterializeShotsWirePayload } from "../productionRun/multiShotCanvasLanding";
+import type { MaterializeShotsWirePayload } from "../productionRun/multiShotCanvasLanding";
 import { createProductionGenerationOperationStore } from "../productionRun/productionGenerationOperationStore";
-import { createProductionGenerationSubmission } from "../productionRun/productionGenerationSubmission";
-import { prepareProductionGenerationAuthorization } from "../productionRun/prepareProductionGenerationAuthorization";
 import { createProductionRunRepository } from "../productionRun/productionRunRepository";
+import { createProductionRunService } from "../productionRun/productionRunService";
+import { withEventTap } from "../productionRun/productionRunEventTap";
+import type { GenerationHandOverFailure, ProductionRun } from "../productionRun/productionRunTypes";
 import { watchSpendCardClose } from "../agentLane/laneSpendCardClose";
 import type { ModelPricing } from "../productionRun/shotPricing";
-import type { SpendReferenceAssets } from "./pendingSpendReferences";
+import type { PlanCandidate } from "./executionContract";
+import { resolveIndexedReferencePreview, type SpendReferenceAssets } from "./pendingSpendReferences";
 
-// 「确认 → 真的开始生成」的端到端夹具（P1.1a · 2026-09-11）。
+// Agent 面板付费卡的端到端夹具（D2 第③步：卡 = 指向元素 + 一行只读摘要 + 主按钮；一台发动机）。
 //
-// 这条链此前**一个测试都没有**：`appIntegrationSpendConfirm.ts` 是付费卡按钮背后的全部编排
-// （改参数 → 撤旧授权 → 重新封印开门 → 主进程手势 → 铸收据 → 决门 → 消费收据 → start），
-// 而它只被 `appIntegration` 的启动 try 装配，没有任何断言看着它。这里补上，零额度：
-// 只有远端供应商是本机 loopback HTTP，其余（durable Run、封印/收据/门、提交-轮询-落库、画布落地口）全是真的。
+// 卡上点「生成」只做一件事：把这几镜交给画布，逐镜走画布单节点提交那一条路。所以这里搭的是**生产同一份接线**：
+//   · 一个账本（真 durable Run 仓库 + 事件旁路：制作 Run 与画布单镜 Run 同住一处，变更订阅与生产同形）；
+//   · 真操作存储、真落地宿主、真画布付费口（`createCanvasShotRuns`，经 `setupCanvasShots`：真收据、真提交出口、真派发闸）、
+//     真画布交接编排（`createCanvasHandOver`）、真卡上动作（`createPendingSpendActions`）、真常驻传输（`createPiGenerationTransportAdapter`
+//     + 工厂同一份 `residentRunFacts`）；排队交接的收回挂在账本的变更订阅上（`withdrawQueuedHandOvers`），和 appIntegration 一样；
+//   · 只有两样是替身：画布那台的传输（进程内假供应商，`vendor.executes` 记下供应商真正收到的每一份请求），和渲染层。
 //
-// 三条核心断言（对应本轮验收）：
-//   ① **执行的参数就是卡上改后的那份**——供应商真正收到的 body 带改后的值，收据的上限也按新价重算；
-//   ② **收据绑定的候选版本 = 执行时的候选版本**——改参数会把候选推一版、撤掉旧授权，
-//      所以「用户照着点头的那份」和「供应商跑的那份」结构上不可能分叉；
-//   ③ **画布落地幂等**——建草稿 / 改参数 / 确认即落三个时机共用同一个 `canvas-landing:{runId}` 章，
-//      落三次仍然只有一个节点（换一个章就会堆出重复节点，这正是该章存在的理由）。
+// 渲染层替身只实现契约里写着的那几件事：落地（每个 `(materializationOperationId, shotId)` 至多一个节点，节点上记下候选——
+// 节点就是一镜要发什么的唯一来源），和 `production.hand-over-shots`（读节点 → 本机判得出发不出去的跳过并说原因 → 为其余的开出带
+// 制作链接的画布同意 → 回话 → 之后照画布批量那一条路逐镜「交」）。所以「卡上摘要 = 节点 = 供应商收到的」在这里能逐项对上。
 
-const NOW_BASE = Date.parse("2026-09-11T00:00:00.000Z");
+const NOW_BASE = Date.parse("2026-10-24T00:00:00.000Z");
 const roots: string[] = [];
 let clock = NOW_BASE;
 const now = () => new Date(clock).toISOString();
 
 const PROJECT_ID = "project-1";
 const OPERATION_ID = "op-spend";
-const CANDIDATE_ID = "cand-hexagon";
-/** 目录价目：基价 0.30，命中 `size:1536x1024` 再加 0.20 —— 改参数会把价格从 0.30 推到 0.50。 */
-const PRICING: ModelPricing = { cost: 0.3, enabled: true, specCosts: [{ specKey: "size:1536x1024", cost: 0.2, enabled: true }] };
+const CANDIDATE_ID = "cand-paper-boat";
+/** 画布那台的供应商（`setupCanvasShots` 只认这一家）。 */
+const VENDOR = "acme";
 
-const registry = createModuleRegistry([{
-  moduleId: "generation.single-shot",
-  version: "1.0.0",
-  inputKinds: ["text", "image"],
-  outputKinds: ["image"],
-  modes: ["text-to-image"],
-  // 尺寸是这个模型档案真的认识的参数：它必须一路活到冻结的合同里，不然「卡上改了」就是句空话。
-  parameterSchema: { size: { type: "string", enum: ["1024x1024", "1536x1024"] } },
-  assetInputSchema: { references: { kind: "image", max: 4 } },
-  providers: [{
-    providerId: "apimart",
-    models: [
-      { modelId: "image-model", modes: ["text-to-image"], parameterSchema: { size: { type: "string", enum: ["1024x1024", "1536x1024"] } }, capabilities: { submitIdempotency: true, query: true, reconcile: true, cancel: true, materialize: true } },
-      { modelId: "image-model-pro", modes: ["text-to-image"], parameterSchema: { size: { type: "string", enum: ["1024x1024", "1536x1024"] } }, capabilities: { submitIdempotency: true, query: true, reconcile: true, cancel: true, materialize: true } },
-    ],
-  }],
-}]);
+const IMAGE_SCHEMA = { size: { type: "string", enum: ["1024x1024", "1536x1024"] } } as const;
+const VIDEO_SCHEMA = { duration: { type: "number" }, aspect_ratio: { type: "string", enum: ["16:9", "9:16", "1:1"] }, resolution: { type: "string", enum: ["480p", "720p"] } } as const;
+const CAPABILITIES = { submitIdempotency: true, query: true, reconcile: true, cancel: true, materialize: true } as const;
+
+const registry = createModuleRegistry([
+  {
+    moduleId: "generation.single-shot", version: "1.0.0", inputKinds: ["text", "image"], outputKinds: ["image"], modes: ["text_to_image"],
+    parameterSchema: IMAGE_SCHEMA, assetInputSchema: { references: { kind: "image", max: 4 } },
+    providers: [{ providerId: VENDOR, models: [{ modelId: "img-model", modes: ["text_to_image"], parameterSchema: IMAGE_SCHEMA, capabilities: CAPABILITIES }] }],
+  },
+  {
+    moduleId: "generation.video", version: "1.0.0", inputKinds: ["text", "image"], outputKinds: ["video"], modes: ["text_to_video"],
+    parameterSchema: VIDEO_SCHEMA, assetInputSchema: { references: { kind: "image", max: 4 } },
+    providers: [{ providerId: VENDOR, models: [{ modelId: "vid-model", modes: ["text_to_video"], parameterSchema: VIDEO_SCHEMA, capabilities: CAPABILITIES }] }],
+  },
+]);
 
 const lease: ProjectLeaseV2 = {
-  version: PROJECT_LEASE_VERSION,
-  keyId: "key-1",
-  algorithm: PROJECT_LEASE_ALGORITHM,
-  issuer: "nomi-main",
-  nonce: "nonce-1",
-  scopeHash: "scope-hash-1",
-  mac: "mac-1",
-  projectId: PROJECT_ID,
-  immutableProjectUuid: "project-uuid-1",
-  projectGeneration: 1,
-  canonicalRootDigest: "root-1",
-  manifestDigest: "manifest-1",
-  issuedAt: "2026-09-11T00:00:00.000Z",
-  expiresAt: "2026-09-11T01:00:00.000Z",
-  audience: PROJECT_LEASE_AUDIENCE,
-  leasePrincipal: "mcp:agent-panel",
-  sessionId: "session-1",
-  connectionNonce: "connection-1",
-  revocationEpoch: 0,
+  version: PROJECT_LEASE_VERSION, keyId: "key-1", algorithm: PROJECT_LEASE_ALGORITHM, issuer: "nomi-main", nonce: "nonce-1",
+  scopeHash: "scope-hash-1", mac: "mac-1", projectId: PROJECT_ID, immutableProjectUuid: "uuid-1", projectGeneration: 1,
+  canonicalRootDigest: "root-1", manifestDigest: "manifest-1", issuedAt: "2026-10-24T00:00:00.000Z", expiresAt: "2099-10-24T00:00:00.000Z",
+  audience: PROJECT_LEASE_AUDIENCE, leasePrincipal: "mcp:agent-panel", sessionId: "session-1", connectionNonce: "connection-1", revocationEpoch: 0,
   scopeSet: ["generation:create", "generation:plan", "generation:preview", "generation:gate", "generation:submit", "generation:read"],
 };
 
-/** 真 loopback 供应商（零额度）：收下任务、报 succeeded、回一个可解码的 data URL，并记下每次请求体。 */
-async function startLoopbackVendor() {
-  const bodies: Array<Record<string, unknown>> = [];
-  const pngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
-  const server = http.createServer((req, res) => {
-    const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
-    req.on("end", () => {
-      try { bodies.push(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}")); } catch { bodies.push({}); }
-      res.writeHead(200, { "content-type": "application/json", connection: "close" });
-      res.end(JSON.stringify({ created: 1, data: [{ task_id: `task-${bodies.length}`, status: "succeeded", url: pngDataUrl }] }));
-    });
-  });
-  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", () => resolve()); });
-  const { port } = server.address() as { port: number };
-  return { origin: `http://127.0.0.1:${port}`, bodies, close: () => new Promise<void>((r) => server.close(() => r())) };
-}
-
-/**
- * 供应商适配器。`buildRequest` 把**合同里冻着的那份载荷**原样带出来，`submit` 原样发给 loopback ——
- * 于是 `vendor.bodies` 里躺着的就是「供应商真正收到的参数」，而不是我们复述的一份。
- */
-function loopbackProvider(origin: string, submits: string[], providerId = "apimart"): GenerationProvider {
+function candidate(modelId = "img-model", parameters: Record<string, unknown> = { size: "1024x1024" }, prompt = "一只纸船在雨后的水洼里慢慢漂"): PlanCandidate {
+  const video = modelId === "vid-model";
   return {
-    providerId,
-    capabilities: { submitIdempotency: true, query: true, reconcile: true, cancel: true, materialize: true },
-    buildRequest: (input) => input,
-    submit: async (request, idempotencyKey) => {
-      submits.push(idempotencyKey);
-      const contract = (request ?? {}) as { modelId?: string; parameters?: Record<string, unknown>; references?: readonly unknown[] };
-      const res = await hardenedFetch(`${origin}/v1/images/generations`, {
-        // Exact origin belongs to this test server; redirects remain forbidden.
-        allowedPrivateOrigins: [origin],
-        allowContentTypes: ["application/json"],
-        method: "POST",
-        // 参考素材原样带出（合同里钉住的那几条）：供应商那一侧收到了哪几张参考，断言读这里。
-        body: JSON.stringify({ idempotencyKey, model: contract.modelId, parameters: contract.parameters ?? {}, ...(contract.references?.length ? { references: contract.references } : {}) }),
-      });
-      const json = JSON.parse(res.bytes.toString("utf8")) as { data: Array<{ task_id: string }> };
-      return { providerTaskId: json.data[0].task_id, raw: json };
-    },
-    query: async (providerTaskId) => ({ status: "succeeded", raw: { id: providerTaskId, status: "succeeded" } }),
-    materialize: async ({ providerTaskId }) => ({ outputs: [{ kind: "image", url: `nomi-local://asset/${PROJECT_ID}/${providerTaskId}.png` }] }),
+    candidateId: CANDIDATE_ID, revision: 1, moduleId: video ? "generation.video" : "generation.single-shot", providerId: VENDOR,
+    modelId, mode: video ? "text_to_video" : "text_to_image", prompt, parameters, references: [],
   };
 }
 
-function candidate(modelId: string, parameters: Record<string, unknown>) {
-  return {
-    candidateId: CANDIDATE_ID, revision: 1, moduleId: "generation.single-shot", providerId: "apimart",
-    modelId, mode: "text-to-image", prompt: "一个悬浮的六棱柱，柔和的演播室灯光", parameters, references: [],
-  };
-}
-
-/**
- * 渲染层替身：它只实现那条**契约里写着的**去重不变量（`materializationStamp.ts`）——
- * 每个 `(materializationOperationId, shotId)` 至多一个节点。所以「同一次生成落了两个节点」
- * 只可能来自宿主每次换了一个章，而这正是这条断言要抓的东西。
- */
-/**
- * 夹具项目的素材库（参考图的唯一身份来源）：测试往里放一张图，宿主按地址钉住它——
- * 和生产那一份（`projectSpendReferenceAssets` / `resolveIndexedReferencePreview`）同一个形状，只是住在内存里。
- */
-const referenceAssetIndex: Array<{ id: string; data: { url: string; contentType: string } }> = [];
-export function addReferenceAsset(id: string, url: string, contentType = "image/png"): void {
-  referenceAssetIndex.push({ id, data: { url, contentType } });
-}
-export const harnessReferenceAssets: SpendReferenceAssets = {
-  list: () => referenceAssetIndex,
-  identity: (_projectId, assetId) => (referenceAssetIndex.some((asset) => asset.id === assetId) ? { contentHash: "hash-" + assetId, version: 1 } : undefined),
-  import: async () => undefined,
+/** 画布上的一个节点（渲染层替身的那一份）：一镜要发什么只住在这里——卡上摘要读它、交的时候也读它。 */
+export type FakeNode = {
+  nodeId: string;
+  runId: string;
+  shotId: string;
+  kind: "image" | "video";
+  prompt: string;
+  vendor: string;
+  modelKey: string;
+  mode: string;
+  candidateRevision: number;
+  parameters: Record<string, string | number | boolean>;
+  references: Array<{ url: string; kind: string; role?: string }>;
 };
 
-function recordingRenderer() {
-  const payloads: MaterializeShotsWirePayload[] = [];
-  const nodes = new Map<string, string>();
-  const resultsByNode = new Map<string, { url: string }>();
+export type SpendWorldOptions = Readonly<{
+  /** 目录价目（缺省 = 一条价都没有：干净装机的默认状态，哪儿都不许出现代表未知的 0）。 */
+  pricing?: ModelPricing;
+  /** 换掉画布那台的传输（「没发出去」矩阵接真的 vendorHttp → appFetch）。 */
+  canvasTransport?: CanvasTransport;
+  /** 3D-BOX 预演闸的回话（缺省 = 没挡）。 */
+  previewBlock?: DirectorPreviewSpendBlockReason | "unrecognized" | null;
+  /**
+   * 渲染层本机就判得出发不出去的那几镜（必填项缺 / 参考不在 / 节点不可用 / 本机参考要匿名托管而这一下没带托管同意）：
+   * 跳过、说原因，主进程记成没发出去（债 a）。`hostingAllowed` = 这一次交接带没带托管同意（卡上那一行披露 + 点了主按钮）。
+   */
+  validateNode?: (node: FakeNode, context: Readonly<{ hostingAllowed: boolean }>) => GenerationHandOverFailure | null;
+  /** 一开始就把派发扣住（开好同意、回过话，交的那一下等 `releaseDispatch()`）。 */
+  holdDispatch?: boolean;
+  /** 起草路要的目录（缺省 = 本文件那份 acme 目录）与视频档案候选。 */
+  registry?: ReturnType<typeof createModuleRegistry>;
+  videoModelCandidates?: Parameters<typeof createGenerationPlanningHandler>[0]["videoModelCandidates"];
+  /** 项目素材库（缺省 = 没有：起草钉住的参考一条都不过线）。给了就走生产同一个解析口 `resolveIndexedReferencePreview`。 */
+  assets?: SpendReferenceAssets;
+}>;
+
+function rendererDouble(validateNode: SpendWorldOptions["validateNode"]) {
+  const nodes = new Map<string, FakeNode>();
+  const byShot = new Map<string, string>();
+  const handOverCalls: Array<Readonly<{ runId: string; shots: Array<{ shotId: string; nodeId: string }>; hostingAllowed: boolean }>> = [];
+  const dispatchErrors: unknown[] = [];
   let nodeSequence = 0;
-  /** 渲染层落不下来（窗口不在 / 项目不对）：materialize-shots 当场抛，与生产 requestRenderer 失败同形。 */
-  let failing = false;
-  const requestRenderer = async (op: string, payload: unknown): Promise<unknown> => {
-    if (op !== "production.materialize-shots") return null;
-    if (failing) throw new Error("Nomi window unavailable");
-    const wire = payload as MaterializeShotsWirePayload;
-    payloads.push(structuredClone(wire));
-    const bindings = wire.shots.map((shot) => {
-      const key = `${wire.materializationOperationId}::${shot.shotId}`;
-      const existing = nodes.get(key);
-      const nodeId = existing ?? `node-${++nodeSequence}`;
-      if (!existing) nodes.set(key, nodeId);
-      if (shot.result) resultsByNode.set(nodeId, { url: shot.result.url });
-      return { shotId: shot.shotId, nodeId };
+  let recordSequence = 0;
+  let landingFailing = false;
+  let handOverFailing = false;
+  let holding = false;
+  const queue: Array<() => Promise<void>> = [];
+  let pump: Promise<void> = Promise.resolve();
+  let canvas: ReturnType<typeof setupCanvasShots> | undefined;
+  let beforeConsent: (() => void | Promise<void>) | undefined;
+
+  const pumpQueue = (): void => {
+    pump = pump.then(async () => {
+      while (!holding && queue.length > 0) {
+        const next = queue.shift()!;
+        await next();
+      }
     });
-    return { bindings };
   };
-  return { payloads, nodes, resultsByNode, requestRenderer, setFailing: (value: boolean) => { failing = value; } };
+
+  /** 交一镜：和画布节点 ↑ / 批量卡同一个付费口（`submit`），请求从节点读。 */
+  const submitNode = async (node: FakeNode, runRecordId: string): Promise<unknown> => {
+    if (!canvas) throw new Error("canvas runs not attached");
+    return canvas.runs.submit({
+      projectId: PROJECT_ID, nodeId: node.nodeId, runRecordId, vendor: node.vendor, gesture: canvas.gesture, senderId: canvas.senderId,
+      request: {
+        kind: node.mode, prompt: node.prompt,
+        extras: {
+          nodeId: node.nodeId, projectId: PROJECT_ID, modelKey: node.modelKey, idempotencyKey: runRecordId,
+          productionRunId: node.runId, productionShotId: node.shotId,
+          ...node.parameters,
+          ...(node.references.length ? { references: node.references.map((reference) => ({ ...reference })) } : {}),
+        },
+      },
+    });
+  };
+
+  const requestRenderer = async (op: string, payload: unknown): Promise<unknown> => {
+    if (op === "production.materialize-shots") {
+      if (landingFailing) throw new Error("Nomi window unavailable");
+      const wire = payload as MaterializeShotsWirePayload;
+      const bindings = wire.shots.flatMap((shot) => {
+        const key = `${wire.materializationOperationId}::${shot.shotId}`;
+        let nodeId = byShot.get(key);
+        if (!nodeId) {
+          if (wire.existingOnly || shot.existingOnly) return [];
+          nodeId = `node-${++nodeSequence}`;
+          byShot.set(key, nodeId);
+        }
+        const existing = nodes.get(nodeId);
+        const incoming = shot.candidate;
+        // 第一次落 / Agent 改了稿（候选版本变了）才写节点；同一版的重放一个字不动（用户在节点上的手改留着）。
+        if (incoming && (!existing || incoming.revision > existing.candidateRevision)) {
+          nodes.set(nodeId, {
+            nodeId, runId: wire.runId, shotId: shot.shotId, kind: shot.kind ?? (incoming.mode.includes("video") ? "video" : "image"),
+            prompt: shot.prompt ?? existing?.prompt ?? "", vendor: incoming.vendor, modelKey: incoming.modelKey, mode: incoming.mode,
+            candidateRevision: incoming.revision, parameters: { ...(incoming.parameters ?? {}) },
+            references: (incoming.references ?? []).map((reference) => ({ ...reference })),
+          });
+        }
+        return [{ shotId: shot.shotId, nodeId }];
+      });
+      return { bindings };
+    }
+    if (op === HAND_OVER_RENDERER_OP) {
+      const input = payload as { projectId: string; runId: string; shots: Array<{ shotId: string; nodeId: string }>; hostingAllowed: boolean };
+      handOverCalls.push(structuredClone(input));
+      if (handOverFailing) throw Object.assign(new Error("Nomi window unavailable"), { name: "RendererUnavailableError" });
+      await beforeConsent?.();
+      const skipped: Array<{ shotId: string; failure: GenerationHandOverFailure }> = [];
+      const ready: Array<{ node: FakeNode; runRecordId: string }> = [];
+      for (const target of input.shots) {
+        const node = nodes.get(target.nodeId);
+        if (!node) { skipped.push({ shotId: target.shotId, failure: { kind: "not_sent", code: "canvas_node_missing" } }); continue; }
+        const invalid = validateNode?.(node, { hostingAllowed: input.hostingAllowed });
+        if (invalid) { skipped.push({ shotId: target.shotId, failure: invalid }); continue; }
+        ready.push({ node, runRecordId: `rr-${node.nodeId}-${++recordSequence}` });
+      }
+      if (ready.length > 0) {
+        if (!canvas) throw new Error("canvas runs not attached");
+        const shots: CanvasConsentShot[] = ready.map(({ node, runRecordId }) => ({
+          nodeId: node.nodeId, runRecordId, vendor: node.vendor, modelKey: node.modelKey, kind: node.kind,
+          production: { runId: input.runId, shotId: node.shotId },
+        }));
+        canvas.runs.consent({ projectId: input.projectId, shots, senderId: canvas.senderId });
+        for (const entry of ready) {
+          queue.push(async () => {
+            try { await submitNode(entry.node, entry.runRecordId); } catch (error) { dispatchErrors.push(error); }
+          });
+        }
+        pumpQueue();
+      }
+      return { skipped };
+    }
+    if (op === "director.preview-blocks") return null;
+    return null;
+  };
+
+  return {
+    nodes,
+    handOverCalls,
+    dispatchErrors,
+    requestRenderer,
+    attach: (attached: ReturnType<typeof setupCanvasShots>) => { canvas = attached; },
+    /** 落不到画布上（窗口不在 / 项目不对）：materialize-shots 当场抛，与生产 requestRenderer 失败同形。 */
+    setLandingFailing: (value: boolean) => { landingFailing = value; },
+    /** 交接那一问渲染层不在（窗口关了）。 */
+    setHandOverFailing: (value: boolean) => { handOverFailing = value; },
+    /** 渲染层开同意之前插一刀（× 晚到、用户打字……落在「记了决定、还没绑上画布」那一段）。 */
+    setBeforeConsent: (hook: (() => void | Promise<void>) | undefined) => { beforeConsent = hook; },
+    holdDispatch: () => { holding = true; },
+    releaseDispatch: () => { holding = false; pumpQueue(); },
+    /** 排队的派发跑完（扣着的不算）。 */
+    drain: async () => { pumpQueue(); await pump; },
+    queuedDispatches: () => queue.length,
+    nodeOf: (shotId: string, runId: string = OPERATION_ID) => [...nodes.values()].find((node) => node.runId === runId && node.shotId === shotId),
+    /** 用户在节点上改了参数 / 换了模型（节点就是一镜要发什么的唯一来源）。 */
+    editNode: (nodeId: string, edit: Partial<Pick<FakeNode, "prompt" | "modelKey" | "parameters">>) => {
+      const node = nodes.get(nodeId);
+      if (!node) throw new Error(`no node ${nodeId}`);
+      nodes.set(nodeId, { ...node, ...edit, parameters: { ...node.parameters, ...(edit.parameters ?? {}) } });
+    },
+    /** 用户在节点上直接点 ↑（单节点提交：不经卡、不开同意）。 */
+    nodeUp: (nodeId: string) => {
+      const node = nodes.get(nodeId);
+      if (!node) throw new Error(`no node ${nodeId}`);
+      return submitNode(node, `rr-up-${node.nodeId}-${++recordSequence}`);
+    },
+  };
 }
 
-function harness() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-spend-confirm-e2e-"));
+/** 夹具账本的变更订阅（生产里是 `subscribeProductionRunChanges`：仓库 execute 的事件旁路，每一条写入同步回调一次）。 */
+type RunListener = (run: ProductionRun) => void;
+
+export function spendWorld(options: SpendWorldOptions = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-spend-card-e2e-"));
   roots.push(root);
-  const repository = createProductionRunRepository({ projectDirResolver: (p) => (p === PROJECT_ID ? root : null), now });
-  const owner = {
-    createGenerationDraft: repository.createGenerationDraft,
-    readFull: (projectId: string, operationId: string) => {
-      const run = repository.read(projectId, operationId);
-      if (!run) throw new Error(`Run not found: ${operationId}`);
-      return run;
-    },
-    command: async (projectId: string, operationId: string, command: Parameters<typeof repository.execute>[2]) => repository.execute(projectId, operationId, command),
-  };
-  const renderer = recordingRenderer();
+  const listeners = new Set<RunListener>();
+  const repository = withEventTap(
+    createProductionRunRepository({ projectDirResolver: (projectId) => (projectId === PROJECT_ID ? root : null), now }),
+    (_events, run) => { for (const listener of [...listeners]) listener(run); },
+  );
+  const subscribe = (listener: RunListener) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
+  const renderer = rendererDouble(options.validateNode);
+  if (options.holdDispatch) renderer.holdDispatch();
+  const canvas = setupCanvasShots({ root, repository, now, ...(options.canvasTransport ? { transport: options.canvasTransport } : {}), ...(options.previewBlock !== undefined ? { previewBlock: options.previewBlock } : {}) });
+  renderer.attach(canvas);
+  installCanvasShotRuns(canvas.runs);
+  // 草稿账本的主人：生产同一个 Run 服务（找不到计划时抛的是带码的错，模型那一侧据它说「没有这个任务」）。
+  const owner = createProductionRunService({ repository, projectRootResolver: () => root, previewSecret: "test", requestRenderer: renderer.requestRenderer });
   const canvasLanding = createCanvasLandingHost({
     readRun: (projectId, runId) => repository.read(projectId, runId),
     command: async (projectId, runId, command) => repository.execute(projectId, runId, command as Parameters<typeof repository.execute>[2]),
     requestRenderer: renderer.requestRenderer,
     resolveProjectRoot: () => root,
     isProjectOpen: () => true,
+    ...(options.assets ? { resolveReferenceUrl: (projectId: string, reference: Parameters<typeof resolveIndexedReferencePreview>[1]) => resolveIndexedReferencePreview(projectId, reference, options.assets) } : {}),
   });
-  const operations = createProductionGenerationOperationStore(owner as never, {
+  const operations = createProductionGenerationOperationStore(owner, {
     onPlanChanged: (projectId, operationId) => canvasLanding.landDraftOnCanvas(projectId, operationId),
   }) as GenerationOperationStore;
-  return { root, repository, owner, operations, renderer, canvasLanding };
-}
-
-function buildActions(base: ReturnType<typeof harness>, vendorOrigin: string, submits: string[], hooks: {
-  /**
-   * 这一镜过完卡上的核对、还没封印开门的那一刻（`confirmOneShot` 里 `requestGenerationGate` 之前）。
-   * 真 App 里主进程忙，× 晚到几秒就落在这儿：收回出价时还没有门可撤，这一镜随后照样封印、批下、发出（10-02 搞破坏线 X2 / X4）。
-   */
-  beforeGate?: () => Promise<void>;
-  beforeAuthorize?: () => Promise<void>;
-  afterAuthorize?: () => Promise<void>;
-  /**
-   * 目录一条价都没填的那台机器（干净装机上的 100% 默认状态）。开着它，整条链上的价格全是
-   * `{ known: false }`——付费卡、门、账本、供应商请求都得在「算不出价」下跑通，
-   * 且任何一处都不许出现代表未知的 0（2026-09-21 未知价开闸）。
-   */
-  unpriced?: boolean;
-  /**
-   * 批准之后先别派：多镜批次的调度器这一轮不跑，job 停在「已授权、还没发出」。模拟第 1 镜还在排队
-   * （等形象确认、被并发挡着）时用户又点了第 2 镜；之后由 `dispatchNow()` 真的跑一轮调度。
-   */
-  holdDispatch?: () => boolean;
-  /**
-   * 批准之后派发另起、不在这一下动作里等它（与真 App 同形：appIntegration 的 driveScheduler 是 fire-and-forget）。
-   * 缺省 = 在 start 里等这一轮调度跑完（老夹具的样子）。
-   */
-  detachDispatch?: boolean;
-  /**
-   * 换一份模块目录（缺省 = 本文件那份只有两个夹具模型的目录）。铁律 ⑩ 的宿主矩阵用真内置目录种子建的目录
-   * （`createCatalogModuleRegistry`），好让「键名不同 / 没有该参数 / 像素档」这几类真模型走同一条宿主链。
-   */
-  registry?: ReturnType<typeof createModuleRegistry>;
-  /** 换了目录就要有对应家的 loopback 供应商（缺省只有 apimart）。 */
-  providerIds?: readonly string[];
-  /** 视频档案候选（变体清单、参数表都从它来）。缺省 = 不接，和老夹具一样走通用判据。 */
-  videoModelCandidates?: Parameters<typeof createGenerationPlanningHandler>[0]["videoModelCandidates"];
-  /** 项目素材库的身份解析（生产装配点绑 `resolveProjectAssetReferenceIdentity`）。缺省 = 不接，带 assetId 的参考当场被拒。 */
-  resolveAssetReferenceIdentity?: (projectId: string, assetId: string) => { contentHash: string; version: number; kind?: "image" | "video" | "audio" } | undefined;
-  /** 换一台执行器（缺省 = 本文件的 loopbackProvider）。「没发出去」矩阵用它接真的目录执行器（引擎 B 的 send）。 */
-  provider?: (providerId: string, origin: string, submits: string[]) => GenerationProvider;
-} = {}) {
-  const { root, repository, owner, operations, canvasLanding } = base;
-  const moduleRegistry = hooks.registry ?? registry;
-  const providers = (hooks.providerIds ?? ["apimart"]).map((providerId) => (hooks.provider ?? ((id, origin, sent) => loopbackProvider(origin, sent, id)))(providerId, vendorOrigin, submits));
-  createGenerationRuntimeAdapter({ providers }); // sanity: the real adapter accepts this provider
-  const submission = createProductionGenerationSubmission({
-    repository, beforeDispatch: () => undefined, projectRoot: root, immutableProjectUuid: "project-uuid-1", projectGeneration: 1,
-    intentMacKey: "test-intent-key", providers,
-    materializeOutput: async ({ providerTaskId }) => {
-      // 真写一个字节到项目里：落地时的产物投影要读得到这个文件，读不到就只落占位、不回填 result。
-      // 项目相对路径恒为 posix 形状（真物化器 writeDeterministicAsset 用的就是 path.posix.join）；
-      // 用 path.join 在 Windows 上会写出反斜杠，产物投影当场拒收，结果回填不了。
-      const relative = path.posix.join(".nomi", "out", `${providerTaskId}.png`);
-      fs.mkdirSync(path.join(root, ".nomi", "out"), { recursive: true });
-      fs.writeFileSync(path.join(root, relative), Buffer.from("89504e470d0a1a0a", "hex"));
-      return { artifactId: `artifact-${providerTaskId}`, kind: "image" as const, contentHash: `hash-${providerTaskId}`, projectRelativePath: relative };
-    },
+  // 与 appIntegration 同一条订阅：Agent 那一次出价从哪条路关的，排队的交接都当场收回。
+  subscribe((run) => withdrawQueuedHandOvers(run));
+  const handOver = createCanvasHandOver({
+    runs: { read: (projectId, runId) => repository.read(projectId, runId), execute: (projectId, runId, command) => repository.execute(projectId, runId, command) },
+    landShots: canvasLanding.landBeforeDispatch,
+    requestRenderer: renderer.requestRenderer,
+    subscribe,
     now,
   });
-  /** 授权必须站在真实 Run 上（`run` 现在是必填）。读不到就在这里停，而不是悄悄退回 attempt=1。 */
-  const requiredHarnessRun = (projectId: string, operationId: string) => {
-    const run = repository.read(projectId, operationId);
-    if (!run) throw new Error(`Harness has no durable Run for ${operationId}`);
-    return run;
-  };
-  const runBatch = async (operationId: string) => {
-    const scheduler = createMultiShotBatchScheduler({
-      repository, submission, projectId: PROJECT_ID, runId: operationId,
-      landShots: canvasLanding.landBeforeDispatch,
-      now,
-    });
-    await scheduler.runToQuiescence();
-    // 出片之后让已落的节点跟上 Run（生产里是 followRunChange；夹具不挂仓库事件旁路，这里显式对一次账）。
-    await canvasLanding.reconcileExistingCanvas(PROJECT_ID, operationId);
-  };
-  const handler = createGenerationPlanningHandler({
-    registry: moduleRegistry,
-    operations,
-    ...(hooks.videoModelCandidates ? { videoModelCandidates: hooks.videoModelCandidates } : {}),
-    resolveModelPricing: () => (hooks.unpriced ? undefined : PRICING),
-    ...(hooks.resolveAssetReferenceIdentity ? { resolveAssetReferenceIdentity: hooks.resolveAssetReferenceIdentity } : {}),
-    now,
-    prepareAuthorization: ({ lease: projectLease, operation, contract, multiShot }) => prepareProductionGenerationAuthorization({
-      lease: projectLease, projectRevision: 0, operation, contract,
-      run: requiredHarnessRun(operation.projectId, operation.operationId),
-      ...(multiShot ? { multiShot } : {}),
-      providers,
-      resolveShotPrice: (shotContract) => {
-        if (hooks.unpriced) return { known: false };
-        // 价格按**合同里冻着的那份参数**算，不是按草稿现有的：改完参数重新封印之后，收据的上限
-        // 必须跟着新规格走，否则「印在卡上的数」和「冻进合同的数」会分叉。
-        const spec = shotContract.parameters ?? {};
-        const bump = PRICING.specCosts.filter((entry) => entry.enabled && Object.entries(spec).some(([key, value]) => entry.specKey === `${key}:${String(value)}` || entry.specKey === String(value))).reduce((sum, entry) => sum + entry.cost, 0);
-        return { known: true, amount: PRICING.cost + bump };
-      },
-      now: now(),
-    }),
-    // appIntegration 的**单镜 start 分支**原样搬过来：先落画布、落下了才交（同一个开拍口）→ 观察到底（这里无需等待，
-    // loopback 一次就 succeeded）。多镜那条由 multiShotBatchScheduler 的 e2e 覆盖。
-    start: async (operation: GenerationOperation) => {
-      if (operation.shots?.length) {
-        const run = repository.read(PROJECT_ID, operation.operationId)!;
-        if (run.generationPlan?.state === "sealed") repository.execute(PROJECT_ID, operation.operationId, {
-          commandId: `fixture:submit:v${run.planVersion}`, expectedRevision: run.revision,
-          type: "generation.submit", payload: {}, issuedAt: now(),
-        });
-        if (!hooks.holdDispatch?.()) {
-          if (hooks.detachDispatch) void runBatch(operation.operationId).catch(() => undefined);
-          else await runBatch(operation.operationId);
-        }
-        return { operationId: operation.operationId, state: "submitted", nextAction: "observe" };
-      }
-      const started = await startSingleShotProduction({ repository, submission, landShots: canvasLanding.landBeforeDispatch, projectId: PROJECT_ID, runId: operation.operationId, now });
-      if (started.nextAction === "observe") {
-        const polled = await submission.poll({ projectId: PROJECT_ID, operationId: operation.operationId }) as { nextAction: string };
-        if (polled.nextAction === "materialize") await submission.materialize({ projectId: PROJECT_ID, operationId: operation.operationId });
-        await canvasLanding.reconcileExistingCanvas(PROJECT_ID, operation.operationId);
-      }
-      return started;
-    },
-  });
-  let receiptSequence = 0;
-  const receipts = createApprovalReceiptAuthority({
-    filePath: path.join(root, "approval-receipts.json"),
-    macKey: "test-receipt-key",
-    storeMacKey: "test-receipt-store-key",
-    keyId: "test-receipt-v1",
-    now,
-    randomId: () => `receipt-sequence-${++receiptSequence}`,
-  });
-  const authority = createRunOwnedGenerationGateAuthority({ owner: owner as never, operations, planning: handler, receipts, now });
-  const actions = (rendererTarget: () => { webContentsId: number; frameId: number; origin: string } | null) => createPendingSpendActions({
-    isProjectOpen: () => true,
+  let projectOpen = true;
+  const card = createPendingSpendActions({
+    isProjectOpen: () => projectOpen,
     runs: { read: (projectId, runId) => repository.read(projectId, runId), list: (projectId) => repository.list(projectId) },
     operations,
-    planning: handler,
-    requestGenerationGate: async input => {
-      await hooks.beforeGate?.();
-      return authority.requestGenerationGate(input);
-    },
-    authorizeGeneration: async input => {
-      await hooks.beforeAuthorize?.();
-      const result = await authority.authorizeGeneration(input);
-      await hooks.afterAuthorize?.();
-      return result;
-    },
-    receipts,
-    rendererTarget,
-    committedBinding: () => ({ projectId: PROJECT_ID, immutableProjectUuid: "project-uuid-1", projectGeneration: 1 }),
-    leaseFor: async () => lease,
-    resolvePricing: () => (hooks.unpriced ? undefined : PRICING),
-    // 与生产同一条并入规则（同一个目录）：卡上改一下也过 resolvePlanPatch。
-    normalizePatch: (base, patch) => resolvePlanPatch({ baseCandidate: base, userPatch: patch, registry: moduleRegistry }).normalizedPatch,
-    landShots: canvasLanding.landBeforeDispatch,
-    referenceAssets: harnessReferenceAssets,
+    handOver: handOver.handOver,
     now,
   });
-  const window = () => ({ webContentsId: 1, frameId: 0, origin: "app://nomi" });
-  /**
-   * 模型那一侧真正用的传输适配器。「全自动」那条免卡放行就长在它里面（`preview` 之后），
-   * 所以这条链必须由**同一个夹具**驱动——另起一份夹具就等于在测一个我们自己编的世界。
-   */
-  const transport = (mode: ProjectAgentApprovalPolicy["mode"]) => createPiGenerationTransportAdapter(
-    { projectId: PROJECT_ID, immutableProjectUuid: "project-uuid-1", projectGeneration: 1 },
+  const handler = createGenerationPlanningHandler({
+    registry: options.registry ?? registry,
+    operations,
+    ...(options.videoModelCandidates ? { videoModelCandidates: options.videoModelCandidates } : {}),
+    resolveModelPricing: () => options.pricing,
+    now,
+  });
+  const runFacts = residentRunFacts(owner);
+  /** 模型那一侧真正用的传输（和常驻工厂同一份依赖：读写 Run 的三件来自 `residentRunFacts`，代答交给同一台画布交接）。 */
+  const transport = (mode?: ProjectAgentApprovalPolicy["mode"]) => createPiGenerationTransportAdapter(
+    { projectId: PROJECT_ID, immutableProjectUuid: "uuid-1", projectGeneration: 1 },
     {
       planning: handler,
-      requestGenerationGate: authority.requestGenerationGate,
-      authorizeGeneration: authority.authorizeGeneration,
-      approvalReceiptAuthority: receipts,
+      approvalReceiptAuthority: canvas.receipts,
       leaseFor: () => lease,
-      approvalPolicy: () => ({ mode }),
-      // 与生产同一条接线（appIntegration）：草稿落地之后回「此刻在画布上吗」，回执据它说话。
-      draftLanding: base.canvasLanding.draftLandingOutcome,
+      ...(mode ? { approvalPolicy: () => ({ mode }) } : {}),
+      ...runFacts,
+      draftLanding: canvasLanding.draftLandingOutcome,
+      handOverToCanvas: handOver,
     },
   );
-  return { actions, withWindow: actions(window), withoutWindow: actions(() => null), submission, handler, receipts, authority, transport,
-    /** 真跑一轮多镜调度（`holdDispatch` 放开之后用）。 */
-    dispatchNow: (operationId: string = OPERATION_ID) => runBatch(operationId) };
+
+  /** 卡此刻的样子（介入槽只出第一张）。 */
+  const pending = (): PendingSpendConfirm | undefined => card.listPendingSpend(PROJECT_ID)[0];
+  const identityOf = (shown: PendingSpendConfirm) => ({
+    projectId: shown.projectId, operationId: shown.operationId, quoteId: shown.quoteId,
+    ...(shown.presentationId ? { presentationId: shown.presentationId } : {}),
+    ...(shown.presentationEpoch !== undefined ? { presentationEpoch: shown.presentationEpoch } : {}),
+    planVersion: shown.planVersion,
+  });
+  /** 主按钮那一下递的镜：卡上还在等决定的（没决定的 + 确定没发出去的），也就是「生成」/「全部生成（N）」/「生成剩下 N 段」/「再试一次」。 */
+  const remainingOn = (shown: PendingSpendConfirm) => shown.shots.filter((shot) => shot.offer === "undecided" || shot.offer === "not_sent").map((shot) => shot.shotId);
+
+  return {
+    root, repository, operations, canvasLanding, canvas, renderer, handOver, card, handler, transport, subscribe,
+    vendor: canvas.vendor,
+    receipts: canvas.receipts,
+    pending,
+    identityOf,
+    remainingOn,
+    setProjectOpen: (value: boolean) => { projectOpen = value; },
+    /** 卡上点主按钮（`shown` 缺省 = 此刻那一张；`shotIds` 缺省 = 主按钮递的那一叠）。 */
+    generate: (shotIds?: readonly string[], shown: PendingSpendConfirm | undefined = pending(), hostingAllowed = false) => {
+      if (!shown) throw new Error("no card on screen");
+      return card.handOverShots({ ...identityOf(shown), shotIds: shotIds ?? remainingOn(shown), hostingAllowed });
+    },
+    cancel: (shown: PendingSpendConfirm | undefined = pending()) => {
+      if (!shown) throw new Error("no card on screen");
+      return card.discardPendingSpend(identityOf(shown));
+    },
+    remove: (shotId: string, shown: PendingSpendConfirm | undefined = pending()) => {
+      if (!shown) throw new Error("no card on screen");
+      return card.removeShot({ ...identityOf(shown), shotId });
+    },
+    restore: (shotId: string, shown: PendingSpendConfirm | undefined = pending()) => {
+      if (!shown) throw new Error("no card on screen");
+      return card.restoreShot({ ...identityOf(shown), shotId });
+    },
+    run: (operationId: string = OPERATION_ID) => repository.read(PROJECT_ID, operationId)!,
+    /** 每一镜交到画布之后，供应商收到的那几份请求（`extras.productionShotId` 认是哪一镜）。 */
+    sentShots: () => canvas.vendor.executes.map((entry) => String(entry.request.extras?.productionShotId ?? entry.request.extras?.nodeId)),
+  };
 }
+
+export type SpendWorld = ReturnType<typeof spendWorld>;
 
 /** 模型那一侧的一次调用（`tryExecute` 的入参形状）。 */
-async function callTool(
-  transport: ReturnType<ReturnType<typeof buildActions>["transport"]>,
-  toolName: string,
-  args: Record<string, unknown>,
-) {
-  return transport.tryExecute({ toolCallId: `call-${toolName}`, toolName, args }, new AbortController().signal);
+export async function callTool(transport: ReturnType<SpendWorld["transport"]>, toolName: string, args: Record<string, unknown>) {
+  return transport.tryExecute({ toolCallId: `call-${toolName}-${clock}`, toolName, args }, new AbortController().signal);
 }
 
-/** Agent 在面板里建的那份草稿（origin.host='nomi' 才会投影成面板上的付费卡）。 */
-async function draft(base: ReturnType<typeof harness>): Promise<void> {
-  await base.operations.create({
-    operationId: OPERATION_ID, projectId: PROJECT_ID, candidate: candidate("image-model", { size: "1024x1024" }),
+/** Agent 在面板里建的那份单镜草稿（origin.host='nomi' 才会投影成面板上的付费卡；卡当场开着）。 */
+export async function draft(world: SpendWorld, modelId = "img-model", parameters: Record<string, unknown> = { size: "1024x1024" }): Promise<void> {
+  await world.operations.create({
+    operationId: OPERATION_ID, projectId: PROJECT_ID, candidate: candidate(modelId, parameters),
     now: now(), origin: { host: "nomi", actorId: "agent-panel" },
   });
-  await base.canvasLanding.settleCanvasLanding(PROJECT_ID);
+  await world.canvasLanding.settleCanvasLanding(PROJECT_ID);
 }
+
+export type DraftShot = Readonly<{ modelId?: string; parameters?: Record<string, unknown>; prompt?: string; references?: PlanCandidate["references"]; role?: "anchor" | "shot" }>;
 
 /**
- * Agent 起草的几张图（`draft_shots`：落画布、不出卡），然后 `generate` 把它们摆到卡上。
- * 逐镜点（`agentPanelSpendPerShot`）和「生成剩下 N 张」（`agentPanelSpendRemaining`）共用这一份起草，不各抄一遍。
+ * Agent 起草的几镜（`draft_shots`：落画布、不出卡），然后 `generate` 把它们摆到卡上。缺省 = 三张纸船图。
+ * `shots` 给了就按它起草（任务 B：两段竖版视频 + 一段横版）。
  */
-export async function imageDraft(base: ReturnType<typeof harness>, handler: ReturnType<typeof buildActions>["handler"], count = 2) {
-  const shots = Array.from({ length: count }, (_, offset) => offset + 1).map((index) => ({
-    shotId: `shot-${index}`,
-    role: "shot" as const,
-    candidate: { ...candidate("image-model", { size: "1024x1024" }), candidateId: `candidate-${index}`, prompt: `第 ${index} 张：渔港清晨` },
-  }));
-  await base.operations.create({ operationId: OPERATION_ID, projectId: PROJECT_ID, candidate: shots[0].candidate, shots,
+export async function shotsDraft(world: SpendWorld, shots: readonly DraftShot[] = [{}, {}, {}], present = true): Promise<void> {
+  const drafted = shots.map((shot, offset) => {
+    const index = offset + 1;
+    const modelId = shot.modelId ?? "img-model";
+    return {
+      shotId: `shot-${index}`,
+      role: shot.role ?? "shot",
+      candidate: {
+        ...candidate(modelId, shot.parameters ?? (modelId === "vid-model" ? { duration: 5, aspect_ratio: "16:9", resolution: "480p" } : { size: "1024x1024" }), shot.prompt ?? `第 ${index} 镜：纸船漂过水洼`),
+        candidateId: `candidate-${index}`,
+        references: shot.references ?? [],
+      },
+    };
+  });
+  await world.operations.create({ operationId: OPERATION_ID, projectId: PROJECT_ID, candidate: drafted[0].candidate, shots: drafted,
     cardHidden: true, origin: { host: "nomi", actorId: "agent-panel" }, now: now() });
-  await base.canvasLanding.settleCanvasLanding(PROJECT_ID);
-  await handler({ capability: "present", params: { operationId: OPERATION_ID }, lease });
-}
-
-/** 供应商收到了哪几镜：loopback 记下的是幂等键，哪一镜由键里的 shotId 认。 */
-export function shotsSent(submits: readonly string[]): readonly string[] {
-  return submits.map((key) => /shot-\d+/.exec(key)?.[0] ?? key);
-}
-
-/** 夹具账本的变更订阅（生产里是 Run 服务的事件 tap）：每次写入之后通知一次。 */
-const ledgerListeners = new WeakMap<object, Set<() => void>>();
-function ledgerChanges(base: ReturnType<typeof harness>): Set<() => void> {
-  const existing = ledgerListeners.get(base);
-  if (existing) return existing;
-  const created = new Set<() => void>();
-  ledgerListeners.set(base, created);
-  const execute = base.repository.execute.bind(base.repository);
-  base.repository.execute = ((...args: Parameters<typeof execute>) => {
-    const result = execute(...args);
-    for (const listener of [...created]) listener();
-    return result;
-  }) as typeof execute;
-  return created;
+  await world.canvasLanding.settleCanvasLanding(PROJECT_ID);
+  if (present) await world.handler({ capability: "present", params: { operationId: OPERATION_ID }, lease });
 }
 
 /**
  * 回合那一侧怎么知道卡关了（生产里 = `laneDesktopSpend.whenCardCloses`）：同一个纯函数，看的是夹具账本。
  * `closed()` 在兑现后的那个微任务里变真，断言前 `await settleMicrotasks()`。
  */
-export function watchCardForTurn(base: ReturnType<typeof harness>, onClosed?: () => void, operationId: string = OPERATION_ID) {
-  const listeners = ledgerChanges(base);
-  const read = () => base.repository.read(PROJECT_ID, operationId)?.generationPlan;
-  const watch = watchSpendCardClose({ read, subscribe: (listener) => {
-    const notify = () => listener(read());
-    listeners.add(notify);
-    return () => { listeners.delete(notify); };
-  } });
+export function watchCardForTurn(world: SpendWorld, options: { settlingGraceMs?: number; operationId?: string } = {}) {
+  const operationId = options.operationId ?? OPERATION_ID;
+  const read = () => world.repository.read(PROJECT_ID, operationId)?.generationPlan;
+  const watch = watchSpendCardClose({
+    read,
+    subscribe: (listener) => world.subscribe(() => listener(read())),
+    ...(options.settlingGraceMs !== undefined ? { settlingGraceMs: options.settlingGraceMs } : {}),
+  });
   let closed = false;
-  void watch.closed.then(() => { closed = true; onClosed?.(); });
-  return { closed: () => closed, dispose: watch.dispose };
+  void watch.closed.then(() => { closed = true; });
+  return { closed: () => closed, whenClosed: watch.closed, dispose: watch.dispose };
 }
 
 export async function settleMicrotasks(): Promise<void> {
-  for (let index = 0; index < 5; index += 1) await Promise.resolve();
+  for (let index = 0; index < 10; index += 1) await Promise.resolve();
+}
+
+/** 一镜的手势收据：谁批的那一份（`decidedBy` / `humanActor`）。 */
+export function receiptOfCanvasRun(world: SpendWorld, canvasRunId: string) {
+  const approval = world.repository.readApprovals(PROJECT_ID, canvasRunId)[0];
+  if (!approval?.receiptId) return undefined;
+  return world.receipts.verifyReceipt(world.receipts.resolveReceiptToken(approval.receiptId));
 }
 
 export function resetSpendFixture() {
+  installCanvasShotRuns(null);
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
-  referenceAssetIndex.splice(0);
   clock = NOW_BASE;
 }
 export function advanceClock(milliseconds: number) { clock += milliseconds; }
-export { PROJECT_ID, OPERATION_ID, CANDIDATE_ID, PRICING, registry, lease, now, candidate, startLoopbackVendor, harness, buildActions, callTool, draft };
+export { PROJECT_ID, OPERATION_ID, CANDIDATE_ID, VENDOR, registry, lease, now, candidate };

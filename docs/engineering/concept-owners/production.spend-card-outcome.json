@@ -22,6 +22,10 @@
     {
       "path": "electron/shared/productionGenerationPresentation.ts",
       "symbol": "shotApprovedInCurrentPresentation"
+    },
+    {
+      "path": "electron/shared/productionGenerationPresentation.ts",
+      "symbol": "offerShots"
     }
   ],
   "forbidden_derivations": [],
@@ -34,8 +38,10 @@
     "electron/capabilityCore/appIntegrationSpendConfirm.ts",
     "electron/capabilityCore/generationTransportAdapters.ts",
     "electron/shared/productionShotPhase.ts",
-    "electron/shared/agentLane/generateOutcomeReceipt.ts"
+    "electron/shared/agentLane/generateOutcomeReceipt.ts",
+    "electron/shared/decideShotClaim.ts",
+    "electron/capabilityCore/appIntegrationCanvasShot.ts"
   ],
   "since": "2026-09-30",
-  "notes": "从出价账（`production.spend-card-presentation`）+ 每道门批没批 + job 有没有可能到过供应商，派生出一个值：在生成的 / 点了但发出前就失败的 / 用户去掉的 / 画布接手的 / 没决定的 + 原因。卡上摆哪几镜（`undecidedShotIds` → `productionPendingSpend`）、封印给哪几镜（`productionGenerationSeal.sealScopeOf`）、画布占位写什么（`productionShotPhase`）、回给模型的那句话（`generateOutcomeReceipt.describeGenerateOutcome`）都读这一个值，不各算一份。以后它原样成为 generate 工具调用的输出（Agent 消息层研究 §4.4）。「在这一次出价里点过」按门的先后算（出价开出来时记下 `fromGate`），不按时间戳比。"
+  "notes": "从出价账（`production.spend-card-presentation`）+ 每道门批没批 + job 有没有可能到过供应商，派生出一个值：在生成的 / 点了但发出前就失败的 / 用户去掉的 / 画布接手的 / 没决定的 + 原因。卡上摆哪几镜（`undecidedShotIds` → `productionPendingSpend`）、封印给哪几镜（`productionGenerationSeal.sealScopeOf`）、画布占位写什么（`productionShotPhase`）、回给模型的那句话（`generateOutcomeReceipt.describeGenerateOutcome`）都读这一个值，不各算一份。以后它原样成为 generate 工具调用的输出（Agent 消息层研究 §4.4）。「在这一次出价里点过」按门的先后算（出价开出来时记下 `fromGate`），不按时间戳比。 2026-10-24 D2 第③步：并入原「付费卡这一次出价最终批下了哪几镜」（agent-panel.spend-outcome-final，2026-10-02 X2/X4 合同 docs/fixes/2026-10-02-stop-outcome-race.root-cause.json、2026-10-10 仲裁器合同 docs/fixes/2026-10-10-spend-action-arbiter.root-cause.json）：卡交给画布之后账本本身就是唯一的线性化点（交接 generation.handover / .bind / .settle 与收卡 closeCurrent 都是账本命令，收卡之后 bind 被拒、排队的同意当场收回、在交的把结论写回它自己那一笔），仲裁器（spendOperationArbiter）随旧卡删除，说结局只经这一个读口。卡上每一镜此刻的样子是 offerShots（没决定 / 不生成 / 画布接手 / 正在交 / 交到了 / 结果未知 / 没发出去 / 批过），卡投影（productionPendingSpend）、认领判定（decideShotClaim）、结局都读它；generating 含交到了、结果未知（绝不说没花钱）与还在交的，failedBeforeSending 含确定没发出去的。"
 }

@@ -92,6 +92,36 @@ describe("传输判决 → 模型看得懂的失败", () => {
     });
   });
 
+  // 发出去之前就失败了（D2 第③步还的债 c）：账本说这份计划一笔都没到过供应商，兜底码就按事实读成「没开始」——
+  // 两个出口（laneDesktopTools / laneExtendedTools）都只走这一处，回执和面板说的都是「没发出去、没花钱」。
+  describe("账本说一笔都没到过供应商：说「没发出去、没花钱」，不说结果未知", () => {
+    const failureWith = (submissionStarted: boolean | undefined) => laneFailureFromDecision({
+      toolName: "generate", code: "generation_execution_failed", message: "generation_execution_failed",
+      fallbackCode: "tool_execution_failed", nextAction: "（该被 taskAdvice 压过）", submissionStarted,
+    });
+
+    it("submissionStarted: false → generation_not_started；不指挥模型去核对一个不存在的任务", () => {
+      const failure = failureWith(false);
+      expect(failure.code).toBe("generation_not_started");
+      expect(failure.message).toContain("nothing was spent");
+      expect(failure.message).not.toContain("unknown");
+      expect(failure.nextAction).toContain("Do not query for a task");
+    });
+
+    it("可能到过（true）或读不到账本（缺席）→ 照旧说结果可能未知、先核对", () => {
+      for (const started of [true, undefined]) {
+        const failure = failureWith(started);
+        expect(failure.code).toBe("generation_execution_failed");
+        expect(failure.message).toContain("submission outcome may be unknown");
+      }
+    });
+
+    it("别的码不受这条事实影响", () => {
+      const failure = laneFailureFromDecision({ toolName: "generate", code: "generation_provider_unavailable", message: undefined, fallbackCode: "x", nextAction: "n", submissionStarted: false });
+      expect(failure.code).toBe("generation_provider_unavailable");
+    });
+  });
+
   it("没有 code 时也永远有 nextAction——没有下一步的拒绝会让模型把同一个调用原样再发一遍", () => {
     const failure = laneFailureFromDecision({
       toolName: "look_at_canvas", code: undefined, message: undefined,
