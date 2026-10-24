@@ -2,6 +2,8 @@ import { makeTempDirAsync } from '../../scripts/_test-temp.mjs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import { spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { launchNomiApp, currentCatalogVersion } from './_launchApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { expect, screenshotSettled } from './_assert.mjs'
@@ -19,9 +21,18 @@ const models = [
   { modelKey: 'MiniMax-H3', labelZh: 'MiniMax H3', kind: 'video' },
 ].map(model => ({ ...model, vendorKey: 'b2c-catalog', enabled: true, published: true, publishedModes: [], createdAt: now, updatedAt: now }))
 await fs.writeFile(path.join(settingsDir, 'model-catalog.json'), JSON.stringify({ version: currentCatalogVersion(), vendors: [{ key: 'b2c-catalog', name: 'Catalog', enabled: true, authType: 'none', createdAt: now, updatedAt: now }], models, mappings: [], apiKeysByVendor: {} }))
+// 自己起这条走查要的开发服务：以前得先手动在 52793 开一个，夜跑里从来没有（run 40035294026：ERR_CONNECTION_REFUSED）。
+// 直接用 node 起 vite（不经 npx 垫片：kill 只杀得到垫片，vite 成孤儿攥着端口）；进程退出 / 被信号终止时一并收掉。
+const VITE_ORIGIN = 'http://127.0.0.1:52793'
+const repoDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+const viteServer = spawn(process.execPath, [path.join(repoDir, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '52793', '--strictPort'], { cwd: repoDir, stdio: 'ignore' })
+viteServer.unref() // 不让这个子进程撑着走查进程不退（否则断言跑完照样挂到超时）；退出时由下面这行收掉它
+process.on('exit', () => viteServer.kill())
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { viteServer.kill(); process.exit(1) })
+await expect.poll(async () => { try { return (await fetch(`${VITE_ORIGIN}/`)).ok } catch { return false } }, { timeout: 60_000 }).toBe(true)
 const application = await launchNomiApp({ name: 'b2c-form', tempRoot, settingsDir, settleMs: 0,
   initialLocalStorage: { 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen', 'nomi:canvas-gesture-hint:v1': 'seen', 'nomi-color-scheme': 'light', 'nomi.assistantModel': JSON.stringify({ vendorKey: 'b2c-catalog', modelKey: 'deepseek-v4-pro' }) },
-  env: { VITE_DEV_SERVER_URL: 'http://127.0.0.1:52793', NOMI_DISABLE_AUTO_UPDATE: '1' } })
+  env: { VITE_DEV_SERVER_URL: VITE_ORIGIN, NOMI_DISABLE_AUTO_UPDATE: '1' } })
 const page = application.win
 const receipt = { modelCalls: 0, evidence: 'real Electron App with isolated catalog and deterministic host snapshots', frames: {}, screenshots: [] }
 async function shot(name) {

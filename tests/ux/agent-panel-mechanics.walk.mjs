@@ -2,14 +2,26 @@ import { chromium } from 'playwright'
 import { expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { mkdir, writeFile } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 const out = process.env.B2A_EVIDENCE_DIR || 'artifacts/b2a'
 await mkdir(out, { recursive: true })
+// 自己起这条走查要的开发服务：以前得先手动在 52793 开一个，夜跑里从来没有（run 40035294026：ERR_CONNECTION_REFUSED）。
+// 直接用 node 起 vite（不经 npx 垫片：kill 只杀得到垫片，vite 成孤儿攥着端口）；进程退出 / 被信号终止时一并收掉。
+const VITE_ORIGIN = 'http://127.0.0.1:52793'
+const repoDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+const viteServer = spawn(process.execPath, [path.join(repoDir, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '52793', '--strictPort'], { cwd: repoDir, stdio: 'ignore' })
+viteServer.unref() // 不让这个子进程撑着走查进程不退（否则断言跑完照样挂到超时）；退出时由下面这行收掉它
+process.on('exit', () => viteServer.kill())
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { viteServer.kill(); process.exit(1) })
+await expect.poll(async () => { try { return (await fetch(`${VITE_ORIGIN}/tests/ux/fixtures/agent-panel-mechanics/`)).ok } catch { return false } }, { timeout: 60_000 }).toBe(true)
 const browser = await chromium.launch({ headless: true })
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 page.setDefaultTimeout(stationTimeout())
 const errors = []
 page.on('pageerror', e => errors.push(e.message))
-await page.goto('http://127.0.0.1:52793/tests/ux/fixtures/agent-panel-mechanics/')
+await page.goto(VITE_ORIGIN + '/tests/ux/fixtures/agent-panel-mechanics/')
 await page.locator('[data-v4-panel]').waitFor()
 await page.screenshot({path:`${out}/folded.png`})
 await page.locator('[data-v4-block="context"] > summary').click()
@@ -41,7 +53,7 @@ const visibleChildren = await page.locator('.workbench-generation__ai').evaluate
 const inert = await page.locator('[data-canvas-content]').evaluate(el => el.inert)
 await page.getByRole('dialog').getByRole('button').click()
 await expect(page.locator('[data-canvas-content]')).not.toHaveAttribute('inert', '')
-await page.goto('http://127.0.0.1:52793/tests/ux/fixtures/agent-panel-mechanics/?width=340')
+await page.goto(VITE_ORIGIN + '/tests/ux/fixtures/agent-panel-mechanics/?width=340')
 await expect(page.locator('[data-v4-panel]')).toBeVisible()
 const narrow = await page.locator('[data-v4-control="model"]').evaluate(el => {
   const label=el.querySelector('span'), panel=el.closest('[data-v4-panel]').getBoundingClientRect()
