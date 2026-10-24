@@ -5,23 +5,28 @@
 // 启动：复用 canvas-perf 的 Vite dev 启动器（同一份 vite 配置、同一份源码），chromium headless；
 // 每次都是全新工程（addInitScript 清 localStorage 工程键 + 打开 E2E 取证桥标志）。
 //
+// 3D-BOX 是唯一的导演台（2026-10-16，8876f0c5d）：打开先落在「导演视图」（DirectorEditor 的 viewMode 初值 'director'），
+// 放人 / 机位 / 灯 / 资产库 / 大纲 / 时间轴 / 骨骼 / 截图产出都住「精修」，真人是点顶栏正中「导演 | 精修」的「精修」进去。
+// 这一步**只在本文件写一次**（enterRefine / enterDirectorView）：launchDirectorLab 默认替旅程点进精修、lab.reload 重开后再点一次，
+// Electron 走查打开导演台后自己调 enterRefine。哪天默认面又变了，只改这里。
+// 钮按词典文字找（src/i18n/locales/director.ts，按页面当前语言取 zh / en），不按位置、不按「没按下的那颗」。
+//
 // 用法：node tests/ux/director-j1-three-person-scene.walk.mjs（各旅程文件自己 import 本启动器）
 // 产出：tests/ux/shots/director/<journey>/NN-*.png（gitignore），必须人眼 Read 过才算走查完成（R13 眼见链）。
 import fs from 'node:fs'
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { startDevRendererServer } from './canvas-perf/devRendererServer.mjs'
 import { clickOrFail, expectVisible, screenshotSettled } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
 const PROJECT_KEY = 'nomi:director-lab:project'
 
-/**
- * @param {{ name: string, viewport?: { width: number, height: number } }} options
- */
 /** Vite 对任何路径都会回 200（SPA 回退），所以要看正文里有没有 devlab 的入口脚本，HEAD 不算数。 */
 function servesDirectorLab(url) {
   return fetch(url)
@@ -30,28 +35,100 @@ function servesDirectorLab(url) {
 }
 
 /**
+ * 已在跑的 Vite 服务的是不是**本工作树**：同一台机器上常有别的工作树开着 `vite --port 5175`，
+ * 它一样回得出 director-lab.html，复用它 = 拿别人那份源码跑本工作树的走查（绿红都不作数）。
+ * 判据：在本工作树 .tmp/ 写一个一次性探针文件，看那个服务能不能原样回出来。
+ */
+async function servesThisCheckout(origin) {
+  const name = `director-lab-root-probe-${randomUUID()}.txt`
+  const file = path.join(repoRoot, '.tmp', name)
+  const token = randomUUID()
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, token)
+  try {
+    const body = await fetch(`${origin}/.tmp/${name}`).then((response) => (response.ok ? response.text() : ''), () => '')
+    return body.trim() === token
+  } finally {
+    fs.rmSync(file, { force: true })
+  }
+}
+
+/**
  * 找 devlab：NOMI_DIRECTOR_LAB_URL 指定的 / 本机已在跑的 `vite --port 5175`（开发时的习惯端口）优先复用，
  * 否则自起一个。两个 Vite 实例共用 .tmp/vite 依赖缓存会互相触发重新预打包，页面一直加载不完，
  * 所以「能复用就复用」不是优化，是必需。不碰 5173：那通常是 `pnpm dev` 的 Electron 渲染进程。
+ * 组件夹具类走查（director-fields / -timeline-pointer / -waypoint-aim）也走这一个：它们要的同样是「本仓源码的 Vite」。
+ * @returns {Promise<{ url: string, origin: string, close: () => Promise<void> }>}
  */
-async function resolveDevServer() {
-  const candidates = [process.env.NOMI_DIRECTOR_LAB_URL, 'http://127.0.0.1:5175'].filter(Boolean)
+export async function resolveDirectorDevServer() {
+  const candidates = [process.env.NOMI_DIRECTOR_LAB_URL, 'http://127.0.0.1:5175'].filter(Boolean).map((url) => url.replace(/\/+$/, ''))
   for (const origin of candidates) {
-    if (await servesDirectorLab(`${origin}/director-lab.html`)) {
-      console.log(`  · 复用已在跑的 devlab：${origin}`)
-      return { url: `${origin}/index.html`, close: async () => {} }
+    if (!(await servesDirectorLab(`${origin}/director-lab.html`))) continue
+    if (!(await servesThisCheckout(origin))) {
+      console.log(`  · ${origin} 在跑的不是本工作树的源码，不复用`)
+      continue
     }
+    console.log(`  · 复用已在跑的 devlab：${origin}`)
+    return { url: `${origin}/index.html`, origin, close: async () => {} }
   }
-  return startDevRendererServer({ preferredPort: 5285 })
+  const server = await startDevRendererServer({ preferredPort: 5285 })
+  return { ...server, origin: server.url.replace(/\/index\.html$/, '') }
 }
 
-export async function launchDirectorLab({ name, viewport = { width: 1440, height: 900 } }) {
-  const server = await resolveDevServer()
-  // 优先用 Playwright 自带的 Chromium；本机没装（npx playwright install 没跑过）就退回系统 Chrome，并明说
-  const browser = await chromium.launch({ headless: true }).catch(async (error) => {
+/** 优先用 Playwright 自带的 Chromium；本机没装（npx playwright install 没跑过）就退回系统 Chrome，并明说。 */
+export async function launchDirectorBrowser() {
+  return chromium.launch({ headless: true }).catch(async (error) => {
     console.log(`  · Playwright 自带 Chromium 不可用（${String(error).split('\n')[0]}），改用系统 Chrome`)
     return chromium.launch({ headless: true, channel: 'chrome' })
   })
+}
+
+/**
+ * 页面当前语言（i18n 把语言同步在 <html lang>）下的一条导演台文案，key 相对 `director.`。
+ * 走 uiText：词典里没有这条就当场抛——键被改名时不会拿 undefined 去当名字（getByRole 的 name 为 undefined = 不按名字过滤，点到哪颗算哪颗）。
+ */
+export async function directorText(page, key) {
+  const lang = await page.evaluate(() => document.documentElement.lang)
+  return uiText(lang === 'en' ? 'en' : 'zh-CN', `director.${key}`)
+}
+
+/** 顶栏正中「导演 | 精修」里的一颗（两个面同一枚 ViewModeSwitch：role=group + aria-label = 词典 viewModeAria）。 */
+async function viewModeButton(page, face) {
+  const label = await directorText(page, face === 'refine' ? 'topbar.refineView' : 'topbar.directorView')
+  const group = page.getByRole('group', { name: await directorText(page, 'topbar.viewModeAria'), exact: true })
+  return { label, button: group.getByRole('button', { name: label, exact: true }) }
+}
+
+/** 进「精修」（已在精修就不动）：点「精修」，精修顶栏（director-topbar）出来才算到。 */
+export async function enterRefine(page) {
+  const { label, button } = await viewModeButton(page, 'refine')
+  await expectVisible(button, `导演台顶栏正中没有「${label}」`)
+  if ((await button.getAttribute('aria-pressed')) !== 'true') await clickOrFail(button, `顶栏·导演 | 精修 →「${label}」`)
+  await expectVisible(page.getByTestId('director-topbar'), `点了「${label}」，精修顶栏没出来`)
+}
+
+/** 回「导演视图」（已在就不动）：导演视图外壳（director-3dbox-view）出来才算到。 */
+export async function enterDirectorView(page) {
+  const { label, button } = await viewModeButton(page, 'director')
+  await expectVisible(button, `导演台顶栏正中没有「${label}」`)
+  if ((await button.getAttribute('aria-pressed')) !== 'true') await clickOrFail(button, `顶栏·导演 | 精修 →「${label}」`)
+  await expectVisible(page.getByTestId('director-3dbox-view'), `点了「${label}」，导演视图没出来`)
+}
+
+/** 进到旅程要的那一面：'refine'（旧导演台那整套工具都在这里）或 'director'（导演视图本身）。 */
+export async function enterDirectorFace(page, face) {
+  if (face === 'refine') await enterRefine(page)
+  else if (face === 'director') await enterDirectorView(page)
+  else throw new Error(`enterDirectorFace：只认 'refine' / 'director'，收到 ${JSON.stringify(face)}`)
+}
+
+/**
+ * @param {{ name: string, viewport?: { width: number, height: number }, view?: 'refine' | 'director' }} options
+ *   view：起跑时落在哪一面。默认 'refine'——旧导演台那批旅程测的全是精修里的工具；测导演视图本身的旅程传 'director'。
+ */
+export async function launchDirectorLab({ name, viewport = { width: 1440, height: 900 }, view = 'refine' }) {
+  const server = await resolveDirectorDevServer()
+  const browser = await launchDirectorBrowser()
   const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
   page.setDefaultTimeout(stationTimeout())
   const pageErrors = []
@@ -67,7 +144,7 @@ export async function launchDirectorLab({ name, viewport = { width: 1440, height
       // 无本地存储：走查照跑，工程只活在内存
     }
   }, PROJECT_KEY)
-  const base = server.url.replace(/\/index\.html$/, '')
+  const base = server.origin
   // Vite 冷启动首屏要做依赖预打包 + 整张模块图的首次转译（three / spark / drei）：实测全新服务 + headless 约 5 分钟，
   // 预热过的服务 5 秒。模块脚本会阻塞 DOMContentLoaded，所以只等导航提交，首屏用画中画元素做信号，上限 8 分钟。
   // 迭代时开着一个 `vite --port 5175`（或设 NOMI_DIRECTOR_LAB_URL）就走热路径。
@@ -77,10 +154,15 @@ export async function launchDirectorLab({ name, viewport = { width: 1440, height
   })
   const shotsDir = path.join(repoRoot, 'tests/ux/shots/director', name)
   fs.mkdirSync(shotsDir, { recursive: true })
+  /** 导演台壳起来了（画中画 + E2E 取证桥）再进旅程要的那一面。首次与每次重载都走这一个。 */
+  const boot = async (face, firstBoot) => {
+    await expectVisible(page.getByTestId('director-pip'), '导演台壳没起来（devlab 页面没挂出画中画）', stationTimeout({ operations: firstBoot ? 32 : 4 }))
+    await page.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null, { timeout: stationTimeout({ operations: 4 }) })
+    await enterDirectorFace(page, face)
+  }
   await page.goto(`${base}/director-lab.html`, { timeout: stationTimeout({ operations: 4 }), waitUntil: 'commit' })
   try {
-    await expectVisible(page.getByTestId('director-pip'), '导演台壳没起来（devlab 页面没挂出画中画）', stationTimeout({ operations: 32 }))
-    await page.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null, { timeout: stationTimeout({ operations: 4 }) })
+    await boot(view, true)
   } catch (error) {
     // 首屏没起来：把页面错误 / 控制台错误 / 截图一起吐出来，别让人对着「元素没找到」猜
     await page.screenshot({ path: path.join(shotsDir, '00-boot-failed.png') }).catch(() => {})
@@ -106,6 +188,14 @@ export async function launchDirectorLab({ name, viewport = { width: 1440, height
       console.log(`  ${ok ? '✓' : '✗'} ${label}${detail ? ` — ${detail}` : ''}`)
       if (!ok) failures.push(label)
       return ok
+    },
+    /**
+     * 刷新页面 = 关掉再打开导演台（devlab 从 localStorage 读工程）：重开又落在导演视图，按 view 再点进旅程要的那一面。
+     * @param {{ view?: 'refine' | 'director' }} [options]
+     */
+    async reload({ view: face = 'refine' } = {}) {
+      await page.reload({ waitUntil: 'commit' })
+      await boot(face, false)
     },
     /** localStorage 里的工程（编辑器 2s 空闲自动写回；要等状态用 waitScene）。 */
     project: () => page.evaluate((key) => JSON.parse(window.localStorage.getItem(key) || 'null'), PROJECT_KEY),
@@ -142,11 +232,13 @@ export async function launchDirectorLab({ name, viewport = { width: 1440, height
       return bridge && typeof bridge[name] === 'function' ? bridge[name](...list) : null
     }, [method, args]),
     toasts: () => page.locator('[role="alert"], [role="status"]').allInnerTexts(),
-    /** 大纲行。2026-10-04 起大纲住顶栏「▤ 图层名 ▾」浮层里（精修「选中才出」），要先 openOutliner() 才在 DOM 里。 */
+    /** 大纲行。2026-10-04 起大纲住精修顶栏「▤ 图层名 ▾」浮层里（精修「选中才出」），要先 openOutliner() 才在 DOM 里。 */
     outlinerRow: (text) => page.locator('[data-testid="director-outliner-row"]', { hasText: text }).first(),
-    /** 打开顶栏「▤ 图层名 ▾」浮层（大纲 + 场景设置）；已经开着就不动。 */
+    /** 打开精修顶栏「▤ 图层名 ▾」浮层（大纲 + 场景设置）；已经开着就不动。 */
     async openOutliner() {
       const trigger = page.getByTestId('director-scene-menu')
+      // 先等它可见再读 aria-expanded：不在精修面时这里当场说清，而不是 getAttribute 干等满 15 秒报「Timeout」
+      await expectVisible(trigger, '精修顶栏没有「▤ 图层名 ▾」（不在精修面？）')
       if ((await trigger.getAttribute('aria-expanded')) !== 'true') await clickOrFail(trigger, '顶栏·▤ 图层名 ▾')
       await expectVisible(page.getByTestId('director-outliner'), '大纲浮层没打开')
     },
@@ -179,7 +271,7 @@ export async function launchDirectorLab({ name, viewport = { width: 1440, height
   return lab
 }
 
-/** 顶栏「＋添加」→ 角色 → 女人/男人 → 点地面落点（世界坐标 x,z）。 */
+/** 精修顶栏「＋」→ 角色 → 女人/男人 → 点地面落点（世界坐标 x,z）。 */
 export async function placeCharacter(lab, gender, x, z) {
   const { page } = lab
   await openAddMenu(lab, '角色')
@@ -188,7 +280,7 @@ export async function placeCharacter(lab, gender, x, z) {
   await page.mouse.click(point.x, point.y)
 }
 
-/** 顶栏「＋添加」→ 机位 → 预设名（相对当前选中主体）。 */
+/** 精修顶栏「＋」→ 机位 → 预设名（相对当前选中主体）。 */
 export async function addCameraPreset(lab, presetLabel) {
   const { page } = lab
   await openAddMenu(lab, '机位')
@@ -196,21 +288,29 @@ export async function addCameraPreset(lab, presetLabel) {
 }
 
 /**
- * 顶栏「＋添加」菜单：先开菜单，再进二级项。
- * 2026-09-09 五簇重排：视口左缘那条竖排创建栏没了，四个创建入口都住这个菜单（一功能一个家）；2026-10-04 触发器只剩「＋」图标。
+ * 精修顶栏「＋」菜单：先开菜单，再进二级项。
+ * 2026-09-09 五簇重排：视口左缘那条竖排创建栏没了，四个创建入口都住这个菜单（一功能一个家）；2026-10-04 触发器只剩「＋」图标；
+ * 2026-10-16 起它只在精修面（导演视图没有）——launchDirectorLab 默认已点进精修，Electron 走查打开导演台后先 enterRefine。
  */
 export async function openAddMenu(lab, itemLabel) {
   const { page } = lab
-  await clickOrFail(page.getByTestId('director-add-menu'), '顶栏·添加')
+  await clickOrFail(page.getByTestId('director-add-menu'), '精修顶栏·＋')
   if (itemLabel) await clickOrFail(page.getByRole('button', { name: itemLabel, exact: true }), `添加菜单·${itemLabel}`)
 }
 
 /** 「＋」菜单底部「资产库」→ 左侧抽屉（2026-10-04 资产库不再常驻右栏页签）。 */
 export async function openAssets(lab) {
   const { page } = lab
-  await clickOrFail(page.getByTestId('director-add-menu'), '顶栏·＋')
+  await clickOrFail(page.getByTestId('director-add-menu'), '精修顶栏·＋')
   await clickOrFail(page.getByTestId('director-open-assets'), '＋菜单·资产库')
   await expectVisible(page.getByTestId('director-assets-drawer'), '资产库抽屉没打开')
+}
+
+/** 关资产库抽屉（点卡头 ×）。抽屉从顶栏下拉到视口底、按设计压在左下预览小窗上面（AssetsDrawer 头注释），要点小窗先关它，和用户一样。 */
+export async function closeAssets(lab) {
+  const { page } = lab
+  await clickOrFail(page.getByTestId('director-assets-close'), '资产库抽屉·×')
+  await expectVisible(page.getByTestId('director-pip'), '关了资产库抽屉，左下预览小窗没回来')
 }
 
 /** 轨道列头「+ 添加轨道 ▾」→ 实体名（加进来自动带一段 4s 空路径片段）。 */
