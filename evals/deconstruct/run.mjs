@@ -156,7 +156,8 @@ try {
     const metrics = scoreDeconstruction(result, { reference: clip.reference, visionCalls: FIXTURE ? walk.fixture.requests.length - (report.fixtureSeen ?? 0) : visionCalls, seconds })
     if (FIXTURE) report.fixtureSeen = walk.fixture.requests.length
     const misses = judgeCase(metrics, { expectDialogue: Boolean(item.speech) && !FIXTURE })
-    const { shots: _shots, ...resultMeta } = result
+    const resultMeta = { ...result }
+    delete resultMeta.shots
     report.cases.push({ id: item.id, resultMeta, seconds: Math.round(seconds), transcribeCalls: after.transcribe - before.transcribe, metrics, misses, sample: result.shots.slice(0, 3).map((shot) => ({ shotSize: shot.shotSize, visual: shot.visual, motionPrompt: shot.motionPrompt, dialogue: shot.dialogue })) })
     console.log(`[case] ${item.id}：${metrics.shots} 镜 · 读图 ${metrics.readRate} · 画面 ${metrics.fill.visual} · 景别 ${metrics.fill.shotSize}/${metrics.shotSizeValid} · 中文(画面/运镜) ${metrics.zhRate.visual}/${metrics.zhRate.motionPrompt} · 对白 ${metrics.dialogueShotRate ?? '-'} · CER ${metrics.dialogueCer ?? '-'} · 调用 ${metrics.visionCalls}=${metrics.shots}? · ${metrics.secondsPerShot ?? '-'}s/镜${misses.length ? ` · ✖ ${misses.join('；')}` : ''}`)
   }

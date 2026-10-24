@@ -49,12 +49,12 @@
       "symbol": "rowServesMode"
     },
     {
-      "kind": "read",
+      "kind": "write",
       "path": "electron/catalog/executableModel.ts",
       "symbol": "rowServesMode"
     },
     {
-      "kind": "read",
+      "kind": "write",
       "path": "src/config/modelCatalogCache.ts",
       "symbol": "rowServesMode"
     },
@@ -64,27 +64,47 @@
       "symbol": "findExecutableModelForMode"
     },
     {
+      "kind": "read",
+      "path": "electron/video/deconstructVideo.ts",
+      "symbol": "findExecutableModelInMode"
+    },
+    {
+      "kind": "write",
+      "path": "electron/audioTaskRunner.ts",
+      "symbol": "runTranscribe"
+    },
+    {
+      "kind": "write",
+      "path": "electron/audioTaskRunner.ts",
+      "symbol": "withTimedSegments"
+    },
+    {
       "kind": "write",
       "path": "electron/catalog/transcriptSegments.ts",
       "symbol": "withTimedSegments"
     },
     {
       "kind": "read",
-      "path": "electron/audioTaskRunner.ts",
-      "symbol": "withTimedSegments"
+      "path": "electron/video/deconstructVideo.ts",
+      "symbol": "transcribeShots"
     },
     {
       "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/AudioStripNode.tsx",
+      "symbol": "buildSrt"
+    },
+    {
+      "kind": "write",
       "path": "electron/desktopStrings.ts",
       "symbol": "deconstruct.transcribeModelUnavailable"
     }
   ],
   "door_reduction": {
     "before": 2,
-    "after": 7,
-    "why_not": "Mode eligibility: one definition (modelPublication.rowServesMode) read by the main-process engine (executableModel) and the renderer picker (modelCatalogCache) - two processes, so two readers of one predicate; the kind-only reader findExecutableModelAnyVendor is deleted. deconstructVideo is the only consumer of the mode resolver. Transcript shape: one definition (transcriptSegments.withTimedSegments) read only at the transcribe executor exit (audioTaskRunner). desktopStrings holds the user-facing reason strings, not logic."
+    "after": 11,
+    "why_not": "The old kind-only resolver was one shared door and is deleted. Eleven doors remain because mode eligibility has one shared predicate definition plus two process-local readers, the explicit and automatic deconstruction paths are separate resolver calls, transcript output has one executor writer and one normalizer definition plus two independent readers, and the user-facing failure strings live in the i18n owner; these boundaries cannot be collapsed without crossing process or feature contracts."
   },
-  "generality_proof": "Every caller that asks 'which model runs mode M' now goes through modeCandidates/findExecutableModelInMode (main) or optionsFromRows (renderer), and both delegate to rowServesMode over listModelCatalogModels. A TTS/music row cannot be chosen for transcription regardless of vendor order because it does not publish 'transcribe'. The transcribe executor owns the audio source and the segments shape, so any vendor mapping (APIMart Whisper, ElevenLabs Scribe, local whisper.cpp, custom) produces the same shape for every reader (deconstruct, audio node SRT).",
+  "generality_proof": "Every caller that asks which model runs mode M now goes through modeCandidates/findExecutableModelForMode or findExecutableModelInMode in the main process, or optionsFromRows in the renderer; all delegate to rowServesMode over listModelCatalogModels. A TTS/music row cannot be chosen for transcription regardless of vendor order because it does not publish transcribe. runTranscribe owns audio source selection and withTimedSegments owns the output shape, so every vendor mapping (APIMart Whisper, ElevenLabs Scribe, local whisper.cpp, custom) reaches the same segments contract for deconstruction and audio-node SRT.",
   "shared_boundaries": [
     {
       "path": "electron/shared/modelPublication.ts",

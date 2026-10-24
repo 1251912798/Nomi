@@ -1,6 +1,6 @@
 # 方向检查：拆解两条腿的模型解析与结果形状（2026-10-19）
 
-触发：`fix-churn` 命中 `electron/audioTaskRunner.ts`（14 天第 4 个 fix）、`electron/video/deconstructVideo.ts`（第 4 个）、`src/config/modelCatalogCache.ts` / `src/config/`（第 3 / 5 个）、`electron/desktopStrings.ts`（第 10 个，词典文件，任何带文案的修复都会碰）。
+触发（2026-10-25 复核）：`fix-churn` 命中 `electron/video/deconstructVideo.ts`（14 天第 6 个，`electron/video/` 目录第 9 个）、`electron/audioTaskRunner.ts`（第 3 个）、`src/config/modelCatalogCache.ts`（第 3 个，`src/config/` 目录第 8 个）、`electron/catalog/executableModel.ts` 的目录可执行判据概念（第 3 个）、`electron/desktopStrings.ts#deconstruct`（第 4 个；词典文件 `#tasks` 第 8 个）。本轮不再增加特例分支，而是把模式资格和转写出口收回共享边界。
 
 ### 0. 一句话根因
 
@@ -16,6 +16,11 @@
 | 724d93b7d / cdfdf7889 模型清单缓存 | 读失败清空、首帧无值 | 不同类（缓存时序），不计入 |
 | 76cc745a0 / 25a01ee8b 音频错误 / 付费出口 | 错误原因丢失、付费出口分叉 | 出口收口（同方向：执行器出口是唯一边界） |
 | 本次 | 转写腿按 kind 挑；Scribe 读错音频参数、只回逐词；评测只授权读图模型 | 模式资格两份判据 + 转写结果形状随供应商漂 |
+| 2fda8a539（10-19）| 分镜表补齐拍板稿的远档卡片、源视频行和固定列 | 分镜表界面 / 画布布局（不同类；未改转写判据） |
+| 4ea28f23b（10-21）| 文本任务切换 pi-ai 单次调用核心 | 文本任务调用时序（不同类；仅碰词典的共用文件） |
+| 7c66c1f0b、ddf304f0d（10-22）| 参考提交阶段与任务结果码收口 | 资产提交 / 任务错误阶段（不同类；未改转写判据） |
+| 9de82f660、57cc560f9（10-24）| 提示库撤销与导出素材探测失败收口 | 提示库 / 导出素材（不同类；仅碰词典的共用文件） |
+| d2ad49331（10-25）| 出站参考媒体 URL 统一序列化 | 外部引用 URL 边界（不同类；未改转写判据） |
 
 ### 2. 为什么会一直出现
 
@@ -41,3 +46,9 @@
 
 - 已做：`rowServesMode` 成为模式资格唯一判据（主进程与渲染层同调同投影）；删掉 kind 级 `findExecutableModelAnyVendor`；转写执行器出口统一音频来源与 `segments` 形状。
 - 建议（不在本 PR）：其余按 kind 挑模型的入口（`findExecutableModelForTask` 的空 modelKey 分支）后续也改按模式问；本机转写在 chip 里预告首次下载体积（改界面，走设计管线）。
+
+### 7. 特征测试清单
+
+- `electron/video/deconstructLegResolution.test.ts`：自动候选必须发布 `transcribe`，显式不可用返回 `requested-unavailable`，`cloud` 排除本机引擎。
+- `electron/catalog/transcriptSegments.test.ts`：逐词 / `audio_event` / 无时间戳的出口形状。
+- `src/config/modelCatalogCache.test.ts`：chip 选项与 `rowServesMode` 的同一投影。

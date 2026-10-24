@@ -18,6 +18,7 @@ vi.mock("./assets/localFileImport", () => ({
 import { runAudioTask } from "./audioTaskRunner";
 import { importLocalFile } from "./assets/localFileImport";
 import { buildProfileHttpRequest } from "./catalog/profileHttpRequest";
+import { ELEVENLABS_MODELS } from "./catalog/elevenlabs";
 import type { Model, Vendor } from "./catalog/types";
 
 const vendor = { key: "apimart", name: "APIMart", enabled: true, baseUrlHint: "https://api.apimart.ai", authType: "bearer", authHeader: "Authorization", createdAt: "", updatedAt: "" } as Vendor;
@@ -183,7 +184,6 @@ describe("runAudioTask（音频同步执行路径）", () => {
     ["拆解（file）", { file: "data:audio/wav;base64,AAAA" }],
     ["音频节点（reference_audio_urls）", { referenceAudioUrls: ["data:audio/wav;base64,AAAA"] }],
   ])("Scribe 真实种子 mapping：%s 都传得上音频，逐词响应出口带 segments", async (_label, extras) => {
-    const { ELEVENLABS_MODELS } = await import("./catalog/elevenlabs");
     const scribe = ELEVENLABS_MODELS.find((model) => model.modelKey === "scribe_v2")!.mappings[0];
     let posted: FormData | null = null;
     vi.stubGlobal("fetch", vi.fn(async (_url, init) => {
