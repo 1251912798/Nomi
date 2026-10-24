@@ -5,7 +5,6 @@ import path from "node:path";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
 import { installChildProcessLifecycle } from "./child-process-lifecycle.mjs";
-import { processTreeSpawnOptions } from "./lib/processTree.mjs";
 import { resolveDevStoragePaths } from "./dev-storage.mjs";
 import { assertElectronInstallIdentity } from "./electron-install-identity.mjs";
 
@@ -88,7 +87,6 @@ function start(command, args, options = {}) {
   const child = childProcessLifecycle.track(spawn(command, args, {
     stdio: "inherit",
     shell: false,
-    ...processTreeSpawnOptions(),
     ...options,
   }));
   child.nomiExit = { exited: false, code: null, signal: null };

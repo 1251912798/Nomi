@@ -1,5 +1,3 @@
-import { killProcessTree } from './lib/processTree.mjs'
-
 function hasExited(child) {
   return child.exitCode !== null || child.signalCode !== null;
 }
@@ -21,7 +19,7 @@ export function installChildProcessLifecycle(host = process, options = {}) {
     childSignals.add(signal);
     sentSignals.set(child, childSignals);
     try {
-      killProcessTree(child, signal)
+      child.kill(signal);
     } catch {
       // 退出路径必须 best-effort；子进程可能刚好在探测与 kill 之间结束。
     }

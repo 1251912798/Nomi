@@ -50,6 +50,7 @@ const BYPASS_PATTERN = /SKIP|NO_VERIFY|BYPASS|process\.env\.(?!NOMI_PR_BODY)\w*(
 // 仅登记不属于「spawn 出来的门岗子进程」的直接信号：Playwright 的 Electron 句柄由 Playwright 管生命周期，
 // with-gates-lock 单测则故意给 wrapper 发单进程信号，验证继承的锁进程仍活着。其它 scripts/ 入口必须走 processTree。
 const DIRECT_KILL_EXCEPTIONS = Object.freeze({
+  'scripts/child-process-lifecycle.mjs': '启动器保留在终端前台进程组；终端关闭时内核向整组发送 SIGHUP，改成 detached 进程组会漏掉 Electron / Vite / Tailwind 后代。',
   'scripts/browser-live-capture-sweep.mjs': 'Playwright 管理 Electron app.close；8 秒兜底只处理 Playwright 未收掉的 app 句柄。',
   'scripts/browser-mse-canvas-walkthrough.mjs': 'Playwright 管理 Electron app.close；8 秒兜底只处理 Playwright 未收掉的 app 句柄。',
   'scripts/with-gates-lock.node-test.mjs': '单测需要分别验证 wrapper 直接信号与其继承子进程的锁生命周期，不能改成整组终止。',
