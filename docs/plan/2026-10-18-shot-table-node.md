@@ -6,6 +6,14 @@
 - 拍板：用户 10-18「方向对，细节要改」→ 唯一细节评论「为什么不居中设计上下的参数框」已改（浮条与下方栏以节点为中心）→「做完你去弄吧」
 - 分批：**第一批 = 图 1 / 2 / 4 / 5**（本文）；第二批 = 图 3（全屏 + 右侧镜头详情）另起
 
+## 先查别人
+
+- `src/workbench/generationCanvas/nodes/composerAnchor.tsx:1-43`：仓库已有画布浮框定位与事件边界；本决定复用 `ComposerAnchor`，不新写拆解栏定位。
+- `src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx:120-150`：仓库已有浮条按钮与 portal 点击边界；本决定复用 `ToolbarIconButton` / `ToolbarActionMenu`，不新写浮条控件。
+- `src/workbench/generationCanvas/nodes/shotTable/deconstructLegChoice.ts:1-42` 与 `src/workbench/common/useModelOptionsState.ts`：仓库已有按能力筛模型的清单与失效判定；本决定让读图 / 转写 chip 复用同一模型目录，不复制供应商解析器。
+
+结论：领域新增只保留拆解腿选择、拆解表状态与镜头表字段；通用定位、菜单、模型目录和事件拦截全部复用仓库现有实现。
+
 ## 问题
 
 - 拆解前选不了模型：点「拆解 → 镜头表」立刻开拆，报价卡上只有一行生硬的 `apimart · gemini-3.5-flash`，转写模型根本不显示。#1171 加的「读图模型」只在表的底栏，表建出来时已经在跑、选择框是灰的，只对重拆有用。

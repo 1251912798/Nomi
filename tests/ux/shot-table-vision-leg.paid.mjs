@@ -30,7 +30,7 @@ import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { clickOrFail, expect, expectAbsent, holdAbsent, proveProbe, waitForVisualQuiescence } from './_assert.mjs'
+import { clickOrFail, expect, holdAbsent, waitForVisualQuiescence } from './_assert.mjs'
 import { SPEND_DIALOG, openPaidWalk } from './_paidRun.mjs'
 import { readRealCatalog } from './_realProfile.mjs'
 import { createRuntimeWalk } from './agent-runtime-walk-support.mjs'
@@ -96,7 +96,6 @@ if (FIXTURE) {
   paid = await openPaidWalk('shot-table-vision-leg.paid.mjs', 'shot-table-vision-leg', [model], { buildMarkers: [uiText('zh-CN', 'shotTable.node.idleHint')] })
   walk = paid.walk
 }
-const modelLine = `${model.vendorKey} · ${model.modelKey}`
 const L = (key) => uiText('zh-CN', key)
 const report = walk.report
 report.mode = FIXTURE ? 'fixture' : CONFIRM ? 'paid-confirmed' : 'paid-stop-at-quote'
