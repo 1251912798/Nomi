@@ -4,12 +4,12 @@
 // 平时是这几段合起来的摘要、悬停哪一格换成哪一镜的，板 ②）。节点此刻的样子（等你确认 / 发出中 / 生成中 / 失败 / 结果）都是
 // 指向元素自己读节点画出来的，这里一样都不存。
 //
-// 多段卡每一格右上挂一颗「不生成 ×」（板 card.pointer.exclude，用户 10-23 选 Q1-A）：悬停 / 聚焦那一格才露出来，点了这一镜
-// 退出这次出价（节点上显示「已去掉，不生成」），那一格淡下去、常驻一颗「恢复」。
+// 多段卡每一格标题行右端挂一颗「不生成 ×」（板 card.pointer.exclude，用户 10-23 选 Q1-A）：悬停 / 聚焦那一格才露出来，点了这一镜
+// 退出这次出价（节点上显示「已去掉，不生成」），那一格淡下去、常驻一颗「恢复」。摆在哪、什么时候露出来、淡不淡归组指向管
+// （NodePointerCellAccessory）：标题行要按它露没露出来让位，判据只有一份。
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '../../../utils/cn'
-import { NodePointer, NodePointerGroup, type NodePointerSubject } from '../pointer/NodePointer'
+import { NodePointer, NodePointerGroup, type NodePointerCellAccessory, type NodePointerSubject } from '../pointer/NodePointer'
 import { IconAlertTriangle, IconX } from './AgentPanelV4Icons'
 import type { SpendCardNotice, SpendCardPointer } from './agentPanelSpendCard'
 
@@ -37,42 +37,43 @@ function subjectOf(pointer: SpendCardPointer): NodePointerSubject {
   }
 }
 
-/**
- * 格子右上那颗小钮。它是指向元素的兄弟、不是指向元素里的按钮（按钮里不能套按钮）；位置压在画面框右上角
- * （标题行 22px + 间距 4px 之下）。「不生成 ×」平时藏着、悬停 / 聚焦这一格时露出来；「恢复」常驻。
- */
-function ExclusionToggle({ pointer, busy, onExclude, onRestore }: {
+/** 格子标题行右端那颗小钮本身（摆在哪、什么时候露出来归组指向管）。 */
+function ExclusionToggle({ pointer, busy, narrow, onExclude, onRestore }: {
   pointer: SpendCardPointer
   busy: boolean
+  /** 窄面板（≤320px）：一格约 86px；「不生成」三个字放不下，只留 ×（读屏名 / 悬停名照旧写全）。 */
+  narrow: boolean
   onExclude: (shotId: string) => void
   onRestore: (shotId: string) => void
-}): JSX.Element | null {
+}): JSX.Element {
   const { t } = useTranslation()
-  if (!pointer.exclusion) return null
   const restore = pointer.exclusion === 'restore'
   const name = restore ? t('agentPanelV4.spendCard.restoreName', { shot: pointer.shotRef }) : t('agentPanelV4.spendCard.excludeName', { shot: pointer.shotRef })
   return (
-    <>
-      {/* 去掉了的那一格淡下去（盖在画面框上，不挡点击：指向元素照样点了去节点）。 */}
-      {restore ? <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 top-[26px] rounded-nomi-sm bg-nomi-paper/60" data-spend-excluded="true" /> : null}
-      <button
-        type="button"
-        aria-label={name}
-        title={name}
-        disabled={busy}
-        onClick={() => (restore ? onRestore(pointer.shotId) : onExclude(pointer.shotId))}
-        data-spend-exclusion={pointer.exclusion}
-        className={cn(
-          'absolute right-1 top-[30px] z-[5] inline-flex h-5 items-center gap-0.5 rounded-full bg-nomi-paper/85 px-1.5 text-micro text-nomi-ink-80 shadow-nomi-sm transition-opacity hover:bg-nomi-paper hover:text-nomi-ink disabled:opacity-40',
-          // 藏着的时候也不接点击（看不见的钮不许挡住缩略图）：悬停 / 聚焦这一格时才露出来、才点得到；键盘 Tab 照样走得到它。
-          !restore && 'pointer-events-none opacity-0 focus-visible:opacity-100 group-focus-within/pointer-cell:pointer-events-auto group-focus-within/pointer-cell:opacity-100 group-hover/pointer-cell:pointer-events-auto group-hover/pointer-cell:opacity-100',
-        )}
-      >
-        {restore ? t('agentPanelV4.spendCard.restore') : t('agentPanelV4.spendCard.exclude')}
-        {restore ? null : <IconX size={11} stroke={1.8} aria-hidden="true" />}
-      </button>
-    </>
+    <button
+      type="button"
+      aria-label={name}
+      title={name}
+      disabled={busy}
+      onClick={() => (restore ? onRestore(pointer.shotId) : onExclude(pointer.shotId))}
+      data-spend-exclusion={pointer.exclusion}
+      className="inline-flex h-5 items-center gap-0.5 rounded-full bg-nomi-paper/85 px-1.5 text-micro text-nomi-ink-80 shadow-nomi-sm hover:bg-nomi-paper hover:text-nomi-ink disabled:opacity-40"
+    >
+      {restore ? t('agentPanelV4.spendCard.restore') : narrow ? null : t('agentPanelV4.spendCard.exclude')}
+      {restore ? null : <IconX size={11} stroke={1.8} aria-hidden="true" />}
+    </button>
   )
+}
+
+/** 这一格挂什么：可去掉的挂「不生成 ×」（悬停 / 聚焦才露）；去掉了的淡下去、常驻「恢复」；别的（已在生成、已删除……）不挂。 */
+function exclusionAccessory(pointer: SpendCardPointer | undefined, props: Pick<SpendCardBodyProps, 'busy' | 'onExclude' | 'onRestore'> & { narrow: boolean }): NodePointerCellAccessory | null {
+  if (!pointer?.exclusion) return null
+  const restore = pointer.exclusion === 'restore'
+  return {
+    action: <ExclusionToggle pointer={pointer} busy={props.busy} narrow={props.narrow} onExclude={props.onExclude} onRestore={props.onRestore} />,
+    pinned: restore,
+    dimmed: restore,
+  }
 }
 
 /** 说明行：没成的原因（警示图标 + 原因 + 别的几段此刻怎样），或者一行中性的披露（素材托管）。 */
@@ -102,10 +103,7 @@ export function AgentPanelV4SpendCardBody({ pointers, single, summary, notices, 
           subjects={subjects}
           narrow={narrow}
           {...(summary ? { idleSummary: summary } : {})}
-          cellAccessory={(_subject, index) => {
-            const pointer = pointers[index]
-            return pointer ? <ExclusionToggle pointer={pointer} busy={busy} onExclude={onExclude} onRestore={onRestore} /> : null
-          }}
+          cellAccessory={(_subject, index) => exclusionAccessory(pointers[index], { busy, narrow, onExclude, onRestore })}
         />
       )}
       {notices.map((notice) => <SpendCardNoticeLine key={`${notice.tone}:${notice.text}`} notice={notice} />)}

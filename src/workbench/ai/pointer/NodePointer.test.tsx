@@ -43,13 +43,16 @@ function seed(nodes: GenerationCanvasNode[], ready = true): void {
   SERVER.isReady = ready
 }
 
-type Host = { type: string; props: Record<string, unknown> }
+type Host = { type: string; props: Record<string, unknown>; clientWidth?: number }
+
+/** 测试宿主没有排版：格子小动作那一槽给一个假宽（useElementWidth 读 clientWidth）。 */
+const SLOT_WIDTH = 40
 
 function mount(element: React.ReactElement) {
   const hosts: Host[] = []
   const renderer = createReactTestRenderer<Host>({
     createInstance: (type, props) => {
-      const host = { type, props }
+      const host: Host = { type, props, ...(props['data-node-pointer-cell-accessory'] !== undefined ? { clientWidth: SLOT_WIDTH } : {}) }
       hosts.push(host)
       return host
     },
@@ -59,7 +62,7 @@ function mount(element: React.ReactElement) {
   const buttons = () => hosts.filter((host) => host.type === 'button' && typeof host.props['data-node-pointer'] === 'string')
   /** 组下方那一行（`<p>`）此刻的字：最近挂上的那一个（有内容 / 空行是两个组件，切换时会重新挂一个）。 */
   const summaryLine = () => String(hosts.filter((host) => host.type === 'p').at(-1)?.props.children ?? '')
-  return { renderer, buttons, summaryLine }
+  return { renderer, hosts, buttons, summaryLine }
 }
 
 beforeEach(async () => {
@@ -379,5 +382,70 @@ describe('NodePointerReturnToChat · the visible words obey §1.8 rule 3, the ac
 
   it('draws nothing when there is no chat to go back to', () => {
     expect(renderToStaticMarkup(<NodePointerReturnToChat />)).toBe('')
+  })
+})
+
+describe('NodePointerGroup · tiles stay tellable apart in a narrow panel (narrow walk 2026-10-25, user-circled)', () => {
+  const tiles: NodePointerSubject[] = [{ nodeId: 'a' }, { nodeId: 'b' }, { nodeId: 'c' }]
+  beforeEach(() => seed(['a', 'b', 'c'].map((id, index) => video(id, { title: `S_NARROW_1 纸船 ${index + 1}` }))))
+
+  it('titles sharing a long opening: the opening may be cut, the differing tail stays whole; the full name stays on hover and in the read-out name', () => {
+    const { renderer, hosts } = mount(<NodePointerGroup subjects={tiles} narrow />)
+    try {
+      const tailsShown = hosts.filter((host) => host.props['data-node-pointer-title-tail'] !== undefined).map((host) => host.props.children)
+      expect(tailsShown).toEqual(['纸船 1', '纸船 2', '纸船 3'])
+      const heads = hosts.filter((host) => host.type === 'span' && host.props.children === 'S_NARROW_1 ')
+      expect(heads).toHaveLength(3)
+      for (const head of heads) expect(String(head.props.className)).toContain('text-ellipsis')
+      const markup = renderToStaticMarkup(<NodePointerGroup subjects={tiles} narrow />)
+      for (const index of [1, 2, 3]) {
+        expect(markup).toContain(`title="S_NARROW_1 纸船 ${index}"`)
+        expect(markup).toContain(i18n.t('nodePointer.ariaPlain', { name: `S_NARROW_1 纸船 ${index}` }))
+      }
+    } finally {
+      renderer.close()
+    }
+  })
+
+  it('tiles that already differ up front are cut from the end as before', () => {
+    seed([video('a', { title: '纸船出发' }), video('b', { title: '越过落叶' }), video('c', { title: '漂向远处' })])
+    const { renderer, hosts } = mount(<NodePointerGroup subjects={tiles} />)
+    try {
+      expect(hosts.some((host) => host.props['data-node-pointer-title-tail'] !== undefined)).toBe(false)
+    } finally {
+      renderer.close()
+    }
+  })
+
+  it('a host action lives in the tile label row: hidden until the tile is hovered or focused unless pinned; the label row makes room for it when it shows', () => {
+    const accessory = (subject: NodePointerSubject) => subject.nodeId === 'b'
+      ? { action: <button type="button" data-test-action="restore">restore</button>, pinned: true, dimmed: true }
+      : { action: <button type="button" data-test-action="exclude">x</button>, pinned: false, dimmed: false }
+    const markup = renderToStaticMarkup(<NodePointerGroup subjects={tiles} cellAccessory={accessory} />)
+    expect(markup.match(/data-node-pointer-cell=""/g)).toHaveLength(3)
+    expect(markup.match(/data-accessory-pinned="true"/g)).toHaveLength(1)
+    expect(markup.match(/data-node-pointer-cell-dimmed="true"/g)).toHaveLength(1)
+    const slots = [...markup.matchAll(/<span class="([^"]*)" data-node-pointer-cell-accessory="">/g)].map((match) => match[1]!)
+    expect(slots).toHaveLength(3)
+    // 藏着的那两槽：看不见也不接点击；悬停 / 聚焦这一格才露。常驻的那一槽不藏。
+    expect(slots.filter((slot) => slot.includes('opacity-0') && slot.includes('pointer-events-none'))).toHaveLength(2)
+    for (const slot of slots) expect(slot).toContain('top-0')
+    // 标题行在小动作露出来的三种情形（悬停 / 聚焦 / 常驻）都让出它的宽。
+    for (const variant of ['group-hover/pointer-cell', 'group-focus-within/pointer-cell', 'group-data-[accessory-pinned]/pointer-cell']) {
+      expect(markup).toContain(`${variant}:pr-[var(--node-pointer-cell-accessory)]`)
+    }
+    const { renderer, hosts } = mount(<NodePointerGroup subjects={tiles} cellAccessory={accessory} />)
+    try {
+      const cells = hosts.filter((host) => host.type === 'div' && host.props['data-node-pointer-cell'] !== undefined)
+      const widths = cells.slice(-3).map((cell) => (cell.props.style as Record<string, string> | undefined)?.['--node-pointer-cell-accessory'])
+      expect(widths).toEqual([`${SLOT_WIDTH + 4}px`, `${SLOT_WIDTH + 4}px`, `${SLOT_WIDTH + 4}px`])
+    } finally {
+      renderer.close()
+    }
+  })
+
+  it('a tile whose host gives no action is not wrapped (nothing to make room for)', () => {
+    const markup = renderToStaticMarkup(<NodePointerGroup subjects={tiles} cellAccessory={(subject) => (subject.nodeId === 'a' ? { action: <span>x</span>, pinned: false, dimmed: false } : null)} />)
+    expect(markup.match(/data-node-pointer-cell=""/g)).toHaveLength(1)
   })
 })

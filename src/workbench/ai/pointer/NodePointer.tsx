@@ -26,7 +26,8 @@ import type { GenerationFeedback } from '../../observability/generationFeedback'
 import { NodeShotLabel, ShotNumberPill } from '../../generation/list/CanvasListLinks'
 import { formatStoryboardShotLabel, isAutoStoryboardShotTitle, useStoryboardShotLabel } from '../../generation/list/storyboardLabels'
 import { useModelLabels } from '../../generation/list/generationListModelLabels'
-import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, nodePointerSummaryFacts, pointerHoverStack, type NodePointerFace } from './nodePointerFace'
+import { useElementWidth } from '../../creation/storyboard/shotRow/useElementWidth'
+import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, nodePointerSummaryFacts, nodePointerTitleTails, pointerHoverStack, type NodePointerFace } from './nodePointerFace'
 import { useNodePointerStore } from './nodePointerStore'
 import { returnToChat, revealNodeFromChat } from './revealNodeFromChat'
 
@@ -137,16 +138,37 @@ function useHoverLink(nodeId: string, enabled: boolean): { hot: boolean; on: () 
   return { hot, on, off }
 }
 
-/** 标题行：节点在就挂节点自己的 NodeShotLabel（改名两边一起变）；节点不在就用宿主的名字快照（已删除划线）。 */
-function PointerLabel({ model, narrow }: { model: PointerModel; narrow: boolean }): JSX.Element {
+/** 格子标题行在小动作露出来时右边让出的宽（组量出来写在格子上）；标题的尾巴永远不被它盖住。 */
+const CELL_ACCESSORY_INSET = '--node-pointer-cell-accessory'
+
+/**
+ * 标题行：节点在就挂节点自己的 NodeShotLabel（改名两边一起变）；节点不在就用宿主的名字快照（已删除划线）。
+ * `tailFrom`（组给的，见 nodePointerTitleTails）：从这儿起是「和兄弟格不一样的那一截」——前面那截公共开头先截（带省略号），这一截不截。
+ * 在组的格子里，小动作（付费卡「不生成 ×」/「恢复」）露出来时标题行右边让出它的宽，小动作不压标题。
+ */
+function PointerLabel({ model, narrow, tailFrom = 0 }: { model: PointerModel; narrow: boolean; tailFrom?: number }): JSX.Element {
   const gone = model.face.kind === 'removed' || model.face.kind === 'unavailable'
   // 窄面板只留镜号（名字靠悬停提示）；没有镜号的节点照旧露名字。
   const hideTitle = narrow && Boolean(model.shotText)
-  const titleNode = hideTitle || !model.title ? null : (
-    <span className={cn('min-w-0 truncate font-semibold text-nomi-ink', gone && 'text-nomi-ink-40', model.face.kind === 'removed' && 'line-through')}>{model.title}</span>
+  const tone = cn('font-semibold text-nomi-ink', gone && 'text-nomi-ink-40', model.face.kind === 'removed' && 'line-through')
+  const split = tailFrom > 0 && tailFrom < model.title.length
+  const titleNode = hideTitle || !model.title ? null : split ? (
+    // 截中间：头一截可以截到只剩省略号，尾巴整截留着（尾巴自己比一格还宽时才在尾巴末端截）。whitespace-pre 留住两截之间那个空格。
+    <span className={cn('flex min-w-0', tone)} data-node-pointer-title="">
+      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-pre">{model.title.slice(0, tailFrom)}</span>
+      <span className="max-w-full shrink-0 overflow-hidden text-ellipsis whitespace-pre" data-node-pointer-title-tail="">{model.title.slice(tailFrom)}</span>
+    </span>
+  ) : (
+    <span className={cn('min-w-0 truncate', tone)} data-node-pointer-title="">{model.title}</span>
   )
   return (
-    <span className="flex h-[22px] min-w-0 items-center gap-1.5 text-caption" title={model.name}>
+    <span
+      className={cn(
+        'flex h-[22px] min-w-0 items-center gap-1.5 text-caption',
+        'group-hover/pointer-cell:pr-[var(--node-pointer-cell-accessory)] group-focus-within/pointer-cell:pr-[var(--node-pointer-cell-accessory)] group-data-[accessory-pinned]/pointer-cell:pr-[var(--node-pointer-cell-accessory)]',
+      )}
+      title={model.name}
+    >
       {model.node && !gone
         ? <NodeShotLabel node={model.node}>{titleNode}</NodeShotLabel>
         : <>{model.shotText ? <ShotNumberPill className="text-nomi-ink-40">{model.shotText}</ShotNumberPill> : null}{titleNode}</>}
@@ -256,11 +278,17 @@ export type NodePointerProps = {
   overflow?: Readonly<{ hidden: number; onExpand: () => void }>
   /** 组指向用：悬停 / 聚焦、离开 / 失焦时报一声，组据此在下方那一行现算被悬停那一镜的摘要。 */
   onHover?: (hovering: boolean) => void
+  /** 组指向用：把自己标题行上那个名字报给组（名字只在这里从节点现算），组据此算每一格「和兄弟不一样的那一截」。 */
+  onTitle?: (title: string) => void
+  /** 组给的：标题从这儿起是和兄弟格不一样的那一截（截中间，见 nodePointerTitleTails）。 */
+  titleTail?: number
 }
 
-export function NodePointer({ subject, density = 'card', frame = 'single', layout = 'auto', narrow = false, overflow, onHover }: NodePointerProps): JSX.Element {
+export function NodePointer({ subject, density = 'card', frame = 'single', layout = 'auto', narrow = false, overflow, onHover, onTitle, titleTail }: NodePointerProps): JSX.Element {
   const { t } = useTranslation()
   const model = usePointerModel(subject)
+  // 绘制前报上去：组拿到名字就在同一帧里算好截法，不先画一帧「几格截成一样」再跳。
+  React.useLayoutEffect(() => { onTitle?.(model.title) }, [onTitle, model.title])
   const locatable = nodePointerLocatable(model.face)
   const located = useNodePointerStore((state) => state.locatedNodeId === subject.nodeId) && locatable
   const hover = useHoverLink(subject.nodeId, locatable && !overflow)
@@ -362,7 +390,7 @@ export function NodePointer({ subject, density = 'card', frame = 'single', layou
     : <PointerFaceArt model={model} size={frame === 'cell' ? 'cell' : 'card'} located={located} />
   return (
     <button {...common} className={cn('flex w-full min-w-0 flex-col gap-1 rounded-nomi text-left text-caption', gone && 'cursor-default')}>
-      <PointerLabel model={model} narrow={narrow} />
+      <PointerLabel model={model} narrow={narrow} {...(titleTail ? { tailFrom: titleTail } : {})} />
       {side ? (
         <span className="flex min-w-0 items-start gap-3">
           <span className="relative shrink-0" style={{ height: SIDE_SLOT_HEIGHT, aspectRatio: String(model.aspect) }}>
@@ -404,6 +432,54 @@ function RowTrailing({ face, located }: { face: NodePointerFace; located: boolea
   return icon ? <span className="grid shrink-0 place-items-center" aria-hidden="true">{icon}</span> : null
 }
 
+/**
+ * 组里一格挂的那个小动作（付费卡多段时的「不生成 ×」/「恢复」）。位置、什么时候露出来、这一格淡不淡下去都归组管——
+ * 标题行要按它露没露出来让位，两处判据只能有一份。
+ */
+export type NodePointerCellAccessory = Readonly<{
+  /** 宿主的那颗按钮本身（不带定位、不带藏起来的样式）。 */
+  action: React.ReactNode
+  /** 常驻（「恢复」）；false = 悬停 / 聚焦这一格时才露出来（「不生成 ×」）。 */
+  pinned: boolean
+  /** 这一格淡下去（盖在画面框上，不挡点击：指向元素照样点了去节点）。 */
+  dimmed: boolean
+}>
+
+/**
+ * 组里挂了小动作的那一格。小动作是格子的兄弟、不是格子里的按钮（按钮里不能套按钮），住在格子标题行的右端：
+ * 不压画面框（框的左上角是「已定位」/ 制作小标，默认浮窗里一格约 108px、窄面板约 86px，两枚小标放不进同一条——
+ * 真 App 窄窗走查 2026-10-25 拍到「已定位」被压成「已定」）；它露出来时标题行右边让出它量出来的宽，也不压标题的尾巴。
+ * 藏着的时候不接点击（看不见的钮不许挡住缩略图），键盘从指向元素 Tab 一下照样走得到它（聚焦在格子里就露出来）。
+ */
+function PointerCell({ pointer, accessory }: { pointer: React.ReactNode; accessory: NodePointerCellAccessory }): JSX.Element {
+  const slotRef = React.useRef<HTMLSpanElement>(null)
+  const width = useElementWidth(slotRef)
+  return (
+    <div
+      className="group/pointer-cell relative min-w-0"
+      data-node-pointer-cell=""
+      data-accessory-pinned={accessory.pinned ? 'true' : undefined}
+      style={width === null ? undefined : { [CELL_ACCESSORY_INSET]: `${width + CELL_ACCESSORY_GAP}px` } as React.CSSProperties}
+    >
+      {pointer}
+      {accessory.dimmed ? <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 top-[26px] rounded-nomi-sm bg-nomi-paper/60" data-node-pointer-cell-dimmed="true" /> : null}
+      <span
+        ref={slotRef}
+        className={cn(
+          'absolute right-0 top-0 z-[5] flex h-[22px] items-center transition-opacity',
+          !accessory.pinned && 'pointer-events-none opacity-0 group-focus-within/pointer-cell:pointer-events-auto group-focus-within/pointer-cell:opacity-100 group-hover/pointer-cell:pointer-events-auto group-hover/pointer-cell:opacity-100',
+        )}
+        data-node-pointer-cell-accessory=""
+      >
+        {accessory.action}
+      </span>
+    </div>
+  )
+}
+
+/** 小动作和标题之间留的那一点空。 */
+const CELL_ACCESSORY_GAP = 4
+
 /** 组指向：一次说多个镜头。card 一行三格（下方一行是被悬停那一镜的摘要）；chip 嵌在一句话里；row 是一列（不折）。 */
 export function NodePointerGroup({ subjects, density = 'card', narrow = false, max = 3, idleSummary, cellAccessory }: {
   subjects: readonly NodePointerSubject[]
@@ -415,17 +491,25 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
    * 缺席 = 一个不换行空格撑着行高（组单独用时）。悬停哪一格，那一行就换成那一镜的摘要，离开回到这一句。
    */
   idleSummary?: string
-  /**
-   * 只对 card：每一格右上角挂一个宿主给的小动作（付费卡多段时的「不生成 ×」/「恢复」）。它是格子的兄弟、不是格子里的按钮
-   * （按钮里不能套按钮）；悬停 / 聚焦这一格时露出来，宿主要它常驻就自己不藏。缺席 = 不挂。
-   */
-  cellAccessory?: (subject: NodePointerSubject, index: number) => React.ReactNode
+  /** 只对 card：每一格标题行右端挂一个宿主给的小动作（见 NodePointerCellAccessory / PointerCell）。缺席或返回 null = 这一格不挂。 */
+  cellAccessory?: (subject: NodePointerSubject, index: number) => NodePointerCellAccessory | null
 }): JSX.Element {
   const { t } = useTranslation()
   const [expanded, setExpanded] = React.useState(false)
   // 被悬停 / 聚焦的格子：存 nodeId（先后到的排成一摞，离开的只拿掉自己），不存摘要——摘要每次渲染从节点现算，
   // 模型目录后到、节点改名都会跟着变（独立验收 V-d2-pointer 偏差 8：摘要曾拍成字符串存进 state，目录晚到就缺模型名）。
   const [hovered, setHovered] = React.useState<readonly string[]>([])
+  // 每一格标题行上那个名字（各格自己从节点现算后报上来，见 NodePointer.onTitle），只拿来算截法。
+  const [titles, setTitles] = React.useState<Readonly<Record<string, string>>>({})
+  // 每一格一枚不变的回报函数：格子的 layout effect 只在名字真变了时才再报一次。
+  const reporters = React.useRef(new Map<string, (title: string) => void>())
+  const reporterFor = (key: string): ((title: string) => void) => {
+    const known = reporters.current.get(key)
+    if (known) return known
+    const report = (title: string): void => setTitles((current) => (current[key] === title ? current : { ...current, [key]: title }))
+    reporters.current.set(key, report)
+    return report
+  }
   if (density === 'row') {
     return <div className="flex flex-col gap-1.5" data-node-pointer-group="row">{subjects.map((subject) => <NodePointer key={subject.nodeId} subject={subject} density="row" narrow={narrow} />)}</div>
   }
@@ -450,11 +534,16 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
       </span>
     )
   }
+  const shown = subjects.slice(0, visible.shown)
+  // 没有节点号的格子（还没落到画布上）用位置当键：几格同时缺号时键不撞。
+  const keys = shown.map((subject, index) => subject.nodeId || `cell-${index}`)
+  const tails = nodePointerTitleTails(keys.map((key) => titles[key] ?? ''))
   return (
     <div className="flex min-w-0 flex-col gap-1.5" data-node-pointer-group="card">
       <div className="grid min-w-0 grid-cols-3 gap-2">
-        {subjects.slice(0, visible.shown).map((subject, index) => {
+        {shown.map((subject, index) => {
           const folded = Boolean(visible.hidden && index === visible.shown - 1)
+          const key = keys[index]
           const pointer = (
             <NodePointer
               subject={subject}
@@ -462,13 +551,13 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
               narrow={narrow}
               overflow={folded ? { hidden: visible.hidden, onExpand: () => setExpanded(true) } : undefined}
               onHover={(hovering) => setHovered((stack) => pointerHoverStack(stack, subject.nodeId, hovering))}
+              onTitle={reporterFor(key)}
+              titleTail={tails[index]}
             />
           )
           const accessory = cellAccessory && !folded ? cellAccessory(subject, index) : null
-          // 没有节点号的格子（还没落到画布上）用位置当键：几格同时缺号时键不撞。
-          const key = subject.nodeId || `cell-${index}`
           return accessory
-            ? <div key={key} className="group/pointer-cell relative min-w-0" data-node-pointer-cell="">{pointer}{accessory}</div>
+            ? <PointerCell key={key} pointer={pointer} accessory={accessory} />
             : <React.Fragment key={key}>{pointer}</React.Fragment>
         })}
       </div>

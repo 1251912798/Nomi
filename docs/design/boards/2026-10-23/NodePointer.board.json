@@ -727,7 +727,7 @@
       ],
       "status": "implemented",
       "assertion": "board:NodePointer/pointer.narrow.collapse",
-      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。"
+      "note": "生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer。第③步起真 App 里也有：付费卡上的指向元素点了走 revealNodeFromChat，浮窗盖住画布大半时先收成小球（真 App 走查 tests/ux/agent-spend-card-narrow.walk.mjs，最小窗 1100×720）。"
     },
     {
       "id": "pointer.narrow.back",
@@ -746,7 +746,7 @@
         "531-span"
       ],
       "status": "implemented",
-      "note": "键盘：Esc 也回到对话。 生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer，component-only——聊天宿主第③步接（SpendCardQ1 card.pointers）。",
+      "note": "键盘：Esc 也回到对话。 生产组件 src/workbench/ai/pointer/NodePointer.tsx（canvas.node.highlight 在 reactFlow/generationCanvasReactFlowAdapter.ts#externalHighlightShellClass）；设计实验室屏 node-pointer。第③步起真画布上挂 NodePointerReturnDock（生成页画布那一格底部正中、压在加节点条上面；P1 宿主用不带标签的那一颗），真 App 走查 tests/ux/agent-spend-card-narrow.walk.mjs（Esc / 点它都回原浮窗，焦点落回那一项）。",
       "assertion": "board:NodePointer/pointer.narrow.back"
     },
     {

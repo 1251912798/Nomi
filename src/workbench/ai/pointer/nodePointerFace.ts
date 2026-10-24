@@ -95,6 +95,55 @@ export function pointerHoverStack(stack: readonly string[], nodeId: string, hove
   return stack.includes(nodeId) ? stack.filter((id) => id !== nodeId) : stack
 }
 
+/** 标题里算「词」边界的那几个分隔符：空白、间隔号、下划线、连字符、冒号、逗号、顿号、斜线、竖线、括号。 */
+const TITLE_SEPARATOR = /[\s·・_\-–—:：,，、/|()（）[\]【】]/u
+/** 往回找词头最多退几个字；再远就当没有词边界（中文标题常常一个空格都没有）。 */
+const TITLE_WORD_REACH = 6
+/** 找不到词边界时尾巴往前多带几个字（「流第一幕」比「一幕」读得懂）。 */
+const TITLE_CONTEXT = 2
+/** 尾巴那个词短到这个数（「1」「02」）就把前一个词也带上（「纸船 1」）。 */
+const TITLE_SHORT_WORD = 2
+
+/**
+ * 组里几格的标题共用一长截开头时（「S_NARROW_1 纸船 1 / 2 / 3」），窄格子照常从尾巴截，几格会被截成同一个样子、分不出是哪一镜
+ * （真 App 窄窗走查 2026-10-25，用户圈出）。这里给每一格算出「和兄弟格不一样的那一截」从哪儿开始：标题行先截前面那截公共开头，
+ * 这一截不截（截中间）。全名照旧在悬停提示和读屏名里。
+ *
+ * 每一格只和**离它最近的兄弟**比（公共开头最长的那一个）：三格里两格像、一格不像时，像的那两格各露自己的尾巴，不像的那一格不用分。
+ * 尾巴从那个不一样的字所在的词开头起；词太短再带上前一个词；整句没有词边界就往前带两个字。返回码元下标（直接拿去 slice），
+ * 0 = 不用分（没有兄弟、和谁都不共开头、或者整句就是别人的开头 / 和别人一字不差——那样怎么截都分不出）。
+ */
+export function nodePointerTitleTails(titles: readonly string[]): readonly number[] {
+  const chars = titles.map((title) => Array.from(title))
+  const separator = (char: string | undefined): boolean => char !== undefined && TITLE_SEPARATOR.test(char)
+  return chars.map((own, index) => {
+    let shared = 0
+    chars.forEach((other, otherIndex) => {
+      if (otherIndex === index) return
+      let length = 0
+      while (length < own.length && length < other.length && own[length] === other[length]) length += 1
+      shared = Math.max(shared, length)
+    })
+    if (shared === 0 || shared >= own.length) return 0
+    // 不一样的那个字所在的词从哪儿起：往回找分隔符，够不着（或一路退到开头都没有）就往前带两个字。
+    let start = shared
+    while (start > 0 && !separator(own[start - 1]) && shared - start < TITLE_WORD_REACH) start -= 1
+    const atWordStart = start > 0 && separator(own[start - 1])
+    if (!atWordStart) return own.slice(0, Math.max(0, shared - TITLE_CONTEXT)).join('').length
+    // 那个词太短：把前一个词也带上（带到开头就算了——那等于不分）。
+    let end = start
+    while (end < own.length && !separator(own[end])) end += 1
+    if (end - start <= TITLE_SHORT_WORD) {
+      let previous = start
+      while (previous > 0 && separator(own[previous - 1])) previous -= 1
+      const wordEnd = previous
+      while (previous > 0 && !separator(own[previous - 1]) && wordEnd - previous < TITLE_WORD_REACH) previous -= 1
+      if (previous > 0 && previous < wordEnd) start = previous
+    }
+    return own.slice(0, start).join('').length
+  })
+}
+
 /** 比例是不是竖的（「9:16」）。读不出就不是。 */
 export function isPortraitAspect(aspect: string | null): boolean {
   const match = aspect ? /^(\d+):(\d+)$/.exec(aspect) : null

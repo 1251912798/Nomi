@@ -70,10 +70,15 @@ async function cardFacts(page) {
       kind: el.getAttribute('data-spend-exclusion'),
       name: el.getAttribute('aria-label') ?? '',
       text: el.textContent?.trim() ?? '',
-      opacity: Number(getComputedStyle(el).opacity),
+      // 露没露出来归组管（藏的是钮外面那一槽）：从钮往上乘到格子为止，才是人眼看到的透明度。
+      opacity: (() => {
+        let value = 1
+        for (let node = el; node && !node.matches('[data-node-pointer-cell]'); node = node.parentElement) value *= Number(getComputedStyle(node).opacity)
+        return value
+      })(),
       disabled: el.disabled,
       cell: el.closest('[data-node-pointer-cell]')?.querySelector('[data-node-pointer]')?.getAttribute('data-node-pointer-id') ?? null,
-      excluded: Boolean(el.closest('[data-node-pointer-cell]')?.querySelector('[data-spend-excluded]')),
+      excluded: Boolean(el.closest('[data-node-pointer-cell]')?.querySelector('[data-node-pointer-cell-dimmed]')),
     })) : []
     const notices = [...card.querySelectorAll('[data-v4-block="spend-notice"]')].map((el) => ({
       tone: el.getAttribute('data-tone'),
@@ -314,8 +319,12 @@ async function expectSpendCardState(page, state, record) {
       const targetBox = await target.boundingBox()
       await target.hover({ position: { x: Math.round((targetBox?.width ?? 40) / 2), y: Math.round((targetBox?.height ?? 40) - 8) } })
       await page.waitForFunction((id) => {
-        const toggle = document.querySelector(`[data-node-pointer-cell] [data-node-pointer-id="${id}"]`)?.closest('[data-node-pointer-cell]')?.querySelector('[data-spend-exclusion]')
-        return toggle && Number(getComputedStyle(toggle).opacity) > 0.99
+        const cell = document.querySelector(`[data-node-pointer-cell] [data-node-pointer-id="${id}"]`)?.closest('[data-node-pointer-cell]')
+        const toggle = cell?.querySelector('[data-spend-exclusion]')
+        if (!toggle) return false
+        let opacity = 1
+        for (let node = toggle; node && node !== cell; node = node.parentElement) opacity *= Number(getComputedStyle(node).opacity)
+        return opacity > 0.99
       }, NODE(2), { timeout: 3000 }).catch(() => record(`${state.id} ${A.exclude}: 真悬停镜 02 后「不生成 ×」没露出来`))
       const hovered = await cardFacts(page)
       if (!(hovered?.hoverSummary ?? '').includes('5s')) record(`${state.id} ${A.summary}: 悬停镜 02 后组下方应换成这一镜的摘要（5s）：${hovered?.hoverSummary}`)

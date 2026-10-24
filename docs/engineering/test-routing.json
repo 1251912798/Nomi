@@ -48,6 +48,7 @@
           "walks": [
             { "path": "tests/ux/agent-panel-missing-card.walk.mjs", "blocking": false, "reason": "Agent panel missing-card regression; scheduled coverages sufficient" },
             { "path": "tests/ux/agent-spend-card.walk.mjs", "blocking": true, "reason": "Spend approval card is a payment safety boundary" },
+            { "path": "tests/ux/agent-spend-card-narrow.walk.mjs", "blocking": false, "reason": "Narrow window: a pointer click collapses the covering chat, back-to-chat by Esc or the pill (NodePointer A4 in the real App); scheduled coverage first, promote after five clean runs" },
             { "path": "tests/ux/agent-spend-confirm-executes.walk.mjs", "blocking": true, "reason": "Post-confirm execution exactly once is a payment safety boundary" },
             { "path": "tests/ux/agent-spend-confirm-then-close.walk.mjs", "blocking": false, "reason": "Generate-then-immediate-cancel race (one terminal per offer); scheduled coverage first, promote after five clean runs" },
             { "path": "tests/ux/agent-spend-full-auto.walk.mjs", "blocking": true, "reason": "Full-auto mode still needs the approval boundary" },

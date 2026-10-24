@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GenerationCanvasNode } from '../../generationCanvas/model/generationCanvasTypes'
 import type { GenerationFeedback } from '../../observability/generationFeedback'
 import type { ProductionShotState } from '../../../../electron/shared/productionShotPhase'
-import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, pointerHoverStack } from './nodePointerFace'
+import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, nodePointerTitleTails, pointerHoverStack } from './nodePointerFace'
 
 const node = (patch: Partial<GenerationCanvasNode> = {}): GenerationCanvasNode => ({
   id: 'n1', kind: 'video', title: '纸船出发', categoryId: 'shots', position: { x: 0, y: 0 }, status: 'idle', prompt: '', meta: {}, ...patch,
@@ -111,5 +111,43 @@ describe('nodePointerSummary', () => {
     expect(isPortraitAspect('3:4')).toBe(true)
     expect(isPortraitAspect('16:9')).toBe(false)
     expect(isPortraitAspect(null)).toBe(false)
+  })
+})
+
+describe('nodePointerTitleTails · the part of each tile title that tells it from its siblings (narrow walk 2026-10-25)', () => {
+  /** 每一格截中间时整截留下的那一段。 */
+  const tails = (titles: string[]): string[] => nodePointerTitleTails(titles).map((at, index) => titles[index]!.slice(at))
+
+  it('a long shared opening: each keeps its differing word, plus the word before when that one is a bare number', () => {
+    expect(tails(['S_NARROW_1 纸船 1', 'S_NARROW_1 纸船 2', 'S_NARROW_1 纸船 3'])).toEqual(['纸船 1', '纸船 2', '纸船 3'])
+  })
+
+  it('a differing word long enough on its own stands alone', () => {
+    expect(tails(['开场 海边远景', '开场 城市夜景'])).toEqual(['海边远景', '城市夜景'])
+  })
+
+  it('Chinese with no word boundary at all: two characters of context before the first difference', () => {
+    expect(tails(['纸船漂流第一幕', '纸船漂流第二幕'])).toEqual(['流第一幕', '流第二幕'])
+  })
+
+  it('the word before would reach the very start: it is not taken (that would be no cut at all)', () => {
+    expect(tails(['Shot 1', 'Shot 2'])).toEqual(['1', '2'])
+  })
+
+  it('each tile is compared with its closest sibling: two alike keep their tails, the odd one is left whole', () => {
+    expect(tails(['海边 远景 1', '海边 远景 2', '城市夜景'])).toEqual(['远景 1', '远景 2', '城市夜景'])
+  })
+
+  it('nothing to tell apart, or nothing a cut could tell apart: no cut', () => {
+    expect(nodePointerTitleTails(['纸船出发'])).toEqual([0])
+    expect(nodePointerTitleTails(['纸船出发', '越过落叶'])).toEqual([0, 0])
+    expect(nodePointerTitleTails(['纸船', '纸船'])).toEqual([0, 0])
+    expect(nodePointerTitleTails(['纸船', '纸船 2'])).toEqual([0, 0])
+    expect(nodePointerTitleTails(['', ''])).toEqual([0, 0])
+    expect(nodePointerTitleTails([])).toEqual([])
+  })
+
+  it('counts characters, not UTF-16 units: an emoji in the shared opening still cuts at the right place', () => {
+    expect(tails(['🎬 开场 1', '🎬 开场 2'])).toEqual(['开场 1', '开场 2'])
   })
 })
