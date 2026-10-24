@@ -79,6 +79,17 @@ describe('项目库报错：原文只进日志，界面只给一句人话', () =
     expect(projectOperationFailureText('save', changed, t)).toBe('«studio.projectSaveFailed»')
   })
 
+  it.each([
+    ['permission', 'studio.projectTrashFailedPermission'],
+    ['no-trash', 'studio.projectTrashFailedNoTrash'],
+    ['in-use', 'studio.projectTrashFailedInUse'],
+    ['unknown', 'studio.projectTrashFailedUnknown'],
+  ])('删除时进不了回收站（%s，经 invoke 只剩信息文本）：说「没删、为什么」，带上回收站叫法', (reason, key) => {
+    const tWithParams = ((k: string, params?: Record<string, unknown>) => `«${k}|${params?.bin ?? ''}»`) as unknown as TFunction
+    const error = new Error(`Error invoking remote method 'nomi:projects:delete': Error: ProjectTrashFailedError[${reason}]: project folder was not moved to the trash and nothing was deleted (x)`)
+    expect(projectOperationFailureText('delete', error, tWithParams, { trashBin: '回收站' })).toBe(`«${key}|回收站»`)
+  })
+
   it('类型上做不出来：原文字符串不能当 UserText 传进界面', () => {
     const accept = (_message: UserText): void => {}
     // @ts-expect-error 裸字符串（含 error.message）不是 UserText，编译不过
@@ -89,7 +100,7 @@ describe('项目库报错：原文只进日志，界面只给一句人话', () =
   it('删除 / 打开项目文件夹（NomiStudioApp 无可注入 harness，钉源码形状）：原文进日志，report 收出口产物', () => {
     const source = read('src/workbench/NomiStudioApp.tsx')
     expect(source).toContain("logRendererError('project-delete-failed', error)")
-    expect(source).toContain("report(project.id, projectOperationFailureText('delete', error, t))")
+    expect(source).toContain("report(projectId, projectOperationFailureText('delete', error, t, { trashBin }))")
     expect(source).toContain("logRendererError('project-reveal-folder-failed', error)")
     expect(source).toContain("report(projectId, projectOperationFailureText('revealFolder', error, t))")
     expect(source).not.toMatch(/error instanceof Error && error\.message \? error\.message/)

@@ -6,7 +6,7 @@ import { ConfirmDialogHost, confirmDialog, NomiLoadingMark } from '../design'
 import ProjectLibraryPage from './library/ProjectLibraryPage'
 import { SettingsDialog } from './settings/SettingsDialog'
 import { useSettingsDialogController } from './settings/useSettingsDialogController'
-import { projectDeleteChoice } from './library/projectDeleteChoice'
+import { runProjectDeleteFlow } from './library/projectDeleteFlow'
 import {
   createLocalProject,
   deleteLocalProject,
@@ -55,6 +55,7 @@ import { cn } from '../utils/cn'
 import { notify } from '../ui/notificationPolicy'
 import { useProjectNotificationTarget } from './project/useProjectNotificationTarget'
 import { getDesktopBridge } from '../desktop/bridge'
+import { toast } from '../ui/toast'
 import { logRendererError } from '../desktop/rendererLog'
 import { LaneCommandFailure, laneFailureText } from './ai/lane/laneCommandFailure'
 import { projectNotice, projectOperationFailureText, type UserText } from './project/projectOperationFailureText'
@@ -503,39 +504,33 @@ export default function NomiStudioApp(): JSX.Element {
 
   const deleteProject = React.useCallback(
     async (project: LocalProjectSummary) => {
-      // 应用内确认框（审计 A7）：原生 window.confirm 脱设计系统、E2E 测不到、
-      // Electron/macOS 有焦点丢失史。
-      // 确认框说什么、交给主进程什么意图，同一个判断出两样（projectDeleteChoice）：说「只移除」就一定传 unbind。
-      const choice = projectDeleteChoice(project)
-      const confirmed = await confirmDialog({
-        title: t(choice.titleKey),
-        message: t(choice.messageKey, { name: project.name }),
-        confirmLabel: t(choice.confirmLabelKey),
-        danger: true,
-      })
-      if (!confirmed) return
+      // 应用内确认框（审计 A7）：原生 window.confirm 脱设计系统、E2E 测不到、Electron/macOS 有焦点丢失史。
+      // 整条流程（确认文案 → 意图 → 进回收站 / 只移除 → 提示）在 runProjectDeleteFlow，单测 projectDeleteFlow.test.ts。
       setFeedback(null)
-      try {
-        if (activeProjectIdRef.current === project.id) {
-          // Deleting the open project must first receive main's release ACK;
-          // otherwise its old canvas-read route could outlive the project.
+      await runProjectDeleteFlow(project, {
+        t,
+        platform: getDesktopBridge()?.platform,
+        confirm: confirmDialog,
+        isActive: (projectId) => activeProjectIdRef.current === projectId,
+        releaseActive: async () => {
           await projectSurface.releaseCurrent()
           if (laneClient.context()) await laneClient.close()
-        }
-        // 主进程只照用户在这个确认框里确认的那一种执行：说了「只移除」就绝不删文件（V-plibrary2）。
-        deleteLocalProject(project.id, choice.intent)
-        if (activeProjectIdRef.current === project.id) {
+        },
+        leaveToLibrary: () => {
           activeProjectIdRef.current = null
           setActiveProject(null)
           setView('library')
           navigate(buildStudioUrl(), { replace: true })
-        }
-
-      } catch (error: unknown) {
-        logRendererError('project-delete-failed', error)
-        report(project.id, projectOperationFailureText('delete', error, t))
-        refreshProjects() // 状态变了（确认时和此刻对不上）：刷新卡片，让用户按新的状态重新确认
-      }
+        },
+        deleteLocalProject,
+        onMovedToTrash: (message) => toast(message, 'success'),
+        onRemovedWithoutTrash: (message) => toast(message, 'info'),
+        onFailed: (projectId, error, trashBin) => {
+          logRendererError('project-delete-failed', error)
+          report(projectId, projectOperationFailureText('delete', error, t, { trashBin }))
+          refreshProjects() // 状态变了 / 没删成：刷新卡片，让用户按此刻的状态再决定
+        },
+      })
     },
     [navigate, projectSurface, refreshProjects, report, t],
   )

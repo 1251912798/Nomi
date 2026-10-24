@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>PromptDetail 提示词详情 拍板图（2026-10-24）</title>
+<style>
+body{margin:0;padding:24px 20px;background:#fff;font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+.bd{margin:0 0 32px}
+.bd-title{margin:0 0 8px;font-size:14px;font-weight:600;color:#333}
+/* 静态预览：去掉动画，候选抽取才确定。图片去掉了 src（画布素材不进仓库），封面看同目录截图（.webp）。 */
+*,*::before,*::after{animation:none!important;transition:none!important}
+</style>
+<style>
+.bd-s1 .nd{--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--danger:oklch(0.55 0.13 25);--scrim:oklch(0.2 0.01 80 / 0.42);--shlg:0 4px 8px oklch(0 0 0 / 0.05),0 20px 50px oklch(0 0 0 / 0.08);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s1 .nd.dark{--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--danger:oklch(0.72 0.13 25);--scrim:oklch(0.08 0.004 80 / 0.58);--shlg:0 4px 10px oklch(0 0 0 / 0.35),0 24px 60px oklch(0 0 0 / 0.45)}
+.bd-s1 .nd .illus{filter:none}
+.bd-s1 .nd.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.bd-s1 .nd button{font-family:inherit}
+.bd-s1 .nm{--shell:#f6f5f3;--accent:oklch(0.55 0.13 250);--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink30:oklch(0.78 0.01 80);--ink20:oklch(0.88 0.005 80);--ink10:oklch(0.94 0.003 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);--shsm:0 1px 2px oklch(0 0 0 / 0.04),0 1px 1px oklch(0 0 0 / 0.03);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s1 .nm.dark{--shell:#0d0c09;--accent:oklch(0.70 0.13 250);--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink30:oklch(0.50 0.006 85);--ink20:oklch(0.42 0.006 85);--ink10:oklch(0.34 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80);--shsm:0 1px 2px oklch(0 0 0 / 0.32),0 1px 1px oklch(0 0 0 / 0.22)}
+.bd-s1 .nm .illus{filter:none}
+.bd-s1 .nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.bd-s1 .nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-s1 .nm .clamp6{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.bd-s1 .nm button{font-family:inherit}
+
+.bd-s2 .nd{--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--danger:oklch(0.55 0.13 25);--scrim:oklch(0.2 0.01 80 / 0.42);--shlg:0 4px 8px oklch(0 0 0 / 0.05),0 20px 50px oklch(0 0 0 / 0.08);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s2 .nd.dark{--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--danger:oklch(0.72 0.13 25);--scrim:oklch(0.08 0.004 80 / 0.58);--shlg:0 4px 10px oklch(0 0 0 / 0.35),0 24px 60px oklch(0 0 0 / 0.45)}
+.bd-s2 .nd .illus{filter:none}
+.bd-s2 .nd.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.bd-s2 .nd button{font-family:inherit}
+.bd-s2 .nm{--shell:#f6f5f3;--accent:oklch(0.55 0.13 250);--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink30:oklch(0.78 0.01 80);--ink20:oklch(0.88 0.005 80);--ink10:oklch(0.94 0.003 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);--shsm:0 1px 2px oklch(0 0 0 / 0.04),0 1px 1px oklch(0 0 0 / 0.03);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s2 .nm.dark{--shell:#0d0c09;--accent:oklch(0.70 0.13 250);--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink30:oklch(0.50 0.006 85);--ink20:oklch(0.42 0.006 85);--ink10:oklch(0.34 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80);--shsm:0 1px 2px oklch(0 0 0 / 0.32),0 1px 1px oklch(0 0 0 / 0.22)}
+.bd-s2 .nm .illus{filter:none}
+.bd-s2 .nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.bd-s2 .nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-s2 .nm .clamp6{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.bd-s2 .nm button{font-family:inherit}
+</style>
+</head>
+<body>
+<section class="bd bd-s1" lang="zh-CN" data-artboard="PromptDetail">
+<h3 class="bd-title">修后 · 提示词详情 · 内置效果（中·明）（去壳：背景里压暗的提示词库页省去，见同名截图）</h3>
+<div class="sc-host" data-sc-name="PromptDetail"><div class="nd " style="width: 1440px; height: 900px; position: relative; overflow: hidden;">
+  
+  
+  <div role="dialog" aria-label="推轨跟拍" style="position: absolute; left: 400px; top: 90px; width: 640px; background: var(--paper); border-radius: 14px; box-shadow: var(--shlg); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: flex-start; gap: 12px; padding: 16px 16px 12px 20px;">
+      <div style="flex: 1 1 0%; min-width: 0px; display: flex; flex-direction: column; gap: 4px;">
+        <h2 style="margin: 0px; font-size: 16px; line-height: 22px; font-weight: 600;"><span class="sc-interp">推轨跟拍</span></h2>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink60);">
+          
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+          
+          <span><span class="sc-interp">运镜 · 内置 · 视频</span></span>
+        </div>
+      </div>
+      <button type="button" aria-label="关闭" style="width: 28px; height: 28px; border: 0px; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center; flex: 0 0 auto;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+    </div>
+    <div style="margin: 0px 20px; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: var(--ink05);">
+      <img class="illus" alt="" style="width: 100%; height: 100%; object-fit: contain; display: block;">
+    </div>
+    <div style="padding: 14px 20px 16px; font-size: 14px; line-height: 22px; color: var(--ink80); white-space: pre-line; max-height: 154px; overflow: hidden;"><span class="sc-interp">Smooth dolly tracking behind the walking subject, steady, matching pace
+
+Keep the walking subject’s identity, appearance, clothing, setting, lighting, color, and continuity unchanged. Change only the tracking path and matching pace described here.</span></div>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--line);">
+      
+      
+        <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"></path><path d="M11 13l9-9"></path><path d="M15 4h5v5"></path></svg><span class="sc-interp">来源</span></a>
+      
+      <span style="flex: 1 1 0%;"></span>
+      
+      <button type="button" aria-label="复制提示词" title="复制提示词" style="width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink80); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9.667A2.667 2.667 0 0 1 9.667 7h8.666A2.667 2.667 0 0 1 21 9.667v8.666A2.667 2.667 0 0 1 18.333 21H9.667A2.667 2.667 0 0 1 7 18.333z"></path><path d="M4.012 16.737A2 2 0 0 1 3 15V5c0-1.1.9-2 2-2h10c.75 0 1.158.385 1.5 1"></path></svg></button>
+      <button type="button" style="height: 32px; padding: 0px 16px; border: 0px; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 13px; font-weight: 600;"><span class="sc-interp">放上画布</span></button>
+    </div>
+  </div></div></div>
+</section>
+<section class="bd bd-s2" lang="zh-CN" data-artboard="PromptDetail-Mine-Dark">
+<h3 class="bd-title">修后 · 提示词详情 · 我的（中·暗）（去壳：背景省去，见同名截图）</h3>
+<div class="sc-host" data-sc-name="PromptDetail-Mine-Dark"><div style="width: 1440px; height: 900px;">
+  <div class="sc-host" data-sc-name="PromptDetail"><div class="nd dark" style="width: 1440px; height: 900px; position: relative; overflow: hidden;">
+  
+  
+  <div role="dialog" aria-label="Q 版角色卡" style="position: absolute; left: 400px; top: 90px; width: 640px; background: var(--paper); border-radius: 14px; box-shadow: var(--shlg); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: flex-start; gap: 12px; padding: 16px 16px 12px 20px;">
+      <div style="flex: 1 1 0%; min-width: 0px; display: flex; flex-direction: column; gap: 4px;">
+        <h2 style="margin: 0px; font-size: 16px; line-height: 22px; font-weight: 600;"><span class="sc-interp">Q 版角色卡</span></h2>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink60);">
+          
+          <span><span class="sc-interp">我的 · 网页提取 · 图片</span></span>
+        </div>
+      </div>
+      <button type="button" aria-label="关闭" style="width: 28px; height: 28px; border: 0px; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center; flex: 0 0 auto;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+    </div>
+    <div style="margin: 0px 20px; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: var(--ink05);">
+      <img class="photo" alt="" style="width: 100%; height: 100%; object-fit: contain; display: block;">
+    </div>
+    <div style="padding: 14px 20px 16px; font-size: 14px; line-height: 22px; color: var(--ink80); white-space: pre-line; max-height: 154px; overflow: hidden;"><span class="sc-interp">画一张带有圆角和柔和投影的现代 UI 卡片 2:3 图片。卡片中央应展示一个上穿图片转换为的 3D 卡通风角色。姿势和服饰应该都是图片的 Q 版版本，在角色下方，包含一个加粗的黑色标题（“Reyna”）和一个字体更小、颜色更浅的副标题（“Valorant”）。使用干净、简约的白色或浅灰色背景。</span></div>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--line);">
+      
+        <button type="button" aria-label="删除" title="删除" style="width: 32px; height: 32px; border: 0px; border-radius: 999px; background: transparent; color: var(--danger); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"></path></svg></button>
+      
+      
+      <span style="flex: 1 1 0%;"></span>
+      
+        <button type="button" aria-label="编辑" title="编辑" style="width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink80); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L18.5 9.5a2.828 2.828 0 1 0-4-4L4 16v4"></path><path d="M13.5 6.5l4 4"></path></svg></button>
+      
+      <button type="button" aria-label="复制提示词" title="复制提示词" style="width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink80); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9.667A2.667 2.667 0 0 1 9.667 7h8.666A2.667 2.667 0 0 1 21 9.667v8.666A2.667 2.667 0 0 1 18.333 21H9.667A2.667 2.667 0 0 1 7 18.333z"></path><path d="M4.012 16.737A2 2 0 0 1 3 15V5c0-1.1.9-2 2-2h10c.75 0 1.158.385 1.5 1"></path></svg></button>
+      <button type="button" style="height: 32px; padding: 0px 16px; border: 0px; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 13px; font-weight: 600;"><span class="sc-interp">放上画布</span></button>
+    </div>
+  </div></div></div></div></div>
+</section>
+</body>
+</html>

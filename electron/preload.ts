@@ -7,6 +7,7 @@ import { mediaBridge } from "./preload/mediaBridge";
 import { modelOnboardingBridge } from "./preload/modelOnboardingBridge";
 import { runtimeBridge } from "./preload/runtimeBridge";
 import type { ProjectDeleteIntent } from "./shared/projectDeleteIntent";
+import type { UserPromptRestoreSnapshot } from "./shared/contracts/promptLibrary";
 
 type ProductionDeepLinkPayload = { projectId: string; runId?: string; nodeId?: string; artifactId?: string };
 let queuedProductionDeepLink: ProductionDeepLinkPayload | null = null;
@@ -158,7 +159,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       ipcRenderer.invoke("nomi:projects:save-async", projectId, record),
     applyCanvasNodePatch: (input: { projectId: string; nodeId: string; patch: Record<string, unknown>; expectedBinding?: unknown }) =>
       ipcRenderer.invoke("nomi:projects:apply-canvas-node-patch", input),
-    delete: (projectId: string, intent: ProjectDeleteIntent) => invokeSync("nomi:projects:delete", projectId, intent),
+    delete: (projectId: string, intent: ProjectDeleteIntent) => ipcRenderer.invoke("nomi:projects:delete", projectId, intent),
   },
   clipboard: {
     readFilePaths: () => ipcRenderer.invoke("nomi:clipboard:read-file-paths") as Promise<string[]>,
@@ -259,6 +260,13 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       }>,
     userDelete: (id: string) =>
       ipcRenderer.invoke("nomi:prompt-library:user-delete", { id }) as Promise<{
+        ok: boolean;
+        prompts: unknown[];
+        deleted?: unknown;
+        error?: string;
+      }>,
+    userRestore: (snapshot: UserPromptRestoreSnapshot) =>
+      ipcRenderer.invoke("nomi:prompt-library:user-restore", snapshot) as Promise<{
         ok: boolean;
         prompts: unknown[];
         error?: string;

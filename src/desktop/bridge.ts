@@ -14,6 +14,7 @@ import type { ComfyCandidateTestPayload, ComfyCandidateTestResult } from './comf
 import type { CanvasReadSurfaceBridge } from '../../electron/shared/surfacePortBinding'
 import type { LaneBridge } from '../workbench/ai/lane/laneClient'
 import type { GenerationResolvePlanEnvelope, GenerationResolvePlanRequest } from '../../electron/shared/videoCapabilities/planResolutionContracts'
+import type { UserPromptRestoreSnapshot } from '../../electron/shared/contracts/promptLibrary'
 export type { AssetLocalizationEvent } from '../../electron/shared/assets/assetLocalizationEvent'
 export type { ProviderKind }
 export type { DesktopAdapterModeResult, DesktopProviderAdapterRun, DesktopProviderRegistration } from './onboardingBridgeTypes'
@@ -228,7 +229,7 @@ export type DesktopBridge = DesktopMediaBridge &
     save: (projectId: string, record: unknown) => Promise<unknown>
     applyCanvasNodePatch?: (input: { projectId: string; nodeId: string; patch: Record<string, unknown>; expectedBinding?: unknown }) => Promise<{ applied: boolean }>
     /** intent = 用户在确认框里确认的那一种；主进程只照它执行（electron/shared/projectDeleteIntent.ts）。 */
-    delete: (projectId: string, intent: ProjectDeleteIntent) => { id: string; deleted: boolean }
+    delete: (projectId: string, intent: ProjectDeleteIntent) => Promise<{ id: string; deleted: boolean }>
   }
   assets: DesktopAssetsSurface
   browser?: DesktopBrowserSurface
@@ -309,6 +310,7 @@ export type DesktopBridge = DesktopMediaBridge &
       patch: { title?: string; prompt?: string; promptType?: 'image' | 'video' },
     ) => Promise<{ ok: boolean; prompts: unknown[]; error?: string }>
     userDelete: (id: string) => Promise<{ ok: boolean; prompts: unknown[]; error?: string }>
+    userRestore: (snapshot: UserPromptRestoreSnapshot) => Promise<{ ok: boolean; prompts: unknown[]; error?: string }>
   }
   /** S4-2b 技术自检结果广播(主进程异步旁路 → 节点 ⚠ 投影)。 */
   review?: {

@@ -12,7 +12,7 @@ vi.mock("electron", () => ({
   },
 }));
 
-import { addUserPrompt, deleteUserPrompt, listUserPrompts, resetUserPromptCache, updateUserPrompt } from "./userPromptStore";
+import { addUserPrompt, deleteUserPrompt, listUserPrompts, resetUserPromptCache, restoreUserPrompt, updateUserPrompt } from "./userPromptStore";
 
 const tempRoots: string[] = [];
 
@@ -74,8 +74,66 @@ describe("userPromptStore", () => {
     const a = addUserPrompt({ prompt: "a", promptType: "image" });
     const b = addUserPrompt({ prompt: "b", promptType: "image" });
     const afterDel = deleteUserPrompt(a.id);
-    expect(afterDel.map((p) => p.id)).toEqual([b.id]);
-    expect(deleteUserPrompt(a.id).map((p) => p.id)).toEqual([b.id]); // 再删不报错
+    expect(afterDel.prompts.map((p) => p.id)).toEqual([b.id]);
+    expect(afterDel.deleted).toEqual(a);
+    expect(deleteUserPrompt(a.id).prompts.map((p) => p.id)).toEqual([b.id]); // 再删不报错
+  });
+
+  it("delete → restore 原样保留 id、标签、参考图、时间和未来字段", () => {
+    const original = addUserPrompt({
+      title: "带元数据的提示词",
+      prompt: "完整快照",
+      promptType: "image",
+      tags: ["tag-a", "tag-b"],
+      referenceImages: [{ url: "nomi-local://asset/p1/ref.png", title: "参考图" }],
+    });
+    const file = path.join(mockedUserDataRoot, "prompt-library-user.json");
+    const persisted = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>[];
+    persisted[0] = { ...persisted[0], futureField: { keep: true } };
+    fs.writeFileSync(file, JSON.stringify(persisted));
+    resetUserPromptCache();
+
+    const before = listUserPrompts()[0];
+    expect(before).toMatchObject({ id: original.id, tags: original.tags, referenceImages: original.referenceImages });
+    const deleted = deleteUserPrompt(original.id);
+    expect(deleted.deleted).toMatchObject({ id: original.id, futureField: { keep: true } });
+    expect(deleted.prompts).toHaveLength(0);
+
+    const restored = restoreUserPrompt(deleted.deleted);
+    const preservedFieldsMatrix = [
+      "id",
+      "title",
+      "prompt",
+      "promptType",
+      "mediaType",
+      "mediaUrl",
+      "tags",
+      "referenceImages",
+      "updatedAt",
+      "futureField",
+    ] as const;
+    for (const field of preservedFieldsMatrix) {
+      expect((restored[0] as Record<string, unknown>)[field], field).toEqual(
+        (deleted.deleted as Record<string, unknown>)[field],
+      );
+    }
+    expect(restored[0]).toEqual(deleted.deleted);
+    expect(restored[0]).toMatchObject({
+      id: original.id,
+      tags: ["tag-a", "tag-b"],
+      referenceImages: [{ url: "nomi-local://asset/p1/ref.png", title: "参考图" }],
+      futureField: { keep: true },
+    });
+  });
+
+  it("删除后没有撤销时记录永久移除且不负责删除引用文件", () => {
+    const referenceFile = path.join(mockedUserDataRoot, "reference.png");
+    fs.writeFileSync(referenceFile, "reference");
+    const item = addUserPrompt({ prompt: "保留引用文件", promptType: "image", referenceImages: [{ url: referenceFile }] });
+    const deleted = deleteUserPrompt(item.id);
+    expect(deleted.deleted?.id).toBe(item.id);
+    expect(listUserPrompts()).toEqual([]);
+    expect(fs.existsSync(referenceFile)).toBe(true);
   });
 
   it("最近更新排前", () => {
@@ -97,7 +155,7 @@ describe("userPromptStore · 素材面收敛随迁字段(2026-07-22)", () => {
       title: "赛博雨夜",
       prompt: "cyberpunk city, rainy night",
       promptType: "image",
-      tags: ["网页提取", "画面复刻"],
+      tags: ["tag-a", "tag-b"],
       referenceImages: [
         { url: "nomi-local://asset/p1/a.png", title: "参考A", sourceUrl: "https://example.com/a" },
         { url: "nomi-local://asset/p1/b.png" },
@@ -105,11 +163,11 @@ describe("userPromptStore · 素材面收敛随迁字段(2026-07-22)", () => {
     });
     expect(item.mediaUrl).toBe("nomi-local://asset/p1/a.png");
     expect(item.referenceImages).toHaveLength(2);
-    expect(item.tags).toEqual(["网页提取", "画面复刻"]);
+    expect(item.tags).toEqual(["tag-a", "tag-b"]);
     resetUserPromptCache();
     const hydrated = listUserPrompts()[0];
     expect(hydrated?.referenceImages?.[0]?.url).toBe("nomi-local://asset/p1/a.png");
-    expect(hydrated?.tags).toEqual(["网页提取", "画面复刻"]);
+    expect(hydrated?.tags).toEqual(["tag-a", "tag-b"]);
   });
 
   it("非法 referenceImages/超量 tags 被清洗,不落脏数据", () => {

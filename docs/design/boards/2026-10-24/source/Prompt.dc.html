@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>提示词库 · 修后</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.nm{--shell:#f6f5f3;--accent:oklch(0.55 0.13 250);--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink30:oklch(0.78 0.01 80);--ink20:oklch(0.88 0.005 80);--ink10:oklch(0.94 0.003 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);--shsm:0 1px 2px oklch(0 0 0 / 0.04),0 1px 1px oklch(0 0 0 / 0.03);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.nm.dark{--shell:#0d0c09;--accent:oklch(0.70 0.13 250);--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink30:oklch(0.50 0.006 85);--ink20:oklch(0.42 0.006 85);--ink10:oklch(0.34 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80);--shsm:0 1px 2px oklch(0 0 0 / 0.32),0 1px 1px oklch(0 0 0 / 0.22)}
+.nm .illus{filter:none}
+.nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm .clamp6{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.nm button{font-family:inherit}
+</style>
+</helmet>
+<div class="nm {{themeClass}}" style="width: 1440px; height: 900px; background: var(--shell); position: relative; overflow: hidden;">
+  <div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 76px; box-sizing: border-box;">
+    <svg width="20" height="20" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="oklch(0.22 0.01 80)"></rect><path d="M7.5 20V8h2.6l7.4 8.4V8h2.6v12h-2.6L10.1 11.6V20z" fill="#fff"></path></svg>
+    <span style="font-size: 13px; font-weight: 500;">{{s.appTitle}}</span>
+    <span style="flex: 1;"></span>
+    <div style="display: flex; align-items: center; gap: 2px;">
+      <button type="button" aria-label="{{s.window}}" style="position: relative; width: 28px; height: 28px; border: 0; padding: 0; background: transparent; color: var(--ink60); display: grid; place-items: center; border-radius: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16"></path><path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12"></path><path d="M8 4v4"></path></svg></button>
+      <button type="button" aria-label="{{s.settings}}" style="position: relative; width: 28px; height: 28px; border: 0; padding: 0; background: transparent; color: var(--ink60); display: grid; place-items: center; border-radius: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"></path></svg><span aria-hidden="true" style="position: absolute; right: 5px; top: 5px; width: 6px; height: 6px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 2px var(--shell);"></span></button>
+    </div>
+  </div>
+  <div style="position: absolute; left: 8px; top: 40px; right: 8px; bottom: 8px; background: var(--paper); border-radius: 10px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: center; gap: 16px; padding: 24px 32px 0 32px; height: 32px;">
+      <div role="tablist" aria-label="{{s.tabsAria}}" style="display: flex; align-items: baseline; gap: 20px;">
+        <button type="button" role="tab" aria-selected="false" style="border: 0; background: transparent; padding: 0; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink40);">{{s.tabProjects}}</button>
+        <button type="button" role="tab" aria-selected="false" style="border: 0; background: transparent; padding: 0; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink40);">{{s.tabSkills}}</button>
+        <button type="button" role="tab" aria-selected="true" style="border: 0; background: transparent; padding: 0; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink);">{{s.tabPrompts}}</button>
+      </div>
+      <div role="radiogroup" aria-label="{{s.typeAria}}" style="margin-left: 8px; display: inline-flex; height: 28px; box-sizing: border-box; padding: 2px; gap: 2px; border-radius: 999px; background: var(--ink05);">
+        <button type="button" role="radio" aria-checked="true" style="border: 0; border-radius: 999px; padding: 0 12px; font-size: 12px; font-weight: 600; background: var(--paper); color: var(--ink); box-shadow: var(--shsm);">{{s.typeAll}}</button>
+        <button type="button" role="radio" aria-checked="false" style="border: 0; border-radius: 999px; padding: 0 12px; font-size: 12px; background: transparent; color: var(--ink60);">{{s.typeImage}}</button>
+        <button type="button" role="radio" aria-checked="false" style="border: 0; border-radius: 999px; padding: 0 12px; font-size: 12px; background: transparent; color: var(--ink60);">{{s.typeVideo}}</button>
+      </div>
+      <label style="display: flex; align-items: center; gap: 6px; width: 260px; height: 30px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+        <input type="search" placeholder="{{s.search}}" aria-label="{{s.search}}" style="border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--ink); width: 100%;">
+      </label>
+      <span style="flex: 1;"></span>
+      <button type="button" style="height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink80); font-size: 12px; font-weight: 500;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>{{s.newLabel}}</button>
+    </div>
+    <div style="display: flex; gap: 28px; padding: 20px 32px 0 32px; flex: 1; min-height: 0;">
+      <nav aria-label="{{s.navAria}}" style="width: 176px; flex: none; display: flex; flex-direction: column; gap: 2px;">
+        <sc-for list="{{navTop}}" as="n" hint-placeholder-count="2">
+          <button type="button" aria-current="{{n.current}}" style="{{n.style}}"><span class="one">{{n.label}}</span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;">{{n.count}}</span></button>
+        </sc-for>
+        <div style="margin: 14px 0 4px 10px; font-size: 11px; color: var(--ink40);">{{s.builtin}}</div>
+        <sc-for list="{{navBuiltin}}" as="n" hint-placeholder-count="8">
+          <button type="button" aria-current="{{n.current}}" style="{{n.style}}"><span class="one">{{n.label}}</span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;">{{n.count}}</span></button>
+        </sc-for>
+        <div style="margin: 14px 0 4px 10px; font-size: 11px; color: var(--ink40);">{{s.public}}</div>
+        <sc-for list="{{navPublic}}" as="n" hint-placeholder-count="5">
+          <button type="button" aria-current="{{n.current}}" style="{{n.style}}"><span class="one">{{n.label}}</span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;">{{n.count}}</span></button>
+        </sc-for>
+      </nav>
+      <main style="flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: 22px;">
+        <sc-for list="{{sections}}" as="sec" hint-placeholder-count="3">
+          <section aria-label="{{sec.title}}" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;">
+              <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--ink);">{{sec.title}}</h3>
+              <sc-if value="{{sec.showCount}}" hint-placeholder-val="{{ false }}">
+                <span style="font-size: 12px; color: var(--ink40);">{{sec.count}}</span>
+              </sc-if>
+              <sc-if value="{{sec.hasMore}}" hint-placeholder-val="{{ true }}">
+                <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;">{{sec.more}}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+              </sc-if>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px 12px;">
+              <sc-for list="{{sec.items}}" as="it" hint-placeholder-count="6">
+                <button type="button" title="{{it.title}}" style="border: 0; padding: 0; background: transparent; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                  <span style="display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);">
+                    <sc-if value="{{it.hasImg}}" hint-placeholder-val="{{ true }}">
+                      <img class="{{it.cls}}" src="{{it.src}}" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    </sc-if>
+                    <sc-if value="{{it.isText}}" hint-placeholder-val="{{ false }}">
+                      <span class="clamp6" style="box-sizing: border-box; height: 100%; padding: 10px 12px; font-size: 12px; line-height: 17px; color: var(--ink60);">{{it.text}}</span>
+                    </sc-if>
+                  </span>
+                  <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+                    <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);">{{it.title}}</strong>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40);">
+                      <sc-if value="{{it.video}}" hint-placeholder-val="{{ false }}">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      </sc-if>
+                      <span class="one">{{it.meta}}</span>
+                    </span>
+                  </span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+        </sc-for>
+      </main>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"lang":{"editor":"enum","options":["zh","en"],"default":"zh"},"view":{"editor":"enum","options":["all","expr"],"default":"all"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const en = (this.props.lang ?? 'zh') === 'en';
+    const view = this.props.view ?? 'all';
+    const T = (zh, e) => (en ? e : zh);
+    const s = {
+      appTitle: T('项目库', 'Projects'), window: T('窗口', 'Window'), settings: T('设置', 'Settings'), tabsAria: T('项目库页签', 'Library tabs'),
+      tabProjects: T('项目', 'Projects'), tabSkills: T('Skill', 'Skills'), tabPrompts: T('提示词', 'Prompts'),
+      typeAria: T('图片或视频', 'Image or video'), typeAll: T('全部', 'All'), typeImage: T('图片', 'Image'), typeVideo: T('视频', 'Video'),
+      search: T('搜提示词…', 'Search prompts…'), newLabel: T('新建', 'New'), navAria: T('提示词分类', 'Prompt categories'),
+      builtin: T('内置', 'Built-in'), public: T('公开库', 'Public'),
+    };
+    const navRow = (label, count, current) => ({
+      label, count, current: current ? 'true' : 'false',
+      style: 'height: 28px; border: 0; border-radius: 6px; padding: 0 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; ' + (current ? 'background: var(--ink05); color: var(--ink); font-weight: 600;' : 'background: transparent; color: var(--ink80); font-weight: 400;'),
+    });
+    const isExpr = view === 'expr';
+    const navTop = [navRow(T('全部', 'All'), '222', !isExpr), navRow(T('我的', 'Mine'), '3', false)];
+    const navBuiltin = [
+      navRow(T('表情预设', 'Expression presets'), '25', isExpr), navRow(T('运镜', 'Camera'), '23', false), navRow(T('构图', 'Composition'), '8', false),
+      navRow(T('分镜', 'Storyboard'), '5', false), navRow(T('角色设定', 'Character'), '4', false), navRow(T('修图', 'Editing'), '2', false),
+      navRow(T('场景', 'Scene'), '1', false), navRow(T('去 AI 感', 'Natural texture'), '1', false),
+    ];
+    const navPublic = [
+      navRow('GPT Image 2', '30', false), navRow('Nano Banana Pro', '30', false), navRow(T('GPT-4o 图像', 'GPT-4o Image'), '30', false),
+      navRow('Sora 2', '30', false), navRow(T('Sora 官方', 'Sora official'), '30', false),
+    ];
+    const img = (title, id, meta, video, illus) => ({ title, src: id, hasImg: true, isText: false, text: '', meta, video, cls: illus ? 'illus' : 'photo' });
+    const txt = (title, text, meta, video) => ({ title, src: '', hasImg: false, isText: true, text, meta, video, cls: '' });
+    const IMG = T('图片', 'Image');
+    const VID = T('视频', 'Video');
+    const exprIds = {
+      'joy-1': '/_blob/37a2b310f720f13a2a8cabda6f724215', 'joy-2': '/_blob/7b6dba3db370862d0257e676e356236d', 'joy-3': '/_blob/0f8e2e54147d58a84d9c1434b4114707', 'joy-4': '/_blob/a09451101962618602d0628324134393', 'joy-5': '/_blob/e7aa0e5759a451a389388cfcea718614',
+      'anger-1': '/_blob/c2ba8e1fd73039e4608b218dd089d97e', 'anger-2': '/_blob/68a72a2d7a31dfaa54f2888d6a8ff093', 'anger-3': '/_blob/aa56bf511f41bded14f9a39c0a18faaa', 'anger-4': '/_blob/1f3e0ae6d5e698cf92400cdbe8d75898', 'anger-5': '/_blob/3e0fce9d84583b25387c365dfad890ed',
+      'sad-1': '/_blob/61e1546e55506d5787c50fa73cb70865', 'sad-2': '/_blob/75c2460471c471c15f5dd541a8ef8fa0', 'sad-3': '/_blob/c5649154563eab7a3a4128b1e4012eb1', 'sad-4': '/_blob/67ef8da0b4233431a703e1dd89a2820a', 'sad-5': '/_blob/ce757d5b577cf8fdd23086f7b4814939',
+      'surprise-1': '/_blob/429ce704ad89027b63416c316c42c705', 'surprise-2': '/_blob/2105f2c4e3f2513cc14999553cf2b75e', 'surprise-3': '/_blob/523dfa04d654832e9d1166d1232594dd', 'surprise-4': '/_blob/0ff93e4a635d9eb47a7d3125ea6207b3', 'surprise-5': '/_blob/66c762fdf58075ee5ee03205b33981f2',
+      'fear-1': '/_blob/edfa5290c40f1b189d3562130f59fc4e', 'fear-2': '/_blob/086c00d5b5376333f6b98769fb57c7ba', 'fear-3': '/_blob/290ef11c243fc89291549bb587ca1cc5', 'fear-4': '/_blob/3b0705ac46a0365fbcaaa66e676557e1', 'fear-5': '/_blob/e2b8bef0d156017ed01a760110bd9a28',
+    };
+    const exprTitles = {
+      'joy-1': '喜悦 1/5 · 一丝笑意', 'joy-2': '喜悦 2/5 · 浅笑', 'joy-3': '喜悦 3/5 · 明朗微笑', 'joy-4': '喜悦 4/5 · 开怀大笑', 'joy-5': '喜悦 5/5 · 欣喜若狂',
+      'anger-1': '愤怒 1/5 · 眉头微蹙', 'anger-2': '愤怒 2/5 · 面露不悦', 'anger-3': '愤怒 3/5 · 愠怒压火', 'anger-4': '愤怒 4/5 · 怒目而视', 'anger-5': '愤怒 5/5 · 暴怒嘶吼',
+      'sad-1': '悲伤 1/5 · 黯然失神', 'sad-2': '悲伤 2/5 · 失落低落', 'sad-3': '悲伤 3/5 · 哽咽欲哭', 'sad-4': '悲伤 4/5 · 无声落泪', 'sad-5': '悲伤 5/5 · 痛哭崩溃',
+      'surprise-1': '惊讶 1/5 · 微微一怔', 'surprise-2': '惊讶 2/5 · 疑惑挑眉', 'surprise-3': '惊讶 3/5 · 睁大双眼', 'surprise-4': '惊讶 4/5 · 目瞪口呆', 'surprise-5': '惊讶 5/5 · 惊骇失色',
+      'fear-1': '恐惧 1/5 · 隐隐不安', 'fear-2': '恐惧 2/5 · 警觉戒备', 'fear-3': '恐惧 3/5 · 心生惶恐', 'fear-4': '恐惧 4/5 · 惊恐后缩', 'fear-5': '恐惧 5/5 · 魂飞魄散',
+    };
+    const expr = (k) => img(exprTitles[k], exprIds[k], IMG, false, false);
+    const sec = (title, total, items, showCount) => ({ title, items, count: String(total), showCount: Boolean(showCount), hasMore: !showCount && total > items.length, more: T('全部 ', 'All ') + total });
+    let sections;
+    if (isExpr) {
+      const keys = ['joy', 'anger', 'sad', 'surprise', 'fear'].flatMap((e) => [1, 2, 3, 4, 5].map((n) => e + '-' + n));
+      sections = [sec(T('表情预设', 'Expression presets'), 25, keys.map(expr), true)];
+    } else {
+      sections = [
+        sec(T('我的', 'Mine'), 3, [
+          img('Q 版角色卡', '/_blob/5e2a1f7cc87876ec47c529c67e604066', T('网页提取 · 图片', 'Web extract · Image'), false, false),
+          txt('Tokyo Walk', 'A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots…', VID, true),
+          txt(T('未命名提示词', 'Untitled prompt'), 'Prompt 1: Create a cinematic hero image of a gourmet cheeseburger on a dark stone surface with glossy brioche bun, melted cheese, crisp lettuce, tomato…', IMG, false),
+        ]),
+        sec(T('表情预设', 'Expression presets'), 25, ['joy-1', 'joy-3', 'anger-2', 'sad-3', 'surprise-3', 'fear-2'].map(expr)),
+        sec(T('运镜', 'Camera'), 23, [
+          img(T('空镜转场', 'Empty-frame bridge'), '/_blob/c7860becc3b99fd1257ba758605e55ff', VID, true, true),
+          img(T('过肩对话', 'OTS dialogue'), '/_blob/ca527711624517d16418d72b017c4150', VID, true, true),
+          img(T('特写情绪', 'Emotion close-up'), '/_blob/0e5af323b2e64e06e5185581333bd567', VID, true, true),
+          img(T('推轨跟拍', 'Dolly follow'), '/_blob/d50df25f03b47fd2028fd4290ec055b6', VID, true, true),
+          img(T('仰拍起势', 'Low-angle hero'), '/_blob/af7a408885b96a5dbec36550e6b15860', VID, true, true),
+          img(T('俯拍众生', 'High-angle crowd'), '/_blob/c9757a108a20bf017230142b491a97f7', VID, true, true),
+        ]),
+        sec(T('构图', 'Composition'), 8, [
+          img(T('画框构图', 'Frame-within-frame'), '/_blob/97caaa935fb2a87fe3349d14e5245dbe', IMG, false, true),
+          img(T('对角线构图', 'Diagonal dynamic'), '/_blob/9f7f5594f9612ccea43e9862a0db306f', IMG, false, true),
+          img(T('绝对对称', 'Absolute symmetry'), '/_blob/53736207baacaf27536404f77af22bf9', IMG, false, true),
+          img(T('三分法构图', 'Rule-of-thirds'), '/_blob/68974e800baa469bc178b6fe7beb4d4b', IMG, false, true),
+          img(T('前景遮挡', 'Foreground occlusion'), '/_blob/e82f79e51e110650b55a1810046b5fdd', IMG, false, true),
+          img(T('后景虚化', 'Background bokeh'), '/_blob/c567bb436bfb603c9507883832418f8b', IMG, false, true),
+        ]),
+      ];
+    }
+    return { themeClass: dark ? 'dark' : '', s, navTop, navBuiltin, navPublic, sections };
+  }
+}
+</script>
+</body>
+</html>

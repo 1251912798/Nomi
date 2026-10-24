@@ -317,7 +317,9 @@ export async function openProcess(process, label = '展开运行过程') {
 }
 
 export async function openCanvas(win) {
-  await clickOrFail(win.getByRole('button', { name: '生成', exact: true }), '生成工作区')
+  // 导航钮的可见名跟界面语言走（i18n 把当前语言同步到 document 的 lang）：只认中文「生成」的话，切到英文再开画布就点不到。
+  const lang = await win.evaluate(() => document.documentElement.lang)
+  await clickOrFail(win.getByRole('button', { name: String(lang).startsWith('en') ? 'Generate' : '生成', exact: true }), '生成工作区')
   await expect(win.locator('.generation-canvas-v2__stage')).toBeVisible()
   // Host cutover retired the in-canvas assistant panel; the project Agent now lives in the
   // ResidentShell dock, resident by default since 2026-09-05.

@@ -114,3 +114,12 @@
 - 改法：（1）删：起浏览器的测试（静态 / 动态 import 或 require playwright 的行首语句，结构信号，不猜文件名）不再进推送前的相关单测，钩子输出写「N 个起浏览器的测试交给 CI」并列文件；CI 照跑不变。（2）补：git grep 只做粗筛，逐个引号串按真正的模块引用核对（相对路径按测试所在目录解析，带斜杠的要对上路径尾巴，裸名必须带扩展名）；改 `src/main.tsx` 从 40 个降到 9 个，`'origin/main'` 不再命中。必红测试在 `scripts/pre-push-structure.node-test.mjs`。
 - 为什么不换成现成方案：结论同上文，`vitest related` 仍慢且看不见文本引用；现成库也没有「按改动挑测试且排除贵测试」的东西。
 - 命中的自写登记仍是 `gate-family`。
+
+## 追记 2026-10-24：起浏览器的测试改经共享夹具起服，识别信号被 helper 带走（没改识别器）
+
+- 症状：`fix/text-ownership-flaky` 第一版把 10 个 vitest 浏览器夹具测试的起服收进唯一入口 `tests/ux/_browserFixture.mjs`（`useBrowserFixture`），夹具自己 `import { chromium } from 'playwright'`，测试文件里的那行 import 随之删掉。本机 gates 的 `check:claude-hooks` 两条必红红了：`creation-sidebar-delete.test.mjs` 被划进 vitest 车道、不在 browser 清单；#1148 那条在临时克隆里改 `build-electron.mjs`，`test:related` 选中按引号提到它的 `pre-push-structure.node-test.mjs`、跑到上一条而红——同一个原因。按全仓测试文件逐个判，起浏览器的从 14 个掉到 4 个，丢的正是迁过去的 10 个；推出去的话它们会回到推送前、和 typecheck 并发冷启动（10-11 那条症状）。
+- 类根因：「这个测试起不起浏览器」只从测试文件自己的源码认；起浏览器的能力一旦收进共享 helper，信号就跟着搬走，识别器看不见。必红用例只拿一个样本文件当判据，样本恰好被迁移才抓到。
+- 改法：**没改识别器**——`scripts/pre-push-related-tests.mjs` 与 `scripts/pre-push-structure.node-test.mjs` 一字未动，所以这次不算识别器近两周的第 3 个 fix（10-10 `8a6994960`、10-11 `8e977dfa5`）。改的是夹具：共享 helper 不许自己起浏览器，浏览器由调用方传入——`useBrowserFixture({ entries, browserType: chromium })`，`browserType` 必填、缺了在登记钩子之前当场抛错，夹具源码里没有 playwright 的运行时 import；10 个测试文件各自 `import { chromium } from 'playwright'`，10-11 的识别契约（测试本文件 import playwright）照旧成立，全仓起浏览器的测试回到 14 个、一个不差。普查放在夹具自己的测试 `tests/ux/_browserFixture.test.mjs`：用 git grep 列出所有调用 `useBrowserFixture(` 的测试文件，用已导出的 `startsBrowser` 只读判断，每个都必须是 true（迁错一个就红）；夹具源码自己必须是 false。
+- 被否的改法：让识别器多认「import 了夹具入口」（第 2 轮草案，补丁没落盘）。它要改识别器本身，按文件裸数是它近两周第 3 个 fix，P1 要停下交用户；而换成「浏览器由调用方传入」只是模块拆法，不碰识别器，同样把信号留在测试文件里。
+- 残留：另写一个自己 import playwright 起浏览器的 helper 给 vitest 测试用，识别器仍看不见（测试文件里没有 playwright 的 import）；普查只盯 `useBrowserFixture` 的调用者。普查用 `gitPaths` 列调用者，扫描型守卫识别器（`scripts/lib/scanGuardDetect.mjs`）不认这种列路径的统一入口，所以普查在推送前只随夹具 / 识别器的改动被挑中，新增调用者由 CI 兜底。
+- 命中的自写登记：无。

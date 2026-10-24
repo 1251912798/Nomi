@@ -9,6 +9,7 @@
 // 零额度：纯本地渲染，不碰任何生成 API。
 import { afterAll, beforeAll, expect, test } from 'vitest'
 import { chromium } from 'playwright'
+// eslint-disable-next-line browser-fixture/no-restricted-imports -- 存量：用应用 vite.config 起设计实验室（屏按查询串懒加载），迁到 useBrowserFixture 要它先支持应用配置与「屏就绪」判据（docs/fixes/2026-10-24-browser-fixture-ready-signals.root-cause.json 残留风险）
 import { createServer } from 'vite'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
