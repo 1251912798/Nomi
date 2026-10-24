@@ -9,7 +9,8 @@
 //      → director 节点 meta.cameraMoveVideo.url 出现、标志清掉、目标视频节点被喂入（video_ref 或提示词地板）
 //   ④ 用 E2E 桥往画布塞一个带 stagingAutoCapture 的 director 节点（模拟 create_staging_reference 的下半场）
 //      → StagingCaptureHost 离屏出图 → image 节点（stagingComposition）+ reference 边；接目标镜头分两支都走（2026-10-24 走查 ⑤）：
-//      ④a 目标是工具栏默认图片模型（只吃文字）→ 不留假的 composition_ref 边，提示「这个镜头的模型不接参考图…」+「定位节点」；
+//      ④a 目标是工具栏默认图片模型（只吃文字）→ 不留假的 composition_ref 边，提示「这个镜头的模型不接参考图…」+「定位节点」
+//          （点了画布对准并选中那张站位图）；
 //      ④b 目标换成能接参考图的模型（经桥写 meta.archetype，模拟用户在节点上换模型）→ composition_ref 边落盘、不再提示
 //   ⑤ 关闭 App → 同隔离目录冷启动 → 从项目库重开，核对导演场景、PNG/MP4 引用及连边
 // 证据 = 磁盘上的 .nomi/project.json（终态真相源，不信页面自述）+ 截图人眼核对（tests/ux/shots/director/electron/）。
@@ -309,8 +310,23 @@ const notified = await expect.poll(async () => (await stagingNotices()).length, 
 const [notice] = await stagingNotices()
 check('④a 目标只吃文字：提示「这个镜头的模型不接参考图…」并带「定位节点」', notified && notice.includes(uiText('zh-CN', 'director.agent.stagingTextOnly')) && notice.includes(uiText('zh-CN', 'generationCommon.node.locateNode')), notice ?? '（一个字都没说）')
 await snap('staging-text-only-notice')
+// 提示上的「定位节点」：站位图常落在视口外，点了画布要对准并选中那张图（toast 只活 8 秒，拍完立刻点）
+await clickOrFail(
+  win.locator('[class*="mantine-Notification-root"]', { hasText: uiText('zh-CN', 'director.agent.stagingTextOnly') })
+    .getByRole('button', { name: uiText('zh-CN', 'generationCommon.node.locateNode'), exact: true }),
+  '站位提示·定位节点',
+)
 const textOnlyImage = await stagedImageOf(stagingTextOnly)
 check('④a 站位图照样落盘 + director→图 reference 边，图→镜头没有假的 composition_ref 边（磁盘）', Boolean(textOnlyImage) && !hasEdge(readCanvas().edges, textOnlyImage, IMAGE_ID))
+const located = textOnlyImage
+  ? await expect.poll(() => win.evaluate((id) => {
+    const box = document.querySelector(`[data-node-id="${id}"]`)?.getBoundingClientRect()
+    const onScreen = Boolean(box) && box.right > 0 && box.bottom > 0 && box.left < window.innerWidth && box.top < window.innerHeight
+    return onScreen && window.__nomiCanvasStore.getState().selectedNodeIds.includes(id)
+  }, textOnlyImage), { timeout: stationTimeout({ operations: 2 }) }).toBe(true).then(() => true, () => false)
+  : false
+check('④a 点「定位节点」：画布对准并选中那张站位图', located)
+await snap('staging-located')
 
 // ④b 用户把这个镜头换成能接参考图的模型（默认文生图模式、「改图」模式有参考图槽）→ 再出一张 → composition_ref 边落盘、不再提示
 await win.evaluate((targetId) => {
