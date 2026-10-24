@@ -1,5 +1,5 @@
 {
-  "name": "哪些推送带新内容、需要五门戳",
+  "name": "哪些推送带新内容、跳过 git 钩子时要留痕",
   "subject": "delivery.review-receipt-scope",
   "lifecycle": "delivery",
   "authority_kind": "decision",
@@ -19,5 +19,5 @@
   "forbidden_derivations": [],
   "allowed_consumers": [],
   "since": "2026-09-27",
-  "notes": "PR #906（合同 docs/fixes/2026-09-27-release-tag-blocked-by-dev-hook.root-cause.json）：发版 tag 指向已合并的提交被开发机钩子当成「新内容」拦下。2026-10-02 评审收据整套删除后，owner 改为 push 闸门本身：HEAD 的提交都已在远端跟踪分支上就不带新内容、不要五门戳，只在 pre-push-check.sh 一处判，回归测试在 scripts/pre-push-check.node-test.mjs。"
+  "notes": "PR #906（合同 docs/fixes/2026-09-27-release-tag-blocked-by-dev-hook.root-cause.json）：发版 tag 指向已合并的提交被开发机钩子当成「新内容」拦下。2026-10-02 评审收据整套删除后，owner 改为 push 闸门本身：HEAD 的提交都已在远端跟踪分支上就不带新内容，只在 pre-push-check.sh 一处判，回归测试在 scripts/pre-push-check.node-test.mjs。2026-10-24 推送改由 CI 把关（设计卡 docs/plan/2026-10-24-push-gate-ci.md）：推送前不再要本机门岗的通过凭据，这条判据只剩一个用处——跳过 git 钩子（--no-verify / core.hooksPath）的推送带新内容才记进绕口日志，不带新内容的不记。"
 }

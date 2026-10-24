@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>拆解表 · 勾了几镜</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:oklch(0.55 0.13 250)}a:hover{color:oklch(0.45 0.13 250)}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; position: relative; overflow: hidden; background-color: oklch(0.985 0.003 90); background-image: radial-gradient(oklch(0.88 0.005 80) 1px, transparent 1px); background-size: 20px 20px; font-family: Inter, -apple-system, 'PingFang SC', sans-serif; color: oklch(0.22 0.01 80); font-size: 13px">
+
+  <div style="position: absolute; left: 72px; top: 196px; font-size: 12px; color: oklch(0.50 0.01 80); display: flex; gap: 6px; align-items: center"><span style="padding: 1px 6px; border: 1px solid oklch(0.91 0.004 80); border-radius: 6px; background: oklch(1 0 0)">视频</span>雨夜参考片</div>
+  <div style="position: absolute; left: 72px; top: 222px; width: 288px; height: 162px; border-radius: 10px; overflow: hidden; background: linear-gradient(160deg, oklch(0.32 0.04 260), oklch(0.20 0.03 280)); box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06)">
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, oklch(0 0 0 / 0.45))"></div>
+    <div style="position: absolute; left: 10px; bottom: 8px; color: oklch(1 0 0); font-size: 11px; font-family: ui-monospace, Menlo, monospace">0:00 / 0:15</div>
+  </div>
+  <svg style="position: absolute; left: 360px; top: 290px" width="64" height="40" aria-hidden="true"><path d="M2 12 C 32 12, 32 30, 62 30" fill="none" stroke="oklch(0.78 0.01 80)" stroke-width="1.5"/><circle cx="2" cy="12" r="4" fill="oklch(0.68 0.01 80)"/></svg>
+
+  <div role="toolbar" aria-label="拆解表工具" style="position: absolute; left: 884px; top: 120px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 4px; background: oklch(1 0 0); border: 1px solid oklch(0.91 0.004 80); border-radius: 12px; box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06)">
+    <button style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: oklch(0.22 0.01 80); cursor: pointer">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>全屏</button>
+    <button style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: oklch(0.22 0.01 80); cursor: pointer">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M10 4v16M15 4v16"/></svg>显示列<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div style="display: flex; align-items: center; gap: 2px; height: 30px; padding: 0 4px; border-radius: 8px">
+      <button aria-label="行变矮" style="width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 15px; color: oklch(0.32 0.01 80); cursor: pointer">−</button>
+      <span style="min-width: 34px; text-align: center; font-size: 12px; color: oklch(0.32 0.01 80)">标准</span>
+      <button aria-label="行变高" style="width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 15px; color: oklch(0.32 0.01 80); cursor: pointer">+</button>
+    </div>
+    <div style="width: 1px; height: 18px; background: oklch(0.91 0.004 80); margin: 0 4px"></div>
+    <button aria-label="导出 CSV" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: oklch(0.32 0.01 80); cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
+    <button aria-label="复制节点" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: oklch(0.32 0.01 80); cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button>
+  </div>
+
+  <div style="position: absolute; left: 424px; top: 172px; width: 920px; height: 372px; background: oklch(1 0 0); border: 1.5px solid oklch(0.32 0.01 80); border-radius: 10px; box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06); overflow: hidden; display: flex; flex-direction: column">
+    <div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid oklch(0.95 0.003 80)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="oklch(0.50 0.01 80)" stroke-width="1.5" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg>
+      <span style="font-weight: 500">拆解表 · 雨夜参考片</span>
+      <span style="font-size: 11px; color: oklch(0.68 0.01 80)">5 镜</span><span style="font-size: 11px; color: oklch(0.68 0.01 80); font-family: ui-monospace, Menlo, monospace">15s</span>
+      <span style="margin-left: auto; font-size: 11px; color: oklch(0.45 0.13 25)">1 镜没读出：You've reached the API rate limit</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 36px 36px 76px 64px 72px 88px minmax(0, 1fr) 150px 96px 64px; align-items: center; height: 32px; padding: 0 8px; font-size: 11px; color: oklch(0.50 0.01 80); background: oklch(0.985 0.003 90); border-bottom: 1px solid oklch(0.95 0.003 80)">
+      <span></span><span>镜</span><span>关键帧</span><span>时长</span><span>景别</span><span>运镜</span><span>画面</span><span>对白</span><span>情绪</span><span>状态</span>
+    </div>
+    <sc-for list="{{rows}}" as="row" hint-placeholder-count="5">
+      <div style="display: grid; grid-template-columns: 36px 36px 76px 64px 72px 88px minmax(0, 1fr) 150px 96px 64px; align-items: center; min-height: 58px; padding: 0 8px; border-bottom: 1px solid oklch(0.95 0.003 80); font-size: 12.5px; background: {{row.bg}}">
+        <input type="checkbox" aria-label="选中这一镜" checked="{{row.checked}}" style="width: 14px; height: 14px; margin: 0">
+        <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: oklch(0.50 0.01 80)">{{row.no}}</span>
+        <div style="width: 68px; height: 38px; border-radius: 4px; background: {{row.thumb}}"></div>
+        <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px">{{row.time}}</span>
+        <span style="color: {{row.ink}}">{{row.size}}</span>
+        <span style="color: {{row.ink}}">{{row.move}}</span>
+        <span style="color: {{row.ink}}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 12px">{{row.desc}}</span>
+        <span style="color: {{row.ink}}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px">{{row.line}}</span>
+        <span style="color: {{row.ink}}">{{row.mood}}</span>
+        <span style="font-size: 11px; color: {{row.statusInk}}">{{row.status}}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="position: absolute; left: 564px; top: 560px; width: 640px; box-sizing: border-box; background: oklch(1 0 0); border: 1px solid oklch(0.91 0.004 80); border-radius: 16px; box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06); padding: 12px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 12.5px">用选中的 3 镜出分镜图</span>
+      <span style="font-size: 11px; color: oklch(0.50 0.01 80)">镜 01 · 02 · 05，提示词取「画面 + 景别 + 运镜」</span>
+      <button style="margin-left: auto; height: 26px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 12px; color: oklch(0.50 0.01 80); cursor: pointer">取消选择</button>
+    </div>
+    <div style="height: 1px; background: oklch(0.95 0.003 80)"></div>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <button style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid oklch(0.91 0.004 80); border-radius: 999px; background: oklch(1 0 0); font: inherit; font-size: 12px; color: oklch(0.22 0.01 80); cursor: pointer">
+        <span>Nano Banana 2</span><span style="color: oklch(0.50 0.01 80)">APIMart</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <button style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid oklch(0.91 0.004 80); border-radius: 999px; background: oklch(1 0 0); font: inherit; font-size: 12px; color: oklch(0.22 0.01 80); cursor: pointer">16:9 · 1K
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <button style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid oklch(0.91 0.004 80); border-radius: 999px; background: oklch(1 0 0); font: inherit; font-size: 12px; color: oklch(0.22 0.01 80); cursor: pointer">参考关键帧
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <button style="margin-left: auto; display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: oklch(0.22 0.01 80); font: inherit; font-size: 12.5px; font-weight: 500; color: oklch(1 0 0); cursor: pointer">生成 3 镜
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const ink = 'oklch(0.22 0.01 80)';
+    const faint = 'oklch(0.68 0.01 80)';
+    const ok = 'oklch(0.50 0.01 80)';
+    const bad = 'oklch(0.45 0.13 25)';
+    return {
+      rows: [
+        { no: '01', time: '0–3s', size: '全景', move: '定机位', desc: '雨夜，街口的灯映在积水中', line: '—', mood: '悬念', status: '已读', checked: true, bg: 'oklch(0.97 0.003 80)', ink, statusInk: ok, thumb: 'linear-gradient(160deg, oklch(0.34 0.05 250), oklch(0.22 0.03 270))' },
+        { no: '02', time: '3–6s', size: '特写', move: '缓慢推近', desc: '女孩握紧旧照片，回头望向巷口', line: '—', mood: '悬念', status: '已读', checked: true, bg: 'oklch(0.97 0.003 80)', ink, statusInk: ok, thumb: 'linear-gradient(160deg, oklch(0.45 0.05 40), oklch(0.25 0.03 30))' },
+        { no: '03', time: '6–9s', size: '全景', move: '定机位', desc: '一束车灯穿过薄雾', line: '我一直在等你。', mood: '悬念', status: '已读', checked: false, bg: 'transparent', ink, statusInk: ok, thumb: 'linear-gradient(160deg, oklch(0.55 0.06 80), oklch(0.28 0.03 260))' },
+        { no: '04', time: '9–12s', size: '没读出', move: '没读出', desc: '没读出', line: '你还记得这里吗？', mood: '没读出', status: '没读出 · 重拆', checked: false, bg: 'transparent', ink: faint, statusInk: bad, thumb: 'linear-gradient(160deg, oklch(0.30 0.03 230), oklch(0.18 0.02 260))' },
+        { no: '05', time: '12–15s', size: '全景', move: '定机位', desc: '风吹动纸页，镜头缓缓拉远', line: '—', mood: '释然', status: '已读', checked: true, bg: 'oklch(0.97 0.003 80)', ink, statusInk: ok, thumb: 'linear-gradient(160deg, oklch(0.62 0.04 90), oklch(0.40 0.03 60))' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

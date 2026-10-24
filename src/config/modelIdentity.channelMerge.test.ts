@@ -13,9 +13,14 @@ import { selectTaskMapping, type CatalogState, type Mapping } from '../../electr
 import { wireReferencedParamKeys } from '../../electron/catalog/paramTranslate'
 import { getArchetypeById } from '../../electron/shared/modelArchetypes'
 import { archetypeVariantAxisIsLive } from '../workbench/generationCanvas/nodes/controls/channelModeReach'
-import { buildArchetypeInputParams } from '../workbench/generationCanvas/nodes/controls/archetypeMeta'
+import { resolveWireModel } from '../../electron/shared/modelArchetypes/wireModelIdentity'
 import { dedupeModelOptions, modelCatalogLifecycle, sortModelProviders, type DedupedModel, type ModelProviderRef } from './modelIdentity'
 import { toCatalogModelOptions } from './modelOptionMappers'
+
+/** 与 useChannelCreateBody.readModeChannelBody 同形：变体栏看的那两样。 */
+function channelOf(mapping: Mapping) {
+  return { body: mapping.create.body, wireParamKeys: wireReferencedParamKeys(mapping.create) }
+}
 
 type Kind = 'video' | 'image' | 'audio' | 'model3d'
 const KINDS: readonly Kind[] = ['video', 'image', 'audio', 'model3d']
@@ -221,11 +226,12 @@ describe('渠道行并进模型身份 · ③ 选的变体 = 真正发出去的 m
     const kie = selectTaskMapping(state.mappings, 'kie', 'text_to_video', 'wan/3-0-video', 't2v')!
     const runway = selectTaskMapping(state.mappings, 'runway', 'text_to_video', 'wan3', 't2v')!
     // kie：body 读 {{request.params.model}} → 变体轴活着，选「高速」真的发 wan/3-0-video-prime。
-    expect(archetypeVariantAxisIsLive({ body: kie.create.body, wireParamKeys: wireReferencedParamKeys(kie.create) })).toBe(true)
-    const prime = { modelKey: 'wan/3-0-video', archetype: { id: 'wan-3.0', modeId: 't2v', variantId: 'prime' } }
-    expect(buildArchetypeInputParams(prime, archetype).model).toBe('wan/3-0-video-prime')
+    expect(archetypeVariantAxisIsLive(channelOf(kie))).toBe(true)
+    const prime = { modelKey: 'wan/3-0-video', archetype: { id: archetype.id, modeId: 't2v', variantId: 'prime' } }
+    expect(resolveWireModel({ operation: kie.create, connection: { vendorKey: 'kie', modelKey: 'wan/3-0-video' }, extras: prime, taskKind: 'text_to_video' }))
+      .toBe('wan/3-0-video-prime')
     // Runway：model 写死 → 变体轴是惰性的，界面不出变体段（NodeParameterControls 按它收掉），线缆上就是 wan3。
-    expect(archetypeVariantAxisIsLive({ body: runway.create.body, wireParamKeys: wireReferencedParamKeys(runway.create) })).toBe(false)
+    expect(archetypeVariantAxisIsLive(channelOf(runway))).toBe(false)
     expect((runway.create.body as { model?: unknown }).model).toBe('wan3')
   })
 })

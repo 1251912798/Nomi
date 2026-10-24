@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shot table on canvas · dark</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:oklch(0.55 0.13 250)}a:hover{color:oklch(0.45 0.13 250)}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; position: relative; overflow: hidden; background-color: oklch(0.18 0.006 80); background-image: radial-gradient(oklch(0.42 0.006 85) 1px, transparent 1px); background-size: 20px 20px; font-family: Inter, -apple-system, 'PingFang SC', sans-serif; color: oklch(0.93 0.006 85); font-size: 13px">
+
+  <div style="position: absolute; left: 72px; top: 196px; font-size: 12px; color: oklch(0.70 0.006 85); display: flex; gap: 6px; align-items: center"><span style="padding: 1px 6px; border: 1px solid oklch(0.36 0.007 80); border-radius: 6px; background: oklch(0.235 0.007 80)">Video</span>Rain reference</div>
+  <div style="position: absolute; left: 72px; top: 222px; width: 288px; height: 162px; border-radius: 10px; overflow: hidden; background: linear-gradient(160deg, oklch(0.32 0.04 260), oklch(0.20 0.03 280)); box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06)">
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, oklch(0 0 0 / 0.45))"></div>
+    <div style="position: absolute; left: 10px; bottom: 8px; color: oklch(0.235 0.007 80); font-size: 11px; font-family: ui-monospace, Menlo, monospace">0:00 / 0:15</div>
+  </div>
+  <svg style="position: absolute; left: 360px; top: 290px" width="64" height="40" aria-hidden="true"><path d="M2 12 C 32 12, 32 30, 62 30" fill="none" stroke="oklch(0.50 0.006 85)" stroke-width="1.5"/><circle cx="2" cy="12" r="4" fill="oklch(0.62 0.006 85)"/></svg>
+
+  <div role="toolbar" aria-label="Shot table tools" style="position: absolute; left: 884px; top: 120px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 4px; background: oklch(0.235 0.007 80); border: 1px solid oklch(0.36 0.007 80); border-radius: 12px; box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06)">
+    <button style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: oklch(0.93 0.006 85); cursor: pointer">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Full screen</button>
+    <button style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: oklch(0.93 0.006 85); cursor: pointer">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M10 4v16M15 4v16"/></svg>Columns<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div style="display: flex; align-items: center; gap: 2px; height: 30px; padding: 0 4px; border-radius: 8px">
+      <button aria-label="Shorter rows" style="width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 15px; color: oklch(0.84 0.006 85); cursor: pointer">−</button>
+      <span style="min-width: 34px; text-align: center; font-size: 12px; color: oklch(0.84 0.006 85)">Standard</span>
+      <button aria-label="Taller rows" style="width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 15px; color: oklch(0.84 0.006 85); cursor: pointer">+</button>
+    </div>
+    <div style="width: 1px; height: 18px; background: oklch(0.36 0.007 80); margin: 0 4px"></div>
+    <button aria-label="Export CSV" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: oklch(0.84 0.006 85); cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
+    <button aria-label="Duplicate node" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: oklch(0.84 0.006 85); cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button>
+  </div>
+
+  <div style="position: absolute; left: 424px; top: 172px; width: 920px; height: 372px; background: oklch(0.235 0.007 80); border: 1.5px solid oklch(0.84 0.006 85); border-radius: 10px; box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06); overflow: hidden; display: flex; flex-direction: column">
+    <div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid oklch(0.31 0.007 80)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="oklch(0.70 0.006 85)" stroke-width="1.5" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg>
+      <span style="font-weight: 500">Shot table · Rain reference</span>
+      <span style="font-size: 11px; color: oklch(0.62 0.006 85)">5 shots</span><span style="font-size: 11px; color: oklch(0.62 0.006 85); font-family: ui-monospace, Menlo, monospace">15s</span>
+      <span style="margin-left: auto; font-size: 11px; color: oklch(0.82 0.13 25)">1 shot unread: You've reached the API rate limit</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 36px 36px 76px 64px 72px 88px minmax(0, 1fr) 150px 96px 64px; align-items: center; height: 32px; padding: 0 8px; font-size: 11px; color: oklch(0.70 0.006 85); background: oklch(0.18 0.006 80); border-bottom: 1px solid oklch(0.31 0.007 80)">
+      <span></span><span>#</span><span>Key frame</span><span>Time</span><span>Size</span><span>Camera</span><span>Frame</span><span>Dialogue</span><span>Mood</span><span>Status</span>
+    </div>
+    <sc-for list="{{rows}}" as="row" hint-placeholder-count="5">
+      <div style="display: grid; grid-template-columns: 36px 36px 76px 64px 72px 88px minmax(0, 1fr) 150px 96px 64px; align-items: center; min-height: 58px; padding: 0 8px; border-bottom: 1px solid oklch(0.31 0.007 80); font-size: 12.5px">
+        <input type="checkbox" aria-label="Select this shot" style="width: 14px; height: 14px; margin: 0">
+        <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: oklch(0.70 0.006 85)">{{row.no}}</span>
+        <div style="width: 68px; height: 38px; border-radius: 4px; background: {{row.thumb}}"></div>
+        <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px">{{row.time}}</span>
+        <span style="color: {{row.ink}}">{{row.size}}</span>
+        <span style="color: {{row.ink}}">{{row.move}}</span>
+        <span style="color: {{row.ink}}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 12px">{{row.desc}}</span>
+        <span style="color: {{row.ink}}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px">{{row.line}}</span>
+        <span style="color: {{row.ink}}">{{row.mood}}</span>
+        <span style="font-size: 11px; color: {{row.statusInk}}">{{row.status}}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="position: absolute; left: 564px; top: 560px; width: 640px; box-sizing: border-box; background: oklch(0.235 0.007 80); border: 1px solid oklch(0.36 0.007 80); border-radius: 16px; box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06); padding: 12px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <div style="width: 64px; height: 36px; border-radius: 6px; background: linear-gradient(160deg, oklch(0.32 0.04 260), oklch(0.20 0.03 280))"></div>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 12.5px">Deconstruct: Rain reference · 0:15</span>
+        <span style="font-size: 11px; color: oklch(0.70 0.006 85)">Reads each shot and transcribes dialogue into the table above</span>
+      </div>
+    </div>
+    <div style="height: 1px; background: oklch(0.31 0.007 80)"></div>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <button style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid oklch(0.36 0.007 80); border-radius: 999px; background: oklch(0.235 0.007 80); font: inherit; font-size: 12px; color: oklch(0.93 0.006 85); cursor: pointer">
+        <span style="color: oklch(0.70 0.006 85)">Vision</span><span>Gemini 3.5 Flash</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <button style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid oklch(0.36 0.007 80); border-radius: 999px; background: oklch(0.235 0.007 80); font: inherit; font-size: 12px; color: oklch(0.93 0.006 85); cursor: pointer">
+        <span style="color: oklch(0.70 0.006 85)">Transcribe</span><span>Whisper on this Mac</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <button style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px dashed oklch(0.42 0.006 85); border-radius: 999px; background: transparent; font: inherit; font-size: 12px; color: oklch(0.70 0.006 85); cursor: pointer">+ Custom column</button>
+      <button style="margin-left: auto; display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: oklch(0.93 0.006 85); font: inherit; font-size: 12.5px; font-weight: 500; color: oklch(0.18 0.006 80); cursor: pointer">Deconstruct again
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const ink = 'oklch(0.93 0.006 85)';
+    const faint = 'oklch(0.62 0.006 85)';
+    const ok = 'oklch(0.70 0.006 85)';
+    const bad = 'oklch(0.82 0.13 25)';
+    return {
+      rows: [
+        { no: '01', time: '0–3s', size: 'Wide', move: 'Static', desc: 'Rainy night, street lights in puddles', line: '—', mood: 'Suspense', status: 'Read', ink, statusInk: ok, thumb: 'linear-gradient(160deg, oklch(0.34 0.05 250), oklch(0.22 0.03 270))' },
+        { no: '02', time: '3–6s', size: 'Close-up', move: 'Slow push-in', desc: 'She grips an old photo, looks back at the alley', line: '—', mood: 'Suspense', status: 'Read', ink, statusInk: ok, thumb: 'linear-gradient(160deg, oklch(0.45 0.05 40), oklch(0.25 0.03 30))' },
+        { no: '03', time: '6–9s', size: 'Wide', move: 'Static', desc: 'Headlights cut through the mist', line: 'I have been waiting for you.', mood: 'Suspense', status: 'Read', ink, statusInk: ok, thumb: 'linear-gradient(160deg, oklch(0.55 0.06 80), oklch(0.28 0.03 260))' },
+        { no: '04', time: '9–12s', size: 'Unread', move: 'Unread', desc: 'Unread', line: 'Do you remember this place?', mood: 'Unread', status: 'Unread · Retry', ink: faint, statusInk: bad, thumb: 'linear-gradient(160deg, oklch(0.30 0.03 230), oklch(0.18 0.02 260))' },
+        { no: '05', time: '12–15s', size: 'Wide', move: 'Static', desc: 'Wind turns the pages, camera pulls back', line: '—', mood: 'Relief', status: 'Read', ink, statusInk: ok, thumb: 'linear-gradient(160deg, oklch(0.62 0.04 90), oklch(0.40 0.03 60))' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -9,7 +9,7 @@ import { canvasReadResultSchema, type CanvasReadResult } from "../shared/agentCa
 import { canvasWriteSemanticInputSchema, type CanvasWriteInput, type CanvasWriteResult } from "../shared/agentCapabilities/canvasWrite";
 import { specsForCapability } from "../shared/agentCapabilities/modelFacingToolRegistry";
 import { projectsToProfile } from "../shared/agentCapabilities/modelFacingTools";
-import { formatCanvasForAgent } from "../shared/agentCapabilities/canvasReadCompact";
+import { projectCanvasForAgent } from "../shared/agentCapabilities/canvasReadCompact";
 import { bindLaneTool, type LaneToolDescriptor, type LaneToolExecutionContext } from "./laneRuntimePort";
 import { toSemanticInput } from "../shared/agentCapabilities/modelFacingTools";
 import { DIRECTOR_WRITE_CAPABILITY, type DirectorWriteInput, type DirectorWriteResult } from "../shared/agentCapabilities/directorWrite";
@@ -33,7 +33,8 @@ export function createCanvasLaneTools(port: CanvasLanePort): LaneToolDescriptor[
     if (spec.contractId === "canvas.read") {
       return bindLaneTool(spec, async (_args, context) => {
         const result: CanvasReadResult = canvasReadResultSchema.parse(await port.read(context));
-        return { ok: true, text: formatCanvasForAgent(result), details: { nodeCount: result.nodes.length } };
+        const projection = projectCanvasForAgent(result);
+        return { ok: true, text: projection.text, details: { nodeCount: result.nodes.length, selection: projection.selection } };
       });
     }
     if (spec.contractId === DIRECTOR_WRITE_CAPABILITY.id) {

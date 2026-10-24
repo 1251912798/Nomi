@@ -10,7 +10,7 @@
 Nomi：本地优先 AI 视频创作工作台。Electron + React 18 + Tailwind 3 + Zustand + React Flow (`@xyflow/react`) + Vercel AI SDK。主要模块：项目库 → 创作（文本）→ 生成画布（节点系统）→ 时间轴预览 → 导出 MP4。设计系统：`Design.md` + `src/design/`，token-only，光 / 暗双模式，密度优先。
 所有改动从最新 `origin/main` 创建独立任务分支 / worktree，通过 PR 交付；禁止直接推 `main`。操作文件用绝对路径。
 
-`pnpm run gates` 是提交前的分层门（按风险档，和 CI 共用 `scripts/validation-policy.mjs`）；全量档 `pnpm run gates:full`；其余命令见 `docs/engineering/commands.md`。开任务先 `pnpm run delivery:preflight`。
+`pnpm run gates` 是本机完整自检（按风险档，和 CI 共用 `scripts/validation-policy.mjs`）；全量档 `pnpm run gates:full`；推送前 git 钩子自动跑快检，完整门岗以 CI 为准；其余命令见 `docs/engineering/commands.md`。开任务先 `pnpm run delivery:preflight`。
 
 ## 核心原则
 

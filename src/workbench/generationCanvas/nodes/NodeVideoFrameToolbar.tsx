@@ -17,8 +17,7 @@ import NodeShotCutPanel from './NodeShotCutPanel'
 import NodeVideoClipPanel from './NodeVideoClipPanel'
 import { startVideoTrim } from './trimVideoToNode'
 import NodeDepthActionButton from '../videoDepth/NodeDepthActionButton'
-import { deconstructToShotTable } from './shotTable/factBridge'
-import { withProjectAction } from '../../project/projectCanvasReadSurface'
+import { ensureDeconstructionShotTable } from './shotTable/factBridge'
 import type { WorkbenchMenuIcon } from '../../../design/menu'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 
@@ -99,7 +98,8 @@ export default function NodeVideoFrameToolbar({ reportFeedback, node, downloadin
             icon: IconTable as WorkbenchMenuIcon,
             label: t('generationCommon.videoToolbar.shotTable'),
             description: t('generationCommon.videoToolbar.deconstructHint'),
-            onSelect: () => { withProjectAction((project) => { void deconstructToShotTable(node.id, project).catch((error: unknown) => reportFeedback(error instanceof Error ? error.message : String(error))) }) },
+            // 只建表并选中它，不开拆（2026-10-18 拆解前选模型）：读图 / 转写模型在表下方的拆解栏里选好，点「拆解」才走报价卡、才花钱。
+            onSelect: () => { ensureDeconstructionShotTable(node.id) },
           },
         ]}
       />
