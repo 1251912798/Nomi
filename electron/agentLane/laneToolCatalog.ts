@@ -51,6 +51,11 @@ export const LANE_MODEL_TOOL_CATALOG: readonly LaneToolSpec[] = buildCatalog();
 export const LANE_DEFERRED_TOOL_CATALOG = Object.freeze(
   modelFacingToolSpecs("internal").filter(spec => spec.internalGroup && !LANE_NATIVE_TOOL_GROUPS.includes(spec.internalGroup)),
 );
+/**
+ * 延迟目录里由 lane 自己答、不经领域端口传输的契约：`read_selection` 读的是本条消息随附的发送时快照，
+ * 那份快照只在 lane 手里（`laneExtendedDesktopPorts` 的 `executeRead` 先认它）。传输表门岗按它排除。
+ */
+export const LANE_SNAPSHOT_READ_CONTRACT_IDS: readonly string[] = Object.freeze(["agent.context.read"]);
 /** 注册表里由原生装配层执行的说明书（今天只有 `nomi_read`）。门岗量预算时与延迟目录一起算。 */
 export const LANE_NATIVE_TOOL_CATALOG = Object.freeze(
   modelFacingToolSpecs("internal").filter(spec => spec.internalGroup && LANE_NATIVE_TOOL_GROUPS.includes(spec.internalGroup)),

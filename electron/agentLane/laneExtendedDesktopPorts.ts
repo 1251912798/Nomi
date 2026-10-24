@@ -17,7 +17,7 @@ import { modelToolCapabilityId } from '../shared/agentCapabilities/modelFacingTo
 import { residentGenerationUnavailableMessage } from '../capabilityCore/residentSurfaceLifecycle'
 import { capabilityContractById } from '../shared/agentCapabilities/registry'
 import { LANE_RECEIPT_AUTHORITY_NOTE } from '../shared/agentLane/laneReceiptAuthority'
-import { LANE_DEFERRED_TOOL_CATALOG, LANE_DEFERRED_TOOL_GROUPS } from './laneToolCatalog'
+import { LANE_DEFERRED_TOOL_CATALOG, LANE_DEFERRED_TOOL_GROUPS, LANE_SNAPSHOT_READ_CONTRACT_IDS } from './laneToolCatalog'
 import { createExtendedLaneTools } from './laneExtendedTools'
 import { LaneDomainFailure, type OpenLaneOptions } from './laneRuntimePort'
 import { verbToTransportCall, type VerbTransportCall } from './laneVerbTransport'
@@ -313,7 +313,7 @@ export function createLaneExtendedDesktopPorts(input: LaneExtendedDesktopPortsIn
   async function executeRead(call: RuntimeToolCall, signal: AbortSignal): Promise<RuntimeToolDecision> {
     const contextSpec = LANE_DEFERRED_TOOL_CATALOG.find(spec => spec.name === call.toolName)
     const contextContract = contextSpec ? capabilityContractById(modelToolCapabilityId(contextSpec, call.args)) : undefined
-    if (contextContract?.id === 'agent.context.read') {
+    if (contextContract && LANE_SNAPSHOT_READ_CONTRACT_IDS.includes(contextContract.id)) {
       return await input.selectionRead?.(call.args, signal) ?? failure('capability_unsupported')
     }
     const { lane, call: transport } = translate(call)
