@@ -12,7 +12,7 @@ import { recoverableHintKey } from '../../../generationCanvas/model/recoverableC
 import type { ShotRowExec } from '../exec/storyboardRowStatus'
 import { storyboardFailureCopy } from '../exec/storyboardFailureCopy'
 import { containedBox, densityBox, sameAspectAsBox, type FrameMediaBox } from './shotFrameGeometry'
-import { useStoryboardRowNarrow } from './storyboardRowDensity'
+import { useStoryboardRowDensity } from './storyboardRowDensity'
 
 /**
  * 画面格 = 视觉列顶上那只预览框（2026-10-06 第二轮）——行状态机的脸。
@@ -52,8 +52,7 @@ export default function StoryboardShotFrame({
 }: Props): JSX.Element {
   const { t } = useTranslation()
   const presentation = shotPresentation(shot, shot.index)
-  const narrow = useStoryboardRowNarrow()
-  const frame = densityBox(box, narrow)
+  const frame = densityBox(box, useStoryboardRowDensity())
   const mediaStyle = { width: frame.width, height: frame.height }
   const ownAspect = !sameAspectAsBox(frame, aspect)
   // 这一镜画幅 ≠ 框：左下角标出它自己的画幅（混排时一眼看出哪镜是竖的）。

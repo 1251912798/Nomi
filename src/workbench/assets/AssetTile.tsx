@@ -1,7 +1,7 @@
 import React, { type JSX } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Icon3dCubeSphere, IconPlayerPlayFilled, IconPlus } from '@tabler/icons-react'
+import { Icon3dCubeSphere, IconPlayerPlayFilled, IconPlus, IconX } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { NomiImage } from '../../design/media'
 import { AssetVideoCover } from './AssetVideoCover'
@@ -25,12 +25,15 @@ export function computeHoverZoomPosition(
   return { left, top }
 }
 
-function useHoverZoom(zoomSrc: string | undefined): {
-  onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => void
+/** 悬停的两个阶段（B3n）：刚停上去 = 小提示（名字 + 来源）；停满 450ms = 大图出现、小提示收掉、名字和来源挪到大图下面。 */
+function useHoverPreview(zoomSrc: string | undefined): {
+  onMouseEnter: (e: React.MouseEvent<HTMLElement>) => void
   onMouseLeave: () => void
-  overlay: JSX.Element | null
+  /** null = 没悬停；false = 小提示；true = 大图。 */
+  zoomed: boolean | null
+  rect: DOMRect | null
 } {
-  const [rect, setRect] = React.useState<DOMRect | null>(null)
+  const [state, setState] = React.useState<{ zoomed: boolean; rect: DOMRect } | null>(null)
   const timerRef = React.useRef<number | undefined>(undefined)
   const clear = React.useCallback(() => {
     if (timerRef.current !== undefined) {
@@ -39,93 +42,118 @@ function useHoverZoom(zoomSrc: string | undefined): {
     }
   }, [])
   React.useEffect(() => clear, [clear])
-  const onMouseEnter = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (!zoomSrc) return
+  const onMouseEnter = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
     const box = event.currentTarget.getBoundingClientRect()
     clear()
-    timerRef.current = window.setTimeout(() => setRect(box), HOVER_ZOOM_DELAY_MS)
+    setState({ zoomed: false, rect: box })
+    if (zoomSrc) timerRef.current = window.setTimeout(() => setState({ zoomed: true, rect: box }), HOVER_ZOOM_DELAY_MS)
   }, [zoomSrc, clear])
   const onMouseLeave = React.useCallback(() => {
     clear()
-    setRect(null)
+    setState(null)
   }, [clear])
-  const overlay =
-    rect && zoomSrc
-      ? createPortal(
-          <div
-            className={cn('pointer-events-none rounded-nomi border border-nomi-line bg-nomi-paper overflow-hidden shadow-nomi-lg')}
-            style={{
-              position: 'fixed',
-              zIndex: 10000,
-              ...computeHoverZoomPosition(rect, { width: window.innerWidth, height: window.innerHeight }),
-              maxWidth: HOVER_ZOOM_MAX,
-              maxHeight: HOVER_ZOOM_MAX,
-            }}
-          >
-            <img src={zoomSrc} alt="" className={cn('block object-contain')} style={{ maxWidth: HOVER_ZOOM_MAX, maxHeight: HOVER_ZOOM_MAX }} />
-          </div>,
-          document.body,
-        )
-      : null
-  return { onMouseEnter, onMouseLeave, overlay }
+  return { onMouseEnter, onMouseLeave, zoomed: state?.zoomed ?? null, rect: state?.rect ?? null }
 }
 
-// 通用素材块(P0.2,样张 v4)。形态自明 > 文字解释:
+function HoverLayer({ zoomed, rect, zoomSrc, name, source, tip }: {
+  zoomed: boolean | null; rect: DOMRect | null; zoomSrc: string | undefined; name: string; source?: string | undefined; tip?: string | undefined
+}): JSX.Element | null {
+  if (zoomed === null || !rect) return null
+  if (!zoomed) {
+    // 小提示在缩略图上方，深底白字（和 Tooltip 同一档），不拦鼠标。
+    return createPortal(
+      <div
+        role="tooltip"
+        data-asset-tile-tip="true"
+        className="pointer-events-none whitespace-nowrap rounded-nomi-sm bg-nomi-ink px-2.5 py-1.5 text-caption leading-snug text-nomi-paper"
+        style={{ position: 'fixed', zIndex: 10000, left: Math.max(8, rect.left - 4), top: Math.max(8, rect.top - 36) }}
+      >
+        {tip ?? (source ? `${name} · ${source}` : name)}
+      </div>,
+      document.body,
+    )
+  }
+  if (!zoomSrc) return null
+  return createPortal(
+    <div
+      data-asset-tile-zoom="true"
+      className="pointer-events-none flex flex-col gap-1.5 rounded-nomi border border-nomi-line bg-nomi-paper p-1.5 shadow-nomi-lg"
+      style={{
+        position: 'fixed',
+        zIndex: 10000,
+        ...computeHoverZoomPosition(rect, { width: window.innerWidth, height: window.innerHeight }),
+        maxWidth: HOVER_ZOOM_MAX + 12,
+      }}
+    >
+      <img src={zoomSrc} alt="" className="block rounded-nomi-sm object-contain" style={{ maxWidth: HOVER_ZOOM_MAX, maxHeight: HOVER_ZOOM_MAX }} />
+      <span className="flex flex-col gap-0.5 px-0.5 text-caption leading-tight">
+        <span className="truncate font-medium text-nomi-ink">{name}</span>
+        {source ? <span className="truncate text-micro text-nomi-ink-60">{source}</span> : null}
+      </span>
+    </div>,
+    document.body,
+  )
+}
+
+// 通用素材块（B3）。形态自明 > 文字解释，平时只有小图，没有序号、没有 ×：
 //   图  → 缩略图铺满
 //   视频 → 缩略图(或暗块)+ 暗蒙层 + 居中播放三角
 //   音频 → 整块波形(音频无缩略图,波形本身就是它的形态语言)
-// 56px 正方形;可选编号徽标(①②③ = prompt 的 character1..N)、删除、点选高亮。token + Tabler,无 emoji。
+// 40px 正方形（统一规则 4：参考图小图 32–40px）。悬停才出 ×（角上）和名字 + 来源的小提示，停满约 0.45 秒出大图（B3n）。
+// 提示词里引用靠「小图 + 名字」，不再靠序号，所以这里没有编号徽标。token + Tabler,无 emoji。
 
 type AssetTileProps = {
   asset: AssetRef
-  /** 1-based 编号徽标;不传 = 不显示。 */
-  index?: number
-  /** 角上的小字签（如「首帧」），与编号徽标同一个徽标样式、放在左下角;不传 = 不显示。 */
+  /** 角上的小字签（如「首帧」），放在左下角;不传 = 不显示。 */
   tag?: string
-  /** 传了才显示删除「×」。 */
+  /** 来源（画布节点 / 素材库 / 上传）：悬停小提示与大图下方的第二行。 */
+  sourceLabel?: string
+  /** 完整的小提示文案（覆盖默认「名字 · 来源」；连线来的图写「…· 点 × 断开连线」）。 */
+  tipText?: string
+  /** × 的名字（连线来的图叫「断开连线」）。缺省 = 「移除 {名字}」。 */
+  removeLabel?: string
+  /** 传了才有删除「×」。 */
   onRemove?: () => void
   /** 传了则可点(hover 高亮)。 */
   onClick?: () => void
   /** 拖拽重排用:spread 到根 div(draggable + onDragStart/onDragOver/onDrop)。 */
   dragProps?: React.HTMLAttributes<HTMLDivElement> & { draggable?: boolean }
+  /** 淡显：这张图此刻用不上（模型不收 / 当前方式没用到），仍留在这里，切回去还在。 */
+  dimmed?: boolean
   className?: string
 }
 
 // 音频波形:固定高度图案(我们不分析音频,波形是纯形态符号)。
 const WAVE_HEIGHTS = [8, 16, 22, 12, 18, 9]
 
-// 角标与 × 都**收在格子里面**：格子自己 `overflow-hidden`（缩略图要按圆角裁），挂在格外的角标会被它切掉一角
-// （2026-10-06 分镜参考条 36 / 28 小格上切得最明显，画布 56 格同样被切）。边长按格子缩：大格保持 16，
-// 小格取「半边减 3」，保证序号和 × 在 28 格里也并排放得下、互不压。
-const CORNER_SIZE = 'h-[min(16px,calc(50%_-_3px))]'
-
-function NumberBadge({ index, tag }: { index?: number; tag?: string }): JSX.Element {
+function TagBadge({ tag }: { tag: string }): JSX.Element {
   return (
     <span
-      {...(tag ? { 'data-asset-tile-tag': 'firstFrame' } : { 'data-asset-tile-badge': index })}
-      className={cn(
-        'absolute flex items-center justify-center leading-none z-[2] text-micro',
-        // 用途字签（Claude Design 拍板稿 Edges）：左下角、深色半透明小标签；编号徽标仍是左上角的强调色小圆。
-        tag
-          ? 'bottom-[3px] left-[3px] h-4 px-1 rounded-nomi-sm bg-[oklch(0.18_0.01_80/0.64)] text-white'
-          : cn('top-[2px] left-[2px] min-w-[min(16px,calc(50%_-_3px))] px-[min(4px,8%)] rounded-pill bg-nomi-accent text-nomi-paper font-semibold', CORNER_SIZE),
-      )}
+      data-asset-tile-tag="firstFrame"
+      className="absolute bottom-[3px] left-[3px] z-[2] flex h-4 items-center justify-center rounded-nomi-sm bg-[oklch(0.18_0.01_80/0.64)] px-1 text-micro leading-none text-white"
     >
-      {tag ?? index}
+      {tag}
     </span>
   )
 }
 
+/** ×：悬停（或键盘聚焦）才出现，挂在缩略图右上角外侧；点击区 28px，圆点 16px。 */
 function RemoveButton({ label, onRemove }: { label: string; onRemove: () => void }): JSX.Element {
-  const { t } = useTranslation()
   return (
     <button
       type="button"
-      aria-label={t('assetLibrary.removeNamed', { name: label })}
+      aria-label={label}
       data-asset-tile-remove="true"
-      className={cn('absolute top-[2px] right-[2px] w-[min(16px,calc(50%_-_3px))] rounded-pill bg-nomi-paper border border-nomi-line text-nomi-ink-60 text-micro leading-none flex items-center justify-center cursor-pointer z-[2]', CORNER_SIZE)}
+      className={cn(
+        'absolute -right-[10px] -top-[10px] z-[3] flex size-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0',
+        'opacity-0 transition-opacity duration-nomi-fast group-hover/tile:opacity-100 focus-visible:opacity-100 group-focus-within/tile:opacity-100',
+      )}
       onClick={(event) => { event.stopPropagation(); onRemove() }}
-    >×</button>
+    >
+      <i className="flex size-4 items-center justify-center rounded-full bg-nomi-ink text-nomi-paper" aria-hidden>
+        <IconX size={12} stroke={2.67} />
+      </i>
+    </button>
   )
 }
 
@@ -171,17 +199,19 @@ export function AssetThumb({ asset, playSize = 22 }: { asset: AssetRef; playSize
   )
 }
 
-export default function AssetTile({ asset, index, tag, onRemove, onClick, dragProps, className }: AssetTileProps): JSX.Element {
+export default function AssetTile({ asset, tag, sourceLabel, tipText, removeLabel, onRemove, onClick, dragProps, dimmed, className }: AssetTileProps): JSX.Element {
+  const { t } = useTranslation()
   const clickable = Boolean(onClick)
-  // 图用原图、视频用首帧缩略图放大；音频无缩略图不弹。
+  // 图用原图、视频用首帧缩略图放大；音频无缩略图不弹（只有小提示）。
   const zoomSrc = asset.kind === 'audio' || asset.kind === 'model3d' ? undefined : asset.kind === 'video' ? asset.thumbUrl : asset.renderUrl
-  const zoom = useHoverZoom(zoomSrc)
+  const hover = useHoverPreview(zoomSrc)
   return (
     <>
       <div
         className={cn(
-          'relative w-14 h-14 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 overflow-hidden flex items-center justify-center',
-          clickable && 'cursor-pointer hover:outline hover:outline-2 hover:outline-offset-1 hover:outline-nomi-ink-30',
+          'group/tile relative h-10 w-10 shrink-0',
+          clickable && 'cursor-pointer',
+          dimmed && 'opacity-40',
           dragProps?.draggable && 'data-[dragover=true]:outline data-[dragover=true]:outline-2 data-[dragover=true]:outline-nomi-ink-40',
           className,
         )}
@@ -193,33 +223,34 @@ export default function AssetTile({ asset, index, tag, onRemove, onClick, dragPr
         onClick={onClick}
         onKeyDown={clickable ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onClick?.() } } : undefined}
         {...dragProps}
-        onMouseEnter={zoom.onMouseEnter}
-        onMouseLeave={zoom.onMouseLeave}
+        onMouseEnter={hover.onMouseEnter}
+        onMouseLeave={hover.onMouseLeave}
       >
-        <AssetThumb asset={asset} />
-        {typeof index === 'number' ? <NumberBadge index={index} /> : null}
-        {tag ? <NumberBadge tag={tag} /> : null}
-        {onRemove ? <RemoveButton label={asset.name} onRemove={onRemove} /> : null}
+        <span className={cn('relative flex size-full items-center justify-center overflow-hidden rounded-nomi-sm bg-nomi-ink-05', clickable && 'group-hover/tile:ring-2 group-hover/tile:ring-nomi-ink-30 group-hover/tile:ring-offset-1')}>
+          <AssetThumb asset={asset} />
+          {tag ? <TagBadge tag={tag} /> : null}
+        </span>
+        {onRemove ? <RemoveButton label={removeLabel ?? t('assetLibrary.removeNamed', { name: asset.name })} onRemove={onRemove} /> : null}
       </div>
-      {zoom.overlay}
+      <HoverLayer zoomed={hover.zoomed} rect={hover.rect} zoomSrc={zoomSrc} name={asset.name} source={sourceLabel} tip={tipText} />
     </>
   )
 }
 
-/** Original asset action frame; pointer and plus vary only the icon and action. */
+/** 40×40 浅底方块：画布点选与「+」都是它，只换图标和动作（图标 20 / 1.6，无虚线）。 */
 export function AssetActionTile({ selected, className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { selected?: boolean }): JSX.Element {
   return <button type="button" {...props} className={cn(
-    'w-14 h-14 rounded-nomi-sm border border-dashed border-nomi-ink-20 bg-nomi-ink-05 text-nomi-ink-40 flex items-center justify-center cursor-pointer hover:border-nomi-ink-30 hover:text-nomi-accent',
-    selected && 'border-nomi-ink-40 bg-nomi-ink-10',
+    'flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-nomi-sm border-0 bg-nomi-ink-05 p-0 text-nomi-ink-80 hover:bg-nomi-ink-10 disabled:cursor-not-allowed disabled:opacity-50',
+    selected && 'bg-nomi-ink-10',
     className,
   )}>{children}</button>
 }
 
-// 空态/添加块:虚线「+」,点开统一选择器(样张 v4 的 .tile.add)。
+// 空态/添加块:浅底「+」，点开统一选择器。
 export function AssetAddTile({ onClick, selected, label, className }: { onClick: () => void; selected?: boolean; label?: string; className?: string }): JSX.Element {
   const { t } = useTranslation()
   return <AssetActionTile data-asset-add-tile="true" aria-label={label ?? t('assetLibrary.addReference')}
     onClick={onClick} selected={selected} className={className}>
-    <IconPlus size={18} stroke={2} />
+    <IconPlus size={20} stroke={1.6} />
   </AssetActionTile>
 }
