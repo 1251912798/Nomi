@@ -14,7 +14,13 @@ import {
 } from '../../../../config/modelCatalogMeta'
 import { normalizeOrientation, type Orientation } from '../../../../utils/orientation'
 import { isComfyuiVendorKey } from '../../model/comfyuiVendor'
-import { normalizeAspectRatioToWH, optionsAreAspectRatios } from '../../../../../electron/shared/aspectRatioValue'
+import {
+  ASPECT_RATIO_META_KEYS,
+  aspectRatioControlKey,
+  aspectRatioControlsOf,
+  normalizeAspectRatioToWH,
+  sameAspectRatio,
+} from '../../../../../electron/shared/aspectRatioValue'
 import { resultUrl } from '../../runner/referenceUrl'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import {
@@ -110,7 +116,6 @@ export function getSlotThumbUrl(meta: Record<string, unknown>, paramKey: string,
   return resultPreviewUrl(nodes.find((n) => n.id === nodeRef))
 }
 
-const ASPECT_RATIO_ALIASES = ['aspect_ratio', 'aspectRatio', 'aspect', 'size', 'imageSize', 'videoSize', 'ratio', 'video_size', 'image_size']
 const DURATION_ALIASES = ['durationSeconds', 'videoDuration', 'duration', 'video_duration', 'length', 'clip_length']
 const RESOLUTION_ALIASES = ['resolution', 'videoResolution', 'video_resolution', 'output_resolution', 'outputResolution', 'resolution_type', 'mode', 'upscale_factor']
 // `quality` has the same paid/output role as resolution, but it is an
@@ -131,7 +136,7 @@ function buildAliasMap(groups: string[][]): Record<string, string[]> {
 }
 
 const PARAMETER_CONTROL_BINDING_KEYS: Record<string, string[]> = buildAliasMap([
-  ASPECT_RATIO_ALIASES,
+  [...ASPECT_RATIO_META_KEYS],
   DURATION_ALIASES,
   RESOLUTION_ALIASES,
   FORMAT_ALIASES,
@@ -150,7 +155,7 @@ const PARAMETER_CONTROL_BINDING_KEYS: Record<string, string[]> = buildAliasMap([
 export type ParameterRole = 'aspect' | 'duration' | 'resolution' | 'quantity'
 
 const PARAMETER_ROLE_BY_KEY: Record<string, ParameterRole> = {
-  ...Object.fromEntries(ASPECT_RATIO_ALIASES.map((key) => [key, 'aspect' as const])),
+  ...Object.fromEntries(ASPECT_RATIO_META_KEYS.map((key) => [key, 'aspect' as const])),
   ...Object.fromEntries(DURATION_ALIASES.map((key) => [key, 'duration' as const])),
   ...Object.fromEntries(RESOLUTION_ROLE_ALIASES.map((key) => [key, 'resolution' as const])),
   ...Object.fromEntries(QUANTITY_ALIASES.map((key) => [key, 'quantity' as const])),
@@ -169,7 +174,7 @@ const PARAMETER_ROLE_BY_BINDING: Partial<Record<DynamicCatalogControl['binding']
 /** 档案没有声明这个角色 → null（调用方据此「没有的不显示」，而不是补一个默认值假装有）。 */
 export function parameterControlRole(control: DynamicModelControl): ParameterRole | null {
   if (!isParameterControl(control)) return PARAMETER_ROLE_BY_BINDING[control.binding] ?? null
-  if (!parameterIsAspectAlias(control) && ASPECT_RATIO_ALIASES.includes(control.key)) return 'resolution'
+  if (!parameterIsAspectAlias(control) && ASPECT_RATIO_META_KEYS.includes(control.key as typeof ASPECT_RATIO_META_KEYS[number])) return 'resolution'
   return PARAMETER_ROLE_BY_KEY[control.key] ?? null
 }
 
@@ -326,9 +331,21 @@ function controlEquivalentKeys(key: string): string[] {
 const KEYS_NAMING_NO_ROLE = new Set(['size', 'imageSize', 'videoSize', 'video_size', 'image_size'])
 
 function parameterIsAspectAlias(control: ModelParameterControl): boolean {
-  if (!ASPECT_RATIO_ALIASES.includes(control.key)) return false
+  if (!ASPECT_RATIO_META_KEYS.includes(control.key as typeof ASPECT_RATIO_META_KEYS[number])) return false
   if (!KEYS_NAMING_NO_ROLE.has(control.key)) return true
-  return optionsAreAspectRatios(control.options.map((option) => ({ value: option.value, text: option.label })))
+  return isAspectRatioControl({ ...control, binding: 'parameter' })
+}
+
+/** 控件的比例身份只由 shared 的值/标签语义判据决定，键名本身不作判断。 */
+export function isAspectRatioControl(control: DynamicModelControl): boolean {
+  if (control.binding === 'aspectRatio') return true
+  const adapted = aspectRatioControlsOf([{
+    key: control.key,
+    options: control.options.map((option) => typeof option === 'string'
+      ? { value: option, label: option }
+      : { value: option.value, label: option.label }),
+  }])
+  return aspectRatioControlKey(adapted) === control.key
 }
 
 /**
@@ -338,7 +355,7 @@ function parameterIsAspectAlias(control: ModelParameterControl): boolean {
  * 两个都真是比例的控件（`size` 选项是 16:9…，又有 `aspect_ratio`）仍在 `aspect_ratio` 这些键上重叠，照旧去重。
  */
 function parameterEquivalentKeys(control: ModelParameterControl): string[] {
-  if (!ASPECT_RATIO_ALIASES.includes(control.key)) return controlEquivalentKeys(control.key)
+  if (!ASPECT_RATIO_META_KEYS.includes(control.key as typeof ASPECT_RATIO_META_KEYS[number])) return controlEquivalentKeys(control.key)
   if (!parameterIsAspectAlias(control)) return [control.key]
   if (KEYS_NAMING_NO_ROLE.has(control.key)) return controlEquivalentKeys(control.key)
   return controlEquivalentKeys(control.key).filter((key) => !KEYS_NAMING_NO_ROLE.has(key))
@@ -613,6 +630,18 @@ export function defaultPatchForControls(controls: readonly DynamicModelControl[]
   }), {})
 }
 
+/** 参数控件点击后的纯 patch；比例标记由组件按 isAspectRatioControl 决定。 */
+export function parameterControlChangePatch(control: ModelParameterControl, rawValue: string): Record<string, unknown> {
+  const parsed = parseControlInput(control, rawValue)
+  const patch: Record<string, unknown> = { [control.key]: parsed }
+  const dynamic = { ...control, binding: 'parameter' as const }
+  if (!isAspectRatioControl(dynamic)) return patch
+  if (control.key === 'aspect_ratio') return patch
+  const option = control.options.find((candidate) => Object.is(candidate.value, parsed) || String(candidate.value) === rawValue)
+  patch.aspect_ratio = normalizeAspectRatioToWH(parsed) ?? normalizeAspectRatioToWH(option?.label ?? '') ?? null
+  return patch
+}
+
 /**
  * 视频比例默认覆盖（2026-07-17 用户拍板：视频首选 16:9，输入全竖才 9:16——档案声明的默认让位于
  * 这条产品规则）。在 controls 里找比例控件，匹配 preferred 的等价选项（normalize 后同 W:H），
@@ -624,19 +653,18 @@ export function videoAspectDefaultPatch(
 ): Record<string, unknown> {
   for (const control of controls) {
     if (isParameterControl(control)) {
-      if (!ASPECT_RATIO_ALIASES.includes(control.key)) continue
+      if (!isAspectRatioControl({ ...control, binding: 'parameter' })) continue
       const matched = control.options.find(
-        (o) => normalizeAspectRatioToWH(controlValueToString(o.value)) === preferred || normalizeAspectRatioToWH(o.label) === preferred,
+        (o) => sameAspectRatio(controlValueToString(o.value), preferred) || sameAspectRatio(o.label, preferred),
       )
       if (!matched) return {}
-      // 与 handleParameterControlChange 同语义：写控件 key + 规范化 W:H 进 aspect_ratio（最高优先级读取键）。
-      return { [control.key]: matched.value, aspect_ratio: preferred }
+      const patch: Record<string, unknown> = { [control.key]: matched.value }
+      if (control.key !== 'aspect_ratio') patch.aspect_ratio = normalizeAspectRatioToWH(matched.value) ?? normalizeAspectRatioToWH(matched.label) ?? preferred
+      return patch
     }
-    if (control.binding !== 'size' && control.binding !== 'aspectRatio') continue
+    if (!isAspectRatioControl(control)) continue
     const matched = control.options.find((o) => {
-      const value = normalizeAspectRatioToWH(optionValue(o))
-      const label = typeof o === 'string' ? value : normalizeAspectRatioToWH(o.label)
-      return value === preferred || label === preferred
+      return sameAspectRatio(optionValue(o), preferred) || sameAspectRatio(typeof o === 'string' ? o : o.label, preferred)
     })
     if (!matched) return {}
     return defaultPatchForCatalogControl({ ...control, defaultValue: optionValue(matched) })

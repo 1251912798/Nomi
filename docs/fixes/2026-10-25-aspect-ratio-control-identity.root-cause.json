@@ -1,0 +1,303 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-25-aspect-ratio-control-identity",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-25",
+  "problem_type": "A semantic aspect-ratio control was identified by vendor key names and compared by unreduced strings, so equivalent model controls diverged across UI and canvas derivation paths",
+  "symptom": "Agnes Video 2.5 selecting 960P treated the resolution size control as an aspect-ratio control, cleared aspect_ratio and marked the node as explicitly ratio-selected; Runway Gen-4 Turbo pixel values such as 1280:720 did not match the product default 16:9, so a portrait input kept a landscape output.",
+  "direct_cause": "NodeParameterControls used ASPECT_RATIO_KEY_SET, parameterControlModel used ASPECT_RATIO_ALIASES and videoAspectDefaultPatch compared normalizeAspectRatioToWH strings, while the shared semantic control helpers were not used by these callers.",
+  "class_root": "The invariant that a control is an aspect-ratio control based on its declared option semantics, and that two ratio values are compared after reduction while preserving the provider value, had no single shared owner.",
+  "affected_population": [
+    "Models whose resolution or quality field is named size, imageSize, videoSize, video_size, or image_size",
+    "Video models whose ratio choices are pixel-sized W:H strings such as 1280:720 and 720:1280",
+    "Every canvas, Agent, storyboard, and catalog entry that derives or writes aspect-ratio metadata"
+  ],
+  "scope_paths": [
+    "electron/shared/aspectRatioValue.ts",
+    "src/workbench/generationCanvas/nodes/aspectRatio.ts",
+    "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
+    "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+    "src/workbench/generationCanvas/nodes/videoAspectSeed.ts"
+  ],
+  "entry_points": [
+    "Parameter control selection in NodeParameterControls",
+    "Catalog and archetype control construction and videoAspectDefaultPatch",
+    "Canvas node ratio reads and video aspect seeding after a connection",
+    "Shared Agent and storyboard aspect-ratio placement consumers"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This remediation enforces an internal Nomi semantic invariant over model catalog declarations; no third-party runtime determines whether a declared control is a ratio control or how Nomi compares equivalent ratios.",
+  "invariants": [
+    "Every aspect-ratio control is identified through aspectRatioControlsOf and aspectRatioControlKey or an explicit catalog aspectRatio binding; a key name alone never makes a control a ratio control.",
+    "Every ratio equality used by video default derivation compares reduced W:H values while provider option values remain unchanged in the patch.",
+    "A non-ratio size, resolution, quality, or duration selection never writes aspect_ratio or aspect_ratio_user_set.",
+    "All legacy aspect meta keys are read from the shared ASPECT_RATIO_META_KEYS declaration."
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/aspectRatio.ts",
+      "symbol": "ASPECT_RATIO_META_KEYS"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
+      "symbol": "ASPECT_RATIO_META_KEYS"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/videoAspectSeed.ts",
+      "symbol": "ASPECT_RATIO_META_KEYS"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/aspectRatioValue.ts",
+      "symbol": "parseAspectRatioValue"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/aspectRatioValue.ts",
+      "symbol": "normalizeAspectRatioToWH"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/aspectRatioValue.ts",
+      "symbol": "optionsAreAspectRatios"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/aspectRatioValue.ts",
+      "symbol": "aspectRatioControlKey"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/storyboard/storyboardShotScope.ts",
+      "symbol": "aspectRatioControlsOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/creation/storyboard/exec/storyboardProjection.ts",
+      "symbol": "aspectRatioControlsOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/creation/storyboard/shotRow/storyboardComposerModel.ts",
+      "symbol": "aspectRatioControlsOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/creation/storyboard/StoryboardBulkParams.tsx",
+      "symbol": "aspectRatioControlsOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/agent/plannedNodeMeta.ts",
+      "symbol": "aspectRatioControlsOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
+      "symbol": "aspectRatioControlsOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
+      "symbol": "isAspectRatioControl"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
+      "symbol": "parameterControlChangePatch"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
+      "symbol": "sameAspectRatio"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "parameterControlChangePatch"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+      "symbol": "NodeParameterControls"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/videoAspectSeed.ts",
+      "symbol": "videoAspectDefaultPatch"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/buildNodeModelChangePatch.ts",
+      "symbol": "videoAspectSeedPatch"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+      "symbol": "videoAspectSeedPatch"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "videoAspectSeedPatch"
+    }
+  ],
+  "door_reduction": {
+    "before": 23,
+    "after": 22,
+    "why_not": "The duplicate identity definitions were deleted, but the surviving semantic owner has multiple legitimate readers and write callers: shared storyboard placement, planned-node landing, the parameter model, the component event handler, and the three video-default entry points must remain separate doors because they run at different boundaries."
+  },
+  "generality_proof": "The shared options and control adapters now answer the same semantic question for parameter and catalog controls, including size-like keys whose options are either resolution labels or ratio values. sameAspectRatio reduces both ordinary ratios and pixel-sized ratios, while the patch returns the matched option value unchanged. NodeParameterControls, videoAspectDefaultPatch, canvas ratio reads, Agent landing, and storyboard consumers therefore cannot disagree because the old local alias and key-set decisions are gone.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/aspectRatioValue.ts",
+      "symbol": "aspectRatioControlsOf",
+      "responsibility": "Adapt catalog control declarations to the shared semantic control shape; aspectRatioControlKey is the single answer to which control carries ratio semantics, and sameAspectRatio is the single equality answer."
+    },
+    {
+      "path": "electron/shared/aspectRatioValue.ts",
+      "symbol": "sameAspectRatio",
+      "responsibility": "Single answer to whether two W:H / named-bucket values are the same ratio (reduced comparison); provider option values are never rewritten."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
+      "entry_point": "videoAspectDefaultPatch",
+      "disposition": "enforced",
+      "evidence": "It uses isAspectRatioControl and sameAspectRatio, then preserves the matched provider value for pixel-sized controls."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "entry_point": "handleParameterControlChange",
+      "disposition": "enforced",
+      "evidence": "The old ASPECT_RATIO_KEY_SET branch is deleted; changes use parameterControlChangePatch and the shared semantic predicate."
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/plannedNodeMeta.ts",
+      "entry_point": "buildPlannedNodeMeta",
+      "disposition": "enforced",
+      "evidence": "It already uses aspectRatioControlsOf/aspectRatioControlKey and is covered by the full-directory semantic census."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/exec/storyboardProjection.ts",
+      "entry_point": "projectStoryboardShot",
+      "disposition": "enforced",
+      "evidence": "It already uses the shared control adapter and key selector, so Agnes-like size resolution cannot be marked as a ratio there."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/useBatchPlanCost.ts",
+      "entry_point": "useBatchPlanCost",
+      "disposition": "not-affected",
+      "evidence": "Read-only audit found it still preloads by kind only and can mark a model unresolved; it does not decide control identity or ratio equality and is outside this fix."
+    },
+    {
+      "path": "src/workbench/generationCanvas/model/modelNameSourceLookup.ts",
+      "entry_point": "cachedModelNameSource",
+      "disposition": "not-affected",
+      "evidence": "Read-only audit found it scans kind-only caches for display provenance; it does not write or compare ratio values and is outside this fix."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
+      "entry_point": "isAspectRatioControl",
+      "disposition": "enforced",
+      "evidence": "Renderer adapter over the shared boundary: it calls aspectRatioControlsOf / aspectRatioControlKey and keeps no key-name rule of its own (covered by parameterControlModel.test.ts and the catalog census)."
+    },
+    {
+      "path": "electron/shared/storyboard/storyboardShotScope.ts",
+      "entry_point": "unsupportedFilmDefaultKeys",
+      "disposition": "enforced",
+      "evidence": "It reads ratio controls through aspectRatioControlsOf, so a resolution-only size control (Agnes 960P) is never treated as the film-default ratio slot."
+    },
+    {
+      "path": "electron/shared/storyboard/storyboardShotScope.ts",
+      "entry_point": "foldRatioIntoSlot",
+      "disposition": "enforced",
+      "evidence": "The real ratio key comes from aspectRatioControlKey(aspectRatioControlsOf(controls)); no key-name list of its own."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/storyboardComposerModel.ts",
+      "entry_point": "storyboardComposerChange",
+      "disposition": "enforced",
+      "evidence": "Control-to-shot-field mapping picks the ratio control with aspectRatioControlKey(aspectRatioControlsOf(...)), the same shared answer as the canvas parameter panel."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/StoryboardBulkParams.tsx",
+      "entry_point": "StoryboardBulkParams",
+      "disposition": "enforced",
+      "evidence": "Bulk storyboard params find the ratio control with aspectRatioControlKey(aspectRatioControlsOf(...)); no key-name rule of its own."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/videoAspectSeed.ts",
+      "entry_point": "videoAspectSeedPatch",
+      "disposition": "enforced",
+      "evidence": "hasCurrentAspect reads the first parseable key in ASPECT_RATIO_META_KEYS priority order and compares with sameAspectRatio; covered by videoAspectSeed.test.ts (stale portrait image_size no longer blocks the 9:16 switch; 720:1280 is not re-seeded)."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "The same concept already had three local definitions and the failure appeared in two independent model populations. New vendors can vary both parameter keys and ratio representations, so a caller-side fix would leave equivalent entries exposed.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs ASPECT_RATIO_KEYS ASPECT_RATIO_ALIASES ASPECT_RATIO_KEY_SET normalizeAspectRatioToWH videoAspectDefaultPatch aspectRatioControlsOf — recorded the duplicate key sets, normalization callers, default patch writer, and shared control adapters.",
+      "rg -n 'ASPECT_RATIO_KEY_SET|ASPECT_RATIO_ALIASES' src electron — old local definitions are removed; only ASPECT_RATIO_META_KEYS from electron/shared/aspectRatioValue.ts remains.",
+      "rg -n 'videoAspectDefaultPatch|sameAspectRatio|aspectRatioControlKey|aspectRatioControlsOf' src electron — canvas, parameter, Agent, and storyboard paths converge on the shared semantic helpers.",
+      "electron/shared/aspectRatioValue.census.test.ts — 338 model/variant/vendor/mode combinations, including 56 pixel controls, are checked for ratio default coverage and non-ratio refusal."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/aspectRatioValue.ts",
+    "invariant": "Control identity is derived from option semantics and explicit catalog binding; ratio equality is based on reduced W:H values; matched provider option values are preserved.",
+    "failure_mode": "A control with no ratio semantics yields no ratio patch and no explicit marker; a requested ratio with no matching option yields an empty default patch, preserving the model declaration.",
+    "exception_policy": "none",
+    "strategy": "Delete the renderer key Set and parameter alias list, route all changed callers through the shared control adapter and equality helper, and cover the full model directory plus the two order/mode edge cases with regression tests.",
+    "artifacts": [
+      "electron/shared/aspectRatioValue.ts",
+      "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
+      "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "src/workbench/generationCanvas/nodes/aspectRatio.ts",
+      "src/workbench/generationCanvas/nodes/videoAspectSeed.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/controls/parameterControlModel.test.ts",
+    "src/workbench/generationCanvas/store/canvasConnectVideoAspect.test.ts",
+    "electron/shared/aspectRatioValue.census.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/shared/aspectRatioValue.census.test.ts",
+    "src/workbench/generationCanvas/nodes/controls/parameterControlModel.test.ts",
+    "src/workbench/generationCanvas/store/canvasConnectVideoAspect.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts"
+    ],
+    "rationale": "The removed paths are the old local identity implementations inside these files: ASPECT_RATIO_KEY_SET and ASPECT_RATIO_ALIASES. The files remain as consumers of the shared owner; no fallback copy remains callable."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The invariant is application-level semantic classification and exact ratio comparison; no dependency version controls it.",
+    "exit_criteria": []
+  },
+  "migration": "Existing node metadata is not rewritten. ASPECT_RATIO_META_KEYS reads all legacy aliases, and parameter/catalog patches preserve the provider's existing option spelling, so old projects continue to load without a data migration.",
+  "residual_risks": [
+    "useBatchPlanCost and modelNameSourceLookup still fetch kind-only model lists; the read-only audit suggests a separate current-mode catalog follow-up for models published in only one generation mode.",
+    "No real Electron window or paid generation was run in this corrective line; evidence is repository tests and type/lint gates.",
+    "Approximate non-reduced ratios outside exact GCD equivalence remain governed by the existing resolveAspectRatioChoice tolerance path; this change does not alter normalizeAspectRatioToWH output semantics."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/aspectRatioValue.ts",
+    "tests": [
+      "electron/shared/aspectRatioValue.census.test.ts",
+      "src/workbench/generationCanvas/nodes/controls/parameterControlModel.test.ts",
+      "src/workbench/generationCanvas/store/canvasConnectVideoAspect.test.ts"
+    ],
+    "why": "比例控件身份、比例等价比较和旧 meta 键表由 shared 层单点持有；参数面板、画布派生、Agent 与分镜只调用它，不再各自复制键名或字符串判定。"
+  }
+}

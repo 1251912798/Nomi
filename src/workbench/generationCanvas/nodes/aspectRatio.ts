@@ -8,14 +8,11 @@
 // 不同档案的 key 命名不一：多数是 `aspect_ratio`，imagen4/qwen 用 `size`，
 // Seedream 改图模式用 `image_size`（named bucket 格式，映射表在 shared 那份）。
 import type { GenerationCanvasEdge, GenerationCanvasNode } from "../model/generationCanvasTypes";
-import { isAutoOptionValue, normalizeAspectRatioToWH, parseAspectRatioValue } from "../../../../electron/shared/aspectRatioValue";
-
-// 比例参数可能用到的 meta key，按常见度排序。
-export const ASPECT_RATIO_KEYS = ["aspect_ratio", "size", "ratio", "image_size"] as const;
+import { ASPECT_RATIO_META_KEYS, isAutoOptionValue, normalizeAspectRatioToWH, parseAspectRatioValue } from "../../../../electron/shared/aspectRatioValue";
 
 /**
- * 节点 meta 上承载画面比例的那个值：按 ASPECT_RATIO_KEYS 顺序，第一个能解析成比例的（非比例的 size 值如 "2K" 跳过）。
- * 读不到（未选模型 / 该模型无比例参数）返回 null。
+ * 节点 meta 上承载画面比例的那个值：按 ASPECT_RATIO_META_KEYS（shared 那一份比例键）顺序，第一个能解析成比例的
+ * （非比例的 size 值如 "2K" 跳过）。读不到（未选模型 / 该模型无比例参数）返回 null。
  *
  * 「节点此刻是什么比例」只有这一个读法：画布节点形状（`readNodeAspectRatio`）和生成列表、指向元素、付费卡摘要上印的
  * 那几个字（`generation/list/generationListMediaFacts.readAspect`）都读它。以前后者自己只认 `aspect_ratio`，Seedance 这类
@@ -25,7 +22,7 @@ export function nodeAspectRatioValue(node: GenerationCanvasNode | undefined): st
   const meta = node?.meta;
   if (!meta || typeof meta !== "object") return null;
   const bag = meta as Record<string, unknown>;
-  for (const key of ASPECT_RATIO_KEYS) {
+  for (const key of ASPECT_RATIO_META_KEYS) {
     const value = bag[key];
     if (typeof value === "string" && parseAspectRatioValue(value)) return value;
   }

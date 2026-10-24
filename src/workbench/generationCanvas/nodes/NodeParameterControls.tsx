@@ -92,12 +92,10 @@ import { composerHeadlineSummary } from './composerHeadlineSummary'
 import { useNodeModelAutoSelect } from './useNodeModelAutoSelect'
 import { resolveArchetypeForOption, resolveRenderedControls } from './nodeModelArchetype'
 import { buildAspectRatioNodePatch } from './nodeSizing'
-import { ASPECT_RATIO_KEYS } from './aspectRatio'
 import { ASPECT_EXPLICIT_META_KEY } from './aspectExplicit'
-import { normalizeAspectRatioToWH, parseAspectRatioValue } from '../../../../electron/shared/aspectRatioValue'
+import { parseAspectRatioValue } from '../../../../electron/shared/aspectRatioValue'
 import { buildNodeModelChangePatch } from './buildNodeModelChangePatch'
-
-const ASPECT_RATIO_KEY_SET = new Set<string>(ASPECT_RATIO_KEYS)
+import { isAspectRatioControl, parameterControlChangePatch } from './controls/parameterControlModel'
 
 type NodeParameterControlsProps = {
   node: GenerationCanvasNode
@@ -270,30 +268,24 @@ export default function NodeParameterControls({
 
   const handleParameterControlChange = (control: ModelParameterControl, value: string) => {
     const parsed = parseControlInput(control, value)
-    const patch: Record<string, unknown> = { [control.key]: parsed }
-    // 跨键同步：凡写任意比例 key（aspect_ratio / size / ratio / image_size），
-    // 同时把规范化后的 W:H 写进 aspect_ratio（最高优先级读取键）。
-    // 防止旧模式遗留的 stale aspect_ratio 遮蔽当前模式的比例选择（如 t2i→改图后 image_size 被旧值盖住）。
-    if (ASPECT_RATIO_KEY_SET.has(control.key)) {
-      const wh = normalizeAspectRatioToWH(parsed)
-      patch.aspect_ratio = wh ?? (control.key === 'aspect_ratio' ? parsed : null)
+    const patch = parameterControlChangePatch(control, value)
+    if (isAspectRatioControl({ ...control, binding: 'parameter' })) {
       // 用户显式选过比例 → 打标记，连边联动不再自动改（用户选择优先于产品默认）。
       patch[ASPECT_EXPLICIT_META_KEY] = true
-      updateAspectRatioMeta(patch, parseAspectRatioValue(parsed))
+      updateAspectRatioMeta(patch, parseAspectRatioValue(patch.aspect_ratio ?? parsed))
       return
     }
     updateMeta(patch)
   }
 
   const handleCatalogControlChange = (control: DynamicCatalogControl, value: string) => {
-    const isAspect =
-      control.binding === 'size' || control.binding === 'aspectRatio' || ASPECT_RATIO_KEY_SET.has(control.key)
-    const patch = {
+    const isAspect = isAspectRatioControl(control)
+    const patch: Record<string, unknown> = {
       ...defaultPatchForCatalogControl({ ...control, defaultValue: value }),
       ...(isAspect ? { [ASPECT_EXPLICIT_META_KEY]: true } : {}),
     }
     if (isAspect) {
-      updateAspectRatioMeta(patch, parseAspectRatioValue(value))
+      updateAspectRatioMeta(patch, parseAspectRatioValue(patch.aspect_ratio ?? value))
       return
     }
     updateMeta(patch)
