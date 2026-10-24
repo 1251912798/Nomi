@@ -1,13 +1,16 @@
 // Clip state precedence: selected wins over active, active belongs to trajectory clips only, neither inherits plain hover; labels inherit the clip foreground.
 // Real production component + generated production CSS in Chromium; expected values are reference evidence.
-// Run: node --import tsx tests/ux/director-clip-states.walk.mjs
+// Run: node tests/ux/director-clip-states.walk.mjs（夜跑就是裸 node）
+// ClipBar 是 .tsx：经 tsx/cjs/api 的 require 加载。静态 `import … from '….tsx'` 在裸 node 下当场 ERR_UNKNOWN_FILE_EXTENSION（2026-10-24 夜跑红过）。
 import fs from 'node:fs'
 import path from 'node:path'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { chromium } from 'playwright'
+import { require as tsxRequire } from 'tsx/cjs/api'
 import { applyColorSchemeForShot, expect, screenshotSettled } from './_assert.mjs'
-import { ClipBar } from '../../src/workbench/generationCanvas/nodes/director/timeline/ClipBar.tsx'
+
+const { ClipBar } = tsxRequire('../../src/workbench/generationCanvas/nodes/director/timeline/ClipBar.tsx', import.meta.url)
 
 const reference = {
   trajectory: { label: '路径片段 0~120', base: '#0084d1', hover: 'oklch(68.5% .169 237.323)', text: 'oklch(97.7% .013 236.62)', alpha: 0.9 },
