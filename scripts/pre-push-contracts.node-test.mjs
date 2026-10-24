@@ -3,13 +3,14 @@
 // 红测试走真实路径：在一个真实 git 仓库副本（共享对象的 clone，稀疏检出）里改文件、提交、再用真实的入口脚本跑——
 // 不 mock 门岗，门岗红就是门岗脚本真的 exit 1。
 import assert from 'node:assert/strict'
-import { execFileSync, spawnSync } from 'node:child_process'
+import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import test, { after, before } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import { makeTempDir } from './_test-temp.mjs'
+import { killProcessTree, processTreeSpawnOptions } from './lib/processTree.mjs'
 import { touchesGateInputs } from './pre-push-gate-inputs.mjs'
 import { TAG_IN_MAIN_NOTICE, runNode, runWithDeadline } from './pre-push-contracts.mjs'
 
@@ -180,15 +181,14 @@ test('真入口：要推的 SHA 和工作树 HEAD 不一致 → 拒绝（fail-cl
 
 test('必红：手动跑（无参数）+ 一个永远不关的 stdin 管道 → 几十秒内退出，不读 stdin（以前会挂 600–1700 秒）', async () => {
   commitChange(() => fs.writeFileSync(path.join(work, 'docs/engineering/prepush-note.md'), '# note\n'))
-  const { spawn } = await import('node:child_process')
   const child = spawn(process.execPath, [path.join(work, 'scripts/pre-push-contracts.mjs')], {
-    cwd: work, env: { ...isolatedFromCiBaseRefs(process.env), NOMI_PR_BODY: CARD }, stdio: ['pipe', 'pipe', 'pipe'],
+    cwd: work, env: { ...isolatedFromCiBaseRefs(process.env), NOMI_PR_BODY: CARD }, stdio: ['pipe', 'pipe', 'pipe'], ...processTreeSpawnOptions(),
   })
   child.stdin.on('error', () => {})
   let stderr = ''
   child.stderr.on('data', (chunk) => { stderr += chunk })
   const outcome = await new Promise((resolve) => {
-    const timer = setTimeout(() => { child.kill(); resolve('HUNG') }, 90_000)
+    const timer = setTimeout(() => { killProcessTree(child, 'SIGKILL'); resolve('HUNG') }, 90_000)
     child.on('close', (code) => { clearTimeout(timer); resolve(code) })
   })
   child.stdin.destroy()

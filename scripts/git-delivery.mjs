@@ -5,6 +5,7 @@ import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 import { gitNameStatus } from './lib/gitPaths.mjs'
+import { killProcessTree, processTreeSpawnOptions } from './lib/processTree.mjs'
 import { retryTransient } from './lib/transientRetry.mjs'
 import { classifyValidationPolicy, CORE_SMOKE_ADVISORY_CHECK_NAMES, CORE_SMOKE_BLOCKING_CHECK_NAMES } from './validation-policy.mjs'
 
@@ -40,11 +41,10 @@ export function runBoundedCommand(
   }
 
   return new Promise((resolve, reject) => {
-    const detached = process.platform !== 'win32'
     const child = spawnProcess(command, args, {
       cwd,
       env,
-      detached,
+      ...processTreeSpawnOptions(),
       shell: false,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -65,16 +65,7 @@ export function runBoundedCommand(
     })
 
     const signalChild = (signal) => {
-      try {
-        if (detached && child.pid) process.kill(-child.pid, signal)
-        else child.kill(signal)
-      } catch {
-        try {
-          child.kill(signal)
-        } catch {
-          /* process already exited */
-        }
-      }
+      try { killProcessTree(child, signal) } catch { /* process already exited */ }
     }
 
     const timeout = setTimeout(() => {

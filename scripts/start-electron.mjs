@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { installChildProcessLifecycle } from "./child-process-lifecycle.mjs";
+import { processTreeSpawnOptions } from "./lib/processTree.mjs";
 import { assertElectronBuildArtifacts } from "./electron-build-artifacts.mjs";
 import { assertElectronInstallIdentity } from "./electron-install-identity.mjs";
 
@@ -43,6 +44,7 @@ const childProcessLifecycle = installChildProcessLifecycle();
 const child = childProcessLifecycle.track(spawn(electron, args, {
   stdio: "inherit",
   shell: false,
+  ...processTreeSpawnOptions(),
   env,
 }));
 
