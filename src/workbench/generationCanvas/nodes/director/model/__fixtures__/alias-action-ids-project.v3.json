@@ -1,0 +1,60 @@
+{
+  "version": 3,
+  "activeSceneId": "scene-1",
+  "exportRatio": "16:9",
+  "exportResolution": "1080",
+  "outputs": { "screenshots": [], "videos": [] },
+  "assets": { "folders": [], "items": [] },
+  "scenes": [
+    {
+      "id": "scene-1",
+      "name": "场景 1",
+      "visible": true,
+      "objects": [
+        {
+          "id": "crowd", "name": "群众组", "type": "group",
+          "position": { "x": 0, "y": 0, "z": 4 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": { "x": 1, "y": 1, "z": 1 }, "visible": true, "locked": false
+        },
+        {
+          "id": "crowd-1", "name": "群众 1", "type": "character", "parentId": "crowd", "modelPath": "builtin:ual", "rig": "ual", "isSystemModel": true, "modelScale": 1,
+          "position": { "x": -1, "y": 0, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": { "x": 1, "y": 1, "z": 1 }, "visible": true, "locked": false,
+          "posePreset": "standing_idle"
+        },
+        {
+          "id": "crowd-2", "name": "群众 2", "type": "character", "parentId": "crowd", "modelPath": "builtin:ual", "rig": "ual", "isSystemModel": true, "modelScale": 1,
+          "position": { "x": 1, "y": 0, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": { "x": 1, "y": 1, "z": 1 }, "visible": true, "locked": false,
+          "posePreset": "standing_idle"
+        },
+        {
+          "id": "posed", "name": "套过姿态的人", "type": "character", "modelPath": "builtin:ual", "rig": "ual", "isSystemModel": true, "modelScale": 1,
+          "position": { "x": -2, "y": 0, "z": 0 }, "rotation": { "x": 0, "y": 90, "z": 0 }, "scale": { "x": 1, "y": 1, "z": 1 }, "visible": true, "locked": false,
+          "posePreset": "running", "inTimeline": true, "actionTrackEnabled": true,
+          "actionClips": [
+            { "id": "posed-walk", "name": "walk", "clipType": "action", "actionPose": "walk", "startTime": 0, "endTime": 4, "startFrame": 0, "endFrame": 120 },
+            { "id": "posed-sit", "name": "动作·坐", "clipType": "action", "actionPose": "坐下", "startTime": 4, "endTime": 6, "startFrame": 120, "endFrame": 180 }
+          ]
+        },
+        {
+          "id": "actor:hero", "name": "编译出来的人", "type": "character",
+          "position": { "x": 2, "y": 0, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": { "x": 1, "y": 1, "z": 1 }, "visible": true, "locked": false,
+          "posePreset": "standing"
+        },
+        {
+          "id": "uploaded", "name": "上传的角色", "type": "character", "modelPath": "nomi-asset://characters/hero.glb", "rig": "ual", "isSystemModel": false, "modelScale": 1,
+          "position": { "x": 3, "y": 0, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": { "x": 1, "y": 1, "z": 1 }, "visible": true, "locked": false,
+          "posePreset": "idle"
+        },
+        {
+          "id": "future", "name": "新版本存的人", "type": "character", "modelPath": "builtin:ual", "rig": "ual", "isSystemModel": true, "modelScale": 1,
+          "position": { "x": 0, "y": 0, "z": -3 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "scale": { "x": 1, "y": 1, "z": 1 }, "visible": true, "locked": false,
+          "posePreset": "Dance_Loop", "inTimeline": true, "actionTrackEnabled": true,
+          "actionClips": [
+            { "id": "future-moon", "name": "Moonwalk_Loop", "clipType": "action", "actionPose": "Moonwalk_Loop", "startTime": 0, "endTime": 4, "startFrame": 0, "endFrame": 120 }
+          ]
+        }
+      ],
+      "cameras": [],
+      "lights": []
+    }
+  ]
+}

@@ -23,6 +23,8 @@ const SEEDANCE = 'doubao-seedance-2.5'
 // 只发布「图生视频」的两个模型（目录种子里只有一条 image_to_video 映射，下面「前提」那条测试从种子本身核）。
 const VIDU = 'viduq3'
 const RUNWAY = 'gen4_turbo'
+const T2V_ONLY_CATALOG = 't2v-only-catalog'
+const H3 = 'MiniMax-H3'
 
 /** 一个模型在目录种子里发布了哪几种生成方式（mapping 的 taskKind）——「只发布图生视频」是从这里算出来的，不手写。 */
 const seededModes = (models: readonly { modelKey: string; mappings: readonly { taskKind: string }[] }[], modelKey: string): string[] =>
@@ -36,6 +38,8 @@ const ROWS = [
   row(SEEDANCE, 'apimart', 'Seedance 2.5', ['text_to_video', 'image_to_video']),
   row(VIDU, 'apimart', 'Vidu Q3', seededModes(APIMART_VIDEO_MODELS, VIDU)),
   row(RUNWAY, 'runway', 'Runway Gen-4 Turbo', seededModes(RUNWAY_OFFICIAL_MODELS, RUNWAY)),
+  { ...row(T2V_ONLY_CATALOG, 'apimart', 'T2V only catalog fixture', ['text_to_video']), meta: { video: { sizeOptions: ['16:9', '9:16'], defaultSize: '16:9' } } },
+  row(H3, 'apimart', 'MiniMax H3', seededModes(APIMART_VIDEO_MODELS, H3)),
 ]
 /** 与真目录同一个筛法（electron 给的 publishedModes 里有这种方式的行才进这份清单）。 */
 const optionsFor = (mode: string) => toCatalogModelOptions(ROWS.filter((candidate) => candidate.publishedModes.includes(mode)) as CatalogRows)
@@ -182,11 +186,38 @@ describe('连线时查模型目录：按节点当前生成方式（只发布「�
     expect(aspectOf('v')).toBe('9:16')
   })
 
-  it('Runway Gen-4 Turbo 同样查得到模型；它的比例档是像素串（1280:720 …），没有「9:16」的等价档 → 比例不动（改前挂载 effect 同样对不上，不是这次引入）', () => {
+  it('Runway Gen-4 Turbo 连竖图 → 720:1280，没连图 → 1280:720', () => {
     state().restoreSnapshot({ nodes: [image('tall', '9:16'), video('v', {}, RUNWAY, 'runway')], edges: [], groups: [] })
     expect(metaOf('v').aspect_ratio).toBe('1280:720')
     connect('tall', 'v')
+    expect(metaOf('v').aspect_ratio).toBe('720:1280')
+    state().restoreSnapshot({ nodes: [video('v', {}, RUNWAY, 'runway')], edges: [], groups: [] })
     expect(metaOf('v').aspect_ratio).toBe('1280:720')
+  })
+
+  it('只发布文生视频的目录模型连参考图 → 当前生成方式清单找不到它，不改比例', () => {
+    const node: GenerationCanvasNode = {
+      id: 't2v-only', title: 't2v-only', kind: 'video', categoryId: 'shots', position: { x: 600, y: 0 },
+      meta: { modelKey: T2V_ONLY_CATALOG, modelVendor: 'apimart', vendor: 'apimart', aspect_ratio: '16:9' },
+    }
+    const source = { ...image('tall', '9:16'), result: { type: 'image' as const, url: 'https://example.com/tall.png' } }
+    state().restoreSnapshot({ nodes: [source, node], edges: [], groups: [] })
+    const base = state().readDocumentSnapshot()
+    state().applyExternalGraph({ base, next: { ...base, edges: [{ id: 'ref', source: 'tall', target: 't2v-only', mode: 'reference' }] } })
+    expect(metaOf('t2v-only').aspect_ratio).toBe('16:9')
+  })
+
+  it('先切到能收参考图的方式，再按新方式算比例（M18 顺序）', () => {
+    const node = video('h3', {}, H3)
+    node.meta = { ...node.meta, archetype: { ...(node.meta?.archetype as Record<string, unknown>), modeId: 'first' } }
+    const source: GenerationCanvasNode = {
+      id: 'tall', title: 'tall', kind: 'audio', categoryId: 'shots', position: { x: 0, y: 0 },
+      meta: { aspect_ratio: '9:16' }, result: { id: 'source-result', type: 'audio', url: 'https://example.com/tall.mp3', createdAt: 0 },
+    }
+    state().restoreSnapshot({ nodes: [source, node], edges: [], groups: [] })
+    expect(connect('tall', 'h3', 'reference')).toMatchObject({ ok: true })
+    expect((metaOf('h3').archetype as { modeId?: string }).modeId).toBe('ref')
+    expect(metaOf('h3').aspect_ratio).toBe('9:16')
   })
 })
 

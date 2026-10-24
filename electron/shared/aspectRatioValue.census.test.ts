@@ -8,9 +8,10 @@
 import { describe, expect, it } from "vitest";
 
 import { MODEL_ARCHETYPES, specializeArchetypeForVariant, specializeArchetypeForVendor } from "./modelArchetypes";
-import { optionsAreAspectRatios, resolveAspectRatioChoice } from "./aspectRatioValue";
+import { optionsAreAspectRatios, resolveAspectRatioChoice, sameAspectRatio } from "./aspectRatioValue";
+import { isAspectRatioControl, videoAspectDefaultPatch, type DynamicModelControl } from "../../src/workbench/generationCanvas/nodes/controls/parameterControlModel";
 
-type Combo = { id: string; controls: Array<{ key: string; options: Array<{ value: unknown; text?: string }>; defaultValue?: unknown }> };
+type Combo = { id: string; kind: string; controls: Array<{ key: string; options: Array<{ value: unknown; text?: string }>; defaultValue?: unknown }> };
 
 function census(): Combo[] {
   const combos: Combo[] = [];
@@ -23,6 +24,7 @@ function census(): Combo[] {
         for (const mode of specializeArchetypeForVendor(archetype, vendor).modes) {
           combos.push({
             id: `${base.id}${variantId ? `@${variantId}` : ""}/${vendor ?? "*"}/${mode.id}`,
+            kind: base.kind,
             controls: (mode.params ?? []).map((control) => ({
               key: control.key,
               options: (control.options ?? []).map((option) => ({ value: option.value, text: option.label })),
@@ -41,6 +43,12 @@ const isPixelControl = (combo: Combo): boolean => combo.controls.some((control) 
 
 describe("全目录普查（档案 × 变体 × 供应商分层 × 模式）", () => {
   const combos = census();
+
+  it("比例相等按约分比较，不改变像素档的原值", () => {
+    expect(sameAspectRatio("1280:720", "16:9")).toBe(true);
+    expect(sameAspectRatio("1.5:1", "3:2")).toBe(true);
+    expect(sameAspectRatio("1280:720", "9:16")).toBe(false);
+  });
 
   // 2026-10-06 +2：Topaz 图片放大、Recraft 清晰放大各一个 upscale 组合（放大没有比例控件，归进下面「没有比例选择」）。
   it("总数与「有比例控件」的数和验收线对得上：338 个组合，按共享判据 231 个有比例控件", () => {
@@ -70,6 +78,24 @@ describe("全目录普查（档案 × 变体 × 供应商分层 × 模式）", (
         if (!outcome.ok) continue;
         const control = combo.controls.find((candidate) => candidate.key === outcome.key)!;
         expect(control.options.map(({ value }) => value), `${combo.id} ${requested}`).toContain(outcome.value);
+      }
+    }
+  });
+
+  it("视频比例控件的 16:9 / 9:16 档都能被默认派生选中，非比例控件永不冒充比例", () => {
+    const videoCombos = combos.filter((combo) => combo.kind === "video");
+    for (const combo of videoCombos) {
+      for (const control of combo.controls) {
+        const dynamic = { ...control, options: control.options.map(({ value, text }) => ({ value: value as string | number, label: text ?? String(value) })), binding: 'parameter' } as unknown as DynamicModelControl;
+        const hasLandscape = control.options.some(({ value, text }) => sameAspectRatio(value, "16:9") || sameAspectRatio(text, "16:9"));
+        const hasPortrait = control.options.some(({ value, text }) => sameAspectRatio(value, "9:16") || sameAspectRatio(text, "9:16"));
+        if (isAspectRatioControl(dynamic)) {
+          if (hasLandscape) expect(videoAspectDefaultPatch([dynamic], "16:9"), combo.id).not.toEqual({});
+          if (hasPortrait) expect(videoAspectDefaultPatch([dynamic], "9:16"), combo.id).not.toEqual({});
+        } else {
+          expect(videoAspectDefaultPatch([dynamic], "16:9"), `${combo.id}:${control.key}`).toEqual({});
+          expect(videoAspectDefaultPatch([dynamic], "9:16"), `${combo.id}:${control.key}`).toEqual({});
+        }
       }
     }
   });

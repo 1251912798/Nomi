@@ -32,7 +32,6 @@ import { createDirectorStore, type DirectorStore } from './model/directorStore'
 import type { DirectorProject, DirectorLinkedAsset } from './model/directorTypes'
 import type { DirectorHotkeyScope } from './model/hotkeys'
 import { OutputsContext, type DirectorOutput } from './OutputsContext'
-import { CanvasImagesContext, EMPTY_CANVAS_IMAGES, type CanvasImage } from './panels/CanvasImagesContext'
 import { EMPTY_LINKED_ASSETS, LinkedAssetsContext } from './panels/LinkedAssetsContext'
 import { useDirectorOutputs } from './useDirectorOutputs'
 import { HelpDialog } from './panels/dialogs/HelpDialog'
@@ -66,8 +65,6 @@ export type DirectorEditorProps = {
   readOnly?: boolean
   // 画布连线带进来的全景 / 泼溅 / 模型引用（资产库「连线引用」目录），随连线增减，不入工程
   linkedAssets?: readonly DirectorLinkedAsset[]
-  // 画布上所有带结果图的 Image 节点（AI 搭场景的「从画布选」参考图），开发入口为空
-  canvasImages?: readonly CanvasImage[]
   // 所属画布节点 id（产物落盘的 owner）与「发送到画布」回调；开发入口都没有 → 发送按钮禁用
   nodeId?: string
   onSendToCanvas?: (output: DirectorOutput) => void
@@ -282,7 +279,7 @@ function useDirectorForcedDark(): void {
   }, [acquire])
 }
 
-export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false, linkedAssets = EMPTY_LINKED_ASSETS, canvasImages = EMPTY_CANVAS_IMAGES, nodeId, onSendToCanvas, onClose, onProjectChange }: DirectorEditorProps): JSX.Element {
+export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false, linkedAssets = EMPTY_LINKED_ASSETS, nodeId, onSendToCanvas, onClose, onProjectChange }: DirectorEditorProps): JSX.Element {
   const { t } = useTranslation()
   useDirectorForcedDark()
   const storeRef = React.useRef<DirectorStore | null>(null)
@@ -409,7 +406,6 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
 
   const shell = (
     <LinkedAssetsContext.Provider value={linkedAssets}>
-    <CanvasImagesContext.Provider value={canvasImages}>
     <DirectorStoreContext.Provider value={store}>
       <TooltipProvider>
         <div
@@ -439,7 +435,6 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
         </div>
       </TooltipProvider>
     </DirectorStoreContext.Provider>
-    </CanvasImagesContext.Provider>
     </LinkedAssetsContext.Provider>
   )
 

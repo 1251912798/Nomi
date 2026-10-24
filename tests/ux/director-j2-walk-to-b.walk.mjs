@@ -18,8 +18,32 @@ try {
   await lab.pickInOutliner(a.name, '大纲·A')
   await page.mouse.move(700, 300)
   await page.keyboard.press('4')
-  await expectVisible(page.getByText(/画线|手绘/).first(), '没进入画线模式（HUD 没有提示条）')
+  await expectVisible(page.getByTestId('director-viewport-hud').filter({ hasText: /画线|手绘/ }), '没进入画线模式（HUD 没有提示条）')
   await lab.snap('pencil-mode')
+
+  // ⑥（2026-10-24）：提示条以前写死 top-3，正好压在顶栏正中的「导演 | 精修」底下；画线的钮住在属性卡头，画线时卡一定开着，
+  // 窄窗里居中的提示条还会钻到卡底下。走查默认窗口（1440）和 App 最小窗口（1100×720，导演台区再让出右侧 Agent 面板）各量一次：两样都不许相交。
+  const hudOverlaps = () => page.evaluate(() => {
+    const rect = (testId) => document.querySelector(`[data-testid="${testId}"]`)?.getBoundingClientRect() ?? null
+    const meet = (a, b) => Boolean(a && b) && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+    const hud = rect('director-viewport-hud')
+    const viewSwitch = rect('director-view-mode')
+    const card = rect('director-context-card')
+    return { width: window.innerWidth, ok: Boolean(hud && viewSwitch && card), overSwitch: meet(hud, viewSwitch), overCard: meet(hud, card), hud, viewSwitch, card }
+  })
+  const wide = await hudOverlaps()
+  check('画线提示条不压在「导演 | 精修」切换上', wide.ok && !wide.overSwitch, JSON.stringify(wide))
+  check('画线提示条不钻到属性卡底下', wide.ok && !wide.overCard, JSON.stringify(wide))
+  const fullSize = page.viewportSize()
+  await page.setViewportSize({ width: 1100, height: 720 })
+  await page.waitForFunction(() => window.innerWidth === 1100)
+  const narrow = await hudOverlaps()
+  check('App 最小窗口（1100×720）里提示条照样不压切换、不钻到属性卡底下', narrow.ok && !narrow.overSwitch && !narrow.overCard, JSON.stringify(narrow))
+  await lab.snap('pencil-mode-narrow')
+  await page.setViewportSize(fullSize)
+  await page.waitForFunction((size) => window.innerWidth === size.width && window.innerHeight === size.height, fullSize)
+  // 三维画布在下一帧才按新尺寸改相机比例：等两帧再按投影点去拖，免得落点偏
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
 
   // 从 A 脚下拖到 B 身边（留 0.8m 停在身边而不是撞上）
   await dragGround(lab, [a.position.x + 0.3, a.position.z], [b.position.x - 0.8, b.position.z], 24)

@@ -229,7 +229,7 @@ export function SkillLibraryContent({ host, toolbarHost, className }: SkillLibra
     />
   )
   const importButton = (
-    <WorkbenchIconButton size="sm" icon={<IconUpload size={16} stroke={1.8} />} label={t('libraries.skill.importAria')} onClick={() => fileInputRef.current?.click()} data-skill-import />
+    <WorkbenchIconButton size="sm" icon={<IconUpload />} label={t('libraries.skill.importAria')} onClick={() => fileInputRef.current?.click()} data-skill-import />
   )
   const tools = page ? (
     <>
@@ -255,7 +255,7 @@ export function SkillLibraryContent({ host, toolbarHost, className }: SkillLibra
   ) : (
     <>
       {importButton}
-      <WorkbenchIconButton size="sm" icon={<IconWand size={16} stroke={1.8} />} label={t('libraries.skill.createAria')} onClick={handleNewWithAi} data-skill-new />
+      <WorkbenchIconButton size="sm" icon={<IconWand />} label={t('libraries.skill.createAria')} onClick={handleNewWithAi} data-skill-new />
     </>
   )
 

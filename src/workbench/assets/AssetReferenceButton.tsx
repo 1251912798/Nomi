@@ -1,6 +1,7 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconPointer } from '../../vendor/tablerIcons'
+import { ICON_TIERS } from '../../design'
 import { AssetActionTile } from './AssetTile'
 
 /**
@@ -16,13 +17,13 @@ export default function AssetReferenceButton({ onClick, disabled, title, iconOnl
   const label = t('assetLibrary.addReference')
   if (!iconOnly) return <AssetActionTile data-reference-entry="true" disabled={disabled} onClick={onClick}
     title={title ?? label} aria-label={label}>
-    <IconPointer size={20} stroke={1.6} aria-hidden="true" />
+    <IconPointer size={ICON_TIERS.bar.size} stroke={ICON_TIERS.bar.stroke} aria-hidden="true" />
   </AssetActionTile>
   return <span className="inline-flex shrink-0 items-center gap-1">
     <button type="button" data-reference-entry="true" disabled={disabled} onClick={onClick} title={title ?? label}
       aria-label={label}
       className="grid size-7 shrink-0 place-items-center rounded-nomi-sm text-nomi-ink-80 hover:bg-nomi-ink-05 disabled:cursor-not-allowed disabled:opacity-50">
-      <IconPointer size={16} stroke={2} aria-hidden="true" />
+      <IconPointer size={ICON_TIERS.tool.size} stroke={ICON_TIERS.tool.stroke} aria-hidden="true" />
     </button>
   </span>
 }

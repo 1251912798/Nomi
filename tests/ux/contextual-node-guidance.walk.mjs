@@ -13,6 +13,23 @@ import { stationTimeout } from './_station-budget.mjs'
 const { createWorkspaceProject } = tsxRequire('../../electron/workspace/workspaceRepository.ts', import.meta.url)
 const { GENERATION_NODE_PLUGINS } = tsxRequire('../../src/workbench/generationCanvas/nodes/registry.ts', import.meta.url)
 const { nodeGroupSchema } = tsxRequire('../../src/workbench/generationCanvas/model/generationCanvasSchema.ts', import.meta.url)
+const { ICON_TIERS } = tsxRequire('../../src/design/iconTiers.ts', import.meta.url)
+// 类型图标的档位（拍板板 IconsF1 D3 / D4）：节点窄条（音频条）角标档 13 / 1.8，其余大 / 中空态空态档 24 / 1.5。
+const STRIP_KINDS = new Set(['audio'])
+const markTier = (kind) => (STRIP_KINDS.has(kind) ? ICON_TIERS.corner : ICON_TIERS.empty)
+/** 量**渲染尺寸**（getBoundingClientRect 折回 CSS 像素 + 描边那条 path 的 computed stroke-width），不读 svg 属性。 */
+const renderedMark = (holder) => holder.locator('svg').first().evaluate((svg) => {
+  const disc = svg.parentElement
+  const scale = disc.offsetWidth > 0 ? disc.getBoundingClientRect().width / disc.offsetWidth : 1
+  const rect = svg.getBoundingClientRect()
+  const stroked = svg.querySelector('path:not([stroke="none"])') ?? svg
+  const round = (value) => Math.round(value * 10) / 10
+  return { width: round(rect.width / scale), height: round(rect.height / scale), stroke: round(Number.parseFloat(getComputedStyle(stroked).strokeWidth)) }
+})
+const expectMark = async (holder, kind) => {
+  const tier = markTier(kind)
+  expect(await renderedMark(holder), `${kind} type mark renders at the F1 tier`).toEqual({ width: tier.size, height: tier.size, stroke: tier.stroke })
+}
 const arg = (flag, fallback) => { const i = process.argv.indexOf(flag); return i < 0 ? fallback : process.argv[i + 1] }
 const locale = arg('--locale', 'zh-CN'), scheme = arg('--scheme', 'light')
 const visualOnly = process.argv.includes('--visual-only')
@@ -109,7 +126,7 @@ try {
     await expect(empty(kind)).toHaveAttribute('data-empty-tier', 'icon')
     const box = await empty(kind).locator('svg').boundingBox()
     expect(box?.width, `${kind} type mark has visible geometry`).toBeGreaterThan(0)
-    expect(await empty(kind).locator('svg').evaluate(el => getComputedStyle(el).width)).toBe('24px')
+    await expectMark(empty(kind), kind)
     if (kind === 'text') await expect(node('text').locator('header[aria-label]'), 'empty unselected text card keeps its drag handle header').toBeVisible()
     if (['image', 'video', 'character', 'scene', 'prop', 'keyframe', 'shot', 'output', 'model3d'].includes(kind)) {
       const holder = await empty(kind).boundingBox(), disc = await empty(kind).locator('span[aria-hidden="true"]').boundingBox()
@@ -130,7 +147,7 @@ try {
     await expectAbsent(win.locator('article[data-node-id]:not([data-render-mode="lightweight"])'), { provenBy: fullNodeProbe })
     for (let i = 0; i < kinds.length; i += 1) {
       await expect(empty(`dense-${i}`)).toHaveAttribute('data-empty-tier', 'icon')
-      expect(await empty(`dense-${i}`).locator('svg').evaluate(el => getComputedStyle(el).width)).toBe('24px')
+      await expectMark(empty(`dense-${i}`), kinds[i])
       const bounds = await empty(`dense-${i}`).boundingBox()
       const badge = await empty(`dense-${i}`).locator('span[aria-hidden="true"]').boundingBox()
       expect(badge.y, `${kinds[i]} LOD mark fits the body top`).toBeGreaterThanOrEqual(bounds.y - 0.5)
