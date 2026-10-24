@@ -1,4 +1,5 @@
 export { ActionCard, DesignButton, IconActionButton, WorkbenchButton, WorkbenchIconButton } from './actions'
+export { WORKBENCH_BUTTON_PRIMARY_CLASS } from './tokens'
 export type { ActionCardProps, DesignButtonProps, IconActionButtonProps, WorkbenchButtonProps, WorkbenchIconButtonProps } from './actions'
 export { DecisionBar } from './decisionBar'
 export type { DecisionBarProps } from './decisionBar'

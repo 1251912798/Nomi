@@ -589,6 +589,57 @@ describe('capabilityCore/mcpConfig', () => {
     })
   })
 
+  // R5.5（2026-10-24）：宿主自己的配置位置变量。设了它，宿主只读那个位置——Nomi 写到主目录等于没接上；
+  // 隔离起的走查也正是因为不认它，才读到了真机的 ~/.claude.json。没设就照旧。
+  describe('reads and writes where the host itself looks (CLAUDE_CONFIG_DIR / CODEX_HOME)', () => {
+    function hostVarDir(name: string): string {
+      const dir = path.join(homeDir, 'elsewhere', name)
+      fs.mkdirSync(dir, { recursive: true })
+      fs.writeFileSync(path.join(dir, 'installed-marker'), '1') // 宿主在那个目录里真用过（痕迹要非空）
+      return dir
+    }
+
+    it('Claude Code: install / read / uninstall all go to $CLAUDE_CONFIG_DIR/.claude.json, and ~/.claude.json is never touched', () => {
+      const dir = hostVarDir('claude')
+      vi.stubEnv('CLAUDE_CONFIG_DIR', dir)
+      const target = path.join(dir, '.claude.json')
+      expect(readMcpInfo(0).clients.claude).toMatchObject({ configPath: target, installed: false, appInstalled: true })
+      expect(installMcp('claude').ok).toBe(true)
+      expect(JSON.parse(fs.readFileSync(target, 'utf8')).mcpServers.nomi).toBeTruthy()
+      expect(fs.existsSync(claudeJson())).toBe(false)
+      expect(readMcpInfo(0).clients.claude.installed).toBe(true)
+      uninstallMcp('claude')
+      expect(JSON.parse(fs.readFileSync(target, 'utf8')).mcpServers?.nomi).toBeUndefined()
+      expect(fs.existsSync(claudeJson())).toBe(false)
+    })
+
+    it('Codex: install / read go to $CODEX_HOME/config.toml, and ~/.codex/config.toml is never touched', () => {
+      const dir = hostVarDir('codex')
+      vi.stubEnv('CODEX_HOME', dir)
+      const target = path.join(dir, 'config.toml')
+      expect(installMcp('codex').ok).toBe(true)
+      expect(fs.readFileSync(target, 'utf8')).toContain('[mcp_servers.nomi]')
+      expect(fs.existsSync(path.join(homeDir, '.codex', 'config.toml'))).toBe(false)
+      expect(readMcpInfo(0).clients.codex).toMatchObject({ configPath: target, installed: true })
+    })
+
+    it('a Nomi entry in the default file does not count once the host has moved its config elsewhere', () => {
+      installMcp('claude') // 主目录那份（没设变量时写的）
+      expect(readMcpInfo(0).clients.claude.installed).toBe(true)
+      vi.stubEnv('CLAUDE_CONFIG_DIR', hostVarDir('claude'))
+      expect(readMcpInfo(0).clients.claude.installed).toBe(false) // 宿主现在读的是另一份：如实说没接上
+    })
+
+    it('unset or empty: exactly the old locations', () => {
+      for (const value of [undefined, '']) {
+        vi.stubEnv('CLAUDE_CONFIG_DIR', value)
+        vi.stubEnv('CODEX_HOME', value)
+        expect(readMcpInfo(0).clients.claude.configPath).toBe(claudeJson())
+        expect(readMcpInfo(0).clients.codex.configPath).toBe(path.join(homeDir, '.codex', 'config.toml'))
+      }
+    })
+  })
+
   it('reports a config whose NOMI_SETTINGS_DIR points at a deleted profile as launcher-broken, and repairs it at boot', () => {
     isPackaged = true
     installMcp('claude')

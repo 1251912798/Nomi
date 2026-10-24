@@ -26,7 +26,7 @@ import { compileFfmpegFiltergraph, type FfmpegFiltergraphPlan } from "./ffmpegFi
 import { FfmpegFiltergraphError } from "./ffmpegGraphPrimitives";
 import type { FfmpegTextOverlayInput } from "./ffmpegTextOverlayGraph";
 import { logError } from "../logging/logger";
-import { probeMediaMetadata } from "./mediaProbe";
+import { probeExportAssets } from "./exportAssetProbe";
 import { appendExportTempInputChunk, finishExportTempInput as finishExportTempInputFile, removeExportTempInput } from "./exportTempInput";
 import { ensureProjectFolders, projectDirById, resolveProjectRelativePath } from "../projects/repository";
 import { ensureWorkspaceProjectIdentity } from "../workspace/workspaceProjectIdentity";
@@ -100,13 +100,10 @@ function isCurrentWebmTransitionRendererManifest(value: unknown): value is Recor
 // startExportJob 里**前置**尝试编译 filtergraph 计划（解析本地资产 + ffprobe + 编译）：
 //   成功 → 暂存计划、backend='filtergraph'，renderer 不录 WebM，finishExportTempInput 直接 ffmpeg 渲染源文件。
 //   失败（资产无法本地解析等）→ backend='webm'，renderer 录 canvas WebM 上传，finishExportTempInput 转码。
+//   素材读不出 / ffprobe 不可用**不是**「不适用」：导出直接失败、停在建任务之前（exportAssetProbe.ts），不退 WebM、不当没音轨。
 // 决策提到 startJob 是为了 renderer 能据 backend 决定「要不要录 WebM」——不再「总是先录再可能丢弃」。
 const preparedFiltergraphExports = new Map<string, { manifest: NomiRenderManifestV1; plan: FfmpegFiltergraphPlan }>();
 
-/**
- * renderer 原始 manifest → 可直接喂 ffmpeg 的 filtergraph 计划：
- * 资产 url → 本地绝对路径 + ffprobe(hasAudio/duration)；任一资产无法解析则返回 null（回退 WebM）。
- */
 /** 从 raw manifest 的 textOverlays 把每条字幕 PNG（base64）落成 jobDir 下的临时 PNG，返回 filtergraph overlay 输入。 */
 function writeTextOverlayFiles(rawManifest: unknown, jobDir: string): FfmpegTextOverlayInput[] {
   if (!isPlainRecord(rawManifest) || !Array.isArray(rawManifest.textOverlays)) return [];
@@ -128,6 +125,26 @@ function writeTextOverlayFiles(rawManifest: unknown, jobDir: string): FfmpegText
   return out;
 }
 
+// 探测进行中（建任务之前）的中止口：App 退出时 abortAllActiveExports 一并中止，探测子进程不留孤儿，
+// 这次导出以「取消」收场。不进 activeExportAbortControllers——那张表是「在编码的导出」，后台自动退出等按它数活。
+const preparingExportAbortControllers = new Set<AbortController>();
+
+function profileWithAudio(rawProfile: Record<string, unknown>, anyHasAudio: boolean): NomiRenderManifestV1["profile"] {
+  return {
+    ...(rawProfile as NomiRenderManifestV1["profile"]),
+    audioCodec: anyHasAudio ? ("aac" as const) : ("none" as const),
+    audioMode: anyHasAudio ? ("mixdown" as const) : ("mute" as const),
+    ...(anyHasAudio ? { audioBitrateKbps: 192 } : {}),
+  } satisfies NomiRenderManifestV1["profile"];
+}
+
+/**
+ * renderer 原始 manifest → 可直接喂 ffmpeg 的 filtergraph 计划。顺序是刻意的：
+ *   ① 不适用（不是本地文件、没有轨、fps / 时长不合法…）→ return null，整体回退 WebM（这条回退本 PR 不动）；
+ *   ② 清单结构不合法 → 抛错，不为注定被拒的清单起任何子进程；
+ *   ③ 逐个探测视频 / 音频素材（唯一探测口 probeExportAssets）：任一段读不出 / ffprobe 不可用 → 抛错，导出停在编码之前；
+ *   ④ 编译 filtergraph：失败记 ERROR 后回退 WebM（原样）。
+ */
 async function tryBuildFiltergraphExport(
   rawManifest: unknown,
   projectId: string,
@@ -141,7 +158,6 @@ async function tryBuildFiltergraphExport(
   if (Object.keys(rawAssets).length === 0) return null;
 
   const resolvedAssets: Record<string, NomiRenderManifestV1["assets"][string]> = {};
-  let anyHasAudio = false;
   for (const [assetId, rawAsset] of Object.entries(rawAssets)) {
     if (!isPlainRecord(rawAsset)) return null;
     const kind = rawAsset.kind;
@@ -149,33 +165,12 @@ async function tryBuildFiltergraphExport(
     // 信 URL 自带 projectId(C4):跨项目拖进来的素材也能导出,不再整体回退 WebM。
     const absolutePath = absolutePathFromLocalAssetUrlAnyProject(rawAsset.url);
     if (!absolutePath) return null; // 非本地/无法解析 → 整体回退 WebM
-    const asset: NomiRenderManifestV1["assets"][string] = { id: assetId, kind, absolutePath };
-    if (kind === "video" || kind === "audio") {
-      try {
-        const probe = await probeMediaMetadata(absolutePath);
-        if (probe.hasAudio) {
-          asset.hasAudio = true;
-          anyHasAudio = true;
-        }
-        if (probe.durationSeconds !== undefined) asset.durationSeconds = probe.durationSeconds;
-        if (probe.audioCodec !== undefined) asset.audioCodec = probe.audioCodec;
-      } catch {
-        // 探测失败不致命：按无音频处理
-      }
-    }
-    resolvedAssets[assetId] = asset;
+    resolvedAssets[assetId] = { id: assetId, kind, absolutePath };
   }
 
   const fps = Number(rawTimeline.fps);
   const durationFrames = Number(rawTimeline.durationFrames);
   if (!Number.isFinite(fps) || fps <= 0 || !Number.isFinite(durationFrames) || durationFrames <= 0) return null;
-
-  const profile = {
-    ...(rawProfile as NomiRenderManifestV1["profile"]),
-    audioCodec: anyHasAudio ? ("aac" as const) : ("none" as const),
-    audioMode: anyHasAudio ? ("mixdown" as const) : ("mute" as const),
-    ...(anyHasAudio ? { audioBitrateKbps: 192 } : {}),
-  } satisfies NomiRenderManifestV1["profile"];
 
   const manifest: NomiRenderManifestV1 = {
     version: 1,
@@ -190,10 +185,20 @@ async function tryBuildFiltergraphExport(
         ? { transitions: rawTimeline.transitions as NomiRenderManifestV1["timeline"]["transitions"] }
         : {}),
     },
-    profile,
+    profile: profileWithAudio(rawProfile, false),
     assets: resolvedAssets,
   };
+  assertValidManifest(manifest);
 
+  const preparing = new AbortController();
+  preparingExportAbortControllers.add(preparing);
+  try {
+    const probed = await probeExportAssets(manifest.assets, { signal: preparing.signal });
+    manifest.assets = probed.assets;
+    manifest.profile = profileWithAudio(rawProfile, probed.anyHasAudio);
+  } finally {
+    preparingExportAbortControllers.delete(preparing);
+  }
   assertValidManifest(manifest);
   try {
     const textOverlays = isPlainRecord(rawManifest) && Array.isArray(rawManifest.textOverlays)
@@ -394,7 +399,7 @@ export async function cancelExportJob(projectIdentity: ExportJobProjectIdentity,
  */
 export function abortAllActiveExports(): number {
   let aborted = 0;
-  for (const controller of activeExportAbortControllers.values()) {
+  for (const controller of [...activeExportAbortControllers.values(), ...preparingExportAbortControllers]) {
     try {
       controller.abort();
       aborted += 1;

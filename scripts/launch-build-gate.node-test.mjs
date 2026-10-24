@@ -13,7 +13,7 @@ test('launchNomiApp refuses a missing or stale build before spawning Electron', 
   let stale = false
   try { verifyBuild(repoRoot) } catch { stale = true }
   let spawned = 0
-  t.mock.method(electron, 'launch', async () => { spawned += 1; return { process: () => ({}) } })
+  t.mock.method(electron, 'launch', async () => { spawned += 1; return { process: () => ({}), close: async () => {} } })
   const attempt = launchNomiApp({ name: 'build-gate', waitForWindow: false, allowUntrackedProcessForTest: true })
   if (stale) {
     await assert.rejects(attempt, /构建产物比源码旧（或没有构建），先跑 pnpm run build/)

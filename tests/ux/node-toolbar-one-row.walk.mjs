@@ -20,7 +20,8 @@ const settingsDir = path.join(root, 'settings')
 const projectsDir = path.join(root, 'projects')
 const projectId = 'toolbar-row-walk'
 const projectRoot = path.join(projectsDir, `toolbar-${projectId}`)
-const outDir = path.join(repoRoot, '.node-toolbar-one-row-lab')
+// 截图进被忽略的 tests/ux/shots/：写进仓库根没忽略的目录会让构建戳的源码身份漂移，夜跑后面的走查全被拒跑（run 40035294026）。
+const outDir = path.join(repoRoot, 'tests/ux/shots/node-toolbar-one-row')
 fs.mkdirSync(path.join(projectRoot, '.nomi'), { recursive: true })
 fs.mkdirSync(outDir, { recursive: true })
 

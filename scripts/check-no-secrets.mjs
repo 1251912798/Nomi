@@ -4,10 +4,11 @@
 //
 // 为什么：反馈雷达持续产生微信群消息(raw.json/digest)、取钥产生 db_key(welive.yaml)，
 //   都是高敏感隐私。gitignore 只是被动兜底——`git add -f` 能绕过，且**内容级泄露**（把群消息或
-//   db_key 粘进某个 .md/.ts）它根本挡不住。本扫描器是主动门岗(shift-left)，被 3 处共用：
-//     ① git pre-commit hook（scripts/git-hooks/pre-commit）→ 扫 staged，挡提交那一刻
-//     ② pnpm run gates 的 check:secrets → 扫全仓 tracked，push 前兜底
-//     ③ Claude PreToolUse hook（pre-push-check.sh）→ 挡 AI/定时 agent 手滑
+//   db_key 粘进某个 .md/.ts）它根本挡不住。本扫描器是主动门岗(shift-left)，接在两处：
+//     ① git pre-commit 钩子（scripts/git-hooks.json → scripts/git-hook.mjs）→ 扫 staged，挡提交那一刻
+//     ② gates:contracts 的 check:secrets → 扫全仓 tracked；CI 的 Contracts 每个 PR 都跑，合并前兜底
+//        （2026-10-24 起推送前只跑快检，全仓扫描不在推送前，见 scripts/pre-push-gate-table.mjs 的 CI_ONLY）
+//   另有 Claude PreToolUse hook（secret-guard.sh）拦 `commit --no-verify` / `add -f` 这两条绕过 ① 的路。
 //   对标 gitleaks/git-secrets 的 defense-in-depth，但轻量自包含、只认 Nomi 的敏感物、零依赖。
 //
 // 用法：

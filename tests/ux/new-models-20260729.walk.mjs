@@ -2,18 +2,16 @@
 //   模型名/模式段（Vidu 参考生 · HH1.1 三模式 · Wan 角色参考）/变体段（Vidu 标准|Mix）/参数条/参考槽。
 // 用法: node tests/ux/new-models-20260729.walk.mjs（先 pnpm build，走 dist 产物）
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
-import { realNomiProfile, seedRealCredentials } from './_realProfile.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { screenshotSettled } from './_assert.mjs'
+import { makeTempDir } from '../../scripts/_test-temp.mjs'
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/new-models-20260729')
 fs.mkdirSync(shotsDir, { recursive: true })
 
-const base = '/tmp/nomi-new-models-20260729'
+const base = makeTempDir('nomi-new-models-20260729-')
 const settingsDir = path.join(base, 'settings'); const projectsDir = path.join(base, 'projects')
-fs.rmSync(base, { recursive: true, force: true }); fs.mkdirSync(settingsDir, { recursive: true }); fs.mkdirSync(projectsDir, { recursive: true })
-// 目录 + 凭据钥匙（Windows 的 Local State）一起进隔离副本；本走查 userData 与 settings 同目录。
-if (fs.existsSync(realNomiProfile().catalogPath)) seedRealCredentials({ settingsDir, userDataDir: settingsDir })
+fs.mkdirSync(settingsDir, { recursive: true }); fs.mkdirSync(projectsDir, { recursive: true })
 
 const mk = (id, kind, x, y, meta) => ({ id, kind, title: id, position: { x, y }, size: { width: 340, height: 270 }, prompt: '镜头', references: [], history: [], status: 'idle', categoryId: 'shots', shotIndex: 1, renderKind: 'shot-frame', meta })
 const nodes = [
@@ -26,11 +24,14 @@ const nodes = [
 const projectId = 'new-models-0001'
 const projDir = path.join(projectsDir, `new-models-${projectId}`)
 fs.mkdirSync(path.join(projDir, '.nomi'), { recursive: true })
-const tmpl = JSON.parse(fs.readFileSync('/Users/aoqimin/Documents/Nomi Projects/未命名项目 06_18 11_56-mqiyx4om-5e071915/.nomi/project.json', 'utf8'))
-tmpl.id = projectId; tmpl.name = '新模型走查'; tmpl.lastKnownRootPath = projDir
-tmpl.payload.generationCanvas = { nodes, edges: [], selectedNodeIds: [], groups: [] }
-fs.writeFileSync(path.join(projDir, 'project.json'), JSON.stringify(tmpl))
-fs.writeFileSync(path.join(projDir, '.nomi', 'project.json'), JSON.stringify(tmpl))
+// 项目夹具当场造（hydrate 只读 payload，见 fixtures/journey-project-fixture.mjs 头注释）。
+// 以前拿作者本机「文稿/Nomi Projects」里的一个真实项目当模板，别的机器（含夜跑）ENOENT，本机则读到用户真实资料。
+const generationCanvas = { nodes, edges: [], selectedNodeIds: [], groups: [] }
+const project = { id: projectId, name: '新模型走查', version: 2, createdAt: 1, updatedAt: 1, savedAt: 1, revision: 1, lastKnownRootPath: projDir,
+  workbenchDocument: null, timeline: null, generationCanvas,
+  payload: { workbenchDocument: null, timeline: null, generationCanvas, storyboardPlan: null, storyboardPlanCommitted: false } }
+fs.writeFileSync(path.join(projDir, 'project.json'), JSON.stringify(project))
+fs.writeFileSync(path.join(projDir, '.nomi', 'project.json'), JSON.stringify(project))
 
 let n = 0
 const snap = async (win, name) => { n += 1; await screenshotSettled(win, { path: path.join(shotsDir, `${String(n).padStart(2,'0')}-${name}.png`) }); console.log(`  · shot ${name}`) }

@@ -1,0 +1,524 @@
+{
+  "walksRan": "2026-10-24 11:48–12:02（本机时间），每趟起 App 前看 1 分钟负载",
+  "assembledAt": "2026-10-24T04:03:30.230Z",
+  "build": "分支 fix/custom-relay-wire-model 的 9421ff0d0 上 pnpm run build（dist-electron/build-stamp.json 源码身份 tree de7f46298a18）",
+  "how": "真 App（pnpm run build 产物，Electron）；隔离资料目录；网络闸 scripts/walkthrough-network-guard.cjs 只放行本机；上游是本机 loopback 假中转（127.0.0.1:47894）；素材中转钉到同一个本机端口（NOMI_ASSET_RELAY_URL）；窗口在屏幕外；用户动作：节点上选模型 → 写提示词 → 点「生成素材」。",
+  "catalog": "盘上旧映射夹具：用设置里「接入」同一批生产函数（register → stage → 内置说明卡 → promote，authType none，无密钥）造自建中转 Loopback Relay（seedance-2 视频、gpt-image-2 图片），映射的 model 读 {{request.params.model}}、没有 wireModel 声明（0.23.x 存量形状；与今天新接的落库形状逐字相同），不迁移。",
+  "baselineOnMain": "origin/main 9b47ae023 同法实测（V-relay-wire §1.1）：文生图出站 gpt-image-2-text-to-image、改图 gpt-image-2-image-to-image、seedance-2 节点有「变体 标准 / 快速 / Mini」，点「快速」出站 bytedance/seedance-2-fast。",
+  "runs": [
+    {
+      "locale": "zh-CN",
+      "htmlLang": "zh-CN",
+      "kind": "image",
+      "relayNode": {
+        "picked": "gpt-image-2Loopback Relay · 未试跑",
+        "modelOptions": [
+          "gpt-image-2Loopback Relay · 未试跑",
+          "即梦图片（会员）即梦"
+        ],
+        "variantControlCount": 0
+      },
+      "generate": [
+        {
+          "scenario": "canvas t2i · relay gpt-image-2",
+          "configured": "gpt-image-2",
+          "consentDialog": null,
+          "outbound": {
+            "method": "POST",
+            "path": "/v1/images/generations",
+            "contentType": "application/json",
+            "model": "gpt-image-2",
+            "body": {
+              "model": "gpt-image-2",
+              "prompt": "a red paper crane on a wooden desk",
+              "n": 1,
+              "response_format": "url"
+            }
+          },
+          "outboundModelEqualsConfigured": true
+        }
+      ],
+      "requestsAfterGenerate": [
+        {
+          "method": "POST",
+          "path": "/v1/images/generations",
+          "model": "gpt-image-2"
+        }
+      ],
+      "storedRelayMappingsAfterRun": [
+        {
+          "taskKind": "image_edit",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_image",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "image_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        }
+      ],
+      "netGuard": {
+        "loaded": true,
+        "blocked": 11,
+        "blockedHosts": [
+          "raw.githubusercontent.com"
+        ]
+      },
+      "screenshotsInThisFolder": []
+    },
+    {
+      "locale": "zh-CN",
+      "htmlLang": "zh-CN",
+      "kind": "edit",
+      "relayNode": {
+        "picked": "gpt-image-2Loopback Relay · 未试跑",
+        "modelOptions": [
+          "gpt-image-2Loopback Relay · 未试跑",
+          "即梦图片（会员）即梦"
+        ],
+        "modeLabels": [
+          "文生图",
+          "图生图"
+        ],
+        "variantControlCount": 0
+      },
+      "generate": [
+        {
+          "scenario": "canvas i2i (reference image) · relay gpt-image-2",
+          "configured": "gpt-image-2",
+          "consentDialog": "开始生成 将生成 1 张画面 · 预计约 1–3 分钟 这次要用到参考图，需先上传到公共临时托管——素材会离开本机，链接短期有效，并存在隐私风险。可以在设置里换上传通道。 记住我的选择，以后不再问 取消 生成",
+          "outbound": {
+            "method": "POST",
+            "path": "/v1/images/edits",
+            "contentType": "multipart/form-data",
+            "model": "gpt-image-2",
+            "fields": {
+              "model": "gpt-image-2",
+              "prompt": "keep the layout, make the crane red",
+              "n": "1",
+              "response_format": "url"
+            },
+            "files": [
+              {
+                "field": "image[]",
+                "bytes": 102712
+              }
+            ]
+          },
+          "outboundModelEqualsConfigured": true
+        }
+      ],
+      "requestsAfterGenerate": [
+        {
+          "method": "POST",
+          "path": "/v1/images/edits",
+          "model": "gpt-image-2"
+        }
+      ],
+      "storedRelayMappingsAfterRun": [
+        {
+          "taskKind": "image_edit",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_image",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "image_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        }
+      ],
+      "netGuard": {
+        "loaded": true,
+        "blocked": 11,
+        "blockedHosts": [
+          "raw.githubusercontent.com"
+        ]
+      },
+      "screenshotsInThisFolder": [
+        "zh-edit-after-generate.png"
+      ]
+    },
+    {
+      "locale": "zh-CN",
+      "htmlLang": "zh-CN",
+      "kind": "video",
+      "relayNode": {
+        "picked": "seedance-2Loopback Relay · 未试跑",
+        "modelOptions": [
+          "seedance-2Loopback Relay · 未试跑",
+          "即梦 Seedance（会员）即梦"
+        ],
+        "variantControlCount": 0
+      },
+      "generate": [
+        {
+          "scenario": "canvas video t2v · relay seedance-2",
+          "configured": "seedance-2",
+          "consentDialog": null,
+          "outbound": {
+            "method": "POST",
+            "path": "/v1/video/generations",
+            "contentType": "application/json",
+            "model": "seedance-2",
+            "body": {
+              "model": "seedance-2",
+              "prompt": "a red paper crane on a wooden desk",
+              "duration": 5,
+              "size": "1024x576"
+            }
+          },
+          "outboundModelEqualsConfigured": true
+        }
+      ],
+      "requestsAfterGenerate": [
+        {
+          "method": "POST",
+          "path": "/v1/video/generations",
+          "model": "seedance-2"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/video/generations/irw-video-task"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/video/generations/irw-video-task"
+        }
+      ],
+      "storedRelayMappingsAfterRun": [
+        {
+          "taskKind": "image_edit",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_image",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "image_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        }
+      ],
+      "netGuard": {
+        "loaded": true,
+        "blocked": 11,
+        "blockedHosts": [
+          "raw.githubusercontent.com"
+        ]
+      },
+      "screenshotsInThisFolder": [
+        "zh-video-relay-seedance2-composer.png",
+        "zh-video-relay-seedance2-node.png"
+      ]
+    },
+    {
+      "locale": "en",
+      "htmlLang": "en",
+      "kind": "image",
+      "relayNode": {
+        "picked": "gpt-image-2Loopback Relay · not tried yet",
+        "modelOptions": [
+          "gpt-image-2Loopback Relay · not tried yet",
+          "Dreamina Image (membership)Dreamina"
+        ],
+        "variantControlCount": 0
+      },
+      "generate": [
+        {
+          "scenario": "canvas t2i · relay gpt-image-2",
+          "configured": "gpt-image-2",
+          "consentDialog": null,
+          "outbound": {
+            "method": "POST",
+            "path": "/v1/images/generations",
+            "contentType": "application/json",
+            "model": "gpt-image-2",
+            "body": {
+              "model": "gpt-image-2",
+              "prompt": "a red paper crane on a wooden desk",
+              "n": 1,
+              "response_format": "url"
+            }
+          },
+          "outboundModelEqualsConfigured": true
+        }
+      ],
+      "requestsAfterGenerate": [
+        {
+          "method": "POST",
+          "path": "/v1/images/generations",
+          "model": "gpt-image-2"
+        }
+      ],
+      "storedRelayMappingsAfterRun": [
+        {
+          "taskKind": "image_edit",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_image",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "image_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        }
+      ],
+      "netGuard": {
+        "loaded": true,
+        "blocked": 11,
+        "blockedHosts": [
+          "raw.githubusercontent.com"
+        ]
+      },
+      "screenshotsInThisFolder": []
+    },
+    {
+      "locale": "en",
+      "htmlLang": "en",
+      "kind": "edit",
+      "relayNode": {
+        "picked": "gpt-image-2Loopback Relay · not tried yet",
+        "modelOptions": [
+          "gpt-image-2Loopback Relay · not tried yet",
+          "Dreamina Image (membership)Dreamina"
+        ],
+        "modeLabels": [
+          "Text-to-image",
+          "Image-to-image"
+        ],
+        "variantControlCount": 0
+      },
+      "generate": [
+        {
+          "scenario": "canvas i2i (reference image) · relay gpt-image-2",
+          "configured": "gpt-image-2",
+          "consentDialog": "Start generation Will generate 1 image · About 1–3 min This generation uses a reference image, so it must first be uploaded to a public temporary host—the asset leaves this computer, the link is short-lived, and there is a privacy risk. You can change the upload channel in Settings. Remember my choice and do not ask again Cancel Generate",
+          "outbound": {
+            "method": "POST",
+            "path": "/v1/images/edits",
+            "contentType": "multipart/form-data",
+            "model": "gpt-image-2",
+            "fields": {
+              "model": "gpt-image-2",
+              "prompt": "keep the layout, make the crane red",
+              "n": "1",
+              "response_format": "url"
+            },
+            "files": [
+              {
+                "field": "image[]",
+                "bytes": 102712
+              }
+            ]
+          },
+          "outboundModelEqualsConfigured": true
+        }
+      ],
+      "requestsAfterGenerate": [
+        {
+          "method": "POST",
+          "path": "/v1/images/edits",
+          "model": "gpt-image-2"
+        }
+      ],
+      "storedRelayMappingsAfterRun": [
+        {
+          "taskKind": "image_edit",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_image",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "image_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        }
+      ],
+      "netGuard": {
+        "loaded": true,
+        "blocked": 11,
+        "blockedHosts": [
+          "raw.githubusercontent.com"
+        ]
+      },
+      "screenshotsInThisFolder": [
+        "en-edit-after-generate.png"
+      ]
+    },
+    {
+      "locale": "en",
+      "htmlLang": "en",
+      "kind": "video",
+      "relayNode": {
+        "picked": "seedance-2Loopback Relay · not tried yet",
+        "modelOptions": [
+          "seedance-2Loopback Relay · not tried yet",
+          "Dreamina Seedance (membership)Dreamina"
+        ],
+        "variantControlCount": 0
+      },
+      "generate": [
+        {
+          "scenario": "canvas video t2v · relay seedance-2",
+          "configured": "seedance-2",
+          "consentDialog": null,
+          "outbound": {
+            "method": "POST",
+            "path": "/v1/video/generations",
+            "contentType": "application/json",
+            "model": "seedance-2",
+            "body": {
+              "model": "seedance-2",
+              "prompt": "a red paper crane on a wooden desk",
+              "duration": 5,
+              "size": "1024x576"
+            }
+          },
+          "outboundModelEqualsConfigured": true
+        }
+      ],
+      "requestsAfterGenerate": [
+        {
+          "method": "POST",
+          "path": "/v1/video/generations",
+          "model": "seedance-2"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/video/generations/irw-video-task"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/video/generations/irw-video-task"
+        }
+      ],
+      "storedRelayMappingsAfterRun": [
+        {
+          "taskKind": "image_edit",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_image",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "image_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        },
+        {
+          "taskKind": "text_to_video",
+          "wireModel": null,
+          "modelTemplates": [
+            "{{request.params.model}}"
+          ]
+        }
+      ],
+      "netGuard": {
+        "loaded": true,
+        "blocked": 11,
+        "blockedHosts": [
+          "raw.githubusercontent.com"
+        ]
+      },
+      "screenshotsInThisFolder": [
+        "en-video-relay-seedance2-composer.png",
+        "en-video-relay-seedance2-node.png"
+      ]
+    }
+  ]
+}

@@ -229,7 +229,9 @@ const UNDECLARED_SCALAR_BODY_KEYS: Readonly<Record<string, string>> = {
 
 /** 声明过的非参考参数键（来源见上）。 */
 function declaredScalarKeys(): Set<string> {
-  const keys = new Set<string>(Object.keys(taskTemplateParams({ extras: {} })))
+  // 探针照真实调用带一个连接身份（画布 / headless / 自定义调用 / 音频都带着连接进来）：线上 model 由唯一 owner
+  // resolveWireModel 在 taskTemplateParams 最后一步写入，是标量；不带身份的探针拿不到这个键，会把它错归成参考键。
+  const keys = new Set<string>(Object.keys(taskTemplateParams({ extras: {} }, { vendorKey: 'census', modelKey: 'census' })))
   for (const archetype of MODEL_ARCHETYPES) {
     for (const mode of archetype.modes) {
       for (const param of mode.params ?? []) keys.add(param.key)

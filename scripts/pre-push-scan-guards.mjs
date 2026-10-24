@@ -46,8 +46,10 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'scripts/check-network-entry.test.mjs', roots: ELECTRON }, // #1142：Node 网络调用必须走共用传输；扫描器 scripts/check-network-entry.mjs 在闭包里（6 秒）
   { file: 'src/vendor/tablerIcons.test.ts', roots: ['src'] }, // 2026-10-18：源码用到的 tabler 图标必须在 src/vendor/tablerIcons.ts 登记（否则只有 build 会炸；遍历 src，<1 秒）
   { file: 'electron/shared/mcpClientRegistry.test.ts', roots: ['src', 'electron'] }, // #1142：不许手抄客户端清单（4 秒）
+  { file: 'electron/shared/contracts/ipcInvokeFailure.test.ts', roots: ['electron', 'src'] }, // 2026-10-24：全仓代码里写下的错误类名都要过 isCodeClassName（遍历 electron + src，<1 秒）
   { file: 'electron/capabilityCore/spendDoorSingleOwner.test.ts', roots: ELECTRON }, // 5 秒
   { file: 'electron/capabilityCore/mcpMigrationEntry.test.ts', roots: ['src', 'electron'] }, // #1142 合入后新增：MCP 宿主迁移入口只有登记的调用点（3 秒）
+  { file: 'electron/catalog/customRelayWireModel.test.ts', roots: ELECTRON }, // 自定义中转站线上模型名只有一个出口：遍历 electron 生产文件（12 秒）
   { file: 'electron/catalog/modelListReconcile.test.ts', roots: ELECTRON }, // 3 秒
   { file: 'electron/catalog/storedApiKeyReaders.test.ts', roots: ELECTRON }, // 3 秒
   { file: 'electron/catalog/vendorAuthSpecReadPaths.test.ts', roots: ELECTRON }, // 5 秒
@@ -58,6 +60,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'electron/update/installGate.structure.test.ts', roots: ELECTRON }, // 2 秒
   { file: 'electron/durability.test.ts', roots: ['electron', 'src', 'scripts', 'tests'] }, // 只有测试 harness 能翻成 ephemeral：四个根目录都扫（9 秒）
   { file: 'electron/providerAdapter/architecture.test.ts', roots: ['electron/providerAdapter'] }, // 2 秒
+  { file: 'electron/export/exportAssetProbe.test.ts', roots: ['electron/export'] }, // 2026-10-24：导出目录里只有 exportAssetProbe.ts 调 ffprobe（probeMediaMetadata / probeMediaBytes）；只遍历 electron/export 一层（<1 秒）
   { file: 'electron/capabilityCore/projectAgentProposalReceiptStore.test.ts', roots: ['electron/capabilityCore/__fixtures__/published-receipts'], exts: '*' }, // 回放已发布收据夹具目录（2 秒）
   { file: 'tests/ux/model-access-journeys/inventory.test.mjs', roots: ['electron/shared/modelArchetypes'] }, // 模型接入生产清单（2 秒）
   { file: 'electron/skills/builtinSkills.test.ts', roots: ['skills'], exts: '*', files: ['package.json'] }, // 4 秒

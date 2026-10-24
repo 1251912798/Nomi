@@ -11,6 +11,8 @@ import { describe, expect, test } from 'vitest'
 import {
   buildNomiLaunchEnv,
   cleanupTempRoot,
+  closeElectronWithin,
+  descendantPids,
   configureSyntheticCredentialStorage,
   currentCatalogVersion,
   diagnoseLaunchFailure,
@@ -26,7 +28,12 @@ import {
   withLinuxNoSandbox,
   withLinuxSyntheticCredentialStorage,
   withPackagedPlaywrightOrigin,
+  seedSavedFixtureCredentials,
+  isolatedHostConfigLeaks,
+  prepareHostConfigDir,
+  withIsolatedHostConfig,
 } from './_launchApp.mjs'
+import { MCP_CLIENT_HOST_ENV_VARS, mcpClientLocations, mcpClientPlatform, resolveMcpClientPath } from '../../electron/shared/mcpClientRegistry.ts'
 
 describe('shared Electron temp-root lifecycle', () => {
   test('cleanup is idempotent for explicit and generated roots', () => {
@@ -39,7 +46,8 @@ describe('shared Electron temp-root lifecycle', () => {
   })
 })
 
-const dirs = { userDataDir: '/tmp/case/user-data', settingsDir: '/tmp/case/settings', projectsDir: '/tmp/case/projects' }
+const dirs = { userDataDir: '/tmp/case/user-data', settingsDir: '/tmp/case/settings', projectsDir: '/tmp/case/projects', hostConfigDir: '/tmp/case/host-config' }
+const hostVarsUnder = (root) => Object.fromEntries(MCP_CLIENT_HOST_ENV_VARS.map((name) => [name, path.join(root, name)]))
 
 describe('initial local storage fixture', () => {
   test('seeds missing preferences while preserving explicit values and excluding subframes', () => {
@@ -180,6 +188,8 @@ describe('buildNomiLaunchEnv', () => {
       NOMI_ELECTRON_USER_DATA_DIR: dirs.userDataDir,
       NOMI_SETTINGS_DIR: dirs.settingsDir,
       NOMI_PROJECTS_DIR: dirs.projectsDir,
+      // 宿主自己的配置位置变量（CLAUDE_CONFIG_DIR / CODEX_HOME，名单在注册表）也指进隔离目录。
+      ...hostVarsUnder(dirs.hostConfigDir),
     })
   })
 
@@ -201,10 +211,169 @@ describe('buildNomiLaunchEnv', () => {
     expect(env.PATH).toBe('/usr/bin')
   })
 
+  test('假凭据（syntheticCredentialStorage: true）默认关在本机：产品测试网闸打开，走查要放行只能显式覆盖', () => {
+    // 夜跑 run 40035294026：占位 key 保存时被产品的免费验证发到真供应商，401 →「密钥验证失败」，四条走查当场红。
+    expect(buildNomiLaunchEnv({ ...dirs, baseEnv: {}, fixtureCredentials: true }).NOMI_TEST_NETWORK_GUARD).toBe('1')
+    expect(buildNomiLaunchEnv({ ...dirs, baseEnv: {} }).NOMI_TEST_NETWORK_GUARD).toBeUndefined()
+    expect(buildNomiLaunchEnv({ ...dirs, baseEnv: {}, fixtureCredentials: true, extraEnv: { NOMI_TEST_NETWORK_GUARD: '' } }).NOMI_TEST_NETWORK_GUARD).toBe('')
+  })
+
+  test('启动器把显式的 syntheticCredentialStorage: true（且只有它）接成假凭据', () => {
+    const source = fs.readFileSync(path.join(repoRoot, 'tests/ux/_launchApp.mjs'), 'utf8')
+    expect(source).toMatch(/buildNomiLaunchEnv\(\{[^}]*fixtureCredentials: options\.syntheticCredentialStorage === true/)
+  })
+
+  test('seedSavedFixtureCredentials 只给显式的隔离假凭据用，且两次起 App 必须同一组目录，否则当场拒绝', async () => {
+    const root = makeTempDir('nomi-seed-guard-')
+    const dirs = { settingsDir: path.join(root, 'settings'), userDataDir: path.join(root, 'user-data') }
+    await expect(seedSavedFixtureCredentials(dirs, ['apimart'])).rejects.toThrow(/syntheticCredentialStorage: true/)
+    await expect(seedSavedFixtureCredentials({ syntheticCredentialStorage: true, settingsDir: dirs.settingsDir }, ['apimart'])).rejects.toThrow(/userDataDir/)
+  })
+
   test('隔离能力核目录也随 env 传入且不与 settings 混用', () => {
     const env = buildNomiLaunchEnv({ ...dirs, capabilityDir: '/tmp/case/capability', baseEnv: {} })
     expect(env.NOMI_CAPABILITY_DIR).toBe('/tmp/case/capability')
     expect(env.NOMI_SETTINGS_DIR).toBe(dirs.settingsDir)
+  })
+})
+
+// 2026-10-24：隔离起的 App 显示「Claude Code 的配置里已有 Nomi」——读到了本机真实的 ~/.claude.json。
+// 门岗：隔离起 App 时，宿主配置路径解析进用户真实的宿主位置（主目录默认位置，或用户自己的 CLAUDE_CONFIG_DIR / CODEX_HOME）就判红。
+// 判据按注册表逐条来（electron/shared/mcpClientRegistry.ts），新加一个带位置变量的宿主不用改这里。
+describe('宿主配置隔离：隔离起的 App 读写不到用户真实的 Claude Code / Codex 配置', () => {
+  const platform = mcpClientPlatform(process.platform)
+  const realHome = '/Users/real-person'
+  const developerShell = { HOME: realHome, USERPROFILE: realHome, CLAUDE_CONFIG_DIR: `${realHome}/.claude-work`, CODEX_HOME: `${realHome}/.codex-alt` }
+  const appHome = (env) => (platform === 'win32' ? env.USERPROFILE : env.HOME) || realHome
+  const inside = (root, target) => { const rel = path.relative(root, target); return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel) }
+  const resolvedFor = (env) => mcpClientLocations()
+    .filter((entry) => entry.platform === platform && entry.location.hostEnv)
+    .map(({ client, location }) => ({ client, path: resolveMcpClientPath(location, { platform, env, homedir: appHome(env), join: path.join }) }))
+
+  test('每个宿主位置变量都指进 hostConfigDir，带变量的宿主路径一条不剩地落在隔离目录里（开发者 shell 里继承的值被换掉）', () => {
+    const env = buildNomiLaunchEnv({ ...dirs, baseEnv: developerShell })
+    expect(MCP_CLIENT_HOST_ENV_VARS.length).toBeGreaterThan(0)
+    for (const name of MCP_CLIENT_HOST_ENV_VARS) expect(env[name], name).toBe(path.join(dirs.hostConfigDir, name))
+    const resolved = resolvedFor(env)
+    expect(resolved.length).toBeGreaterThan(0)
+    for (const entry of resolved) expect(inside(dirs.hostConfigDir, entry.path), `${entry.client} → ${entry.path}`).toBe(true)
+  })
+
+  test('调用方换了主目录（假 HOME 里摆好了 ~/.claude.json）：继承来的宿主变量一律摘掉，宿主默认位置落在假主目录下', () => {
+    const fakeHome = '/tmp/case/fake-home'
+    const env = buildNomiLaunchEnv({ ...dirs, baseEnv: developerShell, extraEnv: { HOME: fakeHome, USERPROFILE: fakeHome } })
+    for (const name of MCP_CLIENT_HOST_ENV_VARS) expect(Object.hasOwn(env, name), name).toBe(false)
+    for (const entry of resolvedFor(env)) expect(inside(fakeHome, entry.path), `${entry.client} → ${entry.path}`).toBe(true)
+    expect(isolatedHostConfigLeaks(env, { baseEnv: developerShell, accountHome: realHome }).leaks).toEqual([])
+  })
+
+  test('调用方自己给的宿主变量照用；指回用户真实的宿主位置就当场拒（App 起不来，而不是去读真配置）', () => {
+    const own = '/tmp/case/own-claude'
+    expect(buildNomiLaunchEnv({ ...dirs, baseEnv: developerShell, extraEnv: { CLAUDE_CONFIG_DIR: own } }).CLAUDE_CONFIG_DIR).toBe(own)
+    expect(() => buildNomiLaunchEnv({ ...dirs, baseEnv: developerShell, extraEnv: { CLAUDE_CONFIG_DIR: developerShell.CLAUDE_CONFIG_DIR } })).toThrow(/真实的宿主配置/)
+    expect(() => buildNomiLaunchEnv({ ...dirs, baseEnv: developerShell, extraEnv: { CODEX_HOME: `${realHome}/.codex` } })).toThrow(/codex/)
+    // 主目录里的默认位置同样是真配置（用户自己没设变量的那一份）。
+    expect(() => buildNomiLaunchEnv({ ...dirs, baseEnv: { HOME: realHome, USERPROFILE: realHome }, extraEnv: { CLAUDE_CONFIG_DIR: `${realHome}/.claude` } })).toThrow(/claude/)
+  })
+
+  test('门岗本身：宿主变量没换掉（=没隔离），按注册表逐条核出来的就是漏口', () => {
+    const notIsolated = { ...developerShell, NOMI_E2E: '1' }
+    const { leaks } = isolatedHostConfigLeaks(notIsolated, { baseEnv: developerShell, accountHome: realHome })
+    expect(leaks.length).toBe(resolvedFor(notIsolated).length)
+    expect([...new Set(leaks.map((leak) => leak.client))].sort()).toEqual([...new Set(resolvedFor(notIsolated).map((entry) => entry.client))].sort())
+    expect(() => withIsolatedHostConfig(developerShell, { hostConfigDir: dirs.hostConfigDir, baseEnv: developerShell })).not.toThrow()
+  })
+
+  test('只给了 Nomi 自己的隔离目录、没给 hostConfigDir：当场拒，不让 App 带着真宿主配置起来', () => {
+    expect(() => buildNomiLaunchEnv({ ...dirs, hostConfigDir: undefined, baseEnv: {} })).toThrow(/hostConfigDir/)
+  })
+
+  test('isolate:false（真实 profile，ui-driver / --real-connect 的既定设计）不动宿主变量', () => {
+    const env = buildNomiLaunchEnv({ userDataDir: null, settingsDir: null, projectsDir: null, capabilityDir: null, hostConfigDir: null, baseEnv: developerShell })
+    for (const name of MCP_CLIENT_HOST_ENV_VARS) expect(env[name], name).toBe(developerShell[name])
+  })
+
+  test('launchNomiApp 把 hostConfigDir 接进同一个 env 构造，并在起 App 前把目录建好（Codex 要求 CODEX_HOME 已存在）', () => {
+    const launcher = fs.readFileSync(path.join(repoRoot, 'tests/ux/_launchApp.mjs'), 'utf8')
+    expect(launcher).toMatch(/buildNomiLaunchEnv\(\{[^}]*hostConfigDir[^}]*\}\)/)
+    expect(launcher).toMatch(/if \(isolate\) prepareHostConfigDir\(hostConfigDir, extraEnv\)/)
+    const root = makeTempDir('nomi-host-config-')
+    try {
+      const made = prepareHostConfigDir(root)
+      expect(made).toEqual(MCP_CLIENT_HOST_ENV_VARS.map((name) => path.join(root, name)))
+      for (const dir of made) expect(fs.statSync(dir).isDirectory()).toBe(true)
+      expect(prepareHostConfigDir(root, { HOME: path.join(root, 'fake-home') })).toEqual([])
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('现在挡不住的（只认主目录、没有位置变量的宿主），名单钉死：要挡它得产品侧隔离实例不读真主目录（交协调拍板）', () => {
+    const env = buildNomiLaunchEnv({ ...dirs, baseEnv: { HOME: realHome, USERPROFILE: realHome } })
+    const { leaks, residual } = isolatedHostConfigLeaks(env, { baseEnv: { HOME: realHome, USERPROFILE: realHome }, accountHome: realHome })
+    expect(leaks).toEqual([])
+    const fixedOnly = [...new Set(mcpClientLocations().filter((entry) => entry.platform === platform && !entry.location.hostEnv).map((entry) => entry.client))].sort()
+    expect(residual).toEqual(fixedOnly)
+    expect(residual).toEqual(platform === 'linux' ? ['cursor', 'workbuddy'] : ['claude-desktop', 'cursor', 'workbuddy'])
+  })
+})
+
+describe('closeElectronWithin', () => {
+  const alive = (pid) => { try { process.kill(pid, 0); return true } catch { return false } }
+
+  test('descendantPids：按 ps 的父子关系收整棵子孙树', () => {
+    const ps = () => ['  10     1', '  11    10', '  12    11', '  13    10', '  20     1', ''].join('\n')
+    expect(descendantPids(10, ps).sort()).toEqual([11, 12, 13])
+    expect(descendantPids(20, ps)).toEqual([])
+  })
+
+  test('优雅关闭到上限没结束：杀掉关之前拍下的整棵树、放掉管道（Linux 上帮手进程攥着管道的最小复现）', async () => {
+    // 主进程忽略 SIGTERM 且常驻；孙进程继承它的 stdout / stderr——Electron 的帮手进程就是这样让 Playwright 的 close 永远等不到管道关。
+    const grandchild = 'process.on("SIGTERM", () => {}); process.stdout.write("grandchild-ready\\n"); setInterval(() => {}, 1000)'
+    const script = `process.on('SIGTERM', () => {}); require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(grandchild)}], { stdio: 'inherit' }); setInterval(() => {}, 1000)`
+    const child = spawn(process.execPath, ['-e', script], { stdio: ['pipe', 'pipe', 'pipe'] })
+    await new Promise((resolve) => { let seen = ''; child.stdout.on('data', (chunk) => { seen += chunk; if (seen.includes('grandchild-ready')) resolve() }) })
+    const tree = descendantPids(child.pid)
+    expect(tree.length).toBeGreaterThan(0)
+    // 关闭永远不回（new Promise(() => {})）：closeElectronWithin 照样返回，上限就生效了；挂住的话这条测试自己超时变红。
+    // 不量墙钟（check:test-waits 的 wallclock-budget-assertion：判据要和机器快慢无关）。
+    await closeElectronWithin({ process: () => child }, () => new Promise(() => {}), 300)
+    await expect.poll(() => [child.pid, ...tree].filter(alive).length, { timeout: 5000 }).toBe(0)
+    expect(child.stdout.destroyed && child.stderr.destroyed).toBe(true)
+  })
+
+  test('攥着管道的进程已经不在树里（被过继走了）：照样把管道放掉，走查进程不被它拖住', async () => {
+    // 中间进程起一个继承了 stdout / stderr 的常驻进程后立刻退出 → 常驻进程被过继给 init，按父子关系找不到它了。
+    const holder = 'process.on("SIGTERM", () => {}); process.stdout.write("holder-ready " + process.pid + "\\n"); setInterval(() => {}, 1000)'
+    const middle = `require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(holder)}], { stdio: 'inherit', detached: true }).unref()`
+    const script = `process.on('SIGTERM', () => {}); require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(middle)}], { stdio: 'inherit' }); setInterval(() => {}, 1000)`
+    const child = spawn(process.execPath, ['-e', script], { stdio: ['pipe', 'pipe', 'pipe'] })
+    const holderPid = await new Promise((resolve) => { let seen = ''; child.stdout.on('data', (chunk) => { seen += chunk; const m = /holder-ready (\d+)/.exec(seen); if (m) resolve(Number(m[1])) }) })
+    try {
+      await expect.poll(() => descendantPids(child.pid).includes(holderPid), { timeout: 5000 }).toBe(false)
+      await closeElectronWithin({ process: () => child }, () => new Promise(() => {}), 300)
+      expect(alive(child.pid)).toBe(false)
+      expect(child.stdout.destroyed && child.stderr.destroyed).toBe(true)
+    } finally {
+      try { process.kill(holderPid, 'SIGKILL') } catch { /* 已经没了 */ }
+    }
+  })
+
+  test('已经关过的 app 再关一次（process() 会抛）：不抛、照样走 close——走查先 app.close() 再 close() 是常见写法', async () => {
+    let closes = 0
+    const closedApp = { process: () => { throw new TypeError("Cannot read properties of undefined (reading '_object')") } }
+    await expect(closeElectronWithin(closedApp, async () => { closes += 1 }, 300)).resolves.toBeUndefined()
+    expect(closes).toBe(1)
+  })
+
+  test('优雅关闭在上限内结束：什么都不杀', async () => {
+    const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' })
+    try {
+      await closeElectronWithin({ process: () => child }, async () => undefined, 300)
+      expect(alive(child.pid)).toBe(true)
+    } finally {
+      child.kill('SIGKILL')
+    }
   })
 })
 

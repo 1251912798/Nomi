@@ -28,6 +28,10 @@
       "symbol": "assertState"
     },
     {
+      "path": "tests/ux/design-lab-director-3dbox.walk.mjs",
+      "symbol": "assertState"
+    },
+    {
       "path": "tests/ux/design-lab-node-composer-bar.walk.mjs",
       "symbol": "assertState"
     },

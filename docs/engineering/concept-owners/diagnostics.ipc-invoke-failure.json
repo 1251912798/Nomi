@@ -1,0 +1,35 @@
+{
+  "name": "主进程失败经 invoke 回到渲染层的那句话（唯一读法：通道、类名、Node 错误码、消息；「代码里定义的类名」的形状）",
+  "subject": "diagnostics.ipc-invoke-failure",
+  "lifecycle": "host",
+  "authority_kind": "schema",
+  "trust_domain": "shared",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/contracts/ipcInvokeFailure.ts",
+    "symbol": "ipcInvokeFailure"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/contracts/ipcInvokeFailure.ts",
+      "symbol": "ipcInvokeFailure"
+    },
+    {
+      "path": "electron/shared/contracts/ipcInvokeFailure.ts",
+      "symbol": "withoutIpcInvokeWrapper"
+    },
+    {
+      "path": "electron/shared/contracts/ipcInvokeFailure.ts",
+      "symbol": "isCodeClassName"
+    },
+    {
+      "path": "electron/shared/contracts/ipcInvokeFailure.ts",
+      "symbol": "CODE_CLASS_NAME"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-24",
+  "notes": "根因合同 docs/fixes/2026-10-24-ipc-error-class-name-fingerprinted.root-cause.json（方向检查 docs/audit/2026-10-24-ipc-error-class-name-direction.md）：Electron 只把主进程错误的 toString() 送回渲染层（`Error invoking remote method '<通道>': <类名>: <消息>`，name 恒为 Error），主进程错误的类名只在这句话里。认锁忙（electron/shared/contracts/workspaceBusy.ts）、剥壳（src/workbench/observability/classifyError.ts 错误卡首行、src/workbench/creation/storyboard/exec/storyboardFailureCopy.ts 技术详情）、记日志（src/desktop/rendererLog.ts summarizeRendererError）都经 ipcInvokeFailure / withoutIpcInvokeWrapper，原来三份私有读法已删。落盘出口（electron/logging/diskSafeFailure.ts diskSafeErrorFacts）只按 isCodeClassName 保留类名（大写开头的标识符，≤64 字）；全仓代码里写下的错误类名过这一条，由 ipcInvokeFailure.test.ts 普查钉住。我们自己嵌进消息里的码（NomiErrorCode / vendor marker）仍归 diagnostics.error-code。"
+}

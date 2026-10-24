@@ -1,0 +1,49 @@
+{
+  "name": "内置 AI 宿主把配置放在哪（宿主自己的位置变量 CLAUDE_CONFIG_DIR / CODEX_HOME 设了且非空就用它，否则主目录 / 应用数据目录下的默认位置）",
+  "subject": "mcp.host-config-location",
+  "lifecycle": "host",
+  "authority_kind": "decision",
+  "trust_domain": "shared",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/mcpClientRegistry.ts",
+    "symbol": "resolveMcpClientPath"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/mcpClientRegistry.ts",
+      "symbol": "resolveMcpClientPath"
+    },
+    {
+      "path": "electron/shared/mcpClientRegistry.ts",
+      "symbol": "resolveMcpClientHostRoot"
+    },
+    {
+      "path": "electron/shared/mcpClientRegistry.ts",
+      "symbol": "mcpClientConfigFile"
+    },
+    {
+      "path": "electron/shared/mcpClientRegistry.ts",
+      "symbol": "mcpClientInstallTraces"
+    },
+    {
+      "path": "electron/shared/mcpClientRegistry.ts",
+      "symbol": "mcpClientLocations"
+    },
+    {
+      "path": "electron/shared/mcpClientRegistry.ts",
+      "symbol": "MCP_CLIENT_HOST_ENV_VARS"
+    }
+  ],
+  "forbidden_derivations": [
+    {
+      "symbol": "CODEX_HOME",
+      "kind": "reference",
+      "why": "生产代码不得直接读 process.env.CODEX_HOME；必须经注册表的宿主位置解析，避免 codexCli 与主进程各自持有一套规则"
+    }
+  ],
+  "allowed_consumers": [],
+  "since": "2026-10-24",
+  "notes": "根因合同 docs/fixes/2026-10-24-isolated-app-reads-real-host-config.root-cause.json：宿主配置位置的规则只有一份（electron/shared/mcpClientRegistry.ts 的注册表 + resolveMcpClientPath / resolveMcpClientHostRoot，照各宿主官方文档：Claude Code 的 CLAUDE_CONFIG_DIR、Codex 的 CODEX_HOME）。主进程读写宿主配置（mcpDetectedClients / mcpConfig / mcpHostEntries / mcpHostMigration）、Codex 图像运行时（electron/catalog/codexCli.ts codexHome）、测试隔离（test-harness.isolated-host-config）、静态判据（scripts/check-test-temp-static.node-test.mjs「不许读真实宿主配置」）都从注册表派生，不另抄路径。"
+}

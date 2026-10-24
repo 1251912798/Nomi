@@ -116,11 +116,13 @@ try {
   await dismissFirstRun()
 
   // ── 反向对照：没设默认时，新卡走原有策略 ─────────────────────────────
+  // 认 data-node-kind 不认位置：以前写 button.nth(1)，工具条现在是「图片 · 视频 · …」，第二个是视频——
+  // 两张卡都开成视频卡（Seedance 2.0），设给「文生图」的默认当然继承不到（夜跑 run 40035294026）。
   const generation = getWin().getByRole('button', { name: '生成', exact: true }).first()
   await generation.waitFor({ timeout: 8000 })
   await generation.click()
   await canvasAddBar(getWin()).waitFor()
-  await clickOrFail(canvasAddBar(getWin()).locator('button').nth(1), '工具条上的「图片」')
+  await clickOrFail(canvasAddBar(getWin()).locator('button[data-node-kind="image"]'), '工具条上的「图片」')
   await getWin().waitForTimeout(1400)
 
   const baseline = await readSelectedModel()
@@ -169,7 +171,7 @@ try {
   // ── 回画布新建一张图片卡：必须开成刚设的那个模型 ───────────────────────
   await getWin().keyboard.press('Escape')
   await getWin().waitForTimeout(700)
-  await clickOrFail(canvasAddBar(getWin()).locator('button').nth(1), '工具条上的「图片」')
+  await clickOrFail(canvasAddBar(getWin()).locator('button[data-node-kind="image"]'), '工具条上的「图片」')
   // 等「第二张卡出现」这个**事实**，而不是睡一个够长的觉——真实耗时会变，
   // sleep 不够长时读到的是 1 张，断言反而会把「还没渲染」当成「功能坏了」。
   await getWin().locator('.generation-canvas-v2-node').nth(1).waitFor({ state: 'visible', timeout: 15_000 })
