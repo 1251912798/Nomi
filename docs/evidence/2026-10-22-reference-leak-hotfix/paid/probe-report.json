@@ -1,0 +1,22 @@
+{
+  "script": "reference-leak-hotfix.paid.mjs",
+  "mode": "probe-dialog",
+  "startedAt": "2026-10-22T13:09:16.307Z",
+  "model": "apimart/doubao-seedance-2.0 · fast · 480p · 4s · 无音频",
+  "finishedAt": "2026-10-22T13:09:27.246Z",
+  "paidCalls": 0,
+  "spend": [],
+  "providerTaskIds": [],
+  "networkAllowlist": [
+    "https://nomi-asset-relay.2373272608.workers.dev"
+  ],
+  "networkBlocked": [
+    {
+      "via": "product-guard",
+      "host": "api.apimart.ai",
+      "url": "https://api.apimart.ai/v1/balance"
+    }
+  ],
+  "walkOutputDir": ".tmp\\pi-reference-leak-hotfix-development-1792674556245",
+  "failure": "locator.click: Target page, context or browser has been closed"
+}

@@ -1,0 +1,29 @@
+{
+  "id": "USER-20261024-prompt-undo",
+  "since": "2026-10-24",
+  "source": "用户任务书 F-prompt-undo（我的库提示词删除后撤销）",
+  "category": "deletion-integrity",
+  "problem": "删除我的库提示词后点击撤销，面板按三字段新建记录，参考图、标签、原 id、更新时间和未来字段丢失",
+  "existingInvariants": [],
+  "ironLaws": [
+    "⑫"
+  ],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "fixedInPr": 1305,
+  "evidence": [
+    "electron/promptLibrary/userPromptStore.test.ts：删除→恢复保留 id、tags、referenceImages、futureField；无撤销时记录移除且引用文件不被误删",
+    "src/workbench/api/promptLibraryApi.test.ts：renderer 映射保留完整快照并经 IPC restoreSnapshot 回传",
+    "git archive HEAD 变异：基线生产代码叠加本次测试后 4 个测试失败"
+  ],
+  "completionCommits": [
+    "143b73858"
+  ],
+  "rootCauseContract": "docs/fixes/2026-10-24-prompt-library-undo.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "electron/promptLibrary/userPromptStore.test.ts"
+  }
+}

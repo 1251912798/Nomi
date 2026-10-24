@@ -31,7 +31,7 @@ describe('3D-BOX 花钱闸：预演时长 vs 候选时长', () => {
 
   it('预演渲染出来多长，写回 ready 时记下来（离屏帧数 / 帧率）', () => {
     addDirector('d1', { status: 'rendering', targetNodeId: shotNode })
-    applyPreviewCaptured('d1', 'dplan-1', 'nomi-local://asset/p/preview.mp4', 'asset-pre', { id: 'o1', name: '预演', width: 1280, height: 720, duration: 6, createdAt: 1 })
+    applyPreviewCaptured('d1', 'dplan-1', 'nomi-local://asset/p/preview.mp4', 'asset-pre', { id: 'o1', name: '预演', width: 1280, height: 720, duration: 6, createdAt: 1 }, 'fp-test')
     expect(readDirectorPreview(useGenerationCanvasStore.getState().nodes.find((node) => node.id === 'd1'))).toMatchObject({ status: 'ready', durationSeconds: 6 })
   })
 

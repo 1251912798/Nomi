@@ -19,6 +19,10 @@ export type NomiErrorCode =
   // 本地参考素材在上传前的本机检查里就没过：读不到、认不出类型、内容不是真正的媒体。
   // 确定性失败，请求没发出、没计费；下一步是换一张或重新导入，不是换服务商。
   | 'asset-invalid'
+  // 主进程发送前的参考守（electron/tasks/referenceResidueGuard.ts）：带档案输入的请求里，通用参考键带着
+  // 参考区没在用的图。渲染层结构上做不出这种请求（唯一推导 placeUploadedImages），出现 = 有新入口绕过了它。
+  // 在发出之前拒：请求没离开本机、服务商没被请求到；下一步是重新点生成（会按参考区重新组一次请求）。
+  | 'reference-not-in-use'
   // Nomi **自己的**出站安全策略拒绝了这次取片（私网/回环/fake-ip 未确证）。与上面几条 asset-* 同族：
   // 失败在我们这侧、服务商根本没被请求到。但它还多一件事——任务**已经付过钱**且上游多半已完成，
   // 所以正确的下一步是「修网络再免费重新拉取」，绝不是「重新生成」（那要再付一次）。
@@ -62,6 +66,35 @@ export type NomiErrorCode =
   | 'retrieval-parse'
   | 'retrieval-download'
   | 'retrieval-timeout'
+
+/**
+ * 每个码的话是不是**只在提交之前才成立**（穷举：新增一个码不回答这一问，typecheck 就红）。
+ *
+ * true = 码的话是「请求还没发出去 / 服务商没被请求到 / 可以放心重新生成」。这些码的生产者（素材本地化、
+ * vendorHttp 出站守卫……）被提交和查询共用、不知道自己在哪个阶段，所以取回出口（taskResultQuery.retrievalStageError）
+ * 按这张表把它们改挂成取回阶段码：任务已经提交、钱已经花了之后，任何界面都不许再说「没发出去、重新生成吧」
+ * （⑬，用户 2026-10-22 拍板）。false = 取回阶段的码，或两个阶段说法都成立（本机处理、服务商地址跳转）。
+ */
+export const NOMI_ERROR_ONLY_BEFORE_SUBMIT: Readonly<Record<NomiErrorCode, boolean>> = {
+  'model-config': true,
+  'asset-too-large': true,
+  'asset-upload-failed': true,
+  'asset-invalid': true,
+  // 主进程在 runTask 碰任何网络之前拒发（referenceResidueGuard）：只有提交前这一个生产者，话是「没发出去、重新点生成」。
+  'reference-not-in-use': true,
+  'outbound-blocked': false,
+  'outbound-blocked-submit': true,
+  'outbound-blocked-credential-origin': true,
+  'credential-redirect': false,
+  'output-unreadable': false,
+  'submission-unknown': true,
+  'output-retrieval-failed': false,
+  'local-processing': false,
+  'retrieval-query': false,
+  'retrieval-parse': false,
+  'retrieval-download': false,
+  'retrieval-timeout': false,
+}
 
 const MARKER_PREFIX = 'NOMI_ERR::'
 const MARKER_SUFFIX = '::'

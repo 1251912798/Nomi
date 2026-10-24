@@ -17,7 +17,7 @@ import {
 import { getDesktopBridge } from '../../desktop/bridge'
 import { resolveArchetypeForModel } from '../../../electron/shared/modelArchetypes'
 import { getTextBrain } from '../../workbench/api/promptLibraryApi'
-import { runWorkbenchTextTaskStream } from '../../workbench/api/taskApi'
+import { runWorkbenchTextTaskStream, textTaskFailureText } from '../../workbench/api/taskApi'
 import { stripCodeFences } from './customCallIntent'
 import { configPatchFromRows, configRowsFromMaskedEntries, hasCustomConfig, type CustomConfigRow } from './customCallConfig'
 import {
@@ -217,7 +217,7 @@ export function CustomCallEditor({
         else setAiError(t('onboardingProviders.customCall.aiEmpty'))
       } catch (e) {
         if (ctrl.signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return
-        setAiError(e instanceof Error ? e.message : String(e))
+        setAiError(textTaskFailureText(e) || String(e))
       } finally {
         setAiRunning(false)
         abortRef.current = null

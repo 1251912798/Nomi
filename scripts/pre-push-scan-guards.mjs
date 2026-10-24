@@ -35,6 +35,10 @@ const TEST_STYLE_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$|^vitest(?:\.\w+)?\.confi
  */
 export const SCAN_GUARDS = Object.freeze([
   // ── electron/ 全树（遍历 electron 找违规文件）──
+  { file: 'scripts/lib/buildInputRefScan.test.mjs', roots: ['src', 'electron'], files: ['vite.config.ts', 'tailwind.config.ts', 'postcss.config.js', 'scripts/build-tailwind.mjs', 'scripts/build-electron.mjs', 'scripts/write-intake-config.mjs', 'scripts/electron-build-artifacts.mjs', 'scripts/package-build-stamp.mjs'] }, // 构建源码不许引用构建戳排除的路径（NON_INPUTS）；遍历 src + electron（<1 秒）
+  { file: 'tests/system/async-signature-migration.test.mjs', roots: ['tests', 'electron', 'src', 'scripts'] }, // V-plibrary F3：同步改异步的函数，调用方（含 tests / 脚本）都要 await；遍历四个目录的源码（<1 秒）
+  { file: 'tests/system/walks-never-trash-projects.test.mjs', roots: ['tests/ux', 'tests/system', 'scripts', 'evals', 'docs/evidence'] }, // ⑭：走查 / 脚本不许调产品删除项目口、点确认删除或直接 trashItem（会往用户真回收站塞垃圾）；遍历五个目录的脚本（<1 秒）
+  { file: 'scripts/lib/buildGateScan.test.mjs', roots: ['tests'] }, // G-walk-build：tests/ 下起构建产物的入口都先核构建戳；遍历 tests（<1 秒）
   { file: 'electron/offLedgerEgress.structure.test.ts', roots: ELECTRON }, // #1156：新增 child_process 出网口没登记（5 秒）
   { file: 'electron/capabilityCore/reservationAmountSingleExit.structure.test.ts', roots: ELECTRON }, // 2026-10-18：确认卡金额只许从 reservationMaximumForDisplay 出（遍历 electron 源码，1 秒）
   { file: 'electron/fileIdentity.test.ts', roots: ELECTRON }, // #1142：不许手写 dev / ino 比较（2 秒）
@@ -63,14 +67,17 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'src/bundleAssetUrlBoundary.test.ts', roots: SRC },
   { file: 'src/workbench/generationCanvas/canvasPreviewDoors.test.ts', roots: ['src', 'electron'] }, // 画布预览入口普查：遍历 src 与 electron 生产代码（9 秒）
   { file: 'src/workbench/generationCanvas/components/lightweightFallbackCensus.test.ts', roots: ['src/workbench'] }, // 兜底节点必须带 loading：遍历 workbench 找 fallback=<LightweightGenerationNode>（<1 秒）
+  { file: 'src/workbench/generationCanvas/nodes/director/agent/attachDoors.guard.test.ts', roots: SRC }, // 预演 / 运镜挂接只有一个入口：遍历 src 生产代码，调核的只有 attachCameraMoveForNode、网址标记只有核自己读（5 秒）
   { file: 'src/workbench/generationCanvas/nodes/textNodeIconSource.test.ts', roots: ['src/workbench/generationCanvas'] }, // 文字节点图标唯一来源：遍历 generationCanvas 找直接引用 IconWriting 的文件（<2 秒）
   { file: 'src/customEventWiring.test.ts', roots: SRC },
   { file: 'src/design/mediaOverlayInk.test.ts', roots: SRC },
   { file: 'src/design/menu.structure.test.ts', roots: SRC },
   { file: 'src/design/portalLayer.structure.test.ts', roots: SRC },
+  { file: 'src/design/outsidePress.structure.test.ts', roots: SRC }, // 「点外面」只有一种听法：遍历 src 找 mousedown / touchstart / 冒泡 pointerdown 监听与 useClickOutside（<1 秒）
   { file: 'src/design/popoverTracking.structure.test.ts', roots: SRC }, // 浮层跟踪不许逐帧轮询：遍历 src 找 autoUpdate 与 animationFrame（<2 秒）
   { file: 'src/ui/browser/assetSurfaceInvariants.test.ts', roots: SRC }, // 7 秒
   { file: 'src/workbench/common/modelSelectStructure.test.ts', roots: SRC }, // 7 秒
+  { file: 'src/workbench/common/richTextActions.structure.test.ts', roots: SRC }, // 格式钮只有一份定义：遍历 src 找 owner 之外的 isActive / 格式命令（<1 秒）
   { file: 'src/workbench/generation/dockCollapsePrefs.test.ts', roots: SRC }, // 4 秒
   { file: 'src/workbench/generationCanvas/model/derivedOutput.test.ts', roots: SRC }, // 12 秒
   { file: 'src/workbench/generationCanvas/nodes/ToolbarActionMenu.structure.test.ts', roots: SRC },
@@ -83,6 +90,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'src/assets/vendor-logos/vendorLogos.test.ts', roots: ['src/assets/vendor-logos', 'src/config', 'src/design', 'src/ui', 'src/workbench'] },
   // ── src/workbench 及以下 ──
   { file: 'src/workbench/generationCanvas/components/canvasViewportMovers.structure.test.ts', roots: WORKBENCH }, // 5 秒
+  { file: 'src/workbench/ai/pointer/pointerDoors.test.ts', roots: ['src/workbench/ai/pointer'] }, // 指向元素目录：不许自己动画布视口（唯一出口 viewNodeInCanvas）、不自带焦点环；只遍历这一个目录，按语法树判（<1 秒）
   { file: 'src/workbench/generationCanvas/nodes/fencedCanvas.invariant.test.ts', roots: WORKBENCH },
   { file: 'src/workbench/generationCanvas/store/canvasReadyOwner.test.ts', roots: WORKBENCH }, // 12 秒
   { file: 'src/workbench/generationCanvas/components/canvasControlsStructure.test.ts', roots: ['src/workbench/generationCanvas'] }, // 4 秒

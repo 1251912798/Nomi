@@ -30,7 +30,7 @@ import {
   shouldRenderFullNodeContent,
   shouldUseLightweightNodeRenderingForSelection,
 } from '../components/canvasNodeLevelOfDetail'
-import type { GenerationFlowEdge, GenerationFlowNode } from './generationCanvasReactFlowAdapter'
+import { externalHighlightShellClass, type GenerationFlowEdge, type GenerationFlowNode } from './generationCanvasReactFlowAdapter'
 import { selectFlowZoom } from './canvasViewportScale'
 import { GenerationFlowNodeScope, useGenerationFlowHandleMenu } from './generationFlowNodeContext'
 import { handleMenuAnchor } from '../quickActions/connectionMenuModel'
@@ -236,8 +236,11 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
         'generation-canvas-react-flow__node-shell',
         pickable === true && 'cursor-pointer rounded-nomi ring-1 ring-nomi-ink-40 ring-offset-2 ring-offset-workbench-bg hover:ring-nomi-ink',
         pickable === false && 'opacity-40 grayscale',
+        // 画布外面点名了这张卡（D2 指向元素，2026-10-23）：中性样式，不用强调色描边（10-10「蓝色描边都删掉」）。
+        externalHighlightShellClass(data.externalHighlight),
       )}
       data-pick={pickable === null ? undefined : pickable ? 'eligible' : 'ineligible'}
+      data-external-highlight={data.externalHighlight ?? undefined}
       onDragStart={blockImplicitNativeDrag}
       // 卡面与自己把手的上下层由把手档位派生（见 generationCanvasReactFlow.css 的同名选择器）：
       // 只有磁吸档才把卡面抬到带子之上，小圆点档的把手必须压在卡面上。
@@ -299,7 +302,7 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
       {!groupPort ? (
         <GenerationFlowNodeScope>
           <NodeEmptyStateProvider engaged={primarySelection} readOnly={data.readOnly}>
-          {shouldRenderFullNodeContent({ lightweightMode, selected: primarySelection, focusFlash: data.focusFlash }) ? (
+          {shouldRenderFullNodeContent({ lightweightMode, selected: primarySelection, focusFlash: data.externalHighlight === 'flash' }) ? (
             // 节点渲染器按种类懒加载（renderRegistry 的 React.lazy）。第一次建某种节点时 chunk 还没到，
             // 若没有就近的 Suspense 边界，React 会把最近那层（NomiStudioApp 包住整个画布的那个）
             // 已提交的内容整体 display:none 直到 chunk 到达：画布闪黑一帧，而且 React Flow 缓存的
@@ -320,7 +323,8 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
                 node={node}
                 selected={selected}
                 readOnly={data.readOnly}
-                focusFlash={data.focusFlash}
+                // 节点只需要知道「定位后在闪」（定预览优先级）；悬停样子画在外壳上，不进卡面。
+                focusFlash={data.externalHighlight === 'flash'}
                 appear={data.appear}
                 host={pluginHost}
               />

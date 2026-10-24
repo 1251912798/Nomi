@@ -9,14 +9,14 @@
  */
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconFileText } from '@tabler/icons-react'
+import { IconLink, IconX } from '@tabler/icons-react'
 import { AnchoredPopover } from '../../../design'
 import { cn } from '../../../utils/cn'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { projectConnectedTextInputs, type ConnectedTextInput } from '../runner/connectedTextPrompt'
 import { sameFlatRecords, useContentStable, type ComposerGraph } from './composerGraphSnapshot'
 
-function ConnectedTextChip({ input }: { input: ConnectedTextInput }): JSX.Element {
+function ConnectedTextChip({ input, onDisconnect }: { input: ConnectedTextInput; onDisconnect?: (() => void) | undefined }): JSX.Element {
   const { t } = useTranslation()
   const ref = React.useRef<HTMLSpanElement>(null)
   const [hover, setHover] = React.useState(false)
@@ -30,17 +30,27 @@ function ConnectedTextChip({ input }: { input: ConnectedTextInput }): JSX.Elemen
         data-connected-text-chip={input.sourceId}
         aria-label={t('generationCommon.textProcess.refAria', { title })}
         className={cn(
-          'inline-flex h-6 max-w-full items-center gap-[5px] rounded-nomi-sm bg-nomi-ink-05 pl-1.5 pr-2 text-caption text-nomi-ink-80',
-          'ring-1 ring-inset ring-nomi-line-soft hover:bg-nomi-ink-10 focus-visible:bg-nomi-ink-10 focus-visible:outline-none',
+          'inline-flex h-7 max-w-full items-center gap-1.5 rounded-pill bg-nomi-ink-05 pl-2.5 text-caption text-nomi-ink-80',
+          onDisconnect ? 'pr-1' : 'pr-2.5',
+          'hover:bg-nomi-ink-10 focus-visible:bg-nomi-ink-10 focus-visible:outline-none',
         )}
         onPointerEnter={() => setHover(true)}
         onPointerLeave={() => setHover(false)}
         onFocus={() => setHover(true)}
         onBlur={() => setHover(false)}
       >
-        <IconFileText size={14} stroke={1.5} aria-hidden="true" className="shrink-0 text-nomi-ink-60" />
-        <span className="shrink-0 text-nomi-ink-40">{t('generationCommon.textProcess.refKind')}</span>
-        <span className="truncate">{title}</span>
+        <IconLink size={12} stroke={2.67} aria-hidden="true" className="shrink-0 text-nomi-ink-60" />
+        <span className="truncate">{t('generationCommon.textProcess.refKind')} · {title}</span>
+        {onDisconnect ? (
+          <button
+            type="button"
+            data-connected-text-disconnect={input.sourceId}
+            aria-label={t('assetLibrary.refRow.disconnect')}
+            title={t('assetLibrary.refRow.disconnect')}
+            className="inline-flex h-6 w-7 shrink-0 cursor-pointer items-center justify-center rounded-pill border-0 bg-transparent p-0 text-nomi-ink-60 hover:text-nomi-ink"
+            onClick={(event) => { event.stopPropagation(); onDisconnect() }}
+          ><IconX size={12} stroke={2.67} aria-hidden /></button>
+        ) : null}
       </span>
       {hover ? (
         <AnchoredPopover anchorRef={ref} side="bottom" align="start" gap={6} passThrough>
@@ -59,11 +69,11 @@ function ConnectedTextChip({ input }: { input: ConnectedTextInput }): JSX.Elemen
 }
 
 /** 小签那一排（纯展示：给什么摆什么）。 */
-export function ConnectedTextChipList({ inputs }: { inputs: readonly ConnectedTextInput[] }): JSX.Element | null {
+export function ConnectedTextChipList({ inputs, onDisconnect }: { inputs: readonly ConnectedTextInput[]; /** 给了就在小签尾巴挂一颗「断开连线」×（这段文字是靠一条连线接进来的）。 */ onDisconnect?: ((sourceId: string) => void) | undefined }): JSX.Element | null {
   if (inputs.length === 0) return null
   return (
     <div data-connected-text-chips className="flex flex-wrap items-center gap-1.5">
-      {inputs.map((input) => <ConnectedTextChip key={input.sourceId} input={input} />)}
+      {inputs.map((input) => <ConnectedTextChip key={input.sourceId} input={input} onDisconnect={onDisconnect ? () => onDisconnect(input.sourceId) : undefined} />)}
     </div>
   )
 }
@@ -72,8 +82,8 @@ export function ConnectedTextChipList({ inputs }: { inputs: readonly ConnectedTe
  * 读图走生成框那一份快照（composerGraphSnapshot）：依赖面没变就不重算；内容没变就沿用同一个数组。
  * 不再自己订整表 + JSON.stringify 防抖（2026-10-16 可疑点 h）。
  */
-export function ConnectedTextChips({ node, graph }: { node: GenerationCanvasNode; graph: ComposerGraph }): JSX.Element | null {
+export function ConnectedTextChips({ node, graph, onDisconnect }: { node: GenerationCanvasNode; graph: ComposerGraph; onDisconnect?: ((sourceId: string) => void) | undefined }): JSX.Element | null {
   const projected = React.useMemo(() => projectConnectedTextInputs(node, graph), [node, graph])
   const inputs = useContentStable(projected, sameFlatRecords)
-  return <ConnectedTextChipList inputs={inputs} />
+  return <ConnectedTextChipList inputs={inputs} onDisconnect={onDisconnect} />
 }

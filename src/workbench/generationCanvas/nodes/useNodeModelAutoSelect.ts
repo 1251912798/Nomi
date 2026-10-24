@@ -38,6 +38,7 @@ import {
   resolveDefaultModelOption,
 } from './defaultNodeModelSelection'
 import { readCandidateNodeIdentity } from '../agent/candidateNodeMeta'
+import { videoAspectSeedPatch } from './videoAspectSeed'
 import {
   candidateNoticeStillHolds,
   disconnectionNoticeStillHolds,
@@ -178,7 +179,14 @@ export function useNodeModelAutoSelect({
     const preferred = resolveDefaultModelOption(modelOptions, getGenerationModelDefaults(), taskKind)
     const firstOption = preferred ?? chooseDefaultModelOption(modelOptions, isImageLike, isVideoLike)
     if (!firstOption?.value) return
-    const defaultPatch = defaultPatchForControls(buildModelControls(firstOption.meta, isImageLike, isVideoLike))
+    const firstControls = buildModelControls(firstOption.meta, isImageLike, isVideoLike)
+    const defaultPatch = defaultPatchForControls(firstControls)
+    // 视频比例的产品默认（首选 16:9、已连输入全竖 9:16）与模型默认值同一笔写进去——只问唯一出处。
+    // 以前它要等生成框挂载 effect 再「纠正」一次：多一笔写，而且那个 effect 连 Agent 写的比例也改。
+    const canvas = useGenerationCanvasStore.getState()
+    const aspectPatch = isVideoLike
+      ? videoAspectSeedPatch({ nodeId: node.id, nodes: canvas.nodes, edges: canvas.edges, controls: firstControls, meta: latestMeta, respectExplicit: false })
+      : {}
     const modelMeta = replaceCustomCapabilityContractMeta(latestMeta, firstOption.meta)
     const defaultMeta = projectParameterReferenceSlots({
       ...modelMeta,
@@ -188,6 +196,7 @@ export function useNodeModelAutoSelect({
       vendor: firstOption.vendor || null,
       modelLabel: firstOption.label,
       ...defaultPatch,
+      ...aspectPatch,
       ...(isVideoLike
         ? { videoModel: firstOption.value, videoModelVendor: firstOption.vendor || null }
         : { imageModel: firstOption.value, imageModelVendor: firstOption.vendor || null }),
@@ -368,7 +377,13 @@ export function useNodeModelAutoSelect({
   React.useEffect(() => {
     if (!isGenerationNode || !archetype) return
     const latestNode = getLatestNode()
+    // 这一帧的档案是按渲染快照里的模型算的；store 里的节点可能已经换了模型（换模型那一笔刚写进去，这个宿主还没重渲）。
+    // 拿旧模型的档案去「初始化」新模型的节点，会把换模型时按参考挑好的方式改回旧档案的默认文生（真机走查 2026-10-22：
+    // 30 张参考换到 Veo 3.1 被打回文生、切回 Seedance 2.5 又被打回文生）。对不上就等下一帧。
+    const latestModelKey = typeof latestNode.meta?.modelKey === 'string' ? latestNode.meta.modelKey : ''
+    if (selectedModelOption && latestModelKey
+      && ![selectedModelOption.modelKey, selectedModelOption.value, selectedModelOption.modelAlias].includes(latestModelKey)) return
     const initialized = initializedArchetypeMeta(latestNode, latestNode.meta || {}, archetype)
     if (initialized) writeDerivedMeta(node.id, { meta: initialized })
-  }, [archetype, getLatestNode, isGenerationNode, node.id, writeDerivedMeta])
+  }, [archetype, getLatestNode, isGenerationNode, node.id, selectedModelOption, writeDerivedMeta])
 }

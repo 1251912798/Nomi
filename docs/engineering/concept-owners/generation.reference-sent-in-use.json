@@ -1,0 +1,51 @@
+{
+  "name": "发给供应商的参考图只能是当前方式声明、界面在用的那些（节点 meta 里别的方式 / 旧工程 / MCP metadata 留下的参考键不上线）",
+  "subject": "generation.reference-sent-in-use",
+  "lifecycle": "execution",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
+    "symbol": "placeUploadedImages"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
+      "symbol": "placeUploadedImages"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceList.ts",
+      "symbol": "readReferenceList"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
+      "symbol": "uploadPlacementForMode"
+    },
+    {
+      "path": "src/workbench/generationCanvas/runner/referenceSlots.ts",
+      "symbol": "resolveReferencePlacement"
+    },
+    {
+      "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "symbol": "buildReferenceExtras"
+    },
+    {
+      "path": "electron/catalog/archetypeInput.ts",
+      "symbol": "findReferenceResidue"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/referenceKeys.ts",
+      "symbol": "GENERIC_REFERENCE_KEYS"
+    },
+    {
+      "path": "electron/tasks/referenceResidueGuard.ts",
+      "symbol": "assertNoReferenceResidueBeforeSend"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-22",
+  "notes": "#1269 参考图结构重写（合同 docs/fixes/2026-10-22-composer-reference-list-single-owner.root-cause.json）后的唯一主人：placeUploadedImages——节点那一份有序参考列表（readReferenceList）+ 当前档案方式 + 连线占位 → 各槽的上传图与「未用到」。参考行经 resolveReferencePlacement、发送经 uploadPlacementForMode 调它，界面标的 = 发出去的。热修 #1279（合同 docs/fixes/2026-10-22-reference-leak-hotfix.root-cause.json）留下的三个符号各归：① buildReferenceExtras 只做请求组装——值全部取自 uploadPlacementForMode / orderedSentMediaReferenceUrls，不再自己判断在不在用；② GENERIC_REFERENCE_KEYS 只回答「哪些键算参考键」（请求组装先把整张表置 undefined、主进程拒发按它查），不是第二份在用判断；③ stripReferenceResidue（只剥）删掉，换成 findReferenceResidue（只找不改）+ electron/tasks/referenceResidueGuard.ts 的 assertNoReferenceResidueBeforeSend（协调 10-22 定）：渲染层契约被绕过时在发出前拒，不再静默剥。钉它的测试：src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts（原 #1269 的特征测试已并入）。 2026-10-23（#1269 条件 2，用户拍板 A）：GENERIC_REFERENCE_KEYS 不再手写，由声明推导——主进程翻译读的标准输入键 ∪ 各档案各方式的槽 inputKey 与合并键 ∪ APIMart 引擎 B 的参考别名（APIMART_REFERENCE_PARAMETER_ALIASES，同模块）∪ 档案的 headlessReferenceKeys；findReferenceResidue 递归收值（对象形也认，role / type 除外）。完整性由同一性质测试里的「请求体实际读的参考键」普查守（内置目录每条请求体读的键都要能归类）。"
+}

@@ -19,7 +19,7 @@ import { verifyBuild } from '../../scripts/package-build-stamp.mjs'
 
 import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { createRuntimeWalk } from './agent-runtime-walk-support.mjs'
-import { blockedError, guardLoadedError, newNetLogFile, paidWalkAllowlist, readNetLog, watchNetLog } from './_paidNetwork.mjs'
+import { blockedError, guardLoadedError, hostedUploadRelayOrigin, newNetLogFile, paidWalkAllowlist, readNetLog, watchNetLog } from './_paidNetwork.mjs'
 import {
   ENV_KEY_ALLOW_CATALOG, ENV_KEY_VAR, ENV_KEY_VENDOR, assertNoSecretOnDisk, assertUsableEnvKey, connectApimartThroughVisibleUi,
   APIMART_TEXT_MODEL_KEYS, collectAppLogs, envKeyOf, filesContainingSecret, paidCredentialSource, readAuthorizedRows, redact, redactNetLogEntry, redactedError,
@@ -139,6 +139,13 @@ export async function openPaidWalk(script, name, models, deps = {}) {
     env = process.env, createWalk = createRuntimeWalk, connect = connectApimartThroughVisibleUi, isNomiRunning = realNomiIsRunning, lockSpendTo = lockSpendToModels, readRows = readAuthorizedRows,
     // 验某个修复的走查传 buildMarkers：会原样进产物的字面量（界面文案 / 错误码），见 assertPaidBuildReady。
     buildMarkers = [], argv = process.argv.slice(2), assertBuild = assertPaidBuildReady,
+    // 带本地参考素材的生成要先经应用的托管上传中转：按需把**当前配置的那一个**中转源加进放行名单（缺省关，别的付费走查行为不变）。
+    hostedUploads = false,
+    // false = 供应商的源不进放行名单（零花费探测：就算误提交，网络闸也当场挡下，结构上花不了钱）。缺省 true，别的付费走查不变。
+    vendorNetwork = true,
+    // true = 闸把放行名单上公网请求的请求体（先脱敏：不记请求头、签名查询串与 key 形状的串打码）记进账本，`readAllowedRequests()` 读回。
+    // 给要核「App 真正发给供应商的是什么」的付费走查用（参考图错发热修的真付费样本）；缺省关，别的付费走查不变。
+    recordAllowedBodies = false,
   } = deps
   // 真实资料目录的位置跟着传进来的 env 走（缺省就是 process.env，和以前一样）；env-key 路根本不会用到它。
   const profile = realNomiProfile({ env })
@@ -149,13 +156,16 @@ export async function openPaidWalk(script, name, models, deps = {}) {
   const secrets = envKey ? [envKey] : []
   if (envKey) assertEnvKeyModels(models)
   // 出网名单按本场授权的供应商自动算（见 _paidNetwork.mjs），连同账本路径一起交给被测 App 的闸；调用方什么都不用配。
-  const allow = envKey
+  const hostedUploadOrigin = hostedUploads ? hostedUploadRelayOrigin(env) : null
+  const vendorAllow = !vendorNetwork ? [] : envKey
     ? paidWalkAllowlist(ENV_KEY_ALLOW_CATALOG, [ENV_KEY_VENDOR])
     : paidWalkAllowlist(readRealCatalog(profile), models.map((model) => model.vendorKey))
+  const allow = [...vendorAllow, ...(hostedUploadOrigin ? [hostedUploadOrigin] : [])]
   const netLog = newNetLogFile()
   // env-key 路：被测 App 的环境里把 key 这一项清成空串——key 只留在本进程的闭包里，子进程（含它的崩溃转储、诊断包）拿不到。
-  const walk = await createWalk(name, { env: { NOMI_WALK_ALLOW_ORIGINS: allow.join(','), NOMI_WALK_NET_LOG: netLog, ...(envKey ? { [ENV_KEY_VAR]: '' } : {}) } })
+  const walk = await createWalk(name, { env: { NOMI_WALK_ALLOW_ORIGINS: allow.join(','), NOMI_WALK_NET_LOG: netLog, ...(recordAllowedBodies ? { NOMI_WALK_NET_BODIES: '1' } : {}), ...(envKey ? { [ENV_KEY_VAR]: '' } : {}) } })
   walk.report.networkAllowlist = allow
+  if (hostedUploadOrigin) walk.report.hostedUploadRelayAllowed = hostedUploadOrigin
   walk.report.credentialSource = envKey ? `env-key（${ENV_KEY_VAR}，只记变量名）` : 'real-profile'
   let blocked = null
   // 被挡就地失败：别等 UI 超时（以前一次连接被挡要干等 600 多秒）。关掉 App，让走查脚本里正在等的那一步立刻报错，
@@ -240,11 +250,11 @@ export async function openPaidWalk(script, name, models, deps = {}) {
         catch (error) { if (!envKey) throw error; spend = { media: [], text: null, readError: redact(String(error?.message ?? error), secrets).slice(0, 300) } }
         if (envKey) {
           envKeyTeardown()
-          return { spend, credentialCopyRemoved: true }
+          return { spend, paidCalls: spend.media.length, credentialCopyRemoved: true }
         }
         const credentialCopyRemoved = removeCredentialCopy()
         const after = guard.assertRealProfileUntouched()
-        return { spend, realProfileAfter: after, credentialCopyRemoved }
+        return { spend, paidCalls: spend.media.length, realProfileAfter: after, credentialCopyRemoved }
       },
     })
     // 报告 / 日志 / 截图都落盘之后再核一遍证据目录：发现 key 就删掉那些文件并红。
@@ -255,7 +265,11 @@ export async function openPaidWalk(script, name, models, deps = {}) {
       if (hits.length) throw new Error(`key 泄漏进了证据目录（${hits.join('、')}）——文件已删，请立即更换这把 key`)
     }
   }
-  return { walk, label, lockToAuthorizedModels, finish }
+  /** 闸记下的放行请求 / 上传响应（recordAllowedBodies 时才有；env-key 路再按 key 原串打码一遍）。要在 finish 之前读：env-key 路收尾会删账本原件。 */
+  const readAllowedRequests = () => readNetLog(netLog)
+    .filter((entry) => entry.kind === 'allowed-request' || entry.kind === 'allowed-response')
+    .map((entry) => (envKey ? redactNetLogEntry(entry, secrets) : entry))
+  return { walk, label, lockToAuthorizedModels, finish, readAllowedRequests }
 }
 
 /** env-key 路只认 APIMart：别家的 key 这条路不管；点名了别家模型就在花钱前拒。 */
@@ -394,6 +408,61 @@ export function paidWalkCoverageProblems(files, readFile, exceptions = PAID_WALK
   for (const entry of exceptions) {
     if (!files.includes(entry.file)) problems.push(`${entry.file}：例外表里的文件不存在了，删掉死条目`)
     if (!entry.why || !entry.networkGuard) problems.push(`${entry.file}：例外表条目缺理由或缺它自己的网络护栏说明`)
+  }
+  return problems
+}
+
+// ── 构建标记还在不在产品源码里（零花费结构核对，结构测试钉它）──────────────────────────────
+// 起因（2026-10-24）：B3 把主进程参考守从「只剥不拒」改成「拒发」，旧付费脚本 reference-leak-hotfix.paid.mjs 的构建标记
+// 'reference residue stripped before send' 随之从源码里消失。assertPaidBuildReady 只在付费那一刻搜产物，平时没有任何一道门
+// 看得见，直到要真付费那天才发现脚本跑不起来。这里把同一件事前移到单测：每个 `buildMarkers: [...]` 的值都要能静态读出来
+// （字符串字面量 / 同文件的 const 字面量 / uiText('语言', 'key')），且原样出现在产品源码里（不含测试文件）。
+export const PRODUCT_SOURCE_DIRS = Object.freeze(['src', 'electron'])
+
+const stripLineAndBlockComments = (source) => source.replace(/\r\n?/g, '\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+// 一项：'…' / "…" / `…`（不带插值）/ uiText('语言', 'key') / 标识符（可带一段调用，带了就读不出来、报问题）。
+const MARKER_ENTRY = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`([^`$\\]*)`|\buiText\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)|([A-Za-z_$][\w$]*(?:\([^)]*\))?)/g
+const QUOTED_VALUE = String.raw`(?:'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|` + '`([^`$\\\\]*)`)'
+const unescapeQuoted = (text) => text.replace(/\\(.)/g, '$1')
+
+/** `buildMarkers: [...]` 里的一项 → { value } 或 { error }。 */
+function resolveMarkerEntry(match, code, uiTextOf) {
+  const [whole, single, double, template, locale, key, identifier] = match
+  if (single !== undefined) return { value: unescapeQuoted(single) }
+  if (double !== undefined) return { value: unescapeQuoted(double) }
+  if (template !== undefined) return { value: template }
+  if (locale !== undefined) {
+    try { return { value: uiTextOf(locale, key) } } catch (error) { return { error: `uiText('${locale}', '${key}') 读不到（${String(error?.message ?? error).slice(0, 120)}）` } }
+  }
+  if (/^[A-Za-z_$][\w$]*$/.test(identifier)) {
+    const constant = new RegExp(String.raw`\bconst\s+` + identifier.replace(/\$/g, '\\$') + String.raw`\s*=\s*` + QUOTED_VALUE).exec(code)
+    if (constant) return { value: constant[3] ?? unescapeQuoted(constant[1] ?? constant[2]) }
+  }
+  return { error: `${whole} 读不出字面值（标记只认字符串字面量、同文件的 const 字面量、uiText('语言', 'key')）` }
+}
+
+/**
+ * 纯判据：files 里每个 `buildMarkers: [...]` 的每一项，读得出字面值、且 sourceIncludes(值) 为真；返回问题清单。
+ * @param {string[]} files 仓库相对路径
+ * @param {(file: string) => string} readFile
+ * @param {{ sourceIncludes: (text: string) => boolean, uiTextOf: (locale: string, key: string) => string }} deps
+ */
+export function paidBuildMarkerProblems(files, readFile, { sourceIncludes, uiTextOf }) {
+  const problems = []
+  for (const file of files) {
+    const code = stripLineAndBlockComments(readFile(file))
+    for (const list of code.matchAll(/\bbuildMarkers\s*:\s*\[([^\]]*)\]/g)) {
+      const entries = [...list[1].matchAll(MARKER_ENTRY)]
+      if (!entries.length) problems.push(`${file}：buildMarkers 是空的——要验修复就给一句会原样进产物的字面量，不验就别传`)
+      for (const entry of entries) {
+        const resolved = resolveMarkerEntry(entry, code, uiTextOf)
+        if (resolved.error) { problems.push(`${file}：构建标记 ${resolved.error}`); continue }
+        if (!resolved.value) { problems.push(`${file}：构建标记是空串`); continue }
+        if (!sourceIncludes(resolved.value)) {
+          problems.push(`${file}：构建标记 ${JSON.stringify(resolved.value)} 在产品源码（${PRODUCT_SOURCE_DIRS.join('/、')}/，不含测试）里找不到——被验的修复已改写或删掉，这条付费走查到付费那一刻会拒跑；同一提交换成新实现会进产物的字面量，或删掉这条走查`)
+        }
+      }
+    }
   }
   return problems
 }

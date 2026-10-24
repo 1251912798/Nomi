@@ -153,7 +153,7 @@ function ProjectionKeyboardHarness() {
   const nodes = React.useMemo<GenerationFlowNode[]>(() => [{ id: 'projection-node', type: 'generation',
     position: { x: 40, y: 40 }, selected: true, style: { width: 240 },
     data: { generationNode: { id: 'projection-node', kind: 'video', title: 'video', position: { x: 40, y: 40 }, meta: { duration } },
-      readOnly: false, primarySelection: true, appear: false, focusFlash: false, change: setDuration } }], [duration])
+      readOnly: false, primarySelection: true, appear: false, externalHighlight: null, change: setDuration } }], [duration])
   React.useEffect(() => {
     Object.assign(window, { projectionSnapshot: () => {
       const state = store.getState()

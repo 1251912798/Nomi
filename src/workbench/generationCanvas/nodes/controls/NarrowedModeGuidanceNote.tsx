@@ -1,8 +1,7 @@
 // 被收窄的模式那一行「指路」提示。
 //
-// 视觉沿用本组件已有的「诚实说一句」惯用法（NodeParameterControls 的 showNoPromptNote：
-// `text-ink-40 text-micro leading-tight`），**不发明新的视觉层级**——它不是控件，是一行说明。
-// 换家动作是行内文字按钮（accent 色 + 下划线），另有低调的 IconX 允许整行关闭；都不弹确认。
+// B3：它住在参考行的行尾，是一句 12px 的 --nomi-ink60 小字（统一规则 5），不是彩色提示条。
+// 换家动作是行内文字按钮（墨色 + 下划线），另有低调的 IconX 允许整行关闭；都不弹确认。
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconX } from '../../../../vendor/tablerIcons'
@@ -30,7 +29,7 @@ export default function NarrowedModeGuidanceNote({
     .join(t('generationCommon.parameters.narrowedModeSeparator'))
 
   return (
-    <div className={cn('flex items-baseline gap-1 text-ink-40 text-micro leading-tight')} data-testid="narrowed-mode-guidance">
+    <div className={cn('flex items-baseline gap-1 text-nomi-ink-60 text-caption leading-tight')} data-testid="narrowed-mode-guidance">
       <span className={cn('min-w-0')}>
         {guidance.kind === 'switch' ? (
           <>
@@ -41,7 +40,7 @@ export default function NarrowedModeGuidanceNote({
             })}{' '}
             <button
               type="button"
-              className={cn('text-workbench-accent underline underline-offset-2')}
+              className={cn('cursor-pointer border-0 bg-transparent p-0 text-caption text-nomi-ink underline underline-offset-2')}
               onClick={() => onSwitch(guidance.target.value, guidance.target.vendor)}
             >
               {t('generationCommon.parameters.narrowedModeSwitchAction', {
@@ -55,7 +54,7 @@ export default function NarrowedModeGuidanceNote({
       </span>
       <button
         type="button"
-        className={cn('inline-flex size-4 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-ink-30 hover:text-ink-60')}
+        className={cn('inline-flex size-4 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-nomi-ink-40 hover:text-nomi-ink-60')}
         aria-label={t('generationCommon.parameters.narrowedModeGuidanceDismiss')}
         onClick={onDismiss}
       >

@@ -317,7 +317,9 @@ export async function openProcess(process, label = '展开运行过程') {
 }
 
 export async function openCanvas(win) {
-  await clickOrFail(win.getByRole('button', { name: '生成', exact: true }), '生成工作区')
+  // 导航钮的可见名跟界面语言走（i18n 把当前语言同步到 document 的 lang）：只认中文「生成」的话，切到英文再开画布就点不到。
+  const lang = await win.evaluate(() => document.documentElement.lang)
+  await clickOrFail(win.getByRole('button', { name: String(lang).startsWith('en') ? 'Generate' : '生成', exact: true }), '生成工作区')
   await expect(win.locator('.generation-canvas-v2__stage')).toBeVisible()
   // Host cutover retired the in-canvas assistant panel; the project Agent now lives in the
   // ResidentShell dock, resident by default since 2026-09-05.
@@ -393,7 +395,7 @@ export async function approvePendingIntervention(win, panel) {
  *   `videoResultPath` 透传给夹具（出片地址的路径段）；`env` 追加到被测 App 的进程环境（如把公网出口指到一个
  *   只记账不放行的本地代理，证明走查碰不到真供应商）。都不传 = 老样子。
  */
-export async function createRuntimeWalk(name, { generationProvider = 'loopback', videoResultPath, env: extraEnv = {}, profileDir, mainRequire, seedApimartKey } = {}) {
+export async function createRuntimeWalk(name, { generationProvider = 'loopback', videoResultPath, env: extraEnv = {}, profileDir, mainRequire, seedApimartKey, trustFixtureOrigin = false } = {}) {
   const args = process.argv.slice(2)
   if (args.length && (args.length !== 2 || args[0] !== '--packaged' || !path.isAbsolute(args[1]))) {
     throw new Error('Usage: node <walk.mjs> [--packaged /absolute/Nomi.app/Contents/MacOS/Nomi]')
@@ -460,6 +462,9 @@ export async function createRuntimeWalk(name, { generationProvider = 'loopback',
           ? { NOMI_TEST_NETWORK_REDIRECTS: JSON.stringify(testNetworkRedirects) }
           : {}),
         NOMI_RENDERER_URL: '', VITE_DEV_SERVER_URL: '', NOMI_DESKTOP_DEV: '', NOMI_DISABLE_AUTO_UPDATE: '1',
+        // 画布直生成要从本机夹具取回产物（127.0.0.1）：产品出站策略默认拒私网地址，只在未打包构建里按精确 origin 放行
+        // （NOMI_LAB_TRUSTED_PRIVATE_ORIGINS，分类器本身不放宽，打包版本连读都不读）。缺省关，老走查一个字不变。
+        ...(trustFixtureOrigin ? { NOMI_LAB_TRUSTED_PRIVATE_ORIGINS: fixture.baseURL } : {}),
         // 这三个是同一个口子的三把钥匙（`safeFixtureBaseUrl` 只接受 http(s) 的 127.0.0.1/localhost/::1）：
         // 少一把就装不出可提交的生成供应商。默认仍是 '0'，老走查一个字都不变。
         ...(generationProvider === 'apimart' || generationProvider === 'higgsfield'

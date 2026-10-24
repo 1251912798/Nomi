@@ -162,7 +162,7 @@ describe('buildCatalogTaskRequest — 档案驱动 input（extras.archetypeInput
     expect(ai.last_frame_url).toBe('L.png')
   })
 
-  it('全能参考模式：角色图数组进（按序），残留的 firstFrameUrl 不进（互斥含数组）', () => {
+  it('全能参考模式：角色图数组进（按序）；旧数据残留的 firstFrameUrl 旧界面看不见 → 先放一边，不发、也不当首帧发（#1269 条件 4）', () => {
     const ai = archetypeInput(seedanceVideoNode('omni', {
       referenceImageUrls: ['c1.png', 'c2.png'],
       referenceVideoUrls: ['v1.mp4'],
@@ -646,6 +646,23 @@ describe('runCatalogGenerationTask — 轮询查询失败绝不重新提交付�
     }).catch((e) => e)
     expect(isRecoverableTimeoutError(error)).toBe(true)
     expect(submitCount).toBe(1) // ★持续失败也绝不二次提交
+  })
+
+  // C7（⑬）：查询被 Nomi 自己挂了提交前的码（出站守卫按提交挂码、#1285 修前的参考重传失败）——
+  // 照样只落可找回，绝不冒泡成「没发出去、可以重新生成」触发再提交。
+  it('轮询持续报提交前的码（outbound-blocked-submit / asset-upload-failed）→ 仍落可找回，runTask 只一次', async () => {
+    const { isRecoverableTimeoutError } = await import('./recoverableTimeout')
+    for (const code of ['outbound-blocked-submit', 'asset-upload-failed']) {
+      let submitCount = 0
+      const error = await runCatalogGenerationTask(videoNode, { projectTarget: TEST_TARGET,
+        runTask: async (_v, req) => { submitCount += 1; return { id: 'up-pre', kind: req.kind, status: 'queued' as const, assets: [], raw: {} } },
+        fetchTaskResult: async () => { throw new Error(`NOMI_ERR::${code}:: 还没请求这次选的服务商`) },
+        pollIntervalMs: 1,
+        pollTimeoutMs: 4,
+      }).catch((e) => e)
+      expect(isRecoverableTimeoutError(error), code).toBe(true)
+      expect(submitCount, code).toBe(1)
+    }
   })
 
   // 2026-07-31：厂商文档（Seedance 2.0 交付文档 §5.1）要求「查询间隔分散到 3-5 秒以上」+

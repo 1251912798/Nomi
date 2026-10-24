@@ -1,5 +1,6 @@
 import { FIND_REFERENCE_STATES } from './findReference/states/01-find-reference'
 import { CREATION_COLUMNS_STATES } from './creationColumns/states/01-columns'
+import { CREATION_AI_REWRITE_STATES } from './creationAiRewrite/states/01-rewrite'
 import { SHOT_TABLE_STATES } from './shotTable/states/01-table'
 import { GENERATION_LIST_STATES } from './generationList/states/01-list'
 import { GENERATION_LIST_CELL_HEIGHT, GENERATION_LIST_CELL_WIDTH } from './generationList/generationListLabKit'
@@ -52,6 +53,8 @@ import { VN_CELL_HEIGHT, VN_CELL_WIDTH } from './videoNodeNext/videoNodeNextTool
 import { EMPTY_NODE_RATIOS_STATES } from './emptyNodeRatios/emptyNodeRatiosStates'
 import { NO_ACCENT_OUTLINE_STATES } from './noAccentOutline/noAccentOutlineStates'
 import { EMPTY_NODE_RATIOS_HEIGHT, EMPTY_NODE_RATIOS_WIDTH } from './emptyNodeRatios/emptyNodeRatiosLabKit'
+import { NODE_POINTER_STATES } from './nodePointer/states/01-node-pointer'
+import { NODE_POINTER_CELL_HEIGHT, NODE_POINTER_CELL_WIDTH } from './nodePointer/nodePointerLabKit'
 import type { LabScreen, LabState } from './labScreen'
 
 /**
@@ -60,8 +63,11 @@ import type { LabScreen, LabState } from './labScreen'
  * 只改一处 = 那一屏要么截不出图、要么孤儿基线）。
  */
 export const LAB_SCREENS: readonly LabScreen[] = [
+  { id: 'creation-ai-rewrite', label: '写作区 · 选中文字 AI 编辑', states: CREATION_AI_REWRITE_STATES, cell: { width: 760, height: 460 } },
   { id: 'no-accent-outline', label: '去掉强调色描边（样张）', states: NO_ACCENT_OUTLINE_STATES, cell: { width: 1100, height: 700 } },
   { id: 'empty-node-ratios', label: '空节点比例', states: EMPTY_NODE_RATIOS_STATES, cell: { width: EMPTY_NODE_RATIOS_WIDTH, height: EMPTY_NODE_RATIOS_HEIGHT } },
+  // 聊天里的指向元素（NodePointer 板，2026-10-23 D2 第②步）：生产组件搭全状态，先不接进聊天。
+  { id: 'node-pointer', label: '指向元素（聊天里代表画布节点）', states: NODE_POINTER_STATES, cell: { width: NODE_POINTER_CELL_WIDTH, height: NODE_POINTER_CELL_HEIGHT } },
   { id: 'find-reference', label: '找参考', states: FIND_REFERENCE_STATES, cell: { width: 1260, height: 650 } },
   { id: 'shot-table', label: '画布 · 拆解表', states: SHOT_TABLE_STATES, cell: { width: 992, height: 452 } },
   { id: 'generation-list', label: '生成页 · 列表视图', states: GENERATION_LIST_STATES, cell: { width: GENERATION_LIST_CELL_WIDTH, height: GENERATION_LIST_CELL_HEIGHT } },

@@ -422,7 +422,9 @@ test('package scripts expose canonical separated profiles and classifier contrac
   assert.equal(scripts['test:canvas:performance'], 'python3 scripts/with-gates-lock.py -- node tests/ux/canvas-real-suite.mjs performance')
   // 棘轮只减不增：2026-09-06 v4 接线删掉旧面板后降到 81；2026-09-22 总合并清完合并带来的
   // 未用 import 与两处 prefer-const 后降到 79。调高需要理由，调低直接改这一行。
-  assert.equal(scripts['lint:ci'], 'eslint . --max-warnings=79')
+  // 2026-10-22 scripts / tests/ux / evals 进 ESLint：带进来 16 条存量警告（TS 脚本里的 any / 未用变量等，批量抑制只冻结错误、冻不了警告），79 → 95。
+  // --cache（按内容判，检出会改 mtime）：本机重跑走缓存；CI 上没有恢复缓存时每次冷跑、结果不变。警告上限不受缓存影响。
+  assert.equal(scripts['lint:ci'], 'eslint . --max-warnings=95 --cache --cache-location .tmp/eslintcache --cache-strategy content')
   assert.match(scripts['check:quality-gate-workflow'], /validation-policy\.node-test\.mjs/)
   assert.match(scripts['check:quality-gate-workflow'], /real-user-test-gates\.node-test\.mjs/)
 })
@@ -588,6 +590,16 @@ test('spending and nightly workflows use shared routing, browser setup, timeouts
   assert.equal(nightly.jobs.walks.steps.find((step) => step.name === 'Install Chromium').run, PLAYWRIGHT_INSTALL_STEP)
   assert.match(nightly.jobs.walks.steps.find((step) => step.name === 'Run non-paid walkthrough batch').run, /timeout 600/)
   assert.match(nightly.jobs.report.steps.find((step) => step.name === 'Publish summary and update issue').run, /nightly-walk-summary\.mjs/)
+  // 打包冒烟每夜一跑（R-mac-smoke-flake）：PR 上的 Mac Package 只在打包文件变动时才跑，夜跑是它唯一的定时兜底。
+  // 跑的必须是同一条 dist:mac:dir（不另抄一份冒烟命令），结果必须进同一张汇总表（report 依赖它、行写进 nightly-walks-*）。
+  const packaged = nightly.jobs['packaged-mac']
+  assert.ok(packaged, '夜跑缺 packaged-mac：打包冒烟又只剩「碰打包文件才跑」')
+  assert.match(String(packaged['runs-on']), /^macos-/)
+  const packagedRun = packaged.steps.find((step) => step.name === 'Package macOS app and run packaged smoke').run
+  assert.match(packagedRun, /pnpm run dist:mac:dir/)
+  assert.match(packagedRun, /nightly-walks\/results-packaged-mac\.tsv/)
+  assert.match(packaged.steps.find((step) => step.name === 'Upload packaged smoke evidence').with.name, /^nightly-walks-/)
+  assert.deepEqual([nightly.jobs.report.needs].flat().sort(), ['packaged-mac', 'walks'])
 })
 
 test('workflows delegate Chromium installation to the shared script', () => {

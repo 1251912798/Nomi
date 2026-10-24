@@ -256,6 +256,7 @@ export default defineConfig(async ({ command, mode }: ConfigEnv): Promise<UserCo
         'react-dom',
         'react-dom/client',
         'react-router-dom',
+        'diff',
         '@radix-ui/react-switch',
         '@floating-ui/dom',
         '@mantine/core',

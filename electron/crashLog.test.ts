@@ -1,4 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { app } from "electron";
+import { CRASH_LOG_FILE_NAME, dailyLogFileName } from "./logging/logFiles";
 import {
   installCrashHandlers,
   installProcessGoneHandlers,
@@ -6,6 +10,11 @@ import {
   isUpstreamStreamTeardownError,
   startNativeCrashCapture,
 } from "./crashLog";
+
+function readLogFile(name: string): string {
+  const file = path.join(app.getPath("logs"), name);
+  return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
+}
 
 /** 用户 2026-08-24 报的那一条，逐字照抄自 Windows 上的崩溃弹框。 */
 function upstreamTeardownError(): Error {
@@ -174,7 +183,21 @@ describe("installProcessGoneHandlers", () => {
     installProcessGoneHandlers(target, record);
     listeners.get("render-process-gone")?.({}, {}, { reason: "crashed", exitCode: 5 });
 
-    expect(record).toHaveBeenCalledWith("render-process-gone", "reason=crashed exitCode=5");
+    expect(record).toHaveBeenCalledWith("render-process-gone", { reason: "crashed", exitCode: 5 });
+  });
+
+  it("默认记录器：死因与退出码按字段落进崩溃日志和通用日志，不被当成错误原文抹成指纹（V-redact 条件 1）", () => {
+    const { target, listeners } = createTarget();
+    installProcessGoneHandlers(target);
+    listeners.get("render-process-gone")?.({}, {}, { reason: "oom", exitCode: -536870904 });
+    listeners.get("child-process-gone")?.({}, { type: "Utility", serviceName: "network.mojom.NetworkService", reason: "crashed", exitCode: 133 });
+
+    const crash = readLogFile(CRASH_LOG_FILE_NAME);
+    expect(crash).toContain("[render-process-gone] reason=oom exitCode=-536870904");
+    expect(crash).toContain("[child-process-gone] type=Utility service=network.mojom.NetworkService reason=crashed exitCode=133");
+    expect(crash).not.toMatch(/process-gone\] \S*Error msg#/);
+    const main = readLogFile(dailyLogFileName(new Date()));
+    expect(main).toMatch(/ERROR crash\s+render-process-gone reason=oom exitCode=-536870904/);
   });
 
   it("子进程死亡落盘：GPU/utility 也要留证（辅助窗口的进程一样会死）", () => {
@@ -184,7 +207,7 @@ describe("installProcessGoneHandlers", () => {
     installProcessGoneHandlers(target, record);
     listeners.get("child-process-gone")?.({}, { type: "GPU", reason: "crashed", exitCode: 133 });
 
-    expect(record).toHaveBeenCalledWith("child-process-gone", "type=GPU name=- reason=crashed exitCode=133");
+    expect(record).toHaveBeenCalledWith("child-process-gone", { type: "GPU", service: "-", reason: "crashed", exitCode: 133 });
   });
 
   it("装在 app 上而不是单个窗口上：两个事件都要挂", () => {

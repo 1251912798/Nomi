@@ -1,0 +1,33 @@
+{
+  "name": "参考素材在任务的哪一步交给供应商（只有提交步；查任务 / 取结果不读盘不上传）",
+  "subject": "asset.reference-submit-stage",
+  "lifecycle": "execution",
+  "authority_kind": "decision",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/catalog/referenceStage.ts",
+    "symbol": "stageSubmitsReferences"
+  },
+  "write_api": [
+    {
+      "path": "electron/catalog/referenceStage.ts",
+      "symbol": "stageSubmitsReferences"
+    },
+    {
+      "path": "electron/catalog/referenceStage.ts",
+      "symbol": "assertNoReferencesOutsideSubmit"
+    },
+    {
+      "path": "electron/runtime.ts",
+      "symbol": "executeProfileOperation"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "electron/runtime.ts"
+  ],
+  "since": "2026-10-22",
+  "notes": "合同 docs/fixes/2026-10-22-poll-reupload.root-cause.json：引擎 A 的唯一 HTTP 出口 executeProfileOperation 每一步都问 stageSubmitsReferences，只有 create 本地化参考；query / result 渲染出的请求带本地素材值就当场拦下（assertNoReferencesOutsideSubmit）。引擎 B（productionReferenceUrls）与自定义调用（customCallDispatch）各自在提交前本地化一次，不在本概念的轮询链上。"
+}

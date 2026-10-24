@@ -179,11 +179,11 @@ try {
   // A：工具栏新按钮（标题/列表/插入 三簇都验证）
   const toolbar = win.locator('.workbench-editor-toolbar')
   await expectVisible(toolbar, '工具栏未渲染')
-  // 通过 title 属性定位新增按钮（WorkbenchIconButton 会带 label → title）
-  for (const label of ['高亮', '删除线', '插入表格', '待办列表']) {
-    const btn = toolbar.locator(`[title="${label}"]`)
+  // 按格式钮的动作 id 定位（RichTextActionButton 的 data-rich-text-action；名字走 Tooltip，不再挂原生 title）
+  for (const action of ['highlight', 'strike', 'table', 'task-list']) {
+    const btn = toolbar.locator(`[data-rich-text-action="${action}"]`)
     const count = await btn.count()
-    record(`工具栏·${label}`, count > 0, `找到 ${count} 个`)
+    record(`工具栏·${action}`, count > 0, `找到 ${count} 个`)
   }
 
   // B：新格式真实渲染

@@ -1,0 +1,212 @@
+{
+  "lang": "en",
+  "startedAt": "2026-10-21T21:36:32.444Z",
+  "checks": [
+    {
+      "name": "A：无槽模型备好的预演退成文字描述（提示词有预演运镜行，没有参考视频）",
+      "ok": true,
+      "detail": "{\"attach\":\"prompt_only\"}"
+    },
+    {
+      "name": "A：换成有槽模型后出成片 → 预演作为参考视频重新挂上",
+      "ok": true,
+      "detail": "[\"nomi-local://asset/project-1792618601404-1wrs4y/assets/generated/2026-10-21/3D-BOX-preview-gen-v2-director-mvimtyqr-qbtx-1792618619549.m-3074366e.mp4\"]"
+    },
+    {
+      "name": "A：请求里带着预演参考（一条，且是假上传口发回的预演网址）",
+      "ok": true,
+      "detail": "{\"videos\":[\"http://127.0.0.1:56678/files/up-1.mp4\"],\"uploads\":[{\"id\":1,\"filename\":\"3D-BOX-preview-gen-v2-director-mvimtyqr-qbtx-1792618619549.m-3074366e.mp4\",\"bytes\":211198}]}"
+    },
+    {
+      "name": "A：请求提示词里的引用是 @video1",
+      "ok": true,
+      "detail": "Two people talk in the study\n@video1 跟随这段参考视频的运镜（只参考镜头运动，画面内容由角色参考与文字决定）。"
+    },
+    {
+      "name": "B：出成片后镜头 B 挂上预演",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "B：手动删掉参考后镜头 B 没有参考视频（标记还在）",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "B：再出成片 → 预演参考重新挂上",
+      "ok": true,
+      "detail": "[\"nomi-local://asset/project-1792618601404-1wrs4y/assets/generated/2026-10-21/3D-BOX-preview-gen-v2-director-mvimtyqr-qbtx-1792618619549.m-3074366e.mp4\"]"
+    },
+    {
+      "name": "B：请求里带着预演参考",
+      "ok": true,
+      "detail": "[\"http://127.0.0.1:56678/files/up-2.mp4\"]"
+    },
+    {
+      "name": "C：请求里两条参考视频，用户自己的在前、预演在后",
+      "ok": true,
+      "detail": "[\"http://127.0.0.1:56678/files/user-clip.mp4\",\"http://127.0.0.1:56678/files/up-3.mp4\"]"
+    },
+    {
+      "name": "C：请求提示词里的引用是 @video2（指向预演那一条，不是第一条用户片）",
+      "ok": true,
+      "detail": "Two people talk in the study\n@video2 跟随这段参考视频的运镜（只参考镜头运动，画面内容由角色参考与文字决定）。"
+    },
+    {
+      "name": "D：无槽模型上出成片 → 预演退成文字描述，没有参考视频",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "D：换模型后直接点 ↑，请求里带着预演参考",
+      "ok": true,
+      "detail": "[\"http://127.0.0.1:56678/files/up-4.mp4\"]"
+    },
+    {
+      "name": "D：请求提示词里的引用是 @video1",
+      "ok": true,
+      "detail": "Two people talk in the study\n@video1 跟随这段参考视频的运镜（只参考镜头运动，画面内容由角色参考与文字决定）。"
+    },
+    {
+      "name": "渲染端没有抛错",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "scenarios": {
+    "A": {
+      "videos": [
+        "http://127.0.0.1:56678/files/up-1.mp4"
+      ],
+      "prompt": "Two people talk in the study\n@video1 跟随这段参考视频的运镜（只参考镜头运动，画面内容由角色参考与文字决定）。"
+    },
+    "B": {
+      "videos": [
+        "http://127.0.0.1:56678/files/up-2.mp4"
+      ],
+      "prompt": "Two people talk in the study\n@video1 跟随这段参考视频的运镜（只参考镜头运动，画面内容由角色参考与文字决定）。"
+    },
+    "C": {
+      "videos": [
+        "http://127.0.0.1:56678/files/user-clip.mp4",
+        "http://127.0.0.1:56678/files/up-3.mp4"
+      ],
+      "prompt": "Two people talk in the study\n@video2 跟随这段参考视频的运镜（只参考镜头运动，画面内容由角色参考与文字决定）。"
+    },
+    "D": {
+      "videos": [
+        "http://127.0.0.1:56678/files/up-4.mp4"
+      ],
+      "prompt": "Two people talk in the study\n@video1 跟随这段参考视频的运镜（只参考镜头运动，画面内容由角色参考与文字决定）。"
+    }
+  },
+  "ids": {
+    "director": "gen-v2-director-mvimtyqr-qbtx",
+    "a": "gen-v2-video-mvimtyqt-ix6l",
+    "b": "gen-v2-video-mvimtyqu-eeuj",
+    "c": "gen-v2-video-mvimtyqu-xs0a",
+    "d": "gen-v2-video-mvimtyqv-4q7s"
+  },
+  "previewUrl": "nomi-local://asset/project-1792618601404-1wrs4y/assets/generated/2026-10-21/3D-BOX-preview-gen-v2-director-mvimtyqr-qbtx-1792618619549.m-3074366e.mp4",
+  "uploads": [
+    {
+      "id": 1,
+      "filename": "3D-BOX-preview-gen-v2-director-mvimtyqr-qbtx-1792618619549.m-3074366e.mp4",
+      "bytes": 211198,
+      "contentType": "video/mp4",
+      "url": "http://127.0.0.1:56678/files/up-1.mp4"
+    },
+    {
+      "id": 2,
+      "filename": "3D-BOX-preview-gen-v2-director-mvimtyqr-qbtx-1792618619549.m-3074366e.mp4",
+      "bytes": 211198,
+      "contentType": "video/mp4",
+      "url": "http://127.0.0.1:56678/files/up-2.mp4"
+    },
+    {
+      "id": 3,
+      "filename": "3D-BOX-preview-gen-v2-director-mvimtyqr-qbtx-1792618619549.m-3074366e.mp4",
+      "bytes": 211198,
+      "contentType": "video/mp4",
+      "url": "http://127.0.0.1:56678/files/up-3.mp4"
+    },
+    {
+      "id": 4,
+      "filename": "3D-BOX-preview-gen-v2-director-mvimtyqr-qbtx-1792618619549.m-3074366e.mp4",
+      "bytes": 211198,
+      "contentType": "video/mp4",
+      "url": "http://127.0.0.1:56678/files/up-4.mp4"
+    }
+  ],
+  "wire": [
+    {
+      "at": "2026-10-21T21:37:11.069Z",
+      "path": "/api/v1/jobs/createTask",
+      "body": {
+        "model": "bytedance/seedance-2",
+        "input": {
+          "prompt": "Two people talk in the study\n@video1 跟随这段参考视频的运镜（只参考镜头运动，画面内容由角色参考与文字决定）。",
+          "reference_video_urls ": [
+            "http://127.0.0.1:56678/files/up-1.mp4"
+          ],
+          "resolution": "720p",
+          "aspect_ratio": "16:9",
+          "duration": 5,
+          "generate_audio": true
+        }
+      }
+    },
+    {
+      "at": "2026-10-21T21:37:25.151Z",
+      "path": "/api/v1/jobs/createTask",
+      "body": {
+        "model": "bytedance/seedance-2",
+        "input": {
+          "prompt": "Two people talk in the study\n@video1 跟随这段参考视频的运镜（只参考镜头运动，画面内容由角色参考与文字决定）。",
+          "reference_video_urls ": [
+            "http://127.0.0.1:56678/files/up-2.mp4"
+          ],
+          "resolution": "720p",
+          "aspect_ratio": "16:9",
+          "duration": 5,
+          "generate_audio": true
+        }
+      }
+    },
+    {
+      "at": "2026-10-21T21:37:33.119Z",
+      "path": "/api/v1/jobs/createTask",
+      "body": {
+        "model": "bytedance/seedance-2",
+        "input": {
+          "prompt": "Two people talk in the study\n@video2 跟随这段参考视频的运镜（只参考镜头运动，画面内容由角色参考与文字决定）。",
+          "reference_video_urls ": [
+            "http://127.0.0.1:56678/files/user-clip.mp4",
+            "http://127.0.0.1:56678/files/up-3.mp4"
+          ],
+          "resolution": "720p",
+          "aspect_ratio": "16:9",
+          "duration": 5,
+          "generate_audio": true
+        }
+      }
+    },
+    {
+      "at": "2026-10-21T21:37:42.210Z",
+      "path": "/api/v1/jobs/createTask",
+      "body": {
+        "model": "bytedance/seedance-2",
+        "input": {
+          "prompt": "Two people talk in the study\n@video1 跟随这段参考视频的运镜（只参考镜头运动，画面内容由角色参考与文字决定）。",
+          "reference_video_urls ": [
+            "http://127.0.0.1:56678/files/up-4.mp4"
+          ],
+          "resolution": "720p",
+          "aspect_ratio": "16:9",
+          "duration": 5,
+          "generate_audio": true
+        }
+      }
+    }
+  ]
+}

@@ -18,7 +18,7 @@ import type { AdapterAuthType, AdapterModeDraft, AdapterModelDraft, ProviderAdap
 import type { AiSdkProviderKind } from "../catalog/types";
 
 // 文本的 OpenAI 兼容 wire。声明它是为了让说明卡形状完整、也把线缆写明；实际文本请求走
-// buildLanguageModelForVendor（AI SDK），验证也在 verifier 里短路成 streamTextTask，不发这条。
+// nomiModelConfigFor → pi-ai 的 openai-completions（与 Agent、文本任务同一个调用核心），不发这条。
 const OPENAI_COMPATIBLE_CHAT_OP: HttpOperation = {
   method: "POST",
   path: "/v1/chat/completions",
@@ -31,7 +31,7 @@ const OPENAI_COMPATIBLE_CHAT_OP: HttpOperation = {
 };
 
 /**
- * Anthropic Messages contract (same line as onboardingIpc's protocol probe and buildAiSdkModel's
+ * Anthropic Messages contract (same line as onboardingIpc's protocol probe and the pi-ai
  * runtime): `POST {base}/v1/messages`, `x-api-key` + `anthropic-version`, and max_tokens is
  * required — omit it and Anthropic returns 400, it is not optional. The auth header is added by
  * withAuthHeader per authType; here we only declare the version header.

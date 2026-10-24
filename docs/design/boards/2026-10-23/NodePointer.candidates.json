@@ -1,0 +1,9750 @@
+{
+  "board": "NodePointer",
+  "extractor": "board-extract@1",
+  "source": "preview/NodePointer.html",
+  "sourceSha256": "97f7d11277ef4fe0f6bf56bded5f5aead31aa260dff6e683bda5f44ab127f447",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "candidates": [
+    {
+      "id": "001-h3-A1一张脸节点指向元素P",
+      "kind": "text",
+      "tag": "h3",
+      "text": "A1 一张脸：节点 ↔ 指向元素（P1；P2 为窄 / 行内形态）",
+      "bbox": [
+        20,
+        24,
+        1240,
+        19
+      ],
+      "region": "root"
+    },
+    {
+      "id": "002-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        60,
+        83,
+        1160,
+        42
+      ],
+      "region": "root"
+    },
+    {
+      "id": "003-span-A1",
+      "kind": "text",
+      "tag": "span",
+      "text": "A1",
+      "bbox": [
+        60,
+        94,
+        30,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "004-h2-一张脸指向元素的每个部件",
+      "kind": "text",
+      "tag": "h2",
+      "text": "一张脸：指向元素的每个部件都来自真节点，不另造",
+      "bbox": [
+        98,
+        83,
+        237,
+        42
+      ],
+      "region": "root"
+    },
+    {
+      "id": "005-span-真组件出处BaseGen",
+      "kind": "text",
+      "tag": "span",
+      "text": "真组件出处：BaseGenerationNode 标题行 + NodeShotLabel（镜号）· NodeEmptyS",
+      "bbox": [
+        343,
+        86,
+        877,
+        36
+      ],
+      "region": "root"
+    },
+    {
+      "id": "006-b-画布上的节点",
+      "kind": "text",
+      "tag": "b",
+      "text": "画布上的节点",
+      "bbox": [
+        60,
+        147,
+        72,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "007-span-同一个镜头的三个阶段真实",
+      "kind": "text",
+      "tag": "span",
+      "text": "同一个镜头的三个阶段，真实排法：状态条在最上、标题行在框外、画面在框里",
+      "bbox": [
+        140,
+        147,
+        420,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "008-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        60,
+        206,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "009-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        113,
+        206,
+        52,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "010-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        60,
+        233,
+        200,
+        112
+      ],
+      "region": "card"
+    },
+    {
+      "id": "011-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        153,
+        282,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "010-div"
+    },
+    {
+      "id": "012-span-等你确认",
+      "kind": "text",
+      "tag": "span",
+      "text": "等你确认",
+      "bbox": [
+        64,
+        237,
+        56,
+        18
+      ],
+      "region": "card"
+    },
+    {
+      "id": "013-div-①等你确认",
+      "kind": "text",
+      "tag": "div",
+      "text": "① 等你确认",
+      "bbox": [
+        60,
+        351,
+        200,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "014-span-生成中已等12秒",
+      "kind": "text",
+      "tag": "span",
+      "text": "生成中 · 已等 12 秒",
+      "bbox": [
+        290,
+        175,
+        131,
+        24
+      ],
+      "region": "root"
+    },
+    {
+      "id": "015-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        290,
+        206,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "016-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        343,
+        206,
+        52,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "017-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        290,
+        233,
+        200,
+        112
+      ],
+      "region": "card"
+    },
+    {
+      "id": "018-div-②生成中",
+      "kind": "text",
+      "tag": "div",
+      "text": "② 生成中",
+      "bbox": [
+        290,
+        351,
+        200,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "019-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        520,
+        206,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "020-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        573,
+        206,
+        52,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "021-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        520,
+        233,
+        200,
+        112
+      ],
+      "region": "card"
+    },
+    {
+      "id": "022-div-③完成只剩结果图",
+      "kind": "text",
+      "tag": "div",
+      "text": "③ 完成（只剩结果图）",
+      "bbox": [
+        520,
+        351,
+        200,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "023-b-聊天里的P1",
+      "kind": "text",
+      "tag": "b",
+      "text": "聊天里的 P1",
+      "bbox": [
+        60,
+        393,
+        64,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "024-span-同样大小同样排法状态条落",
+      "kind": "text",
+      "tag": "span",
+      "text": "同样大小、同样排法；状态条落进缩略图里（GenerationStatusBar 自带的 overlay 形态）",
+      "bbox": [
+        132,
+        393,
+        481,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "025-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        60,
+        417,
+        200,
+        156
+      ],
+      "region": "root"
+    },
+    {
+      "id": "026-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        60,
+        417,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "027-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        113,
+        419,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "028-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        153,
+        490,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "025-button"
+    },
+    {
+      "id": "029-span-等你确认",
+      "kind": "text",
+      "tag": "span",
+      "text": "等你确认",
+      "bbox": [
+        64,
+        445,
+        56,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "030-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 16:9 · 4s",
+      "bbox": [
+        60,
+        558,
+        200,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "031-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        290,
+        417,
+        200,
+        156
+      ],
+      "region": "root"
+    },
+    {
+      "id": "032-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        290,
+        417,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "033-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        343,
+        419,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "034-span-生成中已等12秒",
+      "kind": "text",
+      "tag": "span",
+      "text": "生成中 · 已等 12 秒",
+      "bbox": [
+        294,
+        530,
+        118,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "035-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 16:9 · 4s",
+      "bbox": [
+        290,
+        558,
+        200,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "036-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        520,
+        417,
+        200,
+        156
+      ],
+      "region": "root"
+    },
+    {
+      "id": "037-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        520,
+        417,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "038-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        573,
+        419,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "039-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 16:9 · 4s",
+      "bbox": [
+        520,
+        558,
+        200,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "040-span-P2",
+      "kind": "text",
+      "tag": "span",
+      "text": "P2",
+      "bbox": [
+        800,
+        147,
+        31,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "041-b-行内标签",
+      "kind": "text",
+      "tag": "b",
+      "text": "行内标签",
+      "bbox": [
+        839,
+        148,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "042-span-只取标题行那一半",
+      "kind": "text",
+      "tag": "span",
+      "text": "只取标题行那一半",
+      "bbox": [
+        895,
+        148,
+        96,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "043-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        800,
+        175,
+        420,
+        46
+      ],
+      "region": "root"
+    },
+    {
+      "id": "044-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        845,
+        180,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "045-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        898,
+        182,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "046-span-等你确认",
+      "kind": "text",
+      "tag": "span",
+      "text": "等你确认",
+      "bbox": [
+        845,
+        200,
+        366,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "047-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        800,
+        227,
+        420,
+        46
+      ],
+      "region": "root"
+    },
+    {
+      "id": "048-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        845,
+        232,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "049-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        898,
+        234,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "050-span-生成中已等12秒",
+      "kind": "text",
+      "tag": "span",
+      "text": "生成中 · 已等 12 秒",
+      "bbox": [
+        845,
+        252,
+        344,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "051-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1197,
+        243,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "047-button"
+    },
+    {
+      "id": "052-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        800,
+        279,
+        420,
+        45
+      ],
+      "region": "root"
+    },
+    {
+      "id": "053-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        845,
+        284,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "054-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        898,
+        286,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "055-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 16:9 · 4s",
+      "bbox": [
+        845,
+        304,
+        366,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "056-th-部件",
+      "kind": "text",
+      "tag": "th",
+      "text": "部件",
+      "bbox": [
+        60,
+        595,
+        150,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "057-th-来自哪真组件",
+      "kind": "text",
+      "tag": "th",
+      "text": "来自哪（真组件）",
+      "bbox": [
+        210,
+        595,
+        450,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "058-th-指向元素里的做法",
+      "kind": "text",
+      "tag": "th",
+      "text": "指向元素里的做法",
+      "bbox": [
+        660,
+        595,
+        330,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "059-th-真节点上有吗",
+      "kind": "text",
+      "tag": "th",
+      "text": "真节点上有吗",
+      "bbox": [
+        990,
+        595,
+        230,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "060-td-镜号角标名字",
+      "kind": "text",
+      "tag": "td",
+      "text": "镜号角标 + 名字",
+      "bbox": [
+        60,
+        635,
+        150,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "061-td-NodeShotLabe",
+      "kind": "text",
+      "tag": "td",
+      "text": "NodeShotLabel / 节点标题行",
+      "bbox": [
+        210,
+        635,
+        450,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "062-td-原样边线圆角字号同标题行",
+      "kind": "text",
+      "tag": "td",
+      "text": "原样（边线、圆角、字号同标题行）；改名两边一起变",
+      "bbox": [
+        660,
+        635,
+        330,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "063-td-有",
+      "kind": "text",
+      "tag": "td",
+      "text": "有",
+      "bbox": [
+        990,
+        635,
+        230,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "064-td-画面",
+      "kind": "text",
+      "tag": "td",
+      "text": "画面",
+      "bbox": [
+        60,
+        675,
+        150,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "065-td-结果图空卡NodeEmp",
+      "kind": "text",
+      "tag": "td",
+      "text": "结果图；空卡 = NodeEmptyState 的圆托 + 种类图标",
+      "bbox": [
+        210,
+        675,
+        450,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "066-td-同比例缩小无结果就是同一",
+      "kind": "text",
+      "tag": "td",
+      "text": "同比例缩小；无结果就是同一个空卡；9:16 按真比例（见 A2）",
+      "bbox": [
+        660,
+        675,
+        330,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "067-td-有",
+      "kind": "text",
+      "tag": "td",
+      "text": "有",
+      "bbox": [
+        990,
+        675,
+        230,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "068-td-状态",
+      "kind": "text",
+      "tag": "td",
+      "text": "状态",
+      "bbox": [
+        60,
+        734,
+        150,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "069-td-等你确认排队Produc",
+      "kind": "text",
+      "tag": "td",
+      "text": "等你确认 / 排队：ProductionShotPlaceholder 左上小标；生成中 / 失败：Generation",
+      "bbox": [
+        210,
+        734,
+        450,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "070-td-小标在缩略图左上状态条的",
+      "kind": "text",
+      "tag": "td",
+      "text": "小标在缩略图左上；状态条的 overlay 形态落进缩略图左下。完成没有标，只剩结果图",
+      "bbox": [
+        660,
+        734,
+        330,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "071-td-有状态条在节点上方指向元",
+      "kind": "text",
+      "tag": "td",
+      "text": "有（状态条在节点上方，指向元素里挪进画面）",
+      "bbox": [
+        990,
+        734,
+        230,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "072-td-一行摘要",
+      "kind": "text",
+      "tag": "td",
+      "text": "一行摘要",
+      "bbox": [
+        60,
+        793,
+        150,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "073-td-读节点的模型比例时长",
+      "kind": "text",
+      "tag": "td",
+      "text": "读节点的模型 / 比例 / 时长",
+      "bbox": [
+        210,
+        793,
+        450,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "074-td-缩略图下一行灰字只读",
+      "kind": "text",
+      "tag": "td",
+      "text": "缩略图下一行灰字，只读",
+      "bbox": [
+        660,
+        793,
+        330,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "075-td-节点上没有这一行是读节点",
+      "kind": "text",
+      "tag": "td",
+      "text": "节点上没有这一行，是读节点那一份算出来的",
+      "bbox": [
+        990,
+        793,
+        230,
+        59
+      ],
+      "region": "root"
+    },
+    {
+      "id": "076-td-已删除态",
+      "kind": "text",
+      "tag": "td",
+      "text": "已删除态",
+      "bbox": [
+        60,
+        852,
+        150,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "077-td",
+      "kind": "text",
+      "tag": "td",
+      "text": "—",
+      "bbox": [
+        210,
+        852,
+        450,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "078-td-划线名字空圆托已删除不可",
+      "kind": "text",
+      "tag": "td",
+      "text": "划线名字 + 空圆托 + 「已删除」，不可点",
+      "bbox": [
+        660,
+        852,
+        330,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "079-td-节点没了才有",
+      "kind": "text",
+      "tag": "td",
+      "text": "（节点没了才有）",
+      "bbox": [
+        990,
+        852,
+        230,
+        40
+      ],
+      "region": "root"
+    },
+    {
+      "id": "080-span-只在指向元素上",
+      "kind": "text",
+      "tag": "span",
+      "text": "只在指向元素上",
+      "bbox": [
+        1002,
+        864,
+        86,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "081-h3-A2指向元素状态组指向P",
+      "kind": "text",
+      "tag": "h3",
+      "text": "A2 指向元素 × 状态 + 组指向（P1、P2）",
+      "bbox": [
+        20,
+        924,
+        1240,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "082-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        60,
+        982,
+        1160,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "083-span-A2",
+      "kind": "text",
+      "tag": "span",
+      "text": "A2",
+      "bbox": [
+        60,
+        982,
+        32,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "084-h2-三种指向元素六种状态组指",
+      "kind": "text",
+      "tag": "h2",
+      "text": "三种指向元素 × 六种状态 + 组指向（中文 · 光色）",
+      "bbox": [
+        100,
+        982,
+        310,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "085-span-示例Agent在画布起草",
+      "kind": "text",
+      "tag": "span",
+      "text": "示例：Agent 在画布起草的三个镜头；点击行为三种一致（见 A3）。「已删除」不可点。",
+      "bbox": [
+        418,
+        983,
+        476,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "086-span-P1",
+      "kind": "text",
+      "tag": "span",
+      "text": "P1",
+      "bbox": [
+        62,
+        1031,
+        30,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "087-b-镜像小卡",
+      "kind": "text",
+      "tag": "b",
+      "text": "镜像小卡",
+      "bbox": [
+        100,
+        1032,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "088-span-缩略图同节点比例标题行同",
+      "kind": "text",
+      "tag": "span",
+      "text": "缩略图同节点比例，标题行同节点标题行",
+      "bbox": [
+        156,
+        1032,
+        216,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "089-div-草稿",
+      "kind": "text",
+      "tag": "div",
+      "text": "草稿",
+      "bbox": [
+        60,
+        1067,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "090-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        60,
+        1089,
+        180,
+        144
+      ],
+      "region": "root"
+    },
+    {
+      "id": "091-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        60,
+        1089,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "092-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        113,
+        1091,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "093-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        142,
+        1155,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "090-button"
+    },
+    {
+      "id": "094-span-等你确认",
+      "kind": "text",
+      "tag": "span",
+      "text": "等你确认",
+      "bbox": [
+        64,
+        1117,
+        56,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "095-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 16:9 · 4s",
+      "bbox": [
+        60,
+        1218,
+        180,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "096-div-排队",
+      "kind": "text",
+      "tag": "div",
+      "text": "排队",
+      "bbox": [
+        256,
+        1067,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "097-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        256,
+        1089,
+        180,
+        144
+      ],
+      "region": "root"
+    },
+    {
+      "id": "098-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        256,
+        1089,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "099-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        309,
+        1091,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "100-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        256,
+        1113,
+        180,
+        101
+      ],
+      "region": "root"
+    },
+    {
+      "id": "101-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        338,
+        1155,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "100-span"
+    },
+    {
+      "id": "102-span-排队中第13",
+      "kind": "text",
+      "tag": "span",
+      "text": "排队中 · 第 1/3",
+      "bbox": [
+        260,
+        1117,
+        97,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "103-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        266,
+        1121,
+        10,
+        10
+      ],
+      "region": "root",
+      "iconOf": "102-span-排队中第13"
+    },
+    {
+      "id": "104-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 16:9 · 4s",
+      "bbox": [
+        256,
+        1218,
+        180,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "105-div-生成中",
+      "kind": "text",
+      "tag": "div",
+      "text": "生成中",
+      "bbox": [
+        452,
+        1067,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "106-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        452,
+        1089,
+        180,
+        144
+      ],
+      "region": "root"
+    },
+    {
+      "id": "107-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        452,
+        1089,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "108-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        505,
+        1091,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "109-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        452,
+        1113,
+        180,
+        101
+      ],
+      "region": "root"
+    },
+    {
+      "id": "110-span-生成中",
+      "kind": "text",
+      "tag": "span",
+      "text": "生成中",
+      "bbox": [
+        456,
+        1190,
+        58,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "111-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 16:9 · 4s",
+      "bbox": [
+        452,
+        1218,
+        180,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "112-div-完成结果缩略图",
+      "kind": "text",
+      "tag": "div",
+      "text": "完成（结果缩略图）",
+      "bbox": [
+        648,
+        1067,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "113-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        648,
+        1089,
+        180,
+        144
+      ],
+      "region": "root"
+    },
+    {
+      "id": "114-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        648,
+        1089,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "115-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        701,
+        1091,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "116-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 16:9 · 4s",
+      "bbox": [
+        648,
+        1218,
+        180,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "117-div-失败",
+      "kind": "text",
+      "tag": "div",
+      "text": "失败",
+      "bbox": [
+        844,
+        1067,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "118-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        844,
+        1089,
+        180,
+        177
+      ],
+      "region": "root"
+    },
+    {
+      "id": "119-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        844,
+        1089,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "120-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        897,
+        1091,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "121-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        926,
+        1155,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "118-button"
+    },
+    {
+      "id": "122-span-服务暂时不可用",
+      "kind": "text",
+      "tag": "span",
+      "text": "服务暂时不可用",
+      "bbox": [
+        848,
+        1190,
+        102,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "123-span-没有发出去",
+      "kind": "text",
+      "tag": "span",
+      "text": "没有发出去",
+      "bbox": [
+        844,
+        1218,
+        180,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "124-div-已删除不可点",
+      "kind": "text",
+      "tag": "div",
+      "text": "已删除（不可点）",
+      "bbox": [
+        1040,
+        1067,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "125-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1040,
+        1089,
+        180,
+        146
+      ],
+      "region": "root"
+    },
+    {
+      "id": "126-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        1040,
+        1089,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "127-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        1093,
+        1091,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "128-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1122,
+        1155,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "125-button"
+    },
+    {
+      "id": "129-span-已删除",
+      "kind": "text",
+      "tag": "span",
+      "text": "已删除",
+      "bbox": [
+        1044,
+        1117,
+        45,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "130-span-画布上已没有这个节点",
+      "kind": "text",
+      "tag": "span",
+      "text": "画布上已没有这个节点",
+      "bbox": [
+        1040,
+        1218,
+        180,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "131-span-只在指向元素上",
+      "kind": "text",
+      "tag": "span",
+      "text": "只在指向元素上",
+      "bbox": [
+        1163,
+        1219,
+        86,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "132-div-组指向一次说多个对象",
+      "kind": "text",
+      "tag": "div",
+      "text": "组指向（一次说多个对象）",
+      "bbox": [
+        60,
+        1280,
+        1160,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "133-div-3个镜头全是草稿",
+      "kind": "text",
+      "tag": "div",
+      "text": "3 个镜头 · 全是草稿",
+      "bbox": [
+        60,
+        1306,
+        360,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "134-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        60,
+        1328,
+        360,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "135-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        60,
+        1328,
+        115,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "136-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        60,
+        1328,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "137-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        113,
+        1330,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "138-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        110,
+        1377,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "135-button"
+    },
+    {
+      "id": "139-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        183,
+        1328,
+        115,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "140-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        183,
+        1328,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "141-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        236,
+        1330,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "142-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        233,
+        1377,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "139-button"
+    },
+    {
+      "id": "143-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        305,
+        1328,
+        115,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "144-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        305,
+        1328,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "145-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        358,
+        1330,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "146-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        356,
+        1377,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "143-button"
+    },
+    {
+      "id": "147-div-混合状态完成生成中失败",
+      "kind": "text",
+      "tag": "div",
+      "text": "混合状态：完成 · 生成中 · 失败",
+      "bbox": [
+        460,
+        1306,
+        360,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "148-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        460,
+        1328,
+        360,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "149-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        460,
+        1328,
+        115,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "150-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        460,
+        1328,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "151-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        513,
+        1330,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "152-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        583,
+        1328,
+        115,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "153-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        583,
+        1328,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "154-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        636,
+        1330,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "155-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        583,
+        1352,
+        115,
+        65
+      ],
+      "region": "root"
+    },
+    {
+      "id": "156-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        705,
+        1328,
+        115,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "157-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        705,
+        1328,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "158-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        758,
+        1330,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "159-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        756,
+        1377,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "156-button"
+    },
+    {
+      "id": "160-span-失败",
+      "kind": "text",
+      "tag": "span",
+      "text": "失败",
+      "bbox": [
+        709,
+        1392,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "161-div-5个镜头露3张还有2个点",
+      "kind": "text",
+      "tag": "div",
+      "text": "5 个镜头：露 3 张 + 「还有 2 个」，点它展开成全部",
+      "bbox": [
+        860,
+        1306,
+        360,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "162-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        860,
+        1328,
+        360,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "163-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        860,
+        1328,
+        115,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "164-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        860,
+        1328,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "165-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        913,
+        1330,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "166-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        983,
+        1328,
+        115,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "167-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        983,
+        1328,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "168-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        1036,
+        1330,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "169-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1105,
+        1328,
+        115,
+        89
+      ],
+      "region": "root"
+    },
+    {
+      "id": "170-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        1105,
+        1328,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "171-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        1158,
+        1330,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "172-span-还有2个",
+      "kind": "text",
+      "tag": "span",
+      "text": "还有 2 个",
+      "bbox": [
+        1105,
+        1352,
+        115,
+        64
+      ],
+      "region": "root"
+    },
+    {
+      "id": "173-div-竖版916这次默认值问题",
+      "kind": "text",
+      "tag": "div",
+      "text": "竖版 9:16（这次默认值问题的核心是比例）：缩略图槽固定高度，竖版按真比例居中，不裁、不拉伸",
+      "bbox": [
+        60,
+        1434,
+        1160,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "174-div-一组里横竖混排镜01横版",
+      "kind": "text",
+      "tag": "div",
+      "text": "一组里横竖混排：镜 01 横版 · 镜 02 竖版 · 镜 03 竖版",
+      "bbox": [
+        60,
+        1460,
+        360,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "175-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        60,
+        1482,
+        360,
+        110
+      ],
+      "region": "root"
+    },
+    {
+      "id": "176-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        60,
+        1482,
+        115,
+        110
+      ],
+      "region": "root"
+    },
+    {
+      "id": "177-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        60,
+        1482,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "178-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        113,
+        1484,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "179-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        183,
+        1482,
+        115,
+        110
+      ],
+      "region": "root"
+    },
+    {
+      "id": "180-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        183,
+        1482,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "181-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        236,
+        1484,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "182-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        305,
+        1482,
+        115,
+        110
+      ],
+      "region": "root"
+    },
+    {
+      "id": "183-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        305,
+        1482,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "184-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        358,
+        1484,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "185-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        357,
+        1543,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "182-button"
+    },
+    {
+      "id": "186-div-单个竖版一格的宽度不变高",
+      "kind": "text",
+      "tag": "div",
+      "text": "单个竖版（一格的宽度不变，高度由比例定）",
+      "bbox": [
+        460,
+        1460,
+        360,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "187-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        460,
+        1482,
+        132,
+        123
+      ],
+      "region": "root"
+    },
+    {
+      "id": "188-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        460,
+        1482,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "189-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        513,
+        1484,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "190-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast",
+      "bbox": [
+        602,
+        1508,
+        218,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "191-span-9165s480p",
+      "kind": "text",
+      "tag": "span",
+      "text": "9:16 · 5s · 480p",
+      "bbox": [
+        602,
+        1530,
+        218,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "192-div-P2P3的小缩略图是圆圆",
+      "kind": "text",
+      "tag": "div",
+      "text": "P2 / P3 的小缩略图是圆 / 圆角方块，按中心裁切，横竖都不变形，所以不需要为竖版另画。竖版时 P1 的摘要里必须",
+      "bbox": [
+        860,
+        1460,
+        360,
+        72
+      ],
+      "region": "root"
+    },
+    {
+      "id": "193-span-P2",
+      "kind": "text",
+      "tag": "span",
+      "text": "P2",
+      "bbox": [
+        62,
+        1633,
+        31,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "194-b-行内标签",
+      "kind": "text",
+      "tag": "b",
+      "text": "行内标签",
+      "bbox": [
+        101,
+        1634,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "195-span-只带标题行那一半小缩略图",
+      "kind": "text",
+      "tag": "span",
+      "text": "只带标题行那一半 + 小缩略图；可以直接嵌进一句话里",
+      "bbox": [
+        157,
+        1634,
+        291,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "196-div-草稿",
+      "kind": "text",
+      "tag": "div",
+      "text": "草稿",
+      "bbox": [
+        60,
+        1669,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "197-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        60,
+        1691,
+        180,
+        45
+      ],
+      "region": "root"
+    },
+    {
+      "id": "198-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        105,
+        1696,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "199-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        158,
+        1698,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "200-span-Seedance204s",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 · 4s",
+      "bbox": [
+        105,
+        1716,
+        126,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "201-div-排队",
+      "kind": "text",
+      "tag": "div",
+      "text": "排队",
+      "bbox": [
+        256,
+        1669,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "202-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        256,
+        1691,
+        180,
+        45
+      ],
+      "region": "root"
+    },
+    {
+      "id": "203-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        261,
+        1698,
+        32,
+        32
+      ],
+      "region": "root"
+    },
+    {
+      "id": "204-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        301,
+        1696,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "205-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        354,
+        1698,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "206-span-Seedance204s",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 · 4s",
+      "bbox": [
+        301,
+        1716,
+        104,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "207-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        413,
+        1707,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "202-button"
+    },
+    {
+      "id": "208-div-生成中",
+      "kind": "text",
+      "tag": "div",
+      "text": "生成中",
+      "bbox": [
+        452,
+        1669,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "209-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        452,
+        1691,
+        180,
+        45
+      ],
+      "region": "root"
+    },
+    {
+      "id": "210-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        457,
+        1698,
+        32,
+        32
+      ],
+      "region": "root"
+    },
+    {
+      "id": "211-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        497,
+        1696,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "212-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        550,
+        1698,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "213-span-Seedance204s",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 · 4s",
+      "bbox": [
+        497,
+        1716,
+        104,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "214-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        609,
+        1707,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "209-button"
+    },
+    {
+      "id": "215-div-完成",
+      "kind": "text",
+      "tag": "div",
+      "text": "完成",
+      "bbox": [
+        648,
+        1669,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "216-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        648,
+        1691,
+        180,
+        45
+      ],
+      "region": "root"
+    },
+    {
+      "id": "217-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        693,
+        1696,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "218-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        746,
+        1698,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "219-span-Seedance204s",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 · 4s",
+      "bbox": [
+        693,
+        1716,
+        104,
+        15
+      ],
+      "region": "root"
+    },
+    {
+      "id": "220-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        805,
+        1707,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "216-button"
+    },
+    {
+      "id": "221-div-失败",
+      "kind": "text",
+      "tag": "div",
+      "text": "失败",
+      "bbox": [
+        844,
+        1669,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "222-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        844,
+        1691,
+        180,
+        78
+      ],
+      "region": "root"
+    },
+    {
+      "id": "223-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        889,
+        1696,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "224-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        942,
+        1698,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "225-span-没有发出去",
+      "kind": "text",
+      "tag": "span",
+      "text": "没有发出去",
+      "bbox": [
+        889,
+        1716,
+        104,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "226-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1001,
+        1707,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "222-button"
+    },
+    {
+      "id": "227-div-已删除不可点",
+      "kind": "text",
+      "tag": "div",
+      "text": "已删除（不可点）",
+      "bbox": [
+        1040,
+        1669,
+        180,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "228-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1040,
+        1691,
+        180,
+        46
+      ],
+      "region": "root"
+    },
+    {
+      "id": "229-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        1085,
+        1696,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "230-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        1138,
+        1698,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "231-span-已删除",
+      "kind": "text",
+      "tag": "span",
+      "text": "已删除",
+      "bbox": [
+        1085,
+        1716,
+        104,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "232-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1197,
+        1707,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "228-button"
+    },
+    {
+      "id": "233-div-组指向A嵌在Agent的",
+      "kind": "text",
+      "tag": "div",
+      "text": "组指向 A：嵌在 Agent 的话里（折行自然）",
+      "bbox": [
+        60,
+        1777,
+        360,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "234-p-已在画布上起草了3个镜头",
+      "kind": "text",
+      "tag": "p",
+      "text": "已在画布上起草了 3 个镜头：",
+      "bbox": [
+        60,
+        1799,
+        360,
+        64
+      ],
+      "region": "root"
+    },
+    {
+      "id": "235-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        232,
+        1803,
+        144,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "236-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        264,
+        1808,
+        47,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "237-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        317,
+        1801,
+        48,
+        32
+      ],
+      "region": "root"
+    },
+    {
+      "id": "238-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        60,
+        1835,
+        144,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "239-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        92,
+        1840,
+        47,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "240-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        145,
+        1833,
+        48,
+        32
+      ],
+      "region": "root"
+    },
+    {
+      "id": "241-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        208,
+        1835,
+        144,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "242-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        240,
+        1840,
+        47,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "243-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        293,
+        1833,
+        48,
+        32
+      ],
+      "region": "root"
+    },
+    {
+      "id": "244-div-组指向B列表混合状态",
+      "kind": "text",
+      "tag": "div",
+      "text": "组指向 B：列表（混合状态）",
+      "bbox": [
+        460,
+        1777,
+        360,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "245-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        460,
+        1799,
+        360,
+        42
+      ],
+      "region": "root"
+    },
+    {
+      "id": "246-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        505,
+        1810,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "247-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        558,
+        1812,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "248-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        797,
+        1813,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "245-button"
+    },
+    {
+      "id": "249-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        460,
+        1847,
+        360,
+        42
+      ],
+      "region": "root"
+    },
+    {
+      "id": "250-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        465,
+        1852,
+        32,
+        32
+      ],
+      "region": "root"
+    },
+    {
+      "id": "251-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        505,
+        1858,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "252-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        558,
+        1860,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "253-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        797,
+        1861,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "249-button"
+    },
+    {
+      "id": "254-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        460,
+        1895,
+        360,
+        56
+      ],
+      "region": "root"
+    },
+    {
+      "id": "255-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        505,
+        1913,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "256-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        558,
+        1915,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "257-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        797,
+        1900,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "254-button"
+    },
+    {
+      "id": "258-div-5个镜头嵌句里3个2",
+      "kind": "text",
+      "tag": "div",
+      "text": "5 个镜头：嵌句里 3 个 + 「+2」",
+      "bbox": [
+        860,
+        1777,
+        360,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "259-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        860,
+        1803,
+        144,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "260-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        892,
+        1808,
+        47,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "261-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        945,
+        1801,
+        48,
+        32
+      ],
+      "region": "root"
+    },
+    {
+      "id": "262-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1008,
+        1803,
+        90,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "263-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        1040,
+        1808,
+        47,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "264-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1101,
+        1803,
+        90,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "265-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        1133,
+        1808,
+        47,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "266-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        860,
+        1835,
+        37,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "267-span-2",
+      "kind": "text",
+      "tag": "span",
+      "text": "+2",
+      "bbox": [
+        871,
+        1833,
+        15,
+        32
+      ],
+      "region": "root"
+    },
+    {
+      "id": "268-h3-A3悬停联动点击定位P1",
+      "kind": "text",
+      "tag": "h3",
+      "text": "A3 悬停联动 / 点击定位（P1、P2）",
+      "bbox": [
+        20,
+        1983,
+        1240,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "269-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        60,
+        2041,
+        1620,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "270-span-A3",
+      "kind": "text",
+      "tag": "span",
+      "text": "A3",
+      "bbox": [
+        60,
+        2042,
+        33,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "271-h2-悬停两边同时亮点击画布定",
+      "kind": "text",
+      "tag": "h2",
+      "text": "悬停：两边同时亮 · 点击：画布定位到节点并闪一下（中文 · 光色）",
+      "bbox": [
+        101,
+        2041,
+        435,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "272-span-画布右下是没被点名的参考",
+      "kind": "text",
+      "tag": "span",
+      "text": "画布右下是没被点名的「参考图」，用来对比：只有被指的那个会亮。",
+      "bbox": [
+        544,
+        2043,
+        372,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "273-span-P1",
+      "kind": "text",
+      "tag": "span",
+      "text": "P1",
+      "bbox": [
+        62,
+        2092,
+        30,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "274-b-镜像小卡",
+      "kind": "text",
+      "tag": "b",
+      "text": "镜像小卡",
+      "bbox": [
+        100,
+        2093,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "275-span-聊天里是节点的缩影亮的是",
+      "kind": "text",
+      "tag": "span",
+      "text": "聊天里是节点的缩影；亮的是同一张脸",
+      "bbox": [
+        156,
+        2093,
+        204,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "276-div-①悬停镜02",
+      "kind": "text",
+      "tag": "div",
+      "text": "① 悬停「镜 02」",
+      "bbox": [
+        60,
+        2128,
+        780,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "277-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        85,
+        2224,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "278-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        138,
+        2225,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "279-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        85,
+        2251,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "280-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        134,
+        2276,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "279-div"
+    },
+    {
+      "id": "281-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        217,
+        2224,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "282-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        270,
+        2225,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "283-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        217,
+        2251,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "284-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        266,
+        2276,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "283-div"
+    },
+    {
+      "id": "285-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        349,
+        2224,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "286-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        402,
+        2225,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "287-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        349,
+        2251,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "288-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        398,
+        2276,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "287-div"
+    },
+    {
+      "id": "289-span-参考水洼",
+      "kind": "text",
+      "tag": "span",
+      "text": "参考 · 水洼",
+      "bbox": [
+        217,
+        2339,
+        58,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "290-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        217,
+        2365,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "291-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        480,
+        2150,
+        360,
+        300
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "292-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        493,
+        2163,
+        20,
+        20
+      ],
+      "region": "panel",
+      "iconOf": "291-div"
+    },
+    {
+      "id": "293-span-Noi",
+      "kind": "text",
+      "tag": "span",
+      "text": "Noi",
+      "bbox": [
+        521,
+        2161,
+        38,
+        24
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "294-b-m",
+      "kind": "text",
+      "tag": "b",
+      "text": "m",
+      "bbox": [
+        541,
+        2163,
+        14,
+        19
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "295-p-已在画布上起草了3个镜头",
+      "kind": "text",
+      "tag": "p",
+      "text": "已在画布上起草了 3 个镜头。想改哪个，点它。",
+      "bbox": [
+        495,
+        2207,
+        330,
+        21
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "296-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        495,
+        2238,
+        330,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "297-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        495,
+        2238,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "298-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        495,
+        2238,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "299-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        548,
+        2240,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "300-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        540,
+        2285,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "297-button"
+    },
+    {
+      "id": "301-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        608,
+        2238,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "302-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        608,
+        2238,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "303-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        661,
+        2240,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "304-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        653,
+        2285,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "301-button"
+    },
+    {
+      "id": "305-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        720,
+        2238,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "306-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        720,
+        2238,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "307-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        773,
+        2240,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "308-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        766,
+        2285,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "305-button"
+    },
+    {
+      "id": "309-p-镜02Seedance2",
+      "kind": "text",
+      "tag": "p",
+      "text": "镜 02 · Seedance 2.0 Fast · 16:9 · 5s",
+      "bbox": [
+        495,
+        2331,
+        330,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "310-div-②点击画布滑到镜02缩放",
+      "kind": "text",
+      "tag": "div",
+      "text": "② 点击：画布滑到镜 02（缩放不超 100%），节点闪一下",
+      "bbox": [
+        880,
+        2128,
+        780,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "311-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        801,
+        2224,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "312-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        854,
+        2225,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "313-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        801,
+        2251,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "314-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        850,
+        2276,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "313-div"
+    },
+    {
+      "id": "315-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        1035,
+        2220,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "316-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        1088,
+        2221,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "317-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1035,
+        2247,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "318-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1084,
+        2272,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "317-div"
+    },
+    {
+      "id": "319-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        1171,
+        2224,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "320-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        1224,
+        2225,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "321-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1171,
+        2251,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "322-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1220,
+        2276,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "321-div"
+    },
+    {
+      "id": "323-span-参考水洼",
+      "kind": "text",
+      "tag": "span",
+      "text": "参考 · 水洼",
+      "bbox": [
+        1035,
+        2339,
+        58,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "324-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1035,
+        2365,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "325-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1300,
+        2150,
+        360,
+        300
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "326-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1313,
+        2163,
+        20,
+        20
+      ],
+      "region": "panel",
+      "iconOf": "325-div"
+    },
+    {
+      "id": "327-span-Noi",
+      "kind": "text",
+      "tag": "span",
+      "text": "Noi",
+      "bbox": [
+        1341,
+        2161,
+        38,
+        24
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "328-b-m",
+      "kind": "text",
+      "tag": "b",
+      "text": "m",
+      "bbox": [
+        1361,
+        2163,
+        14,
+        19
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "329-p-已在画布上起草了3个镜头",
+      "kind": "text",
+      "tag": "p",
+      "text": "已在画布上起草了 3 个镜头。想改哪个，点它。",
+      "bbox": [
+        1315,
+        2207,
+        330,
+        21
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "330-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1315,
+        2238,
+        330,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "331-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1315,
+        2238,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "332-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        1315,
+        2238,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "333-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        1368,
+        2240,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "334-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1360,
+        2285,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "331-button"
+    },
+    {
+      "id": "335-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1428,
+        2238,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "336-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        1428,
+        2238,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "337-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        1481,
+        2240,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "338-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1473,
+        2285,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "335-button"
+    },
+    {
+      "id": "339-span-已定位",
+      "kind": "text",
+      "tag": "span",
+      "text": "已定位",
+      "bbox": [
+        1432,
+        2266,
+        58,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "340-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1438,
+        2270,
+        10,
+        10
+      ],
+      "region": "panel",
+      "iconOf": "339-span-已定位"
+    },
+    {
+      "id": "341-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1540,
+        2238,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "342-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        1540,
+        2238,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "343-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        1593,
+        2240,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "344-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1586,
+        2285,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "341-button"
+    },
+    {
+      "id": "345-p-镜02Seedance2",
+      "kind": "text",
+      "tag": "p",
+      "text": "镜 02 · Seedance 2.0 Fast · 16:9 · 5s",
+      "bbox": [
+        1315,
+        2331,
+        330,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "346-span-P2",
+      "kind": "text",
+      "tag": "span",
+      "text": "P2",
+      "bbox": [
+        62,
+        2480,
+        31,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "347-b-行内标签",
+      "kind": "text",
+      "tag": "b",
+      "text": "行内标签",
+      "bbox": [
+        101,
+        2481,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "348-span-亮的是同名同号的那一行那",
+      "kind": "text",
+      "tag": "span",
+      "text": "亮的是同名同号的那一行 / 那一枚",
+      "bbox": [
+        157,
+        2481,
+        179,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "349-div-①悬停镜02",
+      "kind": "text",
+      "tag": "div",
+      "text": "① 悬停「镜 02」",
+      "bbox": [
+        60,
+        2516,
+        780,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "350-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        85,
+        2612,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "351-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        138,
+        2613,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "352-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        85,
+        2639,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "353-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        134,
+        2664,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "352-div"
+    },
+    {
+      "id": "354-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        217,
+        2612,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "355-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        270,
+        2613,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "356-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        217,
+        2639,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "357-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        266,
+        2664,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "356-div"
+    },
+    {
+      "id": "358-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        349,
+        2612,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "359-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        402,
+        2613,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "360-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        349,
+        2639,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "361-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        398,
+        2664,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "360-div"
+    },
+    {
+      "id": "362-span-参考水洼",
+      "kind": "text",
+      "tag": "span",
+      "text": "参考 · 水洼",
+      "bbox": [
+        217,
+        2727,
+        58,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "363-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        217,
+        2753,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "364-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        480,
+        2538,
+        360,
+        300
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "365-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        493,
+        2551,
+        20,
+        20
+      ],
+      "region": "panel",
+      "iconOf": "364-div"
+    },
+    {
+      "id": "366-span-Noi",
+      "kind": "text",
+      "tag": "span",
+      "text": "Noi",
+      "bbox": [
+        521,
+        2549,
+        38,
+        24
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "367-b-m",
+      "kind": "text",
+      "tag": "b",
+      "text": "m",
+      "bbox": [
+        541,
+        2551,
+        14,
+        19
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "368-p-已在画布上起草了3个镜头",
+      "kind": "text",
+      "tag": "p",
+      "text": "已在画布上起草了 3 个镜头。想改哪个，点它。",
+      "bbox": [
+        495,
+        2595,
+        330,
+        21
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "369-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        495,
+        2626,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "370-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        540,
+        2631,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "371-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        593,
+        2633,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "372-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 4s",
+      "bbox": [
+        540,
+        2651,
+        276,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "373-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        495,
+        2677,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "374-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        540,
+        2682,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "375-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        593,
+        2684,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "376-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 5s",
+      "bbox": [
+        540,
+        2702,
+        276,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "377-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        495,
+        2728,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "378-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        540,
+        2733,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "379-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        593,
+        2735,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "380-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 4s",
+      "bbox": [
+        540,
+        2753,
+        276,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "381-div-②点击画布滑到镜02节点",
+      "kind": "text",
+      "tag": "div",
+      "text": "② 点击：画布滑到镜 02，节点闪一下；那一行出现「已定位」",
+      "bbox": [
+        880,
+        2516,
+        780,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "382-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        801,
+        2612,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "383-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        854,
+        2613,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "384-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        801,
+        2639,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "385-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        850,
+        2664,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "384-div"
+    },
+    {
+      "id": "386-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        1035,
+        2608,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "387-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        1088,
+        2609,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "388-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1035,
+        2635,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "389-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1084,
+        2660,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "388-div"
+    },
+    {
+      "id": "390-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        1171,
+        2612,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "391-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        1224,
+        2613,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "392-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1171,
+        2639,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "393-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1220,
+        2664,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "392-div"
+    },
+    {
+      "id": "394-span-参考水洼",
+      "kind": "text",
+      "tag": "span",
+      "text": "参考 · 水洼",
+      "bbox": [
+        1035,
+        2727,
+        58,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "395-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1035,
+        2753,
+        112,
+        63
+      ],
+      "region": "card"
+    },
+    {
+      "id": "396-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1300,
+        2538,
+        360,
+        300
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "397-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1313,
+        2551,
+        20,
+        20
+      ],
+      "region": "panel",
+      "iconOf": "396-div"
+    },
+    {
+      "id": "398-span-Noi",
+      "kind": "text",
+      "tag": "span",
+      "text": "Noi",
+      "bbox": [
+        1341,
+        2549,
+        38,
+        24
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "399-b-m",
+      "kind": "text",
+      "tag": "b",
+      "text": "m",
+      "bbox": [
+        1361,
+        2551,
+        14,
+        19
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "400-p-已在画布上起草了3个镜头",
+      "kind": "text",
+      "tag": "p",
+      "text": "已在画布上起草了 3 个镜头。想改哪个，点它。",
+      "bbox": [
+        1315,
+        2595,
+        330,
+        21
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "401-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1315,
+        2626,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "402-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        1360,
+        2631,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "403-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        1413,
+        2633,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "404-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 4s",
+      "bbox": [
+        1360,
+        2651,
+        276,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "405-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1315,
+        2677,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "406-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        1360,
+        2682,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "407-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        1413,
+        2684,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "408-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 5s",
+      "bbox": [
+        1360,
+        2702,
+        216,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "409-span-已定位",
+      "kind": "text",
+      "tag": "span",
+      "text": "已定位",
+      "bbox": [
+        1584,
+        2692,
+        52,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "410-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1584,
+        2694,
+        12,
+        12
+      ],
+      "region": "panel",
+      "iconOf": "409-span-已定位"
+    },
+    {
+      "id": "411-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1315,
+        2728,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "412-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        1360,
+        2733,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "413-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        1413,
+        2735,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "414-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 4s",
+      "bbox": [
+        1360,
+        2753,
+        276,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "415-h3-A4窄窗口P1P2",
+      "kind": "text",
+      "tag": "h3",
+      "text": "A4 窄窗口（P1、P2）",
+      "bbox": [
+        20,
+        2870,
+        1240,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "416-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        60,
+        2928,
+        1160,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "417-span-A4",
+      "kind": "text",
+      "tag": "span",
+      "text": "A4",
+      "bbox": [
+        60,
+        2929,
+        33,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "418-h2-窄窗口约400px宽点了",
+      "kind": "text",
+      "tag": "h2",
+      "text": "窄窗口（约 400 px 宽）：点了指向，先让出画布，再有一颗「回到对话」",
+      "bbox": [
+        101,
+        2928,
+        461,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "419-span-宽窗口里对话和画布并排不",
+      "kind": "text",
+      "tag": "span",
+      "text": "宽窗口里对话和画布并排，不需要这一步。窄窗口里对话是浮在画布上的一张底部面板（外壳已有的小球 / 浮窗形态）。",
+      "bbox": [
+        569,
+        2930,
+        635,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "420-span-P1",
+      "kind": "text",
+      "tag": "span",
+      "text": "P1",
+      "bbox": [
+        62,
+        2977,
+        30,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "421-b-镜像小卡",
+      "kind": "text",
+      "tag": "b",
+      "text": "镜像小卡",
+      "bbox": [
+        100,
+        2978,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "422-div-①对话浮在画布上画布被盖",
+      "kind": "text",
+      "tag": "div",
+      "text": "① 对话浮在画布上；画布被盖住大半",
+      "bbox": [
+        60,
+        3013,
+        380,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "423-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        79,
+        3065,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "424-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        79,
+        3092,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "425-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        122,
+        3113,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "424-div"
+    },
+    {
+      "id": "426-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        201,
+        3065,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "427-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        201,
+        3092,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "428-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        244,
+        3113,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "427-div"
+    },
+    {
+      "id": "429-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        323,
+        3065,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "430-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        323,
+        3092,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "431-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        366,
+        3113,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "430-div"
+    },
+    {
+      "id": "432-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        71,
+        3272,
+        358,
+        172
+      ],
+      "region": "root"
+    },
+    {
+      "id": "433-span-Noi",
+      "kind": "text",
+      "tag": "span",
+      "text": "Noi",
+      "bbox": [
+        84,
+        3279,
+        38,
+        24
+      ],
+      "region": "root"
+    },
+    {
+      "id": "434-b-m",
+      "kind": "text",
+      "tag": "b",
+      "text": "m",
+      "bbox": [
+        104,
+        3281,
+        14,
+        19
+      ],
+      "region": "root"
+    },
+    {
+      "id": "435-button-收起",
+      "kind": "text",
+      "tag": "button",
+      "text": "收起",
+      "bbox": [
+        390,
+        3277,
+        28,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "436-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        397,
+        3284,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "435-button-收起"
+    },
+    {
+      "id": "437-p-已在画布上起草了3个镜头",
+      "kind": "text",
+      "tag": "p",
+      "text": "已在画布上起草了 3 个镜头。想改哪个，点它。",
+      "bbox": [
+        84,
+        3317,
+        332,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "438-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        84,
+        3348,
+        332,
+        83
+      ],
+      "region": "root"
+    },
+    {
+      "id": "439-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        84,
+        3348,
+        105,
+        83
+      ],
+      "region": "root"
+    },
+    {
+      "id": "440-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        84,
+        3348,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "441-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        137,
+        3350,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "442-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        130,
+        3395,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "439-button"
+    },
+    {
+      "id": "443-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        197,
+        3348,
+        105,
+        83
+      ],
+      "region": "root"
+    },
+    {
+      "id": "444-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        197,
+        3348,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "445-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        250,
+        3350,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "446-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        243,
+        3395,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "443-button"
+    },
+    {
+      "id": "447-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        311,
+        3348,
+        105,
+        83
+      ],
+      "region": "root"
+    },
+    {
+      "id": "448-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        311,
+        3348,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "449-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        364,
+        3350,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "450-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        356,
+        3395,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "447-button"
+    },
+    {
+      "id": "451-div-②点镜02对话收成小球画",
+      "kind": "text",
+      "tag": "div",
+      "text": "② 点「镜 02」：对话收成小球，画布露出并闪一下目标",
+      "bbox": [
+        468,
+        3013,
+        380,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "452-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        387,
+        3179,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "453-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        387,
+        3206,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "454-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        430,
+        3227,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "453-div"
+    },
+    {
+      "id": "455-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        609,
+        3175,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "456-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        609,
+        3202,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "457-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        652,
+        3223,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "456-div"
+    },
+    {
+      "id": "458-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        731,
+        3179,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "459-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        731,
+        3206,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "460-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        774,
+        3227,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "459-div"
+    },
+    {
+      "id": "461-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        803,
+        3410,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": null
+    },
+    {
+      "id": "462-span-回到对话",
+      "kind": "text",
+      "tag": "span",
+      "text": "回到对话",
+      "bbox": [
+        588,
+        3398,
+        98,
+        36
+      ],
+      "region": "root"
+    },
+    {
+      "id": "463-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        600,
+        3409,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "462-span-回到对话"
+    },
+    {
+      "id": "464-div-③点回到对话对话原样回来",
+      "kind": "text",
+      "tag": "div",
+      "text": "③ 点「回到对话」：对话原样回来，镜 02 还标着「已定位」",
+      "bbox": [
+        876,
+        3013,
+        380,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "465-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        795,
+        3065,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "466-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        795,
+        3092,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "467-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        1017,
+        3061,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "468-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1017,
+        3088,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "469-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1060,
+        3109,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "468-div"
+    },
+    {
+      "id": "470-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        1139,
+        3065,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "471-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1139,
+        3092,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "472-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        887,
+        3272,
+        358,
+        172
+      ],
+      "region": "root"
+    },
+    {
+      "id": "473-span-Noi",
+      "kind": "text",
+      "tag": "span",
+      "text": "Noi",
+      "bbox": [
+        900,
+        3279,
+        38,
+        24
+      ],
+      "region": "root"
+    },
+    {
+      "id": "474-b-m",
+      "kind": "text",
+      "tag": "b",
+      "text": "m",
+      "bbox": [
+        920,
+        3281,
+        14,
+        19
+      ],
+      "region": "root"
+    },
+    {
+      "id": "475-button-收起",
+      "kind": "text",
+      "tag": "button",
+      "text": "收起",
+      "bbox": [
+        1206,
+        3277,
+        28,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "476-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1213,
+        3284,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "475-button-收起"
+    },
+    {
+      "id": "477-p-已在画布上起草了3个镜头",
+      "kind": "text",
+      "tag": "p",
+      "text": "已在画布上起草了 3 个镜头。想改哪个，点它。",
+      "bbox": [
+        900,
+        3317,
+        332,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "478-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        900,
+        3348,
+        332,
+        83
+      ],
+      "region": "root"
+    },
+    {
+      "id": "479-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        900,
+        3348,
+        105,
+        83
+      ],
+      "region": "root"
+    },
+    {
+      "id": "480-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        900,
+        3348,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "481-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        953,
+        3350,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "482-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        946,
+        3395,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "479-button"
+    },
+    {
+      "id": "483-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1013,
+        3348,
+        105,
+        83
+      ],
+      "region": "root"
+    },
+    {
+      "id": "484-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        1013,
+        3348,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "485-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        1066,
+        3350,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "486-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1059,
+        3395,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "483-button"
+    },
+    {
+      "id": "487-span-已定位",
+      "kind": "text",
+      "tag": "span",
+      "text": "已定位",
+      "bbox": [
+        1017,
+        3376,
+        58,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "488-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1023,
+        3380,
+        10,
+        10
+      ],
+      "region": "root",
+      "iconOf": "487-span-已定位"
+    },
+    {
+      "id": "489-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1127,
+        3348,
+        105,
+        83
+      ],
+      "region": "root"
+    },
+    {
+      "id": "490-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        1127,
+        3348,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "491-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        1180,
+        3350,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "492-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1172,
+        3395,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "489-button"
+    },
+    {
+      "id": "493-span-P2",
+      "kind": "text",
+      "tag": "span",
+      "text": "P2",
+      "bbox": [
+        62,
+        3483,
+        31,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "494-b-行内标签",
+      "kind": "text",
+      "tag": "b",
+      "text": "行内标签",
+      "bbox": [
+        101,
+        3484,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "495-span-回到对话按钮上带着那一枚",
+      "kind": "text",
+      "tag": "span",
+      "text": "「回到对话」按钮上带着那一枚标签，回来时认得更快",
+      "bbox": [
+        157,
+        3484,
+        288,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "496-div-①对话浮在画布上",
+      "kind": "text",
+      "tag": "div",
+      "text": "① 对话浮在画布上",
+      "bbox": [
+        60,
+        3519,
+        380,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "497-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        79,
+        3571,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "498-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        79,
+        3598,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "499-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        122,
+        3619,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "498-div"
+    },
+    {
+      "id": "500-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        201,
+        3571,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "501-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        201,
+        3598,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "502-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        244,
+        3619,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "501-div"
+    },
+    {
+      "id": "503-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        323,
+        3571,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "504-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        323,
+        3598,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "505-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        366,
+        3619,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "504-div"
+    },
+    {
+      "id": "506-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        71,
+        3723,
+        358,
+        227
+      ],
+      "region": "root"
+    },
+    {
+      "id": "507-span-Noi",
+      "kind": "text",
+      "tag": "span",
+      "text": "Noi",
+      "bbox": [
+        84,
+        3730,
+        38,
+        24
+      ],
+      "region": "root"
+    },
+    {
+      "id": "508-b-m",
+      "kind": "text",
+      "tag": "b",
+      "text": "m",
+      "bbox": [
+        104,
+        3732,
+        14,
+        19
+      ],
+      "region": "root"
+    },
+    {
+      "id": "509-button-收起",
+      "kind": "text",
+      "tag": "button",
+      "text": "收起",
+      "bbox": [
+        390,
+        3728,
+        28,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "510-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        397,
+        3735,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "509-button-收起"
+    },
+    {
+      "id": "511-p-已在画布上起草了3个镜头",
+      "kind": "text",
+      "tag": "p",
+      "text": "已在画布上起草了 3 个镜头。想改哪个，点它。",
+      "bbox": [
+        84,
+        3768,
+        332,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "512-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        84,
+        3799,
+        332,
+        42
+      ],
+      "region": "root"
+    },
+    {
+      "id": "513-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        129,
+        3810,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "514-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        182,
+        3812,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "515-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        84,
+        3847,
+        332,
+        42
+      ],
+      "region": "root"
+    },
+    {
+      "id": "516-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        129,
+        3858,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "517-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        182,
+        3860,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "518-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        84,
+        3895,
+        332,
+        42
+      ],
+      "region": "root"
+    },
+    {
+      "id": "519-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        129,
+        3906,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "520-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        182,
+        3908,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "521-div-②点镜02画布露出并闪一",
+      "kind": "text",
+      "tag": "div",
+      "text": "② 点「镜 02」：画布露出并闪一下",
+      "bbox": [
+        468,
+        3519,
+        380,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "522-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        387,
+        3685,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "523-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        387,
+        3712,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "524-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        609,
+        3681,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "525-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        609,
+        3708,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "526-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        652,
+        3729,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "525-div"
+    },
+    {
+      "id": "527-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        731,
+        3685,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "528-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        731,
+        3712,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "529-span-回到对话",
+      "kind": "text",
+      "tag": "span",
+      "text": "回到对话",
+      "bbox": [
+        548,
+        3904,
+        146,
+        36
+      ],
+      "region": "root"
+    },
+    {
+      "id": "530-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        582,
+        3913,
+        30,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "531-span",
+      "kind": "text",
+      "tag": "span",
+      "text": "·",
+      "bbox": [
+        618,
+        3913,
+        4,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "532-div-③回来那一行标着已定位",
+      "kind": "text",
+      "tag": "div",
+      "text": "③ 回来：那一行标着「已定位」",
+      "bbox": [
+        876,
+        3519,
+        380,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "533-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        795,
+        3571,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "534-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        795,
+        3598,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "535-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        1017,
+        3567,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "536-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1017,
+        3594,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "537-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1060,
+        3615,
+        14,
+        14
+      ],
+      "region": "card",
+      "iconOf": "536-div"
+    },
+    {
+      "id": "538-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        1139,
+        3571,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "539-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        1139,
+        3598,
+        100,
+        56
+      ],
+      "region": "card"
+    },
+    {
+      "id": "540-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        887,
+        3723,
+        358,
+        227
+      ],
+      "region": "root"
+    },
+    {
+      "id": "541-span-Noi",
+      "kind": "text",
+      "tag": "span",
+      "text": "Noi",
+      "bbox": [
+        900,
+        3730,
+        38,
+        24
+      ],
+      "region": "root"
+    },
+    {
+      "id": "542-b-m",
+      "kind": "text",
+      "tag": "b",
+      "text": "m",
+      "bbox": [
+        920,
+        3732,
+        14,
+        19
+      ],
+      "region": "root"
+    },
+    {
+      "id": "543-button-收起",
+      "kind": "text",
+      "tag": "button",
+      "text": "收起",
+      "bbox": [
+        1206,
+        3728,
+        28,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "544-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1213,
+        3735,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "543-button-收起"
+    },
+    {
+      "id": "545-p-已在画布上起草了3个镜头",
+      "kind": "text",
+      "tag": "p",
+      "text": "已在画布上起草了 3 个镜头。想改哪个，点它。",
+      "bbox": [
+        900,
+        3768,
+        332,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "546-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        900,
+        3799,
+        332,
+        42
+      ],
+      "region": "root"
+    },
+    {
+      "id": "547-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        945,
+        3810,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "548-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        998,
+        3812,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "549-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        900,
+        3847,
+        332,
+        42
+      ],
+      "region": "root"
+    },
+    {
+      "id": "550-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        945,
+        3858,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "551-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        998,
+        3860,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "552-span-已定位",
+      "kind": "text",
+      "tag": "span",
+      "text": "已定位",
+      "bbox": [
+        1171,
+        3860,
+        52,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "553-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1171,
+        3862,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "552-span-已定位"
+    },
+    {
+      "id": "554-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        900,
+        3895,
+        332,
+        42
+      ],
+      "region": "root"
+    },
+    {
+      "id": "555-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        945,
+        3906,
+        47,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "556-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        998,
+        3908,
+        48,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "557-h3-A5英文暗色P1P2",
+      "kind": "text",
+      "tag": "h3",
+      "text": "A5 英文 / 暗色（P1、P2）",
+      "bbox": [
+        20,
+        3993,
+        1240,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "558-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        60,
+        4051,
+        1160,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "559-span-A5",
+      "kind": "text",
+      "tag": "span",
+      "text": "A5",
+      "bbox": [
+        60,
+        4052,
+        32,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "560-h2-英文暗色同一批状态各出三",
+      "kind": "text",
+      "tag": "h2",
+      "text": "英文 / 暗色：同一批状态各出三份（左：英文·光 中：中文·暗 右：英文·暗）",
+      "bbox": [
+        100,
+        4051,
+        486,
+        21
+      ],
+      "region": "root"
+    },
+    {
+      "id": "561-span-英文镜号写Shot01比",
+      "kind": "text",
+      "tag": "span",
+      "text": "英文镜号写「Shot 01」，比中文宽，小卡标题会被截断；截断到哪、全名靠悬停提示。",
+      "bbox": [
+        595,
+        4053,
+        463,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "562-span-P1",
+      "kind": "text",
+      "tag": "span",
+      "text": "P1",
+      "bbox": [
+        62,
+        4096,
+        30,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "563-b-镜像小卡",
+      "kind": "text",
+      "tag": "b",
+      "text": "镜像小卡",
+      "bbox": [
+        100,
+        4097,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "564-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        72,
+        4144,
+        360,
+        283
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "565-p-Drafted3shot",
+      "kind": "text",
+      "tag": "p",
+      "text": "Drafted 3 shots on the canvas. Click one to edit it.",
+      "bbox": [
+        87,
+        4157,
+        330,
+        21
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "566-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        87,
+        4188,
+        330,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "567-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        87,
+        4188,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "568-span-Shot01",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 01",
+      "bbox": [
+        87,
+        4188,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "569-span-Paperboatdep",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat departs",
+      "bbox": [
+        154,
+        4191,
+        37,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "570-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        200,
+        4188,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "571-span-Shot02",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 02",
+      "bbox": [
+        200,
+        4188,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "572-span-Pasttheleave",
+      "kind": "text",
+      "tag": "span",
+      "text": "Past the leaves",
+      "bbox": [
+        267,
+        4191,
+        37,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "573-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        200,
+        4212,
+        105,
+        59
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "574-span-Generating",
+      "kind": "text",
+      "tag": "span",
+      "text": "Generating",
+      "bbox": [
+        204,
+        4247,
+        83,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "575-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        312,
+        4188,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "576-span-Shot03",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 03",
+      "bbox": [
+        312,
+        4188,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "577-span-Driftingaway",
+      "kind": "text",
+      "tag": "span",
+      "text": "Drifting away",
+      "bbox": [
+        380,
+        4191,
+        37,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "578-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        358,
+        4235,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "575-button"
+    },
+    {
+      "id": "579-span-Failed",
+      "kind": "text",
+      "tag": "span",
+      "text": "Failed",
+      "bbox": [
+        316,
+        4247,
+        57,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "580-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        87,
+        4281,
+        330,
+        134
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "581-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        87,
+        4281,
+        161,
+        134
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "582-span-Shot04",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 04",
+      "bbox": [
+        87,
+        4281,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "583-span-Reflections",
+      "kind": "text",
+      "tag": "span",
+      "text": "Reflections",
+      "bbox": [
+        154,
+        4284,
+        65,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "584-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        161,
+        4343,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "581-button"
+    },
+    {
+      "id": "585-span-Waitingforyo",
+      "kind": "text",
+      "tag": "span",
+      "text": "Waiting for you",
+      "bbox": [
+        91,
+        4309,
+        90,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "586-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 16:9 · 4s",
+      "bbox": [
+        87,
+        4400,
+        161,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "587-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        256,
+        4281,
+        161,
+        134
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "588-span-Shot05",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 05",
+      "bbox": [
+        256,
+        4281,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "589-span-Sunrise",
+      "kind": "text",
+      "tag": "span",
+      "text": "Sunrise",
+      "bbox": [
+        323,
+        4284,
+        44,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "590-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        330,
+        4343,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "587-button"
+    },
+    {
+      "id": "591-span-Deleted",
+      "kind": "text",
+      "tag": "span",
+      "text": "Deleted",
+      "bbox": [
+        260,
+        4309,
+        53,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "592-span-Nolongeronth",
+      "kind": "text",
+      "tag": "span",
+      "text": "No longer on the canvas",
+      "bbox": [
+        256,
+        4400,
+        161,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "593-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        460,
+        4144,
+        360,
+        284
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "594-p-已在画布上起草了3个镜头",
+      "kind": "text",
+      "tag": "p",
+      "text": "已在画布上起草了 3 个镜头，想改哪个，点它。",
+      "bbox": [
+        475,
+        4157,
+        330,
+        21
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "595-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        475,
+        4188,
+        330,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "596-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        475,
+        4188,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "597-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        475,
+        4188,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "598-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        528,
+        4190,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "599-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        588,
+        4188,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "600-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        588,
+        4188,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "601-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        641,
+        4190,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "602-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        588,
+        4212,
+        105,
+        59
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "603-span-生成中",
+      "kind": "text",
+      "tag": "span",
+      "text": "生成中",
+      "bbox": [
+        592,
+        4247,
+        58,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "604-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        700,
+        4188,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "605-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        700,
+        4188,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "606-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        753,
+        4190,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "607-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        746,
+        4235,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "604-button"
+    },
+    {
+      "id": "608-span-失败",
+      "kind": "text",
+      "tag": "span",
+      "text": "失败",
+      "bbox": [
+        704,
+        4247,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "609-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        475,
+        4281,
+        330,
+        135
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "610-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        475,
+        4281,
+        161,
+        135
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "611-span-镜04",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 04",
+      "bbox": [
+        475,
+        4281,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "612-span-水面倒影",
+      "kind": "text",
+      "tag": "span",
+      "text": "水面倒影",
+      "bbox": [
+        528,
+        4283,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "613-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        549,
+        4343,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "610-button"
+    },
+    {
+      "id": "614-span-等你确认",
+      "kind": "text",
+      "tag": "span",
+      "text": "等你确认",
+      "bbox": [
+        479,
+        4309,
+        56,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "615-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 16:9 · 4s",
+      "bbox": [
+        475,
+        4400,
+        161,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "616-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        644,
+        4281,
+        161,
+        135
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "617-span-镜05",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 05",
+      "bbox": [
+        644,
+        4281,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "618-span-日出",
+      "kind": "text",
+      "tag": "span",
+      "text": "日出",
+      "bbox": [
+        697,
+        4283,
+        24,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "619-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        718,
+        4343,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "616-button"
+    },
+    {
+      "id": "620-span-已删除",
+      "kind": "text",
+      "tag": "span",
+      "text": "已删除",
+      "bbox": [
+        648,
+        4309,
+        45,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "621-span-画布上已没有这个节点",
+      "kind": "text",
+      "tag": "span",
+      "text": "画布上已没有这个节点",
+      "bbox": [
+        644,
+        4400,
+        161,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "622-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        848,
+        4144,
+        360,
+        283
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "623-p-Drafted3shot",
+      "kind": "text",
+      "tag": "p",
+      "text": "Drafted 3 shots on the canvas. Click one to edit it.",
+      "bbox": [
+        863,
+        4157,
+        330,
+        21
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "624-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        863,
+        4188,
+        330,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "625-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        863,
+        4188,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "626-span-Shot01",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 01",
+      "bbox": [
+        863,
+        4188,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "627-span-Paperboatdep",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat departs",
+      "bbox": [
+        930,
+        4191,
+        37,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "628-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        976,
+        4188,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "629-span-Shot02",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 02",
+      "bbox": [
+        976,
+        4188,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "630-span-Pasttheleave",
+      "kind": "text",
+      "tag": "span",
+      "text": "Past the leaves",
+      "bbox": [
+        1043,
+        4191,
+        37,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "631-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        976,
+        4212,
+        105,
+        59
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "632-span-Generating",
+      "kind": "text",
+      "tag": "span",
+      "text": "Generating",
+      "bbox": [
+        980,
+        4247,
+        83,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "633-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1088,
+        4188,
+        105,
+        83
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "634-span-Shot03",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 03",
+      "bbox": [
+        1088,
+        4188,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "635-span-Driftingaway",
+      "kind": "text",
+      "tag": "span",
+      "text": "Drifting away",
+      "bbox": [
+        1156,
+        4191,
+        37,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "636-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1134,
+        4235,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "633-button"
+    },
+    {
+      "id": "637-span-Failed",
+      "kind": "text",
+      "tag": "span",
+      "text": "Failed",
+      "bbox": [
+        1092,
+        4247,
+        57,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "638-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        863,
+        4281,
+        330,
+        134
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "639-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        863,
+        4281,
+        161,
+        134
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "640-span-Shot04",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 04",
+      "bbox": [
+        863,
+        4281,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "641-span-Reflections",
+      "kind": "text",
+      "tag": "span",
+      "text": "Reflections",
+      "bbox": [
+        930,
+        4284,
+        65,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "642-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        937,
+        4343,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "639-button"
+    },
+    {
+      "id": "643-span-Waitingforyo",
+      "kind": "text",
+      "tag": "span",
+      "text": "Waiting for you",
+      "bbox": [
+        867,
+        4309,
+        90,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "644-span-Seedance20Fa",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 Fast · 16:9 · 4s",
+      "bbox": [
+        863,
+        4400,
+        161,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "645-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        1032,
+        4281,
+        161,
+        134
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "646-span-Shot05",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 05",
+      "bbox": [
+        1032,
+        4281,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "647-span-Sunrise",
+      "kind": "text",
+      "tag": "span",
+      "text": "Sunrise",
+      "bbox": [
+        1099,
+        4284,
+        44,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "648-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1106,
+        4343,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "645-button"
+    },
+    {
+      "id": "649-span-Deleted",
+      "kind": "text",
+      "tag": "span",
+      "text": "Deleted",
+      "bbox": [
+        1036,
+        4309,
+        53,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "650-span-Nolongeronth",
+      "kind": "text",
+      "tag": "span",
+      "text": "No longer on the canvas",
+      "bbox": [
+        1032,
+        4400,
+        161,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "651-span-P2",
+      "kind": "text",
+      "tag": "span",
+      "text": "P2",
+      "bbox": [
+        62,
+        4465,
+        31,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "652-b-行内标签",
+      "kind": "text",
+      "tag": "b",
+      "text": "行内标签",
+      "bbox": [
+        101,
+        4466,
+        48,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "653-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        72,
+        4513,
+        360,
+        330
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "654-p-Drafted3shot",
+      "kind": "text",
+      "tag": "p",
+      "text": "Drafted 3 shots:",
+      "bbox": [
+        87,
+        4526,
+        330,
+        64
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "655-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        190,
+        4529,
+        173,
+        28
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "656-span-Shot01",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 01",
+      "bbox": [
+        222,
+        4534,
+        61,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "657-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat",
+      "bbox": [
+        289,
+        4527,
+        63,
+        32
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "658-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        87,
+        4561,
+        104,
+        28
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "659-span-Shot02",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 02",
+      "bbox": [
+        119,
+        4566,
+        61,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "660-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        195,
+        4561,
+        104,
+        28
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "661-span-Shot03",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 03",
+      "bbox": [
+        227,
+        4566,
+        61,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "662-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        87,
+        4600,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "663-span-Shot01",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 01",
+      "bbox": [
+        132,
+        4605,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "664-span-Paperboatdep",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat departs",
+      "bbox": [
+        199,
+        4607,
+        111,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "665-span-Seedance204s",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 · 4s",
+      "bbox": [
+        132,
+        4625,
+        254,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "666-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        394,
+        4615,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "662-button"
+    },
+    {
+      "id": "667-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        87,
+        4651,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "668-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        92,
+        4657,
+        32,
+        32
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "669-span-Shot02",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 02",
+      "bbox": [
+        132,
+        4656,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "670-span-Pasttheleave",
+      "kind": "text",
+      "tag": "span",
+      "text": "Past the leaves",
+      "bbox": [
+        199,
+        4658,
+        88,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "671-span-Seedance205s",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 · 5s",
+      "bbox": [
+        132,
+        4676,
+        254,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "672-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        394,
+        4666,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "667-button"
+    },
+    {
+      "id": "673-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        87,
+        4702,
+        330,
+        77
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "674-span-Shot03",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 03",
+      "bbox": [
+        132,
+        4707,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "675-span-Driftingaway",
+      "kind": "text",
+      "tag": "span",
+      "text": "Drifting away",
+      "bbox": [
+        199,
+        4709,
+        77,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "676-span-Notsent",
+      "kind": "text",
+      "tag": "span",
+      "text": "Not sent",
+      "bbox": [
+        132,
+        4727,
+        254,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "677-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        394,
+        4717,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "673-button"
+    },
+    {
+      "id": "678-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        87,
+        4785,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "679-span-Shot04",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 04",
+      "bbox": [
+        132,
+        4790,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "680-span-Reflections",
+      "kind": "text",
+      "tag": "span",
+      "text": "Reflections",
+      "bbox": [
+        199,
+        4792,
+        65,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "681-span-Deleted",
+      "kind": "text",
+      "tag": "span",
+      "text": "Deleted",
+      "bbox": [
+        132,
+        4810,
+        254,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "682-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        394,
+        4800,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "678-button"
+    },
+    {
+      "id": "683-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        460,
+        4513,
+        360,
+        332
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "684-p-已起草3个镜头",
+      "kind": "text",
+      "tag": "p",
+      "text": "已起草 3 个镜头：",
+      "bbox": [
+        475,
+        4526,
+        330,
+        64
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "685-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        582,
+        4529,
+        144,
+        28
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "686-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        614,
+        4534,
+        47,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "687-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        667,
+        4527,
+        48,
+        32
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "688-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        475,
+        4561,
+        90,
+        28
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "689-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        507,
+        4566,
+        47,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "690-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        569,
+        4561,
+        90,
+        28
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "691-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        601,
+        4566,
+        47,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "692-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        475,
+        4600,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "693-span-镜01",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 01",
+      "bbox": [
+        520,
+        4605,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "694-span-纸船出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "纸船出发",
+      "bbox": [
+        573,
+        4607,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "695-span-Seedance204s",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 · 4s",
+      "bbox": [
+        520,
+        4625,
+        254,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "696-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        782,
+        4615,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "692-button"
+    },
+    {
+      "id": "697-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        475,
+        4651,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "698-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        480,
+        4657,
+        32,
+        32
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "699-span-镜02",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 02",
+      "bbox": [
+        520,
+        4656,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "700-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        573,
+        4658,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "701-span-Seedance205s",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 · 5s",
+      "bbox": [
+        520,
+        4676,
+        254,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "702-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        782,
+        4666,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "697-button"
+    },
+    {
+      "id": "703-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        475,
+        4702,
+        330,
+        78
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "704-span-镜03",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 03",
+      "bbox": [
+        520,
+        4707,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "705-span-漂向远处",
+      "kind": "text",
+      "tag": "span",
+      "text": "漂向远处",
+      "bbox": [
+        573,
+        4709,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "706-span-没有发出去",
+      "kind": "text",
+      "tag": "span",
+      "text": "没有发出去",
+      "bbox": [
+        520,
+        4727,
+        254,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "707-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        782,
+        4718,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "703-button"
+    },
+    {
+      "id": "708-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        475,
+        4786,
+        330,
+        46
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "709-span-镜04",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜 04",
+      "bbox": [
+        520,
+        4791,
+        47,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "710-span-水面倒影",
+      "kind": "text",
+      "tag": "span",
+      "text": "水面倒影",
+      "bbox": [
+        573,
+        4793,
+        48,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "711-span-已删除",
+      "kind": "text",
+      "tag": "span",
+      "text": "已删除",
+      "bbox": [
+        520,
+        4811,
+        254,
+        16
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "712-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        782,
+        4802,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "708-button"
+    },
+    {
+      "id": "713-div",
+      "kind": "box",
+      "tag": "div",
+      "text": "",
+      "bbox": [
+        848,
+        4513,
+        360,
+        330
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "714-p-Drafted3shot",
+      "kind": "text",
+      "tag": "p",
+      "text": "Drafted 3 shots:",
+      "bbox": [
+        863,
+        4526,
+        330,
+        64
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "715-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        966,
+        4529,
+        173,
+        28
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "716-span-Shot01",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 01",
+      "bbox": [
+        998,
+        4534,
+        61,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "717-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat",
+      "bbox": [
+        1065,
+        4527,
+        63,
+        32
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "718-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        863,
+        4561,
+        104,
+        28
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "719-span-Shot02",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 02",
+      "bbox": [
+        895,
+        4566,
+        61,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "720-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        971,
+        4561,
+        104,
+        28
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "721-span-Shot03",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 03",
+      "bbox": [
+        1003,
+        4566,
+        61,
+        18
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "722-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        863,
+        4600,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "723-span-Shot01",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 01",
+      "bbox": [
+        908,
+        4605,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "724-span-Paperboatdep",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat departs",
+      "bbox": [
+        975,
+        4607,
+        111,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "725-span-Seedance204s",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 · 4s",
+      "bbox": [
+        908,
+        4625,
+        254,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "726-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1170,
+        4615,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "722-button"
+    },
+    {
+      "id": "727-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        863,
+        4651,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "728-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        868,
+        4657,
+        32,
+        32
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "729-span-Shot02",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 02",
+      "bbox": [
+        908,
+        4656,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "730-span-Pasttheleave",
+      "kind": "text",
+      "tag": "span",
+      "text": "Past the leaves",
+      "bbox": [
+        975,
+        4658,
+        88,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "731-span-Seedance205s",
+      "kind": "text",
+      "tag": "span",
+      "text": "Seedance 2.0 · 5s",
+      "bbox": [
+        908,
+        4676,
+        254,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "732-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1170,
+        4666,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "727-button"
+    },
+    {
+      "id": "733-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        863,
+        4702,
+        330,
+        77
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "734-span-Shot03",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 03",
+      "bbox": [
+        908,
+        4707,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "735-span-Driftingaway",
+      "kind": "text",
+      "tag": "span",
+      "text": "Drifting away",
+      "bbox": [
+        975,
+        4709,
+        77,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "736-span-Notsent",
+      "kind": "text",
+      "tag": "span",
+      "text": "Not sent",
+      "bbox": [
+        908,
+        4727,
+        254,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "737-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1170,
+        4717,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "733-button"
+    },
+    {
+      "id": "738-button",
+      "kind": "control",
+      "tag": "button",
+      "text": "",
+      "bbox": [
+        863,
+        4785,
+        330,
+        45
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "739-span-Shot04",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 04",
+      "bbox": [
+        908,
+        4790,
+        61,
+        20
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "740-span-Reflections",
+      "kind": "text",
+      "tag": "span",
+      "text": "Reflections",
+      "bbox": [
+        975,
+        4792,
+        65,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "741-span-Deleted",
+      "kind": "text",
+      "tag": "span",
+      "text": "Deleted",
+      "bbox": [
+        908,
+        4810,
+        254,
+        15
+      ],
+      "region": "panel"
+    },
+    {
+      "id": "742-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1170,
+        4800,
+        14,
+        14
+      ],
+      "region": "panel",
+      "iconOf": "738-button"
+    }
+  ]
+}

@@ -306,6 +306,7 @@ function sendProduction(mode: AdapterModeDraft, prompt: string) {
       },
     } as never,
     operation: mode.create,
+    stage: "create",
   });
 }
 
@@ -433,6 +434,7 @@ describe("自建中转一致性台架 · 生成阶段（认证后的真实用法
         extras: { modelKey: MODEL_KEY, referenceImages: [referenceUrl] },
       } as never,
       operation: mode.create,
+      stage: "create",
     });
 
     const hit = requireEditHit("生成请求没打到 /v1/images/edits");

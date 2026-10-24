@@ -1,0 +1,36 @@
+VERDICT one-shot cut {"retried":false,"kind":"unknown","ok":false,"error":"Error invoking remote method 'nomi:tasks:run': TypeError: terminated"}
+VERDICT one-shot http400 {"retried":false,"kind":"model-config","ok":false,"error":"Error invoking remote method 'nomi:tasks:run': AI_APICallError: bad request: model not found"}
+VERDICT one-shot http401 {"retried":false,"kind":"auth","ok":false,"error":"Error invoking remote method 'nomi:tasks:run': AI_APICallError: invalid api key"}
+VERDICT one-shot http429 {"retried":false,"kind":"unknown","ok":false,"error":"Error invoking remote method 'nomi:tasks:run': AI_APICallError: Too many requests, slow down"}
+VERDICT one-shot http429 {"retried":false,"kind":"unknown","ok":false,"error":"Error invoking remote method 'nomi:tasks:run': AI_RetryError: Failed after 3 attempts. Last error: Too many requests, slow down"}
+VERDICT one-shot http500 {"retried":false,"kind":"unknown","ok":false,"error":"Error invoking remote method 'nomi:tasks:run': AI_APICallError: internal error"}
+VERDICT one-shot http500 {"retried":false,"kind":"unknown","ok":false,"error":"Error invoking remote method 'nomi:tasks:run': AI_RetryError: Failed after 3 attempts. Last error: internal error"}
+VERDICT one-shot http503 {"retried":false,"kind":"unknown","ok":false,"error":"Error invoking remote method 'nomi:tasks:run': AI_APICallError: upstream overloaded"}
+VERDICT one-shot http503 {"retried":false,"kind":"unknown","ok":false,"error":"Error invoking remote method 'nomi:tasks:run': AI_RetryError: Failed after 3 attempts. Last error: upstream overloaded"}
+VERDICT one-shot sseError {"retried":false,"kind":"unknown","ok":false,"error":"Error invoking remote method 'nomi:tasks:run': relay upstream failed: channel busy"}
+VERDICT oneShotTimeoutFirst {"retried":false,"kind":"unknown"}
+VERDICT oneShotTimeoutOverall {"retried":false,"kind":"unknown"}
+VERDICT stream cut {"retried":false,"kind":"network","ok":false,"error":"terminated"}
+VERDICT stream http400 {"retried":false,"kind":"model-unavailable-upstream","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTE5IiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTAyMzIvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http400 {"retried":false,"kind":"model-unavailable-upstream","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTI2IiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTQyOTIvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http400 {"retried":false,"kind":"model-unavailable-upstream","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTMzIiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTQ0MDUvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http400 {"retried":false,"kind":"model-unavailable-upstream","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTUiLCJtZXRob2QiOiJQT1NUIiwidXJsIjoiaHR0cDovLzEyNy4wLjAuMTo0OTkwOS92MS9jaGF0L2NvbXBsZXRpb25zIiwiaHR0cFN0YXR1cyI"}
+VERDICT stream http401 {"retried":false,"kind":"auth","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTE4IiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTAyMjkvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http401 {"retried":false,"kind":"auth","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTI1IiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTQyOTAvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http401 {"retried":false,"kind":"auth","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTMyIiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTQ0MDMvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http401 {"retried":false,"kind":"auth","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTQiLCJtZXRob2QiOiJQT1NUIiwidXJsIjoiaHR0cDovLzEyNy4wLjAuMTo0OTkwNy92MS9jaGF0L2NvbXBsZXRpb25zIiwiaHR0cFN0YXR1cyI"}
+VERDICT stream http429 {"retried":false,"kind":"quota","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTE1IiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTAxMDcvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http429 {"retried":false,"kind":"quota","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTEiLCJtZXRob2QiOiJQT1NUIiwidXJsIjoiaHR0cDovLzEyNy4wLjAuMTo0OTc0OC92MS9jaGF0L2NvbXBsZXRpb25zIiwiaHR0cFN0YXR1cyI"}
+VERDICT stream http429 {"retried":false,"kind":"quota","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTI5IiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTQyOTgvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http429 {"retried":false,"kind":"quota","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTIyIiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTAyNDUvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http500 {"retried":false,"kind":"server","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTE3IiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTAxODAvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http500 {"retried":false,"kind":"server","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTI0IiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTQyNTIvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http500 {"retried":false,"kind":"server","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTMiLCJtZXRob2QiOiJQT1NUIiwidXJsIjoiaHR0cDovLzEyNy4wLjAuMTo0OTg2NC92MS9jaGF0L2NvbXBsZXRpb25zIiwiaHR0cFN0YXR1cyI"}
+VERDICT stream http500 {"retried":false,"kind":"server","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTMxIiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTQzNzIvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http503 {"retried":false,"kind":"server","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTE2IiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTAxNDgvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http503 {"retried":false,"kind":"server","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTIiLCJtZXRob2QiOiJQT1NUIiwidXJsIjoiaHR0cDovLzEyNy4wLjAuMTo0OTgxMy92MS9jaGF0L2NvbXBsZXRpb25zIiwiaHR0cFN0YXR1cyI"}
+VERDICT stream http503 {"retried":false,"kind":"server","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTIzIiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTQyMTYvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream http503 {"retried":false,"kind":"server","ok":false,"error":"NOMI_VENDOR_ERR_B64::eyJ2ZW5kb3JLZXkiOiJmaXh0dXJlLTMwIiwibWV0aG9kIjoiUE9TVCIsInVybCI6Imh0dHA6Ly8xMjcuMC4wLjE6NTQzMzYvdjEvY2hhdC9jb21wbGV0aW9ucyIsImh0dHBTdGF0dXM"}
+VERDICT stream sseError {"retried":false,"kind":"unknown","ok":false,"error":"relay upstream failed: channel busy"}
+VERDICT streamTimeoutFirst {"retried":false,"kind":"unknown"}
+VERDICT streamTimeoutOverall {"retried":false,"kind":"unknown"}

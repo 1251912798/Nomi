@@ -17,6 +17,7 @@ Script -> Generate -> Edit -> Preview -> Export
 - Use one clear visual hierarchy: spacing, typography, and subtle surface contrast before borders.
 - Keep creator control explicit; AI suggestions should not hide final user decisions.
 - Keep local project and asset visibility obvious in desktop workflows.
+- One thing, one home; the Agent only points: chat holds pointer elements, necessary confirmations and chat-native content, never mini editors or full previews (full design system §1.0).
 
 ## Tokens
 

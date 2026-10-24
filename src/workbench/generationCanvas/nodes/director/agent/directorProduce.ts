@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 ../model/directorPreviewState 的 readDirectorPreview / directorProduceState（唯一判据）、./directorPreviewCapture 的
- *          requestDirectorPreviewRender（唯一重渲写口）、./attachCameraMoveToTarget 的 computeAttachCameraMove（唯一挂接核心）、
+ *          requestDirectorPreviewRender（唯一重渲写口）、./attachCameraMoveForNode 的 attachCameraMoveForNode（唯一挂接入口；「挂没挂好」由核按当前现状判，这里不再看网址标记早退）、
  *          ../model/directorShotSummaries、画布 store、../../../events/canvasGestureContext、../../nodeSizing
  * [OUTPUT]: 对外提供 prepareProduceFromPreview、DirectorProduceOutcome
  * [POS]: 导演视图主按钮「出成片」的执行那一半（设计卡 docs/plan/2026-10-16-director-3dbox-produce-design-card.md，协调 10-16 定选项 A）：
@@ -20,7 +20,7 @@ import { DIRECTOR_PREVIEW_META_KEY } from '../model/directorNodeMeta'
 import { directorProduceState, readDirectorPreview, type DirectorPreviewMeta } from '../model/directorPreviewState'
 import { summarizeDirectorShots } from '../model/directorShotSummaries'
 import type { DirectorProject } from '../model/directorTypes'
-import { CAMERA_MOVE_ATTACHED_URL_KEY, computeAttachCameraMove } from './attachCameraMoveToTarget'
+import { attachCameraMoveForNode } from './attachCameraMoveForNode'
 import { requestDirectorPreviewRender } from './directorPreviewCapture'
 
 /** 新建的视频节点离导演节点多远（与快捷派生同一个间距）。 */
@@ -84,9 +84,8 @@ export function prepareProduceFromPreview(directorNodeId: string, project: Direc
   }
 
   const fresh = nodeOf(target.id) ?? target
-  if (fresh.meta?.[CAMERA_MOVE_ATTACHED_URL_KEY] === preview.videoUrl) return { kind: 'prepared', videoNodeId: fresh.id, created, attach: 'kept' }
   const cuts = shots.map((cut) => ({ start: cut.start, end: cut.end, shotSize: cut.shotSize, move: cut.move }))
-  const outcome = computeAttachCameraMove(fresh, preview.videoUrl, { kind: 'preview', cuts, notes: preview.notes ?? [] })
+  const outcome = attachCameraMoveForNode(fresh.id, preview.videoUrl, { kind: 'preview', cuts, notes: preview.notes ?? [] })
   if (outcome.kind !== 'patch') return { kind: 'prepared', videoNodeId: fresh.id, created, attach: 'kept', ...(outcome.toast ? { toast: outcome.toast } : {}) }
   inTxn(() => useGenerationCanvasStore.getState().updateNode(fresh.id, outcome.patch))
   const latest = readDirectorPreview(nodeOf(directorNodeId))

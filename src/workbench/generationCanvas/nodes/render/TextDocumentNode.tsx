@@ -5,8 +5,10 @@
  *   正文是 ProseMirror，已被 handlePointerDown 白名单放行 → 点正文 = 编辑、不误拖。
  * - **键盘**：正文 stopPropagation keydown/keyup，否则打字触发画布全局快捷键（Backspace 删节点）。
  * - **持久化**：实时写 store（persist:false），失焦 commit。
- * - **格式条（P2）**：编辑（聚焦）时浮在节点上方，不占节点高度、不依赖选区；与创作区共用
- *   buildRichTextActions（一份定义两个壳）。
+ * - **格式条（P2）**：编辑（聚焦）时浮在节点上方，不占节点高度、不依赖选区；按钮与创作区共用
+ *   useRichTextActions + RichTextActionButton（一份定义三个壳）。外壳走节点浮条的共享外壳 FloatingToolbarShell
+ *   （反向缩放恒定屏幕尺寸、夹在可见画布里），编辑期间顶替节点浮条（锁 / 复制），和白板编辑条同一个做法。
+ *   2026-10-23 之前它是自己写的 absolute 条：跟着画布缩放（300% 时图标放大三倍），节点贴近顶边时整条被顶栏盖住。
  *
  * 复用唯一真相源 useNomiRichTextEditor。本组件只渲染 body，节点选中/拖动/缩放由 BaseGenerationNode 提供。
  */
@@ -20,7 +22,9 @@ import type { GenerationCanvasNode, TiptapDocJson } from '../../model/generation
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
 import { useNomiRichTextEditor } from '../../../common/useNomiRichTextEditor'
 import { NODE_SCROLL_REGION_CLASS_NAME } from '../nodeScrollRegionClassName'
-import { buildRichTextActions } from '../../../common/richTextActions'
+import { useRichTextActions } from '../../../common/richTextActions'
+import { RichTextActionButton } from '../../../common/RichTextActionButton'
+import { FloatingToolbarShell } from '../NodeFloatingToolbar'
 import { NodeEmptyState } from './NodeEmptyState'
 import { isDocEmpty } from './emptyCardLabel'
 import { toast } from '../../../../ui/toast'
@@ -28,7 +32,7 @@ import { requestTaskCancel } from '../../runner/localTaskControl'
 import { presetBlockHint, runTextPreset, useTextPresetBlocks } from '../textProcessRun'
 import { TEXT_PROCESS_PRESET_LABEL_KEY, countSplitItems, type TextProcessPresetId } from '../../runner/textProcessPresets'
 import { docToPlainText } from '../../runner/textGenerationDocument'
-import { NomiLoadingMark } from '../../../../design'
+import { NomiLoadingMark, TooltipProvider } from '../../../../design'
 import { useNodePromptFocusRequest } from '../nodePromptFocus'
 import { landSelectionRewrite } from '../../runner/textActions'
 import { resolveNodeVisualSize } from '../nodeSizing'
@@ -41,9 +45,11 @@ const EMPTY_TRY_PRESETS = ['expand', 'describe', 'split'] as const satisfies rea
 const LONG_TEXT_CHARACTERS = 600
 type Props = {
   node: GenerationCanvasNode
+  /** 正文进出编辑（聚焦）时告诉外壳：编辑期间格式条顶替节点浮条。传稳定引用（setState）。 */
+  onEditingChange?: (editing: boolean) => void
 }
 
-function TextDocumentNodeImpl({ node }: Props): JSX.Element {
+function TextDocumentNodeImpl({ node, onEditingChange }: Props): JSX.Element {
   const { t } = useTranslation()
   const writeNodeBody = useGenerationCanvasStore((state) => state.writeNodeBody)
   const commitPersistedChange = useGenerationCanvasStore((state) => state.commitPersistedChange)
@@ -75,12 +81,17 @@ function TextDocumentNodeImpl({ node }: Props): JSX.Element {
     onSelectionChange: handleSelectionChange,
   })
 
-  // 编辑（聚焦）时才显示格式条。订阅 editor.isFocused（含 active/can 变化驱动按钮态刷新）。
+  // 编辑（聚焦）时才显示格式条。按钮的按下 / 禁用态由 useRichTextActions 自己订阅。
   const editorUi = useEditorState({
     editor,
     selector: ({ editor: current }) => ({ focused: Boolean(current?.isFocused) }),
   })
   const isFocused = editorUi?.focused ?? false
+  React.useEffect(() => {
+    onEditingChange?.(isFocused)
+  }, [isFocused, onEditingChange])
+  React.useEffect(() => () => onEditingChange?.(false), [onEditingChange])
+  const actions = useRichTextActions(editor)
 
   // 「改写」落地：textActions 拿不到 ProseMirror 选区位置，只打了 textPendingSelectionApply 标记；
   // 这里在节点编辑器里 replaceSelection 替换当前选区。seed=挂载时已有 result.id，避免项目加载时重放。
@@ -112,45 +123,19 @@ function TextDocumentNodeImpl({ node }: Props): JSX.Element {
   const characterCount = React.useMemo(() => (showPlaceholder ? 0 : docToPlainText(node.contentJson).length), [node.contentJson, showPlaceholder])
   // 底部一行只说一件事：正在写（可停止）> 拆成几条 > 正文很长。都没有就不占位置。
   const footer = running ? 'running' : splitCount !== null ? 'split' : characterCount >= LONG_TEXT_CHARACTERS ? 'long' : null
-  const actions = buildRichTextActions(editor)
 
   return (
     // 外层 overflow 可见，让格式条能浮到节点上方；圆角/阴影/裁剪都收进内层 body。
     <div className="relative h-full w-full">
-      {/* 浮动格式条：编辑时浮在节点上方（不占节点高度）。 */}
+      {/* 浮动格式条：编辑时浮在节点上方（不占节点高度），走节点浮条的共享外壳。 */}
       {editor && isFocused ? (
-        <div
-          role="toolbar"
-          aria-label={t('generationCommon.textDocument.formattingAria')}
-          onPointerDown={(event) => event.stopPropagation()}
-          className={cn(
-            'absolute left-1/2 top-[-44px] z-[9] -translate-x-1/2',
-            'flex items-center gap-0.5 rounded-full border border-nomi-line bg-nomi-paper px-1.5 py-1 shadow-nomi-lg',
-          )}
-        >
-          {actions.map((action) => (
-            <button
-              key={action.id}
-              type="button"
-              title={action.label}
-              aria-label={action.label}
-              aria-pressed={action.active ? true : undefined}
-              disabled={action.disabled}
-              data-active={action.active ? 'true' : 'false'}
-              // mousedown preventDefault：点按钮不丢选区/焦点（否则格式条会闪退）。
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={action.onClick}
-              className={cn(
-                'inline-grid h-7 w-7 place-items-center rounded-nomi-sm',
-                'text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink',
-                'data-[active=true]:bg-nomi-accent-soft data-[active=true]:text-nomi-ink',
-                'disabled:cursor-not-allowed disabled:text-nomi-ink-30',
-              )}
-            >
-              {action.icon}
-            </button>
-          ))}
-        </div>
+        <FloatingToolbarShell ariaLabel={t('generationCommon.textDocument.formattingAria')} lockNodeId={null}>
+          <TooltipProvider delayDuration={250} disableHoverableContent>
+            {actions.map((action) => (
+              <RichTextActionButton key={action.id} action={action} side="top" className="size-8 [&>svg]:size-4" />
+            ))}
+          </TooltipProvider>
+        </FloatingToolbarShell>
       ) : null}
 
       <div className="flex h-full w-full flex-col overflow-hidden rounded-nomi bg-nomi-paper shadow-nomi-md ring-1 ring-inset ring-nomi-line">
@@ -179,8 +164,9 @@ function TextDocumentNodeImpl({ node }: Props): JSX.Element {
             '[&_.ProseMirror]:m-0 [&_.ProseMirror]:min-h-0 [&_.ProseMirror]:max-w-none',
             '[&_.ProseMirror]:p-3 [&_.ProseMirror]:text-body-sm [&_.ProseMirror]:leading-5',
             '[&_.ProseMirror]:text-nomi-ink-80 [&_.ProseMirror_p]:mb-0',
-            // 拆成多条的结果：编号列表，编号灰、右对齐在一列里。
+            // 拆成多条的结果：编号列表，编号灰、右对齐在一列里；无序列表同一套缩进（符号来自编辑器内核的列表类）。
             '[&_.ProseMirror_ol]:m-0 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-[22px]',
+            '[&_.ProseMirror_ul]:m-0 [&_.ProseMirror_ul]:pl-[22px]',
             '[&_.ProseMirror_li]:py-0.5 [&_.ProseMirror_li::marker]:text-nomi-ink-40 [&_.ProseMirror_li_p]:m-0',
           )}
           onKeyDown={(event) => event.stopPropagation()}

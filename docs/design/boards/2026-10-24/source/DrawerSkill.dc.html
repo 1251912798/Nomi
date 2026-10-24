@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Skill 抽屉 · 修后</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.nm{--shell:#f5f4f2;--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink30:oklch(0.78 0.01 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.nm.dark{--shell:#0c0b09;--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink30:oklch(0.50 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80)}
+.nm .illus{filter:none}
+.nm.dark .illus{filter:invert(.9) hue-rotate(180deg)}
+.nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm .clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nm button{font-family:inherit}
+</style>
+</helmet>
+<div class="nm {{themeClass}}" style="width: 1440px; height: 900px; background: var(--shell); position: relative; overflow: hidden;">
+  <img src="{{shellSrc}}" alt="{{s.shellAlt}}" style="position: absolute; left: 0; top: 0; width: 1440px; height: 900px; display: block;">
+  <aside aria-label="{{s.drawerAria}}" style="position: absolute; left: 64px; top: 44px; width: 280px; bottom: 12px; background: var(--paper); border-radius: 16px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="height: 44px; display: flex; align-items: center; gap: 2px; padding: 0 8px 0 16px; flex: none;">
+      <h2 style="margin: 0; font-size: 13px; font-weight: 600; flex: 1;">{{s.drawerTitle}}</h2>
+      <button type="button" aria-label="{{s.importName}}" title="{{s.importName}}" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path><path d="M7 9l5-5 5 5"></path><path d="M12 4v12"></path></svg></button>
+      <button type="button" aria-label="{{s.newName}}" title="{{s.newName}}" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--ink60); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21l15-15-3-3-15 15 3 3"></path><path d="M15 6l3 3"></path><path d="M9 3a2 2 0 0 0 2 2 2 2 0 0 0-2 2 2 2 0 0 0-2-2 2 2 0 0 0 2-2"></path><path d="M19 13a2 2 0 0 0 2 2 2 2 0 0 0-2 2 2 2 0 0 0-2-2 2 2 0 0 0 2-2"></path></svg></button>
+    </div>
+    <div style="display: flex; gap: 6px; padding: 0 12px 10px 12px; flex: none;">
+      <label style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 30px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+        <input type="search" placeholder="{{s.search}}" aria-label="{{s.search}}" style="border: 0; outline: 0; background: transparent; font: inherit; font-size: 12px; color: var(--ink); width: 100%; min-width: 0;">
+      </label>
+      <button type="button" aria-haspopup="listbox" aria-label="{{s.categoryAria}}" style="height: 30px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink80); font-size: 12px;">{{s.all}}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+    </div>
+    <div style="flex: 1; min-height: 0; overflow: hidden; padding: 4px 12px 12px 12px; display: flex; flex-direction: column; gap: 16px;">
+      <sc-for list="{{sections}}" as="sec" hint-placeholder-count="5">
+        <section aria-label="{{sec.title}}" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 22px;">
+            <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: var(--ink);">{{sec.title}}</h3>
+            <sc-if value="{{sec.hasMore}}" hint-placeholder-val="{{ true }}">
+              <a href="#" style="font-size: 12px; color: var(--ink60); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;">{{sec.more}}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+            </sc-if>
+          </div>
+          <sc-for list="{{sec.items}}" as="it" hint-placeholder-count="2">
+            <button type="button" style="height: 66px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+              <span style="width: 64px; height: 40px; flex: none; border-radius: 6px; overflow: hidden; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);">
+                <sc-if value="{{it.hasCover}}" hint-placeholder-val="{{ true }}">
+                  <img class="{{it.cls}}" src="{{it.src}}" alt="" style="width: 64px; height: 40px; object-fit: cover; display: block;">
+                </sc-if>
+                <sc-if value="{{it.noCover}}" hint-placeholder-val="{{ false }}">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path><path d="M16 5.25l-8 4.5"></path></svg>
+                </sc-if>
+              </span>
+              <span style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                <strong class="one" style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink);">{{it.title}}</strong>
+                <span class="clamp2" style="font-size: 11px; line-height: 15px; color: var(--ink60);">{{it.summary}}</span>
+              </span>
+            </button>
+          </sc-for>
+        </section>
+      </sc-for>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"lang":{"editor":"enum","options":["zh","en"],"default":"zh"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const en = (this.props.lang ?? 'zh') === 'en';
+    const T = (zh, e) => (en ? e : zh);
+    // 抽屉外面的外壳 = 现役真截图（左栏 Skill 抽屉打开时，中英 × 明暗），只把抽屉换成修后
+    const SHELL = {
+      'zh-light': '/_blob/fe41393773b62caa0ce1b1e9c16bc29b',
+      'zh-dark': '/_blob/bc90309bdf6edb3c1c96b8ccd3aec250',
+      'en-light': '/_blob/7d1f567d03b79944d0700286ccb6cf71',
+      'en-dark': '/_blob/ebd539f4c2746b454c3a5ef0d5992899',
+    };
+    const shellSrc = SHELL[(en ? 'en' : 'zh') + '-' + (dark ? 'dark' : 'light')];
+    const s = {
+      shellAlt: T('现役画布外壳（真截图）：顶栏、左栏、画布、底部工具条和时间轴照现状', 'Current canvas shell (real screenshot): top bar, rail, canvas, toolbar and timeline as they are today'),
+      drawerAria: T('技能库', 'Skill library'), drawerTitle: T('Skill', 'Skills'),
+      importName: T('导入技能：SKILL.md、zip 或整个文件夹，也可以直接拖进来', 'Import a skill: SKILL.md, zip or a whole folder — or drop it here'),
+      newName: T('用 AI 新建技能', 'New skill with AI'), search: T('搜技能…', 'Search skills…'), categoryAria: T('分类', 'Category'), all: T('全部', 'All'),
+    };
+    const card = (title, summary, id, photo) => ({ title, summary, src: id || '', hasCover: Boolean(id), noCover: !id, cls: photo ? 'photo' : 'illus' });
+    const sec = (title, total, items) => ({ title, items, hasMore: total > items.length, more: T('全部 ', 'All ') + total });
+    const sections = [
+      sec(T('我的', 'Mine'), 1, [card('improv-scene-mine', '即兴生台词——让角色在设定好的世界里即兴对戏，长出编剧预设不出的真实口语与情节。', '', false)]),
+      sec(T('创作流程', 'Workflow'), 10, [
+        card(T('品牌宣传片', 'Brand promo'), T('做产品/品牌宣传片。当用户要把产品文案、卖点或品牌介绍做成一条短宣传视频时用我。', 'Turn product benefits and brand stories into a short promotional film.'), '/_blob/cfd27c72f35794e6453a243cb70e8170', false),
+        card(T('分镜规划', 'Storyboard planning'), T('把短故事拆成有序镜头，整理为可审阅的分镜方案。', 'Turn a short story into an ordered, reviewable storyboard plan.'), '/_blob/37d3e2fc1e81b5e205a7488814fdb5c3', false),
+      ]),
+      sec(T('导演', 'Directing'), 13, [
+        card(T('镜头语言', 'Cinematography'), T('镜头语言与摄影技法方法论——统一景别体系/构图规则/运镜的情绪语言/打光方案/景深控制。', 'Choose framing, camera motion and lighting to support a scene.'), '/_blob/11df81e4fb7a93e83b1676b36d0907c8', false),
+        card(T('多角色调度', 'Ensemble staging'), T('多角色调度方法论——3 人以上同框的站位设计/视线网络/注意力引导/前后景分层。', 'Arrange positions, gaze and attention in scenes with multiple characters.'), '/_blob/7c2cb65856e6840d06d45c9bf0ad7f3f', false),
+      ]),
+      sec(T('编剧', 'Writing'), 11, [
+        card(T('剧本审查', 'Screenplay review'), T('剧本审查·导演视角——用视觉叙事/节奏把控/镜头语言/空间调度/情绪曲线等导演维度审一份剧本。', 'Review visual storytelling, pacing and whether scenes can be filmed.'), '/_blob/124b0fdafbb617a8fc2ec73065b5d69b', false),
+        card(T('对白设计', 'Dialogue'), T('对白专家（David Mamet 方法论）——台词创作 / 潜台词设计 / 角色语言个性化 / 对白节拍分析 / 沉默设计。', 'Write distinctive dialogue, subtext and purposeful silence.'), '/_blob/0298d55c9b49fcbccf23aa3357616845', false),
+      ]),
+      sec(T('广告', 'Advertising'), 8, [
+        card(T('凝露产品广告', 'Frost-Glass Serum, Condensation Macro'), T('用微距、水滴和环绕镜头展示产品质感。', 'Adapt Frost-Glass Serum, Condensation Macro to the supplied references and check continuity.'), '/_blob/a55bd4d3e0e810cd0322afe6d4eb047d', true),
+        card(T('咖啡倾注特写', 'Espresso Pour, Crema Physics'), T('把注入、油脂和蒸汽拆成清楚的镜头节拍。', 'Adapt Espresso Pour, Crema Physics to the supplied references and check continuity.'), '/_blob/69e37db9485497b71f19084eb2081017', true),
+      ]),
+    ];
+    return { themeClass: dark ? 'dark' : '', shellSrc, s, sections };
+  }
+}
+</script>
+</body>
+</html>

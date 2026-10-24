@@ -18,6 +18,8 @@
 const LONG_EDGE = 240
 const SQUARE_EDGE = 180
 const NARROW_SCALE = 176 / 240
+/** 最窄一档（行宽 < 520，E1a）：预览框缩成一枚缩略图，和参考、提示词排成一列。 */
+const COMPACT_SCALE = 120 / 240
 /** 画幅缺省（模型没声明、plan 没定）时的兜底：竖屏，与项目主画幅一致。 */
 const FALLBACK_RATIO = { width: 9, height: 16 }
 
@@ -48,10 +50,14 @@ export function frameMediaBox(aspect: string | null | undefined): FrameMediaBox 
 }
 
 
-/** 窄窗那一档：整只框等比缩到 176/240。 */
-export function densityBox(box: FrameMediaBox, narrow: boolean): FrameMediaBox {
-  if (!narrow) return box
-  return { width: Math.round(box.width * NARROW_SCALE), height: Math.round(box.height * NARROW_SCALE) }
+/** 行的三档：宽 / 窄（最小窗口）/ 最窄（缩略图在上一行）。 */
+export type StoryboardRowDensity = 'wide' | 'narrow' | 'compact'
+
+/** 窄窗那一档：整只框等比缩到 176/240；最窄一档缩到 120/240。布尔值 = 旧调用方（true = 窄）。 */
+export function densityBox(box: FrameMediaBox, density: boolean | StoryboardRowDensity): FrameMediaBox {
+  const scale = density === 'compact' ? COMPACT_SCALE : density === true || density === 'narrow' ? NARROW_SCALE : 1
+  if (scale === 1) return box
+  return { width: Math.round(box.width * scale), height: Math.round(box.height * scale) }
 }
 
 /** 某个画幅在框里按比例完整放下（contain）的尺寸。 */
@@ -77,7 +83,9 @@ export function isPortraitBox(box: FrameMediaBox): boolean {
 /**
  * 视觉列宽：横版与方图 = 框宽；**竖版与横版同宽（240）**——框靠左、参考在框右边那条带里，
  * 这样整片竖版时各行左缘和内容列起点仍与横版表一致，参考也不再把行撑高。
+ * `refsBeside = false`（镜头行，B3 / E1a 起参考在提示词上一行）：框右边没有参考带，列宽 = 框宽，生成框紧接预览框；
+ * 只有参考卡（锚点行）还把参考排在竖版框右边，沿用默认值。
  */
-export function visualColumnWidth(box: FrameMediaBox): number {
-  return isPortraitBox(box) ? LONG_EDGE : box.width
+export function visualColumnWidth(box: FrameMediaBox, refsBeside = true): number {
+  return isPortraitBox(box) && refsBeside ? LONG_EDGE : box.width
 }

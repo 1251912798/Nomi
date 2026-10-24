@@ -1,6 +1,7 @@
 import { revalidatePendingCredential } from './catalog/validateCandidateCredential';
 import crypto from "node:crypto";
 import { assertLocalAssetTransportReady, localizeAssetsForVendor } from "./catalog/assetLocalization";
+import { assertNoReferencesOutsideSubmit, stageSubmitsReferences } from "./catalog/referenceStage";
 import { assetIngestionResolver, assetLocalizationOptions } from "./catalog/assetTransportRuntime";
 import { readNomiLocalAsset, postJsonForAssetUpload, postMultipartForAssetUpload, putBinaryForAssetUpload } from "./assets/localAssetFile";
 import { writeAsset, writeGeneratedAsset, writeGeneratedDeterministicAsset } from "./assets/projectAssetStore";
@@ -54,7 +55,7 @@ import { extractVendorExtraHeaders, readCatalog } from "./catalog/catalogStore";
 import { unlocalizedTaskAsset } from "./tasks/unlocalizedTaskAsset";
 import type { BillingModelKind, HttpOperation, Mapping, Model, ProfileKind, Vendor } from "./catalog/types";
 import { billingKindForTaskKind, selectTaskMapping } from "./catalog/types";
-import { applyHeadlessParamDefaults, imageEditGuardError, projectOutboundPrompt } from "./catalog/taskParams";
+import { applyHeadlessParamDefaults, imageEditGuardError, projectOutboundPrompt } from "./catalog/taskParams"; import { assertNoReferenceResidueBeforeSend } from "./tasks/referenceResidueGuard";
 import { modelModeBodies } from "./catalog/modelCatalogListing";
 import { runCustomCallTask } from "./catalog/customCallDispatch";
 import { resolveCustomCallExecution } from "./catalog/customCallMode";
@@ -186,7 +187,7 @@ export async function executeProfileOperation(input: {
   request: TaskRequest;
   operation: HttpOperation;
   providerMeta?: JsonRecord;
-  localAssetReader?: import("./catalog/assetLocalization").LocalAssetReader; signal?: AbortSignal; stage?: ProfileOperationStage; antigravityPreflight?: import("./ai/antigravityTask").PreparedAntigravityTask;
+  localAssetReader?: import("./catalog/assetLocalization").LocalAssetReader; signal?: AbortSignal; stage: ProfileOperationStage; antigravityPreflight?: import("./ai/antigravityTask").PreparedAntigravityTask;
 }): Promise<{ response: unknown; request: unknown }> {
   // Process and multipart declarations are handled by their shared executors.
   if (input.operation.process) {
@@ -209,7 +210,7 @@ export async function executeProfileOperation(input: {
   }
   if (input.operation.multipart) return runMultipartProfileOperation(input, (u, h, q, f) => requestMultipart(input.vendor, input.apiKey, u, h, q, f, input.signal, { maxResponseBytes: vendorResponseLimitForKind(input.model.kind) }));
   const uploadCatalog = readCatalog();
-  const localized = await localizeAssetsForVendor(
+  const localized = stageSubmitsReferences(input.stage) ? await localizeAssetsForVendor(
     input.request.extras,
     assetIngestionResolver(input.vendor, uploadCatalog, input.operation.assetIngestion),
     input.localAssetReader || readNomiLocalAsset,
@@ -217,12 +218,9 @@ export async function executeProfileOperation(input: {
     postMultipartForAssetUpload,
     assetLocalizationOptions(input.request.extras),
     putBinaryForAssetUpload,
-  );
-  const effectiveInput =
-    localized.uploaded > 0
-      ? { ...input, request: { ...input.request, extras: localized.value as TaskRequest["extras"] } }
-      : input;
-  const built = buildProfileHttpRequest(effectiveInput);
+  ) : { value: input.request.extras, uploaded: 0 };
+  const effectiveInput = localized.uploaded > 0 ? { ...input, request: { ...input.request, extras: localized.value as TaskRequest["extras"] } } : input;
+  const built = assertNoReferencesOutsideSubmit(input.stage, buildProfileHttpRequest(effectiveInput));
   const body = await applyRequestTransform(input.operation.request_transform, built.body, { baseUrl: String(input.vendor.baseUrlHint || ""), promptId: trim(input.request.extras?.comfyPromptId), request: input.request });
   const { vendor, apiKey } = effectiveInput;
   const response = await requestJson(vendor, apiKey, built.method, built.url, built.headers, built.query, body, input.signal, { maxResponseBytes: vendorResponseLimitForKind(input.model.kind) });
@@ -312,7 +310,7 @@ export async function runTask(payload: unknown, admission: TaskAdmission = TOKEN
   const taskId = `task-${crypto.randomUUID()}`;
   const effectiveVendorKey = vendor.key;
   const mapping = stagedCandidate?.mapping || findTaskMapping(effectiveVendorKey, kind, modelKey, modeId);
-  request.extras = applyHeadlessParamDefaults(request.extras, (model?.meta as { archetypeId?: string } | undefined)?.archetypeId, kind, effectiveVendorKey, mapping?.create?.defaultParams, mapping?.create?.body, model.modelKey);
+  request.extras = applyHeadlessParamDefaults(assertNoReferenceResidueBeforeSend(request.extras, `${modelKey}/${modeId || "-"}`), (model?.meta as { archetypeId?: string } | undefined)?.archetypeId, kind, effectiveVendorKey, mapping?.create?.defaultParams, mapping?.create?.body, model.modelKey);
   // A5：@ 内联参考在发出去之前投影成 @image1/@video1。判据与注释住 taskParams（引擎 A 只有这一个出口）。
   request.prompt = projectOutboundPrompt(request.prompt, request.extras);
   const customCall = resolveCustomCallExecution(model as Model, request, mapping);

@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createWorkspaceProject,
   deleteWorkspaceProject,
-  gcEmptyDraftWorkspaceProjects,
   diagnoseWorkspaceProject,
   listWorkspaceProjects,
   readWorkspaceProject,
@@ -52,7 +51,7 @@ function deps(): WorkspaceRepositoryDeps {
 }
 
 describe("workspace repository", () => {
-  it("keeps projects under a previous default root native after the default location changes", () => {
+  it("keeps projects under a previous default root native after the default location changes", async () => {
     const settingsRoot = makeTempDir("nomi-workspace-repository-settings-");
     const oldDefaultRoot = makeTempDir("nomi-workspace-old-default-");
     const newDefaultRoot = makeTempDir("nomi-workspace-new-default-");
@@ -74,12 +73,16 @@ describe("workspace repository", () => {
       originalDeps,
     );
 
-    expect(listWorkspaceProjects(changedDeps)[0]).toMatchObject({ id: created.id, source: "native" });
-    expect(deleteWorkspaceProject(created.id, changedDeps)).toEqual({ id: created.id, deleted: true });
+    expect((await listWorkspaceProjects(changedDeps))[0]).toMatchObject({ id: created.id, source: "native" });
+    const trashed: string[] = [];
+    // 回收站由调用方注入（主进程传 shell.trashItem 那一份）；这里只记下交给回收站的是哪个目录，再把它挪走。
+    const moveToTrash = async (folder: string) => { trashed.push(folder); fs.renameSync(folder, `${folder}.trashed`); };
+    await expect(deleteWorkspaceProject(created.id, changedDeps, moveToTrash)).resolves.toEqual({ id: created.id, deleted: true });
+    expect(trashed).toEqual([path.resolve(oldProjectRoot)]);
     expect(fs.existsSync(oldProjectRoot)).toBe(false);
   });
 
-  it("never reclassifies an external project when its ancestor becomes the new default root", () => {
+  it("never reclassifies an external project when its ancestor becomes the new default root", async () => {
     const settingsRoot = makeTempDir("nomi-workspace-repository-settings-");
     const oldDefaultRoot = makeTempDir("nomi-workspace-old-default-");
     const newDefaultRoot = makeTempDir("nomi-workspace-new-default-");
@@ -97,12 +100,13 @@ describe("workspace repository", () => {
     );
     fs.writeFileSync(marker, "must survive", "utf8");
 
-    expect(listWorkspaceProjects(changedDeps)[0]).toMatchObject({ id: created.id, source: "folder" });
-    expect(deleteWorkspaceProject(created.id, changedDeps)).toEqual({ id: created.id, deleted: false });
+    expect((await listWorkspaceProjects(changedDeps))[0]).toMatchObject({ id: created.id, source: "folder" });
+    const moveToTrash = async () => { throw new Error("external folders must never reach the trash"); };
+    await expect(deleteWorkspaceProject(created.id, changedDeps, moveToTrash)).resolves.toEqual({ id: created.id, deleted: false });
     expect(fs.readFileSync(marker, "utf8")).toBe("must survive");
   });
 
-  it("creates a project in the selected root path", () => {
+  it("creates a project in the selected root path", async () => {
     const selectedRoot = makeTempDir();
     const repoDeps = deps();
 
@@ -119,7 +123,7 @@ describe("workspace repository", () => {
     });
     expect(fs.existsSync(workspaceProjectFile(selectedRoot))).toBe(true);
     expect(fs.existsSync(path.join(repoDeps.defaultProjectsRoot, created.id))).toBe(false);
-    expect(listWorkspaceProjects(repoDeps)[0]).toMatchObject({
+    expect((await listWorkspaceProjects(repoDeps))[0]).toMatchObject({
       id: created.id,
       rootPath: path.resolve(selectedRoot),
       missing: false,
@@ -372,7 +376,7 @@ describe("workspace repository", () => {
     expect(fs.existsSync(workspaceProjectFile(selectedRoot))).toBe(true);
   });
 
-  it("returns missing=true when the folder no longer exists", () => {
+  it("returns missing=true when the folder no longer exists", async () => {
     const selectedRoot = makeTempDir();
     const repoDeps = deps();
     const created = createWorkspaceProject(
@@ -381,7 +385,7 @@ describe("workspace repository", () => {
     );
     fs.rmSync(selectedRoot, { recursive: true, force: true });
 
-    expect(listWorkspaceProjects(repoDeps)).toEqual([
+    expect((await listWorkspaceProjects(repoDeps))).toEqual([
       expect.objectContaining({
         id: created.id,
         name: "Missing Folder",
@@ -393,7 +397,7 @@ describe("workspace repository", () => {
     expect(resolveWorkspaceProjectDir(created.id, repoDeps)).toBeNull();
   });
 
-  it("keeps readable projects available when one workspace manifest is broken", () => {
+  it("keeps readable projects available when one workspace manifest is broken", async () => {
     const brokenRoot = makeTempDir();
     const healthyRoot = makeTempDir();
     const repoDeps = deps();
@@ -408,7 +412,7 @@ describe("workspace repository", () => {
     fs.writeFileSync(workspaceProjectFile(brokenRoot), "{bad json");
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
-    const projects = listWorkspaceProjects(repoDeps);
+    const projects = (await listWorkspaceProjects(repoDeps));
 
     expect(projects.find((project) => project.id === healthy.id)).toMatchObject({
       id: healthy.id,
@@ -446,7 +450,7 @@ describe("workspace repository", () => {
   });
 });
 
-describe("draft lifecycle + empty-draft GC", () => {
+describe("draft lifecycle + the list returns every registered project", () => {
   // native 项目 = rootPath 落在默认根之下（Nomi 自管目录）。
   function nativeRoot(deps: WorkspaceRepositoryDeps, name: string): string {
     return path.join(deps.defaultProjectsRoot, name);
@@ -473,65 +477,27 @@ describe("draft lifecycle + empty-draft GC", () => {
     expect(readWorkspaceProject(created.id, repoDeps)?.draft).toBeUndefined();
   });
 
-  it("recycles a native, never-edited, asset-free draft", () => {
+  // 读面合同（V-plibrary2 r3，用户 2026-10-22 拍板 B）：列表 = 所有登记过的项目，读面不做展示上的取舍、也不删。
+  // 项目库页面、全部项目素材、MCP 项目列表、工作流来源名、走查都按这个含义读；曾经在这里藏「零编辑空白草稿」，
+  // 刚新建、还没保存的项目就从 MCP 与走查的列表里消失了（CI golden path / real-user-journeys 红）。
+  it("lists every registered project — blank never-edited draft, draft with assets, edited draft, external folder draft — and deletes nothing", async () => {
     const repoDeps = deps();
-    const draft = createWorkspaceProject(
-      { rootPath: nativeRoot(repoDeps, "blank-gc"), record: { name: "空白", draft: true } },
-      repoDeps,
-    );
-    const dir = resolveWorkspaceProjectDir(draft.id, repoDeps);
-    expect(dir).toBeTruthy();
-
-    const result = gcEmptyDraftWorkspaceProjects(repoDeps, listWorkspaceProjects(repoDeps));
-    expect(result.recycled).toContain(draft.id);
-    expect(fs.existsSync(dir as string)).toBe(false);
-    expect(listWorkspaceProjects(repoDeps).some((p) => p.id === draft.id)).toBe(false);
-  });
-
-  it("keeps drafts that have user assets on disk (defense in depth)", () => {
-    const repoDeps = deps();
-    const draft = createWorkspaceProject(
-      { rootPath: nativeRoot(repoDeps, "blank-with-asset"), record: { name: "空白", draft: true } },
-      repoDeps,
-    );
-    writeAsset(resolveWorkspaceProjectDir(draft.id, repoDeps) as string);
-
-    const result = gcEmptyDraftWorkspaceProjects(repoDeps, listWorkspaceProjects(repoDeps));
-    expect(result.recycled).not.toContain(draft.id);
-    expect(readWorkspaceProject(draft.id, repoDeps)).not.toBeNull();
-  });
-
-  it("keeps edited drafts (revision > 0)", async () => {
-    const repoDeps = deps();
-    const draft = createWorkspaceProject(
-      { rootPath: nativeRoot(repoDeps, "blank-edited"), record: { name: "空白", draft: true } },
-      repoDeps,
-    );
-    await saveWorkspaceProject(draft.id, { name: "已编辑", payload: { scenes: [{ id: "s1" }] } }, repoDeps);
-
-    const result = gcEmptyDraftWorkspaceProjects(repoDeps, listWorkspaceProjects(repoDeps));
-    expect(result.recycled).not.toContain(draft.id);
-    expect(readWorkspaceProject(draft.id, repoDeps)).not.toBeNull();
-  });
-
-  it("never touches non-draft native projects", () => {
-    const repoDeps = deps();
-    const normal = createWorkspaceProject(
-      { rootPath: nativeRoot(repoDeps, "normal"), record: { name: "普通" } },
-      repoDeps,
-    );
-    const result = gcEmptyDraftWorkspaceProjects(repoDeps, listWorkspaceProjects(repoDeps));
-    expect(result.recycled).not.toContain(normal.id);
-    expect(readWorkspaceProject(normal.id, repoDeps)).not.toBeNull();
-  });
-
-  it("never deletes an external folder draft — only the registry binding could change, files stay", () => {
-    const repoDeps = deps();
+    const blank = createWorkspaceProject({ rootPath: nativeRoot(repoDeps, "blank"), record: { name: "空白", draft: true } }, repoDeps);
+    const withAsset = createWorkspaceProject({ rootPath: nativeRoot(repoDeps, "blank-with-asset"), record: { name: "空白带素材", draft: true } }, repoDeps);
+    writeAsset(resolveWorkspaceProjectDir(withAsset.id, repoDeps) as string);
+    const edited = createWorkspaceProject({ rootPath: nativeRoot(repoDeps, "blank-edited"), record: { name: "空白", draft: true } }, repoDeps);
+    await saveWorkspaceProject(edited.id, { name: "已编辑", payload: { scenes: [{ id: "s1" }] } }, repoDeps);
     const externalRoot = makeTempDir("nomi-external-folder-"); // 不在默认根下 = folder
-    const draft = createWorkspaceProject({ rootPath: externalRoot, record: { name: "外部", draft: true } }, repoDeps);
-    const result = gcEmptyDraftWorkspaceProjects(repoDeps, listWorkspaceProjects(repoDeps));
-    expect(result.recycled).not.toContain(draft.id);
-    expect(fs.existsSync(workspaceProjectFile(externalRoot))).toBe(true);
+    const external = createWorkspaceProject({ rootPath: externalRoot, record: { name: "外部", draft: true } }, repoDeps);
+    const normal = createWorkspaceProject({ rootPath: nativeRoot(repoDeps, "normal"), record: { name: "普通" } }, repoDeps);
+
+    const registered = [blank, withAsset, edited, external, normal].map((project) => project.id).sort();
+    for (let round = 0; round < 2; round += 1) {
+      const listed = (await listWorkspaceProjects(repoDeps)).map((project) => project.id).sort();
+      expect(listed).toEqual(registered);
+    }
+    expect(fs.existsSync(resolveWorkspaceProjectDir(blank.id, repoDeps) as string)).toBe(true);
+    expect((await listWorkspaceProjects(repoDeps)).find((project) => project.id === blank.id)).toMatchObject({ draft: true, revision: 0 });
   });
 });
 

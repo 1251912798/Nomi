@@ -83,6 +83,7 @@ describe("executeProfileOperation adapter verification seam", () => {
       vendor,
       model,
       apiKey: "sk-test",
+      stage: "create",
       request: {
         kind: "image_edit",
         prompt: "preserve the blue square",
@@ -153,6 +154,7 @@ describe("executeProfileOperation adapter verification seam", () => {
       vendor,
       model,
       apiKey: "sk-test",
+      stage: "create",
       request: {
         kind: "image_edit",
         prompt: "keep the composition",

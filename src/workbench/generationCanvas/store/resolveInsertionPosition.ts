@@ -1,5 +1,6 @@
-import { getGenerationNodeFootprintSize } from '../model/generationNodeKinds'
-import type { GenerationNodeKind } from '../model/generationCanvasTypes'
+import { getGenerationNodeFootprintSize, getNodeBaseSize } from '../model/generationNodeKinds'
+import type { GenerationCanvasNode, GenerationNodeKind } from '../model/generationCanvasTypes'
+import { resolveNodeVisualSize } from '../nodes/nodeSizing'
 import {
   resolveInsertionPositionInAreaWith,
   resolveInsertionPositionWith,
@@ -18,11 +19,30 @@ import {
 const footprint = (kind: string, size?: { width: number; height: number }) =>
   getGenerationNodeFootprintSize(kind as GenerationNodeKind, size)
 
+/**
+ * 一个占位盒。除 kind / position / size 外，带上 `meta` / `result` / `renderKind` 等渲染事实就能算出节点**真实渲染尺寸**
+ * （竖版图、有结果的视频、固定宽的卡片都比名义 size 大）——传完整节点即可，不用自己挑字段。
+ */
 export type NodeBox = {
   kind: GenerationNodeKind
   position: { x: number; y: number }
   size?: { width: number; height: number }
+} & Partial<Pick<GenerationCanvasNode, 'renderKind' | 'categoryId' | 'meta' | 'result'>>
+
+type Size = { width: number; height: number }
+
+/**
+ * 一个盒子在画布上**真正占的地方**：渲染尺寸（`resolveNodeVisualSize`，几何子系统共用的唯一真相源）与名义尺寸取各轴较大者。
+ * 避让只认名义 `node.size` 时（旧做法），竖版图 / 有媒体结果的卡渲染出来比名义高一大截，新节点就落进它的下半身里
+ * （2026-10-18 走查：视频浮条「拆解 ▾ → 镜头表」建出的表压在旁边一排竖图上）。取较大者 = 永远不比旧版更松。
+ */
+export function occupiedSize(box: Pick<NodeBox, 'kind' | 'size'> & Partial<NodeBox>): Size {
+  const base = getNodeBaseSize(box)
+  const visual = resolveNodeVisualSize({ ...box, size: base })
+  return { width: Math.max(base.width, Math.ceil(visual.width)), height: Math.max(base.height, Math.ceil(visual.height)) }
 }
+
+const withOccupiedSize = (box: NodeBox): NodeBox => ({ ...box, size: occupiedSize(box) })
 
 type Point = { x: number; y: number }
 
@@ -40,15 +60,19 @@ export function resolveInsertionPosition(
    * （2026-09-25「新建尽量直接落在当前可见区域」）；找不到才退回螺旋。
    */
   visibleArea?: { x: number; y: number; width: number; height: number } | null,
+  /** 新节点的真实占位（`occupiedSize(新节点)`）；不给 = 名义尺寸。 */
+  newSize?: Size,
 ): Point {
+  // 已有节点一律按真实占位比：每次调用只算一遍，后面的螺旋 / 可见区扫描反复比的是现成的盒子。
+  const occupied = existing.map(withOccupiedSize) as readonly SharedNodeBox[]
   const baseInView = visibleArea
     && base.x >= visibleArea.x && base.x <= visibleArea.x + visibleArea.width
     && base.y >= visibleArea.y && base.y <= visibleArea.y + visibleArea.height
   if (visibleArea && baseInView) {
-    const inView = resolveInsertionPositionInAreaWith(footprint, newKind, base, existing as readonly SharedNodeBox[], visibleArea)
+    const inView = resolveInsertionPositionInAreaWith(footprint, newKind, base, occupied, visibleArea, newSize)
     if (inView) return inView
   }
-  return resolveInsertionPositionWith(footprint, newKind, base, existing as readonly SharedNodeBox[], maxRings)
+  return resolveInsertionPositionWith(footprint, newKind, base, occupied, maxRings, newSize)
 }
 
 /**
@@ -60,5 +84,5 @@ export function resolveGroupInsertionDelta(
   existing: readonly NodeBox[],
   maxRings = 6,
 ): Point {
-  return resolveGroupInsertionDeltaWith(footprint, boxes as readonly SharedNodeBox[], existing as readonly SharedNodeBox[], maxRings)
+  return resolveGroupInsertionDeltaWith(footprint, boxes.map(withOccupiedSize) as readonly SharedNodeBox[], existing.map(withOccupiedSize) as readonly SharedNodeBox[], maxRings)
 }

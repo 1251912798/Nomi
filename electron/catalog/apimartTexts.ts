@@ -10,8 +10,8 @@ import { APIMART_CREATE_TASK_ID_PATH, APIMART_STATUS_MAPPING } from "./apimartVe
 //
 // apimart 本身是 OpenAI 兼容 chat（R5 已核：https://docs.apimart.ai/en/api-reference/texts/general/chat-completions）：
 //   POST /v1/chat/completions  { model, messages, ... }   ——同步、标准形状。
-// 故文本模型**不需要 create/query mapping**：agent 走 electron/ai/vendorLanguageModel.ts 的
-// buildLanguageModelForVendor（apimart 默认 providerKind=openai-compatible → baseURL=/v1 → AI SDK
+// 故文本模型**不需要 create/query mapping**：Agent 与文本任务都走 electron/ai/vendorModelConnection.ts 的
+// nomiModelConfigFor（apimart 默认 providerKind=openai-compatible → baseURL=/v1 → pi-ai 的 openai-completions
 // 自动补 /chat/completions）。catalog 只需一条 kind="text" 的 Model 记录，modelKey 即 chat model id。
 //
 // 默认大脑 = deepseek-v4-pro：2026-08-21 用已配置 key 调 APIMart 官方
@@ -59,13 +59,13 @@ const DEEPSEEK_PRICING_SOURCE = { url: "https://api-docs.deepseek.com/quick_star
  * R5 实测对账（2026-08-12，真 key 打 https://api.apimart.ai）：
  *   ✅ `gemini-3.5-flash` 在 OpenAI 兼容 `/v1/chat/completions` 上活着，且认 OpenAI 式
  *      `content:[{type:"image_url",image_url:{url:"data:image/jpeg;base64,…"}}]` 多模态 part
- *      → 无需新通道，直接吃现成的 streamTextTask（toImagePart 已处理 data: URL）。
+ *      → 无需新通道，直接吃现成的文本任务执行器（electron/textTaskRunner.ts；图片经 modelImageInput 内联）。
  *   ❌ `gemini-3.0-flash` / `gemini-3-flash` 均 503 不可用——**别写这两个 id**（官方文档
  *      https://docs.apimart.ai/en/api-reference/texts/gemini/quickstart.md 列的是 3.5-flash / 3.1-pro-preview
  *      / 3-pro-preview / 2.5-pro；images 分区那些 "Gemini 3.1 Flash / Nano banana2" 是**生图**模型，别混）。
  *   ⚠️ 它是**思考型**模型：实测回「可用」两个字就烧掉 47 completion_tokens（先 thinking 再吐正文）。
  *      maxTokens 给小了 → 正文为空 + finishReason='length'，看着像"模型不行"其实是我们自己截断的
- *      （streamTextTask 已有该判别）。调用方按整段输出预算给足，别照文本模型的老经验给 200。
+ *      （文本任务把 finishReason 带回调用方，能分清这两种空）。调用方按整段输出预算给足，别照文本模型的老经验给 200。
  *      单镜分镜提取实测：1178 token 进（图片占 1058）/ 1160 出 / 10.4s。
  */
 export const APIMART_TEXT_MODELS: ApimartTextModel[] = [

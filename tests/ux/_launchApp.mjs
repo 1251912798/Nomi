@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url'
 import { ensureElectronSignature } from '../../scripts/ensure-electron-signature.mjs'
 import { installFeelObserver } from './_feel-observer.mjs'
 import { assertElectronBuildArtifacts } from '../../scripts/electron-build-artifacts.mjs'
+import { assertFreshBuild } from '../../scripts/package-build-stamp.mjs'
 import { registerWalkProcess } from './_walkInstances.mjs'
 
 const require = createRequire(import.meta.url)
@@ -387,6 +388,8 @@ export async function launchNomiApp(options = {}) {
   // 再塞个 `.` 反而会被当成「要打开的路径」参数。所以这两件事都跟着「是不是开发构建」走。
   const isDevElectron = executablePath === require('electron')
   if (isDevElectron) {
+    // 构建戳核对在最前：产物比源码旧时，后面的「文件在不在」都会通过，走查却量到旧代码。
+    assertFreshBuild(repoRoot)
     assertElectronBuildArtifacts(repoRoot)
     // Apple 会在首次启动时直接删除已吊销公证的 Electron.app。走查必须在 spawn 前复用
     // dev 启动器的静态探测与重签，否则表现为 60s 超时且一张截图也产不出来。
@@ -502,19 +505,11 @@ export async function launchNomiApp(options = {}) {
       throw new Error(diagnoseLaunchFailure(`等了 ${timeout}ms 没等到窗口`, name, error, logTail))
     }
     await win.waitForLoadState('domcontentloaded')
-    // 等启动期那次路由改写落地（`index.html` → `index.html#/studio`）再碰几何。
-    // 为什么非等不可：下面 `app.browserWindow(win)` 拿到的句柄绑在页面当前的执行上下文上，
-    // 而那次改写恰好发生在 domcontentloaded 之后的一两百毫秒里——热启动（profile 已有内容、
-    // 缓存已热）时它正好落在两行之间，句柄当场失效，报成
-    // 「jsHandle.evaluate: Execution context was destroyed」。表现是**只有重启那一次**起不来，
-    // 首启永远好好的（2026-09-12 model-availability-agreement 冷重启阶段复现）。
-    // 等的是 app 自己的契约：渲染层启动后一定落在某个 hash 路由上（#/studio、#/studio?projectId=…）。
-    // Most launches rewrite to a hash route, but a blank-context acceptance can
-    // legitimately remain on the entry document.  Wait for the rewrite when it
-    // happens, then fall back to a settled document instead of failing startup.
-    await win.waitForURL(/#\//, { timeout: Math.min(timeout, 5000) }).catch(async () => {
-      await win.waitForLoadState('networkidle', { timeout: Math.min(timeout, 5000) }).catch(() => undefined)
-    })
+    // 这里原先等过一次启动路由改写（09-12「热启动时 browserWindow 句柄随页面导航失效」）。那个归因不成立：
+    // `app.browserWindow(win)` 的句柄活在主进程，不绑页面上下文。当时那句「Execution context was destroyed」
+    // 与 10-18 起打包冒烟的间歇红是同一类——主进程正忙时 Playwright 的 evaluate 结果被 GC 收掉
+    // （"Promise was collected" 被改写成导航报错），已在共享边界修掉：patches/playwright-core@1.60.0.patch，
+    // 回归见 tests/ux/playwright-main-evaluate.e2e.mjs。等路由只是挪了时机，按 P1 同批删掉。
     const viewportSize = options.viewportSize ?? ACCEPTANCE_VIEWPORT
     // Native resize alone may be clamped by CI's display; bind Chromium content geometry too.
     const browserWindow = await app.browserWindow(win)

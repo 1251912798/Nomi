@@ -6,6 +6,8 @@ import { creationBridge } from "./preload/creationBridge";
 import { mediaBridge } from "./preload/mediaBridge";
 import { modelOnboardingBridge } from "./preload/modelOnboardingBridge";
 import { runtimeBridge } from "./preload/runtimeBridge";
+import type { ProjectDeleteIntent } from "./shared/projectDeleteIntent";
+import type { UserPromptRestoreSnapshot } from "./shared/contracts/promptLibrary";
 
 type ProductionDeepLinkPayload = { projectId: string; runId?: string; nodeId?: string; artifactId?: string };
 let queuedProductionDeepLink: ProductionDeepLinkPayload | null = null;
@@ -138,6 +140,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     deleteFiles: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:delete-files", payload),
     revealProjectFolder: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:reveal-project-folder", payload),
     syncInspect: (payload: string | { projectId: string; adopt?: boolean }) => ipcRenderer.invoke("nomi:workspace:sync-inspect", payload),
+    syncInspectMany: (projectIds: string[]) => ipcRenderer.invoke("nomi:workspace:sync-inspect-many", projectIds),
     syncReveal: (projectId: string) => ipcRenderer.invoke("nomi:workspace:sync-reveal", projectId),
     syncCopyConflict: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:sync-copy-conflict", payload),
   },
@@ -146,7 +149,6 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     show: (payload: unknown) => ipcRenderer.invoke("nomi:notifications:show", payload),
   },
   projects: {
-    list: () => invokeSync("nomi:projects:list"),
     listAsync: () => ipcRenderer.invoke("nomi:projects:list-async"),
     create: (record: unknown) => invokeSync("nomi:projects:create", record),
     read: (projectId: string) => invokeSync("nomi:projects:read", projectId),
@@ -157,7 +159,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       ipcRenderer.invoke("nomi:projects:save-async", projectId, record),
     applyCanvasNodePatch: (input: { projectId: string; nodeId: string; patch: Record<string, unknown>; expectedBinding?: unknown }) =>
       ipcRenderer.invoke("nomi:projects:apply-canvas-node-patch", input),
-    delete: (projectId: string) => invokeSync("nomi:projects:delete", projectId),
+    delete: (projectId: string, intent: ProjectDeleteIntent) => ipcRenderer.invoke("nomi:projects:delete", projectId, intent),
   },
   clipboard: {
     readFilePaths: () => ipcRenderer.invoke("nomi:clipboard:read-file-paths") as Promise<string[]>,
@@ -258,6 +260,13 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       }>,
     userDelete: (id: string) =>
       ipcRenderer.invoke("nomi:prompt-library:user-delete", { id }) as Promise<{
+        ok: boolean;
+        prompts: unknown[];
+        deleted?: unknown;
+        error?: string;
+      }>,
+    userRestore: (snapshot: UserPromptRestoreSnapshot) =>
+      ipcRenderer.invoke("nomi:prompt-library:user-restore", snapshot) as Promise<{
         ok: boolean;
         prompts: unknown[];
         error?: string;

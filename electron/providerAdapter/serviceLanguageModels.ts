@@ -1,12 +1,12 @@
-import type { LanguageModelV1 } from "ai";
-import { buildLanguageModelForVendor } from "../ai/vendorLanguageModel";
+import type { CompilerLanguageModel } from "./compiler";
+import { nomiModelConfigFor } from "../ai/vendorModelConnection";
 import { readCatalog } from "../catalog/catalogStore";
 import { decryptApiKeyRecord } from "../catalog/secrets";
 import { prioritizeCompilerCandidates } from "./compilerCandidatePriority";
 import type { LoadedConnection } from "./serviceCatalog";
 import { createCatalogAvailability } from "../catalog/catalogModelAvailability";
 
-type CompilerCandidate = { vendorKey: string; modelKey: string; languageModel: LanguageModelV1 };
+type CompilerCandidate = { vendorKey: string; modelKey: string; languageModel: CompilerLanguageModel };
 
 /**
  * 谁能当「读文档写说明卡」的编译器：已发布、可执行、凭据可解密的文本模型，外加本次接入
@@ -29,7 +29,7 @@ export function compilerLanguageModelCandidates(connection?: LoadedConnection): 
     candidates.push({
       vendorKey: vendor.key,
       modelKey: model.modelKey,
-      languageModel: buildLanguageModelForVendor(vendor, model, apiKey),
+      languageModel: nomiModelConfigFor(vendor, model, apiKey),
     });
   }
   const selectedText = connection?.models.find((model) => model.kind === "text");
@@ -37,7 +37,7 @@ export function compilerLanguageModelCandidates(connection?: LoadedConnection): 
     candidates.push({
       vendorKey: connection.vendor.key,
       modelKey: selectedText.modelKey,
-      languageModel: buildLanguageModelForVendor(connection.vendor, selectedText, connection.apiKey),
+      languageModel: nomiModelConfigFor(connection.vendor, selectedText, connection.apiKey),
     });
   }
   return candidates;
@@ -48,7 +48,7 @@ export function hasCompilerLanguageModel(): boolean {
   return compilerLanguageModelCandidates().length > 0;
 }
 
-export function defaultResolveLanguageModels(connection: LoadedConnection): LanguageModelV1[] {
+export function defaultResolveLanguageModels(connection: LoadedConnection): CompilerLanguageModel[] {
   const seen = new Set<string>();
   return prioritizeCompilerCandidates(compilerLanguageModelCandidates(connection), connection.vendor.key)
     .filter((candidate) => {

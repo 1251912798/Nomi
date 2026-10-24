@@ -1,13 +1,15 @@
-// 参考缩略图（AssetTile）的序号角标和 × 必须**整枚**看得见：包围盒完全落在最近的裁剪祖先里，
-// 同一格里的序号和 × 不互相压，中心点点得到自己。
+// 参考缩略图（AssetTile）悬停才出的 × 必须**整枚**看得见：包围盒完全落在最近的裁剪祖先里，中心点点得到自己；
+// 平时没有序号、没有 ×（B3：提示词里写「小图 + 名字」，不再靠序号；统一规则 4：悬停才显示名字和 ×）。
 //
-// 2026-10-06：角标原来挂在格外 5px，而格子自己 `overflow-hidden`，所以序号被切掉左半、× 被切掉上沿
-// （分镜参考条 36 / 28 小格最显眼，画布 56 格同样被切）。清单遍历这个组件的两处生产宿主：
+// 2026-10-06 的老教训：角标原来挂在格外 5px，而格子自己 overflow-hidden，所以被切掉一角。B3 的 × 挂在小图右上角
+// **外侧**（-10px），所以生产里那层滚动口必须向卡片边缘外扩、把它装进去（NodeGenerationComposer 的 -mx-3 -mt-3 px-3 pt-3）——这条就是守它。
+// 清单遍历这个组件的两处生产宿主：
 //   · 画布节点参考区：真 NodeParameterControls → AssetReference（fixtures/asset-tile-badges-harness）；
 //   · 分镜行内参考条：设计实验室 storyboard-reuse 屏的真镜头行（横 / 竖 / 3:4 / 1:1 / 混排 × 宽 / 窄、三种状态）。
 // 零额度：纯本地渲染，不碰任何生成 API。
 import { afterAll, beforeAll, expect, test } from 'vitest'
 import { chromium } from 'playwright'
+// eslint-disable-next-line browser-fixture/no-restricted-imports -- 存量：用应用 vite.config 起设计实验室（屏按查询串懒加载），迁到 useBrowserFixture 要它先支持应用配置与「屏就绪」判据（docs/fixes/2026-10-24-browser-fixture-ready-signals.root-cause.json 残留风险）
 import { createServer } from 'vite'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -40,8 +42,8 @@ afterAll(async () => {
   await server?.close()
 })
 
-/** 在页面里量：每枚角标 / × 对它最近的裁剪祖先（overflow 不是 visible 或有 clip-path）的内框。 */
-function measureCorners() {
+/** 在页面里量：悬停中的这一格，它的 × 对最近的裁剪祖先的内框、可点性。 */
+function measureRemove(tileIndex) {
   const clipBoxOf = (element) => {
     for (let ancestor = element.parentElement; ancestor && ancestor !== document.documentElement; ancestor = ancestor.parentElement) {
       const style = getComputedStyle(ancestor)
@@ -54,51 +56,77 @@ function measureCorners() {
     }
     return { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight }
   }
-  return [...document.querySelectorAll('[data-asset-tile]')].flatMap((tile) => {
-    const badge = tile.querySelector('[data-asset-tile-badge]')
-    const remove = tile.querySelector('[data-asset-tile-remove]')
-    return [badge, remove].filter(Boolean).map((element) => {
-      const rect = element.getBoundingClientRect()
-      const clip = clipBoxOf(element)
-      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
-      const other = element === badge ? remove : badge
-      const otherRect = other?.getBoundingClientRect()
-      return {
-        what: element === badge ? `badge ${badge.getAttribute('data-asset-tile-badge')}` : 'remove',
-        rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
-        clip,
-        inside: rect.left >= clip.left - 0.5 && rect.top >= clip.top - 0.5 && rect.right <= clip.right + 0.5 && rect.bottom <= clip.bottom + 0.5,
-        hit: Boolean(hit && element.contains(hit)),
-        hitBy: hit ? `${hit.tagName.toLowerCase()}.${String(hit.className).slice(0, 60)}` : 'null（中心点在视口外）',
-        overlapsSibling: Boolean(otherRect && rect.left < otherRect.right && otherRect.left < rect.right && rect.top < otherRect.bottom && otherRect.top < rect.bottom),
-      }
-    })
-  })
-}
-
-function expectCornersVisible(corners, where) {
-  for (const corner of corners) {
-    expect(corner.inside, `${where}: ${corner.what} 被裁剪祖先切掉（${JSON.stringify(corner.rect)} 不在 ${JSON.stringify(corner.clip)} 里）`).toBe(true)
-    expect(corner.hit, `${where}: ${corner.what} 的中心点不到它自己（落在 ${corner.hitBy} 上；角标 ${JSON.stringify(corner.rect)}）`).toBe(true)
-    expect(corner.overlapsSibling, `${where}: ${corner.what} 和同一格里的另一枚压在一起`).toBe(false)
+  const tile = document.querySelectorAll('[data-asset-tile]')[tileIndex]
+  const remove = tile?.querySelector('[data-asset-tile-remove]')
+  if (!tile || !remove) return null
+  const dot = remove.querySelector('i') ?? remove
+  const rect = dot.getBoundingClientRect()
+  const clip = clipBoxOf(remove)
+  const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+  return {
+    rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+    clip,
+    opacity: Number(getComputedStyle(remove).opacity),
+    inside: rect.left >= clip.left - 0.5 && rect.top >= clip.top - 0.5 && rect.right <= clip.right + 0.5 && rect.bottom <= clip.bottom + 0.5,
+    hit: Boolean(hit && remove.contains(hit)),
+    badges: [...tile.querySelectorAll('*')].filter((el) => !el.children.length && /^\d+$/.test(el.textContent?.trim() ?? '')).length,
   }
 }
 
-test('画布节点参考区：三张编号参考的序号和 × 都整枚可见', async () => {
+/**
+ * 读**终态**，不靠时机：× 带 transition-opacity，注入样式 / 悬停之后立刻读，读到的是渐变半路的值
+ * （CI 上 0.0552 / 0.0166，本机忙时 0.79）。getAnimations() 会先刷新样式、把正在跑的 CSS 过渡交出来，
+ * finish() 直接跳到终值；无限循环的动画没有终点，跳过。
+ */
+async function settleTransitions(page) {
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) {
+      try { animation.finish() } catch { /* 无限循环的动画没有终点 */ }
+    }
+  })
+}
+
+/** 量「平时」之前把指针挪到所有小图之外：滚动后指针可能正好停在下一格上，那一格的 × 就在淡入。 */
+async function movePointerOffTiles(page) {
+  const point = await page.evaluate(() => {
+    const corners = [[1, 1], [window.innerWidth - 2, 1], [1, window.innerHeight - 2], [window.innerWidth - 2, window.innerHeight - 2]]
+    return corners.find(([x, y]) => !document.elementFromPoint(x, y)?.closest('[data-asset-tile]')) ?? corners[0]
+  })
+  await page.mouse.move(point[0], point[1])
+}
+
+async function expectHoverRemoveVisible(page, where) {
+  const count = await page.locator('[data-asset-tile]').count()
+  expect(count, `${where}: 应该量到参考缩略图`).toBeGreaterThan(0)
+  for (let index = 0; index < count; index += 1) {
+    await page.locator('[data-asset-tile]').nth(index).scrollIntoViewIfNeeded()
+    await movePointerOffTiles(page)
+    await settleTransitions(page)
+    const quiet = await page.evaluate(measureRemove, index)
+    expect(quiet?.opacity ?? 1, `${where} #${index}: 平时 × 是看不见的`).toBeLessThan(0.01)
+    await page.locator('[data-asset-tile]').nth(index).hover()
+    await settleTransitions(page)
+    const shown = await page.evaluate(measureRemove, index)
+    expect(shown, `${where} #${index}: 找不到 ×`).not.toBeNull()
+    expect(shown.opacity, `${where} #${index}: 悬停后 × 要出现`).toBe(1)
+    expect(shown.inside, `${where} #${index}: × 被裁剪祖先切掉（${JSON.stringify(shown.rect)} 不在 ${JSON.stringify(shown.clip)} 里）`).toBe(true)
+    expect(shown.hit, `${where} #${index}: × 的中心点点不到它自己`).toBe(true)
+    expect(shown.badges, `${where}: 不再有序号角标`).toBe(0)
+  }
+}
+
+test('画布节点参考区：悬停才出 ×，整枚可见、点得到，没有序号', async () => {
   const page = await browser.newPage({ viewport: { width: 900, height: 500 } })
   try {
     await page.goto(`${origin}/tests/ux/fixtures/asset-tile-badges-harness.html`, { timeout: 90000 })
     await page.addStyleTag({ content: freshTailwindCss() })
     await assertTailwindApplied(page, 'canvas harness')
-    await page.locator('[data-asset-tile-badge="3"]').waitFor({ timeout: 60000 })
-    const corners = await page.evaluate(measureCorners)
-    expect(corners.filter((corner) => corner.what.startsWith('badge'))).toHaveLength(3)
-    expect(corners.filter((corner) => corner.what === 'remove')).toHaveLength(3)
-    expectCornersVisible(corners, 'canvas')
+    await page.locator('[data-asset-tile]').first().waitFor({ timeout: 60000 })
+    await expectHoverRemoveVisible(page, 'canvas')
   } finally { await page.close() }
 }, 180000)
 
-test('分镜行内参考条：各画幅、宽窄两档的序号和 × 都整枚可见', async () => {
+test('分镜行内参考条：各画幅、宽窄两档悬停才出 ×，整枚可见', async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } })
   try {
     for (const state of STRIP_STATES) {
@@ -107,9 +135,7 @@ test('分镜行内参考条：各画幅、宽窄两档的序号和 × 都整枚�
       await page.addStyleTag({ content: freshTailwindCss() })
       await assertTailwindApplied(page, state)
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-      const corners = await page.evaluate(measureCorners)
-      expect(corners.length, `${state}: 应该量到参考缩略图`).toBeGreaterThan(0)
-      expectCornersVisible(corners, state)
+      await expectHoverRemoveVisible(page, state)
     }
   } finally { await page.close() }
 }, 600000)

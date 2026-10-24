@@ -6,13 +6,14 @@
  * 复用优化器同一条文本管线（getTextBrain + runWorkbenchTextTaskStream + prompt_refine），
  * 不新建通道、不新增 TaskKind（P1）。纯逻辑（方向/引用保护/指令）在 promptTranslate.ts。
  */
+import { TEXT_ACTION_INTENT_PROPS } from '../../api/textActionIntent'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconLanguage } from '@tabler/icons-react'
 import type { Editor } from '@tiptap/react'
 import { NodePromptToolIconButton } from './NodePromptToolCluster'
 import { getTextBrain } from '../../api/promptLibraryApi'
-import { runWorkbenchTextTaskStream } from '../../api/taskApi'
+import { runWorkbenchTextTaskStream, textTaskFailureText } from '../../api/taskApi'
 import { isProjectExecutionContextCurrent, withProjectAction } from '../../project/projectCanvasReadSurface'
 import type { PromptReference } from '../../assets/promptMentions'
 import { promptTextBetween, replacePromptRange, translateRange } from './promptTranslateDoc'
@@ -96,8 +97,9 @@ export function NodePromptTranslator({
       editor.view.dispatch(replacePromptRange(editor.state, range, `${lead}${restored.prompt}${trail}`, mentionReferences).scrollIntoView())
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return
-      onFeedback(e instanceof Error && e.message
-        ? t('generationCommon.translator.failedWithReason', { reason: e.message })
+      const reason = textTaskFailureText(e)
+      onFeedback(reason
+        ? t('generationCommon.translator.failedWithReason', { reason })
         : t('generationCommon.translator.failed'))
     } finally {
       setRunning(false)
@@ -114,6 +116,7 @@ export function NodePromptTranslator({
       disabled={empty && !running}
       disabledReason={t('generationCommon.translator.emptyReason')}
       onClick={() => void onClick()}
+      {...TEXT_ACTION_INTENT_PROPS}
     />
   )
 }

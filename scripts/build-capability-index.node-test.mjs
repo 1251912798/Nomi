@@ -79,14 +79,23 @@ describe('大小上限', () => {
   })
 })
 
-describe('大目录不再给空清单（electron/ai 是 AI SDK 文本栈，最容易长轮子）', () => {
-  test('真实登记表下，electron/ai 与 electron/mcp 这类登记没覆盖的目录至少给出依赖名', () => {
-    for (const target of ['electron/ai/x.ts', 'electron/mcp/x.ts', 'src/workbench/canvas/x.ts']) {
+describe('大目录不再给空清单（大目录最容易长轮子）', () => {
+  // 两个分支都要有东西给：登记没覆盖的目录列出 package.json 运行时依赖；登记了主人的目录列出已有 owner。
+  // electron/ai 在 2026-10-21 文本任务迁 pi-ai 时登记了 model-call.* 几个概念，从前一支挪到后一支；ai / @ai-sdk/* 依赖
+  // 同时删掉，依赖名改用还在的 @earendil-works/pi-ai 核对。
+  test('真实登记表下，登记没覆盖的目录（electron/mcp、src/workbench/canvas）至少给出依赖名', () => {
+    for (const target of ['electron/mcp/x.ts', 'src/workbench/canvas/x.ts']) {
       const result = buildCapabilityIndex({ ...real, targetRel: target })
       assert.ok(result.text.length > 0, `${target} 清单是空的`)
       assert.match(result.text, /package\.json 运行时依赖/)
-      assert.match(result.text, /@ai-sdk\/openai/)
+      assert.match(result.text, /@earendil-works\/pi-ai/)
     }
+  })
+
+  test('真实登记表下，登记了主人的目录（electron/ai）列出已有 owner', () => {
+    const result = buildCapabilityIndex({ ...real, targetRel: 'electron/ai/x.ts' })
+    assert.match(result.text, /已有 owner/)
+    assert.match(result.text, /electron\/ai\/modelCallFetch\.ts#observeModelFetch/)
   })
 })
 

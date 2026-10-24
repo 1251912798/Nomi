@@ -3,6 +3,16 @@
   "note": "根因合同 shared_boundaries 声明过的 owner 的处置台账。由 scripts/check-boundary-owners.mjs 逐条核对。本文件只能手改：没有 --update，红了不许一键洗绿。",
   "reanchored": [
     {
+      "contract": "docs/fixes/2026-09-10-c09-readable-focus.root-cause.json",
+      "path": "src/workbench/generationCanvas/reactFlow/focusViewportRecovery.ts",
+      "symbol": "resolveCanvasFocusZoom",
+      "anchor": {
+        "path": "src/workbench/generationCanvas/reactFlow/focusViewportRecovery.ts",
+        "symbol": "resolveCanvasFocusViewport"
+      },
+      "reason": "2026-10-22 对焦算式换成 resolveCanvasFocusViewport：把节点加选中后的生成框整体框进扣掉浮层的可见区，缩放封顶 100%；旧的只看节点的 resolveCanvasFocusZoom 同提交删除，「对焦给可读缩放、不保留总览的缩小比例」这条不变量由新算式继续守（单元测试 focusViewportRecovery.test.ts）。"
+    },
+    {
       "contract": "docs/fixes/2026-09-25-model-catalog-sync-read-per-mount.root-cause.json",
       "path": "src/workbench/generationCanvas/nodes/controls/useChannelCreateBody.ts",
       "symbol": "createVendorMappingsReader",
@@ -430,6 +440,16 @@
         "symbol": "spendDecisionByPolicy"
       },
       "reason": "2026-10-12 挡位收成两档：付费门这扇门不再直接问档位，改问带刹车的单一代答入口 spendDecisionByPolicy（directGenerationBrakes.ts，档位那一半仍是 spendDecidedByPolicy）；不变量「宿主递持久化档位、判据只有一份」不变，门还在同一个文件。"
+    },
+    {
+      "contract": "docs/fixes/2026-08-29-anthropic-protocol-boundary.root-cause.json",
+      "path": "electron/ai/buildAiSdkModel.ts",
+      "symbol": "buildAiSdkModel",
+      "anchor": {
+        "path": "electron/ai/vendorModelConnection.ts",
+        "symbol": "vendorModelConnection"
+      },
+      "reason": "2026-10-21 文本任务迁 pi-ai 单次调用：ai@4 的 buildAiSdkModel 随栈删除。「运行时 base 在造模型之前按协议规范化」（Anthropic 补 /v1）挪进两台发动机共用的 vendorModelConnection（anthropicBaseUrl），Agent、文本任务、编译器都经它拿连接配置；顺手修掉 lane 只存根地址时打到 {root}/messages 的 404（laneModelCall.test.ts）。"
     }
   ],
   "retirements": [
@@ -864,6 +884,12 @@
       "path": "electron/preload.ts",
       "symbol": "director3dBox",
       "reason": "用户 2026-10-16 拍板 3D-BOX 成为唯一导演台（「我觉得可以打开给大家用吧」「为什么要切回旧导演台？」），切换 PR 同一提交删掉旧导演台和构建开关（方向检查 docs/plan/2026-10-16-director-3dbox-sole-director-direction-check.md）。3D-BOX 构建开关整套删除：preload 不再解码、核对主进程经 additionalArguments 传来的开关证明，导航前已经没有任何「功能协商」，「导航前协商只能走 additionalArguments、不许调 IPC」这条不变量失去对象。主进程那一半（mainWindowWebPreferences 的开关证明参数）同一提交删除。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-03-startup-library-discovery-rescan.root-cause.json",
+      "path": "electron/workspace/workspaceRepository.ts",
+      "symbol": "gcEmptyDraftWorkspaceProjects",
+      "reason": "读列表不再删东西（C′，用户 2026-10-22 拍板；方向检查 docs/plan/2026-10-21-project-library-direction-check.md 的 N1 节 §8）：启动回收器 gcEmptyDraftWorkspaceProjects 连同 once-guard 同一提交删除，空草稿改为在列表里隐藏（listWorkspaceProjects 的 isProvablyEmptyDraft，只对候选再读一次，不再列举全库），回收挪到「离开只写欠着的」那条线。这条锚守的是「启动回收器吃调用方现成的快照、不再自己列一遍全库」，回收器没了，不变量失去对象；同一份合同里「一次 listProjects 最多列举一次全库」仍由 listProjects 锚点在位，electron/projects/repository.test.ts「一次列举里每个项目的 manifest 只被快照读一次」继续钉住。"
     }
   ],
   "unverified": [

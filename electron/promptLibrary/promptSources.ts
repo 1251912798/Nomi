@@ -1,6 +1,6 @@
 // 已接入的公开提示词仓库清单(实查锁定 2026-06-21)。
 // 每源:从 rawBase 拉 files,逐文件喂 parse,聚合。图片源媒体稳;视频源结构干净但媒体可能降级。
-import type { ParsedPrompt } from "./promptLibraryTypes";
+import type { ParsedPrompt } from "../shared/contracts/promptLibrary";
 import { parseEvoLinkAI, parseImgEdify, parseSeedance2, parseSora2, parseSoraOfficial, parseYouMind } from "./promptParsers";
 
 export type PromptSource = {
