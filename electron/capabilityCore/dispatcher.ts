@@ -352,7 +352,7 @@ export async function dispatch(method: string, params: Record<string, unknown>, 
     case 'ping':
       return { ok: true }
     case 'project.list': {
-      const projects = listAllProjects()
+      const projects = await listAllProjects()
       // 每一行都带上可直接喂给 nomi_session_open 的 projectSelectionHandle。
       // 修复前只有 project.create 会签发 handle（同一个 issueProjectSelection，此处不复制第二份签发逻辑），
       // 于是没开 GUI 的外部宿主只能在「本次连接里刚建的项目」里干活：重启即失忆，用户已有的项目一个也接不上。

@@ -13,6 +13,8 @@
 //
 // 刻意不做的事：**不试图用正则识别"这是不是一段提示词"**。提示词没有可匹配的特征，
 // 靠内容检测去拦它只会给出一种「已经防住了」的错觉。真正防住它的是 ①，以及值长度上限。
+import { diskSafeErrorFacts } from "./diskSafeFailure";
+
 const MAX_VALUE_CHARS = 200;
 const MAX_LINE_CHARS = 2000;
 
@@ -111,25 +113,69 @@ export function redactField(key: string, value: unknown): string {
 }
 
 /**
- * 错误对象 → 一行可读文本。栈里**全是**绝对路径（`/Applications/Nomi.app/Contents/…`），
- * 逐帧脱敏后才进日志：帧里真正有价值的是文件名与行号，不是它装在谁的硬盘哪个目录下。
+ * 错误对象 → 一行**能落盘**的文本（日志文件与崩溃日志两扇门共用）。
+ *
+ * 只写结构事实，**不写错误原文**（G-redact-owner，方向检查 docs/audit/2026-10-22-redact-owner-direction.md）：
+ * 原文可能是上游原话，连同它回显的凭据——任何一层都可能把它拼进 message，有的连 cause 都不留，
+ * 到这里已认不出来源；日志又会随诊断包 / 反馈包出机。所以这里写的是：
+ *   · 类名、错误码；
+ *   · 我们自己的码形 message 原样，其余只给 `msg#<8 位指纹>`（同一句话同一个指纹，重复失败照样能归并）；
+ *   · cause 链上供应商失败的类别 / 状态码 / 上游自己的码；
+ *   · 栈帧（逐帧剥路径——帧里有价值的是文件名与行号，不是装在谁的硬盘哪个目录下）。
+ * 原文要看：开发态终端（`describeErrorForDevTerminal` → `logger.logDevDetail`，打包版是空操作）。
  */
 export function redactError(error: unknown): string {
-  if (!(error instanceof Error)) return redactLogValue(String(error));
-  const head = `${error.name}: ${error.message}`;
-  const code = (error as NodeJS.ErrnoException).code;
-  const frames = (error.stack || "")
+  const facts = diskSafeErrorFacts(error);
+  const parts = [facts.message ? `${facts.name} ${facts.message}` : facts.name];
+  if (facts.code !== undefined) parts.push(`code=${facts.code}`);
+  if (facts.errno !== undefined) parts.push(`errno=${facts.errno}`);
+  if (facts.exitCode !== undefined) parts.push(`exitCode=${facts.exitCode}`);
+  if (facts.signal) parts.push(`signal=${facts.signal}`);
+  if (facts.vendor) {
+    const vendor = facts.vendor;
+    parts.push(`vendor=${vendor.vendorKey} category=${vendor.category}`);
+    if (vendor.httpStatus !== undefined) parts.push(`http=${vendor.httpStatus}`);
+    if (vendor.upstreamCode) parts.push(`upstreamCode=${vendor.upstreamCode}`);
+    if (vendor.reasonCode) parts.push(`reason=${vendor.reasonCode}`);
+  }
+  let frames: string[] = [];
+  try {
+    if (error instanceof Error) frames = stackFrames(error);
+  } catch {
+    /* instanceof 本身也可能抛（Proxy）：没有帧照样写这一行 */
+  }
+  if (frames.length) parts.push(`| ${frames.map((frame) => redactLogValue(frame)).join(" < ")}`);
+  return parts.join(" ");
+}
+
+/** 栈帧（不含首部的 message 行——message 可能跨行，跨出来的行不许冒充帧混进日志）。 */
+function stackFrames(error: Error): string[] {
+  let stack: string;
+  let header: string;
+  try {
+    stack = typeof error.stack === "string" ? error.stack : "";
+    header = error.message ? `${String(error.name)}: ${String(error.message)}` : String(error.name);
+  } catch {
+    return []; // 读栈都会抛的错误对象：不记帧，也绝不让日志道跟着抛
+  }
+  const body = stack.startsWith(header) ? stack.slice(header.length) : stack.split("\n").slice(1).join("\n");
+  return body
     .split("\n")
-    .slice(1)
     .map((line) => line.trim())
     .filter((line) => line.startsWith("at "))
     .slice(0, 8)
     // 帧里只留「函数名 (文件名:行:列)」——目录部分是本机路径，不进日志。
     .map((line) => line.replace(/\(?([^\s()]*[/\\])([^\s()/\\]+:\d+:\d+)\)?/g, "($2)"));
-  const parts = [redactLogValue(head)];
-  if (code) parts.push(`code=${redactLogValue(String(code))}`);
-  if (frames.length) parts.push(`| ${frames.map((frame) => redactLogValue(frame)).join(" < ")}`);
-  return parts.join(" ");
+}
+
+/** 开发态终端用的完整一行（含原文，仍剥路径 / 密钥形串）。**不许**交给任何落盘写手。 */
+export function describeErrorForDevTerminal(error: unknown): string {
+  try {
+    if (!(error instanceof Error)) return redactLogValue(String(error));
+    return redactLogValue(`${String(error.name)}: ${String(error.message)}`);
+  } catch {
+    return "<unreadable error>";
+  }
 }
 
 /** 一整行的兜底上限——单值上限之外再兜一次，免得字段多到把文件撑爆。 */

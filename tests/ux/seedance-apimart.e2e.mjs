@@ -27,7 +27,9 @@ function assert(cond, label) {
   console.log(`  ✓ ${label}`);
 }
 
-const { app, win } = await launchNomiApp({ name: "seedance-apimart" });
+// 隔离 profile：临时项目都建在这次运行自己的临时根里。收尾用 close() 连临时根一起删（测试自己的 fs.rm），
+// 不走产品的「删除项目」——那条现在会把文件夹放进运行者电脑的系统回收站（⑭），走查不许往用户回收站塞测试垃圾。
+const { win, close } = await launchNomiApp({ name: "seedance-apimart" });
 
 try {
 
@@ -61,7 +63,7 @@ try {
     const hasKey = Boolean(apimart && (apimart.hasApiKey || apimart.enabledApiKey));
     if (!hasKey) {
       console.log("SKIP seedance-apimart.e2e: apimart 未配 API key（在 app「模型接入」里配，或设 APIMART_API_KEY）。");
-      await app.close();
+      await close();
       process.exit(0);
     }
     assert(true, "apimart 已配 key（用已存的，自解密）");
@@ -88,11 +90,10 @@ try {
           resolution: "720p",
           duration: 5, // number（真实渲染流程节点标量参数存的就是 number 5，见 taskParams.ts:39；string 会被 apimart 拒）
           generate_audio: false,
+          // 变体选择随节点 meta 走（extras.archetype），出站 model 由主进程 wireModelIdentity 解出（2026-10-16 起
+          // archetypeInput 不带 model）。标准版 = doubao-seedance-2.0。
+          archetype: { variantId: "standard" },
           archetypeInput: {
-            // 变体合并（2026-06-16）后 catalog body 取 {{request.params.model}}（不再 extras.modelKey）；
-            // 真实渲染流程由 buildArchetypeInputParams 把当前变体 modelKey 写进 archetypeInput.model →
-            // taskTemplateParams 经 referenceInputParams 摊进 params.model。e2e 直调 runtime 须自带它。
-            model: "doubao-seedance-2.0",
             image_with_roles: [
               { url: a.first, role: "first_frame" },
               { url: a.last, role: "last_frame" },
@@ -140,7 +141,6 @@ try {
       return await window.nomiDesktop.video.extractFrame({ videoUrl: a.url, which: "last", projectId: a.pid });
     }, { url: video.url, pid: projectId });
     assert(frame?.url && frame.url.startsWith("nomi-local://"), `M-A 抽帧：从真实视频抽出尾帧 → nomi-local 素材（${(frame?.url || "").slice(0, 56)}…）`);
-    await win.evaluate((pid) => window.nomiDesktop.projects.delete(pid), projectId).catch(() => undefined);
   } else {
     console.log("  (跳过 M-A 抽帧验证：临时项目创建失败)");
   }
@@ -148,8 +148,8 @@ try {
   console.log(`\nSEEDANCE-APIMART E2E PASS: ${passed} assertions`);
 } catch (error) {
   console.error(`\n${error?.message || error}`);
-  await app.close().catch(() => undefined);
+  await close().catch(() => undefined);
   process.exit(1);
 } finally {
-  await app.close().catch(() => undefined);
+  await close().catch(() => undefined);
 }

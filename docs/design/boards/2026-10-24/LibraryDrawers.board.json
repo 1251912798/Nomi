@@ -1,0 +1,622 @@
+{
+  "board": "LibraryDrawers",
+  "approvedOn": "2026-10-24",
+  "stage": "built",
+  "approval": {
+    "quote": "技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。",
+    "date": "2026-10-24",
+    "source": "用户原话（协调转述）",
+    "canvas": "https://claude.ai/artifact/A7vtfvcPzy8zCWJUdrJn9y",
+    "canvasVersion": "第 48 版拍板；第 50 版只修对齐（右上两颗图标、新抽屉描边），第 51 版只改便签措辞，第 52 版只把源码里的素材编号改写成整段素材路径（画面不变）；内容同第 48 版"
+  },
+  "visualReview": "用户 2026-10-24 在 Claude Design 画布「技能库与提示词库排版改版（0.24 探索）」第 48 版上把 10 个问题全按默认定（https://claude.ai/artifact/A7vtfvcPzy8zCWJUdrJn9y，私有，只有仓库主人能开）。",
+  "designCard": "docs/plan/2026-10-23-skill-prompt-library-layout.md",
+  "sourceBoundary": "板源 = Claude Design 画布第 52 版里「修后」画板的原样副本（source/*.dc.html；第 52 版与用户 10-24 拍板的第 48 版内容一致，只修了右上两颗图标与新抽屉描边的对齐，并把源码里的素材编号改写成整段素材路径、画面不变）+ 画布索引公开版（source/canvas.json：只留修后画板；带产品名的先例便签与私有待办编号去掉，先例见设计卡 ★0 与本清单 priorArt）。preview/<板>.html 是把这些画板用画布运行时渲染后去壳拼成的静态页：每格样式加前缀隔离，图片去掉 src（画布素材不进仓库），抽屉板去掉外壳真截图、详情板去掉背景里压暗的库页；preview/<画板>.webp 是同一渲染的截图（1440×900，WebP 质量 90）。候选由 scripts/board-extract.mjs 的抽取函数（extractBoard + renderCandidatesFile，同样的浏览器设置）在拼页上抽出，两次抽取逐字节一致。「修前」画板（现役真截图）不进清单，只作旧功能普查的 before 依据。",
+  "designIntent": "项目里左栏两个抽屉（默认 280px、可拖宽、浮在画布上）：标题行放工具，第一行搜索 + 一颗「分类 ▾」，内容同库页一套卡片。外壳照现役真截图。",
+  "artboards": [
+    "DrawerSkill",
+    "DrawerSkill-Dark",
+    "DrawerPrompt",
+    "DrawerPrompt-En-Dark"
+  ],
+  "priorArt": [
+    {
+      "url": "https://docs.openwebui.com/features/workspace/",
+      "takeaway": "一款开源 AI 对话界面的工作区把 Prompts 和 Skills 做成两个页签、两份清单：Prompts 是用「/」插进输入框的模板，Skills 是教模型「怎么做」的说明、按需加载。",
+      "decisionImpact": "确认了：按「用的时候干什么」分家，技能库只放方法、提示词库只放要填进去的话；「/」可以同时指向两边（与 10 月拍板⑤一致）。"
+    },
+    {
+      "url": "https://code.claude.com/docs/en/skills",
+      "takeaway": "一款 AI 编程工具 2026-01 把斜杠命令并进技能：两种东西用户意图相同，就不该让用户学两套。",
+      "decisionImpact": "改了：效果的家按「用的那一刻想干嘛」定（填进节点），不按文件格式定 → 效果归提示词库（Q1）；技能和提示词意图不同，不合库（Q2 分开）。"
+    },
+    {
+      "url": "https://www.nngroup.com/articles/horizontal-scrolling/",
+      "takeaway": "桌面用户很少发现横向滚动里的内容，关键导航别放横滚。",
+      "decisionImpact": "改了：14 个「来源」标签那一长排（抽屉里横滚、滚动条还藏起来）删掉，并进一列有名字的分类。"
+    },
+    {
+      "url": "https://www.nngroup.com/articles/accordions-on-desktop/",
+      "takeaway": "用户需要看大部分内容时，手风琴每段都要点开，交互成本高。",
+      "decisionImpact": "改了：首页不再整组折成一行字，每组露一行真卡片 +「全部 N ›」；选中某组或搜索时全部摊开（Q3）。"
+    },
+    {
+      "url": "https://www.smashingmagazine.com/2023/08/designing-accessible-text-over-images-part1/",
+      "takeaway": "图上压字要靠遮罩 / 色条 / 模糊压住杂乱背景，并保证对比度；字要放在图里安静的地方。",
+      "decisionImpact": "改了，且更彻底：封面是真实产物，没有「安静的地方」，所以卡片封面上不压任何字和角标，标题和元信息放到封面下方。"
+    },
+    {
+      "url": "https://www.sarasoueidan.com/newsletter/issue-2025-10-31/",
+      "takeaway": "暗色里给图片降亮度，会让图里的字更难认，悬停恢复是补救。",
+      "decisionImpact": "改了：降亮度对线稿插画不够，暗色里「示意插画」封面换成暗纸底 + 浅线（插画里没有字，反相不伤可读）；真实产物照片 / 视频不动（Q8）。"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "Q1",
+      "text": "效果住提示词库：44 个效果按组出现在提示词库「内置」里，技能库不再出现效果；数据仍是 SKILL.md，不复制。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q2",
+      "text": "两个库分开（照 10-08 外壳拍板），不合成一个库两个页签。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q3",
+      "text": "两个库首页每组露一行真卡片 +「全部 N ›」，选中分类 / 搜索时全部摊开；Agent「/」和节点弹层照旧折叠。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q4",
+      "text": "技能详情的「用到节点」删掉；技能详情主按钮改为「放进对话」。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q5",
+      "text": "技能卡改「小封面 + 名字 + 两行简介」条卡（宽页 3 列、抽屉 1 列）。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q6",
+      "text": "「我的」从顶上的分段钮改成左侧分类第一项；没有我的东西时首页不出现「我的」一组。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q7",
+      "text": "主按钮叫法：技能「放进对话」、提示词「放上画布」。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q8",
+      "text": "暗色下示意插画封面换成暗纸底 + 浅线；真实产物照片 / 视频不动。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q9",
+      "text": "「放上画布」统一成总是新建对应类型节点 + 带参考图 + 选中它；往已有节点加只走节点自己的「提示词预设」。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q10",
+      "text": "我的提示词卡的编辑 / 删除放在卡片标题行，悬停或键盘聚焦时露出。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    }
+  ],
+  "elements": [
+    {
+      "id": "drawer.panel",
+      "label": "左栏抽屉外框：浮在画布上，默认 280px、可拖宽，收起规则照旧；外壳（顶栏、左栏、画布、工具条、时间轴）照现役",
+      "change": "keep",
+      "states": [
+        "narrow",
+        "dark",
+        "zh-en"
+      ],
+      "candidates": [
+        "002-aside-技能库",
+        "065-aside-技能库",
+        "128-aside-提示词库",
+        "187-aside-Promptlibrar"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.panel"
+    },
+    {
+      "id": "drawer.title",
+      "label": "抽屉标题「Skill」/「提示词」",
+      "change": "keep",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "003-span-Skill",
+        "066-span-Skill",
+        "129-span-提示词",
+        "188-span-Prompts"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.title"
+    },
+    {
+      "id": "drawer.import",
+      "label": "导入图标钮（技能抽屉标题行）",
+      "change": "changed",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "004-button-导入技能SKILLmdz",
+        "005-svg",
+        "067-button-导入技能SKILLmdz",
+        "068-svg"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.import"
+    },
+    {
+      "id": "drawer.new",
+      "label": "新建图标钮（技能：用 AI 新建；提示词：新建提示词）",
+      "change": "changed",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "006-button-用AI新建技能",
+        "007-svg",
+        "069-button-用AI新建技能",
+        "070-svg",
+        "130-button-新建提示词",
+        "131-svg",
+        "189-button-Newprompt",
+        "190-svg"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.new"
+    },
+    {
+      "id": "drawer.search",
+      "label": "搜索框（抽屉第一行）",
+      "change": "changed",
+      "states": [
+        "empty",
+        "long-text",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "008-label",
+        "009-svg",
+        "010-input-搜技能",
+        "071-label",
+        "072-svg",
+        "073-input-搜技能",
+        "132-label",
+        "133-svg",
+        "134-input-搜提示词",
+        "191-label",
+        "192-svg",
+        "193-input-Searchprompt"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.search"
+    },
+    {
+      "id": "drawer.filter",
+      "label": "一颗「分类 ▾」（提示词抽屉里同时管图片 / 视频）",
+      "change": "new",
+      "states": [
+        "selected",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "011-button-分类",
+        "012-span-全部",
+        "013-svg",
+        "074-button-分类",
+        "075-span-全部",
+        "076-svg",
+        "135-button-分类和图片视频",
+        "136-span-全部",
+        "137-svg",
+        "194-button-Categoryandi",
+        "195-span-All",
+        "196-svg"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.filter"
+    },
+    {
+      "id": "drawer.group",
+      "label": "抽屉里的分组：组名 + 两条（技能）/ 一行两张（提示词）",
+      "change": "changed",
+      "states": [
+        "empty",
+        "long-text",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "014-section-我的",
+        "015-span-我的",
+        "020-section-创作流程",
+        "021-span-创作流程",
+        "031-section-导演",
+        "032-span-导演",
+        "042-section-编剧",
+        "043-span-编剧",
+        "053-section-广告",
+        "054-span-广告",
+        "077-section-我的",
+        "078-span-我的",
+        "083-section-创作流程",
+        "084-span-创作流程",
+        "094-section-导演",
+        "095-span-导演",
+        "105-section-编剧",
+        "106-span-编剧",
+        "116-section-广告",
+        "117-span-广告",
+        "138-section-我的",
+        "139-span-我的",
+        "151-section-表情预设",
+        "152-span-表情预设",
+        "162-section-运镜",
+        "163-span-运镜",
+        "175-section-构图",
+        "176-span-构图",
+        "197-section-Mine",
+        "198-span-Mine",
+        "210-section-Expressionpr",
+        "211-span-Expressionpr",
+        "221-section-Camera",
+        "222-span-Camera",
+        "234-section-Composition",
+        "235-span-Composition"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.group"
+    },
+    {
+      "id": "drawer.group-more",
+      "label": "组头「全部 N ›」",
+      "change": "new",
+      "states": [
+        "hover",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "022-a",
+        "023-span-全部10",
+        "024-svg",
+        "033-a",
+        "034-span-全部13",
+        "035-svg",
+        "044-a",
+        "045-span-全部11",
+        "046-svg",
+        "055-a",
+        "056-span-全部8",
+        "057-svg",
+        "085-a",
+        "086-span-全部10",
+        "087-svg",
+        "096-a",
+        "097-span-全部13",
+        "098-svg",
+        "107-a",
+        "108-span-全部11",
+        "109-svg",
+        "118-a",
+        "119-span-全部8",
+        "120-svg",
+        "140-a",
+        "141-span-全部3",
+        "142-svg",
+        "153-a",
+        "154-span-全部25",
+        "155-svg",
+        "164-a",
+        "165-span-全部23",
+        "166-svg",
+        "177-a",
+        "178-span-全部8",
+        "179-svg",
+        "199-a",
+        "200-span-All3",
+        "201-svg",
+        "212-a",
+        "213-span-All25",
+        "214-svg",
+        "223-a",
+        "224-span-All23",
+        "225-svg",
+        "236-a",
+        "237-span-All8",
+        "238-svg"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.group-more"
+    },
+    {
+      "id": "drawer.skill-card",
+      "label": "技能条卡（抽屉 1 列）：小封面（无封面用中性包图标）+ 名字 + 两行简介",
+      "change": "changed",
+      "states": [
+        "hover",
+        "selected",
+        "long-text",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "016-button",
+        "017-svg",
+        "025-button",
+        "028-button",
+        "036-button",
+        "039-button",
+        "047-button",
+        "050-button",
+        "058-button",
+        "061-button",
+        "079-button",
+        "080-svg",
+        "088-button",
+        "091-button",
+        "099-button",
+        "102-button",
+        "110-button",
+        "113-button",
+        "121-button",
+        "124-button"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.skill-card"
+    },
+    {
+      "id": "drawer.skill-card.title",
+      "label": "条卡名字",
+      "change": "changed",
+      "states": [
+        "long-text",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "018-span-improvscenem",
+        "026-span-品牌宣传片",
+        "029-span-分镜规划",
+        "037-span-镜头语言",
+        "040-span-多角色调度",
+        "048-span-剧本审查",
+        "051-span-对白设计",
+        "059-span-凝露产品广告",
+        "062-span-咖啡倾注特写",
+        "081-span-improvscenem",
+        "089-span-品牌宣传片",
+        "092-span-分镜规划",
+        "100-span-镜头语言",
+        "103-span-多角色调度",
+        "111-span-剧本审查",
+        "114-span-对白设计",
+        "122-span-凝露产品广告",
+        "125-span-咖啡倾注特写"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.skill-card.title"
+    },
+    {
+      "id": "drawer.skill-card.summary",
+      "label": "条卡简介（2 行省略）",
+      "change": "changed",
+      "states": [
+        "long-text",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "019-span-即兴生台词让角色在设定好",
+        "027-span-做产品品牌宣传片当用户要",
+        "030-span-把短故事拆成有序镜头整理",
+        "038-span-镜头语言与摄影技法方法论",
+        "041-span-多角色调度方法论3人以上",
+        "049-span-剧本审查导演视角用视觉叙",
+        "052-span-对白专家DavidMam",
+        "060-span-用微距水滴和环绕镜头展示",
+        "063-span-把注入油脂和蒸汽拆成清楚",
+        "082-span-即兴生台词让角色在设定好",
+        "090-span-做产品品牌宣传片当用户要",
+        "093-span-把短故事拆成有序镜头整理",
+        "101-span-镜头语言与摄影技法方法论",
+        "104-span-多角色调度方法论3人以上",
+        "112-span-剧本审查导演视角用视觉叙",
+        "115-span-对白专家DavidMam",
+        "123-span-用微距水滴和环绕镜头展示",
+        "126-span-把注入油脂和蒸汽拆成清楚"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.skill-card.summary"
+    },
+    {
+      "id": "drawer.prompt-card",
+      "label": "提示词卡（抽屉 2 列）：封面只放图，没有媒体用文字封面",
+      "change": "changed",
+      "states": [
+        "hover",
+        "selected",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "143-button",
+        "146-button",
+        "156-button",
+        "159-button",
+        "167-button",
+        "171-button",
+        "180-button",
+        "183-button",
+        "202-button",
+        "205-button",
+        "215-button",
+        "218-button",
+        "226-button",
+        "230-button",
+        "239-button",
+        "242-button"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.prompt-card"
+    },
+    {
+      "id": "drawer.prompt-card.text-cover",
+      "label": "文字封面",
+      "change": "changed",
+      "states": [
+        "long-text",
+        "narrow",
+        "dark"
+      ],
+      "candidates": [
+        "147-span-Astylishwoma",
+        "206-span-Astylishwoma"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.prompt-card.text-cover"
+    },
+    {
+      "id": "drawer.prompt-card.title",
+      "label": "卡下标题",
+      "change": "changed",
+      "states": [
+        "long-text",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "144-span-Q版角色卡",
+        "148-span-TokyoWalk",
+        "157-span-喜悦15一丝笑意",
+        "160-span-喜悦35明朗微笑",
+        "168-span-空镜转场",
+        "172-span-过肩对话",
+        "181-span-画框构图",
+        "184-span-对角线构图",
+        "203-span-Q版角色卡",
+        "207-span-TokyoWalk",
+        "216-span-喜悦15一丝笑意",
+        "219-span-喜悦35明朗微笑",
+        "227-span-Emptyframebr",
+        "231-span-OTSdialogue",
+        "240-span-Framewithinf",
+        "243-span-Diagonaldyna"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.prompt-card.title"
+    },
+    {
+      "id": "drawer.prompt-card.meta",
+      "label": "卡下一行「分类 · 类型」，视频带小图标",
+      "change": "changed",
+      "states": [
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "145-span-网页提取图片",
+        "149-svg",
+        "150-span-视频",
+        "158-span-图片",
+        "161-span-图片",
+        "169-svg",
+        "170-span-视频",
+        "173-svg",
+        "174-span-视频",
+        "182-span-图片",
+        "185-span-图片",
+        "204-span-WebextractIm",
+        "208-svg",
+        "209-span-Video",
+        "217-span-Image",
+        "220-span-Image",
+        "228-svg",
+        "229-span-Video",
+        "232-svg",
+        "233-span-Video",
+        "241-span-Image",
+        "244-span-Image"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryDrawers/drawer.prompt-card.meta"
+    }
+  ],
+  "decor": [
+    "001-h3-修后Skill抽屉中明外",
+    "064-h3-修后Skill抽屉中暗外",
+    "127-h3-修后提示词抽屉中明外壳是",
+    "186-h3-修后提示词抽屉英暗外壳是"
+  ],
+  "functionCensus": [
+    {
+      "censusId": "B-02",
+      "function": "「Skill」「提示词」按钮（所有项目共用）",
+      "before": "左栏（项目内竖栏）：从左栏右侧浮出抽屉（紧凑版）",
+      "after": "drawer.panel",
+      "afterNote": "不变"
+    },
+    {
+      "censusId": "B-03",
+      "function": "收起抽屉",
+      "before": "左栏抽屉·收起规则：收起抽屉",
+      "after": "drawer.panel",
+      "afterNote": "不变"
+    },
+    {
+      "censusId": "B-04",
+      "function": "拖宽抽屉",
+      "before": "左栏抽屉·宽度：改抽屉宽度（存在 shellLayoutStore）",
+      "after": "drawer.panel",
+      "afterNote": "不变"
+    },
+    {
+      "censusId": "B-05",
+      "function": "打开事件 nomi-focus-skill-library → nomi-open-skill-library",
+      "before": "外部入口·打开 Skill 抽屉：收起的左栏先展开，再开 Skill 抽屉",
+      "after": "drawer.panel",
+      "afterNote": "不变"
+    }
+  ]
+}

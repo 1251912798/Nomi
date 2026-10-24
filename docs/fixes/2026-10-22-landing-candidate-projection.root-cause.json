@@ -1,0 +1,158 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-22-landing-candidate-projection",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-22",
+  "problem_type": "候选 → 画布节点的投影手抄字段：候选有、节点 meta 构造器也认的维度，落地线没传，节点停在档案默认",
+  "symptom": "Agent 起草 Seedance 2.0 标准 / Mini、Veo 3.1 Quality / Lite（以及 Vidu Q3、Hailuo 2.3、KIE / 火山 / Dreamina / Runway 上同类带变体的模型）：候选、付费卡、宿主派发都是所选变体；落到画布的节点显示默认变体，在节点上点生成发出的是默认变体的型号（APIMart 实测 body.model = seedance-2.0-fast / veo3.1-fast），扣的是另一档",
+  "direct_cause": "主进程 candidateWire 逐字段手写落地报文，没写 variantId；渲染层首次落地 candidateNodeArgs 与重绑定 rebindLandedShots 各自手写一份 buildPlannedNodeMeta 入参，也都没写 variantId。buildPlannedNodeMeta 本身早已认 variantId",
+  "class_root": "候选 → 落地报文 → 节点 meta 入参这条投影在三处手抄字段，「故意不传」（transportModelId 这类内部投影）和「忘了传」在对象字面量里长得一样；候选每多一个用户可选维度（参数 → 模型身份 → 变体 → 下一个参考 / 方式）都要有人记得改三处。缺的不变量：候选的每一个键要么过线、要么写出不过线的理由；线上的每一个字段要么喂给节点、要么写出不喂的理由——由类型穷举强制",
+  "affected_population": [
+    "用 Agent 起草带变体模型的创作者：节点显示与节点路发出 ≠ 卡上与 Agent 路发出（多花 / 少花、出片档不对）",
+    "全部内置供应商里带 ≥2 个变体的视频行（真实内置目录逐行覆盖，见 class_regression_tests）"
+  ],
+  "scope_paths": [
+    "electron/productionRun/multiShotCanvasLanding.ts",
+    "electron/shared/canvas/materializeShotCandidate.ts",
+    "src/workbench/capability/multiShotCanvasLanding.ts",
+    "src/workbench/generationCanvas/agent/candidateNodeMeta.ts"
+  ],
+  "entry_points": [
+    "主进程落地报文：buildMaterializeShotsPayload → candidateWire（确认即落 / 派发前落地 landBeforeDispatch、外部 Agent 隐藏窗口落地、草稿投影、追加镜头、Run 跟随、打开项目对账、单镜 plan.candidate 都经它）",
+    "渲染层 materializeShots：新建（create_canvas_nodes → applyCanvasToolCall → buildPlannedNodeMeta）与重绑定（rebindLandedShots，候选 revision 变新）两扇",
+    "Agent 直写 canvas.write create_canvas_nodes（applyCanvasToolCall 直接读 node.variantId，不经落地报文）"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "这是 Nomi 自己的候选 → 画布节点投影（宿主候选、落地报文、节点 meta 构造器都是仓库内的领域类型），没有第三方库或官方文档决定它；穷举用 TypeScript 自带的映射类型",
+  "invariants": [
+    "PlanCandidate 的每一个键在 CANDIDATE_LANDING_FIELDS 里归类：过线（映射到 MaterializeShotCandidateWire 的哪个字段）或 staysInHost（写理由）；漏归类 typecheck 失败",
+    "MaterializeShotCandidateWire 只有一份类型（electron/shared/canvas/materializeShotCandidate.ts），主进程写、渲染层读",
+    "线上的每一个字段在 LANDED_CANDIDATE_FIELDS 里归类：喂给 buildPlannedNodeMeta 的哪个键，或 notNodeModel（写理由）；漏归类 typecheck 失败",
+    "渲染层首次落地与重绑定用同一个 plannedInputFromCandidate 构造 buildPlannedNodeMeta 入参",
+    "落地报文不含 transportModelId；发出型号由节点上的 variantId 在节点路经 resolveArchetypeVariant 推出"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/productionRun/multiShotCanvasLanding.ts",
+      "symbol": "candidateWire"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/capability/multiShotCanvasLanding.ts",
+      "symbol": "plannedInputFromCandidate"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/agent/candidateNodeMeta.ts",
+      "symbol": "MaterializeShotCandidateWire"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/canvas/materializeShotCandidate.ts",
+      "symbol": "MaterializeShotCandidateWire"
+    }
+  ],
+  "door_reduction": {
+    "before": 5,
+    "after": 4,
+    "why_not": "两扇写门在进程边界两侧：candidateWire 在主进程（候选里有 transportModelId / sealedContractHash 等不许过 RPC 的内部字段，必须在主进程裁掉）；plannedInputFromCandidate 在渲染层（buildPlannedNodeMeta 与模型清单只在渲染层），渲染层原来的新建、重绑定两份已合成这一扇。两扇读门是同一份线类型的定义处与渲染层读法（candidateNodeMeta 的穷举表），原来主进程、渲染层各一份同形类型，现在只剩共享那一份"
+  },
+  "generality_proof": "不按模型或变体名修：落地报文与节点入参由两张按类型键穷举的表生成，候选或线上任何一个新键（下一个是参考图 / 方式）不归类就编译失败；值层由 landingProjectionParity 对真实内置目录每一条带变体的视频行 × 每个变体逐格核（候选 → 报文 → 节点变体 = 宿主变体），APIMart 再核两条路的真请求体 model 相等，新接一个带变体的模型自动进格子",
+  "shared_boundaries": [
+    {
+      "path": "electron/productionRun/multiShotCanvasLanding.ts",
+      "symbol": "CANDIDATE_LANDING_FIELDS",
+      "responsibility": "候选每一个键过不过落地线的唯一归类；candidateWire 只按它生成报文"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/candidateNodeMeta.ts",
+      "symbol": "plannedInputFromCandidate",
+      "responsibility": "落地报文候选 → buildPlannedNodeMeta 入参的唯一投影（按 LANDED_CANDIDATE_FIELDS），首次落地与重绑定共用"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/capability/multiShotCanvasLanding.ts",
+      "entry_point": "rebindLandedShots",
+      "disposition": "enforced",
+      "evidence": "原来内联手写的 buildPlannedNodeMeta 入参删掉，改调 plannedInputFromCandidate；landingCarriesVariant.test.ts 的重绑定格钉住"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/applyCanvasToolCall.ts",
+      "entry_point": "create_canvas_nodes",
+      "disposition": "enforced",
+      "evidence": "把节点入参原样交 buildPlannedNodeMeta（含 variantId）；落地新建扇的入参现在由 plannedInputFromCandidate 产出，landingCarriesVariant.test.ts 首次落地格经这条写边界"
+    },
+    {
+      "path": "src/workbench/creation/storyboard/exec/storyboardProjection.ts",
+      "entry_point": "buildPlannedNodeMeta",
+      "disposition": "not-affected",
+      "evidence": "分镜行没有变体轴（StoryboardPlan 不存 variantId），这里的入参来自分镜行而不是候选"
+    },
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/storyboardComposerModel.ts",
+      "entry_point": "storyboardComposerMeta",
+      "disposition": "not-affected",
+      "evidence": "分镜底栏的 ComposerTarget 没有变体轴，不读候选"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "同一投影已漏过三次（参数 2026-09-11、模型身份、变体 2026-10-22），候选下一个要落节点的维度（参考图 / 方式，R-d2-defaults #3）会走同一条线",
+    "same_class_scan": [
+      "node scripts/door-map.mjs buildPlannedNodeMeta：5 扇写入口，逐一核过（落地、分镜投影、分镜底栏、applyCanvasToolCall、自身）",
+      "node scripts/door-map.mjs candidateWire / candidateNodeArgs：各 1 扇，前者改成表驱动，后者删除",
+      "git grep MaterializeShotCandidate：渲染层第二份同形类型删除，改为共享类型派生"
+    ]
+  },
+  "prevention": {
+    "kind": "type-system",
+    "enforcement_path": "electron/productionRun/multiShotCanvasLanding.ts",
+    "invariant": "候选的每个键、落地线的每个字段都必须在穷举表里显式归类（过线 / 喂节点，或写出理由）",
+    "failure_mode": "新增键未归类 → tsc 报 TS2741（2026-10-22 实测：给 PlanCandidate 加键，electron tsc 在 CANDIDATE_LANDING_FIELDS 处红；给线类型加字段，app tsc 在 LANDED_CANDIDATE_FIELDS 处红）",
+    "exception_policy": "none",
+    "strategy": "把「故意不传」从「字面量里没写」变成「表里写一句理由」；手写对象字面量的三份投影换成两张表 + 一份线类型 + 一个共用函数，同一提交删掉 candidateNodeArgs 与重绑定里的内联投影",
+    "artifacts": [
+      "electron/productionRun/multiShotCanvasLanding.ts",
+      "electron/shared/canvas/materializeShotCandidate.ts",
+      "src/workbench/generationCanvas/agent/candidateNodeMeta.ts",
+      "src/workbench/capability/multiShotCanvasLanding.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/capability/landingCarriesVariant.test.ts",
+    "electron/parity/landingProjectionParity.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/parity/landingProjectionParity.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/capability/multiShotCanvasLanding.ts"
+    ],
+    "rationale": "candidateNodeArgs 与 rebindLandedShots 里的内联 buildPlannedNodeMeta 入参删除，渲染层 MaterializeShotCandidate 第二份类型删除，主进程本地 MaterializeShotCandidateWire 类型移到共享处"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及第三方运行时：候选、报文、节点 meta 都是仓库内类型",
+    "exit_criteria": []
+  },
+  "migration": "不迁移已落的节点：节点 meta 不改格式（archetype.variantId 原本就是节点存变体的键）。已落节点在候选下一次 revision 变新时由重绑定带上变体；revision 不变的旧节点保持原样（与「打开项目不改用户手改」同一闸）",
+  "residual_risks": [
+    "参考图仍不过线（R-d2-defaults #3，归 #1269 之后 / D2），表里以 staysInHost 写明",
+    "Runway wan3 / Seedance 2 / Veo 3.1 行：宿主归一把 modelId 换成共享档案的 catalogModelKey，落地节点认不出模型——另一类，另排 PR-c（R-runway-wan3），本测试以 it.fails 标出",
+    "重绑定用「档案默认 ⊕ 候选」盖掉用户在节点上的改动（R-d2-defaults #4，归 D2）",
+    "真付费未跑：两条路的请求体在本机假上游核过，上游真实扣费档 unverified"
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/agent/candidateNodeMeta.ts",
+    "tests": [
+      "electron/parity/landingProjectionParity.test.ts",
+      "src/workbench/capability/landingCarriesVariant.test.ts",
+      "src/workbench/capability/agentDraftSingleLedger.test.ts"
+    ],
+    "why": "线类型在 electron/shared/canvas/materializeShotCandidate.ts，主进程侧按 CANDIDATE_LANDING_FIELDS 归类、渲染层侧由 candidateNodeMeta.plannedInputFromCandidate 按 LANDED_CANDIDATE_FIELDS 归类；首落与重绑定只调它。tests 是这一层的类级与回归测试，改动这条不变量必先让它们红。"
+  }
+}

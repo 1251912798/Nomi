@@ -3,7 +3,7 @@
 // 只有「发现新版」这一下由测试从主进程往窗口发 `nomi:update:event`（开发构建没有真实更新源，不连任何更新服务器、不下载、不安装）。
 //
 // 断言：
-//   ① Mac-only 的热修说明在 Windows 上不出横幅（胶囊仍在）；适用本平台的热修出横幅；
+//   ① 只给别的平台的热修说明在本平台不出横幅（胶囊仍在）；适用本平台的热修出横幅；
 //   ② 横幅 ✕ 之后，整个 App 重启再来同一个事件，横幅仍不出现；
 //   ③ 跳版更新后的「从 0.22.5 更新到 x」卡只出一次：✕ 之后重启不再出现。
 // 用法：node tests/ux/update-reminder-host.walk.mjs（先 pnpm run build）
@@ -32,7 +32,9 @@ const notes = (version, platforms, zhTitle) => ({
   zh: digest(zhTitle, '修了什么', [`${zhTitle}一`, `${zhTitle}二`]),
   en: digest(`${zhTitle} (en)`, 'What changed', [`${zhTitle} one`, `${zhTitle} two`]),
 })
-const macOnly = notes('0.99.1', ['darwin'], '只给 Mac 的热修')
+// 「别的平台」按运行这条走查的机器取：以前写死「只给 Mac」，等于假定跑在 Windows / Linux 上——在 Mac 上它恰好适用本平台，必红。
+const otherPlatform = process.platform === 'darwin' ? 'win32' : 'darwin'
+const otherOnly = notes('0.99.1', [otherPlatform], `只给 ${otherPlatform} 的热修`)
 const everywhere = notes('0.99.2', null, '所有平台的热修')
 
 // 上次运行是 0.22.5、同意更新时记下了 (0.22.5, 当前版本] 的说明：启动后应该生成跳版合并卡。
@@ -86,11 +88,11 @@ try {
   check('applicable-hotfix-shows-banner', /所有平台的热修/.test(await win.locator(BANNER).innerText()))
   await win.screenshot({ path: path.join(shots, '03-hotfix-banner.png') })
 
-  // ── Mac-only 热修在 Windows 上：胶囊有，横幅没有 ─────────────────────────────
-  await sendAvailable(app, '0.99.1', [macOnly])
-  await expectVisible(win.locator(PILL), 'Mac-only 热修在本平台仍有胶囊')
-  await expectAbsent(win.locator(BANNER), { provenBy: bannerProof, message: 'Mac-only 的热修说明在 Windows 上不出横幅' })
-  await win.screenshot({ path: path.join(shots, '02-mac-only-hotfix-no-banner.png') })
+  // ── 只给别的平台的热修：胶囊有，横幅没有 ───────────────────────────────────
+  await sendAvailable(app, '0.99.1', [otherOnly])
+  await expectVisible(win.locator(PILL), `只给 ${otherPlatform} 的热修在本平台仍有胶囊`)
+  await expectAbsent(win.locator(BANNER), { provenBy: bannerProof, message: `只给 ${otherPlatform} 的热修说明在本平台（${process.platform}）不出横幅` })
+  await win.screenshot({ path: path.join(shots, '02-other-platform-hotfix-no-banner.png') })
 
   // ── 回到适用本平台的热修，✕ 后消失 ──────────────────────────────────────────
   await sendAvailable(app, '0.99.2', [everywhere])

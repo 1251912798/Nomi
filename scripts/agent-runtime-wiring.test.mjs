@@ -27,7 +27,7 @@ function json(relative) {
 const reachable = (entry) => resolveReachable(pkg.scripts, entry)
 
 describe('private pi build and test wiring', () => {
-  test('pins the verified SDK graph while preserving non-Agent ai@4 and Nomi Zod', () => {
+  test('pins the verified SDK graph, keeps Nomi Zod, and has no second model-call stack (ai / @ai-sdk/*)', () => {
     for (const name of ['pi-agent-core', 'pi-ai', 'pi-coding-agent']) {
       expect(pkg.dependencies[`@earendil-works/${name}`]).toBe('0.85.1')
     }
@@ -44,7 +44,8 @@ describe('private pi build and test wiring', () => {
     expect(pkg.dependencies.typebox).toBe('1.3.7')
     expect(pkg.dependencies['zod-to-json-schema']).toBe('3.25.1')
     expect(pkg.dependencies.zod).toBe('^3.25.76')
-    expect(pkg.dependencies.ai).toBe('^4.3.19')
+    // 2026-10-21 文本任务迁 pi-ai 单次调用：ai@4 与 @ai-sdk/* 整体删除（check:llm-stream-owner 同样拦回流）。
+    expect(Object.keys(pkg.dependencies).filter((name) => name === 'ai' || name.startsWith('@ai-sdk/'))).toEqual([])
     expect(pkg.engines.node).toBe('>=22.19.0')
   })
 
@@ -76,7 +77,7 @@ describe('private pi build and test wiring', () => {
     expect(dev.match(/compileElectronMain\(\);/g)).toHaveLength(1)
     expect(read('scripts/start-electron.mjs')).toMatch(/assertElectronBuildArtifacts\(repoRoot\)/)
     const launch = read('tests/ux/_launchApp.mjs')
-    expect(launch).toMatch(/if \(isDevElectron\)\s*\{\s*assertElectronBuildArtifacts\(repoRoot\)/)
+    expect(launch).toMatch(/if \(isDevElectron\)\s*\{\s*(?:\/\/[^\n]*\s*)*assertFreshBuild\(repoRoot\)\s*assertElectronBuildArtifacts\(repoRoot\)/)
     expect(launch).not.toContain('function assertBuilt(')
   })
 

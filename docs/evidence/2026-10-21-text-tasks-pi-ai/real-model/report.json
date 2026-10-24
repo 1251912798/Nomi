@@ -1,0 +1,44 @@
+{
+  "name": "text-tasks-pi-ai-real",
+  "mode": "development",
+  "head": "576d88d2b",
+  "calls": [
+    {
+      "entry": "#1 文本节点扩写（流式）",
+      "protocol": "openai-compatible",
+      "firstFeedbackMs": 13129,
+      "totalMs": 13132,
+      "result": "ok",
+      "errorKind": null
+    },
+    {
+      "entry": "#2 文本节点改写选区（流式门，一次性替换）",
+      "protocol": "openai-compatible",
+      "firstFeedbackMs": 8725,
+      "totalMs": 8725,
+      "result": "ok",
+      "errorKind": null
+    },
+    {
+      "entry": "#4 提示词翻译（流式）",
+      "protocol": "openai-compatible",
+      "firstFeedbackMs": 19209,
+      "totalMs": 19295,
+      "result": "ok",
+      "errorKind": null
+    },
+    {
+      "entry": "#3 提示词优化（流式）",
+      "protocol": "openai-compatible",
+      "firstFeedbackMs": 31210,
+      "totalMs": 31216,
+      "result": "ok",
+      "errorKind": null
+    }
+  ],
+  "networkBlocked": [],
+  "credentialCopyRemoved": true,
+  "isolatedCopyRemoved": true,
+  "result": "passed",
+  "note": "协调 10-22 带 key 在验收 HEAD 576d88d2b 上跑；思考型模型 DeepSeek V4 Pro；4 次短调用；spend.text 只统计 Agent 通道故为 0（已知）"
+}

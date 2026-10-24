@@ -134,12 +134,13 @@ export function TaskCenterButton({ projectId, onRevealNode }: Props): JSX.Elemen
                 opened && 'bg-nomi-ink-10',
                 tone === 'failed' ? 'text-nomi-danger' : 'text-nomi-ink-60 hover:text-nomi-ink',
               )}
+              iconTier="bar"
               data-task-center-tone={tone}
               aria-label={t('taskCenter.title')}
               data-task-center-trigger="true"
               onClick={() => setOpened((value) => !value)}
             >
-              <IconListCheck size={18} stroke={1.5} aria-hidden="true" />
+              <IconListCheck aria-hidden="true" />
               {pending > 0 ? (
                 <span
                   className={cn(

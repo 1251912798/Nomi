@@ -3,6 +3,7 @@ import { applyProposalBatch } from '../../../agent/proposalTxn'
 import { generationCanvasTools } from '../../../agent/generationCanvasTools'
 import { findCanvasChange } from '../../../events/canvasUndoJournal'
 import { makeChangeId } from '../../../../../../electron/shared/agentCapabilities/changeId'
+import { encodeMention } from '../../../../../../electron/shared/storyboard/promptMentions'
 import { useGenerationCanvasStore } from '../../../store/generationCanvasStore'
 import { directorPreviewSpendBlock, readDirectorPreview } from '../model/directorPreviewState'
 import type { DirectorWriteDomainResult } from './applyDirectorWrite'
@@ -53,10 +54,11 @@ describe('3D-BOX preview capture (Host 纯逻辑那一半)', () => {
   it('attaches the finished preview as the shot reference video, marks it ready, lifts the spend gate, and stays inside the staging change for undo', async () => {
     const { shotId, directorNodeId, revision, proposalId } = await staged()
     expect(directorPreviewSpendBlock(shotId, useGenerationCanvasStore.getState().nodes)?.reason).toBe('rendering')
-    applyPreviewCaptured(directorNodeId, revision, 'nomi-local://asset/p/preview.mp4', 'asset-preview-1', output)
+    applyPreviewCaptured(directorNodeId, revision, 'nomi-local://asset/p/preview.mp4', 'asset-preview-1', output, previewCapturePlan(node(directorNodeId)!)!.sourceFingerprint)
     expect(readDirectorPreview(node(directorNodeId))).toMatchObject({ status: 'ready', attach: 'video_ref', videoUrl: 'nomi-local://asset/p/preview.mp4', assetId: 'asset-preview-1' })
     expect(node(shotId)?.meta?.referenceVideoUrls).toEqual(['nomi-local://asset/p/preview.mp4'])
-    expect(node(shotId)?.prompt).toContain('@Video1')
+    // 提示词里的引用用 @[asset:url] 标记，发送时按实际参考顺序投影成 @videoN（不写死编号）
+    expect(node(shotId)?.prompt).toContain(`${encodeMention('nomi-local://asset/p/preview.mp4')} 跟随这段参考视频的运镜`)
     expect(directorPreviewSpendBlock(shotId, useGenerationCanvasStore.getState().nodes)).toBeNull()
     // Host 的挂接写入沿用这笔提议的事务身份：撤销 stage_shot 时不被当成「别人的后续改动」。
     expect(findCanvasChange(makeChangeId('canvas', proposalId))?.conflictingEventTypes ?? []).toEqual([])
@@ -64,7 +66,7 @@ describe('3D-BOX preview capture (Host 纯逻辑那一半)', () => {
 
   it('drops a late result whose revision is no longer current', async () => {
     const { shotId, directorNodeId } = await staged()
-    expect(applyPreviewCaptured(directorNodeId, 'dplan-stale', 'nomi-local://asset/p/old.mp4', 'asset-old', output)).toBeNull()
+    expect(applyPreviewCaptured(directorNodeId, 'dplan-stale', 'nomi-local://asset/p/old.mp4', 'asset-old', output, 'fp-old')).toBeNull()
     expect(readDirectorPreview(node(directorNodeId))?.status).toBe('rendering')
     expect(node(shotId)?.meta?.referenceVideoUrls).toBeUndefined()
   })

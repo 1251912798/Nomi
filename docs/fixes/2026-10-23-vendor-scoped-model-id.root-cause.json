@@ -1,0 +1,293 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-23-vendor-scoped-model-id",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-23",
+  "problem_type": "共享档案上的型号名（catalogModelKey / 变体 modelKey / 方式 modelEnum）被当成所有供应商的型号名用",
+  "symptom": "Runway Wan 3 的 Agent 路报 Unknown model: wan/3-0-video；Runway Seedance 2 / Veo 3.1 的发出型号与变体条是 KIE / APIMart 的名字；APIMart kling-v3、gpt-image-2*、seedream、nano-banana 与 fal、MiniMax 若干行的发出型号 / request.params.model 是 KIE 的方式型号名（R-runway-wan3 与 2026-10-23 全目录实测）",
+  "direct_cause": "videoCandidateForPlan 用档案 catalogModelKey 改写候选身份；videoTransportModelIdForPlan 取档案变体 / 方式型号名；buildArchetypeInputParams 无条件把它们写进 request.params.model；变体条读档案 variants——都不看这家供应商认不认这些名字",
+  "class_root": "型号名是供应商相关的，却住在供应商无关的共享档案上、以不带作用域的字符串存在，任何档案解析者都能把它用到别家头上；按名字比对判断归属也不成立（别家旧别名撞名、自家行名对不上档案 key）",
+  "affected_population": [
+    "共享档案被多家供应商使用的目录行（2026-10-23 内置目录 22 行：Runway 13、APIMart 6、fal 2、MiniMax 1）",
+    "用户自建中转：op 没有声明收档案型号名，一律不接受（2026-10-24 判据合一前，按模板文本读 request.params.model 被判成接受，变体栏 / Agent 能力清单摆出别家的名字）",
+    "存量草稿里已被改写成别家 key 的候选"
+  ],
+  "scope_paths": [
+    "electron/shared/modelArchetypes/modelNameSource.ts",
+    "electron/shared/modelArchetypes/index.ts",
+    "electron/shared/videoCapabilities/registry.ts",
+    "electron/catalog/modelNameSource.ts",
+    "electron/catalog/catalogStore.ts",
+    "electron/capabilityCore/mcpGenerationVideoResolve.ts",
+    "src/workbench/generationCanvas/model/modelNameSourceLookup.ts",
+    "src/config/modelOptionMappers.ts",
+    "src/config/models.ts",
+    "src/workbench/api/modelCatalogApi.ts",
+    "src/workbench/generationCanvas/nodes/nodeModelArchetype.ts",
+    "src/main.tsx",
+    "electron/shared/modelArchetypes/wireModelIdentity.ts"
+  ],
+  "entry_points": [
+    "宿主归一：normalizeVideoCandidate（多镜封印 / 预览 / 单镜与门禁 / normalizeAuthoredCandidate 的补丁与起草）→ videoCandidateForPlan（只折叠模型身份；发出型号不在宿主算——videoTransportModelIdForPlan 于 2026-10-16 删除，发送时由 wireModelIdentity.resolveWireModel 解出）",
+    "档案解析：resolveArchetypeForModel（画布、付费卡、分镜、准入、list_models 的全部读者）与 buildVideoModelCandidates（宿主视频候选表）",
+    "目录行判据：deriveModelNameSource 问 operationSelectsArchetypeWireModel（与发送 owner 同一个谓词，2026-10-24 判据合一）",
+    "画布发出：taskTemplateParams 最后经 resolveWireModel 写 request.params.model（buildArchetypeInputParams 不再带 model）",
+    "变体条 / 方式条与 Agent 能力清单（agentModelEntriesFromCatalog / buildAgentModelEntries）：从解析出的档案读 variants / modes"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "「哪家这一行发什么型号名」由我们自己的目录契约决定：内置目录 op 定义处的 wireModel 声明（判据读的是仓库内的数据）；没有第三方文档能决定",
+  "invariants": [
+    "一行接不接受档案型号名，只由这一行要用的 create op（与发送同一个 selectTaskMapping 选法）有没有在定义处声明 wireModel=archetype-selection 决定——operationSelectsArchetypeWireModel，与发送 owner 同一个谓词；计算只在 electron/catalog/modelNameSource.ts",
+    "两个档案解析口（resolveArchetypeForModel、buildVideoModelCandidates）共用 scopeArchetypeModelNames：不接受的行，档案上不留任何型号名",
+    "宿主归一后的 modelId 一定是这家目录里的一行；档案基础行 key 只在这家目录里有这一行时才用来折叠旧变体串",
+    "代码里不出现供应商 / 型号名特判"
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "electron/catalog/catalogStore.ts",
+      "symbol": "ModelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "electron/catalog/modelNameSource.ts",
+      "symbol": "ModelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/modelArchetypes/index.ts",
+      "symbol": "ModelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/modelArchetypes/modelNameSource.ts",
+      "symbol": "ModelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/modelArchetypes/modelNameSource.ts",
+      "symbol": "modelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/videoCapabilities/registry.ts",
+      "symbol": "ModelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/videoCapabilities/registry.ts",
+      "symbol": "modelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "src/config/modelOptionMappers.ts",
+      "symbol": "modelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "src/config/models.ts",
+      "symbol": "ModelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/api/modelCatalogApi.ts",
+      "symbol": "ModelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/model/modelNameSourceLookup.ts",
+      "symbol": "ModelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/model/modelNameSourceLookup.ts",
+      "symbol": "modelNameSource"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/nodeModelArchetype.ts",
+      "symbol": "modelNameSource"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/mcpGenerationTools.ts",
+      "symbol": "videoCandidateForPlan"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/mcpGenerationVideoResolve.ts",
+      "symbol": "videoCandidateForPlan"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/catalogStore.ts",
+      "symbol": "installModelNameSourceLookup"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/modelNameSource.ts",
+      "symbol": "operationSelectsArchetypeWireModel"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/modelNameSource.ts",
+      "symbol": "deriveModelNameSource"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/seedBuiltins.ts",
+      "symbol": "operationSelectsArchetypeWireModel"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/modelArchetypes/index.ts",
+      "symbol": "scopeArchetypeModelNames"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/modelArchetypes/modelNameSource.ts",
+      "symbol": "isModelNameSource"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
+      "symbol": "operationSelectsArchetypeWireModel"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/videoCapabilities/registry.ts",
+      "symbol": "scopeArchetypeModelNames"
+    },
+    {
+      "kind": "write",
+      "path": "src/config/modelOptionMappers.ts",
+      "symbol": "isModelNameSource"
+    },
+    {
+      "kind": "write",
+      "path": "src/main.tsx",
+      "symbol": "installRendererModelNameSourceLookup"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/model/modelNameSourceLookup.ts",
+      "symbol": "installModelNameSourceLookup"
+    }
+  ],
+  "door_reduction": {
+    "before": 27,
+    "after": 26,
+    "why_not": "门表是 door-map 对同一组符号（scopeArchetypeModelNames / deriveModelNameSource / 两个查询口 / videoCandidateForPlan / isModelNameSource / operationSelectsArchetypeWireModel，读 ModelNameSource / modelNameSource）的原样输出；判据合一前（本分支 2f6bb8ca7，同一组符号加上当时的 operationReadsArchetypeModel）是 27 扇，合一后 26 扇：目录层的文本扫描换成发送 owner 的谓词（同一个文件里换符号），渲染层变体栏自己调谓词的那一扇删掉。剩下的不合：两个档案解析口（resolveArchetypeForModel 与宿主视频候选表 profileFor）历史上就是两扇，二者都调同一个 scopeArchetypeModelNames，合成一扇会改变宿主候选表的匹配结果，另立；查询口两扇是两个进程各一个，只转述；谓词的另外两个读者是发送 owner 本身与兄弟连接启动对账；videoCandidateForPlan 是宿主身份折叠的唯一处；读门都是同一个结果随目录下发到渲染层的路，只转述不计算"
+  },
+  "invariant_owner_layer": {
+    "layer": "electron/catalog/modelNameSource.ts",
+    "tests": [
+      "electron/parity/vendorScopedModelId.matrix.test.ts",
+      "electron/parity/variantResolutionParity.test.ts"
+    ],
+    "why": "「这一行接不接受档案型号名」只在 deriveModelNameSource 算；收窄只在 scopeArchetypeModelNames。矩阵遍历全部内置供应商 × 目录行 × 方式 × 变体，改动这条不变量必先让它红。"
+  },
+  "generality_proof": "判据是目录契约本身的声明（数据），不是名字比对也不是名单，也不是模板文本：任何供应商、任何档案、任何目录行（含用户自建中转、AI 编译 / 手改的映射）都由它要用的 op 有没有声明决定，与发送时决定 model 串的 owner 同一个谓词，所以摆出来的和发出去的是同一个答案；两个档案解析口共用一个收窄函数，宿主归一、画布发出、变体条、Agent 能力清单、准入、list_models 都从这两个口拿档案。矩阵按全部内置目录 + 一个真注册的自建中转自动展开，新加供应商 / 档案 / 行自动纳入",
+  "shared_boundaries": [
+    {
+      "path": "electron/catalog/modelNameSource.ts",
+      "symbol": "deriveModelNameSource",
+      "responsibility": "一行发出的型号名由档案提供还是就是这一行的 key（按这家映射与发送同一个选法算）"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/modelNameSource.ts",
+      "symbol": "scopeArchetypeModelNames",
+      "responsibility": "按型号名来源收窄档案：不接受的行去掉变体轴、方式型号名、基础行 key，只留参数"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
+      "symbol": "operationSelectsArchetypeWireModel",
+      "responsibility": "这条 op 收不收档案所选的型号名：目录行判据与发送 owner 共用的唯一谓词"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/capabilityCore/mcpGenerationVideoResolve.ts",
+      "entry_point": "videoCandidateForPlan / normalizeVideoCandidate",
+      "disposition": "enforced",
+      "evidence": "档案来自收窄后的视频候选表；身份折叠只认这家目录里的行；videoTransportModelIdForPlan 已删（概念登记列为禁用派生）；矩阵宿主归一段核引擎 B 真正出站的 model"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
+      "entry_point": "buildArchetypeInputParams",
+      "disposition": "enforced",
+      "evidence": "不再写 request.params.model（2026-10-16 删除），发出型号由 resolveWireModel 在参数层最后写入；矩阵画布发出段核 templateContext 的 request.params.model"
+    },
+    {
+      "path": "electron/catalog/agentModelEntriesFromCatalog.ts",
+      "entry_point": "list_models 的变体投影",
+      "disposition": "enforced",
+      "evidence": "经 resolveArchetypeForModel，主进程查询口转述目录结果；矩阵 Agent 能力清单格同时核主进程与渲染层 buildAgentModelEntries，自建中转行不列变体"
+    },
+    {
+      "path": "electron/catalog/archetypeWireDefaults.generated.ts",
+      "entry_point": "生成的发出缺省表",
+      "disposition": "not-affected",
+      "evidence": "生成脚本按档案拥有者那家生成（fixedParams 常量），不经运行时解析；运行时缺省只在发送映射命中后叠加"
+    },
+    {
+      "path": "electron/catalog/newapiTransport.ts",
+      "entry_point": "自建中转 op（model 字段读 {{request.params.model}}）",
+      "disposition": "enforced",
+      "evidence": "op 不带声明 → 目录行判 row、发送给连接名；矩阵「不是内置家的连接，一律不接受档案型号名」与中转行的档案解析格，旧判据下红"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "每接一家新供应商到已有共享档案，或用户自建中转，都会撞上；档案上的名字没有作用域",
+    "same_class_scan": [
+      "node scripts/door-map.mjs videoCandidateForPlan / videoTransportModelIdForPlan / normalizeVideoCandidate / normalizeAuthoredCandidate：10 扇，全部经同一个收窄后的候选表",
+      "node scripts/door-map.mjs resolveArchetypeForModel：24 扇读者，全部经同一个收窄",
+      "全目录实测：按名字比对判断归属会把 Runway seedance2 / veo3.1 判成拥有、把 Dreamina 判成不拥有，故改为读映射",
+      "node scripts/door-map.mjs operationSelectsArchetypeWireModel：3 扇（目录行判据、发送 owner、兄弟连接启动对账），同一个谓词",
+      "2026-10-24 真 App 实测：main 上自建中转行被判成接受档案型号名，变体栏出别家的三个变体、出站发档案名；矩阵补进自建中转后在旧判据下 6 格红"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/modelArchetypes/modelNameSource.ts",
+    "invariant": "档案型号名只在这一行要用的 op 声明了收档案型号名时才出现在解析出的档案上（与发送同一个谓词）",
+    "failure_mode": "不接受的行：没有变体可选、发出型号就是这一行的 key；说不清（目录没载入、没有供应商身份）：档案原样，与改前一致；存量草稿里别家的 key：这家目录里没有这一行 → 归一认不出 → 编译拒绝，Agent 改选",
+    "exception_policy": "none",
+    "strategy": "型号名的家改成目录契约的 op 声明：目录层一处派生（问发送 owner 的同一个谓词）、两个解析口一个收窄函数、宿主身份只认这家目录行；全目录 + 自建中转的矩阵门岗",
+    "artifacts": [
+      "electron/shared/modelArchetypes/modelNameSource.ts",
+      "electron/catalog/modelNameSource.ts",
+      "electron/shared/modelArchetypes/wireModelIdentity.ts",
+      "electron/capabilityCore/mcpGenerationVideoResolve.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/parity/vendorScopedModelId.matrix.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/parity/vendorScopedModelId.matrix.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/catalog/modelNameSource.ts",
+      "electron/capabilityCore/mcpGenerationVideoResolve.ts",
+      "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts"
+    ],
+    "rationale": "目录层的文本扫描判据（operationReadsArchetypeModel / ARCHETYPE_MODEL_REF）在 2026-10-24 判据合一时删除，换成 operationSelectsArchetypeWireModel；宿主的 videoTransportModelIdForPlan 与渲染层 buildArchetypeInputParams 写 model 的那段已随 2026-10-16 的线上模型名 owner 删除。两个解析口原样保留、各加同一个收窄"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及第三方运行时",
+    "exit_criteria": []
+  },
+  "migration": "不迁移存量数据。存量节点：解析时按目录结果收窄，不接受档案型号名的行上残留的 archetype.variantId 不再生效（没有变体轴）。存量草稿候选里已被改写成别家 key 的：这家目录里没有这一行，归一认不出，编译拒绝并让 Agent 改选（协调 10-23 确认，不猜回原行） 判据合一（2026-10-24）不迁移：存量自建中转连接的映射里读 {{request.params.model}} 的照旧，没有声明 → 判 row。",
+  "residual_risks": [
+    "渲染层查询口在模型目录还没载入时说不清 → 档案原样（与改前一致）；发送前目录一定已载入",
+    "宿主视频候选表与通用解析器仍是两个解析口（共用收窄函数），合并另立",
+    "electron/shared/modelArchetypes/anchorPolicy.structure.test.ts 在 Windows 上因路径分隔符误报（改前同样红），与本修复无关",
+    "真上游未验证：Runway 真请求未发（假上游已核请求体），不花钱",
+    "目录行粒度是「这一行有一个模式的 op 声明就算接受」；内置目录里带变体的行逐模式都一致（2026-10-24 探针 11 行 × 32 模式），用户改过的兄弟连接映射与已声明映射混用时，那个模式的变体栏可能出现而发送发连接名（见 2026-10-16 合同残余风险）"
+  ]
+}

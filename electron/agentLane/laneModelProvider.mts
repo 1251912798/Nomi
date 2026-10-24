@@ -13,6 +13,7 @@ import { anthropicMessagesApi } from '@earendil-works/pi-ai/api/anthropic-messag
 import { z } from 'zod';
 import type { NomiModelConfig, NomiPricingBasis } from '../shared/agentLane/laneModelConfig.js';
 import { guardProviderStreams, type NomiStreamGuard } from './laneProviderGuard.mjs';
+import { applyProfileToRequestBody, getModelProfile } from '../ai/modelProfiles.js';
 
 export type { NomiStreamGuard } from './laneProviderGuard.mjs';
 
@@ -76,6 +77,28 @@ function anthropicFetch(baseURL: string, fetchRequest: NonNullable<StreamOptions
     return fetchRequest(input instanceof Request ? new Request(url, input) : url, init);
   };
   return send;
+}
+
+/**
+ * 预热协议的实现模块，只装调用方点名的那几条（pi 的 `*.lazy` 包装在第一次真发请求时才 import 它们；OpenAI 那两条带着整个 openai SDK，Anthropic 那条带着
+ * Anthropic SDK）。只装不调：有意图时的预热（electron/ai/modelCallBridge.ts 的 prewarmModelCall）用它，让第一次用文本任务不再现装 SDK。
+ *
+ * **一条一条装、中间让出主进程**：Electron 主进程里一个模块图的装载是一整段同步活，三条一起 import 就是一段约 250–500ms 的卡顿
+ * （实测，docs/evidence/2026-10-21-text-tasks-pi-ai/c6-prewarm-trigger.txt）；拆开后最长一段约 120ms（openai SDK 那条），
+ * 段与段之间 IPC、渲染层的回话都能插进来。
+ */
+export async function prewarmProviderProtocols(protocols: readonly NomiModelConfig['kind'][]): Promise<void> {
+  const load = {
+    'openai-compatible': () => import('@earendil-works/pi-ai/api/openai-completions'),
+    'openai-responses': () => import('@earendil-works/pi-ai/api/openai-responses'),
+    anthropic: () => import('@earendil-works/pi-ai/api/anthropic-messages'),
+  } satisfies Record<NomiModelConfig['kind'], () => Promise<unknown>>;
+  const yieldToMain = () => new Promise<void>((resolve) => setImmediate(resolve));
+  for (const protocol of new Set(protocols)) {
+    await yieldToMain();
+    await load[protocol]();
+  }
+  await yieldToMain();
 }
 
 /** 每百万 token 的美元价 → pi `ModelCost` 的每百万单价（`calculateCost` 自己除以 1e6）。 */
@@ -163,7 +186,10 @@ export async function createNomiProvider(input: NomiModelConfig, fetchRequest: t
         body[config.kind === 'openai-responses' ? 'max_output_tokens' : 'max_tokens'] = cap;
       }
       if (config.temperature !== undefined) body.temperature = config.temperature;
-      return (await options?.onPayload?.(body, selected)) ?? body;
+      // 模型怪癖（o1/o3 只收 temperature 1、kimi 的 enable_thinking…）只在这一处套：lane、文本任务、编译器同一份请求体规矩。
+      // 过去 lane 在自己的 rewritePayload 里套、文本任务在 ai@4 的 fetch 包装里套，两份。Anthropic 那条协议不吃这些字段。
+      const profiled = config.kind === 'anthropic' ? body : applyProfileToRequestBody(body, getModelProfile(config.modelId));
+      return (await options?.onPayload?.(profiled, selected)) ?? profiled;
     },
   });
   const base: ProviderStreams = {

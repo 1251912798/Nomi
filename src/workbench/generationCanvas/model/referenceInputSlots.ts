@@ -10,7 +10,8 @@
 // 槽位解析一律走 `resolveReferenceSlots`（显示 / 生成 / 校验共用的那一个），不另写第二份。
 import type { SpendReferenceInput } from '../../../../electron/shared/contracts/pendingSpendConfirm'
 import type { GenerationCanvasEdge, GenerationCanvasEdgeMode, GenerationCanvasNode } from './generationCanvasTypes'
-import { resolveReferenceSlots } from '../runner/referenceSlots'
+import { resolveReferencePlacement, resolveReferenceSlots } from '../runner/referenceSlots'
+import { isImageUploadSlot, withReferenceList } from '../nodes/controls/referenceList'
 import { applyArchetypeModeSwitch, referenceSlotAccept, referenceSlotStorage } from '../nodes/controls/archetypeMeta'
 import { readParameterReferenceSlots, parameterReferenceMetaPatch } from './parameterReferenceSlots'
 import { resultUrl } from '../runner/referenceUrl'
@@ -36,10 +37,15 @@ const PAIRED_ROLES: readonly ReferenceRole[] = ['character', 'reference']
  * 和 `resolveReferenceSlots` 互为逆向：摆完再解析，读回来的就是这一组。
  */
 export function placeReferenceInputs(node: GenerationCanvasNode, inputs: readonly SpendReferenceInput[]): GenerationCanvasNode {
-  const meta = { ...node.meta }
-  const slots = resolveReferenceSlots(node, [], [])
+  const meta: Record<string, unknown> = { ...node.meta }
+  const placement = resolveReferencePlacement(node, [], [])
+  const slots = placement.slots
   const parameters = readParameterReferenceSlots(meta)
+  // 图片（首帧 / 尾帧 / 参考图）住节点那一份有序参考列表（referenceList）：按槽的声明顺序排好，
+  // placeUploadedImages 会按同一顺序落回这些槽；当前方式本来就用不上的那些（未用到）接在后面，不丢。
+  const imagesBySlot: string[][] = slots.map(() => [])
   for (const slot of slots) {
+    if (isImageUploadSlot(slot.slotKind)) continue
     const storage = referenceSlotStorage({ kind: slot.slotKind })
     if (storage) meta[storage.metaKey] = storage.isArray ? [] : null
   }
@@ -51,6 +57,12 @@ export function placeReferenceInputs(node: GenerationCanvasNode, inputs: readonl
     const role = reference.role ?? 'reference'
     const slot = slots.find(slot => slot.accept.includes(kind) && referenceRoleOfSlot(slot.slotKind, slot.numbered) === role)
       ?? slots.find(slot => slot.accept.includes(kind) && PAIRED_ROLES.includes(role) && PAIRED_ROLES.includes(referenceRoleOfSlot(slot.slotKind, slot.numbered)))
+    const slotIndex = slot ? slots.indexOf(slot) : -1
+    if (slot && isImageUploadSlot(slot.slotKind)) {
+      if (slot.max === 1) imagesBySlot[slotIndex] = [input.url]
+      else imagesBySlot[slotIndex]!.push(input.url)
+      continue
+    }
     const storage = slot && referenceSlotStorage({ kind: slot.slotKind })
     if (storage) {
       if (storage.isArray) meta[storage.metaKey] = [...(Array.isArray(meta[storage.metaKey]) ? meta[storage.metaKey] as string[] : []), input.url]
@@ -60,7 +72,14 @@ export function placeReferenceInputs(node: GenerationCanvasNode, inputs: readonl
       if (parameter) Object.assign(meta, parameterReferenceMetaPatch(parameter, parameters, input.url))
     }
   }
-  return { ...node, meta }
+  if (!slots.some((slot) => isImageUploadSlot(slot.slotKind))) return { ...node, meta }
+  const placed = imagesBySlot.flat()
+  const kinds = slots.map((slot) => slot.slotKind)
+  const firstIndex = kinds.indexOf('first_frame')
+  const lastIndex = kinds.indexOf('last_frame')
+  const firstFrameEmpty = firstIndex >= 0 && lastIndex >= 0 && imagesBySlot[firstIndex]!.length === 0 && imagesBySlot[lastIndex]!.length > 0
+  const keptUnused = placement.unused.filter((url) => !placed.includes(url))
+  return { ...node, meta: withReferenceList(meta, [...placed, ...keptUnused], { firstFrameEmpty }) }
 }
 
 /** 节点自己参考槽里此刻摆着的值（当前生成方式的槽 + 参数图槽），不含连线带来的。 */

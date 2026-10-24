@@ -1,7 +1,7 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconChevronDown, IconCheck, IconLayoutDashboard } from '@tabler/icons-react'
-import { WorkbenchButton } from '../../design'
+import { IconCheck, IconLayoutDashboard } from '@tabler/icons-react'
+import { WorkbenchButton, listenOutsidePress } from '../../design'
 import { cn } from '../../utils/cn'
 import type { EditingPanelPreset, EditingPanelVisibility } from './panelLayout'
 import { useWorkbenchStore } from '../workbenchStore'
@@ -33,14 +33,11 @@ export default function EditingLayoutMenu(): JSX.Element {
 
   React.useEffect(() => {
     if (!open) return undefined
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
-    }
+    const stopListeningOutside = listenOutsidePress((target) => target instanceof Node && Boolean(rootRef.current?.contains(target)), () => setOpen(false))
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
-    window.addEventListener('pointerdown', onPointerDown)
     window.addEventListener('keydown', onKeyDown)
     return () => {
-      window.removeEventListener('pointerdown', onPointerDown)
+      stopListeningOutside()
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [open])
@@ -58,14 +55,15 @@ export default function EditingLayoutMenu(): JSX.Element {
           'hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
           open && 'bg-nomi-ink-10 text-nomi-ink',
         )}
+        iconTier="bar"
+        chevron
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('timelinePreview.previewLayout.title')}
         onClick={() => setOpen(!open)}
       >
-        <IconLayoutDashboard size={18} stroke={1.5} />
+        <IconLayoutDashboard />
         <span className="max-[1440px]:hidden">{t('timelinePreview.previewLayout.title')}</span>
-        <IconChevronDown size={12} stroke={1.5} />
       </WorkbenchButton>
       {open ? (
         <div

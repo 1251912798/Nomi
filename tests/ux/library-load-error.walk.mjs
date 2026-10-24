@@ -2,7 +2,7 @@
 // 项目库「读取失败」态走查（设计系统优化 B2）。
 //
 // 修复前的真实假象：`useLocalProjects` 只解构 `{ data, mutate }`，配 `fallbackData: []`，
-// 于是 `desktop.projects.list()` 抛错时 `projects` 仍是 `[]`，页面落进
+// 于是 `desktop.projects.listAsync()` reject 时 `projects` 仍是 `[]`，页面落进
 // `library.firstEmpty`——用户看到的是**崭新的首启空库引导屏**，读作「我的项目全没了」。
 //
 // 这条走查证三件事：
@@ -48,23 +48,21 @@ try {
   check('空态探针可证（零项目 → 首启引导屏）', true, '「还没有项目」可见')
   await screenshotSettled(win, { path: path.join(shotsDir, '01-empty-before-fault.png') })
 
-  // ── ② 注入故障：让 nomi:projects:list 这条同步 IPC 返回失败 ──
+  // ── ② 注入故障：让 nomi:projects:list-async 这条 IPC 抛错 ──
   // 注入点选在主进程 IPC 而不是渲染层改 window.nomiDesktop：contextBridge 暴露的属性
   // 不可重定义（Cannot redefine property），且从 IPC 失败起走的是**生产那条报错路径**
-  // （preload 的 invokeSync 见到 ok!==true 就 throw），比手塞一个 throw 更接近真实故障。
+  // （invoke 的 handler 抛错 → 渲染层 await 收到 rejection），比手塞一个 throw 更接近真实故障。
   const injected = await app.evaluate(({ ipcMain }) => {
-    const channel = 'nomi:projects:list'
-    globalThis.__nomiListOriginals = ipcMain.listeners(channel)
-    ipcMain.removeAllListeners(channel)
+    const channel = 'nomi:projects:list-async'
+    // Electron 没有「取回已注册 handle」的公开接口：读内部表拿到原 handler，故障关掉后原样转发。
+    const original = ipcMain._invokeHandlers?.get(channel)
     globalThis.__nomiListFault = true
-    ipcMain.on(channel, (event, ...args) => {
-      if (globalThis.__nomiListFault) {
-        event.returnValue = { ok: false, error: 'EIO: 项目索引读取失败（走查注入）' }
-        return
-      }
-      for (const handler of globalThis.__nomiListOriginals) handler(event, ...args)
+    ipcMain.removeHandler(channel)
+    ipcMain.handle(channel, (event, ...args) => {
+      if (globalThis.__nomiListFault) throw new Error('EIO: 项目索引读取失败（走查注入）')
+      return original(event, ...args)
     })
-    return globalThis.__nomiListOriginals.length
+    return original ? 1 : 0
   })
   // SWR revalidateOnFocus → 重跑 fetcher → 这次抛。
   // focus 事件有 5s 节流（SWR focusThrottleInterval 默认 5000），冷启动那一发可能已经用掉，
@@ -75,7 +73,7 @@ try {
     await win.waitForTimeout(1000)
     faultObserved = (await win.locator('[data-testid="library-load-error"]').count()) > 0
   }
-  check('故障注入成功（list() 这条 IPC 现在返回失败）', injected === 1, `原 handler 数=${injected}`)
+  check('故障注入成功（list-async 这条 IPC 现在抛错）', injected === 1, `原 handler 数=${injected}`)
   await win.waitForTimeout(600)
 
   await expectVisible(errorState, '读取失败后应出现错误态')

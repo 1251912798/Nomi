@@ -1,6 +1,6 @@
 // 真实端到端（R5 验收门 · 接模型必须验闭环）：验证 apimart 的 `gemini-3.5-flash` 在 **Nomi 自己的
 // 任务管道**上「图进 → 文字出」跑得通。裸 curl 打通不算数——那绕过了 catalog 选型、extras 归一、
-// streamTextTask 的多模态 part 拼装和 SSE 解析，这几层任一处错都会让用户侧静默失败。
+// executeTextTask 的多模态 part 拼装和 SSE 解析，这几层任一处错都会让用户侧静默失败。
 //
 // 判定四条（全中才 PASS）：
 //   ① 种子把 gemini-3.5-flash 写进了 catalog（kind=text）；

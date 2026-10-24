@@ -35,6 +35,7 @@
 | 你可能搜的词 | 规范名 | 去哪找 |
 |---|---|---|
 | agent 引擎 · runAgentChatV2 · streamText 循环 | **pi runtime**（pi SDK 0.85.1）。`runAgentChatV2` 是**已被取代**的旧名 | `electron/harness/runtime/pi/` |
+| 文本任务 · streamTextTask · 文本流 · 首字超时 · 单次调用 · single-shot · callModelOnce · ai@4 · AI SDK | **调一次模型**（唯一核心 `callModelOnce`，pi-ai 单次调用 + lane 三相看门狗）。文本任务唯一一扇门是 `executeTextTask`；`streamTextTask` / `buildAiSdkModel` / `aiSdkVendorError` 与 `ai`、`@ai-sdk/*` 依赖 2026-10-21 **已删** | `electron/agentLane/laneModelCall.mts`、`electron/textTaskRunner.ts`、`docs/plan/2026-10-21-text-tasks-to-pi-ai.md` |
 | 工具组 · toolset · skillKey 选工具 | **内部 profile 全量 + 延迟组**（#646 后不再按 capability 裁剪；工具组按 `internalGroup` 延迟披露） | `electron/agentLane/laneToolCatalog.ts` |
 | 工具定义 · tool schema · descriptor · 说明书 | **动词声明 `VerbDeclaration`**（唯一 owner；`modelToolSurfaceManifest.ts` / `agentToolCatalog.ts` / `*ModelTools.ts` / 契约 `projections` 都是 2026-09-11 **已删**的旧名） | `electron/shared/agentCapabilities/verbDeclarations.ts` |
 | 统一 agent · 跨区 agent · 常驻助手 | **R2-U1 项目级统一 Agent**（未交付） | `docs/plan/2026-08-26-pi-agent-loop-file-migration.md` §7 |

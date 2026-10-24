@@ -26,6 +26,7 @@ import type { McpConfigState, McpInfo, McpMigrationResult, McpMigrationState, Mc
 import {
   ASSISTANT_CLIENT_LABEL,
   ASSISTANT_CLIENT_ORDER,
+  resolveAssistantBrokenAction,
   resolveAssistantConnection,
   type AssistantClientKey,
   type AssistantDot,
@@ -330,11 +331,17 @@ export function ConnectAssistantCard({
     none: t('onboardingProviders.assistant.status.none'),
     checking: t('onboardingProviders.assistant.status.checking'),
   })[badge]
+  // 失效时卡头徽章 / 标题 / 主按钮做什么由共享投影按原因定：端口被占改写配置没用，主按钮就是「测试连接」，不再写「修复接入」。
+  const brokenPlan = activation.box === 'broken'
+    ? resolveAssistantBrokenAction({ staleShape: Boolean(staleShape), reason: verify?.reason ?? 'ok' })
+    : null
   const statusLabel = !hasTarget
     ? t('onboardingProviders.assistant.status.notDetected')
     : activation.box === 'none' && !info.tokenReady
       ? t('onboardingProviders.assistant.status.notReady')
-      : badgeLabel(activation.badge)
+      : brokenPlan
+        ? t(brokenPlan.badgeKey)
+        : badgeLabel(activation.badge)
 
   const clientDot = (key: ClientKey): JSX.Element | null => {
     const dot: AssistantDot = connectionOf(key).dot
@@ -377,8 +384,8 @@ export function ConnectAssistantCard({
     ? t('onboardingProviders.assistant.connect', { client: label })
     : activation.box === 'elsewhere'
       ? t('onboardingProviders.assistant.switchHere', { client: label })
-      : activation.box === 'broken'
-        ? t(staleShape ? 'onboardingProviders.assistant.upgrade' : 'onboardingProviders.assistant.repair', { client: label })
+      : brokenPlan
+        ? t(brokenPlan.labelKey, { client: label })
         : undefined
   const statusBox = (
     <AssistantStatusBox
@@ -389,13 +396,14 @@ export function ConnectAssistantCard({
       detail={brokenDetail}
       brokenCode={staleShape ? client.configState : verify?.reason ?? 'broken'}
       primaryLabel={primaryLabel}
+      brokenTitle={brokenPlan ? t(brokenPlan.titleKey) : undefined}
       verifiedToolCount={verify?.phase === 'ok' ? verify.toolCount : null}
       approvalHint={t('onboardingProviders.assistant.hostApprovalHint', { client: label })}
       test={testState}
       busy={busy}
       confirmingRevoke={confirmingRevoke}
       copied={copied === 'client'}
-      onPrimary={handleInstall}
+      onPrimary={brokenPlan?.action === 'retest' ? handleTest : handleInstall}
       onTest={handleTest}
       onRewrite={handleInstall}
       onRevoke={() => setConfirmingRevoke(true)}

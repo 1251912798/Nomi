@@ -1,0 +1,730 @@
+{
+  "how": "真 MCP stdio 服务进程（electron <repoRoot>，headless），同一份盘上旧映射夹具，网络闸只放本机；nomi_read target=models / target=model。",
+  "baselineOnMain": "main 上同一类自建中转行在能力清单里列出 standard / fast / mini 三个变体与 bytedance/seedance-2* 型号名（V-relay-wire §3）。",
+  "check": {
+    "relayRowsListed": 2,
+    "relayEntriesWithVariants": 0,
+    "foreignModelNamesInRelayEntries": []
+  },
+  "listCount": 2,
+  "relayRows": [
+    {
+      "modelId": "gpt-image-2",
+      "vendor": "local-47894",
+      "label": "gpt-image-2",
+      "kind": "image",
+      "modeIds": [
+        "t2i",
+        "i2i"
+      ],
+      "accepts": {
+        "image": true,
+        "video": false,
+        "audio": false,
+        "multiImage": true
+      },
+      "keyStatus": "ok",
+      "usable": true,
+      "statusReason": "已接入且可用"
+    },
+    {
+      "modelId": "seedance-2",
+      "vendor": "local-47894",
+      "label": "seedance-2",
+      "kind": "video",
+      "modeIds": [
+        "t2v",
+        "first",
+        "firstlast",
+        "omni"
+      ],
+      "accepts": {
+        "image": true,
+        "video": true,
+        "audio": true,
+        "multiImage": true
+      },
+      "keyStatus": "ok",
+      "usable": true,
+      "statusReason": "已接入且可用"
+    }
+  ],
+  "seedanceRowsInList": [
+    {
+      "modelId": "seedance-2",
+      "vendor": "local-47894",
+      "label": "seedance-2",
+      "kind": "video",
+      "modeIds": [
+        "t2v",
+        "first",
+        "firstlast",
+        "omni"
+      ],
+      "accepts": {
+        "image": true,
+        "video": true,
+        "audio": true,
+        "multiImage": true
+      },
+      "keyStatus": "ok",
+      "usable": true,
+      "statusReason": "已接入且可用"
+    }
+  ],
+  "relaySeedanceDetail": {
+    "modelId": "seedance-2",
+    "vendor": "local-47894",
+    "label": "seedance-2",
+    "kind": "video",
+    "modeIds": [
+      "t2v",
+      "first",
+      "firstlast",
+      "omni"
+    ],
+    "accepts": {
+      "image": true,
+      "video": true,
+      "audio": true,
+      "multiImage": true
+    },
+    "keyStatus": "ok",
+    "usable": true,
+    "statusReason": "已接入且可用",
+    "archetypeId": "seedance-2",
+    "modelAlias": "seedance-2",
+    "defaultModeId": "t2v",
+    "modes": [
+      {
+        "modeId": "t2v",
+        "vendorTerm": "文生视频",
+        "intent": "text",
+        "hint": "纯文字描述生成视频，无需参考图",
+        "consumesAnchors": [
+          "none"
+        ],
+        "params": [
+          {
+            "key": "resolution",
+            "label": "清晰度",
+            "type": "select",
+            "options": [
+              {
+                "value": "480p",
+                "label": "480p"
+              },
+              {
+                "value": "720p",
+                "label": "720p"
+              },
+              {
+                "value": "1080p",
+                "label": "1080p"
+              },
+              {
+                "value": "4k",
+                "label": "4k"
+              }
+            ],
+            "defaultValue": "720p"
+          },
+          {
+            "key": "aspect_ratio",
+            "label": "比例",
+            "type": "select",
+            "options": [
+              {
+                "value": "1:1",
+                "label": "1:1"
+              },
+              {
+                "value": "4:3",
+                "label": "4:3"
+              },
+              {
+                "value": "3:4",
+                "label": "3:4"
+              },
+              {
+                "value": "16:9",
+                "label": "16:9"
+              },
+              {
+                "value": "9:16",
+                "label": "9:16"
+              },
+              {
+                "value": "21:9",
+                "label": "21:9"
+              },
+              {
+                "value": "adaptive",
+                "label": "adaptive"
+              }
+            ],
+            "defaultValue": "16:9"
+          },
+          {
+            "key": "duration",
+            "label": "时长",
+            "type": "number",
+            "options": [],
+            "min": 4,
+            "max": 15,
+            "defaultValue": 5
+          },
+          {
+            "key": "generate_audio",
+            "label": "生成音频",
+            "type": "boolean",
+            "options": [],
+            "defaultValue": true
+          }
+        ],
+        "slots": []
+      },
+      {
+        "modeId": "first",
+        "vendorTerm": "首帧",
+        "intent": "single",
+        "hint": "单张首帧图驱动生成",
+        "consumesAnchors": [
+          "firstFrame"
+        ],
+        "params": [
+          {
+            "key": "resolution",
+            "label": "清晰度",
+            "type": "select",
+            "options": [
+              {
+                "value": "480p",
+                "label": "480p"
+              },
+              {
+                "value": "720p",
+                "label": "720p"
+              },
+              {
+                "value": "1080p",
+                "label": "1080p"
+              },
+              {
+                "value": "4k",
+                "label": "4k"
+              }
+            ],
+            "defaultValue": "720p"
+          },
+          {
+            "key": "aspect_ratio",
+            "label": "比例",
+            "type": "select",
+            "options": [
+              {
+                "value": "1:1",
+                "label": "1:1"
+              },
+              {
+                "value": "4:3",
+                "label": "4:3"
+              },
+              {
+                "value": "3:4",
+                "label": "3:4"
+              },
+              {
+                "value": "16:9",
+                "label": "16:9"
+              },
+              {
+                "value": "9:16",
+                "label": "9:16"
+              },
+              {
+                "value": "21:9",
+                "label": "21:9"
+              },
+              {
+                "value": "adaptive",
+                "label": "adaptive"
+              }
+            ],
+            "defaultValue": "16:9"
+          },
+          {
+            "key": "duration",
+            "label": "时长",
+            "type": "number",
+            "options": [],
+            "min": 4,
+            "max": 15,
+            "defaultValue": 5
+          },
+          {
+            "key": "generate_audio",
+            "label": "生成音频",
+            "type": "boolean",
+            "options": [],
+            "defaultValue": true
+          }
+        ],
+        "slots": [
+          {
+            "kind": "first_frame",
+            "label": "首帧",
+            "max": 1
+          }
+        ]
+      },
+      {
+        "modeId": "firstlast",
+        "vendorTerm": "首尾帧",
+        "intent": "firstlast",
+        "hint": "首帧 + 尾帧，过渡更可控",
+        "consumesAnchors": [
+          "firstFrame"
+        ],
+        "params": [
+          {
+            "key": "resolution",
+            "label": "清晰度",
+            "type": "select",
+            "options": [
+              {
+                "value": "480p",
+                "label": "480p"
+              },
+              {
+                "value": "720p",
+                "label": "720p"
+              },
+              {
+                "value": "1080p",
+                "label": "1080p"
+              },
+              {
+                "value": "4k",
+                "label": "4k"
+              }
+            ],
+            "defaultValue": "720p"
+          },
+          {
+            "key": "aspect_ratio",
+            "label": "比例",
+            "type": "select",
+            "options": [
+              {
+                "value": "1:1",
+                "label": "1:1"
+              },
+              {
+                "value": "4:3",
+                "label": "4:3"
+              },
+              {
+                "value": "3:4",
+                "label": "3:4"
+              },
+              {
+                "value": "16:9",
+                "label": "16:9"
+              },
+              {
+                "value": "9:16",
+                "label": "9:16"
+              },
+              {
+                "value": "21:9",
+                "label": "21:9"
+              },
+              {
+                "value": "adaptive",
+                "label": "adaptive"
+              }
+            ],
+            "defaultValue": "16:9"
+          },
+          {
+            "key": "duration",
+            "label": "时长",
+            "type": "number",
+            "options": [],
+            "min": 4,
+            "max": 15,
+            "defaultValue": 5
+          },
+          {
+            "key": "generate_audio",
+            "label": "生成音频",
+            "type": "boolean",
+            "options": [],
+            "defaultValue": true
+          }
+        ],
+        "slots": [
+          {
+            "kind": "first_frame",
+            "label": "首帧",
+            "max": 1
+          },
+          {
+            "kind": "last_frame",
+            "label": "尾帧",
+            "max": 1
+          }
+        ]
+      },
+      {
+        "modeId": "omni",
+        "vendorTerm": "全能参考",
+        "intent": "character",
+        "hint": "多模态参考；最多 9 角色 / 3 视频 / 3 音频",
+        "consumesAnchors": [
+          "character"
+        ],
+        "params": [
+          {
+            "key": "resolution",
+            "label": "清晰度",
+            "type": "select",
+            "options": [
+              {
+                "value": "480p",
+                "label": "480p"
+              },
+              {
+                "value": "720p",
+                "label": "720p"
+              },
+              {
+                "value": "1080p",
+                "label": "1080p"
+              },
+              {
+                "value": "4k",
+                "label": "4k"
+              }
+            ],
+            "defaultValue": "720p"
+          },
+          {
+            "key": "aspect_ratio",
+            "label": "比例",
+            "type": "select",
+            "options": [
+              {
+                "value": "1:1",
+                "label": "1:1"
+              },
+              {
+                "value": "4:3",
+                "label": "4:3"
+              },
+              {
+                "value": "3:4",
+                "label": "3:4"
+              },
+              {
+                "value": "16:9",
+                "label": "16:9"
+              },
+              {
+                "value": "9:16",
+                "label": "9:16"
+              },
+              {
+                "value": "21:9",
+                "label": "21:9"
+              },
+              {
+                "value": "adaptive",
+                "label": "adaptive"
+              }
+            ],
+            "defaultValue": "16:9"
+          },
+          {
+            "key": "duration",
+            "label": "时长",
+            "type": "number",
+            "options": [],
+            "min": 4,
+            "max": 15,
+            "defaultValue": 5
+          },
+          {
+            "key": "generate_audio",
+            "label": "生成音频",
+            "type": "boolean",
+            "options": [],
+            "defaultValue": true
+          }
+        ],
+        "slots": [
+          {
+            "kind": "image_ref",
+            "label": "角色参考",
+            "max": 9,
+            "characterIndexed": true
+          },
+          {
+            "kind": "video_ref",
+            "label": "参考视频",
+            "max": 3
+          },
+          {
+            "kind": "audio_ref",
+            "label": "参考音频",
+            "max": 3
+          }
+        ]
+      }
+    ]
+  },
+  "relayGptImage2Detail": {
+    "modelId": "gpt-image-2",
+    "vendor": "local-47894",
+    "label": "gpt-image-2",
+    "kind": "image",
+    "modeIds": [
+      "t2i",
+      "i2i"
+    ],
+    "accepts": {
+      "image": true,
+      "video": false,
+      "audio": false,
+      "multiImage": true
+    },
+    "keyStatus": "ok",
+    "usable": true,
+    "statusReason": "已接入且可用",
+    "archetypeId": "gpt-image-2",
+    "modelAlias": "gpt-image-2",
+    "defaultModeId": "t2i",
+    "modes": [
+      {
+        "modeId": "t2i",
+        "vendorTerm": "文生图",
+        "intent": "text",
+        "hint": "纯文字生成图像",
+        "consumesAnchors": [
+          "none"
+        ],
+        "params": [
+          {
+            "key": "aspect_ratio",
+            "label": "比例",
+            "type": "select",
+            "options": [
+              {
+                "value": "auto",
+                "label": "auto"
+              },
+              {
+                "value": "1:1",
+                "label": "1:1"
+              },
+              {
+                "value": "3:2",
+                "label": "3:2"
+              },
+              {
+                "value": "2:3",
+                "label": "2:3"
+              },
+              {
+                "value": "4:3",
+                "label": "4:3"
+              },
+              {
+                "value": "3:4",
+                "label": "3:4"
+              },
+              {
+                "value": "5:4",
+                "label": "5:4"
+              },
+              {
+                "value": "4:5",
+                "label": "4:5"
+              },
+              {
+                "value": "16:9",
+                "label": "16:9"
+              },
+              {
+                "value": "9:16",
+                "label": "9:16"
+              },
+              {
+                "value": "2:1",
+                "label": "2:1"
+              },
+              {
+                "value": "1:2",
+                "label": "1:2"
+              },
+              {
+                "value": "3:1",
+                "label": "3:1"
+              },
+              {
+                "value": "1:3",
+                "label": "1:3"
+              },
+              {
+                "value": "21:9",
+                "label": "21:9"
+              },
+              {
+                "value": "9:21",
+                "label": "9:21"
+              }
+            ],
+            "defaultValue": "auto"
+          },
+          {
+            "key": "resolution",
+            "label": "清晰度",
+            "type": "select",
+            "options": [
+              {
+                "value": "1K",
+                "label": "1K"
+              },
+              {
+                "value": "2K",
+                "label": "2K"
+              },
+              {
+                "value": "4K",
+                "label": "4K"
+              }
+            ],
+            "defaultValue": "1K"
+          }
+        ],
+        "slots": []
+      },
+      {
+        "modeId": "i2i",
+        "vendorTerm": "图生图",
+        "intent": "edit",
+        "hint": "给图 + 提示词改图",
+        "consumesAnchors": [
+          "scene"
+        ],
+        "params": [
+          {
+            "key": "aspect_ratio",
+            "label": "比例",
+            "type": "select",
+            "options": [
+              {
+                "value": "auto",
+                "label": "auto"
+              },
+              {
+                "value": "1:1",
+                "label": "1:1"
+              },
+              {
+                "value": "3:2",
+                "label": "3:2"
+              },
+              {
+                "value": "2:3",
+                "label": "2:3"
+              },
+              {
+                "value": "4:3",
+                "label": "4:3"
+              },
+              {
+                "value": "3:4",
+                "label": "3:4"
+              },
+              {
+                "value": "5:4",
+                "label": "5:4"
+              },
+              {
+                "value": "4:5",
+                "label": "4:5"
+              },
+              {
+                "value": "16:9",
+                "label": "16:9"
+              },
+              {
+                "value": "9:16",
+                "label": "9:16"
+              },
+              {
+                "value": "2:1",
+                "label": "2:1"
+              },
+              {
+                "value": "1:2",
+                "label": "1:2"
+              },
+              {
+                "value": "3:1",
+                "label": "3:1"
+              },
+              {
+                "value": "1:3",
+                "label": "1:3"
+              },
+              {
+                "value": "21:9",
+                "label": "21:9"
+              },
+              {
+                "value": "9:21",
+                "label": "9:21"
+              }
+            ],
+            "defaultValue": "auto"
+          },
+          {
+            "key": "resolution",
+            "label": "清晰度",
+            "type": "select",
+            "options": [
+              {
+                "value": "1K",
+                "label": "1K"
+              },
+              {
+                "value": "2K",
+                "label": "2K"
+              },
+              {
+                "value": "4K",
+                "label": "4K"
+              }
+            ],
+            "defaultValue": "1K"
+          }
+        ],
+        "slots": [
+          {
+            "kind": "image_ref",
+            "label": "输入图",
+            "max": 16
+          }
+        ]
+      }
+    ]
+  },
+  "netGuard": {
+    "loaded": true,
+    "blocked": 0,
+    "blockedHosts": []
+  }
+}

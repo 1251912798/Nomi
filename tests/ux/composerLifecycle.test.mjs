@@ -1,21 +1,14 @@
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
-import { afterAll, beforeAll, expect, it } from 'vitest'
+import { beforeAll, expect, it } from 'vitest'
 import { chromium } from 'playwright'
-import { createServer } from 'vite'
 import { expectAbsent, proveProbe } from './_assert.mjs'
-let server, browser, page, cacheDir
+import { useBrowserFixture } from './_browserFixture.mjs'
+const ENTRY = 'tests/ux/fixtures/composer-lifecycle-harness.html'
+const fixture = useBrowserFixture({ entries: [ENTRY], browserType: chromium })
+let page
 beforeAll(async () => {
-  cacheDir = makeTempDir('nomi-t7-vite-lifecycle-')
-  server = await createServer({ configFile: false, cacheDir, server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } })
-  await server.listen()
-  browser = await chromium.launch({ headless: true })
-  page = await browser.newPage()
-  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/composer-lifecycle-harness.html`)
+  page = await fixture.browser.newPage()
+  await page.goto(fixture.url(ENTRY))
 })
-afterAll(async () => { await browser?.close(); await server?.close(); if (cacheDir) rmSync(cacheDir, { recursive: true, force: true }) })
 it('keeps a captured gesture when focus moves between elements, but releases on window blur', async () => {
   await page.reload()
   await page.locator('#unpublished-draft').focus()

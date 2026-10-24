@@ -1,0 +1,124 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-scan-tracked-files",
+  "problem_type": "推送前扫描器把 gitignored 工作树产物当作提交内容",
+  "symptom": "check:test-copy-literals 会因 tests/ux/shots 下本机走查产物判红，而这些文件不会进入提交或 CI",
+  "direct_cause": "扫描器用 fs.readdirSync 递归读取磁盘，只靠手写目录跳过清单，不读取 git 的忽略规则",
+  "class_root": "扫描型门岗没有共享的会进提交文件清单边界",
+  "affected_population": [
+    "推送前扫描型门岗",
+    "被 .gitignore 忽略的本机走查产物",
+    "Mac 与 CI 工作树差异"
+  ],
+  "scope_paths": [
+    "scripts/lib/gitPaths.mjs",
+    "scripts/check-test-copy-literals.mjs",
+    "scripts/check-test-waits.mjs",
+    "scripts/pre-push-tracked-scan.node-test.mjs",
+    "docs/engineering/concept-owners/delivery.tracked-file-list.json"
+  ],
+  "entry_points": [
+    "check:test-copy-literals",
+    "check:test-waits"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "这是仓库推送前门岗的内部文件选择不变量，依据 git ls-files 与现有门岗实现即可判定。",
+  "invariants": [
+    "扫描输入只能来自 git ls-files --cached --others --exclude-standard -z",
+    "不在 git 仓库中必须报错，不能退回磁盘递归",
+    "索引中已跟踪但磁盘已删除的路径不得进入扫描清单"
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "scripts/check-test-copy-literals.mjs",
+      "symbol": "collectTestFiles"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/check-test-waits.mjs",
+      "symbol": "collectTestFiles"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 2,
+    "why_not": "两道门分别保留各自的文件类型筛选与规则扫描；共享的是清单边界，不是规则实现。"
+  },
+  "generality_proof": "trackedFiles 统一承接已跟踪和未忽略未跟踪文件，所有迁移的检查共享同一 fail-closed 清单，因此 ignored 产物不会进入任一检查。",
+  "shared_boundaries": [
+    {
+      "path": "scripts/lib/gitPaths.mjs",
+      "symbol": "trackedFiles",
+      "responsibility": "执行带 NUL 分隔的 git 文件清单并传播非 git 仓库错误。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "scripts/check-test-copy-literals.mjs",
+      "entry_point": "collectTestFiles",
+      "disposition": "enforced",
+      "evidence": "已改为 trackedFiles 并保留测试文件筛选。"
+    },
+    {
+      "path": "scripts/check-test-waits.mjs",
+      "entry_point": "collectTestFiles",
+      "disposition": "enforced",
+      "evidence": "已改为 trackedFiles 并保留扩展名与生成目录筛选。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "同类 check-*.mjs 与扫描守卫仍有多处目录遍历，未来新增扫描器可再次读到本机产物。",
+    "same_class_scan": [
+      "rg -n readdirSync scripts/check-*.mjs scripts/*node-test.mjs",
+      "node scripts/door-map.mjs collectTestFiles",
+      "scripts/pre-push-scan-guards.mjs 登记的扫描守卫清单"
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/lib/gitPaths.mjs",
+    "invariant": "指定推送前扫描器不得直接 readdirSync 递归仓库目录，必须调用 trackedFiles。",
+    "failure_mode": "结构测试点名并失败；trackedFiles 在非 git 仓库中直接抛错。",
+    "exception_policy": "none",
+    "strategy": "用共享 git 边界取代各自遍历，并用结构回归防止迁移对象重新写回磁盘遍历。",
+    "artifacts": [
+      "scripts/lib/gitPaths.mjs",
+      "scripts/pre-push-tracked-scan.node-test.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/pre-push-tracked-scan.node-test.mjs",
+    "scripts/check-test-waits.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/pre-push-tracked-scan.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "scripts/check-test-copy-literals.mjs",
+      "scripts/check-test-waits.mjs"
+    ],
+    "rationale": "删除两处各自的递归工作树遍历，改由共享清单承接。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "未改变第三方依赖。",
+    "exit_criteria": []
+  },
+  "migration": "现有调用签名保持不变；测试夹具改为初始化临时 git 仓库，明确非 git 仓库不再静默回退，并覆盖索引残留删除路径。",
+  "residual_risks": [
+    "CI_ONLY 与其余扫描守卫仍有目录遍历，需后续批次迁移并扩充结构门覆盖。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/lib/gitPaths.mjs",
+    "tests": [
+      "scripts/pre-push-tracked-scan.node-test.mjs"
+    ],
+    "why": "共享 git 文件清单由 trackedFiles 持有，结构测试证明 ignored 文件不进入清单。"
+  },
+  "detected_by": "ci",
+  "recurrence_check_on": "2026-10-31"
+}

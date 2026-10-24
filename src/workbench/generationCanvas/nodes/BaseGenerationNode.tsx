@@ -186,13 +186,13 @@ function BaseGenerationNodeImpl({
   const { handlePanoramaFileChange, handlePanoramaScreenshot } = useNodePanoramaHandlers(node, visualSize, reportFeedback)
   const artifactSlots = useArtifactNodeSlots(node, { reportFeedback, selected, isMultiSelectActive, readOnly }) // 手艺产物的正文/浮条归 artifact 目录
 
-  // 图片本地编辑（切图 / 裁剪 / 旋转翻转）—— A1.5 抽进 useNodeImageEditing。
-  // 图片类与素材类共用；编辑产物进入当前节点历史堆叠，并切换为主图。
+  // 图片本地编辑（切图 / 裁剪 / 旋转翻转，A1.5 抽进 useNodeImageEditing）：图片类与素材类共用，编辑产物进当前节点历史堆叠并切为主图。
   const imageEditing = useNodeImageEditing(node, visualSize, reportFeedback)
   // 面板挂载走可打断的低优先级渲染（按下即选中时同步挂面板，拖动起手实测顿 70–95 ms）：高亮与拖动先出，面板随后到，取消选中立即卸载。
   // 版本宫格铺开时不挂生成浮框（V-1054）：浮框钉在节点正下方、定宽 560，会盖住宫格下面几行；铺开 = 正在挑版本，
   // 和 09-21 结果托盘展开时卸载浮框是同一条约定（不挂才不跑）。收起宫格浮框就回来。
   const whiteboardOpen = useWhiteboardSession((state) => state.nodeId === node.id) && !readOnly
+  const [textEditing, setTextEditing] = React.useState(false) // 文本正文在编辑：格式条顶替节点浮条（同白板编辑条），两条不叠
   const versionGridOpen = showVersionCards && Boolean(node.resultStackOpen)
   const attachedPanelOpen = useHasNodeAttachedPanel(node.id) // 贴着本节点的面板（剪辑面板……）开着时生成面板收起，规矩在 nodeAttachedPanel
   const composerWanted = selected && !isMultiSelectActive && !readOnly && !versionGridOpen && !attachedPanelOpen && nodeHasGenerationComposer(node.kind)
@@ -231,7 +231,7 @@ function BaseGenerationNodeImpl({
     >
 {feedback ? <p role="status" className="absolute inset-x-0 bottom-0 z-[15] m-0 bg-nomi-paper px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
 
-      <EmptyNodeVariantToolbar nodeId={node.id} visible={selected && !isMultiSelectActive && !readOnly && !hasResult && !whiteboardOpen} />
+      <EmptyNodeVariantToolbar nodeId={node.id} visible={selected && !isMultiSelectActive && !readOnly && !hasResult && !whiteboardOpen && !textEditing} />
       {node.kind === 'panorama' && selected && !isMultiSelectActive && !readOnly && node.result?.url ? (
         <PanoramaNodeToolbar
           node={node}
@@ -302,7 +302,7 @@ function BaseGenerationNodeImpl({
       {/* 失败态：错误卡铺满节点正文（absolute inset-0 z-[5]），盖占位底纹但不挡 composer/resize/handles。 */}
       {status === 'error' && node.error ? (
         <NodeErrorReport summaryVisible={false}
-          message={node.error} meta={node.meta} nodeId={node.id}
+          message={node.error} meta={node.meta} nodeId={node.id} taskId={node.runs?.[0]?.taskId}
           onDismiss={() => useGenerationCanvasStore.getState().dismissNodeError(node.id)}
           onRetry={
             isAssetKind && node.meta?.source === 'clipboard-url'
@@ -335,7 +335,7 @@ function BaseGenerationNodeImpl({
       {isTextKind ? (
         <div className="w-full h-full">
           <React.Suspense fallback={<NodeBodyLoading />}>
-            <TextDocumentNode node={node} />
+            <TextDocumentNode node={node} onEditingChange={setTextEditing} />
           </React.Suspense>
         </div>
       ) : null}

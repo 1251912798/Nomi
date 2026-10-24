@@ -4,7 +4,11 @@
 // 推送时放行、合并时才红，是因为两边各有一套口径。判据只此一处，两边同标准。
 // 路由 / 规则与门岗范围仍在 scripts/pr-judgement-lib.mjs（本模块在它之上叠设计卡等判据，并给一个总入口 evaluatePrBody）。
 import { classCheckErrors, contractErrors, escapeIdOfPath, fixedTransitions } from './escape-ledger-lib.mjs'
-import { evaluatePrJudgement, extractSection, inferRoutes } from './pr-judgement-lib.mjs'
+import { checkPrBoardClaims, parsePrBoardClaims } from './check-board-parity.mjs'
+import { approvalCommand, boardApprovalSubject, describeBoardDiff, describeSuppressionGrowth, suppressionApprovalSubject, SUPPRESSIONS_FILE } from './lib/coordApprovals.mjs'
+import { pinScenarioPolicy } from './perf-scenarios-lib.mjs'
+import { localEvidenceInputs } from './lib/prEvidenceInputs.mjs'
+import { evaluatePrJudgement, evidenceJudgementEnforced, extractSection, inferRoutes, loadRoutingTable } from './pr-judgement-lib.mjs'
 
 /** 四类（花钱 / 长跑 / 可打断 / 新界面）——路由表里 pathRules.legacy 的那部分；files: [{ path, status }]，status 'A' = 新增。 */
 export function classifyChange(files, addedLines = '', table = undefined) {
@@ -78,12 +82,48 @@ export function resolveJudgementStage(env = process.env) {
   return env.NOMI_PR_JUDGEMENT_STAGE === 'push' ? 'push' : 'merge'
 }
 
-export function checkIndependentAcceptance(body, { stage = 'merge' } = {}) {
+/**
+ * 独立验收的结论怎么分（看报告第一行）：不通过 → fail；有条件通过 / 通过 → conditional / pass；认不出 → unknown。
+ * 通过类的结论里写着仍有未解除的阻断（「仍有阻断」「阻断：B1 …」）算 blocked——写「通过」也不能放行。
+ */
+const OPEN_BLOCKER = /(?:仍有|尚有|还有|存在|未解除的?|未关闭的?)\s*阻断|阻断\s*[:：]\s*(?!无|0|没有)\S/
+export function classifyAcceptanceVerdict(text) {
+  const t = String(text || '')
+  if (/不通过|未通过|不予通过/.test(t)) return { verdict: 'fail', blocked: true }
+  const verdict = /有条件通过/.test(t) ? 'conditional' : /通过/.test(t) ? 'pass' : 'unknown'
+  return { verdict, blocked: verdict !== 'unknown' && OPEN_BLOCKER.test(t) }
+}
+
+const ACCEPTANCE_LINK = /https?:\/\/\S+|docs\/\S+\.md|[A-Za-z]:[\\/][^\s|，,；;）)]*\.md|(?:^|\s)\/[^\s|，,；;）)]*\.md/
+const stripMark = (text) => String(text).replace(/^[\s#>*`「」-]+|[\s*`「」]+$/g, '').trim()
+const squash = (text) => String(text).replace(/[\s*#`「」>-]/g, '')
+export const shaMatches = (a, b) => {
+  const x = String(a || '').toLowerCase()
+  const y = String(b || '').toLowerCase()
+  return x.length >= 7 && y.length >= 7 && (x.startsWith(y) || y.startsWith(x))
+}
+const reportHead = (text) => (/验收\s*HEAD[^0-9a-fA-F\n]{0,12}([0-9a-f]{7,40})/i.exec(text) ?? /(?:验收头|HEAD)[^0-9a-fA-F\n]{0,12}([0-9a-f]{7,40})/i.exec(text))?.[1] ?? null
+/** 验收线编号规范化后精确比较：去掉括注 / 「·」后缀，不分大小写——不用子串（V-x 不能冒充 V-x-unrelated，S3）。 */
+const lineKey = (text) => String(text ?? '').replace(/[（(·].*$/, '').trim().toLowerCase()
+const reportVerifier = (text) => /验收线\s*[:：]\s*([^（(，,；;|\r\n]+)/.exec(text)?.[1]?.trim() ?? null
+
+/**
+ * 独立验收。旧判据只看「贴了链接 + 验收线 ≠ 实现线」——#1264 的报告结论是「不通过」时也能全绿。
+ * strict（2026-10-22 起开的 PR，evidenceJudgementEnforced）再核报告说了什么：
+ *   · 正文贴「报告首行：<报告第一行原文>」——结论必须是通过 / 有条件通过，不通过、认不出、仍有阻断都不行；
+ *   · 正文写「验收 HEAD：<提交号>」——必须等于 PR 当前 head（headSha）；head 变了就要重验；
+ *   · 读得到报告本体（readReport(引用) → 文本；null = 读不到 → 红；undefined = 这个环境不读本机报告 → 只核正文并提示本机核）时，
+ *     报告第一行要和正文贴的一致、结论过关、报告里的验收 HEAD 等于 PR head、报告里的验收线和正文一致且不等于实现线。
+ * CI 读不到协调目录的报告，所以 CI 只能核正文贴的这些；合并前扫描在协调会话本机读报告本体（scripts/merge-preflight.mjs）。
+ * 推送档（报告推送后才有）这些新增项只提醒。
+ */
+export function checkIndependentAcceptance(body, { stage = 'merge', strict = false, headSha = null, readReport = undefined, headRelation = undefined } = {}) {
   const section = extractSection(body, '独立验收')
-  if (section === null) return { ok: false, lines: [`✖ 四类改动缺 \`## 独立验收\` 一节（报告链接 + 验收线编号）${englishHeadingHint(body, '独立验收')}`] }
+  if (section === null) return { ok: false, lines: [`✖ 四类改动缺 \`## 独立验收\` 一节（报告链接 + 验收线编号${strict ? ' + 报告首行 + 验收 HEAD' : ''}）${englishHeadingHint(body, '独立验收')}`] }
   const lines = []
   let ok = true
-  if (!/https?:\/\/\S+|docs\/\S+\.md/.test(section)) {
+  const report = ACCEPTANCE_LINK.exec(section)?.[0]?.trim() ?? null
+  if (!report) {
     if (stage === 'push') lines.push('⚠ 独立验收还没有报告链接：推送时允许（报告要推送后才有），CI 的 check:pr-judgement 与合并前扫描会一直红到补上链接')
     else {
       ok = false
@@ -91,28 +131,199 @@ export function checkIndependentAcceptance(body, { stage = 'merge' } = {}) {
     }
   }
   const verifier = /验收线\s*(?:编号)?\s*[:：]\s*([^，,；;|\r\n]+)/.exec(section)
+  const implementer = implementationLine(body)
+  const verifierId = verifier ? verifier[1].trim() : null
   if (!verifier) {
     ok = false
     lines.push('✖ 独立验收没写验收线编号（格式：验收线：<编号>）')
-  } else {
-    const implementer = implementationLine(body)
-    const verifierId = verifier[1].trim()
-    if (!implementer) lines.push(`⚠ 验收线 ${verifierId}：正文里没找到实现线编号（设计卡「线/负责人」或「实现线：」），无法核对是否同一条，请人工核`)
-    else if (implementer === verifierId) {
-      ok = false
-      lines.push(`✖ 验收线编号 ${verifierId} 和实现线相同——验收必须另一条线做`)
-    } else lines.push(`✅ 验收线 ${verifierId} ≠ 实现线 ${implementer}`)
+  } else if (!implementer) lines.push(`⚠ 验收线 ${verifierId}：正文里没找到实现线编号（设计卡「线/负责人」或「实现线：」），无法核对是否同一条，请人工核`)
+  else if (lineKey(implementer) === lineKey(verifierId)) {
+    ok = false
+    lines.push(`✖ 验收线编号 ${verifierId} 和实现线相同——验收必须另一条线做`)
+  } else lines.push(`✅ 验收线 ${verifierId} ≠ 实现线 ${implementer}`)
+  if (strict) {
+    // 新增项：推送档只提醒，合并档判红
+    const flag = (message) => {
+      if (stage === 'push') lines.push(`⚠ ${message}（推送时只提醒，CI / 合并前扫描要求）`)
+      else { ok = false; lines.push(`✖ ${message}`) }
+    }
+    const first = /(?:报告首行|报告第一行|结论原文)\s*[:：]\s*(.+)/.exec(section)?.[1]
+    const quoted = first ? stripMark(first) : null
+    const claimedHead = /验收\s*HEAD\s*[:：]\s*`?([0-9a-fA-F]{7,40})/.exec(section)?.[1] ?? null
+    if (!quoted) flag('独立验收没贴报告第一行的结论原文（格式：报告首行：<原文>）——只贴链接不算实证')
+    else {
+      const verdict = classifyAcceptanceVerdict(quoted)
+      if (verdict.verdict === 'fail') flag(`独立验收的报告结论是不通过（${quoted.slice(0, 60)}）：不通过不能合`)
+      else if (verdict.verdict === 'unknown') flag(`认不出独立验收的结论（${quoted.slice(0, 60)}）：报告第一行要写 通过 / 有条件通过 / 不通过`)
+      else if (verdict.blocked) flag(`独立验收的结论里仍有未解除的阻断（${quoted.slice(0, 60)}）：阻断解除、报告更新后再合`)
+      else lines.push(`✅ 报告结论：${verdict.verdict === 'pass' ? '通过' : '有条件通过'}`)
+    }
+    // 验收的版本 vs PR 当前 head：相等；或祖先 + 之后只有干净合 main / docs/evidence 提交（headRelation，见 scripts/lib/prEvidenceInputs.mjs）
+    const versionLine = (label, sha) => {
+      if (shaMatches(sha, headSha)) return lines.push(`✅ ${label} ${sha.slice(0, 12)} = PR 当前 head`)
+      const relation = typeof headRelation === 'function' ? headRelation(sha, headSha) : undefined
+      if (relation?.ok) return lines.push(`✅ ${label} ${sha.slice(0, 12)}：${relation.note}`)
+      if (relation && relation.ok === false) return flag(`${label} ${sha.slice(0, 12)} 和 PR 当前 head ${String(headSha).slice(0, 12)} 对不上：${relation.reason}`)
+      return lines.push(`⚠ ${label} ${sha.slice(0, 12)} 不等于 PR 当前 head ${String(headSha).slice(0, 12)}，这个环境算不了历史（${relation?.reason ?? '没有历史'}）：只核了正文，是否只多了干净合 main / docs/evidence 提交由合并前扫描在本机核`)
+    }
+    if (!claimedHead) flag('独立验收没写「验收 HEAD：<提交号>」——要说清验收的是哪个版本')
+    else if (!headSha) flag('拿不到 PR 当前 head，核不了验收的是不是这一版（不拿算不出来当通过）')
+    else versionLine('验收 HEAD', claimedHead)
+    if (report) {
+      const text = typeof readReport === 'function' ? readReport(report) : undefined
+      if (text === null) flag(`独立验收的报告读不到（${report}）：读不到不能当通过——报告放仓库里，或让合并前扫描在本机读得到`)
+      else if (text === undefined) lines.push(`⚠ 报告 ${report} 在这个环境读不到：只核了正文贴的首行 / HEAD / 验收线，报告本体由合并前扫描在本机核`)
+      else {
+        const reportFirst = stripMark(text.split(/\r?\n/).find((row) => row.trim()) ?? '')
+        if (quoted && squash(reportFirst) !== squash(quoted)) flag(`正文贴的报告首行和报告本体第一行对不上（报告写的是「${reportFirst.slice(0, 60)}」）`)
+        const real = classifyAcceptanceVerdict(reportFirst)
+        if (real.verdict === 'fail') flag(`报告本体写的结论是不通过（${reportFirst.slice(0, 60)}）`)
+        else if (real.verdict === 'unknown') flag(`报告本体第一行认不出结论（${reportFirst.slice(0, 60)}）`)
+        else if (real.blocked) flag(`报告本体的结论里仍有未解除的阻断（${reportFirst.slice(0, 60)}）`)
+        const inReport = reportHead(text)
+        if (!inReport) flag('报告里没写验收 HEAD：要写清验收的是哪个版本')
+        else if (headSha) versionLine('报告里的验收 HEAD', inReport)
+        const reportLine = reportVerifier(text)
+        if (!reportLine) flag('报告里没写「验收线：<编号>」')
+        else if (verifierId && lineKey(reportLine) !== lineKey(verifierId)) flag(`报告里的验收线 ${reportLine} 和正文写的 ${verifierId} 不同`)
+        else if (implementer && lineKey(reportLine) === lineKey(implementer)) flag(`报告里的验收线 ${reportLine} 和实现线相同`)
+      }
+    }
   }
-  if (ok && lines.every((line) => !line.startsWith('✖'))) lines.unshift('✅ 独立验收：带报告链接和验收线编号')
+  if (ok && lines.every((line) => !line.startsWith('✖'))) lines.unshift(strict ? '✅ 独立验收：带报告链接、结论、验收 HEAD 和验收线编号' : '✅ 独立验收：带报告链接和验收线编号')
+  return { ok, lines }
+}
+
+/**
+ * 拍板清单的批准范围：默认全拦（2026-10-22 用户拍板方案 A，V-gates R2-B1 / R2-B2）。
+ * 板文件按 base 与 head 的整份规范化内容对比（先剥掉元素的 status / assertion / owner），任何差异——新增板、整张删板、新增 / 删除 / 改了合同的元素、
+ * 板级字段（decor / functionCensus / 设计来源 / stage 等）——都要协调确认，哈希绑整份规范化后的 head 内容。
+ * 要确认的集合由真实 diff 构造：不看正文认领了什么，也不看 PR 是不是界面改动、有没有写 `## 拍板图` 一节。
+ * CI 读不到本机确认记录，只提示「待协调确认」；合并前扫描没有记录就红。boards / baseBoards = loadManifests() 形状（对象，或返回它的函数；null = 取不到）。
+ */
+export function checkBoardContracts({ strict = false, boards = null, baseBoards = null, approvals = null } = {}) {
+  if (!strict) return { ok: true, lines: [] }
+  const resolve = (value) => (typeof value === 'function' ? value() : value)
+  const head = resolve(boards)
+  const base = resolve(baseBoards)
+  if (!head || !base) return { ok: true, lines: ['⚠ 拍板清单：取不到 PR head 或 base 上的清单，没法对比哪些板被改了（待协调确认，本机 merge-preflight 核）'] }
+  const lines = []
+  let ok = true
+  const local = approvals?.mode === 'local'
+  for (const name of [...new Set([...Object.keys(base), ...Object.keys(head)])].sort()) {
+    const subject = boardApprovalSubject(name, base[name] ?? null, head[name] ?? null)
+    if (!subject.needsApproval) continue
+    if (approvals?.lookup?.('board', name, subject.fingerprint) === true) { lines.push(`✅ 拍板图 ${name}：${describeBoardDiff(subject)}——协调已确认（哈希对上）`); continue }
+    const command = approvalCommand(approvals?.pr, 'board', name)
+    if (local) {
+      ok = false
+      lines.push(`✖ 拍板图 ${name} ${describeBoardDiff(subject)}：清单的批准身份不能由 PR 自己给，没有协调确认记录${approvals?.unavailable ? `（${approvals.unavailable}）` : ''}。协调会话确认后跑 ${command}`)
+    } else lines.push(`⚠ 拍板图 ${name} ${describeBoardDiff(subject)}：待协调确认（本机 merge-preflight 核；确认命令 ${command}）`)
+  }
+  return { ok, lines }
+}
+
+/**
+ * ESLint 批量抑制的冻结数上涨（2026-10-22 协调定，同拍板图 / 性能政策）：冻结数只许减少，涨了要协调确认，哈希绑上涨那部分 diff。
+ * 推送前（lint:changed）读本机确认记录直接判；这里给 CI 和合并前扫描：CI 读不到记录只提示「待协调确认」，合并前扫描没有记录就红。
+ * suppressions / baseSuppressions = eslint-suppressions.json 的内容（对象，或返回它的函数；null = 取不到；文件不存在 = {}）；
+ * 两个都没给（undefined）= 调用方不提供这项输入（只判别的证据的回放 / 夹具），不判。
+ */
+export function checkSuppressionContracts({ strict = false, suppressions = undefined, baseSuppressions = undefined, approvals = null } = {}) {
+  if (!strict || (suppressions === undefined && baseSuppressions === undefined)) return { ok: true, lines: [] }
+  const resolve = (value) => (typeof value === 'function' ? value() : value)
+  const head = resolve(suppressions)
+  const base = resolve(baseSuppressions)
+  if (!head || !base) {
+    // 合并前扫描在本机必须算得出：取不到不能当通过
+    if (approvals?.mode === 'local') return { ok: false, lines: [`✖ ${SUPPRESSIONS_FILE}：取不到 PR head 或 base 上的内容，没法对比冻结数`] }
+    return { ok: true, lines: [`⚠ ${SUPPRESSIONS_FILE}：取不到 PR head 或 base 上的内容，没法对比冻结数（待协调确认，本机 merge-preflight 核）`] }
+  }
+  const subject = suppressionApprovalSubject(base, head)
+  if (!subject.needsApproval) return { ok: true, lines: [] }
+  if (approvals?.lookup?.('eslint-suppressions', SUPPRESSIONS_FILE, subject.fingerprint) === true) return { ok: true, lines: [`✅ ${SUPPRESSIONS_FILE}：${describeSuppressionGrowth(subject)}——协调已确认（哈希对上）`] }
+  const command = approvalCommand(approvals?.pr, 'eslint-suppressions')
+  if (approvals?.mode === 'local') {
+    return { ok: false, lines: [`✖ ${SUPPRESSIONS_FILE}：${describeSuppressionGrowth(subject)}，没有协调确认记录${approvals?.unavailable ? `（${approvals.unavailable}）` : ''}。冻结数只许减少；确需冻进存量，协调看过 diff 后跑 ${command}`] }
+  }
+  return { ok: true, lines: [`⚠ ${SUPPRESSIONS_FILE}：${describeSuppressionGrowth(subject)}——待协调确认（本机 merge-preflight 核；确认命令 ${command}）`] }
+}
+
+/**
+ * 改界面的 PR 必须认领拍板图清单，或给已登记的例外（2026-10-22 起开的 PR，evidenceJudgementEnforced）。
+ * 旧判据：没有 `## 拍板图` 一节就当没认领、照常过——#1264 改了界面，一张清单也没有，门岗全绿。
+ *   · 路径推出「新界面 / 改交互」（inferred 里有 ui 类）才要求；不碰界面的 PR 不问；
+ *   · 认领：`- <板名>: <元素 id>, …`，每条至少一个合法的元素 id（空认领不算，V-gates B2）；板必须存在、元素必须 implemented（或带用户原话的 deferred / dropped）——同 check-board-parity 的 R8，同一份实现；
+ *   · 批准身份（V-gates B4）：认领只对 base 上已有的板和元素直接有效；PR 新增的板、或给已有板新增 / 改了合同的元素，要协调确认（approvals，哈希对上）才算。
+ *     只改实现状态（status / assertion / owner）不用确认。CI 读不到本机确认记录，只提示「待协调确认」；合并前扫描没有记录就红；
+ *   · 例外：`- 不适用：<例外 id>：<具体理由>`，例外 id 必须在路由政策表 evidenceJudgement.boardClaimExceptions 里已登记，理由至少 8 个字且不是重复字符；
+ *   · 新增了生产 .tsx（文件状态 A，含 src/design/components/**）不许用例外：新界面必须有清单；只改令牌、样式的可以用例外（V-gates B3）。
+ * boards / baseBoards = loadManifests() 形状的清单（对象，或返回它的函数；null = 取不到）：boards 是 PR head 上的，baseBoards 是 base 上的。
+ * 非严格口径（旧 PR）下只在写了认领时核认领本身，和以前一样。
+ */
+const PRODUCTION_TSX = /^src\/(?!devlab\/).*\.tsx$/
+const TEST_TSX = /(?:\.(?:test|spec)\.tsx$|(?:^|\/)__tests__\/)/
+export function checkBoardClaim(body, { inferred, files = [], strict = false, table = undefined, boards = null, baseBoards = null, approvals = null } = {}) {
+  const claims = parsePrBoardClaims(body)
+  const lines = []
+  let ok = true
+  const resolve = (value) => (typeof value === 'function' ? value() : value)
+  if (claims.length) {
+    const headBoards = resolve(boards)
+    const empty = claims.filter((claim) => !claim.ids.length)
+    if (empty.length) {
+      ok = false
+      lines.push(`✖ 拍板图认领没有元素 id：${empty.map((claim) => claim.board).join('、')}（写成 \`- <板名>: <元素 id>, …\`；空串、只有逗号 / 顿号 / 空白都不算认领）`)
+    }
+    if (headBoards) {
+      const errors = checkPrBoardClaims(body, headBoards)
+      if (errors.length) {
+        ok = false
+        lines.push(`✖ 拍板图认领未过（${errors.length} 条）：`, ...errors.map((error) => `    ✗ ${error}`))
+      } else if (!empty.length) lines.push(`✅ 拍板图：认领的元素都有去处（${claims.map((claim) => claim.board).join('、')}）`)
+    } else if (strict) lines.push('⚠ 拍板图：这个环境取不到清单目录，认领的元素没核')
+  }
+  // 清单合同的批准：真实 diff，不看认领（认领只用来关联实现验收）
+  const contracts = checkBoardContracts({ strict, boards, baseBoards, approvals })
+  lines.push(...contracts.lines)
+  ok = ok && contracts.ok
+  if (!strict) return { ok, lines }
+  const touchesUi = (inferred?.categories ?? []).some((category) => category.id === 'ui')
+  if (!touchesUi) return { ok, lines }
+  if (claims.length) return { ok, lines }
+  const registered = table?.evidenceJudgement?.boardClaimExceptions ?? []
+  const registry = registered.map((item) => `${item.id}（${item.label}）`).join('；') || '（还没有登记）'
+  const exception = /^\s*[-*]\s*不适用\s*[:：]\s*([a-z][a-z0-9-]*)\s*[:：]\s*(\S.*)$/im.exec(extractSection(body, '拍板图') ?? '')
+  // 新增的生产 .tsx 看文件状态 A（不再按目录豁免 src/design）；改令牌、样式（改动已有文件）可以用例外
+  const newUiFiles = files.filter((file) => (file.status === 'A' || file.status === 'added') && PRODUCTION_TSX.test(String(file.path).split('\\').join('/')) && !TEST_TSX.test(String(file.path))).map((file) => file.path)
+  if (!exception) {
+    lines.push(`✖ 改了界面，但 \`## 拍板图\` 既没认领清单元素（\`- <板名>: <元素 id>\`，清单在 docs/design/boards/），也没写已登记的例外（\`- 不适用：<例外 id>：<具体理由>\`）。已登记的例外：${registry}`)
+    return { ok: false, lines }
+  }
+  const [, id, reason] = exception
+  if (!registered.some((item) => item.id === id)) {
+    lines.push(`✖ 拍板图写了「不适用：${id}」，但 ${id} 不在已登记的例外里。已登记的例外：${registry}`)
+    return { ok: false, lines }
+  }
+  const compact = reason.replace(/\s/g, '')
+  if (compact.length < 8 || new Set(compact).size < 4) {
+    lines.push(`✖ 拍板图的例外「${id}」理由太空（至少 8 个字、不是重复字符，说清这次具体改了什么）`)
+    return { ok: false, lines }
+  }
+  if (newUiFiles.length) {
+    lines.push(`✖ 新增了界面文件（${newUiFiles.slice(0, 3).join('、')}${newUiFiles.length > 3 ? ' …' : ''}），新界面必须认领拍板图清单，不能用例外「${id}」`)
+    return { ok: false, lines }
+  }
+  lines.push(`✅ 拍板图：用已登记的例外「${id}」——${reason.trim().slice(0, 60)}`)
   return { ok, lines }
 }
 
 /**
  * 本 PR 动到的逃逸账本条目 → { transitions, removed }。账本一条一个文件（2026-10-07），所以只取**本 PR 改动的条目文件**
  * 在 base / head 两版，不拉整个目录。纯函数、可测：
- *   files: [{ path, status, previousPath? }]（status 用 GitHub 的 added / modified / removed / renamed，或 A / M）；
+ *   files: [{ path, status }]（status 用本地 git 的 A / D / M / T 等单字母状态）；
  *   fetch(path, side) → 文本 | null（side = 'base' | 'head'；取不到 = null）。
- * 「被删」= 条目文件在 base 有、head 没有（removed、改名的旧路径，或 head 取不到而 base 取得到）。
+ * 「被删」= 条目文件在 base 有、head 没有（D，或 head 取不到而 base 取得到）。
  * 转换怎么算只有一份实现：fixedTransitions（check:escape-ledger 同源）。
  */
 export function ledgerChanges(files, fetch) {
@@ -120,7 +331,6 @@ export function ledgerChanges(files, fetch) {
   const touched = []
   for (const file of files) {
     if (escapeIdOfPath(file.path)) touched.push({ path: file.path, status: file.status })
-    if (file.previousPath && escapeIdOfPath(file.previousPath)) touched.push({ path: file.previousPath, status: 'removed' })
   }
   const base = []
   const head = []
@@ -229,7 +439,7 @@ export function isGrandfathered({ createdAt, effectiveAt = RULES_EFFECTIVE_AT })
 }
 
 /** 正文判据的逐行输出与是否判红；renderReport（合并前）和推送前各自加抬头 / 结论。 */
-export function renderBodyLines({ classification, design, acceptance, escape, promises = { ok: true, lines: [] }, scope = { ok: true, lines: [] }, routing = { blocking: false, lines: [], ok: true }, grandfathered = false }) {
+export function renderBodyLines({ classification, design, acceptance, escape, promises = { ok: true, lines: [] }, scope = { ok: true, lines: [] }, routing = { blocking: false, lines: [], ok: true }, board = { ok: true, lines: [] }, perfPolicy = { ok: true, lines: [] }, suppressions = { ok: true, lines: [] }, grandfathered = false }) {
   const lines = []
   lines.push(classification.fourClass
     ? `· 四类：命中（${classification.classes.join('、')}）——${classification.hits.slice(0, 5).map((hit) => hit.path).join('、')}${classification.hits.length > 5 ? ' …' : ''}`
@@ -241,10 +451,14 @@ export function renderBodyLines({ classification, design, acceptance, escape, pr
   lines.push(...promises.lines)
   // 路由（功能分类 / 验收证据）：生效日之前开的 PR 已在 routing.lines 里降成警告
   lines.push(...routing.lines)
+  // 拍板图（改界面必须认领清单或给已登记的例外）：只对生效日之后的 PR 出判，旧 PR 在 evaluatePrBody 里就没有这些行
+  lines.push(...board.lines)
+  lines.push(...perfPolicy.lines)
+  lines.push(...suppressions.lines)
   // 规则与门岗的改动范围不吃「规则生效前开的 PR」那条宽限：#1032 这种回退正是旧分支带出来的。
   lines.push(...scope.lines)
   if (grandfathered) lines.push('· 这是规则生效（#961 合并）之前开的 PR：缺项只给警告，不判红')
-  const blocked = !scope.ok || !promises.ok || routing.blocking || (!grandfathered && (!design.ok || (classification.fourClass && !acceptance.ok) || !escape.ok))
+  const blocked = !scope.ok || !promises.ok || routing.blocking || !board.ok || !perfPolicy.ok || !suppressions.ok || (!grandfathered && (!design.ok || (classification.fourClass && !acceptance.ok) || !escape.ok))
   return { lines, blocked }
 }
 
@@ -264,10 +478,17 @@ export const renderReport = ({ pr, ...rest }) => mergeReport(pr, renderBodyLines
  *   createdAt: PR 创建时间（拿不到 = 不宽限，fail-closed）；enforce: 假设规则已生效（回放用）；
  *   paidStrict: 合并前扫描传 true——花钱类的 spend-paid-sample 按严格口径判（pr-judgement-lib 的 paidSampleVerdict），CI / 推送前不传。
  */
-export function evaluatePrBody({ body, files, addedLines = '', addedByFile = null, packageRemovedLines = [], contracts = [], ledger = {}, createdAt = null, enforce = false, stage = 'merge', scenarios = null, table = undefined, paidStrict = false }) {
+export function evaluatePrBody({ body, files, addedLines = '', addedByFile = null, packageRemovedLines = [], contracts = [], ledger = {}, createdAt = null, enforce = false, stage = 'merge', scenarios = null, table = undefined, paidStrict = false, evidence = undefined }) {
   const normalized = files.map((file) => ({ ...file, status: file.status === 'added' ? 'A' : file.status }))
   const withAdded = addedByFile ? normalized.map((file) => ({ ...file, added: addedByFile.get(file.path) ?? '' })) : normalized
   const classification = classifyChange(withAdded, addedLines, table)
+  // 证据判「对不对」（独立验收的报告 / HEAD、性能原始结果、拍板图）：生效日之后开的 PR；回放（enforce）按已生效。
+  // evidence = { headSha, readReport, readRaw, boards }：合并前扫描用 gh 取数注入；CI / 推送前不注入时用本地 git 的默认取法（scripts/lib/prEvidenceInputs.mjs）。
+  const policy = table ?? loadRoutingTable()
+  const strictEvidence = evidenceJudgementEnforced(policy, enforce ? null : createdAt)
+  const inputs = evidence ?? (strictEvidence ? localEvidenceInputs() : {})
+  // 性能场景的政策字段（预算 / 统计层级 / 尾部预算 / 欠账 / 基线……）不能由 PR 自己批准：判定用 base 的值，PR 改了要协调确认（V-gates B1）
+  const pinned = strictEvidence && scenarios ? pinScenarioPolicy(scenarios, inputs.approvals) : { known: scenarios, lines: [], blocked: false }
   const judgement = evaluatePrJudgement({
     body,
     files: normalized,
@@ -276,18 +497,22 @@ export function evaluatePrBody({ body, files, addedLines = '', addedByFile = nul
     packageRemovedLines,
     ledgerRemovedIds: ledger.removed ?? [],
     createdAt: enforce ? null : createdAt,
-    scenarios,
-    table,
+    scenarios: pinned.known,
+    table: policy,
     paidStrict,
+    readRaw: inputs.readRaw ?? null,
   })
   const result = renderBodyLines({
     classification,
     design: checkDesignCard(body, classification),
-    acceptance: checkIndependentAcceptance(body, { stage }),
+    acceptance: checkIndependentAcceptance(body, { stage, strict: strictEvidence, headSha: inputs.headSha ?? null, readReport: inputs.readReport, headRelation: inputs.headRelation }),
     escape: checkEscapeContract(body, contracts, ledger.transitions ?? [], ledger.ids ?? [], ledger.settledContracts ?? [], { stage, reviewed: ledger.preparedContracts ?? [] }),
     promises: checkDeferredPromises(body, { stage, createdAt, enforce }),
     scope: judgement.scope,
     routing: judgement.routing,
+    board: checkBoardClaim(body, { inferred: judgement.inferred, files: normalized, strict: strictEvidence, table: policy, boards: inputs.boards ?? null, baseBoards: inputs.baseBoards ?? null, approvals: inputs.approvals ?? null }),
+    perfPolicy: { ok: !pinned.blocked, lines: pinned.lines },
+    suppressions: checkSuppressionContracts({ strict: strictEvidence, suppressions: inputs.suppressions, baseSuppressions: inputs.baseSuppressions, approvals: inputs.approvals ?? null }),
     grandfathered: !enforce && isGrandfathered({ createdAt }),
   })
   return { ...result, classification, judgement }

@@ -8,8 +8,9 @@
 // 同一份板源在任何机器上抽出的候选 id 完全一样；候选 id 只由 DOM 序号 + 标签 + 文字片段组成。
 //
 // 用法：
-//   node scripts/board-extract.mjs            写 <Board>.candidates.json（12 张）
-//   node scripts/board-extract.mjs --check    与仓库里的 candidates.json 比对，不一致退出码 1
+//   node scripts/board-extract.mjs                         写默认 12 张板的 candidates.json
+//   node scripts/board-extract.mjs --check                 与仓库里的 candidates.json 比对
+//   node scripts/board-extract.mjs --dir <板目录> --board <板名>  抽任意日期目录的一张拼页板
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -24,7 +25,6 @@ export const BOARD_NAMES = Object.freeze([
 ])
 export const VIEWPORT = Object.freeze({ width: 1280, height: 800 })
 export const EXTRACTOR_VERSION = 'board-extract@1'
-
 // 结构性 class 词：带这些词的可见盒子（条 / 卡 / 框）也算候选，即使它自己没文字。
 const STRUCTURAL_CLASS = /(^|[\s_-])(card|bar|chip|tab|pill|btn|badge|node|group|frame|header|toolbar|panel|drawer|chrome|menu|row|strip|thumb|hint|tip|empty|action|dock|sheet|modal|dialog|pop|sidebar|nav|tray|timeline|edge|handle|composer|segment|seg|ctl|control)/i
 const INTERACTIVE_TAGS = new Set(['button', 'a', 'input', 'select', 'textarea', 'label'])
@@ -158,8 +158,8 @@ export function candidatesFileOf(board) {
   return path.join(BOARDS_DIR, `${board}.candidates.json`)
 }
 
-export function previewFileOf(board) {
-  return path.join(BOARDS_DIR, 'preview', `${board}.html`)
+export function previewFileOf(board, boardsDir = BOARDS_DIR) {
+  return path.join(boardsDir, 'preview', `${board}.html`)
 }
 
 /** 候选文件正文。sourceSha256 = 抽取时板源的哈希，门岗默认模式靠它判断板改没改（不需要重抽）。 */
@@ -186,17 +186,55 @@ async function withBrowser(fn) {
   }
 }
 
-/** 抽全部 12 张，返回 { board: candidates[] }。 */
-export async function extractAllBoards() {
+/** 抽指定目录里的拼页板，返回 { board: candidates[] }。 */
+export async function extractAllBoards(boardsDir = BOARDS_DIR, boards = BOARD_NAMES) {
   return withBrowser(async (page) => {
     const result = {}
-    for (const board of BOARD_NAMES) result[board] = await extractBoard(page, previewFileOf(board))
+    for (const board of boards) result[board] = await extractBoard(page, previewFileOf(board, boardsDir))
     return result
   })
 }
 
+/** 抽一张任意日期目录里的拼页板。 */
+export async function extractSingleBoard(boardsDir, board) {
+  return withBrowser((page) => extractBoard(page, previewFileOf(board, boardsDir)))
+}
+
+export function parseBoardArgs(argv = []) {
+  const valueAfter = (flag) => {
+    const index = argv.indexOf(flag)
+    if (index < 0) return null
+    const value = argv[index + 1]
+    if (!value || value.startsWith('--')) throw new Error(`${flag} 需要一个值`)
+    return value
+  }
+  const board = valueAfter('--board')
+  const dir = valueAfter('--dir')
+  if (dir && !board) throw new Error('--dir 必须和 --board 一起使用')
+  return { board, dir, check: argv.includes('--check') }
+}
+
+async function writeOrCheckCandidates({ boardsDir, board, candidates, check }) {
+  const rendered = renderCandidatesFile(board, candidates, hashBoardSource(boardsDir, board))
+  const file = path.join(boardsDir, `${board}.candidates.json`)
+  if (check) {
+    const committed = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
+    if (committed !== rendered) throw new Error(`${board}: candidates 与重抽结果不一致`)
+    console.log(`${board}: candidates are up to date`)
+  } else {
+    fs.writeFileSync(file, rendered)
+    console.log(`${board}: ${candidates.length} 个候选`)
+  }
+}
+
 async function main() {
-  const check = process.argv.includes('--check')
+  const { board, dir, check } = parseBoardArgs(process.argv.slice(2))
+  if (board) {
+    const boardsDir = path.resolve(dir || BOARDS_DIR)
+    const candidates = await extractSingleBoard(boardsDir, board)
+    await writeOrCheckCandidates({ boardsDir, board, candidates, check })
+    return
+  }
   const all = await extractAllBoards()
   let drift = 0
   for (const board of BOARD_NAMES) {

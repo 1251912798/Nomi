@@ -426,8 +426,8 @@ export function deriveVendorKeyFromBaseUrl(baseUrl: string): string {
  * deadlock where the doc-reader itself required a pre-existing text model).
  *
  * Reuses the SINGLE write path (commitOnboardedModelToCatalog) — N models = one
- * vendor + N model upserts. Text/chat models run via the direct AI SDK path
- * (buildAiSdkModel → createOpenAICompatible), so we deliberately emit NO HTTP
+ * vendor + N model upserts. Text/chat models run via the direct model-call path
+ * (nomiModelConfigFor → pi-ai openai-completions), so we deliberately emit NO HTTP
  * mapping here: a fabricated /chat/completions mapping would be unused dead data.
  *
  * Connectivity (P3·对齐「接入即验证」纪律，记录现状取舍——不在 commit 里做**阻断式**校验)：

@@ -78,7 +78,6 @@ const ANSWERS: Record<string, (...args: unknown[]) => unknown> = {
   'modelCatalog.listModels': (params) => MODELS.filter((row) => !(params as { kind?: string } | undefined)?.kind || row.kind === (params as { kind: string }).kind),
   'modelCatalog.listMappings': () => [],
   'modelCatalog.health': () => HEALTH,
-  'projects.list': () => PROJECTS,
   'projects.listAsync': async () => PROJECTS,
   'assets.list': async (payload) => ({
     items: [{ id: `${(payload as { projectId: string }).projectId}-a1`, projectId: (payload as { projectId: string }).projectId, name: 'a1.png', createdAt: '2026-10-01', updatedAt: '2026-10-01', data: { relativePath: 'assets/a1.png', mediaType: 'image' } }],

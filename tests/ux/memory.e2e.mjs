@@ -15,7 +15,9 @@ import { execFileSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { WebSocket } from "undici";
-import { withLinuxNoSandbox } from "./_launchApp.mjs";
+import { prepareHostConfigDir, withIsolatedHostConfig, withLinuxNoSandbox } from "./_launchApp.mjs";
+import { assertFreshBuild } from "../../scripts/package-build-stamp.mjs";
+import { killProcessTree, processTreeSpawnOptions } from "../../scripts/lib/processTree.mjs";
 
 const require = createRequire(import.meta.url);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -235,19 +237,6 @@ async function connectPageSession(port) {
   return session;
 }
 
-function killProcessTree(rootPid) {
-  if (!rootPid) return;
-  try {
-    if (process.platform === "win32") {
-      execFileSync("taskkill.exe", ["/PID", String(rootPid), "/T", "/F"], { stdio: "ignore" });
-    } else {
-      process.kill(rootPid, "SIGTERM");
-    }
-  } catch {
-    // process may already be gone
-  }
-}
-
 function prepareFixtureEnvironment() {
   if (process.env.NOMI_MEMORY_EXTERNAL === "1") {
     return {
@@ -294,19 +283,23 @@ function prepareFixtureEnvironment() {
       2,
     ),
   );
+  // 宿主配置（Claude Code / Codex …）和 Nomi 自己的目录一起隔离；规则只在启动器那一处。
+  const hostConfigDir = path.join(root, "host-config");
+  prepareHostConfigDir(hostConfigDir);
   return {
-    env: {
+    env: withIsolatedHostConfig({
       ...process.env,
       NOMI_ELECTRON_USER_DATA_DIR: settingsDir,
       NOMI_SETTINGS_DIR: settingsDir,
       NOMI_PROJECTS_DIR: projectsDir,
       NOMI_E2E_ALLOW_MULTI_INSTANCE: "1",
-    },
+    }, { hostConfigDir }),
     projectName: materialized.name,
     userDataDir: settingsDir,
   };
 }
 
+assertFreshBuild(repoRoot); // 内存量的是 dist-electron；旧构建量出来的数字不反映新代码
 const prepared = prepareFixtureEnvironment();
 const debugPort = Number(process.env.NOMI_MEMORY_DEBUG_PORT || 9333);
 const childEnv = {
@@ -318,6 +311,8 @@ const electronProcess = spawn(require("electron"), withLinuxNoSandbox(["."]), {
   cwd: repoRoot,
   env: childEnv,
   stdio: ["ignore", "ignore", "pipe"],
+  // 独立进程组：收尾按组停，Electron 的 GPU / 渲染子进程一起走
+  ...processTreeSpawnOptions(),
 });
 let stderr = "";
 electronProcess.stderr.on("data", (chunk) => {
@@ -326,6 +321,13 @@ electronProcess.stderr.on("data", (chunk) => {
 
 const rootPid = electronProcess.pid;
 let cdp = null;
+// 独立进程组收不到终端的 Ctrl-C / 关窗信号：先停 Electron 整组，再按原信号退出
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.once(signal, () => {
+    killProcessTree(electronProcess, "SIGTERM");
+    process.kill(process.pid, signal);
+  });
+}
 
 async function collect(labelName) {
   await cdp?.send("HeapProfiler.collectGarbage").catch(() => {});
@@ -498,5 +500,5 @@ try {
   }
 } finally {
   cdp?.close();
-  killProcessTree(rootPid);
+  killProcessTree(electronProcess, "SIGTERM");
 }

@@ -246,7 +246,7 @@ function AudioStripNodeImpl({ node }: Props): JSX.Element {
   if (!hasAudio) {
     return <label onPointerDownCapture={emptyActivation.onPointerDownCapture} onPointerCancelCapture={emptyActivation.onPointerCancelCapture} onClickCapture={emptyActivation.onClickCapture} className="block h-full w-full cursor-pointer bg-nomi-paper" title={t('generationCommon.audio.upload')}>
       {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
-      <NodeEmptyState compact icon={<IconWaveSine size={20} stroke={1.6} />} title={t('generationCommon.nodeEmpty.audio.title')} description={t('generationCommon.nodeEmpty.audio.description')} />
+      <NodeEmptyState strip icon={<IconWaveSine size={20} stroke={1.6} />} title={t('generationCommon.nodeEmpty.audio.title')} description={t('generationCommon.nodeEmpty.audio.description')} />
       <input disabled={!emptyActivation.canActivate} className="hidden" type="file" accept="audio/*" onChange={handleUpload} />
     </label>
   }

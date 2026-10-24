@@ -5,14 +5,14 @@
 //   底部：收起左栏（收起后只剩顶栏里一颗「展开左栏」）
 //
 // 点一项 = 从左栏右侧浮出一张抽屉卡（浮在内容上、不挤画布；点空白 / 再点同一项 / Esc 收起；右缘可拖宽）。
-// 抽屉用 Mantine Drawer（无遮罩，画布照常可点、素材可直接拖进画布）+ @mantine/hooks useClickOutside。
+// 抽屉用 Mantine Drawer（无遮罩，画布照常可点、素材可直接拖进画布）+ design 的 listenOutsidePress（点空白收起）。
 // 项目库页不放左栏（Skill / 提示词在项目库是左上页签）。左栏不放任何「我在哪」的信息（项目名只在顶栏）。
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Drawer } from '@mantine/core'
-import { useClickOutside, useWindowEvent } from '@mantine/hooks'
+import { useWindowEvent } from '@mantine/hooks'
 import { IconBooks, IconBulb, IconFileText, IconFolder, IconLayoutSidebarLeftCollapse, IconListTree, IconPlus, IconRoute } from '@tabler/icons-react'
-import { NOMI_OVERLAY_Z_INDEX, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, WorkbenchIconButton } from '../../../design'
+import { NOMI_OVERLAY_Z_INDEX, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, WorkbenchIconButton, listenOutsidePress } from '../../../design'
 import { cn } from '../../../utils/cn'
 import { lazyWithChunkBoundary } from '../../chunkBoundary'
 import { useWorkbenchStore } from '../../../workbench/workbenchStore'
@@ -87,7 +87,7 @@ function RailButton({ id, icon: Icon, active, onClick }: { id: ShellDrawerItem; 
   )
 }
 
-function DrawerBody({ item, projectId, createGroupNonce }: { item: ShellDrawerItem; projectId: string | null; createGroupNonce: number }): JSX.Element {
+function DrawerBody({ item, projectId, createGroupNonce, libraryToolbar }: { item: ShellDrawerItem; projectId: string | null; createGroupNonce: number; libraryToolbar: HTMLElement | null }): JSX.Element {
   const { t } = useTranslation()
   const categories = useWorkbenchStore((state) => state.categories)
   // 剪辑页：「目录」抽屉最上面是可拖进时间轴 / 点击追加的已出片镜头（同剪辑页左栏「镜头」页签那一格），
@@ -111,8 +111,8 @@ function DrawerBody({ item, projectId, createGroupNonce }: { item: ShellDrawerIt
             ? <AssetLibraryContent projectId={projectId} compact showHeader={false} includeAudio usageContext="timeline" />
             : <AssetLibraryContent projectId={projectId} compact showHeader={false} />)
             : item === 'flows' ? <WorkflowLibraryContent projectId={projectId} compact showHeader={false} />
-              : item === 'skills' ? <SkillLibraryContent active compact showHeader={false} />
-                : <PromptLibraryContent active compact showHeader={false} />}
+              : item === 'skills' ? <SkillLibraryContent host="drawer" toolbarHost={libraryToolbar} />
+                : <PromptLibraryContent host="drawer" toolbarHost={libraryToolbar} />}
     </React.Suspense>
   )
 }
@@ -177,13 +177,16 @@ export function ShellRail({ projectId }: { projectId: string | null }): JSX.Elem
   const [createGroupNonce, setCreateGroupNonce] = React.useState(0)
   const [railNode, setRailNode] = React.useState<HTMLElement | null>(null)
   const [drawerNode, setDrawerNode] = React.useState<HTMLElement | null>(null)
+  const [libraryToolbar, setLibraryToolbar] = React.useState<HTMLDivElement | null>(null)
   // 点空白收起；左栏自己的点击由「再点同一项」处理，不算外面。
   // 抽屉里点出的菜单 / 弹窗（portal 到 body）不算外面：它们挂着 Radix / Mantine 的弹层属性。
-  useClickOutside((event) => {
-    const target = event.target as Element | null
-    if (target?.closest?.('[role="menu"], [role="dialog"], [data-radix-popper-content-wrapper], .mantine-Popover-dropdown')) return
-    setOpen(null)
-  }, null, [railNode, drawerNode])
+  React.useEffect(() => {
+    if (!open) return undefined
+    return listenOutsidePress((target) => {
+      if (target instanceof Node && (railNode?.contains(target) || drawerNode?.contains(target))) return true
+      return target instanceof Element && Boolean(target.closest('[role="menu"], [role="dialog"], [data-radix-popper-content-wrapper], .mantine-Popover-dropdown'))
+    }, () => setOpen(null))
+  }, [open, railNode, drawerNode])
 
   // Esc 收抽屉——但抽屉上面还叠着别的弹层（素材全屏预览、确认卡…）时，这一下 Esc 归那一层，抽屉不跟着关
   // （#1136 复核实测：在素材抽屉里双击开全屏预览，按 Esc 预览和抽屉一起没了）。所以不用 Drawer 自带的 closeOnEscape。
@@ -293,10 +296,12 @@ export function ShellRail({ projectId }: { projectId: string | null }): JSX.Elem
           <header className="flex h-11 shrink-0 items-center gap-1.5 pl-4 pr-2">
             <h2 className="m-0 min-w-0 flex-1 truncate text-body-sm font-semibold text-nomi-ink">{open ? railText(t, open).label : ''}</h2>
             {headerAction}
+            {/* Skill / 提示词抽屉的导入、新建图标在标题行（拍板图 LibraryDrawers）：库内容自己 portal 进这一格。 */}
+            {open === 'skills' || open === 'prompts' ? <div ref={setLibraryToolbar} className="contents" data-library-toolbar={open} /> : null}
           </header>
           {/* 内容区沿用各库原来的面板名当无障碍名（素材库 / 流程库…）：外壳只搬容器，不改内容的身份。 */}
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden" aria-label={open ? drawerPanelLabel(t, open) : undefined}>
-            {open ? <DrawerBody item={open} projectId={projectId} createGroupNonce={createGroupNonce} /> : null}
+            {open ? <DrawerBody item={open} projectId={projectId} createGroupNonce={createGroupNonce} libraryToolbar={libraryToolbar} /> : null}
           </section>
           {open ? <DrawerResizeHandle item={open} width={width} /> : null}
         </div>

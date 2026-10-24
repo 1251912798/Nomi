@@ -1,0 +1,30 @@
+{
+  "name": "画布节点一次生成走哪扇门（文本 kind → 文本流式门，不要授权；其余 → 单镜 Run / 任务门）",
+  "subject": "canvas.generation-door",
+  "lifecycle": "execution",
+  "authority_kind": "gateway",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+    "symbol": "runCatalogGenerationTask"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "symbol": "runCatalogGenerationTask"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/ai/textEntries.ipc.integration.test.ts",
+  "allowed_consumers": [
+    "src/workbench/generationCanvas/runner/textActions.ts",
+    "src/workbench/generationCanvas/runner/imageActions.ts",
+    "src/workbench/generationCanvas/runner/videoActions.ts",
+    "src/workbench/generationCanvas/runner/audioActions.ts",
+    "src/workbench/generationCanvas/runner/model3dActions.ts"
+  ],
+  "since": "2026-10-21",
+  "notes": "合同 docs/fixes/2026-10-21-text-rewrite-routed-into-token-gate.root-cause.json：选门只看 kind，与 paidNodeLedger（文本不进 Run、不要授权）同一判断；onTextDelta 只决定增量给不给调用方看。2026-10-21 之前「没给 onTextDelta 的文本走一次性 nomi:tasks:run」，改写选区因此每次撞令牌付费闸。真入口测试从 generateText 经真 IPC、真准入走到 HTTP。"
+}

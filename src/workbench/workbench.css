@@ -120,12 +120,6 @@
   font-size: 18px;
 }
 
-.workbench-editor__content ul,
-.workbench-editor__content ol {
-  margin: 0 0 14px;
-  padding-left: 24px;
-}
-
 .workbench-editor__content blockquote {
   margin: 0 0 14px;
   padding: 8px 12px;

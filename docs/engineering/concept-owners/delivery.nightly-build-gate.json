@@ -1,0 +1,31 @@
+{
+  "name": "夜间走查构建自检与输出忽略",
+  "subject": "delivery.nightly-build-gate",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/nightly-build-gate.mjs",
+    "symbol": "runBuildGate"
+  },
+  "write_api": [
+    {
+      "path": "scripts/nightly-build-gate.mjs",
+      "symbol": "runBuildGate"
+    },
+    {
+      "path": "scripts/nightly-workflow-outputs.node-test.mjs",
+      "symbol": "夜跑工作流写文件的每个目标都被 .gitignore 忽略，写进去后 sourceIdentity 不变（防输出目录漂移身份）"
+    },
+    {
+      "path": "scripts/nightly-walk-tree-guard.mjs",
+      "symbol": "guardWalkTree"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-23",
+  "notes": "根因合同 docs/fixes/2026-10-23-nightly-build-gate.root-cause.json：夜间走查每个 job 在启动走查 / 打包冒烟之前，由 runBuildGate 跑与走查启动同一条 package-build-stamp verify，失败记一行 build-gate（退出码 97）并让 job 停下、不启动走查；工作流往仓库树里写的每个目标（日志、结果表、汇总）必须被 .gitignore 忽略，否则 build 之后源码身份漂移、整夜走查死在 assertFreshBuild——outputs 测试从工作流 yml 抽出全部写目标逐个核。构建戳的身份定义仍在 scripts/package-build-stamp.mjs，本概念只管夜跑这一层的自检与输出。 2026-10-24（根因合同 docs/fixes/2026-10-24-nightly-walk-writes-source-tree.root-cause.json）：走查自己往源码树里写东西的那一类，由 scripts/nightly-walk-tree-guard.mjs guardWalkTree 在每个走查后比对源码身份，漂了就当场判红（96）、点名改了哪些构建输入，CI 里 --restore 还原后再核一次——不再让后面整批走查连坐死在 assertFreshBuild。身份怎么算、怎么比归 delivery.build-stamp-identity。"
+}

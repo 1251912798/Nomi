@@ -249,6 +249,8 @@ export type AspectRatioPlacement = Readonly<{
   outcome: "placed" | "unsupported" | "none";
 }>;
 
+export type AspectRatioPlacementOutcome = AspectRatioPlacement["outcome"];
+
 /**
  * 分镜 / 画布落地那一层用的：把参数里的比例意图（语义槽）翻成这个模式的真实比例键与选项值。
  * 判据就是 `resolveAspectRatioChoice`（宿主翻译同一份）：写法与某档同串 → 那一档；像素档按同档挑；

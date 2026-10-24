@@ -18,14 +18,22 @@ import { uiText } from '../../ux/full-walk/invariants.mjs'
 /** 本模块提供的场景名（canvas-scale-bench 的 --scenarios 可选值的一部分）。 */
 export const WORKBENCH_SCENARIOS = Object.freeze([
   'select-composer',
+  'select-shot-table',
+  'shot-table-row-height',
   'create-node-burst',
   'switch-stages',
   'switch-canvas-list',
   'document-typing',
+  'text-node-typing',
+  'creation-ai-rewrite-result',
   'timeline-play',
   'timeline-scrub',
   'pan-while-generating',
   'pan-while-agent-streaming',
+  'library-skill-open',
+  'library-prompt-open',
+  'library-prompt-scroll',
+  'library-prompt-search',
 ])
 
 const sleep = (page, ms) => page.waitForTimeout(ms)
@@ -37,6 +45,12 @@ const quantile = (values, q) => {
 }
 const GENERATING_NODES = 6
 const LONG_DOCUMENT_PARAGRAPHS = 400
+// 画布文本节点打字：一张写了 60 段（约 3000 字）的文本节点，和规模夹具里的媒体节点同画布。
+const TEXT_NODE_ID = 'perf-text-node'
+const TEXT_NODE_PARAGRAPHS = 60
+// 写作区 AI 编辑场景：2000 段文稿，选中 180 段（约 8000 字）。
+const REWRITE_DOCUMENT_PARAGRAPHS = 2000
+const REWRITE_SELECTED_PARAGRAPHS = 180
 const STREAM_TEXT = '镜头缓缓推进，雨夜的街道上霓虹倒映在积水里，主角撑伞穿过人群。'.repeat(40)
 
 // ——— 起 App 之前：夹具补料 / 假供应商 ————————————————————————————————————————
@@ -49,6 +63,26 @@ export async function prepareWorkbenchLaunch(scenario, { fixture, root, repoRoot
   if (scenario === 'document-typing') {
     seedLongDocument(fixture)
     return { launch: {}, close: async () => {} }
+  }
+  if (scenario === 'text-node-typing') {
+    seedTextNode(fixture)
+    return { launch: {}, close: async () => {} }
+  }
+  if (scenario === 'creation-ai-rewrite-result') {
+    seedLongDocument(fixture, REWRITE_DOCUMENT_PARAGRAPHS)
+    return { launch: {}, close: async () => {} }
+  }
+  if (scenario.startsWith('library-')) {
+    // 技能库 / 提示词库（设计卡 docs/plan/2026-10-23-skill-prompt-library-layout.md ★7）：零外网（网络闸只放行本机，
+    // 远端示例媒体照样「发出去」、被闸拦下，媒体请求数照数）；提示词场景把公开库撑到最坏规模（5 个来源 × 280 = 1400 条）。
+    const settingsDir = path.join(root, 'settings')
+    fs.mkdirSync(settingsDir, { recursive: true })
+    const publicPrompts = scenario.startsWith('library-prompt') ? seedPublicPromptCache(settingsDir, repoRoot) : 0
+    return {
+      launch: { settingsDir, mainRequire: [path.join(repoRoot, 'scripts', 'walkthrough-network-guard.cjs')], env: { NOMI_TEST_NETWORK_GUARD: '1' } },
+      publicPrompts,
+      close: async () => {},
+    }
   }
   if (scenario === 'pan-while-generating' || scenario === 'pan-while-agent-streaming') {
     const settingsDir = path.join(root, 'settings')
@@ -80,16 +114,54 @@ export async function prepareWorkbenchLaunch(scenario, { fixture, root, repoRoot
 }
 
 /** 给夹具项目塞一份长文稿（约 2 万字）并设为当前文稿：「文稿里长文打字」量的就是它。 */
-function seedLongDocument(fixture) {
+function seedLongDocument(fixture, paragraphCount = LONG_DOCUMENT_PARAGRAPHS) {
   const manifest = path.join(fixture.projectRoot, '.nomi', 'project.json')
   const record = JSON.parse(fs.readFileSync(manifest, 'utf8'))
   const paragraph = (index) => ({ type: 'paragraph', content: [{ type: 'text', text: `第 ${index + 1} 段：夜里的街道，雨一直在下，霓虹灯在积水里碎成一片一片，她没有回头，伞沿压得很低。` }] })
   const document = {
     id: 'perf-long-document', version: 1, title: 'Long document', updatedAt: Date.now(),
-    contentJson: { type: 'doc', content: Array.from({ length: LONG_DOCUMENT_PARAGRAPHS }, (_, index) => paragraph(index)) },
+    contentJson: { type: 'doc', content: Array.from({ length: paragraphCount }, (_, index) => paragraph(index)) },
   }
   record.payload = { ...record.payload, workbenchDocuments: [document], activeDocumentId: document.id }
   fs.writeFileSync(manifest, JSON.stringify(record, null, 1))
+}
+
+/** 给夹具画布加一张长文本节点（约 3000 字），放在网格左侧：「画布文本节点里打字」量的就是它。 */
+function seedTextNode(fixture) {
+  const manifest = path.join(fixture.projectRoot, '.nomi', 'project.json')
+  const record = JSON.parse(fs.readFileSync(manifest, 'utf8'))
+  const paragraph = (index) => ({ type: 'paragraph', content: [{ type: 'text', text: `第 ${index + 1} 行：雨夜站台，她回头看了一眼，列车进站的灯扫过积水。` }] })
+  const canvas = record.payload.generationCanvas
+  const node = {
+    id: TEXT_NODE_ID, kind: 'text', categoryId: 'shots', title: 'Perf text', status: 'idle',
+    position: { x: -460, y: 80 }, exactPosition: true, size: { width: 360, height: 480 },
+    references: [], history: [], runs: [], meta: { userResized: true },
+    contentJson: { type: 'doc', content: Array.from({ length: TEXT_NODE_PARAGRAPHS }, (_, index) => paragraph(index)) },
+  }
+  record.payload = { ...record.payload, generationCanvas: { ...canvas, nodes: [...(canvas.nodes ?? []).filter((candidate) => candidate.id !== TEXT_NODE_ID), node] } }
+  fs.writeFileSync(manifest, JSON.stringify(record, null, 1))
+}
+
+const LIBRARY_PUBLIC_PER_SOURCE = 280
+
+/**
+ * 公开库撑到最坏规模：主进程在网络闸下返回「内置 + 地板」，地板优先读设置目录里的磁盘缓存（promptLibraryStore.ts）。
+ * 拿打包快照（5 个来源 × 30 条）按来源循环复制到每源 280 条，写成那份缓存——数据形状与线上拉回来的一致。
+ */
+function seedPublicPromptCache(settingsDir, repoRoot) {
+  const seed = JSON.parse(fs.readFileSync(path.join(repoRoot, 'electron', 'promptLibrary', 'promptLibrarySeed.json'), 'utf8'))
+  const bySource = new Map()
+  for (const prompt of seed) bySource.set(prompt.sourceId, [...(bySource.get(prompt.sourceId) ?? []), prompt])
+  const prompts = []
+  for (const [sourceId, rows] of bySource) {
+    for (let index = 0; index < LIBRARY_PUBLIC_PER_SOURCE; index += 1) {
+      const base = rows[index % rows.length]
+      const lap = Math.floor(index / rows.length)
+      prompts.push({ ...base, id: `${sourceId}-${index + 1}`, title: lap ? `${base.title} · ${lap + 1}` : base.title })
+    }
+  }
+  fs.writeFileSync(path.join(settingsDir, 'prompt-library-cache.json'), JSON.stringify({ at: Date.now(), prompts }))
+  return prompts.length
 }
 
 // ——— 场景 ——————————————————————————————————————————————————————————————
@@ -102,14 +174,22 @@ function seedLongDocument(fixture) {
  */
 export async function runWorkbenchScenario(page, scenario, ctx) {
   if (scenario === 'select-composer') return selectComposer(page, ctx)
+  if (scenario === 'select-shot-table') return selectShotTable(page, ctx)
+  if (scenario === 'shot-table-row-height') return shotTableRowHeight(page, ctx)
   if (scenario === 'create-node-burst') return createNodeBurst(page, ctx)
   if (scenario === 'switch-stages') return switchStages(page, ctx)
   if (scenario === 'switch-canvas-list') return switchCanvasList(page, ctx)
   if (scenario === 'document-typing') return documentTyping(page, ctx)
+  if (scenario === 'text-node-typing') return textNodeTyping(page, ctx)
+  if (scenario === 'creation-ai-rewrite-result') return creationAiRewriteResult(page, ctx)
   if (scenario === 'timeline-play') return timelinePlay(page, ctx)
   if (scenario === 'timeline-scrub') return timelineScrub(page, ctx)
   if (scenario === 'pan-while-generating') return panWhileGenerating(page, ctx)
   if (scenario === 'pan-while-agent-streaming') return panWhileAgentStreaming(page, ctx)
+  if (scenario === 'library-skill-open') return libraryOpen(page, ctx, 'skills')
+  if (scenario === 'library-prompt-open') return libraryOpen(page, ctx, 'prompts')
+  if (scenario === 'library-prompt-scroll') return libraryScroll(page, ctx)
+  if (scenario === 'library-prompt-search') return librarySearch(page, ctx)
   throw new Error(`未知工作台场景 ${scenario}`)
 }
 
@@ -170,6 +250,83 @@ async function selectComposer(page, ctx) {
     selected: 1,
     path: `click → composer（${target.candidates} 张可点）`,
   }
+}
+
+/** 拆解表卡头的可点位置（卡头是拖拽把手，点它只选中节点、不勾任何镜头）。 */
+async function shotTableHeaderPoint(page) {
+  return page.evaluate(() => {
+    const header = document.querySelector('article[data-kind="shot_table"] header')
+    if (!header) return null
+    const rect = header.getBoundingClientRect()
+    const x = Math.round(rect.left + rect.width * 0.6)
+    const y = Math.round(rect.top + rect.height / 2)
+    const hit = document.elementFromPoint(x, y)
+    return hit && header.contains(hit) ? { id: header.closest('article').getAttribute('data-node-id'), x, y } : null
+  })
+}
+
+/** bench 每次采样前都「适应视图」：把鼠标停在拆解表卡头上滚轮放大到工作缩放（≥0.95），和「点卡出生成框」同一种缩放。 */
+async function frameShotTable(page) {
+  const header = await page.evaluate(() => {
+    const rect = document.querySelector('article[data-kind="shot_table"] header')?.getBoundingClientRect()
+    return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null
+  })
+  if (!header) return { skipped: '画布上没有拆解表（夹具规模要用 T200）' }
+  await page.mouse.move(header.x, header.y)
+  for (let tick = 0; tick < 40; tick += 1) {
+    const zoom = await page.evaluate(() => {
+      const viewport = document.querySelector('.react-flow__viewport')
+      return viewport ? new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a : null
+    })
+    if (zoom !== null && zoom >= 0.95) break
+    await page.mouse.wheel(0, -120)
+    await sleep(page, 60)
+  }
+  await sleep(page, 500)
+  return {}
+}
+
+/** ①b 选中拆解表 → 上方浮条 + 下方拆解栏可见（拆解前选模型，2026-10-18）。夹具 T200：一张 200 镜的表 + 100 张图片卡。 */
+async function selectShotTable(page, ctx) {
+  await clearSelection(page)
+  const framed = await frameShotTable(page)
+  if (framed.skipped) return framed
+  const target = await shotTableHeaderPoint(page)
+  if (!target) return { skipped: '拆解表卡头不在视口里 / 被盖住' }
+  await armResponse(page, { predicate: 'shotTableEngaged', arg: target.id })
+  await ctx.startWindow(page)
+  await page.mouse.click(target.x, target.y)
+  const response = await takeResponse(page)
+  const raw = await ctx.stopWindow(page)
+  await clearSelection(page)
+  return { raw, responseMs: response.ms, storeWrites: response.storeWrites, selected: 1, path: 'click header → toolbar + deconstruct bar' }
+}
+
+/**
+ * ①c 拆解表行高「标准 → 大」：点浮条上的「+」到 200 行都按新行高排好。准备（选中表）与复位（点「−」回标准）不进窗口。
+ * 表身不做窗口化，行高一换 200 行全重渲——这正是要看的那一下。
+ */
+async function shotTableRowHeight(page, ctx) {
+  await clearSelection(page)
+  const framed = await frameShotTable(page)
+  if (framed.skipped) return framed
+  const target = await shotTableHeaderPoint(page)
+  if (!target) return { skipped: '拆解表卡头不在视口里 / 被盖住' }
+  await page.mouse.click(target.x, target.y)
+  const host = page.locator(`.react-flow__node[data-id="${target.id}"]`)
+  const control = host.locator('[data-shot-table-row-height]')
+  await control.waitFor({ state: 'visible', timeout: 10_000 })
+  if (await control.getAttribute('data-shot-table-row-height') !== 'standard') throw new Error('拆解表行高不是「标准」，上一次采样没复位')
+  const taller = control.locator('button').last()
+  await armResponse(page, { predicate: 'shotTableRowHeight', arg: { nodeId: target.id, step: 'large', px: 92 } })
+  await ctx.startWindow(page)
+  await taller.click()
+  const response = await takeResponse(page)
+  const raw = await ctx.stopWindow(page)
+  await control.locator('button').first().click()
+  await host.locator('[data-shot-table-row-height="standard"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await clearSelection(page)
+  return { raw, responseMs: response.ms, storeWrites: response.storeWrites, path: 'toolbar + → 200 rows at large' }
 }
 
 /** ④ 连续新建 5 张图片卡：每一下「点加节点条 → 新卡出现」，主数取最慢那一下。 */
@@ -283,6 +440,137 @@ async function documentTyping(page, ctx) {
   // 40 个字符里至少 30 个要量到「改了 DOM 再上屏」：少于这个数说明键没打进这份文稿（焦点跑了），数字不作数。
   if (keys.length < 30) return { skipped: `40 个字符只量到 ${keys.length} 次编辑器改动，键没打进文稿` }
   return { raw, responseMs: quantile(keys, 0.95), keyMaxMs: round(Math.max(...keys)), keys: keys.length, paragraphs, path: `creation document（${paragraphs} 段）` }
+}
+
+/**
+ * 画布文本节点里打字（2026-10-23 用户「文本节点感觉有点卡」）：同一个口径——每一键「keydown → 节点正文改完后再过两帧」，
+ * 连打 40 个字符（每 60ms 一个），主数取 p95。光标放进正文用编辑器自己的 focus 命令（适应视图下节点很小，点不准），
+ * 之后全是真键盘。
+ */
+async function textNodeTyping(page, ctx) {
+  const selector = `[data-node-id="${TEXT_NODE_ID}"] .ProseMirror`
+  const editor = page.locator(selector).first()
+  // 适应视图下 96 个节点走轻量渲染（canvasNodeLevelOfDetail：>80 个且缩放 <0.55），没有编辑器。
+  // 像人一样：指着这张文本节点滚轮放大到 ~1 倍，再写字。
+  const zoomOf = () => page.evaluate(() => {
+    const viewport = document.querySelector('.react-flow__viewport')
+    return viewport ? new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a : null
+  })
+  for (let tick = 0; tick < 40; tick += 1) {
+    const zoom = await zoomOf()
+    if (zoom !== null && zoom >= 0.95) break
+    const box = await page.locator(`.react-flow__node[data-id="${TEXT_NODE_ID}"]`).first().boundingBox()
+    if (!box) return { skipped: '画布上找不到长文本节点' }
+    await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, 120))
+    await page.mouse.wheel(0, -120)
+    await sleep(page, 60)
+  }
+  await editor.waitFor({ state: 'attached' })
+  const paragraphs = await editor.evaluate((element) => element.querySelectorAll(':scope > p').length)
+  if (paragraphs < TEXT_NODE_PARAGRAPHS) return { skipped: `文本节点正文只有 ${paragraphs} 段，夹具里的长文本节点没有载入（要 ${TEXT_NODE_PARAGRAPHS} 段）` }
+  await page.evaluate((query) => document.querySelector(query).editor.commands.focus('end'), selector)
+  await sleep(page, 300)
+  await page.evaluate((query) => {
+    const root = document.querySelector(query)
+    const rec = { keys: [], pending: null }
+    rec.onKey = (event) => { if (event.key.length === 1) rec.pending = event.timeStamp }
+    rec.mo = new MutationObserver(() => {
+      if (rec.pending === null) return
+      const t0 = rec.pending
+      rec.pending = null
+      requestAnimationFrame(() => requestAnimationFrame((ts) => rec.keys.push(ts - t0)))
+    })
+    rec.mo.observe(root, { childList: true, subtree: true, characterData: true })
+    document.addEventListener('keydown', rec.onKey, true)
+    window.__nomiTypingProbe = rec
+  }, selector)
+  await ctx.startWindow(page)
+  await page.keyboard.type('the rain keeps falling on the night street', { delay: 60 })
+  await sleep(page, 200)
+  const raw = await ctx.stopWindow(page)
+  const keys = await page.evaluate(() => {
+    const rec = window.__nomiTypingProbe
+    rec.mo.disconnect()
+    document.removeEventListener('keydown', rec.onKey, true)
+    return rec.keys
+  })
+  // 打完把光标挪出正文（失焦落盘），下一次采样从同样的「未编辑」状态开始。
+  await clearSelection(page)
+  if (keys.length < 30) return { skipped: `40 个字符只量到 ${keys.length} 次正文改动，键没打进文本节点` }
+  return { raw, responseMs: quantile(keys, 0.95), keyMaxMs: round(Math.max(...keys)), keys: keys.length, paragraphs, path: `canvas text node（${paragraphs} 段）` }
+}
+
+/**
+ * 写作区「选中 8000 字 → AI 编辑」：两个用户可感的时刻，主数取最慢的那个（预算同为 100ms）——
+ *   ① 点浮条上的「AI 编辑」→ 输入条出现；
+ *   ② 结果回来 → 就地画出新旧对比（划线 / 标出来 / 段尾 ✓ ✕）。
+ * 模型那一头不走（零花费）：结果由页内按编辑器自己的插件通道写入（和 controller 收到模型回包后做的是同一笔 patch 事务），
+ * 所以 ② 量的是真实的「比较 + 生成装饰 + 浏览器上屏」，不含网络。选区是真的、点击是真鼠标。
+ */
+async function creationAiRewriteResult(page, ctx) {
+  if (!ctx.state.onCreation) {
+    await switchTo(page, 'creation')
+    ctx.state.onCreation = true
+  }
+  const editor = page.locator('.workbench-creation .ProseMirror').first()
+  const paragraphs = await editor.evaluate((element) => element.querySelectorAll(':scope > p').length)
+  if (paragraphs < REWRITE_DOCUMENT_PARAGRAPHS) return { skipped: `创作页编辑器里只有 ${paragraphs} 段，长文稿没有载入（要 ${REWRITE_DOCUMENT_PARAGRAPHS} 段）` }
+  await editor.click()
+  // 上一个采样留下的选区先收起来：同一段再选一次，浮条才会重新出现。
+  await page.evaluate(() => document.querySelector('.workbench-creation .ProseMirror').editor.commands.setTextSelection(1))
+  await sleep(page, 300)
+  const selectedChars = await page.evaluate((count) => {
+    const tiptap = document.querySelector('.workbench-creation .ProseMirror').editor
+    const doc = tiptap.state.doc
+    let from = 0
+    let to = 0
+    let seen = 0
+    doc.forEach((node, offset) => {
+      seen += 1
+      if (seen === 900) from = offset + 1
+      if (seen === 900 + count - 1) to = offset + node.nodeSize - 1
+    })
+    tiptap.commands.setTextSelection({ from, to })
+    // 选区起点要在视口中间：浮条贴在选区上方，起点在屏外浮条就在屏外，真人点不到。
+    document.querySelector('.workbench-creation .ProseMirror').children[899].scrollIntoView({ block: 'center' })
+    return doc.textBetween(from, to, ' ').length
+  }, REWRITE_SELECTED_PARAGRAPHS)
+  if (selectedChars < 6000) return { skipped: `选区只有 ${selectedChars} 字，没选中预期的段落` }
+  await sleep(page, 400)
+  // ① 点「AI 编辑」。
+  await armResponse(page, { trigger: 'pointerdown', predicate: 'rewriteBarReady' })
+  await ctx.startWindow(page)
+  await page.locator('.workbench-selection-popover__tool--ai').first().click()
+  const opened = await takeResponse(page)
+  await sleep(page, 300)
+  // ② 结果回来：同一笔 patch 事务（插件通道），起表用页内自定义事件。
+  await armResponse(page, { trigger: 'nomi-perf-trigger', predicate: 'rewriteResultReady' })
+  const dispatched = await page.evaluate((runIndex) => {
+    const tiptap = document.querySelector('.workbench-creation .ProseMirror').editor
+    const plugin = tiptap.state.plugins.find((candidate) => String(candidate.key).startsWith('nomiAiRewrite'))
+    const session = plugin?.getState(tiptap.state)?.session
+    if (!session) return false
+    const result = session.original.replace(/霓虹灯/g, '灯火' + runIndex).replace(/碎成一片一片/g, '碎了').replace(/伞沿压得很低/g, '伞压得低')
+    const tr = tiptap.state.tr.setMeta(plugin.spec.key, { type: 'patch', id: session.id, patch: { status: 'result', result } })
+    document.dispatchEvent(new Event('nomi-perf-trigger'))
+    tiptap.view.dispatch(tr)
+    return true
+  }, ctx.runIndex)
+  if (!dispatched) return { skipped: '点了「AI 编辑」但没有会话（条没开起来）' }
+  const drawn = await takeResponse(page)
+  const raw = await ctx.stopWindow(page)
+  // 收尾：Esc 放弃（会话关掉），下一个采样从干净状态开始。
+  await page.keyboard.press('Escape')
+  await sleep(page, 300)
+  return {
+    raw,
+    responseMs: Math.max(opened.ms, drawn.ms),
+    openMs: opened.ms,
+    drawMs: drawn.ms,
+    selectedChars,
+    paragraphs,
+    path: `creation document（${paragraphs} 段，选 ${selectedChars} 字）→ 点 AI 编辑 / 结果上屏`,
+  }
 }
 
 async function ensurePreview(page, ctx) {
@@ -473,4 +761,142 @@ async function panWhileAgentStreaming(page, ctx) {
   // 前提：平移的那 2 秒里正文确实在往外吐（字数在涨）；吐完了才平移就不是这个场景。
   if (charsAfter - charsBefore < 100) return { skipped: `平移期间 Agent 正文只多了 ${charsAfter - charsBefore} 个字，不是在流式输出时操作` }
   return { ...result, streamedCharsDuringPan: charsAfter - charsBefore, path: 'pan while agent streaming' }
+}
+
+// ——— 技能库 / 提示词库（左栏抽屉；设计卡 ★7）——————————————————————————————————————
+
+const LIBRARY_RAIL = (item) => `[data-shell-rail-item="${item}"]`
+const LIBRARY_DRAWER = (item) => `[data-shell-drawer="${item}"]`
+const LIBRARY_QUERY = 'cinematic'
+// 滚动量的最坏情况：一个几乎人人都中的字母，所有组全部摊开（约 1400 张卡、两列 700 行），不是只露一行的首页。
+const LIBRARY_SCROLL_QUERY = 'e'
+
+/** 数这一段里浏览器发出的媒体请求（Playwright request 事件里 image / media 类型；被网络闸拦下的远端也算发出去了）。 */
+function countMediaRequests(page) {
+  const urls = []
+  const listener = (request) => {
+    const type = request.resourceType()
+    if (type === 'image' || type === 'media') urls.push(request.url())
+  }
+  page.on('request', listener)
+  return () => {
+    page.off('request', listener)
+    const remote = urls.filter((url) => /^https?:/i.test(url) && !/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])[:/]/i.test(url))
+    return { total: urls.length, remote: remote.length }
+  }
+}
+
+async function closeLibraryDrawer(page, item) {
+  if (await page.locator(LIBRARY_DRAWER(item)).count()) {
+    await page.locator(LIBRARY_RAIL(item)).first().click()
+    await page.locator(LIBRARY_DRAWER(item)).waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {})
+  }
+  await sleep(page, 300)
+}
+
+async function ensureLibraryDrawer(page, item, card) {
+  if (!(await page.locator(LIBRARY_DRAWER(item)).count())) await page.locator(LIBRARY_RAIL(item)).first().click()
+  await page.locator(`${LIBRARY_DRAWER(item)} ${card}`).first().waitFor({ timeout: 30_000 })
+}
+
+/** 抽屉里此刻挂着几张卡、几张在视口里、挂着几个媒体元素（虚拟列表只挂视口附近的；收起的组、屏外的卡不挂）。 */
+async function libraryMounted(page, item) {
+  return page.evaluate((selector) => {
+    const drawer = document.querySelector(selector)
+    const scroll = drawer?.querySelector('[data-library-scroll]')
+    const box = scroll?.getBoundingClientRect()
+    const cards = [...(drawer?.querySelectorAll('[data-skill-card], [data-prompt-card]') ?? [])]
+    const visibleCards = box ? cards.filter((card) => {
+      const rect = card.getBoundingClientRect()
+      return rect.bottom > box.top && rect.top < box.bottom
+    }).length : 0
+    return { cards: cards.length, visibleCards, media: drawer ? drawer.querySelectorAll('img[src], video[src]').length : 0 }
+  }, LIBRARY_DRAWER(item))
+}
+
+/**
+ * 点左栏「Skill」/「提示词」→ 抽屉里第一张卡可见再过两帧（responseTimer 的 libraryDrawerReady）。
+ * 这个 App 里第一次打开（拉懒加载块、读库）单独记 coldResponseMs；媒体请求数从点下去数到首屏画完后 600ms。
+ */
+async function libraryOpen(page, ctx, item) {
+  await closeLibraryDrawer(page, item)
+  const stopCounting = countMediaRequests(page)
+  await armResponse(page, { predicate: 'libraryDrawerReady', arg: item })
+  await ctx.startWindow(page)
+  await page.locator(LIBRARY_RAIL(item)).first().click()
+  const response = await takeResponse(page)
+  await sleep(page, 600)
+  const raw = await ctx.stopWindow(page)
+  const requests = stopCounting()
+  const mounted = await libraryMounted(page, item)
+  if (ctx.state.coldResponseMs === undefined) ctx.state.coldResponseMs = response.ms
+  await closeLibraryDrawer(page, item)
+  return {
+    raw,
+    responseMs: response.ms,
+    coldResponseMs: ctx.state.coldResponseMs,
+    mediaRequests: requests.total,
+    remoteMediaRequests: requests.remote,
+    mountedMedia: mounted.media,
+    mountedCards: mounted.cards,
+    visibleCards: mounted.visibleCards,
+    path: `rail → ${item} drawer${ctx.extras?.publicPrompts ? `（公开库 ${ctx.extras.publicPrompts} 条）` : ''}`,
+  }
+}
+
+/** 提示词抽屉搜索：逐键打「cinematic」，每一键「keydown → 输入框和列表都换成这一键的结果再过两帧」，主数取 p95。 */
+async function librarySearch(page, ctx) {
+  await ensureLibraryDrawer(page, 'prompts', '[data-prompt-card]')
+  const input = page.locator(`${LIBRARY_DRAWER('prompts')} input[type="search"]`).first()
+  await input.fill('')
+  await sleep(page, 400)
+  await input.click()
+  const times = []
+  let typed = ''
+  await ctx.startWindow(page)
+  for (const char of LIBRARY_QUERY) {
+    typed += char
+    await armResponse(page, { trigger: 'keydown', predicate: 'libraryQueryShown', arg: { item: 'prompts', query: typed } })
+    await page.keyboard.type(char)
+    times.push((await takeResponse(page)).ms)
+  }
+  const raw = await ctx.stopWindow(page)
+  const matchedCards = await page.locator(`${LIBRARY_DRAWER('prompts')} [data-prompt-card]`).count()
+  await input.fill('')
+  await sleep(page, 300)
+  return {
+    raw,
+    responseMs: quantile(times, 0.95),
+    keyMaxMs: round(Math.max(...times)),
+    keys: times.length,
+    matchedCards,
+    path: `prompts drawer search「${LIBRARY_QUERY}」（公开库 ${ctx.extras?.publicPrompts ?? 0} 条）`,
+  }
+}
+
+/** 提示词抽屉滚动：搜一个几乎全中的字母（所有组摊开、约 1400 张卡），在列表上滚轮往下 40 格，量帧间隔与长任务。 */
+async function libraryScroll(page, ctx) {
+  await ensureLibraryDrawer(page, 'prompts', '[data-prompt-card]')
+  const input = page.locator(`${LIBRARY_DRAWER('prompts')} input[type="search"]`).first()
+  if ((await input.inputValue()) !== LIBRARY_SCROLL_QUERY) {
+    await input.fill(LIBRARY_SCROLL_QUERY)
+    await sleep(page, 600)
+  }
+  const scroll = page.locator(`${LIBRARY_DRAWER('prompts')} [data-library-scroll]`).first()
+  await scroll.evaluate((element) => { element.scrollTop = 0 })
+  await sleep(page, 500)
+  const box = await scroll.boundingBox()
+  if (!box) return { skipped: '提示词抽屉的列表没有挂上' }
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await ctx.startWindow(page)
+  for (let step = 0; step < 40; step += 1) {
+    await page.mouse.wheel(0, 240)
+    await sleep(page, 16)
+  }
+  await sleep(page, 300)
+  const raw = await ctx.stopWindow(page)
+  const scrolledPx = await scroll.evaluate((element) => Math.round(element.scrollTop))
+  const mounted = await libraryMounted(page, 'prompts')
+  if (scrolledPx < 2000) return { skipped: `列表只滚了 ${scrolledPx}px，不是在长列表上滚` }
+  return { raw, scrolledPx, mountedCards: mounted.cards, mountedMedia: mounted.media, path: `prompts drawer scroll（搜「${LIBRARY_SCROLL_QUERY}」全部摊开，公开库 ${ctx.extras?.publicPrompts ?? 0} 条）` }
 }

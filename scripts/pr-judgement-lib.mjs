@@ -147,8 +147,8 @@ const EVIDENCE_TOKEN = [
 /** 性能场景证据的 id（2026-10-11）：不走通用的「有链接就算」，要有数字、id 在登记表里，「未验证」不算通过（docs/engineering/perf-scenarios.md）。 */
 export const PERF_EVIDENCE_ID = 'perf-scenario'
 /** 性能证据行的判据。known = knownScenarios 的结果；problems 非空（取不到 / 坏了 / 结构不合格）时，非「不适用」的性能行一律红（fail-closed）。 */
-const perfVerdictFor = (known) => (line) => {
-  const verdict = parsePerfEvidence(line, known.ids, known.byId)
+const perfVerdictFor = (known, options = {}) => (line) => {
+  const verdict = parsePerfEvidence(line, known.ids, known.byId, options)
   if (known.problems.length && verdict.ok && !verdict.notApplicable) return { ok: false, reason: `场景登记表核对不了：${known.problems.join('；')}` }
   return verdict
 }
@@ -219,10 +219,12 @@ function collectEvidence(categoryIds, table) {
 }
 
 /** `## 验收证据`：逐项对账。返回 { ok, lines, gaps }；gaps = 被「未验证」带过、且工具还没建的缺口。 */
-export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable(), createdAt = null, scenarios = null, { paidStrict = false } = {}) {
+export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable(), createdAt = null, scenarios = null, { paidStrict = false, readRaw = null } = {}) {
   // scenarios：调用方（CI / 合并前扫描）用 knownScenarios 算好的已知场景；不传 = 按当前检出（只给单测直接调用用）
   const known = scenarios ?? knownScenarios({ baseEntries: loadScenarios(repoRoot) })
   const required = requiredEvidence(categoryIds, table, createdAt)
+  // 证据判「对不对」（2026-10-22 起开的 PR）：性能证据要读原始结果、核数字，不再是「有一行就算」
+  const perfOptions = { strict: evidenceJudgementEnforced(table, createdAt), readRaw }
   const manualFull = manualFullEvidence(categoryIds, table)
   const manualNote = manualFull.length ? [`· 手动全量跑覆盖（PR 正文不要求）：${manualFull.map((item) => item.id).join('、')}`] : []
   if (required.length === 0) return { ok: true, lines: ['· 验收证据：没有类别要求证据', ...manualNote], gaps: [] }
@@ -247,7 +249,7 @@ export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable
       if (strictPaid) paidReasons.push('合并前扫描要求花钱类 PR 有一行 `spend-paid-sample：<运行号 / 报告链接>` 或 `spend-paid-sample：协调豁免：<理由>`（别名不算，未验证不算）')
       continue
     }
-    const verdicts = mine.map(strictPaid ? paidSampleVerdict : item.id === PERF_EVIDENCE_ID ? perfVerdictFor(known) : evidenceLineVerdict)
+    const verdicts = mine.map(strictPaid ? paidSampleVerdict : item.id === PERF_EVIDENCE_ID ? perfVerdictFor(known, perfOptions) : evidenceLineVerdict)
     const good = verdicts.find((verdict) => verdict.ok)
     if (!good) {
       bad.push(item)
@@ -290,6 +292,22 @@ export function checkRouting(body, inferred, table = loadRoutingTable(), created
   const card = checkRoutingCard(body, inferred, table)
   const evidence = checkRoutingEvidence(body, card.union, table, createdAt, scenarios, options)
   return { ok: card.ok && evidence.ok, lines: [...card.lines, ...evidence.lines], gaps: evidence.gaps, categories: card.union }
+}
+
+/**
+ * 证据判「对不对」的生效日（2026-10-21 起，流程试行第 3 项）：独立验收看报告结论 / 验收 HEAD / 验收线、性能证据读原始结果、改界面认领拍板图清单。
+ * 生效日写在路由政策表的 evidenceJudgement.effectiveFrom（CI 取 base 版本，PR 不能自己放宽）；此日期之前开的 PR 不追溯；
+ * 表里没有这一节 = 规则还没上线；创建时间未知 = 按生效处理（fail-closed）。
+ */
+export function evidenceJudgementEnforced(table, createdAt = null) {
+  const from = table?.evidenceJudgement?.effectiveFrom
+  if (!from) return false
+  if (!createdAt) return true
+  const created = new Date(createdAt).getTime()
+  const start = new Date(`${from}T00:00:00Z`).getTime()
+  // 日期读不懂（非法值）按已生效：不能让「写个坏日期」变成关掉严格口径的开关（S5）
+  if (!Number.isFinite(created) || !Number.isFinite(start)) return true
+  return created >= start
 }
 
 /** 生效时间：此日期之前开的 PR 只警告；创建时间未知 = 按生效处理（fail-closed）。 */
@@ -361,12 +379,12 @@ export function checkProtectedScope(body, files, { packageRemovedLines = [], led
  * CI 与合并前扫描共用的整体判据（路由 + 规则与门岗范围）。
  * 路由部分受 effectiveFrom 宽限（旧 PR 只警告）；规则与门岗范围不吃宽限——#1032 这种回退正是旧分支带出来的。
  */
-export function evaluatePrJudgement({ body, files: rawFiles, addedLines = '', addedByFile = null, packageRemovedLines = [], ledgerRemovedIds = [], createdAt = null, table = undefined, scenarios = null, paidStrict = false }) {
+export function evaluatePrJudgement({ body, files: rawFiles, addedLines = '', addedByFile = null, packageRemovedLines = [], ledgerRemovedIds = [], createdAt = null, table = undefined, scenarios = null, paidStrict = false, readRaw = null }) {
   // table 缺省 = 检出里的政策表（合并前扫描的检出即 main）；CI 必须显式传 base 上的表，PR 不能放宽自己的路由要求
   table = table ?? loadRoutingTable()
   const files = addedByFile ? rawFiles.map((file) => ({ ...file, added: addedByFile.get(file.path) ?? '' })) : rawFiles
   const inferred = inferRoutes(files, addedLines, table)
-  const routing = checkRouting(body, inferred, table, createdAt, scenarios, { paidStrict })
+  const routing = checkRouting(body, inferred, table, createdAt, scenarios, { paidStrict, readRaw })
   const enforced = routingEnforced(createdAt, table)
   const softened = enforced ? routing.lines : routing.lines.map((line) => line.replace(/^✖/, '⚠'))
   if (!enforced) softened.push(`· 这个 PR 在路由规则生效（${table.effectiveFrom}）之前开的：缺项只给警告，不判红`)

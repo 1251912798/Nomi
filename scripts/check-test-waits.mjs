@@ -15,22 +15,15 @@ import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
+import { trackedFiles } from './lib/gitPaths.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 export function collectTestFiles(root = repoRoot) {
-  const files = []
-  const walk = (dir) => {
-    if (!fs.existsSync(dir)) return
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === 'dist-electron') continue
-      const full = path.join(dir, entry.name)
-      if (entry.isDirectory()) walk(full)
-      else if (/\.(?:[cm]?[jt]sx?)$/.test(entry.name) && (full.startsWith(path.join(root, 'tests') + path.sep) || /\.(?:test|spec|node-test|walk|e2e)\./.test(entry.name) || /sweep/.test(entry.name))) files.push(full)
-    }
-  }
-  for (const dir of ['src', 'electron', 'evals', 'scripts', 'tests']) walk(path.join(root, dir))
-  return files
+  return trackedFiles({ cwd: root, roots: ['src', 'electron', 'evals', 'scripts', 'tests'] })
+    .filter((rel) => !/(^|\/)(?:node_modules|dist|dist-electron)(?:\/|$)/.test(rel))
+    .filter((rel) => /\.(?:[cm]?[jt]sx?)$/.test(rel) && (rel.startsWith('tests/') || /\.(?:test|spec|node-test|walk|e2e)\./.test(path.basename(rel)) || /sweep/.test(rel)))
+    .map((rel) => path.join(root, rel))
 }
 
 function stripComments(source) {

@@ -1,8 +1,15 @@
 // scripts/merge-preflight.mjs 的行为测试：四类判定、设计卡格子、独立验收、逃逸合同。
-// gh 调用只在 main() 里，这里测的全是纯函数，输入都是真实 PR 正文的形状。
+// 判据部分测纯函数，输入都是真实 PR 正文的形状；取数部分（main()）用临时 git 仓库当 GitHub，端到端跑。
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
+
+import { cleanupTestTemp, makeTempDir } from './_test-temp.mjs'
 import { fixedTransitions } from './escape-ledger-lib.mjs'
+import { prChanges } from './lib/prChanges.mjs'
 import {
   checkDesignCard,
   checkEscapeContract,
@@ -15,7 +22,9 @@ import {
   renderReport,
   resolveJudgementStage,
 } from './pr-body-criteria.mjs'
-import { checkProtectedScope, escapeLedgerFromTree, extractSection, main as preflightMain, parsePullFileRows } from './merge-preflight.mjs'
+import { checkProtectedScope, extractSection, main as preflightMain } from './merge-preflight.mjs'
+
+const here = path.dirname(fileURLToPath(import.meta.url))
 
 const FULL_CARD = [
   '## 设计卡',
@@ -260,33 +269,17 @@ test('报告：规则与门岗范围红了，规则生效前开的 PR 也不放�
   assert.match(report.text, /✖ 碰到规则/)
 })
 
-test('分页文件表：超过 100 个文件也全收，账本排在后面照样认得出（#1048 有 129 个文件曾被截断）', () => {
-  const rows = Array.from({ length: 129 }, (_, i) => `src/f${String(i).padStart(3, '0')}.ts\tmodified\t1\t0`)
-  rows.push('tests/ux/full-walk/escapeLedger/LAW12-a.json\tadded\t20\t0', 'docs/old.md\tremoved\t0\t9')
-  const parsed = parsePullFileRows(rows.join('\n') + '\n')
-  assert.equal(parsed.length, 131)
-  assert.ok(parsed.some((row) => row.path === 'tests/ux/full-walk/escapeLedger/LAW12-a.json'))
-  assert.deepEqual(parsed.at(-1), { path: 'docs/old.md', status: 'removed', additions: 0, deletions: 9 })
-  assert.deepEqual(parsePullFileRows(''), [])
-  // 改名行带旧路径（jq 输出第五列）；没改名时第五列是空串，不出 previousPath
-  assert.deepEqual(parsePullFileRows('tests/ux/full-walk/escapeLedger/LAW12-b.json\trenamed\t0\t0\ttests/ux/full-walk/escapeLedger/LAW12-a.json\n'),
-    [{ path: 'tests/ux/full-walk/escapeLedger/LAW12-b.json', status: 'renamed', additions: 0, deletions: 0, previousPath: 'tests/ux/full-walk/escapeLedger/LAW12-a.json' }])
-  assert.deepEqual(parsePullFileRows('src/a.ts\tmodified\t1\t0\t\n'), [{ path: 'src/a.ts', status: 'modified', additions: 1, deletions: 0 }])
-})
-
-test('逃逸账本一条一个文件：只取本 PR 动到的条目文件的两版；转 fixed、被删、改名都认得出，别的文件不去取', () => {
+test('逃逸账本一条一个文件：只取本 PR 动到的条目文件的两版；转 fixed、被删都认得出，别的文件不去取', () => {
   const dir = 'tests/ux/full-walk/escapeLedger'
   const versions = {
     base: {
       [`${dir}/FB-a.json`]: { id: 'FB-a', status: 'reviewed' },
       [`${dir}/FB-b.json`]: { id: 'FB-b', status: 'candidate' },
       [`${dir}/FB-c.json`]: { id: 'FB-c', status: 'candidate' },
-      [`${dir}/FB-old.json`]: { id: 'FB-old', status: 'candidate' },
     },
     head: {
       [`${dir}/FB-a.json`]: { id: 'FB-a', status: 'fixed' },
       [`${dir}/FB-new.json`]: { id: 'FB-new', status: 'fixed' },
-      [`${dir}/FB-renamed.json`]: { id: 'FB-renamed', status: 'candidate' },
     },
   }
   const fetched = []
@@ -299,12 +292,11 @@ test('逃逸账本一条一个文件：只取本 PR 动到的条目文件的两�
     { path: `${dir}/FB-a.json`, status: 'modified' },
     { path: `${dir}/FB-new.json`, status: 'added' },
     { path: `${dir}/FB-b.json`, status: 'removed' },
-    { path: `${dir}/FB-renamed.json`, status: 'renamed', previousPath: `${dir}/FB-old.json` },
     { path: `${dir}/${'_meta.json'}`, status: 'modified' },
     { path: 'src/other.ts', status: 'modified' },
   ], fetch)
   assert.deepEqual(result.transitions.sort(), ['FB-a', 'FB-new'])
-  assert.deepEqual(result.removed.sort(), ['FB-b', 'FB-old'])
+  assert.deepEqual(result.removed.sort(), ['FB-b'])
   assert.ok(!fetched.some((key) => key.includes('FB-c') || key.includes('src/other') || key.includes('_meta')), `不该取没动的文件：${fetched.join(', ')}`)
   assert.ok(!fetched.includes(`base:${dir}/FB-new.json`), '新增的条目不去取 base')
   assert.ok(!fetched.includes(`head:${dir}/FB-b.json`), '删掉的条目不去取 head')
@@ -314,93 +306,205 @@ test('逃逸账本一条一个文件：只取本 PR 动到的条目文件的两�
   assert.deepEqual(ledgerChanges([{ path: 'src/a.ts', status: 'M' }], fetch), { transitions: [], removed: [] })
 })
 
-test('判已结账合同：一次 GraphQL 取回的目录按同一套规则组装成账本；缺 _meta / 文件名和 id 对不上 → 取不到（null）', () => {
-  const file = 'docs/fixes/2026-10-06-capability-unavailable-dead-end.root-cause.json'
-  const blob = (value) => ({ text: JSON.stringify(value) })
-  const tree = [
-    { name: '_meta.json', object: blob({ $schemaVersion: 1 }) },
-    { name: 'FB-a.json', object: blob({ id: 'FB-a', since: '2026-10-06', status: 'fixed', rootCauseContract: file }) },
-    { name: 'FB-b.json', object: blob({ id: 'FB-b', since: '2026-10-05', status: 'reviewed' }) },
-  ]
-  const ledger = escapeLedgerFromTree(tree)
-  assert.deepEqual(ledger.entries.map((entry) => entry.id), ['FB-b', 'FB-a'])
-  assert.deepEqual(settledContracts(ledger), [file])
-  assert.equal(escapeLedgerFromTree(tree.slice(1)), null)
-  assert.equal(escapeLedgerFromTree([...tree, { name: 'FB-c.json', object: blob({ id: 'FB-x' }) }]), null)
-  assert.equal(escapeLedgerFromTree(undefined), null)
-})
-
-// ── 取数失败 = 没有结论（2026-10-11，#1166：文件表分页偶发失败 → 退回只含前 100 个文件的 view.files →
-//    账本条目排在 100 名之后 → 误判「没转 fixed」；下一轮取数成功又判通过并合入）。
-//    用假 gh 驱动 main()：同一 PR、同一 head，只有「文件表那一次请求」成败不同。
-const LEDGER = 'tests/ux/full-walk/escapeLedger/FB-x.json'
+// ── 取数只走本地 git（2026-10-24）：GitHub 的 PR diff 超过 300 个文件就 HTTP 406（#1269 改了 321 个，扫描只能打「取不到 PR diff」），
+//    文件表 / 列目录 / GraphQL / compare 也各有上限——现在文件表、新增行、文件内容、merge-base 全在本地对 fetch 到的提交算。
+//    这里用临时仓库当 GitHub：裸仓库当 origin（refs/heads/main + refs/pull/7/head），一个空仓库当协调会话的检出（main() 在里面 fetch）；
+//    假 gh 只认 pr view——pr diff 照真 GitHub 那样报 406，别的（api / graphql / compare / contents）一律报错，证明实现不再走它们。
+const PR = '7'
+const LEDGER_DIR = 'tests/ux/full-walk/escapeLedger'
+const LEDGER = `${LEDGER_DIR}/FB-x.json`
 const CONTRACT = 'docs/fixes/x.root-cause.json'
-const b64 = (value) => Buffer.from(JSON.stringify(value)).toString('base64')
+const runGit = (cwd, args) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] })
 
-function fakeGh({ failFiles = false, failDiff = false, failContract = false, body = '## 设计卡\n', extraRows = [] } = {}) {
-  const fileRows = [...Array.from({ length: 120 }, (_, i) => `src/f${i}.ts\tmodified\t1\t0\t`), `${CONTRACT}\tadded\t9\t0\t`, `${LEDGER}\tmodified\t2\t1\t`, ...extraRows]
+/** base / head：{ 路径: 文本 | 对象（写成 JSON） | null（在 head 里删掉） }。返回 { git, root, origin, baseSha, headSha }。 */
+function prRepo(t, { base = {}, head = {} } = {}) {
+  const dir = makeTempDir('merge-preflight-')
+  t.after(() => cleanupTestTemp(dir))
+  const origin = path.join(dir, 'origin.git')
+  const work = path.join(dir, 'work')
+  const local = path.join(dir, 'local')
+  runGit(dir, ['init', '-q', '--bare', origin])
+  runGit(dir, ['init', '-q', work])
+  for (const [key, value] of [['user.email', 't@t'], ['user.name', 't'], ['commit.gpgsign', 'false']]) runGit(work, ['config', key, value])
+  const commit = (files, message) => {
+    for (const [rel, content] of Object.entries(files)) {
+      const abs = path.join(work, rel)
+      if (content === null) { fs.rmSync(abs, { force: true }); continue }
+      fs.mkdirSync(path.dirname(abs), { recursive: true })
+      fs.writeFileSync(abs, typeof content === 'string' ? content : `${JSON.stringify(content, null, 2)}\n`)
+    }
+    runGit(work, ['add', '-A'])
+    runGit(work, ['commit', '-q', '--allow-empty', '-m', message])
+    return runGit(work, ['rev-parse', 'HEAD']).trim()
+  }
+  const baseSha = commit({ 'README.md': 'base\n', ...base }, 'base')
+  runGit(work, ['push', '-q', origin, 'HEAD:refs/heads/main'])
+  const headSha = commit(head, 'pr')
+  runGit(work, ['push', '-q', origin, `HEAD:refs/pull/${PR}/head`])
+  runGit(dir, ['init', '-q', local])
+  runGit(local, ['remote', 'add', 'origin', origin])
+  return { git: (args) => runGit(local, args), root: local, origin, baseSha, headSha }
+}
+
+function fakeGh({ headRefOid, body = '## 设计卡\n', createdAt = '2026-10-10T00:00:00Z' }) {
   const calls = []
   const exec = (args) => {
     const line = args.join(' ')
     calls.push(line)
-    if (line.startsWith('pr view')) {
-      // 真 gh：files 字段最多 100 个。这里故意带上，证明实现不再读它。
-      return JSON.stringify({ body, headRefOid: 'a'.repeat(40), baseRefName: 'main', headRepository: { name: 'r' }, headRepositoryOwner: { login: 'o' }, createdAt: '2026-10-10T00:00:00Z', files: fileRows.slice(0, 100).map((row) => ({ path: row.split('\t')[0], additions: 1, deletions: 0 })) })
-    }
-    if (line.includes('/pulls/7/files')) {
-      if (failFiles) throw new Error('HTTP 502 retried 3 times')
-      return fileRows.join('\n')
-    }
-    if (line.startsWith('pr diff')) {
-      if (failDiff) throw new Error('diff too large')
-      return ''
-    }
-    if (line.includes('/compare/')) return 'b'.repeat(40)
-    if (line.includes(`contents/${CONTRACT}`)) {
-      if (failContract) throw new Error('HTTP 502 retried 3 times')
-      return b64({ detected_by: 'user' })
-    }
-    if (line.includes(`contents/${LEDGER}`)) return b64({ id: 'FB-x', status: line.includes('ref=bbbb') ? 'candidate' : 'fixed' })
-    if (line.includes('contents/tests/ux/full-walk/escapeLedger?')) return 'FB-x.json'
-    // 性能场景登记表（基线）：G-perfreg 起合并前扫描会列这个目录；这里是空登记表，PR 不带场景文件
-    if (line.includes('contents/tests/perf/scenarios?')) return ''
+    if (line.startsWith('pr view')) return JSON.stringify({ body, headRefOid, baseRefName: 'main', createdAt })
+    // 真 GitHub 的原话（#1269）：实现若退回 gh pr diff 取数，大 PR 就拿不到结论
+    if (line.startsWith('pr diff')) throw new Error("could not find pull request diff: HTTP 406: Sorry, the diff exceeded the maximum number of files (300). Consider using 'List pull requests files' API or locally cloning the repository instead.")
     throw new Error(`unexpected gh call: ${line}`)
   }
   return { exec, calls }
 }
 
-function runPreflight(options) {
-  const { exec, calls } = fakeGh(options)
+function runPreflight(repo, { git = repo.git, ...options } = {}) {
+  const { exec, calls } = fakeGh({ headRefOid: repo.headSha, ...options })
   const lines = []
   const original = console.log
   console.log = (...parts) => lines.push(parts.join(' '))
   try {
-    return { code: preflightMain(['7', '--repo', 'o/r'], exec), out: lines.join('\n'), calls }
+    return { code: preflightMain([PR, '--repo', 'o/r'], exec, git, repo.root), out: lines.join('\n'), calls }
   } finally {
     console.log = original
   }
 }
 
-test('取数失败 = 没有结论：文件表那次请求失败时不退回截断的 view.files，输出「结论：✖ 取不到」让合并循环停手', () => {
-  const failed = runPreflight({ failFiles: true })
-  assert.equal(failed.code, 1)
-  assert.match(failed.out, /取不到PR 文件表/)
-  assert.match(failed.out, /结论：✖/)
-  assert.doesNotMatch(failed.out, /没有把对应的逃逸账本条目/, '不许拿只含前 100 个文件的列表去判账本')
+const ONLY_PR_VIEW = [`pr view ${PR} --json body,headRefOid,baseRefName,createdAt --repo o/r`]
+const sources = (count, version) => Object.fromEntries(Array.from({ length: count }, (_, i) => [`src/f${String(i).padStart(3, '0')}.ts`, `export const v${i} = ${version}\n`]))
+
+test('大 PR（超过 300 个文件，GitHub 的 PR diff 给不了）：本地 git 取全文件表，排在最后的账本条目也认得出，出真结论', (t) => {
+  const count = 320
+  const repo = prRepo(t, {
+    base: { ...sources(count, 0), [LEDGER]: { id: 'FB-x', status: 'candidate' } },
+    head: { ...sources(count, 1), [CONTRACT]: { detected_by: 'user' }, [LEDGER]: { id: 'FB-x', status: 'fixed' } },
+  })
+  const result = runPreflight(repo)
+  assert.match(result.out, /^合并前扫描 · PR #7$/m, result.out)
+  assert.doesNotMatch(result.out, /取不到/)
+  assert.match(result.out, /逃逸账本 FB-x → fixed：带了含 detected_by 的合同（docs\/fixes\/x\.root-cause\.json）/, '账本条目排在第 321 个文件之后')
+  assert.doesNotMatch(result.out, /没有把对应的逃逸账本条目/)
+  assert.match(result.out, /^结论：/m)
+  assert.deepEqual(result.calls, ONLY_PR_VIEW, '远程只剩 gh pr view 一次：不再走 gh pr diff / 文件表 / contents / compare / GraphQL')
+  const changes = prChanges({ git: repo.git, base: repo.baseSha, head: repo.headSha })
+  assert.equal(changes.files.length, count + 2)
+  assert.deepEqual(changes.files.at(-1), { path: LEDGER, status: 'M' })
 })
 
-test('取数成功时同一个 PR 的结论稳定：账本在 100 名之后也认得出，不报「没转 fixed」', () => {
-  const ok = runPreflight()
-  assert.doesNotMatch(ok.out, /没有把对应的逃逸账本条目/)
-  assert.match(ok.out, /逃逸账本 FB-x → fixed/)
+test('head 对不上：fetch 到的 pull/<n>/head 不是 gh pr view 给的 headRefOid（取数这几秒里 PR 又推了）→ 取数失败，不拿新 head 判旧正文', (t) => {
+  const repo = prRepo(t, { base: { 'src/a.ts': 'a\n' }, head: { 'src/a.ts': 'b\n' } })
+  const result = runPreflight(repo, { headRefOid: repo.baseSha })
+  assert.equal(result.code, 1)
+  assert.match(result.out, new RegExp(`取不到和正文同一版的 PR head：fetch 到的 pull/7/head 是 ${repo.headSha.slice(0, 12)}，gh pr view 给的是 ${repo.baseSha.slice(0, 12)}`))
+  assert.match(result.out, /^结论：✖ 有项没过，先别合（取数失败，不是 PR 的问题/m)
+  assert.doesNotMatch(result.out, /合并前扫描 · PR/, '取数失败不出判据行')
 })
 
-test('diff / 合同内容任何一项取不到都是「结论：✖ 取不到」，不是当空处理', () => {
-  for (const options of [{ failDiff: true }, { failContract: true }]) {
-    const result = runPreflight(options)
-    assert.equal(result.code, 1, JSON.stringify(options))
-    assert.match(result.out, /结论：✖ 有项没过，先别合（取数失败/, JSON.stringify(options))
+test('本地 diff 的格式用参数钉死：仓库里设了 diff.noprefix / diff.mnemonicPrefix / color.ui=always / diff.renames / diff.orderFile / diff.algorithm，文件表、新增行、package.json 被删行和扫描结论都不变', (t) => {
+  const problem = '用户在生成框里点了重试，结果没有任何反应，也没有提示哪里出了问题，只能关掉重开'.repeat(4)
+  const repo = prRepo(t, {
+    base: {
+      'package.json': '{\n  "scripts": {\n    "check:x": "node scripts/check-x.mjs",\n    "build": "vite build"\n  }\n}\n',
+      'src/workbench/ai/stream.ts': 'export const a = 1\n',
+      'docs/中文说明.md': '一\n',
+      [`${LEDGER_DIR}/FB-old.json`]: { id: 'FB-old', status: 'candidate', problem },
+    },
+    head: {
+      'package.json': '{\n  "scripts": {\n    "build": "vite build"\n  }\n}\n',
+      'src/workbench/ai/stream.ts': 'export const a = 1\nexport const c = new AbortController()\n',
+      'docs/中文说明.md': '一\n二\n',
+      [`${LEDGER_DIR}/FB-old.json`]: null,
+      [`${LEDGER_DIR}/FB-new.json`]: { id: 'FB-new', status: 'candidate', problem },
+    },
+  })
+  const clean = runPreflight(repo)
+  const cleanChanges = prChanges({ git: repo.git, base: repo.baseSha, head: repo.headSha })
+  // 先证明基准本身是对的（否则「不变」没有意义）
+  assert.deepEqual(cleanChanges.files, [
+    { path: 'docs/中文说明.md', status: 'M' },
+    { path: 'package.json', status: 'M' },
+    { path: 'src/workbench/ai/stream.ts', status: 'M' },
+    { path: `${LEDGER_DIR}/FB-new.json`, status: 'A' },
+    { path: `${LEDGER_DIR}/FB-old.json`, status: 'D' },
+  ])
+  assert.equal(cleanChanges.addedByFile.get('src/workbench/ai/stream.ts'), '+export const c = new AbortController()')
+  assert.equal(cleanChanges.addedByFile.get('docs/中文说明.md'), '+二')
+  assert.deepEqual(cleanChanges.packageRemovedLines, ['    "check:x": "node scripts/check-x.mjs",'])
+  assert.match(clean.out, /四类：命中（[^）]*可打断/)
+  assert.match(clean.out, /没点名：[^\n]*package\.json/)
+  // 再把会改 diff 输出的配置全打开：结果逐字不变
+  const orderFile = path.join(repo.root, 'diff-order.txt')
+  fs.writeFileSync(orderFile, 'tests/*\nsrc/*\npackage.json\n')
+  for (const [key, value] of [['diff.noprefix', 'true'], ['diff.mnemonicPrefix', 'true'], ['color.ui', 'always'], ['diff.renames', 'copies'], ['diff.orderFile', orderFile], ['diff.algorithm', 'histogram']]) runGit(repo.root, ['config', key, value])
+  assert.deepEqual(prChanges({ git: repo.git, base: repo.baseSha, head: repo.headSha }), cleanChanges)
+  assert.equal(runPreflight(repo).out, clean.out)
+})
+
+test('逃逸账本条目文件改名：文件表里是「旧路径 D + 新路径 A」，旧 id 照样算被删（和原来 previous_filename 的行为一致）', (t) => {
+  const problem = '导出的视频少了最后一个镜头，时间轴上明明还在，预览也正常，只有导出文件里没有'.repeat(4)
+  const repo = prRepo(t, {
+    base: { [`${LEDGER_DIR}/FB-old.json`]: { id: 'FB-old', status: 'candidate', problem } },
+    head: { [`${LEDGER_DIR}/FB-old.json`]: null, [`${LEDGER_DIR}/FB-new.json`]: { id: 'FB-new', status: 'candidate', problem } },
+  })
+  const result = runPreflight(repo)
+  assert.match(result.out, /✖ 逃逸账本里有条目被删掉：FB-old（/)
+  assert.equal(result.code, 1)
+  // 内容几乎一样，git 默认会认成改名（R0xx）；钉死 --no-renames 后是一删一增，旧路径不会藏在改名记录里
+  assert.deepEqual(prChanges({ git: repo.git, base: repo.baseSha, head: repo.headSha }).files, [
+    { path: `${LEDGER_DIR}/FB-new.json`, status: 'A' },
+    { path: `${LEDGER_DIR}/FB-old.json`, status: 'D' },
+  ])
+})
+
+test('取数失败 = 没有结论：fetch 不到、本机缺对象、合同内容读不出来、浅克隆——都是「结论：✖ 取不到」，也不退回 GitHub API', (t) => {
+  const repo = prRepo(t, { base: { 'src/a.ts': 'a\n' }, head: { 'src/a.ts': 'b\n', [CONTRACT]: { detected_by: 'user' } } })
+  const failing = (when, message) => (args) => {
+    if (!when(args)) return repo.git(args)
+    const error = new Error(`Command failed: git ${args.join(' ')}\n${message}`)
+    error.status = 128
+    throw error
   }
+  // 输出超过 maxBuffer：Node 杀掉子进程并抛 ENOBUFS（不是返回截断的输出）——到这里同样是取数失败，不会拿半份 diff 去判
+  const overflow = (args) => {
+    if (args.includes('-U0')) throw Object.assign(new Error('spawnSync git ENOBUFS'), { code: 'ENOBUFS' })
+    return repo.git(args)
+  }
+  const cases = [
+    ['fetch 失败', failing((args) => args[0] === 'fetch', "fatal: couldn't find remote ref refs/pull/7/head"), /取不到PR head 与基线分支的提交（git fetch）/],
+    ['本机缺对象', failing((args) => args.includes('diff'), 'fatal: bad object'), /取不到PR 改动（本地 git diff）/],
+    ['diff 输出超过上限', overflow, /取不到PR 改动（本地 git diff）：spawnSync git ENOBUFS/],
+    ['合同内容读不出来', failing((args) => args[0] === 'rev-parse' && String(args.at(-1)).endsWith(`:${CONTRACT}`), 'fatal: unable to read tree'), /取不到docs\/fixes\/x\.root-cause\.json@[0-9a-f]{9} 的内容/],
+  ]
+  for (const [label, git, pattern] of cases) {
+    const result = runPreflight(repo, { git })
+    assert.equal(result.code, 1, label)
+    assert.match(result.out, pattern, `${label}：${result.out}`)
+    assert.match(result.out, /^结论：✖ 有项没过，先别合（取数失败/m, label)
+    assert.deepEqual(result.calls, ONLY_PR_VIEW, `${label}：取不到也不许退回 GitHub API`)
+  }
+  // 真实的取不到：远端没有这个 PR 的引用
+  const gone = prRepo(t, { base: { 'src/a.ts': 'a\n' }, head: { 'src/a.ts': 'b\n' } })
+  runGit(gone.origin, ['update-ref', '-d', `refs/pull/${PR}/head`])
+  const missing = runPreflight(gone)
+  assert.equal(missing.code, 1)
+  assert.match(missing.out, /取不到PR head 与基线分支的提交（git fetch）/)
+  // 浅克隆：merge-base 算不准，不当真
+  const shallow = prRepo(t, { base: { 'src/a.ts': 'a\n' }, head: { 'src/a.ts': 'b\n' } })
+  runGit(shallow.root, ['fetch', '-q', '--depth', '1', 'origin', 'refs/heads/main'])
+  const cut = runPreflight(shallow)
+  assert.equal(cut.code, 1)
+  assert.match(cut.out, /取不到完整的提交历史：本机仓库是浅克隆/)
+})
+
+test('取数只有本地 git 一个口：合并前扫描的远程调用只剩 gh pr view，文件表 / 新增行只经 scripts/lib/prChanges.mjs（不再有 gh pr diff、gh api、第二份 git diff）', () => {
+  const source = fs.readFileSync(path.join(here, 'merge-preflight.mjs'), 'utf8')
+  const ghCalls = [...source.matchAll(/\bgh\(\[\s*'([^']+)',\s*'([^']+)'/g)].map((match) => `${match[1]} ${match[2]}`)
+  assert.deepEqual(ghCalls, ['pr view'])
+  assert.doesNotMatch(source, /\bexec\(\[/, '不许绕过 gh 包装直接调 gh')
+  assert.doesNotMatch(source, /'api'|'graphql'|contents\/|\/compare\/|'--paginate'/, '文件内容 / 文件表 / 目录 / merge-base 不再走 GitHub API')
+  assert.match(source, /from '\.\/lib\/prChanges\.mjs'/)
+  assert.doesNotMatch(source, /'--name-status'|'-U0'/, '文件表 / 新增行只从 prChanges 一处取')
 })
 
 // ── 花钱类合并前要有真付费证据（2026-10-16，#1203 写「未验证」被合进来）：端到端走一遍 main()，只看真付费那一行 ──
@@ -412,11 +516,12 @@ const spendBody = (paidLine) => [
   ...(paidLine ? [paidLine] : []),
   '- spend-fault-injection：tests/ux/full-walk/playbooks/pb07-failure-kinds.walk.mjs',
 ].join('\n')
-const runSpend = (paidLine) => runPreflight({ body: spendBody(paidLine), extraRows: [`${SPEND_FILE}\tmodified\t3\t1\t`] })
+const spendRepo = (t) => prRepo(t, { base: { [SPEND_FILE]: 'export const a = 1\n' }, head: { [SPEND_FILE]: 'export const a = 2\n' } })
 
-test('花钱类 PR：正文缺 spend-paid-sample 行 → 扫描红并点名；写「未验证」→ 红；写裸 PR 号 → 红', () => {
+test('花钱类 PR：正文缺 spend-paid-sample 行 → 扫描红并点名；写「未验证」→ 红；写裸 PR 号 → 红', (t) => {
+  const repo = spendRepo(t)
   for (const line of [null, '- spend-paid-sample：未验证：待协调真付费', '- spend-paid-sample：#1203']) {
-    const result = runSpend(line)
+    const result = runPreflight(repo, { body: spendBody(line) })
     assert.equal(result.code, 1, String(line))
     assert.match(result.out, /spend-paid-sample/, String(line))
     assert.match(result.out, /✖ [^\n]*spend-paid-sample|→ spend-paid-sample/, String(line))
@@ -424,18 +529,21 @@ test('花钱类 PR：正文缺 spend-paid-sample 行 → 扫描红并点名；�
   }
 })
 
-test('花钱类 PR：补上运行号 / 报告链接 → 真付费那一项不再红；协调豁免 → 不红且醒目打出理由', () => {
+test('花钱类 PR：补上运行号 / 报告链接 → 真付费那一项不再红；协调豁免 → 不红且醒目打出理由', (t) => {
+  const repo = spendRepo(t)
   for (const line of ['- spend-paid-sample：run 20261016', '- spend-paid-sample：https://example.com/paid-report']) {
-    const result = runSpend(line)
+    const result = runPreflight(repo, { body: spendBody(line) })
     assert.doesNotMatch(result.out, /→ spend-paid-sample/, line)
     assert.doesNotMatch(result.out, /缺这些证据条目：[^\n]*spend-paid-sample/, line)
   }
-  const waived = runSpend('- spend-paid-sample：协调豁免：只改日志文案，不碰供应商')
+  const waived = runPreflight(repo, { body: spendBody('- spend-paid-sample：协调豁免：只改日志文案，不碰供应商') })
   assert.doesNotMatch(waived.out, /→ spend-paid-sample/)
   assert.match(waived.out, /⚠ spend-paid-sample：协调豁免——只改日志文案/)
 })
 
-test('不是花钱类的 PR 不被要求这一行', () => {
-  const result = runPreflight({ body: '## 设计卡\n', extraRows: [] })
+test('不是花钱类的 PR 不被要求这一行', (t) => {
+  const repo = prRepo(t, { base: { 'src/utils/format.ts': 'a\n' }, head: { 'src/utils/format.ts': 'b\n' } })
+  const result = runPreflight(repo, { body: '## 设计卡\n' })
+  assert.match(result.out, /^合并前扫描 · PR #7$/m)
   assert.doesNotMatch(result.out, /spend-paid-sample/)
 })

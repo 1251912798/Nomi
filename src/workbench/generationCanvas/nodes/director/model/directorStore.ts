@@ -6,6 +6,8 @@
  * [POS]: director/model 的编辑器真相源：每次打开导演台创建一个 vanilla store（React 用 useStore 订阅，渲染循环直接
  *        getState），关闭时 exportProject 写回节点 meta。撤销 = 整树快照 50 步（滚轮/拖拽 200ms 合并）；选择态、
  *        时间轴上下文、面板显隐是瞬态不进工程。实体/片段的具体 action 拆在 storeEntityActions / storeClipActions。
+ *        sceneConfig 只有 patchSceneConfig 一扇写门、自带撤销步（commitStep：一次调用一步；手势开头 saveState 起锚，
+ *        之后同一组键的写入并进这一步）——2026-10-24 走查：「视图 ▾」开关不存快照，⌘Z 连带撤掉上一步真编辑。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { produce } from 'immer'
@@ -33,6 +35,8 @@ import { DIRECTOR_MAX_DURATION_SECONDS, ensureDurationSeconds, sceneContentEndSe
 
 export const HISTORY_LIMIT = 50
 const WHEEL_MERGE_MS = 200
+/** 连续手势里「不是自带撤销写口写的」那一笔的记号：它一出现，手势就不再接受并入。 */
+const FOREIGN_WRITE = '\u0000foreign'
 
 export type SelectedClipType = 'trajectory' | 'action' | 'closeup' | 'lookat' | null
 export type TransformMode = 'translate' | 'rotate' | 'scale' | null
@@ -122,6 +126,11 @@ export type DirectorStoreState = {
   exportProject: () => DirectorProject
   setExportRatio: (ratio: DirectorExportRatio) => void
   setExportResolution: (resolution: DirectorExportResolution) => void
+  /**
+   * sceneConfig 唯一的写口，自带撤销步：一次调用 = 一步，调用方不用先存快照。连续手势（滑条 / 色板拖动）沿用字段原语的约定——
+   * 手势开头调 saveState（onChangeStart），之后同一组键的每一帧并进这一步。2026-10-24 走查：「视图 ▾」的开关直接调它、前面没存快照，
+   * ⌘Z 连带撤掉上一步真编辑——所以撤销步归写口，不归调用方记得。
+   */
   patchSceneConfig: (patch: Partial<DirectorScene['sceneConfig']>) => void
   patchPanoramaConfig: (patch: Partial<DirectorScene['panoramaConfig']>) => void
   // ── 图层 ──
@@ -231,15 +240,22 @@ export function createDirectorStore(options: CreateDirectorStoreOptions): Direct
   const now = options.now ?? (() => Date.now())
   let lastWheelSaveAt = -Infinity
   let historyDepth = 0
+  // 连续手势的锚：字段原语在手势开头调 saveState（onChangeStart 约定），那张快照就是这次手势的撤销步。之后走自带撤销的写口时，
+  // 只要这张快照还在栈顶、且这段时间里只有同一扇门的同一组键写过，就并进这一步；别的写入（另一组键、别的门、撤销 / 重做）
+  // 一插进来手势就结束。前面没有 saveState 的离散点击永远单独成一步。key 为 null = 手势已开、还没人写。
+  let gesture: { entry: HistoryEntry; key: string | null } | null = null
+  let writingKey: string | null = null
 
   return createStore<DirectorStoreState>()((set, get) => {
     const snapshot = (): HistoryEntry => ({ project: cloneDirectorProject(get().project) })
+    const topOfHistory = (): HistoryEntry | undefined => get().undoStack[get().undoStack.length - 1]
 
     // 所有项目数据的写入口。动作按「改草稿」写，immer 产出结构共享的新树：被改到的实体 / 数组 / 场景 /
     // 项目全部换新引用，没改到的保持原引用——订阅方（useStore 的 Object.is 比对、React.memo）据此判断
     // 该不该重渲染。2026-09-02 栽过：原地 push 后 scene / objects 引用不变，视口与大纲都不重渲染，
     // 只有 `.length` 这类原始值选择器动了。产物被 immer 冻结，任何绕过此入口的原地改写会直接抛错。
     const commitProject = (mutate: (project: DirectorProject, scene: DirectorScene) => void) => {
+      if (gesture && gesture.key === null) gesture.key = writingKey ?? FOREIGN_WRITE
       set((state) => {
         const project = produce(state.project, (draft) => {
           mutate(draft, activeSceneOf(draft))
@@ -262,6 +278,18 @@ export function createDirectorStore(options: CreateDirectorStoreOptions): Direct
           timeline,
         }
       })
+    }
+
+    // 自带撤销步的写口（现在只有 sceneConfig）：在一次 withHistory 里写，除非正处在同一组键的连续手势里（见 gesture）。
+    const commitStep = (key: string, mutate: (project: DirectorProject, scene: DirectorScene) => void) => {
+      const continuing = historyDepth > 0 || (gesture !== null && topOfHistory() === gesture.entry && (gesture.key === null || gesture.key === key))
+      writingKey = key
+      try {
+        if (continuing) commitProject(mutate)
+        else get().withHistory(() => commitProject(mutate))
+      } finally {
+        writingKey = null
+      }
     }
 
     const base: Omit<DirectorStoreState, keyof DirectorEntityActions | keyof DirectorClipActions | keyof DirectorTimelineActions | keyof DirectorCameraActions | keyof DirectorCharacterActions | keyof DirectorAssetActions | keyof DirectorOutputActions | keyof DirectorAiSceneActions> = {
@@ -308,6 +336,8 @@ export function createDirectorStore(options: CreateDirectorStoreOptions): Direct
           if (undoStack.length > HISTORY_LIMIT) undoStack.shift()
           return { undoStack, redoStack: [] }
         })
+        const top = topOfHistory()
+        gesture = top ? { entry: top, key: null } : null
       },
       saveStateForWheel: () => {
         const at = now()
@@ -404,7 +434,7 @@ export function createDirectorStore(options: CreateDirectorStoreOptions): Direct
       exportProject: () => cloneDirectorProject(get().project),
       setExportRatio: (ratio) => get().withHistory(() => commitProject(project => { project.exportRatio = ratio })),
       setExportResolution: (resolution) => get().withHistory(() => commitProject(project => { project.exportResolution = resolution })),
-      patchSceneConfig: (patch) => commitProject((_, scene) => Object.assign(scene.sceneConfig, patch)),
+      patchSceneConfig: (patch) => commitStep(`sceneConfig:${Object.keys(patch).sort().join(',')}`, (_, scene) => Object.assign(scene.sceneConfig, patch)),
       patchPanoramaConfig: (patch) => commitProject((_, scene) => Object.assign(scene.panoramaConfig, patch)),
 
       createSceneLayer: (name) => {

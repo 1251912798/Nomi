@@ -65,7 +65,7 @@ try {
   await lab.waitScene("s.objects.some(o => o.name === '小明')", '重命名落盘')
   check('大纲重命名生效', (await lab.outlinerRow('小明').count()) === 1)
   await page.keyboard.press('Escape') // 先收大纲浮层（Esc 一次只收一层）
-  await page.keyboard.press('Control+z')
+  await page.keyboard.press('ControlOrMeta+z')
   await lab.waitScene(`s.objects.some(o => o.name === '${characters[1].name}')`, '撤销重命名')
   await lab.openOutliner()
   await expectVisible(lab.outlinerRow(characters[1].name), '撤销后大纲里没回到原名')

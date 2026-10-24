@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>A4 窄窗口</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="nomi-ds.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,400&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="nm light" style="width:1240px;height:1610px;padding:32px 40px;display:flex;flex-direction:column;gap:28px">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="v" viewBox="0 0 24 24"><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z"/><path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"/></symbol>
+<symbol id="mc" viewBox="0 0 24 24"><path d="M3 20l1.3 -3.9a9 9 0 1 1 3.4 2.9l-4.7 1z"/></symbol>
+<symbol id="fc" viewBox="0 0 24 24"><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 3l0 2"/><path d="M3 12l2 0"/><path d="M12 19l0 2"/><path d="M19 12l2 0"/></symbol>
+<symbol id="x" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
+</defs></svg>
+<div class="row g8"><span class="tag sch">A4</span><h2 class="h2">窄窗口（约 400 px 宽）：点了指向，先让出画布，再有一颗「回到对话」</h2><span class="note">宽窗口里对话和画布并排，不需要这一步。窄窗口里对话是浮在画布上的一张底部面板（外壳已有的小球 / 浮窗形态）。</span></div>
+
+<!-- P1 -->
+<div class="col g8">
+<div class="cap"><span class="tag sch">P1</span><b>镜像小卡</b></div>
+<div style="display:flex;gap:28px">
+<div class="col g4"><div class="note">① 对话浮在画布上；画布被盖住大半</div>
+<div class="win" style="width:380px;height:420px">
+<div class="cv" style="position:absolute;inset:0;border:0;border-radius:0">
+<div class="cn" style="left:18px;top:56px;width:100px;height:56px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:140px;top:56px;width:100px;height:56px"><div class="lab"><span class="shot">镜 02</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:262px;top:56px;width:100px;height:56px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div></div>
+<div class="sheet"><div class="ph" style="height:36px"><span class="wm">No<b>m</b>i</span><span class="sp"></span><button class="ib" type="button" aria-label="收起"><svg class="i i14"><use href="#x"/></svg></button></div>
+<div class="pbody" style="padding:8px 12px 12px"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button></div></div></div>
+</div></div>
+<div class="col g4"><div class="note">② 点「镜 02」：对话收成小球，画布露出并闪一下目标</div>
+<div class="win" style="width:380px;height:420px">
+<div class="cv" style="position:absolute;inset:0;border:0;border-radius:0">
+<div class="cn" style="left:-82px;top:170px;width:100px;height:56px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn flash" style="left:140px;top:166px;width:100px;height:56px"><div class="lab"><span class="shot">镜 02</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:262px;top:170px;width:100px;height:56px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div></div>
+<span class="ball" style="right:14px;bottom:14px"><svg class="i i16"><use href="#mc"/></svg></span>
+<span class="back" style="left:50%;margin-left:-70px;bottom:20px"><svg class="i i14"><use href="#mc"/></svg>回到对话</span></div></div>
+<div class="col g4"><div class="note">③ 点「回到对话」：对话原样回来，镜 02 还标着「已定位」</div>
+<div class="win" style="width:380px;height:420px">
+<div class="cv" style="position:absolute;inset:0;border:0;border-radius:0">
+<div class="cn" style="left:-82px;top:56px;width:100px;height:56px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th draft"></div></div></div>
+<div class="cn" style="left:140px;top:52px;width:100px;height:56px"><div class="lab"><span class="shot">镜 02</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:262px;top:56px;width:100px;height:56px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th draft"></div></div></div></div>
+<div class="sheet"><div class="ph" style="height:36px"><span class="wm">No<b>m</b>i</span><span class="sp"></span><button class="ib" type="button" aria-label="收起"><svg class="i i14"><use href="#x"/></svg></button></div>
+<div class="pbody" style="padding:8px 12px 12px"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button><button class="p1 hot" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span><span class="pl"><svg class="i i10"><use href="#fc"/></svg>已定位</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></span></button></div></div></div>
+</div></div>
+</div>
+</div>
+
+<!-- P2 -->
+<div class="col g8">
+<div class="cap"><span class="tag sch">P2</span><b>行内标签</b><span>「回到对话」按钮上带着那一枚标签，回来时认得更快</span></div>
+<div style="display:flex;gap:28px">
+<div class="col g4"><div class="note">① 对话浮在画布上</div>
+<div class="win" style="width:380px;height:420px">
+<div class="cv" style="position:absolute;inset:0;border:0;border-radius:0">
+<div class="cn" style="left:18px;top:56px;width:100px;height:56px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:140px;top:56px;width:100px;height:56px"><div class="lab"><span class="shot">镜 02</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:262px;top:56px;width:100px;height:56px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div></div>
+<div class="sheet"><div class="ph" style="height:36px"><span class="wm">No<b>m</b>i</span><span class="sp"></span><button class="ib" type="button" aria-label="收起"><svg class="i i14"><use href="#x"/></svg></button></div>
+<div class="pbody" style="padding:8px 12px 12px"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="p2list"><button class="p2row" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span></span></button><button class="p2row" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span></span></button><button class="p2row" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span></span></button></div></div></div>
+</div></div>
+<div class="col g4"><div class="note">② 点「镜 02」：画布露出并闪一下</div>
+<div class="win" style="width:380px;height:420px">
+<div class="cv" style="position:absolute;inset:0;border:0;border-radius:0">
+<div class="cn" style="left:-82px;top:170px;width:100px;height:56px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th draft"></div></div></div>
+<div class="cn flash" style="left:140px;top:166px;width:100px;height:56px"><div class="lab"><span class="shot">镜 02</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:262px;top:170px;width:100px;height:56px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th draft"></div></div></div></div>
+<span class="back" style="left:50%;margin-left:-110px;bottom:20px;padding:0 14px 0 6px"><span class="th draft" style="width:22px;height:22px;border-radius:999px;box-shadow:none"></span><span style="font-size:12px">镜 02</span><span style="opacity:.6">·</span>回到对话</span></div></div>
+<div class="col g4"><div class="note">③ 回来：那一行标着「已定位」</div>
+<div class="win" style="width:380px;height:420px">
+<div class="cv" style="position:absolute;inset:0;border:0;border-radius:0">
+<div class="cn" style="left:-82px;top:56px;width:100px;height:56px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th draft"></div></div></div>
+<div class="cn" style="left:140px;top:52px;width:100px;height:56px"><div class="lab"><span class="shot">镜 02</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:262px;top:56px;width:100px;height:56px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th draft"></div></div></div></div>
+<div class="sheet"><div class="ph" style="height:36px"><span class="wm">No<b>m</b>i</span><span class="sp"></span><button class="ib" type="button" aria-label="收起"><svg class="i i14"><use href="#x"/></svg></button></div>
+<div class="pbody" style="padding:8px 12px 12px"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="p2list"><button class="p2row" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span></span></button><button class="p2row hot" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span></span><span class="stt acc"><svg class="i i12"><use href="#fc"/></svg>已定位</span></button><button class="p2row" type="button"><span class="th draft"></span><span class="tx"><span class="l1"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span></span></button></div></div></div>
+</div></div>
+</div>
+</div>
+
+<!-- P3 -->
+<div class="col g8">
+<div class="cap"><span class="tag sch">P3</span><b>配对号标</b><span>画布露出时节点角上的号还在，「回到对话」按钮也带同号</span></div>
+<div style="display:flex;gap:28px">
+<div class="col g4"><div class="note">① 对话浮在画布上</div>
+<div class="win" style="width:380px;height:420px">
+<div class="cv" style="position:absolute;inset:0;border:0;border-radius:0">
+<div class="cn" style="left:18px;top:56px;width:100px;height:56px"><span class="pm"><span class="mk s">1</span></span><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:140px;top:56px;width:100px;height:56px"><span class="pm"><span class="mk s">2</span></span><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:262px;top:56px;width:100px;height:56px"><span class="pm"><span class="mk s">3</span></span><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div></div>
+<div class="sheet"><div class="ph" style="height:36px"><span class="wm">No<b>m</b>i</span><span class="sp"></span><button class="ib" type="button" aria-label="收起"><svg class="i i14"><use href="#x"/></svg></button></div>
+<div class="pbody" style="padding:8px 12px 12px"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="p2list"><button class="p3" type="button" style="min-height:36px"><span class="mk">1</span><span class="tx"><span class="ttl">纸船出发</span></span></button><button class="p3" type="button" style="min-height:36px"><span class="mk">2</span><span class="tx"><span class="ttl">越过落叶</span></span></button><button class="p3" type="button" style="min-height:36px"><span class="mk">3</span><span class="tx"><span class="ttl">漂向远处</span></span></button></div></div></div>
+</div></div>
+<div class="col g4"><div class="note">② 点「2」：画布露出并闪一下</div>
+<div class="win" style="width:380px;height:420px">
+<div class="cv" style="position:absolute;inset:0;border:0;border-radius:0">
+<div class="cn" style="left:-82px;top:170px;width:100px;height:56px"><span class="pm"><span class="mk s">1</span></span><div class="card"><div class="th draft"></div></div></div>
+<div class="cn flash" style="left:140px;top:166px;width:100px;height:56px"><span class="pm"><span class="mk s">2</span></span><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:262px;top:170px;width:100px;height:56px"><span class="pm"><span class="mk s">3</span></span><div class="card"><div class="th draft"></div></div></div></div>
+<span class="back" style="left:50%;margin-left:-84px;bottom:20px;padding:0 14px 0 8px"><span class="mk s" style="background:var(--nomi-paper);color:var(--nomi-ink);box-shadow:none">2</span>回到对话</span></div></div>
+<div class="col g4"><div class="note">③ 回来：号 2 那一行标着「已定位」</div>
+<div class="win" style="width:380px;height:420px">
+<div class="cv" style="position:absolute;inset:0;border:0;border-radius:0">
+<div class="cn" style="left:-82px;top:56px;width:100px;height:56px"><span class="pm"><span class="mk s">1</span></span><div class="card"><div class="th draft"></div></div></div>
+<div class="cn" style="left:140px;top:52px;width:100px;height:56px"><span class="pm"><span class="mk s">2</span></span><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#v"/></svg></span></div></div></div>
+<div class="cn" style="left:262px;top:56px;width:100px;height:56px"><span class="pm"><span class="mk s">3</span></span><div class="card"><div class="th draft"></div></div></div></div>
+<div class="sheet"><div class="ph" style="height:36px"><span class="wm">No<b>m</b>i</span><span class="sp"></span><button class="ib" type="button" aria-label="收起"><svg class="i i14"><use href="#x"/></svg></button></div>
+<div class="pbody" style="padding:8px 12px 12px"><p class="say">已在画布上起草了 3 个镜头。想改哪个，点它。</p>
+<div class="p2list"><button class="p3" type="button" style="min-height:36px"><span class="mk">1</span><span class="tx"><span class="ttl">纸船出发</span></span></button><button class="p3 hot" type="button" style="min-height:36px"><span class="mk">2</span><span class="tx"><span class="ttl">越过落叶</span></span><span class="stt acc"><svg class="i i12"><use href="#fc"/></svg>已定位</span></button><button class="p3" type="button" style="min-height:36px"><span class="mk">3</span><span class="tx"><span class="ttl">漂向远处</span></span></button></div></div></div>
+</div></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":1610}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

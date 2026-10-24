@@ -29,6 +29,7 @@ import readline from 'node:readline'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { withLinuxNoSandbox, withLinuxSyntheticCredentialStorage } from './_launchApp.mjs'
+import { assertFreshBuild } from '../../scripts/package-build-stamp.mjs'
 export { packagedMcpRuntime } from './_packagedMcpRuntime.mjs'
 
 const require = createRequire(import.meta.url)
@@ -40,15 +41,9 @@ export const { NODE_KIND_DEFAULT_SIZE } = tsxRequire('../../electron/capabilityC
 // FALLBACK_SIZE the built module falls back to for unknown kinds.
 export const NODE_KIND_FALLBACK_SIZE = { width: 340, height: 280 }
 
-/** Assert dist-electron is built (the stdio server runs compiled JS, mirroring _launchApp.assertBuilt). */
+/** The stdio server runs the compiled dist-electron build: refuse a missing or stale build (build stamp, same gate as launchNomiApp). */
 export function assertBuilt() {
-  const mainEntry = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')).main
-  const entryPath = path.join(repoRoot, mainEntry)
-  if (!fs.existsSync(entryPath)) {
-    throw new Error(
-      `Electron main entry missing: ${mainEntry}\n→ the MCP stdio server runs the dist-electron build, run: pnpm run build`,
-    )
-  }
+  assertFreshBuild(repoRoot)
 }
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -76,7 +71,7 @@ export async function startMockVendorServer() {
     req.on('end', () => {
       hits.push({ url: req.url, method: req.method, body })
 
-      // W1 shot-verify judge: streamTextTask POSTs here for kind:image_to_prompt (billed as text → returns
+      // W1 shot-verify judge: executeTextTask POSTs here for kind:image_to_prompt (billed as text → returns
       // BEFORE any spend grant in runtime.ts, zero generation quota). AI SDK defaults to SSE (body.stream);
       // reply with an event-stream carrying a score JSON. Route by the injected marker: low identity when the
       // shot prompt (echoed into the judge prompt) contains BAD_SHOT_MARKER, all-5 otherwise. SSE frame shape
@@ -187,7 +182,7 @@ function crc32(buf) {
  * server so runTask's fallback path reaches it.
  *
  * W1 (draft-journey 幕 5b/6): also exposes a TEXT model `nomi-mock-judge` on the mock vendor so the
- * headless shot-verify judge (resolveOnboardingAgentFromCatalog → first usable text model → streamTextTask
+ * headless shot-verify judge (resolveOnboardingAgentFromCatalog → first usable text model → executeTextTask
  * → POST {baseUrl}/v1/chat/completions) resolves and runs end-to-end at zero quota. Auth-free local gateways
  * do not require a credential; the mock server ignores auth. PRODUCTION and L2 run the SAME code — the only difference is
  * that catalog text model points at the mock server; there is no env branch and no `if (test)` in the
@@ -229,7 +224,7 @@ export function writeIsolatedCatalog(settingsDir, mockOrigin) {
 
 /**
  * Marker embedded in an injected "bad shot" prompt (W1 幕 5b). ASCII so sanitizeForBroadCompat leaves it
- * intact through streamTextTask. The mock judge returns a low identity score whenever it sees this marker in
+ * intact through executeTextTask. The mock judge returns a low identity score whenever it sees this marker in
  * the request messages → shot-verify triggers targeted retry. Because regenerate re-sends the SAME base
  * prompt (still carrying the marker), the mock keeps scoring it low → K=2 exhausted → red-flagged delivery.
  */
@@ -279,6 +274,7 @@ export function spawnMcpStdioClient({
   settingsDir, userDataDir, projectsDir, capabilityDir, clientInfo, capabilities, env, captureStderr = false,
   tracePath, elicitationAction = 'accept', syntheticCredentialStorage = false, runtime = null,
 }) {
+  if (!runtime) assertBuilt()
   const selectedRuntime = runtime || {
     command: require('electron'),
     args: withLinuxSyntheticCredentialStorage(

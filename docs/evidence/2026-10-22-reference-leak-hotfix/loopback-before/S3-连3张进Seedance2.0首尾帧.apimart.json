@@ -1,0 +1,36 @@
+{
+  "case": "S3-连3张进Seedance2.0首尾帧",
+  "transport": "apimart",
+  "kind": "image_to_video",
+  "inUse": [
+    "nomi-local://ref/e1.png"
+  ],
+  "sent": [
+    "nomi-local://ref/e1.png",
+    "nomi-local://ref/e2.png",
+    "nomi-local://ref/e3.png"
+  ],
+  "received": {
+    "method": "POST",
+    "path": "/v1/videos/generations",
+    "body": {
+      "model": "doubao-seedance-2.0-fast",
+      "prompt": "一个镜头",
+      "size": "16:9",
+      "resolution": "720p",
+      "duration": 5,
+      "image_urls": [
+        "nomi-local://ref/e1.png",
+        "nomi-local://ref/e2.png",
+        "nomi-local://ref/e3.png"
+      ],
+      "image_with_roles": [
+        {
+          "url": "nomi-local://ref/e1.png",
+          "role": "first_frame"
+        }
+      ],
+      "generate_audio": true
+    }
+  }
+}

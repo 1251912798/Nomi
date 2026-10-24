@@ -8,8 +8,8 @@
 | `pnpm dev` | 开发模式启动（Vite + Electron） |
 | `pnpm build` | Vite 构建 + electron tsc |
 | `pnpm run test` | Vitest 单测 |
-| `pnpm run gates` | 五门（按风险分档）：contracts 全部 + **改动相关**的测试 + build + 盖戳；碰测试基础设施/删改名/空 diff 自动升全量并打印原因 |
-| `pnpm run gates:full` | 五门全量档（今天的全量测试）：测试基础设施改动、手动发布边界、想自己兜底时用 |
+| `pnpm run gates` | 本机完整自检（按风险分档）：contracts 全部 + **改动相关**的测试 + build；碰测试基础设施/删改名/空 diff 自动升全量并打印原因。推送前不必跑（2026-10-24 起推送只过 git 钩子的快检，完整门岗以 CI 为准），想在推之前自己兜底时用 |
+| `pnpm run gates:full` | 本机完整自检的全量档（今天的全量测试）：测试基础设施改动、手动发布边界、想自己兜底时用 |
 | `pnpm run test:core-smoke -- --fixture <empty\|used\|profile-copy>` | 核心流程冒烟（空节点 composer / 「2 版」托盘 / 编组框删除+⌘Z / 平移手势）：非纯文档 PR 与 main push 必跑，CI 两遍（空项目 / 用过的项目）；`profile-copy` 只在本机、深拷贝真实资料跑完即删。清单唯一 owner `tests/ux/core-smoke/scenarios.mjs` |
 | `pnpm run test:system:focused` | 普通 PR 的 changed/sibling/related tests；仍须配合 contracts |
 | `pnpm run test:system:full` | 测试基础设施或手动发布边界的显式全量本地验证 |
@@ -18,7 +18,7 @@
 | `node scripts/pre-push-contracts.mjs` | 推送前自动跑（pre-push 钩子，无需手动）：按 origin/main...HEAD 的改动选出本机 Contracts 门岗（filesize / self-written / boundary-owners / test-waits / mjs-parse / ipc-sender-binding / 改动文件 lint / prior-art / pr-judgement），并行跑、一次列出全部失败项，典型 < 60 秒；PR 正文取 `gh pr view`，还没有 PR 就读仓库根 `.tmp-pr-body.md`。入口不接受任何缩小门岗集合的参数（只有 `--list`，其余报错）；单独重跑某道请直接 `pnpm run check:xxx` |
 | `pnpm run delivery:verify-merged -- --expected-sha <SHA>` | 在真实 merged-main 上记录 exact-SHA CI checks 收据，不本地重跑 |
 | `pnpm run test:e2e` | Playwright smoke（零额度，CI-ready） |
-| `pnpm run lint:ci` | Lint + max-warnings=98 棘轮（新增 1 个 warning 即红）|
+| `pnpm run lint:ci` | Lint + max-warnings=95 棘轮（新增 1 个 warning 即红）；存量错误冻结在 `eslint-suppressions.json`（ESLint 批量抑制，只减不增：修掉存量后跑 `pnpm exec eslint --prune-suppressions` 收紧再提交；冻结数要涨须协调确认 `node scripts/coord-approve.mjs --suppressions`，见 delivery-and-review.md「协调确认记录」）|
 | `pnpm run typecheck` | TypeScript 双向类型检查 |
 | `pnpm run check:filesize` | 巨壳文件门岗 |
 | `pnpm run check:tokens` | 设计 token 门岗（禁任意 px 字号/圆角、hex 色、默认色板；棘轮只减不增）|

@@ -1,0 +1,26 @@
+{
+  "op": "open-params",
+  "refs": 30,
+  "samples": [
+    {
+      "responseMs": 45.9,
+      "longTasks": 0
+    },
+    {
+      "responseMs": 45.6,
+      "longTasks": 0
+    },
+    {
+      "responseMs": 46.5,
+      "longTasks": 0
+    },
+    {
+      "responseMs": 45.3,
+      "longTasks": 0
+    },
+    {
+      "responseMs": 45.7,
+      "longTasks": 0
+    }
+  ]
+}

@@ -110,6 +110,9 @@ export type GenerationErrorKind =
   // 参考素材本身有问题（上传前的本机检查没过）。与 asset-upload-failed 分开：那条是通道没通、
   // 换网络或稍后重试可能就好；这条是**这个文件**不行，重试一万次都一样，得换素材。
   | 'asset-invalid'
+  // 主进程发送前的参考守在花钱之前拒了：请求里带着参考区没在用的图（有入口绕过了唯一推导）。
+  // 请求没离开本机；下一步是重新点生成，会按参考区重新组一次请求。不是服务商的事。
+  | 'reference-not-in-use'
   // Nomi 自己的出站安全策略把取片拦下了（私网/回环/fake-ip 未确证）。与 network 分开，因为
   // 它的**真相和下一步都不同**：network = 上游或线路偶发，等一等重试可能就好；这条是**确定性**
   // 的自我拒绝（同一个 URL 重试一万次都是同一堵墙），而且任务**已经付过钱**——正确的动作是去
@@ -143,6 +146,10 @@ export type GenerationErrorKind =
   // 已生成、取回失败（#975 A2，机器码 NOMI_ERR::output-retrieval-failed::）：结果在服务商那边，丢的只是下载。
   // 与 outbound-blocked 分开：那条的下一步是去看网络；这条覆盖整个确定性取回失败族，下一步只有「重新取回」。
   | 'output-retrieval-failed'
+  // 已提交、这次没取回（机器码 NOMI_ERR::retrieval-query / -parse / -download / -timeout::，⑬ 用户 10-22 拍板）：任务已经交给服务商、
+  // 钱已经花了，是查结果 / 读结果 / 下载结果这一次没成，**不知道**服务商那边做完没有（所以不能说成 output-retrieval-failed 的「已经生成」）。
+  // 以前分类器不认这四个码，落进 unknown，给「可以重试一次」+ 主动作 retry——再生成、再扣一次。下一步只有「重新取回」。
+  | 'retrieval-incomplete'
   // 本机处理失败（机器码 NOMI_ERR::local-processing::）：截帧 / 提取深度 / 本地素材复制——没有服务商参与，所以动作只有「重试」。
   | 'local-processing'
   | 'unknown'
@@ -166,6 +173,7 @@ export const ERROR_KEY_BY_KIND: Record<GenerationErrorKind, string> = {
   'asset-upload-failed': 'assetUploadFailed',
   'asset-too-large': 'assetTooLarge',
   'asset-invalid': 'assetInvalid',
+  'reference-not-in-use': 'referenceNotInUse',
   'outbound-blocked': 'outboundBlocked',
   'outbound-blocked-submit': 'outboundBlockedSubmit',
   'outbound-blocked-credential-origin': 'outboundBlockedCredentialOrigin',
@@ -177,6 +185,7 @@ export const ERROR_KEY_BY_KIND: Record<GenerationErrorKind, string> = {
   'submission-unknown': 'submissionUnknown',
   'submission-not-sent': 'submissionNotSent',
   'output-retrieval-failed': 'outputRetrievalFailed',
+  'retrieval-incomplete': 'retrievalIncomplete',
   'local-processing': 'localProcessing',
   unknown: 'unknown',
 }
@@ -224,7 +233,7 @@ export function narrateModelKind(kind: string): string {
 // fix-model-kind：**直接把缺口补上**（改类型 + 按新类型重建调用通道），不是又把用户送去某一页
 // 自己找。这是这次唯一新增的动作——因为它是唯一一类「我们确切知道哪里错、也确切知道怎么改对」的
 // 失败。其余类别我们只知道现象、改不动，所以只能给「去哪儿」或「换一个」。
-export type GenerationErrorAction = 'retry' | 'switch-model' | 'switch-same-capability' | 'open-model-access' | 'fix-model-kind' | 'reconcile' | 'view-task' | 'release-regenerate'
+export type GenerationErrorAction = 'retry' | 'switch-model' | 'switch-same-capability' | 'open-model-access' | 'fix-model-kind' | 'reconcile' | 'view-task' | 'open-recoverable' | 'release-regenerate'
 
 // 每类的主动作 + 次动作都写在表里（2026-09-29 起）。次动作默认是「另一个最可能有用的」：主动作不是重试 →
 // 次给重试（想试还能试，不堵死用户）；主动作就是重试 → 次给换模型（等不及就换一家）。下面三个常量就是这条
@@ -267,6 +276,8 @@ const ACTION_BY_KIND: Record<GenerationErrorKind, GenerationErrorActions> = {
   // 参考素材本身不行：换素材的地方就在画布上（连着的那个节点，不需要按钮），换好后点重试。
   // 同「改提示词后重试」那两类的理由——按钮只给 retry，改的动作在画布上。
   'asset-invalid': RETRY_FIRST,
+  // 请求没离开本机：重新点生成会按参考区重新组请求，主动作就是重试。
+  'reference-not-in-use': RETRY_FIRST,
   // 「去模型接入」正是网络那一行的家（NetworkSection 就住在模型设置抽屉里）。绝不给 retry：
   // 重试 = 再生成 = 再扣一次钱，而这次的钱根本没丢，只是产物还没取回来。
   'outbound-blocked': ACCESS_FIRST,
@@ -295,6 +306,8 @@ const ACTION_BY_KIND: Record<GenerationErrorKind, GenerationErrorActions> = {
   'submission-not-sent': RETRY_FIRST,
   // 只指路去任务面板（那里有「重新取回」）。绝不给 retry：重试 = 再生成一份、再花一次钱，而这一份已经做好了。
   'output-retrieval-failed': { primary: 'view-task', secondary: null },
+  // 同上：只指路去任务面板「重新取回」。绝不给 retry（= 再生成、再扣一次），也不给换模型（换了也是另一份新的）。
+  'retrieval-incomplete': { primary: 'view-task', secondary: null },
   // 本机处理失败：换模型帮不上忙（没有模型参与），只留重试。
   'local-processing': { primary: 'retry', secondary: null },
   unknown: RETRY_FIRST,
@@ -325,6 +338,7 @@ const VENDOR_SIDE_BY_KIND: Record<GenerationErrorKind, boolean> = {
   'asset-upload-failed': false,
   'asset-too-large': true,
   'asset-invalid': false,
+  'reference-not-in-use': false,
   'outbound-blocked': false,
   'outbound-blocked-submit': false,
   'outbound-blocked-credential-origin': false,
@@ -339,6 +353,8 @@ const VENDOR_SIDE_BY_KIND: Record<GenerationErrorKind, boolean> = {
   'submission-not-sent': false,
   // 失败在 Nomi 取回这一侧（策略 / 对方拒绝下载 / 返回的不是可用文件），不点名服务商「失败了」。
   'output-retrieval-failed': false,
+  // 失败在取回这一侧；服务商原话（如 503「无可用渠道」）照旧由分类器单独给，这里不替服务商定性、不触发「换一家」。
+  'retrieval-incomplete': false,
   // 全程在本机，没有服务商。
   'local-processing': false,
   unknown: false,
@@ -368,6 +384,8 @@ const ACTION_KEY: Record<GenerationErrorAction, string> = {
   retry: 'retry',
   reconcile: 'reconcile',
   'view-task': 'viewTask',
+  // 画布任务（不是制作 Run）的「去重新取回」：错误卡按任务来源把 view-task 换成它（NodeErrorReport），点了回到可找回面板。
+  'open-recoverable': 'openRecoverable',
   'release-regenerate': 'releaseRegenerate',
 }
 

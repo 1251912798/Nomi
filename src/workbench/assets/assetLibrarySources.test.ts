@@ -12,14 +12,12 @@ function projectAsset(input: {
   projectId: string
   relativePath: string
   kind?: AssetRef['kind']
-  ownerNodeId?: string
 }): AssetRef {
   return {
     id: input.id,
     kind: input.kind ?? 'image',
     name: input.relativePath,
     renderUrl: `nomi-local://asset/${encodeURIComponent(input.projectId)}/${input.relativePath}`,
-    ownerNodeId: input.ownerNodeId,
     source: 'project',
     origin: { source: 'project', projectId: input.projectId, relativePath: input.relativePath },
   }

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import i18n, { DEFAULT_LOCALE } from '../../i18n'
-import { isUntitledPrompt, promptDisplayTitle, promptSourceKey, promptSourceDisplayLabel, promptSourceLabel } from './promptDisplay'
+import { isUntitledPrompt, promptDisplayTitle } from './promptDisplay'
 
 // 这两个字段会落盘。存储侧存稳定值(未命名 = 空串;来源由 origin 表达),显示名在这一层按界面语言取。
 // 老库里躺着 2026-08-28 之前写进去的本地化字符串,读侧必须照旧认它们,否则存量条目会显示成一句
@@ -22,10 +22,6 @@ describe('promptDisplay', () => {
       expect(promptDisplayTitle(userPrompt(''))).toBe('未命名提示词')
       expect(promptDisplayTitle(userPrompt('黄昏剪影'))).toBe('黄昏剪影')
     })
-
-    it('自建条目的来源按 origin 取,不读落盘的 source', () => {
-      expect(promptSourceLabel(userPrompt(''))).toBe('我的库')
-    })
   })
 
   describe('en', () => {
@@ -41,22 +37,13 @@ describe('promptDisplay', () => {
       expect(promptDisplayTitle(userPrompt(''))).toBe('Untitled prompt')
     })
 
-    it('存量 source「我的」在英文界面显英文,不读那个字段', () => {
-      expect(promptSourceLabel(userPrompt(''))).toBe('My library')
-    })
-
-    it('站外精选条目的来源名是专名,原样显示', () => {
-      expect(promptSourceLabel({ origin: 'public', source: 'Lexica' })).toBe('Lexica')
-    })
-
     it('用户自己起的名字不翻译', () => {
       expect(promptDisplayTitle(userPrompt('黄昏剪影'))).toBe('黄昏剪影')
     })
   })
 })
 
-// 2026-09-10 走查反馈回归:库投影曾写死 ["zh-CN"],切界面语言标题/来源不跟。
-// 显示层从这里按 i18n 取 curation 双语字段;键(promptSourceKey)与显示标签分离。
+// 2026-09-10 走查反馈回归:库投影曾写死 ["zh-CN"],切界面语言标题不跟。显示层从这里按 i18n 取 curation 双语字段。
 describe('curation 双语显示(按界面语言取值)', () => {
   const curated = {
     title: '转台产品广告',
@@ -71,26 +58,12 @@ describe('curation 双语显示(按界面语言取值)', () => {
   it('中文界面取 zh-CN,英文界面取 en', () => {
     i18n.changeLanguage('zh-CN')
     expect(promptDisplayTitle(curated)).toBe('转台产品广告')
-    expect(promptSourceLabel(curated)).toBe('广告')
     i18n.changeLanguage('en')
     expect(promptDisplayTitle(curated)).toBe('Sneaker, 360 Turntable Studio')
-    expect(promptSourceLabel(curated)).toBe('Advertising')
     i18n.changeLanguage('zh-CN')
   })
 
-  it('过滤键稳定不随语言变;显示标签随语言变', () => {
-    expect(promptSourceKey(curated)).toBe('Advertising')
-    i18n.changeLanguage('en')
-    expect(promptSourceKey(curated)).toBe('Advertising')
-    expect(promptSourceDisplayLabel(curated)).toBe('Advertising')
-    i18n.changeLanguage('zh-CN')
-    expect(promptSourceDisplayLabel(curated)).toBe('广告')
-  })
-
-  it('无 curation 的存量/用户条目回退原字段,用户条目来源仍走本地化「我的库」', () => {
+  it('无 curation 的存量/用户条目回退原字段', () => {
     expect(promptDisplayTitle({ title: '我的提示词' })).toBe('我的提示词')
-    expect(promptSourceLabel({ origin: 'user', source: '' })).toBe(i18n.t('libraries.prompt.source.mine'))
-    expect(promptSourceKey({ source: '广告' })).toBe('广告')
-    expect(promptSourceDisplayLabel({ source: '广告' })).toBe('广告')
   })
 })

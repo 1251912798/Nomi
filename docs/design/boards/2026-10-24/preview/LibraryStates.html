@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>LibraryStates 各状态：加载 / 失败 / 无匹配 / 媒体失效 拍板图（2026-10-24）</title>
+<style>
+body{margin:0;padding:24px 20px;background:#fff;font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+.bd{margin:0 0 32px}
+.bd-title{margin:0 0 8px;font-size:14px;font-weight:600;color:#333}
+/* 静态预览：去掉动画，候选抽取才确定。图片去掉了 src（画布素材不进仓库），封面看同目录截图（.webp）。 */
+*,*::before,*::after{animation:none!important;transition:none!important}
+</style>
+<style>
+.bd-s1 .nm{--shell:#f6f5f3;--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink30:oklch(0.78 0.01 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.bd-s1 .nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-s1 .nm button{font-family:inherit}
+</style>
+</head>
+<body>
+<section class="bd bd-s1" lang="zh-CN" data-artboard="States">
+<h3 class="bd-title">修后 · 各状态：加载 / 失败 / 无匹配 / 媒体失效（中·明）</h3>
+<div class="sc-host" data-sc-name="States"><div class="nm" style="width: 1440px; height: 900px; background: var(--shell); box-sizing: border-box; padding: 24px; display: grid; grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 24px;">
+  <section aria-label="加载中" style="background: var(--paper); border-radius: 10px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; gap: 20px; padding: 24px; box-sizing: border-box;">
+    <nav aria-label="技能分类" style="width: 150px; flex: 0 0 auto; display: flex; flex-direction: column; gap: 2px;">
+      <span style="height: 28px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; gap: 6px; font-size: 13px; background: var(--ink05); font-weight: 600;">全部</span>
+      <span style="height: 28px; padding: 0px 10px; display: flex; align-items: center; font-size: 13px; color: var(--ink80);">我的</span>
+    </nav>
+    <div role="status" style="flex: 1 1 0%; display: grid; place-items: center;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--ink40);">
+        <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="oklch(0.22 0.01 80)"></rect><path d="M7.5 20V8h2.6l7.4 8.4V8h2.6v12h-2.6L10.1 11.6V20z" fill="#fff"></path></svg>
+        <span style="font-size: 12px;">正在读取技能…</span>
+      </div>
+    </div>
+  </section>
+  <section aria-label="读取失败" style="background: var(--paper); border-radius: 10px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; gap: 20px; padding: 24px; box-sizing: border-box;">
+    <nav aria-label="提示词分类" style="width: 150px; flex: 0 0 auto; display: flex; flex-direction: column; gap: 2px;">
+      <span style="height: 28px; padding: 0px 10px; display: flex; align-items: center; font-size: 13px; color: var(--ink80);">全部</span>
+      <span style="margin: 10px 0px 4px 10px; font-size: 11px; color: var(--ink40);">公开库</span>
+      <span style="height: 28px; border-radius: 6px; padding: 0px 10px; display: flex; align-items: center; font-size: 13px; background: var(--ink05); font-weight: 600;">GPT Image 2</span>
+    </nav>
+    <div role="alert" style="flex: 1 1 0%; display: grid; place-items: center;">
+      <div style="max-width: 320px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;">
+        <h3 style="margin: 0px; font-size: 14px; font-weight: 600;">没拉到提示词</h3>
+        <p style="margin: 0px; font-size: 12px; line-height: 18px; color: var(--ink60);">公开库这次没连上（网络不通或对方站点没响应）。内置效果和我的提示词不受影响。</p>
+        <button type="button" style="margin-top: 4px; height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink80); font-size: 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4"></path><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path></svg>重试</button>
+      </div>
+    </div>
+  </section>
+  <section aria-label="无匹配" style="background: var(--paper); border-radius: 10px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; gap: 14px; padding: 24px; box-sizing: border-box;">
+    <label style="display: flex; align-items: center; gap: 6px; width: 260px; height: 30px; box-sizing: border-box; padding: 0px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+      <input type="search" aria-label="搜索提示词" value="雨夜霓虹 慢推" style="border: 0px; outline: 0px; background: transparent; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 13px; color: var(--ink); width: 100%;">
+    </label>
+    <div role="status" style="flex: 1 1 0%; display: grid; place-items: center;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;">
+        <h3 style="margin: 0px; font-size: 14px; font-weight: 600;">没有匹配的提示词</h3>
+        <p style="margin: 0px; font-size: 12px; color: var(--ink60);">换个分类或搜索词试试。</p>
+      </div>
+    </div>
+  </section>
+  <section aria-label="媒体失效" style="background: var(--paper); border-radius: 10px; box-shadow: 0 0 0 1px var(--linesoft); padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px;">
+    <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;"><h3 style="margin: 0px; font-size: 13px; font-weight: 600;">Sora 2</h3></div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0px, 1fr)); gap: 16px 12px;">
+      <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+        <span style="aspect-ratio: 4 / 3; border-radius: 8px; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft); display: grid; place-items: center; color: var(--ink30);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></span>
+        <strong class="one" style="font-size: 13px; font-weight: 600;">Volleyball Group Activity</strong>
+        <span style="font-size: 11px; color: var(--ink40); margin-top: -4px;">视频</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+        <span style="aspect-ratio: 4 / 3; border-radius: 8px; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft); display: grid; place-items: center; color: var(--ink30);"><span style="display: flex; flex-direction: column; align-items: center; gap: 4px;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><span style="font-size: 11px; color: var(--ink40);">已失效</span></span></span>
+        <strong class="one" style="font-size: 13px; font-weight: 600;">Luxury Mercedes Ad</strong>
+        <span style="font-size: 11px; color: var(--ink40); margin-top: -4px;">视频</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0px;">
+        <span style="aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: 0 0 0 1px var(--linesoft);"><img alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;"></span>
+        <strong class="one" style="font-size: 13px; font-weight: 600;">Mitten Astronaut</strong>
+        <span style="font-size: 11px; color: var(--ink40); margin-top: -4px;">视频</span>
+      </div>
+    </div>
+  </section></div></div>
+</section>
+</body>
+</html>

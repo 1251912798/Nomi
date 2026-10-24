@@ -1,0 +1,18 @@
+{
+  "case": "S4-5张换到wan2.7",
+  "transport": "apimart",
+  "kind": "text_to_video",
+  "inUse": [],
+  "sent": [],
+  "received": {
+    "method": "POST",
+    "path": "/v1/videos/generations",
+    "body": {
+      "model": "wan2.7",
+      "prompt": "一个镜头",
+      "size": "16:9",
+      "resolution": "1080P",
+      "duration": 5
+    }
+  }
+}

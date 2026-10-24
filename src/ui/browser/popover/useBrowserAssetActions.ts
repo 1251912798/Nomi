@@ -206,7 +206,7 @@ export function useBrowserAssetActions({
           if (result.failedCount > 0) report(t('browserAssets.deleteCountFailed', { count: result.failedCount }))
         }
         // 会话内临时卡（无落盘文件）直接从本地状态移除；落盘桶重拉对账真实盘面
-        // （deleteFiles 不广播 nomi:assets:updated，必须手动重拉）。
+        // （deleteFiles 会广播 nomi:assets:updated，但托盘没订阅它，删完自己重拉）。
         setLocalAssets((current) => current.filter((asset) => !selectedIdSet.has(asset.id)))
         setPersistedAssets((current) => current.filter((asset) => !selectedIdSet.has(asset.id)))
         setSelectedIds(new Set())

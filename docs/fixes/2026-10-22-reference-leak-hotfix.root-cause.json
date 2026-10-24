@@ -1,0 +1,207 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-22-reference-leak-hotfix",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-22",
+  "problem_type": "发送路径把节点 meta 整包带走、只按「当前方式有这个槽才加」过滤，没有「没有就清掉」：界面没在用的参考图照样发给供应商",
+  "symptom": "v0.23.2 与 main：放过首帧 / 首尾帧 / 参考图后切到文生，通用中转的 image 带上残留首帧（文生被当图生发）；参考 3 张切首尾帧再放帧，APIMart image_urls 多带 3 张参考；连 3 张图进 Seedance 2.0 首尾帧，APIMart 多带第 2、3 张；Seedance 5 张换到 Veo 3.1 / Kling 3.0 / Wan 2.7 落到文生，中转带上第 1 张。生成照常扣钱，结果被用户看不到的图左右（复盘 docs/audit/2026-10-22-composer-reference-slots-direction.md 末节）",
+  "direct_cause": "catalogTaskActions.buildReferenceExtras 有档案那一支：buildCatalogTaskRequest 先 `...meta` 整包展开，buildReferenceExtras 只在当前方式有首 / 尾帧槽时才加 firstFrameUrl / lastFrameUrl，没有槽时什么都不写，于是 meta 里的残留键原样留在 extras；标准参考面 referenceImages 不分方式恒带、也不截槽上限；视频 / 音频 / 别名键（referenceVideoUrls、referenceAudioUrls、sourceVideoUrl、image_url、first_frame_url、reference_image_urls…）完全不管。主进程 referenceInputParams 把这些 camel 键翻成 snake 键，firstReferenceImage 首帧优先兜成 image_url，projectReferencesOntoBodyKeys 再投到 APIMart 的 image_urls；archetypeInput.ts 文件头注释却写着「渲染层已把残留键置 undefined」",
+  "class_root": "「这张参考现在在不在用」在发送路径上是黑名单（整包带走、个别键按方式过滤），界面是白名单（只显示当前方式声明的槽）；渲染层对主进程的契约只写在注释里，没有任何一层核，也没有一条测试把「界面在用」和「真请求体」放在同一个断言里比",
+  "affected_population": [
+    "通用中转（自建 / 第三方 new-api 站）上所有有档案的视频模型：切过方式或换过模型、落到文生的节点",
+    "APIMart 官方渠道：Seedance 2.0 / 2.5、MiniMax H3、Wan 2.7 / 3.0、Veo 3.1、HappyHorse 1.1 在参考 ↔ 首帧 / 首尾帧之间切换过的节点；连线进首尾帧的多张图",
+    "节点 meta 带着别名参考键的旧工程、MCP canvas.write metadata 原样落的节点",
+    "放过参考视频 / 参考音频后切到不收视频 / 音频的方式（本次新探到：APIMart Seedance 2.0 全能参考切图生、Wan 3.0 参考切文生照发视频 / 音频）"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+    "electron/catalog/archetypeInput.ts",
+    "electron/shared/modelArchetypes/referenceKeys.ts",
+    "electron/runtime.ts",
+    "electron/tasks/referenceResidueGuard.ts"
+  ],
+  "entry_points": [
+    "生成框 / 节点生成钮：runGenerationNode → imageActions / videoActions → runCatalogGenerationTask → buildCatalogTaskRequest → nomi:tasks:run 或 submitCanvasShotRun → runtime.runTask",
+    "分镜批量 / 制作流程：同一条 runGenerationNode（check:batch-machines 钉死不外扩），画布 Run 经 canvasTransportProvider → runtime.runTask",
+    "MCP canvas.write / Agent 落节点：metadata 原样进节点 meta，生成时走上面同一条 buildCatalogTaskRequest",
+    "主进程其它 runTask 调用方（tryModel、deconstructVideo、接入认证、ComfyUI 候选测试）：调用方显式给参数，没有节点 meta，也不带 archetypeInput"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "「界面在用 = 发出去的」是 Nomi 自己的槽位 / 方式模型的不变量，供应商文档决定不了；各家 body 读哪些键已在仓库 mapping 里（APIMART_*_MODELS、NEWAPI_*_OP），测试直接渲染真 mapping。",
+  "invariants": [
+    "有档案的模型：发出去的 extras 里，GENERIC_REFERENCE_KEYS 中每一个键要么是当前方式声明的槽值（与 archetypeInput 同一份有序、截上限列表），要么是 undefined",
+    "主进程 runTask 入口：带 archetypeInput 的请求，通用参考键里不在 archetypeInput 里的地址一律不上线（剥掉 + 开发态诊断）",
+    "全部档案 × 每个方式，从参考 / 首尾帧 / 视频音频 / 别名四种起点切过去：模板参数层、通用中转真请求体、APIMart 真请求体里的参考地址 ⊆ resolveReferenceSlots 显示在用的地址"
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/catalog/archetypeInput.ts",
+    "tests": [
+      "src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts"
+    ],
+    "why": "主进程 runTask 入口的 stripReferenceResidue 是最后一道、对所有渲染层与将来入口都生效的持有者；渲染层 buildReferenceExtras 是第一道（同一张 GENERIC_REFERENCE_KEYS）。tests 按全部档案 × 每个方式量模板参数层、两种传输真请求体、绕过渲染层三类，去掉任一道都会红。"
+  },
+  "doors": [
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/runner/imageActions.ts",
+      "symbol": "buildCatalogTaskRequest"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/runner/videoActions.ts",
+      "symbol": "buildCatalogTaskRequest"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "symbol": "buildCatalogTaskRequest"
+    },
+    {
+      "kind": "write",
+      "path": "electron/runtime.ts",
+      "symbol": "assertNoReferenceResidueBeforeSend"
+    },
+    {
+      "kind": "write",
+      "path": "electron/tasks/referenceResidueGuard.ts",
+      "symbol": "assertNoReferenceResidueBeforeSend"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/archetypeInput.ts",
+      "symbol": "findReferenceResidue"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/modelArchetypes/referenceKeys.ts",
+      "symbol": "GENERIC_REFERENCE_KEYS"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/taskParams.ts",
+      "symbol": "referenceInputParams"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/taskParams.ts",
+      "symbol": "firstReferenceImage"
+    },
+    {
+      "kind": "write",
+      "path": "electron/audioTaskRunner.ts",
+      "symbol": "taskTemplateParams"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/antigravityCreatePreflight.ts",
+      "symbol": "taskTemplateParams"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/customCallDispatch.ts",
+      "symbol": "taskTemplateParams"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/profileHttpRequest.ts",
+      "symbol": "taskTemplateParams"
+    }
+  ],
+  "door_reduction": {
+    "before": 13,
+    "after": 13,
+    "why_not": "热修不合并门：渲染层只有 buildCatalogTaskRequest 一个写口（image / video 两个 action 只是别名）；主进程四个 taskTemplateParams 读口分属四种传输（同步音频、Antigravity 预检、自定义调用脚本、profile HTTP），全部在 runTask 里 stripReferenceResidue 之后，故剥除一处覆盖全部；referenceInputParams / firstReferenceImage 是 taskParams 内部读口。把「在用」收成唯一推导函数、删掉多读口是 #1269 的结构重写（等用户拍板），不在本热修。"
+  },
+  "generality_proof": "不再按键名逐个过滤：渲染层对通用参考键全集（GENERIC_REFERENCE_KEYS，单一真相源，渲染层和主进程共用）先一律置 undefined，再只填当前方式声明的槽值，且槽值取自 archetypeInput 同一个有序截上限函数（orderedSentMediaReferenceUrls）——漏写的键默认是「不发」。主进程不信渲染层：凡带 archetypeInput 的请求，通用参考键里不在 archetypeInput 里的地址都剥掉，所以 MCP / 旧工程 / 今后新入口绕过渲染层也上不了线。性质测试按全部档案自动展开（新增档案自动覆盖），四种起点 × 三层尺子 + 绕过渲染层两层，共 1691 格。",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "symbol": "buildReferenceExtras",
+      "responsibility": "渲染层唯一的请求构造口：有档案模型的通用参考键只放当前方式声明的槽值（与 archetypeInput 同源、截上限），其余显式 undefined 盖掉 `...meta` 带进来的残留"
+    },
+    {
+      "path": "electron/catalog/archetypeInput.ts",
+      "symbol": "findReferenceResidue",
+      "responsibility": "主进程契约断言：带档案投影的请求，通用参考键里不在 archetypeInput 的地址找出来；electron/tasks/referenceResidueGuard.ts 据此在发出前拒发（#1269 起，原「只剥不拒」的 stripReferenceResidue 升级而来）"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/referenceKeys.ts",
+      "symbol": "GENERIC_REFERENCE_KEYS",
+      "responsibility": "通用参考键全集，渲染层清除、ComfyUI 参数契约过滤、主进程剥除共用一张表"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "entry_point": "buildCatalogTaskRequest",
+      "disposition": "enforced",
+      "evidence": "door-map buildCatalogTaskRequest：唯一写口，生成框、分镜批量、制作流程画布 Run、MCP 落节点后生成全部经它；性质测试 params/* 层直接量它"
+    },
+    {
+      "path": "electron/runtime.ts",
+      "entry_point": "runTask",
+      "disposition": "enforced",
+      "evidence": "所有 taskTemplateParams / referenceInputParams / firstReferenceImage 读口都在 runTask 的 stripReferenceResidue 之后；性质测试 relay/bypass、apimart/bypass 两层绕过渲染层（节点 meta 原样进 extras）共 603 格全清"
+    },
+    {
+      "path": "electron/capabilityCore/apimartGenerationProvider.ts",
+      "entry_point": "projectionRequest",
+      "disposition": "not-affected",
+      "evidence": "headless 引擎 B：参考来自执行合同里调用方显式声明的 references，按 input.modeId 的 referenceCombineChannelFor 投影，没有节点 meta、没有残留键可带"
+    },
+    {
+      "path": "electron/capabilityCore/modelOnboarding/tryModel.ts",
+      "entry_point": "tryModel",
+      "disposition": "not-affected",
+      "evidence": "试跑参数由调用方当场给，extras 不含节点 meta 与 archetypeInput，不存在「别的方式留下的键」"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "残留键来自 20 个改 modeId 的写口、换模型、旧工程、MCP metadata，任何一个都会把「别的方式的图」留在 meta；只要发送路径是黑名单，每多一个参考键或读口就多一个漏点（本次就新探出视频 / 音频同类漏）",
+    "same_class_scan": [
+      "node scripts/door-map.mjs buildCatalogTaskRequest / runTask / taskTemplateParams / referenceInputParams / firstReferenceImage / buildReferenceExtras / stripReferenceResidue",
+      "grep runWorkbenchTaskByVendor|submitCanvasShotRun（src）：除 catalogTaskActions 只剩 browserPromptExtractionRunner（文本）",
+      "grep firstFrameUrl|referenceImages|archetypeInput（electron/capabilityCore）：headless 引擎 B 走 apimartGenerationProvider.projectionRequest，按合同 references + modeId 投影",
+      "性质测试：全部档案 × 每个方式，参考 / 首尾帧 / 视频音频 / 别名四种起点，修前模板参数层 85+48+47+197 格漏、中转真请求体 53+39+41+133 格、APIMart 9+8+10+36 格"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/catalog/archetypeInput.ts",
+    "invariant": "带档案投影的请求，通用参考键里的地址 ⊆ archetypeInput 里的地址（= 当前方式声明的槽值）",
+    "failure_mode": "热修期剥掉残留并记开发态诊断（logDevDetail，打包版空操作），不拒发，免得把能出片的流程打挂",
+    "exception_policy": "none",
+    "strategy": "渲染层改白名单（全集先清、只填声明槽），主进程在 runTask 入口按 archetypeInput 再剥一遍；性质测试常驻默认 vitest 车道，按全部档案自动展开，渲染层「置 undefined」被删或主进程剥除被删都会红",
+    "artifacts": [
+      "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "electron/catalog/archetypeInput.ts",
+      "electron/shared/modelArchetypes/referenceKeys.ts",
+      "electron/runtime.ts",
+      "electron/tasks/referenceResidueGuard.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "旧的「只按槽加、不清」写法在同一提交里被替换，没有并行版；archetypeInput.ts 文件头那句不真的注释改成了两道守的真实描述"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及第三方运行时，全是本仓的请求构造。",
+    "exit_criteria": []
+  },
+  "migration": "不改节点数据：用户的图一张不动，只改发出去的东西。旧工程 meta 里的残留 / 别名键照旧留在节点上，只是不再上线。",
+  "residual_risks": [
+    "resolveGenerationReferences 会把 meta.first_frame_url / firstFrameRef / meta.referenceImages / upstreamResultUrls / node.references 抬成当前方式**已声明**的首帧或参考，而界面参考区不显示这些来源——声明了槽的方式下这几个旧别名仍会「看不到却发出」。属于「在用」多处各算一份的同一类，留给 #1269 的唯一推导函数；本热修性质测试的别名起点刻意只在未声明对应槽的方式放这几个键",
+    "托管同意卡（generationRunController.buildConsentNode / hasLocalAssetReference）读节点 meta，可能为看不见的本地图问「要不要托管」：unverified，不在热修范围",
+    "界面在用的尺子 resolveReferenceSlots 不知道渠道只收单图时的上限收窄（复盘第 4 节），这类渠道上尺子偏宽",
+    "真付费验证未做（spend-paid-sample 待协调跑 1–2 条最小量）"
+  ]
+}

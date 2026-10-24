@@ -74,6 +74,8 @@ import { VOLCENGINE_IMAGE_MODELS } from "./volcengineImages";
 import { VOLCENGINE_AUDIO_MODELS } from "./volcengineAudios";
 import { VOLCENGINE_SEEDANCE_QUERY_OP, VOLCENGINE_SEEDANCE_STATUS_MAPPING, VOLCENGINE_VIDEO_MODELS } from "./volcengineVideos";
 import { modelHasPublishedExecution } from "../shared/modelPublication";
+import { operationSelectsArchetypeWireModel, withoutArchetypeWireModel } from "../shared/modelArchetypes/wireModelIdentity";
+import { builtinVendorKeyOfKey } from "../shared/builtinVendorIdentity";
 import { GEMINI_OMNI_11_MAPPINGS, GEMINI_OMNI_11_MODEL_SEED } from "./kieGeminiOmni11";
 import { KIE_SUNO_MUSIC_MAPPINGS, KIE_SUNO_MUSIC_MODEL_SEED, KIE_SUNO_SFX_MAPPING, KIE_SUNO_SFX_MODEL_SEED } from "./kieSunoAudio";
 import { MINIMAX_OFFICIAL_MODELS, MINIMAX_VENDOR_SEED } from "./minimaxOfficial";
@@ -185,7 +187,7 @@ const KIE_CURATED_MAPPINGS: CuratedMapping[] = [
 
 /** apimart 的 curated 模型 + mapping，从单源 APIMART_IMAGE_MODELS / APIMART_VIDEO_MODELS 派生。 */
 const APIMART_CURATED_MODELS: CuratedModel[] = [
-  // 文本大脑（创作助手 / 拆镜头主控）：无 archetype / 无 mapping，走 buildLanguageModelForVendor 直连 chat。
+  // 文本大脑（创作助手 / 拆镜头主控）：无 archetype / 无 mapping，走 nomiModelConfigFor 直连 chat。
   // meta 透传：能读图的（gemini-3.5-flash）靠 meta.supportsImageInput 被 chooseTextModel 选中，
   // 不靠 VISION_MODEL_RE 猜名字（显式声明优先，见 ai/agentUserContent.ts:33）。
   ...APIMART_TEXT_MODELS.map((m) => ({
@@ -346,6 +348,35 @@ const CURATED_VENDOR_CONTRACTS: readonly { vendorKey: string; models: CuratedMod
   { vendorKey: LOCAL_SPEECH_VENDOR_SEED.key, models: LOCAL_SPEECH_CURATED_MODELS, mappings: LOCAL_SPEECH_CURATED_MAPPINGS },
   { vendorKey: HIGGSFIELD_VENDOR_SEED.key, models: HIGGSFIELD_CURATED_MODELS, mappings: HIGGSFIELD_CURATED_MAPPINGS },
 ];
+
+/** 内置家的 curated 报文（去掉声明后）→ 带声明的那一份。兄弟连接迁移用。 */
+function certifiedCuratedCreate(vendorKey: string, create: HttpOperation): HttpOperation | null {
+  const key = JSON.stringify(create);
+  for (const contract of CURATED_VENDOR_CONTRACTS) {
+    if (contract.vendorKey !== vendorKey) continue;
+    const hit = contract.mappings.find((mapping) => JSON.stringify(withoutArchetypeWireModel(mapping.create)) === key);
+    if (hit) return hit.create;
+  }
+  return null;
+}
+
+/**
+ * 旧数据（2026-10-16）：内置家的兄弟连接（`kie--x`）里，与 curated 报文逐字相同、只缺声明的映射是我们自动铺出去的，
+ * 重新派生成带声明的那份；对不上的（用户改过 / 手写的）不猜、不动——它们发连接自己的模型名。
+ */
+function certifySiblingCuratedMappings(mappings: Mapping[], now: string): boolean {
+  let changed = false;
+  for (let index = 0; index < mappings.length; index += 1) {
+    const mapping = mappings[index];
+    const root = builtinVendorKeyOfKey(mapping.vendorKey);
+    if (root === mapping.vendorKey || operationSelectsArchetypeWireModel(mapping.create)) continue;
+    const certified = certifiedCuratedCreate(root, mapping.create);
+    if (!certified) continue;
+    mappings[index] = { ...mapping, create: certified, updatedAt: now };
+    changed = true;
+  }
+  return changed;
+}
 
 /**
  * **退役的 curated 记录（变体合并迁移，2026-06-16）**：Seedance 一族原是 4 个独立 catalog 行
@@ -613,6 +644,7 @@ export function applyBuiltinSeeds(state: CatalogState, now: string): { state: Ca
   for (const contract of CURATED_VENDOR_CONTRACTS) {
     if (reconcileMappings(mappings, contract.vendorKey, contract.mappings, now)) changed = true;
   }
+  if (certifySiblingCuratedMappings(mappings, now)) changed = true;
 
   if (!changed) return { state, changed: false };
   return { state: { ...state, vendors, models, mappings }, changed: true };

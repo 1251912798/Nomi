@@ -87,9 +87,6 @@ export function assetRefFromDesktopAsset(asset: DesktopAssetDto, sourceProjectNa
     ...(dimensions ? { dimensions } : {}),
     ...(aspectRatio !== undefined ? { aspectRatio } : {}),
     ...(sourceProjectName?.trim() ? { sourceProjectName: sourceProjectName.trim() } : {}),
-    ownerNodeId: typeof asset.data.ownerNodeId === 'string' && asset.data.ownerNodeId.trim()
-      ? asset.data.ownerNodeId.trim()
-      : undefined,
     source: 'project',
     origin: { source: 'project', projectId, relativePath },
   }
@@ -156,7 +153,7 @@ async function scanAllProjectAssets(isCurrent: () => boolean): Promise<{ assets:
   let partial = false
   let projectRecords: unknown
   try {
-    projectRecords = desktop.projects.listAsync ? await desktop.projects.listAsync() : desktop.projects.list()
+    projectRecords = await desktop.projects.listAsync()
   } catch {
     projectRecords = []
     partial = true
@@ -188,7 +185,13 @@ export function peekAllProjectAssets(): AssetRef[] | null {
   return libraryState.fresh ? libraryState.assets : null
 }
 
-/** 拿清单：内存里有就直接给；没有就载一次（同一时刻只有一趟在路上）。 */
+/**
+ * 拿清单：内存里有就直接给；没有就载一次（同一时刻只有一趟在路上）。
+ *
+ * 在路上的这一趟被作废盖过（多选删两张 = 两次广播紧挨着到、导入连着落盘）：它扫到的是作废前的盘面，
+ * 不交；接着载最新的一份，等着的调用方和看清单的界面都拿最新的。否则界面会停在作废前的清单上——
+ * 订阅方的「没载过就载」只在 fresh 由 true 变 false 时触发一次，第二次作废时没人会再起一趟（2026-10-24）。
+ */
 export function loadAllProjectAssets(): Promise<AssetRef[]> {
   if (libraryState.fresh) return Promise.resolve(libraryState.assets)
   if (libraryInflight) return libraryInflight
@@ -196,17 +199,14 @@ export function loadAllProjectAssets(): Promise<AssetRef[]> {
   const generation = ++libraryGeneration
   const isCurrent = () => generation === libraryGeneration
   if (!libraryState.loading) publish({ ...libraryState, loading: true })
-  const inflight = scanAllProjectAssets(isCurrent).then(
-    ({ assets, partial }) => {
-      if (isCurrent()) publish({ assets, loading: false, partial, fresh: true })
-      return assets
-    },
-    () => {
-      if (isCurrent()) publish({ assets: [], loading: false, partial: true, fresh: true })
-      return [] as AssetRef[]
-    },
-  ).finally(() => {
+  const inflight: Promise<AssetRef[]> = scanAllProjectAssets(isCurrent).then(
+    (scanned) => scanned,
+    () => ({ assets: [] as AssetRef[], partial: true }),
+  ).then(({ assets, partial }) => {
     if (libraryInflight === inflight) libraryInflight = null
+    if (!isCurrent()) return loadAllProjectAssets()
+    publish({ assets, loading: false, partial, fresh: true })
+    return assets
   })
   libraryInflight = inflight
   return inflight

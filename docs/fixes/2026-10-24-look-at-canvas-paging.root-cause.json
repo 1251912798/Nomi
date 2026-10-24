@@ -1,0 +1,152 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-look-at-canvas-selection-markers",
+  "change_kind": "corrective",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-23",
+  "problem_type": "A bounded selection list silently hides selected canvas nodes and asks the model to recover them through a paging protocol",
+  "symptom": "With a large canvas selection, look_at_canvas shows a separate truncated id list. The first page already contains the node rows, but the model cannot reliably tell which rows are selected or recover the omitted ids; the 10-24 real paid run recorded 0/5 whole-selection visibility at answer time and 0/5 successful turns.",
+  "direct_cause": "The projection spent a separate 900-character budget on selectedNodeIds, while node rows carried no selection state. The added selectedFrom continuation path repeated the same resource and depended on model paging, so it was removed after the real paid result disproved it.",
+  "class_root": "The shared canvas projection had no single bounded representation in which selection membership, node identity, and the total selection count were owned by the same node rows.",
+  "affected_population": [
+    "Resident Agent turns reading a canvas with more selected ids than the separate id-list budget",
+    "Single-shot storyboard planning prompts that consume the same compact projection",
+    "Future projection changes that add a second selection summary instead of marking the canonical rows"
+  ],
+  "scope_paths": [
+    "electron/shared/agentCapabilities/canvasReadCompact.ts",
+    "electron/shared/agentCapabilities/canvasReadSelection.test.ts",
+    "tests/ux/_lookAtCanvasSelectionScore.mjs",
+    "tests/ux/_lookAtCanvasSelectionSteps.mjs",
+    "tests/ux/look-at-canvas-selection-real.paid.mjs",
+    "tests/ux/look-at-canvas-selection-real.rehearsal.walk.mjs"
+  ],
+  "entry_points": [
+    "projectCanvasForAgent is the shared compact projection owner",
+    "laneCanvasTools sends the projection to the resident Agent",
+    "runStoryboardPlanner sends the same projection in a single-shot planning prompt"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This is Nomi's internal invariant for projecting canonical canvas selection state into model-facing text; no dependency or platform decides how a selected node is labeled.",
+  "invariants": [
+    "Every selected node that fits the node budget is represented by its own row with the literal status marker 选中.",
+    "Selected nodes are ordered before unselected nodes, so a node-budget truncation leaves a truthful count M of marked selected rows.",
+    "The selection line states the total N and either says that node rows carry the selection marker or says exactly how many M rows were listed and asks the user to shrink the selection.",
+    "No model-facing canvas read parameter, continuation rule, or paging instruction is needed to recover selection membership.",
+    "Complete prompts and node text are considered for every selected node, subject to the existing overall prompt budget and its explicit truncation marker."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "symbol": "projectCanvasForAgent"
+    },
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneCanvasTools.ts",
+      "symbol": "projectCanvasForAgent"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/agent/runStoryboardPlanner.ts",
+      "symbol": "formatCanvasForAgent"
+    }
+  ],
+  "door_reduction": {
+    "before": 3,
+    "after": 3,
+    "why_not": "The projection owner is one boundary, but the resident Agent lane and the single-shot storyboard planner are distinct consumers and both must be checked because they send the same read face to different model turns. Neither consumer owns selection formatting, so they remain thin callers of the owner."
+  },
+  "generality_proof": "Both model-facing consumers converge on projectCanvasForAgent/formatCanvasForAgent, and the owner sorts and marks the canonical selectedNodeIds before applying the shared node budget. A second caller cannot bypass the marker or invent a separate selected-id window without changing the one projection owner; the tests cover zero, boundary, large, and over-budget selections.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "symbol": "projectCanvasForAgent",
+      "responsibility": "Own the only model-facing canvas projection, including selection ordering, row status markers, selection accounting, and budget truncation wording."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneCanvasTools.ts",
+      "entry_point": "createCanvasLaneTools → formatCanvasForAgent",
+      "disposition": "enforced",
+      "evidence": "The lane calls the shared formatter and does not build a second selection list; the changed lane test is covered by the owner projection tests and the rehearsal walk."
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/runStoryboardPlanner.ts",
+      "entry_point": "runStoryboardPlanner → formatCanvasForAgent",
+      "disposition": "enforced",
+      "evidence": "The single-shot planner uses the same formatter without a paging argument, so it receives the same marker and honest over-budget wording."
+    },
+    {
+      "path": "electron/capabilityCore/mcpCapabilityProjection.ts",
+      "entry_point": "buildCanonicalMcpToolResult → canvas.read",
+      "disposition": "not-affected",
+      "evidence": "MCP returns the canonical canvasReadResult including the complete selectedNodeIds array and does not consume the compact model-facing text."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any larger selection or future compact projection can reproduce the class if it separates membership from the rows it describes; the earlier 32/40/256 ladder and the 10-24 real paid run show that this is not a one-off id length.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs projectCanvasForAgent: the projection owner has one write door.",
+      "node scripts/door-map.mjs formatCanvasForAgent: laneCanvasTools and runStoryboardPlanner are the two model-facing consumers.",
+      "rg -n \"selectedFrom|pageCursorField|continuation|SELECTED_IDS_BUDGET|selectionWindow\" electron src scripts tests: the former paging implementation and tests are removed; remaining hits are listed in the delivery report.",
+      "electron/capabilityCore/mcpCapabilityProjection.test.ts: the canonical MCP read remains a complete structured read and is not an alternate compact selection encoder."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+    "invariant": "Selection membership is encoded on the same node rows that carry id, kind, title, and status; selected rows are emitted first and the summary count is derived from rows admitted by the shared node budget.",
+    "failure_mode": "If the node budget cannot fit all selected rows, the projection states N and M and tells the model not to guess and the user to shrink the selection; it never emits a recoverable-looking paging instruction or a bare selected-id ellipsis.",
+    "exception_policy": "none",
+    "strategy": "Delete the separate selected-id budget and continuation protocol, sort selected nodes before unselected nodes, add a literal row status marker, and derive the selection line from the bounded node list.",
+    "artifacts": [
+      "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "electron/shared/agentCapabilities/canvasReadSelection.test.ts",
+      "tests/ux/_lookAtCanvasSelectionScore.mjs",
+      "tests/ux/_lookAtCanvasSelectionSteps.mjs"
+    ]
+  },
+  "regression_tests": [
+    "electron/shared/agentCapabilities/canvasReadSelection.test.ts",
+    "src/workbench/generationCanvas/agent/canvasPromptContext.test.ts",
+    "tests/ux/_lookAtCanvasSelectionScore.test.mjs",
+    "tests/ux/look-at-canvas-selection-real.rehearsal.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "electron/shared/agentCapabilities/canvasReadSelection.test.ts",
+    "tests/ux/_lookAtCanvasSelectionScore.test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "tests/ux/_lookAtCanvasSelectionScore.mjs",
+      "tests/ux/_lookAtCanvasSelectionSteps.mjs",
+      "tests/ux/look-at-canvas-selection-real.paid.mjs",
+      "tests/ux/look-at-canvas-selection-real.rehearsal.walk.mjs"
+    ],
+    "rationale": "The same PR deletes the old paging path and its declarations, gates, tests, rehearsal modes, and paid metrics. No compatibility fallback is left callable. The baseline read replacement behavior from origin/main remains because it serves general read snapshots unrelated to canvas paging."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The invariant is owned by Nomi's canvas projection and model-facing lane; no third-party runtime controls selection labeling or truncation accounting.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data or MCP input changes. Existing transcript tool results remain historical; the next look_at_canvas call uses the row marker projection. Existing callers that passed the removed paging field now fail schema validation instead of silently taking a different page.",
+  "residual_risks": [
+    "A selection larger than the node budget is still only partially visible; the projection is honest and requires the user to shrink it.",
+    "The existing global prompt budget can still truncate long prompts or text bodies after the node rows; its explicit ellipsis remains a separate node/body budget signal.",
+    "The coordinator owns the real paid rerun; this implementation line only runs the zero-cost rehearsal."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+    "tests": [
+      "electron/shared/agentCapabilities/canvasReadSelection.test.ts",
+      "electron/agentLane/laneDesktopReads.test.ts"
+    ],
+    "why": "projectCanvasForAgent is the earliest shared boundary that turns canonical selectedNodeIds into model-facing rows; both resident lane and storyboard planner consume it without adding selection semantics."
+  }
+}

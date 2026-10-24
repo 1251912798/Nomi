@@ -1,0 +1,33 @@
+{
+  "name": "项目文件夹里的文件：列给素材池、扔进系统回收站（主进程）",
+  "subject": "workspace.project-files",
+  "lifecycle": "project-data",
+  "authority_kind": "gateway",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/workspace/workspaceFileIndex.ts",
+    "symbol": "listWorkspaceFiles"
+  },
+  "write_api": [
+    {
+      "path": "electron/workspace/workspaceFileIndex.ts",
+      "symbol": "listWorkspaceFiles"
+    },
+    {
+      "path": "electron/workspace/workspaceFileDelete.ts",
+      "symbol": "registerWorkspaceFileDeleteIpc"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "electron/main.ts",
+    "src/workbench/workspace/useWorkspaceFiles.ts",
+    "src/workbench/assets/deleteAssetResult.ts",
+    "src/workbench/assets/pendingAssetDeletions.ts",
+    "src/ui/browser/popover/useBrowserAssetActions.ts"
+  ],
+  "since": "2026-10-24",
+  "notes": "nomi:workspace:list-files 给素材池（项目素材页签、选择器、@ 引用）列项目文件：sidecar（.meta）、派生预览（.preview.，与素材库清单 listProjectAssets 同一个 isStoredAssetPreviewPath）、浏览器捕捞那一族都不列。nomi:workspace:delete-files 是项目文件进系统回收站的唯一入口（素材库删除、延后真删、打开项目清扫、素材盒托盘都经它）：连 sidecar 一起进回收站，删掉了就发 assets.onUpdated——和写入同一个信号，列表靠它刷新，调用方不各自手动重拉（2026-10-24 之前删除不广播）。"
+}

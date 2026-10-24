@@ -240,13 +240,24 @@ export async function runBoundedProcess(
 }
 
 export class MediaProbeError extends Error {
-  code: "missing_file" | "probe_failed" | "unsupported_media" | "invalid_probe_output";
+  /**
+   * probe_unavailable = ffprobe 找不到 / 起不来（能力不可用，换哪个文件都一样）；
+   * probe_failed = ffprobe 跑了，但这一个文件没读出来（非 0 退出 / 超时 / 输出超限 / 被中止）。
+   * 两者下一步不同（重装 vs 换文件），所以分成两个码，调用方不必去解析 message。
+   */
+  code: "missing_file" | "probe_unavailable" | "probe_failed" | "unsupported_media" | "invalid_probe_output";
 
   constructor(code: MediaProbeError["code"], message: string) {
     super(message);
     this.name = "MediaProbeError";
     this.code = code;
   }
+}
+
+/** ffprobe 进程这一步的失败 → 探测错误码（probeMediaMetadata / probeMediaBytes 共用这一份判据）。 */
+function probeProcessError(error: unknown): MediaProbeError {
+  if (!(error instanceof BoundedProcessError)) return new MediaProbeError("probe_unavailable", "ffprobe failed to start");
+  return new MediaProbeError(error.code === "spawn_failed" ? "probe_unavailable" : "probe_failed", `ffprobe process ${error.code}`);
 }
 
 type FfprobeStream = Record<string, unknown> & {
@@ -447,7 +458,7 @@ export async function probeMediaMetadata(
 
   const ffprobePath = resolveFfprobePath(options.ffprobePath, options.ffmpegPath);
   if (!ffprobePath) {
-    throw new MediaProbeError("probe_failed", "ffprobe executable could not be resolved");
+    throw new MediaProbeError("probe_unavailable", "ffprobe executable could not be resolved");
   }
 
   const args = ["-v", "error", "-protocol_whitelist", MEDIA_DECODER_PROTOCOL_WHITELIST, "-print_format", "json", "-show_format", "-show_streams", absoluteInputPath];
@@ -467,10 +478,7 @@ export async function probeMediaMetadata(
     else if (hasExplicitProcessLimits) result = await options.runProcess(ffprobePath, args, processOptions);
     else result = await options.runProcess(ffprobePath, args);
   } catch (error) {
-    const detail = error instanceof BoundedProcessError
-      ? `ffprobe process ${error.code}`
-      : "ffprobe failed to start";
-    throw new MediaProbeError("probe_failed", detail);
+    throw probeProcessError(error);
   }
 
   if (result.code !== 0) {
@@ -496,7 +504,7 @@ export async function probeMediaBytes(
   options: ProbeBytesOptions = {},
 ): Promise<MediaProbeMetadata> {
   const ffprobePath = resolveFfprobePath(options.ffprobePath, options.ffmpegPath);
-  if (!ffprobePath) throw new MediaProbeError("probe_failed", "ffprobe executable could not be resolved");
+  if (!ffprobePath) throw new MediaProbeError("probe_unavailable", "ffprobe executable could not be resolved");
   const args = ["-v", "error", "-protocol_whitelist", MEDIA_DECODER_PROTOCOL_WHITELIST, "-print_format", "json", "-show_format", "-show_streams", "pipe:0"];
   const processOptions: BoundedProcessOptions = {
     timeoutMs: options.timeoutMs ?? 15_000,
@@ -509,8 +517,7 @@ export async function probeMediaBytes(
   try {
     result = await (options.runProcess ?? runBoundedProcess)(ffprobePath, args, processOptions);
   } catch (error) {
-    const detail = error instanceof BoundedProcessError ? `ffprobe process ${error.code}` : "ffprobe failed to start";
-    throw new MediaProbeError("probe_failed", detail);
+    throw probeProcessError(error);
   }
   if (result.code !== 0) throw new MediaProbeError("probe_failed", "ffprobe rejected the media payload");
   return parseFfprobeJson(result.stdout);

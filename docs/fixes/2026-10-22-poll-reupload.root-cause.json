@@ -1,0 +1,155 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-22-poll-reupload",
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-21",
+  "problem_type": "Side-effecting reference transport attached to every HTTP step of an async task instead of only to the submission step",
+  "symptom": "Generating a video with local reference images re-uploads every reference before each task-status poll (paid sample #1279: APIMart Seedance 2.0 fast, first/last frame, each image uploaded 26 times = 1 create + 25 polls). If the reference is deleted or moved after submission, polling fails with NOMI_ERR::asset-upload-failed whose copy claims the provider was never requested, although the task was already submitted and paid.",
+  "direct_cause": "runtime.executeProfileOperation runs localizeAssetsForVendor over request.extras before every profile HTTP operation regardless of stage; the task cache keeps the original request with nomi-local:// / data: references, so every query/result step localizes (reads disk and uploads) again.",
+  "class_root": "No owner decides which task step hands references to the provider; localization was a side effect of the generic HTTP executor, so every step that reuses the task request (query, result, catalog test-mapping query) inherited it.",
+  "affected_population": [
+    "Engine A (canvas / storyboard runTask) async image and video tasks with nomi-local:// or data: references, every provider whose mapping has a query or result step",
+    "MCP / headless callers passing inline data: references",
+    "Users who delete or move a reference asset while its task is still running"
+  ],
+  "scope_paths": [
+    "electron/catalog/referenceStage.ts",
+    "electron/runtime.ts"
+  ],
+  "entry_points": [
+    "runtime.runTask create step -> executeProfileOperation(stage create)",
+    "taskResultQuery.executeTaskQuery query step and result step -> executeProfileOperation(stage query/result)",
+    "catalogCommit.testModelCatalogMapping -> executeProfileOperation(stage create/query/result)",
+    "customCallDispatch.runCustomCallTask -> localizeAssetsForVendor once before the script (script polls internally)",
+    "productionReferenceUrls.resolveProductionReferenceUrls -> localizeAssetsForVendor once before the engine-B seal"
+  ],
+  "internal_only_reason": "The invariant is about when Nomi's own executor hands local references to a provider; provider query endpoints address tasks by id (verified by enumerating every built-in query/result operation in referenceFreeQueryOps.class.test.ts), so no external document decides it.",
+  "invariants": [
+    "Only the create (submission) step localizes references; query and result steps never read local reference bytes or upload them.",
+    "A query or result request rendered from a mapping never carries a nomi-local:// or data: value; if a user mapping templates references into those steps the step fails closed without sending.",
+    "Every built-in query/result operation is reference-free and not multipart."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/productionReferenceUrls.ts",
+      "symbol": "localizeAssetsForVendor"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/customCallDispatch.ts",
+      "symbol": "localizeAssetsForVendor"
+    },
+    {
+      "kind": "write",
+      "path": "electron/runtime.ts",
+      "symbol": "localizeAssetsForVendor"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/referenceStage.ts",
+      "symbol": "stageSubmitsReferences"
+    }
+  ],
+  "door_reduction": {
+    "before": 3,
+    "after": 4,
+    "why_not": "The three callers are three distinct submission points (engine A HTTP executor, custom-call script dispatch, engine B pre-seal) and each localizes exactly once per submission. Only the runtime door sat on the polling path, and it is now gated by the stage owner (referenceStage.stageSubmitsReferences) instead of being removed. referenceStage.ts is the stage owner itself (door-map stageSubmitsReferences: referenceStage.ts + runtime.ts), not an extra localization entry."
+  },
+  "generality_proof": "Polling re-upload can only happen where localization runs on a non-submission step. door-map shows three localization doors; customCallDispatch and productionReferenceUrls run once per submission, and runtime.executeProfileOperation is the single HTTP exit for every engine-A step (create, query, result, catalog test mapping). Gating that one exit on stageSubmitsReferences covers every provider and transport, and the class gate enumerates every built-in query/result operation so a provider whose query step needs references cannot be added silently.",
+  "shared_boundaries": [
+    {
+      "path": "electron/catalog/referenceStage.ts",
+      "symbol": "stageSubmitsReferences",
+      "responsibility": "Single owner of which task step hands references to the provider (create only)."
+    },
+    {
+      "path": "electron/catalog/referenceStage.ts",
+      "symbol": "assertNoReferencesOutsideSubmit",
+      "responsibility": "Fail closed when a query/result request would carry a local reference value."
+    },
+    {
+      "path": "electron/runtime.ts",
+      "symbol": "executeProfileOperation",
+      "responsibility": "Engine-A HTTP exit; consults the stage owner before localizing, requires an explicit stage from every caller, and asserts outbound query/result requests are reference-free (user approved 2026-10-22)."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/tasks/taskResultQuery.ts",
+      "entry_point": "executeTaskQuery",
+      "disposition": "enforced",
+      "evidence": "Passes stage query/result to executeProfileOperation; pollDoesNotReuploadReferences.test.ts drives it through a loopback upstream."
+    },
+    {
+      "path": "electron/catalog/catalogCommit.ts",
+      "entry_point": "testModelCatalogMapping",
+      "disposition": "enforced",
+      "evidence": "Passes an explicit stage to executeProfileOperation, so its query/result test runs follow the same gate."
+    },
+    {
+      "path": "electron/catalog/customCallDispatch.ts",
+      "entry_point": "runCustomCallTask",
+      "disposition": "not-affected",
+      "evidence": "Localizes once before runCustomCallScript; the script performs its own polling with the already-localized params and never re-enters localization."
+    },
+    {
+      "path": "electron/capabilityCore/productionReferenceUrls.ts",
+      "entry_point": "resolveProductionReferenceUrls",
+      "disposition": "not-affected",
+      "evidence": "Engine B resolves reference URLs once before sealing the request; its provider query path does not call localizeAssetsForVendor (door-map lists no other caller)."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every async task with local or inline references on every provider with a query step re-uploads on every poll; any new provider or new caller of executeProfileOperation would inherit it.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs localizeAssetsForVendor -> runtime.ts, customCallDispatch.ts, productionReferenceUrls.ts",
+      "node scripts/door-map.mjs executeProfileOperation -> runtime.ts (create), taskResultQuery.ts (query, result), catalogCommit.ts (test mapping)",
+      "rg localizeAssetsForVendor electron src -> no other production caller",
+      "referenceFreeQueryOps.class.test.ts enumerates seed catalog + new-api relay query + native wire queries"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/runtime.ts",
+    "invariant": "Only the create step localizes references; query/result requests never carry local reference values.",
+    "failure_mode": "A query/result request that would carry a nomi-local:// or data: value throws before sending, without an asset-* code (the task is already submitted), and lands as recoverable retrieval.",
+    "exception_policy": "none",
+    "strategy": "Stage owner in referenceStage consulted by the single engine-A HTTP exit; stage becomes a required parameter so a new caller cannot omit it; class gate enumerates built-in query/result operations.",
+    "artifacts": [
+      "electron/catalog/referenceStage.ts",
+      "electron/runtime.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/tasks/pollDoesNotReuploadReferences.test.ts",
+    "electron/catalog/referenceFreeQueryOps.class.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/catalog/referenceFreeQueryOps.class.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "No parallel path is introduced; the existing localization call is gated in place, nothing falls back to per-step localization."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency controls when Nomi localizes references.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted state changes; in-memory task cache entries keep the original request and simply stop being localized on query.",
+  "residual_risks": [
+    "retrievalStageError passes through already-coded errors, including pre-submit codes (asset-*, submission-not-sent, outbound-blocked-submit); after this fix no query-stage producer of those codes is known, but the pass-through itself is unguarded (listed in the direction check for a separate change).",
+    "Echo filtering in buildProfileTaskResult uses the cached request (local references), so an uploaded reference URL echoed in a query response is not recognized as an echo by URL; media-kind priority still covers the video case.",
+    "No Electron GUI walkthrough was run for this change (no free loopback mode exists for the reference paid script); the loopback integration test drives real runTask/fetchTaskResult over HTTP, and the end-to-end paid sample is run by the coordinator."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/catalog/referenceStage.ts",
+    "tests": [
+      "electron/catalog/referenceFreeQueryOps.class.test.ts",
+      "electron/tasks/pollDoesNotReuploadReferences.test.ts"
+    ]
+  }
+}

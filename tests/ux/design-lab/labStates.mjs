@@ -23,8 +23,10 @@ const BASELINE_ROOT = path.join(REPO_ROOT, 'tests/ux/design-lab/__baselines__')
  * 解析顺序 = 文件名排序，与汇总口的拼接顺序一一对应（文件名带数字前缀就是为了这个）。
  */
 export const LAB_SCREENS = {
+  'creation-ai-rewrite': { registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/creationAiRewrite/states'), baselineDir: path.join(BASELINE_ROOT, 'creation-ai-rewrite') },
   'no-accent-outline': { registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/noAccentOutline/states'), baselineDir: path.join(BASELINE_ROOT, 'no-accent-outline') },
   'empty-node-ratios': { registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/emptyNodeRatios/states'), baselineDir: path.join(BASELINE_ROOT, 'empty-node-ratios') },
+  'node-pointer': { registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/nodePointer/states'), baselineDir: path.join(BASELINE_ROOT, 'node-pointer') },
   'find-reference': { registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/findReference/states'), baselineDir: path.join(BASELINE_ROOT, 'find-reference') },
   'creation-columns': { registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/creationColumns/states'), baselineDir: path.join(BASELINE_ROOT, 'creation-columns') },
   'shot-table': { registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/shotTable/states'), baselineDir: path.join(BASELINE_ROOT, 'shot-table') },

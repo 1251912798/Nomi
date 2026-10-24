@@ -23,6 +23,36 @@ const INSTALL_SOURCE = `(() => {
       const article = document.querySelector('article[data-node-id="' + CSS.escape(nodeId) + '"]')
       return Boolean(article) && (visible(composerOf(nodeId)) || Boolean(article.querySelector('[aria-busy="true"]')))
     },
+    // 选中拆解表到位：上方浮条与下方拆解栏都挂在这张表的 React Flow 节点里且可见（两者是 article 的兄弟，不在 article 里面）。
+    shotTableEngaged(nodeId) {
+      const host = document.querySelector('.react-flow__node[data-id="' + CSS.escape(nodeId) + '"]')
+      return Boolean(host) && visible(host.querySelector('[data-node-floating-toolbar]')) && visible(host.querySelector('[data-shot-table-composer]'))
+    },
+    // 拆解表行高切到位：浮条上的档位已换，且表里每一行都按新行高排好（首末两行都量，200 行一次渲完才算）。
+    shotTableRowHeight({ nodeId, step, px }) {
+      const host = document.querySelector('.react-flow__node[data-id="' + CSS.escape(nodeId) + '"]')
+      const rows = host ? host.querySelectorAll('[data-shot-table-row]') : []
+      return Boolean(host && host.querySelector('[data-shot-table-row-height="' + step + '"]')) && rows.length > 0
+        && rows[0].offsetHeight >= px && rows[rows.length - 1].offsetHeight >= px
+    },
+    // 生成框里参考行的小图到齐（B3 最坏规模：30 张）。
+    composerRefTilesReady(count) {
+      return document.querySelectorAll('[data-composer-host] [data-reference-row] [data-asset-tile]').length >= count
+    },
+    // 悬停一张参考小图：名字 + 来源的小提示出现（刚停上去的那一阶段，不含 0.45 秒的大图延迟）。
+    refHoverTip() {
+      return visible(document.querySelector('[data-asset-tile-tip]'))
+    },
+    // 点参数摘要钮：参数面板出现，生成方式那一组在里面。
+    paramPanelOpen() {
+      const panel = document.querySelector('[data-agent-parameter-panel]')
+      return visible(panel) && Boolean(panel.querySelector('[data-agent-generation-mode]'))
+    },
+    // 在面板里切生成方式：高亮的分段变成了 label，且参考行已经按新方式重排（首尾帧 = 出现「首帧」格）。
+    modeSwitched(label) {
+      const active = document.querySelector('[data-agent-generation-mode] [role="radio"][aria-checked="true"]')
+      return Boolean(active) && active.textContent.trim() === label && document.querySelectorAll('[data-asset-slot-label]').length >= 2
+    },
     nodeCountAbove(count) {
       return document.querySelectorAll('.react-flow__node').length > count
     },
@@ -48,6 +78,16 @@ const INSTALL_SOURCE = `(() => {
     libraryReady(count) {
       return [...document.querySelectorAll('[data-project-card]')].filter(visible).length >= count
     },
+    // 技能库 / 提示词库抽屉打开：抽屉在、里面第一张卡可见（技能条卡或提示词卡）。
+    libraryDrawerReady(item) {
+      const drawer = document.querySelector('[data-shell-drawer="' + item + '"]')
+      return visible(drawer) && visible(drawer.querySelector('[data-skill-card], [data-prompt-card]'))
+    },
+    // 库里搜索的一键：搜索框已经是这一键之后的字（受控输入框，值和列表是同一次提交画上去的）。
+    libraryQueryShown({ item, query }) {
+      const input = document.querySelector('[data-shell-drawer="' + item + '"] input[type="search"]')
+      return Boolean(input) && input.value === query
+    },
     // 分镜方案打开到「首屏可编辑」（tests/perf/document-switch-bench.mjs）：行区报出逻辑总数 count，且视口里有带可编辑提示词框的行。
     // 分镜表窗口化（2026-10-16）后只挂视口附近的行，「count 个行盒子都在屏上」永远不成立；末镜够得着由量具停表后另验。
     storyboardPlanOpenReady(count) {
@@ -61,10 +101,33 @@ const INSTALL_SOURCE = `(() => {
       const importButton = editor ? editor.querySelector('[data-toolbar-action="whiteboard-importImage"]') : null
       return visible(editor) && Boolean(editor.querySelector('canvas')) && Boolean(importButton) && !importButton.disabled
     },
+    // 画板完成：编辑器收起，节点上换成刚导出的那张图，并且图已解码可见（导出 + 落盘 + 节点结果 + 画布预览整段）。
+    whiteboardResultVisible(nodeId) {
+      if (document.querySelector('[data-nomi-inline-whiteboard="true"]')) return false
+      const image = document.querySelector('article[data-node-id="' + CSS.escape(nodeId) + '"] [data-testid="whiteboard-open-preview"] img')
+      return visible(image) && image.complete && image.naturalWidth > 0
+    },
+    // 画板完成的第一眼反馈：「完成」钮变成「保存中」（aria-busy），或者图已经到位。
+    whiteboardSaving(nodeId) {
+      const done = document.querySelector('[data-nomi-inline-whiteboard="true"] [data-toolbar-action="whiteboard-done"][aria-busy="true"]')
+      return visible(done) || PREDICATES.whiteboardResultVisible(nodeId)
+    },
     // 内联画板打字：工具条里的文字框已经是 value（同一帧里画布按它重排，量到的是输入 → 画面的整段）。
     whiteboardTextValue({ label, value }) {
       const input = document.querySelector('[data-nomi-inline-whiteboard="true"] [role="toolbar"] input[aria-label="' + CSS.escape(label) + '"]')
       return Boolean(input) && input.value === value
+    },
+    // 写作区 AI 编辑：条出现且输入框在（点「AI 编辑」之后）。
+    rewriteBarReady() {
+      const bar = document.querySelector('.workbench-ai-rewrite-bar')
+      return visible(bar) && Boolean(bar.querySelector('input'))
+    },
+    // 写作区 AI 编辑：结果就地画完——划线的删除部分、标出来的新增部分、段尾 ✓ ✕ 都在。
+    rewriteResultReady() {
+      return Boolean(document.querySelector('[data-rewrite-status="result"]'))
+        && document.querySelectorAll('.nomi-ai-rewrite-del').length > 0
+        && document.querySelectorAll('[data-rewrite-add]').length > 0
+        && document.querySelectorAll('[data-rewrite-action]').length === 2
     },
     // 切文稿：顶栏文稿切换钮写着目标标题，编辑器里是那份文稿的正文（marker 是正文里的标记句）。
     documentShown({ title, marker }) {

@@ -179,6 +179,10 @@
       "reason": "项目绑定：对话与创作项目的归属"
     },
     {
+      "path": "electron/shared/projectDeleteIntent*",
+      "reason": "项目删除意图：用户在确认框里确认的是「从项目库移除」还是「删除文件」，主进程只照它执行——项目目录生命周期的领域语义（V-plibrary2，2026-10-22）；放中立契约层是因为渲染层确认框和主进程删除口共读这一份"
+    },
+    {
       "path": "electron/shared/model*",
       "reason": "模型发布、可用性与上下文窗口目录"
     },
@@ -400,6 +404,10 @@
     {
       "path": "src/workbench/ai/lane/",
       "reason": "Agent 对话投影的渲染层：视图模型、回执撤销、任务候选动作、失败话术——把 lane 的快照画成面板"
+    },
+    {
+      "path": "src/workbench/ai/pointer/",
+      "reason": "聊天里的指向元素（2026-10-23 D2 P1）：代表一个画布节点、长得和节点一样、点了定位过去——一个东西一个家的聊天端，所有聊天卡共用"
     },
     {
       "path": "src/workbench/ai/v4/agentPanelSpendCard*",
@@ -842,6 +850,43 @@
       "revisitBy": "2026-11-15"
     },
     {
+      "id": "model-call-boundary",
+      "capability": "「调一次模型」接 pi-ai 的 Nomi 边界：唯一调用入口（文本任务 / 编译器 / lane 一次性提问共用）、CJS→ESM 桥与有意图时预热、失败留证（去密钥）、远程图按出站授权本机取回",
+      "status": "justified",
+      "paths": [
+        "electron/agentLane/laneModelCall.mts",
+        "electron/shared/agentLane/modelCallPort.ts",
+        "src/workbench/api/textActionIntent.ts",
+        "electron/ai/modelCallBridge.ts",
+        "electron/ai/modelCallFetch.ts",
+        "electron/ai/modelImageInput.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "pi-ai 的 Models.streamSimple（一次调用本身：协议、SSE 解析、可打断重试都用它，不自写）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/models.d.ts:141"
+        },
+        {
+          "name": "pi-ai 的 provider 重试（retryProviderRequest，认 Retry-After、可打断）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/utils/provider-retry.js:75"
+        },
+        {
+          "name": "pi-ai 的错误展示格式 formatProviderError（\"<status>: <body>\"，只是展示串，没有结构化事实）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/utils/error-body.js:111"
+        },
+        {
+          "name": "pi-ai 的图片入参 ImageContent（只收 base64，不取 URL）",
+          "source": "node_modules/@earendil-works/pi-ai/dist/types.d.ts:251"
+        },
+        {
+          "name": "pi-ai 的子路径导出（createModels / createProvider / InMemoryCredentialStore 只在入口 index 导出，冷装约 2s，无法按需只装用得到的部分）",
+          "source": "node_modules/@earendil-works/pi-ai/package.json"
+        }
+      ],
+      "whyNotIntegrated": "不是自写一份调用栈（调用、协议、重试全是 pi-ai 的），是 Nomi 独有约束的接入面：主进程是 CommonJS 而 pi 只发 ESM（桥）；凭据目录、出站授权（取图必须过 hardenedFetch 的每跳授权）、IPC 契约与按状态码分类的错误表是 Nomi 的（pi 只给展示串，日志不许带密钥）；pi 入口冷装约 2s，首个可见反馈的预算要求预热。",
+      "revisitWhen": "主进程改成 ESM（桥可删）；或 pi-ai 提供结构化的 HTTP 失败事实 / 按需的子路径导出（留证与预热可删）；或 pi 的图片入参接受 URL"
+    },
+    {
       "id": "lane-repeated-failure",
       "capability": "同一个工具连着撞同一堵墙的计数与止损",
       "status": "justified",
@@ -1087,30 +1132,6 @@
       "revisitWhen": "pi 的压缩提示词可按领域注入字段，或提供附件 / 默认模型的宿主原语时"
     },
     {
-      "id": "ai-sdk-text-stack",
-      "capability": "文本任务的第二台 LLM 调用栈（AI SDK ai@4）",
-      "status": "to-replace",
-      "plan": "docs/plan/2026-10-01-tech-stack-line-0.24.md",
-      "paths": [
-        "electron/ai/streamTextTask.ts",
-        "electron/ai/buildAiSdkModel.ts",
-        "electron/ai/vendorLanguageModel.ts",
-        "electron/ai/aiSdkVendorError.ts"
-      ],
-      "alternativesChecked": [
-        {
-          "name": "lane 已走的 pi-ai 单次调用（laneSingleShot：一次 provider 调用，无循环无会话）",
-          "source": "electron/agentLane/laneSingleShot.mts:1"
-        },
-        {
-          "name": "pi 九层对照问 3：文本任务改走 pi-ai，删掉 AI SDK 栈与 ai@4 钉死",
-          "source": "docs/research/2026-10-01-pi-coding-agent-reference-conformance/report.md"
-        }
-      ],
-      "whyNotIntegrated": "没有领域理由：这是历史上先接入的栈，lane 后来走了 pi-ai，于是出现两台调用栈。归 0.24「两台发动机收敛」（S4），也是 AI SDK 版本裁决（S5）的前置。",
-      "revisitWhen": "0.24 S4 开工时按 plan 迁移；迁完整体删除"
-    },
-    {
       "id": "telemetry-pipeline",
       "capability": "用量事件与 Agent 轨迹的出站管线：白名单事件、同意合同、发件箱、自建接收端",
       "status": "justified",
@@ -1337,6 +1358,35 @@
       "revisitWhen": "出评估结论"
     },
     {
+      "id": "ipc-invoke-failure-text",
+      "capability": "Electron invoke 失败那句话的读法：从 `Error invoking remote method '<通道>': <主进程错误 toString()>` 里读回主进程错误的类名 / Node 错误码 / 消息，给人看时剥掉外壳；以及落盘出口认「代码里定义的类名」的形状",
+      "status": "under-review",
+      "reviewBy": "2026-11-23",
+      "paths": [
+        "electron/shared/contracts/ipcInvokeFailure.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "Electron 自身：ipcMain.handle 抛出的错只把 message 送回渲染层，不传类与自定义字段",
+          "source": "https://github.com/electron/electron/blob/main/docs/api/ipc-main.md"
+        },
+        {
+          "name": "Electron contextBridge：跨世界的 Error 只拷 message、自定义属性丢，preload 里补结构也过不来",
+          "source": "https://github.com/electron/electron/blob/main/docs/api/context-bridge.md"
+        },
+        {
+          "name": "electron-trpc：主进程错误转成 TRPCError、渲染层拿到 TRPCClientError（结构完整，但要把 IPC 整体迁到 tRPC 路由）",
+          "source": "https://github.com/jsonnull/electron-trpc"
+        },
+        {
+          "name": "electron-better-ipc + serialize-error：handle 返回序列化后的错误对象（同样要改写每一个 handle 与 invoke）",
+          "source": "https://github.com/sindresorhus/electron-better-ipc"
+        }
+      ],
+      "whyNotIntegrated": "尚未下结论。现成方案都能把错误对象完整送过来，但都要换掉整条 IPC（6 个 preload 文件里 218 处 ipcRenderer.invoke 与对应的全部 handle）；在那之前 Electron 送回的那句话是渲染层拿到主进程错误类名的唯一来源，读法只能自己写一处。这里收的是原来散在 workspaceBusy / classifyError / storyboardFailureCopy 的三份私有读法（同一提交删掉），不是新长出来的能力。方向检查 docs/audit/2026-10-24-ipc-error-class-name-direction.md。",
+      "revisitWhen": "评估 IPC 迁到能传结构化错误的方案（electron-trpc / electron-better-ipc）之后出结论；迁完就删这个文件"
+    },
+    {
       "id": "gate-family",
       "capability": "仓库门岗族：一百多个 check:* 脚本（棘轮、登记表、合同、文档记账）",
       "status": "under-review",
@@ -1372,6 +1422,7 @@
       "status": "justified",
       "paths": [
         "src/design/Nomi*",
+        "src/design/iconTiers.ts",
         "src/theme/"
       ],
       "alternativesChecked": [
@@ -1386,9 +1437,17 @@
         {
           "name": "设计系统规范：token-only、禁止任意 px / hex / 默认色板",
           "source": "docs/design/nomi-design-system.md:1"
+        },
+        {
+          "name": "Tabler Icons 自带的 size / stroke 属性（默认 24 / 2，落成 SVG 表现属性）：图标四档只是这两个值的取值表加容器类，图标本身照用 Tabler，不另造图标组件",
+          "source": "node_modules/@tabler/icons-react/dist/esm/createReactComponent.mjs:13"
+        },
+        {
+          "name": "shadcn/ui Button：按钮自己的类定子图标尺寸（[&_svg]:size-4），调用处不传——iconTiers 的容器类照这个做法，只是档位值是 Nomi 的",
+          "source": "https://github.com/shadcn-ui/ui/blob/main/apps/v4/registry/new-york-v4/ui/button.tsx"
         }
       ],
-      "whyNotIntegrated": "领域约束：产品的视觉识别与密度优先的规范是 Nomi 自己的（token 翻转、天黑自动暗、一致的控件层级）；基础交互原语已经用 Mantine，不自写。这里自写的只有品牌层（登记只覆盖 Nomi 前缀的品牌组件与主题）。新增的通用交互组件（例如又一个浮层）仍应先看 Mantine / Radix 有没有。",
+      "whyNotIntegrated": "领域约束：产品的视觉识别与密度优先的规范是 Nomi 自己的（token 翻转、天黑自动暗、一致的控件层级）；基础交互原语已经用 Mantine，不自写。这里自写的只有品牌层（登记只覆盖 Nomi 前缀的品牌组件与主题，加上图标四档令牌 src/design/iconTiers.ts——四档的数值是 Nomi 拍板的视觉规范，不是通用能力）。新增的通用交互组件（例如又一个浮层）仍应先看 Mantine / Radix 有没有。",
       "revisitWhen": "0.24 S6：Tailwind 4 与 AI Elements 评估时，一并评估设计系统与它们的冲突与可替换部分",
       "revisitBy": "2026-12-31"
     },
@@ -2016,6 +2075,51 @@
       ],
       "whyNotIntegrated": "领域约束：「这个助手这次运行里用了哪个 Nomi 工具、几次、还有几个没跑完」是 Nomi 工具面的事实，只有 Nomi 的工具目录与回环 RPC 边界知道；通用的部分（推送、相对时间、协议）都已接现成能力，自写的只剩一本几十行的账与一张展示名表。",
       "revisitWhen": "MCP SDK 提供跨传输的会话 / 调用观测钩子，或要把使用情况持久化成审计账时（审计走收据，不走这本账）"
+    },
+    {
+      "id": "outside-press-listener",
+      "capability": "「点外面就收起」的唯一听法：document 上 pointerdown 捕获阶段，调用方只给「算不算点在自己身上」与收起动作",
+      "status": "to-replace",
+      "plan": "docs/engineering/direction-checks/2026-10-23-outside-press-and-rich-text-controls.md",
+      "paths": [
+        "src/design/outsidePress.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "Floating UI useDismiss：outsidePressEvent 默认 pointerdown、capture.outsidePress 默认 true——本文件的听法就是照它的默认值写的；但它要求浮层由 useFloating 管开合并铺 getFloatingProps，我们只装了 @floating-ui/dom（AnchoredPopover 用它的 autoUpdate 定位），9 个消费者没有一个在 @floating-ui/react 的上下文里",
+          "source": "https://floating-ui.com/docs/useDismiss"
+        },
+        {
+          "name": "Radix DismissableLayer（Popover / DropdownMenu 自带 onPointerDownOutside）：只随 Radix 的浮层组件一起用，不单独暴露给自管开合的面板；我们的菜单族已经在用它（src/design/menu.tsx）",
+          "source": "https://www.radix-ui.com/primitives/docs/components/popover#content"
+        },
+        {
+          "name": "Mantine useClickOutside：默认事件 mousedown + touchstart、冒泡阶段，画布平移面（d3-zoom）在 mousedown 上 stopImmediatePropagation，正是本次 bug 的来源，删掉了它的用法",
+          "source": "https://mantine.dev/hooks/use-click-outside/"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：所有浮在画布上的面板都必须在任何画布手势处理器之前听到按下（画布平移面吞 mousedown），而现有 9 个面各自管开合、焦点与 overlayLayers 让位规则，不在 Floating UI React 的上下文里；本文件只有一个十几行的注册函数，听法与 useDismiss 默认值一致，等浮层整体换到 @floating-ui/react 时整体删除。",
+      "revisitWhen": "AnchoredPopover 换到 @floating-ui/react（useFloating + useDismiss）时删除本文件，其余消费者随之迁移"
+    },
+    {
+      "id": "rich-text-action-button",
+      "capability": "富文本格式钮的画法：设计系统 Tooltip 名字、aria-pressed + 设计系统 §5.5 Pressed 底色、mousedown 不抢编辑器焦点；创作区顶栏、选区浮条、画布文本节点格式条三个壳共用",
+      "status": "justified",
+      "paths": [
+        "src/workbench/common/RichTextActionButton.tsx"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "Tiptap UI Components（MarkButton 等）：用 Tiptap CLI 以模板形式拷进项目（npx @tiptap/cli add mark-button，2026-10-23 经 Context7 核对）、自带一套样式原语，不走我们的 token-only 设计系统；格式状态的订阅我们已直接用 Tiptap 官方 useEditorState",
+          "source": "https://tiptap.dev/docs/ui-components/components/mark-button"
+        },
+        {
+          "name": "Radix Tooltip：已直接使用（src/design/tooltip.tsx），本组件只把它和按钮拼在一起",
+          "source": "https://www.radix-ui.com/primitives/docs/components/tooltip"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：格式钮要同时服从 Nomi 设计系统的按下态与 Tooltip 规范，并在三处 Nomi 独有的编辑表面（创作文稿、选区生成浮条、画布文本节点）保住编辑器选区；通用部分（Tooltip、编辑器状态订阅）都已接现成能力，自写的只剩一颗按钮的组合。",
+      "revisitWhen": "设计系统出了通用的「带提示的开关图标钮」原语时，改用它并删掉本文件"
     }
   ]
 }

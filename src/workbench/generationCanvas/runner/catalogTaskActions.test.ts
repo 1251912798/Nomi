@@ -162,7 +162,7 @@ describe('buildCatalogTaskRequest — 档案驱动 input（extras.archetypeInput
     expect(ai.last_frame_url).toBe('L.png')
   })
 
-  it('全能参考模式：角色图数组进（按序），残留的 firstFrameUrl 不进（互斥含数组）', () => {
+  it('全能参考模式：角色图数组进（按序）；旧数据残留的 firstFrameUrl 旧界面看不见 → 先放一边，不发、也不当首帧发（#1269 条件 4）', () => {
     const ai = archetypeInput(seedanceVideoNode('omni', {
       referenceImageUrls: ['c1.png', 'c2.png'],
       referenceVideoUrls: ['v1.mp4'],
@@ -307,7 +307,7 @@ describe('buildCatalogTaskRequest — 标准参考面与档案投影并存（中
     expect(built.request.kind).toBe('image_edit')
     const archetypeInput = built.request.extras?.archetypeInput as Record<string, unknown>
     expect(archetypeInput.input_urls).toEqual(['nomi-local://asset/ref.png'])
-    expect(archetypeInput.model).toBe('gpt-image-2-image-to-image')
+    expect(archetypeInput).not.toHaveProperty('model') // 线上名由主进程 wireModelIdentity 按连接契约决定
     expect(built.request.extras?.referenceImages).toEqual(['nomi-local://asset/ref.png'])
   })
 
@@ -648,6 +648,23 @@ describe('runCatalogGenerationTask — 轮询查询失败绝不重新提交付�
     expect(submitCount).toBe(1) // ★持续失败也绝不二次提交
   })
 
+  // C7（⑬）：查询被 Nomi 自己挂了提交前的码（出站守卫按提交挂码、#1285 修前的参考重传失败）——
+  // 照样只落可找回，绝不冒泡成「没发出去、可以重新生成」触发再提交。
+  it('轮询持续报提交前的码（outbound-blocked-submit / asset-upload-failed）→ 仍落可找回，runTask 只一次', async () => {
+    const { isRecoverableTimeoutError } = await import('./recoverableTimeout')
+    for (const code of ['outbound-blocked-submit', 'asset-upload-failed']) {
+      let submitCount = 0
+      const error = await runCatalogGenerationTask(videoNode, { projectTarget: TEST_TARGET,
+        runTask: async (_v, req) => { submitCount += 1; return { id: 'up-pre', kind: req.kind, status: 'queued' as const, assets: [], raw: {} } },
+        fetchTaskResult: async () => { throw new Error(`NOMI_ERR::${code}:: 还没请求这次选的服务商`) },
+        pollIntervalMs: 1,
+        pollTimeoutMs: 4,
+      }).catch((e) => e)
+      expect(isRecoverableTimeoutError(error), code).toBe(true)
+      expect(submitCount, code).toBe(1)
+    }
+  })
+
   // 2026-07-31：厂商文档（Seedance 2.0 交付文档 §5.1）要求「查询间隔分散到 3-5 秒以上」+
   // 「429 时指数退避并加入随机抖动」。以前是固定 1500ms、零抖动、429 被空 catch 吞掉照原节奏再敲。
   it('轮询撞 429 → 等待指数退避；不是限流的失败不退避', async () => {
@@ -829,14 +846,14 @@ describe('GPT Image 2 档案（图像，2 模式打不同 taskKind 桶 + input_u
     const built = buildCatalogTaskRequest(gptNode('t2i'))
     expect(built.request.kind).toBe('text_to_image')
     const ai = built.request.extras?.archetypeInput as Record<string, unknown>
-    expect(ai.model).toBe('gpt-image-2-text-to-image')
+    expect(ai).not.toHaveProperty('model') // 线上名由主进程 wireModelIdentity 按连接契约决定
     expect(ai).not.toHaveProperty('input_urls')
   })
   it('图生图模式：taskKind=image_edit，model=i2i enum，输入图进 input_urls（不是 reference_image_urls）', () => {
     const built = buildCatalogTaskRequest(gptNode('i2i', { referenceImageUrls: ['https://x/a.png', 'https://x/b.png'] }))
     expect(built.request.kind).toBe('image_edit')
     const ai = built.request.extras?.archetypeInput as Record<string, unknown>
-    expect(ai.model).toBe('gpt-image-2-image-to-image')
+    expect(ai).not.toHaveProperty('model') // 线上名由主进程 wireModelIdentity 按连接契约决定
     expect(ai.input_urls).toEqual(['https://x/a.png', 'https://x/b.png'])
     expect(ai).not.toHaveProperty('reference_image_urls')
   })
@@ -850,13 +867,13 @@ describe('Seedream 档案（图像，改图输入图走 image_urls，与 GPT 同
   it('文生图：taskKind=text_to_image，model=4.5 t2i enum', () => {
     const built = buildCatalogTaskRequest(sdNode('t2i'))
     expect(built.request.kind).toBe('text_to_image')
-    expect((built.request.extras?.archetypeInput as Record<string, unknown>).model).toBe('seedream/4.5-text-to-image')
+    expect(built.request.extras?.archetypeInput as Record<string, unknown>).not.toHaveProperty('model')
   })
   it('改图：taskKind=image_edit，输入图进 image_urls（不是 input_urls / reference_image_urls）', () => {
     const built = buildCatalogTaskRequest(sdNode('edit', { referenceImageUrls: ['https://x/1.png', 'https://x/2.png'] }))
     expect(built.request.kind).toBe('image_edit')
     const ai = built.request.extras?.archetypeInput as Record<string, unknown>
-    expect(ai.model).toBe('seedream/4.5-edit')
+    expect(ai).not.toHaveProperty('model') // 线上名由主进程 wireModelIdentity 按连接契约决定
     expect(ai.image_urls).toEqual(['https://x/1.png', 'https://x/2.png'])
     expect(ai).not.toHaveProperty('input_urls')
     expect(ai).not.toHaveProperty('reference_image_urls')

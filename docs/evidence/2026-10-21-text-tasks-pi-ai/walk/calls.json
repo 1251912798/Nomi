@@ -1,0 +1,74 @@
+[
+  {
+    "entry": "#1 文本节点扩写（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 39726,
+    "totalMs": 39728,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#2 文本节点改写选区（流式门，一次性替换）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 39800,
+    "totalMs": 39886,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#4 提示词翻译（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 441,
+    "totalMs": 442,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#3 提示词优化（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 418,
+    "totalMs": 418,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#6 视频拆解读图（一次性）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": null,
+    "totalMs": null,
+    "result": "blocked：素材导入失败（no-disk-space）",
+    "errorKind": "local"
+  },
+  {
+    "entry": "#1 文本节点扩写（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 39686,
+    "totalMs": 39686,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#2 文本节点改写选区（流式门，一次性替换）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 39747,
+    "totalMs": 39849,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#4 提示词翻译（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 435,
+    "totalMs": 436,
+    "result": "ok",
+    "errorKind": null
+  },
+  {
+    "entry": "#3 提示词优化（流式）",
+    "protocol": "openai-compatible",
+    "firstFeedbackMs": 480,
+    "totalMs": 481,
+    "result": "ok",
+    "errorKind": null
+  }
+]

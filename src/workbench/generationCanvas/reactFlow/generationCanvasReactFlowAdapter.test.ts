@@ -8,7 +8,9 @@ import {
   canvasViewportFromFlow,
   collectFlowPositionChanges,
   collectFlowSelectionChanges,
+  externalHighlightShellClass,
   flowViewportFromCanvas,
+  projectGenerationFlowNodes,
   toGenerationFlowEdges,
   toGenerationFlowNode,
   toGenerationFlowNodes,
@@ -193,13 +195,58 @@ describe('generation canvas React Flow adapter', () => {
 
     expect(appearing[0]).toBe(first[0])
     expect(appearing[1]).not.toBe(first[1])
-    expect(appearing[1].data).toMatchObject({ appear: true, focusFlash: false })
+    expect(appearing[1].data).toMatchObject({ appear: true, externalHighlight: null })
 
     const focused = toGenerationFlowNodes([a, b], new Set(['a']), false, appearing, {
       focusFlashNodeId: 'a',
     })
-    expect(focused[0].data).toMatchObject({ appear: false, focusFlash: true })
-    expect(focused[1].data).toMatchObject({ appear: false, focusFlash: false })
+    expect(focused[0].data).toMatchObject({ appear: false, externalHighlight: 'flash' })
+    expect(focused[1].data).toMatchObject({ appear: false, externalHighlight: null })
+  })
+
+  it('projects a chat pointer hover as a neutral external highlight, and flash wins over hover', () => {
+    const a = node('a', 0)
+    const b = node('b', 300)
+    const first = toGenerationFlowNodes([a, b], new Set(), false)
+    const hovered = toGenerationFlowNodes([a, b], new Set(), false, first, { pointerHoverNodeId: 'b' })
+    expect(hovered[0]).toBe(first[0])
+    expect(hovered[1].data.externalHighlight).toBe('hover')
+    const both = toGenerationFlowNodes([a, b], new Set(), false, hovered, { pointerHoverNodeId: 'b', focusFlashNodeId: 'b' })
+    expect(both[1].data.externalHighlight).toBe('flash')
+  })
+
+  it('re-projects only the cards whose hover changed when the structure is unchanged', () => {
+    const nodes = [node('a', 0), node('b', 300), node('c', 600)]
+    const base = { nodes, selected: new Set<string>(), readOnly: false, appearingNodeIds: undefined, focusFlashNodeId: null }
+    const first = projectGenerationFlowNodes(null, { ...base, pointerHoverNodeId: null })
+    const hoverB = projectGenerationFlowNodes(first, { ...base, pointerHoverNodeId: 'b' })
+    expect(hoverB.output[0]).toBe(first.output[0])
+    expect(hoverB.output[2]).toBe(first.output[2])
+    expect(hoverB.output[1].data.externalHighlight).toBe('hover')
+    const hoverC = projectGenerationFlowNodes(hoverB, { ...base, pointerHoverNodeId: 'c' })
+    expect(hoverC.output[0]).toBe(first.output[0])
+    expect(hoverC.output[1].data.externalHighlight).toBeNull()
+    expect(hoverC.output[2].data.externalHighlight).toBe('hover')
+    expect(projectGenerationFlowNodes(hoverC, { ...base, pointerHoverNodeId: 'c' })).toBe(hoverC)
+  })
+
+  it('paints the external highlight on the shell in neutral ink only (board NodePointer canvas.node.highlight)', () => {
+    const hover = externalHighlightShellClass('hover')
+    const flash = externalHighlightShellClass('flash')
+    // 悬停 = 1.5px 深色细线 + 阴影抬一级；闪一下 = 同一条细线 + 9px ink 12% 淡光晕。
+    expect(hover).toContain('0_0_0_1.5px_var(--nomi-ink)')
+    expect(hover).toContain('var(--nomi-shadow-lg)')
+    expect(flash).toContain('0_0_0_1.5px_var(--nomi-ink)')
+    expect(flash).toContain('0_0_0_9px_color-mix(in_oklab,var(--nomi-ink)_12%,transparent)')
+    expect(externalHighlightShellClass(null)).not.toContain('box-shadow')
+    // 多段阴影 + var() 不许写成 shadow-[…]（Tailwind 会把它当阴影颜色、不出 box-shadow），只认任意属性写法。
+    expect(hover).toMatch(/^.*\[box-shadow:/)
+    expect(flash).toMatch(/^.*\[box-shadow:/)
+    expect(`${hover} ${flash}`).not.toContain('shadow-[')
+    // 不许蓝色描边：没有强调色 / info 色 / 蓝；混 transparent 不用 oklch（中性色会被判成 h=none 落成粉）。
+    for (const value of [hover, flash, externalHighlightShellClass(null)]) {
+      expect(value).not.toMatch(/accent|info|blue|in_oklch/)
+    }
   })
 
   it('extracts position and selection changes while ignoring unrelated changes', () => {

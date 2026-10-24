@@ -12,11 +12,14 @@ try {
   await run.win.goto(`${base}/docs/design/verification/2026-09-09-skill-library/specimen.html`)
   const window = await run.app.browserWindow(run.win)
   await window.evaluate(w => w.setBounds({ x: 0, y: 0, width: 1440, height: 900 }))
-  const card = run.win.locator('[data-skill-card="skill:curated-multi-view"]')
+  // 2026-10-24 boards: the specimen shows the wide page and the 280px drawer side by side (both real hosts of the same content).
+  // The home view shows one row per group, so the card under test is the first real skill that has a cover image.
+  await expectVisible(run.win.locator('[data-library-host="drawer"] [data-skill-card]').first(), 'board:SkillLibrary/library.devlab-specimen')
+  const card = run.win.locator('[data-library-host="page"] [data-skill-card]:has(img)').first()
   await card.scrollIntoViewIfNeeded()
   await expect.poll(() => card.locator('img').evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true)
   await run.win.screenshot({ path: path.join(output, 'specimen-library.png') })
-  await clickOrFail(card, '打开真实多视图技能详情')
-  await expectVisible(run.win.getByRole('heading', { name: '配方', exact: true }), '详情正文使用 Markdown 标题')
+  await clickOrFail(card, '打开真实技能详情')
+  await expectVisible(run.win.locator('[data-skill-detail]'), '技能详情弹窗打开')
   await run.win.screenshot({ path: path.join(output, 'specimen-detail.png') })
 } finally { await run.close() }

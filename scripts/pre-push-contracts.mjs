@@ -18,13 +18,14 @@
 // 用法（钩子自动调；手动重跑同一套）：
 //   node scripts/pre-push-contracts.mjs [--list]          手动跑；正文用 NOMI_PR_BODY / NOMI_PR_BODY_FILE，都没给则 gh 现取（有超时）
 //   node scripts/pre-push-contracts.mjs <remote名> <url>   钩子调用（git 通过 stdin 传 ref 行）
-import { execFileSync, spawn, spawnSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { resolvePullRequestBody } from './lib/prBody.mjs'
+import { killProcessTree, processTreeSpawnOptions } from './lib/processTree.mjs'
 import { implementationFiles, touchesGateInputs } from './pre-push-gate-inputs.mjs'
 import { CI_ONLY, PARTIAL_LOCAL } from './pre-push-gate-table.mjs'
 import { RELATED_TESTS_GATE, SOURCE_FILE, relatedTests, runRelatedTests } from './pre-push-related-tests.mjs'
@@ -173,7 +174,7 @@ export const SCAN_TESTS = Object.freeze([
   { name: 'check:test-copy-literals', argv: ['scripts/check-test-copy-literals.mjs'], rerun: 'node scripts/check-test-copy-literals.mjs', when: (files) => touchesGateInputs('check:test-copy-literals', files) },
   { name: 'test:control-contract', argv: [VITEST_ENTRY, 'run', 'scripts/check-control-contract.test.mjs'], rerun: 'node node_modules/vitest/vitest.mjs run scripts/check-control-contract.test.mjs', when: (files) => touchesGateInputs('test:control-contract', files) },
   // 本文件与门表 / 输入声明 / package.json 的契约 + 结构用例（几秒；整份 pre-push-contracts.node-test.mjs > 90 秒只在 CI，快的部分拆到这里，#1147 / #1141 在 CI 才红）
-  { name: 'test:pre-push-structure', argv: ['--test', 'scripts/pre-push-structure.node-test.mjs'], rerun: 'node --test scripts/pre-push-structure.node-test.mjs', when: (files) => touchesGateInputs('test:pre-push-structure', files) },
+  { name: 'test:pre-push-structure', argv: ['--test', 'scripts/pre-push-structure.node-test.mjs', 'scripts/pre-push-tracked-scan.node-test.mjs'], rerun: 'node --test scripts/pre-push-structure.node-test.mjs scripts/pre-push-tracked-scan.node-test.mjs', when: (files) => touchesGateInputs('test:pre-push-structure', files) },
   // 扫描型守卫登记核对（几秒）：新增 / 改名 / 删除任何测试文件都触发（GATE_INPUTS 的 match），不再只在改到钩子自己的输入时才跑——#1202 #1203 #1207 #1209 #1210 #1211 在 CI 才红
   { name: 'check:scan-guard-census', argv: ['scripts/check-scan-guard-census.mjs'], rerun: 'node scripts/check-scan-guard-census.mjs', when: (files) => touchesGateInputs('check:scan-guard-census', files) },
   { name: 'test:quit-lifecycle-guard', argv: [VITEST_ENTRY, 'run', 'electron/quitLifecycleGuard.test.ts'], rerun: 'node node_modules/vitest/vitest.mjs run electron/quitLifecycleGuard.test.ts', when: (files) => touchesGateInputs('test:quit-lifecycle-guard', files) },
@@ -191,8 +192,8 @@ export const SCAN_TESTS = Object.freeze([
 /** 正文类（需要 PR 正文）：prior-art 与 pr-judgement，正文取不到时只说「今天没查成」（CI 侧仍然 fail-closed）。 */
 export const BODY_GATES = Object.freeze(['check:prior-art', 'check:pr-judgement'])
 
-/** 改动文件的 eslint 子集（警告数不得比 base 多、错误一律拦）；脚本是 scripts/lint-changed.mjs，不在 package.json 里。 */
-export const LINT_GATE = Object.freeze({ name: 'lint:changed', script: 'scripts/lint-changed.mjs', when: (files) => files.some((file) => /\.(?:tsx?|jsx?|[cm]js)$/.test(file)) })
+/** 改动文件的 eslint 子集（警告数不得比 base 多、错误一律拦、批量抑制只减不增）；脚本是 scripts/lint-changed.mjs，不在 package.json 里。 */
+export const LINT_GATE = Object.freeze({ name: 'lint:changed', script: 'scripts/lint-changed.mjs', when: (files) => files.some((file) => /\.(?:tsx?|jsx?|[cm]js)$/.test(file) || file === 'eslint-suppressions.json') })
 
 /**
  * 没放进推送前的 Contracts 门岗及原因（只写在这里一处，报告与 --list 都读它）：
@@ -311,13 +312,6 @@ export const HOOK_TIMEOUT_MS = 600_000
 /** 仍在跑的子进程：{ child → { name, started } }，给整体超时点名并终止用。 */
 const running = new Map()
 
-function killTree(child) {
-  try {
-    if (process.platform === 'win32' && child.pid) spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' })
-    else child.kill('SIGKILL')
-  } catch { /* 已经退出 */ }
-}
-
 export function runNode(argv, env = {}, { timeoutMs = GATE_TIMEOUT_MS, name = argv.join(' ') } = {}) {
   return new Promise((resolve) => {
     const started = Date.now()
@@ -328,7 +322,7 @@ export function runNode(argv, env = {}, { timeoutMs = GATE_TIMEOUT_MS, name = ar
     // 继承了它们就落到真仓库上：2026-10-10 推送时 check-vocabularies.node-test.mjs 的 `git init` 把真仓库重初始化成 core.bare=true、
     // `git config user.name Test` 写进真仓库配置，所有 worktree 一起失效。门岗与测试都按 cwd 找仓库，一律不继承 GIT_*。
     for (const key of Object.keys(childEnv)) if (/^GIT_/.test(key)) delete childEnv[key]
-    const child = spawn(process.execPath, argv, { cwd: repoRoot, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(process.execPath, argv, { cwd: repoRoot, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'], ...processTreeSpawnOptions() })
     running.set(child, { name, started })
     let output = ''
     let settled = false
@@ -340,7 +334,7 @@ export function runNode(argv, env = {}, { timeoutMs = GATE_TIMEOUT_MS, name = ar
       resolve(result)
     }
     const timer = setTimeout(() => {
-      killTree(child)
+      killProcessTree(child, 'SIGKILL')
       finish({ status: 124, output: `${output}
 [pre-push] 超时：${name} 跑了 ${((Date.now() - started) / 1000).toFixed(1)} 秒仍未结束（上限 ${timeoutMs / 1000} 秒），已终止`, ms: Date.now() - started })
     }, timeoutMs)
@@ -381,7 +375,7 @@ export async function runWithDeadline(tasks, limit, deadlineMs) {
   const deadline = new Promise((resolve) => {
     timer = setTimeout(() => {
       const stillRunning = [...running.values()].map((entry) => `${entry.name}（${((Date.now() - entry.started) / 1000).toFixed(0)}s）`)
-      for (const child of [...running.keys()]) killTree(child)
+      for (const child of [...running.keys()]) killProcessTree(child, 'SIGKILL')
       resolve({ results: [], timedOut: true, stillRunning })
     }, deadlineMs)
   })

@@ -38,6 +38,8 @@ export type AssistantStatusBoxProps = {
   approvalHint?: string
   /** 打开面板时 Nomi 自己实连成功的工具数：助手还没来过时，这是「配置能用」的唯一证据，不能因为换了状态框就丢。 */
   verifiedToolCount?: number | null
+  /** 失效框标题（由调用方按 resolveAssistantBrokenAction 的投影传入；不传 = 默认「配置需要更新」）。 */
+  brokenTitle?: string
   /** 失效 / 另一份的原因码，给走查断言用（此前挂在旧失效框上的 data-assistant-broken / -elsewhere）。 */
   brokenCode?: string
 }
@@ -59,7 +61,7 @@ export function AssistantStatusBox(props: AssistantStatusBoxProps): JSX.Element 
     recent: t('onboardingProviders.assistant.box.recentTitle', { client }),
     written: t('onboardingProviders.assistant.box.writtenTitle', { client }),
     'host-approval': t('onboardingProviders.assistant.box.hostApprovalTitle', { client }),
-    broken: t('onboardingProviders.assistant.brokenTitle'),
+    broken: props.brokenTitle ?? t('onboardingProviders.assistant.brokenTitle'),
     elsewhere: t('onboardingProviders.assistant.elsewhereTitle'),
     none: t('onboardingProviders.assistant.box.noneTitle', { client }),
   }[box]

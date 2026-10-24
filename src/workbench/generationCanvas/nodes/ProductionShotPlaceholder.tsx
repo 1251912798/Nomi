@@ -21,50 +21,61 @@ import { IconClock, IconPlayerPause } from '@tabler/icons-react'
 
 import { cn } from '../../../utils/cn'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
-import { useProductionCanvasLandingStore } from '../../production/productionCanvasLandingStore'
-import { deriveProductionShotState, productionShotIdForNode, type ProductionShotState } from '../../../../electron/shared/productionShotPhase'
 import { resumeProductionBatch } from '../../production/productionShotActions'
-import { productionRunIdOf } from '../../production/productionShotOwnership'
-import type { TranslationKey } from '../../../i18n/translationKey'
+import { productionShotCornerText, stoppedCopyOf, useProductionShotState } from './productionShotCorner'
+import type { ProductionShotState } from '../../../../electron/shared/productionShotPhase'
 
-type StoppedCopy = {
-  message: TranslationKey
-  /** 这一种停法下「继续」有没有用：没用就不摆按钮（选中节点单独生成 / 去任务面板，文案里说清）。 */
-  action: { label: TranslationKey; kind: 'resume-consent' | 'resume-manual' } | null
+// 「阶段 → 小标说什么 / 已停说哪句话」与读阶段的 hook 住在 productionShotCorner.ts（2026-10-23）；
+// 小标的样子是下面这两个组件。聊天里的指向元素和画布节点挂同一份，不各抄一张表、不各画一枚。
+// 走查定位用的 data-*（`data-shot-placeholder-state`、`data-production-shot-node`）只由节点这一侧传进去——
+// 指向元素不能带它们，否则全局 querySelectorAll 会把聊天里的指向元素也数成画布占位。
+
+/** 渲染层的翻译函数（`useTranslation().t` 能直接传进来）。 */
+type Translate = (key: string, options?: Record<string, unknown>) => string
+
+type DataAttributes = { [key: `data-${string}`]: string | undefined }
+
+/** 左上角那枚中性小标（纸白 85% 底、ink-60 字、细阴影）。位置随宿主（节点 8px、指向元素 4px），样子只有这一份。 */
+export function NodeCornerPill({ label, icon, className, attributes }: {
+  label: string
+  icon?: React.ReactNode
+  className?: string
+  attributes?: DataAttributes
+}): JSX.Element {
+  return (
+    <div
+      className={cn('absolute left-2 top-2 z-[4] inline-flex max-w-[calc(100%-16px)] items-center gap-1 rounded-full bg-nomi-paper/85 px-2 py-0.5 text-micro text-nomi-ink-60 shadow-nomi-sm', className)}
+      aria-label={label}
+      {...attributes}
+    >
+      {icon}
+      <span className="min-w-0 truncate">{label}</span>
+    </div>
+  )
 }
 
-/** 停下的原因 → 这一镜上说的话与能做的事。穷尽：新长一个原因而这里没表态，编译就过不去。 */
-function stoppedCopyOf(reason: Extract<ProductionShotState, { phase: 'stopped' }>['stoppedReason']): StoppedCopy {
-  switch (reason) {
-    case 'consent_expired':
-      return { message: 'generationCommon.production.canvasLanding.stoppedConsentExpired', action: { label: 'generationCommon.production.canvasLanding.resume', kind: 'resume-consent' } }
-    case 'landing_failed':
-      return { message: 'generationCommon.production.canvasLanding.stoppedLandingFailed', action: { label: 'generationCommon.production.canvasLanding.resume', kind: 'resume-manual' } }
-    case 'user_paused':
-      return { message: 'generationCommon.production.canvasLanding.stoppedManual', action: { label: 'generationCommon.production.canvasLanding.continueRemaining', kind: 'resume-manual' } }
-    case 'failed':
-      return { message: 'generationCommon.production.canvasLanding.stoppedAfterFailure', action: null }
-    case 'restart_recovery':
-      return { message: 'generationCommon.production.canvasLanding.stoppedForRecovery', action: null }
-    case 'user_cancelled':
-      return { message: 'generationCommon.production.canvasLanding.stoppedCancelled', action: null }
-    case 'unknown':
-      return { message: 'generationCommon.production.canvasLanding.stoppedUnknown', action: { label: 'generationCommon.production.canvasLanding.resume', kind: 'resume-manual' } }
-    default:
-      return ((value: never) => value)(reason)
-  }
+/** 制作小标：阶段有小标才画（排队带钟）。 */
+export function ProductionShotCornerLabel({ state, t, className, attributes }: {
+  state: ProductionShotState | null
+  t: Translate
+  className?: string
+  attributes?: DataAttributes
+}): JSX.Element | null {
+  const corner = productionShotCornerText(t, state)
+  if (!corner) return null
+  return (
+    <NodeCornerPill
+      label={corner.text}
+      icon={corner.queued ? <IconClock size={11} stroke={1.8} aria-hidden="true" className="shrink-0" /> : undefined}
+      className={className}
+      attributes={attributes}
+    />
+  )
 }
-
 
 export function ProductionShotPlaceholder({ node, reportFeedback }: { reportFeedback: (message: string) => void; node: GenerationCanvasNode }): JSX.Element | null {
   const { t } = useTranslation()
-  const runId = productionRunIdOf(node)
-  // 只在这个 Run 是 store 缓存里的那一份时派生（避免读到别的项目/Run 的态）。
-  const state = useProductionCanvasLandingStore((store) => {
-    const run = runId ? store.runs[runId] : undefined
-    return run ? deriveProductionShotState(run, productionShotIdForNode(run, node.id)) : null
-  })
-  const projectId = useProductionCanvasLandingStore((store) => (runId && store.runs[runId] ? store.projectId : null))
+  const { runId, projectId, state } = useProductionShotState(node)
   const [busy, setBusy] = React.useState(false)
   // 这一下点击续哪几镜的同意、怎么接着拍，由主进程定——渲染层只说「继续」。
   const runResume = React.useCallback(() => {
@@ -77,44 +88,10 @@ export function ProductionShotPlaceholder({ node, reportFeedback }: { reportFeed
   // 节点自己在跑（制作投影的「生成中」或用户手动的一次）：那一段由 NodeGeneratingOverlay 画，这里不叠第二层。
   if (node.status === 'running' || node.status === 'queued') return null
 
-  if (state.phase === 'awaiting_confirmation' || state.phase === 'not_generated' || state.phase === 'removed') {
-    // 在等用户点头 / 从没被批过 / 用户在卡上去掉了：中性小标，不转圈、不说排队（它们不在任何队列里）。
-    const label = t(state.phase === 'awaiting_confirmation'
-      ? 'generationCommon.production.canvasLanding.awaitingConfirmation'
-      : state.phase === 'removed'
-        ? 'generationCommon.production.canvasLanding.removedNotGenerated'
-        : 'generationCommon.production.canvasLanding.notGenerated')
-    return (
-      <div
-        className="absolute left-2 top-2 z-[4] inline-flex items-center gap-1 rounded-full bg-nomi-paper/85 px-2 py-0.5 text-micro text-nomi-ink-60 shadow-nomi-sm"
-        data-shot-placeholder-state={state.phase}
-        data-production-shot-node={node.id}
-        aria-label={label}
-      >
-        {label}
-      </div>
-    )
+  if (state.phase !== 'stopped') {
+    // 等你确认 / 还没生成 / 已去掉 / 排队中（第 n/N）：左上角中性小标；其余阶段由节点自己的运行记录画。
+    return <ProductionShotCornerLabel state={state} t={t} attributes={{ 'data-shot-placeholder-state': state.phase, 'data-production-shot-node': node.id }} />
   }
-
-  if (state.phase === 'queued') {
-    // 排队中（第 n/N）：左上角小徽标（同 NodeQueuedBadge 语言）+ 棋盘格占位（节点本来就没生成出来）。
-    const label = state.queueIndex && state.queueTotal
-      ? t('generationCommon.production.canvasLanding.queuedNth', { index: state.queueIndex, total: state.queueTotal })
-      : t('generationCommon.production.canvasLanding.queued')
-    return (
-      <div
-        className="absolute left-2 top-2 z-[4] inline-flex items-center gap-1 rounded-full bg-nomi-paper/85 px-2 py-0.5 text-micro text-nomi-ink-60 shadow-nomi-sm"
-        data-shot-placeholder-state="queued"
-        data-production-shot-node={node.id}
-        aria-label={label}
-      >
-        <IconClock size={11} stroke={1.8} aria-hidden="true" />
-        {label}
-      </div>
-    )
-  }
-
-  if (state.phase !== 'stopped') return null
   // 已停：warning 底（非 danger），一句人话 + 这种停法下真能用的入口（没有就不摆）。
   const copy = stoppedCopyOf(state.stoppedReason)
   return (

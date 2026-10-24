@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>我的 · 修后</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.nm{--shell:#f6f5f3;--accent:oklch(0.55 0.13 250);--paper:oklch(1 0 0);--ink:oklch(0.22 0.01 80);--ink80:oklch(0.32 0.01 80);--ink60:oklch(0.50 0.01 80);--ink40:oklch(0.62 0.01 80);--ink30:oklch(0.78 0.01 80);--ink05:oklch(0.97 0.003 80);--line:oklch(0.91 0.004 80);--linesoft:oklch(0.95 0.003 80);--danger:oklch(0.55 0.13 25);--shsm:0 1px 2px oklch(0 0 0 / 0.04),0 1px 1px oklch(0 0 0 / 0.03);--shmd:0 2px 4px oklch(0 0 0 / 0.04),0 8px 24px oklch(0 0 0 / 0.06);font-family:Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.nm.dark{--shell:#0d0c09;--accent:oklch(0.70 0.13 250);--paper:oklch(0.235 0.007 80);--ink:oklch(0.93 0.006 85);--ink80:oklch(0.84 0.006 85);--ink60:oklch(0.70 0.006 85);--ink40:oklch(0.62 0.006 85);--ink30:oklch(0.50 0.006 85);--ink05:oklch(0.30 0.006 85);--line:oklch(0.36 0.007 80);--linesoft:oklch(0.31 0.007 80);--danger:oklch(0.72 0.13 25);--shsm:0 1px 2px oklch(0 0 0 / 0.32),0 1px 1px oklch(0 0 0 / 0.22);--shmd:0 2px 5px oklch(0 0 0 / 0.30),0 14px 34px oklch(0 0 0 / 0.32)}
+.nm .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm .clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nm .clamp6{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.nm button{font-family:inherit}
+</style>
+</helmet>
+<div class="nm {{themeClass}}" style="width: 1440px; height: 900px; background: var(--shell); position: relative; overflow: hidden;">
+  <div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 76px; box-sizing: border-box;">
+    <svg width="20" height="20" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="oklch(0.22 0.01 80)"></rect><path d="M7.5 20V8h2.6l7.4 8.4V8h2.6v12h-2.6L10.1 11.6V20z" fill="#fff"></path></svg>
+    <span style="font-size: 13px; font-weight: 500;">{{s.appTitle}}</span>
+    <span style="flex: 1;"></span>
+    <div style="display: flex; align-items: center; gap: 2px;">
+      <button type="button" aria-label="{{s.window}}" style="position: relative; width: 28px; height: 28px; border: 0; padding: 0; background: transparent; color: var(--ink60); display: grid; place-items: center; border-radius: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16"></path><path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12"></path><path d="M8 4v4"></path></svg></button>
+      <button type="button" aria-label="{{s.settings}}" style="position: relative; width: 28px; height: 28px; border: 0; padding: 0; background: transparent; color: var(--ink60); display: grid; place-items: center; border-radius: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"></path></svg><span aria-hidden="true" style="position: absolute; right: 5px; top: 5px; width: 6px; height: 6px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 2px var(--shell);"></span></button>
+    </div>
+  </div>
+  <div style="position: absolute; left: 8px; top: 40px; right: 8px; bottom: 8px; background: var(--paper); border-radius: 10px; box-shadow: 0 0 0 1px var(--linesoft); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: center; gap: 16px; padding: 24px 32px 0 32px; height: 32px;">
+      <div role="tablist" aria-label="{{s.tabsAria}}" style="display: flex; align-items: baseline; gap: 20px;">
+        <button type="button" role="tab" aria-selected="false" style="border: 0; background: transparent; padding: 0; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink40);">{{s.tabProjects}}</button>
+        <button type="button" role="tab" aria-selected="{{s.skillSel}}" style="{{s.skillTabStyle}}">{{s.tabSkills}}</button>
+        <button type="button" role="tab" aria-selected="{{s.promptSel}}" style="{{s.promptTabStyle}}">{{s.tabPrompts}}</button>
+      </div>
+      <sc-if value="{{isPrompt}}" hint-placeholder-val="{{ false }}">
+        <div role="radiogroup" aria-label="{{s.typeAria}}" style="margin-left: 8px; display: inline-flex; height: 28px; box-sizing: border-box; padding: 2px; gap: 2px; border-radius: 999px; background: var(--ink05);">
+          <button type="button" role="radio" aria-checked="true" style="border: 0; border-radius: 999px; padding: 0 12px; font-size: 12px; font-weight: 600; background: var(--paper); color: var(--ink); box-shadow: var(--shsm);">{{s.typeAll}}</button>
+          <button type="button" role="radio" aria-checked="false" style="border: 0; border-radius: 999px; padding: 0 12px; font-size: 12px; background: transparent; color: var(--ink60);">{{s.typeImage}}</button>
+          <button type="button" role="radio" aria-checked="false" style="border: 0; border-radius: 999px; padding: 0 12px; font-size: 12px; background: transparent; color: var(--ink60);">{{s.typeVideo}}</button>
+        </div>
+      </sc-if>
+      <label style="display: flex; align-items: center; gap: 6px; width: 260px; height: 30px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink40);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6-6"></path></svg>
+        <input type="search" placeholder="{{s.search}}" aria-label="{{s.search}}" style="border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--ink); width: 100%;">
+      </label>
+      <span style="flex: 1;"></span>
+      <sc-if value="{{isSkill}}" hint-placeholder-val="{{ true }}">
+        <button type="button" aria-label="{{s.importName}}" title="{{s.importName}}" style="width: 28px; height: 28px; border-radius: 999px; border: 0; background: transparent; color: var(--ink60); display: grid; place-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path><path d="M7 9l5-5 5 5"></path><path d="M12 4v12"></path></svg></button>
+      </sc-if>
+      <button type="button" style="height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink80); font-size: 12px; font-weight: 500;">
+        <sc-if value="{{isSkill}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21l15-15-3-3-15 15 3 3"></path><path d="M15 6l3 3"></path><path d="M9 3a2 2 0 0 0 2 2 2 2 0 0 0-2 2 2 2 0 0 0-2-2 2 2 0 0 0 2-2"></path><path d="M19 13a2 2 0 0 0 2 2 2 2 0 0 0-2 2 2 2 0 0 0-2-2 2 2 0 0 0 2-2"></path></svg></sc-if>
+        <sc-if value="{{isPrompt}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></sc-if>
+        {{s.newLabel}}
+      </button>
+    </div>
+    <div style="display: flex; gap: 28px; padding: 20px 32px 0 32px; flex: 1; min-height: 0;">
+      <nav aria-label="{{s.navAria}}" style="width: 176px; flex: none; display: flex; flex-direction: column; gap: 2px;">
+        <sc-for list="{{nav}}" as="n" hint-placeholder-count="8">
+          <sc-if value="{{n.isLabel}}" hint-placeholder-val="{{ false }}">
+            <div style="margin: 14px 0 4px 10px; font-size: 11px; color: var(--ink40);">{{n.label}}</div>
+          </sc-if>
+          <sc-if value="{{n.isRow}}" hint-placeholder-val="{{ true }}">
+            <button type="button" aria-current="{{n.current}}" style="{{n.style}}"><span class="one">{{n.label}}</span><span style="font-size: 12px; color: var(--ink40); font-variant-numeric: tabular-nums;">{{n.count}}</span></button>
+          </sc-if>
+        </sc-for>
+      </nav>
+      <main style="flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px;">
+        <sc-if value="{{showEmpty}}" hint-placeholder-val="{{ false }}">
+          <div style="flex: 1; display: grid; place-items: center; padding-bottom: 120px;">
+            <div style="max-width: 420px; text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center;">
+              <div style="width: 44px; height: 44px; border-radius: 12px; background: var(--ink05); color: var(--ink40); display: grid; place-items: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path><path d="M16 5.25l-8 4.5"></path></svg></div>
+              <h3 style="margin: 4px 0 0 0; font-size: 14px; font-weight: 600;">{{s.emptyTitle}}</h3>
+              <p style="margin: 0; font-size: 12px; line-height: 19px; color: var(--ink60);">{{s.emptyDesc}}</p>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{showList}}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; align-items: baseline; gap: 8px; height: 24px;">
+            <h3 style="margin: 0; font-size: 13px; font-weight: 600;">{{s.mine}}</h3>
+            <span style="font-size: 12px; color: var(--ink40);">{{count}}</span>
+          </div>
+          <sc-if value="{{isSkill}}" hint-placeholder-val="{{ true }}">
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+              <button type="button" style="height: 78px; box-sizing: border-box; display: flex; gap: 12px; align-items: flex-start; padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-align: left; color: inherit;">
+                <span style="width: 88px; height: 55px; flex: none; border-radius: 6px; background: var(--ink05); display: grid; place-items: center; color: var(--ink30);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path><path d="M16 5.25l-8 4.5"></path></svg></span>
+                <span style="min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+                  <strong class="one" style="font-size: 14px; line-height: 20px; font-weight: 600;">improv-scene-mine</strong>
+                  <span class="clamp2" style="font-size: 12px; line-height: 16px; color: var(--ink60);">即兴生台词——让角色在设定好的世界里即兴对戏，长出编剧预设不出的真实口语与情节；再把即兴原料按「剪水→留金→上结构→转场景」消化成可拍剧本。</span>
+                </span>
+              </button>
+            </div>
+          </sc-if>
+          <sc-if value="{{isPrompt}}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px 12px;">
+              <sc-for list="{{cards}}" as="it" hint-placeholder-count="3">
+                <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                  <button type="button" aria-label="{{it.title}}" style="display: block; padding: 0; border: 0; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--ink05); box-shadow: {{it.ring}};">
+                    <sc-if value="{{it.hasImg}}" hint-placeholder-val="{{ true }}"><img src="{{it.src}}" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;"></sc-if>
+                    <sc-if value="{{it.isText}}" hint-placeholder-val="{{ false }}"><span class="clamp6" style="box-sizing: border-box; height: 100%; padding: 10px 12px; font-size: 12px; line-height: 17px; color: var(--ink60); text-align: left;">{{it.text}}</span></sc-if>
+                  </button>
+                  <div style="display: flex; align-items: center; gap: 2px; min-width: 0; height: 18px;">
+                    <strong class="one" style="flex: 1; min-width: 0; font-size: 13px; line-height: 18px; font-weight: 600;">{{it.title}}</strong>
+                    <sc-if value="{{it.hover}}" hint-placeholder-val="{{ false }}">
+                      <button type="button" aria-label="{{s.edit}}" title="{{s.edit}}" style="width: 24px; height: 24px; border: 0; border-radius: 6px; background: var(--ink05); color: var(--ink80); display: grid; place-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L18.5 9.5a2.828 2.828 0 1 0-4-4L4 16v4"></path><path d="M13.5 6.5l4 4"></path></svg></button>
+                      <button type="button" aria-label="{{s.delete}}" title="{{s.delete}}" style="width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--danger); display: grid; place-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"></path></svg></button>
+                    </sc-if>
+                  </div>
+                  <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 16px; color: var(--ink40); margin-top: -4px;">
+                    <sc-if value="{{it.video}}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z"></path><path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></sc-if>
+                    <span class="one">{{it.meta}}</span>
+                  </span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </sc-if>
+      </main>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"lang":{"editor":"enum","options":["zh","en"],"default":"zh"},"lib":{"editor":"enum","options":["skill","prompt"],"default":"skill"},"empty":{"editor":"enum","options":["no","yes"],"default":"no"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const en = (this.props.lang ?? 'zh') === 'en';
+    const lib = this.props.lib ?? 'skill';
+    const empty = (this.props.empty ?? 'no') === 'yes';
+    const isSkill = lib === 'skill';
+    const T = (zh, e) => (en ? e : zh);
+    const tabOn = 'border: 0; background: transparent; padding: 0; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink);';
+    const tabOff = 'border: 0; background: transparent; padding: 0; height: 32px; font-size: 16px; font-weight: 600; color: var(--ink40);';
+    const s = {
+      appTitle: T('项目库', 'Projects'), window: T('窗口', 'Window'), settings: T('设置', 'Settings'), tabsAria: T('项目库页签', 'Library tabs'), tabProjects: T('项目', 'Projects'), tabSkills: T('Skill', 'Skills'), tabPrompts: T('提示词', 'Prompts'),
+      skillSel: isSkill ? 'true' : 'false', promptSel: isSkill ? 'false' : 'true', skillTabStyle: isSkill ? tabOn : tabOff, promptTabStyle: isSkill ? tabOff : tabOn,
+      typeAria: T('图片或视频', 'Image or video'), typeAll: T('全部', 'All'), typeImage: T('图片', 'Image'), typeVideo: T('视频', 'Video'),
+      search: isSkill ? T('搜技能…', 'Search skills…') : T('搜提示词…', 'Search prompts…'),
+      importName: T('导入技能：SKILL.md、zip 或整个文件夹，也可以直接拖进来', 'Import a skill: SKILL.md, zip or a whole folder — or drop it here'),
+      newLabel: T('新建', 'New'), navAria: T('分类', 'Categories'), mine: T('我的', 'Mine'), edit: T('编辑', 'Edit'), delete: T('删除', 'Delete'),
+      emptyTitle: T('你还没有自己的技能', 'You have no skills of your own yet'),
+      emptyDesc: T('点右上「新建」让 AI 帮你写一个；别人发来的技能（SKILL.md、zip 包或整个技能文件夹）直接拖进这里，或点右上的导入。', 'Use New at the top right to have AI write one. Drop a skill someone sent you (SKILL.md, a zip or a whole folder) here, or use Import at the top right.'),
+    };
+    const row = (label, count, current) => ({
+      isRow: true, isLabel: false, label, count, current: current ? 'true' : 'false',
+      style: 'height: 28px; border: 0; border-radius: 6px; padding: 0 10px; display: flex; align-items: center; gap: 6px; text-align: left; font-size: 13px; ' + (current ? 'background: var(--ink05); color: var(--ink); font-weight: 600;' : 'background: transparent; color: var(--ink80); font-weight: 400;'),
+    });
+    const label = (text) => ({ isRow: false, isLabel: true, label: text, count: '', current: 'false', style: '' });
+    const nav = isSkill
+      ? [row(T('全部', 'All'), empty ? '49' : '50', false), row(T('我的', 'Mine'), empty ? '0' : '1', true), label(T('内置', 'Built-in')),
+        row(T('创作流程', 'Workflow'), '10', false), row(T('导演', 'Directing'), '13', false), row(T('编剧', 'Writing'), '11', false), row(T('广告', 'Advertising'), '8', false), row(T('角色与场景', 'Character and scene'), '7', false)]
+      : [row(T('全部', 'All'), '222', false), row(T('我的', 'Mine'), '3', true), label(T('内置', 'Built-in')),
+        row(T('表情预设', 'Expression presets'), '25', false), row(T('运镜', 'Camera'), '23', false), row(T('构图', 'Composition'), '8', false), row(T('分镜', 'Storyboard'), '5', false),
+        row(T('角色设定', 'Character'), '4', false), row(T('修图', 'Editing'), '2', false), row(T('场景', 'Scene'), '1', false), row(T('去 AI 感', 'Natural texture'), '1', false),
+        label(T('公开库', 'Public')), row('GPT Image 2', '30', false), row('Nano Banana Pro', '30', false), row(T('GPT-4o 图像', 'GPT-4o Image'), '30', false), row('Sora 2', '30', false), row(T('Sora 官方', 'Sora official'), '30', false)];
+    const ringOff = '0 0 0 1px var(--linesoft)';
+    const cards = [
+      { title: 'Q 版角色卡', hasImg: true, isText: false, src: '/_blob/5e2a1f7cc87876ec47c529c67e604066', text: '', meta: T('网页提取 · 图片', 'Web extract · Image'), video: false, hover: true, ring: '0 0 0 1px var(--line), var(--shmd)' },
+      { title: 'Tokyo Walk', hasImg: false, isText: true, src: '', text: 'A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots…', meta: T('视频', 'Video'), video: true, hover: false, ring: ringOff },
+      { title: T('未命名提示词', 'Untitled prompt'), hasImg: false, isText: true, src: '', text: 'Prompt 1: Create a cinematic hero image of a gourmet cheeseburger on a dark stone surface with glossy brioche bun, melted cheese, crisp lettuce, tomato, grilled patty…', meta: T('图片', 'Image'), video: false, hover: false, ring: ringOff },
+    ];
+    return {
+      themeClass: dark ? 'dark' : '', s, nav, cards, isSkill, isPrompt: !isSkill,
+      showEmpty: empty, showList: !empty, count: isSkill ? '1' : '3',
+    };
+  }
+}
+</script>
+</body>
+</html>

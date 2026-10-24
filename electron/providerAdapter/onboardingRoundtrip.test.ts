@@ -102,6 +102,7 @@ describe("往返 · 图片同步出图", () => {
       apiKey: "sk-probe",
       request,
       operation: create,
+      stage: "create",
     });
     const hit = received.at(-1)!;
     expect(hit.url).toBe("/v1/images/generations");
@@ -126,6 +127,7 @@ describe("往返 · 图片同步出图", () => {
       apiKey: "",
       request,
       operation: create,
+      stage: "create",
     });
     expect(received.at(-1)!.headers.authorization).toBeUndefined();
   });
@@ -141,6 +143,7 @@ describe("往返 · 图生图（chat/completions 多模态）", () => {
       apiKey: "sk-probe",
       request: editRequest,
       operation: edit,
+      stage: "create",
     });
     const { result } = await buildProfileTaskResult({
       response: executed.response,
@@ -223,6 +226,7 @@ describe("往返 · 视频异步 create → 轮询 → 取产物", () => {
       apiKey: "sk-probe",
       request: videoRequest,
       operation: videoMode.create,
+      stage: "create",
     });
     const createResult = await buildProfileTaskResult({
       response: created.response,
@@ -244,6 +248,7 @@ describe("往返 · 视频异步 create → 轮询 → 取产物", () => {
         apiKey: "sk-probe",
         request: videoRequest,
         operation: query,
+        stage: "query",
         providerMeta: createResult.providerMeta,
       });
       const polledResult = await buildProfileTaskResult({

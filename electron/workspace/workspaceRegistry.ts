@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import { retryOnSharingViolation, writeJsonFileAtomic } from "../jsonFile";
 import {
@@ -90,6 +91,36 @@ export function listRecentWorkspaces(settingsRoot: string): RecentWorkspaceEntry
   return sortRecentWorkspaces(readRecentWorkspaceEntries(settingsRoot).map((entry) => withMissingState(entry)));
 }
 
+/**
+ * 项目库列表用的异步读：注册表本身是一个小 JSON（一次同步读），「文件夹还在不在」这一项
+ * 逐个项目一次 stat——几十个项目就是几十次系统调用，放线程池里并发做（上限由调用方给），不占主进程事件循环。
+ */
+export async function listRecentWorkspacesAsync(
+  settingsRoot: string,
+  limit: <T>(task: () => Promise<T>) => Promise<T>,
+): Promise<RecentWorkspaceEntry[]> {
+  const entries = readRecentWorkspaceEntries(settingsRoot);
+  const withState = await Promise.all(
+    entries.map((entry) =>
+      limit(async () => ({
+        ...entry,
+        missing: !(await fsp.access(entry.rootPath).then(() => true, () => false)),
+      })),
+    ),
+  );
+  return sortRecentWorkspaces(withState);
+}
+
+/** 只要已登记项目的 id（不查盘）：「有没有在跑的任务」这类只按 id 找别处记录的读法用它，不必拿全库摘要。 */
+export function listRegisteredProjectIds(settingsRoot: string): string[] {
+  return readRecentWorkspaceEntries(settingsRoot).map((entry) => entry.id);
+}
+
+/** id → 项目文件夹路径（只读注册表，不查盘）：批量状态检查按 id 找文件夹用，不必每个项目都读一遍清单。 */
+export function listRegisteredWorkspaceRoots(settingsRoot: string): Map<string, string> {
+  return new Map(readRecentWorkspaceEntries(settingsRoot).map((entry) => [entry.id, path.resolve(entry.rootPath)]));
+}
+
 export function findRecentWorkspace(
   settingsRoot: string,
   projectId: string,
@@ -119,7 +150,7 @@ function strictDescendantOf(rootPath: string, candidatePath: string): boolean {
 export function backfillWorkspaceOrigins(
   settingsRoot: string,
   defaultProjectsRoot: string,
-): RecentWorkspaceEntry[] {
+): void {
   const nativeRootPath = path.resolve(defaultProjectsRoot);
   return withRegistryLock(settingsRoot, () => {
     const entries = readRecentWorkspaceEntries(settingsRoot);
@@ -136,7 +167,6 @@ export function backfillWorkspaceOrigins(
     });
     const sorted = sortRecentWorkspaces(next);
     if (changed) writeRecentWorkspaces(settingsRoot, sorted);
-    return sorted.map((entry) => withMissingState(entry));
   });
 }
 

@@ -7,7 +7,7 @@ import path from 'node:path'
 import { chromium } from 'playwright'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { expect, clickOrFail, expectVisible, proveProbe, expectAbsent, screenshotSettled } from './_assert.mjs'
-import { addCameraPreset, placeCharacter } from './_directorLab.mjs'
+import { addCameraPreset, enterRefine, placeCharacter } from './_directorLab.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { createBlankProject, prepareIsolation } from '../../evals/lib/isoApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
@@ -39,6 +39,8 @@ try {
     return point && Number.isFinite(point.x) && Number.isFinite(point.y)
   })
   const lab = { page: win, bridge: (method, ...args) => win.evaluate(([name, list]) => window.__nomiDirectorE2E?.[name](...list), [method, args]) }
+  // 3D-BOX 打开先落在导演视图；放人 / 机位 / 进机位 / 连接手机都在「精修」
+  await enterRefine(win)
   await placeCharacter(lab, 'female', 0, 0)
   await clickOrFail(win.getByTestId('director-scene-menu'), '顶栏·▤ 图层名 ▾（大纲）')
   await clickOrFail(win.getByTestId('director-outliner-row').filter({ hasText: '角色' }).first(), '选中角色')

@@ -1,0 +1,136 @@
+{
+  "label": "library-81",
+  "ipc": [
+    {
+      "channel": "nomi:projects:save-async",
+      "kind": "invoke",
+      "count": 1,
+      "totalMs": 298.4,
+      "maxMs": 298.4
+    },
+    {
+      "channel": "nomi:projects:list-async",
+      "kind": "invoke",
+      "count": 1,
+      "totalMs": 209.8,
+      "maxMs": 209.8
+    },
+    {
+      "channel": "nomi:production-runs:list",
+      "kind": "invoke",
+      "count": 2,
+      "totalMs": 81.7,
+      "maxMs": 43.8
+    },
+    {
+      "channel": "nomi:exports:list",
+      "kind": "invoke",
+      "count": 2,
+      "totalMs": 78,
+      "maxMs": 43.8
+    },
+    {
+      "channel": "nomi:projects:read-async",
+      "kind": "invoke",
+      "count": 1,
+      "totalMs": 40.4,
+      "maxMs": 40.4
+    },
+    {
+      "channel": "nomi:workspace:sync-inspect-many",
+      "kind": "invoke",
+      "count": 1,
+      "totalMs": 15.5,
+      "maxMs": 15.5
+    },
+    {
+      "channel": "nomi:prompt-library:text-brain",
+      "kind": "invoke",
+      "count": 1,
+      "totalMs": 11.7,
+      "maxMs": 11.7
+    },
+    {
+      "channel": "nomi:surface:release",
+      "kind": "invoke",
+      "count": 1,
+      "totalMs": 1.6,
+      "maxMs": 1.6
+    },
+    {
+      "channel": "nomi:window:set-titlebar-overlay",
+      "kind": "invoke",
+      "count": 1,
+      "totalMs": 0.2,
+      "maxMs": 0.2
+    },
+    {
+      "channel": "nomi:app:version",
+      "kind": "invoke",
+      "count": 3,
+      "totalMs": 0.1,
+      "maxMs": 0
+    }
+  ],
+  "storeWrites": null,
+  "layersBefore": null,
+  "layersAfter": null,
+  "memoryBefore": [
+    {
+      "type": "Browser",
+      "pid": 135484,
+      "workingSetMB": 286,
+      "privateMB": 223
+    },
+    {
+      "type": "GPU",
+      "pid": 129548,
+      "workingSetMB": 203,
+      "privateMB": 408
+    },
+    {
+      "type": "Utility",
+      "pid": 135368,
+      "workingSetMB": 96,
+      "privateMB": 12
+    },
+    {
+      "type": "Tab",
+      "pid": 130712,
+      "workingSetMB": 286,
+      "privateMB": 183
+    }
+  ],
+  "memoryAfter": [
+    {
+      "type": "Browser",
+      "pid": 135484,
+      "workingSetMB": 316,
+      "privateMB": 256
+    },
+    {
+      "type": "GPU",
+      "pid": 129548,
+      "workingSetMB": 190,
+      "privateMB": 374
+    },
+    {
+      "type": "Utility",
+      "pid": 135368,
+      "workingSetMB": 96,
+      "privateMB": 12
+    },
+    {
+      "type": "Tab",
+      "pid": 130712,
+      "workingSetMB": 332,
+      "privateMB": 226
+    },
+    {
+      "type": "Utility",
+      "pid": 142240,
+      "workingSetMB": 106,
+      "privateMB": 12
+    }
+  ]
+}
