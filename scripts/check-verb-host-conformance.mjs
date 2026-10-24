@@ -89,13 +89,17 @@ const TRANSLATOR_CONSUMED = {
   'check_job/domain': 'laneVerbTransport.verbToTransportCall 消费为 generation/export lane；域内宿主只接收自己的 jobId/operationId，不再次选择任务域',
   'cancel_job/domain': 'laneVerbTransport.verbToTransportCall 消费为 generation/export lane；laneExtendedDesktopPorts 先要求明确任务域，禁止用取消失败探测另一个域',
   'draft_shots/shots[].role': 'patch 分支改的是候选，role 是逐镜信封字段，宿主的 candidatePatch 不收（表上是 refuse：填了就当场拒，不会静默丢）',
-  'look_at_canvas/selectedFrom': '只决定应用内文本从选区第几个起列（canvasReadCompact.projectCanvasForAgent 在排版时消费）；宿主 canvas.read 恒返回完整 selectedNodeIds，不分页，所以不进语义输入',
   'read_script/scope': 'scope 是契约的 operation 判别值，翻译成 full/selection 后由方法名承载',
   'write_script/where': '同上：where 翻成 document.write 的 operation（insert/replace/append）',
   'arrange_canvas/tidy': '布尔开关本身就是 operation 判别（tidy:true → tidy_canvas），不作为字段下传',
   'stage_shot/staging': '包裹对象摊平进 create_staging_reference 的字段',
   'stage_shot/cameraMove': '包裹对象摊平进 create_camera_move 的字段',
   'make_artifact/fileType': '折进 artifact.fileType（节点内部结构），值仍在 payload 里',
+}
+
+/** A declared page cursor is consumed by presentation, so it needs no duplicate translator registration. */
+function translatorConsumed(verb, fieldPath) {
+  return fieldPath === verb.pageCursorField || Boolean(TRANSLATOR_CONSUMED[`${verb.name}/${fieldPath}`])
 }
 
 /** 每个 lane 的宿主桥 = 各传输适配器**真正调用的那个函数**，不是另写一份校验。 */
@@ -399,7 +403,7 @@ function checkVerb(verb) {
     if (item.label === 'R1 最小实例' && outcome.translated !== undefined) {
       const kept = leafValues(outcome.translated)
       for (const [field, value] of Object.entries(isRecord(item.args) ? item.args : {})) {
-        if (TRANSLATOR_CONSUMED[`${verb.name}/${field}`]) continue
+        if (translatorConsumed(verb, field)) continue
         const missing = [...leafValues(value)].filter((leaf) => !kept.has(leaf))
         if (!missing.length) continue
         problems.push(`R1b 必填字段：字段 "${field}" 被翻译层静默丢掉（丢了 ${missing.slice(0, 3).join(', ')}）`
@@ -428,7 +432,7 @@ function checkVerb(verb) {
       const sent = leafValues(probe.args[probe.field] ?? probe.args)
       const missing = [...leafValues(probe.args)].filter((leaf) => !kept.has(leaf) && sent.has(leaf))
       if (!missing.length) continue
-      if (TRANSLATOR_CONSUMED[`${verb.name}/${probe.path}`]) continue
+      if (translatorConsumed(verb, probe.path)) continue
       problems.push(`R3 逐字段：字段 "${probe.path}" 被翻译层静默丢掉（丢了 ${missing.slice(0, 3).join(', ')}）`
         + '\n        → 要么把它传下去，要么在 TRANSLATOR_CONSUMED 里按这个路径具名登记并写清它被谁吃掉了')
     }
@@ -444,7 +448,7 @@ function checkVerb(verb) {
     const kept = leafValues(outcome.translated)
     const dropped = new Map()
     for (const [leaf, fieldPath] of leafPaths(args)) {
-      if (kept.has(leaf) || TRANSLATOR_CONSUMED[`${verb.name}/${fieldPath}`]) continue
+      if (kept.has(leaf) || translatorConsumed(verb, fieldPath)) continue
       dropped.set(fieldPath, [...(dropped.get(fieldPath) ?? []), leaf])
     }
     for (const [fieldPath, leaves] of dropped) {

@@ -6,11 +6,11 @@
   "recurrence_check_on": "2026-11-23",
   "problem_type": "A paged read is mistaken for a replacement snapshot, so earlier pages disappear from model context",
   "symptom": "After look_at_canvas reads the first page and one or more continuation pages, the message sent for the answer replaces the first page and earlier continuation pages with an omission note; the model can see only the last page.",
-  "direct_cause": "omitSupersededReads keyed reads only by contractId plus semantic input. look_at_canvas intentionally removes selectedFrom from semantic input, so page one and every continuation shared one replacement key.",
-  "class_root": "The shared read replacement boundary had no declared distinction between semantic inputs and presentation inputs, and no sequence invariant saying that continuation pages belong to the latest page-one snapshot without replacing one another.",
+  "direct_cause": "omitSupersededReads keyed reads only by contractId plus semantic input and hard-coded selectedFrom to detect continuations. look_at_canvas intentionally removes that field from semantic input, so page one and every continuation shared one replacement key.",
+  "class_root": "The shared read replacement boundary had no declared page cursor field and no sequence invariant saying that continuation pages belong to the latest page-one snapshot without replacing one another.",
   "affected_population": [
     "Resident Agent turns that page a large canvas selection through look_at_canvas",
-    "Any future read verb whose output changes by a presentation-only window or segment parameter",
+    "Any future read verb whose output changes by a declared presentation-only window or segment parameter",
     "Different canvas resources or read scopes that must remain independently replaceable"
   ],
   "scope_paths": [
@@ -27,9 +27,9 @@
   "external_sources": [],
   "internal_only_reason": "This is Nomi’s internal model-context and canvas presentation invariant; no dependency or platform decides whether a continuation replaces a snapshot.",
   "invariants": [
-    "A successful continuation with selectedFrom > 0 is in the current resource’s latest page-one sequence and does not supersede page one or another continuation.",
+    "A successful continuation with the declared pageCursorField value > 0 is in the current resource’s latest page-one sequence and does not supersede page one or another continuation.",
     "A new successful page-one read (selectedFrom absent or zero) supersedes every successful page in the prior sequence for the same semantic resource, while other resources remain untouched.",
-    "Every read-verb schema parameter is either present in its semantic input or explicitly declared as a presentation input; presentation inputs never leak into MCP semantic input.",
+    "Every read-verb schema parameter is either present in its semantic input or is the declared pageCursorField; the page cursor never leaks into MCP semantic input and its schema is a non-negative integer.",
     "A continuation canvas projection contains only the current selected window and its node details; the first page retains the full canvas projection."
   ],
   "doors": [
@@ -129,7 +129,7 @@
     "invariant": "Only a later page-one read replaces an earlier sequence; continuation pages of the current sequence are all retained.",
     "failure_mode": "A malformed or unknown read call is left unchanged; a successful continuation cannot replace a prior page, and a later page-one read replaces the entire prior sequence for that resource.",
     "exception_policy": "none",
-    "strategy": "Derive the semantic resource key from the declaration, classify selectedFrom continuations from declared presentation metadata, and group successful results into page-one epochs before applying omission notes.",
+    "strategy": "Derive the semantic resource key from the declaration, classify continuations from the declared pageCursorField, and group successful results into page-one epochs before applying omission notes.",
     "artifacts": [
       "electron/agentLane/laneSupersededReads.mts",
       "electron/shared/agentCapabilities/verbDeclaration.ts",
@@ -140,11 +140,13 @@
   "regression_tests": [
     "electron/agentLane/laneSupersededReads.test.ts",
     "electron/shared/agentCapabilities/verbs/readVerbs.test.ts",
-    "electron/shared/agentCapabilities/canvasReadSelection.test.ts"
+    "electron/shared/agentCapabilities/canvasReadSelection.test.ts",
+    "scripts/check-verb-host-conformance.mjs"
   ],
   "class_regression_tests": [
     "electron/agentLane/laneSupersededReads.test.ts",
-    "electron/shared/agentCapabilities/verbs/readVerbs.test.ts"
+    "electron/shared/agentCapabilities/verbs/readVerbs.test.ts",
+    "scripts/check-verb-host-conformance.mjs"
   ],
   "legacy_paths": {
     "status": "not-applicable",
@@ -156,10 +158,10 @@
     "rationale": "The invariant is owned by Nomi’s declaration, host transform, and canvas projection; no third-party runtime controls it.",
     "exit_criteria": []
   },
-  "migration": "No stored data or MCP contract input changes. Existing transcripts retain their original tool results; the next request applies the new sequence-aware transform. selectedFrom remains a presentation-only internal lane parameter and is not added to canvas.read semantic input.",
+  "migration": "No stored data or MCP contract input changes. Existing transcripts retain their original tool results; the next request applies the new sequence-aware transform. The declared pageCursorField remains a presentation-only internal lane parameter and is not added to canvas.read semantic input.",
   "residual_risks": [
     "The real paid model walk remains with the coordinator; this branch runs only the zero-cost rehearsal as required.",
-    "If a future read verb has a multi-dimensional continuation shape, it must declare the presentation field and add a class test for its sequence semantics; the current gate catches an unclassified parameter but does not infer arbitrary continuation rules.",
+    "If a future read verb has a multi-dimensional continuation shape, it must declare its page cursor and add a class test for its sequence semantics; the current gate catches an unclassified parameter but does not infer arbitrary continuation rules.",
     "A selection changed between pages is still an offset read of the current selection; each page reports its current total, but no cursor pins the selection snapshot."
   ],
   "invariant_owner_layer": {

@@ -125,8 +125,12 @@ export interface VerbDeclaration {
    * 的 operation 分支）。缺省 = 动词字段就是契约字段。**两个 profile 共用**：`toSemanticInput` 是唯一调用点。
    */
   readonly semanticInputOf?: (args: Readonly<Record<string, unknown>>) => Record<string, unknown>;
-  /** Model-facing fields that only change host presentation and must stay out of semantic input. */
-  readonly presentationInputFields?: readonly string[];
+  /**
+   * The model-facing field that selects which page of the same read result to present.
+   * It never enters semantic input. A value greater than 0 is a continuation of the
+   * most recent page-one read of the same resource.
+   */
+  readonly pageCursorField?: string;
   /** 哪些 profile 投影它。缺省两个都投；不同于缺省时必须给 `profileReason`。 */
   readonly profiles?: readonly ToolProfile[];
   readonly profileReason?: VerbProfileReason;

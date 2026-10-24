@@ -45,9 +45,9 @@ describe("read verb parameter ownership", () => {
     for (const spec of readVerbs()) {
       const schema = toPublishedJsonSchema(spec.schema) as JsonSchema;
       const fields = Object.entries(schema.properties ?? {});
-      const presentation = new Set(spec.presentationInputFields ?? []);
+      const pageCursorField = spec.pageCursorField;
 
-      expect([...presentation].every((field) => fields.some(([name]) => name === field)), spec.name).toBe(true);
+      expect(pageCursorField === undefined || fields.some(([name]) => name === pageCursorField), spec.name).toBe(true);
       const semanticFields = new Set<string>();
       for (const [field, fieldSchema] of fields) {
         const sample = sampleFor(fieldSchema, field, fields.findIndex(([name]) => name === field));
@@ -69,13 +69,26 @@ describe("read verb parameter ownership", () => {
       }
 
       for (const [field] of fields) {
-        expect(presentation.has(field) || semanticFields.has(field), `${spec.name}.${field}`).toBe(true);
+        expect(field === pageCursorField || semanticFields.has(field), `${spec.name}.${field}`).toBe(true);
+      }
+
+      if (pageCursorField !== undefined) {
+        const cursorSchema = fields.find(([field]) => field === pageCursorField)?.[1];
+        expect(cursorSchema, `${spec.name}.${pageCursorField} schema`).toBeDefined();
+        expect(cursorSchema?.type, `${spec.name}.${pageCursorField} type`).toBe("integer");
+        expect(cursorSchema?.minimum, `${spec.name}.${pageCursorField} minimum`).toBeGreaterThanOrEqual(0);
+
+        const cursorSample = sampleFor(cursorSchema!, pageCursorField, 0);
+        const semantic = toSemanticInput({ ...spec, description: "", promptSnippet: "", execution: { timeoutMs: 0 } } as never, {
+          [pageCursorField]: cursorSample,
+        });
+        expect(containsLeaf(semantic, cursorSample), `${spec.name}.${pageCursorField} semantic input`).toBe(false);
       }
     }
   });
 
   it("declares look_at_canvas selectedFrom as presentation-only", () => {
     const lookAtCanvas = readVerbs().find((spec) => spec.name === "look_at_canvas");
-    expect(lookAtCanvas?.presentationInputFields).toEqual(["selectedFrom"]);
+    expect(lookAtCanvas?.pageCursorField).toBe("selectedFrom");
   });
 });

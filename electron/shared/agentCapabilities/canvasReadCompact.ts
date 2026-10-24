@@ -194,6 +194,10 @@ export function projectCanvasForAgent(result: CanvasReadResult, options: CanvasP
     `${titleById.get(edge.source) || compactHead(edge.source, 120)}→${titleById.get(edge.target) || compactHead(edge.target, 120)}`);
   const writer = createPromptWriter(MAX_CANVAS_PROMPT_CHARACTERS);
   writer.appendLine(`画布节点 ${result.nodes.length} 个(id | 类型 | 镜头号与角色 | 归属节点 | 标题 | 状态 | prompt 摘要 | 结果身份):`);
+  if (continuation) {
+    const pageRange = selection.listed > 0 ? spanLabel(selection.from + 1, selection.from + selection.listed) : "无";
+    writer.appendLine(`本页只列选中的${pageRange}，其余节点和引用边见第 1 页。`);
+  }
   for (const line of selectionLines(selection, requestedFrom, listedSlice.text, options.selectedFrom !== undefined)) writer.appendLine(line);
   writer.appendLine(nodes.text);
   if (!continuation) writer.appendLine(`引用边: ${edges.text || "无"}`);

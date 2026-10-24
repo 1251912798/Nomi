@@ -153,6 +153,7 @@ describe("look_at_canvas 的选区：列全，或明说少了几个", () => {
     expect(first.text).toContain(firstPageId);
     expect(next.text).not.toContain(firstPageId);
     expect(next.text).toContain(nextPageId);
+    expect(next.text).toContain(`本页只列选中的第 ${first.selection.listed + 1}–40 个，其余节点和引用边见第 1 页。`);
     expect(next.text).not.toContain("引用边:");
   });
 });

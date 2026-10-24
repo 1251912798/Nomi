@@ -1,5 +1,6 @@
 // NF-0928-0003 类边界：判据从动词声明派生——只有读动词、只有成功的、只有同一资源（语义入参归一后相同）才互相取代。
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import type { AgentMessage } from '@earendil-works/pi-agent-core'
 import { LANE_MODEL_TOOL_CATALOG } from './laneToolCatalog'
 import { omitSupersededReads, supersededReadNote } from './laneSupersededReads.mjs'
@@ -25,6 +26,22 @@ describe('omitSupersededReads', () => {
       call('page-2', 'look_at_canvas', { selectedFrom: 32 }), result('page-2', 'look_at_canvas', 'PAGE 2'),
     ]
     expect(texts(omitSupersededReads(input, LANE_MODEL_TOOL_CATALOG))).toEqual(['PAGE 1', 'PAGE 2'])
+  })
+
+  it('uses the declared cursor field instead of coupling paging to a field name', () => {
+    const canvas = LANE_MODEL_TOOL_CATALOG.find((spec) => spec.name === 'look_at_canvas')!
+    const offsetSpec = {
+      ...canvas,
+      name: 'read_with_offset',
+      pageCursorField: 'offset',
+      schema: z.object({ offset: z.number().int().min(0).optional() }),
+      semanticInputOf: () => ({}),
+    }
+    const input = [
+      call('page-1', 'read_with_offset', {}), result('page-1', 'read_with_offset', 'PAGE 1'),
+      call('page-2', 'read_with_offset', { offset: 32 }), result('page-2', 'read_with_offset', 'PAGE 2'),
+    ]
+    expect(texts(omitSupersededReads(input, [offsetSpec]))).toEqual(['PAGE 1', 'PAGE 2'])
   })
 
   it('keeps all three pages in one sequence and does not let continuations replace each other', () => {

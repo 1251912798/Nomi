@@ -34,10 +34,10 @@ function readCall(spec: ModelFacingToolSpec | undefined, args: unknown): ReadCal
   if (args !== undefined && (args === null || typeof args !== 'object' || Array.isArray(args))) return undefined;
   try {
     const input = (args ?? {}) as Record<string, unknown>;
-    const selectedFrom = spec.presentationInputFields?.includes('selectedFrom') ? input.selectedFrom : undefined;
+    const pageCursor = spec.pageCursorField ? input[spec.pageCursorField] : undefined;
     return {
       resourceKey: `${spec.contractId}:${stableJson(toSemanticInput(spec, input))}`,
-      continuation: typeof selectedFrom === 'number' && selectedFrom > 0,
+      continuation: typeof pageCursor === 'number' && pageCursor > 0,
     };
   } catch {
     return undefined;
