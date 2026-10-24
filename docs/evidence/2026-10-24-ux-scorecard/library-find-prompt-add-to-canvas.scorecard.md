@@ -1,7 +1,7 @@
 # 体验成绩单：Skill / 提示词库重排：分组 + 统一卡片 + 抽屉两列，「放上画布」新建对应节点并带参考图
 
 - 改动：Skill / 提示词库重排：分组 + 统一卡片 + 抽屉两列，「放上画布」新建对应节点并带参考图
-- 验收 head：`见提交说明（本次三个本地提交接在 5384ea0bd 之后）`（实现线 I-libraries 本地提交（feat/skill-prompt-library-layout），未推送；数字在这几个提交的开发构建上测的）
+- 验收 head：`见提交说明（本分支的本地提交接在 5384ea0bd 之后）`（实现线 I-libraries 本地提交（feat/skill-prompt-library-layout），未推送；走查数字在最终产品代码的开发构建上测的，提示词库三个性能场景在只差文字封面样式和一个 hook 挪文件的早一版构建上测的）
 - 场景 id：`library-find-prompt-add-to-canvas`
 - 谁验：I-libraries（实现线自测；独立验收线待协调指定）（实现线自测）
 - 日期：2026-10-24；成绩单整理：I-libraries，按本次走查日志与性能场景原始结果填写

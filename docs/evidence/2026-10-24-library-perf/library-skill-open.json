@@ -1,9 +1,9 @@
 {
   "machine": "darwin arm64 Apple M5 x10 / 24GB",
-  "commit": "5384ea0bd",
-  "head": "5384ea0bd76c174b493fee9808e86e6fbdaa21f5",
-  "dirty": true,
-  "sourceTree": "9506bc8062c3fbcfb58c2eafaa1851e1deafd2d8",
+  "commit": "24d9abf78",
+  "head": "24d9abf780e284ad3376e05b9a72b7cc858b0b59",
+  "dirty": false,
+  "sourceTree": "03b0cef7e0ae84bdd83d9c32ce8ef4a2287487a3",
   "date": "2026-10-24",
   "runs": 5,
   "results": [
@@ -12,8 +12,8 @@
       "metrics": {
         "response": {
           "runs": 5,
-          "median": 211.6,
-          "p95": 263.7
+          "median": 105,
+          "p95": 111.3
         },
         "mediaRequests": {
           "runs": 5,
@@ -28,11 +28,11 @@
       },
       "samples": {
         "frameGapP95": [
-          10.3,
-          10.3,
-          10.3,
-          10.1,
-          10.3
+          9.1,
+          9.3,
+          9.3,
+          9.2,
+          9.1
         ],
         "longTasks": [
           0,
@@ -42,11 +42,11 @@
           0
         ],
         "response": [
-          90.4,
-          272.4,
-          211.6,
-          136.9,
-          228.8
+          106.7,
+          103.5,
+          112.5,
+          105,
+          97.7
         ],
         "mainRoundTripMax": [],
         "mediaRequests": [
@@ -59,8 +59,8 @@
       },
       "budget": 200,
       "verdict": {
-        "status": "over-budget",
-        "note": "中位数 211.6 > 预算 200"
+        "status": "ok",
+        "note": ""
       }
     }
   ]
