@@ -63,21 +63,18 @@ test('启动器前台进程组收到 SIGHUP 时子进程和孙进程一起消失
   const dir = makeTempDir('nomi-launcher-sighup-')
   const childPidFile = path.join(dir, 'child.pid')
   const grandchildPidFile = path.join(dir, 'grandchild.pid')
-  const mutate = process.env.NOMI_MUTATE_STARTER === '1'
   const lifecycleModule = pathToFileURL(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../child-process-lifecycle.mjs')).href
-  const processTreeModule = pathToFileURL(path.resolve(path.dirname(fileURLToPath(import.meta.url)), './processTree.mjs')).href
   const launcherSource = [
     "import { spawn } from 'node:child_process'",
     "import fs from 'node:fs'",
     `import { installChildProcessLifecycle } from ${JSON.stringify(lifecycleModule)}`,
-    `import { processTreeSpawnOptions } from ${JSON.stringify(processTreeModule)}`,
     'const lifecycle = installChildProcessLifecycle()',
     `const child = lifecycle.track(spawn(process.execPath, ['-e', ${JSON.stringify([
       "const { spawn } = require('node:child_process')",
       `const grandchild = spawn(process.execPath, ['-e', ${JSON.stringify("process.on('SIGHUP', () => process.exit(129)); setInterval(() => {}, 1000)")}], { stdio: 'ignore' })`,
       `require('node:fs').writeFileSync(${JSON.stringify(grandchildPidFile)}, String(grandchild.pid))`,
       "process.on('SIGHUP', () => process.exit(129)); setInterval(() => {}, 1000)",
-    ].join(';'))}], { stdio: 'ignore'${mutate ? ', ...processTreeSpawnOptions()' : ''} }))`,
+    ].join(';'))}], { stdio: 'ignore' }))`,
     `fs.writeFileSync(${JSON.stringify(childPidFile)}, String(child.pid))`,
     'setInterval(() => {}, 1000)',
   ].join('\n')
@@ -103,5 +100,4 @@ test('启动器前台进程组收到 SIGHUP 时子进程和孙进程一起消失
   assert.ok(processGroupId > 0)
   spawnSync('kill', ['-HUP', `-${processGroupId}`], { stdio: 'ignore' })
   await waitFor(() => !isAlive(childPid) && !isAlive(grandchildPid))
-  if (mutate) assert.fail('把 processTreeSpawnOptions() 加回启动器后，子进程组仍存活')
 })
