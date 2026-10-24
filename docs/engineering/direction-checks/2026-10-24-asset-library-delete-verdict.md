@@ -69,4 +69,4 @@
 
 ## 走查真删的副作用（本线顺带补的门岗）
 
-修好以后走查 ⑤ 真的删得掉了：文件进**跑走查那台电脑真实的回收站**（协调 10-23 定过不许，`tests/system/walks-never-trash-projects.test.mjs` 只认得删项目的三扇门和素材删除的桥 / IPC，认不出「素材库垃圾桶钮 → 确认」这扇界面门，注释里「目前全仓没有走查调它」只因为 ⑤ 一直删不掉）。本线：走查在 macOS 上把测试项目放在一次性磁盘映像卷上（照 ⑭ 的 `real-trash-roundtrip.mjs`），顺带核对文件真进了那个卷的废纸篓；CI 照跑；其它系统本机跳过真删并打 SKIP。门岗加一条「同一份走查里既有素材库垃圾桶钮、又点了确认框的按钮」→ 红，除非登记进 `DISPOSABLE_TRASH_WALKS`（登记要写理由，且文件里真有 `hdiutil` 与 `.Trashes`）。本线修好以前在本机跑过的两次走查（commit 1、2 的中文明色）已经把 `a-spare.png`、`walk-asset-a-shot.mp4` 各两份放进了这台 Mac 的废纸篓，交协调告诉用户清掉。
+修好以后走查 ⑤ 真的删得掉了：文件进**跑走查那台电脑真实的回收站**（协调 10-23 定过不许，`tests/system/walks-never-trash-projects.test.mjs` 只认得删项目的三扇门和素材删除的桥 / IPC，认不出「素材库垃圾桶钮 → 确认」这扇界面门，注释里「目前全仓没有走查调它」只因为 ⑤ 一直删不掉）。本线：走查在 macOS 上把测试项目放在一次性磁盘映像卷上（照 ⑭ 的 `real-trash-roundtrip.mjs`），顺带核对文件真进了那个卷的废纸篓；CI 照跑；其它系统本机跳过真删并打 SKIP。门岗加一条「同一份走查里既有素材库垃圾桶钮、又点了确认框的按钮」→ 红，除非登记进 `DISPOSABLE_TRASH_WALKS`（登记要写理由，且文件里真有 `hdiutil` 与 `.Trashes`）。本线修好以前在本机跑过的两次走查（commit 1、2 的中文明色）已经把 `a-spare.png`、`walk-asset-a-shot.mp4` 和它的旁注 `walk-asset-a-shot.mp4.meta` 各两份放进了这台 Mac 的废纸篓（一次性映像卷上的走查核对到 ⑤ 进回收站的正是这三个），交协调告诉用户清掉。
