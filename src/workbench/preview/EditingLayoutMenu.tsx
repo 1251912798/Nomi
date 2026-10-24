@@ -1,7 +1,7 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconChevronDown, IconCheck, IconLayoutDashboard } from '@tabler/icons-react'
-import { WorkbenchButton, listenOutsidePress } from '../../design'
+import { ICON_TIERS, WorkbenchButton, listenOutsidePress } from '../../design'
 import { cn } from '../../utils/cn'
 import type { EditingPanelPreset, EditingPanelVisibility } from './panelLayout'
 import { useWorkbenchStore } from '../workbenchStore'
@@ -60,9 +60,9 @@ export default function EditingLayoutMenu(): JSX.Element {
         aria-label={t('timelinePreview.previewLayout.title')}
         onClick={() => setOpen(!open)}
       >
-        <IconLayoutDashboard size={18} stroke={1.5} />
+        <IconLayoutDashboard size={ICON_TIERS.bar.size} stroke={ICON_TIERS.bar.stroke} />
         <span className="max-[1440px]:hidden">{t('timelinePreview.previewLayout.title')}</span>
-        <IconChevronDown size={12} stroke={1.5} />
+        <IconChevronDown size={ICON_TIERS.corner.size} stroke={ICON_TIERS.corner.stroke} />
       </WorkbenchButton>
       {open ? (
         <div

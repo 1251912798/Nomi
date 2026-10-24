@@ -50,6 +50,15 @@ describe('host-owned empty guidance across the node registry', () => {
     expect(render(<NodeEmptyState compact icon={<svg />} />, false)).toContain('top:calc(50% - 24px)')
   })
 
+  it('F1 empty tiers keep full cards at 24/1.5 and narrow bars at 13/1.8', () => {
+    const full = render(<NodeEmptyState icon={<svg />} />, false)
+    expect(full).toContain('size-6')
+    expect(full).toContain('stroke-[1.5]')
+    const narrow = render(<NodeEmptyState compact icon={<svg />} />, false)
+    expect(narrow).toContain('size-[13px]')
+    expect(narrow).toContain('stroke-[1.8]')
+  })
+
   it.each([120, 169, 462])('icon-only stays a single 48px type mark at height %s', (height) => {
     const out = render(<NodeEmptyState height={height} icon={<svg />} title="TITLE" />, false)
     expect(out).toContain('size-12')

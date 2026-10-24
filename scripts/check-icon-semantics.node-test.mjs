@@ -11,7 +11,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
-import { conflictId, findConflicts, loadRegisteredIcons, scanIconDictionary, scanIconSemantics, scanUnnamedIconButtons } from './check-icon-semantics.mjs'
+import { conflictId, findConflicts, loadRegisteredIcons, scanIconDictionary, scanIconSemantics, scanIconTierViolations, scanUnnamedIconButtons } from './check-icon-semantics.mjs'
 
 function fixture(files) {
   const dir = makeTempDir('icon-semantics-')
@@ -150,4 +150,24 @@ test('规则三 会红：三元两支都是图标也不豁免', () => {
 export const A = () => <button>{open ? <IconX /> : <IconPlus />}</button>`,
   }), ['src'])
   assert.deepEqual(Object.keys(found), ['src/A.tsx'])
+})
+
+test('F1 会红：目标面写了四档之外的 size / stroke', () => {
+  const root = fixture({
+    'src/F1.tsx': `import { IconX } from '@tabler/icons-react'
+export const F1 = () => <button><IconX size={17} stroke={1.7} /></button>`,
+  })
+  assert.deepEqual(scanIconTierViolations(root, ['src/F1.tsx']), [
+    { file: 'src/F1.tsx', line: 2, icon: 'IconX', prop: 'size', value: 17 },
+    { file: 'src/F1.tsx', line: 2, icon: 'IconX', prop: 'stroke', value: 1.7 },
+  ])
+})
+
+test('F1 不乱红：四档数值通过，token 引用也通过', () => {
+  const root = fixture({
+    'src/F1.tsx': `import { IconX } from '@tabler/icons-react'
+const tier = { size: 18, stroke: 1.8 }
+export const F1 = () => <><IconX size={13} stroke={1.8} /><IconX size={tier.size} stroke={tier.stroke} /></>`,
+  })
+  assert.deepEqual(scanIconTierViolations(root, ['src/F1.tsx']), [])
 })

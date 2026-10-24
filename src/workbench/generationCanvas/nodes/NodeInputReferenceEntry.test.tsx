@@ -36,6 +36,8 @@ describe('original library add box is preserved beside the new pointer entry', (
     expect(pointer.replace(/<[^>]+>/g, '')).toBe('')
     expect(pointer).toContain('tabler-icon-pointer')
     expect(pointer).not.toContain('data-asset-add-tile=')
+    expect(pointer).toContain('width="18"')
+    expect(pointer).toContain('stroke-width="1.8"')
   })
 
   it.each([false, true])('pointer entry does not own a second plus (iconOnly=%s)', iconOnly => {
@@ -46,5 +48,12 @@ describe('original library add box is preserved beside the new pointer entry', (
     expect(html.match(/<button/g)).toHaveLength(1)
     expect(html).not.toContain('data-reference-add=')
     expect(html).not.toContain('data-asset-add-tile=')
+    if (iconOnly) {
+      expect(html).toContain('width="16"')
+      expect(html).toContain('stroke-width="2"')
+    } else {
+      expect(html).toContain('width="18"')
+      expect(html).toContain('stroke-width="1.8"')
+    }
   })
 })

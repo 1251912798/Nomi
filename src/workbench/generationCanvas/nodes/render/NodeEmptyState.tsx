@@ -1,5 +1,6 @@
 import React, { type JSX } from 'react'
 import { cn } from '../../../../utils/cn'
+import { ICON_TIER_CLASSES } from '../../../../design'
 import { useNodeEmptyStateContext } from './NodeEmptyStateContext'
 import { EMPTY_STATE_BLOCK_HEIGHT, EMPTY_STATE_TOP_CLEARANCE, EMPTY_STATE_CENTER_RATIO, emptyStateBlockTop, emptyStateIconTop, emptyStateTier } from './nodeEmptyStateLayout'
 
@@ -31,7 +32,7 @@ export function NodeEmptyState({ icon, title, description, action: requestedActi
     return (
       <div data-node-empty-state="true" data-empty-tier="icon" className={cn('relative h-full w-full text-center', className)}>
         <div className="absolute inset-x-0 flex justify-center" style={{ top: compact ? 'calc(50% - 24px)' : emptyStateIconTop(height) }}>
-          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line [&>svg]:size-6" aria-hidden="true">{icon}</span>
+          <span className={cn('grid size-12 shrink-0 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line', compact ? ICON_TIER_CLASSES.corner : ICON_TIER_CLASSES.empty)} aria-hidden="true">{icon}</span>
         </div>
       </div>
     )
@@ -39,7 +40,7 @@ export function NodeEmptyState({ icon, title, description, action: requestedActi
   if (compact) {
     return (
       <div data-node-empty-state="true" className={cn('flex h-full w-full px-3 text-center items-center justify-center gap-2 py-2', className)}>
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line [&>svg]:size-[18px]" aria-hidden="true">
+        <span className={cn('grid size-9 shrink-0 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line', ICON_TIER_CLASSES.corner)} aria-hidden="true">
           {icon}
         </span>
         {title || description ? (
@@ -63,7 +64,7 @@ export function NodeEmptyState({ icon, title, description, action: requestedActi
     <span
       className={cn(
         'grid shrink-0 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line',
-        tier === 'full' ? 'size-9 [&>svg]:size-[18px]' : 'size-6 [&>svg]:size-3.5',
+        tier === 'full' ? cn('size-9', ICON_TIER_CLASSES.empty) : cn('size-6', ICON_TIER_CLASSES.corner),
       )}
       aria-hidden="true"
     >

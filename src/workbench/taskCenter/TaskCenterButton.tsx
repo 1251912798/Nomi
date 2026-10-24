@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { IconListCheck } from '@tabler/icons-react'
 import type { ProductionRunSummary } from '../../../electron/productionRun/productionRunTypes'
 import type { ExportJobSnapshot } from '../../../electron/shared/contracts/exportJobManager'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, WorkbenchButton } from '../../design'
+import { ICON_TIERS, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, WorkbenchButton } from '../../design'
 import { getDesktopBridge } from '../../desktop/bridge'
 import { cn } from '../../utils/cn'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
@@ -139,7 +139,7 @@ export function TaskCenterButton({ projectId, onRevealNode }: Props): JSX.Elemen
               data-task-center-trigger="true"
               onClick={() => setOpened((value) => !value)}
             >
-              <IconListCheck size={18} stroke={1.5} aria-hidden="true" />
+              <IconListCheck size={ICON_TIERS.bar.size} stroke={ICON_TIERS.bar.stroke} aria-hidden="true" />
               {pending > 0 ? (
                 <span
                   className={cn(

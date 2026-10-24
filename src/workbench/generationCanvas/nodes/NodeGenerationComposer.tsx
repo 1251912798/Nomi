@@ -2,7 +2,7 @@ import { notify } from '../../../ui/notificationPolicy'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Editor } from '@tiptap/react'
-import { NomiLoadingMark, WorkbenchIconButton } from '../../../design'
+import { ICON_TIERS, NomiLoadingMark, WorkbenchIconButton } from '../../../design'
 import { cn } from '../../../utils/cn'
 import type { LibraryPrompt } from '../../api/promptLibraryApi'
 import { useNodeEffectChips } from './NodeEffectChips'
@@ -559,7 +559,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
             {rerenderDirectorNodeId ? (
               <WorkbenchIconButton
                 size="sm"
-                icon={<IconRefresh size={14} stroke={2} />}
+                icon={<IconRefresh size={ICON_TIERS.tool.size} stroke={ICON_TIERS.tool.stroke} />}
                 label={t('director.agent.previewRerender')}
                 data-testid="node-composer-preview-rerender"
                 onClick={() => requestDirectorPreviewRender(rerenderDirectorNodeId)}
@@ -576,7 +576,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
                 disabled={!canGenerateNow || productionClaimBlocked || directorPreviewBlock !== null}
                 onClick={handleGenerate}
               >
-                {isGenerating ? '···' : <IconArrowUp size={16} stroke={2} aria-hidden />}
+                {isGenerating ? '···' : <IconArrowUp size={ICON_TIERS.tool.size} stroke={ICON_TIERS.tool.stroke} aria-hidden />}
               </button>
             </span>
             </>

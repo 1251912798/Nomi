@@ -59,6 +59,19 @@ const ROOT = process.cwd()
 const SCAN_ROOTS = ['src', 'electron']
 const BASELINE_FILE = path.join(ROOT, 'scripts', 'icon-semantics-baseline.json')
 
+// F1 只守四个已拍板的用户面；其它历史面仍由各自合同管理，避免把存量一次性
+// 伪装成「全仓四档」而制造无法修完的假红。
+export const ICON_TIER_SCOPE = Object.freeze([
+  'src/ui/app-shell/shell/ShellTopBar.tsx',
+  'src/workbench/taskCenter/TaskCenterButton.tsx',
+  'src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx',
+  'src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx',
+  'src/workbench/generationCanvas/nodes/InlineParameterBar.tsx',
+  'src/workbench/assets/AssetReference.tsx',
+])
+const ICON_TIER_SIZES = new Set([13, 16, 18, 24])
+const ICON_TIER_STROKES = new Set([1.5, 1.8, 2])
+
 const EXCLUDED_PREFIXES = [
   'src/devlab/', // 设计实验室：刻意并列多种画法做对照，不是产品界面
   'src/design/', // 组件库自身的 demo/默认值
@@ -282,6 +295,48 @@ export function scanUnnamedIconButtons(root = ROOT, scanRoots = SCAN_ROOTS) {
   return found
 }
 
+/** F1 四个面中的 Tabler 数值只能落在四档；token 引用不展开，也不会被误判成硬编码。 */
+export function scanIconTierViolations(root = ROOT, scope = ICON_TIER_SCOPE) {
+  const violations = []
+  for (const rel of scope) {
+    const file = path.join(root, rel)
+    if (!fs.existsSync(file)) continue
+    const text = fs.readFileSync(file, 'utf8')
+    const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const tablerIcons = new Set()
+    source.forEachChild((node) => {
+      if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) return
+      if (!node.moduleSpecifier.text.includes('tablerIcons') && node.moduleSpecifier.text !== '@tabler/icons-react') return
+      const named = node.importClause?.namedBindings
+      if (named && ts.isNamedImports(named)) for (const el of named.elements) tablerIcons.add(el.name.text)
+    })
+    const visit = (node) => {
+      if (ts.isJsxSelfClosingElement(node) || ts.isJsxElement(node)) {
+        const tag = jsxTagOf(node)
+        if (tablerIcons.has(tag)) {
+          const attrs = ts.isJsxSelfClosingElement(node) ? node.attributes.properties : node.openingElement.attributes.properties
+          for (const attr of attrs) {
+            if (!ts.isJsxAttribute(attr) || !attr.initializer || !ts.isJsxExpression(attr.initializer)) continue
+            const name = attr.name.getText()
+            if (name !== 'size' && name !== 'stroke') continue
+            const expr = attr.initializer.expression
+            if (!expr || !ts.isNumericLiteral(expr)) continue
+            const value = Number(expr.text)
+            const allowed = name === 'size' ? ICON_TIER_SIZES : ICON_TIER_STROKES
+            if (!allowed.has(value)) {
+              const line = source.getLineAndCharacterOfPosition(attr.getStart()).line + 1
+              violations.push({ file: rel, line, icon: tag, prop: name, value })
+            }
+          }
+        }
+      }
+      node.forEachChild(visit)
+    }
+    visit(source)
+  }
+  return violations
+}
+
 /** 冲突 = 同一动作被配了 ≥2 个不同图标（已折叠状态切换）。 */
 export function findConflicts(pairs) {
   const conflicts = []
@@ -330,6 +385,14 @@ if (REPORT) {
 const conflictIds = conflicts.map(conflictId).sort()
 const unnamed = scanUnnamedIconButtons()
 const unnamedCounts = Object.fromEntries(Object.entries(unnamed).map(([f, lines]) => [f, lines.length]).sort(([a], [b]) => a.localeCompare(b)))
+const iconTierViolations = scanIconTierViolations()
+
+if (iconTierViolations.length > 0) {
+  console.error('❌ check:icon-semantics F1 四档 —— 目标面出现四档之外的 Tabler size / stroke：')
+  for (const violation of iconTierViolations) console.error(`  ✗ ${violation.file}:${violation.line} ${violation.icon} ${violation.prop}=${violation.value}`)
+  console.error('修法：引用 src/design/iconTiers.ts 的 ICON_TIERS，不在调用处写新档位。')
+  process.exit(1)
+}
 
 const savedRaw = fs.existsSync(BASELINE_FILE) ? JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8')) : {}
 

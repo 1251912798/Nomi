@@ -10,6 +10,8 @@ import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconBrowser, IconChevronDown, IconDownload, IconLayoutSidebarLeftExpand, IconSettings } from '@tabler/icons-react'
 import {
+  ICON_TIER_CLASSES,
+  ICON_TIERS,
   NomiLogoMark,
   NomiStepper,
   Tooltip,
@@ -43,6 +45,7 @@ const BAR_ICON_BUTTON = cn(
   'text-nomi-ink-60 transition-[background,color] duration-nomi-fast ease-nomi-fast',
   'hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
   'disabled:cursor-not-allowed disabled:opacity-50',
+  ICON_TIER_CLASSES.bar,
 )
 
 /** 右上角那个小点（设置：上手没做完；窄窗下的新版本）。外圈描一圈外壳底色，压在图标上也读得出。 */
@@ -145,7 +148,7 @@ function ProjectMenu({
         onDoubleClick={() => { setDraft(projectName); setRenaming(true) }}
       >
         <span className="min-w-0 truncate">{projectName}</span>
-        <IconChevronDown size={14} stroke={1.5} className="shrink-0 text-nomi-ink-40" aria-hidden="true" />
+        <IconChevronDown size={ICON_TIERS.corner.size} stroke={ICON_TIERS.corner.stroke} className="shrink-0 text-nomi-ink-40" aria-hidden="true" />
       </button>
       <WorkbenchMenu open={open} onOpenChange={setOpen} anchorRect={rect} items={items} className="min-w-[220px] max-w-[320px]" ariaLabel={t('appShell.topbar.projectMenu', { name: projectName })} />
     </>
@@ -265,7 +268,7 @@ export function ShellTopBar({
                     loading={exportBusy}
                     onClick={requestPreviewExport}
                   >
-                    {exportBusy ? null : <IconDownload size={14} stroke={1.5} />}
+                    {exportBusy ? null : <IconDownload size={ICON_TIERS.corner.size} stroke={ICON_TIERS.corner.stroke} />}
                     <span className="whitespace-nowrap">{exportBusy ? t('timelinePreview.exporting', { percent: exportPercent }) : t('timelinePreview.exportMp4')}</span>
                   </WorkbenchButton>
                 </span>

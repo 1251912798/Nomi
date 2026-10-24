@@ -1153,17 +1153,16 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 
 | 场景 | size | stroke |
 |---|---|---|
-| Sidebar 分类图标 | 16 | 1.5 |
-| 节点角标内的小图标 | 13 | 1.8 |
-| 工作区按钮内图标（`WorkbenchButton`/`WorkbenchIconButton` 的 `[&>svg]` 默认）| **16** | **2** |
-| 节点浮动工具栏图标（NodeFloatingToolbar：图片编辑/视频抽帧/全景/下载）| 16 | 1.6 |
-| 大引导图标 | 24-32 | 1.5 |
-| AppBar / 工具栏图标 | 18 | 1.5-1.6 |
-| 弹窗/卡片头部语义图标（付费确认等）| 18 | 默认 |
+| 角标档（项目名 ▾、导出、节点窄条、参考箭头） | 13 | 1.8 |
+| 工具档（工作区按钮、播放器、生成钮箭头、N 标） | **16** | **2** |
+| 条档（节点浮条、顶栏图标、生成框参考入口） | 18 | 1.8 |
+| 空态档（节点大 / 中空态） | 24 | 1.5 |
+
+四档的代码真相源是 `src/design/iconTiers.ts` 的 `ICON_TIERS` / `ICON_TIER_CLASSES`；生产组件按场景引用，不在调用处写新数值。Sidebar 分类图标和弹窗 / 卡片头部图标若不属于这四个 F1 面，沿用各自现有合同。
 
 > ⚠️ **工作区按钮图标是 16 / stroke-2**（实心粗体，2026-06-22 用户拍板恢复）。这是 `WorkbenchButton`/`WorkbenchIconButton` 一直在用、被认可的视觉——曾被「对齐文档」误改成 14/1.6（更细更小）→ 撤销/工具栏图标变丑，已恢复。**文档=现实，别再按「§6 旧值 14/1.6」把它改细。**
 
-**禁止：** size 13.5 / 17 这种非标准；`strokeWidth` prop（Tabler 用 `stroke`）。（stroke-2 仅工作区按钮图标的认可值，见上；其它场景仍按表，别滥用粗笔。）
+**禁止：** 四档之外的 size / stroke（包括 13.5 / 17 这种非标准）；`strokeWidth` prop（Tabler 用 `stroke`）。（stroke-2 仅工具档认可，别滥用粗笔。）
 
 ### 语义图标登记（同一语义全仓复用同一图标，不漂移）· **有门岗 `check:icon-semantics`**
 
