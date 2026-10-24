@@ -1,0 +1,4616 @@
+{
+  "generatedAt": "2026-10-25T00:00:00.000Z",
+  "source": {
+    "catalog": "electron/catalog/seedBuiltins.ts::applyBuiltinSeeds",
+    "bodyKeyExtraction": "electron/catalog/paramTranslate.ts::bodyReferencedParamKeys",
+    "classifier": "electron/catalog/referenceReachability.ts::classifyReferenceKeyDetailed",
+    "declarationSet": "electron/shared/modelArchetypes/referenceKeys.ts::GENERIC_REFERENCE_KEYS"
+  },
+  "summary": {
+    "seededVendors": 20,
+    "seededModels": 156,
+    "seededMappings": 246,
+    "rowsWithClassifiedKeys": 135,
+    "falsePositiveRows": 26,
+    "falsePositiveKeys": 12,
+    "falsePositiveKeyNames": [
+      "audio",
+      "audio_setting",
+      "frame_rate",
+      "generateAudio",
+      "image_size",
+      "num_frames",
+      "num_images",
+      "video_require_audio",
+      "video_start_seconds",
+      "voice",
+      "voice_id",
+      "voice_preset_id"
+    ],
+    "falsePositiveCategories": [
+      "boolean-switch",
+      "enum",
+      "number",
+      "quantity",
+      "size",
+      "voice"
+    ]
+  },
+  "rows": [
+    {
+      "id": "seed-kie-seedance2-image_to_video",
+      "vendorKey": "kie",
+      "taskKind": "image_to_video",
+      "modelKey": null,
+      "archetypeId": null,
+      "keys": [
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-seedance2-text_to_video",
+      "vendorKey": "kie",
+      "taskKind": "text_to_video",
+      "modelKey": null,
+      "archetypeId": null,
+      "keys": [
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-happyhorse-text_to_video",
+      "vendorKey": "kie",
+      "taskKind": "text_to_video",
+      "modelKey": "happyhorse",
+      "archetypeId": "happyhorse",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "video_url",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audio_setting",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "enum",
+            "detail": "音频（select）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-gpt-image-2-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": null,
+      "archetypeId": null,
+      "keys": [
+        {
+          "key": "input_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-seedream-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": "seedream",
+      "archetypeId": "seedream",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-nano-banana-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": "nano-banana",
+      "archetypeId": "nano-banana",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-kling-3-image_to_video",
+      "vendorKey": "kie",
+      "taskKind": "image_to_video",
+      "modelKey": "kling-3.0",
+      "archetypeId": "kling-3.0",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-minimax-h3-text_to_video",
+      "vendorKey": "kie",
+      "taskKind": "text_to_video",
+      "modelKey": "minimax-h3",
+      "archetypeId": "minimax-h3",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "end_image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-seedance2-5-text_to_video",
+      "vendorKey": "kie",
+      "taskKind": "text_to_video",
+      "modelKey": "bytedance/seedance-2-5",
+      "archetypeId": "seedance-2.5",
+      "keys": [
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-seedance2-5-image_to_video",
+      "vendorKey": "kie",
+      "taskKind": "image_to_video",
+      "modelKey": "bytedance/seedance-2-5",
+      "archetypeId": "seedance-2.5",
+      "keys": [
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-wan3-0-text_to_video",
+      "vendorKey": "kie",
+      "taskKind": "text_to_video",
+      "modelKey": "wan/3-0-video",
+      "archetypeId": "wan-3.0",
+      "keys": [
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audio",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "生成音频（boolean）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-wan3-0-image_to_video",
+      "vendorKey": "kie",
+      "taskKind": "image_to_video",
+      "modelKey": "wan/3-0-video",
+      "archetypeId": "wan-3.0",
+      "keys": [
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audio",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "生成音频（boolean）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-nano-banana-2-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": "nano-banana-2",
+      "archetypeId": "nano-banana-2",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-nano-banana-2-lite-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": "nano-banana-2-lite",
+      "archetypeId": "nano-banana-2-lite",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-seedream-5-pro-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": "seedream/5-pro-text-to-image",
+      "archetypeId": "kie-seedream-5-pro",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-seedream-5-lite-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": "seedream/5-lite-text-to-image",
+      "archetypeId": "kie-seedream-5-lite",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-gpt-image-2-5-flare-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": "gpt-image-2-5-flare-text-to-image",
+      "archetypeId": "gpt-image-2.5-flare",
+      "keys": [
+        {
+          "key": "input_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-gpt-image-2-5-sunburst-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": "gpt-image-2-5-sunburst-text-to-image",
+      "archetypeId": "gpt-image-2.5-sunburst",
+      "keys": [
+        {
+          "key": "input_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-flux-2-pro-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": "flux-2/pro-text-to-image",
+      "archetypeId": "flux-2-pro",
+      "keys": [
+        {
+          "key": "input_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-topaz-image-upscale-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": "topaz/image-upscale",
+      "archetypeId": "topaz-image-upscale",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-recraft-crisp-upscale-image_edit",
+      "vendorKey": "kie",
+      "taskKind": "image_edit",
+      "modelKey": "recraft/crisp-upscale",
+      "archetypeId": "recraft-crisp-upscale",
+      "keys": [
+        {
+          "key": "image",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-gemini-omni-1-1-text_to_video",
+      "vendorKey": "kie",
+      "taskKind": "text_to_video",
+      "modelKey": "google/gemini-omni-flash-1-1",
+      "archetypeId": "gemini-omni-1.1",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audio_ids",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "video_list",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-kie-gemini-omni-1-1-image_to_video",
+      "vendorKey": "kie",
+      "taskKind": "image_to_video",
+      "modelKey": "google/gemini-omni-flash-1-1",
+      "archetypeId": "gemini-omni-1.1",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audio_ids",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "video_list",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-minimax-h3-context-ir-prompt_refine",
+      "vendorKey": "apimart",
+      "taskKind": "prompt_refine",
+      "modelKey": "MiniMax-H3-Context-IR",
+      "archetypeId": null,
+      "keys": [
+        {
+          "key": "first_frame_image",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_image",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-seedream-5-pro-image_edit",
+      "vendorKey": "apimart",
+      "taskKind": "image_edit",
+      "modelKey": "doubao-seedream-5-0-pro",
+      "archetypeId": "seedream-5-pro",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-seedream-image_edit",
+      "vendorKey": "apimart",
+      "taskKind": "image_edit",
+      "modelKey": "doubao-seedream-4.5",
+      "archetypeId": "seedream",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-nano-banana-image_edit",
+      "vendorKey": "apimart",
+      "taskKind": "image_edit",
+      "modelKey": "gemini-2.5-flash-image-preview",
+      "archetypeId": "nano-banana",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-nano-banana-2-image_edit",
+      "vendorKey": "apimart",
+      "taskKind": "image_edit",
+      "modelKey": "gemini-3.1-flash-image-preview",
+      "archetypeId": "nano-banana-2",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-gpt-image-2-image_edit",
+      "vendorKey": "apimart",
+      "taskKind": "image_edit",
+      "modelKey": "gpt-image-2",
+      "archetypeId": "gpt-image-2",
+      "keys": [
+        {
+          "key": "input_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-gpt-image-2.5-flare-image_edit",
+      "vendorKey": "apimart",
+      "taskKind": "image_edit",
+      "modelKey": "gpt-image-2.5-flare",
+      "archetypeId": "gpt-image-2.5-flare",
+      "keys": [
+        {
+          "key": "input_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-gpt-image-2.5-sunburst-image_edit",
+      "vendorKey": "apimart",
+      "taskKind": "image_edit",
+      "modelKey": "gpt-image-2.5-sunburst",
+      "archetypeId": "gpt-image-2.5-sunburst",
+      "keys": [
+        {
+          "key": "input_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-gemini-image-3-pro-image_edit",
+      "vendorKey": "apimart",
+      "taskKind": "image_edit",
+      "modelKey": "gemini-3-pro-image-preview",
+      "archetypeId": "gemini-image-3-pro",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-qwen-image-image_edit",
+      "vendorKey": "apimart",
+      "taskKind": "image_edit",
+      "modelKey": "qwen-image-2.0",
+      "archetypeId": "qwen-image",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-qwen-image-3-image_edit",
+      "vendorKey": "apimart",
+      "taskKind": "image_edit",
+      "modelKey": "qwen-image-3.0",
+      "archetypeId": "qwen-image-3",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-vidu-q3-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "viduq3",
+      "archetypeId": "vidu-q3",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-kling-3.0-turbo-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "kling-3.0-turbo",
+      "archetypeId": "kling-3.0-turbo",
+      "keys": [
+        {
+          "key": "first_frame_image",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-happyhorse-1.1-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "happyhorse-1.1",
+      "archetypeId": "happyhorse-1.1",
+      "keys": [
+        {
+          "key": "first_frame_image",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-grok-imagine-1.5-video-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "grok-imagine-1.5-video-apimart",
+      "archetypeId": "grok-imagine-1.5-video",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-veo-3.1-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "veo3.1-fast",
+      "archetypeId": "veo-3.1",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-kling-3.0-text_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "text_to_video",
+      "modelKey": "kling-v3",
+      "archetypeId": "kling-3.0",
+      "keys": [
+        {
+          "key": "audio",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "生成音频开关",
+            "basis": "wire key semantics"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-kling-3.0-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "kling-v3",
+      "archetypeId": "kling-3.0",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audio",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "生成音频开关",
+            "basis": "wire key semantics"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-seedance-2-apimart-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "doubao-seedance-2.0",
+      "archetypeId": "seedance-2-apimart",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "image_with_roles",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-seedance-2.5-apimart-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "doubao-seedance-2.5",
+      "archetypeId": "seedance-2.5-apimart",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "image_with_roles",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-minimax-h3-apimart-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "MiniMax-H3",
+      "archetypeId": "minimax-h3-apimart",
+      "keys": [
+        {
+          "key": "first_frame_image",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_image",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-wan-2.7-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "wan2.7",
+      "archetypeId": "wan-2.7",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "image_with_roles",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-wan-3.0-apimart-text_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "text_to_video",
+      "modelKey": "wan3.0-video",
+      "archetypeId": "wan-3.0-apimart",
+      "keys": [
+        {
+          "key": "audio",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "生成音频（boolean）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-wan-3.0-apimart-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "wan3.0-video",
+      "archetypeId": "wan-3.0-apimart",
+      "keys": [
+        {
+          "key": "audio",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "生成音频（boolean）",
+            "basis": "ModelParameterControl"
+          }
+        },
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "image_with_roles",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-hailuo-2.3-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "MiniMax-Hailuo-2.3",
+      "archetypeId": "hailuo-2.3",
+      "keys": [
+        {
+          "key": "first_frame_image",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-omni-flash-ext-image_to_video",
+      "vendorKey": "apimart",
+      "taskKind": "image_to_video",
+      "modelKey": "Omni-Flash-Ext",
+      "archetypeId": "omni-flash-ext",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-apimart-nomi-audio-text_to_audio",
+      "vendorKey": "apimart",
+      "taskKind": "text_to_audio",
+      "modelKey": "nomi-audio",
+      "archetypeId": "nomi-audio",
+      "keys": [
+        {
+          "key": "voice",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "voice",
+            "detail": "音色（select）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-agnes-agnes-image-2.1-flash-image_edit",
+      "vendorKey": "agnes",
+      "taskKind": "image_edit",
+      "modelKey": "agnes-image-2.1-flash",
+      "archetypeId": "agnes-image-2.1",
+      "keys": [
+        {
+          "key": "image",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-agnes-agnes-image-2.0-flash-image_edit",
+      "vendorKey": "agnes",
+      "taskKind": "image_edit",
+      "modelKey": "agnes-image-2.0-flash",
+      "archetypeId": "agnes-image",
+      "keys": [
+        {
+          "key": "image",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-agnes-video-v2-text_to_video",
+      "vendorKey": "agnes",
+      "taskKind": "text_to_video",
+      "modelKey": "agnes-video-v2.0",
+      "archetypeId": "agnes-video",
+      "keys": [
+        {
+          "key": "num_frames",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "quantity",
+            "detail": "视频帧数",
+            "basis": "wire key semantics"
+          }
+        },
+        {
+          "key": "frame_rate",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "number",
+            "detail": "帧率（number）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-agnes-video-v2-image_to_video",
+      "vendorKey": "agnes",
+      "taskKind": "image_to_video",
+      "modelKey": "agnes-video-v2.0",
+      "archetypeId": "agnes-video",
+      "keys": [
+        {
+          "key": "num_frames",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "quantity",
+            "detail": "视频帧数",
+            "basis": "wire key semantics"
+          }
+        },
+        {
+          "key": "frame_rate",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "number",
+            "detail": "帧率（number）",
+            "basis": "ModelParameterControl"
+          }
+        },
+        {
+          "key": "image",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "keyframe_images",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-agnes-video-2.5-text_to_video",
+      "vendorKey": "agnes",
+      "taskKind": "text_to_video",
+      "modelKey": "agnes-video-2.5",
+      "archetypeId": "agnes-video-2.5",
+      "keys": [
+        {
+          "key": "first_frame",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "images",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audios",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "videos",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "video_start_seconds",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "number",
+            "detail": "参考视频起始秒（number）",
+            "basis": "ModelParameterControl"
+          }
+        },
+        {
+          "key": "video_require_audio",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "参考视频必须含音轨（boolean）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-agnes-video-2.5-image_to_video",
+      "vendorKey": "agnes",
+      "taskKind": "image_to_video",
+      "modelKey": "agnes-video-2.5",
+      "archetypeId": "agnes-video-2.5",
+      "keys": [
+        {
+          "key": "first_frame",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "images",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audios",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "videos",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "video_start_seconds",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "number",
+            "detail": "参考视频起始秒（number）",
+            "basis": "ModelParameterControl"
+          }
+        },
+        {
+          "key": "video_require_audio",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "参考视频必须含音轨（boolean）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-agnes-video-2.5-flash-text_to_video",
+      "vendorKey": "agnes",
+      "taskKind": "text_to_video",
+      "modelKey": "agnes-video-2.5-flash",
+      "archetypeId": "agnes-video-2.5-flash",
+      "keys": [
+        {
+          "key": "first_frame",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "images",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audios",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-agnes-video-2.5-flash-image_to_video",
+      "vendorKey": "agnes",
+      "taskKind": "image_to_video",
+      "modelKey": "agnes-video-2.5-flash",
+      "archetypeId": "agnes-video-2.5-flash",
+      "keys": [
+        {
+          "key": "first_frame",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "images",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "audios",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-modelscope-qwen-image-edit-image_edit",
+      "vendorKey": "modelscope",
+      "taskKind": "image_edit",
+      "modelKey": "Qwen/Qwen-Image-Edit-2511",
+      "archetypeId": "modelscope-image-edit",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-volcengine-seedream-5-pro-image_edit",
+      "vendorKey": "volcengine",
+      "taskKind": "image_edit",
+      "modelKey": "doubao-seedream-5-0-pro-260628",
+      "archetypeId": "volcengine-seedream-5-pro",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-volcengine-seedream-5-image_edit",
+      "vendorKey": "volcengine",
+      "taskKind": "image_edit",
+      "modelKey": "doubao-seedream-5-0-260128",
+      "archetypeId": "volcengine-seedream",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-volcengine-seedream-4-5-image_edit",
+      "vendorKey": "volcengine",
+      "taskKind": "image_edit",
+      "modelKey": "doubao-seedream-4-5-251128",
+      "archetypeId": "volcengine-seedream",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-volcengine-seedream-4-0-image_edit",
+      "vendorKey": "volcengine",
+      "taskKind": "image_edit",
+      "modelKey": "doubao-seedream-4-0-250828",
+      "archetypeId": "volcengine-seedream",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-volcengine-seedance-2-image_to_video",
+      "vendorKey": "volcengine",
+      "taskKind": "image_to_video",
+      "modelKey": "doubao-seedance-2-0-260128",
+      "archetypeId": "volcengine-seedance-2",
+      "keys": [
+        {
+          "key": "volcengine_first_image_content",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "volcengine_first_role_image_content",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "volcengine_last_role_image_content",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "volcengine_image_contents",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "volcengine_video_contents",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "volcengine_audio_contents",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-volcengine-seedance-2-5-image_to_video",
+      "vendorKey": "volcengine",
+      "taskKind": "image_to_video",
+      "modelKey": "doubao-seedance-2-5-260628",
+      "archetypeId": "volcengine-seedance-2-5",
+      "keys": [
+        {
+          "key": "volcengine_first_image_content",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "volcengine_first_role_image_content",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "volcengine_last_role_image_content",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "volcengine_image_contents",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "volcengine_video_contents",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "volcengine_audio_contents",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runninghub-hunyuan3d-image_to_3d",
+      "vendorKey": "runninghub",
+      "taskKind": "image_to_3d",
+      "modelKey": "hunyuan3d-v3.1",
+      "archetypeId": "hunyuan3d",
+      "keys": [
+        {
+          "key": "imageUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runninghub-hitem3d-image_to_3d",
+      "vendorKey": "runninghub",
+      "taskKind": "image_to_3d",
+      "modelKey": "hitem3d-v21",
+      "archetypeId": "hitem3d",
+      "keys": [
+        {
+          "key": "imageUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runninghub-meshy6-image_to_3d",
+      "vendorKey": "runninghub",
+      "taskKind": "image_to_3d",
+      "modelKey": "meshy6",
+      "archetypeId": "meshy6",
+      "keys": [
+        {
+          "key": "imageUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-rh-seedance-global-t2v",
+      "vendorKey": "runninghub",
+      "taskKind": "text_to_video",
+      "modelKey": "bytedance/seedance-2.0-global",
+      "archetypeId": "runninghub-seedance",
+      "keys": [
+        {
+          "key": "generateAudio",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "生成音频（boolean）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-rh-seedance-global-i2v",
+      "vendorKey": "runninghub",
+      "taskKind": "image_to_video",
+      "modelKey": "bytedance/seedance-2.0-global",
+      "archetypeId": "runninghub-seedance",
+      "keys": [
+        {
+          "key": "generateAudio",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "生成音频（boolean）",
+            "basis": "ModelParameterControl"
+          }
+        },
+        {
+          "key": "firstFrameUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "lastFrameUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-rh-veo31-t2v",
+      "vendorKey": "runninghub",
+      "taskKind": "text_to_video",
+      "modelKey": "rhart-video-v3.1-pro-official",
+      "archetypeId": "rh-veo-3.1",
+      "keys": [
+        {
+          "key": "generateAudio",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "生成音频（boolean）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-rh-veo31-i2v",
+      "vendorKey": "runninghub",
+      "taskKind": "image_to_video",
+      "modelKey": "rhart-video-v3.1-pro-official",
+      "archetypeId": "rh-veo-3.1",
+      "keys": [
+        {
+          "key": "generateAudio",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "boolean-switch",
+            "detail": "生成音频（boolean）",
+            "basis": "ModelParameterControl"
+          }
+        },
+        {
+          "key": "imageUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "lastImageUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-rh-kling3-i2v",
+      "vendorKey": "runninghub",
+      "taskKind": "image_to_video",
+      "modelKey": "kling-v3.0-pro",
+      "archetypeId": "rh-kling-3.0",
+      "keys": [
+        {
+          "key": "firstImageUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "lastImageUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-rh-wan27-i2v",
+      "vendorKey": "runninghub",
+      "taskKind": "image_to_video",
+      "modelKey": "rh-wan-2.7",
+      "archetypeId": "rh-wan-2.7",
+      "keys": [
+        {
+          "key": "firstImageUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "lastImageUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-rh-hailuo23-i2v",
+      "vendorKey": "runninghub",
+      "taskKind": "image_to_video",
+      "modelKey": "rh-hailuo-2.3",
+      "archetypeId": "rh-hailuo-2.3",
+      "keys": [
+        {
+          "key": "imageUrl",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-rh-seedream45-i2i",
+      "vendorKey": "runninghub",
+      "taskKind": "image_edit",
+      "modelKey": "seedream-v4.5",
+      "archetypeId": "rh-seedream-4.5",
+      "keys": [
+        {
+          "key": "imageUrls",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-rh-nano-edit",
+      "vendorKey": "runninghub",
+      "taskKind": "image_edit",
+      "modelKey": "rhart-image-v1",
+      "archetypeId": "rh-nano-banana",
+      "keys": [
+        {
+          "key": "imageUrls",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-rh-gpt2-i2i",
+      "vendorKey": "runninghub",
+      "taskKind": "image_edit",
+      "modelKey": "rhart-image-g-2-official",
+      "archetypeId": "rh-gpt-image-2",
+      "keys": [
+        {
+          "key": "imageUrls",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-rh-qwen2-edit",
+      "vendorKey": "runninghub",
+      "taskKind": "image_edit",
+      "modelKey": "rh-qwen-image-2.0",
+      "archetypeId": "rh-qwen-image-2.0",
+      "keys": [
+        {
+          "key": "imageUrls",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-minimax-h3-text_to_video",
+      "vendorKey": "minimax",
+      "taskKind": "text_to_video",
+      "modelKey": "MiniMax-H3",
+      "archetypeId": "minimax-h3",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "end_image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-minimax-h3-image_to_video",
+      "vendorKey": "minimax",
+      "taskKind": "image_to_video",
+      "modelKey": "MiniMax-H3",
+      "archetypeId": "minimax-h3",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "end_image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-minimax-speech-2.8-hd-text_to_audio",
+      "vendorKey": "minimax",
+      "taskKind": "text_to_audio",
+      "modelKey": "speech-2.8-hd",
+      "archetypeId": "minimax-speech-2.8",
+      "keys": [
+        {
+          "key": "voice_id",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "enum",
+            "detail": "音色 ID（text）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-minimax-speech-2.8-turbo-text_to_audio",
+      "vendorKey": "minimax",
+      "taskKind": "text_to_audio",
+      "modelKey": "speech-2.8-turbo",
+      "archetypeId": "minimax-speech-2.8",
+      "keys": [
+        {
+          "key": "voice_id",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "enum",
+            "detail": "音色 ID（text）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-meshy-7-image-to-3d",
+      "vendorKey": "meshy",
+      "taskKind": "image_to_3d",
+      "modelKey": "meshy-7",
+      "archetypeId": "meshy-7",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-fal-ai-nano-banana-2-t2i",
+      "vendorKey": "fal",
+      "taskKind": "text_to_image",
+      "modelKey": "fal-ai/nano-banana-2",
+      "archetypeId": "nano-banana-2",
+      "keys": [
+        {
+          "key": "num_images",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "quantity",
+            "detail": "生成数量",
+            "basis": "wire key semantics"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-fal-ai-nano-banana-2-edit-edit",
+      "vendorKey": "fal",
+      "taskKind": "image_edit",
+      "modelKey": "fal-ai/nano-banana-2",
+      "archetypeId": "nano-banana-2",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "num_images",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "quantity",
+            "detail": "生成数量",
+            "basis": "wire key semantics"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-openai-gpt-image-2-t2i",
+      "vendorKey": "fal",
+      "taskKind": "text_to_image",
+      "modelKey": "openai/gpt-image-2",
+      "archetypeId": "gpt-image-2",
+      "keys": [
+        {
+          "key": "image_size",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "size",
+            "detail": "图像尺寸枚举",
+            "basis": "wire key semantics"
+          }
+        },
+        {
+          "key": "num_images",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "quantity",
+            "detail": "生成数量",
+            "basis": "wire key semantics"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-openai-gpt-image-2-edit-i2i",
+      "vendorKey": "fal",
+      "taskKind": "image_edit",
+      "modelKey": "openai/gpt-image-2",
+      "archetypeId": "gpt-image-2",
+      "keys": [
+        {
+          "key": "input_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "image_size",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "size",
+            "detail": "图像尺寸枚举",
+            "basis": "wire key semantics"
+          }
+        },
+        {
+          "key": "num_images",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "quantity",
+            "detail": "生成数量",
+            "basis": "wire key semantics"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-bytedance-seedream-v5-pro-text-to-image-t2i",
+      "vendorKey": "fal",
+      "taskKind": "text_to_image",
+      "modelKey": "bytedance/seedream/v5/pro",
+      "archetypeId": "seedream-5-pro",
+      "keys": [
+        {
+          "key": "image_size",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "size",
+            "detail": "图像尺寸枚举",
+            "basis": "wire key semantics"
+          }
+        },
+        {
+          "key": "num_images",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "quantity",
+            "detail": "生成数量",
+            "basis": "wire key semantics"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-bytedance-seedream-v5-pro-edit-edit",
+      "vendorKey": "fal",
+      "taskKind": "image_edit",
+      "modelKey": "bytedance/seedream/v5/pro",
+      "archetypeId": "seedream-5-pro",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "image_size",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "size",
+            "detail": "图像尺寸枚举",
+            "basis": "wire key semantics"
+          }
+        },
+        {
+          "key": "num_images",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "quantity",
+            "detail": "生成数量",
+            "basis": "wire key semantics"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-minimax-h3-max-image-to-video-i2v",
+      "vendorKey": "fal",
+      "taskKind": "image_to_video",
+      "modelKey": "minimax/h3-max",
+      "archetypeId": "minimax-h3-max",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "end_image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-bytedance-seedance-2-5-image-to-video-first",
+      "vendorKey": "fal",
+      "taskKind": "image_to_video",
+      "modelKey": "bytedance/seedance-2.5",
+      "archetypeId": "seedance-2.5",
+      "keys": [
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-bytedance-seedance-2-5-image-to-video-firstlast",
+      "vendorKey": "fal",
+      "taskKind": "image_to_video",
+      "modelKey": "bytedance/seedance-2.5",
+      "archetypeId": "seedance-2.5",
+      "keys": [
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-bytedance-seedance-2-5-reference-to-video-omni",
+      "vendorKey": "fal",
+      "taskKind": "image_to_video",
+      "modelKey": "bytedance/seedance-2.5",
+      "archetypeId": "seedance-2.5",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-fal-ai-kling-video-v3-pro-image-to-video-i2v",
+      "vendorKey": "fal",
+      "taskKind": "image_to_video",
+      "modelKey": "fal-ai/kling-video/v3/pro",
+      "archetypeId": "kling-3.0",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-google-gemini-omni-flash-v1-1-reference-to-video-reference",
+      "vendorKey": "fal",
+      "taskKind": "image_to_video",
+      "modelKey": "google/gemini-omni-flash/v1.1",
+      "archetypeId": "gemini-omni-1.1",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-google-gemini-omni-flash-v1-1-image-to-video-firstlast",
+      "vendorKey": "fal",
+      "taskKind": "image_to_video",
+      "modelKey": "google/gemini-omni-flash/v1.1",
+      "archetypeId": "gemini-omni-1.1",
+      "keys": [
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-fal-hitem3d-hi3d-v3-0-image-to-3d-image",
+      "vendorKey": "fal",
+      "taskKind": "image_to_3d",
+      "modelKey": "hitem3d/hi3d/v3.0",
+      "archetypeId": "hitem3d",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-gen4-5-i2v",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "gen4.5",
+      "archetypeId": "runway-gen4.5",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-gen4-turbo-i2v",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "gen4_turbo",
+      "archetypeId": "runway-gen4-turbo",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedance2-5-t2v",
+      "vendorKey": "runway",
+      "taskKind": "text_to_video",
+      "modelKey": "seedance2_5",
+      "archetypeId": "seedance-2.5-runway",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedance2-5-first",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "seedance2_5",
+      "archetypeId": "seedance-2.5-runway",
+      "keys": [
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedance2-5-firstlast",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "seedance2_5",
+      "archetypeId": "seedance-2.5-runway",
+      "keys": [
+        {
+          "key": "first_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "last_frame_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedance2-5-omni",
+      "vendorKey": "runway",
+      "taskKind": "text_to_video",
+      "modelKey": "seedance2_5",
+      "archetypeId": "seedance-2.5-runway",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seed-audio-sfx",
+      "vendorKey": "runway",
+      "taskKind": "text_to_audio",
+      "modelKey": "seed_audio",
+      "archetypeId": "runway-seed-audio",
+      "keys": [
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seed-audio-tts",
+      "vendorKey": "runway",
+      "taskKind": "text_to_audio",
+      "modelKey": "seed_audio",
+      "archetypeId": "runway-seed-audio",
+      "keys": [
+        {
+          "key": "voice_reference_audio_url",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-eleven_multilingual_v2-speech",
+      "vendorKey": "runway",
+      "taskKind": "text_to_audio",
+      "modelKey": "eleven_multilingual_v2",
+      "archetypeId": "eleven-multilingual-v2",
+      "keys": [
+        {
+          "key": "voice_preset_id",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "voice",
+            "detail": "音色（select）",
+            "basis": "ModelParameterControl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-eleven_v3-speech",
+      "vendorKey": "runway",
+      "taskKind": "text_to_audio",
+      "modelKey": "eleven_v3",
+      "archetypeId": "eleven-v3",
+      "keys": [
+        {
+          "key": "voice_preset_id",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "voice",
+            "detail": "音色预设枚举",
+            "basis": "archetype parameter control / wire key"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedance2-image",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "seedance2",
+      "archetypeId": "seedance-2",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedance2-refs",
+      "vendorKey": "runway",
+      "taskKind": "text_to_video",
+      "modelKey": "seedance2",
+      "archetypeId": "seedance-2",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedance2_fast-image",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "seedance2_fast",
+      "archetypeId": "seedance-2",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedance2_fast-refs",
+      "vendorKey": "runway",
+      "taskKind": "text_to_video",
+      "modelKey": "seedance2_fast",
+      "archetypeId": "seedance-2",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedance2_mini-image",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "seedance2_mini",
+      "archetypeId": "seedance-2",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedance2_mini-refs",
+      "vendorKey": "runway",
+      "taskKind": "text_to_video",
+      "modelKey": "seedance2_mini",
+      "archetypeId": "seedance-2",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-wan3-image",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "wan3",
+      "archetypeId": "wan-3.0",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-wan3-refs",
+      "vendorKey": "runway",
+      "taskKind": "text_to_video",
+      "modelKey": "wan3",
+      "archetypeId": "wan-3.0",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-grok_imagine_1_5-image",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "grok_imagine_1_5",
+      "archetypeId": "grok-imagine-1.5-video",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-hailuo3-image",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "hailuo3",
+      "archetypeId": "minimax-h3",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-hailuo3-refs",
+      "vendorKey": "runway",
+      "taskKind": "text_to_video",
+      "modelKey": "hailuo3",
+      "archetypeId": "minimax-h3",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_video_urls",
+          "classifier": {
+            "family": "video",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "reference_audio_urls",
+          "classifier": {
+            "family": "audio",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-veo3-1-image",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "veo3.1",
+      "archetypeId": "veo-3.1",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-veo3-1_fast-image",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "veo3.1_fast",
+      "archetypeId": "veo-3.1",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-happyhorse_1_0-image",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "happyhorse_1_0",
+      "archetypeId": "happyhorse",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-gemini_omni_flash-image",
+      "vendorKey": "runway",
+      "taskKind": "image_to_video",
+      "modelKey": "gemini_omni_flash",
+      "archetypeId": "gemini-omni-1.1",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-gpt_image_2-i2i",
+      "vendorKey": "runway",
+      "taskKind": "image_edit",
+      "modelKey": "gpt_image_2",
+      "archetypeId": "gpt-image-2",
+      "keys": [
+        {
+          "key": "input_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedream5_pro-i2i",
+      "vendorKey": "runway",
+      "taskKind": "image_edit",
+      "modelKey": "seedream5_pro",
+      "archetypeId": "seedream-5-pro",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-seedream5_lite-i2i",
+      "vendorKey": "runway",
+      "taskKind": "image_edit",
+      "modelKey": "seedream5_lite",
+      "archetypeId": "kie-seedream-5-lite",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-gemini_2-5_flash-i2i",
+      "vendorKey": "runway",
+      "taskKind": "image_edit",
+      "modelKey": "gemini_2.5_flash",
+      "archetypeId": "nano-banana",
+      "keys": [
+        {
+          "key": "image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-muse_image-i2i",
+      "vendorKey": "runway",
+      "taskKind": "image_edit",
+      "modelKey": "muse_image",
+      "archetypeId": "runway-muse-image",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-grok_imagine_image_2-i2i",
+      "vendorKey": "runway",
+      "taskKind": "image_edit",
+      "modelKey": "grok_imagine_image_2",
+      "archetypeId": "grok-imagine-image-2",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-gen4_image-i2i",
+      "vendorKey": "runway",
+      "taskKind": "image_edit",
+      "modelKey": "gen4_image",
+      "archetypeId": "runway-gen4-image",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-gen4_image_turbo-i2i",
+      "vendorKey": "runway",
+      "taskKind": "image_edit",
+      "modelKey": "gen4_image_turbo",
+      "archetypeId": "runway-gen4-image-turbo",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-gemini_image3_pro-i2i",
+      "vendorKey": "runway",
+      "taskKind": "image_edit",
+      "modelKey": "gemini_image3_pro",
+      "archetypeId": "gemini-image-3-pro",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-runway-gemini_image3-1_flash-i2i",
+      "vendorKey": "runway",
+      "taskKind": "image_edit",
+      "modelKey": "gemini_image3.1_flash",
+      "archetypeId": "gemini-image-3.1-flash",
+      "keys": [
+        {
+          "key": "reference_image_urls",
+          "classifier": {
+            "family": "image",
+            "multiImage": true
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-higgsfield-dop-standard-i2v",
+      "vendorKey": "higgsfield",
+      "taskKind": "image_to_video",
+      "modelKey": "higgsfield-ai/dop/standard",
+      "archetypeId": "higgsfield-dop",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "end_image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "seed-higgsfield-dop-turbo-i2v",
+      "vendorKey": "higgsfield",
+      "taskKind": "image_to_video",
+      "modelKey": "higgsfield-ai/dop/turbo",
+      "archetypeId": "higgsfield-dop",
+      "keys": [
+        {
+          "key": "image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        },
+        {
+          "key": "end_image_url",
+          "classifier": {
+            "family": "image",
+            "multiImage": false
+          },
+          "actual": {
+            "role": "reference-input",
+            "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
+            "basis": "GENERIC_REFERENCE_KEYS"
+          }
+        }
+      ]
+    }
+  ]
+}
