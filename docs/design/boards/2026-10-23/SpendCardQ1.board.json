@@ -1,7 +1,7 @@
 {
   "board": "SpendCardQ1",
   "approvedOn": "2026-10-23",
-  "stage": "explored",
+  "stage": "built",
   "visualReview": "用户 10-23 在 Claude Design 画布「指向元素与付费确认卡 D2 样张」第二版（https://claude.ai/artifact/Y8E9jC8RNrKXVuwxUoWv2f，私有）上选 P1 + Q1（协调转述）；四条连带问题 10-23 由协调与用户定（见 decisions）。",
   "sourceBoundary": "板源 = 画布 Q1-states、Q1-flow 两格 + Q4 的 Q1 行（source/ 下原样副本）。preview/SpendCardQ1.html 是去壳拼页（规则同 NodePointer 板），Q4 里 Q2 / Q3 两行不进预览。样张上的价格、型号、时长是占位示例，不是真实报价。卡里的指向元素复用 NodePointer 板的组件，这里只认领「卡里怎么摆」。",
   "designIntent": "内嵌 Agent 的付费请示卡只问一件事：花不花。卡 = 指向元素 + 一句话 + 「生成」；想改点指向去节点里改；确认只按节点当前参数花钱。功能全表 43 行见 functionCensus 与 docs/plan/2026-10-23-d2-pointer-spend-card.md §二。",
@@ -70,8 +70,8 @@
         "380-span-Generatethes",
         "451-span-生成这3段视频"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.title"
     },
     {
       "id": "card.badge",
@@ -92,8 +92,8 @@
         "381-span-GenerationNo",
         "452-span-生成Nomi选的"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.badge"
     },
     {
       "id": "card.pointers",
@@ -325,9 +325,9 @@
         "461-span-镜03",
         "462-svg"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
-      "note": "替掉旧卡体（整件生成框 + 翻页）。窄屏（≤320px）只留镜号 + 缩略图。"
+      "status": "implemented",
+      "note": "替掉旧卡体（整件生成框 + 翻页）。窄屏（≤320px）只留镜号 + 缩略图。",
+      "assertion": "board:SpendCardQ1/card.pointers"
     },
     {
       "id": "card.pointer.exclude",
@@ -341,13 +341,13 @@
         "dark"
       ],
       "candidates": [],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
+      "status": "implemented",
       "userDecision": {
         "quote": "协调 10-23 转述用户「按推荐」：Q1 选 A——多段卡里每个指向元素悬停 / 聚焦时露一颗小「不生成 ×」，点了 N 跟着减，节点显示「已去掉，不生成」；可以撤回（再点一次恢复）",
         "date": "2026-10-23"
       },
-      "note": "对样张的已批差异（样张没画）。全部去掉时主按钮置灰、卡留着（还能恢复），要关卡点「取消」。今天的「去掉」不可撤回，第③步要补「恢复这一镜」的宿主动作。"
+      "note": "对样张的已批差异（样张没画）。全部去掉时主按钮置灰、卡留着（还能恢复），要关卡点「取消」。恢复这一镜是宿主动作 restoreSpendShot（D2 第③步补上，去掉与恢复都带卡的身份）。",
+      "assertion": "board:SpendCardQ1/card.pointer.exclude"
     },
     {
       "id": "card.summary",
@@ -371,8 +371,8 @@
         "392-span-Seedance20Fa",
         "463-span-Seedance20Fa"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.summary"
     },
     {
       "id": "card.total",
@@ -393,13 +393,13 @@
         "393-span-3videosTotal",
         "464-span-3段合计210"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
+      "status": "implemented",
       "userDecision": {
         "quote": "协调 10-23 转述用户「按推荐」：Q2 照 10-08「界面不谈钱」——合计行只写「N 段」，不印合计金额；只有各镜价格不同时折叠明细里印每镜价；价格算不出就不印",
         "date": "2026-10-23"
       },
-      "note": "样张画了「3 段 · 合计 ¥2.10」，与 10-08 规则冲突，用户 10-23 定照 10-08。"
+      "note": "样张画了「3 段 · 合计 ¥2.10」，与 10-08 规则冲突，用户 10-23 定照 10-08。",
+      "assertion": "board:SpendCardQ1/card.total"
     },
     {
       "id": "card.per-shot",
@@ -424,8 +424,8 @@
         "213-span-镜头3Seedance2",
         "214-span-070"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.per-shot"
     },
     {
       "id": "card.cancel",
@@ -447,8 +447,8 @@
         "394-button-Cancel",
         "465-button-取消"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.cancel"
     },
     {
       "id": "card.generate",
@@ -472,9 +472,9 @@
         "395-button-Generateall3",
         "466-button-全部生成3"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
-      "note": "动作在路上时置灰；⏎ 提示、最小宽 80 沿用。"
+      "status": "implemented",
+      "note": "动作在路上时置灰；⏎ 提示、最小宽 80 沿用。",
+      "assertion": "board:SpendCardQ1/card.generate"
     },
     {
       "id": "card.progress",
@@ -495,8 +495,8 @@
         "429-span-Sending2of3v",
         "444-span-Canceltostop"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.progress"
     },
     {
       "id": "card.progress.stop",
@@ -512,8 +512,8 @@
         "334-button-取消",
         "445-button-Cancel"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.progress.stop"
     },
     {
       "id": "card.done",
@@ -529,9 +529,9 @@
         "083-span-已生成3段",
         "084-span-3段合计210"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
-      "note": "协调 10-23 定（Q4）。收据上的「N 段」同样不印金额。"
+      "status": "implemented",
+      "note": "协调 10-23 定（Q4）。收据上的「N 段」同样不印金额。",
+      "assertion": "board:SpendCardQ1/card.done"
     },
     {
       "id": "card.failure",
@@ -560,8 +560,8 @@
         "419-span-服务暂时不可用",
         "420-small-镜01已发出并在生成镜0"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.failure"
     },
     {
       "id": "card.failure.decline",
@@ -577,8 +577,8 @@
         "152-button-先不发了",
         "421-button-先不发了"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.failure.decline"
     },
     {
       "id": "card.failure.retry",
@@ -594,8 +594,8 @@
         "124-button-再试一次",
         "422-button-再试一次"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.failure.retry"
     },
     {
       "id": "card.failure.go-edit",
@@ -610,8 +610,8 @@
         "153-button-去改镜02",
         "154-svg"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.failure.go-edit"
     },
     {
       "id": "canvas.node.highlight",
@@ -637,8 +637,8 @@
         "342-div",
         "343-span-生成中"
       ],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/canvas.node.highlight"
     },
     {
       "id": "node.composer",
@@ -657,8 +657,8 @@
         "274-span-480p",
         "275-svg"
       ],
-      "status": "missing",
-      "owner": "#1269（生成框 B3 新排法）；本线只读它"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/node.composer"
     },
     {
       "id": "card.brake-note",
@@ -669,8 +669,8 @@
         "dark"
       ],
       "candidates": [],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.brake-note"
     },
     {
       "id": "card.unreadable",
@@ -682,8 +682,8 @@
         "dark"
       ],
       "candidates": [],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）"
+      "status": "implemented",
+      "assertion": "board:SpendCardQ1/card.unreadable"
     },
     {
       "id": "dock.pending-count",
@@ -695,9 +695,9 @@
         "dark"
       ],
       "candidates": [],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
-      "note": "协调 10-23 定（Q5），今天的缺口。"
+      "status": "implemented",
+      "note": "协调 10-23 定（Q5），今天的缺口。",
+      "assertion": "board:SpendCardQ1/dock.pending-count"
     },
     {
       "id": "host.one-engine",
@@ -708,13 +708,13 @@
         "error"
       ],
       "candidates": [],
-      "status": "missing",
-      "owner": "I-d2 第③步（新付费卡接线，等 #1269 合入）",
+      "status": "implemented",
       "userDecision": {
         "quote": "协调 10-23 转述用户「按推荐」：Q3 一台发动机——点「生成」逐节点走画布单节点提交，Agent 出价按「已交给画布」关闭，逐镜结局从各单镜 Run 读回回合",
         "date": "2026-10-23"
       },
-      "note": "看不见的宿主行为，进清单是为了让功能全表第 6、20、32–38 行有去处。"
+      "note": "看不见的宿主行为，进清单是为了让功能全表第 6、20、32–38 行有去处。",
+      "assertion": "board:SpendCardQ1/host.one-engine"
     },
     {
       "id": "legacy.card-draft-ledger",

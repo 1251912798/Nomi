@@ -24,6 +24,9 @@ import type {
 } from '../../../workbench/ai/v4/agentPanelV4Types'
 import type { V4FlowItem } from '../../../workbench/ai/v4/AgentPanelV4Panel'
 import type { V4CommandRow, V4ModelRow } from '../../../workbench/ai/v4/AgentPanelV4Composer'
+import type { LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
+import { providerFailureText } from '../../../workbench/ai/lane/laneCommandFailure'
+import { formatMoney } from '../../../workbench/ai/v4/formatMoney'
 
 /** 面板宽度 = 定稿的 390（可拖 320–520，< 320 收成 rail）。 */
 /**
@@ -40,8 +43,6 @@ export const V4_LAB_SLOT_HANDLERS = Object.freeze({
    * 一颗没接线的钮和一颗设计上就没有的钮，在截图里长得一模一样（2026-09-21 实测栽过）。
    */
   onReject: () => undefined,
-  /** 付费卡「生成剩下 N 张」（2026-10-01）：同上，不接这颗钮在取景里就整个消失。 */
-  onBatch: () => undefined,
 })
 
 export const V4_PANEL_WIDTH = 390
@@ -86,6 +87,41 @@ export function useV4Locale(locale: 'zh-CN' | 'en'): boolean {
     return release
   }, [locale])
   return ready
+}
+
+/**
+ * 两层投影要的那份词表。**抽出来是因为它有第二个消费者了**（反问答完那一行）——
+ * 原地再抄一份就是同一份词表两个主人，而「类型要求穷尽」这条护栏的价值正好会被抄漏抵消。
+ */
+export function labViewModelLabels(fx: ReturnType<typeof useV4Fixtures>, toolLabel: string): LaneViewModelLabels {
+  return {
+    toolLabel: () => toolLabel,
+    toolSummary: () => undefined,
+    toolFailure: () => undefined,
+    toolFailureDetail: (failure) => failure.code,
+    assistantFailure: (text, facts) => providerFailureText(text, fx.t, facts),
+    assistantRecovered: fx.t('agentPanelV4.errorRecovered'),
+    thinkingLabel: fx.t('agentPanelV4.thinkingLabel'),
+    formatTokens: (value) => String(value),
+    formatCost: (usd) => `$${usd.toFixed(2)}`,
+    // 三行的两个占位词。这一格只画工具收据，花费/上下文行不进画面；占位词走已有的 contextUnknown，
+    // 「免费」那句不预放死键（3b 的裁决），这里同样借占位符——它在这一格永远不会被渲染。
+    // 3c 的重试行：两个数由调用方填（语序问题），这一格永不渲染重试行，给最朴素的形状。
+    retryLabel: (attempt, maxAttempts) => `${attempt}/${maxAttempts}`,
+    unknown: fx.t('agentPanelV4.contextUnknown'),
+    // 任务卡的四个词条。这一格只画工具收据，一条 task 段都没有，所以它们永远不会被渲染——
+    // 但类型要求穷尽，而穷尽正是它的价值：哪天这一格接上任务卡，缺的那句话是编译错误，
+    // 不是画面上的一块空白。
+    taskTitle: fx.t('agentPanelV4.taskRun'),
+    formatStages: (done, total) => fx.t('agentPanelV4.taskStages', { done, total }),
+    formatMoney: (currency, amount) => formatMoney(fx.locale, currency, amount),
+    taskUnknown: fx.t('agentPanelV4.taskUnknown'),
+    attachmentUnavailable: fx.t('agentPanelV4.attachmentUnavailable'),
+    answered: fx.t('agentPanelV4.questionAnswered'),
+    // 技能名。这一格的转录里一条用户消息都没有，所以永远查不到它——但类型要求穷尽，
+    // 哪天这一格接上带技能的那一轮，缺的那句话是编译错误，不是画面上的一块空白。
+    skillLabel: (key) => key,
+  }
 }
 
 /** 夹具照定稿画布逐格抄：同一句话、同一个数字，才比得出实现有没有走样。 */
@@ -279,22 +315,6 @@ function buildFixtures(t: TFunction) {
       scope: t('agentPanelV4.slotRejectReason'),
       reasonPlaceholder: t('agentPanelV4.slotRejectSample'),
     },
-    // 夹具的字段要和**生产投影** `projectSpendCard` 对得上，否则实验室画的是另一张卡
-    // ——这个坑这条 lane 上已经踩过两次（卡头「需要你定一下」、幽灵的「换模型」按钮）。
-    // 生产投影今天产出（多镜、报得出价）：问话式 `title` + `badge` + 翻页器 + 翻页行右端的 `totalLead`
-    // + 动作行最左的「生成剩下 N 段」+ 右边「去掉这段」和主按钮（2026-10-01 排布）。
-    spend: {
-      kind: 'spend',
-      title: t('agentPanelV4.slotSpendTitle'),
-      badge: t('agentPanelV4.slotSpendBadge'),
-      pager: { index: 0, total: 4, keyHint: t('agentPanelV4.pagerKeyHint') },
-      // 单位跟标题同一条规则（这一叠是视频，说「段」；2026-10-01 用户拍板）。
-      totalLead: t('agentPanelV4.spendTotalLeadVideo', { count: 4, amount: '¥1.20' }),
-      alternateLabel: t('agentPanelV4.spendRemoveThisVideo'),
-      batchLabel: t('agentPanelV4.spendConfirmRemainingVideo', { count: 4 }),
-      params: ['Kling O1', '4 × 3s', 'std', '¥1.20'],
-      confirmLabel: t('agentPanelV4.slotGenerate'),
-    },
     // 反问三格共用同一张卡（2026-09-21：反问是**通用**能力，不为某一种问题写死）。
     // 长相差别只来自数据：有没有说明 / 有没有熔断那句话 / 卡内那一行有没有字。
     question: {
@@ -452,14 +472,6 @@ function buildFixtures(t: TFunction) {
         { id: 'skip', label: t('agentPanelV4.slotDeviationSkip') },
       ],
       selectedOption: 1,
-    },
-    spendOneClip: {
-      kind: 'spend',
-      title: t('agentPanelV4.slotSpendOneTitle'),
-      badge: t('agentPanelV4.slotSpendBadge'),
-      params: ['Kling O1', '3s', 'std', '16:9', '¥0.90'],
-      scope: t('agentPanelV4.slotSpendOneScope'),
-      confirmLabel: t('agentPanelV4.slotGenerate'),
     },
     threeEdits: {
       kind: 'approval-reversible',

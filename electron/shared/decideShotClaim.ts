@@ -2,7 +2,7 @@ import type { ProductionJob, ProductionJobStatus, ProductionRun } from "../produ
 import { currentShotAttempt, jobEndedBeforeAcceptance, latestJobForShot, shotIncluded } from "./productionShotJobs";
 import { isStoppedRunStatus } from "./productionRunStop";
 import { spendAuthorizationGates } from "./productionSpendAuthority";
-import { currentPresentation, draftCardHidden, IN_APP_AGENT_ORIGIN_HOST, offerShots } from "./productionGenerationPresentation";
+import { currentPresentation, draftCardHidden, IN_APP_AGENT_ORIGIN_HOST, latestHandOver, offerShots } from "./productionGenerationPresentation";
 
 export type ShotClaimRequester = "canvas" | "production";
 export type ShotClaimHolder = "canvas" | "production" | "none";
@@ -160,4 +160,22 @@ export function decideShotClaim(
   return isStoppedRunStatus(run.status)
     ? decision("canvas", "run_stopped", requester)
     : decision("production", "queued", requester);
+}
+
+/**
+ * 这一镜**上一次**是哪台发动机跑的——它失败之后，节点上那颗「重试」照它走回原来那一台（D2 第③步：一台发动机）。
+ *
+ *   · 这一次出价把它交给了画布（付费卡 / 「直接生成」档，交接账上有它），或节点上认领了这一次尝试 → 画布；
+ *   · 否则制作流程自己给它派过作业（外部宿主 / 调度器 / 升级前批过的旧卡）→ 制作（返工链）；
+ *   · 一笔都没派过 → 画布（节点上生成的就是画布那一台）。
+ *
+ * 和 `decideShotClaim` 是两个问题：那个问「此刻谁能发」（失败之后两边都说归画布），这个问「刚才是谁发的」。
+ * 只看「是不是多镜 Run」会把交给画布、在画布上失败的那一镜送回制作流程的付费门 + 调度器（第二台发动机）。
+ */
+export function lastShotEngine(run: ProductionRun, shotId: string): "production" | "canvas" {
+  if (latestHandOver(currentPresentation(run.generationPlan), shotId)) return "canvas";
+  const plan = run.generationPlan;
+  const claim = plan?.shots?.length ? plan.shots.find((candidate) => candidate.shotId === shotId)?.claim : plan?.claim;
+  if (claim?.by === "canvas" && claim.attempt === currentShotAttempt(run, shotId)) return "canvas";
+  return latestJobForShot(run, shotId) ? "production" : "canvas";
 }

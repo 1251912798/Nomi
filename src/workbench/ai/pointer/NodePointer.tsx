@@ -13,7 +13,6 @@ import { IconAlertTriangle, IconCheck, IconClock, IconClockSearch, IconFocus2, I
 import { useOverlayEscape } from '../../../design'
 import { cn } from '../../../utils/cn'
 import type { GenerationCanvasNode } from '../../generationCanvas/model/generationCanvasTypes'
-import { getGenerationNodeExecutionKind } from '../../generationCanvas/model/generationNodeKinds'
 import { useGenerationCanvasStore } from '../../generationCanvas/store/generationCanvasStore'
 import { selectCanvasNodeById } from '../../generationCanvas/store/canvasNodeGenerationIndex'
 import { useNodeExternalHighlightStore } from '../../generationCanvas/store/nodeExternalHighlightStore'
@@ -27,8 +26,7 @@ import type { GenerationFeedback } from '../../observability/generationFeedback'
 import { NodeShotLabel, ShotNumberPill } from '../../generation/list/CanvasListLinks'
 import { formatStoryboardShotLabel, isAutoStoryboardShotTitle, useStoryboardShotLabel } from '../../generation/list/storyboardLabels'
 import { useModelLabels } from '../../generation/list/generationListModelLabels'
-import { formatSeconds, readAspect, readDurationSeconds } from '../../generation/list/generationListMediaFacts'
-import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, pointerHoverStack, type NodePointerFace } from './nodePointerFace'
+import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, nodePointerSummaryFacts, pointerHoverStack, type NodePointerFace } from './nodePointerFace'
 import { useNodePointerStore } from './nodePointerStore'
 import { returnToChat, revealNodeFromChat } from './revealNodeFromChat'
 
@@ -40,6 +38,11 @@ export type NodePointerSubject = Readonly<{
   removed?: boolean
   /** 宿主给的这一镜结局（例如付费卡的「没有发出去」）。失败时印在摘要行；不给就照常印模型摘要。 */
   outcome?: string
+  /**
+   * 宿主给的显式事实：这一镜这一次没成（付费卡交给画布却没发出去 / 参数被拒），值是状态条上那一个词。
+   * 节点自己没有失败记录时也画失败脸（见 nodePointerFace）；不给就只读节点。
+   */
+  hostFailure?: string
 }>
 
 export type NodePointerDensity = 'card' | 'row' | 'chip'
@@ -72,15 +75,12 @@ function usePointerModel(subject: NodePointerSubject): PointerModel {
   const production = useProductionShotState(node)
   const modelLabel = useModelLabels()
   const shotLabel = useStoryboardShotLabel(node)
-  const face = nodePointerFace({ node, removed: subject.removed, canvasReady, feedback, productionState: production.state })
+  const face = nodePointerFace({ node, removed: subject.removed, canvasReady, feedback, productionState: production.state, ...(subject.hostFailure ? { hostFailure: subject.hostFailure } : {}) })
   const shotText = node ? (shotLabel ? formatStoryboardShotLabel(t, shotLabel) : null) : subject.fallbackLabel?.shot ?? null
   const rawTitle = node ? (shotLabel && isAutoStoryboardShotTitle(node.title, shotLabel.number) ? '' : node.title ?? '') : subject.fallbackLabel?.title ?? ''
   const title = rawTitle.trim()
-  const aspectText = readAspect(node)
-  const execution = node ? getGenerationNodeExecutionKind(node.kind) : undefined
-  const durationSec = node && (execution === 'video' || execution === 'audio') ? readDurationSeconds(node) : null
-  const resolution = typeof node?.meta?.resolution === 'string' ? node.meta.resolution : null
-  const facts = { model: modelLabel(node), aspect: aspectText, duration: durationSec ? formatSeconds(durationSec) : null, resolution }
+  const facts = nodePointerSummaryFacts(node, modelLabel(node))
+  const aspectText = facts.aspect
   return {
     node,
     face,
@@ -206,8 +206,12 @@ function PointerFaceArt({ model, size, located }: { model: PointerModel; size: '
     case 'empty':
       art = <>
         {KindIcon ? circle(<KindIcon size={14} stroke={1.6} />) : null}
-        {/* 组里的小格只留圆托（板 A2）；点过的那一项「已定位」压过制作小标。 */}
-        {face.kind === 'production' && size === 'card' && !located ? <ProductionShotCornerLabel state={face.state} t={t} className={corner} /> : null}
+        {/* 点过的那一项「已定位」压过制作小标。组里的小格只印和兄弟格不一样的那两种：排队中、还没生成（SpendCardQ1 板 ③⑤⑥）。
+            「等你确认」不印——卡 / 那句话本身就在问，三格各印一遍是噪音（NodePointer 板 A2「全是草稿」只留圆托）；「已去掉，不生成」
+            不印——付费卡上那一格淡下去、常驻「恢复」，再压一枚小标会和「恢复」挤在一起。单独一张照旧全印。 */}
+        {face.kind === 'production' && !located && (size === 'card' || face.state.phase === 'queued' || face.state.phase === 'not_generated')
+          ? <ProductionShotCornerLabel state={face.state} t={t} className={corner} />
+          : null}
       </>
       break
   }
@@ -241,6 +245,11 @@ export type NodePointerProps = {
   density?: NodePointerDensity
   /** 只对 card：组里一格（固定 16:9 槽、不印摘要）还是单独一张。 */
   frame?: 'single' | 'cell'
+  /**
+   * 只对单独一张 card：摘要放哪。`auto` = 竖版放画面右边分两行、横版放画面下一行；`side` = 一律放右边
+   * （付费卡单段那一张：画面在左、模型 / 比例 · 时长 · 清晰度在右，SpendCardQ1 板 ①）。
+   */
+  layout?: 'auto' | 'side'
   /** 窄面板（≤320px）：标题行只留镜号，名字靠悬停提示。 */
   narrow?: boolean
   /** 组指向折叠：这一格的画面位置盖「还有 N 个」，点它展开（板 pointer.group.more）。 */
@@ -249,7 +258,7 @@ export type NodePointerProps = {
   onHover?: (hovering: boolean) => void
 }
 
-export function NodePointer({ subject, density = 'card', frame = 'single', narrow = false, overflow, onHover }: NodePointerProps): JSX.Element {
+export function NodePointer({ subject, density = 'card', frame = 'single', layout = 'auto', narrow = false, overflow, onHover }: NodePointerProps): JSX.Element {
   const { t } = useTranslation()
   const model = usePointerModel(subject)
   const locatable = nodePointerLocatable(model.face)
@@ -335,7 +344,7 @@ export function NodePointer({ subject, density = 'card', frame = 'single', narro
   }
 
   // card：标题行在框外、画面同节点比例、下面一行只读摘要；单个竖版时摘要放到画面右边分两行。
-  const side = frame === 'single' && model.portrait && !gone
+  const side = frame === 'single' && (model.portrait || layout === 'side') && !gone
   const lines = frame === 'cell' ? []
     : model.face.kind === 'removed' ? [t('nodePointer.deletedHint')]
       : gone ? []
@@ -396,11 +405,21 @@ function RowTrailing({ face, located }: { face: NodePointerFace; located: boolea
 }
 
 /** 组指向：一次说多个镜头。card 一行三格（下方一行是被悬停那一镜的摘要）；chip 嵌在一句话里；row 是一列（不折）。 */
-export function NodePointerGroup({ subjects, density = 'card', narrow = false, max = 3 }: {
+export function NodePointerGroup({ subjects, density = 'card', narrow = false, max = 3, idleSummary, cellAccessory }: {
   subjects: readonly NodePointerSubject[]
   density?: NodePointerDensity
   narrow?: boolean
   max?: number
+  /**
+   * 只对 card：没有格子被悬停时下方那一行写什么（付费卡：这几段合起来的只读摘要「模型 · 比例 · 清晰度 · 共 Ns」）。
+   * 缺席 = 一个不换行空格撑着行高（组单独用时）。悬停哪一格，那一行就换成那一镜的摘要，离开回到这一句。
+   */
+  idleSummary?: string
+  /**
+   * 只对 card：每一格右上角挂一个宿主给的小动作（付费卡多段时的「不生成 ×」/「恢复」）。它是格子的兄弟、不是格子里的按钮
+   * （按钮里不能套按钮）；悬停 / 聚焦这一格时露出来，宿主要它常驻就自己不藏。缺席 = 不挂。
+   */
+  cellAccessory?: (subject: NodePointerSubject, index: number) => React.ReactNode
 }): JSX.Element {
   const { t } = useTranslation()
   const [expanded, setExpanded] = React.useState(false)
@@ -434,27 +453,44 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
   return (
     <div className="flex min-w-0 flex-col gap-1.5" data-node-pointer-group="card">
       <div className="grid min-w-0 grid-cols-3 gap-2">
-        {subjects.slice(0, visible.shown).map((subject, index) => (
-          <NodePointer
-            key={subject.nodeId}
-            subject={subject}
-            frame="cell"
-            narrow={narrow}
-            overflow={visible.hidden && index === visible.shown - 1 ? { hidden: visible.hidden, onExpand: () => setExpanded(true) } : undefined}
-            onHover={(hovering) => setHovered((stack) => pointerHoverStack(stack, subject.nodeId, hovering))}
-          />
-        ))}
+        {subjects.slice(0, visible.shown).map((subject, index) => {
+          const folded = Boolean(visible.hidden && index === visible.shown - 1)
+          const pointer = (
+            <NodePointer
+              subject={subject}
+              frame="cell"
+              narrow={narrow}
+              overflow={folded ? { hidden: visible.hidden, onExpand: () => setExpanded(true) } : undefined}
+              onHover={(hovering) => setHovered((stack) => pointerHoverStack(stack, subject.nodeId, hovering))}
+            />
+          )
+          const accessory = cellAccessory && !folded ? cellAccessory(subject, index) : null
+          // 没有节点号的格子（还没落到画布上）用位置当键：几格同时缺号时键不撞。
+          const key = subject.nodeId || `cell-${index}`
+          return accessory
+            ? <div key={key} className="group/pointer-cell relative min-w-0" data-node-pointer-cell="">{pointer}{accessory}</div>
+            : <React.Fragment key={key}>{pointer}</React.Fragment>
+        })}
       </div>
-      {/* 摘要这一行常驻（没有悬停时放一个空格撑着行高）：悬停 / 离开不改组的高度，不把下面的东西（第③步的「生成」钮）顶下去。 */}
-      {hoveredSubject ? <PointerHoverSummary subject={hoveredSubject} /> : <PointerHoverLine text={null} />}
+      {/* 摘要这一行常驻（没有悬停时放宿主那一句或一个空格撑着行高）：悬停 / 离开不改组的高度，不把下面的东西（「生成」钮）顶下去。 */}
+      {hoveredSubject ? <PointerHoverSummary subject={hoveredSubject} /> : <PointerHoverLine text={idleSummary ?? null} idle />}
     </div>
   )
 }
 
-/** 组下方那一行：有内容就是被悬停那一镜的摘要，没有就是一个不换行空格——两种情况同一个 `<p>`、同一行高。 */
-function PointerHoverLine({ text }: { text: string | null }): JSX.Element {
+/**
+ * 组下方那一行：被悬停那一镜的摘要；没有悬停时是宿主给的那一句（`idleSummary`），宿主也没给就是一个不换行空格——
+ * 三种情况同一个 `<p>`、同一行高。
+ */
+function PointerHoverLine({ text, idle = false }: { text: string | null; idle?: boolean }): JSX.Element {
   return (
-    <p className="m-0 min-w-0 truncate text-caption text-nomi-ink-60" data-node-pointer-hover-summary={text ? 'true' : undefined} aria-hidden={text ? undefined : true}>
+    <p
+      className="m-0 min-w-0 truncate text-caption text-nomi-ink-60"
+      data-node-pointer-hover-summary={text && !idle ? 'true' : undefined}
+      data-node-pointer-group-summary={text && idle ? 'true' : undefined}
+      title={text ?? undefined}
+      aria-hidden={text ? undefined : true}
+    >
       {text ?? '\u00a0'}
     </p>
   )

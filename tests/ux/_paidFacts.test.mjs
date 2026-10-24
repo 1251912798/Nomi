@@ -60,6 +60,30 @@ describe('readSpendFacts：从盘上读事实', () => {
     expect(facts.decidedBy).toEqual(['unknown'])
   })
 
+  test('发出 = 跨过提交边界的作业：还没批 / 只批了没出站的不算，出站之后不管受理没受理都算', () => {
+    const { projectRoot, capabilityDir } = fixture([{
+      runId: 'run-s',
+      jobs: [
+        { jobId: 'planned', status: 'planned' }, { jobId: 'gate', status: 'authorization_required' }, { jobId: 'ok', status: 'authorized' },
+        { jobId: 'intent', status: 'submit_intent_persisted' }, { jobId: 'out', status: 'submitting' },
+        { jobId: 'took', providerTaskId: 'task-s', status: 'provider_accepted' }, { jobId: 'gone', status: 'needs_attention' },
+      ],
+      approvals: [],
+    }])
+    const facts = readSpendFacts({ projectRoot, capabilityDir })
+    expect(facts.submitted).toEqual(['run-s:intent', 'run-s:out', 'run-s:took', 'run-s:gone'])
+    expect(facts.accepted, '受理只数拿到任务号的那一笔').toBe(1)
+  })
+
+  test('画布那一台的作业（provider = canvas:<vendorKey>）按前缀后面的供应商记：不是「花在授权之外」', () => {
+    const { projectRoot, capabilityDir } = fixture([{
+      runId: 'canvas-run', jobs: [{ jobId: 'c1', providerTaskId: 'task-c', status: 'adopted', provider: 'canvas:apimart' }], approvals: [],
+    }])
+    const facts = readSpendFacts({ projectRoot, capabilityDir })
+    expect(facts.models).toEqual(['apimart/z-image-turbo'])
+    expect(facts.accepted).toBe(1)
+  })
+
   test('收据库缺失 = 空表，不抛', () => {
     expect(readDecidedByTable(path.join(makeTempDir('nomi-paid-facts-empty-'), 'none')).size).toBe(0)
   })
@@ -114,11 +138,12 @@ describe('判据：成立时返回空清单，不成立时说清哪里不对', (
     expect(stepBrakeVerdict({ cardAppeared: false, brakeLineShown: false, acceptedTotal: 2, deltaAfterRemove: ok }).problems).toHaveLength(1)
   })
 
-  test('步骤 4 停止：停后新增提交、重开后重复提交、没有交出、任务号重复，各自红', () => {
-    const base = { acceptedAtStop: 3, acceptedAfterSettle: 3, acceptedAfterReopen: 3, deliveredTaskIds: ['t3'] }
+  test('步骤 4 停止：停后新增发出、重开后重复发出、没有交出、任务号重复，各自红；停止前已发出、之后才受理的不算新提交', () => {
+    const base = { sentAtStop: 2, sentAfterSettle: 2, sentAfterReopen: 2, deliveredTaskIds: ['t3'] }
     expect(stepStopVerdict(base)).toEqual([])
-    expect(stepStopVerdict({ ...base, acceptedAfterSettle: 4, acceptedAfterReopen: 4 })).toHaveLength(1)
-    expect(stepStopVerdict({ ...base, acceptedAfterReopen: 4 })).toHaveLength(1)
+    expect(stepStopVerdict({ ...base, acceptedAtStop: 1, acceptedAfterSettle: 2 }), '判据不读受理：停止前发出去的那张晚一点受理，照常生成').toEqual([])
+    expect(stepStopVerdict({ ...base, sentAfterSettle: 3, sentAfterReopen: 3 })).toHaveLength(1)
+    expect(stepStopVerdict({ ...base, sentAfterReopen: 3 })).toHaveLength(1)
     expect(stepStopVerdict({ ...base, deliveredTaskIds: [] })).toHaveLength(1)
     expect(stepStopVerdict({ ...base, deliveredTaskIds: ['t3', 't3'] })).toHaveLength(1)
   })

@@ -7,6 +7,7 @@ import { projectLaneSnapshot } from '../../../../electron/shared/agentLane/laneP
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import {
   laneDrivenReceipt,
+  laneSnapshotGenerateDone,
   laneSnapshotQuestionAnswered,
   laneSnapshotQuestionAnsweredLegacy,
   laneSnapshotToolDenied,
@@ -88,6 +89,14 @@ describe('design-lab fixtures driven by a LaneSnapshot (probe P6)', () => {
     expect(receipt.answered).toBeUndefined()
     expect(receipt.status).toBe('output-denied')
     expect(receipt.summary).toBeUndefined()
+  })
+
+  it('付费卡关了之后的 generate 收据：两层真投影带出这一次出价的 operationId（收据下那一句与组指向凭它找镜）', () => {
+    const receipt = laneDrivenReceipt(laneSnapshotGenerateDone('op-lab', ['s1', 's2', 's3']), labels)
+    expect(receipt.status).toBe('output-available')
+    expect(receipt.generation).toEqual({ operationId: 'op-lab' })
+    // 正文是宿主那句逐镜结局（给模型看的），不进面板（收据不印正文）。
+    expect(receipt.output).toBeUndefined()
   })
 
   it('single tool, done: pins the two fields the projection cannot derive yet (why that cell stays hand-written)', () => {

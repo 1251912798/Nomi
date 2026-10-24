@@ -294,45 +294,62 @@ export function createInvariantMonitor(options) {
   // ── 用户点头（铁律 1/2/3 的对账基准）────────────────────────────────────────────────────────
 
   /**
-   * 付费卡上点确认之前调用：读下卡上此刻摆着的一切（宿主投影 = 卡的唯一输入 + DOM 上的标题 / 翻页 / 按钮字）。
-   * 返回的 consent 在点完之后由监视器拿去对供应商收到的请求。
+   * 一个画布节点此刻摆给用户看的那一份：节点上那张生成框的唯一输入，Agent 付费卡读的也是它（D2：卡上没有第二份）。
+   * 提示词、模型、几样参数、参考数（连进来的线 + 参考列表 + 参考槽里的图——用户在这张卡上看得见的都算）。
    */
+  async function nodeShown(canvas, nodeId) {
+    const node = (canvas.nodes ?? []).find((candidate) => candidate.id === nodeId)
+    const incoming = nodeId ? (canvas.edges ?? []).filter((edge) => edge.target === nodeId) : []
+    const meta = node?.meta ?? {}
+    // 用户这一刻在这张卡上看得见的全部文字（提示词框 + 卡面 + 底栏）：铁律 3「提示词的每一句都看得见」拿它当「看得见」的边界。
+    const surfaceText = nodeId ? await win().evaluate((id) => String(document.querySelector(`[data-node-id="${id}"]`)?.innerText ?? ''), nodeId).catch(() => '') : ''
+    return {
+      node, incoming, surfaceText,
+      prompt: node?.prompt ?? '', model: meta.modelKey ?? meta.imageModel ?? meta.videoModel ?? null, providerId: meta.modelVendor ?? null,
+      params: { aspect_ratio: meta.aspect_ratio ?? meta.aspectRatio ?? null, resolution: meta.resolution ?? null, duration: meta.duration ?? null },
+      refs: incoming.length + (Array.isArray(node?.references) ? node.references.length : 0) + nodeSlotReferenceCount(meta),
+    }
+  }
+
   /**
-   * @param {{ label?: string, removedCanvasRefs?: number }} [options] removedCanvasRefs = 用户点之前在卡上拿掉了这一页几张画布连来的参考
-   *   （卡上拿掉只改卡、画布连线不动——那几条线还在，但他看到、点头的是不带它们的那一份）。
+   * 付费卡上点主按钮之前调用（D2 起：卡 = 指向元素 + 一行只读摘要 + 主按钮，点「生成」= 把这几镜照节点此刻的样子交给画布）。
+   * 卡上没有第二份数据——每一镜摆给用户看的就是它指着的那个画布节点，所以逐镜读节点（`nodeShown`，和节点上点 ↑ 同一个读法）；
+   * 卡上只读标题、主按钮字和全部文字。返回的 consent 在点完之后由监视器拿去对供应商收到的请求。
    */
-  async function consentSpendCard(card, { label, removedCanvasRefs = 0 } = {}) {
+  async function consentSpendCard(card, { label } = {}) {
     const read = await readLaneSpend(win()).catch(() => null)
     const pending = read?.surface === 'ready' ? read.rows?.[0] ?? null : null
     const dom = await card.evaluate((element) => {
       const text = (selector) => String(element.querySelector(selector)?.textContent ?? '').replace(/\s+/g, ' ').trim()
       return {
         title: text('[data-v4-block="slot-title"]'),
-        pager: text('[data-v4-block="pager"]'),
         confirmLabel: text('[data-v4-control="confirm"]'),
         text: String(element.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 1200),
       }
     })
-    const pagerMatch = /(\d+)\s*\/\s*(\d+)/.exec(dom.pager)
-    const pageIndex = pagerMatch ? Number(pagerMatch[1]) - 1 : 0
     const declaredCount = Number(/(\d+)/.exec(dom.title)?.[1] ?? pending?.shots?.length ?? 1)
-    const buttonCount = Number(/(\d+)\s*(镜|shots?)/i.exec(dom.confirmLabel)?.[1] ?? 0)
-    // 同一镜在画布上那张占位卡此刻连着几张参考（用户在画布上看得见的那条线）。
+    const buttonCount = Number(/(\d+)/.exec(dom.confirmLabel)?.[1] ?? 0)
     const canvas = (await readProject())?.payload?.generationCanvas ?? {}
-    const canvasRefsOf = (nodeId) => (nodeId ? (canvas.edges ?? []).filter((edge) => edge.target === nodeId).length : 0)
-    const allShots = (pending?.shots ?? []).map((shot, index) => ({
-      shotId: shot.shotId, nodeId: shot.nodeId ?? null, index: shot.index, prompt: shot.prompt,
-      providerId: shot.providerId, model: shot.modelId, params: shot.parameters ?? {}, refs: (shot.references ?? []).length,
-      canvasRefs: Math.max(0, canvasRefsOf(shot.nodeId) - (index === pageIndex ? removedCanvasRefs : 0)), surfaceText: dom.text,
-      // 「这一镜到底是图还是视频」的四份说法（铁律 3：同一件事，四处读法必须一致）：候选的模式、模型自己的种类（目录）、画布占位节点的种类，加上卡标题一份（在下面对整张卡判）。
-      mode: shot.mode ?? null, modelKind: catalogKindOf(shot.providerId, shot.modelId),
-      nodeKind: (canvas.nodes ?? []).find((node) => node.id === shot.nodeId)?.kind ?? null,
-    }))
-    // 按钮承诺的范围：按钮上写了「N 镜」= N 镜（全部）；没写而卡在翻页 = 只有眼前这一页。
-    const buttonScope = buttonCount > 1 || !pagerMatch ? allShots : allShots.filter((_, index) => index === pageIndex)
+    const allShots = []
+    for (const shot of pending?.shots ?? []) {
+      const shown = await nodeShown(canvas, shot.nodeId)
+      allShots.push({
+        shotId: shot.shotId, nodeId: shot.nodeId ?? null, index: shot.index, offer: shot.offer,
+        prompt: shown.prompt, providerId: shown.providerId, model: shown.model, params: shown.params, refs: shown.refs,
+        // 画布上连到这一镜节点的线（U03「参考图明明连着」那一类：丢的是不是这几张）。refs 里已经算了它们。
+        canvasRefs: shown.incoming.length, surfaceText: `${dom.text}\n${shown.surfaceText}`,
+        // 「这一镜到底是图还是视频」的四份说法（铁律 3：同一件事，四处读法必须一致）：宿主的种类（generationShotKind）、模型自己的种类（目录）、
+        // 画布节点的种类，加上卡标题一份（在下面对整张卡判）。
+        hostKind: shot.kind ?? null, modelKind: catalogKindOf(shown.providerId, shown.model), nodeKind: shown.node?.kind ?? null,
+      })
+    }
+    // 按钮承诺的范围：还没决定、已经落在画布上的那几镜（去掉的、画布接走的、早先交出去的不算；本机判得出发不出去的宿主随后记成没发出去）。
+    // 卡上什么都不剩要生成、只有没发出去的那几镜时，主按钮是「再试一次」：范围就是它们。
+    const undecided = allShots.filter((shot) => shot.offer === 'undecided' && shot.nodeId)
+    const buttonScope = undecided.length > 0 ? undecided : allShots.filter((shot) => shot.offer === 'not_sent' && shot.nodeId)
     const consent = {
       id: `c${consents.length + 1}`, kind: 'spend-card', at: Date.now(), step: currentStep?.label ?? null, label: label ?? null,
-      operationId: pending?.operationId ?? null, runId: pending?.runId ?? null, dom, pageIndex,
+      operationId: pending?.operationId ?? null, runId: pending?.runId ?? null, dom,
       declaredCount, buttonCount: buttonCount || buttonScope.length, allShots,
       scope: buttonScope.map((shot) => ({ ...shot, remaining: 1, submissions: [] })),
     }
@@ -360,7 +377,7 @@ export function createInvariantMonitor(options) {
     const kindOfText = (value) => (/video|视频/i.test(String(value ?? '')) ? 'video' : /image|图|封面/i.test(String(value ?? '')) ? 'image' : null)
     const titleKind = /视频|video/i.test(consent.dom.title) ? 'video' : /图片|image|张/i.test(consent.dom.title) ? 'image' : null
     for (const shot of consent.allShots) {
-      const facts = { 卡标题: titleKind, 候选模式: kindOfText(shot.mode), 模型种类: shot.modelKind, 画布节点: shot.nodeKind }
+      const facts = { 卡标题: titleKind, 宿主种类: kindOfText(shot.hostKind), 模型种类: shot.modelKind, 画布节点: shot.nodeKind }
       const distinct = new Set(Object.values(facts).filter(Boolean))
       if (distinct.size <= 1) continue
       await violate({
@@ -369,7 +386,7 @@ export function createInvariantMonitor(options) {
         // semanticGenerationCandidate.admitShotIdentity 核，之后四处都读 generationShotKind。这条规则还红，
         // 说明有一个读者绕开了它（或者一条建镜头的路没过核对）。删掉的按提示词猜种类的旧路不该再出现。
         module: 'electron/shared/generationShotKind.ts（resolveShotTaskKind 定种类 / generationShotKind 唯一读口）+ electron/capabilityCore/semanticGenerationCandidate.ts admitShotIdentity（建镜头时核模型 + 模式）——这条还红就是有读者绕开了唯一主人',
-        message: `付费卡对「${shot.shotId}」说的自相矛盾：${Object.entries(facts).map(([name, value]) => `${name}=${value ?? '无'}`).join('，')}（标题「${consent.dom.title}」，模型 ${shot.providerId}/${shot.model}，模式 ${shot.mode ?? '无'}）`,
+        message: `付费卡对「${shot.shotId}」说的自相矛盾：${Object.entries(facts).map(([name, value]) => `${name}=${value ?? '无'}`).join('，')}（标题「${consent.dom.title}」，节点上的模型 ${shot.providerId}/${shot.model}）`,
         snapshot: { facts, shot: { ...shot, surfaceText: undefined }, title: consent.dom.title },
       })
     }
@@ -398,20 +415,10 @@ export function createInvariantMonitor(options) {
   async function consentNodeGenerate(nodeId, { count = 1, label } = {}) {
     const project = await readProject()
     const canvas = project?.payload?.generationCanvas ?? {}
-    const node = (canvas.nodes ?? []).find((candidate) => candidate.id === nodeId)
-    const incoming = (canvas.edges ?? []).filter((edge) => edge.target === nodeId)
-    const meta = node?.meta ?? {}
-    // 用户这一刻在这张卡上看得见的全部文字（提示词框 + 卡面 + 底栏）：铁律 3「提示词的每一句都看得见」拿它当「看得见」的边界。
-    const surfaceText = await win().evaluate((id) => String(document.querySelector(`[data-node-id="${id}"]`)?.innerText ?? ''), nodeId).catch(() => '')
+    const { node, incoming, surfaceText, prompt, model, providerId, params, refs } = await nodeShown(canvas, nodeId)
     const consent = {
       id: `c${consents.length + 1}`, kind: 'node-generate', at: Date.now(), step: currentStep?.label ?? null, label: label ?? null, nodeId,
-      scope: [{
-        nodeId, prompt: node?.prompt ?? '', model: meta.modelKey ?? meta.imageModel ?? meta.videoModel ?? null, providerId: meta.modelVendor ?? null,
-        params: { aspect_ratio: meta.aspect_ratio ?? meta.aspectRatio ?? null, resolution: meta.resolution ?? null, duration: meta.duration ?? null },
-        // 节点上摆着几张参考：连进来的线 + 参考槽里的图（meta 里的数组 / 单值槽）——用户在这张卡上看得见的都算。
-        refs: incoming.length + (Array.isArray(node?.references) ? node.references.length : 0) + nodeSlotReferenceCount(meta),
-        surfaceText, remaining: count, submissions: [],
-      }],
+      scope: [{ nodeId, prompt, model, providerId, params, refs, surfaceText, remaining: count, submissions: [] }],
       declaredCount: count, buttonCount: count,
     }
     consents.push(consent)
@@ -602,7 +609,7 @@ export function createInvariantMonitor(options) {
       if (exhausted) {
         await violate({
           invariant: 2, rule: 'duplicate-submission', key: `${exhausted.consent.id}|${prompt}|${submissions.length}`,
-          module: exhausted.consent.kind === 'spend-card' ? 'electron/productionRun（派发 / 重试）' : 'src/workbench/generationCanvas/runner/generationRunController.ts',
+          module: exhausted.consent.kind === 'spend-card' ? 'electron/capabilityCore/canvasHandOver.ts + src/workbench/capability/productionHandOverShotsOp.ts（交给画布 / 再试一次）→ src/workbench/generationCanvas/runner/generationRunController.ts' : 'src/workbench/generationCanvas/runner/generationRunController.ts',
           message: `同一次确认（${exhausted.consent.id}）里同一镜被提交了不止一次：「${prompt.slice(0, 40)}」`,
           snapshot: { consent: exhausted.consent, submission, body },
         })
@@ -657,34 +664,33 @@ export function createInvariantMonitor(options) {
     if (shownDuration !== null && shownDuration !== undefined && sent.duration !== null && sent.duration !== undefined && Number(shownDuration) !== Number(sent.duration)) {
       problems.push({ field: 'duration', shown: shownDuration, sent: sent.duration })
     }
-    // 付费卡上摆着的参考 = 宿主那一镜自己的 + 画布上连到这一镜占位卡的（第 4 条：卡上摆出来、照发）。
-    // 只拿宿主那一份比，卡把画布连来的那张如实发出去时这里反而会红——和下面「画布上的没发出去」那条互相打架，哪种结果都过不了。
+    // 付费卡那一镜读的就是节点（D2）：refs 已经含画布连进来的线；canvasRefs 只用来认出「丢的是画布上连着的那几张」（U03）。
     const canvasRefs = consent.kind === 'spend-card' ? Number(entry.canvasRefs ?? 0) : 0
-    const shownRefs = Number(entry.refs ?? 0) + canvasRefs
+    const shownRefs = Number(entry.refs ?? 0)
     const sentRefs = Number(submission.refs ?? 0)
     if (shownRefs !== sentRefs && !(canvasRefs > 0 && sentRefs < shownRefs)) problems.push({ field: 'references', shown: shownRefs, sent: sentRefs })
     // 提示词：发出去的 = 用户看到的那句 + 只许追加「他在同一个界面上看得见的字」。
     // 看不见的追加 = 用户写了「巨龙」、供应商收到「巨龙 + 一段人物特征」。
     const unseen = unseenPromptAdditions({ shown: entry.prompt, sentRaw: body.prompt ?? body.input?.prompt, surfaceText: entry.surfaceText })
     if (unseen.length) problems.push({ field: 'prompt-unseen-addition', shown: entry.prompt, sent: submission.prompt, unseen })
-    // 付费卡那一镜在画布上的占位卡：用户在画布上连了参考线，他看到的就是「这一镜带参考」。
+    // 付费卡那一镜的节点上连着参考线：用户在画布上看到的就是「这一镜带参考」。
     if (canvasRefs > 0 && sentRefs < shownRefs) {
-      problems.push({ field: 'references-on-canvas', shown: entry.canvasRefs, sent: sentRefs })
+      problems.push({ field: 'references-on-canvas', shown: shownRefs, sent: sentRefs })
     }
     for (const problem of problems) {
       await violate({
         invariant: 3, rule: `sent-${problem.field}`, key: `${consent.id}|${entry.shotId ?? entry.nodeId}|${problem.field}`,
         module: problem.field === 'references-on-canvas'
-          ? 'src/workbench/ai/v4/spendCardReferences.ts placeSpendReferences（卡上默认那张框 = 宿主参考 ∪ 画布连线，生成方式按画布的 resolveModeForConnectedReferences 对齐）→ useAgentPanelSpendConfirm.ts persistShown（点下去那一刻落进候选）→ 制作 Run 候选'
+          ? 'src/workbench/capability/productionHandOverShotsOp.ts handOverShotsOp（卡交给画布，逐镜走画布单节点提交）→ src/workbench/generationCanvas/runner/catalogTaskActions.ts buildCatalogTaskRequest（参考读节点的入边与参考槽）'
           : problem.field === 'prompt-unseen-addition'
             ? 'electron/shared/storyboard/storyboardPromptCompiler.ts buildShotPrompt / buildKeyframePrompt（anchorPromptBits 把引用锚的身份特征、文本锚整段追加进提示词；分镜行上只显示用户写的那一句）'
             : problem.field === 'references'
-              ? (consent.kind === 'spend-card' ? '付费卡 → 执行合同 → 出站请求（参考图在哪一层丢）'
+              ? (consent.kind === 'spend-card' ? '付费卡交给画布 → 节点 → 画布单节点提交（参考图在哪一层丢）'
                 : consent.kind.startsWith('storyboard') ? 'src/workbench/generationCanvas/agent/storyboardPlan.ts storyboardShotToCreateNodesArgs（引用锚的定妆卡按 anchorIds 连成参考边；分镜行的参考列只画 referenceBindings，看不到这几张）'
                   : 'src/workbench/generationCanvas/runner（画布直生成的参考槽编译）')
-              : (consent.kind === 'spend-card' ? '付费卡投影 ↔ 执行合同编译' : '节点 composer ↔ 画布执行编译'),
+              : (consent.kind === 'spend-card' ? '节点 meta ↔ 画布执行编译（付费卡读的就是节点）' : '节点 composer ↔ 画布执行编译'),
         message: problem.field === 'references-on-canvas'
-          ? `画布上这一镜的占位卡连着 ${problem.shown} 张参考图，确认付费卡后供应商收到 ${problem.sent} 张`
+          ? `这一镜的节点上摆着 ${problem.shown} 张参考图（含画布连进来的线），在付费卡上按下去之后供应商收到 ${problem.sent} 张`
           : problem.field === 'prompt-unseen-addition'
             ? `用户在界面上看到并确认的提示词是「${normalizePrompt(problem.shown).slice(0, 40)}」，供应商收到的多了他在这个界面上看不见的 ${problem.unseen.length} 段：${problem.unseen.map((line) => `「${line.slice(0, 40)}」`).join('、')}`
             : `${consent.kind === 'spend-card' ? '付费卡' : consent.kind.startsWith('storyboard') ? '分镜表' : '节点'}上显示 ${problem.field}=${JSON.stringify(problem.shown)}，供应商收到的是 ${JSON.stringify(problem.sent)}`,
@@ -696,7 +702,7 @@ export function createInvariantMonitor(options) {
   /**
    * 付费卡的范围（2026-09-30 逐镜：「点了的生成，去掉的不生成」）。在收场 / 收尾时判，三件事：
    * ① 标题数的就是点下去那一刻卡上还没决定的镜（宿主那一刻摆着几镜，标题就说几镜）；
-   * ② 按钮许诺几镜就只发几镜——「生成这张」= 只发这一页这一镜；同一张卡上别的镜没有自己的那一下，不许跟着发出去；
+   * ② 按钮许诺几镜就只发几镜——D2 起主按钮交的是卡上还没决定、没被点「不生成 ×」的那几镜；去掉的那几镜不许跟着发出去；
    * ③ 没点的镜不许悄悄没了（U01）：没发出去的，要么还摆在卡上，要么是用户自己去掉 / 关掉 / 打字岔开的——
    *    宿主的出价记录（`generationPlan.presentations`）里查得到；查不到 = 被悄悄拿掉了。
    */
@@ -704,16 +710,19 @@ export function createInvariantMonitor(options) {
     const runs = readRuns()
     for (const consent of consents.filter((entry) => entry.kind === 'spend-card' && !entry.scopeChecked)) {
       const promised = new Set(consent.scope.map((entry) => entry.shotId))
+      // 同一张卡上不归这一下的镜：去掉的（不生成 ×）、画布接走的、早先交出去的、还没落到画布上的——都不许跟着这一下发出去。
       const siblings = consent.allShots.filter((shot) => !promised.has(shot.shotId))
+      const undecidedCount = consent.allShots.filter((shot) => shot.offer === 'undecided').length
       const later = submissions.filter((submission) => submission.at >= consent.at)
       const sentFor = (shot) => later.filter((submission) => promptMatches(submission.prompt, shot.prompt))
       // 跟着这一下发出去、却没有任何一次点头盖住的同卡别的镜（有自己那一下的，算在那一下头上）。
       const tagAlong = later.filter((submission) => !submission.consent && siblings.some((shot) => promptMatches(submission.prompt, shot.prompt)))
       const run = runs.find((entry) => entry.runId === consent.runId)
-      const dropped = siblings.filter((shot) => sentFor(shot).length === 0 && !hostAccountsForUnsent(run, shot.shotId))
+      // 没发出去要有交代的，只是点下去那一刻还摆着等决定的那几镜（去掉的、早先交出去的本来就有交代）。
+      const dropped = siblings.filter((shot) => (shot.offer === 'undecided' || shot.offer === 'not_sent') && sentFor(shot).length === 0 && !hostAccountsForUnsent(run, shot.shotId))
       const problems = [
-        ...(consent.allShots.length > 0 && consent.declaredCount !== consent.allShots.length
-          ? [`标题写「${consent.dom.title}」（${consent.declaredCount} 镜），点下去那一刻卡上还没决定的是 ${consent.allShots.length} 镜`] : []),
+        ...(undecidedCount > 0 && consent.declaredCount !== undecidedCount
+          ? [`标题写「${consent.dom.title}」（${consent.declaredCount} 镜），点下去那一刻卡上还没决定的是 ${undecidedCount} 镜`] : []),
         ...(tagAlong.length > 0
           ? [`按钮是「${consent.dom.confirmLabel}」（${consent.scope.length} 镜），点完供应商还收到同一张卡上别的 ${tagAlong.length} 镜`] : []),
         ...(dropped.length > 0
@@ -797,7 +806,12 @@ export function createInvariantMonitor(options) {
         const presented = run?.generationPlan?.presentations?.at(-1)?.shotIds
         const shots = (run?.generationPlan?.shots ?? []).filter((shot) => !presented || presented.includes(shot.shotId))
         const excluded = shots.filter((shot) => shot.included === false)
-        const withJobs = new Set((run?.jobs ?? []).map((job) => job.metadata?.shotId).filter(Boolean))
+        // D2 起卡上交出去的镜走画布那一台（任务记在画布那一次运行上，不在制作 Run 的 jobs 里）：这一次出价的交接记录里
+        // 还在交 / 交到了 / 结果未知的都算开拍了（和宿主 offerShots 的 generating 同一个口径）。
+        const handedOver = (run?.generationPlan?.presentations?.at(-1)?.handOvers ?? [])
+          .filter((handOver) => !handOver.settled || handOver.settled.outcome === 'accepted' || handOver.settled.outcome === 'unknown')
+          .map((handOver) => handOver.shotId)
+        const withJobs = new Set([...(run?.jobs ?? []).map((job) => job.metadata?.shotId).filter(Boolean), ...handedOver])
         const notStarted = shots.filter((shot) => shot.included === false || !withJobs.has(shot.shotId))
         if (shots.length > 1 && (excluded.length > 0 || notStarted.length > 0) && /no card is waiting|do not call generate again/i.test(text)) {
           await violate({

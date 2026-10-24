@@ -230,3 +230,27 @@
 - 交接：卡上点「生成」先在出价上记一笔「正在交给画布」（哪几镜、谁决定的），这几镜在节点占位上显示「排队中」而不是「等你确认」（「正在发出」时画布不许再说「等你确认」：一份宿主状态，指向元素和节点占位都读它）；画布认领完最后一镜，出价按新原因「已交给画布」（`handed_to_canvas`）关。
 - 结局：卡交出去的镜，回执照旧说「在生成」；它的单镜 Run 在被供应商受理之前就结束了 → 「没发出去、没花钱」。回合读结局前先等这几镜的派发落定（受理或确定没发出），不在派发半路上报「在生成」。节点上自己点 ↑ 的仍是「画布接手」。回执文案一个字不改。
 - 删：`appIntegrationSpendConfirm.ts` 的确认 / 生成剩下 / 改参数三条宿主动作和它们在渲染层的 API；留「取消」「不生成」，加「恢复这一镜」。
+
+## 五、第③步做完以后（2026-10-24）：门表重数、删掉的东西
+
+### 门表（`node scripts/door-map.mjs`，删完以后重数；不含测试）
+
+| 符号 | 门 | 说明 |
+|---|---|---|
+| `useAgentPanelSpendCard` | 写 2：`src/workbench/ai/ProjectAgentResidentShell.tsx`（生产唯一宿主）、`src/devlab/designLab/spendCard/spendCardLabKit.tsx`（实验室格挂真钩子，不另画） | 取代 `useAgentPanelSpendConfirm`（写 1 → 写 1 + 实验室） |
+| `projectSpendCard` | 写 1：`useAgentPanelSpendCard.ts` | 实验室经钩子走，不再直调（原来 2 扇：钩子 + `07-spend-params.tsx`） |
+| `handOverSpend`（渲染层动作通道） | 写 1：`useAgentPanelSpendCard.ts`（经 `productionRunApi.ts`） | 「生成 / 全部生成（N）/ 生成剩下 N 段 / 再试一次」同一个动作；取代 `confirmSpend` / `confirmSpendRemaining` / 卡上改参数 |
+| `createCanvasHandOver`（主进程记交接、写回结局） | 写 1：`electron/capabilityCore/appIntegration.ts`；测试夹具 `agentPanelSpendConfirmTestUtils.ts` 另一扇 | 卡上点「生成」与「直接生成」档同一个入口 |
+| `handOverShotsOp`（渲染层：这几镜照节点此刻的样子交给画布） | 写 1：`src/workbench/capability/capabilityApplyHandler.ts`（`production.hand-over-shots`） | 逐镜走画布单节点提交，和节点 ↑ 同一条路 |
+| `handOverPrecheck` | 写 2：卡（`useAgentPanelSpendCard.ts`，渲染时）、交接（`productionHandOverShotsOp.ts`，开同意前） | 同一个判据两个读点是设计（债 a：出卡前判、交接时再判），不是两套判据 |
+| `discardPendingSpend` | 写 1：`appIntegrationSpendConfirm.ts`（测试夹具另一扇） | 「取消 / 先不发了」：任何时候立刻送到宿主，带卡的身份 |
+| `createMultiShotBatchScheduler` | 写 3：`appIntegration.ts` 两处（返工 / 续拍 / 恢复观察者；语义多镜开跑）、`mcpStdioServer.ts`（外部 MCP 多镜开跑） | 卡上确认与「直接生成」档不再调它；它那条路的停止反馈在它自己的共享边界说真话（债 b 第二半） |
+
+### 删掉的东西（legacy，同一个 PR 删，P1）
+
+- **渲染层旧卡**：`src/workbench/ai/v4/useAgentPanelSpendConfirm.ts`（含 writeScope / writeAccess 写口）、`spendCardDraft.ts`（卡账本 `nomi:spend-draft:*`；旧键只停读、不清盘，Q8）、`spendCardEstimate.ts`（本地重算报价）、`spendCardReferences.ts`；卡体里的整件生成框（`NodeGenerationComposer host="panel"`，`NodeComposerHost` 只剩 `canvas | inline`）；`InlineParameterBar` 的 chips / stacked / 内嵌面板三种摆法（只剩摘要 pill）；卡上的翻页（`V4Pager` 只剩翻页状态给别的卡用）、批量次按钮与 ← → 键盘处理。
+- **主进程旧动作**：`appIntegrationSpendConfirm.ts` 的确认 / 生成剩下 / 改参数三条（卡来源的 `generation.revise` 一并删）、`spendOperationArbiter.ts`（卡上动作一条队 + 取消令牌）：交接改成逐镜记账（`presentation.handOvers`），「取消」直接收回出价，排队的同意随之收回、还没交的那几镜不再交，正在交的那一镜照常交完（`agentPanelSpendCardStop.e2e.test.ts` 守；渲染层「取消」不排在卡上别的动作后面由 `useAgentPanelSpendCard.test.ts` 守）；`multiShotCanvasLanding.ts` 的 `rebindLandedShots`（换成「候选变新时只写 Agent 这次真改了的那几样」）。
+- **测试与夹具**：旧 e2e 九份（`agentPanelSpendBatches` / `Confirm` / `ConfirmDiscardRace` / `PerShot` / `References` / `Rejected` / `Remaining` / `WindowClosed` / `unknownPriceSpendConfirm`）换成 `agentPanelSpendCard*.e2e.test.ts` 五份；`spendOperationArbiter.test.ts`、`generationRevise.test.ts`；`tests/ux/spend-panel-write-ownership*` 三件；实验室 `07-spend-params` 那批格与 12 张 v4 基线（`v4-panel-spend-*` 4 张、`v4-spend-params-*` 8 张），加生成框实验室的 `composer-bar-chips-mode` 1 张（chips 摆法删了）；新卡在实验室屏「付费卡」，31 格；`v4-intervention-spend` 留着，内容换成新卡，要 CI 重新 accept。
+- **样张**：`docs/design/mockups/2026-10-01-paid-card-generate-remaining/` 与它的意图合同（翻页卡、「生成剩下 N 张」次按钮），被 SpendCardQ1 板取代；设计系统 §1.8.1 规则 1 的例外与 §1.8.2 正反例按新卡改写。
+- **概念登记**：`agent-panel.spend-card-shown-node`、`agent-panel.spend-outcome-final` 退役；`canvas.inline-parameter-chips` 改名 `canvas.parameter-summary-pill`（主人 `InlineParameterBar` 不变）；新登记 `production.spend-card-hand-over`、`canvas.spend-card-hand-over-op`；`reference.candidate-canvas-projection` 接上（`planReferenceProjection` 有了调用方，P1 接上不删）。
+- **门岗**：§1.0「聊天卡片不许引用编辑器组件」那道门岗立起来了——`check:boundaries` 的 R-B6 `chat-card-no-import-node-editor`（`.dependency-cruiser.mjs`，反例单测 `scripts/check-boundaries.chat-card.test.mjs`）。

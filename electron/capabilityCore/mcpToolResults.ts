@@ -82,6 +82,38 @@ function landingHint(value: Record<string, unknown>): (typeof STOP_REASON_HINT)[
     nextEn: `Placed and sent: ${list(sent, true)}. Not placed on the canvas and not sent: ${list(notPlaced, true)}. Ask the user to open this project in Nomi and click Continue — only these unsent shots are retried` }
 }
 
+type UserStopFacts = { sent: LandingRef[]; notSent: LandingRef[] }
+
+/** 用户停下（暂停 / 取消）的这一批的逐镜事实（投影 `stopped`，和落地失败同一份逐镜分类）。没有 = 不是用户停的 / 不是一批生成。 */
+function userStopFacts(value: Record<string, unknown>): UserStopFacts | null {
+  const stopped = rec(value.stopped)
+  const sent = Array.isArray(stopped.sent) ? (stopped.sent as LandingRef[]) : null
+  const notSent = Array.isArray(stopped.notSent) ? (stopped.notSent as LandingRef[]) : null
+  if (!sent || !notSent || sent.length + notSent.length === 0) return null
+  return { sent, notSent }
+}
+
+const stopShotLabel = (ref: LandingRef, en: boolean) => typeof ref.title === 'string' && ref.title
+  ? (en ? `"${ref.title}"` : `「${ref.title}」`)
+  : (en ? `shot ${String(ref.index ?? '?')}` : `第 ${String(ref.index ?? '?')} 镜`)
+
+/**
+ * 用户停下这一批之后那一句（债 b：按真实段数说）：拦下了几镜、哪几镜已经发出去照常生成；
+ * 一镜都没剩（全都已经发出去了）时**不说停下了什么**——停下没有拦下任何一镜，它们照常生成、照常计费。
+ */
+function userStopLine(ctx: Ctx, facts: UserStopFacts): string {
+  const en = ctx.locale === 'en'
+  const list = (refs: LandingRef[]) => refs.map((ref) => stopShotLabel(ref, en)).join(en ? ', ' : '、')
+  if (facts.notSent.length === 0) {
+    return L(ctx,
+      `这一批 ${facts.sent.length} 镜在停下之前都已经发出去了：停下没有拦下任何一镜，它们会照常生成并计费，产物保留在项目里。`,
+      `All ${facts.sent.length} shots in this batch were already sent before the stop: stopping held back none of them; they finish and bill as usual, and the results stay in the project.`)
+  }
+  return L(ctx,
+    `发出了 ${facts.sent.length} 镜（照常生成并计费），${facts.notSent.length} 镜没发、不会再花钱：${list(facts.notSent)}。`,
+    `${facts.sent.length} sent (they finish and bill as usual); ${facts.notSent.length} not sent and will not be charged: ${list(facts.notSent)}.`)
+}
+
 function str(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
@@ -422,6 +454,8 @@ export function buildToolOutcome(
     const artifacts = Array.isArray(value.artifacts) ? (value.artifacts as Array<Record<string, unknown>>) : []
     const latest = artifacts.at(-1)
     const preview = latest ? rec(latest.preview) : {}
+    // 用户停下的这一批：状态那一行之后按逐镜事实说拦下了几镜（没有逐镜事实时照旧只说状态的那一句）。
+    const userStop = stopReason === 'user_paused' || stopReason === 'user_cancelled' ? userStopFacts(value) : null
     const budget = rec(value.budget)
     const budgetLine = echoLine(ctx, [
       typeof budget.authorized === 'number' ? `${L(ctx, '预算上限', 'budget cap')} ${budget.authorized}` : null,
@@ -491,12 +525,18 @@ export function buildToolOutcome(
       ...checkpointLines,
       ...shotLines,
       ...reconciliationLines,
-      hint ? L(ctx, hint.nextZh, hint.nextEn) : null,
+      userStop ? userStopLine(ctx, userStop) : null,
+      // 有逐镜事实时，「未提交的不再花钱」那一类话上一行已经照实说了；暂停着、还有没发的镜，才说还能继续。
+      !userStop ? (hint ? L(ctx, hint.nextZh, hint.nextEn) : null)
+        : stopReason === 'user_paused' && userStop.notSent.length > 0
+          ? L(ctx, '可以继续（只会发没发的那几镜），或取消这次制作', 'Resume (only the unsent shots are sent), or cancel the run')
+          : null,
     ].filter(Boolean).join('\n') + openLine
     return {
       text,
       outcome: {
         kind: 'run_status', runId, projectId, status, stopReason, stageId: str(value.stageId) || null, trustLevel,
+        ...(userStop ? { stoppedShots: { sent: userStop.sent.length, notSent: userStop.notSent.length } } : {}),
         budget: { authorized: budget.authorized ?? null, actual: budget.actual ?? null },
         latestPreviewUrl: str(preview.url) || null,
         ...(direction && direction.candidates.length ? { directionGateId: direction.gateId, directionCandidates: direction.candidates } : {}),
@@ -514,7 +554,8 @@ export function buildToolOutcome(
               ? ['review_anchor_checkpoint']
               : shotGate
                 ? ['review_shot_in_nomi']
-                : hint
+                // 停下时一镜都没剩（全都已经发出去了）：没有可继续的，不给「继续或取消」。
+                : hint && !(userStop && userStop.notSent.length === 0)
                   ? [hint.action]
                   : [],
         openInNomi: openInNomi || null,
@@ -651,6 +692,8 @@ export function buildToolOutcome(
         : action === 'cancel'
           ? L(ctx, '✓ 已取消', '✓ Cancelled')
           : `✓ ${action}`
+    // 用户停下这一批（暂停 / 取消）：按逐镜事实说拦下了几镜；全都已经发出去了就不说「未提交的不再提交」那一类话。
+    const userStop = action === 'pause' || action === 'cancel' ? userStopFacts(value) : null
     const exposure = inFlight > 0 && (action === 'pause' || action === 'cancel')
       ? L(ctx,
           `⚠ ${inFlight} 个已提交的任务无法撤回，会跑完并计费${action === 'pause' ? '；完成后自动落停' : ''}（结果保留，不浪费已花的钱）`,
@@ -659,12 +702,18 @@ export function buildToolOutcome(
     const text = [
       `${done} · ${runId}${str(value.stageId) ? ` · ${str(value.stageId)}` : ''}`,
       exposure,
+      userStop ? userStopLine(ctx, userStop) : null,
       echoLine(ctx, [
         typeof budget.actual === 'number' ? `${L(ctx, '已花费', 'spent')} ${budget.actual}` : null,
-        action === 'pause' ? L(ctx, '未提交的任务不再提交、不计费', 'unsubmitted jobs will not be submitted or charged') : null,
+        action === 'pause' && !userStop ? L(ctx, '未提交的任务不再提交、不计费', 'unsubmitted jobs will not be submitted or charged') : null,
         action === 'cancel' ? L(ctx, '已完成的产物保留在项目里', 'finished artifacts stay in the project') : null,
       ]),
-      hint ? L(ctx, hint.nextZh, hint.nextEn) : null,
+      // 状态那一句的下一步（「未提交的不再花钱」那一类）只在没有逐镜事实时说：有逐镜事实时上一行已经说了真话；
+      // 暂停着、还有没发的镜，才说还能继续。
+      !userStop ? (hint ? L(ctx, hint.nextZh, hint.nextEn) : null)
+        : action === 'pause' && userStop.notSent.length > 0
+          ? L(ctx, '可以继续（只会发没发的那几镜），或取消这次制作', 'Resume (only the unsent shots are sent), or cancel the run')
+          : null,
     ].filter(Boolean).join('\n') + openLine
     return {
       text,
@@ -672,7 +721,9 @@ export function buildToolOutcome(
         kind: 'run_control', runId, projectId, action, status: status || null,
         budget: { actual: budget.actual ?? null },
         inFlightJobs: inFlight,
-        nextActions: hint ? [hint.action] : [],
+        ...(userStop ? { stoppedShots: { sent: userStop.sent.length, notSent: userStop.notSent.length } } : {}),
+        // 停下时一镜都没剩（全都已经发出去了）：没有可继续的，不给「继续或取消」。
+        nextActions: hint && !(userStop && userStop.notSent.length === 0) ? [hint.action] : [],
       },
     }
   }

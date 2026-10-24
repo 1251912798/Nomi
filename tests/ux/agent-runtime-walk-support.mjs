@@ -608,7 +608,9 @@ async function switchAppLocale(win, locale) {
 /** 展开最后一条「用了 N 个工具」并返回最后一行回执的文字。 */
 async function readLastReceipt(win, locale) {
   const { uiText, uiTextPattern } = await import('./full-walk/invariants.mjs')
-  const folds = win.locator(CANVAS_PANEL).getByText(new RegExp(uiTextPattern(uiText(locale, 'agentPanelV4.processSummary'))))
+  // 单复数各一句（英文「1 tool」/「N tools」）：两句都认。
+  const fold = ['one', 'other'].map((form) => uiTextPattern(uiText(locale, `agentPanelV4.processSummary_${form}`))).join('|')
+  const folds = win.locator(CANVAS_PANEL).getByText(new RegExp(fold))
   const receipt = win.locator(`${CANVAS_PANEL} ${TOOL_RECEIPT}`).last()
   if (!(await receipt.isVisible().catch(() => false))) await clickOrFail(folds.last(), '展开「用了 N 个工具」')
   await expect(receipt).toBeVisible()

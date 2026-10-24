@@ -1,6 +1,6 @@
 import { declareStoreLifetime } from '../project/storeLifetime'
 // P4 S5 — 制作 Run 在渲染层的只读投影缓存（画布上**每一个**落了节点的 Run 各一份）。
-// 真相源仍是主进程的 Run；这里只喂「排队中 / 已停」两块制作专属小标与返工/续拍入口。
+// 真相源仍是主进程的 Run；这里喂「排队中 / 已停」两块制作专属小标、返工/续拍入口，以及对话流里付费卡的收据（指着交出去的那几镜）。
 //
 // 「生成中 / 结果 / 失败」**不从这里读**：主进程的画布落地投影把它们写进节点自己的运行记录
 // （materialize-shots），与普通生成同一份状态（2026-09-25，见 ProductionShotPlaceholder 头注释）。
@@ -12,7 +12,7 @@ import type { ProductionRun } from '../../../electron/productionRun/productionRu
 
 type LandingStore = {
   projectId: string | null
-  /** runId → 该 Run 的最新快照。只含画布上有节点的 Run。 */
+  /** runId → 该 Run 的快照。画布上有节点的每一份 Run 都在（节点都出了结果也在）；不会再变的那几份留着上一次读到的（host 的 `landingRunsToRefresh`）。 */
   runs: Readonly<Record<string, ProductionRun>>
   /** E2E 专用：钉住注入的 Run，让 host 的 poll 不覆盖（零额度走查构造各态并存的批次验占位）。生产恒 false。 */
   pinnedForE2E: boolean

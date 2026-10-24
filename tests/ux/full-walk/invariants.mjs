@@ -121,6 +121,21 @@ export function uiText(locale, key, dictionaries = loadDictionaries()) {
   return value
 }
 
+/**
+ * 一条文案填好占位：带 `count` 时按 i18next 的复数后缀取（英文 1 是 `_one`，其余与中文都是 `_other`；词典里没有复数键就用原键）。
+ * 走查断言「界面上写的是不是这一句」用它，不在走查里另抄一份文案。
+ */
+export function uiTextWith(locale, key, values = {}, dictionaries = loadDictionaries()) {
+  let template
+  if (values.count !== undefined) {
+    const suffix = locale === 'en' && Number(values.count) === 1 ? 'one' : 'other'
+    try { template = uiText(locale, `${key}_${suffix}`, dictionaries) } catch { template = uiText(locale, key, dictionaries) }
+  } else {
+    template = uiText(locale, key, dictionaries)
+  }
+  return template.replace(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g, (_, name) => String(values[name] ?? `{{${name}}}`))
+}
+
 /** 把一条带 `{{占位}}` 的文案变成正则源码：字面部分原样转义，占位变成同名捕获组（anchored = 必须从头开始）。 */
 export function uiTextPattern(template, { anchored = false } = {}) {
   const body = String(template).split(/(\{\{\s*[A-Za-z0-9_]+\s*\}\})/).map((part) => {

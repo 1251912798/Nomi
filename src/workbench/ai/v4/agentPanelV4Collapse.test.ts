@@ -247,7 +247,7 @@ describe('process retry summary', () => {
     const { zhAgentPanelV4, enAgentPanelV4 } = await import('../../../i18n/locales/agentPanelV4')
     for (const [lng, locale, expected] of [
       ['zh-CN', zhAgentPanelV4, retries ? `用了 ${retries + 1} 个工具 · ${retries} 次重试` : '用了 1 个工具'],
-      ['en', enAgentPanelV4, retries ? `${retries + 1} tools · ${retries} retries` : '1 tools'],
+      ['en', enAgentPanelV4, retries ? `${retries + 1} tools · ${retries} ${retries === 1 ? 'retry' : 'retries'}` : '1 tool'],
     ] as const) {
       const i18n = createInstance()
       await i18n.init({ lng, resources: { [lng]: { translation: { agentPanelV4: locale } } } })

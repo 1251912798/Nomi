@@ -73,33 +73,18 @@ import { useGenerationCanvasStore } from '../store/generationCanvasStore'
  * 这张 composer 挂在哪里。
  *
  * `canvas`（默认）= 画布上那张浮在节点下沿的卡：绝对定位、自带边框阴影、右下角一颗圆形 `↑`。
- * `panel` = Agent 面板的介入槽里那张付费卡：卡壳由介入槽提供，所以这里**脱掉自己的壳**
- * （不定位、不描边、不投影），并把「生成」交还给卡的底栏——「生成」和「不要」是同一个决定的
- * 两面，分在两处等于把一个决定拆成两个家（§1.5 一功能一个家）。
  *
  * `inline` = **画布这张卡原样，只是放在普通内容流里**（生成页「列表」点开一镜后的大详情用它，用户 10-10：「排版完全复用我们画布里面的排版」）：
  * 生成方式页签、提示词区、模型、参数、工具图标、右下角 `↑` 都和 `canvas` 一模一样（同一个组件、同一套排版），
  * 唯一的差别是不钉在画布节点下沿（没有 React Flow、没有缩放）——宿主只给它一块地方。
  *
- * 刻意用一个 host 字段而不是一堆 `hideX` 开关：宿主只有三种，各自成套。
- * 散开成开关之后，第三个调用者一定会挑出一套没人验证过的组合。
+ * 刻意用一个 host 字段而不是一堆 `hideX` 开关：宿主各自成套，散开成开关之后，下一个调用者一定会挑出一套没人验证过的组合。
  *
- * **`panel` 到底不渲染哪几件**（2026-09-10 用户 v2 反馈：「卡里不需要优化/运镜/更多——都写完了还优化啥」）：
- *
- * | 不渲染 | 为什么 |
- * |---|---|
- * | 「更多 ▾」`effects.more` + 推荐行 `effects.recommendations` | 提示词是 Nomi **已经写完**的。卡的任务是「看一眼、要不要改一个字、按下去」，不是重新起草 |
- * | 提示词优化 `NodePromptOptimizer` | 同上，且它要再花一次模型钱——在一张**正在确认花钱**的卡上放第二笔花钱按钮是错的 |
- * | 生成钮（圆形 `↑`） | 由卡壳的主按钮接替（「生成」与「不要」并排） |
- *
- * 锁 `NodeLockBadge` 不在这张表里，因为它**两个宿主都没有**：2026-09-11 v1.1 把它挪回节点浮条
- * （它的作用对象是这个节点、不是这一次生成），不需要再按宿主分叉。
- *
- * 剩下的恰好就是用户点名的那三件、按他给的顺序：**`[模型 ▾] [参数 ▾] [×N ▾]`**，恒一行不换行。
- * 其中「参数」在这个宿主是**逐参数 chip**（`parameterLayout='chips'`，2026-09-11 用户拍板：
- * 只改付费卡，画布节点的参数条不动）——正在确认「出什么、花多少」时，多一次点击最贵。
+ * Agent 面板的付费卡**不挂**这张卡（D2，用户 2026-10-23 拍板）：卡上只有指向元素和一行只读摘要，想改就点指向元素去节点里改。
+ * 2026-09-10 到 D2 之间那张卡挂过整件生成框（`panel` 宿主、逐参数 chip），连同它的写口一起删了；
+ * 聊天卡片模块引不到这里，由依赖规则 `chat-card-no-import-node-editor` 拦着（设计系统 §1.0）。
  */
-export type NodeComposerHost = 'canvas' | 'panel' | 'inline'
+export type NodeComposerHost = 'canvas' | 'inline'
 
 type Props = {
   onFeedback: (message: string) => void
@@ -127,7 +112,7 @@ function composerMaxHeight(kind: GenerationCanvasNode['kind']): number {
  * 两件东西没有共同的身体，所以按种类分开：文本走 TextNodeComposer，其余走下面这张。
  */
 export default function NodeGenerationComposer(props: Props): JSX.Element {
-  return props.node.kind === 'text' && (props.host ?? 'canvas') !== 'panel'
+  return props.node.kind === 'text'
     ? <TextNodeComposer onFeedback={props.onFeedback} node={props.node} visualSize={props.visualSize} readOnly={props.readOnly ?? false} inFlow={props.host === 'inline'} />
     : <GenericNodeGenerationComposer {...props} />
 }
@@ -142,18 +127,16 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
     notify({ identity: `NodeGenerationComposer:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
   }, [node.id, onFeedback])
   const { t } = useTranslation()
-  const inPanel = host === 'panel'
-  // 不钉在画布节点下沿（面板 / 列表详情）：外层是普通内容流里的一个 div，不绝对定位、不随画布拖动隐身。
+  // 不钉在画布节点下沿（列表详情）：外层是普通内容流里的一个 div，不绝对定位、不随画布拖动隐身。
   const inFlow = host !== 'canvas'
-  // 写到哪儿由宿主接住（见 nodeWriteAccess）：画布宿主写 store，付费确认卡写它自己的草稿账本，
-  // 直到用户按下「生成」才由主进程把改动投影回画布。组件这一侧两个宿主一条写入调用。
+  // 写口（见 nodeWriteAccess）：默认写画布 store；这张卡往下把它包一层只读闸再交给参考区 / @ 引用 / 拖放。
   const { updateNode: writeNode, latestNode, connectNodes } = useNodeWriteAccess()
   const readOnlyRef = React.useRef(readOnly)
   readOnlyRef.current = readOnly
   const updateNode = React.useCallback((...args: Parameters<typeof writeNode>) => {
     if (!readOnlyRef.current) writeNode(...args)
   }, [writeNode])
-  const writeAccess = React.useMemo(() => ({ updateNode, latestNode, canWrite: () => !readOnlyRef.current, ...(!inPanel && connectNodes ? { connectNodes: ((...args: Parameters<typeof connectNodes>) => { if (!readOnlyRef.current) return connectNodes(...args) }) as typeof connectNodes } : {}) }), [updateNode, latestNode, inPanel, connectNodes])
+  const writeAccess = React.useMemo(() => ({ updateNode, latestNode, canWrite: () => !readOnlyRef.current, ...(connectNodes ? { connectNodes: ((...args: Parameters<typeof connectNodes>) => { if (!readOnlyRef.current) return connectNodes(...args) }) as typeof connectNodes } : {}) }), [updateNode, latestNode, connectNodes])
   const status = node.status || 'idle'
   const isGenerating = status === 'queued' || status === 'running'
   const hasResult = Boolean(node.result?.url)
@@ -228,11 +211,11 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
   // 持有 prompt 编辑器实例,供「点参考 tile → 在光标处插入 chip」(@ 内联引用主路径)。
   const [promptEditor, setPromptEditor] = React.useState<Editor | null>(null)
   // 空节点「试试」配方跑完要把光标放进这张卡的提示词（nodes/nodePromptFocus：配方先跑、生成框后挂，请求等它来取）。
-  const focusPrompt = React.useMemo(() => (promptEditor && !inPanel ? () => {
+  const focusPrompt = React.useMemo(() => (promptEditor ? () => {
     if (promptEditor.isDestroyed) return false
     promptEditor.commands.focus('end')
     return true
-  } : null), [inPanel, promptEditor])
+  } : null), [promptEditor])
   useNodePromptFocusRequest(node.id, focusPrompt)
   // 拖文件到卡 → 加为参考（捷径 A）。仅当当前模式有数组参考槽时接管拖拽。
   const { acceptsDrop, isDragOver, isUploading, dropHandlers } = useNodeAssetDrop(node, reportFeedback, writeAccess)
@@ -322,9 +305,9 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
           reportFeedback(t('generationCommon.composer.promptReferenceUnsupported'))
         }
       }
-      if (!inPanel) void persistActiveWorkbenchProjectNow().catch(() => {})
+      void persistActiveWorkbenchProjectNow().catch(() => {})
     },
-    [mentionCandidates, node.id, node.locked, node.prompt, promptEditor, reportFeedback, t, updateNode, latestNode, writeAccess, inPanel],
+    [mentionCandidates, node.id, node.locked, node.prompt, promptEditor, reportFeedback, t, updateNode, latestNode, writeAccess],
   )
 
   const handleGenerate = async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -347,21 +330,11 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
 
   // B 簇（帮我写提示词）：效果 → 翻译 → 优化（翻译与优化同一出现条件，2026-09-21 拍板）。运镜控件已从视频/图片节点移除：用户直接在 prompt
   // 里写运镜，避免节点控件和提示词重复表达。
-  // 一件都没有（锁住的节点、不吃提示词的工作流、面板宿主）就整段不渲染——空的分组连同两根分隔线
+  // 一件都没有（锁住的节点、不吃提示词的工作流）就整段不渲染——空的分组连同两根分隔线
   // 留在那里只会在底栏里留一段没人看得懂的空白。
-  // 面板宿主整段没有：卡上的提示词是 Nomi 已经写完的，这一刻的活是「看一眼、按下去」，
-  // 而且优化要再花一次模型钱——在一张正在确认花钱的卡上摆第二颗花钱的钮是错的（见 NodeComposerHost）。
-  const showPromptPicker = !inPanel && hasPromptPickerButton
-  const showOptimizer = !inPanel && acceptsPrompt && (nodeExecutionKind === 'image' || nodeExecutionKind === 'video') && !node.locked
+  const showPromptPicker = hasPromptPickerButton
+  const showOptimizer = acceptsPrompt && (nodeExecutionKind === 'image' || nodeExecutionKind === 'video') && !node.locked
   const hasPromptTools = showPromptPicker || showOptimizer
-
-  // 就地展开的参数面板的落点（只有 `panel` 宿主有）。
-  //
-  // 为什么要一个专门的落点，而不是让面板留在底栏那一排里：面板是**整幅**的（`w-full`），
-  // 留在排里就只有两条路——要么允许换行（v2 那样，`[模型][参数]` 一行、面板一行、`×N` 又一行，
-  // 底栏看起来就是散的，正是用户说的「参数摆得不齐、还上下两行」），要么不换行被挤成一条缝。
-  // 把面板搬到底栏**下面**这个落点，底栏就能恒一行，面板也拿到整幅宽度。
-  const parameterPanelSlotRef = React.useRef<HTMLDivElement>(null)
 
   // 卡宽恒定（NODE_COMPOSER_WIDTH）；推荐项让位，输入内滚、底栏固定。
 
@@ -373,7 +346,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
       visualSize={visualSize}
       className={cn(
         'generation-canvas-v2-node__composer nokey',
-        // 面板里的卡由介入槽定位，这里只是一段普通内容流；画布上才是浮在节点下沿的绝对定位层。
+        // 列表详情里这只是一段普通内容流；画布上才是浮在节点下沿的绝对定位层。
         inFlow ? 'w-full' : 'absolute',
         // 画布拖动期间隐身（拖节点、拖选区/组框、拖画布平移都算；状态源=stage 的 data-dragging，见 canvasDraggingFlag）。
         // 刻意用 visibility 而非条件卸载：里面是 TipTap 编辑器实例，卸载 = 丢未提交的输入 +
@@ -392,14 +365,13 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
           'generation-canvas-v2-node__composer-card',
           NODE_SCROLL_REGION_CLASS_NAME,
           'relative flex flex-col gap-1.5 min-w-0',
-          // 面板宿主里**卡壳是介入槽的**：再描一层边就成了框中框，而里外说的是同一张卡。
-          inPanel ? 'w-full p-0' : 'p-3 border border-nomi-line rounded-nomi bg-nomi-paper overflow-hidden shadow-nomi-md',
+          'p-3 border border-nomi-line rounded-nomi bg-nomi-paper overflow-hidden shadow-nomi-md',
           // 内容流里（列表详情）：卡宽恒定、在所在列里水平居中，和上面的预览同一条竖直中线（画布上由定位锚负责，不走这里）。
           inFlow && 'mx-auto',
           'transition-[outline-color] duration-150',
           isDragOver && 'outline-2 outline-dashed outline-nomi-ink-40 outline-offset-[-2px]',
         )}
-        style={inPanel ? { cursor: 'default', userSelect: 'auto', touchAction: 'auto' } : {
+        style={{
           width: NODE_COMPOSER_WIDTH,
           ...(inFlow ? { maxWidth: '100%' } : {}),
           ...(promptExpand.expanded ? {} : { maxHeight }),
@@ -422,7 +394,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
         // 参考区最多露两行参考格（40px 格 × 2 + 间距），更多在区内滚；卡片定宽后一行放 11 格。
         // 滚动口向卡片边缘外扩（-mx-3 -mt-3 再用 px-3 pt-3 补回来）：悬停才出的 × 挂在小图右上角外侧，不扩就被滚动口切掉。
         // 以前这里的滚动口高度是按屏幕剩余空间逐帧现算的，那套随放置层一起删了。
-        <div data-node-composer-references className={cn(NODE_SCROLL_REGION_CLASS_NAME, 'min-h-0 shrink-0 overflow-y-auto overscroll-contain', !inPanel && '-mx-3 -mt-3 max-h-40 px-3 pt-3')}>
+        <div data-node-composer-references className={cn(NODE_SCROLL_REGION_CLASS_NAME, 'min-h-0 shrink-0 overflow-y-auto overscroll-contain', '-mx-3 -mt-3 max-h-40 px-3 pt-3')}>
           <NodeParameterControls node={node} section="references" onInsertMention={insertMention} graph={graph} modelOptionsState={modelOptionsState} readMappings={readMappings} />
         </div>
       ) : null}
@@ -432,17 +404,16 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
       {audioIsTranscribe || !acceptsPrompt ? null : (
         // 外层不滚、只负责占位和挂「展开」钮；里层是滚动口。钮挂在滚动口外面，滚到底也还在右上角。
         // 展开（2026-09-25 用户拍板，参考 LibTV）：卡片高度上限让开、滚动口长到全文（再长到 360 才内滚）。
-        // 只给画布宿主——付费确认卡的提示词是 Nomi 写好的、面板高度有限，那里不加（同日拍板第 2 题）。
-        <div className={cn('relative flex min-h-[72px] flex-col', promptExpand.expanded && !inPanel ? 'flex-none' : 'flex-1')}>
+        <div className={cn('relative flex min-h-[72px] flex-col', promptExpand.expanded ? 'flex-none' : 'flex-1')}>
         <div
-          ref={inPanel ? undefined : promptExpand.scrollRef}
+          ref={promptExpand.scrollRef}
           data-node-composer-prompt
-          data-prompt-expanded={promptExpand.expanded && !inPanel ? 'true' : 'false'}
+          data-prompt-expanded={promptExpand.expanded ? 'true' : 'false'}
           className={cn(
             NODE_SCROLL_REGION_CLASS_NAME,
             'relative w-full min-h-[72px] overflow-y-auto overscroll-contain',
-            promptExpand.expanded && !inPanel ? 'max-h-[360px]' : 'flex-1',
-            !inPanel && promptExpand.canToggle && 'pr-7',
+            promptExpand.expanded ? 'max-h-[360px]' : 'flex-1',
+            promptExpand.canToggle && 'pr-7',
           )}
           style={{ cursor: node.locked ? 'default' : 'text', userSelect: node.locked ? 'auto' : 'text' }}
         >
@@ -453,7 +424,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
             placeholder={appendMentionHint(getGenerationNodePromptPlaceholder(node.kind))}
             editable={!node.locked && !readOnly}
             onChange={(next) => { if (!readOnly) updateNode(node.id, { prompt: next }) }}
-            onBlur={() => { if (!inPanel && !readOnlyRef.current) void persistActiveWorkbenchProjectNow().catch(() => {}) }}
+            onBlur={() => { if (!readOnlyRef.current) void persistActiveWorkbenchProjectNow().catch(() => {}) }}
             onReady={setPromptEditor}
             mentionCandidates={mentionCandidates}
             mentionReferences={orderedMediaReferences}
@@ -462,7 +433,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
           />
           </ReferenceNamesContext.Provider>
         </div>
-        {!inPanel && promptExpand.canToggle ? (
+        {promptExpand.canToggle ? (
           <WorkbenchIconButton
             size="sm"
             data-prompt-expand-toggle
@@ -476,8 +447,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
         </div>
       )}
       {/* 连进来的文字：拼进提示词的那几段，摆出来（和生成时拼提示词读同一个投影）。 */}
-      <ConnectedTextChips node={node} graph={graph} onDisconnect={inPanel || readOnly ? undefined : disconnectTextInput} />
-      {/* 推荐行不进面板宿主：卡上的提示词是 Nomi 已经写完的，这一刻不是重新起草的时候。 */}
+      <ConnectedTextChips node={node} graph={graph} onDisconnect={readOnly ? undefined : disconnectTextInput} />
       {showPromptPicker && effects.recommendations}
       {/* 底栏（B3，2026-10-18/19 用户拍板）：铺满卡宽（w-full），左边「出什么」、右边「怎么写 → 出几张 → 走」，不换行：
           `[模型 ▾] [变体 ▾] [16:9 · 5s ▾] ……… [预设][翻译][N] │ [1 个 ▾] [↑]`
@@ -485,13 +455,11 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
           三类归位见 docs/design/2026-09-10-node-composer-bar-v1.md：
             A 决定出什么/花多少 → 第一段与第三段；B 帮我写提示词 → 中段缩小一号的纯 icon；
             锁 → 回节点浮条（它的作用对象是**这个节点**，不是这一次生成）。
-          参数区两个宿主各一种摆法：画布节点是**摘要 pill**（同日 02:10 的逐参数 chip 于 04:30 被用户
-          收回），付费确认卡是**逐参数 chip**——那一刻用户正在逐项确认「出什么、花多少」，多一次点击最贵。
-          面板宿主只剩第一段与第三段（B 簇、锁、生成钮都不进，见 NodeComposerHost 那张表），
-          `flex-nowrap` 对两个宿主都成立：排不下不靠换行解决，靠别往这一排里塞第四件。
+          参数区是**摘要 pill**（同日 02:10 的逐参数 chip 于 04:30 被用户收回）。
+          `flex-nowrap`：排不下不靠换行解决，靠别往这一排里塞第四件。
           `data-node-composer-footer` / `data-bar-segment` 是走查锚点，好断言「单行 + 段序没漂」。 */}
       {!readOnly && <div data-node-composer-footer className={cn('flex items-center gap-2 mt-auto pt-1 shrink-0 w-full flex-nowrap')}>
-        {/* 第一段：模型芯片 + 变体 + 参数区（画布=摘要 pill，见 composerHeadlineSummary；付费卡=chips）。 */}
+        {/* 第一段：模型芯片 + 变体 + 参数区（摘要 pill，见 composerHeadlineSummary）。 */}
         <div data-bar-segment="model-params" className={cn('flex min-w-0 flex-1 items-center')}>
           <NodeParameterControls
             node={node}
@@ -499,13 +467,6 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
             graph={graph}
             modelOptionsState={modelOptionsState}
             readMappings={readMappings}
-            {...(inPanel
-              ? {
-                parameterLayout: 'chips' as const,
-                inlinePanelTarget: anchorRef,
-                inlinePanelSlot: parameterPanelSlotRef,
-              }
-              : {})}
           />
         </div>
         {/* 右半边（三个提示词钮、数量、↑）靠卡片右侧：第一段 flex-1 吃掉剩余宽度，不再另放一个占 8px 间距的空垫片
@@ -519,8 +480,8 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
           </NodePromptToolCluster>
         ) : null}
         {/* 数量：模型声明了数量才有（section="quantity" 自己判断，没有就不渲染），紧挨 ↑ 左边。 */}
-        {inPanel ? null : <NodeParameterControls node={node} section="quantity" graph={graph} modelOptionsState={modelOptionsState} readMappings={readMappings} />}
-        {inPanel ? null : (() => {
+        <NodeParameterControls node={node} section="quantity" graph={graph} modelOptionsState={modelOptionsState} readMappings={readMappings} />
+        {(() => {
           const disabledReason = directorPreviewBlock
             ? t(directorPreviewBlock)
             : unmetDependency
@@ -583,9 +544,6 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
           )
         })()}
       </div>}
-      {/* 参数面板的落点：底栏**下面**、整幅宽。`empty:hidden` 让它在面板收着时一个像素都不占
-          （空 div 也会吃掉外层 flex 的 gap）。画布宿主没有这个落点——那儿的面板 portal 到 body。 */}
-      {inPanel ? <div ref={parameterPanelSlotRef} className="w-full empty:hidden" data-node-composer-parameter-panel-slot /> : null}
       </div>
       {isDragOver ? (
         <div

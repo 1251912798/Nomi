@@ -19,13 +19,15 @@ import {
 } from "../shared/productionGenerationPresentation";
 import type { ProductionCommandEffect } from "./productionRunReducer";
 import { hasUnsettledLiability, revokeWaitingAndUnseal, unsealedGenerationPlanFields } from "./productionGenerationPlanEdits";
-import type {
-  GenerationHandOver,
-  GenerationHandOverSettlement,
-  GenerationPresentation,
-  GenerationPresentationCloser,
-  ProductionGenerationPlan,
-  ProductionRun,
+import {
+  GENERATION_HAND_OVER_OUTCOMES,
+  type GenerationHandOver,
+  type GenerationHandOverOutcome,
+  type GenerationHandOverSettlement,
+  type GenerationPresentation,
+  type GenerationPresentationCloser,
+  type ProductionGenerationPlan,
+  type ProductionRun,
 } from "./productionRunTypes";
 import type { ProjectAgentApprovalPolicy } from "../shared/agentCapabilities/capabilityApprovalPolicy";
 
@@ -237,7 +239,7 @@ export function bindHandOvers(current: ProductionRun, raw: unknown, now: string)
   return withCurrentPresentation(current, now, (live) => ({ presentation: { ...live, handOvers } }));
 }
 
-const SETTLE_OUTCOMES: ReadonlySet<GenerationHandOverSettlement["outcome"]> = new Set(["accepted", "unknown", "not_sent", "withdrawn"]);
+const SETTLE_OUTCOMES: ReadonlySet<GenerationHandOverOutcome> = new Set(GENERATION_HAND_OVER_OUTCOMES);
 const WITHDRAWN_BY: ReadonlySet<NonNullable<GenerationHandOverSettlement["withdrawnBy"]>> = new Set(["removed", "user_closed", "user_wrote", "stopped"]);
 
 function settlementOf(payload: Record<string, unknown>, now: string): GenerationHandOverSettlement {

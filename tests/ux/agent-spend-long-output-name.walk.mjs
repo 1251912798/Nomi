@@ -23,6 +23,7 @@ import { DEFAULT_TIMEOUT_MS, clickOrFail, expect } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { expectToolbarInsideStage } from './_canvasHit.mjs'
 import { FIXTURE_APIMART_VENDOR, flattenRequestText } from './agent-runtime-fixture.mjs'
+import { canvasRunsOf } from './_spendCardWalk.mjs'
 import {
   APPROVAL_CARD, CANVAS_PANEL, INTERVENTION_CONFIRM,
   createRuntimeWalk, openCanvas, readProject, recorded, sendCanvas,
@@ -79,12 +80,6 @@ function hostOf(target) {
   return value.replace(/:\d+$/, '')
 }
 
-function readRun(projectRoot, runId) {
-  const snapshot = path.join(projectRoot, '.nomi', 'runs', runId, 'run.json')
-  if (!fs.existsSync(snapshot)) return null
-  return JSON.parse(fs.readFileSync(snapshot, 'utf8')).run
-}
-
 /** 主进程里的另存对话框替身：记下默认名，返回临时目录里的同名路径（真正的写盘仍由 downloadAssetToDisk 自己做）。 */
 async function stubSaveDialog(app, directory) {
   await app.evaluate(({ dialog }, dir) => {
@@ -119,6 +114,8 @@ const egressEnv = {
 }
 const walk = await createRuntimeWalk('spend-long-output-name', {
   generationProvider: 'apimart',
+  // 卡上「生成」交给画布那一台：它从本机夹具取回产物，按精确 origin 放行（只在未打包构建里读）。
+  trustFixtureOrigin: true,
   videoResultPath: `/fixture/${LONG_NAME}`,
   env: egressEnv,
 })
@@ -179,9 +176,9 @@ try {
   await expect(node, '供应商一出片，节点就变成结果').toHaveAttribute('data-status', 'success', { timeout: stationTimeout({ operations: 4 }) })
 
   // ── ① 落盘名：148 字的出片地址 → 以 .mp4 结尾、名字在预算内 ─────────────────────────
-  const run = readRun(projectRoot, operationId)
-  const artifact = run?.artifacts.find((item) => item.kind === 'video' && item.status !== 'rejected')
-  const relativePath = String(artifact?.projectRelativePath || '')
+  // 卡上「生成」把这一镜交给画布：产物记在画布那一镜的单镜 Run 里（交接记录上有它的号）。
+  const [canvasRun] = await canvasRunsOf(win, projectId, operationId)
+  const relativePath = String(canvasRun?.artifacts.find((item) => item.kind === 'video')?.path || '')
   walk.report.storedRelativePath = relativePath
   expect(relativePath, '长出片地址落进项目的文件以 .mp4 结尾（0.22.0 是 .bin）').toMatch(/\.mp4$/)
   expect(path.posix.basename(relativePath).length, '落盘名在预算内（主干 ≤ 90 − 扩展名，外加 25 位物化键）').toBeLessThanOrEqual(115)

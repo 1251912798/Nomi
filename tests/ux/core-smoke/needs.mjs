@@ -14,13 +14,16 @@ import {
   FIXTURE_TEXT_MODEL, FIXTURE_VENDOR,
 } from '../agent-runtime-fixture.mjs'
 
-/** 执行侧那三把钥匙（同 `agent-runtime-walk-support.mjs:418-424`）。不点名供应商 = apimart。 */
+/** 执行侧那三把钥匙（同 `agent-runtime-walk-support.mjs` 的 generationProvider 那一段），加画布那一台取回产物的精确 origin 放行。不点名供应商 = apimart。 */
 const PAID_ROUTE_ENV = (fixture) => ({
   NOMI_TEST_NETWORK_GUARD: '1',
   NOMI_E2E_PRODUCTION_FIXTURE: '1',
   NOMI_E2E_FIXTURE_BASE_URL: fixture.baseURL,
   NOMI_E2E_FIXTURE_API_KEY: FIXTURE_APIMART_API_KEY,
   NOMI_TEST_NETWORK_REDIRECTS: JSON.stringify([{ from: 'https://api.apimart.ai', to: fixture.baseURL }]),
+  // 付费卡上「生成」交给画布那一台（D2 第③步，和节点 ↑ 同一条路）：画布从本机夹具取回产物，产品出站策略默认拒私网地址，
+  // 只在未打包构建里按这个精确 origin 放行（分类器本身不放宽，打包版本连读都不读）。少了它，卡上按下去发得出、取不回。
+  NOMI_LAB_TRUSTED_PRIVATE_ORIGINS: fixture.baseURL,
 })
 
 /**

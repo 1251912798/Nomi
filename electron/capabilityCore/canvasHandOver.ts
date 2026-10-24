@@ -20,18 +20,13 @@ import { logWarn } from "../logging/logger";
 import type { GenerationHandOverFailure, ProductionRun, RunCommand } from "../productionRun/productionRunTypes";
 import { admitShotsForDispatch, landedNodeOf, type LandShotsOnCanvas } from "../productionRun/shotLandingAdmission";
 import { currentPresentation, latestHandOver, offerShots, type OfferShot } from "../shared/productionGenerationPresentation";
+import { HAND_OVER_SHOTS_OP, type HandOverShotsReply, type HandOverShotsRequest } from "../shared/contracts/canvasHandOver";
 
 /** 渲染层开同意那一步最多等多久（它只读节点、问素材托管、开同意，不等生成）。 */
 export const HAND_OVER_RENDERER_TIMEOUT_MS = 30_000;
 /** 策略那一档等交出去的每一镜落定（交到 / 没发出去）最多等多久；过了还在交的照「在交」算。 */
 export const POLICY_SETTLEMENT_TIMEOUT_MS = 120_000;
 
-export const HAND_OVER_RENDERER_OP = "production.hand-over-shots";
-
-/** 渲染层回给第③步的话：哪几镜没开出同意、为什么（Nomi 自己的语义码）。没提到的、也没绑上的按「没开出同意」收尾。 */
-export type HandOverRendererReply = Readonly<{
-  skipped?: ReadonlyArray<Readonly<{ shotId: string; failure: GenerationHandOverFailure }>>;
-}>;
 
 export type CanvasHandOverInput = Readonly<{
   projectId: string;
@@ -70,7 +65,7 @@ function failureCodeOf(error: unknown): string {
   return error instanceof Error && error.name === "RendererUnavailableError" ? "renderer_unavailable" : "canvas_hand_over_failed";
 }
 
-function replyOf(value: unknown): HandOverRendererReply {
+function replyOf(value: unknown): HandOverShotsReply {
   const skipped = value && typeof value === "object" && Array.isArray((value as { skipped?: unknown }).skipped) ? (value as { skipped: unknown[] }).skipped : [];
   return {
     skipped: skipped.flatMap((entry) => {
@@ -161,7 +156,8 @@ export function createCanvasHandOver(deps: CanvasHandOverDeps) {
       }) : [];
       // ③ 渲染层按画布批量那一条路开同意（绑交接）并开跑；只等同意开好。
       if (targets.length > 0) {
-        const reply = replyOf(await deps.requestRenderer(HAND_OVER_RENDERER_OP, { projectId, runId, shots: targets, hostingAllowed: input.hostingAllowed }, HAND_OVER_RENDERER_TIMEOUT_MS));
+        const request: HandOverShotsRequest = { projectId, runId, shots: targets, hostingAllowed: input.hostingAllowed };
+        const reply = replyOf(await deps.requestRenderer(HAND_OVER_SHOTS_OP, request, HAND_OVER_RENDERER_TIMEOUT_MS));
         for (const skipped of reply.skipped ?? []) failures.set(skipped.shotId, skipped.failure);
       }
     } catch (error) {

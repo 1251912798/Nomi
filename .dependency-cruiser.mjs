@@ -11,6 +11,23 @@
 // 依赖方向的分层背景见 docs/architecture/module-ownership-map.md 与
 // docs/audit/2026-08-31-architecture-coupling-audit.md（分析二/五）。
 
+/**
+ * 节点编辑器（R-B6 拦的那一侧）：画布生成框本体、参数控件、提示词工具、参考槽入口、节点写口。
+ * 只列会**画出可改的东西或写节点**的模块；读节点的纯函数（参数取值 `controls/parameterControlModel`、比例读法
+ * `aspectRatio`、模型身份……）不在此列——聊天卡片读节点正是 D2 的设计（一个东西一个家，卡只读）。
+ */
+export const NODE_EDITOR_MODULES = Object.freeze([
+  // 生成框本体（画布 / 内嵌两种宿主）与文本节点的生成框
+  'NodeGenerationComposer', 'LazyNodeGenerationComposer', 'TextNodeComposer',
+  // 参数控件：参数面板、摘要 pill（点开就是参数面板）、参考槽入口
+  'NodeParameterControls', 'InlineParameterBar', 'NodeInputReferenceEntry',
+  // 提示词工具（优化 / 翻译 / 工具簇）
+  'NodePromptToolCluster', 'NodePromptOptimizer', 'NodePromptTranslator',
+  // 节点写口（旧卡的写口范围挂在这里）与参考槽写法
+  'nodeWriteAccess', 'controls/referenceWrites',
+])
+const NODE_EDITOR_PATH = `^src/workbench/generationCanvas/nodes/(?:(?:${NODE_EDITOR_MODULES.join('|')})\\.tsx?|controls/[^/]+\\.tsx)$`
+
 /** @type {import('dependency-cruiser').IConfiguration} */
 export default {
   forbidden: [
@@ -80,6 +97,23 @@ export default {
       severity: 'error',
       from: { path: '^src/' },
       to: { path: '^scripts/' },
+    },
+
+    // R-B6 聊天卡片不许引用节点编辑器（当前 0，硬零，无 baseline；设计系统 §1.0「卡上一个可改的东西都没有」）。
+    //
+    // 2026-09-10 到 2026-10-24 之间，Agent 付费卡里装着一整件画布生成框（`NodeGenerationComposer host="panel"`）：
+    // 卡上能改模型、参数、参考，于是节点与卡各存一份、两边拉锯——卡上改的冲掉节点上用户的改动、卡上看到的不是发出去的，
+    // 一串根因合同（docs/fixes/2026-10-02-card-revise-merge-rule 起）。D2 第③步起卡只读节点（指向元素 + 一行只读摘要），想改就点指向元素
+    // 去节点里改。这条规则从结构上拦住它长回去：Agent 面板（`src/workbench/ai/`：聊天卡片、指向元素、面板外壳、输入框）
+    // 不许 import 节点编辑器（`NODE_EDITOR_MODULES`）。纯类型导入也拦：类型住在编辑器里，就说明卡在照编辑器的形状长。
+    // 反例单测：scripts/check-boundaries.chat-card.test.mjs。
+    {
+      name: 'chat-card-no-import-node-editor',
+      comment:
+        'Agent 面板（src/workbench/ai/）不许 import 节点编辑器（画布生成框、参数控件、提示词工具、参考槽入口、节点写口）。卡只读节点，改去节点里改。当前零违规，硬零。',
+      severity: 'error',
+      from: { path: '^src/workbench/ai/' },
+      to: { path: NODE_EDITOR_PATH },
     },
 
     // R-B4 禁新增「完全静态」循环。

@@ -14,18 +14,28 @@ import { isAutoOptionValue, normalizeAspectRatioToWH, parseAspectRatioValue } fr
 export const ASPECT_RATIO_KEYS = ["aspect_ratio", "size", "ratio", "image_size"] as const;
 
 /**
- * 从节点 meta 读出当前选定的画面比例（数值）。读不到（未选模型 / 该模型无比例参数）返回 null。
- * 按 ASPECT_RATIO_KEYS 顺序找第一个能解析成 W:H 的值——非比例的 size 值（如 "2K"）会被自动跳过。
+ * 节点 meta 上承载画面比例的那个值：按 ASPECT_RATIO_KEYS 顺序，第一个能解析成比例的（非比例的 size 值如 "2K" 跳过）。
+ * 读不到（未选模型 / 该模型无比例参数）返回 null。
+ *
+ * 「节点此刻是什么比例」只有这一个读法：画布节点形状（`readNodeAspectRatio`）和生成列表、指向元素、付费卡摘要上印的
+ * 那几个字（`generation/list/generationListMediaFacts.readAspect`）都读它。以前后者自己只认 `aspect_ratio`，Seedance 这类
+ * 把比例放在 `size` / `ratio` 上的模型，卡上的摘要就漏了比例（2026-10-24，铁律 ⑩ 矩阵改读卡的读口之后抓到）。
  */
-export function readNodeAspectRatio(node: GenerationCanvasNode): number | null {
-  const meta = node.meta;
+export function nodeAspectRatioValue(node: GenerationCanvasNode | undefined): string | null {
+  const meta = node?.meta;
   if (!meta || typeof meta !== "object") return null;
   const bag = meta as Record<string, unknown>;
   for (const key of ASPECT_RATIO_KEYS) {
-    const ratio = parseAspectRatioValue(bag[key]);
-    if (ratio) return ratio;
+    const value = bag[key];
+    if (typeof value === "string" && parseAspectRatioValue(value)) return value;
   }
   return null;
+}
+
+/** 节点当前选定的画面比例（数值，宽 / 高）。读法见 `nodeAspectRatioValue`。 */
+export function readNodeAspectRatio(node: GenerationCanvasNode): number | null {
+  const value = nodeAspectRatioValue(node);
+  return value === null ? null : parseAspectRatioValue(value);
 }
 
 /** 常用比例的展示优先序（2026-07-17 用户拍板：常用的排最上，16:9 领头）。不在表内的保持声明序殿后。 */

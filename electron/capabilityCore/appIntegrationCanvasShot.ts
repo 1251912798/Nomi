@@ -407,7 +407,7 @@ export function createCanvasShotRuns(deps: CanvasShotDeps) {
 
   /**
    * 批 + 交。建 Run（单节点 ↑）或接着批量卡上那一份同意（已经建好的草稿）冻住这一刻的请求，封、批放进**一次落盘**
-   * （`repository.executeBatch`；批的收据一次写完，`gestureGateApproval`），然后经提交出口交出去。
+   * （`repository.executeBatch`；批的收据一次写完，`mainProcessGateApproval`：手势或交给画布那一镜的策略），然后经提交出口交出去。
    */
   async function dispatch(input: CanvasShotSubmitInput, runId: string, consented: ProductionRun | null): Promise<CanvasTaskResult> {
     const { projectId, nodeId, vendor, request } = input;

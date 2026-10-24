@@ -2,7 +2,7 @@
 // 静默分支普查（2026-09-11）—— 把「错误被吞掉」这一族数出来，不只修撞见的那几处。
 //
 // 起因：付费卡链路上一天里连撞三处同病：
-//   ① src/workbench/ai/v4/useAgentPanelSpendConfirm.ts  `.catch(() => undefined)` 把确认结果丢了；
+//   ① 旧付费卡的 hook（useAgentPanelSpendConfirm，2026-10-24 随旧卡删除）`.catch(() => undefined)` 把确认结果丢了；
 //   ② electron/productionRun/productionActionIpc.ts      读通道 catch 返回 []，加载失败伪装成「没有待确认」；
 //   ③ electron/capabilityCore/appIntegration.ts          装配失败只 logError，整条付费卡 lane 静默消失。
 // 三处的共同形状是同一个：**失败没有回到调用方，于是界面上什么都不会响**。
@@ -18,7 +18,7 @@
 //   node ./scripts/census-silent-branches.mjs --json      机读全量（给文档生成/门岗原型用）
 //   node ./scripts/census-silent-branches.mjs --top 30    只看按用户可见后果排序的前 N 条
 //   node ./scripts/census-silent-branches.mjs --category b --layer UI
-//   node ./scripts/census-silent-branches.mjs --file src/workbench/ai/v4/useAgentPanelSpendConfirm.ts
+//   node ./scripts/census-silent-branches.mjs --file src/workbench/ai/v4/useAgentPanelSpendCard.ts
 
 import fs from 'node:fs'
 import path from 'node:path'

@@ -18,6 +18,8 @@ import type { GenerationCanvasNode } from '../../generationCanvas/model/generati
 import { isLocalProcessingProgressPhase } from '../../generationCanvas/model/localProcessingPhase'
 import type { ProductionShotState } from '../../../../electron/shared/productionShotPhase'
 import { hasProductionShotCorner } from '../../generationCanvas/nodes/productionShotCorner'
+import { getGenerationNodeExecutionKind } from '../../generationCanvas/model/generationNodeKinds'
+import { formatSeconds, readAspect, readDurationSeconds } from '../../generation/list/generationListMediaFacts'
 
 export type NodePointerFace =
   | Readonly<{ kind: 'removed' }>
@@ -42,12 +44,18 @@ export function nodePointerFace(input: Readonly<{
   feedback: GenerationFeedback | null | undefined
   /** 这一镜在制作流程里的阶段（节点不归制作流程管时缺席）。 */
   productionState?: ProductionShotState | null
+  /**
+   * 宿主给的显式事实：这一镜这一次没成（付费卡：交给画布却没发出去 / 参数被拒），值是状态条上那一个词。
+   * 节点自己可能一笔失败记录都没有（同意在派发前就收回了），所以由宿主说；节点自己在跑 / 自己失败时以节点为准。
+   */
+  hostFailure?: string
 }>): NodePointerFace {
-  const { node, removed = false, canvasReady, feedback, productionState } = input
+  const { node, removed = false, canvasReady, feedback, productionState, hostFailure } = input
   if (!node || !canvasReady) return removed ? { kind: 'removed' } : { kind: 'unavailable' }
   if (node.meta?.uploadStatus === 'uploading' || isLocalProcessingProgressPhase(node.progress?.phase)) return { kind: 'processing' }
   if (feedback?.active) return { kind: 'generating', feedback }
   if (feedback?.phase === 'failed') return { kind: 'failed', feedback }
+  if (hostFailure) return { kind: 'failed', feedback: { phase: 'failed', message: hostFailure, late: false, active: false, previewLabel: '' } }
   if (node.status === 'recoverable') return { kind: 'recoverable' }
   const preview = resolveLightweightNodePreview(node)
   if (preview) return { kind: 'result', preview }
@@ -91,6 +99,18 @@ export function pointerHoverStack(stack: readonly string[], nodeId: string, hove
 export function isPortraitAspect(aspect: string | null): boolean {
   const match = aspect ? /^(\d+):(\d+)$/.exec(aspect) : null
   return Boolean(match && Number(match[1]) < Number(match[2]))
+}
+
+/**
+ * 摘要要的四样事实，从节点现读（指向元素自己的摘要行、组下方那一行、付费卡的合计摘要都读这一份）：
+ * 模型显示名由调用方给（`useModelLabels`，目录异步），其余三样读节点 meta。不存、不缓存。
+ */
+export function nodePointerSummaryFacts(node: GenerationCanvasNode | undefined, modelLabel: string): NodePointerSummaryInput & Readonly<{ durationSec: number | null }> {
+  const aspect = readAspect(node)
+  const execution = node ? getGenerationNodeExecutionKind(node.kind) : undefined
+  const durationSec = node && (execution === 'video' || execution === 'audio') ? readDurationSeconds(node) : null
+  const resolution = typeof node?.meta?.resolution === 'string' ? node.meta.resolution : null
+  return { model: modelLabel, aspect, duration: durationSec ? formatSeconds(durationSec) : null, resolution, durationSec: durationSec || null }
 }
 
 export type NodePointerSummaryInput = Readonly<{

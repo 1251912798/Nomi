@@ -3,7 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createCanvasHandOver, HAND_OVER_RENDERER_OP } from "./canvasHandOver";
+import { createCanvasHandOver } from "./canvasHandOver";
+import { HAND_OVER_SHOTS_OP } from "../shared/contracts/canvasHandOver";
 import type { PlanCandidate } from "./executionContract";
 import { landingThatBinds } from "../productionRun/landFirstTestUtils";
 import { createProductionRunRepository } from "../productionRun/productionRunRepository";
@@ -60,7 +61,7 @@ describe("交给画布：第①步之后失败不抛，落成没发出去", () =
   it("先落节点再问渲染层；渲染层拿到的是节点号与托管同意；回话里跳过的照它说的原因收尾，乱码不过线；没提到、也没绑上的按「没开出同意」", async () => {
     const fx = world(async () => ({ skipped: [{ shotId: "s1", failure: { kind: "parameter_rejected", code: "Reference Missing!" } }, { shotId: 42 }] }));
     await fx.handOver.handOver({ projectId: PROJECT, runId: RUN, shotIds: ["s1", "s2"], by: "gesture", hostingAllowed: true });
-    expect(fx.calls).toEqual([{ op: HAND_OVER_RENDERER_OP, payload: { projectId: PROJECT, runId: RUN, shots: [{ shotId: "s1", nodeId: "node-s1" }, { shotId: "s2", nodeId: "node-s2" }], hostingAllowed: true } }]);
+    expect(fx.calls).toEqual([{ op: HAND_OVER_SHOTS_OP, payload: { projectId: PROJECT, runId: RUN, shots: [{ shotId: "s1", nodeId: "node-s1" }, { shotId: "s2", nodeId: "node-s2" }], hostingAllowed: true } }]);
     expect(fx.settlements()).toEqual([["s1", "not_sent", "canvas_not_consented"], ["s2", "not_sent", "canvas_not_consented"]]);
     expect(currentPresentation(fx.read().generationPlan)!.handOvers![0].settled?.failure?.kind).toBe("parameter_rejected");
   });

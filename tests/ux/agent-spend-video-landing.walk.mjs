@@ -23,6 +23,7 @@ import path from 'node:path'
 import { DEFAULT_TIMEOUT_MS, clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { FIXTURE_APIMART_VENDOR, flattenRequestText } from './agent-runtime-fixture.mjs'
+import { canvasRunsOf, taskPanelRows, taskPanelSettledProblems } from './_spendCardWalk.mjs'
 import {
   APPROVAL_CARD, CANVAS_PANEL, INTERVENTION_CONFIRM,
   createRuntimeWalk, openCanvas, readProject, recorded, sendCanvas,
@@ -40,13 +41,8 @@ const PLAN_CALL = 's-video-landing-1'
 const GENERATE_CALL = `${PLAN_CALL}-generate`
 const TASK_TRIGGER = '[data-task-center-trigger="true"]'
 
-function readRun(projectRoot, runId) {
-  const snapshot = path.join(projectRoot, '.nomi', 'runs', runId, 'run.json')
-  if (!fs.existsSync(snapshot)) return null
-  return JSON.parse(fs.readFileSync(snapshot, 'utf8')).run
-}
-
-const walk = await createRuntimeWalk('spend-video-landing', { generationProvider: 'apimart' })
+// 卡上「生成」交给画布那一台：它从本机夹具取回产物，按精确 origin 放行（只在未打包构建里读）。
+const walk = await createRuntimeWalk('spend-video-landing', { generationProvider: 'apimart', trustFixtureOrigin: true })
 let failure
 try {
   const { win } = await walk.start({ first: true })
@@ -116,21 +112,24 @@ try {
   walk.fixture.releaseVideos()
   await expect(node, '供应商一出片，节点就变成结果').toHaveAttribute('data-status', 'success', { timeout: stationTimeout({ operations: 4 }) })
   await expectAbsent(waiting, { provenBy: waitingProof, message: '出片之后等待画面收起来' })
-  const run = readRun(projectRoot, operationId)
-  const artifact = run.artifacts.find((item) => item.kind === 'video' && item.status !== 'rejected')
-  expect(artifact?.projectRelativePath, '真 mp4 落进了项目素材库').toMatch(/\.mp4$/)
-  expect(fs.statSync(path.join(projectRoot, artifact.projectRelativePath)).size, '落盘的是那段真视频的字节').toBeGreaterThan(100_000)
+  // 卡上「生成」把这一镜交给画布：产物记在画布那一镜的单镜 Run 里（交接记录上有它的号）。
+  const [canvasRun] = await canvasRunsOf(win, projectId, operationId)
+  const artifactPath = String(canvasRun?.artifacts.find((item) => item.kind === 'video')?.path || '')
+  expect(artifactPath, '真 mp4 落进了项目素材库').toMatch(/\.mp4$/)
+  expect(fs.statSync(path.join(projectRoot, artifactPath)).size, '落盘的是那段真视频的字节').toBeGreaterThan(100_000)
   const landed = (await readProject(win, projectId)).payload.generationCanvas.nodes.find((item) => item.id === nodeId)
   expect(landed.result?.url, '节点结果是素材库的永久地址（不是 5 分钟过期的签名预览链）')
-    .toBe(`nomi-local://asset/${encodeURIComponent(projectId)}/${artifact.projectRelativePath.split('/').map(encodeURIComponent).join('/')}`)
+    .toBe(`nomi-local://asset/${encodeURIComponent(projectId)}/${artifactPath.split('/').map(encodeURIComponent).join('/')}`)
   await walk.snap('video-landed-zh')
 
+  // 任务面板：卡上「生成」把这一镜交给了画布那一台，这件事在面板里是一行（不是被打开的那份制作 Run 的整卡）。
+  const ids = { offerRunId: operationId, canvasRunIds: [canvasRun?.runId], nodeId }
   await clickOrFail(win.locator(TASK_TRIGGER), '打开任务面板')
-  const runCard = win.locator('[data-production-task-card]').first()
-  await expect(runCard, '任务面板里有这次制作').toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
-  await expect(runCard.locator('[data-production-status-title]'), '不再说「供应商长时间没有返回新状态」')
-    .not.toHaveText('供应商长时间没有返回新状态')
-  await expect(runCard, '生成阶段记为完成（不再是 0 / N）').not.toContainText(/\b0 \/ \d+ 已完成/)
+  await expect.poll(async () => (await taskPanelRows(win)).length, { message: '任务面板里有行', timeout: DEFAULT_TIMEOUT_MS }).toBeGreaterThan(0)
+  await expect.poll(async () => taskPanelSettledProblems(await taskPanelRows(win), ids), {
+    message: '出片之后：没有哪一行还说「供应商长时间没有返回新状态」，这次出价和画布那一镜都记为完成', timeout: DEFAULT_TIMEOUT_MS,
+  }).toEqual([])
+  walk.report.taskRowsZh = await taskPanelRows(win)
   await walk.snap('task-panel-after-landing-zh')
   await win.keyboard.press('Escape')
 
@@ -140,9 +139,10 @@ try {
   await expect(win.locator(`[data-node-id="${nodeId}"]`), 'EN · 重开之后节点仍是结果').toHaveAttribute('data-status', 'success', { timeout: DEFAULT_TIMEOUT_MS })
   await walk.snap('video-landed-en')
   await clickOrFail(win.locator(TASK_TRIGGER), 'open the task panel (EN)')
-  const enCard = win.locator('[data-production-task-card]').first()
-  await expect(enCard).toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
-  await expect(enCard.locator('[data-production-status-title]')).not.toHaveText('The provider has not returned a new state for a while')
+  await expect.poll(async () => taskPanelSettledProblems(await taskPanelRows(win), ids), {
+    message: 'EN · after reload: no row claims the provider is stale, the offer and the canvas shot are done', timeout: DEFAULT_TIMEOUT_MS,
+  }).toEqual([])
+  walk.report.taskRowsEn = await taskPanelRows(win)
   await walk.snap('task-panel-after-landing-en')
 
   walk.report.verified = [

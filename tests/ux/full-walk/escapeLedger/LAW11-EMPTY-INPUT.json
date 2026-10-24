@@ -20,7 +20,8 @@
   "status": "candidate",
   "manualReview": "pending",
   "evidence": [
-    "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts 的 isEmptyInputControl；seed 一类影响 10 个模型"
+    "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts 的 isEmptyInputControl；seed 一类影响 10 个模型",
+    "2026-10-24 D2 第③步：付费卡不再配参数（只指向节点 + 一行只读摘要），这一类只剩节点底栏与分镜行；reachabilityLedger.json 里 spend-card 那三类随入口一起删"
   ],
   "completionCommits": []
 }

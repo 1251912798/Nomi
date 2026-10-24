@@ -8,10 +8,8 @@
 // 所以这些断言同时是生产回归：
 // 底栏被后来的改动挤成两行、段序漂了、锁又跑回浮框里，这里当场红。
 //
-// 第六格 `composer-bar-chips-mode` 不是画布节点：它是同一个 `InlineParameterBar` 多传一个
-// `parameterLayout="chips"` 的陈列（付费确认卡用的那种摆法）。用户 2026-09-11 04:30 拍板
-// **画布节点保持摘要 pill**，所以「每颗参数是可点的下拉」这条断言只能钉在那一格上——
-// 钉在画布五格上就是在守一个用户明确收回的形态。
+// 原来的第六格 `composer-bar-chips-mode`（逐参数 chip，付费确认卡用的那种摆法）随 D2 旧卡一起删了：
+// 付费卡上不再挂参数控件（用户 2026-10-23 拍板），那种摆法没有宿主了。
 //
 // 产出：`tests/ux/shots/design-lab-node-composer-bar/<state>.png` + `_contact-sheet.png`（拍板用）。
 // 用法：node tests/ux/design-lab-node-composer-bar.walk.mjs
@@ -178,24 +176,6 @@ await walkDesignLabScreen({
       }
       return
     }
-    // ── chips 陈列格：没有节点卡、没有 B 簇、没有锁，下面那一整套画布断言对它一条都不成立。
-    // 它只需回答一句话：`parameterLayout="chips"` 真的把参数摆成了**可点的下拉**（一步到位）。
-    if (state.id === 'composer-bar-chips-mode') {
-      const chips = await page.evaluate(() => [...document.querySelectorAll('[data-parameter-chip]')].map((element) => ({
-        key: element.getAttribute('data-parameter-chip'),
-        value: element.getAttribute('data-parameter-chip-value'),
-        trigger: Boolean(element.querySelector('button')),
-      })))
-      if (!chips.length) record(`${state.id} chips 模式一颗主参数 chip 都没有（档案 derive 断了？）`)
-      const brokenChip = chips.find((chip) => !chip.trigger || !chip.value)
-      if (brokenChip) record(`${state.id} chip「${brokenChip.key}」不是可点的下拉或没有当前值（${JSON.stringify(brokenChip)}）`)
-      // 换了摆法，摘要 pill 就不该同时在（同一处不许两个家）。基线 = 上面那句「chip 确实在」。
-      if (chips.length) {
-        const pill = await page.locator('[data-parameter-summary]').count()
-        if (pill) record(`${state.id} chips 模式不该同时渲染摘要 pill（数到 ${pill} 颗）`)
-      }
-      return
-    }
     // 画布五格都是真身：现役 composer 卡必须真的挂出来了，否则下面每一条「没看到 X」都是废话。
     const card = await page.locator('.generation-canvas-v2-node__composer-card').count()
     if (card !== 1) { record(`${state.id} 现役 composer 卡应有 1 张，实际 ${card} —— 这一格没渲染出真身`); return }
@@ -261,11 +241,11 @@ await walkDesignLabScreen({
     if (!headline || headline.split(' · ').filter(Boolean).length !== 2) {
       record(`${state.id} 参数摘要 pill 应恰好两个值，实际「${headline}」`)
     }
-    // 画布节点**不该**长出逐参数 chip：那是付费确认卡的摆法（用户 04:30 明确收回）。
+    // 画布节点**不该**长出逐参数 chip：用户 2026-09-11 04:30 明确收回的摆法。
     // 基线 = 上面那句「摘要 pill 读到了」，所以这里不是一句在真身没渲染时也照样绿的废话。
     if (headline) {
       const strayChips = await page.locator('.generation-canvas-v2-node__composer-card [data-parameter-chip]').count()
-      if (strayChips) record(`${state.id} 画布节点不该有逐参数 chip（数到 ${strayChips} 颗），那是付费卡的摆法`)
+      if (strayChips) record(`${state.id} 画布节点不该有逐参数 chip（数到 ${strayChips} 颗）`)
     }
   },
 })

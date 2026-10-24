@@ -71,8 +71,9 @@ function installBrain(fixture) {
 
 const paid = await openPaidWalk('agent-video-landing-paid.rehearsal.walk.mjs', 'agent-video-landing-rehearsal', [BRAIN, VIDEO], {
   env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', [ENV_KEY_VAR]: FAKE_KEY },
+  // trustFixtureOrigin：卡上「生成」交给画布那一台，画布要从本机夹具取回成片，产品出站策略默认拒 127.0.0.1（未打包构建里按精确 origin 放行）。
   createWalk: (name, options) => createRuntimeWalk(name, {
-    ...options, generationProvider: 'apimart', seedApimartKey: false, env: { ...options.env, NOMI_WALK_ALLOW_ORIGINS: '' },
+    ...options, generationProvider: 'apimart', seedApimartKey: false, trustFixtureOrigin: true, env: { ...options.env, NOMI_WALK_ALLOW_ORIGINS: '' },
   }),
 })
 const { walk } = paid

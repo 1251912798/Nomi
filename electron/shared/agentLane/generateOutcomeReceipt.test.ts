@@ -24,7 +24,7 @@ describe('describeGenerateOutcome', () => {
     expect(receipt.userSees).not.toMatch(/\bAll\b/)
     expect(receipt.userSees).not.toMatch(/generation has started|no card is waiting/i)
     expect(receipt.userSees).toContain('Generating now, because the user clicked generate for each of them: s1.')
-    expect(receipt.userSees).toContain('Not generated and nothing spent for s2: the user closed the card (×) before deciding them.')
+    expect(receipt.userSees).toContain('Not generated and nothing spent for s2: the user cancelled the card before deciding them.')
   })
 
   it('用户去掉的说是他去掉的；一张都没在生成时下一步是问他，不是自己重来', () => {

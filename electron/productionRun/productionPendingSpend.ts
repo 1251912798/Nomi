@@ -1,5 +1,6 @@
 import { directGenerationBrakeForRun, withHandedOverAttempts } from "../shared/agentCapabilities/directGenerationBrakes";
 import { generationShotKind } from "../shared/generationShotKind";
+import { productionNodeIdForShot } from "../shared/productionShotPhase";
 import { createHash } from "node:crypto";
 // 「有一笔生成在等你点头」的**宿主投影**（纯函数，唯一 owner）。
 //
@@ -106,7 +107,7 @@ function shotsOf(plan: ProductionGenerationPlan, shots: readonly OfferShot[]): P
   return shots.map((shot) => {
     const planShot = plan.shots?.find((entry) => entry.shotId === shot.shotId);
     const candidate = planShot?.candidate ?? plan.candidate;
-    const nodeId = plan.shots?.length ? planShot?.nodeId : plan.nodeId;
+    const nodeId = productionNodeIdForShot({ generationPlan: plan }, shot.shotId);
     return {
       shotId: shot.shotId,
       ...(nodeId ? { nodeId } : {}),

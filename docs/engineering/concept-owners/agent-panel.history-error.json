@@ -22,7 +22,7 @@
     "src/workbench/ai/ProjectAgentResidentShell.tsx",
     "src/devlab/designLab/v4/b2cFormFixtures.tsx",
     "src/devlab/designLab/v4/states/03-flow.tsx",
-    "src/devlab/designLab/v4/states/07-spend-params.tsx"
+    "src/devlab/designLab/spendCard/spendCardLabKit.tsx"
   ],
   "since": "2026-09-28",
   "notes": "PR #910（合同 docs/fixes/2026-09-28-agent-panel-history-error-reset.root-cause.json）：面板把「回调换了身份」当成「换了会话」，历史加载失败的提示被无故清掉或清不掉。historyError 只在会话身份（historyIdentity）变了或用户显式重试时清，这件事只在面板这一处管。"

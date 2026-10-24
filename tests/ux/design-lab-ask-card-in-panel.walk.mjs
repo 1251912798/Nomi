@@ -33,40 +33,42 @@ fs.mkdirSync(outDir, { recursive: true })
  *    还在，于是**原生控件**（反问卡的单选圆点、计划卡的勾选框）照旧按浅色方案画：
  *    暗色卡面上三个实心白圆盘，看起来像三个都选中了。真 App 里不会这样，是取景方式造的假象。
  */
+/**
+ * 每一项：哪一屏、哪一格（按界面语言给；缺哪种语言就不拍那一种）、卡的种类、主题。
+ * 反问卡 / 普通确认卡在 agent-panel-v4 屏（格子跟着页面语言走）；付费卡住自己的屏 `spend-card`（SpendCardQ1 板，D2 第③步），
+ * 那一屏的格子把语言钉在格子上，所以英文用它的 `-en` 那一格。
+ */
+const V4 = (id) => ({ screen: 'agent-panel-v4', state: { 'zh-CN': id, en: id } })
+const SPEND = (zh, en) => ({ screen: 'spend-card', state: { 'zh-CN': zh, ...(en ? { en } : {}) } })
 const STATES = [
-  ['v4-panel-question-light', 'question', 'light'],
-  ['v4-panel-question-light', 'question', 'dark'],
-  // 付费卡 = **真卡**：正文是节点参数条那个共享组件，数据由生产投影 `projectSpendCard` 算。
-  ['v4-panel-spend-light', 'spend', 'light'],
-  ['v4-panel-spend-light', 'spend', 'dark'],
+  [V4('v4-panel-question-light'), 'question', 'light'],
+  [V4('v4-panel-question-light'), 'question', 'dark'],
+  // 付费卡 = **真卡**：指向元素 + 一行只读摘要 + 「生成」，数据由生产钩子 `useAgentPanelSpendCard` 从节点现读。
+  [SPEND('spend-single', 'spend-single-en'), 'spend', 'light'],
+  [SPEND('spend-single', 'spend-single-en'), 'spend', 'dark'],
   // 普通确认卡（可撤销档）——同族第三张，验的是「换壳是一处改、全族生效」。
-  ['v4-panel-approval-light', 'approval', 'light'],
-  ['v4-panel-approval-light', 'approval', 'dark'],
+  [V4('v4-panel-approval-light'), 'approval', 'light'],
+  [V4('v4-panel-approval-light'), 'approval', 'dark'],
   // 收尾补的三种：多题反问卡 / 多镜付费卡 / 未知价付费卡。
-  ['v4-panel-question-multi', 'question-multi', 'light'],
-  ['v4-panel-question-multi', 'question-multi', 'dark'],
-  ['v4-panel-spend-batch', 'spend-batch', 'light'],
-  ['v4-panel-spend-batch', 'spend-batch', 'dark'],
-  ['v4-panel-spend-unknown', 'spend-unknown', 'light'],
-  ['v4-panel-spend-unknown', 'spend-unknown', 'dark'],
+  [V4('v4-panel-question-multi'), 'question-multi', 'light'],
+  [V4('v4-panel-question-multi'), 'question-multi', 'dark'],
+  [SPEND('spend-batch', 'spend-batch-en'), 'spend-batch', 'light'],
+  [SPEND('spend-batch', 'spend-batch-en'), 'spend-batch', 'dark'],
+  [SPEND('spend-price-unknown'), 'spend-unknown', 'light'],
+  [SPEND('spend-price-unknown'), 'spend-unknown', 'dark'],
   // 待答态的**对照格**（2026-09-22）：同一张卡、同一个取景，只把「在等你」关掉。
   // 有了这两格，「待答 → 强调 / 答完 → 普通纸面」才是一组能并排看的证据，
   // 而不是一句只能靠读代码相信的话。上面那条兄弟对账也正是靠它们跑到 else 那一支。
-  ['v4-panel-question-answered', 'question-answered', 'light'],
-  ['v4-panel-question-answered', 'question-answered', 'dark'],
-  ['v4-panel-spend-confirmed', 'spend-confirmed', 'light'],
-  ['v4-panel-spend-confirmed', 'spend-confirmed', 'dark'],
-  // 2026-10-08：带变体 chip 的 Seedance 2.0 在生产宽 390 下、以及压窄到 300 时。合同：影响报价的 chip
-  // 与身份 chip（模型 / 变体）每颗整颗可见、不相压；放不下换到第二行，不横向滚动、不退进 ⚙。
-  ['v4-panel-spend-seedance', 'spend-seedance', 'light'],
-  ['v4-panel-spend-seedance-narrow', 'spend-seedance-narrow', 'light'],
-  // 这一对格子自己把卡切到英文（上两格固定中文）：两轨各证一遍。
-  ['v4-panel-spend-seedance-en', 'spend-seedance-en', 'light'],
-  ['v4-panel-spend-seedance-narrow-en', 'spend-seedance-narrow-en', 'light'],
+  [V4('v4-panel-question-answered'), 'question-answered', 'light'],
+  [V4('v4-panel-question-answered'), 'question-answered', 'dark'],
+  // 付费卡的不在等那一档是「正在发出 k/N 段」（安静框：它在说进度，不在等人点）。
+  [SPEND('spend-sending'), 'spend-sending', 'light'],
+  [SPEND('spend-sending'), 'spend-sending', 'dark'],
+  // 面板压窄到 300：指向元素只留镜号 + 缩略图，主按钮与页脚不被裁、不横向滚动。
+  [SPEND('spend-batch-narrow'), 'spend-narrow', 'light'],
+  // 英文长文案（逐镜不同的摘要 + 逐镜明细展开）。
+  [SPEND('spend-mixed', 'spend-mixed-en'), 'spend-mixed', 'light'],
 ]
-
-/** Seedance 2.0 文生视频在付费卡上必须摆出来的报价 chip（档案 derive 的主参数）。 */
-const SEEDANCE_PRICED_CHIPS = ['aspect_ratio', 'duration', 'resolution']
 
 const failures = []
 const measured = []
@@ -99,8 +101,10 @@ try {
     await context.addInitScript(([key, value]) => { window.localStorage.setItem(key, value) }, ['nomi:locale:v1', locale])
     const page = await context.newPage()
     const tag = locale === 'zh-CN' ? 'zh' : 'en'
-    for (const [state, kind, theme] of STATES) {
-      await page.goto(`${BASE}/design-lab.html?screen=agent-panel-v4&frame=1&state=${state}&scheme=${theme}`, { waitUntil: 'networkidle' })
+    for (const [where, kind, theme] of STATES) {
+      const state = where.state[locale]
+      if (!state) continue
+      await page.goto(`${BASE}/design-lab.html?screen=${where.screen}&frame=1&state=${state}&scheme=${theme}`, { waitUntil: 'networkidle' })
       await page.waitForFunction(() => window.__designLabReady === true, null, { timeout: stationTimeout() })
       // token 翻转带 transition，不等就会读到 / 拍到插值中的那一帧（灰不灰、蓝不蓝）。
       await page.waitForTimeout(400)
@@ -177,63 +181,32 @@ try {
         }
       })
       measured.push({ locale: tag, theme, kind, ...shape })
-      // 参数条：**任意两颗控件不许相互压住**（EN 下「Kling 3.0」盖住「16:9」、390px 下「16:9」压在
-      // 变体「标准」上都是这个）。量的是真矩形两两相交——付费卡的 chips 允许换行，只比左右会把
-      // 第二行的 chip 误判成压住第一行的。
-      const overlaps = await shot.locator('[data-node-composer-footer]').evaluateAll((rows) => {
-        const hits = []
-        for (const row of rows) {
-          const boxes = [...row.querySelectorAll('button, [data-parameter-chip]')]
-            .map((node) => ({ node, rect: node.getBoundingClientRect() }))
-            .filter(({ rect }) => rect.width > 0 && rect.height > 0)
-            // 只比最外层的可点块：chip 的 span 里包着它自己的 button，父子不算相压。
-            .filter(({ node }, _, all) => !all.some((other) => other.node !== node && other.node.contains(node)))
-          for (let i = 0; i < boxes.length; i += 1) {
-            for (let j = i + 1; j < boxes.length; j += 1) {
-              const a = boxes[i].rect
-              const b = boxes[j].rect
-              const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left)
-              const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
-              if (overlapX > 1 && overlapY > 1) {
-                hits.push(`${(boxes[i].node.textContent || '').trim().slice(0, 14)} ↔ ${(boxes[j].node.textContent || '').trim().slice(0, 14)}`)
-              }
-            }
-          }
-        }
-        return hits
-      })
-      if (overlaps.length) failures.push(`${tag}/${theme}/${kind}：参数条里控件相互压住：${overlaps.join(' | ')}`)
-      // 付费卡底栏：每颗 chip（参数 chip + 模型 / 变体）整颗落在卡里；参数行不横向滚动、不靠滚动藏东西。
+      // 付费卡（D2 第③步，SpendCardQ1 板）：卡上只有指向元素 + 一行只读摘要 + 动作行。卡里不许有编辑器零件
+      // （生成框 / 参数 chip / 摘要 pill / 输入框——改参数的家只有节点，设计系统 §1.0）；指向元素、「不生成 ×」、
+      // 主按钮与页脚整颗落在卡里，不靠横向滚动藏东西（窄面板与英文长文案各证一遍）。
       if (kind.startsWith('spend')) {
-        const bar = await shot.evaluate((element) => {
-          const card = element.querySelector('[data-v4-block="intervention"]')
-          const row = card?.querySelector('[data-node-composer-footer] .generation-canvas-v2-node__params--parameters')
-          if (!card || !row) return null
-          const cardRect = card.getBoundingClientRect()
-          const members = [...row.querySelectorAll('[data-parameter-chip], button')]
-            .filter((node, _, all) => !all.some((other) => other !== node && other.contains(node)))
+        const card = await shot.evaluate((element) => {
+          const root = element.querySelector('[data-v4-block="intervention"]')
+          if (!root) return null
+          const rect = root.getBoundingClientRect()
+          const members = [...root.querySelectorAll('[data-node-pointer], [data-spend-exclusion], [data-v4-control], [data-v4-block="slot-total"]')]
             .map((node) => ({ text: (node.textContent || '').trim().slice(0, 14), rect: node.getBoundingClientRect() }))
-            .filter(({ rect }) => rect.width > 0 && rect.height > 0)
+            .filter((member) => member.rect.width > 0 && member.rect.height > 0)
           return {
-            chips: [...row.querySelectorAll('[data-parameter-chip]')].map((node) => node.getAttribute('data-parameter-chip')),
-            variant: Boolean(row.querySelector('button[aria-label="变体"], button[aria-label="Variant"]')),
-            overflowX: getComputedStyle(row).overflowX,
-            scrolls: row.scrollWidth - row.clientWidth > 1,
-            outside: members.filter(({ rect }) => rect.left < cardRect.left - 0.5 || rect.right > cardRect.right + 0.5).map(({ text }) => text),
-            rows: new Set(members.map(({ rect }) => Math.round(rect.top))).size,
+            editors: root.querySelectorAll('textarea, input, select, [data-composer-host], [data-node-composer-footer], [data-parameter-chip], [data-parameter-summary]').length,
+            pointers: root.querySelectorAll('[data-v4-block="spend-body"] [data-node-pointer]').length,
+            outside: members.filter((member) => member.rect.left < rect.left - 0.5 || member.rect.right > rect.right + 0.5).map((member) => member.text),
+            scrolls: [...root.querySelectorAll('*')].filter((node) => node.scrollWidth - node.clientWidth > 1 && ['auto', 'scroll'].includes(getComputedStyle(node).overflowX)).length,
+            total: root.querySelector('[data-v4-block="slot-total"]')?.textContent ?? null,
           }
         })
-        if (!bar) failures.push(`${tag}/${theme}/${kind}：付费卡里找不到参数行`)
+        if (!card) failures.push(`${tag}/${theme}/${kind}：面板里没有付费卡`)
         else {
-          if (bar.scrolls || ['auto', 'scroll'].includes(bar.overflowX)) failures.push(`${tag}/${theme}/${kind}：参数行要横向滚动才看得全（overflow-x: ${bar.overflowX}）——放不下必须换行`)
-          if (bar.outside.length) failures.push(`${tag}/${theme}/${kind}：这几颗伸出了卡外：${bar.outside.join(' | ')}`)
-          if (kind.startsWith('spend-seedance')) {
-            const missing = SEEDANCE_PRICED_CHIPS.filter((key) => !bar.chips.includes(key))
-            if (missing.length) failures.push(`${tag}/${theme}/${kind}：报价参数没摆在底栏上（退进了 ⚙ 或丢了）：${missing.join(', ')}`)
-            if (!bar.variant) failures.push(`${tag}/${theme}/${kind}：Seedance 2.0 的变体 chip 不在底栏上`)
-          }
-          if (kind.startsWith('spend-seedance-narrow') && bar.rows < 2) failures.push(`${tag}/${theme}/${kind}：压窄到 300 却仍是一行（${bar.rows} 行）——这一格要证的「换行」没发生`)
-          measured.push({ locale: tag, theme, kind: `${kind}:bar`, ...bar })
+          if (card.editors) failures.push(`${tag}/${theme}/${kind}：付费卡里出现了 ${card.editors} 个编辑器零件（生成框 / 参数 chip / 输入框）——卡上不许有可改的东西`)
+          if (!card.pointers) failures.push(`${tag}/${theme}/${kind}：付费卡上没有指向元素`)
+          if (card.outside.length) failures.push(`${tag}/${theme}/${kind}：这几颗伸出了卡外：${card.outside.join(' | ')}`)
+          if (card.scrolls) failures.push(`${tag}/${theme}/${kind}：卡里有 ${card.scrolls} 处要横向滚动才看得全——放不下必须换行或截断带全名`)
+          measured.push({ locale: tag, theme, kind: `${kind}:card`, ...card })
         }
       }
       // 页脚左下那一格（合计 / 价格未知那句）不许被省略号截断——EN 串长，截断只有眼睛看得出，
@@ -244,6 +217,8 @@ try {
       if (kind === 'spend-unknown') {
         const enabled = await shot.locator('[data-v4-control="confirm"]').isEnabled()
         if (!enabled) failures.push(`${tag}/${theme}/${kind}：算不出价时主按钮被禁用了——用户硬性拍板：算不出价绝不拦生成`)
+        // 算不出价整行不印（板 card.total，D5）：不是印「0」，也不是印一句「暂时算不出」占着那一格。
+        if (await shot.locator('[data-v4-block="slot-total"]').count()) failures.push(`${tag}/${theme}/${kind}：算不出价时页脚还印着那一行`)
       }
       if (shape.missing) failures.push(`${tag}/${theme}/${kind}：面板里没渲染出介入槽`)
       if (shape.scheme !== theme) failures.push(`${tag}/${theme}/${kind}：主题没翻过去（量到 ${shape.scheme}）`)
@@ -273,13 +248,14 @@ try {
           }
         }
         if (shape.waiting === 'true') {
-          // accent 此刻是什么值由 token 说了算（明暗两套），所以不比字面色值，比「和静息
-          // composer 的发丝线不是同一个色」——那正是「一眼看得出这张卡在等你」的机器判据。
+          // 2026-10-10「去蓝色描边」之后，待答态是一条更深的灰线（`border-nomi-ink-40`），不再带 accent 与那层描边光。
+          // 深线此刻是什么值由 token 说了算（明暗两套），所以不比字面色值，比「和静息 composer 的发丝线不是同一个色」——
+          // 那正是「一眼看得出这张卡在等你」的机器判据；光晕必须没有（蓝只留在进度上）。
           if (shape.cardShell.borderColor === shape.composerShell.borderColor) {
             failures.push(`${tag}/${theme}/${kind}：卡在待答态，外框却还是 composer 那条发丝线（${shape.cardShell.borderColor}）——强调没生效`)
           }
-          if (shape.cardShell.shadow === 'none') {
-            failures.push(`${tag}/${theme}/${kind}：卡在待答态却没有那层同色描边光`)
+          if (shape.cardShell.shadow !== 'none') {
+            failures.push(`${tag}/${theme}/${kind}：卡在待答态还带着一层描边光（${shape.cardShell.shadow}）——10-10 起只留深色细线`)
           }
         } else {
           for (const key of ['borderColor', 'shadow']) {
@@ -329,7 +305,7 @@ const report = [
   '# design lab · ask card inside the real panel',
   '',
   `result: ${failures.length ? 'failed' : 'passed'}`,
-  `shots: ${outDir} (8 kinds × light/dark × zh/en = 32)`,
+  `shots: ${outDir} (${STATES.length} rows × zh/en; spend-card cells without an English twin are shot in Chinese only)`,
   `measured: ${JSON.stringify(measured, null, 2)}`,
   'covers: the ask card rendered in its real place (conversation above, composer below, panel shell around) next to the paid confirm card in the same slot, with shell metrics (width, border, radius, shadow, head band, padding, primary button family, close button, composer gap) measured on both so they can be reconciled side by side.',
   failures.length ? `failures: ${failures.join(' | ')}` : 'failures: none',

@@ -1,180 +1,342 @@
-// 付费确认卡的**纯投影**：宿主给的那笔待确认生成 → 介入槽的 `InterventionData`。
+// 付费卡的**纯投影**（D2 第③步，SpendCardQ1 板）：宿主给的那一次出价 + 每一镜节点此刻的事实 → 介入槽要画的一切。
 //
-// 为什么单独一层：这张卡上每一个数都必须能追到产地。住在组件里就只能靠截图证明「印对了没有」，
-// 住在这里能逐条单测——而这是**钱**的卡，印错一个数的代价不是难看。
+// 卡只问一件事：花不花。卡 = 指向元素 + 一句话 + 一行只读摘要 + 「生成」。参数、提示词、参考只住在画布节点上，
+// 卡上的每一个字都读节点此刻的样子（`SpendCardShotFacts` 由宿主钩子从节点现读）；想改点指向去节点里改（设计系统 §1.0）。
 //
-// 三条印数纪律（`docs/research/2026-09-10-permission-rework-prior-art/prior-art.md` 1-4/1-5）：
-//   ① 价格来自宿主投影（目录里的 `model.pricing`），渲染层不从参数反推；
-//   ② 算不出就印「暂时算不出价格」，**绝不落成 ¥0**——三种可能里只有它会被读成「这次免费」；
-//   ③ 算式只印我们真的算过的东西。目录的价目是「基价 + 命中的规格加价」，**不是**「每秒单价 × 时长」，
-//      所以这里印的是「N 镜」而不是「N 镜 × 3s · ¥0.10/秒」。后者要等目录长出按秒计价才成立，
-//      在那之前印它就是编一个不存在的算法（样张上那句是报价桩，不是我们的价目模型）。
+// 为什么单独一层：这是**钱**的卡，每一句话（几段、哪一镜没发出去、为什么、下一步）都必须能追到产地。住在组件里只能靠
+// 截图证明，住在这里能逐条单测。三种样子只由事实决定：
+//   · 有镜正在交给画布（`handing_over`）→ 「正在发出 k/N 段」，动作行只说怎么停；
+//   · 有镜没发出去 / 结果不确定，或者一段能发的都没有、却有本机判得出发不出去的 → 失败留在卡里（板 ⑤⑥）；
+//   · 其余 → 等人决定：「生成」/「全部生成（N）」/「生成剩下 N 段」。
+// 钱照 10-08「界面不谈钱」：页脚只写「N 段」，算不出整行不印；只有各镜价格不同时折叠明细里印每镜价（板 D5）。
 import { formatMoney } from './formatMoney'
-import type { PendingSpendConfirm, PendingSpendShot } from '../../../desktop/productionRunBridgeTypes'
+import type { GenerationHandOverFailure, PendingSpendConfirm, PendingSpendShot } from '../../../desktop/productionRunBridgeTypes'
+import type { ShotPrice } from '../../../../electron/shared/contracts/shotPricingRule'
 import type { InterventionData } from './agentPanelV4Types'
+import { formatSeconds } from '../../generation/list/generationListMediaFacts'
+import { failureNeedsHostingConsent, handOverFailureCopy } from './spendCardFailure'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
 
-export type SpendCardView = Readonly<{
-  page: number
-  /**
-   * 「生成剩下 N 张」正在一张一张走（2026-10-02）：`total` 是点下去那一刻卡上那一叠，`current` 是正在发的第几张，
-   * `stopping` = 用户已经点了 ×、宿主还没停稳。缺席 = 卡在等人点。
-   */
-  batch?: Readonly<{ current: number; total: number; stopping: boolean }>
+/** 一镜此刻在节点上的样子（宿主钩子从画布节点现读，卡不存副本）。 */
+export type SpendCardShotFacts = Readonly<{
+  /** 节点在画布上（画布还没载入完时按「在」算：不知道就不说已删除）。 */
+  present: boolean
+  /** 卡上怎么称呼这一镜：和指向元素标题行同一个名字（分镜号「镜 02」；没有分镜号就是「镜头 N」）。 */
+  shotRef: string
+  /** 摘要那几样（`nodePointerSummaryFacts`：模型显示名、比例、时长秒、清晰度）。 */
+  model: string
+  aspect: string | null
+  durationSec: number | null
+  resolution: string | null
+  /** 节点此刻选的模型身份（「Nomi 选的」判据：它就是 Agent 起草时选的那个）。 */
+  selected: Readonly<{ providerId: string; modelId: string }> | null
+  /** 节点按画布批量估价同一个函数算出的价（`estimateNodePrice`）。 */
+  price: ShotPrice
+  /** 本机预检（`handOverPrecheck`）判得出这一镜此刻交不出去：原因。只对还没决定的镜有意义。 */
+  blocked?: GenerationHandOverFailure
 }>
 
-/** 这一镜的价格文本；算不出 → `undefined`（调用方据此走「算不出」那一档）。 */
+export type SpendCardView = Readonly<{
+  /** 卡上一下动作在路上（按下即置灰，第二下不进）。 */
+  busy: boolean
+  /** 点了「取消」、宿主还没停稳。 */
+  stopping: boolean
+  /** 要交的这几镜得先把本机参考图传到公共临时托管：卡上摆一行披露，按「生成」就是同意这一次（画布批量确认框同一句）。 */
+  hostingDisclosure: boolean
+}>
 
-/**
- * 这一单是视频还是图片：只读宿主给的 `kind`（2026-09-30 第 9 条）。它和画布节点、派发读的是同一个答案；
- * 以前这里自己去解读 `mode` 字符串，卡体却读模型目录、画布读另一种写法，于是标题说视频、卡体是图片模型。
- */
-function isVideoOrder(shots: readonly PendingSpendShot[]): boolean {
-  return shots.some((shot) => shot.kind === 'video')
+export type SpendCardPointer = Readonly<{
+  shotId: string
+  /** 还没落到画布上的那一镜是空串（指向元素画中性占位、不可点）。 */
+  nodeId: string
+  shotRef: string
+  /** 宿主说了删（制作脱离记录）、节点也不在画布上了：指向元素「已删除」。 */
+  removed: boolean
+  /** 指向元素状态条上那一个词：这一镜这一次没成 / 现在交不出去。 */
+  hostFailure?: string
+  /** 多段卡格子右上那颗小钮：「不生成 ×」（还没决定的）/「恢复」（去掉了的）/ 没有。 */
+  exclusion: 'exclude' | 'restore' | null
+}>
+
+export type SpendCardNotice = Readonly<{ tone: 'danger' | 'neutral'; text: string; detail?: string }>
+
+/** 主按钮那一下做什么（宿主照它接线；卡上那颗按钮的字也是它定的）。 */
+export type SpendCardPrimary =
+  | Readonly<{ kind: 'generate'; shotIds: readonly string[]; hostingAllowed: boolean }>
+  | Readonly<{ kind: 'retry'; shotIds: readonly string[]; hostingAllowed: boolean }>
+  | Readonly<{ kind: 'locate'; nodeId: string; label: string }>
+  | Readonly<{ kind: 'none' }>
+
+export type SpendCardModel = Readonly<{
+  slot: InterventionData
+  pointers: readonly SpendCardPointer[]
+  /** 卡上只有一段：单张指向元素（画面左、摘要右，板 ①）。 */
+  single: boolean
+  /** 多段卡组指向下方那一行（没有悬停时）：这几段合起来的只读摘要。只在等人决定时有。 */
+  summary?: string
+  notices: readonly SpendCardNotice[]
+  primary: SpendCardPrimary
+}>
+
+type Role = 'sendable' | 'blocked' | 'absent' | 'excluded' | 'deleted' | 'taken' | 'sending' | 'sent' | 'unclear' | 'notSent'
+
+type Entry = Readonly<{ shot: PendingSpendShot; facts: SpendCardShotFacts; role: Role }>
+
+/** 这一镜在这一次出价里此刻是哪一种（只看宿主的结局 + 节点在不在 + 本机预检）。 */
+function roleOf(shot: PendingSpendShot, facts: SpendCardShotFacts): Role {
+  switch (shot.offer) {
+    case 'removed': return facts.present ? 'excluded' : 'deleted'
+    case 'taken_by_canvas': return 'taken'
+    case 'handing_over': return 'sending'
+    case 'sent': return 'sent'
+    case 'unknown': return 'unclear'
+    // 节点已经不在画布上：再试也交不出去，不当成要处理的那一镜（宿主随后记成脱离）。
+    case 'not_sent': return facts.present && shot.nodeId ? 'notSent' : 'absent'
+    case 'undecided': return !shot.nodeId || !facts.present ? 'absent' : facts.blocked ? 'blocked' : 'sendable'
+  }
 }
 
-/**
- * 这一叠说「图片 · 张」还是「视频 · 段」：标题、「生成剩下 N 张 / 段」、翻页行右端的「N 张 · 合计」**只读这一个**
- * （有视频就说视频，2026-10-01 用户拍板合计行也跟它走）。三处各自判一次，迟早有一处先漂。
- */
-function orderWording(shots: readonly PendingSpendShot[]) {
-  return isVideoOrder(shots)
-    ? { title: 'agentPanelV4.spendParamsTitle', remaining: 'agentPanelV4.spendConfirmRemainingVideo', totalLead: 'agentPanelV4.spendTotalLeadVideo', progress: 'agentPanelV4.spendBatchProgressVideo', stopped: 'agentPanelV4.spendBatchStoppedVideo' } as const
-    : { title: 'agentPanelV4.spendParamsTitleImage', remaining: 'agentPanelV4.spendConfirmRemainingImage', totalLead: 'agentPanelV4.spendTotalLeadImage', progress: 'agentPanelV4.spendBatchProgressImage', stopped: 'agentPanelV4.spendBatchStoppedImage' } as const
-}
-
-/**
- * 「生成剩下 N 张」被停下时那一句（「发出了 K 张，剩下 N−K 张没发」）用哪个键：张 / 段跟卡标题同一条规则，
- * 读点下去那一刻卡上那一叠（卡这时已经关了）。
- */
-export function spendBatchStoppedKey(shots: readonly PendingSpendShot[]): 'agentPanelV4.spendBatchStoppedVideo' | 'agentPanelV4.spendBatchStoppedImage' {
-  return orderWording(shots).stopped
-}
-
-/** 每一镜都有价、且都是同一个数 = 「整齐」。不整齐时算式退成「逐镜不同」。 */
-function isUniform(shots: readonly PendingSpendShot[]): boolean {
-  const first = shots[0]?.price
-  if (!first?.known) return false
-  return shots.every((shot) => shot.price.known && shot.price.amount === first.amount)
-}
-
-export function spendCardPage(pending: PendingSpendConfirm, page: number): number {
-  if (pending.shots.length === 0) return 0
-  return ((page % pending.shots.length) + pending.shots.length) % pending.shots.length
-}
-
-/**
- * 卡上要印的一切。`undefined` = 这笔待确认里一镜都没有（不该出卡）。
- *
- * 「Nomi 选的」是**现算**的：这些候选本来就是 agent 挑的模型，用户一旦在卡上换了模型，
- * 下一次投影里的 `modelId` 就变了，那句话跟着消失——不会留在卡上变成一句假话。
- */
 const BRAKE_COPY = {
   'retry-limit': 'agentPanelV4.brakeRetry.title',
   'out-of-plan': 'agentPanelV4.brakeOutOfPlan.title',
   stopped: 'agentPanelV4.brakeStopped.title',
 } as const
 
+/** 这一叠说「视频 · 段」还是「图片 · 张」：有视频就说视频（标题、页脚、「生成剩下」、停下那一句都读它）。 */
+export function spendCardSaysVideo(shots: readonly Pick<PendingSpendShot, 'kind'>[]): boolean {
+  return shots.some((shot) => shot.kind === 'video')
+}
+
+/**
+ * 点了「取消」之后那一句（卡这时已经关了，它是唯一说这件事的地方）：宿主数着交出去几段、没发几段，只说事实。
+ * 一段都没剩（取消落在最后一段交出去之后）就照实说它们都已经发出去、会照常生成——不说「已停下」。
+ */
+export function spendCardStoppedMessage(
+  shots: readonly Pick<PendingSpendShot, 'kind'>[],
+  stopped: Readonly<{ sent: number; notSent: number }>,
+  t: Translate,
+): string {
+  const video = spendCardSaysVideo(shots)
+  // 一段都还没交出去（按了「生成」立刻「取消」，取消先到）：「发出了 0 段」是一句没有信息的话，照实说没发出去。
+  if (stopped.sent === 0 && stopped.notSent > 0) {
+    return t(video ? 'agentPanelV4.spendBatchNoneSentVideo' : 'agentPanelV4.spendBatchNoneSentImage', { count: stopped.notSent })
+  }
+  if (stopped.notSent > 0) {
+    return t(video ? 'agentPanelV4.spendBatchStoppedVideo' : 'agentPanelV4.spendBatchStoppedImage', { sent: stopped.sent, count: stopped.notSent, total: stopped.sent + stopped.notSent })
+  }
+  return t(video ? 'agentPanelV4.spendBatchAllSentVideo' : 'agentPanelV4.spendBatchAllSentImage', { sent: stopped.sent, count: stopped.sent })
+}
+
+const join = (parts: ReadonlyArray<string | null | undefined | false>, separator = ' · '): string =>
+  parts.filter((part): part is string => Boolean(part)).join(separator)
+
+function distinct<T>(values: readonly T[]): T[] {
+  return [...new Set(values)]
+}
+
+/**
+ * 多段卡组指向下方那一行（板 card.summary）：整齐时「模型 · 比例 · 清晰度 · 共 Ns」；有哪一样逐镜不同时
+ * 「N 镜 · 逐镜不同：16:9 ×1 · 9:16 ×2」（比例、模型、清晰度依次，只列不同的那几样）。读不出就不印。
+ * 「读不出」（比例是自动、没有清晰度这一档）也是一种不同：两镜自动、一镜 16:9 不是「都是 16:9」——整齐那一行只印
+ * 第一镜的值，把它当成整齐会替另外几镜说一个它们没有的比例。不同的那一样里只列读得出的几组（「3 镜 · 逐镜不同：16:9 ×1」）。
+ */
+export function spendCardSummary(facts: readonly SpendCardShotFacts[], t: Translate): string | undefined {
+  if (facts.length === 0) return undefined
+  const dimensions: ReadonlyArray<readonly string[]> = [
+    facts.map((fact) => fact.aspect ?? ''),
+    facts.map((fact) => fact.model),
+    facts.map((fact) => fact.resolution ?? ''),
+  ]
+  const differing = dimensions.filter((values) => distinct(values).length > 1)
+  if (differing.length === 0) {
+    const seconds = facts.every((fact) => fact.durationSec) ? facts.reduce((total, fact) => total + (fact.durationSec ?? 0), 0) : 0
+    const line = join([facts[0]!.model, facts[0]!.aspect, facts[0]!.resolution, seconds ? t('agentPanelV4.spendCard.summarySeconds', { value: formatSeconds(seconds) }) : null])
+    return line || undefined
+  }
+  const groups = differing.flatMap((values) => distinct(values.filter(Boolean))
+    .map((value) => t('agentPanelV4.spendCard.summaryGroup', { value, count: values.filter((candidate) => candidate === value).length })))
+  return t('agentPanelV4.spendCard.summaryMixed', { count: facts.length, groups: groups.join(' · ') })
+}
+
+/** 失败那一段之外，别的几段此刻怎样（板 ⑤⑥ 那一行小字：「镜 01 已发出；镜 03 还没发。」）。没有别的就不印。 */
+function detailLine(entries: readonly Entry[], attention: Entry, t: Translate): string | undefined {
+  const others = entries.filter((entry) => entry !== attention)
+  const listed = (roles: readonly Role[]) => others.filter((entry) => roles.includes(entry.role)).map((entry) => entry.facts.shotRef)
+  const groups: Array<[string, readonly string[]]> = [
+    ['agentPanelV4.spendCard.detail.sent', listed(['sent', 'taken', 'sending'])],
+    ['agentPanelV4.spendCard.detail.unclear', listed(['unclear'])],
+    ['agentPanelV4.spendCard.detail.notSent', listed(['notSent'])],
+    ['agentPanelV4.spendCard.detail.notYet', listed(['sendable', 'blocked'])],
+  ]
+  const parts = groups.filter(([, shots]) => shots.length > 0)
+    .map(([key, shots]) => t(key, { shots: shots.join(t('agentPanelV4.spendCard.detail.listSeparator')) }))
+  return parts.length ? parts.join(t('agentPanelV4.spendCard.detail.separator')) + t('agentPanelV4.spendCard.detail.period') : undefined
+}
+
+/** 失败留在卡里时，卡上那一段（板 ⑤⑥）：标题、原因、主按钮。 */
+function attentionView(attention: Entry, entries: readonly Entry[], view: SpendCardView, t: Translate): Readonly<{ title: string; reason: string; primary: SpendCardPrimary; confirmLabel: string }> {
+  const shot = attention.facts.shotRef
+  const locate = (label: string): SpendCardPrimary => ({ kind: 'locate', nodeId: attention.shot.nodeId ?? '', label })
+  if (attention.role === 'unclear') {
+    // 结果未知：可能已经扣费，不说没花钱；下一步是去节点上核对，不是再发一次（钱可能已经花了）。
+    return { title: t('agentPanelV4.spendCard.failedTitle.unclear', { shot }), reason: t('agentPanelV4.spendCard.failure.unclear'), primary: locate(shot), confirmLabel: t('agentPanelV4.spendCard.goCheck', { shot }) }
+  }
+  const failure: GenerationHandOverFailure = (attention.role === 'blocked' ? attention.facts.blocked : attention.shot.failure) ?? { kind: 'not_sent', code: 'not_sent' }
+  const reason = t(handOverFailureCopy(failure))
+  if (attention.role === 'blocked') {
+    // 还没按就判得出发不出去：参数那一类去节点里改，节点在忙 / 要核对那一类去节点上看。
+    const label = failure.kind === 'parameter_rejected' ? t('agentPanelV4.spendCard.goEdit', { shot }) : t('agentPanelV4.spendCard.goCheck', { shot })
+    return { title: t('agentPanelV4.spendCard.failedTitle.blocked', { shot }), reason, primary: locate(shot), confirmLabel: label }
+  }
+  if (failure.kind === 'parameter_rejected') {
+    return { title: t('agentPanelV4.spendCard.failedTitle.rejected', { shot }), reason, primary: locate(shot), confirmLabel: t('agentPanelV4.spendCard.goEdit', { shot }) }
+  }
+  // 没发出去（没花钱）：「再试一次」只重发没发出去的那几镜（不连带还没决定的）。要问托管同意的那一种，卡上的原因行就是披露原文，
+  // 这一下点的「再试一次」就是同意这一次。
+  const retry = entries.filter((entry) => entry.role === 'notSent' && entry.shot.failure?.kind !== 'parameter_rejected')
+  const hostingAllowed = view.hostingDisclosure || retry.some((entry) => failureNeedsHostingConsent(entry.shot.failure))
+  return {
+    title: t('agentPanelV4.spendCard.failedTitle.notSent', { shot }),
+    reason,
+    primary: { kind: 'retry', shotIds: retry.map((entry) => entry.shot.shotId), hostingAllowed },
+    confirmLabel: t('agentPanelV4.spendCard.retry'),
+  }
+}
+
+/**
+ * 卡上要画的一切。`facts` 与 `pending.shots` 一一对应（宿主钩子从节点现读）。`undefined` = 这一次出价没有能摆的镜。
+ */
 export function projectSpendCard(
   pending: PendingSpendConfirm,
+  facts: readonly SpendCardShotFacts[],
   view: SpendCardView,
   t: Translate,
-  /**
-   * `locale` **必填**：金额怎么印跟着界面语言走（`formatMoney`）。做成必填是因为漏传不会报错、
-   * 只会悄悄按某个默认语言印——那种分歧只有换了语言的用户看得见。
-   */
-  options: Readonly<{ locale: string; agentPickedModelIds?: readonly string[] }>,
-): InterventionData | undefined {
-  const shots = pending.shots
+  /** 金额怎么印跟着界面语言走（`formatMoney`）；必填：漏传不会报错，只会悄悄按某个默认语言印。 */
+  options: Readonly<{ locale: string }>,
+): SpendCardModel | undefined {
+  const entries: Entry[] = pending.shots
+    .map((shot, index) => ({ shot, facts: facts[index]!, role: roleOf(shot, facts[index]!) }))
+    .filter((entry) => Boolean(entry.facts))
+    .sort((a, b) => a.shot.index - b.shot.index)
+  if (entries.length === 0) return undefined
+  const single = entries.length === 1
+  const has = (role: Role) => entries.some((entry) => entry.role === role)
+  const pick = (...roles: Role[]) => entries.filter((entry) => roles.includes(entry.role))
+  const sendable = pick('sendable')
+  const sending = has('sending')
+  // 失败留在卡里：没发出去 / 结果不确定的那一镜；一段能发的都没有时，本机判得出发不出去的那一镜也是（有能发的时它只占一行说明）。
+  const attention = sending ? undefined : entries.find((entry) => entry.role === 'notSent' || entry.role === 'unclear' || (entry.role === 'blocked' && sendable.length === 0))
+  const saysVideo = spendCardSaysVideo(sendable.length ? sendable.map((entry) => entry.shot) : entries.map((entry) => entry.shot))
+  const brake = pending.brake ? { summary: t(BRAKE_COPY[pending.brake.reason]) } : {}
+
+  const pointers: SpendCardPointer[] = entries.map((entry) => ({
+    shotId: entry.shot.shotId,
+    nodeId: entry.shot.nodeId ?? '',
+    shotRef: entry.facts.shotRef,
+    removed: entry.role === 'deleted',
+    ...(entry.role === 'blocked' ? { hostFailure: t('agentPanelV4.spendCard.pointerCannotSend') }
+      : entry.role === 'notSent' ? { hostFailure: t('agentPanelV4.spendCard.pointerFailed') }
+        : entry.role === 'unclear' ? { hostFailure: t('agentPanelV4.spendCard.pointerUnclear') } : {}),
+    // 「不生成 ×」只在多段卡、还没在交的时候（单段卡的「不生成」就是「取消」）；去掉了的那一镜常驻「恢复」。
+    exclusion: single || sending ? null
+      : entry.role === 'sendable' || entry.role === 'blocked' ? 'exclude'
+        : entry.role === 'excluded' ? 'restore' : null,
+  }))
+
+  if (sending) {
+    // 交给画布之后还有镜在交：标题说到第几段，动作行只说怎么停（板 ③）。k = 已经落定的 + 正在交的这一段。
+    const inFlight = pick('sending', 'sent', 'unclear', 'notSent')
+    const settled = inFlight.filter((entry) => entry.role !== 'sending').length
+    const total = inFlight.length
+    const progressKey = saysVideo ? 'agentPanelV4.spendBatchProgressVideo' : 'agentPanelV4.spendBatchProgressImage'
+    return {
+      slot: Object.freeze({
+        kind: 'spend' as const,
+        title: view.stopping ? t('agentPanelV4.spendBatchStopping') : t(progressKey, { current: Math.min(total, settled + 1), total }),
+        ...brake,
+        progress: { hint: t(view.stopping ? 'agentPanelV4.spendBatchStoppingHint' : 'agentPanelV4.spendBatchStopHint') },
+      }),
+      pointers, single, notices: [], primary: { kind: 'none' },
+    }
+  }
+
+  if (attention) {
+    const shown = attentionView(attention, entries, view, t)
+    const detail = detailLine(entries, attention, t)
+    const retryEmpty = shown.primary.kind === 'retry' && shown.primary.shotIds.length === 0
+    // 「再试一次」带着托管同意交：同意只能来自卡上摆着的那一句原文——原因行就是它（要问同意的那一种），或者另摆一行披露。
+    const disclose = shown.primary.kind === 'retry' && view.hostingDisclosure && shown.reason !== t('generationCommon.spendHostingDisclosure.message')
+    return {
+      slot: Object.freeze({
+        kind: 'spend' as const,
+        title: shown.title,
+        ...brake,
+        failed: true as const,
+        dismissLabel: t('agentPanelV4.spendCard.decline'),
+        confirmLabel: shown.confirmLabel,
+        ...(shown.primary.kind === 'locate' ? { confirmIcon: 'locate' as const } : {}),
+        ...(view.busy || retryEmpty ? { actionsDisabled: true as const } : {}),
+      }),
+      pointers, single,
+      notices: [
+        { tone: 'danger', text: shown.reason, ...(detail ? { detail } : {}) },
+        ...(disclose ? [{ tone: 'neutral' as const, text: t('generationCommon.spendHostingDisclosure.message') }] : []),
+      ],
+      primary: shown.primary,
+    }
+  }
+
+  // 等人决定。N = 主按钮这一下会交出去的段数（去掉的、被删的、节点上已经点过 ↑ 的、本机判得出发不出去的都不算）。
+  const count = sendable.length
+  const asked = count + pick('blocked', 'absent').filter((entry) => entry.shot.offer === 'undecided').length
+  const titleKey = saysVideo ? 'agentPanelV4.spendParamsTitle' : 'agentPanelV4.spendParamsTitleImage'
+  // 「Nomi 选的」只说这一下要交的那几镜（还没决定、节点在画布上）：每一镜节点此刻选的模型都还是 Agent 起草时选的那个。
+  const about = pick('sendable', 'blocked')
+  const pickedByNomi = about.length > 0 && about.every((entry) => entry.facts.selected
+    && entry.facts.selected.providerId === entry.shot.draftedModel.providerId
+    && entry.facts.selected.modelId === entry.shot.draftedModel.modelId)
+  // 节点上点过 ↑ 的（画布接走了）或早先交出去的：卡上剩下的就说「生成剩下 N 段」（板 card.generate）。
+  const remaining = has('taken') || has('sent') || has('unclear')
+  // 一段都交不出去（全去掉了 / 还在落到画布上）：按钮置灰、只说「生成」，不印「全部生成（0）」。
+  const confirmLabel = single || count === 0 ? t('agentPanelV4.spendCard.generate')
+    : remaining ? t(saysVideo ? 'agentPanelV4.spendConfirmRemainingVideo' : 'agentPanelV4.spendConfirmRemainingImage', { count })
+      : t('agentPanelV4.spendCard.generateAll', { count })
+  // 钱（D5）：每一段都算得出才印「N 段」（单段卡也印「1 段」——板 ① 那一行在，Q2 只把金额去掉）；各段价格不同时折叠明细
+  // 印每镜价；算不出整行不印。
+  const prices = sendable.map((entry) => entry.facts.price)
+  const allKnown = count >= 1 && prices.every((price) => price.known)
+  const amounts = prices.map((price) => (price.known ? price.amount : Number.NaN))
+  const uniform = allKnown && amounts.every((amount) => amount === amounts[0])
   const money = (amount: number): string => formatMoney(options.locale, pending.currency, amount)
-  if (shots.length === 0) return undefined
-  const index = spendCardPage(pending, view.page)
-  const current = shots[index]
-  const total = pending.unknownShotCount === 0 ? pending.knownSubtotal : undefined
-  const uniform = isUniform(shots)
-  // 按钮只说这一镜（第 1 条）：视频是「这段」，图片是「这张」——看的是这一页这一镜自己的 mode。
-  const currentIsVideo = isVideoOrder([current])
-  const picked = options.agentPickedModelIds
-  const pickedByAgent = picked ? picked.includes(current.modelId) : true
-  const badge = pickedByAgent
-    ? `${t('agentPanelV4.slotSpendBadge')} · ${t('agentPanelV4.spendParamsModelPicked')}`
-    : t('agentPanelV4.slotSpendBadge')
-  const price: NonNullable<InterventionData['price']> = {
-    // 正文下那一行只在它**说得出页脚说不出的事**时才印（由数据 derive，不写死）：
-    // · 单镜：标题已经写着「生成这 1 段视频？」，再印「1 镜」是把同一件事说两遍；
-    // · 多镜且整齐、报得出合计：翻页行右端已经是「N 张 / 段 · 合计 ¥X」，再印「N 镜」同样是重复；
-    // · 多镜但**逐镜不同**：印「N 镜 · 逐镜不同」并带逐镜折叠口——这是页脚说不出的；
-    // · 多镜但**报不出合计**：什么都不印。以前这里补一句「N 镜」，因为页脚那句「价格未知…」没有镜数；
-    //   那句随「仍要生成」删了，标题和「生成剩下 N 张」都已经说了几张，再印一行就是第三遍（2026-10-01 样张没有这一行）。
-    breakdown: shots.length <= 1
-      ? ''
-      : total === undefined
-        ? ''
-        : uniform
-          ? ''
-          : t('agentPanelV4.spendParamsBreakdownMixed', { count: shots.length }),
-    // 报不出价时什么都不印（第 7 条：今天不真的钱话不说）。报得出时照实印合计。
-    ...(total === undefined ? {} : { totalLabel: t('agentPanelV4.spendParamsTotalLabel'), total: money(total) }),
-    // 逐镜摊开只在「不整齐」时才有信息量：整齐时每一行都是同一个数，摊开等于把同一句话抄 N 遍。
-    ...(total !== undefined && shots.length > 1 && !uniform
-      ? {
-          perItemLabel: t('agentPanelV4.spendParamsPerItem', { count: shots.length }),
-          perItem: shots.map((shot) => ({
-            label: t('agentPanelV4.spendParamsShot', { number: shot.index }),
-            amount: shot.price.known
-              ? money(shot.price.amount)
-              : t('agentPanelV4.spendParamsUnavailable'),
-          })),
-        }
-      : {}),
+  const notices: SpendCardNotice[] = []
+  for (const entry of pick('blocked')) {
+    notices.push({ tone: 'danger', text: t('agentPanelV4.spendCard.blockedNotice', { shot: entry.facts.shotRef, reason: t(handOverFailureCopy(entry.facts.blocked!)) }) })
   }
-  const wording = orderWording(shots)
-  const batch = view.batch
-  if (batch) {
-    // 「生成剩下 N 张」在一张一张走（2026-10-02）：卡不能装成还在等人点——标题说进度，动作行只说怎么停，
-    // 不摆「去掉这张 / 生成这张」、翻页和合计（正在被自动批的那几张谁也点不了）。右上那颗 × 就是停下。
-    return Object.freeze({
+  if (view.hostingDisclosure && count > 0) notices.push({ tone: 'neutral', text: t('generationCommon.spendHostingDisclosure.message') })
+  const summary = single ? undefined : spendCardSummary(sendable.map((entry) => entry.facts), t)
+  return {
+    slot: Object.freeze({
       kind: 'spend' as const,
-      title: batch.stopping ? t('agentPanelV4.spendBatchStopping') : t(wording.progress, { current: batch.current, total: batch.total }),
-      badge,
-      progress: { hint: t(batch.stopping ? 'agentPanelV4.spendBatchStoppingHint' : 'agentPanelV4.spendBatchStopHint') },
-    })
-  }
-  return Object.freeze({
-    kind: 'spend' as const,
-    // 标题里**不印金额**：金额随参数变，两个地方印同一个数就一定有一个先漂。
-    title: t(wording.title, { count: shots.length }),
-    badge,
-    // 「直接生成」档的刹车成立、这笔退回成确认卡时，多这一行说明为什么停（只多这一行，其余与「请求批准」下的卡一模一样）。
-    ...(pending.brake ? { summary: t(BRAKE_COPY[pending.brake.reason]) } : {}),
-    ...(shots.length > 1
-      ? {
-          pager: {
-            index,
-            total: shots.length,
-            keyHint: t('agentPanelV4.pagerKeyHint'),
+      title: asked > 0 ? t(titleKey, { count: asked }) : t('agentPanelV4.spendCard.titleNothing'),
+      badge: pickedByNomi ? `${t('agentPanelV4.slotSpendBadge')} · ${t('agentPanelV4.spendParamsModelPicked')}` : t('agentPanelV4.slotSpendBadge'),
+      ...brake,
+      ...(allKnown ? { totalLead: t(saysVideo ? 'agentPanelV4.spendCard.totalVideo' : 'agentPanelV4.spendCard.totalImage', { count }) } : {}),
+      ...(allKnown && !uniform
+        ? {
+          price: {
+            perItemLabel: t('agentPanelV4.spendParamsPerItem', { count }),
+            perItem: sendable.map((entry) => ({
+              label: join([entry.facts.shotRef, entry.facts.model, entry.facts.aspect, entry.facts.durationSec ? formatSeconds(entry.facts.durationSec) : null]),
+              amount: entry.facts.price.known ? money(entry.facts.price.amount) : '',
+            })),
           },
         }
-      : {}),
-    price,
-    // 「N 张 · 合计 ¥X」只在多镜且报得出合计时印（住在翻页那一行的右端）；报不出价时什么都不印——
-    // 「价格未知 · 以供应商账单为准」这一句随「仍要生成」一起删了（第 7 条：今天不真的钱话不说，2026-09-30）。
-    // 单位跟标题同一条规则（2026-10-01 用户拍板：图片说张、视频说段，英文与标题同词）。
-    ...(total !== undefined && shots.length > 1
-      ? { totalLead: t(wording.totalLead, { count: shots.length, amount: money(total) }) }
-      : {}),
-    // 整叠的动作「生成剩下 N 张 / 段」（2026-10-01 用户拍板）：N 就是卡上还没决定的镜（= 标题那个数，去掉的不算），
-    // 张 / 段跟标题同一条规则（有视频就说段）；报得出价也不带合计（翻页行右端已经印着这个数）。
-    // 只剩 1 张时它和「生成这张」是同一件事，不画。
-    ...(shots.length > 1
-      ? { batchLabel: t(wording.remaining, { count: shots.length }) }
-      : {}),
-    // 主按钮只生成这一页这一镜（第 1 条），次动作「去掉这张 / 这段」只让这一镜不生成（第 2 条）。
-    // 这一镜报得出价时按钮带上这一下花多少（第 7 条：可以带，但没有任何一条路径依赖它）；报不出就只说动作。
-    confirmLabel: current.price.known
-      ? t(currentIsVideo ? 'agentPanelV4.spendConfirmThisVideoPriced' : 'agentPanelV4.spendConfirmThisImagePriced', { amount: money(current.price.amount) })
-      : t(currentIsVideo ? 'agentPanelV4.spendConfirmThisVideo' : 'agentPanelV4.spendConfirmThisImage'),
-    alternateLabel: t(currentIsVideo ? 'agentPanelV4.spendRemoveThisVideo' : 'agentPanelV4.spendRemoveThisImage'),
-  })
+        : {}),
+      confirmLabel,
+      ...(view.busy || count === 0 ? { actionsDisabled: true as const } : {}),
+    }),
+    pointers, single, ...(summary ? { summary } : {}), notices,
+    primary: { kind: 'generate', shotIds: sendable.map((entry) => entry.shot.shotId), hostingAllowed: view.hostingDisclosure },
+  }
 }

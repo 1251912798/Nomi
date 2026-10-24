@@ -2,7 +2,7 @@
 // 每一格截图（中英、光暗）+ 下面这些板断言。断言名就是 NodePointer.board.json 里各元素的 `assertion`（check:board-parity R4）。
 // 真画布那一头（投影 → 外壳上的 data-external-highlight、闪完清掉）由 canvas-focus-composer-visible.walk.mjs 在真 Electron 里钉。
 import { walkDesignLabScreen } from './design-lab/walkScreen.mjs'
-import { uiText } from './full-walk/invariants.mjs'
+import { uiText, uiTextPattern } from './full-walk/invariants.mjs'
 
 const A = {
   p1: 'board:NodePointer/pointer.p1',
@@ -109,17 +109,20 @@ async function expectNodePointerState(page, state, record) {
         }
         if (byId['np-not-here']?.text.includes('已删除')) record(`${state.id} ${A.deleted}: 宿主没说删就不许说已删除（D4）`)
         if (!byId['np-not-here']?.disabled) record(`${state.id} ${A.deleted}: 占位不可点`)
-        if (!byId['np-failed']?.text.includes('没有发出去')) record(`${state.id} ${A.failed}: 失败摘要行没印宿主给的结局`)
+        // 宿主给的结局只从 outcome 这一个口子进来：读屏那一句（nodePointer.ariaOutcome）念的和摘要行印的是同一个值——按它认，不在测试里抄文案。
+        const failedAria = await page.locator(pointer('np-failed')).getAttribute('aria-label')
+        const hostOutcome = new RegExp(`${uiTextPattern(uiText('zh-CN', 'nodePointer.ariaOutcome'), { anchored: true })}$`).exec(failedAria ?? '')?.groups?.outcome ?? null
+        if (!hostOutcome || !byId['np-failed']?.text.includes(hostOutcome)) record(`${state.id} ${A.failed}: 失败摘要行没印宿主给的结局（读屏念的是「${failedAria}」）`)
         // 失败的宿主结局行是红（danger-ink）：板 markup 本意是 .bd，渲成灰是样张里 CSS 优先级被 .sum 压过的意外（V-d2-pointer 偏差 5，保留红）。
-        const outcomeInk = await page.evaluate(() => {
-          const line = [...document.querySelectorAll('[data-node-pointer-id="np-failed"] span')].find((el) => !el.firstElementChild && el.textContent?.includes('没有发出去'))
+        const outcomeInk = await page.evaluate((outcome) => {
+          const line = outcome ? [...document.querySelectorAll('[data-node-pointer-id="np-failed"] span')].find((el) => !el.firstElementChild && el.textContent?.includes(outcome)) : undefined
           const probe = document.createElement('span')
           probe.className = 'text-nomi-danger-ink'
           document.body.appendChild(probe)
           const danger = getComputedStyle(probe).color
           probe.remove()
           return { line: line ? getComputedStyle(line).color : null, danger }
-        })
+        }, hostOutcome)
         if (!outcomeInk.line || outcomeInk.line !== outcomeInk.danger) record(`${state.id} ${A.failed}: 失败的宿主结局行必须是红（danger-ink ${outcomeInk.danger}），实际 ${outcomeInk.line}`)
         const longTitle = await page.locator(`${pointer('np-long')} > span:first-child`).getAttribute('title')
         if (!longTitle || !longTitle.includes('河湾')) record(`${state.id} ${A.label}: 长名字没有悬停全名`)

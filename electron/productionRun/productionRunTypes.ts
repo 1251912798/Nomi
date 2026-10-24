@@ -247,6 +247,10 @@ export type GenerationHandOver = {
   settled?: GenerationHandOverSettlement;
 };
 
+/** 交出去的那一镜最后怎样了的四种结局（唯一词表：落定记录的类型与主进程落定时的校验集合都从它来，见下面那段说明）。 */
+export const GENERATION_HAND_OVER_OUTCOMES = ["accepted", "unknown", "not_sent", "withdrawn"] as const;
+export type GenerationHandOverOutcome = (typeof GENERATION_HAND_OVER_OUTCOMES)[number];
+
 /**
  * 交出去的那一镜最后怎样了（画布那一侧写回）：
  *   · `accepted`：供应商受理了（或同步出图已经出完）——钱在花；
@@ -256,7 +260,7 @@ export type GenerationHandOver = {
  */
 export type GenerationHandOverSettlement = {
   at: string;
-  outcome: "accepted" | "unknown" | "not_sent" | "withdrawn";
+  outcome: GenerationHandOverOutcome;
   /**
    * `withdrawn` 时谁收回的：在任务列表里去掉这一镜（`removed`），或这一次出价还没交到画布手里就关了（关卡的原因：
    * 用户点了取消 `user_closed` / 打了字 `user_wrote` / 回合被停 `stopped`）。

@@ -121,34 +121,33 @@ try {
   await checkNamedDuration()
   ok('仅一个数值参数的面板仍保留名称和键盘写入边界')
 
+  // 参数面板只剩一种摆法：静止浮层 portal 到 body（D2 第③步把付费卡里那份「面板内嵌在节点里」的摆法随旧卡删了）。
   const keyboardFailures = []
-  for (const surface of ['portal', 'inline']) {
-    for (const single of [false, true]) {
-      try {
-        const query = `?flow=1${surface === 'inline' ? '&inline=1' : ''}${single ? '&single=1' : ''}`
-        await page.goto(`http://127.0.0.1:${address.port}${fixturePath}${query}`)
-        await page.locator('button[aria-expanded]').first().click()
-        const slider = page.getByRole('slider', { name: '时长', exact: true })
-        await slider.waitFor({ state: 'visible' })
-        assert.equal(await slider.evaluate(element => Boolean(element.closest('.react-flow__node'))), surface === 'inline',
-          `${surface} must exercise the actual component's declared DOM placement`)
-        const before = await page.evaluate(() => window.numericFlowSnapshot())
-        assert.deepEqual(before, { ownsNodes: true, position: { x: 80, y: 80 } })
-        await slider.focus()
-        await slider.press('ArrowRight')
-        await page.waitForFunction(() => document.querySelector('[data-testid="duration-value"]')?.textContent === '6')
-        assert.equal(await slider.getAttribute('aria-valuenow'), '6')
-        assert.deepEqual(await page.evaluate(() => window.numericFlowSnapshot()), before,
-          `${surface}/${single ? 'single' : 'multiple'} slider ArrowRight must change only the parameter, preserving node position and ownership`)
-        await slider.press('Escape')
-        const node = page.locator('.react-flow__node[data-id="numeric-node"]')
-        await node.focus()
-        await node.press('ArrowRight')
-        assert.deepEqual(await page.evaluate(() => window.numericFlowSnapshot()),
-          { ownsNodes: true, position: { x: 85, y: 80 } }, 'Original node keyboard movement must remain enabled')
-        ok(`真实 React Flow ${surface}/${single ? '单参数' : '多参数'} 滑块键盘不移动节点，节点自身键盘仍可用`)
-      } catch (error) { keyboardFailures.push(error) }
-    }
+  for (const single of [false, true]) {
+    try {
+      const query = `?flow=1${single ? '&single=1' : ''}`
+      await page.goto(`http://127.0.0.1:${address.port}${fixturePath}${query}`)
+      await page.locator('button[aria-expanded]').first().click()
+      const slider = page.getByRole('slider', { name: '时长', exact: true })
+      await slider.waitFor({ state: 'visible' })
+      assert.equal(await slider.evaluate(element => Boolean(element.closest('.react-flow__node'))), false,
+        'The parameter panel must exercise the actual component\'s body portal placement')
+      const before = await page.evaluate(() => window.numericFlowSnapshot())
+      assert.deepEqual(before, { ownsNodes: true, position: { x: 80, y: 80 } })
+      await slider.focus()
+      await slider.press('ArrowRight')
+      await page.waitForFunction(() => document.querySelector('[data-testid="duration-value"]')?.textContent === '6')
+      assert.equal(await slider.getAttribute('aria-valuenow'), '6')
+      assert.deepEqual(await page.evaluate(() => window.numericFlowSnapshot()), before,
+        `portal/${single ? 'single' : 'multiple'} slider ArrowRight must change only the parameter, preserving node position and ownership`)
+      await slider.press('Escape')
+      const node = page.locator('.react-flow__node[data-id="numeric-node"]')
+      await node.focus()
+      await node.press('ArrowRight')
+      assert.deepEqual(await page.evaluate(() => window.numericFlowSnapshot()),
+        { ownsNodes: true, position: { x: 85, y: 80 } }, 'Original node keyboard movement must remain enabled')
+      ok(`真实 React Flow portal/${single ? '单参数' : '多参数'} 滑块键盘不移动节点，节点自身键盘仍可用`)
+    } catch (error) { keyboardFailures.push(error) }
   }
 
   try {

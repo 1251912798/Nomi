@@ -303,6 +303,23 @@ describe('laneViewModel', () => {
     }
   })
 
+  // SpendCardQ1 板 card.done：卡关掉以后，`generate` 那一行收据下挂那几镜的组指向。哪一次出价只读信封里的 operationId。
+  it('generate 成功的收据带上那一次出价（信封里的 operationId）；失败、别的动词不带', () => {
+    next = 0
+    const model = laneViewModel(projection([
+      part({ kind: 'user', text: '生成这三段。' }),
+      part({ kind: 'tool-call', toolCallId: 'g1', toolName: 'generate', args: {}, running: false }),
+      part({ kind: 'tool-result', toolCallId: 'g1', toolName: 'generate', isError: false,
+        text: 'Generating.\nUser sees: the shots are generating (operationId=op-7)', nextAction: { kind: 'none', userSees: 'the shots are generating', operationId: 'op-7' } }),
+      part({ kind: 'tool-call', toolCallId: 'g2', toolName: 'generate', args: {}, running: false }),
+      part({ kind: 'tool-result', toolCallId: 'g2', toolName: 'generate', isError: true, text: 'failed', nextAction: { kind: 'none', userSees: 'x', operationId: 'op-8' } }),
+      part({ kind: 'tool-call', toolCallId: 'd1', toolName: 'draft_shots', args: {}, running: false }),
+      part({ kind: 'tool-result', toolCallId: 'd1', toolName: 'draft_shots', isError: false, text: 'Drafted.', nextAction: { kind: 'none', userSees: 'drafted', operationId: 'op-9' } }),
+    ]), labels)
+    const receipts = model.items.flatMap((item) => (item.kind === 'tool' ? [item.receipt] : []))
+    expect(receipts.map((receipt) => receipt.generation?.operationId)).toEqual(['op-7', undefined, undefined])
+  })
+
   it('回合以用户消息为界：上一轮的文本绝不并进下一轮的气泡', () => {
     next = 0
     const model = laneViewModel(projection([

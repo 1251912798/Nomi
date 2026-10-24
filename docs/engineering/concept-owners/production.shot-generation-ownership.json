@@ -22,6 +22,10 @@
     {
       "path": "electron/productionRun/batchScheduleDerivation.ts",
       "symbol": "needsDispatch"
+    },
+    {
+      "path": "electron/shared/decideShotClaim.ts",
+      "symbol": "lastShotEngine"
     }
   ],
   "forbidden_derivations": [],
@@ -36,8 +40,9 @@
     "electron/productionRun/batchScheduleDerivation.ts",
     "electron/shared/productionShotPhase.ts",
     "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
-    "src/workbench/observability/shotClaimCopy.ts"
+    "src/workbench/observability/shotClaimCopy.ts",
+    "src/workbench/generationCanvas/nodes/useProductionNodeRetry.ts"
   ],
   "since": "2026-09-25",
-  "notes": "「这一镜此刻归不归制作流程生成」——画布若再发同一镜就是重复生成、重复扣费。与「节点上显示哪一段」（deriveProductionShotState，概念「制作镜头在画布上的运行状态」）是两件事：显示可以为了措辞改（例如草稿不再显示排队中，#877），归属不许跟着变。规则：报价卡等用户确认 → 归；cardHidden 草稿 → 不归；已确认后排队 / 生成中 → 归；已停 / 失败 / 完成 / 丢掉 / 不在付费范围 → 不归。合同 docs/fixes/2026-09-25-canvas-generate-ignores-production-shot.root-cause.json。 2026-09-28（#921）：判据收成 decideShotClaim——画布、制作两个请求方问同一个函数，Run reducer 的 shot.claim 是唯一的认领写口，原来的 productionShotOwnsGeneration 已删。2026-09-29：制作一侧的派发准入闸（productionShotDispatchGuard）由提交 outbox 在这次尝试的第一笔耐久写（预留 / 提交意向）之前调用，看到的是还没落盘的 job；它排在提交意向之后时看到的永远是 in_flight，一次都没拒过（真额度验收：急停后同一轮的镜照样扣费）。合同 docs/fixes/2026-09-28-production-shot-claim.root-cause.json。 2026-10-05 发动机收敛第一刀第 3 步：画布那一侧的认领只住画布付费口的准入（appIntegrationCanvasShot.claimBoundProductionShot），canvasShotClaim.ts 与 runtime.runTask 里那一行认领随令牌路一起删除。"
+  "notes": "「这一镜此刻归不归制作流程生成」——画布若再发同一镜就是重复生成、重复扣费。与「节点上显示哪一段」（deriveProductionShotState，概念「制作镜头在画布上的运行状态」）是两件事：显示可以为了措辞改（例如草稿不再显示排队中，#877），归属不许跟着变。规则：报价卡等用户确认 → 归；cardHidden 草稿 → 不归；已确认后排队 / 生成中 → 归；已停 / 失败 / 完成 / 丢掉 / 不在付费范围 → 不归。合同 docs/fixes/2026-09-25-canvas-generate-ignores-production-shot.root-cause.json。 2026-09-28（#921）：判据收成 decideShotClaim——画布、制作两个请求方问同一个函数，Run reducer 的 shot.claim 是唯一的认领写口，原来的 productionShotOwnsGeneration 已删。2026-09-29：制作一侧的派发准入闸（productionShotDispatchGuard）由提交 outbox 在这次尝试的第一笔耐久写（预留 / 提交意向）之前调用，看到的是还没落盘的 job；它排在提交意向之后时看到的永远是 in_flight，一次都没拒过（真额度验收：急停后同一轮的镜照样扣费）。合同 docs/fixes/2026-09-28-production-shot-claim.root-cause.json。 2026-10-05 发动机收敛第一刀第 3 步：画布那一侧的认领只住画布付费口的准入（appIntegrationCanvasShot.claimBoundProductionShot），canvasShotClaim.ts 与 runtime.runTask 里那一行认领随令牌路一起删除。 2026-10-24 D2 第③步（合同 docs/fixes/2026-10-24-spend-card-one-engine.root-cause.json）：同一个账本还答「这一镜上一次是哪一台跑的」（lastShotEngine：这一次出价里交给了画布 / 画布认领了当前这次尝试 → canvas；制作流程派过作业 → production；都没有 → canvas）。失败节点的「重试」照它走回原来那一台（useProductionNodeRetry）——卡交给画布、在画布上失败的那一镜不再走返工链（制作流程的付费门 + 调度器）。"
 }

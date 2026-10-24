@@ -155,7 +155,9 @@ export function collapseV4Flow(
       ...(attempt > 0 ? { retryNote: t('agentPanelV4.processRetryingDetail') } : {}),
       label: running
         ? (attempt > 0 ? t('agentPanelV4.processAttempt', { count: attempt }) : last.label)
-        : t(retried.length ? 'agentPanelV4.processSummaryWithRetries' : 'agentPanelV4.processSummary', { count: receipts.length, retries: retried.length }),
+        : retried.length
+          ? t('agentPanelV4.processSummaryWithRetries', { count: retried.length, tools: receipts.length })
+          : t('agentPanelV4.processSummary', { count: receipts.length }),
       ...(elapsed ? { elapsed } : {}), details: withErrors,
       segments: work.flatMap(item => item.kind === 'thinking' ? [item.meta || item.label] : []),
     })

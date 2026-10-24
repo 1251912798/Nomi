@@ -9,9 +9,9 @@ import type {
   RunEvent,
 } from "../../electron/productionRun/productionRunTypes";
 import type { MaterializeStoryboardResult } from "../../electron/productionRun/productionRunService";
-import type { PendingSpendConfirm, PendingSpendRead, PendingSpendShot } from "../../electron/shared/contracts/pendingSpendConfirm";
+import type { GenerationHandOverFailure, PendingSpendConfirm, PendingSpendRead, PendingSpendShot } from "../../electron/shared/contracts/pendingSpendConfirm";
 
-export type { PendingSpendConfirm, PendingSpendRead, PendingSpendShot };
+export type { GenerationHandOverFailure, PendingSpendConfirm, PendingSpendRead, PendingSpendShot };
 export type PendingSpendActionIdentity = Readonly<{ presentationId?: string; presentationEpoch?: number; planVersion?: number }>;
 
 export type ProductionRunProjection = ProductionRun & { storyboardReferenceUrls?: Readonly<Record<string,string>> };

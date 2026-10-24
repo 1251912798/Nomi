@@ -82,6 +82,8 @@ export function useGenerationCanvasReactFlowProjection({
   const nodeProjectionRef = React.useRef<FlowNodeProjection | null>(null)
   // 聊天里的指向元素正悬停着哪个节点（D2 P1）：只有前后被指的两张卡重投，别的卡交回同一个对象。
   const pointerHoverNodeId = useNodeExternalHighlightStore((state) => state.hoverNodeId)
+  // 付费卡交出去的那几镜在卡关掉那一刻一起闪一下：同样只重投被点名的那几张。
+  const pointerFlashNodeIds = useNodeExternalHighlightStore((state) => state.flashNodeIds)
   const flowNodes = React.useMemo(() => {
     nodeProjectionRef.current = projectGenerationFlowNodes(nodeProjectionRef.current, {
       nodes,
@@ -90,9 +92,10 @@ export function useGenerationCanvasReactFlowProjection({
       appearingNodeIds,
       focusFlashNodeId,
       pointerHoverNodeId,
+      pointerFlashNodeIds,
     })
     return nodeProjectionRef.current.output
-  }, [appearingNodeIds, focusFlashNodeId, nodes, pointerHoverNodeId, readOnly, selectedSet])
+  }, [appearingNodeIds, focusFlashNodeId, nodes, pointerFlashNodeIds, pointerHoverNodeId, readOnly, selectedSet])
   const edgeProjectionRef = React.useRef<FlowEdgeProjection | null>(null)
   const flowEdges = React.useMemo(() => {
     edgeProjectionRef.current = projectGenerationFlowEdges(edgeProjectionRef.current, {

@@ -36,6 +36,12 @@ export function readDecidedByTable(capabilityDir) {
 }
 
 /**
+ * 还没跨过提交边界的作业状态（产品里的判据是 `electron/shared/productionShotJobs.ts#isUnsubmittedJobStatus`：
+ * `submitOnce` 先落提交意图、再出站）。其余状态都算「发出了」——可能还没被受理，但已经不归停止钮管了。
+ */
+const UNSUBMITTED_JOB_STATUSES = new Set(['planned', 'authorization_required', 'authorized'])
+
+/**
  * 此刻盘上的付费事实快照。每一步前后各取一次，步的事实 = 两次的差（见 `deltaFacts`）。
  * 返回里只有计数、id、状态词；不含 key，不含提示词原文。
  */
@@ -67,6 +73,8 @@ export function readSpendFacts({ projectRoot, capabilityDir }) {
     decidedBy: approvals.filter((approval) => approval.receiptId).map((approval) => approval.decidedBy),
     approvals,
     jobs,
+    /** 跨过提交边界的作业（`runId:jobId`）：停止那一步数「停止之后还有没有新发出」看它，不看受理。 */
+    submitted: jobs.filter((job) => !UNSUBMITTED_JOB_STATUSES.has(job.status)).map((job) => `${job.runId}:${job.jobId}`),
   }
 }
 
@@ -123,10 +131,10 @@ export function stepSwitchVerdict({ mode, delta }) {
   return problems
 }
 
-/** 步骤 2：直接生成档下前两镜——不弹报价卡 / 确认框、受理恰好 N 次、收据（每道门一条）全是策略代答。 */
+/** 步骤 2：直接生成档下前两镜——不弹付费卡 / 确认框、受理恰好 N 次、收据（每道门一条）全是策略代答。 */
 export function stepDirectBatchVerdict({ expected, cardAppearances, dialogAppearances = 0, delta, models, allowedModel }) {
   const problems = []
-  if (cardAppearances !== 0) problems.push(`直接生成档下报价卡不该弹，实际弹了 ${cardAppearances} 次`)
+  if (cardAppearances !== 0) problems.push(`直接生成档下付费卡不该弹，实际弹了 ${cardAppearances} 次`)
   if (dialogAppearances !== 0) problems.push(`直接生成档下弹出了全局确认框（旧版 SpendConfirmDialog）${dialogAppearances} 次——这一笔没有走策略代答`)
   if (delta.accepted !== expected) problems.push(`供应商受理次数应为 ${expected}，实际 ${delta.accepted}`)
   // 收据按「付费门」铸：一批 N 镜可以共用一道门（loopback 演练里画布 2 镜 = 1 张收据），所以下限是 1、上限是镜数；
@@ -140,7 +148,7 @@ export function stepDirectBatchVerdict({ expected, cardAppearances, dialogAppear
 }
 
 /**
- * 步骤 3：计划外的镜——报价卡立刻弹、卡上有刹车那一行、点「去掉」之后供应商受理次数不变（刹车不铸收据、不发请求）。
+ * 步骤 3：计划外的镜——付费卡立刻弹、卡上有刹车那一行、点「取消」之后供应商受理次数不变（刹车不铸收据、不发请求）。
  * 模型这一步另起了新方案时刹车拦不到（拍板项 5 的边界）：不算失败，`boundary` 记 true，其余判据不看。
  * `acceptedTotal` = 这条消息起到此刻的受理总数；`plannedFront` = 前面说好的镜数。
  */
@@ -149,20 +157,24 @@ export function stepBrakeVerdict({ cardAppeared, brakeLineShown, acceptedTotal, 
   let boundary = false
   if (!cardAppeared) {
     if (acceptedTotal > plannedFront) boundary = true // 模型另起了新方案并被直接代答：记为边界，不算失败
-    else problems.push('补第 3 镜之后既没弹报价卡、也没有多出受理——这一步什么都没发生，无法判断')
+    else problems.push('补第 3 镜之后既没弹付费卡、也没有多出受理——这一步什么都没发生，无法判断')
   } else {
-    if (!brakeLineShown) problems.push('报价卡弹了，但卡上没有计划外刹车那一行')
-    if (deltaAfterRemove.accepted !== 0) problems.push(`点「去掉」之后供应商不该再受理，新增 ${deltaAfterRemove.accepted} 次`)
+    if (!brakeLineShown) problems.push('付费卡弹了，但卡上没有计划外刹车那一行')
+    if (deltaAfterRemove.accepted !== 0) problems.push(`点「取消」之后供应商不该再受理，新增 ${deltaAfterRemove.accepted} 次`)
     if (deltaAfterRemove.receipts !== 0) problems.push(`刹车不该铸收据，新增 ${deltaAfterRemove.receipts} 条`)
   }
   return { problems, boundary }
 }
 
-/** 步骤 4：供应商受理第一张后点停止——停止后新增提交 0；已交出的那张照常完成、只扣一次；重开面板后没有重复提交。 */
-export function stepStopVerdict({ acceptedAtStop, acceptedAfterSettle, acceptedAfterReopen, deliveredTaskIds }) {
+/**
+ * 步骤 4：供应商受理第一张后点停止——停止后新增发出 0；已交出的那张照常完成、只扣一次；重开面板后没有重复提交。
+ * 数「发出」（跨过提交边界的作业，`readSpendFacts().submitted`），不数受理：两张一起交给画布之后，停止前已经发出去、
+ * 晚一点才被受理的那张是「已经发出去的照常生成」，不是停止后的新提交。
+ */
+export function stepStopVerdict({ sentAtStop, sentAfterSettle, sentAfterReopen, deliveredTaskIds }) {
   const problems = []
-  if (acceptedAfterSettle - acceptedAtStop !== 0) problems.push(`停止之后新增提交应为 0，实际 ${acceptedAfterSettle - acceptedAtStop}`)
-  if (acceptedAfterReopen - acceptedAfterSettle !== 0) problems.push(`重开面板后不该有重复提交，实际新增 ${acceptedAfterReopen - acceptedAfterSettle}`)
+  if (sentAfterSettle - sentAtStop !== 0) problems.push(`停止之后新增发出应为 0，实际 ${sentAfterSettle - sentAtStop}`)
+  if (sentAfterReopen - sentAfterSettle !== 0) problems.push(`重开面板后不该有重复提交，实际新增发出 ${sentAfterReopen - sentAfterSettle}`)
   if (deliveredTaskIds.length < 1) problems.push('已受理的那张最后没有交出成品（job 没到 adopted / ready）——「已交出的照常完成」不成立')
   if (new Set(deliveredTaskIds).size !== deliveredTaskIds.length) problems.push('已交出的图出现重复的供应商任务号（同一张被扣了不止一次）')
   return problems

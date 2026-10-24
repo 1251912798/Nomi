@@ -1,0 +1,33 @@
+{
+  "name": "Agent 改稿落到已落地的节点（只写它改了的那几样）",
+  "subject": "canvas.landed-shot-agent-revision",
+  "lifecycle": "author",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/capability/landedShotIntent.ts",
+    "symbol": "applyAgentRevision"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/capability/landedShotIntent.ts",
+      "symbol": "applyAgentRevision"
+    },
+    {
+      "path": "src/workbench/capability/landedShotIntent.ts",
+      "symbol": "intentStampMeta"
+    },
+    {
+      "path": "src/workbench/capability/landedShotIntent.ts",
+      "symbol": "placeLandedReferences"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "src/workbench/capability/multiShotCanvasLanding.ts"
+  ],
+  "since": "2026-10-24",
+  "notes": "D2 第③步（设计卡 docs/plan/2026-10-23-d2-pointer-spend-card.md；合同 docs/fixes/2026-10-24-spend-card-one-engine.root-cause.json）：节点是镜头参数的唯一家，卡只读节点、发出只读节点。以前候选一变新，落地用「档案默认 ⊕ 候选」把整个节点盖掉（rebindLandedShots，已删）：用户在节点上改过的时长、声音、比例，Agent 一改提示词就全回去了。现在落地那一刻在节点上记下这一次从起草写进来的那几样的指纹（intentStampMeta），候选再变新时 applyAgentRevision 只写 Agent 这次真改了的键（模型身份、方式、变体、参数逐键、提示词、标题、参考），没碰的一个不动；参考的增删经 placeLandedReferences → planReferenceProjection（概念 reference.candidate-canvas-projection）。指纹只存比较用的摘要，不存第二份参数。"
+}

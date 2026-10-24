@@ -130,7 +130,7 @@ describe("「直接生成」档答不了：卡带着原因出来，由人点", (
 });
 
 describe("其它档：一个字没变", () => {
-  it.each([["请求批准", "request" as const], ["没有档位可读（外部宿主那一侧）", undefined]])("%s：卡照常出现，供应商一次没碰", async (_label, mode) => {
+  it.each([["request 档", "request" as const], ["没有档位可读（外部宿主那一侧）", undefined]])("%s：卡照常出现，供应商一次没碰", async (_label, mode) => {
     const world = spendWorld();
     const { operationId } = await modelDrafts(world, mode);
     expect(operationId).toBeTruthy();

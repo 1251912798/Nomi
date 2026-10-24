@@ -26,7 +26,7 @@ describe("「取消」打断交接", () => {
     const world = spendWorld({ holdDispatch: true });
     await shotsDraft(world);
     await world.generate();
-    expect(world.pending()!.shots.map((shot) => shot.offer), "正在发出").toEqual(["handing_over", "handing_over", "handing_over"]);
+    expect(world.pending()!.shots.map((shot) => shot.offer), "三镜都在交接中").toEqual(["handing_over", "handing_over", "handing_over"]);
     expect(await world.cancel()).toEqual({ ok: true, code: "discarded", batchStopped: { sent: 0, notSent: 3 } });
     world.renderer.releaseDispatch();
     await world.renderer.drain();

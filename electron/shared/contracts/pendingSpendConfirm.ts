@@ -12,6 +12,9 @@ import type { GenerationReference } from '../agentCapabilities/generationPlanSch
 import type { GenerationHandOverFailure } from "../../productionRun/productionRunTypes";
 import type { OfferShotState } from "../productionGenerationPresentation";
 
+/** 交给画布的一镜为什么没发出去（卡与交接预检读同一份语义码）。渲染层经这份契约拿它，不伸手进 productionRun。 */
+export type { GenerationHandOverFailure };
+
 /** 一条参考在派发那一刻的键（供应商适配层按它找上传后的地址；与卡无关，只是住在这份契约里）。 */
 export function spendReferenceKey(reference: GenerationReference): string {
   return JSON.stringify([reference.assetId, reference.contentHash, reference.version, reference.kind ?? null, reference.role ?? null]);

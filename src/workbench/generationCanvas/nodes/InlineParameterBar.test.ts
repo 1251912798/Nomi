@@ -71,12 +71,9 @@ describe('InlineParameterBar catalog variant control', () => {
   })
 })
 
-// 同一个组件两种参数摆法（`parameterLayout`）：
-//   · `summary`（**默认**，画布节点）= 摘要 pill + 全部参数进面板；
-//   · `chips`（付费确认卡显式传）= 每个主参数一颗下拉 chip，长尾收进一颗 ⚙。
-// 两组测试用同一份档案夹具，差别只在传不传 `parameterLayout`——这正是「一个属性、不是两个组件」的证据。
-// chip 判据本身由 primaryParameterChips.test.ts 钉死，不在这里重复一遍。
-describe('InlineParameterBar 参数摆法（parameterLayout）', () => {
+// 参数区的摆法只有一种：摘要 pill + 全部参数进面板（画布节点，用户 2026-09-11 04:30 拍板保持原样）。
+// 付费确认卡那种「逐参数 chip」随 D2 旧卡一起删了（用户 2026-10-23 拍板：付费卡上不挂参数控件）。
+describe('InlineParameterBar 摘要 pill', () => {
   const ratio: DynamicModelControl = {
     key: 'aspect_ratio', label: '比例', type: 'select', binding: 'parameter',
     options: [{ value: '1:1', label: '1:1' }, { value: '16:9', label: '16:9' }, { value: '9:16', label: '9:16' }],
@@ -108,19 +105,14 @@ describe('InlineParameterBar 参数摆法（parameterLayout）', () => {
     }))
     return { html, onParameterControlChange }
   }
-  const renderChips = (
-    renderedControls: DynamicModelControl[],
-    meta: Record<string, unknown> = {},
-  ) => render(renderedControls, meta, { parameterLayout: 'chips' })
-
   beforeEach(() => { captured.selects = []; captured.iconButtons = [] })
 
-  // ── summary（默认 · 画布节点，用户 2026-09-11 04:30 拍板保持原样）────────────────
-  it('默认就是 summary：一颗摘要 pill，一颗参数 chip 都不摆', () => {
+  it('一颗摘要 pill，一颗参数 chip 都不摆', () => {
     const { html } = render([ratio, duration, generateAudio], { aspect_ratio: '9:16', duration: 5 })
     expect(html).toContain('data-parameter-summary="9:16 · 5 · 生成音频"')
     expect(html).not.toContain('data-parameter-chip')
     expect(html).not.toContain('data-parameter-more')
+    expect(captured.iconButtons).toHaveLength(0)
     // 模型芯片之外一颗 NomiSelect 都不该多出来（参数全在点开的面板里）。
     expect(captured.selects.map(select => select.ariaLabel)).toEqual(['模型'])
   })
@@ -135,79 +127,20 @@ describe('InlineParameterBar 参数摆法（parameterLayout）', () => {
     expect(html).not.toContain('data-parameter-summary')
   })
 
-  // ── chips（付费确认卡显式传）────────────────────────────────────────────────
-  it('chips：主参数各自一颗下拉（一步到位），长尾不占底栏', () => {
-    renderChips([ratio, duration, generateAudio], { aspect_ratio: '9:16', duration: 5 })
-    // [0] 模型芯片，其后是主参数 chip（比例 → 时长），生成音频不在其中。
-    expect(captured.selects.slice(1).map(select => select.ariaLabel)).toEqual(['比例', '时长'])
-    expect(captured.selects[1].value).toBe('9:16')
-    expect(captured.selects[2].options.map(option => option.label)).toEqual(['4s', '5s', '6s', '7s', '8s'])
-  })
-
-  it('chips：chip 选完直接回写 store，不经过任何面板', () => {
-    const { onParameterControlChange } = renderChips([ratio], { aspect_ratio: '16:9' })
-    captured.selects[1].onChange('1:1')
-    expect(onParameterControlChange).toHaveBeenCalledWith(ratio, '1:1')
-  })
-
-  it('chips：比例下拉按常用序排（16:9 / 9:16 领头），与面板那组分段同一把尺子', () => {
-    renderChips([ratio], {})
-    expect(captured.selects[1].options.map(option => option.value)).toEqual(['16:9', '9:16', '1:1'])
-  })
-
-  it('chips：⚙ 只在里面真有东西时出现，名字里带条数', () => {
-    renderChips([ratio, generateAudio], {})
-    expect(captured.iconButtons).toHaveLength(1)
-    expect(captured.iconButtons[0].label).toContain('1')
-    captured.iconButtons = []
-    renderChips([ratio], {})
-    expect(captured.iconButtons).toHaveLength(0)
-  })
-
-  // 2026-10-08 合同：付费卡上影响报价的 chip 永不退进 ⚙、不裁、不横向滚动；放不下就换行。
-  // 真盒子的几何由设计实验室走查量（design-lab-ask-card-in-panel：Seedance 2.0 带变体 · 390 / 300 · 中英）；
-  // 这里钉的是结构：摆法不依赖任何测量，所以「量出来是 0 / 量错了」也少不了一颗。
-  const resolution: DynamicModelControl = {
-    key: 'resolution', label: '清晰度', type: 'select', binding: 'parameter',
-    options: [{ value: '720p', label: '720p' }, { value: '1080p', label: '1080p' }], defaultValue: '720p',
-  }
   const barClass = (html: string): string => /class="([^"]*generation-canvas-v2-node__params--parameters[^"]*)"/.exec(html)?.[1] ?? ''
 
-  it('chips：三颗报价 chip 全摆在底栏上，⚙ 里只剩长尾', () => {
-    const { html } = renderChips([ratio, duration, resolution, generateAudio], {})
-    for (const key of ['aspect_ratio', 'duration', 'resolution']) expect(html).toContain(`data-parameter-chip="${key}"`)
-    expect(captured.iconButtons).toHaveLength(1)
-    expect(captured.iconButtons[0].label).toContain('1')
-  })
-
-  it('chips 横排：放不下换行（flex-wrap），不横向滚动；身份两枚与参数 chip 是同一行的直接成员', () => {
-    const { html } = renderChips([ratio, duration, resolution], {})
-    const cls = barClass(html).split(' ')
-    expect(cls).toContain('flex-wrap')
-    expect(cls.some((name) => /^overflow-/.test(name))).toBe(false)
-    // 身份行在 chips 横排里是 contents：模型 / 变体各自换行，不会被挤出包装压到 16:9 上。
-    expect(html).not.toContain('class="flex min-w-0 items-center gap-2"')
-  })
-
-  it('summary（画布节点）摆法不变：一行、不换行，身份行仍是自己的 flex 盒', () => {
+  it('一行、不换行，身份行是自己的 flex 盒', () => {
     const { html } = render([ratio, duration], {})
     expect(barClass(html).split(' ')).not.toContain('flex-wrap')
     expect(html).toContain('class="flex min-w-0 items-center gap-1.5"')
   })
 
-  it('摆法不读任何测量：组件里没有量盒子的代码（量错 / 量出 0 都少不了一颗 chip）', () => {
+  // 逐参数 chip / 就地展开面板 / 竖排那几种摆法只给过聊天里的卡，随旧卡一起删了：不许长回来。
+  it('只剩一种摆法：逐参数 chip、就地展开面板、竖排这几个开关都不在了', () => {
     const source = readFileSync(fileURLToPath(new URL('./InlineParameterBar.tsx', import.meta.url)), 'utf8')
-    for (const measuring of ['scrollWidth', 'clientWidth', 'ResizeObserver', 'useFittedChipCount', 'planParameterChips']) {
-      expect(source, measuring).not.toContain(measuring)
+    for (const removed of ['parameterLayout', 'chipsMode', 'panelMode', 'inlinePanelSlot', 'portalTarget', 'stacked', 'data-parameter-chip']) {
+      expect(source, removed).not.toContain(removed)
     }
-  })
-
-  it('chips：走查锚点跟着 chip 走：key 找得到、当前值读得出（不靠中文 aria-label）', () => {
-    const { html } = renderChips([ratio], { aspect_ratio: '9:16' })
-    expect(html).toContain('data-parameter-chip="aspect_ratio"')
-    expect(html).toContain('data-parameter-chip-value="9:16"')
-    // 换个摆法之后 pill 就不该再在了（同一处不许两个家）。
-    expect(html).not.toContain('data-parameter-summary')
   })
 })
 
@@ -231,11 +164,10 @@ describe('InlineParameterBar semantic option presentation wiring', () => {
     expect(body).toContain('resolveParameterOptionPurpose(rawOptions, requestedPurpose)')
   })
 
-  // 两种摆法是**同一个组件的一个属性**，不是两份实现：面板与它那批控件渲染只能有一处。
-  it('两种摆法共用同一块面板（renderParameterPanel 只有一个定义、只被声明一次）', () => {
+  // 面板与它那批控件渲染只能有一处。
+  it('面板只有一块（renderParameterPanel 只有一个定义、只被声明一次）', () => {
     expect(source.match(/const renderParameterPanel = /g) ?? []).toHaveLength(1)
     expect(body.match(/export function ParameterPanelGroup\(/g) ?? []).toHaveLength(1)
-    expect(source).toContain("parameterLayout = 'summary'")
   })
 
   // 拆巨壳是**搬**不是抄：控件那批渲染只许住在 ParameterControlBody 里，
@@ -250,8 +182,7 @@ describe('InlineParameterBar semantic option presentation wiring', () => {
   // 2026-09-11 13:00 用户拍板：**面板里不再套下拉**。这条守的是那条路真的被删了，
   // 不是又长回来一份「短候选摊开、长候选下拉」的并行版（P1）。
   // 判据取 `portalTarget={panelRef}`：面板里的下拉必须把浮层 portal 进面板自己
-  // （否则点外面会把面板关掉），所以它是「面板内下拉」独有的签名；底栏那几颗 chip 的
-  // 下拉用的是调用方给的 `portalTarget`，不碰 panelRef。
+  // （否则点外面会把面板关掉），所以它是「面板内下拉」独有的签名。
   it('面板里没有下拉：选项一律摊开（chip 一排/一列，或默认展开的搜索列表）', () => {
     expect(source).not.toContain('portalTarget={panelRef}')
     expect(body).not.toContain('NomiSelect')

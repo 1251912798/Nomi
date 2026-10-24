@@ -10,7 +10,7 @@ import { buildProductionDeepLink } from './productionDeepLink'
 import { safeExternalText, safeProductionContract, safeShotId } from './productionRunProjectionSanitizer'
 import { trustLevelOf } from './productionRunTypes'
 import { runStopReason } from '../shared/productionRunStop'
-import { shotLandingFacts } from './shotLandingAdmission'
+import { shotLandingFacts, shotStopFacts } from './shotLandingAdmission'
 import { createArtifactProjection, type ArtifactProjection } from './artifactProjection'
 import { metadataProjection } from './productionRunArtifactHelpers'
 import type { ProductionRun, RunEvent } from './productionRunTypes'
@@ -33,6 +33,8 @@ export type ProductionRunProjection = {
   stopReason: ReturnType<typeof runStopReason>
   /** 停在 landing_failed 时：逐镜哪几镜发出了、哪几镜没放到画布上（#1139 B1，按镜头算）。 */
   landing?: { sent: LandingRefProjection[]; notPlaced: LandingRefProjection[]; removed: LandingRefProjection[] }
+  /** 用户停下（暂停 / 取消）的这一批：停下时哪几镜已经发出去了（照常生成）、哪几镜被拦下没发（不花钱）。和 landing 同一份逐镜分类。 */
+  stopped?: { sent: LandingRefProjection[]; notSent: LandingRefProjection[] }
   stageId: string
   playbook: ProductionRun['playbook']
   origin: ProductionRun['origin']
@@ -83,6 +85,7 @@ export function safeRunProjection(run: ProductionRun): Omit<ProductionRunProject
     status: run.status,
     stopReason: runStopReason(run),
     ...(runStopReason(run) === 'landing_failed' ? { landing: landingProjection(run) } : {}),
+    ...(userStopped(run) ? { stopped: stopProjection(run) } : {}),
     stageId: run.stageId,
     playbook: { name: run.playbook.name, version: run.playbook.version },
     origin: { host: run.origin.host, ...(run.origin.actorId ? { actorId: run.origin.actorId } : {}) },
@@ -179,9 +182,21 @@ export function eventProjection(event: RunEvent): ProductionEventProjection {
   }
 }
 
+const safeLandingRef = (ref: { shotId: string; index: number; title?: string }): LandingRefProjection =>
+  ({ shotId: safeShotId(ref.shotId) ?? '', index: ref.index, ...(ref.title ? { title: safeExternalText(ref.title) } : {}) })
+
 function landingProjection(run: ProductionRun): { sent: LandingRefProjection[]; notPlaced: LandingRefProjection[]; removed: LandingRefProjection[] } {
   const facts = shotLandingFacts(run)
-  const safe = (ref: { shotId: string; index: number; title?: string }): LandingRefProjection =>
-    ({ shotId: safeShotId(ref.shotId) ?? '', index: ref.index, ...(ref.title ? { title: safeExternalText(ref.title) } : {}) })
-  return { sent: facts.sent.map(safe), notPlaced: facts.notPlaced.map(safe), removed: facts.removed.map(safe) }
+  return { sent: facts.sent.map(safeLandingRef), notPlaced: facts.notPlaced.map(safeLandingRef), removed: facts.removed.map(safeLandingRef) }
+}
+
+/** 用户自己停下的一批生成（暂停 / 取消，不含失败、重启、落地失败那几种停）。 */
+function userStopped(run: ProductionRun): boolean {
+  const reason = runStopReason(run)
+  return Boolean(run.generationPlan) && (reason === 'user_paused' || reason === 'user_cancelled')
+}
+
+function stopProjection(run: ProductionRun): { sent: LandingRefProjection[]; notSent: LandingRefProjection[] } {
+  const facts = shotStopFacts(run)
+  return { sent: facts.sent.map(safeLandingRef), notSent: facts.notSent.map(safeLandingRef) }
 }

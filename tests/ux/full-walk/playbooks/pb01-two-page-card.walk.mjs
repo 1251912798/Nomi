@@ -1,20 +1,23 @@
 #!/usr/bin/env node
-// 剧本 PB01 · 「让 Agent 画两张图，付费卡两页，我只在第 1 页点了『生成这张』」
+// 剧本 PB01 · 「让 Agent 画两张图，我只要第 1 张：第 2 张点『不生成 ×』，再按生成」
 //
-// 已知问题（0.22.1）：点付费卡里的「仍要生成」就直接开跑，第二张卡还没确认；Agent 说「已经开始跑」。
-// 这是一个真实创作者会做的事：让 Agent 起草两镜、在付费卡上翻一翻、在第 1 页按下去。
+// 已知问题（0.22.1，用户报告 U01 / U02）：两页的付费卡只在第 1 页点了「仍要生成」就整份开跑，第二张还没确认；Agent 说「已经开始跑」。
+// 剧本 id 沿用那次报告。D2 起（2026-10-24）卡上没有翻页了：一张卡指着两段（指向元素 + 一行只读摘要 + 主按钮），「只要第 1 张」
+// 就是在第 2 段上点「不生成 ×」再按主按钮。被测的还是同一件事：按钮许诺几镜就只发几镜，去掉的那一镜不跟着发出去，
+// 没点的不悄悄没了，回执不说「都开始了」。
 //
-// 乱用：翻到第 2 页再翻回来才按；点完再点一下出好的那张图看看（节点角标）。
+// 乱用：先把第 2 段去掉、恢复、再去掉一次才按；点完再点一下出好的那张图看看（节点角标），再在节点上按 ↑ 出一版。
 // 变体由跑器指派：base（中文）/ en（英文界面，同一条路）。
 //
-// 零花费：大脑与供应商都是本机夹具；目录里不种价（= 今天每一台干净装机），卡上不说价格的话，主按钮是「生成这张」。
+// 零花费：大脑与供应商都是本机夹具；目录里不种价（= 今天每一台干净装机），卡上不说价格。
 import { DEFAULT_TIMEOUT_MS, clickOrFail, expect } from '../../_assert.mjs'
 import { findNodeHitPoint } from '../../_canvasHit.mjs'
 import { stationTimeout } from '../../_station-budget.mjs'
 import { FIXTURE_APIMART_MODEL, FIXTURE_APIMART_VENDOR } from '../../agent-runtime-fixture.mjs'
-import { APPROVAL_CARD, CANVAS_PANEL, INTERVENTION_CONFIRM, closeSpendCard, expandResidentPanel, sendCanvas } from '../../agent-runtime-walk-support.mjs'
+import { APPROVAL_CARD, CANVAS_PANEL, INTERVENTION_CONFIRM, expandResidentPanel, sendCanvas } from '../../agent-runtime-walk-support.mjs'
 import { clickNodeGenerate } from '../actions.mjs'
 import { operationIdOf, scriptTurn } from '../brain.mjs'
+import { uiTextWith } from '../invariants.mjs'
 import { startPlaybook } from '../launch.mjs'
 
 // 这条剧本的前提就是「目录里没有价目」（夹具读这个开关决定种不种价）。
@@ -27,6 +30,7 @@ const pb = await startPlaybook({
 })
 const { smoke, fixture, monitor } = pb
 const EN = pb.locale === 'en'
+const LOCALE = EN ? 'en' : 'zh-CN'
 const ASK = EN
   ? 'PB01: draw two images for me — shot 1, a white cat on the windowsill of a morning cafe; shot 2, the barista doing latte art.'
   : 'PB01：帮我画两张图——镜1，清晨咖啡馆窗台上趴着一只白猫；镜2，同一家店里咖啡师在拉花。'
@@ -34,6 +38,15 @@ const SHOTS = EN
   ? ['A white cat lying on the windowsill of a morning cafe, soft light', 'The same cafe, a barista pouring latte art behind the counter']
   : ['清晨咖啡馆的窗台上趴着一只白猫，柔和的晨光', '同一家咖啡馆，吧台后的咖啡师在拉花']
 const card = () => smoke.win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="spend"]`)
+const cells = () => card().locator('[data-v4-block="spend-body"] [data-node-pointer-cell]')
+const title = () => card().locator('[data-v4-block="slot-title"]')
+
+/** 第 n 段（0 起）那一格右上的小钮：「不生成 ×」平时藏着，悬停这一格才露出来、才点得到；「恢复」常驻。 */
+async function toggleShot(index, kind, label) {
+  const cell = cells().nth(index)
+  if (kind === 'exclude') await cell.hover()
+  await clickOrFail(cell.locator(`[data-spend-exclusion="${kind}"]`), label)
+}
 
 let harnessError = null
 try {
@@ -54,29 +67,27 @@ try {
   await monitor.step('用户：让 Agent 画两张图', () => sendCanvas(smoke.win, ASK), { surfaces: [] })
   await monitor.step('等 Agent 起草两镜、摆出付费卡', async () => {
     await expect(card(), 'Agent 起草完要在面板里摆一张付费卡').toBeVisible({ timeout: stationTimeout({ turns: 1 }) })
-    await expect(card().locator('[data-v4-block="pager"]'), '两镜的卡有翻页器').toContainText('1/2')
+    await expect(cells(), '一张卡指着两段').toHaveCount(2, { timeout: DEFAULT_TIMEOUT_MS })
+    await expect(card().locator(INTERVENTION_CONFIRM), '主按钮说两段一起生成').toHaveText(uiTextWith(LOCALE, 'agentPanelV4.spendCard.generateAll', { count: 2 }))
   }, { user: false, surfaces: [] })
 
-  await monitor.step('乱用：翻到第 2 页看一眼，再翻回第 1 页', async () => {
-    await clickOrFail(card().locator('[data-v4-control="pager-next"]'), '付费卡「下一页」')
-    await expect(card().locator('[data-v4-block="pager"]')).toContainText('2/2')
-    await clickOrFail(card().locator('[data-v4-control="pager-prev"]'), '付费卡「上一页」')
-    await expect(card().locator('[data-v4-block="pager"]')).toContainText('1/2')
+  await monitor.step('乱用：第 2 段点「不生成 ×」、恢复、再去掉一次', async () => {
+    await toggleShot(1, 'exclude', '第 2 段的「不生成 ×」')
+    await expect(cells().nth(1).locator('[data-spend-exclusion="restore"]'), '去掉的那一段常驻「恢复」').toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
+    await toggleShot(1, 'restore', '第 2 段的「恢复」')
+    await expect(title(), '恢复之后标题又数两段').toHaveText(uiTextWith(LOCALE, 'agentPanelV4.spendParamsTitleImage', { count: 2 }), { timeout: DEFAULT_TIMEOUT_MS })
+    await toggleShot(1, 'exclude', '第 2 段的「不生成 ×」（再一次）')
+    await expect(title(), '标题只数还要生成的第 1 段').toHaveText(uiTextWith(LOCALE, 'agentPanelV4.spendParamsTitleImage', { count: 1 }), { timeout: DEFAULT_TIMEOUT_MS })
   })
 
-  await monitor.step('在第 1 页点「生成这张」', async () => {
-    await monitor.consentSpendCard(card(), { label: '第 1 页的主按钮' })
-    await clickOrFail(card().locator(INTERVENTION_CONFIRM), '付费卡主按钮（第 1 页）', { noWaitAfter: true })
+  await monitor.step('按主按钮（只交第 1 段）', async () => {
+    await monitor.consentSpendCard(card(), { label: '第 2 段去掉之后的主按钮' })
+    await clickOrFail(card().locator(INTERVENTION_CONFIRM), '付费卡主按钮', { noWaitAfter: true })
   })
 
-  // 付费卡逐镜（2026-09-30）：点了的生成，没点的留在卡上等人——卡不消失、只剩第 2 张；用户不想要它，就点 × 关掉。
-  await monitor.step('卡还在、只剩第 2 张；点 × 关掉（第 2 张不生成）', async () => {
-    await expect(card().locator('[data-v4-block="slot-title"]'), '卡还在、标题只数还没决定的第 2 张')
-      .toContainText(EN ? 'Generate this image?' : '生成这 1 张图片？', { timeout: DEFAULT_TIMEOUT_MS })
-    await closeSpendCard(card(), '关掉付费卡（第 2 张不生成）')
-  })
-
-  await monitor.step('等出图、等这一轮 Agent 说完', async () => {
+  // 每一段都定了（第 1 段交给画布、第 2 段用户去掉了）：卡自己关掉，对话流里留一行回执。
+  await monitor.step('卡关掉了；等出图、等这一轮 Agent 说完', async () => {
+    await expect(card(), '每一段都定了，卡自己关掉').toHaveCount(0, { timeout: stationTimeout({ operations: 2 }) })
     await expect.poll(() => fixture.images.length, { message: '供应商至少收到一笔', timeout: DEFAULT_TIMEOUT_MS }).toBeGreaterThan(0)
     await turn.done
     await expect(smoke.win.locator(`${CANVAS_PANEL} [data-v4-block="composer"][data-mode="running"]`), '这一轮落地').toHaveCount(0, { timeout: DEFAULT_TIMEOUT_MS })
@@ -85,10 +96,10 @@ try {
       const nodeIds = (run?.generationPlan?.shots ?? []).map((shot) => shot.nodeId).filter(Boolean)
       const nodes = (await monitor.readProject())?.payload?.generationCanvas?.nodes ?? []
       return nodes.filter((node) => nodeIds.includes(node.id) && node.status === 'success').length
-    }, { message: '至少一镜落成 success', timeout: stationTimeout({ operations: 4 }) }).toBeGreaterThan(0)
+    }, { message: '第 1 段落成 success', timeout: stationTimeout({ operations: 4 }) }).toBeGreaterThan(0)
   }, { user: false, surfaces: [] })
 
-  await monitor.settle('第 1 页那一镜生成完')
+  await monitor.settle('第 1 段生成完')
 
   let landedId = ''
   await monitor.step('乱用：点一下出好的那张图', async () => {

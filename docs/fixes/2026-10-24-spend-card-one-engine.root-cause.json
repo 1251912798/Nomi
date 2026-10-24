@@ -1,0 +1,263 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-spend-card-one-engine",
+  "problem_type": "The Agent panel's paid card kept its own copy of every shot and spent through a second engine: what the card showed, what the node held and what was actually sent could differ, and every user-choosable dimension had to be patched into several projections and two send paths",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-24",
+  "symptom": "Recorded in docs/engineering/direction-checks/2026-10-24-d2-wiring.md section 1: a variant landed on the node as Fast (03c4f99e8); an optional parameter written as null rejected a whole card revise (54c444e53); card edits and confirm interleaved and needed an arbiter queue (1189e91af / be8d32af8); card copy pointed at a × that no longer existed (df3d138b0). The 2026-10-22 landing-defaults audit (R-d2): video ratio lost on landing (#1, fixed in #1291); references pinned in the draft never reached the node, so node ↑ sent without them (#3); a newer candidate revision rebuilt node meta from profile defaults and overwrote the user's node edits (#4); the card's confirm and node ↑ filled defaults on two different paths (#5).",
+  "direct_cause": "The card's confirm, confirm-remaining and revise went through the Agent-path engine (appIntegrationSpendConfirm -> decideGenerationSpend, sending from the candidate) while node ↑ goes through the canvas single-node submission (sending from the node). The card kept its own ledger (spendCardDraft, localStorage nomi:spend-draft:*), its own price estimate (spendCardEstimate) and references (spendCardReferences), mounted a whole node composer, and wrote back into the candidate through generation.revise. The landing table kept references in the host (references: staysInHost) and rebindLandedShots rebuilt node meta from profile defaults plus the candidate whenever the candidate revision changed. The 直接生成 tier called decideGenerationSpend on the same Agent path.",
+  "class_root": "One shot had three homes (the Agent candidate, the card's own ledger, the canvas node) and two engines (the card's confirm on the Agent path, node ↑ on the canvas path). Every user-choosable dimension had to be projected and written back in several places and defaulted on two send paths, and a missed spot failed silently. The missing layer was 'a shot has one home and spending has one path'.",
+  "affected_population": [
+    "Everyone who confirmed a paid batch in the Agent panel after touching a node: the card sent the candidate's values, not the node's",
+    "Everyone whose draft pinned reference images: they never reached the node, so the canvas sent without them",
+    "Everyone on the 直接生成 tier: its shots went through the Agent-path engine, which filled defaults differently from node ↑",
+    "Everyone whose Agent revised a draft after they edited a node: the rebind overwrote their edits with profile defaults"
+  ],
+  "scope_paths": [
+    "electron/capabilityCore/canvasHandOver.ts",
+    "electron/capabilityCore/appIntegration.ts",
+    "electron/capabilityCore/appIntegrationCanvasShot.ts",
+    "electron/capabilityCore/approvalReceipt.ts",
+    "electron/capabilityCore/runOwnedGenerationGateAuthority.ts",
+    "electron/capabilityCore/generationDispatcher.ts",
+    "electron/capabilityCore/generationTransportAdapters.ts",
+    "electron/capabilityCore/residentGenerationAdapterFactory.ts",
+    "electron/productionRun/productionActionIpc.ts",
+    "electron/tasks/taskIpcHandlers.ts",
+    "electron/productionRun/multiShotCanvasLanding.ts",
+    "electron/productionRun/canvasLandingHost.ts",
+    "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+    "src/workbench/production/productionRunApi.ts",
+    "src/workbench/capability/capabilityApplyHandler.ts",
+    "src/workbench/capability/productionHandOverShotsOp.ts",
+    "src/workbench/capability/landedShotIntent.ts",
+    "src/workbench/capability/multiShotCanvasLanding.ts",
+    "src/workbench/generationCanvas/components/batchPlanPreview.ts",
+    "src/workbench/generationCanvas/runner/generationRunController.ts",
+    "src/workbench/generationCanvas/nodes/useProductionNodeRetry.ts"
+  ],
+  "entry_points": [
+    "The card's 生成 / 全部生成（N）/ 生成剩下 N 段 / 再试一次: useAgentPanelSpendCard.primary -> productionRunApi.handOverSpend -> IPC nomi:production-runs:hand-over-spend -> productionActionIpc -> appIntegrationSpendConfirm.handOverPendingSpendShots -> canvasHandOver.handOver (by gesture) -> renderer op production.hand-over-shots -> handOverShotsOp (handOverPrecheck, hosting asked once, consentCanvasShots with the production binding) -> runGenerationNodesByPlan (claimAdmittedByHost) -> runGenerationNode",
+    "The 直接生成 tier: generationTransportAdapters (spendDecisionByPolicy decides) -> handOverToCanvas, the same canvasHandOver (by policy) -> waitForSettlement; a shot that cannot go out returns the offer to the person (policyDecisionState failed) and the card appears with that shot's reason",
+    "Node ↑ while the card is open: NodeGenerationComposer -> decideShotClaim (the canvas may claim a shot this offer has not decided yet) -> runGenerationNode; the card then shows that shot as taken by the canvas",
+    "Agent draft landing and revision: buildMaterializeShotsPayload (references resolved to project asset URLs) -> materializeShots -> buildPlannedNodeMeta + placeLandedReferences; a newer candidate revision -> applyAgentRevision writes only the fields the Agent changed",
+    "Restart while shots are being handed over: stalePresentationSweep closes the offer as stopped and the queued consents are withdrawn",
+    "Retry on a failed node: useProductionNodeRetry -> lastShotEngine (decideShotClaim.ts, the same ledger) -> the canvas (node ↑ again) when this offer handed the shot to the canvas or the canvas claimed the current attempt; the production rework chain only when the production flow dispatched it"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "How a paid shot is confirmed, handed to the canvas and accounted shot by shot is Nomi's own spend-authority domain (docs/engineering/self-written.json domain catalogue); no external protocol or library defines it.",
+  "invariant_owner_layer": {
+    "layer": "electron/capabilityCore/canvasHandOver.ts",
+    "tests": [
+      "electron/capabilityCore/canvasHandOver.test.ts",
+      "electron/capabilityCore/agentPanelSpendCard.e2e.test.ts",
+      "electron/capabilityCore/agentPanelSpendCardPolicy.e2e.test.ts"
+    ],
+    "why": "Spending from the Agent panel exists only as a hand-over: createCanvasHandOver records on the offer which shots are being handed to the canvas and who decided (gesture or policy), asks the renderer to submit them through the canvas single-node submission, and writes each shot's outcome back. The card and the 直接生成 tier are its two callers; there is no other path from the Agent panel to a provider. agentPanelSpendCard.e2e drives tasks A/B/C with the real canvas engine and asserts that the provider receives the node's values; agentPanelSpendCardPolicy.e2e covers the policy tier."
+  },
+  "invariants": [
+    "A paid shot started from the Agent panel (the card's primary button or the 直接生成 tier) is sent only by handing it to the canvas: it goes through the canvas single-node submission that node ↑ uses, with the node's values at that moment.",
+    "The card holds no copy of a shot: its pointers and its one-line summary read the nodes, and it has no parameter editor (modules under src/workbench/ai/ cannot import node editors, R-B6).",
+    "What the Agent drafted lands on the node as drafted (model, variant, ratio, duration, references); an Agent revision writes only the fields it changed and never the user's node edits.",
+    "A shot is spent at most once, whichever of the card, the policy tier and node ↑ reaches it first (claim plus the same-node in-flight guard).",
+    "A shot the renderer can tell will not go out (empty prompt, a required reference missing, node gone) is reported before any money gate, with the same predicate on the card and at hand-over.",
+    "A failed shot retries on the engine that last ran it: a shot the card or the policy tier handed to the canvas retries as node ↑ again, never through the production rework chain."
+  ],
+  "doors": [
+    { "kind": "read", "path": "electron/capabilityCore/appIntegrationCanvasShot.ts", "symbol": "decideShotClaim" },
+    { "kind": "read", "path": "electron/capabilityCore/generationDispatcher.ts", "symbol": "spendDecisionByPolicy" },
+    { "kind": "read", "path": "electron/capabilityCore/generationTransportAdapters.ts", "symbol": "spendDecisionByPolicy" },
+    { "kind": "read", "path": "electron/capabilityCore/modelOnboarding/tryModel.ts", "symbol": "spendDecisionByPolicy" },
+    { "kind": "read", "path": "electron/productionRun/batchScheduleDerivation.ts", "symbol": "decideShotClaim" },
+    { "kind": "read", "path": "electron/productionRun/productionRunReducer.ts", "symbol": "decideShotClaim" },
+    { "kind": "read", "path": "electron/productionRun/productionShotDispatchGuard.ts", "symbol": "decideShotClaim" },
+    { "kind": "read", "path": "src/workbench/ai/v4/useAgentPanelSpendCard.ts", "symbol": "handOverPrecheck" },
+    { "kind": "read", "path": "src/workbench/capability/productionHandOverShotsOp.ts", "symbol": "handOverPrecheck" },
+    { "kind": "read", "path": "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx", "symbol": "decideShotClaim" },
+    { "kind": "read", "path": "src/workbench/generationCanvas/nodes/useProductionNodeRetry.ts", "symbol": "lastShotEngine" },
+    { "kind": "read", "path": "src/workbench/production/productionShotOwnership.ts", "symbol": "decideShotClaim" },
+    { "kind": "write", "path": "electron/capabilityCore/agentPanelSpendConfirmTestUtils.ts", "symbol": "createCanvasHandOver" },
+    { "kind": "write", "path": "electron/capabilityCore/appIntegration.ts", "symbol": "createCanvasHandOver" },
+    { "kind": "write", "path": "electron/capabilityCore/appIntegrationCanvasShot.ts", "symbol": "mainProcessGateApproval" },
+    { "kind": "write", "path": "electron/capabilityCore/approvalReceipt.ts", "symbol": "issueDecisionReceipt" },
+    { "kind": "write", "path": "electron/capabilityCore/canvasHandOver.ts", "symbol": "createCanvasHandOver" },
+    { "kind": "write", "path": "electron/capabilityCore/generationTransportAdapters.ts", "symbol": "handOverToCanvas" },
+    { "kind": "write", "path": "electron/capabilityCore/residentGenerationAdapterFactory.ts", "symbol": "handOverToCanvas" },
+    { "kind": "write", "path": "electron/capabilityCore/runOwnedGenerationGateAuthority.ts", "symbol": "issueDecisionReceipt" },
+    { "kind": "write", "path": "electron/productionRun/canvasLandingHost.ts", "symbol": "buildMaterializeShotsPayload" },
+    { "kind": "write", "path": "electron/productionRun/multiShotCanvasLanding.ts", "symbol": "buildMaterializeShotsPayload" },
+    { "kind": "write", "path": "electron/productionRun/productionActionIpc.ts", "symbol": "handOverPendingSpendShots" },
+    { "kind": "write", "path": "electron/tasks/taskIpcHandlers.ts", "symbol": "consentCanvasShots" },
+    { "kind": "write", "path": "src/workbench/ai/v4/useAgentPanelSpendCard.ts", "symbol": "handOverSpend" },
+    { "kind": "write", "path": "src/workbench/capability/capabilityApplyHandler.ts", "symbol": "handOverShotsOp" },
+    { "kind": "write", "path": "src/workbench/capability/landedShotIntent.ts", "symbol": "placeLandedReferences" },
+    { "kind": "write", "path": "src/workbench/capability/multiShotCanvasLanding.ts", "symbol": "placeLandedReferences" },
+    { "kind": "write", "path": "src/workbench/capability/multiShotCanvasLanding.ts", "symbol": "applyAgentRevision" },
+    { "kind": "write", "path": "src/workbench/capability/productionHandOverShotsOp.ts", "symbol": "runGenerationNodesByPlan" },
+    { "kind": "write", "path": "src/workbench/capability/productionHandOverShotsOp.ts", "symbol": "consentCanvasShots" },
+    { "kind": "write", "path": "src/workbench/generationCanvas/components/batchPlanPreview.ts", "symbol": "consentCanvasShots" },
+    { "kind": "write", "path": "src/workbench/generationCanvas/components/batchPlanPreview.ts", "symbol": "runGenerationNodesByPlan" },
+    { "kind": "write", "path": "src/workbench/generationCanvas/runner/generationRunController.ts", "symbol": "runGenerationNode" },
+    { "kind": "write", "path": "src/workbench/production/productionRunApi.ts", "symbol": "handOverSpend" }
+  ],
+  "door_reduction": {
+    "before": 30,
+    "after": 35,
+    "why_not": "Doors went 30 -> 35 while engines went 2 -> 1. Deleted: the Agent-path confirm (reviseSpend / confirmSpend / confirmSpendRemaining in the card hook and the renderer API, their three IPC routes, decideGenerationSpend on the card and on the 直接生成 tier) and rebindLandedShots. What remains are the stations of the one path (card hook -> handOverSpend -> handOverPendingSpendShots -> createCanvasHandOver -> production.hand-over-shots -> consentCanvasShots -> runGenerationNodesByPlan -> runGenerationNode), the 直接生成 tier as a second caller of the same createCanvasHandOver (handOverToCanvas and its wiring), the receipt minted by decision kind (issueDecisionReceipt / mainProcessGateApproval replace issueGestureReceipt / gestureGateApproval one for one), and doors that did not exist before and are the fix itself: the shared precheck read at card render and at hand-over (debt a), references written onto the node (placeLandedReferences x2) and the Agent revision that writes only what it changed (applyAgentRevision), and the retry decision (lastShotEngine read at useProductionNodeRetry): before it a failed node retried through the production rework chain whenever its run was multi-shot, which for a shot the card handed to the canvas was a second engine."
+  },
+  "generality_proof": "Nothing depends on model, vendor, kind or shot count: the card hands any set of shots to the same createCanvasHandOver, the renderer op submits each node through the same canvas submission node ↑ uses, and the policy tier is a second caller of the same hand-over. The draft -> node -> displayed -> sent parity matrix (electron/parity/draftNodeSendParity.test.ts) runs over every built-in APIMart video / image model that has a profile, every mode, and default and edited drafts, so a newly onboarded model joins automatically; the R-B6 gate covers every module under src/workbench/ai/.",
+  "shared_boundaries": [
+    {
+      "path": "electron/capabilityCore/canvasHandOver.ts",
+      "symbol": "createCanvasHandOver",
+      "responsibility": "The one hand-over: records on the offer which shots are being handed to the canvas and who decided (gesture | policy), asks the renderer to submit them through production.hand-over-shots, and writes each shot's outcome back (accepted, not sent, still handing over). The card's primary button and the 直接生成 tier both call it."
+    },
+    {
+      "path": "src/workbench/capability/productionHandOverShotsOp.ts",
+      "symbol": "handOverShotsOp",
+      "responsibility": "Renderer side of the hand-over: the shared precheck, hosting asked once for the batch, consentCanvasShots carrying the production binding, then runGenerationNodesByPlan with claimAdmittedByHost, so every shot is sent exactly as its node is, through the canvas submission node ↑ uses."
+    },
+    {
+      "path": "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "symbol": "createCanvasShotRuns",
+      "responsibility": "The canvas single-shot runs (consent / dispatch / settle): binds a canvas consent to the hand-over recorded on the offer (the renderer cannot write a hand-over) and, at dispatch, mints the receipt by the decision kind (mainProcessGateApproval: the gesture for the card, the policy for the 直接生成 tier)."
+    },
+    {
+      "path": "src/workbench/capability/landedShotIntent.ts",
+      "symbol": "applyAgentRevision",
+      "responsibility": "A newer candidate revision writes only the fields the Agent changed (intent stamp diff) and places the drafted references on the node; the user's node edits stay (replaces rebindLandedShots)."
+    },
+    {
+      "path": "electron/productionRun/multiShotCanvasLanding.ts",
+      "symbol": "buildMaterializeShotsPayload",
+      "responsibility": "Candidate -> landing payload through one exhaustive per-key table; references now cross the line (resolved to project asset URLs) so the node holds them."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+      "entry_point": "the card's 生成 / 全部生成（N）/ 生成剩下 N 段 / 再试一次",
+      "disposition": "enforced",
+      "evidence": "One action, handOverSpend, carrying the card's identity (useAgentPanelSpendCard.test.ts action matrix; a node changed after the card was drawn is refused as spendActionCardChanged). agentPanelSpendCard.e2e.test.ts tasks A/B/C: the provider receives the node's values, including a duration edited on the node."
+    },
+    {
+      "path": "electron/capabilityCore/generationTransportAdapters.ts",
+      "entry_point": "the 直接生成 (policy) tier",
+      "disposition": "enforced",
+      "evidence": "Calls handOverToCanvas (the same createCanvasHandOver, by policy); a shot that cannot go out returns the offer to the person with its reason; hosting is never answered by the policy (agentPanelSpendCardPolicy.e2e.test.ts)."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+      "entry_point": "node ↑ while the card is open",
+      "disposition": "enforced",
+      "evidence": "The canvas claims a shot the offer has not decided yet and spends it once; a card hand-over and node ↑ racing for one shot send one request (doubleChargeMap.e2e.test.ts path 2, agentPanelSpendCard.e2e.test.ts task C)."
+    },
+    {
+      "path": "src/workbench/capability/multiShotCanvasLanding.ts",
+      "entry_point": "Agent draft landing and Agent revision (materializeShots)",
+      "disposition": "enforced",
+      "evidence": "draftNodeSendParity.test.ts: drafted = landed node = displayed = sent for every built-in model with a profile, default and edited drafts; landedShotIntent.test.ts: a revision writes only what the Agent changed and the drafted references land on the node."
+    },
+    {
+      "path": "electron/productionRun/stalePresentationSweep.ts",
+      "entry_point": "restart while shots are being handed over",
+      "disposition": "enforced",
+      "evidence": "The startup sweep closes offers left open by an earlier process, the 直接生成 tier included, and the queued consents are withdrawn (stalePresentationSweep.test.ts, agentPanelSpendCardStop.e2e.test.ts restart case)."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/batchPlanPreview.ts",
+      "entry_point": "the canvas batch box (生成全部 / storyboard batch / box selection)",
+      "disposition": "not-affected",
+      "evidence": "It is the canvas engine itself (consentCanvasShots -> runGenerationNodesByPlan); the card now shares its price function (estimateNodePrice) and its hosting resolution (resolveBatchHostingNodes)."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/useProductionNodeRetry.ts",
+      "entry_point": "重试 on a failed node whose shot the card (or the policy tier) handed to the canvas",
+      "disposition": "enforced",
+      "evidence": "Found by the real-App walk (agent-spend-card): the retry only asked whether the run was multi-shot and sent a card-handed shot through reworkProductionShot (the production gate and scheduler). It now asks lastShotEngine on the same ledger: a hand-over in this offer (gesture or policy, any outcome) or a canvas claim on the current attempt -> canvas; a production job -> production; nothing -> canvas (lastShotEngine.test.ts, 16 cases; useProductionNodeRetry.test.ts)."
+    },
+    {
+      "path": "electron/capabilityCore/mcpStdioServer.ts",
+      "entry_point": "external MCP multi-shot start, re-shoot / resume observer (createMultiShotBatchScheduler)",
+      "disposition": "not-affected",
+      "evidence": "No Agent-panel card and outside this line by design (design card section 2: external Agent / MCP unchanged); the external host approves through its own elicitation and the scheduler sends the sealed plan. Its stop feedback now reports the real per-shot counts (2026-10-02-generate-remaining-stop). The gap is listed under residual_risks."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "The card was an editable copy of the candidate and the node another projection of it; confirming spent on the Agent path (reading the candidate) while node ↑ spent on the canvas path (reading the node). 'Shown = on the node = sent' depended on three projections per dimension plus two send paths staying aligned, and a missed spot never raised an error, so every new user-choosable dimension could bring the class back (direction check section 2).",
+    "same_class_scan": [
+      "node scripts/door-map.mjs --write=handOverSpend,handOverPendingSpendShots,createCanvasHandOver,handOverShotsOp,handOverToCanvas,mainProcessGateApproval,issueDecisionReceipt,consentCanvasShots,runGenerationNodesByPlan,runGenerationNode,applyAgentRevision,placeLandedReferences,buildMaterializeShotsPayload --read=handOverPrecheck,decideShotClaim,spendDecisionByPolicy (2026-10-24: 34 doors)",
+      "The same count on the merge-base tree dc08a8dbb with the old symbols (reviseSpend, confirmSpend, confirmSpendRemaining, revisePendingSpendConfirmation, confirmPendingSpendConfirmation, confirmRemainingSpendShots, decideGenerationSpend, gestureGateApproval, issueGestureReceipt, rebindLandedShots in place of the new ones): 31 doors, 30 after dropping electron/catalog/directKeyCredential.ts confirmSpend (an unrelated symbol with the same name)",
+      "node scripts/door-map.mjs createMultiShotBatchScheduler (2026-10-24): appIntegration.ts (re-shoot / resume observer, semantic multi-shot start), mcpStdioServer.ts (external MCP multi-shot start) and the test world; the card and the 直接生成 tier no longer call it",
+      "rg decideGenerationSpend electron src (2026-10-24): only a history comment in generationSpendDecision.ts; the chain is deleted",
+      "node scripts/door-map.mjs --read=lastShotEngine --write=reworkProductionShot (2026-10-24): the one retry decision door at useProductionNodeRetry; reworkProductionShot is reached from the node retry (now only for production-dispatched shots), the production action IPC and the resident / external re-shoot path"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/capabilityCore/canvasHandOver.ts",
+    "invariant": "Spending from the Agent panel exists only as a hand-over to the canvas: the node is the shot's one home and the canvas single-node submission its one engine; the card reads nodes and holds no editable copy.",
+    "failure_mode": "A new spend surface that calls an Agent-path engine again, or a card that regrows an editor, turns the draft -> node -> sent parity dimension or the R-B6 dependency rule red; a node edited after the card was drawn is refused at the press (spendActionCardChanged) rather than sent with stale values.",
+    "exception_policy": "none",
+    "strategy": "Delete the card's own copy (ledger, estimate, references, composer mount, write scope) and the Agent-path confirm actions; route the card and the 直接生成 tier through one createCanvasHandOver; land references on the node and let Agent revisions write only what changed; forbid src/workbench/ai/ from importing node editors (.dependency-cruiser.mjs chat-card-no-import-node-editor); keep the draft -> node -> displayed -> sent parity matrix as a permanent dimension.",
+    "artifacts": [
+      "electron/capabilityCore/canvasHandOver.ts",
+      "src/workbench/capability/productionHandOverShotsOp.ts",
+      "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "electron/capabilityCore/generationTransportAdapters.ts",
+      "src/workbench/capability/landedShotIntent.ts",
+      "electron/productionRun/multiShotCanvasLanding.ts",
+      ".dependency-cruiser.mjs"
+    ]
+  },
+  "regression_tests": [
+    "electron/capabilityCore/canvasHandOver.test.ts",
+    "electron/capabilityCore/agentPanelSpendCard.e2e.test.ts",
+    "electron/capabilityCore/agentPanelSpendCardPolicy.e2e.test.ts",
+    "electron/capabilityCore/agentPanelSpendCardFailures.e2e.test.ts",
+    "electron/capabilityCore/agentPanelSpendCardPresentation.e2e.test.ts",
+    "electron/capabilityCore/agentPanelSpendCardStop.e2e.test.ts",
+    "electron/productionRun/doubleChargeMap.e2e.test.ts",
+    "electron/productionRun/stalePresentationSweep.test.ts",
+    "electron/parity/draftNodeSendParity.test.ts",
+    "src/workbench/capability/productionHandOverShotsOp.test.ts",
+    "src/workbench/capability/landedShotIntent.test.ts",
+    "src/workbench/production/handOverPrecheck.test.ts",
+    "src/workbench/ai/v4/useAgentPanelSpendCard.test.ts",
+    "scripts/check-boundaries.chat-card.test.mjs",
+    "electron/shared/lastShotEngine.test.ts",
+    "src/workbench/generationCanvas/nodes/useProductionNodeRetry.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/parity/draftNodeSendParity.test.ts",
+    "electron/capabilityCore/agentPanelSpendCardPolicy.e2e.test.ts",
+    "electron/productionRun/doubleChargeMap.e2e.test.ts",
+    "scripts/check-boundaries.chat-card.test.mjs",
+    "electron/shared/lastShotEngine.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
+      "src/workbench/ai/v4/spendCardDraft.ts",
+      "src/workbench/ai/v4/spendCardEstimate.ts",
+      "src/workbench/ai/v4/spendCardReferences.ts",
+      "electron/capabilityCore/spendOperationArbiter.ts",
+      "src/devlab/designLab/v4/states/07-spend-params.tsx"
+    ],
+    "rationale": "Deleted in the same PR (P1): the card hook with its write scope, the card ledger (old nomi:spend-draft:* keys are no longer read and not cleared, design card Q8), the card's local price estimate and references, the card action arbiter, and the old lab states. Also gone, inside files that stay: the Agent-path confirm / confirm-remaining / revise actions in appIntegrationSpendConfirm.ts and their renderer API and IPC routes, decideGenerationSpend in generationSpendDecision.ts, rebindLandedShots in src/workbench/capability/multiShotCanvasLanding.ts, the composer's panel host, and nine old e2e files replaced by five agentPanelSpendCard*.e2e.test.ts (design card section 5)."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency confirms paid shots or hands them over; the hand-over uses the app's own IPC, ledger and canvas engine.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data migrates. Offers gain an optional per-shot hand-over ledger (presentation.handOvers; absent means none was handed over). The card ledger keys nomi:spend-draft:* are no longer read and not cleared (design card Q8). Design card docs/plan/2026-10-23-d2-pointer-spend-card.md; direction check docs/engineering/direction-checks/2026-10-24-d2-wiring.md.",
+  "residual_risks": [
+    "External MCP multi-shot runs and re-shoot / resume still go through the multi-shot scheduler, which sends the sealed plan: a node edited after landing does not change what that path sends. Outside this line by design (design card section 2).",
+    "A node edited after the hand-over was accepted is sent as it is at submission time, the same as node ↑; the card's summary can trail the node by one render.",
+    "A shot whose request reached the provider before the connection broke stays 'result unknown' on the card and cannot be handed over again; it may have been charged.",
+    "The model-visible wording this line changed (tool receipts after a hand-over, the MCP stop line) has not been measured by agent-intent-eval yet; that needs the coordinator's real-model rig."
+  ]
+}

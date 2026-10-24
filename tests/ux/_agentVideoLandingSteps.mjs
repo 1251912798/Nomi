@@ -1,4 +1,6 @@
 // 「Agent 做一段视频 → 付费卡点生成 → 片子落节点 → 英文 + 重开还在」整条路的步骤本体，唯一一份（2026-10-18）。
+// D2（2026-10-24）：卡 = 指向元素 + 一行只读摘要 + 「生成」，按下去交给画布那一台——作业和产物住在画布那一镜的单镜 Run 里
+// （交接记录上有它的号，`handedOverRuns`）；任务面板里这件事是画布那一行，不是制作 Run 的整卡。
 // 真付费走查（agent-video-landing.paid.mjs）与零额度演练（agent-video-landing-paid.rehearsal.walk.mjs）都只调它：
 // 接入 → 开项目 → 开画布 → Agent 出卡 → 核草稿是最便宜那一档 → 点生成 → 片子落节点 → 任务面板 → 英文 + 重开。
 // 为什么顺序也收在这里：接入（lockToAuthorizedModels）与开项目谁先谁后，以前每份走查各记各的，
@@ -7,9 +9,9 @@
 // 两处只在演练里才有的差别由参数给：duringObservation（夹具压着出片，先验观察窗）、realMedia（真供应商才核片长 / 音轨）。
 import { DEFAULT_TIMEOUT_MS, clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { BRAIN, CHEAP_VIDEO_TERMS, cheapVideoProblems, plannedShots, probeLandedMedia } from './_agentVideoPaid.mjs'
-import { readProductionRuns } from './_paidRun.mjs'
+import { handedOverRuns, readProductionRuns } from './_paidRun.mjs'
+import { CARD_BODY, taskPanelRows, taskPanelSettledProblems } from './_spendCardWalk.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { uiText } from './full-walk/invariants.mjs'
 import {
   APPROVAL_CARD, CANVAS_PANEL, INTERVENTION_CONFIRM,
   chooseAssistantModel, closeSpendCard, openCanvas, readProject, sendCanvas,
@@ -21,8 +23,6 @@ export const ASK = `做一个 4 秒的视频镜头：一只纸船在雨后的水
 const MODEL_TURN_MS = stationTimeout({ turns: 1 })
 /** 真视频出片的安全上限（完成信号是节点 data-status=success，不是这个数）。 */
 const VIDEO_LANDS_MS = stationTimeout({ turns: 2 })
-/** 任务面板里「供应商长时间没有返回新状态」那句的词典键（文案按键取，不抄）。 */
-const STALE_KEY = 'generationCommon.production.status.providerStale'
 const TASK_TRIGGER = '[data-task-center-trigger="true"]'
 
 /**
@@ -78,15 +78,15 @@ export async function runAgentVideoLanding({ paid, win, askText = ASK, realMedia
     runs: runs.length, runId: run?.runId,
     shots: shots.map((shot) => ({ shotId: shot.shotId, providerId: shot.candidate?.providerId, modelId: shot.candidate?.modelId,
       variantId: shot.candidate?.variantId, transportModelId: shot.candidate?.transportModelId, parameters: shot.candidate?.parameters })),
-    // 卡上印给用户看的「变体」——和宿主要派发的那一档对照（两者不一致 = 看到的不是要付的）。
-    cardVariant: (await card.locator('[aria-label="变体"]').first().getAttribute('title').catch(() => null)) ?? null,
+    // 卡上那一行只读摘要（从节点现算）给用户看到的样子——和宿主要派发的那一档对照（两者不一致 = 看到的不是要付的）。
+    cardSummary: ((await card.locator(CARD_BODY).first().innerText().catch(() => '')) || '').replace(/\s+/g, ' ').trim().slice(0, 200) || null,
   }
   await walk.snap('video-01-zh-spend-card-before-confirm')
   if (shots.length !== 1 || problems.length) {
     await closeSpendCard(card, '草稿不是被授权的那一档，关卡不花钱')
     walk.report.blockedBeforeSpend = problems
     throw new Error(`付费前拦下（一分钱没花，卡已关）：宿主要派发的不是被授权的 Seedance 2.0 fast · 480p · 4s · 无音频——`
-      + `${shots.length} 镜；${problems.join('；')}；卡上显示的变体是 ${walk.report.draft.cardVariant}`)
+      + `${shots.length} 镜；${problems.join('；')}；卡上的摘要是「${walk.report.draft.cardSummary}」`)
   }
   await expect.poll(async () => (await readProject(win, projectId)).payload.generationCanvas.nodes
     .filter((node) => node.kind === 'video' && node.meta?.productionRunId === run.runId).length, { message: '草稿落成画布上一个视频节点', timeout: DEFAULT_TIMEOUT_MS }).toBe(1)
@@ -110,11 +110,16 @@ export async function runAgentVideoLanding({ paid, win, askText = ASK, realMedia
   await expect(node, '③ 供应商一出片，节点就变成结果——不是永远转圈').toHaveAttribute('data-status', 'success', { timeout: VIDEO_LANDS_MS })
   const landedAfterMs = Date.now() - confirmedAt
   await expectAbsent(waiting, { provenBy: waitingProof, message: '③ 出片之后等待画面收起来' })
-  const finalRun = readProductionRuns(projectRoot).find((candidate) => candidate.runId === run.runId)
-  const providerTasks = new Set((finalRun.jobs ?? []).map((job) => job.providerTaskId).filter(Boolean))
+  // 这一镜交给了画布那一台：作业和产物住在画布那一镜的单镜 Run 里；制作 Run 自己一笔都不派。
+  const allRuns = readProductionRuns(projectRoot)
+  const offerRun = allRuns.find((candidate) => candidate.runId === run.runId)
+  const canvasRuns = handedOverRuns(allRuns, run.runId)
+  expect(canvasRuns.length, '这一镜交给了画布那一台（交接上记着它的单镜 Run）').toBe(1)
+  expect((offerRun.jobs ?? []).length, '制作 Run 自己一笔作业都没派（一台发动机）').toBe(0)
+  const providerTasks = new Set(canvasRuns.flatMap((candidate) => candidate.jobs ?? []).map((job) => job.providerTaskId).filter(Boolean))
   expect(providerTasks.size, '只花了一笔：这一镜恰好一个供应商任务（观察窗过了只查不交）').toBe(1)
   const landed = (await readProject(win, projectId)).payload.generationCanvas.nodes.find((item) => item.id === nodeId)
-  const artifact = (finalRun.artifacts ?? []).find((item) => item.kind === 'video' && item.status !== 'rejected')
+  const artifact = canvasRuns.flatMap((candidate) => candidate.artifacts ?? []).find((item) => item.kind === 'video' && item.status !== 'rejected')
   expect(artifact?.projectRelativePath, '③ 真 mp4 落进了项目素材库').toMatch(/\.mp4$/)
   expect(landed.result?.url, '③ 节点结果是素材库的永久地址（不是会过期的签名预览链）')
     .toBe(`nomi-local://asset/${encodeURIComponent(projectId)}/${artifact.projectRelativePath.split('/').map(encodeURIComponent).join('/')}`)
@@ -130,11 +135,14 @@ export async function runAgentVideoLanding({ paid, win, askText = ASK, realMedia
   walk.report.observationWindowExercised = landedAfterMs > OBSERVATION_WINDOW_MS
   await walk.snap('video-03-zh-landed')
 
+  // 任务面板：这件事是画布那一行（不是被打开的那份制作 Run 的整卡）。读行，判落定了没有。
+  const ids = { offerRunId: run.runId, canvasRunIds: canvasRuns.map((candidate) => candidate.runId), nodeId }
   await clickOrFail(win.locator(TASK_TRIGGER), '打开任务面板')
-  const runCard = win.locator('[data-production-task-card]').first()
-  await expect(runCard, '③ 任务面板里有这次制作').toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
-  await expect(runCard.locator('[data-production-status-title]'), '③ 不再说供应商长时间没有返回新状态').not.toHaveText(uiText('zh-CN', STALE_KEY))
-  await expect(runCard, '③ 生成阶段记为完成（不再是 0 / N）').not.toContainText(/\b0 \/ \d+ 已完成/)
+  await expect.poll(async () => (await taskPanelRows(win)).length, { message: '③ 任务面板里有行', timeout: DEFAULT_TIMEOUT_MS }).toBeGreaterThan(0)
+  await expect.poll(async () => taskPanelSettledProblems(await taskPanelRows(win), ids), {
+    message: '③ 出片之后：没有哪一行还说供应商长时间没有返回新状态，这次出价和画布那一镜都记为完成', timeout: DEFAULT_TIMEOUT_MS,
+  }).toEqual([])
+  walk.report.taskRowsZh = await taskPanelRows(win)
   await walk.snap('video-04-zh-task-panel-after-landing')
   await win.keyboard.press('Escape')
 
@@ -144,9 +152,10 @@ export async function runAgentVideoLanding({ paid, win, askText = ASK, realMedia
   await expect(win.locator(`[data-node-id="${nodeId}"]`), '④ EN · 重开之后节点仍是结果').toHaveAttribute('data-status', 'success', { timeout: DEFAULT_TIMEOUT_MS })
   await walk.snap('video-05-en-landed-after-reload')
   await clickOrFail(win.locator(TASK_TRIGGER), 'open the task panel (EN)')
-  const enCard = win.locator('[data-production-task-card]').first()
-  await expect(enCard).toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
-  await expect(enCard.locator('[data-production-status-title]')).not.toHaveText(uiText('en', STALE_KEY))
+  await expect.poll(async () => taskPanelSettledProblems(await taskPanelRows(win), ids), {
+    message: '④ EN · after reload: no row claims the provider is stale, the offer and the canvas shot are done', timeout: DEFAULT_TIMEOUT_MS,
+  }).toEqual([])
+  walk.report.taskRowsEn = await taskPanelRows(win)
   await walk.snap('video-06-en-task-panel')
 
   walk.report.verified = [

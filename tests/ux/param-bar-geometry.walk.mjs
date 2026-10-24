@@ -90,8 +90,8 @@ await snap(win, 'node-selected')
 const geo = { maxCard: Math.round(maxCard), anyClip }
 console.log('  GEO=', JSON.stringify(geo))
 
-// 方案 B：点「更多」弹层，截图看收纳的参数
-const moreBtn = win.locator('button[aria-label="更多参数"]').first()
+// 方案 B：点参数摘要 pill 开参数面板，截图看收纳的参数（2026-10-24 D2：chips 摆法和「更多参数」溢出钮已删，只剩这颗 pill）
+const moreBtn = win.locator('[data-parameter-summary]').first()
 console.log('  更多按钮数:', await moreBtn.count())
 if (await moreBtn.count()) {
   await moreBtn.click({ timeout: 3000 }).catch(() => {})

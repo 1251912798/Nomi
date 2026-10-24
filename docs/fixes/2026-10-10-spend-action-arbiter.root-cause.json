@@ -7,151 +7,201 @@
   "symptom": "CI walkthrough agent-spend-stop-midway failed intermittently: after Generate this one and the close button were clicked back to back, the Agent turn never received the generate tool result. Same race, other order: the card showed stopped while that shot was still sealed, authorized and handed to the provider (reproduced by the characterization test at the point between admit and gate).",
   "direct_cause": "electron/capabilityCore/appIntegrationSpendConfirm.ts discardPendingSpend withdrew the offer without any token the queued confirmOneShot could see; confirmOneShot checked the card only at its start (pending re-read) and then went on through landing, lease, gate request and authorization, so a withdraw that landed between those awaits found no gate to revoke and the shot was still approved and sent. Once the shot was authorized, a late close got 'no pending generation to discard' instead of the sealed outcome.",
   "class_root": "The same operation's shots had no single linearization point: the confirm queue, the unqueued withdraw, the pending re-reads and the outcome readers each kept their own view, so any new await between them reopened the window (eight fixes in 14 days each added one more re-check).",
-  "migration": "serializeCardAction/cardActionsSettled moved from spendCardActionQueue.ts into spendOperationArbiter.ts (git mv, old file gone) and gained the cancel token and the sealed-outcome reader; discardPendingSpend registers the token synchronously; confirmOneShot and the batch loop ask the same token before every side-effecting step; the Agent receipt reads the outcome through sealedOutcome.",
+  "migration": "serializeCardAction/cardActionsSettled moved from spendCardActionQueue.ts into spendOperationArbiter.ts (git mv, old file gone) and gained the cancel token and the sealed-outcome reader; discardPendingSpend registers the token synchronously; confirmOneShot and the batch loop ask the same token before every side-effecting step; the Agent receipt reads the outcome through sealedOutcome. 2026-10-24 D2 step 3 (design card docs/plan/2026-10-23-d2-pointer-spend-card.md; contract docs/fixes/2026-10-24-spend-card-one-engine.root-cause.json): the paid card became node pointers plus a read-only summary that hands its shots to the canvas engine; spendOperationArbiter (registerCancel / sealedOutcome / serializeCardAction) was deleted with the old card, so this contract's boundaries, doors, tests and legacy paths were re-pointed to the code that holds the invariant today (problem, symptom, causes and class root above are the original record).",
   "affected_population": [
     "Anyone who closes a paid card while Generate this one or Generate remaining is in flight: a shot could still be sent after the card showed stopped",
     "The Agent turn waiting on that card: the generate tool result could be lost or contradict what the card said"
   ],
   "scope_paths": [
-    "electron/capabilityCore/"
+    "electron/capabilityCore/appIntegrationSpendConfirm.ts",
+    "electron/capabilityCore/appIntegrationCanvasShot.ts",
+    "electron/capabilityCore/canvasHandOver.ts",
+    "electron/productionRun/productionActionIpc.ts",
+    "electron/productionRun/productionGenerationPresentationEdits.ts",
+    "electron/shared/productionGenerationPresentation.ts"
   ],
   "entry_points": [
-    "electron/productionRun/productionActionIpc.ts: discard / confirm / confirmRemaining / removeShot / revise IPC handlers",
-    "electron/capabilityCore/appIntegrationSpendConfirm.ts: discardPendingSpend, confirmPendingSpend (confirmOneShot), confirmRemainingShots, removePendingSpendShot",
-    "electron/capabilityCore/generationTransportAdapters.ts: readPresentationOutcome (Agent receipt)"
+    "electron/productionRun/productionActionIpc.ts: hand-over-spend / discard-spend / remove-spend-shot / restore-spend-shot IPC handlers",
+    "electron/capabilityCore/appIntegrationSpendConfirm.ts: handOverShots, discardPendingSpend, removeShot, restoreShot",
+    "electron/capabilityCore/appIntegrationCanvasShot.ts: the consent bind (recordHandOverBindings), the dispatch write-back (writeBackHandOver), withdrawQueuedHandOvers",
+    "electron/capabilityCore/generationTransportAdapters.ts: readPresentationOutcome (Agent receipt) and the direct-generation policy hand-over"
   ],
   "invariants": [
-    "After the user's close is registered, no shot that has not been authorized is handed to the provider",
-    "A shot whose authorization is recorded is sent; a late close reports it as sent instead of failing",
-    "The card close answer, the Agent receipt and the ledger outcome are read from the same sealed outcome (after the queued actions have landed)",
-    "The close is never queued behind the action it interrupts"
+    "After the user's 取消 is recorded, no shot that is not bound to a canvas Run is sent, and every bound consent still queued on the canvas is withdrawn",
+    "A shot already dispatched is sent; a late 取消 reports it as sent instead of failing",
+    "The card's answer, the Agent receipt and the ledger outcome are read from generationPresentationOutcome",
+    "The 取消 is never queued behind the action it interrupts"
   ],
   "doors": [
     {
+      "kind": "read",
+      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
+      "symbol": "generationPresentationOutcome"
+    },
+    {
+      "kind": "read",
+      "path": "electron/productionRun/productionGenerationOperationStore.ts",
+      "symbol": "generationPresentationOutcome"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/agentPanelSpendConfirmTestUtils.ts",
+      "symbol": "withdrawQueuedHandOvers"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/appIntegration.ts",
+      "symbol": "withdrawQueuedHandOvers"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "symbol": "writeBackHandOver"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "symbol": "recordHandOverBindings"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "symbol": "withdrawQueuedHandOvers"
+    },
+    {
       "kind": "write",
       "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "symbol": "sealedOutcome"
+      "symbol": "discardPendingSpend"
     },
     {
       "kind": "write",
-      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "symbol": "registerCancel"
+      "path": "electron/capabilityCore/canvasHandOver.ts",
+      "symbol": "createCanvasHandOver"
     },
     {
       "kind": "write",
-      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "symbol": "serializeCardAction"
+      "path": "electron/productionRun/productionActionIpc.ts",
+      "symbol": "handOverPendingSpendShots"
     },
     {
       "kind": "write",
-      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "symbol": "spendCancelRequested"
+      "path": "electron/productionRun/productionActionIpc.ts",
+      "symbol": "discardPendingSpendConfirmation"
     },
     {
       "kind": "write",
-      "path": "electron/capabilityCore/generationTransportAdapters.ts",
-      "symbol": "sealedOutcome"
+      "path": "electron/productionRun/productionRunReducer.ts",
+      "symbol": "handOverPresentedShots"
     },
     {
       "kind": "write",
-      "path": "electron/capabilityCore/spendOperationArbiter.ts",
-      "symbol": "cardActionsSettled"
+      "path": "electron/productionRun/productionRunReducer.ts",
+      "symbol": "bindHandOvers"
+    },
+    {
+      "kind": "write",
+      "path": "electron/productionRun/productionRunReducer.ts",
+      "symbol": "settleHandOver"
+    },
+    {
+      "kind": "write",
+      "path": "electron/productionRun/productionGenerationPresentationEdits.ts",
+      "symbol": "bindHandOvers"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/productionGenerationPresentation.ts",
+      "symbol": "generationPresentationOutcome"
     }
   ],
   "door_reduction": {
-    "before": 11,
-    "after": 6,
-    "why_not": "The five production-action IPC doors and the receipt reader remain separate entry points; what was merged is what they share: one module that owns the queue, the cancel token and the sealed outcome. Each door now only calls it (door-map lists the write doors into spendOperationArbiter.ts)."
+    "before": 6,
+    "after": 16,
+    "why_not": "The arbiter module is gone; what replaced it are the ledger commands themselves (hand-over, bind, settle, close) with their one reducer entry each, the four IPC routes that issue them, the canvas side that binds and writes back, and the subscription that withdraws queued consents. Each door issues or reads a ledger command; none keeps its own view."
   },
   "regression_tests": [
-    "electron/capabilityCore/agentPanelSpendConfirmDiscardRace.e2e.test.ts",
-    "electron/capabilityCore/spendOperationArbiter.test.ts",
-    "electron/capabilityCore/agentPanelSpendRemaining.e2e.test.ts",
-    "electron/capabilityCore/agentPanelSpendBatches.e2e.test.ts"
+    "electron/capabilityCore/agentPanelSpendCardStop.e2e.test.ts",
+    "electron/productionRun/generationHandOver.test.ts",
+    "electron/capabilityCore/canvasHandOver.test.ts",
+    "electron/capabilityCore/agentPanelSpendCardFailures.e2e.test.ts"
   ],
   "residual_risks": [
-    "The queue and token are in-process only: a process death mid-confirm is still handled by the startup sweep, not the arbiter.",
-    "Telling the outcome still waits for a queued action that hangs (a provider submit without timeout); the card itself closes at once.",
-    "A close that lands after the authorization is recorded cannot stop that shot: the ledger has no approved-but-not-sent state; the outcome is reported truthfully as sent.",
-    "Provider-side retry and offline behavior in the middle of a batch is not part of this arbiter."
+    "The ledger survives a restart but a canvas consent does not: the startup sweep withdraws open offers (no card after a restart), and a bound hand-over whose renderer died is settled from the canvas Run's job.",
+    "A 取消 that lands after a shot was dispatched cannot stop it; it is reported as sent.",
+    "Provider-side retry and offline behaviour inside the canvas batch belong to the canvas engine, not to the card."
   ],
   "external_sources": [],
   "internal_only_reason": "The order in which Nomi paid-card actions and the Run ledger settle a shot has no external protocol; XState was checked (docs/plan/2026-10-10-spend-arbiter.md section 5) and does not abort in-flight awaits.",
   "recurrence": {
     "classification": "recurring",
-    "reason": "Any new paid-card action, closer or outcome reader can again act or read between two awaits of an in-flight confirm; eight fixes in 14 days each moved the window instead of removing it.",
+    "reason": "Any new paid-card action, closer or outcome reader can again act or read between two awaits; with the ledger as the linearization point there is no in-memory view left to fall out of step.",
     "same_class_scan": [
-      "node scripts/door-map.mjs electron/capabilityCore/spendOperationArbiter.ts -> six write doors, all in appIntegrationSpendConfirm.ts and generationTransportAdapters.ts",
-      "rg operations.withdraw electron -> discardPendingSpend (registers the token first), laneExtendedDesktopPorts withdraw (before any confirm exists), stalePresentationSweep (startup)"
+      "node scripts/door-map.mjs --write=handOverPresentedShots,bindHandOvers,settleHandOver,withdrawQueuedHandOvers,handOverPendingSpendShots,discardPendingSpendConfirmation,recordHandOverBindings,writeBackHandOver --read=generationPresentationOutcome (2026-10-24)",
+      "rg operations.withdraw electron -> discardPendingSpend, laneExtendedDesktopPorts withdraw, stalePresentationSweep (startup); all close through the ledger"
     ]
   },
-  "generality_proof": "Every card action and every reader of the final outcome goes through spendOperationArbiter: actions are serialized there, the cancel token is asked before each side-effecting step, and the outcome is read only after the queue has landed. Nothing depends on the model, provider, shot kind, batch size or who closes the card.",
+  "generality_proof": "Every card action, every close path and every reader of the final outcome goes through ledger commands (generation.handover / .bind / .settle / withdrawPresentation) and generationPresentationOutcome; nothing depends on the model, provider, shot kind, batch size or who closes the card.",
   "shared_boundaries": [
     {
-      "path": "electron/capabilityCore/spendOperationArbiter.ts",
-      "symbol": "registerCancel",
-      "responsibility": "Registers the user's cancel synchronously, before any await, so every queued step sees it."
+      "path": "electron/productionRun/productionGenerationPresentationEdits.ts",
+      "symbol": "bindHandOvers",
+      "responsibility": "Binds a canvas Run to a hand-over only while the presentation is open and the node is the shot's landed node; after any close a bind is refused, so nothing handed over after a close can be sent."
     },
     {
-      "path": "electron/capabilityCore/spendOperationArbiter.ts",
-      "symbol": "sealedOutcome",
-      "responsibility": "The only place that tells a final outcome: waits for the queue, then reads the ledger."
+      "path": "electron/shared/productionGenerationPresentation.ts",
+      "symbol": "generationPresentationOutcome",
+      "responsibility": "The only place that tells a final outcome; the card's answer, the Agent receipt and the operation view read it."
     }
   ],
   "same_class_entry_points": [
     {
       "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "entry_point": "confirmOneShot",
+      "entry_point": "handOverShots",
       "disposition": "enforced",
-      "evidence": "Asks the token at start, after landing, after the lease, before the gate request, after it (abandoning a gate opened after the withdraw) and before authorization; agentPanelSpendConfirmDiscardRace.e2e.test.ts point 2 fails without it."
+      "evidence": "Records the decision in the ledger before the renderer opens any consent (agentPanelSpendCard.e2e.test.ts)."
     },
     {
-      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "entry_point": "confirmRemainingShots",
+      "path": "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "entry_point": "dispatch (bound canvas Run)",
       "disposition": "enforced",
-      "evidence": "Stops between shots when the token is registered; agentPanelSpendRemaining.e2e.test.ts the close landing on the 2nd shot fails without it."
+      "evidence": "Admitted only for the bound canvas Run; every refusal before sending settles the hand-over as not sent (agentPanelSpendCardFailures.e2e.test.ts)."
     },
     {
       "path": "electron/capabilityCore/generationTransportAdapters.ts",
       "entry_point": "readPresentationOutcome",
       "disposition": "enforced",
-      "evidence": "Reads through sealedOutcome, the same reader the close answer uses."
+      "evidence": "Reads generationPresentationOutcome after the hand-overs settle."
     },
     {
       "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "entry_point": "removePendingSpendShot",
+      "entry_point": "removeShot",
       "disposition": "not-affected",
-      "evidence": "Only edits the offer record and never reaches authorization or the provider; it stays on the same queue."
-    },
-    {
-      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "entry_point": "revisePendingSpend",
-      "disposition": "enforced",
-      "evidence": "Runs on the same serializeCardAction queue as confirm; agentPanelSpendConfirmDiscardRace.e2e.test.ts confirm-during-revise and revise-during-confirm interleavings fail without the queue (mutation verified)."
+      "evidence": "Only edits the offer; it never reaches a consent or the provider."
     }
   ],
   "prevention": {
     "kind": "centralized-boundary",
-    "enforcement_path": "electron/capabilityCore/spendOperationArbiter.ts",
-    "invariant": "A user's cancel is visible to every queued paid-card step, and the final outcome is read from one place after the queue has landed.",
-    "failure_mode": "agentPanelSpendConfirmDiscardRace.e2e.test.ts goes red (a shot is sent after the cancel, or the three views disagree); making the token check a no-op turns three tests red (mutation verified).",
+    "enforcement_path": "electron/productionRun/productionGenerationPresentationEdits.ts",
+    "invariant": "The ledger is the one linearization point: a close refuses later binds and withdraws queued consents, and the outcome is told from one reader.",
+    "failure_mode": "agentPanelSpendCardStop.e2e.test.ts goes red (a shot sent after the close, or the views disagree).",
     "exception_policy": "none",
-    "strategy": "One arbiter module owns the queue, the cancel token and the sealed outcome; the discard door no longer bypasses it.",
+    "strategy": "Delete the in-memory arbiter; make hand-over, bind, settle and close ledger commands; withdraw queued consents in a ledger subscription.",
     "artifacts": [
-      "electron/capabilityCore/spendOperationArbiter.ts",
+      "electron/productionRun/productionGenerationPresentationEdits.ts",
+      "electron/capabilityCore/appIntegrationCanvasShot.ts",
       "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "electron/capabilityCore/generationTransportAdapters.ts"
+      "electron/capabilityCore/canvasHandOver.ts"
     ]
   },
   "class_regression_tests": [
-    "electron/capabilityCore/agentPanelSpendConfirmDiscardRace.e2e.test.ts"
+    "electron/capabilityCore/agentPanelSpendCardStop.e2e.test.ts"
   ],
   "legacy_paths": {
     "status": "removed",
     "removed_paths": [
-      "electron/capabilityCore/spendCardActionQueue.ts"
+      "electron/capabilityCore/spendOperationArbiter.ts"
     ],
-    "rationale": "The old queue module is renamed into the arbiter in the same change; no parallel version remains."
+    "rationale": "2026-10-24: the arbiter (queue, cancel token, sealed outcome) is deleted with the card actions it serialized; no parallel version remains."
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
@@ -159,12 +209,11 @@
     "exit_criteria": []
   },
   "invariant_owner_layer": {
-    "layer": "electron/capabilityCore/spendOperationArbiter.ts",
+    "layer": "electron/productionRun/productionGenerationPresentationEdits.ts",
     "tests": [
-      "electron/capabilityCore/agentPanelSpendConfirmDiscardRace.e2e.test.ts",
-      "electron/capabilityCore/spendOperationArbiter.test.ts",
-      "electron/capabilityCore/agentPanelSpendRemaining.e2e.test.ts"
+      "electron/productionRun/generationHandOver.test.ts",
+      "electron/capabilityCore/agentPanelSpendCardStop.e2e.test.ts"
     ],
-    "why": "The queue, the cancel token and the sealed outcome live in one module; the race test exercises five interleaving points against the real ledger and a loopback provider."
+    "why": "Hand-over, bind, settle and close are ledger commands with one reducer entry each; the race test drives 取消 against 0, 1 and 3 in-flight hand-overs, a × before the bind, double clicks, typing, a closed window and a restart against the real ledger."
   }
 }

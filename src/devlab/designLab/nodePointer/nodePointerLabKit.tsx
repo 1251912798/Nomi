@@ -36,8 +36,8 @@ const L = (locale: Locale, zh: string, en: string): string => (locale === 'en' ?
 
 const RUN_ID = 'lab-node-pointer-run'
 const STOPPED_RUN_ID = 'lab-node-pointer-stopped'
-const DESIGN_ID = 'lab-node-pointer-design'
-const DOCUMENT_ID = 'lab-node-pointer-doc'
+export const DESIGN_ID = 'lab-node-pointer-design'
+export const DOCUMENT_ID = 'lab-node-pointer-doc'
 
 const VIDEO_META = (ratio: string, duration: number, extra: Record<string, unknown> = {}) => ({
   modelKey: 'seedance-2', modelVendor: 'apimart', aspect_ratio: ratio, duration, resolution: '480p', ...extra,
@@ -49,8 +49,8 @@ function node(partial: Partial<GenerationCanvasNode> & Pick<GenerationCanvasNode
   return { kind: 'video', title: '', prompt: '', position: { x: 0, y: 0 }, status: 'idle', categoryId: 'shots', ...partial } as GenerationCanvasNode
 }
 
-/** 分镜方案：节点的「镜 NN」从这里派生（和画布、列表同一个口）。 */
-function design(locale: Locale): StoryboardDesign {
+/** 分镜方案：节点的「镜 NN」从这里派生（和画布、列表同一个口）。付费卡那一屏也用它。 */
+export function design(locale: Locale): StoryboardDesign {
   const shots = Array.from({ length: 12 }, (_, index) => ({ shotId: `s${index + 1}`, index: index + 1, shotKind: 'video' as const, durationSec: 4, anchorIds: [], prompt: '' }))
   return { id: DESIGN_ID, documentId: DOCUMENT_ID, title: L(locale, '纸船', 'Paper boat'), committed: true, status: 'draft', createdAt: 1, updatedAt: 1, sourceDocumentUpdatedAt: 1, plan: { title: '', anchors: [], shots } }
 }
@@ -113,7 +113,7 @@ function seedRuns(): void {
  * 只读目录桥：沿用实验室共用的那一份（seedance-2 / gpt-image-2），再给每一行补上主进程投影会给的「能用」。
  * 共用夹具的行没带 `availability`，目录读法按 fail-closed 一律当不可用，摘要里的模型名就永远读不出来。
  */
-function installPointerCatalog(): void {
+export function installPointerCatalog(): void {
   installCatalogBridge()
   const catalog = (window as unknown as { nomiDesktop: { modelCatalog: { listModels: (params?: { kind?: string }) => Array<Record<string, unknown>> } } }).nomiDesktop.modelCatalog
   const listModels = catalog.listModels
@@ -160,7 +160,7 @@ export function NodePointerStage({ locale = 'zh-CN', scene = {}, children }: { l
  * 截图前等两件异步的事落定：模型目录（摘要里的模型名）、画布节点的结果图 / 视频（延迟加载队列）。
  * 走就绪旗的持有登记，不靠墙钟等待；最多等约 10 秒（600 帧），等不到就照实截。
  */
-function useLabSettled(seeded: boolean): void {
+export function useLabSettled(seeded: boolean): void {
   React.useEffect(() => {
     if (!seeded) return undefined
     const release = holdDesignLabReady('node-pointer:settled')
@@ -182,7 +182,7 @@ function useLabSettled(seeded: boolean): void {
 }
 
 /** 替鼠标在某个指向元素上派一次 pointerover（React 的 onPointerEnter 就是从它来的）。 */
-function LabHover({ target }: { target: string }): null {
+export function LabHover({ target }: { target: string }): null {
   React.useEffect(() => {
     const release = holdDesignLabReady(`node-pointer:hover:${target}`)
     const frame = window.requestAnimationFrame(() => {

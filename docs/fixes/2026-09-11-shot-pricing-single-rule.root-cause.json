@@ -19,9 +19,8 @@
     "src/config/models.ts",
     "src/config/modelOptionMappers.ts",
     "src/workbench/generationCanvas/spend/planCostEstimate.ts",
-    "src/workbench/ai/v4/spendCardEstimate.ts",
-    "src/workbench/ai/v4/spendCardEstimate.test.ts",
-    "tests/ux/agent-spend-reprice.walk.mjs",
+    "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+    "tests/ux/agent-spend-priced-card.walk.mjs",
     "src/config/modelOptionMappers.test.ts",
     "src/workbench/generationCanvas/spend/planCostEstimate.test.ts"
   ],
@@ -30,7 +29,7 @@
     "electron/capabilityCore/mcpGenerationTools.ts — 封印合同与 seal 时的硬上限用的 shotPrices（主进程）",
     "electron/spendQuote.ts — 对外报价投影（主进程）",
     "src/workbench/generationCanvas/spend/planCostEstimate.ts — 画布批量确认条的「本波预估额度」（渲染层，此前只累加基价）",
-    "src/workbench/ai/v4/spendCardEstimate.ts — 付费确认卡改参数后的本地重算（渲染层，本轮新增，直接接唯一算式）",
+    "src/workbench/ai/v4/useAgentPanelSpendCard.ts — 付费卡逐镜报价（渲染层；2026-10-24 D2 第③步起读节点当前参数、经 planCostEstimate.estimateNodePrice 接唯一算式，原 spendCardEstimate.ts 删除：卡上没有参数了）",
     "src/config/modelOptionMappers.ts — 目录价目 → ModelOption.pricing 的唯一搬运点（此前在这里第二次归一，把 0.3 变成 0）"
   ],
   "invariants": [
@@ -66,10 +65,10 @@
       "evidence": "此前 `Math.max(0, Math.floor(cost))` 且非有限值落成 0，与主进程 catalogPricingResolver.toModelPricing 的原样透传不一致——基价 0.3 在渲染层变成 0。已改为原样搬运；走查夹具目录里正是 0.3 基价，真机截图上卡印 CNY 0.30，与主进程投影的 0.3 相同"
     },
     {
-      "path": "src/workbench/ai/v4/spendCardEstimate.ts",
-      "entry_point": "付费确认卡改参数后的本地重算",
+      "path": "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+      "entry_point": "付费卡逐镜报价（读节点当前参数）",
       "disposition": "enforced",
-      "evidence": "本轮新增的读者，从第一天就 import 契约层算式与 resolver（不自己判身份、不自己算钱）。真机走查 tests/ux/agent-spend-reprice.walk.mjs：改 chip 后卡上与按钮上同时印 CNY 0.50；同一次真机探针读主进程投影得到 price {known:true, amount:0.5}，两边分毫不差"
+      "evidence": "09-11 本轮新增的读者 spendCardEstimate.ts 从第一天就 import 契约层算式与 resolver（不自己判身份、不自己算钱），当时真机走查改 chip 后卡上与主进程投影同为 0.5。2026-10-24 D2 第③步：卡上没有参数，spendCardEstimate.ts 删除，卡逐镜报价改读节点、调 planCostEstimate.estimateNodePrice（与画布批量估价同一个函数）；真机走查 tests/ux/agent-spend-priced-card.walk.mjs 证卡上「N 张」只在每一镜算得出时印，画布那一镜冻住的授权信封金额 = 目录那一行的价"
     },
     {
       "path": "electron/productionRun/productionPendingSpend.ts",
@@ -98,7 +97,7 @@
     "kind": "centralized-boundary",
     "enforcement_path": "electron/shared/contracts/shotPricingRule.ts",
     "invariant": "一镜的价与模型身份匹配只有这一份实现；任何读者 import 它，不许自带算式，价目原样搬运不做第二次归一",
-    "failure_mode": "再写一份算式意味着要么重新声明 ModelPricing 的形状（形状已只此一份且从契约层 re-export，重复声明会在类型层面立刻显形），要么绕开 deriveShotPrice 自己累加——后者会被 shotPricingRule.test.ts 钉住的语义（基价+加价、known:false 绝不落 0）与 spendCardEstimate.test.ts 的逐镜对账当场证伪，真机走查 agent-spend-reprice.walk.mjs 再从界面这一端量一次同一个数",
+    "failure_mode": "再写一份算式意味着要么重新声明 ModelPricing 的形状（形状已只此一份且从契约层 re-export，重复声明会在类型层面立刻显形），要么绕开 deriveShotPrice 自己累加——后者会被 shotPricingRule.test.ts 钉住的语义（基价+加价、known:false 绝不落 0）与 planCostEstimate.test.ts 的逐节点估价当场证伪，真机走查 agent-spend-priced-card.walk.mjs 再从账本这一端量一次同一个数",
     "exception_policy": "none",
     "strategy": "把算式与身份匹配一起搬进零 import 的中立契约层，主进程侧只留转出（不留第二份实现，P1 加新必删旧），渲染层侧删掉自己的形状定义与自己的算法、改为 import 同一份；同时把「目录价目进渲染层」那一处的第二次归一删掉，让两端读到的价目逐字节相同",
     "artifacts": [
@@ -111,27 +110,23 @@
   ],
   "regression_tests": [
     "electron/shared/contracts/shotPricingRule.test.ts",
-    "src/workbench/ai/v4/spendCardEstimate.test.ts",
     "src/workbench/generationCanvas/spend/planCostEstimate.test.ts",
     "src/config/modelOptionMappers.test.ts",
-    "tests/ux/agent-spend-reprice.walk.mjs"
+    "tests/ux/agent-spend-priced-card.walk.mjs"
   ],
   "legacy_paths": {
     "status": "removed",
     "removed_paths": [
-      "electron/productionRun/shotPricing.ts",
-      "src/config/models.ts",
-      "src/config/modelOptionMappers.ts",
-      "src/workbench/generationCanvas/spend/planCostEstimate.ts"
+      "src/workbench/ai/v4/spendCardEstimate.ts"
     ],
-    "rationale": "四处旧实现在同一批改动里直接删掉，不留并行版：shotPricing.ts 的 deriveShotPrice 函数体与价目类型删除、改为从契约层转出；models.ts 的 ModelOptionPricing/ModelOptionPricingSpec 两个接口删除、改为 re-export 契约层同名类型；modelOptionMappers.ts 的第二次归一（floor/clamp/落 0）删除；planCostEstimate.ts 的基价累加删除、换成调用唯一算式。保留任何一份都等于保留一个会再次漂开的数——而漂开的方向已经证明是「少报」"
+    "rationale": "四处旧实现在同一批改动里直接删掉，不留并行版：shotPricing.ts 的 deriveShotPrice 函数体与价目类型删除、改为从契约层转出；models.ts 的 ModelOptionPricing/ModelOptionPricingSpec 两个接口删除、改为 re-export 契约层同名类型；modelOptionMappers.ts 的第二次归一（floor/clamp/落 0）删除；planCostEstimate.ts 的基价累加删除、换成调用唯一算式。保留任何一份都等于保留一个会再次漂开的数——而漂开的方向已经证明是「少报」。2026-10-24（D2 第③步）：当年删掉的是 electron/productionRun/shotPricing.ts、src/config/models.ts、src/config/modelOptionMappers.ts、src/workbench/generationCanvas/spend/planCostEstimate.ts 里的第二份算式（原始记录，上面那段）；这次随旧付费卡一起删掉的是卡上自带的那一份估价 src/workbench/ai/v4/spendCardEstimate.ts（卡印「N 张 / 段」那一行曾经自己再估一遍）——卡现在从节点读、经 planCostEstimate 的唯一算式（useAgentPanelSpendCard），不留第二份。"
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
     "rationale": "纯内部重构，没有引入、升级或降级任何依赖；改动只在本仓的模块边界之间搬家",
     "exit_criteria": []
   },
-  "migration": "没有持久化格式变化：价目仍是目录里那一行的 model.pricing（用户可改），合同、收据、Run 事件的结构一个字节都没动。用户侧唯一可感知的变化是「数变对了」——此前少报的场景（配了规格加价、或基价是非整数）现在印出的是主进程真正要扣的那个数；不需要迁移、不需要重开项目",
+  "migration": "没有持久化格式变化：价目仍是目录里那一行的 model.pricing（用户可改），合同、收据、Run 事件的结构一个字节都没动。用户侧唯一可感知的变化是「数变对了」——此前少报的场景（配了规格加价、或基价是非整数）现在印出的是主进程真正要扣的那个数；不需要迁移、不需要重开项目 2026-10-24 (D2 step 3): the old card's own estimate (src/workbench/ai/v4/spendCardEstimate.ts) and the reprice walk were deleted with the old card, so this contract's scope, doors, tests and legacy paths were re-pointed to the code that holds the invariant today (useAgentPanelSpendCard reads the node and prices it through planCostEstimate; problem, symptom, causes and class root above are the original record).",
   "residual_risks": [
     "本轮把「两端读同一份价目」做到了取值这一步，但**没有**给『渲染层不许再写第二份报价算式』加机器门岗（现在靠的是类型只此一份 + 单测 + 走查三重，不是 AST 扫描）。真要再写一份，作者得先绕开类型；这条约束的强度弱于 check:vocabularies 那种词表门岗，后续如果再出现第五个价格读者，应当把它升级成门岗",
     "planCostEstimate 的 resolvePricing 直接回 `option.pricing`（模型行已由 findModelOptionByIdentifier 认出来），没有走 createModelPricingResolver 的身份匹配。这一处两端的身份判据因此不是同一段代码——目前不会岔开（那一行就是用户在节点上选中的那一行），但它是本条不变量里最薄的一环",
@@ -142,7 +137,7 @@
     "layer": "electron/shared/contracts/shotPricingRule.ts",
     "tests": [
       "electron/shared/contracts/shotPricingRule.test.ts",
-      "src/workbench/ai/v4/spendCardEstimate.test.ts"
+      "src/workbench/generationCanvas/spend/planCostEstimate.test.ts"
     ]
   }
 }

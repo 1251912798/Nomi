@@ -2,7 +2,7 @@
 // 判据不在这里：这里只负责「点到了没有」，点完之后对不对由监视器按铁律判。
 import { clickOrFail, expect, waitForVisualQuiescence } from '../_assert.mjs'
 import { stationTimeout } from '../_station-budget.mjs'
-import { findCanvasBlankPoint, findConnectionStartPoint, findNodeHitPoint, panCanvasUntilInside } from '../_canvasHit.mjs'
+import { findCanvasBlankPoint, findConnectionStartPoint, findEdgeHitPoint, findNodeHitPoint, panCanvasUntilInside } from '../_canvasHit.mjs'
 import { canvasFitViewButton } from '../_shell.mjs'
 
 export const nodeSelector = (id) => `.react-flow__node[data-id="${id}"]`
@@ -63,6 +63,22 @@ export async function connectNodes(win, sourceId, targetId, readEdges) {
   await win.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 14 })
   await win.mouse.up()
   await expect.poll(async () => (await readEdges()).length, { message: `${sourceId} → ${targetId} 连上了`, timeout: stationTimeout() }).toBeGreaterThan(before)
+}
+
+/**
+ * 断开一条线：在线上点得到的地方点一下（选中它），再点它旁边那个「×」（同 canvas-edge-disconnect.walk.mjs 的手法）。
+ * 点完核对画布上真少了这一条。
+ */
+export async function disconnectEdge(win, edgeId, readEdges) {
+  const edgeSelector = `.generation-canvas-v2__edge[data-edge-id="${edgeId}"] .generation-canvas-v2__edge-hit`
+  let point = null
+  await expect.poll(async () => {
+    point = await findEdgeHitPoint(win, { edgeSelector, withinSelector: '.generation-canvas-v2__stage', margins: { left: 140, top: 100, right: 20, bottom: 20 } })
+    return point !== null
+  }, { message: `线 ${edgeId} 上有点得到的地方`, timeout: stationTimeout() }).toBe(true)
+  await win.mouse.click(point.x, point.y)
+  await clickOrFail(win.locator('.generation-canvas-v2__edge-control button[data-edge-disconnect]'), `线 ${edgeId} 旁边的「×」`)
+  await expect.poll(async () => (await readEdges()).some((edge) => edge.id === edgeId), { message: `线 ${edgeId} 断开了`, timeout: stationTimeout() }).toBe(false)
 }
 
 /** 这个元素整块都在视口里吗（卡片被放得很大时，它下面那条 composer 常常在视口外）。 */

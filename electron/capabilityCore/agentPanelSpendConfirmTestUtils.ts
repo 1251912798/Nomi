@@ -9,7 +9,8 @@ import { createPendingSpendActions } from "./appIntegrationSpendConfirm";
 import { createPiGenerationTransportAdapter } from "./generationTransportAdapters";
 import { residentRunFacts } from "./residentGenerationAdapterFactory";
 import { installCanvasShotRuns, withdrawQueuedHandOvers, type CanvasConsentShot } from "./appIntegrationCanvasShot";
-import { createCanvasHandOver, HAND_OVER_RENDERER_OP } from "./canvasHandOver";
+import { createCanvasHandOver } from "./canvasHandOver";
+import { HAND_OVER_SHOTS_OP } from "../shared/contracts/canvasHandOver";
 import { setupCanvasShots } from "./canvasShotTestUtils";
 import type { CanvasTransport } from "./canvasTransportProvider";
 import type { ProjectAgentApprovalPolicy } from "../shared/agentCapabilities/capabilityApprovalPolicy";
@@ -116,12 +117,18 @@ export type SpendWorldOptions = Readonly<{
   /** 起草路要的目录（缺省 = 本文件那份 acme 目录）与视频档案候选。 */
   registry?: ReturnType<typeof createModuleRegistry>;
   videoModelCandidates?: Parameters<typeof createGenerationPlanningHandler>[0]["videoModelCandidates"];
-  /** 项目素材库（缺省 = 没有：起草钉住的参考一条都不过线）。给了就走生产同一个解析口 `resolveIndexedReferencePreview`。 */
+  /**
+   * 项目素材库（缺省 = 没有：起草钉住的参考一条都不过线）。给了就走生产同一组解析口：起草时钉住参考的身份
+   * （计划处理器的 `resolveAssetReferenceIdentity`，生产里与它同一个 `resolveProjectAssetReferenceIdentity`）+ 落地时的地址
+   * （`resolveIndexedReferencePreview`）。
+   */
   assets?: SpendReferenceAssets;
 }>;
 
 function rendererDouble(validateNode: SpendWorldOptions["validateNode"]) {
   const nodes = new Map<string, FakeNode>();
+  /** 收到的每一份落地报文（原样，铁律 ⑩ 的宿主矩阵从这里接着走渲染层落节点那几步）。 */
+  const payloads: MaterializeShotsWirePayload[] = [];
   const byShot = new Map<string, string>();
   const handOverCalls: Array<Readonly<{ runId: string; shots: Array<{ shotId: string; nodeId: string }>; hostingAllowed: boolean }>> = [];
   const dispatchErrors: unknown[] = [];
@@ -165,6 +172,7 @@ function rendererDouble(validateNode: SpendWorldOptions["validateNode"]) {
     if (op === "production.materialize-shots") {
       if (landingFailing) throw new Error("Nomi window unavailable");
       const wire = payload as MaterializeShotsWirePayload;
+      payloads.push(structuredClone(wire));
       const bindings = wire.shots.flatMap((shot) => {
         const key = `${wire.materializationOperationId}::${shot.shotId}`;
         let nodeId = byShot.get(key);
@@ -188,7 +196,7 @@ function rendererDouble(validateNode: SpendWorldOptions["validateNode"]) {
       });
       return { bindings };
     }
-    if (op === HAND_OVER_RENDERER_OP) {
+    if (op === HAND_OVER_SHOTS_OP) {
       const input = payload as { projectId: string; runId: string; shots: Array<{ shotId: string; nodeId: string }>; hostingAllowed: boolean };
       handOverCalls.push(structuredClone(input));
       if (handOverFailing) throw Object.assign(new Error("Nomi window unavailable"), { name: "RendererUnavailableError" });
@@ -224,6 +232,7 @@ function rendererDouble(validateNode: SpendWorldOptions["validateNode"]) {
 
   return {
     nodes,
+    payloads,
     handOverCalls,
     dispatchErrors,
     requestRenderer,
@@ -306,6 +315,7 @@ export function spendWorld(options: SpendWorldOptions = {}) {
     registry: options.registry ?? registry,
     operations,
     ...(options.videoModelCandidates ? { videoModelCandidates: options.videoModelCandidates } : {}),
+    ...(options.assets ? { resolveAssetReferenceIdentity: options.assets.identity } : {}),
     resolveModelPricing: () => options.pricing,
     now,
   });

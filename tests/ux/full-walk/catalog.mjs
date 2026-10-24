@@ -290,7 +290,7 @@ export const FULL_WALK_JOURNEYS = Object.freeze([
     states: Object.freeze([
       { id: 'reference-connected', kind: 'user', visibleText: ['generationCommon.parameters.referencesAria'], actions: ['拖线连参考', '@ 引用素材', '断开'], owner: 'src/workbench/generationCanvas/runner/referenceSlots.ts#assignEdgeToSlot', deadline: USER },
       { id: 'uploading-reference', kind: 'system', visibleText: ['generationCommon.observability.progress.submitting'], actions: ['停止'], owner: 'electron/catalog/assetLocalization.ts#resolveAssetIngestionWithFallback', deadline: { ref: PHASE, key: 'requesting' } },
-      { id: 'agent-card-waiting', kind: 'user', visibleText: ['agentPanelV4.spendParamsTitleImage_one', 'agentPanelV4.spendConfirmThisImage', 'agentPanelV4.spendRemoveThisImage'], actions: ['生成这张', '去掉这张', '×'], owner: 'src/workbench/ai/v4/spendCardDraft.ts#projectSpendNode', deadline: USER },
+      { id: 'agent-card-waiting', kind: 'user', visibleText: ['agentPanelV4.spendParamsTitleImage_one', 'agentPanelV4.spendCard.generate'], actions: ['点指向元素到节点上看参考 / 改参数', '生成', '取消'], owner: 'src/workbench/ai/v4/agentPanelSpendCard.ts#projectSpendCard', deadline: USER },
       { id: 'generating', kind: 'system', visibleText: ['generationCommon.observability.progress.generating'], actions: ['停止'], owner: 'src/workbench/observability/narrate.ts#narrateProgress', deadline: { ref: PHASE, key: 'generating' } },
       { id: 'success', kind: 'terminal', visibleText: ['generationCommon.versionCards.expandAria'], actions: ['下载', '设为首帧'], owner: 'src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx#NodeVersionCardsHost' },
       { id: 'error', kind: 'terminal', visibleText: ['generationCommon.observability.action.retry.main'], actions: ['重试'], owner: 'src/workbench/observability/classifyError.ts#classifyGenerationError' },
@@ -305,15 +305,18 @@ export const FULL_WALK_JOURNEYS = Object.freeze([
     states: Object.freeze([
       { id: 'agent-turn-running', kind: 'system', visibleText: ['agentPanelV4.stop'], actions: ['停止'], owner: 'electron/agentLane/laneProviderGuard.mts#LANE_STREAM_WATCHDOG', deadline: { ref: 'electron/agentLane/laneProviderGuard.mts#LANE_FIRST_TOKEN_MS' } },
       { id: 'drafted-on-canvas', kind: 'system', visibleText: ['generationCommon.production.canvasLanding.queued'], actions: ['看占位卡'], owner: 'electron/shared/productionShotPhase.ts#deriveProductionShotState', deadline: { gap: '草稿落画布之后到出卡之间没有登记时限（出卡由同一回合的 generate 负责）' } },
-      { id: 'card-waiting', kind: 'user', visibleText: ['agentPanelV4.spendParamsTitleImage_other', 'agentPanelV4.spendConfirmThisImage', 'agentPanelV4.spendRemoveThisImage'], actions: ['翻页', '生成这张', '去掉这张', '×'], owner: 'src/workbench/ai/v4/useAgentPanelSpendConfirm.ts#useAgentPanelSpendConfirm', deadline: USER },
-      { id: 'shots-queued', kind: 'system', visibleText: ['generationCommon.production.canvasLanding.queuedNth'], actions: ['暂停'], owner: 'electron/shared/productionShotPhase.ts#deriveProductionShotState', deadline: { ref: 'electron/productionRun/multiShotBatchScheduler.ts#POLL_DELAY_CAP_MS' } },
-      { id: 'shot-generating', kind: 'system', visibleText: ['generationCommon.observability.progress.generating'], actions: ['暂停'], owner: 'electron/shared/productionShotPhase.ts#deriveProductionShotState', deadline: { ref: PHASE, key: 'generating' } },
-      { id: 'done', kind: 'terminal', visibleText: ['generationCommon.composer.regenerate'], actions: ['再出一版（选中节点后按 ↑；10-06 删了浮条的「重拍这镜」）', '下载'], owner: 'electron/shared/productionShotPhase.ts#deriveProductionShotState' },
-      { id: 'failed', kind: 'terminal', visibleText: ['generationCommon.production.canvasLanding.stoppedAfterFailure'], actions: ['重试（失败卡上，走返工链、停下的批次接着跑）'], owner: 'electron/productionRun/multiShotBatchScheduler.ts#settleAtRest' },
+      { id: 'card-waiting', kind: 'user', visibleText: ['agentPanelV4.spendParamsTitleImage_other', 'agentPanelV4.spendCard.generateAll', 'agentPanelV4.spendCard.exclude'], actions: ['点指向元素到节点上改', '全部生成（N）', '某一段不生成 ×', '取消'], owner: 'src/workbench/ai/v4/useAgentPanelSpendCard.ts#useAgentPanelSpendCard', deadline: USER },
+      // D2 第③步：卡上点「生成」= 把这几镜交给画布，逐镜走画布单节点提交那一条路（不再是制作批次的调度器）。
+      { id: 'card-sending', kind: 'system', visibleText: ['agentPanelV4.spendBatchProgressImage', 'agentPanelV4.spendBatchStopHint'], actions: ['取消（停下还没交出去的）'], owner: 'electron/capabilityCore/canvasHandOver.ts#createCanvasHandOver', deadline: { ref: 'electron/capabilityCore/canvasHandOver.ts#HAND_OVER_RENDERER_TIMEOUT_MS' } },
+      { id: 'shots-queued', kind: 'system', visibleText: ['generationCommon.observability.progress.queued'], actions: ['停止（节点上）'], owner: 'src/workbench/observability/narrate.ts#narrateProgress', deadline: { ref: PHASE, key: 'queued' } },
+      { id: 'shot-generating', kind: 'system', visibleText: ['generationCommon.observability.progress.generating'], actions: ['停止（节点上）'], owner: 'src/workbench/observability/narrate.ts#narrateProgress', deadline: { ref: PHASE, key: 'generating' } },
+      { id: 'card-failure', kind: 'user', visibleText: ['agentPanelV4.spendCard.failedTitle.notSent', 'agentPanelV4.spendCard.retry', 'agentPanelV4.spendCard.decline'], actions: ['再试一次（只重发没发出去的）', '先不发了（收回这一次出价）', '去改镜 N（参数被拒）'], owner: 'src/workbench/ai/v4/agentPanelSpendCard.ts#projectSpendCard', deadline: USER },
+      { id: 'done', kind: 'terminal', visibleText: ['agentPanelV4.spendCard.receiptGeneratedImage_other', 'generationCommon.composer.regenerate'], actions: ['点回执上的组指向到画布', '再出一版（选中节点后按 ↑）', '下载'], owner: 'src/workbench/ai/pointer/GenerationReceiptPointers.tsx#GenerationReceiptPointers' },
+      { id: 'failed', kind: 'terminal', visibleText: ['generationCommon.observability.action.retry.main'], actions: ['重试（节点上）', '换个模型（节点上）'], owner: 'src/workbench/observability/classifyError.ts#classifyGenerationError' },
     ].map(Object.freeze)),
     scripts: Object.freeze(['tests/ux/full-walk/playbooks/pb01-two-page-card.walk.mjs', 'tests/ux/full-walk/playbooks/pb03-default-models.walk.mjs', 'tests/ux/full-walk/playbooks/pb08-cover-card-kind.walk.mjs', 'tests/ux/core-smoke-spend-confirm.walk.mjs']),
     invariants: Object.freeze([1, 2, 3, 4, 6, 9]),
-    metric: Object.freeze({ gap: '付费卡的「确认 / 收回 / 只确认当前页」没有任何上报；agent.turn.completed 在 telemetryEvents 里声明了却没有发射点' }),
+    metric: Object.freeze({ gap: '付费卡的「生成 / 取消 / 不生成」没有任何上报；agent.turn.completed 在 telemetryEvents 里声明了却没有发射点' }),
   }),
   Object.freeze({
     id: 'J05-pause-resume',

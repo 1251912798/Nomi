@@ -17,7 +17,7 @@ const world = seededWorld()
 
 const PROMPT = '清晨的渔港，一条小船出海'
 
-/** 矩阵行。`expect` = 宿主该怎么回应：`land`（四站都摆出同样的值）或 `refuse`（当场说回给 Agent）。 */
+/** 矩阵行。`expect` = 宿主该怎么回应：`land`（草稿、节点、卡三站都摆出同样的值）或 `refuse`（当场说回给 Agent）。 */
 const CASES = [
   { id: 'aspect-key-size', family: '比例键名 = size（比例语义）', intent: { providerId: 'apimart', modelId: 'doubao-seedance-2.5', count: 2, durationSec: 8 }, expect: 'land' },
   { id: 'aspect-key-ratio', family: '比例键名 = ratio', intent: { providerId: 'volcengine', modelId: 'doubao-seedance-2-0-260128', count: 1, durationSec: 5 }, expect: 'land' },
@@ -51,15 +51,20 @@ describe('铁律 ⑩ 说的 = 摆的（宿主矩阵）', () => {
   it('判据会咬人：任一站改值或悄悄丢掉都算违反，宿主拒绝不算', () => {
     const said = { model: 'v/m', count: 2, durationSec: 8, references: 1 }
     const same = { model: 'v/m', count: 2, durationSec: 8, references: 1 }
-    expect(violationsOf({ refused: false, said, draft: same, node: { ...same, references: undefined }, card: { ...same, sentDurationSec: 8 } })).toEqual([])
-    expect(violationsOf({ refused: false, said, draft: same, node: { ...same, durationSec: 6, references: undefined }, card: { ...same, durationSec: undefined, sentDurationSec: 8 } }))
-      .toEqual(['card.durationSec:dropped', 'card.durationSec:shown≠sent(undefined/8)', 'node.durationSec:differs(8→6)'])
+    const card = { ...same, references: undefined }
+    expect(violationsOf({ refused: false, said, draft: same, node: same, card })).toEqual([])
+    expect(violationsOf({ refused: false, said, draft: same, node: { ...same, durationSec: 6 }, card: { ...card, durationSec: undefined } }))
+      .toEqual(['card.durationSec:dropped', 'node.durationSec:differs(8→6)'])
+    // 参考落到节点上（D2 起发出读节点）：节点上没有就是悄悄丢了；卡本来就不摆参考。
+    expect(violationsOf({ refused: false, said, draft: same, node: { ...same, references: undefined }, card })).toEqual(['node.references:dropped'])
+    expect(violationsOf({ refused: false, said, draft: same, node: { ...same, references: 0 }, card })).toEqual(['node.references:differs(1→0)'])
+    // 卡读不出节点上有的比例 = 卡上漏印。
     expect(violationsOf({ refused: true, said })).toEqual([])
     const ratioSaid = { model: 'v/m', count: 1, references: 0, aspectRatio: 16 / 9 }
     const ratioSame = { ...ratioSaid, aspectRatio: 1280 / 720 }
-    expect(violationsOf({ refused: false, said: ratioSaid, draft: ratioSame, node: { ...ratioSame, references: undefined }, card: { ...ratioSame, sentAspectRatio: 16 / 9 } })).toEqual([])
-    expect(violationsOf({ refused: false, said: ratioSaid, draft: ratioSame, node: { ...ratioSame, aspectRatio: 1, references: undefined }, card: { ...ratioSame, sentAspectRatio: 16 / 9 } }))
-      .toEqual(['node.aspectRatio:differs(≈1.78→≈1.00)'])
+    expect(violationsOf({ refused: false, said: ratioSaid, draft: ratioSame, node: ratioSame, card: { ...ratioSame, references: undefined } })).toEqual([])
+    expect(violationsOf({ refused: false, said: ratioSaid, draft: ratioSame, node: { ...ratioSame, aspectRatio: 1 }, card: { ...ratioSame, aspectRatio: undefined, references: undefined } }))
+      .toEqual(['card.aspectRatio:dropped', 'node.aspectRatio:differs(≈1.78→≈1.00)'])
   })
 
   for (const testCase of CASES) {
