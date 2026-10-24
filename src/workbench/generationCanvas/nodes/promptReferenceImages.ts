@@ -10,8 +10,9 @@ import { applyArchetypeModeSwitch, withUnplacedArrayReferences } from './control
 import { archetypeForNode, resolveModeForReferenceDemand } from '../agent/referenceEdgeCapability'
 import { nodeSelectedModelAddress } from './controls/parameterControlModel'
 import { addAssetUrlToNode } from './nodeAssetWrite'
+import type { AspectRatioPlacementOutcome } from '../../../../electron/shared/aspectRatioValue'
 
-export type PromptReferenceOutcome = 'none' | 'applied' | 'unsupported'
+export type PromptReferenceOutcome = AspectRatioPlacementOutcome
 
 export function applyPromptReferenceImages(nodeId: string, referenceUrls: readonly string[], access: NodeWriteAccess): PromptReferenceOutcome {
   const urls = referenceUrls.filter(Boolean)
@@ -23,7 +24,7 @@ export function applyPromptReferenceImages(nodeId: string, referenceUrls: readon
   if (!nodeSelectedModelAddress(meta).modelKey) {
     if (access.canWrite?.() === false) return 'unsupported'
     access.updateNode(nodeId, { meta: withUnplacedArrayReferences(meta, 'image', urls) })
-    return 'applied'
+    return 'placed'
   }
   const archetype = archetypeForNode(target)
   if (archetype) {
@@ -31,5 +32,5 @@ export function applyPromptReferenceImages(nodeId: string, referenceUrls: readon
     if (promotedModeId) access.updateNode(nodeId, { meta: applyArchetypeModeSwitch(meta, archetype, promotedModeId) })
   }
   const outcomes = urls.map((url) => addAssetUrlToNode(nodeId, 'image', url, access))
-  return outcomes.every((outcome) => outcome.status === 'no-slot') ? 'unsupported' : 'applied'
+  return outcomes.every((outcome) => outcome.status === 'no-slot') ? 'unsupported' : 'placed'
 }

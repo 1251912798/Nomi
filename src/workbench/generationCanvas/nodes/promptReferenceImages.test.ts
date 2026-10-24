@@ -25,7 +25,7 @@ const onModel = (modelKey: string, vendor: string, modeId?: string) => ({
 
 it('a card that has no model yet keeps the images in the image-reference slot (deduped) for the first mode choice', () => {
   const { access, read } = card({})
-  expect(applyPromptReferenceImages('card', [REF, REF, OTHER], access)).toBe('applied')
+  expect(applyPromptReferenceImages('card', [REF, REF, OTHER], access)).toBe('placed')
   expect(read().meta?.referenceImageUrls).toEqual([REF, OTHER])
   expect(read().meta?.archetype).toBeUndefined()
   // 第一次定生成方式时这两张图算「要用参考」：要一个收得下图片的槽
@@ -34,7 +34,7 @@ it('a card that has no model yet keeps the images in the image-reference slot (d
 
 it('a card already on a model that also edits images is moved to that mode with the images in place', () => {
   const { access, read } = card(onModel('gpt-image-2', 'apimart', 't2i'))
-  expect(applyPromptReferenceImages('card', [REF], access)).toBe('applied')
+  expect(applyPromptReferenceImages('card', [REF], access)).toBe('placed')
   expect((read().meta?.archetype as { modeId?: string }).modeId).toBe('i2i')
   expect(read().meta?.referenceImageUrls).toEqual([REF])
 })

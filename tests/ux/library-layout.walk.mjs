@@ -11,6 +11,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { expect, clickOrFail, proveProbe, expectAbsent, applyColorSchemeForShot, waitForVisualQuiescence } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
@@ -21,7 +22,7 @@ import { cleanupTestTemp, makeTempDir } from '../../scripts/_test-temp.mjs'
 // 界面文案按键从词典取（check:test-copy-literals：测试不手抄文案）。
 const zh = (key) => uiText('zh-CN', key)
 const en = (key) => uiText('en', key)
-const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..')
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const out = process.env.NOMI_LIBRARY_LAYOUT_SHOTS || path.join(os.tmpdir(), 'nomi-library-layout-walk')
 fs.mkdirSync(out, { recursive: true })
 const settingsDir = makeTempDir('nomi-library-layout-settings-')
