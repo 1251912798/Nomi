@@ -575,11 +575,6 @@
       "count": 1
     }
   },
-  "scripts/lib/intake-radar/cloudflare.mjs": {
-    "preserve-caught-error": {
-      "count": 1
-    }
-  },
   "scripts/lib/intake-radar/store.node-test.mjs": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1

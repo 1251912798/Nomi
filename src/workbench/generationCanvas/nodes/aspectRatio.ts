@@ -8,20 +8,17 @@
 // 不同档案的 key 命名不一：多数是 `aspect_ratio`，imagen4/qwen 用 `size`，
 // Seedream 改图模式用 `image_size`（named bucket 格式，映射表在 shared 那份）。
 import type { GenerationCanvasEdge, GenerationCanvasNode } from "../model/generationCanvasTypes";
-import { isAutoOptionValue, normalizeAspectRatioToWH, parseAspectRatioValue } from "../../../../electron/shared/aspectRatioValue";
-
-// 比例参数可能用到的 meta key，按常见度排序。
-export const ASPECT_RATIO_KEYS = ["aspect_ratio", "size", "ratio", "image_size"] as const;
+import { ASPECT_RATIO_META_KEYS, isAutoOptionValue, normalizeAspectRatioToWH, parseAspectRatioValue } from "../../../../electron/shared/aspectRatioValue";
 
 /**
  * 从节点 meta 读出当前选定的画面比例（数值）。读不到（未选模型 / 该模型无比例参数）返回 null。
- * 按 ASPECT_RATIO_KEYS 顺序找第一个能解析成 W:H 的值——非比例的 size 值（如 "2K"）会被自动跳过。
+ * 按 ASPECT_RATIO_META_KEYS 顺序找第一个能解析成 W:H 的值——非比例的 size 值（如 "2K"）会被自动跳过。
  */
 export function readNodeAspectRatio(node: GenerationCanvasNode): number | null {
   const meta = node.meta;
   if (!meta || typeof meta !== "object") return null;
   const bag = meta as Record<string, unknown>;
-  for (const key of ASPECT_RATIO_KEYS) {
+  for (const key of ASPECT_RATIO_META_KEYS) {
     const ratio = parseAspectRatioValue(bag[key]);
     if (ratio) return ratio;
   }
