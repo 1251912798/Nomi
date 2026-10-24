@@ -44,9 +44,8 @@ try {
     return { ok: true }
   })
   check('庭院对峙经现役编译器编出', seeded.ok, JSON.stringify(seeded))
-  await page.reload({ waitUntil: 'commit' })
-  await expectVisible(page.getByTestId('director-pip'), '重载后导演台没起来')
-  await page.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null)
+  // 重开导演台：3D-BOX 打开先落在导演视图，lab.reload 照真人点「精修」进来（精修顶栏出来才算到）
+  await lab.reload()
   await expectVisible(page.getByTestId('director-topbar'), '精修顶栏没出来')
   check('空闲时右边没有属性卡', (await page.getByTestId('director-context-card').count()) === 0)
   await lab.snap('idle')
@@ -107,8 +106,10 @@ try {
   await click('T2', pip.getByRole('button', { name: '进入视角' }), '小窗·进入视角')
   await expectVisible(page.getByTestId('director-pov-hud'), '没进入机位视角')
   check('T2·进的是 medium 的视角', (await page.getByTestId('director-pov-hud').innerText()).includes('medium'))
+  // 工程是编辑器空闲 2s 才写回存档的：等落盘再读，不拿半路的旧值判（界面上早已是 50mm）
+  const saved50 = await lab.waitScene("s.cameras.some(c => c.name === 'medium' && Math.round(c.focalLengthMm) === 50)", 'T2·medium 的 50mm 落盘').catch(() => false)
   const camera = (await lab.scene()).cameras.find((item) => item.name === 'medium')
-  check('T2·medium 是 50mm', Math.round(camera.focalLengthMm) === 50, `${camera.focalLengthMm}mm`)
+  check('T2·medium 是 50mm', saved50 && Math.round(camera.focalLengthMm) === 50, `${camera.focalLengthMm}mm`)
   check('T2·小窗在左下（和导演视图同位）', await (async () => {
     const pip = await page.getByTestId('director-pip').boundingBox()
     const viewport = await page.getByTestId('director-viewport').boundingBox()
@@ -122,10 +123,16 @@ try {
   await clickOrFail(page.getByTestId('director-pov-hud').getByRole('button', { name: '退出机位' }), 'POV 卡·退出（收尾，不计入任务）')
 
   // ── T3：女子走路推迟 1 秒，再加一盏灯 ──
-  clicks.T3 += 2 // 「＋ 添加轨道」+ 选女子（AI 工程没有轨道，S1 线修好后这两下省掉）
-  await addTrack(lab, '青衣女子')
+  // 「＋ 添加轨道」只列还没上轨的实体（entitiesOutsideTimeline）。编译器现在已把人直接放进时间轴，女子在轨上就不点——和用户一样，
+  // 也不把省掉的两下算进点击数；不在轨上（旧编译结果）才走「＋ 添加轨道」+ 选女子。
+  if (!woman0.inTimeline) {
+    clicks.T3 += 2
+    await addTrack(lab, '青衣女子')
+  }
+  await expectVisible(lab.trackRow('青衣女子'), 'T3·时间轴上没有青衣女子的轨道')
   const woman = (await lab.scene()).objects.find((object) => object.id === woman0.id)
-  const walk = (woman.actionClips || []).find((clip) => /walk/.test(String(clip.actionPose)))
+  // 动作名随 UAL 动作库是「Walk_Loop」这样的首字母大写名（旧库是 standard_walk）：不分大小写认 walk
+  const walk = (woman.actionClips || []).find((clip) => /walk/i.test(String(clip.actionPose)))
   check('T3·女子有走路片段', Boolean(walk), JSON.stringify((woman.actionClips || []).map((clip) => clip.actionPose)))
   if (walk) {
     await click('T3', page.getByTestId('director-timeline-lanes').locator(`[data-clip-id="${walk.id}"]`), '时间轴·走路片段')
