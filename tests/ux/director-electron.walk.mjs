@@ -4,7 +4,8 @@
 //   ① 项目库「新建空白项目」→ 生成区 → 工具栏加 图片 / 视频 / 导演台 三个节点 → 「进入导演台」→ 全屏壳
 //   ② 放一个角色 + 正面中景机位 → Ctrl+Shift+P 截图（真桌面桥落盘 PNG）→ 产出弹层「发送到画布」→ 退出
 //      → 磁盘上的项目多一个 image 节点（meta.source=director）+ 一条 director→image reference 边
-//   ③ 选中视频镜头 → 「运镜」芯片 → 应用 → 常驻 CameraMoveCaptureHost 离屏采帧 → ffmpeg 拼 mp4（真 IPC）
+//   ③ 用 E2E 桥塞一个带 cameraMoveAutoCapture 的 director 节点（模拟 Agent 工具 create_camera_move 的下半场；视频节点上的手动
+//      「运镜」芯片 2026-09-12 已删）→ 常驻 CameraMoveCaptureHost 离屏采帧 → ffmpeg 拼 mp4（真 IPC）
 //      → director 节点 meta.cameraMoveVideo.url 出现、标志清掉、目标视频节点被喂入（video_ref 或提示词地板）
 //   ④ 用 E2E 桥往画布塞一个带 stagingAutoCapture 的 director 节点（模拟 create_staging_reference 的下半场）
 //      → StagingCaptureHost 离屏出图 → image 节点（stagingComposition）+ reference / composition_ref 两条边
@@ -17,11 +18,12 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { applyColorSchemeForShot, clickOrFail, expect, expectAbsent, expectHidden, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
-import { addCameraPreset, addTrack, placeCharacter } from './_directorLab.mjs'
+import { addCameraPreset, addTrack, enterRefine, placeCharacter } from './_directorLab.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { createBlankProject, prepareIsolation, readProjectPayload } from '../../evals/lib/isoApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { backToLibrary, canvasFitViewButton, newProjectEntry } from './_shell.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/director/electron')
@@ -128,8 +130,12 @@ const editor = win.locator('[data-testid="director-editor"]')
 await expectVisible(editor, '全屏导演台没打开', stationTimeout({ operations: 2 }))
 await win.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null, { timeout: stationTimeout({ operations: 4 }) })
 await expectVisible(win.getByTestId('director-pip'), '导演台画中画没渲染出来', stationTimeout({ operations: 4 }))
-check('① 进入全屏导演台', true)
+// 3D-BOX 打开先落在导演视图（2026-10-16 起唯一的导演台）
+await expectVisible(win.getByTestId('director-3dbox-view'), '进导演台没落在导演视图')
+check('① 进入全屏导演台（落在导演视图）', true)
 await snap('editor-open')
+// 放人 / 机位 / 大纲 / 截图产出都在「精修」：照真人点顶栏正中的「精修」
+await enterRefine(win)
 
 // ② 放角色 + 机位 → 截图 → 发送到画布 → 退出
 const lab = {
@@ -150,6 +156,8 @@ await placeCharacter(lab, 'female', 0, 0)
 await clickOrFail(win.getByTestId('director-scene-menu'), '顶栏·▤ 图层名 ▾（大纲）')
 const characterRow = win.locator('[data-testid="director-outliner-row"]', { hasText: '角色' }).first()
 await expectVisible(characterRow, '大纲里没出现放下的角色')
+// 名字趁浮层开着读：大纲行只在「▤ 图层名 ▾」浮层开着时才在 DOM 里，后面收起浮层再读会干等到超时
+const characterName = (await characterRow.innerText()).trim()
 await clickOrFail(characterRow, '大纲·角色行（机位预设相对选中主体）')
 await addCameraPreset(lab, '正面中景')
 await clickOrFail(win.getByTestId('director-scene-menu'), '顶栏·▤ 图层名 ▾（大纲）')
@@ -159,7 +167,6 @@ await clickOrFail(win.getByTestId('director-scene-menu'), '顶栏·▤ 图层名
 await expect.poll(() => countPipCharacterPixels(win), { timeout: stationTimeout() }).toBeGreaterThan(100)
 await snap('scene-built')
 // 本次生成的真实 Electron renderer：新建路径片段后检查双主题下的选中配色，避免只在 devlab 验样式。
-const characterName = (await characterRow.innerText()).trim()
 await addTrack(lab, characterName)
 const pathClip = win.locator('[data-clip-id][title^="路径片段"]').first()
 await expectVisible(pathClip, '给角色添加轨道后没有路径片段')
@@ -193,7 +200,7 @@ for (const theme of ['light', 'dark']) {
   check(`② ${theme} 主题：选中片段白字白边、悬停保持不透明底色`, true)
 }
 await applyColorSchemeForShot(win, originalTheme)
-await win.keyboard.press('Control+Shift+P')
+await win.keyboard.press('ControlOrMeta+Shift+P')
 const screenshotToast = win.locator('[role="alert"], [role="status"]', { hasText: '已截图' }).first()
 await expectVisible(screenshotToast, '按 Ctrl+Shift+P 后没有「已截图」提示（桌面落盘桥没工作？）', stationTimeout({ operations: 2 }))
 check('② 截图经桌面桥落盘', true)
@@ -214,15 +221,29 @@ const sent = await expect.poll(() => {
 }, { timeout: stationTimeout({ operations: 2 }), intervals: [1000] }).toBe(true).then(() => true, () => false)
 check('② 截图落成画布 image 节点 + reference 边（磁盘）', sent)
 
-// ③ 视频镜头 → 运镜芯片 → 应用 → 常驻 Host 出 mp4 + 喂目标镜头
-// 退出导演台后视口停在导演台节点上，视频节点在视口外（React Flow 视口外节点不可见）→ 先适应视图
-await clickOrFail(canvasFitViewButton(win), '画布·适应视图')
-await clickOrFail(win.locator(`[data-node-id="${VIDEO_ID}"]`).first(), '画布·选中视频节点')
-await clickOrFail(win.locator('[aria-label="运镜"]').first(), '视频 composer·运镜芯片')
-await clickOrFail(win.locator('button', { hasText: /^应用$/ }).first(), '运镜弹层·应用')
-// 新节点由 layoutPlannedNodes 排到既有节点旁，常在视口外（React Flow 只渲染视口内节点）→ 以磁盘为准
+// ③ 运镜参考：常驻 Host 出 mp4 + 喂目标镜头
+// 视频节点上的手动「运镜」芯片 2026-09-12 已删（c1b1c9e02），现在建运镜参考的入口只剩 Agent 工具 create_camera_move（要真凭据，
+// 走查覆盖在 camera-move-render-e2e）。这里和 ④ 一样模拟它的下半场：经 E2E 桥塞一个带 cameraMoveAutoCapture 的 director 节点
+// （工程借 ② 搭好的那份），验常驻 CameraMoveCaptureHost 离屏采帧 → ffmpeg 拼 mp4 → 写回 → 喂目标视频镜头这条零额度链路。
+const cameraMoveNodeId = await win.evaluate(({ directorId, videoId, title }) => {
+  const store = window.__nomiCanvasStore
+  if (!store) return null
+  const state = store.getState()
+  const source = state.nodes.find((node) => node.id === directorId)
+  if (!source?.meta?.directorProject) return null
+  const created = state.addNode({
+    kind: 'director',
+    title,
+    prompt: '',
+    position: { x: 120, y: 380 },
+    meta: { directorProject: source.meta.directorProject, cameraMoveAutoCapture: { targetNodeId: videoId, fps: 24, frameCount: 48, move: 'push_in' } },
+  })
+  return created.id
+}, { directorId: DIRECTOR_ID, videoId: VIDEO_ID, title: uiText('zh-CN', 'director.agent.cameraMoveReference') })
+check('③ E2E 桥能塞入待出片的「运镜参考」director 节点', Boolean(cameraMoveNodeId))
+// 新节点常在视口外（React Flow 只渲染视口内节点）→ 以磁盘为准
 const applied = await expect.poll(() => readCanvas().nodes.filter((node) => node.kind === 'director').length >= 2, { timeout: stationTimeout({ operations: 2 }), intervals: [1000] }).toBe(true).then(() => true, () => false)
-check('③ 应用后多出一个「运镜参考」director 节点（磁盘）', applied)
+check('③ 多出一个「运镜参考」director 节点（磁盘）', applied)
 await snap('camera-move-applied')
 const moved = await expect.poll(() => {
   const { nodes } = readCanvas()
@@ -319,6 +340,7 @@ try {
   await expect.poll(() => restoredImage.evaluate((element) => element.complete && element.naturalWidth > 0)).toBe(true)
   await screenshotSettled(reopened, { path: path.join(shotsDir, '13-saved-reopened.png') })
   await clickOrFail(reopened.locator(`[data-node-id="${DIRECTOR_ID}"]`).getByTestId('director-node-open'), '冷启动重开原导演场景')
+  await enterRefine(reopened)
   await clickOrFail(reopened.getByTestId('director-scene-menu'), '冷启动·顶栏·▤ 图层名 ▾（大纲）')
   await expectVisible(reopened.getByTestId('director-outliner-row').filter({ hasText: '角色' }).first(), '冷启动后导演角色未恢复')
   await expectVisible(reopened.getByTestId('director-outliner-row').filter({ hasText: '正面中景' }).first(), '冷启动后机位未恢复')

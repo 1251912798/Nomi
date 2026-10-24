@@ -187,3 +187,14 @@ export function candidatesForArchetype(params: {
   }
   return out
 }
+
+/** 被渠道藏掉的**文生**模式不指路（界面上本来就没有「文生」可选，说了只会让人困惑）；剩下的没有就不出提示。 */
+export function withoutTextModes<G extends { hiddenModeTerms: string[] }>(
+  guidance: G | null | undefined,
+  modes: readonly { intent?: string; vendorTerm: string }[] | undefined,
+): G | null {
+  if (!guidance) return null
+  const textTerms = new Set((modes ?? []).filter((mode) => mode.intent === 'text').map((mode) => mode.vendorTerm))
+  const hiddenModeTerms = guidance.hiddenModeTerms.filter((term) => !textTerms.has(term))
+  return hiddenModeTerms.length > 0 ? { ...guidance, hiddenModeTerms } : null
+}

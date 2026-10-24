@@ -1,9 +1,11 @@
 // 导演视图（3D-BOX）外壳 · Electron 真机取证（3a 第六轮，2026-10-04）。
 //
-// 用法（渲染端走本仓 vite dev，主进程走 dist-electron；要先 `pnpm run build:electron`、起 `npx vite --port <P>`）：
-//   NOMI_WALK_RENDERER_URL=http://127.0.0.1:<P>/ pnpm exec tsx tests/ux/director-3dbox-shell.walk.mjs
-// 为什么用 tsx 跑：工程要由**现役编译器**把 S1 oracle 计划 courtyard-standoff 编出来，与设计实验室 director-3dbox 屏、
-// 评测吃的是同一份（不手抄 JSON，不另造夹具）。
+// 用法（主进程 dist-electron + 渲染端构建产物 dist；要先 `pnpm run build`）：
+//   node tests/ux/director-3dbox-shell.walk.mjs
+//   想看本仓源码的渲染端（vite dev）：NOMI_WALK_RENDERER_URL=http://127.0.0.1:<P>/ node tests/ux/director-3dbox-shell.walk.mjs
+// 工程要由**现役编译器**把 S1 oracle 计划 courtyard-standoff 编出来，与设计实验室 director-3dbox 屏、
+// 评测吃的是同一份（不手抄 JSON，不另造夹具）。编译器是 TS 源码：经 tsx/cjs/api 的 require 加载
+// （夜跑用裸 `node` 跑走查，静态 import .ts 会在 Node 自带的类型剥离里栽在无扩展名的相对 import 上，2026-10-24 夜跑红过）。
 //
 // 走的路径全是真实用户入口：项目库「新建空白项目」→ 生成页 → 画布上的导演台节点 →「进入导演台」→
 // 点第 2 张镜头卡 → 点「精修」。工程是经 E2E 画布桥（__nomiE2E 才挂）写进节点 meta 的——
@@ -17,13 +19,16 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { createBlankProject } from '../../evals/lib/isoApp.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { S1_ORACLE_PLANS } from '../../evals/director/s1OraclePlans.ts'
-import { compileDirectorPlan } from '../../src/workbench/generationCanvas/nodes/director/model/compiler/directorPlanCompiler.ts'
+import { require as tsxRequire } from 'tsx/cjs/api'
 import { newProjectEntry } from './_shell.mjs'
+import { enterRefine } from './_directorLab.mjs'
+
+const { S1_ORACLE_PLANS } = tsxRequire('../../evals/director/s1OraclePlans.ts', import.meta.url)
+const { compileDirectorPlan } = tsxRequire('../../src/workbench/generationCanvas/nodes/director/model/compiler/directorPlanCompiler.ts', import.meta.url)
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+// 不给就用构建产物（launchNomiApp 默认）；给了就走本仓 vite dev
 const rendererUrl = process.env.NOMI_WALK_RENDERER_URL
-if (!rendererUrl) throw new Error('需要 NOMI_WALK_RENDERER_URL（本仓 vite dev 地址），见文件头用法')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/director-3dbox-shell')
 fs.mkdirSync(shotsDir, { recursive: true })
 
@@ -35,7 +40,7 @@ const actionPoses = [...new Set(project.scenes[0].objects.flatMap((object) => (o
 
 const { app, win, projectsDir } = await launchNomiApp({
   name: 'director-3dbox-shell',
-  env: { VITE_DEV_SERVER_URL: rendererUrl },
+  ...(rendererUrl ? { env: { VITE_DEV_SERVER_URL: rendererUrl } } : {}),
 })
 const errors = []
 win.on('pageerror', (error) => errors.push(String(error)))
@@ -84,8 +89,8 @@ try {
   console.log(`  · 顶栏标题：${title}｜小窗：${pip.replace(/\s+/g, ' ')}`)
   if (!title.includes('镜头 2') || !pip.includes('镜头 2')) throw new Error('点第 2 镜后标题 / 小窗没有落到镜头 2')
   await win.screenshot({ path: path.join(shotsDir, 'real-zh-courtyard-director.png') })
-  await win.locator('[data-testid="director-view-header"] button[aria-pressed="false"]').click()
-  await win.locator('[data-testid="director-topbar"]').waitFor({ timeout: stationTimeout({ operations: 2 }) })
+  // 切精修：和其它导演台走查同一个点法（_directorLab 的 enterRefine，按词典文字找「精修」，精修顶栏出来才算到）
+  await enterRefine(win)
   await waitSettled()
   await settleFrames()
   await win.screenshot({ path: path.join(shotsDir, 'real-zh-courtyard-refine.png') })

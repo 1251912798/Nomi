@@ -19,16 +19,12 @@ const fixtureText = JSON.stringify(fixtureProject)
 const lab = await launchDirectorLab({ name: 'ual-migration', viewport: { width: 1600, height: 900 } })
 const { page, check } = lab
 const stored = () => page.evaluate((key) => window.localStorage.getItem(key), KEY)
-const reopen = async () => {
-  await expectVisible(page.getByTestId('director-pip'), '导演台没起来')
-  await page.waitForFunction(() => Boolean(window.__nomiDirectorE2E))
-}
 const waitCharacters = (ids) => page.waitForFunction((list) => list.every((id) => window.__nomiDirectorE2E?.orientationByName('DEF-head', id)), ids)
 const headOf = (id) => lab.bridge('orientationByName', 'DEF-head', id)
 try {
   await page.evaluate(([key, text]) => window.localStorage.setItem(key, text), [KEY, fixtureText])
-  await page.reload({ waitUntil: 'commit' })
-  await reopen()
+  // 打开旧工程只看一眼：停在打开时落的导演视图，不进精修（「只看不改」不该多点任何东西）
+  await lab.reload({ view: 'director' })
   const migrationToast = page.getByText('已换成新的默认人偶和动作库', { exact: false }).first()
   const toastProof = await proveProbe(migrationToast, '打开旧工程时的迁移提示')
   const toastText = await migrationToast.innerText()
@@ -49,9 +45,8 @@ try {
   await expectVisible(page.getByRole('button', { name: 'reopen director' }), '退出后没回到实验室首页')
   check('只看一眼就退出：存档仍是原文', (await stored()) === fixtureText)
 
-  // 重开 → 改一笔：大纲选走路的人，检查器 X 改成 -1.5
-  await page.reload({ waitUntil: 'commit' })
-  await reopen()
+  // 重开 → 进精修改一笔：大纲选走路的人，检查器 X 改成 -1.5
+  await lab.reload()
   await waitCharacters(['walker', 'sitter', 'kneeler'])
   await lab.pickInOutliner('走路的人', '大纲·走路的人')
   const x = page.getByTestId('director-inspector').getByText('X', { exact: true }).locator('..').locator('input[type="text"]').first()
@@ -64,9 +59,8 @@ try {
   check('落盘的手调骨骼是 UAL 骨名、值原样', JSON.stringify(savedObjects.sitter.boneRotations) === JSON.stringify({ 'DEF-upper_armL': { x: 30, y: -12.5, z: 4 }, 'DEF-forearmR': { x: 0, y: 45, z: 0 }, 'DEF-head': { x: -10, y: 20, z: 0 } }), JSON.stringify(savedObjects.sitter.boneRotations))
   await lab.snap('after-edit')
 
-  // 刷新重开：不再提示、坐着的人姿势与迁移当场一样
-  await page.reload({ waitUntil: 'commit' })
-  await reopen()
+  // 刷新重开（只看，停在导演视图）：不再提示、坐着的人姿势与迁移当场一样
+  await lab.reload({ view: 'director' })
   await waitCharacters(['walker', 'sitter', 'kneeler'])
   await page.waitForTimeout(1500)
   await expectAbsent(migrationToast, { provenBy: toastProof, message: '已迁移工程重开不该再提示' })

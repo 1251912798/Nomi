@@ -1,0 +1,27 @@
+{
+  "name": "画布浮层避让（生成框盖住底栏 / 左下导航时，连阴影一起挖洞，那一块不画也不接点击）",
+  "subject": "canvas.chrome-occlusion",
+  "lifecycle": "live-interaction",
+  "authority_kind": "projection",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+    "symbol": "occludedHoles"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+      "symbol": "occludedHoles"
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+      "symbol": "clipPathForHoles"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-24",
+  "notes": "合同 docs/fixes/2026-10-24-chrome-occlusion-shadow.root-cause.json：occludedHoles 用「底栏盒子按 SHADOW_MARGIN 外扩后的外框」和生成框求交得出洞，clipPathForHoles 把外框和洞序列化成一条 nonzero clip-path；CanvasToolbar 与 CanvasNavigationStack 都经 useCanvasChromeOcclusion 走这一处，类检查 canvasChromeOcclusion.test.ts。和 canvas.layer-order（谁压在谁上面）不是一回事：这里管的是 React Flow 叠放上下文压不住时，浮层自己让出被盖住的那一块。"
+}

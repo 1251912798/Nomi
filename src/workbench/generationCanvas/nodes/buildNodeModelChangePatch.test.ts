@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ModelOption } from '../../../config/models'
 import { createGenerationNode } from '../model/graphOps'
 import type { GenerationCanvasEdge, GenerationCanvasNode } from '../model/generationCanvasTypes'
+import { resolveArchetypeForModel } from '../../../../electron/shared/modelArchetypes'
 import { buildNodeModelChangePatch } from './buildNodeModelChangePatch'
 
 function option(partial: Partial<ModelOption> & Pick<ModelOption, 'value' | 'label'>): ModelOption {
@@ -142,5 +143,38 @@ describe('buildNodeModelChangePatch', () => {
 
     expect(patch.meta.aspect_ratio).toBe('9:16')
     expect(patch.meta.archetype).toMatchObject({ modeId: 'first' })
+  })
+
+  describe('换模型时上传放进槽里的图跟着走（验收阻断 2）', () => {
+    const seedance = option({ value: 'seedance-2', modelKey: 'seedance-2', vendor: 'apimart', label: 'Seedance 2.0' })
+    const archetypeKeys = ['wan-2.7', 'veo-3.1', 'kling-3.0', 'grok-imagine-1.5-video', 'seedance-2-apimart']
+    const targets = archetypeKeys
+      .map((key) => ({ key, found: resolveArchetypeForModel({ modelKey: key, vendorKey: 'apimart', meta: {} } as never) }))
+      .filter((row) => row.found)
+    const swapTo = (key: string, meta: Record<string, unknown>) => {
+      const node: GenerationCanvasNode = { ...createGenerationNode({ id: 'v', kind: 'video' }), meta: { modelKey: 'seedance-2', modelVendor: 'apimart', vendor: 'apimart', archetype: { id: 'seedance-2', modeId: meta.__mode ?? 'firstlast' }, ...meta } }
+      const next = option({ value: key, modelKey: key, vendor: 'apimart', label: key })
+      return buildNodeModelChangePatch({ node, nodes: [node], edges: [], modelOptions: [seedance, next], value: key, vendor: 'apimart' })
+    }
+
+    it.each(targets.map((row) => [row.key]))('上传的两张首尾帧换到 %s：节点不会掉成文生，图落在该方式的槽里', (key) => {
+      const result = swapTo(key, { firstFrameUrl: 'a', lastFrameUrl: 'b' })
+      const spec = resolveArchetypeForModel({ modelKey: key, vendorKey: 'apimart', meta: {} } as never)!
+      const modeId = (result.meta.archetype as { modeId: string }).modeId
+      const mode = spec.modes.find((m) => m.id === modeId)!
+      expect(mode.intent, `${key} 换完停在 ${modeId}`).not.toBe('text')
+      const kinds = new Set(mode.slots.map((slot) => slot.kind))
+      // 参考列表不动：旧的首 / 尾帧键落成规范的一份有序列表，首帧在前（一张不少、顺序不变）
+      expect(result.meta.referenceImageUrls).toEqual(['a', 'b'])
+      expect(result.meta.firstFrameUrl).toBeUndefined()
+      expect(kinds.has('first_frame') || kinds.has('image_ref'), key).toBe(true)
+    })
+
+    it('新模型一个能收图的方式都没有：图留在参考列表里（不丢），不删', () => {
+      const textOnly = resolveArchetypeForModel({ modelKey: 'minimax-h3-regeneration', vendorKey: 'apimart', meta: {} } as never)
+      if (!textOnly) return
+      const result = swapTo('minimax-h3-regeneration', { firstFrameUrl: 'a', lastFrameUrl: 'b' })
+      expect(result.meta.referenceImageUrls).toEqual(['a', 'b'])
+    })
   })
 })
