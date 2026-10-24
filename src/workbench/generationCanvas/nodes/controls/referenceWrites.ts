@@ -109,10 +109,12 @@ export function removeFromArray(ctx: ReferenceWriteContext, metaKey: string, ind
   // 来自连边 → 断边（之前只删 meta 不断边，边来源的图重渲染又被解析回来 = 「叉不掉」根因）；
   // 来自上传 → 按 url 删 meta（显示 index 是「边+上传」合并列表的下标，不能直接拿去 filter meta 数组）。
   const state = useGenerationCanvasStore.getState()
+  const currentNode = ctx.latestNode(node.id) ?? node
   const decision = decideArrayReferenceRemoval(ctx.latestNode(node.id) ?? node, state.nodes, state.edges, metaKey, index)
-  // image 数组(= character 参考)删除时，同步抹掉描述框里指向它的 @ chip（保 undo 原子性 + 一次持久化）。
+  // 所有数组参考删除都同步抹掉描述框里指向它的 @ chip（图片 / 视频 / 音频共用同一条规则，
+  // 保 undo 原子性 + 一次持久化）。提示词也从最新节点读取，避免删除按钮的渲染快照覆盖刚刚发生的编辑。
   const promptAfterRemovingMention = (url: string | null) =>
-    metaKey === 'referenceImageUrls' && url ? removeMention(node.prompt || '', url) : null
+    url ? removeMention(currentNode.prompt || '', url) : null
 
   if (decision.kind === 'disconnect-edge') {
     ctx.storeDisconnectEdge(decision.edgeId)
@@ -124,7 +126,7 @@ export function removeFromArray(ctx: ReferenceWriteContext, metaKey: string, ind
     const nextPrompt = promptAfterRemovingMention(decision.url)
     const patch: { meta?: Record<string, unknown>; prompt?: string } = {}
     if (cleanedMeta.length !== metaArr.length) patch.meta = archetypeArrayWrite(latestMeta, metaKey, cleanedMeta)
-    if (nextPrompt != null && nextPrompt !== (node.prompt || '')) patch.prompt = nextPrompt
+    if (nextPrompt != null && nextPrompt !== (currentNode.prompt || '')) patch.prompt = nextPrompt
     if (Object.keys(patch).length > 0) ctx.updateNode(node.id, patch)
     return
   }
@@ -136,7 +138,7 @@ export function removeFromArray(ctx: ReferenceWriteContext, metaKey: string, ind
   const nextPrompt = promptAfterRemovingMention(decision.url)
   ctx.updateNode(node.id, {
     meta: archetypeArrayWrite(latestMeta, metaKey, next),
-    ...(nextPrompt != null && nextPrompt !== (node.prompt || '') ? { prompt: nextPrompt } : {}),
+    ...(nextPrompt != null && nextPrompt !== (currentNode.prompt || '') ? { prompt: nextPrompt } : {}),
   })
 }
 

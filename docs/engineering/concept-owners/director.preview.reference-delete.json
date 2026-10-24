@@ -1,0 +1,31 @@
+{
+  "name": "节点数组参考删除与预演保留",
+  "subject": "director.preview.reference-delete",
+  "lifecycle": "author",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+    "symbol": "removeFromArray"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "removeFromArray"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+      "symbol": "shouldPreserveAttachedCameraMoveMode"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+    "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts",
+    "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts"
+  ],
+  "since": "2026-10-25",
+  "notes": "参考行的 × 按当前显示填充来源断边或按 URL 删除 meta，并清理图片 / 视频 / 音频 @ 标记；cameraMoveAttachedUrl 只代表下次出成片可重新挂接，不允许系统自动收回方式触发 previewAttachReconciler 立即挂回。"
+}

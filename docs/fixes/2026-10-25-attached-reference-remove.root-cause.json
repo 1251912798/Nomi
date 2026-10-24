@@ -1,0 +1,240 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-25-attached-reference-remove",
+  "problem_type": "array reference deletion leaves media-specific prompt mentions behind",
+  "symptom": "在导演台生成镜头后，点参考视频缩略图上的真实 ×，参考数组会被移除，但视频 @ 引用和运镜提示词仍留在节点提示词中；上一轮真实 Electron 走查在 B 场景因此失败。",
+  "direct_cause": "referenceWrites.removeFromArray 只在 metaKey 为 referenceImageUrls 时调用 removeMention；视频和音频数组走同一个删除 owner，却没有清理同 URL 的持久化 @[asset:url] 标记。删除提示词还使用渲染快照 node.prompt，而不是最新节点。",
+  "class_root": "所有数组参考的删除动作都必须在同一个共享 owner 内同时清理对应 URL 的提示词引用，并从最新节点状态合并一次写入；按媒体类型分支使等价的上传、连边和预演参考进入不同清理规则。",
+  "affected_population": [
+    "节点上的图片、视频、音频数组参考",
+    "上传参考、画布连边参考，以及导演台预演挂接到 referenceVideoUrls 的参考",
+    "切换生成方式后仍由当前数组参考槽显示的存量节点"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+    "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+    "src/workbench/generationCanvas/nodes/controls/referenceWrites.director.test.ts",
+    "src/workbench/generationCanvas/nodes/controls/generationModePresentation.test.ts"
+  ],
+  "entry_points": [
+    "NodeParameterControls.handleArrayRemove -> removeFromArray",
+    "director/agent/attachCameraMoveForNode -> computeAttachCameraMove -> referenceVideoUrls",
+    "referenceWrites.removeUnusedReference（同类未用到参考删除）"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "@[asset:url]、参考数组和画布边是 Nomi 自己的持久化与显示契约，没有第三方规范决定删除时的提示词清理规则。",
+  "invariants": [
+    "任何数组参考删除都按 resolveReferenceSlots 当前显示项的来源决定断边或按 URL 清理 meta。",
+    "删除图片、视频或音频数组参考后，提示词中该 URL 的所有 @[asset:url] 标记都被清理。",
+    "删除动作基于最新节点的 prompt/meta 合并一次写入；cameraMoveAttachedUrl 标记保留，供下一次出成片识别上次挂接。"
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "ReferenceWriteContext"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "ReferenceWriteContext"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "restoreParkedReference"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "metaWithParkedRestored"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "assignSlotSource"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "setSlotUrl"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "addToArraySlot"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "removeFromArray"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "assignSlotSource"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "setSlotUrl"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "reorderArray"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "swapFrameSlots"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "removeUnusedReference"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "restoreParkedReference"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+      "symbol": "PanelModeChoice"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+      "symbol": "ModePresentation"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+      "symbol": "textModeToReturnTo"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+      "symbol": "shouldPreserveAttachedCameraMoveMode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+      "symbol": "textModeToReturnTo"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "useRevertToTextMode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "presentGenerationModes"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "modePresentationTexts"
+    }
+  ],
+  "door_reduction": {
+    "before": 22,
+    "after": 22,
+    "why_not": "没有合并门：ReferenceWriteContext 是共享写入上下文类型；referenceWrites.ts 的各导出分别承载参考写入/删除手势；generationModePresentation.ts 的两个读取门和 shouldPreserveAttachedCameraMoveMode/textModeToReturnTo 分别承载方式派生与收回；NodeParameterControls 是这些能力的宿主接线。修复同时收口数组删除和“删空后自动收回方式”这两个共享边界，其他门必须保留。"
+  },
+  "generality_proof": "door-map 找到的四个预演挂接门都只经 attachCameraMoveForNode 生成 referenceVideoUrls，NodeParameterControls 的数组 × 是唯一 removeFromArray 入口；removeUnusedReference 也已按 URL 清理提示词。removeFromArray 现在对所有数组 metaKey 使用同一 removeMention 规则，并从 latestNode 取提示词。删除后，generationModePresentation 的共享收回边界保留带 video_ref 的 attached 模式，避免 previewAttachReconciler 因系统收回产生的模式变化重新挂接。因此上传、连边和预演三种来源以及图片、视频、音频三种媒体不会再分叉。",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "removeFromArray",
+      "responsibility": "按当前显示填充来源删除数组参考，并在同一节点写入中清理所有媒体类型的 URL 提示词引用。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+      "symbol": "shouldPreserveAttachedCameraMoveMode",
+      "responsibility": "当带 video_ref 的模式只因参考被删而暂时为空时，阻止系统自动切回文生，避免模式变化被预演对账器误判为用户换模式。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "entry_point": "handleArrayRemove",
+      "disposition": "enforced",
+      "evidence": "参考行 AssetTile 的真实 × 只调用这个包装，包装把所有数组槽转给 removeFromArray；director-reference-attach 的底层回归覆盖同一生产链。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "entry_point": "removeUnusedReference",
+      "disposition": "enforced",
+      "evidence": "未用到参考的另一颗 × 已按 URL 断边或删 meta，并无媒体类型分支；referenceWrites.unused.test.ts 覆盖上传和连边。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveForNode.ts",
+      "entry_point": "attachCameraMoveForNode",
+      "disposition": "enforced",
+      "evidence": "预演挂接只产生 referenceVideoUrls 和 cameraMoveAttachedUrl，删除由 NodeParameterControls 共享 owner 处理；新测试先走真实 attachCameraMoveForNode 再删除。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "同一个媒体类型分支遗漏可在视频、音频或未来新增数组参考上再次发生；所有数组槽都共用删除入口，等价的上传与连边来源也能到达同一机制。",
+    "same_class_scan": [
+      "node scripts/door-map.mjs removeFromArray attachCameraMoveForNode：四个预演挂接写门 + 一个数组删除门。",
+      "rg -n 'reference(Image|Video|Audio)Urls|removeFromArray|removeUnusedReference' src tests/ux：核对三类数组、真实 AssetTile ×、未用到参考和导演台走查入口。",
+      "src/workbench/generationCanvas/nodes/controls/referenceWrites.director.test.ts：上传/连边 × 图片、视频、音频，切模式后上传删除，以及预演挂接后的真实 owner 删除。"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+    "invariant": "removeFromArray 对所有数组参考按 URL 清理最新 prompt 中的引用，并保留预演标记；任何来源和媒体类型不得有单独清理分支。",
+    "failure_mode": "若显示项无法解析为边或上传，decision 返回 noop，不写状态；可解析删除则一次更新 meta/prompt，边来源先断边。",
+    "exception_policy": "none",
+    "strategy": "把清理规则放在唯一数组删除 owner，复用已有 removeMention 和 resolveReferenceSlots 的来源判定；测试矩阵锁住等价入口。",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+      "src/workbench/generationCanvas/nodes/controls/referenceWrites.director.test.ts",
+      "src/workbench/generationCanvas/nodes/controls/generationModePresentation.test.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/controls/referenceWrites.director.test.ts",
+    "src/workbench/generationCanvas/nodes/controls/generationModePresentation.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/nodes/controls/referenceWrites.director.test.ts",
+    "src/workbench/generationCanvas/nodes/controls/generationModePresentation.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts"
+    ],
+    "rationale": "旧的按 referenceImageUrls 才清理提示词的分支已删除；所有数组参考统一走共享 URL 清理。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "问题在 Nomi 自己的节点参考与提示词写入边界，不由第三方运行时控制。",
+    "exit_criteria": []
+  },
+  "migration": "无需数据迁移；旧节点仍保留 cameraMoveAttachedUrl 和数组数据，下一次删除按 URL 清理存量提示词标记。",
+  "residual_risks": [
+    "真实 Electron 走查仍需在本次产品修复后重跑 A/B/B2/C/D，并逐张检查中英文截图。",
+    "删除预演参考后，生成的运镜说明文字仍可能保留；本任务合同只要求清理 URL @ 标记并保留标记，下一次出成片的挂接核会替换其生成的整句。"
+  ],
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-08",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+    "has_tests": true,
+    "tests": [
+      "src/workbench/generationCanvas/nodes/controls/referenceWrites.director.test.ts",
+      "src/workbench/generationCanvas/nodes/controls/generationModePresentation.test.ts"
+    ],
+    "rationale": "数组删除和删除后自动方式收回是同一用户动作的两个共享边界：前者清理参考/prompt，后者阻止对账器把系统收回误认成用户换模式。"
+  }
+}
