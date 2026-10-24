@@ -1,0 +1,12 @@
+| 反例 | 结果 | 红在哪 |
+|---|---|---|
+| a 中文指引写回右键 → 打开 | 红（抓到） | zh guide does not offer right-click → Open (blocked since macOS 15) |
+| a 英文快速上手提示写回 right-click | 红（抓到） | en quickstart tip does not offer right-click → Open (blocked since macOS 15) |
+| b Electron 43 却删掉 macOS 12 那句 | 红（抓到） | zh guide names the macOS 12 path while Electron 43 still supports macOS 12 |
+| c electron 升到 44.0.0，官网还写 macOS 12+ | 红（抓到） | macOS minimum version matches what Electron 44 requires |
+| d electron 升到 47.0.0（超出核过的范围） | 红（抓到） | Electron 47 is past the checked range: re-check its breaking changes for a dropped macOS, then update MAC_FLOOR_BY_ELECTRON and ELECTRON_CHECKED_THROUGH |
+| e「隐私与安全性」写回「隐私与安全」 | 红（抓到） | zh guide sends a blocked first launch to 隐私与安全性 → 仍要打开 |
+| f 改了文案没重跑 sitemap（page-dates 过期） | 红（抓到） | stale: - marketing/data/page-dates.json |
+| g 手改生成页（不走 content.mjs） | 红（抓到） | stale: - marketing/en/index.html |
+
+restored; static test after restore: PASS
