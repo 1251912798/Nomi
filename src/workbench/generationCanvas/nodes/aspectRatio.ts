@@ -10,12 +10,9 @@
 import type { GenerationCanvasEdge, GenerationCanvasNode } from "../model/generationCanvasTypes";
 import { ASPECT_RATIO_META_KEYS, isAutoOptionValue, normalizeAspectRatioToWH, parseAspectRatioValue } from "../../../../electron/shared/aspectRatioValue";
 
-// 比例参数可能用到的 meta key，按常见度排序。
-export { ASPECT_RATIO_META_KEYS as ASPECT_RATIO_KEYS } from "../../../../electron/shared/aspectRatioValue";
-
 /**
  * 从节点 meta 读出当前选定的画面比例（数值）。读不到（未选模型 / 该模型无比例参数）返回 null。
- * 按 ASPECT_RATIO_KEYS 顺序找第一个能解析成 W:H 的值——非比例的 size 值（如 "2K"）会被自动跳过。
+ * 按 ASPECT_RATIO_META_KEYS 顺序找第一个能解析成 W:H 的值——非比例的 size 值（如 "2K"）会被自动跳过。
  */
 export function readNodeAspectRatio(node: GenerationCanvasNode): number | null {
   const meta = node.meta;
