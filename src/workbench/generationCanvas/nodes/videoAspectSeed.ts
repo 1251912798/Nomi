@@ -30,10 +30,14 @@ export type VideoAspectSeedInput = {
   respectExplicit: boolean
 }
 
+/**
+ * 节点此刻的比例是不是已经是首选：按 ASPECT_RATIO_META_KEYS 的优先级取第一个读得出比例的键（aspect_ratio 最先），
+ * 再约分比较（`720:1280` 就是 9:16）。只看这一个键——旧模式残留在别的键上的比例不算数，不能挡住该铺的默认值。
+ */
 function hasCurrentAspect(meta: Record<string, unknown>, preferred: '16:9' | '9:16'): boolean {
   for (const key of ASPECT_RATIO_META_KEYS) {
     const value = String(meta[key] ?? '')
-    if (normalizeAspectRatioToWH(value) && sameAspectRatio(value, preferred)) return true
+    if (normalizeAspectRatioToWH(value)) return sameAspectRatio(value, preferred)
   }
   return false
 }
