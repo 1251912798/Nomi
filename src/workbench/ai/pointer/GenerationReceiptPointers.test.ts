@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GenerationHandOver, GenerationPresentation, ProductionRun } from '../../../../electron/productionRun/productionRunTypes'
 import type { ToolReceipt, V4FlowItem } from '../v4/agentPanelV4Types'
-import { flowItemGenerations, receiptLine, receiptShotNodeIds } from './GenerationReceiptPointers'
+import { flowItemGenerations, receiptLine, receiptShotNodeIds } from './generationReceiptFacts'
 
 const NOW = '2026-10-24T00:00:00.000Z'
 

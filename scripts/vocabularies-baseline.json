@@ -2090,7 +2090,7 @@
         "sent"
       ],
       "reason": "对话流收据那一句的两种说法（已发出 / 已生成）：从那几镜节点此刻的状态现算（都出了结果才说已生成），只在这一处挑文案，不落盘、不跨模块，不是状态机。",
-      "site": "src/workbench/ai/pointer/GenerationReceiptPointers.tsx::type:ReceiptLine/property:phase/type-union"
+      "site": "src/workbench/ai/pointer/generationReceiptFacts.ts::type:ReceiptLine/property:phase/type-union"
     }
   ],
   "debt": [

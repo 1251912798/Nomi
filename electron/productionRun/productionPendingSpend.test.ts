@@ -185,9 +185,7 @@ describe("付费卡的宿主投影", () => {
 
     const empty = run();
     empty.generationPlan = { ...empty.generationPlan!, shots: [], candidate: undefined as never };
-    let outcome: unknown = "did-not-throw";
-    try { outcome = projectPendingSpendConfirm(empty); } catch (error) { outcome = error; }
-    expect(outcome).toBeInstanceOf(Error);
+    expect(() => projectPendingSpendConfirm(empty)).toThrow(Error);
     expect(listPendingSpendConfirms([empty], () => undefined)[0]?.error).toBeDefined();
   });
 

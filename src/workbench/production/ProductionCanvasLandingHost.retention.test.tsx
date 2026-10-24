@@ -25,11 +25,12 @@ const lane = vi.hoisted(() => {
 })
 vi.mock('../ai/lane/laneClient', () => ({ laneClient: lane.client }))
 
-import { ProductionCanvasLandingHost, changedOfferRuns, landingRunsToRefresh, pendingOfferSignatures } from './ProductionCanvasLandingHost'
+import { ProductionCanvasLandingHost } from './ProductionCanvasLandingHost'
+import { changedOfferRuns, landingRunsToRefresh, pendingOfferSignatures } from './productionCanvasLandingStore'
 import type { PendingSpendConfirm, PendingSpendRead } from '../../desktop/productionRunBridgeTypes'
 import { useProductionCanvasLandingStore } from './productionCanvasLandingStore'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
-import { receiptShotNodeIds } from '../ai/pointer/GenerationReceiptPointers'
+import { receiptShotNodeIds } from '../ai/pointer/generationReceiptFacts'
 import type { GenerationCanvasNode } from '../generationCanvas/model/generationCanvasTypes'
 import type { GenerationHandOver, ProductionRun } from '../../../electron/productionRun/productionRunTypes'
 import { IN_APP_AGENT_ORIGIN_HOST } from '../../../electron/shared/productionGenerationPresentation'

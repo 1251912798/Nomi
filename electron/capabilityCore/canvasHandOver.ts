@@ -182,18 +182,18 @@ export function createCanvasHandOver(deps: CanvasHandOverDeps) {
     return new Promise((resolve) => {
       let done = false;
       let unsubscribe: () => void = () => undefined;
-      let timer: ReturnType<typeof setTimeout> | undefined;
       const finish = (): void => {
         if (done) return;
         done = true;
         unsubscribe();
-        if (timer) clearTimeout(timer);
+        clearTimeout(timer);
         signal?.removeEventListener("abort", finish);
         resolve(outcome(projectId, runId, shotIds));
       };
+      // 先起计时器再订阅：订阅那一刻就可能同步回调到 finish，那时计时器已经在了。
+      const timer = setTimeout(finish, timeoutMs);
       const check = (): void => { if (outcome(projectId, runId, shotIds).pending.length === 0) finish(); };
       unsubscribe = deps.subscribe((run) => { if (run.projectId === projectId && run.runId === runId) check(); });
-      timer = setTimeout(finish, timeoutMs);
       signal?.addEventListener("abort", finish, { once: true });
       check();
     });

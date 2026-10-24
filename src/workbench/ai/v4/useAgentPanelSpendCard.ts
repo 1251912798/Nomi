@@ -307,8 +307,6 @@ export function useAgentPanelSpendCard(read: PendingSpendRead | undefined): Agen
       unpress()
       throw error
     }))
-  // `shownIsCurrent` 只读 ref 与 store 快照。
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [act, t])
 
   /**

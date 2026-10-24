@@ -16,7 +16,6 @@ import type {
   RunCommand,
 } from "./productionRunTypes";
 import { spendAuthorizationGates, waitingAuthorizationGates } from "../shared/productionSpendAuthority";
-import type { ProductionCommandEffect } from "./productionRunReducer";
 
 /** Update one shot inside a plan by id; throws if the plan has no such shot. */
 export function replaceShot(
