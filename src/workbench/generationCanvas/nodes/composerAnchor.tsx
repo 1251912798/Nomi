@@ -3,7 +3,7 @@ import type { NodeComposerHost } from './NodeGenerationComposer'
 import { composerCanvasPlacement } from './composerCanvasPlacement'
 import { useCanvasLiveZoom } from '../reactFlow/canvasViewportScale'
 
-export type ComposerAnchorProps = React.HTMLAttributes<HTMLDivElement> & {
+export type ComposerAnchorProps = Omit<React.HTMLAttributes<HTMLDivElement>, 'onPointerDown' | 'onWheel' | 'onClick'> & {
   /** 在普通内容流里（面板 / 列表详情宿主）：不是钉在画布节点下沿的定位锚。 */
   inFlow: boolean
   anchorRef: React.Ref<HTMLDivElement>
@@ -13,9 +13,18 @@ export type ComposerAnchorProps = React.HTMLAttributes<HTMLDivElement> & {
   placement?: 'standard' | 'match-node'
 }
 
-/** 浮框最外层：面板 / 列表详情宿主是普通内容流里的一个 div；画布宿主是钉在节点下沿的定位锚。 */
+const stopAtComposer = (event: React.SyntheticEvent): void => { event.stopPropagation() }
+
+/**
+ * 浮框最外层：面板 / 列表详情宿主是普通内容流里的一个 div；画布宿主是钉在节点下沿的定位锚。
+ *
+ * 浮框和节点的事件边界归这里，调用方不再各抄一份：按下不起拖 / 框选、滚轮不缩放画布、点击不算「点这个节点」。
+ * 点击那条是 2026-10-18 走查补的——浮框里的菜单是 portal，React 合成事件沿组件树冒泡，不拦就冒到 React Flow 的节点
+ * onClick，框里的动作刚选中别的节点，同一下点击又把选中改回宿主节点（浮条同理，见 NodeFloatingToolbar 的 FloatingToolbarFrame）。
+ */
 export function ComposerAnchor({ inFlow, anchorRef, visualSize, placement, ...rest }: ComposerAnchorProps): JSX.Element {
-  return inFlow ? <div ref={anchorRef} {...rest} /> : <CanvasComposerAnchor anchorRef={anchorRef} visualSize={visualSize} placement={placement} {...rest} />
+  const guarded = { ...rest, onPointerDown: stopAtComposer, onWheel: stopAtComposer, onClick: stopAtComposer }
+  return inFlow ? <div ref={anchorRef} {...guarded} /> : <CanvasComposerAnchor anchorRef={anchorRef} visualSize={visualSize} placement={placement} {...guarded} />
 }
 
 /**
