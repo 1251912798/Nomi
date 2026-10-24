@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { MODEL_ARCHETYPES, resolveArchetypeForModel } from '../../../../../electron/shared/modelArchetypes'
 import { currentArchetypeMode } from './archetypeMeta'
 import { archetypeModeChoices } from './channelModeReach'
-import { presentGenerationModes, shouldPreserveAttachedCameraMoveMode, textModeToReturnTo } from './generationModePresentation'
+import { presentGenerationModes, textModeToReturnTo } from './generationModePresentation'
 
 const TEXTS = {
   reference: '参考', firstLast: '首尾帧', firstFrame: '首帧',
@@ -64,15 +64,10 @@ describe('输入没了回到文生', () => {
   it('首尾帧是用户特意选的，空了也不收回', () => expect(back('seedance-2', 'firstlast', false)).toBeNull())
   it('图片改图方式没图 → 回文生图', () => expect(back('gpt-image-2', 'i2i', false)).toBe('t2i'))
   it('没有文生方式的模型不动', () => expect(back('happyhorse', 'edit', false)).toBe('t2v'))
-  it('删掉预演参考但保留 attached 标记时，不因系统收回方式而触发重新挂接', () => {
+  it('删掉预演参考后仍按 B3 回到文生，即使 attached 标记还在', () => {
     const spec = archetype('seedance-2')
     const mode = currentArchetypeMode(spec, { archetype: { id: spec.id, modeId: 'omni' } })
-    expect(shouldPreserveAttachedCameraMoveMode(spec, mode, { cameraMoveAttachedUrl: 'nomi-local://asset/p/preview.mp4' }, false)).toBe(true)
-  })
-  it('无参考视频槽的模型不因运镜标记阻止正常收回方式', () => {
-    const spec = archetype('veo-3.1')
-    const mode = currentArchetypeMode(spec, { archetype: { id: spec.id, modeId: 't2v' } })
-    expect(shouldPreserveAttachedCameraMoveMode(spec, mode, { cameraMoveAttachedUrl: 'nomi-local://asset/p/preview.mp4' }, false)).toBe(false)
+    expect(textModeToReturnTo(spec, mode, false)).toBe('t2v')
   })
 })
 

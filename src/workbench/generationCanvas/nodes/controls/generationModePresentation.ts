@@ -13,7 +13,6 @@ import React from 'react'
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
 import { resolveReferenceSlots } from '../../runner/referenceSlots'
 import { applyArchetypeModeSwitch } from './archetypeMeta'
-import { CAMERA_MOVE_ATTACHED_URL_KEY } from '../director/agent/attachCameraMoveToTarget'
 import type { useNodeWriteAccess } from '../nodeWriteAccess'
 import type { ModelArchetype, ArchetypeMode } from '../../../../../electron/shared/modelArchetypes'
 import type { ArchetypeModeChoice } from './channelModeReach'
@@ -105,22 +104,6 @@ export function textModeToReturnTo(archetype: ModelArchetype, activeMode: Archet
   return archetype.modes.find((mode) => mode.intent === 'text')?.id ?? null
 }
 
-/**
- * 预演 / 运镜参考被用户删掉后，保留的 attached 标记仍代表「下次出成片时重挂」。
- * 有 video_ref 的档案不能因为空参考被系统自动收回文生模式：那次系统模式切换会被
- * previewAttachReconciler 当成用户换模式，从而把刚删的预演又挂回来。
- */
-export function shouldPreserveAttachedCameraMoveMode(
-  archetype: ModelArchetype,
-  activeMode: ArchetypeMode,
-  meta: Record<string, unknown> | undefined,
-  hasAnyInput: boolean,
-): boolean {
-  if (hasAnyInput || !meta?.[CAMERA_MOVE_ATTACHED_URL_KEY]) return false
-  return archetype.modes.some((mode) => mode.slots.some((slot) => slot.kind === 'video_ref'))
-    && (activeMode.intent === 'character' || activeMode.intent === 'single' || activeMode.intent === 'edit')
-}
-
 /** 把词典里的几句人话收成 Texts（宿主壳只管传 t）。 */
 export function modePresentationTexts(t: (key: string, values?: Record<string, unknown>) => string): Texts {
   return {
@@ -157,7 +140,6 @@ export function useRevertToTextMode(args: {
     if (!latest) return
     const state = useGenerationCanvasStore.getState()
     const hasAnyInput = resolveReferenceSlots(latest, state.nodes, state.edges).some((slot) => slot.fills.length > 0)
-    if (shouldPreserveAttachedCameraMoveMode(archetype, archMode, latest.meta, hasAnyInput)) return
     const target = textModeToReturnTo(archetype, archMode, hasAnyInput)
     if (!target) return
     updateNode(nodeId, { meta: applyArchetypeModeSwitch(latest.meta || {}, archetype, target) }, { history: false })

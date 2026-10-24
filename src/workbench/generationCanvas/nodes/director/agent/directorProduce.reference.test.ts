@@ -5,6 +5,7 @@
  * 不起 Electron、不花钱：请求只构建、不发送。
  */
 import { beforeEach, describe, expect, it } from 'vitest'
+import { MODEL_ARCHETYPES, specializeArchetypeForVariant } from '../../../../../../electron/shared/modelArchetypes'
 import { generationCanvasTools } from '../../../agent/generationCanvasTools'
 import { applyProposalBatch } from '../../../agent/proposalTxn'
 import { buildCatalogTaskRequest } from '../../../runner/catalogTaskActions'
@@ -14,10 +15,13 @@ import { DIRECTOR_PROJECT_META_KEY } from '../model/directorNodeMeta'
 import { directorPreviewSpendBlock } from '../model/directorPreviewState'
 import { normalizeDirectorProject } from '../model/directorProject'
 import type { DirectorProject } from '../model/directorTypes'
+import { archetypeForNode } from '../../../agent/referenceEdgeCapability'
+import { applyArchetypeModeSwitch, currentArchetypeMode } from '../../controls/archetypeMeta'
+import { removeFromArray, type ReferenceWriteContext } from '../../controls/referenceWrites'
 import type { DirectorWriteDomainResult } from './applyDirectorWrite'
 import { applyPreviewCaptured, previewCapturePlan } from './directorPreviewCapture'
 import { prepareProduceFromPreview } from './directorProduce'
-import { startPreviewAttachReconciler } from './previewAttachReconciler'
+import { previewAttachReconcileKey, startPreviewAttachReconciler } from './previewAttachReconciler'
 
 const PLAN = {
   scene: { environment: 'day', template: 'room', tags: ['书房'] },
@@ -66,6 +70,27 @@ function requestOf(shotId: string): { videos: unknown; prompt: string } {
 
 const setShotMeta = (shotId: string, patch: Record<string, unknown>): void => {
   store().updateNode(shotId, { meta: { ...(node(shotId)?.meta ?? {}), ...patch } })
+}
+
+const removePreviewReference = (shotId: string): void => {
+  const current = node(shotId)!
+  const archetype = archetypeForNode(current)!
+  const archMode = currentArchetypeMode(archetype, current.meta ?? {})
+  const canvas = store()
+  const ctx: ReferenceWriteContext = {
+    node: current,
+    archMode,
+    getImageUrlSlots: () => [],
+    latestNode: (id) => store().nodes.find((candidate) => candidate.id === id),
+    updateNode: canvas.updateNode,
+    getLatestMeta: () => store().nodes.find((candidate) => candidate.id === shotId)?.meta ?? {},
+    updateMeta: () => {},
+    storeConnectNodes: canvas.connectNodes,
+    storeDisconnectEdge: canvas.disconnectEdge,
+    closeSlot: () => {},
+    feedback: () => {},
+  }
+  removeFromArray(ctx, 'referenceVideoUrls', 0)
 }
 
 beforeEach(() => {
@@ -126,6 +151,16 @@ describe('3D-BOX produce: 预演参考真的进付费请求，编号指向它', 
   })
 })
 
+it('档案变体只收窄参数，不改变参考槽形状，因此不算换模型', () => {
+  for (const archetype of MODEL_ARCHETYPES) {
+    const baseShape = archetype.modes.map((mode) => mode.slots)
+    for (const variant of archetype.variants ?? []) {
+      const specialized = specializeArchetypeForVariant(archetype, variant.id)
+      expect(specialized.modes.map((mode) => mode.slots), `${archetype.id}:${variant.id}`).toEqual(baseShape)
+    }
+  }
+})
+
 // ── 直接点节点 ↑（不经「出成片」）：换模型 / 换方式之后预演要跟着重挂，花钱闸再核一次「挂接是当前的」 ──
 describe('节点上直接点 ↑：挂接始终是当前的', () => {
   const blockOf = (shotId: string) => directorPreviewSpendBlock(shotId, store().nodes)
@@ -139,6 +174,50 @@ describe('节点上直接点 ↑：挂接始终是当前的', () => {
       expect(requestOf(shotId).videos).toEqual([URL_V1])
       expect(requestOf(shotId).prompt).toMatch(/@video1 跟随这段参考视频的运镜/)
       expect(blockOf(shotId)).toBeNull()
+    } finally { stop() }
+  })
+
+  it('删掉唯一预演参考 → B3 回文生，方式变化不触发对账重挂', async () => {
+    const { shotId, directorNodeId } = await stagedWith({ ...SLOT_MODEL, archetype: { id: 'seedance-2', modeId: 'omni' } })
+    renderPreview(directorNodeId)
+    const stop = startPreviewAttachReconciler()
+    try {
+      removePreviewReference(shotId)
+      const current = node(shotId)!
+      const archetype = archetypeForNode(current)!
+      const target = archetype.modes.find((mode) => mode.intent === 'text')!
+      store().updateNode(shotId, { meta: applyArchetypeModeSwitch(current.meta ?? {}, archetype, target.id) })
+      expect(node(shotId)?.meta?.referenceVideoUrls ?? []).toEqual([])
+      expect((node(shotId)?.meta?.archetype as { modeId: string }).modeId).toBe('t2v')
+      expect(node(shotId)?.meta?.cameraMoveAttachedUrl).toBe(URL_V1)
+      expect(node(shotId)?.prompt).not.toContain(`@[asset:${encodeURIComponent(URL_V1)}]`)
+    } finally { stop() }
+  })
+
+  it('只换生成方式（参考 → 首尾帧 → 参考）不重挂，单份参考列表始终保留', async () => {
+    const { shotId, directorNodeId } = await stagedWith({ ...SLOT_MODEL, archetype: { id: 'seedance-2', modeId: 'omni' } })
+    renderPreview(directorNodeId)
+    const stop = startPreviewAttachReconciler()
+    try {
+      const original = node(shotId)?.meta?.referenceVideoUrls
+      setShotMeta(shotId, { archetype: { id: 'seedance-2', modeId: 'firstlast' } })
+      expect(node(shotId)?.meta?.referenceVideoUrls).toEqual(original)
+      setShotMeta(shotId, { archetype: { id: 'seedance-2', modeId: 'omni' } })
+      expect(node(shotId)?.meta?.referenceVideoUrls).toEqual(original)
+    } finally { stop() }
+  })
+
+  it('只换变体不算换模型：档案变体不改变参考槽形状，预演不重挂', async () => {
+    const { shotId, directorNodeId } = await stagedWith({ ...SLOT_MODEL, archetype: { id: 'seedance-2', modeId: 'omni', variantId: 'standard' } })
+    renderPreview(directorNodeId)
+    const stop = startPreviewAttachReconciler()
+    try {
+      const before = node(shotId)!
+      setShotMeta(shotId, { archetype: { id: 'seedance-2', modeId: 'omni', variantId: 'fast' } })
+      expect(node(shotId)?.prompt).toBe(before.prompt)
+      expect(node(shotId)?.meta?.referenceVideoUrls).toEqual(before.meta?.referenceVideoUrls)
+      expect(node(shotId)?.meta?.cameraMoveAttachedUrl).toBe(before.meta?.cameraMoveAttachedUrl)
+      expect(previewAttachReconcileKey(node(shotId)?.meta ?? {})).toBe(previewAttachReconcileKey(before.meta ?? {}))
     } finally { stop() }
   })
 

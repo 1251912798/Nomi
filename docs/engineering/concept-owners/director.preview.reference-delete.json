@@ -16,8 +16,12 @@
       "symbol": "removeFromArray"
     },
     {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts",
+      "symbol": "previewAttachReconcileKey"
+    },
+    {
       "path": "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
-      "symbol": "shouldPreserveAttachedCameraMoveMode"
+      "symbol": "useRevertToTextMode"
     }
   ],
   "forbidden_derivations": [],
@@ -27,5 +31,5 @@
     "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts"
   ],
   "since": "2026-10-25",
-  "notes": "参考行的 × 按当前显示填充来源断边或按 URL 删除 meta，并清理图片 / 视频 / 音频 @ 标记；cameraMoveAttachedUrl 只代表下次出成片可重新挂接，不允许系统自动收回方式触发 previewAttachReconciler 立即挂回。"
+  "notes": "参考行的 × 按当前显示填充来源断边或按 URL 删除 meta，并清理图片 / 视频 / 音频 @ 标记；cameraMoveAttachedUrl 只代表下次出成片可重新挂接。空参考按 B3 回到文生；previewAttachReconciler 只按供应商、模型键、档案 id 对账，方式、变体和参考列表变化不触发挂回。"
 }

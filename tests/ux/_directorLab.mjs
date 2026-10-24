@@ -396,10 +396,10 @@ export async function placeCharacter(lab, gender, x, z) {
 export async function addCameraPreset(lab, presetLabel) {
   const { page } = lab
   await openAddMenu(lab, 'creation.camera')
-  const presetKey = {
-    '正面中景': 'cameraPreset.front_medium',
-    '正面特写': 'cameraPreset.front_closeup',
-  }[presetLabel] ?? (presetLabel.includes('.') ? presetLabel : null)
+  const presetKeys = ['cameraPreset.front_medium', 'cameraPreset.front_closeup']
+  const presetKey = presetLabel.includes('.')
+    ? presetLabel
+    : (await Promise.all(presetKeys.map(async (key) => ({ key, label: await directorText(page, key) })))).find((entry) => entry.label === presetLabel)?.key
   const label = presetKey ? await directorText(page, presetKey) : presetLabel
   await clickOrFail(page.getByRole('button', { name: label, exact: true }), `机位预设·${label}`)
 }
@@ -448,7 +448,8 @@ export async function addTrack(lab, entityName) {
 export async function rowAddClipMenu(lab, trackName, itemLabel) {
   const row = lab.trackRow(trackName)
   await expectVisible(row, `时间轴上没有「${trackName}」轨道`)
-  await clickOrFail(row.getByRole('button', { name: '添加动作 / 骨骼 / 视线片段' }), `轨道行·添加片段（${trackName}）`)
+  const addClipLabel = await directorText(lab.page, 'timeline.menu.addClip')
+  await clickOrFail(row.getByRole('button', { name: addClipLabel, exact: true }), `轨道行·添加片段（${trackName}）`)
   await clickOrFail(lab.page.getByRole('menuitem', { name: itemLabel, exact: true }), `追加片段菜单·${itemLabel}`)
 }
 

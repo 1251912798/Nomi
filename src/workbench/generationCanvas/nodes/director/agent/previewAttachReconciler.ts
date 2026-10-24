@@ -1,8 +1,9 @@
 /**
  * [INPUT]: 依赖 ../../../store/generationCanvasStore、../model/directorPreviewState 的 readDirectorPreview、../model/directorProject / directorShotSummaries、./attachCameraMoveForNode
  * [OUTPUT]: 对外提供 startPreviewAttachReconciler
- * [POS]: 挂了预演的视频镜头，模型或生成方式一变，就经唯一入口 attachCameraMoveForNode 走同一个核对账，参考行始终显示真实状态
- *        （用户直接点节点 ↑ 也带着预演，不必再点「出成片」）。只在「模型 / 方式变了」时对账，不盯参考列表：用户手动删参考不会被自动加回。
+ * [POS]: 挂了预演的视频镜头，模型身份一变，就经唯一入口 attachCameraMoveForNode 走同一个核对账，参考行始终显示真实状态
+ *        （用户直接点节点 ↑ 也带着预演，不必再点「出成片」）。只在供应商、模型键或档案身份变了时对账，不盯方式或参考列表：
+ *        B3 系统收回文生、用户手动切方式或删参考都不会被自动加回；下一次出成片仍走既有挂接入口。
  *        由画布壳 GenerationCanvasReactFlow 挂载（出片 Host 只在渲染预演时才挂，靠不住）；花钱闸（directorPreviewSpendBlock）是它之外的第二道，对不上就挡。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -15,6 +16,14 @@ import { attachCameraMoveForNode } from './attachCameraMoveForNode'
 
 type Toast = (message: string, level: 'warning') => void
 
+/** 对账只认模型身份：供应商、模型键、档案 id；modeId / variantId 只影响方式或参数，不触发重挂。 */
+export function previewAttachReconcileKey(meta: Record<string, unknown>): string {
+  const archetype = meta.archetype && typeof meta.archetype === 'object'
+    ? meta.archetype as Record<string, unknown>
+    : undefined
+  return JSON.stringify([meta.modelVendor ?? meta.vendor, meta.modelKey, archetype?.id])
+}
+
 export function startPreviewAttachReconciler(onToast?: Toast): () => void {
   const seen = new Map<string, string>()
   const run = (): void => {
@@ -26,7 +35,7 @@ export function startPreviewAttachReconciler(onToast?: Toast): () => void {
       const target = state.nodes.find((node) => node.id === preview.targetNodeId)
       if (!target) continue
       const meta = target.meta ?? {}
-      const key = JSON.stringify([meta.modelVendor, meta.modelKey, meta.archetype])
+      const key = previewAttachReconcileKey(meta)
       const slot = `${director.id}:${target.id}`
       const before = seen.get(slot)
       seen.set(slot, key)
