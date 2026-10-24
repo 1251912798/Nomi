@@ -10,9 +10,9 @@
 //      只改**没被明确选过**比例的视频节点（用户 2026-10-22 Q2 拍板）；断线、删上游不回头改。
 // 「明确选过」只有一个标记 `aspect_ratio_user_set`：用户在比例控件上选、或落地时 Agent / 分镜写了合法比例。
 import type { GenerationCanvasEdge, GenerationCanvasNode } from '../model/generationCanvasTypes'
-import { ASPECT_RATIO_KEYS, collectInputAspectRatios, preferredVideoAspect } from './aspectRatio'
+import { collectInputAspectRatios, preferredVideoAspect } from './aspectRatio'
 import { videoAspectDefaultPatch, type DynamicModelControl } from './controls/parameterControlModel'
-import { normalizeAspectRatioToWH } from '../../../../electron/shared/aspectRatioValue'
+import { ASPECT_RATIO_META_KEYS, normalizeAspectRatioToWH, sameAspectRatio } from '../../../../electron/shared/aspectRatioValue'
 import { ASPECT_EXPLICIT_META_KEY } from './aspectExplicit'
 
 export type VideoAspectSeedInput = {
@@ -30,18 +30,18 @@ export type VideoAspectSeedInput = {
   respectExplicit: boolean
 }
 
-function currentAspect(meta: Record<string, unknown>): string | null {
-  for (const key of ASPECT_RATIO_KEYS) {
-    const wh = normalizeAspectRatioToWH(String(meta[key] ?? ''))
-    if (wh) return wh
+function hasCurrentAspect(meta: Record<string, unknown>, preferred: '16:9' | '9:16'): boolean {
+  for (const key of ASPECT_RATIO_META_KEYS) {
+    const value = String(meta[key] ?? '')
+    if (normalizeAspectRatioToWH(value) && sameAspectRatio(value, preferred)) return true
   }
-  return null
+  return false
 }
 
 /** 铺视频比例默认值的那一笔 meta patch；不该改（明确选过 / 已经是首选 / 模型没有对应档）→ 空对象。 */
 export function videoAspectSeedPatch(input: VideoAspectSeedInput): Record<string, unknown> {
   if (input.respectExplicit && input.meta[ASPECT_EXPLICIT_META_KEY] === true) return {}
   const preferred = preferredVideoAspect(collectInputAspectRatios(input.nodeId, input.edges, input.nodes))
-  if (input.respectExplicit && currentAspect(input.meta) === preferred) return {}
+  if (input.respectExplicit && hasCurrentAspect(input.meta, preferred)) return {}
   return videoAspectDefaultPatch(input.controls, preferred)
 }
