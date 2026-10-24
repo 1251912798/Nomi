@@ -34,15 +34,14 @@ function subjectOf(pointer: SpendCardPointer): NodePointerSubject {
     fallbackLabel: { shot: pointer.shotRef },
     removed: pointer.removed,
     ...(pointer.hostFailure ? { hostFailure: pointer.hostFailure } : {}),
+    ...(pointer.hostStatus ? { hostStatus: pointer.hostStatus } : {}),
   }
 }
 
-/** 格子标题行右端那颗小钮本身（摆在哪、什么时候露出来归组指向管）。 */
-function ExclusionToggle({ pointer, busy, narrow, onExclude, onRestore }: {
+/** 格子缩略图上的小钮本身（摆在哪、什么时候露出来归组指向管）。 */
+function ExclusionToggle({ pointer, busy, onExclude, onRestore }: {
   pointer: SpendCardPointer
   busy: boolean
-  /** 窄面板（≤320px）：一格约 86px；「不生成」三个字放不下，只留 ×（读屏名 / 悬停名照旧写全）。 */
-  narrow: boolean
   onExclude: (shotId: string) => void
   onRestore: (shotId: string) => void
 }): JSX.Element {
@@ -59,18 +58,18 @@ function ExclusionToggle({ pointer, busy, narrow, onExclude, onRestore }: {
       data-spend-exclusion={pointer.exclusion}
       className="inline-flex h-5 items-center gap-0.5 rounded-full bg-nomi-paper/85 px-1.5 text-micro text-nomi-ink-80 shadow-nomi-sm hover:bg-nomi-paper hover:text-nomi-ink disabled:opacity-40"
     >
-      {restore ? t('agentPanelV4.spendCard.restore') : narrow ? null : t('agentPanelV4.spendCard.exclude')}
+      {restore ? t('agentPanelV4.spendCard.restore') : null}
       {restore ? null : <IconX size={11} stroke={1.8} aria-hidden="true" />}
     </button>
   )
 }
 
 /** 这一格挂什么：可去掉的挂「不生成 ×」（悬停 / 聚焦才露）；去掉了的淡下去、常驻「恢复」；别的（已在生成、已删除……）不挂。 */
-function exclusionAccessory(pointer: SpendCardPointer | undefined, props: Pick<SpendCardBodyProps, 'busy' | 'onExclude' | 'onRestore'> & { narrow: boolean }): NodePointerCellAccessory | null {
+function exclusionAccessory(pointer: SpendCardPointer | undefined, props: Pick<SpendCardBodyProps, 'busy' | 'onExclude' | 'onRestore'>): NodePointerCellAccessory | null {
   if (!pointer?.exclusion) return null
   const restore = pointer.exclusion === 'restore'
   return {
-    action: <ExclusionToggle pointer={pointer} busy={props.busy} narrow={props.narrow} onExclude={props.onExclude} onRestore={props.onRestore} />,
+    action: <ExclusionToggle pointer={pointer} busy={props.busy} onExclude={props.onExclude} onRestore={props.onRestore} />,
     pinned: restore,
     dimmed: restore,
   }
@@ -103,7 +102,7 @@ export function AgentPanelV4SpendCardBody({ pointers, single, summary, notices, 
           subjects={subjects}
           narrow={narrow}
           {...(summary ? { idleSummary: summary } : {})}
-          cellAccessory={(_subject, index) => exclusionAccessory(pointers[index], { busy, narrow, onExclude, onRestore })}
+          cellAccessory={(_subject, index) => exclusionAccessory(pointers[index], { busy, onExclude, onRestore })}
         />
       )}
       {notices.map((notice) => <SpendCardNoticeLine key={`${notice.tone}:${notice.text}`} notice={notice} />)}

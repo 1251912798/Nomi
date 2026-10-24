@@ -55,6 +55,8 @@ export type SpendCardPointer = Readonly<{
   removed: boolean
   /** 指向元素状态条上那一个词：这一镜这一次没成 / 现在交不出去。 */
   hostFailure?: string
+  /** 失败卡上还未发出的那一格，本次出价的状态词。 */
+  hostStatus?: string
   /** 多段卡格子右上那颗小钮：「不生成 ×」（还没决定的）/「恢复」（去掉了的）/ 没有。 */
   exclusion: 'exclude' | 'restore' | null
 }>
@@ -137,11 +139,11 @@ function distinct<T>(values: readonly T[]): T[] {
 
 /**
  * 多段卡组指向下方那一行（板 card.summary）：整齐时「模型 · 比例 · 清晰度 · 共 Ns」；有哪一样逐镜不同时
- * 「N 镜 · 逐镜不同：16:9 ×1 · 9:16 ×2」（比例、模型、清晰度依次，只列不同的那几样）。读不出就不印。
+ * 保留共同参数，再列不同组「16:9 ×1 · 9:16 ×2」（比例、模型、清晰度依次）。读不出的比例显示「自动」。
  * 「读不出」（比例是自动、没有清晰度这一档）也是一种不同：两镜自动、一镜 16:9 不是「都是 16:9」——整齐那一行只印
  * 第一镜的值，把它当成整齐会替另外几镜说一个它们没有的比例。不同的那一样里只列读得出的几组（「3 镜 · 逐镜不同：16:9 ×1」）。
  */
-export function spendCardSummary(facts: readonly SpendCardShotFacts[], t: Translate): string | undefined {
+export function spendCardSummary(facts: readonly SpendCardShotFacts[], t: Translate, pickedByNomi = false): string | undefined {
   if (facts.length === 0) return undefined
   const dimensions: ReadonlyArray<readonly string[]> = [
     facts.map((fact) => fact.aspect ?? ''),
@@ -149,29 +151,25 @@ export function spendCardSummary(facts: readonly SpendCardShotFacts[], t: Transl
     facts.map((fact) => fact.resolution ?? ''),
   ]
   const differing = dimensions.filter((values) => distinct(values).length > 1)
+  const modelLabel = (value: string): string => value && pickedByNomi ? t('agentPanelV4.spendCard.summaryPickedModel', { model: value, picked: t('agentPanelV4.spendParamsModelPicked') }) : value
   if (differing.length === 0) {
     const seconds = facts.every((fact) => fact.durationSec) ? facts.reduce((total, fact) => total + (fact.durationSec ?? 0), 0) : 0
-    const line = join([facts[0]!.model, facts[0]!.aspect, facts[0]!.resolution, seconds ? t('agentPanelV4.spendCard.summarySeconds', { value: formatSeconds(seconds) }) : null])
+    const line = join([modelLabel(facts[0]!.model), facts[0]!.aspect, facts[0]!.resolution, seconds ? t('agentPanelV4.spendCard.summarySeconds', { value: formatSeconds(seconds) }) : null])
     return line || undefined
   }
-  const groups = differing.flatMap((values) => distinct(values.filter(Boolean))
-    .map((value) => t('agentPanelV4.spendCard.summaryGroup', { value, count: values.filter((candidate) => candidate === value).length })))
-  return t('agentPanelV4.spendCard.summaryMixed', { count: facts.length, groups: groups.join(' · ') })
-}
-
-/** 失败那一段之外，别的几段此刻怎样（板 ⑤⑥ 那一行小字：「镜 01 已发出；镜 03 还没发。」）。没有别的就不印。 */
-function detailLine(entries: readonly Entry[], attention: Entry, t: Translate): string | undefined {
-  const others = entries.filter((entry) => entry !== attention)
-  const listed = (roles: readonly Role[]) => others.filter((entry) => roles.includes(entry.role)).map((entry) => entry.facts.shotRef)
-  const groups: Array<[string, readonly string[]]> = [
-    ['agentPanelV4.spendCard.detail.sent', listed(['sent', 'taken', 'sending'])],
-    ['agentPanelV4.spendCard.detail.unclear', listed(['unclear'])],
-    ['agentPanelV4.spendCard.detail.notSent', listed(['notSent'])],
-    ['agentPanelV4.spendCard.detail.notYet', listed(['sendable', 'blocked'])],
-  ]
-  const parts = groups.filter(([, shots]) => shots.length > 0)
-    .map(([key, shots]) => t(key, { shots: shots.join(t('agentPanelV4.spendCard.detail.listSeparator')) }))
-  return parts.length ? parts.join(t('agentPanelV4.spendCard.detail.separator')) + t('agentPanelV4.spendCard.detail.period') : undefined
+  const common = dimensions.map((values, dimensionIndex) => {
+    if (distinct(values).length !== 1) return null
+    const value = values[0]!
+    if (!value) return null
+    return dimensionIndex === 1 ? modelLabel(value) : value
+  }).filter((value): value is string => Boolean(value))
+  const groups = differing.flatMap((values, dimensionIndex) => distinct(values)
+    .map((value) => t('agentPanelV4.spendCard.summaryGroup', {
+      value: dimensionIndex === 0 && value === '' ? t('agentPanelV4.spendCard.summaryAuto') : dimensionIndex === 1 ? modelLabel(value) : value,
+      count: values.filter((candidate) => candidate === value).length,
+    })))
+  const groupText = groups.join(' · ')
+  return common.length ? t('agentPanelV4.spendCard.summaryMixed', { prefix: common.join(' · '), groups: groupText }) : groupText
 }
 
 /** 失败留在卡里时，卡上那一段（板 ⑤⑥）：标题、原因、主按钮。 */
@@ -238,6 +236,7 @@ export function projectSpendCard(
     ...(entry.role === 'blocked' ? { hostFailure: t('agentPanelV4.spendCard.pointerCannotSend') }
       : entry.role === 'notSent' ? { hostFailure: t('agentPanelV4.spendCard.pointerFailed') }
         : entry.role === 'unclear' ? { hostFailure: t('agentPanelV4.spendCard.pointerUnclear') } : {}),
+    ...(attention && (entry.role === 'sendable' || entry.role === 'blocked') ? { hostStatus: t('agentPanelV4.spendCard.pointerNotSentYet') } : {}),
     // 「不生成 ×」只在多段卡、还没在交的时候（单段卡的「不生成」就是「取消」）；去掉了的那一镜常驻「恢复」。
     exclusion: single || sending ? null
       : entry.role === 'sendable' || entry.role === 'blocked' ? 'exclude'
@@ -263,7 +262,6 @@ export function projectSpendCard(
 
   if (attention) {
     const shown = attentionView(attention, entries, view, t)
-    const detail = detailLine(entries, attention, t)
     const retryEmpty = shown.primary.kind === 'retry' && shown.primary.shotIds.length === 0
     // 「再试一次」带着托管同意交：同意只能来自卡上摆着的那一句原文——原因行就是它（要问同意的那一种），或者另摆一行披露。
     const disclose = shown.primary.kind === 'retry' && view.hostingDisclosure && shown.reason !== t('generationCommon.spendHostingDisclosure.message')
@@ -280,7 +278,7 @@ export function projectSpendCard(
       }),
       pointers, single,
       notices: [
-        { tone: 'danger', text: shown.reason, ...(detail ? { detail } : {}) },
+        { tone: 'danger', text: shown.reason },
         ...(disclose ? [{ tone: 'neutral' as const, text: t('generationCommon.spendHostingDisclosure.message') }] : []),
       ],
       primary: shown.primary,
@@ -301,7 +299,7 @@ export function projectSpendCard(
   // 一段都交不出去（全去掉了 / 还在落到画布上）：按钮置灰、只说「生成」，不印「全部生成（0）」。
   const confirmLabel = single || count === 0 ? t('agentPanelV4.spendCard.generate')
     : remaining ? t(saysVideo ? 'agentPanelV4.spendConfirmRemainingVideo' : 'agentPanelV4.spendConfirmRemainingImage', { count })
-      : t('agentPanelV4.spendCard.generateAll', { count })
+      : t(saysVideo ? 'agentPanelV4.spendCard.generateAll' : 'agentPanelV4.spendCard.generateAllImage', { count })
   // 钱（D5）：每一段都算得出才印「N 段」（单段卡也印「1 段」——板 ① 那一行在，Q2 只把金额去掉）；各段价格不同时折叠明细
   // 印每镜价；算不出整行不印。
   const prices = sendable.map((entry) => entry.facts.price)
@@ -314,18 +312,17 @@ export function projectSpendCard(
     notices.push({ tone: 'danger', text: t('agentPanelV4.spendCard.blockedNotice', { shot: entry.facts.shotRef, reason: t(handOverFailureCopy(entry.facts.blocked!)) }) })
   }
   if (view.hostingDisclosure && count > 0) notices.push({ tone: 'neutral', text: t('generationCommon.spendHostingDisclosure.message') })
-  const summary = single ? undefined : spendCardSummary(sendable.map((entry) => entry.facts), t)
+  const summary = single ? undefined : spendCardSummary(sendable.map((entry) => entry.facts), t, pickedByNomi)
   return {
     slot: Object.freeze({
       kind: 'spend' as const,
       title: asked > 0 ? t(titleKey, { count: asked }) : t('agentPanelV4.spendCard.titleNothing'),
-      badge: pickedByNomi ? `${t('agentPanelV4.slotSpendBadge')} · ${t('agentPanelV4.spendParamsModelPicked')}` : t('agentPanelV4.slotSpendBadge'),
       ...brake,
       ...(allKnown ? { totalLead: t(saysVideo ? 'agentPanelV4.spendCard.totalVideo' : 'agentPanelV4.spendCard.totalImage', { count }) } : {}),
       ...(allKnown && !uniform
         ? {
           price: {
-            perItemLabel: t('agentPanelV4.spendParamsPerItem', { count }),
+            perItemLabel: t('agentPanelV4.spendParamsPerItem'),
             perItem: sendable.map((entry) => ({
               label: join([entry.facts.shotRef, entry.facts.model, entry.facts.aspect, entry.facts.durationSec ? formatSeconds(entry.facts.durationSec) : null]),
               amount: entry.facts.price.known ? money(entry.facts.price.amount) : '',

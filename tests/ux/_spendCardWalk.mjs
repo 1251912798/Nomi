@@ -62,7 +62,7 @@ export const cardTitle = (locale, count, kind) => say(locale, kind === 'video' ?
 export function primaryLabel(locale, { count, kind, remaining = false, single = false }) {
   if (single || count === 0) return say(locale, 'agentPanelV4.spendCard.generate')
   if (remaining) return say(locale, kind === 'video' ? 'agentPanelV4.spendConfirmRemainingVideo' : 'agentPanelV4.spendConfirmRemainingImage', { count })
-  return say(locale, 'agentPanelV4.spendCard.generateAll', { count })
+  return say(locale, kind === 'video' ? 'agentPanelV4.spendCard.generateAll' : 'agentPanelV4.spendCard.generateAllImage', { count })
 }
 /** 「取消」之后那一句（发出 K 段、剩下 M 段没发；全交出去了就说「已经发出去了」；一段都没交出去就说「没有发出去」）。 */
 export function stoppedLine(locale, { sent, notSent, kind }) {

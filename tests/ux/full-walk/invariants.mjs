@@ -130,7 +130,7 @@ export function uiText(locale, key, dictionaries = loadDictionaries()) {
 export function uiTextWith(locale, key, values = {}, dictionaries = loadDictionaries()) {
   let template
   if (values.count !== undefined) {
-    const suffix = locale === 'en' && Number(values.count) === 1 ? 'one' : 'other'
+    const suffix = Number(values.count) === 1 ? 'one' : 'other'
     try { template = uiText(locale, `${key}_${suffix}`, dictionaries) } catch { template = uiText(locale, key, dictionaries) }
   } else {
     template = uiText(locale, key, dictionaries)
@@ -148,9 +148,13 @@ const SPEND_CARD_TITLE_KEYS = Object.freeze(['agentPanelV4.spendParamsTitle', 'a
  */
 export function spendCardTitleCount(title, locale, maxCount, dictionaries = loadDictionaries()) {
   const text = String(title ?? '')
-  for (let count = 1; count <= Math.max(1, maxCount); count += 1) {
-    if (SPEND_CARD_TITLE_KEYS.some((key) => text.startsWith(uiTextWith(locale, key, { count }, dictionaries)))) return count
+  const matches = (key, count) => {
+    const phrase = uiTextWith(locale, key, { count }, dictionaries)
+    return text === phrase || text.startsWith(`${phrase} `)
   }
+  if (SPEND_CARD_TITLE_KEYS.some((key) => matches(key, 1))) return 1
+  // 方案一把数量交给主按钮；复数标题只证明「不止一镜」，具体数量由按钮范围读取。
+  if (SPEND_CARD_TITLE_KEYS.some((key) => matches(key, 2))) return null
   return null
 }
 

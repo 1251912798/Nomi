@@ -417,7 +417,7 @@ describe('NodePointerGroup · tiles stay tellable apart in a narrow panel (narro
     }
   })
 
-  it('a host action lives in the tile label row: hidden until the tile is hovered or focused unless pinned; the label row makes room for it when it shows', () => {
+  it('a host action lives on the tile thumbnail: hidden until the tile is hovered or focused unless pinned', () => {
     const accessory = (subject: NodePointerSubject) => subject.nodeId === 'b'
       ? { action: <button type="button" data-test-action="restore">restore</button>, pinned: true, dimmed: true }
       : { action: <button type="button" data-test-action="exclude">x</button>, pinned: false, dimmed: false }
@@ -429,16 +429,12 @@ describe('NodePointerGroup · tiles stay tellable apart in a narrow panel (narro
     expect(slots).toHaveLength(3)
     // 藏着的那两槽：看不见也不接点击；悬停 / 聚焦这一格才露。常驻的那一槽不藏。
     expect(slots.filter((slot) => slot.includes('opacity-0') && slot.includes('pointer-events-none'))).toHaveLength(2)
-    for (const slot of slots) expect(slot).toContain('top-0')
-    // 标题行在小动作露出来的三种情形（悬停 / 聚焦 / 常驻）都让出它的宽。
-    for (const variant of ['group-hover/pointer-cell', 'group-focus-within/pointer-cell', 'group-data-[accessory-pinned]/pointer-cell']) {
-      expect(markup).toContain(`${variant}:pr-[var(--node-pointer-cell-accessory)]`)
-    }
+    expect(slots.filter((slot) => slot.includes('top-[20px]'))).toHaveLength(2)
+    expect(slots.filter((slot) => slot.includes('aspect-video') && slot.includes('justify-center'))).toHaveLength(1)
     const { renderer, hosts } = mount(<NodePointerGroup subjects={tiles} cellAccessory={accessory} />)
     try {
       const cells = hosts.filter((host) => host.type === 'div' && host.props['data-node-pointer-cell'] !== undefined)
-      const widths = cells.slice(-3).map((cell) => (cell.props.style as Record<string, string> | undefined)?.['--node-pointer-cell-accessory'])
-      expect(widths).toEqual([`${SLOT_WIDTH + 4}px`, `${SLOT_WIDTH + 4}px`, `${SLOT_WIDTH + 4}px`])
+      expect(cells.every((cell) => cell.props.style === undefined)).toBe(true)
     } finally {
       renderer.close()
     }

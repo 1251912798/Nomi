@@ -434,20 +434,20 @@ export const zhAgentPanelV4 = {
   // 付费卡（D2 第③步，SpendCardQ1 板）：指向元素 + 一句话 + 一行只读摘要 + 「生成」。卡上没有参数，想改点指向去节点里改。
   // 标题是**一句问话**（2026-09-22 换壳，照 Recommendation Card 的形状）：卡在问「要不要做这件事」。
   // 复数走 i18next 的 `_one` / `_other`。zh 两条同文，键必须成对存在——key-parity 门岗要求 zh/en 键集相同。
-  spendParamsTitle_one: '生成这 {{count}} 段视频？',
-  spendParamsTitle_other: '生成这 {{count}} 段视频？',
+  spendParamsTitle_one: '生成这段视频？',
+  spendParamsTitle_other: '生成这些视频？',
   // 同一张卡也用来确认图片生成。标题不许一律写「视频」——用户看着一张图片草稿被说成视频，正要付钱时会以为它搞错了。
-  spendParamsTitleImage_one: '生成这 {{count}} 张图片？',
-  spendParamsTitleImage_other: '生成这 {{count}} 张图片？',
+  spendParamsTitleImage_one: '生成这张图片？',
+  spendParamsTitleImage_other: '生成这些图片？',
   /** 标题旁小字：这几段的模型是 Nomi 替你挑的（节点里换过模型就不再这么说）。 */
   spendParamsModelPicked: 'Nomi 选的',
   /** 逐镜折叠口（只在各镜价格不同时出现，D5）。 */
-  spendParamsPerItem: '逐镜 · {{count}} 镜',
+  spendParamsPerItem: '逐镜',
   /** 节点上已点 ↑ 之后，卡上剩下的那几段（张 / 段跟标题同一条规则）。 */
-  spendConfirmRemainingImage_one: '生成剩下 {{count}} 张',
-  spendConfirmRemainingImage_other: '生成剩下 {{count}} 张',
-  spendConfirmRemainingVideo_one: '生成剩下 {{count}} 段',
-  spendConfirmRemainingVideo_other: '生成剩下 {{count}} 段',
+  spendConfirmRemainingImage_one: '生成 {{count}} 张',
+  spendConfirmRemainingImage_other: '生成 {{count}} 张',
+  spendConfirmRemainingVideo_one: '生成 {{count}} 段',
+  spendConfirmRemainingVideo_other: '生成 {{count}} 段',
   /**
    * 交给画布之后、还有镜在交（D2：画布单节点提交那一条路）：标题说到第几段了，动作行只说怎么停（「取消」就是停下）。
    * 点了「取消」之后、宿主停稳之前：说正在停，已经发出去的照常生成（钱撤不回来，不装作能撤）。
@@ -484,7 +484,8 @@ export const zhAgentPanelV4 = {
     /** 一段都不剩要生成的了（全去掉 / 全被删）：主按钮置灰，卡留着还能恢复。 */
     titleNothing: '没有要生成的了',
     generate: '生成',
-    generateAll: '全部生成（{{count}}）',
+    generateAll: '生成 {{count}} 段',
+    generateAllImage: '生成 {{count}} 张',
     retry: '再试一次',
     goEdit: '去改{{shot}}',
     goCheck: '去看{{shot}}',
@@ -511,10 +512,13 @@ export const zhAgentPanelV4 = {
     totalImage_other: '{{count}} 张',
     /** 一行只读摘要里的总时长。 */
     summarySeconds: '共 {{value}}',
-    summaryMixed: '{{count}} 镜 · 逐镜不同：{{groups}}',
+    summaryMixed: '{{prefix}} · {{groups}}',
+    summaryAuto: '自动',
+    summaryPickedModel: '{{model}}（{{picked}}）',
     summaryGroup: '{{value}} ×{{count}}',
     /** 指向元素状态条上那一个词（宿主给的结局）。 */
     pointerFailed: '失败',
+    pointerNotSentYet: '还没发',
     pointerCannotSend: '发不出去',
     pointerUnclear: '待核对',
     failedTitle: {
@@ -989,16 +993,16 @@ export const enAgentPanelV4 = {
   slotDeviationTitle: 'Shot 3 has no first frame — skip it or draw one first?',
   slotDeviationDraw: 'Draw one first (+¥0.12)',
   slotDeviationSkip: 'Skip',
-  spendParamsTitle_one: 'Generate this video shot?',
-  spendParamsTitle_other: 'Generate these {{count}} video shots?',
+  spendParamsTitle_one: 'Generate this video?',
+  spendParamsTitle_other: 'Generate these videos?',
   spendParamsTitleImage_one: 'Generate this image?',
   spendParamsTitleImage_other: 'Generate these {{count}} images?',
   spendParamsModelPicked: 'Nomi picked',
-  spendParamsPerItem: 'Per shot ({{count}})',
-  spendConfirmRemainingImage_one: 'Generate remaining {{count}}',
-  spendConfirmRemainingImage_other: 'Generate remaining {{count}}',
-  spendConfirmRemainingVideo_one: 'Generate remaining {{count}}',
-  spendConfirmRemainingVideo_other: 'Generate remaining {{count}}',
+  spendParamsPerItem: 'Per shot',
+  spendConfirmRemainingImage_one: 'Generate {{count}} images',
+  spendConfirmRemainingImage_other: 'Generate {{count}} images',
+  spendConfirmRemainingVideo_one: 'Generate {{count}} videos',
+  spendConfirmRemainingVideo_other: 'Generate {{count}} videos',
   spendBatchProgressImage: 'Sending {{current}} of {{total}} images',
   spendBatchProgressVideo: 'Sending {{current}} of {{total}} videos',
   spendBatchStopHint: 'Cancel to stop the rest',
@@ -1023,7 +1027,8 @@ export const enAgentPanelV4 = {
   spendCard: {
     titleNothing: 'Nothing left to generate',
     generate: 'Generate',
-    generateAll: 'Generate all ({{count}})',
+    generateAll: 'Generate {{count}} videos',
+    generateAllImage: 'Generate {{count}} images',
     retry: 'Try again',
     goEdit: 'Edit {{shot}}',
     goCheck: 'Check {{shot}}',
@@ -1045,9 +1050,12 @@ export const enAgentPanelV4 = {
     totalImage_one: '{{count}} image',
     totalImage_other: '{{count}} images',
     summarySeconds: '{{value}} total',
-    summaryMixed: '{{count}} shots · settings differ: {{groups}}',
+    summaryMixed: '{{prefix}} · {{groups}}',
+    summaryAuto: 'Auto',
+    summaryPickedModel: '{{model}} ({{picked}})',
     summaryGroup: '{{value}} ×{{count}}',
     pointerFailed: 'Failed',
+    pointerNotSentYet: 'Not sent yet',
     pointerCannotSend: 'Can\'t send',
     pointerUnclear: 'Check it',
     failedTitle: {

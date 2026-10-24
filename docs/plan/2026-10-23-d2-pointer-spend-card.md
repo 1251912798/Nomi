@@ -93,7 +93,7 @@
 
 | # | 检查 | 反例 |
 |---|---|---|
-| 3.1 | 卡上摘要 = 节点当前参数（模型、变体、比例、时长、清晰度）；在节点上改一个参数，卡摘要 100ms 内跟着变 | 卡读候选、节点改了卡没变 |
+| 3.1 | 卡上摘要 = 节点当前可见参数（模型、比例、时长、清晰度；变体不单独印）；在节点上改一个参数，卡摘要 100ms 内跟着变 | 卡读候选、节点改了卡没变 |
 | 3.2 | 点「生成」/「全部生成（N）」发出的参数 = 节点当前参数（假上游抓真请求体，13 模型 × 默认 / 改过两种，复用 R-d2 的探针做成对等矩阵一维） | 比例被改成 16:9、变体掉回 Fast、参考图丢 |
 | 3.3 | 节点上点 ↑ 后，卡认出这一镜已发，变「生成剩下 N 段」，合计只算剩下的；一镜都不剩时卡关 | 同一镜被卡再发一次（双扣） |
 | 3.4 | 去掉 / 不生成：多段卡每个指向元素悬停 / 聚焦露「不生成 ×」，点了 N 减一、节点显示「已去掉，不生成」，再点一次恢复；去掉的不花、没点的不悄悄生成；全部去掉时主按钮置灰、卡留着（还能恢复），要关卡点「取消」 | 「全部生成」把去掉的也发了 |
@@ -108,6 +108,8 @@
 | 3.13 | Agent 回合：卡关后回合读到逐镜结局，回执文案不变 | 回合一直挂着 |
 | 3.14 | 走查：`tests/ux/agent-spend-*.walk.mjs`、`core-smoke-spend-confirm.walk.mjs`、`p4-s6p5-multishot-paid.e2e.mjs`、`_agentSpendScopeJourney.mjs`、`_permissionTiersPaidSteps.mjs`、`design-lab-agent-panel-v4.walk.mjs` 按新卡改写，本机跑过；`board:SpendCardQ1/*` 断言进走查 | 只跑单测 |
 | 3.15 | 真付费最小抽检 1 次（协调安排）；其余 `unverified` 照实写 | mock 绿灯顶替 |
+| 3.16 | 用户 10-25 选方案一：标题不重复数量，主按钮写「生成 N 段 / 生成 N 张」；删除标题徽章与页脚重复数字；模型来源并入只读摘要，逐镜不同只列分组（含「自动」） | 标题、徽章、页脚、按钮各说一遍数量，或逐镜摘要带「N 镜 · 逐镜不同」前缀 |
+| 3.17 | 方案一共用状态：失败卡删除重复的整行状态说明，失败格 / 未发格各自显示状态；缩略图中央合并状态与图标；「不生成 ×」移到缩略图右上角，恢复留在图中央，动作仍由组的 `cellAccessory` 统一管理 | 失败卡同时印两套状态，或动作回到每格绝对定位导致窄宽压住「已定位」 |
 
 ---
 
@@ -258,7 +260,7 @@
 ### 收尾时补上的（2026-10-25）
 
 - **「回到对话」在真画布上的家**：第②步它只挂在设计实验室，真 App 里点了指向、对话收成小球以后没有「回到对话」，Esc 也回不去（`returnTo` 一直挂着）。补：`src/workbench/ai/pointer/NodePointerReturnDock.tsx` 挂在生成页画布那一格——`returnTo` 属于这一页且对话是小球时才摆出来，底部正中、压在现量的底部停靠区上面；用户没经它、点小球把对话叫回来了，就清掉那一枚（以后别的原因收成小球不冒旧的）。P1 宿主（付费卡、完成收据）用不带标签的那一颗。单测 `NodePointerReturnDock.test.tsx`，真 App 走查 `tests/ux/agent-spend-card-narrow.walk.mjs`（最小窗 1100×720，拉大浮窗盖住画布；zh 浅 / en 暗）。
-- **用户 10-25 看截图提的两处（协调转，本 PR 修）**：① 「已定位」和「不生成 ×」任何宽度都不许压在一起；② 窄宽下三格的标题不许截成一样。做法：格子小动作（「不生成 ×」/「恢复」）的位置、露出、淡下去归组（`NodePointerGroup` 的 `cellAccessory` 返回动作和摆法），挂在标题行右端，标题行在它露出时让出它量出来的宽；「已定位」留在画面框里——两行，任何宽度都不交；≤320 时小钮只剩 ×（名字进 aria / title）。标题由组算每格「和兄弟格不一样的那一截」从哪起（`nodePointerFace.ts#nodePointerTitleTails`，纯函数），标题行截前面的公共开头、尾巴不截，全名进 title / aria。真 App 走查 `tests/ux/agent-spend-card-narrow.walk.mjs` 断言两个包围盒不相交、小钮不压标题尾巴、三格可见标题两两不同（默认 384 / 最窄 320 / 拉大三档，中明 + 英暗）。
+- **用户 10-25 看截图提的两处（协调转，本 PR 修）**：① 「已定位」和「不生成 ×」任何宽度都不许压在一起；② 窄宽下三格的标题不许截成一样。做法：格子小动作（「不生成 ×」/「恢复」）的位置、露出、淡下去归组（`NodePointerGroup` 的 `cellAccessory` 返回动作和摆法），× 挂在缩略图右上角，恢复在缩略图中央；标题行不再给动作让位；「已定位」和制作状态也移到缩略图中央并与图标合成胶囊。≤320 时小钮只剩 ×（名字进 aria / title）。标题由组算每格「和兄弟格不一样的那一截」从哪起（`nodePointerFace.ts#nodePointerTitleTails`，纯函数），标题行截前面的公共开头、尾巴不截，全名进 title / aria。真 App 走查 `tests/ux/agent-spend-card-narrow.walk.mjs` 断言两个包围盒不相交、小钮不压标题尾巴、三格可见标题两两不同（默认 384 / 最窄 320 / 拉大三档，中明 + 英暗）。
 - **全功能走查的监视器（main 上就坏着，本 PR 顺手修）**：10-07 删「已保存到项目」回执时，`tests/ux/full-walk/invariants.mjs#loadLimits` 连带删掉了 `generationPhaseDeadline` 和回执窗口两条上限，监视器和 pb01 还在读，跑到节点转圈那一步就「reading 'value'」——pb02 英文场、pb11 两场都死在这里，D2 改写的 pb01 / pb02 也就核不了。补回阶段时限；回执窗口换成「反馈时钟一格 + 探针三拍的采样误差」（`terminalSpinnerGraceMs`，两项都有出处）。防线：`tests/ux/full-walk/limitsRegistry.test.mjs`——监视器 / 剧本读的每一个 `limits.<名字>` 都要在 `loadLimits` 登记，静态扫，漏了当场红（同文件带原场景反例）。没加进门岗脚本：`scripts/check-*.mjs` 属自写登记 `gate-family`，正在复审「只加不减」，这道检查管的是走查自己内部对不对得上，放进走查自己的单测（默认 vitest 车道）。
 - **自写登记**：合 main 之后 `check:self-written` 认出三个新增文件没有认领（之前 `-M` 把它们当改名）：`AgentPanelV4SpendCard*`、`electron/shared/contracts/canvasHandOver*` 进领域目录；`useAgentPanelSpendCard.ts` 在通用区（hook），登记 `spend-card-host-hook`（查过 React 19 `useActionState` / `useTransition`、XState、TanStack Query，结论与出处在登记里）。`agentPanelSpendCard*` / `spendCard*` 两条领域目录的理由按 D2 改实（本地账本、逐镜修订已删）。
 - **第 0 步第 3 条的真 App 对照（§四 答应过「两张收据的 humanActor 对照」）**：`tests/ux/agent-spend-generate-remaining.walk.mjs` 每一轮都读这一次出价三镜的认领（`shots[].claim.via` / `canvasRunId`）→ 画布单镜 Run 的 `approvals.ndjson` → 能力核收据库，断言节点上点 ↑ 的第 1 段（`via: node`）和卡上交出去的第 2、3 段（`via: handover`）三张收据都是 `human:gesture`、`humanActor` 逐字相同。2026-10-25 合 main 后实跑：中文一轮三张都是 `web_contents:1:11:file://`，英文一轮三张都是 `web_contents:1:14:file://`（换语言重载了页面，frame 号跟着变；同一轮里逐字相同）。

@@ -19,14 +19,13 @@ import { useNodeExternalHighlightStore } from '../../generationCanvas/store/node
 import { getGenerationNodeIcon } from '../../generationCanvas/nodes/renderRegistry'
 import { GenerationWaitingSurface } from '../../generationCanvas/nodes/GenerationWaitingSurface'
 import { GenerationStatusBar } from '../../generationCanvas/nodes/GenerationStatusBar'
-import { NodeCornerPill, ProductionShotCornerLabel } from '../../generationCanvas/nodes/ProductionShotPlaceholder'
+import { NodeCornerPill } from '../../generationCanvas/nodes/ProductionShotPlaceholder'
 import { productionShotCornerText, stoppedCopyOf, useProductionShotState } from '../../generationCanvas/nodes/productionShotCorner'
 import { useGenerationFeedback } from '../../observability/useGenerationFeedback'
 import type { GenerationFeedback } from '../../observability/generationFeedback'
 import { NodeShotLabel, ShotNumberPill } from '../../generation/list/CanvasListLinks'
 import { formatStoryboardShotLabel, isAutoStoryboardShotTitle, useStoryboardShotLabel } from '../../generation/list/storyboardLabels'
 import { useModelLabels } from '../../generation/list/generationListModelLabels'
-import { useElementWidth } from '../../creation/storyboard/shotRow/useElementWidth'
 import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, nodePointerSummaryFacts, nodePointerTitleTails, pointerHoverStack, type NodePointerFace } from './nodePointerFace'
 import { useNodePointerStore } from './nodePointerStore'
 import { returnToChat, revealNodeFromChat } from './revealNodeFromChat'
@@ -44,6 +43,8 @@ export type NodePointerSubject = Readonly<{
    * 节点自己没有失败记录时也画失败脸（见 nodePointerFace）；不给就只读节点。
    */
   hostFailure?: string
+  /** 宿主在当前一次出价里给这一格的状态词（例如失败态的「还没发」）。 */
+  hostStatus?: string
 }>
 
 export type NodePointerDensity = 'card' | 'row' | 'chip'
@@ -62,6 +63,7 @@ type PointerModel = {
   shotText: string | null
   title: string
   status: string | null
+  hostStatus?: string
   summary: (form: 'card' | 'row' | 'side') => readonly string[]
   aspect: number
   portrait: boolean
@@ -89,6 +91,7 @@ function usePointerModel(subject: NodePointerSubject): PointerModel {
     shotText,
     title,
     status: faceStatusText(t, face),
+    ...(subject.hostStatus ? { hostStatus: subject.hostStatus } : {}),
     summary: (form) => nodePointerSummary(facts, form),
     aspect: aspectText ? nodePointerAspect(aspectSize(aspectText)) : SLOT_ASPECT,
     portrait: isPortraitAspect(aspectText),
@@ -162,7 +165,6 @@ function PointerLabel({ model, narrow, tailFrom = 0 }: { model: PointerModel; na
     <span
       className={cn(
         'flex h-[22px] min-w-0 items-center gap-1.5 text-caption',
-        'group-hover/pointer-cell:pr-[var(--node-pointer-cell-accessory)] group-focus-within/pointer-cell:pr-[var(--node-pointer-cell-accessory)] group-data-[accessory-pinned]/pointer-cell:pr-[var(--node-pointer-cell-accessory)]',
       )}
       title={model.name}
     >
@@ -189,6 +191,12 @@ function PointerFaceArt({ model, size, located }: { model: PointerModel; size: '
   // 空卡圆托：NodeEmptyState 那一组 token（ink-05 底 + line 细环 + ink-80 图标），按板缩到 28px。
   const circle = (icon: React.ReactNode, tone?: string) => (
     <span className={cn('absolute left-1/2 top-1/2 grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line', tone)} aria-hidden="true">{icon}</span>
+  )
+  const centerStatus = (label: string, icon?: React.ReactNode, tone?: string, located = false) => (
+    <span className={cn('absolute left-1/2 top-1/2 z-[4] inline-flex max-w-[calc(100%-8px)] -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-nomi-paper/90 px-1.5 py-0.5 text-micro text-nomi-ink-60 shadow-nomi-sm', tone)} data-node-pointer-status="true" data-node-pointer-located={located ? 'true' : undefined}>
+      {icon}
+      <span className="min-w-0 truncate">{label}</span>
+    </span>
   )
   const statusBar = (feedback: GenerationFeedback) => (
     <span className="absolute bottom-1 left-1 flex max-w-[calc(100%-8px)] [&_[data-generation-message]]:truncate [&_[data-generation-status]]:max-w-full [&_[data-generation-status]]:px-1.5 [&_[data-generation-status]]:py-0.5 [&_[data-generation-status]]:text-micro">
@@ -225,11 +233,11 @@ function PointerFaceArt({ model, size, located }: { model: PointerModel; size: '
     case 'empty':
       art = <>
         {KindIcon ? circle(<KindIcon size={14} stroke={1.6} />) : null}
-        {/* 点过的那一项「已定位」压过制作小标。组里的小格只印和兄弟格不一样的那两种：排队中、还没生成（SpendCardQ1 板 ③⑤⑥）。
+        {/* 点过的那一项「已定位」压过制作小标。状态胶囊与节点图标合在缩略图中央；组里的小格只印和兄弟格不一样的那两种：排队中、还没生成（SpendCardQ1 板 ③⑤⑥）。
             「等你确认」不印——卡 / 那句话本身就在问，三格各印一遍是噪音（NodePointer 板 A2「全是草稿」只留圆托）；「已去掉，不生成」
             不印——付费卡上那一格淡下去、常驻「恢复」，再压一枚小标会和「恢复」挤在一起。单独一张照旧全印。 */}
-        {face.kind === 'production' && !located && (size === 'card' || face.state.phase === 'queued' || face.state.phase === 'not_generated')
-          ? <ProductionShotCornerLabel state={face.state} t={t} className={corner} />
+        {face.kind === 'production' && !located && (model.hostStatus || face.state.phase === 'queued' || face.state.phase === 'not_generated' || (size === 'card' && face.state.phase === 'awaiting_confirmation'))
+          ? centerStatus(model.hostStatus ?? productionShotCornerText(t, face.state)?.text ?? '', productionShotCornerText(t, face.state)?.queued ? <IconClock size={11} stroke={1.8} aria-hidden="true" className="shrink-0" /> : undefined)
           : null}
       </>
       break
@@ -237,7 +245,7 @@ function PointerFaceArt({ model, size, located }: { model: PointerModel; size: '
   return (
     <>
       {art}
-      {located ? <NodeCornerPill label={t('nodePointer.located')} icon={<IconFocus2 size={11} stroke={1.8} aria-hidden="true" className="shrink-0" />} className={corner} attributes={{ 'data-node-pointer-located': 'true' }} /> : null}
+      {located ? centerStatus(t('nodePointer.located'), <IconFocus2 size={11} stroke={1.8} aria-hidden="true" className="shrink-0" />, undefined, true) : null}
     </>
   )
 }
@@ -443,29 +451,24 @@ export type NodePointerCellAccessory = Readonly<{
 }>
 
 /**
- * 组里挂了小动作的那一格。小动作是格子的兄弟、不是格子里的按钮（按钮里不能套按钮），住在格子标题行的右端：
- * 不压画面框（框的左上角是「已定位」/ 制作小标，默认浮窗里一格约 108px、窄面板约 86px，两枚小标放不进同一条——
- * 真 App 窄窗走查 2026-10-25 拍到「已定位」被压成「已定」）；它露出来时标题行右边让出它量出来的宽，也不压标题的尾巴。
+ * 组里挂了小动作的那一格。小动作是格子的兄弟、不是格子里的按钮（按钮里不能套按钮），× 在缩略图右上角、恢复在缩略图中央：
+ * 不压画面框里的状态胶囊，也不再占标题行；它露出来时由组统一控制，键盘从指向元素 Tab 一下照样走得到它。
  * 藏着的时候不接点击（看不见的钮不许挡住缩略图），键盘从指向元素 Tab 一下照样走得到它（聚焦在格子里就露出来）。
  */
 function PointerCell({ pointer, accessory }: { pointer: React.ReactNode; accessory: NodePointerCellAccessory }): JSX.Element {
-  const slotRef = React.useRef<HTMLSpanElement>(null)
-  const width = useElementWidth(slotRef)
   return (
     <div
       className="group/pointer-cell relative min-w-0"
       data-node-pointer-cell=""
       data-accessory-pinned={accessory.pinned ? 'true' : undefined}
-      // 格子标题行在小动作露出来时右边让出的宽（组量出来写在格子上，标题行读它）；标题的尾巴永远不被它盖住。
-      // 键名照字面写：check:dangling-tokens 只认得内联 style 里字面的 '--x': 定义。
-      style={width === null ? undefined : { '--node-pointer-cell-accessory': `${width + CELL_ACCESSORY_GAP}px` } as React.CSSProperties}
     >
       {pointer}
       {accessory.dimmed ? <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 top-[26px] rounded-nomi-sm bg-nomi-paper/60" data-node-pointer-cell-dimmed="true" /> : null}
       <span
-        ref={slotRef}
         className={cn(
-          'absolute right-0 top-0 z-[5] flex h-[22px] items-center transition-opacity',
+          accessory.pinned
+            ? 'absolute inset-x-0 top-[26px] z-[5] flex aspect-video items-center justify-center transition-opacity'
+            : 'absolute right-0 top-[20px] z-[5] flex h-[22px] items-center transition-opacity',
           !accessory.pinned && 'pointer-events-none opacity-0 group-focus-within/pointer-cell:pointer-events-auto group-focus-within/pointer-cell:opacity-100 group-hover/pointer-cell:pointer-events-auto group-hover/pointer-cell:opacity-100',
         )}
         data-node-pointer-cell-accessory=""
@@ -475,9 +478,6 @@ function PointerCell({ pointer, accessory }: { pointer: React.ReactNode; accesso
     </div>
   )
 }
-
-/** 小动作和标题之间留的那一点空。 */
-const CELL_ACCESSORY_GAP = 4
 
 /** 组指向：一次说多个镜头。card 一行三格（下方一行是被悬停那一镜的摘要）；chip 嵌在一句话里；row 是一列（不折）。 */
 export function NodePointerGroup({ subjects, density = 'card', narrow = false, max = 3, idleSummary, cellAccessory }: {

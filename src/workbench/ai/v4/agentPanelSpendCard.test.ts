@@ -52,12 +52,12 @@ describe('付费卡投影 · 等人决定', () => {
     expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s1'], hostingAllowed: false })
   })
 
-  it('「Nomi 选的」：节点此刻的模型就是 Agent 起草时选的那个；节点里换过模型就不再这么说', () => {
-    expect(project([shot(1)], [facts(1)]).slot.badge).toBe('agentPanelV4.slotSpendBadge · agentPanelV4.spendParamsModelPicked')
-    const changed = project([shot(1)], [facts(1, { selected: { providerId: 'apimart', modelId: 'seedance-2-pro' } })])
-    expect(changed.slot.badge).toBe('agentPanelV4.slotSpendBadge')
+  it('「Nomi 选的」并入只读摘要；节点里换过模型就不再这么说', () => {
+    expect(project([shot(1), shot(2)], [facts(1), facts(2)]).summary).toContain('agentPanelV4.spendCard.summaryPickedModel')
+    const changed = project([shot(1), shot(2)], [facts(1), facts(2, { selected: { providerId: 'apimart', modelId: 'seedance-2-pro' } })])
+    expect(changed.summary).not.toContain('agentPanelV4.spendParamsModelPicked')
     const noModel = project([shot(1), shot(2)], [facts(1), facts(2, { selected: null })])
-    expect(noModel.slot.badge).toBe('agentPanelV4.slotSpendBadge')
+    expect(noModel.summary).not.toContain('agentPanelV4.spendParamsModelPicked')
   })
 
   it('三段同价：「全部生成（3）」+ 页脚「3 段」，不印合计金额、不出逐镜折叠；摘要是整齐的那一行', () => {
@@ -67,7 +67,7 @@ describe('付费卡投影 · 等人决定', () => {
     expect(card.slot.totalLead).toBe('agentPanelV4.spendCard.totalVideo(count=3)')
     expect(card.slot.price).toBeUndefined()
     expect(JSON.stringify(card)).not.toContain('¥')
-    expect(card.summary).toBe('Seedance 2.0 Fast · 16:9 · 480p · agentPanelV4.spendCard.summarySeconds(value=13s)')
+    expect(card.summary).toBe('agentPanelV4.spendCard.summaryPickedModel(model=Seedance 2.0 Fast,picked=agentPanelV4.spendParamsModelPicked) · 16:9 · 480p · agentPanelV4.spendCard.summarySeconds(value=13s)')
     expect(card.pointers.map((pointer) => pointer.exclusion)).toEqual(['exclude', 'exclude', 'exclude'])
     expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s1', 's2', 's3'], hostingAllowed: false })
   })
@@ -75,12 +75,12 @@ describe('付费卡投影 · 等人决定', () => {
   it('各镜价格不同：折叠明细逐镜印价（名字与指向元素同一个），页脚仍只写「N 段」（D5）', () => {
     const card = project([shot(1), shot(2)], [facts(1), facts(2, { aspect: '9:16', durationSec: 5, price: { known: true, amount: 0.88 } })])
     expect(card.slot.totalLead).toBe('agentPanelV4.spendCard.totalVideo(count=2)')
-    expect(card.slot.price?.perItemLabel).toBe('agentPanelV4.spendParamsPerItem(count=2)')
+    expect(card.slot.price?.perItemLabel).toBe('agentPanelV4.spendParamsPerItem')
     expect(card.slot.price?.perItem).toEqual([
       { label: '镜 01 · Seedance 2.0 Fast · 16:9 · 4s', amount: '¥0.70' },
       { label: '镜 02 · Seedance 2.0 Fast · 9:16 · 5s', amount: '¥0.88' },
     ])
-    expect(card.summary).toBe('agentPanelV4.spendCard.summaryMixed(count=2,groups=agentPanelV4.spendCard.summaryGroup(value=16:9,count=1) · agentPanelV4.spendCard.summaryGroup(value=9:16,count=1))')
+    expect(card.summary).toBe('agentPanelV4.spendCard.summaryMixed(prefix=agentPanelV4.spendCard.summaryPickedModel(model=Seedance 2.0 Fast,picked=agentPanelV4.spendParamsModelPicked) · 480p,groups=agentPanelV4.spendCard.summaryGroup(value=16:9,count=1) · agentPanelV4.spendCard.summaryGroup(value=9:16,count=1))')
   })
 
   it('有一镜算不出价：页脚「N 段」与逐镜折叠整行不印，绝不写 0（3.5）', () => {
@@ -184,11 +184,8 @@ describe('付费卡投影 · 失败留在卡里', () => {
     expect(card.slot.failed).toBe(true)
     expect(card.slot.dismissLabel).toBe('agentPanelV4.spendCard.decline')
     expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.retry')
-    expect(card.notices).toEqual([{
-      tone: 'danger',
-      text: 'agentPanelV4.spendCard.failure.provider_not_reached',
-      detail: 'agentPanelV4.spendCard.detail.sent(shots=镜 01)agentPanelV4.spendCard.detail.separatoragentPanelV4.spendCard.detail.notYet(shots=镜 03)agentPanelV4.spendCard.detail.period',
-    }])
+    expect(card.notices).toEqual([{ tone: 'danger', text: 'agentPanelV4.spendCard.failure.provider_not_reached' }])
+    expect(card.pointers[2]!.hostStatus).toBe('agentPanelV4.spendCard.pointerNotSentYet')
     expect(card.pointers[1]!.hostFailure).toBe('agentPanelV4.spendCard.pointerFailed')
     expect(card.primary).toEqual({ kind: 'retry', shotIds: ['s2'], hostingAllowed: false })
   })
@@ -297,7 +294,7 @@ describe('一行只读摘要', () => {
     expect(spendCardSummary([], t)).toBeUndefined()
     expect(spendCardSummary([facts(1, { model: '', aspect: null, resolution: null, durationSec: null })], t)).toBeUndefined()
     const mixedModel = spendCardSummary([facts(1), facts(2, { model: 'Kling 2.5' })], t)
-    expect(mixedModel).toBe('agentPanelV4.spendCard.summaryMixed(count=2,groups=agentPanelV4.spendCard.summaryGroup(value=Seedance 2.0 Fast,count=1) · agentPanelV4.spendCard.summaryGroup(value=Kling 2.5,count=1))')
+    expect(mixedModel).toBe('agentPanelV4.spendCard.summaryMixed(prefix=16:9 · 480p,groups=agentPanelV4.spendCard.summaryGroup(value=Seedance 2.0 Fast,count=1) · agentPanelV4.spendCard.summaryGroup(value=Kling 2.5,count=1))')
   })
 
   // 走查抓到的：两镜比例自动、一镜在节点里改成 16:9，整齐那一行只印第一镜的值——第一镜正好是 16:9 时，卡对三镜都说 16:9。
@@ -312,7 +309,7 @@ describe('一行只读摘要', () => {
     (key, value, readable, empty) => {
       const shots = [1, 2, 3].map((index) => facts(index, { aspect: '16:9', resolution: '1K', model: 'GPT Image 2', [key]: index - 1 === readable ? value : empty } as Partial<SpendCardShotFacts>))
       const line = spendCardSummary(shots, t)!
-      expect(line).toContain('agentPanelV4.spendCard.summaryMixed(count=3,')
+      expect(line).toContain('agentPanelV4.spendCard.summaryMixed(prefix=')
       expect(line).toContain(`summaryGroup(value=${value},count=1)`)
       expect(line, '读不出的那几镜不印成一组空值').not.toMatch(/value=,/)
     },

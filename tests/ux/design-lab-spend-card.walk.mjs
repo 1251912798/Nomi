@@ -159,10 +159,7 @@ async function expectDecide(page, state, record, facts, expected) {
   if (facts.titleIcon) record(`${state.id} ${A.title}: 等人决定的标题前不顶图标`)
   const title = expected.title ?? tr(locale, 'agentPanelV4.spendParamsTitle', { count: expected.asked })
   if (facts.title !== title) record(`${state.id} ${A.title}: 标题应是「${title}」，实际「${facts.title}」`)
-  const badge = expected.picked === false
-    ? tr(locale, 'agentPanelV4.slotSpendBadge')
-    : `${tr(locale, 'agentPanelV4.slotSpendBadge')} · ${tr(locale, 'agentPanelV4.spendParamsModelPicked')}`
-  if (facts.badge !== badge) record(`${state.id} ${A.badge}: 徽章应是「${badge}」，实际「${facts.badge}」`)
+  if (facts.badge) record(`${state.id} ${A.badge}: 方案一不再显示标题徽章（实际「${facts.badge}」）`)
   const generate = expected.confirm
   if (!facts.confirm || facts.confirm.text !== generate) record(`${state.id} ${A.generate}: 主按钮应是「${generate}」，实际「${facts.confirm?.text}」`)
   if (facts.confirm && facts.confirm.disabled !== Boolean(expected.disabled)) record(`${state.id} ${A.generate}: 主按钮${expected.disabled ? '应置灰' : '应可点'}（disabled=${facts.confirm.disabled}）`)
@@ -288,7 +285,7 @@ async function expectSpendCardState(page, state, record) {
       await expectDecide(page, state, record, facts, { asked: 1, confirm: tr(locale, 'agentPanelV4.spendCard.generate'), total: 1 })
       const pointer = faceOf(facts, 1)
       if (facts.pointers.length !== 1 || pointer?.face !== 'production') record(`${state.id} ${A.pointers}: 单段卡应是一个「等你确认」的指向元素：${JSON.stringify(facts.pointers.map((item) => [item.id, item.face]))}`)
-      if (!pointer?.text.includes(uiText(locale, 'generationCommon.production.canvasLanding.awaitingConfirmation'))) record(`${state.id} ${A.pointers}: 指向元素没说「等你确认」（和画布节点的小标同一句）：${pointer?.text}`)
+      if (pointer?.text.includes(uiText(locale, 'generationCommon.production.canvasLanding.awaitingConfirmation'))) record(`${state.id} ${A.pointers}: 方案一的单格不重复显示「等你确认」：${pointer?.text}`)
       // 板 ①：画面左、摘要右（模型 / 比例 · 时长 · 清晰度），读节点。
       if (!/Seedance/.test(pointer?.text ?? '') || !pointer?.text.includes('16:9 · 4s · 480p')) record(`${state.id} ${A.summary}: 单段摘要应读节点「Seedance… / 16:9 · 4s · 480p」：${pointer?.text}`)
       if (facts.toggles.length) record(`${state.id} ${A.exclude}: 单段卡不挂「不生成 ×」（单段的不生成就是「取消」）`)
@@ -401,10 +398,8 @@ async function expectSpendCardState(page, state, record) {
     }
     case 'spend-not-sent':
     case 'spend-not-sent-en-dark': {
-      const ref = (shot) => (locale === 'en' ? `Shot 0${shot}` : `镜 0${shot}`)
       await expectFailure(page, state, record, facts, {
         shot: 2, titleKey: 'agentPanelV4.spendCard.failedTitle.notSent', reasonKey: 'agentPanelV4.spendCard.failure.provider_not_reached', retry: true, toggles: [null, null, 'exclude'],
-        detail: [tr(locale, 'agentPanelV4.spendCard.detail.sent', { shots: ref(1) }), tr(locale, 'agentPanelV4.spendCard.detail.notYet', { shots: ref(3) })],
       })
       expectGroup(state, record, facts, ['generating', 'failed', 'production'])
       if (!faceOf(facts, 2)?.text.includes(tr(locale, 'agentPanelV4.spendCard.pointerFailed'))) record(`${state.id} ${A.pointers}: 没发出去的那一格状态条应说「${tr(locale, 'agentPanelV4.spendCard.pointerFailed')}」`)
@@ -444,10 +439,9 @@ async function expectSpendCardState(page, state, record) {
     case 'spend-mixed-en': {
       await expectDecide(page, state, record, facts, { asked: 3, confirm: all(3), total: 3, perShot: true })
       const groups = [tr(locale, 'agentPanelV4.spendCard.summaryGroup', { value: '16:9', count: 1 }), tr(locale, 'agentPanelV4.spendCard.summaryGroup', { value: '9:16', count: 2 })].join(' · ')
-      const summary = tr(locale, 'agentPanelV4.spendCard.summaryMixed', { count: 3, groups })
-      if (facts.groupSummary !== summary) record(`${state.id} ${A.summary}: 逐镜不同的摘要应是「${summary}」，实际「${facts.groupSummary}」`)
-      if (facts.groupSummaryTitle !== summary) record(`${state.id} ${A.summary}: 长摘要要带悬停全名`)
-      const label = tr(locale, 'agentPanelV4.spendParamsPerItem', { count: 3 })
+      if (!facts.groupSummary?.includes(groups) || facts.groupSummary.includes('逐镜不同')) record(`${state.id} ${A.summary}: 逐镜不同的摘要应只列分组「${groups}」，实际「${facts.groupSummary}」`)
+      if (facts.groupSummaryTitle !== facts.groupSummary) record(`${state.id} ${A.summary}: 长摘要 title 应与可见摘要一致`)
+      const label = tr(locale, 'agentPanelV4.spendParamsPerItem')
       if (!facts.perShot?.open || facts.perShot.label !== label) record(`${state.id} ${A.perShot}: 「${label}」应展开：${JSON.stringify(facts.perShot)}`)
       const rows = facts.perShot?.rows ?? []
       if (rows.length !== 3 || rows.some((row) => !/\d/.test(row[1] ?? ''))) record(`${state.id} ${A.perShot}: 展开后每镜一行带每镜价：${JSON.stringify(rows)}`)

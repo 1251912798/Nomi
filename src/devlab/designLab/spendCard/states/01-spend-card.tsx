@@ -21,7 +21,7 @@ const THREE: readonly SpendLabShot[] = [undecided(1, { duration: 4 }), undecided
 const SCENARIOS = {
   /** ① 单段：一个指向元素（画面左、摘要右）+ 页脚「1 段」+「取消 · 生成」。 */
   single: { shots: [undecided(1, { duration: 4 })], pricing: 'flat' },
-  /** ② 三段：组指向 + 一行合起来的摘要（共 13s）+ 页脚「3 段」+「全部生成（3）」。 */
+  /** ② 三段：组指向 + 一行合起来的摘要（共 13s）+ 页脚「3 段」+「取消 · 生成 3 段」。 */
   batch: { shots: THREE, pricing: 'flat' },
   /** ③ 正在发出：镜 01 生成中、镜 02 正在提交、镜 03 排队等交；动作行只说怎么停。 */
   sending: {
@@ -53,7 +53,7 @@ const SCENARIOS = {
   },
   /** ⑦ 价格算不出：页脚整行不印（绝不写 0），主按钮照常可点。 */
   priceUnknown: { shots: THREE },
-  /** ⑧ 逐镜不同（一段横版、两段竖版、时长 4 / 5 / 4）：摘要「3 镜 · 逐镜不同：…」+「逐镜 · 3 镜」每镜价。 */
+  /** ⑧ 逐镜不同（一段横版、两段竖版、时长 4 / 5 / 4）：摘要「… · 16:9 ×1 · 9:16 ×2」+「逐镜 · 3 镜」每镜价。 */
   mixed: { shots: [undecided(1, { duration: 4 }), undecided(2, { ratio: '9:16', duration: 5 }), undecided(3, { ratio: '9:16', duration: 4 })], pricing: 'by-duration' },
   /** 去掉了一段：那一格淡下去、常驻「恢复」，N 跟着减（Q1-A，可撤回）。 */
   excluded: { shots: [undecided(1, { duration: 4 }), { shot: 2, duration: 5, offer: 'removed' }, undecided(3, { duration: 4 })], pricing: 'flat' },
@@ -61,7 +61,7 @@ const SCENARIOS = {
   allRemoved: { shots: ([1, 2, 3] as const).map((shot) => ({ shot, offer: 'removed' })) },
   /** 节点被删：指向元素「已删除」，算作不生成。 */
   deleted: { shots: [undecided(1, { duration: 4 }), undecided(2, { duration: 5 }), { shot: 3, offer: 'removed', deleted: true }], pricing: 'flat' },
-  /** 节点上点过 ↑：卡认出这一镜已发，变「生成剩下 2 段」。 */
+  /** 节点上点过 ↑：卡认出这一镜已发，变「生成 2 段」。 */
   remaining: { shots: [{ shot: 1, offer: 'taken_by_canvas', node: 'generating' }, undecided(2, { duration: 5 }), undecided(3, { duration: 4 })], pricing: 'flat' },
   /** 结果未知：可能已经扣了钱，不说没花钱；下一步是去节点上核对，不是再发一次。 */
   unclear: { shots: [{ shot: 1, offer: 'sent', node: 'generating' }, { shot: 2, duration: 5, offer: 'unknown' }, undecided(3)] },
@@ -104,7 +104,7 @@ export const SPEND_CARD_STATES: readonly LabState[] = [
   },
   {
     id: 'spend-batch',
-    name: '② 三段：组指向 + 合起来的摘要 + 页脚「3 段」+ 全部生成（3）',
+    name: '② 三段：组指向 + 合起来的摘要 + 页脚「3 段」+ 生成 3 段',
     source: SOURCE,
     coverage: 'shell',
     render: () => <Cell scenario={SCENARIOS.batch} />,
@@ -148,7 +148,7 @@ export const SPEND_CARD_STATES: readonly LabState[] = [
   },
   {
     id: 'spend-excluded',
-    name: '去掉了镜 02：那一格淡下去、常驻「恢复」，全部生成（2）',
+    name: '去掉了镜 02：那一格淡下去、常驻「恢复」，生成 2 段',
     source: SOURCE,
     coverage: 'shell',
     render: () => <Cell scenario={SCENARIOS.excluded} />,
@@ -169,7 +169,7 @@ export const SPEND_CARD_STATES: readonly LabState[] = [
   },
   {
     id: 'spend-remaining',
-    name: '节点上点过 ↑：生成剩下 2 段',
+    name: '节点上点过 ↑：生成 2 段',
     source: SOURCE,
     coverage: 'shell',
     render: () => <Cell scenario={SCENARIOS.remaining} />,
@@ -256,7 +256,7 @@ export const SPEND_CARD_STATES: readonly LabState[] = [
   },
   {
     id: 'spend-blocked-one',
-    name: '三段里一段发不出去：只多一行说明，全部生成（2）',
+    name: '三段里一段发不出去：只多一行说明，生成 2 段',
     source: SOURCE,
     coverage: 'shell',
     render: () => <Cell scenario={SCENARIOS.blockedOne} />,

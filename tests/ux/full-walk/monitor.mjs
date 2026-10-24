@@ -329,8 +329,8 @@ export function createInvariantMonitor(options) {
     })
     // 标题问的是几镜：按词典那两句认（英文单数没有数字）；认不出（不是那一句问话）再看标题里有没有数字；都没有记 null，下面照实报。
     const titleDigits = /(\d+)/.exec(dom.title)?.[1]
-    const declaredCount = spendCardTitleCount(dom.title, locale, Math.max(pending?.shots?.length ?? 0, 1)) ?? (titleDigits ? Number(titleDigits) : null)
     const buttonCount = Number(/(\d+)/.exec(dom.confirmLabel)?.[1] ?? 0)
+    const declaredCount = spendCardTitleCount(dom.title, locale, Math.max(pending?.shots?.length ?? 0, 1)) ?? (titleDigits ? Number(titleDigits) : (buttonCount || null))
     const canvas = (await readProject())?.payload?.generationCanvas ?? {}
     const allShots = []
     for (const shot of pending?.shots ?? []) {

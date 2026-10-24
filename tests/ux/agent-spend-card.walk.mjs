@@ -200,10 +200,9 @@ try {
   facts = await cardFacts(win)
   expect(facts.pointers.map((pointer) => pointer.id), '任务 B：三个指向元素指着那三个节点').toEqual(nodesB.map((shot) => shot.nodeId))
   walk.report.taskBSummary = facts.groupSummary
-  expect(facts.groupSummary, '任务 B：比例逐镜不同，摘要按比例分组').toBe(say(LOCALE, 'agentPanelV4.spendCard.summaryMixed', {
-    count: 3,
-    groups: [say(LOCALE, 'agentPanelV4.spendCard.summaryGroup', { value: '9:16', count: 2 }), say(LOCALE, 'agentPanelV4.spendCard.summaryGroup', { value: '16:9', count: 1 })].join(' · '),
-  }))
+  const mixedGroups = [say(LOCALE, 'agentPanelV4.spendCard.summaryGroup', { value: '9:16', count: 2 }), say(LOCALE, 'agentPanelV4.spendCard.summaryGroup', { value: '16:9', count: 1 })].join(' · ')
+  expect(facts.groupSummary, '任务 B：比例逐镜不同，摘要按比例分组').toContain(mixedGroups)
+  expect(facts.groupSummary, '任务 B：摘要不再带「N 镜 · 逐镜不同」前缀').not.toContain('逐镜不同')
   await walk.snap('task-b-card-mixed-aspects')
   // 点第 3 个指向元素，在它的生成框里把时长改了：卡上那一镜的摘要跟着变（读节点，不存副本）。
   const hoverBefore = await hoverSummaryOf(win, nodesB[2].nodeId)
