@@ -27,4 +27,17 @@ describe('派工书检查', () => {
     assert.deepEqual(checkDispatchBrief(`${GOOD} 第五轮修补，依据 Direction-Check 复盘 docs/x.md`), [])
     assert.deepEqual(checkDispatchBrief(`${GOOD} 第二轮`), [])
   })
+  test('模型可见工具改动没引用清单则红', () => {
+    assert.match(checkDispatchBrief(`${GOOD} 新增一个模型可见工具`).join(), /model-facing-tool-checklist\.md/)
+  })
+  test('模型可见工具改动引用清单则过', () => {
+    assert.deepEqual(checkDispatchBrief(`${GOOD} 新增一个模型可见工具，先读 docs/engineering/model-facing-tool-checklist.md`), [])
+    assert.deepEqual(checkDispatchBrief(`${GOOD} 改 verbDeclarations 的 tool schema，见 model-facing-tool-checklist.md`), [])
+  })
+  test('非工具类任务不要求清单', () => {
+    assert.deepEqual(checkDispatchBrief(`${GOOD} 修改项目库文案`), [])
+  })
+  test('工具栏和工具条不误伤', () => {
+    assert.deepEqual(checkDispatchBrief(`${GOOD} 调整工具栏和工具条布局`), [])
+  })
 })
