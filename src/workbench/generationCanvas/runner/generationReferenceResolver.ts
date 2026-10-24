@@ -4,6 +4,7 @@ import { archetypeForNode, referenceAssetKindForNode } from '../agent/referenceE
 import { validateEdgeKinds } from '../../../../electron/shared/canvas/edgeAdmission'
 import { isDerivedOutputPair } from '../model/derivedOutput'
 import { currentArchetypeMode } from '../nodes/controls/archetypeMeta'
+import { resolveReferencePlacement } from './referenceSlots'
 import { asUrl, findNodeResultUrl, resolveReferenceUrl } from './referenceUrl'
 import { resolveIndexedParameterReferenceAssignments } from '../model/parameterReferenceSlots'
 import { isComfyuiVendorKey } from '../model/comfyuiVendor'
@@ -237,15 +238,24 @@ export function resolveGenerationReferences(
     }
   }
 
-  ;(node.references || []).forEach((reference) => {
-    const directUrl = asUrl(reference)
-    pushUnique(referenceImages, directUrl || findNodeResultUrl(nodesById, reference))
-  })
   const meta = node.meta || {}
-  ;[meta.referenceImages, meta.upstreamResultUrls].forEach((value) => {
-    if (Array.isArray(value)) value.forEach((item) => pushUnique(referenceImages, item))
-    else pushUnique(referenceImages, value)
-  })
+  // 认得档案的节点：参考只有两个来源——画布边（上面）和节点那一份有序参考列表（referenceList，由
+  // buildArchetypeInputParams / uploadPlacementForMode 按当前方式落槽，和参考行同一个推导）。旧的「别处抬上来」
+  // 的来源（node.references、meta.referenceImages / upstreamResultUrls、firstFrameUrl / first_frame_url / *Ref 这些按槽存的键）
+  // 参考行从来不显示，这里也不再抬成首帧 / 参考——URL 型的旧键已在 readReferenceList 里归一进列表，看得见、才发得出。
+  const vendorKey = typeof meta.modelVendor === 'string' ? meta.modelVendor : typeof meta.vendor === 'string' ? meta.vendor : ''
+  // 与 catalogTaskResolve.resolveTaskArchetype 同口径：ComfyUI 工作流不吃档案。
+  const ownsUploadsViaList = !isComfyuiVendorKey(vendorKey) && Boolean(archetypeForNode(node))
+  if (!ownsUploadsViaList) {
+    ;(node.references || []).forEach((reference) => {
+      const directUrl = asUrl(reference)
+      pushUnique(referenceImages, directUrl || findNodeResultUrl(nodesById, reference))
+    })
+    ;[meta.referenceImages, meta.upstreamResultUrls].forEach((value) => {
+      if (Array.isArray(value)) value.forEach((item) => pushUnique(referenceImages, item))
+      else pushUnique(referenceImages, value)
+    })
+  }
   // 尾帧接力源（视频文件 URL）不是参考图，从 referenceImages 剔除——否则它既被当
   // 普通图片参考、又会经 referenceImages[0] fallback 冒充首帧（封死第二条泄漏路径）。
   const cleanReferenceImages = referenceImages.filter((url) =>
@@ -268,22 +278,31 @@ export function resolveGenerationReferences(
     const url = asUrl(value)
     return usesComfyParameterContract && parameterOwnedUrls.has(url) ? '' : url
   }
-  const firstFrameUrl =
-    firstFrameFromEdge ||
+  const legacyFirst = ownsUploadsViaList ? '' : (
     genericMetaUrl(meta.firstFrameUrl) ||
     genericMetaUrl(meta.first_frame_url) ||
     resolveReferenceUrl(nodesById, meta.firstFrameRef) ||
-    resolveReferenceUrl(nodesById, meta.firstFrameReference) ||
-    // relay 时首帧要等抽帧填，绝不 fallback 到通用参考图（否则又冒充）。只从**图片**参考兜底（视频已分流）。
-    (relayFromVideoUrl ? undefined : imageReferenceImages[0]) ||
-    undefined
-  const lastFrameUrl =
-    lastFrameFromEdge ||
+    resolveReferenceUrl(nodesById, meta.firstFrameReference))
+  const legacyLast = ownsUploadsViaList ? '' : (
     genericMetaUrl(meta.lastFrameUrl) ||
     genericMetaUrl(meta.last_frame_url) ||
     resolveReferenceUrl(nodesById, meta.lastFrameRef) ||
-    resolveReferenceUrl(nodesById, meta.lastFrameReference) ||
-    undefined
+    resolveReferenceUrl(nodesById, meta.lastFrameReference))
+  // relay 时首帧要等抽帧填，绝不 fallback 到通用参考图（否则又冒充）。只从**图片**参考兜底（视频已分流）。
+  const edgeFirst = firstFrameFromEdge || (relayFromVideoUrl ? '' : imageReferenceImages[0] || '')
+  // 档案节点：首 / 尾帧格子里是谁，直接问参考行用的那一个推导（resolveReferencePlacement：连线按候选槽依次落、
+  // 上传图按参考列表依次落）——发送侧和参考行同一个主人，第二条参考连线落尾帧时两边一起落（用户 10-22 拍板 ⑪）。
+  // 待抽帧的视频占着首帧格但还没有地址：这里给空，提交时由 relayFrameResolver 把抽出的帧填进来。
+  const frames = ownsUploadsViaList
+    ? (() => {
+      const placement = resolveReferencePlacement(node, nodes, edges)
+      const slotOf = (kind: string) => placement.slots.find((slot) => slot.slotKind === kind)
+      const urlIn = (kind: string) => slotOf(kind)?.fills.find((fill) => fill.url)?.url ?? ''
+      return { hasFirst: Boolean(slotOf('first_frame')), hasLast: Boolean(slotOf('last_frame')), first: urlIn('first_frame'), last: urlIn('last_frame') }
+    })()
+    : null
+  const firstFrameUrl = (frames?.hasFirst ? frames.first : edgeFirst || legacyFirst) || undefined
+  const lastFrameUrl = (frames?.hasLast ? frames.last : lastFrameFromEdge || legacyLast) || undefined
 
   return {
     ...(parameterSlots.length ? { parameterReferenceUrls } : {}),

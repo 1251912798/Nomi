@@ -25,7 +25,8 @@ import { expectAbsent, proveProbe } from './_assert.mjs'
  *   ② 段序就是拍板那句话——模型/参数 → B 簇 → ×N/生成。
  * 顺序按 `data-bar-segment` 读，不按下标猜：中间夹着两根分隔线，下标会跟着分隔线一起飘。
  */
-const BAR_SEGMENT_ORDER = ['model-params', 'prompt-tools', 'variants', 'generate']
+// 数量（quantity）只在模型声明了数量参数时才有：段序是这四个的子序列，必有第一段与最后一段。
+const BAR_SEGMENT_ORDER = ['model-params', 'prompt-tools', 'quantity', 'generate']
 
 async function assertSingleRow(page, record, stateId) {
   const rows = await page.evaluate(() => {
@@ -43,11 +44,12 @@ async function assertSingleRow(page, record, stateId) {
     }
   })
   if (!rows) { record(`${stateId} 找不到现役底栏 [data-node-composer-footer]`); return }
-  if (rows.count !== 4) record(`${stateId} 底栏应有 4 段（模型/参数 · B 簇 · ×N · 生成），实际量到 ${rows.count} 段`)
+  if (rows.count < 3 || rows.count > 4) record(`${stateId} 底栏应有 3–4 段（模型/参数 · B 簇 · [数量] · 生成），实际量到 ${rows.count} 段`)
   if (rows.spread > 8) record(`${stateId} 底栏换行了：分段中心 y 相差 ${Math.round(rows.spread)}px（单行不换行是这条改造的硬承诺）`)
   const order = rows.segments.join(' → ')
-  if (order !== BAR_SEGMENT_ORDER.join(' → ')) {
-    record(`${stateId} 底栏顺序应是「${BAR_SEGMENT_ORDER.join(' → ')}」，实际「${order}」`)
+  const expected = BAR_SEGMENT_ORDER.filter((name) => rows.segments.includes(name)).join(' → ')
+  if (order !== expected) {
+    record(`${stateId} 底栏顺序应是「${BAR_SEGMENT_ORDER.join(' → ')}」（缺的段跳过），实际「${order}」`)
   }
 }
 

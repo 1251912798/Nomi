@@ -30,18 +30,8 @@ const POPOVERS = [
     activate: (page) => page.locator('[data-storyboard-prompt-segment]').first().click(),
     menu: '[data-storyboard-prompt-menu]',
   },
-  // 「底栏 ⋯ 开关弹层」已随 2026-10-06 分镜复用画布交互（#1042）删除：底栏换成画布同款参数条，开关进了参数面板
-  // （画布 InlineParameterBar 自己的面板，不走 AnchoredPopover）。参考条的「+N」折叠浮层是这次新增的 Portal 弹层，补进清单。
-  {
-    name: '参考条「+N」折叠浮层',
-    // 夹具 `refs`：镜 1 挂 6 张参考；编辑器 640 宽走窄档（28 格一行放 5 格），确定性地折出「+N」。
-    query: 'refs',
-    width: 640,
-    opener: '[data-storyboard-ref-more]',
-    focusOpener: (page) => page.locator('[data-storyboard-row="1"] [data-storyboard-ref-more]').focus(),
-    activate: (page) => page.keyboard.press('Enter'),
-    menu: '[data-storyboard-ref-overflow]',
-  },
+  // 「底栏 ⋯ 开关弹层」已随 2026-10-06 分镜复用画布交互（#1042）删除：底栏换成画布同款参数条，开关进了参数面板。
+  // 参考条的「+N」折叠浮层也已从镜头行删除（B3 / E1a：参考在提示词上一行，放不下就折行，不折叠）。
 ]
 
 for (const item of POPOVERS) test(`分镜 Portal 弹层键盘合同：${item.name}`, async () => {

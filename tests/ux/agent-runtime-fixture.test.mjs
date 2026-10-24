@@ -361,6 +361,21 @@ describe('agent runtime loopback fixture', () => {
     await expect(chat(fixture, [{ role: 'user', content: 'AFTER' }])).rejects.toThrow()
   })
 
+  test('records each APIMart reference upload with its multipart file names (the bytes are not kept)', async () => {
+    const settingsDir = await temporarySettings()
+    // seedApimartKey: false = 目录里不预置钥匙，userDataDir / appName 只是夹具要的身份参数，用不到 safeStorage。
+    const fixture = await createAgentRuntimeFixture({ rootDir, settingsDir, generationProvider: 'apimart', seedApimartKey: false, userDataDir: settingsDir, appName: 'nomi' })
+    cleanups.push(() => fixture.close())
+    const form = new FormData()
+    form.append('file', new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: 'image/png' }), 'first.png')
+    const response = await fetch(`${fixture.baseURL}/v1/uploads/images`, { method: 'POST', body: form })
+    expect(response.status).toBe(200)
+    expect((await response.json()).url).toBe(`${fixture.baseURL}/fixture/image.jpg`)
+    expect(fixture.uploads).toHaveLength(1)
+    expect(fixture.uploads[0].uploadFileNames).toEqual(['first.png'])
+    expect(fixture.uploads[0].body).toBeNull()
+  })
+
   test('never overwrites an existing caller catalog', async () => {
     const settingsDir = await temporarySettings()
     const catalogPath = path.join(settingsDir, 'model-catalog.json')

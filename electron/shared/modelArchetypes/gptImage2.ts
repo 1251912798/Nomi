@@ -36,6 +36,9 @@ export const GPT_IMAGE_2_ARCHETYPE: ModelArchetype = {
   identifierPatterns: ["gpt-image-2", "gpt-image-2-text-to-image", "gpt-image-2-image-to-image", "gpt-4o-image", "gpt_image_2"],
   // Runway 的这一行原挂平台档案 runway-image（已删）；存量节点靠 legacyIds + 模型身份匹配迁到这里。
   legacyIds: ["runway-image"],
+  // fal 的改图请求体读 mask_url（局部重绘蒙版图，electron/catalog/falOfficial.ts 的 openai/gpt-image-2/edit），生成框没有蒙版控件：
+  // 画布请求里出现它 = 界面看不见的图，渲染层清、主进程拒（referenceKeys）。
+  headlessReferenceKeys: ["mask_url"],
   modes: [
     {
       id: "t2i",

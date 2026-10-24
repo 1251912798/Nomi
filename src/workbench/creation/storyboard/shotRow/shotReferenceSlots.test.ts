@@ -291,9 +291,18 @@ describe('请求体构造 —— 走档案的 inputKey / asArray，分镜侧零�
   })
 
   it('删掉绑定后 meta 写空 —— 不让刚删的首帧还留在节点上被发出去', () => {
-    expect(shotReferenceMetaPatch(SEEDANCE_FIRSTLAST, shotOf().referenceBindings)).toEqual({ firstFrameUrl: '', lastFrameUrl: '' })
+    // 图片进节点那一份参考列表（写空列表），旧的按槽存的首 / 尾帧键一并清掉（置 undefined）
+    const firstLast = shotReferenceMetaPatch(SEEDANCE_FIRSTLAST, shotOf().referenceBindings)
+    expect(firstLast.referenceImageUrls).toEqual([])
+    expect(firstLast).toHaveProperty('firstFrameUrl', undefined)
+    expect(firstLast).toHaveProperty('lastFrameUrl', undefined)
     expect(shotReferenceMetaPatch(SEEDANCE_OMNI, shotOf().referenceBindings))
-      .toEqual({ referenceImageUrls: [], referenceVideoUrls: [], referenceAudioUrls: [] })
+      .toMatchObject({ referenceImageUrls: [], referenceVideoUrls: [], referenceAudioUrls: [] })
+  })
+
+  it('首尾帧绑定进参考列表，按槽的声明顺序：首帧在前、尾帧在后', () => {
+    const shot = { ...shotOf(), referenceBindings: { first_frame: [{ url: 'F.png' }], last_frame: [{ url: 'L.png' }] } } as PlanShot
+    expect(shotReferenceMetaPatch(SEEDANCE_FIRSTLAST, shot.referenceBindings).referenceImageUrls).toEqual(['F.png', 'L.png'])
   })
 })
 

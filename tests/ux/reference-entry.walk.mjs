@@ -121,16 +121,17 @@ try {
     await expect(composer.locator('[data-reference-entry]'), nodeAssertions[kind].visible).toBeVisible()
     await expect(composer.locator('[data-reference-entry]')).toBeInViewport({ratio:0.9999})
     const addBox = composer.locator('[data-asset-add-tile]').first()
-    // Fractional canvas zoom can report 0.99999946 for a fully visible 56px tile.
+    // Fractional canvas zoom can report 0.99999946 for a fully visible 40px tile.
     await expect(addBox).toBeInViewport({ratio:0.9999})
     const boxStyle = await addBox.evaluate(button => {
       const style=getComputedStyle(button)
-      return {width:style.width,height:style.height,border:style.borderTopStyle}
+      return {width:style.width,height:style.height,borderWidth:style.borderTopWidth}
     })
-    expect(boxStyle).toEqual({width:'56px',height:'56px',border:'dashed'})
+    // B3：参考行的方块统一 40px 浅底、没有边框（原来 56px 虚线框）。
+    expect(boxStyle).toEqual({width:'40px',height:'40px',borderWidth:'0px'})
     const pointerStyle=await composer.locator('[data-reference-entry]').evaluate(button => {
       const style=getComputedStyle(button)
-      return {width:style.width,height:style.height,border:style.borderTopStyle}
+      return {width:style.width,height:style.height,borderWidth:style.borderTopWidth}
     })
     expect(pointerStyle, 'node pointer reuses the original add frame').toEqual(boxStyle)
     await expect(composer.locator('[data-reference-entry]')).toHaveText('')

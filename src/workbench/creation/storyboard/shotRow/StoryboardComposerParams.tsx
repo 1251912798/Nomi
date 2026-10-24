@@ -5,6 +5,7 @@ import type { ModelParameterControl } from '../../../../config/modelCatalogMeta'
 import { findModelOptionByIdentifier } from '../../../../config/modelOptionResolvers'
 import { useVendorPreferenceOrder } from '../../../common/useVendorPreference'
 import InlineParameterBar from '../../../generationCanvas/nodes/InlineParameterBar'
+import { useStoryboardRowDensity } from './storyboardRowDensity'
 import { composerHeadlineSummary } from '../../../generationCanvas/nodes/composerHeadlineSummary'
 import { resolveArchetypeForOption } from '../../../generationCanvas/nodes/nodeModelArchetype'
 import type { DynamicModelControl } from '../../../generationCanvas/nodes/controls/parameterControlModel'
@@ -80,6 +81,8 @@ export default function StoryboardComposerParams({
     onChange(storyboardComposerChange(control, value, modelControls))
   }
 
+  // 最窄一档（行宽 < 520，E1a 的 320）：模型钮和摘要钮整颗换行、不截字。
+  const compact = useStoryboardRowDensity() === 'compact'
   return (
     <span className="flex min-w-0 items-center" data-storyboard-composer-params={kind}>
       <InlineParameterBar
@@ -93,7 +96,8 @@ export default function StoryboardComposerParams({
         onCatalogControlChange={(control, value) => route({ key: control.key, type: undefined as never, options: [] }, value)}
         onParameterControlChange={(control, value) => route(control, value)}
         summaryOverride={summary}
-        summaryWidth={{ hug: 210 }}
+        summaryWidth={{ hug: 280 }}
+        wrap={compact}
         leadingModelOption={{ label: t('storyboardEditor.defaultModel') }}
         {...(modeChoices.length ? { modeChoices, activeModeId: modeId, onModeSelect: onModeChange } : {})}
       />
