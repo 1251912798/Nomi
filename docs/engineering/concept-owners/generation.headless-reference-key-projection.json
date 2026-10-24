@@ -8,12 +8,12 @@
   "migration_status": "converged",
   "owner": {
     "path": "electron/shared/modelArchetypes/referenceKeys.ts",
-    "symbol": "referenceKeyDeclarationFor"
+    "symbol": "referenceKeyCapacityDeclarationFor"
   },
   "write_api": [
     {
       "path": "electron/shared/modelArchetypes/referenceKeys.ts",
-      "symbol": "referenceKeyDeclarationFor"
+      "symbol": "referenceKeyCapacityDeclarationFor"
     },
     {
       "path": "electron/catalog/taskParams.ts",
@@ -21,7 +21,7 @@
     },
     {
       "path": "electron/catalog/referenceReachability.ts",
-      "symbol": "classifyReferenceKey"
+      "symbol": "bodyReferenceSupport"
     }
   ],
   "forbidden_derivations": [
@@ -44,5 +44,5 @@
     "electron/catalog/referenceKeyProjectionCensus.test.ts"
   ],
   "since": "2026-10-25",
-  "notes": "声明表从 typed reference slots、combineSlotsInto、显式 headlessReferenceKeys、TRANSLATED_REFERENCE_INPUT_KEYS 与 APIMart 别名组推导媒体类别和多图形态。referenceReachability、taskParams 拒发建议和 modelCatalogListing 只读同一份声明；没有同类声明位时 headless 请求在网络前拒发，并提示调用方写明参数名。"
+  "notes": "模型容量先从选中档案的 typed reference slots、slot.max 与 combineSlotsInto 读取；没有对应模型声明时才回落到显式 headlessReferenceKeys、TRANSLATED_REFERENCE_INPUT_KEYS 与 APIMart 别名组的键形态。referenceReachability、taskParams 拒发建议和 modelCatalogListing 只读同一份模型作用域判据；没有同类声明位或超过 max 时 headless 请求在网络前拒发，并提示调用方写明参数名。"
 }

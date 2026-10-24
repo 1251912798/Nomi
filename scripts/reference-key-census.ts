@@ -4,11 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { bodyReferencedParamKeys } from "../electron/catalog/paramTranslate";
-import { referenceKeyDeclarationFor } from "../electron/shared/modelArchetypes/referenceKeys";
+import { referenceKeyDeclarationFor, referenceKeyCapacityDeclarationFor } from "../electron/shared/modelArchetypes/referenceKeys";
 import { applyBuiltinSeeds } from "../electron/catalog/seedBuiltins";
 import type { CatalogState } from "../electron/catalog/types";
 import { GENERIC_REFERENCE_KEYS } from "../electron/shared/modelArchetypes/referenceKeys";
-import { getArchetypeById } from "../electron/shared/modelArchetypes";
+import { getArchetypeById, resolveArchetypeForModel } from "../electron/shared/modelArchetypes";
 import type { ModelParameterControl } from "../electron/shared/videoCapabilities/types";
 
 const NOW = "2026-10-25T00:00:00.000Z";
@@ -76,6 +76,18 @@ export function buildReferenceKeyCensus() {
   const initial: CatalogState = { version: 4, vendors: [], models: [], mappings: [], apiKeysByVendor: {} };
   const { state } = applyBuiltinSeeds(initial, NOW);
   const modelByKey = new Map(state.models.map((model) => [`${model.vendorKey}:${model.modelKey}`, model]));
+  const modelContexts = state.models.map((model) => ({
+    model,
+    archetype: resolveArchetypeForModel({
+      modelKey: model.modelKey,
+      modelAlias: model.modelAlias,
+      vendorKey: model.vendorKey,
+      meta: model.meta,
+    }),
+  }));
+  const modelsWithReferenceDeclarations = modelContexts.filter(({ archetype }) =>
+    Boolean(archetype?.headlessReferenceKeys?.length || archetype?.modes.some((mode) => mode.slots.length > 0 || mode.combineSlotsInto)),
+  ).length;
   const rows = state.mappings.flatMap((mapping) => {
     const referencedKeys = bodyReferencedParamKeys(mapping.create?.body)
       .filter((key) => referenceKeyDeclarationFor(key));
@@ -84,6 +96,13 @@ export function buildReferenceKeyCensus() {
     const archetypeId = typeof (model?.meta as Record<string, unknown> | undefined)?.archetypeId === "string"
       ? (model?.meta as Record<string, string>).archetypeId
       : undefined;
+    const context = {
+      vendorKey: mapping.vendorKey,
+      modelKey: mapping.modelKey,
+      modelAlias: model?.modelAlias,
+      modelMeta: model?.meta,
+      taskKind: mapping.taskKind,
+    };
     return [{
       id: mapping.id,
       vendorKey: mapping.vendorKey,
@@ -93,6 +112,8 @@ export function buildReferenceKeyCensus() {
       keys: referencedKeys.map((key) => ({
         key,
         classifier: referenceKeyDeclarationFor(key),
+        capacity: referenceKeyCapacityDeclarationFor(key, context),
+        capacitySource: referenceKeyCapacityDeclarationFor(key, context)?.source === "model-declaration" ? "模型声明" : "键名形态推断",
         actual: actualClassification(archetypeId, key),
       })),
     }];
@@ -120,6 +141,9 @@ export function buildReferenceKeyCensus() {
       falsePositiveCategories: [...new Set(falsePositiveRows.flatMap((row) => row.keys
         .filter((entry) => entry.actual.role !== "reference-input")
         .map((entry) => entry.actual.role)))].sort(),
+      modelsWithReferenceDeclarations,
+      modelsWithoutReferenceDeclarations: state.models.length - modelsWithReferenceDeclarations,
+      rowsWithModelCapacityDeclarations: rows.filter((row) => row.keys.some((entry) => entry.capacitySource === "模型声明")).length,
     },
     rows,
   };

@@ -17,13 +17,28 @@
 //   ⑥ DERIVED_REFERENCE_CARRIER_KEYS：主进程 taskTemplateParams 把标准参考输入造型成协议形状的请求体键（chat 图片项、JSON 改图）。
 // 完整性门：referenceSentWithinInUse.property.test.ts「键表完整性」——内置目录每条请求体读的键都要能归类，
 // 新请求体多读一个参考键而没进这张表，那里先红。
-import { MODEL_ARCHETYPES } from "./index";
+import { MODEL_ARCHETYPES, resolveArchetypeForModel } from "./index";
+import type { ModelArchetype, ArchetypeMode, ArchetypeReferenceSlot } from "./types";
 
 export type ReferenceFamily = "image" | "video" | "audio";
 
 export type ReferenceKeyDeclaration = Readonly<{
   family: ReferenceFamily;
   multiImage: boolean;
+}>;
+
+export type ReferenceModelContext = Readonly<{
+  modelKey?: string | null;
+  modelAlias?: string | null;
+  vendorKey?: string | null;
+  modelMeta?: unknown;
+  archetypeId?: string | null;
+  taskKind?: string;
+}>;
+
+export type ReferenceKeyCapacityDeclaration = ReferenceKeyDeclaration & Readonly<{
+  max?: number;
+  source: "model-declaration" | "key-shape-inference";
 }>;
 
 type DeclaredReferenceKey = { key: string; family: ReferenceFamily; multiImage?: boolean };
@@ -135,6 +150,15 @@ const SLOT_REFERENCE_FAMILY: Readonly<Record<string, ReferenceFamily>> = {
   source_video: "video",
 };
 
+const SLOT_DEFAULT_INPUT_KEY: Readonly<Record<string, string>> = {
+  first_frame: "first_frame_url",
+  last_frame: "last_frame_url",
+  image_ref: "reference_image_urls",
+  video_ref: "reference_video_urls",
+  audio_ref: "reference_audio_urls",
+  source_video: "video_url",
+};
+
 function mergeDeclaration(
   declarations: Map<string, ReferenceKeyDeclaration>,
   key: string,
@@ -202,6 +226,82 @@ const REFERENCE_KEY_DECLARATIONS: ReadonlyMap<string, ReferenceKeyDeclaration> =
 
 export function referenceKeyDeclarationFor(key: string): ReferenceKeyDeclaration | null {
   return REFERENCE_KEY_DECLARATIONS.get(key.trim()) ?? null;
+}
+
+function archetypeForContext(context: ReferenceModelContext | undefined): ModelArchetype | null {
+  if (!context) return null;
+  return resolveArchetypeForModel({
+    modelKey: context.modelKey,
+    modelAlias: context.modelAlias,
+    vendorKey: context.vendorKey,
+    meta: context.modelMeta ?? (context.archetypeId ? { archetypeId: context.archetypeId } : undefined),
+  });
+}
+
+function slotInputKey(slot: ArchetypeReferenceSlot): string {
+  return (slot.inputKey ?? SLOT_DEFAULT_INPUT_KEY[slot.kind] ?? "").trim();
+}
+
+function modeMatchesTaskKind(mode: ArchetypeMode, taskKind: string | undefined): boolean {
+  return !taskKind || mode.transportTaskKind === taskKind;
+}
+
+function modelDeclarationForModeKey(mode: ArchetypeMode, key: string): ReferenceKeyCapacityDeclaration | null {
+  const slotMatches = mode.slots.filter((slot) => slotInputKey(slot) === key);
+  if (slotMatches.length > 0) {
+    const family = slotMatches.map((slot) => SLOT_REFERENCE_FAMILY[slot.kind]).find(Boolean);
+    if (!family) return null;
+    const sameFamily = slotMatches.filter((slot) => SLOT_REFERENCE_FAMILY[slot.kind] === family);
+    const max = sameFamily.every((slot) => typeof slot.max === "number")
+      ? sameFamily.reduce((sum, slot) => sum + (slot.max ?? 0), 0)
+      : undefined;
+    return {
+      family,
+      multiImage: max === undefined ? sameFamily.some((slot) => slot.asArray === true) : max > 1,
+      ...(max === undefined ? {} : { max }),
+      source: "model-declaration",
+    };
+  }
+  const combined = mode.combineSlotsInto;
+  if (!combined || combined.key !== key) return null;
+  const families = mode.slots.map((slot) => SLOT_REFERENCE_FAMILY[slot.kind]).filter(Boolean);
+  const family = families[0];
+  if (!family) return null;
+  const sameFamily = mode.slots.filter((slot) => SLOT_REFERENCE_FAMILY[slot.kind] === family);
+  const max = sameFamily.length > 0 && sameFamily.every((slot) => typeof slot.max === "number")
+    ? sameFamily.reduce((sum, slot) => sum + (slot.max ?? 0), 0)
+    : undefined;
+  return {
+    family,
+    multiImage: max === undefined ? combined.flat === true || sameFamily.length > 1 : max > 1,
+    ...(max === undefined ? {} : { max }),
+    source: "model-declaration",
+  };
+}
+
+/** Resolve a body key against the selected model's own slot declaration first. */
+export function referenceKeyCapacityDeclarationFor(
+  key: string,
+  context?: ReferenceModelContext,
+): ReferenceKeyCapacityDeclaration | null {
+  const normalized = key.trim();
+  if (!normalized) return null;
+  const archetype = archetypeForContext(context);
+  if (archetype) {
+    for (const mode of archetype.modes) {
+      if (!modeMatchesTaskKind(mode, context?.taskKind)) continue;
+      const declaration = modelDeclarationForModeKey(mode, normalized);
+      if (declaration) return declaration;
+    }
+    for (const candidate of archetype.headlessReferenceKeys ?? []) {
+      if (candidate === normalized) {
+        const generic = referenceKeyDeclarationFor(normalized);
+        if (generic) return { ...generic, source: "model-declaration" };
+      }
+    }
+  }
+  const generic = referenceKeyDeclarationFor(normalized);
+  return generic ? { ...generic, source: "key-shape-inference" } : null;
 }
 
 /** 通用参考键全集由同一份带媒体类别的声明表派生。 */

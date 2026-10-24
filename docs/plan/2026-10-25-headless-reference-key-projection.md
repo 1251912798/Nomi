@@ -112,3 +112,14 @@
 - [ ] 生成效果
 - [ ] 数据格式
 - [ ] 新增功能 / 性能
+
+## 第 2 轮补充（用户 10-25 选 A）
+
+本轮把目录承载力和发送前容量都改为模型自己的声明优先：先读选中模型、模式的 `ArchetypeReferenceSlot.max` / `asArray`，没有对应槽时才回落到共享键形态。火山 Seedance 2.0 / 2.5 的角色参考分别是 9 / 30 张；RunningHub Seedream 4.5、Nano Banana、GPT Image 2 的 `imageUrls` 分别是 1 张。超过声明上限在 headless 投影前拒发，错误写明“这个模型最多收 N 张/个类别参考”，不截断。
+
+★9 新增验收：
+
+1. 遍历全部 seeded mapping：有模型槽声明时，`bodyReferenceSupport(..., modelContext).multiImage` 必须等于该模型槽容量；无声明才允许键名形态推断。
+2. 固定对账火山 2.0 / 2.5 = 多图 9 / 30，RunningHub 三个图片模型 = 单图 1；普查每个容量变化键记录 `capacitySource` 和 `max`。
+3. headless 给 RunningHub 三个模型两张图必须在模板投影前报“这个模型最多收 1张图片参考”；不得静默截断或调用假上游。
+4. 反例把 `imageUrls` 的全局多图声明直接用于 RunningHub 时，模型容量测试必须变红。

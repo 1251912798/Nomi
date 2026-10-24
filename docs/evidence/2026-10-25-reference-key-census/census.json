@@ -14,7 +14,10 @@
     "falsePositiveRows": 0,
     "falsePositiveKeys": 0,
     "falsePositiveKeyNames": [],
-    "falsePositiveCategories": []
+    "falsePositiveCategories": [],
+    "modelsWithReferenceDeclarations": 114,
+    "modelsWithoutReferenceDeclarations": 42,
+    "rowsWithModelCapacityDeclarations": 89
   },
   "rows": [
     {
@@ -30,6 +33,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -42,6 +51,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -54,6 +69,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -66,6 +87,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -78,6 +105,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -99,6 +132,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -111,6 +150,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -123,6 +168,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -135,6 +186,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -147,6 +204,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -168,6 +231,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -180,6 +249,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -192,6 +267,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -213,6 +294,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -234,6 +321,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -255,6 +349,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -276,6 +377,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 2,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -297,6 +405,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -309,6 +423,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -321,6 +441,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -333,6 +459,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -345,6 +477,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -366,6 +504,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -378,6 +522,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -390,6 +540,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -402,6 +558,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -414,6 +576,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -435,6 +603,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -447,6 +621,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -459,6 +639,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 30,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -471,6 +658,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -483,6 +677,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -504,6 +705,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -516,6 +723,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -528,6 +741,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -540,6 +759,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -552,6 +777,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -573,6 +804,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -585,6 +823,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -597,6 +842,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -609,6 +861,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 5,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -621,6 +880,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 5,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -642,6 +908,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -663,6 +936,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -684,6 +964,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -705,6 +992,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -726,6 +1020,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 16,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -747,6 +1048,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 16,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -768,6 +1076,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 8,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -789,6 +1104,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -810,6 +1132,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -831,6 +1160,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -843,6 +1178,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -855,6 +1196,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -867,6 +1214,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -879,6 +1232,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -891,6 +1250,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -912,6 +1277,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 7,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -924,6 +1296,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -936,6 +1314,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -948,6 +1332,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -960,6 +1350,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -972,6 +1369,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -993,6 +1397,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1014,6 +1424,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1035,6 +1451,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1047,6 +1469,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1059,6 +1487,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1071,6 +1505,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1083,6 +1523,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1104,6 +1550,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1125,6 +1578,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1146,6 +1606,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1167,6 +1634,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1188,6 +1662,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 16,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1209,6 +1690,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 16,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1230,6 +1718,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 16,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1251,6 +1746,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1272,6 +1774,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 4,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1293,6 +1802,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1314,6 +1830,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 7,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1335,6 +1858,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1356,6 +1886,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1368,6 +1905,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 9,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1389,6 +1933,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 7,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1410,6 +1961,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1431,6 +1989,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 2,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1452,6 +2017,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 9,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1464,6 +2036,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1476,6 +2055,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1488,6 +2074,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 2,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1509,6 +2102,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 30,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1521,6 +2121,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1533,6 +2140,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1545,6 +2159,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1566,6 +2187,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1578,6 +2206,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1590,6 +2225,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 9,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1602,6 +2244,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1614,6 +2263,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1635,6 +2291,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 2,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1647,6 +2310,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 5,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1659,6 +2329,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 5,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1680,6 +2357,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1692,6 +2376,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1704,6 +2395,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 5,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1716,6 +2414,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 5,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1737,6 +2442,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1758,6 +2470,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1779,6 +2498,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1800,6 +2525,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1821,6 +2552,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1833,6 +2571,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1854,6 +2598,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1866,6 +2616,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1878,6 +2634,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1890,6 +2652,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1902,6 +2670,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1923,6 +2697,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1935,6 +2716,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1947,6 +2735,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1959,6 +2753,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1971,6 +2771,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -1992,6 +2798,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2004,6 +2816,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2016,6 +2834,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2028,6 +2852,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2049,6 +2879,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2061,6 +2898,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2073,6 +2917,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 5,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2085,6 +2936,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2106,6 +2963,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 4,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2127,6 +2991,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2148,6 +3019,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2169,6 +3047,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2190,6 +3075,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2211,6 +3103,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2223,6 +3122,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2235,6 +3141,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2247,6 +3160,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 9,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2259,6 +3179,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2271,6 +3198,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2292,6 +3226,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2304,6 +3245,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2316,6 +3264,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2328,6 +3283,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 30,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2340,6 +3302,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2352,6 +3321,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2373,6 +3349,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2394,6 +3377,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2415,6 +3405,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2436,6 +3433,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2448,6 +3452,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2469,6 +3480,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2481,6 +3499,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2502,6 +3527,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2514,6 +3546,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2535,6 +3574,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2547,6 +3593,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2568,6 +3621,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2589,6 +3649,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2610,6 +3677,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2631,6 +3705,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2652,6 +3733,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2673,6 +3761,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2685,6 +3779,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2697,6 +3797,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2709,6 +3815,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2721,6 +3833,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2742,6 +3860,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2754,6 +3878,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2766,6 +3896,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2778,6 +3914,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2790,6 +3932,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2811,6 +3959,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2832,6 +3986,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2853,6 +4014,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 16,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2865,6 +4033,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2886,6 +4060,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2907,6 +4088,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2919,6 +4107,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2940,6 +4135,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2961,6 +4162,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2973,6 +4180,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -2994,6 +4207,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 30,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3006,6 +4226,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3018,6 +4245,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3039,6 +4273,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 2,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3060,6 +4301,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 7,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3072,6 +4320,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3093,6 +4347,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3105,6 +4366,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3126,6 +4394,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3147,6 +4421,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3168,6 +4449,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3189,6 +4477,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 30,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3201,6 +4496,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3213,6 +4515,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3234,6 +4543,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3246,6 +4561,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3258,6 +4579,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3270,6 +4597,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3291,6 +4624,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3303,6 +4642,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3315,6 +4660,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3327,6 +4678,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3339,6 +4696,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3360,6 +4723,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 30,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3372,6 +4742,13 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3384,6 +4761,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3405,6 +4789,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3426,6 +4817,13 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3447,6 +4845,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3468,6 +4872,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3480,6 +4890,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3492,6 +4908,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3513,6 +4935,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3534,6 +4962,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3546,6 +4980,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3558,6 +4998,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3579,6 +5025,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3600,6 +5052,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3612,6 +5070,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3624,6 +5088,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3645,6 +5115,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3666,6 +5142,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3678,6 +5160,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3690,6 +5178,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3711,6 +5205,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3732,6 +5232,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3753,6 +5259,12 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3765,6 +5277,12 @@
             "family": "video",
             "multiImage": false
           },
+          "capacity": {
+            "family": "video",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3777,6 +5295,12 @@
             "family": "audio",
             "multiImage": false
           },
+          "capacity": {
+            "family": "audio",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3798,6 +5322,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3819,6 +5349,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3840,6 +5376,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3861,6 +5403,12 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "source": "key-shape-inference"
+          },
+          "capacitySource": "键名形态推断",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3882,6 +5430,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 16,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3903,6 +5458,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3924,6 +5486,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3945,6 +5514,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3966,6 +5542,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 10,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -3987,6 +5570,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -4008,6 +5598,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -4029,6 +5626,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 3,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -4050,6 +5654,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -4071,6 +5682,13 @@
             "family": "image",
             "multiImage": true
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": true,
+            "max": 14,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -4092,6 +5710,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -4104,6 +5729,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -4125,6 +5757,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",
@@ -4137,6 +5776,13 @@
             "family": "image",
             "multiImage": false
           },
+          "capacity": {
+            "family": "image",
+            "multiImage": false,
+            "max": 1,
+            "source": "model-declaration"
+          },
+          "capacitySource": "模型声明",
           "actual": {
             "role": "reference-input",
             "detail": "档案槽或 headlessReferenceKeys 声明的参考输入",

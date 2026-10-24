@@ -95,16 +95,27 @@ export function runRehearsal(): { generatedAt: string; summary: Record<string, n
   const received: unknown[] = [];
   const cases = CASES.map((testCase) => {
     const mapping = mappingFor(state, testCase.id);
+    const model = state.models.find((candidate) => candidate.vendorKey === mapping.vendorKey && candidate.modelKey === mapping.modelKey);
+    const archetypeId = typeof (model?.meta as Record<string, unknown> | undefined)?.archetypeId === "string"
+      ? (model?.meta as Record<string, string>).archetypeId
+      : undefined;
+    const referenceContext = {
+      vendorKey: mapping.vendorKey,
+      modelKey: mapping.modelKey,
+      modelMeta: model?.meta,
+      archetypeId,
+      taskKind: mapping.taskKind,
+    };
     const bodyKeys = bodyReferencedParamKeys(mapping.create?.body);
     const declaredReferenceKeys = bodyKeys.filter((key) => {
       const declaration = referenceKeyDeclarationFor(key);
       return declaration?.family === testCase.family;
     });
-    const support = bodyReferenceSupport(mapping.create?.body);
+    const support = bodyReferenceSupport(mapping.create?.body, referenceContext);
     const extras = referenceExtras(testCase.family, testCase.falseKeys);
     const merged = applyHeadlessParamDefaults(
       extras,
-      undefined,
+      archetypeId,
       mapping.taskKind,
       mapping.vendorKey,
       mapping.create?.defaultParams,
@@ -117,6 +128,8 @@ export function runRehearsal(): { generatedAt: string; summary: Record<string, n
       true,
       mapping.modelKey ?? mapping.id,
       mapping.create?.body,
+      undefined,
+      referenceContext,
     );
     const expectedReject = !support[testCase.family];
     if (expectedReject !== Boolean(guardError)) {

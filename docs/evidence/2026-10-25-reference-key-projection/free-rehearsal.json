@@ -38,7 +38,9 @@
           "reference_audio_urls": [
             "https://loopback.invalid/reference-audio.mp3"
           ],
-          "duration": "",
+          "resolution": "1080P",
+          "aspect_ratio": "adaptive",
+          "duration": 5,
           "audio": false
         }
       },
@@ -65,7 +67,8 @@
           "reference_audio_urls": [
             "https://loopback.invalid/reference-audio.mp3"
           ],
-          "duration": "",
+          "resolution": "1080P",
+          "duration": 5,
           "audio": false
         }
       },
@@ -124,8 +127,11 @@
       "requestBody": {
         "model": "wan3.0-video",
         "prompt": "headless reference rehearsal",
-        "duration": "",
+        "resolution": "1080P",
+        "duration": 5,
         "audio": false,
+        "watermark": false,
+        "generation_type": "frame",
         "audio_urls": [
           "https://loopback.invalid/reference-audio.mp3"
         ]
@@ -334,7 +340,10 @@
         "image_urls": [
           "https://loopback.invalid/reference-image.png"
         ],
-        "num_images": 3
+        "num_images": 3,
+        "aspect_ratio": "auto",
+        "resolution": "1K",
+        "output_format": "png"
       },
       "controlValues": {
         "num_images": 3

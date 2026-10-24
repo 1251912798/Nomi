@@ -9,12 +9,16 @@ import { referenceInputParams } from "./archetypeInput";
 import { ARCHETYPE_WIRE_DEFAULTS, ARCHETYPE_SIZE_RATIO_SEMANTIC } from "./archetypeWireDefaults.generated";
 import { bodyReferencedParamKeys } from "./paramTranslate";
 import { hasMentions, numberPromptReferences, projectPromptForSend } from "../shared/storyboard/promptMentions";
-import { bodyReferenceSupport, classifyReferenceKey, type ReferenceFamily } from "./referenceReachability";
-import { DERIVED_REFERENCE_CARRIER_KEYS, referenceKeyDeclarationFor } from "../shared/modelArchetypes/referenceKeys";
+import { assertReferenceCapacity, bodyReferenceSupport, classifyReferenceKey, referenceUrlCount, type ModelModeBody, type ReferenceFamily } from "./referenceReachability";
+import {
+  DERIVED_REFERENCE_CARRIER_KEYS,
+  referenceKeyCapacityDeclarationFor,
+} from "../shared/modelArchetypes/referenceKeys";
 import { chatImageParts, jsonImageEditInput } from "./referenceCarrierShapes";
 import { readSelectedComfyReferenceContract, type ParameterReferenceSelection } from "./parameterReferenceContract";
 import { resolveWireModel, WIRE_MODEL_PARAM } from "../shared/modelArchetypes/wireModelIdentity";
 import { comparableReferenceUrl, comparableReferenceValues, serializeReferenceParams } from "./outboundReferenceUrl";
+
 
 /** taskTemplateParams 实际用到的 TaskRequest 子集（结构化，避免与 runtime 的 TaskRequest 循环依赖）。 */
 export type TaskParamsInput = {
@@ -149,7 +153,12 @@ export function applyHeadlessParamDefaults(
   const withDefaults = applyWireDefaults(applyWireDefaults(guarded, archetypeDefaults), mappingDefaults);
   // ③ 参考键形态投影（既有值优先 → 渲染层已填 archetypeInput 时 no-op）。在缺参兜底之后做，看到的是合并后的 extras。
   if (typeof createBody === "undefined") return withDefaults;
-  const projected = projectReferencesOntoBodyKeys(withDefaults, createBody, { vendorKey, modelKey });
+  const projected = projectReferencesOntoBodyKeys(withDefaults, createBody, {
+    vendorKey,
+    modelKey,
+    modelMeta: archetypeId ? { archetypeId } : undefined,
+    taskKind,
+  });
   return Object.keys(projected).length ? { ...(withDefaults || {}), ...projected } : withDefaults;
 }
 
@@ -434,8 +443,6 @@ export function unreachableReferenceLabels(request: TaskParamsInput, createBody:
 }
 
 /** 一个模式（taskKind）的 create body——供拒发建议判「哪个模式带得动我携带的参考」。 */
-export type ModelModeBody = { taskKind: string; body: unknown };
-
 const FAMILY_LABEL: Record<ReferenceFamily, string> = { image: "参考图", video: "参考视频", audio: "参考音频" };
 const FAMILY_PARAMETER_LABEL: Record<ReferenceFamily, string> = { image: "图片", video: "视频", audio: "音频" };
 // taskKind → 人话模式名（拒发建议里点名"用哪个模式"）。未登记的原样用 taskKind。
@@ -470,7 +477,7 @@ function carriedReferenceFamilies(extras: JsonRecord, selected?: ParameterRefere
 
 /** 发不出的参考里，请求体连同类声明位都没有的那几类：只给参考的调用方据此改成显式参数名（用户 10-25 拍板）。 */
 function undeclaredReferenceHint(request: TaskParamsInput, createBody: unknown, selected?: ParameterReferenceSelection): string {
-  const support = bodyReferenceSupport(createBody);
+  const support = bodyReferenceSupport(createBody, selected);
   const undeclared = [...carriedReferenceFamilies(request.extras || {}, selected)].filter((family) => !support[family]);
   if (undeclared.length === 0) return "";
   return `这个模型的请求体没有声明${undeclared.map((family) => FAMILY_PARAMETER_LABEL[family]).join(" / ")}参考位，请在调用里写明参数名。`;
@@ -501,7 +508,7 @@ export function reachableModeSuggestion(
   const byTaskKind = new Map<string, boolean>();
   for (const mode of modeBodies) {
     if (failedKey !== undefined && JSON.stringify(mode.body) === failedKey) continue; // 刚被判发不出的那条，不推荐它自己。
-    const support = bodyReferenceSupport(mode.body);
+    const support = bodyReferenceSupport(mode.body, mode.selection);
     const covers = [...carried].every((family) => support[family]);
     if (covers) byTaskKind.set(mode.taskKind, (byTaskKind.get(mode.taskKind) ?? false) || support.multiImage);
   }
@@ -614,6 +621,16 @@ export function projectReferencesOntoBodyKeys(
   const archetypeInput = isJsonRecord(src.archetypeInput) ? src.archetypeInput : {};
   const bodyKeys = bodyReferencedParamKeys(createBody);
 
+  // A declared model limit is a pre-send contract. Check existing explicit values as
+  // well as projected values so the headless path never silently trims a caller's input.
+  for (const key of bodyKeys) {
+    const detail = referenceKeyCapacityDeclarationFor(key, selected);
+    if (!detail || detail.max === undefined) continue;
+    // Renderer-produced archetypeInput is already capped by the shared slot writer;
+    // only caller-supplied body values are checked here.
+    assertReferenceCapacity(detail.family, detail.max, referenceUrlCount(src[key]));
+  }
+
   // ── 帧意图优先 ────────────────────────────────────────────────────────────
   // 调用方写 `firstFrameUrl` 是明确表态「这张是首帧」，不是"一张随便的参考图"。
   // 若这条 body 有对应的帧键，就**直接投到帧键**，并把该 URL 从族池里**取走**——
@@ -632,7 +649,7 @@ export function projectReferencesOntoBodyKeys(
       (key) =>
         bodyKeyRe.test(key) &&
         !OBJECT_SHAPE_REF_KEY.test(key) &&
-        referenceKeyDeclarationFor(key) &&
+        referenceKeyCapacityDeclarationFor(key, selected) &&
         !hasNonEmpty(src[key]) &&
         !hasNonEmpty(archetypeInput[key]),
     );
@@ -648,10 +665,10 @@ export function projectReferencesOntoBodyKeys(
   }
 
   // 先按族归拢 body 里可填的 plain 参考键（跳过对象形态键），每族选一个目标：优先数组键（扁平列表天然去处）。
-  const candidateByFamily: Partial<Record<ReferenceFamily, { key: string; wantsArray: boolean }>> = {};
+  const candidateByFamily: Partial<Record<ReferenceFamily, { key: string; wantsArray: boolean; max?: number }>> = {};
   for (const key of bodyKeys) {
     if (frameOverlay[key] !== undefined) continue; // 已被帧意图占用
-    const detail = referenceKeyDeclarationFor(key);
+    const detail = referenceKeyCapacityDeclarationFor(key, selected);
     if (!detail) continue; // 非参考载体键（size/duration/seed…）不碰。
     if (OBJECT_SHAPE_REF_KEY.test(key)) continue; // 对象形态键（image_with_roles/*_contents）headless 不填，留空由模板丢。
     if (DERIVED_REFERENCE_CARRIER_KEYS.has(key)) continue; // 派生载体（chat 图片项 / JSON 改图）由 taskTemplateParams 从标准参考输入现造，不填。
@@ -663,7 +680,9 @@ export function projectReferencesOntoBodyKeys(
     const wantsArray = refKeyWantsArray(key, detail.multiImage);
     const current = candidateByFamily[detail.family];
     // 每族至多一个：优先数组键（扁平参考列表的天然去处）；已有数组候选则不再被单值键替换。
-    if (!current || (wantsArray && !current.wantsArray)) candidateByFamily[detail.family] = { key, wantsArray };
+    if (!current || (wantsArray && !current.wantsArray)) {
+      candidateByFamily[detail.family] = { key, wantsArray, max: detail.max };
+    }
   }
 
   const overlay: Record<string, unknown> = { ...frameOverlay };
@@ -675,6 +694,7 @@ export function projectReferencesOntoBodyKeys(
     if (nested.length > 0 && !hasDistinctFlatSource) continue;
     const cand = candidateByFamily[family]!;
     const urls = byFamily[family];
+    if (cand.max !== undefined) assertReferenceCapacity(family, cand.max, urls.length);
     // 数组键塞整组、单值键塞首张（严格端点对 image:string 期待单串，塞数组会 400——沿用 asArray 声明的教训）。
     overlay[cand.key] = cand.wantsArray ? [...urls] : urls[0];
   }

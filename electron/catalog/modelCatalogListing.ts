@@ -7,13 +7,13 @@
 //      与第三闸/UI 收窄同源判据，P1 不另写一份），跨该模型所有 mapping 汇总，并记下「哪个 taskKind 模式能带」。
 // 已发布模型即使没 key 也照列并带状态；adapter staging/failed 新行则不进入生产清单。
 import { type ApiKeyDecryptStatus, type KeyStatusProbe } from "./secrets";
-import { bodyReferenceSupport, type BodyReferenceSupport } from "./referenceReachability";
-import type { ModelModeBody } from "./taskParams";
+import { bodyReferenceSupport, type BodyReferenceSupport, type ModelModeBody } from "./referenceReachability";
 import { type CatalogState, type Mapping, type ProfileKind } from "./types";
 import { modelHasPublishedExecution } from "../shared/modelPublication";
 import type { ModelAvailability } from "../shared/modelAvailability";
 import { createCatalogAvailability } from "./catalogModelAvailability";
 import { SINGLE_SHOT_GENERATION_MODULE_ID } from "../shared/generationModuleId";
+import type { ReferenceModelContext } from "../shared/modelArchetypes/referenceKeys";
 
 /** 一个模型跨其所有 mapping 汇总出的参考承载力 + 是哪些模式（taskKind）带得动。 */
 export type ModelReferenceSupport = BodyReferenceSupport & {
@@ -90,19 +90,29 @@ export function mappingsForModel(mappings: Mapping[], vendorKey: string, modelKe
 }
 
 /** 这个模型**所有启用模式**的 (taskKind, create body)——供 L3 拒发建议判"哪个模式带得动携带的参考"（交付4）。 */
-export function modelModeBodies(mappings: Mapping[], vendorKey: string, modelKey: string, modelAlias: string | null | undefined): ModelModeBody[] {
+export function modelModeBodies(
+  mappings: Mapping[],
+  vendorKey: string,
+  modelKey: string,
+  modelAlias: string | null | undefined,
+  modelMeta?: unknown,
+): ModelModeBody[] {
   return mappingsForModel(mappings, vendorKey, modelKey, modelAlias)
     .filter((m) => m.enabled)
-    .map((m) => ({ taskKind: m.taskKind, body: m.create?.body }));
+    .map((m) => ({
+      taskKind: m.taskKind,
+      body: m.create?.body,
+      selection: { vendorKey, modelKey, modelAlias, modelMeta, taskKind: m.taskKind } satisfies ReferenceModelContext,
+    }));
 }
 
 /** 跨该模型所有 mapping 汇总参考承载力（任一 mapping 能发 = 能发；记下携带参考的 taskKind）。 */
-function referenceSupportForModel(modelMappings: Mapping[]): ModelReferenceSupport {
+function referenceSupportForModel(modelMappings: Mapping[], context: ReferenceModelContext): ModelReferenceSupport {
   const out: ModelReferenceSupport = { image: false, video: false, audio: false, multiImage: false, referenceModes: [] };
   const modes = new Set<ProfileKind>();
   for (const mapping of modelMappings) {
     if (!mapping.enabled) continue;
-    const support = bodyReferenceSupport(mapping.create?.body);
+    const support = bodyReferenceSupport(mapping.create?.body, { ...context, taskKind: mapping.taskKind });
     out.image ||= support.image;
     out.video ||= support.video;
     out.audio ||= support.audio;
@@ -151,7 +161,12 @@ export function deriveModelListing(
         keyStatus,
         usable: modelAvailability.usable,
         statusReason: statusReasonFor(keyStatus, vendorName, modelAvailability),
-        references: referenceSupportForModel(modelMappings),
+        references: referenceSupportForModel(modelMappings, {
+          vendorKey: model.vendorKey,
+          modelKey: model.modelKey,
+          modelAlias: model.modelAlias,
+          modelMeta: model.meta,
+        }),
       };
     });
 }

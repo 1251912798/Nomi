@@ -4,6 +4,8 @@ import { bodyReferencedParamKeys } from "./paramTranslate";
 import { projectReferencesOntoBodyKeys } from "./taskParams";
 import { buildReferenceKeyCensus } from "../../scripts/reference-key-census";
 import { applyBuiltinSeeds } from "./seedBuiltins";
+import { bodyReferenceSupport } from "./referenceReachability";
+import { referenceKeyCapacityDeclarationFor, referenceKeyDeclarationFor } from "../shared/modelArchetypes/referenceKeys";
 
 const NOW = "2026-10-25T00:00:00.000Z";
 const IMAGE = "https://ref.test/image.png";
@@ -17,6 +19,12 @@ function seededMapping(id: string) {
   return mapping;
 }
 
+function seededContext(mapping: ReturnType<typeof seededMapping>) {
+  const { state } = applyBuiltinSeeds({ version: 4, vendors: [], models: [], mappings: [], apiKeysByVendor: {} }, NOW);
+  const model = state.models.find((candidate) => candidate.modelKey === mapping.modelKey && candidate.vendorKey === mapping.vendorKey);
+  return { vendorKey: mapping.vendorKey, modelKey: mapping.modelKey, modelMeta: model?.meta, taskKind: mapping.taskKind };
+}
+
 describe("reference-key projection census — declared reference behavior", () => {
   it("has no false positives in real seeded creation bodies", () => {
     const census = buildReferenceKeyCensus();
@@ -25,6 +33,24 @@ describe("reference-key projection census — declared reference behavior", () =
     expect(census.summary.falsePositiveRows).toBe(0);
     expect(census.summary.falsePositiveKeys).toBe(0);
     expect(census.summary.falsePositiveKeyNames).toEqual([]);
+  });
+
+  it("directory capacity follows each model declaration when one exists", () => {
+    const { state } = applyBuiltinSeeds({ version: 4, vendors: [], models: [], mappings: [], apiKeysByVendor: {} }, NOW);
+    const modelByKey = new Map(state.models.map((model) => [`${model.vendorKey}:${model.modelKey}`, model]));
+    const census = buildReferenceKeyCensus();
+    for (const row of census.rows) {
+      const mapping = state.mappings.find((candidate) => candidate.id === row.id)!;
+      const model = mapping.modelKey ? modelByKey.get(`${mapping.vendorKey}:${mapping.modelKey}`) : undefined;
+      const context = { vendorKey: mapping.vendorKey, modelKey: mapping.modelKey, modelMeta: model?.meta, taskKind: mapping.taskKind };
+      const declared = row.keys.filter((entry) => entry.capacitySource === "模型声明");
+      if (declared.length === 0) continue;
+      const support = bodyReferenceSupport(mapping.create?.body, context);
+      expect(support.multiImage, row.id).toBe(declared.some((entry) => entry.capacity?.multiImage));
+      for (const entry of declared) {
+        expect(entry.capacity?.source, `${row.id}/${entry.key}`).toBe("model-declaration");
+      }
+    }
   });
 
   it("image-only headless input does not land in a quantity field", () => {
@@ -66,5 +92,34 @@ describe("reference-key projection census — declared reference behavior", () =
     const mapping = seededMapping("seed-apimart-seedance-2-apimart-image_to_video");
     const overlay = projectReferencesOntoBodyKeys({ referenceAudioUrls: [AUDIO], audio: false }, mapping.create.body);
     expect(overlay).toEqual({ audio_urls: [AUDIO] });
+  });
+
+  it.each([
+    ["seed-volcengine-seedance-2-image_to_video", "volcengine-seedance-2", 9],
+    ["seed-volcengine-seedance-2-5-image_to_video", "volcengine-seedance-2-5", 30],
+  ] as const)("model declaration keeps Volcengine omni image capacity at %d", (mappingId, archetypeId, max) => {
+    const mapping = seededMapping(mappingId);
+    const context = { ...seededContext(mapping), archetypeId, taskKind: mapping.taskKind };
+    const support = bodyReferenceSupport(mapping.create.body, context);
+    expect(support).toMatchObject({ image: true, multiImage: true });
+    expect(referenceKeyCapacityDeclarationFor("volcengine_image_contents", context)).toMatchObject({
+      source: "model-declaration",
+      family: "image",
+      max,
+    });
+  });
+
+  it.each([
+    ["seed-rh-seedream45-i2i", "rh-seedream-4.5"],
+    ["seed-rh-nano-edit", "rh-nano-banana"],
+    ["seed-rh-gpt2-i2i", "rh-gpt-image-2"],
+  ] as const)("model declaration keeps RunningHub image capacity single for %s", (mappingId, archetypeId) => {
+    const mapping = seededMapping(mappingId);
+    const context = { ...seededContext(mapping), archetypeId, taskKind: mapping.taskKind };
+    expect(referenceKeyDeclarationFor("imageUrls")?.multiImage).toBe(true);
+    expect(bodyReferenceSupport(mapping.create.body, context)).toMatchObject({ image: true, multiImage: false });
+    expect(referenceKeyCapacityDeclarationFor("imageUrls", context)).toMatchObject({ source: "model-declaration", max: 1, multiImage: false });
+    expect(() => projectReferencesOntoBodyKeys({ referenceImages: [IMAGE, `${IMAGE}-2`] }, mapping.create.body, context))
+      .toThrow("这个模型最多收 1张图片参考");
   });
 });

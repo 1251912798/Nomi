@@ -66,3 +66,16 @@ headless 投影把「body 模板引用的键」当成了「参考槽」，只看
 - 同文件：真实 KIE HappyHorse `audio_setting`、RunningHub `generateAudio`、APIMart Kling `audio` 的音频 URL 错投断言。
 - 同文件：真实 fal GPT Image 2 文生图 `num_images` 的图像 URL 错投断言。
 - 同文件：由真实 Agnes 2.5 body 派生的“无声明视频输入”变体，锁住 `video_start_seconds` 的视频 URL 错投；完整真实 body 仍有 `videos` 声明槽，普查中单列其余两个数值 / 开关键。
+
+## 第 2 轮复盘（2026-10-25，验收 V-mo64）
+
+验收发现：声明表已经能阻止控制键误投，但把跨模型同名键的 `multiImage` 合并结果直接当成目录承载力。于是火山 Seedance 2.0 / 2.5 的 `volcengine_image_contents` 被报成单图，RunningHub Seedream 4.5、Nano Banana、GPT Image 2 的 `imageUrls` 被报成多图；前者少报能力，后者可能多发参考并花错钱。
+
+### 选项
+
+| 选项 | 做法 | 代价 | 结论 |
+|---|---|---|---|
+| A | 每个模型先读自己的档案槽 `max` / `asArray`；模型没有对应声明时才回落到键名形态。发送前超过 `max` 直接拒发。 | 目录、headless 投影和拒发建议都要带模型身份；无声明的自定义键继续要求显式参数名。 | **用户 10-25 选 A** |
+| B | 继续按全局键名合并，只修火山对象数组和 RunningHub 三行特例。 | 仍有第二份跨模型事实；下一个同名键或版本会再漂移，且无法统一拒发上限。 | 不选 |
+
+本轮按 A 收口：`referenceKeyCapacityDeclarationFor` 以选中模型的档案槽为首要来源，目录 `bodyReferenceSupport`、headless 投影和模式建议共用它；没有模型声明才使用键形态推断。headless 参考数量超过模型槽 `max` 时在模板投影前抛出“这个模型最多收 N 张/个类别参考”，不截断、不发网。普查新增容量来源、容量值及模型声明/无声明统计；类测试遍历全部目录行，并保留一个把全局 `imageUrls` 多图声明改回来的红反例。

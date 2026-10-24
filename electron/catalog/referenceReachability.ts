@@ -8,7 +8,12 @@
 // 住在 electron/ 而非 src/：electron tsconfig 是 rootDir:"." 反向 import 不了 src；渲染层则本就 import
 // 得到 electron（bridge.ts 已在做），且本模块依赖链纯净（paramTranslate → jsonUtils，后者零 import）。
 import { bodyReferencedParamKeys } from "./paramTranslate";
-import { referenceKeyDeclarationFor, type ReferenceFamily as DeclaredReferenceFamily } from "../shared/modelArchetypes/referenceKeys";
+import {
+  referenceKeyDeclarationFor,
+  referenceKeyCapacityDeclarationFor,
+  type ReferenceFamily as DeclaredReferenceFamily,
+  type ReferenceModelContext,
+} from "../shared/modelArchetypes/referenceKeys";
 // 渲染层的变体轴收窄也要「这条 create op 引用了哪些参数键」（body ∪ 进程 args）。它的单一实现在
 // paramTranslate；从本模块转出一次，是因为 src→electron 的越界是棘轮门岗，渲染层已放行的入口只有
 // 本文件这一条（archetypeMeta 那条基线）。让渲染层再直连 paramTranslate 会被判成新增违规。
@@ -118,6 +123,7 @@ export type BodyReferenceSupport = {
 };
 
 export type ReferenceFamily = DeclaredReferenceFamily;
+export type ModelModeBody = { taskKind: string; body: unknown; selection?: ReferenceModelContext };
 
 /** 一个参考载体键的族 + 是否多值（数组/多角色键）。null = 不是参考载体。 */
 /**
@@ -135,13 +141,32 @@ export function classifyReferenceKey(key: string): ReferenceFamily | null {
  * 声明的多值键额外点亮 multiImage。body 不引用任何参数（纯静态）→ 判不出来，一律回全 false（诚实：
  * 与「判不出就不误伤」对称，list_models 不谎称有参考能力）。
  */
-export function bodyReferenceSupport(createBody: unknown): BodyReferenceSupport {
+export function bodyReferenceSupport(
+  createBody: unknown,
+  context?: ReferenceModelContext,
+): BodyReferenceSupport {
   const support: BodyReferenceSupport = { image: false, video: false, audio: false, multiImage: false };
   for (const key of bodyReferencedParamKeys(createBody)) {
-    const declaration = referenceKeyDeclarationFor(key);
+    const declaration = referenceKeyCapacityDeclarationFor(key, context);
     if (!declaration) continue;
     support[declaration.family] = true;
     if (declaration.multiImage) support.multiImage = true;
   }
   return support;
+}
+
+const REFERENCE_URL_RE = /^(https?:\/\/|nomi-local:\/\/|data:|blob:|\/)/i;
+const CAPACITY_LABEL: Record<ReferenceFamily, string> = { image: "张图片", video: "个视频", audio: "个音频" };
+
+/** Count URL-shaped references in an already selected body key. */
+export function referenceUrlCount(value: unknown): number {
+  if (typeof value === "string") return REFERENCE_URL_RE.test(value.trim()) ? 1 : 0;
+  if (Array.isArray(value)) return value.reduce((count, item) => count + referenceUrlCount(item), 0);
+  if (value && typeof value === "object") return Object.values(value).reduce((count, item) => count + referenceUrlCount(item), 0);
+  return 0;
+}
+
+/** Fail closed before a request can reach a provider when a model slot has a known maximum. */
+export function assertReferenceCapacity(family: ReferenceFamily, max: number, count: number): void {
+  if (count > max) throw new Error(`这个模型最多收 ${max}${CAPACITY_LABEL[family]}参考。`);
 }

@@ -316,7 +316,7 @@ export async function runTask(payload: unknown, admission: TaskAdmission = TOKEN
   request.prompt = projectOutboundPrompt(request.prompt, request.extras);
   const customCall = resolveCustomCallExecution(model as Model, request, mapping);
   const customCallScript = customCall?.script || "";
-  const guardError = imageEditGuardError(kind, request, Boolean(mapping) || Boolean(customCallScript), model.labelZh || model.modelKey, customCallScript ? undefined : mapping?.create?.body, modelModeBodies(readCatalog().mappings, effectiveVendorKey, modelKey, (model as Model).modelAlias), { vendorKey: effectiveVendorKey, modelKey: model.modelKey });
+  const guardError = imageEditGuardError(kind, request, Boolean(mapping) || Boolean(customCallScript), model.labelZh || model.modelKey, customCallScript ? undefined : mapping?.create?.body, modelModeBodies(readCatalog().mappings, effectiveVendorKey, modelKey, (model as Model).modelAlias, model.meta), { vendorKey: effectiveVendorKey, modelKey: model.modelKey, modelAlias: (model as Model).modelAlias, modelMeta: model.meta, taskKind: kind });
   if (guardError) throw new Error(guardError);
   if (customCallScript)
     return runCustomCallTask({ vendor, model, apiKey, customConfig, script: customCallScript, taskKind: customCall!.taskKind, modeId: customCall!.modeId, operation: mapping?.create, request, kind, wantedKind, projectId, nodeId, grantId, taskId, localizeTaskAsset, writeAsset, spendGate: admission.spendGate });
