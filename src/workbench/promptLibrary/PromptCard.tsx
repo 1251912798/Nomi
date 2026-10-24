@@ -68,7 +68,7 @@ export const PromptCard = React.memo(function PromptCard({ prompt, size, onOpen,
         </span>
         <span className="flex min-w-0 flex-col gap-px">
           <strong className={cn('truncate font-semibold text-nomi-ink', face.title, withActions && 'pr-14')} data-prompt-card-title>{title}</strong>
-          <span className={cn('flex min-w-0 items-center gap-1 text-nomi-ink-40', face.meta)} data-prompt-card-meta>
+          <span className={cn('flex min-w-0 items-center gap-1 text-nomi-ink-60', face.meta)} data-prompt-card-meta>
             {isVideo ? <IconVideo size={12} stroke={1.6} className="shrink-0" aria-hidden="true" /> : null}
             <span className="truncate">{meta}</span>
           </span>
