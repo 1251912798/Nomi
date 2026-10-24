@@ -70,7 +70,7 @@ try {
   const companion = (await lab.scene()).objects.find((item) => item.type === 'character' && item.id !== hero.id)
   await lab.openOutliner() // 多选与打组都在「▤ ▾」浮层里的大纲上做，浮层开着连点
   await lab.outlinerRow(hero.name).click()
-  await lab.outlinerRow(companion.name).click({ modifiers: ['Control'] })
+  await lab.outlinerRow(companion.name).click({ modifiers: ['ControlOrMeta'] })
   await page.getByTestId('director-selection-bar').getByRole('button', { name: '打组', exact: true }).click()
   await lab.waitScene("s.objects.some(o => o.type === 'group')", '两个角色真实打组')
   const group = (await lab.scene()).objects.find((item) => item.type === 'group')
@@ -112,7 +112,7 @@ try {
   await lab.snap('grouped-path-after-bake')
   await screenshotSettled(preview, { path: `${lab.shotsDir}/path-after-bake-pip.png` })
   await page.mouse.move(600, 300)
-  await page.keyboard.press('Control+z')
+  await page.keyboard.press('ControlOrMeta+z')
   await lab.waitScene(`s.cameras.some(c => c.id === '${closeupCamera.id}' && c.closeupClips?.length === 1 && !c.trajectoryClips?.length)`, '一次撤销恢复特写')
   check('一次撤销完整恢复转换前工程', JSON.stringify(beforeProject) === JSON.stringify(await lab.project()))
 

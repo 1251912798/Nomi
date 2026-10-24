@@ -1,8 +1,9 @@
 // 10×10 群众（施工计划 docs/plan/2026-10-07-director-ual-mannequin.md §9 真实任务 ③）：
-// 放一个人 → 时间轴给他加「走路」片段 → 基础页「批量生成群众队列」10 行 × 10 列 → 101 个 UAL 人偶 → 播放 3 秒量帧间隔 → 截图。
+// 放一个人 → 时间轴给他加「走路」片段 → 精修「＋ → 角色 → 群众」10 行 × 10 列 → 点地面放下 → 101 个 UAL 人偶 → 播放 3 秒量帧间隔 → 截图。
+// （3D-BOX 起群众不再是选中角色后检查器基础页的「批量生成群众队列」，入口是添加菜单里的「群众」：设行列间距 → 放置群众 → 点地面。）
 // 无界面 Chromium 是软件渲染（SwiftShader）：帧间隔只当相对参考，真 GPU 帧率另记 unverified。
 // 用法：node tests/ux/director-ual-crowd.walk.mjs（先开着 `vite --port 5175` 走热路径）
-import { addTrack, clickOrFail, expectVisible, launchDirectorLab, placeCharacter, rowAddClipMenu } from './_directorLab.mjs'
+import { addTrack, clickOrFail, expectVisible, launchDirectorLab, openAddMenu, placeCharacter, rowAddClipMenu } from './_directorLab.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
 const lab = await launchDirectorLab({ name: 'ual-crowd', viewport: { width: 1600, height: 900 } })
@@ -42,19 +43,22 @@ try {
   await modal.getByRole('option', { name: /^走路/ }).first().dblclick()
   await lab.waitScene(`(s.objects.find(o => o.id === '${hero.id}').actionClips || []).some(c => c.actionPose === 'Walk_Loop')`, '走路片段入轨')
   const single = await measurePlayback('1 人')
-  // 刚加的片段是选中态、检查器是片段卡：Esc 清掉再从大纲选主角
+  // 刚加的片段是选中态：Esc 清掉，再从精修「＋ → 角色 → 群众」设 10 行 × 10 列、间距 1.2 m，放置群众后点主角身后的地面
   await page.mouse.move(800, 300)
   await page.keyboard.press('Escape')
-  await lab.pickInOutliner(hero.name, '大纲·主角')
-  await clickOrFail(page.getByRole('radio', { name: '基础' }).first(), '检查器·基础')
-  const card = page.getByTestId('director-inspector')
-  const ranges = card.locator('input[type=range]')
-  // 群众卡的三条滑条：行数 / 列数 / 间距（在基础页最后）
-  const count = await ranges.count()
-  await ranges.nth(count - 3).fill('10')
-  await ranges.nth(count - 2).fill('10')
-  await ranges.nth(count - 1).fill('1.2')
-  await clickOrFail(page.getByTestId('director-crowd-confirm'), '确定生成')
+  await openAddMenu(lab, '角色')
+  await clickOrFail(page.getByTestId('director-add-crowd'), '角色下拉·群众')
+  const place = page.getByTestId('director-crowd-place')
+  await expectVisible(place, '群众设置没展开')
+  const crowdPanel = place.locator('xpath=..')
+  for (const [label, value] of [['行数', '10'], ['列数', '10'], ['间距', '1.2']]) {
+    const field = crowdPanel.locator('label').filter({ has: page.getByText(label, { exact: true }) }).locator('input[type="text"]')
+    await field.fill(value)
+    await field.press('Enter')
+  }
+  await clickOrFail(place, '群众设置·放置群众')
+  const spot = await lab.bridge('projectPoint', 0, 0, -3)
+  await page.mouse.click(spot.x, spot.y)
   await lab.waitScene("s.objects.filter(o => o.type === 'character').length === 101", '10×10 群众生成', stationTimeout({ operations: 8 }))
   await page.waitForFunction(() => {
     const bridge = window.__nomiDirectorE2E

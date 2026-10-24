@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { clickOrFail, expect, expectVisible, screenshotSettled } from './_assert.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
+import { enterRefine } from './_directorLab.mjs'
 import { createBlankProject, prepareIsolation } from '../../evals/lib/isoApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { newProjectEntry } from './_shell.mjs'
@@ -74,7 +75,9 @@ await win.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null, { timeo
 await snap('editor-open')
 
 // ── 量几何：40px 合一顶栏（同时是窗口栏，Windows 原生窗口按钮 titleBarOverlay 浮在它右端）/ 全屏壳 / 导演台顶栏按钮 ──
-const geometry = await win.evaluate(() => {
+// 3D-BOX（2026-10-16 起唯一的导演台）有两个面、各一条悬浮顶栏：打开先落在「导演视图」（director-view-topbar），
+// 「精修」是 director-topbar。两条都得整条落在拖拽带之外——用户在哪个面都要点得动。
+const measure = (headerTestId) => win.evaluate((testId) => {
   const rect = (element) => {
     if (!element) return null
     const { top, bottom, left, right, width, height } = element.getBoundingClientRect()
@@ -82,8 +85,7 @@ const geometry = await win.evaluate(() => {
   }
   const windowbar = document.querySelector('[data-shell-topbar]')
   const editor = document.querySelector('[data-testid="director-editor"]')
-  // 2026-09-09 起常驻控件全在悬浮顶栏 director-topbar 里（2026-10-04 起是精修「选中才出」四簇顶栏）
-  const header = document.querySelector('[data-testid="director-topbar"]')
+  const header = document.querySelector(`[data-testid="${testId}"]`)
   const headerControls = header ? Array.from(header.querySelectorAll('button')) : []
   return {
     platform: window.nomiDesktop?.platform ?? null,
@@ -93,7 +95,10 @@ const geometry = await win.evaluate(() => {
     headerControlCount: headerControls.length,
     headerControlMinTop: headerControls.length ? Math.min(...headerControls.map((button) => button.getBoundingClientRect().top)) : null,
   }
-})
+}, headerTestId)
+
+await expectVisible(win.getByTestId('director-view-topbar'), '进导演台没落在导演视图（导演视图顶栏没出来）')
+const geometry = await measure('director-view-topbar')
 
 // 两平台都是 40px 顶栏（窗口按钮在里面）：全屏壳与导演台顶栏都必须落在它下面。
 const bandHeight = geometry.windowbar?.height ?? 0
@@ -106,7 +111,7 @@ check(
 )
 
 check(
-  '② 顶部工具条整条落在拖拽带之外（这才是「点得动」的充要条件）',
+  '② 导演视图顶栏整条落在拖拽带之外（这才是「点得动」的充要条件）',
   geometry.headerControlCount > 0 && geometry.headerControlMinTop !== null && geometry.headerControlMinTop >= bandHeight,
   `${geometry.headerControlCount} 个按钮，最高的 top=${geometry.headerControlMinTop} 需 ≥ ${bandHeight}`,
 )
@@ -118,9 +123,18 @@ check(
   `topbar.height=${geometry.windowbar?.height} editor.top=${geometry.editor?.top}`,
 )
 
+// 切到精修（真人点顶栏正中「精修」）：精修顶栏同样整条落在拖拽带之外
+await enterRefine(win)
+const refineGeometry = await measure('director-topbar')
+check(
+  '② 精修顶栏整条落在拖拽带之外',
+  refineGeometry.headerControlCount > 0 && refineGeometry.headerControlMinTop !== null && refineGeometry.headerControlMinTop >= bandHeight,
+  `${refineGeometry.headerControlCount} 个按钮，最高的 top=${refineGeometry.headerControlMinTop} 需 ≥ ${bandHeight}`,
+)
+
 // 顶栏工具真的还能用（渲染层行为回归；证不了原生命中测试，只证没把交互改坏）
-// 重置视角 2026-10-04 起是「视图 ▾」首项
-await clickOrFail(win.getByTestId('director-view-menu'), '顶栏·视图 ▾')
+// 重置视角 2026-10-04 起是精修「视图 ▾」首项
+await clickOrFail(win.getByTestId('director-view-menu'), '精修顶栏·视图 ▾')
 await clickOrFail(win.getByRole('button', { name: /重置视角/ }).first(), '视图菜单·重置视角')
 await snap('toolbar-clicked')
 
