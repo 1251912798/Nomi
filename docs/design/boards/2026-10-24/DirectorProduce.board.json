@@ -52,7 +52,7 @@
       "candidates": ["004-divider", "005-spinner"],
       "status": "implemented",
       "states": ["loading", "zh-en", "dark"],
-      "assertion": "board:DirectorProduce/primary"
+      "assertion": "board:DirectorProduce/divider-spinner"
     },
     {
       "id": "menu",

@@ -218,7 +218,7 @@ for (const rel of aliasFiles) {
 }
 
 // ---- 第 8 类：主按钮颜色回潮（棘轮，存量只减不增）----
-// 主按钮平时必须是 ink/paper；accent + white 的存量是历史标签/徽标，不能再新增。
+// 主按钮平时必须是 ink/paper；accent + white 的存量是既有小号主动作按钮，不能再新增。
 // text-white 也只保留存量，新增生产 UI 一律使用语义 paper / overlay token。
 const textWhiteCount = files.reduce((sum, rel) => sum + countTextWhiteInSource(fs.readFileSync(path.join(ROOT, rel), "utf8")), 0);
 const accentWhiteCount = files.reduce((sum, rel) => sum + countAccentWhitePrimaries(fs.readFileSync(path.join(ROOT, rel), "utf8")), 0);
