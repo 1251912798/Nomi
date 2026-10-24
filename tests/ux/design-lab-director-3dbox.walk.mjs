@@ -6,13 +6,6 @@
 //
 // 用法：node tests/ux/design-lab-director-3dbox.walk.mjs   （ONLY=d3-focus-3-two-zh 只跑一个）
 import { walkDesignLabScreen } from './design-lab/walkScreen.mjs'
-import fs from 'node:fs'
-
-const C_DS33_SHOTS = '/Users/aoqimin/Nomi-coord/tmp/C-DS33-produce/shots'
-const PRODUCE_CAPTURE_STATES = new Set([
-  'd3-produce-idle-zh', 'd3-produce-idle-en',
-  'd3-produce-rendering-zh', 'd3-produce-rendering-en',
-])
 
 await walkDesignLabScreen({
   screen: 'director-3dbox',
@@ -31,18 +24,6 @@ await walkDesignLabScreen({
     if (!statesWithProduce.has(state.id)) return
     const main = page.getByTestId('director-produce-main')
     const menu = page.getByTestId('director-produce-menu')
-    const variant = process.env.C_DS33_VARIANT
-    if (variant === 'v2') {
-      await page.addStyleTag({ content: `
-        [data-testid="director-produce-main"], [data-testid="director-produce-menu"] {
-          background-color: var(--nomi-paper) !important;
-          color: var(--nomi-accent) !important;
-        }
-        [data-testid="director-produce-main"]:hover:not(:disabled), [data-testid="director-produce-menu"]:hover {
-          background-color: var(--nomi-accent-soft) !important;
-        }
-      ` })
-    }
     const colors = await page.evaluate(() => {
       const resolve = (className) => {
         const probe = document.createElement('span')
@@ -59,29 +40,9 @@ await walkDesignLabScreen({
     const hover = await main.evaluate((node) => getComputedStyle(node).backgroundColor)
     const disabled = await main.isDisabled()
     // board:DirectorProduce/primary · board:DirectorProduce/primary-hover · board:DirectorProduce/primary-disabled · board:DirectorProduce/menu
-    if (variant !== 'v2') {
-      if (before !== colors.ink) record(`${state.id} 主按钮平时背景不是 --nomi-ink：${before} !== ${colors.ink}`)
-      if (!disabled && hover !== colors.accent) record(`${state.id} 主按钮悬停背景不是 --nomi-accent：${hover} !== ${colors.accent}`)
-      if (disabled && hover !== colors.ink) record(`${state.id} 禁用按钮悬停变色：${hover} !== ${colors.ink}`)
-    }
+    if (before !== colors.ink) record(`${state.id} 主按钮平时背景不是 --nomi-ink：${before} !== ${colors.ink}`)
+    if (!disabled && hover !== colors.accent) record(`${state.id} 主按钮悬停背景不是 --nomi-accent：${hover} !== ${colors.accent}`)
+    if (disabled && hover !== colors.ink) record(`${state.id} 禁用按钮悬停变色：${hover} !== ${colors.ink}`)
     if (!(await menu.isVisible())) record(`${state.id} ▾ 菜单按钮不可见`)
-
-    if (variant && PRODUCE_CAPTURE_STATES.has(state.id)) {
-      const target = `${C_DS33_SHOTS}/${variant}`
-      fs.mkdirSync(target, { recursive: true })
-      await main.screenshot({ path: `${target}/${state.id}-button.png` })
-    }
-    if (variant === 'v1' && state.id === 'd3-produce-idle-zh') {
-      await main.hover()
-      await page.screenshot({ path: `${C_DS33_SHOTS}/v1/hover-zh-light-topbar.png` })
-      await main.screenshot({ path: `${C_DS33_SHOTS}/v1/hover-zh-light-button.png` })
-    }
-    if (variant === 'v1' && state.id === 'd3-produce-empty-zh') {
-      await main.hover()
-      await page.screenshot({ path: `${C_DS33_SHOTS}/v1/disabled-zh-light-topbar.png` })
-      await page.evaluate(() => document.documentElement.setAttribute('data-mantine-color-scheme', 'dark'))
-      await page.screenshot({ path: `${C_DS33_SHOTS}/v1/disabled-zh-dark-topbar.png` })
-      await main.screenshot({ path: `${C_DS33_SHOTS}/v1/disabled-zh-dark-button.png` })
-    }
   },
 })
