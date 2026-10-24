@@ -327,9 +327,10 @@
         "hook:self-check(先查别人块)",
         "hook:self-check(调研时刻行)",
         "gate:check:prior-art",
-        "gate:check:board-parity"
+        "gate:check:board-parity",
+        "coordinator-tool:scripts/check-dispatch-brief.mjs(模型可见工具必读)"
       ],
-      "evidence": "prior-art 红灯 60 次几乎全是补文档（登记摩擦），所以新增部分不另立存在性门岗：只有板清单 priorArt（2026-10-19 起）自动查，其余靠设计卡 ★0 / ★1 与提示行；对应 check:standard-formats / dependency-capabilities / archetype-sources 三道零红门岗已删",
+      "evidence": "prior-art 红灯 60 次几乎全是补文档（登记摩擦），所以新增部分不另立存在性门岗：只有板清单 priorArt（2026-10-19 起）自动查，其余靠设计卡 ★0 / ★1 与提示行；对应 check:standard-formats / dependency-capabilities / archetype-sources 三道零红门岗已删。2026-10-25 #1263 的 r3 漏带模型可见工具必读清单，改由派工检查拦截，不在 PR 侧新增存在性门岗",
       "owner": "协调会话",
       "review_on": "2026-12-01",
       "delete_when": "门岗连续 2 个周期零触发且无外部契约类逃逸",
