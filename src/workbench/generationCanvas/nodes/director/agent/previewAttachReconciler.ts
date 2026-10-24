@@ -13,6 +13,7 @@ import { readDirectorPreview } from '../model/directorPreviewState'
 import { normalizeDirectorProject } from '../model/directorProject'
 import { summarizeDirectorShots } from '../model/directorShotSummaries'
 import { attachCameraMoveForNode } from './attachCameraMoveForNode'
+import { isDirectorPreviewDismissed } from './directorPreviewReferenceLifecycle'
 
 type Toast = (message: string, level: 'warning') => void
 
@@ -34,6 +35,7 @@ export function startPreviewAttachReconciler(onToast?: Toast): () => void {
       if (!preview || preview.status !== 'ready' || !preview.videoUrl || !preview.targetNodeId) continue
       const target = state.nodes.find((node) => node.id === preview.targetNodeId)
       if (!target) continue
+      if (isDirectorPreviewDismissed(target, preview.videoUrl)) continue
       const meta = target.meta ?? {}
       const key = previewAttachReconcileKey(meta)
       const slot = `${director.id}:${target.id}`

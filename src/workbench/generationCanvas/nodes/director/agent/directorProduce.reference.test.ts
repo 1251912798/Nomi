@@ -19,7 +19,7 @@ import { archetypeForNode } from '../../../agent/referenceEdgeCapability'
 import { applyArchetypeModeSwitch, currentArchetypeMode } from '../../controls/archetypeMeta'
 import { removeFromArray, type ReferenceWriteContext } from '../../controls/referenceWrites'
 import type { DirectorWriteDomainResult } from './applyDirectorWrite'
-import { applyPreviewCaptured, previewCapturePlan } from './directorPreviewCapture'
+import { applyPreviewCaptured, previewCapturePlan, requestDirectorPreviewRender } from './directorPreviewCapture'
 import { prepareProduceFromPreview } from './directorProduce'
 import { previewAttachReconcileKey, startPreviewAttachReconciler } from './previewAttachReconciler'
 
@@ -190,8 +190,21 @@ describe('节点上直接点 ↑：挂接始终是当前的', () => {
       expect(node(shotId)?.meta?.referenceVideoUrls ?? []).toEqual([])
       expect((node(shotId)?.meta?.archetype as { modeId: string }).modeId).toBe('t2v')
       expect(node(shotId)?.meta?.cameraMoveAttachedUrl).toBe(URL_V1)
+      expect(node(shotId)?.meta?.directorPreviewDismissedUrl).toBe(URL_V1)
       expect(node(shotId)?.prompt).not.toContain(`@[asset:${encodeURIComponent(URL_V1)}]`)
     } finally { stop() }
+  })
+
+  it('删掉后重渲出新 URL：退出只绑定旧 URL，花钱闸要求显式出成片', async () => {
+    const { shotId, directorNodeId } = await stagedWith({ ...SLOT_MODEL, archetype: { id: 'seedance-2', modeId: 'omni' } })
+    renderPreview(directorNodeId, URL_V1)
+    removePreviewReference(shotId)
+    requestDirectorPreviewRender(directorNodeId)
+    renderPreview(directorNodeId, 'nomi-local://asset/p/preview-2.mp4')
+    expect(node(shotId)?.meta?.referenceVideoUrls ?? []).toEqual([])
+    expect(directorPreviewSpendBlock(shotId, store().nodes)?.reason).toBe('not_attached')
+    expect(prepareProduceFromPreview(directorNodeId, projectOf(directorNodeId))).toMatchObject({ kind: 'prepared', attach: 'video_ref' })
+    expect(node(shotId)?.meta?.directorPreviewDismissedUrl).toBeUndefined()
   })
 
   it('只换生成方式（参考 → 首尾帧 → 参考）不重挂，单份参考列表始终保留', async () => {
@@ -232,12 +245,12 @@ describe('节点上直接点 ↑：挂接始终是当前的', () => {
     } finally { stop() }
   })
 
-  it('没有对账器时（比如换模型发生在窗口关着的时候）：花钱闸发现挂接不是当前的 → 挡（用现有的「过期」原因）；出成片重挂后放行', async () => {
+  it('没有对账器时（比如换模型发生在窗口关着的时候）：花钱闸发现预演没挂上 → 用新原因挡；出成片重挂后放行', async () => {
     const { shotId, directorNodeId } = await stagedWith(NO_SLOT_MODEL)
     renderPreview(directorNodeId)
     expect(blockOf(shotId)).toBeNull()
     setShotMeta(shotId, SLOT_MODEL)
-    expect(blockOf(shotId)?.reason).toBe('stale')
+    expect(blockOf(shotId)?.reason).toBe('not_attached')
     prepareProduceFromPreview(directorNodeId, projectOf(directorNodeId))
     expect(blockOf(shotId)).toBeNull()
   })

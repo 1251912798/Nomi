@@ -18,9 +18,20 @@ import { moveArrayItem } from '../../../assets/assetTypes'
 import { resultPreviewUrl as resultPreviewUrlOf } from './parameterControlModel'
 import { nodeReferenceCapacity } from './nodeCrossFieldConstraints'
 import type { useNodeWriteAccess } from '../nodeWriteAccess'
+import { directorPreviewReferenceRemoval, markDirectorPreviewDismissed } from '../director/agent/directorPreviewReferenceLifecycle'
+import { withoutPreviewLines, withoutVideoDirective } from '../director/agent/attachCameraMoveToTarget'
 
 type Access = ReturnType<typeof useNodeWriteAccess>
 type ArchMode = Parameters<typeof nodeReferenceCapacity>[0]
+
+/** 参考删除是一个用户手势：画布写口先打一次快照，再用同一个 updateNode 落下全部字段，避免被前一笔导演台写入吞掉 Cmd+Z。面板草稿写口不碰画布历史。 */
+function updateReferenceNode(ctx: ReferenceWriteContext, patch: Partial<GenerationCanvasNode>, barrier: 'new' | 'existing' = 'new'): void {
+  const canvas = useGenerationCanvasStore.getState()
+  // NodeParameterControls is read-only in the panel host, so a deletion can only reach this path from the canvas.
+  // Keep the snapshot explicit: the director's preceding attach runs in a suppressed transaction and must not swallow Cmd+Z.
+  if (barrier === 'new') canvas.captureHistory()
+  ctx.updateNode(ctx.node.id, patch, { history: false })
+}
 
 export type ReferenceWriteContext = {
   node: GenerationCanvasNode
@@ -116,6 +127,16 @@ export function removeFromArray(ctx: ReferenceWriteContext, metaKey: string, ind
   const promptAfterRemovingMention = (url: string | null) =>
     url ? removeMention(currentNode.prompt || '', url) : null
 
+  const withPreviewDismissal = (patch: { meta?: Record<string, unknown>; prompt?: string }, url: string) => {
+    if (!directorPreviewReferenceRemoval(state.nodes, currentNode, url)) return patch
+    const prompt = withoutPreviewLines(withoutVideoDirective(patch.prompt ?? currentNode.prompt ?? ''))
+    return {
+      ...patch,
+      meta: markDirectorPreviewDismissed(patch.meta ?? ctx.getLatestMeta(), url),
+      ...(prompt !== (patch.prompt ?? currentNode.prompt ?? '') ? { prompt } : {}),
+    }
+  }
+
   if (decision.kind === 'disconnect-edge') {
     ctx.storeDisconnectEdge(decision.edgeId)
     // B5：同一 url 既来自边、又残留在 meta 上传里（去重后只显示边那份）→ 仅断边会让它以 upload 形态
@@ -127,7 +148,8 @@ export function removeFromArray(ctx: ReferenceWriteContext, metaKey: string, ind
     const patch: { meta?: Record<string, unknown>; prompt?: string } = {}
     if (cleanedMeta.length !== metaArr.length) patch.meta = archetypeArrayWrite(latestMeta, metaKey, cleanedMeta)
     if (nextPrompt != null && nextPrompt !== (currentNode.prompt || '')) patch.prompt = nextPrompt
-    if (Object.keys(patch).length > 0) ctx.updateNode(node.id, patch)
+    const finalPatch = decision.url ? withPreviewDismissal(patch, decision.url) : patch
+    if (Object.keys(finalPatch).length > 0) updateReferenceNode(ctx, finalPatch, 'existing')
     return
   }
   if (decision.kind === 'noop') return
@@ -136,10 +158,10 @@ export function removeFromArray(ctx: ReferenceWriteContext, metaKey: string, ind
   const latestMeta = ctx.getLatestMeta()
   const next = readArchetypeArrayForWrite(latestMeta, metaKey, ctx.archMode).filter((u) => u !== decision.url)
   const nextPrompt = promptAfterRemovingMention(decision.url)
-  ctx.updateNode(node.id, {
+  updateReferenceNode(ctx, withPreviewDismissal({
     meta: archetypeArrayWrite(latestMeta, metaKey, next),
     ...(nextPrompt != null && nextPrompt !== (currentNode.prompt || '') ? { prompt: nextPrompt } : {}),
-  })
+  }, decision.url))
 }
 
 /**
@@ -149,19 +171,30 @@ export function removeFromArray(ctx: ReferenceWriteContext, metaKey: string, ind
 export function removeUnusedReference(ctx: ReferenceWriteContext, url: string): void {
   const { node } = ctx
   const state = useGenerationCanvasStore.getState()
+  const currentNode = ctx.latestNode(node.id) ?? node
+  const withPreviewDismissal = (patch: { meta?: Record<string, unknown>; prompt?: string }) => {
+    if (!directorPreviewReferenceRemoval(state.nodes, currentNode, url)) return patch
+    const prompt = withoutPreviewLines(withoutVideoDirective(patch.prompt ?? currentNode.prompt ?? ''))
+    return {
+      ...patch,
+      meta: markDirectorPreviewDismissed(patch.meta ?? ctx.getLatestMeta(), url),
+      ...(prompt !== (patch.prompt ?? currentNode.prompt ?? '') ? { prompt } : {}),
+    }
+  }
   const edge = state.edges.find((candidate) => candidate.target === node.id
     && resultPreviewUrlOf(state.nodes.find((source) => source.id === candidate.source)) === url)
-  const nextPrompt = removeMention(node.prompt || '', url)
-  const promptPatch = nextPrompt !== (node.prompt || '') ? { prompt: nextPrompt } : {}
+  const nextPrompt = removeMention(currentNode.prompt || '', url)
+  const promptPatch = nextPrompt !== (currentNode.prompt || '') ? { prompt: nextPrompt } : {}
   if (edge) {
     ctx.storeDisconnectEdge(edge.id)
-    if (promptPatch.prompt !== undefined) ctx.updateNode(node.id, promptPatch)
+    const finalPatch = withPreviewDismissal(promptPatch)
+    if (Object.keys(finalPatch).length > 0) updateReferenceNode(ctx, finalPatch, 'existing')
     return
   }
   const latestMeta = ctx.getLatestMeta()
   const list = readReferenceList(latestMeta, ctx.archMode)
   if (!list.includes(url)) return
-  ctx.updateNode(node.id, { meta: withReferenceList(latestMeta, removeFromReferenceList(list, url)), ...promptPatch })
+  updateReferenceNode(ctx, withPreviewDismissal({ meta: withReferenceList(latestMeta, removeFromReferenceList(list, url)), ...promptPatch }))
 }
 
 function existingEdgeOf(ctx: ReferenceWriteContext, slot: ImageUrlSlot) {

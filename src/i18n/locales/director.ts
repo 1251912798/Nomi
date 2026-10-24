@@ -210,6 +210,7 @@ export const zhDirector = {
     spendBlockedRendering: '这一镜的 3D-BOX 预演还在渲染，渲染完再生成',
     spendBlockedFailed: '这一镜的 3D-BOX 预演失败了，先重试预演再生成',
     spendBlockedStale: '预演挂上之后导演台又改过，先重渲预演再生成',
+    spendBlockedNotAttached: '这一镜的预演还没挂上，先在导演台点「出成片」',
     spendBlockedTooLong: '这一镜的 3D-BOX 预演超过时长上限，先在导演台改短再生成',
   },
   help: {
@@ -1178,6 +1179,7 @@ export const enDirector = {
     spendBlockedRendering: "This shot's 3D-BOX preview is still rendering. Generate once it is attached.",
     spendBlockedFailed: "This shot's 3D-BOX preview failed. Retry the preview before generating.",
     spendBlockedStale: "The 3D-BOX scene changed after this preview was attached. Re-render the preview before generating.",
+    spendBlockedNotAttached: "This shot's preview is not attached yet. Click ‘Produce’ in the director first.",
     spendBlockedTooLong: "This shot's 3D-BOX scene is longer than the preview limit. Shorten it in the director before generating.",
   },
   help: {

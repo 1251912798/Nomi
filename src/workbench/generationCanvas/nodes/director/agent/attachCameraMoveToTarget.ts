@@ -21,6 +21,8 @@ import { isVideoLikeGenerationNodeKind } from '../../../model/generationNodeKind
 import { applyArchetypeModeSwitch, orderedSentMediaReferenceUrls, readArchetypeArray } from '../../controls/archetypeMeta'
 import { CAMERA_MOVE_DESC, CAMERA_MOVE_LABEL } from './cameraMoveVocab'
 import type { CameraMove } from '../../../../../../electron/shared/director/vocab'
+import { clearDirectorPreviewDismissed } from './directorPreviewReferenceLifecycle'
+export { DIRECTOR_PREVIEW_DISMISSED_URL_KEY } from './directorPreviewReferenceLifecycle'
 
 /** 目标节点里记「当前已附的运镜 mp4」的 meta 键（替换判据） */
 export const CAMERA_MOVE_ATTACHED_URL_KEY = 'cameraMoveAttachedUrl'
@@ -51,7 +53,7 @@ export type AttachPreviewDirective = Readonly<{
 const PREVIEW_CAMERA_MARK = '3D-BOX 预演运镜：'
 const PREVIEW_ACTION_MARK = '3D-BOX 动作细节：'
 
-function withoutPreviewLines(prompt: string): string {
+export function withoutPreviewLines(prompt: string): string {
   return prompt.split('\n').filter((line) => !line.startsWith(PREVIEW_CAMERA_MARK) && !line.startsWith(PREVIEW_ACTION_MARK)).join('\n')
 }
 
@@ -77,7 +79,7 @@ function videoDirectiveLine(url: string): string {
 }
 
 /** 去掉本核写过的参考句（含旧版写死 @Video1 的那一句）：换片 / 换槽后整句重写，不叠加、不留指向空气的引用。 */
-function withoutVideoDirective(prompt: string): string {
+export function withoutVideoDirective(prompt: string): string {
   return prompt.split('\n').filter((line) => !line.includes(VIDEO_DIRECTIVE_MARK)).join('\n')
 }
 
@@ -122,7 +124,7 @@ function promptOnlyOutcome(
     if (!floor) return { kind: 'noop' }
     prompt = basePrompt.includes('镜头运动：') ? basePrompt : `${basePrompt}${floor}`
   }
-  const nextMeta: Record<string, unknown> = { ...meta, [CAMERA_MOVE_ATTACHED_URL_KEY]: url }
+  const nextMeta: Record<string, unknown> = clearDirectorPreviewDismissed({ ...meta, [CAMERA_MOVE_ATTACHED_URL_KEY]: url })
   const existing = readArchetypeArray(meta, REFERENCE_VIDEOS_KEY)
   if (prevAttached && prevAttached !== url && existing.includes(prevAttached)) nextMeta[REFERENCE_VIDEOS_KEY] = existing.filter((item) => item !== prevAttached)
   const toast = toastMessage ? { message: toastMessage, level: 'warning' as const } : undefined
@@ -167,7 +169,7 @@ export function computeAttachCameraMove(
     // 替换语义：上次那条（若与这次不同）剔掉；这次的若已在就**留在原位**（重复挂不挪位置），不在就追加；用户的其它参考视频一条不删
     const kept = existing.filter((item) => item !== prevAttached || item === url)
     const referenceVideoUrls = kept.includes(url) ? kept : [...kept, url]
-    const nextMeta = { ...switched, [videoRef.metaKey]: referenceVideoUrls, [CAMERA_MOVE_ATTACHED_URL_KEY]: url }
+    const nextMeta = clearDirectorPreviewDismissed({ ...switched, [videoRef.metaKey]: referenceVideoUrls, [CAMERA_MOVE_ATTACHED_URL_KEY]: url })
     // 它在**实际发送**的参考视频列表里排第几：连线在前、上传在后、去重、按槽上限截断——和 buildArchetypeInputParams 同一个函数
     const sentVideos = orderedSentMediaReferenceUrls(nextMeta, archetype, { video: context.edgeVideoUrls ?? [] }).filter((item) => item.kind === 'video')
     if (!sentVideos.some((item) => item.url === url)) {

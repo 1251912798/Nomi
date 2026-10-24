@@ -31,10 +31,10 @@
 - [x] 花钱
 - [ ] 长跑 / 可打断
 - [ ] Agent 行为
-- [ ] 大数据量 / 画布 / 长列表
-- [ ] 生成效果
+- [x] 大数据量 / 画布 / 长列表
+- [x] 生成效果
 - [ ] 数据格式
-- [ ] 新增功能 / 性能
+- [x] 新增功能 / 性能
 
 ## ★1b 连带界面
 
@@ -112,4 +112,9 @@ Mac 本机隔离资料目录，中英文两轨走查；真实素材 URL 由走�
 
 | 反例 | 结果 | 证据 |
 |---|---|---|
-| 待实现 | 待实现 | 待实现 |
+| 删的是用户自己的参考，不是当前挂着的预演 | 不写 `directorPreviewDismissedUrl`，只清用户参考和对应 @ | `referenceWrites.director.test.ts` 的用户片反例；中英文走查 C 请求仍保留用户片 |
+| 对账器 / 重渲写口靠参考列表变短猜用户退出 | 已退出镜头跳过自动挂回；新 URL 进入 `not_attached` | `directorPreviewState.test.ts`、`directorProduce.reference.test.ts` 新 URL 测试、B 中英文换模型断言 |
+| 通用删除代码写导演台句子或正则 | 删除入口只调用导演台生命周期函数；运镜句清理复用导出函数 | `referenceWrites.ts` 与 `attachCameraMoveToTarget.ts` 导入关系、`git grep` |
+| 清掉 `preview.targetNodeId` 或给 B3 加特例 | target 保留；B3 仍由方式派生回 t2v，退出字段独立存在 | `directorProduce.reference.test.ts`、B-node-after-delete 截图 |
+| 把未挂接误报 stale 或改动渲染中/失败/超长原因 | 新增 `not_attached` 及中英文文案，旧三类保持原语义 | `directorPreviewState.test.ts`、`directorPreviewStatus.test.ts`、i18n 检查 |
+| 删除后 Cmd+Z 只恢复部分字段 | 一次画布历史恢复参考、@、运镜句和退出事实 | 中英文走查 B 的真实 `Meta+z`；`referenceWrites.director.test.ts` 原子写断言 |
