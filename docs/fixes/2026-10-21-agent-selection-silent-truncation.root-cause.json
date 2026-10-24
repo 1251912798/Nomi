@@ -35,7 +35,9 @@
     "tests/ux/_lookAtCanvasSelectionSteps.mjs",
     "tests/ux/look-at-canvas-selection-real.rehearsal.walk.mjs",
     "docs/engineering/concept-owners/agent.context-selection-read.json",
-    "docs/engineering/concept-owners/agent.context-snapshot-projection.json"
+    "docs/engineering/concept-owners/agent.context-snapshot-projection.json",
+    "electron/shared/agentCapabilities/documentRead.ts",
+    "electron/capabilityCore/documentReadTransportAdapters.ts"
   ],
   "entry_points": [
     "Provider request projection via laneDesktopInput",
@@ -130,12 +132,22 @@
       "kind": "write",
       "path": "electron/agentLane/laneExtendedDesktopPorts.ts",
       "symbol": "executeRead"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/documentRead.ts",
+      "symbol": "DOCUMENT_READ_ALIASES"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/documentReadTransportAdapters.ts",
+      "symbol": "documentReadScopeForAlias"
     }
   ],
   "door_reduction": {
     "before": 2,
-    "after": 11,
-    "why_not": "The two existing projection caller doors remain separate because one injects the live provider message and the other builds a compaction summary. The new read door remains in laneDesktopTools because it is the only execution boundary with the consumed message context. The deferred execution door remains separate from the desktop tool factory because it dispatches the already-registered verb. The declaration, capability registry and type/profile doors are separate registration boundaries that must remain explicit so model exposure cannot drift from the desktop-only contract."
+    "after": 13,
+    "why_not": "The two existing projection caller doors remain separate because one injects the live provider message and the other builds a compaction summary. The new read door remains in laneDesktopTools because it is the only execution boundary with the consumed message context. The deferred execution door remains separate from the desktop tool factory because it dispatches the already-registered verb. The declaration, capability registry and type/profile doors are separate registration boundaries that must remain explicit so model exposure cannot drift from the desktop-only contract. The alias collision audit adds the surviving document alias-table read boundary and its transport adapter write boundary; the obsolete selection alias declaration itself is removed and therefore is not retained as a live door."
   },
   "generality_proof": "Every bounded send-time projection still passes through projectAgentContextSnapshot/formatAgentContextSnapshot, while every desktop recovery call passes through readAgentContextSnapshotPage against the consumed message context. The shared owner has no kind-specific live-read branch or prefix fallback, so existing producers and future handle kinds receive the same all-or-nothing accounting and page contract.",
   "shared_boundaries": [
