@@ -912,6 +912,12 @@
       "reason": "读列表不再删东西（C′，用户 2026-10-22 拍板；方向检查 docs/plan/2026-10-21-project-library-direction-check.md 的 N1 节 §8）：启动回收器 gcEmptyDraftWorkspaceProjects 连同 once-guard 同一提交删除，空草稿改为在列表里隐藏（listWorkspaceProjects 的 isProvablyEmptyDraft，只对候选再读一次，不再列举全库），回收挪到「离开只写欠着的」那条线。这条锚守的是「启动回收器吃调用方现成的快照、不再自己列一遍全库」，回收器没了，不变量失去对象；同一份合同里「一次 listProjects 最多列举一次全库」仍由 listProjects 锚点在位，electron/projects/repository.test.ts「一次列举里每个项目的 manifest 只被快照读一次」继续钉住。"
     },
     {
+      "contract": "docs/fixes/2026-09-07-director-canvas-image-discovery.root-cause.json",
+      "path": "src/workbench/generationCanvas/nodes/director/bridge/canvasImages.ts",
+      "symbol": "collectCanvasImages",
+      "reason": "这条锚守的是「导演台 AI 搭场景的『从画布选参考图』按结果语义收集全画布图片（含历史），不按节点种类筛」。它唯一的消费方 AI 搭场景（director/ai/）已随 8876f0c5d 删除（3D-BOX 成为唯一导演台，搭场景交给右侧 Agent 面板），之后 DirectorNode 仍订阅全画布节点表算这份列表、DirectorEditor 仍注入 CanvasImagesContext，但 useCanvasImages 一个调用方都没有（2026-10-24 导演台走查第 2 轮同类残留）。收集器 canvasImages.ts、它的单测、CanvasImagesContext 与两处接线同一提交删除；画布图片选择器这个功能已不存在，不变量失去对象。"
+    },
+    {
       "contract": "docs/fixes/2026-09-02-push-gate-stamp-identity.root-cause.json",
       "path": "scripts/stamp-gates-ok.mjs",
       "symbol": "戳的唯一签发者（写 sha/worktree/at 到 $GIT_DIR/nomi-gates-ok）",

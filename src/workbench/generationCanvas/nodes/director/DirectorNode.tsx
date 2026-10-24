@@ -29,7 +29,6 @@ import { requestDirectorPreviewRender } from './agent/directorPreviewCapture'
 import { normalizeDirectorProject, projectStats } from './model/directorProject'
 import type { DirectorLinkedAsset, DirectorProject } from './model/directorTypes'
 import type { DirectorOutput } from './OutputsContext'
-import { selectCanvasImages } from './bridge/canvasImages'
 
 // 资产节点连进来的文件只认泼溅 / 模型（全景走全景节点，场景 JSON 不从连线来）
 function linkedAssetKindOf(url: string): DirectorLinkedAsset['kind'] | null {
@@ -103,9 +102,6 @@ function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX
     },
     [node.id, updateNode],
   )
-
-  // 按结果语义收集所有图片与历史；内容没变就是同一个数组引用，无关画布变化不触发导演台重绘。
-  const canvasImages = useGenerationCanvasStore((state) => selectCanvasImages(state.nodes))
 
   // 产物 → 画布：截图落成 Image 节点、录像落成 Video 节点，放在导演台节点右侧并连一条 reference 边回来
   const handleSendToCanvas = React.useCallback(
@@ -243,7 +239,6 @@ function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX
             nodeTitle={node.title || t('director.node.title')}
             readOnly={readOnly}
             linkedAssets={linkedAssets}
-            canvasImages={canvasImages}
             nodeId={node.id}
             onSendToCanvas={handleSendToCanvas}
             onClose={handleClose}

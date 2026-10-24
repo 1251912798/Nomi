@@ -191,7 +191,7 @@ export function PromptLibraryContent({ host, toolbarHost, className }: PromptLib
       </button>
     </>
   ) : (
-    <WorkbenchIconButton size="sm" icon={<IconPlus size={16} stroke={1.8} />} label={t('libraries.prompt.createAria')} onClick={handleNew} data-prompt-new />
+    <WorkbenchIconButton size="sm" icon={<IconPlus />} label={t('libraries.prompt.createAria')} onClick={handleNew} data-prompt-new />
   )
 
   const composer = composing || editing ? (

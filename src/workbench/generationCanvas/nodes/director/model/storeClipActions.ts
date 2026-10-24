@@ -2,11 +2,12 @@
  * [INPUT]: 依赖 ./directorStore 的类型（CommitProject / StoreGet / StoreSet）、./directorTypes、./directorIds、
  *          ./clips（fitClipAt / clipsOverlap / extendClipTo / splitClipAt / trimClipToPlayhead / upsertWaypointAt / patchWaypoint /
  *          waypointsOfClip / waypointTimeBounds / createTrajectoryClip）、./clipKeyframes（resizeClipKeyframes / cutClipKeyframes / samplePoseAt）、./closeupRig（createCloseupClip / findCloseupClipAt）、
- *          ./editLayer 的 findTrajectoryClipAt、./timeGrid（entityClips / quantizeToFrame / secondsToFrame / FRAME_EPSILON）
+ *          ./editLayer 的 findTrajectoryClipAt、./timeGrid（entityClips / quantizeToFrame / secondsToFrame / FRAME_EPSILON）、./actionLibrary 的 resolveActionAlias
  * [OUTPUT]: 对外提供 DirectorClipActions 与 createClipActions（路径片段/路标、特写片段、动作片段与骨骼关键帧、视线片段、
  *           副轨开关、活动片段、POV 进入判定）
  * [POS]: director/model 的时间轴 action 集合，由 directorStore 组装；每个片段家族的增删改都在这里，UI 只发意图。
- *        动作片段规则：内置动作前插 = 播放头前 4s（< 0.5s 不插）；骨骼姿态片段出生即带首帧（抄当前微调）；插骨骼关键帧无片段时自动建 3s 片段。
+ *        动作片段规则：内置动作前插 = 播放头前 4s（< 0.5s 不插）；骨骼姿态片段出生即带首帧（抄当前微调）；插骨骼关键帧无片段时自动建 3s 片段；
+ *        片段的 actionPose 只存动作库正名（入口解析别名、认不出就不加，和角色姿态的写口一个口径）。
  *        返回的拒绝原因是 i18n key（`director.reason.*`），toast 在面板层翻译。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -32,6 +33,7 @@ import { createClipId, createKeyframeId, createWaypointId } from './directorIds'
 import type { CommitProject, SelectedClipType, StoreGet, StoreSet } from './directorStore'
 import type { ActionClip, BoneKeyframe, CloseupClip, DirectorCamera, DirectorObject, LookAtClip, TimelineEntity, TrajectoryClip, Vec3, Waypoint } from './directorTypes'
 import { findTrajectoryClipAt } from './editLayer'
+import { resolveActionAlias } from './actionLibrary'
 import { FRAME_EPSILON, laneClips, quantizeToFrame, secondsToFrame, syncInTimeline } from './timeGrid'
 
 export type ClipFamily = Exclude<SelectedClipType, null>
@@ -349,6 +351,9 @@ export function createClipActions(set: StoreSet, get: StoreGet, commitProject: C
     addActionClip: (objectId, spec, mode = 'append', at) => {
       const object = get().findObject(objectId)
       if (!object || object.type !== 'character') return null
+      // 动作 id 只存正名：姿态采样只按正名查，别名查不到 clip = 绑定姿态（T 字）；认不出就不加
+      const canonicalPose = spec.actionPose === undefined ? undefined : resolveActionAlias(spec.actionPose)?.id
+      if (spec.actionPose !== undefined && !canonicalPose) return null
       const duration = spec.duration ?? 4
       if (!Number.isFinite(duration) || duration < 1 / 30) return null
       const clips = object.actionClips ?? []
@@ -390,7 +395,7 @@ export function createClipActions(set: StoreSet, get: StoreGet, commitProject: C
         id: createClipId('action'),
         name: spec.name,
         clipType: spec.clipType,
-        actionPose: spec.actionPose,
+        actionPose: canonicalPose,
         startTime,
         endTime,
         ...(initialKeyframe ? { keyframes: [initialKeyframe] } : {}),

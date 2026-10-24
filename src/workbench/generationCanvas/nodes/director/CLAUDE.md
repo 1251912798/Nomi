@@ -7,7 +7,7 @@
 > 成员清单
 > useMobilePreview.ts: 复用 captureFrame 与认证手机桥发送最长480px监视帧；单帧在途/大小上限/迟到帧丢弃，录制状态只回桌面真相
 > DirectorNode.tsx: 画布节点卡片（顶层节点组件，注册于 nodes/registry.ts）：统计/入连摘要 + 连线引用列表（全景节点 → 全景；资产节点按后缀分泼溅/模型）+ 打开按钮 + 「发送到画布」落成 Image / Video 节点并连 reference 边；节点 meta.directorProject 的唯一读写点；关闭即落盘
-> DirectorEditor.tsx: 全屏壳（portal + role=dialog + FULLSCREEN_Z_INDEX + Windows 让开自绘窗口栏，顶偏移取 ui/app-shell/windowChrome 的 currentFullscreenOverlayTopOffset —— 那条 32px 是系统拖拽带，盖住它顶部控件整条点不动、窗口控件也埋在下面，见 docs/fixes/2026-09-04-fullscreen-overlay-windows-windowbar.root-cause.json）：创建/注入 store、注入连线引用（LinkedAssetsContext）/ 画布图片（CanvasImagesContext）与产物动作（OutputsContext）、持有角色放置与画框两个创建模式并经 CreationModeContext 下发（视口要指针路由与 ghost、顶栏「＋添加」要发起，只调一次 hook）、悬浮顶栏五簇（panels/topbar）压在视口 / 时间轴 / 右栏嵌套分栏之上、退出确认、2s 空闲自动保存、Esc 归属（捕获期监听，壳根节点会 stopPropagation：模式 → 清工具 + 清全部选中→ 退 POV → 退出确认）；本机偏好（scene/viewSettings 读写）喂给视口，设置 / 帮助对话框挂在壳上
+> DirectorEditor.tsx: 全屏壳（portal + role=dialog + FULLSCREEN_Z_INDEX + Windows 让开自绘窗口栏，顶偏移取 ui/app-shell/windowChrome 的 currentFullscreenOverlayTopOffset —— 那条 32px 是系统拖拽带，盖住它顶部控件整条点不动、窗口控件也埋在下面，见 docs/fixes/2026-09-04-fullscreen-overlay-windows-windowbar.root-cause.json）：创建/注入 store、注入连线引用（LinkedAssetsContext）与产物动作（OutputsContext）、持有角色放置与画框两个创建模式并经 CreationModeContext 下发（视口要指针路由与 ghost、顶栏「＋添加」要发起，只调一次 hook）、悬浮顶栏五簇（panels/topbar）压在视口 / 时间轴 / 右栏嵌套分栏之上、退出确认、2s 空闲自动保存、Esc 归属（捕获期监听，壳根节点会 stopPropagation：模式 → 清工具 + 清全部选中→ 退 POV → 退出确认）；本机偏好（scene/viewSettings 读写）喂给视口，设置 / 帮助对话框挂在壳上
 > DirectorViewShell.tsx: 导演台的默认面「导演视图」（2026-10-16 起 3D-BOX 是唯一的导演台）：顶栏 [← 工程名 · 镜头 N] [导演 | 精修] [撤销 重做][出成片 ▾]（顶栏件取 panels/topbar/shellChrome）+ 视口（小窗左下说正在播哪一镜）+ 只读镜头条
 > DirectorRefineShell.tsx: 精修「选中才出」布局（导演台的「精修」面）：视口满宽 + RefineTopBar + 选中才出的 ContextCard + 左侧资产库抽屉 + 原时间轴
 > DirectorEditorContext.ts: DirectorStoreContext + useDirectorStore(selector) / useDirectorStoreApi()
@@ -21,7 +21,10 @@
 > agent/: AI 来导（create_staging_reference / create_camera_move 的建节点入口 + 离屏出片器 + 两个常驻 Host），见 agent/CLAUDE.md
 > migration/: V1 scene3d → director 单向迁移与 V1 数据化石（AI 来导的 builder 也经这里落成工程），见 migration/CLAUDE.md
 > OutputsContext.ts: 产物动作注入（时间轴头部按钮 / 产出弹层 / 快捷键共用同一个实例）
-> useAiSceneBuilder.ts: AI 搭场景编排：描述 + ≤3参考图经文本大脑生成 JSON；请求身份贯穿模型/存库 await，发起时固定目标图层，取消/reset/卸载拒绝迟到响应；先存场景资源，再由 store 将几何和资产句柄一次物化/撤销；无桥时用 E2E fixture 或明示缺模型
+> directorEditorPersistence.ts: 编辑器 store ↔ 节点 meta 写回的唯一 owner（createDirectorEditorPersistence）：编辑器开着时 store 是唯一写者，记住自己写出去的每一份；节点 meta 被换成别的（撤销补偿放回）就当场重载；空闲 2 秒落盘，没改动不写
+> directorSessionRegistry.ts: 开着的导演台会话登记处：按节点 id 登记 store，外部写入（writeExternalDirectorProject）交给开着的编辑器，镜头焦点的读 / 订阅 / 清除也经这里
+> directorShotFocusSession.ts: 一个开着的导演台的「正在改：镜头 N」读口（createEditorShotFocusSession）：把编辑器 selection 投影成计划镜头，按（工程引用、选中、修订号）缓存
+> useDirectorShotFocus.ts: 镜头焦点的 React 订阅口（useSyncExternalStore 读会话登记处），给 Agent 输入框上的「正在改：镜头 N」标签
 > model/: 纯层（schema、时间格、片段几何、编辑层、路径求值、特写运镜、节目机位、镜头、预设、灯光、快捷键、rig、IK 链、store），见 model/CLAUDE.md
 > scene/: three / R3F 世界（画布、相机、实体、gizmo、描边、拾取、创建模式、标签、播放求值），见 scene/CLAUDE.md
 > panels/: DOM 面板（顶栏五簇 topbar/ 是唯一常驻控件条，2026-09-09 收掉了视口左缘创建栏 / 底中底栏 / 右下显示模式三条，见 docs/plan/2026-09-09-director-chrome-five-clusters.md；右栏大纲/资产库/检查器、字段原语、分栏、浮层），见 panels/CLAUDE.md

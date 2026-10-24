@@ -14,6 +14,7 @@ import { logRendererCrash } from '../../../desktop/rendererLog'
 import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance'
 import { addGenerationNodeToTimelineEnd } from '../../timeline/addNodeToTimelineEnd'
 import { encodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_MIME } from '../../timeline/timelineDragPayload'
+import { ICON_TIERS } from '../../../design'
 
 // 节点浮动工具栏的**单一共享实现**（P1 收口）：图片编辑 / 视频抽帧 / 全景 / 下载三+条以前是三份
 // 几乎一字不差的拷贝、且各自带一堆 token 违规（rgba 硬编码 / gap-[7px] / 图标 16/1.8…）。这里一次性
@@ -21,7 +22,7 @@ import { encodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_
 //
 // 几何：浮在节点正上方、反向缩放抵消画布 zoom（恒定屏幕尺寸，缩放也看得清），transform-origin 贴节点底边。
 
-const ICON = { size: 16, stroke: 1.6 } as const
+const ICON = ICON_TIERS.bar
 
 /**
  * 浮条外壳：定位 + 反向缩放 + token 合规容器，外加**锁的唯一家**。
@@ -333,5 +334,5 @@ export function EmptyNodeVariantToolbar({ nodeId, visible }: { nodeId: string; v
   )
 }
 
-/** 工具栏内统一图标尺寸（§6 节点浮动工具栏：16/1.6）。 */
+/** 工具栏内统一图标尺寸（F1 条档：18/1.8）。 */
 export const TOOLBAR_ICON = ICON

@@ -8,6 +8,17 @@
     "date": "2026-10-16"
   },
   "source": "source/Director3dbox.json",
+  "decisions": [
+    {
+      "id": "D1",
+      "text": "导演台常驻 Host 的两类提示（站位图接不上目标镜头；运镜小片 / 预演挂到目标镜头）是行为修复的直接结果：用现有通知组件（notify 后台档 +「定位节点」），不出样张，在本板认领。不套 pure-bugfix，因为加了文案。",
+      "appliesTo": [
+        "notice.staging-attach",
+        "notice.camera-move-attach"
+      ],
+      "source": "协调 10-24 定，同 #1300 先例（I-director-fixes 第 2 轮任务书 §4）。文案是协调按行为定的，非用户逐字。"
+    }
+  ],
   "elements": [
     {
       "id": "layout.docked",
@@ -354,6 +365,68 @@
       ],
       "note": "对外 MCP 的工具与参数 schema 不变（electron/capabilityCore/director3dboxToolFace.test.ts）；这两个操作建出的导演节点在唯一的 3D-BOX 导演台里打开（directorFunctionCensus.test.ts 真跑建节点）。director.write 仅内部。",
       "owner": "feat/director-3dbox-switch"
+    },
+    {
+      "id": "notice.staging-attach",
+      "label": "站位参考图接不上目标镜头时的后台提示：目标模型只吃文字 / 写边没落下，各一句，都说清图留在了画布上；带「定位节点」，点了画布对准并选中那张站位图",
+      "change": "keep",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "board:Director3dbox/notice.staging-attach",
+      "states": [
+        "error",
+        "zh-en"
+      ],
+      "copy": {
+        "director.agent.stagingTextOnly": {
+          "zh-CN": "这个镜头的模型不接参考图，站位图没连上，留在了画布上；换个接参考图的模型再连",
+          "en": "This shot's model takes no reference images, so the staging image was not connected and stays on the canvas. Switch to a model that accepts reference images, then connect it."
+        },
+        "director.agent.stagingNotConnected": {
+          "zh-CN": "站位图没能连上目标镜头，留在了画布上",
+          "en": "The staging image could not be connected to the target shot and stays on the canvas."
+        },
+        "generationCommon.node.locateNode": {
+          "zh-CN": "定位节点",
+          "en": "Locate node"
+        }
+      },
+      "note": "2026-10-24 走查 ⑤ 的行为修复：站位图接不上目标镜头时，以前写边被写边总闸静默拒掉，Agent 回执还说「已连到镜头」；现在不留假边，图留在画布上，后台提示说清原因。沿用现有通知组件（notify 后台档），不出样张：两句文案是行为修复的直接结果（说真话）。协调 10-24 定在本板认领（同 #1300 口径）。出口：agent/hostNotice.ts 的 notifyHostOutcome，第 2 轮起两个 Host 共用。「只吃文字」那句：走查 director-electron ④a（提示带「定位节点」，点了画布对准并选中那张站位图）。「写边没落下」那句（判据说能接、总闸另有裁决）走查造不出来，由单测 agent/stagingAttach.test.ts 钉住。板上原文 = 产品词典（copy 的键就是词典键），directorFunctionCensus.test.ts 逐字核对。"
+    },
+    {
+      "id": "notice.camera-move-attach",
+      "label": "运镜参考小片 / 3D-BOX 预演挂到目标镜头时的后台提示：目标不是视频镜头 / 为注入参考视频切到全能参考 / 参考视频槽被用户的片占满 / 模型不接参考视频只能写成文字，各一句；带「定位节点」，点了画布对准并选中目标镜头",
+      "change": "keep",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "board:Director3dbox/notice.camera-move-attach",
+      "states": [
+        "error",
+        "zh-en"
+      ],
+      "copy": {
+        "director.agent.videoTargetRequired": {
+          "zh-CN": "运镜参考只能喂给视频镜头节点，已跳过（目标不是视频节点）",
+          "en": "Camera movement references can only be attached to video shot nodes. The target was skipped."
+        },
+        "director.agent.switchedToOmni": {
+          "zh-CN": "已切换到全能参考模式以注入运镜参考视频（该模式无首/尾帧，原首帧不再生效）",
+          "en": "Switched to omni-reference mode to attach the camera movement video. This mode has no first/last-frame slots, so the previous first frame no longer applies."
+        },
+        "director.agent.previewReferenceFull": {
+          "zh-CN": "这个模型的参考视频槽已被你的片占满，运镜参考没法再加一条，只能靠文字描述，精度会低",
+          "en": "The reference-video slots of this model are full of your own clips, so the camera movement reference cannot be added. It is described in text only and will be less precise."
+        },
+        "director.agent.previewPromptOnly": {
+          "zh-CN": "这个模型不接参考视频，运镜只能靠文字描述，精度会低",
+          "en": "This model takes no reference video, so camera movement is described in text only and will be less precise."
+        },
+        "generationCommon.node.locateNode": {
+          "zh-CN": "定位节点",
+          "en": "Locate node"
+        }
+      },
+      "note": "四句文案原样沿用词典，第 2 轮没有新文案；改的是出口。CameraMoveCaptureHost 以前调旧 toast()：只说一句、没有去处，用户不知道说的是哪个镜头。现在和站位提示同一个出口 agent/hostNotice.ts 的 notifyHostOutcome（notify 后台档 +「定位节点」；同一个镜头的提示只留最新一条）。Host 自己 toast / notify / 发定位事件，agent/attachDoors.guard.test.ts 就红。协调 10-24 定在本板认领（同 #1300 口径），不出样张。走查：director-electron ③b（运镜小片的目标是图片节点 → 提示「运镜参考只能喂给视频镜头节点…」+「定位节点」，点了画布对准并选中那个节点，目标不被改）。其余三句什么情形给，由挂接核单测 agent/attachCameraMoveToTarget.test.ts、attachCameraMoveToTarget.reference.test.ts 钉住。板上原文 = 产品词典（copy 的键就是词典键），directorFunctionCensus.test.ts 逐字核对。"
     }
   ],
   "decor": [

@@ -1,8 +1,10 @@
 /**
- * [INPUT]: 依赖 ./stagingVocab 的 SHOT_FRAMING / StagingShot（景别复用站位词表，单一真相源）
- * [OUTPUT]: 对外提供 CameraMove / ZOOM_MOVES、CameraSpeed / CAMERA_SPEED_DURATION、CAMERA_MOVE_LABEL、CAMERA_MOVE_FRAMING、CAMERA_MOVE_DESC，再导出 SHOT_FRAMING / StagingShot
+ * [INPUT]: 依赖 ./stagingVocab 的 SHOT_FRAMING / StagingShot（景别复用站位词表，单一真相源）、electron/shared/director/vocab 的 CAMERA_MOVES / CameraMove
+ * [OUTPUT]: 对外提供 CameraMove / ZOOM_MOVES、CameraSpeed / CAMERA_SPEED_DURATION、CAMERA_MOVE_LABEL / CAMERA_MOVE_LABEL_EN、CAMERA_MOVE_FRAMING、CAMERA_MOVE_DESC，
+ *           再导出 CAMERA_MOVES / SHOT_FRAMING / StagingShot
  * [POS]: director/agent 的运镜词汇表（原 V1 cameraMoveVocab，切换门入籍）：13 个电影运镜（10 个机位运动 + 3 个变焦族），
- *        create_camera_move 工具 schema 与工具摘要 / 手动运镜控件都从这里取；配 ./cameraMoveBuilder。
+ *        Agent 工具 create_camera_move 的受理回执与工具摘要、运镜小片搭建（./cameraMoveBuilder）、挂接的提示词地板、镜头条的运镜名都从这里取
+ *        （视频节点上的手动「运镜」控件 2026-09-12 已删，c1b1c9e02）。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { SHOT_FRAMING, type StagingShot } from './stagingVocab'

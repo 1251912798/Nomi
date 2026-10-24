@@ -5,6 +5,7 @@
  * 这里每项一条探针：能在节点环境里真跑的就真跑（Agent / MCP 建导演节点、编辑器 store 载入工程、快捷键表），
  * 只能看接线的就看现役组件树里它挂在哪（导演视图 / 精修两个面都由 DirectorEditor 无条件渲染，没有开关分支）。
  * 清单里多一项没有探针、或探针对不上清单 = 红；改设计丢了功能 = 红。
+ * 板上认领的提示（notice.*，协调 10-24 定，同 #1300 口径）：copy 的键就是产品词典键，原文逐字等于词典那句——词典改了板没跟、或反过来，都在这里红。
  * 方向检查：docs/plan/2026-10-16-director-3dbox-sole-director-direction-check.md。
  */
 import fs from 'node:fs'
@@ -13,7 +14,8 @@ import { fileURLToPath } from 'node:url'
 import { beforeEach, describe, expect, it } from 'vitest'
 import board from '../../../../../docs/design/boards/2026-10-16/Director3dbox.board.json'
 import candidatesDoc from '../../../../../docs/design/boards/2026-10-16/Director3dbox.candidates.json'
-import { checkBoardManifest } from '../../../../../scripts/check-board-parity.mjs'
+import { checkBoardManifest, loadAssertionCorpus } from '../../../../../scripts/check-board-parity.mjs'
+import { resources } from '../../../../i18n/resources'
 import { MODEL_FACING_TOOL_SPECS } from '../../../../../electron/shared/agentCapabilities/modelFacingToolRegistry'
 import { applyCanvasToolCall, resetClientIdRegistry } from '../../agent/applyCanvasToolCall'
 import { applyProposalBatch } from '../../agent/proposalTxn'
@@ -197,8 +199,21 @@ describe('old director function census: every item still has a working home in t
     for (const [prefix] of PROBES) expect(census.filter((item) => item.function.startsWith(prefix)).length, prefix).toBe(1)
   })
 
-  it('the board manifest itself is consistent (every census item lands on an element, dropped items carry the user quote)', () => {
-    expect(checkBoardManifest({ board: 'Director3dbox', manifest: board, candidates: candidatesDoc.candidates, assertionCorpus: '' })).toEqual([])
+  it('the board manifest itself is consistent (every census item lands on an element, dropped items carry the user quote, implemented items name a real walk assertion)', () => {
+    expect(checkBoardManifest({ board: 'Director3dbox', manifest: board, candidates: candidatesDoc.candidates, assertionCorpus: loadAssertionCorpus() })).toEqual([])
+  })
+
+  it('notices claimed on the board carry the dictionary copy word for word (zh-CN and en)', () => {
+    const notices = (board.elements as ReadonlyArray<{ id: string; copy?: Record<string, Record<string, string>> }>).filter((element) => element.id.startsWith('notice.'))
+    expect(notices.map((element) => element.id)).toEqual(['notice.staging-attach', 'notice.camera-move-attach'])
+    for (const notice of notices) {
+      for (const [key, text] of Object.entries(notice.copy ?? {})) {
+        for (const locale of ['zh-CN', 'en'] as const) {
+          const dictionary = key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], resources[locale].translation)
+          expect(text[locale], `${notice.id} · ${key} · ${locale}`).toBe(dictionary)
+        }
+      }
+    }
   })
 
   it('no director code path branches on a build flag any more', () => {
