@@ -33,7 +33,8 @@ function frameLabel(request: VideoFrameRequest): string {
 /** 抽帧 IPC 的 which：数字就是秒数。 */
 const ipcWhich = (request: VideoFrameRequest): 'first' | 'last' | number => (typeof request === 'string' ? request : request.atSeconds)
 
-function knownDurationOf(node: GenerationCanvasNode): number | undefined {
+/** 视频节点已知的时长（结果自带 / 画布量出来的 / 旧数据），都没有就 undefined——不编。 */
+export function knownDurationOf(node: GenerationCanvasNode): number | undefined {
   const candidates = [node.result?.durationSeconds, node.meta?.videoDuration, node.meta?.durationSeconds]
   return candidates.find((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0)
 }

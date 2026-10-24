@@ -1,3 +1,4 @@
+import { lastDeconstructModelChoice } from './shotTableModelChoice'
 import { readShotTable, type DeconstructionShotTableDocument } from '../../../../../electron/shared/canvas/shotTable'
 import { getDesktopBridge } from '../../../../desktop/bridge'
 import { isProjectExecutionContextCurrent, type ProjectExecutionContext } from '../../../project/projectCanvasReadSurface'
@@ -62,6 +63,8 @@ export function ensureDeconstructionShotTable(sourceNodeId: string): string | un
   let table = createDeconstructionShotTable(sourceNodeId, source.title)
   const legacy = readNodeDeconstruction(source.meta)
   if (legacy) table = deconstructionResultToShotTable(table, legacy)
+  // 新表带上这个项目最近一次拆解选过的读图 / 转写模型：表建出来、还没拆，用户在下方拆解栏看得见也改得了（2026-10-18 拆解前选模型）。
+  table = { ...table, source: { ...table.source, ...lastDeconstructModelChoice(store.nodes) } }
   interruptPendingCanvasWrite()
   pushUndoSnapshot()
   return withCanvasGestureContext({ source: 'user', txnId: `shot-table-${sourceNodeId}-${Date.now()}`, suppressUndoBarriers: true }, () => {
@@ -126,7 +129,8 @@ export async function deconstructToShotTable(
   try {
     const result = await deconstruct({
       // nodeId：这次拆解的付费令牌按它记预算，主进程的一次报价卡也按它显示是哪张表。
-      videoUrl: source.result.url, projectId, requestId, nodeId: id, ...(transcribe ? { transcribe } : {}), ...visionLegPayload(table),
+      // 转写腿：这一次显式给的（「改用云端」）优先，其次是表上选的，都没有 = 主进程自动挑。
+      videoUrl: source.result.url, projectId, requestId, nodeId: id, ...((transcribe ?? table.source.transcribeModel) ? { transcribe: transcribe ?? table.source.transcribeModel } : {}), ...visionLegPayload(table),
       customColumns: table.columns.filter((column) => column.kind === 'custom').map((column) => ({ name: column.columnId, hint: column.hint || column.labelKey })),
     })
     // A completion from a departed project must never write into its successor.
