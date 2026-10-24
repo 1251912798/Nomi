@@ -1,0 +1,41 @@
+{
+  "variant": {
+    "id": "zh-dark",
+    "locale": "zh-CN",
+    "scheme": "dark",
+    "description": "中文暗色：加节点条投影圈与生成框底色对照"
+  },
+  "description": "中文暗色：加节点条投影圈与生成框底色对照",
+  "geometry": {
+    "toolbar": {
+      "left": 537.5,
+      "top": 833,
+      "right": 794.5,
+      "bottom": 873
+    },
+    "composer": {
+      "left": 410.55999755859375,
+      "top": 658.719970703125,
+      "right": 970.5599975585938,
+      "bottom": 961.563720703125
+    },
+    "ring": {
+      "left": 557.5,
+      "top": 876,
+      "right": 774.5,
+      "bottom": 885
+    },
+    "reference": {
+      "left": 557.5,
+      "top": 799,
+      "right": 774.5,
+      "bottom": 808
+    }
+  },
+  "brightness": {
+    "ring": 29.569958847736626,
+    "reference": 31.40740740740741
+  },
+  "delta": 1.8374485596707828,
+  "screenshot": "/Users/aoqimin/Desktop/Nomi/.claude/worktrees/fix-chrome-occlusion-shadow/docs/evidence/2026-10-24-chrome-occlusion-shadow/zh-dark.png"
+}

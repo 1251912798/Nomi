@@ -1,0 +1,41 @@
+{
+  "variant": {
+    "id": "en-light",
+    "locale": "en",
+    "scheme": "light",
+    "description": "英文亮色：加节点条投影圈与生成框底色对照"
+  },
+  "description": "英文亮色：加节点条投影圈与生成框底色对照",
+  "geometry": {
+    "toolbar": {
+      "left": 537.5,
+      "top": 833,
+      "right": 794.5,
+      "bottom": 873
+    },
+    "composer": {
+      "left": 410.55999755859375,
+      "top": 658.719970703125,
+      "right": 970.5599975585938,
+      "bottom": 961.563720703125
+    },
+    "ring": {
+      "left": 557.5,
+      "top": 876,
+      "right": 774.5,
+      "bottom": 885
+    },
+    "reference": {
+      "left": 557.5,
+      "top": 799,
+      "right": 774.5,
+      "bottom": 808
+    }
+  },
+  "brightness": {
+    "ring": 254.77434842249656,
+    "reference": 253.07407407407408
+  },
+  "delta": 1.7002743484224823,
+  "screenshot": "/Users/aoqimin/Desktop/Nomi/.claude/worktrees/fix-chrome-occlusion-shadow/docs/evidence/2026-10-24-chrome-occlusion-shadow/en-light.png"
+}
