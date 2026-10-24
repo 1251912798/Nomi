@@ -65,7 +65,7 @@ SessionStart → intake 脚本调用 `npx wrangler auth token --json` 取当前 
 
 - [ ] 花钱
 - [ ] 新界面 / 改交互
-- [x] 长跑 / 可打断（SessionStart 命令有超时）
+- [ ] 长跑 / 可打断
 - [ ] Agent 行为
 - [ ] 大数据量 / 画布 / 长列表
 - [ ] 生成效果
