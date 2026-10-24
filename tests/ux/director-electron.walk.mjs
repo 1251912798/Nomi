@@ -7,6 +7,8 @@
 //   ③ 用 E2E 桥塞一个带 cameraMoveAutoCapture 的 director 节点（模拟 Agent 工具 create_camera_move 的下半场；视频节点上的手动
 //      「运镜」芯片 2026-09-12 已删）→ 常驻 CameraMoveCaptureHost 离屏采帧 → ffmpeg 拼 mp4（真 IPC）
 //      → director 节点 meta.cameraMoveVideo.url 出现、标志清掉、目标视频节点被喂入（video_ref 或提示词地板）
+//      ③b 再塞一个目标是图片节点的运镜参考 → 挂接核说「只能喂给视频镜头」：提示走 Host 的唯一出口（后台档 +「定位节点」，
+//          点了画布对准并选中那个目标）；目标节点不被改。以前这句走旧 toast()，只说一句、没有去处（2026-10-24 第 2 轮）
 //   ④ 用 E2E 桥往画布塞一个带 stagingAutoCapture 的 director 节点（模拟 create_staging_reference 的下半场）
 //      → StagingCaptureHost 离屏出图 → image 节点（stagingComposition）+ reference 边；接目标镜头分两支都走（2026-10-24 走查 ⑤）：
 //      ④a 目标是工具栏默认图片模型（只吃文字）→ 不留假的 composition_ref 边，提示「这个镜头的模型不接参考图…」+「定位节点」
@@ -259,10 +261,8 @@ const moved = await expect.poll(() => {
 check('③ 运镜小片离屏出片 → mp4 落盘 → 喂进视频镜头（磁盘）', moved, moved ? '' : JSON.stringify(readCanvas().nodes.map((node) => [node.kind, Object.keys(node.meta || {})])))
 await snap('camera-move-done')
 
-// ④ 站位参考：塞带 stagingAutoCapture 的 director 节点（工程直接借运镜参考那份），Host 出图 + 经 attachStagingReference 接目标镜头。
-// 目标 IMAGE_ID 是从工具栏加的图片节点，用的是默认模型（只有文生图、没有参考槽）：2026-10-24 前这里照连不误、被写边总闸静默拒掉，
-// 盘上没有 composition_ref 边，Agent 回执却说「已连到镜头」。现在两支都要对：只吃文字 → 不留假边 + 提示；能接 → 边落盘、不提示。
-// 提示是一条 8 秒的后台 toast：先在真实 DOM 上架通知观察者再塞节点，不和它的自动消失赛跑（与 agent-spend-confirm-executes.walk.mjs 同一手法）。
+// Host 的提示是一条 8 秒的后台 toast：先在真实 DOM 上架通知观察者再塞节点，不和它的自动消失赛跑
+// （与 agent-spend-confirm-executes.walk.mjs 同一手法）。③b 和 ④ 共用这一份记录。
 await win.evaluate(() => {
   window.__nomiToastLog = []
   const record = () => {
@@ -274,8 +274,55 @@ await win.evaluate(() => {
   record()
   new MutationObserver(record).observe(document.body, { childList: true, subtree: true })
 })
-const stagingNotices = async () => (await win.evaluate(() => window.__nomiToastLog ?? []))
-  .filter((text) => text.includes(uiText('zh-CN', 'director.agent.stagingTextOnly')) || text.includes(uiText('zh-CN', 'director.agent.stagingNotConnected')))
+/** 记下来的通知里说了这几句（词典键）之一的那些。 */
+const noticesSaying = async (...keys) => (await win.evaluate(() => window.__nomiToastLog ?? []))
+  .filter((text) => keys.some((key) => text.includes(uiText('zh-CN', key))))
+/** 点说了这句（词典键）的那条通知上的「定位节点」（toast 只活 8 秒，拍完立刻点）。 */
+const clickLocateOn = (key, label) => clickOrFail(
+  win.locator('[class*="mantine-Notification-root"]', { hasText: uiText('zh-CN', key) })
+    .getByRole('button', { name: uiText('zh-CN', 'generationCommon.node.locateNode'), exact: true }),
+  label,
+)
+/** 画布对准并选中了这个节点：它在视口里、在选中集里。 */
+const locatedOnCanvas = (id) => expect.poll(() => win.evaluate((nodeId) => {
+  const box = document.querySelector(`[data-node-id="${nodeId}"]`)?.getBoundingClientRect()
+  const onScreen = Boolean(box) && box.right > 0 && box.bottom > 0 && box.left < window.innerWidth && box.top < window.innerHeight
+  return onScreen && window.__nomiCanvasStore.getState().selectedNodeIds.includes(nodeId)
+}, id), { timeout: stationTimeout({ operations: 2 }) }).toBe(true).then(() => true, () => false)
+
+// ③b 运镜小片的目标不是视频镜头（拿 ① 那个图片节点当目标）：挂接核说「只能喂给视频镜头」，目标不动。
+// 这句以前走旧 toast()：只说一句、没有去处，用户不知道说的是哪个镜头。现在和站位提示同一个出口（agent/hostNotice.ts）：
+// 后台档 +「定位节点」，点了画布对准并选中那个目标。
+const imageTargetMoveId = await win.evaluate(({ imageId, title }) => {
+  const store = window.__nomiCanvasStore
+  if (!store) return null
+  const state = store.getState()
+  const source = state.nodes.find((node) => node.kind === 'director' && node.meta?.directorProject && node.meta?.cameraMoveVideo)
+  if (!source) return null
+  const created = state.addNode({
+    kind: 'director',
+    title,
+    prompt: '',
+    position: { x: 520, y: 380 },
+    meta: { directorProject: source.meta.directorProject, cameraMoveAutoCapture: { targetNodeId: imageId, fps: 24, frameCount: 24, move: 'push_in' } },
+  })
+  return created.id
+}, { imageId: IMAGE_ID, title: uiText('zh-CN', 'director.agent.cameraMoveReference') })
+check('③b E2E 桥能塞入目标是图片节点的「运镜参考」', Boolean(imageTargetMoveId))
+const moveNotified = await expect.poll(async () => (await noticesSaying('director.agent.videoTargetRequired')).length, { timeout: stationTimeout({ operations: 16 }), intervals: [1000] }).toBeGreaterThan(0).then(() => true, () => false)
+const [moveNotice] = await noticesSaying('director.agent.videoTargetRequired')
+check('③b 目标不是视频镜头：提示「运镜参考只能喂给视频镜头节点…」并带「定位节点」（board:Director3dbox/notice.camera-move-attach）', moveNotified && moveNotice.includes(uiText('zh-CN', 'generationCommon.node.locateNode')), moveNotice ?? '（一个字都没说）')
+await snap('camera-move-image-target-notice')
+await clickLocateOn('director.agent.videoTargetRequired', '运镜挂接提示·定位节点')
+check('③b 点「定位节点」：画布对准并选中那个目标节点（board:Director3dbox/notice.camera-move-attach）', await locatedOnCanvas(IMAGE_ID))
+await snap('camera-move-image-target-located')
+const skippedTarget = readCanvas().nodes.find((node) => node.id === IMAGE_ID)
+check('③b 目标没被改：没有参考视频、提示词里没有运镜句（磁盘）', Boolean(skippedTarget) && !(skippedTarget.meta?.referenceVideoUrls?.length) && !/镜头运动/.test(skippedTarget.prompt ?? ''), JSON.stringify(skippedTarget?.meta ?? null).slice(0, 300))
+
+// ④ 站位参考：塞带 stagingAutoCapture 的 director 节点（工程直接借运镜参考那份），Host 出图 + 经 attachStagingReference 接目标镜头。
+// 目标 IMAGE_ID 是从工具栏加的图片节点，用的是默认模型（只有文生图、没有参考槽）：2026-10-24 前这里照连不误、被写边总闸静默拒掉，
+// 盘上没有 composition_ref 边，Agent 回执却说「已连到镜头」。现在两支都要对：只吃文字 → 不留假边 + 提示；能接 → 边落盘、不提示。
+const stagingNotices = () => noticesSaying('director.agent.stagingTextOnly', 'director.agent.stagingNotConnected')
 const injectStaging = (y) => win.evaluate(({ targetId, y: top, title }) => {
   const store = window.__nomiCanvasStore
   if (!store) return null
@@ -308,24 +355,13 @@ const stagingTextOnly = await injectStaging(620)
 check('④ E2E 桥能塞入待出图的 director 节点', Boolean(stagingTextOnly))
 const notified = await expect.poll(async () => (await stagingNotices()).length, { timeout: stationTimeout({ operations: 8 }), intervals: [500] }).toBeGreaterThan(0).then(() => true, () => false)
 const [notice] = await stagingNotices()
-check('④a 目标只吃文字：提示「这个镜头的模型不接参考图…」并带「定位节点」', notified && notice.includes(uiText('zh-CN', 'director.agent.stagingTextOnly')) && notice.includes(uiText('zh-CN', 'generationCommon.node.locateNode')), notice ?? '（一个字都没说）')
+check('④a 目标只吃文字：提示「这个镜头的模型不接参考图…」并带「定位节点」（board:Director3dbox/notice.staging-attach）', notified && notice.includes(uiText('zh-CN', 'director.agent.stagingTextOnly')) && notice.includes(uiText('zh-CN', 'generationCommon.node.locateNode')), notice ?? '（一个字都没说）')
 await snap('staging-text-only-notice')
-// 提示上的「定位节点」：站位图常落在视口外，点了画布要对准并选中那张图（toast 只活 8 秒，拍完立刻点）
-await clickOrFail(
-  win.locator('[class*="mantine-Notification-root"]', { hasText: uiText('zh-CN', 'director.agent.stagingTextOnly') })
-    .getByRole('button', { name: uiText('zh-CN', 'generationCommon.node.locateNode'), exact: true }),
-  '站位提示·定位节点',
-)
+// 提示上的「定位节点」：站位图常落在视口外，点了画布要对准并选中那张图
+await clickLocateOn('director.agent.stagingTextOnly', '站位提示·定位节点')
 const textOnlyImage = await stagedImageOf(stagingTextOnly)
 check('④a 站位图照样落盘 + director→图 reference 边，图→镜头没有假的 composition_ref 边（磁盘）', Boolean(textOnlyImage) && !hasEdge(readCanvas().edges, textOnlyImage, IMAGE_ID))
-const located = textOnlyImage
-  ? await expect.poll(() => win.evaluate((id) => {
-    const box = document.querySelector(`[data-node-id="${id}"]`)?.getBoundingClientRect()
-    const onScreen = Boolean(box) && box.right > 0 && box.bottom > 0 && box.left < window.innerWidth && box.top < window.innerHeight
-    return onScreen && window.__nomiCanvasStore.getState().selectedNodeIds.includes(id)
-  }, textOnlyImage), { timeout: stationTimeout({ operations: 2 }) }).toBe(true).then(() => true, () => false)
-  : false
-check('④a 点「定位节点」：画布对准并选中那张站位图', located)
+check('④a 点「定位节点」：画布对准并选中那张站位图（board:Director3dbox/notice.staging-attach）', textOnlyImage ? await locatedOnCanvas(textOnlyImage) : false)
 await snap('staging-located')
 
 // ④b 用户把这个镜头换成能接参考图的模型（默认文生图模式、「改图」模式有参考图槽）→ 再出一张 → composition_ref 边落盘、不再提示

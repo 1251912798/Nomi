@@ -47,3 +47,22 @@ describe('站位参考图接目标镜头只有一扇门', () => {
     expect(filesMatching(/连到镜头作 composition_ref/)).toEqual(['createStagingReferenceNode.ts'])
   })
 })
+
+// Host 在画布背后跑，说话的对象（出的图、挂接的目标镜头）常在视口外：提示只有一个出口 notifyHostOutcome（后台档 +「定位节点」）。
+// 以前运镜 Host 用旧 toast() 只说一句、没有去处，站位 Host 自己拼 notify——同一类提示两种写法（2026-10-24 走查 ⑤ 的同类残留）。
+describe('导演台 Host 只经一个提示出口说话', () => {
+  const stripComments = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  const hostFiles = fs.readdirSync(here).filter((name) => /Host\.tsx$/.test(name)).sort()
+
+  it('agent 目录下的常驻 Host 就是这两个（新增 Host 要进这张表）', () => {
+    expect(hostFiles).toEqual(['CameraMoveCaptureHost.tsx', 'StagingCaptureHost.tsx'])
+  })
+
+  it.each(hostFiles)('%s 不自己引 toast / notify、不自己发定位事件，提示只走 notifyHostOutcome', (name) => {
+    const source = stripComments(fs.readFileSync(path.join(here, name), 'utf8'))
+    expect(source).not.toMatch(/from\s+['"][^'"]*\/ui\/toast['"]/)
+    expect(source).not.toMatch(/from\s+['"][^'"]*\/ui\/notificationPolicy['"]/)
+    expect(source).not.toMatch(/\bFOCUS_GENERATION_NODE_EVENT\b/)
+    expect(source).toMatch(/\bnotifyHostOutcome\s*\(/)
+  })
+})

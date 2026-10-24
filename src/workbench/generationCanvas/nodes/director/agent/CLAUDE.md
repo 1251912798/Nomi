@@ -6,7 +6,7 @@
 > 依赖方向：本目录可 import migration/ 与 scene/（离屏出片要 three 世界），但 model/ 与 scene/ 不反向 import 这里；对外只暴露建节点入口与两个 Host。
 > 成员清单
 > stagingVocab.ts: 站位词表单一真相（布局 / 机位角度 / 高度 / 景别 / 环境 / 朝向的字面量联合 + 数值表），LLM 工具 schema 与 builder 同源
-> cameraMoveVocab.ts: 运镜词表单一真相（13 种运镜、速度 → 秒、景别 → 距离、CAMERA_MOVE_LABEL 人话）；工具调用摘要与运镜控件同源
+> cameraMoveVocab.ts: 运镜词表单一真相（13 种运镜、速度 → 秒、景别 → 距离、CAMERA_MOVE_LABEL / _EN 人话）；工具受理回执、工具摘要、运镜小片搭建、挂接提示词地板、镜头条运镜名同源
 > cameraMoveFovMath.ts: 变焦 / 希区柯克 dolly-zoom 的 FOV 数学（等价视角保持主体尺寸）
 > stagingBuilder.ts: 站位 spec → V1 形状场景（角色环形 / 直线 / 对峙布局、姿态别名 → 预设 id、机位由角度 / 高度 / 景别推）；auditStagingSpec 运行时自检（未知姿态 / 越界 → issues 人话）
 > cameraMoveBuilder.ts: 运镜 spec → V1 形状场景（主体 + 机位路径绑定：推拉 / 环绕 / 升降 / 横移 / 弧线 / 变焦，速度决定绑定时长，fov 端点走 cameraMoveFovMath）
@@ -18,8 +18,9 @@
 > createStagingReferenceNode.ts: 站位参考建节点入口：buildStagingSceneAudited → migrateScene3DState → create_nodes(kind director, meta directorProject + stagingAutoCapture)；readStagingAutoCapture。站位图接目标镜头的唯一判据与写边门：stagingAttachForTarget（与写边总闸同一条规则预判 none / missing / connect / rejected）→ stagingAttachReceipt（Agent 回执照预判说，接不上不许说「连到镜头」）；attachStagingReference（Host 出图后唯一写 composition_ref 边，连完再读画布：connected / not_connected 带一句提示）；attachDoors.guard.test.ts 拦别处直接写这条边
 > createCameraMoveReferenceNode.ts: 运镜参考建节点入口（create_camera_move 唯一调用方）：buildCameraMoveScene → 迁移 → create_nodes(kind director, meta directorProject + cameraMoveAutoCapture{targetNodeId, fps 24, frameCount, move})；readCameraMoveAutoCapture
 > DirectorHeadlessCapture.tsx: 离屏出片器：隐藏 FencedCanvas + 独立 store，只装环境 / 实体 / 播放求值 / CaptureBinder；等角色 GLB 落地（对象表里出现 characterMount）→ 按时刻序列逐帧 seek + 等两帧 → 机位 1 出片 → 一次回调 frames[]；短边可封顶（参考视频 720p）
-> StagingCaptureHost.tsx: 常驻 Host（画布壳按 components/directorCaptureHostActivation 懒挂）：扫 stagingAutoCapture → 出一张 → persistDirectorScreenshot → image 节点（stagingComposition 标记）+ director→image(reference) + 经 attachStagingReference 接镜头（composition_ref；接不上不留假边，图留在画布上，后台提示 +「定位节点」）→ 截图写回工程 outputs.screenshots → 清标志
-> CameraMoveCaptureHost.tsx: 常驻 Host（运镜小片 + 3D-BOX 整段预演两种请求，同一套重试 / 看门狗 / 落盘）：扫 cameraMoveAutoCapture → 沿机位 1 路径片段区间采 frameCount 帧（720p 封顶）→ persistDirectorFramesVideo 拼 mp4 → 写回 meta.cameraMoveVideo + 工程 outputs.videos → computeAttachCameraMove 喂目标镜头 → 清标志；看门狗 + 重试（attempt 当挂载 key 整棵重挂）；E2E 桥仅 localStorage 打标时暴露
+> StagingCaptureHost.tsx: 常驻 Host（画布壳按 components/directorCaptureHostActivation 懒挂）：扫 stagingAutoCapture → 出一张 → persistDirectorScreenshot → image 节点（stagingComposition 标记）+ director→image(reference) + 经 attachStagingReference 接镜头（composition_ref；接不上不留假边，图留在画布上，经 hostNotice 后台提示 +「定位节点」）→ 截图写回工程 outputs.screenshots → 清标志
+> CameraMoveCaptureHost.tsx: 常驻 Host（运镜小片 + 3D-BOX 整段预演两种请求，同一套重试 / 看门狗 / 落盘）：扫 cameraMoveAutoCapture → 沿机位 1 路径片段区间采 frameCount 帧（720p 封顶）→ persistDirectorFramesVideo 拼 mp4 → 写回 meta.cameraMoveVideo + 工程 outputs.videos → attachCameraMoveForNode 喂目标镜头（挂接提示经 hostNotice：后台档 +「定位节点」对准目标镜头）→ 清标志；看门狗 + 重试（attempt 当挂载 key 整棵重挂）；E2E 桥仅 localStorage 打标时暴露
+> hostNotice.ts: 两个 Host 的唯一提示出口 notifyHostOutcome：notify 后台档 + 「定位节点」（FOCUS_GENERATION_NODE_EVENT 对准提示说的那个节点；图和目标镜头常在视口外）；attachDoors.guard.test.ts 拦 Host 自己 toast / notify / 发定位事件
 > applyDirectorWrite.ts: 3D-BOX stage_shot（director.write）渲染端执行体：新建 = 编译计划建导演节点（工程 + 计划 + 修订号 + 预演标志）；补丁 = 比修订号 → 按名字应用 → 不变则 unchanged 不写 → 重编译走唯一外部写口；领域拒绝原样交回
 > directorWriteCompensation.ts: director.write 一步的撤销补偿：新建删导演节点、补丁放回导演节点 meta，两者都把要挂预演的视频节点放回提议之前（restore-node-fields）
 > directorPreviewCapture.ts: 3D-BOX 预演出片纯逻辑：整段 24fps 采帧计划（节目机位 + 等动作片段）、挂接写回 ready（唯一挂接核心，沿用提议事务身份）、重试用尽判 failed；修订变了即丢弃

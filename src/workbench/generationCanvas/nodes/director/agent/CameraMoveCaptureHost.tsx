@@ -1,10 +1,13 @@
 /**
- * [INPUT]: 依赖 react、react-i18next、../../../../../ui/toast、../../../store/generationCanvasStore、../../../model/generationCanvasTypes、../bridge/persistOutputs 的 persistDirectorFramesVideo、
+ * [INPUT]: 依赖 react、react-i18next、../../../store/generationCanvasStore、../../../model/generationCanvasTypes、../bridge/persistOutputs 的 persistDirectorFramesVideo、
  *          ../model/directorProject 的 normalizeDirectorProject、../model/directorIds 的 createOutputId、../model/directorNodeMeta 的 meta 键、../model/timeGrid 的 sceneContentEndSeconds、
- *          ./createCameraMoveReferenceNode（readCameraMoveAutoCapture / CAMERA_MOVE_CAPTURE_FPS）、./cameraMoveSchedule 的 frameTimes、./cameraMoveCaptureRetry、./attachCameraMoveForNode 的 attachCameraMoveForNode、./DirectorHeadlessCapture
+ *          ./createCameraMoveReferenceNode（readCameraMoveAutoCapture / CAMERA_MOVE_CAPTURE_FPS）、./cameraMoveSchedule 的 frameTimes、./cameraMoveCaptureRetry、./attachCameraMoveForNode 的 attachCameraMoveForNode、
+ *          ./DirectorHeadlessCapture、./hostNotice 的 notifyHostOutcome
  * [OUTPUT]: 对外提供 CameraMoveCaptureHost（常驻：扫到带 cameraMoveAutoCapture 的 director 节点 → 离屏沿机位 1 的路径片段采 N 帧 → 帧转视频桥拼 mp4 →
  *          写回节点 meta.cameraMoveVideo + 工程 outputs.videos → 喂目标镜头 video_ref → 清标志）、CameraMoveVideoResult
- * [POS]: director/agent 的 create_camera_move 执行下半场（手动运镜控件同一条路）。看门狗 + 重试：一次上下文丢失不判死，attempt 当挂载 key 整棵重挂；
+ * [POS]: director/agent 的 create_camera_move 执行下半场（Agent 工具 create_camera_move 是唯一的发起方；视频节点上的手动「运镜」控件 2026-09-12 已删）。
+ *        挂接给的提示（目标不是视频镜头、参考视频槽满、只能写成文字、切了全能参考模式）经 Host 的唯一提示出口 notifyHostOutcome：后台档 +「定位节点」对准目标镜头。
+ *        看门狗 + 重试：一次上下文丢失不判死，attempt 当挂载 key 整棵重挂；
  *        只有 done / giveUp 才清标志。E2E 桥（__nomiCanvasStore / __nomiForceCameraMoveFail）只在 localStorage 打标时生效，生产永不暴露。
  *        3D-BOX 整段预演（导演节点 directorPreview.status=rendering）是同一个 Host 的第二种请求：同一套重试 / 看门狗 / 落盘，
  *        采帧计划与挂接写回在 ./directorPreviewCapture（按时刻取节目机位、等动作片段）；用尽重试判 failed 不清标志（挡生成）。
@@ -13,7 +16,6 @@
  */
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '../../../../../ui/toast'
 import type { GenerationCanvasNode } from '../../../model/generationCanvasTypes'
 import { useGenerationCanvasStore } from '../../../store/generationCanvasStore'
 import { persistDirectorFramesVideo } from '../bridge/persistOutputs'
@@ -29,6 +31,7 @@ import { frameTimes } from './cameraMoveSchedule'
 import type { CameraMove } from '../../../../../../electron/shared/director/vocab'
 import { CAMERA_MOVE_CAPTURE_FPS, readCameraMoveAutoCapture } from './createCameraMoveReferenceNode'
 import { DirectorHeadlessCapture, referenceVideoShortSide, type HeadlessCaptureResult } from './DirectorHeadlessCapture'
+import { notifyHostOutcome } from './hostNotice'
 import { readDirectorPreview } from '../model/directorPreviewState'
 import { applyPreviewCaptured, markPreviewFailed, previewAttemptTimeoutMs, previewCapturePlan } from './directorPreviewCapture'
 
@@ -89,10 +92,15 @@ function captureWindow(project: DirectorProject): { start: number; end: number }
   return { start: 0, end: Math.max(1, scene ? sceneContentEndSeconds(scene) : 1) }
 }
 
+/** 挂接给的提示：说的是目标镜头，「定位节点」对准它；同一个镜头的提示互相替换，原因码就是这句话（挂接核只给文案）。 */
+function notifyAttach(targetNodeId: string, message: string): void {
+  notifyHostOutcome({ nodeId: targetNodeId, identity: `director-attach:${targetNodeId}`, reason: message, message })
+}
+
 function attachToTarget(targetNodeId: string, mp4Url: string, move: CameraMove | undefined): void {
   const store = useGenerationCanvasStore.getState()
   const outcome = attachCameraMoveForNode(targetNodeId, mp4Url, move)
-  if (outcome.toast) toast(outcome.toast.message, outcome.toast.level)
+  if (outcome.toast) notifyAttach(targetNodeId, outcome.toast.message)
   if (outcome.kind === 'patch') store.updateNode(targetNodeId, outcome.patch)
 }
 
@@ -125,7 +133,11 @@ async function persistPreview(nodeId: string, revision: string, sourceFingerprin
   if (!persisted.url || (originProject && !isProjectExecutionContextCurrent(originProject))) return false
   const createdAt = Date.now()
   const outcome = applyPreviewCaptured(nodeId, revision, persisted.url, persisted.assetId, { id: createOutputId(), name: title, width: capture.width, height: capture.height, duration: capture.frames.length / fps, createdAt }, sourceFingerprint)
-  if (outcome?.toast) toast(outcome.toast.message, outcome.toast.level)
+  if (outcome?.toast) {
+    // 有提示 = 挂接核看过目标镜头；预演写回 ready 时照旧记着它（没有就退回指这个导演节点）
+    const director = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === nodeId)
+    notifyAttach(readDirectorPreview(director)?.targetNodeId ?? nodeId, outcome.toast.message)
+  }
   return true
 }
 

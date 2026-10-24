@@ -1,13 +1,13 @@
 /**
  * [INPUT]: 依赖 react、react-i18next、../../../store/generationCanvasStore、../../../model/generationCanvasTypes、../bridge/persistOutputs 的 persistDirectorScreenshot、
  *          ../model/directorProject 的 normalizeDirectorProject、../model/directorIds 的 createOutputId、../model/directorNodeMeta 的 meta 键、
- *          ./createStagingReferenceNode 的 readStagingAutoCapture / attachStagingReference、./DirectorHeadlessCapture、../../../../../ui/notificationPolicy 的 notify、
- *          ../../../nodes/nodeSizing 的 FOCUS_GENERATION_NODE_EVENT
+ *          ./createStagingReferenceNode 的 readStagingAutoCapture / attachStagingReference、./DirectorHeadlessCapture、./hostNotice 的 notifyHostOutcome、
+ *          ../../../nodes/nodeSizing 的 computeMediaMetaPatch
  * [OUTPUT]: 对外提供 StagingCaptureHost：常驻挂在画布上，扫到带 stagingAutoCapture 的 director 节点 → 离屏出一张站位图 → 落 image 节点 +
  *          连 director→image(reference) + 经 attachStagingReference 接目标镜头（composition_ref）→ 截图写回工程 outputs.screenshots + 清标志
  * [POS]: director/agent 的 create_staging_reference 执行下半场。常驻而不挂在节点里：React Flow 只渲染视口内节点，挂节点里的截图永不触发（V1 根因，入籍保留）。
  *        一次只处理一个节点；结果处理失败也清标志，不让 Host 卡死。接不上目标镜头（例如模型只吃文字）不留假边：图留在画布上，
- *        后台提示一句 + 「定位节点」（图常在视口外，点了才对准它；2026-10-24 走查）。
+ *        经 Host 的唯一提示出口 notifyHostOutcome 说一句 + 「定位节点」（图常在视口外，点了才对准它；2026-10-24 走查）。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import React, { type JSX } from 'react'
@@ -22,8 +22,8 @@ import { normalizeDirectorProject } from '../model/directorProject'
 import type { DirectorProject } from '../model/directorTypes'
 import { attachStagingReference, readStagingAutoCapture } from './createStagingReferenceNode'
 import { DirectorHeadlessCapture, type HeadlessCaptureResult } from './DirectorHeadlessCapture'
-import { computeMediaMetaPatch, FOCUS_GENERATION_NODE_EVENT } from '../../../nodes/nodeSizing'
-import { notify } from '../../../../../ui/notificationPolicy'
+import { notifyHostOutcome } from './hostNotice'
+import { computeMediaMetaPatch } from '../../../nodes/nodeSizing'
 
 const STILL_TIMES = [0]
 
@@ -103,15 +103,7 @@ export function StagingCaptureHost(): JSX.Element | null {
         store.connectNodes(nodeId, imageNode.id, 'reference')
         const attach = attachStagingReference(imageNode.id, staging?.targetNodeId)
         if (attach.kind === 'not_connected') {
-          notify({
-            identity: `staging-attach:${imageNode.id}`,
-            reason: attach.reason,
-            message: attach.message,
-            type: 'warning',
-            level: 'background',
-            actionLabel: t('generationCommon.node.locateNode'),
-            onAction: () => window.dispatchEvent(new CustomEvent(FOCUS_GENERATION_NODE_EVENT, { detail: { nodeId: imageNode.id } })),
-          })
+          notifyHostOutcome({ nodeId: imageNode.id, identity: `staging-attach:${imageNode.id}`, reason: attach.reason, message: attach.message })
         }
         const current = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === nodeId)
         const project = normalizeDirectorProject(current?.meta?.[DIRECTOR_PROJECT_META_KEY] ?? node.meta?.[DIRECTOR_PROJECT_META_KEY])
