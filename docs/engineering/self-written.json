@@ -1358,6 +1358,35 @@
       "revisitWhen": "出评估结论"
     },
     {
+      "id": "ipc-invoke-failure-text",
+      "capability": "Electron invoke 失败那句话的读法：从 `Error invoking remote method '<通道>': <主进程错误 toString()>` 里读回主进程错误的类名 / Node 错误码 / 消息，给人看时剥掉外壳；以及落盘出口认「代码里定义的类名」的形状",
+      "status": "under-review",
+      "reviewBy": "2026-11-23",
+      "paths": [
+        "electron/shared/contracts/ipcInvokeFailure.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "Electron 自身：ipcMain.handle 抛出的错只把 message 送回渲染层，不传类与自定义字段",
+          "source": "https://github.com/electron/electron/blob/main/docs/api/ipc-main.md"
+        },
+        {
+          "name": "Electron contextBridge：跨世界的 Error 只拷 message、自定义属性丢，preload 里补结构也过不来",
+          "source": "https://github.com/electron/electron/blob/main/docs/api/context-bridge.md"
+        },
+        {
+          "name": "electron-trpc：主进程错误转成 TRPCError、渲染层拿到 TRPCClientError（结构完整，但要把 IPC 整体迁到 tRPC 路由）",
+          "source": "https://github.com/jsonnull/electron-trpc"
+        },
+        {
+          "name": "electron-better-ipc + serialize-error：handle 返回序列化后的错误对象（同样要改写每一个 handle 与 invoke）",
+          "source": "https://github.com/sindresorhus/electron-better-ipc"
+        }
+      ],
+      "whyNotIntegrated": "尚未下结论。现成方案都能把错误对象完整送过来，但都要换掉整条 IPC（6 个 preload 文件里 218 处 ipcRenderer.invoke 与对应的全部 handle）；在那之前 Electron 送回的那句话是渲染层拿到主进程错误类名的唯一来源，读法只能自己写一处。这里收的是原来散在 workspaceBusy / classifyError / storyboardFailureCopy 的三份私有读法（同一提交删掉），不是新长出来的能力。方向检查 docs/audit/2026-10-24-ipc-error-class-name-direction.md。",
+      "revisitWhen": "评估 IPC 迁到能传结构化错误的方案（electron-trpc / electron-better-ipc）之后出结论；迁完就删这个文件"
+    },
+    {
       "id": "gate-family",
       "capability": "仓库门岗族：一百多个 check:* 脚本（棘轮、登记表、合同、文档记账）",
       "status": "under-review",
@@ -1393,6 +1422,7 @@
       "status": "justified",
       "paths": [
         "src/design/Nomi*",
+        "src/design/iconTiers.ts",
         "src/theme/"
       ],
       "alternativesChecked": [
@@ -1407,9 +1437,17 @@
         {
           "name": "设计系统规范：token-only、禁止任意 px / hex / 默认色板",
           "source": "docs/design/nomi-design-system.md:1"
+        },
+        {
+          "name": "Tabler Icons 自带的 size / stroke 属性（默认 24 / 2，落成 SVG 表现属性）：图标四档只是这两个值的取值表加容器类，图标本身照用 Tabler，不另造图标组件",
+          "source": "node_modules/@tabler/icons-react/dist/esm/createReactComponent.mjs:13"
+        },
+        {
+          "name": "shadcn/ui Button：按钮自己的类定子图标尺寸（[&_svg]:size-4），调用处不传——iconTiers 的容器类照这个做法，只是档位值是 Nomi 的",
+          "source": "https://github.com/shadcn-ui/ui/blob/main/apps/v4/registry/new-york-v4/ui/button.tsx"
         }
       ],
-      "whyNotIntegrated": "领域约束：产品的视觉识别与密度优先的规范是 Nomi 自己的（token 翻转、天黑自动暗、一致的控件层级）；基础交互原语已经用 Mantine，不自写。这里自写的只有品牌层（登记只覆盖 Nomi 前缀的品牌组件与主题）。新增的通用交互组件（例如又一个浮层）仍应先看 Mantine / Radix 有没有。",
+      "whyNotIntegrated": "领域约束：产品的视觉识别与密度优先的规范是 Nomi 自己的（token 翻转、天黑自动暗、一致的控件层级）；基础交互原语已经用 Mantine，不自写。这里自写的只有品牌层（登记只覆盖 Nomi 前缀的品牌组件与主题，加上图标四档令牌 src/design/iconTiers.ts——四档的数值是 Nomi 拍板的视觉规范，不是通用能力）。新增的通用交互组件（例如又一个浮层）仍应先看 Mantine / Radix 有没有。",
       "revisitWhen": "0.24 S6：Tailwind 4 与 AI Elements 评估时，一并评估设计系统与它们的冲突与可替换部分",
       "revisitBy": "2026-12-31"
     },

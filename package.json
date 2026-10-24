@@ -44,9 +44,10 @@
     "test:agent-system:m0-m1": "python3 scripts/with-gates-lock.py --command \"tsc -p tests/agent-system/tsconfig.json && node --test --test-concurrency=1 .tmp/agent-system-tests/tests/agent-system/schema.node-test.mjs .tmp/agent-system-tests/tests/agent-system/contracts/l1-replay.node-test.mjs\"",
     "test:build": "pnpm run build",
     "check:filesize": "node ./scripts/check-file-sizes.mjs",
-    "check:icons": "node ./scripts/check-app-icons.cjs",
+    "check:icons": "node --test ./scripts/packaging/dmg-assets.node-test.mjs && node ./scripts/check-app-icons.cjs && node ./scripts/packaging/check-dmg-assets.mjs",
     "check:icon-semantics": "node --test ./scripts/check-icon-semantics.node-test.mjs && node ./scripts/check-icon-semantics.mjs",
     "generate:icons": "node ./scripts/generate-app-icon.cjs",
+    "render:dmg-assets": "node ./scripts/packaging/render-dmg-assets.mjs",
     "check:tokens": "node ./scripts/check-design-tokens.mjs",
     "check:dangling-tokens": "node ./scripts/check-dangling-tokens.mjs",
     "check:dangling-tailwind": "node --test ./scripts/check-dangling-tailwind.node-test.mjs && node ./scripts/check-dangling-tailwind.mjs",
@@ -97,7 +98,7 @@
     "check:tikhub-search": "node --test ./scripts/research/tikhub-search.node-test.mjs",
     "research:tikhub": "node ./scripts/research/tikhub-search.mjs",
     "gates:contracts": "python3 scripts/with-gates-lock.py -- node scripts/run-gates-contracts.mjs check:gates-chain check:gates-lock check:git-delivery check:quality-gate-workflow check:desktop-rc-workflow check:cla-workflow check:workflow-script-refs check:workflow-protected-writes check:electron-install check:icons check:icon-semantics check:filesize check:tokens check:dangling-tokens check:dangling-tailwind check:platform-archetypes check:orphan-cables check:model-certification-coverage check:root-cause-contracts check:storyboard-owner check:design-lab check:board-parity check:secrets check:symlinks check:nul-bytes check:i18n check:error-surface check:main-console check:heavy-path check:capability-lifecycle check:media-import-owner check:llm-stream-owner check:asset-evidence check:mcp-payload check:guide-mcp-hosts check:mcp-operation-constructible check:model-face-frozen check:verb-host-conformance check:mcp-scope-reachable check:mcp-tool-refs check:skill-tool-binding check:walkthrough-tool-args check:boundaries check:outbound-policy check:credential-origin check:agent-facing-tool-names check:framework-boundary check:framework-surface check:supply-chain-pins check:packaged-deps check:package-budget check:prior-art check:pr-judgement check:perf-scenarios check:self-written check:escape-ledger check:adoption-bridge check:ipc-sender-binding check:renderer-sync-ipc check:skill-ipc-coverage check:skills-format check:transport-assembly check:spend-receipt check:run-task-grant check:announced-card check:batch-machines check:test-waits check:test-temp-static check:canvas-gesture-determinism check:canvas-edge-writers check:vitest-fair-share check:agents-sync check:rule-aliases check:claude-hooks check:push-bypass check:hook-behavior check:git-path-quoting check:main-guard check:script-network-retry check:controls check:vocabularies check:store-lifetime check:concept-owners check:builtin-vendor-literals check:read-path-writes check:no-default-overwrite check:tikhub-search check:mjs-parse check:release-notes check:feedback-worker check:e2e-launch check:walkthroughs check:full-walk-catalog check:real-media-fixture check:feel check:mockup-contracts check:site check:model-availability check:model-identity check:model-schema check:tool-face check:agent-tool-face-usecases lint:ci typecheck check:reference-contract check:boundary-owners check:generation-entrances",
-    "gates": "python3 scripts/with-gates-lock.py --command \"pnpm run check:fresh-base && pnpm run gates:contracts && node ./scripts/run-gates-tests.mjs && pnpm run build && node ./scripts/stamp-gates-ok.mjs\"",
+    "gates": "python3 scripts/with-gates-lock.py --command \"pnpm run check:fresh-base && pnpm run gates:contracts && node ./scripts/run-gates-tests.mjs && pnpm run build\"",
     "check:fresh-base": "node ./scripts/check-fresh-base.mjs",
     "new:contract": "node ./scripts/new-root-cause-contract.mjs",
     "typecheck": "node ./scripts/typecheck.mjs",
@@ -219,7 +220,7 @@
     "check:batch-machines": "node ./scripts/check-batch-machines.mjs",
     "check:test-types": "node --test ./scripts/typecheck.node-test.mjs && node ./scripts/check-test-types.mjs",
     "check:gates-chain": "node --test ./scripts/gate-slimming.node-test.mjs ./scripts/run-gates-contracts.node-test.mjs ./scripts/repair-doc-gates.node-test.mjs && node ./scripts/check-gates-chain.mjs",
-    "check:quality-gate-workflow": "node --test ./scripts/validation-policy.node-test.mjs ./scripts/check-quality-gate-workflow.node-test.mjs ./scripts/ci-install-chromium.node-test.mjs ./scripts/nightly-walk-summary.node-test.mjs ./scripts/nightly-build-gate.node-test.mjs ./scripts/nightly-workflow-outputs.node-test.mjs ./scripts/nightly-walk-selection.node-test.mjs ./scripts/run-gates-tests.node-test.mjs ./scripts/ci-annotation-hygiene.node-test.mjs ./scripts/test-focused.node-test.mjs ./scripts/real-user-test-gates.node-test.mjs",
+    "check:quality-gate-workflow": "node --test ./scripts/validation-policy.node-test.mjs ./scripts/check-quality-gate-workflow.node-test.mjs ./scripts/ci-install-chromium.node-test.mjs ./scripts/nightly-walk-summary.node-test.mjs ./scripts/nightly-build-gate.node-test.mjs ./scripts/nightly-workflow-outputs.node-test.mjs ./scripts/nightly-walk-tree-guard.node-test.mjs ./scripts/nightly-walk-selection.node-test.mjs ./scripts/run-gates-tests.node-test.mjs ./scripts/ci-annotation-hygiene.node-test.mjs ./scripts/test-focused.node-test.mjs ./scripts/real-user-test-gates.node-test.mjs",
     "check:desktop-rc-workflow": "node --test ./scripts/check-desktop-rc-workflow.node-test.mjs",
     "check:workflow-protected-writes": "node --test ./scripts/check-workflow-protected-writes.node-test.mjs && node ./scripts/check-workflow-protected-writes.mjs",
     "check:workflow-script-refs": "node --test ./scripts/check-workflow-script-refs.node-test.mjs && node ./scripts/check-workflow-script-refs.mjs",
@@ -265,7 +266,7 @@
     "test:feel:browser": "python3 scripts/with-gates-lock.py --command \"pnpm run test:feel:mechanism && pnpm run test:popup-geometry\"",
     "test:popup-geometry": "python3 scripts/with-gates-lock.py -- node tests/ux/design-lab/popupGeometry.census.mjs",
     "check:error-surface": "node ./scripts/check-error-surface.mjs",
-    "gates:full": "python3 scripts/with-gates-lock.py --command \"pnpm run check:fresh-base && pnpm run gates:contracts && node ./scripts/run-gates-tests.mjs --tier=full && pnpm run build && node ./scripts/stamp-gates-ok.mjs\"",
+    "gates:full": "python3 scripts/with-gates-lock.py --command \"pnpm run check:fresh-base && pnpm run gates:contracts && node ./scripts/run-gates-tests.mjs --tier=full && pnpm run build\"",
     "test:mcp-legacy-entry": "node --test ./scripts/nomi-mcp-entry.node-test.mjs",
     "handoff:report": "node ./scripts/check-handoff.mjs",
     "test:eng-system": "node --test ./scripts/merge-preflight.node-test.mjs ./scripts/eng-metrics.node-test.mjs ./scripts/archetype-autosync-workflow.node-test.mjs ./scripts/site/released-version.node-test.mjs",
@@ -470,6 +471,26 @@
         "en",
         "zh_CN",
         "zh_TW"
+      ]
+    },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "background": "build/dmg/background.png",
+      "badgeIcon": "build/dmg/badge.png",
+      "iconSize": 128,
+      "iconTextSize": 13,
+      "contents": [
+        {
+          "x": 200,
+          "y": 180,
+          "type": "file"
+        },
+        {
+          "x": 520,
+          "y": 180,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     },
     "win": {

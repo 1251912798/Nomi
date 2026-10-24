@@ -1,7 +1,7 @@
 {
   "board": "SkillLibrary",
   "approvedOn": "2026-10-24",
-  "stage": "explored",
+  "stage": "built",
   "approval": {
     "quote": "技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。",
     "date": "2026-10-24",
@@ -131,9 +131,10 @@
         "248-button-Settings",
         "249-svg"
       ],
-      "status": "missing",
+      "status": "implemented",
       "owner": "I-libraries",
-      "note": "只核位置与样子，不在本线改。"
+      "note": "只核位置与样子，不在本线改。",
+      "assertion": "board:SkillLibrary/shell.topbar"
     },
     {
       "id": "library.tabs",
@@ -167,8 +168,9 @@
         "255-button",
         "256-span-Prompts"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/library.tabs"
     },
     {
       "id": "skill-lib.search",
@@ -191,8 +193,9 @@
         "258-svg",
         "259-input-Searchskills"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/skill-lib.search"
     },
     {
       "id": "skill-lib.import",
@@ -211,8 +214,9 @@
         "260-button-Importaskill",
         "261-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/skill-lib.import"
     },
     {
       "id": "skill-lib.new-ai",
@@ -234,8 +238,10 @@
         "263-svg",
         "264-span-New"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/skill-lib.new-ai",
+      "note": "项目库页上没开项目时禁用并说原因（真机 J-01），抽屉里照常。"
     },
     {
       "id": "skill-lib.category-nav",
@@ -319,8 +325,9 @@
         "286-span-Characterand",
         "287-span-7"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/skill-lib.category-nav"
     },
     {
       "id": "skill-lib.group",
@@ -370,8 +377,9 @@
         "350-section-Characterand",
         "351-span-Characterand"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/skill-lib.group"
     },
     {
       "id": "skill-lib.group-more",
@@ -429,8 +437,9 @@
         "353-span-All7",
         "354-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/skill-lib.group-more"
     },
     {
       "id": "skill-lib.card",
@@ -493,8 +502,9 @@
         "358-button",
         "361-button"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/skill-lib.card"
     },
     {
       "id": "skill-lib.card.cover",
@@ -510,8 +520,9 @@
         "170-svg",
         "291-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/skill-lib.card.cover"
     },
     {
       "id": "skill-lib.card.title",
@@ -572,8 +583,9 @@
         "359-span-Changeviewpo",
         "362-span-Characterexp"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/skill-lib.card.title"
     },
     {
       "id": "skill-lib.card.summary",
@@ -634,8 +646,9 @@
         "360-span-Showtherefer",
         "363-span-Createasetof"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/skill-lib.card.summary"
     },
     {
       "id": "skill-lib.drop-import",
@@ -647,9 +660,10 @@
         "zh-en"
       ],
       "candidates": [],
-      "status": "missing",
+      "status": "implemented",
       "owner": "I-libraries",
-      "note": "样张不画拖着文件时的覆盖层，行为照旧。"
+      "note": "样张不画拖着文件时的覆盖层，行为照旧。",
+      "assertion": "board:SkillLibrary/skill-lib.drop-import"
     },
     {
       "id": "skill-lib.receipt",
@@ -661,9 +675,10 @@
         "dark"
       ],
       "candidates": [],
-      "status": "missing",
+      "status": "implemented",
       "owner": "I-libraries",
-      "note": "样张不画；位置从网格上方挪到工具行下方。"
+      "note": "样张不画；位置从网格上方挪到工具行下方。",
+      "assertion": "board:SkillLibrary/skill-lib.receipt"
     },
     {
       "id": "library.devlab-specimen",
@@ -673,8 +688,9 @@
         "zh-en"
       ],
       "candidates": [],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillLibrary/library.devlab-specimen"
     },
     {
       "id": "skill-lib.type-filter",

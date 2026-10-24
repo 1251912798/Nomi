@@ -1,7 +1,7 @@
 {
   "board": "SkillDetail",
   "approvedOn": "2026-10-24",
-  "stage": "explored",
+  "stage": "built",
   "approval": {
     "quote": "技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。",
     "date": "2026-10-24",
@@ -116,8 +116,9 @@
         "002-div-技能详情",
         "028-div-Skilldetails"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillDetail/skill-detail.dialog"
     },
     {
       "id": "skill-detail.cover",
@@ -129,9 +130,10 @@
         "dark"
       ],
       "candidates": [],
-      "status": "missing",
+      "status": "implemented",
       "owner": "I-libraries",
-      "note": "封面是图片，抽取不成候选；看同名截图。"
+      "note": "封面是图片，抽取不成候选；看同名截图。",
+      "assertion": "board:SkillDetail/skill-detail.cover"
     },
     {
       "id": "skill-detail.title",
@@ -146,8 +148,9 @@
         "003-span-凝露产品广告",
         "029-span-FrostGlassSe"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillDetail/skill-detail.title"
     },
     {
       "id": "skill-detail.summary",
@@ -162,8 +165,9 @@
         "004-span-用微距水滴和环绕镜头展示",
         "030-span-AdaptFrostGl"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillDetail/skill-detail.summary"
     },
     {
       "id": "skill-detail.meta",
@@ -198,8 +202,9 @@
         "040-span",
         "041-span-LichAmnesia"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillDetail/skill-detail.meta"
     },
     {
       "id": "skill-detail.close",
@@ -216,8 +221,9 @@
         "042-button-Close",
         "043-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillDetail/skill-detail.close"
     },
     {
       "id": "skill-detail.body",
@@ -240,8 +246,9 @@
         "047-span-验收",
         "048-span-核对主体身份数量结构光影"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillDetail/skill-detail.body"
     },
     {
       "id": "skill-detail.invalid-notice",
@@ -254,9 +261,10 @@
         "dark"
       ],
       "candidates": [],
-      "status": "missing",
+      "status": "implemented",
       "owner": "I-libraries",
-      "note": "样张不画这一态。"
+      "note": "样张不画这一态。",
+      "assertion": "board:SkillDetail/skill-detail.invalid-notice"
     },
     {
       "id": "skill-detail.export",
@@ -273,8 +281,9 @@
         "049-button-Exportskillp",
         "050-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillDetail/skill-detail.export"
     },
     {
       "id": "skill-detail.delete",
@@ -286,9 +295,10 @@
         "dark"
       ],
       "candidates": [],
-      "status": "missing",
+      "status": "implemented",
       "owner": "I-libraries",
-      "note": "样张画的是内置技能，没有这颗。"
+      "note": "样张画的是内置技能，没有这颗。",
+      "assertion": "board:SkillDetail/skill-detail.delete"
     },
     {
       "id": "skill-detail.add-to-chat",
@@ -306,8 +316,10 @@
         "051-button",
         "052-span-Addtochat"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:SkillDetail/skill-detail.add-to-chat",
+      "note": "项目库页上没开项目时禁用并说原因（真机 J-01：芯片漏进下一个新建的项目）；包有问题时禁用并说「修好之前不能放进对话」。"
     },
     {
       "id": "skill-detail.use-in-node",

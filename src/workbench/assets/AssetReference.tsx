@@ -1,6 +1,7 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconArrowsLeftRight, IconPlus } from '@tabler/icons-react'
+import { ICON_TIERS } from '../../design'
 import { cn } from '../../utils/cn'
 import AssetTile, { AssetActionTile } from './AssetTile'
 import AssetPicker from './AssetPicker'
@@ -161,7 +162,7 @@ export default function AssetReference({
           selected={Boolean(plusKey) && openSlotKey === plusKey}
           onClick={() => plusKey && onTogglePicker(plusKey)}
         >
-          <IconPlus size={20} stroke={1.6} aria-hidden />
+          <IconPlus size={ICON_TIERS.bar.size} stroke={ICON_TIERS.bar.stroke} aria-hidden />
         </AssetActionTile>
         {plusKey === MERGED_ARRAY_KEY && openSlotKey === MERGED_ARRAY_KEY ? (
           <AssetPickerPopover onClose={() => onTogglePicker(MERGED_ARRAY_KEY)}>
@@ -194,14 +195,14 @@ export default function AssetReference({
                 onClick={onSwapFrames}
                 className="mt-1.5 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-nomi-line bg-nomi-paper p-0 text-nomi-ink-80 hover:bg-nomi-ink-05"
               >
-                <IconArrowsLeftRight size={16} stroke={2} aria-hidden />
+                <IconArrowsLeftRight size={ICON_TIERS.tool.size} stroke={ICON_TIERS.tool.stroke} aria-hidden />
               </button>
             ) : null}
             <div data-asset-slot={slot.key} className={cn('relative flex min-w-10 shrink-0 flex-col items-start gap-1', slotIndex === 0 && 'ml-3')}>
               {url
                 ? <AssetTile {...tileProps(url, slot.accept, slot.label)} onRemove={() => onRemove(slot, 0)} dimmed={disabled} />
                 : <AssetActionTile data-asset-add-tile="true" aria-label={t('assetLibrary.addNamed', { label: slot.label })} selected={isOpen} disabled={disabled}
-                  onClick={() => onTogglePicker(slot.key)}><IconPlus size={20} stroke={1.6} aria-hidden /></AssetActionTile>}
+                  onClick={() => onTogglePicker(slot.key)}><IconPlus size={ICON_TIERS.bar.size} stroke={ICON_TIERS.bar.stroke} aria-hidden /></AssetActionTile>}
               {labelSingles ? <span data-asset-slot-label="true" className="whitespace-nowrap text-caption leading-4 text-nomi-ink-60">{label}</span> : null}
               {isOpen && plusKey !== MERGED_ARRAY_KEY ? (
                 <AssetPickerPopover onClose={() => onTogglePicker(slot.key)}>

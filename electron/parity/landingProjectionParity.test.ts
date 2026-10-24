@@ -154,14 +154,11 @@ async function hostWireBody(candidate: PlanCandidate): Promise<Record<string, un
   const { createCatalogModuleRegistry } = await import("../capabilityCore/moduleCatalogBootstrap");
   const { compileExecutionContract } = await import("../capabilityCore/executionContract");
   const contract = compileExecutionContract(candidate, createCatalogModuleRegistry(state, { readinessByProvider: bootstrap.readinessByProvider }), {});
-  const request = provider.buildRequest({
-    moduleId: contract.moduleId, providerId: contract.providerId, modelId: contract.modelId, mode: contract.mode,
-    ...(contract.modeId ? { modeId: contract.modeId } : {}),
-    prompt: contract.prompt, parameters: contract.parameters, references: contract.references,
-    contractHash: contract.contractHash, idempotencyKey: "landing-parity",
-    ...(contract.transportModelId ? { transportModelId: contract.transportModelId } : {}),
-  } as Parameters<typeof provider.buildRequest>[0]);
-  try { await provider.submit(request, "landing-parity"); } catch { /* 假上游不回任务号：只比提交那一下 */ }
+  // 合同 → provider 输入用宿主同一个投影（运行时适配器的 prepareAuthorization），不在测试里手抄字段表：
+  // 手抄的那份漂过一次——#1207 改成靠 variantId 让线上模型名 owner 选型号后，这里还在传已删的 transportModelId（2026-10-24）。
+  const { createGenerationRuntimeAdapter } = await import("../capabilityCore/generationRuntimeAdapter");
+  const { providerRequest } = createGenerationRuntimeAdapter({ providers: [provider] }).prepareAuthorization({ contract, providerIdempotencyKey: "landing-parity" });
+  try { await provider.submit(providerRequest, "landing-parity"); } catch { /* 假上游不回任务号：只比提交那一下 */ }
   return (capture.calls[0]?.body as Record<string, unknown> | undefined) ?? "failure: no outbound request";
 }
 

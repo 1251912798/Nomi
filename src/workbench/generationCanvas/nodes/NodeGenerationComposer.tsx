@@ -2,7 +2,7 @@ import { notify } from '../../../ui/notificationPolicy'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Editor } from '@tiptap/react'
-import { NomiLoadingMark, WorkbenchIconButton } from '../../../design'
+import { ICON_TIERS, NomiLoadingMark, WorkbenchIconButton } from '../../../design'
 import { cn } from '../../../utils/cn'
 import type { LibraryPrompt } from '../../api/promptLibraryApi'
 import { useNodeEffectChips } from './NodeEffectChips'
@@ -35,9 +35,8 @@ import {
   isVideoLikeGenerationNodeKind,
 } from '../model/generationNodeKinds'
 import { resolveArchetypeForModel } from '../../../../electron/shared/modelArchetypes'
-import { applyArchetypeModeSwitch, currentArchetypeMode } from './controls/archetypeMeta'
-import { archetypeForNode, resolveModeForReferenceDemand } from '../agent/referenceEdgeCapability'
-import { addAssetUrlToNode } from './nodeAssetWrite'
+import { currentArchetypeMode } from './controls/archetypeMeta'
+import { applyPromptReferenceImages } from './promptReferenceImages'
 import { useComposerPromptExpand } from './useComposerPromptExpand'
 import { COMPOSER_MIN_USABLE_HEIGHT, NODE_COMPOSER_WIDTH } from './nodeSizing'
 import { ComposerAnchor } from './composerAnchor'
@@ -280,34 +279,15 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
         updateNode(node.id, { prompt: before })
         if (promptEditor && !promptEditor.isDestroyed) promptEditor.commands.setContent(promptToContent(before, mentionCandidates))
       } })
-      // 库 prompt 自带的参考图一并落地（此前只写 prompt，item.referenceImages 被静默丢弃——
-      // 2026-07-28 群反馈「参考被丢」家族）。当前生成方式收不下 image_ref 先促到能收的模式
-      // （与建边 auto-promote 同一把尺子），再走 addAssetUrlToNode 单源写入（去重/上限同一处）；
-      // 模型任何模式都不吃图参考 → 诚实提示只应用了文本，不写死数据。
       const referenceUrls = (item.referenceImages ?? []).map((reference) => reference.url).filter(Boolean)
       if (referenceUrls.length) {
-        const target = latestNode(node.id)
-        const archetype = target ? archetypeForNode(target) : null
-        if (target && archetype) {
-          const promotedModeId = resolveModeForReferenceDemand(
-            archetype,
-            (target.meta || {}) as Record<string, unknown>,
-            [{ slots: ['image_ref'], asset: 'image' }],
-          )
-          if (promotedModeId) {
-            updateNode(node.id, {
-              meta: applyArchetypeModeSwitch((target.meta || {}) as Record<string, unknown>, archetype, promotedModeId),
-            })
-          }
-        }
-        const outcomes = referenceUrls.map((url) => addAssetUrlToNode(node.id, 'image', url, writeAccess))
-        if (outcomes.every((outcome) => outcome.status === 'no-slot')) {
+        if (applyPromptReferenceImages(node.id, referenceUrls, writeAccess) === 'unsupported') {
           reportFeedback(t('generationCommon.composer.promptReferenceUnsupported'))
         }
       }
       void persistActiveWorkbenchProjectNow().catch(() => {})
     },
-    [mentionCandidates, node.id, node.locked, node.prompt, promptEditor, reportFeedback, t, updateNode, latestNode, writeAccess],
+    [mentionCandidates, node.id, node.locked, node.prompt, promptEditor, reportFeedback, t, updateNode, writeAccess],
   )
 
   const handleGenerate = async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -355,8 +335,6 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
       )}
       data-composer-host={host}
       style={{ cursor: 'default', userSelect: 'auto', touchAction: 'auto', ...(inFlow ? null : { zIndex: CANVAS_LAYER.nodeComposer }) }}
-      onPointerDown={(event) => event.stopPropagation()}
-      onWheel={(event) => event.stopPropagation()}
       {...(acceptsDrop ? dropHandlers : {})}
     >
       {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
@@ -520,7 +498,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
             {rerenderDirectorNodeId ? (
               <WorkbenchIconButton
                 size="sm"
-                icon={<IconRefresh size={14} stroke={2} />}
+                icon={<IconRefresh />}
                 label={t('director.agent.previewRerender')}
                 data-testid="node-composer-preview-rerender"
                 onClick={() => requestDirectorPreviewRender(rerenderDirectorNodeId)}
@@ -537,7 +515,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
                 disabled={!canGenerateNow || productionClaimBlocked || directorPreviewBlock !== null}
                 onClick={handleGenerate}
               >
-                {isGenerating ? '···' : <IconArrowUp size={16} stroke={2} aria-hidden />}
+                {isGenerating ? '···' : <IconArrowUp size={ICON_TIERS.tool.size} stroke={ICON_TIERS.tool.stroke} aria-hidden />}
               </button>
             </span>
             </>

@@ -1,20 +1,18 @@
 // R13：验证「主次分层」底栏对其它参数多的模型同样统一生效（seedream 7参数 / wan 含负向提示 / kling）。
 // 用法: node tests/ux/param-bar-models.walk.mjs
-// 隔离真 catalog + 构造含 3 个参数多模型节点的项目,逐个选中量底栏宽度+点参数摘要 pill 截图
+// 隔离目录 + 当场构造含 3 个参数多模型节点的项目（内置目录，不拷真实目录），逐个选中量底栏宽度+点参数摘要 pill 截图
 // （2026-10-24 D2：chips 摆法和「更多参数」溢出钮随旧付费卡一起删了，底栏只剩摘要 pill，点它开参数面板）。
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
-import { realNomiProfile, seedRealCredentials } from './_realProfile.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { screenshotSettled } from './_assert.mjs'
+import { makeTempDir } from '../../scripts/_test-temp.mjs'
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/parambar-models')
 fs.mkdirSync(shotsDir, { recursive: true })
 
-const base = '/tmp/nomi-parambar-models'
+const base = makeTempDir('nomi-parambar-models-')
 const settingsDir = path.join(base, 'settings'); const projectsDir = path.join(base, 'projects')
-fs.rmSync(base, { recursive: true, force: true }); fs.mkdirSync(settingsDir, { recursive: true }); fs.mkdirSync(projectsDir, { recursive: true })
-// 目录 + 凭据钥匙（Windows 的 Local State）一起进隔离副本；本走查 userData 与 settings 同目录。
-if (fs.existsSync(realNomiProfile().catalogPath)) seedRealCredentials({ settingsDir, userDataDir: settingsDir })
+fs.mkdirSync(settingsDir, { recursive: true }); fs.mkdirSync(projectsDir, { recursive: true })
 
 const mk = (id, kind, x, y, meta) => ({ id, kind, title: id, position: { x, y }, size: { width: 340, height: 270 }, prompt: '镜头', references: [], history: [], status: 'idle', categoryId: 'shots', shotIndex: 1, renderKind: 'shot-frame', meta })
 const nodes = [
@@ -22,15 +20,17 @@ const nodes = [
   mk('n-wan', 'video', 520, 120, { modelKey: 'wan2.7', modelLabel: 'Wan 2.7', modelVendor: 'apimart', archetype: { id: 'wan-2.7', modeId: 't2v' } }),
   mk('n-kling', 'video', 920, 120, { modelKey: 'kling-3.0', modelLabel: 'Kling 3.0', modelVendor: 'kie', archetype: { id: 'kling-3.0', modeId: 't2v' } }),
 ]
-// 用真实项目当模板(完整合法 payload 才能 hydrate 进画布),只替换 generationCanvas.nodes 为我的 3 个节点。
+// 项目夹具当场造（hydrate 只读 payload，见 fixtures/journey-project-fixture.mjs 头注释）。
+// 以前拿作者本机「文稿/Nomi Projects」里的一个真实项目当模板，别的机器（含夜跑）ENOENT，本机则读到用户真实资料。
 const projectId = 'parambar-models-0001'
 const projDir = path.join(projectsDir, `parambar-models-${projectId}`)
 fs.mkdirSync(path.join(projDir, '.nomi'), { recursive: true })
-const tmpl = JSON.parse(fs.readFileSync('/Users/aoqimin/Documents/Nomi Projects/未命名项目 06_18 11_56-mqiyx4om-5e071915/.nomi/project.json', 'utf8'))
-tmpl.id = projectId; tmpl.name = '多模型参数栏验证'; tmpl.lastKnownRootPath = projDir
-tmpl.payload.generationCanvas = { nodes, edges: [], selectedNodeIds: [], groups: [] }
-fs.writeFileSync(path.join(projDir, 'project.json'), JSON.stringify(tmpl))
-fs.writeFileSync(path.join(projDir, '.nomi', 'project.json'), JSON.stringify(tmpl))
+const generationCanvas = { nodes, edges: [], selectedNodeIds: [], groups: [] }
+const project = { id: projectId, name: '多模型参数栏验证', version: 2, createdAt: 1, updatedAt: 1, savedAt: 1, revision: 1, lastKnownRootPath: projDir,
+  workbenchDocument: null, timeline: null, generationCanvas,
+  payload: { workbenchDocument: null, timeline: null, generationCanvas, storyboardPlan: null, storyboardPlanCommitted: false } }
+fs.writeFileSync(path.join(projDir, 'project.json'), JSON.stringify(project))
+fs.writeFileSync(path.join(projDir, '.nomi', 'project.json'), JSON.stringify(project))
 
 let n = 0
 const snap = async (win, name) => { n += 1; await screenshotSettled(win, { path: path.join(shotsDir, `${String(n).padStart(2,'0')}-${name}.png`) }); console.log(`  · shot ${name}`) }

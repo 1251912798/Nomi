@@ -1,196 +1,147 @@
-import { groupLibraryItems, libraryGroup } from '../library/libraryGroups'
 /**
- * 提示词库面板。借鉴 infinite-canvas 的提示词库,但瘦身:库只管「靠封面挑起点 → 送上画布」,
- * AI 优化下沉到节点 composer(不在库内重复)。居中大画廊 + 遮罩;点卡片 FLIP 放大浮到中央预览。
- * 双来源:Nomi 精选(外部公开仓库,主进程聚合+1h 缓存+打包快照兜底,只读)/ 我的库(用户级·跨项目,手写可改可删)。
+ * 提示词库。放进节点提示词框的那段话的家：我的 + 内置（表情预设、效果——效果 10-24 拍板 Q1 住这里）+ 公开库（各来源）。
+ * 唯一主动作「放上画布」（新建对应类型节点 + 带参考图 + 选中，撤销删节点，Q9）；往已有节点里加走节点自己的「提示词预设」。
+ * 排版按 2026-10-24 拍板图（docs/design/boards/2026-10-24/PromptLibrary、LibraryDrawers、PromptDetail、LibraryMine、LibraryStates）：
+ *   宽页 = 页签同一行「全部 / 图片 / 视频」· 搜索 · 新建；左侧分类三段（我的 / 内置 / 公开库），右侧分组虚拟网格（6 列），首页每组一行 +「全部 N ›」；
+ *   抽屉 = 新建在标题行，第一行搜索 +「分类 ▾」（同一颗里管图片 / 视频），2 列。
+ * 数据：内置与公开库由主进程聚合（1h 缓存 + 打包快照兜底，只读）；我的库用户级跨项目、可改可删。设计卡 docs/plan/2026-10-23-skill-prompt-library-layout.md。
  */
 import React, { type JSX } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { useVirtualizer } from '@tanstack/react-virtual'
-import { IconX, IconBulb, IconRefresh, IconPlus } from '@tabler/icons-react'
+import { IconBulb, IconPlus, IconRefresh } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
-import { NomiLoadingMark, NomiWordmark, DesignEmptyState, TooltipProvider } from '../../design'
+import { DesignEmptyState, DesignSearchInput, NomiLoadingMark, NomiSegmented, WorkbenchIconButton } from '../../design'
 import { showUndoToast } from '../../utils/showUndoToast'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
-import { filterPrompts, promptSourceOptions, PROMPT_SOURCE_ALL, type LibraryPrompt, type PromptCategory } from '../api/promptLibraryApi'
-import { promptSourceKey, promptSourceDisplayLabel } from './promptDisplay'
+import { useWorkbenchStore } from '../workbenchStore'
+import { applyPromptReferenceImages } from '../generationCanvas/nodes/promptReferenceImages'
+import { matchesPromptQuery, type LibraryPrompt, type PromptCategory } from '../api/promptLibraryApi'
+import { isBuiltinPromptSourceId } from '../../../electron/shared/contracts/promptLibrary'
 import { usePromptLibrary } from './usePromptLibrary'
 import { useUserPrompts } from './useUserPrompts'
 import { PromptCard } from './PromptCard'
-import { UserPromptCard } from './UserPromptCard'
 import { UserPromptComposer } from './UserPromptComposer'
 import { PromptPreviewOverlay } from './PromptPreviewOverlay'
 import { promptDisplayTitle } from './promptDisplay'
 import { markLibraryUsed, sortByLibraryUsage, useLibraryUsageVersion } from '../library/libraryDiscovery'
-import { LibraryDiscoveryToolbar } from '../library/LibraryDiscoveryToolbar'
+import { libraryGroup } from '../library/libraryGroups'
+import {
+  LIBRARY_CATEGORY_ALL,
+  LIBRARY_SECTION_MINE,
+  buildLibrarySections,
+  libraryColumns,
+  libraryHomeCount,
+  libraryNavGroups,
+  librarySectionsView,
+  type LibraryHost,
+} from '../library/libraryLayout'
+import { LibraryCategoryMenu, LibraryCategoryNav } from '../library/LibraryCategoryNav'
+import { LibrarySectionList, type LibraryGridSpec } from '../library/LibrarySectionList'
+import { useElementWidth } from '../creation/storyboard/shotRow/useElementWidth'
 
-const GRID_GAP = 12 // gap-3
-const MIN_CARD_WIDTH = 200 // 卡片最小宽,据此推列数(窄窗自动减列,不再写死 4 列挤压)
-const COMPACT_CARD_WIDTH = 180
-const CARD_ASPECT = 3 / 4 // PromptCard 为 aspect-[4/3]，行高由实际卡宽推出，不再写死 188
-
-type Source = 'nomi' | 'mine'
-
-const SOURCE_OPTIONS: { value: Source; labelKey: 'libraries.prompt.source.mine' | 'libraries.prompt.source.nomi' }[] = [
-  { value: 'mine', labelKey: 'libraries.prompt.source.mine' },
-  { value: 'nomi', labelKey: 'libraries.prompt.source.nomi' },
-]
-
-const CATEGORY_OPTIONS: { value: PromptCategory; labelKey: 'libraries.prompt.category.all' | 'libraries.prompt.category.image' | 'libraries.prompt.category.video' }[] = [
-  { value: 'all', labelKey: 'libraries.prompt.category.all' },
-  { value: 'image', labelKey: 'libraries.prompt.category.image' },
-  { value: 'video', labelKey: 'libraries.prompt.category.video' },
-]
+/** 卡片排法（量自拍板图）：宽页 4:3 封面 + 18 标题 + 16 meta，列距 12、行距 16、组距 22，最多 6 列；抽屉 2 列、列 / 行距 10。 */
+const PROMPT_GRID: Record<LibraryHost, LibraryGridSpec> = {
+  page: { minCardWidth: 160, maxColumns: 6, columnGap: 12, rowGap: 16, sectionGap: 22, cardHeight: (width) => width * 0.75 + 41 },
+  drawer: { minCardWidth: 112, maxColumns: 4, columnGap: 10, rowGap: 10, sectionGap: 16, cardHeight: (width) => width * 0.75 + 35 },
+}
 
 type PromptLibraryContentProps = {
-  active: boolean
-  compact?: boolean
-  showHeader?: boolean
-  onClose?: () => void
+  /** page = 项目库页签（没开项目）；drawer = 项目里左栏抽屉。 */
+  host: LibraryHost
+  /** 宿主给的工具位：宽页是项目库页签那一行，抽屉是抽屉标题行。 */
+  toolbarHost: HTMLElement | null
   className?: string
 }
 
 type Selected = { prompt: LibraryPrompt; rect: DOMRect }
 
-export function PromptLibraryContent({
-  active,
-  compact = false,
-  showHeader = true,
-  onClose,
-  className,
-}: PromptLibraryContentProps): JSX.Element {
+export function PromptLibraryContent({ host, toolbarHost, className }: PromptLibraryContentProps): JSX.Element {
   const { t, i18n } = useTranslation()
-  const [source, setSource] = React.useState<Source>('nomi')
-  const [category, setCategory] = React.useState<PromptCategory>('all')
-  // 精选条目按「来源」分类导航（GPT Image 2 / Sora 2…）——治「一大片无分类难找」。默认「全部来源」。
-  const [sourceFilter, setSourceFilter] = React.useState<string>(PROMPT_SOURCE_ALL)
+  const page = host === 'page'
+  const [category, setCategory] = React.useState<string>(LIBRARY_CATEGORY_ALL)
+  const [type, setType] = React.useState<PromptCategory>('all')
   const [query, setQuery] = React.useState('')
-  const [expanded, setExpanded] = React.useState<ReadonlySet<string>>(new Set())
   const [selected, setSelected] = React.useState<Selected | null>(null)
-  const [scrollEl, setScrollEl] = React.useState<HTMLDivElement | null>(null)
   const [composing, setComposing] = React.useState(false)
   const [editing, setEditing] = React.useState<LibraryPrompt | null>(null)
+  const scrollElementRef = React.useRef<HTMLDivElement | null>(null)
+  const setScrollElement = React.useCallback((element: HTMLDivElement | null) => { scrollElementRef.current = element }, [])
   const usageVersion = useLibraryUsageVersion()
 
-  const { items, loading, error, reload } = usePromptLibrary(active)
-  const user = useUserPrompts(active)
-  const isMine = source === 'mine'
-  const activeItems = React.useMemo(
-    () => {
-      // See ProjectLibraryPage: usageVersion invalidates recency after a use.
-      void usageVersion
-      return sortByLibraryUsage(
-        isMine ? user.items : items,
-        'prompt',
-        (prompt) => prompt.id,
-        (prompt) => prompt.updatedAt ? Date.parse(prompt.updatedAt) : undefined,
-      )
-    },
-    [isMine, items, user.items, usageVersion],
-  )
-  // 来源分类只对精选列表有意义（我的库来源统一为「我的」）；按当前类型筛选后的集合派生来源项，
-  // 这样切「视频」时来源行只列出真有视频的来源，不出空类。值 = 稳定键（不随语言变），
-  // 标签按界面语言另取（promptSourceDisplayLabel）——2026-09-10 走查反馈：原先值/标签共用
-  // 投影时写死中文的 source，切语言时 chips 还是中文。
-  const sourceOptions = React.useMemo(
-    () => (isMine
-      ? []
-      : promptSourceOptions(activeItems.filter((p) => category === 'all' || p.promptType === category))
-          .map((value) => {
-            const first = activeItems.find((p) => promptSourceKey(p) === value)
-            return { value, label: first ? promptSourceDisplayLabel(first) : value }
-          })),
-    [isMine, activeItems, category],
-  )
-  // 当前来源筛选若因切类型/切来源不再存在，回落到「全部来源」，避免筛出空列表还高亮着不存在的项。
-  React.useEffect(() => {
-    if (sourceFilter !== PROMPT_SOURCE_ALL && !sourceOptions.some((option) => option.value === sourceFilter)) setSourceFilter(PROMPT_SOURCE_ALL)
-  }, [sourceOptions, sourceFilter])
-  const effectiveSource = isMine ? PROMPT_SOURCE_ALL : sourceFilter
-  const visible = React.useMemo(
-    () => filterPrompts(activeItems, category, query, effectiveSource),
-    [activeItems, category, query, effectiveSource],
-  )
+  const { items, loading, error, reload } = usePromptLibrary(true)
+  const user = useUserPrompts(true)
+  // 项目库页上没有打开的项目：「放上画布」会把节点建到一张看不见的画布上（真机 J-02），在页上禁用并说原因（C1）。
+  const needsProjectReason = page ? t('libraries.layout.needsProject') : undefined
 
-  // 响应式列数 + 由实际卡宽推出的行高（替代写死的 grid-cols-4 / 188），窄窗也不挤压、滚动不跳。
-  const [contentWidth, setContentWidth] = React.useState(0)
-  React.useEffect(() => {
-    if (!scrollEl) return
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width
-      if (w) setContentWidth(w)
-    })
-    ro.observe(scrollEl)
-    return () => ro.disconnect()
-  }, [scrollEl])
-
-  const width = contentWidth || (compact ? 416 : 920) // 测量前的合理回退（库侧栏 / 960 面板）
-  const minCardWidth = compact ? COMPACT_CARD_WIDTH : MIN_CARD_WIDTH
-  const minCols = compact ? 1 : 2
-  const maxCols = compact ? 2 : 5
-  const cols = Math.max(minCols, Math.min(maxCols, Math.floor((width + GRID_GAP) / (minCardWidth + GRID_GAP))))
-  const cardWidth = (width - (cols - 1) * GRID_GAP) / cols
-  const rowHeight = cardWidth * CARD_ASPECT + GRID_GAP
-
-  const rows = React.useMemo(() => groupLibraryItems(visible, item => libraryGroup(item, i18n.language)).flatMap(group => {
-    const header = group.label ? [{ id: group.id, group, items: [] as LibraryPrompt[] }] : []
-    if (group.collapsed && !expanded.has(group.id)) return header
-    const cards = Array.from({ length: Math.ceil(group.items.length / cols) }, (_, index) => ({
-      id: `${group.id}:${index}`, group: undefined, items: group.items.slice(index * cols, (index + 1) * cols),
+  const sections = React.useMemo(() => {
+    // See ProjectLibraryPage: usageVersion invalidates recency after a use.
+    void usageVersion
+    const typed = [...user.items, ...items].filter((prompt) => type === 'all' || prompt.promptType === type)
+    return buildLibrarySections(
+      typed,
+      (prompt) => (prompt.origin === 'user'
+        ? { segment: 'mine' }
+        : { segment: isBuiltinPromptSourceId(prompt.sourceId) ? 'builtin' : 'public', group: libraryGroup(prompt, i18n.language) }),
+      { mine: t('libraries.layout.mine'), other: t('libraries.layout.other') },
+    ).map((section) => ({
+      ...section,
+      items: sortByLibraryUsage(section.items, 'prompt', (prompt) => prompt.id, (prompt) => (prompt.updatedAt ? Date.parse(prompt.updatedAt) : undefined)),
     }))
-    return [...header, ...cards]
-  }), [visible, i18n.language, expanded, cols])
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getItemKey: index => rows[index].id,
-    getScrollElement: () => scrollEl,
-    estimateSize: index => rows[index].group ? 40 : rowHeight,
-    overscan: 3,
-  })
-
-  // 列数/行高变化（窗口缩放）后重新测量，避免虚拟化用旧行高错位。
+  }, [user.items, items, type, i18n.language, t, usageVersion])
+  const navGroups = React.useMemo(() => libraryNavGroups(sections, t('libraries.layout.all')), [sections, t])
+  // 选中的分类因为切了「图片 / 视频」而不存在了：回到「全部」，不高亮一个不存在的组。
   React.useEffect(() => {
-    rowVirtualizer.measure()
-  }, [rowVirtualizer, rowHeight, cols, rows])
+    if (category !== LIBRARY_CATEGORY_ALL && !sections.some((section) => section.id === category)) setCategory(LIBRARY_CATEGORY_ALL)
+  }, [category, sections])
 
-  React.useEffect(() => {
-    if (!active || !onClose) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !selected) onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [active, onClose, selected])
+  const spec = PROMPT_GRID[host]
+  const width = useElementWidth(scrollElementRef, 'content') ?? 0
+  const columns = libraryColumns(width, { minCardWidth: spec.minCardWidth, gap: spec.columnGap, max: spec.maxColumns })
+  const trimmedQuery = query.trim()
+  const views = React.useMemo(() => librarySectionsView(sections, {
+    category,
+    match: trimmedQuery ? (prompt) => matchesPromptQuery(prompt, trimmedQuery) : undefined,
+    homeCount: libraryHomeCount(columns),
+  }), [sections, category, trimmedQuery, columns])
 
-  // 切来源时收起编辑/新建态(避免在 Nomi 精选上下文里残留我的库表单)，并重置来源分类筛选。
-  const switchSource = React.useCallback((next: Source) => {
-    setSource(next)
-    setSourceFilter(PROMPT_SOURCE_ALL)
-    if (next !== 'mine') { setComposing(false); setEditing(null) }
-  }, [])
+  const handleOpen = React.useCallback((prompt: LibraryPrompt, rect: DOMRect) => setSelected({ prompt, rect }), [])
 
-  const handleSelect = React.useCallback((prompt: LibraryPrompt, rect: DOMRect) => {
-    setSelected({ prompt, rect })
-  }, [])
-
-  // 送上画布:按提示词类型建图/视频节点(都落分镜),prompt 直接灌入;撤销 toast 可删。
-  const handleSendToCanvas = React.useCallback((prompt: LibraryPrompt) => {
+  // 放上画布（Q9）：总是新建对应类型（图片 / 视频）的节点、带上参考图、选中它；撤销删掉这个节点。不追加到当前选中的节点。
+  // 抽屉在创作 / 分镜 / 剪辑里也开得出来：那时画布不在眼前，新节点就建在看不见的地方（与没开项目的 J-02 同一类），
+  // 所以放上之后切到生成画布，让用户看见被选中的那个节点（同「放进对话」切到创作）。
+  const handleAddToCanvas = React.useCallback((prompt: LibraryPrompt) => {
     const store = useGenerationCanvasStore.getState()
-    const node = store.addNode({
-      kind: prompt.promptType === 'video' ? 'video' : 'image',
-      prompt: prompt.prompt,
-      select: true,
+    const kind = prompt.promptType === 'video' ? 'video' : 'image'
+    const node = store.addNode({ kind, prompt: prompt.prompt, select: true })
+    const workbench = useWorkbenchStore.getState()
+    if (workbench.workspaceMode !== 'generation') workbench.setWorkspaceMode('generation')
+    // 参考图和建卡是同一个撤销点：建卡那一笔已推过撤销快照，这里不再推（否则 Ctrl+Z 先撤掉参考图、卡还在）。
+    const references = applyPromptReferenceImages(node.id, (prompt.referenceImages ?? []).map((reference) => reference.url), {
+      updateNode: (nodeId, patch) => useGenerationCanvasStore.getState().updateNode(nodeId, patch, { history: false }),
+      latestNode: (nodeId) => useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === nodeId),
     })
+    const added = t('libraries.prompt.sentToCanvas', { kind: kind === 'video' ? t('libraries.prompt.card.video') : t('libraries.prompt.card.image') })
     showUndoToast({
-      message: t('libraries.prompt.sentToCanvas', { kind: prompt.promptType === 'video' ? t('libraries.prompt.category.video') : t('libraries.prompt.storyboard') }),
+      message: references === 'unsupported' ? `${added} · ${t('generationCommon.composer.promptReferenceUnsupported')}` : added,
       onUndo: () => useGenerationCanvasStore.getState().deleteNode(node.id),
     })
     markLibraryUsed('prompt', prompt.id)
   }, [t])
 
-  const handleNew = React.useCallback(() => { setEditing(null); setComposing(true) }, [])
-  const handleEdit = React.useCallback((prompt: LibraryPrompt) => { setComposing(false); setEditing(prompt) }, [])
+  const handleNew = React.useCallback(() => {
+    setEditing(null)
+    setComposing(true)
+    setCategory(LIBRARY_SECTION_MINE)
+    setQuery('')
+  }, [])
+  const handleEdit = React.useCallback((prompt: LibraryPrompt) => {
+    setSelected(null)
+    setComposing(false)
+    setEditing(prompt)
+  }, [])
   const handleDelete = React.useCallback(async (prompt: LibraryPrompt) => {
+    setSelected(null)
     const deleted = await user.remove(prompt.id)
     if (!deleted) return
     showUndoToast({
@@ -199,236 +150,173 @@ export function PromptLibraryContent({
     })
   }, [user, t])
 
-  const showComposer = isMine && (composing || editing !== null)
-  const showNewTile = isMine && !showComposer
-
-  const sourceTabs = (
-    <div
-      className={cn('inline-flex bg-nomi-ink-05 rounded-full p-0.5', compact ? 'w-full' : 'shrink-0')}
-      role="tablist"
-      aria-label={t('libraries.prompt.sourceAria')}
-    >
-      {SOURCE_OPTIONS.map((option) => {
-        const activeOption = source === option.value
-        return (
-          <button
-            key={option.value}
-            type="button"
-            role="tab"
-            aria-selected={activeOption}
-            className={cn(
-              'rounded-full text-caption cursor-pointer border-0 bg-transparent whitespace-nowrap',
-              'transition-[background,color] duration-nomi-fast ease-nomi-fast',
-              compact ? 'min-w-0 flex-1 px-2 py-1' : 'px-3 py-1',
-              activeOption
-                ? 'bg-nomi-paper text-nomi-ink font-semibold shadow-nomi-sm'
-                : 'text-nomi-ink-60 hover:text-nomi-ink',
-            )}
-            onClick={() => switchSource(option.value)}
-          >
-            {t(option.labelKey)}
-          </button>
-        )
-      })}
-    </div>
+  const search = (
+    <DesignSearchInput
+      value={query}
+      onChange={setQuery}
+      placeholder={t('libraries.prompt.searchPlaceholder')}
+      ariaLabel={t('libraries.prompt.searchAria')}
+      className={page ? 'ml-1 w-[260px] max-w-full flex-none' : 'min-w-0 flex-1'}
+    />
+  )
+  const typeOptions = [
+    { value: 'all', label: t('libraries.prompt.category.all') },
+    { value: 'image', label: t('libraries.prompt.category.image') },
+    { value: 'video', label: t('libraries.prompt.category.video') },
+  ]
+  const tools = page ? (
+    <>
+      {/* 设计卡 ★3：分段只用在「图片 / 视频」，按内容宽（fit=content），不再在弹性父级里竖成一根柱子。 */}
+      <NomiSegmented
+        value={type}
+        onChange={(value) => setType(value as PromptCategory)}
+        ariaLabel={t('libraries.prompt.categoryAria')}
+        density="compact"
+        fit="content"
+        options={typeOptions}
+        className="ml-3 shrink-0 gap-0.5 rounded-pill p-0.5"
+        itemClassName="rounded-pill px-3 py-0"
+      />
+      {search}
+      <span className="flex-1" />
+      <button
+        type="button"
+        onClick={handleNew}
+        title={t('libraries.prompt.createAria')}
+        data-prompt-new
+        className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-pill border-0 bg-nomi-paper pl-2.5 pr-3 text-caption font-medium text-nomi-ink-80 ring-1 ring-nomi-line transition-colors hover:bg-nomi-ink-05 focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink"
+      >
+        <IconPlus size={14} stroke={1.8} className="text-nomi-ink-60" aria-hidden="true" />
+        {t('libraries.prompt.create')}
+      </button>
+    </>
+  ) : (
+    <WorkbenchIconButton size="sm" icon={<IconPlus />} label={t('libraries.prompt.createAria')} onClick={handleNew} data-prompt-new />
   )
 
-  const categoryTabs = (
-    <div
-      className={cn('inline-flex bg-nomi-ink-05 rounded-full p-0.5', compact ? 'w-full' : 'shrink-0')}
-      role="tablist"
-      aria-label={t('libraries.prompt.categoryAria')}
-    >
-      {CATEGORY_OPTIONS.map((option) => {
-        const activeOption = category === option.value
-        return (
-          <button
-            key={option.value}
-            type="button"
-            role="tab"
-            aria-selected={activeOption}
-            className={cn(
-              'rounded-full text-caption cursor-pointer border-0 bg-transparent whitespace-nowrap',
-              'transition-[background,color] duration-nomi-fast ease-nomi-fast',
-              compact ? 'min-w-0 flex-1 px-2 py-1' : 'px-3 py-1',
-              activeOption
-                ? 'bg-nomi-paper text-nomi-ink font-semibold shadow-nomi-sm'
-                : 'text-nomi-ink-60 hover:text-nomi-ink',
-            )}
-            onClick={() => setCategory(option.value)}
-          >
-            {t(option.labelKey)}
-          </button>
-        )
-      })}
-    </div>
-  )
+  const composer = composing || editing ? (
+    <UserPromptComposer
+      key={editing?.id ?? 'new'}
+      initial={editing}
+      onSubmit={async (draft) => {
+        if (editing) await user.update(editing.id, draft)
+        else await user.add(draft)
+        setComposing(false)
+        setEditing(null)
+      }}
+      onCancel={() => { setComposing(false); setEditing(null) }}
+    />
+  ) : null
 
-  // 来源分类导航（仅精选、且来源多于一个时才显）：横向可滚动的 chip 行，「全部来源」+ 各真实来源名。
-  const sourceChips = !isMine && sourceOptions.length > 1 ? (
-    <div
-      className={cn('flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', compact ? 'px-3 pb-2 -mt-0.5' : 'px-5 pb-2 -mt-1')}
-      role="tablist"
-      aria-label={t('libraries.prompt.sourceFilterAria')}
-    >
-      {[{ value: PROMPT_SOURCE_ALL, label: t('libraries.prompt.allSources') }, ...sourceOptions].map((option) => {
-        const { value, label } = option
-        const activeChip = sourceFilter === value
-        return (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={activeChip}
-            className={cn(
-              'shrink-0 rounded-full text-caption cursor-pointer border px-2.5 py-0.5 whitespace-nowrap',
-              'transition-[background,color,border-color] duration-nomi-fast ease-nomi-fast',
-              activeChip
-                ? 'bg-nomi-ink text-nomi-paper border-nomi-ink font-medium'
-                : 'bg-transparent text-nomi-ink-60 border-nomi-line hover:text-nomi-ink hover:border-nomi-ink-20',
-            )}
-            onClick={() => setSourceFilter(value)}
-          >
-            {label}
+  // 内置与公开库是同一次读取（主进程聚合，公开库离线时用磁盘缓存 / 打包快照兜底）；只有整次读取没回来才走这两种状态。
+  // 我的库是另一次读取，照常列在它们上面（LibraryStates 板：只影响那一段）。
+  const publicPending = !items.length && category !== LIBRARY_SECTION_MINE
+  const status = publicPending && loading ? (
+    <div className="flex flex-col items-center justify-center gap-3 py-16 text-nomi-ink-40" data-library-loading>
+      <NomiLoadingMark size={28} />
+      <span className="text-caption">{t('libraries.prompt.fetching')}</span>
+    </div>
+  ) : publicPending && error ? (
+    <div data-library-error title={error}>
+      <DesignEmptyState
+        title={t('libraries.prompt.fetchFailed')}
+        description={t('libraries.prompt.fetchFailedHint')}
+        density="inline"
+        action={(
+          <button type="button" onClick={reload} data-library-retry className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-pill border border-nomi-line bg-transparent px-3 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05 focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink">
+            <IconRefresh size={14} stroke={1.8} aria-hidden="true" />{t('common.retry')}
           </button>
-        )
-      })}
+        )}
+      />
+    </div>
+  ) : null
+  const hasRows = views.some((view) => view.items.length > 0)
+  const mineEmpty = category === LIBRARY_SECTION_MINE && !trimmedQuery && !composer && !user.items.some((prompt) => type === 'all' || prompt.promptType === type)
+  const emptyState = mineEmpty ? (
+    <div className="flex min-h-full items-center justify-center" data-library-mine-empty>
+      <DesignEmptyState
+        icon={<span className="grid size-11 place-items-center rounded-panel bg-nomi-ink-05 text-nomi-ink-40"><IconBulb size={20} stroke={1.5} /></span>}
+        title={t('libraries.prompt.noMine')}
+        description={t('libraries.prompt.mineEmptyHint')}
+      />
+    </div>
+  ) : !hasRows && !composer && !status ? (
+    <div data-library-no-match>
+      <DesignEmptyState title={t('libraries.prompt.noMatch')} description={t('libraries.prompt.tryAnotherFilter')} density="inline" />
     </div>
   ) : null
 
+  const renderCard = React.useCallback((prompt: LibraryPrompt) => (
+    <PromptCard
+      prompt={prompt}
+      size={host}
+      onOpen={handleOpen}
+      onEdit={prompt.origin === 'user' ? handleEdit : undefined}
+      onDelete={prompt.origin === 'user' ? (target) => { void handleDelete(target) } : undefined}
+    />
+  ), [host, handleOpen, handleEdit, handleDelete])
+  const keyOf = React.useCallback((prompt: LibraryPrompt) => prompt.id, [])
+
+  const list = (
+    <LibrarySectionList
+      views={hasRows ? views : []}
+      width={width}
+      columns={columns}
+      spec={spec}
+      size={host}
+      keyOf={keyOf}
+      renderItem={renderCard}
+      onShowAll={setCategory}
+      showCounts={category !== LIBRARY_CATEGORY_ALL || Boolean(trimmedQuery)}
+      scrollRef={setScrollElement}
+      footer={status}
+      className={page ? 'pb-8 pr-1' : 'px-3 pb-3 pt-1'}
+    >
+      {emptyState}
+    </LibrarySectionList>
+  )
+
   return (
-    <TooltipProvider delayDuration={180} skipDelayDuration={80}>
-      <>
-        <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
-          {/* 头部 */}
-          {showHeader ? (
-            <div className={cn('flex items-center gap-2 px-5 pt-4 pb-3 border-b border-nomi-line')}>
-              <IconBulb size={18} stroke={1.6} className={cn('text-nomi-accent')} />
-              <b className={cn('text-title font-bold text-nomi-ink')}>{t('libraries.prompt.title')}</b>
-              <NomiWordmark fontSize={13} className={cn('text-nomi-ink-40')} />
-              <span className={cn('text-caption text-nomi-ink-40')}>· {activeItems.length}</span>
-              <span className={cn('flex-1')} />
-              {onClose ? (
-                <button
-                  type="button"
-                  className={cn('w-7 h-7 grid place-items-center rounded-nomi-sm cursor-pointer border-0 bg-transparent', 'text-nomi-ink-40 hover:text-nomi-ink hover:bg-nomi-ink-05')}
-                  aria-label={t('libraries.prompt.closeAria')}
-                  onClick={onClose}
-                >
-                  <IconX size={16} stroke={2} />
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-
-          {/* 工具行 */}
-          <LibraryDiscoveryToolbar
-            className={compact ? 'px-3 py-3' : 'px-5 py-2.5'}
-            compact={compact}
-            query={query}
-            onQueryChange={setQuery}
-            placeholder={t('libraries.prompt.searchPlaceholder')}
-            ariaLabel={t('libraries.prompt.searchAria')}
-            leading={<>{sourceTabs}{categoryTabs}</>}
+    <div className={cn('relative flex min-h-0 flex-1 flex-col', className)} data-library-host={host} data-prompt-library>
+      {toolbarHost ? createPortal(tools, toolbarHost) : null}
+      {page ? null : (
+        <div className="flex shrink-0 gap-1.5 px-3 pb-2.5">
+          {search}
+          <LibraryCategoryMenu
+            groups={navGroups}
+            value={category}
+            onChange={setCategory}
+            ariaLabel={t('libraries.prompt.categoryMenuAria')}
+            extra={{ label: t('libraries.prompt.categoryAria'), value: type, options: typeOptions, onChange: (value) => setType(value as PromptCategory) }}
           />
-
-          {/* 来源分类导航（精选）：治「一大片无分类难找」，按数据里的来源分类。 */}
-          {sourceChips}
-
-          {/* 网格 / 状态 */}
-          <div ref={setScrollEl} className={cn('flex-1 overflow-y-auto', compact ? 'px-3 pb-3' : 'px-5 pb-5')}>
-            {showComposer ? (
-              <UserPromptComposer
-                initial={editing}
-                onSubmit={async (draft) => {
-                  if (editing) await user.update(editing.id, draft)
-                  else await user.add(draft)
-                  setComposing(false)
-                  setEditing(null)
-                }}
-                onCancel={() => { setComposing(false); setEditing(null) }}
-              />
-            ) : null}
-
-            {isMine ? (
-              <div className={cn('grid gap-3')} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-                {showNewTile ? (
-                  <button
-                    type="button"
-                    onClick={handleNew}
-                    className={cn('flex flex-col items-center justify-center gap-1.5 w-full aspect-[4/3] cursor-pointer', 'rounded-nomi border border-dashed border-nomi-line bg-transparent text-nomi-ink-40', 'hover:border-nomi-ink-30 hover:text-nomi-accent transition-colors')}
-                  >
-                    <IconPlus size={22} stroke={1.6} />
-                    <span className={cn('text-caption')}>{t('libraries.prompt.create')}</span>
-                  </button>
-                ) : null}
-                {visible.map((prompt) => (
-                  <UserPromptCard key={prompt.id} prompt={prompt} onSelect={handleSelect} onEdit={handleEdit} onDelete={handleDelete} />
-                ))}
-                {!visible.length && !user.loading && (query || category !== 'all') ? (
-                  <div className={cn('col-span-full py-10')}>
-                    <DesignEmptyState title={t('libraries.prompt.noMatch')} description={t('libraries.prompt.tryAnotherFilter')} />
-                  </div>
-                ) : null}
-              </div>
-            ) : loading && !items.length ? (
-              <div className={cn('flex flex-col items-center justify-center gap-3 py-20 text-nomi-ink-40')}>
-                <NomiLoadingMark size={28} />
-                <span className={cn('text-caption')}>{t('libraries.prompt.fetching')}</span>
-              </div>
-            ) : error && !items.length ? (
-              <DesignEmptyState
-                title={t('libraries.prompt.fetchFailed')}
-                description={error}
-                action={
-                  <button type="button" onClick={reload} className={cn('inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full cursor-pointer', 'border border-nomi-line bg-transparent text-nomi-ink-80 text-caption hover:bg-nomi-ink-05')}>
-                    <IconRefresh size={14} stroke={1.8} />{t('common.retry')}
-                  </button>
-                }
-              />
-            ) : !visible.length ? (
-              <DesignEmptyState title={t('libraries.prompt.noMatch')} description={t('libraries.prompt.tryAnotherFilter')} />
-            ) : (
-              <div style={{ height: rowVirtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
-                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const row = rows[virtualRow.index]
-                  const group = row.group
-                  return (
-                    <div
-                      key={virtualRow.key}
-                      data-index={virtualRow.index}
-                      className={cn('grid gap-3 pb-3')}
-                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${virtualRow.start}px)`, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-                    >
-                      {group ? <button type="button" disabled={!group.collapsed}
-                        aria-expanded={group.collapsed ? expanded.has(group.id) : undefined}
-                        data-library-group={group.id}
-                        onClick={() => setExpanded(previous => { const next = new Set(previous); if (next.has(group.id)) next.delete(group.id); else next.add(group.id); return next })}
-                        className="col-span-full flex h-7 items-center gap-2 rounded-nomi-sm px-2 text-left text-caption font-medium text-nomi-ink enabled:hover:bg-nomi-ink-05">
-                        {group.collapsed ? <span aria-hidden="true">{expanded.has(group.id) ? '▾' : '▸'}</span> : null}
-                        {t('libraries.gallery.groupCount', { name: group.label, count: group.items.length })}
-                      </button> : row.items.map(prompt => <PromptCard key={prompt.id} prompt={prompt} onSelect={handleSelect} />)}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+        </div>
+      )}
+      {page ? (
+        <div className="flex min-h-0 flex-1 gap-7">
+          <LibraryCategoryNav groups={navGroups} value={category} onChange={setCategory} ariaLabel={t('libraries.prompt.categoryNavAria')} />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {composer ? <div className="shrink-0 pb-3 pr-1">{composer}</div> : null}
+            {list}
           </div>
         </div>
+      ) : (
+        <>
+          {composer ? <div className="shrink-0 px-3 pb-2">{composer}</div> : null}
+          {list}
+        </>
+      )}
 
-        {selected ? (
-          <PromptPreviewOverlay
-            prompt={selected.prompt}
-            originRect={selected.rect}
-            onClose={() => setSelected(null)}
-            onSendToCanvas={handleSendToCanvas}
-          />
-        ) : null}
-      </>
-    </TooltipProvider>
+      {selected ? (
+        <PromptPreviewOverlay
+          prompt={selected.prompt}
+          originRect={selected.rect}
+          onClose={() => setSelected(null)}
+          onAddToCanvas={handleAddToCanvas}
+          addToCanvasBlockedReason={needsProjectReason}
+          onEdit={selected.prompt.origin === 'user' ? handleEdit : undefined}
+          onDelete={selected.prompt.origin === 'user' ? (target) => { void handleDelete(target) } : undefined}
+        />
+      ) : null}
+    </div>
   )
 }
-
-// 注：这里原本还有一个 PromptLibraryPanel（960px 全屏 modal 壳）。它只监听 nomi-open-prompt-library，
-// 全仓零 dispatch —— 永远打不开，用户从没见过（活的是侧栏用的 Content 版）。
-// 2026-08-02 §1.5 清死码时删除，并焊了 src/customEventWiring.test.ts 防同类复发。

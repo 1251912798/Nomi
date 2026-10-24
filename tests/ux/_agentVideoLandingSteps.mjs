@@ -77,7 +77,7 @@ export async function runAgentVideoLanding({ paid, win, askText = ASK, realMedia
   walk.report.draft = {
     runs: runs.length, runId: run?.runId,
     shots: shots.map((shot) => ({ shotId: shot.shotId, providerId: shot.candidate?.providerId, modelId: shot.candidate?.modelId,
-      variantId: shot.candidate?.variantId, transportModelId: shot.candidate?.transportModelId, parameters: shot.candidate?.parameters })),
+      variantId: shot.candidate?.variantId, parameters: shot.candidate?.parameters })),
     // 卡上那一行只读摘要（从节点现算）给用户看到的样子——和宿主要派发的那一档对照（两者不一致 = 看到的不是要付的）。
     cardSummary: ((await card.locator(CARD_BODY).first().innerText().catch(() => '')) || '').replace(/\s+/g, ' ').trim().slice(0, 200) || null,
   }

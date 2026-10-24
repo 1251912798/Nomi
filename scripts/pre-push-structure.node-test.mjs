@@ -47,6 +47,15 @@ const pkg = JSON.parse(read('package.json'))
 // 入口里不许有绕过开关：SKIP / NO_VERIFY / BYPASS 字样，或读任何带 SKIP / DISABLE / OFF 的环境变量（正文来源 NOMI_PR_BODY* 除外）
 const BYPASS_PATTERN = /SKIP|NO_VERIFY|BYPASS|process\.env\.(?!NOMI_PR_BODY)\w*(?:SKIP|DISABLE|OFF)/i
 
+// 仅登记不属于「spawn 出来的门岗子进程」的直接信号：Playwright 的 Electron 句柄由 Playwright 管生命周期，
+// with-gates-lock 单测则故意给 wrapper 发单进程信号，验证继承的锁进程仍活着。其它 scripts/ 入口必须走 processTree。
+const DIRECT_KILL_EXCEPTIONS = Object.freeze({
+  'scripts/child-process-lifecycle.mjs': '启动器保留在终端前台进程组；终端关闭时内核向整组发送 SIGHUP，改成 detached 进程组会漏掉 Electron / Vite / Tailwind 后代。',
+  'scripts/browser-live-capture-sweep.mjs': 'Playwright 管理 Electron app.close；8 秒兜底只处理 Playwright 未收掉的 app 句柄。',
+  'scripts/browser-mse-canvas-walkthrough.mjs': 'Playwright 管理 Electron app.close；8 秒兜底只处理 Playwright 未收掉的 app 句柄。',
+  'scripts/with-gates-lock.node-test.mjs': '单测需要分别验证 wrapper 直接信号与其继承子进程的锁生命周期，不能改成整组终止。',
+})
+
 
 // ── 选择器与扫描器同一份声明：契约测试（10-09 复审：tokens 漏 .css 与依赖脚本、vocabularies 漏 .mts / .cts）──────────────
 
@@ -79,7 +88,7 @@ const SCANNER_READS = {
   'test:temp-helper': ['scripts/x.node-test.mjs', 'tests/ux/y.walk.mjs', 'tests/ux/z.probe.mjs', 'scripts/check-test-temp-static.node-test.mjs', 'scripts/_test-temp.mjs'],
   'check:test-copy-literals': ['src/a.test.ts', 'electron/b.test.ts', 'scripts/c.node-test.mjs', 'tests/ux/d.walk.mjs', 'tests/ux/exempt.json', 'evals/e.test.mjs', 'packages/p/f.test.ts', 'src/i18n/locales/zh.ts', 'electron/desktopStrings.ts', 'scripts/check-test-copy-literals.mjs'],
   'test:control-contract': ['scripts/check-control-contract.test.mjs', 'scripts/control-contract-copy.mjs', 'scripts/control-contract-discarded-commands.mjs', 'scripts/_test-temp.mjs'],
-  'test:pre-push-structure': ['package.json', 'scripts/git-hooks.json', 'scripts/pre-push-structure.node-test.mjs', 'scripts/pre-push-gate-table.mjs', 'scripts/pre-push-gate-inputs.mjs', 'scripts/pre-push-contracts.mjs', 'scripts/pre-push-related-tests.mjs'],
+  'test:pre-push-structure': ['scripts/x.mjs', 'package.json', 'scripts/git-hooks.json', 'scripts/pre-push-structure.node-test.mjs', 'scripts/pre-push-gate-table.mjs', 'scripts/pre-push-gate-inputs.mjs', 'scripts/pre-push-contracts.mjs', 'scripts/pre-push-related-tests.mjs'],
   // 被登记对象 = 任何位置的测试文件（新增 / 改名 / 删除）；加上 package.json、核对脚本、登记表
   'check:scan-guard-census': ['src/workbench/x/newGuard.test.ts', 'electron/newGuard.structure.test.ts', 'scripts/newGuard.node-test.mjs', 'tests/ux/y.test.mjs', 'packages/p/z.test.ts', 'package.json', 'scripts/check-scan-guard-census.mjs', 'scripts/pre-push-scan-guards.mjs'],
   'test:quit-lifecycle-guard': ['electron/quitLifecycleGuard.test.ts', 'electron/main.ts', 'electron/x.mts', 'eslint.config.mjs'],
@@ -324,6 +333,19 @@ test('结构：本文件里只有 isolatedRun 一处直接起子进程（runNode
   assert.doesNotMatch(source.replace(/^\s*\/\/.*$/gm, ''), /\b(?:spawn|spawnSync|execFileSync|execSync|exec)\(/, '本文件不许直接起子进程')
 })
 
+test('结构：scripts/ 里 spawn 出来的子进程统一走 processTree；直接 kill 只能是具名生命周期例外', () => {
+  const files = gitPaths(['ls-files', 'scripts'], { cwd: repoRoot, maxBuffer: 256 * 1024 * 1024 })
+    .filter((file) => /\.(?:mjs|cjs|js)$/.test(file) && file !== 'scripts/lib/processTree.mjs')
+  const directKillFiles = files.filter((file) => /\.kill\s*\(/.test(read(file).replace(/\bprocess\.kill\s*\(/g, '')))
+  assert.deepEqual(directKillFiles.sort(), Object.keys(DIRECT_KILL_EXCEPTIONS).sort(), `未登记的直接 kill：${directKillFiles.join('、')}`)
+  for (const [file, reason] of Object.entries(DIRECT_KILL_EXCEPTIONS)) {
+    assert.ok(reason.length >= 20, `${file} 的直接 kill 例外理由太短`)
+  }
+  const helper = read('scripts/lib/processTree.mjs')
+  assert.match(helper, /process\.kill\(-pid, signal\)/, 'POSIX 必须按负 pid 终止进程组；退回 child.kill 不能过结构门')
+  assert.match(helper, /taskkill.*\/T.*\/F/s, 'Windows 必须保留 taskkill /T /F')
+})
+
 test('必红：钩子环境里的 GIT_DIR / GIT_INDEX_FILE 等不传给门岗与测试子进程（10-10 测试的 git init 把真仓库改成 bare）', async () => {
   const probe = ['-e', 'process.stdout.write(JSON.stringify(Object.keys(process.env).filter((k) => /^GIT_/.test(k))))']
   const result = await isolatedRun(probe, { GIT_DIR: 'C:/should-not-leak/.git', GIT_INDEX_FILE: 'x', GIT_WORK_TREE: 'y', GIT_COMMON_DIR: 'z' }, { name: 'git-env-probe', timeoutMs: 20_000 })
@@ -403,8 +425,10 @@ test('慢测试不进相关单测：pre-push-contracts.node-test.mjs 被命中�
 test('必红：假慢测试（永不退出）→ 到上限被终止、不算红、note 点名文件并说「没跑完，CI 会跑」；真红的测试照样红', async () => {
   const dir = makeTempDir('nomi-related-')
   const slow = path.join(dir, 'slow.node-test.mjs')
+  const slowPidFile = path.join(dir, 'slow.pid')
+  const descendantPidFile = path.join(dir, 'descendant.pid')
   const red = path.join(dir, 'red.node-test.mjs')
-  fs.writeFileSync(slow, ["import test from 'node:test'", "test('hang', () => new Promise(() => setInterval(() => {}, 1000)))", ''].join('\n'))
+  fs.writeFileSync(slow, ["import fs from 'node:fs'", "import { spawn } from 'node:child_process'", "import test from 'node:test'", `fs.writeFileSync(${JSON.stringify(slowPidFile)}, String(process.pid))`, `const descendant = ${['sp', 'awn'].join('')}(process.execPath, ['-e', ${JSON.stringify("setInterval(() => {}, 1000)")}], { stdio: 'ignore' }); fs.writeFileSync(${JSON.stringify(descendantPidFile)}, String(descendant.pid))`, "test('hang', () => new Promise(() => setInterval(() => {}, 1000)))", ''].join('\n'))
   fs.writeFileSync(red, ["import test from 'node:test'", "import assert from 'node:assert/strict'", "test('red', () => assert.equal(1, 2))", ''].join('\n'))
   const started = Date.now()
   const timedOut = await runRelatedTests({ vitest: [], node: [slow], browser: [], skipped: [], truncated: 0 }, isolatedRun, { budgetMs: 1500 })
@@ -413,6 +437,20 @@ test('必红：假慢测试（永不退出）→ 到上限被终止、不算红�
   assert.match(timedOut.note, /相关单测没跑完/)
   assert.match(timedOut.note, /CI 会跑/)
   assert.ok(timedOut.note.includes(slow), '要点名没跑的文件')
+  const slowPid = Number(fs.readFileSync(slowPidFile, 'utf8'))
+  const deadline = Date.now() + 3000
+  while (Date.now() < deadline) {
+    try {
+      process.kill(slowPid, 0)
+    } catch (error) {
+      if (error.code === 'ESRCH') break
+      throw error
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  assert.throws(() => process.kill(slowPid, 0), { code: 'ESRCH' }, '超时后假慢测试的 pid 仍存活')
+  const descendantPid = Number(fs.readFileSync(descendantPidFile, 'utf8'))
+  assert.throws(() => process.kill(descendantPid, 0), { code: 'ESRCH' }, '超时后假慢测试派生的 pid 仍存活')
   const failed = await runRelatedTests({ vitest: [], node: [red], browser: [], skipped: [], truncated: 0 }, isolatedRun, { budgetMs: 60_000 })
   assert.notEqual(failed.status, 0, '上限内真红必须拦')
 })

@@ -192,7 +192,7 @@ function referencesWire(candidate: PlanCandidate, context: CandidateLandingConte
 /**
  * 候选的**每一个键**过不过落地这条线——穷举表，`PlanCandidate` 新增一个键而这里没归类，typecheck 就红。
  *
- * 为什么是表、不是 spread 也不是手写对象字面量：spread 会把 `transportModelId` 这类内部投影顺着 RPC 漏给渲染层；
+ * 为什么是表、不是 spread 也不是手写对象字面量：spread 会把 `sealedContractHash` 这类内部凭据顺着 RPC 漏给渲染层；
  * 手写字面量里「故意不传」和「忘了传」长得一样（都是没出现），变体就是这样漏的（R-d2-defaults #2，2026-10-22）。
  * 表把「不传」变成一句必须写出来的理由。
  */
@@ -204,7 +204,6 @@ const CANDIDATE_LANDING_FIELDS: { readonly [K in keyof Required<PlanCandidate>]:
   modelId: (candidate) => ({ modelKey: candidate.modelId }),
   variantId: (candidate) => (candidate.variantId ? { variantId: candidate.variantId } : {}),
   modeId: (candidate) => (candidate.modeId ? { modeId: candidate.modeId } : {}),
-  transportModelId: { staysInHost: "内部投影：发出型号由节点上的 variantId 在节点路自己推，渲染层不许知道" },
   mode: (candidate) => ({ mode: candidate.mode }),
   prompt: { staysInHost: "提示词随镜走（MaterializeShotWire.prompt），不属于候选身份" },
   parameters: (candidate) => {

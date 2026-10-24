@@ -13,6 +13,16 @@
       "reason": "2026-10-22 对焦算式换成 resolveCanvasFocusViewport：把节点加选中后的生成框整体框进扣掉浮层的可见区，缩放封顶 100%；旧的只看节点的 resolveCanvasFocusZoom 同提交删除，「对焦给可读缩放、不保留总览的缩小比例」这条不变量由新算式继续守（单元测试 focusViewportRecovery.test.ts）。"
     },
     {
+      "contract": "docs/fixes/2026-08-28-persisted-localized-display-strings.root-cause.json",
+      "path": "src/workbench/promptLibrary/promptDisplay.ts",
+      "symbol": "promptDisplayTitle and promptSourceLabel",
+      "anchor": {
+        "path": "src/workbench/promptLibrary/promptDisplay.ts",
+        "symbol": "promptDisplayTitle"
+      },
+      "reason": "2026-10-24 库改版删了来源标签三个函数；精选条目的分组名由 libraryGroup 按界面语言取双语组名，自建条目不再显示来源（落盘的「我的」不再出现在界面上）；「落盘值按当前界面语言投影成显示文字」这条不变量，标题仍由 promptDisplayTitle 守，分组名由 libraryGroup 守（libraryGroups.test.ts）。"
+    },
+    {
       "contract": "docs/fixes/2026-09-25-model-catalog-sync-read-per-mount.root-cause.json",
       "path": "src/workbench/generationCanvas/nodes/controls/useChannelCreateBody.ts",
       "symbol": "createVendorMappingsReader",
@@ -490,6 +500,16 @@
         "symbol": "discard"
       },
       "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：「取消」（旧卡的 ×）的唯一执行点搬到新卡 hook 的 discard：只经 productionRunApi.discardSpend 收回这一次出价、撤排队的画布同意，不动画布节点（撤销问来源不问绑定的判据在宿主那一侧不变）。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-02-cross-device-sync-ux.root-cause.json",
+      "path": "src/workbench/assets/assetResultDeletion.ts",
+      "symbol": "buildAssetResultDeletionPlan",
+      "anchor": {
+        "path": "src/workbench/assets/assetResultDeletion.ts",
+        "symbol": "planAssetDeletion"
+      },
+      "reason": "2026-10-24 素材删除判定换成显式的 planAssetDeletion（隐式计划 { matches, fileTarget } 的 buildAssetResultDeletionPlan 同提交删除，见 docs/fixes/2026-10-24-asset-library-delete-verdict.root-cause.json）。09-02 合同的不变量「先摘结果元数据；只要剩下的结果还引用同一份项目文件就不删文件」由它承担：planAssetDeletion 判本项目文件 trash / keep，keep 的依据仍是唯一引用判定 isProjectFileReferenced（摘完以后的画布 + 时间轴），执行口 deleteAssetResult 先摘结果、只对 trash 进回收站。守它的测试：assetDeletionMatrix.test.ts（共享文件 / 封面 / 白板图层各格）、assetResultDeletion.test.ts。"
     }
   ],
   "retirements": [
@@ -984,6 +1004,30 @@
       "path": "src/workbench/ai/v4/spendCardDraft.ts",
       "symbol": "candidatePatchFromNode",
       "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：卡不再产出参数补丁（generation.revise 删除），渲染层没有「付费卡参数值」的生产者了；Agent 改稿走 generation.patch，经宿主的 JSON schema 校验，节点上的改动随画布单节点提交发出。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-07-director-canvas-image-discovery.root-cause.json",
+      "path": "src/workbench/generationCanvas/nodes/director/bridge/canvasImages.ts",
+      "symbol": "collectCanvasImages",
+      "reason": "这条锚守的是「导演台 AI 搭场景的『从画布选参考图』按结果语义收集全画布图片（含历史），不按节点种类筛」。它唯一的消费方 AI 搭场景（director/ai/）已随 8876f0c5d 删除（3D-BOX 成为唯一导演台，搭场景交给右侧 Agent 面板），之后 DirectorNode 仍订阅全画布节点表算这份列表、DirectorEditor 仍注入 CanvasImagesContext，但 useCanvasImages 一个调用方都没有（2026-10-24 导演台走查第 2 轮同类残留）。收集器 canvasImages.ts、它的单测、CanvasImagesContext 与两处接线同一提交删除；画布图片选择器这个功能已不存在，不变量失去对象。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-02-push-gate-stamp-identity.root-cause.json",
+      "path": "scripts/stamp-gates-ok.mjs",
+      "symbol": "戳的唯一签发者（写 sha/worktree/at 到 $GIT_DIR/nomi-gates-ok）",
+      "reason": "推送改由 CI 把关（用户 2026-10-24 拍板「改成 CI 把关：推分支前本机只跑快检，完整门岗交给 CI，合并照旧只认 CI 全绿和 main 上的收据」；设计卡 docs/plan/2026-10-24-push-gate-ci.md）：推送前不再要求本机 `pnpm run gates` 的通过凭据，签发脚本连同 package.json 里 gates / gates:full 末尾的调用、push 闸里的三项核验、check:push-bypass 的同 SHA 自动确认同一提交删除。凭据没了，「凭据格式与落点只有一处定义」这条不变量失去对象；「这次推送过没过」只剩 git pre-push 快检这一份事实，scripts/pre-push-check.node-test.mjs「种下一枚旧版本机门岗戳也不改变任何判决」与 scripts/check-push-bypass.node-test.mjs「有戳也不算数」钉住旧戳不再算数。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-02-gates-stamp-contract-drift.root-cause.json",
+      "path": "scripts/stamp-gates-ok.mjs",
+      "symbol": "MARKER_BASENAME / STAMP_KEYED_FIELDS / writeStamp",
+      "reason": "2026-10-24 推送改由 CI 把关（设计卡 docs/plan/2026-10-24-push-gate-ci.md）：写戳方删除，读戳方（push 闸的核验段）同一提交删除，「写戳方与读戳方指同一枚戳」这条不变量两端都没了；check:hook-behavior 的戳契约轴随之删除（P1），它现在验命令识别与绕口留痕，scripts/check-hook-behavior.node-test.mjs 的「推送前要一枚本机凭据」变异必须报红，防的是戳从别的门回来。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-07-git-path-output-read-with-default-quotepath.root-cause.json",
+      "path": "scripts/claude-hooks/pre-push-check.sh",
+      "symbol": "is_docs_only",
+      "reason": "doc-only 判据只用来判「这次推送要不要本机门岗戳」，2026-10-24 推送改由 CI 把关后随戳一起删除（设计卡 docs/plan/2026-10-24-push-gate-ci.md），push 闸不再列任何路径。「shell 侧读 git 路径列表必须关掉引号转义」这一族仍由同一份合同的 scanSource 锚（scripts/check-git-path-quoting.mjs）守住，scripts/check-git-path-quoting.node-test.mjs 的阳性对照改用 fixture 里那行原样写法（带 -z 放行、去掉 -z 报红）。"
     }
   ],
   "unverified": [
@@ -1103,11 +1147,6 @@
       "contract": "docs/fixes/2026-09-02-push-gate-stamp-identity.root-cause.json",
       "path": "scripts/claude-hooks/pre-push-check.sh",
       "symbol": "戳的三项核验（新鲜度 / STAMP_WT == ROOT / STAMP_SHA == HEAD_SHA）"
-    },
-    {
-      "contract": "docs/fixes/2026-09-02-push-gate-stamp-identity.root-cause.json",
-      "path": "scripts/stamp-gates-ok.mjs",
-      "symbol": "戳的唯一签发者（写 sha/worktree/at 到 $GIT_DIR/nomi-gates-ok）"
     },
     {
       "contract": "docs/fixes/2026-09-02-push-gate-stamp-identity.root-cause.json",

@@ -18,19 +18,9 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const outDir = path.join(repoRoot, '.relay-fallback-walk')
 fs.mkdirSync(outDir, { recursive: true })
 const NOW = new Date().toISOString()
-const TINY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABh6FO1AAAAABJRU5ErkJggg==', 'base64')
-// 出图用一张真 PNG（有内容可人眼看）；找不到就退 1x1。
-const OUT_PNG = (() => {
-  try {
-    const dir = path.join(os.homedir(), '.codex', 'generated_images')
-    for (const t of fs.readdirSync(dir)) {
-      for (const f of fs.readdirSync(path.join(dir, t))) {
-        if (f.endsWith('.png')) return fs.readFileSync(path.join(dir, t, f))
-      }
-    }
-  } catch { /* fallthrough */ }
-  return TINY_PNG
-})()
+// 出图用仓库里的一张真 PNG（有内容，人眼看得出挂没挂上）。以前去翻 ~/.codex/generated_images 拿一张——
+// 那是用户自己的 Codex 产物，走查不碰用户真实资料（scripts/check-test-temp-static.node-test.mjs 拦）。
+const OUT_PNG = fs.readFileSync(path.join(repoRoot, 'tests', 'ux', 'fixtures', 'hires-detail-1024x1792.png'))
 
 // ── mock 中转 ───────────────────────────────────────────────────────────────
 const wireLog = []

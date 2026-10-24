@@ -1,7 +1,7 @@
 {
   "board": "LibraryStates",
   "approvedOn": "2026-10-24",
-  "stage": "explored",
+  "stage": "built",
   "approval": {
     "quote": "技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。",
     "date": "2026-10-24",
@@ -118,8 +118,9 @@
         "006-svg",
         "007-span-正在读取技能"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "in-progress",
+      "owner": "D-10（协调另立账）",
+      "note": "提示词这一半已做（加载标 +「正在读取提示词…」，走查 library-layout 挂住读取验过）；板上画的是技能「正在读取技能…」——技能库现在没有加载态、读取失败显示成「没有内置技能」，是设计卡「另修」D-10，本线按任务书不修。"
     },
     {
       "id": "states.error",
@@ -141,8 +142,9 @@
         "015-button-重试",
         "016-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "in-progress",
+      "owner": "D-12（协调另立账）",
+      "note": "提示词读取失败这一屏已做（没拉到提示词 + 一句原因 + 重试，我的照常列在上面；走查 library-layout 验过）。文案按真实结构改成「内置和公开库这次没读出来」：内置与公开库是同一次读取，公开库离线有缓存 / 快照兜底，单独「公开库没拉到」这一屏在产品里出不来。板上「我的库读取失败也要显示」= 另修 D-12，本线不修。"
     },
     {
       "id": "states.no-match",
@@ -161,8 +163,9 @@
         "021-h3-没有匹配的提示词",
         "022-p-换个分类或搜索词试试"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryStates/states.no-match"
     },
     {
       "id": "states.media-expired",
@@ -186,8 +189,9 @@
         "032-strong-MittenAstron",
         "033-span-视频"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:LibraryStates/states.media-expired"
     }
   ],
   "decor": [

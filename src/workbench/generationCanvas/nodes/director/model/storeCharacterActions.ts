@@ -1,12 +1,13 @@
 /**
- * [INPUT]: 依赖 ./directorStore 的 CommitProject / StoreGet / StoreSet、./directorTypes（DirectorObject / Vec3）、./rigs（BODY_TYPE_PRESETS / mirrorBoneRotations）、./actionLibrary 的 findActionEntry
+ * [INPUT]: 依赖 ./directorStore 的 CommitProject / StoreGet / StoreSet、./directorTypes（DirectorObject / Vec3）、./rigs（BODY_TYPE_PRESETS / mirrorBoneRotations）、./actionLibrary 的 resolveActionAlias
  * [OUTPUT]: 对外提供 DirectorCharacterActions、createCharacterActions：骨骼旋转单骨写入 / 合并 / 拖动中逐帧写、全部复位 / 复位此肢体 / 左右镜像、
  *           播放头对齐骨骼关键帧、姿态预设（切换清微调）、快捷体形、骨盆偏移
  * [POS]: director/model 的角色骨骼级动作（清单 §4.1 姿态页 / 骨骼页）：写入落点由选择态决定——选中骨骼关键帧时改那一帧，否则改角色静止 boneRotations；
  *        单骨写入不快照（滑条 onChangeStart 已快照），其余每个动作一次快照。
+ *        套姿态（单人 / 整组）与改动作片段写进工程的动作 id 只存动作库正名，入口处解析别名、认不出就拒（和加人 / 群众的写口 defaultCharacterInput 一个口径）。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
-import { findActionEntry } from './actionLibrary'
+import { resolveActionAlias } from './actionLibrary'
 import { IK_POLES, IK_TARGETS, type IkHandleKey } from './ikChains'
 import { boneName, DEFAULT_CHARACTER_RIG } from './rigs'
 import { FRAME_EPSILON } from './timeGrid'
@@ -160,32 +161,35 @@ export function createCharacterActions(_set: StoreSet, get: StoreGet, commitProj
     },
 
     // 静止姿态预设 = 动作库条目（与 posePreset 同义）：角色没有动作片段时按它采样；boneRotations 的手调偏移仍叠在其上
-    // 换预设即清掉全部微调（「微调会在切换后重置」）；同一个预设不重复写
+    // 换预设即清掉全部微调（「微调会在切换后重置」）；同一个预设不重复写。
+    // 存的是正名：调用方给别名也解析成正名（姿态采样只按正名查，别名 = 绑定姿态 T 字；2026-10-24 走查 ①），认不出就拒
     applyPosePreset: (objectId, presetId) => {
-      if (!findActionEntry(presetId)) return false
+      const poseId = resolveActionAlias(presetId)?.id
+      if (!poseId) return false
       const current = get().findObject(objectId)
-      if (!current || current.posePreset === presetId) return false
+      if (!current || current.posePreset === poseId) return false
       save()
       mutateObject(objectId, (object) => {
-        object.posePreset = presetId
+        object.posePreset = poseId
         object.boneRotations = {}
       })
       return true
     },
 
     applyPosePresetToGroup: (groupId, presetId) => {
-      if (!findActionEntry(presetId)) return 0
+      const poseId = resolveActionAlias(presetId)?.id
+      if (!poseId) return 0
       const scene = get().activeScene()
       const members = get().getObjectDescendantIds(groupId).filter((id) => {
         const item = scene.objects.find((object) => object.id === id)
-        return item?.type === 'character' && item.posePreset !== presetId
+        return item?.type === 'character' && item.posePreset !== poseId
       })
       if (members.length === 0) return 0
       save()
       commitProject((_, draft) => {
         for (const object of draft.objects) {
           if (!members.includes(object.id)) continue
-          object.posePreset = presetId
+          object.posePreset = poseId
           object.boneRotations = {}
         }
       })
@@ -209,11 +213,14 @@ export function createCharacterActions(_set: StoreSet, get: StoreGet, commitProj
       })
     },
 
+    // 换片段的动作：actionPose 同样只存正名，认不出就整笔不写（名字也不改）
     updateActionClip: (objectId, clipId, patch) => {
+      const canonicalPose = patch.actionPose === undefined ? undefined : resolveActionAlias(patch.actionPose)?.id
+      if (patch.actionPose !== undefined && !canonicalPose) return
       save()
       mutateObject(objectId, (object) => {
         const clip = object.actionClips?.find((item) => item.id === clipId)
-        if (clip) Object.assign(clip, patch)
+        if (clip) Object.assign(clip, patch, canonicalPose ? { actionPose: canonicalPose } : {})
       })
     },
   }

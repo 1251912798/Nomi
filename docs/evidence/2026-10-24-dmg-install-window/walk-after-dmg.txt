@@ -1,0 +1,13 @@
+PASS 背景画框就是窗口：1x 背景图的尺寸，@2x 正好两倍 · board:DmgInstallWindow/dmg.window
+PASS 弧线从 Nomi 一侧连到「应用程序」一侧，压在图标上方 · board:DmgInstallWindow/dmg.flight-arc
+PASS 三张媒体卡：文本 → 图片 → 视频，媒体轨颜色、画布节点同款图标，不压 Finder 画的东西 · board:DmgInstallWindow/dmg.media-cards
+PASS 中英两行「第一次打开被拦」提示：原文对，在文件名下面、macOS 26 看得见的区域里 · board:DmgInstallWindow/dmg.first-open-hint
+hdiutil: info: cannot find IO media
+PASS 窗口：Finder 里的大小 = 1x 背景图，图标视图，没有工具栏和状态栏 · board:DmgInstallWindow/dmg.window
+PASS 卷名 = package.json 的 build.dmg.title（产品名 + 版本，不带架构后缀） · board:DmgInstallWindow/dmg.title
+PASS 卷图标：磁盘 + Nomi 角标（不再是应用图标本身） · board:DmgInstallWindow/dmg.volume-icon
+PASS Nomi 图标：位置、尺寸、文件名字号照 build.dmg · board:DmgInstallWindow/dmg.app-icon
+PASS 「应用程序」替身：指向 /Applications，位置照 build.dmg · board:DmgInstallWindow/dmg.applications
+PASS 背景图：1x + 2x 两档合成一张 TIFF · board:DmgInstallWindow/dmg.window
+
+10 PASS / 0 FAIL / 0 SKIP

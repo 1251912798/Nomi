@@ -11,8 +11,8 @@
  * 一镜候选的**模型身份与选择**，随落地报文过 RPC。它是画布节点模型的唯一来源：带上它，渲染层就不再
  * 自己另挑一个默认模型（那正是「agent 说的模型」与「节点上的模型」对不上的直接原因）。
  *
- * 只带身份与用户可选的维度，**绝不带 transportModelId、密钥或任何供应商凭据**：发出型号由节点上的
- * 变体在节点路自己推（`resolveArchetypeVariant`），渲染层不需要也不许知道内部投影。节点 `meta.modelKey`
+ * 只带身份与用户可选的维度，**绝不带密钥或任何供应商凭据**：发出型号在主进程发送时由线上模型名的唯一 owner
+ * （`wireModelIdentity.resolveWireModel`）按节点上的模式 / 变体与这条连接的契约解出，渲染层不需要也不许知道。节点 `meta.modelKey`
  * 与候选 `modelId` 本来就是同一个串（generationDefaultModelResolver 的 `modelId: model.modelKey`），故不造转换层。
  *
  * `revision` = PlanCandidate.revision。渲染层据它判断「这镜的意图变了没有」：变了才重绑定，没变一个字不动——

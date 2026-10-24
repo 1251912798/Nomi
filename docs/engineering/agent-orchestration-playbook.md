@@ -41,20 +41,25 @@
 
 **反例**：M1 三线撞车——两个核账班 chip 都指向同一 `-r2` 分支，用户点开后互相踩掉对方的 commit。
 
-### 2.1 交工链：gates →（碰面分支）ci-chain → push → PR → 合并前独立验收
+### 2.1 交工链：并最新 main → push（快检）→ PR → CI 全绿 → 合并前独立验收
 
 **原则**：任务书里的交工链是**一条连续动作**，不许拆散、不许跳步（2026-10-02 起评审收据一环已删，用合并前独立验收代替，见 IA）：
 
-> `pnpm run gates` → **集成 / 碰面分支再加一步** `pnpm run test:e2e:ci-chain` → `git push` → 开 PR，
+> 整合最新 `origin/main` → `git push`（git 的 pre-push 钩子自动跑快检）→ 开 PR，
 > 正文带 `## 设计卡`（四类改动 9 格全填，其余只填 ★ 格）；四类改动合并前另由一条线验收，正文带 `## 独立验收`。
+> 完整门岗以 CI 为准：CI 全绿 + 合并前扫描干净才合，合并后取 main 上的收据。
 
-**为什么多 ci-chain 这一步**（2026-09-18 加）：CI 的 desktop-linux job 那七条走查，`pnpm run gates` **一条都不含**。
+**为什么推送前只跑快检**（2026-10-24 用户拍板「改成 CI 把关：推分支前本机只跑快检，完整门岗交给 CI，合并照旧只认 CI 全绿和 main 上的收据」，设计卡 `docs/plan/2026-10-24-push-gate-ci.md`）：
+本机完整门岗占着全机一把锁，几个 PR 排队等它；CI 本来每个 PR 都跑完整门岗、各跑各的。
+快检按改动选门、一次列出全部失败项、没有缩小门岗的开关；它比完整门岗少，分支上的 CI 偶尔会红——红在分支上，进不了 main。
+`pnpm run gates` 留作本机完整自检，想在推之前自己兜底时跑，不再是推送的前提。
+
+**ci-chain 是工具，不是一步**（2026-09-18 加，2026-10-24 改）：CI 的 desktop-linux job 那七条走查，`pnpm run gates` **一条都不含**。
 2026-09-17 PR #804 本地连过五轮 gates 全绿，CI 仍连红三轮，每轮红的还是另一条不同的走查。
 `test:e2e:ci-chain` 按 CI 同序把七步一次跑完（红了继续跑，最后一张汇总表），只持一次 gates 锁。
-**判据**：每轮红的是不是同一条——每轮不同 = 发现被串行化了，不是「没找到根因」。
-功能 lane 不必跑它（`gates` 的 focused 档够用），它是给集成 / 碰面 / 开 PR 的分支的。
+CI 上一轮接一轮红在不同走查时，本机用它一次跑完七步；**判据**：每轮红的是不是同一条——每轮不同 = 发现被串行化了，不是「没找到根因」。
 
-**为什么写成链**：五门戳 30 分钟过期——任何一步回头改代码，戳随之失效。写成连续步骤，执行体才不会「先盖戳后改」把戳做成摆设。
+**为什么写成链**：CI 验的是「分支 ∪ 最新 main」的合并树，推之前不并 main，快检验的那棵树和 CI 验的不是同一棵；PR 正文是 CI 与合并前扫描判据的输入，推完不开 PR、不写正文，等于没交。
 
 ## 3. 收货三查：采纳任何分支 / 底座前的第一动作
 
@@ -104,7 +109,7 @@
 - 根因是量具错配：追平 merge 的 push 内容 99% 是 main 已有的 commit，本地钩子却要整包评审。
 - **上车流程**：`gh pr update-branch <n>`（服务端把 main 并进分支，不经本地钩子）→ CI 在 merge tree 上跑验证 → 全绿 `gh pr merge <n> --merge`。
 - 需要补小修（如 docs 索引）时：先 `update-branch` 让 remote tip ≈ main，再只 push 那个小 commit（几个文件，不撞钩子上限）。
-- **验证在本地、并线在服务端**：本地五门（`pnpm run gates`）照跑，只是并线动作交给远端。合流模型注意：2026-09-02 起本仓 `strict` 已关（PR 凭自身绿即合，见 §12），`update-branch` 从「合并前强制」降级为「工具」——远落后分支要提前拿 merge tree 的 CI 结论、或本地钩子撞 ENOBUFS 时仍用它。
+- **验证在 CI、并线在服务端**：推送前本机只过 git 钩子的快检（2026-10-24 起完整门岗以 CI 为准，§2.1），并线动作交给远端。合流模型注意：2026-09-02 起本仓 `strict` 已关（PR 凭自身绿即合，见 §12），`update-branch` 从「合并前强制」降级为「工具」——远落后分支要提前拿 merge tree 的 CI 结论、或本地钩子撞 ENOBUFS 时仍用它。
 
 **反例**：此前至少三个班都撞过本地钩子 ENOBUFS，反复试「本地 merge 再 push」反复被挡，直到改用服务端 `update-branch` 才通。
 
@@ -125,7 +130,7 @@
 **原则**：给 Codex 派码活用 **full clone 不用 git worktree**（worktree 的 `.git` 元数据在主仓路径下，Codex 的 cwd 沙箱写不了）；护栏不靠沙箱靠结构。
 
 - **禁 worktree**：worktree 的 `.git` 是指向主仓的引用文件，Codex 沙箱在主仓路径下连 `index.lock` 都写不了、代理端口也不通——它只能把活存成 patch，逼出「假 commit / 补丁接力 / fetch 反转」三类弯路。**给 Codex 一个独立 full clone 目录**。
-- **沙箱与护栏**：`--sandbox workspace-write` 连 clone 内 `.git` 都拦（疑似 VCS 硬保护）→ 码活默认 `--sandbox danger-full-access`；护栏改由**结构**兜：分支保护挡 main、push 五门闸、跨池核账后才合并。任务书仍写死「只在指定 clone 目录工作、只推 feature 分支」。
+- **沙箱与护栏**：`--sandbox workspace-write` 连 clone 内 `.git` 都拦（疑似 VCS 硬保护）→ 码活默认 `--sandbox danger-full-access`；护栏改由**结构**兜：分支保护挡 main、git 的 pre-push 快检、CI 全绿与跨池核账后才合并。任务书仍写死「只在指定 clone 目录工作、只推 feature 分支」。
 - **派工姿势**：`codex exec --cd <clone> --sandbox danger-full-access "<中文任务书>"`，用 Bash `run_in_background`（不阻塞主会话，完成有通知）。默认 **fresh 会话 + 盘上外化现场**，开局先 `gh pr view <n> --comments` 取最新裁决。
 - **resume 只用于恢复中断现场**：需要它「回忆当时设计动机」才 `codex exec resume --last` 或 `fork`（会话存 `~/.codex/sessions/`）；常规派工一律 fresh。沙箱会拦 push 外的 fetch 类操作（如 `delivery:preflight` 的 `FETCH_HEAD` 写）——非实质红，验证侧补跑。
 

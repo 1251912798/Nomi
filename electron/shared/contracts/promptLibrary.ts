@@ -10,6 +10,17 @@ export type ParsedPrompt = {
   mediaType: PromptMediaType;
 };
 
+/**
+ * 随构建走的内置包的来源 id（表情预设包 + 从技能目录投影的策展效果）。只此一份：
+ * 主进程据它把内置包前置并对历史缓存去重（builtinPacks.ts），提示词库界面据它把条目归进「内置」段、
+ * 其余公开条目归「公开库」段——两边不各猜一次（加内置包时漏改这里，builtinPacks.test.ts 会红）。
+ */
+export const BUILTIN_PROMPT_SOURCE_IDS: readonly string[] = Object.freeze(["builtin-expressions", "builtin-curated-effects"]);
+
+export function isBuiltinPromptSourceId(sourceId: string | undefined): boolean {
+  return Boolean(sourceId) && BUILTIN_PROMPT_SOURCE_IDS.includes(sourceId as string);
+}
+
 /** 提示词的参考图（网页提取的截图/原图；2026-07-22 素材面收敛随迁字段）。 */
 export type PromptReferenceImage = {
   url: string;

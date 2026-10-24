@@ -3,6 +3,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 这条走查只用本地文稿与 E2E spend bridge，不调用供应商；四路隔离目录由启动器统一注入。
 import { launchNomiApp } from './_launchApp.mjs'
 import { clickOrFail, expect, expectAbsent, expectVisible, proveProbe } from './_assert.mjs'
+import { AGENT_PANEL } from './_shell.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -82,7 +83,8 @@ try {
   const persistentSelection = editor.locator('.nomi-persistent-selection')
   await expectVisible(persistentSelection, '编辑器选区 decoration 初始可见')
   await expect(persistentSelection, '选区 decoration 包含待替换文本').toContainText('林薇在雨夜的老码头')
-  const assistantInput = win.getByLabel('创作 AI 输入')
+  // 认创作面 Agent 面板的输入框（数据属性）：「创作 AI 输入」这个标签 09-03 随死词条清理删掉了，这里一直按它找。
+  const assistantInput = win.locator(`${AGENT_PANEL}[data-agent-surface="creation"] [data-v4-control="input"]`)
   await expectVisible(assistantInput, '创作助手输入框可见')
   await assistantInput.focus()
   await assistantInput.fill('已选中，准备替换')

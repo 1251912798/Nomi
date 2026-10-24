@@ -53,7 +53,10 @@ test('真仓库当下是干净的；任意一处退回默认写法 → 门岗必
   }
   assert.equal(run(gate), 0, '真仓库当下应当全部走 -z / gitPaths')
 
-  // 阳性对照：把 pre-push 闸退回不带 -z，门岗必须红。
+  // 阳性对照：一个 shell 调用点退回不带 -z，门岗必须红；同一行带着 -z，必须放行。
+  // 那一行就是 2026-09-07 栽过的原样写法（pre-push 闸的 is_docs_only 按行读 git diff）。2026-10-24 推送前的本机门岗戳删除后
+  // push 闸不再列路径（doc-only 判据只用来判「要不要戳」，随戳一起删了），仓库里没有现成的 shell 调用点可以退回，
+  // 所以把那一行原样放进 fixture——门岗走的仍是真实的 CLI 路径、真实的目录扫描。
   // realpath：macOS 的 tmpdir 是 /var → /private/var 的符号链接，而门岗的「我是不是主模块」
   // 判据比的是 `path.resolve(process.argv[1])` 与 `import.meta.url`，前者不解符号链接。
   // 不 realpath 的话 CLI 那段根本不执行，测试拿到的 exit 0 是「没跑」而不是「跑了没问题」。
@@ -62,9 +65,9 @@ test('真仓库当下是干净的；任意一处退回默认写法 → 门岗必
   fs.mkdirSync(path.join(fixture, 'scripts/claude-hooks'), { recursive: true })
   const fixtureGate = path.join(fixture, 'scripts/check-git-path-quoting.mjs')
   fs.copyFileSync(gate, fixtureGate)
-  const hook = fs.readFileSync(path.join(repoRoot, 'scripts/claude-hooks/pre-push-check.sh'), 'utf8')
-  const regressed = hook.replaceAll('git diff -z --name-only', 'git diff --name-only')
-  assert.notEqual(regressed, hook, '替换必须真的命中，否则这条测试是空转')
-  fs.writeFileSync(path.join(fixture, 'scripts/claude-hooks/pre-push-check.sh'), regressed)
-  assert.equal(run(fixtureGate), 1, '退回默认 quotePath 的 hook 必须被门岗拦下')
+  const probe = path.join(fixture, 'scripts/claude-hooks/path-listing-probe.sh')
+  fs.writeFileSync(probe, 'is_docs_only < <(git diff -z --name-only origin/main...HEAD 2>/dev/null) && continue\n')
+  assert.equal(run(fixtureGate), 0, '带 -z 的调用点必须放行（对照组）')
+  fs.writeFileSync(probe, 'is_docs_only < <(git diff --name-only origin/main...HEAD 2>/dev/null) && continue\n')
+  assert.equal(run(fixtureGate), 1, '退回默认 quotePath 的调用点必须被门岗拦下')
 })

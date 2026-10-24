@@ -42,6 +42,13 @@
  *   aria-labelledby、也没有 `{...spread}`（展开的 props 里可能带名字，判不了就不判）= 红。
  *   `WorkbenchIconButton` 自带 label→aria-label+title，不在此列。存量按**文件计数**进基线 `unnamedIconButtons`，只减不增。
  *
+ * 规则四（2026-10-24 加，用户拍板「按钮说了算」）：**按钮里的图标不自己定尺寸**。
+ *   `WorkbenchButton` / `WorkbenchIconButton` 用 `[&>svg]` 选择器按 `iconTier`（§6 四档）给直接子图标定尺寸，
+ *   CSS 盖掉图标自己传的 size / stroke——传了也白传，评审只看代码还会以为生效（F1 第 2 轮顶栏三处就这样漏过复核）。
+ *   判据：直接子图标（WorkbenchButton 的子节点、WorkbenchIconButton 的 `icon` 属性；穿过三元 / && / || / ?? / 片段）
+ *   传 size / stroke / strokeWidth / width / height = 红；直接子节点是只装一个图标的 span / div（包一层绕开 `[&>svg]`）= 红。
+ *   要别的档位给按钮传 `iconTier`；要下拉箭头给 WorkbenchButton 传 `chevron`。存量按**文件计数**进基线 `buttonIconOverrides`，只减不增。
+ *
  * 棘轮：`scripts/icon-semantics-baseline.json` 记录存量冲突（`conflicts`）与存量词典（`dictionary`），**只减不增**。
  *   `--update-baseline` 重拍快照（只在真的清掉了冲突之后用）。
  *   `--report` 只列出全部 动作→图标 映射，不判红。
@@ -58,6 +65,19 @@ import { i18nKeyOf, isControlTag, jsxAttrsOf, jsxTagOf } from './lib/jsxControls
 const ROOT = process.cwd()
 const SCAN_ROOTS = ['src', 'electron']
 const BASELINE_FILE = path.join(ROOT, 'scripts', 'icon-semantics-baseline.json')
+
+// F1 只守四个已拍板的用户面；其它历史面仍由各自合同管理，避免把存量一次性
+// 伪装成「全仓四档」而制造无法修完的假红。
+export const ICON_TIER_SCOPE = Object.freeze([
+  'src/ui/app-shell/shell/ShellTopBar.tsx',
+  'src/workbench/taskCenter/TaskCenterButton.tsx',
+  'src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx',
+  'src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx',
+  'src/workbench/generationCanvas/nodes/InlineParameterBar.tsx',
+  'src/workbench/assets/AssetReference.tsx',
+])
+const ICON_TIER_SIZES = new Set([13, 16, 18, 24])
+const ICON_TIER_STROKES = new Set([1.5, 1.8, 2])
 
 const EXCLUDED_PREFIXES = [
   'src/devlab/', // 设计实验室：刻意并列多种画法做对照，不是产品界面
@@ -282,6 +302,138 @@ export function scanUnnamedIconButtons(root = ROOT, scanRoots = SCAN_ROOTS) {
   return found
 }
 
+/** F1 四个面中的 Tabler 数值只能落在四档；token 引用不展开，也不会被误判成硬编码。 */
+export function scanIconTierViolations(root = ROOT, scope = ICON_TIER_SCOPE) {
+  const violations = []
+  for (const rel of scope) {
+    const file = path.join(root, rel)
+    if (!fs.existsSync(file)) continue
+    const text = fs.readFileSync(file, 'utf8')
+    const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const tablerIcons = new Set()
+    source.forEachChild((node) => {
+      if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) return
+      if (!node.moduleSpecifier.text.includes('tablerIcons') && node.moduleSpecifier.text !== '@tabler/icons-react') return
+      const named = node.importClause?.namedBindings
+      if (named && ts.isNamedImports(named)) for (const el of named.elements) tablerIcons.add(el.name.text)
+    })
+    const visit = (node) => {
+      if (ts.isJsxSelfClosingElement(node) || ts.isJsxElement(node)) {
+        const tag = jsxTagOf(node)
+        if (tablerIcons.has(tag)) {
+          const attrs = ts.isJsxSelfClosingElement(node) ? node.attributes.properties : node.openingElement.attributes.properties
+          for (const attr of attrs) {
+            if (!ts.isJsxAttribute(attr) || !attr.initializer || !ts.isJsxExpression(attr.initializer)) continue
+            const name = attr.name.getText()
+            if (name !== 'size' && name !== 'stroke') continue
+            const expr = attr.initializer.expression
+            if (!expr || !ts.isNumericLiteral(expr)) continue
+            const value = Number(expr.text)
+            const allowed = name === 'size' ? ICON_TIER_SIZES : ICON_TIER_STROKES
+            if (!allowed.has(value)) {
+              const line = source.getLineAndCharacterOfPosition(attr.getStart()).line + 1
+              violations.push({ file: rel, line, icon: tag, prop: name, value })
+            }
+          }
+        }
+      }
+      node.forEachChild(visit)
+    }
+    visit(source)
+  }
+  return violations
+}
+
+/* ───────────────────────── 规则四：按钮说了算 ───────────────────────── */
+
+/** 用 `[&>svg]` 给直接子图标定档位的按钮（src/design/actions.tsx 的 iconTier）。 */
+export const ICON_OWNER_BUTTONS = Object.freeze(['WorkbenchButton', 'WorkbenchIconButton'])
+/** 图标自己定尺寸的写法：Tabler 的 size / stroke，以及透传到 svg 上的同义属性。 */
+const ICON_SIZE_PROPS = new Set(['size', 'stroke', 'strokeWidth', 'width', 'height'])
+const WRAPPER_TAGS = new Set(['span', 'div'])
+
+/** 本文件引进来的 Tabler 图标名（含 vendor/tablerIcons 的转出口）。 */
+function tablerImportsOf(source) {
+  const icons = new Set()
+  source.forEachChild((node) => {
+    if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) return
+    if (!node.moduleSpecifier.text.includes('tablerIcons') && node.moduleSpecifier.text !== '@tabler/icons-react') return
+    const named = node.importClause?.namedBindings
+    if (named && ts.isNamedImports(named)) for (const el of named.elements) icons.add(el.name.text)
+  })
+  return icons
+}
+
+/** 一个 JSX 子节点 / 表达式渲染出来的直接子元素（穿过三元、短路、括号、片段）。 */
+function renderedLeaves(node, out = []) {
+  if (!node) return out
+  if (ts.isParenthesizedExpression(node)) return renderedLeaves(node.expression, out)
+  if (ts.isJsxExpression(node)) return renderedLeaves(node.expression, out)
+  if (ts.isConditionalExpression(node)) { renderedLeaves(node.whenTrue, out); renderedLeaves(node.whenFalse, out); return out }
+  if (ts.isBinaryExpression(node)) {
+    const op = node.operatorToken.kind
+    if (op === ts.SyntaxKind.AmpersandAmpersandToken) return renderedLeaves(node.right, out)
+    if (op === ts.SyntaxKind.BarBarToken || op === ts.SyntaxKind.QuestionQuestionToken) { renderedLeaves(node.left, out); renderedLeaves(node.right, out); return out }
+    return out
+  }
+  if (ts.isJsxFragment(node)) { for (const child of node.children) renderedLeaves(child, out); return out }
+  if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) out.push(node)
+  return out
+}
+
+/**
+ * 全仓「按钮里的图标自己定尺寸」→ { 文件: [{ line, icon, kind, detail }] }。
+ *   kind = 'size-prop'：直接子图标传了 size / stroke（或 strokeWidth / width / height）；
+ *   kind = 'wrapper'：直接子节点是只装一个图标的 span / div（包一层绕开 `[&>svg]`，F1 第 1 轮的写法）。
+ */
+export function scanButtonIconOverrides(root = ROOT, scanRoots = SCAN_ROOTS) {
+  const found = {}
+  for (const scanRoot of scanRoots) {
+    for (const file of collectFiles(path.join(root, scanRoot), root, [], DICTIONARY_EXCLUDED_PREFIXES)) {
+      const text = fs.readFileSync(file, 'utf8')
+      if (!ICON_OWNER_BUTTONS.some((name) => text.includes(name))) continue
+      const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+      const tablerIcons = tablerImportsOf(source)
+      if (tablerIcons.size === 0) continue
+      const rel = path.relative(root, file).split(path.sep).join('/')
+      const record = (node, icon, kind, detail) => {
+        const line = source.getLineAndCharacterOfPosition(node.getStart()).line + 1
+        ;(found[rel] ??= []).push({ line, icon, kind, detail })
+      }
+      const judgeLeaf = (leaf, host) => {
+        const tag = jsxTagOf(leaf)
+        if (tablerIcons.has(tag)) {
+          const props = jsxAttrsOf(leaf).properties
+            .filter((attr) => ts.isJsxAttribute(attr) && ICON_SIZE_PROPS.has(attr.name.getText()))
+            .map((attr) => attr.name.getText())
+          if (props.length > 0) record(leaf, tag, 'size-prop', `${host} 里的 ${tag} 传了 ${props.join(' / ')}`)
+          return
+        }
+        if (!WRAPPER_TAGS.has(tag) || !ts.isJsxElement(leaf)) return
+        const inner = leaf.children.filter((child) => !(ts.isJsxText(child) && child.getText().trim() === ''))
+        const innerLeaves = inner.flatMap((child) => renderedLeaves(child))
+        if (inner.length === 1 && innerLeaves.length > 0 && innerLeaves.every((el) => tablerIcons.has(jsxTagOf(el)))) {
+          record(leaf, jsxTagOf(innerLeaves[0]), 'wrapper', `${host} 里用 <${tag}> 包住 ${jsxTagOf(innerLeaves[0])}`)
+        }
+      }
+      const visit = (node) => {
+        if (ts.isJsxElement(node) && jsxTagOf(node) === 'WorkbenchButton') {
+          for (const child of node.children) for (const leaf of renderedLeaves(child)) judgeLeaf(leaf, 'WorkbenchButton')
+        }
+        if ((ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) && jsxTagOf(node) === 'WorkbenchIconButton') {
+          for (const attr of jsxAttrsOf(node).properties) {
+            if (!ts.isJsxAttribute(attr) || attr.name.getText() !== 'icon' || !attr.initializer) continue
+            for (const leaf of renderedLeaves(attr.initializer)) judgeLeaf(leaf, 'WorkbenchIconButton')
+          }
+        }
+        node.forEachChild(visit)
+      }
+      visit(source)
+    }
+  }
+  return found
+}
+
 /** 冲突 = 同一动作被配了 ≥2 个不同图标（已折叠状态切换）。 */
 export function findConflicts(pairs) {
   const conflicts = []
@@ -330,6 +482,16 @@ if (REPORT) {
 const conflictIds = conflicts.map(conflictId).sort()
 const unnamed = scanUnnamedIconButtons()
 const unnamedCounts = Object.fromEntries(Object.entries(unnamed).map(([f, lines]) => [f, lines.length]).sort(([a], [b]) => a.localeCompare(b)))
+const overrides = scanButtonIconOverrides()
+const overrideCounts = Object.fromEntries(Object.entries(overrides).map(([f, hits]) => [f, hits.length]).sort(([a], [b]) => a.localeCompare(b)))
+const iconTierViolations = scanIconTierViolations()
+
+if (iconTierViolations.length > 0) {
+  console.error('❌ check:icon-semantics F1 四档 —— 目标面出现四档之外的 Tabler size / stroke：')
+  for (const violation of iconTierViolations) console.error(`  ✗ ${violation.file}:${violation.line} ${violation.icon} ${violation.prop}=${violation.value}`)
+  console.error('修法：引用 src/design/iconTiers.ts 的 ICON_TIERS，不在调用处写新档位。')
+  process.exit(1)
+}
 
 const savedRaw = fs.existsSync(BASELINE_FILE) ? JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8')) : {}
 
@@ -343,6 +505,8 @@ if (UPDATE_BASELINE) {
         + '要先登记进 docs/design/nomi-design-system.md §6「语义图标登记」表；不再用的图标从这里删。',
       unnamedIconButtonsNote: '存量「纯图标、没名字」的原生 button，按文件计数；只减不增（规则三）。新按钮请用 WorkbenchIconButton 或自己补 aria-label + title。',
       unnamedIconButtons: unnamedCounts,
+      buttonIconOverridesNote: '存量「Workbench(Icon)Button 里的图标自己传 size / stroke（或包一层 span）」，按文件计数；只减不增（规则四）。按钮说了算：要别的档位给按钮传 iconTier，下拉箭头用 chevron。',
+      buttonIconOverrides: overrideCounts,
       conflicts: conflictIds,
       dictionary: icons,
     }, null, 2)}\n`,
@@ -385,6 +549,22 @@ if (unnamedOver.length > 0) {
   process.exit(1)
 }
 
+const overrideBaseline = savedRaw.buttonIconOverrides ?? {}
+const overrideOver = Object.entries(overrides).filter(([file, hits]) => hits.length > (overrideBaseline[file] ?? 0))
+if (overrideOver.length > 0) {
+  console.error(`❌ check:icon-semantics 规则四 —— ${overrideOver.length} 个文件里，按钮里的图标在自己定尺寸：
+`)
+  for (const [file, hits] of overrideOver) {
+    console.error(`  ✗ ${file}（基线 ${overrideBaseline[file] ?? 0} 处，现 ${hits.length} 处）`)
+    for (const hit of hits) console.error(`      :${hit.line} ${hit.detail}`)
+  }
+  console.error(`
+按钮说了算（用户 2026-10-24 拍板，设计系统 §6）：WorkbenchButton / WorkbenchIconButton 用 [&>svg] 给直接子图标定尺寸，
+图标自己传的 size / stroke 会被 CSS 静默盖掉；包一层 span 绕开选择器就成了第二种写法。
+修法：图标不传 size / stroke；要别的档位给按钮传 iconTier（corner / tool / bar / empty）；要下拉箭头给 WorkbenchButton 传 chevron。`)
+  process.exit(1)
+}
+
 if (unregistered.length > 0) {
   console.error(`❌ check:icon-semantics —— ${unregistered.length} 个图标不在词典里：\n`)
   for (const icon of unregistered) {
@@ -402,6 +582,11 @@ if (unregistered.length > 0) {
 }
 
 const retired = dictionaryBaseline.filter((icon) => !dictionary.has(icon))
+const overrideTotal = Object.values(overrideCounts).reduce((sum, n) => sum + n, 0)
+const overrideBaselineTotal = Object.values(overrideBaseline).reduce((sum, n) => sum + n, 0)
+if (overrideTotal < overrideBaselineTotal) {
+  console.log(`ℹ️ 规则四存量从 ${overrideBaselineTotal} 处降到 ${overrideTotal} 处 —— 跑 --update-baseline 把基线降下来锁住战果。`)
+}
 if (removed.length > 0) {
   console.log(`✅ check:icon-semantics 通过；顺带清掉了 ${removed.length} 个存量冲突 —— 跑 --update-baseline 把基线降下来。`)
 } else {

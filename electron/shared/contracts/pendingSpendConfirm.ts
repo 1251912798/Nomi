@@ -23,7 +23,7 @@ export function spendReferenceKey(reference: GenerationReference): string {
 /**
  * 付费卡上的一镜（D2 第③步）。卡**不**带这一镜要发什么（提示词、参数、参考、价格）——那些只住在画布节点上，
  * 卡上的指向元素和那一行只读摘要都读节点本身（一个东西一个家）。这里只有节点读不到的事实：它是出价里的第几镜、
- * 指向哪个节点、Agent 起草时选的模型（「Nomi 选的」判据）、在这一次出价里走到了哪一步。
+ * 指向哪个节点、Agent 起草时选的模型（「Nomi 选的」判据）、在这一次出价里走到了哪一步。绝不含密钥或供应商 URL。
  */
 export type PendingSpendShot = Readonly<{
   shotId: string;

@@ -10,7 +10,9 @@ import InlineParameterBar from './InlineParameterBar'
 import type { DynamicModelControl } from './controls/parameterControlModel'
 
 const captured = vi.hoisted(() => ({ selects: [] as NomiSelectProps[], iconButtons: [] as WorkbenchIconButtonProps[] }))
-vi.mock('../../../design', () => ({
+vi.mock('../../../design', async () => ({
+  // 摘要 pill 的 ▾ 是按钮外的裸图标，尺寸取四档真相源；用真值，不在测试里抄第二份数字。
+  ICON_TIERS: (await vi.importActual<typeof import('../../../design/iconTiers')>('../../../design/iconTiers')).ICON_TIERS,
   NomiSelect: (props: NomiSelectProps) => {
     captured.selects.push(props)
     return React.createElement('span', null, props.options.find(option => option.value === props.value)?.label)

@@ -2,7 +2,8 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // R13 验收走查（提示词库第三方示例媒体 · 2026-09-25 用户 Mac 控制台：
 // cdn.openai.com/sora/videos/*.mp4 被 COEP 拦、video.twimg.com/*.mp4 403）。
 //
-// 这条走查验的是界面那一半：侧栏「提示词」展开 Sora 两组，示例视频能出的出，出不了的（来源站点删了 /
+// 这条走查验的是界面那一半：侧栏「提示词」的「分类 ▾」里逐个选 Sora 两个来源（2026-10-24 改版：来源 chip 那一排并进了这颗菜单，
+// 选一个来源 = 这一组全部摊开，不再有收起的组头），示例视频能出的出，出不了的（来源站点删了 /
 // 在当前网络下防盗链）显示「示例已失效」而不是黑框；点开失效那张，预览里同样是失效说明。
 // COEP 那一半（require-corp → credentialless）Windows 版本来不开隔离、走查进程也关隔离（NOMI_E2E），
 // 由 electron/shared/crossOriginIsolation.ts 里记的真机探针矩阵作证，不在这里假装验到。
@@ -64,15 +65,16 @@ try {
   await stage.waitFor({ state: 'visible', timeout: stationTimeout() })
 
   await openRailDrawer(win, 'prompts', '侧栏「提示词库」')
-  await win.waitForTimeout(1500)
+  const pickSource = async (source) => {
+    await win.locator('[data-shell-drawer="prompts"] [data-library-category-menu]').click()
+    await win.getByTestId('library-category-menu').getByRole('menuitemradio').filter({ hasText: source }).first().click()
+    await win.getByTestId('library-category-menu').waitFor({ state: 'detached' }).catch(() => {})
+  }
   // 逐个点 Sora 两个来源（推特那组 = Sora 2，openai 那组 = Sora 官方），等媒体落定再数。
   const tally = { videos: 0, loadedVideos: 0, expired: 0 }
-  for (const [index, source] of [/^Sora 2$/, /^Sora (官方|official)$/i].entries()) {
-    await win.locator('[data-shell-drawer="prompts"] button', { hasText: source }).first().click()
-    await win.waitForTimeout(800)
-    // 超过 4 条的来源组默认收起：像用户一样点开组头。
-    const collapsed = win.locator('[data-shell-drawer="prompts"] button[data-library-group][aria-expanded="false"]').first()
-    if (await collapsed.count()) await collapsed.click()
+  for (const [index, source] of [/^Sora 2\s*\d*$/, /^Sora (官方|official)\s*\d*$/i].entries()) {
+    await pickSource(source)
+    await win.locator('[data-shell-drawer="prompts"] [data-prompt-card]').first().waitFor({ timeout: stationTimeout() })
     // 远端示例视频有大有小（Sora 官方 tokyo-walk 48MB、moov 在文件尾），固定等几秒会把「还在加载」当成「黑框」。
     // 逐张等到落定：出了首帧，或者报错被换成「示例已失效」；45 秒还在加载的如实报出来。
     const readCounts = () => win.evaluate(() => {
@@ -97,11 +99,8 @@ try {
   check('没有卡在黑框：每张示例要么出了首帧，要么是「示例已失效」', tally.videos === tally.loadedVideos, JSON.stringify(tally))
 
   // 回到推特那组找失效卡点开（Sora 2 里有已被删除的示例）。
-  await win.locator('[data-shell-drawer="prompts"] button', { hasText: /^Sora 2$/ }).first().click()
-  await win.waitForTimeout(800)
-  const collapsedAgain = win.locator('[data-shell-drawer="prompts"] button[data-library-group][aria-expanded="false"]').first()
-  if (await collapsedAgain.count()) await collapsedAgain.click()
-  await win.waitForTimeout(1500)
+  await pickSource(/^Sora 2\s*\d*$/)
+  await win.locator('[data-shell-drawer="prompts"] [data-prompt-card]').first().waitFor({ timeout: stationTimeout() })
   const expiredCard = win.locator('[data-shell-drawer="prompts"] button:has([data-example-media-expired])').first()
   if (await expiredCard.count()) {
     await expiredCard.scrollIntoViewIfNeeded()

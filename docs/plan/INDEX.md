@@ -282,6 +282,7 @@
 | [2026-06-08-巨壳拆分-B-Scene3D-A-NodeParameterControls.md](2026-06-08-巨壳拆分-B-Scene3D-A-NodeParameterControls.md) | 巨壳拆分：Scene3DFullscreen → NodeParameterControls | ⛔ |
 | [2026-06-08-巨壳拆分-任务派发.md](2026-06-08-巨壳拆分-任务派发.md) | 巨壳拆分多窗口任务派发 | 📎 |
 | [nomi-select-unify.md](nomi-select-unify.md) | 统一选择面板 NomiSelect 通用组件 | 🧊 |
+| [2026-10-24-dmg-install-window.md](2026-10-24-dmg-install-window.md) | **DMG 安装窗口**（拍板 B 镜头飞入）：文本 / 图片 / 视频三张媒体卡沿弧线飞进「应用程序」（媒体轨颜色、画布节点图标，token 渲染 1x+2x）、128 大图标、卷名去架构后缀、卷图标加角标，窗口里中英「第一次打开被拦」提示；派生图过期由 `check:icons` 拦，真 DMG 走查 `tests/ux/dmg-install-window.walk.mjs` | 🚧 |
 
 ## 落地页 / 营销
 

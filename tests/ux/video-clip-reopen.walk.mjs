@@ -78,10 +78,17 @@ const snapshot = () => win.evaluate(() => {
   }
 })
 const newCards = (state) => state.nodes.filter((node) => node.id !== 'long-video')
-/** 我们的剪辑进程（命令行里带 nomi-trim-）：只读查询，不碰任何进程。 */
+/**
+ * 我们的剪辑进程（命令行里带 nomi-trim-）：只读查询，不碰任何进程。
+ * 以前只有 PowerShell 一种查法，macOS / Linux（夜跑）上三格全是「spawnSync powershell ENOENT」。
+ */
 function trimProcessCount() {
-  const out = execFileSync('powershell', ['-NoProfile', '-Command', "(Get-CimInstance Win32_Process -Filter \"Name='ffmpeg.exe'\" | Where-Object { $_.CommandLine -like '*nomi-trim-*' } | Measure-Object).Count"], { encoding: 'utf8' })
-  return Number(out.trim() || 0)
+  if (process.platform === 'win32') {
+    const out = execFileSync('powershell', ['-NoProfile', '-Command', "(Get-CimInstance Win32_Process -Filter \"Name='ffmpeg.exe'\" | Where-Object { $_.CommandLine -like '*nomi-trim-*' } | Measure-Object).Count"], { encoding: 'utf8' })
+    return Number(out.trim() || 0)
+  }
+  const out = execFileSync('ps', ['-A', '-o', 'command='], { encoding: 'utf8' })
+  return out.split('\n').filter((line) => /(?:^|\/)ffmpeg(?:\s|$)/.test(line) && line.includes('nomi-trim-')).length
 }
 async function task(name, body) {
   try { await body(); results.push({ name, pass: true }) } catch (error) {

@@ -44,9 +44,12 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'electron/fileIdentity.test.ts', roots: ELECTRON }, // #1142：不许手写 dev / ino 比较（2 秒）
   { file: 'electron/shared/agentCapabilities/canvasReadShotTable.test.ts', roots: ['electron/shared/agentCapabilities', 'electron/agentLane', 'electron/capabilityCore'] }, // 2026-10-19：Agent 面只有 canvasReadShotTable.ts 读分镜表文档（遍历三目录，<1 秒）
   { file: 'scripts/check-network-entry.test.mjs', roots: ELECTRON }, // #1142：Node 网络调用必须走共用传输；扫描器 scripts/check-network-entry.mjs 在闭包里（6 秒）
+  { file: 'src/vendor/tablerIcons.test.ts', roots: ['src'] }, // 2026-10-18：源码用到的 tabler 图标必须在 src/vendor/tablerIcons.ts 登记（否则只有 build 会炸；遍历 src，<1 秒）
   { file: 'electron/shared/mcpClientRegistry.test.ts', roots: ['src', 'electron'] }, // #1142：不许手抄客户端清单（4 秒）
+  { file: 'electron/shared/contracts/ipcInvokeFailure.test.ts', roots: ['electron', 'src'] }, // 2026-10-24：全仓代码里写下的错误类名都要过 isCodeClassName（遍历 electron + src，<1 秒）
   { file: 'electron/capabilityCore/spendDoorSingleOwner.test.ts', roots: ELECTRON }, // 5 秒
   { file: 'electron/capabilityCore/mcpMigrationEntry.test.ts', roots: ['src', 'electron'] }, // #1142 合入后新增：MCP 宿主迁移入口只有登记的调用点（3 秒）
+  { file: 'electron/catalog/customRelayWireModel.test.ts', roots: ELECTRON }, // 自定义中转站线上模型名只有一个出口：遍历 electron 生产文件（12 秒）
   { file: 'electron/catalog/modelListReconcile.test.ts', roots: ELECTRON }, // 3 秒
   { file: 'electron/catalog/storedApiKeyReaders.test.ts', roots: ELECTRON }, // 3 秒
   { file: 'electron/catalog/vendorAuthSpecReadPaths.test.ts', roots: ELECTRON }, // 5 秒
@@ -57,6 +60,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'electron/update/installGate.structure.test.ts', roots: ELECTRON }, // 2 秒
   { file: 'electron/durability.test.ts', roots: ['electron', 'src', 'scripts', 'tests'] }, // 只有测试 harness 能翻成 ephemeral：四个根目录都扫（9 秒）
   { file: 'electron/providerAdapter/architecture.test.ts', roots: ['electron/providerAdapter'] }, // 2 秒
+  { file: 'electron/export/exportAssetProbe.test.ts', roots: ['electron/export'] }, // 2026-10-24：导出目录里只有 exportAssetProbe.ts 调 ffprobe（probeMediaMetadata / probeMediaBytes）；只遍历 electron/export 一层（<1 秒）
   { file: 'electron/capabilityCore/projectAgentProposalReceiptStore.test.ts', roots: ['electron/capabilityCore/__fixtures__/published-receipts'], exts: '*' }, // 回放已发布收据夹具目录（2 秒）
   { file: 'tests/ux/model-access-journeys/inventory.test.mjs', roots: ['electron/shared/modelArchetypes'] }, // 模型接入生产清单（2 秒）
   { file: 'electron/skills/builtinSkills.test.ts', roots: ['skills'], exts: '*', files: ['package.json'] }, // 4 秒
@@ -67,6 +71,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'src/workbench/generationCanvas/canvasPreviewDoors.test.ts', roots: ['src', 'electron'] }, // 画布预览入口普查：遍历 src 与 electron 生产代码（9 秒）
   { file: 'src/workbench/generationCanvas/components/lightweightFallbackCensus.test.ts', roots: ['src/workbench'] }, // 兜底节点必须带 loading：遍历 workbench 找 fallback=<LightweightGenerationNode>（<1 秒）
   { file: 'src/workbench/generationCanvas/nodes/director/agent/attachDoors.guard.test.ts', roots: SRC }, // 预演 / 运镜挂接只有一个入口：遍历 src 生产代码，调核的只有 attachCameraMoveForNode、网址标记只有核自己读（5 秒）
+  { file: 'src/workbench/generationCanvas/nodes/director/model/actionIds.test.ts', roots: SRC }, // 动作 id 只存正名：遍历 src 生产代码（跳过 src/i18n），写 posePreset / actionPose 的文件必须在名单里（Mac 本机单跑 2.5 秒）
   { file: 'src/workbench/generationCanvas/nodes/textNodeIconSource.test.ts', roots: ['src/workbench/generationCanvas'] }, // 文字节点图标唯一来源：遍历 generationCanvas 找直接引用 IconWriting 的文件（<2 秒）
   { file: 'src/customEventWiring.test.ts', roots: SRC },
   { file: 'src/design/mediaOverlayInk.test.ts', roots: SRC },
@@ -98,6 +103,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'src/workbench/generationCanvas/quickActions/deriveFromNode.noMoneyDoor.test.ts', roots: ['src/workbench/generationCanvas/quickActions'] },
   { file: 'src/workbench/generationCanvas/nodes/director/model/planOverrides.guard.test.ts', roots: ['src/workbench/generationCanvas/nodes/director/model'] },
   { file: 'src/workbench/generationCanvas/nodes/director/panels/inspector/crowdEntry.structure.test.ts', roots: ['src/workbench/generationCanvas/nodes/director/panels/inspector'] },
+  { file: 'src/workbench/generationCanvas/nodes/director/panels/viewport/PipViewport.test.ts', roots: ['src/workbench/generationCanvas/nodes/director/panels/viewport'], files: ['src/workbench/generationCanvas/nodes/director/panels/context/ContextCard.tsx', 'src/workbench/generationCanvas/nodes/director/panels/side/AssetsDrawer.tsx'] }, // 浮在视口之上的面板不写死顶部：遍历 viewport 目录 + 属性卡、资产抽屉两个文件（Mac 本机单跑 1.3 秒）
   { file: 'src/workbench/creation/storyboard/StoryboardShotTable.windowing.test.ts', roots: ['src/workbench/creation/storyboard'] }, // 分镜表窗口化结构：遍历分镜目录找 useElementWidth / useAssetPool 调用点（19 秒）
   { file: 'src/workbench/creation/storyboard/storyboardTableReach.structure.test.ts', roots: ['src/workbench/creation/storyboard'] },
   { file: 'src/workbench/timeline/timelineGesture.structure.test.ts', roots: ['src/workbench/timeline', 'src/workbench/generationCanvas/nodes', 'src/workbench/preview'] },

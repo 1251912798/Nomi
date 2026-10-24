@@ -3,9 +3,10 @@
  *          ../../../model/generationNodeKinds 的 getDefaultCategoryForNodeKind、../../../../../i18n、./cameraMoveBuilder 的 buildCameraMoveScene、
  *          ./cameraMoveVocab 的 CAMERA_SPEED_DURATION、../migration/migrateScene3d 的 migrateScene3DState、../model/directorNodeMeta 的 meta 键
  * [OUTPUT]: 对外提供 CAMERA_MOVE_CAPTURE_FPS、cameraMoveFrameCount、CameraMoveAutoCapture、readCameraMoveAutoCapture、createCameraMoveReferenceNode
- * [POS]: director/agent 的「运镜参考建节点」单一真相：AI 工具 create_camera_move 与手动运镜控件（NodeCameraMoveControl）都调它——
+ * [POS]: director/agent 的「运镜参考建节点」单一真相：AI 工具 create_camera_move（内部 Agent 与对外 MCP 都经 applyCanvasToolCall）调它——
  *        词表 spec → V1 形状运镜场景 → 迁成导演台工程 → 建 director 节点并打 cameraMoveAutoCapture（targetNodeId / fps / frameCount / move）；
- *        **不渲染**，常驻 CameraMoveCaptureHost 扫到标志才离屏采帧拼 mp4。两条产路共用 fps / frameCount 不变量，不各自内联。
+ *        **不渲染**，常驻 CameraMoveCaptureHost 扫到标志才离屏采帧拼 mp4。fps / frameCount 不变量只在这里算。
+ *        （视频节点上的手动「运镜」控件 NodeCameraMoveControl 已于 2026-09-12 c1b1c9e02 删除。）
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import i18n from '../../../../../i18n'
@@ -34,7 +35,7 @@ export function readCameraMoveAutoCapture(node: Pick<GenerationCanvasNode, 'meta
   return raw && typeof raw === 'object' ? (raw as CameraMoveAutoCapture) : null
 }
 
-/** spec 的速度 → 采帧数（round(时长秒 × fps)）。AI 路与手动路共用，锁死不变量。 */
+/** spec 的速度 → 采帧数（round(时长秒 × fps)）。只在这里算，锁死不变量。 */
 export function cameraMoveFrameCount(spec: CameraMoveSpec, fps: number = CAMERA_MOVE_CAPTURE_FPS): number {
   return Math.round(CAMERA_SPEED_DURATION[spec.speed ?? 'medium'] * fps)
 }

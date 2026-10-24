@@ -1,0 +1,71 @@
+{
+  "board": "DirectorProduce",
+  "approvedOn": "2026-10-24",
+  "stage": "built",
+  "sourceBoundary": "按导演台真实顶栏的生产组件人工普查；本任务只改单个已有按钮样式，跳过 Claude Design 探索，板记录实现状态、状态覆盖和旧功能去处。",
+  "designIntent": "导演台顶栏的「出成片」分体按钮沿用 WorkbenchButton primary：平时墨底纸字，启用悬停变强调蓝，禁用保持墨底并降透明度；分隔线和预演转圈跟随 paper token。",
+  "priorArt": [
+    {
+      "url": "https://m3.material.io/components/buttons/overview",
+      "takeaway": "Material 3 把高优先级按钮的默认、悬停、禁用状态分开定义，禁用状态降低对比度并停止交互反馈。",
+      "decisionImpact": "确认主按钮平时使用中性深底，悬停才使用强调色；禁用不再响应蓝色悬停。"
+    },
+    {
+      "url": "https://www.nngroup.com/articles/ten-usability-heuristics/",
+      "takeaway": "可见状态应让用户识别当前能否操作，禁用控件要保留可识别但降低强调。",
+      "decisionImpact": "保留现有按钮文字、尺寸和提示，只换颜色与禁用透明度，避免状态语义丢失。"
+    },
+    {
+      "url": "https://design-system.service.gov.uk/components/button/",
+      "takeaway": "GOV.UK Design System 的主按钮使用稳定的深色基底，交互反馈和 disabled 状态由组件统一提供。",
+      "decisionImpact": "复用 Nomi 的 WorkbenchButton primary 颜色契约，并让分体按钮的两段共享同一套状态。"
+    }
+  ],
+  "elements": [
+    {
+      "id": "primary",
+      "label": "主按钮「出成片」：墨底纸字；可点悬停蓝；没有镜头、超长、渲染中禁用；中英暗色跟 token 翻转",
+      "candidates": ["001-primary"],
+      "status": "implemented",
+      "states": ["disabled", "loading", "hover", "narrow", "zh-en", "dark"],
+      "assertion": "board:DirectorProduce/primary"
+    },
+    {
+      "id": "primary-hover",
+      "label": "可点主按钮悬停态：背景由 nomi-ink 变 nomi-accent",
+      "candidates": ["002-primary-hover"],
+      "status": "implemented",
+      "states": ["hover", "zh-en", "dark"],
+      "assertion": "board:DirectorProduce/primary-hover"
+    },
+    {
+      "id": "primary-disabled",
+      "label": "禁用态：没有镜头 / 超长 / 预演渲染中保持墨底，按 primary 禁用透明度显示",
+      "candidates": ["003-primary-disabled"],
+      "status": "implemented",
+      "states": ["disabled", "loading", "zh-en", "dark"],
+      "assertion": "board:DirectorProduce/primary-disabled"
+    },
+    {
+      "id": "divider-spinner",
+      "label": "分体分隔线与预演转圈：分别使用 paper/25、paper/40 与 paper 顶边 token",
+      "candidates": ["004-divider", "005-spinner"],
+      "status": "implemented",
+      "states": ["loading", "zh-en", "dark"],
+      "assertion": "board:DirectorProduce/divider-spinner"
+    },
+    {
+      "id": "menu",
+      "label": "主按钮旁 ▾：截图、录制 MP4、已有产出菜单照旧可开",
+      "candidates": ["006-menu"],
+      "status": "implemented",
+      "states": ["disabled", "hover", "zh-en", "dark"],
+      "assertion": "board:DirectorProduce/menu"
+    }
+  ],
+  "functionCensus": [
+    { "function": "出成片主动作（含没有镜头、超长、渲染中、失败重试）", "before": "ProduceButton.SEGMENT：bg-nomi-accent + text-white", "after": "primary" },
+    { "function": "分隔 ▾ 菜单：截图、录制 MP4、打开产出", "before": "ProduceButton 分体按钮右段", "after": "menu" }
+  ],
+  "decor": []
+}

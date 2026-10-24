@@ -5,7 +5,8 @@
  *          ./TimelineHeader、./TimelineRuler、./TimelinePlayhead、./TrackList、./TrackLanes、./TimelineContextMenu、./timelineRows、./timelineCommands、
  *          ./useTimelineViewport、./useTimelineHotkeys
  * [OUTPUT]: 对外提供 DirectorTimeline：时间轴装配根（头部 + 轨道列 + 标尺 / 泳道 / 播放头 + 右键菜单），折叠时只留头部
- * [POS]: director/timeline 的入口（清单 §5）：轨道列与泳道共用一份行序并同步纵向滚动；菜单项按「片段 → 副轨 → 轨道」三层上下文拼装，
+ * [POS]: director/timeline 的入口（清单 §5）：轨道列与泳道共用一份行序并同步纵向滚动（片段区是唯一滚动源，轨道列真正溢出的那层跟随；
+ *        在轨道列上滚滚轮交给片段区；刻度尺 sticky 钉顶）；菜单项按「片段 → 副轨 → 轨道」三层上下文拼装，
  *        全部打到命令层；被拒绝的操作统一 toast 原因。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -271,9 +272,18 @@ export function DirectorTimeline({
       ) : null}
       {collapsed || isEmpty ? null : (
         <div className="grid min-h-0 flex-1" style={{ gridTemplateColumns: `${TRACK_COLUMN_PX}px minmax(0, 1fr)` }}>
-          <div ref={trackListRef} className="flex min-h-0 flex-col overflow-hidden border-r border-nomi-line-soft">
+          <div
+            className="flex min-h-0 flex-col overflow-hidden border-r border-nomi-line-soft"
+            onWheel={(event) => {
+              // 轨道名一列自己不滚（overflow-hidden，由片段区带着走）：在这一列上滚滚轮，交给片段区滚；⌘ / Ctrl + 滚轮是片段区的缩放，这里不接
+              if (event.ctrlKey || event.metaKey) return
+              const lanes = viewport.containerRef.current
+              if (lanes) lanes.scrollTop += event.deltaY
+            }}
+          >
             <TrackListHeader trackCount={tracks.length} />
-            <div className="min-h-0 flex-1 overflow-hidden">
+            {/* 跟随片段区纵向滚动的是这一层（真正溢出的那层）；2026-10-24 走查 ③：以前写的是外层，外层不溢出，设了不动 */}
+            <div ref={trackListRef} className="min-h-0 flex-1 overflow-hidden">
               <TrackList
                 rows={rows}
                 tracks={tracks}
@@ -310,8 +320,13 @@ export function DirectorTimeline({
             }}
           >
             <div className="relative" style={{ width: viewport.laneWidth }}>
-              <TimelineRuler viewport={viewport} onScrub={(seconds) => seekTo(store, seconds)} />
-              <TrackLanes rows={rows} viewport={viewport} totalDuration={totalDuration} onContextMenu={rowMenu} onReject={reject} onAppendTrajectory={(row) => appendTrajectory(row.track)} />
+              {/* 刻度尺钉在顶上：纵向滚动时泳道从它下面过去。层级：泳道（自成一层，片段把手的 z 不外溢）< 刻度尺 < 播放头 */}
+              <div className="sticky top-0 z-10">
+                <TimelineRuler viewport={viewport} onScrub={(seconds) => seekTo(store, seconds)} />
+              </div>
+              <div className="relative z-0">
+                <TrackLanes rows={rows} viewport={viewport} totalDuration={totalDuration} onContextMenu={rowMenu} onReject={reject} onAppendTrajectory={(row) => appendTrajectory(row.track)} />
+              </div>
               <TimelinePlayhead viewport={viewport} />
             </div>
           </div>

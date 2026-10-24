@@ -106,9 +106,8 @@ Supported release targets are macOS arm64/x64 and Windows x64. Linux, Windows ar
 
 The current macOS build is **not Apple Developer ID signed or notarized**, so macOS may block it on first launch. Only use the direct downloads above or links from the official Nomi website and GitHub repository.
 
-1. Download the matching DMG and drag `Nomi.app` to Applications.
-2. In Finder, right-click `Nomi.app` in Applications, choose **Open**, then confirm **Open**.
-3. If it is still blocked, open **System Settings → Privacy & Security**, find the Nomi message, and click **Open Anyway**.
+1. Download the matching DMG, open it, and drag **Nomi** onto **Applications** in the window.
+2. Open Nomi from Applications. If macOS says **“Nomi” Not Opened**, click **Done**, then open **System Settings → Privacy & Security**, scroll down to **Security**, click **Open Anyway** next to the Nomi message, and confirm. Since macOS 15, right-clicking the app and choosing **Open** no longer gets past this prompt; on macOS 14 and earlier it still works.
 
 Only if macOS says Nomi is “damaged”, first confirm the installer came from an official Nomi link, then run:
 
@@ -116,7 +115,7 @@ Only if macOS says Nomi is “damaged”, first confirm the installer came from 
 xattr -dr com.apple.quarantine "/Applications/Nomi.app"
 ```
 
-Do not disable Gatekeeper globally. Updates require downloading the matching DMG and replacing the app manually.
+Do not disable Gatekeeper globally. To update, download the matching DMG, quit Nomi, then drag the new Nomi onto Applications and choose **Replace**.
 </details>
 
 <details>

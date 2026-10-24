@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Icon3dCubeSphere, IconPlayerPlayFilled, IconPlus, IconX } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { NomiImage } from '../../design/media'
+import { ICON_TIERS } from '../../design/iconTiers'
 import { AssetVideoCover } from './AssetVideoCover'
 import type { AssetRef } from './assetTypes'
 
@@ -237,7 +238,7 @@ export default function AssetTile({ asset, tag, sourceLabel, tipText, removeLabe
   )
 }
 
-/** 40×40 浅底方块：画布点选与「+」都是它，只换图标和动作（图标 20 / 1.6，无虚线）。 */
+/** 40×40 浅底方块：画布点选与「+」都是它，只换图标和动作（参考入口，图标条档 18 / 1.8，见 §6；无虚线）。 */
 export function AssetActionTile({ selected, className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { selected?: boolean }): JSX.Element {
   return <button type="button" {...props} className={cn(
     'flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-nomi-sm border-0 bg-nomi-ink-05 p-0 text-nomi-ink-80 hover:bg-nomi-ink-10 disabled:cursor-not-allowed disabled:opacity-50',
@@ -251,6 +252,6 @@ export function AssetAddTile({ onClick, selected, label, className }: { onClick:
   const { t } = useTranslation()
   return <AssetActionTile data-asset-add-tile="true" aria-label={label ?? t('assetLibrary.addReference')}
     onClick={onClick} selected={selected} className={className}>
-    <IconPlus size={20} stroke={1.6} />
+    <IconPlus size={ICON_TIERS.bar.size} stroke={ICON_TIERS.bar.stroke} />
   </AssetActionTile>
 }

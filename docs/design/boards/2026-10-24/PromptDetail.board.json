@@ -1,7 +1,7 @@
 {
   "board": "PromptDetail",
   "approvedOn": "2026-10-24",
-  "stage": "explored",
+  "stage": "built",
   "approval": {
     "quote": "技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。",
     "date": "2026-10-24",
@@ -116,8 +116,9 @@
         "002-div-推轨跟拍",
         "017-div-Q版角色卡"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.dialog"
     },
     {
       "id": "prompt-detail.title",
@@ -132,8 +133,9 @@
         "003-span-推轨跟拍",
         "018-span-Q版角色卡"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.title"
     },
     {
       "id": "prompt-detail.meta",
@@ -148,8 +150,9 @@
         "005-span-运镜内置视频",
         "019-span-我的网页提取图片"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.meta"
     },
     {
       "id": "prompt-detail.close",
@@ -166,8 +169,9 @@
         "020-button-关闭",
         "021-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.close"
     },
     {
       "id": "prompt-detail.media",
@@ -179,9 +183,10 @@
         "dark"
       ],
       "candidates": [],
-      "status": "missing",
+      "status": "implemented",
       "owner": "I-libraries",
-      "note": "媒体是图片 / 视频，抽取不成候选；看同名截图。"
+      "note": "媒体是图片 / 视频，抽取不成候选；看同名截图。",
+      "assertion": "board:PromptDetail/prompt-detail.media"
     },
     {
       "id": "prompt-detail.text",
@@ -196,8 +201,9 @@
         "008-span-Smoothdollyt",
         "022-span-画一张带有圆角和柔和投影"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.text"
     },
     {
       "id": "prompt-detail.source",
@@ -213,8 +219,9 @@
         "010-svg",
         "011-span-来源"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.source"
     },
     {
       "id": "prompt-detail.delete",
@@ -229,8 +236,9 @@
         "023-button-删除",
         "024-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.delete"
     },
     {
       "id": "prompt-detail.edit",
@@ -245,8 +253,9 @@
         "025-button-编辑",
         "026-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.edit"
     },
     {
       "id": "prompt-detail.copy",
@@ -264,8 +273,9 @@
         "027-button-复制提示词",
         "028-svg"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "in-progress",
+      "owner": "D-07（协调另立账）",
+      "note": "复制已改成图标钮 + 点后「已复制」（走查 library-layout 验过）；板上「检查剪贴板结果再说已复制」= 另修 D-07，本线不改复制逻辑。"
     },
     {
       "id": "prompt-detail.add-to-canvas",
@@ -283,8 +293,10 @@
         "029-button",
         "030-span-放上画布"
       ],
-      "status": "missing",
-      "owner": "I-libraries"
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.add-to-canvas",
+      "note": "项目库页上没开项目时禁用并说原因（真机 J-02）；在创作 / 分镜 / 剪辑里点了，放上之后切到生成画布让人看见被选中的新节点（同类入口，一并收住）。"
     }
   ],
   "decor": [

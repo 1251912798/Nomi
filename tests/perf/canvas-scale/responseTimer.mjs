@@ -23,6 +23,18 @@ const INSTALL_SOURCE = `(() => {
       const article = document.querySelector('article[data-node-id="' + CSS.escape(nodeId) + '"]')
       return Boolean(article) && (visible(composerOf(nodeId)) || Boolean(article.querySelector('[aria-busy="true"]')))
     },
+    // 选中拆解表到位：上方浮条与下方拆解栏都挂在这张表的 React Flow 节点里且可见（两者是 article 的兄弟，不在 article 里面）。
+    shotTableEngaged(nodeId) {
+      const host = document.querySelector('.react-flow__node[data-id="' + CSS.escape(nodeId) + '"]')
+      return Boolean(host) && visible(host.querySelector('[data-node-floating-toolbar]')) && visible(host.querySelector('[data-shot-table-composer]'))
+    },
+    // 拆解表行高切到位：浮条上的档位已换，且表里每一行都按新行高排好（首末两行都量，200 行一次渲完才算）。
+    shotTableRowHeight({ nodeId, step, px }) {
+      const host = document.querySelector('.react-flow__node[data-id="' + CSS.escape(nodeId) + '"]')
+      const rows = host ? host.querySelectorAll('[data-shot-table-row]') : []
+      return Boolean(host && host.querySelector('[data-shot-table-row-height="' + step + '"]')) && rows.length > 0
+        && rows[0].offsetHeight >= px && rows[rows.length - 1].offsetHeight >= px
+    },
     // 生成框里参考行的小图到齐（B3 最坏规模：30 张）。
     composerRefTilesReady(count) {
       return document.querySelectorAll('[data-composer-host] [data-reference-row] [data-asset-tile]').length >= count
@@ -65,6 +77,16 @@ const INSTALL_SOURCE = `(() => {
     },
     libraryReady(count) {
       return [...document.querySelectorAll('[data-project-card]')].filter(visible).length >= count
+    },
+    // 技能库 / 提示词库抽屉打开：抽屉在、里面第一张卡可见（技能条卡或提示词卡）。
+    libraryDrawerReady(item) {
+      const drawer = document.querySelector('[data-shell-drawer="' + item + '"]')
+      return visible(drawer) && visible(drawer.querySelector('[data-skill-card], [data-prompt-card]'))
+    },
+    // 库里搜索的一键：搜索框已经是这一键之后的字（受控输入框，值和列表是同一次提交画上去的）。
+    libraryQueryShown({ item, query }) {
+      const input = document.querySelector('[data-shell-drawer="' + item + '"] input[type="search"]')
+      return Boolean(input) && input.value === query
     },
     // 分镜方案打开到「首屏可编辑」（tests/perf/document-switch-bench.mjs）：行区报出逻辑总数 count，且视口里有带可编辑提示词框的行。
     // 分镜表窗口化（2026-10-16）后只挂视口附近的行，「count 个行盒子都在屏上」永远不成立；末镜够得着由量具停表后另验。

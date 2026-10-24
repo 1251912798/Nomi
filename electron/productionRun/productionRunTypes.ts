@@ -548,7 +548,7 @@ export type ProductionRun = {
  * 所以一份 agent 刚建的草稿在任务面板上只能显示「等待开始」——用户看不到模型、看不到提示词，
  * 也就无从判断 agent 定的对不对。
  *
- * 只投影**展示**用的身份与文本，绝不含 transportModelId、参数全集或任何凭据。
+ * 只投影**展示**用的身份与文本，绝不含参数全集或任何凭据（发出的型号名不存投影，发送时由 wireModelIdentity 解出）。
  */
 export type ProductionRunDraftSummary = {
   candidateId: string;

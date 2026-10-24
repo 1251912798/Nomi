@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { IconChevronDown } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
-import { NomiSelect } from '../../../design'
+import { ICON_TIERS, NomiSelect } from '../../../design'
 import type { ModelParameterControl } from '../../../config/modelCatalogMeta'
 import type { ModelOption } from '../../../config/models'
 import type { ModelCatalogStatus } from '../../../config/modelCatalogStatus'
@@ -473,8 +473,8 @@ export default function InlineParameterBar({
         {pillText || t('generationCommon.parameters.parameters')}
       </span>
       <IconChevronDown
-        size={12}
-        stroke={1.6}
+        size={ICON_TIERS.corner.size}
+        stroke={ICON_TIERS.corner.stroke}
         className={cn(
           'shrink-0 text-nomi-ink-40 pointer-events-none transition-transform',
           panelOpen && 'rotate-180',

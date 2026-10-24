@@ -28,7 +28,7 @@ import {
 } from '../../../../../electron/shared/modelArchetypes'
 import type { ImageUrlSlot } from '../../model/parameterReferenceSlots'
 import { translateModelDisplayText } from '../../../../i18n/modelDisplayText'
-import { isImageUploadSlot, listPlacementInputs, normalizeReferenceListMeta, placeUploadedImages, type UploadPlacement } from './referenceList'
+import { isImageUploadSlot, listPlacementInputs, normalizeReferenceListMeta, placeUploadedImages, withReferenceList, type UploadPlacement } from './referenceList'
 import { readArchetypeArray } from './archetypeArrayValues'
 export { appendArchetypeArrayValue, archetypeArrayWrite, readArchetypeArray, readArchetypeArrayForWrite, type ArchetypeArrayAppend } from './archetypeArrayValues'
 import {
@@ -37,6 +37,7 @@ import {
   wireReferencedParamKeys,
   type SlotReach,
 } from '../../../../../electron/catalog/referenceReachability'
+export { archetypeModeParams, archetypeModeSourceVideoSlot, localizeModelParameterControl } from './archetypeModePresentation'
 
 export { resolveArchetypeForModel }
 export type { ModelArchetype, ArchetypeMode, ModelArchetypeVariant }
@@ -322,31 +323,28 @@ export function hasAnyArchetypeReference(
   })
 }
 
-/** 当前模式的「源视频」单槽（HappyHorse video-edit）。返回 meta 存储键 + 标签；无则 null。 */
-export function archetypeModeSourceVideoSlot(mode: ArchetypeMode): { metaKey: string; label: string } | null {
-  const slot = mode.slots.find((s) => s.kind === 'source_video')
-  return slot ? { metaKey: 'sourceVideoUrl', label: translateModelDisplayText(slot.label) } : null
+const ARRAY_SLOT_ROUTES = Object.entries(ARRAY_SLOT_ROUTE) as Array<[ArchetypeReferenceSlotKind, ArraySlotRoute]>
+
+/** 还没挑模型的节点：把参考素材先放进对应的持久化列表，等自动选模时再按档案槽落位。 */
+export function withUnplacedArrayReferences(
+  meta: Record<string, unknown>,
+  accept: ArraySlotRoute['accept'],
+  urls: readonly string[],
+): Record<string, unknown> {
+  const route = ARRAY_SLOT_ROUTES.find(([, candidate]) => candidate.accept === accept)?.[1]
+  if (!route) return meta
+  const next = [...new Set([...readArchetypeArray(meta, route.metaKey), ...urls.map((url) => url.trim()).filter(Boolean)])]
+  return accept === 'image' ? withReferenceList(meta, next) : { ...meta, [route.metaKey]: next }
 }
 
-/** 当前模式的标量参数（复用现有 ModelParameterControl 渲染路径）。 */
-export function archetypeModeParams(mode: ArchetypeMode): ModelParameterControl[] {
-  return mode.params.map(localizeModelParameterControl)
-}
-
-export function localizeModelParameterControl(control: ModelParameterControl): ModelParameterControl {
-  return {
-    ...control,
-    label: translateModelDisplayText(control.label),
-    ...(control.placeholder ? { placeholder: translateModelDisplayText(control.placeholder) } : {}),
-    ...(control.options
-      ? {
-          options: control.options.map((option) => ({
-            ...option,
-            label: translateModelDisplayText(option.label),
-          })),
-        }
-      : {}),
-  }
+/** 第一次定生成方式时，把卡上已经暂存的数组参考转成模型选择所需的参考需求。 */
+export function referenceDemandsBeforeFirstMode(
+  meta: Record<string, unknown> | undefined,
+): Array<{ slots: ArchetypeReferenceSlotKind[]; asset: ArraySlotRoute['accept'] }> {
+  if (readArchetypeNodeMeta(meta)) return []
+  return ARRAY_SLOT_ROUTES
+    .filter(([, route]) => readArchetypeArray(meta, route.metaKey).length > 0)
+    .map(([kind, route]) => ({ slots: [kind], asset: route.accept }))
 }
 
 /** 当前模式的 per-mode model enum（HappyHorse 4 端点合 1 靠它；Seedance 各模式同 model → null）。 */
@@ -687,11 +685,13 @@ export function orderedSentMediaReferenceUrls(
 }
 
 /**
- * **档案驱动的 input 构建（M1 单源 + M2 互斥 + M3 enum 覆盖）**：renderer 据当前模式把参考值打成
+ * **档案驱动的 input 构建（M1 单源 + M2 互斥）**：renderer 据当前模式把参考值打成
  * 最终的**通用 snake input 参数**（key = slot 的 API 名，值 = 标量或数组）。只含当前模式声明的键
  * → 别的模式的残留键根本不进结果（M2，§2 坑2）。供应商 mapping body 直接读 request.params.<key>
  * （kie 文档的尾随空格 quirk 在 kie body 单独照抄，§2 坑1）。返回对象放进 extras.archetypeInput，
  * runtime 原样铺进 params（electron/catalog/archetypeInput）。
+ * **不带 model**：发哪个 model 串由主进程 electron/shared/modelArchetypes/wireModelIdentity.resolveWireModel 按连接契约决定
+ * （2026-10-16：这里塞的 kie 拆分名盖掉了自建中转的模型名）。节点只存选择（meta.archetype 的 modeId / variantId）。
  */
 export function buildArchetypeInputParams(
   meta: Record<string, unknown>,
@@ -783,17 +783,9 @@ export function buildArchetypeInputParams(
     const combined = flat ? combinedFlat : combinedRoles
     if (combined.length) out[combineChannel.key] = combined
   }
-  // 模式级固定 body 参数（generation_type 等不需用户选的常量）。在 model 字段之前并入，键不与槽/参数冲突。
+  // 模式级固定 body 参数（generation_type 等不需用户选的常量），键不与槽/参数冲突。
   if (mode.fixedParams) {
     for (const [key, value] of Object.entries(mode.fixedParams)) out[key] = value
   }
-  // model 字段（变体 > per-mode enum > 不带）：
-  // ① 变体轴（A）：选中变体的 modelKey 决定实际发请求的 model（如 doubao-seedance-2.0-fast）。
-  //    变体优先于 mode.modelEnum——变体跨所有 mode 生效，是更外层的身份。
-  // ② per-mode enum 覆盖（M3，HappyHorse）：无变体时按当前模式的 modelEnum。
-  // ③ 都无（如 kie Seedance 各模式同 model 且无变体）→ 不带，catalog body 仍用 {{model.modelKey}}。
-  const variant = currentArchetypeVariant(archetype, meta)
-  if (variant) out.model = variant.modelKey
-  else if (mode.modelEnum) out.model = mode.modelEnum
   return out
 }

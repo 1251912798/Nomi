@@ -1,7 +1,8 @@
 // Real timeline component, DOM pointer events and production store; no 3D scene or model downloads.
+// 夹具页由本仓 Vite 直接服务（与导演台实验室同一个服务：_directorLab 的 resolveDirectorDevServer，复用或自起），不再假设本机开着 5175。
 import fs from 'node:fs'
-import { chromium } from 'playwright'
 import { expect } from './_assert.mjs'
+import { launchDirectorBrowser, resolveDirectorDevServer } from './_directorLab.mjs'
 
 const fixture = '.tmp/director-full-audit-20260907/timeline-pointer.html'
 fs.mkdirSync('.tmp/director-full-audit-20260907', { recursive: true })
@@ -26,11 +27,12 @@ const tracks = buildTimelineTracks(api.activeScene(), { trajectory:()=> 'path', 
 createRoot(document.getElementById('app')).render(React.createElement(DirectorStoreContext.Provider, {value:store}, React.createElement(TrackLanes, { rows:buildTimelineRows(tracks), viewport, totalDuration:60, onContextMenu:noop, onReject:noop, onAppendTrajectory:noop })));
 </script></body></html>`)
 
-const browser = await chromium.launch({ headless: true, channel: process.env.NOMI_BROWSER_CHANNEL ?? 'chrome' })
+const server = await resolveDirectorDevServer()
+const browser = await launchDirectorBrowser()
 const page = await browser.newPage({ viewport: { width: 1100, height: 300 } })
 const errors = []
 page.on('pageerror', error => errors.push(error.message))
-const url = `${process.env.NOMI_DIRECTOR_URL ?? 'http://127.0.0.1:5175'}/${fixture}`
+const url = `${server.origin}/${fixture}`
 let failures = 0
 async function run(name, check) {
   await page.goto(url)
@@ -65,4 +67,4 @@ try {
   })
   if (errors.length) throw new Error(errors.join('\n'))
   if (failures) throw new Error(`${failures} pointer interaction failures`)
-} finally { await browser.close() }
+} finally { await browser.close(); await server.close() }
