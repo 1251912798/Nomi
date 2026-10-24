@@ -11,7 +11,6 @@
 > panoramaImport.ts: 720 全景导入校验常量（80MB 上限、2:1 ±3% 标准比例判定；切换门从 V1 入籍）
 > imageFile.ts: 读图片尺寸 / 文件转 data URL（全景导入与资产库上传共用）
 > LinkedAssetsContext.ts: 画布连线带进来的全景 / 泼溅 / 模型引用注入（DirectorEditor 提供，资产库只读消费，不入工程）
-> CanvasImagesContext.ts: 注入 canvasImages collector 收集的当前/历史图片及标识，不按节点种类过滤（DirectorEditor 提供）；它唯一的消费方 AI 搭场景（ai/）已随 8876f0c5d 删除，useCanvasImages 现在没人调，待删
 > shotStrip/: 导演视图（3D-BOX）底部镜头条：DirectorShotStrip（播放行 + 按时长等比的镜头卡 + 播放指针，点卡选镜）、shotLabels（镜头卡 / 预览小窗 / 顶栏三处共用的一份措辞）、useShotFocusTag（Agent 输入框「正在改：镜头 N」标签）
 > dialogs/: 模态对话框（动作库弹窗 / 手机虚拟相机二维码），见 dialogs/CLAUDE.md
 > outputs/: 产物弹层（截图 / 视频列表、发送到画布 / 删除），见 outputs/CLAUDE.md
