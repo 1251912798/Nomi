@@ -33,12 +33,13 @@ export class ExportAssetProbeError extends Error {
       code === "probe_unavailable"
         ? desktopT("export.probeUnavailable")
         : desktopT("export.assetUnreadable", { file: asset.fileName }),
-      { cause },
     );
     this.name = "ExportAssetProbeError";
     this.code = code;
     this.assetId = asset.assetId;
     this.fileName = asset.fileName;
+    // 渲染层的类型检查（tsconfig.app.json，lib ES2020）也会编到这个文件，那里没有 ErrorOptions；沿用主进程的 Object.assign 写法。
+    Object.assign(this, { cause });
   }
 }
 

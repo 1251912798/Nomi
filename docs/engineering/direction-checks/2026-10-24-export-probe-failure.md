@@ -56,6 +56,18 @@ fix 计数是本仓库自己的流程工具，没有现成库可接；导出侧�
 
 这次是计数口径把「加了两句文案」算成「同一处第 10 刀」；要不要让桌面词典也按键族计数（推荐要，另开一个工具小 PR），而这次导出修复照常走评审。
 
+## 补记：同一 PR 里的第二个修复提交命中目录 `electron/export/`
+
+本 PR 的修复提交（57cc560f9）之后，推送前 typecheck 发现渲染层的类型检查（`tsconfig.app.json`，lib ES2020）也编到 `exportAssetProbe.ts`，那里的 `Error` 构造不接受第二个参数（ErrorOptions 是 ES2022）。改成主进程现有的 `Object.assign(error, { cause })` 写法要再提交一次，fix-churn 报「目录 `electron/export/` 14 天第 3 个 fix」。
+
+| 提交 | 直接原因 | 类 |
+|---|---|---|
+| 15d7a2f5d（10-10）fix(test) | 超时被放弃的用例在后台泄漏导出任务 | 测试收尾，与探测无关 |
+| 57cc560f9（本 PR） | 探测失败被吞成「没声音」 | 本复盘的主题 |
+| 本提交（本 PR） | 同一 PR 未合入前的类型兼容（ErrorOptions → Object.assign） | 同一处修复的自修，不是又一类 bug；文件本身未命中，只换写法、不加分支 |
+
+结论不变：不是导出这条线在反复补。按 P1 的例外（只因目录口径命中、文件本身没命中、改法是换）交协调代批。
+
 ## 特征测试清单
 
 - `electron/export/exportJobs.probeFailure.test.ts`：先红（改前 startExportJob 照常建任务、编码器拿到 audioCodec none / audioMode mute），改后绿，留作回归。
