@@ -115,6 +115,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'tests/ux/_paidRun.test.mjs', roots: ['tests/ux'], exts: ['mjs'] }, // 每个 *.paid.mjs 都走 openPaidWalk 或在例外表里
   { file: 'tests/ux/storyboard-editor-entry.test.mjs', roots: ['tests/ux'], exts: ['mjs'] }, // 走查不许自己点方案行进编辑器，只经 openStoryboardEditor（1 秒）
   { file: 'tests/ux/design-lab/labFailureTriage.test.mjs', roots: ['tests/ux'], exts: ['mjs'] }, // 每份设计实验室走查入口认领角色、不写死端口
+  { file: 'tests/ux/full-walk/limitsRegistry.test.mjs', roots: ['tests/ux/full-walk'], exts: ['mjs'] }, // 2026-10-25：全功能走查（监视器 / 动作 / 剧本）读的每一个 limits.<名字> 都在 loadLimits 登记、带出处（<1 秒）
 ])
 
 /**
