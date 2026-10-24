@@ -8,11 +8,16 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 //   ② 全部素材：B 项目的图拖到画布 → 多一张卡，且卡上的地址已经是 A 项目自己的文件（复制进来，不引用别的项目）
 //   ③ 项目素材：点两张卡的对勾 → 两张都选中；再点其中一张的对勾 → 取消
 //   ④ 项目素材：拖一张到画布 → 多一张卡（复制）；拖到文件夹 → 归进文件夹
-//   ⑤ 项目素材：点对勾选两张 → 删除按钮计数 2 → 确认 → 两张都没了
+//   ⑤ 项目素材：点对勾选两张 → 删除按钮计数 2 → 确认 → 两张都没了（两个页签都不列；文件真进了回收站）
 //   ⑥ 项目素材：删画布上那张卡的素材 → 两个页签都不再列（文件等撤销窗口过去才进回收站，这期间也不许换个名字列回来）
 //   ⑦ 项目素材：删一张只被时间轴片段用着的图 → 留着，顶上说还在用、先从那里移除（2026-10-24 之前说「暂时无法删除」）
 // 用法: pnpm build && node tests/ux/asset-library-interactions.walk.mjs [--locale en] [--scheme dark]
 // 判据 = 断言 + 截图（tests/ux/shots/asset-library-interactions-<locale>/）人眼过。
+//
+// ⑤⑥ 真删：文件进系统回收站（shell.trashItem）。走查不许往跑它的这台电脑的回收站里塞测试垃圾（协调 10-23，
+// tests/system/walks-never-trash-projects.test.mjs 登记了本走查）：macOS 上两个测试项目放在一个一次性的小磁盘映像卷上——
+// 那个卷有自己的废纸篓（<卷>/.Trashes/<uid>），走查顺带核对文件真进了回收站；收尾卸载，映像随临时根删掉。
+// CI 上照跑（runner 用完即毁）；其它系统在本机跑没有一次性的回收站，⑤⑥ 跳过并明着打 SKIP。
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -41,7 +46,38 @@ fs.rmSync(shotsDir, { recursive: true, force: true })
 fs.mkdirSync(shotsDir, { recursive: true })
 
 const tempRoot = makeTempDir('nomi-asset-interactions-')
-const projectsDir = path.join(tempRoot, 'projects')
+const run = (command, args) => execFileSync(command, args, { encoding: 'utf8', stdio: 'pipe' })
+/** macOS：一次性的小磁盘映像卷当项目所在的盘（它自己的废纸篓）；其它系统 null。 */
+function attachDisposableVolume() {
+  if (process.platform !== 'darwin') return null
+  const name = `NomiAssetWalk-${process.pid}`
+  const mount = `/Volumes/${name}`
+  const image = path.join(tempRoot, 'trash-volume')
+  run('hdiutil', ['create', '-size', '64m', '-fs', 'APFS', '-volname', name, '-type', 'SPARSE', image])
+  run('hdiutil', ['attach', '-nobrowse', '-owners', 'on', '-mountpoint', mount, `${image}.sparseimage`])
+  return { mount, trashDir: path.join(mount, '.Trashes', String(process.getuid())) }
+}
+const volume = attachDisposableVolume()
+let volumeAttached = Boolean(volume)
+function detachDisposableVolume() {
+  if (!volumeAttached) return
+  for (const args of [[], ['-force'], ['-force']]) {
+    try {
+      run('hdiutil', ['detach', ...args, volume.mount])
+      volumeAttached = false
+      return
+    } catch (error) {
+      console.log(`  [cleanup] 映像卷卸载重试：${String(error?.message || error).split('\n')[0]}`)
+    }
+  }
+  console.log(`  [cleanup] 映像卷没能卸载，请手动 hdiutil detach -force ${volume.mount}`)
+}
+// 走查中途崩了也要卸载（临时根在进程退出时删，映像文件跟着走）。
+process.once('exit', detachDisposableVolume)
+/** 真删会不会进这台电脑真实的回收站：有一次性映像卷、或在 CI 的一次性 runner 上，才跑 ⑤⑥ 的真删。 */
+const disposableTrash = Boolean(volume) || Boolean(process.env.CI)
+const binned = () => (volume && fs.existsSync(volume.trashDir) ? fs.readdirSync(volume.trashDir).filter((name) => name !== '.DS_Store') : [])
+const projectsDir = volume ? path.join(volume.mount, 'projects') : path.join(tempRoot, 'projects')
 
 const localUrl = (projectId, relative) =>
   `nomi-local://asset/${encodeURIComponent(projectId)}/${relative.split('/').map(encodeURIComponent).join('/')}`
@@ -238,54 +274,72 @@ try {
   check('④ 项目素材：拖到文件夹归类', /1\s*$/.test(folderText.trim()), `folder=${folderText.trim()}`)
   await snap(win, '08-project-tab-drag-to-folder')
 
+  const confirmDelete = () => win.locator('[role="dialog"] button, [role="alertdialog"] button', { hasText: locale === 'en' ? 'Delete' : '删除' }).last().click()
+  // 确认框关掉的过场里内容已经清空：等它整个退场再拍「删完以后」，截图里留的是稳定的结果。
+  const confirmDialogGone = () => win.locator('[data-confirm-dialog-cancel]').first().waitFor({ state: 'hidden', timeout: stationTimeout() })
+  const feedbackLine = win.locator('[data-asset-library-feedback]').first()
+  const importedFile = (name) => path.join(projectA.root, 'assets', 'imported', name)
+
   // ⑤ 多选删除：选两张 → 删两张
   await win.keyboard.press('Escape').catch(() => {})
   // Esc 同时是外壳抽屉的收起键：抽屉被收起了就重开（抽屉是浮层，读完要重开，别假设它常驻）。
   await openRailDrawer(win, 'assets', '重开素材库抽屉')
-  // 重开后抽屉回到默认的「全部素材」页签：切回「项目素材」继续选。
-  await win.locator('[role="tab"]', { hasText: PROJECT_TAB }).first().click()
-  // 删两张只在项目里、没上过画布的素材（上过画布的那张删除＝删卡上的结果，文件另算，是既有语义）。
-  for (const name of ['a-spare.png', VIDEO]) {
-    await tile(name).hover()
-    if (!(await selectedTile(name).count())) await clickTick(name)
+  if (!disposableTrash) {
+    console.log('  SKIP ⑤⑥ 真删：这台机器上删掉的文件会进你真实的回收站（只有 macOS 的一次性映像卷 / CI 的一次性 runner 才跑）')
+  } else {
+    // 重开后抽屉回到默认的「全部素材」页签：删之前先证明这两张在这里也列着，删完要两个页签都不列。
+    const spareAllProof = await proveProbe(tile('a-spare.png'), '删除前全部素材里有 a-spare.png')
+    const videoAllProof = await proveProbe(tile(VIDEO), '删除前全部素材里有这条视频')
+    await win.locator('[role="tab"]', { hasText: PROJECT_TAB }).first().click()
+    // 删两张只在项目里、没上过画布的素材（上过画布的那张删除＝删卡上的结果，文件另算，是既有语义）。
+    for (const name of ['a-spare.png', VIDEO]) {
+      await tile(name).hover()
+      if (!(await selectedTile(name).count())) await clickTick(name)
+    }
+    await win.waitForTimeout(300)
+    const beforeDeleteSelected = await selectedCount()
+    check('⑤ 点对勾选中两张待删', beforeDeleteSelected === 2, `selected=${beforeDeleteSelected}`)
+    // 基线：删除前同一个格子探针找得到这两张。
+    const spareProof = await proveProbe(tile('a-spare.png'), '删除前项目素材里有 a-spare.png')
+    const videoProof = await proveProbe(tile(VIDEO), '删除前项目素材里有这条视频')
+    await deleteButton.click()
+    await win.waitForTimeout(500)
+    await snap(win, '09-confirm-delete-two')
+    await confirmDelete()
+    await checkAbsent('⑤ 删两张：a-spare.png 没了', tile('a-spare.png'), spareProof, '确认删除后 a-spare.png 不该还在')
+    await checkAbsent('⑤ 删两张：视频也没了', tile(VIDEO), videoProof, '确认删除后这条视频不该还在')
+    await confirmDialogGone()
+    await snap(win, '10-after-delete-two')
+    check('⑤ 两个文件已不在项目目录里', !fs.existsSync(importedFile('a-spare.png')) && !fs.existsSync(importedFile(VIDEO)))
+    // 确认框说「落盘文件会移到系统回收站」：在一次性映像卷上核对它们真在回收站里（不是被永久删掉）。
+    if (volume) check('⑤ 两个文件进了回收站（一次性映像卷的废纸篓）', ['a-spare.png', VIDEO].every((name) => binned().includes(name)), binned().join(', '))
+    // 「全部素材」是另一份清单（所有项目扫盘）：删两张 = 两次删除广播紧挨着到，这一份也要刷新到删完以后。
+    await win.locator('[role="tab"]', { hasText: ALL_TAB }).first().click()
+    await checkAbsent('⑤ 全部素材里 a-spare.png 也没了', tile('a-spare.png'), spareAllProof, '删掉的 a-spare.png 不该还在全部素材里')
+    await checkAbsent('⑤ 全部素材里视频也没了', tile(VIDEO), videoAllProof, '删掉的视频不该还在全部素材里')
+    await snap(win, '10b-all-tab-after-delete-two')
+
+    // ⑥ 删画布上那张卡的素材：画布结果摘掉（⌘Z 能撤），文件等撤销窗口过去才进回收站——这期间两个页签都不许把它列回来。
+    const CANVAS_CARD = '画布上的卡'
+    const HERO = 'a-hero.png'
+    const heroProof = await proveProbe(tile(HERO), '删除前全部素材里有 a-hero.png')
+    await win.locator('[role="tab"]', { hasText: PROJECT_TAB }).first().click()
+    const cardProof = await proveProbe(tile(CANVAS_CARD), '删除前项目素材里有画布上那张卡')
+    await tile(CANVAS_CARD).hover()
+    await clickTick(CANVAS_CARD)
+    await win.waitForTimeout(300)
+    check('⑥ 只选中画布上那张卡', (await selectedCount()) === 1, `selected=${await selectedCount()}`)
+    await deleteButton.click()
+    await win.waitForTimeout(500)
+    await confirmDelete()
+    await checkAbsent('⑥ 删画布上的卡：项目素材里没了', tile(CANVAS_CARD), cardProof, '确认删除后画布那张卡的素材不该还在')
+    await checkAbsent('⑥ 文件没有换成文件名回到项目素材', tile(HERO), heroProof, '删掉的素材不该以文件名 a-hero.png 回到项目素材')
+    await confirmDialogGone()
+    await snap(win, '11-after-delete-canvas-card')
+    await win.locator('[role="tab"]', { hasText: ALL_TAB }).first().click()
+    await checkAbsent('⑥ 全部素材里也没了', tile(HERO), heroProof, '删掉的素材不该还在全部素材里')
+    await snap(win, '12-all-tab-after-delete-canvas-card')
   }
-  await win.waitForTimeout(300)
-  const beforeDeleteSelected = await selectedCount()
-  check('⑤ 点对勾选中两张待删', beforeDeleteSelected === 2, `selected=${beforeDeleteSelected}`)
-  // 基线：删除前同一个格子探针找得到这两张。
-  const spareProof = await proveProbe(tile('a-spare.png'), '删除前项目素材里有 a-spare.png')
-  const videoProof = await proveProbe(tile(VIDEO), '删除前项目素材里有这条视频')
-  await deleteButton.click()
-  await win.waitForTimeout(500)
-  await snap(win, '09-confirm-delete-two')
-  await win.locator('[role="dialog"] button, [role="alertdialog"] button', { hasText: locale === 'en' ? 'Delete' : '删除' }).last().click()
-  await checkAbsent('⑤ 删两张：a-spare.png 没了', tile('a-spare.png'), spareProof, '确认删除后 a-spare.png 不该还在')
-  await checkAbsent('⑤ 删两张：视频也没了', tile(VIDEO), videoProof, '确认删除后这条视频不该还在')
-  await snap(win, '10-after-delete-two')
-
-  const confirmDelete = () => win.locator('[role="dialog"] button, [role="alertdialog"] button', { hasText: locale === 'en' ? 'Delete' : '删除' }).last().click()
-  const feedbackLine = win.locator('[data-asset-library-feedback]').first()
-
-  // ⑥ 删画布上那张卡的素材：画布结果摘掉（⌘Z 能撤），文件等撤销窗口过去才进回收站——这期间两个页签都不许把它列回来。
-  const CANVAS_CARD = '画布上的卡'
-  const HERO = 'a-hero.png'
-  await win.locator('[role="tab"]', { hasText: ALL_TAB }).first().click()
-  const heroProof = await proveProbe(tile(HERO), '删除前全部素材里有 a-hero.png')
-  await win.locator('[role="tab"]', { hasText: PROJECT_TAB }).first().click()
-  const cardProof = await proveProbe(tile(CANVAS_CARD), '删除前项目素材里有画布上那张卡')
-  await tile(CANVAS_CARD).hover()
-  await clickTick(CANVAS_CARD)
-  await win.waitForTimeout(300)
-  check('⑥ 只选中画布上那张卡', (await selectedCount()) === 1, `selected=${await selectedCount()}`)
-  await deleteButton.click()
-  await win.waitForTimeout(500)
-  await confirmDelete()
-  await checkAbsent('⑥ 删画布上的卡：项目素材里没了', tile(CANVAS_CARD), cardProof, '确认删除后画布那张卡的素材不该还在')
-  await checkAbsent('⑥ 文件没有换成文件名回到项目素材', tile(HERO), heroProof, '删掉的素材不该以文件名 a-hero.png 回到项目素材')
-  await snap(win, '11-after-delete-canvas-card')
-  await win.locator('[role="tab"]', { hasText: ALL_TAB }).first().click()
-  await checkAbsent('⑥ 全部素材里也没了', tile(HERO), heroProof, '删掉的素材不该还在全部素材里')
-  await snap(win, '12-all-tab-after-delete-canvas-card')
 
   // ⑦ 只被时间轴片段用着的图：不删、格子留着，顶上说还在用、先从那里移除。
   const ON_CLIP = 'a-onclip.png'
@@ -311,7 +365,8 @@ try {
   } catch (error) {
     check('⑦ 时间轴在用的图留着', false, String(error?.message || error).split('\n')[0])
   }
-  check('⑦ 文件还在盘上', fs.existsSync(path.join(projectA.root, 'assets', 'imported', ON_CLIP)))
+  check('⑦ 文件还在盘上', fs.existsSync(importedFile(ON_CLIP)))
+  await confirmDialogGone()
   await snap(win, '13-kept-in-use')
 } catch (error) {
   console.log(`  FAIL walk crashed: ${error?.stack || error}`)
@@ -319,6 +374,7 @@ try {
   if (win) await snap(win, '99-crash')
 } finally {
   await app?.close().catch(() => {})
+  detachDisposableVolume()
 }
 
 const failed = results.filter((result) => !result.ok)
