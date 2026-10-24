@@ -7,7 +7,7 @@ import { launchNomiApp } from '../tests/ux/_launchApp.mjs'
 import { newProjectEntry } from '../tests/ux/_shell.mjs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { mkdirSync, mkdtempSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import os from 'node:os'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -109,6 +109,9 @@ try {
   for (const e of errors.slice(0, 8)) console.log('  ✗ ' + e.slice(0, 200))
 } finally {
   await app.close().catch(() => {})
+  // 每次一份新档案，用完就删，不在系统临时目录里越积越多（截图在 .expr-walk/，档案不留证据）。
+  rmSync(isolatedSettings, { recursive: true, force: true })
+  rmSync(isolatedProjects, { recursive: true, force: true })
 }
 if (failed) { console.log('WALKTHROUGH: FAIL'); process.exit(1) }
 console.log('WALKTHROUGH: PASS')
