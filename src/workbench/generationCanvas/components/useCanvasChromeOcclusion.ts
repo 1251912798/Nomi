@@ -5,14 +5,20 @@ import { COMPOSER_ROOT_SELECTOR } from '../reactFlow/canvasLayerOrder'
 const SHADOW_MARGIN = 24
 type Rect = { left: number; top: number; right: number; bottom: number }
 
-/** 外框控件盒子被一组生成框压住的部分（相对外框控件自己的左上角）。纯函数，便于单测。 */
+/** 外框控件（含投影外扩范围）被一组生成框压住的部分（相对外框控件自己的左上角）。纯函数，便于单测。 */
 export function occludedHoles(dock: Rect, composers: readonly Rect[]): Rect[] {
   const holes: Rect[] = []
+  const outer = {
+    left: dock.left - SHADOW_MARGIN,
+    top: dock.top - SHADOW_MARGIN,
+    right: dock.right + SHADOW_MARGIN,
+    bottom: dock.bottom + SHADOW_MARGIN,
+  }
   for (const c of composers) {
-    const left = Math.max(dock.left, c.left)
-    const top = Math.max(dock.top, c.top)
-    const right = Math.min(dock.right, c.right)
-    const bottom = Math.min(dock.bottom, c.bottom)
+    const left = Math.max(outer.left, c.left)
+    const top = Math.max(outer.top, c.top)
+    const right = Math.min(outer.right, c.right)
+    const bottom = Math.min(outer.bottom, c.bottom)
     if (right - left > 0.5 && bottom - top > 0.5) holes.push({ left: left - dock.left, top: top - dock.top, right: right - dock.left, bottom: bottom - dock.top })
   }
   return holes
