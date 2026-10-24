@@ -2,7 +2,6 @@ import type { CanvasReadResult } from "./canvasRead";
 import { SHOT_TABLE_COMPACT_CHARACTERS, formatShotTableForAgent } from "./canvasReadShotTable";
 
 export const MAX_CANVAS_PROMPT_CHARACTERS = 12_000;
-const SELECTED_IDS_BUDGET = 900;
 const NODE_SUMMARY_BUDGET = 7_500;
 const EDGE_SUMMARY_BUDGET = 1_800;
 
@@ -29,22 +28,35 @@ function boundedJoin<T>(
   maxCharacters: number,
   separator: string,
   format: (value: T) => string,
-): { text: string; truncated: boolean } {
+): { text: string; truncated: boolean; listed: number } {
   let text = "";
+  let listed = 0;
   for (const value of values) {
     const formatted = format(value);
     const addition = text ? `${separator}${formatted}` : formatted;
     if (text.length + addition.length <= maxCharacters) {
       text += addition;
+      listed += 1;
       continue;
     }
     const marker = text ? `${separator}…` : "…";
     text = text.length + marker.length <= maxCharacters
       ? `${text}${marker}`
       : `${text.slice(0, Math.max(0, maxCharacters - 1)).trimEnd()}…`;
-    return { text, truncated: true };
+    return { text, truncated: true, listed };
   }
-  return { text, truncated: false };
+  return { text, truncated: false, listed };
+}
+
+/**
+ * 给模型看的选区的账：总数 = 节点行里标了「选中」的行数 + 没列出的行数，永远写在文本里。
+ */
+export type CanvasSelectionAccount = Readonly<{ total: number; listed: number; omitted: number }>;
+
+function selectionLine(account: CanvasSelectionAccount): string {
+  if (account.total === 0) return "当前选中: 无";
+  if (account.omitted === 0) return `当前选中 ${account.total} 个（节点行里标了「选中」）`;
+  return `当前选中 ${account.total} 个，只列出了其中 ${account.listed} 个；没列出的不要猜，请让用户缩小选区`;
 }
 
 function createPromptWriter(maxCharacters: number) {
@@ -77,14 +89,35 @@ function createPromptWriter(maxCharacters: number) {
   };
 }
 
+/** 紧凑文本，加上它对选区做的账（让调用方 / 测试读事实，而不是反过来解析排版）。 */
+export type CanvasAgentProjection = Readonly<{ text: string; selection: CanvasSelectionAccount }>;
+
+const EMPTY_SELECTION: CanvasSelectionAccount = Object.freeze({ total: 0, listed: 0, omitted: 0 });
+
 /** Compact Pi presentation of the canonical, already-safe canvas.read result. */
 export function formatCanvasForAgent(result: CanvasReadResult): string {
-  if (result.nodes.length === 0) return "画布当前为空。";
+  return projectCanvasForAgent(result).text;
+}
+
+/**
+ * 紧凑文本的唯一 owner。选区那一块的不变量：节点行上的「选中」标记与总数对得上；
+ * 选中的节点优先进入节点预算，放不下就明说列出了多少。截断不是静默的——`…` 只用来说节点 / 边 / 分镜表被截了。
+ */
+export function projectCanvasForAgent(result: CanvasReadResult): CanvasAgentProjection {
+  if (result.nodes.length === 0) return { text: "画布当前为空。", selection: EMPTY_SELECTION };
+
+  const selectedAll = result.selectedNodeIds ?? [];
+  const selectedIds = new Set(selectedAll);
+  const orderedNodes = [
+    ...result.nodes.filter((node) => selectedIds.has(node.id)),
+    ...result.nodes.filter((node) => !selectedIds.has(node.id)),
+  ];
 
   const titleById = new Map(result.nodes.map((node) => [node.id, compactHead(node.title, 80)]));
-  const nodes = boundedJoin(result.nodes, NODE_SUMMARY_BUDGET, "\n", (node) => {
+  const nodes = boundedJoin(orderedNodes, NODE_SUMMARY_BUDGET, "\n", (node) => {
     const storyboardDesignId = (node as unknown as { meta?: { storyboardDesignId?: unknown } }).meta?.storyboardDesignId;
     const flags = [
+      selectedIds.has(node.id) ? "选中" : null,
       node.locked ? "已锁定" : null,
       node.hasResult ? "已有结果" : null,
       node.status !== "idle" && node.status !== "success" ? node.status : null,
@@ -111,12 +144,15 @@ export function formatCanvasForAgent(result: CanvasReadResult): string {
       node.director ? ` | 3D-BOX revision=${node.director.revision} shots=${boundedJoin(node.director.shots, 120, ",", (name) => compactHead(name, 40)).text} actors=${boundedJoin(node.director.actors, 80, ",", (name) => compactHead(name, 40)).text}${node.director.setPieces.length ? ` setPieces=${boundedJoin(node.director.setPieces, 60, ",", (name) => compactHead(name, 40)).text}` : ""} issues=${node.director.issueCount} preview=${node.director.preview}${node.director.previewTargetNodeId ? `→${compactHead(node.director.previewTargetNodeId, 120)}` : ""}${node.director.previewAssetId ? ` previewAssetId=${compactHead(node.director.previewAssetId, 120)}` : ""}` : "",
     ].join("");
   });
+  const listedSelected = orderedNodes.slice(0, nodes.listed).filter((node) => selectedIds.has(node.id)).length;
+  const selection: CanvasSelectionAccount = selectedAll.length === 0
+    ? EMPTY_SELECTION
+    : { total: selectedAll.length, listed: listedSelected, omitted: selectedAll.length - listedSelected };
   const edges = boundedJoin(result.edges, EDGE_SUMMARY_BUDGET, ", ", (edge) =>
     `${titleById.get(edge.source) || compactHead(edge.source, 120)}→${titleById.get(edge.target) || compactHead(edge.target, 120)}`);
-  const selected = boundedJoin(result.selectedNodeIds ?? [], SELECTED_IDS_BUDGET, ", ", (id) => compactHead(id, 120));
   const writer = createPromptWriter(MAX_CANVAS_PROMPT_CHARACTERS);
   writer.appendLine(`画布节点 ${result.nodes.length} 个(id | 类型 | 镜头号与角色 | 归属节点 | 标题 | 状态 | prompt 摘要 | 结果身份):`);
-  writer.appendLine(`当前选中: ${selected.text || "无"}`);
+  writer.appendLine(selectionLine(selection));
   writer.appendLine(nodes.text);
   writer.appendLine(`引用边: ${edges.text || "无"}`);
 
@@ -131,10 +167,10 @@ export function formatCanvasForAgent(result: CanvasReadResult): string {
     writer.appendLine(formatShotTableForAgent({ id: node.id, title: node.title, table: node.shotTable! }, Math.min(SHOT_TABLE_COMPACT_CHARACTERS, share)));
   });
 
-  const selectedIds = new Set(result.selectedNodeIds ?? []);
+  // 完整提示词 / 正文跟所有选中的节点走；预算不够时沿用正文截断提示。
   let promptTruncated = false;
   let promptsOmitted = false;
-  const coreTruncated = selected.truncated || nodes.truncated || edges.truncated || tableBudgetTruncated;
+  const coreTruncated = nodes.truncated || edges.truncated || tableBudgetTruncated;
   for (const node of result.nodes) {
     if (!selectedIds.has(node.id) || node.prompt.length <= 60) continue;
     const heading = `「${compactHead(node.title, 80)}」(${compactHead(node.id, 120)}) 完整提示词:`;
@@ -159,5 +195,5 @@ export function formatCanvasForAgent(result: CanvasReadResult): string {
     promptTruncated = writer.appendRemaining(node.text, coreTruncated ? 2 : 0);
   }
   if ((coreTruncated || promptsOmitted) && !promptTruncated) writer.appendLine("…");
-  return writer.text();
+  return { text: writer.text(), selection };
 }
