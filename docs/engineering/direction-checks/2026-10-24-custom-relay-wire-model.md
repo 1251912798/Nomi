@@ -59,5 +59,5 @@
 ## 特征测试清单（动结构前先锁住）
 
 - `electron/parity/vendorScopedModelId.matrix.test.ts`：扩了自建中转行与 Agent 能力清单格；旧判据 6 红（531 条里）/ 新判据全绿。
-- `electron/catalog/customRelayWireModel.test.ts`：发送侧按入口逐一比出站 model，#1207 修前 11 条红。
+- `electron/catalog/customRelayWireModel.test.ts`：发送侧按入口逐一比出站 model，#1207 修前 14 条里 12 红 2 绿（2 绿是内置 kie 的正向对照；搬到 main 上同样 12 红）。
 - `src/config/modelIdentity.channelMerge.test.ts`、`channelModeReach.test.ts`：变体栏回到 main 的三态 fail-open 语义，自建中转不靠这里拦。

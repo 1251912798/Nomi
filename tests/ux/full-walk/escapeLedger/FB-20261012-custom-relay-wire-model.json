@@ -16,6 +16,8 @@
     "docs/engineering/direction-check-2026-10-16-custom-relay-wire-model.md",
     "electron/catalog/customRelayWireModel.test.ts",
     "electron/parity/vendorScopedModelId.matrix.test.ts",
+    "docs/evidence/2026-10-24-custom-relay-wire-model/outbound.json",
+    "docs/evidence/2026-10-24-custom-relay-wire-model/mcp-agent-list.json",
     "真付费验收 unverified：没有真实中转资源，最小量方案见设计卡「最小量真付费验收」；花钱类抽检由协调另跑"
   ],
   "completionCommits": [],
