@@ -3,7 +3,7 @@
  *          ../../controls/archetypeMeta（applyArchetypeModeSwitch / readArchetypeArray / orderedSentMediaReferenceUrls：实际发送的参考顺序）、
  *          ../../../model/generationNodeKinds 的 isVideoLikeGenerationNodeKind、electron/shared/storyboard/promptMentions 的 encodeMention、
  *          ./cameraMoveVocab（CAMERA_MOVE_LABEL / CAMERA_MOVE_DESC）、../../../../../i18n
- * [OUTPUT]: 对外提供 CAMERA_MOVE_ATTACHED_URL_KEY、AttachCameraMoveOutcome、AttachCameraMoveContext、AttachPreviewDirective、computeAttachCameraMove
+ * [OUTPUT]: 对外提供 CAMERA_MOVE_ATTACHED_URL_KEY、lastAttachedCameraMoveUrl（网址标记的只读口，只给删参考判断）、AttachCameraMoveOutcome、AttachCameraMoveContext、AttachPreviewDirective、computeAttachCameraMove
  * [POS]: director/agent 的「运镜小片 / 3D-BOX 预演 mp4 → 目标镜头视频节点」纯核：吃目标节点的 meta / prompt / kind + 新 mp4 + 画布连线上的视频，
  *        算出要 patch 什么 + 给用户什么提示，不碰 store。**生产代码只经 attachCameraMoveForNode 调它**（attachDoors.guard.test.ts 守）。
  *        「已经挂好」按当前现状判（当前模型实际有哪些参考槽、实际发送的参考列表、网址、提示词里的引用）：完全一致 → noop，否则重算；
@@ -40,6 +40,11 @@ function cameraMoveDirective(move: CameraMove | undefined): string {
 function readAttachedUrl(meta: Record<string, unknown>): string {
   const value = meta[CAMERA_MOVE_ATTACHED_URL_KEY]
   return typeof value === 'string' ? value : ''
+}
+
+/** 网址标记的唯一对外读口：本核上一次挂上去的是哪条。只给删参考认「删的是不是挂着的那份预演」，不当「已挂好」的凭据（attachDoors.guard.test.ts 守调用方）。 */
+export function lastAttachedCameraMoveUrl(target: Pick<GenerationCanvasNode, 'meta'>): string {
+  return readAttachedUrl(target.meta || {})
 }
 
 /** 3D-BOX 整段预演：逐镜实测（文字兜底用）+ 动作库缺的细节动作（交给视频模型）。 */

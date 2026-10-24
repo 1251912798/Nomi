@@ -22,11 +22,13 @@ function latestReadyPreviewForTarget(nodes: readonly Pick<GenerationCanvasNode, 
   return latest
 }
 
-/** 只有“当前挂着的预演 URL”才可被用户删除写成退出；用户自己的同 URL 参考不会命中。 */
-export function directorPreviewReferenceRemoval(nodes: readonly Pick<GenerationCanvasNode, 'id' | 'kind' | 'meta'>[], target: Pick<GenerationCanvasNode, 'id' | 'meta'>, url: string): boolean {
+/**
+ * 只有“当前挂着的预演 URL”才可被用户删除写成退出；用户自己的同 URL 参考不会命中。
+ * attachedUrl 由挂接核的读口 lastAttachedCameraMoveUrl 给：网址标记只有核能读（本模块不反向 import 核，免得成环）。
+ */
+export function directorPreviewReferenceRemoval(nodes: readonly Pick<GenerationCanvasNode, 'id' | 'kind' | 'meta'>[], target: Pick<GenerationCanvasNode, 'id'>, url: string, attachedUrl: string): boolean {
   const preview = latestReadyPreviewForTarget(nodes, target.id)
-  const attached = target.meta?.cameraMoveAttachedUrl
-  return Boolean(preview && preview.videoUrl === url && attached === url)
+  return Boolean(preview && preview.videoUrl === url && attachedUrl === url)
 }
 
 export function isDirectorPreviewDismissed(target: Pick<GenerationCanvasNode, 'meta'> | undefined, previewUrl: string | undefined): boolean {
