@@ -14,7 +14,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「happyhorse」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "audio_setting": "keep-audio-setting"
       }
@@ -80,7 +80,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「kling-v3」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "audio": false
       }
@@ -92,7 +92,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「kling-v3」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "audio": false
       }
@@ -104,7 +104,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「wan3.0-video」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "audio": false
       }
@@ -141,7 +141,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「nomi-audio」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "voice": "keep-voice"
       }
@@ -153,7 +153,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明视频参考位，请在调用里写明参数名。",
+      "error": "模型「agnes-video-v2.0」在这个接入方式下发不出：参考视频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明视频参考位，请在调用里写明参数名。",
       "controlValues": {
         "num_frames": 3,
         "frame_rate": 24
@@ -166,7 +166,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明视频参考位，请在调用里写明参数名。",
+      "error": "模型「agnes-video-v2.0」在这个接入方式下发不出：参考视频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明视频参考位，请在调用里写明参数名。",
       "controlValues": {
         "num_frames": 3,
         "frame_rate": 24
@@ -240,7 +240,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「bytedance/seedance-2.0-global」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "generateAudio": false
       }
@@ -252,7 +252,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「bytedance/seedance-2.0-global」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "generateAudio": false
       }
@@ -264,7 +264,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「rhart-video-v3.1-pro-official」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "generateAudio": false
       }
@@ -276,7 +276,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「rhart-video-v3.1-pro-official」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "generateAudio": false
       }
@@ -288,7 +288,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「speech-2.8-hd」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "voice_id": "keep-voice"
       }
@@ -300,7 +300,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「speech-2.8-turbo」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "voice_id": "keep-voice"
       }
@@ -312,7 +312,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明图片参考位，请在调用里写明参数名。",
+      "error": "模型「fal-ai/nano-banana-2」在这个接入方式下发不出：参考图。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明图片参考位，请在调用里写明参数名。",
       "controlValues": {
         "num_images": 3
       }
@@ -347,7 +347,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明图片参考位，请在调用里写明参数名。",
+      "error": "模型「openai/gpt-image-2」在这个接入方式下发不出：参考图。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明图片参考位，请在调用里写明参数名。",
       "controlValues": {
         "image_size": "keep-image-size",
         "num_images": 3
@@ -386,7 +386,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明图片参考位，请在调用里写明参数名。",
+      "error": "模型「bytedance/seedream/v5/pro」在这个接入方式下发不出：参考图。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明图片参考位，请在调用里写明参数名。",
       "controlValues": {
         "image_size": "keep-image-size",
         "num_images": 3
@@ -424,7 +424,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「eleven_multilingual_v2」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "voice_preset_id": "keep-voice"
       }
@@ -436,7 +436,7 @@
       "declaredReferenceKeys": [],
       "sentCount": 0,
       "rejected": true,
-      "error": "这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
+      "error": "模型「eleven_v3」在这个接入方式下发不出：参考音频。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。\n这个模型的请求体没有声明音频参考位，请在调用里写明参数名。",
       "controlValues": {
         "voice_preset_id": "keep-voice"
       }

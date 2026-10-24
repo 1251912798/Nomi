@@ -13,7 +13,8 @@
 //   ② 每个档案每个方式的参考槽 inputKey 与合并键 combineSlotsInto.key——按 M1 合同，请求体就是从这些键读参考；
 //   ③ APIMART_REFERENCE_PARAMETER_ALIASES：APIMart 引擎 B 认的参考别名（capabilityCore/apimartGenerationProjection 从这里取）；
 //   ④ 档案的 headlessReferenceKeys：请求体认、生成框没有控件的参考输入（KIE Gemini Omni 的 video_list…、fal 改图的 mask_url）；
-//   ⑤ REFERENCE_PARKED_KEY：节点上「先放一边」的旧工程残留（不是请求输入，但装的是图）。
+//   ⑤ REFERENCE_PARKED_KEY：节点上「先放一边」的旧工程残留（不是请求输入，但装的是图）；
+//   ⑥ DERIVED_REFERENCE_CARRIER_KEYS：主进程 taskTemplateParams 把标准参考输入造型成协议形状的请求体键（chat 图片项、JSON 改图）。
 // 完整性门：referenceSentWithinInUse.property.test.ts「键表完整性」——内置目录每条请求体读的键都要能归类，
 // 新请求体多读一个参考键而没进这张表，那里先红。
 import { MODEL_ARCHETYPES } from "./index";
@@ -68,6 +69,18 @@ export const TRANSLATED_REFERENCE_INPUT_KEYS: readonly string[] = translatedRefe
  * 所以同样进表：渲染层清掉，主进程见到就拒。
  */
 export const REFERENCE_PARKED_KEY = "referenceParkedUrls";
+
+/**
+ * ⑥ 主进程派生的请求体载体：taskTemplateParams 每次都从标准参考输入（reference_images）现造这几个键——chat/completions
+ * content 里的图片项、JSON image-edits 的 image / images。请求体就是从它们读参考，所以照样进表（承载力、拒发、普查都认）；
+ * 值永远由主进程重造，headless 投影不往里填。taskParams.test.ts「填了参考地址的派生键都有声明」守着这张表不漏。
+ */
+const derivedReferenceCarrierDeclarations: Readonly<Record<string, ReferenceKeyDeclaration>> = {
+  chat_image_parts: { family: "image", multiImage: true },
+  json_edit_image: { family: "image", multiImage: false },
+  json_edit_images: { family: "image", multiImage: true },
+};
+export const DERIVED_REFERENCE_CARRIER_KEYS: ReadonlySet<string> = new Set(Object.keys(derivedReferenceCarrierDeclarations));
 
 const headlessReferenceKeyDeclarations: Readonly<Record<string, ReferenceKeyDeclaration>> = {
   mask_url: { family: "image", multiImage: false },
@@ -182,6 +195,7 @@ const REFERENCE_KEY_DECLARATIONS: ReadonlyMap<string, ReferenceKeyDeclaration> =
     });
   }
   for (const [key, declaration] of Object.entries(apimartReferenceKeyDeclarations)) mergeDeclaration(declarations, key, declaration);
+  for (const [key, declaration] of Object.entries(derivedReferenceCarrierDeclarations)) mergeDeclaration(declarations, key, declaration);
   for (const [key, declaration] of declaredArchetypeReferenceKeyDeclarations()) mergeDeclaration(declarations, key, declaration);
   return declarations;
 })();

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { hasImageEditReferences, taskTemplateParams, firstReferenceImage, projectReferencesOntoBodyKeys, unreachableReferenceLabels, imageEditGuardError, NO_MAPPING_FALLBACK_BODY } from "./taskParams";
+import { referenceKeyDeclarationFor } from "../shared/modelArchetypes/referenceKeys";
 
 // 「接入即验证」的零额度一环：在不真跑、不花额度的前提下，核对"摊平给模板的参数"是否完整、类型对。
 // 这些坑都只在真实参数构建里暴露（实测）：① duration 是数字被 firstString 吞成 ""；
@@ -533,6 +534,8 @@ describe("无 mapping 兜底：参考素材不得静默丢弃", () => {
     "%s 带参考图但没有任何 mapping → 拒发（而不是走兜底把参考丢掉）",
     (kind) => {
       const error = imageEditGuardError(kind, { extras: refs }, false, "我的中转模型");
+      expect(error).toContain("发不出");
+      expect(error).toContain("参考图");
       expect(error).toContain("这个模型的请求体没有声明图片参考位");
       expect(error).toContain("请在调用里写明参数名");
     },
@@ -545,6 +548,7 @@ describe("无 mapping 兜底：参考素材不得静默丢弃", () => {
       false,
       "我的中转模型",
     );
+    expect(error).toContain("首帧");
     expect(error).toContain("这个模型的请求体没有声明图片参考位");
   });
 
@@ -590,7 +594,37 @@ describe("声明驱动的 headless 拒发", () => {
       "自定义中转模型",
       { prompt: "{{request.prompt}}", audio: "{{request.params.audio}}" },
     );
-    expect(error).toBe("这个模型的请求体没有声明音频参考位，请在调用里写明参数名。");
+    // 拒发照旧说清「发不出什么」，再点明只给参考的下一步：写明参数名。
+    expect(error).toContain("发不出：参考音频");
+    expect(error).toContain("这个模型的请求体没有声明音频参考位，请在调用里写明参数名。");
+  });
+
+  // chat/completions 改图、JSON image-edits 的参考位是主进程现造的派生载体（chat_image_parts / json_edit_image(s)）。
+  // 声明表漏登它们时，承载力判「没有图片位」，两条本来发得出的改图路被误拒（2026-10-25 协调复测抓到）。
+  it.each([
+    ["chat/completions content", { model: "{{request.params.model}}", messages: [{ role: "user", content: ["{{request.params.chat_image_parts}}"] }] }],
+    ["JSON image-edits", { model: "{{request.params.model}}", image: "{{request.params.json_edit_image}}", images: "{{request.params.json_edit_images}}" }],
+  ])("%s：只给参考图照发，headless 投影不往派生载体里填", (_name, body) => {
+    const extras = { referenceImages: ["https://cdn.example.com/ref.png"] };
+    expect(imageEditGuardError("image_edit", { extras }, true, "中转改图模型", body)).toBeNull();
+    expect(projectReferencesOntoBodyKeys(extras, body)).toEqual({});
+  });
+
+  it.each([
+    ["一张图", ["https://cdn.example.com/a.png"]],
+    ["多张图", ["https://cdn.example.com/a.png", "https://cdn.example.com/b.png"]],
+  ])("taskTemplateParams 填了参考地址的键都在声明表里（%s；派生载体不许漏登）", (_name, images) => {
+    const params = taskTemplateParams({ extras: {
+      referenceImages: images,
+      firstFrameUrl: "https://cdn.example.com/first.png",
+      referenceVideoUrls: ["https://cdn.example.com/ref.mp4"],
+      referenceAudioUrls: ["https://cdn.example.com/ref.mp3"],
+    } }, { vendorKey: "census", modelKey: "census" });
+    const carrying = Object.entries(params)
+      .filter(([, value]) => JSON.stringify(value ?? null).includes("cdn.example.com"))
+      .map(([key]) => key);
+    expect(carrying).toContain("chat_image_parts");
+    expect(carrying.filter((key) => !referenceKeyDeclarationFor(key))).toEqual([]);
   });
 
   it("显式写了非通用参数名的调用不被 headless 投影路径改写", () => {

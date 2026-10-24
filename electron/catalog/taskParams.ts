@@ -10,7 +10,8 @@ import { ARCHETYPE_WIRE_DEFAULTS, ARCHETYPE_SIZE_RATIO_SEMANTIC } from "./archet
 import { bodyReferencedParamKeys } from "./paramTranslate";
 import { hasMentions, numberPromptReferences, projectPromptForSend } from "../shared/storyboard/promptMentions";
 import { bodyReferenceSupport, classifyReferenceKey, type ReferenceFamily } from "./referenceReachability";
-import { referenceKeyDeclarationFor } from "../shared/modelArchetypes/referenceKeys";
+import { DERIVED_REFERENCE_CARRIER_KEYS, referenceKeyDeclarationFor } from "../shared/modelArchetypes/referenceKeys";
+import { chatImageParts, jsonImageEditInput } from "./referenceCarrierShapes";
 import { readSelectedComfyReferenceContract, type ParameterReferenceSelection } from "./parameterReferenceContract";
 import { resolveWireModel, WIRE_MODEL_PARAM } from "../shared/modelArchetypes/wireModelIdentity";
 import { comparableReferenceUrl, comparableReferenceValues, serializeReferenceParams } from "./outboundReferenceUrl";
@@ -436,6 +437,7 @@ export function unreachableReferenceLabels(request: TaskParamsInput, createBody:
 export type ModelModeBody = { taskKind: string; body: unknown };
 
 const FAMILY_LABEL: Record<ReferenceFamily, string> = { image: "参考图", video: "参考视频", audio: "参考音频" };
+const FAMILY_PARAMETER_LABEL: Record<ReferenceFamily, string> = { image: "图片", video: "视频", audio: "音频" };
 // taskKind → 人话模式名（拒发建议里点名"用哪个模式"）。未登记的原样用 taskKind。
 const TASK_KIND_LABEL: Record<string, string> = {
   image_edit: "图生图（改图）",
@@ -466,11 +468,13 @@ function carriedReferenceFamilies(extras: JsonRecord, selected?: ParameterRefere
   return families;
 }
 
-const FAMILY_PARAMETER_LABEL: Record<ReferenceFamily, string> = {
-  image: "图片",
-  video: "视频",
-  audio: "音频",
-};
+/** 发不出的参考里，请求体连同类声明位都没有的那几类：只给参考的调用方据此改成显式参数名（用户 10-25 拍板）。 */
+function undeclaredReferenceHint(request: TaskParamsInput, createBody: unknown, selected?: ParameterReferenceSelection): string {
+  const support = bodyReferenceSupport(createBody);
+  const undeclared = [...carriedReferenceFamilies(request.extras || {}, selected)].filter((family) => !support[family]);
+  if (undeclared.length === 0) return "";
+  return `这个模型的请求体没有声明${undeclared.map((family) => FAMILY_PARAMETER_LABEL[family]).join(" / ")}参考位，请在调用里写明参数名。`;
+}
 
 /**
  * 拒发后附一句**可走的路**（交付4）：从**同一套 mapping 数据**（各模式 create body）derive——
@@ -650,6 +654,7 @@ export function projectReferencesOntoBodyKeys(
     const detail = referenceKeyDeclarationFor(key);
     if (!detail) continue; // 非参考载体键（size/duration/seed…）不碰。
     if (OBJECT_SHAPE_REF_KEY.test(key)) continue; // 对象形态键（image_with_roles/*_contents）headless 不填，留空由模板丢。
+    if (DERIVED_REFERENCE_CARRIER_KEYS.has(key)) continue; // 派生载体（chat 图片项 / JSON 改图）由 taskTemplateParams 从标准参考输入现造，不填。
     if (byFamily[detail.family].length === 0) continue; // 没有这个族的参考可填。
     // referenceImages → reference_images is already the standard non-Comfy aggregate path. Do not persist a
     // derived duplicate into extras before async preflight; other wire-key projections keep their existing policy.
@@ -737,18 +742,12 @@ export function imageEditGuardError(
   const effectiveBody = typeof createBody !== "undefined" ? createBody
     : fallbackBodyApplies ? NO_MAPPING_FALLBACK_BODY : undefined;
   if (typeof effectiveBody !== "undefined") {
-    const carriedFamilies = carriedReferenceFamilies(request.extras || {}, selected);
-    const support = bodyReferenceSupport(effectiveBody);
-    const undeclaredFamilies = [...carriedFamilies].filter((family) => !support[family]);
-    if (undeclaredFamilies.length > 0) {
-      const missing = undeclaredFamilies.map((family) => FAMILY_PARAMETER_LABEL[family]).join(" / ");
-      return `这个模型的请求体没有声明${missing}参考位，请在调用里写明参数名。`;
-    }
+    // 拒不拒只看渲染后的请求体里真有没有这条参考（派生载体、别名都算数）；声明表只决定怎么说下一步。
     const unreachable = unreachableReferenceLabels(request, effectiveBody, selected);
     if (unreachable.length > 0) {
       const base = `模型「${modelLabel}」在这个接入方式下发不出：${unreachable.join(" / ")}。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。`;
       const suggestion = reachableModeSuggestion(request, effectiveBody, modeBodies, selected);
-      return suggestion ? `${base}\n${suggestion}` : base;
+      return [base, undeclaredReferenceHint(request, effectiveBody, selected), suggestion].filter(Boolean).join("\n");
     }
   }
   if (kind !== "image_edit" && kind !== "image_to_video") return null;
@@ -763,27 +762,6 @@ export function imageEditGuardError(
     return `模型「${modelLabel}」没有「${kind === "image_edit" ? "图生图（改图）" : "图生视频"}」通道，参考图发不出去。请改用支持${what}的模型${kind === "image_edit" ? "，或断开参考图走纯文生图" : "，或断开参考图走纯文生视频"}。`;
   }
   return null;
-}
-
-/** 参考图 URL 数组 → chat/completions content 的 image_url 项数组。非字符串/空 URL 剔除。 */
-export function chatImageParts(referenceImages: unknown): Array<{ type: "image_url"; image_url: { url: string } }> {
-  if (!Array.isArray(referenceImages)) return [];
-  return referenceImages
-    .filter((u): u is string => typeof u === "string" && u.trim() !== "")
-    .map((url) => ({ type: "image_url", image_url: { url } }));
-}
-
-export type JsonImageEditReference = { type: "image_url"; url: string };
-
-/** JSON image-edits 输入造型：1 张走 image，2~3 张走 images；保序、去空、按官方上限截断。 */
-export function jsonImageEditInput(referenceImages: unknown): { image?: JsonImageEditReference; images?: JsonImageEditReference[] } {
-  if (!Array.isArray(referenceImages)) return {};
-  const refs = referenceImages
-    .filter((url): url is string => typeof url === "string" && url.trim() !== "")
-    .slice(0, 3)
-    .map((url) => ({ type: "image_url" as const, url }));
-  if (refs.length === 1) return { image: refs[0] };
-  return refs.length > 1 ? { images: refs } : {};
 }
 
 /**
