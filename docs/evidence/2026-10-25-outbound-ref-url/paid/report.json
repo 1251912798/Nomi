@@ -1,0 +1,92 @@
+{
+  "script": "tmp-ref-url-paid.mjs",
+  "mode": "paid",
+  "startedAt": "2026-10-24T18:32:09.305Z",
+  "model": "apimart/doubao-seedance-2.0 · fast · 480p · 4s · 无音频",
+  "sceneBeforeSpend": {
+    "modeId": "firstlast",
+    "referenceList": [
+      "first ref.png",
+      "last ref.png",
+      "ref-1.png",
+      "ref-2.png",
+      "ref-3.png"
+    ]
+  },
+  "composerBeforeSpend": {
+    "inUse": {
+      "firstFrameUrl": [
+        "first ref.png"
+      ],
+      "lastFrameUrl": [
+        "last ref.png"
+      ]
+    },
+    "slotLabels": [
+      "首帧",
+      "尾帧（可不填）"
+    ],
+    "arrayInUse": [],
+    "unused": [
+      "ref-1.png",
+      "ref-2.png",
+      "ref-3.png"
+    ],
+    "parked": [],
+    "problems": []
+  },
+  "rejection": null,
+  "request": {
+    "createRequests": 1,
+    "endpoint": "api.apimart.ai/v1/videos/generations",
+    "imageUrlOccurrences": 4,
+    "imagesInBody": [
+      {
+        "file": null,
+        "urlSha256": "9c67955dc94f"
+      },
+      {
+        "file": null,
+        "urlSha256": "eaa667f74b5e"
+      }
+    ],
+    "hostedUploads": [
+      "first ref.png",
+      "last ref.png"
+    ],
+    "problems": [
+      "请求体里有 2 张图对不回本地文件名（托管上传没记到，或换了别的上传形状）——证明不了只发了首帧、尾帧",
+      "请求体里的图（去重后）是 ?、?，应恰好是 first ref.png、last ref.png"
+    ]
+  },
+  "providerTaskIds": [
+    "task_01M5QJZ6C018FB3EHVM49SNACS"
+  ],
+  "landed": {
+    "durationSeconds": 4.041667,
+    "videoCodec": "h264",
+    "width": 864,
+    "height": 496,
+    "hasAudio": false,
+    "bytes": 941676,
+    "keptAt": ".tmp/pi-composer-b3-reference-development-1792866729285/result.mp4"
+  },
+  "finishedAt": "2026-10-24T18:34:52.155Z",
+  "paidCalls": 1,
+  "spend": [
+    {
+      "taskId": "task_01M5QJZ6C018FB3EHVM49SNACS",
+      "status": "ready",
+      "model": "doubao-seedance-2.0",
+      "vendor": "canvas:apimart"
+    }
+  ],
+  "networkAllowlist": [
+    "https://api.apimart.ai",
+    "*.getapib.org",
+    "https://nomi-asset-relay.2373272608.workers.dev"
+  ],
+  "networkBlocked": [],
+  "walkOutputDir": ".tmp/pi-composer-b3-reference-development-1792866729285",
+  "failure": "请求体核对没过：请求体里有 2 张图对不回本地文件名（托管上传没记到，或换了别的上传形状）——证明不了只发了首帧、尾帧；请求体里的图（去重后）是 ?、?，应恰好是 first ref.png、last ref.png"
+}
