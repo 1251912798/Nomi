@@ -1,7 +1,7 @@
 # 体验成绩单：Skill / 提示词库重排：分组 + 统一卡片 + 抽屉两列，「放上画布」新建对应节点并带参考图
 
 - 改动：Skill / 提示词库重排：分组 + 统一卡片 + 抽屉两列，「放上画布」新建对应节点并带参考图
-- 验收 head：`见提交说明（本分支的本地提交接在 5384ea0bd 之后）`（实现线 I-libraries 本地提交（feat/skill-prompt-library-layout），未推送；走查数字在最终产品代码的开发构建上测的，提示词库三个性能场景在只差文字封面样式和一个 hook 挪文件的早一版构建上测的）
+- 验收 head：`见提交说明（本分支的本地提交接在 5384ea0bd 之后）`（实现线 I-libraries 本地提交（feat/skill-prompt-library-layout），未推送；走查数字在最终构建上复跑过（library-layout 第 5 次、skill-library-cards 第 3 次）；提示词库三个性能场景在早一版构建上测的（和最终只差文字封面样式、一个 hook 挪文件、技能库正向过滤一行、空态说明一句））
 - 场景 id：`library-find-prompt-add-to-canvas`
 - 谁验：I-libraries（实现线自测；独立验收线待协调指定）（实现线自测）
 - 日期：2026-10-24；成绩单整理：I-libraries，按本次走查日志与性能场景原始结果填写
@@ -12,17 +12,19 @@
 
 ## 结果
 
-- 机器：完成 **4 / 6**（失败 2 条，原样列在下表，不丢）
+- 机器：完成 **6 / 8**（失败 2 条，原样列在下表，不丢）
 - 首次尝试成功：null（未采集：需要真人首次操作，AI 不代填）
 
 | 尝试 | 结果 | 说明 | 证据 |
 | --- | --- | --- | --- |
 | library-layout 走查第 1 次（修参考图前） | **失败** | 「放上画布」建出的新节点没带参考图：新节点还没选模型，参考图写不进去；已修（还没选模型的卡先记下参考图，第一次定模式时算上） | src/workbench/generationCanvas/nodes/promptReferenceImages.ts、useNodeModelAutoSelect.test.ts |
 | library-layout 走查第 2 次 zh / en × 明 / 暗 | 通过 |  | tests/ux/library-layout.walk.mjs |
-| library-layout 走查第 3 次（最终产品代码，35 张截图） | 通过 |  | tests/ux/library-layout.walk.mjs（NOMI_LIBRARY_LAYOUT_SHOTS 指定落盘目录） |
-| library-layout 走查第 4 次（补拍技能详情英·暗，36 张截图） | 通过 |  | tests/ux/library-layout.walk.mjs（产品代码没变，只多一张截图） |
+| library-layout 走查第 3 次（35 张截图） | 通过 |  | tests/ux/library-layout.walk.mjs（NOMI_LIBRARY_LAYOUT_SHOTS 指定落盘目录） |
+| library-layout 走查第 4 次（补拍技能详情英·暗，36 张截图） | 通过 |  | tests/ux/library-layout.walk.mjs（只多一张截图） |
+| library-layout 走查第 5 次（最终构建：技能库正向过滤、空态说明补一句之后，36 张截图） | 通过 |  | tests/ux/library-layout.walk.mjs |
 | skill-library-cards 走查第 1 次 | **失败** | 走查还在找改版前才有的效果芯片属性；改成核对新节点的提示词已填入 | tests/ux/skill-library-cards.walk.mjs |
 | skill-library-cards 走查第 2 次 | 通过 |  | tests/ux/skill-library-cards.walk.mjs |
+| skill-library-cards 走查第 3 次（最终构建） | 通过 |  | tests/ux/skill-library-cards.walk.mjs |
 
 ## 机器测的
 
