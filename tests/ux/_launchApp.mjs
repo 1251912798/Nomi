@@ -18,6 +18,7 @@ import { cleanupTestTemp, makeTempDir, registerTestTemp } from '../../scripts/_t
 //   import { launchNomiApp } from './_launchApp.mjs'
 //   const { app, win, projectsDir } = await launchNomiApp({ name: 'my-walk' })
 import { _electron as electron } from 'playwright'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
@@ -474,6 +475,12 @@ export async function launchNomiApp(options = {}) {
     cleanupTempRoot(tempRoot)
     throw new Error(diagnoseLaunchFailure(`Electron 起不来（electron.launch 失败/超时，${timeout}ms）`, name, error, logTail))
   }
+  // 走查里直接写的 `await app.close()`（经这里起 App 的近 300 个文件）也走有上限的关闭：Playwright 的 close 要等子进程的标准输出 / 错误
+  // 管道全关；Linux 上 Electron 的帮手进程继承了这两根管道，主进程退了它们还攥着，close 就永远不 resolve
+  // （夜跑 run 40035294026：断言全过的 preview-export-busy / editing-real-user-pass 挂到 600 秒）。
+  const rawClose = app.close.bind(app)
+  app[RAW_CLOSE] = rawClose
+  app.close = () => closeElectronWithin(app, rawClose, GRACEFUL_CLOSE_BOUND_MS)
   const instanceRegistration = registerWalkProcess(app.process(), { worktree: repoRoot, name, allowUntrackedProcessForTest })
   const close = async () => {
     try { await closeNomiApp(app) } finally {
@@ -620,26 +627,72 @@ export function diagnoseLaunchFailure(headline, name, error, logTail) {
   return lines.join('\n')
 }
 
+const RAW_CLOSE = Symbol('nomi.rawElectronClose')
+/** 走查自己 `app.close()` 时等优雅退出的上限：产品的退出收尾自己最多 3 秒（electron/quitTeardown.ts），这里留足余量。 */
+export const GRACEFUL_CLOSE_BOUND_MS = 15_000
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** 这个进程此刻的全部子孙 pid（POSIX）。主进程一退，子孙就被过继给 init，再按父子关系就找不到了——所以要在关之前拍。 */
+export function descendantPids(rootPid, list = () => execFileSync('ps', ['-A', '-o', 'pid=,ppid='], { encoding: 'utf8' })) {
+  if (!rootPid || process.platform === 'win32') return []
+  let out
+  try { out = list() } catch { return [] }
+  const children = new Map()
+  for (const line of out.split('\n')) {
+    const [pid, ppid] = line.trim().split(/\s+/).map(Number)
+    if (!pid) continue
+    if (!children.has(ppid)) children.set(ppid, [])
+    children.get(ppid).push(pid)
+  }
+  const found = []
+  const stack = [rootPid]
+  while (stack.length) {
+    for (const child of children.get(stack.pop()) ?? []) { found.push(child); stack.push(child) }
+  }
+  return found
+}
+
+/**
+ * 关掉一个 Electron，保证一定往下走：优雅关闭最多等 boundMs；过了就 SIGKILL 它和关之前拍下的子孙进程
+ * （只动这一棵树，不按名字杀），再放掉它的标准输入 / 输出 / 错误管道和进程句柄——Linux 上帮手进程攥着的管道
+ * 不放，走查进程自己也退不出去。
+ */
+export async function closeElectronWithin(app, rawClose, boundMs) {
+  // 已经关过的 app（走查先 `app.close()`、再调启动器的 `close()` / `closeNomiApp`）：Playwright 的 process() 这时会抛
+  // 「Cannot read properties of undefined (reading '_object')」——句柄早没了，也就没有树可拍，照样把 close 再走一遍。
+  let child
+  try { child = app.process?.() } catch { child = undefined }
+  const tree = child?.pid ? descendantPids(child.pid) : []
+  let closed = false
+  await Promise.race([
+    Promise.resolve().then(rawClose).then(() => { closed = true }).catch(() => undefined),
+    sleep(boundMs),
+  ])
+  if (closed) return
+  // 留痕：优雅关闭没在上限内完成（产品退出卡住，或帮手进程攥着管道）——强杀不是静默的。
+  console.warn(`[launchNomiApp] app.close() 等满 ${boundMs}ms 没结束，按进程树强杀 pid=${child?.pid ?? '?'}（子孙 ${tree.length} 个）`)
+  if (process.platform === 'win32' && child?.pid) {
+    try { execFileSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' }) } catch { /* 已经没了 */ }
+  } else {
+    for (const pid of [child?.pid, ...tree]) {
+      if (!pid) continue
+      try { process.kill(pid, 'SIGKILL') } catch { /* 已经没了 */ }
+    }
+  }
+  for (const stream of [child?.stdin, child?.stdout, child?.stderr]) {
+    try { stream?.destroy() } catch { /* 已经关了 */ }
+  }
+  try { child?.unref() } catch { /* 没有句柄 */ }
+  await sleep(100)
+}
+
 /**
  * 收尾。electron teardown 在部分环境会 hang（app.close() 永不 resolve），串跑时会把整条卡死，
- * 故给 3s 兜底：尽量清干净，但保证一定往下走。
+ * 故给 3s 兜底：尽量清干净，但保证一定往下走（不在乎优雅退出的场合用它；要等产品自己收尾的走查直接 app.close()）。
  */
 export async function closeNomiApp(app) {
   if (!app) return
-  let closed = false
-  await Promise.race([
-    app.close().then(() => { closed = true }).catch(() => undefined),
-    new Promise((resolve) => setTimeout(resolve, 3000)),
-  ])
-  if (closed) return
-  // Electron can leave its helper tree alive when the renderer has already
-  // exited (observed in failed canvas benchmarks). Do not let a timed-out
-  // graceful close leak into the next scenario.
-  const processHandle = app.process()
-  if (processHandle && !processHandle.killed) {
-    try { processHandle.kill('SIGKILL') } catch { /* already exited */ }
-  }
-  await new Promise((resolve) => setTimeout(resolve, 100))
+  await closeElectronWithin(app, app[RAW_CLOSE] ?? (() => app.close()), 3000)
 }
 
 /**

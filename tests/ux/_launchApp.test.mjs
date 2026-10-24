@@ -11,6 +11,8 @@ import { describe, expect, test } from 'vitest'
 import {
   buildNomiLaunchEnv,
   cleanupTempRoot,
+  closeElectronWithin,
+  descendantPids,
   configureSyntheticCredentialStorage,
   currentCatalogVersion,
   diagnoseLaunchFailure,
@@ -225,6 +227,65 @@ describe('buildNomiLaunchEnv', () => {
     const env = buildNomiLaunchEnv({ ...dirs, capabilityDir: '/tmp/case/capability', baseEnv: {} })
     expect(env.NOMI_CAPABILITY_DIR).toBe('/tmp/case/capability')
     expect(env.NOMI_SETTINGS_DIR).toBe(dirs.settingsDir)
+  })
+})
+
+describe('closeElectronWithin', () => {
+  const alive = (pid) => { try { process.kill(pid, 0); return true } catch { return false } }
+
+  test('descendantPids：按 ps 的父子关系收整棵子孙树', () => {
+    const ps = () => ['  10     1', '  11    10', '  12    11', '  13    10', '  20     1', ''].join('\n')
+    expect(descendantPids(10, ps).sort()).toEqual([11, 12, 13])
+    expect(descendantPids(20, ps)).toEqual([])
+  })
+
+  test('优雅关闭到上限没结束：杀掉关之前拍下的整棵树、放掉管道（Linux 上帮手进程攥着管道的最小复现）', async () => {
+    // 主进程忽略 SIGTERM 且常驻；孙进程继承它的 stdout / stderr——Electron 的帮手进程就是这样让 Playwright 的 close 永远等不到管道关。
+    const grandchild = 'process.on("SIGTERM", () => {}); process.stdout.write("grandchild-ready\\n"); setInterval(() => {}, 1000)'
+    const script = `process.on('SIGTERM', () => {}); require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(grandchild)}], { stdio: 'inherit' }); setInterval(() => {}, 1000)`
+    const child = spawn(process.execPath, ['-e', script], { stdio: ['pipe', 'pipe', 'pipe'] })
+    await new Promise((resolve) => { let seen = ''; child.stdout.on('data', (chunk) => { seen += chunk; if (seen.includes('grandchild-ready')) resolve() }) })
+    const tree = descendantPids(child.pid)
+    expect(tree.length).toBeGreaterThan(0)
+    const started = Date.now()
+    await closeElectronWithin({ process: () => child }, () => new Promise(() => {}), 300)
+    expect(Date.now() - started).toBeLessThan(3000)
+    await expect.poll(() => [child.pid, ...tree].filter(alive).length, { timeout: 5000 }).toBe(0)
+    expect(child.stdout.destroyed && child.stderr.destroyed).toBe(true)
+  })
+
+  test('攥着管道的进程已经不在树里（被过继走了）：照样把管道放掉，走查进程不被它拖住', async () => {
+    // 中间进程起一个继承了 stdout / stderr 的常驻进程后立刻退出 → 常驻进程被过继给 init，按父子关系找不到它了。
+    const holder = 'process.on("SIGTERM", () => {}); process.stdout.write("holder-ready " + process.pid + "\\n"); setInterval(() => {}, 1000)'
+    const middle = `require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(holder)}], { stdio: 'inherit', detached: true }).unref()`
+    const script = `process.on('SIGTERM', () => {}); require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(middle)}], { stdio: 'inherit' }); setInterval(() => {}, 1000)`
+    const child = spawn(process.execPath, ['-e', script], { stdio: ['pipe', 'pipe', 'pipe'] })
+    const holderPid = await new Promise((resolve) => { let seen = ''; child.stdout.on('data', (chunk) => { seen += chunk; const m = /holder-ready (\d+)/.exec(seen); if (m) resolve(Number(m[1])) }) })
+    try {
+      await expect.poll(() => descendantPids(child.pid).includes(holderPid), { timeout: 5000 }).toBe(false)
+      await closeElectronWithin({ process: () => child }, () => new Promise(() => {}), 300)
+      expect(alive(child.pid)).toBe(false)
+      expect(child.stdout.destroyed && child.stderr.destroyed).toBe(true)
+    } finally {
+      try { process.kill(holderPid, 'SIGKILL') } catch { /* 已经没了 */ }
+    }
+  })
+
+  test('已经关过的 app 再关一次（process() 会抛）：不抛、照样走 close——走查先 app.close() 再 close() 是常见写法', async () => {
+    let closes = 0
+    const closedApp = { process: () => { throw new TypeError("Cannot read properties of undefined (reading '_object')") } }
+    await expect(closeElectronWithin(closedApp, async () => { closes += 1 }, 300)).resolves.toBeUndefined()
+    expect(closes).toBe(1)
+  })
+
+  test('优雅关闭在上限内结束：什么都不杀', async () => {
+    const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' })
+    try {
+      await closeElectronWithin({ process: () => child }, async () => undefined, 300)
+      expect(alive(child.pid)).toBe(true)
+    } finally {
+      child.kill('SIGKILL')
+    }
   })
 })
 
