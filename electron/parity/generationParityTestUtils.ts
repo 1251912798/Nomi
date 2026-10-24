@@ -110,7 +110,7 @@ export async function seedUserRelayConnection(
     revision: { id: `revision-${runId}`, vendorKey, digest: `parity-relay-${vendorKey}`, draft, verifiedModes, createdAt: now },
     verifiedModes,
   });
-  if (result.status !== "committed") throw new Error(`自建中转没有落库（${result.status}）：${vendorKey}`);
+  if (result.status !== "committed") throw new Error(`custom relay was not committed (${result.status}): ${vendorKey}`);
   return vendorKey;
 }
 
