@@ -1,0 +1,32 @@
+{
+  "name": "Agent 读画布时给模型看的选区（look_at_canvas 的「当前选中」；节点行内标记）",
+  "subject": "agent.canvas-read-selection-line",
+  "lifecycle": "projection",
+  "authority_kind": "projection",
+  "trust_domain": "shared",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+    "symbol": "projectCanvasForAgent"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "symbol": "projectCanvasForAgent"
+    },
+    {
+      "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "symbol": "formatCanvasForAgent"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/shared/agentCapabilities/canvasReadSelection.test.ts",
+  "allowed_consumers": [
+    "electron/agentLane/laneCanvasTools.ts",
+    "src/workbench/generationCanvas/agent/canvasPromptContext.ts",
+    "src/workbench/generationCanvas/agent/runStoryboardPlanner.ts"
+  ],
+  "since": "2026-10-22",
+  "notes": "合同 docs/fixes/2026-10-22-look-at-canvas-selection-truncation.root-cause.json：真相仍是 canvas.read 的 canonical selectedNodeIds（对外 MCP 原样返回整份）；这里只是它给应用内模型看的紧凑文本。选中的节点先进入节点预算，并在自己的状态列写「选中」；选区行只报告总数与节点行标记，预算放不下时明说列出了多少并要求用户缩小选区。完整提示词 / 正文按所有选中节点走，不再依赖翻页参数。"
+}

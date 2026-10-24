@@ -153,7 +153,7 @@ const zhCN = {
       { id: 'ask', label: '跟 Agent 说', title: '说你想拍什么', description: '新建项目，在右边的 Agent 面板里用大白话说：拍什么、几个镜头、大概多长。建议先用默认的「自动改」档：它改文稿和时间轴不打扰你，要花钱生成时先让你确认。', image: '/assets/promo-0.22/still-agent.jpg', imageAlt: 'Agent 在画布上出了四张关键帧' },
       { id: 'export', label: '挑片导出', title: '挑满意的版本，排好，导出', description: '不满意的镜头在分镜表里改提示词、换模型、再生成一版；角色要统一就锁一张参考卡。排好时间轴，导出 MP4。', image: '/assets/promo-0.22/still-storyboard.jpg', imageAlt: '分镜表里四个镜头都已出片' },
     ],
-    installTip: 'macOS：在「应用程序」里右键 Nomi →「打开」。Windows：提示风险时点「更多信息 → 仍要运行」。',
+    installTip: 'macOS：第一次打开被拦时，到「系统设置 → 隐私与安全性」点「仍要打开」。Windows：提示风险时点「更多信息 → 仍要运行」。',
     faqTitle: '常见问题',
     faq: [
       { question: '要花多少钱？', answer: 'Nomi 本身免费。生成的费用按你接的那家供应商的价格，直接由你和它结算；接免费模型（比如魔搭社区的部分模型）或本地 ComfyUI 就不花钱。' },
@@ -197,9 +197,9 @@ const zhCN = {
     macGuideTitle: 'macOS 第一次打开',
     macGuideSummary: '当前 macOS 安装包未使用 Apple Developer ID 签名，也未经过 Apple 公证。请只使用本页或 Nomi GitHub 官方仓库的下载链接。',
     macSteps: [
-      '下载对应的 DMG，把 Nomi 拖到“应用程序”。',
-      '在 Finder 的“应用程序”中右键 Nomi，选择“打开”，再确认“打开”。',
-      '如果仍被拦截，打开“系统设置” → “隐私与安全”，找到 Nomi 后点击“仍要打开”。',
+      '下载对应的 DMG，双击打开，把 Nomi 拖到“应用程序”上。',
+      '从“应用程序”打开 Nomi。第一次会被系统拦下：关掉提示，不要点“移到废纸篓”。',
+      '打开“系统设置” → “隐私与安全性”，往下找到“安全性”，在 Nomi 那条提示旁点“仍要打开”并确认（macOS 12 在“系统偏好设置” → “安全性与隐私” → “通用”里）。',
     ],
     macDamaged: '仅当 macOS 提示 Nomi“已损坏”时：先确认安装包来自上述官方链接，再打开“终端”运行：',
     macCommand: 'xattr -dr com.apple.quarantine "/Applications/Nomi.app"',
@@ -333,7 +333,7 @@ const english = {
       { id: 'ask', label: 'Ask', title: 'Say what you want to make', description: 'Create a project and tell the agent panel on the right, in plain words: what, how many shots, roughly how long. Start with the default Auto-edit level — it edits documents and the timeline without bothering you, and asks before any paid generation.', image: '/assets/promo-0.22/still-agent.jpg', imageAlt: 'The agent put four keyframes on the canvas' },
       { id: 'export', label: 'Export', title: 'Keep the good takes, arrange, export', description: 'For a shot you don’t like, change the prompt or the model in the storyboard and generate again; lock a reference card to keep a character consistent. Arrange the timeline and export MP4.', image: '/assets/promo-0.22/still-storyboard.jpg', imageAlt: 'All four shots generated in the storyboard' },
     ],
-    installTip: 'macOS: right-click Nomi in Applications → Open. Windows: on the SmartScreen prompt choose More info → Run anyway.',
+    installTip: 'macOS: if the first launch is blocked, open System Settings → Privacy & Security and click Open Anyway. Windows: on the SmartScreen prompt choose More info → Run anyway.',
     faqTitle: 'FAQ',
     faq: [
       { question: 'How much does it cost?', answer: 'Nomi itself is free. Generation costs whatever your provider charges, settled directly between you and them. Free models (some on ModelScope, for example) and local ComfyUI cost nothing.' },
@@ -377,9 +377,9 @@ const english = {
     macGuideTitle: 'First launch on macOS',
     macGuideSummary: 'The current macOS build is not Apple Developer ID signed or notarized. Only use download links on this site or in the official Nomi GitHub repository.',
     macSteps: [
-      'Download the matching DMG and drag Nomi to Applications.',
-      'In Finder, right-click Nomi in Applications, choose Open, then confirm Open.',
-      'If it is still blocked, open System Settings → Privacy & Security, find Nomi, and click Open Anyway.',
+      'Download the matching DMG, open it, and drag Nomi onto Applications.',
+      'Open Nomi from Applications. The first launch is blocked: close the prompt, and don’t choose Move to Trash.',
+      'Open System Settings → Privacy & Security, scroll down to Security, click Open Anyway next to the Nomi message, and confirm (on macOS 12: System Preferences → Security & Privacy → General).',
     ],
     macDamaged: 'Only if macOS says Nomi is “damaged”: confirm the installer came from an official link above, then open Terminal and run:',
     macCommand: 'xattr -dr com.apple.quarantine "/Applications/Nomi.app"',

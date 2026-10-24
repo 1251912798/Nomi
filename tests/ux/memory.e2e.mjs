@@ -17,6 +17,7 @@ import { createRequire } from "node:module";
 import { WebSocket } from "undici";
 import { prepareHostConfigDir, withIsolatedHostConfig, withLinuxNoSandbox } from "./_launchApp.mjs";
 import { assertFreshBuild } from "../../scripts/package-build-stamp.mjs";
+import { killProcessTree, processTreeSpawnOptions } from "../../scripts/lib/processTree.mjs";
 
 const require = createRequire(import.meta.url);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -236,19 +237,6 @@ async function connectPageSession(port) {
   return session;
 }
 
-function killProcessTree(rootPid) {
-  if (!rootPid) return;
-  try {
-    if (process.platform === "win32") {
-      execFileSync("taskkill.exe", ["/PID", String(rootPid), "/T", "/F"], { stdio: "ignore" });
-    } else {
-      process.kill(rootPid, "SIGTERM");
-    }
-  } catch {
-    // process may already be gone
-  }
-}
-
 function prepareFixtureEnvironment() {
   if (process.env.NOMI_MEMORY_EXTERNAL === "1") {
     return {
@@ -323,6 +311,8 @@ const electronProcess = spawn(require("electron"), withLinuxNoSandbox(["."]), {
   cwd: repoRoot,
   env: childEnv,
   stdio: ["ignore", "ignore", "pipe"],
+  // 独立进程组：收尾按组停，Electron 的 GPU / 渲染子进程一起走
+  ...processTreeSpawnOptions(),
 });
 let stderr = "";
 electronProcess.stderr.on("data", (chunk) => {
@@ -331,6 +321,13 @@ electronProcess.stderr.on("data", (chunk) => {
 
 const rootPid = electronProcess.pid;
 let cdp = null;
+// 独立进程组收不到终端的 Ctrl-C / 关窗信号：先停 Electron 整组，再按原信号退出
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.once(signal, () => {
+    killProcessTree(electronProcess, "SIGTERM");
+    process.kill(process.pid, signal);
+  });
+}
 
 async function collect(labelName) {
   await cdp?.send("HeapProfiler.collectGarbage").catch(() => {});
@@ -503,5 +500,5 @@ try {
   }
 } finally {
   cdp?.close();
-  killProcessTree(rootPid);
+  killProcessTree(electronProcess, "SIGTERM");
 }
