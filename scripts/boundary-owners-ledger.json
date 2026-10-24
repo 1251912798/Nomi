@@ -13,6 +13,16 @@
       "reason": "2026-10-22 对焦算式换成 resolveCanvasFocusViewport：把节点加选中后的生成框整体框进扣掉浮层的可见区，缩放封顶 100%；旧的只看节点的 resolveCanvasFocusZoom 同提交删除，「对焦给可读缩放、不保留总览的缩小比例」这条不变量由新算式继续守（单元测试 focusViewportRecovery.test.ts）。"
     },
     {
+      "contract": "docs/fixes/2026-08-28-persisted-localized-display-strings.root-cause.json",
+      "path": "src/workbench/promptLibrary/promptDisplay.ts",
+      "symbol": "promptDisplayTitle and promptSourceLabel",
+      "anchor": {
+        "path": "src/workbench/promptLibrary/promptDisplay.ts",
+        "symbol": "promptDisplayTitle"
+      },
+      "reason": "2026-10-24 库改版删了来源标签三个函数；精选条目的分组名由 libraryGroup 按界面语言取双语组名，自建条目不再显示来源（落盘的「我的」不再出现在界面上）；「落盘值按当前界面语言投影成显示文字」这条不变量，标题仍由 promptDisplayTitle 守，分组名由 libraryGroup 守（libraryGroups.test.ts）。"
+    },
+    {
       "contract": "docs/fixes/2026-09-25-model-catalog-sync-read-per-mount.root-cause.json",
       "path": "src/workbench/generationCanvas/nodes/controls/useChannelCreateBody.ts",
       "symbol": "createVendorMappingsReader",

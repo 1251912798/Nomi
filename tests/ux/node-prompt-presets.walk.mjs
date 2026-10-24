@@ -4,7 +4,7 @@ import path from 'node:path'
 import { launchNomiApp } from './_launchApp.mjs'
 import { expect, expectOverlayReachable, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { canvasAddBar, canvasAddMoreMenu, newProjectEntry, openRailDrawer } from './_shell.mjs'
+import { canvasAddBar, canvasAddMoreMenu, closeRailDrawer, newProjectEntry, openRailDrawer } from './_shell.mjs'
 
 const before = process.argv.includes('--before')
 const output = path.resolve('tests/ux/shots/node-prompt-presets')
@@ -68,14 +68,14 @@ async function verifySupplemental() {
 }
 async function createPersonalPrompt(kind, title, prompt) {
   const panel = await openRailDrawer(page, 'prompts', '侧栏「提示词库」')
-  await panel.getByRole('tab', { name: '我的库', exact: true }).click()
-  await panel.getByRole('button', { name: '新建', exact: true }).click()
+  // 2026-10-24 改版：「新建」在抽屉标题行（点了切到「我的」+ 内联表单），来源分段删了。
+  await page.locator('[data-shell-drawer="prompts"] header [data-prompt-new]').click()
   await panel.getByPlaceholder('标题（选填，如「黄昏剪影」）').fill(title)
   await panel.getByPlaceholder('把验证过好用的提示词粘进来…').fill(prompt)
   await panel.getByRole('tablist', { name: '提示词类型', exact: true }).getByRole('tab', { name: kind === 'image' ? '图片' : '视频', exact: true }).click()
   await panel.getByRole('button', { name: '保存到库', exact: true }).click()
   await expect(panel.getByPlaceholder('把验证过好用的提示词粘进来…')).toBeHidden()
-  await panel.getByRole('button', { name: /收起/ }).click()
+  await closeRailDrawer(page, 'prompts', '收起提示词抽屉')
 }
 try {
   const window = await run.app.browserWindow(page)

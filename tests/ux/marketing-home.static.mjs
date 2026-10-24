@@ -225,7 +225,7 @@ expect(readmeEn.includes('Windows 10 / 11 x64'), 'English README labels the Wind
 expect(readmeEn.includes('not Apple Developer ID signed or notarized'), 'English README discloses macOS signing status')
 expect(readmeEn.includes('no Authenticode signature'), 'English README discloses Windows signing status')
 expect(readmeEn.includes('System Settings → Privacy & Security'), 'English README prefers the supported macOS opening flow')
-expect(readmeZh.includes('“系统设置”→“隐私与安全”'), 'Chinese README prefers the supported macOS opening flow')
+expect(readmeZh.includes('“系统设置”→“隐私与安全性”'), 'Chinese README prefers the supported macOS opening flow')
 for (const readme of [readmeEn, readmeZh]) {
   expect(readme.includes('xattr -dr com.apple.quarantine "/Applications/Nomi.app"'), 'README damaged-app recovery uses the scoped quarantine command')
   expect(!readme.includes('spctl --master-disable'), 'README never disables Gatekeeper globally')

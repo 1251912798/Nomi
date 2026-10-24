@@ -339,6 +339,22 @@
       "failureGuard": "取消后迟到的结果不可写入；任一方案改错目标即不通过",
       "status": "research-candidate",
       "owner": "协调会话"
+    },
+    {
+      "id": "library-find-prompt-add-to-canvas",
+      "title": "在提示词库找到一条，放上画布开做",
+      "source": {
+        "kind": "走查",
+        "ref": "tests/ux/library-layout.walk.mjs；拍板图 docs/design/boards/2026-10-24/PromptLibrary、PromptDetail；设计卡 docs/plan/2026-10-23-skill-prompt-library-layout.md ★9 第 11 条"
+      },
+      "creator": "想拿现成提示词起步的创作者",
+      "moment": "开一个新镜头 / 换一种风格",
+      "frequencyEvidence": "未知（没有遥测）",
+      "successEnd": "新建对应类型（图片 / 视频）的节点、带上参考图、选中且就在眼前；撤销删掉这个节点",
+      "failureGuard": "没开项目时不建到看不见的画布；不追加进当前选中的节点",
+      "status": "executable",
+      "walk": "tests/ux/library-layout.walk.mjs",
+      "owner": "协调会话"
     }
   ]
 }

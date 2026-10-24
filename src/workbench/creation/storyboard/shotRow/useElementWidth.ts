@@ -1,5 +1,14 @@
 import React from 'react'
 
+/** `padding` = clientWidth（含内边距、不含滚动条）；`content` = 再减掉左右内边距。 */
+export type ElementWidthBox = 'padding' | 'content'
+
+export function readElementWidth(element: HTMLElement, box: ElementWidthBox): number {
+  if (box === 'padding') return element.clientWidth
+  const style = getComputedStyle(element)
+  return element.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0)
+}
+
 /**
  * 量**某一个元素自己**有多宽（一条 ResizeObserver）。
  *
@@ -21,15 +30,18 @@ import React from 'react'
  *
  * 首帧返回 `null` = 还没量到。调用方此时**一枚都不挪**，按今天的样子渲染；
  * `useLayoutEffect` 在绘制前就能拿到第一个值，所以不会闪。
+ *
+ * `box = 'content'` 量的是内容宽（再减掉左右内边距）：素材库的滚动容器自带内边距，
+ * 列数和卡宽要按卡片真正能占的那一截算（`PromptLibraryPanel` / `SkillLibraryPanel`）。
  */
-export function useElementWidth(ref: React.RefObject<HTMLElement | null>): number | null {
+export function useElementWidth(ref: React.RefObject<HTMLElement | null>, box: ElementWidthBox = 'padding'): number | null {
   const [width, setWidth] = React.useState<number | null>(null)
 
   React.useLayoutEffect(() => {
     const element = ref.current
     if (!element) return
     const read = (): void => {
-      const next = element.clientWidth
+      const next = readElementWidth(element, box)
       setWidth((previous) => (previous !== null && Math.abs(previous - next) < 1 ? previous : next))
     }
     read()
@@ -37,7 +49,7 @@ export function useElementWidth(ref: React.RefObject<HTMLElement | null>): numbe
     const observer = new ResizeObserver(read)
     observer.observe(element)
     return () => observer.disconnect()
-  }, [ref])
+  }, [ref, box])
 
   return width
 }

@@ -1,0 +1,283 @@
+{
+  "board": "DmgInstallWindow",
+  "approvedOn": "2026-10-24",
+  "stage": "built",
+  "approval": {
+    "quote": "安装窗口用 B 镜头飞入（按你说的只用三种媒体色）。",
+    "date": "2026-10-24",
+    "source": "用户原话（协调转述）",
+    "canvas": "https://claude.ai/artifact/HMWbBktUXkfi7DvsTLwBk6",
+    "canvasVersion": "用户在第 7 版（A 连线 / B 镜头飞入 / C 取景框三个方向）上选 B，并定「只用三种媒体色」；第 8 版按拍板改 B：只留文本 / 图片 / 视频三张卡，换成画布节点同款 Tabler 图标，板上的背景直接取自实现渲染；第 9 版只更正先例便签里 DropDMG 答复的日期；第 10 版只在拍板便签里记下 Q2 / Q5 的结论（画面不变）。入库的是第 10 版"
+  },
+  "visualReview": "协调会话 2026-10-24 逐张对过画布（A / B / C），B 要改两处：不用 --nomi-snap（橙）和 --workbench-text（紫），小图标换成 Tabler 真图标；用户随后拍板 B 并定只用三种媒体色。改完后协调对过真 DMG 截图和卷图标：暖白底、三张卡只用三条媒体轨颜色和注册表里的 Tabler 图标、卷图标角标是墨底白笔画没加强调色（§3.9.0）、文件名在浅底上清楚、提示路径对，通过。画布 https://claude.ai/artifact/HMWbBktUXkfi7DvsTLwBk6 私有，只有仓库主人能开。",
+  "designCard": "docs/plan/2026-10-24-dmg-install-window.md",
+  "sourceBoundary": "板源 = Claude Design 画布第 10 版「B · 镜头飞入」画板的原样副本（source/DmgInstallWindow.dc.html；画布里叫 B.dc.html，入库改成板名，好让板源哈希盖住它）+ 画布索引公开版（source/canvas.json：只留这张画板和四张便签：卡点、先例、骨架、拍板；A / C 方向、现状和细节画板、真机原型画板不入库，看画布）。画板上的背景（弧线、三张媒体卡、提示）是第 8 版直接取自 build/dmg/background.html 的渲染（token 解析成浅色值），和入库的背景图同源；图标和文件名是 Finder 画的，画板上用画布素材摆位。preview/DmgInstallWindow.html 是去掉画布外壳（运行时脚本、外网字体）的静态页：图片去掉 src（画布素材不进仓库），图标位置画成虚线框，两半各加一行说明（decor）。候选由 scripts/board-extract.mjs 的抽取函数（extractBoard + renderCandidatesFile，同样的浏览器设置）在静态页上抽出，两次抽取逐字节一致。",
+  "designIntent": "安装窗口只讲两件事：往哪拖（Nomi → 应用程序，文本 / 图片 / 视频三张媒体卡沿弧线飞过去），第一次打开被拦去哪放行（中英两行提示）。卷名带版本、卷图标是磁盘加 Nomi 角标，桌面上的盘不会被当成已经装好的应用。",
+  "artboards": [
+    "DmgInstallWindow"
+  ],
+  "walk": "node tests/ux/dmg-install-window.walk.mjs --dmg <打出来的 DMG> --shot（第①段查背景源，第②段像用户一样双击打开真 DMG、问 Finder；不给 --dmg 时第②段记 SKIP）",
+  "priorArt": [
+    {
+      "url": "https://developer.apple.com/news/?id=saqachfa",
+      "takeaway": "Apple 开发者公告「Updates to runtime protection in macOS Sequoia」（2024-08-06）：macOS 15 起不能再按住 Control 点按绕过 Gatekeeper，没签名公证的应用要到「系统设置 › 隐私与安全性」里放行。",
+      "decisionImpact": "改了：窗口里加中英两行「第一次打开若被拦」提示，写真实的放行路径；README / 快速开始里的「右键 → 打开」同 PR 改掉。"
+    },
+    {
+      "url": "https://forum.c-command.com/t/light-and-dark-mode-background-images/11916",
+      "takeaway": "DMG 制作工具 DropDMG 的作者 2018-08-28 答复（macOS 10.14）：有背景图的窗口，Finder 一律按浅色外观显示，也没法给深色外观另配一张背景。",
+      "decisionImpact": "确认了：只做一张浅底背景，图标和文件名下方保持干净浅底；macOS 26 深色外观下文件名颜色待真机核实（Q5）。"
+    },
+    {
+      "url": "https://www.electron.build/dmg",
+      "takeaway": "electron-builder 的 DMG 文档：默认窗口 540×380、图标 80、标题默认「${productName} ${version}」；给同名 @2x 背景就自动用在高分屏；badgeIcon 给卷图标加角标。",
+      "decisionImpact": "改了：换掉默认模板（窗口 720×440、图标 128）；标题沿用默认宏（版本跟 package.json 走，去掉架构后缀）；背景出 1x + 2x；卷图标用自带的 badgeIcon，不自己画。"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "Q1",
+      "text": "范围 A：DMG 窗口 + 窗口里中英「第一次打开被拦」提示 + 改掉 README / README.zh-CN / docs/quickstart.md 过时的说明（右键打开失效、xattr 写法统一）。首次启动提示移到「应用程序」（Electron app.moveToApplicationsFolder）记 0.25 候选，不在本板。",
+      "source": "协调 2026-10-24 代定（按默认）"
+    },
+    {
+      "id": "Q2",
+      "text": "Apple Developer ID 签名 + 公证先不做，也不另立项；窗口里的中英「第一次打开被拦」提示照 Q1 = A 保留。",
+      "source": "用户 2026-10-24（原话「先不做了」，协调转述）"
+    },
+    {
+      "id": "Q3",
+      "text": "不做 Windows 安装器。",
+      "source": "协调 2026-10-24 代定（按默认）"
+    },
+    {
+      "id": "Q4",
+      "text": "趣味元素用 B 镜头飞入：文本 / 图片 / 视频三张媒体卡沿弧线飞进「应用程序」，只用三条媒体轨的颜色（--nomi-track-text / -image / -video），图标和画布节点同一套；不做吉祥物，logo mark 不改。",
+      "source": "用户 2026-10-24（原话「安装窗口用 B 镜头飞入（按你说的只用三种媒体色）。」，协调转述）"
+    },
+    {
+      "id": "Q5",
+      "text": "只做浅底背景，不做深色外观实测。已知限制：深色外观下 Finder 图标标签可能变成白字、在浅底上偏淡；未实测（用户 10-24 判定不需要）。",
+      "source": "用户 2026-10-24（原话「没必要」，协调转述）"
+    },
+    {
+      "id": "Q6",
+      "text": "卷名 / 窗口标题「Nomi <版本>」（发 0.24.0 时是「Nomi 0.24.0」），版本取 package.json，不写死，去掉架构后缀。",
+      "source": "协调 2026-10-24 代定（按默认）"
+    },
+    {
+      "id": "Q7",
+      "text": "卷图标 = 系统磁盘图标 + Nomi 角标（electron-builder 自带 badgeIcon；角标源图留出图标网格的透明边）。",
+      "source": "协调 2026-10-24 代定（按默认）"
+    },
+    {
+      "id": "Q8",
+      "text": "应用内更新弹窗 Mac 第 2 步改成「退出 Nomi，把新版拖到「应用程序」，选择替换」（中英）；DMG 窗口里不写这条。",
+      "source": "协调 2026-10-24 代定（按默认）"
+    },
+    {
+      "id": "Q9",
+      "text": "不切系统语言：窗口里没有随系统语言变的字（提示本身中英两行，「Applications」替身照原名显示），中英文系统看到的是同一个窗口；英文系统记 unverified。",
+      "source": "协调 2026-10-24 代定（按默认）"
+    }
+  ],
+  "elements": [
+    {
+      "id": "dmg.window",
+      "label": "窗口 720×440（= 1x 背景图尺寸），图标视图，没有工具栏 / 侧边栏 / 状态栏；背景 1x + 2x 合成一张 TIFF；底部 32pt 是出血（macOS 26 把标题栏算进窗口高度）",
+      "change": "changed",
+      "states": [
+        "dark",
+        "zh-en"
+      ],
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "board:DmgInstallWindow/dmg.window",
+      "note": "窗口本身不是候选（画框没有结构类名）；Finder 里的大小、视图、背景两档由走查第②段问 Finder、读真 DMG 核对。"
+    },
+    {
+      "id": "dmg.title",
+      "label": "卷名 / 窗口标题「Nomi <版本>」：package.json build.dmg.title = ${productName} ${version}，不带架构后缀",
+      "change": "changed",
+      "states": [
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "002-span-Nomi0240",
+        "019-span-Nomi0240"
+      ],
+      "status": "implemented",
+      "assertion": "board:DmgInstallWindow/dmg.title",
+      "note": "板上画的是发 0.24.0 时的样子；本地测试包按仓库当前版本显示「Nomi 0.23.2」。"
+    },
+    {
+      "id": "dmg.volume-icon",
+      "label": "卷图标：系统磁盘图标 + Nomi 角标（标题栏、桌面、侧边栏上都是它）",
+      "change": "changed",
+      "states": [
+        "dark"
+      ],
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "board:DmgInstallWindow/dmg.volume-icon",
+      "note": "图片抽不成候选；真 DMG 里的 .VolumeIcon.icns 和自定义图标标记由走查第②段核对，样子看 PR 里的卷图标截图。"
+    },
+    {
+      "id": "dmg.app-icon",
+      "label": "Nomi 图标 128pt，中心 (200,180)，文件名 13pt 在图标下方",
+      "change": "changed",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "016-div-Nomi",
+        "033-div-Nomi"
+      ],
+      "status": "implemented",
+      "assertion": "board:DmgInstallWindow/dmg.app-icon",
+      "note": "深色外观：Finder 画的文件名可能变成白字、在浅底上偏淡；未实测（用户 10-24 判定不需要），见 knownLimitations。"
+    },
+    {
+      "id": "dmg.applications",
+      "label": "「应用程序」替身 128pt，中心 (520,180)，指向 /Applications；Finder 显示替身自己的名字 Applications，不随系统语言变",
+      "change": "changed",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "017-div-Applications",
+        "034-div-Applications"
+      ],
+      "status": "implemented",
+      "assertion": "board:DmgInstallWindow/dmg.applications",
+      "note": "深色外观：Finder 画的文件名可能变成白字、在浅底上偏淡；未实测（用户 10-24 判定不需要），见 knownLimitations。"
+    },
+    {
+      "id": "dmg.flight-arc",
+      "label": "虚线弧：从 Nomi 图标右上方越过两图标之间，落到「应用程序」左上方（--nomi-ink-30），坐标照 build.dmg 算",
+      "change": "new",
+      "states": [
+        "dark"
+      ],
+      "candidates": [
+        "003-svg",
+        "020-svg"
+      ],
+      "status": "implemented",
+      "assertion": "board:DmgInstallWindow/dmg.flight-arc",
+      "note": "弧线画在背景这张 SVG 里，SVG 本身是候选；三张卡另有候选，归 dmg.media-cards。"
+    },
+    {
+      "id": "dmg.media-cards",
+      "label": "三张媒体卡沿弧线排开：文本 → 图片 → 视频，颜色 = --nomi-track-text / --nomi-track-image / --nomi-track-video，图标 = 画布节点登记 NODE_ICONS 的同款 Tabler，越靠近「应用程序」越小，不压 Finder 画的图标和文件名",
+      "change": "new",
+      "states": [
+        "dark"
+      ],
+      "candidates": [
+        "004-g",
+        "005-rect",
+        "006-svg",
+        "007-g",
+        "008-rect",
+        "009-svg",
+        "010-g",
+        "011-rect",
+        "012-svg",
+        "021-g",
+        "022-rect",
+        "023-svg",
+        "024-g",
+        "025-rect",
+        "026-svg",
+        "027-g",
+        "028-rect",
+        "029-svg"
+      ],
+      "status": "implemented",
+      "assertion": "board:DmgInstallWindow/dmg.media-cards"
+    },
+    {
+      "id": "dmg.first-open-hint",
+      "label": "中英两行提示：「第一次打开若被拦：系统设置 › 隐私与安全性 › 仍要打开」/「Blocked on first open? System Settings › Privacy & Security › Open Anyway」（--nomi-ink-60），在文件名下方、macOS 26 看得见的区域里",
+      "change": "new",
+      "states": [
+        "zh-en",
+        "long-text",
+        "dark"
+      ],
+      "candidates": [
+        "013-div",
+        "014-span-第一次打开若被拦系统设置",
+        "015-span-Blockedonfir",
+        "030-div",
+        "031-span-第一次打开若被拦系统设置",
+        "032-span-Blockedonfir"
+      ],
+      "status": "implemented",
+      "assertion": "board:DmgInstallWindow/dmg.first-open-hint",
+      "note": "提示烧进背景图（Finder 不能按系统语言换背景），所以中英两行同时出现，不走 i18n。"
+    }
+  ],
+  "decor": [
+    "001-h3-B镜头飞入浅色外观Fin",
+    "018-h3-B镜头飞入深色外观标题栏"
+  ],
+  "functionCensus": [
+    {
+      "censusId": "D-1",
+      "function": "指明往哪拖",
+      "before": "electron-builder 默认模板：浅灰底上一个虚线箭头从 Nomi 指向应用程序",
+      "after": "dmg.flight-arc",
+      "afterNote": "箭头换成弧线，三张媒体卡沿弧线飞进「应用程序」，方向不变"
+    },
+    {
+      "censusId": "D-2",
+      "function": "应用图标和文件名",
+      "before": "80pt，中心 (130,220)",
+      "after": "dmg.app-icon",
+      "afterNote": "128pt，中心 (200,180)"
+    },
+    {
+      "censusId": "D-3",
+      "function": "「应用程序」替身",
+      "before": "80pt，中心 (410,220)",
+      "after": "dmg.applications",
+      "afterNote": "128pt，中心 (520,180)，仍指向 /Applications"
+    },
+    {
+      "censusId": "D-4",
+      "function": "卷名 / 窗口标题",
+      "before": "「Nomi 0.23.2-arm64」，带架构后缀",
+      "after": "dmg.title",
+      "afterNote": "「Nomi <版本>」"
+    },
+    {
+      "censusId": "D-5",
+      "function": "卷图标",
+      "before": "就是应用图标本身，桌面上的盘像已经装好的 Nomi",
+      "after": "dmg.volume-icon",
+      "afterNote": "磁盘 + Nomi 角标"
+    },
+    {
+      "censusId": "D-6",
+      "function": "窗口与背景",
+      "before": "540×380，默认模板背景",
+      "after": "dmg.window",
+      "afterNote": "720×440，Nomi 自己的浅底背景，1x + 2x"
+    }
+  ],
+  "unverified": [
+    "英文系统（Q9）：窗口里没有随系统语言变的字，没切系统语言实测",
+    "Intel 版 DMG（x64）：同一份配置，没单独打包截图",
+    "macOS 14 及更早（标题栏不占窗口高度，底部 32pt 会露出来，只铺了底色）：没有真机",
+    "真拖装：本机没拖（会覆盖本机已装的 Nomi），拖拽复制本身由 Finder 完成，本 PR 不改"
+  ],
+  "knownLimitations": [
+    "深色外观下 Finder 图标标签可能变成白字、在浅底上偏淡；未实测（用户 10-24 判定不需要）"
+  ]
+}

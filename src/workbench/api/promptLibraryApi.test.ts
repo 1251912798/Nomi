@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getDesktopBridge } from '../../desktop/bridge'
 import { setAssistantModelPref } from '../ai/assistantModelPref'
-import { deleteUserPromptWithSnapshot, getTextBrain, fetchPromptLibrary, fetchUserPrompts, filterPrompts, promptSourceOptions, PROMPT_SOURCE_ALL, restoreUserPrompt, type LibraryPrompt } from './promptLibraryApi'
+import { deleteUserPromptWithSnapshot, getTextBrain, fetchPromptLibrary, fetchUserPrompts, filterPrompts, matchesPromptQuery, restoreUserPrompt, type LibraryPrompt } from './promptLibraryApi'
 
 vi.mock('../../desktop/bridge', () => ({ getDesktopBridge: vi.fn() }))
 
@@ -142,20 +142,14 @@ describe('filterPrompts', () => {
     expect(filterPrompts(items, 'video', 'camera').map((item) => item.id)).toEqual(['motion'])
   })
 
-  it('filters by source and derives source options from data (no hardcoded vocabulary)', () => {
+  // 来源标签那一长排（P-03）并进了提示词库的分类列：来源不再单独筛，但搜来源名仍能搜到。
+  it('still finds prompts by their source name through the shared query matcher', () => {
     const items = [
       prompt({ id: 'a', source: 'GPT Image 2' }),
       prompt({ id: 'b', source: 'Sora 2', promptType: 'video', mediaType: 'video' }),
-      prompt({ id: 'c', source: 'GPT Image 2' }),
-      prompt({ id: 'd', source: '   ' }), // blank source ignored in options
     ]
-    // options preserve first-seen order and dedupe; blank dropped.
-    expect(promptSourceOptions(items)).toEqual(['GPT Image 2', 'Sora 2'])
-    // default sentinel keeps everything.
-    expect(filterPrompts(items, 'all', '', PROMPT_SOURCE_ALL).map((i) => i.id)).toEqual(['a', 'b', 'c', 'd'])
-    // narrowing to one source.
-    expect(filterPrompts(items, 'all', '', 'GPT Image 2').map((i) => i.id)).toEqual(['a', 'c'])
-    // source + type compose.
-    expect(filterPrompts(items, 'video', '', 'Sora 2').map((i) => i.id)).toEqual(['b'])
+    expect(items.filter((item) => matchesPromptQuery(item, 'sora')).map((item) => item.id)).toEqual(['b'])
+    expect(filterPrompts(items, 'all', '').map((item) => item.id)).toEqual(['a', 'b'])
+    expect(filterPrompts(items, 'image', 'sora')).toEqual([])
   })
 })

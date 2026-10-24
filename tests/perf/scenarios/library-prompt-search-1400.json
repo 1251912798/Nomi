@@ -1,0 +1,31 @@
+{
+  "id": "library-prompt-search-1400",
+  "feature": "提示词库抽屉里逐键打「cinematic」：每一键「keydown → 搜索框和列表都换成这一键的结果再过两帧」，取 9 键的 p95",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "E10",
+    "--scenarios",
+    "library-prompt-search",
+    "--warmup",
+    "1"
+  ],
+  "scale": "提示词库 1469 条（公开库 1400 + 内置 69），每键对全部条目重新匹配并重排分组",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 100,
+  "p95Budget": 150,
+  "group": "⑪ 技能库 / 提示词库",
+  "budgetStatus": "proposed",
+  "budgetBasis": "设计卡 docs/plan/2026-10-23-skill-prompt-library-layout.md ★7：切分类、搜索每键 ≤100ms（p95 ≤150ms）@1400 条；仓库默认「操作到可见反馈 ≤100ms」（docs/engineering/perf-scenarios.md），人对即时的感知阈值约 100ms（RAIL）",
+  "baseline": {
+    "median": 23.8,
+    "p95": 25.1,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-24",
+    "commit": "6ccbd23f6"
+  }
+}

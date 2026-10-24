@@ -44,9 +44,10 @@
     "test:agent-system:m0-m1": "python3 scripts/with-gates-lock.py --command \"tsc -p tests/agent-system/tsconfig.json && node --test --test-concurrency=1 .tmp/agent-system-tests/tests/agent-system/schema.node-test.mjs .tmp/agent-system-tests/tests/agent-system/contracts/l1-replay.node-test.mjs\"",
     "test:build": "pnpm run build",
     "check:filesize": "node ./scripts/check-file-sizes.mjs",
-    "check:icons": "node ./scripts/check-app-icons.cjs",
+    "check:icons": "node --test ./scripts/packaging/dmg-assets.node-test.mjs && node ./scripts/check-app-icons.cjs && node ./scripts/packaging/check-dmg-assets.mjs",
     "check:icon-semantics": "node --test ./scripts/check-icon-semantics.node-test.mjs && node ./scripts/check-icon-semantics.mjs",
     "generate:icons": "node ./scripts/generate-app-icon.cjs",
+    "render:dmg-assets": "node ./scripts/packaging/render-dmg-assets.mjs",
     "check:tokens": "node ./scripts/check-design-tokens.mjs",
     "check:dangling-tokens": "node ./scripts/check-dangling-tokens.mjs",
     "check:dangling-tailwind": "node --test ./scripts/check-dangling-tailwind.node-test.mjs && node ./scripts/check-dangling-tailwind.mjs",
@@ -470,6 +471,26 @@
         "en",
         "zh_CN",
         "zh_TW"
+      ]
+    },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "background": "build/dmg/background.png",
+      "badgeIcon": "build/dmg/badge.png",
+      "iconSize": 128,
+      "iconTextSize": 13,
+      "contents": [
+        {
+          "x": 200,
+          "y": 180,
+          "type": "file"
+        },
+        {
+          "x": 520,
+          "y": 180,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     },
     "win": {

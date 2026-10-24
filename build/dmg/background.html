@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Nomi DMG 窗口背景</title>
+<!--
+  DMG 安装窗口的背景源。渲染：pnpm run render:dmg-assets（只在 macOS 上跑），产物 background.png + background@2x.png 入库。
+  「镜头飞入」：文本、图片、视频三张媒体卡沿弧线从 Nomi 飞进「应用程序」，下方一行中英提示第一次打开被拦怎么办。
+  颜色只用三条媒体轨的 token（文本 = 强调色、图片、视频）；卡上的图标由渲染脚本注入（window.dmgIcons），和应用里画布节点是同一套。
+  底部 32pt 是出血：macOS 26 把标题栏算进窗口高度，这一条看不见；老系统会露出来，所以只铺底色。
+  画框尺寸就是窗口尺寸（1x）。图标和文件名由 Finder 自己画在上面，背景只画装饰：装饰照 package.json build.dmg 的坐标算，
+  渲染脚本把那份布局注入成 window.dmgLayout（坐标只存一份）。
+-->
+<link rel="stylesheet" href="../../src/theme/nomi-tokens.css">
+<style>
+@font-face { font-family: "Inter Variable"; src: url(../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2) format("woff2-variations"); font-weight: 100 900; }
+html, body { margin: 0; overflow: hidden; }
+.frame { position: relative; width: 720px; height: 440px; background: var(--nomi-bg); }
+.scene { position: absolute; inset: 0; }
+.arc { stroke: var(--nomi-ink-30); stroke-width: 1.5; stroke-dasharray: 2 6; stroke-linecap: round; fill: none; }
+.card-text { --media: var(--nomi-track-text); }
+.card-image { --media: var(--nomi-track-image); }
+.card-video { --media: var(--nomi-track-video); }
+.streak { stroke: var(--media); stroke-opacity: 0.42; stroke-width: 2; stroke-linecap: round; fill: none; }
+.chip { fill: var(--media); stroke: var(--nomi-media-ink); stroke-width: 2.5; filter: drop-shadow(0 2px 2.5px color-mix(in srgb, var(--nomi-ink) 22%, transparent)); }
+.glyph { color: var(--nomi-media-ink); stroke-width: 2; }
+.hint { position: absolute; left: 0; top: 322px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--nomi-ink-60); }
+.hint-zh { font: 500 12px/18px "PingFang SC", "Hiragino Sans GB", sans-serif; }
+.hint-en { font: 400 11px/16px "Inter Variable", -apple-system, sans-serif; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <svg class="scene" aria-hidden="true">
+    <path id="arc" class="arc"></path>
+    <g id="cards"></g>
+  </svg>
+  <div class="hint">
+    <span class="hint-zh">第一次打开若被拦：系统设置 › 隐私与安全性 › 仍要打开</span>
+    <span class="hint-en">Blocked on first open? System Settings › Privacy &amp; Security › Open Anyway</span>
+  </div>
+</div>
+<script>
+const { dmgLayout: layout, dmgIcons: icons } = window
+const app = layout.contents.find((item) => item.type === 'file')
+const applications = layout.contents.find((item) => item.type === 'link')
+const { width, height } = document.querySelector('.frame').getBoundingClientRect()
+document.querySelector('.scene').setAttribute('viewBox', `0 0 ${width} ${height}`)
+
+// 弧线：从 Nomi 图标右上方起，越过两个图标之间，落到「应用程序」图标左上方。
+const start = { x: app.x + 32, y: app.y - 60 }
+const end = { x: applications.x - 32, y: applications.y - 60 }
+const c1 = { x: start.x + 36, y: start.y - 80 }
+const c2 = { x: end.x - 36, y: end.y - 80 }
+document.getElementById('arc').setAttribute('d', `M${start.x} ${start.y} C${c1.x} ${c1.y} ${c2.x} ${c2.y} ${end.x} ${end.y}`)
+
+const point = (t, a, b, c, d) => (1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t ** 2 * c + t ** 3 * d
+const slope = (t, a, b, c, d) => 3 * (1 - t) ** 2 * (b - a) + 6 * (1 - t) * t * (c - b) + 3 * t ** 2 * (d - c)
+
+// 三张卡按「文本 → 图片 → 视频」的制作顺序排在弧上，越靠近「应用程序」越小，像飞进去。
+const GLYPH = 18
+const cards = [
+  { kind: 'text', t: 0.2, scale: 1 },
+  { kind: 'image', t: 0.5, scale: 0.93 },
+  { kind: 'video', t: 0.8, scale: 0.86 },
+]
+document.getElementById('cards').innerHTML = cards.map(({ kind, t, scale }) => {
+  const x = point(t, start.x, c1.x, c2.x, end.x)
+  const y = point(t, start.y, c1.y, c2.y, end.y)
+  const angle = Math.atan2(slope(t, start.y, c1.y, c2.y, end.y), slope(t, start.x, c1.x, c2.x, end.x)) * 180 / Math.PI
+  return `<g class="card-${kind}" transform="translate(${x} ${y}) rotate(${angle}) scale(${scale})">
+    <path class="streak" d="M-48 -7 H-35 M-53 0 H-35 M-48 7 H-35"/>
+    <rect class="chip" x="-26" y="-15" width="52" height="30" rx="5"/>
+    <g class="glyph" transform="translate(${-GLYPH / 2} ${-GLYPH / 2})">${icons[kind]}</g>
+  </g>`
+}).join('')
+// 图标尺寸和线宽归背景源管：去掉注入时的默认线宽，让 .glyph 的线宽传下去。
+for (const icon of document.querySelectorAll('.glyph svg')) {
+  icon.setAttribute('width', GLYPH)
+  icon.setAttribute('height', GLYPH)
+  icon.removeAttribute('stroke-width')
+}
+</script>
+</body>
+</html>

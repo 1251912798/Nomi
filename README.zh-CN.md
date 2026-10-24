@@ -110,9 +110,8 @@ Seedance、可灵、Wan、海螺、Nano Banana、GPT Image……走 APIMart、Ki
 
 当前 macOS 安装包**没有使用 Apple Developer ID 签名，也没有经过 Apple 公证**，第一次打开可能被系统拦截。请只用上面表格或 Nomi 官网、GitHub 官方仓库里的下载链接。
 
-1. 下载对应的 DMG，把 `Nomi.app` 拖进“应用程序”。
-2. 在访达的“应用程序”里右键 `Nomi.app`，选择“打开”，再确认“打开”。
-3. 仍被拦截时，打开“系统设置”→“隐私与安全”，找到 Nomi 那条提示，点“仍要打开”。
+1. 下载对应的 DMG，双击打开，在弹出的窗口里把 Nomi 拖到“应用程序”上。
+2. 从“应用程序”打开 Nomi。如果提示“未打开“Nomi””，点“完成”，再打开“系统设置”→“隐私与安全性”，往下找到“安全性”，在 Nomi 那条提示旁点“仍要打开”并确认。macOS 15 起，右键 →“打开”已经过不了这道提示；macOS 14 及更早仍然可以。
 
 只有在 macOS 提示 Nomi“已损坏”时，先确认安装包来自 Nomi 官方链接，再运行：
 
@@ -120,7 +119,7 @@ Seedance、可灵、Wan、海螺、Nano Banana、GPT Image……走 APIMart、Ki
 xattr -dr com.apple.quarantine "/Applications/Nomi.app"
 ```
 
-不要全局关闭 Gatekeeper。更新时下载新的 DMG 覆盖即可。
+不要全局关闭 Gatekeeper。更新时下载新的 DMG，先退出 Nomi，再把新的 Nomi 拖到“应用程序”上，选择“替换”。
 </details>
 
 <details>

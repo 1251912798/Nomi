@@ -15,6 +15,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { trackedFiles } from './lib/gitPaths.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 export const BASELINE_FILE = path.join(repoRoot, 'scripts', 'test-copy-literals-baseline.json')
@@ -32,25 +33,14 @@ export const FIX_HINT = [
   '    按钮 / 控件用 toHaveAccessibleName(uiText(...)) 按名字认，不拿整段可见文字比。',
 ].join('\n')
 
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'dist-electron', '.git', 'artifacts', 'outputs', 'release', '.tmp'])
 const TEST_FILE = /\.(?:test|spec|node-test)\.[cm]?[jt]sx?$/
 const UNDER_TESTS = /^tests\/.*\.(?:[cm]?[jt]sx?|json)$/
 
 /** 测试 / 走查 / 冒烟文件（相对仓库根、正斜杠）。 */
 export function collectTestFiles(root = repoRoot) {
-  const files = []
-  const walk = (dir) => {
-    if (!fs.existsSync(dir)) return
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (SKIP_DIRS.has(entry.name)) continue
-      const full = path.join(dir, entry.name)
-      if (entry.isDirectory()) { walk(full); continue }
-      const rel = path.relative(root, full).replaceAll('\\', '/')
-      if (TEST_FILE.test(rel) || UNDER_TESTS.test(rel)) files.push(rel)
-    }
-  }
-  for (const top of ['src', 'electron', 'scripts', 'tests', 'evals', 'packages']) walk(path.join(root, top))
-  return files.sort()
+  return trackedFiles({ cwd: root, roots: ['src', 'electron', 'scripts', 'tests', 'evals', 'packages'] })
+    .filter((rel) => TEST_FILE.test(rel) || UNDER_TESTS.test(rel))
+    .sort()
 }
 
 const CJK = /[㐀-鿿]/
