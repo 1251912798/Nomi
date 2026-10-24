@@ -19,7 +19,7 @@ export type PromptReferenceImage = {
 
 /** 对外的完整提示词条目。 */
 export type LibraryPrompt = ParsedPrompt & {
-  curation?: import("../shared/skillCuration").SkillCuration;
+  curation?: import("../skillCuration").SkillCuration;
   id: string;
   /** 这条提示词产出的是图还是视频(决定送上画布建哪种节点)。 */
   promptType: PromptMediaType;
@@ -37,3 +37,9 @@ export type LibraryPrompt = ParsedPrompt & {
   /** 参考图(可多张;mediaUrl 取首图当封面)。 */
   referenceImages?: PromptReferenceImage[];
 };
+
+/**
+ * 删除撤销跨 IPC 往返的完整记录。索引签名刻意允许未来字段通过 renderer，
+ * 由 userPromptStore 在主进程校验记录身份并原样持久化。
+ */
+export type UserPromptRestoreSnapshot = LibraryPrompt & Record<string, unknown>;

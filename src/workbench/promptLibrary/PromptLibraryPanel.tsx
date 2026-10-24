@@ -190,11 +190,12 @@ export function PromptLibraryContent({
 
   const handleNew = React.useCallback(() => { setEditing(null); setComposing(true) }, [])
   const handleEdit = React.useCallback((prompt: LibraryPrompt) => { setComposing(false); setEditing(prompt) }, [])
-  const handleDelete = React.useCallback((prompt: LibraryPrompt) => {
-    void user.remove(prompt.id)
+  const handleDelete = React.useCallback(async (prompt: LibraryPrompt) => {
+    const deleted = await user.remove(prompt.id)
+    if (!deleted) return
     showUndoToast({
       message: t('libraries.prompt.removedFromMine', { title: promptDisplayTitle(prompt) }),
-      onUndo: () => void user.add({ title: prompt.title, prompt: prompt.prompt, promptType: prompt.promptType }),
+      onUndo: () => void user.restore(deleted),
     })
   }, [user, t])
 

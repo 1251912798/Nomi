@@ -2,7 +2,7 @@
 // getPromptLibrary 的对外出口恒定前置内置包；磁盘缓存只存外部源 → 升级后内置内容
 // 立即是新版、回滚零残留（缓存里从来没有内置条目）。预设图打包在 public/prompt-media/，
 // mediaUrl 用相对路径（dev 由 Vite serve，prod 相对 dist/index.html 解析），离线/国内不裂图。
-import type { LibraryPrompt } from "./promptLibraryTypes";
+import type { LibraryPrompt } from "../shared/contracts/promptLibrary";
 import expressionPack from "./builtinExpressionPack.json";
 import { getCuratedPrompts } from "./curatedPrompts";
 import { readSkillRecords } from "../skills/skillStore";

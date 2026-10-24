@@ -1,6 +1,7 @@
 // 渲染层取提示词库的唯一入口(镜像 skillApi 的 requireDesktopRuntime 范式)。
 // 主进程已聚合+缓存;这里取全量,搜索/分类过滤是平凡纯函数,放渲染层(不重复后端逻辑)。
 import type { SkillCuration } from '../../../electron/shared/skillCuration'
+import type { UserPromptRestoreSnapshot } from '../../../electron/shared/contracts/promptLibrary'
 import { getDesktopBridge, type DesktopBridge } from '../../desktop/bridge'
 import i18n from '../../i18n'
 import { getAssistantModelPref } from '../ai/assistantModelPref'
@@ -48,6 +49,7 @@ function toPrompt(raw: unknown): LibraryPrompt | null {
   const mediaType: PromptMediaType = r.mediaType === 'video' ? 'video' : 'image'
   const promptType: PromptMediaType = r.promptType === 'video' ? 'video' : 'image'
   return {
+    ...r,
     id,
     curation: r.curation as SkillCuration | undefined,
     title: String(r.title ?? i18n.t('runtime.promptLibrary.untitled')),
@@ -110,9 +112,19 @@ export async function updateUserPrompt(id: string, patch: { title?: string; prom
   return mapUserPrompts(res)
 }
 
-export async function deleteUserPrompt(id: string): Promise<LibraryPrompt[]> {
+export async function deleteUserPromptWithSnapshot(id: string): Promise<{ items: LibraryPrompt[]; deleted: UserPromptRestoreSnapshot | null }> {
   const desktop = requireDesktopRuntime('delete prompt')
-  return mapUserPrompts(await desktop.promptLibrary!.userDelete(id))
+  const res = await desktop.promptLibrary!.userDelete(id) as { ok?: boolean; prompts?: unknown[]; deleted?: unknown; error?: string }
+  if (!res?.ok || !Array.isArray(res.prompts)) throw new Error(res?.error || i18n.t('runtime.promptLibrary.saveFailed'))
+  const deleted = toPrompt(res.deleted) as UserPromptRestoreSnapshot | null
+  return { items: mapUserPrompts(res), deleted }
+}
+
+export async function restoreUserPrompt(snapshot: UserPromptRestoreSnapshot): Promise<LibraryPrompt[]> {
+  const desktop = requireDesktopRuntime('restore prompt')
+  const res = await desktop.promptLibrary!.userRestore(snapshot) as { ok?: boolean; prompts?: unknown[]; error?: string }
+  if (!res?.ok || !Array.isArray(res.prompts)) throw new Error(res?.error || i18n.t('runtime.promptLibrary.saveFailed'))
+  return mapUserPrompts(res)
 }
 
 /**

@@ -1,7 +1,7 @@
 import { resolveEffectSlots } from "../shared/effectSlots";
 import { skillPreviewUrl } from "../skills/skillPreview";
 import type { SkillRecord } from "../skills/skillStore";
-import type { LibraryPrompt } from "./promptLibraryTypes";
+import type { LibraryPrompt } from "../shared/contracts/promptLibrary";
 
 /** SKILL.md remains the body owner; the library receives a projection, never a second content file. */
 export function getCuratedPrompts(records: readonly SkillRecord[]): LibraryPrompt[] {
