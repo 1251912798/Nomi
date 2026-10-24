@@ -55,10 +55,6 @@ export function prePushScriptFiles() {
     .sort()
 }
 
-export function repositoryWalkSites(source) {
-  return [...String(source).matchAll(/\b(?:fs\.)?readdirSync\s*\(/g)].map((match) => match.index)
-}
-
 export function repositoryWalkFiles(files, readSource = (file) => fs.readFileSync(file, 'utf8')) {
   return files.filter((file) => walkSites(file, readSource(file)).some((site) => site.kind === 'readdirSync' && site.anchored))
 }
