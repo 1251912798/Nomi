@@ -19,6 +19,7 @@ export { default as IconBackpack } from '@tabler/icons-react/dist/esm/icons/Icon
 export { default as IconBike } from '@tabler/icons-react/dist/esm/icons/IconBike.mjs'
 export { default as IconBus } from '@tabler/icons-react/dist/esm/icons/IconBus.mjs'
 export { default as IconCarSuv } from '@tabler/icons-react/dist/esm/icons/IconCarSuv.mjs'
+export { default as IconColumns3 } from '@tabler/icons-react/dist/esm/icons/IconColumns3.mjs'
 export { default as IconCreditCard } from '@tabler/icons-react/dist/esm/icons/IconCreditCard.mjs'
 export { default as IconFridge } from '@tabler/icons-react/dist/esm/icons/IconFridge.mjs'
 export { default as IconScooter } from '@tabler/icons-react/dist/esm/icons/IconScooter.mjs'

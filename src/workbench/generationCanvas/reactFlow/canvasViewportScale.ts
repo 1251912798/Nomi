@@ -61,12 +61,16 @@ export function edgeLabelTransform(labelX: number, labelY: number, zoom: number)
 
 export type ShotTableZoomDensity = 'full' | 'compact' | 'card'
 
+/** 分镜表三档的边界（拍板稿图 4：远 < 45% · 中 45%–80% · 近 ≥ 80%）。档位判定只在这里。 */
+export const SHOT_TABLE_FULL_FROM = 0.8
+export const SHOT_TABLE_CARD_BELOW = 0.45
+
 /**
  * 分镜表按缩放分档（订阅的是**档位**不是每一帧的缩放值，所以缩放穿过一档才重渲一次）。
  * 没有画布视口的宿主（设计实验室样张）没有缩放可言，按 1 算 = `full`。
  */
 export function shotTableDensityForZoom(zoom: number): ShotTableZoomDensity {
-  if (zoom >= 0.8) return 'full'
-  if (zoom >= 0.4) return 'compact'
+  if (zoom >= SHOT_TABLE_FULL_FROM) return 'full'
+  if (zoom >= SHOT_TABLE_CARD_BELOW) return 'compact'
   return 'card'
 }

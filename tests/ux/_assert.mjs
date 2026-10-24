@@ -273,8 +273,10 @@ export async function expectNoCjkInEnglishDom(win, { message, allowSelectors = [
       }
       if (document.body) walk(document.body)
       // 还要查 title/aria-label/placeholder 这类可见但不在文本节点里的字。
+      // 跳过范围和上面的文本遍历一致：放行选择器管**整棵子树**（以前这里只看元素自己，放行了 tbody 却照样报格子里的 title）。
+      const inSkippedSubtree = (el) => skipSelectors.some((sel) => el.closest?.(sel))
       for (const el of document.querySelectorAll('[title],[aria-label],[placeholder]')) {
-        if (isSkipped(el) || isPrunedSubtree(el) || isInvisibleSelf(el)) continue
+        if (inSkippedSubtree(el) || isPrunedSubtree(el) || isInvisibleSelf(el)) continue
         for (const attr of ['title', 'aria-label', 'placeholder']) {
           const v = el.getAttribute(attr)
           if (v && cjk.test(v)) hits.push({ where: `${describe(el)}@${attr}`, text: v.replace(/\s+/g, ' ').trim().slice(0, 60) })

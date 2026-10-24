@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>拆解表 · 尺寸与缩放</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:oklch(0.55 0.13 250)}a:hover{color:oklch(0.45 0.13 250)}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; padding: 40px; background: oklch(0.985 0.003 90); font-family: Inter, -apple-system, 'PingFang SC', sans-serif; color: oklch(0.22 0.01 80); font-size: 13px; display: grid; grid-template-columns: 460px minmax(0, 1fr); gap: 40px">
+  <div style="display: flex; flex-direction: column; gap: 16px">
+    <div style="font-size: 18px; font-weight: 500">列宽与关键帧</div>
+    <div style="border: 1px solid oklch(0.91 0.004 80); border-radius: 10px; background: oklch(1 0 0); overflow: hidden; font-size: 12.5px">
+      <div style="display: grid; grid-template-columns: 90px 90px 90px minmax(0, 1fr); padding: 8px 12px; background: oklch(0.985 0.003 90); color: oklch(0.50 0.01 80); font-size: 11.5px"><span>列</span><span>画布上</span><span>全屏</span><span>超出时</span></div>
+      <sc-for list="{{cols}}" as="c" hint-placeholder-count="9">
+        <div style="display: grid; grid-template-columns: 90px 90px 90px minmax(0, 1fr); padding: 8px 12px; border-top: 1px solid oklch(0.95 0.003 80)"><span>{{c.name}}</span><span style="font-family: ui-monospace, Menlo, monospace">{{c.canvas}}</span><span style="font-family: ui-monospace, Menlo, monospace">{{c.full}}</span><span style="color: oklch(0.50 0.01 80)">{{c.overflow}}</span></div>
+      </sc-for>
+    </div>
+    <div style="font-size: 12.5px; line-height: 1.7; color: oklch(0.32 0.01 80)">
+      节点默认 920 × 372，最小 640 × 260，可拖边改大小。<br>
+      表宽大于节点时横向滚动，镜号与关键帧两列固定不动。<br>
+      行高三档：紧凑 44 · 标准 58 · 大图 92（全屏默认大图）。<br>
+      文字最小 12px，画布缩到看不清时换下一档，不硬缩字。
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 28px">
+    <div style="font-size: 18px; font-weight: 500">画布缩放三档：各看得到什么</div>
+    <div style="display: flex; gap: 28px; align-items: flex-start">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 12px; color: oklch(0.50 0.01 80)">远 · 缩放 &lt; 45%：卡片</span>
+        <div style="width: 220px; height: 128px; box-sizing: border-box; background: oklch(1 0 0); border: 1px solid oklch(0.91 0.004 80); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px">
+          <span style="font-size: 14px; font-weight: 500">拆解表 · 雨夜参考片</span>
+          <span style="font-size: 12px; color: oklch(0.50 0.01 80)">5 镜 · 15s · 1 镜没读出</span>
+          <div style="display: flex; gap: 4px"><div style="width: 36px; height: 20px; border-radius: 3px; background: oklch(0.34 0.05 250)"></div><div style="width: 36px; height: 20px; border-radius: 3px; background: oklch(0.45 0.05 40)"></div><div style="width: 36px; height: 20px; border-radius: 3px; background: oklch(0.55 0.06 80)"></div><div style="width: 36px; height: 20px; border-radius: 3px; background: oklch(0.30 0.03 230)"></div><div style="width: 36px; height: 20px; border-radius: 3px; background: oklch(0.62 0.04 90)"></div></div>
+        </div>
+        <span style="font-size: 11.5px; color: oklch(0.50 0.01 80); width: 220px">标题、镜数、问题数、关键帧条。点一下进中档或全屏。</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 12px; color: oklch(0.50 0.01 80)">中 · 45%–80%：精简列</span>
+        <div style="width: 300px; box-sizing: border-box; background: oklch(1 0 0); border: 1px solid oklch(0.91 0.004 80); border-radius: 10px; overflow: hidden; font-size: 12px">
+          <div style="padding: 8px 10px; font-weight: 500; border-bottom: 1px solid oklch(0.95 0.003 80)">拆解表 · 雨夜参考片</div>
+          <sc-for list="{{mid}}" as="r" hint-placeholder-count="5">
+            <div style="display: grid; grid-template-columns: 24px 48px 40px minmax(0, 1fr); gap: 6px; align-items: center; padding: 5px 10px; border-bottom: 1px solid oklch(0.95 0.003 80)"><span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: oklch(0.50 0.01 80)">{{r.no}}</span><div style="width: 44px; height: 25px; border-radius: 3px; background: {{r.thumb}}"></div><span>{{r.size}}</span><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{r.desc}}</span></div>
+          </sc-for>
+        </div>
+        <span style="font-size: 11.5px; color: oklch(0.50 0.01 80); width: 300px">只留 镜 · 关键帧 · 景别 · 画面；其余列在近档和全屏里。</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 12px; color: oklch(0.50 0.01 80)">近 · ≥ 80%：全部列</span>
+        <div style="width: 300px; height: 190px; box-sizing: border-box; background: oklch(1 0 0); border: 1px solid oklch(0.91 0.004 80); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: oklch(0.50 0.01 80)">同第 1 张：完整表 + 选中时上浮条与下方拆解栏</div>
+        <span style="font-size: 11.5px; color: oklch(0.50 0.01 80); width: 300px">选中才出浮条和下方栏，不选中时只有表本身，不挡别的节点。</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      cols: [
+        { name: '镜', canvas: '36', full: '40', overflow: '固定在左侧' },
+        { name: '关键帧', canvas: '76 (68×38)', full: '128 (116×66)', overflow: '固定在左侧；大图档 160' },
+        { name: '时长', canvas: '64', full: '72', overflow: '不截断' },
+        { name: '景别', canvas: '72', full: '80', overflow: '截断，悬停看全' },
+        { name: '运镜', canvas: '88', full: '96', overflow: '截断，悬停看全' },
+        { name: '画面', canvas: '≥ 220 弹性', full: '≥ 320 弹性', overflow: '画布截一行；全屏折行' },
+        { name: '对白', canvas: '150', full: '180', overflow: '画布截一行；全屏折行' },
+        { name: '情绪 / 自定义', canvas: '96', full: '96', overflow: '截断，悬停看全' },
+        { name: '状态', canvas: '64', full: '72', overflow: '没读出时显示原因 + 重拆' }
+      ],
+      mid: [
+        { no: '01', size: '全景', desc: '雨夜，街口的灯映在积水中', thumb: 'oklch(0.34 0.05 250)' },
+        { no: '02', size: '特写', desc: '女孩握紧旧照片，回头望向巷口', thumb: 'oklch(0.45 0.05 40)' },
+        { no: '03', size: '全景', desc: '一束车灯穿过薄雾', thumb: 'oklch(0.55 0.06 80)' },
+        { no: '04', size: '—', desc: '没读出', thumb: 'oklch(0.30 0.03 230)' },
+        { no: '05', size: '全景', desc: '风吹动纸页，镜头缓缓拉远', thumb: 'oklch(0.62 0.04 90)' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

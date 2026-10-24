@@ -6,6 +6,7 @@ import {
   capabilityProjectBindingError,
 } from './capabilityProjectBinding'
 import { useSpendConfirmStore } from '../generationCanvas/spend/spendConfirm'
+import { peekCatalogModelOptions } from '../../config/modelCatalogCache'
 import { confirmGenerationGateForAgent, type GenerationGateConfirmPayload } from './generationGateConfirm'
 import { getDesktopBridge } from '../../desktop/bridge'
 import i18n from '../../i18n'
@@ -68,6 +69,15 @@ type SpendConfirmPayload = {
    * 只给一个总价，他无从知道自己刚批掉的是 1 次还是 13 次。
    */
   callCount?: number
+  /** 一次动作分几条腿（拆解 = 读图 + 转写）：给了就每条腿一行，取代单独那一行「模型」。 */
+  legs?: ReadonlyArray<{ role: 'vision' | 'transcribe'; vendor: string; modelKey: string }>
+}
+
+/** 卡上一条腿的模型名：目录里有就用显示名（「Gemini 3.5 Flash · APIMart」），没有就退回原始身份，绝不编一个。 */
+function legModelLabel(leg: { role: 'vision' | 'transcribe'; vendor: string; modelKey: string }): string {
+  const options = leg.role === 'vision' ? peekCatalogModelOptions('text') : peekCatalogModelOptions('audio', 'transcribe')
+  const match = options?.find((option) => option.vendor === leg.vendor && option.modelKey === leg.modelKey)
+  return match ? (match.vendorName ? `${match.label} · ${match.vendorName}` : match.label) : spendModelLine(leg.vendor, leg.modelKey)
 }
 
 // 方案门（Phase B）：外部 agent 批量落节点前的确认。projectId 由主进程网关带上（可能非当前项目）。
@@ -181,7 +191,9 @@ async function confirmSpendFromMainProcess(info: SpendConfirmPayload): Promise<{
       // 项目行放第一位：用户可能不在这个项目里，先让他知道花在哪个项目。
       ...(projectName ? [{ label: i18n.t('runtime.capability.project'), value: projectName }] : []),
       { label: i18n.t('runtime.capability.node'), value: nodeLabel },
-      { label: i18n.t('runtime.capability.model'), value: spendModelLine(info.vendor, info.modelKey) },
+      ...(info.legs?.length
+        ? info.legs.map((leg) => ({ label: i18n.t(leg.role === 'vision' ? 'runtime.capability.visionModelLine' : 'runtime.capability.transcribeModelLine'), value: legModelLabel(leg) }))
+        : [{ label: i18n.t('runtime.capability.model'), value: spendModelLine(info.vendor, info.modelKey) }]),
       ...(isDeconstruct ? [] : [{ label: i18n.t('runtime.capability.output'), value: describeIntent(info.intent) }]),
     ],
   })
