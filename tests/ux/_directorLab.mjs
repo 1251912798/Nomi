@@ -16,6 +16,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { startDevRendererServer } from './canvas-perf/devRendererServer.mjs'
@@ -24,6 +25,111 @@ import { stationTimeout } from './_station-budget.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+
+const require = createRequire(import.meta.url)
+let resolveArchetypeForModel
+
+function modelArchetypeResolver() {
+  if (!resolveArchetypeForModel) {
+    ({ resolveArchetypeForModel } = require(path.join(repoRoot, 'dist-electron/shared/modelArchetypes/index.js')))
+  }
+  return resolveArchetypeForModel
+}
+
+const IMAGE_MODEL_CAPABILITIES = Object.freeze({
+  TEXT_ONLY: 'text-only',
+  REFERENCE_IMAGE: 'reference-image',
+})
+
+/**
+ * 给画布图片节点钉住一个**现役目录模型档案**声明的能力。
+ *
+ * 走查前置不能吃新节点的自动默认：默认值会随健康度变化。候选来自 Electron
+ * 的真实 modelCatalog 桥，能力来自本工作树构建产物里的 model archetype registry；
+ * 这样模型下架/档案变更会在前置处报清楚，而不是伪装成产品断言失败。
+ * @param {import('playwright').Page} page
+ * @param {string} nodeId
+ * @param {'text-only'|'reference-image'} capability
+ */
+export async function pinCanvasImageModelByCapability(page, nodeId, capability) {
+  const capabilityLabel = capability === IMAGE_MODEL_CAPABILITIES.TEXT_ONLY ? '只吃文字' : '能接参考图'
+  if (![IMAGE_MODEL_CAPABILITIES.TEXT_ONLY, IMAGE_MODEL_CAPABILITIES.REFERENCE_IMAGE].includes(capability)) {
+    throw new Error(`前置不满足：未知的图片模型能力 ${JSON.stringify(capability)}`)
+  }
+
+  const rows = await page.evaluate(async () => {
+    const listModels = window.nomiDesktop?.modelCatalog?.listModels
+    if (typeof listModels !== 'function') return null
+    return await listModels({ kind: 'image', enabled: true })
+  })
+  const resolver = modelArchetypeResolver()
+  const candidates = (Array.isArray(rows) ? rows : [])
+    .filter((row) => row && row.kind === 'image' && row.enabled !== false && row.published !== false)
+    .flatMap((row) => {
+      const archetype = resolver({
+        modelKey: row.modelKey,
+        modelAlias: row.modelAlias,
+        vendorKey: row.vendorKey,
+        meta: row.meta,
+        modelNameSource: row.modelNameSource,
+      })
+      if (!archetype) return []
+      const mode = capability === IMAGE_MODEL_CAPABILITIES.REFERENCE_IMAGE
+        ? archetype.modes.find((candidate) => candidate.slots?.some((slot) => slot.kind === 'image_ref'))
+        : archetype.modes.find((candidate) => !candidate.slots?.some((slot) => slot.kind === 'image_ref'))
+      const hasReferenceMode = archetype.modes.some((candidate) => candidate.slots?.some((slot) => slot.kind === 'image_ref'))
+      const matches = capability === IMAGE_MODEL_CAPABILITIES.REFERENCE_IMAGE ? Boolean(mode) : !hasReferenceMode && Boolean(mode)
+      return matches ? [{ row, archetype, mode }] : []
+    })
+    .sort((a, b) => `${a.row.vendorKey}/${a.row.modelKey}`.localeCompare(`${b.row.vendorKey}/${b.row.modelKey}`))
+
+  const selected = candidates[0]
+  if (!selected) {
+    throw new Error(`前置不满足：档案里没有${capabilityLabel}能力的现役图片模型`)
+  }
+  // 选择逻辑本身也是走查前置的一部分：即使后续有人改坏候选过滤，
+  // 也必须在产品断言之前以「前置不满足」停下，不能把能力错配伪装成产品回归。
+  const selectedHasReferenceMode = selected.archetype.modes.some((candidate) => candidate.slots?.some((slot) => slot.kind === 'image_ref'))
+  const selectedMatchesCapability = capability === IMAGE_MODEL_CAPABILITIES.REFERENCE_IMAGE
+    ? selectedHasReferenceMode
+    : !selectedHasReferenceMode
+  if (!selectedMatchesCapability) {
+    throw new Error(`前置不满足：挑到的档案 ${selected.archetype.id} 不具备${capabilityLabel}能力`)
+  }
+
+  await page.evaluate(({ id, model }) => {
+    const store = window.__nomiCanvasStore
+    const target = store?.getState().nodes.find((node) => node.id === id)
+    if (!store || !target) throw new Error(`前置不满足：目标节点不存在，无法钉${model.capabilityLabel}图片模型`)
+    store.getState().updateNode(id, {
+      meta: {
+        ...(target.meta ?? {}),
+        modelKey: model.modelKey,
+        modelVendor: model.vendorKey,
+        vendor: model.vendorKey,
+        archetype: { id: model.archetypeId, modeId: model.modeId },
+      },
+    })
+  }, {
+    id: nodeId,
+    model: {
+      modelKey: selected.row.modelKey,
+      vendorKey: selected.row.vendorKey,
+      archetypeId: selected.archetype.id,
+      modeId: selected.mode.id,
+      capabilityLabel,
+    },
+  })
+
+  return {
+    capability,
+    capabilityLabel,
+    vendorKey: selected.row.vendorKey,
+    modelKey: selected.row.modelKey,
+    archetypeId: selected.archetype.id,
+    modeId: selected.mode.id,
+  }
+}
 
 const PROJECT_KEY = 'nomi:director-lab:project'
 

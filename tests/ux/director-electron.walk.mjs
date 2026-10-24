@@ -23,7 +23,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { applyColorSchemeForShot, clickOrFail, expect, expectAbsent, expectHidden, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
-import { addCameraPreset, addTrack, enterRefine, placeCharacter } from './_directorLab.mjs'
+import { addCameraPreset, addTrack, enterRefine, pinCanvasImageModelByCapability, placeCharacter } from './_directorLab.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { createBlankProject, prepareIsolation, readProjectPayload } from '../../evals/lib/isoApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
@@ -349,8 +349,8 @@ const stagedImageOf = (stagingId) => expect.poll(() => {
   return nodes.find((node) => node.kind === 'image' && node.meta?.sourceNodeId === stagingId)?.id ?? null
 }, () => null)
 
-const textOnlyTarget = readCanvas().nodes.find((node) => node.id === IMAGE_ID)
-console.log(`  · ④ 目标镜头的模型：${JSON.stringify(textOnlyTarget?.meta?.archetype ?? textOnlyTarget?.meta?.modelKey ?? null)}`)
+const textOnlyModel = await pinCanvasImageModelByCapability(win, IMAGE_ID, 'text-only')
+console.log(`  · ④ 目标镜头的模型：${JSON.stringify(textOnlyModel)}`)
 const stagingTextOnly = await injectStaging(620)
 check('④ E2E 桥能塞入待出图的 director 节点', Boolean(stagingTextOnly))
 const notified = await expect.poll(async () => (await stagingNotices()).length, { timeout: stationTimeout({ operations: 8 }), intervals: [500] }).toBeGreaterThan(0).then(() => true, () => false)
@@ -365,11 +365,8 @@ check('④a 点「定位节点」：画布对准并选中那张站位图（board
 await snap('staging-located')
 
 // ④b 用户把这个镜头换成能接参考图的模型（默认文生图模式、「改图」模式有参考图槽）→ 再出一张 → composition_ref 边落盘、不再提示
-await win.evaluate((targetId) => {
-  const state = window.__nomiCanvasStore.getState()
-  const target = state.nodes.find((node) => node.id === targetId)
-  state.updateNode(targetId, { meta: { ...(target?.meta ?? {}), modelKey: 'seedream-4-5', archetype: { id: 'seedream', modeId: 't2i' } } })
-}, IMAGE_ID)
+const referenceImageModel = await pinCanvasImageModelByCapability(win, IMAGE_ID, 'reference-image')
+console.log(`  · ④b 目标镜头的模型：${JSON.stringify(referenceImageModel)}`)
 const stagingConnected = await injectStaging(860)
 const connectedImage = stagingConnected ? await stagedImageOf(stagingConnected) : null
 const wired = connectedImage
