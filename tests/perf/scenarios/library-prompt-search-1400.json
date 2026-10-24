@@ -20,8 +20,12 @@
   "group": "⑪ 技能库 / 提示词库",
   "budgetStatus": "proposed",
   "budgetBasis": "设计卡 docs/plan/2026-10-23-skill-prompt-library-layout.md ★7：切分类、搜索每键 ≤100ms（p95 ≤150ms）@1400 条；仓库默认「操作到可见反馈 ≤100ms」（docs/engineering/perf-scenarios.md），人对即时的感知阈值约 100ms（RAIL）",
-  "measurement": {
-    "state": "pending",
-    "reason": "实现线（Mac）已用 --measure-only 量过，原始结果随 PR 提交；基线待协调在安静窗口用 --update-baseline 写（实现线不写基线）"
+  "baseline": {
+    "median": 23.8,
+    "p95": 25.1,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-24",
+    "commit": "6ccbd23f6"
   }
 }

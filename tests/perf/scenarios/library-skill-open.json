@@ -21,8 +21,12 @@
   "group": "⑪ 技能库 / 提示词库",
   "budgetStatus": "proposed",
   "budgetBasis": "设计卡 docs/plan/2026-10-23-skill-prompt-library-layout.md ★7：打开库到首屏内容 ≤200ms、p95 ≤300ms（本地数据）；媒体请求（只看）≤ 首屏可见卡片数 + 一屏预取，抽屉 ≤12。改前真机单次：开 Skill 抽屉媒体请求 37 个（远端 29），点 Skill 页签首个内容 346ms",
-  "measurement": {
-    "state": "pending",
-    "reason": "实现线（Mac）已用 --measure-only 量过，原始结果随 PR 提交；基线待协调在安静窗口用 --update-baseline 写（实现线不写基线）"
+  "baseline": {
+    "median": 111.3,
+    "p95": 112.2,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-24",
+    "commit": "6ccbd23f6"
   }
 }

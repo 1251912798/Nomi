@@ -19,8 +19,12 @@
   "group": "⑪ 技能库 / 提示词库",
   "budgetStatus": "proposed",
   "budgetBasis": "设计卡 docs/plan/2026-10-23-skill-prompt-library-layout.md ★7：滚动帧间隔 p95 ≤33ms（60Hz 下不超过两帧）、>50ms 长任务 0 个；同仓库拖动 / 平移场景同一个 33ms 预算",
-  "measurement": {
-    "state": "pending",
-    "reason": "实现线（Mac）已用 --measure-only 量过，原始结果随 PR 提交；基线待协调在安静窗口用 --update-baseline 写（实现线不写基线）"
+  "baseline": {
+    "median": 10.3,
+    "p95": 10.5,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-24",
+    "commit": "6ccbd23f6"
   }
 }
