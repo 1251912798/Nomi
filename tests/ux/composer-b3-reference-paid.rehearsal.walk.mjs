@@ -7,7 +7,8 @@
 //   ② 供应商是夹具：假 Seedance 的上传 / 提交 / 查询 / 出片（片子先压着，提交之后放行）；
 //   ③ 请求体按夹具收到的那一笔核（夹具的上传都回同一个本机地址、对不回文件名，所以按上传记录里的文件名核
 //      「只上传过首帧、尾帧」，按 image_with_roles 核「只发了首帧、尾帧两项」，再核请求体里的每个图片地址都来自上传）。
-// 它证的是「真付费脚本走得通、读数读得出、界面核对在真界面上判得对、生成方式是经参数面板切的」；
+// 它证的是「真付费脚本走得通、读数读得出、界面核对在真界面上判得对、生成方式是经参数面板切的」（点不到步骤本体当场停下，
+// 没有写 store 的退路，所以只有一套判法：旅程走完、verified 齐全）；
 // 不证 APIMart 真收到了什么（那只有真付费的账本证得了）。放行名单清空：哪一层没重定向，真请求也会被走查闸当场挡下。
 import { expect } from './_assert.mjs'
 import { ENV_KEY_VAR } from './_paidEnvKey.mjs'
@@ -36,7 +37,6 @@ try {
     onSubmitted: () => walk.fixture.releaseVideos(),
     judgeWire: () => judgeFixtureWire(walk.fixture),
   })
-  expect(evidence.modeSwitchVia, '演练里生成方式是经参数面板切的（没退回写 store）').toBe('parameter-panel')
   expect(evidence.verified, '花钱前核对、请求体、落地全过').toEqual(expect.arrayContaining([
     'mode-switched-through-parameter-panel', 'composer-shows-frames-in-use-and-3-unused-before-spend',
     'apimart-body-only-first-and-last-frame', 'unused-references-never-uploaded', 'no-reference-not-in-use-rejection', 'result-landed-and-probed',

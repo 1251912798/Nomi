@@ -5,13 +5,16 @@
 // （Seedance 2.0 fast · 480p · 4 秒 · 无音频；3 张参考 + 首帧、尾帧），按 B3 的存法布：
 //   · 节点上只有一份有序参考列表（meta.referenceImageUrls，见 src/workbench/generationCanvas/nodes/controls/referenceList.ts 文件头）：
 //     参考方式（全能参考）下依次放首帧图、尾帧图、3 张参考——和真人在参考区先放两张、再放三张写的是同一个键；
-//   · 经**参数面板顶部的「生成方式」**切到首尾帧（B3 里真人会点的那个控件，见 switchToFirstLast）；
+//   · 经**参数面板顶部的「生成方式」**切到首尾帧（B3 里真人会点的那个控件，见 switchToFirstLast）；点不到就在点 ↑ 之前
+//     停下（一分钱不花），没有改写 store 顶替的退路；
 //   · B3 的唯一推导（placeUploadedImages）把列表前两张落进首帧、尾帧两格，后 3 张淡显「未用到」；
 //   · 点 ↑ 花一条。渲染层只把在用的两帧组进请求；万一有入口绕过推导、把没在用的图塞进请求，主进程守卫
 //     （electron/tasks/referenceResidueGuard.ts）在发出之前**拒发**（机器码 reference-not-in-use，请求没离开本机）——
 //     这也判失败并点名：说明渲染层和界面分了家，正是这条要抓的。
 // 脚本不自己推导谁在用：花钱前读生产组件渲染出来的参考行（_composerReferenceRow.mjs），花钱后读请求体与节点上的报错
 // （_referenceLeakWire.mjs）。
+// 布场景（addNode 一次，新镜头随之选中）是整条旅程唯一一次写 store，其余对 store 只读；
+// _composerReferenceRow.test.mjs 的 E2E 桥白名单零花费盯着这几个文件对 store 的每一处用法。
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -53,7 +56,7 @@ export const COMPOSER_B3_PAID_MODELS = [VIDEO]
 export const COMPOSER_B3_PAID_OPTIONS = { hostedUploads: true, recordAllowedBodies: true, buildMarkers: [BUILD_MARKER] }
 
 /**
- * 整条旅程：布场景 → 经参数面板切首尾帧 → 花钱前核对 ①–④（任一不成立就抛，一分钱不花）→ 点 ↑。
+ * 整条旅程：布场景（唯一一次写 store）→ 经参数面板切首尾帧（点不到就抛，一分钱不花）→ 花钱前核对 ①–④（任一不成立就抛，一分钱不花）→ 点 ↑。
  * probe：走到确认框为止，点「取消」。否则点「生成」→ 等提交 → 等结局（落地或报错）→ 判请求体 → 量成片。
  * @param {{
  *   paid: Awaited<ReturnType<typeof import('./_paidRun.mjs').openPaidWalk>>,
@@ -85,10 +88,10 @@ export async function runComposerB3ReferenceJourney({ paid, evidence, probe = fa
   const scene = { firstFile: FIRST_FILE, lastFile: LAST_FILE, referenceFiles: REFERENCE_FILES, localUrlOf: urlOf }
 
   // 视频镜头：被授权的那一档，参考方式（全能参考），参考列表 = 首帧图、尾帧图、3 张参考。
-  const shotId = await win.evaluate(({ meta }) => {
-    const state = window.__nomiCanvasStore.getState()
-    return state.addNode({ kind: 'video', title: '参考在用核对', prompt: '一只橘猫从书桌上跳下，镜头缓慢跟随，写实', position: { x: 0, y: 0 }, select: false, meta }).id
-  }, {
+  // 整条旅程唯一一次写 store：addNode 缺省就把新镜头设为选中（和真人新建镜头之后一样），不再另写一次选中。
+  const shotId = await win.evaluate(({ meta }) => window.__nomiCanvasStore.getState().addNode({
+    kind: 'video', title: '参考在用核对', prompt: '一只橘猫从书桌上跳下，镜头缓慢跟随，写实', position: { x: 0, y: 0 }, meta,
+  }).id, {
     meta: {
       modelKey: VIDEO.modelKey, modelVendor: VIDEO.vendorKey, vendor: VIDEO.vendorKey,
       archetype: { id: ARCHETYPE, modeId: 'omni', variantId: 'fast' },
@@ -99,11 +102,9 @@ export async function runComposerB3ReferenceJourney({ paid, evidence, probe = fa
   const storeNode = () => win.evaluate((id) => window.__nomiCanvasStore.getState().nodes.find((node) => node.id === id) ?? null, shotId)
   const nodeOnDisk = async () => ((await readProject(win, projectId)).payload.generationCanvas.nodes ?? []).find((node) => node.id === shotId)
 
-  await win.evaluate((id) => window.__nomiCanvasStore.getState().selectNode(id), shotId)
   const composer = win.locator(`[data-node-id="${shotId}"] .generation-canvas-v2-node__composer`).first()
   await expectVisible(composer, '选中镜头后它的生成框出现', stationTimeout({ operations: 2 }))
-  evidence.modeSwitchVia = await switchToFirstLast(win, composer, shotId)
-  await expect.poll(async () => (await storeNode())?.meta?.archetype?.modeId, { message: '切到首尾帧', timeout: stationTimeout({ operations: 1 }) }).toBe('firstlast')
+  await switchToFirstLast(win, walk, composer, shotId)
 
   // ── 花钱之前的整套核对：任何一项不成立就停（一分钱没花）──
   //   ① 被授权那一档；② 方式是首尾帧、首帧图 / 尾帧图排在列表最前；③ 那 3 张参考还在节点的列表里（场景真的布好了）；
@@ -126,7 +127,7 @@ export async function runComposerB3ReferenceJourney({ paid, evidence, probe = fa
   await clickOrFail(generateButton, '节点底栏的 ↑（生成）', { noWaitAfter: true })
   walk.report.generateButtonAfterClick = await readButtonReach(generateButton)
   const dialog = win.locator(SPEND_DIALOG)
-  const before = ['scene-armed-before-spend', ...(evidence.modeSwitchVia === 'parameter-panel' ? ['mode-switched-through-parameter-panel'] : []), 'composer-shows-frames-in-use-and-3-unused-before-spend']
+  const before = ['scene-armed-before-spend', 'mode-switched-through-parameter-panel', 'composer-shows-frames-in-use-and-3-unused-before-spend']
 
   if (probe) {
     // 探测（照 director-reference-attach.paid.mjs）：供应商的源不进放行名单，就算点 ↑ 直接提交，网络闸也当场挡下。
@@ -219,13 +220,12 @@ export async function runComposerB3ReferenceJourney({ paid, evidence, probe = fa
  * （src/workbench/generationCanvas/nodes/InlineParameterBar.tsx 的 [data-agent-generation-mode]，选项是 NomiSegmented 的 role="radio"）。
  * 真人的路：点生成框底栏的参数摘要（[data-parameter-summary]）→ 面板（[data-agent-parameter-panel]，浮层挂在 body 上）→
  * 点「首尾帧」→ Esc 收起（面板盖在生成框上）。点到与否只认节点真的换了方式。
- * 这条路点不到才退回写 store（与 NodeParameterControls 的 handleModeSwitch 同样只改 modeId，参考列表不动），原因记进证据；
- * 零花费演练要求走的是面板——退回写 store 在演练里是红的。
+ * 点不到就截图 fail-mode-switch、在点 ↑ 之前停下（一分钱不花）。没有改写 store 顶替的退路：那样花的钱证明不了真人那条路
+ * （第 1 轮留过「点不到就写 store 照花钱」，协调退回）。
  */
-async function switchToFirstLast(win, composer, shotId) {
+async function switchToFirstLast(win, walk, composer, shotId) {
   const modeId = () => win.evaluate((id) => window.__nomiCanvasStore.getState().nodes.find((node) => node.id === id)?.meta?.archetype?.modeId ?? null, shotId)
   const panel = win.locator('[data-agent-parameter-panel]').first()
-  let via = 'parameter-panel'
   try {
     const summary = composer.locator('[data-parameter-summary]').first()
     await bringButtonIntoReach(win, summary, '生成框的参数摘要')
@@ -233,20 +233,12 @@ async function switchToFirstLast(win, composer, shotId) {
     await clickOrFail(panel.locator('[data-agent-generation-mode]').getByRole('radio', { name: FIRSTLAST_NAME }), '参数面板顶部「生成方式」里的首尾帧')
     await expect.poll(modeId, { message: '点了「首尾帧」之后节点换成首尾帧方式', timeout: stationTimeout({ operations: 1 }) }).toBe('firstlast')
   } catch (error) {
+    await walk.snap('fail-mode-switch')
     const reason = String(error?.message ?? error).split('\n')[0].slice(0, 300)
-    console.warn(`[paid] 参数面板里的「首尾帧」点不到，退回写 store：${reason}`)
-    via = `store（参数面板点不到：${reason}；与 handleModeSwitch 同样只改 modeId，参考列表不动）`
-    if (await modeId() !== 'firstlast') {
-      await win.evaluate((id) => {
-        const state = window.__nomiCanvasStore.getState()
-        const node = state.nodes.find((candidate) => candidate.id === id)
-        state.updateNode(id, { meta: { ...node.meta, archetype: { ...node.meta.archetype, modeId: 'firstlast' } } })
-      }, shotId)
-    }
+    throw new Error(`花钱前核对没过（一分钱没花）：参数面板里的「首尾帧」点不到：${reason}`, { cause: error })
   }
   if (await panel.isVisible().catch(() => false)) await win.keyboard.press('Escape')
   await expectHidden(panel, '参数面板收起（它盖在生成框上，先收起再读参考行、点 ↑）', stationTimeout({ operations: 1 }))
-  return via
 }
 
 /** ④ 读选中镜头那张生成框的参考行并判；图要加载、行要重排，判不过就再读，到时限交最后一次的判定。 */

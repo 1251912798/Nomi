@@ -2,12 +2,14 @@
 // 拿**生产组件** AssetReference（B3 生成框参考行）的服务端渲染喂 readComposerReferences / judgeComposerReferences，
 // props 照 NodeParameterControls 在首尾帧方式下交给它的那一份摆（首帧、尾帧两格 + 3 张未用到）。
 // 组件改了锚点（data-reference-unused / data-asset-slot / data-asset-tile）或嵌套，这里先红，不等付费那一刻。
-// 另钉一条：步骤本体在点 ↑ 之前真的跑这道判、判不过就抛（反例：删掉花钱前的界面核对，这里红）。
+// 另钉两条：步骤本体在点 ↑ 之前真的跑这道判、判不过就抛（反例：删掉花钱前的界面核对，这里红）；
+// 花钱前只经界面改状态——这条样本对 E2E 桥的每一处用法都在白名单里（反例：把「点不到就写 store」的退路塞回去，这里红）。
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import ts from 'typescript'
 import { describe, expect, it, vi } from 'vitest'
 
 import AssetReference from '../../src/workbench/assets/AssetReference'
@@ -134,20 +136,136 @@ describe('fileMapper：小图地址对回场景文件', () => {
   })
 })
 
+// ── 花钱前只经界面改状态：这条付费样本对应用 E2E 桥（window.__nomi*）的用法白名单 ──
+// 扫这条样本自有的全部文件（步骤本体、两个入口脚本、读参考行的纯函数），按语法树把每一处提到 __nomi 的标识符、字符串、
+// 模板、正则逐个归类（注释不在树里，不算）。放行的只有下面四种写法，其它一律红（fail-closed）：
+//   · window.localStorage.setItem('__nomiE2E', '1')          打开 E2E 桥（开关，不是应用状态）
+//   · Boolean(window.__nomiCanvasStore)                      判桥挂上没有
+//   · window.__nomiCanvasStore.getState().nodes.find(…)      读节点（读的这个节点由 addNode / 界面经 immer 写进 store，深冻结：读出来的对象改不动 store）
+//   · window.__nomiCanvasStore.getState().addNode(…)         布场景：全部文件里恰好 1 处，在步骤本体里、在 await switchToFirstLast( 之前
+// 红的例子：取别名（const state = …getState()）、解构、setState / selectNode / updateNode 等别的成员、别的桥
+// （__nomiCapabilityApply、__nomiProductionLandingStore …）、globalThis. / window[…] / 裸名写法、字符串里写桥名。
+// 这是「门岗自动拦」，做不到「结构上做不出来」：window.__nomiCanvasStore 是很多零额度走查共用的 E2E 桥
+// （localStorage __nomiE2E 为 '1' 才挂，src/workbench/production/ProductionCanvasLandingHost.tsx），这条样本布场景、读节点也靠它；
+// 不改产品代码就没法只对这一条脚本收回写权限，所以静态钉住这条样本自己的文件。
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+const readRepo = (file) => fs.readFileSync(path.join(REPO_ROOT, file), 'utf8')
+const STEPS = 'tests/ux/_composerB3ReferenceSteps.mjs'
+const SAMPLE_FILES = [STEPS, 'tests/ux/composer-b3-reference.paid.mjs', 'tests/ux/composer-b3-reference-paid.rehearsal.walk.mjs', 'tests/ux/_composerReferenceRow.mjs']
+
+const isWindow = (node) => ts.isIdentifier(node) && node.text === 'window'
+const isCallOf = (call, callee) => Boolean(call) && ts.isCallExpression(call) && call.expression === callee
+
+/** 一处提到 __nomi 的标识符 / 字面量 → 放行的哪一种（kind），或者红的原因（reason）。 */
+function bridgeUsage(node) {
+  if (!ts.isIdentifier(node)) {
+    const call = node.parent
+    const setItem = ts.isCallExpression(call) && call.arguments.length === 2 && call.arguments[0] === node ? call.expression : null
+    const isSwitch = Boolean(setItem) && ts.isStringLiteral(node) && node.text === '__nomiE2E'
+      && ts.isStringLiteral(call.arguments[1]) && call.arguments[1].text === '1'
+      && ts.isPropertyAccessExpression(setItem) && setItem.name.text === 'setItem'
+      && ts.isPropertyAccessExpression(setItem.expression) && setItem.expression.name.text === 'localStorage' && isWindow(setItem.expression.expression)
+    return isSwitch ? { kind: 'e2e-switch' } : { reason: "字符串 / 模板 / 正则里写了桥名（只放行 window.localStorage.setItem('__nomiE2E', '1')）" }
+  }
+  if (node.text !== '__nomiCanvasStore') return { reason: `用了白名单外的 E2E 桥 ${node.text}` }
+  const bridge = node.parent
+  if (!ts.isPropertyAccessExpression(bridge) || bridge.name !== node || !isWindow(bridge.expression)) return { reason: '不是 window.__nomiCanvasStore 这种写法（globalThis. / 裸名 / 从 window 解构出桥）' }
+  const up = bridge.parent
+  if (ts.isCallExpression(up) && ts.isIdentifier(up.expression) && up.expression.text === 'Boolean' && up.arguments.length === 1) return { kind: 'exists' }
+  if (!ts.isPropertyAccessExpression(up) || up.name.text !== 'getState') {
+    return { reason: `用了 ${ts.isPropertyAccessExpression(up) ? `window.__nomiCanvasStore.${up.name.text}` : 'window.__nomiCanvasStore 本身（取别名 / 当参数传走）'}（只放行 Boolean(…) 判存在、getState().nodes.find(…)、getState().addNode(…)）` }
+  }
+  const state = up.parent
+  if (!isCallOf(state, up)) return { reason: '把 window.__nomiCanvasStore.getState 本身拿走了' }
+  const member = state.parent
+  if (ts.isVariableDeclaration(member)) {
+    return { reason: ts.isIdentifier(member.name) ? `取了别名 ${member.name.text} = …getState()（拿着别名什么都能写）` : '解构了 getState()（拿出来的成员什么都能写）' }
+  }
+  if (!ts.isPropertyAccessExpression(member) || member.expression !== state) return { reason: 'getState() 的结果没有直接读 .nodes.find(…) 或调 .addNode(…)' }
+  if (member.name.text === 'addNode' && isCallOf(member.parent, member)) return { kind: 'addNode' }
+  const find = member.parent
+  if (member.name.text === 'nodes' && ts.isPropertyAccessExpression(find) && find.name.text === 'find' && isCallOf(find.parent, find)) return { kind: 'read' }
+  return { reason: `用了 getState().${member.name.text}（只放行 .nodes.find(…) 读节点、.addNode(…) 布场景）` }
+}
+
+/** 这条样本自有文件里 E2E 桥用法的问题；空数组 = 全在白名单里。 */
+function bridgeProblems(files) {
+  const problems = []
+  const addNodes = []
+  let switchAt = -1
+  for (const { file, text } of files) {
+    const tree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
+    const where = (node) => `${file}:${tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1}`
+    const visit = (node) => {
+      const literal = ts.isIdentifier(node) || ts.isStringLiteralLike(node) || ts.isTemplateLiteralToken(node) || ts.isRegularExpressionLiteral(node)
+      if (literal && node.text.includes('__nomi')) {
+        const usage = bridgeUsage(node)
+        if (usage.reason) problems.push(`${where(node)} ${usage.reason}`)
+        if (usage.kind === 'addNode') addNodes.push({ file, at: node.getStart(tree), where: where(node) })
+      }
+      const callee = ts.isAwaitExpression(node) && ts.isCallExpression(node.expression) ? node.expression.expression : null
+      if (file === STEPS && switchAt === -1 && callee && ts.isIdentifier(callee) && callee.text === 'switchToFirstLast') switchAt = node.getStart(tree)
+      ts.forEachChild(node, visit)
+    }
+    visit(tree)
+  }
+  if (addNodes.length !== 1) problems.push(`布场景的 addNode 有 ${addNodes.length} 处（${addNodes.map((entry) => entry.where).join('、') || '没有'}），应恰好 1 处`)
+  if (switchAt === -1) problems.push(`${STEPS} 里找不到 await switchToFirstLast(…)：经参数面板切首尾帧那一步没了`)
+  for (const entry of addNodes) {
+    if (entry.file !== STEPS) problems.push(`${entry.where} addNode 不在步骤本体里`)
+    else if (switchAt !== -1 && entry.at > switchAt) problems.push(`${entry.where} addNode 在 await switchToFirstLast( 之后：布场景之后不许再写 store`)
+  }
+  return problems
+}
+
+// 第 1 轮 switchToFirstLast 里那段退路的写 store 部分，原样（dd0941c48；协调退回的就是它：点不到就改写方式、照样往下走去花钱）。
+const ROUND1_FALLBACK = [
+  "    if (await modeId() !== 'firstlast') {",
+  '      await win.evaluate((id) => {',
+  '        const state = window.__nomiCanvasStore.getState()',
+  '        const node = state.nodes.find((candidate) => candidate.id === id)',
+  "        state.updateNode(id, { meta: { ...node.meta, archetype: { ...node.meta.archetype, modeId: 'firstlast' } } })",
+  '      }, shotId)',
+  '    }',
+].join('\n')
+const BEFORE_COMPOSER = '  const composer = win.locator('
+const insertBefore = (anchor, line) => (text) => text.replace(anchor, `${line}\n${anchor}`)
+const COUNTER_EXAMPLES = [
+  ['第 1 轮的退路原样塞回 switchToFirstLast（截图 + 抛错换成取别名再 updateNode）', (text) => text.replace(/ {4}await walk\.snap\('fail-mode-switch'\)\n[\s\S]*?throw new Error\([^\n]*\n/, `${ROUND1_FALLBACK}\n`), /取了别名 state = …getState\(\)/],
+  ['选中改回写 store：getState().selectNode(id)', insertBefore(BEFORE_COMPOSER, '  await win.evaluate((id) => window.__nomiCanvasStore.getState().selectNode(id), shotId)'), /用了 getState\(\)\.selectNode/],
+  ['window.__nomiCanvasStore.setState({})', insertBefore(BEFORE_COMPOSER, '  await win.evaluate(() => window.__nomiCanvasStore.setState({}))'), /用了 window\.__nomiCanvasStore\.setState/],
+  ['再加一次 addNode', insertBefore(BEFORE_COMPOSER, "  await win.evaluate(() => window.__nomiCanvasStore.getState().addNode({ kind: 'video' }).id)"), /addNode 有 2 处/],
+  ['切方式挪到布场景之前（布场景的写落在切方式之后）', insertBefore('  // 视频镜头：', '  await switchToFirstLast(win, walk, composer, shotId)'), /addNode 在 await switchToFirstLast\( 之后/],
+  ['解构 getState()', insertBefore(BEFORE_COMPOSER, '  await win.evaluate((id) => { const { updateNode } = window.__nomiCanvasStore.getState(); updateNode(id, {}) }, shotId)'), /解构了 getState\(\)/],
+  ['换一座桥写：window.__nomiCapabilityApply', insertBefore(BEFORE_COMPOSER, '  await win.evaluate(() => window.__nomiCapabilityApply({}))'), /白名单外的 E2E 桥 __nomiCapabilityApply/],
+  ['把写法藏进字符串：win.evaluate(\'…setState…\')', insertBefore(BEFORE_COMPOSER, "  await win.evaluate('window.__nomiCanvasStore.setState({})')"), /字符串 \/ 模板 \/ 正则里写了桥名/],
+]
+
 describe('付费样本花钱前真的核界面状态（反例：删掉这道判，这里红）', () => {
   it('步骤本体在点 ↑ 之前读选中镜头的生成框参考行、判过才往下走；判出的问题并进花钱前的那一次抛错', () => {
-    const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
-    const source = fs.readFileSync(path.join(repoRoot, 'tests/ux/_composerB3ReferenceSteps.mjs'), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    const source = readRepo(STEPS).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
     // 红了就点名「花钱前不核界面状态」：协调看报错就知道这条付费样本又退回了只核 store 的老样子。
     const NOT_CHECKED = '花钱前不核界面状态'
     // 读：页面里取生成框 → 拆 → 判（不是截图了事）。
     expect(source, `${NOT_CHECKED}：步骤本体里没有「页面里取生成框 → 拆 → 判」这一道`).toMatch(/judgeComposerReferences\(readComposerReferences\(await win\.evaluate\(pageReadComposer, shotId\)\)/)
     const read = source.indexOf('await readComposerUntilSettled(win, shotId')
     const merged = source.indexOf('problems.push(...shown.problems)')
-    const thrown = source.indexOf('花钱前核对没过（一分钱没花）')
+    // 认旅程里那一句（带「：\n」）：switchToFirstLast 点不到时也抛同前缀的错，不能混成一处。
+    const thrown = source.indexOf('花钱前核对没过（一分钱没花）：\\n')
     const spend = source.indexOf('clickOrFail(generateButton')
     expect([read, merged, thrown, spend].every((index) => index > -1), `${NOT_CHECKED}：读 / 并进问题 / 抛错 / 点 ↑ 缺了一步 ${JSON.stringify({ read, merged, thrown, spend })}`).toBe(true)
     expect(read < merged && merged < thrown && thrown < spend, `${NOT_CHECKED}：顺序应是读 → 并进问题 → 抛错 → 才点 ↑`).toBe(true)
+  })
+
+  it('花钱前只经界面改状态：样本自有文件对 E2E 桥的每一处用法都在白名单里，布场景的 addNode 恰好 1 处、在切方式之前', () => {
+    expect(bridgeProblems(SAMPLE_FILES.map((file) => ({ file, text: readRepo(file) })))).toEqual([])
+  })
+
+  it.each(COUNTER_EXAMPLES)('反例：%s → 红', (_name, mutate, expected) => {
+    const original = readRepo(STEPS)
+    const mutated = mutate(original)
+    expect(mutated, '反例没改到步骤本体（锚点变了，反例要跟着改，不然它什么也没证）').not.toBe(original)
+    const files = SAMPLE_FILES.map((file) => ({ file, text: file === STEPS ? mutated : readRepo(file) }))
+    expect(bridgeProblems(files).join('\n')).toMatch(expected)
   })
 })
