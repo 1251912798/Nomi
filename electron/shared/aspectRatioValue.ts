@@ -15,6 +15,11 @@
  */
 export const ASPECT_RATIO_SEMANTIC_KEY = "aspectRatio";
 
+/** 旧节点 / 参数面板可能写入比例的 meta 键。值是否真是比例仍由解析结果决定。 */
+export const ASPECT_RATIO_META_KEYS = [
+  "aspect_ratio", "aspectRatio", "aspect", "size", "imageSize", "videoSize", "ratio", "video_size", "image_size",
+] as const;
+
 /**
  * Named bucket → W:H 标准字符串映射。
  * 覆盖 Seedream edit mode 的 image_size 枚举值（portrait_4_3 等）。
@@ -75,6 +80,38 @@ export function normalizeAspectRatioToWH(value: unknown): string | null {
 function aspectRatioMatchKey(value: unknown): string | null {
   const size = widthHeightOf(value);
   return size ? `${size.width}:${size.height}` : null;
+}
+
+function greatestCommonDivisor(left: number, right: number): number {
+  let a = Math.abs(Math.round(left));
+  let b = Math.abs(Math.round(right));
+  while (b !== 0) {
+    const next = a % b;
+    a = b;
+    b = next;
+  }
+  return a || 1;
+}
+
+/** 两个 W:H / named bucket 是否代表同一个约分后的比例；不改供应商原值。 */
+export function sameAspectRatio(left: unknown, right: unknown): boolean {
+  const leftSize = widthHeightOf(left);
+  const rightSize = widthHeightOf(right);
+  if (!leftSize || !rightSize) return false;
+  const reduced = (size: WidthHeight): readonly [number, number] => {
+    const decimals = Math.max(
+      String(size.width).split('.')[1]?.length ?? 0,
+      String(size.height).split('.')[1]?.length ?? 0,
+    );
+    const scale = 10 ** decimals;
+    const width = Math.round(size.width * scale);
+    const height = Math.round(size.height * scale);
+    const gcd = greatestCommonDivisor(width, height);
+    return [width / gcd, height / gcd];
+  };
+  const [leftWidth, leftHeight] = reduced(leftSize);
+  const [rightWidth, rightHeight] = reduced(rightSize);
+  return leftWidth === rightWidth && leftHeight === rightHeight;
 }
 
 export function isAutoOptionValue(value: unknown): boolean {

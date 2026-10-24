@@ -74,7 +74,8 @@ import { toCatalogModelOptions } from '../../../config/modelOptionMappers'
 import { buildAgentModelEntries } from '../agent/availableModels'
 import { buildModelEntryIndex, buildPlannedNodeMeta } from '../agent/plannedNodeMeta'
 import { ASPECT_EXPLICIT_META_KEY } from './aspectExplicit'
-import { readNodeAspectRatio, ASPECT_RATIO_KEYS } from './aspectRatio'
+import { readNodeAspectRatio } from './aspectRatio'
+import { ASPECT_RATIO_META_KEYS } from '../../../../electron/shared/aspectRatioValue'
 
 const VENDORS = [{ key: 'apimart', name: 'APIMart', enabled: true, hasApiKey: true, authType: 'bearer' }]
 const usable = { usable: true }
@@ -218,7 +219,7 @@ describe('打开节点不改比例；新卡的比例默认值在自动选模型�
     ['doubao-seedance-2.5', { aspect_ratio: '21:9' }, undefined],
   ] as const)('报告的格：Agent 落地的 %s %o，打开后 meta 一个字不变', async (modelKey, params, variantId) => {
     const meta = landed(modelKey, params, variantId)
-    expect(ASPECT_RATIO_KEYS.some((key) => meta[key] === params.aspect_ratio), '落地节点就是 Agent 写的比例').toBe(true)
+    expect(ASPECT_RATIO_META_KEYS.some((key) => meta[key] === params.aspect_ratio), '落地节点就是 Agent 写的比例').toBe(true)
     const { before } = await openNode(videoNode('shot', meta))
     expect(metaOf('shot')).toEqual(before)
   })

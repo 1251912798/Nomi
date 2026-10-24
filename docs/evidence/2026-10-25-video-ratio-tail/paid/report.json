@@ -1,0 +1,93 @@
+{
+  "script": "agent-ratio-variant-landing.paid.mjs",
+  "mode": "paid",
+  "startedAt": "2026-10-24T17:18:34.869Z",
+  "shot": {
+    "vendorKey": "apimart",
+    "modelKey": "doubao-seedance-2.0",
+    "variantId": "mini",
+    "modeId": "t2v",
+    "aspect": "9:16",
+    "resolution": "480p",
+    "durationSec": 4,
+    "generateAudio": false,
+    "wireModel": "seedance-2.0-mini"
+  },
+  "operationId": "op-43013298-67aa-4c70-ab38-cd433bdfa897",
+  "candidate": {
+    "variantId": "mini",
+    "parameters": {
+      "resolution": "480p",
+      "generate_audio": false,
+      "size": "9:16",
+      "duration": 4
+    }
+  },
+  "landedNode": {
+    "modelKey": "doubao-seedance-2.0",
+    "vendor": "apimart",
+    "variantId": "mini",
+    "modeId": "t2v",
+    "size": "9:16",
+    "resolution": "480p",
+    "duration": 4,
+    "generateAudio": false,
+    "aspectExplicit": true
+  },
+  "opened-zh": {
+    "changedKeys": [],
+    "composerShowsAspect": true,
+    "composerShowsMini": true
+  },
+  "opened-en": {
+    "changedKeys": [],
+    "composerShowsAspect": true,
+    "composerShowsMini": true
+  },
+  "request": {
+    "createRequests": 1,
+    "endpoint": "api.apimart.ai/v1/videos/generations",
+    "model": "seedance-2.0-mini",
+    "size": "9:16",
+    "resolution": "480p",
+    "duration": 4,
+    "generateAudio": false
+  },
+  "providerTaskIds": [
+    "task_01M5QERCT8BBTDXYCMP6NZKXXT"
+  ],
+  "landed": {
+    "durationSeconds": 4.041667,
+    "width": 496,
+    "height": 864,
+    "hasAudio": false,
+    "bytes": 1750468,
+    "keptAt": ".tmp/pi-agent-ratio-variant-landing-development-1792862314851/result.mp4"
+  },
+  "verified": [
+    "candidate-is-the-authorized-tier",
+    "landed-node-equals-candidate",
+    "opening-node-keeps-variant-and-aspect",
+    "apimart-body-model-is-mini",
+    "apimart-body-size-is-9-16",
+    "one-provider-task",
+    "result-landed-portrait"
+  ],
+  "finishedAt": "2026-10-24T17:20:35.677Z",
+  "paidCalls": 1,
+  "spend": [
+    {
+      "taskId": "task_01M5QERCT8BBTDXYCMP6NZKXXT",
+      "status": "ready",
+      "model": "doubao-seedance-2.0",
+      "vendor": "canvas:apimart"
+    }
+  ],
+  "networkAllowlist": [
+    "https://api.apimart.ai",
+    "*.getapib.org"
+  ],
+  "networkBlocked": [],
+  "walkOutputDir": ".tmp/pi-agent-ratio-variant-landing-development-1792862314851",
+  "failure": null
+}
