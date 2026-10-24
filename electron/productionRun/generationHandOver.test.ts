@@ -10,6 +10,7 @@ import {
   presentationIsOpen,
   queuedHandOversOfClosedPresentations,
 } from "../shared/productionGenerationPresentation";
+import { deriveProductionShotState } from "../shared/productionShotPhase";
 import type { PlanCandidate } from "../capabilityCore/executionContract";
 import type { ProjectAgentApprovalPolicy } from "../shared/agentCapabilities/capabilityApprovalPolicy";
 import { createProductionRunRepository } from "./productionRunRepository";
@@ -119,6 +120,34 @@ describe("交接三步：记决定 → 绑画布 Run → 落定", () => {
     run.settle({ shotId: "s1", canvasRunId: "canvas-s1", outcome: "withdrawn", withdrawnBy: "removed" });
     expect(run.offers()).toEqual([["s1", "removed"], ["s2", "undecided"]]);
     expect(run.read().generationPlan!.shots!.find((shot) => shot.shotId === "s1")?.included).toBe(false);
+  });
+});
+
+// 债 d：「正在发出」是账上的一个事实，不是卡自己记的一份。卡那一格读 `offerShots`（`handing_over` → 「正在发出」），
+// 画布占位读 `deriveProductionShotState`（→ 「排队中」），两个读点底下是同一笔交接；交出去、还没交到的时候，
+// 画布不许还写「等你确认」（那会让用户以为还要再点一次）。
+describe("「正在发出」：卡那一格和画布占位读同一笔交接", () => {
+  const phases = (run: ReturnType<typeof ledger>) => ["s1", "s2"].map((shotId) => deriveProductionShotState(run.read(), shotId)?.phase ?? null);
+
+  it("交出去、还没交到：卡那一格「正在发出」，画布占位「排队中」而不是「等你确认」；同一张卡上没交的那一镜照旧等你确认", () => {
+    const run = ledger();
+    expect(phases(run)).toEqual(["awaiting_confirmation", "awaiting_confirmation"]);
+    run.handOver(["s1"]);
+    expect(run.offers()).toEqual([["s1", "handing_over"], ["s2", "undecided"]]);
+    expect(phases(run)).toEqual(["queued", "awaiting_confirmation"]);
+    run.bind("s1");
+    expect(phases(run), "绑上画布 Run、供应商还没受理：仍是排队中").toEqual(["queued", "awaiting_confirmation"]);
+    run.settle({ shotId: "s1", canvasRunId: "canvas-s1", outcome: "not_sent", failure: { kind: "not_sent", code: "renderer_unavailable" } });
+    expect(run.offers()).toEqual([["s1", "not_sent"], ["s2", "undecided"]]);
+    expect(phases(run), "确定没发出去：占位说「还没生成」，不再说排队中").toEqual(["not_generated", "awaiting_confirmation"]);
+  });
+
+  it("「取消」收回还没交到的那几笔：占位不再说排队中，也不再等你确认", () => {
+    const run = ledger();
+    run.handOver(["s1", "s2"]);
+    expect(phases(run)).toEqual(["queued", "queued"]);
+    run.withdraw("user_closed");
+    expect(phases(run)).toEqual(["not_generated", "not_generated"]);
   });
 });
 
