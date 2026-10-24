@@ -23,7 +23,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 // 默认模式只用常量和哈希：不 import 抽取（抽取要浏览器），抽取在 --reextract 里动态加载。
-import { BOARD_NAMES, BOARDS_DIR, REPO_ROOT } from './board-extract.mjs'
+import { BOARD_NAMES, BOARD_NAME_PATTERN, BOARDS_DIR, REPO_ROOT, isBoardName } from './board-extract.mjs'
 import { hashBoardSource } from './board-source-hash.mjs'
 
 export const BOARD_STATUSES = Object.freeze(['implemented', 'in-progress', 'missing', 'deferred', 'dropped'])
@@ -32,7 +32,8 @@ export const BOARD_STAGES = Object.freeze(['explored', 'built'])
 export const PR_SECTION = '拍板图'
 /** 元素 id：字母 / 数字 / 下划线 / 点 / 冒号 / 连字符（清单里的写法，如 node.card）。 */
 const ELEMENT_ID = /^[\p{L}\p{N}_.:-]+$/u
-const CLAIM_LINE = /^\s*[-*]\s*([A-Za-z]+)\s*[:：]\s*(.+)$/
+const BOARD_NAME_SOURCE = BOARD_NAME_PATTERN.source.replace(/^\^/, '').replace(/\$$/, '')
+const CLAIM_LINE = new RegExp(`^\\s*[-*]\\s*(${BOARD_NAME_SOURCE})\\s*[:：]\\s*(.+)$`)
 
 /** 从这天（含）起，板清单必须带 priorArt。更早的板不追溯。 */
 export const PRIOR_ART_REQUIRED_FROM = '2026-10-19'
@@ -223,7 +224,7 @@ export function findDatedBoards(root = path.dirname(BOARDS_DIR), skipDir = BOARD
     for (const name of fs.readdirSync(dir)) {
       if (!name.endsWith('.board.json')) continue
       const board = name.slice(0, -'.board.json'.length)
-      out.push({ board, dir, manifestOnly: !fs.existsSync(path.join(dir, `${board}.candidates.json`)) })
+      out.push({ board, dir, file: path.join(dir, name), invalidName: !isBoardName(board), manifestOnly: !fs.existsSync(path.join(dir, `${board}.candidates.json`)) })
     }
   }
   return out
@@ -236,7 +237,8 @@ export function loadManifests(dir = BOARDS_DIR, root = path.dirname(dir)) {
     out[board] = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null
   }
   // 其它日期目录的板也能被 `## 拍板图` 认领到。重名（与固定 12 张或彼此）不挑第一份：标成有歧义，认领就红。
-  for (const { board, dir: boardDir } of findDatedBoards(root, dir)) {
+  for (const { board, dir: boardDir, invalidName } of findDatedBoards(root, dir)) {
+    if (invalidName) continue
     if (out[board] === undefined) out[board] = JSON.parse(fs.readFileSync(path.join(boardDir, `${board}.board.json`), 'utf8'))
     else out[board] = { ambiguous: true }
   }
@@ -267,7 +269,11 @@ export async function runBoardParity({ dir = BOARDS_DIR, root = path.dirname(dir
   const corpus = loadAssertionCorpus()
   // 其它日期目录里**发现到的每一张板**都跑完整规则（V-1203 F2：原来只查「只有清单」的那一种，带候选文件的新板落在两个循环之外）。
   // 发现集合与校验集合是同一份：findDatedBoards 找到什么就查什么。
-  for (const { board, dir: boardDir, manifestOnly } of findDatedBoards(root, dir)) {
+  for (const { board, dir: boardDir, file, invalidName, manifestOnly } of findDatedBoards(root, dir)) {
+    if (invalidName) {
+      errors.push(`[${board}] 板名不符合 ${BOARD_NAME_PATTERN}：${path.relative(root, file)}`)
+      continue
+    }
     let candidates = []
     if (!manifestOnly) {
       const doc = JSON.parse(fs.readFileSync(path.join(boardDir, `${board}.candidates.json`), 'utf8'))

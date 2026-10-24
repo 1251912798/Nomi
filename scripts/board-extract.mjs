@@ -22,6 +22,9 @@ export const BOARD_NAMES = Object.freeze([
   'Main', 'Chrome', 'List', 'ListDetail', 'EmptyStates', 'Edges',
   'TextNode', 'Creation', 'CreationDoc', 'Library', 'LibraryEmpty', 'CanvasAgent',
 ])
+/** 板名同时出现在文件名和 PR 正文认领行：首字符必须是字母，后续只允许字母或数字。 */
+export const BOARD_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9]*$/
+export const isBoardName = (value) => typeof value === 'string' && BOARD_NAME_PATTERN.test(value)
 export const VIEWPORT = Object.freeze({ width: 1280, height: 800 })
 export const EXTRACTOR_VERSION = 'board-extract@1'
 
