@@ -228,6 +228,9 @@ export default function ProjectLibraryPage({
   }, [onOpenProject, syncInspectionByProject])
   // 10-08 外壳重设计：模型接入 / 浏览器 / 设置都在 40px 合一顶栏或设置里；这里只剩「缺文本模型」那条提示条。
   const [tab, setTab] = React.useState<LibraryTab>('projects')
+  // Skill / 提示词页签的工具（搜索、类型、导入、新建）和页签同一行（拍板图 SkillLibrary / PromptLibrary）：这一格是它们的落点，库内容自己 portal 进来。
+  const [libraryToolbar, setLibraryToolbar] = React.useState<HTMLDivElement | null>(null)
+  const libraryTab = tab === 'skills' || tab === 'prompts'
   // 第一次打开（没有项目、没在读、没读错、没在搜）= LibraryEmpty 板：三张大动作卡；有项目后收成右上两颗按钮。
   const firstRun = !projectsError && !projectsLoading && projects.length === 0
   const tabs: Array<{ id: LibraryTab; label: string }> = [
@@ -287,7 +290,7 @@ export default function ProjectLibraryPage({
 
   const page = (
     <div className="nomi-library-page flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-panel bg-nomi-paper font-nomi-sans text-body-sm leading-normal text-nomi-ink antialiased ring-1 ring-nomi-line-soft" data-library-tab={tab}>
-      <main className="nomi-library-page__main flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-8 pb-12 pt-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <main className={cn('nomi-library-page__main flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-8 pt-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', libraryTab ? 'pb-0' : 'pb-12')}>
         {/* 通知位（#1135）：热修横幅 / 已更新卡；没有要出的内容时自己隐藏。 */}
         <UpdateNotices />
         {projectFeedback?.message && !filteredProjects.some((project) => project.id === projectFeedback.projectId) ? <p role="alert" className="m-0 text-caption text-nomi-danger">{projectFeedback.message}</p> : null}
@@ -312,6 +315,7 @@ export default function ProjectLibraryPage({
               </button>
             ))}
           </div>
+          {libraryTab ? <div ref={setLibraryToolbar} className="contents" data-library-toolbar={tab} /> : null}
           {tab === 'projects' && !firstRun ? (
             <>
               <div
@@ -390,11 +394,11 @@ export default function ProjectLibraryPage({
 
         {tab === 'skills' ? (
           <React.Suspense fallback={null}>
-            <SkillLibraryContent active showHeader={false} className="min-h-0 flex-1" />
+            <SkillLibraryContent host="page" toolbarHost={libraryToolbar} className="min-h-0 flex-1" />
           </React.Suspense>
         ) : tab === 'prompts' ? (
           <React.Suspense fallback={null}>
-            <PromptLibraryContent active showHeader={false} className="min-h-0 flex-1" />
+            <PromptLibraryContent host="page" toolbarHost={libraryToolbar} className="min-h-0 flex-1" />
           </React.Suspense>
         ) : firstRun ? (
           // LibraryEmpty 板：第一次打开 = 三张大动作卡（设计系统：起始页 / 空状态用 ActionCard）。

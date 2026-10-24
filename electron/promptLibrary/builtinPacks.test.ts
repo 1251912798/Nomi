@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUILTIN_SOURCE_IDS, getBuiltinPrompts, withBuiltinPrompts } from "./builtinPacks";
-import type { LibraryPrompt } from "../shared/contracts/promptLibrary";
+import { isBuiltinPromptSourceId, type LibraryPrompt } from "../shared/contracts/promptLibrary";
 import { readSkillRecords } from "../skills/skillStore";
 import { discoverSkillRecords } from "../agentLane/laneSkillCatalog.mjs";
 
@@ -85,6 +85,13 @@ describe("builtin expression pack", () => {
   it("内置包含 44 条策展效果，来自仓内技能目录的投影", async () => {
     const curated = (await getBuiltinPrompts()).filter((p) => p.sourceId === "builtin-curated-effects");
     expect(curated).toHaveLength(44);
+  });
+
+  it("每条内置条目的来源 id 都登记在共用的 BUILTIN_PROMPT_SOURCE_IDS 里（提示词库界面据它分「内置」段）", async () => {
+    const builtin = await getBuiltinPrompts();
+    expect(builtin.length).toBeGreaterThan(0);
+    for (const prompt of builtin) expect(isBuiltinPromptSourceId(prompt.sourceId), prompt.sourceId).toBe(true);
+    expect([...BUILTIN_SOURCE_IDS].sort()).toEqual([...new Set(builtin.map((prompt) => prompt.sourceId))].sort());
   });
 
   it("withBuiltinPrompts 前置内置包并保持外部顺序", async () => {

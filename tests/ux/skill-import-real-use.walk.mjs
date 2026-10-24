@@ -142,14 +142,15 @@ try {
   await openRailDrawer(win, 'skills', '侧栏「技能库」')
   const panel = win.locator('[data-skill-drop-zone]')
   await expect(panel, '技能库面板没渲染').toBeVisible()
-  // 面板默认停在「Nomi 内置」那一栏（`SkillLibraryPanel.tsx:55`）。找自己导进来的东西要先切到
-  // 「我的技能」——真实用户就是这么点的，而那句导入提示也只在这一栏渲染（同文件 :396）。
+  // 面板默认停在「全部」（每组露两条）。找自己导进来的东西要先切到「我的」——2026-10-24 改版后抽屉里的分类
+  // 收进一颗「分类 ▾」，真实用户就是这么点的，而那句导入提示也只在「我的」为空时渲染。
   // 旧断言写在默认栏上，于是 2026-09-15 复跑时红成「空态没有告诉用户怎么导入」，
   // 其实是这条走查停在了另一栏（docs/lessons/dead-selector-lies-both-ways.md）。
-  await clickOrFail(panel.getByRole('tab', { name: '我的技能', exact: true }).first(), '技能库的「我的技能」栏')
-  // 空态必须说得出「别人发来的技能怎么进来」——只指「用 AI 新建」等于把手上已有文件的用户晾着。
+  await clickOrFail(panel.locator('[data-library-category-menu]'), '技能库的「分类 ▾」')
+  await clickOrFail(win.getByTestId('library-category-menu').getByRole('menuitemradio').filter({ hasText: '我的' }).first(), '分类菜单里的「我的」')
+  // 空态必须说得出「别人发来的技能怎么进来」——只指「让 AI 写」等于把手上已有文件的用户晾着。
   await expect(
-    panel.getByText('拖进这块面板', { exact: false }).first(),
+    panel.locator('[data-library-mine-empty]').getByText('直接拖进这里', { exact: false }).first(),
     '技能库空态没有告诉用户「别人发来的技能怎么导进来」',
   ).toBeVisible()
   await shot(win, '01-skill-panel-entry')

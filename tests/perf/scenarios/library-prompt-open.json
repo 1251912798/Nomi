@@ -1,0 +1,32 @@
+{
+  "id": "library-prompt-open",
+  "feature": "在项目里点左栏「提示词」打开提示词库抽屉（公开库撑到 1400 条），到第一张提示词卡可见再过两帧；同一段里数浏览器发出的图片 / 视频请求（只看）",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "E10",
+    "--scenarios",
+    "library-prompt-open",
+    "--warmup",
+    "1"
+  ],
+  "scale": "提示词库 = 内置 69 条（表情预设 25 + 效果 44）+ 公开库 1400 条（5 个来源 × 280，最坏规模）+ 我的 0 条；项目里 10 个空节点",
+  "metrics": [
+    "response",
+    "mediaRequests",
+    "longTasks"
+  ],
+  "budget": 200,
+  "p95Budget": 300,
+  "group": "⑪ 技能库 / 提示词库",
+  "budgetStatus": "proposed",
+  "budgetBasis": "设计卡 docs/plan/2026-10-23-skill-prompt-library-layout.md ★7：打开库到首屏内容 ≤200ms、p95 ≤300ms（本地数据，公开库远端不挡首屏）；媒体请求（只看）≤ 首屏可见卡片数 + 一屏预取，抽屉 ≤12。改前真机单次：点「提示词」页签首卡 820ms、媒体请求 2 个（已虚拟化）",
+  "baseline": {
+    "median": 29.5,
+    "p95": 31,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-24",
+    "commit": "6ccbd23f6"
+  }
+}

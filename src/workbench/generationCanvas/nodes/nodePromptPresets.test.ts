@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { compatibleNodePresets } from './nodePromptPresets'
 import { filterPrompts, type LibraryPrompt } from '../../api/promptLibraryApi'
 
@@ -30,5 +32,12 @@ describe('node prompt presets', () => {
     expect(filterPrompts(rows, 'all', 'sunset').map(p => p.id)).toEqual([photo.id])
     expect(filterPrompts(rows, 'all', '转台').map(p => p.id)).toEqual([effect.id])
     expect(filterPrompts(rows, 'all', 'not found')).toEqual([])
+  })
+
+  it('routes a selected preset with reference images through the same shared writer as add-to-canvas', () => {
+    const composer = readFileSync(path.join(__dirname, 'NodeGenerationComposer.tsx'), 'utf8')
+    expect(composer).toContain("import { applyPromptReferenceImages } from './promptReferenceImages'")
+    expect(composer).toContain('applyPromptReferenceImages(node.id, referenceUrls, writeAccess)')
+    expect(composer).not.toContain('addAssetUrlToNode(node.id, \'image\'')
   })
 })
