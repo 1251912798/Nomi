@@ -1,0 +1,133 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-gates-lock-signal-race",
+  "change_kind": "corrective",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-24",
+  "problem_type": "Signal race while a gates-lock wrapper starts its foreground child",
+  "symptom": "When SIGTERM lands between subprocess.Popen and signal-handler installation, the wrapper exits with signal status null instead of 143 and leaves its detached child running with the shared gates lock descriptor.",
+  "direct_cause": "scripts/with-gates-lock.py execute() installs SIGTERM/SIGINT handlers only after Popen returns, so the default signal action can terminate the wrapper during child creation before it can kill the child process group.",
+  "class_root": "The shared child-spawn boundary has no invariant that cancellation handlers are installed before every Popen call and that a signal arriving before the child exists is replayed immediately after Popen returns.",
+  "affected_population": [
+    "Every local gates, test, walkthrough, and other package.json entrypoint using scripts/with-gates-lock.py",
+    "Direct, inherited nested, and queued admissions that converge on execute()",
+    "POSIX runs where detached foreground process groups inherit the lock descriptor, with the same pre-spawn ordering requirement on Windows"
+  ],
+  "scope_paths": [
+    "scripts/with-gates-lock.py",
+    "scripts/with-gates-lock.node-test.mjs"
+  ],
+  "entry_points": [
+    "scripts/with-gates-lock.py main() direct, inherited, and queued admissions",
+    "package.json lock-protected validation scripts",
+    "scripts/with-gates-lock.node-test.mjs probe and multi-process regression fixtures"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The invariant is owned by this repository's Python wrapper around the standard-library subprocess, signal, and OS process-group primitives; no third-party dependency controls the ordering.",
+  "invariants": [
+    "SIGTERM and SIGINT handlers are installed before every execute() Popen call.",
+    "A signal received before Popen returns is recorded, then immediately applied to the returned child using the existing Windows terminate or POSIX killpg branch.",
+    "The wrapper preserves the existing 128 + signum exit status and closes its lock descriptor so the next admission can acquire it."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "execute"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "main"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "cancel_wait"
+    }
+  ],
+  "door_reduction": {
+    "before": 3,
+    "after": 3,
+    "why_not": "node scripts/door-map.mjs with-gates-lock reports zero doors because it scans src/ and electron/ JavaScript/TypeScript only; direct Python symbol inspection found execute as the shared child-spawn write and main/cancel_wait as the direct and queued admission readers. They must remain separate: main reaches execute through three admission modes, while cancel_wait owns the pre-child queued cancellation path and does not call Popen."
+  },
+  "generality_proof": "All lock-protected package.json entrypoints converge on main(), and every direct or queued admission that starts a foreground command converges on execute(). Installing handlers at execute() covers direct, inherited nested, and later FIFO handoff starts without caller-specific branches. The pending-signal replay closes the only interval in which a signal can arrive before child assignment, while the existing cancel branch remains the single platform-specific termination path.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "execute",
+      "responsibility": "Own child creation, cancellation delivery, pending-signal replay, wait, and the existing 128 + signum exit mapping for every admitted foreground command."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "scripts/with-gates-lock.py",
+      "entry_point": "main",
+      "disposition": "enforced",
+      "evidence": "Direct ownership, verified nested inheritance, and FIFO handoff all call execute() after admission; no other production Popen boundary exists in this wrapper."
+    },
+    {
+      "path": "package.json",
+      "entry_point": "gates / gates:full / gates:contracts and lock-protected test entrypoints",
+      "disposition": "enforced",
+      "evidence": "Repository search shows the heavy validation commands invoke the same scripts/with-gates-lock.py wrapper, so they inherit execute() ordering."
+    },
+    {
+      "path": "scripts/with-gates-lock.node-test.mjs",
+      "entry_point": "probe and launch",
+      "disposition": "enforced",
+      "evidence": "The changed class tests monkeypatch lock.subprocess.Popen and exercise handler installation, pre-Popen SIGTERM replay, process-group cleanup, and next-lock takeover."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any signal-capable caller can hit the same scheduling window under load; the interval is independent of command, worktree, provider, or the particular POSIX machine.",
+    "same_class_scan": [
+      "rg -n 'with-gates-lock.py' package.json .github scripts: all machine-gated package entrypoints route through one wrapper and no second production wrapper was found.",
+      "rg -n 'subprocess\\.Popen|signal\\.signal|cancel_wait|def execute' scripts/with-gates-lock.py scripts: execute() is the only child-spawn boundary in this wrapper; cancel_wait only handles queued admission and never starts a child.",
+      "node scripts/door-map.mjs with-gates-lock: the repository door-map scans src/ and electron/ only and reports 0 doors; the Python symbols above were then checked directly."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "scripts/with-gates-lock.py",
+    "invariant": "Every child-starting execute() call has SIGTERM/SIGINT handlers installed first, and a signal observed before Popen returns is replayed immediately after child creation through the existing platform termination branch.",
+    "failure_mode": "The child is terminated or its POSIX process group is killed, wait returns the original 128 + signum status, and main closes the lock descriptor; no sleep, retry, or alternate fallback path is added.",
+    "exception_policy": "none",
+    "strategy": "Move the handler setup to the earliest shared execute() boundary, retain a pending signum until child assignment, and replay it immediately after Popen. The old post-Popen-only ordering is removed in the same change.",
+    "artifacts": [
+      "scripts/with-gates-lock.py",
+      "scripts/with-gates-lock.node-test.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/with-gates-lock.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/with-gates-lock.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "scripts/with-gates-lock.py"
+    ],
+    "rationale": "The old ordering that installed cancellation handlers only after Popen is deleted in place; there is no fallback execute path or second wrapper implementation."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The invariant is implemented with the existing Python standard library and OS primitives; no third-party runtime controls signal delivery or process-group ownership.",
+    "exit_criteria": []
+  },
+  "migration": "No user-data or lock-file migration is needed. Existing lock and queue files remain valid; only the in-memory child-start lifecycle changes.",
+  "residual_risks": [
+    "Windows-specific signal delivery and terminate behavior remain unexecuted on this macOS host; the pre-Popen handler invariant is structural and the existing Windows terminate branch is preserved.",
+    "A signal that arrives after the pending replay but before wait still follows the existing installed handler and platform termination path; this change does not add retries or alter child exit semantics."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/with-gates-lock.py",
+    "tests": [
+      "scripts/with-gates-lock.node-test.mjs"
+    ],
+    "why": "All lock-protected entrypoints converge on execute(), where handler installation, pending replay, child-group termination, and exit mapping can be enforced together."
+  }
+}
