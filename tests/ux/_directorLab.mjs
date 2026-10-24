@@ -132,6 +132,7 @@ export async function pinCanvasImageModelByCapability(page, nodeId, capability) 
 }
 
 const PROJECT_KEY = 'nomi:director-lab:project'
+const LOCALE_KEY = 'nomi:locale:v1'
 
 /** Vite 对任何路径都会回 200（SPA 回退），所以要看正文里有没有 devlab 的入口脚本，HEAD 不算数。 */
 function servesDirectorLab(url) {
@@ -229,18 +230,21 @@ export async function enterDirectorFace(page, face) {
 }
 
 /**
- * @param {{ name: string, viewport?: { width: number, height: number }, view?: 'refine' | 'director' }} options
+ * @param {{ name: string, viewport?: { width: number, height: number }, view?: 'refine' | 'director', locale?: 'zh-CN' | 'en' }} options
  *   view：起跑时落在哪一面。默认 'refine'——旧导演台那批旅程测的全是精修里的工具；测导演视图本身的旅程传 'director'。
  */
-export async function launchDirectorLab({ name, viewport = { width: 1440, height: 900 }, view = 'refine' }) {
+export async function launchDirectorLab({ name, viewport = { width: 1440, height: 900 }, view = 'refine', locale = 'zh-CN' }) {
+  if (locale !== 'zh-CN' && locale !== 'en') throw new Error(`launchDirectorLab：不支持的语言 ${JSON.stringify(locale)}`)
   const server = await resolveDirectorDevServer()
   const browser = await launchDirectorBrowser()
   const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
   page.setDefaultTimeout(stationTimeout())
   const pageErrors = []
   page.on('pageerror', (error) => pageErrors.push(String(error)))
-  await page.addInitScript((key) => {
+  await page.addInitScript(({ key, locale: initialLocale, localeKey }) => {
     try {
+      // i18n 在首个页面模块加载时同步读取这个键；必须在 goto 前写，不能等页面起来后再切换。
+      window.localStorage.setItem(localeKey, initialLocale)
       window.localStorage.setItem('__nomiE2E', '1')
       if (!window.sessionStorage.getItem(`${key}:initialized`)) {
         window.localStorage.removeItem(key)
@@ -249,7 +253,7 @@ export async function launchDirectorLab({ name, viewport = { width: 1440, height
     } catch {
       // 无本地存储：走查照跑，工程只活在内存
     }
-  }, PROJECT_KEY)
+  }, { key: PROJECT_KEY, locale, localeKey: LOCALE_KEY })
   const base = server.origin
   // Vite 冷启动首屏要做依赖预打包 + 整张模块图的首次转译（three / spark / drei）：实测全新服务 + headless 约 5 分钟，
   // 预热过的服务 5 秒。模块脚本会阻塞 DOMContentLoaded，所以只等导航提交，首屏用画中画元素做信号，上限 8 分钟。
@@ -380,8 +384,10 @@ export async function launchDirectorLab({ name, viewport = { width: 1440, height
 /** 精修顶栏「＋」→ 角色 → 女人/男人 → 点地面落点（世界坐标 x,z）。 */
 export async function placeCharacter(lab, gender, x, z) {
   const { page } = lab
-  await openAddMenu(lab, '角色')
-  await clickOrFail(page.getByRole('button', { name: gender === 'female' ? '女人' : '男人' }), `角色下拉·${gender}`)
+  await openAddMenu(lab, 'creation.character')
+  const genderKey = gender === 'female' ? 'creation.female' : 'creation.male'
+  const genderLabel = await directorText(page, genderKey)
+  await clickOrFail(page.getByRole('button', { name: genderLabel, exact: true }), `角色下拉·${genderLabel}`)
   const point = await lab.bridge('projectPoint', x, 0, z)
   await page.mouse.click(point.x, point.y)
 }
@@ -389,8 +395,13 @@ export async function placeCharacter(lab, gender, x, z) {
 /** 精修顶栏「＋」→ 机位 → 预设名（相对当前选中主体）。 */
 export async function addCameraPreset(lab, presetLabel) {
   const { page } = lab
-  await openAddMenu(lab, '机位')
-  await clickOrFail(page.getByRole('button', { name: presetLabel, exact: true }), `机位预设·${presetLabel}`)
+  await openAddMenu(lab, 'creation.camera')
+  const presetKey = {
+    '正面中景': 'cameraPreset.front_medium',
+    '正面特写': 'cameraPreset.front_closeup',
+  }[presetLabel] ?? (presetLabel.includes('.') ? presetLabel : null)
+  const label = presetKey ? await directorText(page, presetKey) : presetLabel
+  await clickOrFail(page.getByRole('button', { name: label, exact: true }), `机位预设·${label}`)
 }
 
 /**
@@ -401,7 +412,14 @@ export async function addCameraPreset(lab, presetLabel) {
 export async function openAddMenu(lab, itemLabel) {
   const { page } = lab
   await clickOrFail(page.getByTestId('director-add-menu'), '精修顶栏·＋')
-  if (itemLabel) await clickOrFail(page.getByRole('button', { name: itemLabel, exact: true }), `添加菜单·${itemLabel}`)
+  const itemKey = {
+    '角色': 'creation.character',
+    '机位': 'creation.camera',
+    '灯光': 'creation.light',
+    '方块': 'creation.box',
+  }[itemLabel] ?? (itemLabel?.includes('.') ? itemLabel : null)
+  const label = itemKey ? await directorText(page, itemKey) : itemLabel
+  if (label) await clickOrFail(page.getByRole('button', { name: label, exact: true }), `添加菜单·${label}`)
 }
 
 /** 「＋」菜单底部「资产库」→ 左侧抽屉（2026-10-04 资产库不再常驻右栏页签）。 */

@@ -156,6 +156,33 @@ const waitFor = async (label, predicate, timeout = 60_000) => {
 const clickOrDom = async (locator) => {
   try { await locator.click({ timeout: 4000 }) } catch { await locator.evaluate((element) => element.click()) }
 }
+// 参考条的 × 是用户删除参考的真实入口，最终调用 NodeParameterControls → removeFromArray。
+// 节点卡在画布边缘或被浮层盖住时，Playwright 无法完成真鼠标命中；fallback 只触发同一个按钮 onClick，
+// 不直接改 store，避免删掉 meta 后连边仍把参考解析回来。
+const removeReferenceLikeUser = async (nodeId) => {
+  const remove = win.locator(`[data-node-id="${nodeId}"] [data-asset-tile="video"] [data-asset-tile-remove="true"]`).first()
+  if (await remove.count() !== 1) throw new Error(`镜头 ${nodeId} 没有唯一的参考视频删除按钮`)
+  try {
+    // × 只在 tile hover/focus 时显现；先把鼠标放到 tile，再走 Playwright 真点击。
+    await remove.locator('xpath=..').hover()
+    await remove.click({ timeout: 4000 })
+  } catch {
+    // 节点卡在画布边缘或被浮层盖住时，退到同一个按钮 onClick（仍是 removeFromArray owner）。
+    await remove.evaluate((element) => element.click())
+  }
+  // 某些 Electron 视口组合会吞掉合成 click 和键盘事件；直接调用同一颗按钮的 React onClick，
+  // 仍走 AssetTile → NodeParameterControls → removeFromArray，不绕到 store 写入。
+  const removed = await waitFor(`镜头 ${nodeId} 的参考删除完成`, async () => !((await nodeById(nodeId))?.meta?.referenceVideoUrls ?? []).length, 800).then(() => true).catch(() => false)
+  if (!removed) {
+    await remove.evaluate((element) => {
+      const reactKey = Object.keys(element).find((key) => key.startsWith('__reactProps$'))
+      const onClick = reactKey ? element[reactKey]?.onClick : null
+      if (typeof onClick !== 'function') throw new Error('参考删除按钮没有 React onClick owner')
+      onClick({ stopPropagation() {} })
+    })
+  }
+  await waitFor(`镜头 ${nodeId} 的参考删除完成`, async () => !((await nodeById(nodeId))?.meta?.referenceVideoUrls ?? []).length, 5000)
+}
 const modelPatch = (modelKey, archetypeId, modeId) => ({ modelKey, modelVendor: VENDOR, vendor: VENDOR, archetype: { id: archetypeId, modeId } })
 
 try {
@@ -253,8 +280,9 @@ try {
   await produce(ids.b, 'B1')
   const nodeB1 = await nodeById(ids.b)
   check('B：出成片后镜头 B 挂上预演', (nodeB1.meta.referenceVideoUrls ?? []).includes(previewUrl))
-  await store((id) => { const state = window.__nomiCanvasStore.getState(); const node = state.nodes.find((n) => n.id === id); state.updateNode(id, { meta: { ...node.meta, referenceVideoUrls: [] } }) }, ids.b)
-  check('B：手动删掉参考后镜头 B 没有参考视频（标记还在）', !((await nodeById(ids.b)).meta.referenceVideoUrls ?? []).length && (await nodeById(ids.b)).meta.cameraMoveAttachedUrl === previewUrl)
+  await removeReferenceLikeUser(ids.b)
+  const nodeBAfterDelete = await nodeById(ids.b)
+  check('B：手动删掉参考后镜头 B 没有参考视频（标记还在）', !((nodeBAfterDelete.meta.referenceVideoUrls ?? []).length) && nodeBAfterDelete.meta.cameraMoveAttachedUrl === previewUrl, JSON.stringify({ refs: nodeBAfterDelete.meta.referenceVideoUrls, attached: nodeBAfterDelete.meta.cameraMoveAttachedUrl }))
   await produce(ids.b, 'B2')
   const nodeB2 = await nodeById(ids.b)
   check('B：再出成片 → 预演参考重新挂上', (nodeB2.meta.referenceVideoUrls ?? []).includes(previewUrl), JSON.stringify(nodeB2.meta.referenceVideoUrls))
