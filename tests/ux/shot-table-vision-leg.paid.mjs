@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// 分镜表「读图腿」真实任务验证（2026-10-11 走查 §1）——底栏选读图模型 → 报价卡上的模型行 = 所选 → 确认后逐镜读图，失败原话看得见。
+// 分镜表「读图腿」真实任务验证（2026-10-11 走查 §1；2026-10-18 拆解前选模型改成先建表再拆）——建表不花钱 → 拆解栏选读图模型 →
+// 「拆解」→ 短片（≤30 次调用）不弹报价卡、直接逐镜读图（用户 10-18 拍板「短片不弹，长片才弹」）→ 调用的模型 = 所选，失败原话看得见。
 //
 // 用法（三种模式，从便宜到贵）：
 //
@@ -7,10 +8,10 @@
 //        node tests/ux/shot-table-vision-leg.paid.mjs --fixture [--rate-limit-probe]
 //      读图模型 = 夹具那一个；`--rate-limit-probe` 让夹具对每次读图回 429 原话（验顶上一行是原话）。
 //
-//   2) 真实资料副本，**停在报价卡**（不发任何付费请求）：
+//   2) 真实资料副本，**停在「拆解」之前**（不发任何付费请求）：
 //        NOMI_SPEND_OK=1 node tests/ux/shot-table-vision-leg.paid.mjs --vision-model <id>
 //      会拷一份带凭据的隔离副本（_realProfile.mjs：断开副本里指向真实项目的登记；跑前跑后对用户资料目录做指纹比对，
-//      有差异立刻红），走生产构建，窗口在屏幕外。流程走到报价卡：截图、打印卡上的模型行并断言 = 所选，然后点「取消」退出。
+//      有差异立刻红），走生产构建，窗口在屏幕外。流程走到「拆解」之前：建表零请求、选好模型、本地数镜，停下不点（零花费）。
 //
 //   3) 真付费（只有显式 NOMI_PAID_CONFIRM=1 才点「确认」）：
 //        NOMI_SPEND_OK=1 NOMI_PAID_CONFIRM=1 node tests/ux/shot-table-vision-leg.paid.mjs --vision-model <id> [--rate-limit-probe]
@@ -20,16 +21,16 @@
 //        node tests/ux/shot-table-vision-leg.paid.mjs --list-models
 //
 // 最坏花费（模式 3）：从仓库夹具 canvas-follow-hand-1080p15.mp4 截一小段（--clip-start / --clip-seconds，默认 4.3s 起 1.8s、去音轨，
-// 所以没有转写）；每镜 1 次读图调用（一镜 3 帧同一次请求）。**镜数以第二张报价卡的「调用次数」为准**——超过 4 次脚本在点确认之前直接取消退出；
+// 所以没有转写）；每镜 1 次读图调用（一镜 3 帧同一次请求）。**开拆前用本地切点（同一个 detectShotCuts）先数镜**——超过 4 次脚本不点「拆解」直接退出；
 // 脚本在主进程订阅 undici 出站（diagnostics_channel）计数，读图调用超过 4 次立刻停走查；令牌本身只覆盖报价里那几次。拆解逐镜 `maxRetries: 0`，限流不会重试放大。
-// 未确认（没设 NOMI_PAID_CONFIRM）一分钱不花：报价卡点「取消」，供应商一个请求都没有。
+// 未确认（没设 NOMI_PAID_CONFIRM）一分钱不花：停在「拆解」之前，供应商一个请求都没有。
 import fs from 'node:fs'
 import os from 'node:os'
 import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { clickOrFail, expect, expectAbsent, proveProbe, waitForVisualQuiescence } from './_assert.mjs'
+import { clickOrFail, expect, holdAbsent, waitForVisualQuiescence } from './_assert.mjs'
 import { SPEND_DIALOG, openPaidWalk } from './_paidRun.mjs'
 import { readRealCatalog } from './_realProfile.mjs'
 import { createRuntimeWalk } from './agent-runtime-walk-support.mjs'
@@ -92,10 +93,9 @@ if (FIXTURE) {
     && (wanted ? `${row.vendorKey}/${row.modelKey}` === wanted : row.modelKey === VISION_ARG))
   if (rows.length !== 1) throw new Error(rows.length === 0 ? `目录里没有启用的文本模型 ${VISION_ARG}` : `${VISION_ARG} 在多家都有，请用 供应商/模型 的写法`)
   model = { vendorKey: rows[0].vendorKey, modelKey: rows[0].modelKey, labelZh: rows[0].labelZh ?? rows[0].modelKey }
-  paid = await openPaidWalk('shot-table-vision-leg.paid.mjs', 'shot-table-vision-leg', [model])
+  paid = await openPaidWalk('shot-table-vision-leg.paid.mjs', 'shot-table-vision-leg', [model], { buildMarkers: [uiText('zh-CN', 'shotTable.node.idleHint')] })
   walk = paid.walk
 }
-const modelLine = `${model.vendorKey} · ${model.modelKey}`
 const L = (key) => uiText('zh-CN', key)
 const report = walk.report
 report.mode = FIXTURE ? 'fixture' : CONFIRM ? 'paid-confirmed' : 'paid-stop-at-quote'
@@ -154,7 +154,7 @@ try {
 
   // ② 调用计数器：订阅 undici 的 diagnostics_channel（App 唯一出站入口 appFetch 在模块加载时抓了原生 fetch，
   //    补丁 globalThis.fetch 是拦不到它的——2026-10-11 真付费实测计数全 0 就是这个）。只计数、不拦截：
-  //    上限由两处守住——报价卡的调用次数 > 上限就不点确认；令牌只覆盖报价里那几次（spendGrant 的 maxAttemptsPerNode）。
+  //    上限由两处守住——开拆前本地数镜 > 上限就不点「拆解」；令牌只覆盖这一批那几次（spendGrant 的 maxAttemptsPerNode）。
   //    夹具模式下同时数夹具收到的请求，两个数必须相等——用地面真值证明计数器本身是对的。
   await app.evaluate(() => {
     const counts = { vision: 0, transcribe: 0, other: 0 }
@@ -164,61 +164,59 @@ try {
       if (request?.method !== 'POST') return
       const target = String(request.path ?? '')
       if (/\/audio\/transcriptions/.test(target)) counts.transcribe += 1
-      else if (/\/chat\/completions|\/v1\/messages|generateContent/.test(target)) counts.vision += 1
+      else if (/\/chat\/completions|\/v1\/messages|generateContent/.test(target)) {
+        counts.vision += 1
+      }
       else counts.other += 1
     })
   })
   const callCounts = async () => app.evaluate(() => ({ ...globalThis.__paidCounts }))
 
-  // ③ 选中视频 → 浮条「拆解 ▾ → 拆成镜头表」→ 第一张报价卡（自动挑的模型）→ 取消（零花费，只为让分镜表节点出现）
+  // ③ 选中视频 → 浮条「拆解 ▾ → 拆成镜头表」：**只建表、不开拆**（2026-10-18 拆解前选模型）——没有报价卡、一个请求都不发
   await videoNode.click()
   await clickOrFail(win.getByRole('button', { name: L('generationCommon.videoToolbar.breakDown'), exact: true }).first(), '浮条「拆解」')
   await clickOrFail(win.getByRole('menuitem', { name: new RegExp(`^${L('generationCommon.videoToolbar.shotTable')}`) }), '菜单「拆成镜头表」')
   const dialog = win.locator(SPEND_DIALOG)
-  const dialogProof = await proveProbe(dialog, '拆解的报价卡出现', stationTimeout({ operations: 4 }))
-  const readRows = () => dialog.evaluate((root) => [...root.querySelectorAll('div.justify-between')].map((row) => [...row.children].map((cell) => cell.textContent?.trim() ?? '')))
-  const firstRows = await readRows()
-  const autoModel = firstRows.find(([label]) => label === L('runtime.capability.model'))?.[1]
-  console.log(`[quote#1] 自动挑的读图模型行：${autoModel ?? '(没找到模型行)'}`)
-  report.autoPickedModelLine = autoModel ?? null
-  await clickOrFail(dialog.locator('[data-spend-confirm-action="cancel"]'), '第一张报价卡「取消」')
-  await expectAbsent(dialog, { provenBy: dialogProof, message: '取消后报价卡退场' })
-  expect((await callCounts()).vision, '取消 = 一次读图调用都没发').toBe(0)
-
-  // ④ 底栏「读图模型」选所选模型
   const table = win.locator('[data-testid="shot-table-node"]').first()
-  await expect(table).toBeVisible({ timeout: stationTimeout() })
+  await expect(table).toBeAttached({ timeout: stationTimeout() })
+  await holdAbsent(dialog, '建表不弹报价卡')
+  // 出站计数器本身由夹具模式对过地面真值（计数 = 夹具收到的请求数），这里比的是整只计数器，不是界面上的「不存在」。
+  expect(await callCounts(), '建表 = 一个付费请求都没发').toEqual({ vision: 0, transcribe: 0, other: 0 })
+  // 新表落在源视频右边、可能在屏外：画布不自动挪视口，点边缘「新节点在右侧」框进来（useCanvasArrivalHint）
+  const arrival = win.locator('[data-canvas-arrival-hint]')
+  if (await arrival.count()) await clickOrFail(arrival.first(), '边缘「新节点在右侧」')
   await waitForVisualQuiescence(win)
-  const picker = table.getByRole('button', { name: L('shotTable.visionModel') }).or(table.getByRole('combobox', { name: L('shotTable.visionModel') })).first()
-  await clickOrFail(picker, '底栏「读图模型」')
+  const bar = win.locator('.react-flow__node:has([data-testid="shot-table-node"]) [data-shot-table-composer="deconstruct"]').first()
+  await expect(bar, '新表被选中，下方拆解栏出现').toBeVisible({ timeout: stationTimeout() })
+
+  // ④ 下方拆解栏「读图」选所选模型
+  const picker = bar.getByRole('button', { name: L('shotTable.visionModel') }).or(bar.getByRole('combobox', { name: L('shotTable.visionModel') })).first()
+  await clickOrFail(picker, '拆解栏「读图」')
   await clickOrFail(win.getByRole('option', { name: new RegExp(model.labelZh.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).first(), `选读图模型「${model.labelZh}」`)
   await expect(picker).toContainText(model.labelZh)
 
-  // ⑤ 「重新拆解」→ 第二张报价卡：模型行必须 = 所选
-  await clickOrFail(table.locator('[data-testid="shot-table-restart-deconstruction"]'), '底栏「重新拆解」')
-  const dialog2Proof = await proveProbe(dialog, '第二张报价卡出现', stationTimeout({ operations: 4 }))
-  const quoteRows = await readRows()
-  const quoteModel = quoteRows.find(([label]) => label === L('runtime.capability.model'))?.[1]
-  const quoteCalls = quoteRows.find(([label]) => label === L('runtime.capability.callCount'))?.[1]
-  console.log(`[quote#2] 报价卡模型行：${quoteModel}  ·  调用次数：${quoteCalls ?? '(无)'}`)
-  report.quoteModelLine = quoteModel
-  report.quoteCallCount = quoteCalls ?? null
-  await snap('quote-card')
-  expect(quoteModel, '报价卡上的模型行 = 底栏所选').toBe(modelLine)
-  const quoted = Number(quoteCalls ?? '0')
-  const overCap = quoted > VISION_CAP
-  if (overCap) console.log(`[stop] 报价 ${quoted} 次调用 > 读图上限 ${VISION_CAP}：不点确认。换个小段重试（--clip-start / --clip-seconds）。`)
+  // ⑤ 开拆前先数镜（本地切点，零成本，和拆解用的是同一个 detectShotCuts）：读图调用 = 镜数。
+  //    2026-10-18 用户拍板「短片不弹，长片才弹」——≤30 次调用不再有报价卡，所以上限只能在点「拆解」之前守。
+  const preShots = await win.evaluate(async ({ videoId }) => {
+    const projectId = /projectId=([^&]+)/.exec(location.href)?.[1]
+    const node = window.__nomiCanvasStore.getState().nodes.find((candidate) => candidate.id === videoId)
+    const detected = await window.nomiDesktop.video.detectShotCuts({ videoUrl: node.result.url, projectId })
+    return (detected.cuts?.length ?? 0) + 1
+  }, { videoId: seeded.videoId })
+  report.preCountShots = preShots
+  console.log(`[pre] 本地切点数出 ${preShots} 镜 = ${preShots} 次读图（上限 ${VISION_CAP}）`)
+  const overCap = preShots > VISION_CAP
+  if (overCap) console.log(`[stop] ${preShots} 次 > 上限 ${VISION_CAP}：不点「拆解」。换个小段重试（--clip-start / --clip-seconds）。`)
 
   if (!CONFIRM || overCap) {
-    await clickOrFail(dialog.locator('[data-spend-confirm-action="cancel"]'), '第二张报价卡「取消」')
-    await expectAbsent(dialog, { provenBy: dialog2Proof, message: '取消后报价卡退场' })
-    expect((await callCounts()).vision, '停在报价卡：供应商一个读图请求都没有').toBe(0)
-    if (!overCap) console.log('[stop] 未设 NOMI_PAID_CONFIRM=1：停在报价卡，已取消，零花费。')
+    expect(await callCounts(), '没点「拆解」：供应商一个付费请求都没有').toEqual({ vision: 0, transcribe: 0, other: 0 })
+    if (!overCap) console.log('[stop] 未设 NOMI_PAID_CONFIRM=1：停在「拆解」之前，零花费。')
     if (overCap) process.exitCode = 2
-    report.verified = ['picker-sets-model', 'quote-model-line-equals-selection', 'cancel-sends-nothing']
+    report.verified = ['create-table-sends-nothing', 'picker-sets-model', 'pre-count-within-cap']
   } else {
-    // ⑥ 确认 → 等结果 → 打印每镜状态 / 顶上一行原话 / 实际调用次数
-    await clickOrFail(dialog.locator('[data-spend-confirm-action="confirm"]'), '报价卡「确认」', { noWaitAfter: true })
+    // ⑥ 点「拆解」：短片不弹报价卡，直接开拆 → 等结果 → 打印每镜状态 / 顶上一行原话 / 实际调用次数
+    await clickOrFail(bar.locator('[data-testid="shot-table-restart-deconstruction"]'), '拆解栏「拆解」', { noWaitAfter: true })
+    await holdAbsent(dialog, `≤30 次调用（这次 ${preShots} 次）不弹报价卡`)
     const tableState = () => win.evaluate(() => {
       const node = window.__nomiCanvasStore.getState().nodes.find((candidate) => candidate.kind === 'shot_table')
       const doc = node?.meta?.shotTable
@@ -239,6 +237,17 @@ try {
     console.log(`[calls] 实际调用：读图 ${counts.vision} 次 · 转写 ${counts.transcribe} 次${FIXTURE ? '（undici 出站计数，夹具模式已与夹具收到的请求对账）' : '（undici 出站计数）'}`)
     Object.assign(report, { finalTableStatus: finalState.status, rows: finalState.rows, summaryLine: summaryText, calls: counts })
     expect(counts.vision, `读图调用 ≤ ${VISION_CAP}`).toBeLessThanOrEqual(VISION_CAP)
+    // 拆解栏选的 = 实际发出去的（短片不再有报价卡）。主进程的出站请求体是流式发的、诊断通道拿不到（10-18 实测 bodyChunkSent 零块），
+    // 所以对账分两路：夹具模式拿夹具收到的请求体逐条比；真付费模式靠构造（同一份 plan 既是报价行也是调用，deconstructVideo 单测钉）
+    // 加供应商后台账单人工核对——这一条在报告里明写，不假装自动对过。
+    if (FIXTURE) {
+      const sent = walk.fixture.requests.map((request) => request.body?.model ?? 'unknown')
+      console.log(`[calls] 夹具收到的读图请求 model：${[...new Set(sent)].join('、')}`)
+      expect(sent.length > 0 && sent.every((value) => value === model.modelKey), '读图请求发给的就是拆解栏选的模型').toBe(true)
+      report.visionModelsSent = [...new Set(sent)]
+    } else {
+      report.visionModelReconciliation = '真付费：请求体诊断通道不可见；按构造（同一份 plan）+ 供应商后台账单人工核对'
+    }
     if (FIXTURE) expect(counts.vision, '计数器 = 夹具实际收到的请求数（地面真值）').toBe(walk.fixture.requests.length)
     else expect(counts.vision, '计数器看到了读图请求（不是 0）').toBeGreaterThan(0)
     await snap(RATE_PROBE ? 'result-rate-limit' : 'result')
@@ -248,7 +257,7 @@ try {
       report.verified = ['rate-limit-reason-on-top-line']
     } else {
       expect(finalState.rows.some((row) => !row.visionFailed && row.shotSize), '至少有一镜读出了景别').toBe(true)
-      report.verified = ['picker-sets-model', 'quote-model-line-equals-selection', 'shots-read', 'calls-within-cap']
+      report.verified = ['create-table-sends-nothing', 'picker-sets-model', 'no-quote-card-for-short-clip', FIXTURE ? 'called-model-equals-chip' : 'called-model-by-construction-only', 'shots-read', 'calls-within-cap']
     }
   }
 } catch (error) {

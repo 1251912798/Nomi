@@ -495,20 +495,15 @@ Nomi 最贵的一课：「九宫格切图卡死半小时」。根因是三种写
 
 ### 串成一条命令
 
-把所有门岗串成一条 `gates` 脚本，**push 前必须全过**。Nomi 的 `gates` 跑完会往**本 worktree 自己的 git dir** 盖一枚戳（`$GIT_DIR/nomi-gates-ok`），push 钩子核对它——**没跑门岗就 push 会被拦住**。
+把所有门岗串成一条 `gates` 脚本，作为**本机完整自检**。推送那一刻由 git 的 pre-push 钩子自动跑**按改动选出的快检**（一次列出全部失败项、没有缩小门岗的开关），完整门岗交给 CI，合并只认 CI 全绿（2026-10-24 用户拍板「改成 CI 把关」，设计卡 `docs/plan/2026-10-24-push-gate-ci.md`）。
 
 ```
 gates = check:filesize && check:tokens && check:dangling-tokens && check:i18n
       && check:heavy-path && check:controls && check:walkthroughs
       && lint:ci && typecheck && test && build
-      && node ./scripts/stamp-gates-ok.mjs   # 盖五门戳
 ```
 
-戳里必须带 **worktree 路径**和 **HEAD sha**，不能只是个时间戳文件：并行多 worktree 时，「固定路径 + 时间新鲜」的戳会**互相顶用**（A 树盖的戳把 B 树没过门的代码放上远端），也会在**盖戳后又提交**时继续放行。三维身份 = 三项都对才算数。
-
-戳只有一个书写者（`scripts/stamp-gates-ok.mjs`），路径与字段名都只在那里定义一次。但写戳方（`gates`，JSON）和读戳方（pre-push hook，shell）**不可能互相 import**，所以由 `check:hook-behavior` 把「两边仍然一致」钉成门岗——而且是**实际执行 hook** 判退出码，不是读它的源码文本。
-
-这两步各补一类**两边都不报错**的失效：① 只升级读戳方、写戳方仍写老戳，于是 `gates` 全过也推不上去，而 gates 说盖好了、hook 说没有戳；② 门岗若只 grep hook 源码，会被 hook **注释里**的同名字符串骗出假绿（实测过），也会把等价的 shell 改写误判成漂移。
+推送前不再要一枚「本机 gates 全过」的凭据。之前那一版（gates 跑完往本树 gitdir 盖戳、push 钩子核对它）的两条教训仍值得搬：① 这种凭据必须绑 **worktree 路径**和 **HEAD sha**，「固定路径 + 时间新鲜」的戳会在并行 worktree 之间**互相顶用**，也会在盖戳后又提交时继续放行（`docs/lessons/gate-stamps-must-be-keyed-to-tree-and-head.md`）；② 写凭据的一方和读凭据的一方跨语言不能互相 import 时，要用**实际执行 hook** 判退出码的行为门岗钉住两边一致——只 grep hook 源码会被 hook **注释里**的同名字符串骗出假绿（实测过），也会把等价的 shell 改写误判成漂移。删掉凭据之后，「这次推送过没过」只剩快检结果这一份事实，两边漂移这一类失效跟着没了。
 
 `lint:ci` 也是棘轮：`eslint . --max-warnings=98`——**新增 1 个 warning 就红**。
 

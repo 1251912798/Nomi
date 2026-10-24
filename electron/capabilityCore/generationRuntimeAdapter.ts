@@ -13,7 +13,6 @@ export type ResolvedTaskRequestV1 = {
   modelId: string;
   variantId?: string;
   modeId?: string;
-  transportModelId?: string;
   mode: string;
   prompt: string;
   parameters: Record<string, unknown>;
@@ -187,7 +186,6 @@ export function resolveExecutionContract(contract: ExecutionContractV1, binding:
     modelId: contract.modelId,
     ...(contract.variantId ? { variantId: contract.variantId } : {}),
     ...(contract.modeId ? { modeId: contract.modeId } : {}),
-    ...(contract.transportModelId ? { transportModelId: contract.transportModelId } : {}),
     mode: contract.mode,
     prompt: contract.prompt,
     parameters: structuredClone(contract.parameters),
@@ -216,7 +214,6 @@ function stableRequestFor(
     modelId: contract.modelId,
     ...(contract.variantId ? { variantId: contract.variantId } : {}),
     ...(contract.modeId ? { modeId: contract.modeId } : {}),
-    ...(contract.transportModelId ? { transportModelId: contract.transportModelId } : {}),
     mode: contract.mode,
     prompt: contract.prompt,
     parameters: structuredClone(contract.parameters),
