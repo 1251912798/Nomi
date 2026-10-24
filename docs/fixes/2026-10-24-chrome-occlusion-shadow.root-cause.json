@@ -1,0 +1,140 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-chrome-occlusion-shadow",
+  "problem_type": "Canvas chrome occlusion geometry stops at the dock box while the clip-path chrome includes a shadow margin",
+  "symptom": "When a generation composer overlaps the bottom add-node bar, an approximately 256x40 blank white rectangle with a shadow remains floating over the composer; the same residual shadow can occur on the lower-left canvas navigation stack.",
+  "direct_cause": "occludedHoles intersects composers with the dock box, but clipPathForHoles draws a dock outer path expanded by SHADOW_MARGIN, leaving the expanded ring uncut when the composer covers it.",
+  "class_root": "The shared occlusion boundary was defined in two inconsistent coordinate domains: box geometry for hole calculation and expanded clip-path geometry for rendering, with no invariant requiring holes to cover the actual chrome outline.",
+  "affected_population": [
+    "Mac Electron canvas users with a selected node composer overlapping the bottom CanvasToolbar",
+    "Mac Electron canvas users with a selected node composer overlapping the lower-left CanvasNavigationStack",
+    "Any future caller of useCanvasChromeOcclusion whose composer intersects only the dock shadow ring or fully covers the dock box"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+    "src/workbench/generationCanvas/components/canvasChromeOcclusion.test.ts",
+    "docs/engineering/direction-checks/2026-10-24-chrome-occlusion-shadow.md",
+    "docs/fixes/2026-10-24-chrome-occlusion-shadow.root-cause.json",
+    "tests/ux/canvas-chrome-occlusion-shadow.walk.mjs"
+  ],
+  "entry_points": [
+    "CanvasToolbar and CanvasNavigationStack both call useCanvasChromeOcclusion; the hook measures composer and dock rectangles and applies clipPathForHoles"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The invariant is internal canvas geometry across a React Flow stacking-context boundary; existing project source and the self-written registration decide the behavior, and no external protocol controls it.",
+  "invariants": [
+    "Every hole equals the intersection of a composer rectangle with the dock's expanded clip-path outer rectangle, expressed relative to the dock box and bounded by that outer rectangle.",
+    "A composer that covers only the dock shadow ring still produces a hole; a composer outside the expanded outer rectangle produces none.",
+    "The same occludedHoles boundary is used by both CanvasToolbar and CanvasNavigationStack."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/CanvasNavigationStack.tsx",
+      "symbol": "useCanvasChromeOcclusion"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/CanvasToolbar.tsx",
+      "symbol": "useCanvasChromeOcclusion"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+      "symbol": "clipPathForHoles"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+      "symbol": "occludedHoles"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+      "symbol": "createFrameCoalescer"
+    }
+  ],
+  "door_reduction": {
+    "before": 5,
+    "after": 5,
+    "why_not": "CanvasToolbar and CanvasNavigationStack are the two required chrome consumers and cannot be merged without removing one visible control cluster. The three hook-local symbols are separate direct doors reported by door-map: clipPathForHoles owns path serialization, occludedHoles owns geometry, and createFrameCoalescer owns measurement scheduling; merging them would mix independent responsibilities."
+  },
+  "generality_proof": "Both production callers converge on useCanvasChromeOcclusion, and both pure geometry operations are covered by the same exported occludedHoles and clipPathForHoles contract. Expanding the intersection domain at occludedHoles makes the invariant apply to every dock shape, composer position, and future caller without a provider, platform, or component branch.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+      "symbol": "occludedHoles",
+      "responsibility": "Own the single expanded-dock/composer intersection boundary used to decide which chrome pixels and hit area are removed."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+      "symbol": "clipPathForHoles",
+      "responsibility": "Serialize the expanded outer chrome path and relative holes into one nonzero clip path."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/components/CanvasToolbar.tsx",
+      "entry_point": "CanvasToolbar",
+      "disposition": "enforced",
+      "evidence": "The component calls useCanvasChromeOcclusion(dockRef), so its add-node bar is measured and clipped through the shared occludedHoles boundary."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/CanvasNavigationStack.tsx",
+      "entry_point": "CanvasNavigationStack",
+      "disposition": "enforced",
+      "evidence": "The component calls useCanvasChromeOcclusion(dockRef), so its zoom/navigation cluster is measured and clipped through the same shared boundary."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "The same mismatch affects both existing callers and any future chrome using the hook whenever a composer covers the expanded shadow ring instead of the box alone.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts -> CanvasToolbar, CanvasNavigationStack, and the hook's geometry/scheduling symbols",
+      "rg -n 'useCanvasChromeOcclusion|occludedHoles|clipPathForHoles' src tests -> both production callers and the shared test surface",
+      "src/workbench/generationCanvas/reactFlow/canvasLayerOrder.ts -> chromeDock explicitly documents the shared stacking-context workaround"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+    "invariant": "occludedHoles intersects composers with the dock outer rectangle expanded by SHADOW_MARGIN, and clips the resulting holes relative to the dock box.",
+    "failure_mode": "No hole is emitted when the composer is outside the expanded outer rectangle; any overlap of the box or shadow ring emits a bounded hole, so the chrome cannot paint or receive hits over the composer.",
+    "exception_policy": "none",
+    "strategy": "Define the expanded outer rectangle once inside occludedHoles, use it for all composer intersections, and keep clipPathForHoles' outer path unchanged.",
+    "artifacts": [
+      "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+      "src/workbench/generationCanvas/components/canvasChromeOcclusion.test.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/components/canvasChromeOcclusion.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/components/canvasChromeOcclusion.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The old box-only intersection is replaced in the shared function; no separate production fallback, legacy caller, or persisted data path exists."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The defect is application-owned rectangle geometry; React Flow's stacking context explains why the workaround exists but does not control the invariant.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted state or stored data is involved; the hook recalculates the clip path on the next scheduled measurement.",
+  "residual_risks": [
+    "The real Electron pixel walkthrough and four screenshot review are platform evidence and remain unverified until they run; unit tests cannot prove the browser's compositing result.",
+    "The exact brightness threshold and screenshot coordinates depend on the isolated Electron window and must be recorded in the evidence report."
+  ],
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-24",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts",
+    "tests": [
+      "src/workbench/generationCanvas/components/canvasChromeOcclusion.test.ts"
+    ],
+    "why": "The hook is the only shared owner used by both visible chrome clusters; its pure geometry exports provide the class boundary test."
+  }
+}
