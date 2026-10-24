@@ -8,7 +8,9 @@ import { useComposerControlProps } from './composerControlProps'
 import { useGenerationCanvasStore } from '../../../src/workbench/generationCanvas/store/generationCanvasStore'
 
 // The real catalog, real store and real controls; no network generation calls.
-await window.nomiDesktop!.modelCatalog.upsertVendorApiKey('apimart', { apiKey: 'nomi-e2e-placeholder', enabled: true })
+// The placeholder APIMart key is saved by the walk before launch (seedSavedFixtureCredentials): saving it here
+// goes through the live credential check, which either sends it to the real vendor (401) or, offline, stores it
+// unverified and disabled; both leave the model out of the picker.
 window.nomiDesktop!.modelCatalog.upsertVendor({ key: 'apimart', enabled: true })
 useGenerationCanvasStore.getState().restoreSnapshot({
   nodes: [{ id: 'contract-video', kind: 'video', title: 'Hailuo 2.3', categoryId: 'shots', position: { x: 0, y: 0 }, size: { width: 320, height: 180 },

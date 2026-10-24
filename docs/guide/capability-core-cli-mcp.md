@@ -119,6 +119,8 @@ node scripts/nomi.mjs generate workspace-xxxx modelscope "Tongyi-MAI/Z-Image-Tur
 
 打开 Nomi 的「模型接入」→「接入 AI 编程助手」，选择 Claude Code、Claude Desktop、Codex、Cursor 或 WorkBuddy，点击接入。其他客户端（Cline、Windsurf、Pi 等）没有一键接入，见下面的「其他客户端」。Nomi 会只合并自己的 `nomi` 条目、保留其它 MCP server，并在改写前留下 `.nomi-backup`。接入卡会真正启动配置中的命令做握手，不会只凭“配置里有一行”显示成功。
 
+如果你改过宿主自己的配置位置，Nomi 跟着宿主走：设了 `CLAUDE_CONFIG_DIR`，Claude Code 的配置读写在 `$CLAUDE_CONFIG_DIR/.claude.json`；设了 `CODEX_HOME`，Codex 的配置读写在 `$CODEX_HOME/config.toml`。这两个变量要在启动 Nomi 的那个环境里也设着（从程序坞 / 访达打开的 Nomi 看不到只写在终端配置文件里的变量）。
+
 不要照文档手写一份只有 `NOMI_MCP_STDIO=1` 的配置。当前版本还会为 Claude Code、Claude Desktop、Codex、Cursor、WorkBuddy 分别生成本机签名的 `NOMI_MCP_CLIENT` 与 `NOMI_MCP_CLIENT_PROOF`；证明绑定当前电脑和具体客户端，不能写死在公开文档，也不能跨客户端复用。缺少证明的配置可以列工具，但正式 Production Run 会被安全地视为 `external`，无法越过 Nomi 的可信宿主门。
 
 需要手工接入时，先在卡片里选择目标客户端，再点「复制配置」，把 **Nomi 当机生成的完整片段** 合并到对应客户端。不要使用旧版 `scripts/nomi-mcp.mjs`，也不要从另一个客户端复制 proof。Codex 的生成片段已经包含 Electron 冷启动、长视频任务和写操作审批所需的超时与审批配置。

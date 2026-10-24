@@ -6,7 +6,6 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // → GUI 弹方案卡 → 截图人眼看 → 点「落到画布」→ stdio 拿到 ids。全程**不花额度**（只建节点，不生成）。
 // 用法：pnpm run build && node tests/ux/plan-gate.walk.mjs
 import { launchNomiApp, repoRoot, withLinuxNoSandbox } from './_launchApp.mjs'
-import { realNomiProfile, seedRealCredentials } from './_realProfile.mjs'
 import { createRequire } from 'node:module'
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
@@ -26,8 +25,7 @@ const projectsDir = path.join(base, 'projects')
 const capDir = path.join(base, 'capability-core')
 fs.mkdirSync(settingsDir, { recursive: true })
 fs.mkdirSync(projectsDir, { recursive: true })
-// 目录 + 凭据钥匙（Windows 的 Local State）一起进隔离副本；本走查 userData 与 settings 同目录。
-if (fs.existsSync(realNomiProfile().catalogPath)) seedRealCredentials({ settingsDir, userDataDir: settingsDir })
+// 只建节点、不生成：用 App 自带的目录就够，不拷用户真实目录与凭据（本机跑和夜跑同一份夹具）。
 
 const sharedEnv = {
   NOMI_E2E: '1',

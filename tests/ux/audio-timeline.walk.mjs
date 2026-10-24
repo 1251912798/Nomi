@@ -2,24 +2,29 @@
 //  ① 素材库音频拖到「音频轨」成 audio clip（Playwright 合成拖拽不带自定义 MIME，故用真 DragEvent+DataTransfer）
 //  ② 预览播放能听到（<audio> 元素挂载 + 播放中 currentTime 推进）
 //  ③ 真实 ffmpeg 导出 mp4 带 aac 音轨（ffprobe 实证 = 终极证明）
-// 用法: node tests/ux/audio-timeline.walk.mjs （先 .tmp/probe-tone-3s.mp3 必须存在）
+// 用法: node tests/ux/audio-timeline.walk.mjs
+// 夹具当场造：3 秒正弦波 mp3 用打包的 ffmpeg 生成，导出验音轨用打包的 ffprobe——不依赖开发机预先放好的文件
+// 或 Homebrew 路径（夜跑 run 40035294026 在 Linux 上就是「缺 .tmp/probe-tone-3s.mp3」当场退出）。
 import { launchNomiApp } from './_launchApp.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
+import { createRequire } from 'node:module'
 import { execFileSync } from 'node:child_process'
 import { screenshotSettled } from './_assert.mjs'
+import { makeTempDir } from '../../scripts/_test-temp.mjs'
 
+const require = createRequire(import.meta.url)
+const FFMPEG = require('@ffmpeg-installer/ffmpeg').path
+const FFPROBE = require('@ffprobe-installer/ffprobe').path
 const repoRoot = process.cwd()
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/audio-timeline')
 fs.mkdirSync(shotsDir, { recursive: true })
-const AUDIO = path.join(repoRoot, '.tmp', 'probe-tone-3s.mp3')
-if (!fs.existsSync(AUDIO)) { console.log('缺 .tmp/probe-tone-3s.mp3'); process.exit(1) }
-const FFPROBE = '/opt/homebrew/bin/ffprobe'
+const temp = makeTempDir('nomi-audio-timeline-')
+const AUDIO = path.join(temp, 'probe-tone-3s.mp3')
+execFileSync(FFMPEG, ['-y', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=3', '-c:a', 'libmp3lame', '-q:a', '4', AUDIO], { stdio: 'pipe' })
 
-const userData = path.join(repoRoot, '.tmp', 'nomi-audio-timeline')
-const projectsDir = path.join(repoRoot, '.tmp', 'nomi-audio-timeline-projects')
-fs.rmSync(userData, { recursive: true, force: true })
-fs.rmSync(projectsDir, { recursive: true, force: true })
+const userData = path.join(temp, 'user-data')
+const projectsDir = path.join(temp, 'projects')
 fs.mkdirSync(userData, { recursive: true })
 fs.mkdirSync(projectsDir, { recursive: true })
 const testStart = Date.now()
@@ -143,8 +148,11 @@ try {
   }
 } catch (e) {
   console.log('WALK ERROR:', e.stack || e.message)
+  process.exitCode = 1
 } finally {
   console.log('\n=== 结果 ===')
   console.log(`${results.filter((r) => r.ok).length}/${results.length} 通过`)
+  // 以前只打印「x/y 通过」、退出码恒 0：有一项没过也算绿。没有一项检查跑到也是红。
+  if (!results.length || results.some((r) => !r.ok)) process.exitCode = 1
   await app.close().catch(() => {})
 }

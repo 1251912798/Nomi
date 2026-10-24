@@ -55,9 +55,8 @@ const HIGH_RISK_EXACT = new Set([
   // 蓄意**不**收 self-check.sh / handoff-*.sh / model-doc-check.sh / stack-currency-check.sh：
   // 那些是提醒型（salience）hook，失效顶多少一层提示，不会把未验证的代码送出去；
   // 把它们也收进来，等于让改一句提示文案都要写合同——门岗一旦开始拦无辜的人，人就会开始绕过门岗。
-  "scripts/claude-hooks/pre-push-check.sh",   // R11 push 闸：五门戳的判定方
+  "scripts/claude-hooks/pre-push-check.sh",   // R11 push 闸：跳过 git 快检的推送必须记进那棵树的绕口日志
   "scripts/claude-hooks/secret-guard.sh",     // R25 提交前敏感数据扫描
-  "scripts/stamp-gates-ok.mjs",               // 五门戳的签发方（凭据怎么盖、绑什么身份）
   "scripts/install-claude-hooks.cjs",         // 装配器：坏了 = 上面这些根本没装上
   "scripts/install-git-hooks.cjs",
 ]);

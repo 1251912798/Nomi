@@ -1,33 +1,41 @@
 // R13 几何实测：D2 参数栏在「多供应商 Seedance」下是否截断（供应商下拉 + 多参数 pill 超 880px）。
 // 用法: node tests/ux/param-bar-geometry.walk.mjs
-// 隔离复制真 catalog(含 seedance 多供应商=D2 触发条件) + 一个真实 Seedance 项目的 project.json，
-// 不碰用户真实数据。选中视频节点后量 composer 卡 / 参数栏 / 生成钮的几何，判断是否裁切。
+// 隔离目录 + 当场构造的多视频节点项目（Seedance 各模式 + 参数多的图片 / 视频模型），内置目录，不拷真实目录、
+// 不读真实项目。选中节点后量 composer 卡 / 参数栏 / 生成钮的几何，判断是否裁切。
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
-import { realNomiProfile, seedRealCredentials } from './_realProfile.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { screenshotSettled } from './_assert.mjs'
+import { makeTempDir } from '../../scripts/_test-temp.mjs'
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/parambar')
 fs.mkdirSync(shotsDir, { recursive: true })
 
-const base = '/tmp/nomi-parambar'
+const base = makeTempDir('nomi-parambar-')
 const settingsDir = path.join(base, 'settings')
 const projectsDir = path.join(base, 'projects')
-fs.rmSync(base, { recursive: true, force: true })
 fs.mkdirSync(settingsDir, { recursive: true })
 fs.mkdirSync(projectsDir, { recursive: true })
 
-// 复制真 catalog（含 seedance 4 供应商 → 供应商下拉出现）+ 凭据钥匙（Windows 的 Local State）；
-// 本走查 userData 与 settings 同目录。
-if (fs.existsSync(realNomiProfile().catalogPath)) seedRealCredentials({ settingsDir, userDataDir: settingsDir })
-
-// 复制一个真实 Seedance 多视频节点项目的 project.json（只 project.json，不要 assets——量参数栏不需要真图）
-const srcProj = '/Users/aoqimin/Documents/Nomi Projects/未命名项目 06_18 11_56-mqiyx4om-5e071915/.nomi/project.json'
+// 项目夹具当场造（hydrate 只读 payload，见 fixtures/journey-project-fixture.mjs 头注释）。
+// 以前拿作者本机「文稿/Nomi Projects」里的一个真实项目当模板，别的机器（含夜跑）ENOENT，本机则读到用户真实资料。
+const mk = (id, kind, x, y, meta) => ({ id, kind, title: id, position: { x, y }, size: { width: 340, height: 270 }, prompt: '镜头', references: [], history: [], status: 'idle', categoryId: 'shots', shotIndex: 1, renderKind: 'shot-frame', meta })
+const seedance = (modeId) => ({ modelKey: 'doubao-seedance-2.0', modelLabel: 'Seedance 2.0', modelVendor: 'apimart', archetype: { id: 'seedance-2-apimart', modeId } })
+const nodes = [
+  mk('v-omni', 'video', 120, 120, seedance('omni')),
+  mk('v-t2v', 'video', 520, 120, seedance('t2v')),
+  mk('v-firstlast', 'video', 920, 120, seedance('firstlast')),
+  mk('v-wan', 'video', 120, 480, { modelKey: 'wan2.7', modelLabel: 'Wan 2.7', modelVendor: 'apimart', archetype: { id: 'wan-2.7', modeId: 't2v' } }),
+  mk('i-seedream', 'image', 520, 480, { modelKey: 'doubao-seedream-4.5', modelLabel: 'Seedream 4.5', modelVendor: 'apimart', archetype: { id: 'seedream', modeId: 't2i' } }),
+]
+const projectId = 'parambar-walk-0001'
 const dstDir = path.join(projectsDir, 'parambar-walk')
 fs.mkdirSync(path.join(dstDir, '.nomi'), { recursive: true })
-const proj = JSON.parse(fs.readFileSync(srcProj, 'utf8'))
-proj.name = '参数栏几何实测'
-fs.writeFileSync(path.join(dstDir, '.nomi', 'project.json'), JSON.stringify(proj))
+const generationCanvas = { nodes, edges: [], selectedNodeIds: [], groups: [] }
+const project = { id: projectId, name: '参数栏几何实测', version: 2, createdAt: 1, updatedAt: 1, savedAt: 1, revision: 1, lastKnownRootPath: dstDir,
+  workbenchDocument: null, timeline: null, generationCanvas,
+  payload: { workbenchDocument: null, timeline: null, generationCanvas, storyboardPlan: null, storyboardPlanCommitted: false } }
+fs.writeFileSync(path.join(dstDir, 'project.json'), JSON.stringify(project))
+fs.writeFileSync(path.join(dstDir, '.nomi', 'project.json'), JSON.stringify(project))
 
 let n = 0
 const snap = async (win, name) => { n += 1; await screenshotSettled(win, { path: path.join(shotsDir, `${String(n).padStart(2,'0')}-${name}.png`) }); console.log(`  · shot ${name}`) }

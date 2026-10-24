@@ -6,12 +6,13 @@
 // Runway 的 `wan3` 行被宿主改写成 `wan/3-0-video`、Runway 的 `seedance2` 行出 KIE 的三个变体、APIMart `kling-v3` 的
 // 发出型号写成 KIE 的 `kling-3.0/video`（2026-10-22 R-runway-wan3 / landingProjectionParity 实测）。
 //
-// 型号名的家是**供应商的映射**：映射的请求体模板读 `{{request.params.model}}` = 这家声明「型号名由档案提供」；
-// 写死 `model: "wan3"` 或 `{{model.modelKey}}` = 型号名就是这家目录里这一行自己的 key。这个判断只在主进程目录层算一次
-// （electron/catalog/modelNameSource.ts 的 deriveModelNameSource），随目录读出带给渲染层；这里只认结果：
+// 型号名的家是**供应商的映射**：这一行要用的 create op 声明了 `wireModel: "archetype-selection"`（只有内置目录契约的 op 有）
+// = 这家声明「型号名由档案提供」；没有声明（写死 `model: "wan3"`、读 `{{model.modelKey}}`、用户自建中转）= 型号名就是
+// 这一行连接自己的名字。与发送时决定 model 串的 owner（wireModelIdentity.resolveWireModel）是同一个谓词，这个判断只在
+// 主进程目录层算一次（electron/catalog/modelNameSource.ts 的 deriveModelNameSource），随目录读出带给渲染层；这里只认结果：
 //   · 'archetype'：这一行接受档案的型号名——档案原样（变体轴、方式型号名、基础行都在）；
 //   · 'row'：这一行不接受——档案只给参数，变体轴、方式型号名、基础行全部去掉，发出的型号名就是这一行自己的 key。
-// 不写任何供应商名、任何型号名；新供应商、用户自建中转按它自己的映射自动对上（用户 2026-10-23 拍板方案 A）。
+// 不写任何供应商名、任何型号名（用户 2026-10-23 拍板方案 A；2026-10-24 拍板判据合一到 op 声明）。
 import type { ModelArchetype } from "./types";
 
 export type ModelNameSource = "archetype" | "row";

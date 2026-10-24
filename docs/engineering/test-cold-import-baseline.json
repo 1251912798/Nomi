@@ -59,7 +59,6 @@
     "electron/runtime.antigravityPreflight.test.ts": "每例 vi.resetModules 换模块状态（模块加载时读 env / 临时目录），待改成暴露重置函数后迁静态导入",
     "electron/runtime.apimartH3Preflight.test.ts": "每例 vi.resetModules 换模块状态（模块加载时读 env / 临时目录），待改成暴露重置函数后迁静态导入",
     "electron/runtime.asyncTaskIdGuard.test.ts": "每例 vi.resetModules 换模块状态（模块加载时读 env / 临时目录），待改成暴露重置函数后迁静态导入",
-    "electron/runtime.fallback-path.test.ts": "每例 vi.resetModules 换模块状态（模块加载时读 env / 临时目录），待改成暴露重置函数后迁静态导入",
     "electron/runtime.imageEditGuards.test.ts": "每例 vi.resetModules 换模块状态（模块加载时读 env / 临时目录），待改成暴露重置函数后迁静态导入",
     "electron/runtime.provider-adapter.test.ts": "每例 vi.resetModules 换模块状态（模块加载时读 env / 临时目录），待改成暴露重置函数后迁静态导入",
     "electron/screenshot/screenshotHotkeyProjectContext.test.ts": "每例 vi.resetModules 换模块状态（模块加载时读 env / 临时目录），待改成暴露重置函数后迁静态导入",

@@ -1,0 +1,35 @@
+{
+  "name": "隔离起的 App 不碰用户真实的宿主配置（宿主位置变量全指进本次临时目录；还会落进真实位置就拒起）",
+  "subject": "test-harness.isolated-host-config",
+  "lifecycle": "delivery",
+  "authority_kind": "gateway",
+  "trust_domain": "test",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "tests/ux/_launchApp.mjs",
+    "symbol": "withIsolatedHostConfig"
+  },
+  "write_api": [
+    {
+      "path": "tests/ux/_launchApp.mjs",
+      "symbol": "withIsolatedHostConfig"
+    },
+    {
+      "path": "tests/ux/_launchApp.mjs",
+      "symbol": "isolatedHostConfigLeaks"
+    },
+    {
+      "path": "tests/ux/_launchApp.mjs",
+      "symbol": "isolatedHostConfigEnv"
+    },
+    {
+      "path": "tests/ux/_launchApp.mjs",
+      "symbol": "prepareHostConfigDir"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-24",
+  "notes": "根因合同 docs/fixes/2026-10-24-isolated-app-reads-real-host-config.root-cause.json：每个隔离启动（tests/ux/_launchApp.mjs launchNomiApp、evals/lib/isoApp.mjs、tests/ux/memory.e2e.mjs）的环境都经 buildNomiLaunchEnv → withIsolatedHostConfig：注册表里每个宿主位置变量指进 <临时根>/host-config（调用方改了 HOME / USERPROFILE 时去掉），再用要交给 App 的那份环境把注册表的每个位置解析一遍，落进用户真实位置就抛错拒起；只隔离 NOMI_* 目录而不给 hostConfigDir 由 buildNomiLaunchEnv 拒绝。位置规则本身归 mcp.host-config-location；vitest 那一侧由 tests/setup/tempWorkspace.ts 去掉宿主变量。只住在主目录下的宿主（Cursor / WorkBuddy / Claude Desktop）不能靠变量改道，保留真实 HOME 的隔离启动仍会解析到它们，记在合同 residual_risks。"
+}

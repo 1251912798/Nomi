@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import os from 'node:os'
 import path from 'node:path'
 import { require as tsxRequire } from 'tsx/cjs/api'
-import { parseMcpServerNames, buildCodexOverrides, compareFingerprints } from './mcp-real-client.mjs'
+import { parseMcpServerNames, buildCodexOverrides, compareFingerprints, hostConfigFiles } from './mcp-real-client.mjs'
 
 const { mcpServerEntry } = tsxRequire('../../electron/capabilityCore/mcpConfig.ts', import.meta.url)
 
@@ -54,6 +54,18 @@ test('overrides disable every configured server and preserve exact argv', () => 
   const result = buildCodexOverrides('[mcp_servers."foo.bar"]\n[mcp_servers.pencil]\n', { command: 'electron.exe', args: ['D:/repo', '--flag'], env })
   assert.deepEqual(result.slice(0, 2), ['mcp_servers."foo.bar".enabled=false', 'mcp_servers.pencil.enabled=false'])
   assert.equal(result.at(-2), 'mcp_servers.nomi.args=["D:/repo","--flag"]')
+})
+
+test('the real-host files it fingerprints are the ones the hosts actually read (CODEX_HOME / CLAUDE_CONFIG_DIR honoured)', () => {
+  const home = path.join(os.tmpdir(), 'h')
+  assert.deepEqual(hostConfigFiles({ home, env: {}, platform: 'linux' }), [
+    path.join(home, '.codex', 'config.toml'), path.join(home, '.claude.json'), path.join(home, '.claude', 'settings.json'),
+  ])
+  const codexHome = path.join(os.tmpdir(), 'x')
+  const claudeDir = path.join(os.tmpdir(), 'c')
+  assert.deepEqual(hostConfigFiles({ home, env: { CODEX_HOME: codexHome, CLAUDE_CONFIG_DIR: claudeDir }, platform: 'linux' }), [
+    path.join(codexHome, 'config.toml'), path.join(claudeDir, '.claude.json'), path.join(claudeDir, 'settings.json'),
+  ])
 })
 
 test('fingerprints compare metadata structurally', () => {

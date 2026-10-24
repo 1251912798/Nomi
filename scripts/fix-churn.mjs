@@ -8,9 +8,11 @@
 //   · 目录：同上，但只认「概念大小」的目录——近 14 天 fix 提交碰过的不同源码文件 ≤ DIR_MAX_FILES。
 //     忙碌的大目录（几十个文件、每天都有无关 fix）不当整体算，否则每个 fix 都命中、规则变噪音（2026-10-04 回测：
 //     origin/main 最近 15 个合并里，不设上限时 38 个 fix 提交几乎全命中）。
-// 例外：locale 词典（src/i18n/locales/*.ts）什么功能都要改它，按「文件」数一碰就响（2026-10-05 generationCommon.ts 近 14 天 30 个 fix），
-//   真正重复的那类反而被淹掉。词典文件改按「文件#顶层功能键」各数各的（中英两段同名键算同一个；一个提交改到几个键各计一次；
-//   落在键之外的行——文件头、export 行、顶层单句——归「文件#(根)」），阈值和窗口不变，且不再投目录那一票（词典目录不是一个概念）。
+// 例外：词典文件（登记表 DICTIONARY_FILES：渲染层 src/i18n/locales/*.ts、主进程 electron/desktopStrings.ts）什么功能都要改它，
+//   按「文件」数一碰就响（2026-10-05 generationCommon.ts 近 14 天 30 个 fix；2026-10-24 desktopStrings.ts 第 10 个），真正重复的那类反而被淹掉。
+//   词典文件改按「文件#功能键」各数各的（locale 取顶层键，主进程词典取点号键第一段；中英两段同名键算同一个；一个提交改到几个键各计一次；
+//   落在键之外的行——文件头、export 行、helper、语言段开头——归「文件#(根)」），阈值和窗口不变；
+//   词典不投目录票、不进概念 / 自写单位，只改词典的旧提交也不给它们记票（词典目录不是一个概念）。
 //   盲区：同一类错（例如「界面谈钱」）若散在不同功能键里，这里数不到一起——由 check:i18n 的文案扫描补。
 // 再加两种「按概念数」的单位（scripts/fix-churn-units.mjs 定义哪些单位、各含哪些文件）：
 //   · 自写登记条目（self-written.json 的一条 entry，paths 下的文件合起来）：status 为 under-review / to-replace，
@@ -55,15 +57,20 @@ export function isWatchedSource(rel) {
 /** 单位里的文件要不要管：src/、electron/、scripts/ 下的非测试、非生成源码（自写登记里有 scripts 下的机制）。 */
 export function isUnitSource(rel) {
   const r = norm(rel)
-  // 词典（locale）按「文件#功能键」另数，不进单位（否则每个 fix 都命中）
-  return /^(src|electron|scripts)\//.test(r) && SOURCE_FILE.test(r) && !NOT_SOURCE.test(r) && !r.startsWith('src/i18n/locales/')
+  // 词典按「文件#功能键」另数，不进单位（否则每个 fix 都命中）
+  return /^(src|electron|scripts)\//.test(r) && SOURCE_FILE.test(r) && !NOT_SOURCE.test(r) && !isDictionaryFile(r)
 }
 
 export const isFixSubject = (s) => FIX_SUBJECT.test(String(s || '').trim())
 export const isRevertOfFix = (s) => REVERT_OF_FIX.test(String(s || '').trim())
 
-const LOCALE_DICT = /^src\/i18n\/locales\/[^/]+\.ts$/
-export const isLocaleDict = (rel) => LOCALE_DICT.test(norm(rel))
+const DICTIONARY_FILES = [
+  { name: 'locale', test: (rel) => /^src\/i18n\/locales\/[^/]+\.ts$/.test(rel), lineNamespaces: namespaceLines },
+  { name: 'desktop', test: (rel) => rel === 'electron/desktopStrings.ts', lineNamespaces: desktopNamespaceLines },
+]
+export const dictionaryFor = (rel) => DICTIONARY_FILES.find((entry) => entry.test(norm(rel)))
+export const isDictionaryFile = (rel) => Boolean(dictionaryFor(rel))
+export const isLocaleDict = (rel) => dictionaryFor(rel)?.name === 'locale'
 export const ROOT_NS = '(根)'
 const NS_OPEN = /^  (?:([A-Za-z0-9_$]+)|'([^']+)'|"([^"]+)")\s*:\s*[{[]\s*(?:\/\/.*)?$/
 const NS_CLOSE = /^  [}\]][,)]*\s*(?:\/\/.*)?$/
@@ -86,6 +93,21 @@ export function namespaceLines(source) {
   return out
 }
 
+/** 主进程词典：按点号键第一段归族；非键行（头、helper、export、值是 { / [ 的语言段开头）归 (根)。 */
+export function desktopNamespaceLines(source) {
+  const lines = String(source || '').split(/\r?\n/)
+  const out = [null]
+  for (const line of lines) {
+    const m = line.match(/^\s+"([^".]+)(?:\.[^"]+)?"\s*:(?!\s*[{[])/)
+    out.push(m ? m[1] : ROOT_NS)
+  }
+  return out
+}
+
+function namespacesFor(source, dictionary) {
+  return (dictionary?.lineNamespaces ?? namespaceLines)(source)
+}
+
 /** 解析 git diff -U0 的 hunk 头，返回 [{ oldStart, oldCount, newStart, newCount }]。 */
 export function parseHunks(diffText) {
   const hunks = []
@@ -96,9 +118,9 @@ export function parseHunks(diffText) {
 }
 
 /** 一次改动（hunks + 旧 / 新源码）碰到的功能键集合：删掉 / 改掉的行按旧源码归属，新增 / 改后的行按新源码归属。 */
-export function touchedNamespaces(hunks, oldSource, newSource) {
-  const oldMap = namespaceLines(oldSource)
-  const newMap = namespaceLines(newSource)
+export function touchedNamespaces(hunks, oldSource, newSource, dictionary) {
+  const oldMap = namespacesFor(oldSource, dictionary)
+  const newMap = namespacesFor(newSource, dictionary)
   const out = new Set()
   for (const h of hunks) {
     for (let i = 0; i < h.oldCount; i++) out.add(oldMap[h.oldStart + i] || ROOT_NS)
@@ -118,7 +140,7 @@ export function makeNsCtx(root, git = defaultGit) {
       if (!cache.has(key)) {
         let diff = ''
         try { diff = git(root, ['show', '-U0', '--no-renames', '--format=', commit.sha, '--', file]) } catch { diff = '' }
-        cache.set(key, touchedNamespaces(parseHunks(diff), show(`${commit.sha}^:${file}`), show(`${commit.sha}:${file}`)))
+        cache.set(key, touchedNamespaces(parseHunks(diff), show(`${commit.sha}^:${file}`), show(`${commit.sha}:${file}`), dictionaryFor(file)))
       }
       return cache.get(key)
     },
@@ -128,11 +150,11 @@ export function makeNsCtx(root, git = defaultGit) {
 /** 暂存区对词典文件的改动 → Map(文件 → 功能键集合)，给 commit-msg 校验用。 */
 export function stagedNamespaces(root, files, git = defaultGit) {
   const map = new Map()
-  for (const f of files.map(norm).filter(isLocaleDict)) {
+  for (const f of files.map(norm).filter(isDictionaryFile)) {
     const show = (spec) => { try { return git(root, ['show', spec]) } catch { return '' } }
     let diff = ''
     try { diff = git(root, ['diff', '--cached', '-U0', '--no-renames', '--', f]) } catch { diff = '' }
-    map.set(f, touchedNamespaces(parseHunks(diff), show(`HEAD:${f}`), show(`:${f}`)))
+    map.set(f, touchedNamespaces(parseHunks(diff), show(`HEAD:${f}`), show(`:${f}`), dictionaryFor(f)))
   }
   return map
 }
@@ -156,7 +178,7 @@ export function tallyNamespaces(history, afterIndex, nowMs, file, ctx) {
 }
 
 /** 判一个词典文件：只看被这一刀碰到的功能键（touched 未知 = 报告该文件里所有已达阈值的功能键）。 */
-function evaluateLocale(history, afterIndex, nowMs, file, ctx, touched) {
+function evaluateDictionary(history, afterIndex, nowMs, file, ctx, touched) {
   const counts = tallyNamespaces(history, afterIndex, nowMs, file, ctx)
   const base = path.posix.basename(file)
   const names = touched ? [...touched] : [...counts.keys()]
@@ -192,7 +214,8 @@ export function loadHistory(root, { ref = 'HEAD', since, days = FIX_WINDOW_DAYS,
 export function tally(history, afterIndex, nowMs, scope) {
   const isDir = !/\.[a-z0-9]+$/i.test(scope)
   const prefix = scope.replace(/\/?$/, '/')
-  const touches = (f) => (isDir ? f.startsWith(prefix) : f === scope)
+  // 目录票不收词典文件：只改词典的提交不给所在目录记票（词典按「文件#功能键」另数）
+  const touches = (f) => (isDir ? f.startsWith(prefix) && !isDictionaryFile(f) : f === scope)
   const cutoff = nowMs - FIX_WINDOW_DAYS * 86400000
   let fixes = 0
   let reverts = 0
@@ -209,10 +232,10 @@ export function tally(history, afterIndex, nowMs, scope) {
 /** 判一个文件：文件 + 所在目录各一票，返回命中原因。 */
 export function evaluate(history, afterIndex, nowMs, rel, nsCtx) {
   const file = norm(rel)
-  if (isLocaleDict(file) && nsCtx) {
+  if (isDictionaryFile(file) && nsCtx) {
     // 历史里的提交：取它自己改到的功能键；实时（暂存区 / 只给路径）：用 nsCtx.touched 里登记的，没有就报全部达标的键
     const own = afterIndex >= 0 ? nsCtx.nsOf(history[afterIndex], file) : nsCtx.touched.get(file)
-    return evaluateLocale(history, afterIndex, nowMs, file, nsCtx, own)
+    return evaluateDictionary(history, afterIndex, nowMs, file, nsCtx, own)
   }
   const dir = path.posix.dirname(file)
   const f = tally(history, afterIndex, nowMs, file)
@@ -235,7 +258,8 @@ export function tallyUnit(history, afterIndex, nowMs, unit) {
   for (let i = afterIndex + 1; i < history.length; i++) {
     const c = history[i]
     if (c.ms < cutoff) continue
-    const mine = c.files.filter((f) => unitMatches(unit, f))
+    // 词典不进单位：只改词典的旧提交也不给单位记票（否则含词典的概念把每条新文案都算一刀）
+    const mine = c.files.filter((f) => !isDictionaryFile(f) && unitMatches(unit, f))
     if (!mine.length) continue
     if (isFixSubject(c.subject)) { fixes++; for (const f of mine) if (isUnitSource(f)) fixFiles.add(f) }
     else if (isRevertOfFix(c.subject)) reverts++
@@ -357,10 +381,14 @@ function main(argv) {
     process.exit(flags.has('--warn') || !bad.length ? 0 : 1)
   }
   let paths = argv.filter((a) => !a.startsWith('--'))
-  if (flags.has('--staged')) paths = gitPaths(['diff', '--cached', '--name-only', '--no-renames'], { cwd: root })
+  let touched
+  if (flags.has('--staged')) {
+    paths = gitPaths(['diff', '--cached', '--name-only', '--no-renames'], { cwd: root })
+    touched = stagedNamespaces(root, paths)
+  }
   // 传了目录就展开成该目录下 14 天内被 fix 碰过的源码文件，再判
   const expanded = paths.flatMap((p) => (/\.[a-z0-9]+$/i.test(p) ? [p] : [...new Set(loadHistory(root, { pathspecs: [p] }).flatMap((c) => c.files))].filter(isWatchedSource)))
-  const hits = findHotspots(root, expanded)
+  const hits = findHotspots(root, expanded, { touched })
   if (json) console.log(JSON.stringify(hits, null, 2))
   else console.log(hits.length ? directionMessage(hits) : '方向检查：未命中热点。')
   process.exit(hits.length && !flags.has('--warn') ? 1 : 0)

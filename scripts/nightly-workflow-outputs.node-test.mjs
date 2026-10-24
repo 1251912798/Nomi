@@ -25,6 +25,7 @@ function writeTargets() {
       for (const m of run.matchAll(/mkdir -p\s+(\S+)/g)) add(m[1])
       for (const m of run.matchAll(/(?:>>?|tee)\s*("[^"]+"|\S+)/g)) add(m[1])
       for (const m of run.matchAll(/\blog="([^"]+)"/g)) add(m[1])
+      for (const m of run.matchAll(/--state\s+("[^"]+"|\S+)/g)) add(m[1])
       for (const m of run.matchAll(/nightly-walk-summary\.mjs\s+(\S+)\s+(\S+)/g)) { add(m[1]); add(m[2]) }
       if (step.with?.path) add(String(step.with.path))
     }

@@ -1,0 +1,289 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-nightly-walk-writes-source-tree",
+  "problem_type": "A walkthrough writes into the repository tree mid-batch, the build-stamp source identity drifts, and every later walk in the batch is refused by assertFreshBuild without naming the culprit",
+  "symptom": "Nightly Walkthroughs run 40035294026 (2026-10-24, first clean reading after #1293): in batch 3, from onboarding-auto-fetch.walk.mjs on, 23 walks failed in 1-2 seconds with 「构建产物比源码旧……构建时 tree=21345fca…，当前 tree=2706fe28…」; their logs carry no hint of which file changed or who wrote it.",
+  "direct_cause": "tests/ux/node-toolbar-one-row.walk.mjs (batch 3, position 60) saved its screenshots to <repo>/.node-toolbar-one-row-lab/, a directory .gitignore does not cover. sourceIdentity hashes `git add -A` outside the proven non-input paths, so the eight PNGs changed the identity and every following launch failed the stamp check. Reproduced locally: tree 3a03a666 → 9d5b7fc3 after that walk; the next walk was refused with the same message.",
+  "class_root": "Nothing checked, per walk, that a walk left the build inputs as it found them. The 10-23 fix (2026-10-23-nightly-build-gate) ignored the workflow's own outputs, but each walk still picks its own output location, so one unignored location anywhere silently invalidated the build for the rest of the batch, and the stamp error could not say what had changed.",
+  "affected_population": [
+    "Nightly walks batches 0-3 (every walk after the first one that writes into the tree)",
+    "Local runs of walks / e2e / perf / paid rehearsals in the same worktree (the next launch is refused after a polluting run)",
+    "Any future walk or e2e that saves evidence relative to the repository root"
+  ],
+  "scope_paths": [
+    ".github/workflows/nightly-walkthroughs.yml",
+    "scripts/nightly-walk-tree-guard.mjs",
+    "scripts/nightly-walk-tree-guard.node-test.mjs",
+    "scripts/nightly-workflow-outputs.node-test.mjs",
+    "scripts/package-build-stamp.mjs",
+    "package.json",
+    "tests/ux/node-toolbar-one-row.walk.mjs",
+    "tests/ux/app-page-zoom.e2e.mjs",
+    "tests/ux/canvas-image-preview-and-rename.e2e.mjs",
+    "tests/ux/apimart-domestic-line.paid.mjs"
+  ],
+  "entry_points": [
+    "nightly walks batch loop (every walk in batches 0-3)",
+    "tests/ux/_launchApp.mjs assertFreshBuild at every dev-build walk launch",
+    "paid / packaging / perf entries that verify the stamp"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The build stamp and its source identity are Nomi's own build-freshness invariant; git diff-tree / git restore are used only as plumbing on trees the stamp itself wrote.",
+  "detected_by": "ci",
+  "recurrence_check_on": "2026-11-24",
+  "invariants": [
+    "After every nightly walk the build-stamp source identity equals the identity before that walk; otherwise that walk (and only that walk) is red with exit 96, every added / modified / deleted build input is named in its log, and on CI the paths are restored to the pre-walk tree so later walks run normally.",
+    "A stale-build refusal names the build inputs that differ from the stamped tree."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/nightly-walk-tree-guard.mjs",
+    "tests": [
+      "scripts/nightly-walk-tree-guard.node-test.mjs",
+      "scripts/package-build-stamp.node-test.mjs"
+    ],
+    "why": "The guard runs after every walk at the runner boundary every nightly walk passes through, so it catches any write channel (screenshots, fs, child processes, the app itself) without depending on each walk's code."
+  },
+  "doors": [
+    {
+      "kind": "read",
+      "path": "scripts/launch-build-gate.node-test.mjs",
+      "symbol": "verifyBuild"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/nightly-build-gate.node-test.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/nightly-walk-tree-guard.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/nightly-walk-tree-guard.mjs",
+      "symbol": "identityChanges"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/nightly-walk-tree-guard.node-test.mjs",
+      "symbol": "verifyBuild"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/nightly-workflow-outputs.node-test.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "identityChanges"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "verifyBuild"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/package-build-stamp.node-test.mjs",
+      "symbol": "verifyBuild"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/package-build-stamp.node-test.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/package-build-stamp.node-test.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "scripts/perf-scenarios.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "tests/system/mcp-real-client.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/_launchApp.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/_mcpJourney.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/_modelIntegrationHarness.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/_paidRun.mjs",
+      "symbol": "verifyBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/mcp-apps-host-render.e2e.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "read",
+      "path": "tests/ux/memory.e2e.mjs",
+      "symbol": "assertFreshBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/build-electron.mjs",
+      "symbol": "invalidateBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/nightly-build-gate.node-test.mjs",
+      "symbol": "stampedBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/nightly-walk-tree-guard.node-test.mjs",
+      "symbol": "stampedBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/nightly-workflow-outputs.node-test.mjs",
+      "symbol": "stampedBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "invalidateBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "stampedBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/package-build-stamp.node-test.mjs",
+      "symbol": "stampedBuild"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/package-build-stamp.node-test.mjs",
+      "symbol": "invalidateBuild"
+    }
+  ],
+  "door_reduction": {
+    "before": 23,
+    "after": 28,
+    "why_not": "Counted with `node scripts/door-map.mjs --write=stampedBuild,invalidateBuild --read=sourceIdentity,verifyBuild,assertFreshBuild,identityChanges --roots=src,electron,scripts,tests,.github,evals --include-tests`. The 10-23 contract counted 23 doors with the same roots minus evals and identityChanges. This change adds the per-walk guard (one production reader of sourceIdentity / identityChanges, invoked by the nightly loop) and its regression test; verifyBuild gains identityChanges to name the difference. No door is removed: the stamp module, build wrapper, perf driver, and the walk / e2e / paid launch helpers run in separate processes and each must stay independently callable."
+  },
+  "generality_proof": "The guard compares the same sourceIdentity the stamp uses, before and after each walk, at the runner boundary. Whatever a walk writes into a build input — by screenshot, fs call, child process or the app under test — changes that identity, so the check does not depend on the walk's code or output naming; ignored outputs (tests/ux/shots, artifacts, .tmp, nightly-walks) do not change it and stay allowed. Attribution is exact because each walk is compared with the tree the previous check left. Mutation checks: removing the guard line from the workflow, or making restoreToTree a no-op, turns scripts/nightly-walk-tree-guard.node-test.mjs red.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/nightly-walk-tree-guard.mjs",
+      "symbol": "guardWalkTree",
+      "responsibility": "After each nightly walk compare the source identity with the pre-walk baseline; on drift mark the walk red (96), list the changed build inputs, and with --restore (CI only) restore them to the baseline tree and re-verify."
+    },
+    {
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "identityChanges",
+      "responsibility": "List the build inputs that differ between two source-identity trees; verifyBuild uses it so every stale-build refusal names the files."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": ".github/workflows/nightly-walkthroughs.yml",
+      "entry_point": "jobs.walks.steps.Run non-paid walkthrough batch",
+      "disposition": "enforced",
+      "evidence": "The loop runs `node scripts/nightly-walk-tree-guard.mjs --walk \"$walk\" --state nightly-walks/tree-guard-${BATCH}.state --restore` after every walk and overrides the walk status with the guard status; asserted by the workflow-wiring test."
+    },
+    {
+      "path": "tests/ux/node-toolbar-one-row.walk.mjs",
+      "entry_point": "outDir",
+      "disposition": "enforced",
+      "evidence": "Screenshots now go to the ignored tests/ux/shots/node-toolbar-one-row; local rerun leaves the tree unchanged."
+    },
+    {
+      "path": "tests/ux/app-page-zoom.e2e.mjs",
+      "entry_point": "outDir",
+      "disposition": "enforced",
+      "evidence": "Same class (unignored .page-zoom-lab at the repository root) found by scanning tests/ux for repository-root output literals; moved to tests/ux/shots/app-page-zoom."
+    },
+    {
+      "path": "tests/ux/canvas-image-preview-and-rename.e2e.mjs",
+      "entry_point": "outDir",
+      "disposition": "enforced",
+      "evidence": "Same class (.canvas-image-preview-lab); moved to tests/ux/shots/canvas-image-preview-and-rename."
+    },
+    {
+      "path": "tests/ux/apimart-domestic-line.paid.mjs",
+      "entry_point": "out",
+      "disposition": "enforced",
+      "evidence": "Same class (default .apimart-line-paid at the root); default moved to tests/ux/shots/apimart-domestic-line. Not run (paid)."
+    },
+    {
+      "path": "tests/ux/design-lab/c04-capture.mjs",
+      "entry_point": "entry",
+      "disposition": "not-affected",
+      "evidence": "Writes a temporary .c04-evidence.html for its own vite server and deletes it in finally; a one-off capture script, not in the nightly selection."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every walk chooses its own output location and new walks are added weekly; the same drift already happened through the workflow outputs on 2026-10-22 and through a walk output on 2026-10-24.",
+    "same_class_scan": [
+      "Scanned tests/ux for path.join/resolve(<repo root>, literal) and checked each target with git check-ignore: unignored repository-root writers were .node-toolbar-one-row-lab, .page-zoom-lab, .canvas-image-preview-lab, .apimart-line-paid (fixed) and .c04-evidence.html (temporary, deleted by its script).",
+      "Local reproduction of batch 3 positions 59-61: node-composer-placement left the tree unchanged; node-toolbar-one-row changed it (eight untracked PNGs); onboarding-auto-fetch was refused by the stamp.",
+      "Walks that write evidence into docs/ (docs/evidence, docs/plan, docs/design/mockups) do not change the identity (docs/ is a proven non-input) and are left as they are."
+    ]
+  },
+  "prevention": {
+    "kind": "runtime-assertion",
+    "enforcement_path": "scripts/nightly-walk-tree-guard.mjs",
+    "invariant": "A nightly walk never leaves the build inputs different from the pre-walk tree without being marked red and named.",
+    "failure_mode": "The guard exits 96, the walk row records 96 with the changed paths in its log; on CI the paths are restored so the next walk is not refused. Restoring outside CI is refused.",
+    "exception_policy": "none",
+    "strategy": "Check at the runner boundary every nightly walk passes through (all write channels at once), name the difference at the stamp boundary every launch passes through, and move the known offenders to ignored output paths.",
+    "artifacts": [
+      ".github/workflows/nightly-walkthroughs.yml",
+      "scripts/nightly-walk-tree-guard.mjs",
+      "scripts/package-build-stamp.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/nightly-walk-tree-guard.node-test.mjs",
+    "scripts/nightly-workflow-outputs.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/nightly-walk-tree-guard.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The nightly loop had no per-walk check before; nothing parallel was added. The four walks change only their output path."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency is involved.",
+    "exit_criteria": []
+  },
+  "migration": "None. Existing local .xxx-lab directories left by earlier runs are untracked leftovers; the improved stamp error names them on the next refused launch.",
+  "residual_risks": [
+    "The guard runs only in the nightly loop; locally a polluting walk is still discovered at the next launch (now with the paths named), not at the walk itself.",
+    "Walks writing into docs/ are not flagged (not build inputs); they can still leave untracked evidence locally.",
+    "The CI behaviour (restore, exit 96 in the summary) is only confirmed by the next nightly / workflow_dispatch run."
+  ]
+}

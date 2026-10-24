@@ -18,7 +18,7 @@
 //
 // 为什么 CI 里跳过：GitHub runner（CI=true）checkout 的树**就是**要验的树——
 // pull_request 是合并结果、desktop-rc 是指定的发布 ref，拿 origin/main 祖先关系去拦它们
-// 全是误伤（发布 ref 落后 main tip 是常态）。这一闸只管本地盖五门戳前的那棵树。
+// 全是误伤（发布 ref 落后 main tip 是常态）。这一闸只管本机跑 `pnpm run gates` 的那棵树。
 import { execFileSync } from 'node:child_process'
 
 function git(args) {

@@ -1,0 +1,39 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-push-gate-ci",
+  "change_kind": "structural",
+  "scope_paths": [
+    "scripts/claude-hooks/pre-push-check.sh",
+    "scripts/check-push-bypass.mjs",
+    "scripts/check-hook-behavior.mjs",
+    "scripts/root-cause-contracts.mjs",
+    "package.json"
+  ],
+  "regression_tests": [
+    "scripts/pre-push-check.node-test.mjs",
+    "scripts/check-push-bypass.node-test.mjs",
+    "scripts/check-hook-behavior.node-test.mjs",
+    "scripts/check-root-cause-contracts.node-test.mjs",
+    "scripts/check-git-path-quoting.node-test.mjs"
+  ],
+  "structural_evidence": {
+    "affected_paths": [
+      "scripts/claude-hooks/pre-push-check.sh",
+      "scripts/check-push-bypass.mjs",
+      "scripts/check-hook-behavior.mjs",
+      "scripts/root-cause-contracts.mjs",
+      "package.json"
+    ],
+    "preserved_exports": [
+      { "path": "scripts/check-hook-behavior.mjs", "name": "checkHookBehavior" },
+      { "path": "scripts/root-cause-contracts.mjs", "name": "isHighRiskProductionFile" }
+    ],
+    "behavior_preservation": "用户 2026-10-24 拍板「改成 CI 把关：推分支前本机只跑快检，完整门岗交给 CI，合并照旧只认 CI 全绿和 main 上的收据」，设计卡 docs/plan/2026-10-24-push-gate-ci.md。有意改变的：①普通推送不再要求本树有一枚本机 `pnpm run gates` 全过才盖的戳，签发脚本 scripts/stamp-gates-ok.mjs 删除，gates / gates:full 末尾不再盖戳；②push 闸（pre-push-check.sh）删掉戳的三项核验与 doc-only 豁免，只剩绕口留痕；③check:push-bypass 不再拿同 SHA 的戳自动确认，未确认的绕口一律报红，确认只能靠人 `--accept`；④check:hook-behavior 删掉戳契约轴与 doc-only 非 ASCII 路径轴（P1），HIGH_RISK_EXACT 去掉已删的签发脚本。原样保留的：git 的 pre-push 快检（scripts/pre-push-contracts.mjs 及其门岗表）一行未改，`node scripts/pre-push-contracts.mjs --list` 与 origin/main 逐字相同；CI 工作流、合并前扫描、main 上的收据、门岗锁都没碰；跳过 git 钩子的推送写法（--no-verify、core.hooksPath 及其环境变量形式）照样记进被推那棵树的 .claude/push-bypass.log，归因不了是哪棵树的照样 exit 2；不带新内容的推送（--not --remotes，2026-09-27 发版 tag 合同的判据）照样不留痕；--accept / --clear-confirmed 不变。",
+    "verification_limits": "已验证：push 闸的行为测试在临时 git 仓的真实 worktree 上喂真实 PreToolUse JSON（scripts/pre-push-check.node-test.mjs 12 条、scripts/check-hook-behavior.node-test.mjs 13 条、scripts/check-push-bypass.node-test.mjs 8 条），并拿 origin/main 上的旧 hook / 旧门岗先验会红（旧 hook 在新测试上 11/12 红、行为门岗对旧 hook 报 18 处、旧审计门岗在「有戳也不算数」「判决与戳无关」两条上红）。未验证：本线只做本地提交，没有真实推送到 GitHub；「本机完整门岗不再在推送前跑，漏掉的问题会在 CI 上红」只按设计成立（CI 的 Contracts 每个 PR 跑 gates:contracts），没有回放一次真实的推送后 CI 红；全仓敏感数据扫描（check:secrets --all）从此只在 CI 上跑，推送前只剩 pre-commit 对暂存区的扫描；Claude Code 是否真的加载新 hook 只经 install-claude-hooks --check 核过登记，没有在真会话里推一次。"
+  },
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": ["scripts/stamp-gates-ok.mjs"],
+    "rationale": "戳的签发方，同一提交删除；所有读方（push 闸的核验段、check:push-bypass 的自动确认、check:hook-behavior 的戳契约轴）一并删掉，不留可选读者。引用它的历史合同（2026-09-02 两份）是当时的记录不改写，scripts/boundary-owners-ledger.json 把它们声明过的边界记进 retirements。"
+  }
+}
