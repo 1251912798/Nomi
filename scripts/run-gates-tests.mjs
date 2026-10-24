@@ -16,15 +16,11 @@
 // 失败方向固定为**升档**：判不出来就跑全量。空 diff、删除/重命名、验证基础设施、electron/、
 // journey/canvas/performance/package 风险面全部由那份 policy 判成 `unit: 'full'`，本文件原样继承并打印原因。
 import { execFileSync, spawnSync } from 'node:child_process'
-import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { classifyValidationPolicy } from './validation-policy.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-
-/** 档位记录落在 gitdir 里（一棵 worktree 一份，和五门戳同一个位置、同一条理由）。 */
-export const TIER_RECORD_BASENAME = 'nomi-gates-tier'
 
 /** 两档各自跑什么。**这是本文件唯一的映射表**，别在 package.json 里再写一份。 */
 export const TIER_COMMANDS = Object.freeze({
@@ -105,44 +101,6 @@ export function resolveGatesTier(entries, { requestedTier = '' } = {}) {
   return { tier: policy.unit === 'full' ? 'full' : 'focused', reasons }
 }
 
-function resolveRecordPath(cwd = repoRoot) {
-  return path.join(git(['rev-parse', '--absolute-git-dir'], cwd).trim(), TIER_RECORD_BASENAME)
-}
-
-/** 写下这次跑的是哪一档，供盖戳方记录。带 sha 是为了让读的一方能拒绝陈旧记录。 */
-export function writeTierRecord(tier, cwd = repoRoot) {
-  const record = resolveRecordPath(cwd)
-  const sha = git(['rev-parse', 'HEAD'], cwd).trim()
-  fs.mkdirSync(path.dirname(record), { recursive: true })
-  fs.writeFileSync(record, `tier=${tier}\nsha=${sha}\n`)
-  return { record, tier, sha }
-}
-
-/**
- * 读回档位。**sha 对不上就不采信**（返回 null）：手工盖戳的场景下，gitdir 里很可能躺着上一次
- * 跑 gates 时的记录，照抄它等于给这次的戳编一个它没跑过的档位。
- */
-export function readTierRecord(cwd = repoRoot) {
-  let record
-  try {
-    record = resolveRecordPath(cwd)
-  } catch {
-    return null
-  }
-  if (!fs.existsSync(record)) return null
-  const text = fs.readFileSync(record, 'utf8')
-  const tier = /^tier=(.*)$/m.exec(text)?.[1]?.trim()
-  const sha = /^sha=(.*)$/m.exec(text)?.[1]?.trim()
-  if (!tier || !sha) return null
-  let head
-  try {
-    head = git(['rev-parse', 'HEAD'], cwd).trim()
-  } catch {
-    return null
-  }
-  return sha === head ? { tier, sha } : null
-}
-
 function runTier(tier, cwd = repoRoot) {
   const args = TIER_COMMANDS[tier]
   if (!args) throw new Error(`未知档位：${tier}`)
@@ -171,7 +129,6 @@ export function main(argv = process.argv.slice(2), cwd = repoRoot) {
   }
   if (dryRun) return 0
 
-  writeTierRecord(tier, cwd)
   return runTier(tier, cwd)
 }
 

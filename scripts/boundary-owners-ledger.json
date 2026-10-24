@@ -890,6 +890,24 @@
       "path": "electron/workspace/workspaceRepository.ts",
       "symbol": "gcEmptyDraftWorkspaceProjects",
       "reason": "读列表不再删东西（C′，用户 2026-10-22 拍板；方向检查 docs/plan/2026-10-21-project-library-direction-check.md 的 N1 节 §8）：启动回收器 gcEmptyDraftWorkspaceProjects 连同 once-guard 同一提交删除，空草稿改为在列表里隐藏（listWorkspaceProjects 的 isProvablyEmptyDraft，只对候选再读一次，不再列举全库），回收挪到「离开只写欠着的」那条线。这条锚守的是「启动回收器吃调用方现成的快照、不再自己列一遍全库」，回收器没了，不变量失去对象；同一份合同里「一次 listProjects 最多列举一次全库」仍由 listProjects 锚点在位，electron/projects/repository.test.ts「一次列举里每个项目的 manifest 只被快照读一次」继续钉住。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-02-push-gate-stamp-identity.root-cause.json",
+      "path": "scripts/stamp-gates-ok.mjs",
+      "symbol": "戳的唯一签发者（写 sha/worktree/at 到 $GIT_DIR/nomi-gates-ok）",
+      "reason": "推送改由 CI 把关（用户 2026-10-24 拍板「改成 CI 把关：推分支前本机只跑快检，完整门岗交给 CI，合并照旧只认 CI 全绿和 main 上的收据」；设计卡 docs/plan/2026-10-24-push-gate-ci.md）：推送前不再要求本机 `pnpm run gates` 的通过凭据，签发脚本连同 package.json 里 gates / gates:full 末尾的调用、push 闸里的三项核验、check:push-bypass 的同 SHA 自动确认同一提交删除。凭据没了，「凭据格式与落点只有一处定义」这条不变量失去对象；「这次推送过没过」只剩 git pre-push 快检这一份事实，scripts/pre-push-check.node-test.mjs「种下一枚旧版本机门岗戳也不改变任何判决」与 scripts/check-push-bypass.node-test.mjs「有戳也不算数」钉住旧戳不再算数。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-02-gates-stamp-contract-drift.root-cause.json",
+      "path": "scripts/stamp-gates-ok.mjs",
+      "symbol": "MARKER_BASENAME / STAMP_KEYED_FIELDS / writeStamp",
+      "reason": "2026-10-24 推送改由 CI 把关（设计卡 docs/plan/2026-10-24-push-gate-ci.md）：写戳方删除，读戳方（push 闸的核验段）同一提交删除，「写戳方与读戳方指同一枚戳」这条不变量两端都没了；check:hook-behavior 的戳契约轴随之删除（P1），它现在验命令识别与绕口留痕，scripts/check-hook-behavior.node-test.mjs 的「推送前要一枚本机凭据」变异必须报红，防的是戳从别的门回来。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-07-git-path-output-read-with-default-quotepath.root-cause.json",
+      "path": "scripts/claude-hooks/pre-push-check.sh",
+      "symbol": "is_docs_only",
+      "reason": "doc-only 判据只用来判「这次推送要不要本机门岗戳」，2026-10-24 推送改由 CI 把关后随戳一起删除（设计卡 docs/plan/2026-10-24-push-gate-ci.md），push 闸不再列任何路径。「shell 侧读 git 路径列表必须关掉引号转义」这一族仍由同一份合同的 scanSource 锚（scripts/check-git-path-quoting.mjs）守住，scripts/check-git-path-quoting.node-test.mjs 的阳性对照改用 fixture 里那行原样写法（带 -z 放行、去掉 -z 报红）。"
     }
   ],
   "unverified": [
@@ -1009,11 +1027,6 @@
       "contract": "docs/fixes/2026-09-02-push-gate-stamp-identity.root-cause.json",
       "path": "scripts/claude-hooks/pre-push-check.sh",
       "symbol": "戳的三项核验（新鲜度 / STAMP_WT == ROOT / STAMP_SHA == HEAD_SHA）"
-    },
-    {
-      "contract": "docs/fixes/2026-09-02-push-gate-stamp-identity.root-cause.json",
-      "path": "scripts/stamp-gates-ok.mjs",
-      "symbol": "戳的唯一签发者（写 sha/worktree/at 到 $GIT_DIR/nomi-gates-ok）"
     },
     {
       "contract": "docs/fixes/2026-09-02-push-gate-stamp-identity.root-cause.json",

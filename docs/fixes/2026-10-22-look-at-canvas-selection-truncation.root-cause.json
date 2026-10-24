@@ -1,0 +1,144 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-22-look-at-canvas-selection-truncation",
+  "change_kind": "corrective",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-21",
+  "problem_type": "A bounded model-facing projection drops entries without accounting for them, and gives no way to read the rest",
+  "symptom": "With 32 or more canvas nodes selected, look_at_canvas listed the first 32 selected ids (31 with longer ids), ended the line with a bare ellipsis, wrote no total, and the verb took no argument, so a model told to 'read the live state' (the #1263 send-time note does) could only read the same first 32 again; 40 selected gave 8 silent misses, 256 selected gave 224.",
+  "direct_cause": "formatCanvasForAgent cut result.selectedNodeIds with boundedJoin at a 900-character budget and marked the cut with an ellipsis that carries no number; the canvas.read contract and the look_at_canvas verb had no argument, so the same call always returned the same prefix.",
+  "class_root": "The projection owner had no accounting invariant: it could show fewer selected nodes than were selected, saying nothing countable, and offered no way to reach the rest. Budget pressure was resolved by deleting the tail of the list, and the generic cut helper (boundedJoin) makes that the path of least resistance for any id list.",
+  "affected_population": [
+    "Any generation-canvas multi-selection of 32 or more nodes read by the resident Agent through look_at_canvas",
+    "Storyboard planning prompts, which embed the same selection line and cannot call a tool",
+    "Follow-up edits (delete_from_canvas, arrange_canvas, draft_shots on 'the selected shots') that need every selected id and silently covered only the first 32"
+  ],
+  "scope_paths": [
+    "electron/shared/agentCapabilities/canvasReadCompact.ts",
+    "electron/agentLane/laneCanvasTools.ts"
+  ],
+  "entry_points": [
+    "look_at_canvas lane tool (laneCanvasTools: canvas.read branch)",
+    "Storyboard planner prompt (runStoryboardPlanner: embeds the compact canvas text)"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The compact canvas text is Nomi's own tool-result contract between the Host and the resident model; no dependency or platform decides it. The sibling send-time projection (#1263, electron/shared/agentContextSnapshot.ts, not yet on main) sets the vocabulary this change reuses: total, listed, omitted.",
+  "invariants": [
+    "The selection block writes the total selected count, and when it lists fewer it writes how many were not listed and which ranges, so total = listed + omitted holds in the text itself.",
+    "A listed window is a contiguous run of the selection in selection order; reading every window from 0, each advanced by the count the previous one listed, returns every selected id exactly once.",
+    "A caller that cannot call a tool (single-shot text) is told how many were not listed and never pointed at a tool it cannot call; a caller that can is told the exact selectedFrom for the next window.",
+    "The host canvas.read result is unchanged and complete: the paging argument is consumed by the text projection only and is never translated into the contract's semantic input."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneCanvasTools.ts",
+      "symbol": "projectCanvasForAgent"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "symbol": "projectCanvasForAgent"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/agent/runStoryboardPlanner.ts",
+      "symbol": "formatCanvasForAgent"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 3,
+    "why_not": "The two caller doors (laneCanvasTools for look_at_canvas, runStoryboardPlanner for the single-shot planning prompt) serve different consumers with different capabilities (one can page, one cannot) and hold no projection logic: both only place the string the owner returns. The third door is the owner itself, projectCanvasForAgent, added so the lane can read the selection facts (total/from/listed/omitted) without parsing the text; formatCanvasForAgent is a thin wrapper over it, so there is still exactly one encoder."
+  },
+  "generality_proof": "Every model-facing rendering of the canvas selection goes through projectCanvasForAgent in canvasReadCompact.ts (the lane tool calls it directly, the storyboard planner through the thin formatCanvasForAgent wrapper, and the renderer's canvasPromptContext only re-exports it). The accounting is written by the same function that applies the 900-character budget, so no caller can obtain a bounded selection line without the counts, and the test ladder (1/31/32/40/256 selected, long titles, paging to exhaustion, out-of-range, single-shot caller) exercises the shared encoder rather than one producer. The external MCP surface returns the canonical complete JSON and never goes through this encoder.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "symbol": "projectCanvasForAgent",
+      "responsibility": "Own the compact model-facing canvas text, including the selection window, its total/listed/omitted accounting, the next-window hint, and the rule that full prompts follow the listed selected nodes."
+    },
+    {
+      "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "symbol": "formatCanvasForAgent",
+      "responsibility": "Keep the single-shot caller (storyboard planning) on the one owner by returning only the projection text, without a paging window."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/agent/runStoryboardPlanner.ts",
+      "entry_point": "formatCanvasForAgent(input.snapshot) in the single-shot planning prompt",
+      "disposition": "enforced",
+      "evidence": "node scripts/door-map.mjs formatCanvasForAgent lists it as the only other door. It gets the same accounting through the owner; because the planner cannot call tools it passes no selectedFrom and is told only how many were not listed (canvasReadSelection.test.ts 'single-shot caller')."
+    },
+    {
+      "path": "electron/capabilityCore/mcpToolCatalog.ts",
+      "entry_point": "nomi_read target=canvas (external MCP hosts)",
+      "disposition": "not-affected",
+      "evidence": "buildCanonicalMcpToolResult returns the canonical canvasReadResultSchema JSON (all of selectedNodeIds) as text and structuredContent (mcpToolResults.test.ts 'canvas.read text + structuredContent'); nothing is cut, so there is nothing to account for. The selectedFrom argument is not published on nomi_read and the contract input stays {}."
+    },
+    {
+      "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "entry_point": "boundedJoin over the node list, edges, resultIds, shotOwnerNodeIds, director names",
+      "disposition": "not-affected",
+      "evidence": "These are not the selection. The node list header already states the node total, and the others cut a per-node id list with an in-line ellipsis; recorded in residual_risks rather than widened into this change."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any producer that grows the selection (select-all on a storyboard, a new node kind that adds first-frame plus video nodes per shot) crosses the 900-character line again, and the old encoder resolved that by deleting the tail whatever the producer was.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs formatCanvasForAgent (before): 2 write doors, laneCanvasTools and runStoryboardPlanner; no other renderer of selectedNodeIds exists (rg selectedNodeIds electron src: canvasRead.ts contract, canvasReadCompact.ts, canvasGraph.ts, store/UI code).",
+      "node scripts/door-map.mjs projectCanvasForAgent (after): the lane tool and the owner; formatCanvasForAgent: the planner.",
+      "External surface checked: nomi_read target=canvas returns the complete canonical result, so MCP hosts were never truncated.",
+      "Sibling projection checked: AgentContextSnapshot (send-time selection) is fixed separately in #1263; it is not on this base, so it is cross-referenced in the PR body instead of listed here."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+    "invariant": "A bounded rendering of the canvas selection writes the total and, when it lists fewer, the unlisted count and ranges; paging from 0 by the listed count returns every selected id exactly once.",
+    "failure_mode": "When the selection does not fit, the longest run that fits is listed and the omission is stated in the text and in the returned facts; a window past the end says so and lists nothing instead of pretending; the block stays inside the 12000-character bound.",
+    "exception_policy": "none",
+    "strategy": "Compute the accounting in the same function that applies the budget, drop the ellipsis-only boundedJoin over selectedNodeIds, expose the same counts as returned facts, and give the one caller that can act on them a paging argument that is declared once on the verb and never reaches the host contract.",
+    "artifacts": [
+      "electron/shared/agentCapabilities/canvasReadCompact.ts",
+      "electron/agentLane/laneCanvasTools.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/shared/agentCapabilities/canvasReadSelection.test.ts",
+    "electron/agentLane/laneDesktopReads.test.ts",
+    "src/workbench/generationCanvas/agent/canvasPromptContext.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/shared/agentCapabilities/canvasReadSelection.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/shared/agentCapabilities/canvasReadCompact.ts"
+    ],
+    "rationale": "The ellipsis-only boundedJoin over selectedNodeIds is deleted in the same change (no second encoder, no fallback to the old line). look_at_canvas was also the last user of noArgumentTolerance and NO_ARGUMENTS_SCHEMA (modelArgumentTolerance.ts, verbDeclaration.ts), so both are deleted with it; they are declaration plumbing, not part of the selection invariant, hence outside scope_paths."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal text contract; no third-party runtime controls it.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data changes: the canvas is re-read and re-projected on every look_at_canvas call. Tool results already in a transcript keep the old line; the next read uses the new one (one cache miss, no semantic change). The model face of look_at_canvas gains one optional argument (scripts/model-face-baseline.json updated); external MCP payload is unchanged.",
+  "residual_risks": [
+    "The real-model number is unverified: the only credential in the environment (DEEPSEEK_API_KEY) still returns 402 Insufficient Balance. docs/evidence/2026-10-22-look-at-canvas-selection-truncation has the probe (self-tested against a scripted model through the real lane) and the zero-cost before/after census.",
+    "A 256-node selection takes 8 pages, and each page re-sends the whole 12000-character canvas read. If real use shows that cost, a paged call could give the id line a larger share of the budget; not done without a measured need.",
+    "Other bounded lists in the same text (node list tail, edges, resultIds, shotOwnerNodeIds, director names) are cut with an in-line ellipsis and no count; the node list header does state the node total. They are not the selection and are outside this change.",
+    "Full prompts and text bodies of listed selected nodes are still bounded by the shared 12000-character writer and marked only by the trailing ellipsis; that is depth of detail, not selection membership.",
+    "Paging is a stateless offset, not an opaque cursor: if the user changes the selection between two pages, the second page indexes the new selection. Every page states the current total, so a model can notice that it changed, but nothing forces it to; a cursor would need lane-side state (see docs/engineering/direction-check/2026-10-22-model-facing-projection-accounting.md section 6).",
+    "The send-time selection note (#1263) tells the model to read look_at_canvas but does not name selectedFrom; the look_at_canvas result itself names it, so the loop closes, but the note could point at it once both land."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/agentCapabilities/canvasReadCompact.ts",
+    "tests": [
+      "electron/shared/agentCapabilities/canvasReadSelection.test.ts"
+    ]
+  }
+}

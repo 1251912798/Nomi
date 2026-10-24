@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { assertElectronInstallIdentity } from '../electron-install-identity.mjs'
+import { killProcessTree, processTreeSpawnOptions } from './processTree.mjs'
 
 const require = createRequire(import.meta.url)
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -115,6 +116,7 @@ function callViaHost(token, method, params, spawnEnv) {
     }
     const child = spawn(electronBinary, [hostScript, '--cmd', JSON.stringify({ token, method, params })], {
       stdio: ['ignore', 'pipe', 'pipe'],
+      ...processTreeSpawnOptions(),
       // spawnEnv：调用方按本次调用注入的环境（如指定模型目录、超时），
       // per-call 注入避免改 process.env 全局态在并发调用间串台。
       env: { ...process.env, ...(process.env.NOMI_APP_NAME || appName ? { NOMI_APP_NAME: process.env.NOMI_APP_NAME || appName } : {}), ...(spawnEnv || {}) },
@@ -128,7 +130,7 @@ function callViaHost(token, method, params, spawnEnv) {
       if (settled) return
       settled = true
       try {
-        child.kill('SIGKILL')
+        killProcessTree(child, 'SIGKILL')
       } catch {
         /* 已退出 */
       }
