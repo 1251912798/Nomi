@@ -191,7 +191,7 @@
     "No real paid sample is run on this branch; the coordinator must execute the one-sample plan after free rehearsal and build-marker checks.",
     "Windows and English UI paths are not exercised on this Mac-only implementation line."
   ],
-  "detected_by": "user",
+  "detected_by": "review",
   "recurrence_check_on": "2026-10-25",
   "invariant_owner_layer": {
     "layer": "electron/catalog/referenceReachability.ts",
