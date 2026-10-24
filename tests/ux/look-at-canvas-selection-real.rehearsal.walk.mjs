@@ -75,7 +75,11 @@ try {
     expect(record.score, '快照专用档只靠消息快照答对').toMatchObject({ lookAtCanvasCalls: 0, selectionTotal: 12, otherTools: [], missing: [], extra: [], success: true })
   }
   for (const record of journey.rounds) {
-    expect(record.calls[0]?.selectionLines?.[0] ?? '', `第 ${record.round} 轮的选区账`).toContain(SELECTION_MARKER)
+    if (record.score.readPath === 'look_at_canvas') {
+      expect(record.calls[0]?.selectionLines?.[0] ?? '', `第 ${record.round} 轮的选区账`).toContain(SELECTION_MARKER)
+    } else {
+      expect(record.score.readPath, `第 ${record.round} 轮从发送时快照读选区`).toBe('read_selection')
+    }
     expect(record.score, `第 ${record.round} 轮按发送时快照分页答对`).toMatchObject({ lookAtCanvasCalls: 0, readSelectionCalls: expect.any(Number), selectionRead: 40, selectionTotal: 40, missing: [], extra: [], success: true })
   }
   expect(journey.numbers).toMatchObject({ rounds: 5, turnSuccess: '5/5', snapshotOnlySuccess: '5/5', roundsReadSelection: 5, roundsReadWholeSelection: '5/5', harnessErrors: 0 })
