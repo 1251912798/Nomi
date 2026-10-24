@@ -1,0 +1,26 @@
+{
+  "op": "hover-ref",
+  "refs": 30,
+  "samples": [
+    {
+      "responseMs": 27.1,
+      "longTasks": 0
+    },
+    {
+      "responseMs": 29.3,
+      "longTasks": 0
+    },
+    {
+      "responseMs": 26.8,
+      "longTasks": 0
+    },
+    {
+      "responseMs": 26.6,
+      "longTasks": 0
+    },
+    {
+      "responseMs": 27.7,
+      "longTasks": 0
+    }
+  ]
+}

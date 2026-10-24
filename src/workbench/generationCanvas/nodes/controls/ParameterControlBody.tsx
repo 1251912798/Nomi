@@ -10,6 +10,7 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Slider } from '@mantine/core'
+import { IconInfoCircle } from '@tabler/icons-react'
 import { cn } from '../../../../utils/cn'
 import { DesignSearchInput, DesignSwitch, NomiSegmented, type NomiSegmentedOption } from '../../../../design'
 import { formatVideoOptionLabel, type ModelParameterControl } from '../../../../config/modelCatalogMeta'
@@ -172,7 +173,7 @@ export function ParameterOptionGroup({
 }: {
   ariaLabel: string
   value: string
-  rawOptions: { value: string; text: string }[]
+  rawOptions: { value: string; text: string; /** 悬停提示；有它这一项后面带一个 ⓘ（生成方式「参考」的上限）。 */ hint?: string }[]
   onChange: (value: string) => void
   requestedPurpose?: ParameterOptionPurpose
 }): JSX.Element {
@@ -209,11 +210,17 @@ export function ParameterOptionGroup({
     // Array.sort 稳定：同键项保持声明相对序。
     entries = [...entries].sort((a, b) => commonRatioSortKey(a.value, a.text) - commonRatioSortKey(b.value, b.text))
   }
-  const options: NomiSegmentedOption[] = entries.map((o) => ({
-    value: o.value,
-    label: anyShape ? shapedGroupLabel(o.text, o.shape) : o.text,
-    title: o.text,
-  }))
+  const hintByValue = new Map(rawOptions.map((option) => [option.value, option.hint]))
+  const options: NomiSegmentedOption[] = entries.map((o) => {
+    const hint = hintByValue.get(o.value)
+    return {
+      value: o.value,
+      label: anyShape
+        ? shapedGroupLabel(o.text, o.shape)
+        : hint ? <span className="inline-flex items-center gap-1">{o.text}<IconInfoCircle size={12} stroke={2} aria-hidden /></span> : o.text,
+      title: hint ?? o.text,
+    }
+  })
   return (
     <NomiSegmented
       ariaLabel={ariaLabel}

@@ -7,6 +7,7 @@ import {
   referenceSlotStorage,
   slotAsArray,
 } from '../../../generationCanvas/nodes/controls/archetypeMeta'
+import { isImageUploadSlot, referenceListPatch } from '../../../generationCanvas/nodes/controls/referenceList'
 import { translateModelDisplayText } from '../../../../i18n/modelDisplayText'
 import { removeMention } from '../../../assets/promptMentions'
 
@@ -200,11 +201,18 @@ export function shotReferenceMetaPatch(
   bindings: ReferenceBindingMap | undefined,
 ): Record<string, unknown> {
   const patch: Record<string, unknown> = {}
+  // 图片（首帧 / 尾帧 / 参考图）进节点那一份有序参考列表（referenceList），按槽的声明顺序排——画布上
+  // placeUploadedImages 按同一顺序落回各槽；视频 / 音频 / 源视频仍写各自的键。
+  const images: string[] = []
   for (const slot of mode?.slots ?? []) {
     const storage = referenceSlotStorage(slot)
     if (!storage) continue
     const urls = bindingsOf(bindings, slot.kind).map((binding) => binding.url)
-    patch[storage.metaKey] = storage.isArray ? urls : urls[0] ?? ''
+    if (isImageUploadSlot(slot.kind)) images.push(...(storage.isArray ? urls : urls.slice(0, 1)))
+    else patch[storage.metaKey] = storage.isArray ? urls : urls[0] ?? ''
   }
-  return patch
+  // 首帧没绑、只绑了尾帧：列表没有空位，记下「首帧特意空着」，第一张落尾帧（同画布）。
+  const firstFrameEmpty = Boolean(mode?.slots.some((slot) => slot.kind === 'first_frame'))
+    && bindingsOf(bindings, 'first_frame').length === 0 && bindingsOf(bindings, 'last_frame').length > 0
+  return mode ? { ...patch, ...referenceListPatch(images, { firstFrameEmpty }) } : patch
 }

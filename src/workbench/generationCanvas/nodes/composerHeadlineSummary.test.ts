@@ -33,12 +33,12 @@ const summary = (args: Partial<Parameters<typeof composerHeadlineSummary>[0]> & 
 })
 
 describe('composerHeadlineSummary', () => {
-  it('视频只报比例 + 时长，清晰度和生成音频退到弹层里', () => {
+  it('视频报比例 + 清晰度 + 时长，生成音频退到弹层里', () => {
     expect(summary({
       isVideoLike: true,
       controls: [resolution, ratio, duration, audio],
       meta: { aspect_ratio: '16:9', duration: 5, resolution: '1080p', generate_audio: true },
-    })).toBe('16:9 · 5s')
+    })).toBe('16:9 · 1080p · 5s')
   })
 
   it('图只报比例 + 清晰度', () => {

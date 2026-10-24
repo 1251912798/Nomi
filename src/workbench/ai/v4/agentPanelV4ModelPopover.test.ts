@@ -2,7 +2,7 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { V4ModelPopover } from './AgentPanelV4Composer'
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+vi.mock('react-i18next', async (importOriginal) => ({ ...(await importOriginal<typeof import('react-i18next')>()), useTranslation: () => ({ t: (key: string) => key }) }))
 describe('model popover content flow', () => {
   it('renders all supplied categories without a redundant heading or fixed width', () => {
     const html = renderToStaticMarkup(React.createElement(V4ModelPopover, { rows: ['chat', 'image', 'video'].map(slot => ({ slot, name: slot, empty: 'unavailable' })) }))
