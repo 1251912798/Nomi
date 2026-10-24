@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, test } from 'node:test'
 import { decideDirectionTrailer, docLooksReal, subjectOf } from './check-direction-trailer.mjs'
 import { conceptUnits, CONCEPT_MAX_FILES, loadUnits, selfWrittenUnits } from './fix-churn-units.mjs'
-import { churnFor, directionMessage, findHotspots, isUnitSource, isFixSubject, isRevertOfFix, namespaceLines, parseDirectionTrailer, parseHunks, PRIOR_FIX_THRESHOLD, ROOT_NS, stagedNamespaces, touchedNamespaces } from './fix-churn.mjs'
+import { churnFor, desktopNamespaceLines, directionMessage, findHotspots, isDictionaryFile, isUnitSource, isFixSubject, isRevertOfFix, namespaceLines, parseDirectionTrailer, parseHunks, PRIOR_FIX_THRESHOLD, ROOT_NS, stagedNamespaces, touchedNamespaces } from './fix-churn.mjs'
 
 const SCRIPTS = path.dirname(fileURLToPath(import.meta.url))
 
@@ -341,5 +341,70 @@ describe('按概念计数：自写登记条目（30 天 / 第 2 个）与 concep
     assert.equal(loadUnits('/nonexistent-root').length, 0)
     const git = () => { throw new Error('boom') }
     assert.equal(findHotspots('/x', ['src/mcp/a.ts'], { git, units: selfWrittenUnits(registry([entry()])) }).length, 0)
+  })
+})
+
+describe('桌面词典按点号键族计数', () => {
+  const FILE = 'electron/desktopStrings.ts'
+  const body = (a, b, helper = 'v0') => [
+    '// header',
+    'export const desktopTranslations = {',
+    '  "zh-CN": {',
+    `    "export.probeUnavailable": "${a}",`,
+    `    "review.probeFailed": "${b}",`,
+    '  },',
+    '  en: {',
+    `    "export.probeUnavailable": "${a}-en",`,
+    `    "review.probeFailed": "${b}-en",`,
+    '  },',
+    `}; // helper ${helper}`,
+  ].join('\n')
+  const dictRepo = (steps) => {
+    const root = makeTempDir('nomi-churn-desktop-')
+    const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    git('init', '-q'); git('config', 'user.email', 't@t'); git('config', 'user.name', 't')
+    fs.mkdirSync(path.join(root, 'electron'), { recursive: true })
+    const state = { a: 'a0', b: 'b0', helper: 'v0' }
+    steps.forEach(([subject, patch], i) => {
+      Object.assign(state, patch)
+      fs.writeFileSync(path.join(root, FILE), body(state.a, state.b, state.helper))
+      git('add', '-A'); git('commit', '-q', '-m', subject || `c${i}`)
+    })
+    return { root, git, cleanup: () => fs.rmSync(root, { recursive: true, force: true }) }
+  }
+
+  test('登记表与点号键第一段提取：中英同名合并，helper 行归根', () => {
+    assert.equal(isDictionaryFile(FILE), true)
+    const map = desktopNamespaceLines(body('a', 'b'))
+    assert.equal(map[1], ROOT_NS)
+    assert.equal(map[4], 'export')
+    assert.equal(map[5], 'review')
+    assert.equal(map[8], 'export')
+    assert.equal(map[9], 'review')
+    assert.equal(map[11], ROOT_NS)
+  })
+
+  test('不同键族不互相计数；同一键族命中且按暂存区判法一致', () => {
+    const r = dictRepo([['feat: add', {}], ['fix: export one', { a: 'a1' }], ['fix: export two', { a: 'a2' }], ['fix: review one', { b: 'b1' }]])
+    try {
+      fs.writeFileSync(path.join(r.root, FILE), body('a3', 'b1')); r.git('add', '-A')
+      const hotExport = findHotspots(r.root, [FILE], { touched: stagedNamespaces(r.root, [FILE]) })
+      assert.equal(hotExport.length, 1)
+      assert.match(hotExport[0].reasons[0], /desktopStrings\.ts#export 近 14 天已有 2 个 fix，这一刀是第 3 个/)
+      r.git('reset', '-q', '--hard')
+      fs.writeFileSync(path.join(r.root, FILE), body('a2', 'b2')); r.git('add', '-A')
+      assert.equal(findHotspots(r.root, [FILE], { touched: stagedNamespaces(r.root, [FILE]) }).length, 0)
+    } finally { r.cleanup() }
+  })
+
+  test('键之外的 helper 改动归根并命中；不投 electron 目录或概念单位', () => {
+    const r = dictRepo([['feat: add', {}], ['fix: helper one', { helper: 'v1' }], ['fix: helper two', { helper: 'v2' }]])
+    try {
+      fs.writeFileSync(path.join(r.root, FILE), body('a0', 'b0', 'v3')); r.git('add', '-A')
+      const hits = findHotspots(r.root, [FILE], { touched: stagedNamespaces(r.root, [FILE]), units: [] })
+      assert.equal(hits.length, 1)
+      assert.match(hits[0].reasons[0], /desktopStrings\.ts#\(根\)/)
+      assert.equal(hits[0].dirCounts.fixes, 0)
+    } finally { r.cleanup() }
   })
 })
