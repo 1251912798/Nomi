@@ -85,12 +85,14 @@ describe('crowd = one group built from the default character (same template as a
     expect(membersOf(store, groupId)).toHaveLength(10)
   })
 
-  it('changing the action on the group changes every member in one undo step', () => {
+  // 整组套姿态给的是别名（旧 Mixamo id standard_walk）：存下来的是正名 Walk_Loop（2026-10-24 走查 ① 第 2 轮：套姿态入口同样只存正名）
+  it('changing the action on the group changes every member in one undo step, stored as the canonical id', () => {
     const store = createDirectorStore({ defaultSceneName: 'S1' })
     const groupId = store.getState().batchCreateCrowd(spec())!
     expect(store.getState().applyPosePresetToGroup(groupId, 'standard_walk')).toBe(6)
-    expect(new Set(membersOf(store, groupId).map((item) => item.posePreset))).toEqual(new Set(['standard_walk']))
+    expect(new Set(membersOf(store, groupId).map((item) => item.posePreset))).toEqual(new Set(['Walk_Loop']))
     expect(store.getState().applyPosePresetToGroup(groupId, 'standard_walk')).toBe(0)
+    expect(store.getState().applyPosePresetToGroup(groupId, 'Walk_Loop')).toBe(0)
     store.getState().undo()
     expect(new Set(membersOf(store, groupId).map((item) => item.posePreset))).toEqual(new Set([DEFAULT_CROWD_ACTION_ID]))
   })
@@ -110,7 +112,7 @@ describe('crowd = one group built from the default character (same template as a
     const groupId = store.getState().batchCreateCrowd(spec())!
     const [first, second] = membersOf(store, groupId)
     store.getState().applyPosePreset(first.id, 'running')
-    expect(store.getState().findObject(first.id)!.posePreset).toBe('running')
+    expect(store.getState().findObject(first.id)!.posePreset).toBe('Jog_Fwd_Loop')
     expect(store.getState().findObject(second.id)!.posePreset).toBe(DEFAULT_CROWD_ACTION_ID)
     store.getState().deleteObject(groupId)
     expect(store.getState().activeScene().objects).toHaveLength(0)

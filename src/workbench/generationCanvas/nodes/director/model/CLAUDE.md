@@ -8,13 +8,14 @@
 > directorTypes.ts: 工程 schema（版本 3 = 默认人偶 UAL）+ 资产库（文件夹 / 条目只存句柄）+ 连线引用类型、字面量联合、isDirectorCamera
 > directorIds.ts: id 工厂（时间戳 + 随机后缀，前缀 d*，与 V1 不撞）
 > directorNodeMeta.ts: 画布节点 meta 键单一真相（DIRECTOR_NODE_KIND、directorProject、stagingAutoCapture、cameraMoveAutoCapture）：节点卡片 / 迁移器 / AI 来导 / 画布壳的 Host 门都从这里取，零依赖
-> characterRigMigration.ts: 角色 → UAL 读时迁移（纯函数、幂等）：内置人偶（builtin:* 且 rig 缺省 / mixamo）整个迁——动作 id 走动作库别名表、boneRotations 键 mixamorig* → UAL 骨名值原样、手指 / 末端丢弃计数；用户上传的角色只换动作 id，骨架 / 模型 / 手调骨骼不碰
+> characterRigMigration.ts: 角色 → UAL 读时迁移（纯函数、幂等）：每个角色的动作 id（静止姿态 / 动作片段）一律换成动作库正名（别名表，认不出的原样留着），已是 UAL 的人偶也换；内置 Mixamo 人偶（builtin:* 且 rig 缺省 / mixamo）另外整个迁——boneRotations 键 mixamorig* → UAL 骨名值原样、手指 / 末端丢弃计数；用户上传的角色骨架 / 模型 / 手调骨骼不碰
 > characterRigMigration.test.ts: 旧工程 fixture（__fixtures__/legacy-xbot-project.v2.json：走路 / 坐姿 + 手调骨骼 + 姿态关键帧 / 跪与坐地 / 上传 Mixamo 角色）：迁移结果、说明计数、幂等、只读、旧版存过再读、导入图层
+> actionIds.test.ts: 动作 id 只存正名的类测试：每扇写门（加人 / 群众 / 套姿态 / 整组套姿态 / 加片段 / 改片段 / 编译器 / 读档四种人偶）× 每个别名；认不出的 id 写口拒、读档原样；存了别名的旧工程（__fixtures__/alias-action-ids-project.v3.json）读进来与再存都是正名；生产代码写动作 id 的文件名单
 > directorProject.ts: 默认工程/图层、normalizeDirectorProject / normalizeScene（unknown → 合法工程 / 图层，逐字段容错，含资产库；normalizeObject 是内置人偶读时迁移的唯一入口）、ualMigrationNoteOf（迁移说明只在内存）、remapSceneIds（图层复制与导入场景共用换 id）、clone、projectStats
 > directorStore.ts: zustand vanilla store 工厂：编辑期真相、互斥选择及子选择归属、完整工程50步撤销、图层操作；withHistory 同步嵌套事务一次入栈且异常回滚，commitProject 是工程唯一写入口；sceneConfig 只有 patchSceneConfig 一扇门且自带撤销步（commitStep：一次调用一步，手势开头 saveState 起锚、同组键的后续帧并进这一步）；组装各 action 集
 > defaultCharacter.ts: 默认角色模板（模型 / 绑定 / 颜色 / 默认群众动作）：「加人」放置与群众（batchCreateCrowd）共用，群众永远和加人是同一个人偶；也是这两扇门写 posePreset 的唯一出口，只写动作库正名（别名解析一次，认不出就抛）
 > storeEntityActions.ts: 对象/机位/灯 CRUD、分组解组群众（默认角色模板建群众组，一次撤销撤整组）、跨图层复制移动、显隐锁定、经编辑层的 write*SpatialTransform
-> storeClipActions.ts: 路径片段与路标、特写片段、动作片段与骨骼关键帧、视线片段、副轨开关、POV 进入判定（拒绝原因为 i18n key）
+> storeClipActions.ts: 路径片段与路标、特写片段、动作片段与骨骼关键帧、视线片段、副轨开关、POV 进入判定（拒绝原因为 i18n key）；加动作片段只存动作库正名（别名解析、认不出不加）
 > timeGrid.ts: 30fps 帧格与「内容终点 = 片段末尾」单一真相：quantizeToFrame / sceneContentEndSeconds / ensureDurationSeconds；laneClips = 单泳道集合（机位路径 ∪ 特写争同一段时间、角色各家族只跟自己争），放置 / 拖移 / 拖边 / 粘贴争位置都用它
 > vec3.ts: 零依赖向量数学；lookAtAngles（yaw 从 +Z 起、pitch 正=俯视）、wrapDeg 0–360 / signedDeg ±180（相对转角必须用后者）、eulerXYZToMatrix / applyTransform（等价 three compose）
 > sceneObjectGraph.ts: 纯仿射矩阵/逆变换与子树边界；分组、解组、跨层、创建落点共用，重新挂载同时变换 rest 与所有路标
@@ -43,6 +44,7 @@
 > storeOutputActions.ts: 产物动作：截图 / 视频增删（只存资产句柄）、录制进度瞬态
 > directorSpace.ts: 空间事实唯一 owner：图元几何表（渲染 PrimitiveEntity 与量尺共读）、three Box3 量出的包围盒（scaledBounds 按对象量：图元 / 角色用渲染真值，模型用加载后实量 measuredBounds，没量过 1 米兜底、boundsSource 标 nominal；measureObjectBounds 由 ModelEntity 调用）、唯一的「底 / 中心 → 原点」换算（originYForBottom / originYForCenter）、角色身高与脚印；编译器 / 测量 / AI 搭场景都从这里量，不各抄一份；视线线段穿盒判断 segmentBlocked（three Ray.intersectBox）
 > directorSpatialAudit.ts: 编译产物的物理六判据（不悬空 / 不互穿 / 只有一个地面高度 / 机位不在物体里 / 看得见主体 / 携带物跟人走），评测打分的 P 层；包围盒只读 directorSpace
+> compiler/directorPlanCompiler.ts: 3D-BOX 计划 → 导演工程的编译器（舞台摆位、走位、动作片段、机位求解与视线、携带分组）；编译出来的人的静止姿态与动作片段只写动作库正名
 > compiler/directorStage.ts: 编译器的舞台模型（计划 → 舞台）：每件东西带舞台种类 / 角色 / 尺寸来源 / 朝向，模板命名站位与可站区域，布景件同名合并（辅助分组保住 setPiece id）；摆位、走位、机位只读舞台，不从名字和 scale 反推
 > compiler/stageRelations.ts: 关系词 → 站位与朝向（按舞台角色解释，一条距离公式管人 / 车 / 家具）、走位终点（走到站位，站位有人就停在他跟前面对他）、落脚点不进实心物体的唯一规则 clearOfSolids、携带分组 carryGroups（拿在手里 = 人和东西挂在同一分组下，编辑器父子关系，父级只能是分组）
 > compiler/stageSightline.ts: 机位视线：镜头窗口内机位到主体中心 / 瞄准点被谁挡（墙、布景、别的人一条规则），被挡就对整条路径找看得见、不越轴的候选（绕主体转 / 抬高 / 拉近，静止仍静止、跟拍仍跟拍、接续镜头不挪起点），换遍仍挡由编译器报 occluded
@@ -52,7 +54,7 @@
 > storeAssetActions.ts: 资产句柄/目录增删改移共用历史；目录移动防环，删目录子项回上级、上传目标失效归根；场景导入先辨 AI groups 或工程 objects/cameras/lights，拒绝无关 JSON，物化/换 id 后新增图层
 > splatReveal.ts: 泼溅显现纯参数：效果 id / 默认随机池 Magic|Spread / ×2 倍速 / 尾停 1s / 按半径与最低点推着色器时长 / 三次缓出
 > mobileCamera.ts: 手机虚拟相机纯数学：32 字节 Float32 包编解码、摇杆/升降按 2m/s·1.5m/s 积分、陀螺仪增量累加、焦距换算；electron 桥与渲染层共用
-> storeCharacterActions.ts: 角色骨骼级动作：单骨写入 / 合并 / 拖动逐帧写、全部复位（清微调 + 骨盆归零，保留预设）、复位此肢体（按把手清对应骨）、左右镜像（{x,−y,−z}，源侧空则清目标侧）、播放头对齐骨骼关键帧、姿态预设（切换清全部微调）、快捷体形、骨盆偏移、片段改名 / 换动作
+> storeCharacterActions.ts: 角色骨骼级动作：单骨写入 / 合并 / 拖动逐帧写、全部复位（清微调 + 骨盆归零，保留预设）、复位此肢体（按把手清对应骨）、左右镜像（{x,−y,−z}，源侧空则清目标侧）、播放头对齐骨骼关键帧、姿态预设（切换清全部微调）、快捷体形、骨盆偏移、片段改名 / 换动作；套姿态（单人 / 整组）与换动作只存动作库正名（别名解析、认不出就拒）
 > posePresets.ts: V1 手写静态姿态化石（切换门入籍，只给迁移 / AI 来导词表用）：PoseVec3、MANNEQUIN_POSE_PRESETS（预设 id → 逐骨欧拉偏移）、findPosePreset / presetPoseRotations；V1 的「自然站姿基线」已删（复位 = 纯 bind）；数值是 Mixamo 骨名 + 规范轴，UAL 经读档迁移换名、canonicalBoneFrame 换轴
 > actionLibrary.ts: 动作库单一真相（= 动作清单 + 别名表）：T-Pose + UAL 43 个原生动作（从 assetCatalog/ualActions 推出，去掉 _RM），同一份清单既是动作片段可选项也是角色静止姿态预设（posePreset），规划器提示词（PLANNER_ACTION_IDS：15 个常用动作词经别名表解析）/ 评测尺子也从它推；kind = 循环 / 单次 / 单姿势；ACTION_ALIASES 一份三用（AI 词、旧 Mixamo id 读档迁移、中文），LEGACY_APPROXIMATE_ACTIONS 标出只能落到近似动作的旧 id；LEGACY_POSE_TO_ACTION 给 V1 手写预设找对应动画
 > poseBlend.ts: 动作混合纯数学：片段头 0.25s 淡入（上一片段间隙 <0.2s 从其末帧交叉，否则从静止）/ 片段尾不淡出 / 片段外：相邻间隙 ≤0.5s 交叉、否则尾后 0.25s 淡回静止；姿态片段不参与交叉；custom_pose 关键帧对与插值系数

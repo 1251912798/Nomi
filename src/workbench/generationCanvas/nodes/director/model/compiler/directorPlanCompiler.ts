@@ -26,6 +26,16 @@ import { chooseClearView, sightBlockers, type SightContext } from './stageSightl
 import { carryGroups, clearOfSolids, destinationFor, resolvePlacement, yawToward, yawVector, type Placed } from './stageRelations'
 
 const FPS = 30
+/**
+ * 编译出来的人的静止姿态 = 动作库「站立待机」的正名。posePreset 只存正名（姿态采样只按正名查，别名会退回绑定姿态 = T 字；
+ * 2026-10-24 走查 ①），这里在写入时解析别名 standing；库换了跟着换，缺了模块加载就炸。
+ * 不走加人的写口 defaultCharacterInput：它还会写性别色、模型路径、绑定，改掉编译出来的角色外观和手改覆盖层的逐属性指纹，这一刀只该改动作 id。
+ */
+const STANDING_POSE_ID = (() => {
+  const entry = resolveActionAlias('standing')
+  if (!entry) throw new Error('the action library has no standing idle for compiled people')
+  return entry.id
+})()
 const v = (x = 0, y = 0, z = 0): Vec3 => ({ x, y, z })
 const add = (a: Vec3, b: Vec3): Vec3 => v(a.x + b.x, a.y + b.y, a.z + b.z)
 const sub = (a: Vec3, b: Vec3): Vec3 => v(a.x - b.x, a.y - b.y, a.z - b.z)
@@ -117,7 +127,7 @@ function actorObject(actor: DirectorPlanActor, plan: DirectorPlan, position: Vec
     scale: body.scale,
     visible: true,
     locked: false,
-    posePreset: actor.kind === 'person' ? 'standing' : undefined,
+    posePreset: actor.kind === 'person' ? STANDING_POSE_ID : undefined,
   }
 }
 

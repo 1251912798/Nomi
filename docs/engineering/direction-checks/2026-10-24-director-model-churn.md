@@ -115,3 +115,64 @@
 - **①**：
   - `crowd.test.ts` 原有的分组 / 网格 / 撤销测试不改。
   - `changing the action on the group…` 钉着套姿态入口现在原样存别名，这是停下交协调的那一半。
+
+## 第 2 轮（2026-10-24，协调拍板：① 剩下三处 + 同类残留）
+
+**命中情况**：
+- `model/` 目录口径命中：近 14 天 7 个 fix，只涉及 4 个文件。本次要改的 `characterRigMigration.ts`、`storeCharacterActions.ts`、`storeClipActions.ts` 文件本身都是 0。
+- `model/compiler/` 是另一个目录，没命中。
+- `panels/` 目录口径命中：2 个 fix，只在 1 个文件。本次在 panels/ 只删 `CanvasImagesContext.ts`（死代码），提交按 refactor 走。
+- 改法都是换或删：同一提交替掉旧写法，不新增认别名的分支、不加特例。按 P1 例外由协调代批。
+
+### ① 动作 id 只存正名：剩下的门
+
+第 1 轮只收住了加人 / 群众共用的写入口 `defaultCharacterInput`。下面这些门还会把别名写进工程，用 door-map 和静态清单 `ACTION_ID_SITES` 数全：
+
+| 门 | 以前 | 现在 |
+|---|---|---|
+| 编译器 `actorObject` | 写死 `posePreset: 'standing'`，是别名 | 模块加载时解析一次 `STANDING_POSE_ID`；库里没有站立待机就当场抛 |
+| `applyPosePreset` / `applyPosePresetToGroup` | `findActionEntry` 校验后，原样写调用方给的 id | 入口用 `resolveActionAlias` 换成正名；认不出返回 false / 0，不写（和写入口同一口径） |
+| `addActionClip` / `updateActionClip` 的 `actionPose`（同一类） | 原样写 | 同上；认不出时 add 返回 null，update 不动、也不进撤销栈 |
+| 读档 `migrateCharacterToUal` | 已经是 UAL 的内置人偶和上传角色提前 return，别名不换 | 每个角色的 `posePreset` 和片段 `actionPose` 一律 `resolveActionAlias` |
+
+**认不出的 id 怎么办**：
+- 写入口一律拒。
+- 读档原样留：它可能是新版本存的动作，删掉就丢数据；采样层查不到照旧退回绑定姿态。
+
+**编译器为什么不走 `defaultCharacterInput`**：
+- 那个入口还会写性别配色、modelPath、rig、isSystemModel、modelScale，编译出来的人会换样子。
+- 手改覆盖层按逐属性指纹对账，多出这些字段，已有的覆盖会全部失配。
+- 编译器也没有性别这个输入。
+- 所以只换动作 id，这是最小的「换」。
+
+**指纹不受影响**：
+- planOverrides 算指纹前，两边都先过 normalize。
+- 编译出来的人没写 rig，旧的读档迁移本来就走内置 Mixamo 那条路，会把 `standing` 换成正名。所以旧工程里存的指纹，本来就是正名的指纹。
+- 编译器出口改成正名后，两边归一的结果一样，不会凭空多出一条「手改了姿态」。
+- `actionIds.test.ts` 有一条钉住：用旧写法编出来的结果算指纹，和现在的完全相同。
+
+**为什么不做品牌类型（`CanonicalActionId`）**：要改约 37 处测试调用点和 UI 调用方，超出 16 个产品文件的停点。换成四层：
+- 入口解析；
+- 读边界兜底；
+- 类测试：全部别名 × 12 扇门；
+- 静态清单：生产代码里写 `posePreset` / `actionPose` 的文件就这 10 个，新增一处就红。
+
+### 删 CanvasImagesContext
+
+- 它唯一的消费方「AI 搭场景」已随 `8876f0c5d` 删除。
+- 之后 DirectorNode 仍订阅全画布节点表算图片列表，每次画布写入都跑一遍收集器；DirectorEditor 仍注入这个 Context，但没有人读。
+- 同一提交删掉收集器、它的单测、Context 和两处接线。
+- 边界主人台账（`scripts/boundary-owners-ledger.json`）记退役。
+
+### 系统哪里没拦住
+
+- **别名**：各写入口自己校验（`findActionEntry` 认别名），没有一道门守「存进去的必须是正名」。现在由类测试和静态清单守。
+- **死代码**：仓库没有「导出没人用」的门岗（没有 knip 一类工具）。要不要接一个现成的，交协调定。
+
+### 特征测试（第 2 轮）
+
+- `characterRigMigration.test.ts`：原有测试不改，全绿。
+- `crowd.test.ts` 有两条原来钉的是「原样存别名」，也就是这次要修的 bug，期望改成正名：
+  - 群组换动作 `standard_walk` → `Walk_Loop`，并加一条「已经是正名再套一次返回 0」；
+  - 单人 `running` → `Jog_Fwd_Loop`。
+- 其余分组、网格、撤销测试不改。
