@@ -2,42 +2,50 @@ import { NomiMarkdown } from '../common/NomiMarkdown'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Portal } from '@mantine/core'
-import {
-  IconCopy,
-  IconExternalLink,
-  IconLayoutBoard,
-  IconCheck,
-  IconX,
-  IconVideo,
-  IconPhoto,
-} from '@tabler/icons-react'
+import { IconCheck, IconCopy, IconExternalLink, IconPencil, IconPhoto, IconTrash, IconVideo, IconX } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import type { LibraryPrompt } from '../api/promptLibraryApi'
-import { promptDisplayTitle, promptSourceLabel } from './promptDisplay'
-import { useRemoteExampleMedia } from '../../media/remoteExampleMedia'
+import { libraryGroup } from '../library/libraryGroups'
+import { LibraryDetailFooter, LibraryDetailIconButton, LibraryDetailMeta, LibraryDetailPrimary } from '../library/LibraryDetailParts'
+import { SkillMedia } from '../skillLibrary/SkillMedia'
+import { isBuiltinPromptSourceId } from '../../../electron/shared/contracts/promptLibrary'
+import { promptDisplayTitle } from './promptDisplay'
 
 type Props = {
   prompt: LibraryPrompt
   originRect: DOMRect
   onClose: () => void
-  onSendToCanvas: (prompt: LibraryPrompt) => void
+  onAddToCanvas: (prompt: LibraryPrompt) => void
+  /** 「放上画布」现在为什么点不了（项目库页上没开项目）；有它主按钮就禁用并说原因（C1）。 */
+  addToCanvasBlockedReason?: string
+  /** 只「我的」条目给。 */
+  onEdit?: (prompt: LibraryPrompt) => void
+  onDelete?: (prompt: LibraryPrompt) => void
 }
 
 const EASE = 'cubic-bezier(.2, .7, .3, 1)'
 const ANIM_MS = 260
 
-// 预览浮层:从被点卡片的位置 FLIP 放大浮到屏幕中央(transform-origin 0 0,先映射回原位再过渡到正位)。
-export function PromptPreviewOverlay({ prompt, originRect, onClose, onSendToCanvas }: Props): JSX.Element {
-  const { t } = useTranslation()
+/**
+ * 提示词详情（PromptDetail 板）：从被点卡片的位置 FLIP 放大浮到屏幕中央（transform-origin 0 0，先映射回原位再过渡到正位）。
+ * × 在标题行，不压在媒体上；标题下一行「分类 · 内置 / 公开库 / 我的 · 类型」；媒体 16:9 完整显示（不裁）；
+ * 底栏左边是「来源 ↗」（我的条目是删除），右边（我的）编辑、复制图标、唯一主按钮「放上画布」。
+ */
+export function PromptPreviewOverlay({ prompt, originRect, onClose, onAddToCanvas, addToCanvasBlockedReason, onEdit, onDelete }: Props): JSX.Element {
+  const { t, i18n } = useTranslation()
   const boxRef = React.useRef<HTMLDivElement>(null)
   const [closing, setClosing] = React.useState(false)
-  // 预览大图原来没有 onError：来源站点删了 / 防盗链时只剩一个黑框。失效与卡片同一份会话记账。
-  const media = useRemoteExampleMedia(prompt.mediaUrl)
   const [sent, setSent] = React.useState(false)
   const [copied, setCopied] = React.useState(false)
-  const isVideo = prompt.mediaType === 'video'
-  const hasMedia = Boolean(prompt.mediaUrl)
+  const isVideo = prompt.promptType === 'video'
+  const mine = prompt.origin === 'user'
   const displayTitle = promptDisplayTitle(prompt)
+  const group = libraryGroup(prompt, i18n.language)
+  const typeLabel = isVideo ? t('libraries.prompt.card.video') : t('libraries.prompt.card.image')
+  const segmentLabel = mine
+    ? t('libraries.layout.mine')
+    : isBuiltinPromptSourceId(prompt.sourceId) ? t('libraries.layout.segment.builtin') : t('libraries.layout.segment.public')
+  const TypeIcon = prompt.mediaType === 'video' ? IconVideo : IconPhoto
 
   const mapToOrigin = React.useCallback(
     (box: HTMLDivElement) => {
@@ -50,7 +58,7 @@ export function PromptPreviewOverlay({ prompt, originRect, onClose, onSendToCanv
     [originRect],
   )
 
-  // 进场:挂载即贴回原卡位置 → 下一帧过渡到正位。
+  // 进场：挂载即贴回原卡位置 → 下一帧过渡到正位。
   React.useLayoutEffect(() => {
     const box = boxRef.current
     if (!box) return
@@ -86,8 +94,8 @@ export function PromptPreviewOverlay({ prompt, originRect, onClose, onSendToCanv
     return () => window.removeEventListener('keydown', handler)
   }, [close])
 
-  const handleSend = () => {
-    onSendToCanvas(prompt)
+  const handleAdd = () => {
+    onAddToCanvas(prompt)
     setSent(true)
     window.setTimeout(close, 950)
   }
@@ -109,112 +117,77 @@ export function PromptPreviewOverlay({ prompt, originRect, onClose, onSendToCanv
       >
         <div
           ref={boxRef}
-          className={cn(
-            'w-[560px] max-w-full max-h-[88vh] flex flex-col overflow-hidden',
-            'bg-nomi-paper border border-nomi-line rounded-nomi-lg shadow-nomi-lg',
-          )}
+          data-prompt-preview={prompt.id}
+          className={cn('flex max-h-[88vh] w-[640px] max-w-full flex-col overflow-hidden rounded-modal bg-nomi-paper shadow-nomi-lg ring-1 ring-nomi-line-soft')}
         >
-          {/* 媒体 16:9 */}
-          <div className={cn('relative w-full bg-nomi-ink-05')} style={{ aspectRatio: '16 / 9' }}>
-            {hasMedia && !media.broken ? (
-              isVideo ? (
-                <video
-                  src={prompt.mediaUrl}
-                  controls
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  onError={media.onError}
-                  className={cn('absolute inset-0 w-full h-full object-cover')}
-                />
-              ) : (
-                <img
-                  src={prompt.mediaUrl}
-                  alt={displayTitle}
-                  onError={media.onError}
-                  className={cn('absolute inset-0 w-full h-full object-cover')}
-                />
-              )
-            ) : (
-              <div className={cn('absolute inset-0 grid place-content-center justify-items-center gap-1 text-nomi-ink-30')}>
-                {isVideo ? <IconVideo size={40} stroke={1.3} /> : <IconPhoto size={40} stroke={1.3} />}
-                <span className={cn('px-8 text-center text-caption text-nomi-ink-40')} {...(media.broken ? { 'data-example-media-expired': true } : {})}>
-                  {t(media.broken ? 'libraries.prompt.preview.expired' : 'libraries.prompt.preview.noCover')}
-                </span>
-              </div>
-            )}
-            <span
-              className={cn(
-                'absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-micro',
-                'bg-nomi-overlay-chip-strong border border-nomi-media-ink/20 text-nomi-media-ink shadow-nomi-sm backdrop-blur-sm',
-              )}
-            >
-              {isVideo ? t('libraries.prompt.category.video') : t('libraries.prompt.category.image')} · {promptSourceLabel(prompt)}
-            </span>
+          <header className="flex shrink-0 items-start gap-3 pb-3 pl-5 pr-4 pt-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <h2 className="m-0 text-title font-semibold leading-[22px] text-nomi-ink" data-prompt-detail-title>{displayTitle}</h2>
+              <LibraryDetailMeta data-prompt-detail-meta>
+                {isVideo ? <IconVideo size={13} stroke={1.8} aria-hidden="true" className="-mr-0.5" /> : null}
+                {[group?.label, segmentLabel, mine ? prompt.tags?.[0] : undefined, typeLabel].filter(Boolean).join(' · ')}
+              </LibraryDetailMeta>
+            </div>
             <button
               type="button"
-              aria-label={t('libraries.prompt.preview.close')}
+              aria-label={t('libraries.layout.close')}
               onClick={close}
-              className={cn(
-                'absolute top-2 right-2 w-7 h-7 grid place-items-center rounded-full cursor-pointer',
-                'border border-nomi-media-ink/20 bg-nomi-overlay-chip-strong text-nomi-media-ink shadow-nomi-sm hover:bg-nomi-overlay-chip',
-                'focus-visible:outline-2 focus-visible:outline-nomi-paper focus-visible:outline-offset-2',
-              )}
+              data-prompt-detail-close
+              className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-nomi-sm border-0 bg-transparent text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink"
             >
               <IconX size={16} stroke={2} />
             </button>
+          </header>
+          <div className="relative mx-5 aspect-video shrink-0 overflow-hidden rounded-panel bg-nomi-ink-05" data-prompt-detail-media>
+            {prompt.mediaUrl ? (
+              <SkillMedia
+                cover={prompt.mediaType === 'image' ? prompt.mediaUrl : undefined}
+                preview={{ url: prompt.mediaUrl, type: prompt.mediaType }}
+                play={prompt.mediaType === 'video'}
+                illustration={prompt.curation?.preview?.provenance === 'illustration'}
+                fallback={<TypeIcon size={40} stroke={1.3} />}
+                expiredLabel={t('libraries.prompt.preview.expired')}
+                className="absolute inset-0 size-full object-contain"
+              />
+            ) : (
+              <span className="absolute inset-0 grid place-content-center justify-items-center gap-1 text-nomi-ink-30">
+                <TypeIcon size={40} stroke={1.3} />
+                <span className="px-8 text-center text-caption text-nomi-ink-40">{t('libraries.prompt.preview.noCover')}</span>
+              </span>
+            )}
           </div>
-
-          {/* 内容 */}
-          <div className={cn('flex-1 min-h-0 overflow-y-auto px-4 pt-3.5 pb-4')}>
-            <div className={cn('text-title font-semibold text-nomi-ink mb-2')}>{displayTitle}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-3.5 text-body leading-[22px] text-nomi-ink-80" data-prompt-detail-text>
             <NomiMarkdown>{prompt.prompt}</NomiMarkdown>
           </div>
-
-          {/* 操作 */}
-          <div className={cn('flex items-center gap-2 px-4 py-3 border-t border-nomi-line')}>
-            <button
-              type="button"
-              onClick={handleSend}
-              className={cn(
-                'inline-flex items-center gap-1.5 h-9 px-4 rounded-full cursor-pointer border-0',
-                'bg-nomi-ink text-nomi-paper text-body-sm font-semibold hover:bg-nomi-accent',
-                'transition-[background] duration-nomi-fast ease-nomi-fast',
-              )}
-            >
-              {sent ? <IconCheck size={16} stroke={2} /> : <IconLayoutBoard size={16} stroke={1.8} />}
-              {sent ? t('libraries.prompt.preview.sent') : t('libraries.prompt.preview.send')}
-            </button>
-            <button
-              type="button"
-              onClick={handleCopy}
-              aria-label={t('libraries.prompt.preview.copyAria')}
-              className={cn(
-                'inline-flex items-center gap-1.5 h-9 px-3 rounded-full cursor-pointer',
-                'border border-nomi-line bg-transparent text-nomi-ink-80 text-body-sm hover:bg-nomi-ink-05',
-              )}
-            >
-              {copied ? <IconCheck size={15} stroke={2} /> : <IconCopy size={15} stroke={1.8} />}
-              {copied ? t('libraries.prompt.preview.copied') : t('libraries.prompt.preview.copy')}
-            </button>
-            <span className={cn('flex-1')} />
-            {prompt.sourceUrl ? (
+          <LibraryDetailFooter
+            className="px-5 py-3"
+            leading={mine ? (
+              onDelete ? <LibraryDetailIconButton danger icon={<IconTrash size={16} stroke={1.8} />} label={t('libraries.prompt.card.delete')} onClick={() => onDelete(prompt)} data-prompt-detail-delete /> : null
+            ) : prompt.sourceUrl ? (
               <a
                 href={prompt.sourceUrl}
                 target="_blank"
                 rel="noreferrer"
-                className={cn('inline-flex items-center gap-1 text-caption text-nomi-ink-40 hover:text-nomi-ink')}
+                data-prompt-detail-source
+                className="inline-flex items-center gap-1 text-caption text-nomi-ink-60 no-underline hover:text-nomi-ink"
               >
-                <IconExternalLink size={13} stroke={1.7} />
-                {t('libraries.prompt.preview.source')}
+                <IconExternalLink size={13} stroke={1.8} aria-hidden="true" />
+                {t('libraries.gallery.source')}
               </a>
-            ) : (
-              <span className={cn('inline-flex items-center gap-1 text-caption text-nomi-ink-40')}>
-                {t('libraries.prompt.preview.localOnly')}
-              </span>
-            )}
-          </div>
+            ) : null}
+          >
+            {mine && onEdit ? <LibraryDetailIconButton icon={<IconPencil size={16} stroke={1.8} />} label={t('libraries.prompt.card.edit')} onClick={() => onEdit(prompt)} data-prompt-detail-edit /> : null}
+            <LibraryDetailIconButton
+              icon={copied ? <IconCheck size={16} stroke={2} /> : <IconCopy size={16} stroke={1.8} />}
+              label={copied ? t('libraries.prompt.preview.copied') : t('libraries.prompt.preview.copyAria')}
+              onClick={handleCopy}
+              data-prompt-detail-copy
+            />
+            <LibraryDetailPrimary disabledReason={addToCanvasBlockedReason} onClick={handleAdd} data-prompt-detail-add>
+              {sent ? <IconCheck size={15} stroke={2} aria-hidden="true" /> : null}
+              {sent ? t('libraries.prompt.preview.sent') : t('libraries.prompt.preview.send')}
+            </LibraryDetailPrimary>
+          </LibraryDetailFooter>
         </div>
         <style>{`@keyframes nomi-fade { from { opacity: 0 } to { opacity: 1 } }`}</style>
       </div>

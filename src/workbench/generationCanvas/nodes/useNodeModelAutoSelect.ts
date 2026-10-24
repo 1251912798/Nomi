@@ -15,6 +15,7 @@ import {
   applyArchetypeModeSwitch,
   ensureArchetypeNodeMeta,
   normalizeArchetypeVariantMeta,
+  referenceDemandsBeforeFirstMode,
   resolveArchetypeForModel,
 } from './controls/archetypeMeta'
 import { resolveModeForConnectedReferences } from '../agent/referenceEdgeCapability'
@@ -55,6 +56,8 @@ import {
  * 档案命名空间 meta 的初始化（落到默认模式；已连着参考就顺手促到收得下的模式）。幂等：已是该档案 → null。
  * 「选默认模型」和「选到一个有档案的模型」两处共用：默认模型那一笔写里就把档案一起初始化好，
  * 不再先写模型、重渲、再写档案（2026-10-16 可疑点 i：新卡第一次挂载的级联写）。
+ * 出生就带着参考的卡（提示词库「放上画布」带参考图）第一次定模式时，那些参考和活边一起算——
+ * 否则新卡落在文生图，参考图摆在 meta 里谁也看不见（2026-10-24 库排版走查）。
  */
 function initializedArchetypeMeta(
   node: GenerationCanvasNode,
@@ -64,7 +67,7 @@ function initializedArchetypeMeta(
   const patch = ensureArchetypeNodeMeta(meta, archetype)
   if (!patch) return null
   const state = useGenerationCanvasStore.getState()
-  const promotedModeId = resolveModeForConnectedReferences({ ...node, meta: patch }, state.nodes, state.edges)
+  const promotedModeId = resolveModeForConnectedReferences({ ...node, meta: patch }, state.nodes, state.edges, referenceDemandsBeforeFirstMode(meta))
   return promotedModeId ? applyArchetypeModeSwitch(patch, archetype, promotedModeId) : patch
 }
 

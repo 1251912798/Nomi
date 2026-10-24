@@ -14,10 +14,14 @@
 
 无需 Docker，无需数据库，无需命令行。项目文件全部保存在本地 `文档/Nomi Projects` 目录。
 
-### macOS 首次打开提示「已损坏」？
+### macOS 第一次打开被拦？
+
+安装包没有 Apple 签名和公证，第一次打开会提示「未打开“Nomi”」：点「完成」，再打开「系统设置」→「隐私与安全性」，往下找到「安全性」，在 Nomi 那条提示旁点「仍要打开」并确认。macOS 15 起，右键 →「打开」已经过不了这道提示。
+
+只有提示「已损坏」时，先确认安装包来自 Nomi 官方链接，再运行：
 
 ```bash
-xattr -cr /Applications/Nomi.app
+xattr -dr com.apple.quarantine "/Applications/Nomi.app"
 ```
 
 然后再双击打开即可。

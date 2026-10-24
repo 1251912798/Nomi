@@ -4,6 +4,7 @@ import type { ModelOption } from '../../../config/models'
 import { tagNomiError } from '../../../../electron/shared/nomiErrorCodes'
 import { useNodeModelAutoSelect } from './useNodeModelAutoSelect'
 import { nodeRecoveryToastId } from './nodeRecoveryNotice'
+import { resolveArchetypeForOption } from './nodeModelArchetype'
 
 const mocks = vi.hoisted(() => ({ effects: [] as Array<() => unknown>, push: vi.fn(), nodes: [] as GenerationCanvasNode[] }))
 vi.mock('react', () => ({ default: {
@@ -220,4 +221,25 @@ it('没有候选戳（用户自己建的卡）→ 自动挑默认的老行为不
   // 偏好还没装好（mock 的 useSyncExternalStore 恒 false）→ 这一步本来就该什么都不做，
   // 关键是**没有**弹「候选模型不可用」的提示（那条只属于 agent 草稿的卡）。
   expect(mocks.push).not.toHaveBeenCalled()
+})
+
+it('a card born with reference images starts in the mode that takes them; a card whose mode was already chosen keeps it', () => {
+  const archetype = resolveArchetypeForOption(current)
+  const firstModes = (meta: Record<string, unknown>) => {
+    const node = { id: 'card', kind: 'image', title: 'Image', position: { x: 0, y: 0 }, meta } as GenerationCanvasNode
+    mocks.nodes = [node]
+    mocks.effects = []
+    const updateNode = vi.fn()
+    driveHook({ node, modelOptions: [current], selectedModelValue: 'gpt-image-2', selectedModelOption: current,
+      archetype, isGenerationNode: true, isImageLike: true, isVideoLike: false, updateNode })
+    for (const effect of mocks.effects) effect()
+    return updateNode.mock.calls.map(([, patch]) => (patch.meta?.archetype as { modeId?: string } | undefined)?.modeId)
+  }
+  const identity = { modelKey: 'gpt-image-2', modelAlias: 'gpt-image-2', modelVendor: 'apimart', vendor: 'apimart' }
+  // 提示词库「放上画布」：卡出生就带着参考图 → 第一次定模式落在收图的「改图」，不是看不见参考的文生图
+  expect(firstModes({ ...identity, referenceImageUrls: ['data:image/png;base64,AA'] })).toContain('i2i')
+  // 没带参考的新卡照旧落默认模式
+  expect(firstModes({ ...identity })).not.toContain('i2i')
+  // 用户切到文生图后留下的参考残值不算意图：不把他切回去
+  expect(firstModes({ ...identity, archetype: { id: 'gpt-image-2', modeId: 't2i' }, referenceImageUrls: ['data:image/png;base64,AA'] })).not.toContain('i2i')
 })

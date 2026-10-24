@@ -28,7 +28,7 @@ import {
 } from '../../../../../electron/shared/modelArchetypes'
 import type { ImageUrlSlot } from '../../model/parameterReferenceSlots'
 import { translateModelDisplayText } from '../../../../i18n/modelDisplayText'
-import { isImageUploadSlot, listPlacementInputs, normalizeReferenceListMeta, placeUploadedImages, type UploadPlacement } from './referenceList'
+import { isImageUploadSlot, listPlacementInputs, normalizeReferenceListMeta, placeUploadedImages, withReferenceList, type UploadPlacement } from './referenceList'
 import { readArchetypeArray } from './archetypeArrayValues'
 export { appendArchetypeArrayValue, archetypeArrayWrite, readArchetypeArray, readArchetypeArrayForWrite, type ArchetypeArrayAppend } from './archetypeArrayValues'
 import {
@@ -37,6 +37,7 @@ import {
   wireReferencedParamKeys,
   type SlotReach,
 } from '../../../../../electron/catalog/referenceReachability'
+export { archetypeModeParams, archetypeModeSourceVideoSlot, localizeModelParameterControl } from './archetypeModePresentation'
 
 export { resolveArchetypeForModel }
 export type { ModelArchetype, ArchetypeMode, ModelArchetypeVariant }
@@ -322,31 +323,28 @@ export function hasAnyArchetypeReference(
   })
 }
 
-/** 当前模式的「源视频」单槽（HappyHorse video-edit）。返回 meta 存储键 + 标签；无则 null。 */
-export function archetypeModeSourceVideoSlot(mode: ArchetypeMode): { metaKey: string; label: string } | null {
-  const slot = mode.slots.find((s) => s.kind === 'source_video')
-  return slot ? { metaKey: 'sourceVideoUrl', label: translateModelDisplayText(slot.label) } : null
+const ARRAY_SLOT_ROUTES = Object.entries(ARRAY_SLOT_ROUTE) as Array<[ArchetypeReferenceSlotKind, ArraySlotRoute]>
+
+/** 还没挑模型的节点：把参考素材先放进对应的持久化列表，等自动选模时再按档案槽落位。 */
+export function withUnplacedArrayReferences(
+  meta: Record<string, unknown>,
+  accept: ArraySlotRoute['accept'],
+  urls: readonly string[],
+): Record<string, unknown> {
+  const route = ARRAY_SLOT_ROUTES.find(([, candidate]) => candidate.accept === accept)?.[1]
+  if (!route) return meta
+  const next = [...new Set([...readArchetypeArray(meta, route.metaKey), ...urls.map((url) => url.trim()).filter(Boolean)])]
+  return accept === 'image' ? withReferenceList(meta, next) : { ...meta, [route.metaKey]: next }
 }
 
-/** 当前模式的标量参数（复用现有 ModelParameterControl 渲染路径）。 */
-export function archetypeModeParams(mode: ArchetypeMode): ModelParameterControl[] {
-  return mode.params.map(localizeModelParameterControl)
-}
-
-export function localizeModelParameterControl(control: ModelParameterControl): ModelParameterControl {
-  return {
-    ...control,
-    label: translateModelDisplayText(control.label),
-    ...(control.placeholder ? { placeholder: translateModelDisplayText(control.placeholder) } : {}),
-    ...(control.options
-      ? {
-          options: control.options.map((option) => ({
-            ...option,
-            label: translateModelDisplayText(option.label),
-          })),
-        }
-      : {}),
-  }
+/** 第一次定生成方式时，把卡上已经暂存的数组参考转成模型选择所需的参考需求。 */
+export function referenceDemandsBeforeFirstMode(
+  meta: Record<string, unknown> | undefined,
+): Array<{ slots: ArchetypeReferenceSlotKind[]; asset: ArraySlotRoute['accept'] }> {
+  if (readArchetypeNodeMeta(meta)) return []
+  return ARRAY_SLOT_ROUTES
+    .filter(([, route]) => readArchetypeArray(meta, route.metaKey).length > 0)
+    .map(([kind, route]) => ({ slots: [kind], asset: route.accept }))
 }
 
 /** 当前模式的 per-mode model enum（HappyHorse 4 端点合 1 靠它；Seedance 各模式同 model → null）。 */

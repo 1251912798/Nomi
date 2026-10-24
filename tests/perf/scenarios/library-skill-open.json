@@ -1,0 +1,32 @@
+{
+  "id": "library-skill-open",
+  "feature": "在项目里点左栏「Skill」打开技能库抽屉，到第一张技能条卡可见再过两帧；同一段里数浏览器发出的图片 / 视频请求（只看）",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "E10",
+    "--scenarios",
+    "library-skill-open",
+    "--warmup",
+    "1"
+  ],
+  "scale": "技能库只列 kind: skill（内置约 49 条，效果和提示词不在这里），我的 0 条；项目里 10 个空节点",
+  "metrics": [
+    "response",
+    "mediaRequests",
+    "longTasks"
+  ],
+  "budget": 200,
+  "p95Budget": 300,
+  "group": "⑪ 技能库 / 提示词库",
+  "budgetStatus": "proposed",
+  "budgetBasis": "设计卡 docs/plan/2026-10-23-skill-prompt-library-layout.md ★7：打开库到首屏内容 ≤200ms、p95 ≤300ms（本地数据）；媒体请求（只看）≤ 首屏可见卡片数 + 一屏预取，抽屉 ≤12。改前真机单次：开 Skill 抽屉媒体请求 37 个（远端 29），点 Skill 页签首个内容 346ms",
+  "baseline": {
+    "median": 111.3,
+    "p95": 112.2,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-24",
+    "commit": "6ccbd23f6"
+  }
+}

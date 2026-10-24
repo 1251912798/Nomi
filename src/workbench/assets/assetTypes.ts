@@ -51,8 +51,6 @@ export type AssetRef = {
   aspectRatio?: number
   /** 跨项目素材详情里使用的显示名称；不进入 origin，也不用于传输授权。 */
   sourceProjectName?: string
-  /** 落盘素材所属的画布节点；用于从项目素材删除时同步清理全项目素材。 */
-  ownerNodeId?: string
   /** 画布节点中的单个生成结果；同一节点多图时用于精确设主图/删除。 */
   ownerResultId?: string
   source: AssetSource
@@ -175,7 +173,6 @@ export function canvasNodeToAssetRefs(node: GenerationCanvasNode): AssetRef[] {
       thumbUrl: thumbUrl || undefined,
       ...(dimensions ? { dimensions } : {}),
       ...(aspectRatio !== undefined ? { aspectRatio } : {}),
-      ownerNodeId: node.id,
       ownerResultId: identity,
       source: 'canvas',
       origin: { source: 'canvas', nodeId: node.id, resultId: identity },

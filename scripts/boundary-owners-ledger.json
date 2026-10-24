@@ -13,6 +13,16 @@
       "reason": "2026-10-22 对焦算式换成 resolveCanvasFocusViewport：把节点加选中后的生成框整体框进扣掉浮层的可见区，缩放封顶 100%；旧的只看节点的 resolveCanvasFocusZoom 同提交删除，「对焦给可读缩放、不保留总览的缩小比例」这条不变量由新算式继续守（单元测试 focusViewportRecovery.test.ts）。"
     },
     {
+      "contract": "docs/fixes/2026-08-28-persisted-localized-display-strings.root-cause.json",
+      "path": "src/workbench/promptLibrary/promptDisplay.ts",
+      "symbol": "promptDisplayTitle and promptSourceLabel",
+      "anchor": {
+        "path": "src/workbench/promptLibrary/promptDisplay.ts",
+        "symbol": "promptDisplayTitle"
+      },
+      "reason": "2026-10-24 库改版删了来源标签三个函数；精选条目的分组名由 libraryGroup 按界面语言取双语组名，自建条目不再显示来源（落盘的「我的」不再出现在界面上）；「落盘值按当前界面语言投影成显示文字」这条不变量，标题仍由 promptDisplayTitle 守，分组名由 libraryGroup 守（libraryGroups.test.ts）。"
+    },
+    {
       "contract": "docs/fixes/2026-09-25-model-catalog-sync-read-per-mount.root-cause.json",
       "path": "src/workbench/generationCanvas/nodes/controls/useChannelCreateBody.ts",
       "symbol": "createVendorMappingsReader",
@@ -450,6 +460,16 @@
         "symbol": "vendorModelConnection"
       },
       "reason": "2026-10-21 文本任务迁 pi-ai 单次调用：ai@4 的 buildAiSdkModel 随栈删除。「运行时 base 在造模型之前按协议规范化」（Anthropic 补 /v1）挪进两台发动机共用的 vendorModelConnection（anthropicBaseUrl），Agent、文本任务、编译器都经它拿连接配置；顺手修掉 lane 只存根地址时打到 {root}/messages 的 404（laneModelCall.test.ts）。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-02-cross-device-sync-ux.root-cause.json",
+      "path": "src/workbench/assets/assetResultDeletion.ts",
+      "symbol": "buildAssetResultDeletionPlan",
+      "anchor": {
+        "path": "src/workbench/assets/assetResultDeletion.ts",
+        "symbol": "planAssetDeletion"
+      },
+      "reason": "2026-10-24 素材删除判定换成显式的 planAssetDeletion（隐式计划 { matches, fileTarget } 的 buildAssetResultDeletionPlan 同提交删除，见 docs/fixes/2026-10-24-asset-library-delete-verdict.root-cause.json）。09-02 合同的不变量「先摘结果元数据；只要剩下的结果还引用同一份项目文件就不删文件」由它承担：planAssetDeletion 判本项目文件 trash / keep，keep 的依据仍是唯一引用判定 isProjectFileReferenced（摘完以后的画布 + 时间轴），执行口 deleteAssetResult 先摘结果、只对 trash 进回收站。守它的测试：assetDeletionMatrix.test.ts（共享文件 / 封面 / 白板图层各格）、assetResultDeletion.test.ts。"
     }
   ],
   "retirements": [

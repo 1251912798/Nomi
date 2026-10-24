@@ -18,15 +18,20 @@
     {
       "path": "src/workbench/assets/assetResultDeletion.ts",
       "symbol": "isProjectFileReferenced"
+    },
+    {
+      "path": "src/workbench/assets/pendingAssetDeletions.ts",
+      "symbol": "isAssetFileAwaitingTrash"
     }
   ],
   "forbidden_derivations": [],
   "allowed_consumers": [
+    "src/workbench/assets/AssetLibraryPanel.tsx",
     "src/workbench/assets/deleteAssetResult.ts",
     "src/workbench/project/workbenchProjectSession.ts",
     "src/workbench/project/releaseWorkbenchProjectSession.ts",
     "src/workbench/project/projectPersistenceService.ts"
   ],
   "since": "2026-10-06",
-  "notes": "删一版给撤销，所以文件延后删：撤销日志退不回那一步 / 换项目 / 下次打开项目时到点；到点前用 isProjectFileReferenced（画布 + 时间轴）再判一次。待删清单随项目存盘（payload.pendingAssetDeletions）。 2026-10-12：共享存活判据同时保护当前 whiteboardState 和每个 retained result.raw.whiteboardState 的 canvasAssets，删除原图版本不许删仍供新版编辑的图层文件。"
+  "notes": "删一版给撤销，所以文件延后删：撤销日志退不回那一步 / 换项目 / 下次打开项目时到点；到点前用 isProjectFileReferenced（画布 + 时间轴）再判一次。待删清单随项目存盘（payload.pendingAssetDeletions）。 2026-10-12：共享存活判据同时保护当前 whiteboardState 和每个 retained result.raw.whiteboardState 的 canvasAssets，删除原图版本不许删仍供新版编辑的图层文件。 2026-10-24：列表也问这里——isAssetFileAwaitingTrash / withoutFilesAwaitingTrash（只读）：记在待删里（或正在进回收站）且此刻没人用的文件，素材库两个页签都不列；⌘Z 撤回 = 又有人用，照常列。真删完由主进程 workspace.delete-files 的 assets.onUpdated 广播刷新列表。"
 }

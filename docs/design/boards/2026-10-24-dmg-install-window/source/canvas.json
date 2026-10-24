@@ -1,0 +1,59 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-24T05:20:00Z"
+  },
+  "title": "Nomi DMG 安装窗口探索",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "DmgInstallWindow.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 800,
+      "h": 1040,
+      "title": "B · 镜头飞入（已拍板；按实现渲染：只用三种媒体色 + Tabler 图标；上浅色 / 下深色外观）"
+    }
+  },
+  "order": [
+    "DmgInstallWindow.dc.html"
+  ],
+  "notes": {
+    "pain": {
+      "x": 880,
+      "y": 0,
+      "w": 520,
+      "fill": "orange",
+      "size": "s",
+      "text": "卡点（下载 → 打开 DMG → 拖 → 第一次打开）\n1. 通用模板：灰底虚线箭头，和别的 Electron 应用一模一样\n2. 标题「Nomi 0.23.2-arm64」带架构后缀，桌面和侧边栏也是这个名\n3. 图标 80pt、整体偏下\n4. 卷图标=应用图标，桌面上的盘像「已装好」\n5. 没说要「拖」，新手会直接从盘里运行\n6. 应用开着时替换失败：Finder「正在使用中」(-8087)，更新弹窗没写先退出\n7. 最大卡点：未签名未公证，macOS 15 起右键→打开失效；要去 系统设置 › 隐私与安全性 › 仍要打开，窗口里没有任何预告\n8. README 第 2 步还写右键打开\n9. 每次更新重走第 7 条（推断）\n\nmacOS 26 实测：窗口高度含标题栏，背景底部 32pt 看不见（当出血）；浅色外观下标签是黑字，深色底看不清。"
+    },
+    "prior": {
+      "x": 880,
+      "y": 620,
+      "w": 520,
+      "fill": "blue",
+      "size": "s",
+      "text": "先查别人（★0）\n1. 参考产品（用户截图那款）：760×527、1x+2x、浅底，彩色小角色围着 Applications 指向它，零文字；图标 164、标签 16。→ 确认：大图标、零文字也能一眼会拖。角色是它的品牌，我们不照搬。\n2. 两款常见应用的 DMG：540×380 浅灰/白底 + 一个箭头。→ 确认：业界都用浅底（深底和 Finder 黑字标签冲突）。\n3. Apple 开发者公告（Sequoia）：不能再按住 Control 点按绕过 Gatekeeper。→ 改了：窗口里预告「仍要打开」路径；README 第 2 步要改。\n4. DropDMG 作者 Michael Tsai（2018-08-28，macOS 10.14）：有背景图的窗口 Finder 一律按浅色外观显示，也没法给深色另配一张。→ 确认只做一张浅底；macOS 26 深色外观待真机核实。\n5. electron-builder 源码：背景图尺寸 = 窗口尺寸，@2x 自动合成；badgeIcon 把图标叠到系统磁盘图标上。→ 改了：卷图标用角标。"
+    },
+    "brand": {
+      "x": 880,
+      "y": 1240,
+      "w": 520,
+      "fill": "gray",
+      "size": "s",
+      "text": "三个方向共用的骨架\n· 窗口 720×440，图标 128、标签 13，Nomi (200,180) → 应用程序 (520,180)\n· 底色 --nomi-bg 暖白；底部 32pt 是出血\n· 一行中英「第一次打开若被拦」提示（Q1 默认 A）\n· 标题「Nomi 0.24.0」，卷图标 = 磁盘 + Nomi 角标（Q6/Q7 默认）\n· logo mark 不改（墨底白笔画），字标只在 C 的 HUD 里出现，m 用强调色"
+    },
+    "decision": {
+      "x": 880,
+      "y": 1600,
+      "w": 520,
+      "fill": "green",
+      "size": "s",
+      "text": "拍板（2026-10-24，用户原话，协调转述）：「安装窗口用 B 镜头飞入（按你说的只用三种媒体色）。」\n\n实现对齐：\n· 三张卡 = 文本 / 图片 / 视频，按制作顺序排在弧上，越靠近「应用程序」越小\n· 颜色只用三条媒体轨 token：--nomi-track-text（= 强调色）/ --nomi-track-image / --nomi-track-video；去掉橙（snap）、紫（workbench-text）\n· 卡上图标 = 画布节点同款 Tabler（IconTypography / IconPhoto / IconVideo），渲染时从节点注册表取\n· 背景 = build/dmg/background.html 按 token 渲染；坐标只存在 package.json build.dmg 一处\n· A 板去掉了 55% 的 Nomi 标志拖影（标志只许墨底白笔画）\n\n已知限制：深色外观下 Finder 图标标签可能变成白字、在浅底上偏淡；未实测（用户 10-24 判定不需要）。\n签名公证：用户 10-24「先不做了」，窗口里的中英提示保留。"
+    }
+  },
+  "designSystems": []
+}

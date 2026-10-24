@@ -27,4 +27,9 @@ describe('C20 library category projection', () => {
     expect(libraryGroup({ sourceId: 'user', source: 'My library', origin: 'user' }, 'en')).toBeUndefined()
     expect(libraryGroup({}, 'zh-CN')).toBeUndefined()
   })
+  it('projects curated group names in the active interface language', () => {
+    const item = { curation: { group: { 'zh-CN': '表情预设', en: 'Expressions' } } } as Parameters<typeof libraryGroup>[0]
+    expect(libraryGroup(item, 'zh-CN')).toEqual({ id: 'category:Expressions', label: '表情预设' })
+    expect(libraryGroup(item, 'en')).toEqual({ id: 'category:Expressions', label: 'Expressions' })
+  })
 })

@@ -87,7 +87,7 @@ function RailButton({ id, icon: Icon, active, onClick }: { id: ShellDrawerItem; 
   )
 }
 
-function DrawerBody({ item, projectId, createGroupNonce }: { item: ShellDrawerItem; projectId: string | null; createGroupNonce: number }): JSX.Element {
+function DrawerBody({ item, projectId, createGroupNonce, libraryToolbar }: { item: ShellDrawerItem; projectId: string | null; createGroupNonce: number; libraryToolbar: HTMLElement | null }): JSX.Element {
   const { t } = useTranslation()
   const categories = useWorkbenchStore((state) => state.categories)
   // 剪辑页：「目录」抽屉最上面是可拖进时间轴 / 点击追加的已出片镜头（同剪辑页左栏「镜头」页签那一格），
@@ -111,8 +111,8 @@ function DrawerBody({ item, projectId, createGroupNonce }: { item: ShellDrawerIt
             ? <AssetLibraryContent projectId={projectId} compact showHeader={false} includeAudio usageContext="timeline" />
             : <AssetLibraryContent projectId={projectId} compact showHeader={false} />)
             : item === 'flows' ? <WorkflowLibraryContent projectId={projectId} compact showHeader={false} />
-              : item === 'skills' ? <SkillLibraryContent active compact showHeader={false} />
-                : <PromptLibraryContent active compact showHeader={false} />}
+              : item === 'skills' ? <SkillLibraryContent host="drawer" toolbarHost={libraryToolbar} />
+                : <PromptLibraryContent host="drawer" toolbarHost={libraryToolbar} />}
     </React.Suspense>
   )
 }
@@ -177,6 +177,7 @@ export function ShellRail({ projectId }: { projectId: string | null }): JSX.Elem
   const [createGroupNonce, setCreateGroupNonce] = React.useState(0)
   const [railNode, setRailNode] = React.useState<HTMLElement | null>(null)
   const [drawerNode, setDrawerNode] = React.useState<HTMLElement | null>(null)
+  const [libraryToolbar, setLibraryToolbar] = React.useState<HTMLDivElement | null>(null)
   // 点空白收起；左栏自己的点击由「再点同一项」处理，不算外面。
   // 抽屉里点出的菜单 / 弹窗（portal 到 body）不算外面：它们挂着 Radix / Mantine 的弹层属性。
   React.useEffect(() => {
@@ -295,10 +296,12 @@ export function ShellRail({ projectId }: { projectId: string | null }): JSX.Elem
           <header className="flex h-11 shrink-0 items-center gap-1.5 pl-4 pr-2">
             <h2 className="m-0 min-w-0 flex-1 truncate text-body-sm font-semibold text-nomi-ink">{open ? railText(t, open).label : ''}</h2>
             {headerAction}
+            {/* Skill / 提示词抽屉的导入、新建图标在标题行（拍板图 LibraryDrawers）：库内容自己 portal 进这一格。 */}
+            {open === 'skills' || open === 'prompts' ? <div ref={setLibraryToolbar} className="contents" data-library-toolbar={open} /> : null}
           </header>
           {/* 内容区沿用各库原来的面板名当无障碍名（素材库 / 流程库…）：外壳只搬容器，不改内容的身份。 */}
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden" aria-label={open ? drawerPanelLabel(t, open) : undefined}>
-            {open ? <DrawerBody item={open} projectId={projectId} createGroupNonce={createGroupNonce} /> : null}
+            {open ? <DrawerBody item={open} projectId={projectId} createGroupNonce={createGroupNonce} libraryToolbar={libraryToolbar} /> : null}
           </section>
           {open ? <DrawerResizeHandle item={open} width={width} /> : null}
         </div>

@@ -32,6 +32,15 @@ const FORBIDDEN = [
   { pattern: /nomiDesktop\.workspace\.deleteFiles\s*\(/, why: '调了产品的删除素材口（也会进系统回收站）' },
   { pattern: /['"]nomi:workspace:delete-files['"]/, why: '直接点名产品删除素材 IPC 通道（也会进系统回收站）' },
 ]
+// 素材库的删除（工具栏垃圾桶钮 → 确认框「删除」）也进系统回收站。2026-10-24 之前已打开项目里只在项目里的文件被
+// 静默放过，走查 asset-library-interactions ⑤ 点了确认也没真删，所以上面那句「没有走查调它」看不出这扇界面门；修好以后
+// 它真删了。走查点了素材库的删除再点确认，只许是登记过、在一次性回收站里跑的那几份（登记要写清理由，且文件里真有
+// 一次性映像卷——hdiutil + <卷>/.Trashes）。
+const ASSET_DELETE_BUTTON = /tabler-icon-trash/
+const DIALOG_CONFIRM = /data-confirm-dialog-confirm|\[role=\\?["']?(?:alert)?dialog\\?["']?\][^\n]*?\bbutton\b/
+const DISPOSABLE_TRASH_WALKS = new Map([
+  ['tests/ux/asset-library-interactions.walk.mjs', 'macOS 上两个测试项目放在一次性磁盘映像卷上（它自己的废纸篓，⑤ 核对文件进了那里，收尾卸载）；CI 的 runner 用完即毁；其它系统本机跑跳过 ⑤⑥ 真删'],
+])
 // 项目卡删除按钮的名字（中 / 英）。走查点它之后，紧接着碰的第一个确认框钩子必须是取消，不是确认。
 // 同一份走查里别的确认框（删文件夹、退出导演台……）不归这条管，所以看「点完之后最近的那个钩子」，不看整份文件。
 // 走查可以直接写名字，也可以从词典读（uiText(…, 'library.deleteNamedProject')），两种写法都要认。
@@ -49,6 +58,10 @@ function findViolations(rel, rawSource) {
     const next = CONFIRM_HOOK.exec(source.slice(match.index, match.index + HOOK_REACH))
     if (!next) hits.push(`${rel}：点了项目卡的删除按钮，后面没有取消确认框（只许打开确认框再取消）`)
     else if (next[1] === 'confirm') hits.push(`${rel}：点了项目卡的删除按钮，接着点了确认框的「删除」（会把项目放进系统回收站）`)
+  }
+  // 删除钮常先存进变量、隔很远才点，按「同一份文件里既有素材库垃圾桶钮、又点了确认框的按钮」认。
+  if (ASSET_DELETE_BUTTON.test(source) && DIALOG_CONFIRM.test(source) && !DISPOSABLE_TRASH_WALKS.has(rel)) {
+    hits.push(`${rel}：点了素材库的删除再确认（会把文件放进系统回收站）；要么只开确认框再取消，要么在一次性回收站里跑并登记进 DISPOSABLE_TRASH_WALKS`)
   }
   return hits
 }
@@ -87,8 +100,22 @@ describe('走查与脚本收尾不往系统回收站里扔东西', () => {
     ['界面点确认', "await click(card.getByRole('button', { name: '删除项目 天台' })); await click(page.locator('[data-confirm-dialog-confirm]'))"],
     ['界面点删除后没取消', "await click(card.getByRole('button', { name: 'Delete project Rooftop' }))"],
     ['界面点确认（名字从词典读）', "await click(card.getByRole('button', { name: uiText(locale, 'library.deleteNamedProject') })); await click(page.locator('[data-confirm-dialog-confirm]'))"],
+    ['素材库删除再确认', "const del = win.locator('button', { has: win.locator('svg.tabler-icon-trash') })\nawait del.click()\nawait win.locator('[role=\"dialog\"] button', { hasText: '删除' }).last().click()"],
+    ['素材库删除再确认（确认钩子）', "const del = win.locator('button', { has: win.locator('svg.tabler-icon-trash') }); await del.click(); await win.locator('[data-confirm-dialog-confirm]').click()"],
   ])('反例（%s）被认出来', (_label, source) => {
     expect(findViolations('tests/ux/example.walk.mjs', source)).not.toEqual([])
+  })
+
+  it('素材库删除：只开确认框再取消的放行；登记过的走查真在一次性映像卷上跑', () => {
+    const cancelOnly = "const del = win.locator('button', { has: win.locator('svg.tabler-icon-trash') }); await del.click(); await win.locator('[data-confirm-dialog-cancel]').click()"
+    expect(findViolations('tests/ux/example.walk.mjs', cancelOnly)).toEqual([])
+    for (const [rel, why] of DISPOSABLE_TRASH_WALKS) {
+      expect(why.length).toBeGreaterThan(8)
+      const source = fs.readFileSync(path.join(repoRoot, rel), 'utf8')
+      expect(source, `${rel} 登记成一次性回收站里跑，文件里却没有一次性映像卷`).toMatch(/['"]hdiutil['"]/)
+      expect(source, `${rel} 登记成一次性回收站里跑，却没把文件放在映像卷自己的废纸篓里核对`).toMatch(/\.Trashes/)
+      expect(findViolations(rel, source)).toEqual([])
+    }
   })
 
   it('只打开确认框再取消的走查放行；一次性磁盘映像上的真删真还原脚本是登记过的例外', () => {

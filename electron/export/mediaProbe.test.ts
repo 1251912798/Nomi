@@ -3,6 +3,7 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 
+import ffprobeInstaller from "@ffprobe-installer/ffprobe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -228,6 +229,41 @@ describe("probeMediaMetadata", () => {
         maxStderrBytes: 2_048,
       },
     );
+  });
+
+  // 「ffprobe 起不来」与「这个文件读不出」下一步不同（重装 vs 换文件），码必须分开；调用方不许去解析 message。
+  it.each([
+    [new BoundedProcessError("spawn_failed"), "probe_unavailable"],
+    [new Error("runner exploded before starting"), "probe_unavailable"],
+    [new BoundedProcessError("timeout"), "probe_failed"],
+    [new BoundedProcessError("output_limit"), "probe_failed"],
+    [new BoundedProcessError("cancelled"), "probe_failed"],
+    [new BoundedProcessError("process_cleanup_failed"), "probe_failed"],
+  ] as const)("classifies a runner failure %s as %s for file and byte probes alike", async (failure, code) => {
+    const inputPath = createTempFile();
+    const runProcess = vi.fn<RunProbeProcess>().mockRejectedValue(failure);
+
+    expectMediaProbeError(await probeMediaMetadata(inputPath, { ffprobePath: "ffprobe", runProcess }).catch((error) => error), code);
+    expectMediaProbeError(await probeMediaBytes(Buffer.from("x"), { ffprobePath: "ffprobe", runProcess }).catch((error) => error), code);
+  });
+
+  it("reports a nonzero ffprobe exit as this file failing, not as ffprobe being unavailable", async () => {
+    const inputPath = createTempFile();
+    const runProcess = vi.fn<RunProbeProcess>().mockResolvedValue({ code: 1, stdout: "", stderr: "moov atom not found" });
+
+    expectMediaProbeError(await probeMediaMetadata(inputPath, { ffprobePath: "ffprobe", runProcess }).catch((error) => error), "probe_failed");
+  });
+
+  it("reports an ffprobe that cannot be spawned as unavailable (real spawn, no injected runner)", async () => {
+    const inputPath = createTempFile();
+    const missingBinary = path.join(path.dirname(inputPath), "no-such-dir", process.platform === "win32" ? "ffprobe.exe" : "ffprobe");
+
+    expectMediaProbeError(await probeMediaMetadata(inputPath, { ffprobePath: missingBinary }).catch((error) => error), "probe_unavailable");
+  });
+
+  it("reports a file the bundled ffprobe cannot read as probe_failed (real ffprobe)", async () => {
+    const inputPath = createTempFile();
+    expectMediaProbeError(await probeMediaMetadata(inputPath, { ffprobePath: ffprobeInstaller.path }).catch((error) => error), "probe_failed");
   });
 });
 

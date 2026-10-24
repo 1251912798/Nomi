@@ -1,0 +1,138 @@
+{
+  "what": "变异记录：在 git archive <HEAD> 导出的副本里把修复退回去（node_modules 链回工作树），只跑对应的测试，数红。",
+  "date": "2026-10-24",
+  "machine": "macOS（Darwin 25.5），vitest",
+  "runs": [
+    {
+      "run": "M0（对照，HEAD 1390d8f16 不动）",
+      "head": "1390d8f16",
+      "change": "不改",
+      "testFiles": [
+        "src/workbench/assets/assetDeletionMatrix.test.ts",
+        "electron/workspace/workspaceFileIndex.test.ts",
+        "electron/workspace/workspaceFileDelete.test.ts"
+      ],
+      "result": "57 passed (57)",
+      "failedTests": []
+    },
+    {
+      "run": "M1 删除判定退回 main",
+      "head": "1390d8f16",
+      "change": "assetResultDeletion.ts / deleteAssetResult.ts / assetTypes.ts / useAllProjectAssets.ts 换回 bbb68fb14（隐式计划、已加载早退、ownerNodeId 收窄）",
+      "testFiles": [
+        "src/workbench/assets/assetDeletionMatrix.test.ts"
+      ],
+      "result": "24 failed | 21 passed (45)",
+      "failedTests": [
+        "closed · multi-select · 只被时间轴片段用着的图",
+        "closed · multi-select · 画布结果（指向别的项目的文件）",
+        "closed · multi-select · 画布结果（文件还被另一张卡用着）",
+        "closed · multi-select · 白板图层文件",
+        "closed · multi-select · 视频结果的封面文件",
+        "closed · single · 两张卡共用的文件",
+        "closed · single · 只被时间轴用着的图",
+        "closed · single · 白板图层文件",
+        "closed · single · 视频封面文件",
+        "closed · version-card · 删一版（文件还被另一张卡用着）",
+        "loaded · multi-select · 只在项目里的图（导入、没上画布）",
+        "loaded · multi-select · 只在项目里的视频（导入、没上画布）",
+        "loaded · multi-select · 只被时间轴片段用着的图",
+        "loaded · multi-select · 画布结果（指向别的项目的文件）",
+        "loaded · multi-select · 画布结果（文件还被另一张卡用着）",
+        "loaded · multi-select · 白板图层文件",
+        "loaded · multi-select · 视频结果的封面文件",
+        "loaded · single · 两张卡共用的文件",
+        "loaded · single · 只在项目里的图",
+        "loaded · single · 只被时间轴用着的图",
+        "loaded · single · 白板图层文件",
+        "loaded · single · 视频封面文件",
+        "loaded · version-card · 删一版（文件还被另一张卡用着）",
+        "列表里的每一张素材删了都有结果（没有四个计数全 0 的格）"
+      ]
+    },
+    {
+      "run": "M2 列表不认「已删、待进回收站」",
+      "head": "1390d8f16",
+      "change": "isAssetFileAwaitingTrash 恒为 false",
+      "testFiles": [
+        "src/workbench/assets/assetDeletionMatrix.test.ts"
+      ],
+      "result": "8 failed | 37 passed (45)",
+      "failedTests": [
+        "loaded · multi-select · 画布结果（只它用这份文件）",
+        "loaded · multi-select · 画布视频结果",
+        "loaded · multi-select · 白板卡的结果",
+        "loaded · single · 两张卡共用的文件",
+        "loaded · single · 生成文件（sidecar 记着节点）",
+        "loaded · single · 视频文件",
+        "已加载项目删画布卡的素材：等撤销窗口的文件两个页签都不列，⌘Z 撤回后回来",
+        "延后真删到点、正在进回收站时照样不列；进完以后待删清单放手（列表由删除广播刷新）"
+      ]
+    },
+    {
+      "run": "M3 主进程两处退回 main",
+      "head": "1390d8f16",
+      "change": "workspaceFileIndex.ts（不滤派生预览）、workspaceFileDelete.ts（删文件不广播）换回 bbb68fb14",
+      "testFiles": [
+        "electron/workspace/workspaceFileIndex.test.ts",
+        "electron/workspace/workspaceFileDelete.test.ts"
+      ],
+      "result": "2 failed | 10 passed (12)",
+      "failedTests": [
+        "keeps derived canvas previews out of the index, same rule as the asset library list",
+        "trashes the file with its sidecar and tells every list the project's assets changed"
+      ]
+    },
+    {
+      "run": "M0（对照，HEAD 315b787f6 不动）",
+      "head": "315b787f6",
+      "change": "不改",
+      "testFiles": [
+        "src/workbench/assets/useAllProjectAssets.reload.test.ts",
+        "src/workbench/assets/assetDeletionMatrix.test.ts",
+        "electron/workspace/workspaceFileIndex.test.ts",
+        "electron/workspace/workspaceFileDelete.test.ts",
+        "tests/system/walks-never-trash-projects.test.mjs"
+      ],
+      "result": "73 passed (73)",
+      "failedTests": []
+    },
+    {
+      "run": "M4 「所有项目」清单退回上一个提交",
+      "head": "315b787f6",
+      "change": "useAllProjectAssets.ts 换回 1390d8f16（在路上那一趟被作废盖过：不交结果、也不再起新的一趟）",
+      "testFiles": [
+        "src/workbench/assets/useAllProjectAssets.reload.test.ts"
+      ],
+      "result": "2 failed | 1 passed (3)",
+      "failedTests": [
+        "等着拿清单的调用方：在路上那一趟被作废了，拿到的是最新的一份，不是作废前扫到的",
+        "连着两次作废（多选删两张）：没人再调载入，清单也会停在最新的盘面上，不停在删除前"
+      ]
+    },
+    {
+      "run": "M5 走查不登记成一次性回收站里跑",
+      "head": "315b787f6",
+      "change": "DISPOSABLE_TRASH_WALKS 清空",
+      "testFiles": [
+        "tests/system/walks-never-trash-projects.test.mjs"
+      ],
+      "result": "1 failed | 12 passed (13)",
+      "failedTests": [
+        "tests/ux、tests/system、scripts、evals、docs/evidence 里没有任何产品删除调用、trashItem，也没有点确认删除项目"
+      ]
+    },
+    {
+      "run": "M6 走查去掉一次性映像卷",
+      "head": "315b787f6",
+      "change": "走查里的 hdiutil / .Trashes 换掉（项目回到系统临时区）",
+      "testFiles": [
+        "tests/system/walks-never-trash-projects.test.mjs"
+      ],
+      "result": "1 failed | 12 passed (13)",
+      "failedTests": [
+        "素材库删除：只开确认框再取消的放行；登记过的走查真在一次性映像卷上跑"
+      ]
+    }
+  ]
+}
