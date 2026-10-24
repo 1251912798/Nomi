@@ -22,6 +22,8 @@
 // 规则本体住这里（`assembleVerbDeclarations`），阳性对照住 `verbDeclarations.test.ts`（R17）。
 import type { ZodTypeAny } from "zod";
 
+import { z } from "zod";
+
 import type { CapabilityContract, CapabilityEffectClass } from "./capabilityContract";
 import type { JsonSchemaObject } from "./modelVisibleJsonSchema";
 import { toPublishedJsonSchema } from "./modelVisibleJsonSchema";
@@ -91,6 +93,9 @@ export interface VerbExample {
   readonly arguments: Readonly<Record<string, unknown>>;
 }
 
+/** 显式的空对象 schema。`{}` 说的是「随便填」，这个说的是「这个工具不收参数」。 */
+export const NO_ARGUMENTS_SCHEMA = z.object({}).strict();
+
 export interface VerbDeclaration {
   /** 内部 profile 的工具名。一别名一工具。 */
   readonly name: string;
@@ -125,12 +130,6 @@ export interface VerbDeclaration {
    * 的 operation 分支）。缺省 = 动词字段就是契约字段。**两个 profile 共用**：`toSemanticInput` 是唯一调用点。
    */
   readonly semanticInputOf?: (args: Readonly<Record<string, unknown>>) => Record<string, unknown>;
-  /**
-   * The model-facing field that selects which page of the same read result to present.
-   * It never enters semantic input. A value greater than 0 is a continuation of the
-   * most recent page-one read of the same resource.
-   */
-  readonly pageCursorField?: string;
   /** 哪些 profile 投影它。缺省两个都投；不同于缺省时必须给 `profileReason`。 */
   readonly profiles?: readonly ToolProfile[];
   readonly profileReason?: VerbProfileReason;

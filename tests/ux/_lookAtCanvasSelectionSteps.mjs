@@ -1,10 +1,10 @@
-// look_at_canvas「当前选中」翻页量具的步骤本体（PR #1283，R13.3）。
+// look_at_canvas「当前选中」行内标记量具的步骤本体（PR #1283，E）。
 // 真付费走查（look-at-canvas-selection-real.paid.mjs）与零花费演练（look-at-canvas-selection-real.rehearsal.walk.mjs）
 // 跑**同一份**步骤：差别只在大脑——真付费是 App 里配好的真模型，演练是夹具里写好剧本的那个。两边各自直接调 openPaidWalk。
 //
 // 流程（真 Electron、真 IPC、真 Agent lane、真 look_at_canvas 排版）：
 //   开项目 → 画布 → 选对话模型 → 经画布 store 的真动作（addNode / selectNodes）布 44 个节点、选中其中 40 个 →
-//   用产品自己的排版算一遍「这张画布逼得出翻页」（不成立就拒跑，一个 token 不花）→
+//   用产品自己的排版算一遍「选中标记能否一次列全」（不成立就拒跑，一个 token 不花）→
 //   每一轮：新对话 → 重设选区并核对 → 发那一句 → 等这一轮落地（任何要人点头的卡都不替用户答，按停止）→
 //   从盘上的 lane 转录读这一轮的工具调用序列与最终回答 → 判分。
 // 只读、不花钱、不改画布：问的是「哪几个是视频节点」，不起草、不生成。
@@ -30,23 +30,22 @@ import {
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
 /**
- * 构建标记：本 PR 新代码里提示模型翻页那一句的固定前缀（electron/shared/agentCapabilities/canvasReadCompact.ts）。
+ * 构建标记：本 PR 新代码里选区行的固定字面量（electron/shared/agentCapabilities/canvasReadCompact.ts）。
  * 产物里找不到它 = 跑的不是这次要验的修复，openPaidWalk 当场拒跑（一分钱不花）。单测核对它确实在源码里。
  */
-export const SELECTION_PAGING_MARKER = '未列出的仍在当前选中里，不要猜；再调用 look_at_canvas 并传 selectedFrom: '
+export const SELECTION_MARKER = '节点行里标了「选中」'
 export const SELECTION_EVIDENCE_DIR = path.join(REPO_ROOT, 'docs/evidence/2026-10-22-look-at-canvas-selection-truncation/paid')
 
-/** 三个数的定义（写进证据，PR 正文照抄）。 */
+/** 量具数字的定义（写进证据，PR 正文照抄）。 */
 export const SELECTION_METRICS = Object.freeze({
-  toolWriteCorrect: '工具写对率 = 参数合法的 look_at_canvas 调用数 / look_at_canvas 调用总数（合法：宿主没退回，且不带 selectedFrom，或 selectedFrom 是整数并落在 0…选中总数−1）',
-  pagingRate: '翻页率 = 真的传了 0 < selectedFrom < 选中总数、往后读的轮数 / 总轮数（每一轮都需要翻页：第一页列不全，由场景检查保证）',
+  toolWriteCorrect: '工具写对率 = 不带参数且宿主未退回的 look_at_canvas 调用数 / look_at_canvas 调用总数',
   turnSuccess: '回合成功率 = 最终回答点到的节点集合与 ground truth（选中的 20 个视频节点）完全一致、不多不少的轮数 / 总轮数',
 })
 /** 诊断计数的定义（不进三个数；回合失败时用来分原因）。 */
 export const SELECTION_DIAGNOSTICS = Object.freeze({
-  roundsReadWholeSelection: '转录里各次 look_at_canvas 结果的「当前选中」行合起来覆盖了全部选中 id 的轮数',
-  roundsSawWholeSelectionAtAnswer: '答话那一刻、发给模型的那份消息里（套上宿主 transform_context 的 omitSupersededReads 之后）仍看得见全部选中 id 的轮数',
-  view: 'rounds[].view：答话那一刻 look_at_canvas 结果有几次被换成说明、还看得见几个选中 id、答话前模型在正文 / 思考里自己记下了几个真值视频（眼里没了却答对，看后两个数）',
+  roundsReadWholeSelection: '转录里节点行标了「选中」的行覆盖全部选中 id 的轮数',
+  roundsSawWholeSelectionAtAnswer: '答话那一刻、发给模型的那份消息里仍看得见全部带「选中」标记的节点行的轮数',
+  view: 'rounds[].view：答话那一刻看得见几个带「选中」的节点行、有没有被旧读结果替换、答话前模型自己记下了几个真值视频',
 })
 
 /** 一轮的安全上限（不是完成条件：完成看转录里最后一条助手消息落地 + composer 退出运行态）。 */
@@ -223,12 +222,12 @@ export async function runSelectionJourney(journey, { walk, modelLabel, expectedM
   const transform = loadSentTransform()
   const byKey = new Map(scene.nodes.map((node) => [node.key, node]))
   journey.scene = {
-    nodes: scene.nodes.length, selected: scene.selectedIds.length, total: facts.total, firstPageListed: facts.firstPageListed, pages: facts.pages,
+    nodes: scene.nodes.length, selected: scene.selectedIds.length, total: facts.total, markedSelected: facts.markedSelectedCount,
     groundTruth: groundTruthKeys(scene).map((key) => byKey.get(key).title),
-    laterPageVideoTitles: facts.laterPageVideoTitles, distractorVideoTitles: facts.distractorVideoTitles,
+    selectionLine: facts.selectionLine, distractorVideoTitles: facts.distractorVideoTitles,
     distractors: scene.nodes.filter((node) => !node.selected).map((node) => node.title),
     canvasOrder: scene.nodes.map(({ id, kind, title, selected }) => ({ id, kind, title, selected })),
-    firstPageText: facts.firstPageText,
+    firstText: facts.firstText,
   }
   await walk.snap('00-scene-selected')
   const problems = sceneProblems(facts, scene)
@@ -239,7 +238,7 @@ export async function runSelectionJourney(journey, { walk, modelLabel, expectedM
     journey.rounds.push(record)
     await walk.snap(`r${round}-answer`).catch(() => {})
     const { score, view } = record
-    console.log(`[selection] 第 ${round} 轮 ${Math.round(record.ms / 1000)}s：look_at_canvas ${score.legalCalls}/${score.lookAtCanvasCalls} 合法 · 翻页=${score.paged} · 读到选区 ${score.selectionRead}/${score.selectionTotal} · 答话时眼里 ${view?.selectedIdsVisible ?? '-'}/${score.selectionTotal} · 少列 ${score.missing.length} · 多列 ${score.extra.length} · 成功=${score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
+    console.log(`[selection] 第 ${round} 轮 ${Math.round(record.ms / 1000)}s：look_at_canvas ${score.legalCalls}/${score.lookAtCanvasCalls} 合法 · 读到选区 ${score.selectionRead}/${score.selectionTotal} · 答话时眼里 ${view?.selectedIdsVisible ?? '-'}/${score.selectionTotal} · 少列 ${score.missing.length} · 多列 ${score.extra.length} · 成功=${score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
   }
   journey.numbers = summarizeSelectionRounds(journey.rounds)
   journey.gaugeProblems = gaugeProblems(journey.rounds, { expectedModelKey })
@@ -269,7 +268,7 @@ export function selectionEvidence({ script, mode, startedAt, journey, walk, fail
     script, mode, startedAt, finishedAt: new Date().toISOString(),
     result: failure ? 'failed' : 'passed',
     failure: failure ? String(failure?.message ?? failure).slice(0, 2000) : null,
-    buildMarker: SELECTION_PAGING_MARKER,
+    buildMarker: SELECTION_MARKER,
     model, ask: SELECTION_ASK, metrics: SELECTION_METRICS, diagnostics: SELECTION_DIAGNOSTICS,
     numbers: journey.numbers ?? null,
     gaugeProblems: journey.gaugeProblems ?? null,

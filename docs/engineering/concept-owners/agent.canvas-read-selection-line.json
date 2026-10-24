@@ -1,5 +1,5 @@
 {
-  "name": "Agent 读画布时给模型看的选区（look_at_canvas 的「当前选中」；列全或明说少了几个，并能翻页读到其余）",
+  "name": "Agent 读画布时给模型看的选区（look_at_canvas 的「当前选中」；节点行内标记）",
   "subject": "agent.canvas-read-selection-line",
   "lifecycle": "projection",
   "authority_kind": "projection",
@@ -28,5 +28,5 @@
     "src/workbench/generationCanvas/agent/runStoryboardPlanner.ts"
   ],
   "since": "2026-10-22",
-  "notes": "合同 docs/fixes/2026-10-22-look-at-canvas-selection-truncation.root-cause.json：真相仍是 canvas.read 的 canonical selectedNodeIds（对外 MCP 原样返回整份）；这里只是它给应用内模型看的紧凑文本。total = listed + omitted 写进文本并以 CanvasSelectionAccount 返回；窗口是选区里连续的一段，从 selectedFrom 起，顺着提示翻页恰好读到每个 id 一次。能翻页的调用方（look_at_canvas）被指到下一页的 selectedFrom，不能翻页的（分镜规划单次文本）只被告知没列的数量。selectedFrom 只由排版消费，不翻译进 canvas.read 的语义输入（宿主恒读完整选区）。与 agent.context-snapshot-projection（发送时的选区快照投影，#1263）同一套词：total / listed / omitted。"
+  "notes": "合同 docs/fixes/2026-10-22-look-at-canvas-selection-truncation.root-cause.json：真相仍是 canvas.read 的 canonical selectedNodeIds（对外 MCP 原样返回整份）；这里只是它给应用内模型看的紧凑文本。选中的节点先进入节点预算，并在自己的状态列写「选中」；选区行只报告总数与节点行标记，预算放不下时明说列出了多少并要求用户缩小选区。完整提示词 / 正文按所有选中节点走，不再依赖翻页参数。"
 }

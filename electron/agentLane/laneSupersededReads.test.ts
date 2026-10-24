@@ -1,6 +1,5 @@
 // NF-0928-0003 类边界：判据从动词声明派生——只有读动词、只有成功的、只有同一资源（语义入参归一后相同）才互相取代。
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
 import type { AgentMessage } from '@earendil-works/pi-agent-core'
 import { LANE_MODEL_TOOL_CATALOG } from './laneToolCatalog'
 import { omitSupersededReads, supersededReadNote } from './laneSupersededReads.mjs'
@@ -18,54 +17,6 @@ describe('omitSupersededReads', () => {
     const out = omitSupersededReads([call('a', 'read_script', {}), result('a', 'read_script', 'OLD'),
       call('b', 'read_script', { scope: 'full' }), result('b', 'read_script', 'NEW')], LANE_MODEL_TOOL_CATALOG)
     expect(texts(out)).toEqual([supersededReadNote('read_script', 'b'), 'NEW'])
-  })
-
-  it('keeps a two-page read sequence visible at answer time', () => {
-    const input = [
-      call('page-1', 'look_at_canvas', {},), result('page-1', 'look_at_canvas', 'PAGE 1'),
-      call('page-2', 'look_at_canvas', { selectedFrom: 32 }), result('page-2', 'look_at_canvas', 'PAGE 2'),
-    ]
-    expect(texts(omitSupersededReads(input, LANE_MODEL_TOOL_CATALOG))).toEqual(['PAGE 1', 'PAGE 2'])
-  })
-
-  it('uses the declared cursor field instead of coupling paging to a field name', () => {
-    const canvas = LANE_MODEL_TOOL_CATALOG.find((spec) => spec.name === 'look_at_canvas')!
-    const offsetSpec = {
-      ...canvas,
-      name: 'read_with_offset',
-      pageCursorField: 'offset',
-      schema: z.object({ offset: z.number().int().min(0).optional() }),
-      semanticInputOf: () => ({}),
-    }
-    const input = [
-      call('page-1', 'read_with_offset', {}), result('page-1', 'read_with_offset', 'PAGE 1'),
-      call('page-2', 'read_with_offset', { offset: 32 }), result('page-2', 'read_with_offset', 'PAGE 2'),
-    ]
-    expect(texts(omitSupersededReads(input, [offsetSpec]))).toEqual(['PAGE 1', 'PAGE 2'])
-  })
-
-  it('keeps all three pages in one sequence and does not let continuations replace each other', () => {
-    const input = [
-      call('page-1', 'look_at_canvas', {},), result('page-1', 'look_at_canvas', 'PAGE 1'),
-      call('page-2', 'look_at_canvas', { selectedFrom: 32 }), result('page-2', 'look_at_canvas', 'PAGE 2'),
-      call('page-3', 'look_at_canvas', { selectedFrom: 64 }), result('page-3', 'look_at_canvas', 'PAGE 3'),
-    ]
-    expect(texts(omitSupersededReads(input, LANE_MODEL_TOOL_CATALOG))).toEqual(['PAGE 1', 'PAGE 2', 'PAGE 3'])
-  })
-
-  it('a new page one replaces the old page and every old continuation, while other resources stay', () => {
-    const input = [
-      call('old-1', 'look_at_canvas', {},), result('old-1', 'look_at_canvas', 'OLD PAGE 1'),
-      call('old-2', 'look_at_canvas', { selectedFrom: 32 }), result('old-2', 'look_at_canvas', 'OLD PAGE 2'),
-      call('other', 'read_script', {},), result('other', 'read_script', 'OTHER'),
-      call('new-1', 'look_at_canvas', {},), result('new-1', 'look_at_canvas', 'NEW PAGE 1'),
-    ]
-    expect(texts(omitSupersededReads(input, LANE_MODEL_TOOL_CATALOG))).toEqual([
-      supersededReadNote('look_at_canvas', 'new-1'),
-      supersededReadNote('look_at_canvas', 'new-1'),
-      'OTHER',
-      'NEW PAGE 1',
-    ])
   })
 
   it('a different resource, a failed later read, a failed earlier read and a write are all kept as they are', () => {

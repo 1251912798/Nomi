@@ -83,7 +83,7 @@ describe('formatCanvasForAgent — canonical canvas.read compact presentation', 
       selectedNodeIds: ['selected'],
     }))
 
-    expect(text).toContain('当前选中 1 个: selected')
+    expect(text).toContain('当前选中 1 个（节点行里标了「选中」）')
     expect(text).toContain('「鸟居」(selected) 完整提示词:')
     expect(text).toContain(selectedPrompt)
     expect(text).not.toContain(unselectedPrompt)
@@ -104,7 +104,7 @@ describe('formatCanvasForAgent — canonical canvas.read compact presentation', 
     }))
 
     expect(text.length).toBeLessThanOrEqual(MAX_CANVAS_PROMPT_CHARACTERS)
-    expect(text).toContain('当前选中 1 个: selected')
+    expect(text).toContain('当前选中 1 个（节点行里标了「选中」）')
     expect(text).toContain('- selected | image | 选中镜头')
     expect(text).toContain('- reference | image | 参考镜头')
     expect(text).toContain('引用边: 参考镜头→选中镜头')

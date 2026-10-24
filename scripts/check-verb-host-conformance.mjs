@@ -97,11 +97,6 @@ const TRANSLATOR_CONSUMED = {
   'make_artifact/fileType': '折进 artifact.fileType（节点内部结构），值仍在 payload 里',
 }
 
-/** A declared page cursor is consumed by presentation, so it needs no duplicate translator registration. */
-function translatorConsumed(verb, fieldPath) {
-  return fieldPath === verb.pageCursorField || Boolean(TRANSLATOR_CONSUMED[`${verb.name}/${fieldPath}`])
-}
-
 /** 每个 lane 的宿主桥 = 各传输适配器**真正调用的那个函数**，不是另写一份校验。 */
 function hostBridge(lane, toolName, args) {
   switch (lane) {
@@ -403,7 +398,7 @@ function checkVerb(verb) {
     if (item.label === 'R1 最小实例' && outcome.translated !== undefined) {
       const kept = leafValues(outcome.translated)
       for (const [field, value] of Object.entries(isRecord(item.args) ? item.args : {})) {
-        if (translatorConsumed(verb, field)) continue
+        if (TRANSLATOR_CONSUMED[`${verb.name}/${field}`]) continue
         const missing = [...leafValues(value)].filter((leaf) => !kept.has(leaf))
         if (!missing.length) continue
         problems.push(`R1b 必填字段：字段 "${field}" 被翻译层静默丢掉（丢了 ${missing.slice(0, 3).join(', ')}）`
@@ -432,7 +427,7 @@ function checkVerb(verb) {
       const sent = leafValues(probe.args[probe.field] ?? probe.args)
       const missing = [...leafValues(probe.args)].filter((leaf) => !kept.has(leaf) && sent.has(leaf))
       if (!missing.length) continue
-      if (translatorConsumed(verb, probe.path)) continue
+      if (TRANSLATOR_CONSUMED[`${verb.name}/${probe.path}`]) continue
       problems.push(`R3 逐字段：字段 "${probe.path}" 被翻译层静默丢掉（丢了 ${missing.slice(0, 3).join(', ')}）`
         + '\n        → 要么把它传下去，要么在 TRANSLATOR_CONSUMED 里按这个路径具名登记并写清它被谁吃掉了')
     }
@@ -448,7 +443,7 @@ function checkVerb(verb) {
     const kept = leafValues(outcome.translated)
     const dropped = new Map()
     for (const [leaf, fieldPath] of leafPaths(args)) {
-      if (kept.has(leaf) || translatorConsumed(verb, fieldPath)) continue
+      if (kept.has(leaf) || TRANSLATOR_CONSUMED[`${verb.name}/${fieldPath}`]) continue
       dropped.set(fieldPath, [...(dropped.get(fieldPath) ?? []), leaf])
     }
     for (const [fieldPath, leaves] of dropped) {

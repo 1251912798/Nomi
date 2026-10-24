@@ -51,7 +51,7 @@ export type {
   VerbNextAction,
   VerbExample as ModelFacingToolExample,
 } from "./verbDeclaration";
-export { verbMutates, verbBillable, approvalFacetsOf } from "./verbDeclaration";
+export { NO_ARGUMENTS_SCHEMA, verbMutates, verbBillable, approvalFacetsOf } from "./verbDeclaration";
 import type { ToolProfile } from "./verbDeclaration";
 
 /**
@@ -594,7 +594,7 @@ export function profileDriftBetween(
  *
  * 两条纪律：
  *   ① **只捏合模型填的那一半**。租约、别名定死的判别字段、声明出来的「外部才有」传输字段
- *      原样留下——`knownFields` 会把不认识的键都清掉，直接喂整个对象会连 `leaseHandle` 一起吃掉。
+ *      原样留下——`noArgumentTolerance` 会把整个对象清空，直接喂它会连 `leaseHandle` 一起吃掉。
  *   ② **在校验之前跑**（`mcpProtocol.ts` 的 `validateToolArguments` 之前），与 pi 把
  *      `prepareArguments` 放在 ajv 之前是同一条理由：schema 不合法的参数根本走不到执行边界。
  */
