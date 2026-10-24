@@ -6,7 +6,7 @@ import { ENV_KEY_VAR } from './_paidEnvKey.mjs'
 import { openPaidWalk } from './_paidRun.mjs'
 import { flattenRequestText } from './agent-runtime-fixture.mjs'
 import { createRuntimeWalk, toolNames } from './agent-runtime-walk-support.mjs'
-import { LOOK_AT_CANVAS, SELECTION_ASK } from './_lookAtCanvasSelectionScore.mjs'
+import { LOOK_AT_CANVAS, READ_SELECTION, SELECTION_ASK } from './_lookAtCanvasSelectionScore.mjs'
 import { runSelectionJourney, selectionEvidence, writeSelectionEvidence } from './_lookAtCanvasSelectionSteps.mjs'
 
 const SCRIPT = 'look-at-canvas-selection-real.rehearsal.walk.mjs'
@@ -21,14 +21,19 @@ function installMarkedRowBrain(fixture) {
   let current = null
   fixture.respond({
     label: 'rehearsal brain · node-row selection marker',
-    match: (body) => toolNames(body).includes(LOOK_AT_CANVAS) && lastUserText(body).includes(SELECTION_ASK),
+    match: (body) => (toolNames(body).includes(LOOK_AT_CANVAS) || toolNames(body).includes(READ_SELECTION)) && lastUserText(body).includes(SELECTION_ASK),
     reply: (body) => {
       const { round, scene } = current
-      const prefix = `rh${round}-look-`
+      const prefix = `rh${round}-read-`
       const results = (body.messages ?? []).filter((message) => message.role === 'tool' && String(message.tool_call_id ?? '').startsWith(prefix)).map((message) => contentText(message.content))
-      if (!results.length) return { type: 'tool', id: `${prefix}1`, name: LOOK_AT_CANVAS, args: {} }
+      if (!results.length) return { type: 'tool', id: `${prefix}1`, name: READ_SELECTION, args: {} }
       const latest = results.at(-1)
-      const visible = scene.nodes.filter((node) => node.selected && latest.split('\n').some((line) => line.startsWith('- ') && line.includes('| 选中') && line.includes(node.id)))
+      let page
+      try { page = JSON.parse(latest) } catch { page = { handles: [] } }
+      if (page.nextCursor) return { type: 'tool', id: `${prefix}${results.length + 1}`, name: READ_SELECTION, args: { cursor: page.nextCursor } }
+      const visible = scene.nodes.filter((node) => node.selected && results.some((result) => {
+        try { return (JSON.parse(result).handles ?? []).some((handle) => handle.targetId === node.id) } catch { return false }
+      }))
       return { type: 'text', text: `你选中的节点里，视频节点有这些：\n${visible.filter((node) => node.kind === 'video').map((node) => node.title).join('\n')}` }
     },
   })
@@ -71,10 +76,9 @@ try {
   }
   for (const record of journey.rounds) {
     expect(record.calls[0]?.selectionLines?.[0] ?? '', `第 ${record.round} 轮的选区账`).toContain(SELECTION_MARKER)
-    expect(record.score, `第 ${record.round} 轮按节点行标记答对`).toMatchObject({ lookAtCanvasCalls: 1, legalCalls: 1, selectionRead: 40, selectionTotal: 40, missing: [], extra: [], success: true })
-    expect(record.view, `第 ${record.round} 轮答话时看全选中行`).toMatchObject({ lookResults: 1, lookResultsOmitted: 0, selectedIdsVisible: 40 })
+    expect(record.score, `第 ${record.round} 轮按发送时快照分页答对`).toMatchObject({ lookAtCanvasCalls: 0, readSelectionCalls: expect.any(Number), selectionRead: 40, selectionTotal: 40, missing: [], extra: [], success: true })
   }
-  expect(journey.numbers).toMatchObject({ rounds: 5, toolWriteCorrect: '5/5', turnSuccess: '5/5', snapshotOnlySuccess: '5/5', roundsReadWholeSelection: '5/5', roundsSawWholeSelectionAtAnswer: '5/5', harnessErrors: 0 })
+  expect(journey.numbers).toMatchObject({ rounds: 5, turnSuccess: '5/5', snapshotOnlySuccess: '5/5', roundsReadSelection: 5, roundsReadWholeSelection: '5/5', harnessErrors: 0 })
   expect(journey.canvasIntactAfter).toBe(44)
 } catch (error) {
   failure = error

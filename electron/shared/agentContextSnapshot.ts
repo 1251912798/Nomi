@@ -128,13 +128,20 @@ function compactAnchor(anchor: DocumentAnchorRef): Record<string, unknown> {
 function compactLocator(
   locator: NonNullable<AgentContextHandle['locator']>,
   named: ReadonlySet<string>,
+  selectionCache: Map<readonly string[], readonly string[]>,
 ): Record<string, unknown> | undefined {
   if (locator.type === 'documentAnchor') return { type: locator.type, anchor: compactAnchor(locator.anchor) }
   if (locator.type === 'canvasSelection' || locator.type === 'clipSelection') {
     const ids = locator.type === 'canvasSelection' ? locator.nodeIds : locator.clipIds
-    const unnamed = ids.filter((id) => !named.has(id)).slice(0, 16).map((id) => compactText(id, 96))
-    if (!unnamed.length) return undefined
-    return locator.type === 'canvasSelection' ? { type: locator.type, nodeIds: unnamed } : { type: locator.type, clipIds: unnamed }
+    const cached = selectionCache.get(ids)
+    const unnamed = cached ?? (() => {
+      const found = ids.filter((id) => !named.has(id)).slice(0, 16)
+      selectionCache.set(ids, found)
+      return found
+    })()
+    const compactUnnamed = unnamed.map((id) => compactText(id, 96))
+    if (!compactUnnamed.length) return undefined
+    return locator.type === 'canvasSelection' ? { type: locator.type, nodeIds: compactUnnamed } : { type: locator.type, clipIds: compactUnnamed }
   }
   if (locator.type === 'timeRange') return { type: locator.type, startMs: locator.startMs, endMs: locator.endMs }
   const rawValue = locator.value
@@ -156,25 +163,18 @@ function contextHeader(version: AgentContextSnapshot['version']): string {
  * fields, so the same truncation always produces the same text (KV cache), and the model is never
  * left to assume the list it was given is the whole selection.
  */
-const OMITTED_NOTE = 'The omitted handles are still part of the current selection. Read live state with the tool named in omittedByKind before acting; handles without a listed tool cannot be recovered from this snapshot.'
+const OMITTED_NOTE = 'The omitted handles are still part of the current selection. Use omittedByKind and read_selection to read the send-time snapshot before acting; if read_selection is not listed, request the context tool group first.'
 
-/** Read faces that the Agent can call to recover a handle's current state. */
-const LIVE_READ_TOOLS: Readonly<Partial<Record<AgentContextKind, string>>> = Object.freeze({
-  image: 'look_at_media',
-  video: 'look_at_media',
-  audio: 'look_at_media',
-  document: 'read_script',
-  canvasNode: 'look_at_canvas',
-  timelineClip: 'read_timeline',
-})
+/** Every omitted handle is recoverable from the same send-time snapshot read face. */
+const SNAPSHOT_READ_TOOL = 'read_selection' as const
 
-type OmittedLiveReadKind = Readonly<{
+type OmittedKind = Readonly<{
   kind: AgentContextKind
   count: number
   readTool: string
 }>
 
-type CompactContextHandle = {
+export type CompactContextHandle = {
   id: string
   kind: AgentContextKind
   targetId: string
@@ -212,7 +212,7 @@ type PreparedHandle = Readonly<{
   locator: Record<string, unknown> | undefined
 }>
 
-function prepareHandle(handle: AgentContextHandle, named: ReadonlySet<string>): PreparedHandle {
+function prepareHandle(handle: AgentContextHandle, named: ReadonlySet<string>, selectionCache: Map<readonly string[], readonly string[]>): PreparedHandle {
   return {
     handle,
     id: compactText(handle.id, 160),
@@ -220,7 +220,7 @@ function prepareHandle(handle: AgentContextHandle, named: ReadonlySet<string>): 
     revision: compactText(handle.revision, 96),
     title: compactText(handle.display.title, 160),
     subtitle: handle.display.subtitle ? compactText(handle.display.subtitle, 160) : undefined,
-    locator: handle.locator ? compactLocator(handle.locator, named) : undefined,
+    locator: handle.locator ? compactLocator(handle.locator, named, selectionCache) : undefined,
   }
 }
 
@@ -246,7 +246,7 @@ function compactHandle(prepared: PreparedHandle, detail: ProjectionDetail): Comp
 }
 
 /** The accounting travels with the data: total = listed + omitted, always written, never inferred. */
-function encodeProjection(total: number, rows: readonly CompactContextHandle[], omittedByKind: readonly OmittedLiveReadKind[] = []): string {
+function encodeProjection(total: number, rows: readonly CompactContextHandle[], omittedByKind: readonly OmittedKind[] = []): string {
   const omitted = total - rows.length
   return JSON.stringify({
     total,
@@ -262,48 +262,33 @@ function encodeProjection(total: number, rows: readonly CompactContextHandle[], 
 
 /**
  * Encode the snapshot inside the hard budget. Preference order: list every handle at the richest
- * detail that fits. When no detail level can list every handle, omit every handle kind that has a
- * live read face and put its count/tool in the ledger. Only kinds without a live read face keep the
- * old longest-prefix fallback. The returned block (header included) never exceeds the hard bound.
+ * detail that fits. When no detail level can list every handle, omit every handle and put each
+ * kind's count plus the send-time snapshot read verb in the ledger. The returned block (header
+ * included) never exceeds the hard bound.
  */
 function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLength: number): { body: string; listed: number } {
   const budget = Math.max(256, MAX_TRANSIENT_CONTEXT_CHARS - headerLength)
   const total = handles.length
   const named: ReadonlySet<string> = new Set(handles.map((handle) => handle.targetId))
-  const prepared = handles.map((handle) => prepareHandle(handle, named))
+  const selectionCache = new Map<readonly string[], readonly string[]>()
+  const prepared = handles.map((handle) => prepareHandle(handle, named, selectionCache))
   for (const detail of PROJECTION_LADDER) {
     const body = encodeProjection(total, prepared.map((item) => compactHandle(item, detail)))
     if (body.length <= budget) return { body, listed: total }
   }
-  // Nothing fits whole: live-readable kinds are deliberately all-or-nothing. They have a current
-  // read face, so a partial list is more likely to be mistaken for the whole selection than to help.
-  // Kinds without a read face retain a deterministic longest-prefix fallback.
-  const leanest = PROJECTION_LADDER[PROJECTION_LADDER.length - 1]!
-  const liveReadCounts = new Map<AgentContextKind, number>()
-  for (const item of prepared) {
-    if (LIVE_READ_TOOLS[item.handle.kind]) liveReadCounts.set(item.handle.kind, (liveReadCounts.get(item.handle.kind) ?? 0) + 1)
-  }
+  const counts = new Map<AgentContextKind, number>()
+  for (const item of prepared) counts.set(item.handle.kind, (counts.get(item.handle.kind) ?? 0) + 1)
   const omittedByKind = AGENT_CONTEXT_KINDS.flatMap((kind) => {
-    const count = liveReadCounts.get(kind) ?? 0
-    const readTool = LIVE_READ_TOOLS[kind]
-    return count > 0 && readTool ? [{ kind, count, readTool }] : []
+    const count = counts.get(kind) ?? 0
+    return count > 0 ? [{ kind, count, readTool: SNAPSHOT_READ_TOOL }] : []
   })
-  const fallback = prepared.filter((item) => !LIVE_READ_TOOLS[item.handle.kind])
-  const rows = fallback.map((item) => compactHandle(item, leanest))
-  let low = 0
-  let high = rows.length
-  while (low < high) {
-    const middle = Math.ceil((low + high) / 2)
-    if (encodeProjection(total, rows.slice(0, middle), omittedByKind).length <= budget) low = middle
-    else high = middle - 1
-  }
-  return { body: encodeProjection(total, rows.slice(0, low), omittedByKind), listed: low }
+  return { body: encodeProjection(total, [], omittedByKind), listed: 0 }
 }
 
 /**
  * What the model is shown for a snapshot, plus the facts about it. When a full projection does not
- * fit, live-readable kinds are omitted wholesale and no-read kinds are listed in snapshot order as
- * far as the leanest budget allows; the text carries that ledger instead of implying completeness.
+ * fit, every kind is omitted wholesale and the text carries a stable per-kind ledger instead of
+ * implying completeness.
  */
 export type AgentContextProjection = Readonly<{
   /** Transient model context; empty when nothing is selected. */
@@ -336,4 +321,108 @@ export function projectAgentContextSnapshot(snapshot: AgentContextSnapshot | und
 
 export function formatAgentContextSnapshot(snapshot: AgentContextSnapshot | undefined): string {
   return projectAgentContextSnapshot(snapshot).text
+}
+
+export type AgentContextSnapshotPage = Readonly<{
+  total: number
+  handles: readonly CompactContextHandle[]
+  nextCursor?: string
+}>
+
+export type AgentContextSnapshotPageOptions = Readonly<{
+  cursor?: string
+  kind?: AgentContextKind | string
+}>
+
+export type AgentContextSnapshotPageErrorCode = 'selection_snapshot_unavailable' | 'selection_cursor_invalid' | 'selection_kind_invalid'
+
+export class AgentContextSnapshotPageError extends Error {
+  readonly code: AgentContextSnapshotPageErrorCode
+
+  constructor(code: AgentContextSnapshotPageErrorCode) {
+    super(code)
+    this.name = 'AgentContextSnapshotPageError'
+    this.code = code
+  }
+}
+
+// Cursor state is process-local and snapshot-bound. A cursor from another message or kind filter
+// therefore fails closed without putting the snapshot itself into the model-visible token.
+const snapshotCursorKeys = new WeakMap<object, string>()
+let nextSnapshotCursorKey = 1
+
+function snapshotCursorKey(snapshot: AgentContextSnapshot): string {
+  const existing = snapshotCursorKeys.get(snapshot)
+  if (existing) return existing
+  const key = String(nextSnapshotCursorKey++)
+  snapshotCursorKeys.set(snapshot, key)
+  return key
+}
+
+function encodeSnapshotCursor(key: string, kind: AgentContextKind | undefined, offset: number): string {
+  return encodeURIComponent(JSON.stringify({ key, kind: kind ?? null, offset }))
+}
+
+function decodeSnapshotCursor(cursor: string): { key: string; kind?: AgentContextKind; offset: number } | undefined {
+  try {
+    const raw = JSON.parse(decodeURIComponent(cursor)) as Record<string, unknown>
+    const offset = raw.offset
+    if (typeof raw.key !== 'string' || !Number.isSafeInteger(offset) || (offset as number) < 0) return undefined
+    const kind = raw.kind === null ? undefined : raw.kind
+    if (kind !== undefined && !AGENT_CONTEXT_KINDS.includes(kind as AgentContextKind)) return undefined
+    return { key: raw.key, ...(kind === undefined ? {} : { kind: kind as AgentContextKind }), offset: offset as number }
+  } catch {
+    return undefined
+  }
+}
+
+function encodeSelectionPage(total: number, rows: readonly CompactContextHandle[], nextCursor?: string): string {
+  return JSON.stringify({ total, handles: rows, ...(nextCursor ? { nextCursor } : {}) })
+}
+
+/** Read one bounded page from the immutable snapshot attached to the current message. */
+export function readAgentContextSnapshotPage(
+  snapshot: AgentContextSnapshot | undefined,
+  options: AgentContextSnapshotPageOptions = {},
+): AgentContextSnapshotPage {
+  if (!snapshot) throw new AgentContextSnapshotPageError('selection_snapshot_unavailable')
+  if (options.kind && !AGENT_CONTEXT_KINDS.includes(options.kind as AgentContextKind)) {
+    throw new AgentContextSnapshotPageError('selection_kind_invalid')
+  }
+  const cursor = options.cursor ? decodeSnapshotCursor(options.cursor) : undefined
+  const key = snapshotCursorKey(snapshot)
+  if (options.cursor && (!cursor || cursor.key !== key || cursor.kind !== options.kind)) {
+    throw new AgentContextSnapshotPageError('selection_cursor_invalid')
+  }
+  const kind = options.kind as AgentContextKind | undefined
+  const filtered = kind ? snapshot.handles.filter((handle) => handle.kind === kind) : snapshot.handles
+  const offset = cursor?.offset ?? 0
+  if (offset > filtered.length) throw new AgentContextSnapshotPageError('selection_cursor_invalid')
+  const named = new Set(snapshot.handles.map((handle) => handle.targetId))
+  const selectionCache = new Map<readonly string[], readonly string[]>()
+  const remaining = filtered.slice(offset)
+    .map((handle) => prepareHandle(handle, named, selectionCache))
+  let chosenDetail: ProjectionDetail | undefined
+  let count = 0
+  for (const detail of PROJECTION_LADDER) {
+    const rows = remaining.map((item) => compactHandle(item, detail))
+    let low = 0
+    let high = rows.length
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2)
+      const next = offset + middle < filtered.length ? encodeSnapshotCursor(key, kind, offset + middle) : undefined
+      if (encodeSelectionPage(filtered.length, rows.slice(0, middle), next).length <= MAX_TRANSIENT_CONTEXT_CHARS) low = middle
+      else high = middle - 1
+    }
+    if (low > 0 || rows.length === 0) {
+      chosenDetail = detail
+      count = low
+      break
+    }
+  }
+  if (!chosenDetail && remaining.length) throw new AgentContextSnapshotPageError('selection_cursor_invalid')
+  const detail = chosenDetail ?? PROJECTION_LADDER[PROJECTION_LADDER.length - 1]!
+  const rows = remaining.slice(0, count).map((item) => compactHandle(item, detail))
+  const nextCursor = offset + count < filtered.length ? encodeSnapshotCursor(key, kind, offset + count) : undefined
+  return { total: filtered.length, handles: rows, ...(nextCursor ? { nextCursor } : {}) }
 }

@@ -28,6 +28,7 @@ import {
 import { SKILL_WRITE_CAPABILITY } from "./skillWrite";
 import { SKILL_READ_CAPABILITY } from "./skillRead";
 import { MCP_READ_TOOL_NAME } from "./mcpTransportNames";
+import { AGENT_CONTEXT_READ_CAPABILITY } from "./agentContextRead";
 import type { CapabilityContract, CapabilityEffectClass, CapabilityProjectionSurface } from "./capabilityContract";
 
 type AnyCapabilityContract = CapabilityContract<unknown, unknown>;
@@ -68,6 +69,7 @@ const REGISTERED_CONTRACTS = [
   MODEL_ONBOARDING_SETUP_CAPABILITY,
   MODEL_ONBOARDING_TRY_CAPABILITY,
   MODEL_ONBOARDING_REMOVE_CAPABILITY,
+  AGENT_CONTEXT_READ_CAPABILITY,
 ] as const satisfies readonly CapabilityContract<unknown, unknown>[];
 
 /** 全部契约。`director.write`（3D-BOX `stage_shot` 的仅内部契约）2026-10-16 起常驻（开关随切换删除）。 */

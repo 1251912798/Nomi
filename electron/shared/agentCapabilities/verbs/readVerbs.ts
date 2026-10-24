@@ -2,6 +2,7 @@
 // （`laneCanvasTools.ts` / `laneDocumentTools.ts` / `laneTimelineTools.ts` / `laneModelRead.mts` / `laneExtendedDesktopPorts.ts`）。
 import { z } from "zod";
 import { agentModelEntrySchema } from "../availableModelsSchema";
+import { agentContextReadInputSchema, agentContextReadResultSchema } from "../agentContextRead";
 
 import { LANE_MODEL_OUTPUT_MAX_BYTES, LANE_MODEL_OUTPUT_MAX_LINES } from "../../agentLane/laneContracts";
 import type { DocumentReadInput } from "../documentRead";
@@ -205,4 +206,22 @@ export function readVerbs(): VerbDeclaration[] {
     prepareArguments: modelArgumentTolerance({}),
   };
   return [lookAtCanvas, readScript, readTimeline, lookAtMedia, listModels, checkJob, readSkill];
+}
+
+/** Desktop-only because only the resident Agent message carries a send-time snapshot. */
+export function readSelectionVerbs(): VerbDeclaration[] {
+  return [{
+    name: "read_selection", profiles: ["internal"], profileReason: "desktopOnlyContextSnapshot", internalGroup: "context",
+    contractId: "agent.context.read", effect: "read", nextAction: "none", outputSchema: agentContextReadResultSchema,
+    describe: {
+      does: "Read this message's selected handles, one bounded page at a time.",
+      useWhen: "When context omits; continue with cursor.",
+      notWhen: "For live state use look_at_canvas.",
+      params: "opaque cursor; kind filter.",
+    },
+    promptGuidelines: READ_GUIDELINES,
+    schema: agentContextReadInputSchema,
+    examples: [],
+    prepareArguments: modelArgumentTolerance({}),
+  }];
 }

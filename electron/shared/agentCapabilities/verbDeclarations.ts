@@ -11,12 +11,12 @@ import { assembleVerbDeclarations, type VerbDeclaration } from "./verbDeclaratio
 import { askVerbs } from "./verbs/askVerbs";
 import { onboardingVerbs } from "./verbs/onboardingVerbs";
 import { assertVerbFieldProvenance } from "./verbs/verbFieldProvenance";
-import { readVerbs } from "./verbs/readVerbs";
+import { readSelectionVerbs, readVerbs } from "./verbs/readVerbs";
 import { writeVerbs } from "./verbs/writeVerbs";
 
 export const VERB_DECLARATIONS: readonly VerbDeclaration[] = assembleVerbDeclarations({
   // 接模型那五条只投对外 profile（见 verbs/onboardingVerbs.ts 文件头），内部面仍是 20 个动词。
-  declarations: [...readVerbs(), ...writeVerbs(), ...askVerbs(), ...onboardingVerbs()],
+  declarations: [...readVerbs(), ...writeVerbs(), ...askVerbs(), ...onboardingVerbs(), ...readSelectionVerbs()],
   contractById: (id) => CAPABILITY_CONTRACTS.find((contract) => contract.id === id),
   isPaidBoundaryName: isPaidBoundaryAlias,
   // 只投对外 profile 的动词，说明书点名的是对外那一侧的名字（`nomi_read` …）。真相源仍是契约本身。

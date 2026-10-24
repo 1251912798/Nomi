@@ -63,3 +63,7 @@
   - 画布 40 + 时间轴 3 + 文稿 1 混选 → 一个不列，按类计数对，各页拼起来顺序一致、不重不漏；
   - 坏游标、没有快照 → 机器可读的错误；
   - 同一快照投影两次文本相同（KV 稳定）。
+
+### 自写登记复盘：gate-family
+
+本轮命中自写登记 `gate-family`（status `under-review`）。它负责把 Nomi 自己的门岗族谱、冻结基线、PR 判据和结构合同串成一条只减不增的交付链；这不是一个单独的通用 lint 规则。**现在换不了现成方案**：通用 CI / policy engine 可以执行规则，但不知道 Nomi 的 `VERB_DECLARATIONS`、concept-owner、root-cause contract、模型面基线和门岗棘轮之间的领域关系；拆到现成工具会产生第二份“哪条边界算已登记”的判据。**哪天换**：2026-11-01 前按登记条目的 reviewBy 评估标准 policy engine 或 repository-analysis framework，前提是能保留跨文件门表、只减不增基线和合同联动；满足后再迁移，未满足则继续保留并记录原因。本轮只消费既有门岗，不新增 gate-family 规则。

@@ -1,0 +1,45 @@
+{
+  "name": "发送时选区快照的分页读口（read_selection）",
+  "subject": "agent.context-selection-read",
+  "lifecycle": "execution",
+  "authority_kind": "decision",
+  "trust_domain": "shared",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/agentContextSnapshot.ts",
+    "symbol": "readAgentContextSnapshotPage"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/agentContextSnapshot.ts",
+      "symbol": "readAgentContextSnapshotPage"
+    },
+    {
+      "path": "electron/shared/agentCapabilities/verbs/readVerbs.ts",
+      "symbol": "readSelectionVerbs"
+    },
+    {
+      "path": "electron/agentLane/laneDesktopTools.ts",
+      "symbol": "createDesktopLaneTools"
+    }
+  ],
+  "forbidden_derivations": [
+    {
+      "symbol": "look_at_canvas",
+      "kind": "reference",
+      "why": "The live canvas selection can change after the message is sent and is not the immutable snapshot attached to that message."
+    },
+    {
+      "symbol": "read_timeline",
+      "kind": "reference",
+      "why": "The timeline read returns the project timeline, not which clips were selected when this message was sent."
+    }
+  ],
+  "allowed_consumers": [
+    "electron/agentLane/laneDesktopTools.ts",
+    "electron/shared/agentCapabilities/modelFacingToolRegistry.ts"
+  ],
+  "since": "2026-10-25",
+  "notes": "The tool is internal-only because only the desktop Agent lane carries a message-scoped contextSnapshot. The cursor is opaque to the model, bound to the current snapshot object and kind filter, and never persisted across messages."
+}

@@ -23,7 +23,7 @@ import {
   chooseAssistantModel, composerText, newConversation, openCanvas, sendCanvas,
 } from './agent-runtime-walk-support.mjs'
 import {
-  LOOK_AT_CANVAS, SELECTION_ASK, SNAPSHOT_ONLY_ASK, answerTimeView, groundTruthKeys, roundSettled, roundTranscript, sceneFromIds, sceneProblems, sceneProjectionFacts,
+  LOOK_AT_CANVAS, SELECTION_ASK, SELECTION_PROMPTS, SNAPSHOT_ONLY_ASK, answerTimeView, groundTruthKeys, roundSettled, roundTranscript, sceneFromIds, sceneProblems, sceneProjectionFacts,
   scoreSelectionRound, scoreSnapshotOnlyRound, selectionLinesOf, selectionSceneSpec, summarizeSelectionRounds,
 } from './_lookAtCanvasSelectionScore.mjs'
 
@@ -40,12 +40,14 @@ export const SELECTION_EVIDENCE_DIR = path.join(REPO_ROOT, 'docs/evidence/2026-1
 export const SELECTION_METRICS = Object.freeze({
   toolWriteCorrect: '工具写对率 = 不带参数且宿主未退回的 look_at_canvas 调用数 / look_at_canvas 调用总数',
   turnSuccess: '回合成功率 = 最终回答点到的节点集合与 ground truth（选中的 20 个视频节点）完全一致、不多不少的轮数 / 总轮数',
+  readPath: '读面路径分档 = 调用 read_selection / 调用 look_at_canvas / 两者都没调的回合数',
 })
 /** 诊断计数的定义（不进三个数；回合失败时用来分原因）。 */
 export const SELECTION_DIAGNOSTICS = Object.freeze({
   roundsReadWholeSelection: '转录里节点行标了「选中」的行覆盖全部选中 id 的轮数',
   roundsSawWholeSelectionAtAnswer: '答话那一刻、发给模型的那份消息里仍看得见全部带「选中」标记的节点行的轮数',
   view: 'rounds[].view：答话那一刻看得见几个带「选中」的节点行、有没有被旧读结果替换、答话前模型自己记下了几个真值视频',
+  prompts: `量具预置 ${SELECTION_PROMPTS.length} 句不同的用户说法，实际回合默认抽样其中前 rounds 句`,
 })
 
 /** 一轮的安全上限（不是完成条件：完成看转录里最后一条助手消息落地 + composer 退出运行态）。 */
@@ -299,7 +301,7 @@ export function selectionEvidence({ script, mode, startedAt, journey, walk, fail
     result: failure ? 'failed' : 'passed',
     failure: failure ? String(failure?.message ?? failure).slice(0, 2000) : null,
     buildMarker: SELECTION_MARKER,
-    model, ask: SELECTION_ASK, metrics: SELECTION_METRICS, diagnostics: SELECTION_DIAGNOSTICS,
+    model, ask: SELECTION_ASK, promptBank: SELECTION_PROMPTS, metrics: SELECTION_METRICS, diagnostics: SELECTION_DIAGNOSTICS,
     numbers: journey.numbers ?? null,
     gaugeProblems: journey.gaugeProblems ?? null,
     canvasNodesAfter: journey.canvasIntactAfter ?? null,

@@ -5,29 +5,74 @@
   "detected_by": "review",
   "recurrence_check_on": "2026-11-20",
   "problem_type": "A bounded model-facing projection drops entries without accounting for them",
-  "symptom": "Selecting 12 canvas nodes gives the model 7 of them (10 with short ids), selecting 16 or more gives 6 (8 with short ids), and nothing in the text or the UI says anything is missing; the model answers about 'the selection' as if it were whole.",
-  "direct_cause": "formatAgentContextSnapshot took only the first 16 handles, every canvasNode handle's locator repeated the entire selection (O(N^2) bytes), and encodeBoundedHandles kept the richest detail level and cut the tail one handle at a time to fit 6000 chars. The old fallback could therefore present a plausible partial list without a structural rule that preferred a live read face.",
-  "class_root": "The projection owner had no accounting invariant that distinguished recoverable from non-recoverable handles: budget pressure deleted entries uniformly, even when a live read tool could recover the current state, and the repeated-selection redundancy that created the pressure was never removed.",
+  "symptom": "When a send-time selection exceeds the transient model budget, a partial handle list could look complete; the model could also be pointed at live domain reads that do not reconstruct which handles were selected in that message.",
+  "direct_cause": "The projection owner used LIVE_READ_TOOLS and a no-read longest-prefix fallback, so budget pressure could remove only some kinds or leave a partial prefix. No model-visible tool read the immutable snapshot attached to the consumed message.",
+  "class_root": "A bounded projection lacked one recoverable snapshot boundary: it could omit handles without a single all-or-nothing ledger and a pageable read of the same send-time snapshot.",
   "affected_population": [
-    "Any canvas multi-selection of 12 or more nodes sent to the resident Agent",
-    "Mixed selections (document + canvas nodes + timeline clips + director shots + @ references) whose combined handles exceed the budget",
-    "Nodes or clips with very long titles, which evicted the entries behind them",
-    "Compaction summaries, which re-project the latest selection through the same function"
+    "Any message-scoped selection whose compact projection exceeds 6000 characters",
+    "Mixed document, canvas, timeline, reference and future handle kinds",
+    "Any desktop Agent turn that tries to recover omitted handles after the UI selection changes"
   ],
   "scope_paths": [
-    "electron/shared/agentContextSnapshot.ts"
+    "electron/shared/agentContextSnapshot.ts",
+    "electron/shared/agentContextSnapshot.test.ts",
+    "src/workbench/ai/resident/residentContextSnapshot.test.ts",
+    "electron/shared/agentCapabilities/agentContextRead.ts",
+    "electron/shared/agentCapabilities/capabilityContract.ts",
+    "electron/shared/agentCapabilities/registry.ts",
+    "electron/shared/agentCapabilities/registry.test.ts",
+    "electron/shared/agentCapabilities/verbDeclaration.ts",
+    "electron/shared/agentCapabilities/verbDeclarations.ts",
+    "electron/shared/agentCapabilities/verbs/readVerbs.ts",
+    "electron/agentLane/laneDesktopTools.ts",
+    "electron/agentLane/laneDesktopReads.test.ts",
+    "scripts/check-model-face-frozen.mjs",
+    "scripts/perf-scenarios-lib.mjs",
+    "tests/perf/agent-context-selection-paging-bench.mjs",
+    "tests/perf/scenarios/agent-context-selection-paging-5000.json",
+    "tests/ux/_lookAtCanvasSelectionScore.mjs",
+    "tests/ux/_lookAtCanvasSelectionSteps.mjs",
+    "tests/ux/look-at-canvas-selection-real.rehearsal.walk.mjs",
+    "docs/engineering/concept-owners/agent.context-selection-read.json",
+    "docs/engineering/concept-owners/agent.context-snapshot-projection.json"
   ],
   "entry_points": [
-    "Provider request projection of a user message (laneDesktopInput providerContent)",
-    "Compaction summary of the latest selected state (laneContextBudget before_compaction)"
+    "Provider request projection via laneDesktopInput",
+    "Compaction summary via laneContextBudget",
+    "Desktop lane model-facing read_selection registration and execution"
   ],
-  "external_sources": [],
-  "internal_only_reason": "The projection is Nomi's own wire-to-prompt contract; no dependency or platform decides it. The only external fact used, that look_at_canvas reads the live canvas selection, is read from the repository's own verb declaration.",
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://modelcontextprotocol.io/specification/latest/server/utilities/pagination",
+      "checked_at": "2026-10-25",
+      "purpose": "Opaque cursor, server page size, nextCursor completion and invalid cursor behavior"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://www.anthropic.com/engineering/writing-tools-for-agents",
+      "checked_at": "2026-10-25",
+      "purpose": "Agent-oriented tool boundaries, high-signal results, pagination/filtering, actionable errors and evaluation"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://openai.github.io/openai-agents-python/context/",
+      "checked_at": "2026-10-25",
+      "purpose": "Local run context is available to tools but is not automatically sent to the model"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/src/core/tools/read.ts",
+      "checked_at": "2026-10-25",
+      "purpose": "Reference read tool offset/limit continuation and truncation guidance"
+    }
+  ],
   "invariants": [
-    "The projection writes total, listed and (when listed < total) omitted, so total = listed + omitted holds in the text itself and the model is never left to assume the list is the whole selection.",
-    "Listed handles are always the first `listed` handles of the snapshot in snapshot order; the omitted tail is counted, never dropped silently.",
-    "Budget pressure sheds optional display detail first (subtitle, then title length, then identity caps) and only then entries; identity, role and domain locators are never shed.",
-    "A selection locator never repeats ids that another handle already names, so the projection is linear in the selection size."
+    "Projection either lists every handle at one detail rung or lists zero handles; omitted output always has total, listed, omitted, per-kind counts, the read_selection verb and a fixed note.",
+    "total = listed + omitted and listed handles preserve snapshot order.",
+    "read_selection reads the same immutable snapshot object consumed for the current message, preserves order, and returns total, bounded rows and nextCursor only when more rows remain.",
+    "Cursor is opaque, bound to snapshot identity and kind filter, and invalid or cross-message cursors fail closed without reading live state.",
+    "Every bounded read page stays within the shared 6000-character transient budget."
   ],
   "doors": [
     {
@@ -41,106 +86,163 @@
       "symbol": "formatAgentContextSnapshot"
     },
     {
-      "kind": "write",
+      "kind": "read",
+      "path": "electron/agentLane/laneDesktopTools.ts",
+      "symbol": "readAgentContextSnapshotPage"
+    },
+    {
+      "kind": "read",
       "path": "electron/shared/agentContextSnapshot.ts",
       "symbol": "projectAgentContextSnapshot"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/agentContextRead.ts",
+      "symbol": "agentContextReadInputSchema"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/verbs/readVerbs.ts",
+      "symbol": "agentContextReadResultSchema"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/capabilityContract.ts",
+      "symbol": "CapabilityPortKind"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/registry.ts",
+      "symbol": "AGENT_CONTEXT_READ_CAPABILITY"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/agentCapabilities/verbDeclarations.ts",
+      "symbol": "assembleVerbDeclarations"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/verbDeclaration.ts",
+      "symbol": "profileReason"
     }
   ],
   "door_reduction": {
     "before": 2,
-    "after": 3,
-    "why_not": "The two caller doors (laneContextBudget, laneDesktopInput) already call the single owner formatAgentContextSnapshot and only place its string: laneDesktopInput appends it to the provider-bound user message, laneContextBudget embeds the latest selection in the compaction summary prompt. They serve different consumers (live request vs summary), hold no projection logic and stay unchanged. The third door is the owner itself, projectAgentContextSnapshot, added so the renderer can read the same total/listed/omitted facts without re-deriving them; formatAgentContextSnapshot is now a thin wrapper over it, so there is still exactly one encoder."
+    "after": 10,
+    "why_not": "The two existing projection caller doors remain separate because one injects the live provider message and the other builds a compaction summary. The new read door remains in laneDesktopTools because it is the only execution boundary with the consumed message context. The declaration, capability registry and type/profile doors are separate registration boundaries that must remain explicit so model exposure cannot drift from the desktop-only contract."
   },
-  "generality_proof": "Every model-facing projection of a context snapshot goes through formatAgentContextSnapshot, now a thin wrapper over projectAgentContextSnapshot. The accounting is produced inside the same encoder that enforces the 6000-char bound, so no caller can obtain a bounded projection without the counts, and the test ladder (1/12/16/40/256 selected, long titles, mixed kinds, pathological 256 x 20k-char fields) exercises the shared encoder rather than any one producer.",
+  "generality_proof": "Every bounded send-time projection still passes through projectAgentContextSnapshot/formatAgentContextSnapshot, while every desktop recovery call passes through readAgentContextSnapshotPage against the consumed message context. The shared owner has no kind-specific live-read branch or prefix fallback, so existing producers and future handle kinds receive the same all-or-nothing accounting and page contract.",
   "shared_boundaries": [
     {
       "path": "electron/shared/agentContextSnapshot.ts",
       "symbol": "projectAgentContextSnapshot",
-      "responsibility": "Own the model-facing projection of a snapshot: the hard character bound, the detail ladder, and the total/listed/omitted accounting that is written into the text and returned as facts."
+      "responsibility": "Own the single all-or-nothing projection, budget ladder and omitted ledger."
     },
     {
       "path": "electron/shared/agentContextSnapshot.ts",
-      "symbol": "formatAgentContextSnapshot",
-      "responsibility": "Keep the two existing callers on the single owner by returning only the projection text."
+      "symbol": "readAgentContextSnapshotPage",
+      "responsibility": "Own opaque cursor validation, kind filtering, page sizing and the compact handle row shape."
+    },
+    {
+      "path": "electron/agentLane/laneDesktopTools.ts",
+      "symbol": "createDesktopLaneTools",
+      "responsibility": "Expose read_selection only in the desktop internal lane and bind it to the consumed message context."
     }
   ],
   "same_class_entry_points": [
     {
       "path": "electron/agentLane/laneDesktopInput.ts",
-      "entry_point": "providerContent (user message projection)",
+      "entry_point": "providerContent",
       "disposition": "enforced",
-      "evidence": "Calls formatAgentContextSnapshot(message.context.contextSnapshot); door-map lists it as one of the two doors and the real producer-to-projection test in residentContextSnapshot.test.ts covers the same call."
+      "evidence": "Uses formatAgentContextSnapshot for every provider-bound desktop message."
     },
     {
       "path": "electron/agentLane/laneContextBudget.mts",
-      "entry_point": "before_compaction selected-state summary",
+      "entry_point": "before_compaction",
       "disposition": "enforced",
-      "evidence": "Calls formatAgentContextSnapshot(latest.context.contextSnapshot); the omitted note therefore survives into a compaction summary instead of being flattened into an apparently complete list."
+      "evidence": "Uses the same projection owner for compaction summaries."
     },
     {
-      "path": "src/workbench/ai/resident/residentContextSnapshot.ts",
-      "entry_point": "buildResidentContextSnapshot (producer stamps the whole selection into every canvas handle locator)",
+      "path": "electron/agentLane/laneDesktopTools.ts",
+      "entry_point": "read_selection execution",
+      "disposition": "enforced",
+      "evidence": "Reads input.context().contextSnapshot and calls readAgentContextSnapshotPage; no renderer or live domain read is substituted."
+    },
+    {
+      "path": "electron/shared/agentCapabilities/modelFacingToolRegistry.ts",
+      "entry_point": "internal profile projection",
+      "disposition": "enforced",
+      "evidence": "The verb declaration is internal-only, so MCP has no snapshot read tool."
+    },
+    {
+      "path": "electron/shared/agentCapabilities/documentRead.ts",
+      "entry_point": "method read_selection alias",
       "disposition": "not-affected",
-      "evidence": "The producer's full snapshot is the wire contract that the Host re-finds targets from and that the composer chip reads (residentReferenceFromContextHandle uses locator.nodeIds); the loss happened only in the lossy projection, so the producer is deliberately left unchanged and the projection stops repeating it."
+      "evidence": "This is the existing document.read transport scope alias; registry order preserves its dispatcher resolution and it is not the model-facing snapshot verb."
     },
     {
       "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
-      "entry_point": "formatCanvasForAgent selected-id line (SELECTED_IDS_BUDGET 900 chars)",
+      "entry_point": "formatCanvasForAgent",
       "disposition": "not-affected",
-      "evidence": "A separate projection owner with its own tests (canvasPromptContext.test.ts pins the line). It cuts the selected ids at about 31 ids and marks the cut with an ellipsis, so it is not silent, but it gives no count. Outside this change's owner and recorded in residual_risks."
+      "evidence": "This is #1283 live canvas rendering with a separate owner and contract; this change does not alter it."
     }
   ],
   "recurrence": {
     "classification": "recurring",
-    "reason": "Any producer that adds handles (a new selection kind, more director shots, more @ references) can push the projection over its budget again, and the old encoder resolved that by deleting entries whatever the producer was.",
+    "reason": "Any future handle producer or larger mixed selection can exceed the projection budget; any desktop turn can have its live UI selection changed after send, so only a message-bound page read preserves semantics.",
     "same_class_scan": [
-      "node scripts/door-map.mjs formatAgentContextSnapshot: 2 write doors, both place the string; no other projection of AgentContextSnapshot exists (rg AgentContextSnapshot electron src).",
-      "Producers checked: buildResidentContextSnapshot (canvas/timeline/document), directorShotContextHandles (one handle per shot sharing the director node id), agentReferenceContext (@ references). The director shots are only distinguishable by their custom locator, which is why the new encoder never sheds locators.",
-      "Wire limit checked: laneDesktopInput contextSnapshot handles max(256) and a 256 KB context cap, so 256 handles is the real worst case and is in the test ladder.",
-      "Adjacent bounded projection checked: canvasReadCompact selected-id join (see same_class_entry_points)."
+      "node scripts/door-map.mjs formatAgentContextSnapshot: two existing projection caller doors",
+      "node scripts/door-map.mjs readAgentContextSnapshotPage: laneDesktopTools is the single read execution door",
+      "rg AgentContextSnapshot electron src: producers remain residentContextSnapshot, directorShotFocus and agentReferenceContext; no new producer is added",
+      "model-facing registry and MCP projection checked: read_selection is internal-only and cannot appear on MCP"
     ]
   },
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "electron/shared/agentContextSnapshot.ts",
-    "invariant": "A bounded projection writes total/listed/omitted and lists only a complete detail rung; if no rung fits, every handle kind with a declared live read tool is omitted wholesale and recorded in omittedByKind with its count and tool, while kinds without a live read tool retain a bounded prefix. total = listed + omitted and listed < total always carries the fixed omitted note.",
-    "failure_mode": "When even the leanest rows do not all fit, readable kinds contribute zero rows and their counts/tools are written to omittedByKind; only no-read kinds may contribute the longest prefix that fits. The block stays within 6000 chars and valid JSON.",
+    "invariant": "The shared owner either lists all handles or zero handles with a stable per-kind omitted ledger; readAgentContextSnapshotPage returns bounded pages from the same snapshot and rejects invalid or cross-snapshot cursors.",
+    "failure_mode": "Budget overflow emits no handle rows; missing snapshots and invalid cursors throw machine-readable failures with a model-executable next step.",
     "exception_policy": "none",
-    "strategy": "Compute the accounting in the same encoder that enforces the budget, pick the richest detail rung that lists every handle before ever cutting entries, then fail closed for recoverable kinds by pointing to their live read tool. Keep the longest-prefix fallback only for kinds with no read face, remove selection redundancy, and expose the existing total/listed/omitted facts to the renderer.",
+    "strategy": "Delete the LIVE_READ_TOOLS and no-read prefix branches, keep one compact row encoder, bind cursor lifetime to the current snapshot object, and expose the new verb only through the desktop internal profile.",
     "artifacts": [
-      "electron/shared/agentContextSnapshot.ts"
+      "electron/shared/agentContextSnapshot.ts",
+      "electron/shared/agentCapabilities/agentContextRead.ts",
+      "electron/agentLane/laneDesktopTools.ts"
     ]
   },
   "regression_tests": [
     "electron/shared/agentContextSnapshot.test.ts",
-    "src/workbench/ai/resident/residentContextSnapshot.test.ts"
+    "src/workbench/ai/resident/residentContextSnapshot.test.ts",
+    "electron/agentLane/laneDesktopReads.test.ts",
+    "electron/shared/agentCapabilities/registry.test.ts"
   ],
   "class_regression_tests": [
-    "electron/shared/agentContextSnapshot.test.ts"
+    "electron/shared/agentContextSnapshot.test.ts",
+    "electron/agentLane/laneDesktopReads.test.ts"
   ],
   "legacy_paths": {
     "status": "removed",
     "removed_paths": [
       "electron/shared/agentContextSnapshot.ts"
     ],
-    "rationale": "The fixed 16-handle first page, the per-handle repeated selection ids and the uniform longest-prefix fallback for readable kinds are deleted in the same change; there is no second encoder and no fallback that partially lists a recoverable kind."
+    "rationale": "The LIVE_READ_TOOLS class-to-tool table, its per-kind live-read ledger and the no-read longest-prefix fallback are deleted in the same change. The only recovery path is read_selection paging the send-time snapshot."
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
     "rationale": "Internal projection contract; no third-party runtime controls it.",
     "exit_criteria": []
   },
-  "migration": "No stored data changes: the snapshot on the Host request and in transcripts is untouched and the projection is recomputed from it on every provider request. Messages already in a transcript simply project in the new shape the next time they are sent (one KV-cache miss per existing session, no semantic change).",
+  "migration": "No snapshot format or stored data changes. Existing transcripts re-project with the new ledger; read_selection cursor state is process-local and never persisted, so old messages either have no current context snapshot and fail visibly or are sent again with a fresh snapshot.",
   "residual_risks": [
-    "look_at_canvas (canvasReadCompact) lists at most about 31 selected ids and marks the cut with an ellipsis but no count and the verb takes no arguments. The snapshot projection now omits oversized canvasNode handles wholesale and records look_at_canvas in omittedByKind, but the separate live-read owner still needs its own count or paging fix.",
-    "Handles are listed in snapshot order among kinds without a live read face. Explicit @ references and director shots are canvasNode handles with live read via look_at_canvas, so under budget pressure they are omitted wholesale and recoverable through that tool rather than presented as a partial list.",
-    "The real-model write-correctness number is unverified: the only credential in the environment (DEEPSEEK_API_KEY) returned 402 Insufficient Balance. docs/evidence/2026-10-21-agent-selection-truncation has the probe and the zero-cost before/after census.",
-    "The composer chip does not show the omitted count yet; projectAgentContextSnapshot returns the facts for that follow-up line."
+    "The separate live look_at_canvas result still has its own node-list budget and is outside this change.",
+    "Real-model read_selection adoption and answer accuracy remain unverified until the coordinator runs the paid sample.",
+    "Cursor identity is process-local by design; a restarted lane must start from the first page."
   ],
   "invariant_owner_layer": {
     "layer": "electron/shared/agentContextSnapshot.ts",
     "tests": [
-      "electron/shared/agentContextSnapshot.test.ts"
+      "electron/shared/agentContextSnapshot.test.ts",
+      "electron/agentLane/laneDesktopReads.test.ts"
     ]
   }
 }

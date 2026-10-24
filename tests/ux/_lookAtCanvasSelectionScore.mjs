@@ -6,6 +6,18 @@ export const SELECTION_ASK = '我选中的这些里，哪几个是视频节点�
 // 快照专用档：禁止调用 look_at_canvas，只有每条消息随附的 ContextSnapshot 能提供选区事实。
 export const SNAPSHOT_ONLY_ASK = '只根据当前消息里的选区快照作答，不要调用任何工具。请列出我当前选中的所有视频节点标题，一行一个，只列标题。'
 export const LOOK_AT_CANVAS = 'look_at_canvas'
+export const READ_SELECTION = 'read_selection'
+// 真实用户会把同一意图说成很多种话；量具保留这些句子，防止只用一条演示 prompt 就宣称工具会用。
+export const SELECTION_PROMPTS = Object.freeze([
+  '把我选中的这些镜头都改成夜景。', '逐个说出我刚才框选的镜头标题。', '我选中的视频里，哪些是夜景？',
+  '给这批片段统一加字幕。', '只处理我选中的画布节点。', '把选中的镜头按顺序列出来。',
+  '这次发送时我到底选了多少个？', '把选区里的视频和图片分开说。', '只告诉我选中的前三个标题。',
+  '看当前画布，不看发送时选区。', '时间轴上我勾的片段总时长是多少？', '把文稿选中的段落拆成镜头。',
+  '我刚才 @ 的参考分别是什么？', '先不要改，确认这批选区里有没有音频。', '按我发送那一刻的选择生成一个清单。',
+  '我发送后又换了选择，仍按刚才那一批回答。', '读完所有选中的片段，再告诉我最短的一个。',
+  '只读画布选区，不要读实时画布。', '选区太大时告诉我总数和还没读到的部分。', '继续读取上一页的选区。',
+  '这条消息没有选区时不要猜，告诉我怎么继续。', '游标失效时从第一页重新读。',
+])
 
 const SELECTED_SHOTS = Object.freeze([
   ['晨雾码头', '渔船出港'], ['缆绳绕桩', '汽笛压浪'], ['灯塔初亮', '灯塔夜航'], ['礁石浪花', '海鸥掠水'], ['渔网晾晒', '老街叫卖'],
@@ -131,6 +143,15 @@ export function lookAtCanvasCallLegality(call) {
   return { legal: true }
 }
 
+function selectionIdsFromResult(resultText, scene) {
+  try {
+    const payload = JSON.parse(String(resultText ?? ''))
+    return (Array.isArray(payload.handles) ? payload.handles : [])
+      .filter((handle) => typeof handle?.targetId === 'string' && scene.selectedIds.includes(handle.targetId))
+      .map((handle) => handle.targetId)
+  } catch { return [] }
+}
+
 const squash = (text) => String(text ?? '').replace(/\s+/g, '')
 export function answeredKeys(answer, scene) {
   const text = squash(answer)
@@ -139,9 +160,11 @@ export function answeredKeys(answer, scene) {
 
 export function scoreSelectionRound({ scene, transcript }) {
   const looks = transcript.calls.filter((call) => call.name === LOOK_AT_CANVAS)
+  const snapshotReads = transcript.calls.filter((call) => call.name === READ_SELECTION)
   const verdicts = looks.map((call) => lookAtCanvasCallLegality(call))
   const read = new Set()
   for (const call of looks) for (const id of markedIdsFromText(call.resultText, scene)) read.add(id)
+  for (const call of snapshotReads) for (const id of selectionIdsFromResult(call.resultText, scene)) read.add(id)
   const truth = groundTruthKeys(scene)
   const answered = answeredKeys(transcript.finalAnswer, scene)
   const byKey = new Map(scene.nodes.map((node) => [node.key, node]))
@@ -150,10 +173,12 @@ export function scoreSelectionRound({ scene, transcript }) {
     const node = byKey.get(key); return { title: node.title, kind: node.kind, selected: node.selected }
   })
   return {
-    lookAtCanvasCalls: looks.length, legalCalls: verdicts.filter((verdict) => verdict.legal).length,
+    lookAtCanvasCalls: looks.length, readSelectionCalls: snapshotReads.length,
+    readPath: snapshotReads.length ? 'read_selection' : looks.length ? 'look_at_canvas' : 'none',
+    legalCalls: verdicts.filter((verdict) => verdict.legal).length,
     illegalCalls: verdicts.filter((verdict) => !verdict.legal).map(({ why }) => ({ args: {}, why })),
     selectionRead: read.size, selectionTotal: scene.selectedIds.length,
-    otherTools: transcript.calls.filter((call) => call.name !== LOOK_AT_CANVAS).map((call) => call.name),
+    otherTools: transcript.calls.filter((call) => ![LOOK_AT_CANVAS, READ_SELECTION].includes(call.name)).map((call) => call.name),
     answeredCount: answered.length, missing, extra, success: answered.length > 0 && missing.length === 0 && extra.length === 0,
   }
 }
@@ -210,6 +235,9 @@ export function summarizeSelectionRounds(records) {
     toolWriteCorrect: `${valid.reduce((sum, record) => sum + record.score.legalCalls, 0)}/${valid.reduce((sum, record) => sum + record.score.lookAtCanvasCalls, 0)}`,
     turnSuccess: `${count((record) => record.score.success)}/${records.length}`,
     roundsWithoutLookAtCanvas: count((record) => record.score.lookAtCanvasCalls === 0),
+    roundsReadSelection: count((record) => record.score.readSelectionCalls > 0),
+    roundsReadLiveCanvas: count((record) => record.score.lookAtCanvasCalls > 0),
+    roundsWithoutSelectionRead: count((record) => record.score.readSelectionCalls === 0 && record.score.lookAtCanvasCalls === 0),
     roundsReadWholeSelection: `${count((record) => record.score.selectionRead === record.score.selectionTotal)}/${records.length}`,
     roundsSawWholeSelectionAtAnswer: `${count((record) => record.view?.selectedIdsVisible === record.score.selectionTotal)}/${records.length}`,
     harnessErrors: records.filter((record) => record.harnessError).length,

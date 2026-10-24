@@ -1,0 +1,16 @@
+{
+  "id": "agent-context-selection-paging-5000",
+  "feature": "5000 个句柄的发送时选区投影与 read_selection 首页分页",
+  "script": "tests/perf/agent-context-selection-paging-bench.mjs",
+  "args": [],
+  "scale": "5000 个混合字段句柄，选择定位器共享 5000 个 id",
+  "metrics": ["response"],
+  "budget": 100,
+  "budgetStatus": "proposed",
+  "budgetBasis": "新增 Agent 读操作沿用默认即时响应预算 ≤100ms（docs/engineering/perf-scenarios.md）；最坏规模用于防止投影和读页随句柄数退化",
+  "group": "Agent 上下文快照分页",
+  "measurement": {
+    "state": "pending",
+    "reason": "实现线登记量具；基线由协调在安静窗口用 --update-baseline 写入"
+  }
+}
