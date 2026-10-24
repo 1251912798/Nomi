@@ -14,7 +14,8 @@
     "scripts/lib/gitPaths.mjs",
     "scripts/check-test-copy-literals.mjs",
     "scripts/check-test-waits.mjs",
-    "scripts/pre-push-tracked-scan.node-test.mjs"
+    "scripts/pre-push-tracked-scan.node-test.mjs",
+    "docs/engineering/concept-owners/delivery.tracked-file-list.json"
   ],
   "entry_points": [
     "check:test-copy-literals",
@@ -24,7 +25,8 @@
   "internal_only_reason": "这是仓库推送前门岗的内部文件选择不变量，依据 git ls-files 与现有门岗实现即可判定。",
   "invariants": [
     "扫描输入只能来自 git ls-files --cached --others --exclude-standard -z",
-    "不在 git 仓库中必须报错，不能退回磁盘递归"
+    "不在 git 仓库中必须报错，不能退回磁盘递归",
+    "索引中已跟踪但磁盘已删除的路径不得进入扫描清单"
   ],
   "doors": [
     {
@@ -106,7 +108,7 @@
     "rationale": "未改变第三方依赖。",
     "exit_criteria": []
   },
-  "migration": "现有调用签名保持不变；测试夹具改为初始化临时 git 仓库，明确非 git 仓库不再静默回退。",
+  "migration": "现有调用签名保持不变；测试夹具改为初始化临时 git 仓库，明确非 git 仓库不再静默回退，并覆盖索引残留删除路径。",
   "residual_risks": [
     "CI_ONLY 与其余扫描守卫仍有目录遍历，需后续批次迁移并扩充结构门覆盖。"
   ],

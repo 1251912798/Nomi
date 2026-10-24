@@ -14,6 +14,8 @@
 // 选 `-z` 而不是 `-c core.quotePath=false`：前者按 NUL 分隔，
 // 顺手把「路径里含空格 / 换行」这一族也一起关掉，且不依赖任何配置项。
 import { execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import path from 'node:path'
 
 /** 把 `-z` 插在子命令后面（不能追加到末尾——`--` 之后会被当成 pathspec）。 */
 function withNulTermination(args) {
@@ -46,7 +48,7 @@ export function trackedFiles({ cwd = process.cwd(), roots = [], maxBuffer = 256 
   return gitPaths(
     ['ls-files', '--cached', '--others', '--exclude-standard', ...(roots.length ? ['--', ...roots] : [])],
     { cwd, maxBuffer },
-  )
+  ).filter((file) => existsSync(path.resolve(cwd, file)))
 }
 
 /**
