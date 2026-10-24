@@ -17,7 +17,7 @@
     "@ffprobe-installer/ffprobe": {
       "reason": "探测音轨与媒体信息时 spawn 随包的 ffprobe 可执行文件；包只提供二进制路径（.path）。",
       "evidence": [
-        "electron/export/mediaProbe.ts:403"
+        "electron/export/mediaProbe.ts:414"
       ]
     },
     "onnxruntime-web": {
