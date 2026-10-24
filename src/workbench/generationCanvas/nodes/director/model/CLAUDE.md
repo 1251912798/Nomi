@@ -22,7 +22,7 @@
 > cameraCoordinateSpace.ts: 零 React/THREE 的相机逻辑 YXZ 位姿矩阵转换，保留逻辑 FOV，不含 three 相机 -Z 翻转；POV/手机/录制/预览/截图/跨层共用
 > clipKeyframes.ts: 片段编辑的共享关键帧采样与重映射；拉伸按比例，裁剪/分割采样边界并保持两段独立
 > cameraLens.ts: 竖直 FOV ↔ 焦段 mm（24mm 片高，12–300mm），fov 是真相；exportAspectRatio；取景框 frameGuideSize（四周 80px 内边距装画幅）+ POV 的 FOV 补偿 povVerticalFov（fov' = 2·atan(tan(fov/2)·H/框高)）；8 档常用焦段
-> cameraPresets.ts: 14 个机位预设（主体局部空间坐标，吃主体旋转 / 缩放）+ buildCameraFromPreset（只给位姿不挂看向；「当前视角」= 自由相机位姿 + round(fov)）
+> cameraPresets.ts: 14 个机位预设（主体局部空间坐标；参照系 = 主体位置 + 水平朝向 + 各轴尺度大小，不吃俯仰 / 横滚 / 源轴翻转）+ buildCameraFromPreset（只给位姿不挂看向；「当前视角」= 自由相机位姿 + round(fov)）
 > lights.ts: 三种灯默认位姿/强度、7 色温预设、4 快捷朝向、createLight
 > hotkeys.ts: 默认键位单一真相（视口/时间轴/全局作用域）+ matchesHotkey / formatHotkey（meta = ⌘/Ctrl）；ikMode / fkMode（W / E，仅骨骼页聚焦时生效）
 > clips.ts: 片段几何：找空位（fitClipAt 点哪儿落哪儿：塞不下缩到空档、点在片段里才退到下一空位）、重叠、左右边界、裁剪/分割/紧贴复制、路标归属、upsertWaypointAt、路标拖动夹紧
