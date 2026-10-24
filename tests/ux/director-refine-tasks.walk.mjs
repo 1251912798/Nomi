@@ -11,6 +11,7 @@
 //
 // 用法：node tests/ux/director-refine-tasks.walk.mjs；截图在 tests/ux/shots/director/refine-tasks/，必须人眼 Read 过。
 import { addTrack, clickOrFail, expectVisible, launchDirectorLab, openAddMenu } from './_directorLab.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const lab = await launchDirectorLab({ name: 'refine-tasks', viewport: { width: 1280, height: 900 } })
 const { page, check } = lab
@@ -89,7 +90,7 @@ try {
     const lanes = document.querySelector('[data-testid="director-timeline-lanes"]')
     for (let node = lanes?.parentElement; node; node = node.parentElement) if (/(auto|scroll)/.test(getComputedStyle(node).overflowY)) return node.scrollTop > 0
     return false
-  }, null, { timeout: 5_000 }).catch(() => {})
+  }, null, { timeout: stationTimeout() }).catch(() => {}) // 没滚动就交给下面的断言报红，不在这里抛
   await page.waitForTimeout(200)
   const scrollAfter = await timelineGeometry()
   const scrollDetail = JSON.stringify({ before: scrollBefore, after: scrollAfter })
