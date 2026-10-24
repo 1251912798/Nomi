@@ -48,6 +48,16 @@ const INSTALL_SOURCE = `(() => {
     libraryReady(count) {
       return [...document.querySelectorAll('[data-project-card]')].filter(visible).length >= count
     },
+    // 技能库 / 提示词库抽屉打开：抽屉在、里面第一张卡可见（技能条卡或提示词卡）。
+    libraryDrawerReady(item) {
+      const drawer = document.querySelector('[data-shell-drawer="' + item + '"]')
+      return visible(drawer) && visible(drawer.querySelector('[data-skill-card], [data-prompt-card]'))
+    },
+    // 库里搜索的一键：搜索框已经是这一键之后的字（受控输入框，值和列表是同一次提交画上去的）。
+    libraryQueryShown({ item, query }) {
+      const input = document.querySelector('[data-shell-drawer="' + item + '"] input[type="search"]')
+      return Boolean(input) && input.value === query
+    },
     // 分镜方案打开到「首屏可编辑」（tests/perf/document-switch-bench.mjs）：行区报出逻辑总数 count，且视口里有带可编辑提示词框的行。
     // 分镜表窗口化（2026-10-16）后只挂视口附近的行，「count 个行盒子都在屏上」永远不成立；末镜够得着由量具停表后另验。
     storyboardPlanOpenReady(count) {

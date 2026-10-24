@@ -28,6 +28,10 @@ export const WORKBENCH_SCENARIOS = Object.freeze([
   'timeline-scrub',
   'pan-while-generating',
   'pan-while-agent-streaming',
+  'library-skill-open',
+  'library-prompt-open',
+  'library-prompt-scroll',
+  'library-prompt-search',
 ])
 
 const sleep = (page, ms) => page.waitForTimeout(ms)
@@ -65,6 +69,18 @@ export async function prepareWorkbenchLaunch(scenario, { fixture, root, repoRoot
   if (scenario === 'creation-ai-rewrite-result') {
     seedLongDocument(fixture, REWRITE_DOCUMENT_PARAGRAPHS)
     return { launch: {}, close: async () => {} }
+  }
+  if (scenario.startsWith('library-')) {
+    // 技能库 / 提示词库（设计卡 docs/plan/2026-10-23-skill-prompt-library-layout.md ★7）：零外网（网络闸只放行本机，
+    // 远端示例媒体照样「发出去」、被闸拦下，媒体请求数照数）；提示词场景把公开库撑到最坏规模（5 个来源 × 280 = 1400 条）。
+    const settingsDir = path.join(root, 'settings')
+    fs.mkdirSync(settingsDir, { recursive: true })
+    const publicPrompts = scenario.startsWith('library-prompt') ? seedPublicPromptCache(settingsDir, repoRoot) : 0
+    return {
+      launch: { settingsDir, mainRequire: [path.join(repoRoot, 'scripts', 'walkthrough-network-guard.cjs')], env: { NOMI_TEST_NETWORK_GUARD: '1' } },
+      publicPrompts,
+      close: async () => {},
+    }
   }
   if (scenario === 'pan-while-generating' || scenario === 'pan-while-agent-streaming') {
     const settingsDir = path.join(root, 'settings')
@@ -124,6 +140,28 @@ function seedTextNode(fixture) {
   fs.writeFileSync(manifest, JSON.stringify(record, null, 1))
 }
 
+const LIBRARY_PUBLIC_PER_SOURCE = 280
+
+/**
+ * 公开库撑到最坏规模：主进程在网络闸下返回「内置 + 地板」，地板优先读设置目录里的磁盘缓存（promptLibraryStore.ts）。
+ * 拿打包快照（5 个来源 × 30 条）按来源循环复制到每源 280 条，写成那份缓存——数据形状与线上拉回来的一致。
+ */
+function seedPublicPromptCache(settingsDir, repoRoot) {
+  const seed = JSON.parse(fs.readFileSync(path.join(repoRoot, 'electron', 'promptLibrary', 'promptLibrarySeed.json'), 'utf8'))
+  const bySource = new Map()
+  for (const prompt of seed) bySource.set(prompt.sourceId, [...(bySource.get(prompt.sourceId) ?? []), prompt])
+  const prompts = []
+  for (const [sourceId, rows] of bySource) {
+    for (let index = 0; index < LIBRARY_PUBLIC_PER_SOURCE; index += 1) {
+      const base = rows[index % rows.length]
+      const lap = Math.floor(index / rows.length)
+      prompts.push({ ...base, id: `${sourceId}-${index + 1}`, title: lap ? `${base.title} · ${lap + 1}` : base.title })
+    }
+  }
+  fs.writeFileSync(path.join(settingsDir, 'prompt-library-cache.json'), JSON.stringify({ at: Date.now(), prompts }))
+  return prompts.length
+}
+
 // ——— 场景 ——————————————————————————————————————————————————————————————
 
 /**
@@ -144,6 +182,10 @@ export async function runWorkbenchScenario(page, scenario, ctx) {
   if (scenario === 'timeline-scrub') return timelineScrub(page, ctx)
   if (scenario === 'pan-while-generating') return panWhileGenerating(page, ctx)
   if (scenario === 'pan-while-agent-streaming') return panWhileAgentStreaming(page, ctx)
+  if (scenario === 'library-skill-open') return libraryOpen(page, ctx, 'skills')
+  if (scenario === 'library-prompt-open') return libraryOpen(page, ctx, 'prompts')
+  if (scenario === 'library-prompt-scroll') return libraryScroll(page, ctx)
+  if (scenario === 'library-prompt-search') return librarySearch(page, ctx)
   throw new Error(`未知工作台场景 ${scenario}`)
 }
 
@@ -638,4 +680,142 @@ async function panWhileAgentStreaming(page, ctx) {
   // 前提：平移的那 2 秒里正文确实在往外吐（字数在涨）；吐完了才平移就不是这个场景。
   if (charsAfter - charsBefore < 100) return { skipped: `平移期间 Agent 正文只多了 ${charsAfter - charsBefore} 个字，不是在流式输出时操作` }
   return { ...result, streamedCharsDuringPan: charsAfter - charsBefore, path: 'pan while agent streaming' }
+}
+
+// ——— 技能库 / 提示词库（左栏抽屉；设计卡 ★7）——————————————————————————————————————
+
+const LIBRARY_RAIL = (item) => `[data-shell-rail-item="${item}"]`
+const LIBRARY_DRAWER = (item) => `[data-shell-drawer="${item}"]`
+const LIBRARY_QUERY = 'cinematic'
+// 滚动量的最坏情况：一个几乎人人都中的字母，所有组全部摊开（约 1400 张卡、两列 700 行），不是只露一行的首页。
+const LIBRARY_SCROLL_QUERY = 'e'
+
+/** 数这一段里浏览器发出的媒体请求（Playwright request 事件里 image / media 类型；被网络闸拦下的远端也算发出去了）。 */
+function countMediaRequests(page) {
+  const urls = []
+  const listener = (request) => {
+    const type = request.resourceType()
+    if (type === 'image' || type === 'media') urls.push(request.url())
+  }
+  page.on('request', listener)
+  return () => {
+    page.off('request', listener)
+    const remote = urls.filter((url) => /^https?:/i.test(url) && !/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])[:/]/i.test(url))
+    return { total: urls.length, remote: remote.length }
+  }
+}
+
+async function closeLibraryDrawer(page, item) {
+  if (await page.locator(LIBRARY_DRAWER(item)).count()) {
+    await page.locator(LIBRARY_RAIL(item)).first().click()
+    await page.locator(LIBRARY_DRAWER(item)).waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {})
+  }
+  await sleep(page, 300)
+}
+
+async function ensureLibraryDrawer(page, item, card) {
+  if (!(await page.locator(LIBRARY_DRAWER(item)).count())) await page.locator(LIBRARY_RAIL(item)).first().click()
+  await page.locator(`${LIBRARY_DRAWER(item)} ${card}`).first().waitFor({ timeout: 30_000 })
+}
+
+/** 抽屉里此刻挂着几张卡、几张在视口里、挂着几个媒体元素（虚拟列表只挂视口附近的；收起的组、屏外的卡不挂）。 */
+async function libraryMounted(page, item) {
+  return page.evaluate((selector) => {
+    const drawer = document.querySelector(selector)
+    const scroll = drawer?.querySelector('[data-library-scroll]')
+    const box = scroll?.getBoundingClientRect()
+    const cards = [...(drawer?.querySelectorAll('[data-skill-card], [data-prompt-card]') ?? [])]
+    const visibleCards = box ? cards.filter((card) => {
+      const rect = card.getBoundingClientRect()
+      return rect.bottom > box.top && rect.top < box.bottom
+    }).length : 0
+    return { cards: cards.length, visibleCards, media: drawer ? drawer.querySelectorAll('img[src], video[src]').length : 0 }
+  }, LIBRARY_DRAWER(item))
+}
+
+/**
+ * 点左栏「Skill」/「提示词」→ 抽屉里第一张卡可见再过两帧（responseTimer 的 libraryDrawerReady）。
+ * 这个 App 里第一次打开（拉懒加载块、读库）单独记 coldResponseMs；媒体请求数从点下去数到首屏画完后 600ms。
+ */
+async function libraryOpen(page, ctx, item) {
+  await closeLibraryDrawer(page, item)
+  const stopCounting = countMediaRequests(page)
+  await armResponse(page, { predicate: 'libraryDrawerReady', arg: item })
+  await ctx.startWindow(page)
+  await page.locator(LIBRARY_RAIL(item)).first().click()
+  const response = await takeResponse(page)
+  await sleep(page, 600)
+  const raw = await ctx.stopWindow(page)
+  const requests = stopCounting()
+  const mounted = await libraryMounted(page, item)
+  if (ctx.state.coldResponseMs === undefined) ctx.state.coldResponseMs = response.ms
+  await closeLibraryDrawer(page, item)
+  return {
+    raw,
+    responseMs: response.ms,
+    coldResponseMs: ctx.state.coldResponseMs,
+    mediaRequests: requests.total,
+    remoteMediaRequests: requests.remote,
+    mountedMedia: mounted.media,
+    mountedCards: mounted.cards,
+    visibleCards: mounted.visibleCards,
+    path: `rail → ${item} drawer${ctx.extras?.publicPrompts ? `（公开库 ${ctx.extras.publicPrompts} 条）` : ''}`,
+  }
+}
+
+/** 提示词抽屉搜索：逐键打「cinematic」，每一键「keydown → 输入框和列表都换成这一键的结果再过两帧」，主数取 p95。 */
+async function librarySearch(page, ctx) {
+  await ensureLibraryDrawer(page, 'prompts', '[data-prompt-card]')
+  const input = page.locator(`${LIBRARY_DRAWER('prompts')} input[type="search"]`).first()
+  await input.fill('')
+  await sleep(page, 400)
+  await input.click()
+  const times = []
+  let typed = ''
+  await ctx.startWindow(page)
+  for (const char of LIBRARY_QUERY) {
+    typed += char
+    await armResponse(page, { trigger: 'keydown', predicate: 'libraryQueryShown', arg: { item: 'prompts', query: typed } })
+    await page.keyboard.type(char)
+    times.push((await takeResponse(page)).ms)
+  }
+  const raw = await ctx.stopWindow(page)
+  const matchedCards = await page.locator(`${LIBRARY_DRAWER('prompts')} [data-prompt-card]`).count()
+  await input.fill('')
+  await sleep(page, 300)
+  return {
+    raw,
+    responseMs: quantile(times, 0.95),
+    keyMaxMs: round(Math.max(...times)),
+    keys: times.length,
+    matchedCards,
+    path: `prompts drawer search「${LIBRARY_QUERY}」（公开库 ${ctx.extras?.publicPrompts ?? 0} 条）`,
+  }
+}
+
+/** 提示词抽屉滚动：搜一个几乎全中的字母（所有组摊开、约 1400 张卡），在列表上滚轮往下 40 格，量帧间隔与长任务。 */
+async function libraryScroll(page, ctx) {
+  await ensureLibraryDrawer(page, 'prompts', '[data-prompt-card]')
+  const input = page.locator(`${LIBRARY_DRAWER('prompts')} input[type="search"]`).first()
+  if ((await input.inputValue()) !== LIBRARY_SCROLL_QUERY) {
+    await input.fill(LIBRARY_SCROLL_QUERY)
+    await sleep(page, 600)
+  }
+  const scroll = page.locator(`${LIBRARY_DRAWER('prompts')} [data-library-scroll]`).first()
+  await scroll.evaluate((element) => { element.scrollTop = 0 })
+  await sleep(page, 500)
+  const box = await scroll.boundingBox()
+  if (!box) return { skipped: '提示词抽屉的列表没有挂上' }
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await ctx.startWindow(page)
+  for (let step = 0; step < 40; step += 1) {
+    await page.mouse.wheel(0, 240)
+    await sleep(page, 16)
+  }
+  await sleep(page, 300)
+  const raw = await ctx.stopWindow(page)
+  const scrolledPx = await scroll.evaluate((element) => Math.round(element.scrollTop))
+  const mounted = await libraryMounted(page, 'prompts')
+  if (scrolledPx < 2000) return { skipped: `列表只滚了 ${scrolledPx}px，不是在长列表上滚` }
+  return { raw, scrolledPx, mountedCards: mounted.cards, mountedMedia: mounted.media, path: `prompts drawer scroll（搜「${LIBRARY_SCROLL_QUERY}」全部摊开，公开库 ${ctx.extras?.publicPrompts ?? 0} 条）` }
 }

@@ -1,0 +1,67 @@
+{
+  "machine": "darwin arm64 Apple M5 x10 / 24GB",
+  "commit": "5384ea0bd",
+  "head": "5384ea0bd76c174b493fee9808e86e6fbdaa21f5",
+  "dirty": true,
+  "sourceTree": "9506bc8062c3fbcfb58c2eafaa1851e1deafd2d8",
+  "date": "2026-10-24",
+  "runs": 5,
+  "results": [
+    {
+      "id": "library-skill-open",
+      "metrics": {
+        "response": {
+          "runs": 5,
+          "median": 211.6,
+          "p95": 263.7
+        },
+        "mediaRequests": {
+          "runs": 5,
+          "median": 0,
+          "p95": 0
+        },
+        "longTasks": {
+          "runs": 5,
+          "median": 0,
+          "p95": 0
+        }
+      },
+      "samples": {
+        "frameGapP95": [
+          10.3,
+          10.3,
+          10.3,
+          10.1,
+          10.3
+        ],
+        "longTasks": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "response": [
+          90.4,
+          272.4,
+          211.6,
+          136.9,
+          228.8
+        ],
+        "mainRoundTripMax": [],
+        "mediaRequests": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "budget": 200,
+      "verdict": {
+        "status": "over-budget",
+        "note": "中位数 211.6 > 预算 200"
+      }
+    }
+  ]
+}
