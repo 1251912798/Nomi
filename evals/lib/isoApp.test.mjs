@@ -22,4 +22,22 @@ describe('eval isolation catalog boundary', () => {
     expect(env.NOMI_CAPABILITY_DIR).toBe(iso.capabilityDir)
     expect(env.NOMI_SETTINGS_DIR).toBe(iso.settingsDir)
   })
+
+  test('requireCatalog: false never copies the real profile, even when this machine has one', () => {
+    const real = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-iso-real-profile-'))
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-iso-app-'))
+    roots.push(real, root)
+    fs.writeFileSync(path.join(real, 'model-catalog.json'), JSON.stringify({ version: 1, vendors: [], models: [], apiKeysByVendor: { fixture: { enc: 'safeStorage', value: 'x' } } }))
+    const previous = process.env.NOMI_REAL_PROFILE_USER_DATA
+    process.env.NOMI_REAL_PROFILE_USER_DATA = real
+    try {
+      const hermetic = prepareIsolation(path.join(root, 'hermetic'), { requireCatalog: false })
+      expect(fs.readdirSync(hermetic.settingsDir)).toEqual([])
+      const seeded = prepareIsolation(path.join(root, 'seeded'), { requireCatalog: true })
+      expect(fs.existsSync(path.join(seeded.settingsDir, 'model-catalog.json'))).toBe(true)
+    } finally {
+      if (previous === undefined) delete process.env.NOMI_REAL_PROFILE_USER_DATA
+      else process.env.NOMI_REAL_PROFILE_USER_DATA = previous
+    }
+  })
 })

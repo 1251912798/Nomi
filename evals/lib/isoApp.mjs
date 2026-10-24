@@ -21,6 +21,8 @@ export const TOOL_WHITELIST = new Set([
 
 /**
  * 建一套全新隔离环境;requireCatalog=true 时拷入真实 catalog 与凭据钥匙(同机可解)。
+ * requireCatalog=false 就是一份 App 自带目录的干净 profile:**不碰**用户真实资料——以前「本机有就顺手拷」,
+ * 同一条走查本机读真实目录、夜跑读不到,本机绿夜跑红,而且本机那一遍碰了用户的东西(2026-10-24)。
  * 真实资料目录在哪、凭据由哪几份文件组成,只问 tests/ux/_realProfile.mjs——Windows 上钥匙是
  * userData 里的 Local State,只拷 catalog 那份密文解不开。
  */
@@ -31,10 +33,10 @@ export function prepareIsolation(isoDir, { requireCatalog = true } = {}) {
   if (requireCatalog && !fs.existsSync(profile.catalogPath)) {
     throw new Error(`真实 model-catalog.json 不存在(${profile.catalogPath})——被测 agent 需要已配置的模型与 key`);
   }
-  if (fs.existsSync(profile.catalogPath)) {
+  if (requireCatalog) {
     seedRealCredentials({ settingsDir: path.join(isoDir, "settings"), userDataDir: path.join(isoDir, "chromium"), profile });
     const prepared = prepareIsolatedCatalog(path.join(isoDir, "settings"));
-    if (prepared.status === "quarantined" && requireCatalog) {
+    if (prepared.status === "quarantined") {
       throw new Error(`真实 model-catalog.json 版本 ${prepared.diskVersion} 高于被测 app 版本 ${prepared.testedCatalogVersion}，已隔离到 ${prepared.quarantinePath}；需要兼容 catalog 才能继续`);
     }
   }
