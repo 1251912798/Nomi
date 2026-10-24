@@ -20,6 +20,7 @@ import {
   mcpClientConfigFile,
   mcpClientInstallTraces,
   mcpClientLocations,
+  resolveMcpClientHostRoot,
   resolveMcpClientPath,
   type McpClientPathContext,
 } from './mcpClientRegistry'
@@ -99,6 +100,12 @@ describe('host config location follows the host’s own variable', () => {
     expect(mcpClientConfigFile('codex', posix())).toBe('/home/u/.codex/config.toml')
     expect(mcpClientConfigFile('codex', posix({ CODEX_HOME: '/work/codex' }))).toBe('/work/codex/config.toml')
     expect(mcpClientInstallTraces('codex', posix({ CODEX_HOME: '/work/codex' }))).toEqual(['/work/codex'])
+  })
+
+  it('Codex host root follows CODEX_HOME and keeps the documented default for unset or empty values', () => {
+    expect(resolveMcpClientHostRoot('codex', posix())).toBe('/home/u/.codex')
+    expect(resolveMcpClientHostRoot('codex', posix({ CODEX_HOME: '/work/codex' }))).toBe('/work/codex')
+    expect(resolveMcpClientHostRoot('codex', posix({ CODEX_HOME: '' }))).toBe('/home/u/.codex')
   })
 
   it('an empty variable counts as unset (both hosts: Codex filters empty, Claude Code uses `configDir || home`)', () => {

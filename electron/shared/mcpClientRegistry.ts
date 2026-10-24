@@ -46,6 +46,8 @@ export type McpClientSpec = {
   format: 'json' | 'toml'
   /** 该客户端**用户级** MCP 配置文件；按平台给，缺的平台 = 该平台没有这个客户端。 */
   configPath: Partial<Record<McpClientPlatform, McpClientPath>>
+  /** 宿主自己的位置变量所代表的根目录；没有宿主根目录概念的客户端不填写。 */
+  hostRoot?: Partial<Record<McpClientPlatform, McpClientPath>>
   /** 安装痕迹：任一存在即判「已安装」。只读官方用户目录，不 spawn、不建目录。 */
   installMarkers: Partial<Record<McpClientPlatform, readonly McpClientPath[]>>
   /** 写完档默认就是可信发起方（automationPolicy.trustedHosts 的默认值由此 derive）。 */
@@ -95,6 +97,7 @@ export const MCP_CLIENT_REGISTRY = {
   codex: {
     label: 'Codex',
     format: 'toml',
+    hostRoot: everywhere(hostDir('CODEX_HOME', ['.codex'])),
     configPath: everywhere(hostDir('CODEX_HOME', ['.codex'], 'config.toml')),
     installMarkers: everywhere([hostDir('CODEX_HOME', ['.codex'])]),
     defaultTrusted: true,
@@ -171,6 +174,13 @@ export function resolveMcpClientPath(location: McpClientPath, context: McpClient
   const hostRoot = location.hostEnv ? hostEnvValue(context, location.hostEnv.name) : null
   if (hostRoot !== null && location.hostEnv) return context.join(hostRoot, ...location.hostEnv.segments)
   return context.join(location.root === 'home' ? context.homedir : appDataDir(context), ...location.segments)
+}
+
+/** 某个内置客户端的宿主根目录；根目录的变量判定与所有注册表路径完全相同。 */
+export function resolveMcpClientHostRoot(client: BuiltinMcpClient, context: McpClientPathContext): string {
+  const location = builtinMcpClientSpec(client).hostRoot?.[context.platform]
+  if (!location) throw new Error(`MCP client ${client} has no host root`)
+  return resolveMcpClientPath(location, context)
 }
 
 /** 某个内置客户端在这个环境下的用户级配置文件；该平台没有这个客户端时为 null。 */

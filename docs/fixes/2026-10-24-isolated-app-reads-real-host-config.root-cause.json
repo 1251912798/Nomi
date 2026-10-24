@@ -69,7 +69,7 @@
   "detected_by": "walkthrough",
   "recurrence_check_on": "2026-11-24",
   "invariants": [
-    "Nomi resolves every built-in host's config file and install traces through electron/shared/mcpClientRegistry.ts resolveMcpClientPath: a host location variable (CLAUDE_CONFIG_DIR, CODEX_HOME) that is set and non-empty wins; unset or empty falls back to the documented default under the home / app-data directory.",
+    "Nomi resolves every built-in host's config file, install traces, and declared host roots through electron/shared/mcpClientRegistry.ts: resolveMcpClientPath / resolveMcpClientHostRoot apply one rule where a host location variable (CLAUDE_CONFIG_DIR, CODEX_HOME) that is set and non-empty wins; unset or empty falls back to the documented default under the home / app-data directory.",
     "An isolated launch (any NOMI_* directory isolated) cannot start while any redirectable host location still resolves inside the developer's real host locations: every host variable points into the launch's temp host-config directory, or is removed when the caller redirected HOME / USERPROFILE, and a leak throws before the App starts.",
     "A vitest run never sees the developer's CLAUDE_CONFIG_DIR / CODEX_HOME."
   ],
@@ -120,6 +120,16 @@
     },
     {
       "kind": "read",
+      "path": "electron/catalog/codexCli.ts",
+      "symbol": "resolveMcpClientHostRoot"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/codexCli.ts",
+      "symbol": "codexHome"
+    },
+    {
+      "kind": "read",
       "path": "electron/shared/mcpClientRegistry.ts",
       "symbol": "resolveMcpClientPath"
     },
@@ -135,13 +145,14 @@
     }
   ],
   "door_reduction": {
-    "before": 7,
-    "after": 10,
-    "why_not": "Counted with `node scripts/door-map.mjs --read=builtinMcpClientConfigPath,isMcpClientAppInstalled,mcpClientConfigFile,mcpClientInstallTraces,resolveMcpClientPath,MCP_CLIENT_HOST_ENV_VARS --write=buildNomiLaunchEnv,withIsolatedHostConfig,prepareHostConfigDir --roots=src,electron,scripts,tests,evals`; the base commit 787eea2cb counted 7 with the old symbols (resolveClientPath instead of the registry functions). The path rule itself went from two copies (the private resolver in mcpDetectedClients.ts and the hosts' own rules nobody modelled) to one (resolveMcpClientPath); the extra doors are the two named registry functions that replace the private resolver and the eval harness creating its temp host-config directory. The main-process readers stay separate because they are separate operations (install / uninstall / info / verify, host-entry listing, migration), all of which already go through builtinMcpClientConfigPath / isMcpClientAppInstalled; the eval harness launches outside tests/ux and has to prepare its own temp directory before calling the shared launcher env."
+    "before": 10,
+    "after": 12,
+    "why_not": "Counted with `node scripts/door-map.mjs --read=builtinMcpClientConfigPath,isMcpClientAppInstalled,mcpClientConfigFile,mcpClientInstallTraces,resolveMcpClientPath,MCP_CLIENT_HOST_ENV_VARS --write=buildNomiLaunchEnv,withIsolatedHostConfig,prepareHostConfigDir --roots=src,electron,scripts,tests,evals` before this round and with `--write=codexHome --read=resolveMcpClientHostRoot,resolveMcpClientPath,builtinMcpClientConfigPath,isMcpClientAppInstalled,mcpClientConfigFile,mcpClientInstallTraces,MCP_CLIENT_HOST_ENV_VARS --roots=src,electron,scripts,tests,evals` after it. The prior ten doors remain separate because they are separate main-process operations (install / uninstall / info / verify, host-entry listing, migration), the registry path resolver, and the eval harness's temp host-config preparation. This round adds the Codex image runtime's codexHome write door and its read of the registry host-root resolver; those doors cannot be merged with the MCP config readers because codexCli owns a separate image-job persistence operation."
   },
   "regression_tests": [
     "electron/shared/mcpClientRegistry.test.ts",
     "electron/capabilityCore/mcpConfig.test.ts",
+    "electron/catalog/codexCli.test.ts",
     "tests/ux/_launchApp.test.mjs",
     "evals/lib/isoApp.test.mjs",
     "evals/lib/isoAppEnv.test.ts",
@@ -150,7 +161,7 @@
   ],
   "residual_risks": [
     "Hosts that only live under the home / app-data directory (Cursor, WorkBuddy, Claude Desktop) cannot be redirected by an environment variable: an isolated launch that keeps the real HOME still resolves their configs under the real home. The launcher reports them as residual (pinned in tests/ux/_launchApp.test.mjs); closing it needs a product-side rule that an isolated instance does not read host configs under the real home (electron/capabilityCore/hostConfigWrite.ts already refuses the writes). Left to the coordinator.",
-    "electron/catalog/codexCli.ts codexHome is a second reader of CODEX_HOME (same rule: non-empty wins, else ~/.codex) for the Codex image runtime; it is not routed through the registry.",
+    "The Codex image runtime now routes codexHome through resolveMcpClientHostRoot; future host-root consumers must use that registry export instead of reading CODEX_HOME directly.",
     "A relative or ~-prefixed variable value resolves against Nomi's working directory, not the host's (the hosts do not expand ~ either). An App started from Finder / Dock does not see variables exported only in a shell profile; the guide says so.",
     "Model-access journey J10 (Codex local image, real login, real quota) can no longer use the developer's Codex login from an isolated instance and now reports BLOCKED codex-login-isolated; it needs a real-profile route to run for real."
   ],
@@ -164,12 +175,12 @@
       "rg -n \"spawn\\(|buildCodexSpawnEnv\" electron/catalog/codexCli.ts: the only host CLI Nomi spawns is codex, which inherits the App's CODEX_HOME (isolated → temp)"
     ]
   },
-  "generality_proof": "The location rule exists once (resolveMcpClientPath over the registry), so every main-process reader and writer follows the hosts' own variables. The launcher does not keep its own list: it isolates every variable in MCP_CLIENT_HOST_ENV_VARS and then resolves every registry location (config files and install traces, for this platform) with the env it is about to hand to the App, comparing against the developer's real locations; any resolved path inside a real location throws before launch. A new host or variable added to the registry is isolated and checked automatically, and a new launcher that isolates NOMI_* directories without a hostConfigDir is refused by buildNomiLaunchEnv. Mutation checks: dropping the launcher isolation, the leak check, the product's variable handling, or the vitest scrub each turns the listed tests red.",
+  "generality_proof": "The location rule exists once (resolveMcpClientPath and resolveMcpClientHostRoot over the registry), so every main-process reader, writer, and Codex image-job path follows the hosts' own variables. The launcher does not keep its own list: it isolates every variable in MCP_CLIENT_HOST_ENV_VARS and then resolves every registry location (config files and install traces, for this platform) with the env it is about to hand to the App, comparing against the developer's real locations; any resolved path inside a real location throws before launch. A new host or variable added to the registry is isolated and checked automatically, and a new launcher that isolates NOMI_* directories without a hostConfigDir is refused by buildNomiLaunchEnv. Mutation checks: dropping the launcher isolation, the leak check, the product's variable handling, or the vitest scrub each turns the listed tests red; restoring a direct CODEX_HOME read in codexCli makes the default and empty-value tests red.",
   "shared_boundaries": [
     {
       "path": "electron/shared/mcpClientRegistry.ts",
-      "symbol": "resolveMcpClientPath",
-      "responsibility": "The only rule for where a built-in host keeps its config file and install traces: the host's own location variable when set and non-empty, else the documented default under home / app data."
+      "symbol": "resolveMcpClientPath / resolveMcpClientHostRoot",
+      "responsibility": "The only rule for where a built-in host keeps its config file, install traces, and declared host root: the host's own location variable when set and non-empty, else the documented default under home / app data."
     },
     {
       "path": "tests/ux/_launchApp.mjs",
@@ -205,8 +216,8 @@
     {
       "path": "electron/catalog/codexCli.ts",
       "entry_point": "codexHome",
-      "disposition": "not-affected",
-      "evidence": "Already follows the host rule (CODEX_HOME when non-empty, else ~/.codex); in an isolated launch CODEX_HOME points into the temp directory, so its writes (nomi_image_jobs) stay there too."
+      "disposition": "enforced",
+      "evidence": "Calls the registry's resolveMcpClientHostRoot('codex', ...) with the live environment and homedir; CODEX_HOME when non-empty, unset, and empty values are covered by electron/catalog/codexCli.test.ts and electron/shared/mcpClientRegistry.test.ts. In an isolated launch CODEX_HOME points into the temp directory, so its writes (nomi_image_jobs) stay there too."
     },
     {
       "path": "electron/capabilityCore/hostConfigWrite.ts",
@@ -226,19 +237,21 @@
       "tests/ux/_launchApp.mjs",
       "electron/shared/mcpClientRegistry.ts",
       "electron/capabilityCore/mcpDetectedClients.ts",
-      "tests/setup/tempWorkspace.ts"
+      "tests/setup/tempWorkspace.ts",
+      "electron/catalog/codexCli.ts"
     ]
   },
   "class_regression_tests": [
     "tests/ux/_launchApp.test.mjs",
-    "electron/shared/mcpClientRegistry.test.ts"
+    "electron/shared/mcpClientRegistry.test.ts",
+    "electron/catalog/codexCli.test.ts"
   ],
   "legacy_paths": {
     "status": "removed",
     "removed_paths": [
       "electron/capabilityCore/mcpDetectedClients.ts"
     ],
-    "rationale": "The private path resolver (currentPlatform / appDataDir / resolveClientPath) in mcpDetectedClients.ts is deleted; its callers now use the registry's mcpClientConfigFile / mcpClientInstallTraces."
+    "rationale": "The private path resolver (currentPlatform / appDataDir / resolveClientPath) in mcpDetectedClients.ts and the direct process.env.CODEX_HOME read in codexCli.ts are removed; callers now use the registry's mcpClientConfigFile / mcpClientInstallTraces / resolveMcpClientHostRoot."
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
