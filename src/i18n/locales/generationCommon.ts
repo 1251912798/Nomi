@@ -109,7 +109,7 @@ export const zhGenerationCommon = {
     splitCount: '拆成 {{count}} 条',
     longText: '共 {{count}} 字，在节点里滚动查看',
     tryLabel: '试试',
-    refKind: '引用',
+    refKind: '连入文字',
     refHint: '生成时接在提示词后面',
     refAria: '引用文本节点「{{title}}」',
     refUntitled: '文本',
@@ -311,6 +311,7 @@ export const zhGenerationCommon = {
     action: {
       reconcile: { main: '在任务中心查看', alt: '先在任务中心查看' },
       viewTask: { main: '查看制作任务', alt: '去看制作任务' },
+      openRecoverable: { main: '去重新取回', alt: '去重新取回' },
       releaseRegenerate: { main: '我核对过了，重新生成', alt: '我核对过了，重新生成' },
       retry: { main: '重试', alt: '仍要重试' },
       switchModel: { main: '换个模型', alt: '换个模型' },
@@ -403,6 +404,10 @@ export const zhGenerationCommon = {
         reason: '这个素材太大，传不上去',
         hint: '本机素材要先换成公网地址才能给服务商用，而这个文件超过了所有可用上传通道的大小上限（HTTP 413），Nomi 每条通道都试过了。重试没用——同一个文件每次都会被同一个上限挡回来。请把它压缩或裁短一点再放进来（视频尤其常见），或在「模型接入」接一个上传上限更高的通道。具体是哪个素材、多大，见下方技术详情。',
       },
+      referenceNotInUse: {
+        reason: '这次生成没发出去：请求里带了参考区没在用的图',
+        hint: 'Nomi 在发给服务商之前发现，这次请求里夹着参考区标「未用到」或当前方式用不上的图，于是在发出之前拦下了——这次请求一个字节都没离开你的电脑，服务商没被请求到。重新点一次生成即可：Nomi 会按参考区里正在用的图重新组一次请求。如果反复出现，请把下方技术详情反馈给我们，这说明有个入口没走统一的参考规则。',
+      },
       assetInvalid: {
         reason: '参考素材本身有问题',
         hint: '这张参考素材没通过发送前的本机检查：文件读不到、认不出类型，或者内容不是真正的图片/视频（比如把网页存成了 .png）。请求还没发出去。同一个文件重试结果不会变——请在画布上换一张参考素材，或重新导入原文件，再点重试。具体是哪个文件，见下方技术详情。',
@@ -450,6 +455,12 @@ export const zhGenerationCommon = {
       outputRetrievalFailed: {
         reason: '已经生成，但结果没能取回到本机',
         hint: '服务商那边这一镜已经做完了，是 Nomi 把结果下载回项目这一步没成（地址不让访问、对方拒绝了下载，或者返回的不是能用的文件）。不要重新生成，那会另做一份新的。到任务面板点「重新取回」，Nomi 只会再查一次、再下载一次。具体原因见下方技术详情。',
+      },
+      // 已提交、这次没取回（⑬）：查结果 / 读结果 / 下载结果这一次没成，不知道服务商那边做完没有——不说「已经生成」。
+      // 只给「去任务面板重新取回」，绝不给重试：重试 = 再生成一份新的。
+      retrievalIncomplete: {
+        reason: '任务已提交，这次没能取回结果',
+        hint: '这一镜已经交给服务商了，是 Nomi 这一次查结果、读结果或下载结果没成（常见原因：本机网络或代理一时不通、服务商的查询接口报错）。不要重新生成，那会另做一份新的。点「重新取回」，Nomi 只会再查一次、再下载一次。具体原因见下方技术详情。',
       },
       // 本机处理失败（截帧 / 提取深度 / 本地素材复制）：没有服务商、没有模型参与——不说「换模型」，只留重试。
       localProcessing: {
@@ -864,6 +875,20 @@ export const zhGenerationCommon = {
   },
   // 节点生成浮框底栏 v1（样张 docs/design/2026-09-10-node-composer-bar-v1.md，2026-09-10 拍板的三类归位）。
   // A 类（决定出什么/花多少）留底栏；B 类（帮我写提示词）收成提示词框右上角一簇纯 icon；锁回节点浮条。
+  composerB3: {
+    generateTip: '生成',
+    quantityImage: '{{count}} 张',
+    quantityVideo: '{{count}} 个',
+    quantity: '数量',
+    modeReference: '参考',
+    modeFirstLast: '首尾帧',
+    modeFirstFrame: '首帧',
+    modeLimit: '此模型最多：{{limits}}',
+    limitImages: '{{count}} 张图',
+    limitVideos: '{{count}} 段视频',
+    limitAudios: '{{count}} 段音频',
+    limitSeparator: '、',
+  },
   composerBarV1: {
     promptTools: '写提示词',
     effects: '提示词预设',
@@ -958,6 +983,7 @@ export const zhGenerationCommon = {
     close: '关闭',
     closeAria: '关闭画板',
     done: '完成',
+    doneSaving: '保存中…',
     doneAria: '完成并保存画板',
     savePrimary: '保存为主图',
     imageResult: '图片结果',
@@ -1833,7 +1859,7 @@ export const enGenerationCommon = {
     splitCount: 'Split into {{count}}',
     longText: '{{count}} characters — scroll inside the node',
     tryLabel: 'Try',
-    refKind: 'Reference',
+    refKind: 'Connected text',
     refHint: 'Added after the prompt when generating',
     refAria: 'Referenced text node “{{title}}”',
     refUntitled: 'Text',
@@ -2029,6 +2055,7 @@ export const enGenerationCommon = {
     action: {
       reconcile: { main: 'View in task center', alt: 'View in task center first' },
       viewTask: { main: 'View production task', alt: 'Open task center' },
+      openRecoverable: { main: 'Retrieve again', alt: 'Retrieve again' },
       releaseRegenerate: { main: "I've checked, generate again", alt: "I've checked, generate again" },
       retry: { main: 'Retry', alt: 'Retry anyway' },
       switchModel: { main: 'Switch model', alt: 'Switch model' },
@@ -2119,6 +2146,10 @@ export const enGenerationCommon = {
         reason: 'This asset is too large to upload',
         hint: 'Local assets must first be turned into a publicly reachable URL, and this file exceeds the size limit of every available upload channel (HTTP 413) — Nomi tried them all. Retrying will not help: the same file hits the same ceiling every time. Compress or trim it (videos especially) and add it again, or connect a channel with a higher upload limit under Model Access. The technical details below name the asset and its size.',
       },
+      referenceNotInUse: {
+        reason: 'This generation was not sent: the request carried references that are not in use',
+        hint: 'Before sending, Nomi found images in this request that the reference row marks as Unused, or that the current mode cannot take, so it stopped the request before sending. Not a single byte left your machine and the provider was never called. Just generate again: Nomi will rebuild the request from the references currently in use. If this keeps happening, please send us the technical details below — it means some entry point is not following the shared reference rule.',
+      },
       assetInvalid: {
         reason: 'The reference asset itself is invalid',
         hint: 'This reference asset failed the local check before sending: the file could not be read, its type could not be identified, or its content is not a real image or video (for example, a web page saved as .png). Nothing was sent. Retrying the same file will not change the result — replace the reference on the canvas or re-import the original file, then retry. The technical details below name the file.',
@@ -2166,6 +2197,10 @@ export const enGenerationCommon = {
       outputRetrievalFailed: {
         reason: 'Generated, but the result could not be retrieved',
         hint: 'The provider finished this shot; the step that failed is Nomi downloading the result into your project (the address was not allowed, the download was refused, or what came back was not a usable file). Do not generate again — that makes a brand-new one. Open the task panel and click “Retrieve again”: Nomi only checks the task and downloads it once more. The technical details below give the exact reason.',
+      },
+      retrievalIncomplete: {
+        reason: 'Submitted, but the result could not be retrieved this time',
+        hint: 'This shot was already handed to the provider; what failed is Nomi checking the task, reading its result or downloading it this time (usually the local network or proxy dropped for a moment, or the provider’s status endpoint returned an error). Do not generate again — that makes a brand-new one. Use “Retrieve again”: Nomi only checks the task and downloads it once more. The technical details below give the exact reason.',
       },
       localProcessing: {
         reason: 'Local processing failed',
@@ -2554,6 +2589,20 @@ export const enGenerationCommon = {
     dragAria: 'Drag text node',
     label: 'Text',
   },
+  composerB3: {
+    generateTip: 'Generate',
+    quantityImage: '×{{count}}',
+    quantityVideo: '×{{count}}',
+    quantity: 'Quantity',
+    modeReference: 'Reference',
+    modeFirstLast: 'First / Last',
+    modeFirstFrame: 'First frame',
+    modeLimit: 'This model allows up to: {{limits}}',
+    limitImages: '{{count}} images',
+    limitVideos: '{{count}} videos',
+    limitAudios: '{{count}} audio clips',
+    limitSeparator: ', ',
+  },
   composerBarV1: {
     promptTools: 'Prompt helpers',
     effects: 'Prompt presets',
@@ -2648,6 +2697,7 @@ export const enGenerationCommon = {
     close: 'Close',
     closeAria: 'Close whiteboard',
     done: 'Done',
+    doneSaving: 'Saving…',
     doneAria: 'Finish and save whiteboard',
     savePrimary: 'Save as primary image',
     imageResult: 'Image result',

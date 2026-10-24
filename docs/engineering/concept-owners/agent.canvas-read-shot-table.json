@@ -1,0 +1,31 @@
+{
+  "name": "Agent 读到的分镜表（拆解表）的行 / 列 / 勾选（canvas.read 里的那一块，带上限）",
+  "subject": "agent.canvas-read-shot-table",
+  "lifecycle": "projection",
+  "authority_kind": "projection",
+  "trust_domain": "shared",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/agentCapabilities/canvasReadShotTable.ts",
+    "symbol": "projectShotTableForAgent"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/agentCapabilities/canvasReadShotTable.ts",
+      "symbol": "projectShotTableForAgent"
+    },
+    {
+      "path": "electron/shared/agentCapabilities/canvasReadShotTable.ts",
+      "symbol": "formatShotTableForAgent"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/capabilityCore/canvasReadB6TransportAcceptance.test.ts",
+  "allowed_consumers": [
+    "electron/shared/agentCapabilities/canvasRead.ts",
+    "electron/shared/agentCapabilities/canvasReadCompact.ts"
+  ],
+  "since": "2026-10-19",
+  "notes": "2026-10-18 用户拍板：分镜表节点不自带「生成选中镜头」（那颗按钮藏着模型与提示词的选择），改由 Agent 读表、用户说「照这几镜复刻」。修复前 canvasRead.projectNode 只投文本节点正文，分镜表只剩标题，Agent 看不到行。真相仍是分镜表文档（electron/shared/canvas/shotTable.ts 的 readShotTable）；这里只是它给模型看的那一份投影：canonical 字段 nodes[].shotTable（MCP nomi_read target=canvas 原样返回）与应用内 look_at_canvas 的紧凑文本（formatShotTableForAgent 只排版 canonical 字段，不再读 meta）。上限：每格 400 字、每表 20 000 字、60 行、16 列、勾选镜号 200 个；紧凑文本每表 ≤ 8 000 字。放行顺序勾选的先、其余按表序，输出按表序，没放下的镜号明列。Agent 面（electron/shared/agentCapabilities、electron/agentLane、electron/capabilityCore）除本文件外不许再调 readShotTable（canvasReadShotTable.test.ts 的结构断言）。"
+}

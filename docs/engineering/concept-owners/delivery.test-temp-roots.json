@@ -1,0 +1,31 @@
+{
+  "name": "测试与走查的临时目录归属（唯一根、规范路径、退出时清理）",
+  "subject": "delivery.test-temp-roots",
+  "lifecycle": "delivery",
+  "authority_kind": "writer",
+  "trust_domain": "tooling",
+  "fact_kind": "state-machine",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/_test-temp.mjs",
+    "symbol": "makeTempDir"
+  },
+  "write_api": [
+    {
+      "path": "scripts/_test-temp.mjs",
+      "symbol": "makeTempDir"
+    },
+    {
+      "path": "tests/setup/tempWorkspace.ts",
+      "symbol": "createTempWorkspace"
+    },
+    {
+      "path": "tests/ux/_launchApp.mjs",
+      "symbol": "registerTempRoot"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-08",
+  "notes": "合同 docs/fixes/2026-10-08-test-temp-cleanup.root-cause.json 与 2026-10-18-canonical-test-temp-roots：每次 Vitest 有且仅有一个自有根并在 teardown 后还原；每个隔离 Electron 启动在建任何子临时路径之前登记 profile 根；node:test 与独立脚本的系统临时根由 makeTempDir 发放，且都是 realpath 规范路径。"
+}

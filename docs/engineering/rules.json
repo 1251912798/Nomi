@@ -76,7 +76,7 @@
       "aliases": [
         "R21.2"
       ],
-      "rule": "方向检查（原重写判据）：同一文件、同一概念目录、concept-owners 里的同一概念（owner + write_api 的文件合起来）14 天内第 3 个 fix 提交，或同一条自写登记（status 为 under-review / to-replace，或 justified 但属通用区；paths 下的文件合起来）30 天内第 2 个 fix 提交（locale 词典 src/i18n/locales/*.ts 按「文件#顶层功能键」命名空间计数，中英同名算一个）、出现 revert fix 的提交、修复因评测分数下降被回滚、同一条线派第 3 轮及以上修补、要加第三个特例分支，任一出现就停止派修补，先做类根因复盘（归类表、为什么一直冒、预测、靶子独立性检查、P0 现成方案、接入 / 补 / 重写 / 删对比；成熟方案存在时推荐项默认是接入，除非有领域约束；自写登记命中的复盘必须点名该条登记并写清现在换不了的理由与哪天换），结构性结论交用户拍板，复盘前先写特征测试钉住现状。同一 PR 的验收第二次不通过同样熔断（与「同一条线派第 3 轮修补」合并表述，不是两条规则）：停下，先答「为什么前面没想到」，把漏掉的那一类补进验收清单与门岗，再继续修，不接着补症状。提交前缀如实写：修 bug 就是 fix，不许为了绕方向检查或其他门岗改前缀（fix 写成 feat 之类），评审发现就退回。",
+      "rule": "方向检查（原重写判据）：同一文件、同一概念目录、concept-owners 里的同一概念（owner + write_api 的文件合起来）14 天内第 3 个 fix 提交，或同一条自写登记（status 为 under-review / to-replace，或 justified 但属通用区；paths 下的文件合起来）30 天内第 2 个 fix 提交（locale 词典 src/i18n/locales/*.ts 按「文件#顶层功能键」命名空间计数，中英同名算一个）、出现 revert fix 的提交、修复因评测分数下降被回滚、同一条线派第 3 轮及以上修补、要加第三个特例分支，任一出现就停止派修补，先做类根因复盘（归类表、为什么一直冒、预测、靶子独立性检查、P0 现成方案、接入 / 补 / 重写 / 删对比；成熟方案存在时推荐项默认是接入，除非有领域约束；自写登记命中的复盘必须点名该条登记并写清现在换不了的理由与哪天换），结构性结论交用户拍板（例外：只因概念 / 目录 / 自写登记口径命中、要改的文件本身没命中，且改法是换或删（同提交删旧、不新增分支或特例）时，由协调会话代批、事后报用户（用户 2026-10-22 拍板）；要再补一刀的照旧交用户），复盘前先写特征测试钉住现状。同一 PR 的验收第二次不通过同样熔断（与「同一条线派第 3 轮修补」合并表述，不是两条规则）：停下，先答「为什么前面没想到」，把漏掉的那一类补进验收清单与门岗，再继续修，不接着补症状。提交前缀如实写：修 bug 就是 fix，不许为了绕方向检查或其他门岗改前缀（fix 写成 feat 之类），评审发现就退回。",
       "disease": "同一处被反复补，没人回头问方向和靶子对不对（评测靶子由同一条线自己写、本身有错）",
       "enforcement": [
         "gate:scripts/check-direction-trailer.mjs",
@@ -295,14 +295,18 @@
         "R19",
         "S-VIO"
       ],
-      "rule": "交付与状态：按验证分层通过后自己 commit + push；状态词只有四档：已实现未推送 / 已推送待合入 / 已合入待验证 / 已解决（已解决需 merge SHA 上的 delivery:verify-merged 收据）。",
+      "rule": "交付与状态：自己 commit + push；推送前过 git 的 pre-push 快检（钩子自动跑，按改动选门），完整门岗以 CI 为准；合并只认 CI 全绿 + 合并前扫描 + main 上的收据。状态词只有四档：已实现未推送 / 已推送待合入 / 已合入待验证 / 已解决（已解决需 merge SHA 上的 delivery:verify-merged 收据）。",
       "disease": "把「写了」说成「解决了」",
       "enforcement": [
-        "hook:pre-push-check",
+        "gate:scripts/pre-push-contracts.mjs(git 的 pre-push 钩子在推送那一刻自动跑的快检)",
+        "hook:pre-push-check(跳过 git 钩子的推送记进被推那棵树的绕口日志)",
+        "gate:check:push-bypass(没确认的绕口拦下这棵树的下一次推送)",
+        "gate:.github/workflows/quality-gate.yml(完整门岗以 CI 为准)",
+        "coordinator-tool:scripts/merge-preflight.mjs(合并前扫描)",
         "gate:check:git-delivery",
         "coordinator-tool:delivery:verify-merged"
       ],
-      "evidence": "pre-push-check 留痕；git-delivery 在 contracts",
+      "evidence": "2026-10-24 用户拍板「改成 CI 把关：推分支前本机只跑快检，完整门岗交给 CI，合并照旧只认 CI 全绿和 main 上的收据」（设计卡 docs/plan/2026-10-24-push-gate-ci.md）；推送前不再要本机门岗的通过凭据；pre-push-check 只剩绕口留痕；git-delivery 在 contracts",
       "owner": "协调会话",
       "review_on": "2026-12-01",
       "delete_when": "不适用",
@@ -323,9 +327,10 @@
         "hook:self-check(先查别人块)",
         "hook:self-check(调研时刻行)",
         "gate:check:prior-art",
-        "gate:check:board-parity"
+        "gate:check:board-parity",
+        "coordinator-tool:scripts/check-dispatch-brief.mjs(模型可见工具必读)"
       ],
-      "evidence": "prior-art 红灯 60 次几乎全是补文档（登记摩擦），所以新增部分不另立存在性门岗：只有板清单 priorArt（2026-10-19 起）自动查，其余靠设计卡 ★0 / ★1 与提示行；对应 check:standard-formats / dependency-capabilities / archetype-sources 三道零红门岗已删",
+      "evidence": "prior-art 红灯 60 次几乎全是补文档（登记摩擦），所以新增部分不另立存在性门岗：只有板清单 priorArt（2026-10-19 起）自动查，其余靠设计卡 ★0 / ★1 与提示行；对应 check:standard-formats / dependency-capabilities / archetype-sources 三道零红门岗已删。2026-10-25 #1263 的 r3 漏带模型可见工具必读清单，改由派工检查拦截，不在 PR 侧新增存在性门岗",
       "owner": "协调会话",
       "review_on": "2026-12-01",
       "delete_when": "门岗连续 2 个周期零触发且无外部契约类逃逸",
@@ -511,13 +516,13 @@
         "R33.4",
         "R33.5"
       ],
-      "rule": "概念的 owner 先于目录：同一概念同一时段只归一条 lane；谁说了算在设计卡 ★2 格动手前回答；概念登记表 concept-owners/ 由门岗校验（警告档）。",
+      "rule": "概念的 owner 先于目录：同一概念同一时段只归一条 lane；谁说了算在设计卡 ★2 格动手前回答；概念登记表 concept-owners/ 由门岗校验（阻断；2026-10-19 用户拍板改回挡合并，取代 10-02 的警告档）。",
       "disease": "同一概念出现第二个 owner",
       "enforcement": [
-        "gate:check:concept-owners(警告)",
+        "gate:check:concept-owners",
         "template:docs/engineering/design-card.md"
       ],
-      "evidence": "concept-owners 红 4 次全是登记没补",
+      "evidence": "concept-owners 红 4 次全是登记没补（2026-10-02 降为警告档）；警告档下未登记的合同边界 37 -> 121 无人被拦，2026-10-19 用户拍板改回挡合并",
       "owner": "协调会话",
       "review_on": "2026-12-01",
       "delete_when": "不适用",

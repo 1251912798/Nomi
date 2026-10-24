@@ -9,7 +9,8 @@ vi.mock('../projects/repository', () => ({ readProject: () => ({ name: '雨夜' 
 const grants = vi.hoisted(() => ({ mintSpendGrant: vi.fn(() => 'grant-1') }))
 vi.mock('../spendGrant', () => grants)
 
-import { authorizeDeconstructSpend, DECONSTRUCT_ASK_ABOVE_CALLS } from './deconstructSpend'
+import { authorizeDeconstructSpend } from './deconstructSpend'
+import { DECONSTRUCT_ASK_ABOVE_CALLS } from '../shared/canvas/shotTable'
 
 const vision = { vendorKey: 'apimart', modelKey: 'gemini-3.5-flash' }
 const plan = (shots: number, transcribe = false) => ({

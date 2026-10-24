@@ -178,3 +178,9 @@ export function isRetiredShotTableNode(node: { kind?: unknown; meta?: unknown })
  * 文案在主进程按用户语言生成（`desktopT`），渲染层原样显示，不在两边各拼一次。
  */
 export type DeconstructionProgress = { requestId: string; projectId: string; phase: 0 | 1 | 2; detail?: string }
+
+/**
+ * 拆解「短片不弹报价卡，长片才弹」的分界（2026-10-18 用户拍板）：一共不超过这么多次调用（读图 N 镜 + 转写）时，点「拆解」那一下就是确认。
+ * 主进程的钱闸（electron/video/deconstructSpend.ts）与拆解栏的说明文案读同一个数。
+ */
+export const DECONSTRUCT_ASK_ABOVE_CALLS = 30

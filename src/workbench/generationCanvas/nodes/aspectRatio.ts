@@ -8,20 +8,17 @@
 // 不同档案的 key 命名不一：多数是 `aspect_ratio`，imagen4/qwen 用 `size`，
 // Seedream 改图模式用 `image_size`（named bucket 格式，映射表在 shared 那份）。
 import type { GenerationCanvasEdge, GenerationCanvasNode } from "../model/generationCanvasTypes";
-import { isAutoOptionValue, normalizeAspectRatioToWH, parseAspectRatioValue } from "../../../../electron/shared/aspectRatioValue";
-
-// 比例参数可能用到的 meta key，按常见度排序。
-export const ASPECT_RATIO_KEYS = ["aspect_ratio", "size", "ratio", "image_size"] as const;
+import { ASPECT_RATIO_META_KEYS, isAutoOptionValue, normalizeAspectRatioToWH, parseAspectRatioValue } from "../../../../electron/shared/aspectRatioValue";
 
 /**
  * 从节点 meta 读出当前选定的画面比例（数值）。读不到（未选模型 / 该模型无比例参数）返回 null。
- * 按 ASPECT_RATIO_KEYS 顺序找第一个能解析成 W:H 的值——非比例的 size 值（如 "2K"）会被自动跳过。
+ * 按 ASPECT_RATIO_META_KEYS 顺序找第一个能解析成 W:H 的值——非比例的 size 值（如 "2K"）会被自动跳过。
  */
 export function readNodeAspectRatio(node: GenerationCanvasNode): number | null {
   const meta = node.meta;
   if (!meta || typeof meta !== "object") return null;
   const bag = meta as Record<string, unknown>;
-  for (const key of ASPECT_RATIO_KEYS) {
+  for (const key of ASPECT_RATIO_META_KEYS) {
     const ratio = parseAspectRatioValue(bag[key]);
     if (ratio) return ratio;
   }
@@ -55,15 +52,23 @@ export function preferredVideoAspect(inputRatios: readonly number[]): "16:9" | "
   return "16:9";
 }
 
-/** 采集节点已连接输入（首帧/尾帧/参考）的上游比例（可读的）。供 preferredVideoAspect 用。 */
+/**
+ * 这种边算不算「比例规则要看的输入」（首帧 / 尾帧 / 参考；角色参考、风格参考、构图参考不算）。
+ * 唯一判据：collectInputAspectRatios 数哪些边、连线时新边要不要触发重算（store/canvasConnectDerivations）都问它。
+ */
 const INPUT_EDGE_MODES = new Set<string>(["first_frame", "last_frame", "reference"]);
+export function isAspectInputEdgeMode(mode: string | undefined): boolean {
+  return INPUT_EDGE_MODES.has(String(mode || ""));
+}
+
+/** 采集节点已连接输入（首帧/尾帧/参考）的上游比例（可读的）。供 preferredVideoAspect 用。 */
 export function collectInputAspectRatios(
   nodeId: string,
   edges: readonly GenerationCanvasEdge[],
   nodes: readonly GenerationCanvasNode[],
 ): number[] {
   return edges
-    .filter((e) => e.target === nodeId && INPUT_EDGE_MODES.has(String(e.mode || "")))
+    .filter((e) => e.target === nodeId && isAspectInputEdgeMode(e.mode))
     .map((e) => nodes.find((n) => n.id === e.source))
     .filter((n): n is GenerationCanvasNode => Boolean(n))
     .map((n) => readNodeAspectRatio(n))

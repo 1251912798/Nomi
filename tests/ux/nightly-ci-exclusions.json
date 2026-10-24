@@ -13,14 +13,17 @@
     { "path": "tests/ux/canvas-shot-identity.walk.mjs", "category": "B", "reason": "requires private real-media fixtures" },
     { "path": "tests/ux/canvas-shortcut-parity.walk.mjs", "category": "B", "reason": "requires private real-media fixtures" },
     { "path": "tests/ux/composer-overlap-and-fast-typing.walk.mjs", "category": "B", "reason": "requires a live DeepSeek API key" },
+    { "path": "tests/ux/credential-redirect.walk.mjs", "category": "B", "reason": "requires the developer machine's real Nomi profile (copied catalog and credentials, fingerprint-checked); run by hand on a configured machine" },
     { "path": "tests/ux/custom-prompt-realtask.walk.mjs", "category": "B", "reason": "requires the developer machine's real model catalog and credentials" },
     { "path": "tests/ux/director-3dbox-3b-agent.walk.mjs", "category": "B", "reason": "requires a live DeepSeek API key" },
     { "path": "tests/ux/director-3dbox-3c-agent.walk.mjs", "category": "B", "reason": "requires a local renderer dev server" },
-    { "path": "tests/ux/director-model-import.walk.mjs", "category": "B", "reason": "requires a private Mixamo FBX fixture" },
+    { "path": "tests/ux/draft-loop.walk.mjs", "category": "B", "reason": "spends real image credits through the developer machine's real profile (NOMI_R16_GEN=1); otherwise it exits as a skip that nightly counted as a pass; run by hand in the paid lane" },
+    { "path": "tests/ux/find-reference.walk.mjs", "category": "B", "reason": "requires a live TikHub API key and network; without it the walk exits as a skip that nightly counted as a pass; run by hand with TIKHUB_API_KEY" },
     { "path": "tests/ux/import-reveal.walk.mjs", "category": "B", "reason": "requires an external evidence directory with real media" },
     { "path": "tests/ux/integration-session-terminal.walk.mjs", "category": "B", "reason": "requires a separately authenticated integration profile" },
     { "path": "tests/ux/mcp-client-activation.walk.mjs", "category": "B", "reason": "requires an installed macOS Nomi.app" },
     { "path": "tests/ux/media-import-matrix.walk.mjs", "category": "B", "reason": "requires private media fixture files" },
+    { "path": "tests/ux/narrowed-mode-guidance.walk.mjs", "category": "B", "reason": "requires the developer machine's real model catalog and credentials (prepareIsolation requireCatalog: true); run by hand on a configured machine" },
     { "path": "tests/ux/pr619-reference-task.walk.mjs", "category": "B", "reason": "requires a live TikHub API key" },
     { "path": "tests/ux/pr720-apimart-key.walk.mjs", "category": "B", "reason": "requires a local APIMart credential" },
     { "path": "tests/ux/pr720-language-switch-mid-session.walk.mjs", "category": "B", "reason": "requires the developer machine's real model catalog and credentials" },
@@ -28,7 +31,9 @@
     { "path": "tests/ux/pr720-ux-geometry.walk.mjs", "category": "B", "reason": "requires the developer machine's real model catalog and credentials" },
     { "path": "tests/ux/prompt-translate.walk.mjs", "category": "B", "reason": "requires a live DeepSeek API key" },
     { "path": "tests/ux/provider-adapter-doctor.walk.mjs", "category": "B", "reason": "requires a completed live adapter harness directory" },
+    { "path": "tests/ux/storyboard-methodology.walk.mjs", "category": "B", "reason": "requires a real text model from the developer machine's profile; without it the walk exits as a skip that nightly counted as a pass; run by hand on a configured machine" },
     { "path": "tests/ux/tikhub-connector.walk.mjs", "category": "B", "reason": "requires a live TikHub API key and network" },
-    { "path": "tests/ux/video-ops.walk.mjs", "category": "B", "reason": "requires a locally generated ffmpeg media fixture" }
+    { "path": "tests/ux/video-ops.walk.mjs", "category": "B", "reason": "requires a locally generated ffmpeg media fixture" },
+    { "path": "tests/ux/whiteboard-refactor.walk.mjs", "category": "B", "reason": "requires private real-media fixtures (NOMI_REAL_MEDIA_DIR)" }
   ]
 }

@@ -28,7 +28,7 @@ import { LibraryDiscoveryToolbar } from './LibraryDiscoveryToolbar'
 import { getDesktopBridge } from '../../desktop/bridge'
 import ProjectSyncBadge from './ProjectSyncBadge'
 import { syncStatusBlocksOpen } from './projectSyncFace'
-import type { WorkspaceSyncInspection } from '../../../electron/shared/workspaceSyncContracts'
+import { librarySyncInspect, useLibrarySyncInspections } from './projectSyncInspectStore'
 
 const SkillLibraryContent = lazyWithChunkBoundary('i18n:sidebar.skillLibrary', () =>
   import('../skillLibrary/SkillLibraryPanel').then((module) => ({ default: module.SkillLibraryContent })))
@@ -117,6 +117,11 @@ const ThumbnailMosaic = React.memo(
   (prev, next) => (prev.urls[0] || '') === (next.urls[0] || '') && (prev.videoUrl || '') === (next.videoUrl || ''),
 )
 
+/** 卡片不可打开：文件夹不在，或这一项的数据读不出来（主进程列表已标好原因）。 */
+function isProjectUnavailable(project: LocalProjectSummary): boolean {
+  return Boolean(project.missing || project.unreadableReason)
+}
+
 export default function ProjectLibraryPage({
   projectFeedback,
   onOpenProject,
@@ -142,13 +147,13 @@ export default function ProjectLibraryPage({
   // 双击项目名进入 inline 编辑：editingId 记哪张卡在编辑、editValue 是输入中的名字。
   const [editingId, setEditingId] = React.useState('')
   const [editValue, setEditValue] = React.useState('')
-  const [syncInspectionByProject, setSyncInspectionByProject] = React.useState<Record<string, WorkspaceSyncInspection>>({})
+  const syncInspectionByProject = useLibrarySyncInspections()
   const [openSyncProjectId, setOpenSyncProjectId] = React.useState<string | null>(null)
   // 「重新检查」这一下自己失败了（≠ 检查跑完发现还没就绪）。不记它的话，两种情况在界面上
   // 长得一模一样：弹层原样不动——用户会以为检查跑过了、文件夹还是坏的。
   const [syncRecheckFailedId, setSyncRecheckFailedId] = React.useState<string | null>(null)
   const beginRename = (project: LocalProjectSummary): void => {
-    if (!onRenameProject || project.missing) return
+    if (!onRenameProject || isProjectUnavailable(project)) return
     setEditingId(project.id)
     setEditValue(project.name)
   }
@@ -183,31 +188,14 @@ export default function ProjectLibraryPage({
       : searchedProjects.filter((project) =>
           sourceFilter === 'folder' ? project.source === 'folder' : project.source !== 'folder',
         )
-  const inspectSyncProjects = React.useCallback(async (): Promise<void> => {
-    const api = getDesktopBridge()?.workspace?.syncInspect
-    if (!api) return
-    const entries = await Promise.all(
-      projects.filter((project) => Boolean(project.rootPath)).map(async (project) => {
-        try {
-          const inspection = await api({ projectId: project.id })
-          return [project.id, inspection] as const
-        } catch {
-          // 有意静默：这是**后台批量探测**（挂在 mount + window focus 上，用户没点任何东西），
-          // 产出的只是卡片上的同步告警徽标——一个可选增强。探不到就退回「不显示徽标」，
-          // 也就是探测能力上线前的行为，界面不会因此显示**错误的**同步状态。
-          // 反例见下面的 recheckSync：那条是用户亲手点的，失败必须出声。
-          return null
-        }
-      }),
-    )
-    setSyncInspectionByProject(Object.fromEntries(entries.filter((entry): entry is readonly [string, WorkspaceSyncInspection] => entry !== null)))
-  }, [projects])
-
+  // 卡片上的同步状态在首屏画完之后才在后台查（调度规则见 projectSyncInspectScheduler.ts）：
+  // 项目没变就不重查，聚焦也只是重新登记，不再每次全量发。
   React.useEffect(() => {
-    void inspectSyncProjects()
-    window.addEventListener('focus', inspectSyncProjects)
-    return () => window.removeEventListener('focus', inspectSyncProjects)
-  }, [inspectSyncProjects])
+    const request = (): void => librarySyncInspect.request(projects)
+    request()
+    window.addEventListener('focus', request)
+    return () => window.removeEventListener('focus', request)
+  }, [projects])
 
   const recheckSync = React.useCallback(async (projectId: string): Promise<void> => {
     const api = getDesktopBridge()?.workspace?.syncInspect
@@ -215,14 +203,14 @@ export default function ProjectLibraryPage({
     setSyncRecheckFailedId(null)
     try {
       const inspection = await api({ projectId, adopt: true })
-      setSyncInspectionByProject((current) => ({ ...current, [projectId]: inspection }))
+      librarySyncInspect.set(projects.find((project) => project.id === projectId) ?? { id: projectId }, inspection)
       if (inspection.status === 'ready') setOpenSyncProjectId(null)
     } catch {
       // 用户点的「重新检查」——不能静默：弹层原样不动会被读成「检查跑完了，还是坏的」。
       setSyncRecheckFailedId(projectId)
       setOpenSyncProjectId(projectId)
     }
-  }, [])
+  }, [projects])
   const sourceOptions: Array<{ id: 'all' | 'native' | 'folder'; label: string; count: number }> = [
     { id: 'all', label: t('library.all'), count: sourceCounts.all },
     { id: 'native', label: t('library.local'), count: sourceCounts.native },
@@ -240,6 +228,9 @@ export default function ProjectLibraryPage({
   }, [onOpenProject, syncInspectionByProject])
   // 10-08 外壳重设计：模型接入 / 浏览器 / 设置都在 40px 合一顶栏或设置里；这里只剩「缺文本模型」那条提示条。
   const [tab, setTab] = React.useState<LibraryTab>('projects')
+  // Skill / 提示词页签的工具（搜索、类型、导入、新建）和页签同一行（拍板图 SkillLibrary / PromptLibrary）：这一格是它们的落点，库内容自己 portal 进来。
+  const [libraryToolbar, setLibraryToolbar] = React.useState<HTMLDivElement | null>(null)
+  const libraryTab = tab === 'skills' || tab === 'prompts'
   // 第一次打开（没有项目、没在读、没读错、没在搜）= LibraryEmpty 板：三张大动作卡；有项目后收成右上两颗按钮。
   const firstRun = !projectsError && !projectsLoading && projects.length === 0
   const tabs: Array<{ id: LibraryTab; label: string }> = [
@@ -299,7 +290,7 @@ export default function ProjectLibraryPage({
 
   const page = (
     <div className="nomi-library-page flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-panel bg-nomi-paper font-nomi-sans text-body-sm leading-normal text-nomi-ink antialiased ring-1 ring-nomi-line-soft" data-library-tab={tab}>
-      <main className="nomi-library-page__main flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-8 pb-12 pt-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <main className={cn('nomi-library-page__main flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-8 pt-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', libraryTab ? 'pb-0' : 'pb-12')}>
         {/* 通知位（#1135）：热修横幅 / 已更新卡；没有要出的内容时自己隐藏。 */}
         <UpdateNotices />
         {projectFeedback?.message && !filteredProjects.some((project) => project.id === projectFeedback.projectId) ? <p role="alert" className="m-0 text-caption text-nomi-danger">{projectFeedback.message}</p> : null}
@@ -324,6 +315,7 @@ export default function ProjectLibraryPage({
               </button>
             ))}
           </div>
+          {libraryTab ? <div ref={setLibraryToolbar} className="contents" data-library-toolbar={tab} /> : null}
           {tab === 'projects' && !firstRun ? (
             <>
               <div
@@ -402,11 +394,11 @@ export default function ProjectLibraryPage({
 
         {tab === 'skills' ? (
           <React.Suspense fallback={null}>
-            <SkillLibraryContent active showHeader={false} className="min-h-0 flex-1" />
+            <SkillLibraryContent host="page" toolbarHost={libraryToolbar} className="min-h-0 flex-1" />
           </React.Suspense>
         ) : tab === 'prompts' ? (
           <React.Suspense fallback={null}>
-            <PromptLibraryContent active showHeader={false} className="min-h-0 flex-1" />
+            <PromptLibraryContent host="page" toolbarHost={libraryToolbar} className="min-h-0 flex-1" />
           </React.Suspense>
         ) : firstRun ? (
           // LibraryEmpty 板：第一次打开 = 三张大动作卡（设计系统：起始页 / 空状态用 ActionCard）。
@@ -498,6 +490,10 @@ export default function ProjectLibraryPage({
           <div className="shrink-0 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-6 min-[1200px]:grid-cols-[repeat(auto-fill,248px)]">
             {filteredProjects.map((project) => {
               const urls = project.thumbnailUrls || (project.thumbnail ? [project.thumbnail] : [])
+              const unavailable = isProjectUnavailable(project)
+              const unavailableHint = project.unreadableReason === 'outside-workspace'
+                ? t('library.dataOutsideFolderHint')
+                : project.unreadableReason ? t('library.dataUnreadableHint') : undefined
               return (
                 <div
                   key={project.id}
@@ -506,22 +502,23 @@ export default function ProjectLibraryPage({
                   // 建的两个项目排序就是掷硬币。走查必须按**身份**点项目，不能按位置（`.first()`），
                   // 所以身份要在 DOM 上拿得到——这条 data 属性就是那个锚点。
                   data-project-id={project.id}
+                  title={unavailableHint}
                   className={cn(
                     'group relative overflow-visible rounded-panel text-left',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-nomi-ink',
-                    project.missing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+                    unavailable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
                   )}
-                  role={project.missing ? undefined : 'button'}
-                  tabIndex={project.missing ? undefined : 0}
-                  onClick={project.missing ? undefined : () => openProject(project.id)}
-                  onKeyDown={project.missing ? undefined : (e) => e.key === 'Enter' && openProject(project.id)}
+                  role={unavailable ? undefined : 'button'}
+                  tabIndex={unavailable ? undefined : 0}
+                  onClick={unavailable ? undefined : () => openProject(project.id)}
+                  onKeyDown={unavailable ? undefined : (e) => e.key === 'Enter' && openProject(project.id)}
                 >
                   {projectFeedback?.projectId === project.id && projectFeedback.message ? <p role="alert" className="m-0 px-3 py-2 text-caption text-nomi-danger">{projectFeedback.message}</p> : null}
                   <div
                     className={cn(
                       'aspect-video relative overflow-hidden rounded-panel bg-nomi-ink-05 ring-1 ring-inset ring-nomi-line-soft',
                       'transition-[box-shadow,transform] duration-150',
-                      !project.missing && 'group-hover:-translate-y-0.5 group-hover:shadow-nomi-md',
+                      !unavailable && 'group-hover:-translate-y-0.5 group-hover:shadow-nomi-md',
                     )}
                     style={urls.length === 0 && project.thumbStyle ? { background: project.thumbStyle } : undefined}
                   >
@@ -550,9 +547,17 @@ export default function ProjectLibraryPage({
                       >
                         <IconTrash size={14} stroke={1.8} />
                       </button>
-                      {project.missing ? (
-                        <span className="h-8 px-3 rounded-nomi-sm text-caption font-medium text-nomi-paper/80 flex items-center">
-                          {t('library.folderUnavailable')}
+                      {unavailable ? (
+                        // 贴缩略图下沿、不居中：居中会压在占位胶片图标上，把字盖住（V-plibrary2 截图）。
+                        <span
+                          className="absolute inset-x-3 bottom-3 min-h-8 px-3 py-1 rounded-nomi-sm text-caption font-medium text-nomi-paper/80 flex items-center justify-center text-center"
+                          title={unavailableHint}
+                        >
+                          {project.missing
+                            ? t('library.folderUnavailable')
+                            : project.unreadableReason === 'outside-workspace'
+                              ? t('library.dataOutsideFolder')
+                              : t('library.dataUnreadable')}
                         </span>
                       ) : (
                         <button
@@ -597,13 +602,13 @@ export default function ProjectLibraryPage({
                         <div
                           className={cn(
                             'text-body-sm font-semibold text-nomi-ink truncate mb-0.5',
-                            onRenameProject && !project.missing && 'cursor-text',
+                            onRenameProject && !unavailable && 'cursor-text',
                           )}
-                          title={onRenameProject && !project.missing ? t('library.renameHint') : undefined}
+                          title={onRenameProject && !unavailable ? t('library.renameHint') : undefined}
                           // 名字区单击不打开项目（留给双击改名）；缩略图/「继续创作」仍单击打开。
-                          onClick={onRenameProject && !project.missing ? (e) => e.stopPropagation() : undefined}
+                          onClick={onRenameProject && !unavailable ? (e) => e.stopPropagation() : undefined}
                           onDoubleClick={
-                            onRenameProject && !project.missing
+                            onRenameProject && !unavailable
                               ? (e) => {
                                   e.stopPropagation()
                                   beginRename(project)
@@ -616,7 +621,8 @@ export default function ProjectLibraryPage({
                       )}
                       <div className="flex items-center gap-2 text-micro text-nomi-ink-40">
                         <span>{formatUpdatedAt(project.updatedAt)}</span>
-                        {project.rootPath && syncInspectionByProject[project.id] ? (
+                        {/* 读不出来的卡不放同步角标：它弹层里的「打开文件夹 / 重新检查」对这种项目只会报失败，原因已写在灰卡上。 */}
+                        {project.rootPath && !project.unreadableReason && syncInspectionByProject[project.id] ? (
                           <ProjectSyncBadge
                             inspection={syncInspectionByProject[project.id]}
                             rootPath={project.rootPath}
@@ -630,7 +636,7 @@ export default function ProjectLibraryPage({
                         ) : null}
                       </div>
                     </div>
-                    {onRevealProjectFolder && project.rootPath ? (
+                    {onRevealProjectFolder && project.rootPath && !project.unreadableReason ? (
                       <button
                         type="button"
                         aria-label={t('library.openProjectFolder', { name: project.name })}

@@ -1,0 +1,30 @@
+{
+  "id": "library-prompt-scroll-1400",
+  "feature": "提示词库抽屉里搜一个几乎全中的字母（所有组全部摊开，约 1400 张卡），在列表上滚轮往下 40 格：帧间隔 p95 与长任务",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "E10",
+    "--scenarios",
+    "library-prompt-scroll",
+    "--warmup",
+    "1"
+  ],
+  "scale": "公开库 1400 条 + 内置 69 条全部摊开（两列约 735 行的虚拟列表）",
+  "metrics": [
+    "frameGapP95",
+    "longTasks"
+  ],
+  "budget": 33,
+  "group": "⑪ 技能库 / 提示词库",
+  "budgetStatus": "proposed",
+  "budgetBasis": "设计卡 docs/plan/2026-10-23-skill-prompt-library-layout.md ★7：滚动帧间隔 p95 ≤33ms（60Hz 下不超过两帧）、>50ms 长任务 0 个；同仓库拖动 / 平移场景同一个 33ms 预算",
+  "baseline": {
+    "median": 10.3,
+    "p95": 10.5,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-24",
+    "commit": "6ccbd23f6"
+  }
+}

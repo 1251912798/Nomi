@@ -5,6 +5,8 @@ import type { Mapping } from "../catalog/types";
 import { productionGenerationPayloadHash } from "../productionRun/productionGenerationAuthorization";
 import { ApimartGenerationProviderError } from "./apimartGenerationErrors";
 import type { ReferenceCombineChannel } from "../shared/videoCapabilities/referenceChannels";
+import { APIMART_REFERENCE_PARAMETER_ALIASES } from "../shared/modelArchetypes/referenceKeys";
+import { comparableReferenceUrl } from "../catalog/outboundReferenceUrl";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -33,14 +35,8 @@ function parameter(parameters: Record<string, unknown>, ...keys: string[]): unkn
   return keys.map((key) => parameters[key]).find((value) => value !== undefined && value !== null && value !== "");
 }
 
-const REFERENCE_PARAMETER_ALIASES = {
-  image_urls: ["image_urls", "imageUrls", "input_urls", "inputUrls", "reference_image_urls", "referenceImageUrls"],
-  image_with_roles: ["image_with_roles", "imageWithRoles"],
-  video_urls: ["video_urls", "videoUrls", "reference_video_urls", "referenceVideoUrls"],
-  audio_urls: ["audio_urls", "audioUrls", "reference_audio_urls", "referenceAudioUrls"],
-  first_frame_image: ["first_frame_image", "firstFrameImage", "first_frame_url", "firstFrameUrl"],
-  last_frame_image: ["last_frame_image", "lastFrameImage", "last_frame_url", "lastFrameUrl"],
-} as const;
+// 别名表住在 shared 的通用参考键表旁边（同一份，渲染层清键 / 主进程拒发也按它推导，#1269 条件 2）。
+const REFERENCE_PARAMETER_ALIASES = APIMART_REFERENCE_PARAMETER_ALIASES;
 
 type ReferenceWireKey = keyof typeof REFERENCE_PARAMETER_ALIASES;
 
@@ -359,9 +355,10 @@ export function assertReferencesReachBody(
   if (parameterUrls.length < input.references.length) {
     throw new ApimartGenerationProviderError("catalog references must be resolved to provider URLs before submission");
   }
-  const bodyUrls = new Set(collectProviderUrls(body));
+  // 请求体里的参考是参数层序列化后的写法：两边按同一个序列化比，带空格的已批准参考不被当成「被丢了」。
+  const bodyUrls = new Set(collectProviderUrls(body).map(comparableReferenceUrl));
   for (const url of new Set(parameterUrls)) {
-    if (!bodyUrls.has(url)) {
+    if (!bodyUrls.has(comparableReferenceUrl(url))) {
       throw new ApimartGenerationProviderError("catalog mapping dropped a resolved reference");
     }
   }

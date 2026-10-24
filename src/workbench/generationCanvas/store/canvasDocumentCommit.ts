@@ -24,6 +24,7 @@ import { withLiveNodeFacts, withLiveRunState } from '../../../../electron/shared
 import { convergeDeconstructionNodes } from '../nodes/shotTable/deconstructionLifecycle'
 import type { GenerationCanvasEdge, GenerationCanvasNode, NodeGroup } from '../model/generationCanvasTypes'
 import { bumpPersistRevision } from './canvasGuards'
+import { deriveTargetAfterConnect } from './canvasConnectDerivations'
 import { clearClipboard } from './canvasClipboard'
 import { reportSkippedEdges } from './canvasEdgeWrite'
 import { reconcileTimelineForNodeSetChange, reconcileTimelineForRestoredNodes } from './canvasTimelineBridge'
@@ -226,13 +227,15 @@ export const createCanvasDocumentActions: CanvasSliceCreator<CanvasDocumentActio
         // A 模式实时桥：外部 MCP 改动经主进程算好整张，这里按它读到的那份三方合并到此刻的画布（与盘上同一个合并函数）。
         // 规范化里的「重启收敛」只对装载成立；会话中途应用时事实层一律以此刻的为准（下面 settleNodeFacts）。
         const live = get()
-        // 外部新增的边在合并里过连线总闸（口径同 edgeAdmission）：被拒的不写，说一句。
+        // 外部新增的边在合并里过连线总闸（口径同 edgeAdmission）：被拒的不写，说一句；收下的记下来，下面按连线手势算。
+        const connectedEdgeIds = new Set<string>()
         const merged = mergeExternalCanvasWrite({
           base: write.base,
           next: write.next,
           current: live.readDocumentSnapshot(),
           ...(write.restoredEdgeIds ? { restoredEdgeIds: write.restoredEdgeIds } : {}),
           onRejectedEdges: (rejected) => reportSkippedEdges(rejected, live.projectId),
+          onAdmittedEdges: (admitted) => admitted.forEach((edge) => connectedEdgeIds.add(edge.id)),
         })
         const normalized = normalizeStoreSnapshot(merged)
         const settled = settleNodeFacts(normalized.nodes, live.nodes, live.heldNodeOutcomes, withLiveNodeFacts)
@@ -246,6 +249,12 @@ export const createCanvasDocumentActions: CanvasSliceCreator<CanvasDocumentActio
         emitReturnedLandings(settled.returned)
         emitProductionSignalsForDocumentChange(live.projectId, live.nodes, next.nodes)
         reconcileTimelineForNodeSetChange(live.nodes, next.nodes)
+        // 外部 MCP 的连线（connect_canvas_edges / create_canvas_nodes(edges)）也是连线手势（协调 2026-10-23 裁定，
+        // 口径同进程内 Agent 连线）：过了总闸的新边各走一次连线之后的共用派生口，不另写判断。派生写 history:false，
+        // 和上面那一格撤销是同一步；撤销 / 重做 / 放回的边不在 connectedEdgeIds 里（不是连线）。
+        for (const edge of next.edges) {
+          if (connectedEdgeIds.has(edge.id)) deriveTargetAfterConnect(get, edge.source, edge.target, edge.mode)
+        }
         return
       }
       case 'put-back': {

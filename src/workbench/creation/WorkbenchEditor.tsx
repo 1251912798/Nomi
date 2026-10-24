@@ -4,14 +4,20 @@ import { CreationDocumentSwitcher } from './CreationDocumentSwitcher'
 import { useTranslation } from 'react-i18next'
 import { EditorContent, type Editor, type JSONContent } from '@tiptap/react'
 import SelectionGeneratePopover from './SelectionGeneratePopover'
-import { WorkbenchIconButton } from '../../design/actions'
+import { AiRewriteBar } from './aiRewrite/AiRewriteBar'
+import { rewriteDocumentIdentity, setRewriteDocumentIdentityTransaction, setRewriteLabelProvider } from './aiRewrite/rewriteSession'
+import { useOpenProjectId } from '../project/useOpenProjectId'
+import { toast } from '../../ui/toast'
+import { useAiRewrite } from './aiRewrite/aiRewriteBinding'
+import { TooltipProvider } from '../../design'
 import { TIPTAP_PLACEHOLDER_CLASSES } from '../assets/tiptapPlaceholderClasses'
 import { cn } from '../../utils/cn'
 import { useWorkbenchStore } from '../workbenchStore'
 import { normalizeWorkbenchContentJson } from '../workbenchTypes'
 import { useTransientScrollingClass } from './useTransientScrollingClass'
 import { useNomiRichTextEditor, RICH_TEXT_FEATURE_EXTENSIONS } from '../common/useNomiRichTextEditor'
-import { buildRichTextActions, type RichTextAction } from '../common/richTextActions'
+import { useRichTextActions, type RichTextAction } from '../common/richTextActions'
+import { RichTextActionButton } from '../common/RichTextActionButton'
 import { SurfacePortWireError } from '../../../electron/shared/surfacePortBinding'
 import {
   assertDocumentWritePreconditions,
@@ -31,27 +37,7 @@ const TOOLBAR_LEFT_GROUPS: readonly (readonly string[])[] = [
   ['table', 'link'],
 ]
 const TOOLBAR_RIGHT_GROUP: readonly string[] = ['undo', 'redo']
-
-function ToolbarButton({ action }: { action: RichTextAction }): JSX.Element {
-  return (
-    <WorkbenchIconButton
-      className={cn(
-        'workbench-editor-toolbar__button',
-        'w-[30px] h-[30px] inline-grid place-items-center',
-        'border border-transparent rounded-nomi-sm',
-        'bg-transparent text-workbench-muted cursor-pointer',
-        'hover:bg-workbench-hover',
-        'disabled:cursor-not-allowed disabled:opacity-[0.38]',
-      )}
-      label={action.label}
-      data-active={action.active ? 'true' : 'false'}
-      disabled={action.disabled}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={action.onClick}
-      icon={action.icon}
-    />
-  )
-}
+const TOOLBAR_BUTTON_CLASS = 'workbench-editor-toolbar__button h-[30px] w-[30px] text-workbench-muted hover:bg-workbench-hover hover:text-workbench-ink [&>svg]:size-4 [&>svg]:stroke-2'
 
 function ToolbarDivider(): JSX.Element {
   return <div className="w-px h-[18px] bg-workbench-border mx-1" aria-hidden="true" />
@@ -59,23 +45,7 @@ function ToolbarDivider(): JSX.Element {
 
 function WorkbenchEditorToolbar({ editor }: { editor: Editor | null }): JSX.Element {
   const { t } = useTranslation()
-  const actions = buildRichTextActions(editor)
-  if (actions.length === 0) {
-    return (
-      <div
-        className={cn(
-          'workbench-editor-toolbar',
-          'flex items-center gap-1',
-        workspacePanelHeader,
-        )}
-        aria-label={t('creationAi.editor.toolbarAria')}
-      >
-        {/* 创作内容树住左栏「文稿」抽屉；这一行最左是「当前文稿名 ▾」，换文稿不必开抽屉（10-08 外壳重设计）。 */}
-      <CreationDocumentSwitcher />
-      <ToolbarDivider />
-      </div>
-    )
-  }
+  const actions = useRichTextActions(editor)
   const byId = new Map(actions.map((action) => [action.id, action]))
   const pick = (ids: readonly string[]) => ids.map((id) => byId.get(id)).filter((a): a is RichTextAction => Boolean(a))
   const leftGroups = TOOLBAR_LEFT_GROUPS.map(pick).filter((group) => group.length > 0)
@@ -92,18 +62,20 @@ function WorkbenchEditorToolbar({ editor }: { editor: Editor | null }): JSX.Elem
       {/* 创作内容树住左栏「文稿」抽屉；这一行最左是「当前文稿名 ▾」，换文稿不必开抽屉（10-08 外壳重设计）。 */}
       <CreationDocumentSwitcher />
       <ToolbarDivider />
-      {leftGroups.map((group, index) => (
-        <React.Fragment key={group[0]?.id ?? index}>
-          {index > 0 ? <ToolbarDivider /> : null}
-          {group.map((action) => (
-            <ToolbarButton key={action.id} action={action} />
-          ))}
-        </React.Fragment>
-      ))}
-      <div className="flex-1" aria-hidden="true" />
-      {rightGroup.map((action) => (
-        <ToolbarButton key={action.id} action={action} />
-      ))}
+      <TooltipProvider delayDuration={250} disableHoverableContent>
+        {leftGroups.map((group, index) => (
+          <React.Fragment key={group[0]?.id ?? index}>
+            {index > 0 ? <ToolbarDivider /> : null}
+            {group.map((action) => (
+              <RichTextActionButton key={action.id} action={action} className={TOOLBAR_BUTTON_CLASS} />
+            ))}
+          </React.Fragment>
+        ))}
+        <div className="flex-1" aria-hidden="true" />
+        {rightGroup.map((action) => (
+          <RichTextActionButton key={action.id} action={action} className={TOOLBAR_BUTTON_CLASS} />
+        ))}
+      </TooltipProvider>
     </div>
   )
 }
@@ -172,6 +144,24 @@ export default function WorkbenchEditor(): JSX.Element {
     persistentSelection: true,
   })
 
+  const rewrite = useAiRewrite(editor, { onDiscarded: () => toast(t('creationAi.rewrite.documentSwitched'), 'info') })
+  // 编辑器会被不同文稿复用（正文一样时连同步事务都没有）：改写会话只认「打开它的那篇文稿」，换了就作废。
+  const openProjectId = useOpenProjectId()
+  const rewriteIdentity = rewriteDocumentIdentity(openProjectId, workbenchDocument.id)
+  React.useLayoutEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    editor.view.dispatch(setRewriteDocumentIdentityTransaction(editor.state, rewriteIdentity))
+  }, [editor, rewriteIdentity])
+  // 文档里的 ✓ ✕ 是裸 DOM 小部件，文案在挂载时从 i18n 取（语言切换后下一次画就是新语言）。
+  React.useEffect(() => {
+    setRewriteLabelProvider(() => ({
+      accept: t('creationAi.rewrite.accept'),
+      discard: t('creationAi.rewrite.discard'),
+      acceptHint: t('creationAi.rewrite.acceptHint'),
+      discardHint: t('creationAi.rewrite.discardHint'),
+    }))
+  }, [t])
+
   // 编辑器挂载时用**增强版**覆盖项目会话层的文稿端口（多了光标/选区锚与选区读），卸载时退回基线。
   // 基线本身随项目在（documentSessionPort），这里不是「有没有文稿能力」的开关。
   React.useEffect(() => {
@@ -230,7 +220,10 @@ export default function WorkbenchEditor(): JSX.Element {
         selectionVersion={selectionState.version}
         onStoryboard={storyboardPlannerLauncher ? () => storyboardPlannerLauncher(selectionState.text) : undefined}
         onCreated={clearSelectionText}
+        onAiEdit={rewrite.controller ? () => { rewrite.controller?.open() } : undefined}
+        hidden={rewrite.session !== null}
       />
+      <AiRewriteBar editor={editor} rewrite={rewrite} />
       <div
         ref={scrollRef}
         className={cn(

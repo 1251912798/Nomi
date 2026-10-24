@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import type { ShotIdentity } from '../../../../electron/shared/canvas/shotNumbering'
 import type { GenerationCanvasNode } from '../../generationCanvas/model/generationCanvasTypes'
 import { ShotPreviewOverlays } from '../../generationCanvas/nodes/ConvertShotToVideoButton'
+import { cn } from '../../../utils/cn'
 import { formatStoryboardShotLabel, isAutoStoryboardShotTitle, useStoryboardShotLabel } from './storyboardLabels'
 
 /**
@@ -23,10 +24,24 @@ export function NodeShotLabel({ node, shotRole, children }: {
   if (!label) return <><ShotPreviewOverlays shotRole={shotRole} />{children}</>
   return (
     <>
-      <span data-shot-number data-storyboard-shot-label={label.number} className="inline-flex shrink-0 items-center rounded-nomi-sm border border-nomi-line bg-nomi-paper/90 px-2 py-0.5 font-normal tabular-nums text-nomi-ink pointer-events-none">
-        {formatStoryboardShotLabel(t, label)}
-      </span>
+      <ShotNumberPill attributes={{ 'data-shot-number': 'true', 'data-storyboard-shot-label': String(label.number) }}>{formatStoryboardShotLabel(t, label)}</ShotNumberPill>
       {isAutoStoryboardShotTitle(node.title, label.number) ? null : children}
     </>
+  )
+}
+
+/**
+ * 镜号那一枚小胶囊（边线、圆角、字号同标题行）。聊天里的指向元素在节点已删除时只剩宿主给的镜号快照，
+ * 也画这一枚（2026-10-23 D2），样子只有这一份。
+ */
+export function ShotNumberPill({ children, className, attributes }: {
+  children: React.ReactNode
+  className?: string
+  attributes?: { [key: `data-${string}`]: string | undefined }
+}): JSX.Element {
+  return (
+    <span {...attributes} className={cn('inline-flex shrink-0 items-center rounded-nomi-sm border border-nomi-line bg-nomi-paper/90 px-2 py-0.5 font-normal tabular-nums text-nomi-ink pointer-events-none', className)}>
+      {children}
+    </span>
   )
 }

@@ -1,0 +1,87 @@
+{
+  "name": "一行发给供应商的型号名从哪来（档案提供，还是就是这家目录行自己的 key）",
+  "subject": "generation.model-name-source",
+  "lifecycle": "execution",
+  "authority_kind": "decision",
+  "trust_domain": "shared",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
+    "symbol": "resolveWireModel"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
+      "symbol": "resolveWireModel"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
+      "symbol": "operationSelectsArchetypeWireModel"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
+      "symbol": "ARCHETYPE_WIRE_MODEL"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
+      "symbol": "withoutArchetypeWireModel"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
+      "symbol": "connectionWireModel"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
+      "symbol": "noMappingWireModel"
+    },
+    {
+      "path": "electron/catalog/taskParams.ts",
+      "symbol": "taskTemplateParams"
+    },
+    {
+      "path": "electron/catalog/modelNameSource.ts",
+      "symbol": "deriveModelNameSource"
+    },
+    {
+      "path": "electron/shared/modelArchetypes/modelNameSource.ts",
+      "symbol": "scopeArchetypeModelNames"
+    }
+  ],
+  "forbidden_derivations": [
+    {
+      "symbol": "videoTransportModelIdForPlan",
+      "kind": "definition",
+      "why": "宿主编译期自己按 变体 > modelEnum > 目录名 算出站 model，引擎 B 据此盖掉 body 的 model；不看连接契约，自建中转收到档案里别家的线上名。2026-10-16 删除，执行合同的 transportModelId 一并删除"
+    },
+    {
+      "symbol": "operationReadsArchetypeModel",
+      "kind": "definition",
+      "why": "2026-10-23 的目录层判据：扫映射模板文本里有没有 request.params.model。2026-09-03 起每个自建中转 op 都读它，于是全部被判成接受档案型号名，变体栏、Agent 能力清单与发送 owner 两个答案。2026-10-24 用户拍板判据合一后删除，目录层改问 operationSelectsArchetypeWireModel"
+    }
+  ],
+  "parity_test": "electron/parity/vendorScopedModelId.matrix.test.ts",
+  "allowed_consumers": [
+    "electron/audioTaskRunner.ts",
+    "electron/runtime.ts",
+    "electron/capabilityCore/moduleCatalogBootstrap.ts",
+    "electron/catalog/antigravityCreatePreflight.ts",
+    "electron/catalog/catalogStore.ts",
+    "electron/catalog/customCallDispatch.ts",
+    "electron/catalog/customCallIpc.ts",
+    "electron/catalog/customCallRunner.ts",
+    "electron/catalog/nativeWireProfiles.ts",
+    "electron/catalog/profileHttpRequest.ts",
+    "electron/catalog/seedBuiltins.ts",
+    "electron/catalog/types.ts",
+    "electron/shared/modelArchetypes/index.ts",
+    "electron/shared/videoCapabilities/registry.ts",
+    "src/config/modelOptionMappers.ts",
+    "src/config/models.ts",
+    "src/workbench/api/modelCatalogApi.ts",
+    "src/workbench/generationCanvas/model/modelNameSourceLookup.ts",
+    "src/workbench/generationCanvas/nodes/nodeModelArchetype.ts"
+  ],
+  "since": "2026-10-16",
+  "notes": "同一个问题的两个粒度：这一次请求发哪个 model 串（发送时，resolveWireModel），与这一行接不接受档案型号名（目录行，deriveModelNameSource，随目录下发给渲染层；scopeArchetypeModelNames 在两个档案解析口收窄）。两者只认同一个事实：这一行要用的 create op 在定义处声明了 wireModel=archetype-selection（operationSelectsArchetypeWireModel；只有内置目录契约 kie / apimart / 火山 / 即梦的 op 有，借给中转的原生报文去掉声明，普查测试锁住）。声明了才收 变体 > 模式 modelEnum；没有声明（自建中转、手写 / AI 编译的映射、写死型号或读 {{model.modelKey}} 的映射）一律连接名 modelAlias || modelKey，目录行也判 row，档案的变体 / 方式型号名在解析口就被剥掉。taskTemplateParams 最后写入 params.model，extras.model / archetypeInput.model / headless 默认 / Agent 参数都不是输入。合并理由：2026-10-16（#1207）与 2026-10-23（#1297）各登记了一份，判据各读各的（op 声明 vs 模板文本读 request.params.model），自建中转上两份答案相反（2026-10-24 实测）；用户 2026-10-24 拍板判据合一，概念随之合一，原 generation.wire-model-identity 并入本条。不许按名字比对判断归属，不许写供应商 / 型号名特判，变体栏等界面不许另立判据。合同 docs/fixes/2026-10-16-custom-relay-wire-model.root-cause.json（发送）与 docs/fixes/2026-10-23-vendor-scoped-model-id.root-cause.json（目录行）。"
+}

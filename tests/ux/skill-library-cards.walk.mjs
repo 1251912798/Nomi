@@ -4,7 +4,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { COMPOSER_SKILL, SKILL_POPOVER } from './agent-runtime-walk-support.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, openRailDrawer } from './_shell.mjs'
 const output = path.resolve('docs/design/verification/2026-09-09-skill-library')
 fs.mkdirSync(output, { recursive: true })
 const run = await launchNomiApp({ name: 'skill-library-cards', settleMs: 0,
@@ -14,6 +14,8 @@ const run = await launchNomiApp({ name: 'skill-library-cards', settleMs: 0,
 async function expandGroups(host) {
   while (await host.locator('details:not([open]) > summary').count()) await host.locator('details:not([open]) > summary').first().click()
 }
+// 技能库 / 提示词库 2026-10-24 改版：技能库只列技能（类型筛选删了，Q1），首页每组露一行——用搜索找到要的那张；
+// 效果住在提示词库，「用到节点」删了（Q4），效果经提示词库「放上画布」新建节点。
 const page = run.win
 page.setDefaultTimeout(stationTimeout({ operations: 2 }))
 try {
@@ -26,9 +28,7 @@ try {
   await picker.getByRole('button', { name: '新建 · 管理', exact: false }).click()
   const gallery = page.locator('[data-skill-drop-zone]')
   await proveProbe(gallery.locator('[data-skill-card]'), '真实技能卡片已加载')
-  await gallery.getByRole('radio', { name: '技能', exact: true }).click()
-  await expect(gallery.getByRole('radio', { name: '技能', exact: true })).toHaveAttribute('aria-checked', 'true')
-  await expandGroups(gallery)
+  await gallery.locator('input[type="search"]').fill('多视图')
   const multi = gallery.locator('[data-skill-card="skill:curated-multi-view"]')
   await multi.scrollIntoViewIfNeeded()
   await expect(multi.locator('img')).toBeVisible()
@@ -40,7 +40,7 @@ try {
   await expect(detail.getByRole('heading', { name: '配方', exact: true })).toBeVisible()
   await expect(detail).not.toContainText('metadata:')
   await page.screenshot({ path: path.join(output, '02-detail.png') })
-  await detail.getByRole('button', { name: '引用到 Agent', exact: true }).click()
+  await detail.getByRole('button', { name: '放进对话', exact: true }).click()
   await expect(page.locator('[data-v4-chip="skill"]').first()).toContainText('多视图设定')
   await page.locator(COMPOSER_SKILL).first().click()
   const selectedPicker = page.locator(SKILL_POPOVER).first()
@@ -60,14 +60,15 @@ try {
   await expectAbsent(selectedPicker.locator('[data-v4-command^="skill:"]'), { provenBy: skillProof })
   await expandGroups(selectedPicker)
   await expect(selectedPicker.locator('[data-v4-command="prompt:effect-character-three-view"]')).toBeVisible()
-  await selectedPicker.getByRole('button', { name: '新建 · 管理', exact: false }).click()
-  await gallery.getByRole('radio', { name: '效果', exact: true }).click()
-  await expect(gallery.getByRole('radio', { name: '效果', exact: true })).toHaveAttribute('aria-checked', 'true')
-  await expandGroups(gallery)
-  await gallery.locator('[data-skill-card="prompt:effect-character-three-view"]').click()
-  await detail.getByRole('button', { name: '用到节点', exact: true }).click()
-  await expect(page.locator('[data-node-effect-chips="filled"]')).toBeVisible()
+  await page.keyboard.press('Escape')
+  const prompts = await openRailDrawer(page, 'prompts', '左栏「提示词」')
+  await prompts.locator('input[type="search"]').fill('人物三视图')
+  await prompts.locator('[data-prompt-card="effect-character-three-view"] button').first().click()
+  await page.locator('[data-prompt-preview="effect-character-three-view"] [data-prompt-detail-add]').click()
+  // 「已填」不再有自己的标记（生成框只在空节点时出推荐那一行）：新节点带着效果正文、推荐行不出现，就是放上去了。
   const editor = page.locator('.generation-canvas-v2-node__composer [contenteditable="true"]').first()
+  await expect(editor, '放上画布后新节点没带上效果正文').not.toHaveText('')
+  await expect(page.locator('[data-node-effect-chips="empty"]'), '有正文时不该出空节点推荐').toHaveCount(0)
   await editor.fill('')
   await expect(page.locator('[data-node-effect-chips="empty"] [data-effect-chip]')).toHaveCount(4)
   const chipsProof = await proveProbe(page.locator('[data-effect-chip]'), '空节点四个常用效果')
@@ -97,7 +98,7 @@ try {
   await page.getByRole('button', { name: '撤销', exact: true }).last().click()
   await expect(editor).toHaveText('')
   await expect(page.locator('[data-effect-chip]')).toHaveCount(4)
-  fs.writeFileSync(path.join(output, 'journey.json'), JSON.stringify({ passed: true, paidCalls: 0, tasks: ['browse and reference skill', 'filter and preview picker', 'apply effect and undo'] }, null, 2) + '\n')
+  fs.writeFileSync(path.join(output, 'journey.json'), JSON.stringify({ passed: true, paidCalls: 0, tasks: ['search and add skill to chat', 'filter and preview picker', 'add effect to canvas from prompt library, apply effect and undo'] }, null, 2) + '\n')
 } catch (error) {
   console.error(error)
   await page.screenshot({ path: path.join(output, 'FAIL.png') }).catch(captureError => console.error(captureError))

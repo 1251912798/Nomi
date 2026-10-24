@@ -119,7 +119,9 @@ describe("错误脱敏", () => {
       ].join("\n"),
     });
     const out = redactError(error);
-    expect(out).toContain("Error: boom");
+    // 错误原文不落盘（G-redact-owner）：类名 + 指纹，栈帧照留。
+    expect(out).toMatch(/^Error msg#[0-9a-f]{8} \| /);
+    expect(out).not.toContain("boom");
     expect(out).toContain("hardenedFetch.js:204:31");
     expect(out).not.toContain("/Applications");
     expect(out).not.toContain("app.asar");
@@ -130,8 +132,45 @@ describe("错误脱敏", () => {
     expect(redactError(error)).toContain("code=ENOENT");
   });
 
-  it("非 Error 也走值脱敏", () => {
-    expect(redactError("/Users/someone/x/y")).toBe("<path>");
+  it("非 Error 的字符串同样不落原文", () => {
+    expect(redactError("/Users/someone/x/y")).toMatch(/^Error msg#[0-9a-f]{8}$/);
+  });
+
+  it("错误原文只给指纹；我们自己的码形 message 原样（G-redact-owner）", () => {
+    const said = new Error("（HTTP 401）Access denied: fixture-relay-pass-42; contact gateway admin");
+    expect(redactError(said)).toMatch(/^Error msg#[0-9a-f]{8}/);
+    expect(redactError(said)).not.toContain("Access denied");
+    expect(redactError(new Error("TASK_PROJECT_MISMATCH"))).toMatch(/^Error TASK_PROJECT_MISMATCH/);
+    // 同一句话同一个指纹：重复失败照样能归并。
+    expect(redactError(new Error("same words")).split(" ")[1]).toBe(redactError(new Error("same words")).split(" ")[1]);
+  });
+
+  it("类名照写，只放行「代码里定义的类名」这一种形状（大写开头的标识符）；name 里装着别的东西就只记 Error", () => {
+    class NativeStreamTimeout extends Error {
+      constructor() {
+        super("stream stalled");
+        this.name = "NativeStreamTimeout";
+      }
+    }
+    expect(redactError(new NativeStreamTimeout())).toMatch(/^NativeStreamTimeout msg#[0-9a-f]{8}/);
+    // 库的命名空间前缀（Vercel AI SDK）也是代码里定义的类名。
+    expect(redactError(Object.assign(new Error("x"), { name: "AI_APICallError" }))).toMatch(/^AI_APICallError msg#/);
+    for (const name of ["sk_live_0123456789abcdef", "ghp_0123456789abcdefABCDEF", "猫咪短片", "My Film", "/Users/alice/x", "Error: boom", "x".repeat(65), ""]) {
+      const out = redactError(Object.assign(new Error("x"), { name }));
+      expect(out, name).toMatch(/^Error msg#[0-9a-f]{8}/);
+      if (name) expect(out, name).not.toContain(name);
+    }
+  });
+
+  it("cause 链上的供应商失败只留结构事实", () => {
+    const vendor = Object.assign(new Error("upstream said: fixture-relay-pass-42"), {
+      structured: { vendorKey: "relay", method: "POST", url: "https://relay.example/v1?key=fixture", httpStatus: 401, upstreamMsg: "fixture-relay-pass-42", upstreamCode: "auth_denied", category: "auth", retryable: false },
+    });
+    const wrapped = new Error("Dubbing failed: upstream said fixture-relay-pass-42", { cause: vendor });
+    const out = redactError(wrapped);
+    expect(out).toContain("vendor=relay category=auth http=401 upstreamCode=auth_denied");
+    expect(out).not.toContain("fixture-relay");
+    expect(out).not.toContain("relay.example");
   });
 });
 

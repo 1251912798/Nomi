@@ -1,7 +1,7 @@
 import { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NomiSelect } from '../../../../design'
-import type { DeconstructionShotTableDocument } from '../../../../../electron/shared/canvas/shotTable'
+import { DECONSTRUCT_ASK_ABOVE_CALLS, type DeconstructionShotTableDocument } from '../../../../../electron/shared/canvas/shotTable'
 import { identityOf, useDeconstructLegChoice, type DeconstructLeg } from './deconstructLegChoice'
 import { editShotTableFacts } from './shotTableActions'
 import { CONNECT_VENDOR_OPTION_VALUE, openModelCatalog } from '../../../common/useDedupedModelSelect'
@@ -26,7 +26,7 @@ export function DeconstructModelPicker({ leg, nodeId, table, disabled }: { leg: 
       size="xs"
       ariaLabel={t(leg === 'vision' ? 'shotTable.visionModel' : 'shotTable.node.transcribe')}
       leadingLabel={t(leg === 'vision' ? 'shotTable.node.vision' : 'shotTable.node.transcribe')}
-      title={stale ? t('shotTable.node.modelUnavailableHint') : t(leg === 'vision' ? 'shotTable.visionHint' : 'shotTable.node.transcribeHint')}
+      title={stale ? t('shotTable.node.modelUnavailableHint') : t(leg === 'vision' ? 'shotTable.visionHint' : 'shotTable.node.transcribeHint', { calls: DECONSTRUCT_ASK_ABOVE_CALLS })}
       disabled={disabled}
       triggerMaxWidth={220}
       triggerBadge={stale ? { text: t('shotTable.node.modelUnavailable'), tone: 'danger' } : undefined}

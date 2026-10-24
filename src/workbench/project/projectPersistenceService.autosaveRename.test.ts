@@ -46,7 +46,7 @@ vi.mock('../../desktop/bridge', () => {
     return next
   }
   const read = (id: string) => deps.disk.get(id) ?? null
-  return { getDesktopBridge: () => ({ projects: { read, readAsync: async (id: string) => read(id), save, list: () => [...deps.disk.values()] } }) }
+  return { getDesktopBridge: () => ({ projects: { read, readAsync: async (id: string) => read(id), save, listAsync: async () => [...deps.disk.values()] } }) }
 })
 
 import { createWorkbenchProjectPersistenceService } from './projectPersistenceService'

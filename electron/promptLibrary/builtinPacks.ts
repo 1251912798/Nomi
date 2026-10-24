@@ -2,7 +2,7 @@
 // getPromptLibrary 的对外出口恒定前置内置包；磁盘缓存只存外部源 → 升级后内置内容
 // 立即是新版、回滚零残留（缓存里从来没有内置条目）。预设图打包在 public/prompt-media/，
 // mediaUrl 用相对路径（dev 由 Vite serve，prod 相对 dist/index.html 解析），离线/国内不裂图。
-import type { LibraryPrompt } from "./promptLibraryTypes";
+import { BUILTIN_PROMPT_SOURCE_IDS, type LibraryPrompt } from "../shared/contracts/promptLibrary";
 import expressionPack from "./builtinExpressionPack.json";
 import { getCuratedPrompts } from "./curatedPrompts";
 import { readSkillRecords } from "../skills/skillStore";
@@ -10,9 +10,7 @@ import { readSkillRecords } from "../skills/skillStore";
 const BUILTIN_PROMPTS = expressionPack as unknown as LibraryPrompt[];
 
 /** 内置包占用的 sourceId 集合（用于对外部/缓存数据去重，保证幂等）。 */
-export const BUILTIN_SOURCE_IDS: ReadonlySet<string> = new Set([
-  ...BUILTIN_PROMPTS.map((prompt) => prompt.sourceId), "builtin-curated-effects",
-]);
+export const BUILTIN_SOURCE_IDS: ReadonlySet<string> = new Set(BUILTIN_PROMPT_SOURCE_IDS);
 
 /** 内置条目（防御性拷贝，防调用方原地改动污染模块常量）。策展条目从技能目录投影（目录由 pi 的加载器给，async）。 */
 export async function getBuiltinPrompts(): Promise<LibraryPrompt[]> {

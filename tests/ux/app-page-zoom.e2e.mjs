@@ -11,7 +11,7 @@ import { canvasZoomSlider, newProjectEntry } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const tmp = makeTempDir('nomi-page-zoom-')
-const outDir = path.join(repoRoot, '.page-zoom-lab')
+const outDir = path.join(repoRoot, 'tests/ux/shots/app-page-zoom')
 mkdirSync(outDir, { recursive: true })
 
 const { app, win: _launchedWin } = await launchNomiApp({

@@ -1,0 +1,30 @@
+[
+  {
+    "scenario": "undo-running",
+    "cancelled": true,
+    "status": null,
+    "text": "Existing text.",
+    "pass": true
+  },
+  {
+    "scenario": "external-replace-running",
+    "cancelled": true,
+    "status": null,
+    "text": "Agent replacement.",
+    "pass": true
+  },
+  {
+    "scenario": "dispose-running",
+    "cancelled": true,
+    "status": "running",
+    "text": "New sentence. Existing text.",
+    "pass": true
+  },
+  {
+    "scenario": "history-rapid-accept",
+    "before": "New sentence. Existing text.",
+    "accepted": "Edited sentence. Existing text.",
+    "afterUndo": "Existing text.",
+    "pass": false
+  }
+]

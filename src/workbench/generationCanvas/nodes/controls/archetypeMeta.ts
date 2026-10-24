@@ -4,10 +4,10 @@
 // 需要的三样东西 —— ① 模式分段切换的选项、② 当前模式的参考槽（复用现有 ImageUrlSlot 形状）、
 // ③ 当前模式的标量参数。
 //
-// **参考图存储模型（对齐样张 v3）**：参考值按 slot 键**全局**存在 flat meta 里（firstFrameUrl /
-// lastFrameUrl…），跨模式持久——切模式只改变「显示哪些槽」，不搬动/清空数据，所以切回照片还在
-// （真实用户 F4「怕丢上传」）。**模式互斥（M2）发生在 `buildArchetypeInputParams`**：它只把**当前模式
-// 声明的槽键**打进 archetypeInput，残留的别的模式的键根本不进 body（§2 坑2，避免 Seedance 422）。
+// **参考图存储模型（2026-10-22 方向检查重写）**：上传的图片只存**一份有序列表**（referenceList.ts，
+// meta.referenceImageUrls），跨模式、跨模型不动；「落哪个槽、在不在用」每次由 placeUploadedImages 推导，
+// 参考行（resolveReferencePlacement）和发送（buildArchetypeInputParams / uploadPlacementForMode）同一个函数。
+// 视频 / 音频 / 源视频仍按 slot 键存在 flat meta 里。**模式互斥（M2）**：archetypeInput 只含当前模式声明的槽键。
 // node.meta.archetype 只记 { id, modeId }（当前模式），不囤参考数据。
 //
 // C2b 只处理首帧 / 尾帧两类 frame 槽，映射到现有 flat 传输键（firstFrameUrl/lastFrameUrl），
@@ -28,12 +28,16 @@ import {
 } from '../../../../../electron/shared/modelArchetypes'
 import type { ImageUrlSlot } from '../../model/parameterReferenceSlots'
 import { translateModelDisplayText } from '../../../../i18n/modelDisplayText'
+import { isImageUploadSlot, listPlacementInputs, normalizeReferenceListMeta, placeUploadedImages, withReferenceList, type UploadPlacement } from './referenceList'
+import { readArchetypeArray } from './archetypeArrayValues'
+export { appendArchetypeArrayValue, archetypeArrayWrite, readArchetypeArray, readArchetypeArrayForWrite, type ArchetypeArrayAppend } from './archetypeArrayValues'
 import {
   DEFAULT_SLOT_INPUT_KEY,
   modeSlotReach,
   wireReferencedParamKeys,
   type SlotReach,
 } from '../../../../../electron/catalog/referenceReachability'
+export { archetypeModeParams, archetypeModeSourceVideoSlot, localizeModelParameterControl } from './archetypeModePresentation'
 
 export { resolveArchetypeForModel }
 export type { ModelArchetype, ArchetypeMode, ModelArchetypeVariant }
@@ -241,6 +245,47 @@ function filledValueForSingleSlot(
 }
 
 /**
+ * 发送 / 判定侧的上传图落槽：连线占位从画布边解析结果（references）算，上传图交给 placeUploadedImages——
+ * 和参考行 resolveReferencePlacement 同一个函数、同一份有序列表，所以「标在用的」=「发出去的」。
+ * purpose='judge' 时首帧槽连着待抽帧的视频也算占位（同 filledValueForSingleSlot）；'send' 只认真发上线的值。
+ */
+export function uploadPlacementForMode(
+  meta: Record<string, unknown> | undefined,
+  mode: ArchetypeMode,
+  references: ResolvedReferenceValues | undefined,
+  purpose: 'send' | 'judge' = 'send',
+): UploadPlacement {
+  const countBySlot: number[] = []
+  const urls = new Set<string>()
+  let occupied = 0
+  mode.slots.forEach((slot, slotIndex) => {
+    const route = ARRAY_SLOT_ROUTE[slot.kind]
+    let edgeCount = 0
+    if (route) {
+      const fromEdges = mergeOrderedReferenceImageUrls(edgeListForArraySlotAccept(route.accept, references), [], slot.max)
+      if (route.accept === 'image') fromEdges.forEach((url) => urls.add(url))
+      edgeCount = fromEdges.length
+      // 视频 / 音频上传各住各的键：只占总数预算，不占图片槽。
+      if (route.accept !== 'image') occupied += mergeOrderedReferenceImageUrls(fromEdges, readArchetypeArray(meta, route.metaKey), slot.max).length - edgeCount
+    } else {
+      const value = purpose === 'judge' ? filledValueForSingleSlot(slot.kind, references) : sentValueForSingleSlot(slot.kind, references)
+      if (value) {
+        edgeCount = 1
+        if (isImageUploadSlot(slot.kind)) urls.add(value)
+      } else if (slot.kind === 'source_video' && typeof meta?.sourceVideoUrl === 'string' && meta.sourceVideoUrl.trim()) occupied += 1
+    }
+    countBySlot[slotIndex] = edgeCount
+    occupied += edgeCount
+  })
+  const inputs = listPlacementInputs(meta, mode)
+  return placeUploadedImages(mode, inputs.list, { countBySlot, urls }, {
+    ...(mode.maxTotalReferences === undefined ? {} : { totalBudget: mode.maxTotalReferences - occupied }),
+    firstFrameEmpty: inputs.firstFrameEmpty,
+    parked: inputs.parked,
+  })
+}
+
+/**
  * **当前模式的参考槽里是否已经放进了任何东西 —— 判定侧的唯一入口。**
  *
  * 覆盖**所有**槽种（数组槽 image_ref/video_ref/audio_ref + 单值槽 first_frame/last_frame/source_video）
@@ -260,14 +305,17 @@ export function hasAnyArchetypeReference(
   references?: ResolvedReferenceValues,
 ): boolean {
   const mode = currentArchetypeMode(archetype, meta)
-  return mode.slots.some((slot) => {
+  const placement = uploadPlacementForMode(meta, mode, references, 'judge')
+  return mode.slots.some((slot, slotIndex) => {
+    if (isImageUploadSlot(slot.kind) && placement.bySlot[slotIndex]!.length > 0) return true
     const route = ARRAY_SLOT_ROUTE[slot.kind]
     if (route) {
       return (
-        readArchetypeArray(meta, route.metaKey).length > 0 ||
+        (route.accept !== 'image' && readArchetypeArray(meta, route.metaKey).length > 0) ||
         edgeListForArraySlotAccept(route.accept, references).length > 0
       )
     }
+    if (isImageUploadSlot(slot.kind)) return Boolean(filledValueForSingleSlot(slot.kind, references))
     const metaKey = SINGLE_SLOT_META_KEY[slot.kind]
     if (!metaKey) return false
     const uploaded = typeof meta?.[metaKey] === 'string' ? (meta[metaKey] as string).trim() : ''
@@ -275,63 +323,28 @@ export function hasAnyArchetypeReference(
   })
 }
 
-/** 当前模式的「源视频」单槽（HappyHorse video-edit）。返回 meta 存储键 + 标签；无则 null。 */
-export function archetypeModeSourceVideoSlot(mode: ArchetypeMode): { metaKey: string; label: string } | null {
-  const slot = mode.slots.find((s) => s.kind === 'source_video')
-  return slot ? { metaKey: 'sourceVideoUrl', label: translateModelDisplayText(slot.label) } : null
+const ARRAY_SLOT_ROUTES = Object.entries(ARRAY_SLOT_ROUTE) as Array<[ArchetypeReferenceSlotKind, ArraySlotRoute]>
+
+/** 还没挑模型的节点：把参考素材先放进对应的持久化列表，等自动选模时再按档案槽落位。 */
+export function withUnplacedArrayReferences(
+  meta: Record<string, unknown>,
+  accept: ArraySlotRoute['accept'],
+  urls: readonly string[],
+): Record<string, unknown> {
+  const route = ARRAY_SLOT_ROUTES.find(([, candidate]) => candidate.accept === accept)?.[1]
+  if (!route) return meta
+  const next = [...new Set([...readArchetypeArray(meta, route.metaKey), ...urls.map((url) => url.trim()).filter(Boolean)])]
+  return accept === 'image' ? withReferenceList(meta, next) : { ...meta, [route.metaKey]: next }
 }
 
-/** 读 meta 里某数组槽的当前 URL 列表（健壮：非数组 / 含空串都过滤掉）。 */
-export function readArchetypeArray(meta: Record<string, unknown> | undefined, metaKey: string): string[] {
-  const value = meta?.[metaKey]
-  if (!Array.isArray(value)) return []
-  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-}
-
-export type ArchetypeArrayAppend =
-  | { status: 'added'; next: string[] }
-  | { status: 'empty' }
-  | { status: 'duplicate' }
-  | { status: 'full'; max: number }
-
-/**
- * 往数组参考槽追加一个 URL 的**纯**单源逻辑（去重 + 上限判定）。**仅 meta-only 上传路径**用它：
- * renderer 的 handleArrayAdd（手动粘 URL）、拖入磁盘文件(useNodeAssetDrop)——这两处无源节点、是真上传。
- * 画布连线（completeNodeConnection）已收口成「建有序边」，不再写 meta（audit 2026-06-16 §1d），故不在此列。
- * 保证「加上传参考」只有一套去重/上限规则（规则 1：不开第 N 条写路径）。写入 / toast 由调用方按返回状态决定。
- */
-export function appendArchetypeArrayValue(
+/** 第一次定生成方式时，把卡上已经暂存的数组参考转成模型选择所需的参考需求。 */
+export function referenceDemandsBeforeFirstMode(
   meta: Record<string, unknown> | undefined,
-  slot: ArchetypeArraySlot,
-  url: string,
-): ArchetypeArrayAppend {
-  const trimmed = url.trim()
-  if (!trimmed) return { status: 'empty' }
-  const current = readArchetypeArray(meta, slot.metaKey)
-  if (current.includes(trimmed)) return { status: 'duplicate' }
-  if (slot.max !== undefined && current.length >= slot.max) return { status: 'full', max: slot.max }
-  return { status: 'added', next: [...current, trimmed] }
-}
-
-/** 当前模式的标量参数（复用现有 ModelParameterControl 渲染路径）。 */
-export function archetypeModeParams(mode: ArchetypeMode): ModelParameterControl[] {
-  return mode.params.map(localizeModelParameterControl)
-}
-
-export function localizeModelParameterControl(control: ModelParameterControl): ModelParameterControl {
-  return {
-    ...control,
-    label: translateModelDisplayText(control.label),
-    ...(control.placeholder ? { placeholder: translateModelDisplayText(control.placeholder) } : {}),
-    ...(control.options
-      ? {
-          options: control.options.map((option) => ({
-            ...option,
-            label: translateModelDisplayText(option.label),
-          })),
-        }
-      : {}),
-  }
+): Array<{ slots: ArchetypeReferenceSlotKind[]; asset: ArraySlotRoute['accept'] }> {
+  if (readArchetypeNodeMeta(meta)) return []
+  return ARRAY_SLOT_ROUTES
+    .filter(([, route]) => readArchetypeArray(meta, route.metaKey).length > 0)
+    .map(([kind, route]) => ({ slots: [kind], asset: route.accept }))
 }
 
 /** 当前模式的 per-mode model enum（HappyHorse 4 端点合 1 靠它；Seedance 各模式同 model → null）。 */
@@ -349,7 +362,7 @@ function preservedVariantId(meta: Record<string, unknown>, archetype: ModelArche
 
 /**
  * 切到 nextModeId：改 node.meta.archetype.modeId，并把**存量越界的 select 值夹回新模式的默认**
- * （参考值/照片全局保留，不搬不清）。返回**整份新 meta**。
+ * （参考值/照片全局保留，不搬不清；旧工程按槽存的参考图先按切换前的方式落成那一份列表，见函数体）。返回**整份新 meta**。
  * 互斥不在这里发生——发生在 buildArchetypeInputParams（只发当前模式声明的槽键）。这样切回时照片还在。
  * variantId 跟随保留（切 mode 不动变体）；无变体档案则不写 variantId 键。
  *
@@ -360,10 +373,13 @@ function preservedVariantId(meta: Record<string, unknown>, archetype: ModelArche
  * 收窄了「选项」却不收窄「已存的值」= UI 与发送不一致。通用坑，不是 Seedance 专属。
  */
 export function applyArchetypeModeSwitch(
-  meta: Record<string, unknown>,
+  rawMeta: Record<string, unknown>,
   archetype: ModelArchetype,
   nextModeId: string,
 ): Record<string, unknown> {
+  // 旧工程的按槽存的参考图，先按**切换前**的方式落成规范形：旧界面那时看不见的记进「先放一边」（#1269 条件 4）。
+  // 放在这里是因为改 modeId 的入口有 20 处——只要有一处先改了方式、后归一，旧图就会按新方式被当成「看得见」而在用。
+  const meta = normalizeReferenceListMeta(rawMeta, currentArchetypeMode(archetype, rawMeta)) ?? rawMeta
   const variantId = preservedVariantId(meta, archetype)
   // 按当前变体特化后再取模式参数：变体与模式**都**可能收窄同一个 select，夹的必须是两层叠加后的选项集。
   const specialized = specializeArchetypeForVariant(archetype, variantId)
@@ -630,10 +646,11 @@ export function orderedSentImageReferenceUrls(
   edgeImageUrls: readonly string[],
 ): string[] {
   const mode = currentArchetypeMode(archetype, meta)
-  const slot = mode.slots.find((s) => ARRAY_SLOT_ROUTE[s.kind]?.accept === 'image')
-  const route = slot ? ARRAY_SLOT_ROUTE[slot.kind] : undefined
-  if (!slot || !route) return []
-  return mergeOrderedReferenceImageUrls(edgeImageUrls, readArchetypeArray(meta, route.metaKey), slot.max)
+  const slotIndex = mode.slots.findIndex((s) => ARRAY_SLOT_ROUTE[s.kind]?.accept === 'image')
+  const slot = mode.slots[slotIndex]
+  if (!slot) return []
+  const placed = uploadPlacementForMode(meta, mode, { referenceImages: edgeImageUrls }).bySlot[slotIndex]!
+  return mergeOrderedReferenceImageUrls(edgeImageUrls, placed, slot.max)
 }
 
 /** 当前模式所有数组媒体参考的发送顺序 + 类型编号，供 @imageN/@videoN/@audioN 共用。 */
@@ -649,12 +666,16 @@ export function orderedSentMediaReferenceUrls(
   const mode = currentArchetypeMode(archetype, meta)
   const counts: Record<'image' | 'video' | 'audio', number> = { image: 0, video: 0, audio: 0 }
   const out: Array<{ url: string; kind: 'image' | 'video' | 'audio'; index: number }> = []
-  for (const slot of mode.slots) {
+  const placement = uploadPlacementForMode(meta, mode, {
+    referenceImages: edgeReferences.image ?? [], referenceVideos: edgeReferences.video ?? [], referenceAudios: edgeReferences.audio ?? [],
+  })
+  for (const [slotIndex, slot] of mode.slots.entries()) {
     const route = ARRAY_SLOT_ROUTE[slot.kind]
     if (!route) continue
     const kind = route.accept
     const edgeUrls = edgeReferences[kind] ?? []
-    const urls = mergeOrderedReferenceImageUrls(edgeUrls, readArchetypeArray(meta, route.metaKey), slot.max)
+    const uploads = kind === 'image' ? placement.bySlot[slotIndex]! : readArchetypeArray(meta, route.metaKey)
+    const urls = mergeOrderedReferenceImageUrls(edgeUrls, uploads, slot.max)
     for (const url of urls) {
       counts[kind] += 1
       out.push({ url, kind, index: counts[kind] })
@@ -664,11 +685,13 @@ export function orderedSentMediaReferenceUrls(
 }
 
 /**
- * **档案驱动的 input 构建（M1 单源 + M2 互斥 + M3 enum 覆盖）**：renderer 据当前模式把参考值打成
+ * **档案驱动的 input 构建（M1 单源 + M2 互斥）**：renderer 据当前模式把参考值打成
  * 最终的**通用 snake input 参数**（key = slot 的 API 名，值 = 标量或数组）。只含当前模式声明的键
  * → 别的模式的残留键根本不进结果（M2，§2 坑2）。供应商 mapping body 直接读 request.params.<key>
  * （kie 文档的尾随空格 quirk 在 kie body 单独照抄，§2 坑1）。返回对象放进 extras.archetypeInput，
  * runtime 原样铺进 params（electron/catalog/archetypeInput）。
+ * **不带 model**：发哪个 model 串由主进程 electron/shared/modelArchetypes/wireModelIdentity.resolveWireModel 按连接契约决定
+ * （2026-10-16：这里塞的 kie 拆分名盖掉了自建中转的模型名）。节点只存选择（meta.archetype 的 modeId / variantId）。
  */
 export function buildArchetypeInputParams(
   meta: Record<string, unknown>,
@@ -680,7 +703,9 @@ export function buildArchetypeInputParams(
 ): Record<string, ArchetypeInputValue> {
   const mode = currentArchetypeMode(archetype, meta)
   const out: Record<string, ArchetypeInputValue> = {}
-  for (const slot of mode.slots) {
+  // 上传图落哪个槽：和参考行同一个函数（uploadPlacementForMode → placeUploadedImages），列表里用不上的图不进来。
+  const placement = uploadPlacementForMode(meta, mode, references)
+  for (const [slotIndex, slot] of mode.slots.entries()) {
     const inputKey = slotInputKey(slot)
     const asArray = slotAsArray(slot)
     const arr = ARRAY_SLOT_ROUTE[slot.kind]
@@ -689,7 +714,7 @@ export function buildArchetypeInputParams(
       // **连线在前、上传在后**（option 2 · 2026-06-25 拍板），去重、截到 slot.max——与面板编号①②③、
       // @ 候选、@ 投影 character{N} 同一顺序，杜绝张冠李戴。仅 image 槽收图片边（video/audio 槽不污染，
       // edgeList=[]）；cap 顺带封死手动超额导致的 vendor 422。
-      const metaList = readArchetypeArray(meta, arr.metaKey)
+      const metaList = arr.accept === 'image' ? placement.bySlot[slotIndex]! : readArchetypeArray(meta, arr.metaKey)
       // 按槽资产类型喂对应的连线参考（B4：video_ref/audio_ref 槽此前只收 meta 上传，连线的视频/音频被丢）。
       // 这条规则与判定侧 hasArchetypeArrayReferences 共用同一个函数，别在这里就地展开成 ternary。
       const edgeList = edgeListForArraySlotAccept(arr.accept, references)
@@ -722,12 +747,10 @@ export function buildArchetypeInputParams(
     // 连了线也取不到值（meta.sourceVideoUrl 为空 → video_url 键根本不发），HappyHorse 视频编辑
     // 「拖一段视频进去」等于白拖（2026-08-20 不变量测试扫出，与判定侧同一根因）。
     const fromRef = sentValueForSingleSlot(slot.kind, references)
-    const raw =
-      typeof fromRef === 'string' && fromRef.trim()
-        ? fromRef.trim()
-        : typeof meta[metaKey] === 'string'
-          ? (meta[metaKey] as string).trim()
-          : ''
+    const uploaded = isImageUploadSlot(slot.kind)
+      ? placement.bySlot[slotIndex]![0] ?? ''
+      : typeof meta[metaKey] === 'string' ? (meta[metaKey] as string).trim() : ''
+    const raw = typeof fromRef === 'string' && fromRef.trim() ? fromRef.trim() : uploaded
     if (raw) {
       out[inputKey] = volcengineContentItem(inputKey, raw) ?? (asArray ? [raw] : raw)
     }
@@ -760,17 +783,9 @@ export function buildArchetypeInputParams(
     const combined = flat ? combinedFlat : combinedRoles
     if (combined.length) out[combineChannel.key] = combined
   }
-  // 模式级固定 body 参数（generation_type 等不需用户选的常量）。在 model 字段之前并入，键不与槽/参数冲突。
+  // 模式级固定 body 参数（generation_type 等不需用户选的常量），键不与槽/参数冲突。
   if (mode.fixedParams) {
     for (const [key, value] of Object.entries(mode.fixedParams)) out[key] = value
   }
-  // model 字段（变体 > per-mode enum > 不带）：
-  // ① 变体轴（A）：选中变体的 modelKey 决定实际发请求的 model（如 doubao-seedance-2.0-fast）。
-  //    变体优先于 mode.modelEnum——变体跨所有 mode 生效，是更外层的身份。
-  // ② per-mode enum 覆盖（M3，HappyHorse）：无变体时按当前模式的 modelEnum。
-  // ③ 都无（如 kie Seedance 各模式同 model 且无变体）→ 不带，catalog body 仍用 {{model.modelKey}}。
-  const variant = currentArchetypeVariant(archetype, meta)
-  if (variant) out.model = variant.modelKey
-  else if (mode.modelEnum) out.model = mode.modelEnum
   return out
 }

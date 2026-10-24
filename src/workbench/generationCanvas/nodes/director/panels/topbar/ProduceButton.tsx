@@ -14,6 +14,7 @@ import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconCamera, IconChevronDown } from '../../../../../../vendor/tablerIcons'
 import { cn } from '../../../../../../utils/cn'
+import { WORKBENCH_BUTTON_PRIMARY_CLASS } from '../../../../../../design'
 import { useGenerationCanvasStore } from '../../../../store/generationCanvasStore'
 import { useDirectorStore } from '../../DirectorEditorContext'
 import { DIRECTOR_PREVIEW_META_KEY } from '../../model/directorNodeMeta'
@@ -33,7 +34,11 @@ export type ProduceControl = Readonly<{
   onProduce: () => void
 }>
 
-const SEGMENT = 'pointer-events-auto inline-flex items-center bg-nomi-accent text-body-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60'
+const SEGMENT = cn(
+  'pointer-events-auto inline-flex items-center text-body-sm font-semibold',
+  'disabled:cursor-not-allowed disabled:opacity-50',
+  WORKBENCH_BUTTON_PRIMARY_CLASS,
+)
 
 export function ProduceButton({ control }: { control: ProduceControl }): JSX.Element {
   const { t } = useTranslation()
@@ -55,7 +60,7 @@ export function ProduceButton({ control }: { control: ProduceControl }): JSX.Ele
   return (
     <div className="pointer-events-auto inline-flex shrink-0 overflow-hidden rounded-nomi-lg shadow-nomi-md" role="group" aria-label={t('director.view.produce')} data-testid="director-produce" data-state={busy ? 'rendering' : state}>
       <button type="button" className={cn(SEGMENT, 'min-w-0 gap-1.5 whitespace-nowrap px-3 py-2')} disabled={disabled} title={hint} data-testid="director-produce-main" onClick={control.onProduce}>
-        {busy ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : null}
+        {busy ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-nomi-paper/40 border-t-nomi-paper" aria-hidden="true" /> : null}
         {label}
       </button>
       <Popover
@@ -65,7 +70,7 @@ export function ProduceButton({ control }: { control: ProduceControl }): JSX.Ele
         side="bottom"
         panelClassName="w-[320px] p-2"
         trigger={
-          <button type="button" className={cn(SEGMENT, 'h-full border-l border-white/25 px-2')} aria-label={t('director.view.produceMenu')} aria-expanded={menuOpen} data-testid="director-produce-menu" onClick={() => setMenuOpen((open) => !open)}>
+          <button type="button" className={cn(SEGMENT, 'h-full border-l border-nomi-paper/25 px-2')} aria-label={t('director.view.produceMenu')} aria-expanded={menuOpen} data-testid="director-produce-menu" onClick={() => setMenuOpen((open) => !open)}>
             <IconChevronDown size={15} stroke={2} aria-hidden="true" />
           </button>
         }

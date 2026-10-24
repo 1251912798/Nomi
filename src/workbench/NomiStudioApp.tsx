@@ -6,6 +6,7 @@ import { ConfirmDialogHost, confirmDialog, NomiLoadingMark } from '../design'
 import ProjectLibraryPage from './library/ProjectLibraryPage'
 import { SettingsDialog } from './settings/SettingsDialog'
 import { useSettingsDialogController } from './settings/useSettingsDialogController'
+import { runProjectDeleteFlow } from './library/projectDeleteFlow'
 import {
   createLocalProject,
   deleteLocalProject,
@@ -54,6 +55,7 @@ import { cn } from '../utils/cn'
 import { notify } from '../ui/notificationPolicy'
 import { useProjectNotificationTarget } from './project/useProjectNotificationTarget'
 import { getDesktopBridge } from '../desktop/bridge'
+import { toast } from '../ui/toast'
 import { logRendererError } from '../desktop/rendererLog'
 import { LaneCommandFailure, laneFailureText } from './ai/lane/laneCommandFailure'
 import { projectNotice, projectOperationFailureText, type UserText } from './project/projectOperationFailureText'
@@ -87,7 +89,7 @@ type ProjectCreationSpec = {
   workspaceMode: WorkspaceMode
   name?: string
   templateId?: string
-  /** 播种身份（如 example:xxx）；带 seedKey 的项目永不被空壳 GC 回收。*/
+  /** 播种身份（如 example:xxx）；带 seedKey 的项目不打草稿标记，永远显示在项目库里。*/
   seedKey?: string
 }
 type ProjectPersistenceModule = typeof import('./project/projectPersistenceService')
@@ -442,7 +444,7 @@ export default function NomiStudioApp(): JSX.Element {
 
   // 创建并打开项目的单一编排点（收口创建入口的重复拼装，P1）：
   // 落地视图 → 建项目 → 刷新库 → hydrate，按 spec 统一走一遍。落地视图是 spec 必填字段，
-  // 由调用方显式声明（审计 A11）；seedKey 决定是否参与空壳 GC（带 seedKey 永不回收）。
+  // 由调用方显式声明（审计 A11）；seedKey 决定是否打草稿标记（带 seedKey 不打，永远显示）。
   // 桌面端 createLocalProject 经 IPC 落到 ~/Documents/Nomi Projects 自动文件夹，Web 端落
   // localStorage；要绑定自选目录走「打开文件夹」（openWorkspaceFolder，另一条带 rootPath 的路径）。
   // 单飞 + 「被顶掉不算失败」两条规则住在 projectCreationFlight，所有创建入口经这里得到同一份保证。
@@ -467,7 +469,7 @@ export default function NomiStudioApp(): JSX.Element {
     })
   }, [createAndOpenProject, report, t])
 
-  // 引导旅途：建一个 seedKey 隔离的示例项目（永不 GC、不脏用户真项目）→ 进 studio →
+  // 引导旅途：建一个 seedKey 隔离的示例项目（不打草稿标记、不脏用户真项目）→ 进 studio →
   // 激活 tour，JourneyTourController 用预置数据回放整条流水线。
   const playJourneyTour = React.useCallback(() => {
     setJourneyTourControllerMounted(true)
@@ -502,41 +504,35 @@ export default function NomiStudioApp(): JSX.Element {
 
   const deleteProject = React.useCallback(
     async (project: LocalProjectSummary) => {
-      // 应用内确认框（审计 A7）：原生 window.confirm 脱设计系统、E2E 测不到、
-      // Electron/macOS 有焦点丢失史。
-      // 文案按来源如实区分（真删盘只对 native；外部「打开文件夹」只解绑、不删用户文件）。
-      const isExternal = project.source === 'folder'
-      const confirmed = await confirmDialog({
-        title: isExternal ? t('studio.removeProjectTitle') : t('studio.deleteProjectTitle'),
-        message: isExternal
-          ? t('studio.removeProjectMessage', { name: project.name })
-          : t('studio.deleteProjectMessage', { name: project.name }),
-        confirmLabel: isExternal ? t('studio.removeProject') : t('common.delete'),
-        danger: true,
-      })
-      if (!confirmed) return
+      // 应用内确认框（审计 A7）：原生 window.confirm 脱设计系统、E2E 测不到、Electron/macOS 有焦点丢失史。
+      // 整条流程（确认文案 → 意图 → 进回收站 / 只移除 → 提示）在 runProjectDeleteFlow，单测 projectDeleteFlow.test.ts。
       setFeedback(null)
-      try {
-        if (activeProjectIdRef.current === project.id) {
-          // Deleting the open project must first receive main's release ACK;
-          // otherwise its old canvas-read route could outlive the project.
+      await runProjectDeleteFlow(project, {
+        t,
+        platform: getDesktopBridge()?.platform,
+        confirm: confirmDialog,
+        isActive: (projectId) => activeProjectIdRef.current === projectId,
+        releaseActive: async () => {
           await projectSurface.releaseCurrent()
           if (laneClient.context()) await laneClient.close()
-        }
-        deleteLocalProject(project.id)
-        if (activeProjectIdRef.current === project.id) {
+        },
+        leaveToLibrary: () => {
           activeProjectIdRef.current = null
           setActiveProject(null)
           setView('library')
           navigate(buildStudioUrl(), { replace: true })
-        }
-
-      } catch (error: unknown) {
-        logRendererError('project-delete-failed', error)
-        report(project.id, projectOperationFailureText('delete', error, t))
-      }
+        },
+        deleteLocalProject,
+        onMovedToTrash: (message) => toast(message, 'success'),
+        onRemovedWithoutTrash: (message) => toast(message, 'info'),
+        onFailed: (projectId, error, trashBin) => {
+          logRendererError('project-delete-failed', error)
+          report(projectId, projectOperationFailureText('delete', error, t, { trashBin }))
+          refreshProjects() // 状态变了 / 没删成：刷新卡片，让用户按此刻的状态再决定
+        },
+      })
     },
-    [navigate, projectSurface, report, t],
+    [navigate, projectSurface, refreshProjects, report, t],
   )
 
   // 列表页「双击改名」：只改名不动内容；若改的正是当前打开的项目，同步顶栏显示名（activeProject）。

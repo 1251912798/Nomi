@@ -1,0 +1,30 @@
+{
+  "id": "canvas-text-node-typing",
+  "feature": "在画布上一张约 3000 字（60 段）的文本节点末尾连打 40 个字符（每 60ms 一个），每一键「keydown → 节点正文改完后再过两帧」，主数取 p95",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "M",
+    "--scenarios",
+    "text-node-typing",
+    "--warmup",
+    "1"
+  ],
+  "scale": "一张 60 段约 3000 字的文本节点，与 96 个媒体节点同画布（适应视图，全部挂载）",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 50,
+  "group": "⑦ 文稿长文打字",
+  "budgetStatus": "proposed",
+  "budgetBasis": "与 document-long-typing 同一口径与预算：打字要跟手，按键到上屏 ≤50ms 不觉得拖（RAIL 输入处理 50ms）；2026-10-23 用户反馈「文本节点感觉有点卡」，此前没有量画布文本节点打字的场景",
+  "baseline": {
+    "median": 16.6,
+    "p95": 16.7,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-23",
+    "commit": "cad909708"
+  }
+}

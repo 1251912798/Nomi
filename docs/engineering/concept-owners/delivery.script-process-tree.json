@@ -1,0 +1,27 @@
+{
+  "name": "脚本自建子进程的进程树收尾（门岗 / 超时 owner 按独立进程组起、按组停）",
+  "subject": "delivery.script-process-tree",
+  "lifecycle": "delivery",
+  "authority_kind": "gateway",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/lib/processTree.mjs",
+    "symbol": "killProcessTree"
+  },
+  "write_api": [
+    {
+      "path": "scripts/lib/processTree.mjs",
+      "symbol": "processTreeSpawnOptions"
+    },
+    {
+      "path": "scripts/lib/processTree.mjs",
+      "symbol": "killProcessTree"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-24",
+  "notes": "合同 docs/fixes/2026-10-24-gates-timeout-tree-kill.root-cause.json：门岗（pre-push-contracts.runNode）、雷达、交付、headless host、Electron 内存走查这些会在超时 / 收尾路径停掉自建子进程的脚本，spawn 选项只从 processTreeSpawnOptions 取（POSIX detached=true，pid 即进程组 id），收尾只调 killProcessTree（POSIX 负 pid 发信号，Windows taskkill /T /F；已退出的 ESRCH 算完成，活进程的非组长误用直接报错）。终端启动器（dev-electron / start-electron + child-process-lifecycle）是另一种 owner，留在前台进程组靠内核 SIGINT / SIGHUP 收后代，不并入这里。类检查 scripts/pre-push-structure.node-test.mjs 扫 scripts/ 的直接 .kill。"
+}

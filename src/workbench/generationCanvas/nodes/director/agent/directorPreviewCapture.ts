@@ -1,12 +1,12 @@
 /**
  * [INPUT]: 依赖 ../model/directorPreviewState、../model/programCamera 的 programCameraIdAt、../model/timeGrid 的 sceneContentEndSeconds、
- *          ../model/directorShotSummaries、../model/directorProject、./cameraMoveSchedule 的 frameTimes、./attachCameraMoveToTarget 的 computeAttachCameraMove、
+ *          ../model/directorShotSummaries、../model/directorProject、./cameraMoveSchedule 的 frameTimes、./attachCameraMoveForNode 的 attachCameraMoveForNode、
  *          画布 store、../../../events/canvasGestureContext
  * [OUTPUT]: 对外提供 previewCapturePlan（整段预演的采帧计划，带渲染源工程指纹）、applyPreviewCaptured（挂到视频节点 + 写回 ready）、markPreviewFailed、
  *           requestDirectorPreviewRender（请求重渲：节点卡「重试」与导演视图「出成片」共用的唯一写口）、
  *           previewAttemptTimeoutMs
  * [POS]: 3D-BOX 预演出片的纯逻辑那一半（常驻 CameraMoveCaptureHost 的预演请求调它；React / 计时器 / 落盘留在 Host）。
- *        按时刻取节目机位（programCameraIdAt）、等动作片段就绪；挂接只走唯一核心 computeAttachCameraMove。
+ *        按时刻取节目机位（programCameraIdAt）、等动作片段就绪；挂接只走唯一入口 attachCameraMoveForNode。
  *        Host 事后的写入沿用写下这次预演的那笔提议的事务身份（txn_<proposalId>）：撤销 stage_shot 时它们算同一笔改动，
  *        不算「别人的后续改动」。修订号对不上（预演渲染期间计划又被改了）= 迟到结果，整份丢弃。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -21,7 +21,7 @@ import { summarizeDirectorShots } from '../model/directorShotSummaries'
 import type { DirectorProject } from '../model/directorTypes'
 import { programCameraIdAt } from '../model/programCamera'
 import { sceneContentEndSeconds } from '../model/timeGrid'
-import { computeAttachCameraMove } from './attachCameraMoveToTarget'
+import { attachCameraMoveForNode } from './attachCameraMoveForNode'
 import { frameTimes } from './cameraMoveSchedule'
 
 const MAX_PREVIEW_FRAMES = DIRECTOR_PREVIEW_FPS * DIRECTOR_PREVIEW_MAX_SECONDS
@@ -74,16 +74,14 @@ function inProposal<T>(preview: DirectorPreviewMeta, fn: () => T): T {
  * 预演 mp4 已落盘 → 挂到它的视频节点（唯一挂接核心）→ 导演节点预演写回 ready（含挂法：参考视频 / 只写进提示词）。
  * 返回挂接给出的提示（模型不接参考视频时那句「精度会低」由调用方 toast）。修订已变 = 丢弃，返回 null。
  */
-export function applyPreviewCaptured(nodeId: string, revision: string, videoUrl: string, assetId: string | undefined, output: Readonly<{ id: string; name: string; width: number; height: number; duration: number; createdAt: number }>, sourceFingerprint?: string):
+export function applyPreviewCaptured(nodeId: string, revision: string, videoUrl: string, assetId: string | undefined, output: Readonly<{ id: string; name: string; width: number; height: number; duration: number; createdAt: number }>, sourceFingerprint: string):
   { toast?: { message: string; level: 'warning' } } | null {
   const node = sameRevision(nodeId, revision)
   if (!node) return null
   const preview = readDirectorPreview(node)!
-  const store = useGenerationCanvasStore.getState()
-  const target = preview.targetNodeId ? store.nodes.find((candidate) => candidate.id === preview.targetNodeId) : undefined
   const project = normalizeDirectorProject(node.meta?.[DIRECTOR_PROJECT_META_KEY])
   const cuts = summarizeDirectorShots(project).map((cut) => ({ start: cut.start, end: cut.end, shotSize: cut.shotSize, move: cut.move }))
-  const outcome = computeAttachCameraMove(target, videoUrl, { kind: 'preview', cuts, notes: preview.notes ?? [] })
+  const outcome = attachCameraMoveForNode(preview.targetNodeId, videoUrl, { kind: 'preview', cuts, notes: preview.notes ?? [] })
   return inProposal(preview, () => {
     if (outcome.kind === 'patch' && preview.targetNodeId) useGenerationCanvasStore.getState().updateNode(preview.targetNodeId, outcome.patch)
     const fresh = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === nodeId)
@@ -95,7 +93,7 @@ export function applyPreviewCaptured(nodeId: string, revision: string, videoUrl:
       ...(assetId ? { assetId } : {}),
       durationSeconds: output.duration,
       ...(outcome.kind === 'patch' ? { attach: outcome.mode } : {}),
-      ...(sourceFingerprint ? { sourceFingerprint } : {}),
+      sourceFingerprint,
       updatedAt: Date.now(),
     }
     useGenerationCanvasStore.getState().updateNode(nodeId, {
@@ -129,6 +127,8 @@ export function requestDirectorPreviewRender(nodeId: string): boolean {
   if (!node) return false
   const preview = readDirectorPreview(node)
   if (preview?.status === 'rendering') return true
+  // 坏掉的记录读不出 preview，但它写的目标镜头要留着：重渲后仍挂回原镜头
+  const salvagedTarget = preview ? undefined : (node.meta?.[DIRECTOR_PREVIEW_META_KEY] as { targetNodeId?: unknown } | undefined)?.targetNodeId
   // 超长按当前工程判（改短了就能重渲；拉长了就不渲——离屏录制只有 10 秒，硬渲会把整段压进 10 秒）。
   // 不改写节点上的预演：已挂好的那份照旧留着，花钱闸与「出成片」按当前工程判超长挡住。
   if (directorProjectTooLong(node.meta?.[DIRECTOR_PROJECT_META_KEY])) return false
@@ -136,7 +136,7 @@ export function requestDirectorPreviewRender(nodeId: string): boolean {
   const next: DirectorPreviewMeta = {
     status: 'rendering',
     revision,
-    ...(preview?.targetNodeId ? { targetNodeId: preview.targetNodeId } : {}),
+    ...(preview?.targetNodeId ? { targetNodeId: preview.targetNodeId } : typeof salvagedTarget === 'string' ? { targetNodeId: salvagedTarget } : {}),
     ...(preview?.proposalId ? { proposalId: preview.proposalId } : {}),
     ...(preview?.notes ? { notes: preview.notes } : {}),
     updatedAt: Date.now(),

@@ -3,7 +3,7 @@ import { isolatedAppEnv } from "./isoApp.mjs";
 
 describe("isolatedAppEnv", () => {
   test("always bypasses the desktop single-instance lock", () => {
-    expect(isolatedAppEnv({ projectsDir: "/projects", settingsDir: "/settings", chromiumDir: "/chromium", capabilityDir: "/capability" }, {})).toMatchObject({
+    expect(isolatedAppEnv({ projectsDir: "/projects", settingsDir: "/settings", chromiumDir: "/chromium", capabilityDir: "/capability", hostConfigDir: "/host-config" }, {})).toMatchObject({
       NOMI_E2E: "1",
       NOMI_E2E_ALLOW_MULTI_INSTANCE: "1",
       NOMI_PROJECTS_DIR: "/projects",

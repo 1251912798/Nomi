@@ -14,6 +14,7 @@ import { parseVendorErrorFromMessage, stripVendorErrorMarker, type VendorErrorSt
 import { parseTaskFailureMessage } from '../generationCanvas/runner/taskFailureMessage'
 import { shotClaimCopy } from './shotClaimCopy'
 import { matchNomiErrorCode, stripNomiErrorCode } from '../../../electron/shared/nomiErrorCodes'
+import { withoutIpcInvokeWrapper } from '../../../electron/shared/contracts/ipcInvokeFailure'
 import i18n from '../../i18n'
 
 export type GenerationErrorReport = {
@@ -96,11 +97,9 @@ function jsonErrorMessage(source: string): string | null {
  * message/error 字段，否则取第一行非空文本并截断。抠不出可读内容才返回 ''。
  */
 function extractReadableErrorLine(raw: string): string {
-  const source = stripNomiErrorCode(
-    String(raw || '')
-      .trim()
-      .replace(IPC_WRAPPER_PREFIX, ''),
-  ).trim()
+  // IPC 外壳（`Error invoking remote method '…': Error: …`）是我们自己的管道细节，对用户零信息，却正好占住
+  // 错误卡最显眼的那一行。只从展示用的首行剥掉，`report.raw`（技术详情折叠区）保留原样，排查线索不丢。
+  const source = stripNomiErrorCode(withoutIpcInvokeWrapper(String(raw || '').trim())).trim()
   if (!source) return ''
   // 1) provider 常把报错塞进 JSON（与 pickProviderMessage 共用同一个剥壳器，两处不许各写一份）
   const fromJson = jsonErrorMessage(source)
@@ -112,14 +111,6 @@ function extractReadableErrorLine(raw: string): string {
     .find(Boolean)
   return firstLine ? truncateLine(firstLine) : ''
 }
-
-/**
- * Electron 的 `ipcRenderer.invoke` 会把主进程抛的错重新包一层
- * `Error invoking remote method 'nomi:tasks:run': Error: …`。这层是**我们自己的管道细节**，
- * 对用户零信息——却正好占住错误卡最显眼的那一行（未识别错误的 reason 就取 raw 首行）。
- * 只从展示用的首行剥掉，`report.raw`（技术详情折叠区）保留原样，排查线索不丢。
- */
-const IPC_WRAPPER_PREFIX = /^Error invoking remote method '[^']*':\s*(?:Error:\s*)?/
 
 /**
  * 这句话是不是界面当前语言的话。判据只有一条：中文界面要有汉字，英文界面不能有。
@@ -574,6 +565,8 @@ export function classifyGenerationError(message: string): GenerationErrorReport 
   // 且在生成语境下重试 = 再付一次钱。upstream 显式给 ''：抑制「服务商说：」框，别栽赃上游。
   const outboundCode = matchNomiErrorCode(cleanRaw)
   if (outboundCode === 'model-config') return reportFor('model-config', cleanRaw, '')
+  // 主进程发送前的参考守拒发：请求从未发出，upstream 给 ''（服务商根本没被请求到）。
+  if (outboundCode === 'reference-not-in-use') return reportFor('reference-not-in-use', cleanRaw, '')
   if (outboundCode === 'outbound-blocked') return reportFor('outbound-blocked', cleanRaw, '')
   // 提交侧的同族码：请求从未发出、没有计费。必须与上面一条分开，否则用户读到的是「钱已经付过、
   // 用重新拉取结果免费取回」——一句完全相反的假话，还会把他推向一颗根本不存在的按钮。
@@ -591,6 +584,12 @@ export function classifyGenerationError(message: string): GenerationErrorReport 
   if (outboundCode === 'submission-unknown') return reportFor('submission-unknown', cleanRaw, '')
   // 已生成、取回失败（#975 A2）：机器码先判，upstream 给 ''——失败在我们取回这一侧，不印「服务商原话」。
   if (outboundCode === 'output-retrieval-failed') return reportFor('output-retrieval-failed', cleanRaw, '')
+  // 已提交、这次没取回（⑬）：任务已经交给服务商，是查 / 读 / 下载 / 等这一次没成——主动作只有「重新取回」，
+  // 绝不落进 unknown 被配上「可以重试一次」（= 再生成、再扣一次）。服务商真说过的话（503「无可用渠道」）照旧给；
+  // 没有就给 ''，不从正文里抠一句冒充（取回出口写的「Nomi 本机拦下」那句不是服务商说的）。
+  if (outboundCode === 'retrieval-query' || outboundCode === 'retrieval-parse' || outboundCode === 'retrieval-download' || outboundCode === 'retrieval-timeout') {
+    return reportFor('retrieval-incomplete', cleanRaw, upstream || '')
+  }
   // 本机处理失败：没有服务商参与，upstream 给 ''（不印「服务商原话」）；原因就是码后面那句人话，已经在 raw / 标题里。
   if (outboundCode === 'local-processing') {
     // 第一行 = 生产者写的那句人话（标题）；其余行是技术细节，只进「技术详情」。先切行再剥码——剥码会把换行压成空格。

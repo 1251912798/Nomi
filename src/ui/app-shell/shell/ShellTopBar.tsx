@@ -10,6 +10,8 @@ import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconBrowser, IconChevronDown, IconDownload, IconLayoutSidebarLeftExpand, IconSettings } from '@tabler/icons-react'
 import {
+  ICON_TIER_CLASSES,
+  ICON_TIERS,
   NomiLogoMark,
   NomiStepper,
   Tooltip,
@@ -37,12 +39,13 @@ import { DotMark } from './DotMark'
 import { UpdatePill } from '../UpdatePill'
 import { SHELL_MAC_TRAFFIC_WIDTH, SHELL_TOPBAR_HEIGHT, shellChromePlatform } from '../shellGeometry'
 
-/** 顶栏图标钮一族：28px 方块、圆角 6、图标 18 / 1.5（拍板稿 .ib）。 */
+/** 顶栏图标钮一族：28px 方块、圆角 6（拍板稿 .ib）；图标档位由这一族自己定（条档 18 / 1.8），里面的图标不传 size / stroke。 */
 const BAR_ICON_BUTTON = cn(
   'app-no-drag relative grid size-7 shrink-0 place-items-center rounded-nomi-sm border-0 bg-transparent p-0',
   'text-nomi-ink-60 transition-[background,color] duration-nomi-fast ease-nomi-fast',
   'hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
   'disabled:cursor-not-allowed disabled:opacity-50',
+  ICON_TIER_CLASSES.bar,
 )
 
 /** 右上角那个小点（设置：上手没做完；窄窗下的新版本）。外圈描一圈外壳底色，压在图标上也读得出。 */
@@ -145,7 +148,7 @@ function ProjectMenu({
         onDoubleClick={() => { setDraft(projectName); setRenaming(true) }}
       >
         <span className="min-w-0 truncate">{projectName}</span>
-        <IconChevronDown size={14} stroke={1.5} className="shrink-0 text-nomi-ink-40" aria-hidden="true" />
+        <IconChevronDown size={ICON_TIERS.corner.size} stroke={ICON_TIERS.corner.stroke} className="shrink-0 text-nomi-ink-40" aria-hidden="true" />
       </button>
       <WorkbenchMenu open={open} onOpenChange={setOpen} anchorRect={rect} items={items} className="min-w-[220px] max-w-[320px]" ariaLabel={t('appShell.topbar.projectMenu', { name: projectName })} />
     </>
@@ -217,7 +220,7 @@ export function ShellTopBar({
           {railCollapsed && onExpandRail ? (
             <BarTooltip label={t('appShell.rail.expand')}>
               <button type="button" className={BAR_ICON_BUTTON} aria-label={t('appShell.rail.expand')} onClick={onExpandRail} data-shell-rail-expand>
-                <IconLayoutSidebarLeftExpand size={18} stroke={1.5} aria-hidden="true" />
+                <IconLayoutSidebarLeftExpand aria-hidden="true" />
               </button>
             </BarTooltip>
           ) : null}
@@ -259,13 +262,14 @@ export function ShellTopBar({
                       'app-no-drag mx-1 inline-flex h-7 items-center gap-1.5 rounded-pill border-0 px-3 text-caption font-medium',
                       'bg-nomi-ink text-nomi-paper hover:bg-nomi-ink-80 disabled:cursor-not-allowed disabled:opacity-60',
                     )}
+                    iconTier="corner"
                     aria-label={exportLabel}
                     data-export-busy={exportBusy ? 'true' : 'false'}
                     data-shell-export
                     loading={exportBusy}
                     onClick={requestPreviewExport}
                   >
-                    {exportBusy ? null : <IconDownload size={14} stroke={1.5} />}
+                    {exportBusy ? null : <IconDownload />}
                     <span className="whitespace-nowrap">{exportBusy ? t('timelinePreview.exporting', { percent: exportPercent }) : t('timelinePreview.exportMp4')}</span>
                   </WorkbenchButton>
                 </span>
@@ -283,7 +287,7 @@ export function ShellTopBar({
           ) : null}
           <BarTooltip label={t('appBar.browser')}>
             <button type="button" className={BAR_ICON_BUTTON} aria-label={t('appBar.openBrowser')} onClick={openBrowser} data-shell-browser>
-              <IconBrowser size={18} stroke={1.5} aria-hidden="true" />
+              <IconBrowser aria-hidden="true" />
             </button>
           </BarTooltip>
           {/* 更新胶囊（#1135）：只由主进程更新状态决定出不出；窄屏自收成带点图标，点开的弹窗由 NomiStudioApp 全局挂一份。 */}
@@ -291,7 +295,7 @@ export function ShellTopBar({
           {onOpenSettings ? (
             <BarTooltip label={onboarding.active ? t('appShell.topbar.settingsDot', { count: onboarding.total - onboarding.doneCount }) : t('settings.title')}>
               <button type="button" className={BAR_ICON_BUTTON} aria-label={t('settings.title')} onClick={onOpenSettings} data-shell-settings>
-                <IconSettings size={18} stroke={1.5} aria-hidden="true" />
+                <IconSettings aria-hidden="true" />
                 {onboarding.active ? <DotMark /> : null}
               </button>
             </BarTooltip>

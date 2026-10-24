@@ -6,10 +6,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
 const guard = path.join(path.dirname(fileURLToPath(import.meta.url)), 'walkthrough-network-guard.cjs')
+const { scrubText } = createRequire(import.meta.url)('./walkthrough-url-shape.cjs')
 const temps = []
 
 function runGuarded(code, extraEnv = {}) {
@@ -43,6 +45,94 @@ describe('walkthrough network guard', () => {
     `, { NOMI_WALK_ALLOW_ORIGINS: 'https://allowed.invalid/v1', CI: '' })
     const blocked = entries.filter((entry) => entry.kind === 'blocked')
     expect(blocked.map((entry) => entry.host)).toEqual(['other.invalid'])
+  })
+
+  it('NOMI_WALK_NET_BODIES=1 records the body of allowed public requests, scrubbed (no headers, no signed query, no key-shaped strings)', () => {
+    const { entries } = runGuarded(`
+      const form = new FormData()
+      form.append('file', new Blob([new Uint8Array(4)], { type: 'image/png' }), 'first.png')
+      fetch('https://allowed.invalid/v1/videos/generations', { method: 'POST', headers: { Authorization: 'Bearer sk-live-1234567890abcdef' },
+        body: JSON.stringify({ image_urls: ['https://cdn.invalid/a.png?sig=SECRET&exp=1'], note: 'Bearer sk-live-1234567890abcdef' }) }).catch(() => undefined)
+        .then(() => fetch('https://allowed.invalid/upload', { method: 'POST', body: form })).catch(() => undefined)
+    `, { NOMI_WALK_ALLOW_ORIGINS: 'https://allowed.invalid', NOMI_WALK_NET_BODIES: '1', CI: '' })
+    const recorded = entries.filter((entry) => entry.kind === 'allowed-request')
+    expect(recorded).toHaveLength(2)
+    expect(recorded[0]).toMatchObject({ method: 'POST', host: 'allowed.invalid', url: 'https://allowed.invalid/v1/videos/generations' })
+    const text = recorded[0].body.text
+    expect(JSON.parse(text).image_urls).toEqual(['https://cdn.invalid/a.png?<redacted>'])
+    expect(JSON.stringify(entries)).not.toMatch(/SECRET|sk-live-1234567890abcdef/)
+    expect(recorded[0]).not.toHaveProperty('headers')
+    expect(recorded[1].body.form).toEqual([{ field: 'file', fileName: 'first.png', size: 4, type: 'image/png' }])
+  })
+
+  it('scrubs a signed URL whose path contains a space instead of truncating before the query', () => {
+    const { entries } = runGuarded(`
+      fetch('https://allowed.invalid/v1/videos/generations', { method: 'POST',
+        body: JSON.stringify({ image_urls: ['https://cdn.invalid/first ref.png?sig=SECRET&exp=1'] }) }).catch(() => undefined)
+    `, { NOMI_WALK_ALLOW_ORIGINS: 'https://allowed.invalid', NOMI_WALK_NET_BODIES: '1', CI: '' })
+    const request = entries.find((entry) => entry.kind === 'allowed-request')
+    expect(JSON.parse(request.body.text).image_urls).toEqual(['https://cdn.invalid/first ref.png?<redacted>'])
+    expect(JSON.stringify(entries)).not.toContain('SECRET')
+  })
+
+  it('scrubs a signed URL before truncating an oversized JSON body and records truncated', () => {
+    const { entries } = runGuarded(`
+      fetch('https://allowed.invalid/v1/videos/generations', { method: 'POST',
+        body: JSON.stringify({ image_urls: ['https://cdn.invalid/first ref.png?sig=SECRET&exp=1'], padding: 'x'.repeat(70000) }) }).catch(() => undefined)
+    `, { NOMI_WALK_ALLOW_ORIGINS: 'https://allowed.invalid', NOMI_WALK_NET_BODIES: '1', CI: '' })
+    const request = entries.find((entry) => entry.kind === 'allowed-request')
+    expect(request.body.text).toContain('https://cdn.invalid/first ref.png?<redacted>')
+    expect(request.body.text).not.toContain('SECRET')
+    expect(request.body.truncated).toBe(true)
+  })
+
+  it('scrubs signed URLs in FormData string fields with and without spaces', () => {
+    const { entries } = runGuarded(`
+      const form = new FormData()
+      form.append('withSpace', 'https://cdn.invalid/first ref.png?sig=SPACE_SECRET')
+      form.append('withoutSpace', 'https://cdn.invalid/last.png?sig=PLAIN_SECRET')
+      fetch('https://allowed.invalid/upload', { method: 'POST', body: form }).catch(() => undefined)
+    `, { NOMI_WALK_ALLOW_ORIGINS: 'https://allowed.invalid', NOMI_WALK_NET_BODIES: '1', CI: '' })
+    const request = entries.find((entry) => entry.kind === 'allowed-request')
+    expect(request.body.form).toEqual([
+      { field: 'withSpace', value: 'https://cdn.invalid/first ref.png?<redacted>' },
+      { field: 'withoutSpace', value: 'https://cdn.invalid/last.png?<redacted>' },
+    ])
+    expect(JSON.stringify(entries)).not.toMatch(/SPACE_SECRET|PLAIN_SECRET/)
+  })
+
+  it('scrubs signed URLs embedded in plain text bodies', () => {
+    const { entries } = runGuarded(`
+      fetch('https://allowed.invalid/v1/text', { method: 'POST',
+        body: 'before https://cdn.invalid/first ref.png?sig=SPACE_SECRET after https://cdn.invalid/last.png?sig=PLAIN_SECRET end' }).catch(() => undefined)
+    `, { NOMI_WALK_ALLOW_ORIGINS: 'https://allowed.invalid', NOMI_WALK_NET_BODIES: '1', CI: '' })
+    const request = entries.find((entry) => entry.kind === 'allowed-request')
+    expect(request.body.text).toBe('before https://cdn.invalid/first ref.png?<redacted> after https://cdn.invalid/last.png?<redacted> end')
+    expect(JSON.stringify(entries)).not.toMatch(/SPACE_SECRET|PLAIN_SECRET/)
+  })
+
+  it('scrubs a signed URL embedded in a JSON sentence value', () => {
+    const { entries } = runGuarded(`
+      fetch('https://allowed.invalid/v1/note', { method: 'POST',
+        body: JSON.stringify({ note: 'before https://cdn.invalid/first ref.png?sig=SECRET after' }) }).catch(() => undefined)
+    `, { NOMI_WALK_ALLOW_ORIGINS: 'https://allowed.invalid', NOMI_WALK_NET_BODIES: '1', CI: '' })
+    const request = entries.find((entry) => entry.kind === 'allowed-request')
+    expect(JSON.parse(request.body.text).note).toBe('before https://cdn.invalid/first ref.png?<redacted> after')
+    expect(JSON.stringify(entries)).not.toContain('SECRET')
+  })
+
+  it('scrubs an oversized response string before a caller truncates it', () => {
+    const text = JSON.stringify({ url: 'https://cdn.invalid/first ref.png?sig=SECRET' }) + 'x'.repeat(4096)
+    const scrubbed = scrubText(text)
+    expect(scrubbed).toContain('https://cdn.invalid/first ref.png?<redacted>')
+    expect(scrubbed).not.toContain('SECRET')
+  })
+
+  it('without NOMI_WALK_NET_BODIES nothing about allowed requests is recorded (other walks unchanged)', () => {
+    const { entries } = runGuarded(`
+      fetch('https://allowed.invalid/v1/x', { method: 'POST', body: '{"a":1}' }).catch(() => undefined)
+    `, { NOMI_WALK_ALLOW_ORIGINS: 'https://allowed.invalid', CI: '' })
+    expect(entries.filter((entry) => entry.kind === 'allowed-request')).toEqual([])
   })
 
   it('NOMI_WALK_ALLOW_ORIGINS is ignored under CI (an inherited variable cannot open the public network there)', () => {

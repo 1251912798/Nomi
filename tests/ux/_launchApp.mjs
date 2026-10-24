@@ -18,6 +18,8 @@ import { cleanupTestTemp, makeTempDir, registerTestTemp } from '../../scripts/_t
 //   import { launchNomiApp } from './_launchApp.mjs'
 //   const { app, win, projectsDir } = await launchNomiApp({ name: 'my-walk' })
 import { _electron as electron } from 'playwright'
+import { require as tsxRequire } from 'tsx/cjs/api'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
@@ -27,6 +29,7 @@ import { fileURLToPath } from 'node:url'
 import { ensureElectronSignature } from '../../scripts/ensure-electron-signature.mjs'
 import { installFeelObserver } from './_feel-observer.mjs'
 import { assertElectronBuildArtifacts } from '../../scripts/electron-build-artifacts.mjs'
+import { assertFreshBuild } from '../../scripts/package-build-stamp.mjs'
 import { registerWalkProcess } from './_walkInstances.mjs'
 
 const require = createRequire(import.meta.url)
@@ -247,13 +250,105 @@ async function freeLoopbackPort() {
   })
 }
 
+// ── 宿主配置（Claude Code / Codex / Cursor …）的隔离 ──────────────────────────────────────────────
+// 2026-10-24：隔离起的 App 显示「Claude Code 的配置里已有 Nomi」——读到的是本机真实的 ~/.claude.json。
+// 三个 NOMI_*_DIR 只管 Nomi 自己的目录；宿主配置在哪由宿主自己的规则定（主目录，或 CLAUDE_CONFIG_DIR / CODEX_HOME），
+// 以前这里一条都没管。路径规则只有一份（electron/shared/mcpClientRegistry.ts，主进程算路径也用它），这里不抄。
+const HOME_ENV = ['HOME', 'USERPROFILE']
+
+function hostRegistry() {
+  return tsxRequire('../../electron/shared/mcpClientRegistry.ts', import.meta.url)
+}
+
+/**
+ * 隔离起 App 时宿主配置位置怎么定——唯一一处（launchNomiApp、evals 的 isoApp、memory.e2e 都经这里）：
+ *  · 调用方在自己的 env 里给了某个宿主变量：照用（它在自己的临时目录里摆好了配置）；
+ *  · 调用方换了 HOME / USERPROFILE（假主目录里摆好了 ~/.claude.json 一类）：继承来的宿主变量一律摘掉，
+ *    让宿主的默认位置落在那个假主目录下——不摘的话，开发者 shell 里的 CLAUDE_CONFIG_DIR 会把 App 引回真配置；
+ *  · 其余：每个宿主变量指到 <hostConfigDir>/<变量名>（调用方先建好：Codex 要求 CODEX_HOME 是已存在的目录）。
+ */
+export function isolatedHostConfigEnv({ hostConfigDir, callerEnv = {} }) {
+  const { MCP_CLIENT_HOST_ENV_VARS } = hostRegistry()
+  const redirectsHome = HOME_ENV.some((name) => Object.hasOwn(callerEnv, name))
+  const set = {}
+  const unset = []
+  for (const name of MCP_CLIENT_HOST_ENV_VARS) {
+    if (Object.hasOwn(callerEnv, name)) continue
+    if (redirectsHome) unset.push(name)
+    else set[name] = path.join(hostConfigDir, name)
+  }
+  return { set, unset }
+}
+
+/** 隔离目录里给每个宿主变量建好空目录（宿主要求它存在）；返回建了哪些。 */
+export function prepareHostConfigDir(hostConfigDir, callerEnv = {}) {
+  const dirs = Object.values(isolatedHostConfigEnv({ hostConfigDir, callerEnv }).set)
+  for (const dir of dirs) fs.mkdirSync(dir, { recursive: true })
+  return dirs
+}
+
+function isInside(root, target) {
+  const relative = path.relative(root, target)
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+}
+
+/**
+ * 隔离实例的宿主配置逐条核（门岗）。按注册表每一条路径（本平台的配置文件 + 安装痕迹），分别用「要传给 App 的 env」和
+ * 「用户自己的 env」（含不设宿主变量时的默认位置）解析，App 那一份落进用户真实宿主位置里的：
+ *   · 能重定向的（宿主有位置变量，或调用方换了主目录）→ leaks：隔离漏了，App 会读写真配置；
+ *   · 只能靠主目录、调用方又没换主目录的（Cursor / WorkBuddy / Claude Desktop）→ residual：启动器挡不住，
+ *     名单由 _launchApp.test.mjs 钉住，要挡得产品侧「隔离实例不读真主目录」（交协调拍板）。
+ * App 的主目录按 Node 的 os.homedir() 规则推：POSIX 看 HOME，Windows 看 USERPROFILE，都没有就是账户主目录。
+ */
+export function isolatedHostConfigLeaks(env, { baseEnv = process.env, platform = process.platform, accountHome = os.userInfo().homedir } = {}) {
+  const { MCP_CLIENT_HOST_ENV_VARS, mcpClientLocations, mcpClientPlatform, resolveMcpClientPath } = hostRegistry()
+  const target = mcpClientPlatform(platform)
+  const homeOf = (values) => (target === 'win32' ? values.USERPROFILE : values.HOME) || accountHome
+  const context = (values) => ({ platform: target, env: values, homedir: homeOf(values), join: path.join })
+  const withoutHostVars = Object.fromEntries(Object.entries(baseEnv).filter(([name]) => !MCP_CLIENT_HOST_ENV_VARS.includes(name)))
+  const locations = mcpClientLocations().filter((entry) => entry.platform === target)
+  const realRoots = locations.flatMap(({ location }) => [resolveMcpClientPath(location, context(baseEnv)), resolveMcpClientPath(location, context(withoutHostVars))])
+  const callerRedirectedHome = homeOf(env) !== homeOf(baseEnv)
+  const leaks = []
+  const residual = new Set()
+  for (const { client, location } of locations) {
+    const resolved = resolveMcpClientPath(location, context(env))
+    if (!realRoots.some((root) => isInside(root, resolved))) continue
+    if (location.hostEnv || callerRedirectedHome) leaks.push({ client, path: resolved })
+    else residual.add(client)
+  }
+  return { leaks, residual: [...residual].sort() }
+}
+
+/** 隔离 env 收尾：宿主变量按 isolatedHostConfigEnv 定，再逐条核；漏一条就当场抛，不让 App 起来读真配置。 */
+export function withIsolatedHostConfig(env, { hostConfigDir, callerEnv = {}, baseEnv = process.env }) {
+  const { set, unset } = isolatedHostConfigEnv({ hostConfigDir, callerEnv })
+  const isolated = { ...env, ...set }
+  for (const name of unset) delete isolated[name]
+  const { leaks } = isolatedHostConfigLeaks(isolated, { baseEnv })
+  if (leaks.length) {
+    throw new Error(`隔离起 App 却会读写用户真实的宿主配置：${leaks.map((leak) => `${leak.client} → ${leak.path}`).join('；')}。`
+      + '宿主变量要指到临时目录（见 isolatedHostConfigEnv），换了主目录就别再带宿主变量。')
+  }
+  return isolated
+}
+
 /**
  * 拼一套「窗口一定能起来」的 env。抽成纯函数是为了让那条不变量能被单测钉住
  * （见 _launchApp.test.mjs）：**必需 env 排在 extraEnv 之后，调用方覆盖不掉**。
+ * 隔离起 App（给了任一 Nomi 目录）就必须同时给 hostConfigDir：宿主配置不隔离，App 读到的是本机真配置。
  */
-export function buildNomiLaunchEnv({ extraEnv = {}, userDataDir, settingsDir, projectsDir, capabilityDir, baseEnv = process.env }) {
+export function buildNomiLaunchEnv({ extraEnv = {}, userDataDir, settingsDir, projectsDir, capabilityDir, hostConfigDir, fixtureCredentials = false, baseEnv = process.env }) {
+  if ((userDataDir || settingsDir || projectsDir) && !hostConfigDir) {
+    throw new Error('隔离起 App 要给 hostConfigDir（宿主配置的隔离目录）：只隔离 Nomi 自己的目录，App 照样读写本机真实的 Claude Code / Codex 配置')
+  }
   const env = {
     ...baseEnv,
+    // 假凭据（syntheticCredentialStorage: true = 隔离目录里的非秘密测试 key）不许出这台机器：默认打开产品自带的
+    // 测试网闸（electron/testNetworkGuard.ts，只放行本机与登记的重定向）。以前不开——保存占位 key 时产品的免费验证
+    // （credentialProbePolicy）把它发给真供应商，401 →「密钥验证失败」，走查当场红（夜跑 run 40035294026 四条），
+    // 而且每跑一次都往真供应商发一把假 key。走查真要放行，就在 extraEnv 里显式写 NOMI_TEST_NETWORK_GUARD: ''。
+    ...(fixtureCredentials ? { NOMI_TEST_NETWORK_GUARD: '1' } : {}),
     ...extraEnv,
     // ↓ 放在 extraEnv **之后**：这两条是「窗口能不能起来」的前提，调用方不该、也不能覆盖掉。
     //   不变量靠代码成立，不靠每个脚本作者自觉抄全（抄漏就是静默超时）。
@@ -275,7 +370,7 @@ export function buildNomiLaunchEnv({ extraEnv = {}, userDataDir, settingsDir, pr
   // 「干等到超时」。它常被别的工具链顺手塞进环境里（我们自己 spawn MCP 子进程时也会用），
   // 继承过来纯属误伤——统一摘掉，同一类死法不留第二个入口。
   delete env.ELECTRON_RUN_AS_NODE
-  return env
+  return hostConfigDir ? withIsolatedHostConfig(env, { hostConfigDir, callerEnv: extraEnv, baseEnv }) : env
 }
 
 /**
@@ -346,6 +441,7 @@ export function withPackagedPlaywrightOrigin(args, isPackaged) {
  * @param {string} [options.settingsDir]    单独指定（默认 <tempRoot>/settings）
  * @param {string} [options.projectsDir]    单独指定（默认 <tempRoot>/projects）
  * @param {string} [options.capabilityDir]  优先于 env.NOMI_CAPABILITY_DIR；均未设时隔离实例派生 <tempRoot>/capability
+ * @param {string} [options.hostConfigDir]  宿主配置（CLAUDE_CONFIG_DIR / CODEX_HOME …）的隔离目录；默认 <tempRoot>/host-config
  * @param {number} [options.testedCatalogVersion]  被测构建的 catalog 版本；默认读取仓库 canonical manifest
  * @param {{width: number, height: number}} [options.viewportSize] Content viewport; defaults to ACCEPTANCE_VIEWPORT.
  * @param {number} [options.timeout]        等窗口上限（ms）
@@ -356,7 +452,7 @@ export function withPackagedPlaywrightOrigin(args, isPackaged) {
  * @param {boolean} [options.syntheticCredentialStorage]  仅供隔离目录里的非秘密测试凭据；Linux CI 使用 basic 后端。
  *   不传 = 隔离 catalog 里有 safeStorage 加密凭据就开（夹具加密时用的就是它）；显式 false 用于用户真实资料的拷贝
  * @returns {Promise<{app: import('playwright').ElectronApplication, win: import('playwright').Page,
- *   tempRoot: string, userDataDir: string, settingsDir: string, projectsDir: string, close: () => Promise<void>}>}
+ *   tempRoot: string, userDataDir: string, settingsDir: string, projectsDir: string, hostConfigDir: string | null, close: () => Promise<void>}>}
  */
 export async function launchNomiApp(options = {}) {
   const {
@@ -387,6 +483,8 @@ export async function launchNomiApp(options = {}) {
   // 再塞个 `.` 反而会被当成「要打开的路径」参数。所以这两件事都跟着「是不是开发构建」走。
   const isDevElectron = executablePath === require('electron')
   if (isDevElectron) {
+    // 构建戳核对在最前：产物比源码旧时，后面的「文件在不在」都会通过，走查却量到旧代码。
+    assertFreshBuild(repoRoot)
     assertElectronBuildArtifacts(repoRoot)
     // Apple 会在首次启动时直接删除已吊销公证的 Electron.app。走查必须在 spawn 前复用
     // dev 启动器的静态探测与重签，否则表现为 60s 超时且一张截图也产不出来。
@@ -407,11 +505,14 @@ export async function launchNomiApp(options = {}) {
     ?? extraEnv.NOMI_CAPABILITY_DIR
     ?? process.env.NOMI_CAPABILITY_DIR
     ?? (isolate ? path.join(tempRoot, 'capability') : null)
+  // isolate:false 用的就是真实 profile 与真实宿主配置（ui-driver / --real-connect 的既定设计），不动宿主变量。
+  const hostConfigDir = isolate ? (options.hostConfigDir ?? path.join(tempRoot, 'host-config')) : null
 
   // 只建目录，**绝不清空**：不少走查会在起飞前往 projectsDir/settingsDir 里预埋工程或 catalog
   //（如 toolbar-order.walk.mjs 先写好 project.json 再启动）。启动器擅自 rm 会把它们的前置条件擦掉。
   // 想要干净 profile 的脚本自己在调用前 rmSync——语义留在看得见的地方。
   if (isolate) for (const dir of [userDataDir, settingsDir, projectsDir, capabilityDir]) fs.mkdirSync(dir, { recursive: true })
+  if (isolate) prepareHostConfigDir(hostConfigDir, extraEnv)
   if (isolate) prepareIsolatedCatalog(settingsDir, { testedCatalogVersion: options.testedCatalogVersion })
   // 显式声明优先（core-smoke 的 profile-copy 刻意传 false：那份 catalog 是用户真实钥匙串加密的）；
   // 没声明时由盘上的 catalog 决定，见 isolatedCatalogHasSafeStorageCredentials。
@@ -440,7 +541,8 @@ export async function launchNomiApp(options = {}) {
       syntheticCredentialStorage,
     )),
     cwd: repoRoot,
-    env: buildNomiLaunchEnv({ extraEnv, userDataDir, settingsDir, projectsDir, capabilityDir }),
+    // 只认显式的 syntheticCredentialStorage: true：盘上推出来的那一档也可能是拷进来的真实资料（core-smoke 那种），不能替它关网。
+    env: buildNomiLaunchEnv({ extraEnv, userDataDir, settingsDir, projectsDir, capabilityDir, hostConfigDir, fixtureCredentials: options.syntheticCredentialStorage === true }),
     timeout,
   }
 
@@ -465,6 +567,12 @@ export async function launchNomiApp(options = {}) {
     cleanupTempRoot(tempRoot)
     throw new Error(diagnoseLaunchFailure(`Electron 起不来（electron.launch 失败/超时，${timeout}ms）`, name, error, logTail))
   }
+  // 走查里直接写的 `await app.close()`（经这里起 App 的近 300 个文件）也走有上限的关闭：Playwright 的 close 要等子进程的标准输出 / 错误
+  // 管道全关；Linux 上 Electron 的帮手进程继承了这两根管道，主进程退了它们还攥着，close 就永远不 resolve
+  // （夜跑 run 40035294026：断言全过的 preview-export-busy / editing-real-user-pass 挂到 600 秒）。
+  const rawClose = app.close.bind(app)
+  app[RAW_CLOSE] = rawClose
+  app.close = () => closeElectronWithin(app, rawClose, GRACEFUL_CLOSE_BOUND_MS)
   const instanceRegistration = registerWalkProcess(app.process(), { worktree: repoRoot, name, allowUntrackedProcessForTest })
   const close = async () => {
     try { await closeNomiApp(app) } finally {
@@ -502,19 +610,11 @@ export async function launchNomiApp(options = {}) {
       throw new Error(diagnoseLaunchFailure(`等了 ${timeout}ms 没等到窗口`, name, error, logTail))
     }
     await win.waitForLoadState('domcontentloaded')
-    // 等启动期那次路由改写落地（`index.html` → `index.html#/studio`）再碰几何。
-    // 为什么非等不可：下面 `app.browserWindow(win)` 拿到的句柄绑在页面当前的执行上下文上，
-    // 而那次改写恰好发生在 domcontentloaded 之后的一两百毫秒里——热启动（profile 已有内容、
-    // 缓存已热）时它正好落在两行之间，句柄当场失效，报成
-    // 「jsHandle.evaluate: Execution context was destroyed」。表现是**只有重启那一次**起不来，
-    // 首启永远好好的（2026-09-12 model-availability-agreement 冷重启阶段复现）。
-    // 等的是 app 自己的契约：渲染层启动后一定落在某个 hash 路由上（#/studio、#/studio?projectId=…）。
-    // Most launches rewrite to a hash route, but a blank-context acceptance can
-    // legitimately remain on the entry document.  Wait for the rewrite when it
-    // happens, then fall back to a settled document instead of failing startup.
-    await win.waitForURL(/#\//, { timeout: Math.min(timeout, 5000) }).catch(async () => {
-      await win.waitForLoadState('networkidle', { timeout: Math.min(timeout, 5000) }).catch(() => undefined)
-    })
+    // 这里原先等过一次启动路由改写（09-12「热启动时 browserWindow 句柄随页面导航失效」）。那个归因不成立：
+    // `app.browserWindow(win)` 的句柄活在主进程，不绑页面上下文。当时那句「Execution context was destroyed」
+    // 与 10-18 起打包冒烟的间歇红是同一类——主进程正忙时 Playwright 的 evaluate 结果被 GC 收掉
+    // （"Promise was collected" 被改写成导航报错），已在共享边界修掉：patches/playwright-core@1.60.0.patch，
+    // 回归见 tests/ux/playwright-main-evaluate.e2e.mjs。等路由只是挪了时机，按 P1 同批删掉。
     const viewportSize = options.viewportSize ?? ACCEPTANCE_VIEWPORT
     // Native resize alone may be clamped by CI's display; bind Chromium content geometry too.
     const browserWindow = await app.browserWindow(win)
@@ -563,6 +663,7 @@ export async function launchNomiApp(options = {}) {
     settingsDir,
     projectsDir,
     capabilityDir,
+    hostConfigDir,
     /** 主进程 stdout+stderr 的尾巴（最多 400 行）。断言红时给调用方看，不必只在启动失败时才有。 */
     mainLogTail: () => logTail.slice(),
     close,
@@ -619,24 +720,106 @@ export function diagnoseLaunchFailure(headline, name, error, logTail) {
   return lines.join('\n')
 }
 
+const RAW_CLOSE = Symbol('nomi.rawElectronClose')
+/** 走查自己 `app.close()` 时等优雅退出的上限：产品的退出收尾自己最多 3 秒（electron/quitTeardown.ts），这里留足余量。 */
+export const GRACEFUL_CLOSE_BOUND_MS = 15_000
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** 这个进程此刻的全部子孙 pid（POSIX）。主进程一退，子孙就被过继给 init，再按父子关系就找不到了——所以要在关之前拍。 */
+export function descendantPids(rootPid, list = () => execFileSync('ps', ['-A', '-o', 'pid=,ppid='], { encoding: 'utf8' })) {
+  if (!rootPid || process.platform === 'win32') return []
+  let out
+  try { out = list() } catch { return [] }
+  const children = new Map()
+  for (const line of out.split('\n')) {
+    const [pid, ppid] = line.trim().split(/\s+/).map(Number)
+    if (!pid) continue
+    if (!children.has(ppid)) children.set(ppid, [])
+    children.get(ppid).push(pid)
+  }
+  const found = []
+  const stack = [rootPid]
+  while (stack.length) {
+    for (const child of children.get(stack.pop()) ?? []) { found.push(child); stack.push(child) }
+  }
+  return found
+}
+
+/**
+ * 关掉一个 Electron，保证一定往下走：优雅关闭最多等 boundMs；过了就 SIGKILL 它和关之前拍下的子孙进程
+ * （只动这一棵树，不按名字杀），再放掉它的标准输入 / 输出 / 错误管道和进程句柄——Linux 上帮手进程攥着的管道
+ * 不放，走查进程自己也退不出去。
+ */
+export async function closeElectronWithin(app, rawClose, boundMs) {
+  // 已经关过的 app（走查先 `app.close()`、再调启动器的 `close()` / `closeNomiApp`）：Playwright 的 process() 这时会抛
+  // 「Cannot read properties of undefined (reading '_object')」——句柄早没了，也就没有树可拍，照样把 close 再走一遍。
+  let child
+  try { child = app.process?.() } catch { child = undefined }
+  const tree = child?.pid ? descendantPids(child.pid) : []
+  let closed = false
+  await Promise.race([
+    Promise.resolve().then(rawClose).then(() => { closed = true }).catch(() => undefined),
+    sleep(boundMs),
+  ])
+  if (closed) return
+  // 留痕：优雅关闭没在上限内完成（产品退出卡住，或帮手进程攥着管道）——强杀不是静默的。
+  console.warn(`[launchNomiApp] app.close() 等满 ${boundMs}ms 没结束，按进程树强杀 pid=${child?.pid ?? '?'}（子孙 ${tree.length} 个）`)
+  if (process.platform === 'win32' && child?.pid) {
+    try { execFileSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' }) } catch { /* 已经没了 */ }
+  } else {
+    for (const pid of [child?.pid, ...tree]) {
+      if (!pid) continue
+      try { process.kill(pid, 'SIGKILL') } catch { /* 已经没了 */ }
+    }
+  }
+  for (const stream of [child?.stdin, child?.stdout, child?.stderr]) {
+    try { stream?.destroy() } catch { /* 已经关了 */ }
+  }
+  try { child?.unref() } catch { /* 没有句柄 */ }
+  await sleep(100)
+}
+
 /**
  * 收尾。electron teardown 在部分环境会 hang（app.close() 永不 resolve），串跑时会把整条卡死，
- * 故给 3s 兜底：尽量清干净，但保证一定往下走。
+ * 故给 3s 兜底：尽量清干净，但保证一定往下走（不在乎优雅退出的场合用它；要等产品自己收尾的走查直接 app.close()）。
  */
 export async function closeNomiApp(app) {
   if (!app) return
-  let closed = false
-  await Promise.race([
-    app.close().then(() => { closed = true }).catch(() => undefined),
-    new Promise((resolve) => setTimeout(resolve, 3000)),
-  ])
-  if (closed) return
-  // Electron can leave its helper tree alive when the renderer has already
-  // exited (observed in failed canvas benchmarks). Do not let a timed-out
-  // graceful close leak into the next scenario.
-  const processHandle = app.process()
-  if (processHandle && !processHandle.killed) {
-    try { processHandle.kill('SIGKILL') } catch { /* already exited */ }
+  await closeElectronWithin(app, app[RAW_CLOSE] ?? (() => app.close()), 3000)
+}
+
+/**
+ * 给隔离 profile 备好「这几家各有一把可用的测试 key」：先起一次 App，经产品自己的保存口把占位 key 存成密文，
+ * 关掉后在盘上把这几家的凭据和供应商翻成已启用，调用方再用同一组 options 正式起 App。
+ *
+ * 为什么不在正式那次里直接调 upsertVendorApiKey：保存即验证（credentialProbePolicy，APIMart / Runway 有免费探测）。
+ * 开着网，占位 key 真发给供应商、401（夜跑 run 40035294026）；假凭据默认关网（见 buildNomiLaunchEnv），验证打不出去，
+ * 产品照语义存成「未验证、停用」，这家的模型进不了下拉。也不能在盘上直接种明文 key：自 019d80f1d 起明文不算可用凭据。
+ * 这里只翻「验证通过」会翻的标志（凭据 enabled、去掉 verificationPending；供应商 enabled），密文由产品自己写——
+ * 和 credential-connect-honesty 态②同一个做法。只给隔离目录里的非秘密测试 key 用。
+ */
+export async function seedSavedFixtureCredentials(options, vendorKeys, apiKey = 'nomi-e2e-placeholder') {
+  // 两次起 App 必须同一组目录：密文由 userDataDir 里的加密身份解（Windows 的 DPAPI 密钥只在它的 Local State 里）。
+  if (options.syntheticCredentialStorage !== true || !options.settingsDir || !options.userDataDir) {
+    throw new Error('seedSavedFixtureCredentials 只给隔离目录里的非秘密测试 key 用：要显式 syntheticCredentialStorage: true、settingsDir 和 userDataDir')
   }
-  await new Promise((resolve) => setTimeout(resolve, 100))
+  const { app, win } = await launchNomiApp({ ...options, name: `${options.name ?? 'nomi-walk'}-seed-credentials`, settleMs: 0 })
+  try {
+    for (const vendorKey of vendorKeys) {
+      await win.evaluate(({ key, value }) => window.nomiDesktop.modelCatalog.upsertVendorApiKey(key, { apiKey: value, enabled: true }), { key: vendorKey, value: apiKey })
+    }
+  } finally {
+    await app.close()
+  }
+  const catalogPath = path.join(options.settingsDir, 'model-catalog.json')
+  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'))
+  for (const vendorKey of vendorKeys) {
+    const record = catalog.apiKeysByVendor?.[vendorKey]
+    if (!record?.apiKey || record.enc !== 'safeStorage') throw new Error(`${vendorKey} 的测试 key 没以密文落盘（保存口没写下它）`)
+    record.enabled = true
+    delete record.verificationPending
+    const vendor = catalog.vendors?.find((item) => item.key === vendorKey)
+    if (vendor) vendor.enabled = true
+  }
+  fs.writeFileSync(catalogPath, JSON.stringify(catalog, null, 2))
 }

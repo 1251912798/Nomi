@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import test from 'node:test'
 import { builtArtifactImportLines, asyncWaitForFunctionLines, collectTestFiles, unownedLaneCleanupLines } from './check-test-waits.mjs'
 
@@ -83,6 +84,8 @@ test('discovers real walk/e2e/helper scripts and unit tests while skipping gener
       fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
       fs.writeFileSync(path.join(root, file), '')
     }
+    execFileSync('git', ['init', '-q'], { cwd: root })
+    execFileSync('git', ['add', ...included], { cwd: root })
     assert.deepEqual(collectTestFiles(root).map((file) => path.relative(root, file).replaceAll(path.sep, '/')).sort(), included.sort())
   } finally {
     fs.rmSync(root, { recursive: true, force: true })

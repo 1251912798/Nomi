@@ -1,0 +1,28 @@
+{
+  "id": "USER-20261023-outside-press-swallowed",
+  "since": "2026-10-23",
+  "source": "用户 2026-10-23 原话：「当我点击那个左侧那个画布那个按钮之后呢，再点击中间那个画布，它不会直接自动缩进去……它一直在那挡着。我按我的预期，点中间画布是应该消失的。」",
+  "category": "interaction-semantics",
+  "problem": "画布左下「⋯」视图浮层（AnchoredPopover）、左栏抽屉（Mantine useClickOutside）、任务中心面板在 document / window 上听冒泡的 mousedown，画布空白处的 d3-zoom 在 mousedown 上 stopImmediatePropagation，点画布不收。走查从不点空白处去关浮层，也没有任何门岗规定「点外面」怎么听。",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "docs/fixes/2026-10-23-outside-press-capture.root-cause.json",
+    "src/design/outsidePress.ts",
+    "src/design/outsidePress.structure.test.ts"
+  ],
+  "completionCommits": [
+    "6ef8c3e6b",
+    "62932ad80"
+  ],
+  "rootCauseContract": "docs/fixes/2026-10-23-outside-press-capture.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "src/design/outsidePress.structure.test.ts"
+  },
+  "fixedInPr": 1299
+}

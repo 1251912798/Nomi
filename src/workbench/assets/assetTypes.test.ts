@@ -30,7 +30,6 @@ describe('canvasNodeToAssetRefs', () => {
       kind: 'image',
       name: '日落',
       renderUrl: 'nomi-local://asset/p/a.png',
-      ownerNodeId: 'n1',
       ownerResultId: 'r1',
       source: 'canvas',
       origin: { source: 'canvas', nodeId: 'n1', resultId: 'r1' },
@@ -74,7 +73,7 @@ describe('canvasNodeToAssetRefs', () => {
       result: { id: `result-${kind}`, type: kind, url: `nomi-local://asset/p/result.${kind === 'audio' ? 'mp3' : 'glb'}` } as never,
     }))[0]
 
-    expect(ref).toMatchObject({ kind, source: 'canvas', ownerNodeId: `node-${kind}` })
+    expect(ref).toMatchObject({ kind, source: 'canvas', origin: { source: 'canvas', nodeId: `node-${kind}` } })
   })
 })
 

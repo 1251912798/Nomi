@@ -591,15 +591,18 @@ export async function applyCanvasToolCall(
     }
 
     // 站位参考：词汇 spec → 导演台工程 → 建 director 节点(带 stagingAutoCapture)。
-    // 常驻 StagingCaptureHost 扫到标志就离屏出图 + 连 composition_ref 到目标镜头（director/agent）。
+    // 常驻 StagingCaptureHost 扫到标志就离屏出图，再经 attachStagingReference 接目标镜头（director/agent）。
+    // 接不接得上由同一个判据预判（stagingAttachForTarget），回执照它说：目标只吃文字时不许再说「连到镜头」。
     const spec = parseStagingSpec(record)
-    const { createStagingReferenceNode } = await import('../nodes/director/agent/createStagingReferenceNode')
-    const { stagingNodeId, issues: stagingIssues } = createStagingReferenceNode({ spec, targetNodeId, inCtx })
+    const { createStagingReferenceNode, stagingAttachReceipt } = await import('../nodes/director/agent/createStagingReferenceNode')
+    const { stagingNodeId, issues: stagingIssues, attach } = createStagingReferenceNode({ spec, targetNodeId, inCtx })
+    const receipt = stagingAttachReceipt(attach)
     const cam = spec.camera ?? {}
     return {
       stagingNodeId,
       targetNodeId: targetNodeId ?? null,
-      message: `已创建站位参考（${spec.characters.length} 角色 · ${spec.layout ?? '自动'} 站位 · ${cam.angle ?? 'three-quarter'}/${cam.height ?? 'eye'}/${cam.shot ?? 'medium'}）。正在离屏渲染出图${targetNodeId ? '并连到镜头作 composition_ref' : ''}。${stagingIssues.length ? ' ⚠️ ' + stagingIssues.join('；') : ''}`,
+      degraded: receipt.degraded,
+      message: `已创建站位参考（${spec.characters.length} 角色 · ${spec.layout ?? '自动'} 站位 · ${cam.angle ?? 'three-quarter'}/${cam.height ?? 'eye'}/${cam.shot ?? 'medium'}）。正在离屏渲染出图${receipt.clause}。${stagingIssues.length ? ' ⚠️ ' + stagingIssues.join('；') : ''}`,
     }
   }
 
@@ -639,8 +642,8 @@ export async function applyCanvasToolCall(
     // 运镜参考:词汇 spec → 含相机轨迹的 3D 场景 → 迁成导演台工程 → 建 director 节点(带 cameraMoveAutoCapture)。
     // 节点挂载时常驻 Host(CameraMoveCaptureHost)离屏沿轨迹采帧拼 mp4 + 喂目标镜头视频参考(S3)。
     // 这里只建节点 + 打标志,不渲(S2 Host 异步出片),与 staging 执行结构对称。
-    // 建节点 + 标志的实现抽进 createCameraMoveReferenceNode(单一真相源)——手动运镜控件(B1)也调它,
-    // 两条产路共用 fps/frameCount/move 不变量,不再各自内联(P1/P4)。
+    // 建节点 + 标志的实现住 createCameraMoveReferenceNode(单一真相源),fps/frameCount/move 不变量只在那里算
+    // (视频节点上的手动运镜控件 2026-09-12 已删,现在只有这一个调用方)。
     const spec: CameraMoveSpec = {
       move: parsed.move ?? 'push_in',
       speed: parsed.speed,

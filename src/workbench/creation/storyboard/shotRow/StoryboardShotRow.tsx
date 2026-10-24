@@ -30,12 +30,14 @@ import { isPortraitBox, visualColumnWidth, type FrameMediaBox } from './shotFram
 import type { ShotRowExec } from '../exec/storyboardRowStatus'
 import type { Editor } from '@tiptap/react'
 import StoryboardRowShell from './StoryboardRowShell'
+import { useStoryboardRowDensity } from './storyboardRowDensity'
 import StoryboardShotFrame from './StoryboardShotFrame'
 import StoryboardFrameActions from './StoryboardFrameActions'
 import StoryboardVariantsDrawer from './StoryboardVariantsDrawer'
 import ShotReferenceStrip from './ShotReferenceStrip'
 import { modeDisplayLabel, referenceCapableSibling } from './shotReferenceCells'
 import { dropBindingsForUrls, removeReferenceWithMention } from './shotReferenceSlots'
+import { ReferenceNamesContext, clipReferenceName, dedupeChipNames } from '../../../assets/referenceNames'
 import { droppedMentionUrls } from '../../../assets/promptMentions'
 import ShotComposerBar from './ShotComposerBar'
 import PromptSkeletonSegments from './PromptSkeletonSegments'
@@ -175,6 +177,12 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
     mentionSearch, onMentionSelect, currentRefUrls, mentionUpload, storyboardProfile, sourceSegment,
   } = props
   const orderedVendorKeys = useVendorPreferenceOrder()
+  // 提示词里的引用块写「小图 + 名字」：名字就是参考框里这张图绑定时的名字（重名加「·2」）。
+  const referenceChipNames = React.useMemo(() => {
+    const entries = Object.values(shot.referenceBindings ?? {}).flat().filter((binding) => binding?.url && binding.name?.trim())
+    const names = dedupeChipNames(entries.map((binding) => clipReferenceName(binding.name!)))
+    return Object.fromEntries(entries.map((binding, index) => [binding.url, names[index]!]))
+  }, [shot.referenceBindings])
   const [actionsOpen, setActionsOpen] = React.useState(false)
   const actionsTriggerRef = React.useRef<HTMLButtonElement | null>(null)
   const [variantsOpen, setVariantsOpen] = React.useState(false)
@@ -203,6 +211,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
   const visualHeight = frameBox.height
   // 整片竖版：参考在框右边、提示词不撑满行高（用户选 A）；横版与方图：参考在框下面。
   const portrait = isPortraitBox(frameBox)
+  const compactRow = useStoryboardRowDensity() === 'compact'
 
   const isImageShot = shot.shotKind === 'image'
   // 档案按 (modelKey, modelVendor) 取：同名两家的档案/参数可以不同，按名字取会拿到另一家的模式表。
@@ -273,7 +282,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
       {/* 行菜单贴着「⋯」开，点外面 / Esc 关：开合交给 AnchoredPopover（同一行底栏 ⋯ 弹层用的就是它），这里不另写监听。
           以前是原地 absolute、只有再点一次「⋯」才收：点别处它一直开着，盖住本镜和下一镜的画面格，
           用户以为在点缩略图，实际点进了「复制镜头」（铁律 ⑫ 走查 LAW12-sb-row-more）。
-          点外面那一下是 mousedown 关菜单、不吞事件，所以同一下照样落到被点的东西上。 */}
+          点外面那一下是 pointerdown 捕获阶段关菜单（listenOutsidePress）、不吞事件，所以同一下照样落到被点的东西上。 */}
       {actionsOpen ? (
         // Portal 贴锚点：行在表格的 overflow-hidden 里，原地 absolute 的菜单在最后一行会被裁成一条边。
         <AnchoredPopover anchorRef={actionsTriggerRef} align="start" gap={4} onClose={closeMenus}>
@@ -321,10 +330,10 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
     </div>
   )
 
-  // 视觉列：预览框 → 结果动作（有结果才占位）→ 参考缩略图条。列宽 = 框宽（窄档由行网格和画面格按同一档位缩）。
+  // 视觉列：预览框 → 结果动作（有结果才占位）。列宽 = 框宽（窄档由行网格和画面格按同一档位缩）；参考在提示词框上面一行（B3 / E1a）。
   const visual = (
-    <div className={portrait ? 'flex items-start gap-2' : 'flex flex-col'} data-storyboard-visual={shot.index}>
-      <div className="flex flex-col">
+    <div className="flex flex-col" data-storyboard-visual={shot.index}>
+      <div className={compactRow ? 'flex flex-row flex-wrap items-start gap-x-3 gap-y-1' : 'flex flex-col'}>
       {exec ? (
         <>
           <StoryboardShotFrame
@@ -361,23 +370,6 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
         </div>
       )}
       </div>
-      <ShotReferenceStrip
-        mode={resolvedMode}
-        archetype={resolved?.archetype ?? null}
-        bindings={shot.referenceBindings}
-        onChangeBindings={(next) => onUpdate({ referenceBindings: next })}
-        onRemove={(slotKey, index) => {
-          const next = removeReferenceWithMention(shot.prompt, shot.referenceBindings, slotKey, index)
-          if (next) onUpdate({ referenceBindings: next.bindings, ...(next.prompt !== shot.prompt ? { prompt: next.prompt } : {}) })
-        }}
-        onInsertMention={mentionSearch ? insertMention : undefined}
-        onTriggerMention={mentionSearch ? triggerAtMention : undefined}
-        onSwitchMode={exec?.resultUrl || exec?.status === 'generating' ? undefined : (modeId) => onUpdate({ modeId })}
-        planned={exec?.plannedFirstFrame ?? null}
-        layout={portrait
-          ? { placement: 'right', columnWidth: visualColumnWidth(frameBox), frameWidth: frameBox.width, frameHeight: frameBox.height }
-          : { placement: 'below', width: visualWidth }}
-      />
     </div>
   )
 
@@ -441,6 +433,22 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
             </span>
           </div>
         ) : null}
+        <ShotReferenceStrip
+          mode={resolvedMode}
+          archetype={resolved?.archetype ?? null}
+          bindings={shot.referenceBindings}
+          onChangeBindings={(next) => onUpdate({ referenceBindings: next })}
+          onRemove={(slotKey, index) => {
+            const next = removeReferenceWithMention(shot.prompt, shot.referenceBindings, slotKey, index)
+            if (next) onUpdate({ referenceBindings: next.bindings, ...(next.prompt !== shot.prompt ? { prompt: next.prompt } : {}) })
+          }}
+          onInsertMention={mentionSearch ? insertMention : undefined}
+          onTriggerMention={mentionSearch ? triggerAtMention : undefined}
+          onSwitchMode={exec?.resultUrl || exec?.status === 'generating' ? undefined : (modeId) => onUpdate({ modeId })}
+          planned={exec?.plannedFirstFrame ?? null}
+          layout={{ placement: 'above' }}
+        />
+        <ReferenceNamesContext.Provider value={referenceChipNames}>
         <PromptSkeletonSegments
           prompt={shot.prompt}
           profile={storyboardProfile}
@@ -462,6 +470,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
             onReady: (editor) => { editorRef.current = editor; carryPromptHistory(editor) },
           }}
         />
+        </ReferenceNamesContext.Provider>
         <ShotComposerBar
           shot={shot}
           modelOptions={modelOptions}
@@ -545,7 +554,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
       dropIndicator={props.isDragOver}
       grip={grip}
       visual={visual}
-      visualWidth={visualColumnWidth(frameBox)}
+      visualWidth={visualColumnWidth(frameBox, false)}
       contentStretch={!portrait}
       prompt={prompt}
       footer={variantsOpen ? footer : undefined}

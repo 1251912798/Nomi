@@ -15,6 +15,8 @@ import {
   registerRendererLogIpc,
 } from "./rendererLog";
 import { UntrustedIpcSenderError } from "../ipcSenderGuard";
+import { WorkspaceManifestLockBusyError } from "../workspace/workspaceManifestLock";
+import { diskSafeMessage } from "./diskSafeFailure";
 import {
   installRendererErrorCapture,
   logRendererCrash,
@@ -37,6 +39,15 @@ function linesWrittenBy(marker: string | RegExp, run: () => void): string[] {
   const before = logLines(marker).length;
   run();
   return logLines(marker).slice(before);
+}
+
+/**
+ * 主进程 `ipcMain.handle` 里抛的错回到渲染层的真形状（Electron 43）：主进程侧只回 `error.toString()`，
+ * 渲染层 `ipcRenderer.invoke` 再 `throw new Error(\`Error invoking remote method '${channel}': ${error}\`)`——
+ * name 恒为 `Error`，类、`code`、`cause` 全丢。
+ */
+function receivedOverInvoke(channel: string, thrownInMain: Error): Error {
+  return new Error(`Error invoking remote method '${channel}': ${thrownInMain.toString()}`);
 }
 
 /** 把渲染层 owner 接到一个真的主进程记录器上；报文先过结构化克隆，和真 IPC 一样丢掉原型。 */
@@ -73,7 +84,8 @@ describe("渲染层失败 → 主进程日志（端到端）", () => {
     expect(line).toMatch(/ERROR renderer\s+project-save-failed /);
     expect(line).toContain("trigger=autosave");
     expect(line).toContain("<omitted:prompt>");
-    expect(line).toContain("WorkspaceManifestLockBusyError: Workspace manifest is being changed by another process");
+    // 错误原文不落盘（G-redact-owner）：类名 + 同一句话同一个指纹。
+    expect(line).toContain(`WorkspaceManifestLockBusyError ${diskSafeMessage(error.message)}`);
     expect(line).toContain("code=workspace_manifest_busy");
     expect(line).toContain("index-3f9a.js:12:34");
     for (const leaked of ["alice", "猫咪短片", "Nomi Projects", "东京", "sk-live", "app.asar"]) {
@@ -81,12 +93,50 @@ describe("渲染层失败 → 主进程日志（端到端）", () => {
     }
   });
 
+  it("主进程抛的错经 invoke 回到渲染层（只剩一句话、name 恒为 Error）：盘上那一行仍是主进程那个类名，消息照旧只给指纹", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    wireRendererToMain();
+    // 真实那条路：主进程的锁真抛这个类，消息里带着项目目录。
+    const thrownInMain = new WorkspaceManifestLockBusyError(
+      String.raw`Workspace manifest is owned on another host: 'C:\Users\alice\Documents\Nomi Projects\猫咪短片\.nomi'`,
+    );
+    const lines = linesWrittenBy("project-save-failed-over-invoke-probe", () =>
+      logRendererError("project-save-failed-over-invoke-probe", receivedOverInvoke("nomi:projects:save-async", thrownInMain), {
+        trigger: "autosave",
+      }),
+    );
+    expect(lines).toHaveLength(1);
+    const [line] = lines;
+    // 类名是代码里定义的名字，照写；消息是主进程那个错误自己的消息，指纹和主进程记同一个错误时一样。
+    expect(line).toContain(`WorkspaceManifestLockBusyError ${diskSafeMessage(thrownInMain.message)}`);
+    expect(line).not.toMatch(/ Error msg#/);
+    for (const leaked of ["alice", "猫咪短片", "Nomi Projects", "owned on another host", "invoking remote method"]) {
+      expect(line).not.toContain(leaked);
+    }
+  });
+
+  it("主进程那句消息跨行、某一行长得像栈帧：它不许冒充帧混进日志（摊平后栈首部跟着换，主进程照首部切）", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    wireRendererToMain();
+    const thrownInMain = new Error("render failed\n    at runRender (/Users/alice/猫咪短片/secret-render.js:1:1)");
+    const received = receivedOverInvoke("nomi:export:run", thrownInMain);
+    received.stack = [
+      `Error: ${received.message}`,
+      "    at exportTimeline (file:///C:/Users/alice/AppData/Local/Programs/Nomi/resources/app.asar/dist/assets/index-3f9a.js:12:34)",
+    ].join("\n");
+    const [line] = linesWrittenBy("export-failed-multiline-probe", () => logRendererError("export-failed-multiline-probe", received));
+    expect(line).toContain("index-3f9a.js:12:34");
+    expect(line).not.toContain("secret-render");
+    expect(line).not.toContain("alice");
+  });
+
   it("warn 级带字段与错误进同一份日志；没有桥（纯浏览器 / 单测）时只打 DevTools、不抛", () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     wireRendererToMain();
     logRendererWarn("timeline-append-probe-failed-probe", { attempt: 2 }, new Error("probe timeout"));
     const [line] = logLines("timeline-append-probe-failed-probe");
-    expect(line).toMatch(/WARN\s+renderer\s+timeline-append-probe-failed-probe attempt=2 Error: probe timeout/);
+    expect(line).toMatch(/WARN\s+renderer\s+timeline-append-probe-failed-probe attempt=2 Error msg#[0-9a-f]{8}/);
+    expect(line).toContain(diskSafeMessage("probe timeout"));
 
     vi.unstubAllGlobals();
     expect(() => logRendererError("no-bridge-probe", new Error("x"))).not.toThrow();
@@ -98,7 +148,7 @@ describe("渲染层失败 → 主进程日志（端到端）", () => {
     wireRendererToMain();
     const componentStack = "\n    at CanvasNode (http://localhost:5173/src/a.tsx:1:1)\n    at Workspace (x)\n    at App (y)";
     logRendererCrash("root-boundary-probe", new TypeError("cannot read x"), componentStack);
-    expect(readFile(CRASH_LOG_FILE_NAME)).toContain("[renderer:root-boundary-probe] TypeError: cannot read x");
+    expect(readFile(CRASH_LOG_FILE_NAME)).toContain(`[renderer:root-boundary-probe] TypeError ${diskSafeMessage("cannot read x")}`);
     const [line] = logLines("renderer:root-boundary-probe");
     expect(line).toContain("components=CanvasNode < Workspace < App");
     expect(line).not.toContain("localhost:5173/src");
@@ -114,8 +164,8 @@ describe("渲染层失败 → 主进程日志（端到端）", () => {
     // ResizeObserver 回路通知不是失败：不进日志。
     listeners.get("error")!({ error: null, message: "ResizeObserver loop completed with undelivered notifications." } as unknown as Event);
 
-    expect(logLines("uncaught-probe-rejection")[0]).toMatch(/ERROR renderer\s+unhandled-rejection RangeError: uncaught-probe-rejection/);
-    expect(logLines("uncaught-probe-throw")[0]).toMatch(/ERROR renderer\s+uncaught-error Error: uncaught-probe-throw/);
+    expect(logLines(diskSafeMessage("uncaught-probe-rejection"))[0]).toMatch(/ERROR renderer\s+unhandled-rejection RangeError msg#/);
+    expect(logLines(diskSafeMessage("uncaught-probe-throw"))[0]).toMatch(/ERROR renderer\s+uncaught-error Error msg#/);
     expect(logLines("ResizeObserver")).toHaveLength(0);
   });
 });

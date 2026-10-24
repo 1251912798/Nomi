@@ -1,0 +1,23 @@
+{
+  "name": "媒体节点能不能拖进时间轴（只放行可执行的受支持媒体）",
+  "subject": "canvas.node-timeline-drag",
+  "lifecycle": "live-interaction",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/model/timelineDragAffordance.ts",
+    "symbol": "canDragGenerationNodeToTimeline"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/model/timelineDragAffordance.ts",
+      "symbol": "canDragGenerationNodeToTimeline"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-12",
+  "notes": "合同 docs/fixes/2026-10-12-node-timeline-toolbar.root-cause.json：canDragGenerationNodeToTimeline 在呈现与交互之前授权「有实际可用的主结果」的媒体；点击与拖动消费同一个判断。"
+}

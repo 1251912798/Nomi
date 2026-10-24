@@ -12,19 +12,20 @@ export const zhShotTable = {
   viewOnly: '删除此节点只移除这张表，参考片不受影响',
   columns: { index: '镜', thumbnail: '关键帧', duration: '时长', visual: '画面', status: '状态' },
   unread: '没读出',
-  visionModel: '读图模型', visionAuto: '自动选择', visionHint: '换一个读图模型后点「重新拆解」或某一镜的「重新拆解」；每次拆解开始前都会先报价确认。',
+  visionModel: '读图模型', visionAuto: '自动选择', visionHint: '换一个读图模型后点「重新拆解」或某一镜的「重新拆解」；一共超过 {{calls}} 次调用的长片开拆前会先报价确认。',
   visionFailedSummary: '{{count}} 镜没读出：{{reason}}',
   status: { ready: '未生成', 'anchor-ignored': '参考未使用', 'missing-required': '缺必填参考', generating: '生成中', failed: '生成失败', recoverable: '可找回', done: '已生成', locked: '已锁定' },
   // 拆解表节点：上方浮条 + 下方拆解栏（2026-10-18 拆解前选模型）
   node: {
     toolbar: '拆解表工具', columns: '显示列', rowShorter: '行变矮', rowTaller: '行变高',
     rowHeight: { compact: '紧凑', standard: '标准', large: '大图' },
-    composer: '拆解栏', composerTitle: '拆这条视频：{{title}}', composerHint: '逐镜读画面、取对白，结果写进上面这张表', readyHint: '已拆完。换了模型后，点某一镜的「重拆」就用新模型；整表不重拆，免得盖掉你改过的格子',
+    composer: '拆解栏', composerTitle: '拆这条视频：{{title}}', composerTitleWithLength: '拆这条视频：{{title}} · {{length}}', composerHint: '逐镜读画面、取对白，结果写进上面这张表', readyHint: '已拆完。换了模型后，点某一镜的「重拆」就用新模型；整表不重拆，免得盖掉你改过的格子',
     vision: '读图', transcribe: '转写', transcribeAuto: '自动选择',
-    transcribeHint: '对白用哪个模型转写；每次拆解开始前都会先报价确认。',
-    modelUnavailable: '用不了', modelUnavailableHint: '选的这个模型现在用不了（停用、删了或供应商断开）：先换一个再拆，不会悄悄替你换', noVisionModel: '还没有能读图的模型', staleBlocked: '选的模型用不了，先换一个再拆', deconstruct: '拆解', idleHint: '选好下方的读图 / 转写模型后点「拆解」',
+    transcribeHint: '对白用哪个模型转写；一共超过 {{calls}} 次调用的长片开拆前会先报价确认。',
+    modelUnavailable: '用不了', modelUnavailableHint: '选的这个模型现在用不了（停用、删了或供应商断开）：先换一个再拆，不会悄悄替你换', noVisionModel: '没有能读图的模型', staleBlocked: '选的模型用不了，先换一个再拆', deconstruct: '拆解', idleHint: '选好下方的读图 / 转写模型后点「拆解」',
     addCustomColumn: '+ 自定义列',
     selectedCount: '已选 {{count}} 镜', clearSelection: '取消选择',
+    farUnread: '{{count}} 镜没读出',
   },
 }
 export const enShotTable = {
@@ -40,18 +41,19 @@ export const enShotTable = {
   viewOnly: 'Deleting this node only removes this table; the reference clip is untouched',
   columns: { index: 'Shot', thumbnail: 'Keyframe', duration: 'Duration', visual: 'Visual', status: 'Status' },
   unread: 'Not read',
-  visionModel: 'Vision model', visionAuto: 'Automatic', visionHint: 'Pick another vision model, then deconstruct again (whole table or one shot). Each run asks you to confirm the quote first.',
+  visionModel: 'Vision model', visionAuto: 'Automatic', visionHint: 'Pick another vision model, then deconstruct again (whole table or one shot). Runs over {{calls}} calls ask you to confirm the quote first.',
   visionFailedSummary: '{{count}} shots not read: {{reason}}',
   status: { ready: 'Not generated', 'anchor-ignored': 'Reference unused', 'missing-required': 'Required reference missing', generating: 'Generating', failed: 'Generation failed', recoverable: 'Recoverable', done: 'Generated', locked: 'Locked' },
   // Shot-table node: floating toolbar above + deconstruct bar below (2026-10-18 拆解前选模型)
   node: {
     toolbar: 'Shot table tools', columns: 'Columns', rowShorter: 'Shorter rows', rowTaller: 'Taller rows',
     rowHeight: { compact: 'Compact', standard: 'Standard', large: 'Large' },
-    composer: 'Deconstruct bar', composerTitle: 'Deconstruct: {{title}}', composerHint: 'Reads each shot and transcribes the dialogue into the table above', readyHint: 'Done. Switch models, then Retry a shot to use them. The whole table is not re-run, so your edits stay',
+    composer: 'Deconstruct bar', composerTitle: 'Deconstruct: {{title}}', composerTitleWithLength: 'Deconstruct: {{title}} · {{length}}', composerHint: 'Reads each shot and transcribes the dialogue into the table above', readyHint: 'Done. Switch models, then Retry a shot to use them. The whole table is not re-run, so your edits stay',
     vision: 'Vision', transcribe: 'Transcribe', transcribeAuto: 'Automatic',
-    transcribeHint: 'Which model transcribes the dialogue. Each run asks you to confirm the quote first.',
-    modelUnavailable: 'Unavailable', modelUnavailableHint: 'This model is unavailable now (disabled, removed or its provider disconnected). Pick another before deconstructing; Nomi will not switch it for you', noVisionModel: 'No model that can read images yet', staleBlocked: 'A chosen model is unavailable. Pick another before deconstructing', deconstruct: 'Deconstruct', idleHint: 'Pick the vision and transcription models below, then Deconstruct',
+    transcribeHint: 'Which model transcribes the dialogue. Runs over {{calls}} calls ask you to confirm the quote first.',
+    modelUnavailable: 'Unavailable', modelUnavailableHint: 'This model is unavailable now (disabled, removed or its provider disconnected). Pick another before deconstructing; Nomi will not switch it for you', noVisionModel: 'No vision model', staleBlocked: 'A chosen model is unavailable. Pick another before deconstructing', deconstruct: 'Deconstruct', idleHint: 'Pick the vision and transcription models below, then Deconstruct',
     addCustomColumn: '+ Column',
     selectedCount: '{{count}} shots selected', clearSelection: 'Clear selection',
+    farUnread: '{{count}} not read',
   },
 }

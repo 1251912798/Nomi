@@ -2,7 +2,8 @@
 // 不另开第 N 条写路径）。读 store 最新 meta（连续多次写时不丢前一次）→ appendArchetypeArrayValue
 // 单源去重/上限 → updateNode 单帧持久化。toast 由调用方按返回状态决定（UI 关注点不进这里）。
 import type { NodeWriteAccess } from './nodeWriteAccess'
-import { appendArchetypeArrayValue } from './controls/archetypeMeta'
+import { appendArchetypeArrayValue, archetypeArrayWrite } from './controls/archetypeMeta'
+import { readParkedReferences, readReferenceList, REFERENCE_LIST_KEY, withReferenceList } from './controls/referenceList'
 import { type AssetDropKind, findArraySlotForKind, resolveNodeArraySlots } from '../model/nodeAssetDrop'
 
 export type AddAssetOutcome =
@@ -25,7 +26,12 @@ export function addAssetUrlToNode(nodeId: string, kind: AssetDropKind, url: stri
   if (!slot) return { status: 'no-slot' }
   const result = appendArchetypeArrayValue(meta, slot, url)
   if (result.status === 'full') return { status: 'full', max: result.max, label: slot.label }
+  // 拖进来的正是列表里「先放一边」的那张（旧工程残留）：用户主动放 = 要用它，放回在用（#1269 条件 4）。
+  if (result.status === 'duplicate' && slot.metaKey === REFERENCE_LIST_KEY && readParkedReferences(meta).includes(url.trim())) {
+    access.updateNode(nodeId, { meta: withReferenceList(meta, readReferenceList(meta), { unpark: [url.trim()] }) })
+    return { status: 'added' }
+  }
   if (result.status !== 'added') return { status: result.status }
-  access.updateNode(nodeId, { meta: { ...meta, [slot.metaKey]: result.next } })
+  access.updateNode(nodeId, { meta: archetypeArrayWrite(meta, slot.metaKey, result.next) })
   return { status: 'added' }
 }

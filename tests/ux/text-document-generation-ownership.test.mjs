@@ -1,36 +1,23 @@
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // Real Chromium, original TextDocumentNode/ProseMirror and generation action; controlled supplier/storage, not Electron acceptance.
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
-import { afterAll, beforeAll, expect, test } from 'vitest'
-import { chromium } from 'playwright'
+import { expect, test } from 'vitest'
 import { expect as browserExpect } from '@playwright/test'
-import { createServer } from 'vite'
+import { chromium } from 'playwright'
+import { useBrowserFixture } from './_browserFixture.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { assertTailwindApplied, freshTailwindCss } from './_freshTailwindCss.mjs'
 
 // 现编一次 Tailwind（收集阶段做完，不占用例自己的超时），后面各用例复用。
 freshTailwindCss()
 
-let server, browser, cacheDir
-beforeAll(async () => {
-  cacheDir = makeTempDir('nomi-text-ownership-vite-')
-  server = await createServer({ configFile: false, cacheDir, server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } })
-  await server.listen()
-  browser = await chromium.launch({ headless: true })
-})
-afterAll(async () => {
-  await browser?.close()
-  await server?.close()
-  if (cacheDir) rmSync(cacheDir, { recursive: true, force: true })
-})
+const ENTRY = 'tests/ux/fixtures/text-document-generation-ownership.html'
+// 夹具页在准备阶段编完（_browserFixture.mjs）：用例里的 goto 只是执行页面，不再在 15 秒的操作预算里等开发服务冷编译。
+const fixture = useBrowserFixture({ entries: [ENTRY], browserType: chromium })
 
 test('selection rewrite persists its actual result body, reopens without replay, and rejects later manual edits', async () => {
-  const page = await browser.newPage()
+  const page = await fixture.browser.newPage()
   page.setDefaultTimeout(stationTimeout({ operations: 1 }))
   try {
-    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/text-document-generation-ownership.html`)
+    await page.goto(fixture.url(ENTRY))
     await page.addStyleTag({ content: freshTailwindCss() })
     await assertTailwindApplied(page, 'text-document-generation-ownership.test.mjs')
     const editor = page.locator('.ProseMirror')
@@ -38,12 +25,8 @@ test('selection rewrite persists its actual result body, reopens without replay,
     await browserExpect(editor).toHaveText('Keep OLD tail')
     await editor.click()
     await browserExpect(editor).toBeFocused()
-    await page.keyboard.press('ControlOrMeta+a')
-    await browserExpect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('Keep OLD tail')
-    await page.keyboard.press('ArrowLeft')
-    for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowRight')
-    for (let index = 0; index < 3; index += 1) await page.keyboard.press('Shift+ArrowRight')
-    await browserExpect.poll(() => page.evaluate(() => window.textOwnership.snapshot().selection)).toBe('OLD')
+    // 选区经编辑器自己的选区命令落下（原因见夹具 select()）：同步写进屏幕选区和节点 meta，不用等、也不赌时序。
+    expect(await page.evaluate(() => window.textOwnership.select('OLD'))).toEqual({ screen: 'OLD', stored: 'OLD' })
     await page.evaluate(() => window.textOwnership.prepare())
     await page.evaluate(() => window.textOwnership.generate())
     await browserExpect.poll(() => page.evaluate(() => window.textOwnership.snapshot().pending)).toBe(null)

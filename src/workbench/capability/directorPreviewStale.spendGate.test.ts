@@ -84,11 +84,35 @@ describe('3D-BOX spend gate: a stale preview blocks the shot like rendering / fa
     expect(canPress(shotId)).toBe(true)
   })
 
-  it('a preview rendered before fingerprints existed is not called stale without evidence', async () => {
+  it('a preview rendered before fingerprints existed has unknown freshness: stale before the first paid generation, one free re-render lifts it', async () => {
     const { shotId, directorNodeId } = await stagedAndRendered()
     const { sourceFingerprint: _drop, ...legacy } = readDirectorPreview(node(directorNodeId))!
     useGenerationCanvasStore.getState().updateNode(directorNodeId, { meta: { ...node(directorNodeId)!.meta, [DIRECTOR_PREVIEW_META_KEY]: legacy } })
+    // 没动过工程也一样：没有指纹 = 没法证明它对得上当前工程，花钱前要先重渲一次（本机免费）
+    expect(directorPreviewBlocksOp({ nodeIds: [shotId] }).blocks).toEqual([{ nodeId: shotId, reason: 'stale' }])
+    expect(canPress(shotId)).toBe(false)
     handEdit(directorNodeId)
+    expect(directorPreviewBlocksOp({ nodeIds: [shotId] }).blocks).toEqual([{ nodeId: shotId, reason: 'stale' }])
+    // 沿用现有的「重渲」入口；重渲出的新预演带指纹，放行
+    expect(requestDirectorPreviewRender(directorNodeId)).toBe(true)
+    render(directorNodeId, 'nomi-local://asset/p/preview-2.mp4')
     expect(directorPreviewBlocksOp({ nodeIds: [shotId] }).blocks).toEqual([])
+    expect(canPress(shotId)).toBe(true)
+  })
+})
+
+describe('3D-BOX spend gate: a corrupted preview record is freshness-unknown, like a legacy one', () => {
+  const corrupt = (directorNodeId: string, shotId: string) => useGenerationCanvasStore.getState().updateNode(directorNodeId, { meta: { ...node(directorNodeId)!.meta, [DIRECTOR_PREVIEW_META_KEY]: { status: 'weird', targetNodeId: shotId } } })
+
+  it('invalid status / missing revision no longer reads as "no preview": the shot is blocked until one free re-render', async () => {
+    const { shotId, directorNodeId } = await stagedAndRendered()
+    corrupt(directorNodeId, shotId)
+    expect(directorPreviewBlocksOp({ nodeIds: [shotId] }).blocks).toEqual([{ nodeId: shotId, reason: 'stale' }])
+    expect(canPress(shotId)).toBe(false)
+    expect(requestDirectorPreviewRender(directorNodeId)).toBe(true)
+    expect(readDirectorPreview(node(directorNodeId))?.targetNodeId).toBe(shotId)
+    render(directorNodeId, 'nomi-local://asset/p/preview-2.mp4')
+    expect(directorPreviewBlocksOp({ nodeIds: [shotId] }).blocks).toEqual([])
+    expect(canPress(shotId)).toBe(true)
   })
 })

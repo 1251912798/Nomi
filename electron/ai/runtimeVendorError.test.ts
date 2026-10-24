@@ -19,7 +19,7 @@ describe('pi transport error classification', () => {
     expect(structured).toMatchObject({ httpStatus: status, category });
   });
 
-  // 第三条把上游失败带过 IPC 的通道（另两条：vendorHttp 的媒体请求、aiSdkVendorError 的文本请求）也带上游自己的码：
+  // 第三条把上游失败带过 IPC 的通道（另一条：vendorHttp 的媒体请求；文本任务的模型调用与它共用本文件的映射）也带上游自己的码：
   // 模型下线的 400 只靠状态码会被说成「参数不被接受」。
   it('carries the upstream error code the vendor itself gave, next to its message', () => {
     const structured = parseVendorErrorFromMessage(describeRuntimeError({ kind: 'http', status: 400,

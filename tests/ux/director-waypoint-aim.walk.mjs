@@ -1,7 +1,8 @@
 // Real waypoint and clip inspectors, mounted without the 3D renderer.
+// 夹具页由本仓 Vite 直接服务（与导演台实验室同一个服务：_directorLab 的 resolveDirectorDevServer，复用或自起），不再假设本机开着 5175。
 import fs from 'node:fs'
-import { chromium } from 'playwright'
 import { expect, expectAbsent, proveProbe } from './_assert.mjs'
+import { launchDirectorBrowser, resolveDirectorDevServer } from './_directorLab.mjs'
 const folder = '.tmp/director-full-audit-20260907'
 const fixture = `${folder}/waypoint-aim.html`
 fs.mkdirSync(folder, { recursive: true })
@@ -36,7 +37,8 @@ React.createElement('div',{id:'action'},React.createElement(ActionClipInspector,
 React.createElement('div',{id:'closeup'},React.createElement(CloseupClipInspector,{camera,clip:camera.closeupClips[0]})));}
 createRoot(document.getElementById('app')).render(React.createElement(MantineProvider,null,React.createElement(DirectorStoreContext.Provider,{value:store},React.createElement(App))));
 </script></body></html>`)
-const browser = await chromium.launch({ headless: true, channel: process.env.NOMI_BROWSER_CHANNEL ?? 'chrome' })
+const server = await resolveDirectorDevServer()
+const browser = await launchDirectorBrowser()
 const page = await browser.newPage({ viewport: { width: 800, height: 1000 } })
 const errors = []
 page.on('pageerror', error => { errors.push(error.message); console.log(`PAGE ERROR ${error.message}`) })
@@ -45,7 +47,7 @@ const points = () => page.evaluate(() => window.fixture.store.getState().findObj
 const undo = () => page.evaluate(() => window.fixture.store.getState().undo())
 let failures = 0
 async function run(name, check) {
-  await page.goto(`${process.env.NOMI_DIRECTOR_URL ?? 'http://127.0.0.1:5175'}/${fixture}`)
+  await page.goto(`${server.origin}/${fixture}`)
   await expect(page.locator('#single input[type=range]')).toBeVisible()
   try { await check(); console.log(`PASS ${name}`) } catch (error) { failures++; console.log(`FAIL ${name}: ${error.message}`) }
 }
@@ -108,6 +110,7 @@ try {
   })
 } finally {
   await browser.close()
+  await server.close()
 }
 console.log(`Waypoint inspector verification: ${failures} failures; ${errors.length} page errors`)
 if(failures||errors.length) process.exitCode=1

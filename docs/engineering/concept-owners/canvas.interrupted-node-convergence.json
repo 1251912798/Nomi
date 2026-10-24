@@ -1,0 +1,27 @@
+{
+  "name": "载入时「上次退出前正在跑」的节点变成什么（本地可重做 → 本地处理错误卡，其余 → 通用中断）",
+  "subject": "canvas.interrupted-node-convergence",
+  "lifecycle": "execution",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/store/canvasSnapshotNormalizer.ts",
+    "symbol": "convergeStuckMidFlightNode"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/store/canvasSnapshotNormalizer.ts",
+      "symbol": "convergeStuckMidFlightNode"
+    },
+    {
+      "path": "src/workbench/generationCanvas/model/localProcessingPhase.ts",
+      "symbol": "hasLocalRedoFacts"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-10",
+  "notes": "合同 docs/fixes/2026-10-10-local-task-interrupted-on-reopen.root-cause.json：任一载入路径（快照 / 事件尾重放）之后，没有节点因本窗口里已不存在的任务而保持 running；convergeStuckMidFlightNode 是唯一规则，hasLocalRedoFacts 判中断的本地步骤能否重做（载入收敛与失败卡重试共用）。"
+}

@@ -20,9 +20,11 @@ import { registerCustomCallDraftIpc } from "./customCallDraftIpc";
 import type { ProfileKind } from "./types";
 import { createCustomCallTestRunRegistry, type CustomCallTestRunInput, type CustomCallTestRunResult } from "./customCallTestRuns";
 
+import { serializeReferenceParams } from "./outboundReferenceUrl";
 import { assertTrustedSender } from "../ipcSenderGuard";
 import { desktopT } from "../i18n";
-function resolveTarget(vendorKey: string, modelKey: string) {
+import { connectionWireModel } from "../shared/modelArchetypes/wireModelIdentity";
+function resolveCustomCallTarget(vendorKey: string, modelKey: string) {
   const state = readCatalog();
   const vendor = state.vendors.find((v) => v.key === vendorKey);
   if (!vendor) throw new Error(desktopT("catalog.vendorMissing", { vendor: vendorKey }));
@@ -70,7 +72,7 @@ async function executeCustomCallTest(
 ): Promise<CustomCallTestRunResult> {
   const started = Date.now();
   try {
-    const { vendor, model, apiKey, customConfig } = resolveTarget(input.vendorKey, input.modelKey);
+    const { vendor, model, apiKey, customConfig } = resolveCustomCallTarget(input.vendorKey, input.modelKey);
     if (!input.script.trim()) throw new Error(desktopT("customCall.emptyScript"));
     const canned = cannedTestInput(model.kind);
     const taskKind = input.taskKind || cannedTaskKind(model.kind);
@@ -81,7 +83,9 @@ async function executeCustomCallTest(
       customConfig,
       script: input.script,
       prompt: input.prompt?.trim() || canned.prompt,
-      params: input.params || canned.params,
+      // 试跑参数由渲染层按模式槽拼好、不经 taskTemplateParams：参考链接在交给脚本之前过同一道序列化（outboundReferenceUrl），
+      // 脚本拿到的就是要发的写法（脚本若对请求体签名，签的也是这一份）。
+      params: serializeReferenceParams(input.params || canned.params),
       taskKind,
       modeId: input.modeId,
       signal,
@@ -127,9 +131,9 @@ export function registerCustomCallIpc(registerSyncIpc: (channel: string, handler
     const raw = (payload || {}) as Record<string, unknown>;
     const vendorKey = trim(raw.vendorKey);
     const modelKey = trim(raw.modelKey);
-    const { vendor, model } = resolveTarget(vendorKey, modelKey);
+    const { vendor, model } = resolveCustomCallTarget(vendorKey, modelKey);
     return buildCustomCallAiInstruction({
-      modelKey: model.modelAlias || model.modelKey,
+      modelKey: connectionWireModel(model),
       kind: model.kind,
       baseUrl: String(vendor.baseUrlHint || ""),
       material: String(raw.material || ""),

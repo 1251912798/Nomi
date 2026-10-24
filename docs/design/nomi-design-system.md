@@ -99,6 +99,39 @@ Script → Generate → Edit → Preview → Export
 - **Creator control explicit**：AI 建议不能盖过用户决定，副本/派生关系永远要看得见
 - **Local-first visibility**：本地项目 / 资产 / 进度对桌面用户始终可见
 
+### 1.0 一个东西一个家 / Agent 只指路（2026-10-22 用户拍板）
+
+**第一层｜一个东西一个家**：每个东西只存一份数据、只有一套编辑。可以在多处看到它，但必须是同一个组件读同一份数据。
+
+**第二层｜Agent 只指路**：画布、创作区、时间轴、项目库是唯一的工作区。Agent 在里面干活，在聊天里汇报和请示。聊天里只放三样：
+
+- 指向元素：长得和它在工作台里一样，点一下就定位过去；
+- 必要请示：花钱、覆盖、不可撤销，每次只问这一件事；
+- 本来就属于聊天的：回答、计划、进度、报错、提问。
+
+要改东西只有两条路：去它的家里改，或者跟 Agent 说一句。聊天里不放小编辑器，不做完整预览。
+
+**五条边界**：
+
+1. 还没落进工作台的待选方案，可以有最小预览，选完就落进去；
+2. 请示不顺带改参数；
+3. 多个对象用一组指向；
+4. 目标删了，指向元素显示「已删除」；
+5. 窄屏时点指向，先露出目标，再能一键回到对话。
+
+**怎么用**：出样张前必问一句：**「这个东西在工作台里有没有家？」**有家 → 聊天里只放指向元素；没家 → 先给它安家，再谈聊天里怎么指。本节也是上面「Creator control explicit」「副本/派生关系永远要看得见」的落点：改动发生在东西的家里，聊天只负责指过去。
+
+出处：
+
+- 直接操作（Ben Shneiderman, 1983）：对象一直可见，直接在对象上操作；
+- 以对象为中心的设计 OOUX（Sophia Prater）：先定对象，再定界面；
+- 单一数据源 / MVC 一个模型多个视图：多处看到、一份数据；
+- 联动高亮 brushing & linking（Becker & Cleveland, 1987）：一处选中，别处同步定位；
+- 识别优于回忆（Jakob Nielsen 十条可用性启发式）：指向元素长得和原件一样，一眼认得；
+- 人机 AI 交互准则「支持高效纠错」（Amershi 等, CHI 2019, Guidelines for Human-AI Interaction）：改错的路径短，去家里改或说一句。
+
+门岗（聊天卡片不许引用编辑器组件）尚未做，以后单独立项；现在靠出样张前这一问和评审把关。
+
 ---
 
 ## 行布局：附属信息跟随内容流
@@ -957,6 +990,57 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 
 ---
 
+### 4.7 `NodePointer`（聊天里的指向元素）
+
+文件：`src/workbench/ai/pointer/NodePointer.tsx`（零件 + 组 `NodePointerGroup` + 窄窗口「回到对话」`NodePointerReturnToChat`）；脸的判序与摘要在 `nodePointerFace.ts`，「已定位 / 回到哪个形态」在 `nodePointerStore.ts`，点击定位在 `revealNodeFromChat.ts`；悬停认领在 `src/workbench/generationCanvas/store/nodeExternalHighlightStore.ts`，节点外壳上的高亮样式是 `externalHighlightShellClass`（`generationCanvasReactFlowAdapter.ts`）。拍板稿：`docs/design/boards/2026-10-23/NodePointer.board.json`（19 个元素，`preview/NodePointer.html`）。设计实验室屏「指向元素」（`src/devlab/designLab/nodePointer/`）画全了状态；聊天里的第一个宿主在 D2 第③步（新付费卡），第②步还没有。
+
+视觉：聊天里代表画布上的**一个节点**——长得和节点一样（同一个镜号小胶囊、制作小标、状态条、等待面、结果缩略图，全挂节点自己的件，不另写一张「状态 → 文案」表）；悬停它，画布上那个节点同时亮；点一下，画布定位过去。这是 §1.0「一个东西一个家 / Agent 只指路」在聊天这一端的零件：聊天里不放参数、不放编辑器、不放预览播放器，想改就点过去在节点里改。
+
+**一个零件三种密度**（P2 是 P1 的窄屏 / 行内形态，不是第二套）：
+
+| 密度 | 形态 | 规格 |
+|---|---|---|
+| `card`（P1 镜像小卡）| 标题行在框外、画面框、下面一行只读摘要 | 标题行高 22px（镜号小胶囊 `ShotNumberPill` + 名字，`text-caption`，名字 `font-semibold`，长名截断、`title` 给全名）；画面框是 16:9 槽，节点的真比例放进去（宽的贴满宽、竖的贴满高并居中，不裁不拉伸），`rounded-nomi-sm`，常态 `ring-1 ring-inset ring-nomi-line`；摘要 `text-caption text-nomi-ink-60`：模型 · 比例 · 时长（读节点，和列表卡同一组读法）。**单个竖版**：槽高固定 96px、宽按真比例，摘要放画面右边分两行（模型 / 比例 · 时长 · 清晰度）|
+| `row`（P2 列表行）| 缩略图 + 标题行 + 摘要 + 行尾状态图标 | `min-h-10`、`rounded-nomi border-nomi-line bg-nomi-paper`；32px 缩略图 `rounded-nomi-sm`；摘要 = 模型 · 时长（竖版必须带比例）；行尾图标 14px / stroke 1.8：✓ 完成、转圈 生成中（蓝只留在转圈上）、钟 排队、⚠ 失败、断链 已删除、暂停 已停、钟搜 可找回；点过的那一行行尾改写「已定位」|
+| `chip`（P2 句中小标签）| 圆缩略图 + 镜号 + 名字，嵌在 Agent 的话里自然折行 | `h-7 rounded-full border-nomi-line bg-nomi-paper`，22px 圆缩略图，镜号小胶囊缩到 18px 高；一行内不折 |
+
+**组**（`NodePointerGroup`，一次说多个镜头）：`card` 一行三格（`grid-cols-3 gap-2`，格里只留镜号 + 名字 + 画面，不印摘要）；超过 3 个（4 个也算）第 3 格的画面位置盖「还有 N 个」，点它展开全部；`chip` 句中最后接「+N」，点它展开；`row` 是一列、不折。**组下方有一行常驻**（行高由 `text-caption` 撑着，没有悬停时放一个空格）：悬停 / 聚焦哪一格，就写那一镜的「镜号 · 模型 · 比例 · 时长」——从节点现算、不存，所以悬停和离开都不改组的高度，不把下面的东西（第③步的「生成」钮）顶下去。
+
+**状态**（脸的判序照 `BaseGenerationNode` 叠层，`nodePointerFace.ts`；文案都是节点自己的那句）：
+
+| 状态 | 画法 |
+|---|---|
+| 等你确认 / 排队 · 第 k/N | 空卡 + 左上制作小标（`ProductionShotCornerLabel`，和节点上同一枚，贴得更近：左 4 上 4）|
+| 生成中 | 等待面（`GenerationWaitingSurface`，聊天里一律 `motion="reduced"` 静态方格、不起 WebGL）+ 状态条（`GenerationStatusBar overlay`，`text-micro`，原话「生成中」）|
+| 完成 | 结果缩略图（画布轻量档同一个取图函数）|
+| 失败 | ⚠ 圆托 + 状态条（红点 + 节点自己的失败原因，窄格截断）+ 摘要行写**宿主给的结局**（例如「没有发出去」），用 `text-nomi-danger-ink` 保持红 |
+| 可找回 / 制作已停 / 导入中 / 其余 | 节点同一句：可找回小标、已停原因、等待面、种类图标圆托（28px `bg-nomi-ink-05` + `ring-nomi-line`）|
+| **已删除** | 只认宿主**显式**给的 `removed`：名字快照划线 + 断链圆托 + 「已删除」小标；不可点（`aria-disabled`）|
+| **占位** | 节点不在、或画布还没载入完、而宿主没说删：中性空卡，**不说已删除**（载入中 / 撤销回放的那一瞬节点也会不在），不可点（板 D4）|
+
+**悬停 / 聚焦 / 已定位**：
+
+| 属性 | 值 |
+|---|---|
+| 悬停 / 键盘聚焦 | 指向元素这一头：`card` 画面框外一圈 1.5px 深色细线（`--nomi-ink`）+ `--nomi-shadow-md`，`row` / `chip` 淡底（`bg-nomi-ink-05`、边线透明）；画布那一头：节点外壳同样 1.5px 深色细线 + `--nomi-shadow-lg`（`externalHighlightShellClass('hover')`）。一律中性，不用蓝（§8「描边颜色」）|
+| 谁在亮 | 悬停是**一摞认领**（每个指向元素最多一条，亮最后到的那一条指着的节点）：同一节点被几个指向元素指着，谁先走谁后走都不清掉别人还亮着的；已删除 / 占位不点亮画布 |
+| 点击 | `revealNodeFromChat`：切到生成页 / 画布视图 → 窄窗口先收对话 → 派现役对焦事件（`viewNodeInCanvas`，缩放封顶 100%、扣掉浮层、目标闪 1.4 秒：外壳 1.5px 细线 + 9px ink 12% 淡光晕）。指向元素自己不动视口（`pointerDoors.test.ts` 守）|
+| 已定位 | 点过的那一项左上小标「已定位」（`IconFocus2` 11px / stroke 1.8，压过制作小标）；回到对话后仍标着；全局只有一项 |
+
+**窄窗口「回到对话」**（`NodePointerReturnToChat`）：浮着的对话把画布盖住大半（或停靠但窗口太窄）时，点指向元素 → 对话**先**收成小球露出目标、**再**对焦；画布底部出现一颗深色胶囊 `h-9 rounded-full bg-nomi-ink text-nomi-paper shadow-nomi-lg`（`text-body-sm`、`IconMessage` 16px / stroke 1.8）；P2 形态在最前面带那一镜的圆缩略图和标签（「镜 02 · 回到对话」）。点它或按 Esc：对话回到收起前的形态，焦点落回被点的那一项（它仍标着「已定位」）。可见文字 §1.8 规则 3：中文「回到对话」（4 字）、英文「Back」（≤2 词）；读屏名 / 悬停名写全（英文「Back to chat」）。
+
+其余 token：字号 `text-caption`（12px，标题行 / 摘要）、`text-micro`（11px，状态条 / 行尾「已定位」）、`text-body-sm`（13px，「还有 N 个」/ 回到对话）；圆角 `rounded-nomi-sm` / `rounded-nomi` / `rounded-full`；底 `bg-nomi-paper` / `bg-nomi-ink-05`；边线 `border-nomi-line`；全部走 token，光 / 暗自动翻。22 / 18 / 96px 这几个尺寸（标题行与圆缩略图、镜号小胶囊、单个竖版的槽高）照拍板稿写成任意值，不是 §2.2 的 4 倍数刻度（门岗不拦）。与拍板稿的已知差异：画面框圆角用 token 6px（板 8px）、聊天里等待面静态（板示意渐变竖条）、失败原因在窄格里截断（均 2026-10-23 协调接受）。
+
+使用场景：Agent 说「已在画布上起草了 3 个镜头。想改哪个，点它。」，后面跟一组 `card`（一行三格）。悬停第 2 格 → 画布上镜 02 同时亮、组下方一行写「镜 02 · Seedance 2 · 16:9 · 5s」；点它 → 画布滑到镜 02 并闪一下，那一格标「已定位」。窄窗口：对话浮在画布上盖住大半 → 点镜 02，对话收成小球、画布露出并定位 → 底部「回到对话」（Esc 也回）→ 对话原样回来、镜 02 仍标着「已定位」。Agent 的话里提到镜头时用 `chip`，列出一批时用 `row`。
+
+何时用：
+- 用：Agent 的话或聊天卡（起草结果、付费卡的每一镜、完成收据）里提到画布上的某一个 / 一批镜头——凡是「指着画布上那个节点说话」。
+- 不用：要在聊天里改参数 / 播放预览 → 点过去在节点里做（§1.0：聊天卡片不许引用编辑器组件）；指的不是画布节点（素材库里的素材、时间轴片段）→ 用它们各自的卡；画布上的节点自己 → 用节点。
+
+可访问性：整张指向元素就是一颗原生 `<button>`（Tab 可达，Enter / Space 定位），不嵌套别的可交互元素。读屏名 = 镜号 + 名字 + 状态（失败时再念宿主给的结局）+「点了在画布上定位」；已删除念「X，已删除」、占位念「X，现在还定位不到」，二者 `aria-disabled`；「还有 N 个」`aria-expanded="false"`、点了全部展开；行尾状态图标 `aria-hidden`，状态文字另在读屏名里。**焦点环只用全局那一份**（§8「焦点环」）：组件不自己加 `focus-visible:ring-*` / `outline-*`（`pointerDoors.test.ts` 守）；「回到对话」`useOverlayEscape` 接 Esc。
+
+---
+
 ## 5. 视觉 Patterns（recur 模式）
 
 ### 5.1 节点卡片（NodeCard）
@@ -1069,17 +1153,18 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 
 | 场景 | size | stroke |
 |---|---|---|
-| Sidebar 分类图标 | 16 | 1.5 |
-| 节点角标内的小图标 | 13 | 1.8 |
-| 工作区按钮内图标（`WorkbenchButton`/`WorkbenchIconButton` 的 `[&>svg]` 默认）| **16** | **2** |
-| 节点浮动工具栏图标（NodeFloatingToolbar：图片编辑/视频抽帧/全景/下载）| 16 | 1.6 |
-| 大引导图标 | 24-32 | 1.5 |
-| AppBar / 工具栏图标 | 18 | 1.5-1.6 |
-| 弹窗/卡片头部语义图标（付费确认等）| 18 | 默认 |
+| 角标档（项目名 ▾、导出、节点窄条、参考箭头） | 13 | 1.8 |
+| 工具档（工作区按钮、播放器、生成钮箭头、N 标） | **16** | **2** |
+| 条档（节点浮条、顶栏图标、生成框参考入口） | 18 | 1.8 |
+| 空态档（节点大 / 中空态） | 24 | 1.5 |
+
+四档的代码真相源是 `src/design/iconTiers.ts` 的 `ICON_TIERS` / `ICON_TIER_CLASSES`；生产组件按场景引用，不在调用处写新数值。Sidebar 分类图标和弹窗 / 卡片头部图标若不属于这四个 F1 面，沿用各自现有合同。
+
+**图标多大，按钮说了算（2026-10-24 用户拍板）。** `WorkbenchButton` / `WorkbenchIconButton` 收 `iconTier`（默认 `tool`，就是下面那条 16 / 2），按钮把档位类挂在自己身上，里面的图标**不传 size / stroke**——传了会被按钮的 `[&>svg]` 静默盖掉；也不许包一层 span 绕开选择器。下拉触发器给 `WorkbenchButton` 传 `chevron`，按钮自己在末尾画 ▾（恒为角标档），调用处不再自己放箭头。自带图标槽的其它容器（空态图标盘、顶栏图标钮）同样挂 `ICON_TIER_CLASSES`；只有不在任何容器里的裸图标才把 `ICON_TIERS` 的数值传给 Tabler。门岗：`check:icon-semantics` 规则四（存量按文件计数，只减不增）。
 
 > ⚠️ **工作区按钮图标是 16 / stroke-2**（实心粗体，2026-06-22 用户拍板恢复）。这是 `WorkbenchButton`/`WorkbenchIconButton` 一直在用、被认可的视觉——曾被「对齐文档」误改成 14/1.6（更细更小）→ 撤销/工具栏图标变丑，已恢复。**文档=现实，别再按「§6 旧值 14/1.6」把它改细。**
 
-**禁止：** size 13.5 / 17 这种非标准；`strokeWidth` prop（Tabler 用 `stroke`）。（stroke-2 仅工作区按钮图标的认可值，见上；其它场景仍按表，别滥用粗笔。）
+**禁止：** 四档之外的 size / stroke（包括 13.5 / 17 这种非标准）；`strokeWidth` prop（Tabler 用 `stroke`）。（stroke-2 仅工具档认可，别滥用粗笔。）
 
 ### 语义图标登记（同一语义全仓复用同一图标，不漂移）· **有门岗 `check:icon-semantics`**
 
@@ -1123,6 +1208,7 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 | 这一步**还没轮到**（多步进度里尚未开始的那几行）| `IconCircleDashed` | `AssistedIntegrationProgress` 五步进度的 `pending` 行（§Progress）。词典里没有现成的：`IconCircleFilled` 是「有内容/已占位」、`IconCircleCheck` 是已完成、`IconAlertCircle` 是出事了——虚线圈才说得出「位置留着、还没发生」，而实心或空心圆都会被读成一个已存在的状态 |
 | 展开 / 收起提示词（原地变高显示全文）| `IconArrowsDiagonal` / `IconArrowsDiagonalMinimize2` | 生成节点浮框提示词区右上角那一颗（2026-09-25 用户拍板，参考 LibTV）。选对角双箭头而不是 `IconMaximize`：后者在本仓已是「全屏打开编辑器」（`scene3d.fullscreen.openEditor`），这里是原地变高、不离开当前面；收起用同族的收拢形，一眼看出是同一颗钮的两态 |
 | 画布外那一侧有新东西（点了过去）| `IconArrowDown`（与 `IconArrowUp` / `IconArrowLeft` / `IconArrowRight` 同族按方向取）| 画布边缘提示胶囊 `CanvasArrivalHint` 尾部那一颗（2026-09-25 用户拍板，样张 v1）。箭头只指方向、不是按钮本身的动作；不用 `IconChevron*`：那族在本仓是「展开/折叠」示能 |
+| 首帧 / 尾帧左右对调 | `IconArrowsLeftRight` | 生成框参考行里首尾帧两格中间那颗小圆钮（B3，2026-10-19）。词典里没有现成的：`IconArrowsExchange` 在本仓没人用、`IconArrowsDiagonal` 已是「展开提示词」——左右双箭头才说得出「两格互换位置」 |
 | 左栏「目录」（镜头与分组的树：分组 / 节点的层级清单）| `IconListTree` | 外壳左栏 `ShellRail` 的「目录」项（2026-10-08 外壳拍板稿 Main 板点名 Tabler list-tree）。词典里没有现成的：`IconList` 读成平铺列表、`IconFolder` 已是「素材」——缩进的树形线才说得出「有层级的目录」 |
 | Agent 形态：浮窗（可拖动、可改大小的小窗）| `IconPictureInPicture` | Agent 面板头部三选一、小球右键菜单（`ShellAgentHost`，2026-10-08 CanvasAgent 板）。画中画图形 = 「浮在内容上的一块小窗」，`IconAppWindow` 读成整窗 |
 | Agent 形态：停靠在右侧 | `IconLayoutSidebarRight` | 同上三选一与右键菜单。与左栏收起用的 `IconLayoutSidebarLeftCollapse` 同族，方向说明停在哪一边 |
@@ -1130,6 +1216,8 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 | 你的项目和素材留在本机、这次操作不动它（一句保证，放在动作前的说明行里）| `IconShieldCheck` | 应用内更新弹窗 `UpdateDialog` 的「项目和素材都在你电脑上，更新只换 Nomi 本身」那一行（2026-10-09）。词典里没有现成的：`IconLock` 已是「自动化与权限 / 受限」的语义，在这里会读成「被锁住」；`IconFolder` 读成「文件夹入口」而不是「保证」；`IconCircleCheck` 只表状态完成，不表保护。|
 | 剪辑（取视频的一段，拖入点 / 出点）| `IconCut` | 视频节点浮条「剪辑」钮（样张 `video-node-next`，2026-10-09 待拍板）。与剪辑节点「分割片段」同一把刀：都是在时间轴上切 |
 | 拆解（把一条视频按镜头分开）| `IconLayoutRows` | 视频节点浮条「拆解▾」及其「按镜头拆」项（同上样张）。取分镜分类图标（§7 shots）：拆出来的产物就是分镜，不再用剪刀，免得和「剪辑」并排两把剪刀 |
+| 指向的目标已不在画布上（聊天里的指向元素「已删除」，只在指向元素上有）| `IconLinkOff` | `NodePointer` 已删除态的圆托与 P2 行尾（NodePointer 板 `pointer.deleted`，2026-10-23 D2）。词典里没有现成的：`IconTrash` 是「删除」这个动作的按钮，放在一个不可点的状态上会读成「点了删掉」；断开的链才说得出「指着的那个东西没了」 |
+| 定位到画布上的那个节点（动作「去定位」与结果「已定位」同一个图形）| `IconFocus2` | 分镜行菜单「定位」（`StoryboardShotRow`，`storyboardEditor.rowMenu.locateInCanvas`：定位到画布上那一镜）；`NodePointer` 左上「已定位」小标与 P2 行尾（NodePointer 板 `pointer.located`，2026-10-23 D2；点过、画布定位过去的那一项，回到对话后仍标着）。同一个「定位」语义全仓一个图标，不另选：`IconPointer` 是鼠标点选、`IconTarget` 不在词典里；圆心一点的取景框说得出「对准了某个东西」 |
 
 ### 选图规则
 

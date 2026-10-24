@@ -1,18 +1,9 @@
-// Intake Radar —— Cloudflare R2 取数层：凭据解析 + list/get REST 调用。
-//
-// 凭据永远只在内存里过一遍，从不打印、不落盘、不进返回值以外的任何地方。
-// 这份文件不认识「意见/事件/轨迹长什么样」——那是 aggregate.mjs 的事，这里只搬字节。
-//
-// 凭据解析顺序（照任务书 + 已验证跑通的 D:\tmp\intake-pull.mjs）：
-//   账号 id：NOMI_CF_ACCOUNT_ID 环境变量 → 没设就跑 `npx wrangler whoami` 解析。
-//   OAuth token：本机 wrangler 配置文件里的 `oauth_token = "..."`（xdg 风格路径，
-//     Windows 上就是 intake-pull.mjs 已验证过的那条；也兼容 macOS/Linux 的 XDG 默认位置，
-//     因为本仓主仓库是在 macOS 上跑的——这条雷达不能只在 Windows 能用）。
-// 两者都拿不到就抛——错误文案只说「怎么给」，不带任何值。
+// 凭据解析顺序：
+//   bearer token：官方 `npx wrangler auth token --json`（由 Wrangler 自己处理
+//     macOS/Linux/Windows 的配置、keyring、旧目录优先级与 OAuth refresh）。
+//   账号 id：NOMI_CF_ACCOUNT_ID 环境变量 → 没设就解析 `npx wrangler whoami`。
+// 两者都拿不到就抛——错误文案只说下一步，不带任何值。
 
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fetchWithRetry } from '../transientRetry.mjs'
 
@@ -22,49 +13,47 @@ import { fetchWithRetry } from '../transientRetry.mjs'
 export const INTAKE_BUCKET = 'nomi-feedback-intake'
 export const INTAKE_PREFIXES = ['feedback/', 'events/', 'trajectories/']
 
-/**
- * wrangler 配置文件的候选路径，按优先级排列。
- *
- * 第一条是本机已验证跑通的路径（`D:\tmp\intake-pull.mjs` 实测有效）；后面几条是
- * wrangler 在 macOS/Linux 上的 XDG 默认位置与老版本的传统位置，宁可多试几个,
- * 也不要因为换了台机器/换了 wrangler 版本就整条雷达报「拿不到凭据」。
- */
-export function wranglerConfigCandidates(env = process.env, home = os.homedir(), platform = process.platform) {
-  const candidates = []
-  if (env.WRANGLER_HOME) candidates.push(path.join(env.WRANGLER_HOME, 'config', 'default.toml'))
-  if (platform === 'win32' && env.APPDATA) {
-    candidates.push(path.join(env.APPDATA, 'xdg.config', '.wrangler', 'config', 'default.toml'))
+/** 从官方 `wrangler auth token --json` 输出取 bearer token；不接受 API key/email。 */
+export function parseWranglerAuthToken(text) {
+  try {
+    const value = JSON.parse(String(text || ''))
+    return value && typeof value.token === 'string' ? value.token : ''
+  } catch {
+    return ''
   }
-  candidates.push(path.join(home, '.config', '.wrangler', 'config', 'default.toml'))
-  candidates.push(path.join(home, '.wrangler', 'config', 'default.toml'))
-  return candidates
-}
-
-/** 从一份 wrangler config toml 的文本里取 oauth_token。纯函数、可测——不摸文件系统。 */
-export function parseOAuthTokenFromToml(text) {
-  const m = /^oauth_token\s*=\s*"([^"]+)"/m.exec(String(text || ''))
-  return m ? m[1] : ''
 }
 
 /**
- * 读本机 wrangler 的登录态。**只在内存里用，绝不打印、不落盘**。
- * 依次试 candidates，第一个「文件存在且能解出 token」的赢；都不行就抛——
- * 错误文案只说「去哪 login」，不带路径以外的任何内容。
+ * 让 Wrangler 自己处理三平台的配置、keyring 与 OAuth refresh。**只在内存里用**，
+ * 绝不打印、不落盘；错误不带命令输出，避免底层 stderr 意外回显 token。
  */
-export function readWranglerOAuthToken({ candidates, readFileImpl = (p) => fs.readFileSync(p, 'utf8'), existsImpl = fs.existsSync } = {}) {
-  const list = candidates ?? wranglerConfigCandidates()
-  for (const file of list) {
-    if (!existsImpl(file)) continue
-    let text
-    try {
-      text = readFileImpl(file)
-    } catch {
-      continue // 读不动这个候选，试下一个
+export function authTokenFromWrangler({ execImpl } = {}) {
+  const run = execImpl ?? ((cmd, args) => execFileSync(cmd, args, {
+    encoding: 'utf8',
+    windowsHide: true,
+    timeout: 20_000,
+    shell: true,
+  }))
+  let output
+  try {
+    output = run('npx', ['wrangler', 'auth', 'token', '--json'])
+  } catch (err) {
+    const timedOut = err?.code === 'ETIMEDOUT' || err?.signal === 'SIGTERM' || err?.killed
+    if (err instanceof Error) {
+      err.message = 'wrangler command failed'
+      err.stack = undefined
+      delete err.stdout
+      delete err.stderr
+      delete err.output
     }
-    const token = parseOAuthTokenFromToml(text)
-    if (token) return token
+    if (timedOut) {
+      throw new Error('跑不动 `npx wrangler auth token --json`：超时（20 秒）——若登录已过期或未登录，跑 `npx wrangler login` 后重试。', { cause: err })
+    }
+    throw new Error('wrangler 登录已过期（或没登录）——跑 `npx wrangler login` 后重试。', { cause: err })
   }
-  throw new Error('拿不到本机 wrangler 登录态（oauth_token）。先跑 `npx wrangler login` 后重试。')
+  const token = parseWranglerAuthToken(output)
+  if (!token) throw new Error('wrangler 登录已过期（或没登录）——跑 `npx wrangler login` 后重试。')
+  return token
 }
 
 /** 从 `wrangler whoami` 的输出里挑账号 id。Cloudflare 账号 id 是 32 位小写十六进制——
@@ -86,7 +75,18 @@ export function whoamiAccountId({ execImpl } = {}) {
   try {
     output = run('npx', ['wrangler', 'whoami'])
   } catch (err) {
-    throw new Error(`跑不动 \`npx wrangler whoami\`：${err instanceof Error ? err.message : String(err)}（或者直接设 NOMI_CF_ACCOUNT_ID 环境变量跳过这一步）`)
+    const timedOut = err?.code === 'ETIMEDOUT' || err?.signal === 'SIGTERM' || err?.killed
+    if (err instanceof Error) {
+      err.message = 'wrangler command failed'
+      err.stack = undefined
+      delete err.stdout
+      delete err.stderr
+      delete err.output
+    }
+    if (timedOut) {
+      throw new Error('跑不动 `npx wrangler whoami`：超时（20 秒）——若登录已过期或未登录，跑 `npx wrangler login` 后重试；也可设 NOMI_CF_ACCOUNT_ID。', { cause: err })
+    }
+    throw new Error('跑不动 `npx wrangler whoami`：命令启动失败——若登录已过期或未登录，跑 `npx wrangler login` 后重试；也可设 NOMI_CF_ACCOUNT_ID。', { cause: err })
   }
   const accountId = parseAccountIdFromWhoami(output)
   if (!accountId) throw new Error('`npx wrangler whoami` 的输出里解不出账号 id——先确认已 `npx wrangler login`，或直接设 NOMI_CF_ACCOUNT_ID。')
@@ -97,10 +97,10 @@ export function whoamiAccountId({ execImpl } = {}) {
  * 解析这一轮要用的凭据。账号 id 与 token 都只回内存里的值，调用方负责不打印、不落盘、
  * 不写进任何报告——`main()` 里过一遍代码检查这条约束就够，这里只是提供值。
  */
-export function resolveCredentials({ env = process.env, execImpl, candidates, readFileImpl, existsImpl } = {}) {
+export function resolveCredentials({ env = process.env, execImpl } = {}) {
+  const token = authTokenFromWrangler({ execImpl })
   const fromEnv = String(env.NOMI_CF_ACCOUNT_ID || '').trim()
   const accountId = fromEnv || whoamiAccountId({ execImpl })
-  const token = readWranglerOAuthToken({ candidates, readFileImpl, existsImpl })
   return { accountId, token }
 }
 

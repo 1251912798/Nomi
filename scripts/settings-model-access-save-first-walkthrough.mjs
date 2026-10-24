@@ -176,7 +176,7 @@ async function certificationRuns(win) {
   })
 }
 
-function readCatalog() {
+function readCatalogFromDisk() {
   return JSON.parse(readFileSync(path.join(settingsDir, 'model-catalog.json'), 'utf8'))
 }
 
@@ -443,7 +443,7 @@ try {
   await addPage.getByRole('button', { name: '获取模型列表', exact: true }).waitFor({ state: 'visible' })
   assert(requests.length === 0, `Saving the connection contacted the upstream: ${JSON.stringify(requests)}`)
 
-  const catalogAfterConnectionSave = readCatalog()
+  const catalogAfterConnectionSave = readCatalogFromDisk()
   const vendor = catalogAfterConnectionSave.vendors.find((item) => item.name === vendorName && item.baseUrlHint === baseUrl)
   assert(vendor, 'Saved connection was not found in the catalog')
   assert(!catalogAfterConnectionSave.models.some((model) => model.vendorKey === vendor.key), 'Connection-only save created a fake model')
@@ -506,7 +506,7 @@ try {
   const firstTaskPage = win.locator(`[data-model-settings-page="verification"][data-adapter-run-id="${firstRun.id}"]`)
   await firstTaskPage.waitFor({ state: 'visible' })
   await assertSettingsOwnedPage(win, `[data-model-settings-page="verification"][data-adapter-run-id="${firstRun.id}"]`, 'canonical verification task')
-  const catalogDuringCertification = readCatalog()
+  const catalogDuringCertification = readCatalogFromDisk()
   const candidates = catalogDuringCertification.models.filter((model) => model.vendorKey === vendor.key && initialModels.includes(model.modelKey))
   assert(candidates.length === 3 && candidates.every((model) => model.enabled === false), 'Unverified candidates became usable before certification')
   await screenshot(win, '05-desktop-certification-running.png')
@@ -599,7 +599,7 @@ try {
   assert(await existingAddPage.getByPlaceholder('sk-...', { exact: true }).count() === 0, 'Saved connection asked for its API key again')
   await addExistingModelManually(win, manualAudioModel)
   assert(requests.length === requestsBeforeExistingPicker, 'Manually saving to an existing connection contacted the upstream')
-  const catalogAfterAppend = readCatalog()
+  const catalogAfterAppend = readCatalogFromDisk()
   const appended = catalogAfterAppend.models.find((model) => model.vendorKey === vendor.key && model.modelKey === manualAudioModel)
   assert(appended?.kind === 'audio' && appended.enabled === false, 'Manually appended audio model was not saved disabled')
   assert(appended?.meta?.adapter?.state === 'unverified', 'Manually appended audio model was not saved unverified')

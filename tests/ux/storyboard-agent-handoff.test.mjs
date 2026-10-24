@@ -4,13 +4,12 @@
 import { test } from 'vitest'
 import { expect } from '@playwright/test'
 import { chromium } from 'playwright'
-import { createServer } from 'vite'
-import fs from 'node:fs'
-import path from 'node:path'
 import { assertTailwindApplied, freshTailwindCss } from './_freshTailwindCss.mjs'
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
+import { useBrowserFixture } from './_browserFixture.mjs'
 
 freshTailwindCss()
+const HARNESS = 'tests/ux/fixtures/original-storyboard-editor-harness.html'
+const fixture = useBrowserFixture({ entries: [HARNESS], browserType: chromium })
 
 const ENTRIES = [
   { name: '页脚入口', select: true, click: (page) => page.locator('[data-storyboard-agent-handoff="footer"]').click() },
@@ -27,14 +26,9 @@ const ENTRIES = [
 
 for (const locale of ['zh-CN', 'en']) for (const entry of ENTRIES) test(`分镜「交给 Agent」${locale}：${entry.name}把这一镜挂给 Agent`, async () => {
   const en = locale === 'en'
-  const cacheDir = makeTempDir('nomi-storyboard-handoff-')
-  const server = await createServer({ configFile: false, cacheDir, server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } })
-  let browser
+  const page = await fixture.browser.newPage({ viewport: { width: 1280, height: 1000 } })
   try {
-    await server.listen()
-    browser = await chromium.launch({ headless: true })
-    const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } })
-    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/original-storyboard-editor-harness.html?locale=${locale}`, { timeout: 120000 })
+    await page.goto(fixture.url(HARNESS, `?locale=${locale}`))
     await page.addStyleTag({ content: freshTailwindCss() })
     await assertTailwindApplied(page, 'storyboard-agent-handoff.test.mjs')
     await page.addStyleTag({ url: '/src/styles/index.css' })
@@ -54,7 +48,6 @@ for (const locale of ['zh-CN', 'en']) for (const entry of ENTRIES) test(`分镜�
     expect(refs[0]).toContain('storyboard:plan:')
     expect(refs[0]).toContain('shot-a')
   } finally {
-    await browser?.close()
-    await server.close()
+    await page.close()
   }
-}, 240000)
+})

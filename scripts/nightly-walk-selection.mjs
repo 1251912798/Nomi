@@ -18,13 +18,17 @@ export function selectNightlyWalks(files, { root = repoRoot } = {}) {
     .sort()
 }
 
-function listWalks(directory) {
+function listWalks(directory, root = repoRoot) {
   return fs.readdirSync(directory, { withFileTypes: true })
     .filter((entry) => entry.isFile())
-    .map((entry) => path.posix.join(path.relative(repoRoot, directory).replaceAll('\\', '/'), entry.name))
+    .map((entry) => path.posix.join(path.relative(root, directory).replaceAll('\\', '/'), entry.name))
+}
+
+/** 夜跑真正会跑的那份清单（工作流调本文件 CLI 拿的就是它）：目录顶层的走查，去掉登记的排除项。 */
+export function nightlyWalkInventory({ root = repoRoot, directory = 'tests/ux' } = {}) {
+  return selectNightlyWalks(listWalks(path.resolve(root, directory), root), { root })
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const directory = path.resolve(repoRoot, process.argv[2] ?? 'tests/ux')
-  for (const file of selectNightlyWalks(listWalks(directory))) console.log(file)
+  for (const file of nightlyWalkInventory({ directory: process.argv[2] ?? 'tests/ux' })) console.log(file)
 }

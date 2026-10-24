@@ -10,7 +10,9 @@ import InlineParameterBar from './InlineParameterBar'
 import type { DynamicModelControl } from './controls/parameterControlModel'
 
 const captured = vi.hoisted(() => ({ selects: [] as NomiSelectProps[], iconButtons: [] as WorkbenchIconButtonProps[] }))
-vi.mock('../../../design', () => ({
+vi.mock('../../../design', async () => ({
+  // 摘要 pill 的 ▾ 是按钮外的裸图标，尺寸取四档真相源；用真值，不在测试里抄第二份数字。
+  ICON_TIERS: (await vi.importActual<typeof import('../../../design/iconTiers')>('../../../design/iconTiers')).ICON_TIERS,
   NomiSelect: (props: NomiSelectProps) => {
     captured.selects.push(props)
     return React.createElement('span', null, props.options.find(option => option.value === props.value)?.label)
@@ -192,7 +194,7 @@ describe('InlineParameterBar 参数摆法（parameterLayout）', () => {
   it('summary（画布节点）摆法不变：一行、不换行，身份行仍是自己的 flex 盒', () => {
     const { html } = render([ratio, duration], {})
     expect(barClass(html).split(' ')).not.toContain('flex-wrap')
-    expect(html).toContain('class="flex min-w-0 items-center gap-2"')
+    expect(html).toContain('class="flex min-w-0 items-center gap-1.5"')
   })
 
   it('摆法不读任何测量：组件里没有量盒子的代码（量错 / 量出 0 都少不了一颗 chip）', () => {

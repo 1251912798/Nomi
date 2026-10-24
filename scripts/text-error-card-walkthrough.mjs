@@ -57,7 +57,7 @@ fs.writeFileSync(
       labelZh: '走查文本模型', kind: 'text', enabled: true,
     }],
     mappings: [],
-    // 必须给一把（哪怕是假的）钥匙：authType=none 时 apiKey 为空，buildAiSdkModel 会在
+    // 必须给一把（哪怕是假的）钥匙：authType=none 时 apiKey 为空，the model-call core (nomiModelConfigFor) 会在
     // **发请求之前**就抛 "apiKey is required"，走查连上游都碰不到（第一版就栽在这）。
     // enc: 'plain' = 明文记录，safeStorage 不参与，跨机可复现。
     apiKeysByVendor: {

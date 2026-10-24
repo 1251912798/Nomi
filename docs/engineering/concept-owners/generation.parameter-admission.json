@@ -78,6 +78,14 @@
     {
       "path": "electron/capabilityCore/mcpGenerationTools.ts",
       "symbol": "admitDraftParameters"
+    },
+    {
+      "path": "electron/shared/aspectRatioValue.ts",
+      "symbol": "aspectRatioControlsOf"
+    },
+    {
+      "path": "electron/shared/aspectRatioValue.ts",
+      "symbol": "sameAspectRatio"
     }
   ],
   "forbidden_derivations": [

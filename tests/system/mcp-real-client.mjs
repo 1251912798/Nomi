@@ -5,11 +5,25 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { repoRoot, makeIsolatedDirs, seedMcpClientIdentityEnv } from '../ux/_mcpJourney.mjs'
 import { createRequire } from 'node:module'
+import { assertFreshBuild } from '../../scripts/package-build-stamp.mjs'
 import { fileURLToPath } from 'node:url'
 import { realNomiProfile } from '../ux/_realProfile.mjs'
 import { require as tsxRequire } from 'tsx/cjs/api'
 const require = createRequire(import.meta.url)
 const { mcpServerEntry } = tsxRequire('../../electron/capabilityCore/mcpConfig.ts', import.meta.url)
+const { mcpClientConfigFile, mcpClientInstallTraces, mcpClientPlatform } = tsxRequire('../../electron/shared/mcpClientRegistry.ts', import.meta.url)
+
+/**
+ * 这台机器上 Codex / Claude Code 真正在读的那几份配置（指纹与「关掉别的服务器」都按它）。
+ * 位置只问注册表（和产品同一份规则）：用户设了 CODEX_HOME / CLAUDE_CONFIG_DIR，宿主读的就是那里，
+ * 手写 ~/.codex/config.toml 会去指纹一份宿主根本不读的文件（2026-10-24）。
+ * Claude Code 的配置目录 = 注册表里它的第一条安装痕迹（~/.claude，或 $CLAUDE_CONFIG_DIR），settings.json 在里面。
+ */
+export function hostConfigFiles({ home = os.homedir(), env = process.env, platform = process.platform } = {}) {
+  const context = { platform: mcpClientPlatform(platform), env, homedir: home, join: path.join }
+  const [claudeConfigDir] = mcpClientInstallTraces('claude', context)
+  return [mcpClientConfigFile('codex', context), mcpClientConfigFile('claude', context), path.join(claudeConfigDir, 'settings.json')]
+}
 
 export function parseMcpServerNames(configText = '') {
   const names = []
@@ -56,7 +70,7 @@ function fileFingerprint(file) {
 }
 
 export function captureFingerprint(home = os.homedir()) {
-  const files = [path.join(home, '.codex', 'config.toml'), path.join(home, '.claude.json'), path.join(home, '.claude', 'settings.json')]
+  const files = hostConfigFiles({ home })
   const capabilityDir = path.join(home, '.nomi', 'capability-core')
   const capability = fs.existsSync(capabilityDir)
     ? fs.readdirSync(capabilityDir).sort().map((name) => fileFingerprint(path.join(capabilityDir, name)))
@@ -126,7 +140,7 @@ export async function main(argv = process.argv.slice(2)) {
   const before = captureFingerprint()
   let command; let args; let env = nomiEnv; let configFile
   if (client === 'codex') {
-    const configPath = path.join(os.homedir(), '.codex', 'config.toml')
+    const [configPath] = hostConfigFiles()
     const configText = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : ''
     const launcher = mcpServerEntry('codex', {
       appCommand: electron,
@@ -159,6 +173,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
   console.log(JSON.stringify({ client, fixture, command, args, overrides: client === 'codex' ? args.slice(3, -1) : configFile }, null, 2))
   if (!dryRun) {
+    assertFreshBuild(repoRoot) // 真起客户端才核；dry-run 只打印命令，不启动构建产物
     const result = await runProcess(command, args, env)
     process.stdout.write(result.stdout); process.stderr.write(result.stderr)
     if (result.code !== 0) throw new Error(`client exited ${result.code}`)

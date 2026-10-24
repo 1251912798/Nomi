@@ -25,7 +25,7 @@ describe('第三方示例媒体的会话失效记账', () => {
   it('已失效的示例：提示词卡不再挂 <video> 去请求，显示「示例已失效」', () => {
     const mediaUrl = 'https://video.twimg.com/amplify_video/2/vid/avc1/480x270/b.mp4'
     const prompt = { id: 'p1', title: 'Sora 2 示例', prompt: 'a cat', mediaType: 'video', mediaUrl, source: 'sora2-viral' } as unknown as LibraryPrompt
-    const render = () => renderToStaticMarkup(React.createElement(TooltipProvider, null, React.createElement(PromptCard, { prompt, onSelect: () => undefined })))
+    const render = () => renderToStaticMarkup(React.createElement(TooltipProvider, null, React.createElement(PromptCard, { prompt, size: 'page', onOpen: () => undefined })))
     expect(render()).toContain(`src="${mediaUrl}"`)
     markRemoteExampleMediaBroken(mediaUrl)
     const html = render()

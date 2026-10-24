@@ -54,7 +54,8 @@ describe('canvas viewport scale', () => {
     expect(shotTableDensityForZoom(1)).toBe('full')
     expect(shotTableDensityForZoom(0.8)).toBe('full')
     expect(shotTableDensityForZoom(0.6)).toBe('compact')
-    expect(shotTableDensityForZoom(0.4)).toBe('compact')
+    expect(shotTableDensityForZoom(0.45)).toBe('compact')
+    expect(shotTableDensityForZoom(0.44)).toBe('card')
     expect(shotTableDensityForZoom(0.3)).toBe('card')
   })
 

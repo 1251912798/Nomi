@@ -199,4 +199,28 @@ describe("workspace manifest transaction", () => {
     const after = tryAcquireWorkspaceManifestLock(root);
     releaseWorkspaceManifestLock(after);
   });
+
+  // N1 附带（V-plibrary 用例 C）：写者排队等锁期间项目根被删（回收 / 用户在资源管理器里删 / 同步盘挪走），
+  // 此前每次重试都 mkdirSync(.nomi, {recursive}) 把根重新建出来，留下没清单、没登记的孤儿目录。
+  // 不变量：取锁不能凭空造出项目根；根没了就明确报错、不再重试。
+  for (const kind of ["staged", "immediate"] as const) {
+    it(`${kind} 写者排队等锁时项目根被删：明确报错，不重建孤儿目录`, async () => {
+      const parent = makeTempDir();
+      const root = path.join(parent, "project");
+      fs.mkdirSync(root);
+      const holder = tryAcquireWorkspaceManifestLock(root);
+      let ran = false;
+      const writing = kind === "staged"
+        ? withWorkspaceManifestStagedTransaction(root, () => { ran = true; return 1; }, { retryDelayMs: 5 })
+        : withWorkspaceManifestTransaction(root, () => { ran = true; return 1; }, { retryDelayMs: 5 });
+      const settled = writing.then(() => null, (error: unknown) => error);
+      await new Promise((resolve) => setTimeout(resolve, 20)); // 进入重试
+      fs.rmSync(root, { recursive: true, force: true });
+      try { releaseWorkspaceManifestLock(holder); } catch { /* 锁目录已随根一起删掉 */ }
+      const error = await settled;
+      expect(ran).toBe(false);
+      expect(String((error as Error | null)?.message)).toMatch(/no longer exists/i);
+      expect(fs.existsSync(root)).toBe(false);
+    });
+  }
 });

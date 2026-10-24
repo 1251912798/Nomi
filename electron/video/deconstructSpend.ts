@@ -13,6 +13,7 @@
 import { confirmSpendAndMintGrant } from "../spendConfirmGrant";
 import { readProject } from "../projects/repository";
 import type { DeconstructSpendPlan } from "./deconstructVideo";
+import { DECONSTRUCT_ASK_ABOVE_CALLS } from "../shared/canvas/shotTable";
 
 /** 取项目名给卡上那一行（读不到就不显示，绝不编一个）。 */
 function projectNameOf(projectId: string): string | undefined {
@@ -24,9 +25,6 @@ function projectNameOf(projectId: string): string | undefined {
     return undefined;
   }
 }
-
-/** 一次拆解一共不超过这么多次调用就直接开拆，超过才弹报价卡（用户 2026-10-18 拍板「短片不弹，长片才弹」）。 */
-export const DECONSTRUCT_ASK_ABOVE_CALLS = 30;
 
 export async function authorizeDeconstructSpend(plan: DeconstructSpendPlan): Promise<string | null> {
   const projectName = projectNameOf(plan.projectId);

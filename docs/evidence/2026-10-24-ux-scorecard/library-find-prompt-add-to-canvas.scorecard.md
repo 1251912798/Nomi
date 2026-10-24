@@ -1,0 +1,78 @@
+# 体验成绩单：Skill / 提示词库重排：分组 + 统一卡片 + 抽屉两列，「放上画布」新建对应节点并带参考图
+
+- 改动：Skill / 提示词库重排：分组 + 统一卡片 + 抽屉两列，「放上画布」新建对应节点并带参考图
+- 验收 head：`见提交说明（本分支的本地提交接在 5384ea0bd 之后）`（实现线 I-libraries 本地提交（feat/skill-prompt-library-layout），未推送；走查数字在最终构建上复跑过（library-layout 第 5 次、skill-library-cards 第 3 次）；提示词库三个性能场景在早一版构建上测的（和最终只差文字封面样式、一个 hook 挪文件、技能库正向过滤一行、空态说明一句））
+- 场景 id：`library-find-prompt-add-to-canvas`
+- 谁验：I-libraries（实现线自测；独立验收线待协调指定）（实现线自测）
+- 日期：2026-10-24；成绩单整理：I-libraries，按本次走查日志与性能场景原始结果填写
+
+**用户这次能完成：**在项目里点左栏「提示词」，搜或按分类找到一条，点开看大图和全文，点「放上画布」：画布上多一个图片 / 视频节点、带上这条自带的参考图、被选中且就在眼前；不想要就点撤销
+
+**能力变化：**新增：分类导航（我的 / 内置 / 公开库各组）与组内「全部 N ›」、提示词卡统一一张脸：封面只放图，标题和类型在封面下；没媒体的用文字封面、「放上画布」带上条目自带的参考图，并切到生成画布让人看见新节点、性能场景 library-skill-open / library-prompt-open / library-prompt-scroll-1400 / library-prompt-search-1400；改变：技能库只列 kind: skill（提示词和效果回各自的库）、抽屉：两排分段收成「搜索 + 分类 ▾」一行，导入 / 新建挪到标题行、没开项目时「放上画布」「放进对话」「新建」禁用并说原因；去掉：来源分段（我的库 / Nomi 精选）和来源标签排、封面上压字和角标、「自建」文字卡（我的条目和公开条目同一张卡）、技能卡上的模型可用性检查
+
+## 结果
+
+- 机器：完成 **6 / 8**（失败 2 条，原样列在下表，不丢）
+- 首次尝试成功：null（未采集：需要真人首次操作，AI 不代填）
+
+| 尝试 | 结果 | 说明 | 证据 |
+| --- | --- | --- | --- |
+| library-layout 走查第 1 次（修参考图前） | **失败** | 「放上画布」建出的新节点没带参考图：新节点还没选模型，参考图写不进去；已修（还没选模型的卡先记下参考图，第一次定模式时算上） | src/workbench/generationCanvas/nodes/promptReferenceImages.ts、useNodeModelAutoSelect.test.ts |
+| library-layout 走查第 2 次 zh / en × 明 / 暗 | 通过 |  | tests/ux/library-layout.walk.mjs |
+| library-layout 走查第 3 次（35 张截图） | 通过 |  | tests/ux/library-layout.walk.mjs（NOMI_LIBRARY_LAYOUT_SHOTS 指定落盘目录） |
+| library-layout 走查第 4 次（补拍技能详情英·暗，36 张截图） | 通过 |  | tests/ux/library-layout.walk.mjs（只多一张截图） |
+| library-layout 走查第 5 次（最终构建：技能库正向过滤、空态说明补一句之后，36 张截图） | 通过 |  | tests/ux/library-layout.walk.mjs |
+| skill-library-cards 走查第 1 次 | **失败** | 走查还在找改版前才有的效果芯片属性；改成核对新节点的提示词已填入 | tests/ux/skill-library-cards.walk.mjs |
+| skill-library-cards 走查第 2 次 | 通过 |  | tests/ux/skill-library-cards.walk.mjs |
+| skill-library-cards 走查第 3 次（最终构建） | 通过 |  | tests/ux/skill-library-cards.walk.mjs |
+
+## 机器测的
+
+来源：walk-log
+设备 / 窗口 / 语言：Mac（Apple M5，10 核，24GB），开发构建（electron .），窗口放屏幕外 / 1440×900 内容视口；抽屉 280px / zh-CN 与 en，明 / 暗。边界：隔离资料目录 + 走查种子（两条我的提示词、两条我的技能），公开库走 IPC 夹具；不请求生成、不花钱
+
+| 主指标 / 指标 | 现状 → 当前 | 单位 | 样本数 | 口径 | 备注 |
+| --- | --- | --- | --- | --- | --- |
+| 带参考图的条目「放上画布」后，新节点带上那张参考图 | null → 1 | 次 | 1 | 脚本计数（真事件，非采集器） | 走查断言新节点参考图的 src 就是条目自带的那张；改前代码只灌提示词、不带参考图（读代码得知，没有跑改前走查） |
+| 项目里从打开提示词抽屉到节点出现在眼前的点击 | null → 3 | 次 | 1 | 脚本计数（真事件，非采集器） | 左栏「提示词」→ 卡片 → 「放上画布」；在创作 / 剪辑里点也会切到生成画布（改前不切，新节点建在看不见的画布上） |
+| 提示词页首屏挂载的媒体数（可见卡 20 张，共 221 条） | null → 25 | 个 | 1 | 脚本计数（真事件，非采集器） | 设计卡 ★9 第 15 条：不超过可见卡 × 2；挂载的卡 26 张 |
+| 项目里点左栏「提示词」到首屏卡片可见 | null → 30.1 | ms | 5 | 实测（采集器） | perf:scenarios library-prompt-open --measure-only，中位数；p95 31.3，预算 200 |
+| 1400 条提示词里逐键搜索，每键到结果换好 | null → 23 | ms | 5 | 实测（采集器） | perf:scenarios library-prompt-search-1400 --measure-only，中位数；p95 29.9，预算 100 |
+
+## 真人给的（和上面分开记）
+
+- SEQ（1–7）：null（未采集）
+- 误点：null · 回退：null · 求助：null · 首次尝试成功：null
+- 说明：还没有真人试过
+
+## 护栏
+
+| 护栏 | 结果 | 证据 / 说明 |
+| --- | --- | --- |
+| 没开项目时不建到看不见的画布：「放上画布」禁用并说原因 | 通过 | library-layout 走查（项目库页上 [data-prompt-detail-add] 禁用、title 是 libraries.layout.needsProject）；截图 prompt-detail-zh-light |
+| 不追加进当前选中的节点：总是新建一个 | 通过 | library-layout 走查：节点数 +1、新节点被选中 |
+| 撤销删掉新节点（参考图和建卡是同一个撤销点） | 通过 | library-layout 走查：撤销后节点数回到原值 |
+| 模型收不下参考图时明说，不悄悄丢 | 通过 | 单测 promptReferenceImages.test.ts（不收参考图的模型返回 unsupported、什么都不写） |
+
+## 最大摩擦点与决定
+
+- 摩擦：英文界面里，内置分组名、来源标签和条目标题仍是中文（数据里没有英文）
+- 决定：界面文案全走 i18n；数据层补英文另立账，交协调排期
+- 协调决定：待协调验收
+
+## 没验证的
+
+| 缺口 | owner | 复查条件 |
+| --- | --- | --- |
+| 真人首次尝试：在提示词库找到一条放上画布 | 协调会话 | 下一次有人试用时补 SEQ 和人工事件 |
+| AI 用户走查（要花钱） | 协调会话 | 协调决定跑不跑；跑时用本场景 |
+| 默认模型没有参考图槽位时，先记下的参考图看不见、也不提示 | 协调会话 | 选到有参考图槽位的模式时会出现；要不要提示交协调定 |
+
+## 证据路径
+
+- tests/ux/library-layout.walk.mjs
+- docs/evidence/2026-10-24-library-perf/
+- docs/plan/2026-10-23-skill-prompt-library-layout.md ★9
+- docs/design/boards/2026-10-24/
+
+> 这一页不出总分：机器数、真人数、护栏、未验证各看各的。

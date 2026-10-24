@@ -1,7 +1,7 @@
 import { markStoryboardOverrides, overriddenShotFields } from '../model/storyboardOverrides'
 import { createEdgeId, createGenerationNode, removeNodes, upsertNode } from '../model/graphOps'
 import { normalizeParameterEdges } from '../model/parameterReferenceSlots'
-import { resolveInsertionPosition } from './resolveInsertionPosition'
+import { occupiedSize, resolveInsertionPosition } from './resolveInsertionPosition'
 import { visibleCanvasRect, visibleInsertionPoint } from './canvasVisibleArea'
 import { tidyCanvasLayout } from './tidyCanvasLayout'
 import { getDefaultCategoryForNodeKind, type GenerationCanvasNode, type NodeGroup, type TiptapDocJson } from '../model/generationCanvasTypes'
@@ -82,24 +82,23 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
     // 旧版除工具栏外各入口都信任原始落点、零避让）。只比同分类：画布按 activeCategoryId
     // 分屏渲染，跨分类卡不同屏、不会遮挡，拿它们避让只会把新卡无谓推远。批量建卡（create_nodes）
     // 与项目加载直接 set nodes、不走这里，故其自有的紧凑布局不受影响。
-    // exactPosition：调用方已算好成组紧凑布局（切图瓦片），信任原值、不避让——否则会被逐张推散。
+    // 避让比的是**真实占位**（渲染尺寸，不是名义 node.size）：竖版图 / 有媒体结果的卡渲染出来比名义高一大截，
+    // 按名义比就会把新节点（拆解表、抽帧卡……）落进它的下半身里。
     const siblings = currentState.nodes.filter((node) => (node.categoryId || 'shots') === (categoryId || 'shots'))
-    const position = input.exactPosition && input.position
-      ? input.position
-      // 没给落点 = 调用方不关心具体位置：落在用户此刻看得见的地方（2026-09-25 拍板：新建尽量直接落在可见区，
-      // 程序不再为了「露出」去挪画布）。画布从没挂载过（没有可见区）才退回固定原点。
-      : resolveInsertionPosition(input.kind, input.position ?? visibleInsertionPoint(categoryId) ?? { x: 120, y: 360 }, siblings, 6, visibleCanvasRect(categoryId))
     // 节点构造经**共用工厂**（与 electron 能力核/MCP 同一份纯函数）：title/size/prompt/references/history/
     // status/meta/categoryId/shotIndex 全由工厂按 UI 同款规则补齐。store 只留 store 关注点
     // （落点避让、撤销点、set、事件）。镜号 = 出生即分配的存储身份（max+1，审计 A2）——工厂据传入的
     // currentState.nodes 算 max+1；categoryId 已在上面定好，显式传入让工厂与 store 一致。
+    // 先按期望落点造出节点、再解落点：避让要拿**新节点自己的真实占位**（含 meta / 显式 size 带来的渲染尺寸）去比，
+    // 不是 registry 名义尺寸；同一个盒子用来比，已有节点那边同理（见 resolveInsertionPosition 的 occupiedSize）。
+    const requested = input.position ?? visibleInsertionPoint(categoryId) ?? { x: 120, y: 360 }
     const nextNode = buildCanvasNode(
       {
         kind: input.kind,
         title: input.title,
         prompt: input.prompt,
-        x: position.x,
-        y: position.y,
+        x: requested.x,
+        y: requested.y,
         categoryId,
         ...(input.meta ? { meta: input.meta } : {}),
         ...(input.size ? { size: input.size } : {}),
@@ -107,6 +106,12 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
       currentState.nodes,
       RENDERER_NODE_FACTORY_DEPS,
     ) as GenerationCanvasNode
+    // 没给落点 = 调用方不关心具体位置：落在用户此刻看得见的地方（2026-09-25 拍板：新建尽量直接落在可见区，
+    // 程序不再为了「露出」去挪画布）。画布从没挂载过（没有可见区）才退回固定原点。
+    // exactPosition：调用方已算好成组紧凑布局（切图瓦片），信任原值、不避让——否则会被逐张推散。
+    if (!(input.exactPosition && input.position)) {
+      nextNode.position = resolveInsertionPosition(input.kind, requested, siblings, 6, visibleCanvasRect(categoryId), occupiedSize(nextNode))
+    }
     if (input.typeId) nextNode.typeId = input.typeId
     if (input.pluginState) nextNode.pluginState = input.pluginState
     pushUndoSnapshot(currentState)
@@ -443,7 +448,7 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
     // 变体落点经同分类避让：默认贴在原卡右下 +40，被占则螺旋挪开，不压住原卡或邻卡。
     const dupSiblings = state.nodes.filter((candidate) => (candidate.categoryId || 'shots') === (node.categoryId || 'shots'))
     const preferredDupPosition = { x: node.position.x + 40, y: node.position.y + 40 }
-    let dupPosition = resolveInsertionPosition(node.kind, preferredDupPosition, dupSiblings)
+    let dupPosition = resolveInsertionPosition(node.kind, preferredDupPosition, dupSiblings, 6, null, occupiedSize(node))
     // Keep a duplicate in the usable canvas when the first free spiral slot
     // happens to be above/left of the origin. The below-source fallback still
     // goes through the shared collision resolver and preserves spacing.
@@ -452,6 +457,9 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
         node.kind,
         { x: node.position.x, y: node.position.y + resolveNodeVisualSize(node).height + 48 },
         dupSiblings,
+        6,
+        null,
+        occupiedSize(node),
       )
     }
     const nextNode = createGenerationNode({
@@ -552,6 +560,9 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
       source.kind,
       { x: source.position.x + CLIPBOARD_OFFSET, y: source.position.y + CLIPBOARD_OFFSET },
       copySiblings,
+      6,
+      null,
+      occupiedSize(source),
     )
     const copiedNode: GenerationCanvasNode = {
       ...rest,

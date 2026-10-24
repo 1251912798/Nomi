@@ -58,9 +58,12 @@ const storyboardShotSchema = z.object({
     .min(1)
     .optional()
     .describe("Optional scene/group id; same-scene shots share it and remain contiguous."),
+  // 外部新输入省略 shotKind 就是 image（与说明一致，也不让外部 Agent 无意建出更贵的视频节点）：
+  // 默认值落在这份「模型入参」契约上，主进程解析后才转发给渲染层。持久化 / 旧草稿读口
+  // （storyboardPlanSchema.planShotSchema）不加默认值——旧数据省略时仍按 video 兜底。
   shotKind: z
     .enum(["image", "video"])
-    .optional()
+    .default("image")
     .describe("image: still frame (default); video: duration and camera motion."),
   durationSec: z
     .number()

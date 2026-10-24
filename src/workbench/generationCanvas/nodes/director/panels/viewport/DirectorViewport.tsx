@@ -1,15 +1,16 @@
 /**
- * [INPUT]: 依赖 react、react-i18next、../../scene/DirectorCanvas、../../scene/ViewCamera 的 DEFAULT_VIEW_SETTINGS / ViewSettings、
- *          ../../scene/sceneTheme、../../scene/creation/usePathDraw、../../scene/LabelProjector 类型、./ViewportOverlays、
- *          ../../DirectorEditorContext、../../model/directorTypes、../../scene/ViewportApiContext
+ * [INPUT]: 依赖 react、react-i18next、../../scene/DirectorCanvas、../../scene/viewSettings 的 DEFAULT_VIEW_SETTINGS / ViewSettings、
+ *          ../../scene/sceneTheme、../../scene/creation/usePathDraw、../../scene/LabelProjector 类型、./ViewportOverlays、./AspectGuide、./CameraPovHud、./PipViewport、
+ *          ../../DirectorEditorContext、../../CameraRecorderContext、../../model/cameraLens、../../scene/ViewportApiContext、../../../../../../ui/toast、
  *          ../../useDirectorHotkeys 的共享输入归属；统一创建模式 Esc、工具切换取消与 Orbit 生命周期
  *          角色放置 / 画框两个 API 由壳（DirectorEditor）持有并经 props 传入，顶栏「＋添加」是另一个发起方
- * [OUTPUT]: 对外提供 DirectorViewport：视口容器 —— 画布 + 标签层 + 模式提示 + 放置/画框 HUD + POV 卡 + 画中画 + AI 搭场景；
+ * [OUTPUT]: 对外提供 DirectorViewport：视口容器 —— 画布 + 机位取景框 + 标签层 + POV 卡 + 放置 / 画框 / 画线提示条 + 画中画；
  *           指针事件先给创建模式 hook，再落到画布拾取；悬浮态写入 hoveredRef / scopeRef；
  *           presentation（导演视图）时编辑辅助物不画、不可点选、小窗改说「正在播哪一镜」
  * [POS]: director/panels/viewport 的视口装配（清单 §2 全部 DOM 侧），three 世界在 scene/DirectorCanvas。
  *        2026-09-09 五簇重排后视口上不再有控件带：创建栏 / 底栏 / 显示模式三条已并进顶栏（今天是 topbar/RefineTopBar），
- *        这里只剩内容与情境浮层（标签 / HUD / POV / 画中画 / AI 入口）。
+ *        这里只剩内容与情境浮层（取景框 / 标签 / POV / 提示条 / 画中画）；顶部锚定的浮层都让开悬浮顶栏（topbar/topChrome）。
+ *        底部中央的「AI 搭场景」入口已随 8876f0c5d 删除（3D-BOX 成为唯一导演台，搭场景交给右侧 Agent 面板）。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import React, { type JSX } from 'react'

@@ -140,7 +140,7 @@ async function openComfyInstanceDetailOwning(name) {
   return { found: false, text: await bodyText() }
 }
 
-function readCatalog() {
+function readCatalogFromDisk() {
   const file = path.join(settingsDir, 'model-catalog.json')
   if (!fs.existsSync(file)) return null
   try {
@@ -212,7 +212,7 @@ try {
   await snap('06-instance-enabled')
   record('B3. 打开的是拥有这条工作流的那条连接', detail.found, detail.found ? '' : '翻遍 ComfyUI 连接都没找到它')
   const cardText = detail.text
-  const catalog = readCatalog()
+  const catalog = readCatalogFromDisk()
   const comfyVendor = catalog?.vendors?.find((v) => String(v.baseUrlHint || '').replace(/\/+$/, '') === BASE_URL)
   const comfyModel = catalog?.models?.find((m) => m.vendorKey === comfyVendor?.key && m.labelZh === NAME)
   record('B. catalog 里 ComfyUI vendor 已启用', Boolean(comfyVendor?.enabled), `vendor=${comfyVendor?.key} enabled=${comfyVendor?.enabled}`)

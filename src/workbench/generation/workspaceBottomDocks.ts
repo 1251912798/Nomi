@@ -88,6 +88,21 @@ export function collectBottomDockRects(
   })
 }
 
+/** 浮在画布上的 Agent 窗（ShellAgentHost 的浮窗形态自带这个标记）。 */
+export const AGENT_FLOAT_SELECTOR = '[data-agent-float]'
+
+/**
+ * 此刻压在画布上的所有浮层矩形（底部停靠区 ∪ 浮动 Agent 窗），坐标换算到 `origin` 的坐标系。
+ * 消费者：对焦——要知道「用户此刻真正看得见哪一块」，把节点和它的生成框摆进去。
+ */
+export function collectCanvasOverlayRects(host: Element, origin: Readonly<{ left: number; top: number }>): BottomDockRect[] {
+  const floats = Array.from(resolveBottomDockScope(host).querySelectorAll(AGENT_FLOAT_SELECTOR))
+    .map((element) => element.getBoundingClientRect())
+    .filter((rect) => rect.width > 0 && rect.height > 0)
+    .map((rect) => ({ left: rect.left - origin.left, top: rect.top - origin.top, right: rect.right - origin.left, bottom: rect.bottom - origin.top }))
+  return [...collectBottomDockRects(host, origin), ...floats]
+}
+
 /**
  * 「这一条横向跨度往下最多能用到哪儿」——底部停靠区对浮在画布上的东西的**唯一**让位判据。
  *

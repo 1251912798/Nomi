@@ -34,7 +34,8 @@ export function useNodeEffectChips({ enabled, empty, kind, disabled, onSelect }:
   }))
   const loading = library.loading || user.loading
   const failed = Boolean(library.error || user.error)
-  const close = () => { setOpen(false); anchorRef.current?.focus() }
+  // 还焦点归 AnchoredPopover（Esc / 选一项还给触发钮，因点外面关闭不还），这里不自己塞回去。
+  const close = () => setOpen(false)
   const recommendations = empty ? <NodeEffectRecommendations>
     {STARTER_EFFECTS.flatMap(id => {
       const item = effects.find(p => p.id === id)

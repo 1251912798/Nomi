@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>00 先读这页</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="nomi-ds.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,400&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="nm light" style="width:1240px;height:760px;padding:40px 48px;display:flex;flex-direction:column;gap:24px">
+<div class="row g12"><span class="tag sch">D-pointer-d2</span><span class="note">2026-10-22 · 给用户挑的样张 · 全部按 Nomi 设计系统 token 画（光 / 暗、中 / 英）</span></div>
+<h1 class="h1" style="font-size:28px">聊天里的「指向元素」+ 付费确认卡（新版）</h1>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px;flex:1;min-height:0">
+<div class="col g12">
+<div class="sec">创作者那一刻</div>
+<p class="say">Agent 在聊天里说：「已在画布上起草了 3 个镜头」。创作者的眼睛在右边聊天，手在左边画布。</p>
+<p class="say"><b>他要做的三件事，按顺序：</b><br>① 认：聊天里这三个东西，是画布上哪三个节点？不想读字、不想数。<br>② 决：花这笔钱行不行？只想知道几段、约多少。<br>③ 改：不对就改——改在节点里，改完回来点一下。</p>
+<p class="say"><b>他会卡在哪：</b>看不出聊天里的东西对应哪个节点；怕点错就花钱；想改，却发现卡里又有一套参数；跳去画布后找不回对话；窗口窄时一跳就把对话丢了。</p>
+</div>
+<div class="col g12">
+<div class="sec">已定的规则（10-22 用户拍板）</div>
+<p class="say"><b>一个东西一个家：</b>节点就是唯一的数据，聊天里不存第二份、不放小编辑器。<br><b>Agent 只指路：</b>聊天里只放三样——指向元素、必要请示（花钱）、本来属于聊天的话。要改只有两条路：去节点里改，或者跟 Agent 说一句。</p>
+<p class="say"><b>所以这批样张只回答两个问题：</b><br>A. 聊天里那个「指向元素」长什么样，才能一眼认出它是哪个节点？（P1 / P2 / P3）<br>B. 建在它上面的付费请示卡怎么排？（Q1 / Q2 / Q3）</p>
+<p class="note">命名：付费卡三种方案叫 Q1–Q3（请示），避免和功能名「D2」混，对应任务书的 D1–D3。按钮文案沿用现有付费卡：「生成」「全部生成（N）」「生成剩下 N 段」「取消」；卡头小字「生成 · Nomi 选的」。</p>
+</div>
+<div class="col g8">
+<div class="sec">这张画布怎么读</div>
+<div class="col g6" style="font-size:12.5px;line-height:19px;color:var(--nomi-ink80)">
+<div><b>A1</b> 一张脸：节点和指向元素的部件对照</div>
+<div><b>A2</b> P1 / P2 / P3 × 6 种状态 + 组指向</div>
+<div><b>A3</b> 悬停两边同时亮 / 点击定位 + 闪一下</div>
+<div><b>A4</b> 窄窗口：点了先露出目标，再回到对话</div>
+<div><b>A5</b> 英文 / 暗色</div>
+<div><b>Q1</b> 一张卡一颗「确认」· 状态 · 想改的路径</div>
+<div><b>Q2</b> 一段一行，可单段先试 · 状态 · 想改的路径</div>
+<div><b>Q3</b> 对话里留指向，请示贴在输入框上 · 状态 · 路径</div>
+<div><b>Q4</b> 三种卡的英文 / 暗色 / 窄屏</div>
+<div><b>Z</b> 对比表 + 推荐</div>
+</div>
+<p class="note" style="margin-top:8px">示例数据（纸船三镜头、型号、时长、价格）是样张用的占位，不是真实报价。价格行沿用现在付费卡的做法：算得出才印，算不出整行不印，不写免费 / 预算。</p>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,11 +1,13 @@
-# 交付与评审（L2）：push 前分层 · 交付身份 · 合并前检查
+# 交付与评审（L2）：推送前快检 · CI 分层 · 交付身份 · 合并前检查
 
-> 从 CLAUDE.md 搬来（规则体系瘦身）。**用到时怎么保证看到**：`self-check.sh` 在用户消息含「合并 / merge / 收据 / verify-merged / preflight / 开 PR / 交工 / 推送」时注入【交付】块（带合并规矩要点与本文件指针）；CLAUDE.md 的「常用命令」一节也直接指向本文件；push 时 pre-push 闸门自己拦没过的。
+> 从 CLAUDE.md 搬来（规则体系瘦身）。**用到时怎么保证看到**：`self-check.sh` 在用户消息含「合并 / merge / 收据 / verify-merged / preflight / 开 PR / 交工 / 推送」时注入【交付】块（带合并规矩要点与本文件指针）；CLAUDE.md 的「常用命令」一节也直接指向本文件；push 时 git 的 pre-push 钩子自动跑快检。
 > 详解在 `docs/engineering-rules.md` 的 R11 / R22；编排侧见 `docs/engineering/agent-orchestration-playbook.md` §19。
 
-## Push 前按风险面分层（R22）
+## 推送前只过快检，完整门岗以 CI 为准（R11 / R22）
 
-contracts 始终跑（一次跑完全部门岗再汇总，不再第一个红就停；`check:concept-owners` 只出 warning 不阻断；`check:docs-index` / `check:doc-status` / `check:ledger` 已移出 PR 的 Contracts——合入 main 后由 `docs-autosync` workflow 自动补齐回写；档案默认值生成物由 `archetype-autosync` 工作流自动重生成；`check:root-cause-contracts` 只对 schema 不合法阻断）；unit 独立选 focused/full（**本机 `pnpm run gates` 也按同一份 `scripts/validation-policy.mjs` 分档**，全量一万两千多个测试交给 CI 并行机器，不再占着全机那把 gates 锁；想本机兜底跑全量用 `pnpm run gates:full`）；Electron、真实旅程、React Flow 画布、性能和 macOS package 各按受影响路径独立触发，`main` push 也按真实 `before..after` 分类，不因事件名自动全量。删除/重命名、空 diff、测试/CI 分类器自身和手动发布边界 fail-closed 到全维度。连续小修先在本地收敛，再一次性验证和 push，不让每个微提交反复触发全套 CI。
+推送前把关的是 git 的 pre-push 钩子（`scripts/pre-push-contracts.mjs`）：按改动选出快检门岗并行跑、一次列出全部失败项，没有缩小门岗集合的开关；完整门岗交给 CI，合并只认 CI 全绿 + 合并前扫描 + main 上的收据（2026-10-24 用户拍板「改成 CI 把关：推分支前本机只跑快检，完整门岗交给 CI，合并照旧只认 CI 全绿和 main 上的收据」，推送前不再要本机 `pnpm run gates` 的通过凭据；设计卡 `docs/plan/2026-10-24-push-gate-ci.md`）。跳过 git 钩子的推送写法（`--no-verify` / `core.hooksPath`）照常放行，但记进被推那棵树的 `.claude/push-bypass.log`，没确认的绕口由快检里的 `check:push-bypass` 拦下这棵树的下一次推送。快检比完整门岗少，分支上的 CI 偶尔会红——红在分支上，进不了 main。
+
+CI 按风险面分层：contracts 始终跑（一次跑完全部门岗再汇总，不再第一个红就停；`check:concept-owners` 阻断（2026-10-19 用户拍板改回挡合并，取代 10-02 的警告档）；`check:docs-index` / `check:doc-status` / `check:ledger` 已移出 PR 的 Contracts——合入 main 后由 `docs-autosync` workflow 自动补齐回写；档案默认值生成物由 `archetype-autosync` 工作流自动重生成；`check:root-cause-contracts` 只对 schema 不合法阻断）；unit 独立选 focused/full（**本机 `pnpm run gates` 也按同一份 `scripts/validation-policy.mjs` 分档**，全量一万两千多个测试交给 CI 并行机器，不再占着全机那把 gates 锁；想本机兜底跑全量用 `pnpm run gates:full`）；Electron、真实旅程、React Flow 画布、性能和 macOS package 各按受影响路径独立触发，`main` push 也按真实 `before..after` 分类，不因事件名自动全量。删除/重命名、空 diff、测试/CI 分类器自身和手动发布边界 fail-closed 到全维度。连续小修先在本地收敛，再一次性验证和 push，不让每个微提交反复触发全套 CI。
 
 ## 交付身份只走统一命令（R11）
 
@@ -17,9 +19,15 @@ contracts 始终跑（一次跑完全部门岗再汇总，不再第一个红就�
 
 - **暂停点①设计卡**：碰花钱 / 长跑 / 可打断 / 新界面，动手前写一页卡（`docs/engineering/design-card.md`），PR 正文 `## 设计卡` 放链接或全文；其余改动只填 ★ 格。
 - **暂停点②独立验收**：四类改动合并前由另一条线验收，PR 正文 `## 独立验收` 带报告链接和验收线编号，编号不得与实现线相同。
+  - **2026-10-22 起开的 PR 判「对不对」**（旧：只看链接在不在）：正文写 `报告首行：<报告第一行原文>`（结论必须是 通过 / 有条件通过；不通过、认不出、仍有阻断都红）、`验收 HEAD：<提交号>`（等于 PR 当前 head；或是它的祖先、且之后只有「干净自动合并 main」的合并提交——树等于 `git merge-tree --write-tree <M^1> <M^2>`，人工解过冲突算不干净——和只改 `docs/evidence/**` 下图片 / 数据 / 文本（png jpg webp gif json md txt csv log，不许可执行类型和符号链接）的提交；分支自己别的新提交要重验。CI 浅克隆算不了历史时只核正文并提示本机核，merge-preflight 在本机算，读不到历史就红）、`验收线：<编号>`（验收线编号规范化后精确相等，不用子串）。CI 读不到协调目录的报告，只核正文这几项；协调会话本机跑 `merge-preflight` 时读报告本体，核首行一致、报告里的验收 HEAD、验收线，读不到就红。报告放仓库里则 CI 也能读。拍板图清单由合并前扫描从 PR head 读（PR 自己新增的板也认得），规则与判据仍取 base。
+  - **改界面的 PR 认领拍板图清单**：路径推出「新界面 / 改交互」的 PR，`## 拍板图` 要么认领 `- <板名>: <元素 id>`，要么写 `- 不适用：<例外 id>：<具体理由>`；例外只认 `test-routing.json` 的 `evidenceJudgement.boardClaimExceptions` 里登记的（纯 bug 修复、只改单个元素的样子、纯内部改动），新增界面文件不许用例外。生效日同上，回滚也同上（删 `evidenceJudgement` 一节）。性能证据的新口径见 `perf-scenarios.md`。
+  - **协调确认记录：合同文件默认全拦（合同类数据不能由 PR 自己批准，2026-10-22 用户拍板）**：合同文件——拍板板文件 `docs/design/boards/**/*.board.json` 和性能场景文件 `tests/perf/scenarios/*.json`——按 base 与 head 的**整份规范化内容**对比；先剥掉白名单字段，剩下的**任何差异**（新增、删除、板级字段如 decor / functionCensus / 设计来源 / stage、以后新加的任何字段、整个文件被删）都要协调确认，哈希绑整份规范化后的内容。白名单（PR 可以自己改、不用确认）：板 = 元素的 `status` / `assertion` / `owner`，加板级 `stage` 的**一种**前进（base 是已拍板阶段 approved / explored、head 是 built；其余 stage 变化都要确认，尤其是改成 approved——那代表用户拍板，只能来自确认记录）；场景 = `feature` / `scale` / `group` 描述字段 + `baseline` 的 `machine` / `date` / `commit`（含 baseline 的 median / p95 / runs / noisy 在内的其余全算政策）。**要确认的集合由真实 diff 构造，不看 PR 认领了什么、也不看是不是界面改动、有没有写 `## 拍板图` 一节**；认领只用来关联实现验收。判定一律用 base 的值，PR 要用自己的值，协调会话看过 PR head 上的内容后在本机跑 `node scripts/coord-approve.mjs --pr <号> --board <板名>` 或 `--perf <场景 id> [--note 说明]`（整张板 / 整个场景被删也是一条确认），往 `NOMI_COORD_APPROVALS` 指向的本机 JSONL 追加 `{pr, kind, name, sha256, at, note}`（sha256 是 PR head 上整份规范化内容的哈希，内容之后又改了一个字就对不上）。`merge-preflight` 没有匹配记录、环境变量没设、文件读不到都红，并打出该跑的命令；CI 读不到本机文件，只提示「待协调确认」。认领还要求每条至少一个合法元素 id；新增的生产 `.tsx`（文件状态 A，含 `src/design/components/**`）不许用例外，只改令牌 / 样式可以。CI 读报告 / 原始结果 / 清单统一用 PR head（`git show <headSha>:路径`，headSha 取事件里的 `pull_request.head.sha`）。跟进（不在本 PR）：「可信运行收据自动绑定的正常基线刷新」批量确认。
+  - **ESLint 批量抑制的冻结数上涨同样要协调确认（2026-10-22 协调定）**：`eslint-suppressions.json` 里任一规则的冻结总数比 base 多（新开规则 / 扩大覆盖面把存量冻进来），协调看过 diff 后跑 `node scripts/coord-approve.mjs [--pr <号>] --suppressions`（还没开 PR 时不带 `--pr`，按本地 HEAD 算），哈希绑**上涨的那部分 diff**（每个文件 × 规则冻结数比 base 多的条目），之后再多冻一处就对不上；只减少、改名搬家（总数不变）不用确认。推送前 `lint:changed` 与 `merge-preflight` 读本机记录，没有就红；CI 只提示「待协调确认」。
 - **协调会话合并前跑** `node scripts/merge-preflight.mjs <PR 号>`：按路径判是否四类、查卡格是否填全、查独立验收、修逃逸 bug 时查带 `detected_by` 的根因合同；碰到规则 / 门岗文件（CLAUDE.md、rules.json、`scripts/check-*`、门岗基线、workflow 等）时正文「碰到的规则与门岗」一节必须逐个点名、整文件删除写「删除：理由」，逃逸账本条目不许消失（#1032 用旧分支回退 #1031 后加）；**路径推出「花钱」类的 PR 还查真付费证据行**（见下文「花钱路径的真实验收」，2026-10-16 起）。脚本只打印结论，不合并。
 
-## 用户可见改动的验收交付：测试表 + 真截图 + 验收页（2026-09-29 用户拍板）
+## 用户可见改动的验收交付：一页体验成绩单 + 真截图（2026-09-29 用户拍板；2026-10-21 起入口改为成绩单）
+
+- **入口是一页体验成绩单**（路由证据 `ui-task-scorecard`，生效日见 `test-routing.json`）：场景 id、完成 n/d（失败保留）、主指标现状 → 当前（带单位、样本数、设备窗口语言、实测还是估算）、护栏、最大摩擦与决定、没验证的、证据路径。机器测的和真人给的分开记；真人 SEQ（1–7）和误点 / 回退 / 求助 / 首次尝试没有就写 null，AI 不代填；不出总分。记录格式和渲染在 `tests/ux/experience/scorecard.mjs`，场景来自 `tests/ux/journeys/catalog.json` 的 `scenarios`，样例见 `docs/evidence/2026-10-21-ux-scorecard/`。成绩单取代下面测试表 / 验收页里重复的结果抄写：完整测试表和截图仍是后面的原始证据，不再另抄一份摘要。
 
 - PR 正文有「用户能力变化：新增 / 改变 / 去掉」三栏，**去掉或挡住已有能力必须用户点头**；再附测试表（编号 ｜ 在哪、做什么 ｜ 应该看到什么 ｜ 我们的结果 ｜ 用户的结果），新装机 / 老装机升级、中文 / 英文分开列，每行是用户能照着做的动作，不写代码术语（五层体系见 `docs/plan/2026-09-29-quality-system.md`）。
 - 我们先把表**逐条真跑完**：截图必须来自要发的那个包、自己亲眼看过每一张，至少一次真实调用，不能全是本机模拟。

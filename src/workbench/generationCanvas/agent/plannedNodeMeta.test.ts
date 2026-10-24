@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { buildModelEntryIndex, buildPlannedNodeMeta, resolvePlannedNodeArgs } from "./plannedNodeMeta";
 import { buildAgentModelEntries, type AgentModelEntry } from "./availableModels";
 import type { ModelOption } from "../../../config/models";
+import { ASPECT_EXPLICIT_META_KEY } from "../nodes/aspectExplicit";
 
 function entryByKey(): Map<string, AgentModelEntry> {
   const entries = buildAgentModelEntries([
@@ -192,5 +193,52 @@ describe("B4 provider preference at node persistence", () => {
     const index = buildModelEntryIndex(entries, ["apimart", "relay"]);
     expect(buildPlannedNodeMeta({ modelKey: "gpt-image-2" }, index)?.modelVendor).toBe("apimart");
     expect(buildPlannedNodeMeta({ modelKey: "gpt-image-2", vendor: "relay" }, index)?.modelVendor).toBe("relay");
+  });
+});
+
+// 「比例明确选过」标记（aspect_ratio_user_set）：Agent / 分镜写了合法比例就记，连线时视频比例的产品默认不改它。
+// 判据是**控件语义**——这个模式的比例控件（选项全是比例的那一个）被写了才算，不是键名：
+// Agnes Video 2.5 的 `size` 是清晰度（720P / 960P / 2K），比例在 `aspect_ratio`；Seedance 2.5 的比例控件才叫 `size`。
+describe("buildPlannedNodeMeta · 比例明确选过的标记", () => {
+  const index = buildModelEntryIndex(buildAgentModelEntries([
+    { value: "seedance-2", label: "即梦 Seedance", vendor: "kie", meta: { archetypeId: "seedance-2" } },
+    { value: "doubao-seedance-2.5", label: "Seedance 2.5", vendor: "apimart", meta: { archetypeId: "seedance-2.5-apimart" } },
+    { value: "agnes-video-2.5", label: "Agnes Video 2.5", vendor: "agnes", meta: { archetypeId: "agnes-video-2.5" } },
+  ] as ModelOption[]));
+  const metaOf = (modelKey: string, params?: Record<string, unknown>) => buildPlannedNodeMeta({ modelKey, ...(params ? { params } : {}) }, index)!;
+
+  it("写了比例控件的合法值 → 记明确选过", () => {
+    expect(metaOf("seedance-2", { aspect_ratio: "9:16" })[ASPECT_EXPLICIT_META_KEY]).toBe(true);
+  });
+
+  it("没写比例（落地 = 档案默认）→ 不记", () => {
+    const meta = metaOf("seedance-2");
+    expect(meta.aspect_ratio).toBe("16:9");
+    expect(meta[ASPECT_EXPLICIT_META_KEY]).toBeUndefined();
+  });
+
+  it("写了非法比例（丢弃、回档案默认）→ 不记", () => {
+    const meta = metaOf("seedance-2", { aspect_ratio: "999:1" });
+    expect(meta.aspect_ratio).toBe("16:9");
+    expect(meta[ASPECT_EXPLICIT_META_KEY]).toBeUndefined();
+  });
+
+  it("比例控件不叫 aspect_ratio（Seedance 2.5 的比例叫 size）：写了它 → 记", () => {
+    const meta = metaOf("doubao-seedance-2.5", { size: "9:16" });
+    expect(meta.size).toBe("9:16");
+    expect(meta[ASPECT_EXPLICIT_META_KEY]).toBe(true);
+  });
+
+  it("Agnes Video 2.5 只写了清晰度 size: 960P（它的 size 不是比例）→ 不记，aspect_ratio 仍是档案默认", () => {
+    const meta = metaOf("agnes-video-2.5", { size: "960P" });
+    expect(meta.size).toBe("960P");
+    expect(meta.aspect_ratio).toBe("16:9");
+    expect(meta[ASPECT_EXPLICIT_META_KEY]).toBeUndefined();
+  });
+
+  it("Agnes Video 2.5 同时写了清晰度和比例 → 记（因为比例控件被写了）", () => {
+    const meta = metaOf("agnes-video-2.5", { size: "960P", aspect_ratio: "9:16" });
+    expect(meta.aspect_ratio).toBe("9:16");
+    expect(meta[ASPECT_EXPLICIT_META_KEY]).toBe(true);
   });
 });

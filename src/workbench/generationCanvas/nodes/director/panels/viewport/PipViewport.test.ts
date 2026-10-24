@@ -1,3 +1,6 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PipRect } from '../../scene/pipCamera'
@@ -99,5 +102,34 @@ describe('PiP committed screen and rectangle lifetime', () => {
     runtime.layout = { ...runtime.layout, collapsed: false }; view.render(); expect(view.rectRef.current?.width).toBe(400)
     runtime.effects.forEach((effect) => effect.cleanup?.()); runtime.effects = []
     expect(view.rectRef.current).toBeNull(); expect(view.observers[1].disconnect).toHaveBeenCalledOnce()
+  })
+})
+
+// 结构门岗（2026-10-24 走查 ⑥）：精修画线时，提示条压在顶栏正中的「导演 | 精修」底下——三条提示条各写各的 top-3。
+// 悬浮顶栏是 absolute 浮层、不占布局流：浮在视口之上的东西只有从 topbar/topChrome 的 DIRECTOR_TOP_CHROME_PX 取顶部留白，
+// 才不会钻到顶栏底下（画中画的拖动上限也从它 derive，所以门岗住这里）。类名或样式里写死顶部位置 = 红。
+describe('浮在视口之上的面板都让开悬浮顶栏', () => {
+  const PANELS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+  const viewportFiles = fs.readdirSync(path.join(PANELS, 'viewport')).filter((name) => /\.tsx$/.test(name) && !/\.test\.tsx$/.test(name)).map((name) => `viewport/${name}`)
+  // 视口叠加层全部 + 同样浮在视口之上的属性卡、资产抽屉（它们里面的列表内容不算浮层，不扫）
+  const FLOATS = [...viewportFiles, 'context/ContextCard.tsx', 'side/AssetsDrawer.tsx']
+  // 写死顶部位置：类名 top-N / top-px / top-[…]、非零的 inset-N / inset-y-N（inset-0 是铺满的叠加层，不是贴顶的浮层），样式里 top: 数字
+  const HARDCODED_TOP = /(?<![\w-])(?:top-(?:\d+(?:\.\d+)?|px|\[[^\]\s]+\])|inset(?:-y)?-(?:[1-9]\d*(?:\.\d+)?|px|\[[^\]\s]+\]))(?![\w/.-])|\btop:\s*['"]?\d/g
+  // 不贴视口顶、相对别的框定位的，逐个写明出处；多一个就红
+  const INSIDE_ANOTHER_BOX: Record<string, readonly string[]> = {
+    // 画幅徽标住在机位取景框里（取景框四周已留 80px 内边距），相对取景框定位
+    'viewport/AspectGuide.tsx': ['top-3'],
+  }
+  const strip = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  const read = (file: string) => strip(fs.readFileSync(path.join(PANELS, file), 'utf8'))
+
+  it.each(FLOATS)('%s：不写死顶部位置', (file) => {
+    expect(read(file).match(HARDCODED_TOP) ?? []).toEqual(INSIDE_ANOTHER_BOX[file] ?? [])
+  })
+
+  it('三条模式提示条、POV 卡、属性卡、资产抽屉的顶部都取 DIRECTOR_TOP_CHROME_PX', () => {
+    for (const file of ['viewport/ViewportOverlays.tsx', 'viewport/CameraPovHud.tsx', 'context/ContextCard.tsx', 'side/AssetsDrawer.tsx']) {
+      expect(read(file), file).toMatch(/\btop:\s*DIRECTOR_TOP_CHROME_PX\b/)
+    }
   })
 })

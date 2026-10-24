@@ -1,4 +1,3 @@
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 分镜表里每一个 Portal 弹层的键盘合同（V-1039 评审：「用作…」/ 片段菜单挪进 Portal 后 Tab 进不去）。
 // 修在 `src/design/AnchoredPopover.tsx` 这一层，所以这里按**清单遍历**，不是只测一个：
 //   打开 → 焦点进浮层 → Tab / Shift+Tab 在浮层内循环（不掉出去）→ Esc 关 → 焦点回到打开前的那个元素。
@@ -6,14 +5,13 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { test } from 'vitest'
 import { expect } from '@playwright/test'
 import { chromium } from 'playwright'
-import { createServer } from 'vite'
-import fs from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
 import { assertTailwindApplied, freshTailwindCss } from './_freshTailwindCss.mjs'
+import { useBrowserFixture } from './_browserFixture.mjs'
 
 // 现编一次 Tailwind（收集阶段做完，不占用例自己的超时），后面各用例复用。
 freshTailwindCss()
+const HARNESS = 'tests/ux/fixtures/original-storyboard-editor-harness.html'
+const fixture = useBrowserFixture({ entries: [HARNESS], browserType: chromium })
 
 const POPOVERS = [
   {
@@ -32,29 +30,14 @@ const POPOVERS = [
     activate: (page) => page.locator('[data-storyboard-prompt-segment]').first().click(),
     menu: '[data-storyboard-prompt-menu]',
   },
-  // 「底栏 ⋯ 开关弹层」已随 2026-10-06 分镜复用画布交互（#1042）删除：底栏换成画布同款参数条，开关进了参数面板
-  // （画布 InlineParameterBar 自己的面板，不走 AnchoredPopover）。参考条的「+N」折叠浮层是这次新增的 Portal 弹层，补进清单。
-  {
-    name: '参考条「+N」折叠浮层',
-    // 夹具 `refs`：镜 1 挂 6 张参考；编辑器 640 宽走窄档（28 格一行放 5 格），确定性地折出「+N」。
-    query: 'refs',
-    width: 640,
-    opener: '[data-storyboard-ref-more]',
-    focusOpener: (page) => page.locator('[data-storyboard-row="1"] [data-storyboard-ref-more]').focus(),
-    activate: (page) => page.keyboard.press('Enter'),
-    menu: '[data-storyboard-ref-overflow]',
-  },
+  // 「底栏 ⋯ 开关弹层」已随 2026-10-06 分镜复用画布交互（#1042）删除：底栏换成画布同款参数条，开关进了参数面板。
+  // 参考条的「+N」折叠浮层也已从镜头行删除（B3 / E1a：参考在提示词上一行，放不下就折行，不折叠）。
 ]
 
 for (const item of POPOVERS) test(`分镜 Portal 弹层键盘合同：${item.name}`, async () => {
-  const cacheDir = makeTempDir('nomi-storyboard-popover-kbd-')
-  const server = await createServer({ configFile: false, cacheDir, server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } })
-  let browser
+  const page = await fixture.browser.newPage({ viewport: { width: 1280, height: 1000 } })
   try {
-    await server.listen()
-    browser = await chromium.launch({ headless: true })
-    const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } })
-    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/ux/fixtures/original-storyboard-editor-harness.html?locale=en&${item.query}`)
+    await page.goto(fixture.url(HARNESS, `?locale=en&${item.query}`))
     await page.addStyleTag({ content: freshTailwindCss() })
     await assertTailwindApplied(page, 'storyboard-popover-keyboard.test.mjs')
     await page.addStyleTag({ url: '/src/styles/index.css' })
@@ -110,7 +93,6 @@ for (const item of POPOVERS) test(`分镜 Portal 弹层键盘合同：${item.nam
     // Radix FocusScope 在卸载后的下一个任务里还焦点，所以要等，不能立刻读。
     await expect.poll(() => page.evaluate(() => document.activeElement === window.__opener), { message: `${item.name}：关闭后焦点没有回到打开前的那个元素`, timeout: 3000 }).toBe(true)
   } finally {
-    await browser?.close()
-    await server.close()
+    await page.close()
   }
-}, 240000)
+})

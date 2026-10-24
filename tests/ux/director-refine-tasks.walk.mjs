@@ -6,10 +6,12 @@
 //   T2 把镜头 2 的机位（medium）改成 50mm 并进机位视角看构图
 //   T3 把青衣女子的走路动作推迟 1 秒，再加一盏灯
 // 每条任务数用户点了几下（拖动 / 输入另计），和设计卡里写的点击路径对账。
+// 开场先验时间轴纵向滚动（6 条轨道一屏放不下）：真滚轮滚片段区，左右两列一起走、刻度尺钉在顶上。
 // 真 App（Electron + 真 Agent 面板）那一遍不在这里：pending-real-app，等用户不用电脑时由协调会话安排。
 //
 // 用法：node tests/ux/director-refine-tasks.walk.mjs；截图在 tests/ux/shots/director/refine-tasks/，必须人眼 Read 过。
 import { addTrack, clickOrFail, expectVisible, launchDirectorLab, openAddMenu } from './_directorLab.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const lab = await launchDirectorLab({ name: 'refine-tasks', viewport: { width: 1280, height: 900 } })
 const { page, check } = lab
@@ -44,9 +46,8 @@ try {
     return { ok: true }
   })
   check('庭院对峙经现役编译器编出', seeded.ok, JSON.stringify(seeded))
-  await page.reload({ waitUntil: 'commit' })
-  await expectVisible(page.getByTestId('director-pip'), '重载后导演台没起来')
-  await page.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null)
+  // 重开导演台：3D-BOX 打开先落在导演视图，lab.reload 照真人点「精修」进来（精修顶栏出来才算到）
+  await lab.reload()
   await expectVisible(page.getByTestId('director-topbar'), '精修顶栏没出来')
   check('空闲时右边没有属性卡', (await page.getByTestId('director-context-card').count()) === 0)
   await lab.snap('idle')
@@ -57,6 +58,60 @@ try {
   const woman0 = byName(scene0, '青衣女子')
   const gate = byName(scene0, 'gate')
   check('夹具里有侍卫 / 女子 / 院门', Boolean(guard0 && woman0 && gate))
+
+  // ── 时间轴纵向滚动（2026-10-24 走查 ③）：片段区 onScroll 写的是不会动的外层容器，左侧轨道名纹丝不动、刻度尺被滚走。
+  //    真滚轮滚片段区：左右两列 scrollTop 相同、第一行两边一起挪、刻度尺位置不变。滚完滚回顶，后面的任务照原样走。 ──
+  const timelineGeometry = () => page.evaluate(() => {
+    const lanes = document.querySelector('[data-testid="director-timeline-lanes"]')
+    const list = document.querySelector('[data-testid="director-timeline-tracks"]')
+    const ruler = document.querySelector('[data-testid="director-timeline-ruler"]')
+    const firstTrack = document.querySelector('[data-testid="director-timeline-track"]')
+    // 片段区 = 泳道往上第一个能滚的祖先；轨道列 = 轨道列表往上第一个内容溢出的祖先（它 overflow-hidden，由片段区带着滚）
+    const ancestor = (element, test) => {
+      for (let node = element?.parentElement; node; node = node.parentElement) if (test(node)) return node
+      return null
+    }
+    const lanesScroller = ancestor(lanes, (node) => /(auto|scroll)/.test(getComputedStyle(node).overflowY))
+    const listScroller = ancestor(list, (node) => node.scrollHeight > node.clientHeight + 1)
+    if (!lanes || !list || !ruler || !firstTrack || !lanesScroller || !listScroller) return null
+    return {
+      lanesScrollTop: lanesScroller.scrollTop,
+      listScrollTop: listScroller.scrollTop,
+      rulerTop: ruler.getBoundingClientRect().top,
+      leftRowTop: firstTrack.getBoundingClientRect().top,
+      rightRowTop: lanes.getBoundingClientRect().top,
+    }
+  })
+  const scrollBefore = await timelineGeometry()
+  const lanesBox = await page.getByTestId('director-timeline-lanes').boundingBox()
+  await page.mouse.move(lanesBox.x + 240, lanesBox.y + 20)
+  await page.mouse.wheel(0, 80)
+  await page.waitForFunction(() => {
+    const lanes = document.querySelector('[data-testid="director-timeline-lanes"]')
+    for (let node = lanes?.parentElement; node; node = node.parentElement) if (/(auto|scroll)/.test(getComputedStyle(node).overflowY)) return node.scrollTop > 0
+    return false
+  }, null, { timeout: stationTimeout() }).catch(() => {}) // 没滚动就交给下面的断言报红，不在这里抛
+  await page.waitForTimeout(200)
+  const scrollAfter = await timelineGeometry()
+  const scrollDetail = JSON.stringify({ before: scrollBefore, after: scrollAfter })
+  check('③ 滚轮真滚动了片段区', Boolean(scrollBefore && scrollAfter) && scrollAfter.lanesScrollTop > 0, scrollDetail)
+  check('③ 左右两列 scrollTop 相同', Boolean(scrollAfter) && scrollAfter.listScrollTop === scrollAfter.lanesScrollTop, scrollDetail)
+  check('③ 第一行左右一起挪（两边行顶的差不变）', Boolean(scrollBefore && scrollAfter)
+    && Math.abs((scrollAfter.leftRowTop - scrollAfter.rightRowTop) - (scrollBefore.leftRowTop - scrollBefore.rightRowTop)) < 1, scrollDetail)
+  check('③ 刻度尺位置不变', Boolean(scrollBefore && scrollAfter) && Math.abs(scrollAfter.rulerTop - scrollBefore.rulerTop) < 1, scrollDetail)
+  console.log(`  · 滚动前左右第一行行顶差 ${scrollBefore ? (scrollBefore.leftRowTop - scrollBefore.rightRowTop).toFixed(1) : '?'} px`)
+  await lab.snap('timeline-scrolled')
+  await page.mouse.wheel(0, -400)
+  await page.waitForTimeout(200)
+  // 在轨道名一列上滚：这一列自己不滚（由片段区带着走），滚轮要交给片段区，两列一起走
+  const listBox = await page.getByTestId('director-timeline-tracks').boundingBox()
+  await page.mouse.move(listBox.x + 60, listBox.y + 20)
+  await page.mouse.wheel(0, 80)
+  await page.waitForTimeout(300)
+  const listWheel = await timelineGeometry()
+  check('③ 在轨道名一列上滚滚轮，两列一起走', Boolean(listWheel) && listWheel.lanesScrollTop > 0 && listWheel.listScrollTop === listWheel.lanesScrollTop, JSON.stringify(listWheel))
+  await page.mouse.wheel(0, -400)
+  await page.waitForTimeout(200)
 
   // ── T1：侍卫朝女子挪近 1 米，转身面对她 ──
   await pickRow('T1', '黑衣侍卫')
@@ -107,8 +162,10 @@ try {
   await click('T2', pip.getByRole('button', { name: '进入视角' }), '小窗·进入视角')
   await expectVisible(page.getByTestId('director-pov-hud'), '没进入机位视角')
   check('T2·进的是 medium 的视角', (await page.getByTestId('director-pov-hud').innerText()).includes('medium'))
+  // 工程是编辑器空闲 2s 才写回存档的：等落盘再读，不拿半路的旧值判（界面上早已是 50mm）
+  const saved50 = await lab.waitScene("s.cameras.some(c => c.name === 'medium' && Math.round(c.focalLengthMm) === 50)", 'T2·medium 的 50mm 落盘').catch(() => false)
   const camera = (await lab.scene()).cameras.find((item) => item.name === 'medium')
-  check('T2·medium 是 50mm', Math.round(camera.focalLengthMm) === 50, `${camera.focalLengthMm}mm`)
+  check('T2·medium 是 50mm', saved50 && Math.round(camera.focalLengthMm) === 50, `${camera.focalLengthMm}mm`)
   check('T2·小窗在左下（和导演视图同位）', await (async () => {
     const pip = await page.getByTestId('director-pip').boundingBox()
     const viewport = await page.getByTestId('director-viewport').boundingBox()
@@ -122,10 +179,16 @@ try {
   await clickOrFail(page.getByTestId('director-pov-hud').getByRole('button', { name: '退出机位' }), 'POV 卡·退出（收尾，不计入任务）')
 
   // ── T3：女子走路推迟 1 秒，再加一盏灯 ──
-  clicks.T3 += 2 // 「＋ 添加轨道」+ 选女子（AI 工程没有轨道，S1 线修好后这两下省掉）
-  await addTrack(lab, '青衣女子')
+  // 「＋ 添加轨道」只列还没上轨的实体（entitiesOutsideTimeline）。编译器现在已把人直接放进时间轴，女子在轨上就不点——和用户一样，
+  // 也不把省掉的两下算进点击数；不在轨上（旧编译结果）才走「＋ 添加轨道」+ 选女子。
+  if (!woman0.inTimeline) {
+    clicks.T3 += 2
+    await addTrack(lab, '青衣女子')
+  }
+  await expectVisible(lab.trackRow('青衣女子'), 'T3·时间轴上没有青衣女子的轨道')
   const woman = (await lab.scene()).objects.find((object) => object.id === woman0.id)
-  const walk = (woman.actionClips || []).find((clip) => /walk/.test(String(clip.actionPose)))
+  // 动作名随 UAL 动作库是「Walk_Loop」这样的首字母大写名（旧库是 standard_walk）：不分大小写认 walk
+  const walk = (woman.actionClips || []).find((clip) => /walk/i.test(String(clip.actionPose)))
   check('T3·女子有走路片段', Boolean(walk), JSON.stringify((woman.actionClips || []).map((clip) => clip.actionPose)))
   if (walk) {
     await click('T3', page.getByTestId('director-timeline-lanes').locator(`[data-clip-id="${walk.id}"]`), '时间轴·走路片段')

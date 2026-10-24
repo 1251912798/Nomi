@@ -11,14 +11,6 @@
     },
     {
       "file": "electron/preload.ts",
-      "channel": "nomi:projects:delete"
-    },
-    {
-      "file": "electron/preload.ts",
-      "channel": "nomi:projects:list"
-    },
-    {
-      "file": "electron/preload.ts",
       "channel": "nomi:projects:read"
     },
     {

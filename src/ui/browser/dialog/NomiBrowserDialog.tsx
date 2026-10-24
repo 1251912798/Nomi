@@ -1,5 +1,6 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
+import { listenOutsidePress } from '../../../design/outsidePress'
 import {
   getDesktopBridge,
   type DesktopBrowserAssetOverlayCaptureRequest,
@@ -342,24 +343,12 @@ export function NomiBrowserDialog({ opened, onClose }: NomiBrowserDialogProps): 
 
   React.useEffect(() => {
     if (!tabContextMenu) return
-    const handlePointerDown = (event: PointerEvent): void => {
-      const target = event.target as Node
-      if (tabContextMenuRef.current?.contains(target)) return
-      setTabContextMenu(null)
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
+    return listenOutsidePress((target) => target instanceof Node && Boolean(tabContextMenuRef.current?.contains(target)), () => setTabContextMenu(null))
   }, [tabContextMenu])
 
   React.useEffect(() => {
     if (!bookmarkContextMenu) return
-    const handlePointerDown = (event: PointerEvent): void => {
-      const target = event.target as Node
-      if (bookmarkContextMenuRef.current?.contains(target)) return
-      setBookmarkContextMenu(null)
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
+    return listenOutsidePress((target) => target instanceof Node && Boolean(bookmarkContextMenuRef.current?.contains(target)), () => setBookmarkContextMenu(null))
   }, [bookmarkContextMenu])
 
   React.useEffect(() => {

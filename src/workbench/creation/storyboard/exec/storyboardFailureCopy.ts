@@ -1,4 +1,5 @@
 import i18n from '../../../../i18n'
+import { withoutIpcInvokeWrapper } from '../../../../../electron/shared/contracts/ipcInvokeFailure'
 import { classifyGenerationError } from '../../../observability/classifyError'
 
 export type StoryboardFailureCopy = {
@@ -30,6 +31,6 @@ export function storyboardFailureCopy(errorMessage: string | null | undefined): 
 
 /** 技术详情只取原始报错里人能读的那一段：去掉 IPC 外壳（Error invoking remote method …: Error:），截到一行。 */
 function technicalDetail(raw: string): string {
-  const text = String(raw || '').replace(/^Error invoking remote method '[^']*': (?:Error: )?/, '').split('\n')[0].trim()
+  const text = withoutIpcInvokeWrapper(String(raw || '')).split('\n')[0].trim()
   return text.length > 240 ? `${text.slice(0, 240)}…` : text
 }

@@ -94,6 +94,7 @@ describe('desktop lane read adapter contracts', () => {
     expect(f.result).toMatchObject({ isError: false, text: formatCanvasForAgent(projectCanvasRead(canvasSource)) })
     expect(f.canvasRead).toHaveBeenCalledOnce()
     expect(f.result.text).toContain('shot-a')
+    expect(f.result.text).toContain('节点行里标了「选中」')
     expect(f.result.text).toContain('result-a')
     expect(f.result.text).not.toContain('private.invalid')
     expect(f.result.text).not.toContain('private-fixture-value')

@@ -1,0 +1,23 @@
+{
+  "name": "预算预览金额投给界面 / 客户端的唯一判据（未知不是 0）",
+  "subject": "mcp.reservation-display-maximum",
+  "lifecycle": "spend-authority",
+  "authority_kind": "decision",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/capabilityCore/approvalReceipt.ts",
+    "symbol": "reservationMaximumForDisplay"
+  },
+  "write_api": [
+    {
+      "path": "electron/capabilityCore/approvalReceipt.ts",
+      "symbol": "reservationMaximumForDisplay"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-17",
+  "notes": "合同 docs/fixes/2026-10-17-mcp-host-reliability.root-cause.json：「价格未知」原先三处各写判据，现在只有 reservationMaximumForDisplay。"
+}

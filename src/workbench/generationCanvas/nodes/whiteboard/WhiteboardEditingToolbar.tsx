@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { IconArrowBackUp, IconArrowForwardUp, IconBrush, IconCamera, IconEraser, IconFlipHorizontal, IconFlipVertical, IconLayersSubtract, IconPhoto, IconPhotoPlus, IconPointer, IconStack2, IconTrash, IconTypography, IconWand } from '@tabler/icons-react'
 import { resolveAnchoredPopoverPlacement } from '../../../../design/anchoredPopoverPlacement'
 import { DesignNumberInput } from '../../../../design/forms'
+import { NomiLoadingMark } from '../../../../design/identity'
 import { ToolbarActionPanel } from '../ToolbarActionMenu'
 import { FloatingToolbarShell, ToolbarButton, ToolbarDivider, ToolbarIconButton } from '../NodeFloatingToolbar'
 import { collectBottomDockRects, resolveUsableBottomAboveDocks } from '../../../generation/workspaceBottomDocks'
@@ -115,7 +116,8 @@ export function WhiteboardEditingToolbar(p: WhiteboardEditingToolbarProps): Reac
       <ToolbarDivider />
       <button type="button" data-toolbar-action="whiteboard-ratio" className="h-8 rounded-nomi-sm px-2 text-caption tabular-nums text-nomi-ink-60 hover:bg-nomi-ink-05" aria-label={label('canvasSize')} onClick={() => openLocal('ratio')}>{p.dimensions.width} × {p.dimensions.height}</button>
       {p.onScreenshot && <ToolbarIconButton actionId="whiteboard-capture" icon={<IconCamera {...icon} />} title={p.screenshotLabel} ariaLabel={p.screenshotLabel} onClick={p.onScreenshot} disabled={p.screenshotBusy} />}
-      <ToolbarButton actionId="whiteboard-done" icon={null} label={label('done')} accent disabled={p.screenshotBusy || p.uploading || p.removeBgBusy} onClick={p.onDone} />
+      {/* While Done is exporting and saving (seconds on a large board), the button itself says so within the same frame: the editor must stay mounted until the export has read the live canvas. */}
+      <ToolbarButton actionId="whiteboard-done" icon={p.screenshotBusy ? <NomiLoadingMark size={14} /> : null} label={p.screenshotBusy ? t('generationCommon.whiteboard.doneSaving') : label('done')} accent ariaBusy={p.screenshotBusy} disabled={p.screenshotBusy || p.uploading || p.removeBgBusy} onClick={p.onDone} />
     </FloatingToolbarShell>
     {p.panel && <ToolbarActionPanel anchorRef={anchorRef} boundaryRect={boundaryRect} align="center" side="bottom" gap={8} onClose={close}>
       <div data-whiteboard-panel={p.panel} className="nodrag nopan nokey nowheel w-max max-w-[560px] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper text-nomi-ink shadow-nomi-md" onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>

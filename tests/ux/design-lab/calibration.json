@@ -1,6 +1,8 @@
 {
   "version": 2,
   "pendingApprovalScreens": {
+    "node-pointer": "2026-10-23 立屏（I-d2 第②步）· 聊天里的指向元素（NodePointer 板 A1–A5，P1 + P2 窄 / 行内密度）：格子挂的全是生产件（NodePointer / NodePointerGroup / 回到对话、生产 BaseGenerationNode 加外壳同一个外部高亮类函数），读现役画布 store、制作投影缓存与分镜方案；对话面板、Agent 那一句话、画布点阵是取景布景。第②步还没有聊天宿主，全部格子是 component-only（第③步新付费卡接线）。等用户看过截图拍板后跑 pnpm run design-lab:accept -- --screen node-pointer 录基线，并**删掉本条登记**。",
+    "creation-ai-rewrite": "2026-10-19 立屏（I-rewrite）· 写作区「选中文字 → AI 编辑 → 就地出结果」：格子是生产 WorkbenchEditor 本体（选区浮条、AI 编辑条、文档里的新旧对比与 ✓ ✕ 都是真组件），只有模型一头是假桌面桥。样张 WD1 / WA3，对账见 docs/evidence/2026-10-19-creation-ai-rewrite/。基线要在 darwin 上由 CI 产物取回：等用户看过截图点头后跑 pnpm run design-lab:accept -- --screen creation-ai-rewrite 并**删掉本条登记**。",
     "settings": "2026-10-17 · 「隐私与诊断」说明文字写准（多了界面流畅度分档与场景、设备档位），舞台高度 480 → 600 容纳更长的文字，并新增一格告知范围升级后的再确认（privacy-05，英文暗色）。文案和再确认交互等用户看截图拍板；拍板后在 darwin 上跑 pnpm run design-lab:update -- --screen settings 重录四张旧基线并录新的一张，并**删掉本条登记**。截图在对应 PR 里。",
     "director-3dbox": "2026-10-16 D-3dbox：3D-BOX 成为唯一导演台前补了 14 格（d3-switch-* 5 格对账、d3-produce-* 9 格「出成片 ▾」各态，现役组件只改文案与状态）。验收过后用 pnpm run design-lab:accept -- --screen director-3dbox 录全屏基线并**删掉这条登记**；截图证据 docs/design/boards/2026-10-16/preview/。",
     "no-accent-outline": "2026-10-10 立屏（样张线 D-outline）· 去掉强调色描边的普查 + 八格「现在 / 改后」样张，「改后」是 `.nao-after` 范围内的覆盖样式（生产组件不动），只是样张不是落地实现。用户 10-10 拍板「按样张改」，已落地（L6 线）：「现在」格即落地后的生产组件，「改后」格仍是样张近似。落地后仍须用 pnpm run design-lab:accept -- --screen no-accent-outline 录基线并删掉本条登记。截图证据在 docs/evidence/2026-10-10-no-accent-outline/。",

@@ -2,7 +2,7 @@ import { notify } from '../../../ui/notificationPolicy'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Editor } from '@tiptap/react'
-import { NomiLoadingMark, WorkbenchIconButton } from '../../../design'
+import { ICON_TIERS, NomiLoadingMark, WorkbenchIconButton } from '../../../design'
 import { cn } from '../../../utils/cn'
 import type { LibraryPrompt } from '../../api/promptLibraryApi'
 import { useNodeEffectChips } from './NodeEffectChips'
@@ -22,7 +22,6 @@ import { collectUngeneratedReferenceAncestors } from '../runner/referenceAncesto
 import NodeParameterControls from './NodeParameterControls'
 import { GENERATE_BUTTON_CLASS } from './nodeComposerStyles'
 import { NodePromptToolCluster } from './NodePromptToolCluster'
-import { ToolbarDivider } from './NodeFloatingToolbar'
 import { NodePromptOptimizer } from './NodePromptOptimizer'
 import { NodePromptTranslator } from './NodePromptTranslator'
 import { useNodeAssetDrop } from './useNodeAssetDrop'
@@ -36,15 +35,17 @@ import {
   isVideoLikeGenerationNodeKind,
 } from '../model/generationNodeKinds'
 import { resolveArchetypeForModel } from '../../../../electron/shared/modelArchetypes'
-import { applyArchetypeModeSwitch, currentArchetypeMode } from './controls/archetypeMeta'
-import { archetypeForNode, resolveModeForReferenceDemand } from '../agent/referenceEdgeCapability'
-import { addAssetUrlToNode } from './nodeAssetWrite'
+import { currentArchetypeMode } from './controls/archetypeMeta'
+import { applyPromptReferenceImages } from './promptReferenceImages'
 import { useComposerPromptExpand } from './useComposerPromptExpand'
 import { COMPOSER_MIN_USABLE_HEIGHT, NODE_COMPOSER_WIDTH } from './nodeSizing'
 import { ComposerAnchor } from './composerAnchor'
 import { ConnectedTextChips } from './ConnectedTextChips'
 import TextNodeComposer from './TextNodeComposer'
-import { IconArrowsDiagonal, IconArrowsDiagonalMinimize2, IconRefresh } from '@tabler/icons-react'
+import { IconArrowUp, IconArrowsDiagonal, IconArrowsDiagonalMinimize2, IconRefresh } from '@tabler/icons-react'
+import { ReferenceNamesContext, resolveReferenceInfos } from '../../assets/referenceNames'
+import { mentionUrlsInOrder } from '../../assets/promptMentions'
+import { peekAllProjectAssets } from '../../assets/useAllProjectAssets'
 import {
   findModelOptionByIdentifier,
   requiredModeForGenerationNode,
@@ -61,6 +62,7 @@ import { decideShotClaim } from '../../../../electron/shared/decideShotClaim'
 import { shotClaimCopy } from '../../observability/shotClaimCopy'
 import { useNodePromptFocusRequest } from './nodePromptFocus'
 import { CANVAS_LAYER } from '../reactFlow/canvasLayerOrder'
+import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 
 // 生成节点的浮动 composer：references + 提示词 + 参数 + 生成/重新生成按钮。
 // 从 BaseGenerationNode 抽出（A1.5 接缝）：只有「生成类」节点挂它，素材节点不挂。
@@ -239,6 +241,30 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
   // （建边或落上传槽，都过能力校验闸），见 useNodeMentionSource。素材库那组打了 @ 才去取，挂载不扫。
   const { orderedReferenceUrls: mentionCandidates, orderedMediaReferences, mentionSearch, onMentionSelect } =
     useNodeMentionSource(node, reportFeedback, writeAccess, graph)
+  // 提示词里的引用块写「小图 + 名字」（不写图1、图2）：名字是当前这批参考的投影，重名加「·2」。
+  const computedReferenceNames = React.useMemo(() => {
+    const infos = resolveReferenceInfos({
+      nodeId: node.id,
+      // 当前方式里的参考 + 提示词里写着的引用（换到首尾帧后，参考数组里的图不在当前槽里，句中的小块仍要有名字）。
+      references: [
+        ...orderedMediaReferences.map((reference) => ({ url: reference.url, kind: reference.kind })),
+        ...mentionUrlsInOrder(node.prompt || '').filter((url) => !orderedMediaReferences.some((reference) => reference.url === url)).map((url) => ({ url, kind: 'image' as const })),
+      ],
+      nodes: graph.nodes, edges: graph.edges, library: peekAllProjectAssets(),
+      fallbackName: (kind) => t(kind === 'video' ? 'assetLibrary.referenceVideo' : kind === 'audio' ? 'assetLibrary.referenceAudio' : 'assetLibrary.referenceImage'),
+    })
+    return Object.fromEntries([...infos.values()].map((info) => [info.url, info.chipName]))
+  }, [graph, node.id, node.prompt, orderedMediaReferences, t])
+  // 名字表内容没变就沿用同一个对象：换方式时参考集合换了新数组，名字表内容却一样——对象一换，提示词里每枚引用块都会白白重渲一遍
+  // （30 张参考切方式时，这一项是提示词编辑器 ~16ms 的来源）。
+  const referenceNamesKey = JSON.stringify(computedReferenceNames)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const referenceNames = React.useMemo(() => computedReferenceNames, [referenceNamesKey])
+  // 连入的文字是一条连线接进来的：小签尾巴的 × = 断开这条线（和参考小图的 × 同一个动作）。
+  const disconnectTextInput = React.useCallback((sourceId: string) => {
+    const edge = graph.edges.find((candidate) => candidate.source === sourceId && candidate.target === node.id)
+    if (edge) useGenerationCanvasStore.getState().disconnectEdge(edge.id)
+  }, [graph, node.id])
   const insertMention = React.useCallback((url: string) => {
     if (!promptEditor || promptEditor.isDestroyed) return
     const reference = orderedMediaReferences.find((candidate) => candidate.url === url)
@@ -270,34 +296,15 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
         updateNode(node.id, { prompt: before })
         if (promptEditor && !promptEditor.isDestroyed) promptEditor.commands.setContent(promptToContent(before, mentionCandidates))
       } })
-      // 库 prompt 自带的参考图一并落地（此前只写 prompt，item.referenceImages 被静默丢弃——
-      // 2026-07-28 群反馈「参考被丢」家族）。当前生成方式收不下 image_ref 先促到能收的模式
-      // （与建边 auto-promote 同一把尺子），再走 addAssetUrlToNode 单源写入（去重/上限同一处）；
-      // 模型任何模式都不吃图参考 → 诚实提示只应用了文本，不写死数据。
       const referenceUrls = (item.referenceImages ?? []).map((reference) => reference.url).filter(Boolean)
       if (referenceUrls.length) {
-        const target = latestNode(node.id)
-        const archetype = target ? archetypeForNode(target) : null
-        if (target && archetype) {
-          const promotedModeId = resolveModeForReferenceDemand(
-            archetype,
-            (target.meta || {}) as Record<string, unknown>,
-            [{ slots: ['image_ref'], asset: 'image' }],
-          )
-          if (promotedModeId) {
-            updateNode(node.id, {
-              meta: applyArchetypeModeSwitch((target.meta || {}) as Record<string, unknown>, archetype, promotedModeId),
-            })
-          }
-        }
-        const outcomes = referenceUrls.map((url) => addAssetUrlToNode(node.id, 'image', url, writeAccess))
-        if (outcomes.every((outcome) => outcome.status === 'no-slot')) {
+        if (applyPromptReferenceImages(node.id, referenceUrls, writeAccess) === 'unsupported') {
           reportFeedback(t('generationCommon.composer.promptReferenceUnsupported'))
         }
       }
       if (!inPanel) void persistActiveWorkbenchProjectNow().catch(() => {})
     },
-    [mentionCandidates, node.id, node.locked, node.prompt, promptEditor, reportFeedback, t, updateNode, latestNode, writeAccess, inPanel],
+    [mentionCandidates, node.id, node.locked, node.prompt, promptEditor, reportFeedback, t, updateNode, writeAccess, inPanel],
   )
 
   const handleGenerate = async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -381,17 +388,19 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
         }}
       >
       {readOnly ? <div role="status" className="text-caption text-nomi-ink-60">{t('generationCommon.workflowPlugin.readOnly')}</div> : null}
-      {/* 「生成方式」在参考区滚动口之外、紧贴在它上面：仍是参考区的头，但属于卡片的固定内容，
-          压到最小高度也整行可见可点（2026-09-21，见 NodeParameterControls 的 section="mode"）。 */}
-      {hasReferenceControls && !readOnly ? (
+      {/* 声音 / 3D 的「生成方式」仍在参考区滚动口之外、紧贴在它上面：属于卡片的固定内容，
+          压到最小高度也整行可见可点（2026-09-21，见 NodeParameterControls 的 section="mode"）。
+          视频的生成方式在参数面板顶部，图片没有这一组（由输入决定，见 generationModePresentation）。 */}
+      {hasReferenceControls && !readOnly && (isAudioKind || isModel3dLikeGenerationNodeKind(node.kind)) ? (
         <div data-node-composer-mode-bar className={cn('shrink-0')}>
           <NodeParameterControls node={node} section="mode" graph={graph} modelOptionsState={modelOptionsState} readMappings={readMappings} />
         </div>
       ) : null}
       {hasReferenceControls && !readOnly ? (
-        // 参考区最多露两行参考格（56px 格 × 2 + 间距），更多在区内滚；卡片定宽后一行放 8 格，两行覆盖绝大多数模式。
+        // 参考区最多露两行参考格（40px 格 × 2 + 间距），更多在区内滚；卡片定宽后一行放 11 格。
+        // 滚动口向卡片边缘外扩（-mx-3 -mt-3 再用 px-3 pt-3 补回来）：悬停才出的 × 挂在小图右上角外侧，不扩就被滚动口切掉。
         // 以前这里的滚动口高度是按屏幕剩余空间逐帧现算的，那套随放置层一起删了。
-        <div data-node-composer-references className={cn(NODE_SCROLL_REGION_CLASS_NAME, 'min-h-0 shrink-0 overflow-y-auto overscroll-contain border-b border-nomi-line-soft', !inPanel && 'max-h-36')}>
+        <div data-node-composer-references className={cn(NODE_SCROLL_REGION_CLASS_NAME, 'min-h-0 shrink-0 overflow-y-auto overscroll-contain', !inPanel && '-mx-3 -mt-3 max-h-40 px-3 pt-3')}>
           <NodeParameterControls node={node} section="references" onInsertMention={insertMention} graph={graph} modelOptionsState={modelOptionsState} readMappings={readMappings} />
         </div>
       ) : null}
@@ -415,6 +424,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
           )}
           style={{ cursor: node.locked ? 'default' : 'text', userSelect: node.locked ? 'auto' : 'text' }}
         >
+          <ReferenceNamesContext.Provider value={referenceNames}>
           <PromptEditor
             className={cn('min-h-[72px]')}
             value={node.prompt || ''}
@@ -428,6 +438,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
             mentionSearch={mentionSearch}
             onMentionSelect={(...args) => readOnlyRef.current ? null : onMentionSelect(...args)}
           />
+          </ReferenceNamesContext.Provider>
         </div>
         {!inPanel && promptExpand.canToggle ? (
           <WorkbenchIconButton
@@ -443,12 +454,12 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
         </div>
       )}
       {/* 连进来的文字：拼进提示词的那几段，摆出来（和生成时拼提示词读同一个投影）。 */}
-      <ConnectedTextChips node={node} graph={graph} />
+      <ConnectedTextChips node={node} graph={graph} onDisconnect={inPanel || readOnly ? undefined : disconnectTextInput} />
       {/* 推荐行不进面板宿主：卡上的提示词是 Nomi 已经写完的，这一刻不是重新起草的时候。 */}
       {showPromptPicker && effects.recommendations}
-      {/* 底栏（v1.1，2026-09-11 用户拍板）：铺满卡宽（w-full），一行三段、不换行：
-          `[模型 ▾] [16:9 · 5s ▾] │ [✦][✨] │ [×N ▾] ……… [↑]`
-          从左到右是「出什么 → 怎么写 → 出几张 → 走」，与人在按下生成那一刻的决策顺序同向。
+      {/* 底栏（B3，2026-10-18/19 用户拍板）：铺满卡宽（w-full），左边「出什么」、右边「怎么写 → 出几张 → 走」，不换行：
+          `[模型 ▾] [变体 ▾] [16:9 · 5s ▾] ……… [预设][翻译][N] │ [1 个 ▾] [↑]`
+          左边模型一颗、变体一颗、参数摘要一颗（现有组件原样）；右边三个提示词钮 + 分隔线 + 数量（模型声明了才有）+ ↑ 圆钮。
           三类归位见 docs/design/2026-09-10-node-composer-bar-v1.md：
             A 决定出什么/花多少 → 第一段与第三段；B 帮我写提示词 → 中段缩小一号的纯 icon；
             锁 → 回节点浮条（它的作用对象是**这个节点**，不是这一次生成）。
@@ -459,7 +470,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
           `data-node-composer-footer` / `data-bar-segment` 是走查锚点，好断言「单行 + 段序没漂」。 */}
       {!readOnly && <div data-node-composer-footer className={cn('flex items-center gap-2 mt-auto pt-1 shrink-0 w-full flex-nowrap')}>
         {/* 第一段：模型芯片 + 变体 + 参数区（画布=摘要 pill，见 composerHeadlineSummary；付费卡=chips）。 */}
-        <div data-bar-segment="model-params" className={cn('flex min-w-0 shrink items-center')}>
+        <div data-bar-segment="model-params" className={cn('flex min-w-0 flex-1 items-center')}>
           <NodeParameterControls
             node={node}
             section="parameters"
@@ -475,18 +486,18 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
               : {})}
           />
         </div>
-        {/* 第二段：B 簇。分隔线用节点浮条那根现役 ToolbarDivider，不另画一根。 */}
+        {/* 右半边（三个提示词钮、数量、↑）靠卡片右侧：第一段 flex-1 吃掉剩余宽度，不再另放一个占 8px 间距的空垫片
+            ——英文「Standard」那一档正是被这 8px 挤得模型名和摘要各被截掉几像素（验收 V-b1a 建议 1）。 */}
+        {/* B 簇（三个提示词钮）。它和数量之间的分隔线由数量自己带（只有数量存在才有）。 */}
         {hasPromptTools ? (
-          <>
-            <ToolbarDivider />
-            <NodePromptToolCluster ariaLabel={t('generationCommon.composerBarV1.promptTools')}>
-              {showPromptPicker ? effects.more : null}
-              {showOptimizer ? <NodePromptTranslator editor={promptEditor} prompt={node.prompt || ''} mentionReferences={orderedMediaReferences} onFeedback={reportFeedback} /> : null}
-              {showOptimizer ? <NodePromptOptimizer node={node} isVideo={nodeExecutionKind === 'video'} /> : null}
-            </NodePromptToolCluster>
-            <ToolbarDivider />
-          </>
+          <NodePromptToolCluster ariaLabel={t('generationCommon.composerBarV1.promptTools')}>
+            {showPromptPicker ? effects.more : null}
+            {showOptimizer ? <NodePromptTranslator editor={promptEditor} prompt={node.prompt || ''} mentionReferences={orderedMediaReferences} onFeedback={reportFeedback} /> : null}
+            {showOptimizer ? <NodePromptOptimizer node={node} isVideo={nodeExecutionKind === 'video'} /> : null}
+          </NodePromptToolCluster>
         ) : null}
+        {/* 数量：模型声明了数量才有（section="quantity" 自己判断，没有就不渲染），紧挨 ↑ 左边。 */}
+        {inPanel ? null : <NodeParameterControls node={node} section="quantity" graph={graph} modelOptionsState={modelOptionsState} readMappings={readMappings} />}
         {inPanel ? null : (() => {
           const disabledReason = directorPreviewBlock
             ? t(directorPreviewBlock)
@@ -520,13 +531,13 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
                 ? t('generationCommon.composer.generateReferencesFirst')
                 : hasResult
                   ? t('generationCommon.composer.regenerate')
-                  : t('generationCommon.composer.generate'))
+                  : t('generationCommon.composerB3.generateTip'))
           return (
             <>
             {rerenderDirectorNodeId ? (
               <WorkbenchIconButton
                 size="sm"
-                icon={<IconRefresh size={14} stroke={2} />}
+                icon={<IconRefresh />}
                 label={t('director.agent.previewRerender')}
                 data-testid="node-composer-preview-rerender"
                 onClick={() => requestDirectorPreviewRender(rerenderDirectorNodeId)}
@@ -534,16 +545,16 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
             ) : null}
             <span title={title} style={{ display: 'contents' }}>
               {/* 原生 button：避开 WorkbenchButton(Mantine)对 radius/bg 的覆盖,确保样张 v4 的深色圆形主行动钮。
-                  ml-auto：把生成钮推到底栏最右 = 卡片右下角（卡宽恒定 → 屏幕位置锁死）。 */}
+                  右半边由上面那根 flex-1 撑开：生成钮永远在底栏最右 = 卡片右下角（卡宽恒定 → 屏幕位置锁死）。 */}
               <button
                 type="button"
                 data-bar-segment="generate"
-                className={cn(GENERATE_BUTTON_CLASS, 'ml-auto')}
+                className={GENERATE_BUTTON_CLASS}
                 aria-label={hasResult ? t('generationCommon.composer.regenerate') : t('generationCommon.composer.generateAsset')}
                 disabled={!canGenerateNow || productionClaimBlocked || directorPreviewBlock !== null}
                 onClick={handleGenerate}
               >
-                {isGenerating ? '···' : '↑'}
+                {isGenerating ? '···' : <IconArrowUp size={ICON_TIERS.tool.size} stroke={ICON_TIERS.tool.stroke} aria-hidden />}
               </button>
             </span>
             </>

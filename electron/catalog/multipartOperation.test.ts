@@ -13,11 +13,11 @@ function contextFor(prompt: string, extras: AnyRec, modelKey = "gpt-image-2"): A
   return buildTemplateContext({
     request: { prompt },
     // selected 必须给（与生产 profileHttpRequest.templateContext 同构）：multipart 的 model 字段读
-    // `{{request.params.model}}`，而没选变体时那个键的回落正来自 selected.wireModelKey。不给 =
+    // `{{request.params.model}}`，那个键由线上模型名 owner 按连接身份写入（wireModelIdentity）。不给 =
     // 测试里 model 恒缺席，量到的不是生产真发的那份表单。
     params: applyParamMap(
       OPENAI_MULTIPART_IMAGE_EDIT_OP.paramMap,
-      taskTemplateParams({ extras }, { vendorKey: "self-hosted-relay", modelKey, wireModelKey: modelKey }),
+      taskTemplateParams({ extras }, { vendorKey: "self-hosted-relay", modelKey }),
     ),
     model: { modelKey },
     modelKey,
@@ -134,6 +134,21 @@ describe("multipart 图生图（/v1/images/edits）请求装配", () => {
     expect(req.multipart).toBe(true);
     expect((req.images as AnyRec[])[0]).toMatchObject({ fileName: "a.png", contentType: "image/png" });
     expect(JSON.stringify(req)).not.toContain("bytes:"); // 字节内容不进 preview
+  });
+
+  // 带空格的参考链接：取字节源（fileSource）是模板从 request.params 搬来的值——参数层（taskTemplateParams）已经序列化。
+  it("multipart 取字节源读到的是参数层序列化后的参考链接", async () => {
+    const seen: string[] = [];
+    await executeMultipartOperation({
+      multipart: spec,
+      context: contextFor("改图", { referenceImages: ["https://cdn.example.com/Windows ref.png"] }),
+      resolveFile: async (url) => {
+        seen.push(url);
+        return { bytes: Buffer.from([1]), contentType: "image/png", fileName: "ref.png" };
+      },
+      send: async () => ({}),
+    });
+    expect(seen).toEqual(["https://cdn.example.com/Windows%20ref.png"]);
   });
 
   it("generic file declaration supports audio multipart fields without image aliases", async () => {

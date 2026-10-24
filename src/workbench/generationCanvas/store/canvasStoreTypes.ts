@@ -110,8 +110,9 @@ export type CanvasGraphActions = {
   /**
    * 系统出处边的**唯一**写法：建派生节点 + 连出处边是一个原子动作（全景 / 白板截图、导演台产物、剪辑导出、事实表）。
    * 按 model/derivedOutput 的规则表核源种类和新节点种类，不符返回 null（什么都不建）；目标一定是刚建的新节点，没有任何身份字段可伪造、可复制。
+   * 落点：`node.position` 只是「希望贴在哪」，一律过 addNode 的真实占位避让总闸，**不收 `exactPosition`**（派生节点不是成组紧凑布局，没有跳过避让的理由）。
    */
-  addDerivedOutput: (request: { sourceNodeId: string; kind: DerivedOutputKind; node: CreateNodeInput; mode?: GenerationCanvasEdge['mode'] }) => GenerationCanvasNode | null
+  addDerivedOutput: (request: { sourceNodeId: string; kind: DerivedOutputKind; node: Omit<CreateNodeInput, 'exactPosition'>; mode?: GenerationCanvasEdge['mode'] }) => GenerationCanvasNode | null
   /**
    * 把待连的线落到**一个组**上：给组内每个成员各连一根真边，并记下组入参
    * （以后新进组的成员自动补一根）。图结构不变——组只是输入手势的语法糖，见 model/groupInputLinks.ts。

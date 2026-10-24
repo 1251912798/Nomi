@@ -1,0 +1,29 @@
+{
+  "name": "目录里的一行接入 → 一次模型调用的连接配置（协议、地址、鉴权、上下文窗口、输出上限）",
+  "subject": "model-call.connection-config",
+  "lifecycle": "catalog",
+  "authority_kind": "decision",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/ai/vendorModelConnection.ts",
+    "symbol": "nomiModelConfigFor"
+  },
+  "write_api": [
+    {
+      "path": "electron/ai/vendorModelConnection.ts",
+      "symbol": "nomiModelConfigFor"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/ai/vendorModelConnection.test.ts",
+  "allowed_consumers": [
+    "electron/textTaskRunner.ts",
+    "electron/agentLane/laneDesktopRuntime.ts",
+    "electron/providerAdapter/serviceLanguageModels.ts",
+    "electron/ai/textStreamIpc.ts"
+  ],
+  "since": "2026-10-21",
+  "notes": "合同 docs/fixes/2026-10-21-text-task-liveness.root-cause.json：Agent、文本任务、编译器同一份（含 Anthropic 根地址补版本段——以前 lane 一次性提问打到 {root}/messages 404）。预热按目录里启用的文本模型点名协议也读这里。"
+}

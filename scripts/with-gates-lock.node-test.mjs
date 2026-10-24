@@ -77,13 +77,121 @@ test('two worktree directories serialize and the waiter reports owner then takes
   const first = launch(t, lock, firstDir, "print('FIRST', flush=True); input()")
   await output(first, /FIRST/)
   const second = launch(t, lock, secondDir, "print('SECOND', flush=True)")
-  await output(second, /另一棵 worktree/)
-  assert.match(second.lines.join(''), /pid=.*worktree-a.*已跑/)
+  await output(second, /前面还有/)
+  assert.match(second.lines.join(''), /前面还有 0 个（正在跑：pid=.*worktree-a.*已跑/)
   assert.doesNotMatch(second.lines.join(''), /SECOND/)
   first.stdin.end('\n')
   assert.equal((await first.done)[0], 0)
   assert.equal((await second.done)[0], 0)
   assert.match(second.lines.join(''), /SECOND/)
+})
+
+test('five queued workers acquire the lock in ticket order and report queue depth', { timeout: 30000 }, async (t) => {
+  const { root, lock } = fixture(t)
+  const orderPath = path.join(root, 'acquisition-order.txt')
+  const holder = launch(t, lock, root, "print('HOLDER', flush=True); input()")
+  await output(holder, /HOLDER/)
+  const workers = []
+  for (let index = 0; index < 5; index += 1) {
+    if (index > 0) await new Promise((resolve) => setTimeout(resolve, 300))
+    workers.push(launch(t, lock, root, `import time; open(${JSON.stringify(orderPath)}, 'a').write('FIFO_${index}\\n'); print('FIFO_${index}', flush=True); time.sleep(0.2)`))
+  }
+  await Promise.all(workers.map((worker) => output(worker, /排队等待/)))
+  holder.stdin.end('\n')
+  assert.equal((await holder.done)[0], 0)
+  assert.deepEqual((await Promise.all(workers.map((worker) => worker.done))).map(([code]) => code), [0, 0, 0, 0, 0])
+  const order = fs.readFileSync(orderPath, 'utf8').trim().split(/\r?\n/)
+  assert.deepEqual(order, ['FIFO_0', 'FIFO_1', 'FIFO_2', 'FIFO_3', 'FIFO_4'])
+  const stderr = workers.map((worker) => worker.lines.join('')).join('')
+  assert.match(stderr, /前面还有 [0-4] 个（正在跑：pid=.* cwd=.* 已跑 .* 分钟）；排队等待/)
+  assert.match(stderr, /前面还有 [1-4] 个（正在跑：pid=.* cwd=.* 已跑 .* 分钟）；排队等待/)
+  assert.deepEqual([...new Set([...stderr.matchAll(/前面还有 (\d+) 个/g)].map((match) => Number(match[1])))].sort((a, b) => a - b), [0, 1, 2, 3, 4])
+  assert.deepEqual(fs.readdirSync(`${lock}.queue`).filter((name) => name.startsWith('ticket-')), [])
+})
+
+test('a SIGKILLed middle ticket is reclaimed by the kernel and cannot block later tickets', { timeout: 20000 }, async (t) => {
+  const { root, lock } = fixture(t)
+  const holder = launch(t, lock, root, "print('HOLDER', flush=True); input()")
+  await output(holder, /HOLDER/)
+  const first = launch(t, lock, root, "import time; print('FIRST_TICKET', flush=True); time.sleep(0.2)")
+  await output(first, /排队等待/)
+  const middle = launch(t, lock, root, "print('MIDDLE_TICKET', flush=True)")
+  await output(middle, /排队等待/)
+  const last = launch(t, lock, root, "print('LAST_TICKET', flush=True)")
+  await output(last, /排队等待/)
+  middle.kill('SIGKILL')
+  assert.notEqual((await middle.done)[0], 0)
+  holder.stdin.end('\n')
+  assert.equal((await holder.done)[0], 0)
+  assert.equal((await first.done)[0], 0)
+  assert.equal((await last.done)[0], 0)
+  assert.match(first.lines.join(''), /FIRST_TICKET/)
+  assert.match(last.lines.join(''), /LAST_TICKET/)
+})
+
+test('the next admission removes a SIGKILLed ticket file under the queue guard', { timeout: 20000 }, async (t) => {
+  if (process.platform === 'win32') return t.skip('POSIX SIGKILL and unlink evidence')
+  const { root, lock } = fixture(t)
+  const queue = `${lock}.queue`
+  const holder = launch(t, lock, root, "print('HOLDER', flush=True); input()")
+  await output(holder, /HOLDER/)
+  const first = launch(t, lock, root, "print('FIRST_CLEANUP', flush=True)")
+  await output(first, /排队等待/)
+  const killed = launch(t, lock, root, "print('KILLED_CLEANUP', flush=True)")
+  await output(killed, /排队等待/)
+  killed.kill('SIGKILL')
+  assert.notEqual((await killed.done)[0], 0)
+  assert.equal(fs.readdirSync(queue).filter((name) => name === 'ticket-00000000000000000001.lock').length, 1)
+  const admission = launch(t, lock, root, "print('ADMISSION_CLEANUP', flush=True)")
+  await output(admission, /排队等待/)
+  assert.equal(fs.existsSync(path.join(queue, 'ticket-00000000000000000001.lock')), false)
+  holder.stdin.end('\n')
+  assert.equal((await holder.done)[0], 0)
+  assert.equal((await first.done)[0], 0)
+  assert.equal((await admission.done)[0], 0)
+  assert.deepEqual(fs.readdirSync(queue).filter((name) => name.startsWith('ticket-')), [])
+})
+
+test('a queued SIGINT exits non-zero without disturbing the remaining ticket order', { timeout: 20000 }, async (t) => {
+  if (process.platform === 'win32') return t.skip('POSIX signal delivery in the queue test')
+  const { root, lock } = fixture(t)
+  const holder = launch(t, lock, root, "print('HOLDER', flush=True); input()")
+  await output(holder, /HOLDER/)
+  const first = launch(t, lock, root, "print('FIRST_CANCEL', flush=True)")
+  await output(first, /排队等待/)
+  const cancelled = launch(t, lock, root, "print('CANCELLED', flush=True)")
+  await output(cancelled, /排队等待/)
+  const last = launch(t, lock, root, "print('LAST_CANCEL', flush=True)")
+  await output(last, /排队等待/)
+  cancelled.kill('SIGINT')
+  assert.notEqual((await cancelled.done)[0], 0)
+  holder.stdin.end('\n')
+  assert.equal((await holder.done)[0], 0)
+  assert.equal((await first.done)[0], 0)
+  assert.equal((await last.done)[0], 0)
+  assert.match(first.lines.join(''), /FIRST_CANCEL/)
+  assert.match(last.lines.join(''), /LAST_CANCEL/)
+  assert.doesNotMatch(cancelled.lines.join(''), /CANCELLED/)
+})
+
+test('the main lock inode survives queue setup and release', { timeout: 10000 }, async (t) => {
+  if (process.platform === 'win32') return t.skip('inode identity is POSIX evidence')
+  const { root, lock } = fixture(t)
+  const child = launch(t, lock, root, "print('INODE', flush=True)")
+  await output(child, /INODE/)
+  const before = fs.statSync(lock).ino
+  assert.equal((await child.done)[0], 0)
+  const after = fs.statSync(lock).ino
+  assert.equal(after, before)
+  assert.equal(fs.statSync(`${lock}.queue`).isDirectory(), true)
+})
+
+test('unopenable queue state fails closed instead of falling back to lock polling', { timeout: 10000 }, async (t) => {
+  const { root, lock } = fixture(t)
+  fs.writeFileSync(`${lock}.queue`, 'not a directory')
+  const child = launch(t, lock, root, "print('SHOULD_NOT_RUN', flush=True)")
+  assert.notEqual((await child.done)[0], 0)
+  assert.doesNotMatch(child.lines.join(''), /SHOULD_NOT_RUN/)
 })
 
 test('dead holder metadata does not prevent acquisition and failure exit is preserved', { timeout: 10000 }, async (t) => {
@@ -101,6 +209,21 @@ test('nested wrapper inherits verified ownership without self-deadlock', { timeo
   assert.match(child.lines.join(''), /NESTED/)
 })
 
+test('a nested token with a different cwd takes a ticket and waits for the outer owner', { timeout: 15000 }, async (t) => {
+  if (process.platform === 'win32') return t.skip('POSIX inherited stdout and signal semantics')
+  const { root, lock } = fixture(t)
+  const other = path.join(root, 'other-cwd')
+  const marker = path.join(root, 'different-cwd.marker')
+  fs.mkdirSync(other)
+  const nested = `open(${JSON.stringify(marker)}, 'w').write('nested'); print('DIFFERENT_CWD', flush=True)`
+  const source = `import os, subprocess, time; subprocess.Popen([${JSON.stringify(python)}, ${JSON.stringify(wrapper)}, '--', ${JSON.stringify(python)}, '-u', '-c', ${JSON.stringify(nested)}], cwd=${JSON.stringify(other)}); time.sleep(0.25); print('OUTER_MARKER=' + str(os.path.exists(${JSON.stringify(marker)})), flush=True)`
+  const child = launch(t, lock, root, source)
+  await output(child, /OUTER_MARKER=False/)
+  assert.equal((await child.done)[0], 0)
+  assert.match(child.lines.join(''), /DIFFERENT_CWD/)
+  assert.equal(fs.readFileSync(marker, 'utf8'), 'nested')
+})
+
 test('killed wrapper cannot release lock while its inherited child still runs', { timeout: 15000 }, async (t) => {
   if (process.platform === 'win32') return t.skip('POSIX inherited flock descriptor')
   const { root, lock } = fixture(t)
@@ -108,7 +231,7 @@ test('killed wrapper cannot release lock while its inherited child still runs', 
   await output(first, /CHILD/)
   first.kill('SIGKILL')
   const second = launch(t, lock, root, "print('TAKEOVER', flush=True)")
-  await output(second, /另一棵 worktree/)
+  await output(second, /前面还有/)
   assert.doesNotMatch(second.lines.join(''), /TAKEOVER/)
   fs.writeFileSync(path.join(root, 'release'), 'release')
   assert.equal((await second.done)[0], 0)
@@ -128,7 +251,7 @@ test('owner death allows later nested foreground validation while keeping outsid
   fs.writeFileSync(start, 'start')
   await output(first, /AFTER_OWNER_DEATH/)
   const second = launch(t, lock, root, "print('OUTSIDER', flush=True)")
-  await output(second, /另一棵 worktree/)
+  await output(second, /前面还有/)
   assert.doesNotMatch(second.lines.join(''), /OUTSIDER/)
   fs.writeFileSync(finish, 'finish')
   await first.done
@@ -159,6 +282,88 @@ test('termination reaches the foreground process group and releases the lock', {
   const second = launch(t, lock, root, "print('RELEASED', flush=True)")
   assert.equal((await second.done)[0], 0)
   assert.match(second.lines.join(''), /RELEASED/)
+})
+
+test('execute installs SIGTERM handling before spawning the child', { timeout: 15000 }, async () => {
+  const observed = await probe(`${loadWrapper}
+import sys, tempfile
+
+fd, path = tempfile.mkstemp()
+os.close(fd)
+try:
+    with open(path, 'w+') as file:
+        lock.ensure_lock_byte(file)
+        real_popen = lock.subprocess.Popen
+        observed = {}
+
+        def hooked_popen(*args, **kwargs):
+            child = real_popen(*args, **kwargs)
+            observed['handler_installed'] = signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
+            return child
+
+        lock.subprocess.Popen = hooked_popen
+        owner = {'pid': os.getpid(), 'cwd': os.getcwd(), 'token': 'probe'}
+        observed['code'] = lock.execute([sys.executable, '-c', 'pass'], False, file, 'probe', owner)
+finally:
+    os.unlink(path)
+print(json.dumps(observed))`)
+  assert.deepEqual(observed, { handler_installed: true, code: 0 })
+})
+
+test('a SIGTERM during Popen is deferred until the child group can be killed', { timeout: 15000 }, async () => {
+  const observed = await probe(`${loadWrapper}
+import sys, tempfile
+
+fd, path = tempfile.mkstemp()
+os.close(fd)
+try:
+    with open(path, 'w+') as file:
+        lock.ensure_lock_byte(file)
+        assert lock.try_lock(file)
+        real_popen = lock.subprocess.Popen
+        observed = {}
+
+        def hooked_popen(*args, **kwargs):
+            child = real_popen(*args, **kwargs)
+            observed['pid'] = child.pid
+            os.kill(os.getpid(), signal.SIGTERM)
+            return child
+
+        lock.subprocess.Popen = hooked_popen
+        owner = {'pid': os.getpid(), 'cwd': os.getcwd(), 'token': 'probe'}
+        observed['code'] = lock.execute(
+            [sys.executable, '-c', 'import time; time.sleep(2)'],
+            False,
+            file,
+            'probe',
+            owner,
+        )
+        observed['child_alive'] = lock.alive(observed['pid'])
+        try:
+            os.killpg(observed['pid'], 0)
+        except ProcessLookupError:
+            observed['group_alive'] = False
+        else:
+            observed['group_alive'] = True
+        lock.unlock(file)
+    takeover = real_popen(
+        [sys.executable, ${JSON.stringify(wrapper)}, '--', sys.executable, '-c', "print('TAKEOVER', flush=True)"],
+        env={**os.environ, 'NOMI_GATES_LOCK_PATH': path, 'NOMI_GATES_LOCK_TOKEN': ''},
+        stdout=lock.subprocess.PIPE,
+        stderr=lock.subprocess.PIPE,
+        text=True,
+    )
+    stdout, stderr = takeover.communicate(timeout=10)
+    observed['takeover_code'] = takeover.returncode
+    observed['takeover_output'] = stdout
+finally:
+    os.unlink(path)
+print(json.dumps(observed))`)
+  assert.equal(observed.code, 143)
+  assert.equal(observed.child_alive, false)
+  assert.equal(observed.group_alive, false)
+  assert.equal(observed.takeover_code, 0, observed.takeover_output)
+  assert.match(observed.takeover_output, /TAKEOVER/)
 })
 
 // Liveness is a read. It answers for real pids and refuses anything that is not

@@ -86,6 +86,32 @@ button{font-family:inherit;cursor:default}
 
 
 
+.light{--nomi-ink40:oklch(.68 .01 80)}
+.dark{--nomi-ink40:oklch(.62 .006 85)}
+.rp{position:absolute;z-index:5;box-sizing:border-box;width:320px;border:1px solid var(--nomi-line);background:var(--nomi-paper);border-radius:16px;box-shadow:var(--nomi-shadow-md)}
+.rp .rpi{display:flex;flex-direction:column;gap:12px;padding:12px;max-height:420px;overflow-y:auto;border-radius:16px}
+.rp .rg{display:flex;flex-direction:column;gap:6px}
+.rp .rtt{font-size:11px;font-weight:600;line-height:1;color:var(--nomi-ink40)}
+.rp .sgm{display:grid;grid-template-columns:repeat(auto-fit,minmax(56px,1fr));gap:4px;padding:4px;border-radius:10px;background:var(--nomi-ink05)}
+.rp .sgm button{min-height:28px;padding:4px 8px;border:0;border-radius:6px;background:transparent;color:var(--nomi-ink60);font:inherit;font-size:12px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0}
+.rp .sgm button.on{background:var(--nomi-paper);color:var(--nomi-ink);font-weight:600;box-shadow:var(--nomi-shadow-sm)}
+.rp .sgm button.dis{color:var(--nomi-ink40);opacity:.6}
+.rp .shp{display:block;height:18px}
+.rp .sl{display:flex;align-items:center;gap:12px;min-width:0}
+.rp .sl .tr{position:relative;flex:1;min-width:0;height:6px;border-radius:3px;background:var(--nomi-ink10)}
+.rp .sl .tr i{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:var(--nomi-accent)}
+.rp .sl .tr u{position:absolute;top:-5px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--nomi-paper);border:2px solid var(--nomi-accent);box-sizing:border-box;text-decoration:none}
+.rp .sl b{flex:none;min-width:28px;text-align:right;font-size:12px;font-weight:400;color:var(--nomi-ink80);font-variant-numeric:tabular-nums}
+.rp .swr{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px}
+.rp .sw{position:relative;flex:none;width:28px;height:16px;border-radius:8px;background:var(--nomi-ink10)}
+.rp .sw.on{background:var(--nomi-accent)}
+.rp .sw::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--nomi-paper)}
+.rp .sw.on::after{left:14px}
+.chip.sum{background:var(--nomi-ink05);padding:0 8px 0 10px}
+
+.rp.fit{left:12px;right:12px;top:12px;bottom:96px;width:auto}
+.rp.fit .rpi{height:100%;max-height:none}
+
 .i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
 .i12{width:12px;height:12px}.i14{width:14px;height:14px}.i16{width:16px;height:16px}
 .gen,.lk,.par{white-space:nowrap}
@@ -117,7 +143,10 @@ button{font-family:inherit;cursor:default}
 .rrow{display:flex;align-items:center;gap:8px;min-height:32px;padding-right:32px}
 .nm13{font-size:13px;font-weight:600;color:var(--nomi-ink);display:flex;align-items:baseline;gap:8px;min-width:0}
 .nm13 .idx{font-size:12px;font-weight:400;color:var(--nomi-ink60);font-variant-numeric:tabular-nums}
-.last{display:flex;align-items:center;gap:8px;min-height:32px}
+.last{display:flex;align-items:center;gap:8px;min-height:32px;min-width:0}
+.last .par{padding:0 2px;margin-left:0;gap:2px;flex:0 1 auto;min-width:0}
+.last .pri2{padding:0 12px}
+.last .par + .par{margin-left:2px}
 .r1{display:flex;align-items:center;gap:8px;min-height:32px}
 .r1 .idx{font-size:12px;color:var(--nomi-ink60);font-variant-numeric:tabular-nums}
 .r1 .nm{font-size:14px;font-weight:600;color:var(--nomi-ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -159,7 +188,7 @@ button{font-family:inherit;cursor:default}
 
 </style>
 </helmet>
-<div class="root light" style="width:440px;min-height:380px;padding:24px 40px 28px;"><div class="panel mini"><div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span><span class="tag" style="margin-left:2px">3%</span><span class="sp"></span><button class="ib bare" aria-label="历史会话"><svg class="i i16 " viewBox="0 0 24 24" style="stroke-width:2;" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></svg></button></div><div class="convo"></div><div class="pslot" style="position:relative"><div class="sc2"><span class="xtop"><button class="xb" type="button" aria-label="不生成"><svg class="i i16 " viewBox="0 0 24 24" style="stroke-width:2;" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button></span><div class="rrow"><span class="rt rt32" style="background:linear-gradient(160deg,#e9e4dc,#9bb7c9)"></span><span class="rt rt32" style="background:linear-gradient(160deg,#41576a,#c8b48a)"></span></div><div class="nm13"><span class="idx">01</span>纸船出发</div><div class="pr1">雨后清晨，路面一滩积水形成的小水洼，水面倒映着微亮的天空。一只手工折成的白色纸船在水洼中央缓缓漂浮，船身随微波轻轻摇晃。</div><div class="last"><button class="par" type="button" style="border:0;background:transparent">Seedance 2.0 Fast · 16:9 · 4s · 480p<svg class="i i12 " viewBox="0 0 24 24" style="stroke-width:2.67;" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></button><span class="sp"></span><button class="pri2" type="button">生成</button></div></div></div><div class="pin">可继续输入，将排队发送…</div></div></div>
+<div class="root light" style="width:440px;min-height:380px;padding:24px 40px 28px;"><div class="panel mini"><div class="ph"><svg width="20" height="20" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--nomi-logo-ground)"/><rect x="5.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><rect x="18.5" y="5.5" width="4" height="17" rx="1.2" fill="white"/><polygon points="9.5,5.5 13.5,5.5 18.5,22.5 14.5,22.5" fill="white"/></svg><span class="wm">No<b>m</b>i</span><span class="tag" style="margin-left:2px">3%</span><span class="sp"></span><button class="ib bare" aria-label="历史会话"><svg class="i i16 " viewBox="0 0 24 24" style="stroke-width:2;" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></svg></button></div><div class="convo"></div><div class="pslot" style="position:relative"><div class="sc2"><span class="xtop"><button class="xb" type="button" aria-label="不生成"><svg class="i i16 " viewBox="0 0 24 24" style="stroke-width:2;" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button></span><div class="rrow"><span class="rt rt32" style="background:linear-gradient(160deg,#e9e4dc,#9bb7c9)"></span><span class="rt rt32" style="background:linear-gradient(160deg,#41576a,#c8b48a)"></span></div><div class="nm13"><span class="idx">01</span>纸船出发</div><div class="pr1">雨后清晨，路面一滩积水形成的小水洼，水面倒映着微亮的天空。一只手工折成的白色纸船在水洼中央缓缓漂浮，船身随微波轻轻摇晃。</div><div class="last"><span class="par" style="margin-left:0;padding:0">Seedance 2.0 Fast · 16:9 · 4s · 480p</span><span class="sp"></span><button class="pri2" type="button">生成</button></div></div></div><div class="pin">可继续输入，将排队发送…</div></div></div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":440,"height":380}}'>
 class Component extends DCLogic {

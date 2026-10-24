@@ -1,0 +1,343 @@
+{
+  "board": "PromptDetail",
+  "approvedOn": "2026-10-24",
+  "stage": "built",
+  "approval": {
+    "quote": "技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。",
+    "date": "2026-10-24",
+    "source": "用户原话（协调转述）",
+    "canvas": "https://claude.ai/artifact/A7vtfvcPzy8zCWJUdrJn9y",
+    "canvasVersion": "第 48 版拍板；第 50 版只修对齐（右上两颗图标、新抽屉描边），第 51 版只改便签措辞，第 52 版只把源码里的素材编号改写成整段素材路径（画面不变）；内容同第 48 版"
+  },
+  "visualReview": "用户 2026-10-24 在 Claude Design 画布「技能库与提示词库排版改版（0.24 探索）」第 48 版上把 10 个问题全按默认定（https://claude.ai/artifact/A7vtfvcPzy8zCWJUdrJn9y，私有，只有仓库主人能开）。",
+  "designCard": "docs/plan/2026-10-23-skill-prompt-library-layout.md",
+  "sourceBoundary": "板源 = Claude Design 画布第 52 版里「修后」画板的原样副本（source/*.dc.html；第 52 版与用户 10-24 拍板的第 48 版内容一致，只修了右上两颗图标与新抽屉描边的对齐，并把源码里的素材编号改写成整段素材路径、画面不变）+ 画布索引公开版（source/canvas.json：只留修后画板；带产品名的先例便签与私有待办编号去掉，先例见设计卡 ★0 与本清单 priorArt）。preview/<板>.html 是把这些画板用画布运行时渲染后去壳拼成的静态页：每格样式加前缀隔离，图片去掉 src（画布素材不进仓库），抽屉板去掉外壳真截图、详情板去掉背景里压暗的库页；preview/<画板>.webp 是同一渲染的截图（1440×900，WebP 质量 90）。候选由 scripts/board-extract.mjs 的抽取函数（extractBoard + renderCandidatesFile，同样的浏览器设置）在拼页上抽出，两次抽取逐字节一致。「修前」画板（现役真截图）不进清单，只作旧功能普查的 before 依据。",
+  "designIntent": "提示词详情：× 在标题行；媒体在上、全文在下；底栏左「来源」，右「复制」图标 +「放上画布」主按钮；我的条目另有编辑 / 删除。",
+  "artboards": [
+    "PromptDetail",
+    "PromptDetail-Mine-Dark"
+  ],
+  "priorArt": [
+    {
+      "url": "https://docs.openwebui.com/features/workspace/",
+      "takeaway": "一款开源 AI 对话界面的工作区把 Prompts 和 Skills 做成两个页签、两份清单：Prompts 是用「/」插进输入框的模板，Skills 是教模型「怎么做」的说明、按需加载。",
+      "decisionImpact": "确认了：按「用的时候干什么」分家，技能库只放方法、提示词库只放要填进去的话；「/」可以同时指向两边（与 10 月拍板⑤一致）。"
+    },
+    {
+      "url": "https://code.claude.com/docs/en/skills",
+      "takeaway": "一款 AI 编程工具 2026-01 把斜杠命令并进技能：两种东西用户意图相同，就不该让用户学两套。",
+      "decisionImpact": "改了：效果的家按「用的那一刻想干嘛」定（填进节点），不按文件格式定 → 效果归提示词库（Q1）；技能和提示词意图不同，不合库（Q2 分开）。"
+    },
+    {
+      "url": "https://www.nngroup.com/articles/horizontal-scrolling/",
+      "takeaway": "桌面用户很少发现横向滚动里的内容，关键导航别放横滚。",
+      "decisionImpact": "改了：14 个「来源」标签那一长排（抽屉里横滚、滚动条还藏起来）删掉，并进一列有名字的分类。"
+    },
+    {
+      "url": "https://www.nngroup.com/articles/accordions-on-desktop/",
+      "takeaway": "用户需要看大部分内容时，手风琴每段都要点开，交互成本高。",
+      "decisionImpact": "改了：首页不再整组折成一行字，每组露一行真卡片 +「全部 N ›」；选中某组或搜索时全部摊开（Q3）。"
+    },
+    {
+      "url": "https://www.smashingmagazine.com/2023/08/designing-accessible-text-over-images-part1/",
+      "takeaway": "图上压字要靠遮罩 / 色条 / 模糊压住杂乱背景，并保证对比度；字要放在图里安静的地方。",
+      "decisionImpact": "改了，且更彻底：封面是真实产物，没有「安静的地方」，所以卡片封面上不压任何字和角标，标题和元信息放到封面下方。"
+    },
+    {
+      "url": "https://www.sarasoueidan.com/newsletter/issue-2025-10-31/",
+      "takeaway": "暗色里给图片降亮度，会让图里的字更难认，悬停恢复是补救。",
+      "decisionImpact": "改了：降亮度对线稿插画不够，暗色里「示意插画」封面换成暗纸底 + 浅线（插画里没有字，反相不伤可读）；真实产物照片 / 视频不动（Q8）。"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "Q1",
+      "text": "效果住提示词库：44 个效果按组出现在提示词库「内置」里，技能库不再出现效果；数据仍是 SKILL.md，不复制。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q2",
+      "text": "两个库分开（照 10-08 外壳拍板），不合成一个库两个页签。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q3",
+      "text": "两个库首页每组露一行真卡片 +「全部 N ›」，选中分类 / 搜索时全部摊开；Agent「/」和节点弹层照旧折叠。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q4",
+      "text": "技能详情的「用到节点」删掉；技能详情主按钮改为「放进对话」。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q5",
+      "text": "技能卡改「小封面 + 名字 + 两行简介」条卡（宽页 3 列、抽屉 1 列）。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q6",
+      "text": "「我的」从顶上的分段钮改成左侧分类第一项；没有我的东西时首页不出现「我的」一组。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q7",
+      "text": "主按钮叫法：技能「放进对话」、提示词「放上画布」。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q8",
+      "text": "暗色下示意插画封面换成暗纸底 + 浅线；真实产物照片 / 视频不动。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q9",
+      "text": "「放上画布」统一成总是新建对应类型节点 + 带参考图 + 选中它；往已有节点加只走节点自己的「提示词预设」。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    },
+    {
+      "id": "Q10",
+      "text": "我的提示词卡的编辑 / 删除放在卡片标题行，悬停或键盘聚焦时露出。",
+      "source": "用户 2026-10-24：按默认（原话「技能库 / 提示词库设计稿 10 个问题全按默认定，Q1 效果放提示词库。」，协调转述）"
+    }
+  ],
+  "elements": [
+    {
+      "id": "prompt-detail.dialog",
+      "label": "提示词详情浮层（从卡片放大浮出，动画保留）",
+      "change": "changed",
+      "states": [
+        "long-text",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "002-div-推轨跟拍",
+        "017-div-Q版角色卡"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.dialog"
+    },
+    {
+      "id": "prompt-detail.title",
+      "label": "标题",
+      "change": "changed",
+      "states": [
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "003-span-推轨跟拍",
+        "018-span-Q版角色卡"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.title"
+    },
+    {
+      "id": "prompt-detail.meta",
+      "label": "标题下一行：分类 · 内置 / 我的 · 类型（视频带小图标），我的条目带来源标签",
+      "change": "changed",
+      "states": [
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "004-svg",
+        "005-span-运镜内置视频",
+        "019-span-我的网页提取图片"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.meta"
+    },
+    {
+      "id": "prompt-detail.close",
+      "label": "× 挪到标题行（不压在媒体上）",
+      "change": "changed",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "006-button-关闭",
+        "007-svg",
+        "020-button-关闭",
+        "021-svg"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.close"
+    },
+    {
+      "id": "prompt-detail.media",
+      "label": "媒体（视频自动播放静音循环；没有媒体 / 失效有说明）",
+      "change": "keep",
+      "states": [
+        "empty",
+        "error",
+        "dark"
+      ],
+      "candidates": [],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "note": "媒体是图片 / 视频，抽取不成候选；看同名截图。",
+      "assertion": "board:PromptDetail/prompt-detail.media"
+    },
+    {
+      "id": "prompt-detail.text",
+      "label": "提示词全文",
+      "change": "keep",
+      "states": [
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "008-span-Smoothdollyt",
+        "022-span-画一张带有圆角和柔和投影"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.text"
+    },
+    {
+      "id": "prompt-detail.source",
+      "label": "底栏左「来源 ↗」（公开库 / 内置）",
+      "change": "changed",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "009-a",
+        "010-svg",
+        "011-span-来源"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.source"
+    },
+    {
+      "id": "prompt-detail.delete",
+      "label": "删除（只我的，底栏最左）",
+      "change": "changed",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "023-button-删除",
+        "024-svg"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.delete"
+    },
+    {
+      "id": "prompt-detail.edit",
+      "label": "编辑（只我的，图标）",
+      "change": "changed",
+      "states": [
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "025-button-编辑",
+        "026-svg"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.edit"
+    },
+    {
+      "id": "prompt-detail.copy",
+      "label": "复制提示词（图标，检查剪贴板结果再说「已复制」）",
+      "change": "changed",
+      "states": [
+        "hover",
+        "error",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "012-button-复制提示词",
+        "013-svg",
+        "027-button-复制提示词",
+        "028-svg"
+      ],
+      "status": "in-progress",
+      "owner": "D-07（协调另立账）",
+      "note": "复制已改成图标钮 + 点后「已复制」（走查 library-layout 验过）；板上「检查剪贴板结果再说已复制」= 另修 D-07，本线不改复制逻辑。"
+    },
+    {
+      "id": "prompt-detail.add-to-canvas",
+      "label": "主按钮「放上画布」：总是新建对应类型节点 + 带参考图 + 选中它，撤销删节点",
+      "change": "changed",
+      "states": [
+        "hover",
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "candidates": [
+        "014-button",
+        "015-span-放上画布",
+        "029-button",
+        "030-span-放上画布"
+      ],
+      "status": "implemented",
+      "owner": "I-libraries",
+      "assertion": "board:PromptDetail/prompt-detail.add-to-canvas",
+      "note": "项目库页上没开项目时禁用并说原因（真机 J-02）；在创作 / 分镜 / 剪辑里点了，放上之后切到生成画布让人看见被选中的新节点（同类入口，一并收住）。"
+    }
+  ],
+  "decor": [
+    "001-h3-修后提示词详情内置效果中",
+    "016-h3-修后提示词详情我的中暗去"
+  ],
+  "functionCensus": [
+    {
+      "censusId": "P-11",
+      "function": "媒体显示（视频可控制，图片全宽）",
+      "before": "预览浮层·媒体：没媒体：「此条暂无封面媒体」；失效：「这条示例的媒体已失效……」",
+      "after": "prompt-detail.media",
+      "afterNote": "不变"
+    },
+    {
+      "censusId": "P-12",
+      "function": "送上画布",
+      "before": "预览浮层·底部：新建一个图片或视频节点（按提示词类型），填入正文并选中它；按钮变「已放置」，950ms 后关闭；弹「已送上画布」撤销 toast（撤销 = 删掉那个节点）；记一次「最近用过」",
+      "after": "prompt-detail.add-to-canvas",
+      "afterNote": "改叫「放上画布」，统一成新建 + 带参考图 + 选中（Q9）"
+    },
+    {
+      "censusId": "P-13",
+      "function": "复制提示词",
+      "before": "预览浮层·底部：写入剪贴板，按钮变「已复制」",
+      "after": "prompt-detail.copy",
+      "afterNote": "图标；检查剪贴板结果（另修）"
+    },
+    {
+      "censusId": "P-14",
+      "function": "来源链接 / 仅本地标记",
+      "before": "预览浮层·底部右侧：精选：有来源链接；我的库：显示「我的库 · 仅本地」",
+      "after": "prompt-detail.source",
+      "afterNote": "底栏左「来源」；我的显示标签"
+    },
+    {
+      "censusId": "P-15",
+      "function": "关闭",
+      "before": "预览浮层：反向动画（260ms）后关",
+      "after": "prompt-detail.close",
+      "afterNote": "× 挪到标题行"
+    }
+  ]
+}

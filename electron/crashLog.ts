@@ -40,7 +40,7 @@ function append(line: string): void {
  * 2026-09-06 走查实测：不脱敏时，一次隔离实例的导出里出现了另一台 worktree 的完整路径。
  */
 function recordCrash(scope: string, error: unknown, fields?: LogFields): void {
-  append(`[${scope}] ${redactError(error)}${formatLogFields(fields)}`);
+  append(`[${scope}]${error === undefined ? "" : ` ${redactError(error)}`}${formatLogFields(fields)}`);
 }
 
 /** `fields` 与通用日志同一套字段脱敏（渲染层崩溃边界用它带上组件栈摘要）。 */
@@ -81,25 +81,36 @@ type GoneDetails = {
  * 挂单个窗口会漏掉它们。这两个事件不代表主进程还活着——但只要它们先落了盘，
  * 「app 整个没了」就能区分是渲染层先死还是主进程原生崩溃。
  */
+/**
+ * 进程死亡这一条的全部可记内容：Electron 给的枚举（reason / type / 服务名）与数字退出码。
+ * 走**字段**而不是拼成一句当错误传：错误原文在落盘道只留指纹（`redactError`），拼成句子的死因会被整句抹掉——
+ * 2026-10-22 独立验收 V-redact 实测过这一误伤（`[render-process-gone] Error msg#…`）。
+ */
+export type ProcessGoneRecorder = (scope: string, fields: LogFields) => void;
+
+/** 字段名 `name` 在日志字段黑名单里（会被略掉），服务 / 子进程名记在 `service` 上。 */
+function goneFields(details: GoneDetails, withType: boolean): LogFields {
+  return {
+    ...(withType ? { type: details.type ?? "?" } : {}),
+    ...(withType ? { service: details.serviceName || details.name || "-" } : {}),
+    reason: details.reason ?? "?",
+    exitCode: typeof details.exitCode === "number" ? details.exitCode : "?",
+  };
+}
+
 export function installProcessGoneHandlers(
   // 默认就是 Electron 的 app。这里必须 cast：Electron 把 app.on 声明成上百条按事件名字面量重载，
   // 结构类型表达不出来（写成 (event: string, …) 会反过来不被 App 满足）。单测注入自己的假 target。
   target: ProcessGoneTarget = app as unknown as ProcessGoneTarget,
   // 默认走 logCrash（落盘 + console）：这里主进程本身是健康的，不像 uncaughtExceptionMonitor
   // 那样要防"stderr 已经坏了"，开发时直接在终端看到进程死因更省事。
-  record: CrashRecorder = logCrash,
+  record: ProcessGoneRecorder = (scope, fields) => logCrash(scope, undefined, fields),
 ): void {
   target.on("render-process-gone", (...args: unknown[]) => {
-    const details = (args[2] ?? {}) as GoneDetails;
-    record("render-process-gone", `reason=${details.reason ?? "?"} exitCode=${details.exitCode ?? "?"}`);
+    record("render-process-gone", goneFields((args[2] ?? {}) as GoneDetails, false));
   });
   target.on("child-process-gone", (...args: unknown[]) => {
-    const details = (args[1] ?? {}) as GoneDetails;
-    const name = details.serviceName || details.name || "-";
-    record(
-      "child-process-gone",
-      `type=${details.type ?? "?"} name=${name} reason=${details.reason ?? "?"} exitCode=${details.exitCode ?? "?"}`,
-    );
+    record("child-process-gone", goneFields((args[1] ?? {}) as GoneDetails, true));
   });
 }
 
