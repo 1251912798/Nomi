@@ -40,7 +40,8 @@ import type { FilterValue } from './assetLibraryPanelFilters'
 import { assetProvenanceOf, countAssetProvenance } from './assetProvenance'
 import { useAssetLibraryFilters } from './useAssetLibraryFilters'
 import { filterCanvasLibraryAssets, filterPlayableAssets } from './assetLibrarySources'
-import { deleteAssetResult } from './deleteAssetResult'
+import { deleteAssetResult, type DeleteAssetResultOutcome } from './deleteAssetResult'
+import { readPendingAssetDeletionsVersion, subscribePendingAssetDeletions, withoutFilesAwaitingTrash } from './pendingAssetDeletions'
 import { addAssetToTimelineEnd, assetRefFromDragPayload } from '../timeline/addAssetToTimeline'
 import { materializeAssetLibraryItems } from './assetLibraryMaterialize'
 import { useAssetLibraryLocalImport } from './assetLibraryLocalImport'
@@ -143,13 +144,21 @@ export function AssetLibraryContent({
   } = useAllProjectAssets()
   const localImport = useAssetLibraryLocalImport({ projectId, refreshProjectAssets, refreshAllProjectAssets, present })
   const folderApi = useAssetFolders(projectId)
+  // 已经删了、只等撤销窗口过去才进回收站的文件，两个页签都不再列；⌘Z 撤回那一版 = 又有人用，照常列，
+  // 所以画布一变就重新问一次。真进了回收站以后由删除广播刷新列表。
+  const pendingDeletionVersion = React.useSyncExternalStore(subscribePendingAssetDeletions, readPendingAssetDeletionsVersion, readPendingAssetDeletionsVersion)
+  const listedFiles = React.useCallback((assets: readonly AssetRef[]): readonly AssetRef[] => {
+    void pendingDeletionVersion
+    void canvasAssets
+    return withoutFilesAwaitingTrash(assets)
+  }, [canvasAssets, pendingDeletionVersion])
   const allSourceAssets = React.useMemo(
-    () => (includeAudio ? filterPlayableAssets(allProjectAssets) : filterCanvasLibraryAssets(allProjectAssets)),
-    [allProjectAssets, includeAudio],
+    () => (includeAudio ? filterPlayableAssets(listedFiles(allProjectAssets)) : filterCanvasLibraryAssets(listedFiles(allProjectAssets))),
+    [allProjectAssets, includeAudio, listedFiles],
   )
   const currentProjectAssets = React.useMemo(
-    () => mergeAssetRefs(canvasAssets, workspaceProjectAssets),
-    [canvasAssets, workspaceProjectAssets],
+    () => mergeAssetRefs(canvasAssets, listedFiles(workspaceProjectAssets)),
+    [canvasAssets, listedFiles, workspaceProjectAssets],
   )
   const projectSourceAssets = React.useMemo(
     () => (includeAudio ? filterPlayableAssets(currentProjectAssets) : filterCanvasLibraryAssets(currentProjectAssets)),
@@ -432,6 +441,15 @@ export function AssetLibraryContent({
     if (assetBelongsToProject(asset, projectId)) markLibraryUsed('asset', asset.id)
   } : undefined, [itemAction, projectId])
 
+  // 两扇删除门（项目素材多选、全部素材单张）共用这一份回报：删掉的由列表变化回执（不另弹），
+  // 只说没删成的——还被别处用着的（说原因和下一步）、进回收站失败的。不再有「一张都没认出来」的兜底话。
+  const reportDeletion = React.useCallback((outcomes: readonly DeleteAssetResultOutcome[]): void => {
+    const keptInUse = outcomes.reduce((total, outcome) => total + outcome.keptInUseCount, 0)
+    const failedFiles = outcomes.reduce((total, outcome) => total + outcome.failedFileCount, 0)
+    if (keptInUse > 0) report(t('assetLibrary.keptInUse', { count: keptInUse }), 'warning')
+    if (failedFiles > 0) report(t('assetLibrary.failedFiles', { count: failedFiles }), 'warning')
+  }, [report, t])
+
   const deleteSelectedProjectAssets = React.useCallback(async (): Promise<void> => {
     present('')
     const loaded = withProjectAction((project) => project) ?? null
@@ -452,21 +470,17 @@ export function AssetLibraryContent({
     if (!confirmed || (loaded && !isProjectExecutionContextCurrent(loaded))) return
     try {
       // 串行：同一关闭项目的多张结果必须一张张基于最新 record 改，Promise.all 会各读同一旧快照后互相覆盖。
-      const outcomes: Awaited<ReturnType<typeof deleteAssetResult>>[] = []
+      // 删完不用手动重拉：文件进回收站时主进程广播 assets.onUpdated（两个页签都听它），
+      // 摘掉的结果由画布 store 直接反映，延后真删的文件由待删清单藏起来。
+      const outcomes: DeleteAssetResultOutcome[] = []
       for (const asset of selectedProjectAssets) outcomes.push(await deleteAssetResult(asset, loaded))
-      const removedCount = outcomes.reduce((total, outcome) => total + outcome.removedResultCount, 0)
-      const deletedFileCount = outcomes.reduce((total, outcome) => total + outcome.deletedFileCount, 0)
-      const failedFileCount = outcomes.reduce((total, outcome) => total + outcome.failedFileCount, 0)
-      refreshProjectAssets()
-      refreshAllProjectAssets()
       setSelectedIds(new Set())
-      if (removedCount === 0 && deletedFileCount === 0 && failedFileCount === 0) report(t('assetLibrary.cannotDeleteSelected'), 'warning')
-      if (failedFileCount > 0) report(t('assetLibrary.failedFiles', { count: failedFileCount }), 'warning')
+      reportDeletion(outcomes)
     } catch (error) {
       logRendererError('asset-delete-failed', error)
       report(t('assetLibrary.deleteFailed'), 'error')
     }
-  }, [projectId, refreshAllProjectAssets, refreshProjectAssets, selectedProjectAssets, present, report, t])
+  }, [projectId, reportDeletion, selectedProjectAssets, present, report, t])
 
   const deleteOneAsset = React.useCallback(async (asset: AssetRef): Promise<void> => {
     present('')
@@ -484,15 +498,13 @@ export function AssetLibraryContent({
     if (!confirmed || (loaded && !isProjectExecutionContextCurrent(loaded))) return
     try {
       const outcome = await deleteAssetResult(asset, loaded)
-      refreshProjectAssets()
-      refreshAllProjectAssets()
       setPreviewAsset((current) => current?.id === asset.id ? null : current)
-      if (outcome.failedFileCount > 0) report(t('assetLibrary.failedFiles', { count: outcome.failedFileCount }), 'warning')
+      reportDeletion([outcome])
     } catch (error) {
       logRendererError('asset-result-delete-failed', error)
       report(t('assetLibrary.deleteFailed'), 'error')
     }
-  }, [projectId, refreshAllProjectAssets, refreshProjectAssets, present, report, t])
+  }, [projectId, reportDeletion, present, report, t])
 
   return (
     <TooltipProvider delayDuration={180} skipDelayDuration={80}>

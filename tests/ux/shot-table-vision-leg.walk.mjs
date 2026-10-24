@@ -5,7 +5,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 断言（用户看得见的事实）：
 //   ① 顶上一行说清「N 镜没读出：<供应商原话>」，且是原话（不是泛泛的「没读出」）；
 //   ② 没读出的那几行，状态列也写着原话；读出来的那行没有；
-//   ③ 底栏有「读图模型」选择，默认「自动选择」（换模型的入口）。
+//   ③ 选中表后下方拆解栏有「读图模型」选择，默认「自动选择」（换模型的入口；2026-10-18 从表内底栏挪出）。
 // 用法：node tests/ux/shot-table-vision-leg.walk.mjs [--locale en] [--scheme dark]
 // 截图：docs/evidence/2026-10-11-canvas-ux-8/s1-shot-table-vision-<zh|en>[-dark].png
 import fs from 'node:fs'
@@ -103,9 +103,13 @@ try {
     const proof = await proveProbe(node.locator('[data-shot-table-row="fact-2"] [data-testid="shot-table-row-failure-reason"]'), '没读出的那行里有原话')
     await expectAbsent(node.locator('[data-shot-table-row="fact-1"] [data-testid="shot-table-row-failure-reason"]'), { provenBy: proof, message: '读出来的那行不该有失败原话' })
   })
-  await task('03-footer-has-vision-model-picker-default-auto', async () => {
+  await task('03-deconstruct-bar-has-vision-model-picker-default-auto', async () => {
+    // 2026-10-18 拆解前选模型：读图模型从表内底栏挪到选中表后出现的下方拆解栏（和表是同一个 React Flow 节点里的兄弟，不在表卡里）。
+    await node.locator('header').click({ position: { x: 300, y: 20 } })
+    const bar = win.locator('.react-flow__node:has([data-testid="shot-table-node"]) [data-shot-table-composer]').first()
+    await expect(bar).toBeVisible()
     const label = uiText(locale, 'shotTable.visionModel')
-    const picker = node.getByRole('button', { name: label }).or(node.getByRole('combobox', { name: label })).first()
+    const picker = bar.getByRole('button', { name: label }).or(bar.getByRole('combobox', { name: label })).first()
     await expect(picker).toBeVisible()
     await expect(picker).toContainText(uiText(locale, 'shotTable.visionAuto'))
     await waitForVisualQuiescence(win)

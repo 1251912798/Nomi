@@ -7,7 +7,7 @@ import {
   type NodeResultLifecyclePatch,
 } from '../generationCanvas/model/nodeResultLifecycle'
 import type { GenerationCanvasNode, GenerationNodeResult } from '../generationCanvas/model/generationCanvasTypes'
-import type { AssetRef } from './assetTypes'
+import type { AssetOrigin, AssetRef } from './assetTypes'
 import type { TimelineState } from '../timeline/timelineTypes'
 
 export type ProjectFileTarget = { projectId: string; relativePath: string }
@@ -18,23 +18,38 @@ export type ProjectFileReferenceScope = {
   timeline?: Pick<TimelineState, 'tracks'> | null
 }
 
+/** 删除判定读的是哪个项目：画布与时间轴是它的，落盘文件也只认它自己的（别的项目的文件这里绝不动）。 */
+export type AssetDeletionScope = ProjectFileReferenceScope & { projectId: string }
+
 export type AssetResultDeletionMatch = {
   nodeId: string
-  resultId: string
+  /** 这张卡上要摘掉的结果（一张卡上可能有几版就是同一份文件）。 */
+  resultIds: string[]
   patch: NodeResultLifecyclePatch
 }
 
-export type AssetResultDeletionPlan = {
+/**
+ * 素材库里一张素材「删了会怎样」——唯一判定。项目素材多选删除、全部素材单张删除、版本卡片删一版，都只经它。
+ *
+ * - `matches`：要从画布卡上摘掉的结果（卡本身保留）。
+ * - `file`：这张素材自己那份落盘文件（只认本项目的）和它的去向：`trash` = 摘完以后没人用了，进回收站；
+ *   `keep` = 还被时间轴 / 白板 / 别的结果（含封面）用着，留着，并且要告诉用户为什么没删。
+ *
+ * 列表里出现的每一种素材都落在 matches × file 的某个组合上，执行口对每个组合都有确定的结果。
+ * 2026-10-24 之前判定是隐式的 `{ matches, fileTarget }`，已加载 / 关闭两条执行路径各自解读：
+ * 已加载项目里「画布上没有结果、只有文件」的素材被直接放过（夜跑 asset-library-interactions ⑤，一张都删不掉）。
+ */
+export type AssetDeletionPlan = {
   matches: AssetResultDeletionMatch[]
-  fileTarget: { projectId: string; relativePath: string } | null
+  file: { target: ProjectFileTarget; fate: 'trash' | 'keep' } | null
 }
 
 function comparableUrl(value: string | undefined): string {
   return String(value || '').trim().split(/[?#]/, 1)[0]
 }
 
-function resultMatchesAsset(result: GenerationNodeResult, asset: AssetRef): boolean {
-  const targetUrl = comparableUrl(asset.renderUrl)
+function resultShowsUrl(result: GenerationNodeResult, renderUrl: string): boolean {
+  const targetUrl = comparableUrl(renderUrl)
   if (!targetUrl) return false
   return [result.url, result.thumbnailUrl].some((url) => comparableUrl(url) === targetUrl)
 }
@@ -61,46 +76,86 @@ export function isProjectFileReferenced(target: ProjectFileTarget, scope: Projec
   )))
 }
 
-export function buildAssetResultDeletionPlan(
-  asset: AssetRef,
-  nodes: readonly GenerationCanvasNode[],
-  timeline?: ProjectFileReferenceScope['timeline'],
-): AssetResultDeletionPlan {
-  const ownerNodeId = asset.ownerNodeId || (asset.origin.source === 'canvas' ? asset.origin.nodeId : '')
-  const hintedResultId = asset.ownerResultId || (asset.origin.source === 'canvas' ? asset.origin.resultId : '')
-  const candidateNodes = ownerNodeId ? nodes.filter((node) => node.id === ownerNodeId) : nodes
-  const matches: AssetResultDeletionMatch[] = []
-
-  for (const node of candidateNodes) {
-    const results = listNodeMediaResults(node)
-    const matchedResult =
-      (hintedResultId ? results.find((result) => resultIdentity(result) === hintedResultId) : undefined) ??
-      results.find((result) => resultMatchesAsset(result, asset))
-    if (!matchedResult) continue
-    const resultId = resultIdentity(matchedResult)
-    const patch = removeNodeResult(node, resultId)
-    if (patch) matches.push({ nodeId: node.id, resultId, patch })
+/** 从一张卡上依次摘掉几版；摘不掉的（不是媒体结果）跳过。一版都没摘掉 = null。 */
+function removeResults(node: GenerationCanvasNode, resultIds: readonly string[]): AssetResultDeletionMatch | null {
+  let current = node
+  let patch: NodeResultLifecyclePatch | null = null
+  const removed: string[] = []
+  for (const resultId of resultIds) {
+    const next = removeNodeResult(current, resultId)
+    if (!next) continue
+    patch = next
+    current = { ...current, ...next }
+    removed.push(resultId)
   }
+  return patch ? { nodeId: node.id, resultIds: removed, patch } : null
+}
 
-  const candidateFileTarget = asset.origin.source === 'project'
-    ? { projectId: asset.origin.projectId, relativePath: asset.origin.relativePath }
-    : parseNomiLocalAssetUrl(asset.renderUrl)
-  if (!candidateFileTarget) return { matches, fileTarget: null }
+/** 素材自己那份文件：只认本项目的地址（指向别的项目的旧数据 = 没有本项目的文件可删）。 */
+function ownProjectFile(renderUrl: string, projectId: string): ProjectFileTarget | null {
+  const parsed = parseNomiLocalAssetUrl(renderUrl)
+  return parsed && parsed.projectId === projectId ? parsed : null
+}
 
-  // A single physical asset can back more than one result (for example an
-  // image result and another node's video thumbnail). Remove the result from
-  // metadata first, then only delete the file when no remaining result still
-  // points at the same project-relative path.
-  const afterDeletion = applyAssetResultDeletion(nodes, { matches, fileTarget: null })
-  const stillReferenced = isProjectFileReferenced(candidateFileTarget, { nodes: afterDeletion, timeline })
-  return { matches, fileTarget: stillReferenced ? null : candidateFileTarget }
+function fileFate(target: ProjectFileTarget, matches: readonly AssetResultDeletionMatch[], scope: AssetDeletionScope): NonNullable<AssetDeletionPlan['file']> {
+  // 一份文件可能同时挂在好几处（别的卡的结果、视频的封面、白板图层、时间轴片段）：先在画布上摘掉，
+  // 再用唯一的引用判定看还有没有人用。
+  const remaining = applyAssetResultDeletion(scope.nodes, matches)
+  return { target, fate: isProjectFileReferenced(target, { nodes: remaining, timeline: scope.timeline }) ? 'keep' : 'trash' }
+}
+
+/** 画布上的一张结果（版本卡片的一版、项目素材里画布那一格）：只摘这一张，别的结果都保留。 */
+function planResultDeletion(asset: AssetRef, origin: Extract<AssetOrigin, { source: 'canvas' }>, scope: AssetDeletionScope): AssetDeletionPlan {
+  const node = scope.nodes.find((candidate) => candidate.id === origin.nodeId)
+  const results = node ? listNodeMediaResults(node) : []
+  const result = (origin.resultId ? results.find((candidate) => resultIdentity(candidate) === origin.resultId) : undefined)
+    ?? results.find((candidate) => resultShowsUrl(candidate, asset.renderUrl))
+  const match = node && result ? removeResults(node, [resultIdentity(result)]) : null
+  const matches = match ? [match] : []
+  const own = ownProjectFile(asset.renderUrl, scope.projectId)
+  return { matches, file: own ? fileFate(own, matches, scope) : null }
+}
+
+/**
+ * 一份落盘文件（项目素材 / 全部素材里的文件格子）：凡是「就是这份文件」的结果（地址是它）一起摘；
+ * 只是拿它当封面 / 白板图层 / 时间轴片段的不算「就是它」，那是「被用着」——这时一张结果都不摘，原样留着。
+ */
+function planFileDeletion(origin: Extract<AssetOrigin, { source: 'project' }>, scope: AssetDeletionScope): AssetDeletionPlan {
+  if (origin.projectId !== scope.projectId) return { matches: [], file: null }
+  const target = { projectId: origin.projectId, relativePath: origin.relativePath }
+  const matches = scope.nodes.flatMap((node) => {
+    const resultIds = listNodeMediaResults(node).filter((result) => urlReferencesFile(result.url, target)).map(resultIdentity)
+    const match = resultIds.length > 0 ? removeResults(node, resultIds) : null
+    return match ? [match] : []
+  })
+  const file = fileFate(target, matches, scope)
+  return file.fate === 'keep' ? { matches: [], file } : { matches, file }
+}
+
+function unknownOrigin(origin: never): never {
+  throw new Error(`Unknown asset origin: ${JSON.stringify(origin)}`)
+}
+
+export function planAssetDeletion(asset: AssetRef, scope: AssetDeletionScope): AssetDeletionPlan {
+  const origin = asset.origin
+  switch (origin.source) {
+    case 'canvas': return planResultDeletion(asset, origin, scope)
+    case 'project': return planFileDeletion(origin, scope)
+    // 素材来源多一种（AssetOrigin 加成员）而这里没认它：编译不过，不会悄悄落进「什么都不删」。
+    default: return unknownOrigin(origin)
+  }
+}
+
+/** 摘掉的结果数（一张卡上可能摘几版）。 */
+export function countRemovedResults(matches: readonly AssetResultDeletionMatch[]): number {
+  return matches.reduce((total, match) => total + match.resultIds.length, 0)
 }
 
 export function applyAssetResultDeletion(
   nodes: readonly GenerationCanvasNode[],
-  plan: AssetResultDeletionPlan,
+  matches: readonly AssetResultDeletionMatch[],
 ): GenerationCanvasNode[] {
-  const patchByNodeId = new Map(plan.matches.map((match) => [match.nodeId, match.patch]))
+  const patchByNodeId = new Map(matches.map((match) => [match.nodeId, match.patch]))
   return nodes.map((node) => {
     const patch = patchByNodeId.get(node.id)
     return patch ? { ...node, ...patch } : node

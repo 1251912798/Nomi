@@ -110,7 +110,7 @@ try {
   const run = readProductionRuns(projectRoot).find((candidate) => candidate.runId === operationId)
   const candidate = run?.generationPlan?.shots?.[0]?.candidate ?? run?.generationPlan?.candidate
   const candidateProblems = candidateShotProblems(candidate)
-  evidence.candidate = { variantId: candidate?.variantId ?? null, transportModelId: candidate?.transportModelId ?? null, parameters: candidate?.parameters ?? null }
+  evidence.candidate = { variantId: candidate?.variantId ?? null, parameters: candidate?.parameters ?? null }
   if (candidateProblems.length) throw new Error(`宿主候选不是这一档（Agent 定的就不对，一分钱没花）：\n  ${candidateProblems.join('\n  ')}`)
   await expect.poll(async () => ((await readProject(win, projectId)).payload.generationCanvas.nodes ?? []).filter((node) => node.meta?.productionRunId === operationId).length,
     { message: '草稿落到画布上（1 个节点）', timeout: DEFAULT_TIMEOUT_MS }).toBe(1)

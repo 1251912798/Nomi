@@ -44,7 +44,7 @@ for (const scenario of ['env', 'explicit', 'inherited', 'derived', 'non-isolated
     let launched
     t.mock.method(electron, 'launch', async (launchOptions) => {
       launched = launchOptions
-      return { process: () => ({}) }
+      return { process: () => ({}), close: async () => {} }
     })
     const handle = await launchNomiApp(options)
     assert.equal(launched.env.NOMI_CAPABILITY_DIR, expected)

@@ -1,0 +1,219 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-24-ipc-error-class-name-fingerprinted",
+  "problem_type": "A main-process failure that reaches the renderer through ipcRenderer.invoke loses its class name before it is logged, because nothing reads the one sentence Electron sends back; once log messages became fingerprints, the class name was fingerprinted together with the message",
+  "symptom": "tests/ux/renderer-failure-diagnostics.walk.mjs (nightly, red since 2026-10-22): the exported diagnostics bundle has the line `ERROR renderer project-save-failed trigger=autosave Error msg#d559bf39` and no longer says WorkspaceManifestLockBusyError, so the bundle cannot tell why the save failed (the gap of the 2026-09-24 Windows report is back).",
+  "direct_cause": "src/desktop/rendererLog.ts summarizeRendererError took error.name, which is always `Error` for an invoke rejection (Electron rebuilds it as new Error(`Error invoking remote method '<channel>': <main error toString()>`)); the class name only lived inside the message. Since 8f684ebb9 / 170d2182a (G-redact-owner, 2026-10-22) electron/logging/diskSafeFailure.ts diskSafeErrorFacts writes any non-code message as `msg#<sha256 prefix>`, so the whole sentence, class name included, became one fingerprint. electron/logging/rendererLog.test.ts fed an error whose name was already the real class name, not the invoke shape, and stayed green.",
+  "class_root": "The invoke failure sentence had no owner: every place that needed the main error's identity wrote its own reader (workspaceBusy message.includes, classifyError IPC_WRAPPER_PREFIX, storyboardFailureCopy technicalDetail regex) and the renderer log exit had none, while the class-name shape the redaction lets through was a private regex in diskSafeFailure.ts that also admitted lowercase credential-shaped identifiers.",
+  "migration": "No data migration. Renderer log lines for invoke failures now carry the main error's class name (and a Node internal error code when its toString has one) instead of `Error`; the message part stays a fingerprint, now of the main error's own message. Plain objects with a `name` field are logged as NonError. Error names that are not an upper-case-initial identifier are logged as Error on every disk exit; a census test shows no class name written in electron/ or src/ is affected. The three private readers are deleted in the same change.",
+  "affected_population": [
+    "Every renderer failure that comes from an ipcRenderer.invoke rejection and is logged through src/desktop/rendererLog.ts (79 call sites plus the uncaught-error / unhandled-rejection capture), i.e. every diagnostics bundle a user exports after a main-process failure",
+    "Main-process and crash log lines whose error name is not an upper-case-initial identifier (none in Nomi's own code; the census pins it)"
+  ],
+  "scope_paths": [
+    "electron/shared/contracts/ipcInvokeFailure.ts",
+    "electron/shared/contracts/workspaceBusy.ts",
+    "electron/logging/diskSafeFailure.ts",
+    "src/desktop/rendererLog.ts",
+    "src/workbench/observability/classifyError.ts",
+    "src/workbench/creation/storyboard/exec/storyboardFailureCopy.ts",
+    "docs/audit/2026-10-24-ipc-error-class-name-direction.md"
+  ],
+  "entry_points": [
+    "src/desktop/rendererLog.ts logRendererError / logRendererWarn / logRendererCrash / installRendererErrorCapture (all renderer failure evidence, through summarizeRendererError)",
+    "electron/logging/rendererLog.ts createRendererLogRecorder (main-side intake of the renderer entry, then redactError)",
+    "electron/logging/logger.ts and electron/crashLog.ts (every disk exit for an error, through redactError → diskSafeErrorFacts)",
+    "electron/shared/contracts/workspaceBusy.ts isWorkspaceBusyError (project in use elsewhere copy)",
+    "src/workbench/observability/classifyError.ts classifyGenerationError (error card first line)",
+    "src/workbench/creation/storyboard/exec/storyboardFailureCopy.ts storyboardFailureCopy (shot table technical detail)"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://github.com/electron/electron/blob/main/docs/api/ipc-main.md",
+      "checked_at": "2026-10-24",
+      "purpose": "Errors thrown through ipcMain.handle reach the renderer as their message only (#24427)"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://github.com/electron/electron/blob/main/docs/api/context-bridge.md",
+      "checked_at": "2026-10-24",
+      "purpose": "Errors crossing contextBridge are copied with their message; custom properties are lost (#25596), so the preload cannot carry the class name either"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://github.com/jsonnull/electron-trpc",
+      "checked_at": "2026-10-24",
+      "purpose": "Structured errors over IPC exist only by moving the IPC layer to tRPC routers (migration of every invoke)"
+    }
+  ],
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-24",
+  "invariants": [
+    "The sentence Electron sends back for a failed invoke is read in one place, electron/shared/contracts/ipcInvokeFailure.ts: ipcInvokeFailure for the channel, class name, Node internal code and message; withoutIpcInvokeWrapper for display text.",
+    "A renderer log entry for an invoke failure carries the main error's class name; its message on disk is still only a fingerprint (or our own code-shaped message).",
+    "Disk exits keep an error name only when it has the shape of a class name written in code (CODE_CLASS_NAME: upper-case-initial identifier, at most 64 characters); every error class name written in electron/ and src/ has that shape."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/contracts/ipcInvokeFailure.ts",
+    "tests": [
+      "electron/shared/contracts/ipcInvokeFailure.test.ts",
+      "electron/logging/rendererLog.test.ts",
+      "src/desktop/rendererLog.test.ts",
+      "electron/logging/redact.test.ts"
+    ],
+    "why": "The invoke sentence is produced by Electron and consumed by both the renderer (copy, log exit) and the main-side redaction (class-name shape); a neutral contract module is the only place both sides can import, and it has no dependencies so the pi compile island can include it through the logger."
+  },
+  "doors": [
+    {
+      "kind": "read",
+      "path": "electron/logging/diskSafeFailure.ts",
+      "symbol": "isCodeClassName"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/contracts/workspaceBusy.ts",
+      "symbol": "ipcInvokeFailure"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/contracts/workspaceBusy.ts",
+      "symbol": "isWorkspaceBusyError"
+    },
+    {
+      "kind": "read",
+      "path": "src/desktop/rendererLog.ts",
+      "symbol": "ipcInvokeFailure"
+    },
+    {
+      "kind": "read",
+      "path": "src/desktop/rendererLog.ts",
+      "symbol": "summarizeRendererError"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/exec/storyboardFailureCopy.ts",
+      "symbol": "withoutIpcInvokeWrapper"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/observability/classifyError.ts",
+      "symbol": "withoutIpcInvokeWrapper"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/project/projectOperationFailureText.ts",
+      "symbol": "isWorkspaceBusyError"
+    }
+  ],
+  "door_reduction": {
+    "before": 6,
+    "after": 8,
+    "why_not": "Counted with `node scripts/door-map.mjs --read=ipcInvokeFailure,withoutIpcInvokeWrapper,isCodeClassName,isWorkspaceBusyError,summarizeRendererError` (after) and, on the base commit f7c5d15f6, `--read=IPC_WRAPPER_PREFIX,technicalDetail,isWorkspaceBusyError,summarizeRendererError,diskSafeErrorFacts` (before: 6). The count grows because the readers now call one named owner instead of carrying a private regex each; the private copies of the invoke format went from three (workspaceBusy includes, classifyError IPC_WRAPPER_PREFIX, storyboardFailureCopy technicalDetail) plus one missing reader (the log exit) to zero, and the class-name shape from a private regex in diskSafeFailure.ts to the shared CODE_CLASS_NAME. The remaining call sites are different operations (recognise the busy lock, strip for display, flatten for the log, keep the name on disk) and stay where they are."
+  },
+  "regression_tests": [
+    "electron/shared/contracts/ipcInvokeFailure.test.ts",
+    "electron/logging/rendererLog.test.ts",
+    "src/desktop/rendererLog.test.ts",
+    "electron/logging/redact.test.ts"
+  ],
+  "residual_risks": [
+    "Class names on a cause chain are still fingerprinted together with the message, on both sides: the renderer folds one level of cause into the message text and the main-side facts record only the top-level name (codes and vendor facts already walk the cause chain). No renderer code wraps with a cause today. Recording cause class names is a new log field and is left to the coordinator.",
+    "The invoke channel name is not logged (the renderer log entry has no field for it); it is a code-defined identifier and would help triage. Adding it changes the wire contract and is left to the coordinator.",
+    "A `code` field on a main-process error other than a Node internal error does not survive invoke; only codes that main code puts into the message (NomiErrorCode markers, vendor markers) or Node's toString carries come back.",
+    "The reader exists because Electron returns a sentence; migrating IPC to a transport that carries structured errors (electron-trpc, electron-better-ipc) would delete it. Registered as under-review in docs/engineering/self-written.json."
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every new place that needs to know which main-process error came back, and every change to what the log exit writes, reopens it: it already happened four times (busy copy, error card first line, shot table detail, log exit) with four different readers, and the log exit broke as soon as the message stopped being written verbatim.",
+    "same_class_scan": [
+      "rg -n \"Error invoking remote method\" src electron (product code): only electron/shared/contracts/ipcInvokeFailure.ts; the rest are tests and comments",
+      "rg -n \"WORKSPACE_MANIFEST_BUSY_ERROR_NAME\" src electron: the constant is compared only against error.name and ipcInvokeFailure(...).name; no message.includes left",
+      "node scripts/door-map.mjs (command in door_reduction.why_not): 8 doors, every invoke reader goes through ipcInvokeFailure / withoutIpcInvokeWrapper",
+      "rg -n \"isNothingToResume|isRevisionConflict|ProjectTrashFailedError\\[\" src: these recognise our own codes inside the message (diagnostics.error-code), not the envelope; unchanged"
+    ]
+  },
+  "generality_proof": "The invoke sentence and the class-name shape each exist once. The log exit lifts every invoke failure through ipcInvokeFailure, so any main error class, any channel and Node's internal `Name [CODE]` form come back without a per-class list; the disk exits keep a name only by CODE_CLASS_NAME, and a census over electron/ and src/ shows every error class name written in code passes it while credential-shaped and free-text names do not. Mutation checks: removing the lift in summarizeRendererError, reverting the stack header rewrite, or going back to the old name regex each turns the listed tests red.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/contracts/ipcInvokeFailure.ts",
+      "symbol": "ipcInvokeFailure",
+      "responsibility": "The only reader of the sentence Electron sends back for a failed invoke: channel, main error class name, Node internal code, main error message."
+    },
+    {
+      "path": "electron/shared/contracts/ipcInvokeFailure.ts",
+      "symbol": "isCodeClassName",
+      "responsibility": "The only rule for what counts as a class name written in code, used by the disk exits to keep error names and by the invoke reader to recognise them."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/desktop/rendererLog.ts",
+      "entry_point": "summarizeRendererError",
+      "disposition": "enforced",
+      "evidence": "Lifts the top-level error and one level of cause through ipcInvokeFailure and rewrites the stack header to match; electron/logging/rendererLog.test.ts drives a real WorkspaceManifestLockBusyError through the Electron sentence to the line on disk."
+    },
+    {
+      "path": "electron/logging/diskSafeFailure.ts",
+      "entry_point": "diskSafeErrorFacts",
+      "disposition": "enforced",
+      "evidence": "Keeps the name only when isCodeClassName; electron/logging/redact.test.ts pins kept and refused shapes, the census in ipcInvokeFailure.test.ts pins every class name in code."
+    },
+    {
+      "path": "electron/shared/contracts/workspaceBusy.ts",
+      "entry_point": "isWorkspaceBusyError",
+      "disposition": "enforced",
+      "evidence": "Reads the class name with ipcInvokeFailure instead of message.includes; workspaceBusy.test.ts (unchanged) stays green."
+    },
+    {
+      "path": "src/workbench/observability/classifyError.ts",
+      "entry_point": "extractReadableErrorLine",
+      "disposition": "enforced",
+      "evidence": "Uses withoutIpcInvokeWrapper; ipcInvokeFailure.test.ts proves it equals the deleted IPC_WRAPPER_PREFIX on every fixture, classifyGenerationError.test.ts stays green."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/exec/storyboardFailureCopy.ts",
+      "entry_point": "technicalDetail",
+      "disposition": "enforced",
+      "evidence": "Uses withoutIpcInvokeWrapper; same parity test, storyboardFailureCopy.test.ts stays green."
+    },
+    {
+      "path": "src/workbench/production/productionRunCommands.ts",
+      "entry_point": "isNothingToResume",
+      "disposition": "not-affected",
+      "evidence": "Recognises our own code nothing_to_resume anywhere in the message (diagnostics.error-code), not the envelope; it works whether or not the sentence is wrapped."
+    }
+  ],
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/contracts/ipcInvokeFailure.ts",
+    "invariant": "Every error class name written in electron/ and src/ has the code class-name shape the disk exits keep, the shape refuses credential-shaped and free-text names, and display stripping is identical to the readers it replaced.",
+    "failure_mode": "A new error class whose name does not have the shape (and would be logged as Error) fails the census with its file and name; the renderer end-to-end test fails when an invoke failure reaches disk without its class name.",
+    "exception_policy": "none",
+    "strategy": "One reader at the shared contract layer, a census over the code that defines class names, and an end-to-end test that uses the real main error class and the real Electron sentence.",
+    "artifacts": [
+      "electron/shared/contracts/ipcInvokeFailure.ts",
+      "electron/shared/contracts/ipcInvokeFailure.test.ts",
+      "electron/logging/rendererLog.test.ts"
+    ]
+  },
+  "class_regression_tests": [
+    "electron/shared/contracts/ipcInvokeFailure.test.ts",
+    "electron/logging/rendererLog.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/observability/classifyError.ts",
+      "src/workbench/creation/storyboard/exec/storyboardFailureCopy.ts",
+      "electron/shared/contracts/workspaceBusy.ts",
+      "electron/logging/diskSafeFailure.ts"
+    ],
+    "rationale": "IPC_WRAPPER_PREFIX (classifyError), the technicalDetail regex (storyboardFailureCopy), the message.includes check (workspaceBusy) and the private name regex (diskSafeFailure) are deleted; their files now import the shared reader."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The sentence format is Electron's own (lib/renderer/api/ipc-renderer.ts); no dependency of Nomi decides it beyond Electron itself, which is pinned.",
+    "exit_criteria": []
+  }
+}

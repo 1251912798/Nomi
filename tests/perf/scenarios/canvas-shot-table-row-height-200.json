@@ -1,0 +1,30 @@
+{
+  "id": "canvas-shot-table-row-height-200",
+  "feature": "选中 200 镜拆解表后点上方浮条的行高「+」（标准 → 大），到表里 200 行都按新行高排好再过两帧；工作缩放约 100%。表身不做窗口化，这一下是 200 行全重渲",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "T200",
+    "--scenarios",
+    "shot-table-row-height",
+    "--warmup",
+    "1"
+  ],
+  "scale": "1 张 200 镜的拆解表（ready，每镜六格事实有字）+ 100 张图片卡 + 1 个视频节点，边 50 条",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 100,
+  "group": "① 选中节点 → 生成框出现",
+  "budgetStatus": "approved",
+  "budgetBasis": "仓库默认预算「操作到可见反馈 ≤100ms」（docs/engineering/perf-scenarios.md）；行高是浮条上的一下点击，用户期望即时生效",
+  "baseline": {
+    "median": 31.1,
+    "p95": 32.1,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-18",
+    "commit": "b44122651"
+  }
+}

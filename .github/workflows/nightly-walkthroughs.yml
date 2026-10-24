@@ -59,7 +59,12 @@ jobs:
             set +e
             timeout 600 xvfb-run -a node "$walk" >"$log" 2>&1
             status=$?
+            # 走查改了构建输入（源码树）：这一条判红（96）并点名写了什么，按它之前的树还原，后面的照常跑。
+            # 不核的话，后面每条都被构建戳拒跑、日志里找不到真凶（run 40035294026 b3 连坐 23 条）。
+            node scripts/nightly-walk-tree-guard.mjs --walk "$walk" --state "nightly-walks/tree-guard-${BATCH}.state" --restore >>"$log" 2>&1
+            guard=$?
             set -e
+            if [ "$guard" -ne 0 ]; then status=$guard; fi
             ended=$(date +%s)
             duration=$((ended - started))
             printf '%s\t%s\t%s\t%s\n' "$walk" "$status" "$duration" "$log" >> "nightly-walks/results-${BATCH}.tsv"

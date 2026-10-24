@@ -590,6 +590,9 @@ async function codexLocalImage(journey, ui, fixture, recorder) {
   await recorder.step('observed', '本机存在可运行的 codex CLI（真实运行时探测）', async () => {
     // 卡片按设计不探测 codex 装没装（D4：如实写前提），所以旅途自己测真实运行时：
     // 没装 = 环境性 BLOCKED（同 J08 ComfyUI 的口径），不是产品失败。
+    // 隔离起的 App 把 CODEX_HOME 指进临时目录（_launchApp.mjs 的宿主配置隔离，2026-10-24）：它拉起的 codex
+    // 只认那里的登录，看不到你真实的 Codex 登录。这条要真登录、真额度，隔离实例里同样记环境性 BLOCKED。
+    if (ui.hostConfigDir) throw new JourneyBlocked('codex-login-isolated', '隔离实例的 CODEX_HOME 在临时目录，拉起的 codex 看不到真实的 Codex 登录；这条旅程要真登录、真额度，只能在真实配置下跑')
     const codex = spawnSync('codex', ['--version'], { encoding: 'utf8' })
     if (codex.status !== 0) throw new JourneyBlocked('codex-runtime-missing', '本机没有可执行 codex CLI；Codex 本地生图旅程需要真实运行时')
     return { version: (codex.stdout || '').trim().slice(0, 80) }

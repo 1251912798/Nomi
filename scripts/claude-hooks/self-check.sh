@@ -124,7 +124,7 @@ if hit_block dispatch-token '派工|派活|子 ?agent|任务书|并行|开 ?lane
 fi
 # 命令 / 门岗（全表在 docs/engineering/commands.md）
 if hit_block commands 'gates|check:|门岗|命令|pnpm run'; then
-  echo "【命令全表】CLAUDE.md 只留 gates 一行；各门岗、冒烟、数门、合并前检查命令的全表在 docs/engineering/commands.md；push 前按风险面分层见 docs/engineering/delivery-and-review.md｜门岗红了先读它红在哪条判据，不许抬基线或预算挤 PR(R17)"
+  echo "【命令全表】CLAUDE.md 只留 gates 一行（本机完整自检）；各门岗、冒烟、数门、合并前检查命令的全表在 docs/engineering/commands.md；推送前快检与 CI 怎么分工见 docs/engineering/delivery-and-review.md｜门岗红了先读它红在哪条判据，不许抬基线或预算挤 PR(R17)"
   echo ""
 fi
 # 交付 / 合并 / 交工评审
@@ -137,6 +137,6 @@ cat <<'EOF'
 【动手前 · 到这三刻必停（详解 CLAUDE.md）】
 ① 动手前：这段是我们独有的吗？不是 → 先找现成的接入(P0)｜重要改动先 grill：一轮批量问、每题带默认、连带面单独成题（纯 bug 修复不问）｜碰花钱/长跑/可打断/新界面先写设计卡 design-card(P5)
 ② 报完成前：全绿≠完成(P3)。截图要自己亲眼 Read 过、来自用户将跑的那个构建；没闭环别说「做完」(R13)
-③ push 前：pnpm run gates 全过(R11/R22)
+③ push 前：先并最新 origin/main；git 钩子自动跑快检，完整门岗以 CI 为准，CI 不绿不合并(R11/R22)
 贯穿：修根因不修症状(P2)｜加新必删旧(P1)｜同一处第 3 次修 → 先做类根因复盘(RW)
 EOF

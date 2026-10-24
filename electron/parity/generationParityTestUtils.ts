@@ -72,6 +72,48 @@ export async function seedParityCatalog(vendorKeys: readonly string[] = ["apimar
   return store.readCatalog();
 }
 
+export type UserRelayModel = { modelKey: string; labelZh: string; kind: "image" | "video" };
+
+/**
+ * 用户自建的 OpenAI 兼容中转：与设置里「接入」同一批生产函数落库（register → stage → 内置说明卡 → promote），
+ * 不手写 mapping——手写的就不是用户盘上那一份。baseUrl 默认是本机一个没人听的端口：只落库、不出网。
+ * 返回落库后的 vendorKey。
+ */
+export async function seedUserRelayConnection(
+  models: readonly UserRelayModel[],
+  options: { vendorName?: string; baseUrl?: string } = {},
+): Promise<string> {
+  const { registerProviderConnection } = await import("../providerAdapter/registration");
+  const { defaultCatalog } = await import("../providerAdapter/serviceCatalog");
+  const { buildOpenAiCompatibleDraft } = await import("../providerAdapter/builtinOpenAiCompatibleDraft");
+  const now = "2026-10-24T00:00:00.000Z";
+  const vendorName = options.vendorName ?? "Parity Relay";
+  const baseUrl = options.baseUrl ?? "http://127.0.0.1:9";
+  const selected = models.map((model) => ({ ...model }));
+  const connection = { vendorName, baseUrl, apiKey: "sk-parity-relay", authType: "bearer" as const, providerKind: "openai-compatible" as const, models: selected };
+  const { vendorKey } = registerProviderConnection({ rawInput: connection, catalog: defaultCatalog, now: () => now });
+  const runId = `run-parity-relay-${vendorKey}`;
+  defaultCatalog.stage({ ...connection, vendorKey, runId });
+  const draft = buildOpenAiCompatibleDraft({ baseUrl, authType: "bearer", providerKind: "openai-compatible", models: selected });
+  const verifiedModes = draft.models.flatMap((model) => model.modes.map((mode) => ({ modelKey: model.modelKey, taskKind: mode.taskKind })));
+  const result = defaultCatalog.promote({
+    run: {
+      id: runId, vendorKey, vendorName, connectionFingerprint: `parity-relay-${vendorKey}`, selectedModelKeys: selected.map((model) => model.modelKey),
+      stage: "completed", repairAttempt: 0,
+      models: draft.models.map((model) => ({
+        modelKey: model.modelKey, labelZh: model.labelZh, kind: model.kind,
+        modes: model.modes.map((mode) => ({ taskKind: mode.taskKind, state: "verified" as const, attempts: 1 })),
+      })),
+      sourceUrls: [], createdAt: now, updatedAt: now,
+    },
+    draft,
+    revision: { id: `revision-${runId}`, vendorKey, digest: `parity-relay-${vendorKey}`, draft, verifiedModes, createdAt: now },
+    verifiedModes,
+  });
+  if (result.status !== "committed") throw new Error(`custom relay was not committed (${result.status}): ${vendorKey}`);
+  return vendorKey;
+}
+
 function recordFromCall(call: CapturedCall | undefined, notes?: Record<string, unknown>): OutboundRecord {
   if (!call) return { failure: { code: "no_outbound_request", message: "no outbound request was made" }, ...(notes ? { notes } : {}) };
   const url = new URL(call.url);
@@ -209,7 +251,7 @@ export async function driveEngineB(capture: FetchCapture, input: EngineBTaskInpu
     // 两个真实宿主都接了那个解析器（`mcpStdioServer.ts:334` / `appIntegration.ts:325`）；
     // 夹具不给，就会把「宿主没接线」当成「Run 路投影不出 @image1」报成产品分裂。
     const referenceSourceUrls = references.map((reference) => input.referenceUrls?.[spendReferenceKey(reference)]);
-    // 与真实宿主同形：编译前先把候选归一到它在目录里的视频档案——变体、模式、出站 model（transportModelId）
+    // 与真实宿主同形：编译前先把候选归一到它在目录里的视频档案——变体、模式（出站 model 由 wireModelIdentity 按它们解出）
     // 都在这一步定（`mcpGenerationTools.ts:330`，候选表 = `deriveUsableVideoModelCandidates`）。
     // 夹具以前跳过这一步，「宿主按哪个变体派」根本没进矩阵：2026-09-26 卡上 Fast、派出去 standard，矩阵一直是绿的。
     const { normalizeVideoCandidate } = await import("../capabilityCore/mcpGenerationVideoResolve");
@@ -238,21 +280,15 @@ export async function driveEngineB(capture: FetchCapture, input: EngineBTaskInpu
     contractParameters: contract.parameters,
   };
   try {
-    const request = provider.buildRequest({
-      moduleId: contract.moduleId,
-      providerId: contract.providerId,
-      modelId: contract.modelId,
-      mode: contract.mode,
-      ...(contract.modeId ? { modeId: contract.modeId } : {}),
-      prompt: contract.prompt,
-      parameters: contract.parameters,
-      references: contract.references,
-      contractHash: contract.contractHash,
-      idempotencyKey: "parity-idempotency-key",
+    // 合同 → provider 输入用宿主同一个投影（运行时适配器的 prepareAuthorization），不在夹具里手抄字段表：
+    // 手抄的那份漏过 variantId（宿主 resolveExecutionContract 一直带着它，线上模型名 owner 靠它选变体，2026-10-24）。
+    const { createGenerationRuntimeAdapter } = await import("../capabilityCore/generationRuntimeAdapter");
+    const { providerRequest } = createGenerationRuntimeAdapter({ providers: [provider] }).prepareAuthorization({
+      contract,
+      providerIdempotencyKey: "parity-idempotency-key",
       ...(input.referenceUrls ? { referenceUrls: input.referenceUrls } : {}),
-      ...(contract.transportModelId ? { transportModelId: contract.transportModelId } : {}),
     });
-    await provider.submit(request, "parity-idempotency-key");
+    await provider.submit(providerRequest, "parity-idempotency-key");
   } catch (error) {
     if (!capture.calls.length) return { failure: { code: failureCode(error), message: String((error as Error)?.message ?? error) }, notes };
   }

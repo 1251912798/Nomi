@@ -295,14 +295,18 @@
         "R19",
         "S-VIO"
       ],
-      "rule": "交付与状态：按验证分层通过后自己 commit + push；状态词只有四档：已实现未推送 / 已推送待合入 / 已合入待验证 / 已解决（已解决需 merge SHA 上的 delivery:verify-merged 收据）。",
+      "rule": "交付与状态：自己 commit + push；推送前过 git 的 pre-push 快检（钩子自动跑，按改动选门），完整门岗以 CI 为准；合并只认 CI 全绿 + 合并前扫描 + main 上的收据。状态词只有四档：已实现未推送 / 已推送待合入 / 已合入待验证 / 已解决（已解决需 merge SHA 上的 delivery:verify-merged 收据）。",
       "disease": "把「写了」说成「解决了」",
       "enforcement": [
-        "hook:pre-push-check",
+        "gate:scripts/pre-push-contracts.mjs(git 的 pre-push 钩子在推送那一刻自动跑的快检)",
+        "hook:pre-push-check(跳过 git 钩子的推送记进被推那棵树的绕口日志)",
+        "gate:check:push-bypass(没确认的绕口拦下这棵树的下一次推送)",
+        "gate:.github/workflows/quality-gate.yml(完整门岗以 CI 为准)",
+        "coordinator-tool:scripts/merge-preflight.mjs(合并前扫描)",
         "gate:check:git-delivery",
         "coordinator-tool:delivery:verify-merged"
       ],
-      "evidence": "pre-push-check 留痕；git-delivery 在 contracts",
+      "evidence": "2026-10-24 用户拍板「改成 CI 把关：推分支前本机只跑快检，完整门岗交给 CI，合并照旧只认 CI 全绿和 main 上的收据」（设计卡 docs/plan/2026-10-24-push-gate-ci.md）；推送前不再要本机门岗的通过凭据；pre-push-check 只剩绕口留痕；git-delivery 在 contracts",
       "owner": "协调会话",
       "review_on": "2026-12-01",
       "delete_when": "不适用",

@@ -5,6 +5,11 @@ const identitySchema = z.string().trim().min(1)
 const viewSchema = z.object({
   selectedRowIds: z.array(identitySchema).refine((ids) => new Set(ids).size === ids.length),
   density: z.enum(['auto', 'full', 'compact', 'card']),
+  /**
+   * 行高三档（拆解表节点浮条的 − / + ，2026-10-18 拆解前选模型）：紧凑 44 · 标准 58 · 大图 92。
+   * 缺席 = 标准；只在用户动过时写，老表读回来就是标准。
+   */
+  rowHeight: z.enum(['compact', 'standard', 'large']).optional(),
 }).strict()
 const commonShape = {
   schemaVersion: z.literal(1),
@@ -112,6 +117,11 @@ export const deconstructionShotTableSchema = z.object({
      */
     visionModel: z.object({ vendorKey: z.string().min(1), modelKey: z.string().min(1) }).strict().optional(),
     /**
+     * 用户在拆解栏给**转写腿**选的模型（与 `visionModel` 同形，2026-10-18 拆解前选模型）。缺席 = 自动挑。
+     * 整表重拆带它；「改用云端重试」是另一个显式动作，不改写它。
+     */
+    transcribeModel: z.object({ vendorKey: z.string().min(1), modelKey: z.string().min(1) }).strict().optional(),
+    /**
      * 这张表是不是整条片子（切点超上限时自动抬了阈值）。
      *
      * `.optional()` 只为**已经存在的老项目**：2026-09-22 之前落盘的表里没有这一块，
@@ -168,3 +178,9 @@ export function isRetiredShotTableNode(node: { kind?: unknown; meta?: unknown })
  * 文案在主进程按用户语言生成（`desktopT`），渲染层原样显示，不在两边各拼一次。
  */
 export type DeconstructionProgress = { requestId: string; projectId: string; phase: 0 | 1 | 2; detail?: string }
+
+/**
+ * 拆解「短片不弹报价卡，长片才弹」的分界（2026-10-18 用户拍板）：一共不超过这么多次调用（读图 N 镜 + 转写）时，点「拆解」那一下就是确认。
+ * 主进程的钱闸（electron/video/deconstructSpend.ts）与拆解栏的说明文案读同一个数。
+ */
+export const DECONSTRUCT_ASK_ABOVE_CALLS = 30
