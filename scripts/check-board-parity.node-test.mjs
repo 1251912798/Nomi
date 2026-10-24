@@ -7,7 +7,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { checkBoardManifest, checkPriorArt, checkPrBoardClaims, checkSourceHash, findDatedBoards, loadManifests, parsePrBoardClaims, runBoardParity } from './check-board-parity.mjs'
+import { BOARD_NAME, checkBoardManifest, checkPriorArt, checkPrBoardClaims, checkSourceHash, findDatedBoards, loadManifests, parsePrBoardClaims, runBoardParity } from './check-board-parity.mjs'
+import { BOARD_NAMES } from './board-extract.mjs'
 import { hashBoardSourceFiles } from './board-source-hash.mjs'
 
 const CORPUS = "it('board:Main/topbar.title', () => {})"
@@ -192,46 +193,6 @@ describe('R8 PR 认领的拍板图元素必须有去处', () => {
     m.elements[1].userDecision = { quote: '先放着', date: '2026-10-10' }
     assert.deepEqual(checkPrBoardClaims('## 拍板图\n- Main: group.header', { Main: m }), [])
   })
-
-  it('正例：带数字的板名按同一认领行语法解析', () => {
-    const body = [
-      '## 拍板图',
-      '- IconsF1: icon.one',
-      '- ComposerB3: composer.one',
-      '- Director3dbox: director.one',
-    ].join('\n')
-    assert.deepEqual(parsePrBoardClaims(body), [
-      { board: 'IconsF1', ids: ['icon.one'] },
-      { board: 'ComposerB3', ids: ['composer.one'] },
-      { board: 'Director3dbox', ids: ['director.one'] },
-    ])
-  })
-
-  it('反例：非法字符的板名照旧不认，不扩大到文件名以外的语法', () => {
-    const body = '## 拍板图\n- Composer-B3: composer.one\n- ComposerB3: composer.two'
-    assert.deepEqual(parsePrBoardClaims(body), [{ board: 'ComposerB3', ids: ['composer.two'] }])
-  })
-
-  it('反例：不存在的带数字板名照旧由认领校验报不存在', () => {
-    const errors = checkPrBoardClaims('## 拍板图\n- Missing9: element.one', { Main: base() })
-    assert.match(errors.join('\n'), /拍板图 Missing9 不存在/)
-  })
-
-  it('普查：docs/design/boards/ 下每个真实板名都能被认领行解析', () => {
-    const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-    const names = []
-    const walk = (dir) => {
-      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name)
-        if (entry.isDirectory()) walk(full)
-        else if (entry.name.endsWith('.board.json')) names.push(entry.name.slice(0, -'.board.json'.length))
-      }
-    }
-    walk(path.join(repoRoot, 'docs/design/boards'))
-    const unique = [...new Set(names)].sort()
-    const body = ['## 拍板图', ...unique.map((name) => `- ${name}: element.one`)].join('\n')
-    assert.deepEqual(parsePrBoardClaims(body).map((claim) => claim.board), unique)
-  })
 })
 
 describe('板源哈希：默认模式不起浏览器，靠哈希判断板改没改', () => {
@@ -383,5 +344,19 @@ describe('V-1203 复验 R1：跨日期同名板——校验按「日期目录 + 
     const found = findDatedBoards(root, main).map((entry) => `${path.basename(entry.dir)}/${entry.board}`).sort()
     fs.rmSync(root, { recursive: true, force: true })
     assert.deepEqual(found, ['2099-01-01/ReviewProbe', '2099-01-02/ReviewProbe'])
+  })
+})
+
+describe('板名：磁盘上每一张板都能被 ## 拍板图 认领（2026-10-24：IconsF1 / ComposerB3 / Director3dbox 带数字认不出）', () => {
+  const onDisk = [...BOARD_NAMES, ...findDatedBoards().map((b) => b.board)]
+  it('每张板的名字都符合板名规则，且认领行解析得出来', () => {
+    assert.ok(onDisk.length > BOARD_NAMES.length, '应读到日期目录里的板')
+    for (const board of onDisk) {
+      assert.match(board, BOARD_NAME, `${board}.board.json 的名字不符合板名规则，认领行认不出它`)
+      assert.deepEqual(parsePrBoardClaims(`## 拍板图\n- ${board}: x`), [{ board, ids: ['x'] }], `${board} 认领不出来`)
+    }
+  })
+  it('反例：带数字的板名照样认得出', () => {
+    assert.deepEqual(parsePrBoardClaims('## 拍板图\n- IconsF1: node.toolbar, topbar'), [{ board: 'IconsF1', ids: ['node.toolbar', 'topbar'] }])
   })
 })

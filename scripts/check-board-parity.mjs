@@ -32,9 +32,10 @@ export const BOARD_STAGES = Object.freeze(['explored', 'built'])
 export const PR_SECTION = '拍板图'
 /** 元素 id：字母 / 数字 / 下划线 / 点 / 冒号 / 连字符（清单里的写法，如 node.card）。 */
 const ELEMENT_ID = /^[\p{L}\p{N}_.:-]+$/u
-// 板名来自 docs/design/boards/ 的文件名：字母开头，后续只允许字母和数字。
-// 认领正文、合并前扫描和正文判据都经 parsePrBoardClaims 走这一个边界。
-const CLAIM_LINE = /^\s*[-*]\s*([A-Za-z][A-Za-z0-9]*)\s*[:：]\s*(.+)$/
+const BOARD_NAME_PART = '[A-Za-z][A-Za-z0-9]*'
+/** 板名：字母开头、后面字母或数字（`IconsF1`、`Director3dbox`）。认领行和磁盘上的板文件名（`<板名>.board.json`）共用这一份。 */
+export const BOARD_NAME = new RegExp(`^${BOARD_NAME_PART}$`)
+const CLAIM_LINE = new RegExp(`^\\s*[-*]\\s*(${BOARD_NAME_PART})\\s*[:：]\\s*(.+)$`)
 
 /** 从这天（含）起，板清单必须带 priorArt。更早的板不追溯。 */
 export const PRIOR_ART_REQUIRED_FROM = '2026-10-19'
