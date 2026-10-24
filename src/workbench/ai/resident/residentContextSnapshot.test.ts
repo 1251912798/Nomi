@@ -181,7 +181,7 @@ describe('resident ContextSnapshot', () => {
       total: number
       listed: number
       omitted?: number
-      omittedByKind?: Array<{ kind: string; count: number; readTool: string }>
+      omittedByKind?: Array<{ kind: string; count: number }>
       handles: Array<{ targetId: string }>
     }
     expect(payload.total).toBe(count)
@@ -189,8 +189,8 @@ describe('resident ContextSnapshot', () => {
     expect(payload.listed + (payload.omitted ?? 0)).toBe(count)
     if (count <= 24) expect(payload.listed).toBe(count)
     if (count > 24) {
-      expect(payload.listed).toBe(0)
-      expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count, readTool: 'read_selection' }])
+      expect(payload.listed).toBeGreaterThan(0)
+      expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count: count - payload.listed }])
     }
     expect(context.length).toBeLessThanOrEqual(6000)
   })

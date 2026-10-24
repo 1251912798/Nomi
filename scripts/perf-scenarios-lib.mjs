@@ -48,17 +48,6 @@ function firstRow(payload) {
 }
 
 export const DRIVERS = Object.freeze({
-  // Send-time selection projection + one paged read at the declared worst scale.
-  // The driver loads the production TypeScript owner through tsx; the benchmark itself does not
-  // reimplement the projection, so the number covers the exact shared boundary under test.
-  'tests/perf/agent-context-selection-paging-bench.mjs': {
-    supports: ['response'],
-    buildArgs: (script, args, { runs, label }) => ['--import', 'tsx', script, ...args, '--runs', String(runs), '--label', label],
-    resultFile: (label) => `tests/perf/results/agent-context-selection-paging-${label}.json`,
-    readRuns(payload) {
-      return { response: (payload.samples ?? []).map((sample) => sample.totalMs).filter(isNumber) }
-    },
-  },
   // 帧间隔 + 长任务：画布规模基准（tests/perf/canvas-scale-bench.mjs，自带 CDP 指标与 rAF 探针）；
   // 工作台场景（tests/perf/canvas-scale/workbenchScenarios.mjs）另有 responseMs（操作 → 界面到位）与主进程往返峰值；
   // 库场景（library-*）另有 mediaRequests：打开那一下浏览器发出的图片 / 视频请求数（设计卡 2026-10-23-skill-prompt-library-layout ★7）。

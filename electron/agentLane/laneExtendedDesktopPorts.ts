@@ -17,7 +17,7 @@ import { modelToolCapabilityId } from '../shared/agentCapabilities/modelFacingTo
 import { residentGenerationUnavailableMessage } from '../capabilityCore/residentSurfaceLifecycle'
 import { capabilityContractById } from '../shared/agentCapabilities/registry'
 import { LANE_RECEIPT_AUTHORITY_NOTE } from '../shared/agentLane/laneReceiptAuthority'
-import { LANE_DEFERRED_TOOL_CATALOG, LANE_DEFERRED_TOOL_GROUPS, LANE_SNAPSHOT_READ_CONTRACT_IDS } from './laneToolCatalog'
+import { LANE_DEFERRED_TOOL_CATALOG, LANE_DEFERRED_TOOL_GROUPS } from './laneToolCatalog'
 import { createExtendedLaneTools } from './laneExtendedTools'
 import { LaneDomainFailure, type OpenLaneOptions } from './laneRuntimePort'
 import { verbToTransportCall, type VerbTransportCall } from './laneVerbTransport'
@@ -62,7 +62,6 @@ export interface LaneExtendedDesktopPortsInput {
   onTaskCreated?(call: RuntimeToolCall, result: unknown): Promise<void>
   context?(): LaneComposerContext
   /** Desktop message-scoped selection read; kept here because the verb is deferred under the context group. */
-  selectionRead?(args: unknown, signal: AbortSignal): Promise<RuntimeToolDecision>
   /**
    * 3D-BOX 花钱闸：这次要生成的镜头里，哪些挂着还没好的参考预演。
    * 出卡**之前**问——问到了就不出卡、不花钱，原因交给模型；问不到（渲染层不在）也不出卡（fail-closed）。
@@ -311,11 +310,6 @@ export function createLaneExtendedDesktopPorts(input: LaneExtendedDesktopPortsIn
   }
 
   async function executeRead(call: RuntimeToolCall, signal: AbortSignal): Promise<RuntimeToolDecision> {
-    const contextSpec = LANE_DEFERRED_TOOL_CATALOG.find(spec => spec.name === call.toolName)
-    const contextContract = contextSpec ? capabilityContractById(modelToolCapabilityId(contextSpec, call.args)) : undefined
-    if (contextContract && LANE_SNAPSHOT_READ_CONTRACT_IDS.includes(contextContract.id)) {
-      return await input.selectionRead?.(call.args, signal) ?? failure('capability_unsupported')
-    }
     const { lane, call: transport } = translate(call)
     if (lane === 'skillRead') return await input.skillRead.tryExecute(transport, signal) ?? failure('capability_unsupported')
     if (lane === 'media' || lane === 'export') return await input.phase4.tryExecuteRead(transport, signal) ?? failure('capability_unsupported')

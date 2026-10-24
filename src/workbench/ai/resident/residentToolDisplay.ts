@@ -292,7 +292,6 @@ export function readableToolName(t: Translate, name: string, rawArgs?: unknown):
   if (normalized.includes('append_to_end') || normalized.includes('document_append')) return t('agentResident.toolDocumentWrite')
   if (isCanvasWriteToolName(name, args) && isAllArtifactDelivery(args)) return t('agentResident.toolCanvasWriteArtifact')
   if (normalized.includes('create_canvas_nodes') || normalized.includes('canvas_nodes')) return t('agentResident.toolCanvasWrite')
-  if (normalized.includes('agent.context.read') || normalized.includes('read_selection')) return t('agentResident.toolSelectionRead')
   if (normalized.includes('document.read') || normalized.includes('document_read')) return t('agentResident.toolDocumentRead')
   if (normalized.includes('document.write') || normalized.includes('document_edit')) return t('agentResident.toolDocumentWrite')
   if (normalized.includes('canvas.read') || normalized.includes('canvas_read')) return t('agentResident.toolCanvasRead')

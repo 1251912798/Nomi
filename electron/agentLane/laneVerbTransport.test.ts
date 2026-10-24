@@ -12,7 +12,7 @@ import { isPiGenerationToolName } from "../capabilityCore/generationTransportAda
 import { resolveCapabilityAlias } from "../shared/agentCapabilities/registry";
 import { modelFacingToolSpecs } from "../shared/agentCapabilities/modelFacingToolRegistry";
 import { objectFieldKeys } from "../shared/agentCapabilities/verbs/verbProjections";
-import { LANE_DEFERRED_TOOL_CATALOG, LANE_SNAPSHOT_READ_CONTRACT_IDS } from "./laneToolCatalog";
+import { LANE_DEFERRED_TOOL_CATALOG } from "./laneToolCatalog";
 import { exportJobTransportCall, verbToTransportCall, type VerbTransportCall } from "./laneVerbTransport";
 
 /** 每个 lane 的「适配器认不认这个方法名」判据——与各适配器的路由谓词同源。 */
@@ -48,11 +48,10 @@ function sampleArgsFor(verb: string): Record<string, unknown> {
 
 /**
  * 延迟目录里经领域端口执行的动词 + `check_job`（它是读动词，同样走 `executeRead` 的生成→导出两跳）。
- * lane 自己答的快照读（`LANE_SNAPSHOT_READ_CONTRACT_IDS`，即 `read_selection`）不经传输表，不在这里。
  */
 function transportedVerbs(): string[] {
   const deferred = LANE_DEFERRED_TOOL_CATALOG
-    .filter((spec) => spec.contractId !== "timeline.read" && !LANE_SNAPSHOT_READ_CONTRACT_IDS.includes(spec.contractId))
+    .filter((spec) => spec.contractId !== "timeline.read")
     .map((spec) => spec.name);
   const checkJob = modelFacingToolSpecs("internal").find((spec) => spec.name === "check_job");
   return checkJob && !deferred.includes(checkJob.name) ? [...deferred, checkJob.name] : deferred;

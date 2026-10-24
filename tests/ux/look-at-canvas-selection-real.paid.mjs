@@ -22,11 +22,9 @@ import { runSelectionJourney, selectionEvidence, writeSelectionEvidence } from '
 const SCRIPT = 'look-at-canvas-selection-real.paid.mjs'
 const ROUNDS = Number(process.env.NOMI_REAL_ROUNDS || 5)
 const SELECTION_MARKER = '节点行里标了「选中」'
-// #1263：发送时选区按页读（read_selection）的错误码，只在分页实现里出现
-const PAGING_MARKER = 'selection_cursor_invalid'
 if (!Number.isInteger(ROUNDS) || ROUNDS < 1) throw new Error(`NOMI_REAL_ROUNDS 要是正整数，拿到 ${process.env.NOMI_REAL_ROUNDS}`)
 const startedAt = new Date().toISOString()
-const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-real', [BRAIN], { buildMarkers: [SELECTION_MARKER, PAGING_MARKER] })
+const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-real', [BRAIN], { buildMarkers: [SELECTION_MARKER] })
 const { walk } = paid
 const journey = { rounds: [] }
 let failure

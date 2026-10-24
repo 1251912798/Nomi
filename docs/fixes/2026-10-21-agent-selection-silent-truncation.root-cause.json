@@ -4,10 +4,10 @@
   "change_kind": "corrective",
   "detected_by": "review",
   "recurrence_check_on": "2026-11-20",
-  "problem_type": "A bounded model-facing projection drops entries without accounting for them",
-  "symptom": "When a send-time selection exceeds the transient model budget, a partial handle list could look complete; the model could also be pointed at live domain reads that do not reconstruct which handles were selected in that message.",
-  "direct_cause": "The projection owner used LIVE_READ_TOOLS and a no-read longest-prefix fallback, so budget pressure could remove only some kinds or leave a partial prefix. No model-visible tool read the immutable snapshot attached to the consumed message.",
-  "class_root": "A bounded projection lacked one recoverable snapshot boundary: it could omit handles without a single all-or-nothing ledger and a pageable read of the same send-time snapshot.",
+  "problem_type": "A bounded model-facing projection can omit entries without an explicit, actionable ledger",
+  "symptom": "When a send-time selection exceeds the transient model budget, a partial handle list could look complete.",
+  "direct_cause": "The projection owner used a no-read longest-prefix fallback that could remove entries without a stable per-kind count or next action.",
+  "class_root": "A bounded projection lacked one shared accounting boundary: every emitted prefix must carry total, listed, omitted, omittedByKind and an actionable instruction for the omitted suffix.",
   "affected_population": [
     "Any message-scoped selection whose compact projection exceeds 6000 characters",
     "Mixed document, canvas, timeline, reference and future handle kinds",
@@ -41,8 +41,7 @@
   ],
   "entry_points": [
     "Provider request projection via laneDesktopInput",
-    "Compaction summary via laneContextBudget",
-    "Desktop lane model-facing read_selection registration and execution"
+    "Compaction summary via laneContextBudget"
   ],
   "external_sources": [
     {
@@ -71,11 +70,10 @@
     }
   ],
   "invariants": [
-    "Projection either lists every handle at one detail rung or lists zero handles; omitted output always has total, listed, omitted, per-kind counts, the read_selection verb and a fixed note.",
+    "Projection lists the longest prefix that fits the 6000-character budget and always writes total, listed, omitted and omittedByKind for the omitted suffix.",
     "total = listed + omitted and listed handles preserve snapshot order.",
-    "read_selection reads the same immutable snapshot object consumed for the current message, preserves order, and returns total, bounded rows and nextCursor only when more rows remain.",
-    "Cursor is opaque, bound to snapshot identity and kind filter, and invalid or cross-message cursors fail closed without reading live state.",
-    "Every bounded read page stays within the shared 6000-character transient budget."
+    "The fixed omitted note says the handles remain in the current selection and instructs the user to shrink or batch the selection.",
+    "Projection output is deterministic and valid JSON within the shared transient budget."
   ],
   "doors": [
     {
@@ -90,33 +88,13 @@
     },
     {
       "kind": "read",
-      "path": "electron/agentLane/laneDesktopTools.ts",
-      "symbol": "readAgentContextSnapshotPage"
-    },
-    {
-      "kind": "read",
       "path": "electron/shared/agentContextSnapshot.ts",
       "symbol": "projectAgentContextSnapshot"
     },
     {
       "kind": "read",
-      "path": "electron/shared/agentCapabilities/agentContextRead.ts",
-      "symbol": "agentContextReadInputSchema"
-    },
-    {
-      "kind": "read",
-      "path": "electron/shared/agentCapabilities/verbs/readVerbs.ts",
-      "symbol": "agentContextReadResultSchema"
-    },
-    {
-      "kind": "read",
       "path": "electron/shared/agentCapabilities/capabilityContract.ts",
       "symbol": "CapabilityPortKind"
-    },
-    {
-      "kind": "read",
-      "path": "electron/shared/agentCapabilities/registry.ts",
-      "symbol": "AGENT_CONTEXT_READ_CAPABILITY"
     },
     {
       "kind": "write",
@@ -142,29 +120,29 @@
       "kind": "write",
       "path": "electron/capabilityCore/documentReadTransportAdapters.ts",
       "symbol": "documentReadScopeForAlias"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/registry.ts",
+      "symbol": "CAPABILITY_CONTRACTS"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/verbs/readVerbs.ts",
+      "symbol": "readVerbs"
     }
   ],
   "door_reduction": {
     "before": 2,
-    "after": 13,
-    "why_not": "The two existing projection caller doors remain separate because one injects the live provider message and the other builds a compaction summary. The new read door remains in laneDesktopTools because it is the only execution boundary with the consumed message context. The deferred execution door remains separate from the desktop tool factory because it dispatches the already-registered verb. The declaration, capability registry and type/profile doors are separate registration boundaries that must remain explicit so model exposure cannot drift from the desktop-only contract. The alias collision audit adds the surviving document alias-table read boundary and its transport adapter write boundary; the obsolete selection alias declaration itself is removed and therefore is not retained as a live door."
+    "after": 11,
+    "why_not": "The two projection caller doors remain separate because one injects provider content and the other builds a compaction summary. The registration, declaration and transport doors remain separate in the full PR diff because each owns a distinct capability or profile boundary; the obsolete snapshot read execution door was deleted."
   },
-  "generality_proof": "Every bounded send-time projection still passes through projectAgentContextSnapshot/formatAgentContextSnapshot, while every desktop recovery call passes through readAgentContextSnapshotPage against the consumed message context. The shared owner has no kind-specific live-read branch or prefix fallback, so existing producers and future handle kinds receive the same all-or-nothing accounting and page contract.",
+  "generality_proof": "Every bounded send-time projection passes through projectAgentContextSnapshot/formatAgentContextSnapshot. The shared encoder computes the longest fitting prefix and the omitted suffix ledger for every handle kind, so future producers cannot silently drop entries through a separate read or kind-specific branch.",
   "shared_boundaries": [
     {
       "path": "electron/shared/agentContextSnapshot.ts",
       "symbol": "projectAgentContextSnapshot",
-      "responsibility": "Own the single all-or-nothing projection, budget ladder and omitted ledger."
-    },
-    {
-      "path": "electron/shared/agentContextSnapshot.ts",
-      "symbol": "readAgentContextSnapshotPage",
-      "responsibility": "Own opaque cursor validation, kind filtering, page sizing and the compact handle row shape."
-    },
-    {
-      "path": "electron/agentLane/laneDesktopTools.ts",
-      "symbol": "createDesktopLaneTools",
-      "responsibility": "Expose read_selection only in the desktop internal lane and bind it to the consumed message context."
+      "responsibility": "Own the single budget ladder, longest-prefix selection, omittedByKind accounting and actionable note."
     }
   ],
   "same_class_entry_points": [
@@ -181,86 +159,63 @@
       "evidence": "Uses the same projection owner for compaction summaries."
     },
     {
-      "path": "electron/agentLane/laneDesktopTools.ts",
-      "entry_point": "read_selection execution",
+      "path": "src/workbench/ai/resident/residentContextSnapshot.ts",
+      "entry_point": "resident snapshot producer",
       "disposition": "enforced",
-      "evidence": "Reads input.context().contextSnapshot and calls readAgentContextSnapshotPage; no renderer or live domain read is substituted."
-    },
-    {
-      "path": "electron/shared/agentCapabilities/modelFacingToolRegistry.ts",
-      "entry_point": "internal profile projection",
-      "disposition": "enforced",
-      "evidence": "The verb declaration is internal-only, so MCP has no snapshot read tool."
-    },
-    {
-      "path": "electron/shared/agentCapabilities/documentRead.ts",
-      "entry_point": "method read_selection alias",
-      "disposition": "not-affected",
-      "evidence": "This is the existing document.read transport scope alias; registry order preserves its dispatcher resolution and it is not the model-facing snapshot verb."
-    },
-    {
-      "path": "electron/shared/agentCapabilities/canvasReadCompact.ts",
-      "entry_point": "formatCanvasForAgent",
-      "disposition": "not-affected",
-      "evidence": "This is #1283 live canvas rendering with a separate owner and contract; this change does not alter it."
+      "evidence": "Produces handles consumed by the shared projection; it does not encode a second model-facing list."
     }
   ],
   "recurrence": {
     "classification": "recurring",
     "reason": "Any future handle producer or larger mixed selection can exceed the projection budget; any desktop turn can have its live UI selection changed after send, so only a message-bound page read preserves semantics.",
     "same_class_scan": [
-      "node scripts/door-map.mjs formatAgentContextSnapshot: two existing projection caller doors",
-      "node scripts/door-map.mjs readAgentContextSnapshotPage: laneDesktopTools is the single read execution door",
-      "rg AgentContextSnapshot electron src: producers remain residentContextSnapshot, directorShotFocus and agentReferenceContext; no new producer is added",
-      "model-facing registry and MCP projection checked: read_selection is internal-only and cannot appear on MCP"
+      "node scripts/door-map.mjs formatAgentContextSnapshot: two projection caller doors",
+      "rg AgentContextSnapshot electron src: resident and domain producers converge on the shared projection",
+      "rg omittedByKind electron src tests: accounting assertions cover provider and resident consumers"
     ]
   },
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "electron/shared/agentContextSnapshot.ts",
-    "invariant": "The shared owner either lists all handles or zero handles with a stable per-kind omitted ledger; readAgentContextSnapshotPage returns bounded pages from the same snapshot and rejects invalid or cross-snapshot cursors.",
-    "failure_mode": "Budget overflow emits no handle rows; missing snapshots and invalid cursors throw machine-readable failures with a model-executable next step.",
+    "invariant": "The shared owner emits the longest prefix that fits, with total = listed + omitted, per-kind omitted counts and a fixed instruction to shrink or batch the selection.",
+    "failure_mode": "Budget overflow emits a truthful prefix and an omitted ledger; it never implies that the prefix is the whole selection.",
     "exception_policy": "none",
-    "strategy": "Delete the LIVE_READ_TOOLS and no-read prefix branches, keep one compact row encoder, bind cursor lifetime to the current snapshot object, and expose the new verb only through the desktop internal profile.",
+    "strategy": "Delete the snapshot paging capability and its lane dispatch; keep one compact row encoder and compute omittedByKind from the omitted suffix at the shared projection boundary.",
     "artifacts": [
       "electron/shared/agentContextSnapshot.ts",
-      "electron/shared/agentCapabilities/agentContextRead.ts",
-      "electron/agentLane/laneDesktopTools.ts"
+      "electron/shared/agentContextSnapshot.test.ts",
+      "src/workbench/ai/resident/residentContextSnapshot.test.ts"
     ]
   },
   "regression_tests": [
     "electron/shared/agentContextSnapshot.test.ts",
-    "src/workbench/ai/resident/residentContextSnapshot.test.ts",
-    "electron/agentLane/laneDesktopReads.test.ts",
-    "electron/shared/agentCapabilities/registry.test.ts"
+    "src/workbench/ai/resident/residentContextSnapshot.test.ts"
   ],
   "class_regression_tests": [
     "electron/shared/agentContextSnapshot.test.ts",
-    "electron/agentLane/laneDesktopReads.test.ts"
+    "src/workbench/ai/resident/residentContextSnapshot.test.ts"
   ],
   "legacy_paths": {
-    "status": "removed",
-    "removed_paths": [
-      "electron/shared/agentContextSnapshot.ts"
-    ],
-    "rationale": "The LIVE_READ_TOOLS class-to-tool table, its per-kind live-read ledger and the no-read longest-prefix fallback are deleted in the same change. The only recovery path is read_selection paging the send-time snapshot."
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The temporary read_selection declaration, cursor paging functions and dedicated performance fixtures are absent from the final tree; the final diff retains no callable legacy path."
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
     "rationale": "Internal projection contract; no third-party runtime controls it.",
     "exit_criteria": []
   },
-  "migration": "No snapshot format or stored data changes. Existing transcripts re-project with the new ledger; read_selection cursor state is process-local and never persisted, so old messages either have no current context snapshot and fail visibly or are sent again with a fresh snapshot.",
+  "migration": "No snapshot format or stored data changes. Existing messages are re-projected through the shared longest-prefix encoder; omitted entries are reported with counts and a user action instead of a paging tool.",
   "residual_risks": [
-    "The separate live look_at_canvas result still has its own node-list budget and is outside this change.",
-    "Real-model read_selection adoption and answer accuracy remain unverified until the coordinator runs the paid sample.",
-    "Cursor identity is process-local by design; a restarted lane must start from the first page."
+    "The model cannot inspect omitted handles in the same turn; users must shrink or batch the selection until the deferred tool-group decision is implemented.",
+    "The separate live look_at_canvas result has its own node-list budget and is outside this change.",
+    "Real-model accuracy for the updated omitted note remains unverified until the coordinator runs the approved sample."
   ],
   "invariant_owner_layer": {
     "layer": "electron/shared/agentContextSnapshot.ts",
     "tests": [
       "electron/shared/agentContextSnapshot.test.ts",
-      "electron/agentLane/laneDesktopReads.test.ts"
+      "src/workbench/ai/resident/residentContextSnapshot.test.ts"
     ]
   }
 }

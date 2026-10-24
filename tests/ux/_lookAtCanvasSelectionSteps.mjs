@@ -40,11 +40,11 @@ export const SELECTION_EVIDENCE_DIR = path.join(REPO_ROOT, 'docs/evidence/2026-1
 export const SELECTION_METRICS = Object.freeze({
   toolWriteCorrect: '工具写对率 = 不带参数且宿主未退回的 look_at_canvas 调用数 / look_at_canvas 调用总数',
   turnSuccess: '回合成功率 = 最终回答点到的节点集合与 ground truth（选中的 20 个视频节点）完全一致、不多不少的轮数 / 总轮数',
-  readPath: '读面路径分档 = 调用 read_selection / 调用 look_at_canvas / 两者都没调的回合数',
+  readPath: '读面路径分档 = 调用 look_at_canvas / 没调读工具的回合数',
 })
 /** 诊断计数的定义（不进三个数；回合失败时用来分原因）。 */
 export const SELECTION_DIAGNOSTICS = Object.freeze({
-  roundsReadWholeSelection: '转录里读回的选区（look_at_canvas 节点行的「选中」标记，或 read_selection 按页读回的句柄）覆盖全部选中 id 的轮数',
+  roundsReadWholeSelection: '转录里读回的选区（look_at_canvas 节点行的「选中」标记）覆盖全部选中 id 的轮数',
   roundsSawWholeSelectionAtAnswer: '答话那一刻、发给模型的那份消息里仍看得见全部选中 id 的轮数（两种读法的结果都算，被旧读结果替换掉的那一份不算）',
   view: 'rounds[].view：答话那一刻看得见几个选中 id、有几份读结果被旧读结果替换、答话前模型自己记下了几个真值视频',
   prompts: `量具预置 ${SELECTION_PROMPTS.length} 句不同的用户说法，实际回合默认抽样其中前 rounds 句`,
@@ -193,9 +193,9 @@ export async function runSelectionRound({ win, projectRoot, scene, round, transf
   return record
 }
 
-/** 快照专用档选 12 个节点：该规模在 #1263 的 6000 字投影预算内可列全，避免把 omitted 档误当成模型失败。 */
+/** 快照专用档选 40 个节点：故意进入 6000 字投影预算的 omitted 档，验证模型如实报账。 */
 function snapshotOnlyScene(scene) {
-  const selectedIds = scene.nodes.filter((node) => node.selected).slice(0, 12).map((node) => node.id)
+  const selectedIds = scene.nodes.filter((node) => node.selected).slice(0, 40).map((node) => node.id)
   const selected = new Set(selectedIds)
   return Object.freeze({
     nodes: Object.freeze(scene.nodes.map((node) => Object.freeze({ ...node, selected: selected.has(node.id) }))),
@@ -220,7 +220,7 @@ export function gaugeProblems(rounds, { expectedModelKey }) {
  * 整条旅程。`journey` 由调用方传入并就地填写：中途出错时调用方手里仍有已跑完的那几轮（证据照写）。
  * `beforeRound(round, scene)`：演练在这里给夹具大脑换剧本；真付费不传。
  */
-export async function runSelectionJourney(journey, { walk, modelLabel, expectedModelKey, rounds, beforeRound = async () => {}, includeSnapshotOnly = false }) {
+export async function runSelectionJourney(journey, { walk, modelLabel, expectedModelKey, rounds, snapshotRounds = rounds, beforeRound = async () => {}, includeSnapshotOnly = false }) {
   journey.rounds ??= []
   const { win } = await walk.start({ first: true })
   // 画布 store 的走查桥（localStorage.__nomiE2E，开项目之前置上）：布场景、设选区都走 store 的真动作。
@@ -255,7 +255,7 @@ export async function runSelectionJourney(journey, { walk, modelLabel, expectedM
   if (includeSnapshotOnly) {
     const snapshotRecords = []
     const snapshotScene = snapshotOnlyScene(scene)
-    for (let round = 1; round <= rounds; round += 1) {
+    for (let round = 1; round <= snapshotRounds; round += 1) {
       const journeyRound = rounds + round
       await beforeRound(journeyRound, scene)
       const record = await runSelectionRound({
@@ -265,7 +265,7 @@ export async function runSelectionJourney(journey, { walk, modelLabel, expectedM
       record.selectionTotal = snapshotScene.selectedIds.length
       snapshotRecords.push(record)
       await walk.snap(`snapshot-only-r${round}-answer`).catch(() => {})
-      console.log(`[selection] 快照专用档 ${round}/${rounds} ${Math.round(record.ms / 1000)}s：无工具调用=${record.score.lookAtCanvasCalls === 0 && record.score.otherTools.length === 0} · 快照含完整选区=${record.score.snapshotMessagesWithWholeSelection} · 成功=${record.score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
+      console.log(`[selection] 快照专用档 ${round}/${snapshotRounds} ${Math.round(record.ms / 1000)}s：无工具调用=${record.score.lookAtCanvasCalls === 0 && record.score.otherTools.length === 0} · 列出=${record.score.listed ?? '-'} · 省略=${record.score.omitted ?? '-'} · 成功=${record.score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
     }
     journey.snapshotOnly = snapshotRecords
   }

@@ -38,8 +38,6 @@ import { laneToolMutates } from '../shared/agentLane/laneToolContract'
 import type { ProjectAgentProposalReceiptService } from '../capabilityCore/projectAgentProposalReceiptStore'
 import type { ResidentGenerationAdapterFactory } from '../capabilityCore/residentGenerationAdapterFactory'
 import { documentProposalReceiptFor, prepareDocumentProposalReceipt, commitDocumentProposalReceipt, abandonDocumentProposalReceipt } from '../capabilityCore/projectAgentDocumentReceipt'
-import { AgentContextSnapshotPageError, readAgentContextSnapshotPage } from '../shared/agentContextSnapshot'
-import type { AgentContextReadInput } from '../shared/agentCapabilities/agentContextRead'
 
 /**
  * 判决 → 结果，失败就抛成模型看得懂的那种失败。
@@ -107,20 +105,6 @@ export function createDesktopLaneTools(input: {
   const approvals = new Map<string, CanvasWriteApprovalAuthority>()
   const approvedCalls = new Set<string>()
   const documentReceipts = new Map<string, { proposal: ReturnType<typeof documentProposalReceiptFor>; prepared: ReturnType<typeof prepareDocumentProposalReceipt>; approvalId: string }>()
-
-  const selectionRead = async (args: unknown): Promise<RuntimeToolDecision> => {
-    try {
-      const page = readAgentContextSnapshotPage(input.context().contextSnapshot, args as AgentContextReadInput)
-      return { ok: true, result: page }
-    } catch (error) {
-      const code = error instanceof AgentContextSnapshotPageError ? error.code : 'selection_snapshot_unavailable'
-      return { ok: false, code, message: code === 'selection_cursor_invalid'
-        ? 'The cursor is invalid for this message snapshot. Call read_selection without a cursor to start again.'
-        : code === 'selection_kind_invalid'
-          ? 'The kind filter is invalid. Call read_selection without kind or use a kind from the selection snapshot.'
-          : 'This message has no selection snapshot. Ask the user to resend from the desktop Agent surface, then call read_selection.' }
-    }
-  }
 
   const tools = [
     ...createDocumentLaneTools({
@@ -251,7 +235,7 @@ export function createDesktopLaneTools(input: {
         generation = factory?.(input.binding, input.approvalPolicy)
       }
       return generation
-    }, onTaskCreated: input.onTaskCreated, context: input.context, selectionRead,
+    }, onTaskCreated: input.onTaskCreated, context: input.context,
     // 3D-BOX 花钱闸：generate 出卡前问渲染端唯一判据。
     directorPreviewBlocks: async (operationId: string, shotIds: readonly string[] | undefined, candidate: ShotCandidateFacts) => {
       const reply = await requestRenderer("director.preview-blocks", { projectId: input.binding.projectId, operationId, ...(shotIds ? { shotIds } : {}), candidateReferences: candidate.references, candidateDurations: candidate.durationSeconds }, 10_000) as { blocks?: unknown } | null

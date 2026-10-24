@@ -1,5 +1,5 @@
 {
-  "verbCount": 30,
+  "verbCount": 29,
   "tools": [
     {
       "aliasBoundInput": null,
@@ -1235,7 +1235,7 @@
       "aliasBoundInput": null,
       "alsoCovers": null,
       "contractId": "director.write",
-      "description": "Plan: compile preview; attach video. For scene. Not generate or draft_shots. Create plan; change node+rev+edits. The change lands in the project as a reversible local edit (in step-by-step approval mode the user confirms it first; otherwise it applies right away). This local edit grants no new spending permission; use the tool result for any generation status.",
+      "description": "Build or change a 3D-BOX director plan; Nomi compiles a gray 3D preview with blocking and cameras and attaches it to the shot as reference video. The user describes a scene, blocking or camera coverage, or asks to change part of an existing preview. Not for producing the final shot: once the user approves the preview, that is generate. Not for prompt edits or new shots (draft_shots), links or layout (arrange_canvas), or hand-made artifacts (make_artifact). Create: plan (+ target.shotId). Change: target.directorNodeId, baseRevision and edits from look_at_canvas or the last stage_shot result. The change lands in the project as a reversible local edit (in step-by-step approval mode the user confirms it first; otherwise it applies right away). This local edit grants no new spending permission; use the tool result for any generation status.",
       "effect": "reversible_local",
       "effectGroups": [
         "canvas-node-creation"
@@ -1352,7 +1352,7 @@
         "Read the returned issues and measured cuts. Fix real problems in at most two or three more calls, then tell the user what the preview now shows and what still differs.",
         "The user may hand-adjust the preview in the editor; a patch keeps those adjustments. When a result lists reorderedOverrides, tell the user each one: it was his own adjustment that this instruction directly overrode, it has been recomputed for the new instruction, and undo brings it back. When it lists changedEntities, say in one sentence what moved along with the change; his adjustments on those are kept."
       ],
-      "promptSnippet": "Plan: compile preview; attach video.",
+      "promptSnippet": "Build or change a 3D-BOX director plan; Nomi compiles a gray 3D preview with blocking and cameras and attaches it to the shot as reference video.",
       "publishedJsonSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "additionalProperties": false,
@@ -3589,45 +3589,6 @@
           "vendorKey",
           "ifUnchanged"
         ],
-        "type": "object"
-      }
-    },
-    {
-      "aliasBoundInput": null,
-      "alsoCovers": null,
-      "contractId": "agent.context.read",
-      "description": "Read this message's selected handles, one bounded page at a time. When context omits; continue with cursor. For live state use look_at_canvas. opaque cursor; kind filter. Nothing changes; it only reads.",
-      "effect": "read",
-      "effectGroups": null,
-      "examples": [],
-      "execution": {
-        "timeoutMs": 30000
-      },
-      "internalGroup": "context",
-      "mcpTransportFields": null,
-      "name": "read_selection",
-      "nextAction": "none",
-      "profileReason": "desktopOnlyContextSnapshot",
-      "profiles": [
-        "internal"
-      ],
-      "promptGuidelines": [
-        "Read before you write: every id you pass to a write verb comes from a read in this conversation, never from memory or guesswork."
-      ],
-      "promptSnippet": "Read this message's selected handles, one bounded page at a time.",
-      "publishedJsonSchema": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": false,
-        "properties": {
-          "cursor": {
-            "description": "c",
-            "type": "string"
-          },
-          "kind": {
-            "description": "k",
-            "type": "string"
-          }
-        },
         "type": "object"
       }
     }

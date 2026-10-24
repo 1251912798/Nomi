@@ -7,8 +7,6 @@ import { describe, expect, it } from 'vitest'
 import {
   formatAgentContextSnapshot,
   projectAgentContextSnapshot,
-  readAgentContextSnapshotPage,
-  AgentContextSnapshotPageError,
   type AgentContextHandle,
   type AgentContextSnapshot,
 } from './agentContextSnapshot'
@@ -36,7 +34,7 @@ type Payload = {
   total: number
   listed: number
   omitted?: number
-  omittedByKind?: Array<{ kind: string; count: number; readTool: string }>
+  omittedByKind?: Array<{ kind: string; count: number }>
   omittedNote?: string
   handles: Array<{ targetId: string; display: { title: string } }>
 }
@@ -71,7 +69,7 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     const text = formatAgentContextSnapshot(snapshot)
     const payload = expectBalanced(snapshot, text)
     if (count <= 24) expect(payload.listed).toBe(count)
-    else expect(payload.listed).toBe(0)
+    else expect(payload.listed).toBeGreaterThan(0)
   })
 
   it.each([1, 12, 16])('选 %i 个节点：一个不少（事故里 12 个只收到 7 个、16 个只收到 6 个）', (count) => {
@@ -81,12 +79,12 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.omitted).toBeUndefined()
   })
 
-  it.each([40, 256])('选 %i 个有实时读工具的节点放不下：一个节点句柄都不列，账里列出总数和工具', (count) => {
+  it.each([40, 256])('选 %i 个节点放不下：列出前缀并按类明说剩余账', (count) => {
     const snapshot = canvasSnapshot(count)
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
-    expect(payload.listed).toBe(0)
-    expect(payload.handles).toEqual([])
-    expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count, readTool: 'read_selection' }])
+    expect(payload.listed).toBeGreaterThan(0)
+    expect(payload.listed).toBeLessThan(count)
+    expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count: count - payload.listed }])
   })
 
   it('不再把整份选区抄进每一条句柄：每个节点 id 在文本里至多出现两次（句柄 id + targetId）', () => {
@@ -103,10 +101,11 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.handles[4]?.display.title).toBe('镜头5')
   })
 
-  it('每个节点的标题都很长时，宁可把所有标题都截短也先把条目列全', () => {
+  it('每个节点的标题都很长时，仍列前缀并明说省略数量', () => {
     const snapshot = canvasSnapshot(30, (index) => `${index + 1}-${'镜'.repeat(400)}`)
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
-    expect(payload.listed).toBe(30)
+    expect(payload.listed).toBeGreaterThan(0)
+    expect(payload.listed).toBeLessThan(30)
   })
 
   it('文稿、时间轴片段、画布节点、导演镜头混在一起：账同样平，文稿锚点仍在第一条', () => {
@@ -139,7 +138,7 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.listed).toBe(snapshot.handles.length)
   })
 
-  it('定位器是句柄意思的一部分，任何一档都不丢：20 个导演镜头共用一个节点 id，只有定位器里的镜头名能区分它们', () => {
+  it('定位器是句柄意思的一部分：前缀中的导演镜头仍保留定位器里的镜头名', () => {
     const shots = Array.from({ length: 20 }, (_, index): AgentContextHandle => ({
       id: `director-shot:dir-1/shot-${index}`, kind: 'canvasNode', targetId: 'dir-1', revision: 'dplan-abc',
       locator: { type: 'custom', key: 'director.shot', value: `shot-${index}` },
@@ -148,8 +147,9 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     const snapshot: AgentContextSnapshot = { version: 1, handles: shots }
     const text = formatAgentContextSnapshot(snapshot)
     const payload = expectBalanced(snapshot, text)
-    expect(payload.listed).toBe(20)
-    for (let index = 0; index < 20; index += 1) expect(text).toContain(`"key":"director.shot","value":"shot-${index}"`)
+    expect(payload.listed).toBeGreaterThan(0)
+    expect(payload.listed).toBeLessThan(20)
+    for (let index = 0; index < payload.listed; index += 1) expect(text).toContain(`"key":"director.shot","value":"shot-${index}"`)
   })
 
   it('选区定位器里没有对应句柄的 id 不会被当成「重复」而吞掉', () => {
@@ -163,7 +163,7 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(text.split(first!.targetId).length - 1).toBe(2)
   })
 
-  it('混合句柄超过预算时所有类整类不列，账照平并指向同一个快照读动词', () => {
+  it('混合句柄超过预算时列出前缀，账按省略后缀的类计数', () => {
     const clips = Array.from({ length: 200 }, (_, index): AgentContextHandle => ({
       id: `timeline-clip:clip-${index}`, kind: 'timelineClip', targetId: `clip-${index}`, revision: 'timeline-abc',
       locator: { type: 'timeRange', startMs: index * 1000, endMs: index * 1000 + 900 },
@@ -172,14 +172,12 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     const snapshot: AgentContextSnapshot = { version: 1, handles: [...canvasSnapshot(20).handles, ...clips] }
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
     expect(payload.total).toBe(220)
-    expect(payload.listed).toBe(0)
-    expect(payload.omittedByKind).toEqual([
-      { kind: 'canvasNode', count: 20, readTool: 'read_selection' },
-      { kind: 'timelineClip', count: 200, readTool: 'read_selection' },
-    ])
+    expect(payload.listed).toBeGreaterThan(0)
+    expect(payload.omittedByKind?.reduce((sum, item) => sum + item.count, 0)).toBe(payload.omitted)
+    expect(payload.omittedByKind?.every((item) => !('readTool' in item))).toBe(true)
   })
 
-  it('混选时没有单独实时读工具的类也一个不列', () => {
+  it('混选时没有单独实时读工具的类也按前缀和类账说明', () => {
     const snapshot: AgentContextSnapshot = {
       version: 1,
       handles: [
@@ -191,12 +189,8 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
       ],
     }
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
-    expect(payload.listed).toBe(0)
-    expect(payload.handles).toEqual([])
-    expect(payload.omittedByKind).toEqual([
-      { kind: 'webSelection', count: 80, readTool: 'read_selection' },
-      { kind: 'canvasNode', count: 40, readTool: 'read_selection' },
-    ])
+    expect(payload.listed).toBeGreaterThan(0)
+    expect(payload.omittedByKind?.reduce((sum, item) => sum + item.count, 0)).toBe(payload.omitted)
   })
 
   it('病态输入（每个字段 5 万字、256 条）：硬上限不破、仍是合法 JSON、账照平', () => {
@@ -230,50 +224,6 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(formatAgentContextSnapshot(undefined)).toBe('')
     expect(formatAgentContextSnapshot({ version: 1, handles: [] })).toBe('')
     expect(projectAgentContextSnapshot(undefined)).toEqual({ text: '', total: 0, listed: 0, omitted: 0, truncated: false })
-  })
-})
-
-function pageHandles(snapshot: AgentContextSnapshot, kind?: AgentContextHandle['kind']): AgentContextHandle[] {
-  const out: AgentContextHandle[] = []
-  let cursor: string | undefined
-  do {
-    const page = readAgentContextSnapshotPage(snapshot, { ...(cursor ? { cursor } : {}), ...(kind ? { kind } : {}) })
-    out.push(...page.handles.map((handle) => snapshot.handles.find((candidate) => candidate.targetId === handle.targetId)!))
-    cursor = page.nextCursor
-  } while (cursor)
-  return out
-}
-
-describe('readAgentContextSnapshotPage · send-time selection paging', () => {
-  it.each([300, 120])('pages %i handles without gaps or duplicates', (count) => {
-    const snapshot = canvasSnapshot(count)
-    const rows = pageHandles(snapshot)
-    expect(rows.map((handle) => handle.id)).toEqual(snapshot.handles.map((handle) => handle.id))
-  })
-
-  it('pages a mixed document + canvas + timeline snapshot in snapshot order', () => {
-    const snapshot: AgentContextSnapshot = {
-      version: 1,
-      handles: [
-        { id: 'doc-1', kind: 'document', targetId: 'doc-1', revision: '1', display: { title: '稿子' }, intentRole: 'source' },
-        ...canvasSnapshot(40).handles,
-        ...Array.from({ length: 3 }, (_, index): AgentContextHandle => ({
-          id: `clip-${index}`, kind: 'timelineClip', targetId: `clip-${index}`, revision: 't1',
-          locator: { type: 'timeRange', startMs: index * 1000, endMs: index * 1000 + 900 },
-          display: { title: `片段${index}` }, intentRole: 'target',
-        })),
-      ],
-    }
-    expect(pageHandles(snapshot).map((handle) => handle.id)).toEqual(snapshot.handles.map((handle) => handle.id))
-    expect(pageHandles(snapshot, 'timelineClip').map((handle) => handle.kind)).toEqual(['timelineClip', 'timelineClip', 'timelineClip'])
-  })
-
-  it('rejects a bad cursor, a cursor from another snapshot, and a missing snapshot', () => {
-    const snapshot = canvasSnapshot(300)
-    const cursor = readAgentContextSnapshotPage(snapshot).nextCursor!
-    expect(() => readAgentContextSnapshotPage(snapshot, { cursor: `${cursor}broken` })).toThrowError(AgentContextSnapshotPageError)
-    expect(() => readAgentContextSnapshotPage(canvasSnapshot(300), { cursor })).toThrowError(AgentContextSnapshotPageError)
-    expect(() => readAgentContextSnapshotPage(undefined)).toThrowError(AgentContextSnapshotPageError)
   })
 })
 

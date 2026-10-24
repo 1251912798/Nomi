@@ -10,7 +10,6 @@ import { createProjectAgentProposalReceiptService } from '../capabilityCore/proj
 import { formatCanvasForAgent } from '../shared/agentCapabilities/canvasReadCompact'
 import { projectCanvasRead } from '../shared/agentCapabilities/canvasRead'
 import type { TimelineReadInput } from '../shared/agentCapabilities/timelineRead'
-import type { AgentContextSnapshot } from '../shared/agentContextSnapshot'
 import { createDesktopLaneTools } from './laneDesktopTools'
 import { SurfacePortWireError } from '../shared/surfacePortBinding'
 import { openLane } from './laneHost.mjs'
@@ -27,8 +26,7 @@ const canvasSource = { nodes: [{ id: 'shot-a', kind: 'image', title: 'Opening sh
     raw: { credential: 'private-fixture-value' } } }], edges: [], groups: [], selectedNodeIds: ['shot-a'] }
 
 async function fixture(toolName: string, args: Record<string, unknown>, stale = false,
-  readDocument: DocumentReadPort['read'] = async ({ scope }) => ({ text: `${scope} fixture text` }),
-  contextSnapshot?: AgentContextSnapshot) {
+  readDocument: DocumentReadPort['read'] = async ({ scope }) => ({ text: `${scope} fixture text` })) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'nomi-desktop-lane-reads-'))
   cleanups.push(() => fs.rm(root, { recursive: true, force: true }))
   const binding = { projectId: 'reads-fixture', immutableProjectUuid: '11111111-1111-4111-8111-111111111111', projectGeneration: 1 }
@@ -55,7 +53,7 @@ async function fixture(toolName: string, args: Record<string, unknown>, stale = 
     surfacePortRuntime: { createCanvasWritePort: () => ({}) } } as unknown as DesktopCanvasReadRuntime
   const assembly = createDesktopLaneTools({ session, binding, surface,
     receipts: createProjectAgentProposalReceiptService({ projectRoot: root, binding }),
-    context: () => ({ documentId: 'fixture-document', approvalPolicy: { mode: 'request' }, ...(contextSnapshot ? { contextSnapshot } : {}) }),
+    context: () => ({ documentId: 'fixture-document', approvalPolicy: { mode: 'request' } }),
     // 档位和工具审批读**同一份**快照（生产里两者都来自 `composer.approvalPolicy`）。
     approvalPolicy: () => ({ mode: 'request' }),
     generationFactory: () => undefined, onTaskCreated: async () => undefined,
@@ -128,23 +126,4 @@ describe('desktop lane read adapter contracts', () => {
     expect(f.result.text).not.toContain('(capability_unsupported)')
   })
 
-  it('read_selection reads the active message snapshot and returns a continuation cursor', async () => {
-    const snapshot: AgentContextSnapshot = { version: 1, handles: Array.from({ length: 300 }, (_, index) => ({
-      id: `canvas-${index}`, kind: 'canvasNode', targetId: `node-${index}`, revision: '1',
-      display: { title: `镜头 ${index}` }, intentRole: 'subject',
-    })) }
-    const f = await fixture('read_selection', {}, false, undefined, snapshot)
-    expect(f.result).toMatchObject({ isError: false })
-    expect(JSON.parse(f.result.text)).toMatchObject({ total: 300, nextCursor: expect.any(String) })
-  })
-
-  it('read_selection gives machine-readable next steps for missing and invalid snapshots', async () => {
-    const missing = await fixture('read_selection', {})
-    expect(missing.result).toMatchObject({ isError: true, failure: { code: 'selection_snapshot_unavailable' } })
-    expect(missing.result.text).toContain('read_selection')
-    const snapshot: AgentContextSnapshot = { version: 1, handles: [{ id: 'canvas-1', kind: 'canvasNode', targetId: 'node-1', revision: '1', display: { title: '镜头' }, intentRole: 'subject' }] }
-    const invalid = await fixture('read_selection', { cursor: 'broken' }, false, undefined, snapshot)
-    expect(invalid.result).toMatchObject({ isError: true, failure: { code: 'selection_cursor_invalid' } })
-    expect(invalid.result.text).toContain('without a cursor')
-  })
 })

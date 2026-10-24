@@ -1,7 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { CAPABILITY_EFFECT_CLASSES, type CapabilityContract } from "./capabilityContract";
 import { AGENT_ASK_CAPABILITY } from "./askUser";
-import { AGENT_CONTEXT_READ_CAPABILITY } from "./agentContextRead";
 import { ASSET_READ_CAPABILITY } from "./assetRead";
 import { CANVAS_DELETE_CAPABILITY } from "./canvasDelete";
 import { CANVAS_READ_CAPABILITY } from "./canvasRead";
@@ -100,7 +99,6 @@ describe("capability contract registry", () => {
       MODEL_ONBOARDING_TRY_CAPABILITY,
       MODEL_ONBOARDING_REMOVE_CAPABILITY,
       // 3D-BOX 是唯一的导演台（2026-10-16）：仅内部的 director.write 恒注册。
-      AGENT_CONTEXT_READ_CAPABILITY,
       DIRECTOR_WRITE_CAPABILITY,
     ]);
 
@@ -143,7 +141,6 @@ describe("capability contract registry", () => {
       "model.onboarding.setup",
       "model.onboarding.try",
       "model.onboarding.remove",
-      "agent.context.read",
       "director.write",
     ]);
     // 主别名按 surface 摆平：`pi` 只放模型可见动词名（与 `verbDeclarations.ts` 对账，门岗
@@ -170,7 +167,7 @@ describe("capability contract registry", () => {
       // 试跑是付费能力，所以它有自己的契约与自己的名字（付费边界的判据全挂在 effect 上）。
       "try_model", "nomi_try_model",
       "remove_model_provider", "nomi_remove_provider",
-      "read_selection", "stage_shot",
+      "stage_shot",
     ]);
     expect(CAPABILITY_CONTRACTS.find((contract) => contract.id === "canvas.read")?.exposure).toBe("mcp_safe");
     expect(CAPABILITY_CONTRACTS.every((contract) => CAPABILITY_EFFECT_CLASSES.includes(contract.effectClass))).toBe(true);
@@ -181,7 +178,6 @@ describe("capability contract registry", () => {
     ]);
     expect(resolveCapabilityAlias("stage_shot")?.contract).toBe(DIRECTOR_WRITE_CAPABILITY);
     expect(resolveCapabilityAlias("nomi_set_node_prompt")).toBeUndefined();
-    expect(resolveCapabilityAlias("read_selection")?.contract).toBe(AGENT_CONTEXT_READ_CAPABILITY);
     expect(resolveCapabilityAlias(DOCUMENT_WRITE_ALIASES.replace)?.contract).toBe(DOCUMENT_WRITE_CAPABILITY);
     expect(resolveCapabilityAlias(DOCUMENT_WRITE_ALIASES.append)?.contract).toBe(DOCUMENT_WRITE_CAPABILITY);
     expect(resolveCapabilityAlias("inspect_timeline_range")?.contract).toBe(TIMELINE_READ_CAPABILITY);

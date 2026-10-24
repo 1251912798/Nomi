@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { projectCanvasRead } from '../../electron/shared/agentCapabilities/canvasRead'
 import { projectCanvasForAgent } from '../../electron/shared/agentCapabilities/canvasReadCompact'
 import {
-  LOOK_AT_CANVAS, READ_SELECTION, SELECTION_ASK, SNAPSHOT_ONLY_ASK, answerTimeView, answeredKeys, lookAtCanvasCallLegality, roundSettled, roundTranscript,
+  LOOK_AT_CANVAS, SELECTION_ASK, SNAPSHOT_ONLY_ASK, answeredKeys, lookAtCanvasCallLegality, roundSettled, roundTranscript,
   sceneFromIds, sceneProblems, sceneProjectionFacts, scoreSelectionRound, scoreSnapshotOnlyRound, selectionSceneSpec, summarizeSelectionRounds,
 } from './_lookAtCanvasSelectionScore.mjs'
 import { SELECTION_MARKER } from './_lookAtCanvasSelectionSteps.mjs'
@@ -76,11 +76,11 @@ describe('一轮判分', () => {
   })
 
   it('快照专用档拒绝工具，并确认用户消息本身带齐选中标题', () => {
-    const messages = [{ role: 'user', content: [{ type: 'text', text: `${SNAPSHOT_ONLY_ASK}\n${allTruth}` }] }, {
+    const messages = [{ role: 'user', content: [{ type: 'text', text: `${SNAPSHOT_ONLY_ASK}\n{"total":40,"listed":24,"omitted":16,"omittedNote":"..."}` }] }, {
       role: 'assistant', provider: 'apimart', model: 'deepseek-v4-pro', stopReason: 'stop', content: [{ type: 'text', text: allTruth }],
     }]
     const transcript = roundTranscript([{ entries: messages.map((message) => ({ type: 'message', message })) }])
-    expect(scoreSnapshotOnlyRound({ scene, transcript })).toMatchObject({ lookAtCanvasCalls: 0, otherTools: [], snapshotMessagesWithWholeSelection: 1, missing: [], extra: [], success: true })
+    expect(scoreSnapshotOnlyRound({ scene, transcript })).toMatchObject({ lookAtCanvasCalls: 0, otherTools: [], success: false })
   })
 })
 
@@ -99,40 +99,11 @@ describe('转录和汇总', () => {
   })
 
   it('汇总删除翻页率，只保留工具、读面路径、成功和可见性数字', () => {
-    const live = { harnessError: null, score: { legalCalls: 1, lookAtCanvasCalls: 1, readSelectionCalls: 0, success: true, selectionRead: 40, selectionTotal: 40 }, view: { selectedIdsVisible: 40 } }
-    const paged = { harnessError: null, score: { legalCalls: 0, lookAtCanvasCalls: 0, readSelectionCalls: 2, success: true, selectionRead: 40, selectionTotal: 40 }, view: { selectedIdsVisible: 40 } }
-    expect(summarizeSelectionRounds([live, paged])).toEqual({
-      rounds: 2, toolWriteCorrect: '1/1', turnSuccess: '2/2', roundsWithoutLookAtCanvas: 1,
-      roundsReadSelection: 1, roundsReadLiveCanvas: 1, roundsWithoutSelectionRead: 0,
-      roundsReadWholeSelection: '2/2', roundsSawWholeSelectionAtAnswer: '2/2', harnessErrors: 0,
+    const live = { harnessError: null, score: { legalCalls: 1, lookAtCanvasCalls: 1, success: true, selectionRead: 40, selectionTotal: 40 }, view: { selectedIdsVisible: 40 } }
+    const none = { harnessError: null, score: { legalCalls: 0, lookAtCanvasCalls: 0, success: false, selectionRead: 0, selectionTotal: 40 }, view: { selectedIdsVisible: 0 } }
+    expect(summarizeSelectionRounds([live, none])).toEqual({
+      rounds: 2, toolWriteCorrect: '1/1', turnSuccess: '1/2', roundsWithoutLookAtCanvas: 1,
+      roundsReadLiveCanvas: 1, roundsReadWholeSelection: '1/2', roundsSawWholeSelectionAtAnswer: '1/2', harnessErrors: 0,
     })
-  })
-})
-
-describe('答话那一刻还看得见的选区', () => {
-  const scene = seededScene()
-  const half = Math.ceil(scene.selectedIds.length / 2)
-  // 两页 read_selection（前一半、后一半）再作答，和真模型走的路径同形。
-  const pagedSessions = () => {
-    const messages = [{ role: 'user', content: [{ type: 'text', text: SELECTION_ASK }] }]
-    const pages = [scene.selectedIds.slice(0, half), scene.selectedIds.slice(half)]
-    pages.forEach((ids, index) => {
-      const id = `page-${index + 1}`
-      messages.push({ role: 'assistant', provider: 'apimart', model: 'deepseek-v4-pro', stopReason: 'toolUse', content: [{ type: 'toolCall', id, name: READ_SELECTION, arguments: {} }] })
-      messages.push({ role: 'toolResult', toolCallId: id, toolName: READ_SELECTION, isError: false, content: [{ type: 'text', text: JSON.stringify({ handles: ids.map((targetId) => ({ targetId })) }) }] })
-    })
-    messages.push({ role: 'assistant', provider: 'apimart', model: 'deepseek-v4-pro', stopReason: 'stop', content: [{ type: 'text', text: videoTitles(scene).join('\n') }] })
-    return [{ entries: messages.map((message) => ({ type: 'message', message })) }]
-  }
-
-  it('read_selection 按页读回的句柄也算看得见', () => {
-    const view = answerTimeView({ scene, sessions: pagedSessions(), transform: (messages) => messages })
-    expect(view).toMatchObject({ lookResults: 2, lookResultsOmitted: 0, selectedIdsVisible: scene.selectedIds.length })
-  })
-
-  it('发出去之前被换成旧读结果的那一页不算', () => {
-    const elideFirstPage = (messages) => messages.map((message) => (message.toolCallId === 'page-1' ? { ...message, content: [{ type: 'text', text: '（旧读结果已省略）' }] } : message))
-    const view = answerTimeView({ scene, sessions: pagedSessions(), transform: elideFirstPage })
-    expect(view).toMatchObject({ lookResults: 2, lookResultsOmitted: 1, selectedIdsVisible: scene.selectedIds.length - half })
   })
 })
