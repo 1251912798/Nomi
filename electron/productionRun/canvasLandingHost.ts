@@ -14,7 +14,7 @@
 //      一份 Run 快照另画一套；两份真相各判各的，供应商早出片了节点还在转。
 // 共用是刻意的（P1 一个家）：几条各写一份的话，任何一份漏了幂等章就会堆出重复节点。
 // 同一个 Run 的落地**逐个排队**：并发的两次 materialize 都会看见「节点还没建」，然后各建一份。
-import { buildMaterializeShotsPayload, landCanvasForRun, landCanvasForRunOrThrow, materializeShotsSignature, runHasBeenOnCanvas, type CanvasLandingDeps } from "./multiShotCanvasLanding";
+import { buildMaterializeShotsPayload, landCanvasForRun, landCanvasForRunOrThrow, materializeShotsSignature, runHasBeenOnCanvas, type CanvasLandingDeps, type ResolveLandingReferenceUrl } from "./multiShotCanvasLanding";
 import type { ProductionRun } from "./productionRunTypes";
 import { ProductionRunRevisionConflictError } from "./productionRunRepository";
 import type { DraftCanvasLanding } from "../shared/agentLane/draftCanvasLanding";
@@ -35,6 +35,8 @@ export type CanvasLandingHostDeps = {
    * 打不开就抛（用户可见的窗口开着别的项目 / 没有渲染层）。不给 = 只认已经打开的项目。
    */
   openProjectForLanding?: LandingProjectAccess;
+  /** 候选参考 → 本项目素材地址（参考落到节点上，D2 第③步）。不给 = 参考不过线。 */
+  resolveReferenceUrl?: ResolveLandingReferenceUrl;
 };
 
 export type CanvasLandingHost = {
@@ -138,6 +140,7 @@ export function createCanvasLandingHost(deps: CanvasLandingHostDeps): CanvasLand
     requestRenderer: deps.requestRenderer,
     projectRoot: deps.resolveProjectRoot(projectId),
     planName: landing.authoring?.title ?? landing.brief?.goal,
+    ...(deps.resolveReferenceUrl ? { resolveReferenceUrl: deps.resolveReferenceUrl } : {}),
     bindShotNodes: async (boundProjectId, boundRunId, expectedRevision, bindings) => {
       // 命令号按「绑到哪」去重：同一份绑定反复落地只记一次。可一镜被记过 detached 之后又回报「节点还在」，
       // 那是一次**新的**纠正——绑定串和当初一字不差，按旧号会被仓库的幂等重放原样吞掉，detached 永远纠正不回来

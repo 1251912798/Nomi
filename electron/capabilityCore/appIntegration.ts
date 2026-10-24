@@ -231,6 +231,8 @@ export async function startCapabilityCore(
       resolveProjectRoot: (projectId) => resolveWorkspaceProjectDir(projectId, getWorkspaceRepositoryDeps()),
       isProjectOpen,
       openProjectForLanding: createGuiLandingProjectAccess(() => canvasReadSurfaceRuntime.getCommittedProjectSelection()?.projectId ?? null),
+      // 参考落到节点上（D2 第③步）：与卡预览同一个解析口，钉住的版本对不上就不过线（节点上没有的不会发出去）。
+      resolveReferenceUrl: (projectId, reference) => resolveIndexedReferencePreview(projectId, reference),
     })
     landDraftOnCanvas = canvasLanding.landDraftOnCanvas
     // 画布节点跟着 Run 走：每一次耐久变化（派发 / 受理 / 出片落盘 / 失败 / 停）都经过仓库 execute 的事件旁路，

@@ -42,4 +42,15 @@ export type MaterializeShotCandidateWire = {
    * 只带标量（字符串 / 数字 / 布尔）：参数面上真正能选的就是这些，这条线不该变成任意 JSON 通道。
    */
   parameters?: Record<string, string | number | boolean>;
+  /**
+   * 候选钉住的参考（与 `PlanCandidate.references` 同序），换成**本项目素材库里的地址**过线。
+   *
+   * 为什么必须过这条线（D2 第③步）：发出读节点之后，参考不落到节点上，带参考的镜头就会按纯文生发出去
+   * （或在节点上被「缺参考图」拦下）。渲染层首次落地 / Agent 改稿时经 `planReferenceProjection` 摆进节点：
+   * 画布上已有的那张图连真边，其余进节点那一份参考列表，生成方式按画布同一条规则对齐。
+   *
+   * 只带地址、媒体种类、用途：钉死的身份（assetId / contentHash / version）留在宿主，渲染层用不上、也不该据它做判断。
+   * 宿主解析不出地址的（素材后来被删 / 版本变了）不过线——节点上没有的就不会发出去，卡上读的也是节点。
+   */
+  references?: Array<{ url: string; kind: "image" | "video" | "audio"; role?: "character" | "first_frame" | "last_frame" | "reference" | "audio" }>;
 };

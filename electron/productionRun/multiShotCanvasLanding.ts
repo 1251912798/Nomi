@@ -161,13 +161,42 @@ function scalarParameters(parameters: Record<string, unknown> | undefined): Reco
 type StaysInHost = { readonly staysInHost: string };
 
 /**
+ * 候选里钉住的一条参考 → 本项目素材库里的地址。解析不出（素材被删 / 版本变了）返回 undefined：那一条不过线。
+ * 宿主装配给的是卡预览同一个解析口（`pendingSpendReferences.resolveIndexedReferencePreview`）；不给 = 参考一条都不过线。
+ */
+export type ResolveLandingReferenceUrl = (projectId: string, reference: PlanCandidate["references"][number]) => string | undefined;
+
+/** 投影一份候选时手里的事实：参考要按哪个项目解析地址。 */
+type CandidateLandingContext = { readonly projectId: string; readonly resolveReferenceUrl?: ResolveLandingReferenceUrl };
+
+/** 候选的参考 → 线上的参考（只带地址 / 种类 / 用途）。一条解析不出就只丢那一条，记一笔。 */
+function referencesWire(candidate: PlanCandidate, context: CandidateLandingContext): Partial<MaterializeShotCandidateWire> {
+  if (!candidate.references?.length || !context.resolveReferenceUrl) return {};
+  const references: NonNullable<MaterializeShotCandidateWire["references"]> = [];
+  for (const reference of candidate.references) {
+    let url: string | undefined;
+    try {
+      url = context.resolveReferenceUrl(context.projectId, reference);
+    } catch {
+      url = undefined;
+    }
+    if (!url) {
+      logWarn("production-run", "canvas-landing-reference-unresolved", { assetId: reference.assetId });
+      continue;
+    }
+    references.push({ url, kind: reference.kind ?? "image", ...(reference.role ? { role: reference.role } : {}) });
+  }
+  return references.length > 0 ? { references } : {};
+}
+
+/**
  * 候选的**每一个键**过不过落地这条线——穷举表，`PlanCandidate` 新增一个键而这里没归类，typecheck 就红。
  *
  * 为什么是表、不是 spread 也不是手写对象字面量：spread 会把 `transportModelId` 这类内部投影顺着 RPC 漏给渲染层；
  * 手写字面量里「故意不传」和「忘了传」长得一样（都是没出现），变体就是这样漏的（R-d2-defaults #2，2026-10-22）。
  * 表把「不传」变成一句必须写出来的理由。
  */
-const CANDIDATE_LANDING_FIELDS: { readonly [K in keyof Required<PlanCandidate>]: ((candidate: PlanCandidate) => Partial<MaterializeShotCandidateWire>) | StaysInHost } = {
+const CANDIDATE_LANDING_FIELDS: { readonly [K in keyof Required<PlanCandidate>]: ((candidate: PlanCandidate, context: CandidateLandingContext) => Partial<MaterializeShotCandidateWire>) | StaysInHost } = {
   candidateId: (candidate) => ({ candidateId: candidate.candidateId }),
   revision: (candidate) => ({ revision: candidate.revision }),
   moduleId: { staysInHost: "宿主编排模块身份；节点不按它做任何事" },
@@ -182,15 +211,16 @@ const CANDIDATE_LANDING_FIELDS: { readonly [K in keyof Required<PlanCandidate>]:
     const scalars = scalarParameters(candidate.parameters);
     return scalars ? { parameters: scalars } : {};
   },
-  references: { staysInHost: "参考图落节点归 D2（R-d2-defaults #3）；今天节点经连线 / 参考槽拿参考" },
+  // D2 第③步：发出读节点，参考必须落到节点上（2026-10-22 落地默认值核查）。地址由宿主按项目素材库解析，身份不过线。
+  references: referencesWire,
   sealedContractHash: { staysInHost: "封印合同哈希是付费授权的内部凭据" },
 };
 
 /** 候选 → 落地报文里的候选身份（只此一处；逐键规则见上表）。 */
-function candidateWire(candidate: PlanCandidate): MaterializeShotCandidateWire {
+function candidateWire(candidate: PlanCandidate, context: CandidateLandingContext): MaterializeShotCandidateWire {
   const wire: Partial<MaterializeShotCandidateWire> = {};
   for (const rule of Object.values(CANDIDATE_LANDING_FIELDS)) {
-    if (typeof rule === "function") Object.assign(wire, rule(candidate));
+    if (typeof rule === "function") Object.assign(wire, rule(candidate, context));
   }
   return wire as MaterializeShotCandidateWire;
 }
@@ -212,7 +242,7 @@ function shotKind(shot: ProductionGenerationShot): GenerationShotKind {
  */
 export function buildMaterializeShotsPayload(
   run: ProductionRun,
-  deps: { projectRoot: string | null; planName?: string; existingOnly?: boolean; placeDocumentPlan?: true },
+  deps: { projectRoot: string | null; planName?: string; existingOnly?: boolean; placeDocumentPlan?: true; resolveReferenceUrl?: ResolveLandingReferenceUrl },
 ): MaterializeShotsWirePayload | null {
   const plan = run.generationPlan;
   if (!plan) return null;
@@ -281,7 +311,7 @@ export function buildMaterializeShotsPayload(
       // 空标题**不发**：发空串会盖掉渲染层的 i18n 兜底，和发硬编码中文是同一个 bug。
       ...(shotLabel(shot) ? { title: shotLabel(shot) } : {}),
       prompt: shot.candidate?.prompt ?? "",
-      ...(shot.candidate ? { candidate: candidateWire(shot.candidate) } : {}),
+      ...(shot.candidate ? { candidate: candidateWire(shot.candidate, { projectId: run.projectId, ...(deps.resolveReferenceUrl ? { resolveReferenceUrl: deps.resolveReferenceUrl } : {}) }) } : {}),
       ...(result ? { result } : {}),
       ...(result && dimensionsByShot.get(shot.shotId) ? { mediaDimensions: dimensionsByShot.get(shot.shotId) } : {}),
       ...(generation ? { generation } : {}),
@@ -317,6 +347,8 @@ export type CanvasLandingDeps = {
   isCurrent?: () => boolean;
   /** 派发前落地：文稿来源的计划也真建节点（确认 = 放到画布）。 */
   placeDocumentPlan?: true;
+  /** 候选参考 → 项目素材地址（见 `ResolveLandingReferenceUrl`）。 */
+  resolveReferenceUrl?: ResolveLandingReferenceUrl;
 };
 
 /**
@@ -339,7 +371,12 @@ export async function landCanvasForRun(run: ProductionRun, deps: CanvasLandingDe
  */
 export async function landCanvasForRunOrThrow(run: ProductionRun, deps: CanvasLandingDeps): Promise<boolean> {
   if (deps.isCurrent && !deps.isCurrent()) return false;
-  const payload = buildMaterializeShotsPayload(run, { projectRoot: deps.projectRoot, planName: deps.planName, ...(deps.existingOnly ? { existingOnly: true } : {}), ...(deps.placeDocumentPlan ? { placeDocumentPlan: true as const } : {}) });
+  const payload = buildMaterializeShotsPayload(run, {
+    projectRoot: deps.projectRoot, planName: deps.planName,
+    ...(deps.existingOnly ? { existingOnly: true } : {}),
+    ...(deps.placeDocumentPlan ? { placeDocumentPlan: true as const } : {}),
+    ...(deps.resolveReferenceUrl ? { resolveReferenceUrl: deps.resolveReferenceUrl } : {}),
+  });
   if (!payload) return false;
   if (deps.isCurrent && !deps.isCurrent()) return false;
   const rendered = (await deps.requestRenderer("production.materialize-shots", payload, 60_000)) as { bindings?: unknown } | null;

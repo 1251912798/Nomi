@@ -18,6 +18,11 @@ export const CANDIDATE_META_KEYS = {
   /** 候选选的模型身份（两段）。模型此刻不可用时它仍在，用来向用户说清「agent 要的是哪个」。 */
   candidateModelKey: 'productionCandidateModelKey',
   candidateModelVendor: 'productionCandidateModelVendor',
+  /**
+   * 上一次从起草写进节点的那几样的指纹（`capability/landedShotIntent.ts`）。候选变新时据它只写 Agent 真改了的键，
+   * 用户在节点上改过、Agent 没碰的不动（D2 第③步）。只存摘要，不是第二份参数。
+   */
+  candidateIntent: 'productionCandidateIntent',
 } as const
 
 export type CandidateNodeIdentity = {
@@ -72,6 +77,7 @@ const LANDED_CANDIDATE_FIELDS: { readonly [K in keyof Required<MaterializeShotCa
   variantId: 'variantId',
   parameters: 'params',
   mode: { notNodeModel: '任务种类；节点的方式由 modeId 定，任务种类在节点路由方式推出' },
+  references: { notNodeModel: '参考不是模型参数：首次落地 / 改稿经 planReferenceProjection 摆进节点参考列表或连真边（landedShotIntent）' },
 }
 
 /**
