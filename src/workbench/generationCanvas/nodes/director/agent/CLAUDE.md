@@ -2,7 +2,7 @@
 > L2 | 父级: ../CLAUDE.md
 > 「AI 来导」：画布助手的 create_staging_reference / create_camera_move 两个工具（契约住 agent/canvasDescriptors，工具名与 schema 不变）在导演台侧的执行体。
 > 词表 spec → V1 形状场景（builder，含运行时自检）→ migration/ 迁成导演台工程 → 建 director 节点 + 打自动出图标志 → 常驻 Host 扫到标志才离屏出图 / 出片 → 落 image 节点 / 喂目标镜头。
-> 手动运镜控件（nodes/NodeCameraMoveControl）与 AI 工具共用 createCameraMoveReferenceNode，fps / frameCount / move 不变量只算一次。
+> 运镜参考只有 AI 工具一条产路（视频节点上的手动运镜控件 2026-09-12 c1b1c9e02 已删），fps / frameCount / move 不变量只在 createCameraMoveReferenceNode 算一次。
 > 依赖方向：本目录可 import migration/ 与 scene/（离屏出片要 three 世界），但 model/ 与 scene/ 不反向 import 这里；对外只暴露建节点入口与两个 Host。
 > 成员清单
 > stagingVocab.ts: 站位词表单一真相（布局 / 机位角度 / 高度 / 景别 / 环境 / 朝向的字面量联合 + 数值表），LLM 工具 schema 与 builder 同源
@@ -16,7 +16,7 @@
 > previewAttachReconciler.ts: 挂了预演的视频镜头换模型 / 方式时经 attachCameraMoveForNode 自动重挂（直接点节点 ↑ 也带预演）；由画布壳 GenerationCanvasReactFlow 挂载；只盯模型 / 方式，不盯参考列表
 > attachCameraMoveForNode.ts: 挂接的唯一入口（出成片 / 预演写回 / 运镜小片 Host 都只调它）：读此刻目标节点与连到它的视频边，交给纯核；attachDoors.guard.test.ts 拦生产代码直接调核
 > createStagingReferenceNode.ts: 站位参考建节点入口：buildStagingSceneAudited → migrateScene3DState → create_nodes(kind director, meta directorProject + stagingAutoCapture)；readStagingAutoCapture。站位图接目标镜头的唯一判据与写边门：stagingAttachForTarget（与写边总闸同一条规则预判 none / missing / connect / rejected）→ stagingAttachReceipt（Agent 回执照预判说，接不上不许说「连到镜头」）；attachStagingReference（Host 出图后唯一写 composition_ref 边，连完再读画布：connected / not_connected 带一句提示）；attachDoors.guard.test.ts 拦别处直接写这条边
-> createCameraMoveReferenceNode.ts: 运镜参考建节点入口（AI 路 + 手动路共用）：buildCameraMoveScene → 迁移 → create_nodes(kind director, meta directorProject + cameraMoveAutoCapture{targetNodeId, fps 24, frameCount, move})；readCameraMoveAutoCapture
+> createCameraMoveReferenceNode.ts: 运镜参考建节点入口（create_camera_move 唯一调用方）：buildCameraMoveScene → 迁移 → create_nodes(kind director, meta directorProject + cameraMoveAutoCapture{targetNodeId, fps 24, frameCount, move})；readCameraMoveAutoCapture
 > DirectorHeadlessCapture.tsx: 离屏出片器：隐藏 FencedCanvas + 独立 store，只装环境 / 实体 / 播放求值 / CaptureBinder；等角色 GLB 落地（对象表里出现 characterMount）→ 按时刻序列逐帧 seek + 等两帧 → 机位 1 出片 → 一次回调 frames[]；短边可封顶（参考视频 720p）
 > StagingCaptureHost.tsx: 常驻 Host（画布壳按 components/directorCaptureHostActivation 懒挂）：扫 stagingAutoCapture → 出一张 → persistDirectorScreenshot → image 节点（stagingComposition 标记）+ director→image(reference) + 经 attachStagingReference 接镜头（composition_ref；接不上不留假边，图留在画布上，后台提示 +「定位节点」）→ 截图写回工程 outputs.screenshots → 清标志
 > CameraMoveCaptureHost.tsx: 常驻 Host（运镜小片 + 3D-BOX 整段预演两种请求，同一套重试 / 看门狗 / 落盘）：扫 cameraMoveAutoCapture → 沿机位 1 路径片段区间采 frameCount 帧（720p 封顶）→ persistDirectorFramesVideo 拼 mp4 → 写回 meta.cameraMoveVideo + 工程 outputs.videos → computeAttachCameraMove 喂目标镜头 → 清标志；看门狗 + 重试（attempt 当挂载 key 整棵重挂）；E2E 桥仅 localStorage 打标时暴露

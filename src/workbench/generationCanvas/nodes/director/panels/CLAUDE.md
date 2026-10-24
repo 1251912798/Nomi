@@ -7,12 +7,12 @@
 > CreationModeContext.ts: 角色放置 / 画框两个创建模式的注入接缝；hook 只在 DirectorEditor 调一次（视口要指针路由与 ghost ref、顶栏「＋添加」要发起），避免两份互不知情的模式状态
 > EditorSplit.tsx: 两栏可拖分栏（横/纵），比例持久到 localStorage（nomi:director:split:*），指针捕获 + 方向键/Home/End
 > Popover.tsx: 锚定浮层原语（上 / 下 / 右三向）：BodyPortal + 按触发器矩形 fixed 定位（分栏各自是层叠上下文，挂在触发器里会被兄弟面板盖住）、z 走 NOMI_OVERLAY_Z_INDEX.popover、外点（触发器 / 面板都算内）关闭、捕获期 Esc、data-nomi-escape-layer 让编辑器 Esc 让路 + PopoverItem
-> usePanoramaImport.ts: 720 全景导入流程：类型 / 80MB 校验 → 读尺寸（非 2:1 软警告）→ object URL 先预览 → 资产桥落盘换托管 url → 无桌面运行时退回 data URL 并提示临时
+> usePanoramaImport.tsx: 720 全景导入流程：类型 / 80MB 校验 → 读尺寸（非 2:1 软警告）→ object URL 先预览 → 资产桥落盘换托管 url → 无桌面运行时退回 data URL 并提示临时（反馈就地，hook 自带 status 条）
 > panoramaImport.ts: 720 全景导入校验常量（80MB 上限、2:1 ±3% 标准比例判定；切换门从 V1 入籍）
 > imageFile.ts: 读图片尺寸 / 文件转 data URL（全景导入与资产库上传共用）
 > LinkedAssetsContext.ts: 画布连线带进来的全景 / 泼溅 / 模型引用注入（DirectorEditor 提供，资产库只读消费，不入工程）
-> CanvasImagesContext.ts: 注入 canvasImages collector 收集的当前/历史图片及标识，不按节点种类过滤；AI「从画布选」与签名共用结果
-> ai/: AI 搭场景（折叠态 = 视口底部中央常驻胶囊入口，展开态 = 浮条），见 ai/CLAUDE.md
+> CanvasImagesContext.ts: 注入 canvasImages collector 收集的当前/历史图片及标识，不按节点种类过滤（DirectorEditor 提供）；它唯一的消费方 AI 搭场景（ai/）已随 8876f0c5d 删除，useCanvasImages 现在没人调，待删
+> shotStrip/: 导演视图（3D-BOX）底部镜头条：DirectorShotStrip（播放行 + 按时长等比的镜头卡 + 播放指针，点卡选镜）、shotLabels（镜头卡 / 预览小窗 / 顶栏三处共用的一份措辞）、useShotFocusTag（Agent 输入框「正在改：镜头 N」标签）
 > dialogs/: 模态对话框（动作库弹窗 / 手机虚拟相机二维码），见 dialogs/CLAUDE.md
 > outputs/: 产物弹层（截图 / 视频列表、发送到画布 / 删除），见 outputs/CLAUDE.md
 > viewport/: 视口容器与叠加层，见 viewport/CLAUDE.md

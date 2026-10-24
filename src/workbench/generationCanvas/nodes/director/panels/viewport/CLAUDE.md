@@ -2,7 +2,7 @@
 > L2 | 父级: ../CLAUDE.md
 > 视口的 DOM 侧：容器负责指针路由（创建模式优先于拾取）与悬浮作用域，叠加层全部 pointer-events:none。
 > 成员清单
-> DirectorViewport.tsx: 视口容器：DirectorCanvas + 标签层 + 放置/画框 HUD + 画中画 + POV 卡片 + 底部中央 AI 搭场景（折叠即入口）；视口上不再有控件带（2026-09-09 三条浮层并入 topbar/）；角色放置 / 画框经 props 由壳传入，本地只持有画线；hoveredRef/scopeRef；拥有创建模式互斥、首次激活 HUD、Esc 优先取消和 Orbit 占用，并向壳登记取消处理器
+> DirectorViewport.tsx: 视口容器：DirectorCanvas + 标签层 + 放置/画框 / 画线 HUD + 画中画 + POV 卡片 + 机位取景框（AI 搭场景入口已随 8876f0c5d 删除）；视口上不再有控件带（2026-09-09 三条浮层并入 topbar/）；角色放置 / 画框经 props 由壳传入，本地只持有画线；hoveredRef/scopeRef；拥有创建模式互斥、首次激活 HUD、Esc 优先取消和 Orbit 占用，并向壳登记取消处理器
 > ViewportToolbar.tsx: 精修顶栏「工具」：选择/移动/旋转/缩放（画线/逐点住属性卡头）；由 topbar/RefineTopBar 装配；切工具经 onCancelCreation 取消已有创建，再设置 transform/draw 模式；模式状态与 Orbit 所有权在 DirectorViewport
 > useDirectorToolChange.ts: 切视口工具的唯一写法（取消创建模式 → 画线/逐点进模式并关 gizmo，其余工具退出画线模式）；ViewportToolbar 与精修属性卡头的画线/逐点共用
 > ViewportOverlays.tsx: ViewportLabels（角色名标签）、PlacementHud（放置/画框提示条）、PathDrawHud（画线/逐点提示条）、ModeChip（模式胶囊原语）

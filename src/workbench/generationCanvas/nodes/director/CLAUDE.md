@@ -21,7 +21,10 @@
 > agent/: AI 来导（create_staging_reference / create_camera_move 的建节点入口 + 离屏出片器 + 两个常驻 Host），见 agent/CLAUDE.md
 > migration/: V1 scene3d → director 单向迁移与 V1 数据化石（AI 来导的 builder 也经这里落成工程），见 migration/CLAUDE.md
 > OutputsContext.ts: 产物动作注入（时间轴头部按钮 / 产出弹层 / 快捷键共用同一个实例）
-> useAiSceneBuilder.ts: AI 搭场景编排：描述 + ≤3参考图经文本大脑生成 JSON；请求身份贯穿模型/存库 await，发起时固定目标图层，取消/reset/卸载拒绝迟到响应；先存场景资源，再由 store 将几何和资产句柄一次物化/撤销；无桥时用 E2E fixture 或明示缺模型
+> directorEditorPersistence.ts: 编辑器 store ↔ 节点 meta 写回的唯一 owner（createDirectorEditorPersistence）：编辑器开着时 store 是唯一写者，记住自己写出去的每一份；节点 meta 被换成别的（撤销补偿放回）就当场重载；空闲 2 秒落盘，没改动不写
+> directorSessionRegistry.ts: 开着的导演台会话登记处：按节点 id 登记 store，外部写入（writeExternalDirectorProject）交给开着的编辑器，镜头焦点的读 / 订阅 / 清除也经这里
+> directorShotFocusSession.ts: 一个开着的导演台的「正在改：镜头 N」读口（createEditorShotFocusSession）：把编辑器 selection 投影成计划镜头，按（工程引用、选中、修订号）缓存
+> useDirectorShotFocus.ts: 镜头焦点的 React 订阅口（useSyncExternalStore 读会话登记处），给 Agent 输入框上的「正在改：镜头 N」标签
 > model/: 纯层（schema、时间格、片段几何、编辑层、路径求值、特写运镜、节目机位、镜头、预设、灯光、快捷键、rig、IK 链、store），见 model/CLAUDE.md
 > scene/: three / R3F 世界（画布、相机、实体、gizmo、描边、拾取、创建模式、标签、播放求值），见 scene/CLAUDE.md
 > panels/: DOM 面板（顶栏五簇 topbar/ 是唯一常驻控件条，2026-09-09 收掉了视口左缘创建栏 / 底中底栏 / 右下显示模式三条，见 docs/plan/2026-09-09-director-chrome-five-clusters.md；右栏大纲/资产库/检查器、字段原语、分栏、浮层），见 panels/CLAUDE.md

@@ -642,8 +642,8 @@ export async function applyCanvasToolCall(
     // 运镜参考:词汇 spec → 含相机轨迹的 3D 场景 → 迁成导演台工程 → 建 director 节点(带 cameraMoveAutoCapture)。
     // 节点挂载时常驻 Host(CameraMoveCaptureHost)离屏沿轨迹采帧拼 mp4 + 喂目标镜头视频参考(S3)。
     // 这里只建节点 + 打标志,不渲(S2 Host 异步出片),与 staging 执行结构对称。
-    // 建节点 + 标志的实现抽进 createCameraMoveReferenceNode(单一真相源)——手动运镜控件(B1)也调它,
-    // 两条产路共用 fps/frameCount/move 不变量,不再各自内联(P1/P4)。
+    // 建节点 + 标志的实现住 createCameraMoveReferenceNode(单一真相源),fps/frameCount/move 不变量只在那里算
+    // (视频节点上的手动运镜控件 2026-09-12 已删,现在只有这一个调用方)。
     const spec: CameraMoveSpec = {
       move: parsed.move ?? 'push_in',
       speed: parsed.speed,
