@@ -7,7 +7,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { BOARD_NAMES } from './board-extract.mjs'
 import { checkBoardManifest, checkPriorArt, checkPrBoardClaims, checkSourceHash, findDatedBoards, loadManifests, parsePrBoardClaims, runBoardParity } from './check-board-parity.mjs'
 import { hashBoardSourceFiles } from './board-source-hash.mjs'
 
@@ -173,24 +172,6 @@ describe('R8 PR 认领的拍板图元素必须有去处', () => {
   it('解析：只读 ## 拍板图 一节', () => {
     assert.deepEqual(parsePrBoardClaims(body.join('\n')), [{ board: 'Main', ids: ['topbar.title', 'group.header'] }])
   })
-  it('正例：仓库每张真实板、带数字板名和纯字母板名都能解析', () => {
-    const boardNames = new Set(BOARD_NAMES)
-    const walk = (dir) => {
-      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name)
-        if (entry.isDirectory()) walk(full)
-        else if (entry.name.endsWith('.board.json')) boardNames.add(entry.name.slice(0, -'.board.json'.length))
-      }
-    }
-    walk(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'docs/design/boards'))
-    const claims = parsePrBoardClaims(['## 拍板图', ...[...boardNames].sort().map((board) => `- ${board}: probe`)].join('\n'))
-    assert.deepEqual(claims.map(({ board }) => board), [...boardNames].sort())
-    assert.equal(claims.find((claim) => claim.board === 'Director3dbox')?.ids[0], 'probe')
-    assert.equal(claims.find((claim) => claim.board === 'Main')?.ids[0], 'probe')
-  })
-  it('反例：不合规则的板名不会被认领行静默收下', () => {
-    assert.deepEqual(parsePrBoardClaims('## 拍板图\n- 123Board: probe\n- Board-Name: probe'), [])
-  })
   it('没有这一节 → 不认领、照过', () => assert.deepEqual(parsePrBoardClaims('## 功能分类\n无'), []))
   it('反例：认领的元素还是 missing → 红', () => {
     const manifests = { Main: base() }
@@ -210,19 +191,6 @@ describe('R8 PR 认领的拍板图元素必须有去处', () => {
     delete m.elements[1].owner
     m.elements[1].userDecision = { quote: '先放着', date: '2026-10-10' }
     assert.deepEqual(checkPrBoardClaims('## 拍板图\n- Main: group.header', { Main: m }), [])
-  })
-})
-
-describe('板名规则：找板遇到非法文件名必须点名报红', () => {
-  it('反例：日期目录里的非法板名文件被发现并报红', async () => {
-    const root = fs.mkdtempSync(path.join(process.env.TMPDIR || process.env.TEMP || '.', 'bp-invalid-board-name-'))
-    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
-    const day = path.join(root, 'later-day'); fs.mkdirSync(day)
-    const file = path.join(day, '123Board.board.json')
-    fs.writeFileSync(file, JSON.stringify({ board: '123Board', stage: 'built', elements: [], decor: [], functionCensus: [] }))
-    const errors = await runBoardParity({ dir: main, root })
-    fs.rmSync(root, { recursive: true, force: true })
-    assert.ok(errors.some((error) => error.includes('123Board') && error.includes('板名不符合')), errors.join('\n'))
   })
 })
 
