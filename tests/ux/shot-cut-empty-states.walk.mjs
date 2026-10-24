@@ -112,7 +112,9 @@ async function openShotCutPanel(nodeId) {
   const node = win.locator(`[data-node-id="${nodeId}"]`)
   await node.scrollIntoViewIfNeeded().catch(() => {})
   await node.click({ position: { x: 30, y: 30 } })
-  await clickOrFail(node.locator('button', { hasText: '按镜头拆' }).first(), `${nodeId} 的「按镜头拆」`)
+  // 10-11 起「按镜头拆」收在视频浮条的「拆解▾」菜单里（NodeVideoFrameToolbar.tsx）：先开菜单再点项，认数据属性不认文案。
+  await clickOrFail(win.locator('button[data-toolbar-action-menu="break-down"]').first(), `${nodeId} 的「拆解」菜单`)
+  await clickOrFail(win.locator('[data-menu-item="shot-cuts"]').first(), `${nodeId} 的「按镜头拆」`)
   await expectVisible(panel, `${nodeId}：按镜头拆面板没打开`)
   await expectText(subtitle, /^(?!正在找画面切点)/, `${nodeId}：检测迟迟不结束`, 60_000)
 }

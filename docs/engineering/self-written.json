@@ -1358,6 +1358,35 @@
       "revisitWhen": "出评估结论"
     },
     {
+      "id": "ipc-invoke-failure-text",
+      "capability": "Electron invoke 失败那句话的读法：从 `Error invoking remote method '<通道>': <主进程错误 toString()>` 里读回主进程错误的类名 / Node 错误码 / 消息，给人看时剥掉外壳；以及落盘出口认「代码里定义的类名」的形状",
+      "status": "under-review",
+      "reviewBy": "2026-11-23",
+      "paths": [
+        "electron/shared/contracts/ipcInvokeFailure.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "Electron 自身：ipcMain.handle 抛出的错只把 message 送回渲染层，不传类与自定义字段",
+          "source": "https://github.com/electron/electron/blob/main/docs/api/ipc-main.md"
+        },
+        {
+          "name": "Electron contextBridge：跨世界的 Error 只拷 message、自定义属性丢，preload 里补结构也过不来",
+          "source": "https://github.com/electron/electron/blob/main/docs/api/context-bridge.md"
+        },
+        {
+          "name": "electron-trpc：主进程错误转成 TRPCError、渲染层拿到 TRPCClientError（结构完整，但要把 IPC 整体迁到 tRPC 路由）",
+          "source": "https://github.com/jsonnull/electron-trpc"
+        },
+        {
+          "name": "electron-better-ipc + serialize-error：handle 返回序列化后的错误对象（同样要改写每一个 handle 与 invoke）",
+          "source": "https://github.com/sindresorhus/electron-better-ipc"
+        }
+      ],
+      "whyNotIntegrated": "尚未下结论。现成方案都能把错误对象完整送过来，但都要换掉整条 IPC（6 个 preload 文件里 218 处 ipcRenderer.invoke 与对应的全部 handle）；在那之前 Electron 送回的那句话是渲染层拿到主进程错误类名的唯一来源，读法只能自己写一处。这里收的是原来散在 workspaceBusy / classifyError / storyboardFailureCopy 的三份私有读法（同一提交删掉），不是新长出来的能力。方向检查 docs/audit/2026-10-24-ipc-error-class-name-direction.md。",
+      "revisitWhen": "评估 IPC 迁到能传结构化错误的方案（electron-trpc / electron-better-ipc）之后出结论；迁完就删这个文件"
+    },
+    {
       "id": "gate-family",
       "capability": "仓库门岗族：一百多个 check:* 脚本（棘轮、登记表、合同、文档记账）",
       "status": "under-review",

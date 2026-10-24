@@ -165,6 +165,32 @@ describe("Codex CLI image bridge", () => {
     expect(existsSync(newFile)).toBe(true);
   });
 
+  it("CODEX_HOME 未设置时沿用 ~/.codex", () => {
+    const root = path.join(os.tmpdir(), `nomi-codex-default-home-test-${Date.now()}-${process.pid}`);
+    tempRoots.push(root);
+    vi.stubEnv("HOME", root);
+    vi.stubEnv("CODEX_HOME", undefined);
+    const imageDir = path.join(root, ".codex", "generated_images", "thread-default");
+    mkdirSync(imageDir, { recursive: true });
+    const imagePath = path.join(imageDir, "default.png");
+    writeFileSync(imagePath, "png");
+
+    expect(latestGeneratedImageForThread("thread-default")).toBe(imagePath);
+  });
+
+  it("CODEX_HOME 为空字符串时仍沿用 ~/.codex", () => {
+    const root = path.join(os.tmpdir(), `nomi-codex-empty-home-test-${Date.now()}-${process.pid}`);
+    tempRoots.push(root);
+    vi.stubEnv("HOME", root);
+    vi.stubEnv("CODEX_HOME", "");
+    const imageDir = path.join(root, ".codex", "generated_images", "thread-empty");
+    mkdirSync(imageDir, { recursive: true });
+    const imagePath = path.join(imageDir, "empty.png");
+    writeFileSync(imagePath, "png");
+
+    expect(latestGeneratedImageForThread("thread-empty")).toBe(imagePath);
+  });
+
   it("query 可从落盘 job + generated_images 找回并导入图片", async () => {
     const root = path.join(os.tmpdir(), `nomi-codex-query-test-${Date.now()}-${process.pid}`);
     tempRoots.push(root);

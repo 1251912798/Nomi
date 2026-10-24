@@ -1,0 +1,35 @@
+{
+  "name": "打包构建戳的源码身份（哪些文件算构建输入、两棵身份树之间改了哪些输入、走查启动前核对产物新鲜）",
+  "subject": "delivery.build-stamp-identity",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/package-build-stamp.mjs",
+    "symbol": "sourceIdentity"
+  },
+  "write_api": [
+    {
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "sourceIdentity"
+    },
+    {
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "identityChanges"
+    },
+    {
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "verifyBuild"
+    },
+    {
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "assertFreshBuild"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-24",
+  "notes": "根因合同 docs/fixes/2026-10-24-nightly-walk-writes-source-tree.root-cause.json：构建戳的身份只有一份——sourceIdentity 按 NON_INPUTS / KEEP_INSIDE_EXCLUDED 算构建输入的身份树，verifyBuild / assertFreshBuild 拿它和戳比，identityChanges 列出两棵身份树之间改了哪些输入（每一次「产物过期」都点名到文件）。夜跑这一层的自检与输出忽略归 delivery.nightly-build-gate，走查改树的判红与还原（scripts/nightly-walk-tree-guard.mjs guardWalkTree）也挂在那里；这里只管身份怎么算、怎么比。"
+}

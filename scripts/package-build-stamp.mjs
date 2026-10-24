@@ -47,6 +47,29 @@ export function invalidateBuild(root) {
   for (const output of outputs) fs.rmSync(path.join(root, output, stampName), { force: true })
 }
 
+/**
+ * 两棵源码身份树之间改了哪些构建输入：`[{ status: 'A'|'M'|'D'|'T', path }]`（相对仓库根）。
+ * 两棵树都是 sourceIdentity 的 write-tree 写进本仓对象库的；读不到（被 gc、戳来自别的仓）返回 null——
+ * 调用方只是少了点名，判据不变。
+ */
+export function identityChanges(root, fromTree, toTree) {
+  try {
+    const out = execFileSync('git', ['diff-tree', '-r', '-z', '--no-renames', '--name-status', fromTree, toTree], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    const tokens = out.split('\0').filter(Boolean)
+    const changes = []
+    for (let index = 0; index + 1 < tokens.length; index += 2) changes.push({ status: tokens[index], path: tokens[index + 1] })
+    return changes
+  } catch {
+    return null
+  }
+}
+
+function describeChanges(changes, limit = 8) {
+  if (!changes?.length) return ''
+  const shown = changes.slice(0, limit).map(({ status, path: file }) => `${status} ${file}`).join('、')
+  return `；比构建时多出 / 改掉 ${changes.length} 处构建输入：${shown}${changes.length > limit ? ' …' : ''}`
+}
+
 export function verifyBuild(root) {
   const current = sourceIdentity(root)
   for (const output of outputs) {
@@ -54,8 +77,9 @@ export function verifyBuild(root) {
     try { stamp = JSON.parse(fs.readFileSync(path.join(root, output, stampName), 'utf8')) }
     catch { throw new Error(`${output}: ${hint}`) }
     if (stamp.version !== STAMP_VERSION || Object.keys(current).some(key => stamp[key] !== current[key])) {
-      // 带上两个身份：CI 上失配时不用再猜是哪一边变了（再配合 git status 看是哪个文件）。
-      throw new Error(`${output}: ${hint}（构建时 tree=${stamp.tree ?? '无'}，当前 tree=${current.tree}）`)
+      // 带上两个身份和它们之间的差异：失配时直接点名是哪几个文件（10-24 夜跑 23 条连坐，日志里一个字都没指向真凶）。
+      const changes = stamp.tree ? identityChanges(root, stamp.tree, current.tree) : null
+      throw new Error(`${output}: ${hint}（构建时 tree=${stamp.tree ?? '无'}，当前 tree=${current.tree}${describeChanges(changes)}）`)
     }
   }
   return current

@@ -50,7 +50,11 @@ async function launch(name, p) {
   const { app, win } = await launchNomiApp({
     name: `credhon-${name}`, tempRoot: p.tempRoot, userDataDir: p.userDataDir, settingsDir: p.settingsDir,
     projectsDir: p.projectsDir, capabilityDir: p.capabilityDir,
-    env: { NODE_ENV: 'production' }, args: ['--no-proxy-server', '--disable-gpu'], settleMs: 0,
+    // 默认那把是假 key：按假凭据起（Linux 用测试后端加密；产品测试网闸打开，假 key 不出这台机器）。
+    // 手动给了真 key（APIMART_API_KEY）才放行出网，让免费验证真去问 APIMart。
+    syntheticCredentialStorage: true,
+    env: { NODE_ENV: 'production', ...(process.env.APIMART_API_KEY ? { NOMI_TEST_NETWORK_GUARD: '' } : {}) },
+    args: ['--no-proxy-server', '--disable-gpu'], settleMs: 0,
   })
   await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; if (w) { w.setSize(1680, 1050); w.center() } }).catch(() => {})
   await win.waitForLoadState('domcontentloaded')

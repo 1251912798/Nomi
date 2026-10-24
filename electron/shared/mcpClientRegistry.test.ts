@@ -14,8 +14,15 @@ import { DEFAULT_AUTOMATION_POLICY_SETTINGS } from '../settings/automationPolicy
 import {
   BUILTIN_MCP_CLIENTS,
   DEFAULT_TRUSTED_MCP_CLIENTS,
+  MCP_CLIENT_HOST_ENV_VARS,
   MCP_CLIENT_REGISTRY,
   isBuiltinMcpClient,
+  mcpClientConfigFile,
+  mcpClientInstallTraces,
+  mcpClientLocations,
+  resolveMcpClientHostRoot,
+  resolveMcpClientPath,
+  type McpClientPathContext,
 } from './mcpClientRegistry'
 
 const repoRoot = process.cwd()
@@ -70,5 +77,62 @@ describe('MCP client registry is the only owner of the builtin client list', () 
       }
     }
     expect(offenders, 'derive from electron/shared/mcpClientRegistry.ts instead of listing clients again').toEqual([])
+  })
+})
+
+// R5.5：宿主自己的配置位置变量。用户设了它，宿主读写那个位置——Nomi 必须读写同一处（2026-10-24 前只认主目录）。
+describe('host config location follows the host’s own variable', () => {
+  const posix = (env: Record<string, string | undefined> = {}, platform: McpClientPathContext['platform'] = 'linux'): McpClientPathContext => ({
+    platform,
+    env,
+    homedir: '/home/u',
+    join: path.posix.join,
+  })
+
+  it('Claude Code: .claude.json sits in the home dir by default and inside CLAUDE_CONFIG_DIR when it is set', () => {
+    expect(mcpClientConfigFile('claude', posix())).toBe('/home/u/.claude.json')
+    expect(mcpClientConfigFile('claude', posix({ CLAUDE_CONFIG_DIR: '/work/claude' }))).toBe('/work/claude/.claude.json')
+    expect(mcpClientInstallTraces('claude', posix())).toEqual(['/home/u/.claude', '/home/u/.claude.json'])
+    expect(mcpClientInstallTraces('claude', posix({ CLAUDE_CONFIG_DIR: '/work/claude' }))).toEqual(['/work/claude', '/work/claude/.claude.json'])
+  })
+
+  it('Codex: config.toml sits in ~/.codex by default and in CODEX_HOME when it is set', () => {
+    expect(mcpClientConfigFile('codex', posix())).toBe('/home/u/.codex/config.toml')
+    expect(mcpClientConfigFile('codex', posix({ CODEX_HOME: '/work/codex' }))).toBe('/work/codex/config.toml')
+    expect(mcpClientInstallTraces('codex', posix({ CODEX_HOME: '/work/codex' }))).toEqual(['/work/codex'])
+  })
+
+  it('Codex host root follows CODEX_HOME and keeps the documented default for unset or empty values', () => {
+    expect(resolveMcpClientHostRoot('codex', posix())).toBe('/home/u/.codex')
+    expect(resolveMcpClientHostRoot('codex', posix({ CODEX_HOME: '/work/codex' }))).toBe('/work/codex')
+    expect(resolveMcpClientHostRoot('codex', posix({ CODEX_HOME: '' }))).toBe('/home/u/.codex')
+  })
+
+  it('an empty variable counts as unset (both hosts: Codex filters empty, Claude Code uses `configDir || home`)', () => {
+    expect(mcpClientConfigFile('claude', posix({ CLAUDE_CONFIG_DIR: '' }))).toBe('/home/u/.claude.json')
+    expect(mcpClientConfigFile('codex', posix({ CODEX_HOME: '' }))).toBe('/home/u/.codex/config.toml')
+  })
+
+  it('every location that names a host variable resolves under it when set, and to the plain default when not', () => {
+    for (const { client, platform, location } of mcpClientLocations()) {
+      if (!location.hostEnv) continue
+      const set = posix({ [location.hostEnv.name]: '/var-root' }, platform)
+      expect(resolveMcpClientPath(location, set), `${client}/${platform}`).toBe(path.posix.join('/var-root', ...location.hostEnv.segments))
+      expect(resolveMcpClientPath(location, posix({}, platform)), `${client}/${platform}`).toBe(path.posix.join('/home/u', ...location.segments))
+    }
+  })
+
+  it('names exactly the variables the hosts document; hosts without one stay on their fixed location', () => {
+    expect(MCP_CLIENT_HOST_ENV_VARS).toEqual(['CLAUDE_CONFIG_DIR', 'CODEX_HOME'])
+    // Claude Desktop / Cursor / WorkBuddy 的官方文档只给固定位置（规范链接在注册表头注释）——加变量要先有出处。
+    const fixedOnly = BUILTIN_MCP_CLIENTS.filter((client) => mcpClientLocations().every((entry) => entry.client !== client || !entry.location.hostEnv))
+    expect(fixedOnly).toEqual(['claude-desktop', 'cursor', 'workbuddy'])
+  })
+
+  it('appData hosts keep the platform rule (macOS Application Support, Windows %APPDATA%)', () => {
+    expect(mcpClientConfigFile('claude-desktop', posix({}, 'darwin'))).toBe('/home/u/Library/Application Support/Claude/claude_desktop_config.json')
+    expect(mcpClientConfigFile('claude-desktop', { platform: 'win32', env: { APPDATA: 'C:\\Users\\u\\AppData\\Roaming' }, homedir: 'C:\\Users\\u', join: path.win32.join }))
+      .toBe('C:\\Users\\u\\AppData\\Roaming\\Claude\\claude_desktop_config.json')
+    expect(mcpClientConfigFile('claude-desktop', posix({}, 'linux'))).toBeNull()
   })
 })

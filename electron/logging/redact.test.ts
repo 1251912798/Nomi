@@ -145,6 +145,23 @@ describe("错误脱敏", () => {
     expect(redactError(new Error("same words")).split(" ")[1]).toBe(redactError(new Error("same words")).split(" ")[1]);
   });
 
+  it("类名照写，只放行「代码里定义的类名」这一种形状（大写开头的标识符）；name 里装着别的东西就只记 Error", () => {
+    class NativeStreamTimeout extends Error {
+      constructor() {
+        super("stream stalled");
+        this.name = "NativeStreamTimeout";
+      }
+    }
+    expect(redactError(new NativeStreamTimeout())).toMatch(/^NativeStreamTimeout msg#[0-9a-f]{8}/);
+    // 库的命名空间前缀（Vercel AI SDK）也是代码里定义的类名。
+    expect(redactError(Object.assign(new Error("x"), { name: "AI_APICallError" }))).toMatch(/^AI_APICallError msg#/);
+    for (const name of ["sk_live_0123456789abcdef", "ghp_0123456789abcdefABCDEF", "猫咪短片", "My Film", "/Users/alice/x", "Error: boom", "x".repeat(65), ""]) {
+      const out = redactError(Object.assign(new Error("x"), { name }));
+      expect(out, name).toMatch(/^Error msg#[0-9a-f]{8}/);
+      if (name) expect(out, name).not.toContain(name);
+    }
+  });
+
   it("cause 链上的供应商失败只留结构事实", () => {
     const vendor = Object.assign(new Error("upstream said: fixture-relay-pass-42"), {
       structured: { vendorKey: "relay", method: "POST", url: "https://relay.example/v1?key=fixture", httpStatus: 401, upstreamMsg: "fixture-relay-pass-42", upstreamCode: "auth_denied", category: "auth", retryable: false },
