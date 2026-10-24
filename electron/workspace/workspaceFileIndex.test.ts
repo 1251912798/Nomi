@@ -111,6 +111,29 @@ describe("workspace file index", () => {
     expect(paths).not.toContain("assets/imported/2026-07-05/box.png.meta");
   });
 
+  it("keeps derived canvas previews out of the index, same rule as the asset library list", () => {
+    // 2026-10-24：项目素材把视频海报（.preview.jpg）当成一张图列出来，「全部素材」那份清单却不列。
+    const root = makeTempDir();
+    write(root, "assets/imported/shot.mp4", "mp4");
+    write(root, "assets/imported/shot.preview.jpg", "jpg");
+    write(root, "assets/generated/big.png", "png");
+    write(root, "assets/generated/big.preview.png", "png");
+
+    const paths: string[] = [];
+    const walk = (nodes: ReturnType<typeof listWorkspaceFiles>["items"]): void => {
+      for (const node of nodes) {
+        paths.push(node.relativePath);
+        if (node.children) walk(node.children);
+      }
+    };
+    walk(listWorkspaceFiles({ rootPath: root }).items);
+
+    expect(paths).toContain("assets/imported/shot.mp4");
+    expect(paths).toContain("assets/generated/big.png");
+    expect(paths).not.toContain("assets/imported/shot.preview.jpg");
+    expect(paths).not.toContain("assets/generated/big.preview.png");
+  });
+
   (canCreateDirSymlink ? it : it.skip)("does not follow symlinks outside workspace by default", () => {
     const root = makeTempDir();
     const outside = makeTempDir();
