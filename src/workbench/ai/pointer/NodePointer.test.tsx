@@ -427,9 +427,10 @@ describe('NodePointerGroup · tiles stay tellable apart in a narrow panel (narro
     expect(markup.match(/data-node-pointer-cell-dimmed="true"/g)).toHaveLength(1)
     const slots = [...markup.matchAll(/<span class="([^"]*)" data-node-pointer-cell-accessory="">/g)].map((match) => match[1]!)
     expect(slots).toHaveLength(3)
-    // 藏着的那两槽：看不见也不接点击；悬停 / 聚焦这一格才露。常驻的那一槽不藏。
+    // 藏着的那两槽：看不见也不接点击；悬停 / 聚焦这一格才露。常驻恢复也先让画面接到 hover，再接按钮点击。
     expect(slots.filter((slot) => slot.includes('opacity-0') && slot.includes('pointer-events-none'))).toHaveLength(2)
-    expect(slots.filter((slot) => slot.includes('top-[20px]'))).toHaveLength(2)
+    expect(slots.filter((slot) => slot.includes('top-[18px]'))).toHaveLength(2)
+    expect(slots.filter((slot) => slot.includes('pointer-events-none') && slot.includes('aspect-video'))).toHaveLength(1)
     expect(slots.filter((slot) => slot.includes('aspect-video') && slot.includes('justify-center'))).toHaveLength(1)
     const { renderer, hosts } = mount(<NodePointerGroup subjects={tiles} cellAccessory={accessory} />)
     try {
