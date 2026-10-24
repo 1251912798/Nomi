@@ -22,7 +22,8 @@
     "cancel_job",
     "save_skill",
     "start_model_setup",
-    "ask_user"
+    "ask_user",
+    "read_selection"
   ],
   "metrics": [
     "first_tool_accuracy",
@@ -316,6 +317,18 @@
       ],
       "tools": [
         "start_model_setup"
+      ]
+    },
+    {
+      "id": "U21",
+      "userSays": "继续读取上一页的选区。",
+      "firstTool": "read_selection",
+      "proof": [
+        "trajectory",
+        "answer"
+      ],
+      "tools": [
+        "read_selection"
       ]
     },
     {
