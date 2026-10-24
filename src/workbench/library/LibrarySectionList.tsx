@@ -5,7 +5,6 @@ import { IconChevronRight } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { libraryRows, type LibrarySectionView } from './libraryLayout'
 import type { LibraryFaceSize } from './LibraryEntryFace'
-import { useElementContentWidth } from './useElementContentWidth'
 
 /** 一种卡在一种宿主里的排法（量自拍板图）。 */
 export type LibraryGridSpec = Readonly<{
@@ -42,7 +41,6 @@ export function LibrarySectionList<T>({ views, columns, spec, size, keyOf, rende
 }): JSX.Element {
   const { t } = useTranslation()
   const [scrollElement, setScrollElement] = React.useState<HTMLDivElement | null>(null)
-  const width = useElementContentWidth(scrollElement)
   const rows = React.useMemo(() => libraryRows(views, columns, keyOf), [views, columns, keyOf])
   const cardWidth = columns > 0 && width > 0 ? (width - (columns - 1) * spec.columnGap) / columns : spec.minCardWidth
   const headerHeight = size === 'page' ? 32 : 28

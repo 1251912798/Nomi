@@ -38,7 +38,7 @@ import {
 } from '../library/libraryLayout'
 import { LibraryCategoryMenu, LibraryCategoryNav } from '../library/LibraryCategoryNav'
 import { LibrarySectionList, type LibraryGridSpec } from '../library/LibrarySectionList'
-import { useElementContentWidth } from '../library/useElementContentWidth'
+import { useElementWidth } from '../creation/storyboard/shotRow/useElementWidth'
 
 /** 卡片排法（量自拍板图）：宽页 4:3 封面 + 18 标题 + 16 meta，列距 12、行距 16、组距 22，最多 6 列；抽屉 2 列、列 / 行距 10。 */
 const PROMPT_GRID: Record<LibraryHost, LibraryGridSpec> = {
@@ -65,7 +65,8 @@ export function PromptLibraryContent({ host, toolbarHost, className }: PromptLib
   const [selected, setSelected] = React.useState<Selected | null>(null)
   const [composing, setComposing] = React.useState(false)
   const [editing, setEditing] = React.useState<LibraryPrompt | null>(null)
-  const [scrollElement, setScrollElement] = React.useState<HTMLDivElement | null>(null)
+  const scrollElementRef = React.useRef<HTMLDivElement | null>(null)
+  const setScrollElement = React.useCallback((element: HTMLDivElement | null) => { scrollElementRef.current = element }, [])
   const usageVersion = useLibraryUsageVersion()
 
   const { items, loading, error, reload } = usePromptLibrary(true)
@@ -95,7 +96,7 @@ export function PromptLibraryContent({ host, toolbarHost, className }: PromptLib
   }, [category, sections])
 
   const spec = PROMPT_GRID[host]
-  const columns = libraryColumns(useElementContentWidth(scrollElement), { minCardWidth: spec.minCardWidth, gap: spec.columnGap, max: spec.maxColumns })
+  const columns = libraryColumns(useElementWidth(scrollElementRef) ?? 0, { minCardWidth: spec.minCardWidth, gap: spec.columnGap, max: spec.maxColumns })
   const trimmedQuery = query.trim()
   const views = React.useMemo(() => librarySectionsView(sections, {
     category,

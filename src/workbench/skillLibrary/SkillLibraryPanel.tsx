@@ -38,7 +38,7 @@ import {
 import { LibraryCategoryMenu, LibraryCategoryNav } from '../library/LibraryCategoryNav'
 import { LibraryEntryFace, LibraryStripCard } from '../library/LibraryEntryFace'
 import { LibrarySectionList, type LibraryGridSpec } from '../library/LibrarySectionList'
-import { useElementContentWidth } from '../library/useElementContentWidth'
+import { useElementWidth } from '../creation/storyboard/shotRow/useElementWidth'
 
 const SKILL_AUTHOR_KEY = 'skill-author'
 
@@ -66,7 +66,8 @@ export function SkillLibraryContent({ host, toolbarHost, className }: SkillLibra
   const report = React.useCallback((identity: string, message: string) => notify({ identity: `skill-library:${identity}`, reason: 'operation', level: 'inline', message, present: (value) => setFeedback((old) => ({ ...old, [identity]: value })) }), [])
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [dragActive, setDragActive] = React.useState(false)
-  const [scrollElement, setScrollElement] = React.useState<HTMLDivElement | null>(null)
+  const scrollElementRef = React.useRef<HTMLDivElement | null>(null)
+  const setScrollElement = React.useCallback((element: HTMLDivElement | null) => { scrollElementRef.current = element }, [])
   const usageVersion = useLibraryUsageVersion()
 
   const { items, remove, importPackage, exportPackage } = useWorkbenchSkills(true)
@@ -88,7 +89,7 @@ export function SkillLibraryContent({ host, toolbarHost, className }: SkillLibra
   }, [items, i18n.language, t, usageVersion])
   const navGroups = React.useMemo(() => libraryNavGroups(sections, t('libraries.layout.all')), [sections, t])
   const spec = SKILL_GRID[host]
-  const columns = libraryColumns(useElementContentWidth(scrollElement), { minCardWidth: spec.minCardWidth, gap: spec.columnGap, max: spec.maxColumns })
+  const columns = libraryColumns(useElementWidth(scrollElementRef) ?? 0, { minCardWidth: spec.minCardWidth, gap: spec.columnGap, max: spec.maxColumns })
   const trimmedQuery = query.trim()
   const views = React.useMemo(() => librarySectionsView(sections, {
     category,
