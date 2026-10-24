@@ -1,5 +1,6 @@
 // 付费走查的覆盖边界：每个 *.paid.mjs 要么走 openPaidWalk（自动配出网名单、被挡即失败、花钱前核闸），
 // 要么在 _paidRun.mjs 的例外表里写明理由与它自己的网络护栏。
+// 另钉一条（2026-10-24，B3 起因）：每个 buildMarkers 的标记都还原样留在产品源码里——被验的修复改写了，这里先红，不等付费那天。
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -7,14 +8,20 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 
-import { PAID_WALKS_WITHOUT_OPEN_PAID_WALK, assertPaidBuildReady, openPaidWalk, paidWalkCoverageProblems } from './_paidRun.mjs'
+import { PAID_WALKS_WITHOUT_OPEN_PAID_WALK, PRODUCT_SOURCE_DIRS, assertPaidBuildReady, openPaidWalk, paidBuildMarkerProblems, paidWalkCoverageProblems } from './_paidRun.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
-function repoPaidWalks() {
-  return execFileSync('git', ['ls-files', 'tests/ux'], { cwd: repoRoot, encoding: 'utf8' })
-    .split('\n').filter((file) => /\.paid\.mjs$/.test(file))
+/**
+ * tests/ux 下所有非测试的 .mjs，含还没 add 的新文件。只列已跟踪的话，新付费走查在提交前跑这里是假绿、提交后才红
+ * （2026-10-24：composer-b3-reference.paid.mjs 经一层包装调 openPaidWalk，提交前没被覆盖核对看见）。
+ */
+function walkScripts() {
+  return execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', 'tests/ux'], { cwd: repoRoot, encoding: 'utf8' })
+    .split('\n').filter((file) => /\.mjs$/.test(file) && !/\.test\.mjs$/.test(file) && fs.existsSync(path.join(repoRoot, file)))
 }
+const repoPaidWalks = () => walkScripts().filter((file) => /\.paid\.mjs$/.test(file))
 const read = (file) => fs.readFileSync(path.join(repoRoot, file), 'utf8')
 
 describe('paid walk coverage', () => {
@@ -172,5 +179,55 @@ describe('openPaidWalk · 接入先于开项目，不靠走查记得顺序', () 
     const source = read('tests/ux/_paidEnvKey.mjs')
     expect(source).toContain('openModelSettings(win')
     expect(source).not.toContain("dispatchEvent(new CustomEvent('nomi-open-model-catalog')")
+  })
+})
+
+/** 产品源码里（src/、electron/，不含测试文件）有没有这句原文：git grep 搜工作树（含还没 add 的新文件）。 */
+function inProductSource(text) {
+  try {
+    execFileSync('git', ['grep', '--untracked', '-q', '-F', '-e', text, '--', ...PRODUCT_SOURCE_DIRS, ':(exclude)*.test.*', ':(exclude)**/__tests__/**'], { cwd: repoRoot, stdio: 'pipe' })
+    return true
+  } catch (error) {
+    if (error.status === 1) return false
+    throw error
+  }
+}
+const MARKER_DEPS = { sourceIncludes: inProductSource, uiTextOf: uiText }
+
+describe('build markers stay in product source (zero cost, before any paid day)', () => {
+  it('every buildMarkers entry under tests/ux reads statically and appears verbatim in src/ or electron/ (tests excluded)', () => {
+    const files = walkScripts().filter((file) => /\bbuildMarkers\s*:\s*\[/.test(read(file)))
+    expect(files).toContain('tests/ux/_composerB3ReferenceSteps.mjs')
+    expect(paidBuildMarkerProblems(files, read, MARKER_DEPS)).toEqual([])
+  })
+
+  it('goes red for the marker B3 removed from the main-process guard (strip → reject), naming the file and the marker', () => {
+    const old = "const BUILD_MARKER = 'reference residue stripped before send'\nawait openPaidWalk('x', 'y', [], { buildMarkers: [BUILD_MARKER] })\n"
+    const problems = paidBuildMarkerProblems(['tests/ux/old.paid.mjs'], () => old, MARKER_DEPS)
+    expect(problems).toHaveLength(1)
+    expect(problems[0]).toContain('tests/ux/old.paid.mjs')
+    expect(problems[0]).toContain('reference residue stripped before send')
+    expect(paidBuildMarkerProblems(['tests/ux/new.paid.mjs'], () => old.replace('stripped', 'rejected'), MARKER_DEPS)).toEqual([])
+  })
+
+  it('reads a literal, a same-file const, a uiText call and a plain template; commented-out lists do not count', () => {
+    const seen = []
+    const code = [
+      "// run({ buildMarkers: ['commented out'] })",
+      'const M = "double \\" quoted"',
+      "run({ buildMarkers: ['plain', M, uiText('zh-CN', 'creationAi.rewrite.inputAria'), `tpl`] })",
+    ].join('\n')
+    expect(paidBuildMarkerProblems(['a.mjs'], () => code, { sourceIncludes: (text) => { seen.push(text); return true }, uiTextOf: uiText })).toEqual([])
+    expect(seen).toEqual(['plain', 'double " quoted', uiText('zh-CN', 'creationAi.rewrite.inputAria'), 'tpl'])
+  })
+
+  it('goes red for an entry it cannot read statically, an unknown uiText key, or an empty list', () => {
+    const deps = { sourceIncludes: () => true, uiTextOf: uiText }
+    const problems = paidBuildMarkerProblems(['b.mjs'], () => "run({ buildMarkers: [makeMarker(), IMPORTED, uiText('zh-CN', 'no.such.key')] })", deps)
+    expect(problems).toHaveLength(3)
+    expect(problems.join('\n')).toMatch(/makeMarker\(\) 读不出字面值/)
+    expect(problems.join('\n')).toMatch(/IMPORTED 读不出字面值/)
+    expect(problems.join('\n')).toMatch(/uiText\('zh-CN', 'no\.such\.key'\) 读不到/)
+    expect(paidBuildMarkerProblems(['c.mjs'], () => 'run({ buildMarkers: [] })', deps).join()).toContain('是空的')
   })
 })

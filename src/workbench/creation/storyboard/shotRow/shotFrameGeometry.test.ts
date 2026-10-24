@@ -83,5 +83,8 @@ describe('竖版（用户选 A）：视觉列与横版同宽，参考在框右�
     expect(visualColumnWidth(frameMediaBox('3:4'))).toBe(240)
     expect(visualColumnWidth(frameMediaBox('16:9'))).toBe(240)
     expect(visualColumnWidth(frameMediaBox('1:1'))).toBe(180)
+    // 镜头行参考在提示词上一行：竖版列宽 = 框宽，生成框紧接预览框
+    expect(visualColumnWidth(frameMediaBox('9:16'), false)).toBe(135)
+    expect(visualColumnWidth(frameMediaBox('16:9'), false)).toBe(240)
   })
 })

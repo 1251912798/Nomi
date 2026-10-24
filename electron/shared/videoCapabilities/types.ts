@@ -134,4 +134,6 @@ export type ModelArchetype = {
   variantIdAliases?: Record<string, string>;
   transportTaskKind: ArchetypeTransportTaskKind;
   identifierPatterns: string[];
+  /** Provider request-body reference inputs with no composer control (headless callers only); see modelArchetypes/referenceKeys. */
+  headlessReferenceKeys?: string[];
 };

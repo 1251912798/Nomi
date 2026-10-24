@@ -321,9 +321,9 @@ export function checkBoardClaim(body, { inferred, files = [], strict = false, ta
 /**
  * 本 PR 动到的逃逸账本条目 → { transitions, removed }。账本一条一个文件（2026-10-07），所以只取**本 PR 改动的条目文件**
  * 在 base / head 两版，不拉整个目录。纯函数、可测：
- *   files: [{ path, status, previousPath? }]（status 用 GitHub 的 added / modified / removed / renamed，或 A / M）；
+ *   files: [{ path, status }]（status 用本地 git 的 A / D / M / T 等单字母状态）；
  *   fetch(path, side) → 文本 | null（side = 'base' | 'head'；取不到 = null）。
- * 「被删」= 条目文件在 base 有、head 没有（removed、改名的旧路径，或 head 取不到而 base 取得到）。
+ * 「被删」= 条目文件在 base 有、head 没有（D，或 head 取不到而 base 取得到）。
  * 转换怎么算只有一份实现：fixedTransitions（check:escape-ledger 同源）。
  */
 export function ledgerChanges(files, fetch) {
@@ -331,7 +331,6 @@ export function ledgerChanges(files, fetch) {
   const touched = []
   for (const file of files) {
     if (escapeIdOfPath(file.path)) touched.push({ path: file.path, status: file.status })
-    if (file.previousPath && escapeIdOfPath(file.previousPath)) touched.push({ path: file.previousPath, status: 'removed' })
   }
   const base = []
   const head = []

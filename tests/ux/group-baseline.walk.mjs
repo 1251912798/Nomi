@@ -124,7 +124,12 @@ expect(composerPan.ok, `把浮框整张拖进舞台：${JSON.stringify(composerP
 await expectComposerFooterHit(composer, '分组后空提示词')
 await snapNear(win, 'composer-real', composer, 20)
 // Reference controls may scroll in their own area after recommendations yield.
-await composer.getByRole('button', { name: '文生图', exact: true }).click()
+// B3 之后图片节点没有方式钮（方式随输入走，原来点的「文生图」已不存在）：改点参考区里真有的「+」，
+// 打开选择器再 Esc 收起——同样是参考区里的一次操作，之后底栏仍要钉住、点得到（断言不变）。
+await clickOrFail(composer.locator('[data-reference-add-entry], [data-asset-add-tile]'), '参考区「+」')
+const assetPickerProof = await proveProbe(win.locator('[data-testid="asset-picker"]'), '「+」打开了素材选择器')
+await win.keyboard.press('Escape')
+await expectAbsent(win.locator('[data-testid="asset-picker"]'), { provenBy: assetPickerProof, message: 'Esc 收起素材选择器' })
 await expectComposerFooterHit(composer, '参考区内部滚动后')
 
 // 节点浮动工具栏（图片节点的那条，@ 与抽帧共用同一 shell）

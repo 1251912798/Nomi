@@ -23,7 +23,7 @@ import {
 import type { PlanShot } from '../../generationCanvas/agent/storyboardPlan'
 import type { AnchorCardRuntime, StoryboardRowRuntime } from './exec/storyboardRowStatus'
 import { useShotMentionPool, useShotMentionSource, type ShotMentionPool } from './shotRow/useShotMentionSource'
-import { StoryboardRowNarrowContext, useStoryboardRowsDensity } from './shotRow/storyboardRowDensity'
+import { StoryboardRowDensityContext, useStoryboardRowsDensity } from './shotRow/storyboardRowDensity'
 import { StoryboardPromptHistoryContext } from './shotRow/promptHistoryCarry'
 import StoryboardShotRowPlaceholder from './shotRow/StoryboardShotRowPlaceholder'
 import { planItemMounts } from './storyboardMountPlan'
@@ -75,7 +75,8 @@ const HEAD_ESTIMATE = 30
  * 内容列（提示词 + 底栏）至少约 100；再加行内边距 24 + 分隔线 1 + 行间插入线 6。
  * 2026-10-16 实测：9:16 宽档 265 / 窄档 201，16:9 宽档 201。
  */
-const rowEstimate = (box: FrameMediaBox): number => Math.max(isPortraitBox(box) ? box.height : box.height + 42, 100) + 24 + 1 + 6
+/** 最窄档：缩略图一行 + 参考 / 提示词 / 底栏（底栏可能折两行）整列往下排。 */
+const rowEstimate = (box: FrameMediaBox, compact = false): number => (compact ? box.height + 230 : Math.max(isPortraitBox(box) ? box.height : box.height + 42, 100)) + 24 + 1 + 6
 
 /**
  * 分镜页被藏起来时（切到生成页：React.Activity / display:none），滚动区和每一项都会被量成 0。
@@ -221,7 +222,7 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
 
   const tableRef = React.useRef<HTMLDivElement>(null)
   // 行宽档位：行区量**一次**，经 context 递给每一行（行不再各量自己）。
-  const narrow = useStoryboardRowsDensity(tableRef)
+  const density = useStoryboardRowsDensity(tableRef)
   // @ 候选的素材池：整张表一份（挂载即扫一次项目文件），各行只读。
   const mentionPool = useShotMentionPool(projectId)
   const rowFocus = useWorkbenchStore((state) => state.storyboardRowFocus)
@@ -264,7 +265,7 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
   // 盒子 = **整片默认画幅**的框（`planDefaultAspect`，与落画布同一个 resolver）；覆盖了画幅的镜在这只框里
   // contain + 角标。2026-10-06 起不再用「镜数最多的画幅」近似——覆盖过半时那样算会让整张表跟着少数派变形。
   const tableBox = React.useMemo(() => frameMediaBox(planDefaultAspect(plan)), [plan])
-  const shotEstimate = rowEstimate(densityBox(tableBox, narrow))
+  const shotEstimate = rowEstimate(densityBox(tableBox, density), density === 'compact')
 
   // 表上面还有执行计划条、参考卡区、标题行：列表的起点 = 行区在滚动区里的偏移（TanStack `scrollMargin`）。
   const [scrollMargin, setScrollMargin] = React.useState(0)
@@ -681,7 +682,7 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
         if (key && key !== focusedItemKey) setFocusedItemKey(key)
       }}
     >
-      <StoryboardRowNarrowContext.Provider value={narrow}>
+      <StoryboardRowDensityContext.Provider value={density}>
       <StoryboardPromptHistoryContext.Provider value={promptHistoryRef.current}>
         <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           {virtualItems.map((virtualItem) => {
@@ -710,7 +711,7 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
           })}
         </div>
       </StoryboardPromptHistoryContext.Provider>
-      </StoryboardRowNarrowContext.Provider>
+      </StoryboardRowDensityContext.Provider>
     </div>
     {selectedRows.length > 0 ? (
         <StoryboardSelectionToolbar
