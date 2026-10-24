@@ -450,6 +450,16 @@
         "symbol": "vendorModelConnection"
       },
       "reason": "2026-10-21 文本任务迁 pi-ai 单次调用：ai@4 的 buildAiSdkModel 随栈删除。「运行时 base 在造模型之前按协议规范化」（Anthropic 补 /v1）挪进两台发动机共用的 vendorModelConnection（anthropicBaseUrl），Agent、文本任务、编译器都经它拿连接配置；顺手修掉 lane 只存根地址时打到 {root}/messages 的 404（laneModelCall.test.ts）。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-02-cross-device-sync-ux.root-cause.json",
+      "path": "src/workbench/assets/assetResultDeletion.ts",
+      "symbol": "buildAssetResultDeletionPlan",
+      "anchor": {
+        "path": "src/workbench/assets/assetResultDeletion.ts",
+        "symbol": "planAssetDeletion"
+      },
+      "reason": "2026-10-24 素材删除判定换成显式的 planAssetDeletion（隐式计划 { matches, fileTarget } 的 buildAssetResultDeletionPlan 同提交删除，见 docs/fixes/2026-10-24-asset-library-delete-verdict.root-cause.json）。09-02 合同的不变量「先摘结果元数据；只要剩下的结果还引用同一份项目文件就不删文件」由它承担：planAssetDeletion 判本项目文件 trash / keep，keep 的依据仍是唯一引用判定 isProjectFileReferenced（摘完以后的画布 + 时间轴），执行口 deleteAssetResult 先摘结果、只对 trash 进回收站。守它的测试：assetDeletionMatrix.test.ts（共享文件 / 封面 / 白板图层各格）、assetResultDeletion.test.ts。"
     }
   ],
   "retirements": [
