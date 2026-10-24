@@ -8,6 +8,7 @@ import {
   parseControlInput,
   shouldUseVideoFrameSlotFallback,
   videoAspectDefaultPatch,
+  parameterControlChangePatch,
   type DynamicModelControl,
 } from './parameterControlModel'
 import { buildImageUrlSlots } from '../../model/parameterReferenceSlots'
@@ -79,6 +80,24 @@ describe('videoAspectDefaultPatch（2026-07-17：视频首选 16:9 / 输入全�
   it('无比例控件 → 空 patch', () => {
     const duration: DynamicModelControl = { key: 'durationSeconds', label: '时长', binding: 'durationSeconds', options: [{ value: '5', label: '5s' }] }
     expect(videoAspectDefaultPatch([duration], '16:9')).toEqual({})
+  })
+
+  it('Agnes Video 2.5 选 960P 清晰度：不写比例、不记明确选过', () => {
+    const size = {
+      key: 'size', label: '清晰度', type: 'select',
+      options: ['720P', '960P', '2K'].map((value) => ({ value, label: value })),
+    } as unknown as ModelParameterControl
+    const patch = parameterControlChangePatch(size, '960P')
+    expect(patch).toEqual({ size: '960P' })
+  })
+
+  it('Runway Gen-4 Turbo 像素档按约分匹配：竖图选 720:1280，横图选 1280:720', () => {
+    const runway: DynamicModelControl = {
+      key: 'aspect_ratio', label: '比例', binding: 'parameter',
+      type: 'select', options: ['1280:720', '720:1280'].map((value) => ({ value, label: value })),
+    } as unknown as DynamicModelControl
+    expect(videoAspectDefaultPatch([runway], '16:9').aspect_ratio).toBe('1280:720')
+    expect(videoAspectDefaultPatch([runway], '9:16').aspect_ratio).toBe('720:1280')
   })
 })
 
