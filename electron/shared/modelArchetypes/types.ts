@@ -159,6 +159,11 @@ export type ModelArchetype = {
   /** 该档案默认打到哪个 mapping 桶（显式，不靠启发式）。图像档案可被 mode.transportTaskKind 覆盖。 */
   transportTaskKind: ArchetypeTransportTaskKind;
   /**
+   * 供应商请求体认、但生成框**没有控件**的参考输入键（只有 headless 调用方显式给）。画布请求里出现它们 = 界面看不见的参考：
+   * 渲染层清掉、主进程拒发——通用参考键表 GENERIC_REFERENCE_KEYS 由它和各槽 inputKey 推导（referenceKeys.ts）。
+   */
+  headlessReferenceKeys?: string[];
+  /**
    * 识别用：模型身份（modelKey/别名）匹配这些 pattern 之一就套这套档案。
    * 匹配规则见 resolveArchetypeForModel —— 按「整串相等」或「去掉 vendor 前缀后的末段相等」，
    * 故 'seedance-2' 不会误命中 'seedance-2-fast'。

@@ -20,7 +20,7 @@ import { readParameterReferenceSlots } from '../model/parameterReferenceSlots'
 import { getGenerationNodeExecutionKind } from '../model/generationNodeKinds'
 import { applyRelayFirstFrame } from './relayFrameResolver'
 import { narrateProgress, type GenerationProgressPhase, type ProgressNarrationContext } from '../../observability/narrate'
-import { buildArchetypeInputParams, currentArchetypeMode, orderedSentImageReferenceUrls, orderedSentMediaReferenceUrls } from '../nodes/controls/archetypeMeta'
+import { buildArchetypeInputParams, currentArchetypeMode, orderedSentImageReferenceUrls, orderedSentMediaReferenceUrls, uploadPlacementForMode } from '../nodes/controls/archetypeMeta'
 import { projectPromptForSend } from '../../assets/promptMentions'
 import {
   type CatalogTaskActionOptions,
@@ -212,12 +212,19 @@ function buildReferenceExtras(
   // 认不出 → 现有无条件带首/尾帧（非档案模型走老路）。
   const archetype = resolveTaskArchetype(meta)
   if (archetype) {
-    const archetypeInput = buildArchetypeInputParams(meta, archetype, {
+    // 档案节点的上传图只住节点那一份有序参考列表（旧的 meta.referenceImages 已在 readReferenceList 里归一进去），
+    // 这里的 referenceImages 只剩画布边——上传图由 buildArchetypeInputParams 按当前方式落槽，和参考行同一个推导。
+    const edgeReferenceImages = uniqueStrings(references.referenceImages || [])
+    const edgeReferences = {
       firstFrameUrl: asTrimmedString(references.firstFrameUrl) || null,
       lastFrameUrl: asTrimmedString(references.lastFrameUrl) || null,
+      referenceImages: edgeReferenceImages,
+      referenceVideos: references.referenceVideos || [],
+      referenceAudios: references.referenceAudios || [],
+    }
+    const archetypeInput = buildArchetypeInputParams(meta, archetype, {
+      ...edgeReferences,
       // 切片1：把画布边产出的实时参考图喂进档案 image 槽（此前只读 meta，边的角色图被丢）。
-      // referenceImages 已是 meta.referenceImages + 边超集的去重并集。
-      referenceImages,
       // B4：连线进来的视频/音频参考喂进 video_ref/audio_ref 槽（此前只收 meta 上传）。
       referenceVideos: references.referenceVideos || [],
       referenceAudios: references.referenceAudios || [],
@@ -230,22 +237,23 @@ function buildReferenceExtras(
     // 否则「首帧模式残留尾帧」的 §2 坑2 会从标准键复活（kie 同名 token 渲进 body）。
     const mode = currentArchetypeMode(archetype, meta)
     const declared = new Set((mode.slots || []).map((slot) => slot.kind))
-    const firstFrameUrl = declared.has('first_frame')
-      ? asTrimmedString(references.firstFrameUrl) || asTrimmedString(meta.firstFrameUrl)
-      : ''
-    const lastFrameUrl = declared.has('last_frame')
-      ? asTrimmedString(references.lastFrameUrl) || asTrimmedString(meta.lastFrameUrl)
-      : ''
+    // 发出去哪些参考，只问一个主人：上传图按 uploadPlacementForMode（→ placeUploadedImages）落槽，和参考行同一个推导；
+    // 连线按 references。首 / 尾帧：连线优先，否则是参考列表里落进这一格的那张上传图。
+    const placement = uploadPlacementForMode(meta, mode, edgeReferences)
+    const uploadIn = (kind: string) => {
+      const slotIndex = (mode.slots || []).findIndex((slot) => slot.kind === kind)
+      return slotIndex >= 0 ? placement.bySlot[slotIndex]?.[0] ?? '' : ''
+    }
+    const firstFrameUrl = declared.has('first_frame') ? asTrimmedString(references.firstFrameUrl) || uploadIn('first_frame') : ''
+    const lastFrameUrl = declared.has('last_frame') ? asTrimmedString(references.lastFrameUrl) || uploadIn('last_frame') : ''
     const sourceVideoUrl = declared.has('source_video')
       ? asTrimmedString(references.referenceVideos?.[0]) || asTrimmedString(meta.sourceVideoUrl)
       : ''
-    // 数组参考（图 / 视频 / 音频）的标准面 = archetypeInput 那几个数组槽**同一份**有序列表（连线在前、上传在后、
-    // 截到槽上限，orderedSentMediaReferenceUrls 单源）。当前方式没有这种槽 → 空 → 下面整键置 undefined。
-    // 档案图槽的上传住 meta.referenceImageUrls——它同样必须进标准面，否则中转 multipart 的
-    // params.reference_images 恒空（走查 B 段抓出的第二个吞点）。
+    // 数组参考（图 / 视频 / 音频）的标准面 = archetypeInput 那几个数组槽**同一份**有序列表（连线在前、上传按当前方式落槽、
+    // 截到槽上限；orderedSentMediaReferenceUrls 的图片部分同样走 uploadPlacementForMode）。当前方式没有这种槽 → 空 → 不发。
     const sent: Record<'image' | 'video' | 'audio', string[]> = { image: [], video: [], audio: [] }
     for (const ref of orderedSentMediaReferenceUrls(meta, archetype, {
-      image: referenceImages,
+      image: edgeReferenceImages,
       video: references.referenceVideos || [],
       audio: references.referenceAudios || [],
     })) sent[ref.kind].push(ref.url)
@@ -253,10 +261,9 @@ function buildReferenceExtras(
       const kept = uniqueStrings(readStringArray(values).filter((url) => allowed.includes(url)))
       return kept.length ? kept : undefined
     }
-    // 界面标的 = 发出去的（2026-10-22 线上错花钱热修）：节点 meta 会带着别的方式 / 旧工程 / MCP metadata 留下的
-    // 参考键，而 buildCatalogTaskRequest 先整包 `...meta`。所以这里对**通用参考键全集**先一律置 undefined、
-    // 再只填当前方式声明了的那几项——漏写的键默认是「不发」，不是「原样带出去」。
-    // 显式参数参考槽（参数契约声明的键）是另一条通道，不在这里清。
+    // 请求组装先整包 `...meta`（别的参数照带），所以**通用参考键全集**（GENERIC_REFERENCE_KEYS，热修 #1279 的唯一键表）
+    // 先一律置 undefined，再只填上面推导出的在用值——漏写的键默认是「不发」。这不是第二份「在用」判断：值全部来自
+    // 同一个推导函数，键表只决定「哪些键算参考、要清」。显式参数参考槽（参数契约声明的键）是另一条通道，不在这里清。
     const declaredParameterKeys = new Set(Object.keys(parameterInputs))
     const cleared = Object.fromEntries([...GENERIC_REFERENCE_KEYS]
       .filter((key) => !declaredParameterKeys.has(key))

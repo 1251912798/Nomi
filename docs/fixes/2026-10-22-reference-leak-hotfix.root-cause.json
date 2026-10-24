@@ -59,17 +59,17 @@
     {
       "kind": "write",
       "path": "electron/runtime.ts",
-      "symbol": "stripReferenceResidueBeforeSend"
+      "symbol": "assertNoReferenceResidueBeforeSend"
     },
     {
       "kind": "write",
       "path": "electron/tasks/referenceResidueGuard.ts",
-      "symbol": "stripReferenceResidueBeforeSend"
+      "symbol": "assertNoReferenceResidueBeforeSend"
     },
     {
       "kind": "write",
       "path": "electron/catalog/archetypeInput.ts",
-      "symbol": "stripReferenceResidue"
+      "symbol": "findReferenceResidue"
     },
     {
       "kind": "read",
@@ -121,8 +121,8 @@
     },
     {
       "path": "electron/catalog/archetypeInput.ts",
-      "symbol": "stripReferenceResidue",
-      "responsibility": "主进程契约断言：带档案投影的请求，通用参考键里不在 archetypeInput 的地址剥掉并交给开发态诊断"
+      "symbol": "findReferenceResidue",
+      "responsibility": "主进程契约断言：带档案投影的请求，通用参考键里不在 archetypeInput 的地址找出来；electron/tasks/referenceResidueGuard.ts 据此在发出前拒发（#1269 起，原「只剥不拒」的 stripReferenceResidue 升级而来）"
     },
     {
       "path": "electron/shared/modelArchetypes/referenceKeys.ts",

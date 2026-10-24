@@ -1,7 +1,12 @@
-// 参考图错发热修的真付费样本判定（纯函数，不起 App、不花钱就能单测）。
+// 参考图「界面标为在用 = 真发出去」的真付费样本判定（纯函数，不起 App、不花钱就能单测）。
+// 用它的付费走查：composer-b3-reference.paid.mjs（B3 版；步骤本体在 _composerB3ReferenceSteps.mjs）。
+// 10-22 热修 #1279 的旧脚本 reference-leak-hotfix.paid.mjs 已随 B3「守卫只剥不拒 → 拒发」删掉（构建标记失效，跑不起来）。
 //
-// 输入是走查网络闸的账本条目（scripts/walkthrough-network-guard.cjs 在 NOMI_WALK_NET_BODIES=1 时写的
-// `allowed-request` / `allowed-response`），判 App 真正发往供应商的那一次视频创建请求里带了哪些图。
+// 三件事：
+//   · firstLastSceneProblems：花钱前，节点 meta 上场景布好了没（B3 规范形：一份有序参考列表）；
+//   · judgeReferenceWire：花钱后，App 真正发往供应商的那一次视频创建请求里带了哪些图。输入是走查网络闸的账本条目
+//     （scripts/walkthrough-network-guard.cjs 在 NOMI_WALK_NET_BODIES=1 时写的 `allowed-request` / `allowed-response`）；
+//   · referenceRejection：主进程参考守有没有拒发（机器码 reference-not-in-use），落在节点上的报错里读。
 //
 // 两条要点（V-refleak 第 1 轮的条件）：
 //   · **按地址去重**：APIMart 首尾帧的请求体里 image_urls 和 image_with_roles 各带一遍首帧、尾帧，
@@ -83,4 +88,43 @@ export function judgeReferenceWire(entries, { host, firstFile, lastFile, referen
       problems,
     },
   }
+}
+
+/**
+ * 花钱前的场景核对（②③）：B3 节点上只存一份有序参考列表（meta.referenceImageUrls），首尾帧方式下列表前两张依次落首帧、尾帧，
+ * 其余「未用到」（src/workbench/generationCanvas/nodes/controls/referenceList.ts 文件头）。这里只核**存的事实**，不推导谁在用——
+ * 谁在用归 B3 的唯一推导，花钱前从界面上读（_composerReferenceRow.mjs），花钱后从请求体读（judgeReferenceWire）。
+ * @param {Record<string, any> | undefined} meta
+ * @param {{ firstFile: string, lastFile: string, referenceFiles: string[], localUrlOf: (file: string) => string }} scene
+ * @returns {string[]} 问题清单（空 = 场景布好了）
+ */
+export function firstLastSceneProblems(meta, { firstFile, lastFile, referenceFiles, localUrlOf }) {
+  const problems = []
+  const list = Array.isArray(meta?.referenceImageUrls) ? meta.referenceImageUrls : []
+  const nameOf = (url) => [firstFile, lastFile, ...referenceFiles].find((file) => localUrlOf(file) === url) ?? 'other'
+  if (meta?.archetype?.modeId !== 'firstlast') problems.push(`当前方式是 ${meta?.archetype?.modeId ?? '（没有）'}，不是首尾帧`)
+  if (list[0] !== localUrlOf(firstFile) || list[1] !== localUrlOf(lastFile)) {
+    problems.push(`参考列表最前面两张不是 ${firstFile}、${lastFile}（首尾帧方式下列表前两张依次落首帧、尾帧）：${list.map(nameOf).join('、') || '（空）'}`)
+  }
+  if (meta?.referenceFirstFrameEmpty === true) problems.push('首帧被标成「特意空着」（referenceFirstFrameEmpty）：列表第一张会落尾帧')
+  const missing = referenceFiles.filter((file) => !list.includes(localUrlOf(file)))
+  if (missing.length) problems.push(`那 ${referenceFiles.length} 张参考不全在节点的参考列表里（场景没布好，这条付费证明不了什么）：缺 ${missing.join('、')}`)
+  return problems
+}
+
+// 主进程参考守拒发时抛的机器码（electron/shared/nomiErrorCodes.ts 的 reference-not-in-use；标记形如 `NOMI_ERR::<码>::`）。
+const REJECTION_MARKER = /NOMI_ERR::reference-not-in-use::/
+
+/**
+ * 主进程参考守（electron/tasks/referenceResidueGuard.ts）有没有拒发这个镜头的请求。渲染层把失败消息**原样**存进节点
+ * （generationRunController：Store the RAW message），码标记穿过 IPC 的包装（`Error invoking remote method …`）还在。
+ * @param {Record<string, any> | null | undefined} node 盘上或 store 里的画布节点
+ * @returns {{ where: string, excerpt: string } | null} 拒发落在哪（node.error / runs[i].error）与前 240 字；没有拒发 → null
+ */
+export function referenceRejection(node) {
+  const places = [['node.error', node?.error], ...(Array.isArray(node?.runs) ? node.runs : []).map((run, index) => [`runs[${index}].error`, run?.error])]
+  for (const [where, text] of places) {
+    if (typeof text === 'string' && REJECTION_MARKER.test(text)) return { where, excerpt: text.slice(0, 240) }
+  }
+  return null
 }
