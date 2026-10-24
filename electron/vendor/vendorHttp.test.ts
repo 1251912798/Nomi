@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { VendorRequestError, categorizeVendorFailure, requestBinary, requestJson, requestMultipart } from "./vendorHttp";
+import { VendorRequestError, categorizeVendorFailure, requestBinary, requestJson } from "./vendorHttp";
 import { setSubmitOutboundDepsForTests } from "./vendorOutboundGuard";
 import type { Vendor } from "../catalog/types";
 import { buildHttpRequest, buildTemplateContext } from "../ai/requestPipeline";
@@ -43,27 +43,6 @@ describe("categorizeVendorFailure", () => {
 });
 
 describe("requestJson 结构化错误(S4-0,修压扁根因)", () => {
-  it("在 JSON 写出前统一序列化参考媒体 URL", async () => {
-    let sentBody = "";
-    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
-      sentBody = String(init?.body || "");
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    }));
-    await requestJson(vendor, "k", "POST", "https://x/v1/jobs", {}, {}, {
-      image_urls: ["https://cdn.example.com/Windows ref.png"],
-    });
-    expect(JSON.parse(sentBody).image_urls[0]).toBe("https://cdn.example.com/Windows%20ref.png");
-  });
-
-  it("无法解析的参考 URL 在写出前失败，fetch 一次也不调用", async () => {
-    const fetchSpy = vi.fn();
-    vi.stubGlobal("fetch", fetchSpy);
-    await expect(requestJson(vendor, "k", "POST", "https://x/v1/jobs", {}, {}, {
-      image_urls: ["https://[bad"],
-    })).rejects.toThrow(/参考|reference/i);
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
   it("付费出口：供应商声明幂等时，写出前失败只用同一幂等键重发一次", async () => {
     const calls: Array<{ headers?: HeadersInit }> = [];
     let attempt = 0;
@@ -446,29 +425,5 @@ describe("requestBinary shared vendor transport", () => {
     assert(error instanceof VendorRequestError);
     expect(error.structured).toMatchObject({ logicalCode: 402, category: "balance", retryable: false });
     expect(`${error.message}${JSON.stringify(error.structured)}`).not.toContain(secret);
-  });
-});
-
-describe("requestMultipart outbound reference URLs", () => {
-  it("normalizes URL-valued text fields while preserving multipart files", async () => {
-    const form = new FormData();
-    form.append("image_urls", "https://cdn.example.com/Windows ref.png");
-    form.append("file", new Blob([Buffer.from([1])], { type: "image/png" }), "ref.png");
-    let sentEntries: Array<[string, FormDataEntryValue]> = [];
-    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
-      sentEntries = [...(init?.body as FormData).entries()];
-      return new Response("{}", { status: 200 });
-    }));
-    await requestMultipart(vendor, "k", "https://x", {}, {}, form);
-    expect(sentEntries.find(([key]) => key === "image_urls")?.[1]).toBe("https://cdn.example.com/Windows%20ref.png");
-  });
-
-  it("rejects an invalid URL-valued multipart field before fetch", async () => {
-    const fetchSpy = vi.fn();
-    vi.stubGlobal("fetch", fetchSpy);
-    const form = new FormData();
-    form.append("image_urls", "https://[bad");
-    await expect(requestMultipart(vendor, "k", "https://x", {}, {}, form)).rejects.toThrow(/参考|reference/i);
-    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

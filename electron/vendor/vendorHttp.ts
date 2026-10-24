@@ -24,7 +24,6 @@ import { createFreshConnectionDispatcher } from "../systemProxy";
 import type { Dispatcher } from "undici";
 import { authorizeSubmitDestination } from "./vendorOutboundGuard";
 import { outboundRequestWasNeverWritten } from "../outboundDispatchEvidence";
-import { normalizeOutboundReferenceFormData, normalizeOutboundReferenceMediaUrls } from "../catalog/outboundReferenceUrl";
 
 export type VendorErrorCategory = "auth" | "balance" | "quota" | "input" | "server" | "network" | "timeout" | "unknown";
 
@@ -436,10 +435,8 @@ export async function requestJson(
 ): Promise<unknown> {
   const upperMethod = method.toUpperCase();
   const hasBody = upperMethod !== "GET" && upperMethod !== "HEAD" && body != null;
-  const normalizedBody = typeof body === "string" ? body : normalizeOutboundReferenceMediaUrls(body);
-  const normalizedQuery = normalizeOutboundReferenceMediaUrls(query);
-  const bodyInit = hasBody ? (typeof normalizedBody === "string" ? normalizedBody : JSON.stringify(normalizedBody)) : undefined;
-  return requestVendor(vendor, apiKey, upperMethod, url, headers, normalizedQuery, bodyInit, signal, options.maxResponseBytes, "json", options);
+  const bodyInit = hasBody ? (typeof body === "string" ? body : JSON.stringify(body)) : undefined;
+  return requestVendor(vendor, apiKey, upperMethod, url, headers, query, bodyInit, signal, options.maxResponseBytes, "json", options);
 }
 
 /** Byte-in-body submission for synchronous media endpoints, with the same error, redaction and timeout contract as JSON. */
@@ -504,5 +501,5 @@ export async function requestMultipart(
   const cleanHeaders = Object.fromEntries(
     Object.entries(headers).filter(([key]) => key.toLowerCase() !== "content-type"),
   );
-  return requestVendor(vendor, apiKey, "POST", url, cleanHeaders, normalizeOutboundReferenceMediaUrls(query), normalizeOutboundReferenceFormData(form), signal, options.maxResponseBytes, "json", options);
+  return requestVendor(vendor, apiKey, "POST", url, cleanHeaders, query, form, signal, options.maxResponseBytes, "json", options);
 }

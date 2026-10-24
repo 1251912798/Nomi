@@ -11,7 +11,6 @@ import { normalizeComfyuiBaseUrl } from "../comfyui/endpointResolver";
 import { trim } from "../jsonUtils";
 import { validateRequestTransform } from "../tasks/requestTransforms";
 import type { TaskRequest } from "../runtime";
-import { normalizeOutboundReferenceMediaUrls } from "./outboundReferenceUrl";
 
 /** 共享 requestPipeline context 构造。铁律翻译层：渲染 body 前按 op 的 paramMap 把档案中性参数译成该站 wire 字段。
  *  传整条 op（不只 paramMap）：`params.model` 由线上模型名 owner 按「这条 op 声明了什么」决定。 */
@@ -57,7 +56,7 @@ export function buildProfileHttpRequest(input: {
   preview: unknown;
 } {
   const extraHeaders = extractVendorExtraHeaders(input.vendor);
-  const built = buildHttpRequest({
+  return buildHttpRequest({
     baseUrl: isComfyuiVendor(input.vendor)
       ? normalizeComfyuiBaseUrl(String(input.vendor.baseUrlHint || ""))
       : String(input.vendor.baseUrlHint || ""),
@@ -70,9 +69,6 @@ export function buildProfileHttpRequest(input: {
     operation: input.operation,
     ...(extraHeaders ? { extraHeaders } : {}),
   });
-  const body = normalizeOutboundReferenceMediaUrls(built.body);
-  const query = normalizeOutboundReferenceMediaUrls(built.query);
-  return { ...built, body, query, preview: { ...built.preview, body } };
 }
 
 /** Validate the rendered request before local asset localization and spend. */

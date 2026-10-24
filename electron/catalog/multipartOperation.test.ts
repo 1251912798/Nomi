@@ -136,7 +136,8 @@ describe("multipart 图生图（/v1/images/edits）请求装配", () => {
     expect(JSON.stringify(req)).not.toContain("bytes:"); // 字节内容不进 preview
   });
 
-  it("multipart reference source is serialized before byte resolution", async () => {
+  // 带空格的参考链接：取字节源（fileSource）是模板从 request.params 搬来的值——参数层（taskTemplateParams）已经序列化。
+  it("multipart 取字节源读到的是参数层序列化后的参考链接", async () => {
     const seen: string[] = [];
     await executeMultipartOperation({
       multipart: spec,
