@@ -1,0 +1,28 @@
+{
+  "name": "门岗会进提交的文件清单",
+  "subject": "delivery.tracked-file-list",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/lib/gitPaths.mjs",
+    "symbol": "trackedFiles"
+  },
+  "forbidden_derivations": [],
+  "write_api": [
+    {
+      "path": "scripts/lib/gitPaths.mjs",
+      "symbol": "trackedFiles"
+    }
+  ],
+  "parity_test": "scripts/pre-push-tracked-scan.node-test.mjs",
+  "allowed_consumers": [
+    "scripts/check-test-copy-literals.mjs",
+    "scripts/check-test-waits.mjs",
+    "scripts/pre-push-tracked-scan.node-test.mjs"
+  ],
+  "since": "2026-10-24",
+  "notes": "trackedFiles 是门岗读取会进提交文件集合的唯一共享边界：执行 git ls-files --cached --others --exclude-standard -z，非 git 仓库直接报错，不退回磁盘遍历。"
+}
