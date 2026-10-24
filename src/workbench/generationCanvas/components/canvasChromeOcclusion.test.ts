@@ -5,23 +5,35 @@ const dock = { left: 100, top: 700, right: 300, bottom: 740 }
 
 describe('外框控件被生成框压住的那一块', () => {
   it('不相交 → 没有洞，也不加任何裁剪', () => {
-    const holes = occludedHoles(dock, [{ left: 0, top: 0, right: 90, bottom: 690 }])
+    const holes = occludedHoles(dock, [{ left: 0, top: 0, right: 50, bottom: 650 }])
     expect(holes).toEqual([])
     expect(clipPathForHoles(200, 40, holes)).toBeUndefined()
   })
 
   it('相交 → 洞是交集，坐标相对外框控件左上角', () => {
     const holes = occludedHoles(dock, [{ left: 250, top: 600, right: 500, bottom: 720 }])
-    expect(holes).toEqual([{ left: 150, top: 0, right: 200, bottom: 20 }])
+    expect(holes).toEqual([{ left: 150, top: -24, right: 224, bottom: 20 }])
   })
 
-  it('洞转成 clip-path：外框比盒子大一圈（不剪投影），洞反向缠绕挖空', () => {
-    const path = clipPathForHoles(200, 40, [{ left: 150, top: 0, right: 200, bottom: 20 }])
-    expect(path).toBe('path(nonzero,"M-24 -24H224V64H-24ZM150 0V20H200V0Z")')
+  it('只压住投影圈、没有碰到盒子 → 也要挖掉投影圈', () => {
+    expect(occludedHoles(dock, [{ left: 76, top: 676, right: 100, bottom: 700 }])).toEqual([
+      { left: -24, top: -24, right: 0, bottom: 0 },
+    ])
+  })
+
+  it('生成框整个盖住盒子 → 洞延伸到被盖住的投影圈', () => {
+    expect(occludedHoles(dock, [{ left: 50, top: 650, right: 350, bottom: 750 }])).toEqual([
+      { left: -24, top: -24, right: 224, bottom: 50 },
+    ])
+  })
+
+  it('洞转成 clip-path：超出盒子的洞坐标仍生成合法路径', () => {
+    const path = clipPathForHoles(200, 40, [{ left: -24, top: -24, right: 224, bottom: 64 }])
+    expect(path).toBe('path(nonzero,"M-24 -24H224V64H-24ZM-24 -24V64H224V-24Z")')
   })
 
   it('只擦边（不足半像素）不算压住', () => {
-    expect(occludedHoles(dock, [{ left: 300.2, top: 700, right: 400, bottom: 740 }])).toEqual([])
+    expect(occludedHoles(dock, [{ left: 324.2, top: 700, right: 400, bottom: 740 }])).toEqual([])
   })
 })
 

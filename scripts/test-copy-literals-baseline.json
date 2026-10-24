@@ -218,7 +218,6 @@
   "tests/ux/design-lab-settings-sound.walk.mjs": 1,
   "tests/ux/design-lab-vendor-order.walk.mjs": 1,
   "tests/ux/diagnostics-bundle.walk.mjs": 2,
-  "tests/ux/director-ai.walk.mjs": 1,
   "tests/ux/director-assets.walk.mjs": 5,
   "tests/ux/director-clip-states.walk.mjs": 1,
   "tests/ux/director-electron.walk.mjs": 4,
