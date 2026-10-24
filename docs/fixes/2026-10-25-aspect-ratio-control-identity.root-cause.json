@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
   "id": "2026-10-25-aspect-ratio-control-identity",
-  "detected_by": "user",
+  "detected_by": "review",
   "recurrence_check_on": "2026-11-25",
   "problem_type": "A semantic aspect-ratio control was identified by vendor key names and compared by unreduced strings, so equivalent model controls diverged across UI and canvas derivation paths",
   "symptom": "Agnes Video 2.5 selecting 960P treated the resolution size control as an aspect-ratio control, cleared aspect_ratio and marked the node as explicitly ratio-selected; Runway Gen-4 Turbo pixel values such as 1280:720 did not match the product default 16:9, so a portrait input kept a landscape output.",
@@ -158,14 +158,9 @@
       "responsibility": "Adapt catalog control declarations to the shared semantic control shape; aspectRatioControlKey is the single answer to which control carries ratio semantics, and sameAspectRatio is the single equality answer."
     },
     {
-      "path": "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
-      "symbol": "isAspectRatioControl",
-      "responsibility": "Apply the shared semantic control identity to parameter and catalog controls and build ratio-safe change/default patches."
-    },
-    {
-      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
-      "symbol": "handleParameterControlChange",
-      "responsibility": "Route user parameter changes through the shared patch and only set the explicit-ratio marker for a semantically identified ratio control."
+      "path": "electron/shared/aspectRatioValue.ts",
+      "symbol": "sameAspectRatio",
+      "responsibility": "Single answer to whether two W:H / named-bucket values are the same ratio (reduced comparison); provider option values are never rewritten."
     }
   ],
   "same_class_entry_points": [
@@ -204,6 +199,12 @@
       "entry_point": "cachedModelNameSource",
       "disposition": "not-affected",
       "evidence": "Read-only audit found it scans kind-only caches for display provenance; it does not write or compare ratio values and is outside this fix."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
+      "entry_point": "isAspectRatioControl",
+      "disposition": "enforced",
+      "evidence": "Renderer adapter over the shared boundary: it calls aspectRatioControlsOf / aspectRatioControlKey and keeps no key-name rule of its own (covered by parameterControlModel.test.ts and the catalog census)."
     }
   ],
   "recurrence": {
