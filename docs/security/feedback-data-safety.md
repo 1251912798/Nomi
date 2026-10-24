@@ -20,7 +20,7 @@
 | ① **gitignore（whitelist）** | `docs/feedback/` 默认全 ignore，只放行 `sources.example.json`/README；`*.db`/`welive.yaml`/`keys.json` 全局 ignore | 数据文件默认进不了 git | `git add -f` |
 | ② **git pre-commit hook** | 每次 commit 扫 staged 的路径+内容（`scripts/check-no-secrets.mjs`），对**所有** git 客户端生效 | 明文凭证（API key/token）+ 路径黑名单 + 内容正则（db_key/wxid/群消息/微信路径） | `git commit --no-verify` |
 | ③ **Claude secret-guard hook** | PreToolUse(Bash) 拦 AI/agent 的 `--no-verify` 和 `add -f` | 绕过 ①② 的两个动作 | 只对 Claude 生效 |
-| ④ **gates `check:secrets`** | `pnpm run gates` 里全仓 tracked 审计（push 前兜底） | 任何历史遗留的敏感数据 | — |
+| ④ **CI `check:secrets`** | `gates:contracts` 里全仓 tracked 审计：CI 的 Contracts 每个 PR 都跑（合并前兜底），本机 `pnpm run gates` 也跑。2026-10-24 起推送前只跑快检、不含这一项——绕过 ② 提交进来的内容，全仓扫描第一次看到它是在 CI 上（那时分支已在远端） | 任何历史遗留的敏感数据 | — |
 
 要真泄露，得**同时绕过所有四层**。
 
