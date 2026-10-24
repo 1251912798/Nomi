@@ -1,6 +1,6 @@
 // 「这个 PR 改了什么」的本地 git 取法（2026-10-24）：对 base..head 做 diff，文件表、逐文件新增行、package.json 被删行都从这一处出。
 // 合并前扫描（scripts/merge-preflight.mjs）用它：base = merge-base(基线分支末端, PR head)，head = fetch 到的 PR head。
-// 推送前 / CI（scripts/check-pr-judgement.mjs）是同一口径（merge-base 起点、--no-renames、-U0），取数还是它自己的三行 git diff。
+// 推送前 / CI（scripts/check-pr-judgement.mjs）和合并前扫描调同一个函数，保持同一口径。
 //
 // 为什么不用 GitHub 的 PR diff / 文件表接口：GitHub 给 PR diff 设了硬上限——超过 300 个文件就整个不给
 // （HTTP 406「the diff exceeded the maximum number of files (300)」；#1269 改了 321 个文件，合并前扫描只能打「取不到 PR diff」）；

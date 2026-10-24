@@ -269,19 +269,17 @@ test('报告：规则与门岗范围红了，规则生效前开的 PR 也不放�
   assert.match(report.text, /✖ 碰到规则/)
 })
 
-test('逃逸账本一条一个文件：只取本 PR 动到的条目文件的两版；转 fixed、被删、改名都认得出，别的文件不去取', () => {
+test('逃逸账本一条一个文件：只取本 PR 动到的条目文件的两版；转 fixed、被删都认得出，别的文件不去取', () => {
   const dir = 'tests/ux/full-walk/escapeLedger'
   const versions = {
     base: {
       [`${dir}/FB-a.json`]: { id: 'FB-a', status: 'reviewed' },
       [`${dir}/FB-b.json`]: { id: 'FB-b', status: 'candidate' },
       [`${dir}/FB-c.json`]: { id: 'FB-c', status: 'candidate' },
-      [`${dir}/FB-old.json`]: { id: 'FB-old', status: 'candidate' },
     },
     head: {
       [`${dir}/FB-a.json`]: { id: 'FB-a', status: 'fixed' },
       [`${dir}/FB-new.json`]: { id: 'FB-new', status: 'fixed' },
-      [`${dir}/FB-renamed.json`]: { id: 'FB-renamed', status: 'candidate' },
     },
   }
   const fetched = []
@@ -294,12 +292,11 @@ test('逃逸账本一条一个文件：只取本 PR 动到的条目文件的两�
     { path: `${dir}/FB-a.json`, status: 'modified' },
     { path: `${dir}/FB-new.json`, status: 'added' },
     { path: `${dir}/FB-b.json`, status: 'removed' },
-    { path: `${dir}/FB-renamed.json`, status: 'renamed', previousPath: `${dir}/FB-old.json` },
     { path: `${dir}/${'_meta.json'}`, status: 'modified' },
     { path: 'src/other.ts', status: 'modified' },
   ], fetch)
   assert.deepEqual(result.transitions.sort(), ['FB-a', 'FB-new'])
-  assert.deepEqual(result.removed.sort(), ['FB-b', 'FB-old'])
+  assert.deepEqual(result.removed.sort(), ['FB-b'])
   assert.ok(!fetched.some((key) => key.includes('FB-c') || key.includes('src/other') || key.includes('_meta')), `不该取没动的文件：${fetched.join(', ')}`)
   assert.ok(!fetched.includes(`base:${dir}/FB-new.json`), '新增的条目不去取 base')
   assert.ok(!fetched.includes(`head:${dir}/FB-b.json`), '删掉的条目不去取 head')
