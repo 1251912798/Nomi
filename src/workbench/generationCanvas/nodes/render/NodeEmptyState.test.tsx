@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { GENERATION_NODE_PLUGINS } from '../registry'
 import { getGenerationNodeIcon } from '../renderRegistry'
+import { ICON_TIER_CLASSES } from '../../../../design/iconTiers'
 import { NodeEmptyState } from './NodeEmptyState'
 import { NodeEmptyStateProvider } from './NodeEmptyStateProvider'
 import { EmptyStateLauncher, UploadFallback } from './CardCommon'
@@ -46,17 +47,28 @@ describe('host-owned empty guidance across the node registry', () => {
     expect(out).toContain(`top:${top}px`)
   })
 
-  it('compact (audio strip / director inline) is the documented exception: centred in its own container', () => {
-    expect(render(<NodeEmptyState compact icon={<svg />} />, false)).toContain('top:calc(50% - 24px)')
+  it.each([
+    ['compact (director inline / clip lane)', { compact: true }],
+    ['strip (audio strip / short LOD body)', { strip: true }],
+  ])('%s is the documented exception: centred in its own container', (_name, variant) => {
+    expect(render(<NodeEmptyState {...variant} icon={<svg />} />, false)).toContain('top:calc(50% - 24px)')
   })
 
-  it('F1 empty tiers keep full cards at 24/1.5 and narrow bars at 13/1.8', () => {
-    const full = render(<NodeEmptyState icon={<svg />} />, false)
-    expect(full).toContain('size-6')
-    expect(full).toContain('stroke-[1.5]')
-    const narrow = render(<NodeEmptyState compact icon={<svg />} />, false)
-    expect(narrow).toContain('size-[13px]')
-    expect(narrow).toContain('stroke-[1.8]')
+  // F1（IconsF1 D3 / D4）：节点窄条角标档，其余大 / 中空态空态档——导演节点内嵌是大卡，不是窄条。
+  const discIconClasses = (html: string) => [...html.replace(/&gt;/g, '>').replace(/&amp;/g, '&').matchAll(/class="([^"]*rounded-full[^"]*)"/g)]
+    .map(([, cls]) => cls.split(/\s+/).filter((token) => token.startsWith('[&>svg]:')).join(' '))
+  it.each([
+    ['full card', {}, ICON_TIER_CLASSES.empty],
+    ['compact (director inline)', { compact: true }, ICON_TIER_CLASSES.empty],
+    ['strip (audio strip)', { strip: true }, ICON_TIER_CLASSES.corner],
+  ])('F1 tier for %s: browsing and selected discs carry the same tier', (_name, variant, tier) => {
+    const body = <NodeEmptyState {...variant} icon={<svg />} title="KIND" description="INSTRUCTION" />
+    expect(discIconClasses(render(body, false))).toEqual([tier])
+    expect(discIconClasses(render(body, true))).toEqual([tier])
+  })
+
+  it('short engaged cards fold into the strip row and take the corner tier', () => {
+    expect(discIconClasses(render(<NodeEmptyState height={120} icon={<svg />} title="KIND" />, true))).toEqual([ICON_TIER_CLASSES.corner])
   })
 
   it.each([120, 169, 462])('icon-only stays a single 48px type mark at height %s', (height) => {

@@ -107,7 +107,7 @@ export function LightweightGenerationNode({
             />
           ) : (
             <NodeEmptyStateProvider engaged={false} readOnly>
-              <NodeEmptyState icon={<Icon size={18} stroke={1.5} />} height={bodyHeight} compact={bodyHeight < EMPTY_STATE_COMPACT_MIN_HEIGHT} />
+              <NodeEmptyState icon={<Icon size={18} stroke={1.5} />} height={bodyHeight} strip={bodyHeight < EMPTY_STATE_COMPACT_MIN_HEIGHT} />
             </NodeEmptyStateProvider>
           )}
 

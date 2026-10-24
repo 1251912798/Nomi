@@ -39,7 +39,7 @@ import { DotMark } from './DotMark'
 import { UpdatePill } from '../UpdatePill'
 import { SHELL_MAC_TRAFFIC_WIDTH, SHELL_TOPBAR_HEIGHT, shellChromePlatform } from '../shellGeometry'
 
-/** 顶栏图标钮一族：28px 方块、圆角 6、图标 18 / 1.5（拍板稿 .ib）。 */
+/** 顶栏图标钮一族：28px 方块、圆角 6（拍板稿 .ib）；图标档位由这一族自己定（条档 18 / 1.8），里面的图标不传 size / stroke。 */
 const BAR_ICON_BUTTON = cn(
   'app-no-drag relative grid size-7 shrink-0 place-items-center rounded-nomi-sm border-0 bg-transparent p-0',
   'text-nomi-ink-60 transition-[background,color] duration-nomi-fast ease-nomi-fast',
@@ -220,7 +220,7 @@ export function ShellTopBar({
           {railCollapsed && onExpandRail ? (
             <BarTooltip label={t('appShell.rail.expand')}>
               <button type="button" className={BAR_ICON_BUTTON} aria-label={t('appShell.rail.expand')} onClick={onExpandRail} data-shell-rail-expand>
-                <IconLayoutSidebarLeftExpand size={18} stroke={1.5} aria-hidden="true" />
+                <IconLayoutSidebarLeftExpand aria-hidden="true" />
               </button>
             </BarTooltip>
           ) : null}
@@ -262,13 +262,14 @@ export function ShellTopBar({
                       'app-no-drag mx-1 inline-flex h-7 items-center gap-1.5 rounded-pill border-0 px-3 text-caption font-medium',
                       'bg-nomi-ink text-nomi-paper hover:bg-nomi-ink-80 disabled:cursor-not-allowed disabled:opacity-60',
                     )}
+                    iconTier="corner"
                     aria-label={exportLabel}
                     data-export-busy={exportBusy ? 'true' : 'false'}
                     data-shell-export
                     loading={exportBusy}
                     onClick={requestPreviewExport}
                   >
-                    {exportBusy ? null : <IconDownload size={ICON_TIERS.corner.size} stroke={ICON_TIERS.corner.stroke} />}
+                    {exportBusy ? null : <IconDownload />}
                     <span className="whitespace-nowrap">{exportBusy ? t('timelinePreview.exporting', { percent: exportPercent }) : t('timelinePreview.exportMp4')}</span>
                   </WorkbenchButton>
                 </span>
@@ -286,7 +287,7 @@ export function ShellTopBar({
           ) : null}
           <BarTooltip label={t('appBar.browser')}>
             <button type="button" className={BAR_ICON_BUTTON} aria-label={t('appBar.openBrowser')} onClick={openBrowser} data-shell-browser>
-              <IconBrowser size={18} stroke={1.5} aria-hidden="true" />
+              <IconBrowser aria-hidden="true" />
             </button>
           </BarTooltip>
           {/* 更新胶囊（#1135）：只由主进程更新状态决定出不出；窄屏自收成带点图标，点开的弹窗由 NomiStudioApp 全局挂一份。 */}
@@ -294,7 +295,7 @@ export function ShellTopBar({
           {onOpenSettings ? (
             <BarTooltip label={onboarding.active ? t('appShell.topbar.settingsDot', { count: onboarding.total - onboarding.doneCount }) : t('settings.title')}>
               <button type="button" className={BAR_ICON_BUTTON} aria-label={t('settings.title')} onClick={onOpenSettings} data-shell-settings>
-                <IconSettings size={18} stroke={1.5} aria-hidden="true" />
+                <IconSettings aria-hidden="true" />
                 {onboarding.active ? <DotMark /> : null}
               </button>
             </BarTooltip>

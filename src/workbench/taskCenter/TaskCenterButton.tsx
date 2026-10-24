@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { IconListCheck } from '@tabler/icons-react'
 import type { ProductionRunSummary } from '../../../electron/productionRun/productionRunTypes'
 import type { ExportJobSnapshot } from '../../../electron/shared/contracts/exportJobManager'
-import { ICON_TIERS, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, WorkbenchButton } from '../../design'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, WorkbenchButton } from '../../design'
 import { getDesktopBridge } from '../../desktop/bridge'
 import { cn } from '../../utils/cn'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
@@ -134,12 +134,13 @@ export function TaskCenterButton({ projectId, onRevealNode }: Props): JSX.Elemen
                 opened && 'bg-nomi-ink-10',
                 tone === 'failed' ? 'text-nomi-danger' : 'text-nomi-ink-60 hover:text-nomi-ink',
               )}
+              iconTier="bar"
               data-task-center-tone={tone}
               aria-label={t('taskCenter.title')}
               data-task-center-trigger="true"
               onClick={() => setOpened((value) => !value)}
             >
-              <IconListCheck size={ICON_TIERS.bar.size} stroke={ICON_TIERS.bar.stroke} aria-hidden="true" />
+              <IconListCheck aria-hidden="true" />
               {pending > 0 ? (
                 <span
                   className={cn(

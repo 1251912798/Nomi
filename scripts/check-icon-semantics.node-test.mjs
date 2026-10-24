@@ -11,7 +11,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
-import { conflictId, findConflicts, loadRegisteredIcons, scanIconDictionary, scanIconSemantics, scanIconTierViolations, scanUnnamedIconButtons } from './check-icon-semantics.mjs'
+import { fileURLToPath } from 'node:url'
+import { conflictId, findConflicts, loadRegisteredIcons, scanButtonIconOverrides, scanIconDictionary, scanIconSemantics, scanIconTierViolations, scanUnnamedIconButtons } from './check-icon-semantics.mjs'
 
 function fixture(files) {
   const dir = makeTempDir('icon-semantics-')
@@ -170,4 +171,79 @@ const tier = { size: 18, stroke: 1.8 }
 export const F1 = () => <><IconX size={13} stroke={1.8} /><IconX size={tier.size} stroke={tier.stroke} /></>`,
   })
   assert.deepEqual(scanIconTierViolations(root, ['src/F1.tsx']), [])
+})
+
+/* ───────── 规则四：按钮说了算（2026-10-24）───────── */
+
+const overrides = (files) => scanButtonIconOverrides(fixture(files), ['src'])
+const kinds = (found) => Object.values(found).flat().map((hit) => `${hit.kind}:${hit.icon}`)
+
+test('规则四会红：按钮的直接子图标自己传 size / stroke（穿过三元、&&、片段）', () => {
+  const found = overrides({
+    'src/A.tsx': `import { IconX, IconPlus, IconCheck } from '@tabler/icons-react'
+import { WorkbenchButton, WorkbenchIconButton } from '../design'
+export const A = ({ busy, ok }) => <>
+  <WorkbenchButton><IconX size={13} />导出</WorkbenchButton>
+  <WorkbenchButton>{busy ? null : <IconCheck stroke={1.8} />}</WorkbenchButton>
+  <WorkbenchButton>{ok && <><IconPlus strokeWidth={2} /></>}</WorkbenchButton>
+  <WorkbenchIconButton label="x" icon={busy ? <IconPlus width={18} /> : <IconX />} />
+</>`,
+  })
+  assert.deepEqual(kinds(found), ['size-prop:IconX', 'size-prop:IconCheck', 'size-prop:IconPlus', 'size-prop:IconPlus'])
+})
+
+test('规则四会红：包一层只装一个图标的 span / div 绕开 [&>svg]（F1 第 1 轮的写法）', () => {
+  const found = overrides({
+    'src/A.tsx': `import { IconDownload } from '@tabler/icons-react'
+import { WorkbenchButton, WorkbenchIconButton, ICON_TIER_CLASSES } from '../design'
+export const A = () => <>
+  <WorkbenchButton><span className={ICON_TIER_CLASSES.corner}><IconDownload /></span>导出</WorkbenchButton>
+  <WorkbenchIconButton label="x" icon={<div className="contents"><IconDownload /></div>} />
+</>`,
+  })
+  assert.deepEqual(kinds(found), ['wrapper:IconDownload', 'wrapper:IconDownload'])
+})
+
+test('规则四不乱红：给按钮传档位、按钮自己的 chevron、按钮外的裸图标、图标加角标的组合', () => {
+  const found = overrides({
+    'src/A.tsx': `import { IconX, IconListCheck, IconChevronDown } from '@tabler/icons-react'
+import { WorkbenchButton, WorkbenchIconButton, ICON_TIERS } from '../design'
+export const A = ({ n }) => <>
+  <WorkbenchButton iconTier="bar"><IconListCheck aria-hidden="true" />{n}</WorkbenchButton>
+  <WorkbenchButton iconTier="bar" chevron><IconX />布局</WorkbenchButton>
+  <WorkbenchIconButton label="x" iconTier="corner" icon={<IconX />} />
+  <button type="button" aria-label="x"><IconChevronDown size={ICON_TIERS.corner.size} stroke={ICON_TIERS.corner.stroke} /></button>
+  <IconX size={24} />
+  <WorkbenchButton><span className="relative"><IconX /><i className="dot" /></span></WorkbenchButton>
+</>`,
+  })
+  assert.deepEqual(found, {})
+})
+
+// 「退回时要红」：拿 F1 现役文件真身做变异——把图标尺寸塞回按钮里，门岗必须当场认出来。
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const F1_BUTTON_HOSTS = [
+  { file: 'src/ui/app-shell/shell/ShellTopBar.tsx', from: '<IconDownload />', to: '<IconDownload size={ICON_TIERS.corner.size} stroke={ICON_TIERS.corner.stroke} />' },
+  { file: 'src/workbench/taskCenter/TaskCenterButton.tsx', from: '<IconListCheck aria-hidden="true" />', to: '<IconListCheck size={18} stroke={1.8} aria-hidden="true" />' },
+  { file: 'src/workbench/preview/EditingLayoutMenu.tsx', from: '<IconLayoutDashboard />', to: '<span className="[&>svg]:size-[18px]"><IconLayoutDashboard /></span>' },
+  { file: 'src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx', from: 'icon={<IconRefresh />}', to: 'icon={<IconRefresh size={14} stroke={2} />}' },
+  { file: 'src/workbench/generationCanvas/nodes/NodeVideoControls.tsx', from: '<IconCamera />', to: '<IconCamera size={16} />' },
+]
+
+test('规则四守住 F1：现役按钮宿主零命中，且不在存量基线里', () => {
+  const baseline = JSON.parse(fs.readFileSync(path.join(repoRoot, 'scripts/icon-semantics-baseline.json'), 'utf8')).buttonIconOverrides ?? {}
+  for (const { file } of F1_BUTTON_HOSTS) {
+    const root = fixture({ [file]: fs.readFileSync(path.join(repoRoot, file), 'utf8') })
+    assert.deepEqual(scanButtonIconOverrides(root, ['src']), {}, `${file} 的按钮里还有图标自己定尺寸`)
+    assert.equal(baseline[file], undefined, `${file} 不许进规则四的存量基线（F1 面要恒为 0）`)
+  }
+})
+
+test('规则四退回时要红：把尺寸塞回 F1 按钮里（属性或包一层），逐个文件当场红', () => {
+  for (const { file, from, to } of F1_BUTTON_HOSTS) {
+    const source = fs.readFileSync(path.join(repoRoot, file), 'utf8')
+    assert.ok(source.includes(from), `${file} 里找不到变异锚点 ${from}——现役写法改了就同步更新这张表`)
+    const found = scanButtonIconOverrides(fixture({ [file]: source.replace(from, to) }), ['src'])
+    assert.equal(Object.values(found).flat().length, 1, `${file} 退回后门岗没红`)
+  }
 })

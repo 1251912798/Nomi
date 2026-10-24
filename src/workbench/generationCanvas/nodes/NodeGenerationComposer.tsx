@@ -559,7 +559,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
             {rerenderDirectorNodeId ? (
               <WorkbenchIconButton
                 size="sm"
-                icon={<IconRefresh size={ICON_TIERS.tool.size} stroke={ICON_TIERS.tool.stroke} />}
+                icon={<IconRefresh />}
                 label={t('director.agent.previewRerender')}
                 data-testid="node-composer-preview-rerender"
                 onClick={() => requestDirectorPreviewRender(rerenderDirectorNodeId)}

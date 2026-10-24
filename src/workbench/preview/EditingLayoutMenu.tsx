@@ -1,7 +1,7 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconChevronDown, IconCheck, IconLayoutDashboard } from '@tabler/icons-react'
-import { ICON_TIERS, WorkbenchButton, listenOutsidePress } from '../../design'
+import { IconCheck, IconLayoutDashboard } from '@tabler/icons-react'
+import { WorkbenchButton, listenOutsidePress } from '../../design'
 import { cn } from '../../utils/cn'
 import type { EditingPanelPreset, EditingPanelVisibility } from './panelLayout'
 import { useWorkbenchStore } from '../workbenchStore'
@@ -55,14 +55,15 @@ export default function EditingLayoutMenu(): JSX.Element {
           'hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
           open && 'bg-nomi-ink-10 text-nomi-ink',
         )}
+        iconTier="bar"
+        chevron
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('timelinePreview.previewLayout.title')}
         onClick={() => setOpen(!open)}
       >
-        <IconLayoutDashboard size={ICON_TIERS.bar.size} stroke={ICON_TIERS.bar.stroke} />
+        <IconLayoutDashboard />
         <span className="max-[1440px]:hidden">{t('timelinePreview.previewLayout.title')}</span>
-        <IconChevronDown size={ICON_TIERS.corner.size} stroke={ICON_TIERS.corner.stroke} />
       </WorkbenchButton>
       {open ? (
         <div

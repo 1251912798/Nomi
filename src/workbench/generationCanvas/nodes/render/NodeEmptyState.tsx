@@ -11,7 +11,10 @@ export type NodeEmptyStateProps = {
   description?: string
   action?: React.ReactNode
   className?: string
+  /** 装在比卡小的容器里（导演节点内嵌、剪辑轨道）：圆盘按容器正中；图标照旧是空态档。 */
   compact?: boolean
+  /** 节点窄条（音频条、LOD 矮卡）：排法同 compact，图标按 §6 角标档 13 / 1.8（拍板 IconsF1 D3）。 */
+  strip?: boolean
   /** 节点卡高（CSS 像素）。给了才按档位收矮；不给 = 完整档 + CSS 兜底定位。 */
   height?: number
   /** Operational facts (waiting/ready) remain visible while browsing. */
@@ -23,24 +26,27 @@ export type NodeEmptyStateProps = {
  * 内容块中心放在卡高 45%、离顶至少 44px、水平居中，
  * 左上角状态小标永远碰不到图标。矮卡分档（纯函数 `emptyStateTier`，见 nodeEmptyStateLayout.ts）：
  * 完整 → 图标 / 类型名 / 状态 / 动作；紧凑 → 图标 + 「类型 · 状态」一行 + 动作。height 必须是渲染用的有效卡高（resolveNodeVisualSize），见 nodeEmptyStateLayout.ts。
- * compact（音频条 / 导演节点内嵌）是装在更小容器里的变体，容器不等于卡高，圆盘按容器正中，不走 45% / 44px 规则（10-10 拍板 B 的例外）；其余一律走 nodeEmptyStateLayout 同一套算法。
+ * compact（导演节点内嵌 / 剪辑轨道）和 strip（音频条 / LOD 矮卡）都是装在更小容器里的变体，容器不等于卡高，圆盘按容器正中，不走 45% / 44px 规则（10-10 拍板 B 的例外）；其余一律走 nodeEmptyStateLayout 同一套算法。
+ * 图标档位由空态圆盘自己定（§6）：节点窄条角标档 13 / 1.8，其余大 / 中空态空态档 24 / 1.5。
  */
-export function NodeEmptyState({ icon, title, description, action: requestedAction, className, compact = false, height, purpose = 'guidance' }: NodeEmptyStateProps): JSX.Element {
+export function NodeEmptyState({ icon, title, description, action: requestedAction, className, compact = false, strip = false, height, purpose = 'guidance' }: NodeEmptyStateProps): JSX.Element {
   const { engaged, readOnly } = useNodeEmptyStateContext()
   const action = readOnly ? undefined : requestedAction
+  const inContainer = compact || strip
+  const discIconTier = strip ? ICON_TIER_CLASSES.corner : ICON_TIER_CLASSES.empty
   if (purpose === 'guidance' && !engaged) {
     return (
       <div data-node-empty-state="true" data-empty-tier="icon" className={cn('relative h-full w-full text-center', className)}>
-        <div className="absolute inset-x-0 flex justify-center" style={{ top: compact ? 'calc(50% - 24px)' : emptyStateIconTop(height) }}>
-          <span className={cn('grid size-12 shrink-0 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line', compact ? ICON_TIER_CLASSES.corner : ICON_TIER_CLASSES.empty)} aria-hidden="true">{icon}</span>
+        <div className="absolute inset-x-0 flex justify-center" style={{ top: inContainer ? 'calc(50% - 24px)' : emptyStateIconTop(height) }}>
+          <span className={cn('grid size-12 shrink-0 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line', discIconTier)} aria-hidden="true">{icon}</span>
         </div>
       </div>
     )
   }
-  if (compact) {
+  if (inContainer) {
     return (
       <div data-node-empty-state="true" className={cn('flex h-full w-full px-3 text-center items-center justify-center gap-2 py-2', className)}>
-        <span className={cn('grid size-9 shrink-0 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line', ICON_TIER_CLASSES.corner)} aria-hidden="true">
+        <span className={cn('grid size-9 shrink-0 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line', discIconTier)} aria-hidden="true">
           {icon}
         </span>
         {title || description ? (

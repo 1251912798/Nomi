@@ -1,7 +1,9 @@
 import { ActionIcon, Button, type ActionIconProps, type ButtonProps } from '@mantine/core'
+import { IconChevronDown } from '@tabler/icons-react'
 import { type JSX, forwardRef, type ButtonHTMLAttributes, type ComponentPropsWithoutRef, type ReactNode } from 'react'
 import { cn } from '../utils/cn'
 import { NomiLoadingMark } from './identity'
+import { ICON_TIER_CHEVRON_CLASS, ICON_TIER_CLASSES, type IconTier } from './iconTiers'
 
 export type IconActionButtonProps = Omit<ActionIconProps, 'children'> & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'color'> & {
   icon: ReactNode
@@ -114,6 +116,11 @@ export type WorkbenchIconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   label: string
   /** md = 32px (default), sm = 28px for compact canvas/tool surfaces. */
   size?: 'sm' | 'md'
+  /**
+   * 图标档位（设计系统 §6 四档）。按钮说了算：`icon` 不传 size / stroke，渲染尺寸只由这里定
+   * （`check:icon-semantics` 规则四）。默认 `tool` = 16 / 2，与历史渲染逐字相同。
+   */
+  iconTier?: IconTier
 }
 
 const WORKBENCH_ICON_BUTTON_SIZE = {
@@ -125,6 +132,7 @@ export const WorkbenchIconButton = forwardRef<HTMLButtonElement, WorkbenchIconBu
   icon,
   label,
   size = 'md',
+  iconTier = 'tool',
   className,
   type = 'button',
   ...props
@@ -138,7 +146,7 @@ export const WorkbenchIconButton = forwardRef<HTMLButtonElement, WorkbenchIconBu
     'transition-[background,color] duration-150 ease-out',
     'hover:bg-workbench-hover hover:text-workbench-ink',
     'disabled:opacity-40 disabled:cursor-not-allowed',
-    '[&>svg]:size-4 [&>svg]:stroke-2',
+    ICON_TIER_CLASSES[iconTier],
     className,
   )
 
@@ -263,6 +271,16 @@ export type WorkbenchButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   loading?: boolean
   variant?: keyof typeof WORKBENCH_BUTTON_VARIANT
   size?: keyof typeof WORKBENCH_BUTTON_SIZE
+  /**
+   * 子图标的档位（设计系统 §6 四档）。按钮说了算：子图标不传 size / stroke，渲染尺寸只由这里定
+   * （`check:icon-semantics` 规则四）。默认 `tool` = 16 / 2，与历史渲染逐字相同。
+   */
+  iconTier?: IconTier
+  /**
+   * 下拉触发器：按钮自己在末尾画 ▾，恒为角标档 13 / 1.8（§6 D3），与主图标的档位互不相干。
+   * 调用处不再自己放箭头图标——一个按钮里两档图标只能这么来，不许包 span 绕开 `[&>svg]`。
+   */
+  chevron?: boolean
 }
 
 export const WorkbenchButton = forwardRef<HTMLButtonElement, WorkbenchButtonProps>(function WorkbenchButton({
@@ -273,6 +291,8 @@ export const WorkbenchButton = forwardRef<HTMLButtonElement, WorkbenchButtonProp
   disabled,
   variant = 'default',
   size = 'md',
+  iconTier = 'tool',
+  chevron = false,
   ...props
 }, ref): JSX.Element {
   const rootClassName = cn(
@@ -282,7 +302,8 @@ export const WorkbenchButton = forwardRef<HTMLButtonElement, WorkbenchButtonProp
     'cursor-pointer',
     'transition-[background,border-color,color,box-shadow] duration-150 ease-out',
     'disabled:opacity-50 disabled:cursor-not-allowed',
-    '[&>svg]:size-4 [&>svg]:stroke-2',
+    ICON_TIER_CLASSES[iconTier],
+    chevron && ICON_TIER_CHEVRON_CLASS,
     WORKBENCH_BUTTON_SIZE[size],
     WORKBENCH_BUTTON_VARIANT[variant],
     className,
@@ -299,6 +320,7 @@ export const WorkbenchButton = forwardRef<HTMLButtonElement, WorkbenchButtonProp
     >
       {loading ? <NomiLoadingMark size={14} /> : null}
       {children}
+      {chevron ? <IconChevronDown data-button-chevron="" aria-hidden="true" /> : null}
     </button>
   )
 })

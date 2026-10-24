@@ -1160,6 +1160,8 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 
 四档的代码真相源是 `src/design/iconTiers.ts` 的 `ICON_TIERS` / `ICON_TIER_CLASSES`；生产组件按场景引用，不在调用处写新数值。Sidebar 分类图标和弹窗 / 卡片头部图标若不属于这四个 F1 面，沿用各自现有合同。
 
+**图标多大，按钮说了算（2026-10-24 用户拍板）。** `WorkbenchButton` / `WorkbenchIconButton` 收 `iconTier`（默认 `tool`，就是下面那条 16 / 2），按钮把档位类挂在自己身上，里面的图标**不传 size / stroke**——传了会被按钮的 `[&>svg]` 静默盖掉；也不许包一层 span 绕开选择器。下拉触发器给 `WorkbenchButton` 传 `chevron`，按钮自己在末尾画 ▾（恒为角标档），调用处不再自己放箭头。自带图标槽的其它容器（空态图标盘、顶栏图标钮）同样挂 `ICON_TIER_CLASSES`；只有不在任何容器里的裸图标才把 `ICON_TIERS` 的数值传给 Tabler。门岗：`check:icon-semantics` 规则四（存量按文件计数，只减不增）。
+
 > ⚠️ **工作区按钮图标是 16 / stroke-2**（实心粗体，2026-06-22 用户拍板恢复）。这是 `WorkbenchButton`/`WorkbenchIconButton` 一直在用、被认可的视觉——曾被「对齐文档」误改成 14/1.6（更细更小）→ 撤销/工具栏图标变丑，已恢复。**文档=现实，别再按「§6 旧值 14/1.6」把它改细。**
 
 **禁止：** 四档之外的 size / stroke（包括 13.5 / 17 这种非标准）；`strokeWidth` prop（Tabler 用 `stroke`）。（stroke-2 仅工具档认可，别滥用粗笔。）

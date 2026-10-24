@@ -38,6 +38,9 @@ describe('original library add box is preserved beside the new pointer entry', (
     expect(pointer).not.toContain('data-asset-add-tile=')
     expect(pointer).toContain('width="18"')
     expect(pointer).toContain('stroke-width="1.8"')
+    // F1 参考入口同档（IconsF1 composer.bar，条档 18 / 1.8）：点选和「+」并排，图标一样大。
+    expect(plus).toContain('width="18"')
+    expect(plus).toContain('stroke-width="1.8"')
   })
 
   it.each([false, true])('pointer entry does not own a second plus (iconOnly=%s)', iconOnly => {
