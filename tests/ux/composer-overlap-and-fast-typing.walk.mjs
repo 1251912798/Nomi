@@ -30,7 +30,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { launchNomiApp, repoRoot, ACCEPTANCE_VIEWPORT } from './_launchApp.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
-import { pinCanvasImageModelByCapability } from './_directorLab.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { clickOrFail, expect, expectVisible, expectHittable, screenshotSettled, DEFAULT_TIMEOUT_MS } from './_assert.mjs'
 import { canvasAddBar, newProjectEntry } from './_shell.mjs'
@@ -391,8 +390,6 @@ try {
 
   // 图片节点 + 改图模式 + 真实参考图：浮框长到截图里那么高。
   await addCanvasNodeFromRail(win, 'image')
-  const imageNodeId = await win.evaluate(() => window.__nomiCanvasStore?.getState().nodes.at(-1)?.id ?? null)
-  await pinCanvasImageModelByCapability(win, imageNodeId, 'reference-image')
   const imageNode = '[data-node-id]'
   await expectVisible(win.locator(COMPOSER).first(), '新建图片节点后浮出生成浮框')
   await clickOrFail(win.locator(COMPOSER).first().getByRole('button', { name: '改图', exact: true }), '改图 模式')
@@ -458,8 +455,6 @@ try {
   win = current.win
   await openBlankGenerationCanvas(win, true)
   await addCanvasNodeFromRail(win, 'image')
-  const englishImageNodeId = await win.evaluate(() => window.__nomiCanvasStore?.getState().nodes.at(-1)?.id ?? null)
-  await pinCanvasImageModelByCapability(win, englishImageNodeId, 'reference-image')
   await expectVisible(win.locator(COMPOSER).first(), 'EN：新建图片节点后浮出生成浮框')
   await clickOrFail(win.locator(COMPOSER).first().getByRole('button', { name: /edit/i }).first(), 'EN：改图模式')
   await uploadReference(win, true)
