@@ -3,13 +3,15 @@
 // 测法（2026-09-29 定）：先定几条「用户不管怎么用都必须成立」的铁律，带着真实任务到处用、乱用，
 // 每一步都核对。第一产出是**证据**——违反了哪条、发生在哪个模块——有了证据才能归到底层设计问题上。
 //
-// 读数的规矩：上限和时限只从产品自己的登记处取（`generationPhaseDeadline.ts`、`generationFeedback.ts`、
+// 读数的规矩：上限和时限只从产品自己的登记处取（`generationPhaseDeadline.ts`、`useGenerationFeedback.ts`、
 // `laneContextBudget.mts`、`laneHost.mts`、`multiShotBatchScheduler.ts`……）。读不到就**当场报错**
 // （fail-closed），绝不回落到一个本地写死的数——那样登记处改了、监视器还拿着旧数判，两边各说各话。
+// 监视器 / 剧本读的每一个 `limits.<名字>` 都得在 loadLimits 里登记：limitsRegistry.test.mjs 静态扫，漏登记当场红。
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { require as tsxRequire } from 'tsx/cjs/api'
+import { STALE_AFTER_MS } from './spinnerVerdict.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 
@@ -136,6 +138,22 @@ export function uiTextWith(locale, key, values = {}, dictionaries = loadDictiona
   return template.replace(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g, (_, name) => String(values[name] ?? `{{${name}}}`))
 }
 
+/** 付费卡标题那两句（视频 / 图片），都带 i18next 复数。 */
+const SPEND_CARD_TITLE_KEYS = Object.freeze(['agentPanelV4.spendParamsTitle', 'agentPanelV4.spendParamsTitleImage'])
+
+/**
+ * 付费卡标题写的是几镜：照词典里标题那两句，从 1 数到 `maxCount` 逐个去对。不能只抓数字——英文单数是
+ * 「Generate this image?」，没有数字（以前没数字就回落到出价里的镜数，D2 起出价里还有去掉的镜，单数标题被读成 2 镜）。
+ * `title` 是标题那一格的全部文字（后面可能跟着「生成 · Nomi 选的」角标），所以按开头对。对不上返回 null。
+ */
+export function spendCardTitleCount(title, locale, maxCount, dictionaries = loadDictionaries()) {
+  const text = String(title ?? '')
+  for (let count = 1; count <= Math.max(1, maxCount); count += 1) {
+    if (SPEND_CARD_TITLE_KEYS.some((key) => text.startsWith(uiTextWith(locale, key, { count }, dictionaries)))) return count
+  }
+  return null
+}
+
 /** 把一条带 `{{占位}}` 的文案变成正则源码：字面部分原样转义，占位变成同名捕获组（anchored = 必须从头开始）。 */
 export function uiTextPattern(template, { anchored = false } = {}) {
   const body = String(template).split(/(\{\{\s*[A-Za-z0-9_]+\s*\}\})/).map((part) => {
@@ -153,6 +171,17 @@ export function loadLimits() {
   const { GENERATION_PHASE_DEADLINE } = tsxRequire('../../../src/workbench/generationCanvas/runner/generationPhaseDeadline.ts', base)
   const laneBudget = readNumericConstant('electron/agentLane/laneContextBudget.mts', 'LANE_CONTEXT_TOKEN_BUDGET')
   cachedLimits = Object.freeze({
+    generationPhaseDeadline: Object.freeze({
+      value: GENERATION_PHASE_DEADLINE,
+      source: 'src/workbench/generationCanvas/runner/generationPhaseDeadline.ts GENERATION_PHASE_DEADLINE',
+    }),
+    terminalSpinnerGraceMs: Object.freeze({
+      // 节点到了终态，界面在下一拍就该把转圈收掉：反馈时钟一格（唯一的界面节拍）+ 探针三拍的采样误差。
+      // 原来这里是「已保存到项目」回执的 4 秒窗口 + 一格；回执 10-07 删了，窗口跟着没了（那次连带把上面那条也删了，
+      // 监视器读到 undefined.value，跑到对应那一步才炸——所以有了上面那行的静态检查）。
+      value: readFeedbackClockTick() + STALE_AFTER_MS,
+      source: 'src/workbench/observability/useGenerationFeedback.ts 反馈时钟一格 + tests/ux/full-walk/spinnerVerdict.mjs STALE_AFTER_MS（探针三拍的采样误差）',
+    }),
     agentInputTokensPerRequest: Object.freeze({
       value: laneBudget,
       source: 'electron/agentLane/laneContextBudget.mts LANE_CONTEXT_TOKEN_BUDGET',

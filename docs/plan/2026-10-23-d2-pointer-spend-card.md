@@ -198,9 +198,9 @@
 - [x] 花钱
 - [x] 长跑 / 可打断
 - [x] Agent 行为
-- [ ] 大数据量 / 画布 / 长列表
+- [x] 大数据量 / 画布 / 长列表（③ 动了画布节点高亮、生成框、参数摘要 pill 与落地投影；2026-10-25 按路径补勾）
 - [ ] 生成效果
-- [ ] 数据格式
+- [x] 数据格式（③ 动了 `generationPlanSchemas.ts`：落地报文的参考过线；2026-10-25 按路径补勾）
 - [x] 新增功能 / 性能
 
 ## 四、第③步动手前核查（2026-10-24，基线 `dc08a8dbb`）
@@ -254,3 +254,11 @@
 - **样张**：`docs/design/mockups/2026-10-01-paid-card-generate-remaining/` 与它的意图合同（翻页卡、「生成剩下 N 张」次按钮），被 SpendCardQ1 板取代；设计系统 §1.8.1 规则 1 的例外与 §1.8.2 正反例按新卡改写。
 - **概念登记**：`agent-panel.spend-card-shown-node`、`agent-panel.spend-outcome-final` 退役；`canvas.inline-parameter-chips` 改名 `canvas.parameter-summary-pill`（主人 `InlineParameterBar` 不变）；新登记 `production.spend-card-hand-over`、`canvas.spend-card-hand-over-op`；`reference.candidate-canvas-projection` 接上（`planReferenceProjection` 有了调用方，P1 接上不删）。
 - **门岗**：§1.0「聊天卡片不许引用编辑器组件」那道门岗立起来了——`check:boundaries` 的 R-B6 `chat-card-no-import-node-editor`（`.dependency-cruiser.mjs`，反例单测 `scripts/check-boundaries.chat-card.test.mjs`）。
+
+### 收尾时补上的（2026-10-25）
+
+- **「回到对话」在真画布上的家**：第②步它只挂在设计实验室，真 App 里点了指向、对话收成小球以后没有「回到对话」，Esc 也回不去（`returnTo` 一直挂着）。补：`src/workbench/ai/pointer/NodePointerReturnDock.tsx` 挂在生成页画布那一格——`returnTo` 属于这一页且对话是小球时才摆出来，底部正中、压在现量的底部停靠区上面；用户没经它、点小球把对话叫回来了，就清掉那一枚（以后别的原因收成小球不冒旧的）。P1 宿主（付费卡、完成收据）用不带标签的那一颗。单测 `NodePointerReturnDock.test.tsx`，真 App 走查 `tests/ux/agent-spend-card-narrow.walk.mjs`（最小窗 1100×720，拉大浮窗盖住画布；zh 浅 / en 暗）。
+- **用户 10-25 看截图提的两处（协调转，本 PR 修）**：① 「已定位」和「不生成 ×」任何宽度都不许压在一起；② 窄宽下三格的标题不许截成一样。做法：格子小动作（「不生成 ×」/「恢复」）的位置、露出、淡下去归组（`NodePointerGroup` 的 `cellAccessory` 返回动作和摆法），挂在标题行右端，标题行在它露出时让出它量出来的宽；「已定位」留在画面框里——两行，任何宽度都不交；≤320 时小钮只剩 ×（名字进 aria / title）。标题由组算每格「和兄弟格不一样的那一截」从哪起（`nodePointerFace.ts#nodePointerTitleTails`，纯函数），标题行截前面的公共开头、尾巴不截，全名进 title / aria。真 App 走查 `tests/ux/agent-spend-card-narrow.walk.mjs` 断言两个包围盒不相交、小钮不压标题尾巴、三格可见标题两两不同（默认 384 / 最窄 320 / 拉大三档，中明 + 英暗）。
+- **全功能走查的监视器（main 上就坏着，本 PR 顺手修）**：10-07 删「已保存到项目」回执时，`tests/ux/full-walk/invariants.mjs#loadLimits` 连带删掉了 `generationPhaseDeadline` 和回执窗口两条上限，监视器和 pb01 还在读，跑到节点转圈那一步就「reading 'value'」——pb02 英文场、pb11 两场都死在这里，D2 改写的 pb01 / pb02 也就核不了。补回阶段时限；回执窗口换成「反馈时钟一格 + 探针三拍的采样误差」（`terminalSpinnerGraceMs`，两项都有出处）。防线：`tests/ux/full-walk/limitsRegistry.test.mjs`——监视器 / 剧本读的每一个 `limits.<名字>` 都要在 `loadLimits` 登记，静态扫，漏了当场红（同文件带原场景反例）。没加进门岗脚本：`scripts/check-*.mjs` 属自写登记 `gate-family`，正在复审「只加不减」，这道检查管的是走查自己内部对不对得上，放进走查自己的单测（默认 vitest 车道）。
+- **自写登记**：合 main 之后 `check:self-written` 认出三个新增文件没有认领（之前 `-M` 把它们当改名）：`AgentPanelV4SpendCard*`、`electron/shared/contracts/canvasHandOver*` 进领域目录；`useAgentPanelSpendCard.ts` 在通用区（hook），登记 `spend-card-host-hook`（查过 React 19 `useActionState` / `useTransition`、XState、TanStack Query，结论与出处在登记里）。`agentPanelSpendCard*` / `spendCard*` 两条领域目录的理由按 D2 改实（本地账本、逐镜修订已删）。
+- **对验收清单的一处偏差（交协调）**：3.13 写「回执文案不变」，§四写「一个字不改」。实际改了一句：`user_closed` 的关因从「the user closed the card (×) before deciding them」改成「the user cancelled the card before deciding them」——新卡上没有 ×，旧句子对模型说了一个不存在的动作。另外关因表补了 `handed_to_canvas` 一格（新关因，和 resolved 同一句）。两处都是模型看得见的字，agent-intent-eval 未验证（等协调的真模型量具）。

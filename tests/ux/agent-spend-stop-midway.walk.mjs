@@ -55,7 +55,7 @@ async function sendingRound(walk, win, projectId, locale) {
   const cardProbe = await proveProbe(card, `${locale}：12 张的卡`)
   await expect(card.locator(CARD_PRIMARY), `${locale}：主按钮是「全部生成（12）」`).toContainText(primaryLabel(locale, { count: 12, kind: 'image' }))
   walk.fixture.holdSubmits(true)
-  let peak = 0
+  let peak
   try {
     await clickOrFail(card.locator(CARD_PRIMARY), `${locale}：「全部生成（12）」`, { noWaitAfter: true })
     await expect(card.locator(CARD_TITLE), `${A.progress}：标题说正在发出第 1 张（还没有一张落定）`)

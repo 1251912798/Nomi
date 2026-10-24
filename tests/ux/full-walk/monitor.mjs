@@ -22,7 +22,7 @@ import {
 } from '../agent-runtime-fixture.mjs'
 import { laneMessages, readLaneTranscripts } from '../agent-lane-observer.mjs'
 import { appFramesOf, classifyEgress, REQUIRED_GUARD_LAYERS, vendorHostsOf } from './egress.mjs'
-import { INVARIANTS, invariantById, loadDictionaries, loadLimits, UI_LOCALES, uiText, uiTextPattern } from './invariants.mjs'
+import { INVARIANTS, invariantById, loadDictionaries, loadLimits, spendCardTitleCount, UI_LOCALES, uiText, uiTextPattern } from './invariants.mjs'
 import { activeDebt, collectVisibleTextInPage, compileExemptions, findLeaks } from './outcomeText.mjs'
 import { ensurePageProbe, readPageProbe } from './pageProbe.mjs'
 import { unseenPromptAdditions } from './promptTruth.mjs'
@@ -327,7 +327,9 @@ export function createInvariantMonitor(options) {
         text: String(element.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 1200),
       }
     })
-    const declaredCount = Number(/(\d+)/.exec(dom.title)?.[1] ?? pending?.shots?.length ?? 1)
+    // 标题问的是几镜：按词典那两句认（英文单数没有数字）；认不出（不是那一句问话）再看标题里有没有数字；都没有记 null，下面照实报。
+    const titleDigits = /(\d+)/.exec(dom.title)?.[1]
+    const declaredCount = spendCardTitleCount(dom.title, locale, Math.max(pending?.shots?.length ?? 0, 1)) ?? (titleDigits ? Number(titleDigits) : null)
     const buttonCount = Number(/(\d+)/.exec(dom.confirmLabel)?.[1] ?? 0)
     const canvas = (await readProject())?.payload?.generationCanvas ?? {}
     const allShots = []
@@ -722,7 +724,9 @@ export function createInvariantMonitor(options) {
       const dropped = siblings.filter((shot) => (shot.offer === 'undecided' || shot.offer === 'not_sent') && sentFor(shot).length === 0 && !hostAccountsForUnsent(run, shot.shotId))
       const problems = [
         ...(undecidedCount > 0 && consent.declaredCount !== undecidedCount
-          ? [`标题写「${consent.dom.title}」（${consent.declaredCount} 镜），点下去那一刻卡上还没决定的是 ${undecidedCount} 镜`] : []),
+          ? [consent.declaredCount === null
+            ? `标题「${consent.dom.title}」读不出问的是几镜（不是词典里那一句问话，也没有数字），点下去那一刻卡上还没决定的是 ${undecidedCount} 镜`
+            : `标题写「${consent.dom.title}」（${consent.declaredCount} 镜），点下去那一刻卡上还没决定的是 ${undecidedCount} 镜`] : []),
         ...(tagAlong.length > 0
           ? [`按钮是「${consent.dom.confirmLabel}」（${consent.scope.length} 镜），点完供应商还收到同一张卡上别的 ${tagAlong.length} 镜`] : []),
         ...(dropped.length > 0
@@ -993,7 +997,7 @@ export function createInvariantMonitor(options) {
             continue
           }
           const lingering = seen.lingeringMs ?? 0
-          if (seen.verdict === 'fresh-present' && lingering > limits.savedFeedbackWindowMs.value) {
+          if (seen.verdict === 'fresh-present' && lingering > limits.terminalSpinnerGraceMs.value) {
             await violate({
               invariant: 5, rule: 'spinner-on-finished-node', key: `${node.id}|${spinner.desc}`,
               module: 'src/workbench/generationCanvas/nodes（节点状态已终态，转圈没收）',

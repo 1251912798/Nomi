@@ -12,12 +12,12 @@
 // 零花费：大脑与供应商都是本机夹具；目录里不种价（= 今天每一台干净装机），卡上不说价格。
 import { DEFAULT_TIMEOUT_MS, clickOrFail, expect } from '../../_assert.mjs'
 import { findNodeHitPoint } from '../../_canvasHit.mjs'
+import { CARD_TITLE, SPEND_CARD, cardTitle, primaryLabel } from '../../_spendCardWalk.mjs'
 import { stationTimeout } from '../../_station-budget.mjs'
 import { FIXTURE_APIMART_MODEL, FIXTURE_APIMART_VENDOR } from '../../agent-runtime-fixture.mjs'
-import { APPROVAL_CARD, CANVAS_PANEL, INTERVENTION_CONFIRM, expandResidentPanel, sendCanvas } from '../../agent-runtime-walk-support.mjs'
+import { CANVAS_PANEL, INTERVENTION_CONFIRM, expandResidentPanel, sendCanvas } from '../../agent-runtime-walk-support.mjs'
 import { clickNodeGenerate } from '../actions.mjs'
 import { operationIdOf, scriptTurn } from '../brain.mjs'
-import { uiTextWith } from '../invariants.mjs'
 import { startPlaybook } from '../launch.mjs'
 
 // 这条剧本的前提就是「目录里没有价目」（夹具读这个开关决定种不种价）。
@@ -37,9 +37,10 @@ const ASK = EN
 const SHOTS = EN
   ? ['A white cat lying on the windowsill of a morning cafe, soft light', 'The same cafe, a barista pouring latte art behind the counter']
   : ['清晨咖啡馆的窗台上趴着一只白猫，柔和的晨光', '同一家咖啡馆，吧台后的咖啡师在拉花']
-const card = () => smoke.win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="spend"]`)
+const card = () => smoke.win.locator(SPEND_CARD)
 const cells = () => card().locator('[data-v4-block="spend-body"] [data-node-pointer-cell]')
-const title = () => card().locator('[data-v4-block="slot-title"]')
+// 标题那一格还带着「生成 · Nomi 选的」角标、主按钮还带着「⏎」：只认里面那一句（toContainText），不全等。
+const title = () => card().locator(CARD_TITLE)
 
 /** 第 n 段（0 起）那一格右上的小钮：「不生成 ×」平时藏着，悬停这一格才露出来、才点得到；「恢复」常驻。 */
 async function toggleShot(index, kind, label) {
@@ -63,21 +64,27 @@ try {
       { text: EN ? 'Done — generation has started.' : '好的，已经开始生成了。' },
     ],
   })
+  // 这一轮起草的制作 Run（卡指着的两镜的计划在它身上）。D2 起每一镜交给画布后各有自己的单镜 Run（canvas- 开头），
+  // 建得比它晚，所以不能拿「最后一个 Run」当它——按起草结果里的 operationId 找。
+  const draftRun = async () => {
+    const operationId = operationIdOf((await turn.arrivals[1]).previous)
+    return monitor.readRuns().find((run) => run.runId === operationId || run.generationPlan?.operationId === operationId) ?? null
+  }
 
   await monitor.step('用户：让 Agent 画两张图', () => sendCanvas(smoke.win, ASK), { surfaces: [] })
   await monitor.step('等 Agent 起草两镜、摆出付费卡', async () => {
     await expect(card(), 'Agent 起草完要在面板里摆一张付费卡').toBeVisible({ timeout: stationTimeout({ turns: 1 }) })
     await expect(cells(), '一张卡指着两段').toHaveCount(2, { timeout: DEFAULT_TIMEOUT_MS })
-    await expect(card().locator(INTERVENTION_CONFIRM), '主按钮说两段一起生成').toHaveText(uiTextWith(LOCALE, 'agentPanelV4.spendCard.generateAll', { count: 2 }))
+    await expect(card().locator(INTERVENTION_CONFIRM), '主按钮说两段一起生成').toContainText(primaryLabel(LOCALE, { count: 2, kind: 'image' }))
   }, { user: false, surfaces: [] })
 
   await monitor.step('乱用：第 2 段点「不生成 ×」、恢复、再去掉一次', async () => {
     await toggleShot(1, 'exclude', '第 2 段的「不生成 ×」')
     await expect(cells().nth(1).locator('[data-spend-exclusion="restore"]'), '去掉的那一段常驻「恢复」').toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
     await toggleShot(1, 'restore', '第 2 段的「恢复」')
-    await expect(title(), '恢复之后标题又数两段').toHaveText(uiTextWith(LOCALE, 'agentPanelV4.spendParamsTitleImage', { count: 2 }), { timeout: DEFAULT_TIMEOUT_MS })
+    await expect(title(), '恢复之后标题又数两段').toContainText(cardTitle(LOCALE, 2, 'image'), { timeout: DEFAULT_TIMEOUT_MS })
     await toggleShot(1, 'exclude', '第 2 段的「不生成 ×」（再一次）')
-    await expect(title(), '标题只数还要生成的第 1 段').toHaveText(uiTextWith(LOCALE, 'agentPanelV4.spendParamsTitleImage', { count: 1 }), { timeout: DEFAULT_TIMEOUT_MS })
+    await expect(title(), '标题只数还要生成的第 1 段').toContainText(cardTitle(LOCALE, 1, 'image'), { timeout: DEFAULT_TIMEOUT_MS })
   })
 
   await monitor.step('按主按钮（只交第 1 段）', async () => {
@@ -92,7 +99,7 @@ try {
     await turn.done
     await expect(smoke.win.locator(`${CANVAS_PANEL} [data-v4-block="composer"][data-mode="running"]`), '这一轮落地').toHaveCount(0, { timeout: DEFAULT_TIMEOUT_MS })
     await expect.poll(async () => {
-      const run = monitor.readRuns().at(-1)
+      const run = await draftRun()
       const nodeIds = (run?.generationPlan?.shots ?? []).map((shot) => shot.nodeId).filter(Boolean)
       const nodes = (await monitor.readProject())?.payload?.generationCanvas?.nodes ?? []
       return nodes.filter((node) => nodeIds.includes(node.id) && node.status === 'success').length
@@ -103,7 +110,7 @@ try {
 
   let landedId = ''
   await monitor.step('乱用：点一下出好的那张图', async () => {
-    const run = monitor.readRuns().at(-1)
+    const run = await draftRun()
     const nodes = (await monitor.readProject())?.payload?.generationCanvas?.nodes ?? []
     const landed = (run?.generationPlan?.shots ?? []).map((shot) => nodes.find((node) => node.id === shot.nodeId)).find((node) => node?.status === 'success')
     if (!landed) throw new Error('找不到落地的那一镜')
@@ -115,7 +122,7 @@ try {
   }, { surfaces: [] })
 
   await monitor.step('停一会儿，看节点上挂着什么', async () => {
-    await smoke.win.waitForTimeout(monitor.limits.savedFeedbackWindowMs.value + 1000)
+    await smoke.win.waitForTimeout(monitor.limits.terminalSpinnerGraceMs.value + 1000)
   }, { user: false, surfaces: [] })
 
   // 乱用：对这一张不满意，想再来一张。10-06 起浮条里不再有「重拍这镜」（用户拍板删：它和「再出一版」分不清）——
