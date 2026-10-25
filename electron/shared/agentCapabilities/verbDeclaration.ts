@@ -32,7 +32,7 @@ type AnyCapabilityContract = CapabilityContract<unknown, unknown>;
 
 /** 两个 profile。名字与 `check:model-schema` 的 profile 列、方案 §3.1 的表头逐字一致。 */
 export type ToolProfile = "internal" | "mcp";
-export type LaneDomainToolGroup = "timeline" | "generation" | "media" | "maintenance" | "models" | "skills";
+export type LaneDomainToolGroup = "timeline" | "generation" | "media" | "maintenance" | "models" | "skills" | "context";
 
 /**
  * **全仓唯一的效果词表**（设计正本 §3）。
@@ -63,7 +63,7 @@ export type VerbNextAction = (typeof VERB_NEXT_ACTIONS)[number];
  * `mcpGenerationToolCatalog.ts` / 手写适配器），这些动词在 PR B 收编对外面时改成前两种或删掉；
  * `check:tool-face` 的 `profile-reason-transitional` 棘轮只许它减少。
  */
-export type VerbProfileReason = "paidBoundary" | "headlessHost" | "mcpHandwrittenTransport";
+export type VerbProfileReason = "paidBoundary" | "headlessHost" | "mcpHandwrittenTransport" | "desktopOnlyContextSnapshot";
 
 /**
  * 「同一句用户的话，两个动词都能办成」的组（审计 §4.1 D1–D4）。同组动词两两之间**必须**
@@ -331,7 +331,7 @@ export function assembleVerbDeclarations(input: VerbAssemblyInput): readonly Ver
     assertEnglish(declaration, published.get(declaration.name)!);
     assertNoPaidContradiction(declaration, input.isPaidBoundaryName);
     if (declaration.profiles && declaration.profiles.length !== 2 && !declaration.profileReason) {
-      throw new Error(`Verb ${declaration.name} projects to ${declaration.profiles.join("+")} only but gives no profileReason (paidBoundary | headlessHost).`);
+      throw new Error(`Verb ${declaration.name} projects to ${declaration.profiles.join("+")} only but gives no profileReason (paidBoundary | headlessHost | desktopOnlyContextSnapshot).`);
     }
     for (const example of declaration.examples) {
       const parsed = declaration.schema.safeParse(example.arguments);

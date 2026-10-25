@@ -125,4 +125,5 @@ describe('desktop lane read adapter contracts', () => {
     expect(f.result.text).toContain('read_script without scope')
     expect(f.result.text).not.toContain('(capability_unsupported)')
   })
+
 })

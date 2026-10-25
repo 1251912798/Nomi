@@ -46,9 +46,13 @@ function sampleArgsFor(verb: string): Record<string, unknown> {
   return Object.fromEntries(Object.entries(SAMPLE_FIELDS).filter(([key]) => keys.includes(key)));
 }
 
-/** 延迟目录里经领域端口执行的动词 + `check_job`（它是读动词，同样走 `executeRead` 的生成→导出两跳）。 */
+/**
+ * 延迟目录里经领域端口执行的动词 + `check_job`（它是读动词，同样走 `executeRead` 的生成→导出两跳）。
+ */
 function transportedVerbs(): string[] {
-  const deferred = LANE_DEFERRED_TOOL_CATALOG.filter((spec) => spec.contractId !== "timeline.read").map((spec) => spec.name);
+  const deferred = LANE_DEFERRED_TOOL_CATALOG
+    .filter((spec) => spec.contractId !== "timeline.read")
+    .map((spec) => spec.name);
   const checkJob = modelFacingToolSpecs("internal").find((spec) => spec.name === "check_job");
   return checkJob && !deferred.includes(checkJob.name) ? [...deferred, checkJob.name] : deferred;
 }

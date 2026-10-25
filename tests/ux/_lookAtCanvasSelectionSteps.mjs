@@ -3,7 +3,7 @@
 // 跑**同一份**步骤：差别只在大脑——真付费是 App 里配好的真模型，演练是夹具里写好剧本的那个。两边各自直接调 openPaidWalk。
 //
 // 流程（真 Electron、真 IPC、真 Agent lane、真 look_at_canvas 排版）：
-//   开项目 → 画布 → 选对话模型 → 经画布 store 的真动作（addNode / selectNodes）布 44 个节点、选中其中 40 个 →
+//   开项目 → 画布 → 选对话模型 → 经画布 store 的真动作（addNode / selectNodes）布主场景并选中其中 40 个 →
 //   用产品自己的排版算一遍「选中标记能否一次列全」（不成立就拒跑，一个 token 不花）→
 //   每一轮：新对话 → 重设选区并核对 → 发那一句 → 等这一轮落地（任何要人点头的卡都不替用户答，按停止）→
 //   从盘上的 lane 转录读这一轮的工具调用序列与最终回答 → 判分。
@@ -17,13 +17,13 @@ import { require as tsxRequire } from 'tsx/cjs/api'
 import { DEFAULT_TIMEOUT_MS, expect } from './_assert.mjs'
 import { envKeyOf } from './_paidEnvKey.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { readLaneTranscripts } from './agent-lane-observer.mjs'
+import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import {
   APPROVAL_CARD, CANVAS_PANEL, COMPOSER, COMPOSER_INPUT, COMPOSER_STOP, EMPTY_STATE, ERROR_BAR,
   chooseAssistantModel, composerText, newConversation, openCanvas, sendCanvas,
 } from './agent-runtime-walk-support.mjs'
 import {
-  LOOK_AT_CANVAS, SELECTION_ASK, answerTimeView, groundTruthKeys, roundSettled, roundTranscript, sceneFromIds, sceneProblems, sceneProjectionFacts,
+  LOOK_AT_CANVAS, SELECTION_ASK, SELECTION_PROMPTS, answerTimeView, groundTruthKeys, roundSettled, roundTranscript, sceneFromIds, sceneProblems, sceneProjectionFacts,
   scoreSelectionRound, selectionLinesOf, selectionSceneSpec, summarizeSelectionRounds,
 } from './_lookAtCanvasSelectionScore.mjs'
 
@@ -34,18 +34,21 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
  * 产物里找不到它 = 跑的不是这次要验的修复，openPaidWalk 当场拒跑（一分钱不花）。单测核对它确实在源码里。
  */
 export const SELECTION_MARKER = '节点行里标了「选中」'
+export const OMITTED_CANVAS_MARKER = 'call look_at_canvas with no arguments'
 export const SELECTION_EVIDENCE_DIR = path.join(REPO_ROOT, 'docs/evidence/2026-10-22-look-at-canvas-selection-truncation/paid')
 
 /** 量具数字的定义（写进证据，PR 正文照抄）。 */
 export const SELECTION_METRICS = Object.freeze({
   toolWriteCorrect: '工具写对率 = 不带参数且宿主未退回的 look_at_canvas 调用数 / look_at_canvas 调用总数',
   turnSuccess: '回合成功率 = 最终回答点到的节点集合与 ground truth（选中的 20 个视频节点）完全一致、不多不少的轮数 / 总轮数',
+  readPath: '读面路径分档 = 调用 look_at_canvas / 没调读工具的回合数',
 })
 /** 诊断计数的定义（不进三个数；回合失败时用来分原因）。 */
 export const SELECTION_DIAGNOSTICS = Object.freeze({
-  roundsReadWholeSelection: '转录里节点行标了「选中」的行覆盖全部选中 id 的轮数',
-  roundsSawWholeSelectionAtAnswer: '答话那一刻、发给模型的那份消息里仍看得见全部带「选中」标记的节点行的轮数',
-  view: 'rounds[].view：答话那一刻看得见几个带「选中」的节点行、有没有被旧读结果替换、答话前模型自己记下了几个真值视频',
+  roundsReadWholeSelection: '转录里读回的选区（look_at_canvas 节点行的「选中」标记）覆盖全部选中 id 的轮数',
+  roundsSawWholeSelectionAtAnswer: '答话那一刻、发给模型的那份消息里仍看得见全部选中 id 的轮数（两种读法的结果都算，被旧读结果替换掉的那一份不算）',
+  view: 'rounds[].view：答话那一刻看得见几个选中 id、有几份读结果被旧读结果替换、答话前模型自己记下了几个真值视频',
+  prompts: `量具预置 ${SELECTION_PROMPTS.length} 句不同的用户说法，实际回合默认抽样其中前 rounds 句`,
 })
 
 /** 一轮的安全上限（不是完成条件：完成看转录里最后一条助手消息落地 + composer 退出运行态）。 */
@@ -57,6 +60,23 @@ function loadProjector() {
   const { projectCanvasRead } = tsxRequire('../../electron/shared/agentCapabilities/canvasRead.ts', import.meta.url)
   const { projectCanvasForAgent } = tsxRequire('../../electron/shared/agentCapabilities/canvasReadCompact.ts', import.meta.url)
   return { projectCanvasRead, projectCanvasForAgent }
+}
+
+function loadSnapshotProjector() {
+  const { projectAgentContextSnapshot } = tsxRequire('../../electron/shared/agentContextSnapshot.ts', import.meta.url)
+  const { buildResidentContextSnapshot } = tsxRequire('../../src/workbench/ai/resident/residentContextSnapshot.ts', import.meta.url)
+  return (canvasSnapshot) => projectAgentContextSnapshot(buildResidentContextSnapshot({
+    canvas: {
+      revision: 1,
+      nodes: (canvasSnapshot.nodes ?? []).map((node) => ({ id: node.id, title: node.title, kind: node.kind, subtitle: node.subtitle })),
+      selectedNodeIds: canvasSnapshot.selectedNodeIds ?? [],
+    },
+  }))
+}
+
+function loadContextSnapshotProjector() {
+  const { projectAgentContextSnapshot } = tsxRequire('../../electron/shared/agentContextSnapshot.ts', import.meta.url)
+  return projectAgentContextSnapshot
 }
 
 /** 宿主发给模型之前对消息做的那一步（laneHost 的 transform_context = omitSupersededReads + 内部工具声明），诊断用。 */
@@ -161,8 +181,25 @@ function callEvidence(call) {
   }
 }
 
+function projectionLedgerFromTranscript(transcript, sessions) {
+  const messages = sessions.flatMap((session) => laneMessages(session))
+    .filter((message) => message.role === 'user' || message.role === 'nomi.input')
+  const contextSnapshot = messages.find((message) => message.context?.contextSnapshot?.handles)?.context?.contextSnapshot
+  if (contextSnapshot) {
+    const projection = loadContextSnapshotProjector()(contextSnapshot)
+    return { total: projection.total, listed: projection.listed, omitted: projection.omitted, truncated: projection.truncated }
+  }
+  const raw = [String(transcript.userTexts?.join('\n') ?? ''), ...messages.map((message) => JSON.stringify({ content: message.content, context: message.context }))].join('\n')
+  const match = raw.replaceAll('\\"', '"').match(/"total":(\d+),"listed":(\d+)(?:,"omitted":(\d+))?/)
+  if (!match) return undefined
+  const total = Number(match[1])
+  const listed = Number(match[2])
+  const omitted = match[3] === undefined ? total - listed : Number(match[3])
+  return { total, listed, omitted, truncated: listed < total }
+}
+
 /** 一轮：新对话 → 重设选区 → 发话 → 等落地 → 读这一轮新出现的转录 → 判分。量具自己出的错记在 harnessError，不算模型的。 */
-export async function runSelectionRound({ win, projectRoot, scene, round, transform, ask = SELECTION_ASK }) {
+export async function runSelectionRound({ win, projectRoot, scene, round, transform, ask = SELECTION_ASK, score = scoreSelectionRound, beforeSend = async () => {} }) {
   const record = { round, startedAt: new Date().toISOString(), harnessError: null }
   const startedAt = Date.now()
   const before = new Set(readLaneTranscripts(projectRoot).map((session) => session.path))
@@ -173,6 +210,10 @@ export async function runSelectionRound({ win, projectRoot, scene, round, transf
     const noShare = win.getByRole('button', { name: '不分享', exact: true }).first()
     if (await noShare.isVisible().catch(() => false)) await noShare.click()
     record.selectedBeforeSend = await reapplySelection(win, scene)
+    const snapshot = await win.evaluate(() => JSON.parse(JSON.stringify(window.__nomiCanvasStore.getState().readSnapshot())))
+    const projection = loadSnapshotProjector()(snapshot)
+    record.projection = { total: projection.total, listed: projection.listed, omitted: projection.omitted, truncated: projection.truncated }
+    await beforeSend({ record, scene, projection: record.projection })
     record.sendAttempts = await sendAccepted(win, ask)
     record.settle = await settleRound({ win, roundSessions })
   } catch (error) {
@@ -186,7 +227,8 @@ export async function runSelectionRound({ win, projectRoot, scene, round, transf
   record.calls = transcript.calls.map(callEvidence)
   record.finalAnswer = transcript.finalAnswer
   if (transcript.assistantTexts.length > 1) record.assistantTexts = transcript.assistantTexts
-  record.score = scoreSelectionRound({ scene, transcript })
+  record.projection = projectionLedgerFromTranscript(transcript, sessions) ?? record.projection
+  record.score = score({ scene, transcript, projection: record.projection })
   record.view = answerTimeView({ scene, sessions, transform })
   return record
 }
@@ -240,7 +282,9 @@ export async function runSelectionJourney(journey, { walk, modelLabel, expectedM
     const { score, view } = record
     console.log(`[selection] 第 ${round} 轮 ${Math.round(record.ms / 1000)}s：look_at_canvas ${score.legalCalls}/${score.lookAtCanvasCalls} 合法 · 读到选区 ${score.selectionRead}/${score.selectionTotal} · 答话时眼里 ${view?.selectedIdsVisible ?? '-'}/${score.selectionTotal} · 少列 ${score.missing.length} · 多列 ${score.extra.length} · 成功=${score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
   }
-  journey.numbers = summarizeSelectionRounds(journey.rounds)
+  journey.numbers = {
+    ...summarizeSelectionRounds(journey.rounds),
+  }
   journey.gaugeProblems = gaugeProblems(journey.rounds, { expectedModelKey })
   journey.canvasIntactAfter = await win.evaluate(() => window.__nomiCanvasStore.getState().nodes.length)
   return journey
@@ -269,7 +313,7 @@ export function selectionEvidence({ script, mode, startedAt, journey, walk, fail
     result: failure ? 'failed' : 'passed',
     failure: failure ? String(failure?.message ?? failure).slice(0, 2000) : null,
     buildMarker: SELECTION_MARKER,
-    model, ask: SELECTION_ASK, metrics: SELECTION_METRICS, diagnostics: SELECTION_DIAGNOSTICS,
+    model, ask: SELECTION_ASK, promptBank: SELECTION_PROMPTS, metrics: SELECTION_METRICS, diagnostics: SELECTION_DIAGNOSTICS,
     numbers: journey.numbers ?? null,
     gaugeProblems: journey.gaugeProblems ?? null,
     canvasNodesAfter: journey.canvasIntactAfter ?? null,

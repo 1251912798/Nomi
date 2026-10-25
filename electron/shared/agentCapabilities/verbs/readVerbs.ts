@@ -54,7 +54,6 @@ function rangeRefinement(startField: string, endField: string) {
     }
   };
 }
-
 export function readVerbs(): VerbDeclaration[] {
   const lookAtCanvas: VerbDeclaration = {
     name: "look_at_canvas", contractId: "canvas.read", effect: "read", nextAction: "none",
