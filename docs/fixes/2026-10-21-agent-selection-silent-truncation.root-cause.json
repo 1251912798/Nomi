@@ -1,0 +1,223 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-21-agent-selection-silent-truncation",
+  "change_kind": "corrective",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-20",
+  "problem_type": "A bounded model-facing projection can omit entries without an explicit, actionable ledger",
+  "symptom": "When a send-time selection exceeds the transient model budget, the omitted handles are named but the next read action can point the model away from an existing complete read path.",
+  "direct_cause": "The bounded encoder still emitted a prefix of canvasNode handles when the full selection exceeded budget; even with a look_at_canvas note, real models treated the visible prefix as the selection and skipped the complete reader.",
+  "class_root": "The type-to-recovery contract controlled the omitted note but not row inclusion, so a kind with a complete reader could still be presented as a misleading partial source of truth.",
+  "affected_population": [
+    "Any message-scoped selection whose compact projection exceeds 6000 characters",
+    "Mixed document, canvas, timeline, reference and future handle kinds",
+    "Any desktop Agent turn that tries to recover omitted handles after the UI selection changes"
+  ],
+  "scope_paths": [
+    "electron/shared/agentContextSnapshot.ts",
+    "electron/shared/agentContextSnapshot.test.ts",
+    "src/workbench/ai/resident/residentContextSnapshot.test.ts",
+    "electron/shared/agentCapabilities/capabilityContract.ts",
+    "electron/shared/agentCapabilities/registry.ts",
+    "electron/shared/agentCapabilities/registry.test.ts",
+    "electron/shared/agentCapabilities/verbDeclaration.ts",
+    "electron/shared/agentCapabilities/verbDeclarations.ts",
+    "electron/shared/agentCapabilities/verbs/readVerbs.ts",
+    "electron/agentLane/laneDesktopTools.ts",
+    "electron/agentLane/laneExtendedDesktopPorts.ts",
+    "electron/agentLane/laneDesktopReads.test.ts",
+    "scripts/check-model-face-frozen.mjs",
+    "scripts/perf-scenarios-lib.mjs",
+    "tests/ux/_lookAtCanvasSelectionScore.mjs",
+    "tests/ux/_lookAtCanvasSelectionSteps.mjs",
+    "tests/ux/look-at-canvas-selection-real.rehearsal.walk.mjs",
+    "docs/engineering/concept-owners/agent.context-snapshot-projection.json",
+    "electron/shared/agentCapabilities/documentRead.ts",
+    "electron/capabilityCore/documentReadTransportAdapters.ts",
+    "tests/ux/_lookAtCanvasSelectionScore.test.mjs",
+    "tests/ux/look-at-canvas-selection-real.paid.mjs",
+    "docs/engineering/direction-checks/2026-10-25-agent-selection-snapshot-route.md"
+  ],
+  "entry_points": [
+    "Provider request projection via laneDesktopInput",
+    "Compaction summary via laneContextBudget"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://modelcontextprotocol.io/specification/latest/server/utilities/pagination",
+      "checked_at": "2026-10-25",
+      "purpose": "Opaque cursor, server page size, nextCursor completion and invalid cursor behavior"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://www.anthropic.com/engineering/writing-tools-for-agents",
+      "checked_at": "2026-10-25",
+      "purpose": "Agent-oriented tool boundaries, high-signal results, pagination/filtering, actionable errors and evaluation"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://openai.github.io/openai-agents-python/context/",
+      "checked_at": "2026-10-25",
+      "purpose": "Local run context is available to tools but is not automatically sent to the model"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/src/core/tools/read.ts",
+      "checked_at": "2026-10-25",
+      "purpose": "Reference read tool offset/limit continuation and truncation guidance"
+    }
+  ],
+  "invariants": [
+    "Projection first chooses the richest detail rung that lists every handle; when no rung lists all handles, every kind with a complete reader is omitted as a whole and only kinds without that reader may use the least detailed longest fitting prefix.",
+    "total = listed + omitted and listed handles preserve snapshot order.",
+    "The omitted note is derived from one type-to-recovery table: omitted canvasNode kinds direct the model to call look_at_canvas with no arguments, rely on selected row markers, and report a changed selection when its selected count differs from the canvasNode count in omittedByKind; kinds without that reader direct the user to shrink or batch.",
+    "projectionLength uses the exact derived omitted note, and projection output is deterministic and valid JSON within the shared transient budget."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneContextBudget.mts",
+      "symbol": "formatAgentContextSnapshot"
+    },
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneDesktopInput.ts",
+      "symbol": "formatAgentContextSnapshot"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentContextSnapshot.ts",
+      "symbol": "projectAgentContextSnapshot"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/capabilityContract.ts",
+      "symbol": "CapabilityPortKind"
+    },
+    {
+      "kind": "write",
+      "path": "electron/shared/agentCapabilities/verbDeclarations.ts",
+      "symbol": "assembleVerbDeclarations"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/verbDeclaration.ts",
+      "symbol": "profileReason"
+    },
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneExtendedDesktopPorts.ts",
+      "symbol": "executeRead"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/documentRead.ts",
+      "symbol": "DOCUMENT_READ_ALIASES"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/documentReadTransportAdapters.ts",
+      "symbol": "documentReadScopeForAlias"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/registry.ts",
+      "symbol": "CAPABILITY_CONTRACTS"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/agentCapabilities/verbs/readVerbs.ts",
+      "symbol": "readVerbs"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 11,
+    "why_not": "The two projection caller doors remain separate because one injects provider content and the other builds a compaction summary. The registration, declaration and transport doors remain separate in the full PR diff because each owns a distinct capability or profile boundary; the obsolete snapshot read execution door was deleted."
+  },
+  "generality_proof": "Every bounded send-time projection passes through projectAgentContextSnapshot/formatAgentContextSnapshot. The shared encoder derives complete-reader kinds from the same table as the note, removes those kinds wholesale before applying the legacy prefix ladder to other kinds, and records all omitted counts, so future producers cannot present a partial complete-reader kind as the selection.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/agentContextSnapshot.ts",
+      "symbol": "projectAgentContextSnapshot",
+      "responsibility": "Own the single budget ladder, complete-reader all-or-none filtering, omittedByKind accounting and actionable note."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneDesktopInput.ts",
+      "entry_point": "providerContent",
+      "disposition": "enforced",
+      "evidence": "Uses formatAgentContextSnapshot for every provider-bound desktop message."
+    },
+    {
+      "path": "electron/agentLane/laneContextBudget.mts",
+      "entry_point": "before_compaction",
+      "disposition": "enforced",
+      "evidence": "Uses the same projection owner for compaction summaries."
+    },
+    {
+      "path": "src/workbench/ai/resident/residentContextSnapshot.ts",
+      "entry_point": "resident snapshot producer",
+      "disposition": "enforced",
+      "evidence": "Produces handles consumed by the shared projection; it does not encode a second model-facing list."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any future handle producer or larger mixed selection can exceed the projection budget; any desktop turn can have its live UI selection changed after send, so only a message-bound page read preserves semantics.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs formatAgentContextSnapshot: two projection caller doors",
+      "rg AgentContextSnapshot electron src: resident and domain producers converge on the shared projection",
+      "rg omittedByKind electron src tests: accounting assertions cover provider and resident consumers"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/agentContextSnapshot.ts",
+    "invariant": "The shared owner chooses the first richest rung that lists all handles; otherwise it lists zero or all handles for every kind with a complete reader, applies the least-detailed longest-prefix ladder only to other kinds, and keeps total = listed + omitted with per-kind counts.",
+    "failure_mode": "Budget overflow omits complete-reader kinds wholesale, emits a truthful prefix only for kinds without that reader, and derives a note that points each omitted kind to its recovery path without implying that any partial list is complete.",
+    "exception_policy": "none",
+    "strategy": "Delete the snapshot-only gauge path; keep one compact row encoder, scan the detail ladder for a full fit, then filter complete-reader kinds as whole classes before applying the legacy prefix ladder to the remaining rows; compute omittedByKind from one count map and derive the note and projection length from one local kind-to-recovery table without changing the model-facing tool schema.",
+    "artifacts": [
+      "electron/shared/agentContextSnapshot.ts",
+      "electron/shared/agentContextSnapshot.test.ts",
+      "src/workbench/ai/resident/residentContextSnapshot.test.ts",
+      "tests/ux/_lookAtCanvasSelectionScore.mjs",
+      "tests/ux/_lookAtCanvasSelectionSteps.mjs",
+      "tests/ux/look-at-canvas-selection-real.paid.mjs"
+    ]
+  },
+  "regression_tests": [
+    "electron/shared/agentContextSnapshot.test.ts",
+    "src/workbench/ai/resident/residentContextSnapshot.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/shared/agentContextSnapshot.test.ts",
+    "src/workbench/ai/resident/residentContextSnapshot.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The snapshot-only scorer and rehearsal rounds were deleted in place from existing gauge modules; no legacy production file path remains callable and no parallel implementation is retained."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal projection contract; no third-party runtime controls it.",
+    "exit_criteria": []
+  },
+  "migration": "No snapshot format or stored data changes. Existing messages are re-projected through the shared all-or-none complete-reader rule; omitted entries are reported with counts and a user action instead of a paging tool.",
+  "residual_risks": [
+    "Timeline clips and future asset handles without a selected-marker reader still require users to shrink or batch the selection; this is intentional until a message-scoped read path is approved.",
+    "If the user changes the canvas selection after send, look_at_canvas reads the live selection; the note requires the model to compare its selected count with the canvasNode count in omittedByKind and report a mismatch.",
+    "Real-model accuracy for the updated omitted note remains unverified until the coordinator runs the approved paid sample."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/agentContextSnapshot.ts",
+    "tests": [
+      "electron/shared/agentContextSnapshot.test.ts",
+      "src/workbench/ai/resident/residentContextSnapshot.test.ts"
+    ]
+  }
+}

@@ -21,9 +21,8 @@ describe("document.read canonical contract", () => {
     expect(documentReadResultSchema.safeParse({ text: "draft", path: "/secret" }).success).toBe(false);
   });
 
-  it("derives the full and selection aliases without creating another capability", () => {
+  it("derives only the full transport alias; selection uses the canonical method", () => {
     expect(documentReadScopeForAlias("read_script")).toBe("full");
-    expect(documentReadScopeForAlias("read_selection")).toBe("selection");
     expect(documentReadScopeForAlias("read_document")).toBeUndefined();
   });
 });

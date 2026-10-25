@@ -11,7 +11,7 @@
 
 **不管**：Agent 后端循环（`electron/ai/agentLoop.ts`）、工具 schema、画布节点视觉（主文档 §4/§5）、时间轴实现，以及 #226 已定义的 Capability / Connector / Skill / Workflow 权限真相源。本文只规定这些能力如何被用户看见和操控。
 
-**为什么必须单独成章**：B5 要落 21 种对话形态，而设计系统主文档里此前**没有任何 agent 章节**（grep 只命中付费确认弹窗与 logo）。没有依据就动手 = 每个形态各写各的，正是 `CanvasAssistantPanel`(770 行) / `CreationAiPanel`(800 行) 长成今天这样的原因。
+**为什么必须单独成章**：B5 要落 21 种对话形态，而设计系统主文档里此前**没有任何 agent 章节**（grep 只命中付费确认弹窗与 logo）。没有依据就动手 = 每个形态各写各的，正是 `CanvasAssistantPanel`（格式化代码约 770 行）/ `CreationAiPanel`（格式化代码约 800 行） 长成今天这样的原因。
 
 ---
 
@@ -323,7 +323,7 @@ R17 纪律：**加规则必须先验它会红。**
 
 | 现在 | 为什么 |
 |---|---|
-| `CanvasAssistantPanel.tsx`（770 行）+ `CreationAiPanel.tsx`（800 行） | 合并成一个 Agent 主栏。两个都卡在 800 行门岗边上 |
+| `CanvasAssistantPanel.tsx`（770 行）+ `CreationAiPanel.tsx`（800 行） | 合并成一个 Agent 主栏。两个都卡在 格式化代码行门岗（650 黄牌、800 红牌）边上 |
 | `AssistantTimeline` 的 15-prop 接口 | 每加一种行为就加 props；21 种形态照此写法要 40 个 |
 | `StepTone = 'done' \| 'active' \| 'warn'` | 被 §2 的 8 态 + 2 标志取代 |
 | 定妆跨面板事件传话（`fixationLauncher` 的 CustomEvent） | 合并后两面板都没了，传话线作废（`2026-06-06-unified-agent-merge.md` 已列） |

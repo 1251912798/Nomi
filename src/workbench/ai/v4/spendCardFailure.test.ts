@@ -43,6 +43,11 @@ describe('卡上一下动作没做成时说哪一句', () => {
       .toBe('generationCommon.production.canvasLanding.actionFailure.providerUnavailable')
   })
 
+  it('真实参考上传期间范围变了：沿用确认过期的可见下一步', () => {
+    expect(spendActionFailureCopy({ ok: false, code: 'failed', message: 'generation_not_started', reason: 'generation_reference_scope_changed', failure: 'approval_stale' }))
+      .toBe('generationCommon.production.canvasLanding.actionFailure.approvalStale')
+  })
+
   it('认不出是哪一种：只说没发出去、再按一次（不许说「改一下」——卡上没有可改的东西）', () => {
     expect(spendActionFailureCopy({ ok: false, code: 'failed', message: 'generation_not_started', failure: 'internal_error' })).toBe('agentPanelV4.spendActionNotStarted')
     expect(spendActionFailureCopy({ ok: false, code: 'failed', message: 'generation_not_started' })).toBe('agentPanelV4.spendActionNotStarted')

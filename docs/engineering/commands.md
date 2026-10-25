@@ -20,7 +20,7 @@
 | `pnpm run test:e2e` | Playwright smoke（零额度，CI-ready） |
 | `pnpm run lint:ci` | Lint + max-warnings=95 棘轮（新增 1 个 warning 即红）；存量错误冻结在 `eslint-suppressions.json`（ESLint 批量抑制，只减不增：修掉存量后跑 `pnpm exec eslint --prune-suppressions` 收紧再提交；冻结数要涨须协调确认 `node scripts/coord-approve.mjs --suppressions`，见 delivery-and-review.md「协调确认记录」）|
 | `pnpm run typecheck` | TypeScript 双向类型检查 |
-| `pnpm run check:filesize` | 巨壳文件门岗 |
+| `pnpm run check:filesize` | 格式化代码行巨壳门岗（650 黄牌、800 红牌、冻结项只减不增） |
 | `pnpm run check:tokens` | 设计 token 门岗（禁任意 px 字号/圆角、hex 色、默认色板；棘轮只减不增）|
 | `pnpm run check:heavy-path` | 重活门岗（同步图像编码 / base64 进 store / 尺寸双真相源；棘轮只减不增）|
 | `pnpm run check:vocabularies` | 单一语义 owner 门岗（AST 扫状态/阶段词表；新增、复制、成员/位置漂移、陈旧登记或 debt 增长都会红）|

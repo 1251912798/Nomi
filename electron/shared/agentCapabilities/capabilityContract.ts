@@ -10,7 +10,7 @@ export const CAPABILITY_EFFECT_CLASSES = ["reversible_local", "spend", "irrevers
 export type CapabilityEffectClass = (typeof CAPABILITY_EFFECT_CLASSES)[number];
 export type CapabilityExposure = "internal_only" | "mcp_safe" | "legacy_unverified";
 export type CapabilityPortKind =
-  | "document" | "canvas" | "timeline" | "production-run" | "asset" | "export" | "skills"
+  | "document" | "canvas" | "timeline" | "production-run" | "asset" | "export" | "skills" | "agent-context"
   /** 模型目录：接入、显示/隐藏、删除。它不属于任何一个项目——见 `CapabilityContract.scope`。 */
   | "model-catalog";
 export type CapabilityAvailability = "main_only" | "renderer_required" | "main_or_renderer";

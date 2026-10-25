@@ -100,8 +100,8 @@ function aliasEntriesFor<Contract extends AnyCapabilityContract>(contract: Contr
 }
 
 /**
- * All public tool aliases are derived from the canonical registry. Scope aliases
- * such as read_selection do not create a second document contract.
+ * All public tool aliases are derived from the canonical registry, including
+ * per-surface operation aliases.
  */
 export const CAPABILITY_ALIAS_ENTRIES = Object.freeze([...CAPABILITY_CONTRACTS.flatMap(aliasEntriesFor)]);
 

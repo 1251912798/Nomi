@@ -1,0 +1,27 @@
+{
+  "name": "参考素材异步本地化期间只按用户生成范围判陈旧，不按 Nomi 自写的投影 revision 判陈旧",
+  "subject": "generation.reference-upload-scope",
+  "lifecycle": "execution",
+  "authority_kind": "decision",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/capabilityCore/generationReferenceScope.ts",
+    "symbol": "createGenerationReferenceScopeGuard"
+  },
+  "write_api": [
+    {
+      "path": "electron/capabilityCore/generationReferenceScope.ts",
+      "symbol": "createGenerationReferenceScopeGuard"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "electron/capabilityCore/appIntegration.ts",
+    "electron/capabilityCore/mcpStdioServer.ts",
+    "electron/productionRun/prepareProductionGenerationAuthorization.ts"
+  ],
+  "since": "2026-10-25",
+  "notes": "合同 docs/fixes/2026-10-25-agent-reference-upload-scope.root-cause.json：上传窗口的共享门只冻结项目绑定、候选 / 参考身份与选中镜头 Run 语义；revision、updatedAt、canvas nodeId 与 detached 投影字段属于 Nomi 自写，不再令授权失效。两个宿主只注入这一份 guard，用户改变候选、参考或 Run 状态仍 fail-closed。"
+}

@@ -4,6 +4,10 @@ import path from "node:path";
 
 import { createModuleRegistry } from "./moduleRegistry";
 import { createGenerationPlanningHandler, type GenerationOperationStore } from "./mcpGenerationTools";
+import type { GenerationProvider } from "./generationRuntimeAdapter";
+import { prepareProductionGenerationAuthorizationWithReferences } from "../productionRun/prepareProductionGenerationAuthorization";
+import { createGenerationReferenceScopeGuard } from "./generationReferenceScope";
+import { resolveProductionReferenceUrls } from "./productionReferenceUrls";
 import { PROJECT_LEASE_ALGORITHM, PROJECT_LEASE_AUDIENCE, PROJECT_LEASE_VERSION, type ProjectLeaseV2 } from "./projectLease";
 import { createPendingSpendActions } from "./appIntegrationSpendConfirm";
 import { createPiGenerationTransportAdapter } from "./generationTransportAdapters";
@@ -123,7 +127,16 @@ export type SpendWorldOptions = Readonly<{
    * （`resolveIndexedReferencePreview`）。
    */
   assets?: SpendReferenceAssets;
+  /** Agent generate 封信封时的参考地址解析；测试可换成真实的延迟 multipart 上传。 */
+  resolveReferences?: Parameters<typeof prepareProductionGenerationAuthorizationWithReferences>[1];
 }>;
+
+const authorizationProvider: GenerationProvider = {
+  providerId: VENDOR,
+  capabilities: CAPABILITIES,
+  buildRequest: (input) => structuredClone(input),
+  submit: async (_request, idempotencyKey) => ({ providerTaskId: `authorization-${idempotencyKey}` }),
+};
 
 function rendererDouble(validateNode: SpendWorldOptions["validateNode"]) {
   const nodes = new Map<string, FakeNode>();
@@ -318,6 +331,35 @@ export function spendWorld(options: SpendWorldOptions = {}) {
     ...(options.assets ? { resolveAssetReferenceIdentity: options.assets.identity } : {}),
     resolveModelPricing: () => options.pricing,
     now,
+    prepareAuthorization: async ({ lease: projectLease, operation, contract, multiShot }) => {
+      const initialRun = repository.read(operation.projectId, operation.operationId);
+      if (!initialRun) throw new Error("Generation authorization requires the current Run snapshot");
+      const assertCurrent = createGenerationReferenceScopeGuard({
+        lease: projectLease,
+        operation,
+        contract,
+        ...(multiShot ? { multiShot } : {}),
+        initialRun,
+        readProject: () => ({ id: PROJECT_ID, immutableProjectUuid: "uuid-1", projectGeneration: 1 }),
+        readRun: () => repository.read(operation.projectId, operation.operationId),
+      });
+      const resolveReferences = options.resolveReferences ?? (async (input) => resolveProductionReferenceUrls(input, {
+        assets: options.assets ?? { list: () => [], identity: () => undefined },
+        localize: async (_providerId, urls) => urls,
+      }));
+      return prepareProductionGenerationAuthorizationWithReferences({
+        lease: projectLease,
+        projectRevision: 0,
+        operation,
+        contract,
+        ...(multiShot ? { multiShot } : {}),
+        providers: [authorizationProvider],
+        resolveShotPrice: () => options.pricing ? { known: true, amount: options.pricing.cost } : { known: false },
+        run: initialRun,
+        now: now(),
+        assertCurrent,
+      }, resolveReferences);
+    },
   });
   const runFacts = residentRunFacts(owner);
   /** 模型那一侧真正用的传输（和常驻工厂同一份依赖：读写 Run 的三件来自 `residentRunFacts`，代答交给同一台画布交接）。 */

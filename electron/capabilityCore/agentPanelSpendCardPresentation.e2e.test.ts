@@ -1,13 +1,63 @@
 import { afterEach, describe, expect, it } from "vitest";
+import http from "node:http";
 
 import { verbToTransportCall } from "../agentLane/laneVerbTransport";
 import { currentPresentation, presentationIsOpen } from "../shared/productionGenerationPresentation";
 import { GENERATION_METHODS } from "../shared/agentCapabilities/generation";
+import { spendReferenceKey } from "../shared/contracts/pendingSpendConfirm";
+import { resolveProductionReferenceUrls } from "./productionReferenceUrls";
 import { withdrawStalePresentations } from "../productionRun/stalePresentationSweep";
 import type { SpendReferenceAssets } from "./pendingSpendReferences";
 import {
   OPERATION_ID, PROJECT_ID, callTool, candidate, draft, lease, now, resetSpendFixture, shotsDraft, spendWorld, type DraftShot, type SpendWorld,
 } from "./agentPanelSpendConfirmTestUtils";
+
+const HELD_REFERENCE_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+
+async function startHeldReferenceUpload() {
+  const uploads: Array<{ bytes: number }> = [];
+  let releaseUpload: (() => void) | undefined;
+  let seenResolve!: () => void;
+  const requestSeen = new Promise<void>((resolve) => { seenResolve = resolve; });
+  const server = http.createServer(async (request, response) => {
+    if (request.method !== "POST" || request.url !== "/v1/uploads/images") {
+      response.writeHead(404).end();
+      return;
+    }
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) chunks.push(Buffer.from(chunk));
+    uploads.push({ bytes: Buffer.concat(chunks).length });
+    seenResolve();
+    await new Promise<void>((resolve) => { releaseUpload = resolve; });
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ url: "https://loopback.invalid/reference.png" }));
+  });
+  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("held upload fixture did not bind");
+  const endpoint = `http://127.0.0.1:${address.port}/v1/uploads/images`;
+  const assets: SpendReferenceAssets = {
+    list: () => [{ id: "a1", data: { url: "nomi-local://asset/project-1/cat.png", contentType: "image/png" } }],
+    identity: (_projectId, assetId) => assetId === "a1" ? { contentHash: "h-a1", version: 1 } : undefined,
+  };
+  const resolveReferences = async (input: Parameters<typeof resolveProductionReferenceUrls>[0]) => {
+    input.assertCurrent();
+    const form = new FormData();
+    form.append("file", new Blob([new Uint8Array(HELD_REFERENCE_PNG)], { type: "image/png" }), "cat.png");
+    const response = await fetch(endpoint, { method: "POST", body: form });
+    const body = await response.json() as { url: string };
+    input.assertCurrent();
+    return Object.fromEntries(input.references.map((reference) => [spendReferenceKey(reference), body.url]));
+  };
+  return {
+    assets,
+    resolveReferences,
+    requestSeen,
+    uploads,
+    release: () => { releaseUpload?.(); releaseUpload = undefined; },
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+  };
+}
 
 // 一次出价（D2 第③步）：卡摆的是 Agent 这一次 `generate` 点名的那几镜；「取消」/ Agent 收回 / 重启清扫关的都只是**这一次出价**，
 // 草稿、镜头、画布节点一个不动，同一份草稿再 `generate` 就是重新出价（新的身份，旧卡上的动作一律挡回）。卡上没有参数：
@@ -187,6 +237,55 @@ describe("参考图住在节点上", () => {
     await world.renderer.drain();
     expect(world.vendor.executes[0].request.extras?.references).toEqual([{ url: "nomi-local://asset/project-1/a1.png", kind: "image", role: "first_frame" }]);
     expect(JSON.stringify(world.vendor.executes)).not.toContain("gone");
+  });
+
+  it("Agent 封出价时真实 multipart 上传被扣住：Nomi 自写节点绑定不作废，放行后出价照常封出", async () => {
+    const upload = await startHeldReferenceUpload();
+    const world = spendWorld({ assets: upload.assets, resolveReferences: upload.resolveReferences });
+    try {
+      await shotsDraft(world, [{ references: [pinned("a1")] }], false);
+      await world.handler({ capability: "present", params: { operationId: OPERATION_ID }, lease });
+      const seal = world.handler({ capability: "gate_request", params: { operationId: OPERATION_ID }, lease });
+      await upload.requestSeen;
+      const duringUpload = world.run();
+      const shotId = duringUpload.generationPlan!.shots?.[0]?.shotId ?? duringUpload.generationPlan!.candidate.candidateId;
+      world.repository.execute(PROJECT_ID, OPERATION_ID, {
+        commandId: `fixture:self-write:${duringUpload.revision}`,
+        expectedRevision: duringUpload.revision,
+        type: "plan.bind-shot-nodes",
+        payload: { bindings: [{ shotId, nodeId: "node-self-write" }] },
+        issuedAt: now(),
+      });
+      upload.release();
+      await expect(seal).resolves.toMatchObject({ nextAction: "confirm" });
+      expect(upload.uploads).toHaveLength(1);
+      expect(world.run().generationPlan?.state).toBe("sealed");
+      expect(world.pending()).toBeDefined();
+    } finally {
+      upload.release();
+      await upload.close();
+    }
+  });
+
+  it("Agent 封出价时真实 multipart 上传被扣住：用户改候选后放行拒绝，原因是 generation_reference_scope_changed、供应商 0 次、卡保留", async () => {
+    const upload = await startHeldReferenceUpload();
+    const world = spendWorld({ assets: upload.assets, resolveReferences: upload.resolveReferences });
+    try {
+      await shotsDraft(world, [{ references: [pinned("a1")] }], false);
+      await world.handler({ capability: "present", params: { operationId: OPERATION_ID }, lease });
+      const seal = world.handler({ capability: "gate_request", params: { operationId: OPERATION_ID }, lease });
+      await upload.requestSeen;
+      const current = world.run();
+      await world.operations.patch!(PROJECT_ID, OPERATION_ID, { prompt: "用户在上传期间改了这一镜" }, now(), "shot-1");
+      upload.release();
+      await expect(seal).rejects.toThrow("generation_reference_scope_changed");
+      expect(world.vendor.executes).toHaveLength(0);
+      expect(world.pending()).toBeDefined();
+      expect(current.generationPlan?.shots?.[0]?.candidate.prompt).not.toBe("用户在上传期间改了这一镜");
+    } finally {
+      upload.release();
+      await upload.close();
+    }
   });
 });
 

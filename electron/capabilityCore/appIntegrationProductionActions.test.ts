@@ -306,6 +306,7 @@ describe("失败归类：只认源头的类型与系统错误码，认不出的�
     ["状态机不允许", new IllegalProductionTransitionError("run", "completed", "running"), "run_changed"],
     ["控制被拒", new ProductionRunControlRefusedError("无法继续：制作当前状态是 completed，不允许这个操作"), "run_changed"],
     ["确认时项目有变动", new ReceiptScopeError("Approval receipt project revision does not match the current project"), "approval_stale"],
+    ["参考上传期间范围变了", new Error("generation_reference_scope_changed"), "approval_stale"],
     ["确认过期", new ReceiptExpiredError(), "approval_expired"],
     ["没有人证", new HumanApprovalRequiredError(), "confirmation_unavailable"],
     ["供应商没注册", new GenerationProviderCapabilityError("apimart", ["registered_provider"]), "provider_unavailable"],

@@ -1,6 +1,5 @@
 import { readAgentApprovalPolicy } from '../settings/agentApprovalPolicySettings'
 import { parseDirectorPreviewBlockReply } from "../shared/director/directorPreviewStatus";
-import { spendReferenceKey } from "../shared/contracts/pendingSpendConfirm";
 // 能力核 · app 集成（见 docs/plan/2026-06-20-capability-core-headless-exposure.md §S4）。
 //
 // 把 RPC server + token + 实例广告接到运行中的 Nomi app：启动时拉起 RPC（127.0.0.1）、ensureToken、
@@ -73,6 +72,7 @@ import { canvasLocalArtifactReceipt, createCanvasShotRuns, installCanvasShotRuns
 import { createCanvasHandOver } from './canvasHandOver'
 import { canvasTransportProviders, isCanvasProviderId, lazyCanvasTransport } from './canvasTransportProvider'
 import { quoteSpendLine } from '../spendQuote'
+import { createGenerationReferenceScopeGuard } from './generationReferenceScope'
 export { consentCanvasShots, submitCanvasShot, pollCanvasShot, releaseCanvasShot, withdrawCanvasShots, releaseCanvasShotSender } from './appIntegrationCanvasShot'
 // 付费卡的四个动作住在它自己的模块里（这里只装配）。main.ts 的 IPC 经能力核门面转调，所以门面要露出这四个名字。
 export { handOverPendingSpendShots, discardPendingSpendConfirmation, removePendingSpendShot, restorePendingSpendShot } from './appIntegrationSpendConfirm'
@@ -197,9 +197,6 @@ export async function startCapabilityCore(
     })
     const projectRevisionResolver = authorities.projectRevisionResolver ?? defaults.projectRevisionResolver!
     const fixtureBaseUrlOverride = productionFixtureBaseOriginFromEnv(process.env)
-    const fixtureReferenceUrl = fixtureBaseUrlOverride && process.env.NOMI_E2E_FIXTURE_REFERENCE_URL
-      ? process.env.NOMI_E2E_FIXTURE_REFERENCE_URL
-      : undefined
     const liveGenerationRuntime = createLiveGenerationRuntime({
       bootstrap: (state, options) => createGenerationProviderBootstrap(state, {
         ...options,
@@ -377,16 +374,21 @@ export async function startCapabilityCore(
           // attempt 谱系、负债合计和硬上限全部从这份快照里算。读不到就停在这里——
           // 以前的 `run?` 会让它按「这一镜没有任何 attempt」继续，算出来的 attempt 在校验侧对不上。
           if (!authorizationRun) throw new Error('Generation authorization requires the current Run snapshot')
+          const assertCurrent = createGenerationReferenceScopeGuard({
+            lease,
+            operation,
+            contract,
+            ...(multiShot ? { multiShot } : {}),
+            initialRun: authorizationRun,
+            readProject: () => {
+              const current = readWorkspaceProject(lease.projectId, getWorkspaceRepositoryDeps())
+              return current ? { id: current.id, immutableProjectUuid: current.immutableProjectUuid, projectGeneration: current.projectGeneration } : null
+            },
+            readRun: () => generationService.repository.read(lease.projectId, operation.operationId),
+          })
           return prepareProductionGenerationAuthorizationWithReferences({
             lease,
-            assertCurrent: () => {
-              const currentProject = readWorkspaceProject(lease.projectId, getWorkspaceRepositoryDeps())
-              const currentRun = generationService.repository.read(lease.projectId, operation.operationId)
-              if (!currentProject || currentProject.revision !== projectRecord.revision
-                || currentProject.immutableProjectUuid !== lease.immutableProjectUuid
-                || currentProject.projectGeneration !== lease.projectGeneration
-                || currentRun?.revision !== authorizationRun?.revision) throw new Error('generation_reference_scope_changed')
-            },
+            assertCurrent,
             projectRevision: projectRecord.revision,
             operation,
             contract,
@@ -395,7 +397,7 @@ export async function startCapabilityCore(
             resolveShotPrice,
             run: authorizationRun,
             now: new Date().toISOString(),
-          }, fixtureReferenceUrl ? async ({ references }) => Object.fromEntries(references.map(reference => [spendReferenceKey(reference), fixtureReferenceUrl])) : undefined)
+          })
         },
         start: async (operation, lease) => {
           // Settings can save APIMart while this process is already running.

@@ -47,7 +47,7 @@ function modelFaceOf(verb, { toPublishedJsonSchema, toModelFacingToolSpec }) {
   })
 }
 
-/** 全部 20 个动词的模型面，按目录顺序（顺序本身是合同：它是提示词与 `tools/list` 的前缀）。 */
+/** 全部内部动词的模型面，按目录顺序（顺序本身是合同：它是提示词与 `tools/list` 的前缀）。 */
 export async function captureModelFace() {
   const { VERB_DECLARATIONS } = await import('../electron/shared/agentCapabilities/verbDeclarations.ts')
   const { toPublishedJsonSchema } = await import('../electron/shared/agentCapabilities/modelVisibleJsonSchema.ts')
