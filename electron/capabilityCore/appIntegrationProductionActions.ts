@@ -50,6 +50,7 @@ const LEDGER_WRITE_ERRNO = new Set(['ENOSPC', 'EDQUOT', 'EROFS', 'EACCES', 'EPER
  * 认不出来的只剩 Nomi 自己的不变量断言（bug）：如实归到 `internal_error`，不装成「稍后再试」。
  */
 export function productionShotActionFailureOf(error: unknown): ProductionShotActionFailure {
+  if (error instanceof Error && error.message === 'generation_reference_scope_changed') return 'approval_stale'
   if (error instanceof GenerationReworkRefusedError) return error.refusal
   if (error instanceof NothingToResumeError) return 'nothing_to_resume'
   if (error instanceof ProductionRunRevisionConflictError

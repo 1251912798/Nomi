@@ -73,7 +73,6 @@ try {
       // instead of assertDraftFilmReady against the renderer timeline state.
       ...(mcpRuntime ? { NOMI_E2E_PACKAGED_FIXTURE: '1' } : {}),
       NOMI_E2E_FIXTURE_BASE_URL: provider.origin,
-      NOMI_E2E_FIXTURE_REFERENCE_URL: `${provider.origin}/fixture/image.png`,
       NOMI_E2E_FIXTURE_API_KEY: 'mcp-l2-loopback-key',
     },
     args: ['--disable-gpu', '--disable-software-rasterizer'], settleMs: 0, syntheticCredentialStorage: true,
@@ -107,7 +106,6 @@ try {
       NOMI_APP_NAME: 'nomi',
       NOMI_E2E_PRODUCTION_FIXTURE: '1',
       NOMI_E2E_FIXTURE_BASE_URL: provider.origin,
-      NOMI_E2E_FIXTURE_REFERENCE_URL: `${provider.origin}/fixture/image.png`,
       NOMI_E2E_FIXTURE_API_KEY: 'mcp-l2-loopback-key',
     }, syntheticCredentialStorage: true,
   })
@@ -477,7 +475,6 @@ try {
       NOMI_APP_NAME: 'nomi',
       NOMI_E2E_PRODUCTION_FIXTURE: '1',
       NOMI_E2E_FIXTURE_BASE_URL: provider.origin,
-      NOMI_E2E_FIXTURE_REFERENCE_URL: `${provider.origin}/fixture/image.png`,
       NOMI_E2E_FIXTURE_API_KEY: 'mcp-l2-loopback-key',
     },
   })
@@ -549,7 +546,6 @@ try {
       NOMI_APP_NAME: 'nomi',
       NOMI_E2E_PRODUCTION_FIXTURE: '1',
       NOMI_E2E_FIXTURE_BASE_URL: provider.origin,
-      NOMI_E2E_FIXTURE_REFERENCE_URL: `${provider.origin}/fixture/image.png`,
       NOMI_E2E_FIXTURE_API_KEY: 'mcp-l2-loopback-key',
     },
   })

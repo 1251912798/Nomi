@@ -9,6 +9,7 @@ import { createApprovalReceiptAuthority } from "./approvalReceipt";
 import { createModuleRegistry } from "./moduleRegistry";
 import { createGenerationRuntimeAdapter, type GenerationProvider } from "./generationRuntimeAdapter";
 import { createGenerationPlanningHandler, type GenerationOperation, type GenerationOperationStore } from "./mcpGenerationTools";
+import type { ExecutionContractV1 } from "./executionContract";
 import { PROJECT_LEASE_ALGORITHM, PROJECT_LEASE_AUDIENCE, PROJECT_LEASE_VERSION, type ProjectLeaseV2 } from "./projectLease";
 import { createRunOwnedGenerationGateAuthority } from "./runOwnedGenerationGateAuthority";
 import { createPendingSpendActions } from "./appIntegrationSpendConfirm";
@@ -20,7 +21,9 @@ import { startSingleShotProduction } from "../productionRun/singleShotProduction
 import { type MaterializeShotsWirePayload } from "../productionRun/multiShotCanvasLanding";
 import { createProductionGenerationOperationStore } from "../productionRun/productionGenerationOperationStore";
 import { createProductionGenerationSubmission } from "../productionRun/productionGenerationSubmission";
-import { prepareProductionGenerationAuthorization } from "../productionRun/prepareProductionGenerationAuthorization";
+import { prepareProductionGenerationAuthorizationWithReferences } from "../productionRun/prepareProductionGenerationAuthorization";
+import { createGenerationReferenceScopeGuard } from "./generationReferenceScope";
+import { resolveProductionReferenceUrls } from "./productionReferenceUrls";
 import { createProductionRunRepository } from "../productionRun/productionRunRepository";
 import { watchSpendCardClose } from "../agentLane/laneSpendCardClose";
 import type { ModelPricing } from "../productionRun/shotPricing";
@@ -253,6 +256,8 @@ function buildActions(base: ReturnType<typeof harness>, vendorOrigin: string, su
   resolveAssetReferenceIdentity?: (projectId: string, assetId: string) => { contentHash: string; version: number; kind?: "image" | "video" | "audio" } | undefined;
   /** 换一台执行器（缺省 = 本文件的 loopbackProvider）。「没发出去」矩阵用它接真的目录执行器（引擎 B 的 send）。 */
   provider?: (providerId: string, origin: string, submits: string[]) => GenerationProvider;
+  /** App Agent reference localization seam. Production uses the same helper with the live upload transport. */
+  resolveReferences?: Parameters<typeof prepareProductionGenerationAuthorizationWithReferences>[1];
 } = {}) {
   const { root, repository, owner, operations, canvasLanding } = base;
   const moduleRegistry = hooks.registry ?? registry;
@@ -295,21 +300,39 @@ function buildActions(base: ReturnType<typeof harness>, vendorOrigin: string, su
     resolveModelPricing: () => (hooks.unpriced ? undefined : PRICING),
     ...(hooks.resolveAssetReferenceIdentity ? { resolveAssetReferenceIdentity: hooks.resolveAssetReferenceIdentity } : {}),
     now,
-    prepareAuthorization: ({ lease: projectLease, operation, contract, multiShot }) => prepareProductionGenerationAuthorization({
-      lease: projectLease, projectRevision: 0, operation, contract,
-      run: requiredHarnessRun(operation.projectId, operation.operationId),
-      ...(multiShot ? { multiShot } : {}),
-      providers,
-      resolveShotPrice: (shotContract) => {
-        if (hooks.unpriced) return { known: false };
-        // 价格按**合同里冻着的那份参数**算，不是按草稿现有的：改完参数重新封印之后，收据的上限
-        // 必须跟着新规格走，否则「印在卡上的数」和「冻进合同的数」会分叉。
-        const spec = shotContract.parameters ?? {};
-        const bump = PRICING.specCosts.filter((entry) => entry.enabled && Object.entries(spec).some(([key, value]) => entry.specKey === `${key}:${String(value)}` || entry.specKey === String(value))).reduce((sum, entry) => sum + entry.cost, 0);
-        return { known: true, amount: PRICING.cost + bump };
-      },
-      now: now(),
-    }),
+    prepareAuthorization: ({ lease: projectLease, operation, contract, multiShot }) => {
+      const authorizationRun = requiredHarnessRun(operation.projectId, operation.operationId);
+      const assertCurrent = createGenerationReferenceScopeGuard({
+        lease: projectLease,
+        operation,
+        contract,
+        ...(multiShot ? { multiShot } : {}),
+        initialRun: authorizationRun,
+        readProject: () => ({ id: PROJECT_ID, immutableProjectUuid: "project-uuid-1", projectGeneration: 1 }),
+        readRun: () => repository.read(operation.projectId, operation.operationId),
+      });
+      const authorizationInput = {
+        lease: projectLease, projectRevision: 0, operation, contract,
+        run: authorizationRun,
+        ...(multiShot ? { multiShot } : {}),
+        providers,
+        resolveShotPrice: (shotContract: ExecutionContractV1) => {
+          if (hooks.unpriced) return { known: false };
+          // 价格按**合同里冻着的那份参数**算，不是按草稿现有的：改完参数重新封印之后，收据的上限
+          // 必须跟着新规格走，否则「印在卡上的数」和「冻进合同的数」会分叉。
+          const spec = shotContract.parameters ?? {};
+          const bump = PRICING.specCosts.filter((entry) => entry.enabled && Object.entries(spec).some(([key, value]) => entry.specKey === `${key}:${String(value)}` || entry.specKey === String(value))).reduce((sum, entry) => sum + entry.cost, 0);
+          return { known: true, amount: PRICING.cost + bump };
+        },
+        now: now(),
+        assertCurrent,
+      } as Parameters<typeof prepareProductionGenerationAuthorizationWithReferences>[0];
+      const resolveReferences = hooks.resolveReferences ?? (async (referenceInput: Parameters<typeof resolveProductionReferenceUrls>[0]) => resolveProductionReferenceUrls(referenceInput, {
+        assets: harnessReferenceAssets,
+        localize: async (_providerId, urls) => urls.map((_url, index) => `https://fixture.invalid/reference-${index}.png`),
+      }));
+      return prepareProductionGenerationAuthorizationWithReferences(authorizationInput, resolveReferences);
+    },
     // appIntegration 的**单镜 start 分支**原样搬过来：先落画布、落下了才交（同一个开拍口）→ 观察到底（这里无需等待，
     // loopback 一次就 succeeded）。多镜那条由 multiShotBatchScheduler 的 e2e 覆盖。
     start: async (operation: GenerationOperation) => {
