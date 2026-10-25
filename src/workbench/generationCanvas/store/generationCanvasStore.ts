@@ -26,7 +26,7 @@ import { createCanvasDocumentActions } from './canvasDocumentCommit'
 import { reconcileTimelineForDeletedNodes } from './canvasTimelineBridge'
 import { appendAdmittedEdges, reportSkippedEdges, type AppendedEdges } from './canvasEdgeWrite'
 import { assertProductionCanvasProjectIdentity, emitProductionCanvasSignal } from '../../production/productionCanvasSignals'
-import { reconcileTargetModeForInputs } from './canvasConnectDerivations'
+import { revertTargetModeForEmptyInputs, targetHasLiveReferenceInput } from './canvasConnectDerivations'
 
 export { __resetCanvasUndoJournalForTests as __resetGenerationCanvasHistoryForTests } from '../events/canvasUndoJournal'
 
@@ -231,8 +231,13 @@ useGenerationCanvasStore.subscribe((state, previous) => {
   if (reconcilingInputModes || (state.nodes === previous.nodes && state.edges === previous.edges)) return
   reconcilingInputModes = true
   try {
-    for (const node of useGenerationCanvasStore.getState().nodes) {
-      reconcileTargetModeForInputs(useGenerationCanvasStore.getState(), node.id)
+    const current = useGenerationCanvasStore.getState()
+    for (const node of current.nodes) {
+      // Reconcile empty inputs after every graph/document write. An explicitly
+      // chosen empty first/last-frame workflow must survive node-only writes,
+      // restores and undo; the helper owns that exception.
+      if (targetHasLiveReferenceInput(current, node.id)) continue
+      revertTargetModeForEmptyInputs(current, node.id)
     }
   } finally {
     reconcilingInputModes = false

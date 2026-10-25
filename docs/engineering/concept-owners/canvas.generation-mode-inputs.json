@@ -1,5 +1,5 @@
 {
-  "name": "画布生成方式随当前参考输入升格或在输入全空时回到文生",
+  "name": "画布生成方式在输入全空时回到文生，连线手势单独负责升格",
   "subject": "canvas.generation-mode-inputs",
   "lifecycle": "projection",
   "authority_kind": "decision",
@@ -8,12 +8,12 @@
   "migration_status": "converged",
   "owner": {
     "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
-    "symbol": "reconcileTargetModeForInputs"
+    "symbol": "revertTargetModeForEmptyInputs"
   },
   "write_api": [
     {
       "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
-      "symbol": "reconcileTargetModeForInputs"
+      "symbol": "revertTargetModeForEmptyInputs"
     },
     {
       "path": "src/workbench/generationCanvas/store/generationCanvasStore.ts",
@@ -34,5 +34,5 @@
   ],
   "parity_test": "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts",
   "since": "2026-10-25",
-  "notes": "模式是 nodes + edges + reference slots 的持久投影。所有 store/document 写入由订阅触发同一收口；生成框只读，不再用 React effect 写回。"
+  "notes": "模式是 nodes + edges + reference slots 的持久投影。store/document 订阅只负责参考输入全空时回文生，尊重首尾帧空槽的显式意图；连线手势由 deriveTargetAfterConnect 负责升格，生成框只读，不再用 React effect 写回。"
 }

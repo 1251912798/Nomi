@@ -54,3 +54,15 @@ React、ComfyUI、Blender 都提供通用节点/状态操作，但“参考边�
 
 - `src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts`：先钉住当前 effect 只能在挂载组件时纠偏、store 断线后仍残留 mode 的现状，随后同一测试改为断线/删源/Agent/恢复/undo 的类回归。
 - `src/workbench/generationCanvas/agent/referenceEdgeCapability.test.ts`：保留并扩展纯函数升格判据。
+
+### 本轮复盘
+
+实现复验发现，把升格也放进 store 写后订阅会覆盖显式的多步写入：先建首帧、尾帧或运镜参考边，再切生成方式时，订阅看见中间状态就会重新挑模式，导致调用方写下的边角色或方式丢失。缺失的系统边界是「订阅只负责输入全空时回文生；连线手势才负责升格」。本轮删除订阅里的升格分支，恢复 `deriveTargetAfterConnect` 的单一升格写口，并用先建节点、再建边、再切方式的类测试钉住首帧、尾帧、首尾帧和导演台运镜参考。
+
+### 拍板
+
+原话：「#1333 选 B（store 只做参考没了回文生，升格回到连线手势）」。
+
+按 B 做：store 订阅只做「参考全没了 → 回文生」，删掉订阅里的升格分支，升格留在连线手势和跑前纠偏。
+
+补「显式首帧 / 尾帧 / 运镜参考不被改」的类测试；本机跑整个画布和分镜单测目录再交。

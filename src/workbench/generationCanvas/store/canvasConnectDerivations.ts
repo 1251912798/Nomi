@@ -16,14 +16,7 @@
 // updateNode 默认会给 `meta` patch 打一个自己的 undo barrier，于是连完一条线后日志里叠了两个 barrier——第一下 ⌘Z
 // 只把模式 / 比例切回去（用户眼里画布毫无变化），得按第二下才撤掉那条边。关掉的只是 barrier：这条 meta 变更照常入日志、
 // 照常落盘，撤到连线那个 barrier 时它跟着回退。
-import {
-  archetypeForNode,
-  isTextPromptEdge,
-  referenceAssetKindForNode,
-  resolveModeForConnectedReferences,
-  resolveTargetModeForEdge,
-  textModeToReturnTo,
-} from '../agent/referenceEdgeCapability'
+import { archetypeForNode, isTextPromptEdge, referenceAssetKindForNode, resolveTargetModeForEdge, textModeToReturnTo } from '../agent/referenceEdgeCapability'
 import { applyArchetypeModeSwitch } from '../nodes/controls/archetypeMeta'
 import { currentArchetypeMode } from '../nodes/controls/archetypeMeta'
 import { resolveReferenceSlots } from '../runner/referenceSlots'
@@ -41,28 +34,56 @@ type ConnectDerivationStore = {
   updateNode: (nodeId: string, patch: { meta: Record<string, unknown> }, options?: { history?: boolean }) => void
 }
 
-/** 生成方式跟着输入走：所有 store 写入口都复用这一处，先升格再在输入全空时回文生。 */
-export function reconcileTargetModeForInputs(store: ConnectDerivationStore, targetNodeId: string): void {
-  const target = store.nodes.find((node) => node.id === targetNodeId)
-  if (!target) return
-  const archetype = archetypeForNode(target)
-  if (!archetype) return
-  const activeMode = currentArchetypeMode(archetype, (target.meta || {}) as Record<string, unknown>)
-  const promotedModeId = store.edges
-    .filter((edge) => edge.target === target.id)
-    .map((edge) => {
-      const source = store.nodes.find((node) => node.id === edge.source)
-      return source ? resolveTargetModeForEdge(source, target, edge.mode) : null
-    })
-    .find((modeId): modeId is string => Boolean(modeId))
-    ?? resolveModeForConnectedReferences(target, store.nodes, store.edges)
-  const hasAnyInput = resolveReferenceSlots(target, store.nodes, store.edges).some((slot) => slot.fills.length > 0)
+type InputState = Pick<ConnectDerivationStore, 'nodes' | 'edges'>
+
+function hasLiveReferenceInput(store: InputState, target: GenerationCanvasNode): boolean {
+  return resolveReferenceSlots(target, store.nodes, store.edges).some((slot) => slot.fills.length > 0)
     || store.edges.some((edge) => {
       if (edge.target !== target.id) return false
       const source = store.nodes.find((node) => node.id === edge.source)
       return Boolean(source && referenceAssetKindForNode(source) && !isTextPromptEdge(source, target, edge.mode))
     })
-  const nextModeId = promotedModeId ?? textModeToReturnTo(archetype, activeMode, hasAnyInput)
+}
+
+export function targetHasLiveReferenceInput(store: InputState, targetNodeId: string): boolean {
+  const target = store.nodes.find((node) => node.id === targetNodeId)
+  return target ? hasLiveReferenceInput(store, target) : false
+}
+
+/** 连线手势的唯一升格写口：边已经建好后，按这条边的语义切到能消费它的模式。 */
+function promoteTargetMode(store: ConnectDerivationStore, sourceNodeId: string, targetNodeId: string, mode: GenerationCanvasEdgeMode | undefined): void {
+  const source = store.nodes.find((node) => node.id === sourceNodeId)
+  const target = store.nodes.find((node) => node.id === targetNodeId)
+  if (!source || !target) return
+  const nextModeId = resolveTargetModeForEdge(source, target, mode)
+  if (!nextModeId) return
+  const archetype = archetypeForNode(target)
+  if (!archetype) return
+  const activeMode = currentArchetypeMode(archetype, (target.meta || {}) as Record<string, unknown>)
+  if (nextModeId === activeMode.id) return
+  store.updateNode(
+    targetNodeId,
+    { meta: applyArchetypeModeSwitch((target.meta || {}) as Record<string, unknown>, archetype, nextModeId) },
+    { history: false },
+  )
+}
+
+/** Store/document 写入口的唯一回文生写口：仅当参考输入全部消失时收回文生。 */
+export function revertTargetModeForEmptyInputs(
+  store: ConnectDerivationStore,
+  targetNodeId: string,
+): void {
+  const target = store.nodes.find((node) => node.id === targetNodeId)
+  if (!target) return
+  const archetype = archetypeForNode(target)
+  if (!archetype) return
+  const activeMode = currentArchetypeMode(archetype, (target.meta || {}) as Record<string, unknown>)
+  // A freshly restored/created empty first-frame card is an explicit workflow
+  // choice. The same explicit choice must survive undo restoring its empty
+  // slots, so a single-frame intent never gets an implicit text switch.
+  if (activeMode.intent === 'single') return
+  const hasAnyInput = hasLiveReferenceInput(store, target)
+  const nextModeId = textModeToReturnTo(archetype, activeMode, hasAnyInput)
   if (!nextModeId || nextModeId === activeMode.id) return
   store.updateNode(
     targetNodeId,
@@ -101,10 +122,6 @@ export function deriveTargetAfterConnect(
   targetNodeId: string,
   mode: GenerationCanvasEdgeMode | undefined,
 ): void {
-  // The store subscription also covers external/restore writes; this call keeps the
-  // direct connect path explicit and uses the same reconciliation function.
-  void sourceNodeId
-  void mode
-  reconcileTargetModeForInputs(getStore(), targetNodeId)
+  promoteTargetMode(getStore(), sourceNodeId, targetNodeId, mode)
   seedTargetVideoAspect(getStore(), targetNodeId, mode)
 }
