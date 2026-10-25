@@ -19,8 +19,6 @@ export const documentReadResultSchema = z
 export type DocumentReadInput = z.infer<typeof documentReadSemanticInputSchema>;
 export type DocumentReadResult = z.infer<typeof documentReadResultSchema>;
 
-export const DOCUMENT_READ_SELECTION_ALIAS = "read_selection" as const;
-
 /**
  * Project a domain adapter response into the one safe document.read result.
  * Adapters may return plain text or a `{ text }` envelope; all other fields are dropped.
@@ -36,14 +34,11 @@ export function projectDocumentRead(source: unknown): DocumentReadResult {
 export const DOCUMENT_READ_CAPABILITY = {
   id: "document.read",
   version: 1,
-  // 模型可见动词只有 `read_script(scope)`；`read_full_text` / `read_selection` 是传输层的方法词表（`method` surface）。
+  // 模型可见动词只有 `read_script(scope)`；`read_full_text` 是传输层的方法词（`method` surface）。
   aliases: {
     pi: "read_script",
     mcp: "nomi_document_read",
     method: "read_full_text",
-  },
-  additionalAliases: {
-    method: Object.freeze([DOCUMENT_READ_SELECTION_ALIAS]),
   },
   inputSchema: documentReadSemanticInputSchema,
   outputSchema: documentReadResultSchema,
@@ -58,14 +53,12 @@ export const DOCUMENT_READ_CAPABILITY = {
   targetKind: "document",
 } as const satisfies CapabilityContract<DocumentReadInput, DocumentReadResult>;
 
-/** Registry-owned aliases for the two semantic scopes of one capability. */
+/** Registry-owned aliases for the document.read transport. */
 export const DOCUMENT_READ_ALIASES = Object.freeze({
   full: DOCUMENT_READ_CAPABILITY.aliases.pi,
-  selection: DOCUMENT_READ_SELECTION_ALIAS,
 });
 
 export function documentReadScopeForAlias(alias: string): DocumentReadInput["scope"] | undefined {
   if (alias === DOCUMENT_READ_ALIASES.full) return "full";
-  if (alias === DOCUMENT_READ_ALIASES.selection) return "selection";
   return undefined;
 }

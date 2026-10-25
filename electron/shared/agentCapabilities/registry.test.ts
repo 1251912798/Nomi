@@ -6,7 +6,7 @@ import { CANVAS_DELETE_CAPABILITY } from "./canvasDelete";
 import { CANVAS_READ_CAPABILITY } from "./canvasRead";
 import { CANVAS_WRITE_CAPABILITY } from "./canvasWrite";
 import { DIRECTOR_WRITE_CAPABILITY } from "./directorWrite";
-import { DOCUMENT_READ_CAPABILITY, DOCUMENT_READ_ALIASES } from "./documentRead";
+import { DOCUMENT_READ_CAPABILITY } from "./documentRead";
 import { DOCUMENT_WRITE_CAPABILITY, DOCUMENT_WRITE_ALIASES } from "./documentWrite";
 import { EXPORT_READ_CAPABILITY, EXPORT_WRITE_CAPABILITY } from "./exportCapabilities";
 import { TIMELINE_READ_CAPABILITY } from "./timelineRead";
@@ -106,11 +106,9 @@ describe("capability contract registry", () => {
     // 一个名字只能指向一个契约。同一契约在两个 surface 上用同一个名字（`nomi_canvas_read` 内外同名）
     // 不是重复——那正是「内外同源」；两个契约共用一个名字才是。
     const ownerByAlias = new Map<string, string>();
-    for (const contract of CAPABILITY_CONTRACTS) {
-      for (const alias of Object.values(contract.aliases)) {
-        expect(ownerByAlias.get(alias) ?? contract.id, `${alias} claimed by two contracts`).toBe(contract.id);
-        ownerByAlias.set(alias, contract.id);
-      }
+    for (const { contract, alias } of CAPABILITY_ALIAS_ENTRIES) {
+      expect(ownerByAlias.get(alias) ?? contract.id, `${alias} claimed by two contracts`).toBe(contract.id);
+      ownerByAlias.set(alias, contract.id);
     }
 
     expect(new Set(ids).size).toBe(ids.length);
@@ -180,7 +178,6 @@ describe("capability contract registry", () => {
     ]);
     expect(resolveCapabilityAlias("stage_shot")?.contract).toBe(DIRECTOR_WRITE_CAPABILITY);
     expect(resolveCapabilityAlias("nomi_set_node_prompt")).toBeUndefined();
-    expect(resolveCapabilityAlias(DOCUMENT_READ_ALIASES.selection)?.contract).toBe(DOCUMENT_READ_CAPABILITY);
     expect(resolveCapabilityAlias(DOCUMENT_WRITE_ALIASES.replace)?.contract).toBe(DOCUMENT_WRITE_CAPABILITY);
     expect(resolveCapabilityAlias(DOCUMENT_WRITE_ALIASES.append)?.contract).toBe(DOCUMENT_WRITE_CAPABILITY);
     expect(resolveCapabilityAlias("inspect_timeline_range")?.contract).toBe(TIMELINE_READ_CAPABILITY);

@@ -1,29 +1,56 @@
 {
   "script": "look-at-canvas-selection-real.rehearsal.walk.mjs",
   "mode": "rehearsal（夹具剧本大脑，不是模型分数）",
-  "startedAt": "2026-10-24T05:12:39.038Z",
-  "finishedAt": "2026-10-24T05:12:52.915Z",
+  "startedAt": "2026-10-25T01:47:04.445Z",
+  "finishedAt": "2026-10-25T01:47:18.083Z",
   "result": "passed",
   "failure": null,
   "buildMarker": "节点行里标了「选中」",
   "model": "apimart/deepseek-v4-pro（地址重定向到本机夹具）",
   "ask": "我选中的这些里，哪几个是视频节点？把标题都列出来",
+  "promptBank": [
+    "把我选中的这些镜头都改成夜景。",
+    "逐个说出我刚才框选的镜头标题。",
+    "我选中的视频里，哪些是夜景？",
+    "给这批片段统一加字幕。",
+    "只处理我选中的画布节点。",
+    "把选中的镜头按顺序列出来。",
+    "这次发送时我到底选了多少个？",
+    "把选区里的视频和图片分开说。",
+    "只告诉我选中的前三个标题。",
+    "看当前画布，不看发送时选区。",
+    "时间轴上我勾的片段总时长是多少？",
+    "把文稿选中的段落拆成镜头。",
+    "我刚才 @ 的参考分别是什么？",
+    "先不要改，确认这批选区里有没有音频。",
+    "按我发送那一刻的选择生成一个清单。",
+    "我发送后又换了选择，仍按刚才那一批回答。",
+    "读完所有选中的片段，再告诉我最短的一个。",
+    "只读画布选区，不要读实时画布。",
+    "选区太大时告诉我总数和还没读到的部分。",
+    "继续读取上一页的选区。",
+    "这条消息没有选区时不要猜，告诉我怎么继续。",
+    "游标失效时从第一页重新读。"
+  ],
   "metrics": {
     "toolWriteCorrect": "工具写对率 = 不带参数且宿主未退回的 look_at_canvas 调用数 / look_at_canvas 调用总数",
-    "turnSuccess": "回合成功率 = 最终回答点到的节点集合与 ground truth（选中的 20 个视频节点）完全一致、不多不少的轮数 / 总轮数"
+    "turnSuccess": "回合成功率 = 最终回答点到的节点集合与 ground truth（选中的 20 个视频节点）完全一致、不多不少的轮数 / 总轮数",
+    "readPath": "读面路径分档 = 调用 look_at_canvas / 没调读工具的回合数"
   },
   "diagnostics": {
-    "roundsReadWholeSelection": "转录里节点行标了「选中」的行覆盖全部选中 id 的轮数",
-    "roundsSawWholeSelectionAtAnswer": "答话那一刻、发给模型的那份消息里仍看得见全部带「选中」标记的节点行的轮数",
-    "view": "rounds[].view：答话那一刻看得见几个带「选中」的节点行、有没有被旧读结果替换、答话前模型自己记下了几个真值视频"
+    "roundsReadWholeSelection": "转录里读回的选区（look_at_canvas 节点行的「选中」标记）覆盖全部选中 id 的轮数",
+    "roundsSawWholeSelectionAtAnswer": "答话那一刻、发给模型的那份消息里仍看得见全部选中 id 的轮数（两种读法的结果都算，被旧读结果替换掉的那一份不算）",
+    "view": "rounds[].view：答话那一刻看得见几个选中 id、有几份读结果被旧读结果替换、答话前模型自己记下了几个真值视频",
+    "prompts": "量具预置 22 句不同的用户说法，实际回合默认抽样其中前 rounds 句"
   },
   "numbers": {
     "rounds": 5,
-    "toolWriteCorrect": "5/5",
+    "toolWriteCorrect": "0/0",
     "turnSuccess": "5/5",
-    "roundsWithoutLookAtCanvas": 0,
-    "roundsReadWholeSelection": "5/5",
-    "roundsSawWholeSelectionAtAnswer": "5/5",
+    "roundsWithoutLookAtCanvas": 5,
+    "roundsReadLiveCanvas": 0,
+    "roundsReadWholeSelection": "0/5",
+    "roundsSawWholeSelectionAtAnswer": "0/5",
     "harnessErrors": 0
   },
   "gaugeProblems": [],
@@ -68,278 +95,284 @@
     ],
     "canvasOrder": [
       {
-        "id": "gen-v2-image-mvly05yn-6zrq",
+        "id": "gen-v2-image-mvn63n41-w72v",
         "kind": "image",
         "title": "首帧·晨雾码头",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yn-i4ss",
+        "id": "gen-v2-video-mvn63n42-5hxh",
         "kind": "video",
         "title": "视频·渔船出港",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yo-auvx",
+        "id": "gen-v2-image-mvn63n42-by9m",
         "kind": "image",
         "title": "首帧·缆绳绕桩",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yo-icha",
+        "id": "gen-v2-video-mvn63n42-tekl",
         "kind": "video",
         "title": "视频·汽笛压浪",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yo-u7ut",
+        "id": "gen-v2-image-mvn63n42-nz0q",
         "kind": "image",
         "title": "首帧·灯塔初亮",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yo-bu50",
+        "id": "gen-v2-video-mvn63n42-f4yz",
         "kind": "video",
         "title": "视频·灯塔夜航",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yo-fhc7",
+        "id": "gen-v2-image-mvn63n42-pgxa",
         "kind": "image",
         "title": "首帧·礁石浪花",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yo-197r",
+        "id": "gen-v2-video-mvn63n42-62np",
         "kind": "video",
         "title": "视频·海鸥掠水",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yo-kivl",
+        "id": "gen-v2-image-mvn63n42-dszl",
         "kind": "image",
         "title": "首帧·渔网晾晒",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yo-kgym",
+        "id": "gen-v2-video-mvn63n42-xl99",
         "kind": "video",
         "title": "视频·老街叫卖",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yo-fp3y",
+        "id": "gen-v2-image-mvn63n43-yckf",
         "kind": "image",
         "title": "首帧·石桥细雨",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yo-zidd",
+        "id": "gen-v2-video-mvn63n43-hg3q",
         "kind": "video",
         "title": "视频·油纸伞下",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yp-90zo",
+        "id": "gen-v2-image-mvn63n43-o5ci",
         "kind": "image",
         "title": "首帧·茶馆清晨",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yp-h1v7",
+        "id": "gen-v2-video-mvn63n43-1ar5",
         "kind": "video",
         "title": "视频·说书开场",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yp-9t5c",
+        "id": "gen-v2-image-mvn63n43-ngpc",
         "kind": "image",
         "title": "首帧·戏台灯笼",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yp-ni6u",
+        "id": "gen-v2-video-mvn63n43-y2pk",
         "kind": "video",
         "title": "视频·锣鼓开戏",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yp-voo1",
+        "id": "gen-v2-image-mvn63n43-0r23",
         "kind": "image",
         "title": "首帧·竹林小径",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yp-1rax",
+        "id": "gen-v2-video-mvn63n43-u53g",
         "kind": "video",
         "title": "视频·竹叶翻飞",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yp-on8k",
+        "id": "gen-v2-image-mvn63n43-cje2",
         "kind": "image",
         "title": "首帧·稻田白鹭",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yp-1zrd",
+        "id": "gen-v2-video-mvn63n43-b1rb",
         "kind": "video",
         "title": "视频·风吹稻浪",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yp-p2px",
+        "id": "gen-v2-image-mvn63n43-0v33",
         "kind": "image",
         "title": "首帧·松林木屋",
         "selected": false
       },
       {
-        "id": "gen-v2-video-mvly05yp-bk1a",
+        "id": "gen-v2-video-mvn63n43-a9n2",
         "kind": "video",
         "title": "视频·炉火噼啪",
         "selected": false
       },
       {
-        "id": "gen-v2-image-mvly05yp-r4vm",
+        "id": "gen-v2-image-mvn63n43-e8cc",
         "kind": "image",
         "title": "首帧·古井青苔",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yp-6xoj",
+        "id": "gen-v2-video-mvn63n44-e7j8",
         "kind": "video",
         "title": "视频·木桶打水",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yp-stan",
+        "id": "gen-v2-image-mvn63n44-4pxv",
         "kind": "image",
         "title": "首帧·铁轨尽头",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yq-a932",
+        "id": "gen-v2-video-mvn63n44-hdaz",
         "kind": "video",
         "title": "视频·绿皮火车",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yq-qf3p",
+        "id": "gen-v2-image-mvn63n44-186x",
         "kind": "image",
         "title": "首帧·站台送别",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yq-mihu",
+        "id": "gen-v2-video-mvn63n44-p76t",
         "kind": "video",
         "title": "视频·车窗挥手",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yq-f702",
+        "id": "gen-v2-image-mvn63n44-uacc",
         "kind": "image",
         "title": "首帧·隧道出口",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yq-tcoh",
+        "id": "gen-v2-video-mvn63n44-cyb9",
         "kind": "video",
         "title": "视频·天光乍现",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yq-0ldu",
+        "id": "gen-v2-image-mvn63n44-rmaa",
         "kind": "image",
         "title": "首帧·天桥黄昏",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yq-5cpx",
+        "id": "gen-v2-video-mvn63n44-aygj",
         "kind": "video",
         "title": "视频·车流成河",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yq-7ffm",
+        "id": "gen-v2-image-mvn63n44-nj86",
         "kind": "image",
         "title": "首帧·霓虹招牌",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yq-ws1i",
+        "id": "gen-v2-video-mvn63n44-ay96",
         "kind": "video",
         "title": "视频·雨夜街头",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yq-w093",
+        "id": "gen-v2-image-mvn63n44-9qbg",
         "kind": "image",
         "title": "首帧·邮筒旁边",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yq-4jd6",
+        "id": "gen-v2-video-mvn63n44-u1ci",
         "kind": "video",
         "title": "视频·信封落地",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yq-7wzv",
+        "id": "gen-v2-image-mvn63n45-i961",
         "kind": "image",
         "title": "首帧·书摊午后",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yq-9udl",
+        "id": "gen-v2-video-mvn63n45-528m",
         "kind": "video",
         "title": "视频·翻书声响",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yr-zkez",
+        "id": "gen-v2-image-mvn63n45-4hio",
         "kind": "image",
         "title": "首帧·钟楼正午",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yr-2ao2",
+        "id": "gen-v2-video-mvn63n45-lfcd",
         "kind": "video",
         "title": "视频·鸽群起飞",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yr-wh7q",
+        "id": "gen-v2-image-mvn63n45-grln",
         "kind": "image",
         "title": "首帧·雪山日出",
         "selected": true
       },
       {
-        "id": "gen-v2-video-mvly05yr-oi9e",
+        "id": "gen-v2-video-mvn63n45-8p77",
         "kind": "video",
         "title": "视频·冰湖倒影",
         "selected": true
       },
       {
-        "id": "gen-v2-image-mvly05yr-tx4e",
+        "id": "gen-v2-image-mvn63n45-q4rb",
         "kind": "image",
         "title": "首帧·沙丘驼队",
         "selected": false
       },
       {
-        "id": "gen-v2-video-mvly05yr-51gm",
+        "id": "gen-v2-video-mvn63n45-pzic",
         "kind": "video",
         "title": "视频·极光夜空",
         "selected": false
       }
     ],
-    "firstText": "画布节点 44 个(id | 类型 | 镜头号与角色 | 归属节点 | 标题 | 状态 | prompt 摘要 | 结果身份):\n当前选中 40 个（节点行里标了「选中」）\n- gen-v2-image-mvly05yn-6zrq | image | 首帧图 | 首帧·晨雾码头 | 选中\n- gen-v2-video-mvly05yn-i4ss | video | 视频 | 视频·渔船出港 | 选中\n- gen-v2-image-mvly05yo-auvx | image | 首帧图 | 首帧·缆绳绕桩 | 选中\n- gen-v2-video-mvly05yo-icha | video | 视频 | 视频·汽笛压浪 | 选中\n- gen-v2-image-mvly05yo-u7ut | image | 首帧图 | 首帧·灯塔初亮 | 选中\n- gen-v2-video-mvly05yo-bu50 | video | 视频 | 视频·灯塔夜航 | 选中\n- gen-v2-image-mvly05yo-fhc7 | image | 首帧图 | 首帧·礁石浪花 | 选中\n- gen-v2-video-mvly05yo-197r | video | 视频 | 视频·海鸥掠水 | 选中\n- gen-v2-image-mvly05yo-kivl | image | 首帧图 | 首帧·渔网晾晒 | 选中\n- gen-v2-video-mvly05yo-kgym | video | 视频 | 视频·老街叫卖 | 选中\n- gen-v2-image-mvly05yo-fp3y | image | 首帧图 | 首帧·石桥细雨 | 选中\n- gen-v2-video-mvly05yo-zidd | video | 视频 | 视频·油纸伞下 | 选中\n- gen-v2-image-mvly05yp-90zo | image | 首帧图 | 首帧·茶馆清晨 | 选中\n- gen-v2-video-mvly05yp-h1v7 | video | 视频 | 视频·说书开场 | 选中\n- gen-v2-image-mvly05yp-9t5c | image | 首帧图 | 首帧·戏台灯笼 | 选中\n- gen-v2-video-mvly05yp-ni6u | video | 视频 | 视频·锣鼓开戏 | 选中\n- gen-v2-image-mvly05yp-voo1 | image | 首帧图 | 首帧·竹林小径 | 选中\n- gen-v2-video-mvly05yp-1rax | video | 视频 | 视频·竹叶翻飞 | 选中\n- gen-v2-image-mvly05yp-on8k | image | 首帧图 | 首帧·稻田白鹭 | 选中\n- gen-v2-video-mvly05yp-1zrd | video | 视频 | 视频·风吹稻浪 | 选中\n- gen-v2-image-mvly05yp-r4vm | image | 首帧图 | 首帧·古井青苔 | 选中\n- gen-v2-video-mvly05yp-6xoj | video | 视频 | 视频·木桶打水 | 选中\n- gen-v2-image-mvly05yp-stan | image | 首帧图 | 首帧·铁轨尽头 | 选中\n- gen-v2-video-mvly05yq-a932 | video | 视频 | 视频·绿皮火车 | 选中\n- gen-v2-image-mvly05yq-qf3p | image | 首帧图 | 首帧·站台送别 | 选中\n- gen-v2-video-mvly05yq-mihu | video | 视频 | 视频·车窗挥手 | 选中\n- gen-v2-image-mvly05yq-f702 | image | 首帧图 | 首帧·隧道出口 | 选中\n- gen-v2-video-mvly05yq-tcoh | video | 视频 | 视频·天光乍现 | 选中\n- gen-v2-image-mvly05yq-0ldu | image | 首帧图 | 首帧·天桥黄昏 | 选中\n- gen-v2-video-mvly05yq-5cpx | video | 视频 | 视频·车流成河 | 选中\n- gen-v2-image-mvly05yq-7ffm | image | 首帧图 | 首帧·霓虹招牌 | 选中\n- gen-v2-video-mvly05yq-ws1i | video | 视频 | 视频·雨夜街头 | 选中\n- gen-v2-image-mvly05yq-w093 | image | 首帧图 | 首帧·邮筒旁边 | 选中\n- gen-v2-video-mvly05yq-4jd6 | video | 视频 | 视频·信封落地 | 选中\n- gen-v2-image-mvly05yq-7wzv | image | 首帧图 | 首帧·书摊午后 | 选中\n- gen-v2-video-mvly05yq-9udl | video | 视频 | 视频·翻书声响 | 选中\n- gen-v2-image-mvly05yr-zkez | image | 首帧图 | 首帧·钟楼正午 | 选中\n- gen-v2-video-mvly05yr-2ao2 | video | 视频 | 视频·鸽群起飞 | 选中\n- gen-v2-image-mvly05yr-wh7q | image | 首帧图 | 首帧·雪山日出 | 选中\n- gen-v2-video-mvly05yr-oi9e | video | 视频 | 视频·冰湖倒影 | 选中\n- gen-v2-image-mvly05yp-p2px | image | 首帧图 | 首帧·松林木屋\n- gen-v2-video-mvly05yp-bk1a | video | 视频 | 视频·炉火噼啪\n- gen-v2-image-mvly05yr-tx4e | image | 首帧图 | 首帧·沙丘驼队\n- gen-v2-video-mvly05yr-51gm | video | 视频 | 视频·极光夜空\n引用边: 无"
+    "firstText": "画布节点 44 个(id | 类型 | 镜头号与角色 | 归属节点 | 标题 | 状态 | prompt 摘要 | 结果身份):\n当前选中 40 个（节点行里标了「选中」）\n- gen-v2-image-mvn63n41-w72v | image | 首帧图 | 首帧·晨雾码头 | 选中\n- gen-v2-video-mvn63n42-5hxh | video | 视频 | 视频·渔船出港 | 选中\n- gen-v2-image-mvn63n42-by9m | image | 首帧图 | 首帧·缆绳绕桩 | 选中\n- gen-v2-video-mvn63n42-tekl | video | 视频 | 视频·汽笛压浪 | 选中\n- gen-v2-image-mvn63n42-nz0q | image | 首帧图 | 首帧·灯塔初亮 | 选中\n- gen-v2-video-mvn63n42-f4yz | video | 视频 | 视频·灯塔夜航 | 选中\n- gen-v2-image-mvn63n42-pgxa | image | 首帧图 | 首帧·礁石浪花 | 选中\n- gen-v2-video-mvn63n42-62np | video | 视频 | 视频·海鸥掠水 | 选中\n- gen-v2-image-mvn63n42-dszl | image | 首帧图 | 首帧·渔网晾晒 | 选中\n- gen-v2-video-mvn63n42-xl99 | video | 视频 | 视频·老街叫卖 | 选中\n- gen-v2-image-mvn63n43-yckf | image | 首帧图 | 首帧·石桥细雨 | 选中\n- gen-v2-video-mvn63n43-hg3q | video | 视频 | 视频·油纸伞下 | 选中\n- gen-v2-image-mvn63n43-o5ci | image | 首帧图 | 首帧·茶馆清晨 | 选中\n- gen-v2-video-mvn63n43-1ar5 | video | 视频 | 视频·说书开场 | 选中\n- gen-v2-image-mvn63n43-ngpc | image | 首帧图 | 首帧·戏台灯笼 | 选中\n- gen-v2-video-mvn63n43-y2pk | video | 视频 | 视频·锣鼓开戏 | 选中\n- gen-v2-image-mvn63n43-0r23 | image | 首帧图 | 首帧·竹林小径 | 选中\n- gen-v2-video-mvn63n43-u53g | video | 视频 | 视频·竹叶翻飞 | 选中\n- gen-v2-image-mvn63n43-cje2 | image | 首帧图 | 首帧·稻田白鹭 | 选中\n- gen-v2-video-mvn63n43-b1rb | video | 视频 | 视频·风吹稻浪 | 选中\n- gen-v2-image-mvn63n43-e8cc | image | 首帧图 | 首帧·古井青苔 | 选中\n- gen-v2-video-mvn63n44-e7j8 | video | 视频 | 视频·木桶打水 | 选中\n- gen-v2-image-mvn63n44-4pxv | image | 首帧图 | 首帧·铁轨尽头 | 选中\n- gen-v2-video-mvn63n44-hdaz | video | 视频 | 视频·绿皮火车 | 选中\n- gen-v2-image-mvn63n44-186x | image | 首帧图 | 首帧·站台送别 | 选中\n- gen-v2-video-mvn63n44-p76t | video | 视频 | 视频·车窗挥手 | 选中\n- gen-v2-image-mvn63n44-uacc | image | 首帧图 | 首帧·隧道出口 | 选中\n- gen-v2-video-mvn63n44-cyb9 | video | 视频 | 视频·天光乍现 | 选中\n- gen-v2-image-mvn63n44-rmaa | image | 首帧图 | 首帧·天桥黄昏 | 选中\n- gen-v2-video-mvn63n44-aygj | video | 视频 | 视频·车流成河 | 选中\n- gen-v2-image-mvn63n44-nj86 | image | 首帧图 | 首帧·霓虹招牌 | 选中\n- gen-v2-video-mvn63n44-ay96 | video | 视频 | 视频·雨夜街头 | 选中\n- gen-v2-image-mvn63n44-9qbg | image | 首帧图 | 首帧·邮筒旁边 | 选中\n- gen-v2-video-mvn63n44-u1ci | video | 视频 | 视频·信封落地 | 选中\n- gen-v2-image-mvn63n45-i961 | image | 首帧图 | 首帧·书摊午后 | 选中\n- gen-v2-video-mvn63n45-528m | video | 视频 | 视频·翻书声响 | 选中\n- gen-v2-image-mvn63n45-4hio | image | 首帧图 | 首帧·钟楼正午 | 选中\n- gen-v2-video-mvn63n45-lfcd | video | 视频 | 视频·鸽群起飞 | 选中\n- gen-v2-image-mvn63n45-grln | image | 首帧图 | 首帧·雪山日出 | 选中\n- gen-v2-video-mvn63n45-8p77 | video | 视频 | 视频·冰湖倒影 | 选中\n- gen-v2-image-mvn63n43-0v33 | image | 首帧图 | 首帧·松林木屋\n- gen-v2-video-mvn63n43-a9n2 | video | 视频 | 视频·炉火噼啪\n- gen-v2-image-mvn63n45-q4rb | image | 首帧图 | 首帧·沙丘驼队\n- gen-v2-video-mvn63n45-pzic | video | 视频 | 视频·极光夜空\n引用边: 无"
   },
   "rounds": [
     {
       "round": 1,
-      "startedAt": "2026-10-24T05:12:47.661Z",
+      "startedAt": "2026-10-25T01:47:12.961Z",
       "harnessError": null,
       "selectedBeforeSend": 40,
+      "projection": {
+        "total": 41,
+        "listed": 30,
+        "omitted": 11,
+        "truncated": true
+      },
       "sendAttempts": 1,
       "settle": {
         "interventions": [],
@@ -347,28 +380,19 @@
         "errorBar": null,
         "timedOut": false
       },
-      "ms": 738,
+      "ms": 654,
       "sessions": 1,
       "models": [
         "apimart/deepseek-v4-pro"
       ],
-      "calls": [
-        {
-          "name": "look_at_canvas",
-          "args": {},
-          "isError": false,
-          "selectionLines": [
-            "当前选中 40 个（节点行里标了「选中」）"
-          ],
-          "resultChars": 2603
-        }
-      ],
+      "calls": [],
       "finalAnswer": "你选中的节点里，视频节点有这些：\n视频·渔船出港\n视频·汽笛压浪\n视频·灯塔夜航\n视频·海鸥掠水\n视频·老街叫卖\n视频·油纸伞下\n视频·说书开场\n视频·锣鼓开戏\n视频·竹叶翻飞\n视频·风吹稻浪\n视频·木桶打水\n视频·绿皮火车\n视频·车窗挥手\n视频·天光乍现\n视频·车流成河\n视频·雨夜街头\n视频·信封落地\n视频·翻书声响\n视频·鸽群起飞\n视频·冰湖倒影",
       "score": {
-        "lookAtCanvasCalls": 1,
-        "legalCalls": 1,
+        "lookAtCanvasCalls": 0,
+        "readPath": "none",
+        "legalCalls": 0,
         "illegalCalls": [],
-        "selectionRead": 40,
+        "selectionRead": 0,
         "selectionTotal": 40,
         "otherTools": [],
         "answeredCount": 20,
@@ -377,9 +401,9 @@
         "success": true
       },
       "view": {
-        "lookResults": 1,
+        "lookResults": 0,
         "lookResultsOmitted": 0,
-        "selectedIdsVisible": 40,
+        "selectedIdsVisible": 0,
         "selectionTotal": 40,
         "truthNotedBeforeAnswer": 0,
         "truthInReasoningBeforeAnswer": 0
@@ -387,9 +411,15 @@
     },
     {
       "round": 2,
-      "startedAt": "2026-10-24T05:12:48.607Z",
+      "startedAt": "2026-10-25T01:47:13.815Z",
       "harnessError": null,
       "selectedBeforeSend": 40,
+      "projection": {
+        "total": 41,
+        "listed": 30,
+        "omitted": 11,
+        "truncated": true
+      },
       "sendAttempts": 1,
       "settle": {
         "interventions": [],
@@ -397,28 +427,19 @@
         "errorBar": null,
         "timedOut": false
       },
-      "ms": 790,
+      "ms": 780,
       "sessions": 1,
       "models": [
         "apimart/deepseek-v4-pro"
       ],
-      "calls": [
-        {
-          "name": "look_at_canvas",
-          "args": {},
-          "isError": false,
-          "selectionLines": [
-            "当前选中 40 个（节点行里标了「选中」）"
-          ],
-          "resultChars": 2603
-        }
-      ],
+      "calls": [],
       "finalAnswer": "你选中的节点里，视频节点有这些：\n视频·渔船出港\n视频·汽笛压浪\n视频·灯塔夜航\n视频·海鸥掠水\n视频·老街叫卖\n视频·油纸伞下\n视频·说书开场\n视频·锣鼓开戏\n视频·竹叶翻飞\n视频·风吹稻浪\n视频·木桶打水\n视频·绿皮火车\n视频·车窗挥手\n视频·天光乍现\n视频·车流成河\n视频·雨夜街头\n视频·信封落地\n视频·翻书声响\n视频·鸽群起飞\n视频·冰湖倒影",
       "score": {
-        "lookAtCanvasCalls": 1,
-        "legalCalls": 1,
+        "lookAtCanvasCalls": 0,
+        "readPath": "none",
+        "legalCalls": 0,
         "illegalCalls": [],
-        "selectionRead": 40,
+        "selectionRead": 0,
         "selectionTotal": 40,
         "otherTools": [],
         "answeredCount": 20,
@@ -427,9 +448,9 @@
         "success": true
       },
       "view": {
-        "lookResults": 1,
+        "lookResults": 0,
         "lookResultsOmitted": 0,
-        "selectedIdsVisible": 40,
+        "selectedIdsVisible": 0,
         "selectionTotal": 40,
         "truthNotedBeforeAnswer": 0,
         "truthInReasoningBeforeAnswer": 0
@@ -437,9 +458,15 @@
     },
     {
       "round": 3,
-      "startedAt": "2026-10-24T05:12:49.618Z",
+      "startedAt": "2026-10-25T01:47:14.845Z",
       "harnessError": null,
       "selectedBeforeSend": 40,
+      "projection": {
+        "total": 41,
+        "listed": 30,
+        "omitted": 11,
+        "truncated": true
+      },
       "sendAttempts": 1,
       "settle": {
         "interventions": [],
@@ -447,28 +474,19 @@
         "errorBar": null,
         "timedOut": false
       },
-      "ms": 775,
+      "ms": 774,
       "sessions": 1,
       "models": [
         "apimart/deepseek-v4-pro"
       ],
-      "calls": [
-        {
-          "name": "look_at_canvas",
-          "args": {},
-          "isError": false,
-          "selectionLines": [
-            "当前选中 40 个（节点行里标了「选中」）"
-          ],
-          "resultChars": 2603
-        }
-      ],
+      "calls": [],
       "finalAnswer": "你选中的节点里，视频节点有这些：\n视频·渔船出港\n视频·汽笛压浪\n视频·灯塔夜航\n视频·海鸥掠水\n视频·老街叫卖\n视频·油纸伞下\n视频·说书开场\n视频·锣鼓开戏\n视频·竹叶翻飞\n视频·风吹稻浪\n视频·木桶打水\n视频·绿皮火车\n视频·车窗挥手\n视频·天光乍现\n视频·车流成河\n视频·雨夜街头\n视频·信封落地\n视频·翻书声响\n视频·鸽群起飞\n视频·冰湖倒影",
       "score": {
-        "lookAtCanvasCalls": 1,
-        "legalCalls": 1,
+        "lookAtCanvasCalls": 0,
+        "readPath": "none",
+        "legalCalls": 0,
         "illegalCalls": [],
-        "selectionRead": 40,
+        "selectionRead": 0,
         "selectionTotal": 40,
         "otherTools": [],
         "answeredCount": 20,
@@ -477,9 +495,9 @@
         "success": true
       },
       "view": {
-        "lookResults": 1,
+        "lookResults": 0,
         "lookResultsOmitted": 0,
-        "selectedIdsVisible": 40,
+        "selectedIdsVisible": 0,
         "selectionTotal": 40,
         "truthNotedBeforeAnswer": 0,
         "truthInReasoningBeforeAnswer": 0
@@ -487,9 +505,15 @@
     },
     {
       "round": 4,
-      "startedAt": "2026-10-24T05:12:50.608Z",
+      "startedAt": "2026-10-25T01:47:15.839Z",
       "harnessError": null,
       "selectedBeforeSend": 40,
+      "projection": {
+        "total": 41,
+        "listed": 30,
+        "omitted": 11,
+        "truncated": true
+      },
       "sendAttempts": 1,
       "settle": {
         "interventions": [],
@@ -497,28 +521,19 @@
         "errorBar": null,
         "timedOut": false
       },
-      "ms": 773,
+      "ms": 774,
       "sessions": 1,
       "models": [
         "apimart/deepseek-v4-pro"
       ],
-      "calls": [
-        {
-          "name": "look_at_canvas",
-          "args": {},
-          "isError": false,
-          "selectionLines": [
-            "当前选中 40 个（节点行里标了「选中」）"
-          ],
-          "resultChars": 2603
-        }
-      ],
+      "calls": [],
       "finalAnswer": "你选中的节点里，视频节点有这些：\n视频·渔船出港\n视频·汽笛压浪\n视频·灯塔夜航\n视频·海鸥掠水\n视频·老街叫卖\n视频·油纸伞下\n视频·说书开场\n视频·锣鼓开戏\n视频·竹叶翻飞\n视频·风吹稻浪\n视频·木桶打水\n视频·绿皮火车\n视频·车窗挥手\n视频·天光乍现\n视频·车流成河\n视频·雨夜街头\n视频·信封落地\n视频·翻书声响\n视频·鸽群起飞\n视频·冰湖倒影",
       "score": {
-        "lookAtCanvasCalls": 1,
-        "legalCalls": 1,
+        "lookAtCanvasCalls": 0,
+        "readPath": "none",
+        "legalCalls": 0,
         "illegalCalls": [],
-        "selectionRead": 40,
+        "selectionRead": 0,
         "selectionTotal": 40,
         "otherTools": [],
         "answeredCount": 20,
@@ -527,9 +542,9 @@
         "success": true
       },
       "view": {
-        "lookResults": 1,
+        "lookResults": 0,
         "lookResultsOmitted": 0,
-        "selectedIdsVisible": 40,
+        "selectedIdsVisible": 0,
         "selectionTotal": 40,
         "truthNotedBeforeAnswer": 0,
         "truthInReasoningBeforeAnswer": 0
@@ -537,9 +552,15 @@
     },
     {
       "round": 5,
-      "startedAt": "2026-10-24T05:12:51.603Z",
+      "startedAt": "2026-10-25T01:47:16.856Z",
       "harnessError": null,
       "selectedBeforeSend": 40,
+      "projection": {
+        "total": 41,
+        "listed": 30,
+        "omitted": 11,
+        "truncated": true
+      },
       "sendAttempts": 1,
       "settle": {
         "interventions": [],
@@ -547,28 +568,19 @@
         "errorBar": null,
         "timedOut": false
       },
-      "ms": 904,
+      "ms": 783,
       "sessions": 1,
       "models": [
         "apimart/deepseek-v4-pro"
       ],
-      "calls": [
-        {
-          "name": "look_at_canvas",
-          "args": {},
-          "isError": false,
-          "selectionLines": [
-            "当前选中 40 个（节点行里标了「选中」）"
-          ],
-          "resultChars": 2603
-        }
-      ],
+      "calls": [],
       "finalAnswer": "你选中的节点里，视频节点有这些：\n视频·渔船出港\n视频·汽笛压浪\n视频·灯塔夜航\n视频·海鸥掠水\n视频·老街叫卖\n视频·油纸伞下\n视频·说书开场\n视频·锣鼓开戏\n视频·竹叶翻飞\n视频·风吹稻浪\n视频·木桶打水\n视频·绿皮火车\n视频·车窗挥手\n视频·天光乍现\n视频·车流成河\n视频·雨夜街头\n视频·信封落地\n视频·翻书声响\n视频·鸽群起飞\n视频·冰湖倒影",
       "score": {
-        "lookAtCanvasCalls": 1,
-        "legalCalls": 1,
+        "lookAtCanvasCalls": 0,
+        "readPath": "none",
+        "legalCalls": 0,
         "illegalCalls": [],
-        "selectionRead": 40,
+        "selectionRead": 0,
         "selectionTotal": 40,
         "otherTools": [],
         "answeredCount": 20,
@@ -577,9 +589,9 @@
         "success": true
       },
       "view": {
-        "lookResults": 1,
+        "lookResults": 0,
         "lookResultsOmitted": 0,
-        "selectedIdsVisible": 40,
+        "selectedIdsVisible": 0,
         "selectionTotal": 40,
         "truthNotedBeforeAnswer": 0,
         "truthInReasoningBeforeAnswer": 0
@@ -588,17 +600,17 @@
   ],
   "spend": {
     "text": {
-      "replies": 10,
-      "input": 80,
-      "output": 70,
-      "cacheRead": 30,
+      "replies": 5,
+      "input": 40,
+      "output": 35,
+      "cacheRead": 15,
       "cacheWrite": 0,
       "models": {
-        "apimart/deepseek-v4-pro": 10
+        "apimart/deepseek-v4-pro": 5
       }
     },
     "mediaCalls": 0
   },
   "networkBlocked": [],
-  "walkOutputDir": ".tmp/pi-look-at-canvas-selection-rehearsal-development-1792818759653"
+  "walkOutputDir": ".tmp/pi-look-at-canvas-selection-rehearsal-development-1792892825079"
 }

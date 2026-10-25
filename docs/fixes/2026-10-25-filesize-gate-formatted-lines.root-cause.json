@@ -1,0 +1,167 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-25-filesize-gate-formatted-lines",
+  "problem_type": "File-size gate measured physical source lines, so compressed formatting and comment deletion could hide a responsibility blob while the 800-line rule claimed to enforce modularity.",
+  "symptom": "A file that crossed 800 physical lines was compressed to pass the gate; the gate reported green even though the normalized code still exceeded the intended module-size boundary.",
+  "direct_cause": "scripts/check-file-sizes.mjs counted newline characters and treated five legacy allowlist entries as a second inline policy, with no normalized metric, declaration diagnostics, or baseline-drift comparison.",
+  "class_root": "The modularity invariant had no single normalized measurement and no structural ratchet for reviewed exceptions: the gate could be evaded by source layout changes and the exception list could grow without a machine-enforced migration boundary.",
+  "affected_population": [
+    "Any tracked production TypeScript file whose source is compressed or whose comments and blank lines change without changing responsibilities",
+    "Any frozen or legacy baseline entry that is increased or any new exception added after the migration",
+    "The push fast-check and CI full scan that consume check:filesize"
+  ],
+  "scope_paths": [
+    "docs/engineering/rules.json",
+    "docs/engineering/rules.md",
+    "docs/plan/2026-10-25-filesize-gate-formatted-lines.md",
+    "scripts/check-file-sizes.mjs",
+    "scripts/check-file-sizes.test.mjs",
+    "scripts/claude-hooks/self-check.sh",
+    "scripts/file-size-baseline.json",
+    "scripts/pre-push-contracts.mjs"
+  ],
+  "entry_points": [
+    "pnpm run check:filesize",
+    "scripts/pre-push-contracts.mjs changed-file fast check",
+    "CI gates:contracts check:filesize",
+    "scripts/check-file-sizes.test.mjs fixture runner"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://prettier.io/docs/api",
+      "checked_at": "2026-10-25",
+      "purpose": "The normalized metric must use the repository Prettier configuration in memory via filepath-aware formatting."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://eslint.org/docs/latest/rules/max-lines",
+      "checked_at": "2026-10-25",
+      "purpose": "skipBlankLines and skipComments confirm the line-category semantics while showing that physical-line counting alone is insufficient."
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/microsoft/TypeScript/wiki/Using-the-Compiler-API",
+      "checked_at": "2026-10-25",
+      "purpose": "createSourceFile supplies top-level declaration spans for actionable warnings."
+    }
+  ],
+  "invariants": [
+    "Every tracked production .ts/.tsx/.mts/.cts file is formatted with the repository Prettier configuration before code lines are counted.",
+    "Blank lines and lines covered only by comments do not count; non-comment text including multiline strings does count.",
+    "650–800 normalized code lines produce a warning with the largest top-level declarations; >800 produces a blocking error.",
+    "Frozen and legacy baseline entries cannot grow; a baseline addition or upper-bound increase is red except for the one recorded migration from origin/main 4236b6b412d92af52c16f012ccaf99f076ca92ae.",
+    "The baseline is one file with kind legacy or frozen; no second allowlist logic exists."
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "scripts/pre-push-contracts.mjs",
+      "symbol": "runNode"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/pre-push-contracts.mjs",
+      "symbol": "gateCommands"
+    },
+    {
+      "kind": "write",
+      "path": "scripts/pre-push-contracts.mjs",
+      "symbol": "runNode"
+    }
+  ],
+  "generality_proof": "The single command is consumed by the package script, the changed-file pre-push contract, and the CI contracts chain; all converge on check-file-sizes.mjs and the same JSON baseline. The metric is independent of source wrapping, comment density, file extension among the supported TypeScript family, and whether the file is new or frozen, so the reported compression escape and future baseline drift share one enforcement path.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/check-file-sizes.mjs",
+      "symbol": "checkFileSizes",
+      "responsibility": "Format, count, classify declarations, compare baselines, and emit pass/warn/error results."
+    },
+    {
+      "path": "scripts/file-size-baseline.json",
+      "symbol": "entries",
+      "responsibility": "Store the single reviewed baseline with legacy/frozen kind, cap, reason, and declaration hints."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "package.json",
+      "entry_point": "check:filesize",
+      "disposition": "enforced",
+      "evidence": "Delegates directly to scripts/check-file-sizes.mjs."
+    },
+    {
+      "path": "scripts/pre-push-contracts.mjs",
+      "entry_point": "check:filesize changed-file selection",
+      "disposition": "enforced",
+      "evidence": "The fast-check invokes the same package gate for changed files; no alternate metric is introduced."
+    },
+    {
+      "path": "scripts/check-file-sizes.test.mjs",
+      "entry_point": "fixture gate runner",
+      "disposition": "enforced",
+      "evidence": "The class matrix covers normalized counting, frozen ratchets, baseline drift, and extension exclusions."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any future compressed source, multiline string, comment deletion, new TypeScript extension, or exception-list edit can reproduce the same false-green or unbounded-baseline behavior.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs --roots=scripts runNode gateCommands check-file-sizes.mjs -> 3 generated script doors (pre-push command selection and process boundary); no alternate production state writer exists.",
+      "rg -n 'check:filesize|file-size-baseline|单文件.*800|800.*行' package.json scripts docs CLAUDE.md -> package, pre-push, rules, hook, and generated-agent surfaces checked.",
+      "git grep 'ALLOWLIST\\|countLines\\|wc -l' scripts -> old physical-line and inline allowlist paths removed from the shared gate."
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/check-file-sizes.mjs",
+    "invariant": "Normalized formatted code lines and a one-file non-growing baseline are required for every supported production TypeScript entry.",
+    "failure_mode": "Formatting/AST failure, >800 lines, frozen growth, baseline addition, or baseline upper-bound increase exits 1 with the path and actionable declaration/cap message.",
+    "exception_policy": "none",
+    "strategy": "Delete the physical-line counter and inline allowlist, centralize entries in JSON, permit the one origin/main migration once, then reject every later addition or increase while allowing only downward ratchets.",
+    "artifacts": [
+      "scripts/check-file-sizes.mjs",
+      "scripts/file-size-baseline.json",
+      "scripts/check-file-sizes.test.mjs",
+      "docs/engineering/rules.json",
+      "scripts/claude-hooks/self-check.sh"
+    ]
+  },
+  "regression_tests": [
+    "scripts/check-file-sizes.test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/check-file-sizes.test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "scripts/check-file-sizes.mjs"
+    ],
+    "rationale": "The old inline exception table and physical-line metric are deleted in the same change; all callers use the formatted-code metric and JSON baseline."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Prettier and TypeScript are already repository dependencies used through their documented APIs; no dependency defect or upgrade is required for this invariant.",
+    "exit_criteria": []
+  },
+  "migration": "The five existing legacy paths are recalculated once, and the 28 newly frozen paths are recorded at their current normalized caps, while origin/main still carries only the old ALLOWLIST and no scripts/file-size-baseline.json. Once the baseline JSON is on origin/main that window is closed structurally (no commit id is checked): only lower caps or removed entries are accepted.",
+  "residual_risks": [
+    "A future Prettier major change can alter normalized counts; the gate will surface the change as a baseline drift or file result, but the baseline must then be reviewed deliberately.",
+    "The frozen entries still exceed 800 and require responsibility-based splits in follow-up work; this change only prevents them from growing.",
+    "The four paths that fell below the new red line compared with the previous 32-file exploration are removed from the frozen list; future Prettier/config drift must be recomputed against the current main baseline."
+  ],
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-25",
+  "invariant_owner_layer": {
+    "layer": "scripts/check-file-sizes.mjs",
+    "tests": [
+      "scripts/check-file-sizes.test.mjs"
+    ]
+  },
+  "door_reduction": {
+    "before": 3,
+    "after": 3,
+    "why_not": "The generated door-map for runNode/gateCommands reports three surviving script doors: gateCommands selects the package command, runNode reads the child process boundary, and the pre-push caller supplies the changed-file environment. They cross separate command and process responsibilities and are not merged by this gate change."
+  }
+}

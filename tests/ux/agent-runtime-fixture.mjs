@@ -449,6 +449,9 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
   const videos = []
   /** APIMart 参考图上传（`/v1/uploads/images`），每笔带 multipart 里的文件名（uploadFileNames）。 */
   const uploads = []
+  let referenceUploadsHeld = false
+  let releaseReferenceUploads = () => {}
+  let referenceUploadReleasePromise = null
   // 真视频要跑**几分钟**：受理之后供应商一直回 `processing`，直到走查说「供应商那边出片了」。
   // 默认就压着——一条走查若不 release，它看到的正是用户看到的「还在生成」。
   let videosHeld = true
@@ -552,6 +555,10 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
       // 只留 multipart 头里的文件名（演练据此核「哪几张图被上传过」，如没在用的参考图一张都不该上传），字节不留。
       record.uploadFileNames = [...Buffer.concat(parts).toString('latin1').matchAll(/filename="([^"]*)"/g)].map((match) => match[1])
       uploads.push(record)
+      if (referenceUploadsHeld) {
+        referenceUploadReleasePromise ??= new Promise((resolve) => { releaseReferenceUploads = resolve })
+        await referenceUploadReleasePromise
+      }
       jsonResponse(response, 200, { url: `${fixtureOrigin}/fixture/image.jpg` })
       return
     }
@@ -720,6 +727,15 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
       baseURL, requests, images, videos, uploads, unexpected, modelListProbes, balanceProbes, close, generationProvider,
       /** 已受理的 apimart 图片任务先停在 `processing`（true），放开后下一次轮询照常出图（false）。 */
       holdTasks(on) { holdTasks = Boolean(on) },
+      /** 参考图 multipart 上传收到完整请求后停住；由走查显式 release，禁止固定毫秒数掩盖上传窗口。 */
+      holdReferenceUploads(on) {
+        referenceUploadsHeld = Boolean(on)
+        if (!referenceUploadsHeld) {
+          releaseReferenceUploads()
+          releaseReferenceUploads = () => {}
+          referenceUploadReleasePromise = null
+        }
+      },
       /** apimart 图片 / 视频 create 先压着不回（true），放开后压着的那几笔照常受理（false）。 */
       holdSubmits(on) {
         if (on) submitsHeld ??= new Promise((resolve) => { releaseSubmits = resolve })

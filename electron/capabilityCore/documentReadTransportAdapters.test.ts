@@ -41,12 +41,12 @@ async function setup() {
 
 describe("document.read Pi transport", () => {
   it.each([
-    [DOCUMENT_READ_ALIASES.full, "full", "full draft"],
-    [DOCUMENT_READ_ALIASES.selection, "selection", "selected text"],
-  ] as const)("projects %s through one canonical executor", async (toolName, scope, text) => {
+    [DOCUMENT_READ_ALIASES.full, "full", "full draft", {}],
+    ["nomi_document_read", "selection", "selected text", { scope: "selection" }],
+  ] as const)("projects %s through one canonical executor", async (toolName, scope, text, args) => {
     const test = await setup();
     await expect(test.adapter.tryExecute(
-      { toolCallId: `tool-${scope}`, toolName, args: {} },
+      { toolCallId: `tool-${scope}`, toolName, args },
       "document-a",
       new AbortController().signal,
     )).resolves.toEqual({ ok: true, result: { text }, silent: true });

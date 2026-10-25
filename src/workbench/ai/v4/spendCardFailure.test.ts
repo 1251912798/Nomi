@@ -24,6 +24,11 @@ describe('付费卡上一下没做成时说哪一句', () => {
       .toBe('generationCommon.production.canvasLanding.actionFailure.approvalStale')
   })
 
+  it('真实参考上传期间范围变了：沿用确认过期的可见下一步', () => {
+    expect(spendActionFailureCopy({ ok: false, code: 'failed', message: 'generation_not_started', reason: 'generation_reference_scope_changed', failure: 'approval_stale' }, true))
+      .toBe('generationCommon.production.canvasLanding.actionFailure.approvalStale')
+  })
+
   it('卡刚变了 / 这一张已经不在卡上 / 项目没打开 / 生成功能还没起来：各说各的', () => {
     expect(spendActionFailureCopy({ ok: false, code: 'failed', message: 'generation_quote_changed' }, true)).toBe('agentPanelV4.spendActionCardChanged')
     expect(spendActionFailureCopy({ ok: false, code: 'failed', message: 'generation_scope_invalid' }, true)).toBe('agentPanelV4.spendActionShotGone')

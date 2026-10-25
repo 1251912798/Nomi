@@ -92,9 +92,13 @@ export function freezeAgentContextSnapshot(snapshot: AgentContextSnapshot): Agen
   return cloneAndFreeze(snapshot) as AgentContextSnapshot
 }
 
-function compactText(value: string, limit = 160): string {
-  const normalized = value.replace(/\s+/g, ' ').trim()
+/** Cut an already-normalized label to `limit`.  Cutting a cut label gives the same result as cutting once. */
+function clipText(normalized: string, limit: number): string {
   return normalized.length > limit ? `${normalized.slice(0, limit - 1)}…` : normalized
+}
+
+function compactText(value: string, limit = 160): string {
+  return clipText(value.replace(/\s+/g, ' ').trim(), limit)
 }
 
 function compactAnchor(anchor: DocumentAnchorRef): Record<string, unknown> {
@@ -114,10 +118,31 @@ function compactAnchor(anchor: DocumentAnchorRef): Record<string, unknown> {
   return { kind: anchor.kind, trailingTextHash: compactText(anchor.trailingTextHash, 64) }
 }
 
-function compactLocator(locator: NonNullable<AgentContextHandle['locator']>): Record<string, unknown> {
+/**
+ * A locator is part of a handle's meaning (a document range, a time range, which director shot), so
+ * the projection keeps it at every detail level.  The one exception is a selection locator: the
+ * producer stamps the WHOLE selection into every handle, but each selected target is already its
+ * own handle (or is counted in `omitted`), so repeating the ids per handle only burns the budget
+ * quadratically (12 nodes already overflowed it).  Only ids that no handle names are written out.
+ */
+function compactLocator(
+  locator: NonNullable<AgentContextHandle['locator']>,
+  named: ReadonlySet<string>,
+  selectionCache: Map<readonly string[], readonly string[]>,
+): Record<string, unknown> | undefined {
   if (locator.type === 'documentAnchor') return { type: locator.type, anchor: compactAnchor(locator.anchor) }
-  if (locator.type === 'canvasSelection') return { type: locator.type, nodeIds: locator.nodeIds.slice(0, 16).map((id) => compactText(id, 96)) }
-  if (locator.type === 'clipSelection') return { type: locator.type, clipIds: locator.clipIds.slice(0, 16).map((id) => compactText(id, 96)) }
+  if (locator.type === 'canvasSelection' || locator.type === 'clipSelection') {
+    const ids = locator.type === 'canvasSelection' ? locator.nodeIds : locator.clipIds
+    const cached = selectionCache.get(ids)
+    const unnamed = cached ?? (() => {
+      const found = ids.filter((id) => !named.has(id)).slice(0, 16)
+      selectionCache.set(ids, found)
+      return found
+    })()
+    const compactUnnamed = unnamed.map((id) => compactText(id, 96))
+    if (!compactUnnamed.length) return undefined
+    return locator.type === 'canvasSelection' ? { type: locator.type, nodeIds: compactUnnamed } : { type: locator.type, clipIds: compactUnnamed }
+  }
   if (locator.type === 'timeRange') return { type: locator.type, startMs: locator.startMs, endMs: locator.endMs }
   const rawValue = locator.value
   let value: unknown
@@ -133,7 +158,26 @@ function contextHeader(version: AgentContextSnapshot['version']): string {
   return `[Nomi current selection — read-only ContextSnapshot v${version}]\n`
 }
 
-type CompactContextHandle = {
+/**
+ * The only source for omitted-kind recovery guidance.  Keep this beside the snapshot encoder rather
+ * than in a model-facing schema: it describes how an already available read verb recovers a kind,
+ * without spending resident tool-schema budget.  The note below is derived from this table.
+ */
+const OMITTED_KIND_GUIDANCE: Readonly<Partial<Record<AgentContextKind, string>>> = Object.freeze({
+  canvasNode: 'For omitted canvas nodes, call look_at_canvas with no arguments; its node rows mark selected nodes and include all selected nodes. If its selected count differs from the canvasNode count in omittedByKind, the selection changed after send; tell the user.',
+})
+const OMITTED_FALLBACK_GUIDANCE = 'For omitted kinds without a selected-marker reader, ask the user to shrink the selection or send it in batches.'
+
+function hasCompleteRead(kind: AgentContextKind): boolean {
+  return Object.prototype.hasOwnProperty.call(OMITTED_KIND_GUIDANCE, kind)
+}
+
+type OmittedKind = Readonly<{
+  kind: AgentContextKind
+  count: number
+}>
+
+export type CompactContextHandle = {
   id: string
   kind: AgentContextKind
   targetId: string
@@ -143,73 +187,224 @@ type CompactContextHandle = {
   locator?: Record<string, unknown>
 }
 
+type ProjectionDetail = Readonly<{ subtitle: boolean; titleLimit: number; tightIdentity: boolean }>
+
 /**
- * Build a display-safe projection at a known detail level.  The runtime must
- * retain stable identity/revision even when it has to shed optional locator
- * detail to stay inside the hard context budget.
+ * Richest first.  The projection takes the first rung that lists EVERY handle, so a long title costs
+ * detail (a shorter title, no subtitle) before it ever costs an entry.  Identity, role and locator
+ * are never shed.  Only when even the last rung cannot list everything are handles left out, and
+ * then the projection says how many.
  */
-function compactHandle(handle: AgentContextHandle, detail: 'full' | 'reduced' | 'minimal'): CompactContextHandle {
-  if (detail === 'minimal') {
-    return {
-      id: compactText(handle.id, 64),
-      kind: handle.kind,
-      targetId: compactText(handle.targetId, 96),
-      revision: compactText(handle.revision, 64),
-      intentRole: handle.intentRole,
-      display: { title: compactText(handle.display.title, 96) },
-    }
-  }
-  const display = {
-    title: compactText(handle.display.title),
-    ...(detail === 'full' && handle.display.subtitle ? { subtitle: compactText(handle.display.subtitle) } : {}),
-  }
+const PROJECTION_LADDER: readonly ProjectionDetail[] = [
+  { subtitle: true, titleLimit: 160, tightIdentity: false },
+  { subtitle: false, titleLimit: 160, tightIdentity: false },
+  { subtitle: false, titleLimit: 96, tightIdentity: true },
+  { subtitle: false, titleLimit: 48, tightIdentity: true },
+  { subtitle: false, titleLimit: 24, tightIdentity: true },
+  { subtitle: false, titleLimit: 12, tightIdentity: true },
+]
+
+/** A handle with every label normalized and cut to its widest rung once, so each rung only slices. */
+type PreparedHandle = Readonly<{
+  handle: AgentContextHandle
+  id: string
+  targetId: string
+  revision: string
+  title: string
+  subtitle: string | undefined
+  locator: Record<string, unknown> | undefined
+}>
+
+function prepareHandle(handle: AgentContextHandle, named: ReadonlySet<string>, selectionCache: Map<readonly string[], readonly string[]>): PreparedHandle {
   return {
-    id: compactText(handle.id),
-    kind: handle.kind,
-    targetId: compactText(handle.targetId),
+    handle,
+    id: compactText(handle.id, 160),
+    targetId: compactText(handle.targetId, 160),
     revision: compactText(handle.revision, 96),
-    intentRole: handle.intentRole,
-    display,
-    ...(detail === 'full' && handle.locator ? { locator: compactLocator(handle.locator) } : {}),
+    title: compactText(handle.display.title, 160),
+    subtitle: handle.display.subtitle ? compactText(handle.display.subtitle, 160) : undefined,
+    locator: handle.locator ? compactLocator(handle.locator, named, selectionCache) : undefined,
   }
 }
 
 /**
- * Encode as many handles as fit, preserving deterministic order.  A single
- * pathological handle is progressively compacted before it can be emitted;
- * this guarantees that the returned block (header included) never exceeds
- * MAX_TRANSIENT_CONTEXT_CHARS and is always valid JSON after the header.
+ * Build a display-safe projection at a known detail level.  The runtime must
+ * retain stable identity/revision even when it has to shed optional display
+ * detail to stay inside the hard context budget.
  */
-function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLength: number): string {
-  const budget = Math.max(256, MAX_TRANSIENT_CONTEXT_CHARS - headerLength)
-  const attempts: readonly CompactContextHandle[][] = [
-    handles.map((handle) => compactHandle(handle, 'full')),
-    handles.map((handle) => compactHandle(handle, 'reduced')),
-    handles.map((handle) => compactHandle(handle, 'minimal')),
-  ]
-  for (const candidate of attempts) {
-    let end = candidate.length
-    while (end > 0) {
-      const encoded = JSON.stringify(candidate.slice(0, end))
-      if (encoded.length <= budget) return encoded
-      end -= 1
-    }
+function compactHandle(prepared: PreparedHandle, detail: ProjectionDetail): CompactContextHandle {
+  const tight = detail.tightIdentity
+  return {
+    id: clipText(prepared.id, tight ? 64 : 160),
+    kind: prepared.handle.kind,
+    targetId: clipText(prepared.targetId, tight ? 96 : 160),
+    revision: clipText(prepared.revision, tight ? 64 : 96),
+    intentRole: prepared.handle.intentRole,
+    display: {
+      title: clipText(prepared.title, detail.titleLimit),
+      ...(detail.subtitle && prepared.subtitle ? { subtitle: prepared.subtitle } : {}),
+    },
+    ...(prepared.locator ? { locator: prepared.locator } : {}),
   }
-  // `minimal` has bounded scalar fields, so this branch is only defensive
-  // against future schema changes that add an unexpectedly large fixed field.
-  return '[]'
 }
+
+/** The accounting travels with the data: total = listed + omitted, always written, never inferred. */
+function encodeProjection(total: number, rows: readonly CompactContextHandle[], omittedByKind: readonly OmittedKind[] = []): string {
+  const omitted = total - rows.length
+  return JSON.stringify({
+    total,
+    listed: rows.length,
+    ...(omitted > 0 ? {
+      omitted,
+      ...(omittedByKind.length ? { omittedByKind } : {}),
+      omittedNote: omittedNoteForKinds(omittedByKind),
+    } : {}),
+    handles: rows,
+  })
+}
+
+function omittedByKindFromCounts(counts: ReadonlyMap<AgentContextKind, number>): OmittedKind[] {
+  return AGENT_CONTEXT_KINDS.flatMap((kind) => {
+    const count = counts.get(kind) ?? 0
+    return count > 0 ? [{ kind, count }] : []
+  })
+}
+
+function omittedNoteForKinds(omittedByKind: readonly OmittedKind[]): string {
+  const guidance = omittedByKind.map(({ kind }) => OMITTED_KIND_GUIDANCE[kind] ?? OMITTED_FALLBACK_GUIDANCE)
+  return `The omitted handles are still part of the current selection. Use omittedByKind to see how many were not listed. ${guidance.join(' ')}`
+}
+
+function projectionLength(total: number, listed: number, handlePrefixLength: number, omittedByKind: readonly OmittedKind[]): number {
+  let length = `{"total":${total},"listed":${listed}`.length
+  const omitted = total - listed
+  if (omitted > 0) {
+    length += `,"omitted":${omitted}`.length
+    if (omittedByKind.length) length += `,"omittedByKind":${JSON.stringify(omittedByKind)}`.length
+    length += `,"omittedNote":${JSON.stringify(omittedNoteForKinds(omittedByKind))}`.length
+  }
+  return length + ',"handles":['.length + handlePrefixLength + 2
+}
+
+function tryEncodeRows({
+  total,
+  budget,
+  rows,
+  sourceHandles,
+  initialOmittedCounts,
+  allowPrefix,
+}: {
+  total: number
+  budget: number
+  rows: readonly CompactContextHandle[]
+  sourceHandles: readonly AgentContextHandle[]
+  initialOmittedCounts: ReadonlyMap<AgentContextKind, number>
+  allowPrefix: boolean
+}): { body: string; listed: number } | undefined {
+  const rowLengths = rows.map((row) => JSON.stringify(row).length)
+  const omittedCounts = new Map(initialOmittedCounts)
+  let lastListed = 0
+  let lastOmittedByKind: OmittedKind[] | undefined
+  let handlePrefixLength = 0
+  for (let listed = 0; listed <= rows.length; listed += 1) {
+    const omittedByKind = omittedByKindFromCounts(omittedCounts)
+    if (projectionLength(total, listed, handlePrefixLength, omittedByKind) > budget) break
+    lastListed = listed
+    lastOmittedByKind = omittedByKind
+    if (listed === rows.length) return { body: encodeProjection(total, rows, omittedByKind), listed }
+    const next = sourceHandles[listed]
+    if (next) omittedCounts.set(next.kind, (omittedCounts.get(next.kind) ?? 0) - 1)
+    handlePrefixLength += rowLengths[listed] + (listed > 0 ? 1 : 0)
+  }
+  if (allowPrefix && lastOmittedByKind !== undefined) {
+    return { body: encodeProjection(total, rows.slice(0, lastListed), lastOmittedByKind), listed: lastListed }
+  }
+  return undefined
+}
+
+/**
+ * Encode the snapshot inside the hard budget. Preference order: every detail rung first gets the
+ * chance to list every handle; only if none can, omit every kind with a complete reader as a whole,
+ * then give the remaining kinds the first rung that lists them all, or the least detailed rung's
+ * longest prefix. The returned block (header included) never exceeds the hard bound.
+ */
+function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLength: number): { body: string; listed: number } {
+  const budget = Math.max(256, MAX_TRANSIENT_CONTEXT_CHARS - headerLength)
+  const total = handles.length
+  const named: ReadonlySet<string> = new Set(handles.map((handle) => handle.targetId))
+  const selectionCache = new Map<readonly string[], readonly string[]>()
+  const prepared = handles.map((handle) => prepareHandle(handle, named, selectionCache))
+  const fullOmittedCounts = new Map<AgentContextKind, number>()
+  for (const handle of handles) fullOmittedCounts.set(handle.kind, (fullOmittedCounts.get(handle.kind) ?? 0) + 1)
+  const rungRows: CompactContextHandle[][] = []
+  for (const detail of PROJECTION_LADDER) {
+    const rows = prepared.map((item) => compactHandle(item, detail))
+    const fullProjection = tryEncodeRows({
+      total,
+      budget,
+      rows,
+      sourceHandles: handles,
+      initialOmittedCounts: fullOmittedCounts,
+      allowPrefix: false,
+    })
+    if (fullProjection) return fullProjection
+    rungRows.push(rows)
+  }
+
+  // No rung lists the whole selection. A kind with a complete reader is all-or-nothing: remove
+  // those rows as a class and spend the recovered budget on the kinds that have no selected-marker
+  // reader, which keep the ladder and, on the least detailed rung, the longest prefix.
+  const fallbackIndexes = handles.flatMap((handle, index) => hasCompleteRead(handle.kind) ? [] : [index])
+  const fallbackHandles = fallbackIndexes.map((index) => handles[index])
+  for (const [rung, rows] of rungRows.entries()) {
+    const fallbackProjection = tryEncodeRows({
+      total,
+      budget,
+      rows: fallbackIndexes.map((index) => rows[index]),
+      sourceHandles: fallbackHandles,
+      initialOmittedCounts: fullOmittedCounts,
+      allowPrefix: rung === rungRows.length - 1,
+    })
+    if (fallbackProjection) return fallbackProjection
+  }
+  /* istanbul ignore next -- the final rung always fits the ledger-only projection */
+  return { body: encodeProjection(total, [], omittedByKindFromCounts(fullOmittedCounts)), listed: 0 }
+}
+
+/**
+ * What the model is shown for a snapshot, plus the facts about it. When a full projection does not
+ * fit, every kind is omitted wholesale and the text carries a stable per-kind ledger instead of
+ * implying completeness.
+ */
+export type AgentContextProjection = Readonly<{
+  /** Transient model context; empty when nothing is selected. */
+  text: string
+  /** Handles in the snapshot. */
+  total: number
+  /** Number of handles written into `text` (readable kinds may be omitted wholesale). */
+  listed: number
+  /** `total - listed`: handles the model was told about but not shown. */
+  omitted: number
+  truncated: boolean
+}>
+
+const EMPTY_PROJECTION: AgentContextProjection = Object.freeze({ text: '', total: 0, listed: 0, omitted: 0, truncated: false })
 
 /**
  * Project the snapshot into a small transient model context. It deliberately
  * omits posters/extensions and bounds labels so a large title or custom
- * locator cannot evict the conversation from the model's KV cache.
+ * locator cannot evict the conversation from the model's KV cache.  The full
+ * immutable snapshot stays on the Host request; this projection is model
+ * context, not a second owner — and it never drops a handle silently.
  */
-export function formatAgentContextSnapshot(snapshot: AgentContextSnapshot | undefined): string {
-  if (!snapshot?.handles.length) return ''
-  // Keep only a deterministic first page.  The full immutable snapshot stays
-  // on the Host request; this projection is model context, not a second owner.
-  const handles = snapshot.handles.slice(0, 16)
+export function projectAgentContextSnapshot(snapshot: AgentContextSnapshot | undefined): AgentContextProjection {
+  if (!snapshot?.handles.length) return EMPTY_PROJECTION
   const header = contextHeader(snapshot.version)
-  return `${header}${encodeBoundedHandles(handles, header.length)}`
+  const { body, listed } = encodeBoundedHandles(snapshot.handles, header.length)
+  const total = snapshot.handles.length
+  return { text: `${header}${body}`, total, listed, omitted: total - listed, truncated: listed < total }
+}
+
+export function formatAgentContextSnapshot(snapshot: AgentContextSnapshot | undefined): string {
+  return projectAgentContextSnapshot(snapshot).text
 }

@@ -4,6 +4,17 @@ import { laneMessageText, laneMessages } from './agent-lane-observer.mjs'
 
 export const SELECTION_ASK = '我选中的这些里，哪几个是视频节点？把标题都列出来'
 export const LOOK_AT_CANVAS = 'look_at_canvas'
+// 真实用户会把同一意图说成很多种话；量具保留这些句子，防止只用一条演示 prompt 就宣称工具会用。
+export const SELECTION_PROMPTS = Object.freeze([
+  '把我选中的这些镜头都改成夜景。', '逐个说出我刚才框选的镜头标题。', '我选中的视频里，哪些是夜景？',
+  '给这批片段统一加字幕。', '只处理我选中的画布节点。', '把选中的镜头按顺序列出来。',
+  '这次发送时我到底选了多少个？', '把选区里的视频和图片分开说。', '只告诉我选中的前三个标题。',
+  '看当前画布，不看发送时选区。', '时间轴上我勾的片段总时长是多少？', '把文稿选中的段落拆成镜头。',
+  '我刚才 @ 的参考分别是什么？', '先不要改，确认这批选区里有没有音频。', '按我发送那一刻的选择生成一个清单。',
+  '我发送后又换了选择，仍按刚才那一批回答。', '读完所有选中的片段，再告诉我最短的一个。',
+  '只读画布选区，不要读实时画布。', '选区太大时告诉我总数和还没读到的部分。', '继续读取上一页的选区。',
+  '这条消息没有选区时不要猜，告诉我怎么继续。', '游标失效时从第一页重新读。',
+])
 
 const SELECTED_SHOTS = Object.freeze([
   ['晨雾码头', '渔船出港'], ['缆绳绕桩', '汽笛压浪'], ['灯塔初亮', '灯塔夜航'], ['礁石浪花', '海鸥掠水'], ['渔网晾晒', '老街叫卖'],
@@ -130,8 +141,14 @@ export function lookAtCanvasCallLegality(call) {
 }
 
 const squash = (text) => String(text ?? '').replace(/\s+/g, '')
+// 答案 = 列出来的条目（编号 / 项目符号 / 表格行）+ 没明说「没选中」的散文行。
+// 列全选区后顺手说明「画布上另有 X 没被选中」是对用户有用的补充，不算多列；列表项上标了「未选中」照样算多列。
+const LIST_ITEM = /^\s*(?:[-*•·]|\d+\s*[.、)）]|[（(]\d+[)）]|\|)/
+const NOT_SELECTED = /未被?选中|没有?被?选中|[不没]在(?:你的)?选[中区]|not selected|unselected|not in your selection|outside your selection/i
 export function answeredKeys(answer, scene) {
-  const text = squash(answer)
+  const text = String(answer ?? '').split('\n')
+    .filter((line) => LIST_ITEM.test(line) || !NOT_SELECTED.test(line))
+    .map(squash).join('\n')
   return scene.nodes.filter((node) => text.includes(node.key)).map((node) => node.key)
 }
 
@@ -148,7 +165,9 @@ export function scoreSelectionRound({ scene, transcript }) {
     const node = byKey.get(key); return { title: node.title, kind: node.kind, selected: node.selected }
   })
   return {
-    lookAtCanvasCalls: looks.length, legalCalls: verdicts.filter((verdict) => verdict.legal).length,
+    lookAtCanvasCalls: looks.length,
+    readPath: looks.length ? 'look_at_canvas' : 'none',
+    legalCalls: verdicts.filter((verdict) => verdict.legal).length,
     illegalCalls: verdicts.filter((verdict) => !verdict.legal).map(({ why }) => ({ args: {}, why })),
     selectionRead: read.size, selectionTotal: scene.selectedIds.length,
     otherTools: transcript.calls.filter((call) => call.name !== LOOK_AT_CANVAS).map((call) => call.name),
@@ -156,22 +175,27 @@ export function scoreSelectionRound({ scene, transcript }) {
   }
 }
 
+const SELECTION_IDS_BY_TOOL = Object.freeze({
+  [LOOK_AT_CANVAS]: (text, scene) => markedIdsFromText(text, scene),
+})
+const readsSelection = (message) => message?.role === 'toolResult' && message.toolName === LOOK_AT_CANVAS
+
 export function answerTimeView({ scene, sessions, transform }) {
   const messages = sessions.flatMap((session) => laneMessages(session))
   const answerAt = messages.findLastIndex((message) => message.role === 'assistant')
   if (answerAt < 0) return null
   const context = messages.slice(0, answerAt)
   const sent = transform(context)
-  const originalResults = context.filter((message) => message?.role === 'toolResult' && message.toolName === LOOK_AT_CANVAS)
+  const originalResults = context.filter(readsSelection)
   let resultIndex = 0
   const visible = new Set(); let lookResults = 0; let omitted = 0
   for (const message of sent) {
-    if (message?.role !== 'toolResult' || message.toolName !== LOOK_AT_CANVAS) continue
+    if (!readsSelection(message)) continue
     const original = originalResults[resultIndex++]
     lookResults += 1
     const text = textOf(message.content)
-    if (!original || text !== textOf(original.content)) { omitted += 1; continue }
-    for (const id of markedIdsFromText(text, scene)) visible.add(id)
+    if (!original || original.toolName !== message.toolName || text !== textOf(original.content)) { omitted += 1; continue }
+    for (const id of SELECTION_IDS_BY_TOOL[message.toolName](text, scene)) visible.add(id)
   }
   const before = messages.slice(0, answerAt).filter((message) => message.role === 'assistant')
   const spoken = before.flatMap((message) => [textOf(message.content), thinkingOf(message.content)]).join('\n')
@@ -187,6 +211,7 @@ export function summarizeSelectionRounds(records) {
     toolWriteCorrect: `${valid.reduce((sum, record) => sum + record.score.legalCalls, 0)}/${valid.reduce((sum, record) => sum + record.score.lookAtCanvasCalls, 0)}`,
     turnSuccess: `${count((record) => record.score.success)}/${records.length}`,
     roundsWithoutLookAtCanvas: count((record) => record.score.lookAtCanvasCalls === 0),
+    roundsReadLiveCanvas: count((record) => record.score.lookAtCanvasCalls > 0),
     roundsReadWholeSelection: `${count((record) => record.score.selectionRead === record.score.selectionTotal)}/${records.length}`,
     roundsSawWholeSelectionAtAnswer: `${count((record) => record.view?.selectedIdsVisible === record.score.selectionTotal)}/${records.length}`,
     harnessErrors: records.filter((record) => record.harnessError).length,
