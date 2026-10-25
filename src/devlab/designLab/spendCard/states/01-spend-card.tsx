@@ -33,9 +33,9 @@ const IMAGE_THREE: readonly SpendLabShot[] = [image(1), image(2), image(3)]
 const THREE: readonly SpendLabShot[] = [undecided(1, { duration: 4 }), undecided(2, { duration: 5 }), undecided(3, { duration: 4 })]
 
 const SCENARIOS = {
-  /** 方案一 · 中明宽：三张 GPT Image 2 图片，同前缀标题，第 1 格已定位并聚焦。 */
-  oneZhWide: { shots: IMAGE_THREE, located: 1, message: IMAGE_MESSAGE },
-  /** 方案一 · 中明窄：第 1 张已在节点上点过生成，鼠标停在第 2 张。 */
+  /** 方案一 · 中明宽：三张 GPT Image 2 图片，同前缀标题。「点过第 1 格」由走查真点击做（点完鼠标还停在那一格上）。 */
+  oneZhWide: { shots: IMAGE_THREE, message: IMAGE_MESSAGE },
+  /** 方案一 · 中明窄：第 1 张已在节点上点过生成。「鼠标停在第 2 张」由走查真悬停做。 */
   oneZhNarrow: { shots: [image(1, { offer: 'taken_by_canvas', node: 'generating' }), image(2), image(3)], message: IMAGE_MESSAGE },
   /** 方案一 · 英暗宽：去掉第 3 张。 */
   oneEnWideDark: { shots: [image(1), image(2), image(3, { offer: 'removed' })], message: IMAGE_MESSAGE },
@@ -112,17 +112,17 @@ function Cell({ scenario, locale = 'zh-CN', scene, width }: { scenario: SpendLab
 export const SPEND_CARD_STATES: readonly LabState[] = [
   {
     id: 'spend-one-zh-wide',
-    name: '方案一 · 中文 · 明 · 宽 384：三张图片，第 1 格已定位并聚焦',
+    name: '方案一 · 中文 · 明 · 宽 384：三张图片，点过第 1 格（走查真点击，鼠标停在它上面）',
     source: SOURCE,
     coverage: 'shell',
-    render: () => <Cell scenario={SCENARIOS.oneZhWide} width={384} scene={{ focus: pointer(1) }} />,
+    render: () => <Cell scenario={SCENARIOS.oneZhWide} width={384} />,
   },
   {
     id: 'spend-one-zh-narrow',
-    name: '方案一 · 中文 · 明 · 窄 320：第 1 张生成中，悬停第 2 张',
+    name: '方案一 · 中文 · 明 · 窄 320：第 1 张生成中，鼠标停在第 2 张（走查真悬停）',
     source: SOURCE,
     coverage: 'shell',
-    render: () => <Cell scenario={SCENARIOS.oneZhNarrow} width={320} scene={{ hover: [pointer(2)] }} />,
+    render: () => <Cell scenario={SCENARIOS.oneZhNarrow} width={320} />,
   },
   {
     id: 'spend-one-en-wide-dark',
@@ -193,7 +193,7 @@ export const SPEND_CARD_STATES: readonly LabState[] = [
   },
   {
     id: 'spend-exclude-focus',
-    name: '② 聚焦镜 02：露出「不生成 ×」，组下方换成这一镜的摘要',
+    name: '② 键盘聚焦镜 02：露出「不生成 ×」，组下方换成这一镜的摘要',
     source: SOURCE,
     coverage: 'shell',
     render: () => <Cell scenario={SCENARIOS.batch} scene={{ focus: pointer(2) }} />,
@@ -322,7 +322,7 @@ export const SPEND_CARD_STATES: readonly LabState[] = [
   },
   {
     id: 'spend-mixed',
-    name: '⑧ 逐镜不同：一横两竖 + 「逐镜 · 3 镜」每镜价（展开）',
+    name: '⑧ 逐镜不同：一横两竖 + 「逐镜 · 3 镜」每镜价（展开），鼠标停在第 3 格竖图（走查真悬停）',
     source: SOURCE,
     coverage: 'shell',
     render: () => <Cell scenario={SCENARIOS.mixed} scene={{ openPerShot: true }} />,

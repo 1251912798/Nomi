@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import { projectSpendCard, spendCardStoppedMessage, spendCardSummary, type SpendCardShotFacts, type SpendCardView } from './agentPanelSpendCard'
 import type { PendingSpendConfirm, PendingSpendShot } from '../../../desktop/productionRunBridgeTypes'
+import i18n from '../../../i18n'
+import { enAgentPanelV4, zhAgentPanelV4 } from '../../../i18n/locales/agentPanelV4'
 
 // 付费卡（D2 第③步，SpendCardQ1 板）每一句话都要能追到产地：几段、哪一镜没发出去、为什么、下一步、印不印钱。
 // 这一组钉的是「说错了会怎样」——把去掉的也算进 N、结果未知说成没花钱、算不出价印 0、失败时给一条不存在的出路。
@@ -320,5 +322,61 @@ describe('一行只读摘要', () => {
 
   it('三镜都读不出那一样：整齐，那一样不印（不是「逐镜不同」）', () => {
     expect(spendCardSummary([1, 2, 3].map((index) => facts(index, { aspect: null })), t)).toBe('Seedance 2.0 Fast · 480p · agentPanelV4.spendCard.summarySeconds(value=12s)')
+  })
+})
+
+// SpendCardQ1 板 card.title：卡标题一句问话、不带数量（数量只在主按钮）。英文曾有一条「Generate these {{count}} images?」带着张数，
+// 样张是「Generate these images?」——中英每一条标题键、以及标题的每一种说法（多段 / 单段 / 剩下的 / 一段都不剩）都在这里数着。
+describe('付费卡标题 · 一句问话、不带数量（SpendCardQ1/card.title）', () => {
+  const dictionaries = { 'zh-CN': zhAgentPanelV4, en: enAgentPanelV4 } as const
+  /** 等人决定那一档的全部标题键（词典里 `spendParamsTitle*` 与「没有要生成的了」）；进度标题（正在发出 k/N）不是问话，不在此列。 */
+  const titleEntries = (locale: keyof typeof dictionaries): Array<[string, string]> => {
+    const dictionary = dictionaries[locale]
+    return [
+      ...Object.entries(dictionary).filter(([key, value]) => key.startsWith('spendParamsTitle') && typeof value === 'string') as Array<[string, string]>,
+      ['spendCard.titleNothing', dictionary.spendCard.titleNothing],
+    ]
+  }
+
+  it.each(['zh-CN', 'en'] as const)('%s：每一条标题键都没有数量占位、没有数字（词典逐键数着）', (locale) => {
+    const entries = titleEntries(locale)
+    // 防空转：标题键至少是 多段 / 单段 / 剩下的 × 图片 / 视频，加「没有要生成的了」。
+    expect(entries.length).toBeGreaterThanOrEqual(9)
+    for (const [key, text] of entries) {
+      expect(text, `${locale} ${key}`).not.toMatch(/\{\{/)
+      expect(text, `${locale} ${key}`).not.toMatch(/\d/)
+    }
+  })
+
+  const shots = (count: number, kind: 'image' | 'video', overrides: Partial<PendingSpendShot> = {}) =>
+    Array.from({ length: count }, (_, index) => shot(index + 1, { kind, ...overrides }))
+  const factsFor = (count: number, kind: 'image' | 'video') => Array.from({ length: count }, (_, index) => facts(index + 1, kind === 'image' ? { durationSec: null } : {}))
+
+  /** 真 i18n 的 t（i18next 的重载签名比投影要的宽，窄成它要的那一种）。 */
+  const realT = (locale: 'zh-CN' | 'en') => i18n.getFixedT(locale) as unknown as (key: string, options?: Record<string, unknown>) => string
+  /** 用真 i18n 把投影出来的标题念出来：覆盖「挑哪一句」+ 词典 + 复数，三层一起。 */
+  const spoken = (locale: 'zh-CN' | 'en', pendingShots: readonly PendingSpendShot[], shotFacts: readonly SpendCardShotFacts[]): string =>
+    projectSpendCard(pending(pendingShots), shotFacts, IDLE, realT(locale), { locale })!.slot.title
+
+  it.each(['zh-CN', 'en'] as const)('%s：多段 / 单段 / 剩下的 / 一段都不剩，图片和视频，念出来的标题都不带数字', (locale) => {
+    for (const kind of ['image', 'video'] as const) {
+      for (const count of [2, 3, 8]) {
+        const many = spoken(locale, shots(count, kind), factsFor(count, kind))
+        expect(many, `${locale} ${kind} 多段 ${count}`).not.toMatch(/\d/)
+      }
+      const single = spoken(locale, shots(1, kind), factsFor(1, kind))
+      expect(single, `${locale} ${kind} 单段`).not.toMatch(/\d/)
+      const remaining = spoken(locale, [shot(1, { kind, offer: 'taken_by_canvas' }), shot(2, { kind }), shot(3, { kind })], factsFor(3, kind))
+      expect(remaining, `${locale} ${kind} 剩下的`).not.toMatch(/\d/)
+    }
+    const nothing = spoken(locale, [shot(1, { offer: 'removed' }), shot(2, { offer: 'removed' })], [facts(1), facts(2)])
+    expect(nothing, `${locale} 一段都不剩`).not.toMatch(/\d/)
+  })
+
+  it('英文多段图片：标题就是词典那一句、不带张数；张数只在主按钮（曾是标题里带着 2 的那一句）', () => {
+    const card = projectSpendCard(pending(shots(2, 'image')), factsFor(2, 'image'), IDLE, realT('en'), { locale: 'en' })!
+    expect(card.slot.title).toBe(enAgentPanelV4.spendParamsTitleImage_other)
+    expect(card.slot.title).not.toMatch(/\d/)
+    expect(card.slot.confirmLabel).toBe(enAgentPanelV4.spendCard.generateAllImage.replace('{{count}}', '2'))
   })
 })

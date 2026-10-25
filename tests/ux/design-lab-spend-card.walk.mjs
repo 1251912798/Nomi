@@ -5,8 +5,14 @@
 // 期望的字一律从词典按键取（不在走查里再抄一份文案）；看不见的宿主行为（点「生成」走画布那一台发动机、节点改了卡跟着变、
 // 完成时画布各亮一下、收起后小球数上它）在真 Electron 里钉：tests/ux/agent-spend-card.walk.mjs。
 //
+// 「点过 / 鼠标停在」的格子一律用真指针（Playwright 的真鼠标：CSS :hover 才会亮，「不生成 ×」才会露出来）做完再拍、再断言——
+// 不用程序 focus() 或合成的 pointerover（那样拍出来是「格子亮了、× 没出来」的假悬停帧，或者多出一圈键盘焦点环）。
+// 驱动（walkScreen.mjs）在断言之前就拍了每一格（那时没有指针），所以走真指针的格子在这里做完动作后重拍同一个文件。
+//
 // 用法：node tests/ux/design-lab-spend-card.walk.mjs  （ONLY=spend-batch 只跑一格）
+import path from 'node:path'
 import { walkDesignLabScreen } from './design-lab/walkScreen.mjs'
+import { REPO_ROOT } from './design-lab/labStates.mjs'
 import { uiText, uiTextPattern, uiTextWith } from './full-walk/invariants.mjs'
 
 const A = {
@@ -31,7 +37,12 @@ const A = {
   unreadable: 'board:SpendCardQ1/card.unreadable',
   // 同一行刹车原因也是「权限两档」那张板的元素（刹车把直接档退回这张卡，原因写在标题下）。
   brakeReason: 'board:AgentPermissionTiers/spend-card.brake-reason',
+  // 卡里的指向元素是 NodePointer 板的生产件：P1 外壳（标题行在框外）、「已定位」是那张板的元素。
+  p1: 'board:NodePointer/pointer.p1',
+  located: 'board:NodePointer/pointer.located',
 }
+
+const SHOT_DIR = path.join(REPO_ROOT, 'tests/ux/shots/design-lab-spend-card')
 
 const NODE = (shot) => `lab-spend-node-${shot}`
 const MONEY = /[¥￥$€£]|\d+\.\d{2}/
@@ -68,6 +79,17 @@ async function cardFacts(page) {
         const rect = frame.getBoundingClientRect()
         return { ratio: rect.width / rect.height }
       })(),
+      // 缩略图正中这一格自己画的件（种类图标 / 状态胶囊 / 已定位）；宿主挂的常驻「恢复」另算（pinned）。
+      centers: [...(el.querySelector('[data-node-pointer-frame]')?.querySelectorAll('[data-node-pointer-center]') ?? [])].map((node) => node.getAttribute('data-node-pointer-center')),
+      pinned: Boolean(el.closest('[data-node-pointer-cell]')?.hasAttribute('data-accessory-pinned')),
+      hot: el.getAttribute('data-node-pointer-hot') === 'true',
+      // 标题行在画面框外（上面一行），不是框里的东西。
+      titleOutsideFrame: (() => {
+        const title = el.querySelector('[data-node-pointer-title]')
+        const frame = el.querySelector('[data-node-pointer-frame]')
+        if (!title || !frame) return null
+        return !frame.contains(title) && title.getBoundingClientRect().bottom <= frame.getBoundingClientRect().top + 1
+      })(),
     })) : []
     const toggles = body ? [...body.querySelectorAll('[data-spend-exclusion]')].map((el) => ({
       kind: el.getAttribute('data-spend-exclusion'),
@@ -82,6 +104,27 @@ async function cardFacts(page) {
       disabled: el.disabled,
       cell: el.closest('[data-node-pointer-cell]')?.querySelector('[data-node-pointer]')?.getAttribute('data-node-pointer-id') ?? null,
       excluded: Boolean(el.closest('[data-node-pointer-cell]')?.querySelector('[data-node-pointer-cell-dimmed]')),
+      // 「不生成 ×」要和输入框里参考图的 × 是同一件（共用 ThumbCornerX）：标记、点击区、圆点的大小与颜色、圆点在这一格画面框的哪个位置。
+      cornerX: (() => {
+        const rect = (node) => { const box = node.getBoundingClientRect(); return { left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: box.width, height: box.height } }
+        const dot = el.querySelector(':scope > i')
+        const frame = el.closest('[data-node-pointer-cell]')?.querySelector('[data-node-pointer-frame]')
+        // 颜色串的写法不一（oklch / oklab / rgb）：统一画到 1 个像素上读回 sRGB 再比。
+        const rgb = (value) => { const canvas = document.createElement('canvas'); canvas.width = 1; canvas.height = 1; const context = canvas.getContext('2d', { willReadFrequently: true }); context.fillStyle = '#000'; context.fillStyle = value; context.fillRect(0, 0, 1, 1); return Array.from(context.getImageData(0, 0, 1, 1).data).join(',') }
+        const token = (name) => { const probe = document.createElement('span'); probe.style.color = `var(${name})`; document.body.append(probe); const value = rgb(getComputedStyle(probe).color); probe.remove(); return value }
+        const dotStyle = dot ? getComputedStyle(dot) : null
+        return {
+          shared: el.hasAttribute('data-thumb-corner-x'),
+          hit: rect(el),
+          dot: dot ? rect(dot) : null,
+          frame: frame ? rect(frame) : null,
+          dotBackground: dotStyle ? rgb(dotStyle.backgroundColor) : null,
+          dotColor: dotStyle ? rgb(dotStyle.color) : null,
+          dotRadius: dotStyle ? Number.parseFloat(dotStyle.borderTopLeftRadius) : null,
+          ink: token('--nomi-ink'),
+          paper: token('--nomi-paper'),
+        }
+      })(),
     })) : []
     const notices = [...card.querySelectorAll('[data-v4-block="spend-notice"]')].map((el) => ({
       tone: el.getAttribute('data-tone'),
@@ -121,6 +164,13 @@ async function cardFacts(page) {
       // 卡上不许有一个可改的东西：编辑器零件（生成框、参数 chip、摘要 pill、参数面板）与输入框一个都不许出现（设计系统 §1.0）。
       editors: card.querySelectorAll('textarea, input, select, [contenteditable="true"], [data-composer-host], [data-node-composer-footer], [data-parameter-chip], [data-parameter-summary], [data-agent-parameter-panel]').length,
       cardText: card.textContent ?? '',
+      // 逐镜价格折叠口（板 card.per-shot）展开后本来就印每镜价（D5）；「界面不谈钱」查的是它以外的所有字。
+      // （d3be41f5d 把这条从「页脚」改成了「整张卡」，把折叠口里板上写明要印的价也当成违规——spend-mixed 两格因此一直红，只跑 4 格时看不见。）
+      cardTextOutsidePerShot: (() => {
+        const clone = card.cloneNode(true)
+        clone.querySelectorAll('[data-v4-block="price-per-item"]').forEach((node) => node.remove())
+        return clone.textContent ?? ''
+      })(),
       cardBox: (() => { const rect = card.getBoundingClientRect(); return { left: rect.left, right: rect.right, width: rect.width } })(),
       confirmBox: confirm ? (() => { const rect = confirm.getBoundingClientRect(); return { left: rect.left, right: rect.right, width: rect.width } })() : null,
     }
@@ -145,8 +195,9 @@ async function noAccentOutline(page, state, record) {
 /** 每一张卡都守的几条：卡上没有编辑器零件、动作行上不出钱、不许蓝描边。 */
 async function commonCard(page, state, record, facts) {
   if (facts.editors) record(`${state.id} ${A.pointers}: 卡上出现了 ${facts.editors} 个可改的东西（生成框 / 参数 chip / 输入框）——改参数的家只有节点`)
-  if (MONEY.test(facts.cardText)) record(`${state.id} ${A.total}: 卡上印了钱「${facts.cardText}」（10-08 界面不谈钱）`)
+  if (MONEY.test(facts.cardTextOutsidePerShot)) record(`${state.id} ${A.total}: 卡上印了钱「${facts.cardTextOutsidePerShot}」（10-08 界面不谈钱；逐镜折叠口除外）`)
   if (facts.confirm && MONEY.test(facts.confirm.text)) record(`${state.id} ${A.generate}: 主按钮印了钱「${facts.confirm.text}」`)
+  expectOneCenter(state, record, facts)
   await noAccentOutline(page, state, record)
 }
 
@@ -165,6 +216,8 @@ async function expectDecide(page, state, record, facts, expected) {
       ? tr(locale, expected.asked === 1 ? 'agentPanelV4.spendParamsTitleImageSingle' : 'agentPanelV4.spendParamsTitleImage', { count: expected.asked })
       : tr(locale, 'agentPanelV4.spendParamsTitle', { count: expected.asked }))
   if (facts.title !== title) record(`${state.id} ${A.title}: 标题应是「${title}」，实际「${facts.title}」`)
+  // 卡标题是一句问话、不带数量（数量只在主按钮）：中英都不许有数字。
+  if (/\d/.test(facts.title ?? '')) record(`${state.id} ${A.title}: 标题里不许带数量（数量只在主按钮），实际「${facts.title}」`)
   if (facts.badge) record(`${state.id} ${A.badge}: 方案一不再显示标题徽章（实际「${facts.badge}」）`)
   const generate = expected.confirm
   if (!facts.confirm || facts.confirm.text !== generate) record(`${state.id} ${A.generate}: 主按钮应是「${generate}」，实际「${facts.confirm?.text}」`)
@@ -199,18 +252,120 @@ function expectToggles(state, record, facts, kinds) {
     const key = toggle.kind === 'restore' ? 'agentPanelV4.spendCard.restoreName' : 'agentPanelV4.spendCard.excludeName'
     if (!pattern(locale, key).test(toggle.name)) record(`${state.id} ${A.exclude}: 小钮读屏名「${toggle.name}」不是词典那一句（${key}）`)
     if (toggle.kind === 'restore' && (toggle.opacity < 0.99 || !toggle.excluded)) record(`${state.id} ${A.exclude}: 去掉了的那一格应淡下去、「恢复」常驻：${JSON.stringify(toggle)}`)
+    if (toggle.kind === 'exclude') expectCornerX(state, record, toggle)
   }
 }
 
-async function expectAccessoryOnFrame(page, state, record) {
-  const result = await page.evaluate(() => [...document.querySelectorAll('[data-spend-exclusion]')].map((toggle) => {
-    const frame = toggle.closest('[data-node-pointer-cell]')?.querySelector('[data-node-pointer-frame]')
-    if (!frame) return null
-    const toggleBox = toggle.getBoundingClientRect()
-    const frameBox = frame.getBoundingClientRect()
-    return { rightDelta: Math.abs(toggleBox.right - frameBox.right), topDelta: Math.abs(toggleBox.top - frameBox.top), frameWidth: frameBox.width }
-  }).filter(Boolean))
-  if (result.some(({ rightDelta, topDelta }) => rightDelta > 12 || topDelta > 18)) record(`${state.id} ${A.exclude}: × 没有骑在缩略图画面框右上角：${JSON.stringify(result)}`)
+/**
+ * 「不生成」是缩略图右上角的小 ×，和输入框里参考图的 × 同一件（板 card.pointer.exclude；共用 ThumbCornerX，不是各画各的）：
+ * 带共用件的标记、点击区 28px、圆点 16px 黑底（ink）白叉（paper）、圆点中心落在**这一格自己画面框**的右上角里 4px（竖图就在竖框自己的角上）。
+ */
+function expectCornerX(state, record, toggle) {
+  const x = toggle.cornerX
+  const near = (value, target, tolerance = 1) => Math.abs(value - target) <= tolerance
+  if (!x.shared) record(`${state.id} ${A.exclude}: ${toggle.cell} 的「不生成」没有用共用的 ThumbCornerX（缺 data-thumb-corner-x）——样子要和参考图的 × 同一份定义`)
+  if (!near(x.hit.width, 28) || !near(x.hit.height, 28)) record(`${state.id} ${A.exclude}: × 的点击区应是 28px，实际 ${x.hit.width.toFixed(1)}×${x.hit.height.toFixed(1)}`)
+  if (!x.dot || !near(x.dot.width, 16) || !near(x.dot.height, 16)) record(`${state.id} ${A.exclude}: × 的圆点应是 16px，实际 ${JSON.stringify(x.dot && [x.dot.width, x.dot.height])}`)
+  if (x.dotBackground !== x.ink || x.dotColor !== x.paper || !(x.dotRadius >= 8)) record(`${state.id} ${A.exclude}: × 应是黑底（ink）白叉（paper）的圆：${JSON.stringify({ bg: x.dotBackground, color: x.dotColor, ink: x.ink, paper: x.paper, radius: x.dotRadius })}`)
+  if (x.dot && x.frame) {
+    const right = x.frame.right - (x.dot.left + x.dot.width / 2)
+    const top = x.dot.top + x.dot.height / 2 - x.frame.top
+    if (!near(right, 4, 1.5) || !near(top, 4, 1.5)) record(`${state.id} ${A.exclude}: × 的圆点中心应在这一格画面框右上角里 4px（和参考图同一个摆法），实际 右 ${right.toFixed(1)}px / 上 ${top.toFixed(1)}px（${toggle.cell}）`)
+  }
+}
+
+/** 鼠标（或键盘）停在哪一格，「不生成 ×」就只在那一格露出来；别的格子的藏着。 */
+function expectOnlyShown(state, record, facts, shot) {
+  const shown = facts.toggles.filter((toggle) => toggle.opacity > 0.99).map((toggle) => toggle.cell)
+  if (JSON.stringify(shown) !== JSON.stringify([NODE(shot)])) record(`${state.id} ${A.exclude}: 鼠标停在镜 0${shot} 上时，只该露出它那一颗「不生成 ×」，实际露出 ${JSON.stringify(shown)}`)
+}
+
+/**
+ * 缩略图正中只放一样东西（板 card.pointer.status / card.pointer.exclude）：这一格自己画的正中件（种类图标 / 状态胶囊 / 已定位）
+ * 加上宿主挂的常驻「恢复」，合起来不许超过一件。铺满整格的（结果图、等待面）和贴角的小标不算正中件。
+ * `expected`：每一格应是哪一档（'icon' | 'status' | 'located' | 'restore' | null）；缺省只验「不超过一件」。
+ */
+function expectOneCenter(state, record, facts, expected) {
+  const cards = facts.pointers.filter((pointer) => pointer.density === 'card')
+  cards.forEach((pointer, index) => {
+    const pieces = [...pointer.centers, ...(pointer.pinned ? ['restore'] : [])]
+    if (pieces.length > 1) record(`${state.id} ${A.status}: 镜 0${index + 1} 缩略图正中叠了 ${pieces.length} 样东西（${pieces.join(' + ')}），只许放一样`)
+    if (expected && (pieces[0] ?? null) !== expected[index]) record(`${state.id} ${A.status}: 镜 0${index + 1} 缩略图正中应是 ${expected[index]}，实际 ${pieces[0] ?? null}`)
+  })
+}
+
+/**
+ * 真点击过 / 鼠标停着的那一格：标题行在画面框外，标题 + 缩略图外面没有任何一层环（按钮、格子、组都不许有 outline / 描边 / 阴影）。
+ * 全局键盘焦点环（`:root :focus-visible`）只在键盘聚焦时画；真鼠标点一下不会触发它——所以这里要求没有。
+ */
+async function expectNoOuterRing(page, state, record, shot) {
+  const result = await page.evaluate((id) => {
+    const button = document.querySelector(`[data-v4-block="spend-body"] [data-node-pointer-id="${id}"]`)
+    if (!button) return null
+    const layers = [['pointer', button], ['cell', button.closest('[data-node-pointer-cell]')], ['group', button.closest('[data-node-pointer-group]')]]
+    return {
+      focused: document.activeElement === button,
+      focusVisible: button.matches(':focus-visible'),
+      layers: layers.filter(([, el]) => el).map(([name, el]) => {
+        const style = getComputedStyle(el)
+        return { name, outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth, boxShadow: style.boxShadow, borderTop: style.borderTopWidth }
+      }),
+    }
+  }, NODE(shot))
+  if (!result) { record(`${state.id} ${A.p1}: 找不到第 ${shot} 格的指向元素`); return }
+  if (result.focusVisible) record(`${state.id} ${A.p1}: 真点击后第 ${shot} 格不该进键盘焦点环（:focus-visible），那是程序 focus() / 键盘才有的`)
+  const rings = result.layers.filter((layer) => (layer.outlineStyle !== 'none' && layer.outlineWidth !== '0px') || layer.boxShadow !== 'none' || layer.borderTop !== '0px')
+  if (rings.length) record(`${state.id} ${A.p1}: 点过的第 ${shot} 格在标题 + 缩略图外面多了一圈框：${JSON.stringify(rings)}`)
+}
+
+/** 驱动在断言之前拍过这一格（没有指针）；走真指针的格子做完动作后重拍同一个文件，PNG / 接触表里是真悬停 / 真点击之后的样子。 */
+async function reshoot(page, state) {
+  await page.locator(`[data-design-lab-shot="${state.id}"]`).screenshot({ path: path.join(SHOT_DIR, `${state.id}.png`), animations: 'disabled' })
+}
+
+const pointerAt = (page, shot) => page.locator(`[data-v4-block="spend-body"] [data-node-pointer-id="${NODE(shot)}"]`)
+
+/** 鼠标真落到这一格缩略图的下半（人眼看着缩略图点的那一块；藏着的「不生成 ×」此刻不接指针，挡不住这一下）。`action`：'hover' | 'click'。 */
+async function mouseOnto(page, shot, action) {
+  const target = pointerAt(page, shot)
+  const box = await target.boundingBox()
+  await target[action]({ position: { x: Math.round((box?.width ?? 40) / 2), y: Math.round((box?.height ?? 40) - 8) } })
+}
+
+/** 等「不生成 ×」真露出来：从钮往上乘到格子为止的透明度 = 1（:hover 真亮了才会）。 */
+function waitForCornerX(page, shot) {
+  return page.waitForFunction((id) => {
+    const cell = document.querySelector(`[data-node-pointer-cell] [data-node-pointer-id="${id}"]`)?.closest('[data-node-pointer-cell]')
+    const toggle = cell?.querySelector('[data-spend-exclusion]')
+    if (!toggle) return false
+    let opacity = 1
+    for (let node = toggle; node && node !== cell; node = node.parentElement) opacity *= Number(getComputedStyle(node).opacity)
+    return opacity > 0.99
+  }, NODE(shot), { timeout: 3000 })
+}
+
+/**
+ * 板上写着「点过 / 鼠标停在」的格子，用真指针做完再拍（见文件头）：
+ *   spend-one-zh-wide   真点击第 1 格（点过 = 「已定位」；点完鼠标还停在它上面，所以 × 也露着）
+ *   spend-one-zh-narrow 鼠标真停到第 2 格
+ *   spend-mixed         鼠标真停到第 3 格（竖图）：它的 × 要在竖框自己的角上，不在格子的右缘。悬停会把组下方那一行换成这一格自己的摘要，
+ *                       所以这一格放在最后（`late`）：先在没有指针的卡上验完整行摘要，再悬停。
+ */
+const REAL_POINTER = {
+  'spend-one-zh-wide': { shot: 1, action: 'click' },
+  'spend-one-zh-narrow': { shot: 2, action: 'hover' },
+  'spend-mixed': { shot: 3, action: 'hover', late: true },
+}
+
+async function realPointer(page, state, record) {
+  const plan = REAL_POINTER[state.id]
+  if (!plan) return
+  await mouseOnto(page, plan.shot, plan.action)
+  if (plan.action === 'click') {
+    await pointerAt(page, plan.shot).locator('[data-node-pointer-located]').waitFor({ timeout: 3000 }).catch(() => record(`${state.id} ${A.located}: 真点击第 ${plan.shot} 格后没有立起「已定位」`))
+  }
+  await waitForCornerX(page, plan.shot).catch(() => record(`${state.id} ${A.exclude}: 鼠标真停在镜 0${plan.shot} 上后「不生成 ×」没露出来`))
+  await reshoot(page, state)
 }
 
 async function expectStatusCapsules(page, state, record) {
@@ -317,6 +472,8 @@ async function expectSpendCardState(page, state, record) {
     await expectReceipt(page, state, record, generated ? 'generated' : 'sent', generated ? ['result', 'result', 'result'] : ['result', 'generating', 'generating'])
     return
   }
+  // 真指针先做完（并重拍），下面读到的卡就是真悬停 / 真点击之后的样子（`late` 的那一格在它自己的断言末尾再做）。
+  if (!REAL_POINTER[state.id]?.late) await realPointer(page, state, record)
   const facts = await cardFacts(page)
   if (!facts) { record(`${state.id} ${A.title}: 介入槽里没有卡`); return }
   const all = (count) => tr(locale, 'agentPanelV4.spendCard.generateAll', { count })
@@ -327,8 +484,14 @@ async function expectSpendCardState(page, state, record) {
       expectGroup(state, record, facts, ['production', 'production', 'production'])
       expectImageTitles(state, record, facts, ['雨后纸船 · 出发', '雨后纸船 · 越过落叶', '雨后纸船 · 停在石阶'])
       expectImageSummary(state, record, facts, 'GPT Image 2（Nomi 选的） · 16:9 · 1K')
-      if (!faceOf(facts, 1)?.located) record(`${state.id} ${A.pointers}: 第 1 格聚焦后应有「已定位」中心胶囊`)
+      // 真点击第 1 格（点完鼠标还停在上面）：「已定位」独占缩略图正中、画面框亮起、× 只在这一格露出来，外面没有多一圈框。
+      if (!faceOf(facts, 1)?.located) record(`${state.id} ${A.located}: 真点击第 1 格后应有「已定位」中心胶囊`)
+      expectOneCenter(state, record, facts, ['located', 'icon', 'icon'])
       expectToggles(state, record, facts, ['exclude', 'exclude', 'exclude'])
+      expectOnlyShown(state, record, facts, 1)
+      if (!faceOf(facts, 1)?.hot) record(`${state.id} ${A.p1}: 鼠标停着的第 1 格画面框应亮起`)
+      if (facts.pointers.some((pointer) => pointer.titleOutsideFrame === false)) record(`${state.id} ${A.p1}: 标题行应在画面框外：${JSON.stringify(facts.pointers.map((pointer) => pointer.titleOutsideFrame))}`)
+      await expectNoOuterRing(page, state, record, 1)
       break
     }
     case 'spend-one-zh-narrow': {
@@ -339,7 +502,11 @@ async function expectSpendCardState(page, state, record) {
       if (!facts.hoverSummary?.includes('GPT Image 2') || !facts.hoverSummary?.includes('16:9') || !facts.hoverSummary?.includes('1K')) record(`${state.id} ${A.summary}: 悬停第 2 格应换成它自己的图片摘要：${facts.hoverSummary}`)
       if (/共|total/i.test(facts.hoverSummary ?? '')) record(`${state.id} ${A.summary}: 单格悬停摘要不应带总计词：${facts.hoverSummary}`)
       await expectStatusCapsules(page, state, record)
+      expectOneCenter(state, record, facts, ['status', 'icon', 'icon'])
       expectToggles(state, record, facts, [null, 'exclude', 'exclude'])
+      // 鼠标真停在第 2 格：它的 × 露出来（别的格藏着），画面框亮起。
+      expectOnlyShown(state, record, facts, 2)
+      if (!faceOf(facts, 2)?.hot) record(`${state.id} ${A.p1}: 鼠标停着的第 2 格画面框应亮起`)
       break
     }
     case 'spend-one-en-wide-dark': {
@@ -348,6 +515,8 @@ async function expectSpendCardState(page, state, record) {
       expectImageTitles(state, record, facts, ['Paper boat — sets off', 'Paper boat — drifts by', 'Paper boat — rests'])
       expectImageSummary(state, record, facts, "GPT Image 2 (Nomi's pick) · 16:9 · 1K")
       expectToggles(state, record, facts, ['exclude', 'exclude', 'restore'])
+      // 去掉的那一格正中常驻「恢复」，这一格不再画种类图标。
+      expectOneCenter(state, record, facts, ['icon', 'icon', 'restore'])
       break
     }
     case 'spend-one-en-narrow-dark': {
@@ -355,6 +524,9 @@ async function expectSpendCardState(page, state, record) {
       expectGroup(state, record, facts, ['production', 'production', 'production'])
       expectImageTitles(state, record, facts, ['Paper boat — sets off', 'Paper boat — drifts by', 'Paper boat — rests'])
       expectImageSummary(state, record, facts, "GPT Image 2 (Nomi's pick) · 1K · 16:9 ×2 · 9:16 ×1")
+      expectOneCenter(state, record, facts, ['icon', 'icon', 'icon'])
+      // 第 3 格是竖图：它的 × 在竖框自己的角上（expectToggles 里按各自画面框量）。
+      expectToggles(state, record, facts, ['exclude', 'exclude', 'exclude'])
       if (facts.cardBox.width > 301) record(`${state.id} ${A.pointers}: 图片窄卡比 300 的面板还宽：${facts.cardBox.width}`)
       const ratios = facts.pointers.map((pointer) => pointer.frame?.ratio ?? 0)
       if (Math.abs(ratios[0] - 16 / 9) > 0.03 || Math.abs(ratios[1] - 16 / 9) > 0.03 || Math.abs(ratios[2] - 9 / 16) > 0.03) record(`${state.id} ${A.pointers}: 图片节点比例应为 16:9、16:9、9:16：${JSON.stringify(ratios)}`)
@@ -396,18 +568,11 @@ async function expectSpendCardState(page, state, record) {
       const target = page.locator(`[data-v4-block="spend-body"] [data-node-pointer-id="${NODE(2)}"]`)
       const targetBox = await target.boundingBox()
       await target.hover({ position: { x: Math.round((targetBox?.width ?? 40) / 2), y: Math.round((targetBox?.height ?? 40) - 8) } })
-      await page.waitForFunction((id) => {
-        const cell = document.querySelector(`[data-node-pointer-cell] [data-node-pointer-id="${id}"]`)?.closest('[data-node-pointer-cell]')
-        const toggle = cell?.querySelector('[data-spend-exclusion]')
-        if (!toggle) return false
-        let opacity = 1
-        for (let node = toggle; node && node !== cell; node = node.parentElement) opacity *= Number(getComputedStyle(node).opacity)
-        return opacity > 0.99
-      }, NODE(2), { timeout: 3000 }).catch(() => record(`${state.id} ${A.exclude}: 真悬停镜 02 后「不生成 ×」没露出来`))
+      await waitForCornerX(page, 2).catch(() => record(`${state.id} ${A.exclude}: 真悬停镜 02 后「不生成 ×」没露出来`))
       const hovered = await cardFacts(page)
       if (!(hovered?.hoverSummary ?? '').includes('5s')) record(`${state.id} ${A.summary}: 悬停镜 02 后组下方应换成这一镜的摘要（5s）：${hovered?.hoverSummary}`)
       if ((hovered?.hoverSummary ?? '').includes('镜 02') || (hovered?.hoverSummary ?? '').includes('越过落叶')) record(`${state.id} ${A.summary}: 悬停摘要不应重复镜号或镜头名：${hovered?.hoverSummary}`)
-      await expectAccessoryOnFrame(page, state, record)
+      expectOnlyShown(state, record, hovered, 2)
       const others = hovered?.toggles.filter((toggle) => toggle.cell !== NODE(2)).map((toggle) => toggle.opacity) ?? []
       if (others.some((opacity) => opacity > 0.01)) record(`${state.id} ${A.exclude}: 只悬停镜 02，别的格子也露了小钮：${others.join(',')}`)
       const hot = (await group.boundingBox())?.height ?? 0
@@ -436,6 +601,7 @@ async function expectSpendCardState(page, state, record) {
       await expectDecide(page, state, record, facts, { asked: 2, confirm: all(2), total: 2 })
       expectGroup(state, record, facts, ['production', 'production', 'production'])
       expectToggles(state, record, facts, ['exclude', 'restore', 'exclude'])
+      expectOneCenter(state, record, facts, ['icon', 'restore', 'icon'])
       // 去掉了的那一格读的还是节点那一份制作状态：读屏名说「已去掉，不生成」（画布节点的小标同一句；格子上是淡下去 + 「恢复」）。
       if (!faceOf(facts, 2)?.aria.includes(uiText(locale, 'generationCommon.production.canvasLanding.removedNotGenerated'))) record(`${state.id} ${A.exclude}: 去掉了的那一格读屏名应说「已去掉，不生成」（和节点同一句）：${faceOf(facts, 2)?.aria}`)
       break
@@ -443,6 +609,7 @@ async function expectSpendCardState(page, state, record) {
     case 'spend-all-removed': {
       await expectDecide(page, state, record, facts, { title: tr(locale, 'agentPanelV4.spendCard.titleNothing'), confirm: tr(locale, 'agentPanelV4.spendCard.generate'), disabled: true, picked: false })
       expectToggles(state, record, facts, ['restore', 'restore', 'restore'])
+      expectOneCenter(state, record, facts, ['restore', 'restore', 'restore'])
       break
     }
     case 'spend-deleted': {
@@ -477,6 +644,7 @@ async function expectSpendCardState(page, state, record) {
       if (facts.pointers.some((pointer) => pointer.text.includes(uiText(locale, 'generationCommon.production.canvasLanding.awaitingConfirmation')))) record(`${state.id} ${A.pointers}: 正在发出时还有格子写着「等你确认」`)
       if (facts.toggles.length) record(`${state.id} ${A.exclude}: 正在发出时不再挂「不生成 ×」`)
       await expectStatusCapsules(page, state, record)
+      expectOneCenter(state, record, facts, ['status', 'status', 'status'])
       await commonCard(page, state, record, facts)
       break
     }
@@ -536,6 +704,13 @@ async function expectSpendCardState(page, state, record) {
       for (const shot of [2, 3]) {
         const ratio = faceOf(facts, shot)?.frame?.ratio ?? 0
         if (Math.abs(ratio - 9 / 16) > 0.03) record(`${state.id} ${A.pointers}: 镜 0${shot} 是竖版，画面框比例应是 9:16，实际 ${ratio.toFixed(3)}`)
+      }
+      // 竖版格的 × 在竖框自己的角上（不在格子的右缘）：expectToggles 按各格自己的画面框量。
+      expectToggles(state, record, facts, ['exclude', 'exclude', 'exclude'])
+      // 中文那一格鼠标真停在第 3 格（竖图）：只露它那一颗 ×，它在竖框自己的角上（上面 expectToggles 量的是位置，这里量露不露）。
+      if (state.id === 'spend-mixed') {
+        await realPointer(page, state, record)
+        expectOnlyShown(state, record, await cardFacts(page), 3)
       }
       break
     }

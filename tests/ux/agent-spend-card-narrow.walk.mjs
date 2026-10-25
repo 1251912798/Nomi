@@ -149,7 +149,11 @@ async function expectTitlesTellable(card, label) {
   return texts
 }
 
-/** 那一格标着「已定位」、小钮此刻露着：两个包围盒不相交，小钮也不压标题。 */
+/**
+ * 那一格标着「已定位」、小钮此刻露着：两个包围盒不相交，小钮也不压标题。
+ * 小钮量**看得见的那一块**：「不生成 ×」是 28px 透明点击区里一颗 16px 圆点（共用 ThumbCornerX，和参考图的 × 同一件），
+ * 压不压胶囊 / 标题要看圆点；透明的点击区本来就伸到框外 10px，量它会把「看不见的边」当成压住。
+ */
 async function expectLocatedClear(card, nodeId, label) {
   const read = () => card.evaluate((root, id) => {
     const cell = root.querySelector(`[data-node-pointer-id="${id}"]`)?.closest('[data-node-pointer-cell]')
@@ -163,7 +167,7 @@ async function expectLocatedClear(card, nodeId, label) {
     return {
       located: box(cell?.querySelector('[data-node-pointer-located]')),
       locatedText: cell?.querySelector('[data-node-pointer-located]')?.textContent?.trim() ?? null,
-      toggle: box(toggle),
+      toggle: box(toggle?.querySelector(':scope > i') ?? toggle),
       toggleText: toggle?.textContent?.trim() ?? null,
       opacity,
       title: box(cell?.querySelector('[data-node-pointer-title]')),
@@ -178,7 +182,12 @@ async function expectLocatedClear(card, nodeId, label) {
   const apart = facts.located.right <= facts.toggle.left || facts.toggle.right <= facts.located.left
     || facts.located.bottom <= facts.toggle.top || facts.toggle.bottom <= facts.located.top
   expect(apart, `${A.located}：${label}，「已定位」和「不生成 ×」不重叠 ${JSON.stringify(facts)}`).toBe(true)
-  // 方案一：标题行不给缩略图上的 × 让位；只核 × 不压正中的「已定位」胶囊。
+  // 方案一：标题行不给缩略图上的 × 让位（× 在缩略图角上、不占标题行）；× 的圆点也不压标题字。
+  if (facts.title) {
+    const clear = facts.title.right <= facts.toggle.left || facts.toggle.right <= facts.title.left
+      || facts.title.bottom <= facts.toggle.top || facts.toggle.bottom <= facts.title.top
+    expect(clear, `${A.exclude}：${label}，「不生成 ×」不压标题字 ${JSON.stringify(facts)}`).toBe(true)
+  }
   return facts
 }
 

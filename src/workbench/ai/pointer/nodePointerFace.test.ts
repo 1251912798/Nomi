@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GenerationCanvasNode } from '../../generationCanvas/model/generationCanvasTypes'
 import type { GenerationFeedback } from '../../observability/generationFeedback'
 import type { ProductionShotState } from '../../../../electron/shared/productionShotPhase'
-import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, nodePointerTitleTails, pointerHoverStack } from './nodePointerFace'
+import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, nodePointerTitleTails, pointerCenterTier, pointerHoverStack, type PointerCenterTier } from './nodePointerFace'
 
 const node = (patch: Partial<GenerationCanvasNode> = {}): GenerationCanvasNode => ({
   id: 'n1', kind: 'video', title: '纸船出发', categoryId: 'shots', position: { x: 0, y: 0 }, status: 'idle', prompt: '', meta: {}, ...patch,
@@ -149,5 +149,26 @@ describe('nodePointerTitleTails · the part of each tile title that tells it fro
 
   it('counts characters, not UTF-16 units: an emoji in the shared opening still cuts at the right place', () => {
     expect(tails(['🎬 开场 1', '🎬 开场 2'])).toEqual(['开场 1', '开场 2'])
+  })
+})
+
+describe('pointerCenterTier · the middle of a thumbnail holds exactly one thing (SpendCardQ1 card.pointer.status / card.pointer.exclude)', () => {
+  const none = { restore: false, located: false, status: false, icon: false } as const
+  const has = (...tiers: PointerCenterTier[]) => ({ ...none, ...Object.fromEntries(tiers.map((tier) => [tier, true])) })
+
+  it('picks the first of restore > located > status > icon, whatever else is also there', () => {
+    expect(pointerCenterTier(none)).toBeNull()
+    expect(pointerCenterTier(has('icon'))).toBe('icon')
+    expect(pointerCenterTier(has('status', 'icon'))).toBe('status')
+    expect(pointerCenterTier(has('located', 'status', 'icon'))).toBe('located')
+    expect(pointerCenterTier(has('restore', 'located', 'status', 'icon'))).toBe('restore')
+  })
+
+  it('every one of the 16 combinations yields one winner, and it is the highest-ranked thing present', () => {
+    const order: readonly PointerCenterTier[] = ['restore', 'located', 'status', 'icon']
+    for (let mask = 0; mask < 16; mask += 1) {
+      const present = order.filter((_, bit) => mask & (1 << bit))
+      expect(pointerCenterTier(has(...present))).toBe(present[0] ?? null)
+    }
   })
 })

@@ -440,20 +440,86 @@ describe('NodePointerGroup · tiles stay tellable apart in a narrow panel (narro
     expect(slots).toHaveLength(3)
     // 藏着的那两槽：看不见也不接点击；悬停 / 聚焦这一格才露。常驻恢复也先让画面接到 hover，再接按钮点击。
     expect(slots.filter((slot) => slot.includes('opacity-0') && slot.includes('pointer-events-none'))).toHaveLength(2)
-    expect(slots.filter((slot) => slot.includes('top-[18px]'))).toHaveLength(2)
+    // × 的摆法同输入框里参考图那一颗（AssetTile）：28px 点击区，上缘比画面框（26px）高 10px、右缘比画面框多 10px。
+    expect(slots.filter((slot) => slot.includes('top-[16px]') && slot.includes('h-7') && slot.includes('-10px)]'))).toHaveLength(2)
     expect(slots.filter((slot) => slot.includes('pointer-events-none') && slot.includes('aspect-video'))).toHaveLength(1)
     expect(slots.filter((slot) => slot.includes('aspect-video') && slot.includes('justify-center'))).toHaveLength(1)
     const { renderer, hosts } = mount(<NodePointerGroup subjects={tiles} cellAccessory={accessory} />)
     try {
+      // 框宽（--node-pointer-frame-width）写在这一格自己身上：小动作是指向元素按钮的兄弟，写在按钮上它读不到（原来就是这样，× 一直贴格子右缘）。
       const cells = hosts.filter((host) => host.type === 'div' && host.props['data-node-pointer-cell'] !== undefined)
-      expect(cells.every((cell) => cell.props.style === undefined)).toBe(true)
+      expect(cells.map((cell) => (cell.props.style as Record<string, string>)['--node-pointer-frame-width'])).toEqual(['100%', '100%', '100%'])
+      expect(hosts.filter((host) => host.type === 'button' && host.props['data-node-pointer'] !== undefined).every((button) => button.props.style === undefined)).toBe(true)
     } finally {
       renderer.close()
     }
   })
 
+  it('a portrait tile hangs its × on the portrait frame’s own corner: the cell carries that frame’s width, not the full slot', () => {
+    seed([video('a'), video('b', { meta: { modelKey: 'seedance-2', aspect_ratio: '9:16', duration: 5 } }), video('c')])
+    const markup = renderToStaticMarkup(<NodePointerGroup subjects={tiles} cellAccessory={() => ({ action: <button type="button">x</button>, pinned: false, dimmed: false })} />)
+    const widths = [...markup.matchAll(/data-node-pointer-cell=""|--node-pointer-frame-width:([\d.]+)%/g)].flatMap((match) => (match[1] ? [Number(match[1])] : []))
+    // 9:16 在 16:9 的槽里：(9/16) / (16/9) = 81/256 ≈ 31.64%；横版满宽。
+    expect(widths).toHaveLength(3)
+    expect(widths[0]).toBe(100)
+    expect(widths[1]).toBeCloseTo(31.640625, 5)
+    expect(widths[2]).toBe(100)
+  })
+
   it('a tile whose host gives no action is not wrapped (nothing to make room for)', () => {
     const markup = renderToStaticMarkup(<NodePointerGroup subjects={tiles} cellAccessory={(subject) => (subject.nodeId === 'a' ? { action: <span>x</span>, pinned: false, dimmed: false } : null)} />)
     expect(markup.match(/data-node-pointer-cell=""/g)).toHaveLength(1)
+  })
+})
+
+// 缩略图正中只放一样东西（SpendCardQ1 板 card.pointer.status / card.pointer.exclude）：恢复 > 已定位 > 状态胶囊 > 种类图标，判据在 pointerCenterTier。
+describe('NodePointer · one thing in the middle of the thumbnail', () => {
+  const CENTER = /data-node-pointer-center="([a-z]+)"/g
+  const centersOf = (markup: string): string[] => [...markup.matchAll(CENTER)].map((match) => match[1]!)
+  const POINTER_SERVER = useNodePointerStore.getInitialState() as unknown as { locatedNodeId: string | null }
+  afterEach(() => { POINTER_SERVER.locatedNodeId = null })
+
+  it('a tile with nothing to say shows its kind icon, and only that', () => {
+    expect(centersOf(renderToStaticMarkup(<NodePointer subject={{ nodeId: 'n1' }} frame="cell" />))).toEqual(['icon'])
+  })
+
+  it('a failed tile shows the one failure capsule in the middle, no icon circle behind it', () => {
+    seed([video('n1', { status: 'error', error: 'socket hang up' })])
+    const markup = renderToStaticMarkup(<NodePointer subject={{ nodeId: 'n1' }} frame="cell" />)
+    expect(markup).toContain('data-node-pointer-face="failed"')
+    expect(centersOf(markup)).toEqual(['status'])
+  })
+
+  it('a host status word (not sent yet) is a capsule that replaces the icon, not a second thing on top of it', () => {
+    seen.productionState = { phase: 'awaiting_confirmation' }
+    const markup = renderToStaticMarkup(<NodePointer subject={{ nodeId: 'n1', hostStatus: 'not-sent-yet' }} frame="cell" suppressAwaitingConfirmation />)
+    expect(markup).toContain('not-sent-yet')
+    expect(centersOf(markup)).toEqual(['status'])
+  })
+
+  it('a located tile shows “已定位” alone: it beats the icon circle and a status capsule', () => {
+    POINTER_SERVER.locatedNodeId = 'n1'
+    const plain = renderToStaticMarkup(<NodePointer subject={{ nodeId: 'n1' }} frame="cell" />)
+    expect(centersOf(plain)).toEqual(['located'])
+    expect(plain).toContain(i18n.t('nodePointer.located'))
+    seed([video('n1', { status: 'error', error: 'socket hang up' })])
+    expect(centersOf(renderToStaticMarkup(<NodePointer subject={{ nodeId: 'n1' }} frame="cell" />))).toEqual(['located'])
+  })
+
+  it('when the group says the middle is taken (a pinned 「恢复」), the tile draws no middle piece of its own — even a located or failed one', () => {
+    expect(centersOf(renderToStaticMarkup(<NodePointer subject={{ nodeId: 'n1' }} frame="cell" centerTaken />))).toEqual([])
+    POINTER_SERVER.locatedNodeId = 'n1'
+    expect(centersOf(renderToStaticMarkup(<NodePointer subject={{ nodeId: 'n1' }} frame="cell" centerTaken />))).toEqual([])
+    seed([video('n1', { status: 'error', error: 'socket hang up' })])
+    expect(centersOf(renderToStaticMarkup(<NodePointer subject={{ nodeId: 'n1' }} frame="cell" centerTaken />))).toEqual([])
+  })
+
+  it('in a group, only the tile with a pinned action gives up its middle; its neighbours keep theirs', () => {
+    const tiles: NodePointerSubject[] = [{ nodeId: 'n1' }, { nodeId: 'n2' }, { nodeId: 'tall' }]
+    const markup = renderToStaticMarkup(<NodePointerGroup subjects={tiles} cellAccessory={(subject) => (subject.nodeId === 'n2'
+      ? { action: <button type="button">restore</button>, pinned: true, dimmed: true }
+      : { action: <button type="button">x</button>, pinned: false, dimmed: false })} />)
+    const cells = markup.split('data-node-pointer-cell=""').slice(1)
+    expect(cells.map((cell) => centersOf(cell.split('data-node-pointer-cell-accessory=""')[0]!))).toEqual([['icon'], [], ['icon']])
   })
 })

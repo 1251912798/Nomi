@@ -4,14 +4,14 @@
 // 平时是这几段合起来的摘要、悬停哪一格换成哪一镜的，板 ②）。节点此刻的样子（等你确认 / 发出中 / 生成中 / 失败 / 结果）都是
 // 指向元素自己读节点画出来的，这里一样都不存。
 //
-// 多段卡每一格标题行右端挂一颗「不生成 ×」（板 card.pointer.exclude，用户 10-23 选 Q1-A）：悬停 / 聚焦那一格才露出来，点了这一镜
-// 退出这次出价（节点上显示「已去掉，不生成」），那一格淡下去、常驻一颗「恢复」。摆在哪、什么时候露出来、淡不淡归组指向管
-// （NodePointerCellAccessory）：标题行要按它露没露出来让位，判据只有一份。
+// 多段卡每一格缩略图右上角挂一颗小 ×（板 card.pointer.exclude，用户 10-23 选 Q1-A；样子是输入框里参考图那一颗，共用 ThumbCornerX）：
+// 悬停 / 聚焦那一格才露出来，点了这一镜退出这次出价（节点上显示「已去掉，不生成」），那一格淡下去、常驻一颗「恢复」。
+// 摆在哪、什么时候露出来、淡不淡归组指向管（NodePointerCellAccessory）；缩略图正中被「恢复」占着时那一格不再画别的正中件，判据同样只有一份。
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '../../../utils/cn'
+import { ThumbCornerX } from '../../assets/ThumbCornerX'
 import { NodePointer, NodePointerGroup, type NodePointerCellAccessory, type NodePointerSubject } from '../pointer/NodePointer'
-import { IconAlertTriangle, IconX } from './AgentPanelV4Icons'
+import { IconAlertTriangle } from './AgentPanelV4Icons'
 import type { SpendCardNotice, SpendCardPointer } from './agentPanelSpendCard'
 
 export type SpendCardBodyProps = Readonly<{
@@ -39,7 +39,11 @@ function subjectOf(pointer: SpendCardPointer): NodePointerSubject {
   }
 }
 
-/** 格子缩略图上的小钮本身（摆在哪、什么时候露出来归组指向管）。 */
+/**
+ * 格子缩略图上的小钮本身（摆在哪、什么时候露出来归组指向管）。
+ * 「不生成」是缩略图角上的小 ×，样子是输入框里参考图那一颗（共用的 ThumbCornerX，板 card.pointer.exclude），这里不另写；
+ * 「恢复」是去掉了的那一格正中的小胶囊（样子板没管，沿用现行）。
+ */
 function ExclusionToggle({ pointer, busy, onExclude, onRestore }: {
   pointer: SpendCardPointer
   busy: boolean
@@ -47,25 +51,24 @@ function ExclusionToggle({ pointer, busy, onExclude, onRestore }: {
   onRestore: (shotId: string) => void
 }): JSX.Element {
   const { t } = useTranslation()
-  const restore = pointer.exclusion === 'restore'
-  const name = restore ? t('agentPanelV4.spendCard.restoreName', { shot: pointer.shotRef }) : t('agentPanelV4.spendCard.excludeName', { shot: pointer.shotRef })
-  return (
-    <button
-      type="button"
-      aria-label={name}
-      title={name}
-      disabled={busy}
-      onClick={() => (restore ? onRestore(pointer.shotId) : onExclude(pointer.shotId))}
-      data-spend-exclusion={pointer.exclusion}
-      className={cn(
-        'inline-flex h-5 items-center gap-0.5 rounded-full bg-nomi-paper/85 px-1.5 text-micro text-nomi-ink-80 shadow-nomi-sm hover:bg-nomi-paper hover:text-nomi-ink disabled:opacity-40',
-        restore && 'pointer-events-none group-hover/pointer-cell:pointer-events-auto group-focus-within/pointer-cell:pointer-events-auto',
-      )}
-    >
-      {restore ? t('agentPanelV4.spendCard.restore') : null}
-      {restore ? null : <IconX size={11} stroke={1.8} aria-hidden="true" />}
-    </button>
-  )
+  if (pointer.exclusion === 'restore') {
+    const name = t('agentPanelV4.spendCard.restoreName', { shot: pointer.shotRef })
+    return (
+      <button
+        type="button"
+        aria-label={name}
+        title={name}
+        disabled={busy}
+        onClick={() => onRestore(pointer.shotId)}
+        data-spend-exclusion="restore"
+        className="pointer-events-none inline-flex h-5 items-center rounded-full bg-nomi-paper/85 px-1.5 text-micro text-nomi-ink-80 shadow-nomi-sm hover:bg-nomi-paper hover:text-nomi-ink disabled:opacity-40 group-hover/pointer-cell:pointer-events-auto group-focus-within/pointer-cell:pointer-events-auto"
+      >
+        {t('agentPanelV4.spendCard.restore')}
+      </button>
+    )
+  }
+  const name = t('agentPanelV4.spendCard.excludeName', { shot: pointer.shotRef })
+  return <ThumbCornerX aria-label={name} title={name} disabled={busy} onClick={() => onExclude(pointer.shotId)} data-spend-exclusion="exclude" />
 }
 
 /** 这一格挂什么：可去掉的挂「不生成 ×」（悬停 / 聚焦才露）；去掉了的淡下去、常驻「恢复」；别的（已在生成、已删除……）不挂。 */

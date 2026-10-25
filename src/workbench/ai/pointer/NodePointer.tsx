@@ -24,7 +24,7 @@ import { useGenerationFeedback } from '../../observability/useGenerationFeedback
 import { NodeShotLabel, ShotNumberPill } from '../../generation/list/CanvasListLinks'
 import { formatStoryboardShotLabel, isAutoStoryboardShotTitle, useStoryboardShotLabel } from '../../generation/list/storyboardLabels'
 import { useModelLabels } from '../../generation/list/generationListModelLabels'
-import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, nodePointerSummaryFacts, nodePointerTitleTails, pointerHoverStack, type NodePointerFace } from './nodePointerFace'
+import { isPortraitAspect, nodePointerAspect, nodePointerFace, nodePointerGroupVisible, nodePointerLocatable, nodePointerSummary, nodePointerSummaryFacts, nodePointerTitleTails, pointerCenterTier, pointerHoverStack, type NodePointerFace } from './nodePointerFace'
 import { useNodePointerStore } from './nodePointerStore'
 import { returnToChat, revealNodeFromChat } from './revealNodeFromChat'
 
@@ -91,7 +91,7 @@ function usePointerModel(subject: NodePointerSubject): PointerModel {
     status: faceStatusText(t, face),
     ...(subject.hostStatus ? { hostStatus: subject.hostStatus } : {}),
     summary: (form) => nodePointerSummary(facts, form),
-    aspect: aspectText ? nodePointerAspect(aspectSize(aspectText)) : SLOT_ASPECT,
+    aspect: aspectFromText(aspectText),
     portrait: isPortraitAspect(aspectText),
   }
 }
@@ -99,6 +99,16 @@ function usePointerModel(subject: NodePointerSubject): PointerModel {
 function aspectSize(aspect: string): { width: number; height: number } {
   const [width, height] = aspect.split(':').map(Number)
   return { width, height }
+}
+
+/** 节点比例文字（「16:9」）→ 画面框的宽 / 高；读不出就按 16:9 槽。指向元素自己和组里挂了小动作的格子（PointerCell）读同一个算式。 */
+function aspectFromText(aspect: string | null): number {
+  return aspect ? nodePointerAspect(aspectSize(aspect)) : SLOT_ASPECT
+}
+
+/** 画面框占 16:9 槽宽的百分之几：横版满宽，竖 / 窄版按真比例。框自己的位置（frameBox）与挂在框右上角的小动作（PointerCell）都读这一份。 */
+function frameWidthPercent(aspect: number): number {
+  return Math.min(100, (aspect / SLOT_ASPECT) * 100)
 }
 
 /** 读屏和悬停提示里的「状态」：都是节点自己那几句（制作小标 / 状态条原话 / 可找回 / 已停原因）。 */
@@ -173,8 +183,13 @@ function PointerLabel({ model, narrow, tailFrom = 0 }: { model: PointerModel; na
   )
 }
 
-/** 画面槽里的那一张脸。`thumb`（P2 的小缩略图）只留画面或等待面，状态交给行尾图标 / 边线。 */
-function PointerFaceArt({ model, size, located, suppressAwaitingConfirmation = false }: { model: PointerModel; size: 'card' | 'cell' | 'thumb'; located: boolean; suppressAwaitingConfirmation?: boolean }): JSX.Element | null {
+/**
+ * 画面槽里的那一张脸。`thumb`（P2 的小缩略图）只留画面或等待面，状态交给行尾图标 / 边线。
+ *
+ * 缩略图正中只放一样东西（板 card.pointer.status / card.pointer.exclude）：「恢复」（宿主挂的，`centerTaken`）> 已定位 > 状态胶囊 > 种类图标，
+ * 只在 `pointerCenterTier` 判一次，下面各张脸只管把自己的几样备好，不自己去压别人。铺满整格的（结果图、等待面）和贴角的小标不算正中件，照画。
+ */
+function PointerFaceArt({ model, size, located, suppressAwaitingConfirmation = false, centerTaken = false }: { model: PointerModel; size: 'card' | 'cell' | 'thumb'; located: boolean; suppressAwaitingConfirmation?: boolean; centerTaken?: boolean }): JSX.Element | null {
   const { t } = useTranslation()
   const face = model.face
   if (size === 'thumb') {
@@ -185,63 +200,64 @@ function PointerFaceArt({ model, size, located, suppressAwaitingConfirmation = f
   const KindIcon = model.node ? getGenerationNodeIcon(model.node.kind) : null
   // 小标在指向元素上贴得更近（板：4px），样子与节点那一枚同一个组件。
   const corner = 'left-1 top-1 max-w-[calc(100%-8px)] px-1.5'
-  // 空卡圆托：NodeEmptyState 那一组 token（ink-05 底 + line 细环 + ink-80 图标），按板缩到 28px。
+  // 空卡圆托：NodeEmptyState 那一组 token（ink-05 底 + line 细环 + ink-80 图标），按板缩到 28px。正中件的最后一档。
   const circle = (icon: React.ReactNode, tone?: string) => (
-    <span className={cn('absolute left-1/2 top-1/2 grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line', tone)} aria-hidden="true">{icon}</span>
+    <span className={cn('absolute left-1/2 top-1/2 grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line', tone)} data-node-pointer-center="icon" aria-hidden="true">{icon}</span>
   )
+  // 「图标 + 字」的小胶囊：已定位和各种状态同一个样子（正中件的第二、三档）。
   const centerStatus = (label: string, icon?: React.ReactNode, tone?: string, isLocated = false, generationMessage = false) => (
-    <span className={cn('absolute left-1/2 top-1/2 z-[4] inline-flex max-w-[calc(100%-8px)] -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-nomi-paper/90 px-1.5 py-0.5 text-micro text-nomi-ink-60 shadow-nomi-sm', tone)} data-node-pointer-status="true" data-node-pointer-located={isLocated ? 'true' : undefined} data-generation-status={generationMessage ? 'true' : undefined}>
+    <span className={cn('absolute left-1/2 top-1/2 z-[4] inline-flex max-w-[calc(100%-8px)] -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-nomi-paper/90 px-1.5 py-0.5 text-micro text-nomi-ink-60 shadow-nomi-sm', tone)} data-node-pointer-center={isLocated ? 'located' : 'status'} data-node-pointer-status="true" data-node-pointer-located={isLocated ? 'true' : undefined} data-generation-status={generationMessage ? 'true' : undefined}>
       {icon}
       <span className="min-w-0 truncate" data-generation-message={generationMessage ? true : undefined}>{label}</span>
     </span>
   )
+  // art = 铺满整格的东西与贴角的小标（不抢正中）；icon = 这一张脸自己的圆托图标（正中件的最后一档）。
   let art: React.ReactNode = null
+  let icon: React.ReactNode = null
   switch (face.kind) {
     case 'result':
-      art = face.preview.kind === 'image'
-        ? <img src={face.preview.src} alt="" draggable={false} className="absolute inset-0 size-full object-cover" />
-        : KindIcon ? circle(<KindIcon size={14} stroke={1.6} />) : null
+      if (face.preview.kind === 'image') art = <img src={face.preview.src} alt="" draggable={false} className="absolute inset-0 size-full object-cover" />
+      else if (KindIcon) icon = circle(<KindIcon size={14} stroke={1.6} />)
       break
     case 'generating':
     case 'processing':
       art = <GenerationWaitingSurface motion="reduced" previewLabel="" audio={model.node?.kind === 'audio'} />
       break
-    case 'failed':
-      art = null
-      break
     case 'recoverable':
-      art = <>{circle(<IconClockSearch size={14} stroke={1.6} />, 'text-nomi-ink-60')}{size === 'card' && !located ? <NodeCornerPill label={t('shotTable.status.recoverable')} className={corner} /> : null}</>
+      icon = circle(<IconClockSearch size={14} stroke={1.6} />, 'text-nomi-ink-60')
+      if (size === 'card' && !located) art = <NodeCornerPill label={t('shotTable.status.recoverable')} className={corner} />
       break
     case 'stopped':
-      art = circle(<IconPlayerPause size={14} stroke={1.6} />, 'bg-nomi-paper text-nomi-warning')
+      icon = circle(<IconPlayerPause size={14} stroke={1.6} />, 'bg-nomi-paper text-nomi-warning')
       break
     case 'removed':
-      art = <>{circle(<IconLinkOff size={14} stroke={1.6} />, 'bg-transparent text-nomi-ink-40')}{size === 'card' ? <NodeCornerPill label={t('nodePointer.deleted')} className={corner} /> : null}</>
-      break
-    case 'unavailable':
-      art = null
+      icon = circle(<IconLinkOff size={14} stroke={1.6} />, 'bg-transparent text-nomi-ink-40')
+      if (size === 'card') art = <NodeCornerPill label={t('nodePointer.deleted')} className={corner} />
       break
     case 'production':
     case 'empty':
-      art = <>
-        {KindIcon ? circle(<KindIcon size={14} stroke={1.6} />) : null}
-        {/* 点过的那一项「已定位」压过制作小标。状态胶囊与节点图标合在缩略图中央；组里的小格只印和兄弟格不一样的那两种：排队中、还没生成（SpendCardQ1 板 ③⑤⑥）。
-            「等你确认」不印——卡 / 那句话本身就在问，三格各印一遍是噪音（NodePointer 板 A2「全是草稿」只留圆托）；「已去掉，不生成」
-            不印——付费卡上那一格淡下去、常驻「恢复」，再压一枚小标会和「恢复」挤在一起。单独一张照旧全印。 */}
-      </>
+      // 状态胶囊（下面）压过圆托；「等你确认」不印——卡 / 那句话本身就在问，三格各印一遍是噪音（NodePointer 板 A2「全是草稿」只留圆托）；
+      // 「已去掉，不生成」不印——付费卡上那一格淡下去、常驻「恢复」（恢复占着正中，见 pointerCenterTier）。单独一张照旧全印。
+      if (KindIcon) icon = circle(<KindIcon size={14} stroke={1.6} />)
+      break
+    case 'failed':
+    case 'unavailable':
       break
   }
-  const status = !located && face.kind === 'generating'
-      ? centerStatus(face.feedback.message, face.feedback.phase === 'queued' ? <IconClock size={11} stroke={1.8} aria-hidden="true" className="shrink-0" /> : <IconLoader2 size={11} stroke={1.8} aria-hidden="true" className="shrink-0 animate-spin motion-reduce:animate-none" />, undefined, false, true)
-    : !located && face.kind === 'failed'
+  // 这一格有哪几样状态：生成中 / 失败读节点自己的反馈；制作流程那几种（排队中 / 还没生成 / 宿主给的词 / 等你确认）读制作状态（SpendCardQ1 板 ③⑤⑥）。
+  const status = face.kind === 'generating'
+    ? centerStatus(face.feedback.message, face.feedback.phase === 'queued' ? <IconClock size={11} stroke={1.8} aria-hidden="true" className="shrink-0" /> : <IconLoader2 size={11} stroke={1.8} aria-hidden="true" className="shrink-0 animate-spin motion-reduce:animate-none" />, undefined, false, true)
+    : face.kind === 'failed'
       ? centerStatus(face.feedback.message, <IconAlertTriangle size={11} stroke={1.8} aria-hidden="true" className="shrink-0" />, 'text-nomi-danger-ink', false, true)
-      : !located && face.kind === 'production' && (model.hostStatus || face.state.phase === 'queued' || face.state.phase === 'not_generated' || (!suppressAwaitingConfirmation && face.state.phase === 'awaiting_confirmation'))
+      : face.kind === 'production' && (model.hostStatus || face.state.phase === 'queued' || face.state.phase === 'not_generated' || (!suppressAwaitingConfirmation && face.state.phase === 'awaiting_confirmation'))
         ? centerStatus(model.hostStatus ?? productionShotCornerText(t, face.state)?.text ?? '', <IconClock size={11} stroke={1.8} aria-hidden="true" className="shrink-0" />)
         : null
+  const locatedPill = located ? centerStatus(t('nodePointer.located'), <IconFocus2 size={11} stroke={1.8} aria-hidden="true" className="shrink-0" />, undefined, true) : null
+  const tier = pointerCenterTier({ restore: centerTaken, located: Boolean(locatedPill), status: Boolean(status), icon: Boolean(icon) })
   return (
     <>
       {art}
-      {located ? centerStatus(t('nodePointer.located'), <IconFocus2 size={11} stroke={1.8} aria-hidden="true" className="shrink-0" />, undefined, true) : status}
+      {tier === 'located' ? locatedPill : tier === 'status' ? status : tier === 'icon' ? icon : null}
     </>
   )
 }
@@ -259,7 +275,7 @@ function frameBox(aspect: number): React.CSSProperties {
     const height = (SLOT_ASPECT / aspect) * 100
     return { left: 0, right: 0, top: `${(100 - height) / 2}%`, height: `${height}%` }
   }
-  const width = (aspect / SLOT_ASPECT) * 100
+  const width = frameWidthPercent(aspect)
   return { top: 0, bottom: 0, left: `${(100 - width) / 2}%`, width: `${width}%` }
 }
 
@@ -285,9 +301,11 @@ export type NodePointerProps = {
   titleTail?: number
   /** 卡面已经在父级标题提问时，隐藏子指向元素的「等你确认」小标。 */
   suppressAwaitingConfirmation?: boolean
+  /** 组给的：缩略图正中已被宿主挂的常驻小动作（「恢复」）占着——这一格不再画自己的正中件（已定位 / 状态胶囊 / 种类图标），判据见 pointerCenterTier。 */
+  centerTaken?: boolean
 }
 
-export function NodePointer({ subject, density = 'card', frame = 'single', layout = 'auto', narrow = false, overflow, onHover, onTitle, titleTail, suppressAwaitingConfirmation = false }: NodePointerProps): JSX.Element {
+export function NodePointer({ subject, density = 'card', frame = 'single', layout = 'auto', narrow = false, overflow, onHover, onTitle, titleTail, suppressAwaitingConfirmation = false, centerTaken = false }: NodePointerProps): JSX.Element {
   const { t } = useTranslation()
   const model = usePointerModel(subject)
   // 绘制前报上去：组拿到名字就在同一帧里算好截法，不先画一帧「几格截成一样」再跳。
@@ -390,10 +408,9 @@ export function NodePointer({ subject, density = 'card', frame = 'single', layou
   )
   const art = overflow
     ? <span className="absolute inset-0 grid place-items-center bg-nomi-ink-05 text-body-sm font-semibold text-nomi-ink-80" data-node-pointer-more={overflow.hidden}>{t('nodePointer.more', { count: overflow.hidden })}</span>
-    : <PointerFaceArt model={model} size={frame === 'cell' ? 'cell' : 'card'} located={located} suppressAwaitingConfirmation={suppressAwaitingConfirmation} />
-  const frameWidth = `${Math.min(100, (model.aspect / SLOT_ASPECT) * 100)}%`
+    : <PointerFaceArt model={model} size={frame === 'cell' ? 'cell' : 'card'} located={located} suppressAwaitingConfirmation={suppressAwaitingConfirmation} centerTaken={centerTaken} />
   return (
-    <button {...common} style={{ '--node-pointer-frame-width': frameWidth } as React.CSSProperties} className={cn('flex w-full min-w-0 flex-col gap-1 rounded-nomi text-left text-caption', gone && 'cursor-default')}>
+    <button {...common} className={cn('flex w-full min-w-0 flex-col gap-1 rounded-nomi text-left text-caption', gone && 'cursor-default')}>
       <PointerLabel model={model} narrow={narrow} {...(titleTail ? { tailFrom: titleTail } : {})} />
       {side ? (
         <span className="flex min-w-0 items-start gap-3">
@@ -443,7 +460,7 @@ function RowTrailing({ face, located }: { face: NodePointerFace; located: boolea
 export type NodePointerCellAccessory = Readonly<{
   /** 宿主的那颗按钮本身（不带定位、不带藏起来的样式）。 */
   action: React.ReactNode
-  /** 常驻（「恢复」）；false = 悬停 / 聚焦这一格时才露出来（「不生成 ×」）。 */
+  /** 常驻（「恢复」，摆在缩略图正中、占着正中：这一格不再画自己的正中件）；false = 悬停 / 聚焦这一格时才露出来（「不生成 ×」，摆在缩略图右上角）。 */
   pinned: boolean
   /** 这一格淡下去（盖在画面框上，不挡点击：指向元素照样点了去节点）。 */
   dimmed: boolean
@@ -453,11 +470,18 @@ export type NodePointerCellAccessory = Readonly<{
  * 组里挂了小动作的那一格。小动作是格子的兄弟、不是格子里的按钮（按钮里不能套按钮），× 在缩略图右上角、恢复在缩略图中央：
  * 不压画面框里的状态胶囊，也不再占标题行；它露出来时由组统一控制，键盘从指向元素 Tab 一下照样走得到它。
  * 藏着的时候不接点击（看不见的钮不许挡住缩略图），键盘从指向元素 Tab 一下照样走得到它（聚焦在格子里就露出来）。
+ *
+ * × 的摆法和输入框里参考图（AssetTile）那一颗一样：28px 的点击区，右缘比画面框右缘多 10px、上缘比画面框上缘高 10px，
+ * 16px 的圆点就落在框角里 4px。画面框上缘 = 标题行 22px + 间距 4px = 26px；竖版 / 窄版的框在 16:9 槽里居中，
+ * 右缘要按框自己的宽算——所以框宽（`--node-pointer-frame-width`）写在这一格自己身上，小动作才读得到（写在兄弟那颗按钮上它读不到）。
  */
-function PointerCell({ pointer, accessory }: { pointer: React.ReactNode; accessory: NodePointerCellAccessory }): JSX.Element {
+function PointerCell({ subject, pointer, accessory }: { subject: NodePointerSubject; pointer: React.ReactNode; accessory: NodePointerCellAccessory }): JSX.Element {
+  const node = useGenerationCanvasStore((state) => selectCanvasNodeById(state, subject.nodeId))
+  const frameWidth = frameWidthPercent(aspectFromText(nodePointerSummaryFacts(node, '').aspect))
   return (
     <div
       className="group/pointer-cell relative min-w-0"
+      style={{ '--node-pointer-frame-width': `${frameWidth}%` } as React.CSSProperties}
       data-node-pointer-cell=""
       data-accessory-pinned={accessory.pinned ? 'true' : undefined}
     >
@@ -467,8 +491,8 @@ function PointerCell({ pointer, accessory }: { pointer: React.ReactNode; accesso
         className={cn(
           accessory.pinned
             ? 'pointer-events-none absolute inset-x-0 top-[26px] z-[5] flex aspect-video items-center justify-center transition-opacity'
-            : 'absolute top-[18px] z-[5] flex h-[22px] items-center transition-opacity',
-          !accessory.pinned && 'right-[calc((100%-var(--node-pointer-frame-width,100%))/2-4px)]',
+            : 'absolute top-[16px] z-[5] flex h-7 items-center transition-opacity',
+          !accessory.pinned && 'right-[calc((100%-var(--node-pointer-frame-width,100%))/2-10px)]',
           !accessory.pinned && 'pointer-events-none opacity-0 group-focus-within/pointer-cell:pointer-events-auto group-focus-within/pointer-cell:opacity-100 group-hover/pointer-cell:pointer-events-auto group-hover/pointer-cell:opacity-100',
         )}
         data-node-pointer-cell-accessory=""
@@ -490,7 +514,7 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
    * 缺席 = 一个不换行空格撑着行高（组单独用时）。悬停哪一格，那一行就换成那一镜的摘要，离开回到这一句。
    */
   idleSummary?: string
-  /** 只对 card：每一格标题行右端挂一个宿主给的小动作（见 NodePointerCellAccessory / PointerCell）。缺席或返回 null = 这一格不挂。 */
+  /** 只对 card：每一格缩略图上挂一个宿主给的小动作（见 NodePointerCellAccessory / PointerCell）。缺席或返回 null = 这一格不挂。 */
   cellAccessory?: (subject: NodePointerSubject, index: number) => NodePointerCellAccessory | null
   /** 付费卡逐镜参数不同时的悬停摘要；返回 null 表示保留整行摘要。 */
   hoverSummary?: (subject: NodePointerSubject, index: number) => string | null
@@ -558,10 +582,11 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
               onTitle={reporterFor(key)}
               titleTail={tails[index]}
               suppressAwaitingConfirmation={suppressAwaitingConfirmation}
+              centerTaken={Boolean(accessory?.pinned)}
             />
           )
           return accessory
-            ? <PointerCell key={key} pointer={pointer} accessory={accessory} />
+            ? <PointerCell key={key} subject={subject} pointer={pointer} accessory={accessory} />
             : <React.Fragment key={key}>{pointer}</React.Fragment>
         })}
       </div>

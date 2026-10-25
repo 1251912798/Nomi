@@ -69,6 +69,19 @@ export function nodePointerLocatable(face: NodePointerFace): boolean {
   return face.kind !== 'removed' && face.kind !== 'unavailable'
 }
 
+/** 缩略图正中可能放的四样，按先后排（先的压后的）。 */
+export type PointerCenterTier = 'restore' | 'located' | 'status' | 'icon'
+const POINTER_CENTER_ORDER: readonly PointerCenterTier[] = ['restore', 'located', 'status', 'icon']
+
+/**
+ * 缩略图正中只放一样东西（SpendCardQ1 板 card.pointer.status / card.pointer.exclude）：按「恢复 > 已定位 > 状态胶囊 > 种类图标」取第一个。
+ * 铺满整格的（结果图、等待面）和贴角的小标不算正中件，另画。「恢复」是宿主挂在格子上的常驻小动作、不是这一格自己画的：
+ * 组把「正中已被占」告诉这一格（`restore`），这一格的三样就一样都不画。谁占正中只在这一处判——不按状态逐个开分支。
+ */
+export function pointerCenterTier(has: Readonly<Record<PointerCenterTier, boolean>>): PointerCenterTier | null {
+  return POINTER_CENTER_ORDER.find((tier) => has[tier]) ?? null
+}
+
 /** 指向元素里节点画面的比例（宽 / 高）。竖版按真比例放进固定高度的槽里，不裁不拉伸。 */
 export function nodePointerAspect(size: Readonly<{ width: number; height: number }>): number {
   const ratio = size.width / size.height

@@ -433,6 +433,7 @@ export const zhAgentPanelV4 = {
   slotDeviationSkip: '跳过',
   // 付费卡（D2 第③步，SpendCardQ1 板）：指向元素 + 一句话 + 一行只读摘要 + 「生成」。卡上没有参数，想改点指向去节点里改。
   // 标题是**一句问话**（2026-09-22 换壳，照 Recommendation Card 的形状）：卡在问「要不要做这件事」。
+  // 标题不带数量（SpendCardQ1 板 card.title）：数量只在主按钮；中英每一条标题键都不许有 `{{count}}` 或数字（agentPanelSpendCard.test.ts 逐键数着）。
   // 复数走 i18next 的 `_one` / `_other`。zh 两条同文，键必须成对存在——key-parity 门岗要求 zh/en 键集相同。
   spendParamsTitle_one: '生成这段视频？',
   spendParamsTitle_other: '生成这些视频？',
@@ -986,7 +987,7 @@ export const enAgentPanelV4 = {
   spendParamsTitle_other: 'Generate these videos?',
   spendParamsTitleSingle: 'Generate this video?',
   spendParamsTitleImage_one: 'Generate this image?',
-  spendParamsTitleImage_other: 'Generate these {{count}} images?',
+  spendParamsTitleImage_other: 'Generate these images?',
   spendParamsTitleImageSingle: 'Generate this image?',
   spendParamsTitleRemainingVideo: 'Generate the remaining videos?',
   spendParamsTitleRemainingImage: 'Generate the remaining images?',

@@ -31,7 +31,7 @@ import type { ModelOptionPricing } from '../../../config/models'
 import { peekCatalogHealth, peekCatalogModelOptions, seedModelCatalogForTests } from '../../../config/modelCatalogCache'
 import { LabLocaleGate } from '../labLocaleGate'
 import { holdDesignLabReady } from '../labReadyHold'
-import { DESIGN_ID, DOCUMENT_ID, L, LabHover, design, installPointerCatalog, useLabSettled, type Locale } from '../nodePointer/nodePointerLabKit'
+import { DESIGN_ID, DOCUMENT_ID, L, design, installPointerCatalog, useLabSettled, type Locale } from '../nodePointer/nodePointerLabKit'
 import { shotArt } from '../generationList/generationListArt'
 import { laneFlowItems, laneSnapshotGenerateDone } from '../v4/laneDrivenFixtures'
 import { collapseV4Flow } from '../../../workbench/ai/v4/agentPanelV4Collapse'
@@ -86,8 +86,6 @@ export type SpendLabShot = Readonly<{
 
 export type SpendLabScenario = Readonly<{
   shots: readonly SpendLabShot[]
-  /** 取景用的已定位格；只写 store 事实，不在卡里另画状态。 */
-  located?: 1 | 2 | 3
   /** 方案一样张的用户原话；有它时用用户气泡 + 真实工具收据布景。 */
   message?: readonly [string, string]
   brake?: NonNullable<PendingSpendConfirm['brake']>['reason']
@@ -238,12 +236,15 @@ function installSpendCatalog(pricing: ModelOptionPricing | undefined): void {
   ])
 }
 
+/**
+ * 取景布景。**没有「悬停」**：「不生成 ×」是 CSS 的 :hover / :focus-within 露的，合成的指针事件点不亮 :hover——
+ * 以前这里有一个 `hover`（派一次 pointerover），拍出来是「格子亮了、× 没出来」的一张假的悬停帧（2026-10-25 协调放大看图查出）。
+ * 悬停 / 点过只能由走查用真指针（Playwright 的 hover / click）做、做完再拍（tests/ux/design-lab-spend-card.walk.mjs），这里做不出来。
+ */
 export type SpendLabScene = Readonly<{
-  /** 悬停哪几个指向元素（CSS 选择器；派一次 pointerover，组下方那一行与画布高亮跟着走）。 */
-  hover?: readonly string[]
   /**
-   * 聚焦哪一个（CSS 选择器）。「不生成 ×」是悬停 / 聚焦才露的（CSS 的 :hover / :focus-within）：合成的指针事件点不亮 :hover，
-   * 实验室替键盘聚焦一下——那正是板上「悬停 / 聚焦」的后一半。
+   * 键盘聚焦哪一个（CSS 选择器）。聚焦也会露出「不生成 ×」（:focus-within）：实验室替键盘聚焦一下——那正是板上「键盘 Tab 到它」的那一半。
+   * 这是**键盘**聚焦（全局焦点环会画出来），不是鼠标点过：点过用真点击。
    */
   focus?: string
   /** 把「逐镜 · N 镜」那一块折叠展开（替手点一下）。 */
@@ -301,11 +302,12 @@ export function SpendCardStage({ scenario, locale: pinned = 'zh-CN', scene = {},
     useGenerationCanvasStore.setState({ nodes: scenario.shots.filter((shot) => !shot.deleted).map((shot) => labNode(shot, locale)), edges: [], groups: [] })
     useProductionCanvasLandingStore.getState().setRuns(PROJECT_ID, { [RUN_ID]: labRun(scenario) } as never)
     useNodeExternalHighlightStore.setState({ hoverNodeId: null, claims: [], flashNodeIds: [] })
-    useNodePointerStore.setState({ locatedNodeId: scenario.located ? spendLabNodeId(scenario.located) : null, returnTo: null })
+    // 「已定位」只能由真点击立起来（走查点一下格子）：实验室不预置，免得拍出一张没人点过的「已定位」。
+    useNodePointerStore.setState({ locatedNodeId: null, returnTo: null })
     setSeeded(true)
   }, [scenario, locale])
   useLabSettled(seeded)
-  const content = seeded ? <>{children}{scene.hover?.map((target) => <LabHover key={target} target={target} />)}{scene.openPerShot ? <LabOpenPerShot /> : null}{scene.focus ? <LabFocus target={scene.focus} /> : null}</> : null
+  const content = seeded ? <>{children}{scene.openPerShot ? <LabOpenPerShot /> : null}{scene.focus ? <LabFocus target={scene.focus} /> : null}</> : null
   if (bare) return <>{content}</>
   return (
     <LabLocaleGate locale={locale}>
