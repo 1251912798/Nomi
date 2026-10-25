@@ -42,6 +42,18 @@ function videoNode(id: string, modeId: string): GenerationCanvasNode {
   }
 }
 
+function klingVideoNode(id: string, modeId: string): GenerationCanvasNode {
+  return {
+    id,
+    kind: 'video',
+    title: id,
+    position: { x: 0, y: 0 },
+    prompt: '',
+    categoryId: 'shots',
+    meta: { modelKey: 'kling-3.0', modelVendor: 'ux-local', archetype: { id: 'kling-3.0', modeId } },
+  }
+}
+
 function directorReferenceNode(id: string): GenerationCanvasNode {
   return {
     id,
@@ -196,6 +208,40 @@ describe('canvas generation mode follows input writes', () => {
 
     expect(useGenerationCanvasStore.getState().edges).toHaveLength(0)
     expect(modeId('target')).toBe('t2i')
+  })
+
+  it('keeps edge and mode together across connect, disconnect, undo, redo, and undo', () => {
+    useGenerationCanvasStore.getState().restoreSnapshot({
+      nodes: [sourceNode('source'), klingVideoNode('target', 't2v')],
+      edges: [],
+      groups: [],
+    })
+
+    useGenerationCanvasStore.getState().connectNodes('source', 'target', 'first_frame')
+    const edgeId = useGenerationCanvasStore.getState().edges[0]?.id
+    expect(edgeId).toBeDefined()
+    expect(modeId('target')).toBe('i2v')
+
+    useGenerationCanvasStore.getState().disconnectEdge(edgeId!)
+    expect(useGenerationCanvasStore.getState().edges).toHaveLength(0)
+    expect(modeId('target')).toBe('t2v')
+
+    useGenerationCanvasStore.getState().undo()
+    expect(useGenerationCanvasStore.getState().edges).toEqual([
+      expect.objectContaining({ source: 'source', target: 'target', mode: 'first_frame' }),
+    ])
+    expect(modeId('target')).toBe('i2v')
+
+    useGenerationCanvasStore.getState().redo()
+    expect(useGenerationCanvasStore.getState().edges).toHaveLength(0)
+    expect(modeId('target')).toBe('t2v')
+
+    useGenerationCanvasStore.getState().undo()
+    expect(useGenerationCanvasStore.getState().edges).toEqual([
+      expect.objectContaining({ source: 'source', target: 'target', mode: 'first_frame' }),
+    ])
+    expect(modeId('target')).toBe('i2v')
+    expect(useGenerationCanvasStore.getState().canRedo).toBe(true)
   })
 
   it.each([
