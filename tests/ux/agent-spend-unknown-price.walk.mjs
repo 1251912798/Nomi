@@ -14,7 +14,7 @@ import { expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { FIXTURE_APIMART_MODEL, FIXTURE_APIMART_VENDOR } from './agent-runtime-fixture.mjs'
 import {
-  CARD_PER_SHOT, CARD_PRIMARY, CARD_TOTAL, armCanvasBridges, canvasRunsOf, createPresenter, offerFacts, pressPrimary, primaryLabel, readRun, shotNodes,
+  CARD_PER_SHOT, CARD_PRIMARY, armCanvasBridges, canvasRunsOf, createPresenter, offerFacts, pressPrimary, primaryLabel, readRun, shotNodes,
 } from './_spendCardWalk.mjs'
 import { closeSpendCard, createRuntimeWalk, openCanvas, recorded } from './agent-runtime-walk-support.mjs'
 
@@ -32,7 +32,6 @@ const prism = (line) => (tag) => [{
 /** ① 卡上一句价格的话都没有，主按钮「生成」可点，没有任何 0。 */
 async function assertNoPriceWords(card, locale) {
   const primaryProbe = await proveProbe(card.locator(CARD_PRIMARY), `${locale}：卡上的主按钮在（下面那几条「不在」都以它为基线）`)
-  await expectAbsent(card.locator(CARD_TOTAL), { provenBy: primaryProbe, message: `${locale}：算不出价时没有「N 张」那一格` })
   await expectAbsent(card.locator(CARD_PER_SHOT), { provenBy: primaryProbe, message: `${locale}：算不出价时也没有逐镜明细（新卡没有「价格未知」那一行，合计那一格上面已经核过）` })
   await expect(card.locator(CARD_PRIMARY), `${locale}：主按钮是「生成」`).toContainText(primaryLabel(locale, { count: 1, kind: 'image', single: true }))
   // 算不出价**绝不拦**生成（用户 2026-09-21 硬性拍板）：按钮必须是可点的。

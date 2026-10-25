@@ -166,7 +166,7 @@ export function V4TaskCard({
 /**
  * ⑤ 介入槽的**逐镜价格折叠**（SpendCardQ1 板 card.per-shot，D5）。
  *
- * 只在各镜价格不同时出现（投影定的）：折叠口一句「逐镜 · N 镜」，展开每镜一行「镜号 · 模型 · 比例 · 时长」+ 那一镜的价。
+ * 只在各镜价格不同时出现（投影定的）：折叠口一句「逐镜」，展开每镜一行「镜号 · 模型 · 比例 · 时长」+ 那一镜的价。
  * 合计金额哪里都不印（10-08「界面不谈钱」）；算不出价的那一档投影根本不给这一块——不是印 `¥0`。
  */
 function V4PriceRow({ price }: { price: NonNullable<InterventionData['price']> }): JSX.Element {
@@ -339,14 +339,7 @@ export function V4Intervention({
         </>
       ) : (
         <>
-          {/* ── 左：**元信息** ──
-              付费卡的「N 段」（板 card.total：主按钮这一下交出去几段；不印金额，算不出价整行不印）、「不再问 →」「收起清单」
-              这类次要的东西在这一侧。颜色是 ink-60，不是警示色：这是一个数，不是警告（设计系统 §2.1.2b）。 */}
-          {data.totalLead ? (
-            <span className="shrink-0 whitespace-nowrap text-caption tabular-nums text-nomi-ink-60" data-v4-block="slot-total">
-              {data.totalLead}
-            </span>
-          ) : null}
+          {/* ── 左：**元信息** ── 次要动作贴着说明文字，数量只由主按钮表达。 */}
           {canEscalate ? (
             <button type="button" className="text-micro text-nomi-ink-40" onClick={onEscalate} data-v4-control="escalate">
               {labels.escalate}

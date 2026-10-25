@@ -117,7 +117,7 @@ async function runLocale(walk, win, projectId, locale) {
     await generateOnNode(win, card, nodes[0].nodeId, `${locale}：在节点上生成第 1 张`)
     await row(R(2), '节点上生成第 1 张：供应商只收到第 1 张；卡还在、问的是剩下那 1 张；第 2 张还在等你确认', async () => {
       await expect.poll(() => walk.fixture.images.length - before, { timeout: stationTimeout({ operations: 4 }) }).toBe(1)
-      await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 1, 'image'), { timeout: stationTimeout({ operations: 4 }) })
+      await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 1, 'image', { remaining: true }), { timeout: stationTimeout({ operations: 4 }) })
       await expect(card.locator(CARD_PRIMARY)).toContainText(primaryLabel(L, { count: 1, kind: 'image', remaining: true }))
       const sent = sentShots(walk.fixture.images, before)
       if (sent.join() !== '1') throw new Error(`供应商收到：${sent.join()}`)
@@ -167,7 +167,7 @@ async function runLocale(walk, win, projectId, locale) {
     const before = walk.fixture.images.length
     const { card, tag, turnDone, receipt, operationId, nodes } = await presentShots(walk, win, projectId, locale, 2)
     await generateOnNode(win, card, nodes[0].nodeId, `${locale}：在节点上生成第 1 张`)
-    await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 1, 'image'), { timeout: stationTimeout({ operations: 4 }) })
+    await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 1, 'image', { remaining: true }), { timeout: stationTimeout({ operations: 4 }) })
     await closeSpendCard(card, `${locale}：「取消」`)
     await row(R(5), '生成第 1 张后「取消」：第 2 张没发；回执说第 2 张用户取消了、没生成；第 1 张是画布上接走的', async () => {
       await recorded(turnDone.received, `${tag}: generate returns`)
@@ -186,7 +186,7 @@ async function runLocale(walk, win, projectId, locale) {
     const before = walk.fixture.images.length
     const { card, tag, receipt, request, turnDone, nodes } = await presentShots(walk, win, projectId, locale, 2)
     await generateOnNode(win, card, nodes[0].nodeId, `${locale}：在节点上生成第 1 张`)
-    await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 1, 'image'), { timeout: stationTimeout({ operations: 4 }) })
+    await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 1, 'image', { remaining: true }), { timeout: stationTimeout({ operations: 4 }) })
     await win.locator(`${CANVAS_PANEL} ${COMPOSER_INPUT}`).fill(interrupt(locale, tag))
     await clickOrFail(win.locator(`${CANVAS_PANEL} ${COMPOSER_SEND}`), `${locale}：卡开着时打字发出去`)
     await row(R(6), '生成第 1 张后直接打字：第 2 张没发；Agent 按打的字办，回执里知道第 2 张没生成', async () => {
@@ -206,11 +206,11 @@ async function runLocale(walk, win, projectId, locale) {
     const before = walk.fixture.images.length
     const { card, tag, turnDone, receipt, nodes } = await presentShots(walk, win, projectId, locale, 5)
     await generateOnNode(win, card, nodes[0].nodeId, `${locale}：在节点上生成第 1 张`)
-    await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 4, 'image'), { timeout: stationTimeout({ operations: 4 }) })
+    await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 4, 'image', { remaining: true }), { timeout: stationTimeout({ operations: 4 }) })
     await excludeShot(card, nodes[1].nodeId, `${locale}：第 2 张「不生成 ×」`)
-    await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 3, 'image'), { timeout: stationTimeout({ operations: 4 }) })
+    await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 3, 'image', { remaining: true }), { timeout: stationTimeout({ operations: 4 }) })
     await generateOnNode(win, card, nodes[2].nodeId, `${locale}：在节点上生成第 3 张`)
-    await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 2, 'image'), { timeout: stationTimeout({ operations: 4 }) })
+    await expect(card.locator(CARD_TITLE)).toContainText(cardTitle(L, 2, 'image', { remaining: true }), { timeout: stationTimeout({ operations: 4 }) })
     await expect(card.locator(CARD_PRIMARY)).toContainText(primaryLabel(L, { count: 2, kind: 'image', remaining: true }))
     await snap(walk, R(9), 'two-left', card)
     await closeSpendCard(card, `${locale}：「取消」`)

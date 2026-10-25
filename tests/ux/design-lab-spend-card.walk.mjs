@@ -16,6 +16,7 @@ const A = {
   exclude: 'board:SpendCardQ1/card.pointer.exclude',
   summary: 'board:SpendCardQ1/card.summary',
   total: 'board:SpendCardQ1/card.total',
+  status: 'board:SpendCardQ1/card.pointer.status',
   perShot: 'board:SpendCardQ1/card.per-shot',
   cancel: 'board:SpendCardQ1/card.cancel',
   generate: 'board:SpendCardQ1/card.generate',
@@ -101,7 +102,6 @@ async function cardFacts(page) {
       })(),
       badge: text('[data-v4-block="slot-badge"]'),
       titleIcon: Boolean(card.querySelector('[data-v4-block="slot-title-icon"]')),
-      total: text('[data-v4-block="slot-total"]'),
       progress: text('[data-v4-block="slot-progress"]'),
       confirm: confirm ? { text: confirmText, disabled: confirm.disabled, locate: Boolean(confirm.querySelector('svg')) } : null,
       dismiss: dismiss ? { text: dismiss.textContent?.trim() ?? '', disabled: dismiss.disabled } : null,
@@ -143,7 +143,7 @@ async function noAccentOutline(page, state, record) {
 /** 每一张卡都守的几条：卡上没有编辑器零件、动作行上不出钱、不许蓝描边。 */
 async function commonCard(page, state, record, facts) {
   if (facts.editors) record(`${state.id} ${A.pointers}: 卡上出现了 ${facts.editors} 个可改的东西（生成框 / 参数 chip / 输入框）——改参数的家只有节点`)
-  if (facts.total && MONEY.test(facts.total)) record(`${state.id} ${A.total}: 页脚印了钱「${facts.total}」（10-08 界面不谈钱）`)
+  if (MONEY.test(facts.cardText)) record(`${state.id} ${A.total}: 卡上印了钱「${facts.cardText}」（10-08 界面不谈钱）`)
   if (facts.confirm && MONEY.test(facts.confirm.text)) record(`${state.id} ${A.generate}: 主按钮印了钱「${facts.confirm.text}」`)
   await noAccentOutline(page, state, record)
 }
@@ -157,7 +157,9 @@ async function expectDecide(page, state, record, facts, expected) {
   if (facts.tone) record(`${state.id} ${A.failure}: 等人决定的卡不该是警示边（tone=${facts.tone}）`)
   if (facts.waiting !== 'true') record(`${state.id} ${A.title}: 等人决定的卡外框要是「在等你」（waiting=${facts.waiting}）`)
   if (facts.titleIcon) record(`${state.id} ${A.title}: 等人决定的标题前不顶图标`)
-  const title = expected.title ?? tr(locale, 'agentPanelV4.spendParamsTitle', { count: expected.asked })
+  const title = expected.title ?? (expected.remaining
+    ? tr(locale, expected.video === false ? 'agentPanelV4.spendParamsTitleRemainingImage' : 'agentPanelV4.spendParamsTitleRemainingVideo', { count: expected.asked })
+    : tr(locale, 'agentPanelV4.spendParamsTitle', { count: expected.asked }))
   if (facts.title !== title) record(`${state.id} ${A.title}: 标题应是「${title}」，实际「${facts.title}」`)
   if (facts.badge) record(`${state.id} ${A.badge}: 方案一不再显示标题徽章（实际「${facts.badge}」）`)
   const generate = expected.confirm
@@ -166,8 +168,6 @@ async function expectDecide(page, state, record, facts, expected) {
   if (facts.confirm?.locate) record(`${state.id} ${A.generate}: 「生成」前不该有定位图标`)
   const cancel = tr(locale, 'agentPanelV4.reject')
   if (!facts.dismiss || facts.dismiss.text !== cancel || facts.dismiss.disabled) record(`${state.id} ${A.cancel}: 「${cancel}」应在且可点：${JSON.stringify(facts.dismiss)}`)
-  const total = expected.total === undefined ? null : tr(locale, 'agentPanelV4.spendCard.totalVideo', { count: expected.total })
-  if (facts.total !== total) record(`${state.id} ${A.total}: 页脚应是「${total ?? '（不印）'}」，实际「${facts.total ?? '（没有）'}」`)
   if (Boolean(facts.perShot) !== Boolean(expected.perShot)) record(`${state.id} ${A.perShot}: 逐镜折叠${expected.perShot ? '应出现（各镜价格不同）' : '不该出现'}`)
   if (facts.progress) record(`${state.id} ${A.progress}: 等人决定的卡不该有进度行`)
   await commonCard(page, state, record, facts)
@@ -196,6 +196,32 @@ function expectToggles(state, record, facts, kinds) {
     if (!pattern(locale, key).test(toggle.name)) record(`${state.id} ${A.exclude}: 小钮读屏名「${toggle.name}」不是词典那一句（${key}）`)
     if (toggle.kind === 'restore' && (toggle.opacity < 0.99 || !toggle.excluded)) record(`${state.id} ${A.exclude}: 去掉了的那一格应淡下去、「恢复」常驻：${JSON.stringify(toggle)}`)
   }
+}
+
+async function expectAccessoryOnFrame(page, state, record) {
+  const result = await page.evaluate(() => [...document.querySelectorAll('[data-spend-exclusion]')].map((toggle) => {
+    const frame = toggle.closest('[data-node-pointer-cell]')?.querySelector('[data-node-pointer-frame]')
+    if (!frame) return null
+    const toggleBox = toggle.getBoundingClientRect()
+    const frameBox = frame.getBoundingClientRect()
+    return { rightDelta: Math.abs(toggleBox.right - frameBox.right), topDelta: Math.abs(toggleBox.top - frameBox.top), frameWidth: frameBox.width }
+  }).filter(Boolean))
+  if (result.some(({ rightDelta, topDelta }) => rightDelta > 12 || topDelta > 18)) record(`${state.id} ${A.exclude}: × 没有骑在缩略图画面框右上角：${JSON.stringify(result)}`)
+}
+
+async function expectStatusCapsules(page, state, record) {
+  const bad = await page.evaluate(() => [...document.querySelectorAll('[data-node-pointer="card"]')].flatMap((pointer) => {
+    const frame = pointer.querySelector('[data-node-pointer-frame]')
+    const statuses = [...(frame?.querySelectorAll('[data-node-pointer-status]') ?? [])]
+    if (!['generating', 'failed'].includes(pointer.getAttribute('data-node-pointer-face') ?? '')) return []
+    if (statuses.length !== 1 || !statuses[0]?.querySelector('svg')) return [{ id: pointer.getAttribute('data-node-pointer-id'), statuses: statuses.length, icon: Boolean(statuses[0]?.querySelector('svg')) }]
+    const box = statuses[0].getBoundingClientRect()
+    const frameBox = frame.getBoundingClientRect()
+    return Math.abs((box.left + box.width / 2) - (frameBox.left + frameBox.width / 2)) > 8 || Math.abs((box.top + box.height / 2) - (frameBox.top + frameBox.height / 2)) > 8
+      ? [{ id: pointer.getAttribute('data-node-pointer-id'), center: true }]
+      : []
+  }))
+  if (bad.length) record(`${state.id} ${A.status}: 状态必须是缩略图正中一个图标 + 文字胶囊：${JSON.stringify(bad)}`)
 }
 
 /** 失败留在卡里（板 ⑤⑥ 与结果未知 / 本机判得出发不出去）。 */
@@ -307,6 +333,7 @@ async function expectSpendCardState(page, state, record) {
         if (!(facts.groupSummary ?? '').includes(part)) record(`${state.id} ${A.summary}: 组下方那一行（合起来的摘要）缺「${part}」：${facts.groupSummary}`)
       }
       if (facts.groupSummaryTitle !== facts.groupSummary) record(`${state.id} ${A.summary}: 摘要行要带悬停全名`)
+      await expectStatusCapsules(page, state, record)
       if (state.id !== 'spend-batch') break
       // 真悬停一格（鼠标真移过去）：「不生成 ×」露出来，组下方换成这一镜的摘要（5s），组的高度一点不变（不把「生成」钮顶下去）。
       const group = page.locator('[data-v4-block="spend-body"] [data-node-pointer-group="card"]')
@@ -325,6 +352,8 @@ async function expectSpendCardState(page, state, record) {
       }, NODE(2), { timeout: 3000 }).catch(() => record(`${state.id} ${A.exclude}: 真悬停镜 02 后「不生成 ×」没露出来`))
       const hovered = await cardFacts(page)
       if (!(hovered?.hoverSummary ?? '').includes('5s')) record(`${state.id} ${A.summary}: 悬停镜 02 后组下方应换成这一镜的摘要（5s）：${hovered?.hoverSummary}`)
+      if ((hovered?.hoverSummary ?? '').includes('镜 02') || (hovered?.hoverSummary ?? '').includes('越过落叶')) record(`${state.id} ${A.summary}: 悬停摘要不应重复镜号或镜头名：${hovered?.hoverSummary}`)
+      await expectAccessoryOnFrame(page, state, record)
       const others = hovered?.toggles.filter((toggle) => toggle.cell !== NODE(2)).map((toggle) => toggle.opacity) ?? []
       if (others.some((opacity) => opacity > 0.01)) record(`${state.id} ${A.exclude}: 只悬停镜 02，别的格子也露了小钮：${others.join(',')}`)
       const hot = (await group.boundingBox())?.height ?? 0
@@ -370,7 +399,7 @@ async function expectSpendCardState(page, state, record) {
       break
     }
     case 'spend-remaining': {
-      await expectDecide(page, state, record, facts, { asked: 2, confirm: tr(locale, 'agentPanelV4.spendConfirmRemainingVideo', { count: 2 }), total: 2 })
+      await expectDecide(page, state, record, facts, { asked: 2, remaining: true, confirm: tr(locale, 'agentPanelV4.spendConfirmRemainingVideo', { count: 2 }), total: 2 })
       expectGroup(state, record, facts, ['generating', 'production', 'production'])
       expectToggles(state, record, facts, [null, 'exclude', 'exclude'])
       break
@@ -393,6 +422,7 @@ async function expectSpendCardState(page, state, record) {
       if (!faceOf(facts, 3)?.text.includes(uiText(locale, 'generationCommon.production.canvasLanding.queued'))) record(`${state.id} ${A.pointers}: 镜 03 应说「排队中」：${faceOf(facts, 3)?.text}`)
       if (facts.pointers.some((pointer) => pointer.text.includes(uiText(locale, 'generationCommon.production.canvasLanding.awaitingConfirmation')))) record(`${state.id} ${A.pointers}: 正在发出时还有格子写着「等你确认」`)
       if (facts.toggles.length) record(`${state.id} ${A.exclude}: 正在发出时不再挂「不生成 ×」`)
+      await expectStatusCapsules(page, state, record)
       await commonCard(page, state, record, facts)
       break
     }
@@ -402,6 +432,7 @@ async function expectSpendCardState(page, state, record) {
         shot: 2, titleKey: 'agentPanelV4.spendCard.failedTitle.notSent', reasonKey: 'agentPanelV4.spendCard.failure.provider_not_reached', retry: true, toggles: [null, null, 'exclude'],
       })
       expectGroup(state, record, facts, ['generating', 'failed', 'production'])
+      await expectStatusCapsules(page, state, record)
       if (!faceOf(facts, 2)?.text.includes(tr(locale, 'agentPanelV4.spendCard.pointerFailed'))) record(`${state.id} ${A.pointers}: 没发出去的那一格状态条应说「${tr(locale, 'agentPanelV4.spendCard.pointerFailed')}」`)
       break
     }
@@ -409,6 +440,7 @@ async function expectSpendCardState(page, state, record) {
     case 'spend-rejected-en': {
       await expectFailure(page, state, record, facts, { shot: 2, titleKey: 'agentPanelV4.spendCard.failedTitle.rejected', reasonKey: 'agentPanelV4.spendCard.failure.provider_rejected', locateKey: 'agentPanelV4.spendCard.goEdit', toggles: [null, null, 'exclude'] })
       expectGroup(state, record, facts, ['generating', 'failed', 'production'])
+      await expectStatusCapsules(page, state, record)
       break
     }
     case 'spend-unclear': {

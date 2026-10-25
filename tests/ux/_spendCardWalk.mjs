@@ -24,7 +24,6 @@ export const CARD_BADGE = '[data-v4-block="slot-badge"]'
 export const CARD_PRIMARY = INTERVENTION_CONFIRM
 export const CARD_CANCEL = INTERVENTION_REJECT
 export const CARD_BODY = '[data-v4-block="spend-body"]'
-export const CARD_TOTAL = '[data-v4-block="slot-total"]'
 export const CARD_PROGRESS = '[data-v4-block="slot-progress"]'
 export const CARD_NOTICE = '[data-v4-block="spend-notice"]'
 export const CARD_PER_SHOT = '[data-v4-block="price-per-item"]'
@@ -56,10 +55,12 @@ export const MONEY = /[¥￥$€£]|\d+\.\d{2}/
 /** 界面上写的那一句（词典按键取 + 填占位，带 count 走复数）。`locale`：'zh-CN' | 'en'。 */
 export const say = (locale, key, values = {}) => uiTextWith(locale, key, values)
 
-/** 卡的标题那一句（「生成这 N 段视频？」/「生成这 N 张图片？」）。 */
-export const cardTitle = (locale, count, kind) => say(locale, count === 1
-  ? (kind === 'video' ? 'agentPanelV4.spendParamsTitleSingle' : 'agentPanelV4.spendParamsTitleImageSingle')
-  : (kind === 'video' ? 'agentPanelV4.spendParamsTitle' : 'agentPanelV4.spendParamsTitleImage'), { count })
+/** 卡的标题那一句（「生成这 N 段视频？」/「生成剩下的视频？」）。 */
+export const cardTitle = (locale, count, kind, { remaining = false } = {}) => say(locale, remaining
+  ? (kind === 'video' ? 'agentPanelV4.spendParamsTitleRemainingVideo' : 'agentPanelV4.spendParamsTitleRemainingImage')
+  : count === 1
+    ? (kind === 'video' ? 'agentPanelV4.spendParamsTitleSingle' : 'agentPanelV4.spendParamsTitleImageSingle')
+    : (kind === 'video' ? 'agentPanelV4.spendParamsTitle' : 'agentPanelV4.spendParamsTitleImage'), { count })
 /** 主按钮那一句：单段「生成」，多段「全部生成（N）」，节点上点过 ↑ 之后「生成剩下 N 段 / 张」。 */
 export function primaryLabel(locale, { count, kind, remaining = false, single = false }) {
   if (single || count === 0) return say(locale, 'agentPanelV4.spendCard.generate')
@@ -388,7 +389,6 @@ export function cardFacts(win) {
       tone: card.getAttribute('data-tone'),
       title,
       badge: text('[data-v4-block="slot-badge"]'),
-      total: text('[data-v4-block="slot-total"]'),
       progress: text('[data-v4-block="slot-progress"]'),
       confirm: confirm ? { text: (confirm.textContent ?? '').replace('⏎', '').trim(), disabled: confirm.disabled } : null,
       dismiss: dismiss ? { text: dismiss.textContent?.trim() ?? '', disabled: dismiss.disabled } : null,

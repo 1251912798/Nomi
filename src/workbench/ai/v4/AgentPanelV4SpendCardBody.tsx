@@ -107,6 +107,7 @@ export function AgentPanelV4SpendCardBody({ pointers, single, summary, notices, 
           narrow={narrow}
           suppressAwaitingConfirmation
           {...(summary ? { idleSummary: summary } : {})}
+          hoverSummary={(_subject, index) => pointers[index]?.hoverSummary ?? null}
           cellAccessory={(_subject, index) => exclusionAccessory(pointers[index], { busy, onExclude, onRestore })}
         />
       )}

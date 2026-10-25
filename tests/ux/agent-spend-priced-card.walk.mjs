@@ -17,8 +17,8 @@ import { expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { FIXTURE_APIMART_MODEL, FIXTURE_APIMART_VENDOR } from './agent-runtime-fixture.mjs'
 import {
-  CARD_PRIMARY, CARD_TOTAL, MONEY, armCanvasBridges, canvasRunsOf, createPresenter, offerFacts, pointerAway, pressPrimary,
-  primaryLabel, readRun, say, shotNodes,
+  CARD_PRIMARY, MONEY, armCanvasBridges, canvasRunsOf, createPresenter, offerFacts, pointerAway, pressPrimary,
+  primaryLabel, readRun, shotNodes,
 } from './_spendCardWalk.mjs'
 import { closeSpendCard, createRuntimeWalk, openCanvas, recorded } from './agent-runtime-walk-support.mjs'
 
@@ -36,28 +36,24 @@ const teacups = (lines) => (tag) => lines.map((line, index) => ({
 
 /** 有价这一档的卡此刻摆着什么（动作行左边那一格、主按钮），以及两者是不是同一行、有没有折行。 */
 async function pricedRow(card) {
-  const total = card.locator(CARD_TOTAL)
   const primary = card.locator(CARD_PRIMARY)
-  const [totalBox, primaryBox] = [await total.boundingBox(), await primary.boundingBox()]
+  const [primaryBox, actions] = [await primary.boundingBox(), card.locator('[data-v4-block="card-actions"] > *').count()]
   return {
-    total: ((await total.textContent()) ?? '').trim(),
     primary: ((await primary.textContent()) ?? '').replace('⏎', '').trim(),
-    sameRow: Boolean(totalBox && primaryBox) && Math.abs((totalBox.y + totalBox.height / 2) - (primaryBox.y + primaryBox.height / 2)) < 6,
-    oneLine: (totalBox?.height ?? 99) < 24,
+    actionCount: actions,
+    oneLine: (primaryBox?.height ?? 99) < 24,
   }
 }
 
 /** ⑥ 两张一起摆、报得出价：看完就关（「取消」），让等这张卡的那个回合收尾。 */
 async function twoShotPricedCard(walk, win, locale, lines) {
   const two = await present(walk, win, { locale, kind: 'image', shots: teacups(lines) })
-  await proveProbe(two.card.locator(CARD_TOTAL), `${locale}：两张的卡上动作行左边那一格在`)
   await pointerAway(win)
   const row = await pricedRow(two.card)
-  expect(row.total, `${locale}：动作行左边写「2 张」（单位跟标题同一条规则）`).toBe(say(locale, 'agentPanelV4.spendCard.totalImage', { count: 2 }))
   expect(row.primary, `${locale}：主按钮「全部生成（2）」`).toBe(primaryLabel(locale, { count: 2, kind: 'image' }))
-  expect(`${row.total} ${row.primary}`, `${locale}：动作行不出金额`).not.toMatch(MONEY)
-  expect(row.sameRow, `${locale}：「2 张」和主按钮在同一行`).toBe(true)
-  expect(row.oneLine, `${locale}：「2 张」一行放得下，不折行`).toBe(true)
+  expect(row.primary, `${locale}：动作行不出金额`).not.toMatch(MONEY)
+  expect(row.actionCount, `${locale}：动作行只保留取消和主按钮`).toBe(2)
+  expect(row.oneLine, `${locale}：主按钮一行放得下，不折行`).toBe(true)
   const file = await walk.snap(`priced-two-shots-${locale}`)
   await two.card.screenshot({ path: file.replace(/\.png$/, '-card.png') })
   await closeSpendCard(two.card, `${locale}：看完关掉两张的卡`)
@@ -76,10 +72,8 @@ try {
   const { card, operationId, turnDone } = await present(walk, win, { locale: 'zh-CN', kind: 'image', shots: teacups(['一只青瓷茶杯，晨光斜照']) })
   const cardProbe = await proveProbe(card, '有价的付费卡摆在介入槽里')
   // 新卡算不出价时整行不印（没有「暂时算不出价格」那一格可找）：有价这一档要证的是那一格真的在。
-  await proveProbe(card.locator(CARD_TOTAL), '有价这一档动作行左边那一格在')
   await pointerAway(win)
   const single = await pricedRow(card)
-  expect(single.total, '动作行左边写「1 张」').toBe(say('zh-CN', 'agentPanelV4.spendCard.totalImage', { count: 1 }))
   expect(single.primary, '单张的主按钮是「生成」').toBe(primaryLabel('zh-CN', { count: 1, kind: 'image', single: true }))
   expect(await card.innerText(), '卡上不出金额').not.toMatch(MONEY)
   expect(walk.fixture.images, '卡还没按之前，一次供应商生成都没发生').toHaveLength(0)
@@ -119,10 +113,8 @@ try {
   await win.evaluate(() => localStorage.setItem('nomi:locale:v1', 'en'))
   await win.reload()
   const en = await present(walk, win, { locale: 'en', kind: 'image', shots: teacups(['A celadon teacup in slanting morning light']) })
-  await proveProbe(en.card.locator(CARD_TOTAL), 'EN：动作行左边那一格在')
   await pointerAway(win)
   const enRow = await pricedRow(en.card)
-  expect(enRow.total, 'EN：「1 image」').toBe(say('en', 'agentPanelV4.spendCard.totalImage', { count: 1 }))
   expect(enRow.primary, 'EN：Generate').toBe(primaryLabel('en', { count: 1, kind: 'image', single: true }))
   expect(await en.card.innerText(), 'EN：卡上不出金额').not.toMatch(MONEY)
   await walk.snap('priced-card-en')
@@ -134,8 +126,8 @@ try {
   await twoShotPricedCard(walk, win, 'en', ['A celadon teacup in slanting morning light', 'A celadon teacup against the evening light'])
 
   walk.report.verified = [
-    'priced-card-shows-count-not-amount-zh-and-en', 'generate-really-reaches-the-vendor', 'canvas-run-ledger-records-the-catalog-price',
-    'artifact-lands-on-the-node-the-draft-created', 'two-shot-count-on-the-action-row-one-line-zh-and-en',
+    'priced-card-keeps-count-on-primary-not-footer-zh-and-en', 'generate-really-reaches-the-vendor', 'canvas-run-ledger-records-the-catalog-price',
+    'artifact-lands-on-the-node-the-draft-created', 'two-shot-primary-one-line-zh-and-en',
   ]
 } catch (error) {
   failure = error

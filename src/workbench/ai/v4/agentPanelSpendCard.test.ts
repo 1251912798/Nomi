@@ -40,12 +40,11 @@ function project(shots: readonly PendingSpendShot[], shotFacts: readonly SpendCa
 }
 
 describe('付费卡投影 · 等人决定', () => {
-  it('单段：一张指向元素 + 「生成」；页脚「1 段」（板 ① 那一行在，只是不印金额），不挂「不生成 ×」', () => {
+  it('单段：一张指向元素 + 「生成」；数量只在主按钮，不渲染页脚，不挂「不生成 ×」', () => {
     const card = project([shot(1)], [facts(1)])
     expect(card.single).toBe(true)
     expect(card.slot.title).toBe('agentPanelV4.spendParamsTitleSingle(count=1)')
     expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.generate')
-    expect(card.slot.totalLead).toBe('agentPanelV4.spendCard.totalVideo(count=1)')
     expect(card.slot.price).toBeUndefined()
     expect(card.summary).toBeUndefined()
     expect(card.pointers).toEqual([{ shotId: 's1', nodeId: 'n1', shotRef: '镜 01', removed: false, exclusion: null }])
@@ -60,40 +59,43 @@ describe('付费卡投影 · 等人决定', () => {
     expect(noModel.summary).not.toContain('agentPanelV4.spendParamsModelPicked')
   })
 
-  it('三段同价：「全部生成（3）」+ 页脚「3 段」，不印合计金额、不出逐镜折叠；摘要是整齐的那一行', () => {
+  it('三段同价：「全部生成（3）」+ 不渲染页脚、不印合计金额、不出逐镜折叠；摘要是整齐的那一行', () => {
     const card = project([shot(1), shot(2), shot(3)], [facts(1), facts(2), facts(3, { durationSec: 5 })])
     expect(card.single).toBe(false)
     expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.generateAll(count=3)')
-    expect(card.slot.totalLead).toBe('agentPanelV4.spendCard.totalVideo(count=3)')
     expect(card.slot.price).toBeUndefined()
     expect(JSON.stringify(card)).not.toContain('¥')
     expect(card.summary).toBe('agentPanelV4.spendCard.summaryPickedModel(model=Seedance 2.0 Fast,picked=agentPanelV4.spendParamsModelPicked) · 16:9 · 480p · agentPanelV4.spendCard.summarySeconds(value=13s)')
+    expect(card.pointers[0]!.hoverSummary).toContain('4s')
+    expect(card.pointers[1]!.hoverSummary).toContain('4s')
+    expect(card.pointers[2]!.hoverSummary).toContain('5s')
+    const uniform = project([shot(1), shot(2), shot(3)], [facts(1), facts(2), facts(3)])
+    expect(uniform.pointers.every((pointer) => pointer.hoverSummary === undefined)).toBe(true)
     expect(card.pointers.map((pointer) => pointer.exclusion)).toEqual(['exclude', 'exclude', 'exclude'])
     expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s1', 's2', 's3'], hostingAllowed: false })
   })
 
-  it('各镜价格不同：折叠明细逐镜印价（名字与指向元素同一个），页脚仍只写「N 段」（D5）', () => {
+  it('各镜价格不同：折叠明细逐镜印价（名字与指向元素同一个），不渲染页脚（D5）', () => {
     const card = project([shot(1), shot(2)], [facts(1), facts(2, { aspect: '9:16', durationSec: 5, price: { known: true, amount: 0.88 } })])
-    expect(card.slot.totalLead).toBe('agentPanelV4.spendCard.totalVideo(count=2)')
     expect(card.slot.price?.perItemLabel).toBe('agentPanelV4.spendParamsPerItem')
     expect(card.slot.price?.perItem).toEqual([
       { label: '镜 01 · Seedance 2.0 Fast · 16:9 · 4s', amount: '¥0.70' },
       { label: '镜 02 · Seedance 2.0 Fast · 9:16 · 5s', amount: '¥0.88' },
     ])
     expect(card.summary).toBe('agentPanelV4.spendCard.summaryMixed(prefix=agentPanelV4.spendCard.summaryPickedModel(model=Seedance 2.0 Fast,picked=agentPanelV4.spendParamsModelPicked) · 480p,groups=agentPanelV4.spendCard.summaryGroup(value=16:9,count=1) · agentPanelV4.spendCard.summaryGroup(value=9:16,count=1))')
+    expect(card.pointers[0]!.hoverSummary).toContain('16:9')
+    expect(card.pointers[1]!.hoverSummary).toContain('9:16')
   })
 
-  it('有一镜算不出价：页脚「N 段」与逐镜折叠整行不印，绝不写 0（3.5）', () => {
+  it('有一镜算不出价：页脚与逐镜折叠整行不印，绝不写 0（3.5）', () => {
     const card = project([shot(1), shot(2)], [facts(1), facts(2, { price: { known: false } })])
-    expect(card.slot.totalLead).toBeUndefined()
     expect(card.slot.price).toBeUndefined()
     expect(JSON.stringify(card)).not.toMatch(/¥0(?!\.\d*[1-9])/)
   })
 
-  it('图片：标题、页脚、「生成剩下」都说「张」；有一段视频就说视频', () => {
+  it('图片：标题和「生成剩下」都说「张」；有一段视频就说视频', () => {
     const images = project([shot(1, { kind: 'image' }), shot(2, { kind: 'image' })], [facts(1, { durationSec: null }), facts(2, { durationSec: null })])
     expect(images.slot.title).toBe('agentPanelV4.spendParamsTitleImage(count=2)')
-    expect(images.slot.totalLead).toBe('agentPanelV4.spendCard.totalImage(count=2)')
     const mixed = project([shot(1, { kind: 'image' }), shot(2)], [facts(1), facts(2)])
     expect(mixed.slot.title).toBe('agentPanelV4.spendParamsTitle(count=2)')
   })
@@ -136,10 +138,10 @@ describe('付费卡投影 · 不生成 / 恢复 / 删除 / 节点上点过 ↑',
     expect(allLanding.slot.actionsDisabled).toBe(true)
   })
 
-  it('节点上点过 ↑（画布接走了）：卡说「生成剩下 N 段」，页脚只数剩下的（3.3）', () => {
+  it('节点上点过 ↑（画布接走了）：卡说「生成剩下 N 段」，按钮只数剩下的（3.3）', () => {
     const card = project([shot(1, { offer: 'taken_by_canvas' }), shot(2), shot(3)], [facts(1), facts(2), facts(3)])
+    expect(card.slot.title).toBe('agentPanelV4.spendParamsTitleRemainingVideo(count=2)')
     expect(card.slot.confirmLabel).toBe('agentPanelV4.spendConfirmRemainingVideo(count=2)')
-    expect(card.slot.totalLead).toBe('agentPanelV4.spendCard.totalVideo(count=2)')
     expect(card.pointers[0]!.exclusion).toBeNull()
     expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s2', 's3'], hostingAllowed: false })
   })

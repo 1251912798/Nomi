@@ -175,11 +175,6 @@ export type InterventionData = Readonly<{
   badge?: string
   summary?: string
   scope?: string
-  /**
-   * 付费卡页脚左端那一句「N 段」/「N 张」（SpendCardQ1 板 card.total，D2 第③步）：主按钮这一下交出去几段。
-   * 照 10-08「界面不谈钱」不印合计金额；只在多段、而且每一段都算得出价时有（算不出整行不印，绝不写 0）。
-   */
-  totalLead?: string
   params?: readonly string[]
   /**
    * 反问的选项。**模型自己写**（标签 + 一句说明 + 可标推荐），形状与解析在

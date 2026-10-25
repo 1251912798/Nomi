@@ -66,10 +66,9 @@
         "empty"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "assertion": "board:SpendCardQ1/card.title",
-      "note": "方案一（10-25）。现状缺「生成剩下的…？」：标题只按段数挑单复数（agentPanelSpendCard.ts 标题那一行）。",
-      "owner": "I-d2-plan1-c"
+      "note": "方案一（10-25）。现状缺「生成剩下的…？」：标题只按段数挑单复数（agentPanelSpendCard.ts 标题那一行）。"
     },
     {
       "id": "card.badge",
@@ -119,14 +118,13 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "userDecision": {
         "quote": "协调 10-23 转述用户「按推荐」：Q1 选 A——多段卡里每个指向元素悬停 / 聚焦时露一颗小「不生成 ×」，点了 N 跟着减，节点显示「已去掉，不生成」；可以撤回（再点一次恢复）",
         "date": "2026-10-23"
       },
       "note": "方案一（10-25 按画布评论改，两个方案都做）。现状：× 贴的是格子右缘（NodePointer.tsx PointerCell），竖图时离开了竖框；标题行还按 reserveAccessory 给它让位。全部去掉时主按钮置灰、卡留着，要关卡点「取消」；恢复是宿主动作 restoreSpendShot。",
-      "assertion": "board:SpendCardQ1/card.pointer.exclude",
-      "owner": "I-d2-plan1-c"
+      "assertion": "board:SpendCardQ1/card.pointer.exclude"
     },
     {
       "id": "card.pointer.status",
@@ -141,8 +139,7 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
-      "owner": "I-d2-plan1-c",
+      "status": "implemented",
       "assertion": "board:SpendCardQ1/card.pointer.status",
       "note": "方案一（10-25 按画布评论改，两个方案都做）。和 NodePointer 板 pointer.state.generating / pointer.state.failed / pointer.located 是同一个组件、同一条规则，所有指向卡片一起变。现状：生成中 / 失败的状态条在左下角（NodePointer.tsx statusBar），失败格正中另有警示圆托。"
     },
@@ -157,10 +154,9 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "assertion": "board:SpendCardQ1/card.summary",
-      "note": "方案一（10-25）。现状：悬停 / 聚焦时换成「镜号 · 模型 · …」（NodePointer.tsx PointerHoverSummary），带镜头名，参数一样时也换。",
-      "owner": "I-d2-plan1-c"
+      "note": "方案一（10-25）。现状：悬停 / 聚焦时换成「镜号 · 模型 · …」（NodePointer.tsx PointerHoverSummary），带镜头名，参数一样时也换。"
     },
     {
       "id": "card.total",
@@ -172,14 +168,13 @@
         "dark"
       ],
       "candidates": [],
-      "status": "in-progress",
+      "status": "implemented",
       "userDecision": {
         "quote": "付费卡的新设计没啥问题 就方案1就行",
         "date": "2026-10-25"
       },
       "note": "方案一（10-25）删。删完之前是 in-progress：走查断言页脚不再出现数量（动作行只剩取消 / 生成）才改 implemented。现状 agentPanelSpendCard.ts 在价格都已知时仍给 totalLead。10-23 的「合计行只写 N 段」（D5）随之作废。",
-      "assertion": "board:SpendCardQ1/card.total",
-      "owner": "I-d2-plan1-c"
+      "assertion": "board:SpendCardQ1/card.total"
     },
     {
       "id": "card.per-shot",

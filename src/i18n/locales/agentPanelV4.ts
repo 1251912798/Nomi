@@ -441,6 +441,8 @@ export const zhAgentPanelV4 = {
   spendParamsTitleImage_one: '生成这张图片？',
   spendParamsTitleImage_other: '生成这些图片？',
   spendParamsTitleImageSingle: '生成这张图片？',
+  spendParamsTitleRemainingVideo: '生成剩下的视频？',
+  spendParamsTitleRemainingImage: '生成剩下的图片？',
   /** 标题旁小字：这几段的模型是 Nomi 替你挑的（节点里换过模型就不再这么说）。 */
   spendParamsModelPicked: 'Nomi 选的',
   /** 逐镜折叠口（只在各镜价格不同时出现，D5）。 */
@@ -507,11 +509,6 @@ export const zhAgentPanelV4 = {
     receiptGeneratedVideo_other: '已生成 {{count}} 段',
     receiptGeneratedImage_one: '已生成 {{count}} 张',
     receiptGeneratedImage_other: '已生成 {{count}} 张',
-    /** 页脚「N 段」：照 10-08「界面不谈钱」不印合计金额（D5）。 */
-    totalVideo_one: '{{count}} 段',
-    totalVideo_other: '{{count}} 段',
-    totalImage_one: '{{count}} 张',
-    totalImage_other: '{{count}} 张',
     /** 一行只读摘要里的总时长。 */
     summarySeconds: '共 {{value}}',
     summaryMixed: '{{prefix}} · {{groups}}',
@@ -531,16 +528,6 @@ export const zhAgentPanelV4 = {
     },
     /** 多段卡里有一段本机就判得出发不出去、其余照常可发时的那一行（主按钮不数它）。 */
     blockedNotice: '{{shot}} 现在发不出去：{{reason}}',
-    /** 失败那一段之外，别的几段此刻怎样（板 ⑤⑥ 的小字）。 */
-    detail: {
-      sent: '{{shots}} 已发出',
-      unclear: '{{shots}} 结果还不确定',
-      notSent: '{{shots}} 没发出去',
-      notYet: '{{shots}} 还没发',
-      listSeparator: '、',
-      separator: '；',
-      period: '。',
-    },
     /** 为什么没发出去 / 为什么发不出去（Nomi 自己的语义码；没登记的码按种类说）。 */
     failure: {
       provider_not_reached: '服务暂时不可用。',
@@ -1001,6 +988,8 @@ export const enAgentPanelV4 = {
   spendParamsTitleImage_one: 'Generate this image?',
   spendParamsTitleImage_other: 'Generate these {{count}} images?',
   spendParamsTitleImageSingle: 'Generate this image?',
+  spendParamsTitleRemainingVideo: 'Generate the remaining videos?',
+  spendParamsTitleRemainingImage: 'Generate the remaining images?',
   spendParamsModelPicked: 'Nomi picked',
   spendParamsPerItem: 'Per shot',
   spendConfirmRemainingImage_one: 'Generate {{count}} images',
@@ -1049,10 +1038,6 @@ export const enAgentPanelV4 = {
     receiptGeneratedVideo_other: 'Generated {{count}} videos',
     receiptGeneratedImage_one: 'Generated {{count}} image',
     receiptGeneratedImage_other: 'Generated {{count}} images',
-    totalVideo_one: '{{count}} video',
-    totalVideo_other: '{{count}} videos',
-    totalImage_one: '{{count}} image',
-    totalImage_other: '{{count}} images',
     summarySeconds: '{{value}} total',
     summaryMixed: '{{prefix}} · {{groups}}',
     summaryAuto: 'Auto',
@@ -1069,15 +1054,6 @@ export const enAgentPanelV4 = {
       blocked: '{{shot}} can\'t be sent yet',
     },
     blockedNotice: '{{shot}} can\'t be sent yet: {{reason}}',
-    detail: {
-      sent: '{{shots}} sent',
-      unclear: '{{shots}} unclear',
-      notSent: '{{shots}} not sent',
-      notYet: '{{shots}} not sent yet',
-      listSeparator: ', ',
-      separator: '; ',
-      period: '.',
-    },
     failure: {
       provider_not_reached: 'The service is unavailable right now.',
       project_not_open: 'This project is no longer open.',

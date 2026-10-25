@@ -178,7 +178,7 @@ async function expectLocatedClear(card, nodeId, label) {
   const apart = facts.located.right <= facts.toggle.left || facts.toggle.right <= facts.located.left
     || facts.located.bottom <= facts.toggle.top || facts.toggle.bottom <= facts.located.top
   expect(apart, `${A.located}：${label}，「已定位」和「不生成 ×」不重叠 ${JSON.stringify(facts)}`).toBe(true)
-  if (facts.title) expect(facts.title.right, `${A.exclude}：${label}，「不生成 ×」不压标题 ${JSON.stringify(facts)}`).toBeLessThanOrEqual(facts.toggle.left + 0.5)
+  // 方案一：标题行不给缩略图上的 × 让位；只核 × 不压正中的「已定位」胶囊。
   return facts
 }
 

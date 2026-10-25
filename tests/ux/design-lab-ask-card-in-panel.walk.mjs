@@ -183,13 +183,13 @@ try {
       measured.push({ locale: tag, theme, kind, ...shape })
       // 付费卡（D2 第③步，SpendCardQ1 板）：卡上只有指向元素 + 一行只读摘要 + 动作行。卡里不许有编辑器零件
       // （生成框 / 参数 chip / 摘要 pill / 输入框——改参数的家只有节点，设计系统 §1.0）；指向元素、「不生成 ×」、
-      // 主按钮与页脚整颗落在卡里，不靠横向滚动藏东西（窄面板与英文长文案各证一遍）。
+      // 主按钮整颗落在卡里，不靠横向滚动藏东西（窄面板与英文长文案各证一遍）。
       if (kind.startsWith('spend')) {
         const card = await shot.evaluate((element) => {
           const root = element.querySelector('[data-v4-block="intervention"]')
           if (!root) return null
           const rect = root.getBoundingClientRect()
-          const members = [...root.querySelectorAll('[data-node-pointer], [data-spend-exclusion], [data-v4-control], [data-v4-block="slot-total"]')]
+          const members = [...root.querySelectorAll('[data-node-pointer], [data-spend-exclusion], [data-v4-control]')]
             .map((node) => ({ text: (node.textContent || '').trim().slice(0, 14), rect: node.getBoundingClientRect() }))
             .filter((member) => member.rect.width > 0 && member.rect.height > 0)
           return {
@@ -197,7 +197,6 @@ try {
             pointers: root.querySelectorAll('[data-v4-block="spend-body"] [data-node-pointer]').length,
             outside: members.filter((member) => member.rect.left < rect.left - 0.5 || member.rect.right > rect.right + 0.5).map((member) => member.text),
             scrolls: [...root.querySelectorAll('*')].filter((node) => node.scrollWidth - node.clientWidth > 1 && ['auto', 'scroll'].includes(getComputedStyle(node).overflowX)).length,
-            total: root.querySelector('[data-v4-block="slot-total"]')?.textContent ?? null,
           }
         })
         if (!card) failures.push(`${tag}/${theme}/${kind}：面板里没有付费卡`)
@@ -209,16 +208,9 @@ try {
           measured.push({ locale: tag, theme, kind: `${kind}:card`, ...card })
         }
       }
-      // 页脚左下那一格（合计 / 价格未知那句）不许被省略号截断——EN 串长，截断只有眼睛看得出，
-      // 所以量它：内容宽不许超过自己的盒子。
-      const leadClipped = await shot.locator('[data-v4-block="slot-total"]').evaluateAll((nodes) =>
-        nodes.filter((node) => node.scrollWidth - node.clientWidth > 1).length)
-      if (leadClipped) failures.push(`${tag}/${theme}/${kind}：页脚左下那句被截断了`)
       if (kind === 'spend-unknown') {
         const enabled = await shot.locator('[data-v4-control="confirm"]').isEnabled()
         if (!enabled) failures.push(`${tag}/${theme}/${kind}：算不出价时主按钮被禁用了——用户硬性拍板：算不出价绝不拦生成`)
-        // 算不出价整行不印（板 card.total，D5）：不是印「0」，也不是印一句「暂时算不出」占着那一格。
-        if (await shot.locator('[data-v4-block="slot-total"]').count()) failures.push(`${tag}/${theme}/${kind}：算不出价时页脚还印着那一行`)
       }
       if (shape.missing) failures.push(`${tag}/${theme}/${kind}：面板里没渲染出介入槽`)
       if (shape.scheme !== theme) failures.push(`${tag}/${theme}/${kind}：主题没翻过去（量到 ${shape.scheme}）`)

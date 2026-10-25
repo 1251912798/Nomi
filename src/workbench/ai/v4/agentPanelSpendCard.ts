@@ -8,7 +8,7 @@
 //   · 有镜正在交给画布（`handing_over`）→ 「正在发出 k/N 段」，动作行只说怎么停；
 //   · 有镜没发出去 / 结果不确定，或者一段能发的都没有、却有本机判得出发不出去的 → 失败留在卡里（板 ⑤⑥）；
 //   · 其余 → 等人决定：「生成」/「全部生成（N）」/「生成剩下 N 段」。
-// 钱照 10-08「界面不谈钱」：页脚只写「N 段」，算不出整行不印；只有各镜价格不同时折叠明细里印每镜价（板 D5）。
+// 钱照 10-08「界面不谈钱」：方案一不渲染页脚数量；只有各镜价格不同时折叠明细里印每镜价（板 D5）。
 import { formatMoney } from './formatMoney'
 import type { GenerationHandOverFailure, PendingSpendConfirm, PendingSpendShot } from '../../../desktop/productionRunBridgeTypes'
 import type { ShotPrice } from '../../../../electron/shared/contracts/shotPricingRule'
@@ -59,6 +59,8 @@ export type SpendCardPointer = Readonly<{
   hostStatus?: string
   /** 多段卡格子右上那颗小钮：「不生成 ×」（还没决定的）/「恢复」（去掉了的）/ 没有。 */
   exclusion: 'exclude' | 'restore' | null
+  /** 逐镜摘要；参数逐镜不同时给悬停行使用。 */
+  hoverSummary?: string
 }>
 
 export type SpendCardNotice = Readonly<{ tone: 'danger' | 'neutral'; text: string; detail?: string }>
@@ -137,11 +139,23 @@ function distinct<T>(values: readonly T[]): T[] {
   return [...new Set(values)]
 }
 
+/** 单格摘要；整行摘要和悬停摘要都从这一份格式化函数取参数。 */
+export function spendCardShotSummary(fact: SpendCardShotFacts, t: Translate, pickedByNomi = false): string | undefined {
+  const model = fact.model && pickedByNomi
+    ? t('agentPanelV4.spendCard.summaryPickedModel', { model: fact.model, picked: t('agentPanelV4.spendParamsModelPicked') })
+    : fact.model
+  const line = join([
+    model,
+    fact.aspect,
+    fact.resolution,
+    fact.durationSec ? t('agentPanelV4.spendCard.summarySeconds', { value: formatSeconds(fact.durationSec) }) : null,
+  ])
+  return line || undefined
+}
+
 /**
- * 多段卡组指向下方那一行（板 card.summary）：整齐时「模型 · 比例 · 清晰度 · 共 Ns」；有哪一样逐镜不同时
- * 保留共同参数，再列不同组「16:9 ×1 · 9:16 ×2」（比例、模型、清晰度依次）。读不出的比例显示「自动」。
- * 「读不出」（比例是自动、没有清晰度这一档）也是一种不同：两镜自动、一镜 16:9 不是「都是 16:9」——整齐那一行只印
- * 第一镜的值，把它当成整齐会替另外几镜说一个它们没有的比例。不同的那一样里只列读得出的几组（「3 镜 · 逐镜不同：16:9 ×1」）。
+ * 多段卡组指向下方那一行（板 card.summary）：整齐时保留共同参数；有哪一样逐镜不同时
+ * 列不同组「16:9 ×1 · 9:16 ×2」。逐镜悬停摘要由 spendCardShotSummary 共用同一格式。
  */
 export function spendCardSummary(facts: readonly SpendCardShotFacts[], t: Translate, pickedByNomi = false): string | undefined {
   if (facts.length === 0) return undefined
@@ -223,6 +237,17 @@ export function projectSpendCard(
   const pick = (...roles: Role[]) => entries.filter((entry) => roles.includes(entry.role))
   const sendable = pick('sendable')
   const sending = has('sending')
+  // 「Nomi 选的」只说这一下要交的那几镜（还没决定、节点在画布上）。
+  const about = pick('sendable', 'blocked')
+  const pickedByNomi = about.length > 0 && about.every((entry) => entry.facts.selected
+    && entry.facts.selected.providerId === entry.shot.draftedModel.providerId
+    && entry.facts.selected.modelId === entry.shot.draftedModel.modelId)
+  const summaryVaries = [
+    sendable.map((entry) => entry.facts.model),
+    sendable.map((entry) => entry.facts.aspect ?? ''),
+    sendable.map((entry) => entry.facts.resolution ?? ''),
+    sendable.map((entry) => String(entry.facts.durationSec ?? '')),
+  ].some((values) => distinct(values).length > 1)
   // 失败留在卡里：没发出去 / 结果不确定的那一镜；一段能发的都没有时，本机判得出发不出去的那一镜也是（有能发的时它只占一行说明）。
   const attention = sending ? undefined : entries.find((entry) => entry.role === 'notSent' || entry.role === 'unclear' || (entry.role === 'blocked' && sendable.length === 0))
   const saysVideo = spendCardSaysVideo(sendable.length ? sendable.map((entry) => entry.shot) : entries.map((entry) => entry.shot))
@@ -241,6 +266,9 @@ export function projectSpendCard(
     exclusion: single || sending ? null
       : entry.role === 'sendable' || entry.role === 'blocked' ? 'exclude'
         : entry.role === 'excluded' ? 'restore' : null,
+    ...(summaryVaries && (entry.role === 'sendable' || entry.role === 'blocked')
+      ? { hoverSummary: spendCardShotSummary(entry.facts, t, pickedByNomi) }
+      : {}),
   }))
 
   if (sending) {
@@ -290,19 +318,14 @@ export function projectSpendCard(
   const asked = count + pick('blocked', 'absent').filter((entry) => entry.shot.offer === 'undecided').length
   const titleKey = saysVideo ? 'agentPanelV4.spendParamsTitle' : 'agentPanelV4.spendParamsTitleImage'
   const singleTitleKey = saysVideo ? 'agentPanelV4.spendParamsTitleSingle' : 'agentPanelV4.spendParamsTitleImageSingle'
-  // 「Nomi 选的」只说这一下要交的那几镜（还没决定、节点在画布上）：每一镜节点此刻选的模型都还是 Agent 起草时选的那个。
-  const about = pick('sendable', 'blocked')
-  const pickedByNomi = about.length > 0 && about.every((entry) => entry.facts.selected
-    && entry.facts.selected.providerId === entry.shot.draftedModel.providerId
-    && entry.facts.selected.modelId === entry.shot.draftedModel.modelId)
+  const remainingTitleKey = saysVideo ? 'agentPanelV4.spendParamsTitleRemainingVideo' : 'agentPanelV4.spendParamsTitleRemainingImage'
   // 节点上点过 ↑ 的（画布接走了）或早先交出去的：卡上剩下的就说「生成剩下 N 段」（板 card.generate）。
   const remaining = has('taken') || has('sent') || has('unclear')
   // 一段都交不出去（全去掉了 / 还在落到画布上）：按钮置灰、只说「生成」，不印「全部生成（0）」。
   const confirmLabel = single || count === 0 ? t('agentPanelV4.spendCard.generate')
     : remaining ? t(saysVideo ? 'agentPanelV4.spendConfirmRemainingVideo' : 'agentPanelV4.spendConfirmRemainingImage', { count })
       : t(saysVideo ? 'agentPanelV4.spendCard.generateAll' : 'agentPanelV4.spendCard.generateAllImage', { count })
-  // 钱（D5）：每一段都算得出才印「N 段」（单段卡也印「1 段」——板 ① 那一行在，Q2 只把金额去掉）；各段价格不同时折叠明细
-  // 印每镜价；算不出整行不印。
+  // 钱（D5）：各段价格不同时折叠明细印每镜价；算不出整行不印。数量只在主按钮。
   const prices = sendable.map((entry) => entry.facts.price)
   const allKnown = count >= 1 && prices.every((price) => price.known)
   const amounts = prices.map((price) => (price.known ? price.amount : Number.NaN))
@@ -317,9 +340,8 @@ export function projectSpendCard(
   return {
     slot: Object.freeze({
       kind: 'spend' as const,
-      title: asked > 0 ? t(asked === 1 ? singleTitleKey : titleKey, { count: asked }) : t('agentPanelV4.spendCard.titleNothing'),
+      title: asked > 0 ? t(remaining ? remainingTitleKey : asked === 1 ? singleTitleKey : titleKey, { count: asked }) : t('agentPanelV4.spendCard.titleNothing'),
       ...brake,
-      ...(allKnown ? { totalLead: t(saysVideo ? 'agentPanelV4.spendCard.totalVideo' : 'agentPanelV4.spendCard.totalImage', { count }) } : {}),
       ...(allKnown && !uniform
         ? {
           price: {

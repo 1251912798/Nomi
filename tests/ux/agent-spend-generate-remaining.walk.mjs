@@ -77,7 +77,7 @@ async function remainingRound(walk, win, { projectId, projectRoot }, locale) {
   await expect.poll(() => walk.fixture.videos.length - videosBefore, { message: `${tag}：节点上点 ↑ 发出一笔`, timeout: stationTimeout({ operations: 4 }) }).toBe(1)
   await expect(card.locator('[data-v4-control="confirm"]'), `${A.generate}：画布接走第 1 镜之后，主按钮是「生成剩下 2 段」`)
     .toHaveText(new RegExp(escape(primaryLabel(locale, { count: 2, kind: 'video', remaining: true }))), { timeout: stationTimeout({ operations: 4 }) })
-  await expect(card.locator(CARD_TITLE), `${tag}：标题只问还没决定的两段`).toContainText(cardTitle(locale, 2, 'video'))
+  await expect(card.locator(CARD_TITLE), `${tag}：标题只问剩下的两段`).toContainText(cardTitle(locale, 2, 'video', { remaining: true }))
   facts = await cardFacts(win)
   expect(facts.pointers.map((pointer) => pointer.id), `${tag}：三个指向元素都还在（第 1 镜跟着节点说它在生成）`).toEqual(nodes.map((shot) => shot.nodeId))
   expect(facts.toggles.filter((toggle) => toggle.cell === nodes[0].nodeId), `${tag}：画布接走的那一镜没有「不生成 ×」`).toEqual([])
