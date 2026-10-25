@@ -990,7 +990,7 @@ export const enAgentPanelV4 = {
   spendParamsTitleImageSingle: 'Generate this image?',
   spendParamsTitleRemainingVideo: 'Generate the remaining videos?',
   spendParamsTitleRemainingImage: 'Generate the remaining images?',
-  spendParamsModelPicked: 'Nomi picked',
+  spendParamsModelPicked: "Nomi's pick",
   spendParamsPerItem: 'Per shot',
   spendConfirmRemainingImage_one: 'Generate {{count}} images',
   spendConfirmRemainingImage_other: 'Generate {{count}} images',

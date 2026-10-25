@@ -69,6 +69,7 @@ describe('付费卡投影 · 等人决定', () => {
     expect(card.pointers[0]!.hoverSummary).toContain('4s')
     expect(card.pointers[1]!.hoverSummary).toContain('4s')
     expect(card.pointers[2]!.hoverSummary).toContain('5s')
+    expect(card.pointers[2]!.hoverSummary).not.toContain('summarySeconds')
     const uniform = project([shot(1), shot(2), shot(3)], [facts(1), facts(2), facts(3)])
     expect(uniform.pointers.every((pointer) => pointer.hoverSummary === undefined)).toBe(true)
     expect(card.pointers.map((pointer) => pointer.exclusion)).toEqual(['exclude', 'exclude', 'exclude'])

@@ -15,10 +15,32 @@ const SOURCE = 'docs/design/boards/2026-10-23/SpendCardQ1.board.json'
 const undecided = (shot: 1 | 2 | 3, extra: Partial<SpendLabShot> = {}): SpendLabShot => ({ shot, offer: 'undecided', ...extra })
 const pointer = (shot: 1 | 2 | 3): string => `[data-v4-block="spend-body"] [data-node-pointer-id="${spendLabNodeId(shot)}"]`
 
+const IMAGE_TITLES: Record<1 | 2 | 3, readonly [string, string]> = {
+  1: ['雨后纸船 · 出发', 'Paper boat — sets off'],
+  2: ['雨后纸船 · 越过落叶', 'Paper boat — drifts by'],
+  3: ['雨后纸船 · 停在石阶', 'Paper boat — rests'],
+}
+const IMAGE_MESSAGE: readonly [string, string] = ['画 3 张雨后纸船的图，起草好给我确认。', 'Draw 3 rainy paper-boat images and let me confirm the drafts.']
+const image = (shot: 1 | 2 | 3, extra: Partial<SpendLabShot> = {}): SpendLabShot => undecided(shot, {
+  kind: 'image',
+  title: IMAGE_TITLES[shot],
+  resolution: '1K',
+  ...extra,
+})
+const IMAGE_THREE: readonly SpendLabShot[] = [image(1), image(2), image(3)]
+
 /** 三段 16:9（4 / 5 / 4 秒），每段同价。 */
 const THREE: readonly SpendLabShot[] = [undecided(1, { duration: 4 }), undecided(2, { duration: 5 }), undecided(3, { duration: 4 })]
 
 const SCENARIOS = {
+  /** 方案一 · 中明宽：三张 GPT Image 2 图片，同前缀标题，第 1 格已定位并聚焦。 */
+  oneZhWide: { shots: IMAGE_THREE, located: 1, message: IMAGE_MESSAGE },
+  /** 方案一 · 中明窄：第 1 张已在节点上点过生成，鼠标停在第 2 张。 */
+  oneZhNarrow: { shots: [image(1, { offer: 'taken_by_canvas', node: 'generating' }), image(2), image(3)], message: IMAGE_MESSAGE },
+  /** 方案一 · 英暗宽：去掉第 3 张。 */
+  oneEnWideDark: { shots: [image(1), image(2), image(3, { offer: 'removed' })], message: IMAGE_MESSAGE },
+  /** 方案一 · 英暗窄：16:9 ×2、9:16 ×1，标题公共前缀按唯一尾巴截断。 */
+  oneEnNarrowDark: { shots: [image(1), image(2), image(3, { ratio: '9:16' })], message: IMAGE_MESSAGE },
   /** ① 单段：一个指向元素（画面左、摘要右）+ 页脚「1 段」+「取消 · 生成」。 */
   single: { shots: [undecided(1, { duration: 4 })], pricing: 'flat' },
   /** ② 三段：组指向 + 一行合起来的摘要（共 13s）+ 页脚「3 段」+「取消 · 生成 3 段」。 */
@@ -88,6 +110,36 @@ function Cell({ scenario, locale = 'zh-CN', scene, width }: { scenario: SpendLab
 }
 
 export const SPEND_CARD_STATES: readonly LabState[] = [
+  {
+    id: 'spend-one-zh-wide',
+    name: '方案一 · 中文 · 明 · 宽 384：三张图片，第 1 格已定位并聚焦',
+    source: SOURCE,
+    coverage: 'shell',
+    render: () => <Cell scenario={SCENARIOS.oneZhWide} width={384} scene={{ focus: pointer(1) }} />,
+  },
+  {
+    id: 'spend-one-zh-narrow',
+    name: '方案一 · 中文 · 明 · 窄 320：第 1 张生成中，悬停第 2 张',
+    source: SOURCE,
+    coverage: 'shell',
+    render: () => <Cell scenario={SCENARIOS.oneZhNarrow} width={320} scene={{ hover: [pointer(2)] }} />,
+  },
+  {
+    id: 'spend-one-en-wide-dark',
+    name: '方案一 · English · dark · wide 384：去掉第 3 张',
+    source: SOURCE,
+    coverage: 'shell',
+    scheme: 'dark',
+    render: () => <Cell scenario={SCENARIOS.oneEnWideDark} locale="en" width={384} />,
+  },
+  {
+    id: 'spend-one-en-narrow-dark',
+    name: '方案一 · English · dark · narrow 320：16:9 ×2、9:16 ×1',
+    source: SOURCE,
+    coverage: 'shell',
+    scheme: 'dark',
+    render: () => <Cell scenario={SCENARIOS.oneEnNarrowDark} locale="en" width={320} />,
+  },
   {
     id: 'spend-single',
     name: '① 单段：一个指向元素（画面左、摘要右）+ 取消 · 生成',

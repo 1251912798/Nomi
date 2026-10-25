@@ -57,6 +57,8 @@ async function cardFacts(page) {
       id: el.getAttribute('data-node-pointer-id'),
       face: el.getAttribute('data-node-pointer-face'),
       density: el.getAttribute('data-node-pointer'),
+      title: el.querySelector('[data-node-pointer-title]')?.textContent?.trim() ?? '',
+      located: Boolean(el.querySelector('[data-node-pointer-located]')),
       text: el.textContent ?? '',
       aria: el.getAttribute('aria-label') ?? '',
       disabled: el.getAttribute('aria-disabled') === 'true',
@@ -159,7 +161,9 @@ async function expectDecide(page, state, record, facts, expected) {
   if (facts.titleIcon) record(`${state.id} ${A.title}: 等人决定的标题前不顶图标`)
   const title = expected.title ?? (expected.remaining
     ? tr(locale, expected.video === false ? 'agentPanelV4.spendParamsTitleRemainingImage' : 'agentPanelV4.spendParamsTitleRemainingVideo', { count: expected.asked })
-    : tr(locale, 'agentPanelV4.spendParamsTitle', { count: expected.asked }))
+    : expected.video === false
+      ? tr(locale, expected.asked === 1 ? 'agentPanelV4.spendParamsTitleImageSingle' : 'agentPanelV4.spendParamsTitleImage', { count: expected.asked })
+      : tr(locale, 'agentPanelV4.spendParamsTitle', { count: expected.asked }))
   if (facts.title !== title) record(`${state.id} ${A.title}: 标题应是「${title}」，实际「${facts.title}」`)
   if (facts.badge) record(`${state.id} ${A.badge}: 方案一不再显示标题徽章（实际「${facts.badge}」）`)
   const generate = expected.confirm
@@ -263,6 +267,17 @@ function expectNarrow(state, record, facts) {
   if (facts.confirmBox && facts.confirmBox.right > facts.cardBox.right + 1) record(`${state.id} ${A.generate}: 主按钮被裁在卡外：${JSON.stringify(facts.confirmBox)} / ${JSON.stringify(facts.cardBox)}`)
 }
 
+function expectImageTitles(state, record, facts, expected) {
+  const actual = facts.pointers.map((pointer) => pointer.title)
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) record(`${state.id} ${A.pointers}: 图片标题应保留公共前缀并按唯一尾巴截断：${JSON.stringify({ expected, actual })}`)
+}
+
+function expectImageSummary(state, record, facts, expected) {
+  const summary = facts.groupSummary ?? facts.hoverSummary
+  if (summary !== expected) record(`${state.id} ${A.summary}: 图片节点整行摘要应是「${expected}」，实际「${summary}」`)
+  if ((summary ?? '').includes('共') || (summary ?? '').includes('total')) record(`${state.id} ${A.summary}: 图片摘要不应出现视频时长总计：${summary}`)
+}
+
 async function expectReceipt(page, state, record, phase, faces) {
   const locale = localeOf(state.id)
   if (await page.locator('[data-v4-block="intervention"]').count()) record(`${state.id} ${A.done}: 完成后卡应离开输入框上方那一格`)
@@ -305,7 +320,46 @@ async function expectSpendCardState(page, state, record) {
   const facts = await cardFacts(page)
   if (!facts) { record(`${state.id} ${A.title}: 介入槽里没有卡`); return }
   const all = (count) => tr(locale, 'agentPanelV4.spendCard.generateAll', { count })
+  const allImage = (count) => tr(locale, 'agentPanelV4.spendCard.generateAllImage', { count })
   switch (state.id) {
+    case 'spend-one-zh-wide': {
+      await expectDecide(page, state, record, facts, { asked: 3, video: false, confirm: allImage(3), total: 3 })
+      expectGroup(state, record, facts, ['production', 'production', 'production'])
+      expectImageTitles(state, record, facts, ['雨后纸船 · 出发', '雨后纸船 · 越过落叶', '雨后纸船 · 停在石阶'])
+      expectImageSummary(state, record, facts, 'GPT Image 2（Nomi 选的） · 16:9 · 1K')
+      if (!faceOf(facts, 1)?.located) record(`${state.id} ${A.pointers}: 第 1 格聚焦后应有「已定位」中心胶囊`)
+      expectToggles(state, record, facts, ['exclude', 'exclude', 'exclude'])
+      break
+    }
+    case 'spend-one-zh-narrow': {
+      await expectDecide(page, state, record, facts, { asked: 2, video: false, remaining: true, confirm: tr(locale, 'agentPanelV4.spendConfirmRemainingImage', { count: 2 }), total: 2 })
+      expectGroup(state, record, facts, ['generating', 'production', 'production'])
+      expectImageTitles(state, record, facts, ['雨后纸船 · 出发', '雨后纸船 · 越过落叶', '雨后纸船 · 停在石阶'])
+      if (facts.cardBox.width > 301) record(`${state.id} ${A.pointers}: 图片窄卡比 300 的面板还宽：${facts.cardBox.width}`)
+      if (!facts.hoverSummary?.includes('GPT Image 2') || !facts.hoverSummary?.includes('16:9') || !facts.hoverSummary?.includes('1K')) record(`${state.id} ${A.summary}: 悬停第 2 格应换成它自己的图片摘要：${facts.hoverSummary}`)
+      if (/共|total/i.test(facts.hoverSummary ?? '')) record(`${state.id} ${A.summary}: 单格悬停摘要不应带总计词：${facts.hoverSummary}`)
+      await expectStatusCapsules(page, state, record)
+      expectToggles(state, record, facts, [null, 'exclude', 'exclude'])
+      break
+    }
+    case 'spend-one-en-wide-dark': {
+      await expectDecide(page, state, record, facts, { asked: 2, video: false, confirm: allImage(2), total: 2 })
+      expectGroup(state, record, facts, ['production', 'production', 'production'])
+      expectImageTitles(state, record, facts, ['Paper boat — sets off', 'Paper boat — drifts by', 'Paper boat — rests'])
+      expectImageSummary(state, record, facts, "GPT Image 2 (Nomi's pick) · 16:9 · 1K")
+      expectToggles(state, record, facts, ['exclude', 'exclude', 'restore'])
+      break
+    }
+    case 'spend-one-en-narrow-dark': {
+      await expectDecide(page, state, record, facts, { asked: 3, video: false, confirm: allImage(3), total: 3 })
+      expectGroup(state, record, facts, ['production', 'production', 'production'])
+      expectImageTitles(state, record, facts, ['Paper boat — sets off', 'Paper boat — drifts by', 'Paper boat — rests'])
+      expectImageSummary(state, record, facts, "GPT Image 2 (Nomi's pick) · 1K · 16:9 ×2 · 9:16 ×1")
+      if (facts.cardBox.width > 301) record(`${state.id} ${A.pointers}: 图片窄卡比 300 的面板还宽：${facts.cardBox.width}`)
+      const ratios = facts.pointers.map((pointer) => pointer.frame?.ratio ?? 0)
+      if (Math.abs(ratios[0] - 16 / 9) > 0.03 || Math.abs(ratios[1] - 16 / 9) > 0.03 || Math.abs(ratios[2] - 9 / 16) > 0.03) record(`${state.id} ${A.pointers}: 图片节点比例应为 16:9、16:9、9:16：${JSON.stringify(ratios)}`)
+      break
+    }
     case 'spend-single':
     case 'spend-single-en': {
       await expectDecide(page, state, record, facts, { asked: 1, confirm: tr(locale, 'agentPanelV4.spendCard.generate'), total: 1 })

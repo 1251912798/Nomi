@@ -148,7 +148,9 @@ export function spendCardShotSummary(fact: SpendCardShotFacts, t: Translate, pic
     model,
     fact.aspect,
     fact.resolution,
-    fact.durationSec ? t('agentPanelV4.spendCard.summarySeconds', { value: formatSeconds(fact.durationSec) }) : null,
+    // This is a single shot's readout. The aggregate row owns the `共 / total`
+    // wording; repeating it on hover makes one shot sound like the whole batch.
+    fact.durationSec ? formatSeconds(fact.durationSec) : null,
   ])
   return line || undefined
 }

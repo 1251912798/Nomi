@@ -63,8 +63,15 @@ const PRICING: Record<'flat' | 'by-duration', ModelOptionPricing> = {
 export type SpendLabShot = Readonly<{
   /** 分镜里第几镜：节点标题、「镜 NN」都从这里来。 */
   shot: 1 | 2 | 3
+  /** 方案一图片帧要走真实图片节点；旧格默认仍是视频。 */
+  kind?: 'image' | 'video'
+  /** 夹具里的节点标题；不带分镜计划时，窄卡也必须按标题公共前缀截断。 */
+  title?: readonly [string, string]
+  /** 节点目录里的模型身份；缺席按 kind 选现有默认模型。 */
+  model?: Readonly<{ providerId: string; modelId: string }>
   ratio?: '16:9' | '9:16'
   duration?: number
+  resolution?: string
   offer: PendingSpendShot['offer']
   failure?: GenerationHandOverFailure
   /** 节点自己在画布上的样子（交出去的那几镜在画布上跑）。缺席 = 空闲。 */
@@ -79,6 +86,10 @@ export type SpendLabShot = Readonly<{
 
 export type SpendLabScenario = Readonly<{
   shots: readonly SpendLabShot[]
+  /** 取景用的已定位格；只写 store 事实，不在卡里另画状态。 */
+  located?: 1 | 2 | 3
+  /** 方案一样张的用户原话；有它时用用户气泡 + 真实工具收据布景。 */
+  message?: readonly [string, string]
   brake?: NonNullable<PendingSpendConfirm['brake']>['reason']
   /** 读不到待决出价（那张会说话的缺卡）。 */
   unreadable?: boolean
@@ -104,14 +115,26 @@ const TONES: Record<1 | 2 | 3, string> = { 1: '#c9d6dc|#93a9b8', 2: '#3d4f5c|#c7
 const shotIdOf = (shot: Pick<SpendLabShot, 'shot'>): string => `lab-shot-${shot.shot}`
 export const spendLabNodeId = (shot: 1 | 2 | 3): string => `lab-spend-node-${shot}`
 
+const IMAGE_MODEL = Object.freeze({ providerId: 'apimart', modelId: 'gpt-image-2' })
+
+function shotKind(shot: SpendLabShot): 'image' | 'video' {
+  return shot.kind ?? 'video'
+}
+
+function shotModel(shot: SpendLabShot): Readonly<{ providerId: string; modelId: string }> {
+  return shot.model ?? (shotKind(shot) === 'image' ? IMAGE_MODEL : DRAFTED)
+}
+
 function labNode(shot: SpendLabShot, locale: Locale): GenerationCanvasNode {
+  const kind = shotKind(shot)
+  const model = shotModel(shot)
   const ratio = shot.ratio ?? '16:9'
   const portrait = ratio === '9:16'
   return {
     id: spendLabNodeId(shot.shot),
-    kind: 'video',
+    kind,
     categoryId: 'shots',
-    title: L(locale, TITLES[shot.shot][0], TITLES[shot.shot][1]),
+    title: shot.title ? L(locale, shot.title[0], shot.title[1]) : L(locale, TITLES[shot.shot][0], TITLES[shot.shot][1]),
     prompt: shot.emptyPrompt ? '' : L(locale, PROMPTS[shot.shot][0], PROMPTS[shot.shot][1]),
     position: { x: 0, y: 0 },
     size: portrait ? { width: 192, height: 340 } : { width: 340, height: 192 },
@@ -121,8 +144,13 @@ function labNode(shot: SpendLabShot, locale: Locale): GenerationCanvasNode {
     // 无头 Chromium 不解 H.264：结果给成首帧图（指向元素读的也正是这一张）。
     ...(shot.node === 'done' ? { result: { id: `lab-spend-art-${shot.shot}`, type: 'image' as const, url: shotArt(shot.shot, ratio, TONES[shot.shot]), createdAt: 1 } } : {}),
     meta: {
-      modelKey: DRAFTED.modelId, modelVendor: DRAFTED.providerId, aspect_ratio: ratio, duration: shot.duration ?? 4, resolution: '480p',
-      storyboardDesignId: DESIGN_ID, shotId: `s${shot.shot}`, productionRunId: RUN_ID, productionShotId: shotIdOf(shot),
+      modelKey: model.modelId, modelVendor: model.providerId, aspect_ratio: ratio,
+      ...(kind === 'video' ? { duration: shot.duration ?? 4 } : {}),
+      resolution: shot.resolution ?? (kind === 'image' ? '1K' : '480p'),
+      // The four approved image frames intentionally have no storyboard shot
+      // number: the shared title prefix is the thing being tested in narrow width.
+      ...(kind === 'video' ? { storyboardDesignId: DESIGN_ID, shotId: `s${shot.shot}` } : {}),
+      productionRunId: RUN_ID, productionShotId: shotIdOf(shot),
     },
   } as GenerationCanvasNode
 }
@@ -152,7 +180,10 @@ function claimOf(shot: SpendLabShot) {
 
 /** 落地投影缓存里的那份 Run：出价（开着 / 已关）、去掉了哪几镜、交到哪一步——节点上的小标、收据下那几镜从它派生。 */
 function labRun(scenario: SpendLabScenario) {
-  const candidate = { candidateId: 'lab-spend-candidate', revision: 1, moduleId: 'm', providerId: DRAFTED.providerId, modelId: DRAFTED.modelId, mode: 't2v', prompt: '', parameters: {}, references: [] }
+  const first = scenario.shots[0]
+  const kind = first ? shotKind(first) : 'video'
+  const model = first ? shotModel(first) : DRAFTED
+  const candidate = { candidateId: 'lab-spend-candidate', revision: 1, moduleId: 'm', providerId: model.providerId, modelId: model.modelId, mode: kind === 'image' ? 't2i' : 't2v', prompt: '', parameters: {}, references: [] }
   return {
     runId: RUN_ID, projectId: PROJECT_ID, status: 'running', jobs: [], gates: [], origin: { host: 'nomi' },
     generationPlan: {
@@ -181,8 +212,8 @@ function labRead(scenario: SpendLabScenario): PendingSpendRead {
     presentationId: PRESENTATION_ID, presentationEpoch: 1, currency: 'CNY',
     ...(scenario.brake ? { brake: { reason: scenario.brake } } : {}),
     shots: scenario.shots.map((shot) => ({
-      shotId: shotIdOf(shot), nodeId: spendLabNodeId(shot.shot), index: shot.shot, kind: 'video' as const,
-      draftedModel: scenario.draftedOther ? DRAFTED_OTHER : DRAFTED, offer: shot.offer,
+      shotId: shotIdOf(shot), nodeId: spendLabNodeId(shot.shot), index: shot.shot, kind: shotKind(shot),
+      draftedModel: scenario.draftedOther ? DRAFTED_OTHER : shotModel(shot), offer: shot.offer,
       ...(shot.failure ? { failure: shot.failure } : {}),
     })),
   }
@@ -197,11 +228,13 @@ function installSpendCatalog(pricing: ModelOptionPricing | undefined): void {
   installPointerCatalog()
   const health = peekCatalogHealth()
   if (!pricing || !health) return
-  const priced = (mode: 'text_to_video' | 'image_to_video') => (peekCatalogModelOptions('video', mode) ?? [])
-    .map((option) => ((option.modelKey ?? option.value) === DRAFTED.modelId ? { ...option, pricing } : option))
+  const priced = (kind: 'image' | 'video', mode: 'text_to_video' | 'image_to_video' | 'text_to_image' | 'image_edit', modelId: string) => (peekCatalogModelOptions(kind, mode) ?? [])
+    .map((option) => ((option.modelKey ?? option.value) === modelId ? { ...option, pricing } : option))
   seedModelCatalogForTests(health, [
-    { kind: 'video', requiredMode: 'text_to_video', options: priced('text_to_video') },
-    { kind: 'video', requiredMode: 'image_to_video', options: priced('image_to_video') },
+    { kind: 'video', requiredMode: 'text_to_video', options: priced('video', 'text_to_video', DRAFTED.modelId) },
+    { kind: 'video', requiredMode: 'image_to_video', options: priced('video', 'image_to_video', DRAFTED.modelId) },
+    { kind: 'image', requiredMode: 'text_to_image', options: priced('image', 'text_to_image', IMAGE_MODEL.modelId) },
+    { kind: 'image', requiredMode: 'image_edit', options: priced('image', 'image_edit', IMAGE_MODEL.modelId) },
   ])
 }
 
@@ -268,7 +301,7 @@ export function SpendCardStage({ scenario, locale: pinned = 'zh-CN', scene = {},
     useGenerationCanvasStore.setState({ nodes: scenario.shots.filter((shot) => !shot.deleted).map((shot) => labNode(shot, locale)), edges: [], groups: [] })
     useProductionCanvasLandingStore.getState().setRuns(PROJECT_ID, { [RUN_ID]: labRun(scenario) } as never)
     useNodeExternalHighlightStore.setState({ hoverNodeId: null, claims: [], flashNodeIds: [] })
-    useNodePointerStore.setState({ locatedNodeId: null, returnTo: null })
+    useNodePointerStore.setState({ locatedNodeId: scenario.located ? spendLabNodeId(scenario.located) : null, returnTo: null })
     setSeeded(true)
   }, [scenario, locale])
   useLabSettled(seeded)
@@ -338,7 +371,12 @@ export function SpendCardPanel({ scenario, locale = 'zh-CN', width = V4_PANEL_WI
   const fx = useV4Fixtures()
   const laneLabels = useSpendLaneLabels()
   const { t } = useTranslation()
-  const lead = React.useMemo<readonly V4FlowItem[]>(() => flow ?? (scenario.done
+  const lead = React.useMemo<readonly V4FlowItem[]>(() => flow ?? (scenario.message
+    ? [
+      { kind: 'user', text: L(locale, scenario.message[0], scenario.message[1]) },
+      { kind: 'tool', receipt: { label: L(locale, '准备生成', 'Prepare generation'), action: 'image', status: 'output-available' } },
+    ]
+    : scenario.done
     // 和真面板同一条路：两层投影出流水，再按回合把工作折成一行过程（收据在折起来的那一行里，那一句与组指向露在外面）。
     ? collapseV4Flow(laneFlowItems(laneSnapshotGenerateDone(OPERATION_ID, scenario.shots.map(shotIdOf), locale === 'en'), laneLabels), t)
     : [{ kind: 'assistant', text: SENTENCE(locale, scenario.shots.length), status: 'complete' }]), [flow, scenario, locale, laneLabels, t])
