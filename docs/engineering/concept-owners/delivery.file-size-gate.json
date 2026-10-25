@@ -1,0 +1,27 @@
+{
+  "name": "单文件体积门岗：格式化代码行的判据与冻结 / legacy 基线清单",
+  "subject": "delivery.file-size-gate",
+  "lifecycle": "delivery",
+  "authority_kind": "gateway",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/check-file-sizes.mjs",
+    "symbol": "checkFileSizes"
+  },
+  "write_api": [
+    {
+      "path": "scripts/check-file-sizes.mjs",
+      "symbol": "checkFileSizes"
+    },
+    {
+      "path": "scripts/file-size-baseline.json",
+      "symbol": "entries"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-25",
+  "notes": "合同 docs/fixes/2026-10-25-filesize-gate-formatted-lines.root-cause.json：checkFileSizes 按仓库 Prettier 归一化后数代码行（650 黄牌点名最大顶层声明，800 红牌）；scripts/file-size-baseline.json 的 entries 是唯一一份冻结 / legacy 清单，相对 origin/main 只许变短，唯一一次迁移窗口是 origin/main 还没有这份清单的时候。package.json 的 check:filesize、推送前快检（只扫改动文件）和 CI Contracts 都走这一个入口。"
+}
