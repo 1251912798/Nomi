@@ -15,7 +15,7 @@ vi.mock("electron", () => ({
   },
 }));
 
-import { deriveModelListing } from "./modelCatalogListing";
+import { deriveModelListing, modelReferenceSelection } from "./modelCatalogListing";
 import { apiKeyDecryptStatus } from "./secrets";
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
@@ -339,6 +339,39 @@ describe("deriveModelListing — 参考承载力真话（与 referenceReachabili
     });
     const entry = deriveModelListing(s)[0];
     expect(entry.references).toEqual({ image: false, video: false, audio: false, multiImage: false, referenceModes: [] });
+  });
+
+  it("型号名认不出、只靠 meta.archetypeId 认档案的模型：承载力按档案声明（单图），不按键名猜成多图", () => {
+    // modelKey 不命中任何档案的型号名，档案只能从 meta 来；档案改图槽声明 imageUrls 最多 1 张，
+    // 而键名形态的通用声明是多图。meta 没传到判据就会退回键名推断、说成多图——这条就是要它当场红。
+    const s = state({
+      vendors: [vendor({ key: "relay", name: "Relay" })],
+      models: [model({ modelKey: "relay-custom-edit", vendorKey: "relay", meta: { archetypeId: "rh-seedream-4.5" } })],
+      mappings: [mapping({ id: "edit", vendorKey: "relay", modelKey: "relay-custom-edit", taskKind: "image_edit", create: { method: "POST", path: "/x", body: { imageUrls: "{{request.params.imageUrls}}" } } })],
+      apiKeysByVendor: { relay: { vendorKey: "relay", apiKey: b64("k"), enc: "safeStorage", enabled: true, createdAt: "t", updatedAt: "t" } },
+    });
+    const entry = deriveModelListing(s)[0];
+    expect(entry.references).toEqual({ image: true, video: false, audio: false, multiImage: false, referenceModes: ["image_edit"] });
+  });
+});
+
+describe("modelReferenceSelection — 运行时第三闸和清单共用的模型身份", () => {
+  const meta = { archetypeId: "rh-seedream-4.5" };
+
+  it("别名和 meta 原样带上；不给 taskKind 就不带这个字段（清单那条路）", () => {
+    expect(modelReferenceSelection("relay", { modelKey: "m", modelAlias: "alias", meta })).toEqual({
+      vendorKey: "relay",
+      modelKey: "m",
+      modelAlias: "alias",
+      modelMeta: meta,
+    });
+  });
+
+  it("给了 taskKind 就原样带上，空串也带（运行时那条路，和收成一份之前逐字一致）", () => {
+    expect(modelReferenceSelection("relay", { modelKey: "m", meta }, "image_edit")).toMatchObject({ taskKind: "image_edit" });
+    const empty = modelReferenceSelection("relay", { modelKey: "m", meta }, "");
+    expect(Object.prototype.hasOwnProperty.call(empty, "taskKind")).toBe(true);
+    expect(empty.taskKind).toBe("");
   });
 });
 

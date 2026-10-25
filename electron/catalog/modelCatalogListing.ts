@@ -113,7 +113,13 @@ export function modelReferenceSelection(
   model: { modelKey: string; modelAlias?: string | null; meta?: unknown },
   taskKind?: string,
 ): ParameterReferenceSelection {
-  return { vendorKey, modelKey: model.modelKey, modelAlias: model.modelAlias, modelMeta: model.meta, ...(taskKind ? { taskKind } : {}) };
+  return {
+    vendorKey,
+    modelKey: model.modelKey,
+    modelAlias: model.modelAlias,
+    modelMeta: model.meta,
+    ...(taskKind !== undefined ? { taskKind } : {}),
+  };
 }
 
 /** 跨该模型所有 mapping 汇总参考承载力（任一 mapping 能发 = 能发；记下携带参考的 taskKind）。 */
