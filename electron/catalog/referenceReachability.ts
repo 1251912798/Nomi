@@ -8,6 +8,7 @@
 // 住在 electron/ 而非 src/：electron tsconfig 是 rootDir:"." 反向 import 不了 src；渲染层则本就 import
 // 得到 electron（bridge.ts 已在做），且本模块依赖链纯净（paramTranslate → jsonUtils，后者零 import）。
 import { bodyReferencedParamKeys } from "./paramTranslate";
+import { desktopT } from "../desktopStrings";
 import {
   referenceKeyDeclarationFor,
   referenceKeyCapacityDeclarationFor,
@@ -156,7 +157,11 @@ export function bodyReferenceSupport(
 }
 
 const REFERENCE_URL_RE = /^(https?:\/\/|nomi-local:\/\/|data:|blob:|\/)/i;
-const CAPACITY_LABEL: Record<ReferenceFamily, string> = { image: "张图片", video: "个视频", audio: "个音频" };
+const CAPACITY_MESSAGE_KEY: Record<ReferenceFamily, "modelConstraints.imageReferenceCapacity" | "modelConstraints.videoReferenceCapacity" | "modelConstraints.audioReferenceCapacity"> = {
+  image: "modelConstraints.imageReferenceCapacity",
+  video: "modelConstraints.videoReferenceCapacity",
+  audio: "modelConstraints.audioReferenceCapacity",
+};
 
 /** Count URL-shaped references in an already selected body key. */
 export function referenceUrlCount(value: unknown): number {
@@ -168,5 +173,5 @@ export function referenceUrlCount(value: unknown): number {
 
 /** Fail closed before a request can reach a provider when a model slot has a known maximum. */
 export function assertReferenceCapacity(family: ReferenceFamily, max: number, count: number): void {
-  if (count > max) throw new Error(`这个模型最多收 ${max}${CAPACITY_LABEL[family]}参考。`);
+  if (count > max) throw new Error(desktopT(CAPACITY_MESSAGE_KEY[family], { max }));
 }

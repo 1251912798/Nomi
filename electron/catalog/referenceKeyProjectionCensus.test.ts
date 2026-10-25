@@ -6,6 +6,7 @@ import { buildReferenceKeyCensus } from "../../scripts/reference-key-census";
 import { applyBuiltinSeeds } from "./seedBuiltins";
 import { bodyReferenceSupport } from "./referenceReachability";
 import { referenceKeyCapacityDeclarationFor, referenceKeyDeclarationFor } from "../shared/modelArchetypes/referenceKeys";
+import { desktopT } from "../desktopStrings";
 
 const NOW = "2026-10-25T00:00:00.000Z";
 const IMAGE = "https://ref.test/image.png";
@@ -120,6 +121,6 @@ describe("reference-key projection census — declared reference behavior", () =
     expect(bodyReferenceSupport(mapping.create.body, context)).toMatchObject({ image: true, multiImage: false });
     expect(referenceKeyCapacityDeclarationFor("imageUrls", context)).toMatchObject({ source: "model-declaration", max: 1, multiImage: false });
     expect(() => projectReferencesOntoBodyKeys({ referenceImages: [IMAGE, `${IMAGE}-2`] }, mapping.create.body, context))
-      .toThrow("这个模型最多收 1张图片参考");
+      .toThrow(desktopT("modelConstraints.imageReferenceCapacity", { max: 1 }));
   });
 });

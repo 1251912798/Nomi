@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { buildTemplateContext, renderTemplateValue } from "../electron/ai/requestPipeline";
 import { bodyReferencedParamKeys } from "../electron/catalog/paramTranslate";
@@ -196,7 +197,7 @@ export function runRehearsal(): { generatedAt: string; summary: Record<string, n
   };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const destination = path.resolve(process.argv.includes("--out") ? process.argv[process.argv.indexOf("--out") + 1] : "docs/evidence/2026-10-25-reference-key-projection/free-rehearsal.json");
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.writeFileSync(destination, `${JSON.stringify(runRehearsal(), null, 2)}\n`, "utf8");

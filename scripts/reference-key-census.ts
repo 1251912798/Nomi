@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { bodyReferencedParamKeys } from "../electron/catalog/paramTranslate";
 import { referenceKeyDeclarationFor, referenceKeyCapacityDeclarationFor } from "../electron/shared/modelArchetypes/referenceKeys";
@@ -149,7 +150,7 @@ export function buildReferenceKeyCensus() {
   };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const destination = outputPath(process.argv.slice(2));
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.writeFileSync(destination, `${JSON.stringify(buildReferenceKeyCensus(), null, 2)}\n`, "utf8");
