@@ -244,6 +244,32 @@ describe('canvas generation mode follows input writes', () => {
     expect(useGenerationCanvasStore.getState().canRedo).toBe(true)
   })
 
+  it('keeps a planned empty first-frame mode when undoing the connect', () => {
+    const store = useGenerationCanvasStore.getState()
+    const target = store.addNode(videoNode('target', 'first'))
+    const source = store.addNode(sourceNode('source'))
+    store.captureHistory()
+
+    store.connectNodes(source.id, target.id, 'first_frame')
+    expect(useGenerationCanvasStore.getState().edges).toHaveLength(1)
+    expect(modeId(target.id)).toBe('first')
+
+    store.undo()
+    expect(useGenerationCanvasStore.getState().edges).toHaveLength(0)
+    expect(modeId(target.id)).toBe('first')
+
+    store.redo()
+    expect(useGenerationCanvasStore.getState().edges).toEqual([
+      expect.objectContaining({ source: source.id, target: target.id, mode: 'first_frame' }),
+    ])
+    expect(modeId(target.id)).toBe('first')
+
+    store.undo()
+    expect(useGenerationCanvasStore.getState().edges).toHaveLength(0)
+    expect(modeId(target.id)).toBe('first')
+    expect(useGenerationCanvasStore.getState().canRedo).toBe(true)
+  })
+
   it.each([
     ['首帧', 'first_frame', 'first'],
     ['尾帧', 'last_frame', 'firstlast'],
