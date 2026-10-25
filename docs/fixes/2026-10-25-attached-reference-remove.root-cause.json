@@ -1,0 +1,299 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-25-attached-reference-remove",
+  "problem_type": "reference deletion and preview reconciliation infer user intent from different state changes",
+  "symptom": "在导演台删除唯一预演参考后，参考、@ 和运镜句应清空并继续按文生生成；第 3 轮实际仍被 stale 花钱闸挡住，且点“出成片”会把刚删的 URL 挂回。",
+  "direct_cause": "参考删除只改参考数组和 @，没有写“退出这份预演”的显式事实；花钱闸把“预演没有挂上”与“导演工程改过”都归为 stale，对账器和重渲写口也没有读取用户退出意图。",
+  "class_root": "“这一镜是否使用这份预演”必须由一个按 URL 绑定、只能由显式删除写入且只能由显式挂接清除的生命周期事实拥有；参考列表、cameraMoveAttachedUrl、preview.targetNodeId 和提示词只是不同投影。所有删除、花钱闸、Agent 核对、模型对账和重渲写回都必须经同一事实读写边界。",
+  "affected_population": [
+    "有 video_ref 槽且已挂预演、用户删除唯一预演参考的镜头",
+    "首尾帧方式下淡显“未用到”预演参考并删除的镜头",
+    "预演就绪但从未显式出成片的镜头（未挂接）",
+    "删除后换模型、B3 回文生、重渲新 URL、Agent 候选生成的镜头",
+    "用户自己的参考与预演 URL 相同或同时存在的删除入口"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/controls/generationModePresentation.test.ts",
+    "src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts",
+    "src/workbench/generationCanvas/nodes/controls/referenceWrites.director.test.ts",
+    "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/directorPreviewCapture.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/directorPreviewReferenceLifecycle.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/directorProduce.reference.test.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts",
+    "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.test.ts",
+    "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+    "tests/ux/_directorLab.mjs",
+    "tests/ux/director-reference-attach.paid.mjs"
+  ],
+  "entry_points": [
+    "NodeParameterControls.handleArrayRemove -> removeFromArray -> directorPreviewReferenceRemoval",
+    "NodeParameterControls.onRemoveUnused -> removeUnusedReference -> directorPreviewReferenceRemoval",
+    "GenerationCanvasReactFlow -> startPreviewAttachReconciler -> isDirectorPreviewDismissed -> attachCameraMoveForNode",
+    "directorPreviewCapture.applyPreviewCaptured -> explicit dismissal guard -> attachCameraMoveForNode",
+    "directorProduce.prepareProduceFromPreview -> attachCameraMoveForNode -> clearDirectorPreviewDismissed",
+    "CameraMoveCaptureHost -> applyPreviewCaptured / attachCameraMoveForNode",
+    "directorPreviewSpendBlock / directorPreviewBlocksForOperation -> isDirectorPreviewDismissed",
+    "NodeGenerationComposer / generationRunController / capability directorPreviewBlocksOp -> directorPreviewSpendBlockMessageKey"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "退出事实、参考数组、提示词标记、导演预演目标和花钱闸都是 Nomi 自己的持久化与画布交互契约；本轮 prior-art 只用于设计卡的用户控制决定，不改变内部数据规范。",
+  "invariants": [
+    "用户删除 URL 只有在该 URL 是当前目标镜头已挂预演时，才由显式删除写 directorPreviewDismissedUrl；删除用户自己的参考不写退出。",
+    "同一删除 updateNode 清理被删媒体 URL、所有 @[asset:url] 标记、预演运镜句和预演动作句，并保留 cameraMoveAttachedUrl、preview.targetNodeId。",
+    "directorPreviewDismissedUrl 只按 URL 命中：已退出的当前预演放行花钱且 Agent 不报 not_referenced；新 URL 不继承旧退出，进入 not_attached。",
+    "只有显式 attachCameraMoveToTarget 挂接清除退出；B3、方式/变体切换、模型对账、重渲写回不能清除或猜测退出。",
+    "花钱闸 stale 只表示导演工程在挂接后改变；就绪但未挂接使用 not_attached，渲染中、失败、超长原因保持原语义。",
+    "previewAttachReconciler 和 directorPreviewCapture 在已退出镜头上不自动挂回；prepareProduceFromPreview 的显式挂接仍可恢复。"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/capability/directorPreviewBlocksOp.ts",
+      "symbol": "directorPreviewSpendBlock"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/capability/directorPreviewBlocksOp.ts",
+      "symbol": "directorPreviewBlocksForOperation"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewReferenceLifecycle.ts",
+      "symbol": "markDirectorPreviewDismissed"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewReferenceLifecycle.ts",
+      "symbol": "isDirectorPreviewDismissed"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "directorPreviewReferenceRemoval"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "markDirectorPreviewDismissed"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+      "symbol": "clearDirectorPreviewDismissed"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/CameraMoveCaptureHost.tsx",
+      "symbol": "attachCameraMoveForNode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/CameraMoveCaptureHost.tsx",
+      "symbol": "applyPreviewCaptured"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewCapture.ts",
+      "symbol": "attachCameraMoveForNode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorProduce.ts",
+      "symbol": "attachCameraMoveForNode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts",
+      "symbol": "isDirectorPreviewDismissed"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts",
+      "symbol": "attachCameraMoveForNode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/DirectorEditor.tsx",
+      "symbol": "prepareProduceFromPreview"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "symbol": "isDirectorPreviewDismissed"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "symbol": "directorPreviewSpendBlock"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+      "symbol": "directorPreviewSpendBlock"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "removeFromArray"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "removeUnusedReference"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlow.tsx",
+      "symbol": "startPreviewAttachReconciler"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/runner/generationRunController.ts",
+      "symbol": "directorPreviewSpendBlock"
+    }
+  ],
+  "door_reduction": {
+    "before": 19,
+    "after": 21,
+    "why_not": "门表由 node scripts/door-map.mjs 生成后补入共享生命周期 owner 文件的读写符号。21 扇门不能合并：两个删除入口分别承载在用数组和未用到参考；三个显式挂接 Host/预演写回/出成片入口必须保留各自事务；对账器与重渲写回必须在已退出镜头上跳过；节点生成钮、runner、Agent 主进程回包是不同读面但都只能读统一 spend block；DirectorEditor 是出成片用户入口；生命周期 owner 的写/读是最早共享边界。"
+  },
+  "generality_proof": "退出事实按 URL 绑定并由 directorPreviewReferenceRemoval 在两个删除入口统一判定，覆盖图片/视频/音频数组、边来源与未用到路径；所有自动或显式挂接入口都经过同一 attachCameraMoveToTarget，只有显式出成片的挂接清除退出；花钱闸和 Agent 阻断器从同一 isDirectorPreviewDismissed 读取。因此同类问题不会因媒体类型、调用者、模型方式、变体、重渲 URL 或候选生成路径改变形状而绕过边界。",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewReferenceLifecycle.ts",
+      "symbol": "directorPreviewReferenceRemoval",
+      "responsibility": "判断被删 URL 是否是当前镜头已挂的预演，并提供显式退出事实的唯一写/读边界。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "removeFromArray / removeUnusedReference",
+      "responsibility": "将两个用户删除入口的媒体、@、运镜句和退出事实合并进一次节点写入。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "symbol": "directorPreviewSpendBlock",
+      "responsibility": "按 stale / not_attached / rendering / failed / too_long 的真实原因决定花钱是否放行；已退出 URL 放行。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+      "symbol": "computeAttachCameraMove",
+      "responsibility": "所有显式挂接清除退出并保持参考槽、提示词与标记一致。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts",
+      "symbol": "startPreviewAttachReconciler",
+      "responsibility": "模型身份变化才自动对账；已退出镜头和同模型状态不自动挂回。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "entry_point": "removeFromArray",
+      "disposition": "enforced",
+      "evidence": "在用参考 × 通过 directorPreviewReferenceRemoval；referenceWrites.director.test.ts 覆盖唯一预演、用户片不误判和三媒体清理。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "entry_point": "removeUnusedReference",
+      "disposition": "enforced",
+      "evidence": "未用到参考 × 复用同一 URL/边判据和退出写入；新增 focused test 覆盖。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewCapture.ts",
+      "entry_point": "applyPreviewCaptured",
+      "disposition": "enforced",
+      "evidence": "旧退出存在时新 URL 只写 ready 不自动挂接，directorProduce.reference.test.ts 覆盖新 URL -> not_attached。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts",
+      "entry_point": "startPreviewAttachReconciler",
+      "disposition": "enforced",
+      "evidence": "已退出镜头跳过自动挂回；模型身份、方式、变体矩阵仍由 focused tests 覆盖。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorProduce.ts",
+      "entry_point": "prepareProduceFromPreview",
+      "disposition": "enforced",
+      "evidence": "显式出成片调用唯一挂接核并清除退出；删除后恢复请求测试覆盖。"
+    },
+    {
+      "path": "src/workbench/capability/directorPreviewBlocksOp.ts",
+      "entry_point": "directorPreviewBlocksForOperation",
+      "disposition": "enforced",
+      "evidence": "已退出镜头不报 not_referenced，未退出候选缺预演仍报；directorPreviewState.test.ts 覆盖。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "参考删除、预演重渲、模型切换、B3 回收、Agent 候选生成和新增媒体类型都能再次产生“载荷变了但用户意图未被记录”的同类分叉；多个写/读门会持续存在。",
+    "same_class_scan": [
+      "node scripts/door-map.mjs directorPreviewReferenceRemoval markDirectorPreviewDismissed clearDirectorPreviewDismissed isDirectorPreviewDismissed directorPreviewSpendBlock directorPreviewBlocksForOperation prepareProduceFromPreview removeFromArray removeUnusedReference attachCameraMoveForNode applyPreviewCaptured startPreviewAttachReconciler：19 扇写门，逐一映射到删除、挂接、重渲、对账、节点、runner、Agent 读面。",
+      "rg -n \"reference(Video|Image|Audio)Urls|cameraMoveAttachedUrl|directorPreviewDismissedUrl|removeFromArray|removeUnusedReference\" src tests：覆盖三媒体数组、边来源、预演标记和两个删除入口。",
+      "rg -n \"previewAttachReconcileKey|isDirectorPreviewDismissed|attachCameraMoveForNode|directorPreviewSpendBlock\" src/workbench/generationCanvas/nodes/director src/workbench/capability：自动挂接和花钱闸均经共享边界，无第二份退出判据。",
+      "specializeArchetypeForVariant 遍历与 directorProduce.reference.test.ts：变体只收窄 params，不改变槽形状；同档案变体不触发挂接。"
+    ]
+  },
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-08",
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewReferenceLifecycle.ts",
+    "invariant": "只有显式删除当前已挂预演 URL 才写按 URL 的退出事实；只有显式 attachCameraMoveToTarget 才清除；所有花钱和自动挂接读同一事实。",
+    "failure_mode": "删除用户自己的参考不会写退出；已退出镜头的花钱闸放行且 Agent 不报 not_referenced；新 URL / 未挂接 URL 返回 not_attached；模型身份未变或已退出时自动对账跳过。",
+    "exception_policy": "none",
+    "strategy": "把用户意图从参考载荷和预演产物中拆出一个显式生命周期字段，在两个删除入口和唯一挂接核收口；删掉通过状态差异猜意图的隐式路径。",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/director/agent/directorPreviewReferenceLifecycle.ts",
+      "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+      "src/workbench/generationCanvas/nodes/director/agent/directorPreviewCapture.ts",
+      "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/shared/director/directorPreviewStatus.test.ts",
+    "src/workbench/generationCanvas/nodes/controls/generationModePresentation.test.ts",
+    "src/workbench/generationCanvas/nodes/controls/referenceWrites.director.test.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/directorProduce.reference.test.ts",
+    "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.test.ts",
+    "tests/ux/director-reference-attach.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/nodes/controls/referenceWrites.director.test.ts",
+    "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.test.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/directorProduce.reference.test.ts",
+    "electron/shared/director/directorPreviewStatus.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts"
+    ],
+    "rationale": "这两处改动删除了按 attached / 方式差异猜用户意图的旧行为；渲染中、失败、超长和真实导演工程 stale 分支继续保留。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "问题在 Nomi 自己的节点参考、预演生命周期和花钱闸边界，不由第三方运行时控制。",
+    "exit_criteria": []
+  },
+  "migration": "无需数据迁移；旧节点没有 directorPreviewDismissedUrl 时按未退出兼容。新字段持久化在视频节点 meta；旧的 cameraMoveAttachedUrl、preview.targetNodeId 和提示词继续保留。重渲新 URL 不继承旧退出，显式出成片清除退出。",
+  "residual_risks": [
+    "真实 Electron 中英文 A/B/B2/C/D 走查需在本轮产品代码完成后重新跑并逐张看截图。",
+    "真实上游与付费脚本不执行，协调付费抽样需要确认新原因字面量；本报告保留未验证状态。",
+    "removeUnusedReference 的未用到列表当前由图片参考列表承载；若未来允许视频预演进入同一未用到列表，需沿用本生命周期 owner 并补真实 UI 证据。",
+    "档案变体槽形状仍依赖当前实现；若未来变体改变槽形状，必须重新定义模型身份并更新对账测试。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewReferenceLifecycle.ts",
+    "has_tests": true,
+    "tests": [
+      "src/workbench/generationCanvas/nodes/controls/referenceWrites.director.test.ts",
+      "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.test.ts",
+      "src/workbench/generationCanvas/nodes/director/agent/directorProduce.reference.test.ts"
+    ],
+    "rationale": "directorPreviewReferenceRemoval / isDirectorPreviewDismissed / clearDirectorPreviewDismissed 统一用户退出事实的写入、读取和显式恢复；花钱闸、Agent、对账器、重渲和删除入口不再各自猜测。"
+  }
+}

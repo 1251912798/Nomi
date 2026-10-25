@@ -76,14 +76,18 @@ export function scoreDeconstruction(result, context = {}) {
     callsMatchShots: typeof context.visionCalls === 'number' ? context.visionCalls === shots.length : null,
     secondsPerShot: typeof context.seconds === 'number' && shots.length ? Math.round((context.seconds / shots.length) * 10) / 10 : null,
     failureReasons: [...new Set(shots.map((shot) => shot.failureReason).filter(Boolean))].slice(0, 3),
+    // 整次层面的原因（对白为什么是空的）：报告里要看得见，不只看镜头级的。
+    dialogueFailure: typeof result?.failureReason === 'string' ? result.failureReason : null,
   }
 }
 
 /** 门槛（初版，第一次真跑后按实测收紧；只许变严）。返回不达标的条目，空 = 达标。 */
 export const THRESHOLDS = Object.freeze({ readRate: 0.95, fillVisual: 0.95, fillShotSize: 0.9, shotSizeValid: 0.9, dialogueCer: 0.3, zhMotion: 0.9 })
 
-export function judgeCase(metrics) {
+/** `expectDialogue`：这段有人说话（run.mjs 的 `speech: true`）。有说话却一镜对白都没有 = 不达标——没有参考稿时 CER 是 null，旧门槛就静默放过了。 */
+export function judgeCase(metrics, { expectDialogue = false } = {}) {
   const misses = []
+  if (expectDialogue && !(metrics.dialogueShotRate > 0)) misses.push(`对白覆盖 ${metrics.dialogueShotRate ?? '-'}：有人说话的片子一镜对白都没有${metrics.dialogueFailure ? `（${metrics.dialogueFailure}）` : ''}`)
   if (metrics.readRate !== null && metrics.readRate < THRESHOLDS.readRate) misses.push(`读图成功率 ${metrics.readRate} < ${THRESHOLDS.readRate}`)
   if (metrics.fill.visual !== null && metrics.fill.visual < THRESHOLDS.fillVisual) misses.push(`画面填充率 ${metrics.fill.visual} < ${THRESHOLDS.fillVisual}`)
   if (metrics.fill.shotSize !== null && metrics.fill.shotSize < THRESHOLDS.fillShotSize) misses.push(`景别填充率 ${metrics.fill.shotSize} < ${THRESHOLDS.fillShotSize}`)

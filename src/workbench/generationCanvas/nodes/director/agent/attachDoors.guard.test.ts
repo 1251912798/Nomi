@@ -36,6 +36,10 @@ describe('预演 / 运镜挂接只有一个入口', () => {
   it('「当前已挂的网址标记」只有核自己读写：上层不许拿它早退', () => {
     expect(filesMatching(/\bCAMERA_MOVE_ATTACHED_URL_KEY\b|\bcameraMoveAttachedUrl\b/)).toEqual(['attachCameraMoveToTarget.ts'])
   })
+
+  it('标记的只读口只给删参考认「删的是不是挂着的预演」：调 lastAttachedCameraMoveUrl 的只有删参考写口', () => {
+    expect(filesMatching(/\blastAttachedCameraMoveUrl\s*\(/)).toEqual(['attachCameraMoveToTarget.ts', 'referenceWrites.ts'])
+  })
 })
 
 describe('站位参考图接目标镜头只有一扇门', () => {

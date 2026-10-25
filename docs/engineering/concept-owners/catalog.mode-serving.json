@@ -1,0 +1,46 @@
+{
+  "name": "目录行现在能跑哪个模式",
+  "subject": "catalog.mode-serving",
+  "lifecycle": "catalog",
+  "authority_kind": "decision",
+  "trust_domain": "shared",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/modelPublication.ts",
+    "symbol": "rowServesMode"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/modelPublication.ts",
+      "symbol": "rowServesMode"
+    },
+    {
+      "path": "electron/catalog/executableModel.ts",
+      "symbol": "modeCandidates"
+    },
+    {
+      "path": "src/config/modelCatalogCache.ts",
+      "symbol": "optionsFromRows"
+    }
+  ],
+  "forbidden_derivations": [
+    {
+      "symbol": "findExecutableModelAnyVendor",
+      "kind": "definition",
+      "why": "mode-specific tasks must not select by billing kind alone"
+    },
+    {
+      "symbol": "publishedModesIncludes",
+      "kind": "reference",
+      "why": "callers must use the shared rowServesMode predicate"
+    }
+  ],
+  "parity_test": "src/config/modelCatalogCache.test.ts",
+  "allowed_consumers": [
+    "electron/video/deconstructVideo.ts",
+    "src/config/modelCatalogCache.ts"
+  ],
+  "since": "2026-10-19",
+  "notes": "合同 docs/fixes/2026-10-19-deconstruct-transcribe-leg.root-cause.json：主进程和渲染层都必须在同一份 listModelCatalogModels 投影上调用 rowServesMode；不可把 audio kind 当成 transcribe 模式。"
+}

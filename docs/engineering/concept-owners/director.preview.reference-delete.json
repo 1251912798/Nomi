@@ -1,0 +1,67 @@
+{
+  "name": "节点数组参考删除后的预演退出事实",
+  "subject": "director.preview.reference-delete",
+  "lifecycle": "author",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewReferenceLifecycle.ts",
+    "symbol": "directorPreviewReferenceRemoval"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewReferenceLifecycle.ts",
+      "symbol": "directorPreviewReferenceRemoval"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewReferenceLifecycle.ts",
+      "symbol": "markDirectorPreviewDismissed"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/directorPreviewReferenceLifecycle.ts",
+      "symbol": "clearDirectorPreviewDismissed"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "removeFromArray"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "removeUnusedReference"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+      "symbol": "directorPreviewSpendBlock"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts",
+      "symbol": "startPreviewAttachReconciler"
+    }
+  ],
+  "forbidden_derivations": [
+    {
+      "symbol": "referenceVideoUrls",
+      "kind": "reference",
+      "why": "参考列表变短只代表载荷变化，不能推断用户是否退出预演"
+    },
+    {
+      "symbol": "previewAttachReconcileKey",
+      "kind": "reference",
+      "why": "模型身份对账不能写用户退出意图"
+    }
+  ],
+  "allowed_consumers": [
+    "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+    "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/previewAttachReconciler.ts",
+    "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+    "electron/catalog/agnesVideoContract.ts",
+    "electron/catalog/apimartMinimaxH3.ts",
+    "electron/catalog/archetypeInput.ts",
+    "src/workbench/generationCanvas/runner/catalogTaskActions.ts"
+  ],
+  "since": "2026-10-25",
+  "notes": "删除在用或未用参考时，只有被删 URL 同时是当前导演预演 URL 且 cameraMoveAttachedUrl 的显式删除才写 directorPreviewDismissedUrl；同一 updateNode 清理参考、@ 和运镜句。花钱闸与 Agent 读同一退出事实；已退出镜头放行且不报 not_referenced。导演台“出成片”经 attachCameraMoveToTarget 显式挂接后清掉退出；模型对账和重渲不清除退出，新 URL 只进入未挂接状态。"
+}
