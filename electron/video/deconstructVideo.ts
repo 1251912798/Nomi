@@ -29,7 +29,8 @@ import { firstString, isJsonRecord, parseLooseJsonObject, trim } from "../jsonUt
 // 旧分支从 agentChatV2 import 已失效，port 时改指真源（docs/ARCHITECTURE-NOW 的「文本大脑」判据同一处）。
 import { resolveVisionLeg, type VisionLegIdentity } from "./deconstructVisionLeg";
 import { runTask } from "../runtime";
-import { findExecutableModel, findExecutableModelAnyVendor } from "../catalog/executableModel";
+import { findExecutableModel, findExecutableModelForMode, findExecutableModelInMode } from "../catalog/executableModel";
+import { readCatalog } from "../catalog/catalogStore";
 import { readVendorPreferenceSettings } from "../settings/vendorPreferenceSettings";
 import { getDesktopLocale } from "../i18n";
 import { isSpendAuthorizationError } from "../spendGrant";
@@ -297,6 +298,10 @@ async function transcribeShots(
           return [{ start, end: Number.isFinite(end) ? end : start, text }];
         })
       : [];
+    // 转出了字却没有时间戳：分不到镜头上。说出来，不让对白列静默空白（2026-10-19 前 Scribe 正是这样整列空的）。
+    if (!segments.length && isJsonRecord(raw) && firstString(raw.text).trim()) {
+      return { hasAudio: true, dialogues: empty, failureReason: desktopT("deconstruct.transcriptUntimed", { model: leg.modelKey }) };
+    }
     return { hasAudio: true, dialogues: assignSegmentsToShots(segments, boundaries) };
   } catch (error) {
     // 转写挂了不该毁掉整次拆解——画面那半仍然有价值。但**原因要带回去**：
@@ -325,29 +330,48 @@ function messageOf(error: unknown): string {
 }
 
 /**
+ * 转写腿解出来的结果。三种，各有各的话（与读图腿 `resolveVisionLeg` 同形）：
+ *  · ok：这次用这一行；
+ *  · requested-unavailable：用户点名的那一行跑不了（停用 / 没钥匙 / 根本不是转写模型）——**不悄悄换别家**，原话带回去；
+ *  · none：自动挑也挑不出一个能转写的。
+ */
+export type TranscribeLegResolution =
+  | { ok: true; vendorKey: string; modelKey: string }
+  | { ok: false; reason: "requested-unavailable"; requested: { vendorKey: string; modelKey: string }; detail: string }
+  | { ok: false; reason: "none" };
+
+/** 这一行的转写 mapping 声明了本机引擎（`localEngine`）——「改用云端重试」要排除的就是它。按声明认，不按 vendor 名认。 */
+function servesTranscribeLocally(model: { vendorKey: string; modelKey: string }): boolean {
+  return readCatalog().mappings.some((mapping) => mapping.enabled && mapping.taskKind === "transcribe"
+    && mapping.vendorKey === model.vendorKey && (!mapping.modelKey || mapping.modelKey === model.modelKey)
+    && Boolean(mapping.create?.localEngine));
+}
+
+/**
  * 解出转写会用的那一行模型（与 runtime 用同一个解析器，报价才对得上真实扣费）。
  *
- * 显式指定优先：`{vendorKey,modelKey}` 就按它解；`"cloud"` 与缺省都走自动解析。
- * **指定了却解不出来就返回 null**，不悄悄回落到别家——「我选了本地，它却偷偷走了云端
- * 并且扣了钱」是这条路上最糟的失败。
+ * 显式指定优先：`{vendorKey,modelKey}` 就按它解；**指定了却解不出来就带原因返回**，不悄悄回落到别家——
+ * 「我选了本地，它却偷偷走了云端并且扣了钱」是这条路上最糟的失败。
+ * `"cloud"` = 这次强制走云端：同一份候选里排除本机引擎那几行（否则本地挂了点「改用云端重试」又落回本地）。
  *
- * 自动那一半 2026-09-17 修过：原来写的是 `findExecutableModel(brain.vendor, "", "audio")`——
- * 只在**文本大脑那一家**里找 audio 模型。大脑是 Moonshot 时它必然找不到，用户拿到
- * 「没有可用的转写模型」，而 APIMart / 火山语音的转写模型就在隔壁启用着（09-17 真机实测）。
- * 「谁来做转写」和「谁来做文本」本来就是两件事，绑在一起是一个没人声明过的耦合。
- * 现在在所有已启用供应商里解，顺序按 #682 的供应商偏好。
+ * 候选**按模式**问（`findExecutableModelForMode("transcribe")`），与转写 chip 的选项同一份投影、同一条判据。
+ * 2026-10-19 之前这里问的是 kind（`findExecutableModelAnyVendor("audio")`）：目录序第一个能用的 audio 行
+ * 是 Suno / TTS 时，转写腿就拿它去发转写请求。
  */
-function resolveTranscribeLeg(requested?: DeconstructVideoPayload["transcribe"]): { vendorKey: string; modelKey: string } | null {
+export function resolveTranscribeLeg(requested?: DeconstructVideoPayload["transcribe"]): TranscribeLegResolution {
   if (requested && requested !== "cloud") {
     try {
-      const { vendor, model } = findExecutableModel(requested.vendorKey, requested.modelKey, "audio");
-      return { vendorKey: vendor.key, modelKey: model.modelKey };
-    } catch {
-      return null;
+      const { vendor, model } = findExecutableModelInMode(requested.vendorKey, requested.modelKey, "transcribe");
+      return { ok: true, vendorKey: vendor.key, modelKey: model.modelKey };
+    } catch (error) {
+      return { ok: false, reason: "requested-unavailable", requested, detail: messageOf(error) };
     }
   }
-  const resolved = findExecutableModelAnyVendor("audio", readVendorPreferenceSettings().orderedVendorKeys);
-  return resolved ? { vendorKey: resolved.vendor.key, modelKey: resolved.model.modelKey } : null;
+  const resolved = findExecutableModelForMode("transcribe", {
+    orderedVendorKeys: readVendorPreferenceSettings().orderedVendorKeys,
+    ...(requested === "cloud" ? { accept: (model: { vendorKey: string; modelKey: string }) => !servesTranscribeLocally(model) } : {}),
+  });
+  return resolved ? { ok: true, vendorKey: resolved.vendor.key, modelKey: resolved.model.modelKey } : { ok: false, reason: "none" };
 }
 
 /**
@@ -419,7 +443,14 @@ export async function deconstructVideo(payload: DeconstructVideoPayload, options
   const visionModel = findExecutableModel(brain.vendor, brain.modelKey, "text");
   const visionIdentity = { vendorKey: visionModel.vendor.key, modelKey: visionModel.model.modelKey };
   const visionParameters: Record<string, unknown> = { projectId, modelKey: brain.modelKey, temperature: 0.2, maxTokens: DECONSTRUCT_MAX_TOKENS };
-  const transcribeLeg = sourceHasAudio ? resolveTranscribeLeg(payload.transcribe) : null;
+  const transcribeResolution = sourceHasAudio ? resolveTranscribeLeg(payload.transcribe) : null;
+  // 点名的转写模型跑不了：和读图腿同一条规矩——**整次拒绝，零报价、零付费调用**，不悄悄换别家，
+  // 也不「画面照拆、对白留空」（验收线 C1，2026-10-19：那样用户花了读图的钱，拿回一列自己没选的空白）。
+  // 「一个能转写的都没有」（自动挑不到）不在此列：画面那半仍值得拆，对白列顶上一行说清原因。
+  if (transcribeResolution && !transcribeResolution.ok && transcribeResolution.reason === "requested-unavailable") {
+    throw new DeconstructError(desktopT("deconstruct.transcribeModelUnavailable", { model: transcribeResolution.requested.modelKey, detail: transcribeResolution.detail }));
+  }
+  const transcribeLeg = transcribeResolution?.ok ? { vendorKey: transcribeResolution.vendorKey, modelKey: transcribeResolution.modelKey } : null;
   const plan: DeconstructSpendPlan = {
     projectId,
     nodeId,
@@ -450,7 +481,8 @@ export async function deconstructVideo(payload: DeconstructVideoPayload, options
         hasAudio: sourceHasAudio,
         dialogues: assignSegmentsToShots([], boundaries),
         // 有音轨却没有可用的转写模型 —— 这句话必须说出来，不然用户只看到空白的对白列。
-        ...(sourceHasAudio ? { failureReason: desktopT("deconstruct.noTranscribeModel") } : {}),
+        // （点名的模型跑不了已在报价前整次拒绝，走不到这里。）
+        ...(transcribeResolution && !transcribeResolution.ok ? { failureReason: desktopT("deconstruct.noTranscribeModel") } : {}),
       });
 
   onPhase?.(1);

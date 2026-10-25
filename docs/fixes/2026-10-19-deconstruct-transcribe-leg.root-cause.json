@@ -1,0 +1,216 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-19-deconstruct-transcribe-leg",
+  "problem_type": "Two answers to 'which models can run this mode' (engine asked by kind, picker asked by mode), plus transcription results whose shape depends on the vendor",
+  "symptom": "Paid deconstruction eval 2026-10-18 (talk-mixed, 40 s speech clip with audio): every shot's dialogue empty, result.failureReason '对白没取到：这台机器上还没有可用的转写模型', zero transcription calls, with both auto and explicit elevenlabs/scribe_v2.",
+  "direct_cause": "(a) The eval harness authorized only the vision model, so lockSpendToModels disabled every transcription model in the isolated copy; (b) explicit scribe_v2 failed findExecutableModel (the user's catalog has no ElevenLabs key) and the failure was reported as 'no transcription model on this machine'; (c) auto resolution used findExecutableModelAnyVendor('audio'), which is mode-blind and can pick a TTS/music model; (d) the Scribe seed mapping reads the audio from reference_audio_urls while deconstruct passes file, and Scribe returns only word timestamps while deconstruct reads segments, so dialogue would be silently empty even with a key.",
+  "class_root": "Mode eligibility ('can this row run transcribe right now') had no single owner: the main-process engine and the renderer chip each derived it, one by kind and one by published mode; and the transcription output/input contract (which audio, which timestamp shape) was left to each vendor mapping instead of being owned by the transcribe executor.",
+  "affected_population": [
+    "Users whose first usable audio model in vendor-preference order is TTS or music (Suno, MiniMax speech, Doubao TTS, Eleven v3) while a transcription model exists",
+    "Users who pick ElevenLabs Scribe for deconstruction or any vendor that returns only word-level timestamps",
+    "Users who hit 'retry with cloud' after local speech fails while local speech is first in order",
+    "Every paid deconstruction eval run (transcription was never exercised)"
+  ],
+  "scope_paths": [
+    "electron/catalog/executableModel.ts",
+    "electron/shared/modelPublication.ts",
+    "electron/video/deconstructVideo.ts",
+    "electron/audioTaskRunner.ts",
+    "electron/catalog/transcriptSegments.ts",
+    "electron/desktopStrings.ts",
+    "src/config/modelCatalogCache.ts",
+    "evals/deconstruct/run.mjs",
+    "evals/deconstruct/metrics.mjs"
+  ],
+  "entry_points": [
+    "Shot table deconstruct (nomiDesktop.video.deconstruct) with auto, explicit, or 'cloud' transcription",
+    "Transcription chip options in the shot table footer (useModelOptionsState('audio','transcribe'))",
+    "Any transcribe task through runTask -> audioTaskRunner.runTranscribe (deconstruct, canvas audio node)",
+    "Paid deconstruction eval evals/deconstruct/run.mjs"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://elevenlabs.io/docs/api-reference/speech-to-text/convert",
+      "checked_at": "2026-10-19",
+      "purpose": "Scribe response shape: words[] with text/start/end/type (word|spacing|audio_event)/speaker_id; no segments field"
+    }
+  ],
+  "invariants": [
+    "A model is a transcription candidate iff rowServesMode(projectionRow, 'transcribe') — the same predicate and the same listModelCatalogModels projection for the engine and for the picker",
+    "An explicitly requested transcription model that cannot run yields requested-unavailable with the resolver's reason, never a silent substitute and never 'no model on this machine'",
+    "Every transcribe result leaving runTranscribe carries segments when the vendor returned any timestamps; the uploaded audio is always the one resolveAudioSource picked",
+    "A speech clip with zero dialogue is a failing eval case"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/shared/modelPublication.ts",
+      "symbol": "rowServesMode"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/executableModel.ts",
+      "symbol": "rowServesMode"
+    },
+    {
+      "kind": "write",
+      "path": "src/config/modelCatalogCache.ts",
+      "symbol": "rowServesMode"
+    },
+    {
+      "kind": "read",
+      "path": "electron/video/deconstructVideo.ts",
+      "symbol": "findExecutableModelForMode"
+    },
+    {
+      "kind": "read",
+      "path": "electron/video/deconstructVideo.ts",
+      "symbol": "findExecutableModelInMode"
+    },
+    {
+      "kind": "write",
+      "path": "electron/audioTaskRunner.ts",
+      "symbol": "runTranscribe"
+    },
+    {
+      "kind": "write",
+      "path": "electron/audioTaskRunner.ts",
+      "symbol": "withTimedSegments"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/transcriptSegments.ts",
+      "symbol": "withTimedSegments"
+    },
+    {
+      "kind": "read",
+      "path": "electron/video/deconstructVideo.ts",
+      "symbol": "transcribeShots"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/AudioStripNode.tsx",
+      "symbol": "buildSrt"
+    },
+    {
+      "kind": "write",
+      "path": "electron/desktopStrings.ts",
+      "symbol": "deconstruct.transcribeModelUnavailable"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 11,
+    "why_not": "The old kind-only resolver was one shared door and is deleted. Eleven doors remain because mode eligibility has one shared predicate definition plus two process-local readers, the explicit and automatic deconstruction paths are separate resolver calls, transcript output has one executor writer and one normalizer definition plus two independent readers, and the user-facing failure strings live in the i18n owner; these boundaries cannot be collapsed without crossing process or feature contracts."
+  },
+  "generality_proof": "Every caller that asks which model runs mode M now goes through modeCandidates/findExecutableModelForMode or findExecutableModelInMode in the main process, or optionsFromRows in the renderer; all delegate to rowServesMode over listModelCatalogModels. A TTS/music row cannot be chosen for transcription regardless of vendor order because it does not publish transcribe. runTranscribe owns audio source selection and withTimedSegments owns the output shape, so every vendor mapping (APIMart Whisper, ElevenLabs Scribe, local whisper.cpp, custom) reaches the same segments contract for deconstruction and audio-node SRT.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/modelPublication.ts",
+      "symbol": "rowServesMode",
+      "responsibility": "The only predicate for 'this row can run this mode now' (usable availability x published mode)."
+    },
+    {
+      "path": "electron/catalog/executableModel.ts",
+      "symbol": "modeCandidates",
+      "responsibility": "Main-process ordered candidates for a mode from the same projection the renderer reads; findExecutableModelForMode / findExecutableModelInMode build on it."
+    },
+    {
+      "path": "electron/audioTaskRunner.ts",
+      "symbol": "runTranscribe",
+      "responsibility": "Uploads the audio picked by resolveAudioSource and normalizes vendor output to segments (withTimedSegments)."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/video/deconstructVideo.ts",
+      "entry_point": "resolveTranscribeLeg",
+      "disposition": "enforced",
+      "evidence": "Auto uses findExecutableModelForMode('transcribe'), explicit uses findExecutableModelInMode, 'cloud' filters localEngine rows from the same candidates; deconstructLegResolution.test.ts covers every vendor order."
+    },
+    {
+      "path": "src/config/modelCatalogCache.ts",
+      "entry_point": "optionsFromRows",
+      "disposition": "enforced",
+      "evidence": "Calls rowServesMode; modelCatalogCache.test.ts asserts the listed transcribe options equal rowServesMode over the same rows."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/AudioStripNode.tsx",
+      "entry_point": "buildSrt",
+      "disposition": "enforced",
+      "evidence": "Reads raw.segments; Scribe results now carry segments from runTranscribe, so SRT export gets per-sentence cues instead of one whole-text cue."
+    },
+    {
+      "path": "electron/video/deconstructVisionLeg.ts",
+      "entry_point": "resolveVisionLeg",
+      "disposition": "not-affected",
+      "evidence": "Text bucket, mode 'chat' is always published for text rows; image-input capability is checked by modelSupportsImageInput, the vision chip filters on the same meta flag."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any user whose vendor order or catalog puts a non-transcription audio row first, any new word-timestamp vendor, and every future eval run would hit the same mechanism.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs findExecutableModelAnyVendor -> 1 door (deconstructVideo), deleted",
+      "git grep \"'transcribe'\" src electron -> chip (deconstructLegChoice), capabilityApplyHandler legModelLabel (reads the same peekCatalogModelOptions('audio','transcribe')), audio node composer",
+      "git grep '\\.segments' src electron -> deconstructVideo transcribeShots, AudioStripNode buildSrt",
+      "git grep 'reference_audio_urls\\|fileSource' electron/catalog -> Scribe seed uses reference_audio_urls, APIMart Whisper uses file"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/modelPublication.ts",
+    "invariant": "Mode eligibility is rowServesMode over listModelCatalogModels for every engine and picker caller; transcribe output shape is owned by runTranscribe.",
+    "failure_mode": "No eligible row -> resolution 'none' with an honest reason; requested row ineligible -> requested-unavailable with the resolver's message; text without timestamps -> explicit 'transcriptUntimed' reason.",
+    "exception_policy": "none",
+    "strategy": "Delete the kind-only resolver, route both processes through one predicate, and normalize vendor transcription output at the executor exit.",
+    "artifacts": [
+      "electron/shared/modelPublication.ts",
+      "electron/catalog/executableModel.ts",
+      "electron/catalog/transcriptSegments.ts",
+      "electron/audioTaskRunner.ts",
+      "src/config/modelCatalogCache.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/video/deconstructLegResolution.test.ts",
+    "electron/audioTaskRunner.test.ts",
+    "electron/catalog/transcriptSegments.test.ts",
+    "src/config/modelCatalogCache.test.ts",
+    "evals/deconstruct/metrics.test.mjs"
+  ],
+  "class_regression_tests": [
+    "electron/video/deconstructLegResolution.test.ts",
+    "src/config/modelCatalogCache.test.ts",
+    "electron/catalog/transcriptSegments.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/catalog/executableModel.ts"
+    ],
+    "rationale": "findExecutableModelAnyVendor (kind-only) is deleted in the same change; its single caller now uses the mode-aware resolver."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party runtime controls the invariant; the ElevenLabs response shape is consumed through our own executor.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data changes. Shot tables that saved an explicit transcribeModel keep it; if it no longer serves transcribe they now get an honest requested-unavailable reason instead of 'no model'.",
+  "residual_risks": [
+    "ElevenLabs Scribe not paid-verified: the user's catalog has no ElevenLabs key; covered by real-seed-mapping unit test only.",
+    "Local speech still downloads on first use without an up-front size notice in the chip (progress is shown during the run); follow-up UI work.",
+    "Paid eval in auto mode authorizes no transcription model in the isolated copy, so auto there reports 'no transcription model'; pass --transcribe-model to exercise a real leg."
+  ],
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-19",
+  "invariant_owner_layer": {
+    "layer": "electron/shared/modelPublication.ts",
+    "tests": [
+      "src/config/modelCatalogCache.test.ts",
+      "electron/video/deconstructLegResolution.test.ts",
+      "electron/catalog/transcriptSegments.test.ts"
+    ]
+  }
+}

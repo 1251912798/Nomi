@@ -1,0 +1,70 @@
+{
+  "what": "拆解转写腿真付费抽样（协调，只跑一次；免费演练先过）",
+  "runner": "evals/deconstruct/run.mjs --only talk-mixed --vision-model apimart/gemini-3.5-flash --transcribe-model apimart/nomi-audio --max-calls 40",
+  "build": "534b8ed3a052996bcf8e807b1d45173657d4116f",
+  "ranAt": "2026-10-25T00:11Z",
+  "mode": "paid",
+  "credentialSource": "real-profile",
+  "seededModels": [
+    "apimart/gemini-3.5-flash",
+    "apimart/nomi-audio"
+  ],
+  "networkAllowlist": [
+    "https://api.apimart.ai",
+    "*.getapib.org"
+  ],
+  "case": {
+    "id": "talk-mixed",
+    "durationSeconds": 40,
+    "hasAudio": true,
+    "cutCoverage": {
+      "detectedCuts": 14,
+      "keptCuts": 14,
+      "appliedThreshold": 0.1,
+      "capped": false,
+      "coveredSeconds": 35.1333,
+      "durationSeconds": 40
+    },
+    "failedShotIndexes": [],
+    "transcribeCalls": 1,
+    "seconds": 92,
+    "metrics": {
+      "shots": 15,
+      "readRate": 1,
+      "fill": {
+        "visual": 1,
+        "shotSize": 1,
+        "mood": 1,
+        "imagePrompt": 1
+      },
+      "zhRate": {
+        "visual": 1,
+        "motionPrompt": 1
+      },
+      "shotSizeValid": 1,
+      "hasAudio": true,
+      "dialogueShotRate": 0.667,
+      "dialogueCer": 0.258,
+      "visionCalls": 15,
+      "callsMatchShots": true,
+      "secondsPerShot": 6.2,
+      "failureReasons": [],
+      "dialogueFailure": null
+    },
+    "misses": []
+  },
+  "thresholds": {
+    "readRate": 0.95,
+    "fillVisual": 0.95,
+    "fillShotSize": 0.9,
+    "shotSizeValid": 0.9,
+    "dialogueCer": 0.3,
+    "zhMotion": 0.9
+  },
+  "summary": {
+    "ran": 1,
+    "failing": [],
+    "visionCalls": 15
+  },
+  "notIncluded": "转写文本、每镜画面 / 运镜描述是用户真实素材的内容，只留在本机，不入库"
+}
