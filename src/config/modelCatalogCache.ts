@@ -16,6 +16,7 @@ import {
 } from './modelOptionResolvers'
 import { toCatalogModelOptions } from './modelOptionMappers'
 import { resolveCatalogKind } from './modelCatalogStatus'
+import { rowServesMode } from '../../electron/shared/modelPublication'
 
 export const MODEL_REFRESH_EVENT = 'nomi-models-refresh'
 export type ModelQueryMode = ProfileKind | 'any-published'
@@ -194,12 +195,10 @@ function optionsFromRows(
   names: Map<string, string>,
   requiredMode: ModelQueryMode,
 ): ModelOption[] {
-  // 「能不能用」判一次（主进程给的 availability）；这里额外要的只是**模式级**匹配：
-  // 同一个模型可能文生图发布了、改图那条没发布，节点问的是「这个模式能用吗」。
-  const usableRows = keepUsableModelRows(rows).filter(
-    (row) => Array.isArray(row.publishedModes) && (requiredMode === 'any-published'
-      ? row.publishedModes.length > 0 : row.publishedModes.includes(requiredMode)),
-  )
+  // 「能不能用」（主进程给的 availability）+ **模式级**匹配（同一个模型可能文生图发布了、改图那条没发布，
+  // 节点问的是「这个模式能用吗」）。判据是共享的 `rowServesMode`：主进程按模式挑模型（拆解转写腿等）调的是同一条，
+  // 这里不再抄第二份——两份就会出现「下拉列出来的模型引擎跑不了」（2026-10-19 转写腿根因）。
+  const usableRows = rows.filter((row) => rowServesMode(row, requiredMode))
   return toCatalogModelOptions(usableRows).map((opt) => {
     const name = opt.vendor ? names.get(opt.vendor.toLowerCase()) : undefined
     return name ? { ...opt, vendorName: name } : opt

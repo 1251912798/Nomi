@@ -10,6 +10,7 @@ import {
 } from './agent-runtime-walk-support.mjs'
 import { openRailDrawer } from './_shell.mjs'
 import { repoRoot } from './_launchApp.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const ASK_ZH = '用这张参考图生成一张海边纸船的图。'
 const ASK_EN = 'Use the selected reference image to make a paper boat by the sea.'
@@ -101,7 +102,7 @@ try {
   // 关闭这一次出价后切换语言，再用同一真实素材跑一遍，留下英文拒绝截图。
   const card = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="spend"]`)
   await card.locator('[data-v4-control="slot-dismiss"]').click().catch(() => {})
-  await clickOrFail(win.getByRole('button', { name: /^(设置|Settings)$/ }).first(), '打开设置')
+  await clickOrFail(win.getByRole('button', { name: uiText('zh-CN', 'settings.general.screenshotOpenSettings') }).first(), '设置入口')
   await clickOrFail(win.locator('[data-settings-tab-id="general"]'), '打开通用设置')
   await clickOrFail(win.locator('[data-settings-locale="en"]'), '切换 English')
   await clickOrFail(win.locator('[data-settings-close]'), '关闭设置')
