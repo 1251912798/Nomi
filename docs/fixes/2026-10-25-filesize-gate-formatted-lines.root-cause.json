@@ -145,7 +145,7 @@
     "rationale": "Prettier and TypeScript are already repository dependencies used through their documented APIs; no dependency defect or upgrade is required for this invariant.",
     "exit_criteria": []
   },
-  "migration": "The five existing legacy paths are recalculated once against origin/main 4236b6b412d92af52c16f012ccaf99f076ca92ae, and the 28 newly frozen paths are recorded at their current normalized caps. After that migration SHA, only lower caps or removed entries are accepted.",
+  "migration": "The five existing legacy paths are recalculated once, and the 28 newly frozen paths are recorded at their current normalized caps, while origin/main still carries only the old ALLOWLIST and no scripts/file-size-baseline.json. Once the baseline JSON is on origin/main that window is closed structurally (no commit id is checked): only lower caps or removed entries are accepted.",
   "residual_risks": [
     "A future Prettier major change can alter normalized counts; the gate will surface the change as a baseline drift or file result, but the baseline must then be reviewed deliberately.",
     "The frozen entries still exceed 800 and require responsibility-based splits in follow-up work; this change only prevents them from growing.",

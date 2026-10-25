@@ -1,9 +1,5 @@
 {
   "version": 1,
-  "migration": {
-    "from": "4236b6b412d92af52c16f012ccaf99f076ca92ae",
-    "reason": "本次一次性把旧 5 个白名单按格式化代码行重算，并冻结新口径下的非白名单超线文件；之后清单只许变短。"
-  },
   "entries": {
     "electron/runtime.ts": {
       "kind": "legacy",

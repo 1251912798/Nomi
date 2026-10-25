@@ -14,7 +14,6 @@ import { gitPaths } from './lib/gitPaths.mjs'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const MAX_LINES = 800
 const WARNING_LINES = 650
-const MIGRATION_FROM = '4236b6b412d92af52c16f012ccaf99f076ca92ae'
 const BASELINE_PATH = 'scripts/file-size-baseline.json'
 const SCAN_DIRS = ['src', 'electron']
 const SOURCE_RE = /\.(?:tsx?|[mc]ts)$/
@@ -151,13 +150,17 @@ function gitShow(ref, relativePath) {
   }
 }
 
+/**
+ * origin/main 上的基线。`legacyAllowlist` = origin/main 还没有基线 JSON、只有旧脚本里的 ALLOWLIST：
+ * 这就是唯一一次迁移窗口（旧 5 项按格式化代码行重算、写入冻结项）。JSON 一合进 main，窗口在结构上关上，不认提交号。
+ */
 function originEntries() {
   if (process.env.NOMI_FILESIZE_SKIP_BASELINE_COMPARE === '1') return null
   const ref = process.env.NOMI_FILESIZE_ORIGIN_REF ?? 'origin/main'
   const json = gitShow(ref, BASELINE_PATH)
   if (json) {
     try {
-      return JSON.parse(json).entries ?? {}
+      return { entries: JSON.parse(json).entries ?? {}, legacyAllowlist: false }
     } catch (error) {
       throw new Error(`${ref}:${BASELINE_PATH} 不是合法 JSON：${error.message}`, { cause: error })
     }
@@ -165,20 +168,17 @@ function originEntries() {
   const oldScript = gitShow(ref, 'scripts/check-file-sizes.mjs')
   if (!oldScript) return null
   const match = oldScript.match(/const ALLOWLIST = \{([\s\S]*?)\n\};/)
-  if (!match) return {}
+  if (!match) return { entries: {}, legacyAllowlist: true }
   const entries = {}
   for (const item of match[1].matchAll(/"([^"]+)"\s*:\s*(\d+)/g)) entries[item[1]] = { kind: 'legacy', max: Number(item[2]) }
-  return entries
+  return { entries, legacyAllowlist: true }
 }
 
 function baselineDriftErrors() {
-  const previous = originEntries()
-  if (previous === null) return { errors: [], warnings: ['⚠ 未找到 origin/main 基线，跳过基线漂移比较（本地夹具或无远端引用）'] }
-  const originSha = (() => {
-    try { return execFileSync('git', ['rev-parse', process.env.NOMI_FILESIZE_ORIGIN_REF ?? 'origin/main'], { cwd: ROOT, encoding: 'utf8' }).trim() }
-    catch { return '' }
-  })()
-  const migrationWindow = originSha === MIGRATION_FROM
+  const origin = originEntries()
+  if (origin === null) return { errors: [], warnings: ['⚠ 未找到 origin/main 基线，跳过基线漂移比较（本地夹具或无远端引用）'] }
+  const previous = origin.entries
+  const migrationWindow = origin.legacyAllowlist
   const errors = []
   const warnings = []
   for (const [file, entry] of Object.entries(baselineEntries)) {
@@ -191,7 +191,7 @@ function baselineDriftErrors() {
     if (entry.max < old.max) warnings.push(`↓ 基线下调 ${file}: ${entry.max} < origin/main ${old.max}`)
     if (entry.kind !== old.kind && !migrationWindow) errors.push(`✗ 基线 kind 变更 ${file}: ${old.kind ?? 'legacy'} → ${entry.kind}`)
   }
-  if (migrationWindow) warnings.push(`ℹ 一次性基线迁移已启用：origin/main ${MIGRATION_FROM}`)
+  if (migrationWindow) warnings.push(`ℹ 一次性基线迁移已启用：origin/main 还没有 ${BASELINE_PATH}（只有旧白名单）；合入后清单只许变短`)
   return { errors, warnings }
 }
 
@@ -206,7 +206,7 @@ function baselineMessage(relativePath, currentLines, entry, declarations) {
   return null
 }
 
-async function main() {
+async function checkFileSizes() {
   const files = listFiles()
   const errors = []
   const warnings = []
@@ -234,7 +234,7 @@ async function main() {
   console.log(`✓ 文件体积门岗通过：格式化代码行；黄牌 ${WARNING_LINES}，红牌 ${MAX_LINES}；冻结/legacy 基线 ${Object.keys(baselineEntries).length} 个（棘轮只减不增）。`)
 }
 
-main().catch((error) => {
+checkFileSizes().catch((error) => {
   console.error(`文件体积门岗无法运行：${error.message}`)
   process.exitCode = 1
 })

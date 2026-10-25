@@ -18,7 +18,7 @@ function fixtureContent(lines, { name = 'fixture', comments = false } = {}) {
   return `export function ${name}() {\n${body.map((line) => `${line} // comment ${line}`).join('\n')}\n}\n`
 }
 
-function createFixture({ files, baselineMutator = null, originBaseline = null } = {}) {
+function createFixture({ files, baselineMutator = null, originBaseline = null, originLegacyAllowlist = null } = {}) {
   const root = makeTempDir('nomi-file-sizes-')
   temporaryRoots.push(root)
   fs.mkdirSync(path.join(root, 'scripts/lib'), { recursive: true })
@@ -47,6 +47,19 @@ function createFixture({ files, baselineMutator = null, originBaseline = null } 
     execFileSync('git', ['commit', '--quiet', '-m', 'origin-baseline'], { cwd: root })
     execFileSync('git', ['branch', 'origin-main'], { cwd: root })
     execFileSync('git', ['update-ref', 'refs/remotes/origin/main', 'origin-main'], { cwd: root })
+    fs.writeFileSync(baselinePath, JSON.stringify(baseline, null, 2))
+  }
+  if (originLegacyAllowlist) {
+    // origin/main 还是旧口径：没有基线 JSON，白名单写在旧脚本的 ALLOWLIST 里。
+    const scriptPath = path.join(root, 'scripts/check-file-sizes.mjs')
+    const currentScript = fs.readFileSync(scriptPath, 'utf8')
+    const allowlist = Object.entries(originLegacyAllowlist).map(([file, max]) => `  "${file}": ${max},`).join('\n')
+    fs.writeFileSync(scriptPath, `const ALLOWLIST = {\n${allowlist}\n};\n`)
+    fs.rmSync(baselinePath)
+    execFileSync('git', ['add', '-A', '--', 'scripts'], { cwd: root })
+    execFileSync('git', ['commit', '--quiet', '-m', 'origin-legacy-allowlist'], { cwd: root })
+    execFileSync('git', ['update-ref', 'refs/remotes/origin/main', 'HEAD'], { cwd: root })
+    fs.writeFileSync(scriptPath, currentScript)
     fs.writeFileSync(baselinePath, JSON.stringify(baseline, null, 2))
   }
   return root
@@ -149,6 +162,20 @@ describe('formatted TypeScript file-size gate', () => {
     const result = runWithOrigin(root)
     expect(result.status, result.stderr).toBe(1)
     expect(result.stderr).toContain('基线新增 src/harness/new-frozen.ts')
+  })
+
+  test('the one-time migration is open only while origin/main has no baseline JSON, whatever its commit id', () => {
+    const root = createFixture({
+      originLegacyAllowlist: { 'electron/main.ts': 900 },
+      baselineMutator: (baseline) => {
+        baseline.entries['src/harness/new-frozen.ts'] = { kind: 'frozen', max: 900, reason: '新口径落地时已超线，冻结，按职责逐步拆', topDeclarations: [] }
+      },
+      files: { 'src/harness/new-frozen.ts': fixtureContent(100, { name: 'newFrozen' }) },
+    })
+    const result = runWithOrigin(root)
+    expect(result.status, result.stderr).toBe(0)
+    expect(result.stdout + result.stderr).toContain('一次性基线迁移已启用')
+    expect(result.stderr).not.toContain('基线新增 src/harness/new-frozen.ts')
   })
 
   test('raising a baseline cap is red after the migration window', () => {
