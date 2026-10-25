@@ -449,6 +449,7 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
   const videos = []
   /** APIMart 参考图上传（`/v1/uploads/images`），每笔带 multipart 里的文件名（uploadFileNames）。 */
   const uploads = []
+  let uploadSequence = 0
   let referenceUploadsHeld = false
   let releaseReferenceUploads = () => {}
   let referenceUploadReleasePromise = null
@@ -488,7 +489,8 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
 
   async function handleRequest(request, response, record) {
     // 产物本体：真实出片那一步会由宿主把它下载下来落进项目目录（`generationOutputMaterializer`）。
-    if (record.path === '/fixture/image.jpg') {
+    const uploadedImage = /^\/fixture\/upload-(\d+)\.jpg$/.exec(record.path)
+    if (uploadedImage || record.path === '/fixture/image.jpg') {
       if (!canWrite(response)) return
       response.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': imageBytes.length })
       response.end(imageBytes)
@@ -544,7 +546,10 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
       return
     }
     if (record.path === '/v1/chat/completions') requests.push(record)
-    else if (record.path === '/v1/images/generations' || record.path.startsWith('/higgsfield-ai/')) images.push(record)
+    else if (record.path === '/v1/images/generations' || record.path.startsWith('/higgsfield-ai/')) {
+      record.resultUrl = `${fixtureOrigin}/fixture/image.jpg`
+      images.push(record)
+    }
     else if (record.path === '/v1/videos/generations') videos.push(record)
     // APIMart 参考图上传（POST /v1/uploads/images，multipart）。上传端点现在跟着用户的 base 走，夹具口把 base
     // 指到本机，所以它会落到这里；收下字节、回一个本机取得到的图地址（走查据此证明「没出门」）。
@@ -554,12 +559,13 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
       record.upload = true
       // 只留 multipart 头里的文件名（演练据此核「哪几张图被上传过」，如没在用的参考图一张都不该上传），字节不留。
       record.uploadFileNames = [...Buffer.concat(parts).toString('latin1').matchAll(/filename="([^"]*)"/g)].map((match) => match[1])
+      record.uploadUrl = `${fixtureOrigin}/fixture/upload-${++uploadSequence}.jpg`
       uploads.push(record)
       if (referenceUploadsHeld) {
         referenceUploadReleasePromise ??= new Promise((resolve) => { releaseReferenceUploads = resolve })
         await referenceUploadReleasePromise
       }
-      jsonResponse(response, 200, { url: `${fixtureOrigin}/fixture/image.jpg` })
+      jsonResponse(response, 200, { url: record.uploadUrl })
       return
     }
     const chunks = []

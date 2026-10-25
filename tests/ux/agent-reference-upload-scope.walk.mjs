@@ -107,6 +107,10 @@ try {
   await clickOrFail(settings.locator('[data-settings-close]'), '关闭设置')
   await expect(win.locator(`${CANVAS_PANEL} ${COMPOSER}`)).toBeVisible()
   await runRefusedLeg({ win, projectId, reference, locale: 'en', planId: PLAN_EN, generateId: GENERATE_EN, ask: ASK_EN, screenshotName: 'reference-upload-scope-refused-en' })
+  const uploadUrls = new Set(walk.fixture.uploads.map((record) => record.uploadUrl).filter(Boolean))
+  for (const image of walk.fixture.images) {
+    expect(uploadUrls.has(image.resultUrl), '成片结果地址不能复用参考上传地址').toBe(false)
+  }
   walk.report.verified = ['app-agent-real-multipart-upload-held-by-release', 'user-shot-edit-during-upload-refused', 'zh-visible-refusal-screenshot', 'en-visible-refusal-screenshot']
 } catch (error) {
   failure = error
