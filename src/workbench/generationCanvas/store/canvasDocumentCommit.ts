@@ -24,7 +24,7 @@ import { withLiveNodeFacts, withLiveRunState } from '../../../../electron/shared
 import { convergeDeconstructionNodes } from '../nodes/shotTable/deconstructionLifecycle'
 import type { GenerationCanvasEdge, GenerationCanvasNode, NodeGroup } from '../model/generationCanvasTypes'
 import { bumpPersistRevision } from './canvasGuards'
-import { deriveTargetAfterConnect } from './canvasConnectDerivations'
+import { convergeStuckInputModes, deriveTargetAfterConnect } from './canvasConnectDerivations'
 import { clearClipboard } from './canvasClipboard'
 import { reportSkippedEdges } from './canvasEdgeWrite'
 import { reconcileTimelineForNodeSetChange, reconcileTimelineForRestoredNodes } from './canvasTimelineBridge'
@@ -126,6 +126,15 @@ function emitReturnedLandings(returned: readonly Returned[]): void {
 
 type Projection = Readonly<{ nodes: GenerationCanvasNode[]; edges: GenerationCanvasEdge[]; groups: NodeGroup[] }>
 
+// History snapshots are authoritative complete document states. The input-mode
+// subscription must not derive a second correction while undo/redo is restoring
+// one of those snapshots (it would rewrite an explicitly empty first-frame
+// workflow during the rewind itself).
+let canvasHistoryReplay = false
+export function isCanvasHistoryReplay(): boolean {
+  return canvasHistoryReplay
+}
+
 function emitProductionSignalsForDocumentChange(projectId: string | null, before: readonly GenerationCanvasNode[], after: readonly GenerationCanvasNode[]): void {
   const beforeIds = new Set(before.map((node) => node.id))
   const afterIds = new Set(after.map((node) => node.id))
@@ -196,6 +205,7 @@ export const createCanvasDocumentActions: CanvasSliceCreator<CanvasDocumentActio
           hasClipboard: false,
           ...getHistoryFlags(),
         })
+        convergeStuckInputModes(get())
         // genesis 事件不在这里发(S5-b-1):必须等 hydrate 尾部重放完成后由
         // workbenchProjectSession 以"含尾巴的后态"发,否则磁盘日志最终态会丢尾巴。
         return
@@ -210,12 +220,18 @@ export const createCanvasDocumentActions: CanvasSliceCreator<CanvasDocumentActio
         // 终态判定的 owner 只有一份，重放完再问它一次；已终态的表它原样返回，幂等（重启后拆解表卡在「进行中」就是这一下）。
         // 同一个坑的另一半：存盘时在跑的本机处理 / 生成节点，重放后也要再收口一次（只在装载时收口会被尾巴盖回去，永久 running）。
         set({ nodes: convergeStuckMidFlightNodes(convergeDeconstructionNodes(projection.nodes)), edges: projection.edges, groups: projection.groups })
+        convergeStuckInputModes(get())
         return
       }
       case 'rewind': {
         const live = get()
         const next = settleRewind(write.restore, live.nodes, live.heldNodeOutcomes)
-        replaceDocument(next, withoutReturned(live.heldNodeOutcomes, next.returned))
+        canvasHistoryReplay = true
+        try {
+          replaceDocument(next, withoutReturned(live.heldNodeOutcomes, next.returned))
+        } finally {
+          canvasHistoryReplay = false
+        }
         // 影子记账:撤销=全量后态(replay≡snapshot 恒真)
         emitCanvasGesture([{ type: 'canvas.snapshot.restored', payload: { snapshot: { nodes: next.nodes, edges: next.edges, groups: next.groups } } }])
         emitReturnedLandings(next.returned)

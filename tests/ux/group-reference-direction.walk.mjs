@@ -9,6 +9,7 @@ import { screenshotSettled } from './_assert.mjs'
 import { findConnectionStartPoint, findEdgeHitPoint } from './_canvasHit.mjs'
 import { canvasFitViewButton, newProjectEntry } from './_shell.mjs'
 const repoRoot = process.cwd()
+const locale = process.env.NOMI_WALK_LANG === 'en' ? 'en' : 'zh-CN'
 const tempRoot = path.join(repoRoot, '.tmp', 'nomi-group-reference-direction')
 const settingsDir = path.join(tempRoot, 'settings')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/group-reference-direction')
@@ -60,6 +61,14 @@ try {
     env: {
       NOMI_DESKTOP_DEV: '1',
       VITE_DEV_SERVER_URL: baseUrl,
+    },
+    initialLocalStorage: {
+      'nomi:locale:v1': locale,
+      'nomi-color-scheme': 'dark',
+      'nomi:splash:v1': 'seen',
+      'nomi:journey-tour:v1': 'seen',
+      'nomi:canvas-gesture-hint:v1': 'seen',
+      __nomiE2E: '1',
     },
     settleMs: 0,
   }))
@@ -163,7 +172,11 @@ try {
   await win.mouse.move(dropPoint.x, dropPoint.y, { steps: 12 })
   await win.waitForTimeout(350)
   const pendingAria = await win.locator('[data-group-id="reference-group"]').first().getAttribute('aria-label')
-  check('左输入端待连提示说明“将编组作为输入”', /作为输入/.test(pendingAria || ''), pendingAria || '')
+  const expectedPendingAria = await win.evaluate(async () => {
+    const { default: i18n } = await import('/src/i18n/index.ts')
+    return i18n.t('generationCommon.canvas.group.connectFromHere', { name: '双图参考', count: 2 })
+  })
+  check('左输入端待连提示使用编组输入的本地化文案', pendingAria === expectedPendingAria, `${pendingAria || ''} · expected ${expectedPendingAria}`)
   await screenshotSettled(win, { path: path.join(shotsDir, '02-group-as-input.png') })
   await win.mouse.up()
   await win.waitForTimeout(1200)
@@ -224,14 +237,31 @@ try {
     return {
       edgeCount: current.edges.length,
       outputLinks: current.groups.find((group) => group.id === 'reference-group')?.outputLinks,
+      modeId: current.nodes.find((node) => node.id === 'target')?.meta?.archetype?.modeId,
     }
   })
   check('断开编组连接会撤掉全部展开边', disconnected.edgeCount === 0, JSON.stringify(disconnected))
   check('断开同时清掉编组声明，不会后续复活', disconnected.outputLinks == null, JSON.stringify(disconnected.outputLinks))
+  check('生成框未挂载时断开最后参考线立即回到文生图', disconnected.modeId === 't2i', String(disconnected.modeId))
   await referenceImages.first().waitFor({ state: 'detached', timeout: 10_000 })
   const disconnectedReferenceImageCount = await referenceImages.count()
   check('目标顶部参考图随断开实时清空', disconnectedReferenceImageCount === 0, String(disconnectedReferenceImageCount))
   await screenshotSettled(win, { path: path.join(shotsDir, '05-after-disconnected.png') })
+
+  // 复用同一 store 写口重连一张真实出图参考；生成框仍未打开，模式应立即升格。
+  await win.evaluate(() => window.__nomiCanvasStore.getState().connectNodes('source-a', 'target', 'reference'))
+  await win.waitForTimeout(700)
+  const reconnected = await win.evaluate(async () => {
+    const { useGenerationCanvasStore } = await import('/src/workbench/generationCanvas/store/generationCanvasStore.ts')
+    const current = useGenerationCanvasStore.getState()
+    const target = current.nodes.find((node) => node.id === 'target')
+    return {
+      edgeCount: current.edges.filter((edge) => edge.target === 'target').length,
+      modeId: target?.meta?.archetype?.modeId,
+    }
+  })
+  check('生成框未挂载时重新连参考立即升格到改图', reconnected.edgeCount === 1 && reconnected.modeId === 'edit', JSON.stringify(reconnected))
+  await screenshotSettled(win, { path: path.join(shotsDir, '06-after-reconnected.png') })
 } catch (error) {
   failures.push(String(error))
   console.error(error)

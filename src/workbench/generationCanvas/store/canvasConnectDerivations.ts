@@ -16,8 +16,11 @@
 // updateNode 默认会给 `meta` patch 打一个自己的 undo barrier，于是连完一条线后日志里叠了两个 barrier——第一下 ⌘Z
 // 只把模式 / 比例切回去（用户眼里画布毫无变化），得按第二下才撤掉那条边。关掉的只是 barrier：这条 meta 变更照常入日志、
 // 照常落盘，撤到连线那个 barrier 时它跟着回退。
-import { archetypeForNode, resolveTargetModeForEdge } from '../agent/referenceEdgeCapability'
+import { archetypeForNode, isTextPromptEdge, referenceAssetKindForNode, resolveTargetModeForEdge, textModeToReturnTo } from '../agent/referenceEdgeCapability'
 import { applyArchetypeModeSwitch } from '../nodes/controls/archetypeMeta'
+import { currentArchetypeMode } from '../nodes/controls/archetypeMeta'
+import { listPlacementInputs } from '../nodes/controls/referenceList'
+import { referenceSlotStorage } from '../nodes/controls/archetypeMeta'
 import { findModelOptionByIdentifier, peekGenerationNodeModelOptions } from '../adapters/modelOptionsAdapter'
 import { isAspectInputEdgeMode } from '../nodes/aspectRatio'
 import { resolveRenderedControls } from '../nodes/nodeModelArchetype'
@@ -32,20 +35,132 @@ type ConnectDerivationStore = {
   updateNode: (nodeId: string, patch: { meta: Record<string, unknown> }, options?: { history?: boolean }) => void
 }
 
-/** ① 生成方式跟着参考走。 */
+type InputState = Pick<ConnectDerivationStore, 'nodes' | 'edges'>
+
+/** Fields read by liveInputNodeIds. Keep this list next to the skip check so a new input
+ * fact cannot silently bypass the subscription's drag fast path. */
+export const LIVE_INPUT_NODE_FIELDS = ['kind', 'meta', 'result'] as const
+
+function storyboardKey(meta: Record<string, unknown> | undefined): string {
+  const design = typeof meta?.storyboardDesignId === 'string' ? meta.storyboardDesignId : ''
+  const shot = typeof meta?.shotId === 'string' ? meta.shotId : ''
+  return design && shot ? `${design}\u0000${shot}` : ''
+}
+
+function hasNodeOwnedReferenceInput(node: GenerationCanvasNode): boolean {
+  const archetype = archetypeForNode(node)
+  if (!archetype) return false
+  const meta = (node.meta || {}) as Record<string, unknown>
+  const mode = currentArchetypeMode(archetype, meta)
+  if (mode.slots.some((slot) => ['first_frame', 'last_frame', 'image_ref'].includes(slot.kind))) {
+    const inputs = listPlacementInputs(meta, mode)
+    if (inputs.list.some((url) => !inputs.parked.has(url))) return true
+  }
+  for (const slot of mode.slots) {
+    if (['first_frame', 'last_frame', 'image_ref'].includes(slot.kind)) continue
+    const storage = referenceSlotStorage(slot)
+    if (!storage) continue
+    const value = meta[storage.metaKey]
+    if (storage.isArray
+      ? Array.isArray(value) && value.some((item) => typeof item === 'string' && item.trim())
+      : typeof value === 'string' && value.trim()) return true
+  }
+  return false
+}
+
+/** Compute all targets with any live input in one nodes+edges pass. */
+export function liveInputNodeIds(store: InputState): Set<string> {
+  const live = new Set<string>()
+  const nodesById = new Map(store.nodes.map((node) => [node.id, node]))
+  const plannedKeyframes = new Map<string, Set<string>>()
+  for (const node of store.nodes) {
+    const meta = (node.meta || {}) as Record<string, unknown>
+    if (meta.storyboardKeyframe === true) {
+      const key = storyboardKey(meta)
+      if (key) {
+        const ids = plannedKeyframes.get(key) ?? new Set<string>()
+        ids.add(node.id)
+        plannedKeyframes.set(key, ids)
+      }
+    }
+  }
+  for (const node of store.nodes) {
+    const meta = (node.meta || {}) as Record<string, unknown>
+    const keyframeIds = plannedKeyframes.get(storyboardKey(meta))
+    if (hasNodeOwnedReferenceInput(node) || Boolean(keyframeIds && [...keyframeIds].some((id) => id !== node.id))) live.add(node.id)
+  }
+  for (const edge of store.edges) {
+    const target = nodesById.get(edge.target)
+    const source = nodesById.get(edge.source)
+    if (target && source && referenceAssetKindForNode(source) && !isTextPromptEdge(source, target, edge.mode)) live.add(target.id)
+  }
+  return live
+}
+
+/** The subscription can skip deriving both sets when only positions/other fields changed. */
+export function inputDerivationFieldsChanged(before: readonly GenerationCanvasNode[], after: readonly GenerationCanvasNode[]): boolean {
+  if (before.length !== after.length) return true
+  for (let index = 0; index < before.length; index += 1) {
+    const previous = before[index]
+    const next = after[index]
+    if (previous.id !== next.id) return true
+    for (const field of LIVE_INPUT_NODE_FIELDS) if (previous[field] !== next[field]) return true
+  }
+  return false
+}
+
+export function targetHasLiveReferenceInput(store: InputState, targetNodeId: string): boolean {
+  return liveInputNodeIds(store).has(targetNodeId)
+}
+
+/** 连线手势的唯一升格写口：边已经建好后，按这条边的语义切到能消费它的模式。 */
 function promoteTargetMode(store: ConnectDerivationStore, sourceNodeId: string, targetNodeId: string, mode: GenerationCanvasEdgeMode | undefined): void {
-  const source = store.nodes.find((n) => n.id === sourceNodeId)
-  const target = store.nodes.find((n) => n.id === targetNodeId)
+  const source = store.nodes.find((node) => node.id === sourceNodeId)
+  const target = store.nodes.find((node) => node.id === targetNodeId)
   if (!source || !target) return
   const nextModeId = resolveTargetModeForEdge(source, target, mode)
   if (!nextModeId) return
   const archetype = archetypeForNode(target)
   if (!archetype) return
+  const activeMode = currentArchetypeMode(archetype, (target.meta || {}) as Record<string, unknown>)
+  if (nextModeId === activeMode.id) return
   store.updateNode(
     targetNodeId,
     { meta: applyArchetypeModeSwitch((target.meta || {}) as Record<string, unknown>, archetype, nextModeId) },
     { history: false },
   )
+}
+
+/** Store/document 写入口的唯一回文生写口：仅当参考输入全部消失时收回文生。 */
+export function revertTargetModeForEmptyInputs(
+  store: ConnectDerivationStore,
+  targetNodeId: string,
+  hasAnyInput = false,
+): void {
+  const target = store.nodes.find((node) => node.id === targetNodeId)
+  if (!target) return
+  const archetype = archetypeForNode(target)
+  if (!archetype) return
+  const activeMode = currentArchetypeMode(archetype, (target.meta || {}) as Record<string, unknown>)
+  const nextModeId = textModeToReturnTo(archetype, activeMode, hasAnyInput)
+  if (!nextModeId || nextModeId === activeMode.id) return
+  store.updateNode(
+    targetNodeId,
+    { meta: applyArchetypeModeSwitch((target.meta || {}) as Record<string, unknown>, archetype, nextModeId) },
+    { history: false },
+  )
+}
+
+/** Load-time state convergence for snapshots and event tails; it deliberately does not push undo. */
+export function convergeStuckInputModes(store: ConnectDerivationStore): void {
+  const live = liveInputNodeIds(store)
+  for (const node of store.nodes) {
+    if (live.has(node.id)) continue
+    const archetype = archetypeForNode(node)
+    const activeMode = archetype ? currentArchetypeMode(archetype, (node.meta || {}) as Record<string, unknown>) : null
+    if (activeMode?.slots.some((slot) => slot.kind === 'first_frame' || slot.kind === 'last_frame')) continue
+    revertTargetModeForEmptyInputs(store, node.id, false)
+  }
 }
 
 /**

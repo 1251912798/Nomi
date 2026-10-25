@@ -9,13 +9,9 @@
 //
 // 模式的真名（vendorTerm）仍是档案的事，这里只按 `intent`（档案跨模型统一的意图词）把标签收成三个人话词；
 // 认不出的（视频编辑等）照用档案真名。
-import React from 'react'
-import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
-import { resolveReferenceSlots } from '../../runner/referenceSlots'
-import { applyArchetypeModeSwitch } from './archetypeMeta'
-import type { useNodeWriteAccess } from '../nodeWriteAccess'
 import type { ModelArchetype, ArchetypeMode } from '../../../../../electron/shared/modelArchetypes'
 import type { ArchetypeModeChoice } from './channelModeReach'
+export { textModeToReturnTo } from '../../agent/referenceEdgeCapability'
 
 export type PanelModeChoice = { id: string; label: string; /** 悬停的上限提示，只有「参考」有。 */ limitTip?: string }
 
@@ -93,17 +89,6 @@ export function presentGenerationModes(args: {
   return { where: 'panel', choices, activeId: activeIsVisible ? activeModeId : defaultVisible.id }
 }
 
-/**
- * 输入没了，方式跟着回到文生：参考 / 单图 / 改图方式下一张都没放，而且档案有文生模式 → 回文生。
- * 首尾帧不收回——用户在空节点上特意选了首尾帧，是要接着放首帧和尾帧。
- * 返回要回到的文生模式 id；不需要收回返回 null。
- */
-export function textModeToReturnTo(archetype: ModelArchetype, activeMode: ArchetypeMode, hasAnyInput: boolean): string | null {
-  if (hasAnyInput) return null
-  if (activeMode.intent !== 'character' && activeMode.intent !== 'single' && activeMode.intent !== 'edit') return null
-  return archetype.modes.find((mode) => mode.intent === 'text')?.id ?? null
-}
-
 /** 把词典里的几句人话收成 Texts（宿主壳只管传 t）。 */
 export function modePresentationTexts(t: (key: string, values?: Record<string, unknown>) => string): Texts {
   return {
@@ -118,32 +103,4 @@ export function modePresentationTexts(t: (key: string, values?: Record<string, u
       ].filter(Boolean).join(t('generationCommon.composerB3.limitSeparator')),
     }),
   }
-}
-
-/**
- * 输入没了，生成方式跟着回到文生（B3：方式由输入决定，界面上没有「文生视频」可选，所以空了只能自己回去）。
- * 只收回「参考 / 单图 / 改图」；首尾帧是用户在空节点上特意选的，不收回。系统纠偏，不占撤销。
- */
-export function useRevertToTextMode(args: {
-  enabled: boolean
-  nodeId: string
-  archetype: Parameters<typeof textModeToReturnTo>[0] | null
-  archMode: Parameters<typeof textModeToReturnTo>[1] | null
-  latestNode: ReturnType<typeof useNodeWriteAccess>['latestNode']
-  updateNode: ReturnType<typeof useNodeWriteAccess>['updateNode']
-  watch: readonly unknown[]
-}): void {
-  const { enabled, nodeId, archetype, archMode, latestNode, updateNode, watch } = args
-  React.useEffect(() => {
-    if (!enabled || !archetype || !archMode) return
-    const latest = latestNode(nodeId)
-    if (!latest) return
-    const state = useGenerationCanvasStore.getState()
-    const hasAnyInput = resolveReferenceSlots(latest, state.nodes, state.edges).some((slot) => slot.fills.length > 0)
-    const target = textModeToReturnTo(archetype, archMode, hasAnyInput)
-    if (!target) return
-    updateNode(nodeId, { meta: applyArchetypeModeSwitch(latest.meta || {}, archetype, target) }, { history: false })
-    // 触发时机只需「方式 / 参考集合」变化；latestNode/updateNode 每渲染重建。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, archetype?.id, archMode?.id, nodeId, ...watch])
 }

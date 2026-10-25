@@ -78,7 +78,7 @@ import { useChannelCreateBodies, type VendorMappingsReader } from './controls/us
 import { translateModelDisplayText } from '../../../i18n/modelDisplayText'
 import { modeTransportFor, specializeArchetypeForVariant } from '../../../../electron/shared/modelArchetypes'
 import ModeBar from './controls/ModeBar'
-import { modePresentationTexts, presentGenerationModes, useRevertToTextMode } from './controls/generationModePresentation'
+import { modePresentationTexts, presentGenerationModes } from './controls/generationModePresentation'
 import { normalizeReferenceListMeta } from './controls/referenceList'
 import AssetReference, { type AssetSlot } from '../../assets/AssetReference'
 import { parameterChipOptions } from './primaryParameterChips'
@@ -282,8 +282,6 @@ export default function NodeParameterControls({
     // getLatestMeta/updateNode 每渲染重建；触发时机只需「可见模式集 / 档案 / 节点」变化。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleModeIdSignature, archetype?.id, node.id, ownsDerivedWrites])
-
-  useRevertToTextMode({ enabled: ownsDerivedWrites, nodeId: node.id, archetype, archMode, latestNode, updateNode, watch: [meta, nodes, edges] })
 
   if (!isGenerationNode) return null
 

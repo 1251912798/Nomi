@@ -313,6 +313,16 @@ export function resolveModeForConnectedReferences(
   return resolveModeForReferenceDemand(archetype, (target.meta || {}) as Record<string, unknown>, demands)
 }
 
+/**
+ * 输入没了，生成方式回到文生；参考 / 单图 / 改图才收回，首尾帧是用户在空节点上保留的意图。
+ * 这是画布写口的纯判据，不依赖生成框是否挂载。
+ */
+export function textModeToReturnTo(archetype: ModelArchetype, activeMode: ArchetypeMode, hasAnyInput: boolean): string | null {
+  if (hasAnyInput) return null
+  if (activeMode.intent !== 'character' && activeMode.intent !== 'single' && activeMode.intent !== 'edit') return null
+  return archetype.modes.find((mode) => mode.intent === 'text')?.id ?? null
+}
+
 /** 参考的用途 → 对应的连线语义（首 / 尾帧照名；角色、通用、音频都按通用参考，落哪一格由目标的槽位解析定）。 */
 export function edgeModeForReferenceRole(role: string | undefined): GenerationCanvasEdgeMode {
   return role === 'first_frame' || role === 'last_frame' ? role : 'reference'

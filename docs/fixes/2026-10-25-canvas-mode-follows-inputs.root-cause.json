@@ -1,0 +1,261 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-25-canvas-mode-follows-inputs",
+  "problem_type": "A canvas generation-mode projection can remain stale after an input-removing write, including writes persisted while the project is not open.",
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-25",
+  "symptom": "A node can remain in a reference or single-image mode after its last reference is removed, including when an external disk-gateway write occurs while the project is closed and the stale snapshot is later loaded.",
+  "direct_cause": "The session subscription only had a previous/current transition to compare and the load path had no state-only convergence. The old component effect was removed, so persisted nodes and offline writes had no shared load boundary that could recover a stuck mode.",
+  "class_root": "The shared boundary lacked one input fact covering pending edges, node-owned slots/links and planned storyboard first frames, plus two trigger invariants: ordinary writes revert only on live-to-empty transitions, while load and event-tail replay run the same state convergence once after projection.",
+  "affected_population": [
+    "Video first-frame, last-frame and first-last workflows built through multi-step quick actions or Agent/storyboard writes",
+    "Director camera-reference writes and any future caller that creates an edge before explicitly setting the target mode",
+    "All store/document writes that remove the final reference input while the composer is closed",
+    "Legacy and offline disk snapshots loaded after the project was not in the renderer"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+    "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+    "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+    "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts",
+    "src/workbench/generationCanvas/store/canvasModeConvergeOnLoad.test.ts"
+  ],
+  "entry_points": [
+    "All nodes/edges store and document writes are observed by the subscription, which compares previous/current input facts; load and load-tail call the same convergence after projection.",
+    "The connect gesture paths call deriveTargetAfterConnect; promotion remains there.",
+    "Undo/redo restore complete snapshots through canvasDocumentCommit and bypass derived reversion during the replay write; load convergence uses history:false."
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://react.dev/learn/you-might-not-need-an-effect",
+      "checked_at": "2026-10-25",
+      "purpose": "React recommends calculating derived state from existing state and moving event-caused writes to event/shared boundaries instead of an Effect."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://github.com/Comfy-Org/docs/blob/main/basic-concepts/nodes.mdx",
+      "checked_at": "2026-10-25",
+      "purpose": "ComfyUI documents connect and disconnect as graph operations on node inputs."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://docs.blender.org/manual/en/latest/interface/controls/nodes/editing.html",
+      "checked_at": "2026-10-25",
+      "purpose": "Blender documents dragging a link away as disconnecting the socket and restoring an unconnected input."
+    }
+  ],
+  "invariants": [
+    "A live input is any admitted non-text reference edge (pending or resolved), a node-owned reference link/slot fill, or a planned storyboard keyframe for the target shot.",
+    "The subscription reverts only when the same target was live before the write and empty after it; an already-empty target is untouched.",
+    "Promotion is performed only by the connect gesture through deriveTargetAfterConnect and resolveTargetModeForEdge.",
+    "Undo/redo restore snapshots without a second mode projection; load and load-tail convergence use history:false and remain idempotent."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "symbol": "disconnectEdge"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/agent/generationCanvasTools.ts",
+      "symbol": "deleteNode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/agent/proposalUndo.ts",
+      "symbol": "disconnectEdge"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/controls/referenceWrites.ts",
+      "symbol": "ReferenceWriteContext"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "updateNode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/agent/generationCanvasTools.ts",
+      "symbol": "updateNode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/capability/capabilityApplyHandler.ts",
+      "symbol": "applyExternalGraph"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/project/workbenchProjectSession.ts",
+      "symbol": "restoreSnapshot"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+      "symbol": "commit"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+      "symbol": "revertTargetModeForEmptyInputs"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "promoteTargetMode"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/agent/referenceEdgeCapability.ts",
+      "symbol": "resolveTargetModeForEdge"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/agent/referenceEdgeCapability.ts",
+      "symbol": "textModeToReturnTo"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/runner/generationRunController.ts",
+      "symbol": "resolveModeForConnectedReferences"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/ai/v4/spendCardReferences.ts",
+      "symbol": "resolveModeForConnectedReferences"
+    }
+  ],
+  "door_reduction": {
+    "before": 13,
+    "after": 15,
+    "why_not": "The input-reducing user, Agent and document doors remain required and still converge through the store subscription. The two surviving mode owners are intentionally separate: promoteTargetMode is the connect-gesture write door, while revertTargetModeForEmptyInputs is the all-store-writes empty-input door; merging them recreates the intermediate-state overwrite. Submit and paid-card readers remain separate defensive consumers."
+  },
+  "generality_proof": "Every input-reducing caller mutates the same nodes/edges store identity and is observed by the subscription; the shared predicate treats unresolved edges, node-owned slots and planned keyframes as inputs, so caller, provider result timing, import format and UI mount do not change the result. Undo/redo is a separate authoritative snapshot boundary, so its explicit empty modes are preserved.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "revertTargetModeForEmptyInputs",
+      "responsibility": "Own the single input predicate and apply text reversion only after a proven live-to-empty transition."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+      "symbol": "useGenerationCanvasStore.subscribe",
+      "responsibility": "Compare the target in the previous and current store snapshots and invoke reversion only on the transition."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "deriveTargetAfterConnect",
+      "responsibility": "Own the connect-gesture postcondition and its sole promotion decision."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "convergeStuckInputModes",
+      "responsibility": "Apply the same state-based empty-input convergence once after load and event-tail replay without creating undo history."
+    }
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+    "tests": [
+      "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts"
+    ],
+    "why": "Promotion and empty-input reversion are separate explicit functions at the shared canvas derivation boundary; the store subscription is only the trigger for reversion."
+  },
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+      "entry_point": "load and load-tail commit branches",
+      "disposition": "enforced",
+      "evidence": "The class regression test loads a stale snapshot, applies a disk-gateway write, and replays an edge-removal tail; both converge through convergeStuckInputModes."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "entry_point": "disconnectEdge",
+      "disposition": "enforced",
+      "evidence": "The subscription sees the edge-array change and class tests cover last-edge removal and atomic undo."
+    },
+    {
+      "path": "src/workbench/generationCanvas/quickActions/nodeTryRecipes.ts",
+      "entry_point": "runNodeTryRecipe",
+      "disposition": "enforced",
+      "evidence": "The class tests execute the same add-node, edge-write and explicit mode-write order used by the recipe and keep its edge roles."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/exec/storyboardFirstFrameApproval.test.ts",
+      "entry_point": "original first-frame projection and batch confirmation",
+      "disposition": "enforced",
+      "evidence": "The two baseline storyboard failures are reproduced before the fix and the full creation directory is rerun after the fix."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/agent/attachCameraMoveToTarget.ts",
+      "entry_point": "camera-reference attachment",
+      "disposition": "enforced",
+      "evidence": "The class test models a director video reference edge followed by an explicit target mode write; the subscription no longer re-promotes it."
+    },
+    {
+      "path": "src/workbench/generationCanvas/runner/generationRunController.ts",
+      "entry_point": "reconcileNodeModeWithConnectedReferences",
+      "disposition": "not-affected",
+      "evidence": "Submit-time reconciliation remains a defensive reader-side fallback and is unchanged; promotion stays in the connect gesture as required by the approved direction."
+    },
+    {
+      "path": "src/workbench/ai/v4/spendCardReferences.ts",
+      "entry_point": "placeSpendReferences",
+      "disposition": "not-affected",
+      "evidence": "The paid-card projection is outside this canvas line and no card code is changed."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any current or future caller that writes an edge and then an explicit mode can expose the same intermediate-state overwrite if promotion is attached to the all-writes subscription. Any caller that removes the final reference or persists a stale snapshot while the project is closed can expose stale mode if reversion and load convergence leave the shared boundary.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs revertTargetModeForEmptyInputs",
+      "node scripts/door-map.mjs promoteTargetMode",
+      "node scripts/door-map.mjs deriveTargetAfterConnect",
+      "rg -n \"connectNodes|connectToNode|applyExternalGraph|restoreSnapshot|updateNode|disconnectEdge|deleteNode\" src/workbench/generationCanvas src/workbench/creation src/workbench/capability src/workbench/project",
+      "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts covers disconnect, source deletion, uploaded-reference removal, restore, undo and explicit first/last/first-last/director writes.",
+      "src/workbench/generationCanvas/store/canvasModeConvergeOnLoad.test.ts covers old data, disk-gateway offline edge removal, event-tail removal, unresolved upstream edges and planned first frames."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+    "invariant": "For ordinary writes, a target is eligible only on a live-to-empty transition; load and load-tail run the same shared input predicate after projection for every empty single/edit/character node, while history replay remains authoritative.",
+    "failure_mode": "If no archetype, no compatible text mode or no live input fact can be established, no speculative mode switch occurs; existing capability admission and submit-time reconciliation remain responsible for reporting unusable generation.",
+    "exception_policy": "none",
+    "strategy": "Keep promotion at deriveTargetAfterConnect, compute liveInputNodeIds once per state in canvasConnectDerivations, compare both snapshots at the store boundary, and call convergeStuckInputModes after load and load-tail while guarding complete undo/redo replacement with the document commit replay marker.",
+    "artifacts": [
+      "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+      "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+      "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts",
+      "src/workbench/generationCanvas/store/canvasModeConvergeOnLoad.test.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts",
+    "src/workbench/generationCanvas/store/canvasModeConvergeOnLoad.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts",
+    "src/workbench/generationCanvas/store/canvasModeConvergeOnLoad.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The obsolete composer effect and component-only write path were removed earlier. This change removes the single-image exception, removes post-write promotion from the subscription, and adds no fallback; undo/redo is explicitly marked as an authoritative snapshot path."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency decides Nomi's archetype modes or reference slots; React guidance informed removal of the effect but no dependency change is needed.",
+    "exit_criteria": []
+  },
+  "migration": "No stored schema migration is needed. Existing snapshots keep their nodes, edges and mode ids; load and load-tail now converge stuck single/edit/character modes, ordinary input-removing writes still reconcile only on a live-to-empty transition, and undo/redo restores the stored snapshot as-is.",
+  "residual_risks": [
+    "中英真实 Electron 走查和截图逐张复核已在最终构建上完成；不跑真实供应商付费任务。",
+    "600 节点拖动场景因真实抓手被 react-flow__nodesselection-rect 遮挡而无数据；临时 Vitest 已量到写后订阅在 600 节点上的位置写入跳过、meta 写入额外开销仍低于 2ms，跨平台旧基线与同平台安静基线仍可能有差异。",
+    "规划首帧的识别依赖分镜节点的 storyboardDesignId + shotId + storyboardKeyframe 绑定；未绑定的外部计划数据不会被猜测。"
+  ]
+}

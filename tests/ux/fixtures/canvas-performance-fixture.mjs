@@ -32,6 +32,7 @@ export const CANVAS_PERF_SCALES = Object.freeze({
   I60: { imageCount: 60, videoCount: 0, edgeCount: 30, clipCount: 0 },
   I150: { imageCount: 150, videoCount: 0, edgeCount: 75, clipCount: 0 },
   I300: { imageCount: 300, videoCount: 0, edgeCount: 150, clipCount: 0 },
+  I600: { imageCount: 600, videoCount: 0, edgeCount: 300, clipCount: 0 },
   // 2026-10-15 卡顿场景表（tests/perf/scenarios/）：「选中节点 → 生成框出现」要分三种节点、三档规模量——
   // 空节点（还没生成过，没有结果图）/ 有图 / 视频，各 10 / 100 / 200 个，单一种类，边按 N/2。
   // 空节点是 image 种类、status idle、没有 result：用户刚建出来还没生成的卡就是这样。
