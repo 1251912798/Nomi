@@ -13,16 +13,15 @@ import {
 } from './nodePointerFace'
 import { useNodePointerStore } from './nodePointerStore'
 import { returnToChat } from './revealNodeFromChat'
+import { NodePointer, PointerFaceArt } from './NodePointer'
 import {
-  NodePointer,
   aspectFromText,
   frameTone,
   frameWidthPercent,
+  usePointerModel,
   type NodePointerDensity,
   type NodePointerSubject,
-  PointerFaceArt,
-  usePointerModel,
-} from './NodePointer'
+} from './nodePointerModel'
 
 export type NodePointerCellAccessory = Readonly<{
   /** 宿主的那颗按钮本身（不带定位、不带藏起来的样式）。 */
