@@ -1,9 +1,9 @@
 {
   "machine": "darwin arm64 Apple M5 x10 / 24GB",
-  "commit": "379193742",
-  "head": "379193742eadbb9669f2ee08a0e1b7c06c27f229",
+  "commit": "64b28f6d0",
+  "head": "64b28f6d0d480053c0e1d7aead06fced3bb8af47",
   "dirty": false,
-  "sourceTree": "62845237f2f1809a9beb98cdd776faa663062414",
+  "sourceTree": "0f1e5a5f45eee5c8713356b9baa275deafeab053",
   "date": "2026-10-25",
   "runs": 5,
   "results": [
@@ -12,8 +12,8 @@
       "metrics": {
         "frameGapP95": {
           "runs": 5,
-          "median": 10.9,
-          "p95": 11.2
+          "median": 11.2,
+          "p95": 11.3
         },
         "longTasks": {
           "runs": 5,
@@ -23,11 +23,11 @@
       },
       "samples": {
         "frameGapP95": [
-          10.9,
-          11.2,
           11.1,
-          10.7,
-          10.9
+          11.3,
+          11.3,
+          11.2,
+          11
         ],
         "longTasks": [
           0,
@@ -50,8 +50,8 @@
         "commit": "94724f860"
       },
       "verdict": {
-        "status": "ok",
-        "note": ""
+        "status": "regression",
+        "note": "中位数 11.2 比基线 9.3 差 20%"
       }
     }
   ]
