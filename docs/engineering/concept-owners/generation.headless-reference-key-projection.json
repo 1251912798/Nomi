@@ -1,0 +1,48 @@
+{
+  "name": "headless 请求只把参考投进声明过且媒体类别相符的 body 键",
+  "subject": "generation.headless-reference-key-projection",
+  "lifecycle": "execution",
+  "authority_kind": "decision",
+  "trust_domain": "shared",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/modelArchetypes/referenceKeys.ts",
+    "symbol": "referenceKeyCapacityDeclarationFor"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/modelArchetypes/referenceKeys.ts",
+      "symbol": "referenceKeyCapacityDeclarationFor"
+    },
+    {
+      "path": "electron/catalog/taskParams.ts",
+      "symbol": "projectReferencesOntoBodyKeys"
+    },
+    {
+      "path": "electron/catalog/referenceReachability.ts",
+      "symbol": "bodyReferenceSupport"
+    }
+  ],
+  "forbidden_derivations": [
+    {
+      "symbol": "REFERENCE_KEY_FAMILY",
+      "kind": "definition",
+      "why": "按键名正则猜参考族会把开关、枚举、尺寸、数量、数值和音色字段当成参考承载位；声明表是唯一可投影判据。"
+    },
+    {
+      "symbol": "CONTROL_KEY_PREFIX",
+      "kind": "definition",
+      "why": "控制键黑名单只是另一份不完整的键名推断，不能替代显式媒体类别声明。"
+    }
+  ],
+  "allowed_consumers": [
+    "electron/catalog/referenceReachability.ts",
+    "electron/catalog/modelCatalogListing.ts",
+    "electron/catalog/taskParams.ts",
+    "scripts/reference-key-census.ts",
+    "electron/catalog/referenceKeyProjectionCensus.test.ts"
+  ],
+  "since": "2026-10-25",
+  "notes": "模型容量先从选中档案的 typed reference slots、slot.max 与 combineSlotsInto 读取；没有对应模型声明时才回落到显式 headlessReferenceKeys、TRANSLATED_REFERENCE_INPUT_KEYS 与 APIMart 别名组的键形态。referenceReachability、taskParams 拒发建议和 modelCatalogListing 只读同一份模型作用域判据；没有同类声明位或超过 max 时 headless 请求在网络前拒发，并提示调用方写明参数名。"
+}

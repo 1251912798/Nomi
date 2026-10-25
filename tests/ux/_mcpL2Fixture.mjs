@@ -53,6 +53,10 @@ export async function startFakeApimartServer({ pendingPolls = 0 } = {}) {
       if (req.url === '/fixture/video.mp4') {
         res.writeHead(200, { 'content-type': 'video/mp4', 'content-length': media.video.length }); res.end(media.video); return
       }
+      if (req.url === '/v1/uploads/images') {
+        setTimeout(() => json({ url: `${origin}/fixture/image.png` }), 25)
+        return
+      }
       const create = /^\/v1\/(images|videos)\/generations$/.exec(req.url || '')
       if (create) {
         const taskId = `mcp-l2-${++sequence}`

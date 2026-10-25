@@ -23,6 +23,7 @@ export type ParameterReferenceSelection = {
   vendorKey: string
   modelAlias?: string | null
   modelMeta?: unknown
+  taskKind?: string
   operation?: { wireModel?: unknown } | null
 }
 
