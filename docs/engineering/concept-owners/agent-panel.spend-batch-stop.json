@@ -25,7 +25,8 @@
   "allowed_consumers": [
     "electron/productionRun/productionActionIpc.ts",
     "electron/capabilityCore/appIntegration.ts",
-    "src/workbench/ai/v4/useAgentPanelSpendCard.ts"
+    "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+    "electron/capabilityCore/canvasShotRunApi.ts"
   ],
   "since": "2026-10-02",
   "notes": "2026-10-24 D2 第③步（设计卡 docs/plan/2026-10-23-d2-pointer-spend-card.md）：卡不再自己一张一张批、一张一张发——「生成 / 全部生成（N）/ 生成剩下 N 段」把这几镜一次交给画布（账本记交接 generation.handover），画布按自己的批量并发提交。停下只由账本定：「取消」直接送到宿主（discardPendingSpend → withdrawGenerationPresentation），收卡那一笔把还没绑上画布 Run 的交接记 withdrawn；已经绑上、还在排队的同意由账本的变更订阅 withdrawQueuedHandOvers 当场收回（每一条关卡的路都经它，不靠哪个按钮记得收）；已经在交的照常交完、把结论写回它自己那一笔。回给卡的 batchStopped 只在这一次出价真有交接时按账本事实算（交出去 K 镜、没发 M 镜；一镜都没交过就只回 discarded，不说「已停止」）。渲染层不保存第二份「交到第几镜」。2026-10-02 那一版（合同 docs/fixes/2026-10-02-generate-remaining-stop.root-cause.json：confirmRemainingShots 在两张之间看卡还在不在、noteReplacing 认换掉过的报价）随旧卡一起删了，那份合同留作历史。"

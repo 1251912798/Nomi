@@ -1,8 +1,5 @@
 import type { ArtifactReviewDecision } from "../shared/agentCapabilities/productionRun";
 import { transitionJob, transitionRun } from "./productionRunState";
-import { decideShotClaim } from "../shared/decideShotClaim";
-import { currentPresentation, latestHandOver } from "../shared/productionGenerationPresentation";
-import { currentShotAttempt, jobsForShot } from "../shared/productionShotJobs";
 import { applyOwedLifecycleStep, applyRunStatus } from "./productionRunLifecycle";
 import { bindShotNodes, detachShotNodes } from "./productionRunCanvasLandingReducer";
 import type {
@@ -13,7 +10,6 @@ import type {
   ProductionJob,
   ProductionJobStatus,
   ProductionRun,
-  ProductionShotClaim,
   ProductionStage,
   RunCommand,
 } from "./productionRunTypes";
@@ -33,16 +29,14 @@ import {
   unsealedGenerationPlanFields,
 } from "./productionGenerationPlanEdits";
 import {
-  bindHandOvers,
-  handOverPresentedShots,
   parsePresentationCloser,
   presentGenerationPlan,
   markGenerationPolicyDecisionFailed,
   removePresentedShot,
   restorePresentedShot,
-  settleHandOver,
   withdrawGenerationPresentation,
 } from "./productionGenerationPresentationEdits";
+import { applyCanvasShotClaim, applyGenerationHandoverCommand } from "./productionRunHandoverReducer";
 
 export { SealBudgetExceededError } from "./productionGenerationSeal";
 
@@ -64,17 +58,11 @@ function text(payload: Record<string, unknown>, key: string): string {
   return value.trim();
 }
 
-const ARTIFACT_STATUSES = new Set<ProductionArtifact["status"]>([
-  "candidate",
-  "ready",
-  "adopted",
-  "rejected",
-]);
+const ARTIFACT_STATUSES = new Set<ProductionArtifact["status"]>(["candidate", "ready", "adopted", "rejected"]);
 const GATE_STATUSES = new Set<ProductionGate["status"]>(["waiting", "approved", "rejected", "expired", "revoked"]);
 
-
 function artifactVersion(value: ProductionArtifact): number {
-  return Number.isInteger(value.version) && (value.version as number) > 0 ? value.version as number : 1;
+  return Number.isInteger(value.version) && (value.version as number) > 0 ? (value.version as number) : 1;
 }
 
 function artifactHash(value: ProductionArtifact | undefined): string | undefined {
@@ -82,7 +70,12 @@ function artifactHash(value: ProductionArtifact | undefined): string | undefined
 }
 
 function isApprovedScript(value: ProductionArtifact | undefined): boolean {
-  return Boolean(value && value.kind === "script" && value.status === "adopted" && (value.reviewStatus === undefined || value.reviewStatus === "approved"));
+  return Boolean(
+    value &&
+    value.kind === "script" &&
+    value.status === "adopted" &&
+    (value.reviewStatus === undefined || value.reviewStatus === "approved"),
+  );
 }
 
 function reviewDecision(payload: Record<string, unknown>): ArtifactReviewDecision {
@@ -153,15 +146,18 @@ function artifact(payload: Record<string, unknown>): ProductionArtifact {
 
 /** B1：校验方向候选 —— 2-3 个、key 唯一且安全、title/oneLiner 非空且截断。别信 LLM 原样入库。 */
 function directionCandidates(value: unknown): ProductionDirectionCandidate[] {
-  if (!Array.isArray(value) || value.length < 2 || value.length > 3) throw new Error("Direction candidates must be 2 or 3 options");
+  if (!Array.isArray(value) || value.length < 2 || value.length > 3)
+    throw new Error("Direction candidates must be 2 or 3 options");
   const seen = new Set<string>();
   return value.map((item, index) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error(`Invalid direction candidate ${index}`);
+    if (!item || typeof item !== "object" || Array.isArray(item))
+      throw new Error(`Invalid direction candidate ${index}`);
     const raw = item as Record<string, unknown>;
     const key = typeof raw.key === "string" ? raw.key.trim() : "";
     const title = typeof raw.title === "string" ? raw.title.trim() : "";
     const oneLiner = typeof raw.oneLiner === "string" ? raw.oneLiner.trim() : "";
-    if (!/^[A-Za-z0-9._-]{1,40}$/.test(key) || seen.has(key)) throw new Error(`Invalid direction candidate key ${index}`);
+    if (!/^[A-Za-z0-9._-]{1,40}$/.test(key) || seen.has(key))
+      throw new Error(`Invalid direction candidate key ${index}`);
     if (!title || !oneLiner) throw new Error(`Direction candidate ${index} needs a title and one-liner`);
     seen.add(key);
     return { key, title: title.slice(0, 80), oneLiner: oneLiner.slice(0, 200) };
@@ -217,7 +213,8 @@ export function applyProductionCommand(
     }
     case "generation.patch": {
       const currentPlan = current.generationPlan;
-      if (!currentPlan || currentPlan.state !== "draft") throw new Error("new_draft_required: edit a new generation draft");
+      if (!currentPlan || currentPlan.state !== "draft")
+        throw new Error("new_draft_required: edit a new generation draft");
       // P4 S1 shot-addressing patch variant: edit one shot's candidate (model/mode/params/prompt/refs)
       // and/or its included flag (试拍/分批). No shotId → patch the top-level candidate exactly as today.
       return {
@@ -227,36 +224,61 @@ export function applyProductionCommand(
       };
     }
     case "generation.present":
-      return { run: presentGenerationPlan(current, command.payload.shotIds, now,
-        command.payload.policySnapshot && typeof command.payload.policySnapshot === "object"
-          ? command.payload.policySnapshot as Parameters<typeof presentGenerationPlan>[3]
-          : undefined), eventType: "generation.plan.presented", message: current.runId };
+      return {
+        run: presentGenerationPlan(
+          current,
+          command.payload.shotIds,
+          now,
+          command.payload.policySnapshot && typeof command.payload.policySnapshot === "object"
+            ? (command.payload.policySnapshot as Parameters<typeof presentGenerationPlan>[3])
+            : undefined,
+        ),
+        eventType: "generation.plan.presented",
+        message: current.runId,
+      };
     case "generation.policy_decision_failed":
-      return { run: markGenerationPolicyDecisionFailed(current, now), eventType: "generation.policy_decision.failed", message: current.generationPlan?.operationId ?? current.runId };
+      return {
+        run: markGenerationPolicyDecisionFailed(current, now),
+        eventType: "generation.policy_decision.failed",
+        message: current.generationPlan?.operationId ?? current.runId,
+      };
     // 用户的一下点击（放行形象 / 继续）续它批过、还没发出去的那几镜的同意（付费卡① 第 13 条）。
     // 写口只有 `productionDispatchConsentEdits.renewDispatchConsent`，判据在 `productionDispatchConsent`。
     case "generation.consent_renew":
       return applyDispatchConsentRenewal(current, command, now);
     case "generation.withdraw": {
       const withdrawn = withdrawGenerationPresentation(current, now, parsePresentationCloser(command.payload.reason));
-      return { run: withdrawn, eventType: "generation.plan.withdrawn", message: current.generationPlan?.operationId ?? current.runId };
+      return {
+        run: withdrawn,
+        eventType: "generation.plan.withdrawn",
+        message: current.generationPlan?.operationId ?? current.runId,
+      };
     }
     case "generation.shot.remove":
-      return { run: removePresentedShot(current, text(command.payload, "shotId"), now), eventType: "generation.shot.removed", message: text(command.payload, "shotId") };
+      return {
+        run: removePresentedShot(current, text(command.payload, "shotId"), now),
+        eventType: "generation.shot.removed",
+        message: text(command.payload, "shotId"),
+      };
     case "generation.shot.restore":
-      return { run: restorePresentedShot(current, text(command.payload, "shotId"), now), eventType: "generation.shot.restored", message: text(command.payload, "shotId") };
-    // 付费卡 / 「直接生成」档把这几镜交给画布（D2 第③步）：决定 → 画布开好同意时绑上画布 Run → 画布写回派发结论。
+      return {
+        run: restorePresentedShot(current, text(command.payload, "shotId"), now),
+        eventType: "generation.shot.restored",
+        message: text(command.payload, "shotId"),
+      };
     case "generation.handover":
-      return { run: handOverPresentedShots(current, command.payload.shotIds, command.payload.by, now), eventType: "generation.shots.handed_over", message: current.generationPlan?.operationId ?? current.runId };
     case "generation.handover.bind":
-      return { run: bindHandOvers(current, command.payload.bindings, now), eventType: "generation.handover.bound", message: current.generationPlan?.operationId ?? current.runId };
     case "generation.handover.settle":
-      return { run: settleHandOver(current, command.payload, now), eventType: "generation.handover.settled", message: text(command.payload, "shotId") };
+      return applyGenerationHandoverCommand(current, command, now);
     case "generation.seal":
       return applyGenerationSeal(current, command, now);
     // 一次点击没点完（封了门、还没决）留下的那份等人的授权：下一次点击之前由调用方先撤掉，只解封它盖着的那几镜。
     case "generation.authorization.abandon":
-      return { run: revokeWaitingAndUnseal(current, now, "Abandon"), eventType: "generation.authorization.abandoned", message: current.generationPlan?.operationId ?? current.runId };
+      return {
+        run: revokeWaitingAndUnseal(current, now, "Abandon"),
+        eventType: "generation.authorization.abandoned",
+        message: current.generationPlan?.operationId ?? current.runId,
+      };
     case "generation.trial_narrow": {
       // Trial-first changes the provider payload and spend scope. Revoke the unapproved authority,
       // return to draft, and force the normal prepare -> seal -> gate path to create a new digest.
@@ -302,15 +324,27 @@ export function applyProductionCommand(
       if (currentPlan.state === "submitted") throw new Error("Submitted generation cannot be cancelled as a draft");
       // 已封印、门还在等人 → 先把那道门收回；不收回，盘上会留一道永远 `waiting` 的门，
       // 挂在一份已经终结的计划上。
-      const revoked = currentPlan.state === "sealed"
-        ? revokeWaitingGenerationAuthorization(current, currentPlan, now, "Cancel") : undefined;
+      const revoked =
+        currentPlan.state === "sealed"
+          ? revokeWaitingGenerationAuthorization(current, currentPlan, now, "Cancel")
+          : undefined;
       // 这一次出价若还开着，跟着关（用户不要这份草稿了，卡上的镜一镜都不生成）。
-      const closedPlan = withdrawGenerationPresentation({ ...current, ...(revoked ?? {}),
-        generationPlan: revoked ? unsealedGenerationPlanFields(currentPlan, now) : currentPlan }, now, "user_closed").generationPlan!;
+      const closedPlan = withdrawGenerationPresentation(
+        {
+          ...current,
+          ...(revoked ?? {}),
+          generationPlan: revoked ? unsealedGenerationPlanFields(currentPlan, now) : currentPlan,
+        },
+        now,
+        "user_closed",
+      ).generationPlan!;
       return {
-        run: { ...current, ...(revoked ?? {}),
+        run: {
+          ...current,
+          ...(revoked ?? {}),
           generationPlan: { ...closedPlan, state: "cancelled", updatedAt: now },
-          updatedAt: now },
+          updatedAt: now,
+        },
         eventType: "generation.plan.cancelled",
         message: currentPlan.operationId,
       };
@@ -320,60 +354,16 @@ export function applyProductionCommand(
       if (!currentPlan || !currentPlan.contract || currentPlan.state === "draft" || currentPlan.state === "cancelled") {
         throw new Error("A sealed generation plan is required before submission");
       }
-      if (currentPlan.state === "submitted") return { run: current, eventType: "generation.plan.submitted", message: currentPlan.operationId };
+      if (currentPlan.state === "submitted")
+        return { run: current, eventType: "generation.plan.submitted", message: currentPlan.operationId };
       return {
         run: { ...current, generationPlan: { ...currentPlan, state: "submitted", updatedAt: now }, updatedAt: now },
         eventType: "generation.plan.submitted",
         message: currentPlan.operationId,
       };
     }
-    case "shot.claim": {
-      const by = text(command.payload, "by");
-      if (by !== "canvas" && by !== "production") throw new Error("Invalid shot claim owner");
-      const shotId = text(command.payload, "shotId");
-      const canvasRunId = typeof command.payload.canvasRunId === "string" && command.payload.canvasRunId.trim() ? command.payload.canvasRunId.trim() : undefined;
-      const decision = decideShotClaim(current, shotId, by, { ...(canvasRunId ? { canvasRunId } : {}) });
-      if (!decision.granted) {
-        throw Object.assign(new Error(`production_shot_claimed: ${decision.reason}`), {
-          code: "production_shot_claimed",
-          reason: decision.reason,
-        });
-      }
-      if (by === "production") {
-        return { run: current, eventType: "shot.claimed", message: shotId };
-      }
-      // A canvas claim is only durable when the shared decision explicitly
-      // assigns ownership to canvas. `holder: none` covers missing/mismatched
-      // shot IDs and must remain a no-op, especially for single-shot plans.
-      if (decision.holder !== "canvas") return { run: current, eventType: "shot.claimed", message: shotId };
-      const pending = new Set<ProductionJob["status"]>(["planned", "authorization_required", "authorized"]);
-      // 从哪来、哪一次出价，由账本派生（不信载荷）：交接绑着的那个画布 Run 来认领 = 卡交出去的；别的都是节点上点的。
-      const presentation = currentPresentation(current.generationPlan);
-      const handOver = latestHandOver(presentation, shotId);
-      const viaHandOver = Boolean(canvasRunId && handOver?.canvasRunId === canvasRunId);
-      const claim: ProductionShotClaim = {
-        by: "canvas", attempt: currentShotAttempt(current, shotId), claimedAt: now,
-        via: viaHandOver ? "handover" : "node",
-        ...(presentation?.presentationId && (viaHandOver || !presentation.closed) ? { presentationId: presentation.presentationId } : {}),
-        ...(canvasRunId ? { canvasRunId } : {}),
-      };
-      const jobs = current.jobs.map((job) => {
-        const matches = jobsForShot(current, shotId).some((candidate) => candidate.jobId === job.jobId);
-        return matches && pending.has(job.status)
-          ? { ...transitionJob(job, "detached", now), errorCode: "canvas_claimed", errorMessage: "Canvas claimed this shot", updatedAt: now }
-          : job;
-      });
-      const plan = current.generationPlan;
-      const shots = plan?.shots?.map((shot) => shot.shotId === shotId ? { ...shot, claim, updatedAt: now } : shot);
-      const generationPlan = plan
-        ? { ...plan, ...(shots ? { shots } : { claim }), updatedAt: now }
-        : plan;
-      return {
-        run: { ...current, jobs, ...(generationPlan ? { generationPlan } : {}), updatedAt: now },
-        eventType: "shot.claimed",
-        message: shotId,
-      };
-    }
+    case "shot.claim":
+      return applyCanvasShotClaim(current, command, now);
     case "plan.bind-shot-nodes":
       // P4 S5 画布落地：拆进 productionRunCanvasLandingReducer 守 800 行门岗（R9）。
       return bindShotNodes(current, command, now);
@@ -411,11 +401,18 @@ export function applyProductionCommand(
       if (current.jobs.some((item) => item.jobId === job.jobId)) throw new Error(`Duplicate job: ${job.jobId}`);
       if (job.executionBinding) {
         const binding = validateProductionExecutionBinding(job.executionBinding);
-        if (binding.runId !== current.runId) throw new Error("Invalid execution binding: run id does not match ProductionRun");
-        if (binding.providerNamespace !== job.provider) throw new Error("Invalid execution binding: provider namespace does not match job provider");
-        if (binding.providerIdempotencyKey !== job.idempotencyKey) throw new Error("Invalid execution binding: idempotency key does not match job");
+        if (binding.runId !== current.runId)
+          throw new Error("Invalid execution binding: run id does not match ProductionRun");
+        if (binding.providerNamespace !== job.provider)
+          throw new Error("Invalid execution binding: provider namespace does not match job provider");
+        if (binding.providerIdempotencyKey !== job.idempotencyKey)
+          throw new Error("Invalid execution binding: idempotency key does not match job");
       }
-      return { run: { ...current, jobs: [...current.jobs, job], updatedAt: now }, eventType: "job.created", message: job.jobId };
+      return {
+        run: { ...current, jobs: [...current.jobs, job], updatedAt: now },
+        eventType: "job.created",
+        message: job.jobId,
+      };
     }
     case "qa.retry.schedule": {
       // Budget reservation and retry-job creation are one durable command. A
@@ -432,30 +429,42 @@ export function applyProductionCommand(
     case "job.status": {
       const jobId = text(command.payload, "jobId");
       const status = text(command.payload, "status") as ProductionJobStatus;
-      const patch = command.payload.patch && typeof command.payload.patch === "object"
-        ? command.payload.patch as Partial<ProductionJob>
-        : {};
-      const jobs = replaceById(current.jobs, jobId, (job) => job.jobId, (job) => ({
-        ...transitionJob(job, status, now),
-        ...patch,
-        jobId: job.jobId,
-        status,
-        updatedAt: now,
-      }));
+      const patch =
+        command.payload.patch && typeof command.payload.patch === "object"
+          ? (command.payload.patch as Partial<ProductionJob>)
+          : {};
+      const jobs = replaceById(
+        current.jobs,
+        jobId,
+        (job) => job.jobId,
+        (job) => ({
+          ...transitionJob(job, status, now),
+          ...patch,
+          jobId: job.jobId,
+          status,
+          updatedAt: now,
+        }),
+      );
       return { run: { ...current, jobs, updatedAt: now }, eventType: `job.${status}`, message: jobId };
     }
     case "job.patch": {
       const jobId = text(command.payload, "jobId");
-      const patch = command.payload.patch && typeof command.payload.patch === "object"
-        ? command.payload.patch as Partial<ProductionJob>
-        : {};
-      const jobs = replaceById(current.jobs, jobId, (job) => job.jobId, (job) => ({
-        ...job,
-        ...patch,
-        jobId: job.jobId,
-        status: job.status,
-        updatedAt: now,
-      }));
+      const patch =
+        command.payload.patch && typeof command.payload.patch === "object"
+          ? (command.payload.patch as Partial<ProductionJob>)
+          : {};
+      const jobs = replaceById(
+        current.jobs,
+        jobId,
+        (job) => job.jobId,
+        (job) => ({
+          ...job,
+          ...patch,
+          jobId: job.jobId,
+          status: job.status,
+          updatedAt: now,
+        }),
+      );
       return { run: { ...current, jobs, updatedAt: now }, eventType: "job.updated", message: jobId };
     }
     case "gate.add": {
@@ -463,10 +472,19 @@ export function applyProductionCommand(
       if (current.gates.some((item) => item.gateId === gate.gateId)) throw new Error(`Duplicate gate: ${gate.gateId}`);
       // 形象确认只留一张在等（付费卡逐镜）：参考卡是一张一张点的，这一批多了一张参考卡，旧的那张等待就作废，
       // 换成盖住这一批的新的一张——不让一张盖着旧参考卡集合的确认永远挂在那里。
-      const gates = gate.scope === "anchor_checkpoint"
-        ? current.gates.map((item) => item.scope === "anchor_checkpoint" && item.status === "waiting" ? { ...item, status: "revoked" as const, decidedAt: now } : item)
-        : current.gates;
-      return { run: { ...current, gates: [...gates, gate], updatedAt: now }, eventType: "gate.waiting", message: gate.gateId };
+      const gates =
+        gate.scope === "anchor_checkpoint"
+          ? current.gates.map((item) =>
+              item.scope === "anchor_checkpoint" && item.status === "waiting"
+                ? { ...item, status: "revoked" as const, decidedAt: now }
+                : item,
+            )
+          : current.gates;
+      return {
+        run: { ...current, gates: [...gates, gate], updatedAt: now },
+        eventType: "gate.waiting",
+        message: gate.gateId,
+      };
     }
     case "gate.set_candidates": {
       // B1：方向门候选挂到 waiting 的 gate 上（driver 拟好后调）。只允许方向门、只在 waiting 时设。
@@ -474,12 +492,18 @@ export function applyProductionCommand(
       const candidates = directionCandidates(command.payload.candidates);
       const currentGate = current.gates.find((gate) => gate.gateId === gateId);
       if (!currentGate) throw new Error(`Production entity not found: ${gateId}`);
-      if (currentGate.scope !== "stage" || !gateId.startsWith("gate-direction-")) throw new Error("Direction candidates apply only to a direction gate");
+      if (currentGate.scope !== "stage" || !gateId.startsWith("gate-direction-"))
+        throw new Error("Direction candidates apply only to a direction gate");
       if (currentGate.status !== "waiting") throw new Error(`Production gate is already decided: ${gateId}`);
-      const gates = replaceById(current.gates, gateId, (gate) => gate.gateId, (gate) => ({
-        ...gate,
-        directionCandidates: candidates,
-      }));
+      const gates = replaceById(
+        current.gates,
+        gateId,
+        (gate) => gate.gateId,
+        (gate) => ({
+          ...gate,
+          directionCandidates: candidates,
+        }),
+      );
       return { run: { ...current, gates, updatedAt: now }, eventType: "gate.candidates", message: gateId };
     }
     case "gate.decide": {
@@ -491,9 +515,12 @@ export function applyProductionCommand(
       if (currentGate.status !== "waiting") throw new Error(`Production gate is already decided: ${gateId}`);
       // B1：方向门批准可带 choiceKey（用户选中的候选）。校验它确属该门候选之一，留痕进 gate。
       const rawChoice = typeof command.payload.choiceKey === "string" ? command.payload.choiceKey.trim() : "";
-      const choiceKey = status === "approved" && rawChoice && (currentGate.directionCandidates ?? []).some((candidate) => candidate.key === rawChoice)
-        ? rawChoice
-        : undefined;
+      const choiceKey =
+        status === "approved" &&
+        rawChoice &&
+        (currentGate.directionCandidates ?? []).some((candidate) => candidate.key === rawChoice)
+          ? rawChoice
+          : undefined;
       const authorizationDecision = applyGenerationAuthorizationGateDecision({
         run: current,
         gate: currentGate,
@@ -501,26 +528,44 @@ export function applyProductionCommand(
         ...(typeof command.payload.receiptId === "string" ? { receiptId: command.payload.receiptId } : {}),
         now,
       });
-      const gates = replaceById(current.gates, gateId, (gate) => gate.gateId, (gate) => ({
-        ...gate,
-        status,
-        decidedAt: now,
-        ...(choiceKey ? { decidedChoiceKey: choiceKey } : {}),
-        ...(authorizationDecision.receiptId ? { receiptId: authorizationDecision.receiptId } : {}),
-      }));
-      const jobs = status === "approved"
-        ? current.jobs.map((job) => currentGate.jobIds.includes(job.jobId) && job.status === "authorization_required"
-          ? transitionJob(job, "authorized", now)
-          : job)
-        : currentGate.authorizationDigest && currentGate.costScope?.startsWith("generation.rework:")
-          ? current.jobs.map((job) => currentGate.jobIds.includes(job.jobId) && ["authorization_required", "authorized"].includes(job.status)
-            ? { ...transitionJob(job, "detached", now), errorCode: "production_gate_rejected", errorMessage: "Production authorization was rejected", updatedAt: now }
-            : job)
-          : current.jobs;
-      const approvesDirection = status === "approved" && current.status === "awaiting_direction"
-        && currentGate.scope === "stage" && gateId.startsWith("gate-direction-");
-      const approvesBuild = status === "approved" && current.status === "awaiting_contract"
-        && currentGate.scope === "budget_envelope";
+      const gates = replaceById(
+        current.gates,
+        gateId,
+        (gate) => gate.gateId,
+        (gate) => ({
+          ...gate,
+          status,
+          decidedAt: now,
+          ...(choiceKey ? { decidedChoiceKey: choiceKey } : {}),
+          ...(authorizationDecision.receiptId ? { receiptId: authorizationDecision.receiptId } : {}),
+        }),
+      );
+      const jobs =
+        status === "approved"
+          ? current.jobs.map((job) =>
+              currentGate.jobIds.includes(job.jobId) && job.status === "authorization_required"
+                ? transitionJob(job, "authorized", now)
+                : job,
+            )
+          : currentGate.authorizationDigest && currentGate.costScope?.startsWith("generation.rework:")
+            ? current.jobs.map((job) =>
+                currentGate.jobIds.includes(job.jobId) && ["authorization_required", "authorized"].includes(job.status)
+                  ? {
+                      ...transitionJob(job, "detached", now),
+                      errorCode: "production_gate_rejected",
+                      errorMessage: "Production authorization was rejected",
+                      updatedAt: now,
+                    }
+                  : job,
+              )
+            : current.jobs;
+      const approvesDirection =
+        status === "approved" &&
+        current.status === "awaiting_direction" &&
+        currentGate.scope === "stage" &&
+        gateId.startsWith("gate-direction-");
+      const approvesBuild =
+        status === "approved" && current.status === "awaiting_contract" && currentGate.scope === "budget_envelope";
       const stages = current.stages.map((stage) => {
         if (approvesDirection && stage.stageId === "direction") {
           return { ...stage, status: "completed" as const, completedAt: now };
@@ -532,19 +577,24 @@ export function applyProductionCommand(
       });
       const generationPlan = authorizationDecision.generationPlan;
       const decided = { ...current, gates, jobs, stages, ...(generationPlan ? { generationPlan } : {}) };
-      const run = status === "approved" && current.status === "awaiting_contract"
-        ? transitionRun(decided, "ready", now)
-        : status === "approved" && current.status === "awaiting_direction"
-          ? transitionRun(decided, "running", now)
-        : status === "approved" && current.status === "awaiting_rough_cut_review"
-          ? transitionRun(decided, "awaiting_export", now)
-        : { ...decided, updatedAt: now };
+      const run =
+        status === "approved" && current.status === "awaiting_contract"
+          ? transitionRun(decided, "ready", now)
+          : status === "approved" && current.status === "awaiting_direction"
+            ? transitionRun(decided, "running", now)
+            : status === "approved" && current.status === "awaiting_rough_cut_review"
+              ? transitionRun(decided, "awaiting_export", now)
+              : { ...decided, updatedAt: now };
       return { run, eventType: "gate.decided", message: gateId };
     }
     case "plan.proposed": {
-      const proposed = Array.isArray(command.payload.artifacts) ? command.payload.artifacts.map((item) => artifact({ artifact: item })) : [];
+      const proposed = Array.isArray(command.payload.artifacts)
+        ? command.payload.artifacts.map((item) => artifact({ artifact: item }))
+        : [];
       if (proposed.length === 0) throw new Error("Production plan artifacts are required");
-      if (proposed.some((nextArtifact) => current.artifacts.some((item) => item.artifactId === nextArtifact.artifactId))) {
+      if (
+        proposed.some((nextArtifact) => current.artifacts.some((item) => item.artifactId === nextArtifact.artifactId))
+      ) {
         throw new Error("Duplicate production plan artifact");
       }
       const scriptProposal = proposed.find((item) => item.kind === "script");
@@ -554,17 +604,26 @@ export function applyProductionCommand(
         assertStoryboardSourceApproved(withProposed, storyboardProposal.artifactId);
       }
       const stages = current.stages.map((stage) => {
-        if (scriptProposal && stage.stageId === "script") return { ...stage, status: "awaiting_gate" as const, startedAt: stage.startedAt || now };
-        if (!scriptProposal && stage.stageId === "script" || storyboardProposal && stage.stageId === "storyboard") return { ...stage, status: "completed" as const, completedAt: now };
+        if (scriptProposal && stage.stageId === "script")
+          return { ...stage, status: "awaiting_gate" as const, startedAt: stage.startedAt || now };
+        if ((!scriptProposal && stage.stageId === "script") || (storyboardProposal && stage.stageId === "storyboard"))
+          return { ...stage, status: "completed" as const, completedAt: now };
         if (stage.stageId === "build") return { ...stage, status: "awaiting_gate" as const };
         return stage;
       });
-      const next = { ...current, artifacts: [...current.artifacts, ...proposed], stages, stageId: scriptProposal ? "script" : "storyboard", updatedAt: now };
-      const run = scriptProposal && ["running", "awaiting_storyboard_review"].includes(current.status)
-        ? transitionRun(next, "awaiting_script_review", now)
-        : storyboardProposal && current.status === "running"
-          ? transitionRun(next, "awaiting_storyboard_review", now)
-          : next;
+      const next = {
+        ...current,
+        artifacts: [...current.artifacts, ...proposed],
+        stages,
+        stageId: scriptProposal ? "script" : "storyboard",
+        updatedAt: now,
+      };
+      const run =
+        scriptProposal && ["running", "awaiting_storyboard_review"].includes(current.status)
+          ? transitionRun(next, "awaiting_script_review", now)
+          : storyboardProposal && current.status === "running"
+            ? transitionRun(next, "awaiting_storyboard_review", now)
+            : next;
       return { run, eventType: "plan.proposed", message: proposed[0].artifactId };
     }
     case "script.review":
@@ -575,46 +634,81 @@ export function applyProductionCommand(
       if (!target) throw new Error(`Production entity not found: ${artifactId}`);
       if (target.status !== "candidate") throw new Error("Only candidate artifacts can be reviewed");
       if (decision === "approved" && target.kind === "storyboard") assertStoryboardSourceApproved(current, artifactId);
-      const artifacts = current.artifacts.map((item) => item.artifactId === artifactId
-        ? {
-            ...item,
-            status: decision === "approved" ? "adopted" as const : decision === "rejected" ? "rejected" as const : "candidate" as const,
-            reviewStatus: decision === "approved" ? "approved" as const : "changes_requested" as const,
-            ...(decision === "approved" ? { adoptedAt: now } : {}),
-          }
-        : item);
+      const artifacts = current.artifacts.map((item) =>
+        item.artifactId === artifactId
+          ? {
+              ...item,
+              status:
+                decision === "approved"
+                  ? ("adopted" as const)
+                  : decision === "rejected"
+                    ? ("rejected" as const)
+                    : ("candidate" as const),
+              reviewStatus: decision === "approved" ? ("approved" as const) : ("changes_requested" as const),
+              ...(decision === "approved" ? { adoptedAt: now } : {}),
+            }
+          : item,
+      );
       let next: ProductionRun = { ...current, artifacts, updatedAt: now };
       if (decision === "approved" && target.kind === "script") {
         next = markDerivedArtifactsStale(next, artifactId);
-        const stages = next.stages.map((stage) => stage.stageId === "script"
-          ? { ...stage, status: "completed" as const, completedAt: now }
-          : stage);
+        const stages = next.stages.map((stage) =>
+          stage.stageId === "script" ? { ...stage, status: "completed" as const, completedAt: now } : stage,
+        );
         next = { ...next, stages, stageId: "storyboard" };
         if (current.status === "awaiting_script_review") next = transitionRun(next, "running", now);
       }
-      return { run: next, eventType: decision === "approved" ? "artifact.adopted" : "artifact.reviewed", message: artifactId };
+      return {
+        run: next,
+        eventType: decision === "approved" ? "artifact.adopted" : "artifact.reviewed",
+        message: artifactId,
+      };
     }
     case "plan.attach": {
       const artifactId = text(command.payload, "artifactId");
       const jobs = Array.isArray(command.payload.jobs)
-        ? command.payload.jobs.map((item) => item && typeof item === "object" && !Array.isArray(item) ? item as ProductionJob : (() => { throw new Error("Invalid production job"); })())
+        ? command.payload.jobs.map((item) =>
+            item && typeof item === "object" && !Array.isArray(item)
+              ? (item as ProductionJob)
+              : (() => {
+                  throw new Error("Invalid production job");
+                })(),
+          )
         : [];
       const gate = record(command.payload, "gate") as unknown as ProductionGate;
       const nextArtifact = current.artifacts.find((item) => item.artifactId === artifactId);
       if (!nextArtifact) throw new Error(`Production entity not found: ${artifactId}`);
-      if (nextArtifact.kind !== 'storyboard' || nextArtifact.status !== 'adopted' || (nextArtifact.reviewStatus !== undefined && nextArtifact.reviewStatus !== 'approved')) throw new Error("Approved storyboard artifact required before attach");
+      if (
+        nextArtifact.kind !== "storyboard" ||
+        nextArtifact.status !== "adopted" ||
+        (nextArtifact.reviewStatus !== undefined && nextArtifact.reviewStatus !== "approved")
+      )
+        throw new Error("Approved storyboard artifact required before attach");
       if (current.gates.some((item) => item.gateId === gate.gateId)) throw new Error(`Duplicate gate: ${gate.gateId}`);
-      if (jobs.some((job) => current.jobs.some((item) => item.jobId === job.jobId))) throw new Error("Duplicate production job");
+      if (jobs.some((job) => current.jobs.some((item) => item.jobId === job.jobId)))
+        throw new Error("Duplicate production job");
       const stages = current.stages.map((stage) => {
-        if (stage.stageId === "script" || stage.stageId === "storyboard") return { ...stage, status: "completed" as const, completedAt: now };
+        if (stage.stageId === "script" || stage.stageId === "storyboard")
+          return { ...stage, status: "completed" as const, completedAt: now };
         if (stage.stageId === "build") return { ...stage, status: "awaiting_gate" as const };
         return stage;
       });
-      const artifacts = current.artifacts.map((item) => item.artifactId === artifactId ? { ...item, status: "adopted" as const, adoptedAt: now } : item);
-      const attached = { ...current, artifacts, jobs: [...current.jobs, ...jobs], gates: [...current.gates, gate], stages, stageId: "build", updatedAt: now };
-      const run = current.status === "running" || current.status === "awaiting_storyboard_review"
-        ? transitionRun(attached, "awaiting_contract", now)
-        : attached;
+      const artifacts = current.artifacts.map((item) =>
+        item.artifactId === artifactId ? { ...item, status: "adopted" as const, adoptedAt: now } : item,
+      );
+      const attached = {
+        ...current,
+        artifacts,
+        jobs: [...current.jobs, ...jobs],
+        gates: [...current.gates, gate],
+        stages,
+        stageId: "build",
+        updatedAt: now,
+      };
+      const run =
+        current.status === "running" || current.status === "awaiting_storyboard_review"
+          ? transitionRun(attached, "awaiting_contract", now)
+          : attached;
       return { run, eventType: "plan.attached", message: nextArtifact.artifactId };
     }
     case "skill.evidence": {
@@ -624,12 +718,17 @@ export function applyProductionCommand(
         ? command.payload.skillEvidence.filter((item): item is { name: string; version: string; stageId: string } => {
             if (!item || typeof item !== "object" || Array.isArray(item)) return false;
             const value = item as Record<string, unknown>;
-            return typeof value.name === "string" && typeof value.version === "string" && typeof value.stageId === "string";
+            return (
+              typeof value.name === "string" && typeof value.version === "string" && typeof value.stageId === "string"
+            );
           })
         : [];
-      const artifacts = artifactId && evidence.length > 0
-        ? current.artifacts.map((item) => item.artifactId === artifactId ? { ...item, skillEvidence: evidence } : item)
-        : current.artifacts;
+      const artifacts =
+        artifactId && evidence.length > 0
+          ? current.artifacts.map((item) =>
+              item.artifactId === artifactId ? { ...item, skillEvidence: evidence } : item,
+            )
+          : current.artifacts;
       return { run: { ...current, artifacts, updatedAt: now }, eventType: "skill.loaded", message: skillName };
     }
     case "qa.verdict": {
@@ -644,20 +743,30 @@ export function applyProductionCommand(
       if (current.artifacts.some((item) => item.artifactId === nextArtifact.artifactId)) {
         throw new Error(`Duplicate artifact: ${nextArtifact.artifactId}`);
       }
-      return { run: { ...current, artifacts: [...current.artifacts, nextArtifact], updatedAt: now }, eventType: "artifact.ready", message: nextArtifact.artifactId };
+      return {
+        run: { ...current, artifacts: [...current.artifacts, nextArtifact], updatedAt: now },
+        eventType: "artifact.ready",
+        message: nextArtifact.artifactId,
+      };
     }
     case "artifact.adopt": {
       const artifactId = text(command.payload, "artifactId");
       if (!canAdoptArtifact(current, artifactId)) throw new Error("Artifact requires approved review");
-      const artifacts = replaceById(current.artifacts, artifactId, (artifact) => artifact.artifactId, (artifact): ProductionArtifact => ({
-        ...artifact,
-        status: "adopted",
-        reviewStatus: "approved",
-        adoptedAt: now,
-      }));
-      const next = current.artifacts.find((artifact) => artifact.artifactId === artifactId)?.kind === "script"
-        ? markDerivedArtifactsStale({ ...current, artifacts, updatedAt: now }, artifactId)
-        : { ...current, artifacts, updatedAt: now };
+      const artifacts = replaceById(
+        current.artifacts,
+        artifactId,
+        (artifact) => artifact.artifactId,
+        (artifact): ProductionArtifact => ({
+          ...artifact,
+          status: "adopted",
+          reviewStatus: "approved",
+          adoptedAt: now,
+        }),
+      );
+      const next =
+        current.artifacts.find((artifact) => artifact.artifactId === artifactId)?.kind === "script"
+          ? markDerivedArtifactsStale({ ...current, artifacts, updatedAt: now }, artifactId)
+          : { ...current, artifacts, updatedAt: now };
       return { run: next, eventType: "artifact.adopted", message: artifactId };
     }
     case "budget.set": {
@@ -666,7 +775,11 @@ export function applyProductionCommand(
     }
     case "policy.set": {
       const policy = record(command.payload, "policy") as unknown as ProductionRun["policy"];
-      return { run: { ...current, policy, updatedAt: now }, eventType: "policy.updated", message: trustLevelOf(policy) };
+      return {
+        run: { ...current, policy, updatedAt: now },
+        eventType: "policy.updated",
+        message: trustLevelOf(policy),
+      };
     }
     default:
       throw new Error(`Unknown production command: ${command.type}`);
