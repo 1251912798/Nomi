@@ -416,7 +416,11 @@ function audit(cells: Cell[], layer: Layer): CellResult[] {
       const transport = layer.startsWith('relay')
         ? relayTransport(modelKey, archetype.id, request.kind)
         : apimartTransport(apimartArchetypes.find((entry) => entry.modelKey === modelKey)!.model, request.kind, mode.id)
-      sent = urlsIn(wire(transport, request as never))
+      try {
+        sent = urlsIn(wire(transport, request as never))
+      } catch (error) {
+        return { label, leaked: [], clickable: clickable(graph, mode), sentInUse: [], skipped: String((error as Error).message).slice(0, 80) }
+      }
     }
     const leaked = [...sent].filter(([url]) => !shown.has(url)).map(([url, keys]) => `${url.slice(REF.length)}←${[...new Set(keys)].join(',')}`)
     return { label, leaked, clickable: clickable(graph, mode), sentInUse: [...sent.keys()].filter((url) => shown.has(url)).sort() }

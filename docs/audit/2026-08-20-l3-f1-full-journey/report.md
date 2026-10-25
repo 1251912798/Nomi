@@ -101,7 +101,7 @@ Seedance 的 i2v body 用的是 `image_urls`（复数）——`image_url$` 要�
 ## 缺陷 A/B 已修（同日）
 
 **A — 两跳判据改用目录 derive**（commit `9d0b233a`）：不再手写正则猜键名，改问目录里那张经实战打磨的
-参考键族表（`referenceReachability.REFERENCE_KEY_FAMILY`，`list_models` 用的同一份源）。
+参考键族表（`referenceReachability.REFERENCE_KEY_FAMILY`，已删 / 禁止；`list_models` 现用声明表同一份源）。
 另补上真正让两跳有意义的那半：**两跳成了 → 参考通道换成那张首帧静帧**，不再发原始锚卡——
 锚卡是中性灰背景的证件照，拿它当 i2v 驱动图等于让视频从证件照开始动；静帧已经长成这一镜该有的样子
 且身份已由锚卡锁定，同时携带身份与构图。

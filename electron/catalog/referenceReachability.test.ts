@@ -2,7 +2,7 @@
 // 夹具一律用**真实 body**（NEWAPI_VIDEO_CREATE_OP / apimart / 火山），不自造——本轮栽过「编错 fixture
 // 把自己骗过去」（ComfyUI 视频通道整条不存在却测试全绿）。
 import { describe, expect, it } from "vitest";
-import { modeSlotReach, modeIsUsable, bodyReferenceSupport, DEFAULT_SLOT_INPUT_KEY, type ReachSlot } from "./referenceReachability";
+import { modeSlotReach, modeIsUsable, bodyReferenceSupport, classifyReferenceKey, DEFAULT_SLOT_INPUT_KEY, type ReachSlot } from "./referenceReachability";
 import { NEWAPI_VIDEO_CREATE_OP } from "./newapiTransport";
 import { VOLCENGINE_VIDEO_MODELS } from "./volcengineVideos";
 import { APIMART_VIDEO_MODELS } from "./apimartVideos";
@@ -134,6 +134,19 @@ describe("bodyReferenceSupport · list_models 逐 mapping 汇报参考能力（�
     const support = bodyReferenceSupport(VOLC_I2V);
     expect(support.image).toBe(true);
     expect(support.video).toBe(true);
+  });
+});
+
+describe("声明驱动分类", () => {
+  it("只认显式媒体声明，不把名字像参考的控制键当成载体", () => {
+    expect(classifyReferenceKey("audio_urls")).toBe("audio");
+    expect(classifyReferenceKey("video_list")).toBe("video");
+    expect(classifyReferenceKey("character_ids")).toBe("image");
+    expect(classifyReferenceKey("generateAudio")).toBeNull();
+    expect(classifyReferenceKey("audio_setting")).toBeNull();
+    expect(classifyReferenceKey("num_images")).toBeNull();
+    expect(classifyReferenceKey("image_size")).toBeNull();
+    expect(classifyReferenceKey("voice_id")).toBeNull();
   });
 });
 

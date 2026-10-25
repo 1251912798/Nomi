@@ -9,10 +9,16 @@ import { referenceInputParams } from "./archetypeInput";
 import { ARCHETYPE_WIRE_DEFAULTS, ARCHETYPE_SIZE_RATIO_SEMANTIC } from "./archetypeWireDefaults.generated";
 import { bodyReferencedParamKeys } from "./paramTranslate";
 import { hasMentions, numberPromptReferences, projectPromptForSend } from "../shared/storyboard/promptMentions";
-import { bodyReferenceSupport, classifyReferenceKey, classifyReferenceKeyDetailed, type ReferenceFamily } from "./referenceReachability";
+import { assertReferenceCapacity, bodyReferenceSupport, classifyReferenceKey, referenceUrlCount, type ModelModeBody, type ReferenceFamily } from "./referenceReachability";
+import {
+  DERIVED_REFERENCE_CARRIER_KEYS,
+  referenceKeyCapacityDeclarationFor,
+} from "../shared/modelArchetypes/referenceKeys";
+import { chatImageParts, jsonImageEditInput } from "./referenceCarrierShapes";
 import { readSelectedComfyReferenceContract, type ParameterReferenceSelection } from "./parameterReferenceContract";
 import { resolveWireModel, WIRE_MODEL_PARAM } from "../shared/modelArchetypes/wireModelIdentity";
 import { comparableReferenceUrl, comparableReferenceValues, serializeReferenceParams } from "./outboundReferenceUrl";
+
 
 /** taskTemplateParams 实际用到的 TaskRequest 子集（结构化，避免与 runtime 的 TaskRequest 循环依赖）。 */
 export type TaskParamsInput = {
@@ -147,7 +153,12 @@ export function applyHeadlessParamDefaults(
   const withDefaults = applyWireDefaults(applyWireDefaults(guarded, archetypeDefaults), mappingDefaults);
   // ③ 参考键形态投影（既有值优先 → 渲染层已填 archetypeInput 时 no-op）。在缺参兜底之后做，看到的是合并后的 extras。
   if (typeof createBody === "undefined") return withDefaults;
-  const projected = projectReferencesOntoBodyKeys(withDefaults, createBody, { vendorKey, modelKey });
+  const projected = projectReferencesOntoBodyKeys(withDefaults, createBody, {
+    vendorKey,
+    modelKey,
+    modelMeta: archetypeId ? { archetypeId } : undefined,
+    taskKind,
+  });
   return Object.keys(projected).length ? { ...(withDefaults || {}), ...projected } : withDefaults;
 }
 
@@ -262,7 +273,7 @@ const REF_URL_RE = /^(https?:\/\/|nomi-local:\/\/|data:|blob:|\/)/i;
 const OBJECT_SHAPE_REF_KEY = /with_roles|_contents\b|_content\b/i;
 
 // 数组形态键：复数 URL 键（image_urls / video_urls / audio_urls / input_urls / reference_*_urls / *_images / *_paths）。
-// classifyReferenceKeyDetailed 的 multiImage 只覆盖 image 族的多图信号，video/audio 复数键靠此补齐 → 塞数组不塞单串。
+// 声明表的 multiImage 只表达媒体键的数组形态；video/audio 复数键也由同一声明补齐 → 塞数组不塞单串。
 const ARRAY_SHAPE_REF_KEY = /_urls$|urls$|images$|audios$|videos$|_paths$|paths$/i;
 
 /**
@@ -432,9 +443,8 @@ export function unreachableReferenceLabels(request: TaskParamsInput, createBody:
 }
 
 /** 一个模式（taskKind）的 create body——供拒发建议判「哪个模式带得动我携带的参考」。 */
-export type ModelModeBody = { taskKind: string; body: unknown };
-
 const FAMILY_LABEL: Record<ReferenceFamily, string> = { image: "参考图", video: "参考视频", audio: "参考音频" };
+const FAMILY_PARAMETER_LABEL: Record<ReferenceFamily, string> = { image: "图片", video: "视频", audio: "音频" };
 // taskKind → 人话模式名（拒发建议里点名"用哪个模式"）。未登记的原样用 taskKind。
 const TASK_KIND_LABEL: Record<string, string> = {
   image_edit: "图生图（改图）",
@@ -465,6 +475,14 @@ function carriedReferenceFamilies(extras: JsonRecord, selected?: ParameterRefere
   return families;
 }
 
+/** 发不出的参考里，请求体连同类声明位都没有的那几类：只给参考的调用方据此改成显式参数名（用户 10-25 拍板）。 */
+function undeclaredReferenceHint(request: TaskParamsInput, createBody: unknown, selected?: ParameterReferenceSelection): string {
+  const support = bodyReferenceSupport(createBody, selected);
+  const undeclared = [...carriedReferenceFamilies(request.extras || {}, selected)].filter((family) => !support[family]);
+  if (undeclared.length === 0) return "";
+  return `这个模型的请求体没有声明${undeclared.map((family) => FAMILY_PARAMETER_LABEL[family]).join(" / ")}参考位，请在调用里写明参数名。`;
+}
+
 /**
  * 拒发后附一句**可走的路**（交付4）：从**同一套 mapping 数据**（各模式 create body）derive——
  * 找出这个模型哪些模式的 body 真读得到我携带的参考族，点名它（"该模型 i2v 模式的 image_urls 支持多张参考图"）；
@@ -490,7 +508,7 @@ export function reachableModeSuggestion(
   const byTaskKind = new Map<string, boolean>();
   for (const mode of modeBodies) {
     if (failedKey !== undefined && JSON.stringify(mode.body) === failedKey) continue; // 刚被判发不出的那条，不推荐它自己。
-    const support = bodyReferenceSupport(mode.body);
+    const support = bodyReferenceSupport(mode.body, mode.selection);
     const covers = [...carried].every((family) => support[family]);
     if (covers) byTaskKind.set(mode.taskKind, (byTaskKind.get(mode.taskKind) ?? false) || support.multiImage);
   }
@@ -561,7 +579,7 @@ function archetypeReferenceUrlsByFamily(extras: JsonRecord): Record<ReferenceFam
  * first_frame_image …），headless 没有这一步——参考只落在标准键 reference_images，body 读的却是 image_urls
  * → 第三闸判「发不出」、护栏诚实拒绝，图生图/图生视频整条走不通（L3 三跑现场）。
  *
- * 投影判据**与护栏同一套**（P1）：目标键 = bodyReferencedParamKeys(createBody) 里被 classifyReferenceKeyDetailed
+ * 投影判据**与护栏同一套**（P1）：目标键 = bodyReferencedParamKeys(createBody) 里被共享声明表
  * 判为参考载体的键；按族匹配（image 键收图参考、video 收视频、audio 收音频）；多值键（image_urls/input_urls…）
  * 收整组、单值键（first_frame_image/单图聚合位）收首张（沿用 firstReferenceImage 优先级）。
  *
@@ -594,12 +612,24 @@ export function projectReferencesOntoBodyKeys(
   if (byFamily.image.length === 0 && byFamily.video.length === 0 && byFamily.audio.length === 0) return {};
 
   const hasNonEmpty = (value: unknown): boolean =>
-    (typeof value === "string" && value.trim() !== "") ||
-    (Array.isArray(value) && value.length > 0) ||
-    (value != null && typeof value === "object");
+    value !== null && typeof value !== "undefined" && (
+      (typeof value === "string" && value.trim() !== "") ||
+      (Array.isArray(value) && value.length > 0) ||
+      (typeof value !== "string" && !Array.isArray(value))
+    );
 
   const archetypeInput = isJsonRecord(src.archetypeInput) ? src.archetypeInput : {};
   const bodyKeys = bodyReferencedParamKeys(createBody);
+
+  // A declared model limit is a pre-send contract. Check existing explicit values as
+  // well as projected values so the headless path never silently trims a caller's input.
+  for (const key of bodyKeys) {
+    const detail = referenceKeyCapacityDeclarationFor(key, selected);
+    if (!detail || detail.max === undefined) continue;
+    // Renderer-produced archetypeInput is already capped by the shared slot writer;
+    // only caller-supplied body values are checked here.
+    assertReferenceCapacity(detail.family, detail.max, referenceUrlCount(src[key]));
+  }
 
   // ── 帧意图优先 ────────────────────────────────────────────────────────────
   // 调用方写 `firstFrameUrl` 是明确表态「这张是首帧」，不是"一张随便的参考图"。
@@ -619,7 +649,7 @@ export function projectReferencesOntoBodyKeys(
       (key) =>
         bodyKeyRe.test(key) &&
         !OBJECT_SHAPE_REF_KEY.test(key) &&
-        classifyReferenceKeyDetailed(key) &&
+        referenceKeyCapacityDeclarationFor(key, selected) &&
         !hasNonEmpty(src[key]) &&
         !hasNonEmpty(archetypeInput[key]),
     );
@@ -635,12 +665,13 @@ export function projectReferencesOntoBodyKeys(
   }
 
   // 先按族归拢 body 里可填的 plain 参考键（跳过对象形态键），每族选一个目标：优先数组键（扁平列表天然去处）。
-  const candidateByFamily: Partial<Record<ReferenceFamily, { key: string; wantsArray: boolean }>> = {};
+  const candidateByFamily: Partial<Record<ReferenceFamily, { key: string; wantsArray: boolean; max?: number }>> = {};
   for (const key of bodyKeys) {
     if (frameOverlay[key] !== undefined) continue; // 已被帧意图占用
-    const detail = classifyReferenceKeyDetailed(key);
+    const detail = referenceKeyCapacityDeclarationFor(key, selected);
     if (!detail) continue; // 非参考载体键（size/duration/seed…）不碰。
     if (OBJECT_SHAPE_REF_KEY.test(key)) continue; // 对象形态键（image_with_roles/*_contents）headless 不填，留空由模板丢。
+    if (DERIVED_REFERENCE_CARRIER_KEYS.has(key)) continue; // 派生载体（chat 图片项 / JSON 改图）由 taskTemplateParams 从标准参考输入现造，不填。
     if (byFamily[detail.family].length === 0) continue; // 没有这个族的参考可填。
     // referenceImages → reference_images is already the standard non-Comfy aggregate path. Do not persist a
     // derived duplicate into extras before async preflight; other wire-key projections keep their existing policy.
@@ -649,7 +680,9 @@ export function projectReferencesOntoBodyKeys(
     const wantsArray = refKeyWantsArray(key, detail.multiImage);
     const current = candidateByFamily[detail.family];
     // 每族至多一个：优先数组键（扁平参考列表的天然去处）；已有数组候选则不再被单值键替换。
-    if (!current || (wantsArray && !current.wantsArray)) candidateByFamily[detail.family] = { key, wantsArray };
+    if (!current || (wantsArray && !current.wantsArray)) {
+      candidateByFamily[detail.family] = { key, wantsArray, max: detail.max };
+    }
   }
 
   const overlay: Record<string, unknown> = { ...frameOverlay };
@@ -661,6 +694,7 @@ export function projectReferencesOntoBodyKeys(
     if (nested.length > 0 && !hasDistinctFlatSource) continue;
     const cand = candidateByFamily[family]!;
     const urls = byFamily[family];
+    if (cand.max !== undefined) assertReferenceCapacity(family, cand.max, urls.length);
     // 数组键塞整组、单值键塞首张（严格端点对 image:string 期待单串，塞数组会 400——沿用 asArray 声明的教训）。
     overlay[cand.key] = cand.wantsArray ? [...urls] : urls[0];
   }
@@ -728,11 +762,12 @@ export function imageEditGuardError(
   const effectiveBody = typeof createBody !== "undefined" ? createBody
     : fallbackBodyApplies ? NO_MAPPING_FALLBACK_BODY : undefined;
   if (typeof effectiveBody !== "undefined") {
+    // 拒不拒只看渲染后的请求体里真有没有这条参考（派生载体、别名都算数）；声明表只决定怎么说下一步。
     const unreachable = unreachableReferenceLabels(request, effectiveBody, selected);
     if (unreachable.length > 0) {
       const base = `模型「${modelLabel}」在这个接入方式下发不出：${unreachable.join(" / ")}。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。`;
       const suggestion = reachableModeSuggestion(request, effectiveBody, modeBodies, selected);
-      return suggestion ? `${base}\n${suggestion}` : base;
+      return [base, undeclaredReferenceHint(request, effectiveBody, selected), suggestion].filter(Boolean).join("\n");
     }
   }
   if (kind !== "image_edit" && kind !== "image_to_video") return null;
@@ -747,27 +782,6 @@ export function imageEditGuardError(
     return `模型「${modelLabel}」没有「${kind === "image_edit" ? "图生图（改图）" : "图生视频"}」通道，参考图发不出去。请改用支持${what}的模型${kind === "image_edit" ? "，或断开参考图走纯文生图" : "，或断开参考图走纯文生视频"}。`;
   }
   return null;
-}
-
-/** 参考图 URL 数组 → chat/completions content 的 image_url 项数组。非字符串/空 URL 剔除。 */
-export function chatImageParts(referenceImages: unknown): Array<{ type: "image_url"; image_url: { url: string } }> {
-  if (!Array.isArray(referenceImages)) return [];
-  return referenceImages
-    .filter((u): u is string => typeof u === "string" && u.trim() !== "")
-    .map((url) => ({ type: "image_url", image_url: { url } }));
-}
-
-export type JsonImageEditReference = { type: "image_url"; url: string };
-
-/** JSON image-edits 输入造型：1 张走 image，2~3 张走 images；保序、去空、按官方上限截断。 */
-export function jsonImageEditInput(referenceImages: unknown): { image?: JsonImageEditReference; images?: JsonImageEditReference[] } {
-  if (!Array.isArray(referenceImages)) return {};
-  const refs = referenceImages
-    .filter((url): url is string => typeof url === "string" && url.trim() !== "")
-    .slice(0, 3)
-    .map((url) => ({ type: "image_url" as const, url }));
-  if (refs.length === 1) return { image: refs[0] };
-  return refs.length > 1 ? { images: refs } : {};
 }
 
 /**
