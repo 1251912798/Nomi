@@ -73,6 +73,7 @@ function labNodes(locale: Locale): GenerationCanvasNode[] {
     node({ id: 'np-draft-1', title: L(locale, '纸船出发', 'Paper boat departs'), meta: { ...VIDEO_META('16:9', 4), ...shot('s1') } }),
     node({ id: 'np-draft-2', title: L(locale, '越过落叶', 'Past the leaves'), meta: { ...VIDEO_META('16:9', 5), ...shot('s2') } }),
     node({ id: 'np-draft-3', title: L(locale, '漂向远处', 'Drifting away'), meta: { ...VIDEO_META('16:9', 4), ...shot('s3') } }),
+    node({ id: 'np-control', kind: 'character', categoryId: 'cast', title: L(locale, '水洼', 'Puddle'), status: 'success', result: { id: 'art-control', type: 'image', url: shotArt(6, '16:9', '#8da6a8|#d8c7a4'), createdAt: 1 }, meta: { referenceSheet: true } }),
     // 窄窗口第 ① 步用的同一批镜头（还没点过：「已定位」是全局的一项，① 不能跟着 ③ 一起标）。
     node({ id: 'np-narrow-1', title: L(locale, '纸船出发', 'Paper boat departs'), meta: { ...VIDEO_META('16:9', 4), ...shot('s1') } }),
     node({ id: 'np-narrow-2', title: L(locale, '越过落叶', 'Past the leaves'), meta: { ...VIDEO_META('16:9', 5), ...shot('s2') } }),
@@ -213,14 +214,21 @@ export function LabCanvasNode({ nodeId, width, flash = false }: { nodeId: string
   const hovered = useNodeExternalHighlightStore((state) => state.hoverNodeId === nodeId)
   if (!target) return null
   const size = resolveNodeVisualSize(width ? { ...target, size: { width, height: Math.round(width * 9 / 16) } } : target)
+  // A3 keeps the three shot nodes at their production minimum while the unaddressed
+  // reference node is intentionally a smaller 140px comparison tile. Scale only an
+  // explicitly sub-minimum request so the production BaseGenerationNode remains the
+  // rendered face and existing nodes keep their real dimensions.
+  const scale = width && width < size.width ? width / size.width : 1
   const highlight: ExternalNodeHighlight | null = flash ? 'flash' : hovered ? 'hover' : null
   return (
-    <div className="relative" style={{ width: size.width, height: size.height + 72, paddingTop: 72 }} data-lab-canvas-node={nodeId}>
-      <LabCanvasNodeHost width={size.width} height={size.height}>
-        <div className={cn('generation-canvas-react-flow__node-shell size-full', externalHighlightShellClass(highlight))} data-external-highlight={highlight ?? undefined}>
-          <BaseGenerationNode node={{ ...target, size: { width: size.width, height: size.height } }} selected={false} readOnly waitingMotion="reduced" />
-        </div>
-      </LabCanvasNodeHost>
+    <div className="relative" style={{ width: size.width * scale, height: (size.height + 72) * scale }} data-lab-canvas-node={nodeId}>
+      <div style={{ width: size.width, height: size.height + 72, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+        <LabCanvasNodeHost width={size.width} height={size.height}>
+          <div className={cn('generation-canvas-react-flow__node-shell size-full', externalHighlightShellClass(highlight))} data-external-highlight={highlight ?? undefined}>
+            <BaseGenerationNode node={{ ...target, size: { width: size.width, height: size.height } }} selected={false} readOnly waitingMotion="reduced" />
+          </div>
+        </LabCanvasNodeHost>
+      </div>
     </div>
   )
 }

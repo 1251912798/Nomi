@@ -61,21 +61,23 @@ function LinkBoard({ locale, located = false }: { locale: Locale; located?: bool
     <div className="flex flex-col gap-4">
       <div className="flex items-stretch gap-0">
         <LabCanvasBackdrop className="flex-1 rounded-r-none" style={{ height: 300 }}>
-          <div className="absolute left-8 top-8 flex gap-6">
-            {s.drafts.map((subject, index) => <LabCanvasNode key={subject.nodeId} nodeId={subject.nodeId} width={180} flash={located && index === 1} />)}
+          <div className="absolute left-0 top-8 flex gap-0">
+            {s.drafts.map((subject, index) => <LabCanvasNode key={subject.nodeId} nodeId={subject.nodeId} width={240} flash={located && index === 1} />)}
+            <LabCanvasNode nodeId="np-control" width={140} />
           </div>
         </LabCanvasBackdrop>
-        <LabChatPanel text={SENTENCE(locale)} className="rounded-l-none border-l-0 shadow-none">
+        <LabChatPanel text={SENTENCE(locale)} width={328} className="rounded-l-none border-l-0 shadow-none">
           <div data-lab-hover="p1"><NodePointerGroup subjects={s.drafts} /></div>
         </LabChatPanel>
       </div>
       <div className="flex items-stretch gap-0">
         <LabCanvasBackdrop className="flex-1 rounded-r-none" style={{ height: 300 }}>
-          <div className="absolute left-8 top-8 flex gap-6">
-            {s.drafts.map((subject) => <LabCanvasNode key={subject.nodeId} nodeId={subject.nodeId} width={180} />)}
+          <div className="absolute left-0 top-8 flex gap-0">
+            {s.drafts.map((subject, index) => <LabCanvasNode key={subject.nodeId} nodeId={subject.nodeId} width={240} flash={located && index === 1} />)}
+            <LabCanvasNode nodeId="np-control" width={140} />
           </div>
         </LabCanvasBackdrop>
-        <LabChatPanel text={SENTENCE(locale)} className="rounded-l-none border-l-0 shadow-none">
+        <LabChatPanel text={SENTENCE(locale)} width={328} className="rounded-l-none border-l-0 shadow-none">
           <div data-lab-hover="p2"><NodePointerGroup subjects={s.drafts} density="row" /></div>
         </LabChatPanel>
       </div>

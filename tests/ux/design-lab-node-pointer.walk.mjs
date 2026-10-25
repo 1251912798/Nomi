@@ -196,10 +196,14 @@ async function expectNodePointerState(page, state, record) {
       }
       case 'np-hover':
       case 'np-hover-en-dark': {
+        for (const id of ['np-draft-1', 'np-draft-2', 'np-draft-3', 'np-control']) {
+          if (await page.locator(`[data-lab-canvas-node="${id}"]`).count() !== 2) record(`${state.id} ${A.canvasHighlight}: 上下两半都应有 ${id} 画布节点外壳`)
+        }
         if (!(await page.locator(`[data-lab-hover="p1"] ${pointer('np-draft-2')}[data-node-pointer-hot="true"]`).count())) record(`${state.id} ${A.hoverLink}: 悬停的 P1 没有亮`)
         if (!(await page.locator(`[data-lab-hover="p2"] ${pointer('np-draft-2')}[data-node-pointer-hot="true"]`).count())) record(`${state.id} ${A.row}: 悬停的 P2 行没有亮`)
         const lit = await page.locator('[data-external-highlight]').evaluateAll((list) => list.map((el) => [el.closest('[data-lab-canvas-node]')?.getAttribute('data-lab-canvas-node'), el.getAttribute('data-external-highlight')]))
         if (!lit.some(([id, kind]) => id === 'np-draft-2' && kind === 'hover') || lit.some(([id]) => id !== 'np-draft-2')) record(`${state.id} ${A.canvasHighlight}: 画布上亮的不是镜 02 一个：${JSON.stringify(lit)}`)
+        if (await page.locator('[data-lab-canvas-node="np-control"] [data-external-highlight]').count()) record(`${state.id} ${A.canvasHighlight}: 对照节点 np-control 不应被悬停联动点亮`)
         const shadow = await page.locator('[data-lab-canvas-node="np-draft-2"] [data-external-highlight="hover"]').first().evaluate((el) => getComputedStyle(el).boxShadow)
         if (!shadow || shadow === 'none') record(`${state.id} ${A.canvasHighlight}: 悬停没有深色细线 + 阴影`)
         if (!(await page.locator('[data-node-pointer-hover-summary]').count())) record(`${state.id} ${A.hoverLink}: 组下方没显示被悬停那一镜的摘要`)
@@ -210,7 +214,13 @@ async function expectNodePointerState(page, state, record) {
         break
       }
       case 'np-located': {
-        if (!(await page.locator('[data-lab-canvas-node="np-draft-2"] [data-external-highlight="flash"]').count())) record(`${state.id} ${A.canvasHighlight}: 定位后的闪一下没画在外壳上`)
+        for (const id of ['np-draft-1', 'np-draft-2', 'np-draft-3', 'np-control']) {
+          if (await page.locator(`[data-lab-canvas-node="${id}"]`).count() !== 2) record(`${state.id} ${A.canvasHighlight}: 上下两半都应有 ${id} 画布节点外壳`)
+        }
+        if (await page.locator('[data-lab-canvas-node="np-draft-2"] [data-external-highlight="flash"]').count() !== 2) record(`${state.id} ${A.canvasHighlight}: 上下两半的镜 02 都应闪一下`)
+        for (const id of ['np-draft-1', 'np-draft-3', 'np-control']) {
+          if (await page.locator(`[data-lab-canvas-node="${id}"] [data-external-highlight="flash"]`).count()) record(`${state.id} ${A.canvasHighlight}: ${id} 不应闪一下`)
+        }
         if (await page.locator(`[data-lab-hover="p1"] ${pointer('np-draft-2')} [data-node-pointer-located]`).count() !== 1) record(`${state.id} ${A.located}: P1 那一项没标「已定位」`)
         await noAccentOutline(page, state, record)
         break
