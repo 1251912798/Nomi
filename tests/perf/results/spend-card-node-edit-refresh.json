@@ -1,10 +1,10 @@
 {
   "machine": "darwin arm64 Apple M5 x10 / 24GB",
-  "commit": "6ddd37892",
-  "head": "6ddd378929dedf256cdba6a664a58183d8c8c024",
+  "commit": "2df2d0ca2",
+  "head": "2df2d0ca23b5a5be0d8fede492c4570dbe271c48",
   "dirty": true,
-  "sourceTree": "b9cecc723113ded21090ec32f223d9e874e80694",
-  "date": "2026-10-24",
+  "sourceTree": "695d6e965f30d273002d567927165627a1d6ed06",
+  "date": "2026-10-25",
   "runs": 5,
   "results": [
     {
@@ -12,8 +12,8 @@
       "metrics": {
         "response": {
           "runs": 5,
-          "median": 23,
-          "p95": 23.1
+          "median": 22.7,
+          "p95": 23
         },
         "longTasks": {
           "runs": 5,
@@ -23,11 +23,11 @@
       },
       "samples": {
         "frameGapP95": [
-          15.8,
-          16.9,
-          17.6,
-          16.7,
-          16
+          18,
+          18.4,
+          17.3,
+          18.9,
+          16.8
         ],
         "longTasks": [
           0,
@@ -37,11 +37,11 @@
           0
         ],
         "response": [
-          23.1,
-          22.8,
-          22.9,
-          23.1,
-          23
+          22.7,
+          23,
+          20.9,
+          22.7,
+          22.8
         ],
         "mainRoundTripMax": [],
         "mediaRequests": []
