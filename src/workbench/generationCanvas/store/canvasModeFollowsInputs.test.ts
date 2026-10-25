@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGenerationCanvasStore } from './generationCanvasStore'
+import * as canvasConnectDerivations from './canvasConnectDerivations'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { applyArchetypeModeSwitch } from '../nodes/controls/archetypeMeta'
 import { archetypeForNode, resolveTargetModeForEdge, textModeToReturnTo } from '../agent/referenceEdgeCapability'
@@ -115,6 +116,19 @@ describe('canvas generation mode follows input writes', () => {
     useGenerationCanvasStore.getState().restoreSnapshot({ nodes: [], edges: [], groups: [] })
   })
 
+  it('skips input derivation for position-only writes and computes each changed state once', () => {
+    useGenerationCanvasStore.getState().restoreSnapshot({ nodes: [imageNode('target', 'edit')], edges: [], groups: [] })
+    const liveInputSpy = vi.spyOn(canvasConnectDerivations, 'liveInputNodeIds')
+    liveInputSpy.mockClear()
+
+    useGenerationCanvasStore.getState().moveNode('target', { x: 42, y: 18 })
+    expect(liveInputSpy).not.toHaveBeenCalled()
+
+    useGenerationCanvasStore.getState().updateNode('target', { meta: { archetype: { id: 'nano-banana', modeId: 'edit' }, referenceImageUrls: ['nomi-local://ref.png'] } })
+    expect(liveInputSpy.mock.calls.length).toBeLessThanOrEqual(2)
+    liveInputSpy.mockRestore()
+  })
+
   it('reverts immediately when the last reference edge is disconnected while the composer is absent', () => {
     useGenerationCanvasStore.getState().restoreSnapshot({
       nodes: [sourceNode('source'), imageNode('target', 'edit')],
@@ -153,14 +167,14 @@ describe('canvas generation mode follows input writes', () => {
     expect(modeId('target')).toBe('t2i')
   })
 
-  it('does not touch a node that was already empty before an imported snapshot write', () => {
+  it('load convergence repairs a persisted node that is already empty', () => {
     useGenerationCanvasStore.getState().restoreSnapshot({
       nodes: [imageNode('target', 'edit')],
       edges: [],
       groups: [],
     })
 
-    expect(modeId('target')).toBe('edit')
+    expect(modeId('target')).toBe('t2i')
   })
 
   it('undoes the input and the derived mode together', () => {

@@ -1,0 +1,23 @@
+{
+  "id": "canvas-drag-20-nodes-600",
+  "feature": "600 个图片节点画布多选约 20 个节点一起拖动",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "I600",
+    "--scenarios",
+    "drag-nodes-20"
+  ],
+  "scale": "600 个图片节点 / 300 条边，多选其中 20 个左右",
+  "metrics": [
+    "frameGapP95",
+    "longTasks"
+  ],
+  "budget": 33,
+  "budgetStatus": "proposed",
+  "budgetBasis": "拖动帧间隔预算为 2 帧（33ms）；本轮新增 I600 以覆盖装载与大画布拖动的最坏节点规模。",
+  "measurement": {
+    "state": "pending",
+    "reason": "本轮登记新规模；需在门岗锁下用同一台机器背靠背量 origin/main 与本分支后写入结果收据。"
+  }
+}

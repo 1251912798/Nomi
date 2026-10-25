@@ -19,7 +19,8 @@
 import { archetypeForNode, isTextPromptEdge, referenceAssetKindForNode, resolveTargetModeForEdge, textModeToReturnTo } from '../agent/referenceEdgeCapability'
 import { applyArchetypeModeSwitch } from '../nodes/controls/archetypeMeta'
 import { currentArchetypeMode } from '../nodes/controls/archetypeMeta'
-import { resolveReferenceSlots } from '../runner/referenceSlots'
+import { listPlacementInputs } from '../nodes/controls/referenceList'
+import { referenceSlotStorage } from '../nodes/controls/archetypeMeta'
 import { findModelOptionByIdentifier, peekGenerationNodeModelOptions } from '../adapters/modelOptionsAdapter'
 import { isAspectInputEdgeMode } from '../nodes/aspectRatio'
 import { resolveRenderedControls } from '../nodes/nodeModelArchetype'
@@ -36,29 +37,80 @@ type ConnectDerivationStore = {
 
 type InputState = Pick<ConnectDerivationStore, 'nodes' | 'edges'>
 
-function hasLiveReferenceInput(store: InputState, target: GenerationCanvasNode): boolean {
-  const meta = (target.meta || {}) as Record<string, unknown>
-  const storyboardDesignId = typeof meta.storyboardDesignId === 'string' ? meta.storyboardDesignId : ''
-  const shotId = typeof meta.shotId === 'string' ? meta.shotId : ''
-  const hasPlannedStoryboardFirstFrame = Boolean(storyboardDesignId && shotId) && store.nodes.some((node) => {
-    const sourceMeta = (node.meta || {}) as Record<string, unknown>
-    return node.id !== target.id
-      && sourceMeta.storyboardKeyframe === true
-      && sourceMeta.storyboardDesignId === storyboardDesignId
-      && sourceMeta.shotId === shotId
-  })
-  const slots = resolveReferenceSlots(target, store.nodes, store.edges).some((slot) => slot.fills.length > 0)
-  const edge = store.edges.some((edge) => {
-      if (edge.target !== target.id) return false
-      const source = store.nodes.find((node) => node.id === edge.source)
-      return Boolean(source && referenceAssetKindForNode(source) && !isTextPromptEdge(source, target, edge.mode))
-    })
-  return hasPlannedStoryboardFirstFrame || slots || edge
+/** Fields read by liveInputNodeIds. Keep this list next to the skip check so a new input
+ * fact cannot silently bypass the subscription's drag fast path. */
+export const LIVE_INPUT_NODE_FIELDS = ['kind', 'meta', 'result'] as const
+
+function storyboardKey(meta: Record<string, unknown> | undefined): string {
+  const design = typeof meta?.storyboardDesignId === 'string' ? meta.storyboardDesignId : ''
+  const shot = typeof meta?.shotId === 'string' ? meta.shotId : ''
+  return design && shot ? `${design}\u0000${shot}` : ''
+}
+
+function hasNodeOwnedReferenceInput(node: GenerationCanvasNode): boolean {
+  const archetype = archetypeForNode(node)
+  if (!archetype) return false
+  const meta = (node.meta || {}) as Record<string, unknown>
+  const mode = currentArchetypeMode(archetype, meta)
+  if (mode.slots.some((slot) => ['first_frame', 'last_frame', 'image_ref'].includes(slot.kind))) {
+    const inputs = listPlacementInputs(meta, mode)
+    if (inputs.list.some((url) => !inputs.parked.has(url))) return true
+  }
+  for (const slot of mode.slots) {
+    if (['first_frame', 'last_frame', 'image_ref'].includes(slot.kind)) continue
+    const storage = referenceSlotStorage(slot)
+    if (!storage) continue
+    const value = meta[storage.metaKey]
+    if (storage.isArray
+      ? Array.isArray(value) && value.some((item) => typeof item === 'string' && item.trim())
+      : typeof value === 'string' && value.trim()) return true
+  }
+  return false
+}
+
+/** Compute all targets with any live input in one nodes+edges pass. */
+export function liveInputNodeIds(store: InputState): Set<string> {
+  const live = new Set<string>()
+  const nodesById = new Map(store.nodes.map((node) => [node.id, node]))
+  const plannedKeyframes = new Map<string, Set<string>>()
+  for (const node of store.nodes) {
+    const meta = (node.meta || {}) as Record<string, unknown>
+    if (meta.storyboardKeyframe === true) {
+      const key = storyboardKey(meta)
+      if (key) {
+        const ids = plannedKeyframes.get(key) ?? new Set<string>()
+        ids.add(node.id)
+        plannedKeyframes.set(key, ids)
+      }
+    }
+  }
+  for (const node of store.nodes) {
+    const meta = (node.meta || {}) as Record<string, unknown>
+    const keyframeIds = plannedKeyframes.get(storyboardKey(meta))
+    if (hasNodeOwnedReferenceInput(node) || Boolean(keyframeIds && [...keyframeIds].some((id) => id !== node.id))) live.add(node.id)
+  }
+  for (const edge of store.edges) {
+    const target = nodesById.get(edge.target)
+    const source = nodesById.get(edge.source)
+    if (target && source && referenceAssetKindForNode(source) && !isTextPromptEdge(source, target, edge.mode)) live.add(target.id)
+  }
+  return live
+}
+
+/** The subscription can skip deriving both sets when only positions/other fields changed. */
+export function inputDerivationFieldsChanged(before: readonly GenerationCanvasNode[], after: readonly GenerationCanvasNode[]): boolean {
+  if (before.length !== after.length) return true
+  for (let index = 0; index < before.length; index += 1) {
+    const previous = before[index]
+    const next = after[index]
+    if (previous.id !== next.id) return true
+    for (const field of LIVE_INPUT_NODE_FIELDS) if (previous[field] !== next[field]) return true
+  }
+  return false
 }
 
 export function targetHasLiveReferenceInput(store: InputState, targetNodeId: string): boolean {
-  const target = store.nodes.find((node) => node.id === targetNodeId)
-  return target ? hasLiveReferenceInput(store, target) : false
+  return liveInputNodeIds(store).has(targetNodeId)
 }
 
 /** 连线手势的唯一升格写口：边已经建好后，按这条边的语义切到能消费它的模式。 */
@@ -83,13 +135,13 @@ function promoteTargetMode(store: ConnectDerivationStore, sourceNodeId: string, 
 export function revertTargetModeForEmptyInputs(
   store: ConnectDerivationStore,
   targetNodeId: string,
+  hasAnyInput = false,
 ): void {
   const target = store.nodes.find((node) => node.id === targetNodeId)
   if (!target) return
   const archetype = archetypeForNode(target)
   if (!archetype) return
   const activeMode = currentArchetypeMode(archetype, (target.meta || {}) as Record<string, unknown>)
-  const hasAnyInput = hasLiveReferenceInput(store, target)
   const nextModeId = textModeToReturnTo(archetype, activeMode, hasAnyInput)
   if (!nextModeId || nextModeId === activeMode.id) return
   store.updateNode(
@@ -97,6 +149,18 @@ export function revertTargetModeForEmptyInputs(
     { meta: applyArchetypeModeSwitch((target.meta || {}) as Record<string, unknown>, archetype, nextModeId) },
     { history: false },
   )
+}
+
+/** Load-time state convergence for snapshots and event tails; it deliberately does not push undo. */
+export function convergeStuckInputModes(store: ConnectDerivationStore): void {
+  const live = liveInputNodeIds(store)
+  for (const node of store.nodes) {
+    if (live.has(node.id)) continue
+    const archetype = archetypeForNode(node)
+    const activeMode = archetype ? currentArchetypeMode(archetype, (node.meta || {}) as Record<string, unknown>) : null
+    if (activeMode?.slots.some((slot) => slot.kind === 'first_frame' || slot.kind === 'last_frame')) continue
+    revertTargetModeForEmptyInputs(store, node.id, false)
+  }
 }
 
 /**

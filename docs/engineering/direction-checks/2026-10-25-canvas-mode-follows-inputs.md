@@ -74,3 +74,20 @@ React、ComfyUI、Blender 都提供通用节点/状态操作，但“参考边�
 用户原话：「#1263 和 #1333 都按推荐 A 做」。
 
 本轮命中自写登记 `canvas-undo-journal-write-boundary`（under-review）。为什么现在换不了现成方案：这里的回放不是普通撤销栈，而是 Nomi 事件日志前缀重放后，还要按领域规则把已付费的生成结局叠回；Immer patches / zundo 不能表达这条“用户编辑回退、付费事实保留”的组合约束。本轮只给现有整写边界加一个极小的回放标记，避免模式订阅在权威快照恢复时二次改写，不改变撤销日志机制。哪天换：该登记的评估日 2026-11-06；若评估决定把画布与时间轴统一到可表达落地叠回的事件日志，再一并迁移并删除这个标记。
+
+## 第 6 轮停点：项目未打开时的外部写入与装载收敛
+
+### 查到的
+
+- 项目不在前台时，外部 Agent 的画布写入走 `electron/capabilityCore/gateway.ts` 的 `createDiskGateway`；`createHybridGateway` 的写也委托它，`rpcServer.ts` 的 `makeGateway` 按渲染层可达性选择网关。这条写不经过渲染层 store，写后订阅看不到“有输入 → 没输入”。
+- main 的旧 `useRevertToTextMode` 在 `src/workbench/generationCanvas/nodes/NodeParameterControls.tsx:286` 被调用，定义在 `src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts:127`，按状态收回文生；本分支已删除它。旧数据和离线写入的卡住节点必须由装载收敛接住。
+
+### 代决
+
+采用 A：会话中的订阅只按 live-to-empty 转变收回文生；`load` 和 `load-tail` 各在 `set` 之后按同一 `liveInputNodeIds` 状态判据收敛一次。此收敛使用 `history:false`，不产生撤销记录；不按意图、档案或模型开特例。
+
+### 本轮停点
+
+- 核不上 main 旧 hook 按状态判、本分支已删：停。
+- 装载收敛只能靠意图、档案或模型特例才绿：停。
+- 装载收敛和尾巴重放先后保不住：停。

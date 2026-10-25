@@ -26,7 +26,7 @@ import { createCanvasDocumentActions, isCanvasHistoryReplay } from './canvasDocu
 import { reconcileTimelineForDeletedNodes } from './canvasTimelineBridge'
 import { appendAdmittedEdges, reportSkippedEdges, type AppendedEdges } from './canvasEdgeWrite'
 import { assertProductionCanvasProjectIdentity, emitProductionCanvasSignal } from '../../production/productionCanvasSignals'
-import { revertTargetModeForEmptyInputs, targetHasLiveReferenceInput } from './canvasConnectDerivations'
+import { inputDerivationFieldsChanged, liveInputNodeIds, revertTargetModeForEmptyInputs } from './canvasConnectDerivations'
 
 export { __resetCanvasUndoJournalForTests as __resetGenerationCanvasHistoryForTests } from '../events/canvasUndoJournal'
 
@@ -228,17 +228,16 @@ export const useGenerationCanvasStore = create<GenerationCanvasState>()(subscrib
 // undo and redo even when no generation composer is mounted.
 let reconcilingInputModes = false
 useGenerationCanvasStore.subscribe((state, previous) => {
-  if (reconcilingInputModes || isCanvasHistoryReplay() || (state.nodes === previous.nodes && state.edges === previous.edges)) return
+  if (reconcilingInputModes || isCanvasHistoryReplay() || state.edges === previous.edges && !inputDerivationFieldsChanged(previous.nodes, state.nodes)) return
   reconcilingInputModes = true
   try {
+    const beforeLive = liveInputNodeIds(previous)
+    const afterLive = liveInputNodeIds(state)
     for (const node of state.nodes) {
       // Reconcile only the transition that removes the final input. A node that
       // was already empty is caller-authored state (imports and planned work
       // included) and must not be rewritten by this subscription.
-      const before = previous.nodes.find((candidate) => candidate.id === node.id)
-      if (!before || !targetHasLiveReferenceInput(previous, before.id)) continue
-      if (targetHasLiveReferenceInput(state, node.id)) continue
-      revertTargetModeForEmptyInputs(state, node.id)
+      if (beforeLive.has(node.id) && !afterLive.has(node.id)) revertTargetModeForEmptyInputs(state, node.id, false)
     }
   } finally {
     reconcilingInputModes = false
