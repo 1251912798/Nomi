@@ -8,9 +8,8 @@ import {
   APPROVAL_CARD, CANVAS_PANEL, COMPOSER, INTERVENTION_CONFIRM,
   openCanvas, readProject, recorded, sendCanvas, createRuntimeWalk,
 } from './agent-runtime-walk-support.mjs'
-import { openRailDrawer } from './_shell.mjs'
+import { openRailDrawer, openSettings } from './_shell.mjs'
 import { repoRoot } from './_launchApp.mjs'
-import { uiText } from './full-walk/invariants.mjs'
 
 const ASK_ZH = '用这张参考图生成一张海边纸船的图。'
 const ASK_EN = 'Use the selected reference image to make a paper boat by the sea.'
@@ -102,10 +101,9 @@ try {
   // 关闭这一次出价后切换语言，再用同一真实素材跑一遍，留下英文拒绝截图。
   const card = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="spend"]`)
   await card.locator('[data-v4-control="slot-dismiss"]').click().catch(() => {})
-  await clickOrFail(win.getByRole('button', { name: uiText('zh-CN', 'settings.general.screenshotOpenSettings') }).first(), '设置入口')
-  await clickOrFail(win.locator('[data-settings-tab-id="general"]'), '打开通用设置')
-  await clickOrFail(win.locator('[data-settings-locale="en"]'), '切换 English')
-  await clickOrFail(win.locator('[data-settings-close]'), '关闭设置')
+  const settings = await openSettings(win, { tab: 'general', label: '设置入口' })
+  await clickOrFail(settings.locator('[data-settings-locale="en"]'), '切换 English')
+  await clickOrFail(settings.locator('[data-settings-close]'), '关闭设置')
   await expect(win.locator(`${CANVAS_PANEL} ${COMPOSER}`)).toBeVisible()
   await runRefusedLeg({ win, projectId, reference, locale: 'en', planId: PLAN_EN, generateId: GENERATE_EN, ask: ASK_EN, screenshotName: 'reference-upload-scope-refused-en' })
   walk.report.verified = ['app-agent-real-multipart-upload-held-by-release', 'user-shot-edit-during-upload-refused', 'zh-visible-refusal-screenshot', 'en-visible-refusal-screenshot']
