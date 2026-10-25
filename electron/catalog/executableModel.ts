@@ -1,11 +1,13 @@
 // 可执行模型解析（vendor 启用 + 模型启用 + key 解密）——从 runtime.ts 下沉（R12 净减，
 // 依赖全在 catalog 域）；runtime re-export 保住 textTaskRunner/taskResultQuery 既有 import 面。
-import { readCatalog } from "./catalogStore";
+import { listModelCatalogModels, readCatalog } from "./catalogStore";
 import { apiKeyDecryptStatus, decryptApiKeyRecord, decryptCustomConfigWithLegacy } from "./secrets";
-import { selectExecutableModel, type BillingModelKind } from "./types";
+import { billingKindForTaskKind, selectExecutableModel, type BillingModelKind, type ProfileKind } from "./types";
 import type { Model, Vendor } from "./types";
 import { catalogModelAvailability, createCatalogAvailability } from "./catalogModelAvailability";
 import { orderByVendorPreference } from "../shared/contracts/vendorPreference";
+import { rowServesMode, type PublishedExecution } from "../shared/modelPublication";
+import type { ModelAvailability } from "../shared/modelAvailability";
 
 export function findExecutableModel(
   vendorKey: string,
@@ -78,37 +80,60 @@ export function findExecutableModelForTask(
 }
 
 
+export type ExecutableModel = { vendor: Vendor; model: Model; apiKey: string; customConfig: Record<string, string> };
+
 /**
- * 在**全部已启用供应商**里解出一行某类可执行模型。
+ * 「哪些模型此刻能跑这个**模式**」的唯一答案（2026-10-19，拆解转写腿根因修复）。
  *
- * 为什么要有它（2026-09-17，T-RL-08）：视频拆解的转写腿原来写的是
- * `findExecutableModel(brain.vendor, "", "audio")`——只在**文本大脑那一家**里找 audio 模型。
- * 大脑是 Moonshot 时它当然找不到，于是用户拿到「没有可用的转写模型」，
- * 哪怕 APIMart / 火山语音的转写模型就在隔壁启用着。把「谁来做转写」和「谁来做文本」
- * 绑在一起，本来就是一个没人声明过的耦合。
+ * 为什么必须按模式问、而不是按 kind 问：audio 这个 kind 里有配音、音乐、音效、转写四种完全不同的事。
+ * 旧的 `findExecutableModelAnyVendor("audio")` 只问 kind——目录序里第一个能用的 audio 行是 Suno / 某个 TTS 时，
+ * 拆解的转写腿就拿它去发转写请求（没有转写 mapping → 落到默认 Whisper 路径 → 供应商 4xx）。
+ * 同一时刻渲染层的转写 chip 走 `useModelOptionsState('audio','transcribe')`，按模式问，于是「哪些模型能转写」
+ * 有两个答案：chip 说一个，引擎跑另一个。
  *
- * 顺序按供应商偏好（#682 的那份全局顺序）——挑哪一家是用户已经表达过的偏好，
- * 不在这里另发明一套排序。偏好里没有的排在后面，彼此保持目录里的原始顺序。
+ * 现在两边读**同一份投影**（`listModelCatalogModels`，渲染层经 IPC 拿到的就是它）、过**同一条判据**
+ * （`rowServesMode`，渲染层 `optionsFromRows` 也调它）。返回顺序按供应商偏好（#682 那份全局顺序）。
+ */
+export function modeCandidates(
+  mode: ProfileKind,
+  orderedVendorKeys: readonly string[] = [],
+): ReadonlyArray<Model & PublishedExecution & { availability: ModelAvailability }> {
+  const rows = listModelCatalogModels({ kind: billingKindForTaskKind(mode), enabled: true }).filter((row) => rowServesMode(row, mode));
+  return orderByVendorPreference(rows, orderedVendorKeys, (item) => item.vendorKey);
+}
+
+/**
+ * 按模式解出一行可执行模型（自动挑）。`accept` 是调用方在同一份候选上再收窄一步（例：「改用云端重试」排除本机引擎）。
  *
  * 返回的 vendor/model **必须**能被 `findExecutableModel` 原样解出来：报价卡上的那一行
  * 和 runTask 真会扣费的那一行是同一行，靠的就是两边走同一个解析器。
  */
-export function findExecutableModelAnyVendor(
-  kind: BillingModelKind,
-  orderedVendorKeys: readonly string[] = [],
-): { vendor: Vendor; model: Model; apiKey: string; customConfig: Record<string, string> } | null {
-  const state = readCatalog();
-  const enabled = new Set(state.vendors.filter((vendor) => vendor.enabled).map((vendor) => vendor.key));
-  const availability = createCatalogAvailability(state);
-  const candidates = state.models.filter((model) =>
-    model.kind === kind && enabled.has(model.vendorKey) && availability.of(model).usable);
-  for (const model of orderByVendorPreference(candidates, orderedVendorKeys, (item) => item.vendorKey)) {
+export function findExecutableModelForMode(
+  mode: ProfileKind,
+  options: { orderedVendorKeys?: readonly string[]; accept?: (model: Model) => boolean } = {},
+): ExecutableModel | null {
+  for (const model of modeCandidates(mode, options.orderedVendorKeys)) {
+    if (options.accept && !options.accept(model)) continue;
     try {
-      // 走同一个解析器：key 解不开 / 未发布这类问题在这里就被挡掉，不会把一行解不出来的模型报给用户。
-      return findExecutableModel(model.vendorKey, model.modelKey, kind);
+      // 走同一个解析器：key 解不开这类问题在这里就被挡掉，不会把一行解不出来的模型报给用户。
+      return findExecutableModel(model.vendorKey, model.modelKey, billingKindForTaskKind(mode));
     } catch {
       continue;
     }
   }
   return null;
+}
+
+/**
+ * 显式点名一行模型跑某个模式：能跑就解出来，不能跑就**抛一句说得出原因的话**（不悄悄换别家）。
+ * 判据与 `modeCandidates` 同一条：先过 `findExecutableModel`（启用 / 发布 / 钥匙三态各有原话），再问它发布了这个模式没有。
+ */
+export function findExecutableModelInMode(vendorKey: string, modelKey: string, mode: ProfileKind): ExecutableModel {
+  const resolved = findExecutableModel(vendorKey, modelKey, billingKindForTaskKind(mode));
+  const row = listModelCatalogModels({ kind: billingKindForTaskKind(mode), enabled: true })
+    .find((item) => item.vendorKey === resolved.vendor.key && item.modelKey === resolved.model.modelKey);
+  if (!row || !rowServesMode(row, mode)) {
+    throw new Error(`Model does not serve ${mode}: ${modelKey}（published=${(row?.publishedModes ?? []).join("/") || "none"}）`);
+  }
+  return resolved;
 }

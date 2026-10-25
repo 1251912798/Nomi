@@ -45,8 +45,9 @@ const CONFIRM = FIXTURE || process.env.NOMI_PAID_CONFIRM === '1'
 const ffmpeg = createRequire(import.meta.url)('@ffmpeg-installer/ffmpeg').path
 
 const CASES = [
-  { id: 'talk-mixed', asset: 'speech-zh-mixed-hevc', start: 0, seconds: 40, audio: true, reference: (file) => fs.readFileSync(file.replace(/\.mov$/, '.txt'), 'utf8') },
-  { id: 'screenrec-zh', asset: 'speech-zh-only-hevc', start: 120, seconds: 40, audio: true },
+  // speech: true = 这段有人说话，对白列整列空就是不达标（2026-10-19 之前空对白被当成「没给参考稿」静默放过）。
+  { id: 'talk-mixed', asset: 'speech-zh-mixed-hevc', start: 0, seconds: 40, audio: true, speech: true, reference: (file) => fs.readFileSync(file.replace(/\.mov$/, '.txt'), 'utf8') },
+  { id: 'screenrec-zh', asset: 'speech-zh-only-hevc', start: 120, seconds: 40, audio: true, speech: true },
   { id: 'follow-hand', asset: 'video-canvas-follow-hand-1080p15', start: 0, seconds: 15, audio: false },
   { id: 'ai-shot', asset: 'video-ai-shot-640x360', start: 0, seconds: 10, audio: false },
 ].filter((item) => !ONLY || ONLY.split(',').includes(item.id))
@@ -80,7 +81,17 @@ if (FIXTURE) {
   const row = (readRealCatalog().models ?? []).find((candidate) => candidate.kind === 'text' && candidate.enabled && `${candidate.vendorKey}/${candidate.modelKey}` === VISION_ARG)
   if (!row) throw new Error(`目录里没有启用的文本模型 ${VISION_ARG}`)
   model = { vendorKey: row.vendorKey, modelKey: row.modelKey }
-  paid = await openPaidWalk('evals/deconstruct/run.mjs', 'deconstruct-eval', [model], { buildMarkers: [uiText('zh-CN', 'shotTable.node.idleHint')] })
+  // 转写腿显式点名的模型也要进授权名单：付费走查只装、只放行点名的模型（其余生成模型一律停用），
+  // 2026-10-19 之前只授权了读图模型——转写模型在隔离副本里全被停掉，于是每次都是「没有可用的转写模型」，
+  // 那不是产品的结论，是量具自己的盲区。不点名 = 隔离副本里没有任何转写模型可用（对白会如实报「没有可用的转写模型」并判不达标）。
+  const authorized = [model]
+  if (TRANSCRIBE_ARG) {
+    const [vendorKey, ...rest] = TRANSCRIBE_ARG.split('/')
+    const transcribeRow = (readRealCatalog().models ?? []).find((candidate) => candidate.kind === 'audio' && candidate.enabled && candidate.vendorKey === vendorKey && candidate.modelKey === rest.join('/'))
+    if (!transcribeRow) throw new Error(`目录里没有启用的音频模型 ${TRANSCRIBE_ARG}`)
+    authorized.push({ vendorKey: transcribeRow.vendorKey, modelKey: transcribeRow.modelKey })
+  }
+  paid = await openPaidWalk('evals/deconstruct/run.mjs', 'deconstruct-eval', authorized, { buildMarkers: [uiText('zh-CN', 'shotTable.node.idleHint'), 'deconstruct.transcriptUntimed'] })
   walk = paid.walk
 }
 
@@ -101,7 +112,8 @@ try {
     process.getBuiltinModule('node:diagnostics_channel').subscribe('undici:request:create', ({ request }) => {
       if (request?.method !== 'POST') return
       const target = String(request.path ?? '')
-      if (/\/audio\/transcriptions/.test(target)) counts.transcribe += 1
+      // 转写端点两种形状：OpenAI 兼容（/audio/transcriptions）与 ElevenLabs（/v1/speech-to-text）。
+      if (/\/audio\/transcriptions|\/speech-to-text/.test(target)) counts.transcribe += 1
       else if (/\/chat\/completions|\/v1\/messages|generateContent/.test(target)) counts.vision += 1
     })
   })
@@ -143,7 +155,7 @@ try {
     spent += visionCalls
     const metrics = scoreDeconstruction(result, { reference: clip.reference, visionCalls: FIXTURE ? walk.fixture.requests.length - (report.fixtureSeen ?? 0) : visionCalls, seconds })
     if (FIXTURE) report.fixtureSeen = walk.fixture.requests.length
-    const misses = judgeCase(metrics)
+    const misses = judgeCase(metrics, { expectDialogue: Boolean(item.speech) && !FIXTURE })
     const resultMeta = { ...result }
     delete resultMeta.shots
     report.cases.push({ id: item.id, resultMeta, seconds: Math.round(seconds), transcribeCalls: after.transcribe - before.transcribe, metrics, misses, sample: result.shots.slice(0, 3).map((shot) => ({ shotSize: shot.shotSize, visual: shot.visual, motionPrompt: shot.motionPrompt, dialogue: shot.dialogue })) })

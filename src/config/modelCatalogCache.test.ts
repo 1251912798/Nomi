@@ -265,3 +265,32 @@ describe('a failed catalog read never throws away the last good list', () => {
     expect(optionsAfterReadFailure([], 'audio')).toEqual([])
   })
 })
+
+// 2026-10-19 拆解转写腿根因：「哪些模型能跑某个模式」原来有两个答案——这里（chip 的选项）按模式问，
+// 主进程的转写腿按 kind 问（于是 Suno / TTS 也被拿去转写）。现在两边过同一条 `rowServesMode`；
+// 这条钉住：同一份投影进来，下拉列出的就是主进程会挑的那一组，一行不多一行不少。
+describe('模式级候选：下拉与主进程同一条判据', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    notifyModelOptionsRefresh()
+    mocks.listVendors.mockResolvedValue([{ key: 'relay', name: 'Relay', enabled: true, authType: 'none' }])
+  })
+
+  it('audio 桶里只有发布了 transcribe 且可用的行进转写下拉', async () => {
+    const { rowServesMode } = await import('../../electron/shared/modelPublication')
+    const audio = (modelKey: string, publishedModes: string[], usable = true) => ({
+      ...row(modelKey, publishedModes), kind: 'audio' as const,
+      availability: usable ? { usable: true as const } : { usable: false as const, reason: 'credential_missing' as const },
+    })
+    const rows = [
+      audio('tts-and-stt', ['text_to_audio', 'transcribe']),
+      audio('music-only', ['text_to_audio']),
+      audio('stt-no-key', ['transcribe'], false),
+      audio('stt-local', ['transcribe']),
+    ]
+    mocks.listModels.mockResolvedValue(rows)
+    const listed = (await preloadModelOptions('audio', 'transcribe')).map((option) => option.value)
+    expect(listed).toEqual(['tts-and-stt', 'stt-local'])
+    expect(listed).toEqual(rows.filter((item) => rowServesMode(item, 'transcribe')).map((item) => item.modelKey))
+  })
+})
