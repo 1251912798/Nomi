@@ -9,6 +9,7 @@
 // （NodePointerCellAccessory）：标题行要按它露没露出来让位，判据只有一份。
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '../../../utils/cn'
 import { NodePointer, NodePointerGroup, type NodePointerCellAccessory, type NodePointerSubject } from '../pointer/NodePointer'
 import { IconAlertTriangle, IconX } from './AgentPanelV4Icons'
 import type { SpendCardNotice, SpendCardPointer } from './agentPanelSpendCard'
@@ -99,11 +100,12 @@ export function AgentPanelV4SpendCardBody({ pointers, single, summary, notices, 
   return (
     <div className="flex min-w-0 flex-col gap-2" data-v4-block="spend-body">
       {single && subjects[0] ? (
-        <NodePointer subject={subjects[0]} layout="side" narrow={narrow} />
+        <NodePointer subject={subjects[0]} layout="side" narrow={narrow} suppressAwaitingConfirmation />
       ) : (
         <NodePointerGroup
           subjects={subjects}
           narrow={narrow}
+          suppressAwaitingConfirmation
           {...(summary ? { idleSummary: summary } : {})}
           cellAccessory={(_subject, index) => exclusionAccessory(pointers[index], { busy, onExclude, onRestore })}
         />

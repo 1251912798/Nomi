@@ -4,8 +4,12 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const seen = vi.hoisted(() => ({ reveal: vi.fn(), modelLabelCalls: 0, catalogReady: true }))
+const seen = vi.hoisted(() => ({ reveal: vi.fn(), modelLabelCalls: 0, catalogReady: true, productionState: null as { phase: 'awaiting_confirmation' } | null }))
 vi.mock('./revealNodeFromChat', () => ({ revealNodeFromChat: seen.reveal, returnToChat: vi.fn() }))
+vi.mock('../../generationCanvas/nodes/productionShotCorner', async (original) => ({
+  ...await original<typeof import('../../generationCanvas/nodes/productionShotCorner')>(),
+  useProductionShotState: () => ({ runId: seen.productionState ? 'run-1' : null, projectId: seen.productionState ? 'project-1' : null, state: seen.productionState }),
+}))
 // 模型显示名读目录（异步）；这里换成同步桩（`catalogReady` 模拟「目录晚到」），顺便数一个指向元素渲染了几次（每渲染一次读一次）。
 vi.mock('../../generation/list/generationListModelLabels', () => ({
   useModelLabels: () => {
@@ -70,6 +74,7 @@ beforeEach(async () => {
   seen.reveal.mockReset()
   seen.modelLabelCalls = 0
   seen.catalogReady = true
+  seen.productionState = null
   seed([video('n1'), video('n2'), video('tall', { meta: { modelKey: 'seedance-2', aspect_ratio: '9:16', duration: 5, resolution: '480p' } })])
   useNodeExternalHighlightStore.setState({ hoverNodeId: null, claims: [] })
 })
@@ -105,6 +110,12 @@ describe('NodePointer · one face read from the node', () => {
     expect(markup).toContain('host-outcome')
     expect(markup).toContain('text-nomi-danger-ink')
     expect(markup).not.toMatch(ACCENT_OUTLINE)
+  })
+
+  it('single-card waiting state does not repeat the card-level awaiting-confirmation label', () => {
+    seen.productionState = { phase: 'awaiting_confirmation' }
+    const markup = renderToStaticMarkup(<NodePointer subject={{ nodeId: 'n1' }} suppressAwaitingConfirmation />)
+    expect(markup).not.toContain('data-node-pointer-status')
   })
 })
 

@@ -21,7 +21,7 @@ import { flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   CARD_TITLE, EXCLUDE, RECEIPT_POINTERS, RESTORE,
   armCanvasBridges, canvasRunsOf, cardFacts, cardTitle, createPresenter, generateOnNode, nodeParams, offerFacts, pointerAway,
-  pointerFace, pointerOf, pressPrimary, primaryLabel, say, shotGestureReceipts, shotNodes, wireParams,
+  pointerOf, pressPrimary, primaryLabel, say, shotGestureReceipts, shotNodes, wireParams,
 } from './_spendCardWalk.mjs'
 import { CANVAS_PANEL, createRuntimeWalk, openCanvas, recorded } from './agent-runtime-walk-support.mjs'
 
@@ -41,8 +41,10 @@ function requestsByShot(walk, from, shots) {
 
 /** 卡上某个指向元素那一格里的「不生成 ×」/「恢复」（悬停那一镜的缩略图才露出来，人就是这么点的）。 */
 async function toggleExclusion(card, nodeId, kind, label) {
-  await pointerFace(card, nodeId).hover()
   const cell = card.locator('[data-node-pointer-cell]').filter({ has: card.page().locator(pointerOf(nodeId)) })
+  // 恢复按钮位于缩略图中央；先把鼠标放到同一格的边缘触发格子 hover，避免按钮出现后拦截
+  // 「悬停画面正中」的定位动作。真实用户先进入格子，再点中央按钮，规格不变。
+  await cell.hover({ position: { x: 4, y: 4 } })
   await clickOrFail(cell.locator(kind === 'exclude' ? EXCLUDE : RESTORE), label)
 }
 

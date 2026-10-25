@@ -84,7 +84,9 @@ const sentShots = (records, from) => records.slice(from).map((record) => /第 (\
 
 /** 画布上这一镜的占位此刻写着什么（点卡上它的指向元素，画布先把它带到眼前，再读）。 */
 async function placeholderOf(win, card, nodeId) {
-  await clickOrFail(pointerFace(card, nodeId), '点那一镜的指向元素，把画布带到它跟前')
+  // 被去掉的格子中央会常驻「恢复」按钮；点同一缩略图的边缘仍是同一个指向元素，
+  // 但不会让恢复按钮遮住定位手势。
+  await clickOrFail(pointerFace(card, nodeId), '点那一镜的指向元素，把画布带到它跟前', { position: { x: 4, y: 4 } })
   const marker = win.locator(`[data-production-shot-node="${nodeId}"]`).first()
   await expect(marker, '那一镜的占位在眼前').toBeVisible({ timeout: stationTimeout() })
   return marker.getAttribute('data-shot-placeholder-state')

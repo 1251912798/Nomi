@@ -178,7 +178,7 @@ function PointerLabel({ model, narrow, tailFrom = 0, reserveAccessory = false }:
 }
 
 /** 画面槽里的那一张脸。`thumb`（P2 的小缩略图）只留画面或等待面，状态交给行尾图标 / 边线。 */
-function PointerFaceArt({ model, size, located }: { model: PointerModel; size: 'card' | 'cell' | 'thumb'; located: boolean }): JSX.Element | null {
+function PointerFaceArt({ model, size, located, suppressAwaitingConfirmation = false }: { model: PointerModel; size: 'card' | 'cell' | 'thumb'; located: boolean; suppressAwaitingConfirmation?: boolean }): JSX.Element | null {
   const { t } = useTranslation()
   const face = model.face
   if (size === 'thumb') {
@@ -237,7 +237,7 @@ function PointerFaceArt({ model, size, located }: { model: PointerModel; size: '
         {/* 点过的那一项「已定位」压过制作小标。状态胶囊与节点图标合在缩略图中央；组里的小格只印和兄弟格不一样的那两种：排队中、还没生成（SpendCardQ1 板 ③⑤⑥）。
             「等你确认」不印——卡 / 那句话本身就在问，三格各印一遍是噪音（NodePointer 板 A2「全是草稿」只留圆托）；「已去掉，不生成」
             不印——付费卡上那一格淡下去、常驻「恢复」，再压一枚小标会和「恢复」挤在一起。单独一张照旧全印。 */}
-        {face.kind === 'production' && !located && (model.hostStatus || face.state.phase === 'queued' || face.state.phase === 'not_generated' || (size === 'card' && face.state.phase === 'awaiting_confirmation'))
+        {face.kind === 'production' && !located && (model.hostStatus || face.state.phase === 'queued' || face.state.phase === 'not_generated' || (!suppressAwaitingConfirmation && face.state.phase === 'awaiting_confirmation'))
           ? centerStatus(model.hostStatus ?? productionShotCornerText(t, face.state)?.text ?? '', productionShotCornerText(t, face.state)?.queued ? <IconClock size={11} stroke={1.8} aria-hidden="true" className="shrink-0" /> : undefined)
           : null}
       </>
@@ -290,9 +290,11 @@ export type NodePointerProps = {
   titleTail?: number
   /** 组格挂右上角小动作时，标题留出同一格的安全边。 */
   reserveAccessory?: boolean
+  /** 卡面已经在父级标题提问时，隐藏子指向元素的「等你确认」小标。 */
+  suppressAwaitingConfirmation?: boolean
 }
 
-export function NodePointer({ subject, density = 'card', frame = 'single', layout = 'auto', narrow = false, overflow, onHover, onTitle, titleTail, reserveAccessory = false }: NodePointerProps): JSX.Element {
+export function NodePointer({ subject, density = 'card', frame = 'single', layout = 'auto', narrow = false, overflow, onHover, onTitle, titleTail, reserveAccessory = false, suppressAwaitingConfirmation = false }: NodePointerProps): JSX.Element {
   const { t } = useTranslation()
   const model = usePointerModel(subject)
   // 绘制前报上去：组拿到名字就在同一帧里算好截法，不先画一帧「几格截成一样」再跳。
@@ -395,7 +397,7 @@ export function NodePointer({ subject, density = 'card', frame = 'single', layou
   )
   const art = overflow
     ? <span className="absolute inset-0 grid place-items-center bg-nomi-ink-05 text-body-sm font-semibold text-nomi-ink-80" data-node-pointer-more={overflow.hidden}>{t('nodePointer.more', { count: overflow.hidden })}</span>
-    : <PointerFaceArt model={model} size={frame === 'cell' ? 'cell' : 'card'} located={located} />
+    : <PointerFaceArt model={model} size={frame === 'cell' ? 'cell' : 'card'} located={located} suppressAwaitingConfirmation={suppressAwaitingConfirmation} />
   return (
     <button {...common} className={cn('flex w-full min-w-0 flex-col gap-1 rounded-nomi text-left text-caption', gone && 'cursor-default')}>
       <PointerLabel model={model} narrow={narrow} reserveAccessory={reserveAccessory} {...(titleTail ? { tailFrom: titleTail } : {})} />
@@ -483,7 +485,7 @@ function PointerCell({ pointer, accessory }: { pointer: React.ReactNode; accesso
 }
 
 /** 组指向：一次说多个镜头。card 一行三格（下方一行是被悬停那一镜的摘要）；chip 嵌在一句话里；row 是一列（不折）。 */
-export function NodePointerGroup({ subjects, density = 'card', narrow = false, max = 3, idleSummary, cellAccessory }: {
+export function NodePointerGroup({ subjects, density = 'card', narrow = false, max = 3, idleSummary, cellAccessory, suppressAwaitingConfirmation = false }: {
   subjects: readonly NodePointerSubject[]
   density?: NodePointerDensity
   narrow?: boolean
@@ -495,6 +497,8 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
   idleSummary?: string
   /** 只对 card：每一格标题行右端挂一个宿主给的小动作（见 NodePointerCellAccessory / PointerCell）。缺席或返回 null = 这一格不挂。 */
   cellAccessory?: (subject: NodePointerSubject, index: number) => NodePointerCellAccessory | null
+  /** 父级卡已经在标题行提问时，组格不重复显示等待确认小标。 */
+  suppressAwaitingConfirmation?: boolean
 }): JSX.Element {
   const { t } = useTranslation()
   const [expanded, setExpanded] = React.useState(false)
@@ -557,6 +561,7 @@ export function NodePointerGroup({ subjects, density = 'card', narrow = false, m
               onTitle={reporterFor(key)}
               titleTail={tails[index]}
               reserveAccessory={Boolean(accessory)}
+              suppressAwaitingConfirmation={suppressAwaitingConfirmation}
             />
           )
           return accessory
