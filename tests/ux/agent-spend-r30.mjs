@@ -27,7 +27,7 @@ import { DEFAULT_TIMEOUT_MS, clickOrFail, expect } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { FIXTURE_IMAGE_MODEL, FIXTURE_TEXT_MODEL_LABEL, FIXTURE_VENDOR } from './agent-runtime-fixture.mjs'
 import {
-  APPROVAL_CARD, CANVAS_PANEL, COMPOSER, INTERVENTION_CONFIRM, chooseAssistantModel, createRuntimeWalk,
+  APPROVAL_CARD, CANVAS_PANEL, COMPOSER, INTERVENTION_CONFIRM, chooseAssistantModel, closeSpendCard, createRuntimeWalk,
   openCanvas, readProject, sendCanvas,
 } from './agent-runtime-walk-support.mjs'
 import { SPEND_R30_CASES } from './agent-spend-r30-cases.mjs'
@@ -175,13 +175,22 @@ try {
         ?? (await win.locator(`${CARD} ${INTERVENTION_CONFIRM}`).first().innerText().catch(() => '')).replace(/⏎/g, '').trim()
       : ''
     // 这一句到底有没有**新**落下一份草稿。这是两个数唯一的判据——
-    // 卡是否在屏幕上不能当判据：草稿留在画布上不清，介入槽里那张卡从第一句起就一直在。
+    // 卡是否在屏幕上不能当判据：草稿留在画布上不清（每句量完会取消那张卡，但取消不删草稿）。
     // 阴性对照因此会在这里等满一整段时间才判「没长出新的」（不等就判 = 假绿）。
     const grew = await settled(before + 1)
     if (grew) expected = before + 1
     const said = await win.locator(`${CANVAS_PANEL} [data-v4-block="assistant"]`).last().innerText().catch(() => '')
     // 「写对」= 草稿真的落下来了（节点 + 卡 + 卡上那颗确认按钮），不是「模型说了它要生成」。
     const drafted = grew && cardVisible && confirmLabel.length > 0
+    // 量完就答这张卡（取消，一笔不发）。generate 的回合挂在卡上等用户（2026-09-22 裁决 A）；卡还挂着时用户打的字
+    // 不开新回合，而是作为「用户改口」回给那一次 generate（user_wrote，2026-10-01 起）——不答，下一句就量不到。
+    // 草稿照旧留在画布上（取消收回的只是这一次出价，计划留着），所以判据仍是节点增量。
+    if (cardVisible) {
+      await closeSpendCard(card, `${sample.id}：量完取消这张卡`)
+      await expect(card, `${sample.id}：取消之后卡退出介入槽`).toBeHidden({ timeout: stationTimeout({ operations: 2 }) })
+      await expect(win.locator(`${CANVAS_PANEL} ${COMPOSER}[data-mode="running"]`).first(), `${sample.id}：卡答了，这一回合收尾`)
+        .toBeHidden({ timeout: DEEPSEEK ? stationTimeout({ turns: 1 }) : stationTimeout({ operations: 2 }) })
+    }
     const toolCorrect = sample.expectsDraft ? drafted : !drafted
     const turnOk = sample.expectsDraft ? drafted : (!drafted && said.trim().length > 0)
     // 回合的最后一句话留在行里：两个数说「不对」的时候，得看得出是模型没写对、还是这条链根本没通。

@@ -91,9 +91,9 @@ describe('core smoke needs', () => {
     }
   })
 
-  // 「能真按下去的那条生成路」：声明了才开执行侧那三把钥匙。不声明 → 一把都不给（老场景一个字不变）；
+  // 「能真按下去的那条生成路」：声明了才开执行侧那三把钥匙（加画布那一台取回产物的放行）。不声明 → 一把都不给（老场景一个字不变）；
   // 声明 → 三把齐，且地址就是这台夹具（少一把主进程就装不出可提交的执行器，见 needs.mjs 里的理由）。
-  it('paidGenerationRoute hands the main process the three fixture keys, and nothing does without it', async () => {
+  it('paidGenerationRoute hands the main process the fixture keys and the trusted fixture origin, and nothing does without it', async () => {
     const plain = makeTempDir('nomi-core-smoke-needs-plain-')
     temps.push(plain)
     const textOnly = await provisionNeeds(['loopbackProvider', 'fixtureTextModel'], { repoRoot, settingsDir: plain })
@@ -112,6 +112,8 @@ describe('core smoke needs', () => {
       expect(paid.env.NOMI_E2E_PRODUCTION_FIXTURE).toBe('1')
       expect(paid.env.NOMI_E2E_FIXTURE_BASE_URL).toBe(paid.handles.loopbackProvider.baseURL)
       expect(String(paid.env.NOMI_E2E_FIXTURE_API_KEY || '')).not.toBe('')
+      // 卡上「生成」交给画布那一台：它从这台夹具取回产物，只按这个精确 origin 放行。
+      expect(paid.env.NOMI_LAB_TRUSTED_PRIVATE_ORIGINS).toBe(paid.handles.loopbackProvider.baseURL)
       // 目录里真的有那家内置档案（异步协议那条路），否则提交层拿不到 task id。
       const catalog = JSON.parse(fs.readFileSync(path.join(paidDir, 'model-catalog.json'), 'utf8'))
       expect(catalog.vendors.map((vendor) => vendor.key)).toContain(paid.handles.paidGenerationRoute.vendorKey)

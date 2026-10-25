@@ -16,6 +16,8 @@ import type { LaneSnapshot } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
 import { LANE_APPROVAL_NOTE_TYPE } from '../../../../electron/shared/agentLane/laneContracts'
 import { projectLaneSnapshot, type LaneModelFacts } from '../../../../electron/shared/agentLane/laneProjection'
+import { describeGenerateOutcome } from '../../../../electron/shared/agentLane/generateOutcomeReceipt'
+import { renderLaneToolNextAction, type LaneToolNextAction } from '../../../../electron/shared/agentLane/laneToolNextAction'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import type { V4FlowItem } from '../../../workbench/ai/v4/agentPanelV4Types'
 import type { ToolReceipt } from '../../../workbench/ai/v4/agentPanelV4Types'
@@ -159,6 +161,28 @@ export function laneDrivenReceipt(lane: LaneSnapshot, labels: LaneViewModelLabel
   const tool = model.items.find((item) => item.kind === 'tool')
   if (!tool || tool.kind !== 'tool') throw new Error('the lane snapshot projected no tool receipt')
   return tool.receipt
+}
+
+const GENERATE_CALL = 'call-generate-1'
+
+/**
+ * 付费卡自己关了之后对话流里那一行 `generate` 收据（SpendCardQ1 板 card.done，D2 Q4）：用户说做那几段 → 调 generate →
+ * 卡上每一镜都交给了画布、卡关了 → 结果落盘。结果正文与信封由宿主那两个渲染点现写（`describeGenerateOutcome` +
+ * `renderLaneToolNextAction`），信封带着这一次出价的 `operationId`——收据下那一句和组指向就凭它找到那几镜。
+ */
+export function laneSnapshotGenerateDone(operationId: string, shotIds: readonly string[], english = false): LaneSnapshot {
+  const outcome = describeGenerateOutcome({ closedBy: 'handed_to_canvas', generating: shotIds, failedBeforeSending: [], removed: [], takenByCanvas: [], undecided: [] })
+  const nextAction: LaneToolNextAction = { kind: outcome.kind, userSees: outcome.userSees, operationId }
+  const call: AssistantMessage = { ...assistantCall(), content: [{ type: 'toolCall', id: GENERATE_CALL, name: 'generate', arguments: { operationId } }] }
+  const asked = { ...userEntry, message: { ...userEntry.message, content: [{ type: 'text' as const, text: english ? 'Make the three paper-boat shots.' : '把纸船那三段做出来。' }] } }
+  return snapshot([
+    asked,
+    { id: 'e2', parentId: 'e1', seq: 2, timestamp: AT, type: 'message', message: call },
+    {
+      id: 'e3', parentId: 'e2', seq: 3, timestamp: AT + 400, type: 'message',
+      message: { role: 'toolResult', toolCallId: GENERATE_CALL, toolName: 'generate', content: [{ type: 'text', text: renderLaneToolNextAction(nextAction) }], details: { nextAction }, isError: false, timestamp: AT + 400 },
+    },
+  ])
 }
 
 /**

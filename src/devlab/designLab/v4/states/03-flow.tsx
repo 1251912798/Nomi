@@ -13,9 +13,9 @@ import { AgentBallFace } from '../../../../ui/app-shell/shell/AgentBallFace'
 import { TooltipProvider } from '../../../../design'
 import { dockStatusLabel } from '../../../../workbench/ai/v4/agentPanelV4DockStatus'
 import { useV4Labels } from '../../../../workbench/ai/v4/agentPanelV4Labels'
-import { useV4Fixtures, V4_LAB_SLOT_HANDLERS } from '../agentPanelV4LabKit'
+import { labViewModelLabels, useV4Fixtures, V4_LAB_SLOT_HANDLERS } from '../agentPanelV4LabKit'
+import { SpendCardPanel, SpendCardStage, type SpendLabScenario } from '../../spendCard/spendCardLabKit'
 import { laneFlowItems, laneSnapshotConnectionDropped } from '../laneDrivenFixtures'
-import { labViewModelLabels } from './01-vocabulary'
 import type { LabState } from '../../labScreen'
 
 function FlowCreation(): JSX.Element {
@@ -32,17 +32,18 @@ function FlowCreation(): JSX.Element {
   )
 }
 
+/**
+ * FlowGeneration 板的付费槽：D2 第③步起是新付费卡（一段：指向元素 + 一行只读摘要 + 「生成」），卡由生产钩子从画布节点现算，
+ * 夹具与付费卡那一屏同一份（`spendCard/spendCardLabKit.tsx`）；对话流仍是这一板自己的。
+ */
+const ONE_CLIP: SpendLabScenario = { shots: [{ shot: 1, duration: 4, offer: 'undecided' }] }
+
 function FlowGeneration(): JSX.Element {
   const fx = useV4Fixtures()
   return (
-    <AgentPanelV4Panel
-      slotHandlers={V4_LAB_SLOT_HANDLERS}
-      flow={fx.flows.generation}
-      slot={fx.slots.spendOneClip}
-      context={{ ...fx.context, used: 68000 }}
-      composer={{ mode: 'running' }}
-      height={860}
-    />
+    <SpendCardStage scenario={ONE_CLIP} bare>
+      <SpendCardPanel scenario={ONE_CLIP} flow={fx.flows.generation} contextUsed={68000} composer={{ mode: 'running' }} height={860} />
+    </SpendCardStage>
   )
 }
 
@@ -128,8 +129,8 @@ function PanelWithQuestion({ multi = false, waiting }: { multi?: boolean; waitin
 
 /**
  * 同一个取景、同一条对话，槽里换成**普通确认卡**（可撤销档）。
- * 付费卡那一格不在这里：它的正文是节点参数条那个真组件，要先给画布 store 播种，
- * 住在 `07-spend-params.tsx`（`v4-panel-spend-light`）。
+ * 付费卡那一格不在这里：它的卡体是指向元素（读画布节点），要先给画布 store 播种，
+ * 住自己的屏 `spend-card`（`spend-single`，SpendCardQ1 板）。
  *
  * 暗色**不另立一格**：暗色是翻真 token（`data-mantine-color-scheme`），由走查在同一格上翻。
  * 这里原来有过 `-dark` 两格，用的是面板的 `darkMode` prop——那个 prop 只换用户气泡的底色，
@@ -222,7 +223,7 @@ export const V4_FLOW_STATES: readonly LabState[] = [
   },
   {
     id: 'v4-flow-generation',
-    name: 'FlowGeneration · 四张参考图任务卡 + 付费槽',
+    name: 'FlowGeneration · 四张参考图任务卡 + 付费槽（新付费卡：指向元素 + 只读摘要）',
     source: '2026-09-06-agent-panel-v4.md · FlowGeneration 板',
     coverage: 'component-only',
     span: 2,

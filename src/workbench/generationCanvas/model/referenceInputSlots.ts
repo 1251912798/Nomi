@@ -1,14 +1,12 @@
-// 「这一次生成带哪些参考」在**一个节点上**长什么样——付费卡、画布落地共用的那一张对照表。
+// 「这一次生成带哪些参考」在**一个节点上**长什么样——宿主候选落到画布节点时用的那一张对照表。
 //
-// 参考在三处出现：宿主候选里钉住的那几条（`candidate.references`，真正发出去的）、付费卡那张框的参考槽、
-// 画布占位节点（连线 + 节点自己参考槽里的值）。三处说的必须是同一件事，所以「一条参考 ↔ 节点上的哪一格」
-// 只在这里写一次：
-//   · `placeReferenceInputs`：一组参考 → 摆进节点当前生成方式的参考槽（卡上摆宿主那几条、落地回写画布节点都用它）；
+// 参考在两处出现：宿主候选里钉住的那几条（`candidate.references`）、画布节点（连线 + 节点自己参考槽里的值）。
+// 两处说的必须是同一件事，所以「一条参考 ↔ 节点上的哪一格」只在这里写一次：
 //   · `nodeOwnReferenceInputs`：节点自己参考槽里此刻摆着的值（不含连线）→ 一组参考；
-//   · `edgeReferenceInputs`：连到节点的线此刻带来的参考（只收已经出了图的源）；
 //   · `planReferenceProjection`：宿主候选 → 画布节点要补的东西（画布上已有的图补一条真边，其余补进参考槽）。
 // 槽位解析一律走 `resolveReferenceSlots`（显示 / 生成 / 校验共用的那一个），不另写第二份。
-import type { SpendReferenceInput } from '../../../../electron/shared/contracts/pendingSpendConfirm'
+// （付费卡以前也在这里摆它自己那张框的参考槽；D2 之后卡不再有参数框，只读节点本身。）
+import type { GenerationReference } from '../../../../electron/shared/agentCapabilities/generationPlanSchemas'
 import type { GenerationCanvasEdge, GenerationCanvasEdgeMode, GenerationCanvasNode } from './generationCanvasTypes'
 import { resolveReferencePlacement, resolveReferenceSlots } from '../runner/referenceSlots'
 import { isImageUploadSlot, withReferenceList } from '../nodes/controls/referenceList'
@@ -17,7 +15,7 @@ import { readParameterReferenceSlots, parameterReferenceMetaPatch } from './para
 import { resultUrl } from '../runner/referenceUrl'
 import { archetypeForNode, edgeModeForReferenceRole, referenceDemandForRole, resolveModeForConnectedReferences } from '../agent/referenceEdgeCapability'
 
-export type ReferenceRole = NonNullable<Extract<SpendReferenceInput, { kind: unknown }>['role']>
+export type ReferenceRole = NonNullable<GenerationReference['role']>
 export type ReferenceInputKind = 'image' | 'video' | 'audio'
 /** 一条摆在节点上的参考（没有钉住身份的那一种：只有地址、媒体种类、用途）。 */
 export type NodeReferenceInput = Readonly<{ url: string; kind: ReferenceInputKind; role: ReferenceRole }>
@@ -36,7 +34,7 @@ const PAIRED_ROLES: readonly ReferenceRole[] = ['character', 'reference']
  * 一组参考 → 摆进节点**当前生成方式**的参考槽（先清空这些槽，再按序摆）。摆不下的（这个生成方式没有对口的槽）不摆。
  * 和 `resolveReferenceSlots` 互为逆向：摆完再解析，读回来的就是这一组。
  */
-export function placeReferenceInputs(node: GenerationCanvasNode, inputs: readonly SpendReferenceInput[]): GenerationCanvasNode {
+function placeReferenceInputs(node: GenerationCanvasNode, inputs: readonly CandidateReferenceInput[]): GenerationCanvasNode {
   const meta: Record<string, unknown> = { ...node.meta }
   const placement = resolveReferencePlacement(node, [], [])
   const slots = placement.slots
@@ -52,9 +50,8 @@ export function placeReferenceInputs(node: GenerationCanvasNode, inputs: readonl
   for (const parameter of parameters) Object.assign(meta, parameterReferenceMetaPatch(parameter, parameters, null))
   for (const input of inputs) {
     if (!input.url) continue
-    const reference = 'reference' in input ? input.reference : input
-    const kind = reference.kind ?? 'image'
-    const role = reference.role ?? 'reference'
+    const kind = input.kind
+    const role = input.role ?? 'reference'
     const slot = slots.find(slot => slot.accept.includes(kind) && referenceRoleOfSlot(slot.slotKind, slot.numbered) === role)
       ?? slots.find(slot => slot.accept.includes(kind) && PAIRED_ROLES.includes(role) && PAIRED_ROLES.includes(referenceRoleOfSlot(slot.slotKind, slot.numbered)))
     const slotIndex = slot ? slots.indexOf(slot) : -1
@@ -98,7 +95,7 @@ export function nodeOwnReferenceInputs(node: GenerationCanvasNode): NodeReferenc
 }
 
 /** 连到 `target` 的线此刻带来的参考（按 `target` 当前生成方式落槽）。源还没出图的不收：此刻发不出去，也不说会发。 */
-export function edgeReferenceInputs(
+function edgeReferenceInputs(
   target: GenerationCanvasNode,
   nodes: readonly GenerationCanvasNode[],
   edges: readonly GenerationCanvasEdge[],

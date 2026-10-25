@@ -4,8 +4,8 @@
 //
 // 这条算式有两个读者，而且它们必须永远报同一个数：
 //   · 主进程——封印合同、铸收据时按它算出**正式报价**（`productionRun/shotPricing.ts`）；
-//   · 渲染层——付费确认卡上用户每改一个 chip，价格行要**当场**跟着动（`spendCardEstimate.ts`），
-//     以及画布上那条批量确认条的「本波预估额度」（`generationCanvas/spend/planCostEstimate.ts`）。
+//   · 渲染层——画布上那条批量确认条的「本波预估额度」，以及 Agent 付费卡上各镜价格不同时的逐镜价
+//     （都经 `generationCanvas/spend/planCostEstimate.ts` 的 `estimateNodePrice`，读节点当前的参数）。
 //
 // 在 2026-09-11 之前这两边各写各的：主进程算「基价 + 命中的规格加价」，渲染层只累加基价。
 // 于是同一批镜头，确认条上印的数比真正要扣的少——**少报比不报更坏**，用户以为便宜。

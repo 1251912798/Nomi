@@ -1,5 +1,5 @@
 // 点一张卡 = 大详情（样张板 ListDetail）：左边收成 288 窄列（同一份列表，点别的镜即切换），
-// 右边 = 大预览 + 版本行 + 完整输入框（画布节点那张现役 NodeGenerationComposer，host="panel"）+ 底部「生成 / 重新生成」。
+// 右边 = 大预览 + 版本行 + 完整输入框（画布节点那张现役 NodeGenerationComposer，host="inline"）+ 底部「生成 / 重新生成」。
 // 这里**不包 NodeWriteAccessProvider**——写口就是画布 store，改的就是画布上那个节点；列表与画布只有一份数据（概念 generation.list-view）。
 // 「生成」按下去走 composerRun.startGenerationFromComposer——和画布生成框「↑」同一个口，不另写一份。
 import React, { type JSX } from 'react'

@@ -134,6 +134,13 @@ export type RunGenerationNodeOptions = {
   assetUploadConsent: AssetUploadConsentDecision
   /** 这次运行所属的项目（提交那一刻签发的完整绑定）。**必填**：运行期间只认它，不重读当前项目。 */
   target: RunProjectTarget
+  /**
+   * 「这一镜归不归画布」主进程已经认过了（D2 第③步：Agent 付费卡把这几镜交给画布，同意绑在那一次交接上）。
+   * 渲染层那份制作 Run 投影比账本晚一拍（交接刚记下、同意刚绑上），拿它再判一次会把刚交过来的镜拦回去；
+   * 派发时主进程按绑着的那个画布 Run 再认一次（`decideShotClaim` 带 canvasRunId），这里只跳过渲染层自己的那一份预判，
+   * 输入齐不齐（`generationNodeInputsReady`）照判。缺省 = 照常预判（节点 ↑、框选生成）。
+   */
+  claimAdmittedByHost?: true
 }
 
 async function buildConsentNode(node: GenerationCanvasNode): Promise<Pick<GenerationCanvasNode, 'meta' | 'references'>> {
@@ -240,7 +247,8 @@ export async function runGenerationNode(
   if (previewBlock) {
     throw new Error(i18n.t(directorPreviewSpendBlockMessageKey(previewBlock)))
   }
-  if (!canRunGenerationNode(initialNode, { nodes: initialState.nodes, edges: initialState.edges })) {
+  const runnable = options.claimAdmittedByHost ? generationNodeInputsReady : canRunGenerationNode
+  if (!runnable(initialNode, { nodes: initialState.nodes, edges: initialState.edges })) {
     throw new Error(
       initialNode.kind === 'video'
         ? '视频节点缺少上游真实图片或视频资产 URL。请先生成或选择首帧/参考图后再生成视频。'
@@ -501,6 +509,7 @@ export async function runGenerationNodesBatch(
           // 整批共用一个托管决定：批量确认卡对整批问了一次（batchPlanPreview），别在波次里逐个再问。
           assetUploadConsent: options.assetUploadConsent,
           target: options.target,
+          ...(options.claimAdmittedByHost ? { claimAdmittedByHost: true as const } : {}),
           ...(options.canvasRunRecordIds?.has(nodeId) ? { ledger: 'run' as const, runRecordId: options.canvasRunRecordIds.get(nodeId)! } : {}),
           ...(options.batchId ? { batchId: options.batchId } : {}),
         })
@@ -639,6 +648,19 @@ export function canRunGenerationNode(
   if (!node) return false
   // 这一镜归制作流程生成（报价卡等确认 / 排队 / 生成中）：画布再发一次就是重复生成、重复扣费。
   if ('id' in node && node.id && isNodeGenerationOwnedByProduction(node, useProductionCanvasLandingStore.getState().runs)) return false
+  return generationNodeInputsReady(node, context)
+}
+
+/**
+ * 这个节点**自己的输入**够不够发一次（不问这一镜归谁生成）：3D-BOX 预演就绪、档案模式要的参考都在、跨槽依赖成立。
+ * `canRunGenerationNode` = 归画布 + 这一条；交接过来的镜（`claimAdmittedByHost`）与付费卡出卡前的本地预检只问这一条——
+ * 判据只有这一份，生成钮置灰、提交咽喉、卡上「去改镜 N」说的是同一件事。
+ */
+export function generationNodeInputsReady(
+  node: GenerationCanvasNode | Pick<GenerationCanvasNode, 'kind'> | null | undefined,
+  context: GenerationRunContext = {},
+): boolean {
+  if (!node) return false
   // 这一镜的 3D-BOX 参考预演还没好（渲染中 / 失败）或已过期（挂上之后又被改过）：花钱就是按错的参考出片。判据只住 directorPreviewState。
   if ('id' in node && node.id && directorPreviewSpendBlock(node.id, context.nodes ?? useGenerationCanvasStore.getState().nodes)) return false
   const executionKind = getGenerationNodeExecutionKind(node.kind)

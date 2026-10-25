@@ -43,14 +43,13 @@ import { useShotFocusTag } from '../generationCanvas/nodes/director/panels/shotS
 import { useAgentPanelV4Data } from './v4/useAgentPanelV4Data'
 import { useAgentPanelV4Actions } from './v4/useAgentPanelV4Actions'
 import { LaneCommandFailure, laneFailureText } from './lane/laneCommandFailure'
-import { useAgentPanelSpendConfirm } from './v4/useAgentPanelSpendConfirm'
+import { useAgentPanelSpendCard } from './v4/useAgentPanelSpendCard'
+import { AgentPanelV4SpendCardBody } from './v4/AgentPanelV4SpendCardBody'
 import { assertAnnouncedCardRendered } from './v4/missingInterventionCard'
 import { useAgentPanelAutoMode } from './v4/useAgentPanelAutoMode'
 import { V4AutoModeBanner } from './v4/AgentPanelV4AutoMode'
 import { V4SandboxNotice } from './v4/AgentPanelV4SandboxNotice'
 import { v4SandboxNoticeText } from './v4/agentPanelV4SandboxReason'
-import NodeGenerationComposer from '../generationCanvas/nodes/LazyNodeGenerationComposer'
-import { NodeWriteAccessProvider } from '../generationCanvas/nodes/nodeWriteAccess'
 import { useShotVerifyFeedback } from './resident/useShotVerifyFeedback'
 import { adoptLaneTaskCandidate } from './lane/laneTaskCandidateActions'
 import { useV4Labels } from './v4/agentPanelV4Labels'
@@ -149,24 +148,11 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
   // 「要不要花这笔钱」——后者住在 ProductionRun 域里，`LanePendingApproval` 上根本没有报价字段。
   // 两张卡读的是**同一份推过来的投影**（2026-10-05 起付费卡不再轮询：`data.snapshot.spend`）。
   // 两者同时在时钱优先：钱撤不回来。
-  const spend = useAgentPanelSpendConfirm(data.snapshot.spend)
-  // 卡体是画布节点那张生成框**整件**，但写入面换成卡自己的账本（`spend.writeAccess`）：
-  // 用户还没答应花这笔钱，画布上那个草稿节点就不该被改；改动在按下「生成」那一刻
-  // 才由主进程落进候选、再投影回画布（单向，没有拉锯）。见 nodeWriteAccess 顶部注释。
-  // 「生成剩下 N 张」在一张一张走时卡体只给看（`inert`）：这一叠在点下去那一刻已经落进候选，此刻再改就是
-  // 「卡上看到的」≠「发出去的」；写口那头同样关着（`spend.writeAccess.canWrite`）。
-  const spendComposer = spend.pending && spend.node ? (
-    <div className="contents" inert={spend.batchRunning}>
-      <NodeWriteAccessProvider value={spend.writeAccess}>
-        <NodeGenerationComposer
-          node={spend.node}
-          visualSize={spend.node.size ?? { width: 340, height: 192 }}
-          host="panel"
-          onFeedback={() => undefined}
-        />
-      </NodeWriteAccessProvider>
-    </div>
-  ) : null
+  const spend = useAgentPanelSpendCard(data.snapshot.spend)
+  // 卡体 = 指向元素 + 一行只读摘要 + 说明行（D2 第③步，SpendCardQ1 板）。卡上没有可改的东西：
+  // 想改点指向元素去节点里改，按「生成」就是照节点此刻的样子交给画布（和节点上点 ↑ 同一条路）。
+  // 面板拖到最窄（320px）时指向元素标题行只留镜号（NodePointer 板 A4）。
+  const spendBody = spend.body ? <AgentPanelV4SpendCardBody {...spend.body} narrow={size.width <= 320} /> : null
   // 切到「全自动」要先问一句（换档本身可撤销，所以它就是介入槽的可撤销档）。
   const autoMode = useAgentPanelAutoMode(actions.permission, actions.setPermission)
   // 三个数据源同时有卡时的优先序：**换档 > 钱 > lane 的工具审批**。
@@ -181,15 +167,9 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
   // 在开发/测试里当场抛（`missingInterventionCard.ts`）；打包版里那条链已各自渲成会说话的卡。
   // 它拦的是**下一条**静默分支：新接一个 announce 面而忘了接渲染，CI 当场红。
   assertAnnouncedCardRendered({ announcer: 'agent-panel-intervention-slot', announced: Boolean(data.primaryPending) || Boolean(spend.pending), rendered: activeSlot })
-  const spendSlotHandlers = {
-    onConfirm: spend.confirm,
-    onReject: spend.discard,
-    onPage: spend.setPage,
-    // 次动作 =「去掉这张 / 这段」：这一镜不生成，卡上剩下的照旧等人（付费卡逐镜）。
-    onAlternate: spend.remove,
-    // 整叠的动作 =「生成剩下 N 张 / 段」：卡上还没决定的每一张各点一次「生成这张」（2026-10-01）。
-    onBatch: spend.confirmRemaining,
-  }
+  // 主按钮那一下由投影定（生成 / 再试一次 / 去改镜 N）；「取消」/「先不发了」任何时候立刻送到宿主。
+  // 「不生成 ×」/「恢复」长在卡体的指向元素上，不占决定栏。
+  const spendSlotHandlers = { onConfirm: spend.primary, onReject: spend.discard }
   const autoModeSlotHandlers = { onConfirm: autoMode.confirm, onReject: autoMode.cancel }
   // 计划行的两根线（勾选 / 收起）与「这张卡是谁给的」无关——三个数据源都可能带清单，
   // 所以在最外层一次补齐。它们在 `V4Intervention` 上是**必填 prop**：以前是可选的，
@@ -367,7 +347,8 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
    * 失败看「最后一件事是不是坏的」——面板级错误带，或者流末尾那条 error。翻历史找旧失败
    * 会让一个早就被绕过去的错误永远在 logo 上挂着，那是假报警。
    */
-  const dockPendingCount = data.primaryPending?.pendingCount ?? 0
+  // 付费卡也算一条在等你的（Q5：收起后小球的待确认计数读同一份 spend，不另开一条真相）。
+  const dockPendingCount = (data.primaryPending?.pendingCount ?? 0) + (spend.pending ? 1 : 0)
   const dockStatus = useV4DockStatus({
     running: data.running,
     pendingCount: dockPendingCount,
@@ -588,7 +569,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
         surface={surface}
         onStarter={startFromStarter}
         slot={activeSlot}
-        {...(!autoMode.slot && spend.slot && spendComposer ? { slotComposer: spendComposer } : {})}
+        {...(!autoMode.slot && spend.slot && spendBody ? { slotBody: spendBody } : {})}
         {...(composerBanner ? { composerBanner } : {})}
         queue={queue}
         queueHint={t(recovered.length ? 'agentPanelV4.recoveredDraftHint' : 'agentPanelV4.queueHint')}

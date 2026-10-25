@@ -1,7 +1,7 @@
 // 悬停认领（聊天里的指向元素 → 画布上那个节点亮）：认领是一摞，不是一个槽（独立验收 V-d2-pointer 建议 B，S5 的反例）。
 // 画布只亮最后到的那一条认领指着的节点；谁走了都只拿掉自己那一条，别人正指着的亮不能被它清掉。
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { nodeExternalHighlightStoreLifetime, useNodeExternalHighlightStore } from './nodeExternalHighlightStore'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { EXTERNAL_FLASH_MS, nodeExternalHighlightStoreLifetime, useNodeExternalHighlightStore } from './nodeExternalHighlightStore'
 
 const store = () => useNodeExternalHighlightStore.getState()
 const lit = (): string | null => store().hoverNodeId
@@ -74,5 +74,40 @@ describe('nodeExternalHighlightStore · claims', () => {
     nodeExternalHighlightStoreLifetime.releaseProject?.()
     expect(lit()).toBeNull()
     expect(store().claims).toEqual([])
+  })
+})
+
+// SpendCardQ1 板 card.done：卡自己关掉那一刻，交出去的那几镜一起闪一下——自己会灭，再来一批就换成新的一批。
+describe('nodeExternalHighlightStore · flash', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('flashes a batch together and puts it out after the shared flash duration', () => {
+    store().flashNodes(['n1', 'n2', 'n1'])
+    expect(store().flashNodeIds).toEqual(['n1', 'n2'])
+    vi.advanceTimersByTime(EXTERNAL_FLASH_MS - 1)
+    expect(store().flashNodeIds).toEqual(['n1', 'n2'])
+    vi.advanceTimersByTime(1)
+    expect(store().flashNodeIds).toEqual([])
+  })
+
+  it('a new batch replaces the old one and restarts the clock; hover claims are untouched', () => {
+    store().claimHover('n9', 'p1')
+    store().flashNodes(['n1'])
+    vi.advanceTimersByTime(EXTERNAL_FLASH_MS - 10)
+    store().flashNodes(['n2'])
+    vi.advanceTimersByTime(20)
+    expect(store().flashNodeIds).toEqual(['n2'])
+    expect(lit()).toBe('n9')
+    vi.advanceTimersByTime(EXTERNAL_FLASH_MS)
+    expect(store().flashNodeIds).toEqual([])
+  })
+
+  it('leaving the project puts the flash out at once', () => {
+    store().flashNodes(['n1'])
+    nodeExternalHighlightStoreLifetime.releaseProject?.()
+    expect(store().flashNodeIds).toEqual([])
+    vi.advanceTimersByTime(EXTERNAL_FLASH_MS)
+    expect(store().flashNodeIds).toEqual([])
   })
 })

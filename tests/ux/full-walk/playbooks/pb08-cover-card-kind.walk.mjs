@@ -8,7 +8,8 @@
 // 这条剧本走两个回合（同一个 Agent 大脑、同一个图片模型，唯一的差别是提示词里有没有「镜头」这类字）：
 //   A 对照：「一张书籍封面，青绿色海面上一只白鹭，3:4 竖版」——不带 taskKind（Agent 常常不写）。
 //   B 复现：「电影镜头感的书籍封面……」——同样不带 taskKind，提示词里有「镜头」。
-// 每回合都在用户点头之前读下：卡标题、卡里的模型 / 模式、画布节点的种类和它上面写的字；再试着改卡上的参数；再点确认，看供应商收到什么。
+// 每回合都在用户点头之前读下：卡标题、卡指着的节点（种类、模型、上面写的字）；再点主按钮，看供应商收到什么。
+// D2 起（2026-10-24）卡上没有可改的东西：模型和参数在节点上改，卡读节点、按「生成」就是照节点此刻的样子交给画布。
 //
 // 零花费：供应商是本机回环夹具。
 import { DEFAULT_TIMEOUT_MS, clickOrFail, expect } from '../../_assert.mjs'
@@ -58,7 +59,7 @@ try {
     }, { user: false, surfaces: [] })
     await monitor.screenshot(`${one.id}-card-before-confirm`)
 
-    await monitor.step(`${one.id} · 读卡、试着改卡上的模型和参数`, async () => {
+    await monitor.step(`${one.id} · 读卡和它指着的节点`, async () => {
       const facts = await card().evaluate((element) => ({
         title: String(element.querySelector('[data-v4-block="slot-title"]')?.textContent ?? '').trim(),
         text: String(element.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 600),
@@ -71,7 +72,7 @@ try {
       monitor.note({ kind: `case-${one.id}-card`, facts, canvasNode: placeholder ? { id: placeholder.id, kind: placeholder.kind, title: placeholder.title, model: placeholder.meta?.modelKey ?? null, status: placeholder.status } : null })
     }, { user: false, surfaces: [] })
 
-    await monitor.step(`${one.id} · 在付费卡上点「生成这张」`, async () => {
+    await monitor.step(`${one.id} · 在付费卡上点「生成」`, async () => {
       await monitor.consentSpendCard(card(), { label: `${one.id} 卡的主按钮` })
       await monitor.screenshot(`${one.id}-card-consent`)
       await clickOrFail(card().locator(INTERVENTION_CONFIRM), '付费卡主按钮', { noWaitAfter: true })

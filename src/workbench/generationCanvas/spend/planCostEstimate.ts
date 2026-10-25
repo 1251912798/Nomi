@@ -6,11 +6,11 @@
 //
 // 2026-09-11：这里此前只累加基价，规格加价（如 720p / 10s 的加钱档）一分都不进这个数，
 // 于是同一批镜头，确认条上印的数比主进程真正要扣的少。算式收进契约层后两边共用一份——
-// 付费确认卡的本地重算走的也是它（`workbench/ai/v4/spendCardEstimate.ts`）。
+// Agent 付费卡上各镜价格不同时的逐镜价也读这里的 `estimateNodePrice`（D2 起卡读节点，和批量确认条同一个价函数）。
 //
 // 纯函数：喂节点 + 该 kind 的模型选项，不碰 store，可裸测。
 
-import { deriveShotPrice } from '../../../../electron/shared/contracts/shotPricingRule'
+import { deriveShotPrice, type ShotPrice } from '../../../../electron/shared/contracts/shotPricingRule'
 import type { ModelOption } from '../../../config/models'
 import { findModelOptionByIdentifier } from '../adapters/modelOptionsAdapter'
 import { nodeSelectedModelAddress } from '../nodes/controls/parameterControlModel'
@@ -36,22 +36,7 @@ export function estimatePlanCost(
       unresolved += 1
       continue
     }
-    const option = resolveOption(node)
-    if (!option) {
-      unresolved += 1
-      continue
-    }
-    // 参数喂节点 meta：档案把选中的参数值就写在 meta 顶层，而规格加价的 specKey 认的正是
-    // 「某个参数选了某个值」（裸值或 `paramKey:value`）。算式忽略非标量，不会被 meta 里
-    // 那些结构化字段（参考槽 / 档案快照）误伤。
-    const price = deriveShotPrice({
-      candidate: {
-        providerId: option.vendor ?? '',
-        modelId: option.modelKey ?? option.value,
-        parameters: (node.meta ?? {}) as Record<string, unknown>,
-      },
-      resolvePricing: () => option.pricing,
-    })
+    const price = estimateNodePrice(node, resolveOption(node))
     if (!price.known) {
       unresolved += 1
       continue
@@ -59,6 +44,23 @@ export function estimatePlanCost(
     credits += price.amount
   }
   return unresolved > 0 ? { known: false, credits, unresolved } : { known: true, credits }
+}
+
+/**
+ * 一个节点这一次大概花多少（画布批量估价与 Agent 付费卡逐镜那一行**同一个函数**）：模型选项解不出、目录没有价目 → 未知，不是 0。
+ * 参数喂节点 meta：档案把选中的参数值就写在 meta 顶层，而规格加价的 specKey 认的正是「某个参数选了某个值」
+ * （裸值或 `paramKey:value`）。算式忽略非标量，不会被 meta 里那些结构化字段（参考槽 / 档案快照）误伤。
+ */
+export function estimateNodePrice(node: GenerationCanvasNode, option: ModelOption | undefined): ShotPrice {
+  if (!option) return { known: false }
+  return deriveShotPrice({
+    candidate: {
+      providerId: option.vendor ?? '',
+      modelId: option.modelKey ?? option.value,
+      parameters: (node.meta ?? {}) as Record<string, unknown>,
+    },
+    resolvePricing: () => option.pricing,
+  })
 }
 
 /** 便利入口：从模型选项表按节点 meta 解析模型选项（供渲染层直接喂 estimatePlanCost 的 resolveOption）。 */

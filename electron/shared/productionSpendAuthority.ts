@@ -84,12 +84,6 @@ export function waitingAuthorizationGateForShot(run: Pick<ProductionRun, "gates"
   return waitingAuthorizationGates(run).find((gate) => gate.authorizationEnvelope.jobs.some((job) => job.shotId === shotId));
 }
 
-/** 这一镜已经被批准的那几份授权（按批准先后）。 */
-export function approvedAuthorizationGatesForShot(run: Pick<ProductionRun, "gates">, shotId: string): SpendAuthorizationGate[] {
-  return spendAuthorizationGates(run)
-    .filter((gate) => gate.status === "approved" && gate.authorizationEnvelope.jobs.some((job) => job.shotId === shotId));
-}
-
 /**
  * 这份合同上一次被批准时冻住的参考图 URL。重做沿用它：同一份合同、同一批参考，不因为「又一份授权」
  * 去重新上传一遍（传上去的地址也会变，线上报文哈希就对不上了）。

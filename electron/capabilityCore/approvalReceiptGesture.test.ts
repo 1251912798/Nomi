@@ -24,13 +24,14 @@ const challenge = (key: string) => ({
   gateId: "gate-1", contractHash: "h", targetHash: "h", projectRevision: 0, costScope: "generation.single-shot:canvas-run-1", pricingSnapshotHash: "h",
   reservationPreview: { currency: "CNY", maximum: 0 },
 });
-const gesture = { webContentsId: 7, frameId: 1, origin: "app://nomi" };
+const gesture = { kind: "gesture" as const, webContentsId: 7, frameId: 1, origin: "app://nomi" };
+const policy = { kind: "policy" as const, policyMode: "project" as const, policySurface: "agent-lane" };
 
 it("one write: the receipt is bound to its challenge, decided by this window's gesture, and already consumed", () => {
   const { filePath, receipts } = authority();
   const writes = vi.spyOn(fs, "renameSync");
 
-  const receipt = receipts.issueGestureReceipt(challenge("k1"), gesture);
+  const receipt = receipts.issueDecisionReceipt(challenge("k1"), gesture);
 
   expect(writes).toHaveBeenCalledTimes(1);
   expect(receipt).toMatchObject({ runId: "canvas-run-1", gateId: "gate-1", contractHash: "h", decidedBy: "human:gesture", humanActor: "web_contents:7:1:app://nomi" });
@@ -43,13 +44,23 @@ it("one write: the receipt is bound to its challenge, decided by this window's g
 
 it("the same authorization asked twice gets the same receipt; a different binding under the same key is refused", () => {
   const { receipts } = authority();
-  const first = receipts.issueGestureReceipt(challenge("k1"), gesture);
-  expect(receipts.issueGestureReceipt(challenge("k1"), gesture)).toEqual(first);
-  expect(() => receipts.issueGestureReceipt({ ...challenge("k1"), contractHash: "other", targetHash: "other", pricingSnapshotHash: "other" }, gesture)).toThrow(ReceiptScopeError);
+  const first = receipts.issueDecisionReceipt(challenge("k1"), gesture);
+  expect(receipts.issueDecisionReceipt(challenge("k1"), gesture)).toEqual(first);
+  expect(() => receipts.issueDecisionReceipt({ ...challenge("k1"), contractHash: "other", targetHash: "other", pricingSnapshotHash: "other" }, gesture)).toThrow(ReceiptScopeError);
 });
 
 it("an incomplete binding mints nothing", () => {
   const { filePath, receipts } = authority();
-  expect(() => receipts.issueGestureReceipt({ ...challenge("k1"), gateId: "" }, gesture)).toThrow(ReceiptScopeError);
+  expect(() => receipts.issueDecisionReceipt({ ...challenge("k1"), gateId: "" }, gesture)).toThrow(ReceiptScopeError);
   expect(fs.existsSync(filePath)).toBe(false);
+});
+
+it("a policy decision (direct-generation mode handing a shot to the canvas) mints the same one-write receipt, recorded as the policy", () => {
+  const { receipts } = authority();
+  const receipt = receipts.issueDecisionReceipt(challenge("k2"), policy);
+  expect(receipt).toMatchObject({ runId: "canvas-run-1", decidedBy: "policy:full_auto", humanActor: "policy:project:agent-lane" });
+  expect(receipts.consumeReceipt(receipts.resolveReceiptToken(receipt.receiptId))).toMatchObject({ replayed: true });
+  // 别的档位铸不出策略收据；没写哪个宿主面替用户决的也不行。
+  expect(() => receipts.issueDecisionReceipt(challenge("k3"), { ...policy, policyMode: "request" as never })).toThrow(ReceiptScopeError);
+  expect(() => receipts.issueDecisionReceipt(challenge("k4"), { ...policy, policySurface: " " })).toThrow(ReceiptScopeError);
 });

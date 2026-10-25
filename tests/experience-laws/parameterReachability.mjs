@@ -8,11 +8,10 @@
 //   · 「每个入口能选到什么」= 入口自己渲染时调的那个函数，原样调：
 //       节点底栏   `resolveRenderedControls`（NodeParameterControls → InlineParameterBar，摘要 pill 的面板装全部控件）
 //                  + `archetypeModeChoices`（模式栏）+ `archetypeVariantChoices`（变体下拉）；
-//       Agent 付费卡 `projectSpendNode` 投影出卡体那张生成框，再走同一个 `resolveRenderedControls`
-//                  （卡体就是 `NodeGenerationComposer host="panel"`，chips + ⚙ 合起来装全部控件）；
 //       分镜表行底栏 / 参考卡（2026-10-06 起同一条路）`storyboardComposerMeta`（落画布同一个构造器）
 //                  + `storyboardComposerControls`（= `resolveRenderedControls`，画布同款面板），生成方式在面板顶上一组；
 //                  分镜两入口没有变体选择器。
+// Agent 付费卡 2026-10-24 起不再是入口（D2 第③步）：卡上只有指向元素和一行只读摘要，参数到节点底栏去改——见 NOT_PARAMETER_ENTRIES。
 //
 // 判据只有一条：declared ⊆ reachable。做不到的要么在豁免表（`reachabilityWaivers.json`，写清为什么这个入口
 // 本来就不该给），要么在已知缺口表（`reachabilityKnownGaps.json`，第一次跑出来、等协调会话决定修哪些的那批）。
@@ -28,26 +27,19 @@ import { resolveRenderedControls } from '../../src/workbench/generationCanvas/no
 import { archetypeModeChoices } from '../../src/workbench/generationCanvas/nodes/controls/channelModeReach'
 import { archetypeVariantChoices } from '../../src/workbench/generationCanvas/nodes/controls/archetypeMeta'
 import { isParameterReferenceControl } from '../../src/workbench/generationCanvas/model/parameterReferenceSlots'
-import { projectSpendNode } from '../../src/workbench/ai/v4/spendCardDraft'
 import { composerEntryIndex, storyboardComposerControls, storyboardComposerMeta } from '../../src/workbench/creation/storyboard/shotRow/storyboardComposerModel'
 
 /** 变体轴与模式轴不是档案参数，但同样是「用户要能选到」的东西；用保留键名进同一张表。 */
 export const MODE_AXIS = '(生成方式)'
 export const VARIANT_AXIS = '(变体)'
 
-/** 三个入口。`kinds` = 这个入口本来就接哪几类模型（不接的不算缺口，算「不适用」）。 */
+/** 用户配参数的入口。`kinds` = 这个入口本来就接哪几类模型（不接的不算缺口，算「不适用」）。 */
 export const REACHABILITY_ENTRIES = Object.freeze([
   Object.freeze({
     id: 'node-bar',
     title: '画布节点底栏',
     kinds: Object.freeze(['image', 'video', 'audio', 'model3d']),
     owner: 'src/workbench/generationCanvas/nodes/nodeModelArchetype.ts#resolveRenderedControls',
-  }),
-  Object.freeze({
-    id: 'spend-card',
-    title: 'Agent 付费卡',
-    kinds: Object.freeze(['image', 'video']),
-    owner: 'src/workbench/ai/v4/spendCardDraft.ts#projectSpendNode',
   }),
   Object.freeze({
     id: 'storyboard-row',
@@ -71,6 +63,7 @@ export const REACHABILITY_ENTRIES = Object.freeze([
  * 下面这些也碰模型，但**不是**配参数的地方——写明为什么，不许悄悄漏掉。协调会话要把哪一个升格成入口，挪到上面即可。
  */
 export const NOT_PARAMETER_ENTRIES = Object.freeze([
+  Object.freeze({ owner: 'src/workbench/ai/v4/AgentPanelV4SpendCardBody.tsx', why: 'Agent 付费卡（2026-10-24 D2 起）：卡上只有指向元素和一行只读摘要，不配参数——点指向元素到节点底栏去改（node-bar 已覆盖）；聊天卡不许引节点编辑器由 depcruise chat-card-no-import-node-editor 守' }),
   Object.freeze({ owner: 'src/workbench/creation/storyboard/StoryboardBulkBar.tsx', why: '分镜批量条：一次给多镜统一换模型 / 种类 / 整片画幅；各镜模型不同、参数表不同，逐参数批量设没有共同的一张表——单镜参数在行底栏配' }),
   Object.freeze({ owner: 'src/workbench/creation/storyboard/StoryboardSelectionToolbar.tsx', why: '分镜选中工具条：选中几镜后统一换模型（按镜种分档），同上' }),
   Object.freeze({ owner: 'src/workbench/generationCanvas/quickActions/ImageQuickActionsToolbar.tsx', why: '图片快捷动作（改图 / 扩图 / 抠图 / 多机位）只派生一个新节点、不扣费；新节点的参数在它自己的底栏配（node-bar 已覆盖）' }),
@@ -149,22 +142,6 @@ function nodeBarReach(row, mode) {
   }
 }
 
-/** 付费卡：宿主那一镜 → 卡体那张生成框（`projectSpendNode`）→ 同一个控件解析。 */
-function spendCardReach(row, mode) {
-  const shot = {
-    shotId: 'reach-1', index: 1, prompt: 'reach', providerId: row.vendorKey, modelId: row.option.modelKey,
-    kind: row.kind, modeId: mode.id, parameters: {}, price: { known: false },
-  }
-  const node = projectSpendNode(shot, undefined, row.option)
-  if (!node) return { params: new Map(), modes: [], variants: [] }
-  const controls = resolveRenderedControls(row.option, node.meta ?? {}, row.kind === 'image', row.kind === 'video')
-  return {
-    params: controlsReach(controls),
-    modes: archetypeModeChoices(row.archetype).map((choice) => choice.id),
-    variants: archetypeVariantChoices(row.archetype).map((choice) => choice.id),
-  }
-}
-
 /**
  * 分镜行与参考卡（2026-10-06 起同一条路）：底栏 = 画布同款 `InlineParameterBar`，控件 = `storyboardComposerControls`
  * 喂 `storyboardComposerMeta`（落画布同一个构造器），生成方式在面板顶上一组（档案有两种以上模式就全部可选）。
@@ -188,7 +165,7 @@ function anchorCardReach(row, mode) {
   return storyboardComposerReach(row, mode, 'image')
 }
 
-const REACH_BY_ENTRY = Object.freeze({ 'node-bar': nodeBarReach, 'spend-card': spendCardReach, 'storyboard-row': storyboardReach, 'storyboard-anchor': anchorCardReach })
+const REACH_BY_ENTRY = Object.freeze({ 'node-bar': nodeBarReach, 'storyboard-row': storyboardReach, 'storyboard-anchor': anchorCardReach })
 
 /**
  * 全量矩阵：发布模型 × 这家发得出的模式 × 声明的参数 × 入口。

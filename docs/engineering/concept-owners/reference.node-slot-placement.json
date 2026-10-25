@@ -22,9 +22,6 @@
       "symbol": "referenceRoleOfSlot"
     }
   ],
-  "allowed_consumers": [
-    "src/workbench/ai/v4/spendCardReferences.ts",
-    "src/workbench/ai/v4/spendCardDraft.ts"
-  ],
-  "notes": "合同 docs/fixes/2026-10-07-spend-card-references-one-owner.root-cause.json：付费卡、（方案 A 之后的）落地回写把一组参考摆进节点当前生成方式的参考槽、再读回来，都只经这一张表；读节点自己槽里的值（nodeOwnReferenceInputs）与连线带来的（edgeReferenceInputs）也在同文件。原来卡里那份 applySpendReferences / slotRole 已删。"
+  "allowed_consumers": [],
+  "notes": "合同 docs/fixes/2026-10-07-spend-card-references-one-owner.root-cause.json：付费卡、（方案 A 之后的）落地回写把一组参考摆进节点当前生成方式的参考槽、再读回来，都只经这一张表；读节点自己槽里的值（nodeOwnReferenceInputs）与连线带来的（edgeReferenceInputs）也在同文件。原来卡里那份 applySpendReferences / slotRole 已删。 2026-10-24 D2 第③步：付费卡那一份（spendCardReferences / spendCardDraft）随旧卡删了；落地回写与 Agent 改稿经同文件的 planReferenceProjection 摆。"
 }

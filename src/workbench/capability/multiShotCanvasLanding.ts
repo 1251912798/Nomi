@@ -18,12 +18,13 @@ import { useGenerationCanvasStore } from '../generationCanvas/store/generationCa
 import { applyCanvasToolCall, resolveCanvasToolNodeId } from '../generationCanvas/agent/applyCanvasToolCall'
 import { listAvailableModelsForAgent } from '../generationCanvas/agent/availableModels'
 import { getVendorPreference } from '../api/vendorPreferenceApi'
-import { buildModelEntryIndex, buildPlannedNodeMeta } from '../generationCanvas/agent/plannedNodeMeta'
+import { buildModelEntryIndex } from '../generationCanvas/agent/plannedNodeMeta'
 import {
   materializedNodeIdsByClientId,
   sanitizeMaterializationOperationId,
 } from '../generationCanvas/agent/materializationStamp'
 import { CANDIDATE_META_KEYS, plannedInputFromCandidate, type LandedShotCandidate } from '../generationCanvas/agent/candidateNodeMeta'
+import { applyAgentRevision, intentStampMeta, placeLandedReferences } from './landedShotIntent'
 import { withCanvasGestureContext } from '../generationCanvas/events/canvasGestureContext'
 import { pushUndoSnapshot } from '../generationCanvas/events/canvasUndoJournal'
 import { interruptPendingCanvasWrite } from '../generationCanvas/events/canvasWriteBoundary'
@@ -110,43 +111,6 @@ function nodeCandidateRevision(meta: Record<string, unknown> | undefined): numbe
 }
 
 /**
- * 把新候选重绑定到**已经落在画布上**的节点：prompt、标题、模型身份、以及新的候选 revision 戳。
- *
- * 模型 meta 走 `buildPlannedNodeMeta`（全仓「计划模型 → 节点 meta」的唯一 owner），不在这里另写一套：
- * 它负责按 `(vendor, modelKey)` 认身份、铺档案默认参数、丢掉非法值。候选的模型此刻不可用时它返回
- * undefined —— 那就只更新 prompt 与戳，**不去猜一个别的模型**（戳仍记着 agent 要的是哪个，
- * 由节点控件那边向用户明说）。
- */
-async function rebindLandedShots(
-  shots: readonly MaterializeShotInput[],
-  nodeIdByShot: ReadonlyMap<string, string>,
-  inLandingTxn: <T>(fn: () => T) => T,
-): Promise<void> {
-  const needsModels = shots.some((shot) => Boolean(shot.candidate?.modelKey))
-  const entryByKey = needsModels
-    ? buildModelEntryIndex(await listAvailableModelsForAgent(), (await getVendorPreference()).orderedVendorKeys)
-    : buildModelEntryIndex([])
-  for (const shot of shots) {
-    const nodeId = nodeIdByShot.get(shot.shotId)
-    if (!nodeId) continue
-    const store = useGenerationCanvasStore.getState()
-    const node = store.nodes.find((candidate) => candidate.id === nodeId)
-    if (!node) continue
-    const currentMeta = (node.meta as Record<string, unknown> | undefined) ?? {}
-    // 与首次落地同一个投影（plannedInputFromCandidate）：模型身份、方式、变体、候选选的参数一起重绑——
-    // 漏一样，重绑定就把它按回档案默认（2026-09-11 尺寸弹回去、2026-10-22 变体回到 Fast 都是这一类）。
-    const plannedInput = plannedInputFromCandidate(shot.candidate)
-    const modelMeta = plannedInput ? buildPlannedNodeMeta(plannedInput, entryByKey) : undefined
-    const title = (shot.title || '').trim()
-    inLandingTxn(() => useGenerationCanvasStore.getState().updateNode(nodeId, {
-      ...(typeof shot.prompt === 'string' ? { prompt: shot.prompt } : {}),
-      ...(title ? { title } : {}),
-      meta: { ...currentMeta, ...(modelMeta ?? {}), ...candidateStamp(shot.candidate) },
-    }))
-  }
-}
-
-/**
  * 文稿方案的镜头已经经分镜行落在画布上的那些节点（shotId → 节点 id）。只认本 op 章还没认领的镜；
  * 方案 id 就是 Run id（草稿与方案同一套 id，见 generationDocumentPlan）。镜头 id 不是稳定 id 时不猜（照常新建）。
  */
@@ -211,8 +175,8 @@ export async function materializeShots(payload: MaterializeShotsPayload): Promis
   const clientIdToNodeId: Record<string, string> = Object.fromEntries(existingByShot.entries())
   const createdNodeIds: string[] = []
   const missing = ordered.filter((shot) => !existingByShot.has(shot.shotId))
-  // 已落的节点里，候选意图**变新了**的那些（generation.patch 之后）。revision 没变就一个字不动——
-  // 这条闸是「打开项目补齐」这类幂等重放不会覆盖用户手改的原因。
+  // 已落的节点里，候选意图**变新了**的那些（Agent 改稿 generation.patch 之后）。revision 没变就一个字不动——
+  // 这条闸是「打开项目补齐」这类幂等重放不会覆盖用户手改的原因；变了也只写 Agent 真改了的键（landedShotIntent）。
   const rebindable = ordered.filter((shot) => {
     const nodeId = existingByShot.get(shot.shotId)
     if (existingOnly(shot) || !nodeId || !shot.candidate || adoptedByShot.has(shot.shotId)) return false
@@ -253,7 +217,7 @@ export async function materializeShots(payload: MaterializeShotsPayload): Promis
           title: (shot.title || '').trim() || i18n.t('generationCommon.production.canvasLanding.shotFallbackTitle', { shot: ordered.indexOf(shot) + 1 }),
           prompt: typeof shot.prompt === 'string' ? shot.prompt : '',
           // 候选的模型身份与选择：节点模型以它为准（写边界 buildPlannedNodeMeta 负责校验 + 补全档案参数）；
-          // 入参只从 plannedInputFromCandidate 来——与重绑定同一个投影。
+          // 入参只从 plannedInputFromCandidate 来——与 Agent 改稿（landedShotIntent）同一个投影。
           ...(plannedInputFromCandidate(shot.candidate) ?? {}),
           // categoryId 由 groupCategoryId 统一定（create_canvas_nodes 忽略 per-node categoryId，按 groupCategoryId/kind 定）。
           ...(shot.role === 'anchor' ? { referenceSheet: true as const } : {}),
@@ -265,6 +229,8 @@ export async function materializeShots(payload: MaterializeShotsPayload): Promis
             productionShotId: shot.shotId,
             ...(shot.role ? { productionShotRole: shot.role } : {}),
             ...candidateStamp(shot.candidate),
+            // 这一次从起草写进节点的是哪几样（指纹）：Agent 之后改稿只写它真改了的那几样。
+            ...(shot.candidate ? intentStampMeta({ candidate: shot.candidate, prompt: shot.prompt, title: shot.title }) : {}),
           },
         }
       }),
@@ -289,13 +255,26 @@ export async function materializeShots(payload: MaterializeShotsPayload): Promis
       if (nodeId) {
         clientIdToNodeId[shot.shotId] = nodeId
         createdNodeIds.push(nodeId)
+        // 起草钉住的参考摆到节点上（D2 第③步）：发出读节点，节点上没有的就不会发出去。
+        placeLandedReferences(nodeId, shot.candidate?.references ?? [], inLandingTxn)
       }
     }
   }
 
-  // generation.patch 之后：把已落节点的 prompt / 模型同步到新候选。**草稿只有一个账本**——
-  // 候选是意图，节点是它的投影，改了意图就该在用户眼前变，而不是等下次重开项目。
-  if (rebindable.length > 0) await rebindLandedShots(rebindable, existingByShot, inLandingTxn)
+  // Agent 改稿之后：只把它这一次真改了的那几样写进已落的节点（节点是唯一 owner，用户在节点上的改动不被冲掉；
+  // 以前这里用「档案默认 ⊕ 候选」整份重绑，2026-10-22 落地默认值核查，D2 第③步换掉）。
+  if (rebindable.length > 0) {
+    const needsModels = rebindable.some((shot) => Boolean(shot.candidate?.modelKey))
+    const entryByKey = needsModels
+      ? buildModelEntryIndex(await listAvailableModelsForAgent(), (await getVendorPreference()).orderedVendorKeys)
+      : buildModelEntryIndex([])
+    project.assertCurrent()
+    for (const shot of rebindable) {
+      const nodeId = existingByShot.get(shot.shotId)
+      if (!nodeId) continue
+      applyAgentRevision(nodeId, { candidate: shot.candidate, prompt: shot.prompt, title: shot.title }, entryByKey, candidateStamp(shot.candidate), inLandingTxn)
+    }
+  }
   project.assertCurrent()
 
   // 编组（幂等章）：先按 op 章找已建的分镜组复用；没有才建。名字即时命名「分镜组·<计划名>」。

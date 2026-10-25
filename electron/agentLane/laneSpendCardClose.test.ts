@@ -45,6 +45,22 @@ describe('watchSpendCardClose', () => {
     expect(await settled(watchSpendCardClose({ read: () => { throw new Error('run gone') }, subscribe: () => () => undefined }).closed)).toBe(true)
   })
 
+  it('卡关了、交给画布的那一镜还在交 → 等它落定再醒（回执不在派发半路上报「在生成」）；一直不落定 → 等满宽限期就醒', async () => {
+    const card: GenerationPresentation = { ...open(), handOvers: [{ shotId: 'shot-1', by: 'gesture', at: 't2', canvasRunId: 'canvas-1' }] }
+    const book = ledger(plan(card))
+    const watch = watchSpendCardClose(book.source)
+    book.write(plan(closed(card, 'user_closed')))
+    expect(await settled(watch.closed)).toBe(false)
+    book.write(plan(closed({ ...card, handOvers: [{ ...card.handOvers![0], settled: { at: 't3', outcome: 'accepted' } }] }, 'user_closed')))
+    expect(await settled(watch.closed)).toBe(true)
+    expect(book.listeners.size).toBe(0)
+
+    const stuck = ledger(plan(card))
+    const late = watchSpendCardClose({ ...stuck.source, settlingGraceMs: 5 })
+    stuck.write(plan(closed(card, 'user_closed')))
+    expect(await settled(late.closed)).toBe(true)
+  })
+
   it('不看了（回合被停 / 打了字）→ 退订，之后关卡不再惊动它', async () => {
     const card = open()
     const book = ledger(plan(card))

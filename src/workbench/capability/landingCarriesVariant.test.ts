@@ -3,7 +3,8 @@
 // 症状：Agent 起草 Seedance 2.0 标准 / Mini，候选、付费卡、宿主派发都是所选变体，落地节点停在默认 Fast，
 // 在节点上点 ↑ 发的是 Fast。直接原因：落地报文没带 variantId，渲染层「新建」「重绑定」两处手写的
 // buildPlannedNodeMeta 入参也都没有它。这里走真 `materializeShots` 的两扇门（新建经 create_canvas_nodes 写边界，
-// 重绑定经 rebindLandedShots），钉住两扇门用的是同一个投影、变体都过得来；以及「只动已有节点」的重放不改用户切过的变体。
+// Agent 改稿经 landedShotIntent 的 applyAgentRevision——D2 第③步起只写 Agent 真改了的那几样），钉住两扇门用的是
+// 同一个投影、变体都过得来；以及「只动已有节点」的重放不改用户切过的变体。
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { persistNowSpy } = vi.hoisted(() => ({ persistNowSpy: vi.fn(async () => null) }))

@@ -6,13 +6,16 @@
 // 再加第 4 步会到 5 张，与它自己写的上限不符；这里按预计 3 张、最坏 4 张排：
 //   ① 切到「直接生成」——不花钱（创作面板）；
 //   ② + ③ 文稿方案（创作面板，一条消息）：前 2 镜不弹卡、受理 2 次、收据 2 条（decidedBy = policy:full_auto）；
-//        补第 3 镜时报价卡立刻弹、卡上有计划外那一行，点「去掉」后受理仍是 2（刹车不铸收据、不发请求）。
+//        补第 3 镜时付费卡立刻弹、卡上有计划外那一行，点「取消」（收回这一次出价）后受理仍是 2（刹车不铸收据、不发请求）。
 //        **回退**：如果文稿方案这条路一张都没花（例如它弹出了旧版的全局确认框「生成这 N 项？」而不是策略代答——
 //        演练里就撞到过），就取消那个框、记下事实，再到画布面板走 D-L19 原来的第 2 步（画布草稿 2 镜）补上「直接生成不弹卡」的证据；
-//   ④ 画布面板再生成一次（要 2 张），供应商**受理**第一张后马上点停止（宿主一张一张交：上一张被受理了才批下一张，「交出」指交给供应商）：
-//      停止后新增提交 0，已交出的那张照常完成、只扣一次，重开面板后没有重复提交。
-//      第二张有可能抢在停止之前就发出去了（宿主批下一张很快）：那时记为「停止没赶上」（unverified），不算通过也不算失败。
-//   总数预计 3 张（文稿路通：2 + 1）或 4 张（回退：2 + 2），最坏 4 张。
+//   ④ 画布面板再生成一次（要 2 张），供应商**受理**第一张后马上点停止：
+//      停止后新增**发出** 0（数跨过提交边界的作业，不数受理：停止前已经发出去、晚一点才被受理的那张是「已经发出去的照常生成」，
+//      不是停止后的新提交），已交出的那张照常完成、只扣一次，重开面板后没有重复提交。
+//      D2 起「直接生成」档和卡上「生成」都交给画布那一台，画布按依赖波次一起发（同一波最多 6 镜并发）：2 张几乎总是一起发出去，
+//      停止时两张都已发出 = 「停止没赶上」（unverified），不算通过也不算失败。要真证「停止拦住了还没发的」得比画布一波多一张，
+//      那超出本走查的张数上限，由卡上「取消」的走查（agent-spend-stop-midway：12 镜、一波 6 镜）在 loopback 上证。
+//   总数预计 4 张（文稿路通：2 + 2；回退：画布 2 + 2），最坏 4 张——第 4 步两张一起发出，停止不再省下第二张。
 // 刹车 1（同一镜连续失败）不在真付费里验：不该花钱造失败，靠适配器边界测试。
 //
 // 每一步只记事实（受理次数、收据条数与 decidedBy、有没有弹卡 / 弹框、停止后新增提交数），事实全部取自盘上，不取自界面；
@@ -24,14 +27,14 @@ import {
 } from './_paidFacts.mjs'
 import { SPEND_DIALOG } from './_paidRun.mjs'
 import {
-  APPROVAL_CARD, CANVAS_PANEL, COMPOSER, COMPOSER_PERMISSION, COMPOSER_STOP, CREATION_PANEL, DOCUMENT, INTERVENTION_ALTERNATE,
-  INTERVENTION_CONFIRM, PERMISSION_POPOVER, expandResidentPanel, permissionTier,
+  APPROVAL_CARD, CANVAS_PANEL, COMPOSER, COMPOSER_PERMISSION, COMPOSER_STOP, CREATION_PANEL, DOCUMENT, INTERVENTION_CONFIRM,
+  INTERVENTION_REJECT, PERMISSION_POPOVER, expandResidentPanel, permissionTier,
 } from './agent-runtime-walk-support.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 
 export const spendCardSelector = (panel) => `${panel} ${APPROVAL_CARD}[data-kind="spend"]`
 /** 预计总数（张）与最坏总数：再多就是跑飞了，保险丝立刻停 App。 */
-export const IMAGE_CAP = 3
+export const IMAGE_CAP = 4
 export const IMAGE_HARD_CAP = 4
 /** 一张图「交出」的 job 状态（与 _spendStopRounds.mjs 的 settledJobs 同一组词）。 */
 const DELIVERED = new Set(['adopted', 'ready'])
@@ -66,7 +69,7 @@ export function createSpendCap({ projectRoot, stopApp, ceiling = IMAGE_HARD_CAP,
 }
 
 /**
- * 在真实 DOM 上挂观察者：Agent 面板的报价卡、全局确认框（旧版 SpendConfirmDialog）各**出现过几次**，以及出现时的字。
+ * 在真实 DOM 上挂观察者：Agent 面板的付费卡、全局确认框（旧版 SpendConfirmDialog）各**出现过几次**，以及出现时的字。
  * 两个都算「花钱前问了人」：直接生成档下，哪一个都不该出现。
  */
 export async function watchSpendUi(win, panel) {
@@ -131,7 +134,7 @@ export async function runSwitchStep(ctx, { panel = CREATION_PANEL } = {}) {
 }
 
 /**
- * 等「报价卡出现」「全局确认框出现」「这一轮落地且什么都没弹」或超时。返回 'card' | 'dialog' | 'idle' | 'timeout'。
+ * 等「付费卡出现」「全局确认框出现」「这一轮落地且什么都没弹」或超时。返回 'card' | 'dialog' | 'idle' | 'timeout'。
  * 起飞宽限 8 秒：刚点发送时 composer 还没进运行态，不能把「还没起飞」当成「已落地」。
  */
 export async function waitForSpendUiOrIdle(win, panel, { timeout, graceMs = 8_000, pollMs = 500 }) {
@@ -172,7 +175,7 @@ export async function settleTurn(win, panel, { maxMs = stationTimeout({ turns: 1
 }
 
 /**
- * 等「受理够了」「报价卡出现」「全局确认框出现」「这一轮落地且什么都没弹」或超时。
+ * 等「受理够了」「付费卡出现」「全局确认框出现」「这一轮落地且什么都没弹」或超时。
  * 返回 'accepted' | 'card' | 'dialog' | 'idle' | 'timeout'。`wantAccepted` 缺省 = 不看受理数。
  */
 async function waitForTurnOutcome(ctx, panel, { wantAccepted = null, baseline = 0, timeout, graceMs = 8_000, pollMs = 500 }) {
@@ -190,7 +193,7 @@ async function waitForTurnOutcome(ctx, panel, { wantAccepted = null, baseline = 
   return 'timeout'
 }
 
-/** 步骤 ② + ③：文稿方案分两轮——第一轮前 2 镜（直接生成、不弹卡），第二轮补第 3 镜（刹车、弹卡、去掉）。返回 { accepted, dialogShown, abort }。 */
+/** 步骤 ② + ③：文稿方案分两轮——第一轮前 2 镜（直接生成、不弹卡），第二轮补第 3 镜（刹车、弹卡、取消）。返回 { accepted, dialogShown, abort }。 */
 export async function runPlanAndBrakeStep(ctx, { askText, askMoreText }) {
   const { win, walk, snapshot, record, cap, allowedModel } = ctx
   const panel = CREATION_PANEL
@@ -236,13 +239,13 @@ export async function runPlanAndBrakeStep(ctx, { askText, askMoreText }) {
   if (first === 'dialog' || first === 'card') {
     // 文稿方案走旧框 / 第一轮就弹了普通卡：关掉（不花钱），第 3 步没有结论。
     if (first === 'dialog') await cancelSpendDialog(win)
-    else await clickOrFail(win.locator(spendCardSelector(panel)).locator(INTERVENTION_ALTERNATE), '报价卡上的「去掉」')
+    else await clickOrFail(win.locator(spendCardSelector(panel)).locator(INTERVENTION_REJECT), '付费卡上的「取消」')
     await settleTurn(win, panel)
     await win.waitForTimeout(QUIET_WINDOW_MS)
     const total = deltaFacts(before, snapshot())
     record('3-out-of-plan-brake', {
       outcome: first, cardAppeared: false, brakeLineShown: false, boundary: false, acceptedAfterRemove: total.accepted,
-      note: first === 'dialog' ? '文稿方案走的是旧版全局确认框，不是策略代答：第二轮没有发，刹车没有机会触发（unverified）' : '第一轮就弹了普通报价卡：第二轮没有发（unverified）',
+      note: first === 'dialog' ? '文稿方案走的是旧版全局确认框，不是策略代答：第二轮没有发，刹车没有机会触发（unverified）' : '第一轮就弹了普通付费卡：第二轮没有发（unverified）',
       inconclusive: true, problems: [],
     })
     return { accepted: total.accepted, dialogShown: first === 'dialog' }
@@ -252,7 +255,7 @@ export async function runPlanAndBrakeStep(ctx, { askText, askMoreText }) {
     return { accepted: front.accepted, dialogShown: false }
   }
 
-  // ── 第二轮：再补第 3 镜，也现在就生成——计划外的新镜，刹车 2 应当让报价卡立刻弹出来。
+  // ── 第二轮：再补第 3 镜，也现在就生成——计划外的新镜，刹车 2 应当让付费卡立刻弹出来。
   cap.setCeiling(afterFirst.accepted)
   await ctx.ask('plan2', askMoreText)
   const second = await waitForTurnOutcome(ctx, panel, { timeout: turnTimeout })
@@ -267,7 +270,7 @@ export async function runPlanAndBrakeStep(ctx, { askText, askMoreText }) {
     await switchAppLocale(win, 'en')
     await expect(card, '英文界面下刹车那一行也在').toContainText(brakeTitle('en'))
     await walk.snap('paid-05-en-brake-card-out-of-plan')
-    await clickOrFail(win.locator(spendCardSelector(panel)).locator(INTERVENTION_ALTERNATE), '报价卡上的「去掉」')
+    await clickOrFail(win.locator(spendCardSelector(panel)).locator(INTERVENTION_REJECT), '付费卡上的「取消」')
   } else if (second === 'dialog') {
     await cancelSpendDialog(win)
   }
@@ -358,10 +361,16 @@ export async function runStopStep(ctx, { askText, graceMs = QUIET_WINDOW_MS, set
   }
   const stopButton = win.locator(`${panel} ${COMPOSER_STOP}`)
   const stopAvailable = (await stopButton.count()) > 0
-  const acceptedAtClick = snapshot().accepted
+  // 这一步新增的「发出」（跨过提交边界的作业）：停止拦的是还没发的，已经发出去的照常生成（见文件头 ④）。
+  const sentSince = (facts) => facts.submitted.filter((id) => !before.submitted.includes(id)).length
+  const atClick = snapshot()
+  const acceptedAtClick = atClick.accepted
+  const sentAtClick = sentSince(atClick)
   if (stopAvailable) await stopButton.first().click()
   await win.waitForTimeout(graceMs)
-  const acceptedAtStop = snapshot().accepted
+  const atStop = snapshot()
+  const acceptedAtStop = atStop.accepted
+  const sentAtStop = sentSince(atStop)
   await win.waitForTimeout(settleMs)
   const settled = snapshot()
   const fresh = new Set(settled.taskIds.filter((id) => !before.taskIds.includes(id)))
@@ -371,16 +380,21 @@ export async function runStopStep(ctx, { askText, graceMs = QUIET_WINDOW_MS, set
   await win.reload({ waitUntil: 'domcontentloaded' })
   await expect(win.locator(`${panel} ${COMPOSER}`).first(), '重载后面板回来了').toBeVisible({ timeout: stationTimeout({ operations: 4 }) })
   await win.waitForTimeout(QUIET_WINDOW_MS)
-  const acceptedAfterReopen = snapshot().accepted
+  const reopened = snapshot()
+  const acceptedAfterReopen = reopened.accepted
   cap.assertNotBreached()
-  const lostRace = acceptedAtStop - before.accepted >= 2 // 停止前第二张已经发出去了
+  const lostRace = sentAtStop >= 2 // 停止时两张都已经发出去了：没有可拦的
   const problems = stopAvailable
-    ? stepStopVerdict({ acceptedAtStop, acceptedAfterSettle: settled.accepted, acceptedAfterReopen, deliveredTaskIds })
+    ? stepStopVerdict({ sentAtStop, sentAfterSettle: sentSince(settled), sentAfterReopen: sentSince(reopened), deliveredTaskIds })
     : []
   return record('4-stop-after-first-accepted', {
-    stopAvailable, lostRace, acceptedAtClick, acceptedAtStop, acceptedAfterSettle: settled.accepted, acceptedAfterReopen,
-    inFlightAtClick: acceptedAtStop - acceptedAtClick, deliveredTasks: deliveredTaskIds.length, newAcceptedThisStep: deltaFacts(before, snapshot()).accepted,
-    note: !stopAvailable ? '第一张被受理时停止钮已不在（这一轮已经收尾）——unverified' : lostRace ? '第二张抢在停止之前就发出去了——停止没赶上，unverified' : undefined,
+    stopAvailable, lostRace, sentAtClick, sentAtStop, sentAfterSettle: sentSince(settled), sentAfterReopen: sentSince(reopened),
+    acceptedAtClick, acceptedAtStop, acceptedAfterSettle: settled.accepted, acceptedAfterReopen,
+    // 这一步新作业此刻停在哪一相（「已交出的照常完成」不成立时看它）。
+    jobsThisStep: reopened.jobs.filter((job) => !before.jobs.some((seen) => seen.runId === job.runId && seen.jobId === job.jobId))
+      .map((job) => ({ status: job.status, accepted: Boolean(job.providerTaskId) })),
+    inFlightAtClick: acceptedAtStop - acceptedAtClick, deliveredTasks: deliveredTaskIds.length, newAcceptedThisStep: deltaFacts(before, reopened).accepted,
+    note: !stopAvailable ? '第一张被受理时停止钮已不在（这一轮已经收尾）——unverified' : lostRace ? '停止时两张都已经发出去了（画布一波一起发）——停止没赶上，unverified' : undefined,
     problems,
   })
 }

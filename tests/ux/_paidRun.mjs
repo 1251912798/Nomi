@@ -287,12 +287,34 @@ function readJson(file) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch { return null }
 }
 
+/**
+ * 画布那一台（卡上「生成」、节点 ↑、「直接生成」档交给画布的那一镜）的作业，provider 记成 `canvas:<vendorKey>`
+ * （传输前缀，见 `electron/capabilityCore/canvasTransportProvider.ts#CANVAS_PROVIDER_PREFIX`）。收据里的供应商是前缀后面那一段。
+ */
+const CANVAS_PROVIDER_PREFIX = 'canvas:'
+export function jobVendor(provider) {
+  const value = String(provider ?? '')
+  return value.startsWith(CANVAS_PROVIDER_PREFIX)
+    ? { vendor: value.slice(CANVAS_PROVIDER_PREFIX.length), engine: 'canvas' }
+    : { vendor: value || null, engine: 'production' }
+}
+
 /** 项目里所有制作 Run（`.nomi/runs/<runId>/run.json`，Agent 发起的付费都记在这里），按创建先后。 */
 export function readProductionRuns(projectRoot) {
   const dir = path.join(projectRoot, '.nomi', 'runs')
   if (!fs.existsSync(dir)) return []
   return fs.readdirSync(dir).map((id) => readJson(path.join(dir, id, 'run.json'))?.run).filter(Boolean)
     .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+}
+
+/**
+ * 这一次出价（制作 Run `runId`）交给画布的那几镜各自的单镜 Run（盘上的交接记录 `handOvers[].canvasRunId`，取最近一次出价）。
+ * D2 起卡上「生成」、「直接生成」档都走画布那一台：作业和产物住在这些 Run 里，制作 Run 自己一笔作业都不派。
+ */
+export function handedOverRuns(runs, runId) {
+  const presentation = runs.find((run) => run.runId === runId)?.generationPlan?.presentations?.at(-1)
+  const ids = new Set((presentation?.handOvers ?? []).map((entry) => entry.canvasRunId).filter(Boolean))
+  return runs.filter((run) => ids.has(run.runId))
 }
 
 /**
@@ -318,9 +340,10 @@ export function spendReceipt(projectRoot) {
     for (const job of run.jobs ?? []) {
       if (!job.providerTaskId) continue
       const node = nodes.find((candidate) => candidate.id === job.nodeId)
+      const { vendor, engine } = jobVendor(job.provider)
       media.set(job.providerTaskId, {
         ...media.get(job.providerTaskId),
-        source: 'production-run', runId: run.runId, jobId: job.jobId, nodeId: job.nodeId ?? null, vendor: job.provider, model: job.model,
+        source: 'production-run', engine, runId: run.runId, jobId: job.jobId, nodeId: job.nodeId ?? null, vendor, model: job.model,
         taskId: job.providerTaskId, status: job.status, providerCost: node?.result?.provenance?.cost ?? null,
       })
     }

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shared states · English</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 384px; height: 820px; box-sizing: border-box; padding: 20px 11px; background: oklch(0.18 0.006 80); display: flex; flex-direction: column; gap: 8px; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif;">
+  <span style="font-size: 11px; color: oklch(0.70 0.006 85);">Sending (handed to the canvas, some still on their way)</span>
+  <dc-import name="SpendCard" locale="en" scheme="dark" fit="wide" plan="one" phase="sending" chrome="card" hint-size="362px,176px"></dc-import>
+  <span style="margin-top: 16px; font-size: 11px; color: oklch(0.70 0.006 85);">Failed (one shot wasn't sent; the card stays)</span>
+  <dc-import name="SpendCard" locale="en" scheme="dark" fit="wide" plan="one" phase="failure" chrome="card" hint-size="362px,200px"></dc-import>
+  <span style="margin-top: 16px; font-size: 11px; color: oklch(0.70 0.006 85);">Nothing left (all three skipped)</span>
+  <dc-import name="SpendCard" locale="en" scheme="dark" fit="wide" plan="one" phase="nothing" chrome="card" hint-size="362px,176px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":384,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

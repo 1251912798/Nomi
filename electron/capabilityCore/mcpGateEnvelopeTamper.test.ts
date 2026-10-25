@@ -1,4 +1,4 @@
-// 外部 MCP 付费门放宽「比信封封好时的版本」之后的反向保护（V-1049 独立验收写的 12 条）：卡开着时改提示词 / 模型 / 参数 / 参考图 / 撤回计划 / 放弃授权，两个确认面各一遍——确认一律被拒，start 与供应商 submit 都是 0 次。
+// 外部 MCP 付费门放宽「比信封封好时的版本」之后的反向保护（V-1049 独立验收写的 12 条）：卡开着时撤回计划 / 放弃授权 → 确认一律被拒、start 与供应商 submit 都是 0 次；改提示词 / 模型 / 参数 / 参考图 → 改不动（已封的草稿拒改稿），确认的正是封好的那一份。两个确认面各一遍。
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -96,7 +96,7 @@ type ConfirmationSurface = "client" | "nomi";
 type CardOpenState = {
   bumpProjectRevision: () => void
   cancelOperation: () => Promise<unknown>
-  // revise / abandonWaitingAuthorization 在 store 类型上是可选的；这里要的是真 store，缺了就让改动抛错——
+  // abandonWaitingAuthorization 在 store 类型上是可选的；这里要的是真 store，缺了就让改动抛错——
   // 改动没生效时确认会照常通过，断言当场变红，不会空转。
   operations: Required<ReturnType<typeof createProductionGenerationOperationStore>>
   owner: {
@@ -257,15 +257,12 @@ async function semanticGateJourney(options: { surface?: ConfirmationSurface; whi
 }
 
 
+// 卡开着时还能改动信封的两条路：撤回这一次出价、放弃那份在等的授权。改了 → 确认一律被拒、供应商不被碰。
 const mutations: Record<string, (st: CardOpenState) => unknown> = {
-  "revise prompt": (st) => st.operations.revise(projectIdentity.projectId, st.operationId(), { patch: { prompt: "A red car" } }, "2026-08-23T00:00:00.000Z"),
-  "revise model": (st) => st.operations.revise(projectIdentity.projectId, st.operationId(), { patch: { modelId: "other-model" } }, "2026-08-23T00:00:00.000Z"),
-  "revise parameters": (st) => st.operations.revise(projectIdentity.projectId, st.operationId(), { patch: { parameters: { aspectRatio: "1:1" } } }, "2026-08-23T00:00:00.000Z"),
-  "revise references": (st) => st.operations.revise(projectIdentity.projectId, st.operationId(), { patch: { references: [{ assetId: "x", kind: "image" }] } }, "2026-08-23T00:00:00.000Z"),
   "withdraw": (st) => st.owner.command(projectIdentity.projectId, st.operationId(), { commandId: "w1", expectedRevision: st.owner.readFull(projectIdentity.projectId, st.operationId()).revision, type: "generation.withdraw", payload: {}, issuedAt: "2026-08-23T00:00:00.000Z" }),
   "abandon": (st) => st.operations.abandonWaitingAuthorization(projectIdentity.projectId, st.operationId(), "2026-08-23T00:00:00.000Z"),
 };
-describe("卡开着时信封内容被改：确认一律被拒、供应商不被碰", () => {
+describe("卡开着时信封被撤：确认一律被拒、供应商不被碰", () => {
   for (const surface of ["client", "nomi"] as const) for (const [name, fn] of Object.entries(mutations)) {
     it(`${surface}: ${name} -> refused, provider untouched`, async () => {
       const { gate, start, provider, runTask } = await semanticGateJourney({ surface, whileCardOpen: async (st) => { try { await fn(st) } catch { /* 改动本身被拒也算「卡上的东西变了」：断言看的是确认被拒、供应商没碰 */ } } });
@@ -274,6 +271,31 @@ describe("卡开着时信封内容被改：确认一律被拒、供应商不被�
       expect(start).not.toHaveBeenCalled();
       expect(provider.submit).not.toHaveBeenCalled();
       expect(runTask).not.toHaveBeenCalled();
+    });
+  }
+});
+
+// 卡开着时改提示词 / 模型 / 参数 / 参考图：**改不动**。原来能改的那一条是付费卡上的「改参数」（`generation.revise`，
+// 封着也能改、改完撤授权重封）；D2 第③步卡上没有参数了，它随旧卡删掉——剩下的改稿口（`generation.patch`）只收草稿，
+// 封着的一律拒（new_draft_required）。所以确认的正是封好的那一份：start 恰好一次、读到的是原样的候选。
+const contentPatches: Record<string, Record<string, unknown>> = {
+  "patch prompt": { prompt: "A red car" },
+  "patch model": { modelId: "other-model" },
+  "patch parameters": { parameters: { aspectRatio: "1:1" } },
+  "patch references": { references: [{ assetId: "x", kind: "image" }] },
+};
+describe("卡开着时改信封内容：已封的草稿拒改稿，确认的正是封好的那一份", () => {
+  for (const surface of ["client", "nomi"] as const) for (const [name, patch] of Object.entries(contentPatches)) {
+    it(`${surface}: ${name} -> the patch is refused, the sealed envelope is confirmed unchanged`, async () => {
+      let refusal: unknown;
+      const { gate, start, operationId, repository } = await semanticGateJourney({ surface, whileCardOpen: async (st) => {
+        try { await st.operations.patch(projectIdentity.projectId, st.operationId(), patch, "2026-08-23T00:00:00.000Z"); } catch (error) { refusal = error; }
+      } });
+      expect(String((refusal as Error | undefined)?.message)).toContain("new_draft_required");
+      expect((gate.result as { isError?: boolean }).isError).not.toBe(true);
+      expect(start).toHaveBeenCalledTimes(1);
+      expect(repository.read(projectIdentity.projectId, operationId)?.generationPlan?.candidate)
+        .toMatchObject({ prompt: "A paper boat on a lake", modelId: "fixture-model", parameters: { aspectRatio: "16:9" }, references: [] });
     });
   }
 });

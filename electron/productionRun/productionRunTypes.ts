@@ -218,6 +218,63 @@ export type ProductionShotClaim = {
   by: "canvas" | "production";
   attempt: number;
   claimedAt: string;
+  /**
+   * 画布认领从哪来（D2 第③步，2026-10-24）：`handover` = 付费卡 / 「直接生成」档把这一镜交给画布（出价里记着那一笔交接）；
+   * `node` = 用户在节点上自己点了生成。旧数据缺席 = 节点。
+   */
+  via?: "handover" | "node";
+  /** 认领那一刻开着的那一次出价（没有开着的出价 = 缺席）。下一次出价不被上一次的认领挡住。 */
+  presentationId?: string;
+  /** 认领它的那一个画布单镜 Run（`canvasRunIdFor(运行记录号)`）。 */
+  canvasRunId?: string;
+};
+
+/**
+ * 出价里的一镜「交给画布」那一笔（D2 第③步：一台发动机）。卡上点「生成」/「直接生成」档的策略决定之后，这几镜不再由
+ * 制作流程发，而是逐镜走画布单节点提交；出价按交接记录关（`handed_to_canvas`）。
+ *
+ * 写口只有 `productionGenerationPresentationEdits.ts`（`generation.handover*` 三条命令，只走主进程：渲染层的命令白名单
+ * 里没有它们）。读口只有 `electron/shared/productionGenerationPresentation.ts`。
+ */
+export type GenerationHandOver = {
+  shotId: string;
+  /** 谁决定交出去：用户在卡上点了「生成」（`gesture`），或「直接生成」档的策略（`policy`，只有主进程能写）。 */
+  by: "gesture" | "policy";
+  at: string;
+  /** 画布那一镜的同意建好时绑上（`canvasRunIdFor(运行记录号)`）；缺席 = 渲染层还没开出画布那一份同意。 */
+  canvasRunId?: string;
+  /** 派发落定。缺席 = 还在交（排队 / 正在交给供应商）。 */
+  settled?: GenerationHandOverSettlement;
+};
+
+/** 交出去的那一镜最后怎样了的四种结局（唯一词表：落定记录的类型与主进程落定时的校验集合都从它来，见下面那段说明）。 */
+export const GENERATION_HAND_OVER_OUTCOMES = ["accepted", "unknown", "not_sent", "withdrawn"] as const;
+export type GenerationHandOverOutcome = (typeof GENERATION_HAND_OVER_OUTCOMES)[number];
+
+/**
+ * 交出去的那一镜最后怎样了（画布那一侧写回）：
+ *   · `accepted`：供应商受理了（或同步出图已经出完）——钱在花；
+ *   · `unknown`：交的那一下没有结论（结果未知）——可能已经扣了钱，先去核对，绝不说没花钱；
+ *   · `not_sent`：确定没发出去（本机就拒了 / 没连上 / 供应商当场拒）——没花钱，卡上可「再试一次」或「去改」；
+ *   · `withdrawn`：还没轮到它就被收回了（用户点了「取消」/ 在任务列表里去掉）——没花钱。
+ */
+export type GenerationHandOverSettlement = {
+  at: string;
+  outcome: GenerationHandOverOutcome;
+  /**
+   * `withdrawn` 时谁收回的：在任务列表里去掉这一镜（`removed`），或这一次出价还没交到画布手里就关了（关卡的原因：
+   * 用户点了取消 `user_closed` / 打了字 `user_wrote` / 回合被停 `stopped`）。
+   */
+  withdrawnBy?: "removed" | "user_closed" | "user_wrote" | "stopped";
+  /** `not_sent` 时为什么没发出去（Nomi 自己的语义码，不是供应商原话）：卡据此选「再试一次」还是「去改镜 N」。 */
+  failure?: GenerationHandOverFailure;
+};
+
+export type GenerationHandOverFailure = {
+  /** `parameter_rejected` = 参数 / 提示词 / 参考被拒（去节点里改）；`not_sent` = 别的原因没发出去（可以再试一次）。 */
+  kind: "parameter_rejected" | "not_sent";
+  /** 语义码（如 `provider_rejected`、`director_preview_blocked`、`node_generation_in_flight`），只给卡选文案用。 */
+  code: string;
 };
 
 /**
@@ -274,8 +331,12 @@ export type ProductionGenerationShot = {
   updatedAt: string;
 };
 
-/** 这一次出价是怎么关掉的。`resolved` = 卡上每一镜都决定了（生成或去掉）；其余三种是还有镜没决定就关了。 */
-export type GenerationPresentationCloser = "resolved" | "user_closed" | "user_wrote" | "stopped";
+/**
+ * 这一次出价是怎么关掉的。`resolved` = 卡上每一镜都决定了（去掉 / 节点上自己拿走 / 旧版门批过）；`handed_to_canvas` = 同上，
+ * 而且有镜是卡 / 策略交给画布去生成的、都交到了供应商手里（D2 第③步）；其余三种是还有镜没决定就关了
+ * （`user_closed` 卡上「取消」/ `user_wrote` 用户在面板里打了字 / `stopped` 回合被停、被下一次出价顶掉、重启清扫）。
+ */
+export type GenerationPresentationCloser = "resolved" | "handed_to_canvas" | "user_closed" | "user_wrote" | "stopped";
 
 export type GenerationPresentation = {
   /** Durable identity of the displayed confirmation card. */
@@ -296,8 +357,10 @@ export type GenerationPresentation = {
    * ——按门的先后算，不按时间戳比：两次操作落在同一毫秒时，时间戳分不出先后。
    */
   fromGate: number;
-  /** 用户在卡上点了「去掉这张」的那几镜（按点的先后）。去掉的镜不生成、以后也不再自动摆上卡。 */
+  /** 用户在卡上点了「不生成 ×」的那几镜（按点的先后）。去掉的镜不生成、以后也不再自动摆上卡。再点一次（恢复）就从这里拿掉。 */
   removed?: Array<{ shotId: string; at: string }>;
+  /** 交给画布的那几镜（按交的先后；同一镜「再试一次」再记一笔，以最后一笔为准）。 */
+  handOvers?: GenerationHandOver[];
   /** 缺席 = 卡还开着。 */
   closed?: { at: string; by: GenerationPresentationCloser };
 };
@@ -307,8 +370,9 @@ export type ProductionGenerationPlan = {
   state: "draft" | "sealed" | "cancelled" | "submitted";
   /**
    * 每一次把卡摆到用户面前（`generate` 动词 → `generation.present`）一条，只追加（2026-09-30 付费卡逐镜）。
-   * 最后一条就是这一次出价：摆了哪几镜、什么时候、关了没有、为什么关。卡上每一镜点「生成这张」「去掉这张」
-   * 之后，这一次出价里还没决定的镜才留在卡上；一镜都不剩时这一条自己关掉（`resolved`）。
+   * 最后一条就是这一次出价：摆了哪几镜、什么时候、关了没有、为什么关。卡上点「生成」把还没决定的镜交给画布
+   * （`handOvers`），点「不生成 ×」记进 `removed`（可恢复）；每一镜都定了（交到了 / 去掉了 / 节点上自己拿走了）这一条
+   * 自己关掉（`resolved` / `handed_to_canvas`）。Agent 面板那一张全部去掉时留着（主按钮置灰、还能恢复），要关点「取消」。
    * 唯一读口 `electron/shared/productionGenerationPresentation.ts`，唯一写口 `electron/productionRun/productionGenerationPresentationEdits.ts`
    * （都经 reducer 的命令）。旧 Run 的 `cardHidden` 读盘时归一成它。
    */
@@ -434,6 +498,14 @@ export type ProductionArtifact = {
   adoptedAt?: string;
 };
 
+export type ProductionRunOrigin = {
+  host: string;
+  actorId?: string;
+  nodeId?: string;
+  sourceDocument?: { documentId: string; revision: number; contentHash: string };
+  handOverOf?: { runId: string; shotId: string };
+};
+
 export type ProductionRun = {
   schemaVersion: number;
   runId: string;
@@ -442,8 +514,11 @@ export type ProductionRun = {
   status: ProductionRunStatus;
   stageId: string;
   playbook: { name: string; version: string };
-  /** `nodeId`：画布节点发起的 Run（host canvas）的来源节点——先有节点、请求才发出（shotLandingAdmission.landedNodeOf）。 */
-  origin: { host: string; actorId?: string; nodeId?: string; sourceDocument?: { documentId: string; revision: number; contentHash: string } };
+  /**
+   * `nodeId`：画布节点发起的 Run（host canvas）的来源节点——先有节点、请求才发出（shotLandingAdmission.landedNodeOf）。
+   * `handOverOf`：这个画布单镜 Run 是替哪个制作 Run 的哪一镜交的（付费卡 / 「直接生成」档交给画布，D2 第③步）；派发落定时写回那一笔交接。
+   */
+  origin: ProductionRunOrigin;
   brief?: ProductionBrief;
   policy: AutomationPolicy;
   budget: BudgetLedgerSummary;
@@ -565,10 +640,10 @@ export type ProductionActionResult = {
   ok: boolean;
   code:
     | "run_not_open" // 该项目不是当前打开的项目（守卫）
-    | "revised" // 付费卡上改了参数：旧授权已撤、计划回到草稿等重新封印
-    | "discarded" // 付费卡上按了 ×：这份草稿被丢弃
-    | "spend_confirmed" // 付费卡上「生成这张」：这一镜的收据已签、门已批、已开跑
-    | "shot_removed" // 付费卡上「去掉这张」：这一镜不生成
+    | "discarded" // 付费卡上按了「取消」：这一次出价收回（草稿、节点都留着）
+    | "handed_over" // 付费卡上「生成 / 全部生成 / 生成剩下 N 段 / 再试一次」：这几镜交给了画布（逐镜走画布单节点提交）
+    | "shot_removed" // 付费卡上「不生成 ×」：这一镜不生成
+    | "shot_restored" // 付费卡上「不生成 ×」再点一次：这一镜回到卡上
     | "unavailable" // 能力核未就绪 / provider 未配置
     | "failed"; // 其它失败（账本事实在 message，语义码在 reason）
   /**
@@ -596,8 +671,8 @@ export type ProductionActionResult = {
    */
   failure?: ProductionShotActionFailure;
   /**
-   * 「生成剩下 N 张」跑到一半卡被关掉时才有（付费卡①，2026-10-02）：卡关掉之前批下、照常生成的有几张（`sent`），
-   * 没发的有几张（`notSent`）。只由 `confirmRemainingShots` 写；卡上那句「发出了 K 张，剩下 N−K 张没发」只读它。
+   * 交给画布的那几镜交到一半时点了「取消」才有（D2 第③步）：已经交出去、照常生成的有几段（`sent`：交到了 / 结果未知 / 还在交），
+   * 没发的有几段（`notSent`）。只由 `discardPendingSpend` 写；取消之后那一句「交出去了 K 段，剩下的没发」只读它——一段都没剩时不说「已停止」。
    */
   batchStopped?: Readonly<{ sent: number; notSent: number }>;
 };
@@ -606,8 +681,11 @@ export type CreateProductionRunInput = {
   runId?: string;
   projectId: string;
   playbook: { name: string; version: string };
-  /** `nodeId`：画布节点发起的 Run（host canvas）的来源节点——先有节点、请求才发出（shotLandingAdmission.landedNodeOf）。 */
-  origin: { host: string; actorId?: string; nodeId?: string; sourceDocument?: { documentId: string; revision: number; contentHash: string } };
+  /**
+   * `nodeId`：画布节点发起的 Run（host canvas）的来源节点——先有节点、请求才发出（shotLandingAdmission.landedNodeOf）。
+   * `handOverOf`：这个画布单镜 Run 是替哪个制作 Run 的哪一镜交的（付费卡 / 「直接生成」档交给画布，D2 第③步）；派发落定时写回那一笔交接。
+   */
+  origin: ProductionRunOrigin;
   brief?: ProductionBrief;
   policy?: Partial<AutomationPolicy>;
   currency?: string;

@@ -90,9 +90,9 @@ export function describeBlockedNotice(plan: DependencyWavePlan): string | null {
 
 /**
  * 一批节点的托管解析：整批只问一次（有一个节点需要披露，整批就带上披露块）。
- * 返回 null = 策略 deny，这批直接不跑。
+ * 返回 null = 策略 deny，这批直接不跑。Agent 付费卡交给画布的那几镜也问这一份（卡上的披露行、交接时的同意）。
  */
-async function resolveBatchHostingNodes(
+export async function resolveBatchHostingNodes(
   nodes: readonly GenerationCanvasNode[],
 ): Promise<Awaited<ReturnType<typeof resolveAssetUploadConsent>> | null> {
   const canvasState = useGenerationCanvasStore.getState()

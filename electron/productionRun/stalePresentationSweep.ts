@@ -1,4 +1,4 @@
-import { currentPresentation } from "../shared/productionGenerationPresentation";
+import { currentPresentation, IN_APP_AGENT_ORIGIN_HOST, presentationIsOpen } from "../shared/productionGenerationPresentation";
 // 重启之后，把「上一个进程摆出去、还没人答」的那几次**出价**撤回（裁决 C，2026-09-22 二次裁决）。
 //
 // ── 它在解决哪个真实摩擦 ──
@@ -18,9 +18,14 @@ import { currentPresentation } from "../shared/productionGenerationPresentation"
 // 清扫挂在「打开 / 切换项目」的补齐钩子上，它在一个进程里会跑很多次。本进程里摆出去的卡有人在等
 // （lane 的回合挂在闸上；回合没了的那几条路——按停止 / 关窗 / 切项目——自己会撤回），
 // 扫到它就是把用户正看着的卡抽走。所以判据是「这次出价发生在本进程启动之前」，不是「现在没人认领它」。
+//
+// ── 为什么不管它还等不等人（D2 第③步）──
+//
+// 上一个进程开着的出价一律收回，包括「直接生成」档正在替用户交给画布的那一次：问这句话的回合已经没了，
+// 重开之后谁也不在等它的结局（3.11 重启不出卡）。交出去、还没绑上画布的那几镜当场记成收回；绑上了的归画布那一侧——
+// 没轮到的同意由打开项目时的孤儿回收收回（记「没发出去」），已经交到供应商的由观察者接着看。
 
 import type { ProductionRun } from "./productionRunTypes";
-import { awaitingSpendDecision } from "./productionPendingSpend";
 
 /** 本进程的启动时刻（模块装载那一刻）。测试可注入别的值。 */
 export const PROCESS_STARTED_AT = new Date().toISOString();
@@ -38,22 +43,17 @@ export async function withdrawStalePresentations(deps: StalePresentationSweepDep
   const startedAt = deps.processStartedAt ?? PROCESS_STARTED_AT;
   const withdrawn: string[] = [];
   for (const run of deps.listRuns(projectId)) {
-    const awaiting = awaitingSpendDecision(run);
-    if (!awaiting) continue;
-    // A project-policy decision has a read-side deadline precisely because its
-    // failure marker may be lost. Keep the durable card for manual recovery;
-    // startup cleanup must not turn that safety net back into a disappearance.
-    const presentation = currentPresentation(awaiting.plan);
-    if (presentation?.policySnapshot?.mode === "direct" && presentation.policyDecisionState !== "failed") continue;
+    const plan = run.generationPlan;
+    if (run.origin.host !== IN_APP_AGENT_ORIGIN_HOST || !plan || plan.state === "cancelled" || !presentationIsOpen(plan)) continue;
     // 这一次出价开出来的那一刻；ISO 串同宽，字典序即时间序。
-    const openedAt = currentPresentation(awaiting.plan)?.openedAt ?? awaiting.plan.updatedAt;
+    const openedAt = currentPresentation(plan)?.openedAt ?? plan.updatedAt;
     if (openedAt.localeCompare(startedAt) >= 0) continue;
     try {
       // 问这句话的那个回合随上一个进程没了：这一次出价关成 stopped（没决定的镜记「被停」）。
-      await deps.withdraw(projectId, awaiting.plan.operationId, deps.now?.() ?? new Date().toISOString(), "stopped");
-      withdrawn.push(awaiting.plan.operationId);
+      await deps.withdraw(projectId, plan.operationId, deps.now?.() ?? new Date().toISOString(), "stopped");
+      withdrawn.push(plan.operationId);
     } catch (error) {
-      deps.onError?.(awaiting.plan.operationId, error);
+      deps.onError?.(plan.operationId, error);
     }
   }
   return Object.freeze(withdrawn);

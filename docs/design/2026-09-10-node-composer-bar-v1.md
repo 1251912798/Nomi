@@ -1,5 +1,9 @@
 # 节点生成浮框底栏 v1.1 · 三类归位（+ §B：逐参数下拉，只给付费确认卡）
 
+> **[2026-10-24 D2 第③步：§B 的逐参数下拉 chip（`parameterLayout='chips'`）、付费卡上的 ⚙ 长尾面板、实验室第六格 `composer-bar-chips-mode`
+> 随旧付费卡一起删了——付费卡不再挂生成框与参数控件（设计系统 §1.0，`docs/plan/2026-10-23-d2-pointer-spend-card.md`），
+> `InlineParameterBar` 只剩摘要 pill 一种摆法，生成框只有画布（canvas）与节点内嵌（inline）两种宿主。下文 §B 与 chips 相关的段落是历史。]**
+
 > 状态：**已接线**（2026-09-11 用户「都按默认」拍板 v1.1 并已实施）。
 > **先读 §B 开头那段**：同日 02:10 拍板的「逐参数下拉 chip」我错误地落到了共用组件的默认行为上，
 > 04:30 用户纠正为**只给付费确认卡，画布节点退回摘要 pill**。所以 v1.1 各节里写的
@@ -177,7 +181,7 @@ i18n `parameters.workflowParams`）**在 04:30 的纠正里全部恢复**——�
 | 真机 `node-composer-placement.walk.mjs` | 底栏参数区是一颗读得出当前配置、点得到的摘要 pill；像真人一样点开它 → 面板里挑一个别的档 → 那一组的选中态真的挪过去了（面板受控，选中态 = 节点 meta） | 画布节点的「读得出 + 点得开真能改」退化 |
 | 真机 同上 | 画布节点上 `[data-parameter-chip]` **一颗都没有**（基线 = 上一条 pill 读到了） | chips 又被误接回画布（这次的根因） |
 | 真机 同上 | 「点开面板改一个值」这条路整场至少走到一次 | 模型碰巧没有分段组时那一段静静跳过的假绿 |
-| 实验室 `composer-bar-chips-mode` 那一格 | 每颗 `[data-parameter-chip]` 都有 `button` 触发器、带当前值；且不同时渲染摘要 pill | chips 形态退化成一段不可点的文字 |
+| ~~实验室 `composer-bar-chips-mode` 那一格~~ | 2026-10-24 删：逐参数 chip 那种摆法随 D2 旧付费卡一起删了（付费卡上不再挂参数控件，`docs/plan/2026-10-23-d2-pointer-spend-card.md`） | — |
 | 实验室 画布五格 | 摘要 pill 恰好两个值；且这五格里没有任何逐参数 chip | 两种摆法互相串门 |
 
 ---
@@ -320,7 +324,6 @@ tests/ux/shots/design-lab-node-composer-bar/composer-bar-v1-video-camera.png
 tests/ux/shots/design-lab-node-composer-bar/composer-bar-v1-image.png
 tests/ux/shots/design-lab-node-composer-bar/composer-bar-v1-video-dark.png
 tests/ux/shots/design-lab-node-composer-bar/composer-bar-v1-image-dark.png
-tests/ux/shots/design-lab-node-composer-bar/composer-bar-chips-mode.png  ← §B：chips 摆法（付费卡用）
 ```
 
 真机（打包 Electron 里点出来的，`node tests/ux/node-composer-placement.walk.mjs`）：
@@ -458,7 +461,7 @@ tests/ux/shots/node-composer-placement/06-video-param-panel.png  ← 点摘要 p
 |---|---|
 | 实验室两格 | `composer-bar-panel-flat-options`（Seedance 2 真实档案 → 多参数面板）与 `composer-bar-panel-solo-direct`（Agnes Image 真实档案，只声明一个「尺寸」→ pill 直出）。控件由 `resolveRenderedControls`（生产同一个函数）derive；展开态由取景台**真的点一下那颗 pill** 得到，点不到就当场抛错。浮层 portal 到 body，所以两格 `capture: 'viewport'` 截整屏 |
 | 真机 | `node-composer-placement.walk.mjs` 在打包 Electron 里对视频节点与图片节点各断一次「下拉 0 个 / 可点项 ≥1 个」。这台机器上**没有**单参数图片模型（内置图片档案声明了比例 + 清晰度），所以直出那半边只由实验室那一格守——不在真机断言里假装走到了一个不存在的模型 |
-| 付费卡 ⚙ | `design-lab-agent-panel-v4.walk.mjs` 只对 `v4-spend-params-panel-open` 那一格断言：其余格子没有参数浮层，对它们断「没有下拉」是句在任何情况下都成立的废话 |
+| ~~付费卡 ⚙~~ | 2026-10-24 删：付费卡上不再有参数浮层（D2 第③步），`v4-spend-params-panel-open` 那一格随旧卡删；摘要 pill 的面板只在画布节点上，由上面两格与 `node-composer-placement.walk.mjs` 守 | — |
 
 每一条「没有下拉」都配一句基线（「数得到可点选项」）：面板整个空着时「没有下拉」照样成立，
 那种绿和真绿在观测上一模一样。

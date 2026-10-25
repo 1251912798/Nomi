@@ -98,17 +98,16 @@ describe('soloOptionControl', () => {
   const duration: DynamicModelControl = {
     key: 'duration', label: '时长', type: 'number', binding: 'parameter', options: [], min: 4, max: 8, defaultValue: 5,
   }
-  const base = { hasProvider: false, hasModeChoices: false, chipsMode: false }
+  const base = { hasProvider: false, hasModeChoices: false }
 
   it('只有一个带候选项的参数时，pill 直接出它的选项（不套面板壳）', () => {
     expect(soloOptionControl({ ...base, controls: [size] })).toBe(size)
   })
 
-  it('面板里还有别的东西就退回面板：第二个参数 / 供应商 / 生成方式 / chips 摆法', () => {
+  it('面板里还有别的东西就退回面板：第二个参数 / 供应商 / 生成方式', () => {
     expect(soloOptionControl({ ...base, controls: [size, duration] })).toBeNull()
     expect(soloOptionControl({ ...base, controls: [size], hasProvider: true })).toBeNull()
     expect(soloOptionControl({ ...base, controls: [size], hasModeChoices: true })).toBeNull()
-    expect(soloOptionControl({ ...base, controls: [size], chipsMode: true })).toBeNull()
   })
 
   it('没有候选项的控件（滑杆/数字框/开关）不走直出：脱了小标题读不出它在调什么', () => {

@@ -12,6 +12,8 @@ const INSTALL_SOURCE = `(() => {
   if (window.__nomiPerfResponse) return 'exists'
   const visible = (element) => Boolean(element) && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden'
   const composerOf = (nodeId) => document.querySelector('article[data-node-id="' + CSS.escape(nodeId) + '"] [data-composer-host="canvas"]')
+  // 画布节点外壳（任何细节层级都有它；外部高亮 data-external-highlight 挂在这一层）。按 React Flow 节点包层的 data-id 找，不按 DOM 里第一个 data-node-id。
+  const shellOf = (nodeId) => document.querySelector('.react-flow__node[data-id="' + CSS.escape(nodeId) + '"] .generation-canvas-react-flow__node-shell')
   const PREDICATES = {
     // 生成框真内容可见：浮框挂上、提示词编辑器在、里面没有任何「加载中」骨架（懒加载骨架 / 模型清单骨架都带 aria-busy）。
     composerReady(nodeId) {
@@ -52,6 +54,21 @@ const INSTALL_SOURCE = `(() => {
     modeSwitched(label) {
       const active = document.querySelector('[data-agent-generation-mode] [role="radio"][aria-checked="true"]')
       return Boolean(active) && active.textContent.trim() === label && document.querySelectorAll('[data-asset-slot-label]').length >= 2
+    },
+    // 聊天里的指向元素（D2，NodePointer 板）：悬停它 → 画布上那个节点的外壳亮起（hover）。
+    pointerNodeLit(nodeId) {
+      return shellOf(nodeId)?.getAttribute('data-external-highlight') === 'hover'
+    },
+    // 点它 → 那个节点在闪（flash 压过 hover），且画布已经开始对焦（视口离开了点下去之前那一刻的位置）。
+    // 对焦本身是一段 220ms 的滑动（设计如此，不是延迟）：滑完的时刻由场景另记，只看。视口变换读内联样式，不逼一次样式重算。
+    pointerFocusStarted({ nodeId, before }) {
+      const viewport = document.querySelector('.react-flow__viewport')
+      return shellOf(nodeId)?.getAttribute('data-external-highlight') === 'flash' && Boolean(viewport) && viewport.style.transform !== before
+    },
+    // 在节点生成框里改了一个参数 → 付费卡组下方那一行摘要换了字（卡从节点现算，不留第二份）。
+    spendSummaryChanged({ card, before }) {
+      const line = document.querySelector(card + ' [data-node-pointer-group-summary]')
+      return Boolean(line) && line.textContent.trim() !== before
     },
     nodeCountAbove(count) {
       return document.querySelectorAll('.react-flow__node').length > count
@@ -168,6 +185,7 @@ const INSTALL_SOURCE = `(() => {
                 earlyMs: earlyMs === null ? null : Math.round(earlyMs * 10) / 10,
                 longTasks,
                 storeWrites: unsubscribe ? storeWrites : null,
+                t0: Math.round(t0 * 10) / 10,
               })))
               return
             }
@@ -198,7 +216,7 @@ export async function armResponse(page, { trigger = 'pointerdown', predicate, ar
   await page.evaluate((options) => window.__nomiPerfResponse.arm(options), { trigger, predicate, arg, early, timeoutMs })
 }
 
-/** 取上一次 arm 的结果：{ ms, earlyMs, longTasks, storeWrites }。 */
+/** 取上一次 arm 的结果：{ ms, earlyMs, longTasks, storeWrites, t0 }（t0 = 起表那一下输入事件的页内时间戳，和 performance.now() 同一时基）。 */
 export async function takeResponse(page) {
   return page.evaluate(() => window.__nomiPerfResponse.take())
 }

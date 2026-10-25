@@ -230,6 +230,19 @@ describe('generation canvas React Flow adapter', () => {
     expect(projectGenerationFlowNodes(hoverC, { ...base, pointerHoverNodeId: 'c' })).toBe(hoverC)
   })
 
+  // SpendCardQ1 板 card.done：卡自己关掉那一刻，交出去的那几镜一起闪一下；只重投被点名的那几张，灭了再重投回来。
+  it('flashes several chat-named cards at once and re-projects only those cards', () => {
+    const nodes = [node('a', 0), node('b', 300), node('c', 600)]
+    const base = { nodes, selected: new Set<string>(), readOnly: false, appearingNodeIds: undefined, focusFlashNodeId: null, pointerHoverNodeId: 'a' }
+    const first = projectGenerationFlowNodes(null, base)
+    const flashing = projectGenerationFlowNodes(first, { ...base, pointerFlashNodeIds: ['b', 'c'] })
+    expect(flashing.output[0]).toBe(first.output[0])
+    expect(flashing.output.map((flowNode) => flowNode.data.externalHighlight)).toEqual(['hover', 'flash', 'flash'])
+    const done = projectGenerationFlowNodes(flashing, { ...base, pointerFlashNodeIds: [] })
+    expect(done.output[0]).toBe(first.output[0])
+    expect(done.output.map((flowNode) => flowNode.data.externalHighlight)).toEqual(['hover', null, null])
+  })
+
   it('paints the external highlight on the shell in neutral ink only (board NodePointer canvas.node.highlight)', () => {
     const hover = externalHighlightShellClass('hover')
     const flash = externalHighlightShellClass('flash')

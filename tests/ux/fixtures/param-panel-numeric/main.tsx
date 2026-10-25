@@ -89,7 +89,6 @@ function NumericControls(): JSX.Element {
         modelCatalogStatus={{ message: 'ready' }}
         renderedControls={fixtureQuery.has('single')
           ? [durationControl] : [megapixelsControl, denoiseControl, durationControl]}
-        panelMode={fixtureQuery.has('inline') ? 'inline' : 'portal'}
         selectedModelOption={selectedModel}
         archetype={null}
         meta={meta}

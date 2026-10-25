@@ -1,166 +1,165 @@
 #!/usr/bin/env node
-// 真实用户任务（R13）：付费卡上的「生成剩下 N 张」（2026-10-01 用户拍板）。
+// 真实用户任务（R13，D2 第③步，SpendCardQ1 板，设计卡 ★1 任务 C）：卡上摆着三段视频，我先去节点上点 ↑ 生成了第 1 段，
+// 再回到卡上点「生成剩下 2 段」。
 //
-// 我让 Agent 画几张图，卡摆出来：动作行最左是「生成剩下 N 张」，右边是「去掉这张」和主按钮「生成这张」。
-// 点一下「生成剩下」= 卡上还没决定的每一张各点一次「生成这张」：每张各记一笔授权，点完卡关掉，
-// 画布上每个节点和逐张点完一模一样。只剩 1 张时它不出现；去掉的不算在 N 里。
-// 它跑起来以后的样子（正在发出 k/N）和跑到一半点 × 停下，在 `agent-spend-stop-midway.walk.mjs`。
+//   · 节点上点 ↑：画布接走这一镜（和卡上交出去走的是同一条画布单节点提交）。卡上那一镜的指向元素跟着节点说「生成中」、
+//     不再算在主按钮里，主按钮换成「生成剩下 2 段」（板 card.generate）；
+//   · 卡上「不生成 ×」去掉一段 → 「生成剩下 1 段」；再点「恢复」→ 回到 2（去掉的不算在 N 里，board:SpendCardQ1/card.pointer.exclude）；
+//   · 「生成剩下 2 段」：只交那两段（第 1 段不再发一次），供应商一共收到三笔、各一次；卡收起来，出价按「已交给画布」关，
+//     回执照实说：两段是卡上交出去的、第 1 段是画布上接走的；对话流那一行指着三段（画布接走的也是这一次生成的）。
+//   · 中英各一遍；每一遍都核「卡上摘要 = 节点参数 = 假上游收到的请求体」；
+//   · 节点 ↑ 那一段和卡上交出去的两段，批准收据都是人点的手势、`humanActor` 逐字相同（同一个窗口、同一个 frame 铸的，
+//     设计卡 §四 第 3 条要在真 App 里对照）。
 //
-// 这条走查同时是样张的机器对账（`docs/design/mockups/contracts/2026-10-01-paid-card-generate-remaining.intent.mjs`）：
-//   · 翻页那一行只有翻页器和 `←→`（这一档报不出价，没有合计）；
-//   · 「生成剩下 N 张」在动作行最左，右边那两颗是一组；
-//   · 中文一行放得下；英文放不下时左边那颗整颗换到上一行、右边两颗保持一组靠右（不截断、不挤压）。
-// 每一态中英各拍一张整窗图和一张卡的近景，交给验收页。
-//
-// 这台机器的目录里**没有价**（今天的常态：中转不给价）——报得出价的那一档在 `agent-spend-priced-card.walk.mjs`。
-// 只有远端供应商是 loopback 夹具（零额度）；SDK、IPC、ProductionRun、渲染层、落盘全是真的。
+// 「正在发出 k/N」与中途「先不发了」在 agent-spend-stop-midway.walk.mjs；卡本身每一态的长相在 design-lab-spend-card.walk.mjs。
+// 只有远端供应商是 loopback 夹具（零额度）；SDK、IPC、ProductionRun、渲染层、落盘全是真的。不灌 store、不直调桥。
+import path from 'node:path'
+
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { assertMockupContract } from './_contract.mjs'
-import generateRemainingContract from '../../docs/design/mockups/contracts/2026-10-01-paid-card-generate-remaining.intent.mjs'
-import { BATCH, COPY, TITLE, createPresenter } from './_spendRemainingWalk.mjs'
+import { flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
-  CANVAS_PANEL, INTERVENTION_ALTERNATE, INTERVENTION_CONFIRM,
-  closeSpendCard, createRuntimeWalk, openCanvas, readProject, recorded,
-} from './agent-runtime-walk-support.mjs'
+  CARD_TITLE, EXCLUDE, RECEIPT_POINTERS, RESTORE,
+  armCanvasBridges, canvasRunsOf, cardFacts, cardTitle, createPresenter, generateOnNode, nodeParams, offerFacts, pointerAway,
+  pointerOf, pressPrimary, primaryLabel, say, shotGestureReceipts, shotNodes, wireParams,
+} from './_spendCardWalk.mjs'
+import { CANVAS_PANEL, createRuntimeWalk, openCanvas, recorded } from './agent-runtime-walk-support.mjs'
 
-process.env.NOMI_WALK_UNPRICED_MODEL = '1'
+const VIDEO = { providerId: 'apimart', modelId: 'doubao-seedance-2.0' }
+const A = { generate: 'board:SpendCardQ1/card.generate', exclude: 'board:SpendCardQ1/card.pointer.exclude' }
 
 const present = createPresenter('S_REMAIN')
 
-/** 动作行三颗按钮此刻在屏上的位置（中文要一行放下；英文放不下时左边那颗换到上一行）。 */
-async function actionBoxes(card) {
-  const box = async (selector) => {
-    const found = await card.locator(selector).first().boundingBox()
-    if (!found) throw new Error(`没量到 ${selector} 的位置`)
-    return found
-  }
-  const cardBox = await card.boundingBox()
-  if (!cardBox) throw new Error('没量到卡的位置')
-  return { batch: await box(BATCH), alternate: await box(INTERVENTION_ALTERNATE), confirm: await box(INTERVENTION_CONFIRM), card: cardBox }
+/** 供应商收到的每一笔（按提示词认回是哪一镜）。 */
+function requestsByShot(walk, from, shots) {
+  return walk.fixture.videos.slice(from).map((record) => {
+    const facts = wireParams(record.body)
+    const shot = shots.find((candidate) => candidate.node?.prompt && facts.prompt.includes(candidate.node.prompt))
+    return { shotId: shot?.shotId ?? null, ...facts }
+  })
 }
 
-/**
- * 排布：整叠的在左、这一张的在右，最贵的那颗离主按钮最远；主按钮贴右缘、不被挤到下一行。
- * `wrapped`：英文一行放不下 → 左边那颗在上一行；中文必须一行放下。
- */
-async function expectLayout(card, locale, { wrapped }) {
-  const { batch, alternate, confirm, card: cardBox } = await actionBoxes(card)
-  expect(alternate.x, `${locale}：「去掉这张」在主按钮左边`).toBeLessThan(confirm.x)
-  expect(Math.abs(alternate.y - confirm.y), `${locale}：「去掉这张」和主按钮在同一行（一组）`).toBeLessThan(4)
-  expect(cardBox.x + cardBox.width - (confirm.x + confirm.width), `${locale}：主按钮贴着卡的右缘`).toBeLessThan(24)
-  expect(batch.x, `${locale}：「生成剩下」在最左`).toBeLessThan(alternate.x)
-  if (wrapped) {
-    expect(batch.y + batch.height, `${locale}：放不下一行时「生成剩下」整颗在上一行`).toBeLessThanOrEqual(confirm.y + 1)
-  } else {
-    expect(Math.abs(batch.y - confirm.y), `${locale}：一行放得下，三颗在同一行`).toBeLessThan(4)
-  }
+/** 卡上某个指向元素那一格里的「不生成 ×」/「恢复」（悬停那一镜的缩略图才露出来，人就是这么点的）。 */
+async function toggleExclusion(card, nodeId, kind, label) {
+  const cell = card.locator('[data-node-pointer-cell]').filter({ has: card.page().locator(pointerOf(nodeId)) })
+  // 恢复按钮位于缩略图中央；先把鼠标放到同一格的边缘触发格子 hover，避免按钮出现后拦截
+  // 「悬停画面正中」的定位动作。真实用户先进入格子，再点中央按钮，规格不变。
+  await cell.hover({ position: { x: 4, y: 4 } })
+  await clickOrFail(cell.locator(kind === 'exclude' ? EXCLUDE : RESTORE), label)
 }
 
-/**
- * 整窗一张 + 卡的近景一张（整窗图里卡太小，字看不清）。拍之前把鼠标挪到标题上：刚点过的那颗按钮还停在悬停态
- * （主按钮悬停是强调色），截出来像是另一种按钮样式（2026-10-01 验收截图里「只剩 1 张」那张就是这样）。
- */
-async function snapCard(walk, card, label) {
-  await card.locator(TITLE).hover({ position: { x: 2, y: 2 } })
+/** 整窗一张 + 卡的近景一张（整窗图里卡太小，字看不清）。拍之前把鼠标挪开：刚点过的按钮还停在悬停态。 */
+async function snapCard(walk, win, card, label) {
+  await pointerAway(win)
   const file = await walk.snap(label)
   await card.screenshot({ path: file.replace(/\.png$/, '-card.png') })
 }
 
-/** 这一份草稿落在画布上的那几个图片节点。 */
-async function draftNodes(win, projectId, operationId) {
-  return (await readProject(win, projectId)).payload.generationCanvas.nodes
-    .filter((node) => node.meta?.productionRunId === operationId && node.kind === 'image')
-}
+async function remainingRound(walk, win, { projectId, projectRoot }, locale) {
+  const tag = locale === 'en' ? 'en' : 'zh'
+  const round = await present(walk, win, {
+    locale, kind: 'video',
+    shots: (prefix) => [1, 2, 3].map((index) => ({
+      title: `${prefix} 纸船 ${index}`, prompt: `${prefix} 纸船第 ${index} 镜：雨后清晨，纸船顺着水流漂`, taskKind: 'text_to_video', candidate: VIDEO,
+    })),
+  })
+  const { card } = round
+  const cardProof = await proveProbe(card, `${tag}：三段视频的付费卡摆出来了`)
+  const nodes = await shotNodes(win, projectId, round.operationId)
+  expect(nodes.every((shot) => shot.nodeId), `${tag}：三镜都落到了画布上`).toBe(true)
+  await pointerAway(win)
+  let facts = await cardFacts(win)
+  expect(facts.confirm?.text, `${tag}：先是「全部生成（3）」`).toBe(primaryLabel(locale, { count: 3, kind: 'video' }))
+  const videosBefore = walk.fixture.videos.length
 
-async function batchRound(walk, win, projectId, locale, { wrapped, checkAwaiting = false }) {
-  const imagesBefore = walk.fixture.images.length
-  const { card, operationId, turnDone } = await present(walk, win, 2, locale)
-  const cardProbe = await proveProbe(card, `${locale}：两张图的付费卡摆出来了`)
-  await expect(card.locator(BATCH), `${locale}：从第 1 页起就在，写明张数`).toHaveText(COPY[locale].batch(2))
-  await assertMockupContract(win, generateRemainingContract)
-  await expectLayout(card, locale, { wrapped })
-  expect(walk.fixture.images.length, `${locale}：按之前一张都没发`).toBe(imagesBefore)
-  // 第 12 条（测试表第 22 行）：卡还没点时，画布上这两张写的是「等你确认」，不是「排队中」。
-  // 只在新项目的第一轮量：那时画布上只有这两张、都在屏内（屏外的节点不渲染，后面几轮会被挤出视口）。
-  if (checkAwaiting) {
-    const waiting = await draftNodes(win, projectId, operationId)
-    expect(waiting, `${locale}：草稿落成两个图片节点`).toHaveLength(2)
-    for (const node of waiting) {
-      await expect(win.locator(`[data-node-id="${node.id}"] [data-shot-placeholder-state]`).first(), `${locale}：卡还没点，节点 ${node.id} 写的是等你确认`)
-        .toHaveAttribute('data-shot-placeholder-state', 'awaiting_confirmation', { timeout: stationTimeout({ operations: 2 }) })
-    }
+  // 去节点上点 ↑：点第 1 个指向元素 → 生成框为它打开 → 生成。
+  await generateOnNode(win, card, nodes[0].nodeId, `${tag}：在节点上生成第 1 镜`)
+  await expect.poll(() => walk.fixture.videos.length - videosBefore, { message: `${tag}：节点上点 ↑ 发出一笔`, timeout: stationTimeout({ operations: 4 }) }).toBe(1)
+  await expect(card.locator('[data-v4-control="confirm"]'), `${A.generate}：画布接走第 1 镜之后，主按钮是「生成剩下 2 段」`)
+    .toHaveText(new RegExp(escape(primaryLabel(locale, { count: 2, kind: 'video', remaining: true }))), { timeout: stationTimeout({ operations: 4 }) })
+  await expect(card.locator(CARD_TITLE), `${tag}：标题只问剩下的两段`).toContainText(cardTitle(locale, 2, 'video', { remaining: true }))
+  facts = await cardFacts(win)
+  expect(facts.pointers.map((pointer) => pointer.id), `${tag}：三个指向元素都还在（第 1 镜跟着节点说它在生成）`).toEqual(nodes.map((shot) => shot.nodeId))
+  expect(facts.toggles.filter((toggle) => toggle.cell === nodes[0].nodeId), `${tag}：画布接走的那一镜没有「不生成 ×」`).toEqual([])
+
+  // 去掉第 3 段 → 「生成剩下 1 段」；恢复 → 回到 2。
+  await toggleExclusion(card, nodes[2].nodeId, 'exclude', `${tag}：第 3 段「不生成 ×」`)
+  await expect(card.locator('[data-v4-control="confirm"]'), `${A.exclude}：去掉的不算在 N 里`)
+    .toHaveText(new RegExp(escape(primaryLabel(locale, { count: 1, kind: 'video', remaining: true }))), { timeout: stationTimeout({ operations: 4 }) })
+  await snapCard(walk, win, card, `${tag}-remaining-one-excluded`)
+  await toggleExclusion(card, nodes[2].nodeId, 'restore', `${tag}：第 3 段「恢复」`)
+  await expect(card.locator('[data-v4-control="confirm"]'), `${A.exclude}：恢复之后回到 2`)
+    .toHaveText(new RegExp(escape(primaryLabel(locale, { count: 2, kind: 'video', remaining: true }))), { timeout: stationTimeout({ operations: 4 }) })
+  await snapCard(walk, win, card, `${tag}-remaining-two`)
+  expect(walk.fixture.videos.length - videosBefore, `${tag}：去掉 / 恢复都不发请求`).toBe(1)
+
+  // 「生成剩下 2 段」：只交那两段。
+  await pressPrimary(card, `${tag}：「生成剩下 2 段」`)
+  await expect.poll(() => walk.fixture.videos.length - videosBefore, { message: `${tag}：一共三笔——第 1 段不再发一次`, timeout: stationTimeout({ operations: 6 }) }).toBe(3)
+  await expectAbsent(card, { provenBy: cardProof, message: `${tag}：每一段都定了，卡收起来` }, stationTimeout({ operations: 6 }))
+  const receipt = flattenRequestText((await recorded(round.turnDone.received, `${tag}: generate returns once every shot is decided`, stationTimeout({ operations: 6 }))).body)
+  expect(receipt, `${tag}：回执说卡上交出去的那两段在生成`).toContain('Generating now, because the user clicked generate for each of them')
+  expect(receipt, `${tag}：回执说第 1 段是画布上接走的`).toContain('were taken over on the canvas while the card was open')
+  const after = await shotNodes(win, projectId, round.operationId)
+  const requests = requestsByShot(walk, videosBefore, after)
+  expect(requests.map((request) => request.shotId).sort(), `${tag}：供应商收到的正好是这三段、各一次`).toEqual(after.map((shot) => shot.shotId).sort())
+  for (const shot of after) {
+    const request = requests.find((candidate) => candidate.shotId === shot.shotId)
+    const expected = nodeParams(shot.node.meta)
+    if (expected.aspect) expect(request.aspect, `${tag}：${shot.title} 发出去的比例 = 节点上的`).toBe(expected.aspect)
+    if (expected.duration) expect(request.duration, `${tag}：${shot.title} 发出去的时长 = 节点上的`).toBe(expected.duration)
   }
-  await snapCard(walk, card, `${locale}-two-shots`)
-
-  await clickOrFail(card.locator(BATCH), `${locale}：「生成剩下 2 张」`, { noWaitAfter: true })
-  await expect.poll(() => walk.fixture.images.length - imagesBefore,
-    { message: `${locale}：两张都真的发到供应商，各一次`, timeout: stationTimeout({ operations: 6 }) }).toBe(2)
-  await recorded(turnDone.received, `${locale}: generate returns once every shot on the card is decided`)
-  await expectAbsent(card, { provenBy: cardProbe, message: `${locale}：每一张都定了，卡关掉` })
-  // 和逐张点完一模一样：两个节点都出片（同一份逐镜结局驱动，不是另一条路）。读项目文档里的节点状态——
-  // 屏外的节点不渲染，量 DOM 会把「视口在哪」误当成「出没出片」。
-  await expect.poll(async () => (await draftNodes(win, projectId, operationId)).map((node) => node.status).sort().join(','),
-    { message: `${locale}：两个节点都出片`, timeout: stationTimeout({ operations: 6 }) }).toBe('success,success')
-  // 点完之后的整窗只在第一轮拍：后面几轮画布上已经有几十个节点，出片时整屏一直在重排，拍不出安定的图
-  // （截图门会拒绝）；功能上的断言（各发一次、卡关掉、两个节点都出片）每一轮照样做。
-  if (checkAwaiting) await walk.snap(`${locale}-two-shots-after-generate-remaining`)
-}
-
-async function oneLeftRound(walk, win, locale) {
-  const { card, turnDone } = await present(walk, win, 2, locale)
-  const batchProbe = await proveProbe(card.locator(BATCH), `${locale}：两张时「生成剩下」在`)
-  await clickOrFail(card.locator(INTERVENTION_CONFIRM), `${locale}：第 1 页「生成这张」`, { noWaitAfter: true })
-  await expect(card.locator(TITLE), `${locale}：卡还在，只剩 1 张`).toContainText(COPY[locale].title(1), { timeout: stationTimeout({ operations: 4 }) })
-  await expectAbsent(card.locator(BATCH), { provenBy: batchProbe, message: `${locale}：只剩 1 张时不画「生成剩下」（它和「生成这张」是同一件事）` })
-  await snapCard(walk, card, `${locale}-one-left`)
-  await closeSpendCard(card, `${locale}：看完关掉`)
-  await recorded(turnDone.received, `${locale}: generate returns once the one-left card is closed`)
-}
-
-async function manyShotsRound(walk, win, locale, { wrapped }) {
-  const { card, turnDone } = await present(walk, win, 33, locale)
-  await expect(card.locator(BATCH), `${locale}：33 张`).toHaveText(COPY[locale].batch(33))
-  await expectLayout(card, locale, { wrapped })
-  await snapCard(walk, card, `${locale}-33-shots`)
-  // 去掉的不算：去掉两张之后标题、页码、按钮一起变成 31。
-  for (const left of [32, 31]) {
-    await clickOrFail(card.locator(INTERVENTION_ALTERNATE), `${locale}：「去掉这张」（剩 ${left}）`, { noWaitAfter: true })
-    await expect(card.locator(TITLE), `${locale}：标题只数还没决定的`).toContainText(COPY[locale].title(left), { timeout: stationTimeout({ operations: 4 }) })
+  const offer = await offerFacts(win, projectId, round.operationId)
+  expect(offer.closedBy, `${tag}：出价按「已交给画布」关`).toBe('handed_to_canvas')
+  expect(offer.handOvers.map((entry) => entry.shotId).sort(), `${tag}：卡上交出去的只有第 2、3 段`).toEqual([after[1].shotId, after[2].shotId].sort())
+  expect(offer.productionJobs, `${tag}：制作 Run 自己一笔作业都没派`).toBe(0)
+  expect((await canvasRunsOf(win, projectId, round.operationId)).every((run) => run.jobs.length === 1), `${tag}：交出去的每一段一个画布单镜 Run、一笔作业`).toBe(true)
+  // 设计卡 §四 第 3 条（真 App 对照，不靠读码）：节点上点 ↑ 的第 1 段和卡上交出去的第 2、3 段，收据是同一个窗口、同一个 frame 铸的。
+  const gestures = await shotGestureReceipts(win, { projectId, projectRoot, capabilityDir: path.join(walk.report.tempRoot, 'capability'), operationId: round.operationId })
+  expect(gestures.map((entry) => entry.via), `${tag}：第 1 段是节点上点的，第 2、3 段是卡上交出去的`).toEqual(['node', 'handover', 'handover'])
+  expect(gestures.map((entry) => entry.receipts.length), `${tag}：三段各一张收据`).toEqual([1, 1, 1])
+  expect(gestures.flatMap((entry) => entry.receipts.map((receipt) => receipt.decidedBy)), `${tag}：三张都是人点的手势`).toEqual(['human:gesture', 'human:gesture', 'human:gesture'])
+  const actors = [...new Set(gestures.flatMap((entry) => entry.receipts.map((receipt) => receipt.humanActor)))]
+  expect(actors, `${tag}：节点 ↑ 和卡上「生成」铸的收据，humanActor 逐字相同`).toHaveLength(1)
+  expect(actors[0], `${tag}：humanActor 是这个窗口里的手势`).toMatch(/^web_contents:\d+:\d+:/)
+  const receiptRow = win.locator(`${CANVAS_PANEL} ${RECEIPT_POINTERS}`).last()
+  await expect(receiptRow, `${tag}：对话流那一行指着这一次生成的三段（画布接走的也算）`).toContainText(say(locale, 'agentPanelV4.spendCard.receiptSentVideo', { count: 3 }), { timeout: stationTimeout() })
+  walk.fixture.releaseVideos()
+  // 读画布 store（不读 DOM）：第二轮画布上已经有六个节点，React Flow 不渲染视口外的节点，DOM 里找不到它们。
+  await expect.poll(async () => (await shotNodes(win, projectId, round.operationId)).map((shot) => `${shot.title}=${shot.node?.status ?? 'missing'}`), {
+    message: `${tag}：三段都出了结果`, timeout: stationTimeout({ operations: 8 }),
+  }).toEqual(after.map((shot) => `${shot.title}=success`))
+  await expect(receiptRow, `${tag}：三段都出了结果，那一行说「已生成」`).toContainText(say(locale, 'agentPanelV4.spendCard.receiptGeneratedVideo', { count: 3 }), { timeout: stationTimeout() })
+  return {
+    requests: requests.map(({ shotId, aspect, duration, resolution }) => ({ shotId, aspect, duration, resolution })), handOvers: offer.handOvers,
+    gestureReceipts: gestures.map((entry) => ({ shotId: entry.shotId, via: entry.via, receipts: entry.receipts })),
   }
-  await expect(card.locator(BATCH), `${locale}：去掉的不算在 N 里`).toHaveText(COPY[locale].batch(31))
-  await expect(card.locator('[data-v4-block="pager"]'), `${locale}：页码也是 31`).toContainText('/31')
-  await snapCard(walk, card, `${locale}-33-shots-after-removing-2`)
-  await closeSpendCard(card, `${locale}：看完关掉`)
-  await recorded(turnDone.received, `${locale}: generate returns once the 33-shot card is closed`)
 }
 
-const walk = await createRuntimeWalk('spend-generate-remaining', { generationProvider: 'apimart' })
+function escape(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+const walk = await createRuntimeWalk('spend-generate-remaining', { generationProvider: 'apimart', trustFixtureOrigin: true })
 let failure
 try {
   const { win } = await walk.start({ first: true })
-  const { projectId } = await walk.newProject()
+  await armCanvasBridges(win)
+  const project = await walk.newProject()
   await openCanvas(win)
-
-  await batchRound(walk, win, projectId, 'zh', { wrapped: false, checkAwaiting: true })
-  await oneLeftRound(walk, win, 'zh')
-  await manyShotsRound(walk, win, 'zh', { wrapped: false })
+  walk.report.zh = await remainingRound(walk, win, project, 'zh-CN')
 
   await win.evaluate(() => localStorage.setItem('nomi:locale:v1', 'en'))
   await win.reload()
-  // 上一轮落下的图这时可能还在写盘，重载要多等一会儿才回到画布。
   await expect(win.locator(`${CANVAS_PANEL} [data-v4-control="input"]`), '换成英文之后回到画布、Agent 面板的输入框在').toBeVisible({ timeout: stationTimeout({ operations: 8 }) })
-  await batchRound(walk, win, projectId, 'en', { wrapped: true })
-  await oneLeftRound(walk, win, 'en')
-  await manyShotsRound(walk, win, 'en', { wrapped: true })
+  walk.report.en = await remainingRound(walk, win, project, 'en')
 
-  expect(walk.fixture.images.length, '整个过程只发了两次「生成剩下 2 张」里的四张，加上两次「生成这张」').toBe(6)
+  expect(walk.fixture.videos.length, '整个过程两轮各三笔：节点上点 ↑ 一笔 + 「生成剩下 2 段」两笔').toBe(6)
   walk.report.verified = [
-    'generate-remaining-sends-each-undecided-shot-once',
-    'card-closes-and-nodes-land-like-per-shot',
-    'hidden-when-one-left',
-    'removed-shots-are-not-counted',
-    'layout-batch-left-pair-right-zh-one-line-en-wraps',
+    'node-up-takes-the-shot-card-says-generate-remaining', 'excluded-shot-not-counted-restore-brings-it-back',
+    'generate-remaining-sends-only-the-rest-each-once', 'card-summary-node-wire-equal', 'offer-closes-handed-to-canvas',
+    'receipt-says-taken-on-canvas-and-generating', 'receipt-row-points-at-all-three',
+    'node-up-and-card-generate-mint-the-same-human-actor',
   ]
 } catch (error) {
   failure = error

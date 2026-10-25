@@ -2,9 +2,12 @@
 //
 // 走的是真宿主链（零额度）：模型面 `draft_shots` 参数 → `verbToTransportCall`（全链唯一的有损投影）→ 宿主计划处理器
 // （真内置目录种子建的模块目录 `createCatalogModuleRegistry`）→ durable Run 草稿 → 画布落地线缆 →
-// 渲染层 `buildPlannedNodeMeta`（节点 meta 的唯一构造器）→ 付费卡投影 `listPendingSpend` →
-// 卡体那张生成框（`projectSpendNode` + `resolveRenderedControls`）上用户读到的值。
-// 供应商只有本机 loopback，且整条链停在「等用户点头」，一笔都不发。
+// 渲染层落节点那几步（`plannedInputFromCandidate` → `buildPlannedNodeMeta`，节点 meta 的唯一构造器；起草钉住的参考经
+// `planReferenceProjection` 摆进节点）→ 付费卡：`listPendingSpend` 出的那一次出价，加卡读节点的那几个读口
+// （`nodePointerSummaryFacts` 读比例 / 时长，`nodeSelectedModelAddress` 读模型身份）。
+// D2 之后卡上没有第二份数据：卡上的每个字都从节点现读，所以「卡」这一站核的是卡的读口在它指着的那个节点上读出来的值——
+// 节点上有、卡读不出来，就是卡上漏印了。
+// 供应商一笔都不发：整条链停在「等用户点头」。
 //
 // 每一格只回答一件事：Agent 说了 X，这一站摆的是不是 X。宿主当场拒绝（把不合法的意图说回给模型）也算一致——
 // 那是诚实；悄悄改值、悄悄丢掉才是违反。
@@ -12,13 +15,13 @@ import { applyBuiltinSeeds } from '../../electron/catalog/seedBuiltins'
 import { agentModelEntriesFromCatalog } from '../../electron/catalog/agentModelEntriesFromCatalog'
 import { createCatalogModuleRegistry } from '../../electron/capabilityCore/moduleCatalogBootstrap'
 import { verbToTransportCall } from '../../electron/agentLane/laneVerbTransport'
-import {
-  PROJECT_ID, buildActions, callTool, harness, resetSpendFixture, startLoopbackVendor,
-} from '../../electron/capabilityCore/agentPanelSpendConfirmTestUtils'
+import { PROJECT_ID, callTool, resetSpendFixture, spendWorld } from '../../electron/capabilityCore/agentPanelSpendConfirmTestUtils'
 import { toCatalogModelOptions } from '../../src/config/modelOptionMappers'
 import { buildModelEntryIndex, buildPlannedNodeMeta } from '../../src/workbench/generationCanvas/agent/plannedNodeMeta'
-import { projectSpendNode } from '../../src/workbench/ai/v4/spendCardDraft'
-import { resolveRenderedControls } from '../../src/workbench/generationCanvas/nodes/nodeModelArchetype'
+import { plannedInputFromCandidate } from '../../src/workbench/generationCanvas/agent/candidateNodeMeta'
+import { nodeOwnReferenceInputs, planReferenceProjection } from '../../src/workbench/generationCanvas/model/referenceInputSlots'
+import { nodeSelectedModelAddress } from '../../src/workbench/generationCanvas/nodes/controls/parameterControlModel'
+import { nodePointerSummaryFacts } from '../../src/workbench/ai/pointer/nodePointerFace'
 import { parseAspectRatioValue } from '../../electron/shared/aspectRatioValue'
 
 const SEED_NOW = '2026-10-05T00:00:00.000Z'
@@ -55,30 +58,43 @@ export function seededWorld() {
   return { state, registry, entries, entryIndex: buildModelEntryIndex(entries), optionOf }
 }
 
-/** 卡体那张生成框上「时长」这一格用户读到的值（控件当前值 = meta 上的值，没有就是档案默认）。 */
-function displayedValue(controls, meta, key) {
-  const control = controls.find((candidate) => candidate.key === key)
-  if (!control) return { shown: false }
-  const value = meta[key] ?? control.defaultValue
-  return { shown: true, value: value === undefined ? undefined : Number.isFinite(Number(value)) ? Number(value) : value }
+/**
+ * 本项目素材库（矩阵只用得到一张：`asset-` 开头的 id 认得，其余认不得——「参考给了素材库里没有的 id」那一格靠它拒）。
+ * 起草时钉身份、落地时换地址，走夹具里生产同一组解析口。
+ */
+const LAW_ASSETS = Object.freeze({
+  list: () => [{ id: 'asset-hero', data: { url: 'nomi-local://asset/project-1/asset-hero.png', contentType: 'image/png' } }],
+  identity: (_projectId, assetId) => (assetId.startsWith('asset-') ? { contentHash: `hash-${assetId}`, version: 1, kind: 'image' } : undefined),
+})
+
+/**
+ * 落地线缆上的一镜 → 渲染层落下的那个节点（只走纯的那几步，不起画布仓库）：kind 照 `materializeShots` 的规则，
+ * meta 由 `plannedInputFromCandidate` → `buildPlannedNodeMeta`（create_canvas_nodes 写边界里同一个构造器），
+ * 参考由 `planReferenceProjection` 摆进节点（这里画布上没有别的图，参考全进节点那一份参考列表）。
+ */
+function landedNode(shot, entryIndex) {
+  const input = plannedInputFromCandidate(shot.candidate)
+  const node = {
+    id: `law10-${shot.shotId}`,
+    kind: shot.kind || (shot.role === 'anchor' ? 'image' : 'video'),
+    title: shot.title ?? '',
+    position: { x: 0, y: 0 },
+    meta: (input ? buildPlannedNodeMeta(input, entryIndex) : undefined) ?? {},
+  }
+  const references = shot.candidate?.references ?? []
+  if (references.length === 0) return node
+  const placed = planReferenceProjection(node, references, [node], [])
+  return placed.meta ? { ...node, meta: placed.meta } : node
 }
 
 /**
  * 跑一个用例：Agent 发一次 `draft_shots`，再 `generate` 把草稿摆上卡，逐站读下摆出来的东西。
- * 返回 { refused, said, draft, node, card } —— 每站都是同一形状：{ model, count, durationSec, references }。
+ * 返回 { refused, said, draft, node, card } —— 每站都是同一形状：{ model, count, durationSec, references, aspectRatio }。
  */
 export async function observeIntent(world, intent) {
-  const vendor = await startLoopbackVendor()
-  const base = harness()
-  const submits = []
+  const spend = spendWorld({ registry: world.registry, assets: LAW_ASSETS })
   try {
-    const built = buildActions(base, vendor.origin, submits, {
-      registry: world.registry,
-      providerIds: [...new Set(world.state.models.map((model) => model.vendorKey))],
-      unpriced: true,
-      resolveAssetReferenceIdentity: (_projectId, assetId) => (assetId.startsWith('asset-') ? { contentHash: `hash-${assetId}`, version: 1, kind: 'image' } : undefined),
-    })
-    const transport = built.transport('step')
+    const transport = spend.transport('request')
     const shots = Array.from({ length: intent.count }, (_, index) => ({
       title: `镜 ${index + 1}`,
       prompt: `${intent.prompt} · ${index + 1}`,
@@ -93,11 +109,11 @@ export async function observeIntent(world, intent) {
     const saidRatio = intent.aspectRatio === undefined ? undefined : parseAspectRatioValue(intent.aspectRatio) ?? undefined
     const said = { model: `${intent.providerId}/${intent.modelId}`, count: intent.count, durationSec: intent.durationSec, references: intent.references?.length ?? 0, aspectRatio: saidRatio }
     if (!created?.ok) return { refused: true, refusal: JSON.stringify(created), said }
-    await base.canvasLanding.settleCanvasLanding(PROJECT_ID)
+    await spend.canvasLanding.settleCanvasLanding(PROJECT_ID)
     const operation = created.result.operation
     const generateCall = verbToTransportCall({ toolCallId: 'law10-present', toolName: 'generate', args: { operationId: operation.operationId } })
     await callTool(transport, generateCall.call.toolName, generateCall.call.args)
-    await base.canvasLanding.settleCanvasLanding(PROJECT_ID)
+    await spend.canvasLanding.settleCanvasLanding(PROJECT_ID)
 
     const draftShots = operation.shots ?? [{ candidate: operation.candidate }]
     const durationOf = (parameters) => (parameters && parameters.duration !== undefined ? Number(parameters.duration) : undefined)
@@ -109,40 +125,36 @@ export async function observeIntent(world, intent) {
       aspectRatio: aspectOf(draftShots[0].candidate.parameters)?.ratio,
     }
 
-    const wire = base.renderer.payloads.at(-1)?.shots ?? []
-    const nodeMetas = wire.map((shot) => buildPlannedNodeMeta({
-      modelKey: shot.candidate?.modelKey, vendor: shot.candidate?.vendor, modeId: shot.candidate?.modeId, params: shot.candidate?.parameters,
-    }, world.entryIndex) ?? {})
+    const wire = spend.renderer.payloads.at(-1)?.shots ?? []
+    const nodeByShot = new Map(wire.map((shot) => [shot.shotId, landedNode(shot, world.entryIndex)]))
+    const firstNode = wire[0] ? nodeByShot.get(wire[0].shotId) : undefined
     const node = {
-      model: nodeMetas[0] ? `${nodeMetas[0].modelVendor}/${nodeMetas[0].modelKey}` : undefined,
+      model: firstNode?.meta.modelKey ? `${firstNode.meta.modelVendor}/${firstNode.meta.modelKey}` : undefined,
       count: wire.length,
-      durationSec: nodeMetas[0]?.duration === undefined ? undefined : Number(nodeMetas[0].duration),
-      // 参考在画布上是节点的边，不在线缆的 meta 里——这一站只核数量能不能对上（线缆不带就记 undefined）。
-      references: undefined,
-      aspectRatio: aspectOf(nodeMetas[0])?.ratio,
+      durationSec: firstNode?.meta.duration === undefined ? undefined : Number(firstNode.meta.duration),
+      references: firstNode ? nodeOwnReferenceInputs(firstNode).length : undefined,
+      aspectRatio: aspectOf(firstNode?.meta)?.ratio,
     }
 
-    const card = built.withWindow.listPendingSpend(PROJECT_ID)[0]
-    const cardShot = card?.shots[0]
-    const option = cardShot ? world.optionOf(cardShot.providerId, cardShot.modelId) : undefined
-    const cardNode = cardShot ? projectSpendNode(cardShot, undefined, option) : undefined
-    const controls = cardNode ? resolveRenderedControls(option, cardNode.meta ?? {}, cardNode.kind === 'image', cardNode.kind === 'video') : []
-    const shownDuration = cardNode ? displayedValue(controls, cardNode.meta ?? {}, 'duration') : { shown: false }
-    // 卡上比例那一格：发出去的参数里比例落在哪个键，卡体那张生成框上同一个键的控件此刻显示什么。
-    const sentAspect = aspectOf(cardShot?.parameters)
-    const shownAspect = sentAspect && cardNode ? displayedValue(controls, cardNode.meta ?? {}, sentAspect.key) : { shown: false }
+    // 卡上那一次出价：每一镜指着哪个节点（绑定由落地回报写回），卡上的字从那个节点现读。指不到节点的那一镜卡上是中性占位，不算摆出来了。
+    const card = spend.pending()
+    const pointed = (card?.shots ?? []).map((shot) => {
+      const bound = spend.renderer.nodeOf(shot.shotId, operation.operationId)
+      return shot.nodeId && bound && shot.nodeId === bound.nodeId ? nodeByShot.get(shot.shotId) : undefined
+    })
+    const shownNode = pointed[0]
+    const facts = shownNode ? nodePointerSummaryFacts(shownNode, '') : undefined
+    const selected = shownNode ? nodeSelectedModelAddress(shownNode.meta) : undefined
     const cardView = {
-      model: cardShot ? `${cardShot.providerId}/${cardShot.modelId}` : undefined,
-      count: card?.shots.length ?? 0,
-      durationSec: shownDuration.shown ? shownDuration.value : undefined,
-      references: cardShot?.references?.length ?? 0,
-      sentDurationSec: durationOf(cardShot?.parameters),
-      aspectRatio: shownAspect.shown ? parseAspectRatioValue(String(shownAspect.value)) ?? undefined : undefined,
-      sentAspectRatio: sentAspect?.ratio,
+      model: selected?.modelKey ? `${selected.vendorKey}/${selected.modelKey}` : undefined,
+      count: pointed.filter(Boolean).length,
+      durationSec: facts?.durationSec ?? undefined,
+      // 卡上不摆参考（见 NOT_CARRIED_BY_DESIGN）。
+      references: undefined,
+      aspectRatio: facts?.aspect ? parseAspectRatioValue(facts.aspect) ?? undefined : undefined,
     }
     return { refused: false, said, draft, node, card: cardView }
   } finally {
-    await vendor.close()
     resetSpendFixture()
   }
 }
@@ -162,30 +174,27 @@ export function compareStation(said, station, field) {
 
 /** 这一站本来就不承载这个字段（不是丢，是住在别处）。只有写在这里的才不算「悄悄丢掉」。 */
 export const NOT_CARRIED_BY_DESIGN = Object.freeze({
-  'node.references': '画布上参考是连到节点的边，不在落地线缆的 meta 里；参考数量由草稿与付费卡两站核',
+  'card.references': '付费卡不摆参考：卡只指向节点，摘要一行只读模型 · 比例 · 时长 · 清晰度（设计系统 §1.0、SpendCardQ1 板）；参考住在节点上，由节点那一站核',
 })
 
 /**
  * 一个用例的全部违反：
- *   · `differs`：某一站摆的值和 Agent 说的不一样（例如节点写 6 秒、卡和请求写 8 秒）；
+ *   · `differs`：某一站摆的值和 Agent 说的不一样（例如节点写 6 秒、Agent 说的是 8 秒）；
  *   · `dropped`：Agent 说了，宿主没拒绝，可某一站（除了上面登记的「本来不承载」）什么都没摆——悄悄丢了。
  * 宿主当场拒绝 = 诚实，不算违反。
+ *
+ * 卡上看到的 = 发出去的（铁律 ③）不在这里核：卡没有自己的那一份，读的就是节点；节点上看到的 = 节点上发出去的，
+ * 由 `electron/parity/draftNodeSendParity.test.ts` 用真请求构造器逐模型、逐方式守着。
  */
 export function violationsOf(observation) {
   if (observation.refused) return []
   const out = []
   for (const stationName of ['draft', 'node', 'card']) {
-    for (const field of ['model', 'count', 'durationSec', 'references', 'aspectRatio']) {
+    for (const field of INTENT_FIELDS) {
       const cell = compareStation(observation.said, observation[stationName], field)
       if (cell.verdict === 'differs') out.push(`${stationName}.${field}:differs(${cell.said}→${cell.shown})`)
       if (cell.verdict === 'not-carried' && !NOT_CARRIED_BY_DESIGN[`${stationName}.${field}`]) out.push(`${stationName}.${field}:dropped`)
     }
-  }
-  // 卡上「看到的」和「发出去的」也得一致（铁律 ③ 在这一站的投影，⑩ 只核 Agent 说过的字段，不改 ③ 的判据）。
-  if (observation.said.durationSec !== undefined && observation.card.sentDurationSec !== observation.card.durationSec) out.push(`card.durationSec:shown≠sent(${observation.card.durationSec}/${observation.card.sentDurationSec})`)
-  const { aspectRatio: shownRatio, sentAspectRatio } = observation.card
-  if (observation.said.aspectRatio !== undefined && ((shownRatio === undefined) !== (sentAspectRatio === undefined) || (shownRatio !== undefined && !sameRatio(shownRatio, sentAspectRatio)))) {
-    out.push(`card.aspectRatio:shown≠sent(${ratioLabel(shownRatio)}/${ratioLabel(sentAspectRatio)})`)
   }
   return out.sort()
 }

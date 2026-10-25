@@ -47,6 +47,8 @@ import { executeCanonicalCanvasPlanPatch } from './canonicalCanvasPlanPatch'
 import { handleMcpHostSurfaceOp } from './mcpHostSurfaceOps'
 import { presentStoryboard } from './storyboardPresent'
 import { directorPreviewBlocksOp } from './directorPreviewBlocksOp'
+import { handOverShotsOp } from './productionHandOverShotsOp'
+import { HAND_OVER_SHOTS_OP } from '../../../electron/shared/contracts/canvasHandOver'
 import { extendAgentStoryboardDesign, patchAgentStoryboardDesign, upsertAgentStoryboardDesign } from '../creation/storyboard/agentStoryboardDesign'
 import { confirmCredentialProbeSpend, spendModelLine } from './credentialProbeSpendCard'
 
@@ -325,6 +327,8 @@ export async function handleCapabilityApply(op: string, payload: unknown): Promi
   if (landed !== null) return landed
   if (op === 'storyboard.present') return presentStoryboard(data)
   if (op === 'director.preview-blocks') return directorPreviewBlocksOp(data)
+  // Agent 付费卡 / 「直接生成」档把几镜交给画布（D2 第③步）：主进程记了交接、落好了节点，这里开同意并照画布批量那条路发。
+  if (op === HAND_OVER_SHOTS_OP) return handOverShotsOp(data)
   if (op === 'storyboard.upsert-design') return upsertAgentStoryboardDesign(data)
   if (op === 'storyboard.patch-design') return patchAgentStoryboardDesign(data)
   if (op === 'storyboard.extend-design') return extendAgentStoryboardDesign(data)

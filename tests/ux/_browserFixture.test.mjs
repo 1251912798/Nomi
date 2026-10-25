@@ -29,8 +29,13 @@ describe('useBrowserFixture：浏览器由调用方传入，起浏览器的信�
   })
 
   it('普查：每个调用 useBrowserFixture 的测试文件，推送前的识别都认出它起浏览器', () => {
-    const callers = gitPaths(['grep', '-l', 'useBrowserFixture(', '--', 'tests/*.test.*'], { cwd: repoRoot }).filter((file) => file !== SELF)
-    expect(callers.length).toBeGreaterThanOrEqual(10)
+    const found = gitPaths(['grep', '-l', 'useBrowserFixture(', '--', 'tests/*.test.*'], { cwd: repoRoot })
+    // 普查不空的证明：同一条 pathspec 认得出本文件（它也调用了 useBrowserFixture），说明它真的够到了 tests/ 下的测试文件。
+    // 不拿写死的个数当下限：夹具测试随功能删掉是正常的（2026-10-24 D2 删旧付费卡时 spend-panel-write-ownership.test.mjs 一起删了），
+    // 写死的个数会把一次正常的删除判成红。
+    expect(found).toContain(SELF)
+    const callers = found.filter((file) => file !== SELF)
+    expect(callers.length).toBeGreaterThan(0)
     // 迁错一个就红：列出来的文件要么自己 import playwright，要么别经夹具起服
     expect(callers.filter((file) => !startsBrowser(read(file)))).toEqual([])
   })

@@ -5,9 +5,10 @@
 // 真实创作者会做的两件事，一条剧本里都做一遍（两条路走的是两台发动机，正好对照）：
 //   A. 画布上：把一张参考图连到自己的卡上，点 ↑ 生成（画布直生成那条路）；
 //   B. Agent：让 Agent 画一张「照着这张参考图」的图，卡还在等的时候，用户在画布上把参考图连到 Agent 起草的那张占位卡上，
-//      再在付费卡上按「生成这张」（制作流程那条路；0.22.1 时这颗按钮叫「仍要生成」）。
-//   C. 同一招再来一张，这一次用户在卡上把画布连来的那张参考图点 × 拿掉，再按「生成这张」：只改卡，画布连线不动，
-//      供应商收到 0 张参考图（付费卡① 测试表第 8 行）。
+//      再在付费卡上按「生成」（0.22.1 时这颗按钮叫「仍要生成」）。D2 起（2026-10-24）卡上点「生成」就是把这一镜照节点此刻的
+//      样子交给画布、走画布单节点提交那一条路——和 A 是同一台发动机了，连着的参考图跟着节点发出去。
+//   C. 同一招再来一张，这一次用户改主意不要那张参考：点卡上的指向元素到节点上，在画布上把那条线断开，再按「生成」：
+//      供应商收到 0 张参考图（卡上没有参考图、也没有可改的东西，改只在节点上改）。
 // 乱用：B 里先连线、后确认——用户就是这么做的（看到占位卡，顺手把参考图拖过去）。
 //
 // 零花费：A 用本机回环的「Fixture 图片」模型（画布直生成只认目录里的地址，回环那家就在本机）；
@@ -16,7 +17,7 @@ import { DEFAULT_TIMEOUT_MS, clickOrFail, expect } from '../../_assert.mjs'
 import { stationTimeout } from '../../_station-budget.mjs'
 import { FIXTURE_APIMART_MODEL, FIXTURE_APIMART_VENDOR, FIXTURE_IMAGE_MODEL, FIXTURE_VENDOR } from '../../agent-runtime-fixture.mjs'
 import { APPROVAL_CARD, CANVAS_PANEL, INTERVENTION_CONFIRM, expandResidentPanel, sendCanvas } from '../../agent-runtime-walk-support.mjs'
-import { clickBlank, clickNodeGenerate, connectNodes, fitCanvasView } from '../actions.mjs'
+import { clickBlank, clickNodeGenerate, connectNodes, disconnectEdge, fitCanvasView } from '../actions.mjs'
 import { operationIdOf, scriptTurn } from '../brain.mjs'
 import { readPlaybookEnvironment, startPlaybook } from '../launch.mjs'
 
@@ -93,7 +94,7 @@ try {
     await connectNodes(win(), 'ref-photo', placeholderId, edges)
   }, { surfaces: ['canvasGesture'] })
 
-  await monitor.step('在付费卡上点「生成这张」', async () => {
+  await monitor.step('在付费卡上点「生成」', async () => {
     await monitor.screenshot('B-card-with-canvas-reference')
     await monitor.consentSpendCard(card(), { label: '单镜卡的主按钮（画布上已连参考）' })
     await clickOrFail(card().locator(INTERVENTION_CONFIRM), '付费卡主按钮', { noWaitAfter: true })
@@ -106,7 +107,7 @@ try {
       { message: '占位卡落成 success', timeout: stationTimeout({ operations: 4 }) }).toBe('success')
   }, { user: false, surfaces: [] })
 
-  // ── C：卡上拿掉画布连来的参考图（第 8 行）──────────────────────────────────────────────────
+  // ── C：改主意不要那张参考了——点卡上的指向元素到节点上，在画布上把那条线断开，再按「生成」────────────────────
   const promptC = EN ? 'The same man walking down a rainy street at night' : '同一个人走在雨夜的街头'
   const turnC = scriptTurn(fixture, {
     label: 'pb02-draft-c',
@@ -138,22 +139,23 @@ try {
     await fitCanvasView(win())
     await connectNodes(win(), 'ref-photo', placeholderC, edges)
   }, { surfaces: ['canvasGesture'] })
-  const linesTo = async (nodeId) => (await edges()).filter((edge) => edge.target === nodeId).length
-  let linesBefore = 0
-  await monitor.step('在付费卡上把画布连来的那张参考图拿掉', async () => {
-    const tile = card().locator('[data-asset-tile]').first()
-    await expect(tile, '卡上摆着画布连来的那张参考图（第 7 行）').toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
-    linesBefore = await linesTo(placeholderC)
-    if (linesBefore < 1) throw new Error('画布上没有连到第二张占位卡的线')
-    await monitor.screenshot('C-card-with-canvas-reference')
-    await clickOrFail(tile.locator('button[aria-label]').first(), '参考图右上角的 ×')
-    await expect(card().locator('[data-asset-tile]'), '卡上不再摆它').toHaveCount(0)
-    await expect.poll(() => linesTo(placeholderC), { message: '画布上的连线一根不动（第 8 行）', timeout: DEFAULT_TIMEOUT_MS }).toBe(linesBefore)
-    await monitor.screenshot('C-card-after-removing-reference')
-  }, { surfaces: ['agentPanel'] })
+  const linesTo = async (nodeId) => (await edges()).filter((edge) => edge.target === nodeId)
+  // D2 起（2026-10-24）卡上没有参考图、也没有可改的东西（付费卡① 第 8 行「卡上拿掉只改卡」随旧卡删了）：卡指着节点，
+  // 参考住在节点上，想改就点指向元素到节点那里改。供应商收到的就是节点此刻的样子。
+  await monitor.step('改主意：点卡上的指向元素到节点上，在画布上把那条参考线断开', async () => {
+    const pointer = card().locator(`[data-node-pointer-id="${placeholderC}"]`)
+    await monitor.screenshot('C-card-pointing-at-node')
+    await clickOrFail(pointer, '付费卡上指着第二张的指向元素')
+    await expect(pointer.locator('[data-node-pointer-located]'), '点了指向元素 = 定位到画布上那个节点（卡上记「已定位」）').toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
+    const [line] = await linesTo(placeholderC)
+    if (!line) throw new Error('画布上没有连到第二张占位卡的线')
+    await disconnectEdge(win(), line.id, edges)
+    await expect(card(), '在节点上改了，卡还在、还指着它').toBeVisible()
+    await monitor.screenshot('C-after-disconnecting-on-canvas')
+  }, { surfaces: ['canvasGesture', 'agentPanel'] })
   const imagesBeforeC = fixture.images.filter((record) => record.path === '/v1/images/generations' && record.taskId).length
-  await monitor.step('在付费卡上点「生成这张」（拿掉参考图之后）', async () => {
-    await monitor.consentSpendCard(card(), { label: '单镜卡的主按钮（卡上拿掉了画布连来的参考图）', removedCanvasRefs: 1 })
+  await monitor.step('在付费卡上点「生成」（节点上已经没有那张参考图）', async () => {
+    await monitor.consentSpendCard(card(), { label: '单镜卡的主按钮（参考线在节点上断开之后）' })
     await clickOrFail(card().locator(INTERVENTION_CONFIRM), '付费卡主按钮', { noWaitAfter: true })
   })
   await monitor.step('等第二张出图、等这一轮说完', async () => {
@@ -162,9 +164,8 @@ try {
     await turnC.done
     await expect.poll(async () => (await nodes()).find((node) => node.id === placeholderC)?.status,
       { message: '第二张占位卡落成 success', timeout: stationTimeout({ operations: 4 }) }).toBe('success')
-    if (await linesTo(placeholderC) !== linesBefore) throw new Error('生成之后画布上那条线没了：卡上拿掉不该动画布')
   }, { user: false, surfaces: [] })
-  await monitor.step('看一眼画布：第二张那条参考线还在', async () => {
+  await monitor.step('看一眼画布：第二张出图了，没有参考线', async () => {
     await fitCanvasView(win())
     await monitor.screenshot('C-canvas-after-generate')
   }, { surfaces: ['canvasGesture'] })

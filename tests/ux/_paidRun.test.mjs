@@ -8,7 +8,9 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 
-import { PAID_WALKS_WITHOUT_OPEN_PAID_WALK, PRODUCT_SOURCE_DIRS, assertPaidBuildReady, openPaidWalk, paidBuildMarkerProblems, paidWalkCoverageProblems } from './_paidRun.mjs'
+import {
+  PAID_WALKS_WITHOUT_OPEN_PAID_WALK, PRODUCT_SOURCE_DIRS, assertPaidBuildReady, handedOverRuns, jobVendor, openPaidWalk, paidBuildMarkerProblems, paidWalkCoverageProblems,
+} from './_paidRun.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -229,5 +231,23 @@ describe('build markers stay in product source (zero cost, before any paid day)'
     expect(problems.join('\n')).toMatch(/IMPORTED 读不出字面值/)
     expect(problems.join('\n')).toMatch(/uiText\('zh-CN', 'no\.such\.key'\) 读不到/)
     expect(paidBuildMarkerProblems(['c.mjs'], () => 'run({ buildMarkers: [] })', deps).join()).toContain('是空的')
+  })
+})
+
+describe('画布那一台的读数（D2：卡上「生成」交给画布）', () => {
+  it('handedOverRuns：按这一次出价最近一回的交接找到画布那几镜的单镜 Run；别的出价、没交出去的不算', () => {
+    const offer = { runId: 'op-1', generationPlan: { presentations: [
+      { handOvers: [{ shotId: 'shot-1', canvasRunId: 'canvas-old' }] },
+      { handOvers: [{ shotId: 'shot-1', canvasRunId: 'canvas-a' }, { shotId: 'shot-2' }, { shotId: 'shot-3', canvasRunId: 'canvas-b' }] },
+    ] } }
+    const runs = [offer, { runId: 'canvas-a' }, { runId: 'canvas-b' }, { runId: 'canvas-old' }, { runId: 'canvas-other' }]
+    expect(handedOverRuns(runs, 'op-1').map((run) => run.runId)).toEqual(['canvas-a', 'canvas-b'])
+    expect(handedOverRuns(runs, 'op-missing')).toEqual([])
+  })
+
+  it('jobVendor：画布那一台的 provider 带传输前缀 canvas:，收据里的供应商是前缀后面那一段', () => {
+    expect(jobVendor('canvas:apimart')).toEqual({ vendor: 'apimart', engine: 'canvas' })
+    expect(jobVendor('apimart')).toEqual({ vendor: 'apimart', engine: 'production' })
+    expect(jobVendor(undefined)).toEqual({ vendor: null, engine: 'production' })
   })
 })

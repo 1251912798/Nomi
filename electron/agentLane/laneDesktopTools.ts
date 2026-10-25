@@ -59,6 +59,7 @@ function resultOf(decision: RuntimeToolDecision | null, toolName: string): unkno
       toolName,
       code: decision?.code,
       message: decision?.message,
+      ...(decision && typeof decision.submissionStarted === 'boolean' ? { submissionStarted: decision.submissionStarted } : {}),
       fallbackCode: 'capability_unsupported',
       ...(advice ? { advice } : {}),
       nextAction: 'Review the requested action and select a supported capability before trying again.',

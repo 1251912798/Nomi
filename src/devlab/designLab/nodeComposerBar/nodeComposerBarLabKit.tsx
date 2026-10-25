@@ -16,10 +16,9 @@
 // `component-only` 样张；形态一上线，「现状」就是 v1.1 本身，再留一格顶着「现状 · 9 件挤一行」
 // 的名字去渲染新底栏，那是一句会骗人的图注，所以同 commit 删掉（P1 加新必删旧）。
 //
-// 参数区的**第二种摆法**（`parameterLayout='chips'`，逐参数下拉 + ⚙）只给付费确认卡，
-// 画布节点不用它（用户 2026-09-11 04:30 纠正：02:10 拍板的 B 我错误地落到了共用组件上，
-// 两处都变了）。它在这一屏有单独一格「chips 模式（付费卡用）」，coverage 是 `component-only`：
-// 组件支持，本分支上还没有生产调用点（付费卡在权限那条分支）。
+// 参数区只有摘要 pill 一种摆法（用户 2026-09-11 04:30 纠正：02:10 拍板的逐参数 chip 只给付费确认卡）。
+// 那种摆法在这一屏曾有一格「chips 模式（付费卡用）」；D2（用户 2026-10-23 拍板）付费卡上不再挂参数控件，
+// 那种摆法随旧卡一起删了，这一格同 commit 删。
 //
 // 模型目录：实验室没有 Electron 桥，`useModelOptions` 会 catch 成空 → 参数区退化成
 // 「配置模型」按钮，整屏就白画了。所以这里按 findReference 那一屏的既有手法装一个**只读桥**，
@@ -233,55 +232,11 @@ export function ComposerBarStage({ kind, cameraPicked = false }: { kind: BarKind
   )
 }
 
-/**
- * 「chips 模式（付费卡用）」那一格：**同一个 `InlineParameterBar`**，只多传一个
- * `parameterLayout="chips"`。它证的是这个属性真的换了摆法（每个主参数一颗可点的下拉 + ⚙），
- * 不是另写了一个组件。
- *
- * 为什么不像上面几格那样挂整张节点卡：画布节点**不传**这个属性（用户 2026-09-11 04:30 拍板），
- * 让节点渲成 chips 就是在这一屏上造一份生产里不存在的假形态。付费确认卡是它真正的宿主，
- * 那个宿主在另一条分支上——所以这一格诚实地标成 `component-only` + `mirrors: 'none'`。
- *
- * 控件不是手打的：走 `resolveRenderedControls`（NodeParameterControls 用的同一个函数）
- * 从 Seedance 2 的真实档案 derive，所以摆出哪几颗 chip、上面印什么值都是真货。
- */
-export function ChipsModeStage(): JSX.Element {
-  // 不装那个只读目录桥：这一格直接用 `toCatalogModelOptions`（生产同一个映射器）把同一份档案行
-  // 变成 ModelOption，不走 `useModelOptions`——用不上的全局副作用就别留。
-  const modelOptions = React.useMemo(
-    () => toCatalogModelOptions(CATALOG_MODELS.filter((model) => model.kind === 'video') as ModelCatalogModelDto[]),
-    [],
-  )
-  const [meta, setMeta] = React.useState<Record<string, unknown>>(
-    () => ({ ...(makeBarNode('video').meta as Record<string, unknown>) }),
-  )
-  const option = modelOptions[0] ?? null
-  const controls = React.useMemo(() => resolveRenderedControls(option, meta, false, true), [option, meta])
-  return (
-    <StageFrame>
-      <div className="absolute left-7 top-7 rounded-nomi-lg border border-nomi-line bg-nomi-paper p-3" style={{ width: 560 }}>
-        <InlineParameterBar
-          parameterLayout="chips"
-          modelOptions={modelOptions}
-          modelCatalogStatus={{ message: '' }}
-          renderedControls={controls}
-          selectedModelOption={option}
-          archetype={resolveArchetypeForOption(option)}
-          meta={meta}
-          onModelChange={() => {}}
-          onCatalogControlChange={(control, value) => setMeta((prev) => ({ ...prev, [control.key]: value }))}
-          onParameterControlChange={(control, value) => setMeta((prev) => ({ ...prev, [control.key]: value }))}
-        />
-      </div>
-    </StageFrame>
-  )
-}
-
 // ── 参数面板：选项摊开 / 单参数直出（v1.2，2026-09-11 13:00 用户真机拍板）────────────────
 //
 // 这两格钉的是**点开之后**那一层：v1.1 的五格只看得到收起来的底栏，而用户当天反馈的
 // 「点好几次」全发生在点开之后（pill → 面板 → 下拉 → 列表 → 选，四步）。
-// 它们不套整张节点卡：panelMode 默认 portal，浮层落在 body 上、不在节点子树里，
+// 它们不套整张节点卡：参数面板只有挂在 body 上这一种摆法，浮层不在节点子树里，
 // 所以两格都用 `capture: 'viewport'` 截整屏，否则截回来的是一张没有浮层的卡。
 //
 // 控件全部由**真实档案** derive（`resolveRenderedControls`，NodeParameterControls 用的同一个函数）：

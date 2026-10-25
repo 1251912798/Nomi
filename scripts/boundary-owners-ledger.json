@@ -462,6 +462,46 @@
       "reason": "2026-10-21 文本任务迁 pi-ai 单次调用：ai@4 的 buildAiSdkModel 随栈删除。「运行时 base 在造模型之前按协议规范化」（Anthropic 补 /v1）挪进两台发动机共用的 vendorModelConnection（anthropicBaseUrl），Agent、文本任务、编译器都经它拿连接配置；顺手修掉 lane 只存根地址时打到 {root}/messages 的 404（laneModelCall.test.ts）。"
     },
     {
+      "contract": "docs/fixes/2026-09-11-approval-gates-never-self-decide.root-cause.json",
+      "path": "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
+      "symbol": "act()",
+      "anchor": {
+        "path": "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+        "symbol": "act"
+      },
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：旧卡 hook 随旧卡删除；新卡 hook 的 act 是卡上会写宿主的动作（生成 / 不生成 × / 恢复）共用的执行口，也是宿主回答的出口：被拒或抛错时用户看到的是 spendActionFailureCopy 按事实挑的那一句 i18n，宿主原话只进 logRendererWarn（useAgentPanelSpendCard.test「没有别的一下在路上时，生成被宿主拒了」钉住）。「取消」故意不进这个队（不排队，同文件 discard），它的拒绝同样只弹 i18n、原话进日志。判据里没有时间这一维。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-13-spend-surface-capability-guard.root-cause.json",
+      "path": "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
+      "symbol": "useAgentPanelSpendConfirm.refresh",
+      "anchor": {
+        "path": "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+        "symbol": "pendingSpendOfRead"
+      },
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：卡早已不自己调 productionRuns.pendingSpend（2026-10-05 起读推过来的投影 data.snapshot.spend），旧 hook 随旧卡删除。「能力不在 ≠ 调用失败」现在由新卡 hook 的 pendingSpendOfRead 守：surface off（disabled / starting / stopped）= 没有卡、不留任何 console 痕迹，unreadable 才是带身份的错误卡（useAgentPanelSpendCard.test「pendingSpendOfRead：off 不是失败」逐格钉住）。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-13-spend-surface-unavailable-error-boundary.root-cause.json",
+      "path": "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
+      "symbol": "useAgentPanelSpendConfirm.refresh",
+      "anchor": {
+        "path": "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+        "symbol": "pendingSpendOfRead"
+      },
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：同上一条——宿主裁剪（能力不在）与真读不到在投影上是两种 surface（off / unreadable），新卡 hook 的 pendingSpendOfRead 分开读：off 不出卡也不报错，unreadable 保留带身份的错误卡；卡不再直接碰可选 bridge，preload 桩那一类拒绝到不了卡。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-21-spend-decline-deletes-user-nodes.root-cause.json",
+      "path": "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
+      "symbol": "discard",
+      "anchor": {
+        "path": "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+        "symbol": "discard"
+      },
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：「取消」（旧卡的 ×）的唯一执行点搬到新卡 hook 的 discard：只经 productionRunApi.discardSpend 收回这一次出价、撤排队的画布同意，不动画布节点（撤销问来源不问绑定的判据在宿主那一侧不变）。"
+    },
+    {
       "contract": "docs/fixes/2026-09-02-cross-device-sync-ux.root-cause.json",
       "path": "src/workbench/assets/assetResultDeletion.ts",
       "symbol": "buildAssetResultDeletionPlan",
@@ -910,6 +950,60 @@
       "path": "electron/workspace/workspaceRepository.ts",
       "symbol": "gcEmptyDraftWorkspaceProjects",
       "reason": "读列表不再删东西（C′，用户 2026-10-22 拍板；方向检查 docs/plan/2026-10-21-project-library-direction-check.md 的 N1 节 §8）：启动回收器 gcEmptyDraftWorkspaceProjects 连同 once-guard 同一提交删除，空草稿改为在列表里隐藏（listWorkspaceProjects 的 isProvablyEmptyDraft，只对候选再读一次，不再列举全库），回收挪到「离开只写欠着的」那条线。这条锚守的是「启动回收器吃调用方现成的快照、不再自己列一遍全库」，回收器没了，不变量失去对象；同一份合同里「一次 listProjects 最多列举一次全库」仍由 listProjects 锚点在位，electron/projects/repository.test.ts「一次列举里每个项目的 manifest 只被快照读一次」继续钉住。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-12-spend-card-model-swap-blocked.root-cause.json",
+      "path": "electron/productionRun/productionGenerationPlanEdits.ts",
+      "symbol": "policyAdmittingUserRevisedIdentity",
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：卡上不再能改参数、换模型，generation.revise 这条命令随卡上改参一起删除（阶段 C 提交 a4b723c84）；真人换模型只在节点生成框里，卡上「生成」与节点 ↑ 都走画布单节点提交，不经过制作 Run 的 policy 冻结白名单，这条「真人在卡上换掉的身份算不算数」的判据没有调用者了。「agent 不能偷换身份」那一半照旧由 generation.patch 那条路守，同合同另一条边界 assertProductionPolicyReady 在位。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-19-composer-lifecycle.root-cause.json",
+      "path": "src/workbench/ai/v4/spendCardDraft.ts",
+      "symbol": "projectSpendNode",
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：卡上没有生成框了（NodeComposerHost 只剩 canvas | inline，panel 宿主同提交删除），「把待确认的候选投进生成框、不碰画布节点」这件事不存在；卡侧再引节点编辑器由依赖门 chat-card-no-import-node-editor（.dependency-cruiser.mjs，scripts/check-boundaries.chat-card.test.mjs 钉住）结构上拦住。同合同其余生成框生命周期边界在位。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-19-composer-lifecycle.root-cause.json",
+      "path": "electron/capabilityCore/pendingSpendReferences.ts",
+      "symbol": "resolveSpendReferenceInputs",
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：卡上不再改参考图（revise 删除），没有「用户在卡上填的参考」要在 revise 前核身份；参考只住节点上，落地时经同文件的 resolveIndexedReferencePreview 按项目素材索引过线（解析不出跳过并记日志），随画布单节点提交发出。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-20-spend-confirm-loopback-socket-lifecycle.root-cause.json",
+      "path": "electron/capabilityCore/agentPanelSpendConfirmTestUtils.ts",
+      "symbol": "startLoopbackVendor",
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：付费卡 e2e 夹具改写成 spendWorld（真仓库、真画布 store，渲染层替身实现 production.hand-over-shots 合同），卡上「生成」交给画布、不再由宿主直连供应商，夹具里不起 HTTP 服务器（文件里没有 createServer），空闲 socket 与客户端处理关闭的竞态无从发生；对应的 loopback socket idle 用例同步退役。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-20-spend-draft-recovery-validation.root-cause.json",
+      "path": "src/workbench/ai/v4/spendCardDraft.ts",
+      "symbol": "readSpendDraft",
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：卡上没有可编辑的本地草稿了（卡只读节点），本地草稿账本 spendCardDraft.ts 同提交删除；旧资料里的 nomi:spend-draft:* 一个都不读（useAgentPanelSpendCard.test 钉住），「持久化的可编辑输入先验再用」没有输入可验。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-20-spend-draft-recovery-validation.root-cause.json",
+      "path": "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
+      "symbol": "useAgentPanelSpendConfirm",
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：同上一条——没有草稿要恢复，「请求身份要等草稿恢复成功才发布」随草稿一起退役；新卡的身份就是宿主推来的那一次出价（quoteId / presentationId），动作带此刻卡上那一张的身份（useAgentPanelSpendCard.test 动作清单矩阵）。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-22-spend-draft-owner.root-cause.json",
+      "path": "src/workbench/ai/v4/spendCardDraft.ts",
+      "symbol": "spendDraftKey",
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：卡上不再有未提交的本地改动（改参数的家只有节点），本地草稿账本与它的地址派生同提交删除；节点上的改动就是这一镜的真相，不需要按 operationId 另开一本账。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-22-spend-draft-owner.root-cause.json",
+      "path": "src/workbench/ai/v4/spendCardDraft.ts",
+      "symbol": "effectivePatchForShot",
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：同上一条——没有逐镜叠层的本地补丁，卡上摘要直接从节点现算（nodePointerSummaryFacts / spendCardSummary），发出去的就是节点此刻的参数（electron/parity/draftNodeSendParity.test.ts 对等矩阵）。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-26-spend-card-patch-json-values.root-cause.json",
+      "path": "src/workbench/ai/v4/spendCardDraft.ts",
+      "symbol": "candidatePatchFromNode",
+      "reason": "2026-10-24 D2 第③步（付费卡 = 指向元素 + 一行只读摘要，点「生成」交给画布那一台发动机）：卡不再产出参数补丁（generation.revise 删除），渲染层没有「付费卡参数值」的生产者了；Agent 改稿走 generation.patch，经宿主的 JSON schema 校验，节点上的改动随画布单节点提交发出。"
     },
     {
       "contract": "docs/fixes/2026-09-07-director-canvas-image-discovery.root-cause.json",

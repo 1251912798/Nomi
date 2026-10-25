@@ -2,98 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   MAX_CHIP_RANGE_STEPS,
   numericRangeChipOptions,
-  overflowParameterControls,
-  parameterChipLabel,
   parameterChipOptions,
   parameterChipValue,
-  splitPrimaryParameterControls,
 } from './primaryParameterChips'
-import { parameterControlRole, type DynamicModelControl } from './controls/parameterControlModel'
-import type { ModelParameterControl } from '../../../../electron/shared/videoCapabilities/types'
-import { MODEL_ARCHETYPES } from '../../../../electron/shared/modelArchetypes'
+import type { DynamicModelControl } from './controls/parameterControlModel'
 
-describe('paid-card size visibility characterization', () => {
-  it('keeps pixel size in the visible primary parameter set', () => {
-    const pixelSize: DynamicModelControl = {
-      key: 'size', label: '尺寸', type: 'select', binding: 'parameter',
-      options: [{ value: '1024x1024', label: '1024x1024' }, { value: '1536x1024', label: '1536x1024' }],
-      defaultValue: '1024x1024',
-    }
-    expect(splitPrimaryParameterControls([pixelSize]).primary.map((control) => control.key)).toEqual(['size'])
-  })
-
-  it('keeps quality independently visible beside resolution while sharing its role', () => {
-    const control = (key: string): DynamicModelControl => ({
-      key, label: key, type: 'select', binding: 'parameter',
-      options: [{ value: 'standard', label: 'standard' }, { value: 'high', label: 'high' }],
-    })
-    const { primary } = splitPrimaryParameterControls([control('resolution'), control('quality')])
-    expect(primary.map((item) => item.key)).toEqual(['resolution', 'quality'])
-    expect(parameterControlRole(control('resolution'))).toBe('resolution')
-    expect(parameterControlRole(control('quality'))).toBe('resolution')
-  })
-})
-
-const PAID_PARAMETER_KEYS = new Set([
-  'aspect_ratio', 'aspectRatio', 'aspect', 'size', 'imageSize', 'videoSize', 'ratio', 'video_size', 'image_size',
-  'durationSeconds', 'videoDuration', 'duration', 'video_duration', 'length', 'clip_length',
-  'resolution', 'videoResolution', 'video_resolution', 'output_resolution', 'outputResolution',
-  'quality', 'resolution_type', 'mode', 'upscale_factor',
-  'output_count', 'batch_size', 'num_images', 'number_of_images', 'n',
-])
-
-function modelControl(parameter: ModelParameterControl): DynamicModelControl {
-  return { ...parameter, binding: 'parameter' }
-}
-
-function isPaidParameter(control: DynamicModelControl): boolean {
-  return PAID_PARAMETER_KEYS.has(control.key) || /ratio|size|resolution|duration|count|batch|quality|upscale/i.test(control.key)
-}
-
-describe('real model catalog paid parameter matrix', () => {
-  it('keeps every priced/output-affecting chip in the primary set and de-dupes aspect aliases', () => {
-    const failures: string[] = []
-    for (const archetype of MODEL_ARCHETYPES) {
-      if (archetype.kind !== 'image' && archetype.kind !== 'video') continue
-      for (const mode of archetype.modes) {
-        const controls = mode.params.map(modelControl)
-        const { primary } = splitPrimaryParameterControls(controls)
-        const primaryKeys = new Set(primary.map((control) => control.key))
-        for (const control of controls.filter(isPaidParameter)) {
-          const role = parameterControlRole(control)
-          if (!role) failures.push(`${archetype.id}/${mode.id}/${control.key}: no role`)
-          if (role && role !== 'aspect' && parameterChipOptions(control).length > 0 && !primaryKeys.has(control.key)) {
-            failures.push(`${archetype.id}/${mode.id}/${control.key}: ${role} not primary`)
-          }
-        }
-        const visibleAspectControls = controls.filter((control) => isPaidParameter(control) && parameterControlRole(control) === 'aspect' && parameterChipOptions(control).length > 0)
-        const primaryAspectCount = primary.filter((control) => parameterControlRole(control) === 'aspect').length
-        if (visibleAspectControls.length > 0 && primaryAspectCount !== 1) {
-          failures.push(`${archetype.id}/${mode.id}: expected one aspect chip, got ${primaryAspectCount}`)
-        }
-      }
-    }
-    expect(failures).toEqual([])
-  })
-
-  it('keeps the Agnes size/resolution and ratio pair covered by the alias regression', () => {
-    const select = (key: string, values: string[]): DynamicModelControl => modelControl({
-      key, label: key, type: 'select', options: values.map((value) => ({ value, label: value })),
-    })
-    expect(splitPrimaryParameterControls([
-      select('size', ['1K', '2K']),
-      select('ratio', ['1:1', '16:9']),
-    ]).primary.map((control) => control.key)).toEqual(['ratio', 'size'])
-    expect(splitPrimaryParameterControls([
-      select('size', ['1024x1024', '1280x720']),
-      select('aspect_ratio', ['16:9', '1:1']),
-    ]).primary.map((control) => control.key)).toEqual(['aspect_ratio', 'size'])
-  })
-})
-
-// 底栏「哪几个参数自己占一颗 chip」（2026-09-11 02:10 拍板方案 B）。
-// 这条规则的全部价值在「换个模型照样说得对」——所以每条都拿**档案里真实存在的控件形状**去验，
-// 不是拿一个手搓的理想 control。形状出处写在各常量旁边。
+// 参数下拉的候选项与当前值（底栏数量钮用）：每条都拿**档案里真实存在的控件形状**去验，形状出处写在各常量旁边。
 
 const ratio: DynamicModelControl = {
   key: 'aspect_ratio', label: '比例', type: 'select', binding: 'parameter',
@@ -109,62 +23,11 @@ const resolution: DynamicModelControl = {
   key: 'resolution', label: '清晰度', type: 'select', binding: 'parameter',
   options: [{ value: '720p', label: '720p' }, { value: '1080p', label: '1080p' }], defaultValue: '720p',
 }
-const generateAudio: DynamicModelControl = {
-  key: 'generate_audio', label: '生成音频', type: 'boolean', binding: 'parameter', options: [], defaultValue: true,
-}
-const seed: DynamicModelControl = {
-  key: 'seed', label: '种子', type: 'number', binding: 'parameter', options: [],
-}
 // 目录模型（没有档案）走 binding，不走 key。
-const catalogSize: DynamicModelControl = {
-  key: 'aspect_ratio', label: '画幅', binding: 'size',
-  options: [{ value: '16:9', label: '16:9' }], defaultValue: '16:9',
-}
 const catalogDuration: DynamicModelControl = {
   key: 'durationSeconds', label: '时长', binding: 'durationSeconds',
   options: [{ value: 5, label: '5s' }, { value: 10, label: '10s' }], defaultValue: 5,
 }
-
-const keys = (controls: readonly DynamicModelControl[]): string[] => controls.map((control) => control.key)
-
-describe('splitPrimaryParameterControls — 哪几个参数直接露在底栏上', () => {
-  it('比例 / 时长 / 清晰度上底栏，开关与种子退到 ⚙', () => {
-    const { primary, rest } = splitPrimaryParameterControls([resolution, ratio, duration, generateAudio, seed])
-    expect(keys(primary)).toEqual(['aspect_ratio', 'duration', 'resolution'])
-    expect(keys(rest)).toEqual(['generate_audio', 'seed'])
-  })
-
-  it('顺序按角色固定，不随档案声明顺序漂（换模型不用重新找比例在哪）', () => {
-    const { primary } = splitPrimaryParameterControls([duration, resolution, ratio])
-    expect(keys(primary)).toEqual(['aspect_ratio', 'duration', 'resolution'])
-  })
-
-  it('档案没声明的角色就没有那颗 chip——不补默认值假装模型支持', () => {
-    const { primary } = splitPrimaryParameterControls([ratio, resolution])
-    expect(keys(primary)).toEqual(['aspect_ratio', 'resolution'])
-  })
-
-  it('目录模型（无档案）按 binding 认角色，与档案模型同一条路', () => {
-    const { primary, rest } = splitPrimaryParameterControls([catalogDuration, catalogSize])
-    expect(keys(primary)).toEqual(['aspect_ratio', 'durationSeconds'])
-    expect(rest).toEqual([])
-  })
-
-  it('点开选不出东西的（无候选项、无可用区间）不上 chip：它在 ⚙ 里是输入框/滑杆', () => {
-    const openEnded: DynamicModelControl = { ...duration, min: undefined, max: undefined }
-    const { primary, rest } = splitPrimaryParameterControls([ratio, openEnded])
-    expect(keys(primary)).toEqual(['aspect_ratio'])
-    expect(keys(rest)).toEqual(['duration'])
-  })
-
-  it('导入的 ComfyUI 工作流（采样步数 / 帧率这类）一颗 chip 都不出，全在 ⚙ 里', () => {
-    const steps: DynamicModelControl = { key: 'steps', label: '采样步数', type: 'number', binding: 'parameter', options: [], min: 1, max: 50 }
-    const fps: DynamicModelControl = { key: 'frame_rate', label: '帧率', type: 'select', binding: 'parameter', options: [{ value: 24, label: '24' }] }
-    const { primary, rest } = splitPrimaryParameterControls([steps, fps])
-    expect(primary).toEqual([])
-    expect(keys(rest)).toEqual(['steps', 'frame_rate'])
-  })
-})
 
 describe('numericRangeChipOptions — 区间型时长切成下拉档位', () => {
   it('4–15 秒切成 12 档（Seedance 2 的真实声明）', () => {
@@ -194,30 +57,7 @@ describe('chip 上的值与文案', () => {
     expect(parameterChipValue(catalogDuration, {})).toBe('5')
   })
 
-  it('时长补单位；档案标签已经带单位就不补第二次（否则渲出「5ss」）', () => {
-    const seconds = (value: string): string => `${value}s`
-    expect(parameterChipLabel(duration, '5', seconds)).toBe('5s')
-    expect(parameterChipLabel(catalogDuration, '5s', seconds)).toBe('5s')
-    expect(parameterChipLabel(ratio, '16:9', seconds)).toBe('16:9')
-  })
-
   it('候选项优先用档案声明的枚举', () => {
     expect(parameterChipOptions(resolution)).toEqual([{ value: '720p', label: '720p' }, { value: '1080p', label: '1080p' }])
-  })
-})
-
-describe('overflowParameterControls — ⚙ 里只剩长尾', () => {
-  // 主参数恒全摆在底栏（不按宽度退位；放不下由 InlineParameterBar 换行）。⚙ 只收非主参数。
-  it('⚙ 只装长尾，且保持档案声明顺序', () => {
-    const declared = [resolution, ratio, duration, generateAudio]
-    const { primary } = splitPrimaryParameterControls(declared)
-    expect(keys(primary)).toEqual(['aspect_ratio', 'duration', 'resolution'])
-    expect(keys(overflowParameterControls(declared, primary))).toEqual(['generate_audio'])
-  })
-
-  it('摆在底栏上的参数不会在 ⚙ 里再出现一次（同一个值只有一个家）', () => {
-    const declared = [ratio, duration, resolution, generateAudio]
-    const { primary } = splitPrimaryParameterControls(declared)
-    expect(keys(overflowParameterControls(declared, primary))).toEqual(['generate_audio'])
   })
 })

@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 // 核心冒烟 · **花钱路最小的那一条**（2026-09-22 登记进 CORE_SMOKE_SCENARIOS）。
 //
-// 守的那件事：「Agent 要花钱 → 面板上出一张报价卡 → 用户点头才扣、点 × 一个节点都不动」这条路
+// 守的那件事：「Agent 要花钱 → 面板上出一张付费卡 → 用户按「生成」才扣、按「取消」一个节点都不动」这条路
 // 每个非纯文档 PR 都走一遍。它此前只在 `agent-spend-card.walk.mjs` 那条大走查里覆盖，而那条不在
 // 任何逢 PR 必跑的套件里——09-22 main 上 composer 消失 / 「2 版」打不开那次，CI 是全绿的。
 //
 // 四条断言（handoff 定的那四条，一条不多）：
-//   ① 出卡：Agent 自己不许花钱，钱这一步必须变成介入槽里的一张报价卡，卡上有宿主算出来的真数字；
+//   ① 出卡：Agent 自己不许花钱，钱这一步必须变成介入槽里的一张付费卡，卡指着草稿落下的那个节点（D2：卡 = 指向元素 + 摘要）；
 //   ② 确认后供应商**恰收一次**：不是零（点了没反应）、也不是两次（重试/双发把钱花两遍）；
 //   ③ 节点出产物：确认之后那个节点真的拿到结果，不是卡在 running；
-//   ④ × 后节点数不变：收回出价不删用户的任何节点（09-21 Q3 用户原话「不生成≠我的节点没了」）。
+//   ④「取消」后节点数不变：收回出价不删用户的任何节点（09-21 Q3 用户原话「不生成≠我的节点没了」）。
 //
 // 零付费：远端只有 `loopbackProvider`（`agent-runtime-fixture.mjs` 起的真 HTTP 回环服务，零额度）。
 // SDK、IPC、ProductionRun、渲染层、落盘全是真的；不灌 store、不直调桥、不伪造待决状态。
@@ -27,6 +27,7 @@ import {
   expandResidentPanel, readProject, recorded, sendCanvas,
 } from './agent-runtime-walk-support.mjs'
 import { launchCoreSmoke } from './core-smoke/fixture.mjs'
+import { CARD_EDITORS, cardFacts, pointerOf } from './_spendCardWalk.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 
 const ASK = 'CORE_SMOKE_SPEND：帮我生成一张六棱柱的图。'
@@ -48,14 +49,7 @@ const projectId = smoke.project.projectId
 let failed = null
 try {
   const win = await smoke.openProject()
-  // 宿主如果拒了这一单，它在渲染层 console 里说了为什么。不收这句话，「没发出去」就只会以
-  // 超时的形状报出来（同 `agent-spend-priced-card.walk.mjs:119`）。
-  const hostRefusals = []
-  win.on('console', (message) => {
-    const text = message.text()
-    if (text.includes('[spend-confirm] host refused')) hostRefusals.push(text)
-    if (process.env.NOMI_WALK_DEBUG === '1') console.log('[console]', message.type(), text.slice(0, 400))
-  })
+  if (process.env.NOMI_WALK_DEBUG === '1') win.on('console', (message) => console.log('[console]', message.type(), message.text().slice(0, 400)))
   await expandResidentPanel(win)
   await expect(win.locator(`${CANVAS_PANEL} [data-v4-block="composer"]`),
     '默认档位就是「每次问我」：钱这一步不许被档位放行').toHaveAttribute('data-approval-mode', 'request')
@@ -106,26 +100,28 @@ try {
   const confirmButton = card.locator(INTERVENTION_CONFIRM)
   await expect(confirmButton, '确认按钮在卡上可见').toBeVisible()
   // 按控件名字认（键取词典值）：按钮里还有 aria-hidden 的 ⏎ 键帽，整段可见文字不是它的名字。
-  const confirmLabel = uiText(smoke.locale === 'en' ? 'en' : 'zh-CN', 'agentPanelV4.spendConfirmThisImage')
-  await expect(confirmButton, '确认按钮的名字是词典键 spendConfirmThisImage 的值').toHaveAccessibleName(confirmLabel)
+  const confirmLabel = uiText(smoke.locale === 'en' ? 'en' : 'zh-CN', 'agentPanelV4.spendCard.generate')
+  await expect(confirmButton, '确认按钮的名字是词典键 spendCard.generate 的值（单张：「生成」）').toHaveAccessibleName(confirmLabel)
   expect((await confirmButton.innerText()), '确认按钮上不含金额或货币符号').not.toMatch(/[¥￥$€£]|[0-9]/)
-  await expect(card, '卡体就是那张生成框整件：提示词在卡上').toContainText('六棱柱')
+  // D2：卡 = 指向元素 + 一行只读摘要 + 「生成」；要看要改就点指向元素、去节点上——卡上没有提示词框、没有参数。
+  await expect(card.locator(pointerOf(drafted.id)), '卡指着草稿落下的那个节点').toBeVisible()
+  await expect(card.locator(CARD_EDITORS), '卡上没有可改的东西').toHaveCount(0)
   expect(fixture.images, '卡还没答，一次媒体请求都不许发').toHaveLength(0)
   const nodesWithDraft = (await readProject(win, projectId)).payload.generationCanvas.nodes.map((entry) => entry.id).sort()
 
   if (caseId === 'cancel') {
-    // ── ④ × 后节点数不变 ──────────────────────────────────────────────────────────
-    // 09-22 下午用户拍板：× 只收回**这一次出价**，节点和草稿都留着。
+    // ── ④「取消」后节点数不变 ──────────────────────────────────────────────────────
+    // 09-22 下午用户拍板：「取消」只收回**这一次出价**，节点和草稿都留着。
     await clickOrFail(card.locator(INTERVENTION_REJECT), '收回这次出价')
     await expectAbsent(card, { provenBy: cardProof, message: '收回之后付款卡退出介入槽' })
     const declined = flattenRequestText((await recorded(turnDone.received, 'generate returns once the user closed the card')).body)
     // 付费卡逐镜（2026-09-30）：回执渲染宿主的逐镜结局——没决定的这一镜「没生成、没花钱」，原因是他关了卡。
-    expect(declined, '模型读到的是「他关了这张卡」，不是一个错误').toContain('the user closed the card (×) before deciding them')
+    expect(declined, '模型读到的是「他关了这张卡」，不是一个错误').toContain('the user cancelled the card before deciding them')
     // 落地轮询在这段时间里对这份计划又跑过好几趟——节点数还是要一个不多一个不少。
     await expect.poll(async () => (await readProject(win, projectId)).payload.generationCanvas.nodes.map((entry) => entry.id).sort(),
-      { timeout: DEFAULT_TIMEOUT_MS, message: '× 一个节点都不删（09-21 Q3：不生成≠我的节点没了）' })
+      { timeout: DEFAULT_TIMEOUT_MS, message: '「取消」一个节点都不删（09-21 Q3：不生成≠我的节点没了）' })
       .toEqual(nodesWithDraft)
-    expect(fixture.images, '× 之后一次媒体请求都没发出去').toHaveLength(0)
+    expect(fixture.images, '「取消」之后一次媒体请求都没发出去').toHaveLength(0)
     console.log(`[core-smoke] spend-confirm/cancel 通过：节点 ${nodesWithDraft.length} 个不变，媒体请求 0 次`)
   } else {
     // ── ② 确认后供应商恰收一次 · ③ 节点出产物 ──────────────────────────────────────
@@ -133,12 +129,14 @@ try {
     // 请求一次适应视图，2026-09-25 拍板删了）。基线在视口停稳时读；另挂一个改写记录器，抓首尾相同的来回闪。
     const viewportBeforeConfirm = await waitForCanvasViewportSettled(win)
     const viewportWrites = await recordCanvasViewportWrites(win)
-    await clickOrFail(card.locator(INTERVENTION_CONFIRM), '按下「生成这张」')
-    // 顺序照 `agent-spend-confirm-executes.walk.mjs:162-172`：先等出站请求（那是「钱真的动了」的第一个
-    // 证据），再等 `generate` 把结论递回正在等的那个回合。反过来写会让「还没跑起来」以超时的形状报出来。
-    await expect.poll(() => fixture.images.length + hostRefusals.length,
-      { timeout: DEFAULT_TIMEOUT_MS, message: '按下确认之后必须有结论（发出去了，或者宿主说了为什么不行）' }).toBeGreaterThan(0)
-    expect(hostRefusals, `宿主不许拒（实际：${hostRefusals.join(' ')}）`).toHaveLength(0)
+    await clickOrFail(card.locator(INTERVENTION_CONFIRM), '按下「生成」')
+    // 先等出站请求（那是「钱真的动了」的第一个证据），再等 `generate` 把结论递回正在等的那个回合。
+    // 被拒写在卡上那一行说明里：一起等，不让「没发出去」以超时的形状报出来。
+    await expect.poll(async () => {
+      if (fixture.images.length > 0) return 'sent'
+      const notices = (await cardFacts(win))?.notices ?? []
+      return notices.length ? `refused: ${notices.map((notice) => notice.text).join(' | ')}` : 'waiting'
+    }, { timeout: DEFAULT_TIMEOUT_MS, message: '按下「生成」之后必须有结论（发出去了，或者卡上说了为什么不行）' }).toBe('sent')
     expect(fixture.images, '确认之后供应商要收到这一次生成').toHaveLength(1)
     await recorded(turnDone.received, 'generate returns once the user approved')
     // 「恰一次」不是「至少一次」：再等一段，重试 / 双发会在这里现形。

@@ -45,7 +45,8 @@ export function registerTaskIpcHandlers(loadRuntimeModule: RuntimeLoader, loadCo
     });
   });
 
-  // 批量卡上点了确认（「生成全部」、分镜整批、框选生成）：卡上列出的每一镜各建一个单镜 Run，出价开着 = 这一镜他同意了。
+  // 批量卡上点了确认（「生成全部」、分镜整批、框选生成），或 Agent 付费卡 / 「直接生成」档把几镜交给画布：每一镜各建一个
+  // 单镜 Run，出价开着 = 这一镜他同意了（交给画布的那几镜带 `production`，主进程把它绑到那一笔交接上——交接本身渲染层写不出）。
   // 什么都还没交；轮到它时 canvas-submit 才冻住请求、批、交。
   ipcMain.handle("nomi:tasks:canvas-consent", async (event, payload) => {
     assertTrustedSender(event);
@@ -54,9 +55,14 @@ export function registerTaskIpcHandlers(loadRuntimeModule: RuntimeLoader, loadCo
     const projectId = str(raw.projectId);
     const shots = Array.isArray(raw.shots) ? raw.shots.map((shot) => {
       const value = (shot || {}) as Record<string, unknown>;
-      return { nodeId: str(value.nodeId), runRecordId: str(value.runRecordId), vendor: str(value.vendor), modelKey: str(value.modelKey), kind: str(value.kind) };
+      const production = value.production && typeof value.production === "object" ? value.production as Record<string, unknown> : undefined;
+      return {
+        nodeId: str(value.nodeId), runRecordId: str(value.runRecordId), vendor: str(value.vendor), modelKey: str(value.modelKey), kind: str(value.kind),
+        ...(production ? { production: { runId: str(production.runId), shotId: str(production.shotId) } } : {}),
+      };
     }) : [];
-    if (!projectId || shots.length === 0 || shots.length > 500 || shots.some((shot) => !shot.nodeId || !shot.runRecordId || !shot.vendor || !shot.kind)) {
+    if (!projectId || shots.length === 0 || shots.length > 500 || shots.some((shot) => !shot.nodeId || !shot.runRecordId || !shot.vendor || !shot.kind
+      || (shot.production && (!shot.production.runId || !shot.production.shotId)))) {
       throw new Error("canvas generation consent is invalid");
     }
     return (await loadCore()).consentCanvasShots({ projectId, shots, senderId: event.sender.id });

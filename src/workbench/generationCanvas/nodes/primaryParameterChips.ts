@@ -1,25 +1,9 @@
 /**
- * 底栏「哪几个参数自己占一颗下拉 chip、哪些收进 ⚙」的**唯一判据**
- * （docs/design/2026-09-10-node-composer-bar-v1.md §B，2026-09-11 02:10 用户拍板方案 B）。
+ * 参数下拉的候选项与当前值——底栏数量钮（`QuantitySelect`）和「数量是不是一个能选的参数」的判据都读这里。
  *
- * 要权衡的那一个东西：底栏这条带子的常驻宽度是有限的，而「每个参数一颗 chip」的价值
- * 恰恰来自**一步到位**——多一颗 chip 就多占一格宽，多收一颗进 ⚙ 就多一次点击。
- * 判据只回答「露哪几颗」，而且从档案 derive。露不下时**换行**，不收（2026-10-08 合同：主参数影响报价 / 产出，
- * 付费确认那一刻一颗都不许退进 ⚙、不许被裁、不许横向滚动；换行在 InlineParameterBar 的 chips 横排上）。
- *
- * 判据（三条，缺一不可）：
- *   ① **档案声明了这个语义角色**（比例 / 时长 / 清晰度，`parameterControlRole` 是全仓唯一的角色表）。
- *      档案没声明就没有这颗 chip——不补默认值、不假装模型支持它。
- *      为什么只有这三个角色够用：它们是**值本身就读得懂**的那一批（`16:9`、`5s`、`1080p`），
- *      chip 上不写参数名也认得出。种子 / 生成音频 / 负向提示词写成 `12345`、`开` 谁也读不出是什么，
- *      那种参数摆出来占的是宽度、给的是问号——它们的家是 ⚙（一功能一个家，§1.5.2）。
- *   ② **点开确实能选**：有候选项，或是能从 min/max/step 切出有限档位的数值区间
- *      （档案里 `duration` 常声明成 `number` + 区间而不是枚举，见 electron/shared/videoCapabilities/seedance.ts）。
- *      切不出档位的连续量（denoise 0–1 未声明步长）留在 ⚙ 里用输入框/滑杆，chip 装不下它。
- *   ③ **不是开关**：boolean 的 chip 只会显示「开 / 关」，读不出它管的是什么。
- *
- * 顺序按角色固定（比例 → 时长 → 清晰度），不随档案声明顺序漂：底栏是用户每次生成前都要扫的
- * 同一行，比例这颗今天在第一位、换个模型跑到第三位，等于每换一次模型都要重新找一遍。
+ * 档案声明的枚举优先；档案只给了区间的数值（`number` + min/max/step）切成有限档位，切不出就不算能选。
+ * 2026-09-11 到 D2（用户 2026-10-23 拍板）之间这里还住着付费确认卡「逐参数 chip」的判据（哪几个参数露在卡底栏上），
+ * 付费卡不再挂参数控件，那套判据随旧卡一起删了。
  */
 import {
   catalogControlInitialValue,
@@ -28,14 +12,9 @@ import {
   isParameterControl,
   optionLabel,
   optionValue,
-  parameterControlRole,
   type DynamicModelControl,
-  type ParameterRole,
 } from './controls/parameterControlModel'
 import { hasUsableSliderStep } from './controls/numericDraft'
-
-/** 露出顺序 = 决策顺序：先定画面形状，再定它多长，再定清晰度和输出张数。 */
-export const PRIMARY_ROLE_ORDER: readonly ParameterRole[] = ['aspect', 'duration', 'resolution', 'quantity']
 
 /**
  * 数值区间能切出多少档还算「一个下拉」。
@@ -80,65 +59,4 @@ export function parameterChipValue(control: DynamicModelControl, meta: Record<st
   return isParameterControl(control)
     ? controlInitialValue(control, meta)
     : catalogControlInitialValue(control, meta)
-}
-
-function isChipEligible(control: DynamicModelControl): boolean {
-  if (isParameterControl(control) && control.type === 'boolean') return false
-  return parameterChipOptions(control).length > 0
-}
-
-/**
- * 把档案给出的控件分成「底栏 chip 候选」与「其余」。
- * `rest` 保持**档案声明顺序**——它就是 ⚙ 面板里的顺序，面板不该被 chip 的排序规则带偏。
- */
-export function splitPrimaryParameterControls(controls: readonly DynamicModelControl[]): {
-  primary: DynamicModelControl[]
-  rest: DynamicModelControl[]
-} {
-  const ranked: { control: DynamicModelControl; rank: number }[] = []
-  const rest: DynamicModelControl[] = []
-  const takenRoles = new Set<ParameterRole>()
-  for (const control of controls) {
-    const role = parameterControlRole(control)
-    const rank = role ? PRIMARY_ROLE_ORDER.indexOf(role) : -1
-    // Aspect aliases are the same semantic value. Other roles may have more than one independently priced/output-affecting control.
-    const isDuplicateAspect = role === 'aspect' && takenRoles.has(role)
-    if (role && rank >= 0 && !isDuplicateAspect && isChipEligible(control)) {
-      if (role === 'aspect') takenRoles.add(role)
-      ranked.push({ control, rank })
-      continue
-    }
-    rest.push(control)
-  }
-  return {
-    primary: ranked.sort((a, b) => a.rank - b.rank).map((entry) => entry.control),
-    rest,
-  }
-}
-
-/**
- * ⚙ 里到底放哪些控件：档案声明的全部控件里，去掉此刻摆在底栏上的那几颗。
- * 顺序保持档案声明顺序。
- */
-export function overflowParameterControls(
-  controls: readonly DynamicModelControl[],
-  chips: readonly DynamicModelControl[],
-): DynamicModelControl[] {
-  const chipKeys = new Set(chips.map((control) => control.key))
-  return controls.filter((control) => !chipKeys.has(control.key))
-}
-
-/**
- * chip 上那句短文案。
- *
- * 时长补单位只在**纯数字**时做：档案里 duration 的选项标签有的是「5」、有的已经写成「5s」/「5 秒」，
- * 无条件套单位会渲出「5ss」——一条只在某些模型上才现形的假文案（2026-09-11 v1.1 踩过）。
- */
-export function parameterChipLabel(
-  control: DynamicModelControl,
-  optionText: string,
-  formatSeconds: (value: string) => string,
-): string {
-  if (parameterControlRole(control) !== 'duration') return optionText
-  return /^\d+(\.\d+)?$/.test(optionText) ? formatSeconds(optionText) : optionText
 }

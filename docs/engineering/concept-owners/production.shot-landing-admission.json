@@ -15,7 +15,9 @@
     { "path": "electron/productionRun/shotLandingAdmission.ts", "symbol": "assertShotAdmission" },
     { "path": "electron/productionRun/shotLandingAdmission.ts", "symbol": "recordLandingFailure" },
     { "path": "electron/productionRun/shotLandingAdmission.ts", "symbol": "liftLandingFailure" },
-    { "path": "electron/productionRun/shotLandingAdmission.ts", "symbol": "landedNodeOf" }
+    { "path": "electron/productionRun/shotLandingAdmission.ts", "symbol": "landedNodeOf" },
+    { "path": "electron/productionRun/shotLandingAdmission.ts", "symbol": "shotSendFacts" },
+    { "path": "electron/productionRun/shotLandingAdmission.ts", "symbol": "shotStopFacts" }
   ],
   "forbidden_derivations": [
     {
@@ -31,8 +33,9 @@
     "electron/productionRun/singleShotProductionStart.ts",
     "electron/capabilityCore/appIntegrationCanvasShot.ts",
     "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-    "electron/capabilityCore/appIntegrationLandFirst.ts"
+    "electron/capabilityCore/appIntegrationLandFirst.ts",
+    "electron/productionRun/productionRunProjections.ts"
   ],
   "since": "2026-10-08",
-  "notes": "架构③（用户拍板「生成那一刻 = 落画布那一刻」，协调会话合同 brief-I-landfirst，根因合同 docs/fixes/2026-10-08-production-land-first.root-cause.json）。一镜能不能派只问 admitShotsForDispatch：没节点的先经落地器（canvasLandingHost.landBeforeDispatch）落一次，落下了发 LandedShotAdmission（品牌类型），落不下来报回、由 recordLandingFailure 把 Run 停在 landing_failed。提交出口 submission.start 的入参类型必须带这份准入（不带编译不过），并在第一笔耐久写之前、拿到 Run 锁之后各按耐久 Run 复核一次（assertShotAdmission）——不依赖可注入的 beforeDispatch。画布节点发起的 Run 以来源节点为落点（origin.nodeId，landedNodeOf 唯一判据）。多镜调度器每一趟派发前、单镜开拍口、付费卡确认（批之前）、画布单节点都经它；项目没打开时只在隐藏且用户从没叫出来的主窗口里替 Agent 打开（landingProjectAccess），其余拒。"
+  "notes": "架构③（用户拍板「生成那一刻 = 落画布那一刻」，协调会话合同 brief-I-landfirst，根因合同 docs/fixes/2026-10-08-production-land-first.root-cause.json）。一镜能不能派只问 admitShotsForDispatch：没节点的先经落地器（canvasLandingHost.landBeforeDispatch）落一次，落下了发 LandedShotAdmission（品牌类型），落不下来报回、由 recordLandingFailure 把 Run 停在 landing_failed。提交出口 submission.start 的入参类型必须带这份准入（不带编译不过），并在第一笔耐久写之前、拿到 Run 锁之后各按耐久 Run 复核一次（assertShotAdmission）——不依赖可注入的 beforeDispatch。画布节点发起的 Run 以来源节点为落点（origin.nodeId，landedNodeOf 唯一判据）。多镜调度器每一趟派发前、单镜开拍口、付费卡确认（批之前）、画布单节点都经它；项目没打开时只在隐藏且用户从没叫出来的主窗口里替 Agent 打开（landingProjectAccess），其余拒。 2026-10-24 D2 第③步（合同 docs/fixes/2026-10-02-generate-remaining-stop.root-cause.json 的第二个入口）：一镜「发出去了没」只一份判据 shotSendFacts（发出 → 用户去掉 → 没放上画布 → 画布接手 → 没发出）；落地准入的报告 shotLandingFacts 与用户停下那一刻的 shotStopFacts 都建在它上面——外部宿主 / 调度器那条路停下时，Run 投影的 stopped 与 MCP 的 nomi_run_control / nomi_read 照它说「发出去几镜、没发几镜」，全发出去了就不说停下了什么。"
 }

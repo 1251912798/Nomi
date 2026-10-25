@@ -14,6 +14,7 @@ import type { ProjectAgentApprovalPolicy } from "../shared/agentCapabilities/cap
 import { readAgentApprovalPolicy } from "../settings/agentApprovalPolicySettings";
 import type { ProductionRunService } from "../productionRun/productionRunService";
 import { waitingAuthorizationGates } from "../shared/productionSpendAuthority";
+import { withHandedOverAttempts } from "../shared/agentCapabilities/directGenerationBrakes";
 
 type RunOwner = Pick<ProductionRunService, "readFull" | "command">;
 
@@ -27,6 +28,8 @@ export type ResidentGenerationAdapterFactoryInput = Readonly<{
   owner: RunOwner;
   /** 草稿落地之后「此刻在画布上吗」（见 `GenerationTransportAdapterDependencies.draftLanding`）。 */
   draftLanding?: GenerationTransportAdapterDependencies["draftLanding"];
+  /** 「直接生成」档把几镜交给画布（见 `GenerationTransportAdapterDependencies.handOverToCanvas`）。 */
+  handOverToCanvas?: GenerationTransportAdapterDependencies["handOverToCanvas"];
 }>;
 
 export type ResidentGenerationAdapterFactory = Readonly<{
@@ -36,14 +39,47 @@ export type ResidentGenerationAdapterFactory = Readonly<{
    * 主进程持有的那份权威值。调用方永远没有办法「自报」一个更松的档位。
    */
   factory: (binding: ProjectBinding, approvalPolicy?: () => ProjectAgentApprovalPolicy | undefined) => PiGenerationTransportAdapter;
-  /**
-   * 同一条项目租约的**唯一**取得口。付费确认卡（`appIntegrationSpendConfirm.ts`）要用它去开
-   * Run 自己的付费门；再写一份缓存/续期逻辑就会出现两份过期判断，而过期判断错在钱这条轴上
-   * 是「门开着但没人守」。
-   */
-  leaseFor: (binding: ProjectBinding) => Promise<ProjectLeaseV2>;
   dispose: () => void;
 }>;
+
+/**
+ * 常驻传输读写 Run 的那三件：拒掉外部宿主那道在等的门、把出价标成「要人决定」、读刹车要看的事实（带上交给画布的那几镜
+ * 在画布单镜 Run 里的尝试，读不到的画布 Run 跳过）。工厂与端到端夹具共用这一份，夹具测的就是生产这一份接线。
+ */
+export function residentRunFacts(owner: RunOwner): Required<Pick<GenerationTransportAdapterDependencies, "rejectGeneration" | "markPolicyDecisionFailed" | "readRun">> {
+  return {
+    async rejectGeneration({ params, lease }) {
+      const operationId = typeof params.operationId === "string" ? params.operationId.trim() : "";
+      if (!operationId) return;
+      // 这一次在等决定的授权（外部宿主那一整份，住在它自己那道门上）。没有在等的 = 已经决过了，no-op。
+      let current = owner.readFull(lease.projectId, operationId);
+      for (const gate of waitingAuthorizationGates(current)) {
+        current = (await owner.command(lease.projectId, operationId, {
+          commandId: `generation.gate.reject:${gate.gateId}`,
+          expectedRevision: current.revision,
+          type: "gate.decide",
+          payload: { gateId: gate.gateId, status: "rejected", authorizationDigest: gate.authorizationDigest },
+          issuedAt: new Date().toISOString(),
+        })).run;
+      }
+    },
+    async markPolicyDecisionFailed({ params, lease }) {
+      const operationId = typeof params.operationId === "string" ? params.operationId.trim() : "";
+      if (!operationId) return;
+      const current = owner.readFull(lease.projectId, operationId);
+      await owner.command(lease.projectId, operationId, {
+        commandId: `generation.policy_decision_failed:${operationId}:${current.revision}`,
+        expectedRevision: current.revision,
+        type: "generation.policy_decision_failed",
+        payload: {},
+        issuedAt: new Date().toISOString(),
+      });
+    },
+    readRun: (projectId, operationId) => withHandedOverAttempts(owner.readFull(projectId, operationId), (canvasRunId) => {
+      try { return owner.readFull(projectId, canvasRunId); } catch { return null; }
+    }),
+  };
+}
 
 /**
  * Install the factory and return a disposer for app shutdown/restart.
@@ -93,35 +129,6 @@ export function createResidentGenerationAdapterFactory(
     return lease;
   };
 
-  const reject = async ({ params, lease }: { params: Record<string, unknown>; lease: ProjectLeaseV2 }): Promise<void> => {
-    const operationId = typeof params.operationId === "string" ? params.operationId.trim() : "";
-    if (!operationId) return;
-    // 这一次在等决定的授权（外部宿主那一整份，住在它自己那道门上）。没有在等的 = 已经决过了，no-op。
-    let current = input.owner.readFull(lease.projectId, operationId);
-    for (const gate of waitingAuthorizationGates(current)) {
-      current = (await input.owner.command(lease.projectId, operationId, {
-        commandId: `generation.gate.reject:${gate.gateId}`,
-        expectedRevision: current.revision,
-        type: "gate.decide",
-        payload: { gateId: gate.gateId, status: "rejected", authorizationDigest: gate.authorizationDigest },
-        issuedAt: new Date().toISOString(),
-      })).run;
-    }
-  };
-
-  const markPolicyDecisionFailed = async ({ params, lease }: { params: Record<string, unknown>; lease: ProjectLeaseV2 }): Promise<void> => {
-    const operationId = typeof params.operationId === "string" ? params.operationId.trim() : "";
-    if (!operationId) return;
-    const current = input.owner.readFull(lease.projectId, operationId);
-    await input.owner.command(lease.projectId, operationId, {
-      commandId: `generation.policy_decision_failed:${operationId}:${current.revision}`,
-      expectedRevision: current.revision,
-      type: "generation.policy_decision_failed",
-      payload: {},
-      issuedAt: new Date().toISOString(),
-    });
-  };
-
   const factory = (
     binding: ProjectBinding,
     approvalPolicy?: () => ProjectAgentApprovalPolicy | undefined,
@@ -129,21 +136,19 @@ export function createResidentGenerationAdapterFactory(
     planning: input.planning,
     requestGenerationGate: input.requestGenerationGate,
     authorizeGeneration: input.authorizeGeneration,
-    rejectGeneration: reject,
-    markPolicyDecisionFailed,
+    ...residentRunFacts(input.owner),
     confirmGenerationInNomi: input.confirmGenerationInNomi,
     approvalReceiptAuthority: input.approvalReceiptAuthority,
     leaseFor,
     ...(input.draftLanding ? { draftLanding: input.draftLanding } : {}),
+    ...(input.handOverToCanvas ? { handOverToCanvas: input.handOverToCanvas } : {}),
     // 宿主没给档位时**不再按默认档走**：档位是用户设置，主进程自己就持有那份权威值。
     // 此前这里缺席 = 照旧弹卡，于是用户选了「全自动」而非 lane 的宿主（外部 MCP 等）仍然每步问人。
     approvalPolicy: approvalPolicy ?? readAgentApprovalPolicy,
-    readRun: (projectId, operationId) => input.owner.readFull(projectId, operationId),
   });
 
   return {
     factory,
-    leaseFor,
     dispose() {
       disposed = true;
       connections.clear();

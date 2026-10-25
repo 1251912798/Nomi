@@ -29,7 +29,8 @@
     "src/ui/app-shell/shell/ShellAgentHost.tsx",
     "src/devlab/designLab/v4/states/01-vocabulary.tsx",
     "src/devlab/designLab/v4/states/03-flow.tsx",
-    "src/devlab/designLab/v4/states/07-spend-params.tsx"
+    "src/devlab/designLab/spendCard/spendCardLabKit.tsx",
+    "src/devlab/designLab/v4/states/07-auto-mode.tsx"
   ],
   "since": "2026-09-27",
   "notes": "PR #904（合同 docs/fixes/2026-09-27-agent-panel-long-conversation-freeze.root-cause.json）：21 回合长对话把渲染进程冻住——每行每次渲染都新建一份 labels、调 64 次 t()。现在按 i18n.resolvedLanguage 缓存，同一语言返回同一个引用，切语言才重建；调用方照旧 useV4Labels()，不许再自己拼一份 labels 对象。"

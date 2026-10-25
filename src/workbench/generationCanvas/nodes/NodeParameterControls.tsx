@@ -87,7 +87,7 @@ import referenceRowTail from './controls/referenceRowTail'
 import { FIRST_LAST_HINT_DISMISSED_META_KEY, computeReferenceRowModel, firstLastAmbiguityTarget } from './controls/referenceRowModel'
 import type { AssetRef, AssetKind } from '../../assets/assetTypes'
 import { pickNodeSlotReference } from './nodeSlotReferencePick'
-import InlineParameterBar, { type InlineParameterBarParameterLayout } from './InlineParameterBar'
+import InlineParameterBar from './InlineParameterBar'
 import { composerHeadlineSummary } from './composerHeadlineSummary'
 import { useNodeModelAutoSelect } from './useNodeModelAutoSelect'
 import { resolveArchetypeForOption, resolveRenderedControls } from './nodeModelArchetype'
@@ -102,24 +102,6 @@ type NodeParameterControlsProps = {
   section?: 'all' | 'mode' | 'references' | 'parameters' | 'quantity' | 'model' | 'controls'
   /** 点参考 tile → 在描述框光标处插入 @ 引用 chip(主路径,由 composer 注入 editor 命令)。 */
   onInsertMention?: (url: string) => void
-  /**
-   * 参数区怎么摆（透传给 InlineParameterBar，那边写着两种形态的判据）。
-   * 画布节点**不传** → 默认 `summary`（摘要 pill + 面板，2026-09-11 04:30 用户拍板节点保持原样）；
-   * 付费确认卡（`host="panel"` 的 composer）显式传 `chips`，逐参数一颗下拉。
-   */
-  parameterLayout?: InlineParameterBarParameterLayout
-  /**
-   * 参数**下拉浮层**的落点容器（`host="panel"` 的 composer 传自己的卡）。画布上不传：浮层 portal 到
-   * body、打开时定位一次就不跟随，而节点卡本来就不滚动。面板里的卡随转录滚动，body 上的静止浮层会
-   * **留在原地**脱离卡；给了落点就换成「就地展开 + 浮层进卡」，和 `panelMode="inline"` 同一条理由。
-   */
-  inlinePanelTarget?: React.RefObject<HTMLElement | null>
-  /**
-   * 就地展开的参数面板**本体**落在哪（`host="panel"` 传底栏下面那个空 div）。和上面那条是两件事：
-   * 那条是下拉浮层的 portal 根（整张卡），这条是面板的位置。不给就原地渲染在摘要 pill 后面——
-   * 那会让整幅面板变成底栏那一排的兄弟去抢宽度，把「模型/参数/×N」挤成两行。
-   */
-  inlinePanelSlot?: React.RefObject<HTMLElement | null>
   /** 以下三件由生成框各算一份往下传（2026-10-16 可疑点 f / g）：控件不自己订整表、不各算一遍模型清单。 */
   graph: ComposerGraph; modelOptionsState: ModelOptionsState; readMappings: VendorMappingsReader
 }
@@ -128,9 +110,6 @@ export default function NodeParameterControls({
   node,
   section = 'all',
   onInsertMention,
-  parameterLayout,
-  inlinePanelTarget,
-  inlinePanelSlot,
   graph, modelOptionsState, readMappings,
 }: NodeParameterControlsProps): JSX.Element | null {
   const openProjectId = useOpenProjectId()
@@ -554,8 +533,7 @@ export default function NodeParameterControls({
 
   // 数量：模型声明了「数量」这类参数（output_count / batch_size / n…）才有这个控件，住在底栏右边、紧挨生成钮左边
   // （B3：数量只在模型声明时显示）。它**搬家不是复制**：有了它，面板里就不再出现同一个参数（一功能一个家）。
-  // 付费确认卡（逐参数 chip 的 chips 形态）保持原样，数量仍是那一排的一颗 chip。
-  const quantityControl = parameterLayout !== 'chips' && (isImageLike || isVideoLike)
+  const quantityControl = isImageLike || isVideoLike
     ? renderedControls.find((control) => parameterControlRole(control) === 'quantity' && parameterChipOptions(control).length > 0)
     : undefined
   const panelRenderedControls = quantityControl ? renderedControls.filter((control) => control !== quantityControl) : renderedControls
@@ -569,8 +547,7 @@ export default function NodeParameterControls({
   }
 
   // section="parameters"：底栏 = 模型芯片 + 变体 + 摘要 pill + 统一参数面板（实现见 InlineParameterBar）。
-  // **画布节点不传 parameterLayout** → 默认 `summary`：2026-09-11 04:30 用户纠正，
-  // 同日 02:10 的逐参数 chip 只给付费确认卡，节点这一处退回原样（摘要 pill + 面板，含比例小图形）。
+  // 摘要 pill + 面板（含比例小图形）：2026-09-11 04:30 用户纠正，同日 02:10 的逐参数 chip 节点这一处退回原样。
   if (section === 'parameters') {
     // 导入的 ComfyUI 工作流：参数名是作者随手起的（采样步数/帧率/Float (duration)…），
     // 把当前值串成 pill（`15 · 24`）没人认得出那是自己勾的东西。改成报名字+条数。
@@ -612,9 +589,6 @@ export default function NodeParameterControls({
           modeLabel: t('generationCommon.parameters.generationMode'),
           onModeSelect: handleModeSwitch,
         } : {})}
-        {...(parameterLayout ? { parameterLayout } : {})}
-        {...(inlinePanelTarget ? { panelMode: 'inline' as const, portalTarget: inlinePanelTarget } : {})}
-        {...(inlinePanelSlot ? { inlinePanelSlot } : {})}
       />
     )
   }

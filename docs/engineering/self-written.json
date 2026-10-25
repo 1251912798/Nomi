@@ -119,6 +119,10 @@
       "reason": "阶段 4 画布 / 文稿 / 时间轴面的传输适配"
     },
     {
+      "path": "electron/capabilityCore/mcpToolResults*",
+      "reason": "MCP 工具结果的内容：一次制作发出了哪几镜、停在哪、没发的还能不能继续、进度起步那一句——按镜头花钱的领域事实（协议与传输另在 mcp* 自写登记里）"
+    },
+    {
       "path": "electron/shared/agentCapabilities/",
       "reason": "能力契约与动词：画布 / 文稿 / 时间轴 / 生成的领域读写、审批语义"
     },
@@ -157,6 +161,10 @@
     {
       "path": "electron/shared/production*",
       "reason": "制作流程的镜头阶段、批次成员、停下原因、命令 id"
+    },
+    {
+      "path": "electron/shared/contracts/canvasHandOver*",
+      "reason": "交给画布的跨进程契约（D2 一台发动机）：付费卡上按「生成」的那几镜从制作流程交给画布单节点提交，主进程与渲染层那一问的 op 名与回话形状——按镜头花钱的领域语义"
     },
     {
       "path": "electron/shared/decideShotClaim*",
@@ -411,11 +419,15 @@
     },
     {
       "path": "src/workbench/ai/v4/agentPanelSpendCard*",
-      "reason": "付费确认卡的领域呈现：报价、范围、逐镜修订"
+      "reason": "付费卡的领域投影（D2）：出价 × 那几镜节点的事实 → 标题、一行只读摘要、主按钮、说明行"
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4SpendCard*",
+      "reason": "付费卡的卡体（D2 SpendCardQ1 板）：指向元素 + 一行只读摘要 + 说明行——按镜头花钱的领域呈现，卡上每个字都从那几镜节点现读"
     },
     {
       "path": "src/workbench/ai/v4/spendCard*",
-      "reason": "付费确认卡的本地账本：覆写、估算、参考图"
+      "reason": "付费卡上说「没成」的那几句：卡上那一下动作本身没做成、交给画布的某一镜没发出去——只认 Nomi 自己的语义码，只说发没发出去和下一步"
     },
     {
       "path": "src/workbench/ai/v4/AgentPanelV4AskCard*",
@@ -1835,28 +1847,32 @@
       "revisitWhen": "use-gesture（或 dnd-kit）提供区分 release / cancel 并覆盖 blur、lostpointercapture、Esc 的会话原语时；或预览区 OverlaySelectionBox / TimelinePreview 的拖动也迁入同一会话、需要把它抽成通用手势层时"
     },
     {
-      "id": "spend-card-action-arbiter",
-      "capability": "付费卡每一次出价的仲裁器：卡上动作的队、× 的取消令牌、封存终态（UI / 回执 / lane 读同一个口）",
+      "id": "spend-card-host-hook",
+      "capability": "Agent 面板付费卡的接线 hook（D2 SpendCardQ1）：出价（对话投影推来）× 那几镜节点的现读事实 → 卡的投影；主按钮那一下（交给画布 / 定位到节点）与「取消 / 先不发了」各自的在飞标记；按过「生成」的那几镜（卡关时闪）",
       "status": "justified",
       "paths": [
-        "electron/capabilityCore/spendOperationArbiter.ts"
+        "src/workbench/ai/v4/useAgentPanelSpendCard.ts"
       ],
       "alternativesChecked": [
         {
-          "name": "XState v5（状态机 / actor 库：停掉 actor 只丢弃在飞 Promise 的结果，不中止已在 await 的账本写入；快照是内存里的第二份事实）",
-          "source": "https://github.com/statelyai/xstate/blob/main/packages/core/src/actors/promise.ts"
+          "name": "React 19 useActionState（仓库 react ^19.3）：多次 dispatch 按顺序排队执行（「React queues and executes multiple calls to dispatchAction sequentially」）——「取消」会排在在飞的「生成」后面",
+          "source": "https://react.dev/reference/react/useActionState"
         },
         {
-          "name": "仓库已有的 Run 锁（跨进程落盘的 fencing 互斥，管「谁拥有这个 Run」，× 不该去等它）",
-          "source": "electron/productionRun/productionRunLock.ts:1"
+          "name": "React 19 useTransition / async Actions：多个进行中的 Transition 合成一批（「If there are multiple ongoing Transitions, React currently batches them together」），isPending 一直亮到全部结束——停下的那一下分不出自己的进度",
+          "source": "https://react.dev/reference/react/useTransition"
         },
         {
-          "name": "项目租约 ProjectLeaseV2（同上，confirm 已持有；仲裁器要的是同进程的取消令牌）",
-          "source": "electron/capabilityCore/projectLease.ts:1"
+          "name": "XState v5 + @xstate/react useMachine：被删的登记 spend-card-action-arbiter 留的复查条件是「卡的界面态要做时评估 XState」——评估结论：D2 之后发出 / 停下 / 出结果都是主进程交接账与画布节点自己的事实，机器里再存一份就是第二份事实；卡上只剩两个在飞标记和一份「按过的镜」",
+          "source": "https://stately.ai/docs/xstate-react"
+        },
+        {
+          "name": "TanStack Query useMutation：每个 mutation 各有 isPending，但这两下的结果不从返回值读、从对话投影推回来，等于在渲染层再记一份状态；仓库没有这个依赖（只有 @tanstack/react-virtual）",
+          "source": "https://tanstack.com/query/latest/docs/framework/react/reference/useMutation"
         }
       ],
-      "whyNotIntegrated": "领域约束：同一镜的「交 / 不交」要在授权落账那一点上由账本裁决，× 要在每个有副作用的 await 之前被问到、又不能排队等前一个动作；状态机库和租约都不提供「在飞的账本写入之前问一枚同步令牌」。事实仍在 Run 账本（事件溯源 reducer），仲裁器只是同进程协调者，不落盘、不存第二份事实。方案对比与拍板：docs/plan/2026-10-10-spend-arbiter.md。",
-      "revisitWhen": "卡的界面态（stopping / sending / confirm 的纯界面状态机）要做时评估 XState；那里没有账本事实，可以接。"
+      "whyNotIntegrated": "领域约束：按镜头花钱的刹车不能排队——「取消 / 先不发了」任何时候都要越过在飞的「生成」立刻送到宿主（useActionState 顺序排队、async Transition 把并发的 pending 并成一份，正好反着）；卡上的发出 / 停下 / 出结果是主进程交接账与画布节点自己的事实，这里不存第二份（XState、useMutation 都会在渲染层再长一份）。hook 里剩下的是这张卡的领域投影接线：哪几镜、哪几个节点、本机预检、素材托管披露、卡关时闪哪几镜。",
+      "revisitWhen": "卡上又长出不来自交接账 / 节点的纯界面态（两个以上互斥态加转移）时评估 XState；或 React 让并发 Action 各有各的 pending（useTransition 那条 currently batches 的限制取消）时，把两个在飞标记换成 Actions"
     },
     {
       "id": "inflight-probe-registry",

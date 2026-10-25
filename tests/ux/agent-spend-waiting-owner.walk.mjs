@@ -9,7 +9,7 @@
 //   ③ 卡还挂着的时候**冷重启**（C）→ 那一次出价被收回：重开项目没有卡、没有人在等；
 //      计划是 draft / 未 present（**不是** cancelled——重启不是用户说「不」），节点一个没少。
 //   ④ 重启后用户再说一句「生成」→ 同一个 operationId 的卡 → 点「生成」→ 供应商**恰好收到一次**；
-//      同一回合里模型**再调一次** `generate`（F）→ 宿主当成「再来一次」重新摆卡（要花钱必须再点一次）；× 掉它，
+//      同一回合里模型**再调一次** `generate`（F）→ 宿主当成「再来一次」重新摆卡（要花钱必须再点一次）；「取消」掉它，
 //      供应商仍然只收到那一次，而且**出过图的节点还在**。
 //
 // 「看卡 >90 秒再确认仍成功」不在这里：`check:test-waits` 不许走查里放墙钟空等，而那条要证的不变量
@@ -21,6 +21,7 @@ import path from 'node:path'
 
 import { DEFAULT_TIMEOUT_MS, clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { FIXTURE_APIMART_MODEL, FIXTURE_APIMART_VENDOR, flattenRequestText } from './agent-runtime-fixture.mjs'
+import { cardFacts } from './_spendCardWalk.mjs'
 import {
   APPROVAL_CARD, CANVAS_PANEL, INTERVENTION_CONFIRM,
   closeSpendCard, createRuntimeWalk, hasToolResult, openCanvas, readProject, recorded, sendCanvas,
@@ -37,7 +38,8 @@ function readPlan(projectRoot, runId) {
   return JSON.parse(fs.readFileSync(snapshot, 'utf8')).run?.generationPlan ?? null
 }
 
-const walk = await createRuntimeWalk('spend-waiting-owner', { generationProvider: 'apimart' })
+// 卡上「生成」交给画布那一台：它从本机夹具取回产物，按精确 origin 放行（只在未打包构建里读）。
+const walk = await createRuntimeWalk('spend-waiting-owner', { generationProvider: 'apimart', trustFixtureOrigin: true })
 let failure
 try {
   let { win } = await walk.start({ first: true })
@@ -89,7 +91,7 @@ try {
   await expect(win.locator(`${CANVAS_PANEL}`).getByText('S_WO_HEARD', { exact: false }), '回合在同一轮里接着说话').toBeVisible()
   expect(readPlan(projectRoot, operationId), '收回的是这一次出价，不是这份计划').toMatchObject({ state: 'draft' })
   expect(readPlan(projectRoot, operationId).presentations?.at(-1)?.closed?.by, '这一次出价记的是「用户打了字」').toBe('user_wrote')
-  expect(readPlan(projectRoot, operationId).cancelReason, '打字不是 ×').toBeUndefined()
+  expect(readPlan(projectRoot, operationId).cancelReason, '打字不是「取消」').toBeUndefined()
   expect(await nodeIds(), '画布上的占位一个没动').toEqual(draftedNodes)
   expect(walk.fixture.images, '到此一次供应商请求都没有').toHaveLength(0)
   await walk.snap('waiting-owner-02-typed-text-withdrew-the-quote')
@@ -147,19 +149,20 @@ try {
   await sendCanvas(win, 'S_WO_FINAL：生成吧。')
   await recorded(afterRestart.received, 'present after restart')
   await expect(card, '重启后说一句「生成」= 对同一份草稿重新出价').toBeVisible()
-  const hostRefusals = []
-  win.on('console', (message) => { if (message.text().includes('[spend-confirm] host refused')) hostRefusals.push(message.text()) })
-  await clickOrFail(card.locator(INTERVENTION_CONFIRM), '卡上的主按钮', { noWaitAfter: true })
-  await expect.poll(() => walk.fixture.images.length + hostRefusals.length,
-    { message: '按下确认之后必须有结论', timeout: DEFAULT_TIMEOUT_MS }).toBeGreaterThan(0)
-  expect(hostRefusals, `宿主不许拒（实际：${hostRefusals.join(' ')}）`).toHaveLength(0)
+  await clickOrFail(card.locator(INTERVENTION_CONFIRM), '卡上的主按钮「生成」', { noWaitAfter: true })
+  // 先等「有结论」再判对错：被拒会写在卡上那一行说明里（不是超时的形状）。
+  await expect.poll(async () => {
+    if (walk.fixture.images.length > 0) return 'sent'
+    const notices = (await cardFacts(win))?.notices ?? []
+    return notices.length ? `refused: ${notices.map((notice) => notice.text).join(' | ')}` : 'waiting'
+  }, { message: '按下「生成」之后必须有结论（发出去了，或者卡上说了为什么不行）', timeout: DEFAULT_TIMEOUT_MS }).toBe('sent')
   expect(flattenRequestText((await recorded(approved.received, 'generate returns approved')).body),
     // 付费卡逐镜（2026-09-30）：回执渲染宿主的逐镜结局——这张卡上的每一镜都在生成，才说「都在生成」。
     '模型读到「用户批了、已经开始生成」').toContain('All 1 shot(s) on the card are generating')
 
   // 同回合第二次 generate：上一批已经结清，所以宿主把它当成「同一镜再来一次」——**重新摆一张卡**，要花钱必须再点一次
   // （这是既有的产品路径：`agentPanelSpendBatches` 的「new confirmation … distinct attempt」）。模型自己花不了第二笔。
-  // 用户不想要第二次 → × 掉。× 撤的是**这次请求**，不是已经花过钱的那张图：出过图的节点必须还在。
+  // 用户不想要第二次 → 「取消」。撤的是**这次请求**，不是已经花过钱的那张图：出过图的节点必须还在。
   // （第一版在这里把出过图的节点一起删了、画布空了——本走查当场抓到，修在 `spendCardRollback.ownedSpendNodeIds` 判据 ④。）
   const repeatCard = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="spend"]`)
   await expect(repeatCard, '「再来一次」要花钱就得再问一次').toBeVisible()
@@ -167,7 +170,7 @@ try {
   await closeSpendCard(repeatCard, '不要第二次：关掉这张卡')
   await recorded(secondAnswer.received, 'the repeated generate returns once its card was closed')
   await expect(win.locator('[data-node-id][data-status="success"]').first(), '花过钱、出过图的那个节点还在画布上').toBeVisible()
-  expect(await nodeIds(), '× 不许撤掉已经出图的节点').toEqual(draftedNodes)
+  expect(await nodeIds(), '「取消」不许撤掉已经出图的节点').toEqual(draftedNodes)
   expect(walk.fixture.images, '同一回合里再调一次 generate，供应商仍然只收到一次（只扣一次）').toHaveLength(1)
   await walk.snap('waiting-owner-05-confirmed-once-charged-once')
 

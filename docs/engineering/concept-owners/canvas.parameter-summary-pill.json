@@ -1,0 +1,23 @@
+{
+  "name": "生成框里参数的样子（一颗摘要 pill，点开是挂在 body 上的参数面板；只有这一种摆法）",
+  "subject": "canvas.parameter-summary-pill",
+  "lifecycle": "live-interaction",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "projection",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/InlineParameterBar.tsx",
+    "symbol": "InlineParameterBar"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/InlineParameterBar.tsx",
+      "symbol": "InlineParameterBar"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-08",
+  "notes": "原登记「付费卡上主参数 chip 的呈现（全部上卡、一行放不下就换行，不按宽度降级）」（canvas.inline-parameter-chips，合同 docs/fixes/2026-10-08-paid-chips-wrap-not-measure.root-cause.json）：InlineParameterBar 在 chips 布局下渲染每个主 chip，行不横向滚动、不重叠，不按测量宽度把主控件塞进齿轮面板。2026-10-24 D2 第③步（设计卡 docs/plan/2026-10-23-d2-pointer-spend-card.md）：付费卡不再嵌整件生成框（指向元素 + 一行只读摘要，想改去节点里改），chips / stacked / 内嵌面板 portal 三种摆法同提交删光；InlineParameterBar 只剩摘要 pill + 点开挂在 body 上的参数面板这一种（tests/ux/param-panel-numeric.e2e.mjs 钉住面板不在 React Flow 节点里），摘要 pill 照旧不读布局测量。改名不是撤销：主人与写口没变。"
+}

@@ -286,7 +286,11 @@ export async function releaseCanvasShotRun(input: { projectId: string; runRecord
 }
 
 /** 批量卡上要花钱的一镜：节点、它这一次的运行记录号、点确认那一刻选着的家 / 模型 / 任务种类。 */
-export type CanvasConsentShot = { nodeId: string; runRecordId: string; vendor: string; modelKey: string; kind: string }
+/**
+ * 一镜的同意。`production` = 这一镜是 Agent 付费卡（或「直接生成」档）交给画布的那一镜：主进程把这个画布 Run 绑到那一次交接上
+ * （`generation.handover.bind`），派发只认绑着的那一个；缺席 = 画布自己的批量（框选生成 / 分镜整批）。
+ */
+export type CanvasConsentShot = { nodeId: string; runRecordId: string; vendor: string; modelKey: string; kind: string; production?: { runId: string; shotId: string } }
 
 /**
  * 批量卡上点了确认：卡上列出的每一镜在主进程各建一个单镜 Run，出价开着 = 这一镜他同意了（这一张卡就是这一份授权）。

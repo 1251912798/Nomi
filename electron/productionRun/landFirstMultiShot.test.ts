@@ -452,3 +452,58 @@ describe("the one submit boundary re-checks the stop, and a Run has one drive at
     expect(sleeps.length).toBeGreaterThan(0);
   });
 });
+
+// 债 b 第二半（D2 第③步）：调度器那条路（外部宿主、续拍 / 恢复观察者、外部 MCP 多镜开跑）用户停下之后那一句，
+// 按逐镜事实说发出了几镜、几镜没发；一镜都没剩时不说停下了什么。停在哪一镜 × 怎么停（暂停 / 取消）的矩阵，
+// 投影 `stopped` 与 MCP 回执（nomi_run_control 那一下、之后 nomi_read 读回）都核。
+describe("a user stop of a scheduler batch reports the shots that were really sent (stop point × action matrix)", () => {
+  const SIX = ["s1", "s2", "s3", "s4", "s5", "s6"];
+  const STOP_MATRIX = [1, 3, 6].flatMap((stopAt) => (["pause", "cancel"] as const).map((action) => ({ stopAt, action })));
+
+  it.each(STOP_MATRIX)("stop during submit #$stopAt by $action → sent $stopAt, the rest not sent; the words say exactly that", async ({ stopAt, action }) => {
+    const { root, repository } = setupBatch(SIX.map((id) => shotEntry(id, id)));
+    let atStop: ReturnType<typeof safeRunProjection> | undefined;
+    const submit = vi.fn(async () => {
+      if (submit.mock.calls.length === stopAt) {
+        // 用户在第 stopAt 镜交给供应商的这一刻停下（这一镜的提交意图已落盘：可能到过供应商，算发出了）。
+        const run = repository.read(PROJECT, RUN)!;
+        atStop = safeRunProjection(applyRunControl(repository, PROJECT, RUN, run, { commandId: `user-${action}`, expectedRevision: run.revision, type: "run.control", payload: { action }, issuedAt: NOW }).run);
+      }
+      return { providerTaskId: `task-${submit.mock.calls.length}` };
+    });
+
+    await scheduler(root, repository, submit, landingThatBinds(repository, [])).runToQuiescence();
+
+    expect(submit).toHaveBeenCalledTimes(stopAt);
+    const notSent = SIX.length - stopAt;
+    expect(atStop?.stopped?.sent.map((ref) => ref.shotId)).toEqual(SIX.slice(0, stopAt));
+    expect(atStop?.stopped?.notSent.map((ref) => ref.shotId)).toEqual(SIX.slice(stopAt));
+
+    const control = buildToolOutcome("nomi_run_control", { action, projectId: PROJECT, runId: RUN }, atStop);
+    expect(control.outcome).toMatchObject({ stoppedShots: { sent: stopAt, notSent } });
+    const final = safeRunProjection(repository.read(PROJECT, RUN)!);
+    const read = buildToolOutcome("nomi_read", { target: "run", projectId: PROJECT, runId: RUN }, final);
+    expect(final.stopped?.sent).toHaveLength(stopAt);
+    for (const text of [control.text, read.text]) {
+      if (notSent > 0) {
+        expect(text).toContain(`发出了 ${stopAt} 镜`);
+        expect(text).toContain(`${notSent} 镜没发`);
+      } else {
+        expect(text).toContain(`这一批 ${stopAt} 镜在停下之前都已经发出去了`);
+        expect(text).toContain("停下没有拦下任何一镜");
+        expect(text).not.toContain("镜没发");
+      }
+      // 有逐镜事实时不再说那句不带数的「未提交的不再提交 / 不再花钱」。
+      expect(text).not.toContain("未提交的任务不再提交");
+      expect(text).not.toContain("未提交的不再花钱");
+    }
+    // 一镜都没剩：没有可继续的，不给「继续或取消」；还有没发的、而且是暂停：才说能继续。
+    if (notSent === 0) {
+      expect(control.outcome?.nextActions).toEqual([]);
+      expect(read.outcome?.nextActions).toEqual([]);
+    }
+    expect((read.text ?? "").includes("可以继续（只会发没发的那几镜）")).toBe(notSent > 0 && action === "pause");
+    const en = buildToolOutcome("nomi_run_control", { action, projectId: PROJECT, runId: RUN }, atStop, "en").text;
+    expect(en).toContain(notSent > 0 ? `${stopAt} sent` : `All ${stopAt} shots in this batch were already sent`);
+  });
+});

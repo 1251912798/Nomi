@@ -20,12 +20,12 @@ export const productionRunApi = {
   // P4 S6：返工一镜（同 Run 新 Job + 单镜确认 + 派发）；续拍已停批次。回结构化结果（没做成带语义码 failure，渲染层按码翻译）。
   rework: (projectId: string, runId: string, shotId?: string): Promise<ProductionShotActionResult> => bridge().rework(projectId, runId, shotId),
   resumeBatch: (projectId: string, runId: string): Promise<ProductionShotActionResult> => bridge().resumeBatch(projectId, runId),
-  // 2026-09-11 Agent 面板付费确认卡的动作，都回结构化 { ok, code }。卡本身随对话投影推过来，这里没有读口。
-  reviseSpend: (input: { projectId: string; operationId: string; quoteId: string; shotId?: string; patch: Record<string, unknown> } & PendingSpendActionIdentity) => bridge().reviseSpend(input),
+  // Agent 面板付费卡的动作（D2 第③步），都回结构化 { ok, code }。卡本身随对话投影推过来，这里没有读口。
+  /** 「生成」/「全部生成（N）」/「生成剩下 N 段」/「再试一次」：这几镜交给画布。 */
+  handOverSpend: (input: { projectId: string; operationId: string; quoteId: string; shotIds: readonly string[]; hostingAllowed: boolean } & PendingSpendActionIdentity) => bridge().handOverSpend(input),
   discardSpend: (projectId: string, operationId: string, quoteId: string, identity?: PendingSpendActionIdentity) => bridge().discardSpend(projectId, operationId, quoteId, identity),
-  /** 付费卡上「生成这张 / 这段」：只批这一镜。 */
-  confirmSpend: (projectId: string, operationId: string, quoteId: string, shotId?: string, identity?: PendingSpendActionIdentity) => bridge().confirmSpend(projectId, operationId, quoteId, shotId, identity),
-  /** 付费卡上「去掉这张 / 这段」：这一镜不生成。 */
+  /** 「不生成 ×」：这一镜不生成。 */
   removeSpendShot: (projectId: string, operationId: string, quoteId: string, shotId: string, identity?: PendingSpendActionIdentity) => bridge().removeSpendShot(projectId, operationId, quoteId, shotId, identity),
-  confirmSpendRemaining: (projectId: string, operationId: string, quoteId: string, shotIds: readonly string[], identity?: PendingSpendActionIdentity) => bridge().confirmSpendRemaining(projectId, operationId, quoteId, shotIds, identity),
+  /** 「不生成 ×」再点一次：这一镜回到卡上。 */
+  restoreSpendShot: (projectId: string, operationId: string, quoteId: string, shotId: string, identity?: PendingSpendActionIdentity) => bridge().restoreSpendShot(projectId, operationId, quoteId, shotId, identity),
 }

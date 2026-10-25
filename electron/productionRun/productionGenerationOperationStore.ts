@@ -5,7 +5,7 @@ import type { ExecutionContractV1 } from "../capabilityCore/executionContract";
 import { generationShotEnvelopeOf } from "../shared/generationShotEnvelope";
 import type { ProductionRunService } from "./productionRunService";
 import { spendAuthorizationGates } from "../shared/productionSpendAuthority";
-import { draftCardHidden, generationPresentationOutcome } from "../shared/productionGenerationPresentation";
+import { draftCardHidden, generationPresentationOutcome, handOverMayHaveReachedProvider } from "../shared/productionGenerationPresentation";
 
 type GenerationRunOwner = Pick<ProductionRunService, "createGenerationDraft" | "readFull" | "command">;
 
@@ -26,7 +26,8 @@ function operationFromRun(run: ReturnType<ProductionRunService["readFull"]>): Ge
     ...(plan.presentations?.at(-1)?.presentationId ? { presentationId: plan.presentations.at(-1)!.presentationId } : {}),
     ...(plan.presentations?.at(-1)?.presentationEpoch !== undefined ? { presentationEpoch: plan.presentations.at(-1)!.presentationEpoch } : {}),
     ...(plan.presentations?.at(-1)?.policySnapshot ? { policySnapshot: structuredClone(plan.presentations.at(-1)!.policySnapshot) } : {}),
-    submissionStarted: anySubmissionMayHaveReachedProvider(run.jobs),
+    // 交给画布的那几镜没有制作 Run 自己的作业：它们可能到过供应商（交到了 / 结果未知 / 绑上了画布还没落定）也要算。
+    submissionStarted: anySubmissionMayHaveReachedProvider(run.jobs) || handOverMayHaveReachedProvider(run),
     ...(plan.contract ? { contract: structuredClone(plan.contract) } : {}),
     ...(latest ? { authorization: { gateId: latest.gateId, digest: latest.authorizationDigest,
       envelope: structuredClone(latest.authorizationEnvelope), status: latest.status } } : {}),
@@ -182,6 +183,21 @@ export function createProductionGenerationOperationStore(
       notifyPlanChanged(operation.projectId, operation.operationId);
       return operation;
     },
+    async restoreShot(projectId, operationId, shotId, now) {
+      read(projectId, operationId);
+      const revision = owner.readFull(projectId, operationId).revision;
+      const result = await owner.command(projectId, operationId, {
+        commandId: `generation.shot.restore:${operationId}:${shotId}:${revision}`,
+        expectedRevision: revision,
+        type: "generation.shot.restore",
+        payload: { shotId },
+        issuedAt: now,
+      });
+      const operation = operationFromRun(result.run);
+      if (!operation) throw new Error("Production Run lost its generation plan");
+      notifyPlanChanged(operation.projectId, operation.operationId);
+      return operation;
+    },
     async present(projectId, operationId, now, shotIds, target, policySnapshot) {
       read(projectId, operationId);
       const run = owner.readFull(projectId, operationId);
@@ -234,6 +250,7 @@ export function createProductionGenerationOperationStore(
       });
       const operation = operationFromRun(result.run);
       if (!operation) throw new Error("Production Run lost its generation plan");
+      // 交给画布、还没轮到的那几镜不在这里收：账本的变更订阅（`withdrawQueuedHandOvers`）对每一条关卡的写入都收一次。
       // 卡从「可见」回到「藏着」同样是一次 plan 变化：面板的报价卡读通道据此收卡。
       notifyPlanChanged(operation.projectId, operation.operationId);
       return operation;
@@ -249,31 +266,6 @@ export function createProductionGenerationOperationStore(
       });
       const operation = operationFromRun(result.run);
       if (!operation) throw new Error("Production Run lost its generation plan");
-      return operation;
-    },
-    /**
-     * 2026-09-11 付费卡上改参数。`commandId` 带 `planVersion`：改参数是**可重放的用户动作**
-     * （用户可能连点两下），幂等键只用 operationId 会把第二次改动吃掉；带上 planVersion 之后，
-     * 每一次真的把计划推进一版的改动都有自己的键，而同一版上的重发仍然幂等（同 trial_narrow）。
-     */
-    async revise(projectId, operationId, input, now) {
-      const current = read(projectId, operationId);
-      const result = await owner.command(projectId, operationId, {
-        commandId: `generation.revise:${operationId}:v${current.planVersion}:${current.candidate.revision}:${input.shotId ?? "plan"}`,
-        expectedRevision: input.expectedRevision ?? owner.readFull(projectId, operationId).revision,
-        type: "generation.revise",
-        payload: {
-          patch: input.patch,
-          ...(input.shotId ? { shotId: input.shotId } : {}),
-          ...(input.shotId && typeof input.included === "boolean" ? { included: input.included } : {}),
-        },
-        issuedAt: now,
-      });
-      const operation = operationFromRun(result.run);
-      if (!operation) throw new Error("Production Run lost its generation plan");
-      // 改草稿立刻投影回画布：卡上改的提示词/模型必须同步到那份已经落地的草稿节点，
-      // 否则「卡上说的」和「画布上的」又分叉成两个账本（同 patch 那条链，不新建第二条）。
-      notifyPlanChanged(operation.projectId, operation.operationId);
       return operation;
     },
     async trialNarrow(projectId, operationId, now) {

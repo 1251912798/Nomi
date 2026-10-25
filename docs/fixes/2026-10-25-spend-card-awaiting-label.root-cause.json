@@ -1,0 +1,137 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-25-spend-card-awaiting-label",
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-25",
+  "problem_type": "The shared pointer renderer reintroduced a card-level waiting label inside a paid-card pointer, duplicating the question the card already asks.",
+  "symptom": "The design-lab spend-single and spend-single-en states rendered the visible 「等你确认」 / Waiting for you label inside the pointer, while the SpendCardQ1 card title already asks for confirmation.",
+  "direct_cause": "NodePointer's production-face status branch rendered awaiting_confirmation whenever density was card, even though the D2 card contract only allows queued and not-generated pointer status chips.",
+  "class_root": "The shared pointer status boundary did not distinguish card-level decision state from per-shot execution state, so a new card surface could repeat the parent card's waiting copy.",
+  "affected_population": [
+    "Paid-card single-pointer and any future card surface using NodePointer density=card while a shot is awaiting confirmation",
+    "Chinese and English SpendCardQ1 design-lab states"
+  ],
+  "scope_paths": [
+    "src/workbench/ai/pointer/nodePointerFace.ts",
+    "src/workbench/ai/pointer/NodePointer.tsx",
+    "src/workbench/ai/pointer/NodePointer.test.tsx",
+    "src/workbench/ai/v4/AgentPanelV4SpendCardBody.tsx"
+  ],
+  "entry_points": [
+    "NodePointer production-face status rendering for card density",
+    "AgentPanelV4SpendCardBody's NodePointerGroup consumer"
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/ai/pointer/NodePointer.tsx",
+    "tests": [
+      "src/workbench/ai/pointer/NodePointer.test.tsx"
+    ],
+    "why": "NodePointer is the shared status renderer for card, row, and chip consumers; the focused test mounts a production awaiting-confirmation card and asserts that no status chip is emitted."
+  },
+  "external_sources": [],
+  "internal_only_reason": "The distinction between a parent paid-card decision and per-shot execution status is an internal Nomi design contract.",
+  "invariants": [
+    "A NodePointer card never repeats awaiting_confirmation; the parent card owns that question.",
+    "Card pointers may still show per-shot queued and not_generated status, while group and single-card consumers share the same rule."
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "src/devlab/designLab/nodePointer/nodePointerLabKit.tsx",
+      "symbol": "NodePointer"
+    },
+    {
+      "kind": "read",
+      "path": "src/devlab/designLab/nodePointer/states/01-node-pointer.tsx",
+      "symbol": "NodePointer"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/ai/pointer/NodePointer.tsx",
+      "symbol": "NodePointer"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/ai/v4/AgentPanelV4SpendCardBody.tsx",
+      "symbol": "NodePointer"
+    }
+  ],
+  "door_reduction": {
+    "before": 4,
+    "after": 4,
+    "why_not": "The four readers are separate legitimate hosts: the production NodePointer implementation, its spend-card body consumer, and the independent NodePointer design-lab host and state fixtures. They must remain separate to exercise the shared component at each surface."
+  },
+  "generality_proof": "The status rule is enforced inside the shared NodePointer production-face renderer, so every current card consumer receives the same no-duplicate behavior regardless of whether it is the real spend card or a design-lab host. The focused component test covers the reported awaiting state; the existing design-lab spend-card walk covers Chinese and English single and grouped cards plus queued and not-generated states.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/ai/pointer/nodePointerFace.ts",
+      "symbol": "nodePointerFace",
+      "responsibility": "Own the shared production-face state consumed by NodePointer; card hosts use an explicit presentation flag to omit the parent-card awaiting-confirmation label."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4SpendCardBody.tsx",
+      "entry_point": "AgentPanelV4SpendCardBody",
+      "disposition": "enforced",
+      "evidence": "Its NodePointerGroup now inherits the shared no-duplicate rule; the design-lab spend-single states exercise this consumer."
+    },
+    {
+      "path": "src/devlab/designLab/nodePointer/nodePointerLabKit.tsx",
+      "entry_point": "NodePointer lab host",
+      "disposition": "enforced",
+      "evidence": "It imports the same production NodePointer component and remains covered by the NodePointer lab walk."
+    },
+    {
+      "path": "src/workbench/ai/pointer/NodePointer.tsx",
+      "entry_point": "PointerFaceArt",
+      "disposition": "enforced",
+      "evidence": "The awaiting_confirmation branch was removed from the one shared status condition; queued and not_generated branches remain explicit."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any future card or pointer state can accidentally surface a parent-level decision label inside a child pointer unless the shared renderer owns the distinction and tests the card density boundary.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs NodePointer — four current reader doors converge on the shared NodePointer implementation.",
+      "rg -n 'awaiting_confirmation|productionShotCornerText|data-node-pointer-status' src/workbench/ai/pointer src/workbench/ai/v4 src/devlab/designLab/spendCard — checked all status-label producers and paid-card consumers.",
+      "design-lab-spend-card.walk.mjs — reported the visible duplicate in both zh and en single-card states and still asserts queued / not-generated labels separately."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/ai/pointer/nodePointerFace.ts",
+    "invariant": "PointerFaceArt emits only per-shot execution status chips for card density; awaiting_confirmation remains card-owned and is omitted.",
+    "failure_mode": "A future awaiting-confirmation card render fails the focused NodePointer test and the design-lab spend-card walk before it can ship a duplicate label.",
+    "exception_policy": "none",
+    "strategy": "Delete the card-density awaiting branch from the shared renderer and retain the explicit queued/not-generated branches, with a focused component regression and bilingual lab coverage.",
+    "artifacts": [
+      "src/workbench/ai/pointer/nodePointerFace.ts",
+      "src/workbench/ai/pointer/NodePointer.tsx",
+      "src/workbench/ai/pointer/NodePointer.test.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/ai/pointer/NodePointer.test.tsx"
+  ],
+  "class_regression_tests": [
+    "src/workbench/ai/pointer/NodePointer.test.tsx"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/ai/pointer/NodePointer.tsx"
+    ],
+    "rationale": "The obsolete card-density awaiting_confirmation branch is removed from the existing shared renderer; the file remains as the owner."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "This is an internal presentation-state boundary with no dependency-controlled behavior.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted state changes; awaiting_confirmation remains in the production state model and is simply no longer rendered as a duplicate card pointer chip.",
+  "residual_risks": [
+    "The full design-lab spend-card and NodePointer lanes still need a clean rerun after this source change.",
+    "ARIA labels continue to describe the pointer's state for accessibility; the visible duplicate chip is removed by design."
+  ]
+}

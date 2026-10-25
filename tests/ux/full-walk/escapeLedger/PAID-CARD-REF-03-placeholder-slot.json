@@ -15,12 +15,13 @@
   "evidence": [
     "src/workbench/ai/v4/spendCardReferenceOwner.matrix.test.ts：「画布节点「首帧」那一格选了一张本项目素材」卡上有、宿主钉住、画布节点上仍在",
     "变异：卡只读连线、不读占位节点自己的参考槽 → 这一行红",
-    "带档案模型连线进首帧 / 参考格的那一张在 main 上已不复现（同一矩阵前两行）"
+    "带档案模型连线进首帧 / 参考格的那一张在 main 上已不复现（同一矩阵前两行）",
+    "2026-10-24 D2 第③步：卡上点「生成」= 把这一镜照节点此刻的样子交给画布、走画布单节点提交，节点参考槽里的那一张就是请求体里的那一张；类级检查 electron/parity/draftNodeSendParity.test.ts（每个带参考的方式，参考都在节点上、都在节点发出的请求体里）"
   ],
   "completionCommits": [],
   "rootCauseContract": "docs/fixes/2026-10-07-spend-card-references-one-owner.root-cause.json",
   "classCheck": {
     "kind": "matrix",
-    "file": "src/workbench/ai/v4/spendCardReferenceOwner.matrix.test.ts"
+    "file": "electron/parity/draftNodeSendParity.test.ts"
   }
 }
