@@ -17,13 +17,15 @@
 // 截图与完整走查报告在 .tmp/pi-look-at-canvas-selection-real-*/。
 import { BRAIN } from './_agentVideoPaid.mjs'
 import { openPaidWalk } from './_paidRun.mjs'
-import { runSelectionJourney, selectionEvidence, writeSelectionEvidence, SELECTION_MARKER, OMITTED_CANVAS_MARKER } from './_lookAtCanvasSelectionSteps.mjs'
+import { runSelectionJourney, selectionEvidence, writeSelectionEvidence } from './_lookAtCanvasSelectionSteps.mjs'
 
 const SCRIPT = 'look-at-canvas-selection-real.paid.mjs'
 const ROUNDS = Number(process.env.NOMI_REAL_ROUNDS || 5)
 if (!Number.isInteger(ROUNDS) || ROUNDS < 1) throw new Error(`NOMI_REAL_ROUNDS 要是正整数，拿到 ${process.env.NOMI_REAL_ROUNDS}`)
+const SELECTION_BUILD_MARKER = '节点行里标了「选中」'
+const OMITTED_CANVAS_BUILD_MARKER = 'call look_at_canvas with no arguments'
 const startedAt = new Date().toISOString()
-const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-real', [BRAIN], { buildMarkers: [SELECTION_MARKER, OMITTED_CANVAS_MARKER] })
+const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-real', [BRAIN], { buildMarkers: [SELECTION_BUILD_MARKER, OMITTED_CANVAS_BUILD_MARKER] })
 const { walk } = paid
 const journey = { rounds: [] }
 let failure

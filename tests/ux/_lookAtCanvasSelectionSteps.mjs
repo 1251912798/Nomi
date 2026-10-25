@@ -34,7 +34,7 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
  * 产物里找不到它 = 跑的不是这次要验的修复，openPaidWalk 当场拒跑（一分钱不花）。单测核对它确实在源码里。
  */
 export const SELECTION_MARKER = '节点行里标了「选中」'
-export const OMITTED_CANVAS_MARKER = 'call look_at_canvas'
+export const OMITTED_CANVAS_MARKER = 'call look_at_canvas with no arguments'
 export const SELECTION_EVIDENCE_DIR = path.join(REPO_ROOT, 'docs/evidence/2026-10-22-look-at-canvas-selection-truncation/paid')
 
 /** 量具数字的定义（写进证据，PR 正文照抄）。 */

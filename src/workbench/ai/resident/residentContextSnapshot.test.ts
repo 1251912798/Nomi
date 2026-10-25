@@ -189,8 +189,8 @@ describe('resident ContextSnapshot', () => {
     expect(payload.listed + (payload.omitted ?? 0)).toBe(count)
     if (count <= 24) expect(payload.listed).toBe(count)
     if (count > 24) {
-      expect(payload.listed).toBeGreaterThan(0)
-      expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count: count - payload.listed }])
+      expect(payload.listed).toBe(0)
+      expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count }])
     }
     expect(context.length).toBeLessThanOrEqual(6000)
   })

@@ -64,21 +64,24 @@ type Payload = {
   omitted?: number
   omittedByKind?: Array<{ kind: string; count: number }>
   omittedNote?: string
-  handles: Array<{ targetId: string; display: { title: string; subtitle?: string } }>
+  handles: Array<{ kind: string; targetId: string; display: { title: string; subtitle?: string } }>
 }
 
 function payloadOf(text: string): Payload {
   return JSON.parse(text.slice(text.indexOf('\n') + 1)) as Payload
 }
 
-/** 账本不变式：total = listed + omitted；列出的恰好是快照的前 listed 条；写出来的数与文本里真有的数一致。 */
+/** 账本不变式：total = listed + omitted；列出的句柄保持快照顺序；写出来的数与文本里真有的数一致。 */
 function expectBalanced(snapshot: AgentContextSnapshot, text: string): Payload {
   const payload = payloadOf(text)
   expect(payload.total).toBe(snapshot.handles.length)
   expect(payload.handles).toHaveLength(payload.listed)
   expect(payload.listed + (payload.omitted ?? 0)).toBe(snapshot.handles.length)
-  if (payload.listed === payload.total) {
-    expect(payload.handles.map((handle) => handle.targetId)).toEqual(snapshot.handles.map((handle) => handle.targetId))
+  let cursor = 0
+  for (const handle of payload.handles) {
+    const found = snapshot.handles.findIndex((candidate, index) => index >= cursor && candidate.kind === handle.kind && candidate.targetId === handle.targetId)
+    expect(found, `列出的 ${handle.kind}/${handle.targetId} 必须来自快照且保持顺序`).toBeGreaterThanOrEqual(cursor)
+    cursor = found + 1
   }
   if (payload.listed < payload.total) {
     expect(payload.omitted, '少了就必须明说少了几个').toBe(payload.total - payload.listed)
@@ -92,12 +95,21 @@ function expectBalanced(snapshot: AgentContextSnapshot, text: string): Payload {
 }
 
 describe('formatAgentContextSnapshot · 选区投影的账', () => {
-  it.each([1, 12, 16, 40, 256])('选 %i 个节点：列全，或者明写总数与未列出数量', (count) => {
-    const snapshot = canvasSnapshot(count)
-    const text = formatAgentContextSnapshot(snapshot)
-    const payload = expectBalanced(snapshot, text)
-    if (count <= 24) expect(payload.listed).toBe(count)
-    else expect(payload.listed).toBeGreaterThan(0)
+  it('画布节点的列出数只能是 0 或全部：N=1…200 以及 5000', () => {
+    for (const count of [...Array.from({ length: 200 }, (_, index) => index + 1), 5000]) {
+      const snapshot = canvasSnapshot(count)
+      const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
+      expect([0, count]).toContain(payload.listed)
+      if (payload.listed === count) expect(payload.omitted).toBeUndefined()
+      else expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count }])
+    }
+  })
+
+  it('画布选 10 个且放得下：10 个全列，没有省略说明', () => {
+    const snapshot = canvasSnapshot(10)
+    const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
+    expect(payload.listed).toBe(10)
+    expect(payload.omittedNote).toBeUndefined()
   })
 
   it.each([1, 12, 16])('选 %i 个节点：一个不少（事故里 12 个只收到 7 个、16 个只收到 6 个）', (count) => {
@@ -107,21 +119,18 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.omitted).toBeUndefined()
   })
 
-  it.each([40, 256])('选 %i 个节点放不下：列出前缀并按类明说剩余账', (count) => {
+  it.each([40, 256])('选 %i 个节点放不下：画布整类不列并按类明说剩余账', (count) => {
     const snapshot = canvasSnapshot(count)
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
-    expect(payload.listed).toBeGreaterThan(0)
-    expect(payload.listed).toBeLessThan(count)
-    expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count: count - payload.listed }])
+    expect(payload.listed).toBe(0)
+    expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count }])
   })
 
-  it('首档列不全但较省档能列全：列全并保留能列全的最丰富档细节', () => {
+  it('画布节点即使较省档也放不下：整类不列而不是列一部分', () => {
     const snapshot = compactSnapshot(40, 160)
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
-    expect(payload.listed).toBe(40)
-    expect(payload.omitted).toBeUndefined()
-    expect(payload.handles[0]?.display.subtitle).toBeUndefined()
-    expect(payload.handles[0]?.display.title).toBe('镜头0')
+    expect(payload.listed).toBe(0)
+    expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count: 40 }])
   })
 
   it('不再把整份选区抄进每一条句柄：每个节点 id 在文本里至多出现两次（句柄 id + targetId）', () => {
@@ -138,11 +147,11 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.handles[4]?.display.title).toBe('镜头5')
   })
 
-  it('每个节点的标题都很长时，连最省档也列不全，仍列前缀并明说省略数量', () => {
+  it('每个节点的标题都很长时，连最省档也列不全，画布整类不列并明说省略数量', () => {
     const snapshot = canvasSnapshot(150, (index) => `${index + 1}-${'镜'.repeat(400)}`)
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
-    expect(payload.listed).toBeGreaterThan(0)
-    expect(payload.listed).toBeLessThan(150)
+    expect(payload.listed).toBe(0)
+    expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count: 150 }])
   })
 
   it('画布节点省略时指向 look_at_canvas，并提醒核对发送后选区是否变化', () => {
@@ -166,13 +175,16 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
   it('画布与时间轴同时省略时把两条按类型指引都写入同一说明', () => {
     const snapshot: AgentContextSnapshot = {
       version: 1,
-      handles: [...kindSnapshot('canvasNode', 100).handles, ...kindSnapshot('timelineClip', 100).handles],
+      handles: [...kindSnapshot('canvasNode', 40).handles, ...kindSnapshot('timelineClip', 150).handles],
     }
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
+    expect(payload.listed).toBeGreaterThan(0)
     expect(payload.omittedByKind).toEqual([
-      { kind: 'canvasNode', count: expect.any(Number) },
+      { kind: 'canvasNode', count: 40 },
       { kind: 'timelineClip', count: expect.any(Number) },
     ])
+    expect(payload.omittedByKind?.find((item) => item.kind === 'timelineClip')?.count).toBeGreaterThan(0)
+    expect(payload.omittedByKind?.find((item) => item.kind === 'timelineClip')?.count).toBeLessThan(150)
     expect(payload.omittedNote).toContain('call look_at_canvas')
     expect(payload.omittedNote).toContain('shrink the selection')
   })
@@ -193,9 +205,11 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.total).toBe(5000)
     expect(payload.listed + (payload.omitted ?? 0)).toBe(5000)
     expect(payload.omittedByKind?.reduce((sum, item) => sum + item.count, 0)).toBe(payload.omitted)
+    const listedByKind = new Map<string, number>()
+    for (const handle of payload.handles) listedByKind.set(handle.kind, (listedByKind.get(handle.kind) ?? 0) + 1)
     const expectedByKind = ['image', 'canvasNode'].map((kind) => ({
       kind,
-      count: snapshot.handles.slice(payload.listed).filter((handle) => handle.kind === kind).length,
+      count: snapshot.handles.filter((handle) => handle.kind === kind).length - (listedByKind.get(kind) ?? 0),
     })).filter(({ count }) => count > 0)
     expect(payload.omittedByKind).toEqual(expectedByKind)
   })
@@ -230,7 +244,7 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.listed).toBe(snapshot.handles.length)
   })
 
-  it('定位器是句柄意思的一部分：较省档列全时仍保留每个镜头名', () => {
+  it('画布定位器是句柄意思的一部分：放不下时整类不列', () => {
     const shots = Array.from({ length: 20 }, (_, index): AgentContextHandle => ({
       id: `director-shot:dir-1/shot-${index}`, kind: 'canvasNode', targetId: 'dir-1', revision: 'dplan-abc',
       locator: { type: 'custom', key: 'director.shot', value: `shot-${index}` },
@@ -239,9 +253,8 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     const snapshot: AgentContextSnapshot = { version: 1, handles: shots }
     const text = formatAgentContextSnapshot(snapshot)
     const payload = expectBalanced(snapshot, text)
-    expect(payload.listed).toBeGreaterThan(0)
-    expect(payload.listed).toBe(20)
-    for (let index = 0; index < payload.listed; index += 1) expect(text).toContain(`"key":"director.shot","value":"shot-${index}"`)
+    expect(payload.listed).toBe(0)
+    expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count: 20 }])
   })
 
   it('选区定位器里没有对应句柄的 id 不会被当成「重复」而吞掉', () => {

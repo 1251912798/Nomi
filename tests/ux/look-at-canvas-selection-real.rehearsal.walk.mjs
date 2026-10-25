@@ -7,10 +7,12 @@ import { openPaidWalk } from './_paidRun.mjs'
 import { flattenRequestText } from './agent-runtime-fixture.mjs'
 import { createRuntimeWalk, toolNames } from './agent-runtime-walk-support.mjs'
 import { LOOK_AT_CANVAS, SELECTION_ASK } from './_lookAtCanvasSelectionScore.mjs'
-import { runSelectionJourney, selectionEvidence, writeSelectionEvidence, SELECTION_MARKER, OMITTED_CANVAS_MARKER } from './_lookAtCanvasSelectionSteps.mjs'
+import { runSelectionJourney, selectionEvidence, writeSelectionEvidence } from './_lookAtCanvasSelectionSteps.mjs'
 
 const SCRIPT = 'look-at-canvas-selection-real.rehearsal.walk.mjs'
 const FAKE_KEY = 'rehearsal-fake-key-0123456789abcdef'
+const SELECTION_BUILD_MARKER = '节点行里标了「选中」'
+const OMITTED_CANVAS_BUILD_MARKER = 'call look_at_canvas with no arguments'
 const startedAt = new Date().toISOString()
 
 const lastUserText = (body) => flattenRequestText({ messages: (body.messages ?? []).filter((message) => message.role === 'user').slice(-1) })
@@ -31,7 +33,7 @@ function installMarkedRowBrain(fixture) {
 
 const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-rehearsal', [BRAIN], {
   env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', [ENV_KEY_VAR]: FAKE_KEY },
-  buildMarkers: [SELECTION_MARKER, OMITTED_CANVAS_MARKER],
+  buildMarkers: [SELECTION_BUILD_MARKER, OMITTED_CANVAS_BUILD_MARKER],
   createWalk: (name, options) => createRuntimeWalk(name, {
     ...options, generationProvider: 'apimart', seedApimartKey: false, env: { ...options.env, NOMI_WALK_ALLOW_ORIGINS: '' },
   }),

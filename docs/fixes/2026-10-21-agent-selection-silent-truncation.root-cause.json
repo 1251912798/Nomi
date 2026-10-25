@@ -6,8 +6,8 @@
   "recurrence_check_on": "2026-11-20",
   "problem_type": "A bounded model-facing projection can omit entries without an explicit, actionable ledger",
   "symptom": "When a send-time selection exceeds the transient model budget, the omitted handles are named but the next read action can point the model away from an existing complete read path.",
-  "direct_cause": "The omitted note used one shrink-or-batch instruction for every handle kind, even though canvas nodes already have look_at_canvas with selected row markers; real models followed that instruction and did not read the full canvas selection.",
-  "class_root": "The bounded projection had no single type-to-recovery contract: its omitted ledger counted kinds, but the actionable read guidance was not derived from those same kinds.",
+  "direct_cause": "The bounded encoder still emitted a prefix of canvasNode handles when the full selection exceeded budget; even with a look_at_canvas note, real models treated the visible prefix as the selection and skipped the complete reader.",
+  "class_root": "The type-to-recovery contract controlled the omitted note but not row inclusion, so a kind with a complete reader could still be presented as a misleading partial source of truth.",
   "affected_population": [
     "Any message-scoped selection whose compact projection exceeds 6000 characters",
     "Mixed document, canvas, timeline, reference and future handle kinds",
@@ -69,7 +69,7 @@
     }
   ],
   "invariants": [
-    "Projection first chooses the richest detail rung that lists every handle; only when every rung cannot list all handles does the least detailed rung emit its longest fitting prefix, always with total, listed, omitted and omittedByKind for the omitted suffix.",
+    "Projection first chooses the richest detail rung that lists every handle; when no rung lists all handles, every kind with a complete reader is omitted as a whole and only kinds without that reader may use the least detailed longest fitting prefix.",
     "total = listed + omitted and listed handles preserve snapshot order.",
     "The omitted note is derived from one type-to-recovery table: omitted canvasNode kinds direct the model to call look_at_canvas with no arguments, rely on selected row markers, and report a changed selection when its selected count differs from snapshot total; kinds without that reader direct the user to shrink or batch.",
     "projectionLength uses the exact derived omitted note, and projection output is deterministic and valid JSON within the shared transient budget."
@@ -136,12 +136,12 @@
     "after": 11,
     "why_not": "The two projection caller doors remain separate because one injects provider content and the other builds a compaction summary. The registration, declaration and transport doors remain separate in the full PR diff because each owns a distinct capability or profile boundary; the obsolete snapshot read execution door was deleted."
   },
-  "generality_proof": "Every bounded send-time projection passes through projectAgentContextSnapshot/formatAgentContextSnapshot. The shared encoder computes the longest fitting prefix and the omitted suffix ledger for every handle kind, so future producers cannot silently drop entries through a separate read or kind-specific branch.",
+  "generality_proof": "Every bounded send-time projection passes through projectAgentContextSnapshot/formatAgentContextSnapshot. The shared encoder derives complete-reader kinds from the same table as the note, removes those kinds wholesale before applying the legacy prefix ladder to other kinds, and records all omitted counts, so future producers cannot present a partial complete-reader kind as the selection.",
   "shared_boundaries": [
     {
       "path": "electron/shared/agentContextSnapshot.ts",
       "symbol": "projectAgentContextSnapshot",
-      "responsibility": "Own the single budget ladder, longest-prefix selection, omittedByKind accounting and actionable note."
+      "responsibility": "Own the single budget ladder, complete-reader all-or-none filtering, omittedByKind accounting and actionable note."
     }
   ],
   "same_class_entry_points": [
@@ -176,10 +176,10 @@
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "electron/shared/agentContextSnapshot.ts",
-    "invariant": "The shared owner chooses the first richest rung that lists all handles; otherwise it emits the longest least-detailed prefix, with total = listed + omitted, per-kind omitted counts and a note derived from the same kind-to-recovery table.",
-    "failure_mode": "Budget overflow emits a truthful prefix and an omitted ledger; the note points each omitted kind to its available recovery path or explicitly asks the user to shrink or batch, and never implies that the prefix is the whole selection.",
+    "invariant": "The shared owner chooses the first richest rung that lists all handles; otherwise it lists zero or all handles for every kind with a complete reader, applies the least-detailed longest-prefix ladder only to other kinds, and keeps total = listed + omitted with per-kind counts.",
+    "failure_mode": "Budget overflow omits complete-reader kinds wholesale, emits a truthful prefix only for kinds without that reader, and derives a note that points each omitted kind to its recovery path without implying that any partial list is complete.",
     "exception_policy": "none",
-    "strategy": "Delete the snapshot-only gauge path; keep one compact row encoder, scan the detail ladder for a full fit, compute omittedByKind by decrementing one full-suffix count map, and derive the omitted note and projection length from one local kind-to-recovery table without changing the model-facing tool schema.",
+    "strategy": "Delete the snapshot-only gauge path; keep one compact row encoder, scan the detail ladder for a full fit, then filter complete-reader kinds as whole classes before applying the legacy prefix ladder to the remaining rows; compute omittedByKind from one count map and derive the note and projection length from one local kind-to-recovery table without changing the model-facing tool schema.",
     "artifacts": [
       "electron/shared/agentContextSnapshot.ts",
       "electron/shared/agentContextSnapshot.test.ts",
@@ -207,7 +207,7 @@
     "rationale": "Internal projection contract; no third-party runtime controls it.",
     "exit_criteria": []
   },
-  "migration": "No snapshot format or stored data changes. Existing messages are re-projected through the shared longest-prefix encoder; omitted entries are reported with counts and a user action instead of a paging tool.",
+  "migration": "No snapshot format or stored data changes. Existing messages are re-projected through the shared all-or-none complete-reader rule; omitted entries are reported with counts and a user action instead of a paging tool.",
   "residual_risks": [
     "Timeline clips and future asset handles without a selected-marker reader still require users to shrink or batch the selection; this is intentional until a message-scoped read path is approved.",
     "If the user changes the canvas selection after send, look_at_canvas reads the live selection; the note requires the model to compare its selected count with snapshot total and report a mismatch.",

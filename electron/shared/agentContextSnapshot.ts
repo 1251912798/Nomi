@@ -168,6 +168,10 @@ const OMITTED_KIND_GUIDANCE: Readonly<Partial<Record<AgentContextKind, string>>>
 })
 const OMITTED_FALLBACK_GUIDANCE = 'For omitted kinds without a selected-marker reader, ask the user to shrink the selection or send it in batches.'
 
+function hasCompleteRead(kind: AgentContextKind): boolean {
+  return Object.prototype.hasOwnProperty.call(OMITTED_KIND_GUIDANCE, kind)
+}
+
 type OmittedKind = Readonly<{
   kind: AgentContextKind
   count: number
@@ -282,11 +286,47 @@ function projectionLength(total: number, listed: number, handlePrefixLength: num
   return length + ',"handles":['.length + handlePrefixLength + 2
 }
 
+function tryEncodeRows({
+  total,
+  budget,
+  rows,
+  sourceHandles,
+  initialOmittedCounts,
+  allowPrefix,
+}: {
+  total: number
+  budget: number
+  rows: readonly CompactContextHandle[]
+  sourceHandles: readonly AgentContextHandle[]
+  initialOmittedCounts: ReadonlyMap<AgentContextKind, number>
+  allowPrefix: boolean
+}): { body: string; listed: number } | undefined {
+  const rowLengths = rows.map((row) => JSON.stringify(row).length)
+  const omittedCounts = new Map(initialOmittedCounts)
+  let lastListed = 0
+  let lastOmittedByKind: OmittedKind[] | undefined
+  let handlePrefixLength = 0
+  for (let listed = 0; listed <= rows.length; listed += 1) {
+    const omittedByKind = omittedByKindFromCounts(omittedCounts)
+    if (projectionLength(total, listed, handlePrefixLength, omittedByKind) > budget) break
+    lastListed = listed
+    lastOmittedByKind = omittedByKind
+    if (listed === rows.length) return { body: encodeProjection(total, rows, omittedByKind), listed }
+    const next = sourceHandles[listed]
+    if (next) omittedCounts.set(next.kind, (omittedCounts.get(next.kind) ?? 0) - 1)
+    handlePrefixLength += rowLengths[listed] + (listed > 0 ? 1 : 0)
+  }
+  if (allowPrefix && lastOmittedByKind !== undefined) {
+    return { body: encodeProjection(total, rows.slice(0, lastListed), lastOmittedByKind), listed: lastListed }
+  }
+  return undefined
+}
+
 /**
  * Encode the snapshot inside the hard budget. Preference order: find the first detail rung that
- * lists every handle; if no rung can do that, use the least detailed rung for the longest fitting
- * prefix and count the omitted suffix by kind. The returned block (header included) never exceeds
- * the hard bound.
+ * lists every handle; if no rung can do that, omit every kind with a complete reader as a whole,
+ * then give the remaining kinds the least detailed longest-prefix projection. The returned block
+ * (header included) never exceeds the hard bound.
  */
 function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLength: number): { body: string; listed: number } {
   const budget = Math.max(256, MAX_TRANSIENT_CONTEXT_CHARS - headerLength)
@@ -298,23 +338,37 @@ function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLeng
   for (const handle of handles) fullOmittedCounts.set(handle.kind, (fullOmittedCounts.get(handle.kind) ?? 0) + 1)
   for (const detail of PROJECTION_LADDER) {
     const rows = prepared.map((item) => compactHandle(item, detail))
-    const rowLengths = rows.map((row) => JSON.stringify(row).length)
-    const omittedCounts = new Map(fullOmittedCounts)
-    let lastListed = 0
-    let lastOmittedByKind: OmittedKind[] | undefined
-    let handlePrefixLength = 0
-    for (let listed = 0; listed <= rows.length; listed += 1) {
-      const omittedByKind = omittedByKindFromCounts(omittedCounts)
-      if (projectionLength(total, listed, handlePrefixLength, omittedByKind) > budget) break
-      lastListed = listed
-      lastOmittedByKind = omittedByKind
-      if (listed === rows.length) return { body: encodeProjection(total, rows), listed }
-      const next = handles[listed]
-      if (next) omittedCounts.set(next.kind, (omittedCounts.get(next.kind) ?? 0) - 1)
-      handlePrefixLength += rowLengths[listed] + (listed > 0 ? 1 : 0)
-    }
-    if (detail === PROJECTION_LADDER[PROJECTION_LADDER.length - 1] && lastOmittedByKind !== undefined) {
-      return { body: encodeProjection(total, rows.slice(0, lastListed), lastOmittedByKind), listed: lastListed }
+    const fullProjection = tryEncodeRows({
+      total,
+      budget,
+      rows,
+      sourceHandles: handles,
+      initialOmittedCounts: fullOmittedCounts,
+      allowPrefix: false,
+    })
+    if (fullProjection) return fullProjection
+
+    // A kind with a complete reader is all-or-nothing. Once the whole snapshot no longer fits,
+    // remove those rows as a class and spend the recovered budget on the kinds that have no
+    // selected-marker reader. The remaining kinds retain the old longest-prefix behavior.
+    const fallbackIndexes = handles.flatMap((handle, index) => hasCompleteRead(handle.kind) ? [] : [index])
+    const fallbackRows = fallbackIndexes.map((index) => rows[index])
+    const fallbackHandles = fallbackIndexes.map((index) => handles[index])
+    const fallbackProjection = tryEncodeRows({
+      total,
+      budget,
+      rows: fallbackRows,
+      sourceHandles: fallbackHandles,
+      initialOmittedCounts: fullOmittedCounts,
+      allowPrefix: detail === PROJECTION_LADDER[PROJECTION_LADDER.length - 1],
+    })
+    if (fallbackProjection) return fallbackProjection
+
+    // `tryEncodeRows` only returns a prefix when the caller opts into the final rung. Continue
+    // through richer rungs until the least detailed one is reached.
+    /* istanbul ignore next -- the final rung always fits the ledger-only projection */
+    if (detail === PROJECTION_LADDER[PROJECTION_LADDER.length - 1]) {
+      return { body: encodeProjection(total, [], omittedByKindFromCounts(fullOmittedCounts)), listed: 0 }
     }
   }
   return { body: encodeProjection(total, [], omittedByKindFromCounts(fullOmittedCounts)), listed: 0 }
