@@ -1,0 +1,95 @@
+{
+  "what": "只给参考、不写参数名的 Agent 生成，在真 App 里跑：零花费演练 + 真付费尝试（协调，10-25）",
+  "entry": "应用内 Agent：draft_shots → generate → production run start",
+  "model": {
+    "vendorKey": "apimart",
+    "modelKey": "qwen-image-2.0"
+  },
+  "rehearsal": {
+    "build": "e0c085b79d17eef5b5cc6c23d91fdab933fb0230",
+    "ranAt": "2026-10-25T00:33Z",
+    "vendor": "loopback",
+    "createRequests": 1,
+    "body": {
+      "model": "qwen-image-2.0",
+      "prompt": "把素材库里的参考图改成一张雨后红色纸船的方形海报。",
+      "size": "1:1",
+      "resolution": "1K",
+      "image_urls": [
+        "<loopback 参考地址>"
+      ]
+    },
+    "checks": {
+      "referenceOnlyInDeclaredKey": true,
+      "problems": [],
+      "landedOnSameNode": true,
+      "taskRuns": 1
+    },
+    "ok": true
+  },
+  "paidOnThisPr": {
+    "build": "e0c085b79d17eef5b5cc6c23d91fdab933fb0230",
+    "ranAt": "2026-10-25T00:36Z",
+    "mode": "paid",
+    "referenceSource": "本地素材经应用自己的上传路（托管中转）",
+    "createsBeforeConfirm": 0,
+    "confirmButton": {
+      "text": "生成这张⏎",
+      "enabled": true
+    },
+    "networkAfterStart": [
+      {
+        "method": "GET",
+        "host": "api.apimart.ai",
+        "path": "/models"
+      },
+      {
+        "method": "GET",
+        "host": "api.apimart.ai",
+        "path": "/v1/models"
+      },
+      {
+        "method": "POST",
+        "host": "api.apimart.ai",
+        "path": "/v1/uploads/images"
+      }
+    ],
+    "createRequests": 0,
+    "hostRefusalReason": "generation_reference_scope_changed",
+    "spend": 0,
+    "ok": false
+  },
+  "paidOnMain": {
+    "build": "1fefe99e16adce39b7c374ef56c552cb8691f91e",
+    "ranAt": "2026-10-25T00:40Z",
+    "mode": "paid",
+    "referenceSource": "本地素材经应用自己的上传路（托管中转）",
+    "createsBeforeConfirm": 0,
+    "confirmButton": {
+      "text": "生成这张⏎",
+      "enabled": true
+    },
+    "networkAfterStart": [
+      {
+        "method": "GET",
+        "host": "api.apimart.ai",
+        "path": "/models"
+      },
+      {
+        "method": "GET",
+        "host": "api.apimart.ai",
+        "path": "/v1/models"
+      },
+      {
+        "method": "POST",
+        "host": "api.apimart.ai",
+        "path": "/v1/uploads/images"
+      }
+    ],
+    "createRequests": 0,
+    "hostRefusalReason": "generation_reference_scope_changed",
+    "spend": 0,
+    "ok": false
+  },
+  "conclusion": "两次真付费都在参考图上传之后、发创建请求之前被宿主拒绝（generation_reference_scope_changed），main 构建同样复现，是既有缺陷，零花费；同一入口的零花费演练通过。修复合入后用同一份脚本补跑。"
+}
