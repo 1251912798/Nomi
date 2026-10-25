@@ -20,7 +20,7 @@
   ],
   "rootCauseContract": "docs/fixes/2026-10-25-agent-reference-upload-scope.root-cause.json",
   "completionCommits": [
-    "5408e85b73626b9cfc91bacff33ab1806a9e36cd"
+    "714b8d49d"
   ],
   "classCheck": {
     "kind": "matrix",
