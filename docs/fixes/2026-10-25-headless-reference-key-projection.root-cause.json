@@ -1,0 +1,190 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-25-headless-reference-key-projection",
+  "problem_type": "Headless reference projection and model listing derive reference capacity from a global body-key shape instead of the selected model declaration",
+  "symptom": "A headless request carrying an image, video, or audio reference can put its URL into a boolean switch, enum, quantity, size, numeric, or voice field; a mapping with a model-declared one-image slot can be advertised and sent as multi-image, while a model-declared multi-image slot can be advertised as single-image.",
+  "direct_cause": "The first repair replaced name regexes with a shared key declaration, but bodyReferenceSupport merged same-key multiImage values across every model. It therefore ignored the selected archetype slot max when the same key was used by another model.",
+  "class_root": "The shared body-key boundary had no model-scoped capacity declaration tying a request key to the selected model and mode, so a global key shape could override per-model limits and array capacity.",
+  "affected_population": [
+    "Headless and MCP callers that provide referenceImages, referenceVideoUrls, or referenceAudioUrls without an explicit body parameter name",
+    "All built-in catalog mappings whose creation body contains a key that resembles a reference but is actually a control",
+    "Custom relay mappings whose non-standard reference key has no shared declaration"
+  ],
+  "scope_paths": [
+    "electron/catalog/referenceReachability.ts",
+    "electron/catalog/taskParams.ts",
+    "electron/shared/modelArchetypes/referenceKeys.ts",
+    "electron/catalog/referenceCarrierShapes.ts",
+    "electron/catalog/modelCatalogListing.ts",
+    "electron/catalog/parameterReferenceContract.ts",
+    "electron/runtime.ts",
+    "scripts/reference-key-census.ts",
+    "electron/catalog/referenceKeyProjectionCensus.test.ts",
+    "src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts",
+    "electron/catalog/referenceReachability.test.ts",
+    "electron/catalog/taskParams.test.ts",
+    "electron/catalog/refusalSuggestion.test.ts",
+    "electron/catalog/modelCatalogListing.test.ts",
+    "electron/catalog/refusalSuggestion.test.ts",
+    "docs/evidence/2026-10-25-reference-key-census/census.json",
+    "docs/evidence/2026-10-25-reference-key-projection/free-rehearsal.json"
+  ],
+  "entry_points": [
+    "projectReferencesOntoBodyKeys projects headless references before task-template rendering",
+    "classifyReferenceKey and carried-reference readers classify input values for refusal labels",
+    "bodyReferenceSupport derives model-listing and reachable-mode reference capability"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://spec.openapis.org/registry/format/uri",
+      "checked_at": "2026-10-25",
+      "purpose": "OpenAPI makes URI semantics an explicit field format rather than a name-based inference."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://spec.openapis.org/oas/v3.0",
+      "checked_at": "2026-10-25",
+      "purpose": "OpenAPI describes parameter schemas and media-type serialization as the source for generated callers."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://json-schema.org/understanding-json-schema/reference/non_json_data",
+      "checked_at": "2026-10-25",
+      "purpose": "JSON Schema uses contentMediaType/contentEncoding annotations to declare the media carried by a value."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://docs.aws.amazon.com/sdk-for-go/v2/developer-guide/aws-sdk-go-v2-dg.pdf",
+      "checked_at": "2026-10-25",
+      "purpose": "Generated SDK operations use concrete input shapes, so callers fill declared fields instead of guessing arbitrary file-like names."
+    }
+  ],
+  "invariants": [
+    "A headless reference is projected only to a body key declared for the same media family.",
+    "A body key with an existing value, including false, is never overwritten by a projected URL.",
+    "If a carried media family has no declared body key, the request fails before network submission with an explicit parameter-name instruction.",
+    "Model listing and refusal suggestions use the same declaration-driven classification as projection."
+  ],
+  "doors": [
+    { "kind": "write", "path": "electron/shared/modelArchetypes/referenceKeys.ts", "symbol": "referenceKeyCapacityDeclarationFor" },
+    { "kind": "write", "path": "electron/catalog/referenceReachability.ts", "symbol": "bodyReferenceSupport" },
+    { "kind": "write", "path": "electron/catalog/taskParams.ts", "symbol": "projectReferencesOntoBodyKeys" },
+    { "kind": "write", "path": "electron/catalog/modelCatalogListing.ts", "symbol": "referenceSupportForModel" },
+    { "kind": "write", "path": "electron/catalog/referenceCarrierShapes.ts", "symbol": "chatImageParts" },
+    { "kind": "write", "path": "electron/catalog/parameterReferenceContract.ts", "symbol": "readParameterReferenceContract" },
+    { "kind": "write", "path": "electron/runtime.ts", "symbol": "runTask" }
+  ],
+  "door_reduction": {
+    "before": 6,
+    "after": 7,
+    "why_not": "The deleted regex classifier door is replaced by the model-scoped declaration read. Seven surviving doors remain because model listing, reachability, projection, protocol carrier construction, parameter-contract validation, and runtime admission are separate public boundaries; each now carries the same selected-model capacity context and cannot be collapsed without changing its call contract."
+  },
+  "generality_proof": "The body-key classifier is the shared boundary for projection, refusal labeling, refusal suggestions, and model listings. It reads the selected model's typed slots and mode max first, then the global declaration table assembled from explicit headless keys, translated inputs, and alias groups only when no model slot matches. Therefore a new provider key is either declared once for that model and handled consistently by every caller, or it is not eligible and the carried family fails closed; no cross-model capacity merge remains.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/modelArchetypes/referenceKeys.ts",
+      "symbol": "referenceKeyCapacityDeclarationFor",
+      "responsibility": "Own the selected model and mode capacity declaration for each reference key, falling back to the global key-shape declaration only when the model has no matching slot."
+    },
+    {
+      "path": "electron/catalog/referenceReachability.ts",
+      "symbol": "bodyReferenceSupport",
+      "responsibility": "Read the selected model declaration and return body reference families and capacity, or fall back to key shape when no model slot matches."
+    },
+    {
+      "path": "electron/catalog/taskParams.ts",
+      "symbol": "projectReferencesOntoBodyKeys",
+      "responsibility": "Project only same-family references into declared, body-referenced, empty keys and refuse when no same-family key exists."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/catalog/taskParams.ts",
+      "entry_point": "projectReferencesOntoBodyKeys",
+      "disposition": "enforced",
+      "evidence": "The red census tests reproduce image, video, and audio URLs landing in control fields and assert Volcengine 9/30 versus RunningHub 1; projectReferencesOntoBodyKeys now consumes the model-scoped declaration."
+    },
+    {
+      "path": "electron/catalog/modelCatalogListing.ts",
+      "entry_point": "referenceSupportForModel",
+      "disposition": "enforced",
+      "evidence": "list_models calls bodyReferenceSupport for every enabled mapping with model identity; its output uses the same model-scoped declaration, removing false capacity claims."
+    },
+    {
+      "path": "electron/catalog/taskParams.ts",
+      "entry_point": "carriedReferences / reachableModeSuggestion",
+      "disposition": "enforced",
+      "evidence": "Refusal labels and suggestions call the declaration-backed classifier and bodyReferenceSupport with selected model context and therefore converge on the same declaration boundary."
+    },
+    {
+      "path": "electron/capabilityCore/apimartGenerationProjection.ts",
+      "entry_point": "APIMART_REFERENCE_PARAMETER_ALIASES",
+      "disposition": "not-affected",
+      "evidence": "This path already consumes the shared alias declaration and is not a name-regex classifier; its alias groups remain the source used to build the new declaration table."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "The same body-key spelling heuristic can misclassify another provider, version, custom mapping, or newly added control field; the prior census already found 12 false-positive keys across 26 real catalog rows.",
+    "same_class_scan": [
+      "scripts/reference-key-census.ts scans all 246 seeded mappings and records false positives independently from the projection output.",
+      "electron/catalog/referenceKeyProjectionCensus.test.ts covers real image, video, and audio headless inputs plus a body with its declared video key removed.",
+      "node scripts/door-map.mjs referenceKeyCapacityDeclarationFor bodyReferenceSupport projectReferencesOntoBodyKeys enumerates the surviving production consumer doors; the removed regex classifier is recorded in legacy_paths.",
+      "referenceSentWithinInUse.property.test.ts checks that every body reference key is present in the shared declaration set."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/modelArchetypes/referenceKeys.ts",
+    "invariant": "Only keys present in the explicit declaration table, with a matching media family, are reference carriers.",
+    "failure_mode": "Undeclared keys are classified as null; projection leaves them untouched and a carried family with no declared same-family key is rejected before network submission with an explicit parameter-name instruction.",
+    "exception_policy": "none",
+      "strategy": "Delete the regex classifier and derive model-scoped capacity from typed slots and max first; use explicit headless media declarations, translated inputs, combined slots, and alias groups only as the key-shape fallback. Every consumer reads the same classifier; completeness and capacity tests make new body reference keys or model limits fail until declared.",
+    "artifacts": [
+      "electron/shared/modelArchetypes/referenceKeys.ts",
+      "electron/catalog/referenceReachability.ts",
+      "electron/catalog/taskParams.ts",
+      "scripts/reference-key-census.ts",
+      "electron/catalog/referenceCarrierShapes.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/catalog/referenceKeyProjectionCensus.test.ts",
+    "electron/catalog/referenceReachability.test.ts",
+    "electron/catalog/taskParams.test.ts",
+    "electron/catalog/modelCatalogListing.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/catalog/referenceKeyProjectionCensus.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/catalog/referenceReachability.ts"
+    ],
+    "rationale": "The obsolete regex classifier symbols REFERENCE_KEY_FAMILY, CONTROL_KEY_PREFIX, and classifyReferenceKeyDetailed are deleted from this file in the same change; no compatibility fallback remains."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The invariant is owned by Nomi's catalog declarations and pure TypeScript functions; no third-party runtime controls the classification boundary.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted data migration is required. Existing explicit reference keys and renderer archetypeInput values remain valid; headless callers whose non-standard key was previously guessed must now provide that key explicitly or add a declaration before sending.",
+  "residual_risks": [
+    "Custom mappings whose body reference key is not in the declaration table will be rejected until the caller supplies an explicit parameter name; the repository cannot prove arbitrary user-authored contracts from seeded fixtures.",
+    "No real paid sample is run on this branch; the coordinator must execute the one-sample plan after free rehearsal and build-marker checks.",
+    "Windows and English UI paths are not exercised on this Mac-only implementation line."
+  ],
+  "detected_by": "review",
+  "recurrence_check_on": "2026-10-25",
+  "invariant_owner_layer": {
+    "layer": "electron/catalog/referenceReachability.ts",
+    "tests": [
+      "electron/catalog/referenceKeyProjectionCensus.test.ts",
+      "electron/catalog/referenceReachability.test.ts",
+      "src/workbench/generationCanvas/runner/referenceSentWithinInUse.property.test.ts"
+    ],
+    "why": "请求体参考键的分类是投影、拒发建议和目录承载力共同消费的最早共享边界；这些类级测试在该边界验证声明与 body 的对账。"
+  }
+}

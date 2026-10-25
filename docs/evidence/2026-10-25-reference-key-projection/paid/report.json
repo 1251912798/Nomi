@@ -1,0 +1,93 @@
+{
+  "what": "只给参考、不写参数名的 Agent 生成，在真 App 里跑：零花费演练 + 真付费一次（协调，10-25，并 main 后的最终代码）",
+  "entry": "应用内 Agent：draft_shots（只带 references:[assetId]）→ generate → production run start",
+  "model": {
+    "vendorKey": "apimart",
+    "modelKey": "qwen-image-2.0"
+  },
+  "build": "4c079dd78448bf3458d6c6f3a402f2f105011430",
+  "buildMarker": "这个模型的请求体没有声明 mode",
+  "rehearsal": {
+    "ranAt": "2026-10-25T05:32:06Z",
+    "vendor": "loopback",
+    "createsBeforeConfirm": 0,
+    "createRequests": 1,
+    "uploadRequests": 1,
+    "body": {
+      "model": "qwen-image-2.0",
+      "prompt": "把素材库里的参考图改成一张雨后红色纸船的方形海报。",
+      "size": "1:1",
+      "resolution": "1K",
+      "image_urls": [
+        "<夹具上传口回的地址>"
+      ]
+    },
+    "checks": {
+      "referenceOnlyInDeclaredKey": true,
+      "imageUrlsIsTheUploadedUrl": true,
+      "problems": [],
+      "landedOnSameNode": true,
+      "taskRuns": 1
+    },
+    "fixtureNote": "演练时测试夹具临时改成上传口按次回独立地址，跑完按字节还原（哈希比对、工作树干净）；原因见 README",
+    "ok": true
+  },
+  "paid": {
+    "ranAt": "2026-10-25T05:32:53Z",
+    "finishedAt": "2026-10-25T05:33:25Z",
+    "referenceSource": "本地素材经应用自己的上传路；请求体里的参考地址是供应商上传口回的地址",
+    "reference": {
+      "contentType": "image/png",
+      "bytes": 293279,
+      "from": "tests/ux/fixtures/real-shot-640x360.mp4 第 2 秒的一帧"
+    },
+    "createsBeforeConfirm": 0,
+    "confirmButton": {
+      "text": "生成这张⏎",
+      "enabled": true
+    },
+    "createRequests": 1,
+    "body": {
+      "model": "qwen-image-2.0",
+      "prompt": "把素材库里的参考图改成一张雨后红色纸船的方形海报。",
+      "size": "1:1",
+      "resolution": "1K",
+      "image_urls": [
+        "<供应商上传口回的地址>"
+      ]
+    },
+    "checks": {
+      "referenceOnlyInDeclaredKey": true,
+      "problems": [],
+      "landedOnSameNode": true,
+      "resultIsLocalMaterializedAsset": true,
+      "taskRuns": 1
+    },
+    "run": {
+      "status": "awaiting_rough_cut_review",
+      "artifactsReady": 1,
+      "providerTaskIds": 1
+    },
+    "spend": {
+      "paidCalls": 1,
+      "media": [
+        {
+          "source": "production-run",
+          "nodeIsTheDraftedNode": true,
+          "vendor": "apimart",
+          "model": "qwen-image-2.0",
+          "status": "adopted",
+          "hasProviderTaskId": true
+        }
+      ]
+    },
+    "networkBlocked": 0,
+    "realProfileUnchangedBeforeAfter": true,
+    "credentialCopyRemoved": true,
+    "ok": true
+  },
+  "limits": [
+    "成片图本身没留：隔离项目收尾时整个删掉；落地按 Run 里 ready 的产物、原节点的结果地址（本地物化资产）和花费账本记在原节点的那一笔判",
+    "Agent 大脑是 loopback 夹具（剧本固定回 draft_shots → generate），证明的是确认卡之后的真路，不证明真模型会这样调工具"
+  ]
+}
