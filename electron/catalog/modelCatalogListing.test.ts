@@ -356,7 +356,9 @@ describe("modelCatalogListing 的导出面", () => {
       "deriveModelListing",
       "mappingsForModel",
       "modelModeBodies",
+      "modelReferenceSelection",
     ]);
     // 2026-10-05：referenceModeForIntent / videoBodyKeysForModel 只服务于已删的 core.generateOnProject，随它一起删（P1）。
+    // 2026-10-25：加 modelReferenceSelection——运行时第三闸和清单承载力共用一份模型身份，原来清单里手拼一份、runtime.ts 又手拼一份。
   });
 });

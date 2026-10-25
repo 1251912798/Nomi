@@ -14,6 +14,7 @@ import type { ModelAvailability } from "../shared/modelAvailability";
 import { createCatalogAvailability } from "./catalogModelAvailability";
 import { SINGLE_SHOT_GENERATION_MODULE_ID } from "../shared/generationModuleId";
 import type { ReferenceModelContext } from "../shared/modelArchetypes/referenceKeys";
+import type { ParameterReferenceSelection } from "./parameterReferenceContract";
 
 /** 一个模型跨其所有 mapping 汇总出的参考承载力 + 是哪些模式（taskKind）带得动。 */
 export type ModelReferenceSupport = BodyReferenceSupport & {
@@ -106,6 +107,15 @@ export function modelModeBodies(
     }));
 }
 
+/** 一个连接的模型身份（运行时第三闸与清单承载力同一份口径）：vendor 用这次实际走的那家，别名和 meta 取连接自己的。 */
+export function modelReferenceSelection(
+  vendorKey: string,
+  model: { modelKey: string; modelAlias?: string | null; meta?: unknown },
+  taskKind?: string,
+): ParameterReferenceSelection {
+  return { vendorKey, modelKey: model.modelKey, modelAlias: model.modelAlias, modelMeta: model.meta, ...(taskKind ? { taskKind } : {}) };
+}
+
 /** 跨该模型所有 mapping 汇总参考承载力（任一 mapping 能发 = 能发；记下携带参考的 taskKind）。 */
 function referenceSupportForModel(modelMappings: Mapping[], context: ReferenceModelContext): ModelReferenceSupport {
   const out: ModelReferenceSupport = { image: false, video: false, audio: false, multiImage: false, referenceModes: [] };
@@ -161,12 +171,7 @@ export function deriveModelListing(
         keyStatus,
         usable: modelAvailability.usable,
         statusReason: statusReasonFor(keyStatus, vendorName, modelAvailability),
-        references: referenceSupportForModel(modelMappings, {
-          vendorKey: model.vendorKey,
-          modelKey: model.modelKey,
-          modelAlias: model.modelAlias,
-          modelMeta: model.meta,
-        }),
+        references: referenceSupportForModel(modelMappings, modelReferenceSelection(model.vendorKey, model)),
       };
     });
 }
