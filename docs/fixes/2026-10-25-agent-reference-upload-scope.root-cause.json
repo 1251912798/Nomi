@@ -19,7 +19,10 @@
     "electron/capabilityCore/productionReferenceUrls.test.ts",
     "src/workbench/ai/v4/spendCardFailure.ts",
     "src/workbench/ai/v4/spendCardFailure.test.ts",
-    "tests/ux/mcp-l2-journeys.e2e.mjs"
+    "tests/ux/mcp-l2-journeys.e2e.mjs",
+    "electron/capabilityCore/agentPanelSpendReferences.e2e.test.ts",
+    "tests/ux/agent-runtime-fixture.mjs",
+    "tests/ux/agent-reference-upload-scope.walk.mjs"
   ],
   "entry_points": [
     "appIntegration startCapabilityCore generation planning prepareAuthorization",
@@ -72,7 +75,7 @@
       "path": "electron/capabilityCore/appIntegration.ts",
       "entry_point": "startCapabilityCore generationPlanning.prepareAuthorization",
       "disposition": "enforced",
-      "evidence": "App Agent panel calls prepareProductionGenerationAuthorizationWithReferences and will receive the shared guard through its assertCurrent callback."
+      "evidence": "App Agent panel calls prepareProductionGenerationAuthorizationWithReferences and will receive the shared guard through its assertCurrent callback. The new agentPanelSpendReferences.e2e.test.ts and agent-reference-upload-scope.walk.mjs exercise this host with a real held multipart upload."
     },
     {
       "path": "electron/capabilityCore/mcpStdioServer.ts",
@@ -114,11 +117,15 @@
     "electron/capabilityCore/generationReferenceScope.test.ts",
     "electron/capabilityCore/productionReferenceUrls.test.ts",
     "electron/capabilityCore/appIntegrationProductionActions.test.ts",
-    "src/workbench/ai/v4/spendCardFailure.test.ts"
+    "src/workbench/ai/v4/spendCardFailure.test.ts",
+    "electron/capabilityCore/agentPanelSpendReferences.e2e.test.ts",
+    "tests/ux/agent-reference-upload-scope.walk.mjs"
   ],
   "class_regression_tests": [
     "electron/capabilityCore/generationReferenceScope.test.ts",
-    "electron/capabilityCore/productionReferenceUrls.test.ts"
+    "electron/capabilityCore/productionReferenceUrls.test.ts",
+    "electron/capabilityCore/agentPanelSpendReferences.e2e.test.ts",
+    "tests/ux/agent-reference-upload-scope.walk.mjs"
   ],
   "legacy_paths": {
     "status": "removed",
