@@ -3,8 +3,6 @@
 import { laneMessageText, laneMessages } from './agent-lane-observer.mjs'
 
 export const SELECTION_ASK = '我选中的这些里，哪几个是视频节点？把标题都列出来'
-// 快照专用档：禁止调用 look_at_canvas，只有每条消息随附的 ContextSnapshot 能提供选区事实。
-export const SNAPSHOT_ONLY_ASK = '只根据当前消息里的选区快照作答，不要调用任何工具。请列出我当前选中的所有视频节点标题，一行一个，只列标题。'
 export const LOOK_AT_CANVAS = 'look_at_canvas'
 // 真实用户会把同一意图说成很多种话；量具保留这些句子，防止只用一条演示 prompt 就宣称工具会用。
 export const SELECTION_PROMPTS = Object.freeze([
@@ -168,21 +166,6 @@ export function scoreSelectionRound({ scene, transcript }) {
     selectionRead: read.size, selectionTotal: scene.selectedIds.length,
     otherTools: transcript.calls.filter((call) => call.name !== LOOK_AT_CANVAS).map((call) => call.name),
     answeredCount: answered.length, missing, extra, success: answered.length > 0 && missing.length === 0 && extra.length === 0,
-  }
-}
-
-/** 快照专用档：没有工具调用；模型只能依据发送时投影中的 listed / omitted 账回答。 */
-export function scoreSnapshotOnlyRound({ scene, transcript, projection }) {
-  const looks = transcript.calls.filter((call) => call.name === LOOK_AT_CANVAS)
-  const match = squash(transcript.finalAnswer).match(/^列出了(\d+)个节点，还有(\d+)个没列出。$/)
-  const listed = match ? Number(match[1]) : null
-  const omitted = match ? Number(match[2]) : null
-  return {
-    lookAtCanvasCalls: looks.length, legalCalls: 0, selectionTotal: scene.selectedIds.length,
-    listed, omitted, otherTools: transcript.calls.map((call) => call.name),
-    snapshotMessagesWithLedger: match ? 1 : 0,
-    success: looks.length === 0 && transcript.calls.length === 0 && match !== null
-      && projection !== undefined && listed === projection.listed && omitted === projection.omitted,
   }
 }
 

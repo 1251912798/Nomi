@@ -23,8 +23,8 @@ import {
   chooseAssistantModel, composerText, newConversation, openCanvas, sendCanvas,
 } from './agent-runtime-walk-support.mjs'
 import {
-  LOOK_AT_CANVAS, SELECTION_ASK, SELECTION_PROMPTS, SNAPSHOT_ONLY_ASK, answerTimeView, groundTruthKeys, roundSettled, roundTranscript, sceneFromIds, sceneProblems, sceneProjectionFacts,
-  scoreSelectionRound, scoreSnapshotOnlyRound, selectionLinesOf, selectionSceneSpec, summarizeSelectionRounds,
+  LOOK_AT_CANVAS, SELECTION_ASK, SELECTION_PROMPTS, answerTimeView, groundTruthKeys, roundSettled, roundTranscript, sceneFromIds, sceneProblems, sceneProjectionFacts,
+  scoreSelectionRound, selectionLinesOf, selectionSceneSpec, summarizeSelectionRounds,
 } from './_lookAtCanvasSelectionScore.mjs'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -34,7 +34,7 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
  * 产物里找不到它 = 跑的不是这次要验的修复，openPaidWalk 当场拒跑（一分钱不花）。单测核对它确实在源码里。
  */
 export const SELECTION_MARKER = '节点行里标了「选中」'
-export const SNAPSHOT_MARKER = 'ask the user to shrink the selection'
+export const OMITTED_CANVAS_MARKER = 'call look_at_canvas'
 export const SELECTION_EVIDENCE_DIR = path.join(REPO_ROOT, 'docs/evidence/2026-10-22-look-at-canvas-selection-truncation/paid')
 
 /** 量具数字的定义（写进证据，PR 正文照抄）。 */
@@ -107,34 +107,6 @@ export async function seedSelectionScene(win, spec = selectionSceneSpec()) {
   expect(seeded.storeIds, '画布上恰好是布的这些节点，顺序同布的顺序').toEqual(seeded.ids)
   expect(seeded.storeSelected, '选区恰好是该选的那一批，顺序同画布').toEqual([...scene.selectedIds])
   return scene
-}
-
-/** 追加快照专用的大场景：主场景的 look_at_canvas 仍保持 44 个节点，快照档另有 150 个真节点。 */
-async function seedSnapshotScene(win, baseScene, count = 150) {
-  const spec = Array.from({ length: count }, (_, index) => Object.freeze({
-    key: `snapshot-${index + 1}`, id: `s${index.toString(36)}`,
-    kind: 'image', role: 'snapshot', title: `快照节点${index + 1}`, selected: true,
-  }))
-  const ids = await win.evaluate((nodes) => {
-    const store = () => window.__nomiCanvasStore.getState()
-    const current = store().readSnapshot()
-    const template = current.nodes[0]
-    if (!template) throw new Error('快照档没有可复制的画布节点模板')
-    const added = nodes.map((node, index) => ({
-      ...template,
-      id: node.id,
-      title: node.title,
-      position: { x: 80 + (index % 11) * 300, y: 1800 + Math.floor(index / 11) * 380 },
-      selected: false,
-    }))
-    store().restoreSnapshot({ ...current, nodes: [...current.nodes, ...added] })
-    return added.map((node) => node.id)
-  }, spec)
-  const added = sceneFromIds(spec.map((node) => ({ ...node, id: node.id })), ids)
-  return Object.freeze({
-    nodes: Object.freeze([...baseScene.nodes, ...added.nodes]),
-    selectedIds: Object.freeze([...added.selectedIds]),
-  })
 }
 
 /** 每一轮发话前：选区设回那 40 个，并核对画布没被改过（节点一个不多一个不少）。返回此刻选中数。 */
@@ -261,17 +233,6 @@ export async function runSelectionRound({ win, projectRoot, scene, round, transf
   return record
 }
 
-/** 快照专用档由投影结果决定是否完整：40 个档核对全列，150 个档核对 truncated。 */
-function snapshotOnlyScene(scene, count) {
-  if (count > scene.nodes.length) throw new Error(`快照档要选 ${count} 个，但场景只有 ${scene.nodes.length} 个节点`)
-  const selectedIds = scene.nodes.slice(-count).map((node) => node.id)
-  const selected = new Set(selectedIds)
-  return Object.freeze({
-    nodes: Object.freeze(scene.nodes.map((node) => Object.freeze({ ...node, selected: selected.has(node.id) }))),
-    selectedIds: Object.freeze(selectedIds),
-  })
-}
-
 /** 量具自己的问题（不是模型的）：哪一轮量具出了错、哪一轮答话的不是被授权的那个模型、哪一轮没落地。空 = 这一场的数可以用。 */
 export function gaugeProblems(rounds, { expectedModelKey }) {
   const problems = []
@@ -289,7 +250,7 @@ export function gaugeProblems(rounds, { expectedModelKey }) {
  * 整条旅程。`journey` 由调用方传入并就地填写：中途出错时调用方手里仍有已跑完的那几轮（证据照写）。
  * `beforeRound(round, scene)`：演练在这里给夹具大脑换剧本；真付费不传。
  */
-export async function runSelectionJourney(journey, { walk, modelLabel, expectedModelKey, rounds, snapshotRounds = rounds, beforeRound = async () => {}, includeSnapshotOnly = false }) {
+export async function runSelectionJourney(journey, { walk, modelLabel, expectedModelKey, rounds, beforeRound = async () => {} }) {
   journey.rounds ??= []
   const { win } = await walk.start({ first: true })
   // 画布 store 的走查桥（localStorage.__nomiE2E，开项目之前置上）：布场景、设选区都走 store 的真动作。
@@ -321,42 +282,10 @@ export async function runSelectionJourney(journey, { walk, modelLabel, expectedM
     const { score, view } = record
     console.log(`[selection] 第 ${round} 轮 ${Math.round(record.ms / 1000)}s：look_at_canvas ${score.legalCalls}/${score.lookAtCanvasCalls} 合法 · 读到选区 ${score.selectionRead}/${score.selectionTotal} · 答话时眼里 ${view?.selectedIdsVisible ?? '-'}/${score.selectionTotal} · 少列 ${score.missing.length} · 多列 ${score.extra.length} · 成功=${score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
   }
-  if (includeSnapshotOnly) {
-    const snapshotRecords = []
-    const snapshotBase = await seedSnapshotScene(win, scene)
-    const variants = [
-      { name: 'full-40', count: 40, truncated: false },
-      { name: 'truncated-150', count: 150, truncated: true },
-    ]
-    let variantRound = 0
-    for (const variant of variants) {
-      const snapshotScene = snapshotOnlyScene(snapshotBase, variant.count)
-      for (let round = 1; round <= snapshotRounds; round += 1) {
-        const journeyRound = rounds + (++variantRound)
-        await beforeRound(journeyRound, snapshotScene)
-        const record = await runSelectionRound({
-          win, projectRoot, scene: snapshotScene, round: journeyRound, transform, ask: SNAPSHOT_ONLY_ASK, score: scoreSnapshotOnlyRound,
-          beforeSend: async ({ projection }) => {
-            if (projection.truncated !== variant.truncated) {
-              throw new Error(`快照档 ${variant.name} 与投影事实不符：truncated=${projection.truncated}`)
-            }
-          },
-        })
-        record.kind = 'snapshot-only'
-        record.snapshotVariant = variant.name
-        record.selectionTotal = snapshotScene.selectedIds.length
-        snapshotRecords.push(record)
-        await walk.snap(`snapshot-only-${variant.name}-r${round}-answer`).catch(() => {})
-        console.log(`[selection] 快照专用档 ${variant.name} ${round}/${snapshotRounds} ${Math.round(record.ms / 1000)}s：无工具调用=${record.score.lookAtCanvasCalls === 0 && record.score.otherTools.length === 0} · 列出=${record.score.listed ?? '-'} · 省略=${record.score.omitted ?? '-'} · 成功=${record.score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
-      }
-    }
-    journey.snapshotOnly = snapshotRecords
-  }
   journey.numbers = {
     ...summarizeSelectionRounds(journey.rounds),
-    ...(journey.snapshotOnly ? { snapshotOnlySuccess: `${journey.snapshotOnly.filter((record) => record.score.success).length}/${journey.snapshotOnly.length}` } : {}),
   }
-  journey.gaugeProblems = gaugeProblems([...journey.rounds, ...(journey.snapshotOnly ?? [])], { expectedModelKey })
+  journey.gaugeProblems = gaugeProblems(journey.rounds, { expectedModelKey })
   journey.canvasIntactAfter = await win.evaluate(() => window.__nomiCanvasStore.getState().nodes.length)
   return journey
 }
@@ -390,7 +319,6 @@ export function selectionEvidence({ script, mode, startedAt, journey, walk, fail
     canvasNodesAfter: journey.canvasIntactAfter ?? null,
     scene: journey.scene ?? null,
     rounds: journey.rounds ?? [],
-    snapshotOnly: journey.snapshotOnly ?? null,
     spend: { text: walk.report.spend?.text ?? null, mediaCalls: walk.report.spend?.media?.length ?? null },
     networkBlocked: walk.report.networkBlocked ?? [],
     walkOutputDir: walk.report.outputDir ? path.relative(REPO_ROOT, walk.report.outputDir) : null,

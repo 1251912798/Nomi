@@ -44,6 +44,20 @@ function compactSnapshot(count: number, subtitleLength: number): AgentContextSna
   }
 }
 
+function kindSnapshot(kind: AgentContextHandle['kind'], count: number): AgentContextSnapshot {
+  return {
+    version: 1,
+    handles: Array.from({ length: count }, (_, index): AgentContextHandle => ({
+      id: `${kind}-${index}`,
+      kind,
+      targetId: `${kind}-target-${index}`,
+      revision: '1',
+      display: { title: `${kind} ${index}`, subtitle: kind },
+      intentRole: 'subject',
+    })),
+  }
+}
+
 type Payload = {
   total: number
   listed: number
@@ -129,6 +143,38 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
     expect(payload.listed).toBeGreaterThan(0)
     expect(payload.listed).toBeLessThan(150)
+  })
+
+  it('画布节点省略时指向 look_at_canvas，并提醒核对发送后选区是否变化', () => {
+    const payload = expectBalanced(kindSnapshot('canvasNode', 150), formatAgentContextSnapshot(kindSnapshot('canvasNode', 150)))
+    expect(payload.omitted).toBeGreaterThan(0)
+    expect(payload.omittedNote).toContain('call look_at_canvas')
+    expect(payload.omittedNote).toContain('selection changed after send')
+    expect(payload.omittedNote).not.toContain('shrink the selection')
+  })
+
+  it('只有时间轴片段省略时保留缩小或分批指引，不暗示 look_at_canvas', () => {
+    const snapshot = kindSnapshot('timelineClip', 150)
+    const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
+    expect(payload.omitted).toBeGreaterThan(0)
+    expect(payload.omittedNote).toContain('omitted kinds without a selected-marker reader')
+    expect(payload.omittedNote).toContain('shrink the selection')
+    expect(payload.omittedNote).toContain('send it in batches')
+    expect(payload.omittedNote).not.toContain('look_at_canvas')
+  })
+
+  it('画布与时间轴同时省略时把两条按类型指引都写入同一说明', () => {
+    const snapshot: AgentContextSnapshot = {
+      version: 1,
+      handles: [...kindSnapshot('canvasNode', 100).handles, ...kindSnapshot('timelineClip', 100).handles],
+    }
+    const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
+    expect(payload.omittedByKind).toEqual([
+      { kind: 'canvasNode', count: expect.any(Number) },
+      { kind: 'timelineClip', count: expect.any(Number) },
+    ])
+    expect(payload.omittedNote).toContain('call look_at_canvas')
+    expect(payload.omittedNote).toContain('shrink the selection')
   })
 
   it('5000 个句柄仍在线性账本内：总数、列数和按类省略数相等', () => {

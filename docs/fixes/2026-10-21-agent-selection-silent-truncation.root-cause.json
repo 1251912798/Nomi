@@ -5,9 +5,9 @@
   "detected_by": "review",
   "recurrence_check_on": "2026-11-20",
   "problem_type": "A bounded model-facing projection can omit entries without an explicit, actionable ledger",
-  "symptom": "When a send-time selection exceeds the transient model budget, a partial handle list could look complete.",
-  "direct_cause": "The projection owner returned the first detail rung's fitting prefix before trying cheaper rungs, while recomputing the omitted suffix and reading listed back from JSON in the prefix loop.",
-  "class_root": "A bounded projection lacked one shared accounting boundary: every emitted prefix must carry total, listed, omitted, omittedByKind and an actionable instruction for the omitted suffix.",
+  "symptom": "When a send-time selection exceeds the transient model budget, the omitted handles are named but the next read action can point the model away from an existing complete read path.",
+  "direct_cause": "The omitted note used one shrink-or-batch instruction for every handle kind, even though canvas nodes already have look_at_canvas with selected row markers; real models followed that instruction and did not read the full canvas selection.",
+  "class_root": "The bounded projection had no single type-to-recovery contract: its omitted ledger counted kinds, but the actionable read guidance was not derived from those same kinds.",
   "affected_population": [
     "Any message-scoped selection whose compact projection exceeds 6000 characters",
     "Mixed document, canvas, timeline, reference and future handle kinds",
@@ -17,7 +17,6 @@
     "electron/shared/agentContextSnapshot.ts",
     "electron/shared/agentContextSnapshot.test.ts",
     "src/workbench/ai/resident/residentContextSnapshot.test.ts",
-    "electron/shared/agentCapabilities/agentContextRead.ts",
     "electron/shared/agentCapabilities/capabilityContract.ts",
     "electron/shared/agentCapabilities/registry.ts",
     "electron/shared/agentCapabilities/registry.test.ts",
@@ -29,15 +28,15 @@
     "electron/agentLane/laneDesktopReads.test.ts",
     "scripts/check-model-face-frozen.mjs",
     "scripts/perf-scenarios-lib.mjs",
-    "tests/perf/agent-context-selection-paging-bench.mjs",
-    "tests/perf/scenarios/agent-context-selection-paging-5000.json",
     "tests/ux/_lookAtCanvasSelectionScore.mjs",
     "tests/ux/_lookAtCanvasSelectionSteps.mjs",
     "tests/ux/look-at-canvas-selection-real.rehearsal.walk.mjs",
-    "docs/engineering/concept-owners/agent.context-selection-read.json",
     "docs/engineering/concept-owners/agent.context-snapshot-projection.json",
     "electron/shared/agentCapabilities/documentRead.ts",
-    "electron/capabilityCore/documentReadTransportAdapters.ts"
+    "electron/capabilityCore/documentReadTransportAdapters.ts",
+    "tests/ux/_lookAtCanvasSelectionScore.test.mjs",
+    "tests/ux/look-at-canvas-selection-real.paid.mjs",
+    "docs/engineering/direction-checks/2026-10-25-agent-selection-snapshot-route.md"
   ],
   "entry_points": [
     "Provider request projection via laneDesktopInput",
@@ -72,8 +71,8 @@
   "invariants": [
     "Projection first chooses the richest detail rung that lists every handle; only when every rung cannot list all handles does the least detailed rung emit its longest fitting prefix, always with total, listed, omitted and omittedByKind for the omitted suffix.",
     "total = listed + omitted and listed handles preserve snapshot order.",
-    "The fixed omitted note says the handles remain in the current selection and instructs the user to shrink or batch the selection.",
-    "Projection output is deterministic and valid JSON within the shared transient budget."
+    "The omitted note is derived from one type-to-recovery table: omitted canvasNode kinds direct the model to call look_at_canvas with no arguments, rely on selected row markers, and report a changed selection when its selected count differs from snapshot total; kinds without that reader direct the user to shrink or batch.",
+    "projectionLength uses the exact derived omitted note, and projection output is deterministic and valid JSON within the shared transient budget."
   ],
   "doors": [
     {
@@ -177,14 +176,17 @@
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "electron/shared/agentContextSnapshot.ts",
-    "invariant": "The shared owner chooses the first richest rung that lists all handles; otherwise it emits the longest least-detailed prefix, with total = listed + omitted, per-kind omitted counts and a fixed instruction to shrink or batch the selection.",
-    "failure_mode": "Budget overflow emits a truthful prefix and an omitted ledger; it never implies that the prefix is the whole selection.",
+    "invariant": "The shared owner chooses the first richest rung that lists all handles; otherwise it emits the longest least-detailed prefix, with total = listed + omitted, per-kind omitted counts and a note derived from the same kind-to-recovery table.",
+    "failure_mode": "Budget overflow emits a truthful prefix and an omitted ledger; the note points each omitted kind to its available recovery path or explicitly asks the user to shrink or batch, and never implies that the prefix is the whole selection.",
     "exception_policy": "none",
-    "strategy": "Delete the snapshot paging capability and its lane dispatch; keep one compact row encoder, scan the detail ladder for a full fit, and compute omittedByKind by decrementing one full-suffix count map at the shared projection boundary.",
+    "strategy": "Delete the snapshot-only gauge path; keep one compact row encoder, scan the detail ladder for a full fit, compute omittedByKind by decrementing one full-suffix count map, and derive the omitted note and projection length from one local kind-to-recovery table without changing the model-facing tool schema.",
     "artifacts": [
       "electron/shared/agentContextSnapshot.ts",
       "electron/shared/agentContextSnapshot.test.ts",
-      "src/workbench/ai/resident/residentContextSnapshot.test.ts"
+      "src/workbench/ai/resident/residentContextSnapshot.test.ts",
+      "tests/ux/_lookAtCanvasSelectionScore.mjs",
+      "tests/ux/_lookAtCanvasSelectionSteps.mjs",
+      "tests/ux/look-at-canvas-selection-real.paid.mjs"
     ]
   },
   "regression_tests": [
@@ -198,7 +200,7 @@
   "legacy_paths": {
     "status": "not-applicable",
     "removed_paths": [],
-    "rationale": "The temporary read_selection declaration, cursor paging functions and dedicated performance fixtures are absent from the final tree; the final diff retains no callable legacy path."
+    "rationale": "The snapshot-only scorer and rehearsal rounds were deleted in place from existing gauge modules; no legacy production file path remains callable and no parallel implementation is retained."
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
@@ -207,9 +209,9 @@
   },
   "migration": "No snapshot format or stored data changes. Existing messages are re-projected through the shared longest-prefix encoder; omitted entries are reported with counts and a user action instead of a paging tool.",
   "residual_risks": [
-    "The model cannot inspect omitted handles in the same turn; users must shrink or batch the selection until the deferred tool-group decision is implemented.",
-    "The separate live look_at_canvas result has its own node-list budget and is outside this change.",
-    "Real-model accuracy for the updated omitted note remains unverified until the coordinator runs the approved sample."
+    "Timeline clips and future asset handles without a selected-marker reader still require users to shrink or batch the selection; this is intentional until a message-scoped read path is approved.",
+    "If the user changes the canvas selection after send, look_at_canvas reads the live selection; the note requires the model to compare its selected count with snapshot total and report a mismatch.",
+    "Real-model accuracy for the updated omitted note remains unverified until the coordinator runs the approved paid sample."
   ],
   "invariant_owner_layer": {
     "layer": "electron/shared/agentContextSnapshot.ts",

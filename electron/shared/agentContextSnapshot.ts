@@ -159,11 +159,14 @@ function contextHeader(version: AgentContextSnapshot['version']): string {
 }
 
 /**
- * Said whenever handles are left out.  A constant sentence on purpose: the counts live in numeric
- * fields, so the same truncation always produces the same text (KV cache), and the model is never
- * left to assume the list it was given is the whole selection.
+ * The only source for omitted-kind recovery guidance.  Keep this beside the snapshot encoder rather
+ * than in a model-facing schema: it describes how an already available read verb recovers a kind,
+ * without spending resident tool-schema budget.  The note below is derived from this table.
  */
-const OMITTED_NOTE = 'The omitted handles are still part of the current selection. Use omittedByKind to see how many were not listed. To process every handle, ask the user to shrink the selection or select and send in batches.'
+const OMITTED_KIND_GUIDANCE: Readonly<Partial<Record<AgentContextKind, string>>> = Object.freeze({
+  canvasNode: 'For omitted canvas nodes, call look_at_canvas with no arguments; its node rows mark selected nodes and include all selected nodes. If its selected count differs from this snapshot total, the selection changed after send; tell the user.',
+})
+const OMITTED_FALLBACK_GUIDANCE = 'For omitted kinds without a selected-marker reader, ask the user to shrink the selection or send it in batches.'
 
 type OmittedKind = Readonly<{
   kind: AgentContextKind
@@ -250,7 +253,7 @@ function encodeProjection(total: number, rows: readonly CompactContextHandle[], 
     ...(omitted > 0 ? {
       omitted,
       ...(omittedByKind.length ? { omittedByKind } : {}),
-      omittedNote: OMITTED_NOTE,
+      omittedNote: omittedNoteForKinds(omittedByKind),
     } : {}),
     handles: rows,
   })
@@ -263,13 +266,18 @@ function omittedByKindFromCounts(counts: ReadonlyMap<AgentContextKind, number>):
   })
 }
 
+function omittedNoteForKinds(omittedByKind: readonly OmittedKind[]): string {
+  const guidance = omittedByKind.map(({ kind }) => OMITTED_KIND_GUIDANCE[kind] ?? OMITTED_FALLBACK_GUIDANCE)
+  return `The omitted handles are still part of the current selection. Use omittedByKind to see how many were not listed. ${guidance.join(' ')}`
+}
+
 function projectionLength(total: number, listed: number, handlePrefixLength: number, omittedByKind: readonly OmittedKind[]): number {
   let length = `{"total":${total},"listed":${listed}`.length
   const omitted = total - listed
   if (omitted > 0) {
     length += `,"omitted":${omitted}`.length
     if (omittedByKind.length) length += `,"omittedByKind":${JSON.stringify(omittedByKind)}`.length
-    length += `,"omittedNote":${JSON.stringify(OMITTED_NOTE)}`.length
+    length += `,"omittedNote":${JSON.stringify(omittedNoteForKinds(omittedByKind))}`.length
   }
   return length + ',"handles":['.length + handlePrefixLength + 2
 }

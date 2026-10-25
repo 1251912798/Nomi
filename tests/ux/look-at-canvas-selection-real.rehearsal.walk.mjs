@@ -7,7 +7,7 @@ import { openPaidWalk } from './_paidRun.mjs'
 import { flattenRequestText } from './agent-runtime-fixture.mjs'
 import { createRuntimeWalk, toolNames } from './agent-runtime-walk-support.mjs'
 import { LOOK_AT_CANVAS, SELECTION_ASK } from './_lookAtCanvasSelectionScore.mjs'
-import { runSelectionJourney, selectionEvidence, writeSelectionEvidence, SELECTION_MARKER, SNAPSHOT_MARKER } from './_lookAtCanvasSelectionSteps.mjs'
+import { runSelectionJourney, selectionEvidence, writeSelectionEvidence, SELECTION_MARKER, OMITTED_CANVAS_MARKER } from './_lookAtCanvasSelectionSteps.mjs'
 
 const SCRIPT = 'look-at-canvas-selection-real.rehearsal.walk.mjs'
 const FAKE_KEY = 'rehearsal-fake-key-0123456789abcdef'
@@ -17,7 +17,6 @@ const lastUserText = (body) => flattenRequestText({ messages: (body.messages ?? 
 
 function installMarkedRowBrain(fixture) {
   let current = null
-  const ledgers = []
   fixture.respond({
     label: 'rehearsal brain · node-row selection marker',
     match: (body) => toolNames(body).includes(LOOK_AT_CANVAS) && lastUserText(body).includes(SELECTION_ASK),
@@ -26,26 +25,13 @@ function installMarkedRowBrain(fixture) {
       return { type: 'text', text: `你选中的节点里，视频节点有这些：\n${scene.nodes.filter((node) => node.selected && node.kind === 'video').map((node) => node.title).join('\n')}` }
     },
   })
-  fixture.respond({
-    label: 'rehearsal brain · snapshot-only selection',
-    match: (body) => !body.messages.some((message) => message.role === 'tool') && !lastUserText(body).includes(SELECTION_ASK),
-    reply: (body) => {
-      // 只从本次 user 消息里的 ContextSnapshot 读标题；不闭包读取 scene，避免夹具替模型作答。
-      const text = lastUserText(body)
-      const total = Number(text.match(/"total":(\d+)/)?.[1] ?? 0)
-      const listed = Number(text.match(/"listed":(\d+)/)?.[1] ?? 0)
-      const omitted = Number(text.match(/"omitted":(\d+)/)?.[1] ?? 0)
-      ledgers.push({ round: current?.round ?? 0, total, listed, omitted })
-      return { type: 'text', text: `列出了${listed}个节点，还有${omitted}个没列出。` }
-    },
-  })
   fixture.respond({ label: 'rehearsal fallback · non-brain text call', match: () => true, reply: { type: 'text', text: '好的。' } })
-  return { play(round, scene) { current = { round, scene } }, ledgers }
+  return { play(round, scene) { current = { round, scene } } }
 }
 
 const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-rehearsal', [BRAIN], {
   env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', [ENV_KEY_VAR]: FAKE_KEY },
-  buildMarkers: [SELECTION_MARKER, SNAPSHOT_MARKER],
+  buildMarkers: [SELECTION_MARKER, OMITTED_CANVAS_MARKER],
   createWalk: (name, options) => createRuntimeWalk(name, {
     ...options, generationProvider: 'apimart', seedApimartKey: false, env: { ...options.env, NOMI_WALK_ALLOW_ORIGINS: '' },
   }),
@@ -56,26 +42,17 @@ const journey = { rounds: [] }
 let failure
 try {
   await runSelectionJourney(journey, {
-    walk, rounds: 0, snapshotRounds: 5, expectedModelKey: BRAIN.modelKey, modelLabel: () => paid.label(BRAIN.vendorKey, BRAIN.modelKey),
-    includeSnapshotOnly: true,
+    walk, rounds: 5, expectedModelKey: BRAIN.modelKey, modelLabel: () => paid.label(BRAIN.vendorKey, BRAIN.modelKey),
     beforeRound: async (round, scene) => brain.play(round, scene),
   })
   expect(journey.gaugeProblems, '量具本身没出错').toEqual([])
-  expect(journey.rounds, '本次只跑快照账演练').toEqual([])
-  expect(journey.snapshotOnly, '快照专用档两档各跑 5 轮').toHaveLength(10)
-  for (const record of journey.snapshotOnly) {
-    expect(record.harnessError, '快照专用档正常落地').toBeNull()
-    expect(record.score, '快照专用档只靠消息快照如实报账').toMatchObject({ lookAtCanvasCalls: 0, selectionTotal: record.selectionTotal, otherTools: [], listed: record.projection.listed, omitted: record.projection.omitted, success: true })
-    const ledger = brain.ledgers.find((item) => item.round === record.round)
-    expect(ledger?.listed + ledger?.omitted).toBe(ledger?.total)
-    expect(record.finalAnswer).toBe(`列出了${record.projection.listed}个节点，还有${record.projection.omitted}个没列出。`)
+  expect(journey.rounds, '主档 5 轮真实 Electron 演练').toHaveLength(5)
+  for (const record of journey.rounds) {
+    expect(record.harnessError, '主档正常落地').toBeNull()
+    expect(record.score, '主档通过节点行选中标记读全选区').toMatchObject({ selectionTotal: 40, success: true })
   }
-  expect(journey.snapshotOnly.filter((record) => record.snapshotVariant === 'full-40')).toHaveLength(5)
-  expect(journey.snapshotOnly.filter((record) => record.snapshotVariant === 'truncated-150')).toHaveLength(5)
-  expect(journey.snapshotOnly.filter((record) => record.snapshotVariant === 'full-40').every((record) => record.projection.truncated === false)).toBe(true)
-  expect(journey.snapshotOnly.filter((record) => record.snapshotVariant === 'truncated-150').every((record) => record.projection.truncated === true)).toBe(true)
-  expect(journey.numbers).toMatchObject({ rounds: 0, snapshotOnlySuccess: '10/10', harnessErrors: 0 })
-  expect(journey.canvasIntactAfter).toBe(journey.scene.nodes + 150)
+  expect(journey.numbers).toMatchObject({ rounds: 5, turnSuccess: '5/5', harnessErrors: 0 })
+  expect(journey.canvasIntactAfter).toBe(journey.scene.nodes)
 } catch (error) {
   failure = error
   process.exitCode = 1

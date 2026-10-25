@@ -4,8 +4,8 @@
 //   pnpm build && NOMI_SPEND_OK=1 node tests/ux/look-at-canvas-selection-real.paid.mjs        （轮数：NOMI_REAL_ROUNDS，缺省 5）
 //
 // 先跑零花费演练 look-at-canvas-selection-real.rehearsal.walk.mjs（同一份步骤，夹具大脑），过了再跑这条。
-// 为什么要它：#1283 让 look_at_canvas 在节点行直接标出选中状态，并对放不下的选中节点明说列出数量。
-// 工具说明一改，「外观绿」不等于模型真会用——这条走查让 App 里配好的真模型面对 40 个全列档与 150 个截断档，
+// 为什么要它：#1283 让 look_at_canvas 在节点行直接标出选中状态；选区快照放不下时，说明也必须把画布节点指向这个读法。
+// 工具说明一改，「外观绿」不等于模型真会用——这条走查让 App 里配好的真模型面对真实选区，
 // 问一句必须读清选区才能答对的话，量它会不会按节点行的「选中」标记作答、工具参数是否正确、最后答得对不对。
 //
 // 场景与判分见 _lookAtCanvasSelectionScore.mjs，步骤本体见 _lookAtCanvasSelectionSteps.mjs（与演练同一份）。
@@ -17,19 +17,19 @@
 // 截图与完整走查报告在 .tmp/pi-look-at-canvas-selection-real-*/。
 import { BRAIN } from './_agentVideoPaid.mjs'
 import { openPaidWalk } from './_paidRun.mjs'
-import { runSelectionJourney, selectionEvidence, writeSelectionEvidence, SELECTION_MARKER, SNAPSHOT_MARKER } from './_lookAtCanvasSelectionSteps.mjs'
+import { runSelectionJourney, selectionEvidence, writeSelectionEvidence, SELECTION_MARKER, OMITTED_CANVAS_MARKER } from './_lookAtCanvasSelectionSteps.mjs'
 
 const SCRIPT = 'look-at-canvas-selection-real.paid.mjs'
 const ROUNDS = Number(process.env.NOMI_REAL_ROUNDS || 5)
 if (!Number.isInteger(ROUNDS) || ROUNDS < 1) throw new Error(`NOMI_REAL_ROUNDS 要是正整数，拿到 ${process.env.NOMI_REAL_ROUNDS}`)
 const startedAt = new Date().toISOString()
-const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-real', [BRAIN], { buildMarkers: [SELECTION_MARKER, SNAPSHOT_MARKER] })
+const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-real', [BRAIN], { buildMarkers: [SELECTION_MARKER, OMITTED_CANVAS_MARKER] })
 const { walk } = paid
 const journey = { rounds: [] }
 let failure
 try {
   await runSelectionJourney(journey, {
-    walk, rounds: ROUNDS, expectedModelKey: BRAIN.modelKey, modelLabel: () => paid.label(BRAIN.vendorKey, BRAIN.modelKey), includeSnapshotOnly: true,
+    walk, rounds: ROUNDS, expectedModelKey: BRAIN.modelKey, modelLabel: () => paid.label(BRAIN.vendorKey, BRAIN.modelKey),
   })
   walk.report.numbers = journey.numbers
   console.log(`[selection] ${JSON.stringify(journey.numbers)}`)
