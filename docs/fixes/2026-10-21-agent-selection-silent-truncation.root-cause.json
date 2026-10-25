@@ -6,7 +6,7 @@
   "recurrence_check_on": "2026-11-20",
   "problem_type": "A bounded model-facing projection can omit entries without an explicit, actionable ledger",
   "symptom": "When a send-time selection exceeds the transient model budget, a partial handle list could look complete.",
-  "direct_cause": "The projection owner used a no-read longest-prefix fallback that could remove entries without a stable per-kind count or next action.",
+  "direct_cause": "The projection owner returned the first detail rung's fitting prefix before trying cheaper rungs, while recomputing the omitted suffix and reading listed back from JSON in the prefix loop.",
   "class_root": "A bounded projection lacked one shared accounting boundary: every emitted prefix must carry total, listed, omitted, omittedByKind and an actionable instruction for the omitted suffix.",
   "affected_population": [
     "Any message-scoped selection whose compact projection exceeds 6000 characters",
@@ -70,7 +70,7 @@
     }
   ],
   "invariants": [
-    "Projection lists the longest prefix that fits the 6000-character budget and always writes total, listed, omitted and omittedByKind for the omitted suffix.",
+    "Projection first chooses the richest detail rung that lists every handle; only when every rung cannot list all handles does the least detailed rung emit its longest fitting prefix, always with total, listed, omitted and omittedByKind for the omitted suffix.",
     "total = listed + omitted and listed handles preserve snapshot order.",
     "The fixed omitted note says the handles remain in the current selection and instructs the user to shrink or batch the selection.",
     "Projection output is deterministic and valid JSON within the shared transient budget."
@@ -177,10 +177,10 @@
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "electron/shared/agentContextSnapshot.ts",
-    "invariant": "The shared owner emits the longest prefix that fits, with total = listed + omitted, per-kind omitted counts and a fixed instruction to shrink or batch the selection.",
+    "invariant": "The shared owner chooses the first richest rung that lists all handles; otherwise it emits the longest least-detailed prefix, with total = listed + omitted, per-kind omitted counts and a fixed instruction to shrink or batch the selection.",
     "failure_mode": "Budget overflow emits a truthful prefix and an omitted ledger; it never implies that the prefix is the whole selection.",
     "exception_policy": "none",
-    "strategy": "Delete the snapshot paging capability and its lane dispatch; keep one compact row encoder and compute omittedByKind from the omitted suffix at the shared projection boundary.",
+    "strategy": "Delete the snapshot paging capability and its lane dispatch; keep one compact row encoder, scan the detail ladder for a full fit, and compute omittedByKind by decrementing one full-suffix count map at the shared projection boundary.",
     "artifacts": [
       "electron/shared/agentContextSnapshot.ts",
       "electron/shared/agentContextSnapshot.test.ts",

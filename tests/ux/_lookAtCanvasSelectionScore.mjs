@@ -172,7 +172,7 @@ export function scoreSelectionRound({ scene, transcript }) {
 }
 
 /** 快照专用档：没有工具调用；模型只能依据发送时投影中的 listed / omitted 账回答。 */
-export function scoreSnapshotOnlyRound({ scene, transcript }) {
+export function scoreSnapshotOnlyRound({ scene, transcript, projection }) {
   const looks = transcript.calls.filter((call) => call.name === LOOK_AT_CANVAS)
   const match = squash(transcript.finalAnswer).match(/^列出了(\d+)个节点，还有(\d+)个没列出。$/)
   const listed = match ? Number(match[1]) : null
@@ -181,7 +181,8 @@ export function scoreSnapshotOnlyRound({ scene, transcript }) {
     lookAtCanvasCalls: looks.length, legalCalls: 0, selectionTotal: scene.selectedIds.length,
     listed, omitted, otherTools: transcript.calls.map((call) => call.name),
     snapshotMessagesWithLedger: match ? 1 : 0,
-    success: looks.length === 0 && transcript.calls.length === 0 && match !== null,
+    success: looks.length === 0 && transcript.calls.length === 0 && match !== null
+      && projection !== undefined && listed === projection.listed && omitted === projection.omitted,
   }
 }
 

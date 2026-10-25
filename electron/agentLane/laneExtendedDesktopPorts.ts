@@ -61,7 +61,6 @@ export interface LaneExtendedDesktopPortsInput {
   spendCard: Readonly<{ whenCardCloses(operationId: string): Readonly<{ closed: Promise<void>; dispose(): void }> }>
   onTaskCreated?(call: RuntimeToolCall, result: unknown): Promise<void>
   context?(): LaneComposerContext
-  /** Desktop message-scoped selection read; kept here because the verb is deferred under the context group. */
   /**
    * 3D-BOX 花钱闸：这次要生成的镜头里，哪些挂着还没好的参考预演。
    * 出卡**之前**问——问到了就不出卡、不花钱，原因交给模型；问不到（渲染层不在）也不出卡（fail-closed）。

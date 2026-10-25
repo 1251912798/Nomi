@@ -256,10 +256,29 @@ function encodeProjection(total: number, rows: readonly CompactContextHandle[], 
   })
 }
 
+function omittedByKindFromCounts(counts: ReadonlyMap<AgentContextKind, number>): OmittedKind[] {
+  return AGENT_CONTEXT_KINDS.flatMap((kind) => {
+    const count = counts.get(kind) ?? 0
+    return count > 0 ? [{ kind, count }] : []
+  })
+}
+
+function projectionLength(total: number, listed: number, handlePrefixLength: number, omittedByKind: readonly OmittedKind[]): number {
+  let length = `{"total":${total},"listed":${listed}`.length
+  const omitted = total - listed
+  if (omitted > 0) {
+    length += `,"omitted":${omitted}`.length
+    if (omittedByKind.length) length += `,"omittedByKind":${JSON.stringify(omittedByKind)}`.length
+    length += `,"omittedNote":${JSON.stringify(OMITTED_NOTE)}`.length
+  }
+  return length + ',"handles":['.length + handlePrefixLength + 2
+}
+
 /**
- * Encode the snapshot inside the hard budget. Preference order: list every handle at the richest
- * detail that fits; otherwise list the longest prefix that fits at a detail rung and count the
- * omitted suffix by kind. The returned block (header included) never exceeds the hard bound.
+ * Encode the snapshot inside the hard budget. Preference order: find the first detail rung that
+ * lists every handle; if no rung can do that, use the least detailed rung for the longest fitting
+ * prefix and count the omitted suffix by kind. The returned block (header included) never exceeds
+ * the hard bound.
  */
 function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLength: number): { body: string; listed: number } {
   const budget = Math.max(256, MAX_TRANSIENT_CONTEXT_CHARS - headerLength)
@@ -267,30 +286,30 @@ function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLeng
   const named: ReadonlySet<string> = new Set(handles.map((handle) => handle.targetId))
   const selectionCache = new Map<readonly string[], readonly string[]>()
   const prepared = handles.map((handle) => prepareHandle(handle, named, selectionCache))
+  const fullOmittedCounts = new Map<AgentContextKind, number>()
+  for (const handle of handles) fullOmittedCounts.set(handle.kind, (fullOmittedCounts.get(handle.kind) ?? 0) + 1)
   for (const detail of PROJECTION_LADDER) {
     const rows = prepared.map((item) => compactHandle(item, detail))
-    let lastBody: string | undefined
-    for (let count = 0; count <= rows.length; count += 1) {
-      const omittedHandles = handles.slice(count)
-      const omittedCounts = new Map<AgentContextKind, number>()
-      for (const handle of omittedHandles) omittedCounts.set(handle.kind, (omittedCounts.get(handle.kind) ?? 0) + 1)
-      const omittedByKind = AGENT_CONTEXT_KINDS.flatMap((kind) => {
-        const omitted = omittedCounts.get(kind) ?? 0
-        return omitted > 0 ? [{ kind, count: omitted }] : []
-      })
-      const body = encodeProjection(total, rows.slice(0, count), omittedByKind)
-      if (body.length > budget) break
-      lastBody = body
+    const rowLengths = rows.map((row) => JSON.stringify(row).length)
+    const omittedCounts = new Map(fullOmittedCounts)
+    let lastListed = 0
+    let lastOmittedByKind: OmittedKind[] | undefined
+    let handlePrefixLength = 0
+    for (let listed = 0; listed <= rows.length; listed += 1) {
+      const omittedByKind = omittedByKindFromCounts(omittedCounts)
+      if (projectionLength(total, listed, handlePrefixLength, omittedByKind) > budget) break
+      lastListed = listed
+      lastOmittedByKind = omittedByKind
+      if (listed === rows.length) return { body: encodeProjection(total, rows), listed }
+      const next = handles[listed]
+      if (next) omittedCounts.set(next.kind, (omittedCounts.get(next.kind) ?? 0) - 1)
+      handlePrefixLength += rowLengths[listed] + (listed > 0 ? 1 : 0)
     }
-    if (lastBody !== undefined) {
-      const listed = JSON.parse(lastBody).listed as number
-      return { body: lastBody, listed }
+    if (detail === PROJECTION_LADDER[PROJECTION_LADDER.length - 1] && lastOmittedByKind !== undefined) {
+      return { body: encodeProjection(total, rows.slice(0, lastListed), lastOmittedByKind), listed: lastListed }
     }
   }
-  return { body: encodeProjection(total, [], AGENT_CONTEXT_KINDS.flatMap((kind) => {
-    const count = handles.filter((handle) => handle.kind === kind).length
-    return count > 0 ? [{ kind, count }] : []
-  })), listed: 0 }
+  return { body: encodeProjection(total, [], omittedByKindFromCounts(fullOmittedCounts)), listed: 0 }
 }
 
 /**

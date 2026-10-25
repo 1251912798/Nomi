@@ -30,13 +30,27 @@ function canvasSnapshot(count: number, title = (index: number) => `镜头${index
   }
 }
 
+function compactSnapshot(count: number, subtitleLength: number): AgentContextSnapshot {
+  return {
+    version: 1,
+    handles: Array.from({ length: count }, (_, index): AgentContextHandle => ({
+      id: `node-${index}`,
+      kind: 'canvasNode',
+      targetId: `target-${index}`,
+      revision: '1',
+      display: { title: `镜头${index}`, subtitle: 's'.repeat(subtitleLength) },
+      intentRole: 'subject',
+    })),
+  }
+}
+
 type Payload = {
   total: number
   listed: number
   omitted?: number
   omittedByKind?: Array<{ kind: string; count: number }>
   omittedNote?: string
-  handles: Array<{ targetId: string; display: { title: string } }>
+  handles: Array<{ targetId: string; display: { title: string; subtitle?: string } }>
 }
 
 function payloadOf(text: string): Payload {
@@ -87,6 +101,15 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count: count - payload.listed }])
   })
 
+  it('首档列不全但较省档能列全：列全并保留能列全的最丰富档细节', () => {
+    const snapshot = compactSnapshot(40, 160)
+    const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
+    expect(payload.listed).toBe(40)
+    expect(payload.omitted).toBeUndefined()
+    expect(payload.handles[0]?.display.subtitle).toBeUndefined()
+    expect(payload.handles[0]?.display.title).toBe('镜头0')
+  })
+
   it('不再把整份选区抄进每一条句柄：每个节点 id 在文本里至多出现两次（句柄 id + targetId）', () => {
     const snapshot = canvasSnapshot(12)
     const text = formatAgentContextSnapshot(snapshot)
@@ -101,11 +124,34 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.handles[4]?.display.title).toBe('镜头5')
   })
 
-  it('每个节点的标题都很长时，仍列前缀并明说省略数量', () => {
-    const snapshot = canvasSnapshot(30, (index) => `${index + 1}-${'镜'.repeat(400)}`)
+  it('每个节点的标题都很长时，连最省档也列不全，仍列前缀并明说省略数量', () => {
+    const snapshot = canvasSnapshot(150, (index) => `${index + 1}-${'镜'.repeat(400)}`)
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
     expect(payload.listed).toBeGreaterThan(0)
-    expect(payload.listed).toBeLessThan(30)
+    expect(payload.listed).toBeLessThan(150)
+  })
+
+  it('5000 个句柄仍在线性账本内：总数、列数和按类省略数相等', () => {
+    const snapshot: AgentContextSnapshot = {
+      version: 1,
+      handles: Array.from({ length: 5000 }, (_, index): AgentContextHandle => ({
+        id: `canvas-node:${index}`,
+        kind: index % 2 ? 'canvasNode' : 'image',
+        targetId: `target-${index}`,
+        revision: '1',
+        display: { title: `标题${index}`, subtitle: 'image' },
+        intentRole: 'subject',
+      })),
+    }
+    const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
+    expect(payload.total).toBe(5000)
+    expect(payload.listed + (payload.omitted ?? 0)).toBe(5000)
+    expect(payload.omittedByKind?.reduce((sum, item) => sum + item.count, 0)).toBe(payload.omitted)
+    const expectedByKind = ['image', 'canvasNode'].map((kind) => ({
+      kind,
+      count: snapshot.handles.slice(payload.listed).filter((handle) => handle.kind === kind).length,
+    })).filter(({ count }) => count > 0)
+    expect(payload.omittedByKind).toEqual(expectedByKind)
   })
 
   it('文稿、时间轴片段、画布节点、导演镜头混在一起：账同样平，文稿锚点仍在第一条', () => {
@@ -138,7 +184,7 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.listed).toBe(snapshot.handles.length)
   })
 
-  it('定位器是句柄意思的一部分：前缀中的导演镜头仍保留定位器里的镜头名', () => {
+  it('定位器是句柄意思的一部分：较省档列全时仍保留每个镜头名', () => {
     const shots = Array.from({ length: 20 }, (_, index): AgentContextHandle => ({
       id: `director-shot:dir-1/shot-${index}`, kind: 'canvasNode', targetId: 'dir-1', revision: 'dplan-abc',
       locator: { type: 'custom', key: 'director.shot', value: `shot-${index}` },
@@ -148,7 +194,7 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     const text = formatAgentContextSnapshot(snapshot)
     const payload = expectBalanced(snapshot, text)
     expect(payload.listed).toBeGreaterThan(0)
-    expect(payload.listed).toBeLessThan(20)
+    expect(payload.listed).toBe(20)
     for (let index = 0; index < payload.listed; index += 1) expect(text).toContain(`"key":"director.shot","value":"shot-${index}"`)
   })
 

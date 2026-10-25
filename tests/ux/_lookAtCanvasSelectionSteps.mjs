@@ -3,7 +3,7 @@
 // 跑**同一份**步骤：差别只在大脑——真付费是 App 里配好的真模型，演练是夹具里写好剧本的那个。两边各自直接调 openPaidWalk。
 //
 // 流程（真 Electron、真 IPC、真 Agent lane、真 look_at_canvas 排版）：
-//   开项目 → 画布 → 选对话模型 → 经画布 store 的真动作（addNode / selectNodes）布 44 个节点、选中其中 40 个 →
+//   开项目 → 画布 → 选对话模型 → 经画布 store 的真动作（addNode / selectNodes）布主场景并选中其中 40 个 →
 //   用产品自己的排版算一遍「选中标记能否一次列全」（不成立就拒跑，一个 token 不花）→
 //   每一轮：新对话 → 重设选区并核对 → 发那一句 → 等这一轮落地（任何要人点头的卡都不替用户答，按停止）→
 //   从盘上的 lane 转录读这一轮的工具调用序列与最终回答 → 判分。
@@ -17,7 +17,7 @@ import { require as tsxRequire } from 'tsx/cjs/api'
 import { DEFAULT_TIMEOUT_MS, expect } from './_assert.mjs'
 import { envKeyOf } from './_paidEnvKey.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { readLaneTranscripts } from './agent-lane-observer.mjs'
+import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import {
   APPROVAL_CARD, CANVAS_PANEL, COMPOSER, COMPOSER_INPUT, COMPOSER_STOP, EMPTY_STATE, ERROR_BAR,
   chooseAssistantModel, composerText, newConversation, openCanvas, sendCanvas,
@@ -34,6 +34,7 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
  * 产物里找不到它 = 跑的不是这次要验的修复，openPaidWalk 当场拒跑（一分钱不花）。单测核对它确实在源码里。
  */
 export const SELECTION_MARKER = '节点行里标了「选中」'
+export const SNAPSHOT_MARKER = 'ask the user to shrink the selection'
 export const SELECTION_EVIDENCE_DIR = path.join(REPO_ROOT, 'docs/evidence/2026-10-22-look-at-canvas-selection-truncation/paid')
 
 /** 量具数字的定义（写进证据，PR 正文照抄）。 */
@@ -59,6 +60,23 @@ function loadProjector() {
   const { projectCanvasRead } = tsxRequire('../../electron/shared/agentCapabilities/canvasRead.ts', import.meta.url)
   const { projectCanvasForAgent } = tsxRequire('../../electron/shared/agentCapabilities/canvasReadCompact.ts', import.meta.url)
   return { projectCanvasRead, projectCanvasForAgent }
+}
+
+function loadSnapshotProjector() {
+  const { projectAgentContextSnapshot } = tsxRequire('../../electron/shared/agentContextSnapshot.ts', import.meta.url)
+  const { buildResidentContextSnapshot } = tsxRequire('../../src/workbench/ai/resident/residentContextSnapshot.ts', import.meta.url)
+  return (canvasSnapshot) => projectAgentContextSnapshot(buildResidentContextSnapshot({
+    canvas: {
+      revision: 1,
+      nodes: (canvasSnapshot.nodes ?? []).map((node) => ({ id: node.id, title: node.title, kind: node.kind, subtitle: node.subtitle })),
+      selectedNodeIds: canvasSnapshot.selectedNodeIds ?? [],
+    },
+  }))
+}
+
+function loadContextSnapshotProjector() {
+  const { projectAgentContextSnapshot } = tsxRequire('../../electron/shared/agentContextSnapshot.ts', import.meta.url)
+  return projectAgentContextSnapshot
 }
 
 /** 宿主发给模型之前对消息做的那一步（laneHost 的 transform_context = omitSupersededReads + 内部工具声明），诊断用。 */
@@ -89,6 +107,34 @@ export async function seedSelectionScene(win, spec = selectionSceneSpec()) {
   expect(seeded.storeIds, '画布上恰好是布的这些节点，顺序同布的顺序').toEqual(seeded.ids)
   expect(seeded.storeSelected, '选区恰好是该选的那一批，顺序同画布').toEqual([...scene.selectedIds])
   return scene
+}
+
+/** 追加快照专用的大场景：主场景的 look_at_canvas 仍保持 44 个节点，快照档另有 150 个真节点。 */
+async function seedSnapshotScene(win, baseScene, count = 150) {
+  const spec = Array.from({ length: count }, (_, index) => Object.freeze({
+    key: `snapshot-${index + 1}`, id: `s${index.toString(36)}`,
+    kind: 'image', role: 'snapshot', title: `快照节点${index + 1}`, selected: true,
+  }))
+  const ids = await win.evaluate((nodes) => {
+    const store = () => window.__nomiCanvasStore.getState()
+    const current = store().readSnapshot()
+    const template = current.nodes[0]
+    if (!template) throw new Error('快照档没有可复制的画布节点模板')
+    const added = nodes.map((node, index) => ({
+      ...template,
+      id: node.id,
+      title: node.title,
+      position: { x: 80 + (index % 11) * 300, y: 1800 + Math.floor(index / 11) * 380 },
+      selected: false,
+    }))
+    store().restoreSnapshot({ ...current, nodes: [...current.nodes, ...added] })
+    return added.map((node) => node.id)
+  }, spec)
+  const added = sceneFromIds(spec.map((node) => ({ ...node, id: node.id })), ids)
+  return Object.freeze({
+    nodes: Object.freeze([...baseScene.nodes, ...added.nodes]),
+    selectedIds: Object.freeze([...added.selectedIds]),
+  })
 }
 
 /** 每一轮发话前：选区设回那 40 个，并核对画布没被改过（节点一个不多一个不少）。返回此刻选中数。 */
@@ -163,8 +209,25 @@ function callEvidence(call) {
   }
 }
 
+function projectionLedgerFromTranscript(transcript, sessions) {
+  const messages = sessions.flatMap((session) => laneMessages(session))
+    .filter((message) => message.role === 'user' || message.role === 'nomi.input')
+  const contextSnapshot = messages.find((message) => message.context?.contextSnapshot?.handles)?.context?.contextSnapshot
+  if (contextSnapshot) {
+    const projection = loadContextSnapshotProjector()(contextSnapshot)
+    return { total: projection.total, listed: projection.listed, omitted: projection.omitted, truncated: projection.truncated }
+  }
+  const raw = [String(transcript.userTexts?.join('\n') ?? ''), ...messages.map((message) => JSON.stringify({ content: message.content, context: message.context }))].join('\n')
+  const match = raw.replaceAll('\\"', '"').match(/"total":(\d+),"listed":(\d+)(?:,"omitted":(\d+))?/)
+  if (!match) return undefined
+  const total = Number(match[1])
+  const listed = Number(match[2])
+  const omitted = match[3] === undefined ? total - listed : Number(match[3])
+  return { total, listed, omitted, truncated: listed < total }
+}
+
 /** 一轮：新对话 → 重设选区 → 发话 → 等落地 → 读这一轮新出现的转录 → 判分。量具自己出的错记在 harnessError，不算模型的。 */
-export async function runSelectionRound({ win, projectRoot, scene, round, transform, ask = SELECTION_ASK, score = scoreSelectionRound }) {
+export async function runSelectionRound({ win, projectRoot, scene, round, transform, ask = SELECTION_ASK, score = scoreSelectionRound, beforeSend = async () => {} }) {
   const record = { round, startedAt: new Date().toISOString(), harnessError: null }
   const startedAt = Date.now()
   const before = new Set(readLaneTranscripts(projectRoot).map((session) => session.path))
@@ -175,6 +238,10 @@ export async function runSelectionRound({ win, projectRoot, scene, round, transf
     const noShare = win.getByRole('button', { name: '不分享', exact: true }).first()
     if (await noShare.isVisible().catch(() => false)) await noShare.click()
     record.selectedBeforeSend = await reapplySelection(win, scene)
+    const snapshot = await win.evaluate(() => JSON.parse(JSON.stringify(window.__nomiCanvasStore.getState().readSnapshot())))
+    const projection = loadSnapshotProjector()(snapshot)
+    record.projection = { total: projection.total, listed: projection.listed, omitted: projection.omitted, truncated: projection.truncated }
+    await beforeSend({ record, scene, projection: record.projection })
     record.sendAttempts = await sendAccepted(win, ask)
     record.settle = await settleRound({ win, roundSessions })
   } catch (error) {
@@ -188,14 +255,16 @@ export async function runSelectionRound({ win, projectRoot, scene, round, transf
   record.calls = transcript.calls.map(callEvidence)
   record.finalAnswer = transcript.finalAnswer
   if (transcript.assistantTexts.length > 1) record.assistantTexts = transcript.assistantTexts
-  record.score = score({ scene, transcript })
+  record.projection = projectionLedgerFromTranscript(transcript, sessions) ?? record.projection
+  record.score = score({ scene, transcript, projection: record.projection })
   record.view = answerTimeView({ scene, sessions, transform })
   return record
 }
 
-/** 快照专用档选 40 个节点：故意进入 6000 字投影预算的 omitted 档，验证模型如实报账。 */
-function snapshotOnlyScene(scene) {
-  const selectedIds = scene.nodes.filter((node) => node.selected).slice(0, 40).map((node) => node.id)
+/** 快照专用档由投影结果决定是否完整：40 个档核对全列，150 个档核对 truncated。 */
+function snapshotOnlyScene(scene, count) {
+  if (count > scene.nodes.length) throw new Error(`快照档要选 ${count} 个，但场景只有 ${scene.nodes.length} 个节点`)
+  const selectedIds = scene.nodes.slice(-count).map((node) => node.id)
   const selected = new Set(selectedIds)
   return Object.freeze({
     nodes: Object.freeze(scene.nodes.map((node) => Object.freeze({ ...node, selected: selected.has(node.id) }))),
@@ -254,18 +323,32 @@ export async function runSelectionJourney(journey, { walk, modelLabel, expectedM
   }
   if (includeSnapshotOnly) {
     const snapshotRecords = []
-    const snapshotScene = snapshotOnlyScene(scene)
-    for (let round = 1; round <= snapshotRounds; round += 1) {
-      const journeyRound = rounds + round
-      await beforeRound(journeyRound, scene)
-      const record = await runSelectionRound({
-        win, projectRoot, scene: snapshotScene, round: journeyRound, transform, ask: SNAPSHOT_ONLY_ASK, score: scoreSnapshotOnlyRound,
-      })
-      record.kind = 'snapshot-only'
-      record.selectionTotal = snapshotScene.selectedIds.length
-      snapshotRecords.push(record)
-      await walk.snap(`snapshot-only-r${round}-answer`).catch(() => {})
-      console.log(`[selection] 快照专用档 ${round}/${snapshotRounds} ${Math.round(record.ms / 1000)}s：无工具调用=${record.score.lookAtCanvasCalls === 0 && record.score.otherTools.length === 0} · 列出=${record.score.listed ?? '-'} · 省略=${record.score.omitted ?? '-'} · 成功=${record.score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
+    const snapshotBase = await seedSnapshotScene(win, scene)
+    const variants = [
+      { name: 'full-40', count: 40, truncated: false },
+      { name: 'truncated-150', count: 150, truncated: true },
+    ]
+    let variantRound = 0
+    for (const variant of variants) {
+      const snapshotScene = snapshotOnlyScene(snapshotBase, variant.count)
+      for (let round = 1; round <= snapshotRounds; round += 1) {
+        const journeyRound = rounds + (++variantRound)
+        await beforeRound(journeyRound, snapshotScene)
+        const record = await runSelectionRound({
+          win, projectRoot, scene: snapshotScene, round: journeyRound, transform, ask: SNAPSHOT_ONLY_ASK, score: scoreSnapshotOnlyRound,
+          beforeSend: async ({ projection }) => {
+            if (projection.truncated !== variant.truncated) {
+              throw new Error(`快照档 ${variant.name} 与投影事实不符：truncated=${projection.truncated}`)
+            }
+          },
+        })
+        record.kind = 'snapshot-only'
+        record.snapshotVariant = variant.name
+        record.selectionTotal = snapshotScene.selectedIds.length
+        snapshotRecords.push(record)
+        await walk.snap(`snapshot-only-${variant.name}-r${round}-answer`).catch(() => {})
+        console.log(`[selection] 快照专用档 ${variant.name} ${round}/${snapshotRounds} ${Math.round(record.ms / 1000)}s：无工具调用=${record.score.lookAtCanvasCalls === 0 && record.score.otherTools.length === 0} · 列出=${record.score.listed ?? '-'} · 省略=${record.score.omitted ?? '-'} · 成功=${record.score.success}${record.harnessError ? ` · 量具错=${record.harnessError}` : ''}`)
+      }
     }
     journey.snapshotOnly = snapshotRecords
   }

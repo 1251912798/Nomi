@@ -7,11 +7,10 @@ import { openPaidWalk } from './_paidRun.mjs'
 import { flattenRequestText } from './agent-runtime-fixture.mjs'
 import { createRuntimeWalk, toolNames } from './agent-runtime-walk-support.mjs'
 import { LOOK_AT_CANVAS, SELECTION_ASK } from './_lookAtCanvasSelectionScore.mjs'
-import { runSelectionJourney, selectionEvidence, writeSelectionEvidence } from './_lookAtCanvasSelectionSteps.mjs'
+import { runSelectionJourney, selectionEvidence, writeSelectionEvidence, SELECTION_MARKER, SNAPSHOT_MARKER } from './_lookAtCanvasSelectionSteps.mjs'
 
 const SCRIPT = 'look-at-canvas-selection-real.rehearsal.walk.mjs'
 const FAKE_KEY = 'rehearsal-fake-key-0123456789abcdef'
-const SELECTION_MARKER = '节点行里标了「选中」'
 const startedAt = new Date().toISOString()
 
 const lastUserText = (body) => flattenRequestText({ messages: (body.messages ?? []).filter((message) => message.role === 'user').slice(-1) })
@@ -46,7 +45,7 @@ function installMarkedRowBrain(fixture) {
 
 const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-rehearsal', [BRAIN], {
   env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', [ENV_KEY_VAR]: FAKE_KEY },
-  buildMarkers: [SELECTION_MARKER],
+  buildMarkers: [SELECTION_MARKER, SNAPSHOT_MARKER],
   createWalk: (name, options) => createRuntimeWalk(name, {
     ...options, generationProvider: 'apimart', seedApimartKey: false, env: { ...options.env, NOMI_WALK_ALLOW_ORIGINS: '' },
   }),
@@ -63,16 +62,20 @@ try {
   })
   expect(journey.gaugeProblems, '量具本身没出错').toEqual([])
   expect(journey.rounds, '本次只跑快照账演练').toEqual([])
-  expect(journey.snapshotOnly, '快照专用档跑 5 轮').toHaveLength(5)
+  expect(journey.snapshotOnly, '快照专用档两档各跑 5 轮').toHaveLength(10)
   for (const record of journey.snapshotOnly) {
     expect(record.harnessError, '快照专用档正常落地').toBeNull()
-    expect(record.score, '快照专用档只靠消息快照如实报账').toMatchObject({ lookAtCanvasCalls: 0, selectionTotal: 40, otherTools: [], listed: expect.any(Number), omitted: expect.any(Number), success: true })
+    expect(record.score, '快照专用档只靠消息快照如实报账').toMatchObject({ lookAtCanvasCalls: 0, selectionTotal: record.selectionTotal, otherTools: [], listed: record.projection.listed, omitted: record.projection.omitted, success: true })
     const ledger = brain.ledgers.find((item) => item.round === record.round)
     expect(ledger?.listed + ledger?.omitted).toBe(ledger?.total)
-    expect(record.finalAnswer).toBe(`列出了${ledger?.listed ?? -1}个节点，还有${ledger?.omitted ?? -1}个没列出。`)
+    expect(record.finalAnswer).toBe(`列出了${record.projection.listed}个节点，还有${record.projection.omitted}个没列出。`)
   }
-  expect(journey.numbers).toMatchObject({ rounds: 0, snapshotOnlySuccess: '5/5', harnessErrors: 0 })
-  expect(journey.canvasIntactAfter).toBe(44)
+  expect(journey.snapshotOnly.filter((record) => record.snapshotVariant === 'full-40')).toHaveLength(5)
+  expect(journey.snapshotOnly.filter((record) => record.snapshotVariant === 'truncated-150')).toHaveLength(5)
+  expect(journey.snapshotOnly.filter((record) => record.snapshotVariant === 'full-40').every((record) => record.projection.truncated === false)).toBe(true)
+  expect(journey.snapshotOnly.filter((record) => record.snapshotVariant === 'truncated-150').every((record) => record.projection.truncated === true)).toBe(true)
+  expect(journey.numbers).toMatchObject({ rounds: 0, snapshotOnlySuccess: '10/10', harnessErrors: 0 })
+  expect(journey.canvasIntactAfter).toBe(journey.scene.nodes + 150)
 } catch (error) {
   failure = error
   process.exitCode = 1

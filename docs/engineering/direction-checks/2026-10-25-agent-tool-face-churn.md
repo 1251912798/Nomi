@@ -57,3 +57,7 @@
 - `scripts/check-agent-tool-face-usecases.ts`：发布动词与 canonical 清单、至少一条用户句子逐项对账。
 - `scripts/check-model-schema.node-test.mjs`：完整常驻组合、逐工具账和超预算阳性夹具。
 - 当前 r4 先运行以上三道门岗，预算门岗仍红；coding read/write residency 需协调拍板后再改测试和生产装配。
+
+## r6
+
+协调审 r5 时发现快照细节梯子没有真正生效，且留下两处已删工具残留。改法是替换共享编码循环并同提交删除残留，没有新增分支或特例。方向仍是用户 10-25 拍板的「先不上翻页工具」。
