@@ -1,0 +1,42 @@
+{
+  "name": "转写结果的带时间戳句段形状",
+  "subject": "audio.transcript-shape",
+  "lifecycle": "execution",
+  "authority_kind": "schema",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/audioTaskRunner.ts",
+    "symbol": "runTranscribe"
+  },
+  "write_api": [
+    {
+      "path": "electron/audioTaskRunner.ts",
+      "symbol": "runTranscribe"
+    },
+    {
+      "path": "electron/catalog/transcriptSegments.ts",
+      "symbol": "withTimedSegments"
+    }
+  ],
+  "forbidden_derivations": [
+    {
+      "symbol": "rawWords",
+      "kind": "reference",
+      "why": "consumers must read the normalized segments contract"
+    },
+    {
+      "symbol": "rawTextWithoutTiming",
+      "kind": "reference",
+      "why": "text without timing cannot be placed onto shots or exported as timed cues"
+    }
+  ],
+  "parity_test": "electron/catalog/transcriptSegments.test.ts",
+  "allowed_consumers": [
+    "electron/video/deconstructVideo.ts",
+    "src/workbench/generationCanvas/nodes/render/AudioStripNode.tsx"
+  ],
+  "since": "2026-10-19",
+  "notes": "合同 docs/fixes/2026-10-19-deconstruct-transcribe-leg.root-cause.json：执行器选择并上传唯一音频来源，并在出口把逐词响应收成 segments；无时间戳时由消费者诚实报告。"
+}

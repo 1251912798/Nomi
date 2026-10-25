@@ -24,6 +24,7 @@ import { buildProfileHttpRequest, templateContext } from "./catalog/profileHttpR
 import { firstMappedString } from "./tasks/responseParsing";
 import type { HttpOperation, Mapping, Model, ProfileKind, Vendor } from "./catalog/types";
 import { executeSynchronousAudioOperation } from "./audio/synchronousAudioResponse";
+import { withTimedSegments } from "./catalog/transcriptSegments";
 import { requestBinary, requestMultipart, VendorRequestError } from "./vendor/vendorHttp";
 
 const TTS_PATH = "/v1/audio/speech";
@@ -176,7 +177,12 @@ async function runTranscribe(input: AudioTaskInput): Promise<TaskResult> {
     path: TRANSCRIBE_PATH,
     headers: { Authorization: "Bearer {{user_api_key}}" },
   };
-  const multipart = op.multipart ?? {
+  // 上传哪段音频只有一个答案：上面 `resolveAudioSource` 读出来的那条（它认 file / reference_audio_urls / camelCase 各种写法）。
+  // mapping 自己的 `fileSource` 模板只写了**一种**参数名——ElevenLabs Scribe 写的是 reference_audio_urls，
+  // 拆解传的是 file，于是同一段音频在一家能传上去、换一家就「缺少待上传媒体」（2026-10-19）。
+  // 字段（model_id / language_code…）仍完全由 mapping 声明；被覆盖的只有「传哪个文件」这一处。
+  const declared = op.multipart;
+  const multipart = declared ? { ...declared, fileSource: audioUrl, imageSource: undefined } : {
     fields: {
       model: firstString(params.model),
       language,
@@ -214,7 +220,9 @@ async function runTranscribe(input: AudioTaskInput): Promise<TaskResult> {
       }
     },
   });
-  const json = executed.response;
+  // 出口统一成带 segments 的同一形状：只回逐词时间戳的家（ElevenLabs Scribe）在这里收成句段，
+  // 读的人（拆解分镜头、音频节点导 SRT）只认 segments 一种（见 catalog/transcriptSegments.ts）。
+  const json = withTimedSegments(executed.response);
   const text = firstMappedString(json, (op.response_mapping || null) as JsonRecord | null, "text")
     || firstString(isJsonRecord(json) ? json.text : undefined);
   if (!text) throw new Error(desktopT("transcribe.noText"));
