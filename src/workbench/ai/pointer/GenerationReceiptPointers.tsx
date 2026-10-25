@@ -13,7 +13,8 @@ import { useGenerationCanvasStore } from '../../generationCanvas/store/generatio
 import { selectCanvasNodeById } from '../../generationCanvas/store/canvasNodeGenerationIndex'
 import type { GenerationCanvasState } from '../../generationCanvas/store/canvasStoreTypes'
 import { IconCheck } from '../v4/AgentPanelV4Icons'
-import { NodePointerGroup, type NodePointerSubject } from './NodePointer'
+import { NodePointerGroup } from './NodePointerGroup'
+import type { NodePointerSubject } from './nodePointerModel'
 import { receiptLine, receiptShotNodeIds, type ReceiptLine } from './generationReceiptFacts'
 
 const RECEIPT_COPY = {

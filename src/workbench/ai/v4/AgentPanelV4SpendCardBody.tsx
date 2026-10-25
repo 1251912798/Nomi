@@ -10,7 +10,9 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ThumbCornerX } from '../../assets/ThumbCornerX'
-import { NodePointer, NodePointerGroup, type NodePointerCellAccessory, type NodePointerSubject } from '../pointer/NodePointer'
+import { NodePointer } from '../pointer/NodePointer'
+import { NodePointerGroup, type NodePointerCellAccessory } from '../pointer/NodePointerGroup'
+import type { NodePointerSubject } from '../pointer/nodePointerModel'
 import { IconAlertTriangle } from './AgentPanelV4Icons'
 import type { SpendCardNotice, SpendCardPointer } from './agentPanelSpendCard'
 

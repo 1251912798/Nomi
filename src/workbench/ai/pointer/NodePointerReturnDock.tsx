@@ -10,7 +10,7 @@
 import React, { type JSX } from 'react'
 import { useAgentFormStore, type AgentFormSurface } from '../../../ui/app-shell/shell/agentFormStore'
 import { useCanvasBottomDockRects } from '../../generationCanvas/reactFlow/useCanvasBottomDockRects'
-import { NodePointerReturnToChat } from './NodePointer'
+import { NodePointerReturnToChat } from './NodePointerGroup'
 import { useNodePointerStore } from './nodePointerStore'
 import { RETURN_DOCK_EDGE_GAP, returnDockBottom } from './returnDockPlacement'
 

@@ -24,7 +24,9 @@ import { useGenerationCanvasStore } from '../../generationCanvas/store/generatio
 import { useNodeExternalHighlightStore } from '../../generationCanvas/store/nodeExternalHighlightStore'
 import { createReactTestRenderer } from '../v4/testReactRenderer'
 import { enNodePointer } from '../../../i18n/locales/nodePointer'
-import { NodePointer, NodePointerGroup, NodePointerReturnToChat, type NodePointerSubject } from './NodePointer'
+import { NodePointer } from './NodePointer'
+import { NodePointerGroup, NodePointerReturnToChat } from './NodePointerGroup'
+import type { NodePointerSubject } from './nodePointerModel'
 import { useNodePointerStore, type NodePointerReturn } from './nodePointerStore'
 
 const video = (id: string, patch: Partial<GenerationCanvasNode> = {}): GenerationCanvasNode => ({

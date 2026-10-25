@@ -8,7 +8,7 @@ import { NodePointerReturnDock } from './NodePointerReturnDock'
 import { RETURN_DOCK_CLEARANCE, RETURN_DOCK_EDGE_GAP, returnDockBottom } from './returnDockPlacement'
 
 // 按钮本身（字、读屏名、Esc）在 NodePointer.test.tsx 里钉；这里只看「它在真画布上什么时候在、摆在哪」。
-vi.mock('./NodePointer', async () => {
+vi.mock('./NodePointerGroup', async () => {
   const ReactModule = await import('react')
   return { NodePointerReturnToChat: () => ReactModule.createElement('button', { 'data-node-pointer-return': 'true' }) }
 })

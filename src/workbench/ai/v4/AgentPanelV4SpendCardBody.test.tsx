@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('../pointer/NodePointer', () => ({
   NodePointer: () => null,
+}))
+vi.mock('../pointer/NodePointerGroup', () => ({
   NodePointerGroup: ({ cellAccessory }: { cellAccessory?: (subject: unknown, index: number) => { action?: React.ReactNode } | null }) => {
     const accessory = cellAccessory?.({}, 0)
     return accessory?.action ?? null

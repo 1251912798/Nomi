@@ -576,6 +576,3 @@ function RowTrailing({ face, located }: { face: NodePointerFace; located: boolea
     </span>
   ) : null
 }
-
-export { NodePointerGroup, NodePointerReturnToChat } from './NodePointerGroup'
-export type { NodePointerCellAccessory } from './NodePointerGroup'
