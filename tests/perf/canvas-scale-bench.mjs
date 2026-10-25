@@ -315,7 +315,7 @@ const OFF_CANVAS_SCENARIOS = new Set(['document-typing', 'creation-ai-rewrite-re
  */
 const WORKING_ZOOM_SCENARIOS = new Set(['select-composer'])
 /** 工作台场景带进样本的数（主数 responseMs / mainRoundTripMaxMs，其余只看）。 */
-const WORKBENCH_SAMPLE_KEYS = ['responseMs', 'firstFeedbackMs', 'coldResponseMs', 'storeWrites', 'mainRoundTripMaxMs', 'mainRoundTripP95Ms', 'keyMaxMs', 'toCreation', 'toPreview', 'toGeneration', 'toList', 'toCanvas', 'generating', 'streamedCharsDuringPan', 'keys', 'paragraphs', 'created', 'playheadTravelPx', 'panMovedPx', 'openMs', 'drawMs', 'selectedChars', 'mediaRequests', 'remoteMediaRequests', 'mountedMedia', 'mountedCards', 'visibleCards', 'matchedCards', 'scrolledPx']
+const WORKBENCH_SAMPLE_KEYS = ['responseMs', 'firstFeedbackMs', 'coldResponseMs', 'storeWrites', 'mainRoundTripMaxMs', 'mainRoundTripP95Ms', 'keyMaxMs', 'toCreation', 'toPreview', 'toGeneration', 'toList', 'toCanvas', 'generating', 'streamedCharsDuringPan', 'keys', 'paragraphs', 'created', 'playheadTravelPx', 'panMovedPx', 'openMs', 'drawMs', 'selectedChars', 'mediaRequests', 'remoteMediaRequests', 'mountedMedia', 'mountedCards', 'visibleCards', 'matchedCards', 'scrolledPx', 'hoverResponseMs', 'clickResponseMs', 'focusSettledMs']
 
 async function zoomToWorkingScale(page) {
   const stage = await stageBox(page)
@@ -804,6 +804,8 @@ async function main() {
           viewportSize: machine.viewport,
           settleMs: 1200,
           ...(extra.settingsDir ? { settingsDir: extra.settingsDir } : {}),
+          // 夹具要按这一份 userData 加密供应商钥匙（safeStorage）时，App 必须用同一份（付费卡那两条）。
+          ...(extra.userDataDir ? { userDataDir: extra.userDataDir } : {}),
           args: ['--no-proxy-server', ...(onscreen ? [] : OFFSCREEN_CHROMIUM_ARGS)],
           mainRequire: [...(extra.mainRequire ?? []), ...(onscreen ? [] : [OFFSCREEN_MODULE]), ...(diagOut ? [IPC_PROBE_MODULE] : [])],
           initialLocalStorage: { ...FIRST_RUN_SEEN, ...(extra.initialLocalStorage ?? {}) },
@@ -854,7 +856,7 @@ async function main() {
           if (counted) meta = { selected: scenarioResult.selected ?? null, path: scenarioResult.path, viewport: scenarioResult.viewport ?? null }
           if (counted && outcome.top) profileTop = outcome.top
           console.log(
-            `  [${scenario}] run${runIndex}${counted ? "" : "（预热，不计）"} sel=${scenarioResult.selected ?? '-'} zoom=${scenarioResult.viewport?.zoom ?? '-'} mounted=${scenarioResult.viewport?.mountedNodes ?? '-'} fps=${summary.fps} p50=${summary.frameP50Ms} p95=${summary.frameP95Ms} max=${summary.frameMaxMs} load=${summary.loadAvg1} script/style/layout=${cdpDelta?.scriptMs}/${cdpDelta?.styleMs}/${cdpDelta?.layoutMs}ms layouts=${cdpDelta?.layoutCount} 触碰/刷=${summary.medianTouchedPerFlush}/${summary.maxTouchedPerFlush} 长任务=${summary.longTasks}/${summary.longTaskMaxMs}ms${summary.responseMs !== undefined ? ` 响应=${summary.responseMs}ms` : ''}${summary.mainRoundTripMaxMs !== undefined ? ` 主进程往返峰值=${summary.mainRoundTripMaxMs}ms` : ''}`,
+            `  [${scenario}] run${runIndex}${counted ? "" : "（预热，不计）"} sel=${scenarioResult.selected ?? '-'} zoom=${scenarioResult.viewport?.zoom ?? '-'} mounted=${scenarioResult.viewport?.mountedNodes ?? '-'} fps=${summary.fps} p50=${summary.frameP50Ms} p95=${summary.frameP95Ms} max=${summary.frameMaxMs} load=${summary.loadAvg1} script/style/layout=${cdpDelta?.scriptMs}/${cdpDelta?.styleMs}/${cdpDelta?.layoutMs}ms layouts=${cdpDelta?.layoutCount} 触碰/刷=${summary.medianTouchedPerFlush}/${summary.maxTouchedPerFlush} 长任务=${summary.longTasks}/${summary.longTaskMaxMs}ms${summary.responseMs !== undefined ? ` 响应=${summary.responseMs}ms` : ''}${summary.hoverResponseMs !== undefined ? `（悬停=${summary.hoverResponseMs}ms 点=${summary.clickResponseMs}ms 滑完=${summary.focusSettledMs ?? '-'}ms）` : ''}${summary.mainRoundTripMaxMs !== undefined ? ` 主进程往返峰值=${summary.mainRoundTripMaxMs}ms` : ''}`,
           )
           // 组框场景建了组：撤销掉，下一次采样回到同一起点。
           if (scenario === 'drag-group-frame-60') {

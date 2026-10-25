@@ -139,6 +139,16 @@ export type GestureAttestationV1 =
   | PolicyDecisionAttestationV1;
 
 /**
+ * 主进程这一次受信调用本身就是「决定」的那一刻（`issueDecisionReceipt`）：
+ *   · `gesture` —— 发起这一下的那个窗口里真人点了（画布 ↑、卡上点了「生成」之后的派发）；
+ *   · `policy`  —— 「直接生成」档的策略替用户决了这一镜（只在出价记着策略交接时才走得到，见 `appIntegrationCanvasShot`）。
+ * 两种铸出来的收据只差 `decidedBy` / `humanActor`：账本上一眼看得出这一笔是谁批的。
+ */
+export type MainProcessDecision =
+  | Readonly<{ kind: "gesture"; webContentsId: number; frameId: number; origin: string }>
+  | Readonly<{ kind: "policy"; policyMode: "project"; policySurface: string }>;
+
+/**
  * 这张收据是**谁**决定的。三个值与 `gestureAttestation.kind` 一一对应，在铸造时派生
  * （不是第二个真相源），写进被 MAC 覆盖的载荷里，好让账本只读一个字段就说得清。
  */
@@ -549,7 +559,11 @@ export function createApprovalReceiptAuthority(deps: ApprovalReceiptAuthorityDep
     policyMode: "project";
     policySurface: string;
   }): PolicyDecisionAttestationV1 {
-    const challenge = verifyChallenge(token);
+    return policyAttestation(verifyChallenge(token), input, now());
+  }
+
+  /** 策略那一份签证的唯一造法（经挑战令牌来的、和主进程一次写完的那条共用）。 */
+  function policyAttestation(challenge: HumanApprovalChallengeV1, input: { policyMode: "project"; policySurface: string }, issuedAt: string): PolicyDecisionAttestationV1 {
     if (input.policyMode !== "project") {
       throw new ReceiptScopeError("Only the full-auto approval mode may decide a paid gate without a human gesture");
     }
@@ -564,7 +578,7 @@ export function createApprovalReceiptAuthority(deps: ApprovalReceiptAuthorityDep
       policyMode: "project",
       policySurface,
       gestureNonce: challenge.nonce,
-      issuedAt: now(),
+      issuedAt,
       expiresAt: challenge.expiresAt,
     };
     return { ...withoutMac, mac: sign(withoutMac, deps.macKey) };
@@ -677,13 +691,14 @@ export function createApprovalReceiptAuthority(deps: ApprovalReceiptAuthorityDep
   }
 
   /**
-   * 主进程这一次受信调用本身就是手势（画布 ↑、批量卡确认之后的派发）：挑战 → 手势签证 → 收据 → 用掉，**一次读、一次写**。
+   * 主进程这一次受信调用本身就是决定（画布 ↑、卡上点了「生成」之后的派发是窗口里那一下手势；「直接生成」档交给画布的那一镜
+   * 是策略）：挑战 → 签证 → 收据 → 用掉，**一次读、一次写**。
    *
    * 以前同一件事要走五次整份读写（挑战、签证里验挑战、铸收据、验收据、用掉；画布每点一次约 85 ms，发动机收敛第一刀
    * 第 1–2 步实测）。令牌从头到尾没离开主进程，所以没有「拿着令牌去重放」这一面要防；落盘只为两件事：同一份授权（同一个
-   * challengeKey）重来一次时拿回同一张收据（幂等），以及事后查得到这一笔是哪个窗口批的。收据当场记成已用掉。
+   * challengeKey）重来一次时拿回同一张收据（幂等），以及事后查得到这一笔是哪个窗口（或哪条策略）批的。收据当场记成已用掉。
    */
-  function issueGestureReceipt(input: HumanApprovalChallengeInput, gesture: { webContentsId: number; frameId: number; origin: string }): HumanApprovalReceiptV1 {
+  function issueDecisionReceipt(input: HumanApprovalChallengeInput, decision: MainProcessDecision): HumanApprovalReceiptV1 {
     return mutate<HumanApprovalReceiptV1>((state) => {
       const issuedAt = now();
       const existing = Object.values(state.challenges).find((record) => record.input.challengeKey === input.challengeKey);
@@ -695,21 +710,27 @@ export function createApprovalReceiptAuthority(deps: ApprovalReceiptAuthorityDep
         if (record) return { result: { ...record.receipt }, changed: false };
       }
       const { challenge, token } = newChallenge(input, issuedAt);
-      const withoutMac: Omit<MainProcessGestureAttestationV1, "mac"> = {
-        kind: "main_process_gesture",
-        issuer: "nomi-main",
-        keyId,
-        challengeId: challenge.challengeId,
-        decision: "accept",
-        webContentsId: gesture.webContentsId,
-        frameId: gesture.frameId,
-        origin: gesture.origin,
-        gestureNonce: challenge.nonce,
-        issuedAt,
-        expiresAt: challenge.expiresAt,
-      };
-      const attestation: MainProcessGestureAttestationV1 = { ...withoutMac, mac: sign(withoutMac, deps.macKey) };
-      if (!Number.isInteger(attestation.webContentsId) || !Number.isInteger(attestation.frameId) || !attestation.origin) throw new HumanApprovalRequiredError();
+      let attestation: GestureAttestationV1;
+      if (decision.kind === "policy") {
+        attestation = policyAttestation(challenge, decision, issuedAt);
+      } else {
+        const withoutMac: Omit<MainProcessGestureAttestationV1, "mac"> = {
+          kind: "main_process_gesture",
+          issuer: "nomi-main",
+          keyId,
+          challengeId: challenge.challengeId,
+          decision: "accept",
+          webContentsId: decision.webContentsId,
+          frameId: decision.frameId,
+          origin: decision.origin,
+          gestureNonce: challenge.nonce,
+          issuedAt,
+          expiresAt: challenge.expiresAt,
+        };
+        const gesture: MainProcessGestureAttestationV1 = { ...withoutMac, mac: sign(withoutMac, deps.macKey) };
+        if (!Number.isInteger(gesture.webContentsId) || !Number.isInteger(gesture.frameId) || !gesture.origin) throw new HumanApprovalRequiredError();
+        attestation = gesture;
+      }
       const receipt = newReceipt(challenge, attestation, issuedAt);
       const receiptToken = encode(receipt);
       state.challenges[challenge.challengeId] = { input: { ...input }, token, challenge, status: "accepted", receiptToken };
@@ -757,7 +778,7 @@ export function createApprovalReceiptAuthority(deps: ApprovalReceiptAuthorityDep
     createClientElicitationAttestation,
     createPolicyDecisionAttestation,
     mintReceipt,
-    issueGestureReceipt,
+    issueDecisionReceipt,
     verifyReceipt,
     resolveReceiptToken,
     consumeReceipt,

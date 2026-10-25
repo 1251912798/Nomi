@@ -18,7 +18,9 @@ import { useProductionCanvasLandingStore } from '../../../workbench/production/p
 import BaseGenerationNode from '../../../workbench/generationCanvas/nodes/BaseGenerationNode'
 import { resolveNodeVisualSize } from '../../../workbench/generationCanvas/nodes/nodeSizing'
 import { externalHighlightShellClass, type ExternalNodeHighlight } from '../../../workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter'
-import { NodePointer, NodePointerGroup, NodePointerReturnToChat, type NodePointerSubject } from '../../../workbench/ai/pointer/NodePointer'
+import { NodePointer } from '../../../workbench/ai/pointer/NodePointer'
+import { NodePointerGroup, NodePointerReturnToChat } from '../../../workbench/ai/pointer/NodePointerGroup'
+import type { NodePointerSubject } from '../../../workbench/ai/pointer/nodePointerModel'
 import { useNodePointerStore } from '../../../workbench/ai/pointer/nodePointerStore'
 import { AgentBallFace } from '../../../ui/app-shell/shell/AgentBallFace'
 import { LabCanvasNodeHost, LabCanvasViewport } from '../labCanvasViewport'
@@ -36,8 +38,8 @@ const L = (locale: Locale, zh: string, en: string): string => (locale === 'en' ?
 
 const RUN_ID = 'lab-node-pointer-run'
 const STOPPED_RUN_ID = 'lab-node-pointer-stopped'
-const DESIGN_ID = 'lab-node-pointer-design'
-const DOCUMENT_ID = 'lab-node-pointer-doc'
+export const DESIGN_ID = 'lab-node-pointer-design'
+export const DOCUMENT_ID = 'lab-node-pointer-doc'
 
 const VIDEO_META = (ratio: string, duration: number, extra: Record<string, unknown> = {}) => ({
   modelKey: 'seedance-2', modelVendor: 'apimart', aspect_ratio: ratio, duration, resolution: '480p', ...extra,
@@ -49,8 +51,8 @@ function node(partial: Partial<GenerationCanvasNode> & Pick<GenerationCanvasNode
   return { kind: 'video', title: '', prompt: '', position: { x: 0, y: 0 }, status: 'idle', categoryId: 'shots', ...partial } as GenerationCanvasNode
 }
 
-/** 分镜方案：节点的「镜 NN」从这里派生（和画布、列表同一个口）。 */
-function design(locale: Locale): StoryboardDesign {
+/** 分镜方案：节点的「镜 NN」从这里派生（和画布、列表同一个口）。付费卡那一屏也用它。 */
+export function design(locale: Locale): StoryboardDesign {
   const shots = Array.from({ length: 12 }, (_, index) => ({ shotId: `s${index + 1}`, index: index + 1, shotKind: 'video' as const, durationSec: 4, anchorIds: [], prompt: '' }))
   return { id: DESIGN_ID, documentId: DOCUMENT_ID, title: L(locale, '纸船', 'Paper boat'), committed: true, status: 'draft', createdAt: 1, updatedAt: 1, sourceDocumentUpdatedAt: 1, plan: { title: '', anchors: [], shots } }
 }
@@ -71,6 +73,7 @@ function labNodes(locale: Locale): GenerationCanvasNode[] {
     node({ id: 'np-draft-1', title: L(locale, '纸船出发', 'Paper boat departs'), meta: { ...VIDEO_META('16:9', 4), ...shot('s1') } }),
     node({ id: 'np-draft-2', title: L(locale, '越过落叶', 'Past the leaves'), meta: { ...VIDEO_META('16:9', 5), ...shot('s2') } }),
     node({ id: 'np-draft-3', title: L(locale, '漂向远处', 'Drifting away'), meta: { ...VIDEO_META('16:9', 4), ...shot('s3') } }),
+    node({ id: 'np-control', kind: 'image', title: L(locale, '参考 · 水洼', 'Reference · Puddle'), status: 'success', result: { id: 'art-control', type: 'image', url: shotArt(6, '16:9', '#8da6a8|#d8c7a4'), createdAt: 1 } }),
     // 窄窗口第 ① 步用的同一批镜头（还没点过：「已定位」是全局的一项，① 不能跟着 ③ 一起标）。
     node({ id: 'np-narrow-1', title: L(locale, '纸船出发', 'Paper boat departs'), meta: { ...VIDEO_META('16:9', 4), ...shot('s1') } }),
     node({ id: 'np-narrow-2', title: L(locale, '越过落叶', 'Past the leaves'), meta: { ...VIDEO_META('16:9', 5), ...shot('s2') } }),
@@ -113,7 +116,7 @@ function seedRuns(): void {
  * 只读目录桥：沿用实验室共用的那一份（seedance-2 / gpt-image-2），再给每一行补上主进程投影会给的「能用」。
  * 共用夹具的行没带 `availability`，目录读法按 fail-closed 一律当不可用，摘要里的模型名就永远读不出来。
  */
-function installPointerCatalog(): void {
+export function installPointerCatalog(): void {
   installCatalogBridge()
   const catalog = (window as unknown as { nomiDesktop: { modelCatalog: { listModels: (params?: { kind?: string }) => Array<Record<string, unknown>> } } }).nomiDesktop.modelCatalog
   const listModels = catalog.listModels
@@ -160,7 +163,7 @@ export function NodePointerStage({ locale = 'zh-CN', scene = {}, children }: { l
  * 截图前等两件异步的事落定：模型目录（摘要里的模型名）、画布节点的结果图 / 视频（延迟加载队列）。
  * 走就绪旗的持有登记，不靠墙钟等待；最多等约 10 秒（600 帧），等不到就照实截。
  */
-function useLabSettled(seeded: boolean): void {
+export function useLabSettled(seeded: boolean): void {
   React.useEffect(() => {
     if (!seeded) return undefined
     const release = holdDesignLabReady('node-pointer:settled')
@@ -182,7 +185,7 @@ function useLabSettled(seeded: boolean): void {
 }
 
 /** 替鼠标在某个指向元素上派一次 pointerover（React 的 onPointerEnter 就是从它来的）。 */
-function LabHover({ target }: { target: string }): null {
+export function LabHover({ target }: { target: string }): null {
   React.useEffect(() => {
     const release = holdDesignLabReady(`node-pointer:hover:${target}`)
     const frame = window.requestAnimationFrame(() => {

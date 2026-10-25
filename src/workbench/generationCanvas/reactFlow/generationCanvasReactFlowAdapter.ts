@@ -123,11 +123,13 @@ type FlowNodeVisualState = {
   focusFlashNodeId?: string | null
   /** 聊天里正被悬停的指向元素指着的节点（`nodeExternalHighlightStore`）。 */
   pointerHoverNodeId?: string | null
+  /** 聊天那边让一起闪一下的几个节点（付费卡「完成时各亮一下」，`nodeExternalHighlightStore.flashNodeIds`）。 */
+  pointerFlashNodeIds?: readonly string[]
 }
 
-/** 闪一下压过悬停：刚定位过去的那一下最要紧。 */
+/** 闪一下压过悬停：刚定位过去 / 刚开始生成的那一下最要紧。 */
 export function externalHighlightOf(nodeId: string, visualState: FlowNodeVisualState): ExternalNodeHighlight | null {
-  if (visualState.focusFlashNodeId === nodeId) return 'flash'
+  if (visualState.focusFlashNodeId === nodeId || visualState.pointerFlashNodeIds?.includes(nodeId)) return 'flash'
   if (visualState.pointerHoverNodeId === nodeId) return 'hover'
   return null
 }
@@ -304,6 +306,7 @@ export type FlowNodeProjection = {
   readonly appearingNodeIds: ReadonlySet<string> | undefined
   readonly focusFlashNodeId: string | null | undefined
   readonly pointerHoverNodeId: string | null | undefined
+  readonly pointerFlashNodeIds?: readonly string[]
   readonly output: GenerationFlowNode[]
   /** id → 在 output 里的下标（结构不变时选区增量只靠它定位）。 */
   readonly indexById: ReadonlyMap<string, number>
@@ -319,12 +322,14 @@ export function projectGenerationFlowNodes(previous: FlowNodeProjection | null, 
     && previous.appearingNodeIds === input.appearingNodeIds
   ) {
     const highlightChanged = previous.focusFlashNodeId !== input.focusFlashNodeId || previous.pointerHoverNodeId !== input.pointerHoverNodeId
+      || previous.pointerFlashNodeIds !== input.pointerFlashNodeIds
     if (previous.selected === input.selected && !highlightChanged) return previous
     let output = previous.output
     // 只有前后两次选区里的卡、以及前后被点名（闪 / 悬停）的那几张会变；其余交回同一个对象。
     const touched = new Set([...previous.selected, ...input.selected])
     if (highlightChanged) {
       for (const id of [previous.focusFlashNodeId, input.focusFlashNodeId, previous.pointerHoverNodeId, input.pointerHoverNodeId]) if (id) touched.add(id)
+      for (const id of [...(previous.pointerFlashNodeIds ?? []), ...(input.pointerFlashNodeIds ?? [])]) touched.add(id)
     }
     for (const id of touched) {
       const index = previous.indexById.get(id)

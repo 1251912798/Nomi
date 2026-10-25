@@ -20,11 +20,9 @@ export const WHOLE_TABLE_SUBSCRIPTION_BASELINE = Object.freeze({
   // 设计实验室：样张页，不上生产画布。
   'src/devlab/designLab/canvasHandles/canvasHandlesLabKit.tsx': 1,
   'src/devlab/designLab/nodeQuickActions/nodeQuickActionsLabKit.tsx': 1,
-  'src/devlab/designLab/v4/states/07-spend-params.tsx': 1,
   'src/devlab/designLab/versionCards/versionCardsFlowLabKit.tsx': 1,
   'src/devlab/designLab/versionCards/versionCardsLabKit.tsx': 1,
   // 生产路径存量（交协调排期逐个收窄，见本线报告「整表订阅普查」）。
-  'src/workbench/ai/v4/useAgentPanelSpendConfirm.ts': 2,
   'src/workbench/ai/v4/useDirectorPatchNotices.ts': 1,
   'src/workbench/creation/DocumentListSidebar.tsx': 1,
   'src/workbench/creation/storyboard/StoryboardPlanEditor.tsx': 1,

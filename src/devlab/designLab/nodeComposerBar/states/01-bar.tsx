@@ -1,18 +1,15 @@
-// 「画布 · 节点生成浮框底栏」六格：视频、图片、明暗各一，
-// 外加一格「chips 模式（付费卡用）」。
-// 前五格渲染的都是**现役** BaseGenerationNode + NodeGenerationComposer 本体（coverage: 'shell'）——
+// 「画布 · 节点生成浮框底栏」：视频、图片、明暗各一，外加点开之后那一层（面板 / 单参数直出）。
+// 前几格渲染的都是**现役** BaseGenerationNode + NodeGenerationComposer 本体（coverage: 'shell'）——
 // 2026-09-11 拍板的 v1.1 已接线，参数区是摘要 pill：同日 02:10 的逐参数 chip 于 04:30 被用户收回，
-// **画布节点保持原样**，chip 只给付费确认卡。改了真身，这一屏跟着变，不需要在这里画第二遍。
-// 第六格是那第二种摆法的陈列（同一个组件 + 一个属性）；它的生产宿主是付费确认卡
-// （`NodeGenerationComposer host="panel"`，#736 合入后进来的），整件的样子在 v4 屏那几格。
+// **画布节点保持原样**。改了真身，这一屏跟着变，不需要在这里画第二遍。
+// 原来的第六格「chips 模式（付费卡用）」随 D2 旧付费卡一起删了（付费卡上不再挂参数控件）。
 //
 // 格 id 保持样张阶段的名字不变：截图文件名是拍板对账的锚点，改名等于把前几版的对账线索弄丢。
 import React from 'react'
-import { ChipsModeStage, ComposerBarStage, ParamPanelStage } from '../nodeComposerBarLabKit'
+import { ComposerBarStage, ParamPanelStage } from '../nodeComposerBarLabKit'
 import type { LabState } from '../../labScreen'
 
 const SOURCE = 'docs/design/2026-09-10-node-composer-bar-v1.md §v1.1（摘要 pill + 统一面板）'
-const CHIPS_SOURCE = 'docs/design/2026-09-10-node-composer-bar-v1.md §B（逐参数下拉 · 只给付费确认卡）'
 const FLAT_SOURCE = 'docs/design/2026-09-10-node-composer-bar-v1.md §v1.2（面板里选项摊开 · 单参数直出）'
 const MIRRORS = [
   'src/workbench/generationCanvas/nodes/InlineParameterBar.tsx:166',
@@ -66,18 +63,6 @@ export const COMPOSER_BAR_STATES: readonly LabState[] = [
     coverage: 'shell',
     scheme: 'dark',
     render: () => <ComposerBarStage kind="image" />,
-  },
-  {
-    id: 'composer-bar-chips-mode',
-    name: 'chips 模式（付费卡用）· 同一组件的 parameterLayout 属性',
-    source: CHIPS_SOURCE,
-    // 这个摆法的生产宿主已经进来了（#736 的付费确认卡 = `NodeGenerationComposer host="panel"`，
-    // 它显式传 `parameterLayout='chips'`）。所以这一格不再是「组件有、生产没接」的零采纳件，
-    // 指路牌指向那个真实调用点；它整件的样子在 v4 屏的 `v4-spend-params-*` 几格。
-    mirrors: 'src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx:479',
-    coverage: 'shell',
-    scheme: 'light',
-    render: () => <ChipsModeStage />,
   },
   // ── v1.2：点开之后那一层（2026-09-11 13:00 用户真机拍板「点好几次」）──────────────
   // 浮层 portal 到 body、不在舞台子树里，所以这两格必须截整屏（capture: 'viewport'）。

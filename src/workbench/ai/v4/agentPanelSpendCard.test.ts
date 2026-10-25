@@ -1,297 +1,382 @@
 import { describe, expect, it } from 'vitest'
 
-import { projectSpendCard, spendBatchStoppedKey } from './agentPanelSpendCard'
-import { candidatePatchFromNode } from './spendCardDraft'
-import type { PendingSpendConfirm } from '../../../desktop/productionRunBridgeTypes'
-import type { GenerationCanvasNode } from '../../generationCanvas/model/generationCanvasTypes'
+import { projectSpendCard, spendCardStoppedMessage, spendCardSummary, type SpendCardShotFacts, type SpendCardView } from './agentPanelSpendCard'
+import type { PendingSpendConfirm, PendingSpendShot } from '../../../desktop/productionRunBridgeTypes'
+import i18n from '../../../i18n'
+import { enAgentPanelV4, zhAgentPanelV4 } from '../../../i18n/locales/agentPanelV4'
 
-// 卡上每一个数都要能追到产地。这一组钉的是「印错了会怎样」而不是「长什么样」：
-// 印 ¥0 会被读成免费、标题印金额会和价格行漂。2026-09-30 付费卡逐镜：主按钮只生成这一页这一镜、
-// 次动作只去掉这一镜；「仍要生成」「价格未知 · 以供应商账单为准」和「逐镜 / 全部」切换都删了（今天不真的钱话不说）。
+// 付费卡（D2 第③步，SpendCardQ1 板）每一句话都要能追到产地：几段、哪一镜没发出去、为什么、下一步、印不印钱。
+// 这一组钉的是「说错了会怎样」——把去掉的也算进 N、结果未知说成没花钱、算不出价印 0、失败时给一条不存在的出路。
 
 const t = (key: string, options?: Record<string, unknown>): string =>
   options ? `${key}(${Object.entries(options).map(([k, v]) => `${k}=${String(v)}`).join(',')})` : key
 
-/** 一镜。`kind` 是宿主给的那一格（`generationShotKind`）——卡只读它，不再自己去解读 `mode`。 */
-function shot(index: number, amount: number | null, modelId = 'kling', kind: 'image' | 'video' = 'image') {
+const DRAFTED = { providerId: 'apimart', modelId: 'seedance-2-fast' } as const
+
+function shot(index: number, overrides: Partial<PendingSpendShot> = {}): PendingSpendShot {
+  return { shotId: `s${index}`, nodeId: `n${index}`, index, kind: 'video', draftedModel: DRAFTED, offer: 'undecided', ...overrides }
+}
+
+function facts(index: number, overrides: Partial<SpendCardShotFacts> = {}): SpendCardShotFacts {
   return {
-    shotId: `s${index}`,
-    nodeId: `node-${index}`,
-    index,
-    prompt: `镜头 ${index}`,
-    providerId: 'kie',
-    modelId,
-    kind,
-    mode: kind === 'video' ? 'text_to_video' : 'text_to_image',
-    parameters: { duration: '3' },
-    price: amount === null ? { known: false as const } : { known: true as const, amount },
+    present: true,
+    shotRef: `镜 0${index}`,
+    model: 'Seedance 2.0 Fast',
+    aspect: '16:9',
+    durationSec: 4,
+    resolution: '480p',
+    selected: DRAFTED,
+    price: { known: true, amount: 0.7 },
+    ...overrides,
   }
 }
 
-function pending(shots: ReturnType<typeof shot>[]): PendingSpendConfirm {
-  const known = shots.filter((entry) => entry.price.known)
-  return {
-    projectId: 'p1', runId: 'op-1', operationId: 'op-1', planVersion: 1, quoteId: 'fixture-quote', candidateRevision: 2,
-    currency: 'CNY', shots,
-    knownSubtotal: known.reduce((sum, entry) => sum + (entry.price.known ? entry.price.amount : 0), 0),
-    unknownShotCount: shots.length - known.length,
-  }
+function pending(shots: readonly PendingSpendShot[], overrides: Partial<PendingSpendConfirm> = {}): PendingSpendConfirm {
+  return { projectId: 'p1', runId: 'r1', operationId: 'op-1', planVersion: 1, quoteId: 'q1', currency: 'CNY', shots, ...overrides }
 }
 
-describe('付费卡投影', () => {
-  it('单镜：没有翻页器；主按钮「生成这张」（报得出价时带上这一下花多少），次动作「去掉这张」', () => {
-    const data = projectSpendCard(pending([shot(1, 0.3)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.kind).toBe('spend')
-    expect(data.pager).toBeUndefined()
-    expect(data.confirmLabel).toBe('agentPanelV4.spendConfirmThisImagePriced(amount=¥0.30)')
-    expect(data.alternateLabel).toBe('agentPanelV4.spendRemoveThisImage')
-    expect(data.price?.total).toContain('¥0.30')
+const IDLE: SpendCardView = { busy: false, stopping: false, hostingDisclosure: false }
+
+function project(shots: readonly PendingSpendShot[], shotFacts: readonly SpendCardShotFacts[], view: Partial<SpendCardView> = {}, overrides: Partial<PendingSpendConfirm> = {}) {
+  return projectSpendCard(pending(shots, overrides), shotFacts, { ...IDLE, ...view }, t, { locale: 'zh-CN' })!
+}
+
+describe('付费卡投影 · 等人决定', () => {
+  it('单段：一张指向元素 + 「生成」；数量只在主按钮，不渲染页脚，不挂「不生成 ×」', () => {
+    const card = project([shot(1)], [facts(1)])
+    expect(card.single).toBe(true)
+    expect(card.slot.title).toBe('agentPanelV4.spendParamsTitleSingle(count=1)')
+    expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.generate')
+    expect(card.slot.price).toBeUndefined()
+    expect(card.summary).toBeUndefined()
+    expect(card.pointers).toEqual([{ shotId: 's1', nodeId: 'n1', shotRef: '镜 01', removed: false, exclusion: null }])
+    expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s1'], hostingAllowed: false })
   })
 
-  it('直接生成档的刹车退回这张卡时只多一行说明（summary），没有刹车就没有这一行', () => {
-    const plain = projectSpendCard(pending([shot(1, 0.3)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(plain.summary).toBeUndefined()
+  it('「Nomi 选的」并入只读摘要；节点里换过模型就不再这么说', () => {
+    expect(project([shot(1), shot(2)], [facts(1), facts(2)]).summary).toContain('agentPanelV4.spendCard.summaryPickedModel')
+    const changed = project([shot(1), shot(2)], [facts(1), facts(2, { selected: { providerId: 'apimart', modelId: 'seedance-2-pro' } })])
+    expect(changed.summary).not.toContain('agentPanelV4.spendParamsModelPicked')
+    const noModel = project([shot(1), shot(2)], [facts(1), facts(2, { selected: null })])
+    expect(noModel.summary).not.toContain('agentPanelV4.spendParamsModelPicked')
+  })
+
+  it('三段同价：「全部生成（3）」+ 不渲染页脚、不印合计金额、不出逐镜折叠；摘要是整齐的那一行', () => {
+    const card = project([shot(1), shot(2), shot(3)], [facts(1), facts(2), facts(3, { durationSec: 5 })])
+    expect(card.single).toBe(false)
+    expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.generateAll(count=3)')
+    expect(card.slot.price).toBeUndefined()
+    expect(JSON.stringify(card)).not.toContain('¥')
+    expect(card.summary).toBe('agentPanelV4.spendCard.summaryPickedModel(model=Seedance 2.0 Fast,picked=agentPanelV4.spendParamsModelPicked) · 16:9 · 480p · agentPanelV4.spendCard.summarySeconds(value=13s)')
+    expect(card.pointers[0]!.hoverSummary).toContain('4s')
+    expect(card.pointers[1]!.hoverSummary).toContain('4s')
+    expect(card.pointers[2]!.hoverSummary).toContain('5s')
+    expect(card.pointers[2]!.hoverSummary).not.toContain('summarySeconds')
+    const uniform = project([shot(1), shot(2), shot(3)], [facts(1), facts(2), facts(3)])
+    expect(uniform.pointers.every((pointer) => pointer.hoverSummary === undefined)).toBe(true)
+    expect(card.pointers.map((pointer) => pointer.exclusion)).toEqual(['exclude', 'exclude', 'exclude'])
+    expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s1', 's2', 's3'], hostingAllowed: false })
+  })
+
+  it('各镜价格不同：折叠明细逐镜印价（名字与指向元素同一个），不渲染页脚（D5）', () => {
+    const card = project([shot(1), shot(2)], [facts(1), facts(2, { aspect: '9:16', durationSec: 5, price: { known: true, amount: 0.88 } })])
+    expect(card.slot.price?.perItemLabel).toBe('agentPanelV4.spendParamsPerItem')
+    expect(card.slot.price?.perItem).toEqual([
+      { label: '镜 01 · Seedance 2.0 Fast · 16:9 · 4s', amount: '¥0.70' },
+      { label: '镜 02 · Seedance 2.0 Fast · 9:16 · 5s', amount: '¥0.88' },
+    ])
+    expect(card.summary).toBe('agentPanelV4.spendCard.summaryMixed(prefix=agentPanelV4.spendCard.summaryPickedModel(model=Seedance 2.0 Fast,picked=agentPanelV4.spendParamsModelPicked) · 480p,groups=agentPanelV4.spendCard.summaryGroup(value=16:9,count=1) · agentPanelV4.spendCard.summaryGroup(value=9:16,count=1))')
+    expect(card.pointers[0]!.hoverSummary).toContain('16:9')
+    expect(card.pointers[1]!.hoverSummary).toContain('9:16')
+  })
+
+  it('有一镜算不出价：页脚与逐镜折叠整行不印，绝不写 0（3.5）', () => {
+    const card = project([shot(1), shot(2)], [facts(1), facts(2, { price: { known: false } })])
+    expect(card.slot.price).toBeUndefined()
+    expect(JSON.stringify(card)).not.toMatch(/¥0(?!\.\d*[1-9])/)
+  })
+
+  it('图片：标题和「生成剩下」都说「张」；有一段视频就说视频', () => {
+    const images = project([shot(1, { kind: 'image' }), shot(2, { kind: 'image' })], [facts(1, { durationSec: null }), facts(2, { durationSec: null })])
+    expect(images.slot.title).toBe('agentPanelV4.spendParamsTitleImage(count=2)')
+    const mixed = project([shot(1, { kind: 'image' }), shot(2)], [facts(1), facts(2)])
+    expect(mixed.slot.title).toBe('agentPanelV4.spendParamsTitle(count=2)')
+  })
+})
+
+describe('付费卡投影 · 不生成 / 恢复 / 删除 / 节点上点过 ↑', () => {
+  it('「不生成 ×」去掉一镜：N 减一、主按钮不交它、那一格改挂「恢复」（3.4）', () => {
+    const card = project([shot(1), shot(2, { offer: 'removed' }), shot(3)], [facts(1), facts(2), facts(3)])
+    expect(card.slot.title).toBe('agentPanelV4.spendParamsTitle(count=2)')
+    expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.generateAll(count=2)')
+    expect(card.pointers.map((pointer) => pointer.exclusion)).toEqual(['exclude', 'restore', 'exclude'])
+    expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s1', 's3'], hostingAllowed: false })
+  })
+
+  it('全部去掉：主按钮置灰只说「生成」，卡留着（每一格都能恢复），标题说没有要生成的了', () => {
+    const card = project([shot(1, { offer: 'removed' }), shot(2, { offer: 'removed' })], [facts(1), facts(2)])
+    expect(card.slot.title).toBe('agentPanelV4.spendCard.titleNothing')
+    expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.generate')
+    expect(card.slot.actionsDisabled).toBe(true)
+    expect(card.pointers.map((pointer) => pointer.exclusion)).toEqual(['restore', 'restore'])
+    expect(card.primary).toEqual({ kind: 'generate', shotIds: [], hostingAllowed: false })
+  })
+
+  it('节点被删：指向元素「已删除」、不能恢复，N 跟着变（3.12）；宿主还没记上删除时也不交它', () => {
+    const card = project(
+      [shot(1), shot(2, { offer: 'removed' }), shot(3)],
+      [facts(1), facts(2, { present: false }), facts(3, { present: false })],
+    )
+    expect(card.pointers.map((pointer) => [pointer.removed, pointer.exclusion])).toEqual([[false, 'exclude'], [true, null], [false, null]])
+    expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s1'], hostingAllowed: false })
+    expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.generateAll(count=1)')
+  })
+
+  it('还没落到画布上的那一镜：指向元素是不可点的占位（nodeId 空），卡不算它、不交它', () => {
+    const card = project([shot(1, { nodeId: undefined }), shot(2)], [facts(1, { present: false }), facts(2)])
+    expect(card.pointers[0]).toMatchObject({ nodeId: '', removed: false, exclusion: null })
+    expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s2'], hostingAllowed: false })
+    const allLanding = project([shot(1, { nodeId: undefined }), shot(2, { nodeId: undefined })], [facts(1, { present: false }), facts(2, { present: false })])
+    expect(allLanding.slot.confirmLabel).toBe('agentPanelV4.spendCard.generate')
+    expect(allLanding.slot.actionsDisabled).toBe(true)
+  })
+
+  it('节点上点过 ↑（画布接走了）：卡说「生成剩下 N 段」，按钮只数剩下的（3.3）', () => {
+    const card = project([shot(1, { offer: 'taken_by_canvas' }), shot(2), shot(3)], [facts(1), facts(2), facts(3)])
+    expect(card.slot.title).toBe('agentPanelV4.spendParamsTitleRemainingVideo(count=2)')
+    expect(card.slot.confirmLabel).toBe('agentPanelV4.spendConfirmRemainingVideo(count=2)')
+    expect(card.pointers[0]!.exclusion).toBeNull()
+    expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s2', 's3'], hostingAllowed: false })
+  })
+
+  it('动作在路上：主按钮置灰（第二下不进）', () => {
+    expect(project([shot(1)], [facts(1)], { busy: true }).slot.actionsDisabled).toBe(true)
+  })
+})
+
+describe('付费卡投影 · 正在发出', () => {
+  it('有镜在交：标题说到第几段，动作行只说怎么停；不挂「不生成 ×」、没有主按钮（3.6）', () => {
+    const card = project([shot(1, { offer: 'sent' }), shot(2, { offer: 'handing_over' }), shot(3, { offer: 'handing_over' })], [facts(1), facts(2), facts(3)])
+    expect(card.slot.title).toBe('agentPanelV4.spendBatchProgressVideo(current=2,total=3)')
+    expect(card.slot.progress).toEqual({ hint: 'agentPanelV4.spendBatchStopHint' })
+    expect(card.slot.confirmLabel).toBeUndefined()
+    expect(card.primary).toEqual({ kind: 'none' })
+    expect(card.pointers.every((pointer) => pointer.exclusion === null)).toBe(true)
+  })
+
+  it('点了「取消」、宿主还没停稳：说正在停，已经发出的照常生成', () => {
+    const card = project([shot(1, { offer: 'handing_over' }), shot(2, { offer: 'handing_over' })], [facts(1), facts(2)], { stopping: true })
+    expect(card.slot.title).toBe('agentPanelV4.spendBatchStopping')
+    expect(card.slot.progress).toEqual({ hint: 'agentPanelV4.spendBatchStoppingHint' })
+  })
+
+  it('停下之后那一句只说事实：发了几段、没发几段；一段没剩就照实说已经发出去；一段都没交出去就说没发出去', () => {
+    const shots = [shot(1), shot(2), shot(3)]
+    expect(spendCardStoppedMessage(shots, { sent: 1, notSent: 2 }, t)).toBe('agentPanelV4.spendBatchStoppedVideo(sent=1,count=2,total=3)')
+    expect(spendCardStoppedMessage(shots, { sent: 3, notSent: 0 }, t)).toBe('agentPanelV4.spendBatchAllSentVideo(sent=3,count=3)')
+    expect(spendCardStoppedMessage([shot(1, { kind: 'image' })], { sent: 0, notSent: 1 }, t)).toBe('agentPanelV4.spendBatchNoneSentImage(count=1)')
+    expect(spendCardStoppedMessage(shots, { sent: 0, notSent: 3 }, t)).toBe('agentPanelV4.spendBatchNoneSentVideo(count=3)')
+  })
+})
+
+describe('付费卡投影 · 失败留在卡里', () => {
+  it('没发出去：「先不发了 · 再试一次」，再试只重发没发出去的那几镜；别的几段此刻怎样写在原因下面（3.7）', () => {
+    const card = project(
+      [shot(1, { offer: 'sent' }), shot(2, { offer: 'not_sent', failure: { kind: 'not_sent', code: 'provider_not_reached' } }), shot(3)],
+      [facts(1), facts(2), facts(3)],
+    )
+    expect(card.slot.title).toBe('agentPanelV4.spendCard.failedTitle.notSent(shot=镜 02)')
+    expect(card.slot.failed).toBe(true)
+    expect(card.slot.dismissLabel).toBe('agentPanelV4.spendCard.decline')
+    expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.retry')
+    expect(card.notices).toEqual([{ tone: 'danger', text: 'agentPanelV4.spendCard.failure.provider_not_reached' }])
+    expect(card.pointers[2]!.hostStatus).toBe('agentPanelV4.spendCard.pointerNotSentYet')
+    expect(card.pointers[1]!.hostFailure).toBe('agentPanelV4.spendCard.pointerFailed')
+    expect(card.primary).toEqual({ kind: 'retry', shotIds: ['s2'], hostingAllowed: false })
+  })
+
+  it('参数被拒：「先不发了 · 去改镜 N」，点了定位到那个节点（不给「再试一次」：同样的参数再发一次还是被拒）', () => {
+    const card = project(
+      [shot(1, { offer: 'sent' }), shot(2, { offer: 'not_sent', failure: { kind: 'parameter_rejected', code: 'provider_rejected' } })],
+      [facts(1), facts(2)],
+    )
+    expect(card.slot.title).toBe('agentPanelV4.spendCard.failedTitle.rejected(shot=镜 02)')
+    expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.goEdit(shot=镜 02)')
+    expect(card.slot.confirmIcon).toBe('locate')
+    expect(card.notices[0]!.text).toBe('agentPanelV4.spendCard.failure.provider_rejected')
+    expect(card.primary).toEqual({ kind: 'locate', nodeId: 'n2', label: '镜 02' })
+  })
+
+  it('结果未知：不说没花钱，下一步是去节点上核对（不是再发一次）', () => {
+    const card = project([shot(1, { offer: 'unknown' }), shot(2)], [facts(1), facts(2)])
+    expect(card.slot.title).toBe('agentPanelV4.spendCard.failedTitle.unclear(shot=镜 01)')
+    expect(card.notices[0]!.text).toBe('agentPanelV4.spendCard.failure.unclear')
+    expect(JSON.stringify(card)).not.toContain('notSentFallback')
+    expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.goCheck(shot=镜 01)')
+    expect(card.primary).toEqual({ kind: 'locate', nodeId: 'n1', label: '镜 01' })
+    expect(card.pointers[0]!.hostFailure).toBe('agentPanelV4.spendCard.pointerUnclear')
+  })
+
+  it('没登记的码按种类说：没发出去 = 这次没花钱、可以再试；参数被拒 = 去节点里改', () => {
+    const notSent = project([shot(1, { offer: 'not_sent', failure: { kind: 'not_sent', code: 'some_new_code' } })], [facts(1)])
+    expect(notSent.notices[0]!.text).toBe('agentPanelV4.spendCard.failure.notSentFallback')
+    const rejected = project([shot(1, { offer: 'not_sent', failure: { kind: 'parameter_rejected', code: 'some_new_code' } })], [facts(1)])
+    expect(rejected.notices[0]!.text).toBe('agentPanelV4.spendCard.failure.rejectedFallback')
+  })
+
+  it('要问托管同意的那一种：原因行就是披露原文，「再试一次」带着这次同意再交', () => {
+    const card = project([shot(1, { offer: 'not_sent', failure: { kind: 'not_sent', code: 'asset_hosting_consent_required' } })], [facts(1)])
+    expect(card.notices[0]!.text).toBe('generationCommon.spendHostingDisclosure.message')
+    expect(card.primary).toEqual({ kind: 'retry', shotIds: ['s1'], hostingAllowed: true })
+  })
+
+  it('再试的那几镜要先传托管、原因却是别的：另摆一行披露原文，「再试一次」才带同意（同意只来自卡上摆着的那一句）', () => {
+    const failure = { kind: 'not_sent' as const, code: 'provider_not_reached' }
+    const withoutDisclosure = project([shot(1, { offer: 'not_sent', failure })], [facts(1)])
+    expect(withoutDisclosure.notices).toHaveLength(1)
+    expect(withoutDisclosure.primary).toEqual({ kind: 'retry', shotIds: ['s1'], hostingAllowed: false })
+    const disclosed = project([shot(1, { offer: 'not_sent', failure })], [facts(1)], { hostingDisclosure: true })
+    expect(disclosed.notices[1]).toEqual({ tone: 'neutral', text: 'generationCommon.spendHostingDisclosure.message' })
+    expect(disclosed.primary).toEqual({ kind: 'retry', shotIds: ['s1'], hostingAllowed: true })
+    // 原因行就是披露原文时不重复摆。
+    const consent = project([shot(1, { offer: 'not_sent', failure: { kind: 'not_sent', code: 'asset_hosting_consent_required' } })], [facts(1)], { hostingDisclosure: true })
+    expect(consent.notices).toHaveLength(1)
+  })
+
+  it('没发出去的节点已经不在画布上：不再当成要处理的那一镜', () => {
+    const card = project([shot(1, { offer: 'not_sent', failure: { kind: 'not_sent', code: 'canvas_node_missing' } }), shot(2)], [facts(1, { present: false }), facts(2)])
+    expect(card.slot.failed).toBeUndefined()
+    expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s2'], hostingAllowed: false })
+  })
+})
+
+describe('付费卡投影 · 本机预检（按下之前就判得出发不出去）', () => {
+  const blocked = (code: string, kind: 'not_sent' | 'parameter_rejected' = 'parameter_rejected') => ({ blocked: { kind, code } })
+
+  it('有别的段能发：那一镜一行红字说明、不进 N，指向元素写「发不出去」', () => {
+    const card = project([shot(1), shot(2), shot(3)], [facts(1), facts(2, blocked('prompt_required')), facts(3)])
+    expect(card.slot.failed).toBeUndefined()
+    expect(card.slot.confirmLabel).toBe('agentPanelV4.spendCard.generateAll(count=2)')
+    expect(card.notices).toEqual([{ tone: 'danger', text: 'agentPanelV4.spendCard.blockedNotice(shot=镜 02,reason=agentPanelV4.spendCard.failure.prompt_required)' }])
+    expect(card.pointers[1]).toMatchObject({ hostFailure: 'agentPanelV4.spendCard.pointerCannotSend', exclusion: 'exclude' })
+    expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s1', 's3'], hostingAllowed: false })
+  })
+
+  it('一段能发的都没有：失败样子留在卡里，参数那一类「去改」，节点在忙那一类「去看」', () => {
+    const rejected = project([shot(1)], [facts(1, blocked('model_not_selected'))])
+    expect(rejected.slot.title).toBe('agentPanelV4.spendCard.failedTitle.blocked(shot=镜 01)')
+    expect(rejected.slot.confirmLabel).toBe('agentPanelV4.spendCard.goEdit(shot=镜 01)')
+    expect(rejected.primary).toEqual({ kind: 'locate', nodeId: 'n1', label: '镜 01' })
+    const busy = project([shot(1)], [facts(1, blocked('node_generation_in_flight', 'not_sent'))])
+    expect(busy.slot.confirmLabel).toBe('agentPanelV4.spendCard.goCheck(shot=镜 01)')
+  })
+})
+
+describe('付费卡投影 · 托管披露、刹车、空卡', () => {
+  it('要先把本机参考图传到公共临时托管：卡上一行中性披露，按「生成」就是同意这一次', () => {
+    const card = project([shot(1)], [facts(1)], { hostingDisclosure: true })
+    expect(card.notices).toEqual([{ tone: 'neutral', text: 'generationCommon.spendHostingDisclosure.message' }])
+    expect(card.primary).toEqual({ kind: 'generate', shotIds: ['s1'], hostingAllowed: true })
+  })
+
+  it('直接生成档的刹车退回这张卡：三种样子都多一行说明，别的不变', () => {
     for (const [reason, key] of [['retry-limit', 'brakeRetry'], ['out-of-plan', 'brakeOutOfPlan'], ['stopped', 'brakeStopped']] as const) {
-      const data = projectSpendCard({ ...pending([shot(1, 0.3)]), brake: { reason } }, { page: 0 }, t, { locale: 'zh-CN' })!
-      expect(data.summary).toBe(`agentPanelV4.${key}.title`)
-      // 其余与请求批准下的卡一模一样：标题、按钮都不变。
-      expect(data.title).toBe(plain.title)
-      expect(data.confirmLabel).toBe(plain.confirmLabel)
+      const card = project([shot(1)], [facts(1)], {}, { brake: { reason } })
+      expect(card.slot.summary).toBe(`agentPanelV4.${key}.title`)
+      expect(card.slot.title).toBe('agentPanelV4.spendParamsTitleSingle(count=1)')
+    }
+    const failed = project([shot(1, { offer: 'unknown' })], [facts(1)], {}, { brake: { reason: 'retry-limit' } })
+    expect(failed.slot.summary).toBe('agentPanelV4.brakeRetry.title')
+  })
+
+  it('一镜都没有：不出卡', () => {
+    expect(projectSpendCard(pending([]), [], IDLE, t, { locale: 'zh-CN' })).toBeUndefined()
+  })
+})
+
+describe('一行只读摘要', () => {
+  it('读不出就不印；只列不同的那几样', () => {
+    expect(spendCardSummary([], t)).toBeUndefined()
+    expect(spendCardSummary([facts(1, { model: '', aspect: null, resolution: null, durationSec: null })], t)).toBeUndefined()
+    const mixedModel = spendCardSummary([facts(1), facts(2, { model: 'Kling 2.5' })], t)
+    expect(mixedModel).toBe('agentPanelV4.spendCard.summaryMixed(prefix=16:9 · 480p,groups=agentPanelV4.spendCard.summaryGroup(value=Seedance 2.0 Fast,count=1) · agentPanelV4.spendCard.summaryGroup(value=Kling 2.5,count=1))')
+  })
+
+  // 走查抓到的：两镜比例自动、一镜在节点里改成 16:9，整齐那一行只印第一镜的值——第一镜正好是 16:9 时，卡对三镜都说 16:9。
+  // 读不出的那一格放在哪一镜、哪一样上都一样：它和读得出的不同，整齐那一行永远不替它说一个值。
+  const READS: ReadonlyArray<readonly ['aspect' | 'resolution' | 'model', string, null | '']> = [
+    ['aspect', '16:9', null],
+    ['resolution', '1K', null],
+    ['model', 'GPT Image 2', ''],
+  ]
+  it.each(READS.flatMap(([key, value, empty]) => [0, 1, 2].map((readable) => [key, value, readable, empty] as const)))(
+    '%s=%s，三镜里只有第 %i 镜（0 基）读得出：不被说成三镜都是它',
+    (key, value, readable, empty) => {
+      const shots = [1, 2, 3].map((index) => facts(index, { aspect: '16:9', resolution: '1K', model: 'GPT Image 2', [key]: index - 1 === readable ? value : empty } as Partial<SpendCardShotFacts>))
+      const line = spendCardSummary(shots, t)!
+      expect(line).toContain('agentPanelV4.spendCard.summaryMixed(prefix=')
+      expect(line).toContain(`summaryGroup(value=${value},count=1)`)
+      expect(line, '读不出的那几镜不印成一组空值').not.toMatch(/value=,/)
+    },
+  )
+
+  it('三镜都读不出那一样：整齐，那一样不印（不是「逐镜不同」）', () => {
+    expect(spendCardSummary([1, 2, 3].map((index) => facts(index, { aspect: null })), t)).toBe('Seedance 2.0 Fast · 480p · agentPanelV4.spendCard.summarySeconds(value=12s)')
+  })
+})
+
+// SpendCardQ1 板 card.title：卡标题一句问话、不带数量（数量只在主按钮）。英文曾有一条「Generate these {{count}} images?」带着张数，
+// 样张是「Generate these images?」——中英每一条标题键、以及标题的每一种说法（多段 / 单段 / 剩下的 / 一段都不剩）都在这里数着。
+describe('付费卡标题 · 一句问话、不带数量（SpendCardQ1/card.title）', () => {
+  const dictionaries = { 'zh-CN': zhAgentPanelV4, en: enAgentPanelV4 } as const
+  /** 等人决定那一档的全部标题键（词典里 `spendParamsTitle*` 与「没有要生成的了」）；进度标题（正在发出 k/N）不是问话，不在此列。 */
+  const titleEntries = (locale: keyof typeof dictionaries): Array<[string, string]> => {
+    const dictionary = dictionaries[locale]
+    return [
+      ...Object.entries(dictionary).filter(([key, value]) => key.startsWith('spendParamsTitle') && typeof value === 'string') as Array<[string, string]>,
+      ['spendCard.titleNothing', dictionary.spendCard.titleNothing],
+    ]
+  }
+
+  it.each(['zh-CN', 'en'] as const)('%s：每一条标题键都没有数量占位、没有数字（词典逐键数着）', (locale) => {
+    const entries = titleEntries(locale)
+    // 防空转：标题键至少是 多段 / 单段 / 剩下的 × 图片 / 视频，加「没有要生成的了」。
+    expect(entries.length).toBeGreaterThanOrEqual(9)
+    for (const [key, text] of entries) {
+      expect(text, `${locale} ${key}`).not.toMatch(/\{\{/)
+      expect(text, `${locale} ${key}`).not.toMatch(/\d/)
     }
   })
 
-  it('标题里不印金额：金额随参数变，两处印同一个数一定有一个先漂', () => {
-    const data = projectSpendCard(pending([shot(1, 0.3)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.title).toBe('agentPanelV4.spendParamsTitleImage(count=1)')
-    expect(data.title).not.toContain('0.30')
+  const shots = (count: number, kind: 'image' | 'video', overrides: Partial<PendingSpendShot> = {}) =>
+    Array.from({ length: count }, (_, index) => shot(index + 1, { kind, ...overrides }))
+  const factsFor = (count: number, kind: 'image' | 'video') => Array.from({ length: count }, (_, index) => facts(index + 1, kind === 'image' ? { durationSec: null } : {}))
+
+  /** 真 i18n 的 t（i18next 的重载签名比投影要的宽，窄成它要的那一种）。 */
+  const realT = (locale: 'zh-CN' | 'en') => i18n.getFixedT(locale) as unknown as (key: string, options?: Record<string, unknown>) => string
+  /** 用真 i18n 把投影出来的标题念出来：覆盖「挑哪一句」+ 词典 + 复数，三层一起。 */
+  const spoken = (locale: 'zh-CN' | 'en', pendingShots: readonly PendingSpendShot[], shotFacts: readonly SpendCardShotFacts[]): string =>
+    projectSpendCard(pending(pendingShots), shotFacts, IDLE, realT(locale), { locale })!.slot.title
+
+  it.each(['zh-CN', 'en'] as const)('%s：多段 / 单段 / 剩下的 / 一段都不剩，图片和视频，念出来的标题都不带数字', (locale) => {
+    for (const kind of ['image', 'video'] as const) {
+      for (const count of [2, 3, 8]) {
+        const many = spoken(locale, shots(count, kind), factsFor(count, kind))
+        expect(many, `${locale} ${kind} 多段 ${count}`).not.toMatch(/\d/)
+      }
+      const single = spoken(locale, shots(1, kind), factsFor(1, kind))
+      expect(single, `${locale} ${kind} 单段`).not.toMatch(/\d/)
+      const remaining = spoken(locale, [shot(1, { kind, offer: 'taken_by_canvas' }), shot(2, { kind }), shot(3, { kind })], factsFor(3, kind))
+      expect(remaining, `${locale} ${kind} 剩下的`).not.toMatch(/\d/)
+    }
+    const nothing = spoken(locale, [shot(1, { offer: 'removed' }), shot(2, { offer: 'removed' })], [facts(1), facts(2)])
+    expect(nothing, `${locale} 一段都不剩`).not.toMatch(/\d/)
   })
 
-  it('报不出价：不印任何价格的话（没有「价格未知」那句、没有 ¥0），主按钮照样是「生成这张」', () => {
-    const data = projectSpendCard(pending([shot(1, null), shot(2, null)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.price?.total).toBeUndefined()
-    expect(data.price?.unavailable).toBeUndefined()
-    expect(data.totalLead).toBeUndefined()
-    expect(JSON.stringify(data)).not.toContain('¥0.00')
-    expect(JSON.stringify(data)).not.toContain('spendTotalUnknown')
-    expect(data.confirmLabel).toBe('agentPanelV4.spendConfirmThisImage')
-  })
-
-  // 2026-09-21 未知价开闸之后这张卡是**真能按下去**的（从前按下去必然失败）。所以「屏上不出现
-  // 任何代表未知的 0」从一条显示纪律升级成了一条花钱纪律：用户会照着它做花钱的决定。
-  it('报不出价：整张卡序列化后找不到任何金额位的 0（混合批次也一样）', () => {
-    const allUnknown = projectSpendCard(pending([shot(1, null), shot(2, null)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    // t() 把金额渲染成 `amount=X`，所以金额位的 0 只会长成这两种样子。
-    expect(JSON.stringify(allUnknown)).not.toMatch(/amount=0(?!\.\d*[1-9])/)
-    expect(allUnknown.price?.total).toBeUndefined()
-
-    // 混合：有一镜算得出、一镜算不出 —— 合计仍然不许印（那个数不是合计），
-    // 而算不出的那一行印的是「暂时算不出价格」，不是 ¥0。
-    const mixed = projectSpendCard(pending([shot(1, 0.5), shot(2, null)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(mixed.price?.total).toBeUndefined()
-    expect(mixed.price?.unavailable).toBeUndefined()
-    expect(JSON.stringify(mixed)).not.toMatch(/amount=0(?!\.\d*[1-9])/)
-  })
-
-  it('多镜整齐：不出逐镜折叠口（把同一句话抄 N 遍没有信息量）', () => {
-    const data = projectSpendCard(pending([shot(1, 0.3), shot(2, 0.3)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.price?.perItem).toBeUndefined()
-    expect(data.pager).toMatchObject({ index: 0, total: 2 })
-  })
-
-  it('多镜不整齐：算式退成「逐镜不同」并摊开每一行', () => {
-    const data = projectSpendCard(pending([shot(1, 0.5), shot(2, 0.3)]), { page: 1 }, t, { locale: 'zh-CN' })!
-    expect(data.price?.breakdown).toContain('spendParamsBreakdownMixed')
-    expect(data.price?.perItem).toHaveLength(2)
-    // 主按钮只生成这一页这一镜，带的是**这一镜**的价（这一下花多少）；没有任何一条路径依赖它。
-    expect(data.confirmLabel).toBe('agentPanelV4.spendConfirmThisImagePriced(amount=¥0.30)')
-    // 页脚左下印的是**整单合计**，带镜数——逐镜确认时用户始终看得见整单要花多少。
-    // 两格说的是两件事，所以这里两个数不一样才是对的（0.30 vs 0.80）。
-    expect(data.totalLead).toBe('agentPanelV4.spendTotalLeadImage(count=2,amount=¥0.80)')
-  })
-
-  it('没有「全部」：翻页器旁不再有范围切换，每一页都只有「生成这张 / 这段」和「去掉这张 / 这段」', () => {
-    const data = projectSpendCard(pending([shot(1, 0.3), shot(2, 0.3, 'kling', 'video')]), { page: 1 }, t, { locale: 'zh-CN' })!
-    expect(data.pager).toMatchObject({ index: 1, total: 2 })
-    expect(JSON.stringify(data.pager)).not.toContain('scope')
-    expect(data.confirmLabel).toBe('agentPanelV4.spendConfirmThisVideoPriced(amount=¥0.30)')
-    expect(data.alternateLabel).toBe('agentPanelV4.spendRemoveThisVideo')
-  })
-
-  it('翻页越界回环：卡永远停在一个真实存在的镜头上', () => {
-    const data = projectSpendCard(pending([shot(1, 0.3), shot(2, 0.4)]), { page: -1 }, t, { locale: 'zh-CN' })!
-    expect(data.pager?.index).toBe(1)
-  })
-
-  it('「Nomi 选的」是现算的：用户换过模型之后这句话就消失', () => {
-    const kept = projectSpendCard(pending([shot(1, 0.3, 'kling')]), { page: 0 }, t, { locale: 'zh-CN', agentPickedModelIds: ['kling'] })!
-    expect(kept.badge).toContain('spendParamsModelPicked')
-    const changed = projectSpendCard(pending([shot(1, 0.3, 'seedance')]), { page: 0 }, t, { locale: 'zh-CN', agentPickedModelIds: ['kling'] })!
-    expect(changed.badge).not.toContain('spendParamsModelPicked')
-  })
-
-  it('图片单说图片、视频单才说视频——付钱前那一刻不许让人怀疑它搞错了', () => {
-    const image = projectSpendCard(pending([shot(1, 0.3)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(image.title).toContain('spendParamsTitleImage')
-    const video = projectSpendCard(pending([shot(1, 0.3, 'kling', 'video')]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(video.title).toContain('spendParamsTitle(')
-  })
-
-  // 第 9 条：标题、按钮都只读宿主给的那一格。`mode` 字符串怎么写都不该让卡改口——
-  // 以前卡读 `mode`、卡体读模型目录、画布读节点种类，于是标题说视频、卡体是图片模型。
-  it('图还是视频只读宿主给的 kind：mode 字符串里有 video 也不改口', () => {
-    const data = projectSpendCard(pending([{ ...shot(1, 0.3), mode: 'image_to_video_legacy' }]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.title).toBe('agentPanelV4.spendParamsTitleImage(count=1)')
-    expect(data.confirmLabel).toContain('spendConfirmThisImage')
-  })
-
-  it('没有镜头就不出卡', () => {
-    expect(projectSpendCard(pending([]), { page: 0 }, t, { locale: 'zh-CN' })).toBeUndefined()
+  it('英文多段图片：标题就是词典那一句、不带张数；张数只在主按钮（曾是标题里带着 2 的那一句）', () => {
+    const card = projectSpendCard(pending(shots(2, 'image')), factsFor(2, 'image'), IDLE, realT('en'), { locale: 'en' })!
+    expect(card.slot.title).toBe(enAgentPanelV4.spendParamsTitleImage_other)
+    expect(card.slot.title).not.toMatch(/\d/)
+    expect(card.slot.confirmLabel).toBe(enAgentPanelV4.spendCard.generateAllImage.replace('{{count}}', '2'))
   })
 })
-
-describe('节点 → 候选补丁', () => {
-  const base = shot(1, 0.3)
-  function node(meta: Record<string, unknown>, prompt = '镜头 1'): GenerationCanvasNode {
-    return {
-      id: 'node-1', kind: 'video', categoryId: 'shots', title: '镜头 1', prompt,
-      position: { x: 0, y: 0 }, size: { width: 340, height: 192 }, status: 'idle',
-      meta: { modelKey: 'kling', modelVendor: 'kie', archetype: { id: 'kling', modeId: undefined }, duration: '3', ...meta },
-    } as GenerationCanvasNode
-  }
-
-  it('一个字都没改 → 不发命令（防抖之外的第二道闸：空改动不推进 planVersion）', () => {
-    expect(candidatePatchFromNode(node({}), base)).toBeUndefined()
-  })
-
-  it('数组参数按值比：节点上那一份和候选里那一份不是同一个对象，没动过就不发命令（点「生成这张」不白推一版计划）', () => {
-    const withArray = { ...base, parameters: { ...base.parameters, image_urls: ['https://example.test/a.png'] } }
-    expect(candidatePatchFromNode(node({ image_urls: ['https://example.test/a.png'] }), withArray)).toBeUndefined()
-    expect(candidatePatchFromNode(node({ image_urls: ['https://example.test/b.png'] }), withArray)?.parameters)
-      .toMatchObject({ image_urls: ['https://example.test/b.png'] })
-  })
-
-  it('改时长 → 参数整组带过去（候选认识的键才带，不另立第二份词表）', () => {
-    const patch = candidatePatchFromNode(node({ duration: '5' }), base)!
-    expect(patch.parameters).toEqual({ duration: '5' })
-    expect(patch.prompt).toBeUndefined()
-  })
-
-  it('改提示词 / 换模型 → 各自单独进补丁', () => {
-    expect(candidatePatchFromNode(node({}, '六棱柱'), base)).toEqual({ prompt: '六棱柱' })
-    const swapped = candidatePatchFromNode(node({ modelKey: 'seedance', modelVendor: 'apimart' }), base)!
-    expect(swapped).toMatchObject({ modelId: 'seedance', providerId: 'apimart' })
-  })
-
-  it('节点上没有的参数键回落候选原值，不把它抹成 undefined', () => {
-    const patch = candidatePatchFromNode(node({ duration: undefined, modelKey: 'seedance' }), base)!
-    expect(patch.parameters).toBeUndefined()
-    expect(patch.modelId).toBe('seedance')
-  })
-})
-
-describe('「生成剩下 N 张 / 段」（2026-10-01 用户拍板）', () => {
-  it('2 张：从第 1 页起就在，写明张数；N 就是标题那个数', () => {
-    const data = projectSpendCard(pending([shot(1, null), shot(2, null)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.batchLabel).toBe('agentPanelV4.spendConfirmRemainingImage(count=2)')
-    expect(data.title).toContain('count=2')
-  })
-
-  it('翻到第 2 页也还是同一颗（它管的是整叠，不是这一页）', () => {
-    const data = projectSpendCard(pending([shot(1, null), shot(2, null), shot(3, null)]), { page: 2 }, t, { locale: 'zh-CN' })!
-    expect(data.batchLabel).toBe('agentPanelV4.spendConfirmRemainingImage(count=3)')
-  })
-
-  it('只剩 1 张时不出现：它和「生成这张」是同一件事', () => {
-    const data = projectSpendCard(pending([shot(1, null)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.batchLabel).toBeUndefined()
-  })
-
-  it('张 / 段跟标题同一条规则：有视频就说段——标题、「生成剩下」、合计行三处读同一个（2026-10-01 用户拍板合计行也跟它走）', () => {
-    const data = projectSpendCard(pending([shot(1, null), shot(2, null, 'kling', 'video')]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.title).toContain('spendParamsTitle(')
-    expect(data.batchLabel).toBe('agentPanelV4.spendConfirmRemainingVideo(count=2)')
-    const priced = projectSpendCard(pending([shot(1, 0.3), shot(2, 0.5, 'kling', 'video')]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(priced.title).toContain('spendParamsTitle(')
-    expect(priced.totalLead).toBe('agentPanelV4.spendTotalLeadVideo(count=2,amount=¥0.80)')
-  })
-
-  it('报得出价时也不带合计：这一叠的合计已经印在翻页那一行（同一个数不说两遍）', () => {
-    const data = projectSpendCard(pending([shot(1, 0.3), shot(2, 0.3)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.batchLabel).toBe('agentPanelV4.spendConfirmRemainingImage(count=2)')
-    expect(data.batchLabel).not.toContain('¥')
-    expect(data.totalLead).toBe('agentPanelV4.spendTotalLeadImage(count=2,amount=¥0.60)')
-  })
-
-  it('报不出价时哪儿都不写数，也没有任何价格未知、预算之类的话', () => {
-    const data = projectSpendCard(pending([shot(1, null), shot(2, null)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.totalLead).toBeUndefined()
-    expect(JSON.stringify(data)).not.toMatch(/¥|Unavailable|Budget|budget|预算/)
-  })
-})
-
-describe('「生成剩下 N 张」在跑（2026-10-02：卡不能装成还在等人点）', () => {
-  it('标题说正在发第几张；不摆「生成这张」「去掉这张」「生成剩下」、翻页和合计；动作行只说怎么停', () => {
-    const data = projectSpendCard(pending([shot(1, 0.3), shot(2, 0.3), shot(3, 0.3)]), { page: 1, batch: { current: 2, total: 6, stopping: false } }, t, { locale: 'zh-CN' })!
-    expect(data.title).toBe('agentPanelV4.spendBatchProgressImage(current=2,total=6)')
-    expect(data.progress).toEqual({ hint: 'agentPanelV4.spendBatchStopHint' })
-    expect(data.batchLabel).toBeUndefined()
-    expect(data.pager).toBeUndefined()
-    expect(data.totalLead).toBeUndefined()
-  })
-
-  it('点了 × 之后说正在停、已经发出的照常生成；张 / 段跟标题同一条规则', () => {
-    const stopping = projectSpendCard(pending([shot(1, null), shot(2, null)]), { page: 0, batch: { current: 1, total: 2, stopping: true } }, t, { locale: 'zh-CN' })!
-    expect(stopping.title).toBe('agentPanelV4.spendBatchStopping')
-    expect(stopping.progress).toEqual({ hint: 'agentPanelV4.spendBatchStoppingHint' })
-    const video = projectSpendCard(pending([shot(1, null), shot(2, null, 'kling', 'video')]), { page: 0, batch: { current: 1, total: 2, stopping: false } }, t, { locale: 'zh-CN' })!
-    expect(video.title).toBe('agentPanelV4.spendBatchProgressVideo(current=1,total=2)')
-    expect(spendBatchStoppedKey([shot(1, null), shot(2, null, 'kling', 'video')])).toBe('agentPanelV4.spendBatchStoppedVideo')
-    expect(spendBatchStoppedKey([shot(1, null), shot(2, null)])).toBe('agentPanelV4.spendBatchStoppedImage')
-  })
-})
-
-describe('「N 镜」汇总只在多镜时出现', () => {
-  it('单镜：标题已经说了「这 1 段」，正文下不再印一行「1 镜」', () => {
-    const data = projectSpendCard(pending([shot(1, 0.3)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.price?.breakdown).toBe('')
-  })
-  it('多镜且整齐：翻页行右端已经是「N 张 / 段 · 合计」，正文下不再重复一行「N 镜」', () => {
-    const data = projectSpendCard(pending([shot(1, 0.3), shot(2, 0.3)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.price?.breakdown).toBe('')
-    expect(data.totalLead).toContain('count=2')
-  })
-  it('多镜但报不出合计：页脚什么价格话都不说，正文下也不再补一句「N 镜」', () => {
-    const data = projectSpendCard(pending([shot(1, 0.3), shot(2, null)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    // 标题和「生成剩下 N 张」都已经说了几张；正文下不再印第三遍（2026-10-01 样张没有这一行）。
-    expect(data.price?.breakdown).toBe('')
-    expect(data.totalLead).toBeUndefined()
-  })
-})
-
-describe('页脚左下只印主按钮说不出的那件事', () => {
-  it('单镜且报得出价：左下**留空**——价格行已经印着这个数', () => {
-    const data = projectSpendCard(pending([shot(1, 0.3)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    expect(data.totalLead).toBeUndefined()
-    expect(data.price?.total).toContain('¥0.30')
-  })
-  it('多镜且报得出合计：翻页行右端「N 张 · 合计」，主按钮只说这一镜（带这一镜的价）', () => {
-    const each = projectSpendCard(pending([shot(1, 0.5), shot(2, 0.3)]), { page: 1 }, t, { locale: 'zh-CN' })!
-    expect(each.totalLead).toContain('count=2')
-    expect(each.totalLead).toContain('¥0.80')
-    expect(each.confirmLabel).toBe('agentPanelV4.spendConfirmThisImagePriced(amount=¥0.30)')
-  })
-})
-
-describe('算不出价**绝不拦**生成（2026-09-21 用户硬性拍板）', () => {
-  it('没有价时不印 ¥0、也不印「价格未知」那句，而且主按钮照常给得出来', () => {
-    const data = projectSpendCard(pending([shot(1, null)]), { page: 0 }, t, { locale: 'zh-CN' })!
-    // 三种可能（免费 / 算不出 / 真的零元）里，印 0 恰好是唯一会让用户误以为「这次不花钱」的那一种；
-    // 「价格未知 · 以供应商账单为准」随「仍要生成」一起删了（2026-09-30 第 7 条）。
-    expect(data.totalLead).toBeUndefined()
-    expect(JSON.stringify(data)).not.toMatch(/amount=0(?!\.\d*[1-9])/)
-    // 按钮**存在且有文案** —— 「算不出价格就不让生成」那条闸已经被用户否掉：
-    // 「不能因为这个拦截其他任何东西，我们现在都没有建立价格的标尺」。
-    expect(data.confirmLabel).toBe('agentPanelV4.spendConfirmThisImage')
-  })
-})
-

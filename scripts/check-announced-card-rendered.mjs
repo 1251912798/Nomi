@@ -49,7 +49,7 @@ const WATCHED = [
   'electron/productionRun/productionActionIpc.ts',
   'electron/productionRun/productionPendingSpend.ts',
   // 渲染层：读 → 投影 → 摆进槽
-  'src/workbench/ai/v4/useAgentPanelSpendConfirm.ts',
+  'src/workbench/ai/v4/useAgentPanelSpendCard.ts',
   'src/workbench/ai/v4/agentPanelV4Intervention.ts',
   'src/workbench/ai/v4/agentPanelSpendCard.ts',
   'src/workbench/ai/v4/useAgentPanelV4Data.ts',

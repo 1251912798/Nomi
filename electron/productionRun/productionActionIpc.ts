@@ -1,7 +1,6 @@
 import { ipcMain } from "electron";
 
 import type { ProductionActionResult, ProductionShotActionResult } from "./productionRunTypes";
-import type { PendingSpendRevised } from "../shared/contracts/pendingSpendConfirm";
 
 import { assertTrustedSender } from "../ipcSenderGuard";
 import { logError } from "../logging/logger";
@@ -15,15 +14,16 @@ type CapabilityActions = {
   reworkProductionShot: (input: { projectId: string; runId: string; shotId?: string }) => Promise<ProductionShotActionResult>;
   resumeProductionBatch: (input: { projectId: string; runId: string }) => Promise<ProductionShotActionResult>;
   /**
-   * 2026-09-11 Agent 面板付费确认卡：改参数 / 丢弃 / 确认并开跑。**读不在这里**（2026-10-05）：
-   * 待决出价随对话投影推给面板（`laneDesktopSpend`），渲染层没有第二条去拉它的路。
+   * Agent 面板付费卡（D2 第③步）：交给画布 / 取消 / 不生成 × / 恢复。卡上没有参数，所以没有「改参数」。
+   * **读不在这里**（2026-10-05）：待决出价随对话投影推给面板（`laneDesktopSpend`），渲染层没有第二条去拉它的路。
    */
-  revisePendingSpendConfirmation: (input: { projectId: string; operationId: string; quoteId: string; shotId?: string; patch: Record<string, unknown> }) => Promise<ProductionActionResult & PendingSpendRevised>;
-  discardPendingSpendConfirmation: (input: { projectId: string; operationId: string; quoteId: string }) => Promise<ProductionActionResult>;
-  confirmPendingSpendConfirmation: (input: { projectId: string; operationId: string; quoteId: string; shotId?: string }) => Promise<ProductionActionResult>;
-  removePendingSpendShot: (input: { projectId: string; operationId: string; quoteId: string; shotId: string }) => Promise<ProductionActionResult>;
-  confirmRemainingSpendShots: (input: { projectId: string; operationId: string; quoteId: string; shotIds: readonly string[] }) => Promise<ProductionActionResult>;
+  handOverPendingSpendShots: (input: SpendCardInput & { shotIds: readonly string[]; hostingAllowed: boolean }) => Promise<ProductionActionResult>;
+  discardPendingSpendConfirmation: (input: SpendCardInput) => Promise<ProductionActionResult>;
+  removePendingSpendShot: (input: SpendCardInput & { shotId: string }) => Promise<ProductionActionResult>;
+  restorePendingSpendShot: (input: SpendCardInput & { shotId: string }) => Promise<ProductionActionResult>;
 };
+
+type SpendCardInput = { projectId: string; operationId: string; quoteId: string; presentationId?: string; presentationEpoch?: number; planVersion?: number };
 
 export function registerProductionActionIpc(deps: {
   getActiveProjectId: () => string;
@@ -82,15 +82,18 @@ export function registerProductionActionIpc(deps: {
     ...(typeof raw.planVersion === "number" ? { planVersion: raw.planVersion } : {}),
   });
 
-  ipcMain.handle("nomi:production-runs:revise-spend", async (event, payload: unknown): Promise<ProductionActionResult & PendingSpendRevised> => {
+  /**
+   * 「生成」/「全部生成（N）」/「生成剩下 N 段」/「再试一次」：渲染层只递「用户点的是这几镜」和他有没有在卡上看过「托管」那一句，
+   * 它们必须就是卡上还在等决定的那几镜（宿主核）；交不交、怎么交由主进程定（逐镜走画布单节点提交，同一张手势收据）。
+   */
+  ipcMain.handle("nomi:production-runs:hand-over-spend", async (event, payload: unknown): Promise<ProductionActionResult> => {
     assertTrustedSender(event);
     const scoped = spendOperation(payload);
     if ("ok" in scoped) return scoped;
     const raw = objectOf(payload);
-    const shotId = str(raw.shotId) || undefined;
-    const patch = objectOf(raw.patch);
-    if (Object.keys(patch).length === 0) return { ok: false, code: "failed", message: "empty revision" };
-    return (await deps.loadCore()).revisePendingSpendConfirmation({ ...scoped, ...cardIdentity(raw), quoteId: str(raw.quoteId), ...(shotId ? { shotId } : {}), patch });
+    const shotIds = Array.isArray(raw.shotIds) ? raw.shotIds.map(str).filter(Boolean) : [];
+    if (shotIds.length === 0) return { ok: false, code: "failed", message: "generation_scope_invalid" };
+    return (await deps.loadCore()).handOverPendingSpendShots({ ...scoped, ...cardIdentity(raw), quoteId: str(raw.quoteId), shotIds, hostingAllowed: raw.hostingAllowed === true });
   });
 
   ipcMain.handle("nomi:production-runs:discard-spend", async (event, payload: unknown): Promise<ProductionActionResult> => {
@@ -101,37 +104,20 @@ export function registerProductionActionIpc(deps: {
     return (await deps.loadCore()).discardPendingSpendConfirmation({ ...scoped, ...cardIdentity(raw), quoteId: str(raw.quoteId) });
   });
 
-  ipcMain.handle("nomi:production-runs:confirm-spend", async (event, payload: unknown): Promise<ProductionActionResult> => {
-    assertTrustedSender(event);
-    const scoped = spendOperation(payload);
-    if ("ok" in scoped) return scoped;
-    const raw = objectOf(payload);
-    // 一下点击只批一镜（付费卡逐镜）：渲染层只递「用户点的是哪一镜」，批不批、派不派由主进程决定。
-    const shotId = str(raw.shotId) || undefined;
-    return (await deps.loadCore()).confirmPendingSpendConfirmation({ ...scoped, ...cardIdentity(raw), quoteId: str(raw.quoteId), ...(shotId ? { shotId } : {}) });
-  });
-
-  ipcMain.handle("nomi:production-runs:confirm-spend-remaining", async (event, payload: unknown): Promise<ProductionActionResult> => {
-    assertTrustedSender(event);
-    const scoped = spendOperation(payload);
-    if ("ok" in scoped) return scoped;
-    const raw = objectOf(payload);
-    // 「生成剩下 N 张」：渲染层只递「用户点的是这几张」，它们必须就是卡上还没决定的那一叠（宿主核）；
-    // 每张各封一份授权、各派一份由主进程决定。
-    const shotIds = Array.isArray(raw.shotIds) ? raw.shotIds.map(str).filter(Boolean) : [];
-    if (shotIds.length === 0) return { ok: false, code: "failed", message: "generation_scope_invalid" };
-    return (await deps.loadCore()).confirmRemainingSpendShots({ ...scoped, ...cardIdentity(raw), quoteId: str(raw.quoteId), shotIds });
-  });
-
-  ipcMain.handle("nomi:production-runs:remove-spend-shot", async (event, payload: unknown): Promise<ProductionActionResult> => {
-    assertTrustedSender(event);
-    const scoped = spendOperation(payload);
-    if ("ok" in scoped) return scoped;
-    const raw = objectOf(payload);
-    const shotId = str(raw.shotId);
-    if (!shotId) return { ok: false, code: "failed", message: "generation_scope_invalid" };
-    return (await deps.loadCore()).removePendingSpendShot({ ...scoped, ...cardIdentity(raw), quoteId: str(raw.quoteId), shotId });
-  });
+  const shotChannel = (channel: string, run: (core: CapabilityActions, input: SpendCardInput & { shotId: string }) => Promise<ProductionActionResult>) => {
+    ipcMain.handle(channel, async (event, payload: unknown): Promise<ProductionActionResult> => {
+      assertTrustedSender(event);
+      const scoped = spendOperation(payload);
+      if ("ok" in scoped) return scoped;
+      const raw = objectOf(payload);
+      const shotId = str(raw.shotId);
+      if (!shotId) return { ok: false, code: "failed", message: "generation_scope_invalid" };
+      return run(await deps.loadCore(), { ...scoped, ...cardIdentity(raw), quoteId: str(raw.quoteId), shotId });
+    });
+  };
+  // 「不生成 ×」与再点一次的「恢复」：一镜一下，可撤回。
+  shotChannel("nomi:production-runs:remove-spend-shot", (core, input) => core.removePendingSpendShot(input));
+  shotChannel("nomi:production-runs:restore-spend-shot", (core, input) => core.restorePendingSpendShot(input));
 
   ipcMain.handle("nomi:production-runs:resume-batch", async (event, payload: unknown): Promise<ProductionShotActionResult> => {
     assertTrustedSender(event);

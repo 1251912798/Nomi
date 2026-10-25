@@ -459,6 +459,9 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
           ...(failure ? { summary: redactResidentSensitiveText(failure) } : {}),
           ...(!part.isError && part.toolCallId === undoableToolCallId
             && capabilitySupportsUndo(resolveModelToolCapabilityId(slot.toolName, slot.args) ?? slot.toolName, slot.args) ? { undoable: true } : {}),
+          // `generate` 交出去的那一次出价：卡关掉以后收据下挂那几镜的组指向（读的是信封里的 operationId，不从正文猜）。
+          ...(!part.isError && slot.toolName === 'generate' && part.nextAction?.operationId
+            ? { generation: { operationId: part.nextAction.operationId } } : {}),
           // 展开体印的是「这次工具做了什么」，**不是模型收到的那段字**。宿主拼在正文末尾的
           // `User sees: …` 是给模型转述用的话（英文、第三人称写用户「the user can undo it with Cmd+Z」），
           // 而它讲的那件事这一行自己已经画出来了（上面那颗撤销钮、介入槽里的卡）。

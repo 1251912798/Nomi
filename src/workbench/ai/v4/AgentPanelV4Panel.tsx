@@ -25,6 +25,8 @@ import { V4Intervention, V4Queue, V4TaskCard } from './AgentPanelV4Cards'
 import { V4AssistantMessage, V4Thinking, V4UserBubble } from './AgentPanelV4Message'
 import { V4ErrorBar, V4Process, V4ReceiptNotice, V4ToolGroup, V4ToolReceipt } from './AgentPanelV4Receipt'
 import { flowItemNotices } from './useDirectorPatchNotices'
+import { GenerationReceiptPointers } from '../pointer/GenerationReceiptPointers'
+import { flowItemGenerations } from '../pointer/generationReceiptFacts'
 import { V4EmptyState } from './AgentPanelV4Empty'
 import { IconHistory, IconLayoutSidebarRightCollapse } from './AgentPanelV4Icons'
 import { AGENT_HEADER_COMPACT_WIDTH, AgentPanelHeaderSlotContext, type AgentPanelHeaderSlot } from '../../../ui/app-shell/shell/agentPanelHeaderSlot'
@@ -61,14 +63,10 @@ export type V4FlowHandlers = Readonly<{
 
 export type V4InterventionHandlers = Readonly<{
   onConfirm?: () => void
-  /** 翻页（付费卡多镜时）。 */
-  onPage?: (index: number) => void
   onReject?: (reason?: string) => void
   onEscalate?: () => void
-  /** 次动作（付费卡上是「去掉这张 / 这段」）。 */
+  /** 次动作（「改一下」「换模型」「去配置」）。 */
   onAlternate?: () => void
-  /** 整叠的动作（付费卡上是「生成剩下 N 张 / 段」）。 */
-  onBatch?: () => void
   /** 用户答了反问（chip 或卡内那一行，同一个动作）。 */
   onAnswer?: (reply: V4QuestionReply, questions: readonly string[]) => void
   /** 计划行勾选 / 收起。**必填**——见 `V4Intervention` 里那段注释（R28）。 */
@@ -93,11 +91,10 @@ export type AgentPanelV4PanelProps = {
   onStarter?: (prompt: string) => void
   slot?: InterventionData
   /**
-   * 介入槽的**卡体**。付费确认卡把画布节点那张生成框整件放进来
-   * （`NodeGenerationComposer host="panel"`，2026-09-10 用户拍板：「要和画布里一样的真实体验」）。
+   * 介入槽的**卡体**。付费卡放指向元素 + 一行只读摘要 + 说明行（`AgentPanelV4SpendCardBody`，SpendCardQ1 板）。
    * 其余 kind 不传 = 槽照旧渲染它自己的摘要与参数 chip。
    */
-  slotComposer?: React.ReactNode
+  slotBody?: React.ReactNode
   /**
    * 槽里那张卡在不在等用户回答。**缺席 = 在等**，完整推导在 `V4SlotShell` 的 `waiting` 上。
    *
@@ -225,7 +222,7 @@ export function AgentPanelV4Panel({
   surface = 'creation',
   onStarter,
   slot,
-  slotComposer,
+  slotBody,
   slotWaiting,
   composerBanner,
   queue,
@@ -422,13 +419,15 @@ export function AgentPanelV4Panel({
             />
             {/* 宿主确定性的提示（例如 3D-BOX 补丁覆盖了手调）画在这一行外面：收起的过程行也照样看得见 */}
             {flowItemNotices(item).map((notice, position) => <V4ReceiptNotice key={position} text={notice} />)}
+            {/* `generate` 那一行：卡关掉以后挂那几镜的组指向（实时读节点，点了照样定位），同样画在行外面 */}
+            {flowItemGenerations(item).map((operationId) => <GenerationReceiptPointers key={operationId} operationId={operationId} />)}
           </React.Fragment>
         ))}
         {flowTail}
       </div>
       {slot ? (
         <div className="shrink-0 px-2.5 pb-2">
-          <V4Intervention data={slot} labels={labels.intervention} {...(slotComposer ? { composer: slotComposer } : {})} {...(slotWaiting === undefined ? {} : { waiting: slotWaiting })} {...slotHandlers} />
+          <V4Intervention data={slot} labels={labels.intervention} {...(slotBody ? { body: slotBody } : {})} {...(slotWaiting === undefined ? {} : { waiting: slotWaiting })} {...slotHandlers} />
         </div>
       ) : null}
       {queue?.length ? (

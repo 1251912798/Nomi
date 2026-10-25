@@ -219,6 +219,13 @@ table.cmpt tr.rec td{background:var(--nomi-ink05)}
 .bd-Q1f{margin:0}.bd-Q1f .chg2{background:var(--nomi-ink10);border-radius:4px;padding:0 3px;color:var(--nomi-ink);font-weight:600}
 .bd-Q4{margin:0}.bd-Q4 .docked.bad{border-color:var(--nomi-danger-edge)}.bd-Q4 .docked.quiet{border-color:var(--nomi-line)}
 </style>
+<style>
+/* 方案一区：帧并排，帧外壳与部件样式全部来自板源（内联），这里只排版。 */
+.p1-grid{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.p1-frame{margin:0}
+.p1-cap{margin:0 0 6px;font-size:12px;color:#555;max-width:384px}
+.p1-note{margin:0 0 12px;font-size:12px;color:#555;max-width:960px}
+</style>
 </head>
 <body>
 <section class="bd bd-Q1s" data-board-cell="Q1s">
@@ -241,7 +248,7 @@ table.cmpt tr.rec td{background:var(--nomi-ink05)}
 <div class="col g4"><div class="cap"><b>① 单段 · 确认前</b></div>
 <div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
 <div class="pbody"><p class="say">已在画布上起草了 1 个镜头。</p></div>
-<div class="rq"><div class="rq-h"><span class="rq-t">生成这 1 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="rq"><div class="rq-h"><span class="rq-t">生成这段视频？</span></div>
 <div class="one-p1"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i16"><use href="#Q1s-v"/></svg></span><span class="pl">等你确认</span></span></button>
 <div class="col g4" style="padding-top:26px"><span class="sum">Seedance 2.0 Fast</span><span class="sum">16:9 · 4s · 480p</span></div></div>
 <div class="rq-f"><span class="price">合计 ¥0.70</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">生成</button></div></div>
@@ -251,13 +258,13 @@ table.cmpt tr.rec td{background:var(--nomi-ink05)}
 <div class="col g4"><div class="cap"><b>② 三段 · 确认前</b></div>
 <div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
 <div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
-<div class="rq"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="rq"><div class="rq-h"><span class="rq-t">生成这些视频？</span></div>
 <div class="strip">
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span></span></button>
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span></span></button>
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span></span></button></div>
 <span class="sum">Seedance 2.0 Fast · 16:9 · 480p · 共 13s</span>
-<div class="rq-f"><span class="price">3 段 · 合计 ¥2.10</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div>
+<div class="rq-f"><span class="price">3 段</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">生成 3 段</button></div></div>
 <div class="pinp">可继续输入，将排队发送…</div></div></div>
 
 <!-- 3 生成中 -->
@@ -276,7 +283,7 @@ table.cmpt tr.rec td{background:var(--nomi-ink05)}
 <div class="col g4"><div class="cap"><b>④ 完成</b></div>
 <div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
 <div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
-<div class="rq quiet"><div class="rq-h"><svg class="i i14 ok"><use href="#Q1s-ck"/></svg><span class="rq-t">已生成 3 段</span><span class="sp"></span><span class="price">3 段 · 合计 ¥2.10</span></div>
+<div class="rq quiet"><div class="rq-h"><svg class="i i14 ok"><use href="#Q1s-ck"/></svg><span class="rq-t">已生成 3 段</span><span class="sp"></span><span class="price">3 段</span></div>
 <div class="strip">
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th im1"><span class="tp"><svg class="i i12"><use href="#Q1s-v"/></svg></span></span></button>
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th im2"><span class="tp"><svg class="i i12"><use href="#Q1s-v"/></svg></span></span></button>
@@ -292,8 +299,8 @@ table.cmpt tr.rec td{background:var(--nomi-ink05)}
 <div class="strip">
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty gen"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="sb acc"><svg class="i i10 spin"><use href="#Q1s-ld"/></svg>生成中</span></span></button>
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th bad"><span class="ct bd"><svg class="i i14"><use href="#Q1s-al"/></svg></span><span class="sb bad">失败</span></span></button>
-<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">还没生成</span></span></button></div>
-<div class="fact"><svg class="i i14 bd"><use href="#Q1s-al"/></svg><span>服务暂时不可用。<small>镜 01 已发出并在生成；镜 03 还没发。</small></span></div>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">还没发</span></span></button></div>
+<div class="fact"><svg class="i i14 bd"><use href="#Q1s-al"/></svg><span>服务暂时不可用。<small>镜 01 已发出并在生成；</small></span></div>
 <div class="rq-f"><button class="btn txt" type="button">先不发了</button><button class="btn pri" type="button">再试一次</button></div></div>
 <div class="pinp">可继续输入，将排队发送…</div></div></div>
 
@@ -305,111 +312,40 @@ table.cmpt tr.rec td{background:var(--nomi-ink05)}
 <div class="strip">
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty gen"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="sb acc"><svg class="i i10 spin"><use href="#Q1s-ld"/></svg>生成中</span></span></button>
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th bad"><span class="ct bd"><svg class="i i14"><use href="#Q1s-al"/></svg></span><span class="sb bad">失败</span></span></button>
-<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">还没生成</span></span></button></div>
-<div class="fact"><svg class="i i14 bd"><use href="#Q1s-al"/></svg><span>时长 5s 超出这个模型的上限。<small>镜 01 已发出；镜 03 未发。</small></span></div>
+<button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">还没发</span></span></button></div>
+<div class="fact"><svg class="i i14 bd"><use href="#Q1s-al"/></svg><span>时长 5s 超出这个模型的上限。<small>镜 01 已发出；</small></span></div>
 <div class="rq-f"><button class="btn txt" type="button">先不发了</button><button class="btn pri" type="button"><svg class="i i14"><use href="#Q1s-fc"/></svg>去改镜 02</button></div></div>
 <div class="pinp">可继续输入，将排队发送…</div></div></div>
 <!-- 7 价格算不出 -->
 <div class="col g4"><div class="cap"><b>⑦ 价格算不出（多数模型的常态）：整行不印，不写 ¥0</b></div>
 <div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
 <div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
-<div class="rq"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="rq"><div class="rq-h"><span class="rq-t">生成这些视频？</span></div>
 <div class="strip">
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">等你确认</span></span></button>
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">等你确认</span></span></button>
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span><span class="pl">等你确认</span></span></button></div>
 <span class="sum">Seedance 2.0 Fast · 16:9 · 480p · 共 13s</span>
-<div class="rq-f"><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div>
+<div class="rq-f"><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">生成 3 段</button></div></div>
 <div class="pinp">可继续输入，将排队发送…</div></div></div>
 
 <!-- 8 逐镜不同 + 竖版 -->
 <div class="col g4"><div class="cap"><b>⑧ 逐镜不同 · 含竖版：逐镜单价展开</b></div>
 <div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
 <div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
-<div class="rq"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="rq"><div class="rq-h"><span class="rq-t">生成这些视频？</span></div>
 <div class="strip">
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="slot t"><span class="th h draft"><span class="ct"><svg class="i i14"><use href="#Q1s-v"/></svg></span></span></span></button>
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="slot t"><span class="th v draft"><span class="ct" style="width:22px;height:22px"><svg class="i i12"><use href="#Q1s-v"/></svg></span></span></span></button>
 <button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="slot t"><span class="th v draft"><span class="ct" style="width:22px;height:22px"><svg class="i i12"><use href="#Q1s-v"/></svg></span></span></span></button></div>
-<span class="sum">3 镜 · 逐镜不同：16:9 ×1 · 9:16 ×2</span>
+<span class="sum">16:9 ×1 · 9:16 ×2 · 自动 ×0</span>
 <div class="col" style="gap:3px"><span class="sum" style="display:flex;align-items:center;gap:4px"><svg class="i i12" style="transform:rotate(90deg)"><use href="#Q1s-cr"/></svg>逐镜 · 3 镜</span>
 <div class="row" style="padding-left:16px"><span class="sum" style="flex:1">镜头 1 · Seedance 2.0 Fast · 16:9 · 4s</span><span class="price">¥0.70</span></div>
 <div class="row" style="padding-left:16px"><span class="sum" style="flex:1">镜头 2 · Seedance 2.0 Fast · 9:16 · 5s</span><span class="price">¥0.88</span></div>
 <div class="row" style="padding-left:16px"><span class="sum" style="flex:1">镜头 3 · Seedance 2.0 Fast · 9:16 · 4s</span><span class="price">¥0.70</span></div></div>
-<div class="rq-f"><span class="price">3 段 · 合计 ¥2.28</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div>
+<div class="rq-f"><span class="price">3 段</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">生成 3 段</button></div></div>
 <div class="pinp">可继续输入，将排队发送…</div></div></div>
 
-
-</div>
-</div>
-</section>
-<section class="bd bd-Q1f" data-board-cell="Q1f">
-<h3 class="bd-title">Q1 想改的路径</h3>
-<div class="nm light" style="width:1700px;padding:32px 40px;display:flex;flex-direction:column;gap:20px">
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-<symbol id="Q1f-v" viewBox="0 0 24 24"><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z"/><path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"/></symbol>
-<symbol id="Q1f-up" viewBox="0 0 24 24"><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></symbol>
-<symbol id="Q1f-ld" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
-<symbol id="Q1f-fc" viewBox="0 0 24 24"><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 3l0 2"/><path d="M3 12l2 0"/><path d="M12 19l0 2"/><path d="M19 12l2 0"/></symbol>
-</defs></svg>
-<div class="row g8"><span class="tag sch">Q1</span><h2 class="h2">想改参数：点指向 → 在节点里改 → 回聊天点「全部生成」，或直接在节点上生成</h2><span class="note">卡上的摘要和合计读节点，所以节点里一改，卡跟着变；聊天里没有第二份参数。</span></div>
-<div style="display:grid;grid-template-columns:repeat(2,780px);gap:24px 40px">
-
-<!-- ① -->
-<div class="col g4"><div class="note"><b>① 点「镜 02」</b> 　不想改的人，直接点「全部生成」，不用走这条路</div>
-<div style="display:flex;width:780px;height:320px">
-<div class="cv" style="width:420px;height:320px;border-radius:12px 0 0 12px">
-<div class="cn" style="left:24px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></div></div></div>
-<div class="cn hot" style="left:156px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></div></div></div>
-<div class="cn" style="left:288px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></div></div></div></div>
-<div class="panel" style="width:360px;height:320px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
-<div class="rq" style="margin-top:12px"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
-<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button><button class="p1 hot" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button></div>
-<span class="sum">Seedance 2.0 Fast · 16:9 · 480p · 共 13s</span>
-<div class="rq-f"><span class="price">3 段 · 合计 ¥2.10</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div></div>
-</div></div>
-
-<!-- ② -->
-<div class="col g4"><div class="note"><b>② 画布滑到镜 02，生成框就在节点下面</b> 　把 5s 改成 8s；卡上的「共 13s」「合计」同时跟着变</div>
-<div style="display:flex;width:780px;height:320px">
-<div class="cv" style="width:420px;height:320px;border-radius:12px 0 0 12px">
-<div class="cn" style="left:-80px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th draft"></div></div></div>
-<div class="cn flash" style="left:154px;top:66px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></div></div></div>
-<div class="cn" style="left:290px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th draft"></div></div></div>
-<div class="cmp" style="left:50px;top:142px;width:320px"><div class="pt">雨后清晨，落叶随水流缓缓漂过纸船身侧，船身轻轻晃动。</div><div class="pr"><span class="chp">Seedance 2.0 Fast</span><span class="chp">16:9</span><span class="chp chg">8s</span><span class="chp">480p</span><span class="sp"></span><span class="up"><svg class="i i14"><use href="#Q1f-up"/></svg></span></div></div></div>
-<div class="panel" style="width:360px;height:320px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
-<div class="rq" style="margin-top:12px"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
-<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button><button class="p1 hot" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button></div>
-<span class="sum">Seedance 2.0 Fast · 16:9 · 480p · <span class="chg2">共 16s</span></span>
-<div class="rq-f"><span class="price"><span class="chg2">3 段 · 合计 ¥2.94</span></span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div></div>
-</div></div>
-
-<!-- ③ -->
-<div class="col g4"><div class="note"><b>③ 回到聊天，点「全部生成」</b> 　按节点当前的参数发出；画布上三个节点依次亮起、进入生成</div>
-<div style="display:flex;width:780px;height:320px">
-<div class="cv" style="width:420px;height:320px;border-radius:12px 0 0 12px">
-<div class="cn" style="left:-80px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg></span></div></div></div>
-<div class="cn" style="left:154px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg></span></div></div></div>
-<div class="cn" style="left:290px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg></span></div></div></div></div>
-<div class="panel" style="width:360px;height:320px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
-<div class="rq quiet" style="margin-top:12px"><div class="rq-h"><svg class="i i14 spin" style="color:var(--nomi-accent)"><use href="#Q1f-ld"/></svg><span class="rq-t">正在发出 1/3 段</span></div>
-<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg>发出中</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th empty"><span class="pl"><svg class="i i10"><use href="#Q1f-cl"/></svg>排队中</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th empty"><span class="pl"><svg class="i i10"><use href="#Q1f-cl"/></svg>排队中</span></span></button></div>
-<div class="rq-f"><span class="sp"></span><button class="btn" type="button">取消</button></div></div></div>
-</div></div>
-
-<!-- ④ -->
-<div class="col g4"><div class="note"><b>④ 或者：在节点上直接点 ↑</b> 　卡自己认出镜 02 已经发了，生成钮变成「生成剩下 2 段」，合计只算剩下的</div>
-<div style="display:flex;width:780px;height:320px">
-<div class="cv" style="width:420px;height:320px;border-radius:12px 0 0 12px">
-<div class="cn" style="left:-80px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 01</span></div><div class="card"><div class="th draft"></div></div></div>
-<div class="cn hot" style="left:154px;top:66px;width:112px;height:63px"><div class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></div><div class="card"><div class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg>生成中</span></div></div></div>
-<div class="cn" style="left:290px;top:70px;width:112px;height:63px"><div class="lab"><span class="shot">镜 03</span></div><div class="card"><div class="th draft"></div></div></div></div>
-<div class="panel" style="width:360px;height:320px;border-radius:0 12px 12px 0;box-shadow:none;border-left:1px solid var(--nomi-line)"><div class="ph"><span class="wm">No<b>m</b>i</span></div>
-<div class="rq" style="margin-top:12px"><div class="rq-h"><span class="rq-t">生成这 2 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
-<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button><button class="p1 hot" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q1f-ld"/></svg>生成中</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q1f-v"/></svg></span></span></button></div>
-<span class="sum">镜 02 已发出 · 其余 Seedance 2.0 Fast · 16:9 · 480p</span>
-<div class="rq-f"><span class="price">2 段 · 合计 ¥1.40</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">生成剩下 2 段</button></div></div></div>
-</div></div>
 
 </div>
 </div>
@@ -431,26 +367,1192 @@ table.cmpt tr.rec td{background:var(--nomi-ink05)}
 <div class="col g8"><div class="cap"><span class="tag sch">Q1</span><b>一张卡一颗确认</b></div>
 <div style="display:flex;gap:8px;align-items:flex-start">
 <div class="nm light" style="padding:12px;width:384px"><div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div><div class="pbody"><p class="say">Drafted 3 shots on the canvas.</p></div>
-<div class="rq"><div class="rq-h"><span class="rq-t">Generate these 3 clips?</span><span class="bdg">Generation · Nomi picked</span></div>
+<div class="rq"><div class="rq-h"><span class="rq-t">Generate these images?</span></div>
 <div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">Shot 01</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">Shot 02</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">Shot 03</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button></div>
 <span class="sum">Seedance 2.0 Fast · 16:9 · 480p · 13s total</span>
-<div class="rq-f"><span class="price">3 videos · Total ¥2.10</span><span class="sp"></span><button class="btn txt" type="button">Cancel</button><button class="btn pri" type="button">Generate all (3)</button></div></div><div class="pinp">You can keep typing; it will be queued…</div></div></div>
+<div class="rq-f"><span class="price">3 videos</span><span class="sp"></span><button class="btn txt" type="button">Cancel</button><button class="btn pri" type="button">Generate 3 images</button></div></div><div class="pinp">You can keep typing; it will be queued…</div></div></div>
 <div class="nm dark" style="padding:12px;width:384px"><div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div><div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
 <div class="rq bad"><div class="rq-h"><svg class="i i14 bd"><use href="#Q4-al"/></svg><span class="rq-t">镜 02 没有发出去</span></div>
-<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q4-ld"/></svg>生成中</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th bad"><span class="ct bd"><svg class="i i14"><use href="#Q4-al"/></svg></span><span class="sb bad">失败</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="pl">还没生成</span></span></button></div>
-<div class="fact"><svg class="i i14 bd"><use href="#Q4-al"/></svg><span>服务暂时不可用。<small>镜 01 已发出并在生成；镜 03 还没发。</small></span></div>
+<div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span><span class="ttl">纸船出发</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q4-ld"/></svg>生成中</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span><span class="ttl">越过落叶</span></span><span class="th bad"><span class="ct bd"><svg class="i i14"><use href="#Q4-al"/></svg></span><span class="sb bad">失败</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span><span class="ttl">漂向远处</span></span><span class="th draft"><span class="pl">还没发</span></span></button></div>
+<div class="fact"><svg class="i i14 bd"><use href="#Q4-al"/></svg><span>服务暂时不可用。<small>镜 01 已发出并在生成；</small></span></div>
 <div class="rq-f"><button class="btn txt" type="button">先不发了</button><button class="btn pri" type="button">再试一次</button></div></div><div class="pinp">可继续输入，将排队发送…</div></div></div>
 <div class="nm dark" style="padding:12px;width:384px"><div class="panel"><div class="ph"><span class="wm">No<b>m</b>i</span></div><div class="pbody"><p class="say">Drafted 3 shots on the canvas.</p></div>
 <div class="rq quiet"><div class="rq-h"><svg class="i i14 spin" style="color:var(--nomi-accent)"><use href="#Q4-ld"/></svg><span class="rq-t">Sending 2 of 3 videos</span></div>
 <div class="strip"><button class="p1" type="button"><span class="lab"><span class="shot">Shot 01</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q4-ld"/></svg>Generating</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">Shot 02</span></span><span class="th empty gen"><span class="sb acc"><svg class="i i10 spin"><use href="#Q4-ld"/></svg>Sending</span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">Shot 03</span></span><span class="th empty"><span class="pl"><svg class="i i10"><use href="#Q4-cl"/></svg>Queued</span></span></button></div>
 <div class="rq-f"><span class="note">Cancel to stop the rest</span><span class="sp"></span><button class="btn" type="button">Cancel</button></div></div><div class="pinp">You can keep typing; it will be queued…</div></div></div>
 <div class="nm light" style="padding:12px;width:324px"><div class="panel w300"><div class="ph"><span class="wm">No<b>m</b>i</span></div><div class="pbody"><p class="say">已在画布上起草了 3 个镜头。</p></div>
-<div class="rq" style="margin:0 10px 10px;padding:10px"><div class="rq-h"><span class="rq-t">生成这 3 段视频？</span><span class="bdg">生成 · Nomi 选的</span></div>
+<div class="rq" style="margin:0 10px 10px;padding:10px"><div class="rq-h"><span class="rq-t">生成这些视频？</span></div>
 <div class="strip" style="gap:6px"><button class="p1" type="button"><span class="lab"><span class="shot">镜 01</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 02</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button><button class="p1" type="button"><span class="lab"><span class="shot">镜 03</span></span><span class="th draft"><span class="ct"><svg class="i i14"><use href="#Q4-v"/></svg></span></span></button></div>
 <span class="sum">Seedance 2.0 Fast · 16:9 · 共 13s</span>
-<div class="rq-f" style="flex-wrap:wrap"><span class="price">3 段 · 合计 ¥2.10</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">全部生成（3）</button></div></div></div></div>
+<div class="rq-f" style="flex-wrap:wrap"><span class="price">3 段</span><span class="sp"></span><button class="btn txt" type="button">取消</button><button class="btn pri" type="button">生成 3 段</button></div></div></div></div>
 </div></div>
 
+</div>
+</section>
+<section class="bd bd-P1" data-board-cell="P1">
+<h3 class="bd-title">方案一（用户 10-25 拍板）· 画布部件原样渲染：中英 · 明暗 · 宽窄 · 进行中 / 失败 / 一张不剩</h3>
+<p class="p1-note">这一区是付费卡的现行标准。上面 Q1 / Q4 两区是 10-23 的原样副本；两边不一致的地方以这一区为准：页脚不再写「N 段 / N 张」，标题旁不再有「生成 · Nomi 选的」，缩略图的状态和图标合成正中一个胶囊，悬停不再把摘要换成镜头名，失败时不再有「镜头 1 已发出；镜头 3 还没发。」那一行。</p>
+<div class="p1-grid">
+<figure class="p1-frame" data-board-frame="One-Zh-Wide"><figcaption class="p1-cap">方案一 · 中 · 明 · 宽 384 · 聚焦第 1 格</figcaption>
+<div style="width: 384px; height: 500px;">
+  <div style="width: 384px; height: 500px; background: oklch(0.985 0.003 90); position: relative; box-sizing: border-box; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif; color: oklch(0.22 0.01 80); -webkit-font-smoothing: antialiased;">
+  <div style="position: relative; height: 100%; border-radius: 16px; border: 1px solid oklch(0.91 0.004 80); background: oklch(1 0 0); box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06); overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+    
+      <div style="height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; box-sizing: border-box;">
+        <span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; background: oklch(0.22 0.01 80); color: oklch(1 0 0); font-size: 11px; font-weight: 700; display: grid; place-items: center;">N</span>
+        <span style="font-size: 14px; font-weight: 600; letter-spacing: -0.01em;">Nomi</span>
+        <span style="height: 22px; padding: 0 6px 0 8px; border: 1px solid oklch(0.91 0.004 80); border-radius: 999px; font-size: 11px; color: oklch(0.32 0.01 80); display: inline-flex; align-items: center; gap: 2px; box-sizing: border-box;">已用 11<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+        <span style="flex: 1;"></span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: oklch(0.50 0.01 80);"><path d="M12 8v4l2 2"></path><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"></path></svg>
+        <span aria-hidden="true" style="height: 26px; padding: 0 3px; border-radius: 8px; background: oklch(0.97 0.003 80); display: inline-flex; align-items: center; gap: 2px; color: oklch(0.50 0.01 80);">
+          <span style="width: 22px; height: 20px; display: grid; place-items: center;"><span style="width: 6px; height: 6px; border-radius: 999px; background: currentColor;"></span></span>
+          <span style="width: 22px; height: 20px; border-radius: 6px; background: oklch(1 0 0); box-shadow: 0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03); display: grid; place-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><rect x="12" y="12" width="6" height="4" rx="1"></rect></svg></span>
+          <span style="width: 22px; height: 20px; display: grid; place-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16"></path></svg></span>
+        </span>
+      </div>
+      <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 8px 12px 10px; box-sizing: border-box;">
+        <div style="align-self: flex-end; max-width: 82%; background: oklch(0.22 0.01 80); color: oklch(1 0 0); border-radius: 10px; padding: 7px 10px; font-size: 12px; line-height: 1.45;">画 3 张雨后纸船的图，起草好给我确认。</div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: oklch(0.50 0.01 80);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+          <span>准备生成</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+        </div>
+      </div>
+    
+    <section aria-label="付费卡" style="flex-shrink: 0; margin: 0 11px; width: 362px; box-sizing: border-box; border: 1px solid oklch(0.68 0.01 80); border-radius: 10px; background: oklch(1 0 0); overflow: hidden;">
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; font-size: 12px;">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: oklch(0.22 0.01 80); display: flex; align-items: center; gap: 6px; min-width: 0; line-height: 18px;">
+          
+          
+          <span style="min-width: 0;">生成这些图片？</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 出发" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">出发</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: 0 0 0 1.5px oklch(0.22 0.01 80), 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="已定位" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.50 0.01 80); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0;"><circle cx="12" cy="12" r="7"></circle><path d="M12 3v2M3 12h2M12 19v2M19 12h2"></path></svg>
+                      
+                      
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">已定位</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+                  <button type="button" aria-label="雨后纸船 · 出发不生成" title="雨后纸船 · 出发不生成" style="position: absolute; left: calc(100% - 16px); top: -8px; z-index: 6; width: 24px; height: 24px; padding: 0; border: 0; background: transparent; display: grid; place-items: center; cursor: pointer;">
+                    <span aria-hidden="true" style="width: 16px; height: 16px; border-radius: 999px; background: oklch(0.22 0.01 80); color: oklch(1 0 0); box-shadow: 0 0 0 1.5px oklch(1 0 0); display: grid; place-items: center;"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"></path></svg></span>
+                  </button>
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 越过落叶" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">越过落叶</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                    <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.68 0.01 80); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="M21 16l-5-5-9 8"></path></svg></span>
+                  
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 停在石阶" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">停在石阶</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                    <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.68 0.01 80); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="M21 16l-5-5-9 8"></path></svg></span>
+                  
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+        </div>
+        
+          <p title="GPT Image 2（Nomi 选的）· 16:9 · 1K" style="margin: 0; font-size: 12px; line-height: 18px; color: oklch(0.50 0.01 80); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">GPT Image 2（Nomi 选的）· 16:9 · 1K</p>
+        
+        
+      </div>
+      <div style="border-top: 1px solid oklch(0.95 0.003 80); padding: 8px 10px; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+        
+        <span style="flex: 1;"></span>
+        <button type="button" style="height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid oklch(0.95 0.003 80); background: oklch(1 0 0); color: oklch(0.22 0.01 80); font: inherit; font-size: 12px; flex-shrink: 0; box-sizing: border-box;">取消</button>
+        
+          <button type="button" style="height: 28px; min-width: 80px; padding: 0 12px; border-radius: 7px; border: 0; background: oklch(0.22 0.01 80); color: oklch(1 0 0); font: inherit; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; opacity: 1; flex-shrink: 0; box-sizing: border-box; white-space: nowrap;">生成 3 张<span aria-hidden="true" style="font-size: 11px; opacity: 0.7;">⏎</span></button>
+        
+      </div>
+    </section>
+    
+      <div style="margin: 10px 11px 11px; flex-shrink: 0; border: 1px solid oklch(0.91 0.004 80); border-radius: 10px; background: oklch(1 0 0); padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box;">
+        <span style="font-size: 13px; color: oklch(0.68 0.01 80);">可继续输入，将排队发送…</span>
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: oklch(0.32 0.01 80);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 7-6 2-2 6z"></path></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+          <span style="display: inline-flex; align-items: center; gap: 4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path></svg>Skill</span>
+          <span style="flex: 1;"></span>
+          <span style="display: inline-flex; align-items: center; gap: 2px;">请求批准<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+          <span aria-hidden="true" style="width: 28px; height: 28px; border-radius: 999px; border: 1.5px solid oklch(0.22 0.01 80); display: grid; place-items: center; box-sizing: border-box;"><span style="width: 9px; height: 9px; border-radius: 2px; background: oklch(0.22 0.01 80);"></span></span>
+        </div>
+      </div>
+    
+  </div>
+</div>
+</div>
+</figure>
+<figure class="p1-frame" data-board-frame="One-Zh-Narrow"><figcaption class="p1-cap">方案一 · 中 · 明 · 窄 320 · 第 1 张已在节点上点过生成 · 鼠标停在第 2 张</figcaption>
+<div style="width: 320px; height: 500px;">
+  <div style="width: 320px; height: 500px; background: oklch(0.985 0.003 90); position: relative; box-sizing: border-box; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif; color: oklch(0.22 0.01 80); -webkit-font-smoothing: antialiased;">
+  <div style="position: relative; height: 100%; border-radius: 16px; border: 1px solid oklch(0.91 0.004 80); background: oklch(1 0 0); box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06); overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+    
+      <div style="height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; box-sizing: border-box;">
+        <span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; background: oklch(0.22 0.01 80); color: oklch(1 0 0); font-size: 11px; font-weight: 700; display: grid; place-items: center;">N</span>
+        <span style="font-size: 14px; font-weight: 600; letter-spacing: -0.01em;">Nomi</span>
+        <span style="height: 22px; padding: 0 6px 0 8px; border: 1px solid oklch(0.91 0.004 80); border-radius: 999px; font-size: 11px; color: oklch(0.32 0.01 80); display: inline-flex; align-items: center; gap: 2px; box-sizing: border-box;">已用 11<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+        <span style="flex: 1;"></span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: oklch(0.50 0.01 80);"><path d="M12 8v4l2 2"></path><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"></path></svg>
+        <span aria-hidden="true" style="height: 26px; padding: 0 3px; border-radius: 8px; background: oklch(0.97 0.003 80); display: inline-flex; align-items: center; gap: 2px; color: oklch(0.50 0.01 80);">
+          <span style="width: 22px; height: 20px; display: grid; place-items: center;"><span style="width: 6px; height: 6px; border-radius: 999px; background: currentColor;"></span></span>
+          <span style="width: 22px; height: 20px; border-radius: 6px; background: oklch(1 0 0); box-shadow: 0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03); display: grid; place-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><rect x="12" y="12" width="6" height="4" rx="1"></rect></svg></span>
+          <span style="width: 22px; height: 20px; display: grid; place-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16"></path></svg></span>
+        </span>
+      </div>
+      <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 8px 12px 10px; box-sizing: border-box;">
+        <div style="align-self: flex-end; max-width: 82%; background: oklch(0.22 0.01 80); color: oklch(1 0 0); border-radius: 10px; padding: 7px 10px; font-size: 12px; line-height: 1.45;">画 3 张雨后纸船的图，起草好给我确认。</div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: oklch(0.50 0.01 80);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+          <span>准备生成</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+        </div>
+      </div>
+    
+    <section aria-label="付费卡" style="flex-shrink: 0; margin: 0 11px; width: 298px; box-sizing: border-box; border: 1px solid oklch(0.68 0.01 80); border-radius: 10px; background: oklch(1 0 0); overflow: hidden;">
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; font-size: 12px;">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: oklch(0.22 0.01 80); display: flex; align-items: center; gap: 6px; min-width: 0; line-height: 18px;">
+          
+          
+          <span style="min-width: 0;">生成剩下的图片？</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 出发" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">出发</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="生成中" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.50 0.01 80); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; color: oklch(0.55 0.13 250);"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
+                      
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">生成中</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 越过落叶" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">越过落叶</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: 0 0 0 1.5px oklch(0.22 0.01 80), 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06); overflow: hidden; display: grid; place-items: center;">
+                  
+                    <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.68 0.01 80); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="M21 16l-5-5-9 8"></path></svg></span>
+                  
+                  
+                </div>
+                
+                
+                
+                  <button type="button" aria-label="雨后纸船 · 越过落叶不生成" title="雨后纸船 · 越过落叶不生成" style="position: absolute; left: calc(100% - 16px); top: -8px; z-index: 6; width: 24px; height: 24px; padding: 0; border: 0; background: transparent; display: grid; place-items: center; cursor: pointer;">
+                    <span aria-hidden="true" style="width: 16px; height: 16px; border-radius: 999px; background: oklch(0.22 0.01 80); color: oklch(1 0 0); box-shadow: 0 0 0 1.5px oklch(1 0 0); display: grid; place-items: center;"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"></path></svg></span>
+                  </button>
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 停在石阶" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">停在石阶</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                    <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.68 0.01 80); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="M21 16l-5-5-9 8"></path></svg></span>
+                  
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+        </div>
+        
+          <p title="GPT Image 2（Nomi 选的）· 16:9 · 1K" style="margin: 0; font-size: 12px; line-height: 18px; color: oklch(0.50 0.01 80); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">GPT Image 2（Nomi 选的）· 16:9 · 1K</p>
+        
+        
+      </div>
+      <div style="border-top: 1px solid oklch(0.95 0.003 80); padding: 8px 10px; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+        
+        <span style="flex: 1;"></span>
+        <button type="button" style="height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid oklch(0.95 0.003 80); background: oklch(1 0 0); color: oklch(0.22 0.01 80); font: inherit; font-size: 12px; flex-shrink: 0; box-sizing: border-box;">取消</button>
+        
+          <button type="button" style="height: 28px; min-width: 80px; padding: 0 12px; border-radius: 7px; border: 0; background: oklch(0.22 0.01 80); color: oklch(1 0 0); font: inherit; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; opacity: 1; flex-shrink: 0; box-sizing: border-box; white-space: nowrap;">生成 2 张<span aria-hidden="true" style="font-size: 11px; opacity: 0.7;">⏎</span></button>
+        
+      </div>
+    </section>
+    
+      <div style="margin: 10px 11px 11px; flex-shrink: 0; border: 1px solid oklch(0.91 0.004 80); border-radius: 10px; background: oklch(1 0 0); padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box;">
+        <span style="font-size: 13px; color: oklch(0.68 0.01 80);">可继续输入，将排队发送…</span>
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: oklch(0.32 0.01 80);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 7-6 2-2 6z"></path></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+          <span style="display: inline-flex; align-items: center; gap: 4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path></svg>Skill</span>
+          <span style="flex: 1;"></span>
+          <span style="display: inline-flex; align-items: center; gap: 2px;">请求批准<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+          <span aria-hidden="true" style="width: 28px; height: 28px; border-radius: 999px; border: 1.5px solid oklch(0.22 0.01 80); display: grid; place-items: center; box-sizing: border-box;"><span style="width: 9px; height: 9px; border-radius: 2px; background: oklch(0.22 0.01 80);"></span></span>
+        </div>
+      </div>
+    
+  </div>
+</div>
+</div>
+</figure>
+<figure class="p1-frame" data-board-frame="One-En-Wide"><figcaption class="p1-cap">方案一 · 英 · 暗 · 宽 384 · 去掉了第 3 张</figcaption>
+<div style="width: 384px; height: 500px;">
+  <div style="width: 384px; height: 500px; background: oklch(0.18 0.006 80); position: relative; box-sizing: border-box; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif; color: oklch(0.93 0.006 85); -webkit-font-smoothing: antialiased;">
+  <div style="position: relative; height: 100%; border-radius: 16px; border: 1px solid oklch(0.36 0.007 80); background: oklch(0.235 0.007 80); box-shadow: 0 2px 5px oklch(0 0 0 / 0.30), 0 14px 34px oklch(0 0 0 / 0.32); overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+    
+      <div style="height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; box-sizing: border-box;">
+        <span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; background: oklch(0.93 0.006 85); color: oklch(0.235 0.007 80); font-size: 11px; font-weight: 700; display: grid; place-items: center;">N</span>
+        <span style="font-size: 14px; font-weight: 600; letter-spacing: -0.01em;">Nomi</span>
+        <span style="height: 22px; padding: 0 6px 0 8px; border: 1px solid oklch(0.36 0.007 80); border-radius: 999px; font-size: 11px; color: oklch(0.84 0.006 85); display: inline-flex; align-items: center; gap: 2px; box-sizing: border-box;">Used 11<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+        <span style="flex: 1;"></span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: oklch(0.70 0.006 85);"><path d="M12 8v4l2 2"></path><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"></path></svg>
+        <span aria-hidden="true" style="height: 26px; padding: 0 3px; border-radius: 8px; background: oklch(0.30 0.006 85); display: inline-flex; align-items: center; gap: 2px; color: oklch(0.70 0.006 85);">
+          <span style="width: 22px; height: 20px; display: grid; place-items: center;"><span style="width: 6px; height: 6px; border-radius: 999px; background: currentColor;"></span></span>
+          <span style="width: 22px; height: 20px; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: 0 1px 2px oklch(0 0 0 / 0.32), 0 1px 1px oklch(0 0 0 / 0.22); display: grid; place-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><rect x="12" y="12" width="6" height="4" rx="1"></rect></svg></span>
+          <span style="width: 22px; height: 20px; display: grid; place-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16"></path></svg></span>
+        </span>
+      </div>
+      <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 8px 12px 10px; box-sizing: border-box;">
+        <div style="align-self: flex-end; max-width: 82%; background: oklch(0.93 0.006 85); color: oklch(0.235 0.007 80); border-radius: 10px; padding: 7px 10px; font-size: 12px; line-height: 1.45;">Draw 3 rainy paper-boat images and let me confirm the drafts.</div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: oklch(0.70 0.006 85);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+          <span>Prepare generation</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+        </div>
+      </div>
+    
+    <section aria-label="Spend card" style="flex-shrink: 0; margin: 0 11px; width: 362px; box-sizing: border-box; border: 1px solid oklch(0.62 0.006 85); border-radius: 10px; background: oklch(0.235 0.007 80); overflow: hidden;">
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; font-size: 12px;">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: oklch(0.93 0.006 85); display: flex; align-items: center; gap: 6px; min-width: 0; line-height: 18px;">
+          
+          
+          <span style="min-width: 0;">Generate these images?</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — sets off" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">sets off</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                    <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: oklch(0.30 0.006 85); color: oklch(0.62 0.006 85); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="M21 16l-5-5-9 8"></path></svg></span>
+                  
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — drifts by" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">drifts by</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                    <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: oklch(0.30 0.006 85); color: oklch(0.62 0.006 85); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="M21 16l-5-5-9 8"></path></svg></span>
+                  
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — rests" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">rests</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                </div>
+                
+                  <div aria-hidden="true" style="position: absolute; inset: 0; border-radius: 6px; background: oklch(0.235 0.007 80 / 0.6);"></div>
+                
+                
+                  <button type="button" aria-label="Restore Paper boat — rests" title="Restore Paper boat — rests" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; height: 22px; padding: 0 9px; border: 0; border-radius: 999px; background: oklch(0.235 0.007 80); color: oklch(0.93 0.006 85); box-shadow: 0 1px 2px oklch(0 0 0 / 0.32), 0 1px 1px oklch(0 0 0 / 0.22), 0 0 0 1px oklch(0.36 0.007 80); font: inherit; font-size: 11px; font-weight: 500; white-space: nowrap; box-sizing: border-box; cursor: pointer;">Restore</button>
+                
+                
+              </div>
+            </div>
+          
+        </div>
+        
+          <p title="GPT Image 2 (Nomi's pick) · 16:9 · 1K" style="margin: 0; font-size: 12px; line-height: 18px; color: oklch(0.70 0.006 85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">GPT Image 2 (Nomi's pick) · 16:9 · 1K</p>
+        
+        
+      </div>
+      <div style="border-top: 1px solid oklch(0.31 0.007 80); padding: 8px 10px; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+        
+        <span style="flex: 1;"></span>
+        <button type="button" style="height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid oklch(0.31 0.007 80); background: oklch(0.235 0.007 80); color: oklch(0.93 0.006 85); font: inherit; font-size: 12px; flex-shrink: 0; box-sizing: border-box;">Cancel</button>
+        
+          <button type="button" style="height: 28px; min-width: 80px; padding: 0 12px; border-radius: 7px; border: 0; background: oklch(0.93 0.006 85); color: oklch(0.235 0.007 80); font: inherit; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; opacity: 1; flex-shrink: 0; box-sizing: border-box; white-space: nowrap;">Generate 2 images<span aria-hidden="true" style="font-size: 11px; opacity: 0.7;">⏎</span></button>
+        
+      </div>
+    </section>
+    
+      <div style="margin: 10px 11px 11px; flex-shrink: 0; border: 1px solid oklch(0.36 0.007 80); border-radius: 10px; background: oklch(0.235 0.007 80); padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box;">
+        <span style="font-size: 13px; color: oklch(0.62 0.006 85);">Keep typing — it will be queued…</span>
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: oklch(0.84 0.006 85);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 7-6 2-2 6z"></path></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+          <span style="display: inline-flex; align-items: center; gap: 4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path></svg>Skill</span>
+          <span style="flex: 1;"></span>
+          <span style="display: inline-flex; align-items: center; gap: 2px;">Ask first<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+          <span aria-hidden="true" style="width: 28px; height: 28px; border-radius: 999px; border: 1.5px solid oklch(0.93 0.006 85); display: grid; place-items: center; box-sizing: border-box;"><span style="width: 9px; height: 9px; border-radius: 2px; background: oklch(0.93 0.006 85);"></span></span>
+        </div>
+      </div>
+    
+  </div>
+</div>
+</div>
+</figure>
+<figure class="p1-frame" data-board-frame="One-En-Narrow"><figcaption class="p1-cap">方案一 · 英 · 暗 · 窄 320 · 比例逐镜不同</figcaption>
+<div style="width: 320px; height: 500px;">
+  <div style="width: 320px; height: 500px; background: oklch(0.18 0.006 80); position: relative; box-sizing: border-box; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif; color: oklch(0.93 0.006 85); -webkit-font-smoothing: antialiased;">
+  <div style="position: relative; height: 100%; border-radius: 16px; border: 1px solid oklch(0.36 0.007 80); background: oklch(0.235 0.007 80); box-shadow: 0 2px 5px oklch(0 0 0 / 0.30), 0 14px 34px oklch(0 0 0 / 0.32); overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+    
+      <div style="height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; box-sizing: border-box;">
+        <span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; background: oklch(0.93 0.006 85); color: oklch(0.235 0.007 80); font-size: 11px; font-weight: 700; display: grid; place-items: center;">N</span>
+        <span style="font-size: 14px; font-weight: 600; letter-spacing: -0.01em;">Nomi</span>
+        <span style="height: 22px; padding: 0 6px 0 8px; border: 1px solid oklch(0.36 0.007 80); border-radius: 999px; font-size: 11px; color: oklch(0.84 0.006 85); display: inline-flex; align-items: center; gap: 2px; box-sizing: border-box;">Used 11<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+        <span style="flex: 1;"></span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: oklch(0.70 0.006 85);"><path d="M12 8v4l2 2"></path><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"></path></svg>
+        <span aria-hidden="true" style="height: 26px; padding: 0 3px; border-radius: 8px; background: oklch(0.30 0.006 85); display: inline-flex; align-items: center; gap: 2px; color: oklch(0.70 0.006 85);">
+          <span style="width: 22px; height: 20px; display: grid; place-items: center;"><span style="width: 6px; height: 6px; border-radius: 999px; background: currentColor;"></span></span>
+          <span style="width: 22px; height: 20px; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: 0 1px 2px oklch(0 0 0 / 0.32), 0 1px 1px oklch(0 0 0 / 0.22); display: grid; place-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><rect x="12" y="12" width="6" height="4" rx="1"></rect></svg></span>
+          <span style="width: 22px; height: 20px; display: grid; place-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16"></path></svg></span>
+        </span>
+      </div>
+      <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 8px 12px 10px; box-sizing: border-box;">
+        <div style="align-self: flex-end; max-width: 82%; background: oklch(0.93 0.006 85); color: oklch(0.235 0.007 80); border-radius: 10px; padding: 7px 10px; font-size: 12px; line-height: 1.45;">Draw 3 rainy paper-boat images and let me confirm the drafts.</div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: oklch(0.70 0.006 85);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+          <span>Prepare generation</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+        </div>
+      </div>
+    
+    <section aria-label="Spend card" style="flex-shrink: 0; margin: 0 11px; width: 298px; box-sizing: border-box; border: 1px solid oklch(0.62 0.006 85); border-radius: 10px; background: oklch(0.235 0.007 80); overflow: hidden;">
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; font-size: 12px;">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: oklch(0.93 0.006 85); display: flex; align-items: center; gap: 6px; min-width: 0; line-height: 18px;">
+          
+          
+          <span style="min-width: 0;">Generate these images?</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — sets off" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">sets off</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                    <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: oklch(0.30 0.006 85); color: oklch(0.62 0.006 85); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="M21 16l-5-5-9 8"></path></svg></span>
+                  
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — drifts by" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">drifts by</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                    <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: oklch(0.30 0.006 85); color: oklch(0.62 0.006 85); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="M21 16l-5-5-9 8"></path></svg></span>
+                  
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — rests" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">rests</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 34.18%; top: 0; width: 31.64%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                    <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: oklch(0.30 0.006 85); color: oklch(0.62 0.006 85); display: grid; place-items: center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="M21 16l-5-5-9 8"></path></svg></span>
+                  
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+        </div>
+        
+          <p title="GPT Image 2 (Nomi's pick) · 1K · 16:9 ×2 · 9:16 ×1" style="margin: 0; font-size: 12px; line-height: 18px; color: oklch(0.70 0.006 85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">GPT Image 2 (Nomi's pick) · 1K · 16:9 ×2 · 9:16 ×1</p>
+        
+        
+      </div>
+      <div style="border-top: 1px solid oklch(0.31 0.007 80); padding: 8px 10px; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+        
+        <span style="flex: 1;"></span>
+        <button type="button" style="height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid oklch(0.31 0.007 80); background: oklch(0.235 0.007 80); color: oklch(0.93 0.006 85); font: inherit; font-size: 12px; flex-shrink: 0; box-sizing: border-box;">Cancel</button>
+        
+          <button type="button" style="height: 28px; min-width: 80px; padding: 0 12px; border-radius: 7px; border: 0; background: oklch(0.93 0.006 85); color: oklch(0.235 0.007 80); font: inherit; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; opacity: 1; flex-shrink: 0; box-sizing: border-box; white-space: nowrap;">Generate 3 images<span aria-hidden="true" style="font-size: 11px; opacity: 0.7;">⏎</span></button>
+        
+      </div>
+    </section>
+    
+      <div style="margin: 10px 11px 11px; flex-shrink: 0; border: 1px solid oklch(0.36 0.007 80); border-radius: 10px; background: oklch(0.235 0.007 80); padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box;">
+        <span style="font-size: 13px; color: oklch(0.62 0.006 85);">Keep typing — it will be queued…</span>
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: oklch(0.84 0.006 85);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 7-6 2-2 6z"></path></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+          <span style="display: inline-flex; align-items: center; gap: 4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path></svg>Skill</span>
+          <span style="flex: 1;"></span>
+          <span style="display: inline-flex; align-items: center; gap: 2px;">Ask first<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+          <span aria-hidden="true" style="width: 28px; height: 28px; border-radius: 999px; border: 1.5px solid oklch(0.93 0.006 85); display: grid; place-items: center; box-sizing: border-box;"><span style="width: 9px; height: 9px; border-radius: 2px; background: oklch(0.93 0.006 85);"></span></span>
+        </div>
+      </div>
+    
+  </div>
+</div>
+</div>
+</figure>
+<figure class="p1-frame" data-board-frame="States-Zh"><figcaption class="p1-cap">两个方案共用 · 中 · 明 · 进行中 / 失败 / 一张不剩</figcaption>
+<div style="width: 384px; height: 820px; box-sizing: border-box; padding: 20px 11px; background: oklch(0.985 0.003 90); display: flex; flex-direction: column; gap: 8px; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif;">
+  <span style="font-size: 11px; color: oklch(0.50 0.01 80);">进行中（交给画布之后，还有几张在交）</span>
+  <div style="width: 362px; height: auto; background: transparent; position: relative; box-sizing: border-box; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif; color: oklch(0.22 0.01 80); -webkit-font-smoothing: antialiased;">
+  <div style="position: relative; height: auto; border-radius: 0; border: 0; background: transparent; box-shadow: none; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+    
+    <section aria-label="付费卡" style="flex-shrink: 0; margin: 0; width: 362px; box-sizing: border-box; border: 1px solid oklch(0.68 0.01 80); border-radius: 10px; background: oklch(1 0 0); overflow: hidden;">
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; font-size: 12px;">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: oklch(0.22 0.01 80); display: flex; align-items: center; gap: 6px; min-width: 0; line-height: 18px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" style="color: oklch(0.55 0.13 250); flex-shrink: 0;"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
+          
+          <span style="min-width: 0;">正在发出 2/3 张</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 出发" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">出发</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="生成中" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.50 0.01 80); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; color: oklch(0.55 0.13 250);"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
+                      
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">生成中</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 越过落叶" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">越过落叶</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="提交中" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.50 0.01 80); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; color: oklch(0.55 0.13 250);"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
+                      
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">提交中</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 停在石阶" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">停在石阶</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="排队中" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.50 0.01 80); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">排队中</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+        </div>
+        
+        
+      </div>
+      <div style="border-top: 1px solid oklch(0.95 0.003 80); padding: 8px 10px; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+        
+          <span style="min-width: 0; color: oklch(0.50 0.01 80);">点「取消」停下剩下的</span>
+        
+        <span style="flex: 1;"></span>
+        <button type="button" style="height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid oklch(0.95 0.003 80); background: oklch(1 0 0); color: oklch(0.22 0.01 80); font: inherit; font-size: 12px; flex-shrink: 0; box-sizing: border-box;">取消</button>
+        
+      </div>
+    </section>
+    
+  </div>
+</div>
+  <span style="margin-top: 16px; font-size: 11px; color: oklch(0.50 0.01 80);">失败（有一张没发出去，留在卡里）</span>
+  <div style="width: 362px; height: auto; background: transparent; position: relative; box-sizing: border-box; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif; color: oklch(0.22 0.01 80); -webkit-font-smoothing: antialiased;">
+  <div style="position: relative; height: auto; border-radius: 0; border: 0; background: transparent; box-shadow: none; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+    
+    <section aria-label="付费卡" style="flex-shrink: 0; margin: 0; width: 362px; box-sizing: border-box; border: 1px solid oklch(0.895 0.052 25); border-radius: 10px; background: oklch(1 0 0); overflow: hidden;">
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; font-size: 12px;">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: oklch(0.22 0.01 80); display: flex; align-items: center; gap: 6px; min-width: 0; line-height: 18px;">
+          
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: oklch(0.45 0.13 25); flex-shrink: 0;"><path d="M12 9v4"></path><path d="M10.36 3.59L2.26 17.13a1.91 1.91 0 0 0 1.64 2.87h16.2a1.91 1.91 0 0 0 1.64-2.87L13.64 3.59a1.91 1.91 0 0 0-3.28 0z"></path><path d="M12 16h.01"></path></svg>
+          <span style="min-width: 0;">镜头 2 没有发出去</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 出发" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">出发</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="生成中" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.50 0.01 80); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; color: oklch(0.55 0.13 250);"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
+                      
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">生成中</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 越过落叶" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">越过落叶</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.895 0.052 25); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="失败" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.45 0.13 25); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      
+                      
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M12 9v4"></path><path d="M10.36 3.59L2.26 17.13a1.91 1.91 0 0 0 1.64 2.87h16.2a1.91 1.91 0 0 0 1.64-2.87L13.64 3.59a1.91 1.91 0 0 0-3.28 0z"></path><path d="M12 16h.01"></path></svg>
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">失败</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 停在石阶" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">停在石阶</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="还没发" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.97 0.003 80); color: oklch(0.50 0.01 80); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      
+                      
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">还没发</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+        </div>
+        
+        
+          <p style="margin: 0; font-size: 12px; line-height: 18px; color: oklch(0.45 0.13 25);">服务暂时不可用。</p>
+        
+      </div>
+      <div style="border-top: 1px solid oklch(0.95 0.003 80); padding: 8px 10px; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+        
+        <span style="flex: 1;"></span>
+        <button type="button" style="height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid oklch(0.95 0.003 80); background: oklch(1 0 0); color: oklch(0.22 0.01 80); font: inherit; font-size: 12px; flex-shrink: 0; box-sizing: border-box;">先不发了</button>
+        
+          <button type="button" style="height: 28px; min-width: 80px; padding: 0 12px; border-radius: 7px; border: 0; background: oklch(0.22 0.01 80); color: oklch(1 0 0); font: inherit; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; opacity: 1; flex-shrink: 0; box-sizing: border-box; white-space: nowrap;">再试一次<span aria-hidden="true" style="font-size: 11px; opacity: 0.7;">⏎</span></button>
+        
+      </div>
+    </section>
+    
+  </div>
+</div>
+  <span style="margin-top: 16px; font-size: 11px; color: oklch(0.50 0.01 80);">一张不剩（三张都去掉了）</span>
+  <div style="width: 362px; height: auto; background: transparent; position: relative; box-sizing: border-box; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif; color: oklch(0.22 0.01 80); -webkit-font-smoothing: antialiased;">
+  <div style="position: relative; height: auto; border-radius: 0; border: 0; background: transparent; box-shadow: none; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+    
+    <section aria-label="付费卡" style="flex-shrink: 0; margin: 0; width: 362px; box-sizing: border-box; border: 1px solid oklch(0.68 0.01 80); border-radius: 10px; background: oklch(1 0 0); overflow: hidden;">
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; font-size: 12px;">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: oklch(0.22 0.01 80); display: flex; align-items: center; gap: 6px; min-width: 0; line-height: 18px;">
+          
+          
+          <span style="min-width: 0;">没有要生成的了</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 出发" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">出发</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                </div>
+                
+                  <div aria-hidden="true" style="position: absolute; inset: 0; border-radius: 6px; background: oklch(1 0 0 / 0.6);"></div>
+                
+                
+                  <button type="button" aria-label="雨后纸船 · 出发恢复生成" title="雨后纸船 · 出发恢复生成" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; height: 22px; padding: 0 9px; border: 0; border-radius: 999px; background: oklch(1 0 0); color: oklch(0.22 0.01 80); box-shadow: 0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03), 0 0 0 1px oklch(0.91 0.004 80); font: inherit; font-size: 11px; font-weight: 500; white-space: nowrap; box-sizing: border-box; cursor: pointer;">恢复</button>
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 越过落叶" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">越过落叶</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                </div>
+                
+                  <div aria-hidden="true" style="position: absolute; inset: 0; border-radius: 6px; background: oklch(1 0 0 / 0.6);"></div>
+                
+                
+                  <button type="button" aria-label="雨后纸船 · 越过落叶恢复生成" title="雨后纸船 · 越过落叶恢复生成" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; height: 22px; padding: 0 9px; border: 0; border-radius: 999px; background: oklch(1 0 0); color: oklch(0.22 0.01 80); box-shadow: 0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03), 0 0 0 1px oklch(0.91 0.004 80); font: inherit; font-size: 11px; font-weight: 500; white-space: nowrap; box-sizing: border-box; cursor: pointer;">恢复</button>
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="雨后纸船 · 停在石阶" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.22 0.01 80);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">雨后纸船 · </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">停在石阶</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(1 0 0); box-shadow: inset 0 0 0 1px oklch(0.91 0.004 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                </div>
+                
+                  <div aria-hidden="true" style="position: absolute; inset: 0; border-radius: 6px; background: oklch(1 0 0 / 0.6);"></div>
+                
+                
+                  <button type="button" aria-label="雨后纸船 · 停在石阶恢复生成" title="雨后纸船 · 停在石阶恢复生成" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; height: 22px; padding: 0 9px; border: 0; border-radius: 999px; background: oklch(1 0 0); color: oklch(0.22 0.01 80); box-shadow: 0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03), 0 0 0 1px oklch(0.91 0.004 80); font: inherit; font-size: 11px; font-weight: 500; white-space: nowrap; box-sizing: border-box; cursor: pointer;">恢复</button>
+                
+                
+              </div>
+            </div>
+          
+        </div>
+        
+        
+      </div>
+      <div style="border-top: 1px solid oklch(0.95 0.003 80); padding: 8px 10px; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+        
+        <span style="flex: 1;"></span>
+        <button type="button" style="height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid oklch(0.95 0.003 80); background: oklch(1 0 0); color: oklch(0.22 0.01 80); font: inherit; font-size: 12px; flex-shrink: 0; box-sizing: border-box;">取消</button>
+        
+          <button type="button" disabled style="height: 28px; min-width: 80px; padding: 0 12px; border-radius: 7px; border: 0; background: oklch(0.22 0.01 80); color: oklch(1 0 0); font: inherit; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; opacity: 0.4; flex-shrink: 0; box-sizing: border-box; white-space: nowrap;">生成<span aria-hidden="true" style="font-size: 11px; opacity: 0.7;">⏎</span></button>
+        
+      </div>
+    </section>
+    
+  </div>
+</div>
+</div>
+</figure>
+<figure class="p1-frame" data-board-frame="States-En"><figcaption class="p1-cap">两个方案共用 · 英 · 暗 · 进行中 / 失败 / 一张不剩</figcaption>
+<div style="width: 384px; height: 820px; box-sizing: border-box; padding: 20px 11px; background: oklch(0.18 0.006 80); display: flex; flex-direction: column; gap: 8px; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif;">
+  <span style="font-size: 11px; color: oklch(0.70 0.006 85);">Sending (handed to the canvas, some still on their way)</span>
+  <div style="width: 362px; height: auto; background: transparent; position: relative; box-sizing: border-box; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif; color: oklch(0.93 0.006 85); -webkit-font-smoothing: antialiased;">
+  <div style="position: relative; height: auto; border-radius: 0; border: 0; background: transparent; box-shadow: none; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+    
+    <section aria-label="Spend card" style="flex-shrink: 0; margin: 0; width: 362px; box-sizing: border-box; border: 1px solid oklch(0.62 0.006 85); border-radius: 10px; background: oklch(0.235 0.007 80); overflow: hidden;">
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; font-size: 12px;">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: oklch(0.93 0.006 85); display: flex; align-items: center; gap: 6px; min-width: 0; line-height: 18px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" style="color: oklch(0.70 0.13 250); flex-shrink: 0;"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
+          
+          <span style="min-width: 0;">Sending 2 of 3 images</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — sets off" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">sets off</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="Generating" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.30 0.006 85); color: oklch(0.70 0.006 85); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; color: oklch(0.70 0.13 250);"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
+                      
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">Generating</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — drifts by" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">drifts by</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="Submitting" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.30 0.006 85); color: oklch(0.70 0.006 85); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; color: oklch(0.70 0.13 250);"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
+                      
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">Submitting</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — rests" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">rests</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="Queued" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.30 0.006 85); color: oklch(0.70 0.006 85); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">Queued</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+        </div>
+        
+        
+      </div>
+      <div style="border-top: 1px solid oklch(0.31 0.007 80); padding: 8px 10px; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+        
+          <span style="min-width: 0; color: oklch(0.70 0.006 85);">Cancel to stop the rest</span>
+        
+        <span style="flex: 1;"></span>
+        <button type="button" style="height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid oklch(0.31 0.007 80); background: oklch(0.235 0.007 80); color: oklch(0.93 0.006 85); font: inherit; font-size: 12px; flex-shrink: 0; box-sizing: border-box;">Cancel</button>
+        
+      </div>
+    </section>
+    
+  </div>
+</div>
+  <span style="margin-top: 16px; font-size: 11px; color: oklch(0.70 0.006 85);">Failed (one shot wasn't sent; the card stays)</span>
+  <div style="width: 362px; height: auto; background: transparent; position: relative; box-sizing: border-box; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif; color: oklch(0.93 0.006 85); -webkit-font-smoothing: antialiased;">
+  <div style="position: relative; height: auto; border-radius: 0; border: 0; background: transparent; box-shadow: none; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+    
+    <section aria-label="Spend card" style="flex-shrink: 0; margin: 0; width: 362px; box-sizing: border-box; border: 1px solid oklch(0.4 0.07 25); border-radius: 10px; background: oklch(0.235 0.007 80); overflow: hidden;">
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; font-size: 12px;">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: oklch(0.93 0.006 85); display: flex; align-items: center; gap: 6px; min-width: 0; line-height: 18px;">
+          
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: oklch(0.82 0.13 25); flex-shrink: 0;"><path d="M12 9v4"></path><path d="M10.36 3.59L2.26 17.13a1.91 1.91 0 0 0 1.64 2.87h16.2a1.91 1.91 0 0 0 1.64-2.87L13.64 3.59a1.91 1.91 0 0 0-3.28 0z"></path><path d="M12 16h.01"></path></svg>
+          <span style="min-width: 0;">Shot 2 wasn't sent</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — sets off" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">sets off</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="Generating" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.30 0.006 85); color: oklch(0.70 0.006 85); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; color: oklch(0.70 0.13 250);"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
+                      
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">Generating</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — drifts by" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">drifts by</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.4 0.07 25); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="Failed" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.30 0.006 85); color: oklch(0.82 0.13 25); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      
+                      
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M12 9v4"></path><path d="M10.36 3.59L2.26 17.13a1.91 1.91 0 0 0 1.64 2.87h16.2a1.91 1.91 0 0 0 1.64-2.87L13.64 3.59a1.91 1.91 0 0 0-3.28 0z"></path><path d="M12 16h.01"></path></svg>
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">Failed</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — rests" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">rests</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                    <span title="Not sent yet" style="max-width: calc(100% - 12px); height: 20px; padding: 0 7px; border-radius: 999px; background: oklch(0.30 0.006 85); color: oklch(0.70 0.006 85); font-size: 11px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; box-sizing: border-box;">
+                      
+                      
+                      
+                      
+                      <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">Not sent yet</span>
+                    </span>
+                  
+                </div>
+                
+                
+                
+              </div>
+            </div>
+          
+        </div>
+        
+        
+          <p style="margin: 0; font-size: 12px; line-height: 18px; color: oklch(0.82 0.13 25);">The service is unavailable right now.</p>
+        
+      </div>
+      <div style="border-top: 1px solid oklch(0.31 0.007 80); padding: 8px 10px; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+        
+        <span style="flex: 1;"></span>
+        <button type="button" style="height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid oklch(0.31 0.007 80); background: oklch(0.235 0.007 80); color: oklch(0.93 0.006 85); font: inherit; font-size: 12px; flex-shrink: 0; box-sizing: border-box;">Don't send</button>
+        
+          <button type="button" style="height: 28px; min-width: 80px; padding: 0 12px; border-radius: 7px; border: 0; background: oklch(0.93 0.006 85); color: oklch(0.235 0.007 80); font: inherit; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; opacity: 1; flex-shrink: 0; box-sizing: border-box; white-space: nowrap;">Try again<span aria-hidden="true" style="font-size: 11px; opacity: 0.7;">⏎</span></button>
+        
+      </div>
+    </section>
+    
+  </div>
+</div>
+  <span style="margin-top: 16px; font-size: 11px; color: oklch(0.70 0.006 85);">Nothing left (all three skipped)</span>
+  <div style="width: 362px; height: auto; background: transparent; position: relative; box-sizing: border-box; font-family: Inter, 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif; color: oklch(0.93 0.006 85); -webkit-font-smoothing: antialiased;">
+  <div style="position: relative; height: auto; border-radius: 0; border: 0; background: transparent; box-shadow: none; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+    
+    <section aria-label="Spend card" style="flex-shrink: 0; margin: 0; width: 362px; box-sizing: border-box; border: 1px solid oklch(0.62 0.006 85); border-radius: 10px; background: oklch(0.235 0.007 80); overflow: hidden;">
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; font-size: 12px;">
+        <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: oklch(0.93 0.006 85); display: flex; align-items: center; gap: 6px; min-width: 0; line-height: 18px;">
+          
+          
+          <span style="min-width: 0;">Nothing left to generate</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — sets off" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">sets off</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                </div>
+                
+                  <div aria-hidden="true" style="position: absolute; inset: 0; border-radius: 6px; background: oklch(0.235 0.007 80 / 0.6);"></div>
+                
+                
+                  <button type="button" aria-label="Restore Paper boat — sets off" title="Restore Paper boat — sets off" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; height: 22px; padding: 0 9px; border: 0; border-radius: 999px; background: oklch(0.235 0.007 80); color: oklch(0.93 0.006 85); box-shadow: 0 1px 2px oklch(0 0 0 / 0.32), 0 1px 1px oklch(0 0 0 / 0.22), 0 0 0 1px oklch(0.36 0.007 80); font: inherit; font-size: 11px; font-weight: 500; white-space: nowrap; box-sizing: border-box; cursor: pointer;">Restore</button>
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — drifts by" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">drifts by</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                </div>
+                
+                  <div aria-hidden="true" style="position: absolute; inset: 0; border-radius: 6px; background: oklch(0.235 0.007 80 / 0.6);"></div>
+                
+                
+                  <button type="button" aria-label="Restore Paper boat — drifts by" title="Restore Paper boat — drifts by" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; height: 22px; padding: 0 9px; border: 0; border-radius: 999px; background: oklch(0.235 0.007 80); color: oklch(0.93 0.006 85); box-shadow: 0 1px 2px oklch(0 0 0 / 0.32), 0 1px 1px oklch(0 0 0 / 0.22), 0 0 0 1px oklch(0.36 0.007 80); font: inherit; font-size: 11px; font-weight: 500; white-space: nowrap; box-sizing: border-box; cursor: pointer;">Restore</button>
+                
+                
+              </div>
+            </div>
+          
+            <div style="position: relative; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <div title="Paper boat — rests" style="height: 22px; display: flex; align-items: center; min-width: 0; font-size: 12px; font-weight: 600; color: oklch(0.93 0.006 85);">
+                <span style="display: flex; min-width: 0;">
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre;">Paper boat — </span>
+                  <span style="flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: pre;">rests</span>
+                </span>
+              </div>
+              <div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+                <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 6px; background: oklch(0.235 0.007 80); box-shadow: inset 0 0 0 1px oklch(0.36 0.007 80); overflow: hidden; display: grid; place-items: center;">
+                  
+                  
+                </div>
+                
+                  <div aria-hidden="true" style="position: absolute; inset: 0; border-radius: 6px; background: oklch(0.235 0.007 80 / 0.6);"></div>
+                
+                
+                  <button type="button" aria-label="Restore Paper boat — rests" title="Restore Paper boat — rests" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; height: 22px; padding: 0 9px; border: 0; border-radius: 999px; background: oklch(0.235 0.007 80); color: oklch(0.93 0.006 85); box-shadow: 0 1px 2px oklch(0 0 0 / 0.32), 0 1px 1px oklch(0 0 0 / 0.22), 0 0 0 1px oklch(0.36 0.007 80); font: inherit; font-size: 11px; font-weight: 500; white-space: nowrap; box-sizing: border-box; cursor: pointer;">Restore</button>
+                
+                
+              </div>
+            </div>
+          
+        </div>
+        
+        
+      </div>
+      <div style="border-top: 1px solid oklch(0.31 0.007 80); padding: 8px 10px; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+        
+        <span style="flex: 1;"></span>
+        <button type="button" style="height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid oklch(0.31 0.007 80); background: oklch(0.235 0.007 80); color: oklch(0.93 0.006 85); font: inherit; font-size: 12px; flex-shrink: 0; box-sizing: border-box;">Cancel</button>
+        
+          <button type="button" disabled style="height: 28px; min-width: 80px; padding: 0 12px; border-radius: 7px; border: 0; background: oklch(0.93 0.006 85); color: oklch(0.235 0.007 80); font: inherit; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; opacity: 0.4; flex-shrink: 0; box-sizing: border-box; white-space: nowrap;">Generate<span aria-hidden="true" style="font-size: 11px; opacity: 0.7;">⏎</span></button>
+        
+      </div>
+    </section>
+    
+  </div>
+</div>
+</div>
+</figure>
 </div>
 </section>
 </body>

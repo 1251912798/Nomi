@@ -18,6 +18,8 @@ import type { GenerationCanvasNode } from '../../generationCanvas/model/generati
 import { isLocalProcessingProgressPhase } from '../../generationCanvas/model/localProcessingPhase'
 import type { ProductionShotState } from '../../../../electron/shared/productionShotPhase'
 import { hasProductionShotCorner } from '../../generationCanvas/nodes/productionShotCorner'
+import { getGenerationNodeExecutionKind } from '../../generationCanvas/model/generationNodeKinds'
+import { formatSeconds, readAspect, readDurationSeconds } from '../../generation/list/generationListMediaFacts'
 
 export type NodePointerFace =
   | Readonly<{ kind: 'removed' }>
@@ -42,12 +44,18 @@ export function nodePointerFace(input: Readonly<{
   feedback: GenerationFeedback | null | undefined
   /** 这一镜在制作流程里的阶段（节点不归制作流程管时缺席）。 */
   productionState?: ProductionShotState | null
+  /**
+   * 宿主给的显式事实：这一镜这一次没成（付费卡：交给画布却没发出去 / 参数被拒），值是状态条上那一个词。
+   * 节点自己可能一笔失败记录都没有（同意在派发前就收回了），所以由宿主说；节点自己在跑 / 自己失败时以节点为准。
+   */
+  hostFailure?: string
 }>): NodePointerFace {
-  const { node, removed = false, canvasReady, feedback, productionState } = input
+  const { node, removed = false, canvasReady, feedback, productionState, hostFailure } = input
   if (!node || !canvasReady) return removed ? { kind: 'removed' } : { kind: 'unavailable' }
   if (node.meta?.uploadStatus === 'uploading' || isLocalProcessingProgressPhase(node.progress?.phase)) return { kind: 'processing' }
   if (feedback?.active) return { kind: 'generating', feedback }
   if (feedback?.phase === 'failed') return { kind: 'failed', feedback }
+  if (hostFailure) return { kind: 'failed', feedback: { phase: 'failed', message: hostFailure, late: false, active: false, previewLabel: '' } }
   if (node.status === 'recoverable') return { kind: 'recoverable' }
   const preview = resolveLightweightNodePreview(node)
   if (preview) return { kind: 'result', preview }
@@ -59,6 +67,19 @@ export function nodePointerFace(input: Readonly<{
 /** 能不能点：已删除与占位不可点（没有目标可去）；其余一律点了去节点。 */
 export function nodePointerLocatable(face: NodePointerFace): boolean {
   return face.kind !== 'removed' && face.kind !== 'unavailable'
+}
+
+/** 缩略图正中可能放的四样，按先后排（先的压后的）。 */
+export type PointerCenterTier = 'restore' | 'located' | 'status' | 'icon'
+const POINTER_CENTER_ORDER: readonly PointerCenterTier[] = ['restore', 'located', 'status', 'icon']
+
+/**
+ * 缩略图正中只放一样东西（SpendCardQ1 板 card.pointer.status / card.pointer.exclude）：按「恢复 > 已定位 > 状态胶囊 > 种类图标」取第一个。
+ * 铺满整格的（结果图、等待面）和贴角的小标不算正中件，另画。「恢复」是宿主挂在格子上的常驻小动作、不是这一格自己画的：
+ * 组把「正中已被占」告诉这一格（`restore`），这一格的三样就一样都不画。谁占正中只在这一处判——不按状态逐个开分支。
+ */
+export function pointerCenterTier(has: Readonly<Record<PointerCenterTier, boolean>>): PointerCenterTier | null {
+  return POINTER_CENTER_ORDER.find((tier) => has[tier]) ?? null
 }
 
 /** 指向元素里节点画面的比例（宽 / 高）。竖版按真比例放进固定高度的槽里，不裁不拉伸。 */
@@ -87,10 +108,71 @@ export function pointerHoverStack(stack: readonly string[], nodeId: string, hove
   return stack.includes(nodeId) ? stack.filter((id) => id !== nodeId) : stack
 }
 
+/** 标题里算「词」边界的那几个分隔符：空白、间隔号、下划线、连字符、冒号、逗号、顿号、斜线、竖线、括号。 */
+const TITLE_SEPARATOR = /[\s·・_\-–—:：,，、/|()（）[\]【】]/u
+/** 往回找词头最多退几个字；再远就当没有词边界（中文标题常常一个空格都没有）。 */
+const TITLE_WORD_REACH = 6
+/** 找不到词边界时尾巴往前多带几个字（「流第一幕」比「一幕」读得懂）。 */
+const TITLE_CONTEXT = 2
+/** 尾巴那个词短到这个数（「1」「02」）就把前一个词也带上（「纸船 1」）。 */
+const TITLE_SHORT_WORD = 2
+
+/**
+ * 组里几格的标题共用一长截开头时（「S_NARROW_1 纸船 1 / 2 / 3」），窄格子照常从尾巴截，几格会被截成同一个样子、分不出是哪一镜
+ * （真 App 窄窗走查 2026-10-25，用户圈出）。这里给每一格算出「和兄弟格不一样的那一截」从哪儿开始：标题行先截前面那截公共开头，
+ * 这一截不截（截中间）。全名照旧在悬停提示和读屏名里。
+ *
+ * 每一格只和**离它最近的兄弟**比（公共开头最长的那一个）：三格里两格像、一格不像时，像的那两格各露自己的尾巴，不像的那一格不用分。
+ * 尾巴从那个不一样的字所在的词开头起；词太短再带上前一个词；整句没有词边界就往前带两个字。返回码元下标（直接拿去 slice），
+ * 0 = 不用分（没有兄弟、和谁都不共开头、或者整句就是别人的开头 / 和别人一字不差——那样怎么截都分不出）。
+ */
+export function nodePointerTitleTails(titles: readonly string[]): readonly number[] {
+  const chars = titles.map((title) => Array.from(title))
+  const separator = (char: string | undefined): boolean => char !== undefined && TITLE_SEPARATOR.test(char)
+  return chars.map((own, index) => {
+    let shared = 0
+    chars.forEach((other, otherIndex) => {
+      if (otherIndex === index) return
+      let length = 0
+      while (length < own.length && length < other.length && own[length] === other[length]) length += 1
+      shared = Math.max(shared, length)
+    })
+    if (shared === 0 || shared >= own.length) return 0
+    // 不一样的那个字所在的词从哪儿起：往回找分隔符，够不着（或一路退到开头都没有）就往前带两个字。
+    let start = shared
+    while (start > 0 && !separator(own[start - 1]) && shared - start < TITLE_WORD_REACH) start -= 1
+    const atWordStart = start > 0 && separator(own[start - 1])
+    if (!atWordStart) return own.slice(0, Math.max(0, shared - TITLE_CONTEXT)).join('').length
+    // 那个词太短：把前一个词也带上（带到开头就算了——那等于不分）。
+    let end = start
+    while (end < own.length && !separator(own[end])) end += 1
+    if (end - start <= TITLE_SHORT_WORD) {
+      let previous = start
+      while (previous > 0 && separator(own[previous - 1])) previous -= 1
+      const wordEnd = previous
+      while (previous > 0 && !separator(own[previous - 1]) && wordEnd - previous < TITLE_WORD_REACH) previous -= 1
+      if (previous > 0 && previous < wordEnd) start = previous
+    }
+    return own.slice(0, start).join('').length
+  })
+}
+
 /** 比例是不是竖的（「9:16」）。读不出就不是。 */
 export function isPortraitAspect(aspect: string | null): boolean {
   const match = aspect ? /^(\d+):(\d+)$/.exec(aspect) : null
   return Boolean(match && Number(match[1]) < Number(match[2]))
+}
+
+/**
+ * 摘要要的四样事实，从节点现读（指向元素自己的摘要行、组下方那一行、付费卡的合计摘要都读这一份）：
+ * 模型显示名由调用方给（`useModelLabels`，目录异步），其余三样读节点 meta。不存、不缓存。
+ */
+export function nodePointerSummaryFacts(node: GenerationCanvasNode | undefined, modelLabel: string): NodePointerSummaryInput & Readonly<{ durationSec: number | null }> {
+  const aspect = readAspect(node)
+  const execution = node ? getGenerationNodeExecutionKind(node.kind) : undefined
+  const durationSec = node && (execution === 'video' || execution === 'audio') ? readDurationSeconds(node) : null
+  const resolution = typeof node?.meta?.resolution === 'string' ? node.meta.resolution : null
+  return { model: modelLabel, aspect, duration: durationSec ? formatSeconds(durationSec) : null, resolution, durationSec: durationSec || null }
 }
 
 export type NodePointerSummaryInput = Readonly<{

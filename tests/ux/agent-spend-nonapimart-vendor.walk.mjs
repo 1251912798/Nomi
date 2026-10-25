@@ -23,6 +23,7 @@
 import { DEFAULT_TIMEOUT_MS, clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { FIXTURE_NON_APIMART_MODEL, FIXTURE_NON_APIMART_VENDOR, flattenRequestText } from './agent-runtime-fixture.mjs'
+import { cardFacts, offerFacts } from './_spendCardWalk.mjs'
 import {
   APPROVAL_CARD, CANVAS_PANEL, INTERVENTION_CONFIRM,
   createRuntimeWalk, openCanvas, readProject, recorded, sendCanvas,
@@ -32,7 +33,8 @@ const ASK = 'S_NONAPIMART：帮我生成一张雪山日出的图。'
 const PLAN_CALL = 's-nonapimart-1'
 const GENERATE_CALL = `${PLAN_CALL}-generate`
 
-const walk = await createRuntimeWalk('spend-nonapimart-vendor', { generationProvider: 'higgsfield' })
+// 卡上「生成」交给画布那一台：它从本机夹具取回产物，按精确 origin 放行（只在未打包构建里读）。
+const walk = await createRuntimeWalk('spend-nonapimart-vendor', { generationProvider: 'higgsfield', trustFixtureOrigin: true })
 let failure
 try {
   const { win } = await walk.start({ first: true })
@@ -79,18 +81,19 @@ try {
   await walk.snap('nonapimart-card-zh')
 
   // ── ② 按下去：真的发出去，而且发的是**这家自己的**那份报文 ──
-  const hostRefusals = []
-  win.on('console', (message) => {
-    const text = message.text()
-    if (text.includes('[spend-confirm] host refused')) hostRefusals.push(text)
-  })
   const nodeId = (await readProject(win, projectId)).payload.generationCanvas.nodes[0].id
-  await clickOrFail(card.locator(INTERVENTION_CONFIRM), '卡上的主按钮', { noWaitAfter: true })
-
-  await expect.poll(() => walk.fixture.images.length,
-    { message: '按下确认之后，这家供应商必须真的收到一次生成请求', timeout: DEFAULT_TIMEOUT_MS }).toBeGreaterThan(0)
-  expect(hostRefusals, `宿主不许再拒（实际：${hostRefusals.join(' ')}）`).toHaveLength(0)
-  await recorded(turnDone.received, 'generate returns once the user approved the card')
+  await clickOrFail(card.locator(INTERVENTION_CONFIRM), '卡上的主按钮「生成」', { noWaitAfter: true })
+  // 先等「有结论」再判对错：被拒会写在卡上那一行说明里（不是超时的形状）。
+  await expect.poll(async () => {
+    if (walk.fixture.images.length > 0) return 'sent'
+    const notices = (await cardFacts(win))?.notices ?? []
+    return notices.length ? `refused: ${notices.map((notice) => notice.text).join(' | ')}` : 'waiting'
+  }, { message: '按下「生成」之后，这家供应商必须真的收到一次生成请求（或者卡上说了为什么不行）', timeout: DEFAULT_TIMEOUT_MS }).toBe('sent')
+  await recorded(turnDone.received, 'generate returns once the user pressed generate')
+  // 一台发动机：这一镜是用户在卡上按「生成」交给画布的，作业住在画布那一镜的单镜 Run 里。
+  await expect.poll(async () => (await offerFacts(win, projectId, operationId)).handOvers.map((entry) => `${entry.by}:${entry.outcome}`),
+    { message: '这一镜交到了', timeout: DEFAULT_TIMEOUT_MS }).toEqual(['gesture:accepted'])
+  expect((await offerFacts(win, projectId, operationId)).productionJobs, '制作 Run 自己一笔作业都没派').toBe(0)
 
   const call = walk.fixture.images[0]
   // ②-a 路径来自**这条 mapping 的声明**，不是某条写死的 APIMart 串

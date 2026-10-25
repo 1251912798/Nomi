@@ -16,6 +16,7 @@ const TimelinePanel = lazyWithChunkBoundary(
   () => import('../timeline/TimelinePanel'),
 )
 import { useGenerationViewStore } from './list/generationViewStore'
+import { NodePointerReturnDock } from '../ai/pointer/NodePointerReturnDock'
 
 const loadGenerationListView = () => import('./list/GenerationListView').then((module) => ({ default: module.GenerationListView }))
 const GenerationListView = lazyWithChunkBoundary('i18n:generationList.aria', loadGenerationListView)
@@ -125,6 +126,8 @@ export default function GenerationWorkspace({
           {timelineCollapsed ? null : <TimelineMiniPreview />}
           {/* Agent 小球 / 浮窗住这一层（外壳的 ShellAgentHost portal 进来）。 */}
           <div ref={agentLayerRef} className="pointer-events-none absolute inset-0 z-[60]" data-generation-agent-layer />
+          {/* 窄窗口里点了聊天里的指向元素、对话收成小球之后：底部正中「回到对话」（NodePointer 板 pointer.narrow.back）。 */}
+          <NodePointerReturnDock surface="generation" />
         </div>
         {/* 时间轴收起 = 贴工作面底边的窄条（段数 · 时长 · 每段小缩略图 · ^ 展开），不再是一颗浮在画布上的胶囊。 */}
         {timelineCollapsed ? (

@@ -15,10 +15,13 @@ export type GenerateOutcomeReceipt = Readonly<{ kind: "job_running" | "none"; us
 
 /** 没决定的那几镜为什么没决定：卡是怎么关的。 */
 const UNDECIDED_BECAUSE: Readonly<Record<GenerationPresentationCloser | "open", string>> = {
-  user_closed: "the user closed the card (×) before deciding them",
+  // 卡上没有 ×（底栏是「取消」）：模型照着回执转述，说「你点了 ×」就是在说一个不存在的按钮。
+  user_closed: "the user cancelled the card before deciding them",
   user_wrote: "the user wrote a message instead of deciding them",
   stopped: "the conversation was stopped before he decided them",
   resolved: "they were not decided on the card",
+  // 卡交给画布的那一次出价只在每一镜都定了时才这样关，留不下没决定的镜；为了表全，和 resolved 同一句。
+  handed_to_canvas: "they were not decided on the card",
   open: "they are still waiting on the card",
 };
 

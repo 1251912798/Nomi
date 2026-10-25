@@ -1748,8 +1748,7 @@
       "label": "宿主：Agent 付费确认卡（卡内编辑生成内容；主行动归卡底，不复制右侧工具与发送钮）",
       "change": "host-pending",
       "candidates": [],
-      "status": "missing",
-      "owner": "I-b1b：付费卡 D2，下一个 PR（它要嵌这件生成框）",
+      "status": "dropped",
       "hostPending": true,
       "states": [
         "empty",
@@ -1760,7 +1759,11 @@
         "zh-en",
         "dark"
       ],
-      "note": "等 D 组付费卡样张确认；含文本节点的确认卡（TEXT-07）"
+      "note": "10-22「一个东西一个家」之后付费卡不再嵌这件生成框：卡上只有指向元素 + 一行只读摘要 + 「生成」（SpendCardQ1 板，D2 第③步实现）；生成框只在画布上（canvas）与节点内嵌（inline）两种宿主。门岗 R-B6 chat-card-no-import-node-editor（.dependency-cruiser.mjs）拦它长回去。",
+      "userDecision": {
+        "quote": "D2 付费卡新方向：按默认值先在画布建节点，聊天里指向元素加「确认」只管花钱；想改点指向去节点里改（用户 10-22 拍板，docs/design/2026-10-08-approved-designs.md §⑪ 第 4 条）",
+        "date": "2026-10-22"
+      }
     },
     {
       "id": "host.storyboard-row",
@@ -3050,32 +3053,32 @@
       "function": "付费卡宿主外壳和主行动",
       "before": "panel 无双重描边/定位/阴影；无推荐翻译优化和 ↑，由卡底生成/不要接替",
       "after": "host.agent-paycard",
-      "landing": "host-pending",
-      "afterNote": "保留：落在宿主 host.agent-paycard（host-pending，等 D / E 组样张确认）；补确认卡，保留主行动归宿主，不复制右侧工具和发送钮。"
+      "landing": "dropped",
+      "afterNote": "已放弃（D2 第③步，用户 10-22 拍板「一个东西一个家」）：付费卡不嵌生成框，这一项随 host.agent-paycard 一起不做；改参数只在节点里改。"
     },
     {
       "censusId": "HOST-03",
       "function": "付费卡逐参数 chip 与长尾",
       "before": "主参数可见；窄时整颗换行；长尾进更多；旧恒一行注释过时",
       "after": "host.agent-paycard",
-      "landing": "host-pending",
-      "afterNote": "保留：落在宿主 host.agent-paycard（host-pending，等 D / E 组样张确认）；保留逐项 chips 和主参数不隐藏合同，补窄宽中英文。"
+      "landing": "dropped",
+      "afterNote": "已放弃（D2 第③步，用户 10-22 拍板「一个东西一个家」）：付费卡不嵌生成框，这一项随 host.agent-paycard 一起不做；改参数只在节点里改。"
     },
     {
       "censusId": "HOST-04",
       "function": "付费卡草稿与画布隔离",
       "before": "写宿主草稿；无 connect 权能时画布候选落卡内槽",
       "after": "host.agent-paycard",
-      "landing": "host-pending",
-      "afterNote": "保留：落在宿主 host.agent-paycard（host-pending，等 D / E 组样张确认）；保留未确认不回写；删除现有参考含直接 store 断边调用，须专项核验，不能只信注释。"
+      "landing": "dropped",
+      "afterNote": "已放弃（D2 第③步，用户 10-22 拍板「一个东西一个家」）：付费卡不嵌生成框，这一项随 host.agent-paycard 一起不做；改参数只在节点里改。"
     },
     {
       "censusId": "HOST-05",
       "function": "付费卡参数面板跟随滚动",
       "before": "下拉进卡内，整幅参数面板放底栏下方",
       "after": "host.agent-paycard",
-      "landing": "host-pending",
-      "afterNote": "保留：落在宿主 host.agent-paycard（host-pending，等 D / E 组样张确认）；保留卡内浮层和下方整幅面板，不能滚动后悬空。"
+      "landing": "dropped",
+      "afterNote": "已放弃（D2 第③步，用户 10-22 拍板「一个东西一个家」）：付费卡不嵌生成框，这一项随 host.agent-paycard 一起不做；改参数只在节点里改。"
     },
     {
       "censusId": "HOST-06",
@@ -3354,8 +3357,8 @@
       "function": "文本 panel 分流",
       "before": "走 Generic composer；prompt/模型参数，无媒体参考区",
       "after": "host.agent-paycard",
-      "landing": "host-pending",
-      "afterNote": "保留：落在宿主 host.agent-paycard（host-pending，等 D / E 组样张确认）；补文本确认卡，不把画布预设塞进卡里。"
+      "landing": "dropped",
+      "afterNote": "已放弃（D2 第③步，用户 10-22 拍板「一个东西一个家」）：付费卡不嵌生成框，这一项随 host.agent-paycard 一起不做；改参数只在节点里改。"
     },
     {
       "censusId": "BOUND-01",

@@ -119,6 +119,34 @@ describe('buildMaterializeShotsPayload', () => {
 // 2026-09-25 用户报：Agent 付费卡建出的视频镜头一直转圈，视频其实早就出好了。
 // 根因之一是「一镜在生成中」有两个 owner：节点自己的运行记录（普通生成）与渲染层另轮询的 Run 快照（制作）。
 // 现在制作的运行状态也由这条投影写进节点的运行记录——投影必须把每一镜的真实段带过去。
+describe('落地线带上参考（D2 第③步：发出读节点，参考必须落到节点上）', () => {
+  const pinned = (assetId: string, role?: 'reference' | 'first_frame') => ({ assetId, contentHash: `h-${assetId}`, version: 1, kind: 'image' as const, ...(role ? { role } : {}) })
+  const withRefs = run([shot('s1', { candidate: { ...shot('s1').candidate, references: [pinned('a1', 'first_frame'), pinned('gone'), pinned('a2')] } })])
+
+  it('宿主解析得出的参考按原顺序过线，只带地址 / 种类 / 用途，身份不过线', () => {
+    const resolve = vi.fn((_projectId: string, reference: { assetId: string }) => (reference.assetId === 'gone' ? undefined : `nomi-local://asset/proj-1/${reference.assetId}.png`))
+    const payload = buildMaterializeShotsPayload(withRefs, { projectRoot: null, resolveReferenceUrl: resolve })
+    expect(payload!.shots[0]!.candidate!.references).toEqual([
+      { url: 'nomi-local://asset/proj-1/a1.png', kind: 'image', role: 'first_frame' },
+      { url: 'nomi-local://asset/proj-1/a2.png', kind: 'image' },
+    ])
+    expect(resolve).toHaveBeenCalledWith('proj-1', expect.objectContaining({ assetId: 'a1' }))
+    expect(JSON.stringify(payload)).not.toContain('h-a1')
+  })
+
+  it('解析口抛错（钉住的版本对不上）只丢那一条，不让整份落地失败', () => {
+    const payload = buildMaterializeShotsPayload(withRefs, { projectRoot: null, resolveReferenceUrl: (_projectId, reference) => {
+      if (reference.assetId === 'a2') throw new Error('storyboard_reference_asset_unavailable')
+      return `u-${reference.assetId}`
+    } })
+    expect(payload!.shots[0]!.candidate!.references?.map((reference) => reference.url)).toEqual(['u-a1', 'u-gone'])
+  })
+
+  it('没给解析口 → 参考一条都不过线（不猜地址）', () => {
+    expect(buildMaterializeShotsPayload(withRefs, { projectRoot: null })!.shots[0]!.candidate).not.toHaveProperty('references')
+  })
+})
+
 describe('buildMaterializeShotsPayload projects each shot\'s run state onto its node', () => {
   const job = (shotId: string, status: ProductionJob['status'], extra: Partial<ProductionJob> = {}): ProductionJob => ({
     jobId: `job-${shotId}`, stageId: 'generate', status, attempt: 1, provider: 'apimart', model: 'video', idempotencyKey: `k-${shotId}`,

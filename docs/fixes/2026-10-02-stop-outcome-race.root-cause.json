@@ -12,53 +12,44 @@
     "Everyone who types into the Agent panel while a Generate this one is being approved: same wrong receipt through the lane's redirected path"
   ],
   "scope_paths": [
-    "electron/capabilityCore/spendOperationArbiter.ts",
+    "electron/productionRun/productionGenerationPresentationEdits.ts",
     "electron/capabilityCore/appIntegrationSpendConfirm.ts",
+    "electron/capabilityCore/appIntegrationCanvasShot.ts",
     "electron/capabilityCore/generationTransportAdapters.ts",
-    "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts"
+    "electron/agentLane/laneSpendCardClose.ts",
+    "electron/shared/productionGenerationPresentation.ts"
   ],
   "entry_points": [
-    "The card's ×: slot-dismiss -> useAgentPanelSpendConfirm.discard -> IPC discard-spend -> appIntegrationSpendConfirm.discardPendingSpend",
-    "Typing while the card is open: laneExtendedDesktopPorts.preflightGenerate (redirected) -> generation.withdrawPresentation -> generation.readPresentationOutcome",
-    "The card closing because every shot is decided: confirmOneShot / removePendingSpendShot finally -> settleWaiterIfClosed -> lane -> readPresentationOutcome"
+    "The card's 取消: useAgentPanelSpendCard.discard -> IPC discard-spend -> appIntegrationSpendConfirm.discardPendingSpend -> generation.withdrawPresentation -> answer from generationPresentationOutcome",
+    "Typing while the card is open: laneExtendedDesktopPorts (redirected) -> withdrawPresentation -> readPresentationOutcome",
+    "The card closing because every shot is handed over or removed: settlePresentation (handed_to_canvas) -> watchSpendCardClose waits for the hand-overs to settle -> receipt"
   ],
   "external_sources": [],
   "internal_only_reason": "When a paid card's outcome is final, and who may read it, is Nomi's own spend-authority flow; no external protocol defines it.",
   "invariant_owner_layer": {
-    "layer": "electron/capabilityCore/spendOperationArbiter.ts",
+    "layer": "electron/productionRun/productionGenerationPresentationEdits.ts",
     "tests": [
-      "electron/capabilityCore/agentPanelSpendRemaining.e2e.test.ts",
-      "electron/capabilityCore/agentPanelSpendBatches.e2e.test.ts",
-      "tests/ux/spend-panel-write-ownership.test.mjs",
-      "tests/ux/agent-spend-stop-midway.walk.mjs"
+      "electron/productionRun/generationHandOver.test.ts",
+      "electron/capabilityCore/agentPanelSpendCardStop.e2e.test.ts",
+      "electron/agentLane/laneSpendCardClose.test.ts"
     ],
-    "why": "The card's actions are serialized per presentation in one queue (serializeCardAction), and the only way to read a final outcome is after cardActionsSettled: the × waits for it before it answers the card, and readPresentationOutcome (the only reader behind the Agent's receipt) waits for it before it reads. The closers stay unqueued so they can still interrupt; only the telling of the result waits."
+    "why": "The ledger is the one linearization point: hand-over, bind, settle and close are ledger commands; after a close a bind is refused, queued consents are withdrawn, and in-flight hand-overs write their own settlement. The outcome is read only through generationPresentationOutcome, and the lane waits for the settlement before reading it."
   },
   "invariants": [
-    "The receipt the Agent gets after the card closes lists as generating exactly the shots the host approved, including one whose approval was in flight when the card was closed.",
-    "The × answers the card with the host's final count (sent / not sent) for this presentation, and the card's notice says that count; the interrupted action's own failure is not shown on top of it.",
-    "Closing the card is never queued behind the action it interrupts."
+    "The receipt the Agent gets after the card closes lists as generating exactly the shots handed to the provider or still being handed over, including one whose hand-over was in flight when the card was closed; a shot whose result is unknown is never reported as not charged.",
+    "The card's 取消 answers with the ledger's count (sent / not sent) for this presentation, and the card's notice says that count.",
+    "Closing the card is never queued behind the action it interrupts; the lane reads the outcome only after the hand-overs it waits on have settled (or the wait has timed out, when the ones still in flight count as generating)."
   ],
   "doors": [
     {
-      "kind": "write",
-      "path": "electron/capabilityCore/spendOperationArbiter.ts",
-      "symbol": "serializeCardAction"
-    },
-    {
-      "kind": "write",
+      "kind": "read",
       "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "symbol": "serializeCardAction"
+      "symbol": "generationPresentationOutcome"
     },
     {
       "kind": "read",
-      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "symbol": "sealedOutcome"
-    },
-    {
-      "kind": "read",
-      "path": "electron/capabilityCore/generationTransportAdapters.ts",
-      "symbol": "sealedOutcome"
+      "path": "electron/productionRun/productionGenerationOperationStore.ts",
+      "symbol": "generationPresentationOutcome"
     },
     {
       "kind": "read",
@@ -67,26 +58,66 @@
     },
     {
       "kind": "read",
-      "path": "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
-      "symbol": "batchStopped"
+      "path": "electron/agentLane/laneSpendCardClose.ts",
+      "symbol": "watchSpendCardClose"
+    },
+    {
+      "kind": "read",
+      "path": "electron/capabilityCore/generationTransportAdapters.ts",
+      "symbol": "waitForSettlement"
+    },
+    {
+      "kind": "read",
+      "path": "electron/capabilityCore/generationTransportAdapters.ts",
+      "symbol": "presentationOutcome"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "symbol": "writeBackHandOver"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "symbol": "recordHandOverBindings"
+    },
+    {
+      "kind": "write",
+      "path": "electron/productionRun/productionRunReducer.ts",
+      "symbol": "bindHandOvers"
+    },
+    {
+      "kind": "write",
+      "path": "electron/productionRun/productionRunReducer.ts",
+      "symbol": "settleHandOver"
+    },
+    {
+      "kind": "write",
+      "path": "electron/productionRun/productionGenerationPresentationEdits.ts",
+      "symbol": "settleHandOver"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/productionGenerationPresentation.ts",
+      "symbol": "generationPresentationOutcome"
     }
   ],
   "door_reduction": {
-    "before": 4,
-    "after": 6,
-    "why_not": "One queue, one wait (cardActionsSettled), and two places that tell a final result: the × telling the card (it needs the count for the notice) and readPresentationOutcome telling the Agent (both lane paths read through it). The queue moved out of createPendingSpendActions into its own module so the lane's reader can wait on the same queue instead of keeping a second notion of 'in flight'; the local copy was deleted in the same change."
+    "before": 6,
+    "after": 12,
+    "why_not": "The in-memory queue and its wait are gone; the ledger is the one linearization point. The write doors are the hand-over commands (bind, settle) and the canvas side that issues them; the read doors are the tellers of the result (the card answer, the operation view, the two lane readers, the policy wait), all reading generationPresentationOutcome."
   },
-  "generality_proof": "Nothing depends on the model, vendor, shot kind, batch size or who closes the card: any closer (×, typing, every shot decided) and any card action (Generate this one, Remove, Generate remaining) go through the same queue and the same wait.",
+  "generality_proof": "Nothing depends on the model, vendor, shot kind, batch size or who closes the card: every closer (取消, typing, every shot decided) and every card action (Generate, 不生成 ×, restore) is a ledger command, and every teller of a final result reads generationPresentationOutcome.",
   "shared_boundaries": [
     {
-      "path": "electron/capabilityCore/spendOperationArbiter.ts",
-      "symbol": "sealedOutcome",
-      "responsibility": "Resolves when the presentation's queued card actions have all landed; reading the run after it gives the host's final approved set."
+      "path": "electron/productionRun/productionGenerationPresentationEdits.ts",
+      "symbol": "settleHandOver",
+      "responsibility": "Writes each handed-over shot's settlement (accepted / unknown / not_sent / withdrawn) into the presentation that handed it over, found by canvasRunId across presentations; closing the card records unbound hand-overs as withdrawn in the same command."
     },
     {
-      "path": "electron/capabilityCore/spendOperationArbiter.ts",
-      "symbol": "serializeCardAction",
-      "responsibility": "Runs a presentation's card actions one after another; the queue cardActionsSettled waits on."
+      "path": "electron/shared/productionGenerationPresentation.ts",
+      "symbol": "generationPresentationOutcome",
+      "responsibility": "The only reader of a presentation's final per-shot outcome: generating (approved, sent, unknown, handing over), failed before sending, removed, undecided. The card's answer, the Agent's receipt and the operation view all read it."
     }
   ],
   "same_class_entry_points": [
@@ -94,72 +125,73 @@
       "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
       "entry_point": "discardPendingSpend",
       "disposition": "enforced",
-      "evidence": "Waits for cardActionsSettled after the withdraw and returns batchStopped from the final outcome; agentPanelSpendRemaining.e2e.test.ts creates the race on the single path and on Generate remaining (× lands after the card's checks, before the gate)."
+      "evidence": "Withdraws through the ledger and answers from generationPresentationOutcome (agentPanelSpendCardStop.e2e.test.ts: 取消 with 0, 1 and 3 in flight; × before the bind)."
+    },
+    {
+      "path": "electron/agentLane/laneSpendCardClose.ts",
+      "entry_point": "watchSpendCardClose",
+      "disposition": "enforced",
+      "evidence": "Waits for unsettled hand-overs before the receipt is read (laneSpendCardClose.test.ts)."
     },
     {
       "path": "electron/agentLane/laneExtendedDesktopPorts.ts",
       "entry_point": "redirected (typing while the card is open)",
       "disposition": "enforced",
-      "evidence": "Reads through readPresentationOutcome, which now waits; agentPanelSpendRemaining.e2e.test.ts 'typing while Generate this one is being approved' fails without the wait."
-    },
-    {
-      "path": "electron/agentLane/laneExtendedDesktopPorts.ts",
-      "entry_point": "stopped (turn stopped / window closed)",
-      "disposition": "not-affected",
-      "evidence": "Returns generation_cancelled without reading or claiming any per-shot outcome."
+      "evidence": "Closes through withdrawPresentation and reads readPresentationOutcome, which reads generationPresentationOutcome (agentPanelSpendCardStop.e2e.test.ts user_wrote)."
     },
     {
       "path": "electron/productionRun/productionGenerationOperationStore.ts",
       "entry_point": "operation view presentationOutcome (external MCP read / status)",
       "disposition": "not-affected",
-      "evidence": "A polled read model, not a one-time verdict: a read during the race shows the shot undecided and the next read shows it generating."
+      "evidence": "A polled read model over the same projection: a read during a hand-over shows the shot handing over and the next read shows its settlement."
     }
   ],
   "recurrence": {
     "classification": "recurring",
-    "reason": "Any new way of closing the card, or any new reader of the outcome, can again read before an in-flight approval lands; the breaker line found it through two different closers (single and batch) on the first try.",
+    "reason": "Any new way of closing the card, or any new reader of the outcome, can again read before an in-flight hand-over lands; the ledger commands and the one reader are what keep that from coming back.",
     "same_class_scan": [
-      "node scripts/door-map.mjs --write=serializeCardAction --read=cardActionsSettled,readPresentationOutcome",
-      "rg \"withdrawPresentation|operations.withdraw\" electron -> discardPendingSpend, laneExtendedDesktopPorts (redirected, stopped, no window), stalePresentationSweep (startup, nothing in flight)"
+      "node scripts/door-map.mjs --write=settleHandOver,bindHandOvers,recordHandOverBindings,writeBackHandOver --read=generationPresentationOutcome,readPresentationOutcome,waitForSettlement,presentationOutcome (2026-10-24)",
+      "rg \"withdrawPresentation|operations.withdraw\" electron -> discardPendingSpend, laneExtendedDesktopPorts (redirected, stopped, no window), stalePresentationSweep (startup)"
     ]
   },
   "prevention": {
     "kind": "centralized-boundary",
-    "enforcement_path": "electron/capabilityCore/spendOperationArbiter.ts",
-    "invariant": "A presentation's final outcome is read only after its queued card actions have landed.",
-    "failure_mode": "If a queued action hangs (a single-shot vendor submit that never times out), the × answer and the receipt wait as long as it does; the card itself closes at once.",
+    "enforcement_path": "electron/productionRun/productionGenerationPresentationEdits.ts",
+    "invariant": "A presentation's final outcome is read from the ledger after its hand-overs have settled; every close path closes through the ledger, after which a late bind is refused.",
+    "failure_mode": "If a hand-over never settles (the renderer is gone mid-dispatch), the lane's wait times out and the shot is reported as generating (it may have been charged), never as not sent.",
     "exception_policy": "none",
-    "strategy": "Move the card's action queue into one module, expose cardActionsSettled, and make both tellers of a final result (the × and readPresentationOutcome) wait on it; the renderer shows the ×'s count after an interrupted single action.",
+    "strategy": "Record hand-over, bind and settle as ledger commands, make a close refuse later binds, and read the outcome only through generationPresentationOutcome; the in-memory arbiter is deleted.",
     "artifacts": [
-      "electron/capabilityCore/spendOperationArbiter.ts",
+      "electron/productionRun/productionGenerationPresentationEdits.ts",
+      "electron/shared/productionGenerationPresentation.ts",
+      "electron/capabilityCore/appIntegrationCanvasShot.ts",
       "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "electron/capabilityCore/generationTransportAdapters.ts",
-      "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts"
+      "electron/agentLane/laneSpendCardClose.ts"
     ]
   },
   "regression_tests": [
-    "electron/capabilityCore/agentPanelSpendRemaining.e2e.test.ts",
-    "electron/capabilityCore/agentPanelSpendBatches.e2e.test.ts",
-    "tests/ux/spend-panel-write-ownership.test.mjs",
+    "electron/capabilityCore/agentPanelSpendCardStop.e2e.test.ts",
+    "electron/productionRun/generationHandOver.test.ts",
+    "electron/agentLane/laneSpendCardClose.test.ts",
     "tests/ux/agent-spend-stop-midway.walk.mjs"
   ],
   "class_regression_tests": [
-    "electron/capabilityCore/agentPanelSpendRemaining.e2e.test.ts"
+    "electron/capabilityCore/agentPanelSpendCardStop.e2e.test.ts"
   ],
   "legacy_paths": {
     "status": "removed",
     "removed_paths": [
-      "electron/capabilityCore/appIntegrationSpendConfirm.ts"
+      "electron/capabilityCore/spendOperationArbiter.ts"
     ],
-    "rationale": "Deleted in place: the queue local to createPendingSpendActions (moved, not copied), and the × answering before the in-flight action landed."
+    "rationale": "2026-10-24: spendOperationArbiter (serializeCardAction / sealedOutcome / cardActionsSettled) is deleted with the old card's host actions; the ledger is the linearization point."
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
     "rationale": "No third-party dependency orders the card's actions.",
     "exit_criteria": []
   },
-  "migration": "No stored data changes; the queue is in memory and empty after a restart (the startup sweep withdraws a presentation left open).",
+  "migration": "No stored data changes; the queue is in memory and empty after a restart (the startup sweep withdraws a presentation left open). 2026-10-24 D2 step 3 (design card docs/plan/2026-10-23-d2-pointer-spend-card.md; contract docs/fixes/2026-10-24-spend-card-one-engine.root-cause.json): the paid card became node pointers plus a read-only summary that hands its shots to the canvas engine; spendOperationArbiter (serializeCardAction / sealedOutcome) was deleted with the old card, so this contract's boundaries, doors, tests and legacy paths were re-pointed to the code that holds the invariant today (problem, symptom, causes and class root above are the original record).",
   "residual_risks": [
-    "A single-shot plan's start awaits the vendor's submit; while a submit hangs without a timeout (breaker S2, assigned to its own lane), a × or a typed message landing in that approval waits as long for its answer and receipt. Before this change the receipt for that card already waited the same way when the shot closed the card."
+    "If the renderer disappears between the consent and the dispatch, a bound hand-over is settled from the canvas Run's job (accepted / unknown / not sent); until then the lane's wait times out after 15 s and reports it as generating."
   ]
 }

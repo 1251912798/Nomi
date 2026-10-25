@@ -3,6 +3,7 @@ import {
   AgentBallFace, L, LabCanvasBackdrop, LabCanvasNode, LabCanvasZoomed, LabCaption, LabCardRow, LabChatPanel, NodePointer, NodePointerGroup,
   NodePointerReturnToChat, NodePointerStage, subjects, type Locale,
 } from '../nodePointerLabKit'
+import { LabCanvasViewport } from '../../labCanvasViewport'
 
 const SOURCE = 'docs/design/boards/2026-10-23/NodePointer.board.json'
 // 第②步只在实验室搭全状态，聊天里还没有宿主（第③步新付费卡接线）：全部格子都是「组件在、界面走不到」（component-only）。
@@ -57,23 +58,33 @@ function StatesBoard({ locale }: { locale: Locale }) {
 /** A3：悬停两边同时亮 / 点击后画布闪一下、那一项「已定位」。画布节点是生产 BaseGenerationNode。 */
 function LinkBoard({ locale, located = false }: { locale: Locale; located?: boolean }) {
   const s = subjects(locale)
+  const zoom = 0.45
+  const boardScale = 240 / 112
+  const shotLefts = [24, 156, 288].map((left) => left * boardScale)
+  const shotTop = 100 * boardScale - 72
+  const controlLeft = 156 * boardScale
+  const controlTop = 214 * boardScale - 72
+  const canvasNodes = (flash: boolean) => (
+    <div className="absolute left-0 top-0" style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
+      <LabCanvasViewport zoom={zoom}>
+        {s.drafts.map((subject, index) => <div key={subject.nodeId} className="absolute" style={{ left: shotLefts[index], top: shotTop }}><LabCanvasNode nodeId={subject.nodeId} width={240} flash={flash && index === 1} /></div>)}
+        <div className="absolute" style={{ left: controlLeft, top: controlTop }}><LabCanvasNode nodeId="np-control" width={240} /></div>
+      </LabCanvasViewport>
+    </div>
+  )
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-stretch gap-0">
-        <LabCanvasBackdrop className="flex-1 rounded-r-none" style={{ height: 300 }}>
-          <div className="absolute left-8 top-8 flex gap-6">
-            {s.drafts.map((subject, index) => <LabCanvasNode key={subject.nodeId} nodeId={subject.nodeId} width={180} flash={located && index === 1} />)}
-          </div>
+      <div data-link-board-half="p1" className="flex items-stretch gap-0">
+        <LabCanvasBackdrop className="link-board-canvas flex-1 rounded-r-none" style={{ height: 300 }}>
+          {canvasNodes(located)}
         </LabCanvasBackdrop>
         <LabChatPanel text={SENTENCE(locale)} className="rounded-l-none border-l-0 shadow-none">
           <div data-lab-hover="p1"><NodePointerGroup subjects={s.drafts} /></div>
         </LabChatPanel>
       </div>
-      <div className="flex items-stretch gap-0">
-        <LabCanvasBackdrop className="flex-1 rounded-r-none" style={{ height: 300 }}>
-          <div className="absolute left-8 top-8 flex gap-6">
-            {s.drafts.map((subject) => <LabCanvasNode key={subject.nodeId} nodeId={subject.nodeId} width={180} />)}
-          </div>
+      <div data-link-board-half="p2" className="flex items-stretch gap-0">
+        <LabCanvasBackdrop className="link-board-canvas flex-1 rounded-r-none" style={{ height: 300 }}>
+          {canvasNodes(located)}
         </LabCanvasBackdrop>
         <LabChatPanel text={SENTENCE(locale)} className="rounded-l-none border-l-0 shadow-none">
           <div data-lab-hover="p2"><NodePointerGroup subjects={s.drafts} density="row" /></div>

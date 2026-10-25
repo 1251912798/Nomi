@@ -1,153 +1,111 @@
 #!/usr/bin/env node
-// 真实用户任务（R13/R16）：**「我把档位切到全自动，之后让 Agent 生成，还会不会逐笔问我价钱？」**
+// 真实用户任务（R13/R16，D2 第③步）：**「我把档位切到直接生成，之后让 Agent 生成，还会不会一笔一笔问我？」**
 //
-// 2026-09-12 用户拍板：三档里只有「全自动」代答付费门——那一档下付费生成直接跑，不出报价卡；
-// 「每步问」「自动改」一个字不变。这一条走查证的就是这句话在真机上成不成立。
+// 2026-10-12 用户拍板：权限只有两档——请求批准（默认）/ 直接生成；只有「直接生成」替用户答付费那一下，不出卡。
+// D2 第③步之后「直接生成」不是另一条花钱的路：主进程替用户记一笔**策略交接**（`by: 'policy'`），逐镜照样走画布单节点提交，
+// 和卡上点「生成」、节点上点 ↑ 同一台发动机。卡只在策略答不了的时候出来（刹车 / 有一镜没交到 / 托管要先问人）。
 //
 // 只有远端供应商是 loopback 夹具（零额度）；SDK、IPC、ProductionRun、渲染层、落盘全是真的。
-// 走查像真人一样点：在面板里打字、在权限胶囊里选档、看槽里有没有卡——
-// 不灌 store、不直调桥、不伪造待决状态。
+// 走查像真人一样点：在面板里打字、在权限弹层里选档、看槽里有没有卡——不灌 store、不直调桥、不伪造待决状态。
 //
-// ⚠️ **这条走查证不到「决成了所以没有卡」那一半，这是有意的、原因写在这里**（P3：假绿比红更糟）：
-// 这台夹具的供应商身份是 `agent-runtime-loopback`，而 `generationProviderBootstrap.ts` 只把
-// **apimart** 装成可提交的生成供应商。所以「全自动」在这里去决门时，封印那一步会被宿主
-// 诚实地拒绝（供应商缺少必需能力），一分钱不花，草稿也就仍然是草稿。
-// 「免卡放行 → 封印 → 铸收据（`decidedBy: policy:full_auto`）→ 决门 → 真的跑起来 → 没有卡」
-// 那一整条，由零额度的 `electron/capabilityCore/agentPanelSpendConfirm.e2e.test.ts` 在真
-// loopback HTTP 供应商上逐条断言。同样的取舍与理由见 `agent-spend-confirm-executes.walk.mjs`。
-//
-// 那这条走查还剩什么可证的？——**档位到底有没有改变宿主的行为**。它有一个真人看得见的判据：
-//
-//   · 「自动改」档下问一次：宿主**根本不去碰那道门**，所以面板上不会出现任何失败；
-//   · 「全自动」档下问一次：宿主当场就去决门了，于是这台夹具上必然出现一条**看得见的失败**。
-//
-// 两次问的是同一件事、走的是同一条夹具，唯一的变量是档位。这条差异一旦消失
-// （比如那段策略分支又挂到一个真实模型走不到的入口上，2026-09-12 就发生过一次），这条走查立刻红。
-//
-// 五条（全部是真人视角看得见的事）：
-//   ① 阳性对照——默认档「自动改」下问一次：报价卡出现，且**没有**任何失败条
-//   ② 切到「直接生成」：它自己那张确认卡要说清「付费生成会直接跑」，不能还写着「付费仍然每次问」
-//   ③ 再问一次：宿主真的去决了那道门——面板上出现一条看得见的失败（不是沉默）
-//   ④ 决不成就不假装成功：那张报价卡仍然在原处等人答（「没决成，所以它仍然待决」）
-//   ⑤ 整场零额度
-import { DEFAULT_TIMEOUT_MS, clickOrFail, expect } from './_assert.mjs'
-import { FIXTURE_IMAGE_MODEL, FIXTURE_VENDOR, flattenRequestText } from './agent-runtime-fixture.mjs'
-import {
-  APPROVAL_CARD, CANVAS_PANEL, COMPOSER_PERMISSION, INTERVENTION_CONFIRM,
-  PERMISSION_POPOVER, createRuntimeWalk, openCanvas, permissionTier, readProject, recorded, sendCanvas, closeSpendCard,
-} from './agent-runtime-walk-support.mjs'
+//   ① 阳性对照——默认档「请求批准」下问一次：卡出现、供应商一次没碰、面板上没有任何失败；点「取消」关掉它。
+//   ② 切到「直接生成」：先出一张确认卡，说清生成会直接跑；确认之后常驻一条提醒。
+//   ③ 再问一次：从草稿落盘到交到为止**一次都不出卡**；供应商收到这一笔；宿主账本上这一镜是策略交出去的（`policy`），
+//      出价按「已交给画布」关，制作 Run 自己不派作业；回执说是策略批的；节点出结果。
+//   ④ 整场零额度（供应商是本机 loopback）。
+// 「每一刻都不出卡」与托管要先问人时策略不代答，由 electron/capabilityCore/agentPanelSpendCardPolicy.e2e.test.ts 逐条钉。
+import { clickOrFail, expect } from './_assert.mjs'
+import { stationTimeout } from './_station-budget.mjs'
+import { FIXTURE_APIMART_MODEL, FIXTURE_APIMART_VENDOR } from './agent-runtime-fixture.mjs'
 import { uiText } from './full-walk/invariants.mjs'
+import {
+  MONEY, RECEIPT_POINTERS, SPEND_CARD, armCanvasBridges, cardFacts, createPresenter, offerFacts, shotNodes,
+} from './_spendCardWalk.mjs'
+import {
+  APPROVAL_CARD, CANVAS_PANEL, COMPOSER, COMPOSER_PERMISSION, INTERVENTION_CONFIRM, PERMISSION_POPOVER,
+  closeSpendCard, createRuntimeWalk, openCanvas, permissionTier, recorded,
+} from './agent-runtime-walk-support.mjs'
 
-const ASK_SAFE = 'S_AUTO_ASK_1：帮我生成一张六棱柱的图。'
-const ASK_FULL = 'S_AUTO_ASK_2：再来一张，换个角度。'
-const PRICE_TOTAL = '[data-v4-price="total"]'
+const LOCALE = 'zh-CN'
+const FAILURES = `${CANVAS_PANEL} [data-v4-block="errorbar"], ${CANVAS_PANEL} [data-v4-block="tool"][data-status="failed"]`
+const present = createPresenter('S_AUTO')
+const oneImage = (angle) => (tag) => [{
+  title: `${tag} 六棱柱`, prompt: `${tag} 一个悬浮的六棱柱，${angle}，柔和的演播室灯光`, taskKind: 'text_to_image',
+  candidate: { providerId: FIXTURE_APIMART_VENDOR, modelId: FIXTURE_APIMART_MODEL }, parameters: { aspect_ratio: '1:1' },
+}]
 
-/** 一次「模型建草稿」的脚本回合。付费能力不在模型工具面里（paidBoundary），它能做的只有这个。 */
-function draftTurn(walk, { marker, callId, prompt, done }) {
-  // 20 动词：draft_shots 建草稿（落画布、不出卡），generate 才把报价卡摆到用户面前；「全自动」档在 generate 那一刻替用户决门。
-  const generateId = `${callId}-generate`
-  let operationId
-  const planner = walk.fixture.expectText({
-    label: `the agent drafts a generation for ${marker}`,
-    match: (body) => flattenRequestText(body).includes(marker),
-    reply: { type: 'tool', id: callId, name: 'draft_shots', args: {
-      shots: [{ prompt, taskKind: 'text_to_image', candidate: { providerId: FIXTURE_VENDOR, modelId: FIXTURE_IMAGE_MODEL }, parameters: { size: '1024x1024' } }],
-    } },
-  })
-  const drafted = walk.fixture.expectText({
-    label: `the draft for ${marker} comes back with its operationId, then the agent calls generate`,
-    match: (body) => {
-      const result = (body.messages ?? []).find((message) => message.role === 'tool' && message.tool_call_id === callId)
-      if (!result) return false
-      operationId = /"operationId":"([^"]+)"/.exec(String(result.content))?.[1]
-      return true
-    },
-    reply: { type: 'hold' },
-  })
-  drafted.received.then(() => drafted.release({ type: 'tool', id: generateId, name: 'generate', args: { operationId } }))
-  const finished = walk.fixture.expectText({
-    label: `the drafting turn for ${marker} completes through the same SDK turn`,
-    match: (body) => (body.messages ?? []).some((message) => message.role === 'tool' && message.tool_call_id === generateId),
-    reply: { type: 'text', text: done },
-  })
-  return { planner, finished }
+/** 记下此刻起付费卡有没有出现过（哪怕只闪一帧）：轮询会错过一闪而过的卡，挂观察者。 */
+async function watchSpendCard(win) {
+  await win.evaluate((selector) => {
+    window.__spendCardSeenObserver?.disconnect()
+    window.__spendCardSeen = Boolean(document.querySelector(selector))
+    window.__spendCardSeenObserver = new MutationObserver(() => {
+      if (document.querySelector(selector)) window.__spendCardSeen = true
+    })
+    window.__spendCardSeenObserver.observe(document.body, { childList: true, subtree: true })
+  }, SPEND_CARD)
 }
 
-const walk = await createRuntimeWalk('spend-full-auto')
+const walk = await createRuntimeWalk('spend-full-auto', { generationProvider: 'apimart', trustFixtureOrigin: true })
 let failure
 try {
   const { win } = await walk.start({ first: true })
+  await armCanvasBridges(win)
   const { projectId } = await walk.newProject()
   await openCanvas(win)
+  const panel = win.locator(CANVAS_PANEL)
 
-  // ① 阳性对照：默认档（「自动改」）下问一次，报价卡必须出现。
-  //
-  // 没有这一步，③ 的「没有卡」就毫无意义——一个根本长不出卡的现场里断言「没有卡」恒真。
-  const first = draftTurn(walk, { marker: 'S_AUTO_ASK_1', callId: 'auto-draft-1', prompt: '一个悬浮的六棱柱，柔和的演播室灯光', done: 'S_AUTO_DONE_1：草稿已就绪，等你确认。' })
-  await sendCanvas(win, ASK_SAFE)
-  await recorded(first.planner.received, 'safe-auto draft request')
-  // 2026-09-22 裁决 A：`generate` **等**用户答完那张卡才返回——这一轮此刻正挂在卡上，收尾在下面关卡之后。
+  // ① 阳性对照：默认档下问一次，卡必须出现（没有这一步，③ 的「没有卡」在一个根本长不出卡的现场里恒真）。
+  await expect(panel.locator(COMPOSER), '默认档是「请求批准」').toHaveAttribute('data-approval-mode', 'request')
+  const asked = await present(walk, win, { locale: LOCALE, kind: 'image', shots: oneImage('正面') })
+  const askedFacts = await cardFacts(win)
+  expect(askedFacts.cardText, '卡上不出钱（10-08「界面不谈钱」）').not.toMatch(MONEY)
+  await expect(win.locator(FAILURES), '「请求批准」档下不去答那一下，也就没有任何失败').toHaveCount(0)
+  expect(walk.fixture.images, '卡还没按，供应商一次没碰').toHaveLength(0)
+  await walk.snap('full-auto-01-request-tier-asks')
+  await closeSpendCard(asked.card, '点「取消」关掉这张卡')
+  await recorded(asked.turnDone.received, 'the request-tier generate returns once its card was closed')
+  expect((await offerFacts(win, projectId, asked.operationId)).closedBy, '这一次出价是用户关的').toBe('user_closed')
 
-  const card = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="spend"]`)
-  await expect(card, '「自动改」档下每一笔付费生成照旧逐次问——这一档一个字都没变').toBeVisible()
-  // 草稿也确实落到了画布上：卡上问的那件事是真的存在的。
-  await expect.poll(async () => (await readProject(win, projectId)).payload.generationCanvas.nodes.length,
-    { timeout: DEFAULT_TIMEOUT_MS }).toBe(1)
-  // 合同 contract-moneycopy（#1099）：卡上不出 Nomi 按价目表算的金额（原断言 0.30 已随合同删除）。
-  await expect(card.locator(PRICE_TOTAL), '「自动改」档下那张卡的确认控件不出金额').not.toHaveText(/[¥￥$€£]|\d+\.\d{2}/)
-  // 阴性对照：这一档下宿主**根本不去碰那道门**，所以不该有任何失败。
-  // ③ 里同一个定位器要变成「有」——两次之间唯一的变量就是档位。
-  //
-  // 出卡不留任何失败痕迹：等用户不再以「错误 + STOP」的形状出现（2026-09-22 裁决 A），
-  // 所以这里没有一句要滤掉的「公告」——**任何**失败行都算数。
-  const anyFailure = win.locator(`${CANVAS_PANEL} [data-v4-block="errorbar"], ${CANVAS_PANEL} [data-v4-block="tool"][data-status="failed"]`)
-  // 公告那一行现在是普通完成态，所以「除了公告之外的失败」= **任何**失败行：不用再把它滤出去。
-  const failures = anyFailure
-  await expect(failures, '「自动改」档下不该去决门，也就不该有任何决门失败').toHaveCount(0)
-  await walk.snap('full-auto-01-safe-auto-still-asks')
-
-  // 看完就答：把这张卡关掉，等它的那个回合才收得了尾（「已经在等的那张卡不因切档而被放行」由
-  // `agent-spend-card.walk.mjs` 钉着，这里不重复）。不关它，下面那句新的请求就成了对这张卡的回答（裁决 E）。
-  await closeSpendCard(card, '关掉「自动改」档下的那张卡')
-  await recorded(first.finished.received, 'the safe-auto generate returns once its card was closed')
-
-  // ② 切到「直接生成」。那张二次确认卡上的话必须和今天的行为一致——
-  // 它 2026-09-12 之前写的是「付费和不可逆的操作仍然每次问」，而那句话现在是假的。
-  await clickOrFail(win.locator(`${CANVAS_PANEL} ${COMPOSER_PERMISSION}`), '权限档选择器')
-  await expect(win.locator(`${CANVAS_PANEL} ${PERMISSION_POPOVER}`)).toBeVisible()
-  await clickOrFail(win.locator(`${CANVAS_PANEL} ${permissionTier('direct')}`), '切到「直接生成」')
-  const switchCard = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="approval-reversible"]`)
-  await expect(switchCard, '切档本身仍然要问一次——这一次点头就是他对之后每一笔付费的授权').toBeVisible()
-  // 按键取值（uiText），不抄字面：#1099 把这句改成「生成也会直接跑」时，手抄的旧句在这里撞过红。
-  await expect(switchCard, '切档确认必须说清「生成会直接跑」，不能还写着「仍然每次问」')
-    .toContainText(uiText('zh-CN', 'agentPanelV4.autoModeConfirmBody').replace(/\*\*/g, ''))
+  // ② 切到「直接生成」：先问一次，确认卡说清生成会直接跑；确认之后常驻提醒。
+  await clickOrFail(panel.locator(COMPOSER_PERMISSION), '权限档选择器')
+  await expect(panel.locator(PERMISSION_POPOVER)).toBeVisible()
+  await clickOrFail(panel.locator(permissionTier('direct')), '切到「直接生成」')
+  const switchCard = panel.locator(`${APPROVAL_CARD}[data-kind="approval-reversible"]`)
+  await expect(switchCard, '切档本身要问一次——这一次点头就是对之后每一笔生成的授权').toBeVisible()
+  await expect(switchCard, '切档确认说清「生成会直接跑」').toContainText(uiText(LOCALE, 'agentPanelV4.autoModeConfirmBody').replace(/\*\*/g, ''))
   await walk.snap('full-auto-02-switch-says-paid-runs-directly')
   await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), '确认切到直接生成')
+  await expect(panel.locator(COMPOSER), '档位变成「直接生成」').toHaveAttribute('data-approval-mode', 'direct')
+  await expect(panel.locator('[data-v4-block="auto-mode"]'), '常驻提醒说实话：生成会直接跑').toContainText(uiText(LOCALE, 'agentPanelV4.autoModeBannerNote'))
 
-  const banner = win.locator(`${CANVAS_PANEL} [data-v4-block="auto-mode"]`)
-  await expect(banner, '全自动档要有常驻提醒——用户得一直知道自己在这一档').toBeVisible()
-  await expect(banner, '提醒那一行也要说实话：生成会直接跑').toContainText(uiText('zh-CN', 'agentPanelV4.autoModeBannerNote'))
+  // ③ 再问一次：策略替用户交给画布——一次都不出卡，供应商收到这一笔。
+  const imagesBefore = walk.fixture.images.length
+  await watchSpendCard(win)
+  const direct = await present(walk, win, { locale: LOCALE, kind: 'image', shots: oneImage('俯视'), waitForCard: false })
+  await recorded(direct.turnDone.received, 'the direct-tier generate returns once the policy handed the shot over', stationTimeout({ operations: 6 }))
+  await expect.poll(() => walk.fixture.images.length - imagesBefore, { message: '供应商收到这一笔', timeout: stationTimeout({ operations: 6 }) }).toBe(1)
+  await expect.poll(async () => (await offerFacts(win, projectId, direct.operationId)).handOvers.map((entry) => `${entry.by}:${entry.outcome}`),
+    { message: '这一镜是策略交给画布的，交到了', timeout: stationTimeout({ operations: 6 }) }).toEqual(['policy:accepted'])
+  const offer = await offerFacts(win, projectId, direct.operationId)
+  expect(offer.closedBy, '出价按「已交给画布」关').toBe('handed_to_canvas')
+  expect(offer.productionJobs, '制作 Run 自己一笔作业都没派（同一台发动机：作业在画布那一镜的单镜 Run 里）').toBe(0)
+  expect(direct.receipt(), '回执说得出是「直接生成」档批的').toContain('policy:full_auto')
+  expect(await win.evaluate(() => window.__spendCardSeen), '从草稿落盘到交到为止，一次都不出卡').toBe(false)
+  await expect(win.locator(FAILURES), '直接生成档下这一笔顺利交出去：面板上没有失败').toHaveCount(0)
+  await expect.poll(async () => (await shotNodes(win, projectId, direct.operationId))[0]?.node?.status,
+    { message: '草稿那一刻建的那个节点出了结果', timeout: stationTimeout({ operations: 6 }) }).toBe('success')
+  // 对话流里那一行带组指向的收据（板 ④）是卡退场后留下的：这一档没有卡，也就没有那一行（板与设计卡都没要求，报告里交协调）。
+  walk.report.directTierReceiptRow = await panel.locator(`${RECEIPT_POINTERS}[data-operation-id="${direct.operationId}"]`).count()
+  await walk.snap('full-auto-03-direct-tier-no-card')
 
-  // ③ 再问一次。这一次宿主会**当场去决那道门**——在这台夹具上它会被诚实地拒绝，
-  // 而拒绝必须是用户看得见的（沉默是这一族里最贵的回答）。
-  const second = draftTurn(walk, { marker: 'S_AUTO_ASK_2', callId: 'auto-draft-2', prompt: '同一个六棱柱，换一个俯视角度', done: 'S_AUTO_DONE_2：这一笔我按你的档位直接处理了。' })
-  await sendCanvas(win, ASK_FULL)
-  await recorded(second.planner.received, 'full-auto draft request')
-  await recorded(second.finished.received, 'full-auto draft result')
+  // ④ 零额度：供应商是本机 loopback，一共只收到 ③ 那一笔。
+  expect(walk.fixture.images, '整场只有「直接生成」档那一笔到了（loopback，零额度）').toHaveLength(1)
 
-  await expect(failures.first(), '「全自动」档下宿主要真的去决门——它没去，这一格就永远是空的')
-    .toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
-  await walk.snap('full-auto-03-host-really-decided-the-gate')
-
-  // ④ 决不成就不假装成功：那一笔仍然待决，卡还在原处等人答。
-  // 这正是「不吞错、不兜底」——**不是**「全自动地什么都没发生」。
-  await expect(card, '决门失败时那一笔仍然待决：卡必须还在，不许被悄悄吃掉').toBeVisible()
-  await walk.snap('full-auto-04-failed-decision-leaves-the-card')
-
-  expect(walk.fixture.images, '整场走查一次供应商生成都没发生（零额度）').toHaveLength(0)
-
-  walk.report.verified = ['safe-auto-does-not-touch-the-gate', 'switch-copy-matches-behaviour',
-    'full-auto-really-decides-the-gate', 'failed-decision-leaves-the-card']
+  walk.report.verified = [
+    'request-tier-still-asks', 'switch-copy-matches-behaviour', 'direct-tier-hands-over-by-policy-without-a-card',
+    'policy-hand-over-goes-through-the-canvas-engine',
+  ]
 } catch (error) {
   failure = error
   process.exitCode = 1

@@ -62,8 +62,14 @@ export function laneFailureFromDecision(input: {
   reason?: unknown;
   /** 准入层拒绝的具体码（传输层随失败带来）。 */
   admission?: string | undefined;
+  /** 宿主账本说这份计划有没有一笔可能到过供应商（传输层随失败带来，`RuntimeToolDecision.submissionStarted`）。 */
+  submissionStarted?: boolean | undefined;
 }): LaneToolFailureShape {
-  const code = input.code ?? input.fallbackCode;
+  // 「提交结果可能未知」只有在真的可能有一笔到过供应商时才说（铁律 4）。账本说一笔都没有：兜底码按事实读成「没开始」，
+  // 回给模型和面板的都是「没发出去、没花钱」。缺席（读不到账本）照旧按可能到过说。
+  const code = input.code === 'generation_execution_failed' && input.submissionStarted === false
+    ? 'generation_not_started'
+    : input.code ?? input.fallbackCode;
   const taskAdvice: Record<string, LaneFailureAdvice> = {
     task_reference_required: { message: 'This task reference has no verified domain.', nextAction: 'Read the task result or canvas again and copy both domain and jobId from taskRef. Do not guess a task ID from a node ID.' },
     generation_operation_not_found: { message: 'No generation task exists for this reference in the authorized project.', nextAction: 'Read the current task list or canvas and use its taskRef. Do not create another paid request to recover an unknown outcome.' },

@@ -88,9 +88,9 @@ describe("改草稿只改被点名的参数", () => {
   });
 });
 
-describe("付费卡手改：每次带的是这一镜的完整参数集，合并与替换结果相同（行为不变）", () => {
-  it("卡上改一个值（其余照抄）→ 落盘的就是卡发来的那一份", () => {
-    // 卡的补丁 = 这一镜全部参数键 ∪ 控件键，没动的取候选原值（`spendCardDraft.candidatePatchFromNode`）。
+describe("补丁带的是这一镜的完整参数集：合并与替换结果相同（行为不变）", () => {
+  it("改一个值（其余照抄）→ 落盘的就是补丁里的那一份", () => {
+    // 2026-10-24 之前付费卡每次都这样发（卡上没动的键取候选原值）；卡不再改参数之后，这条钉的是并入规则本身的性质。
     const cardPatch = { aspect_ratio: "16:9", resolution: "2K", output_format: "png" };
     const { normalizedPatch } = revise(nanoBanana({ aspect_ratio: "16:9", resolution: "1K", output_format: "png" }), { parameters: cardPatch });
     expect(normalizedPatch.parameters).toEqual(cardPatch);

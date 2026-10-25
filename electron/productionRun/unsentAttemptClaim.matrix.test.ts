@@ -16,6 +16,7 @@
  *   · 把「发出后网络断」误判成「没发出」（例如账本不看已交出的请求）→ 「发出后断 / 5xx / 先发一笔再被拦」各格红；
  *   · 账本不看子进程（V-1047 B1 那一版：画布那台声明全走 appFetch，CLI 子进程账上 0 笔）→ CLI 「超时 / 被杀 / 非零退出」各格红。
  */
+import fs from "node:fs";
 import http from "node:http";
 import type net from "node:net";
 import os from "node:os";
@@ -27,9 +28,14 @@ import { setupCanvasShots, CANVAS_TEST_PROJECT } from "../capabilityCore/canvasS
 import type { CanvasTaskResult, CanvasTransport } from "../capabilityCore/canvasTransportProvider";
 import { createCatalogGenerationProvider } from "../capabilityCore/apimartGenerationProvider";
 import type { GenerationProvider, GenerationProviderRequestInputV1 } from "../capabilityCore/generationRuntimeAdapter";
-import {
-  PROJECT_ID, OPERATION_ID, harness, buildActions, draft, resetSpendFixture, advanceClock,
-} from "../capabilityCore/agentPanelSpendConfirmTestUtils";
+import { PROJECT_ID, now, resetSpendFixture, shotsDraft, spendWorld } from "../capabilityCore/agentPanelSpendConfirmTestUtils";
+import { compileExecutionContract, type PlanCandidate } from "../capabilityCore/executionContract";
+import { createModuleRegistry } from "../capabilityCore/moduleRegistry";
+import { createProductionGenerationSubmission } from "./productionGenerationSubmission";
+import { sealAndApproveProductionGeneration } from "./productionGenerationAuthorizationTestUtils";
+import { createProductionRunRepository } from "./productionRunRepository";
+import { createProductionShotDispatchGuard } from "./productionShotDispatchGuard";
+import { landedAdmission } from "./landFirstTestUtils";
 import type { CatalogState, Vendor } from "../catalog/types";
 import { requestJson } from "../vendor/vendorHttp";
 import { runDreaminaCli } from "../catalog/dreaminaCli";
@@ -275,28 +281,75 @@ describe.each(ENTRIES)("入口：$label", (entry) => {
   });
 });
 
-// ── 入口 3：Agent 付费卡（真目录执行器 = 引擎 B 的 send → appFetch）────────────────────────────
+// ── 入口 3：Agent 付费卡（D2 第③步：交给画布 = 引擎 A，和节点 ↑ 同一个付费口）───────────────────────
+//
+// 卡上点「生成」不再自己开制作流程的付费门：这一镜交给画布，逐镜走上面那两格同一个口子。这里钉的是交接那一半：
+// 每一种失败落回出价账的哪一格（确定没发出去 → 卡上「再试一次」、可以直接再交；说不清 → 结果未知、卡上不许再交；
+// 明确拒绝 → 参数被拒），以及供应商一共收到几笔。
+
+describe("入口：Agent 付费卡（交给画布）", () => {
+  it.each(KINDS)("$label", async (kind) => {
+    const vendor = await loopbackVendor(kind.server);
+    const world = spendWorld({ canvasTransport: engineATransport(vendor.origin) });
+    await shotsDraft(world, [{ prompt: "林薇，短发风衣" }]);
+    expect(world.pending(), "付费卡在").toBeDefined();
+    phase.failing = true;
+    phase.local = kind.local;
+    await world.generate();
+    await world.renderer.drain();
+    phase.failing = false;
+    const submissions = () => vendor.received.length + cliRuns.count;
+    const firstReceived = submissions();
+    const handOver = world.run().generationPlan!.presentations!.at(-1)!.handOvers!.at(-1)!;
+    const offer = () => world.pending()?.shots[0];
+
+    if (kind.expect === "reconcile") {
+      expect(handOver.settled?.outcome, "说不清：结果未知（钱可能已经花了）").toBe("unknown");
+      expect(offer()?.offer, "卡上照实说要核对").toBe("unknown");
+      expect(firstReceived, "第一次确实交出去了一笔").toBe(1);
+      expect(await world.generate(["shot-1"]), "卡上不许再交一次").toMatchObject({ ok: false, message: "generation_quote_changed" });
+      await world.renderer.drain();
+      expect(submissions(), "防双扣：卡上再点也不会再发一笔").toBe(firstReceived);
+      return;
+    }
+
+    expect(handOver.settled?.outcome, "确定没发出去 / 明确拒绝：交接落定成没发出去").toBe("not_sent");
+    expect(offer()).toMatchObject(kind.expect === "rejected"
+      ? { offer: "not_sent", failure: { kind: "parameter_rejected", code: "provider_rejected" } }
+      : { offer: "not_sent", failure: { kind: "not_sent" } });
+    expect(firstReceived, "确定没离开本机：一笔都没收到；明确拒绝：只有被拒的那一笔").toBe(kind.expect === "rejected" || kind.local === "write-then-refused" ? 1 : 0);
+    const canvasRun = world.repository.read(PROJECT_ID, handOver.canvasRunId!)!;
+    expect(reservationOf(world.repository, canvasRun), "预留 provider-safe 释放，不是挂成 unsettled").toBe("released");
+    // 卡上「再试一次」（参数被拒的那一格是改好之后）：再交一次，这一次真的发出去，供应商只多收一笔。
+    await world.generate();
+    await world.renderer.drain();
+    expect(submissions(), "重试只发一笔").toBe(firstReceived + 1);
+    expect(world.pending(), "交到了，卡关").toBeUndefined();
+  });
+});
+
+// ── 入口 4：外部宿主开跑（制作提交出口 → 真目录执行器 = 引擎 B 的 send → appFetch）────────────────────
+//
+// 卡不再走引擎 B 之后，引擎 B 还服务外部 MCP 宿主的开跑（`multiShotBatchScheduler` / `start`）。同一张矩阵在它自己的提交出口上
+// 照样成立：确定没离开本机的释放认领、预留，画布可以直接重做；说不清的进对账、画布认领被拒。
 
 function catalogFor(origin: string): CatalogState {
-  const now = "now";
+  const stamp = "now";
   return {
     version: 11,
-    vendors: [{ key: "acme", name: "Acme", enabled: true, baseUrlHint: origin, authType: "bearer", authHeader: "Authorization", createdAt: now, updatedAt: now }],
-    models: [{ vendorKey: "acme", modelKey: "acme-image", kind: "image", enabled: true, labelZh: "Acme 图", createdAt: now, updatedAt: now }],
+    vendors: [{ key: "acme", name: "Acme", enabled: true, baseUrlHint: origin, authType: "bearer", authHeader: "Authorization", createdAt: stamp, updatedAt: stamp }],
+    models: [{ vendorKey: "acme", modelKey: "acme-image", kind: "image", enabled: true, labelZh: "Acme 图", createdAt: stamp, updatedAt: stamp }],
     mappings: [{
       id: "acme-text_to_image", vendorKey: "acme", modelKey: "acme-image", taskKind: "text_to_image", name: "Acme 文生图", enabled: true,
       create: { method: "POST", path: "/v1/images/generations", body: { model: "{{model.modelKey}}", prompt: "{{request.prompt}}" }, response_mapping: { task_id: "data.0.task_id" } },
       query: { method: "GET", path: "/v1/tasks/{{providerMeta.task_id}}", response_mapping: { status: "data.0.status" } },
-      createdAt: now, updatedAt: now,
+      createdAt: stamp, updatedAt: stamp,
     }],
     apiKeysByVendor: {},
   } as CatalogState;
 }
 
-/**
- * 付费卡夹具的目录叫 apimart / image-model；真目录执行器服务的是用户自己接的 acme。这一层只改名字，
- * 构建与发送原样交给真执行器（它的 send 就是付费卡在生产里走的那一个出口）。
- */
+/** 制作那一侧的目录叫 apimart / image-model；真目录执行器服务的是用户自己接的 acme。这一层只改名字，构建与发送原样交给真执行器。 */
 function engineBProvider(origin: string): GenerationProvider {
   const local = () => (phase.failing ? phase.local : undefined);
   const inner = createCatalogGenerationProvider({
@@ -311,61 +364,70 @@ function engineBProvider(origin: string): GenerationProvider {
     ...(inner.networkTransport ? { networkTransport: inner.networkTransport } : {}),
     buildRequest: (input) => inner.buildRequest(rename(input)),
     submit: async () => { throw new Error("submitWithContext is the production path"); },
-    submitWithContext: async (request: unknown, key: string, input: GenerationProviderRequestInputV1) => {
-      return inner.submitWithContext(request, key, rename(input));
-    },
+    submitWithContext: async (request: unknown, key: string, input: GenerationProviderRequestInputV1) => inner.submitWithContext(request, key, rename(input)),
     query: async (providerTaskId) => ({ status: "succeeded", raw: { id: providerTaskId } }),
     materialize: async ({ providerTaskId }) => ({ outputs: [{ kind: "image", url: `nomi-local://asset/${PROJECT_ID}/${providerTaskId}.png` }] }),
   } as GenerationProvider;
 }
 
+const ENGINE_B_REGISTRY = createModuleRegistry([{
+  moduleId: "generation.single-shot", version: "1.0.0", inputKinds: ["text"], outputKinds: ["image"], modes: ["text_to_image"],
+  parameterSchema: {}, assetInputSchema: {},
+  providers: [{ providerId: "apimart", models: [{ modelId: "image-model", modes: ["text_to_image"], parameterSchema: {}, capabilities: { submitIdempotency: false, query: true, reconcile: true, cancel: true, materialize: true } }] }],
+}]);
+const ENGINE_B_RUN = "op-external";
+const engineBRoots: string[] = [];
+afterEach(() => { for (const root of engineBRoots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
+
+/** 一份外部宿主起的、已经批过的单镜计划（批准在那条路自己的 elicitation / 收据门里，这里直接给盖好章的那一份）。 */
+function approvedExternalRun(provider: GenerationProvider) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-unsent-engine-b-"));
+  engineBRoots.push(root);
+  const repository = createProductionRunRepository({ projectDirResolver: (id) => (id === PROJECT_ID ? root : null), now });
+  const draftCandidate: PlanCandidate = { candidateId: "cand-1", revision: 1, moduleId: "generation.single-shot", providerId: "apimart", modelId: "image-model", mode: "text_to_image", prompt: "林薇，短发风衣", parameters: {}, references: [] };
+  const contract = compileExecutionContract(draftCandidate, ENGINE_B_REGISTRY);
+  repository.createGenerationDraft({ operationId: ENGINE_B_RUN, projectId: PROJECT_ID, origin: { host: "claude-code" }, candidate: draftCandidate,
+    policy: { trustedHosts: ["claude-code"], allowedProviders: ["apimart"], allowedModels: ["image-model"], maxSpend: null, maxAttemptsPerJob: 3 } });
+  sealAndApproveProductionGeneration({ repository, projectId: PROJECT_ID, operationId: ENGINE_B_RUN, immutableProjectUuid: "project-uuid-1", projectGeneration: 1, projectRevision: 0,
+    candidate: { ...draftCandidate, sealedContractHash: contract.contractHash }, contract, providers: [provider], now: now() });
+  const sealed = repository.read(PROJECT_ID, ENGINE_B_RUN)!;
+  repository.execute(PROJECT_ID, ENGINE_B_RUN, { commandId: "submit", expectedRevision: sealed.revision, type: "generation.submit", payload: {}, issuedAt: now() });
+  const submission = createProductionGenerationSubmission({
+    repository, beforeDispatch: createProductionShotDispatchGuard({ readRun: (projectId, runId) => repository.read(projectId, runId) ?? undefined }),
+    projectRoot: root, immutableProjectUuid: "project-uuid-1", projectGeneration: 1, intentMacKey: "test-intent-key", provider,
+    materializeOutput: async ({ providerTaskId }) => ({ artifactId: `artifact-${providerTaskId}`, kind: "image", contentHash: `hash-${providerTaskId}`, projectRelativePath: `.nomi/out/${providerTaskId}.png` }),
+    now,
+  });
+  return { repository, submission, shotId: draftCandidate.candidateId };
+}
+
 /** 引擎 B 没有提交侧出网策略（另报）、没有多步脚本、也没有 CLI 子进程：这几格不适用，矩阵里如实标出来。 */
 const ENGINE_B_KINDS = KINDS.filter((kind) => kind.local !== "outbound-policy" && kind.local !== "write-then-refused" && !kind.local?.startsWith("cli-"));
 
-describe("入口：Agent 付费卡", () => {
+describe("入口：外部宿主开跑（制作提交出口）", () => {
   it.each(ENGINE_B_KINDS)("$label", async (kind) => {
     const vendor = await loopbackVendor(kind.server);
-    const base = harness();
-    const submits: string[] = [];
-    const { withWindow } = buildActions(base, vendor.origin, submits, { provider: (_id, origin) => engineBProvider(origin) });
-    await draft(base);
-    advanceClock(1000);
-    const card = withWindow.listPendingSpend(PROJECT_ID)[0];
-    expect(card, "付费卡在").toBeDefined();
+    const { repository, submission, shotId } = approvedExternalRun(engineBProvider(vendor.origin));
     phase.failing = true;
     phase.local = kind.local;
-    await withWindow.confirmPendingSpend({ projectId: PROJECT_ID, operationId: OPERATION_ID, quoteId: card.quoteId }).catch(() => undefined);
+    await submission.start({ projectId: PROJECT_ID, operationId: ENGINE_B_RUN, admission: await landedAdmission(repository, PROJECT_ID, ENGINE_B_RUN) }).catch(() => undefined);
     phase.failing = false;
-    const run = base.repository.read(PROJECT_ID, OPERATION_ID)!;
-    const shotId = run.generationPlan!.candidate.candidateId;
+    const run = repository.read(PROJECT_ID, ENGINE_B_RUN)!;
     const job = latestJobForShot(run, shotId)!;
     const firstReceived = vendor.received.length;
-    const current = () => base.repository.read(PROJECT_ID, OPERATION_ID)!;
-    const again = () => {
-      const quote = withWindow.listPendingSpend(PROJECT_ID)[0];
-      return quote ? withWindow.confirmPendingSpend({ projectId: PROJECT_ID, operationId: OPERATION_ID, quoteId: quote.quoteId }).catch(() => undefined) : Promise.resolve(undefined);
-    };
 
     if (kind.expect === "reconcile") {
       expect(job.status, "说不清：结果未知，进对账").toBe("submission_unknown");
       expect(decideShotClaim(run, shotId, "canvas"), "认领不放：这一镜在对账").toMatchObject({ granted: false, reason: "needs_reconcile" });
       expect(firstReceived).toBe(1);
-      advanceClock(1000);
-      await again();
-      expect(vendor.received.length, "防双扣：卡上再点也不会再发一笔").toBe(1);
       return;
     }
     expect(job.status).toBe("needs_attention");
     expect(job.errorCode).toBe(kind.expect === "rejected" ? "provider_rejected" : "provider_not_reached");
     expect(jobMayHaveReachedProvider(job)).toBe(false);
     expect(firstReceived, "确定没离开本机 / 明确拒绝：最多收到被拒的那一笔").toBe(kind.expect === "rejected" ? 1 : 0);
-    const ledger = base.repository.readBudgetLedger(PROJECT_ID, OPERATION_ID);
+    const ledger = repository.readBudgetLedger(PROJECT_ID, ENGINE_B_RUN);
     expect(Object.values(ledger.reservations).map((reservation) => reservation.status), "预留释放").toEqual(["released"]);
-    // 直接重试：认领放回画布（付费卡落在画布上的那个节点点一下就是重做这一镜，走画布那个口子，矩阵上半段已验）。
-    expect({ ...decideShotClaim(current(), shotId, "canvas") }, "认领释放：画布可以直接重做这一镜").toEqual({ granted: true, holder: "canvas", reason: "terminal" });
-    expect(withWindow.listPendingSpend(PROJECT_ID), "这一张卡已经决定过，不会自己再冒出来再发一次").toEqual([]);
-    advanceClock(1000);
-    await again();
-    expect(vendor.received.length, "制作这边不会自己再发一笔").toBe(firstReceived);
+    expect({ ...decideShotClaim(run, shotId, "canvas") }, "认领释放：画布可以直接重做这一镜").toEqual({ granted: true, holder: "canvas", reason: "terminal" });
   });
 });

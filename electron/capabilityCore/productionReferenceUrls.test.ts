@@ -56,7 +56,7 @@ it('uses the real multipart upload path against a delayed loopback endpoint', as
     }, {
       assets: {
         list: () => [{ id: 'asset', data: { url: localUrl, contentType: 'image/png' } }],
-        identity: () => ({ contentHash: 'hash', version: 1 }), import: vi.fn(),
+        identity: () => ({ contentHash: 'hash', version: 1 }),
       },
       localize: async (_providerId, urls) => {
         const result = await localizeAssetsForVendor(

@@ -2050,6 +2050,47 @@
       ],
       "reason": "Canvas media preview facts on an asset receipt and a canvas result: ready = a separate bounded preview file exists, source = the source itself is within the preview bound, missing = no preview could be derived. A media-derivation fact, not a lifecycle; poseClipStatus is the 3D director pose-clip loading lifecycle and shares only two words.",
       "site": "electron/shared/canvas/canvasMediaPreview.ts::variable:CANVAS_PREVIEW_STATES/as-const"
+    },
+    {
+      "members": [
+        "accepted",
+        "not_sent",
+        "unknown",
+        "withdrawn"
+      ],
+      "reason": "D2 交接落定的四种结局（交到了 / 结果未知 / 确定没发出去 / 被收回）的唯一 owner：画布那一侧写回、主进程落定时的校验集合、落定记录的类型都从这一个 as const 来；它回答的是「交给画布的这一镜钱有没有在花」，和制作作业状态、画布节点状态是不同的事，没有现成词表可复用。",
+      "site": "electron/productionRun/productionRunTypes.ts::variable:GENERATION_HAND_OVER_OUTCOMES/as-const"
+    },
+    {
+      "members": [
+        "approved",
+        "handing_over",
+        "not_sent",
+        "removed",
+        "sent",
+        "taken_by_canvas",
+        "undecided",
+        "unknown"
+      ],
+      "reason": "这一次出价里一镜的样子（等决定 / 去掉 / 画布接手 / 在交 / 交到了 / 结果未知 / 没发出去 / 制作流程批过）的唯一 owner：卡、回执、画布小标、认领判定都只经 offerShots 读它；它是出价账本上的投影，不是作业状态机，也不是节点状态，无处可复用。",
+      "site": "electron/shared/productionGenerationPresentation.ts::type:OfferShotState/type-union"
+    },
+    {
+      "members": [
+        "done",
+        "generating",
+        "submitting"
+      ],
+      "reason": "设计实验室付费卡那一屏自己的夹具场景（节点在提交中 / 生成中 / 已出片），只用来把实验室里的画布节点摆成那个样子（落到真节点的 status 与 progress.phase 上），不是任何生产状态机的词表，无处可复用。",
+      "site": "src/devlab/designLab/spendCard/spendCardLabKit.tsx::type:SpendLabShot/property:node/type-union"
+    },
+    {
+      "members": [
+        "generated",
+        "sent"
+      ],
+      "reason": "对话流收据那一句的两种说法（已发出 / 已生成）：从那几镜节点此刻的状态现算（都出了结果才说已生成），只在这一处挑文案，不落盘、不跨模块，不是状态机。",
+      "site": "src/workbench/ai/pointer/generationReceiptFacts.ts::type:ReceiptLine/property:phase/type-union"
     }
   ],
   "debt": [

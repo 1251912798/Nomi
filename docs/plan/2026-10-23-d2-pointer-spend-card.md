@@ -58,7 +58,7 @@
 |---|---|---|---|
 | 内嵌 Agent（面板展开 / 收起） | 有，唯一宿主 | `ProjectAgentResidentShell.tsx` → `AgentPanelV4Panel` 的 `slot`；收起时同一棵树（文件内 return 处注释） | 新卡 |
 | 外部 Agent / MCP（Claude Desktop、Codex…） | **没有**。投影只认 `origin.host === "nomi"` | `electron/productionRun/productionPendingSpend.ts` 文件头 + `awaitingSpendDecision`；外部宿主走 elicitation + 倒计时 | 不变（不在本线） |
-| 制作 Run（创作区文稿 → Agent 按分镜方案出图） | 有，同一张卡（Agent 起的 Run，`origin.host = "nomi"`，带 `sourceDocument`） | `electron/capabilityCore/generationTransportAdapters.ts` 的 `plan()` 盖 `host: "nomi"` | 新卡 |
+| 制作 Run（创作区文稿 → Agent 按分镜方案出图） | **没有这张卡**（③ 动手前核过，见 §四 第 1 条）：`generate` 对文稿方案走 `presentStoryboardAuthoring` → 渲染层 `storyboard.present` → 全局批量框 `confirmStoryboardPlanBatch`（`SpendConfirmDialog`），从不写出价，`awaitingSpendDecision` 投影不出它 | `electron/capabilityCore/mcpGenerationTools.ts` 的 `present` 分支；`src/workbench/creation/storyboard/exec/storyboardRowActions.ts` | 不变：批量框归 Q7，不在本线 |
 | 分镜表整批 / 画布「生成全部」/ 框选生成 | 不是这张卡，是画布批量确认弹窗 `SpendConfirmDialog` | `src/workbench/creation/storyboard/exec/storyboardRowActions.ts`、`generationCanvas/spend/spendConfirm.ts`、`consentCanvasShots` | 不在本线（不在聊天里），记 Q7 |
 | 重试 / 重跑 | Agent 重起草 → 新一次出价 → 同一张卡；画布节点 ↑ 重试走画布单节点路径，不出卡 | `appIntegrationCanvasShot.ts` 文件头 | 新卡；卡内「再试一次」只重发失败那一镜 |
 | 旧项目里已有的卡 | 重启后上一个进程摆出的出价被收回，不出卡；卡账本 localStorage 键 `nomi:spend-draft:*` 留在旧资料里 | `electron/productionRun/stalePresentationSweep.ts`；`spendCardDraft.ts#spendDraftKey` | 出价收回行为不变；旧键停读（Q8） |
@@ -93,7 +93,7 @@
 
 | # | 检查 | 反例 |
 |---|---|---|
-| 3.1 | 卡上摘要 = 节点当前参数（模型、变体、比例、时长、清晰度）；在节点上改一个参数，卡摘要 100ms 内跟着变 | 卡读候选、节点改了卡没变 |
+| 3.1 | 卡上摘要 = 节点当前可见参数（模型、比例、时长、清晰度；变体不单独印）；在节点上改一个参数，卡摘要 100ms 内跟着变 | 卡读候选、节点改了卡没变 |
 | 3.2 | 点「生成」/「全部生成（N）」发出的参数 = 节点当前参数（假上游抓真请求体，13 模型 × 默认 / 改过两种，复用 R-d2 的探针做成对等矩阵一维） | 比例被改成 16:9、变体掉回 Fast、参考图丢 |
 | 3.3 | 节点上点 ↑ 后，卡认出这一镜已发，变「生成剩下 N 段」，合计只算剩下的；一镜都不剩时卡关 | 同一镜被卡再发一次（双扣） |
 | 3.4 | 去掉 / 不生成：多段卡每个指向元素悬停 / 聚焦露「不生成 ×」，点了 N 减一、节点显示「已去掉，不生成」，再点一次恢复；去掉的不花、没点的不悄悄生成；全部去掉时主按钮置灰、卡留着（还能恢复），要关卡点「取消」 | 「全部生成」把去掉的也发了 |
@@ -101,13 +101,15 @@
 | 3.6 | 正在发出 k/N：「取消」立即生效，已发出的照常生成，toast 照实说发了几段 | 取消排在队后 |
 | 3.7 | 失败两种：没发出去（先不发了 · 再试一次）、参数被拒（先不发了 · 去改镜 N → 点了就定位到那个节点）；结果未知不说没花钱 | 说「没扣费」 |
 | 3.8 | 删旧：`spendCardDraft.ts`、`spendCardEstimate.ts`、`spendCardReferences.ts`、卡体 `NodeGenerationComposer host="panel"` 挂载、翻页、`rebindLandedShots` 同 PR 删；`git grep` 无残留引用；对应测试改写或删 | 留一个 fallback |
-| 3.9 | 宿主：内嵌 Agent 展开 / 收起都出卡（收起时小球的待确认计数也数付费卡，Q5）；制作 Run（文稿出图）出同一张卡；外部 MCP 不出卡 | 收起时卡丢了 |
+| 3.9 | 宿主：内嵌 Agent 展开 / 收起都出卡（收起时小球的待确认计数也数付费卡，Q5）；制作 Run（文稿出图）照旧走全局批量框、不出这张卡（§四 第 1 条，Q7）；外部 MCP 不出卡 | 收起时卡丢了 |
 | 3.10 | 策略档：「请求批准」逐次出卡；「直接生成」不出卡，刹车 / 失败时回同一张卡并带刹车说明 | 全自动档仍弹卡 |
 | 3.11 | 重启：上一个进程摆出的出价收回，不出卡；旧资料里的 `nomi:spend-draft:*` 不再被读，也不报错 | 旧草稿被套到新卡上 |
 | 3.12 | 节点被删：指向元素「已删除」，卡把它算作不生成，N 跟着变 | 卡对着不存在的节点发钱 |
 | 3.13 | Agent 回合：卡关后回合读到逐镜结局，回执文案不变 | 回合一直挂着 |
 | 3.14 | 走查：`tests/ux/agent-spend-*.walk.mjs`、`core-smoke-spend-confirm.walk.mjs`、`p4-s6p5-multishot-paid.e2e.mjs`、`_agentSpendScopeJourney.mjs`、`_permissionTiersPaidSteps.mjs`、`design-lab-agent-panel-v4.walk.mjs` 按新卡改写，本机跑过；`board:SpendCardQ1/*` 断言进走查 | 只跑单测 |
 | 3.15 | 真付费最小抽检 1 次（协调安排）；其余 `unverified` 照实写 | mock 绿灯顶替 |
+| 3.16 | 用户 10-25 选方案一：标题不重复数量，主按钮写「生成 N 段 / 生成 N 张」；删除标题徽章与页脚重复数字；模型来源并入只读摘要，逐镜不同只列分组（含「自动」） | 标题、徽章、页脚、按钮各说一遍数量，或逐镜摘要带「N 镜 · 逐镜不同」前缀 |
+| 3.17 | 方案一共用状态：失败卡删除重复的整行状态说明，失败格 / 未发格各自显示状态；缩略图中央合并状态与图标；「不生成 ×」移到缩略图右上角，恢复留在图中央，动作仍由组的 `cellAccessory` 统一管理 | 失败卡同时印两套状态，或动作回到每格绝对定位导致窄宽压住「已定位」 |
 
 ---
 
@@ -198,7 +200,68 @@
 - [x] 花钱
 - [x] 长跑 / 可打断
 - [x] Agent 行为
-- [ ] 大数据量 / 画布 / 长列表
+- [x] 大数据量 / 画布 / 长列表（③ 动了画布节点高亮、生成框、参数摘要 pill 与落地投影；2026-10-25 按路径补勾）
 - [ ] 生成效果
-- [ ] 数据格式
+- [x] 数据格式（③ 动了 `generationPlanSchemas.ts`：落地报文的参考过线；2026-10-25 按路径补勾）
 - [x] 新增功能 / 性能
+
+## 四、第③步动手前核查（2026-10-24，基线 `dc08a8dbb`）
+
+逐条照任务书第 0 步核；证据是文件 # 符号，能跑的都做成常驻测试（下面写了测试路径）。
+
+**1. 文稿方案出的是哪张卡 → 全局批量框，不是这张卡（Q7，不在本线）。** `generate` 对文稿来源的计划在 `mcpGenerationTools.ts` 的 `present` 分支直接走 `presentStoryboardAuthoring` → 渲染层 `storyboard.present` → `storyboardRowActions.ts#confirmStoryboardPlanBatch`（`SpendConfirmDialog`）；它从不调 `presentGenerationPlan`，计划上没有出价，`productionPendingSpend.ts#awaitingSpendDecision` 投影不出卡。已改正 §一 宿主表那一行和验收 3.9。范围不扩大。
+
+**2. R-d2 #1–#3 在 main 上补齐了没有 → #1、#2 补齐；#3 没补齐，本 PR 在最早的共享边界补。**
+- #1 比例（#1291）：`NodeParameterControls.tsx` 的挂载 effect 已删；视频比例默认只在 `nodes/videoAspectSeed.ts` 三个手势里铺；起草写了合法比例落地记 `aspect_ratio_user_set`（`plannedNodeMeta.ts#buildPlannedNodeMeta`）。Agent 没写比例时节点 = 档案默认（比例卡 Q1）。#1291 正文里「D2 落地改走铺默认值 owner、统一到 16:9」那句**本线不采纳**：③ 之后发出读节点，档案默认已经是「卡 = 节点 = 发出」三处一致，改成 16:9 是产品默认值的取舍，不是一致性需要——列进报告「未决」交协调。
+- #2 变体（#1288）：`CANDIDATE_LANDING_FIELDS` / `LANDED_CANDIDATE_FIELDS` 两张穷举表 + `electron/parity/landingProjectionParity.test.ts`，补齐。
+- #3 参考图：**没补齐**。`electron/productionRun/multiShotCanvasLanding.ts#CANDIDATE_LANDING_FIELDS.references` 写着「不过线，归 D2」，落地节点上一张参考都没有；规划函数 `referenceInputSlots.ts#planReferenceProjection` 有单测、0 个调用方。③ 之后发出读节点，不补就会把带参考的镜头按纯文生发出去。补法（换，不加分支）：落地报文的参考这一键过线（宿主用卡预览同一个解析口 `pendingSpendReferences.ts#resolveIndexedReferencePreview` 把钉死的素材身份换成项目素材地址），渲染层首次落地调 `planReferenceProjection`——画布上已有的图连真边、其余进节点那一份参考列表，生成方式按画布同一条规则对齐（`resolveModeForConnectedReferences`）。概念 `reference.candidate-canvas-projection` 由此接上（P1：接上，不删）。
+- #3 图片方式 `modeId`：起草没写方式的图片镜头，落地停在档案默认方式；带参考时由上一条的「按参考对齐方式」落到收得下参考的方式（和画布连线 / 换模型 / 提交同一个函数），不带参考的本来就是文生图，节点与发出一致。不另在宿主写第二条图片方式规则。
+- R-d2 #4（重绑定冲掉节点上的改动）：`rebindLandedShots` 删。但 Agent 改稿（`draft_shots` 带 shotId）今天就靠它把改动同步到节点，直接删掉会让「把第二段改成竖版」静默不生效（发出读节点）。换成：落地时在节点上记下「上一次从起草写进来的那几样」的指纹，候选变新时**只把 Agent 这次真改了的键**写进节点（模型身份、方式、变体、参数逐键，提示词、标题、参考），用户在节点上改过、Agent 没碰的键一个不动。不再有「档案默认 ⊕ 候选」整份盖。
+- 常驻测试：对等矩阵新一维 `electron/parity/draftNodeSendParity.test.ts`（APIMart 13 个模型 × 默认 / 改过：起草 → 落地报文 → 节点 meta → 生成框显示值 → 本机假上游抓的真请求体），新增模型自动进格子。
+
+**3. 手势收据 → 读码：同款；真 App 确认放在实现后（报告里附两张收据的 `humanActor` 对照）。** 聊天面板（`ProjectAgentResidentShell`）挂在工作台同一棵 React 树、同一个 BrowserWindow 的主 frame 里，不是 webview / iframe。卡上「生成」调的是画布批量那一套（`consentCanvasShots` 开出价 → `runGenerationNodesByPlan` → `runGenerationNode` 单镜 Run 路），每一镜经同一个 IPC `nomi:tasks:canvas-submit`，主进程按 `event.sender.id` / `senderFrame.routingId` / `senderFrame.origin` 铸 `CanvasShotGesture`（`electron/tasks/taskIpcHandlers.ts`），与节点 ↑ 是同一个签发口、同一个窗口、同一个 frame。收据 `humanActor = web_contents:<id>:<frame>:<origin>` 两边应逐字相同——这条在真 App 里对照（不许假设）。
+
+**4. 「直接生成」档的准入 → 有唯一合法做法，不是岔路。** 画布单镜派发的批准一步（`appIntegrationCanvasShot.ts#dispatch` 里的 `gestureGateApproval`）改成认一个「决定」：用户手势（IPC 事件铸，今天那条）或策略。策略只在主进程判：节点绑着的那个制作镜头在一份开着的、Agent 起的出价里，出价的策略快照是「直接生成」、代答没失败过、刹车不成立（`directGenerationBrakes.ts#spendDecisionByPolicy` 同一个判据）、这一镜还没决定；判过才用已有的 `createPolicyDecisionAttestation` 铸收据（`humanActor = policy:project:<surface>`），判不过就拒。触发：Agent 回合起草完，`generationTransportAdapters.ts#decideByPolicyAfterDraft` 对 Agent 起的计划不再启动 Agent 路发动机，改为请渲染层把这几镜交给画布（和卡上点「生成」同一个函数，决定 = 策略）；渲染层不可用或被拒 → `markGenerationPolicyDecisionFailed`，卡带说明出来等人。别的做法都不合法：主进程自己组请求要复制渲染层的请求组装和参考上传（P1）；保留 Agent 路发动机给这一档 = 两台发动机（Q3 已否）；让渲染层自己判策略，它拿不到签名钥匙，也不该有这个权。
+
+**5. ③ 之后 `multiShotBatchScheduler` 还有谁调（`node scripts/door-map.mjs createMultiShotBatchScheduler`，4 扇门）：** `appIntegration.ts#buildSchedulerForRun`（返工 / 续拍 / 恢复观察者）、`appIntegration.ts` 的 `start`（语义多镜计划开跑：外部宿主的计划、升级前留下的计划）、`mcpStdioServer.ts`（外部 MCP 的多镜开跑），以及测试夹具 `agentPanelSpendConfirmTestUtils.ts`。卡上确认和直接生成档不再调它。所以「停下之后说发了几段」这件事两半都要做：卡上「取消」的反馈按画布交出去的真实段数说（全交出去了就不说「已停止」）；调度器那条路的停止反馈在它自己的共享边界说真话。
+
+**6. 方向检查：** `docs/engineering/direction-checks/2026-10-24-d2-wiring.md`（fix-churn 2026-10-24 重数的命中表在那页）。改法是换 / 删、不加分支，按 Q6 协调代批；碰热点的提交带 `Direction-Check:`。
+
+**主进程怎么接（据 2–5 定的实现约束，写给验收线核）：**
+- 认领：Agent 起的出价开着时，这一次出价里还没决定的镜，画布可以认领（`decideShotClaim` 一处判，节点 ↑ 因此在卡开着时可点，Q3c）；认领记下是不是卡交出去的（`via`）和画布那个单镜 Run 的号。双扣只靠两道现有准入：同节点在途（`assertNodeIdle`）+ 认领。
+- 交接：卡上点「生成」先在出价上记一笔「正在交给画布」（哪几镜、谁决定的），这几镜在节点占位上显示「排队中」而不是「等你确认」（「正在发出」时画布不许再说「等你确认」：一份宿主状态，指向元素和节点占位都读它）；画布认领完最后一镜，出价按新原因「已交给画布」（`handed_to_canvas`）关。
+- 结局：卡交出去的镜，回执照旧说「在生成」；它的单镜 Run 在被供应商受理之前就结束了 → 「没发出去、没花钱」。回合读结局前先等这几镜的派发落定（受理或确定没发出），不在派发半路上报「在生成」。节点上自己点 ↑ 的仍是「画布接手」。回执文案一个字不改。
+- 删：`appIntegrationSpendConfirm.ts` 的确认 / 生成剩下 / 改参数三条宿主动作和它们在渲染层的 API；留「取消」「不生成」，加「恢复这一镜」。
+
+## 五、第③步做完以后（2026-10-24）：门表重数、删掉的东西
+
+### 门表（`node scripts/door-map.mjs`，删完以后重数；不含测试）
+
+| 符号 | 门 | 说明 |
+|---|---|---|
+| `useAgentPanelSpendCard` | 写 2：`src/workbench/ai/ProjectAgentResidentShell.tsx`（生产唯一宿主）、`src/devlab/designLab/spendCard/spendCardLabKit.tsx`（实验室格挂真钩子，不另画） | 取代 `useAgentPanelSpendConfirm`（写 1 → 写 1 + 实验室） |
+| `projectSpendCard` | 写 1：`useAgentPanelSpendCard.ts` | 实验室经钩子走，不再直调（原来 2 扇：钩子 + `07-spend-params.tsx`） |
+| `handOverSpend`（渲染层动作通道） | 写 1：`useAgentPanelSpendCard.ts`（经 `productionRunApi.ts`） | 「生成 / 全部生成（N）/ 生成剩下 N 段 / 再试一次」同一个动作；取代 `confirmSpend` / `confirmSpendRemaining` / 卡上改参数 |
+| `createCanvasHandOver`（主进程记交接、写回结局） | 写 1：`electron/capabilityCore/appIntegration.ts`；测试夹具 `agentPanelSpendConfirmTestUtils.ts` 另一扇 | 卡上点「生成」与「直接生成」档同一个入口 |
+| `handOverShotsOp`（渲染层：这几镜照节点此刻的样子交给画布） | 写 1：`src/workbench/capability/capabilityApplyHandler.ts`（`production.hand-over-shots`） | 逐镜走画布单节点提交，和节点 ↑ 同一条路 |
+| `handOverPrecheck` | 写 2：卡（`useAgentPanelSpendCard.ts`，渲染时）、交接（`productionHandOverShotsOp.ts`，开同意前） | 同一个判据两个读点是设计（债 a：出卡前判、交接时再判），不是两套判据 |
+| `discardPendingSpend` | 写 1：`appIntegrationSpendConfirm.ts`（测试夹具另一扇） | 「取消 / 先不发了」：任何时候立刻送到宿主，带卡的身份 |
+| `createMultiShotBatchScheduler` | 写 3：`appIntegration.ts` 两处（返工 / 续拍 / 恢复观察者；语义多镜开跑）、`mcpStdioServer.ts`（外部 MCP 多镜开跑） | 卡上确认与「直接生成」档不再调它；它那条路的停止反馈在它自己的共享边界说真话（债 b 第二半） |
+
+### 删掉的东西（legacy，同一个 PR 删，P1）
+
+- **渲染层旧卡**：`src/workbench/ai/v4/useAgentPanelSpendConfirm.ts`（含 writeScope / writeAccess 写口）、`spendCardDraft.ts`（卡账本 `nomi:spend-draft:*`；旧键只停读、不清盘，Q8）、`spendCardEstimate.ts`（本地重算报价）、`spendCardReferences.ts`；卡体里的整件生成框（`NodeGenerationComposer host="panel"`，`NodeComposerHost` 只剩 `canvas | inline`）；`InlineParameterBar` 的 chips / stacked / 内嵌面板三种摆法（只剩摘要 pill）；卡上的翻页（`V4Pager` 只剩翻页状态给别的卡用）、批量次按钮与 ← → 键盘处理。
+- **主进程旧动作**：`appIntegrationSpendConfirm.ts` 的确认 / 生成剩下 / 改参数三条（卡来源的 `generation.revise` 一并删）、`spendOperationArbiter.ts`（卡上动作一条队 + 取消令牌）：交接改成逐镜记账（`presentation.handOvers`），「取消」直接收回出价，排队的同意随之收回、还没交的那几镜不再交，正在交的那一镜照常交完（`agentPanelSpendCardStop.e2e.test.ts` 守；渲染层「取消」不排在卡上别的动作后面由 `useAgentPanelSpendCard.test.ts` 守）；`multiShotCanvasLanding.ts` 的 `rebindLandedShots`（换成「候选变新时只写 Agent 这次真改了的那几样」）。
+- **测试与夹具**：旧 e2e 九份（`agentPanelSpendBatches` / `Confirm` / `ConfirmDiscardRace` / `PerShot` / `References` / `Rejected` / `Remaining` / `WindowClosed` / `unknownPriceSpendConfirm`）换成 `agentPanelSpendCard*.e2e.test.ts` 五份；`spendOperationArbiter.test.ts`、`generationRevise.test.ts`；`tests/ux/spend-panel-write-ownership*` 三件；实验室 `07-spend-params` 那批格与 12 张 v4 基线（`v4-panel-spend-*` 4 张、`v4-spend-params-*` 8 张），加生成框实验室的 `composer-bar-chips-mode` 1 张（chips 摆法删了）；新卡在实验室屏「付费卡」，31 格；`v4-intervention-spend` 留着，内容换成新卡，要 CI 重新 accept。
+- **样张**：`docs/design/mockups/2026-10-01-paid-card-generate-remaining/` 与它的意图合同（翻页卡、「生成剩下 N 张」次按钮），被 SpendCardQ1 板取代；设计系统 §1.8.1 规则 1 的例外与 §1.8.2 正反例按新卡改写。
+- **概念登记**：`agent-panel.spend-card-shown-node`、`agent-panel.spend-outcome-final` 退役；`canvas.inline-parameter-chips` 改名 `canvas.parameter-summary-pill`（主人 `InlineParameterBar` 不变）；新登记 `production.spend-card-hand-over`、`canvas.spend-card-hand-over-op`；`reference.candidate-canvas-projection` 接上（`planReferenceProjection` 有了调用方，P1 接上不删）。
+- **门岗**：§1.0「聊天卡片不许引用编辑器组件」那道门岗立起来了——`check:boundaries` 的 R-B6 `chat-card-no-import-node-editor`（`.dependency-cruiser.mjs`，反例单测 `scripts/check-boundaries.chat-card.test.mjs`）。
+
+### 收尾时补上的（2026-10-25）
+
+- **「回到对话」在真画布上的家**：第②步它只挂在设计实验室，真 App 里点了指向、对话收成小球以后没有「回到对话」，Esc 也回不去（`returnTo` 一直挂着）。补：`src/workbench/ai/pointer/NodePointerReturnDock.tsx` 挂在生成页画布那一格——`returnTo` 属于这一页且对话是小球时才摆出来，底部正中、压在现量的底部停靠区上面；用户没经它、点小球把对话叫回来了，就清掉那一枚（以后别的原因收成小球不冒旧的）。P1 宿主（付费卡、完成收据）用不带标签的那一颗。单测 `NodePointerReturnDock.test.tsx`，真 App 走查 `tests/ux/agent-spend-card-narrow.walk.mjs`（最小窗 1100×720，拉大浮窗盖住画布；zh 浅 / en 暗）。
+- **用户 10-25 看截图提的两处（协调转，本 PR 修）**：① 「已定位」和「不生成 ×」任何宽度都不许压在一起；② 窄宽下三格的标题不许截成一样。做法：格子小动作（「不生成 ×」/「恢复」）的位置、露出、淡下去归组（`NodePointerGroup` 的 `cellAccessory` 返回动作和摆法），× 挂在缩略图右上角，恢复在缩略图中央；标题行不再给动作让位；「已定位」和制作状态也移到缩略图中央并与图标合成胶囊。≤320 时小钮只剩 ×（名字进 aria / title）。标题由组算每格「和兄弟格不一样的那一截」从哪起（`nodePointerFace.ts#nodePointerTitleTails`，纯函数），标题行截前面的公共开头、尾巴不截，全名进 title / aria。真 App 走查 `tests/ux/agent-spend-card-narrow.walk.mjs` 断言两个包围盒不相交、小钮不压标题尾巴、三格可见标题两两不同（默认 384 / 最窄 320 / 拉大三档，中明 + 英暗）。
+- **全功能走查的监视器（main 上就坏着，本 PR 顺手修）**：10-07 删「已保存到项目」回执时，`tests/ux/full-walk/invariants.mjs#loadLimits` 连带删掉了 `generationPhaseDeadline` 和回执窗口两条上限，监视器和 pb01 还在读，跑到节点转圈那一步就「reading 'value'」——pb02 英文场、pb11 两场都死在这里，D2 改写的 pb01 / pb02 也就核不了。补回阶段时限；回执窗口换成「反馈时钟一格 + 探针三拍的采样误差」（`terminalSpinnerGraceMs`，两项都有出处）。防线：`tests/ux/full-walk/limitsRegistry.test.mjs`——监视器 / 剧本读的每一个 `limits.<名字>` 都要在 `loadLimits` 登记，静态扫，漏了当场红（同文件带原场景反例）。没加进门岗脚本：`scripts/check-*.mjs` 属自写登记 `gate-family`，正在复审「只加不减」，这道检查管的是走查自己内部对不对得上，放进走查自己的单测（默认 vitest 车道）。
+- **自写登记**：合 main 之后 `check:self-written` 认出三个新增文件没有认领（之前 `-M` 把它们当改名）：`AgentPanelV4SpendCard*`、`electron/shared/contracts/canvasHandOver*` 进领域目录；`useAgentPanelSpendCard.ts` 在通用区（hook），登记 `spend-card-host-hook`（查过 React 19 `useActionState` / `useTransition`、XState、TanStack Query，结论与出处在登记里）。`agentPanelSpendCard*` / `spendCard*` 两条领域目录的理由按 D2 改实（本地账本、逐镜修订已删）。
+- **第 0 步第 3 条的真 App 对照（§四 答应过「两张收据的 humanActor 对照」）**：`tests/ux/agent-spend-generate-remaining.walk.mjs` 每一轮都读这一次出价三镜的认领（`shots[].claim.via` / `canvasRunId`）→ 画布单镜 Run 的 `approvals.ndjson` → 能力核收据库，断言节点上点 ↑ 的第 1 段（`via: node`）和卡上交出去的第 2、3 段（`via: handover`）三张收据都是 `human:gesture`、`humanActor` 逐字相同。2026-10-25 合 main 后实跑：中文一轮三张都是 `web_contents:1:11:file://`，英文一轮三张都是 `web_contents:1:14:file://`（换语言重载了页面，frame 号跟着变；同一轮里逐字相同）。
+- **对验收清单的一处偏差（交协调）**：3.13 写「回执文案不变」，§四写「一个字不改」。实际改了一句：`user_closed` 的关因从「the user closed the card (×) before deciding them」改成「the user cancelled the card before deciding them」——新卡上没有 ×，旧句子对模型说了一个不存在的动作。另外关因表补了 `handed_to_canvas` 一格（新关因，和 resolved 同一句）。两处都是模型看得见的字，agent-intent-eval 未验证（等协调的真模型量具）。

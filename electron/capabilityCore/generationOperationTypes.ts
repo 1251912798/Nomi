@@ -52,7 +52,10 @@ export type GenerationOperation = Readonly<{
   presentationId?: string;
   presentationEpoch?: number;
   policySnapshot?: ProjectAgentApprovalPolicy;
-  /** 账本里有没有任何一笔**可能**到过供应商（`productionShotJobs.anySubmissionMayHaveReachedProvider`）。`false` = 一个字节都没离开过这台机器、没花钱。 */
+  /**
+   * 账本里有没有任何一笔**可能**到过供应商：制作 Run 自己的作业（`productionShotJobs.anySubmissionMayHaveReachedProvider`）与交给画布的那几镜
+   * （`productionGenerationPresentation.handOverMayHaveReachedProvider`）。`false` = 一个字节都没离开过这台机器、没花钱。
+   */
   submissionStarted?: boolean;
   updatedAt: string;
 }>;
@@ -95,22 +98,10 @@ export type GenerationOperationStore = {
   withdraw(projectId: string, operationId: string, now: string, reason?: GenerationPresentationCloser): GenerationOperation | Promise<GenerationOperation>;
   /** 一次点击没点完（门封了、还没决）留下的那份等人的授权：撤掉，只解封它盖着的那几镜。下一次点击封新的一份之前调。 */
   abandonWaitingAuthorization?(projectId: string, operationId: string, now: string): GenerationOperation | Promise<GenerationOperation>;
-  /** 付费卡上「去掉这张」：这一镜不生成（这一次出价里记下，以后也不再自动摆上卡）。 */
+  /** 付费卡上「不生成 ×」：这一镜不生成（这一次出价里记下，以后也不再自动摆上卡）。 */
   removeShot?(projectId: string, operationId: string, shotId: string, now: string): GenerationOperation | Promise<GenerationOperation>;
+  /** 付费卡上「不生成 ×」再点一次：这一镜回到这一次出价里等人决定。 */
+  restoreShot?(projectId: string, operationId: string, shotId: string, now: string): GenerationOperation | Promise<GenerationOperation>;
   /** P4 S4 试拍首镜: invalidate the waiting authority and return a narrowed plan to draft for re-seal. */
   trialNarrow?(projectId: string, operationId: string, now: string): GenerationOperation | Promise<GenerationOperation>;
-  /**
-   * 2026-09-11 付费卡上改参数：撤掉还没被点头的授权、把改动落到候选、回到 draft 等重新封印。
-   * 与 `trialNarrow` 同族（同一条「撤授权 → 回 draft → 重新 seal/gate」的路），差别只在改了什么。
-   */
-  revise?(projectId: string, operationId: string, input: GenerationReviseInput, now: string): GenerationOperation | Promise<GenerationOperation>;
 };
-
-/** 卡上那一次改动：改哪一镜（缺省 = 顶层候选）、改了什么。 */
-export type GenerationReviseInput = Readonly<{
-  expectedRevision?: number;
-  shotId?: string;
-  patch: Readonly<Record<string, unknown>>;
-  /** 只对 `shotId` 有意义：把这一镜勾上/取消勾选（「逐镜 / 全部」那个范围切换的落点）。 */
-  included?: boolean;
-}>;

@@ -778,9 +778,6 @@ export const zhGenerationCommon = {
     // 摘要 pill 的文案覆盖（画布节点 summary 形态）：导入的 ComfyUI 工作流参数名是作者随手起的，
     // 串当前值成 `15 · 24` 没人认得出那是自己勾的东西（群反馈 2026-08-20 G2#433），改成报名字+条数。
     workflowParams: '工作流参数 · {{count}} 项',
-    // ⚙ 的名字带数字（付费卡 chips 形态）：它要回答的是「齿轮后面还有没有东西」。
-    // 数字为 0 时这颗齿轮根本不渲染，所以不必再写一版无数字文案。
-    moreParameters: '更多参数 · {{count}} 项',
     configureModel: '去配置模型',
     openModelCatalog: '点击打开模型设置',
     configure: '去配置 →',
@@ -2504,7 +2501,6 @@ export const enGenerationCommon = {
   parameters: {
     auto: 'Auto',
     workflowParams: 'Workflow params · {{count}}',
-    moreParameters: 'More parameters · {{count}}',
     configureModel: 'Configure a model',
     openModelCatalog: 'Open model setup',
     configure: 'Configure →',

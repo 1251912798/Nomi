@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { collectInputAspectRatios, commonRatioSortKey, isAspectInputEdgeMode, preferredVideoAspect, readNodeAspectRatio } from "./aspectRatio";
-import { normalizeAspectRatioToWH, parseAspectRatioValue } from "../../../../electron/shared/aspectRatioValue";
+import { readAspect } from "../../generation/list/generationListMediaFacts";
+import { ASPECT_RATIO_META_KEYS, normalizeAspectRatioToWH, parseAspectRatioValue } from "../../../../electron/shared/aspectRatioValue";
 import type { GenerationCanvasEdge, GenerationCanvasEdgeMode, GenerationCanvasNode } from "../model/generationCanvasTypes";
 
 describe("parseAspectRatioValue", () => {
@@ -79,6 +80,26 @@ describe("readNodeAspectRatio", () => {
   it("无比例参数返回 null", () => {
     expect(readNodeAspectRatio(nodeWithMeta({ resolution: "1080p" }))).toBeNull();
     expect(readNodeAspectRatio(nodeWithMeta({}))).toBeNull();
+  });
+});
+
+// 2026-10-24：列表 / 指向元素 / 付费卡摘要上印的比例（readAspect）以前只认 aspect_ratio，比例放在 size / ratio 上的模型
+// （Seedance 一类）卡上就漏印了。现在两边读同一个值（nodeAspectRatioValue）；这里按承载键逐个钉，新加一个键两边一起跟。
+describe("节点比例只有一个读法：印出来的字和画布节点形状读的是同一个值", () => {
+  it.each(ASPECT_RATIO_META_KEYS.map((key) => [key]))("比例放在 %s 上：两边都读得到、是同一个比例", (key) => {
+    const node = nodeWithMeta({ [key]: "9:16" });
+    expect(readNodeAspectRatio(node)).toBeCloseTo(9 / 16);
+    expect(readAspect(node)).toBe("9:16");
+  });
+
+  it("具名档印成它的比例；不是比例的值两边都读不出", () => {
+    expect(readAspect(nodeWithMeta({ image_size: "landscape_16_9" }))).toBe("16:9");
+    expect(readNodeAspectRatio(nodeWithMeta({ image_size: "landscape_16_9" }))).toBeCloseTo(16 / 9);
+    for (const meta of [{ size: "2K" }, { size: "2048x2048" }, { aspect_ratio: "auto" }, {}]) {
+      expect(readAspect(nodeWithMeta(meta)), JSON.stringify(meta)).toBeNull();
+      expect(readNodeAspectRatio(nodeWithMeta(meta)), JSON.stringify(meta)).toBeNull();
+    }
+    expect(readAspect(nodeWithMeta({ size: "2K", ratio: "1:1" }))).toBe("1:1");
   });
 });
 

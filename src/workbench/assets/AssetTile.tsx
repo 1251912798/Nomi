@@ -1,12 +1,13 @@
 import React, { type JSX } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Icon3dCubeSphere, IconPlayerPlayFilled, IconPlus, IconX } from '@tabler/icons-react'
+import { Icon3dCubeSphere, IconPlayerPlayFilled, IconPlus } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { NomiImage } from '../../design/media'
 import { ICON_TIERS } from '../../design/iconTiers'
 import { AssetVideoCover } from './AssetVideoCover'
 import type { AssetRef } from './assetTypes'
+import { ThumbCornerX } from './ThumbCornerX'
 
 // hover 放大浮层（#52 群反馈「鼠标放置参考图自动弹出放大图片」）：参考块太小（56px）看不清细节，
 // 悬停延迟后在块旁弹一张放大图。延迟 450ms 防「划过」误触；浮层 pointer-events-none 不拦鼠标；
@@ -138,23 +139,18 @@ function TagBadge({ tag }: { tag: string }): JSX.Element {
   )
 }
 
-/** ×：悬停（或键盘聚焦）才出现，挂在缩略图右上角外侧；点击区 28px，圆点 16px。 */
+/** ×：悬停（或键盘聚焦）才出现，挂在缩略图右上角外侧；样子（点击区 28px、圆点 16px）在共用的 ThumbCornerX，这里只管摆在哪、什么时候露出来。 */
 function RemoveButton({ label, onRemove }: { label: string; onRemove: () => void }): JSX.Element {
   return (
-    <button
-      type="button"
+    <ThumbCornerX
       aria-label={label}
       data-asset-tile-remove="true"
       className={cn(
-        'absolute -right-[10px] -top-[10px] z-[3] flex size-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0',
+        'absolute -right-[10px] -top-[10px] z-[3]',
         'opacity-0 transition-opacity duration-nomi-fast group-hover/tile:opacity-100 focus-visible:opacity-100 group-focus-within/tile:opacity-100',
       )}
       onClick={(event) => { event.stopPropagation(); onRemove() }}
-    >
-      <i className="flex size-4 items-center justify-center rounded-full bg-nomi-ink text-nomi-paper" aria-hidden>
-        <IconX size={12} stroke={2.67} />
-      </i>
-    </button>
+    />
   )
 }
 

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // #1203 真付费走查的 loopback 演练：**零额度**。把真付费走查（agent-permission-two-tiers.paid.mjs）的步骤本体
 // （_permissionTiersPaidSteps.mjs）原样跑在 loopback 夹具上——供应商是本机夹具、大脑是夹具里写好剧本的那个，
-// 其余（Electron、IPC、制作 Run 落盘、收据库、渲染层、权限弹层、报价卡、停止钮、事实读数与判据）全是真的。
+// 其余（Electron、IPC、制作 Run 落盘、收据库、渲染层、权限弹层、付费卡、停止钮、事实读数与判据）全是真的。
 //
 // 它证的是「真付费走查的脚本走得通、读数读得出、判据判得对」，不证模型自己会怎么调工具（那只有真付费能证）。
-// 与真付费的差别只有两处：①大脑是剧本；②第 4 步里夹具把第二张的受理压在门口，让「受理第一张后点停止」稳定赶得上。
+// 与真付费的差别只有一处：大脑是剧本。第 4 步两张一起交给画布、一起发出（画布一波并发），停止赶不上第二张是常态，
+// 记为「停止没赶上」（unverified）；夹具门口压第二张也拦不住——它已经发出去了，所以不再压。
 import path from 'node:path'
 
 import { expect } from './_assert.mjs'
@@ -93,7 +94,8 @@ function installBrain(fixture) {
   })
 }
 
-const walk = await createRuntimeWalk('permission-two-tiers-paid-rehearsal', { generationProvider: 'apimart' })
+// 「直接生成」档交给画布那一台（D2）：画布从本机夹具取回产物，按精确 origin 放行（只在未打包构建里读）。
+const walk = await createRuntimeWalk('permission-two-tiers-paid-rehearsal', { generationProvider: 'apimart', trustFixtureOrigin: true })
 let cap
 let failure
 try {
@@ -108,17 +110,6 @@ try {
     win, walk, projectRoot, capabilityDir: path.join(walk.report.tempRoot, 'capability'),
     allowedModel: `${FIXTURE_APIMART_VENDOR}/${FIXTURE_APIMART_MODEL}`, cap,
     ask: async (kind, text) => {
-      if (kind === 'stop') {
-        // 第一张的受理放行，紧接着把后面的受理压在夹具门口（与 agent-spend-stop-midway 同一手法）。
-        walk.fixture.holdSubmits(true)
-        const imagesBefore = walk.fixture.images.length // 前面画布那一步已经发过 2 张：只等这一步的第一张
-        void (async () => {
-          const deadline = Date.now() + stationTimeout({ turns: 1 })
-          while (walk.fixture.images.length <= imagesBefore && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50))
-          walk.fixture.holdSubmits(false)
-          walk.fixture.holdSubmits(true)
-        })()
-      }
       await (kind === 'plan' || kind === 'plan2' ? sendCreation(win, text) : sendCanvas(win, text))
     },
   })
@@ -127,11 +118,7 @@ try {
   const plan = await runPlanAndBrakeStep(ctx, { askText: ASK_PLAN, askMoreText: ASK_PLAN_MORE })
   if (plan.accepted < 2) await runCanvasDirectStep(ctx, { askText: ASK_CANVAS })
   if ((await win.evaluate(() => localStorage.getItem('nomi:locale:v1'))) !== 'en') await switchAppLocale(win, 'en')
-  try {
-    await runStopStep(ctx, { askText: ASK_STOP, graceMs: 2_000, settleMs: 5_000 })
-  } finally {
-    walk.fixture.holdSubmits(false)
-  }
+  await runStopStep(ctx, { askText: ASK_STOP, graceMs: 2_000, settleMs: 5_000 })
   cap.assertNotBreached()
   // 阴性对照：大脑只建草稿不调 generate——「调过几次 generate」的读数要分得出来（正对照：前面真调过）。
   const generatesBefore = countLaneToolCalls(projectRoot, 'generate')

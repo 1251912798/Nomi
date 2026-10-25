@@ -22,7 +22,6 @@ export const zhAgentPanelV4 = {
   headerMore: '更多',
   // 收起坞 · 右上角那枚 Nomi logo 钮（2026-09-06 用户改：收起态回到 logo + 状态叠加）
   dockOpen: '展开 Nomi',
-  dockClose: '关闭输入坞',
   dockIdle: 'Nomi 在这儿',
   dockRunning: 'Nomi 正在做',
   dockNeedsConfirm: '等你确认 {{count}} 条',
@@ -142,8 +141,10 @@ export const zhAgentPanelV4 = {
   // 队列
   queueStatus: { draft: '未发送', queued: '排队', running: '进行中', complete: '完成' },
   queueJumpAhead: '插队',
-  processSummary: '用了 {{count}} 个工具',
-  processSummaryWithRetries: '用了 {{count}} 个工具 · {{retries}} 次重试',
+  processSummary_one: '用了 {{count}} 个工具',
+  processSummary_other: '用了 {{count}} 个工具',
+  processSummaryWithRetries_one: '用了 {{tools}} 个工具 · {{count}} 次重试',
+  processSummaryWithRetries_other: '用了 {{tools}} 个工具 · {{count}} 次重试',
   queueDelete: '取消这条指令',
   queueInterrupt: '立即中断',
 
@@ -375,11 +376,7 @@ export const zhAgentPanelV4 = {
   slotTrimScope: '已在时间轴高亮，未落盘',
   slotRejectReason: '拒绝原因（可选）',
   slotRejectSample: '这次先不删，保留镜头待复核',
-  slotSpendTitle: '生成这 4 段视频？',
   slotSpendBadge: '生成',
-  slotSpendOneTitle: '生成这 1 段视频？',
-  slotSpendOneScope: '用镜头 2 采用的那张当首帧 · 结果落画布并可拖进时间轴',
-  slotGenerate: '生成',
   slotQuestionTitle: '这段旁白用哪种口吻？',
   slotOptionVoiceCalm: '平静叙述',
   slotOptionVoiceUrgent: '紧绷、压着说',
@@ -434,50 +431,30 @@ export const zhAgentPanelV4 = {
   slotDeviationTitle: '第 3 镜没有首帧，跳过还是先生图？',
   slotDeviationDraw: '先生图（+¥0.12）',
   slotDeviationSkip: '跳过',
-  // 付费卡 · 参数条版（2026-09-10 用户拍板：参数行 = 节点那条参数条，确认前全部可改）
-  // 标题是**一句问话**（2026-09-22 换壳，照 Recommendation Card 的形状）：
-  // 卡在问「要不要做这件事」，陈述句「生成 N 镜的视频」读起来像它已经决定了。
-  // 复数走 i18next 的 `_one` / `_other`（本仓现成机制，见 generationCommon）。zh 两条同文，
-  // 键必须成对存在——key-parity 门岗要求 zh/en 键集相同。
-  spendParamsTitle_one: '生成这 {{count}} 段视频？',
-  spendParamsTitle_other: '生成这 {{count}} 段视频？',
-  // 同一张卡也用来确认图片生成（agent 建的草稿两种都有）。标题不许一律写「视频」——
-  // 用户看着一张图片草稿被说成视频，第一反应是「它是不是搞错了」，而这一刻他正要付钱。
-  spendParamsTitleImage_one: '生成这 {{count}} 张图片？',
-  spendParamsTitleImage_other: '生成这 {{count}} 张图片？',
-  /** 模型芯片上的极小徽标：这一项是 Nomi 替你挑的，不是你选的。 */
+  // 付费卡（D2 第③步，SpendCardQ1 板）：指向元素 + 一句话 + 一行只读摘要 + 「生成」。卡上没有参数，想改点指向去节点里改。
+  // 标题是**一句问话**（2026-09-22 换壳，照 Recommendation Card 的形状）：卡在问「要不要做这件事」。
+  // 标题不带数量（SpendCardQ1 板 card.title）：数量只在主按钮；中英每一条标题键都不许有 `{{count}}` 或数字（agentPanelSpendCard.test.ts 逐键数着）。
+  // 复数走 i18next 的 `_one` / `_other`。zh 两条同文，键必须成对存在——key-parity 门岗要求 zh/en 键集相同。
+  spendParamsTitle_one: '生成这段视频？',
+  spendParamsTitle_other: '生成这些视频？',
+  spendParamsTitleSingle: '生成这段视频？',
+  // 同一张卡也用来确认图片生成。标题不许一律写「视频」——用户看着一张图片草稿被说成视频，正要付钱时会以为它搞错了。
+  spendParamsTitleImage_one: '生成这张图片？',
+  spendParamsTitleImage_other: '生成这些图片？',
+  spendParamsTitleImageSingle: '生成这张图片？',
+  spendParamsTitleRemainingVideo: '生成剩下的视频？',
+  spendParamsTitleRemainingImage: '生成剩下的图片？',
+  /** 标题旁小字：这几段的模型是 Nomi 替你挑的（节点里换过模型就不再这么说）。 */
   spendParamsModelPicked: 'Nomi 选的',
-  /** 「怎么算出来的」那半行。数由报价给，语序在这里。 */
-  /** 逐镜参数已经不一样了：那句算式不再成立，改说「逐镜不同」，数字交给下面的逐镜折叠口。 */
-  spendParamsBreakdownMixed: '{{count}} 镜 · 逐镜不同',
-  spendParamsTotalLabel: '合计',
-  spendParamsUnavailable: '处理量暂时无法估算',
-  spendParamsPerItem: '逐镜 · {{count}} 镜',
-  spendParamsShot: '镜头 {{number}}',
-  /** 翻页那一行右端的合计（多镜且报得出价时）。单位跟标题同一条规则：图片说张、视频说段（2026-10-01 用户拍板）。 */
-  spendTotalLeadImage_one: '{{count}} 张 · 已选',
-  spendTotalLeadImage_other: '{{count}} 张 · 已选',
-  spendTotalLeadVideo_one: '{{count}} 段 · 已选',
-  spendTotalLeadVideo_other: '{{count}} 段 · 已选',
-  /** 主按钮只生成这一页这一镜（2026-09-30 付费卡逐镜）：图片说「这张」，视频说「这段」。 */
-  spendConfirmThisImage: '生成这张',
-  spendConfirmThisVideo: '生成这段',
-  /** 这一镜报得出价时，按钮带上这一下花多少（报不出就不带，没有任何一条路径依赖它）。 */
-  spendConfirmThisImagePriced: '生成这张',
-  spendConfirmThisVideoPriced: '生成这段',
-  /** 次动作：这一镜不生成，占位留在画布上，卡上剩下的照旧等人。 */
-  spendRemoveThisImage: '去掉这张',
-  spendRemoveThisVideo: '去掉这段',
+  /** 逐镜折叠口（只在各镜价格不同时出现，D5）。 */
+  spendParamsPerItem: '逐镜',
+  /** 节点上已点 ↑ 之后，卡上剩下的那几段（张 / 段跟标题同一条规则）。 */
+  spendConfirmRemainingImage_one: '生成 {{count}} 张',
+  spendConfirmRemainingImage_other: '生成 {{count}} 张',
+  spendConfirmRemainingVideo_one: '生成 {{count}} 段',
+  spendConfirmRemainingVideo_other: '生成 {{count}} 段',
   /**
-   * 「生成剩下 N 张 / 段」（2026-10-01 用户拍板）：等于把卡上还没决定的每一张各点一次「生成这张」，每张各记一笔授权。
-   * N 只数还没决定的；张 / 段跟标题同一条规则（有视频就说段）；报得出价时也不带合计（左下已印）。只剩 1 张时不出现。
-   */
-  spendConfirmRemainingImage_one: '生成剩下 {{count}} 张',
-  spendConfirmRemainingImage_other: '生成剩下 {{count}} 张',
-  spendConfirmRemainingVideo_one: '生成剩下 {{count}} 段',
-  spendConfirmRemainingVideo_other: '生成剩下 {{count}} 段',
-  /**
-   * 「生成剩下 N 张」正在一张一张走（2026-10-02）：标题说到第几张了，动作行只说怎么停（「取消」就是停下）。
+   * 交给画布之后、还有镜在交（D2：画布单节点提交那一条路）：标题说到第几段了，动作行只说怎么停（「取消」就是停下）。
    * 点了「取消」之后、宿主停稳之前：说正在停，已经发出去的照常生成（钱撤不回来，不装作能撤）。
    */
   spendBatchProgressImage: '正在发出 {{current}}/{{total}} 张',
@@ -485,26 +462,102 @@ export const zhAgentPanelV4 = {
   spendBatchStopHint: '点「取消」停下剩下的',
   spendBatchStopping: '正在停下…',
   spendBatchStoppingHint: '已经发出的照常生成',
-  /** 停下之后那一句（卡这时已经关了）：批下去几张、没发几张，只说事实。 */
+  /** 停下之后那一句（卡这时已经关了）：交出去几段、没发几段，只说事实。 */
   spendBatchStoppedImage_one: '发出了 {{sent}} 张，剩下 {{count}} 张没发。',
   spendBatchStoppedImage_other: '发出了 {{sent}} 张，剩下 {{count}} 张没发。',
   spendBatchStoppedVideo_one: '发出了 {{sent}} 段，剩下 {{count}} 段没发。',
   spendBatchStoppedVideo_other: '发出了 {{sent}} 段，剩下 {{count}} 段没发。',
-  spendParamsDecline: '取消',
-  /** 卡上有没提交的手改时，× 先问这一句（D4：撤什么、丢什么，明着说）。 */
-  /** 宿主拒绝这一下时的兜底句（它通常自己带一句更具体的，那句优先）。按了没反应是最贵的一种沉默。 */
+  /** 点「取消」时这几段其实都已经交出去了：不说「已停止」，照实说它们会照常生成。 */
+  spendBatchAllSentImage_one: '这 {{sent}} 张已经发出去了，会照常生成。',
+  spendBatchAllSentImage_other: '这 {{sent}} 张已经发出去了，会照常生成。',
+  spendBatchAllSentVideo_one: '这 {{sent}} 段已经发出去了，会照常生成。',
+  spendBatchAllSentVideo_other: '这 {{sent}} 段已经发出去了，会照常生成。',
+  /** 点「取消」时一段都还没交出去（按了「生成」立刻「取消」，取消先到）：不说「发出了 0 段」，照实说没发出去。 */
+  spendBatchNoneSentImage_one: '这 {{count}} 张没有发出去。',
+  spendBatchNoneSentImage_other: '这 {{count}} 张没有发出去。',
+  spendBatchNoneSentVideo_one: '这 {{count}} 段没有发出去。',
+  spendBatchNoneSentVideo_other: '这 {{count}} 段没有发出去。',
+  /** 卡上一下动作没做成时弹的那一句（宿主原话只进日志）。 */
   spendActionFailed: '暂时无法确认这一步的结果，请查看任务状态后再操作。',
-  spendActionNotStarted: '这一步没成，Nomi 没有开始生成。可以改一下再按一次。',
-  /** 合同编译口拒了某个参数：点名是哪个键（目录里的参数名，不是原话），没发起、没花钱。 */
-  spendActionParameterRejected: '参数「{{field}}」没通过核对，Nomi 没有开始生成。在卡上改掉它再按；卡改不了就点「取消」，让 Nomi 重新起草。',
-  /** 第 11 条：卡此刻改不了时不许说「改一下再按」，说改不了、该怎么办。 */
-  spendActionNotStartedLocked: '这一步没成，Nomi 没有开始生成。这张卡现在改不了：点「取消」，告诉 Nomi 要怎么改，它会重新起草。',
-  /** 按下去的那一刻卡上的内容刚变了（报价换了一份）：没发起，看一眼现在的样子再按。 */
+  spendActionNotStarted: '这一下没成，Nomi 没有发出去。再按一次试试。',
+  /** 按下去的那一刻卡上的内容刚变了（Agent 改了稿 / 节点刚被改过）：没发起，看一眼现在的样子再按。 */
   spendActionCardChanged: '卡上的内容刚变了，Nomi 没有开始生成。看一眼现在的样子再按。',
-  /** 这一张已经不在卡上（刚被决定，或卡已关掉）。 */
-  spendActionShotGone: '这一张已经不在卡上了，Nomi 没有为它开始生成。',
-  /** 宿主在本项目素材里认不出卡上的某一张参考图（spendCardFailure 的 REFERENCE_NOT_IN_PROJECT）：点名是参考图、给真能走的那一步。 */
-  spendActionReferenceNotInProject: '有一张参考图不在这个项目的素材里，Nomi 没有开始生成。在卡上拿掉它再按；还要用它，就用 @ 重新选一次（别的项目的图会先复制进来）。',
+  /** 这一段已经不在卡上（刚被决定，或卡已关掉）。 */
+  spendActionShotGone: '这一段已经不在卡上了，Nomi 没有为它开始生成。',
+  /** 付费卡新件（D2 第③步）。 */
+  spendCard: {
+    /** 一段都不剩要生成的了（全去掉 / 全被删）：主按钮置灰，卡留着还能恢复。 */
+    titleNothing: '没有要生成的了',
+    generate: '生成',
+    generateAll: '生成 {{count}} 段',
+    generateAllImage: '生成 {{count}} 张',
+    retry: '再试一次',
+    goEdit: '去改{{shot}}',
+    goCheck: '去看{{shot}}',
+    /** 失败时收回剩下的出价（板 card.failure.decline）。 */
+    decline: '先不发了',
+    /** 多段卡每个指向元素悬停 / 聚焦时露的那颗小钮（板 card.pointer.exclude），再点一次恢复。 */
+    exclude: '不生成',
+    excludeName: '{{shot}}不生成',
+    restore: '恢复',
+    restoreName: '{{shot}}恢复生成',
+    /** 卡关了之后对话流里那一句（板 card.done，Q4）：交出去了几段；那几段节点都出了结果才说「已生成」。 */
+    receiptSentVideo_one: '已发出 {{count}} 段',
+    receiptSentVideo_other: '已发出 {{count}} 段',
+    receiptSentImage_one: '已发出 {{count}} 张',
+    receiptSentImage_other: '已发出 {{count}} 张',
+    receiptGeneratedVideo_one: '已生成 {{count}} 段',
+    receiptGeneratedVideo_other: '已生成 {{count}} 段',
+    receiptGeneratedImage_one: '已生成 {{count}} 张',
+    receiptGeneratedImage_other: '已生成 {{count}} 张',
+    /** 一行只读摘要里的总时长。 */
+    summarySeconds: '共 {{value}}',
+    summaryMixed: '{{prefix}} · {{groups}}',
+    summaryAuto: '自动',
+    summaryPickedModel: '{{model}}（{{picked}}）',
+    summaryGroup: '{{value}} ×{{count}}',
+    /** 指向元素状态条上那一个词（宿主给的结局）。 */
+    pointerFailed: '失败',
+    pointerNotSentYet: '还没发',
+    pointerCannotSend: '发不出去',
+    pointerUnclear: '待核对',
+    failedTitle: {
+      notSent: '{{shot}} 没有发出去',
+      rejected: '{{shot}} 参数被拒',
+      unclear: '{{shot}} 结果还不确定',
+      blocked: '{{shot}} 现在发不出去',
+    },
+    /** 多段卡里有一段本机就判得出发不出去、其余照常可发时的那一行（主按钮不数它）。 */
+    blockedNotice: '{{shot}} 现在发不出去：{{reason}}',
+    /** 为什么没发出去 / 为什么发不出去（Nomi 自己的语义码；没登记的码按种类说）。 */
+    failure: {
+      provider_not_reached: '服务暂时不可用。',
+      project_not_open: '这个项目已经不在前台了。',
+      canvas_node_missing: '画布上已经没有这个节点了。',
+      node_generation_in_flight: '这个节点上还有一次生成在路上，这一段没有再发。等它出结果再决定要不要重发。',
+      node_needs_reconcile: '这个节点上一次生成的结果还没核对，先在节点上找回它。',
+      asset_hosting_denied: '设置不允许把参考图传到公共临时托管。在设置里换个上传通道，或允许匿名素材托管，再试一次。',
+      renderer_unavailable: '窗口还没准备好。',
+      canvas_landing_failed: '没能放到画布上。',
+      canvas_consent_failed: '没能交给画布。',
+      canvas_consent_withdrawn: '没能交给画布。',
+      canvas_not_consented: '没能交给画布。',
+      canvas_hand_over_failed: '没能交给画布。',
+      provider_rejected: '服务商拒收了这一镜的参数。',
+      director_preview_blocked: '3D-BOX 预演还没好或已经过期，先在导演台出一次预演。',
+      model_not_selected: '还没选模型。',
+      local_model_on_card: '本机模型不从这张卡生成，在节点上点生成。',
+      reference_required: '这个生成方式要参考图，节点上还没有。',
+      reference_combination_invalid: '这个模型不收这样的参考组合（比如只放了参考音频）。',
+      prompt_required: '提示词还空着。',
+      anchor_not_frozen: '它引用的参考卡还没定妆，先在参考卡上点「定妆」。',
+      upstream_not_ready: '它要用的上游镜头还没出结果。',
+      reference_cycle: '参考连成了一个环。',
+      notSentFallback: '这一段没有发出去，可以再试一次。',
+      rejectedFallback: '有参数没通过核对，去节点里改一下。',
+      unclear: '不确定这一段有没有交到服务商手里。先去节点上核对结果，再决定要不要重发。',
+    },
+  },
 
   // 「直接生成」档（2026-09-10 增量 2 的「全自动」；2026-10-12 用户拍板收成两档）
   autoModeConfirmTitle: '切到「直接生成」？',
@@ -525,8 +578,6 @@ export const zhAgentPanelV4 = {
   /** 介入槽翻页器（`‹ 2/4 ›`）的无障碍名。 */
   pagerPrev: '上一张',
   pagerNext: '下一张',
-  /** 键盘翻页提示：只印两个箭头字符（不是一句说明；说明会让用户多读一行）。 */
-  pagerKeyHint: '←→',
 
   slotThreeEdits: '3 处改动，已在时间轴高亮',
   slotEditTransition: '转场 · 镜头 2→3 叠化 12 帧',
@@ -559,7 +610,6 @@ export const enAgentPanelV4 = {
   collapsePanel: 'Collapse panel',
   headerMore: 'More',
   dockOpen: 'Open Nomi',
-  dockClose: 'Close input dock',
   dockIdle: 'Nomi is here',
   dockRunning: 'Nomi is working',
   dockNeedsConfirm: '{{count}} waiting for you',
@@ -669,8 +719,12 @@ export const enAgentPanelV4 = {
 
   queueStatus: { draft: 'Unsent', queued: 'Queued', running: 'Running', complete: 'Done' },
   queueJumpAhead: 'Move up',
-  processSummary: '{{count}} tools',
-  processSummaryWithRetries: '{{count}} tools · {{retries}} retries',
+  // 英文按数走单复数（「1 tools」是 2026-10-24 设计实验室完成格里看见的）。有重试那一句按重试次数走（「1 retries」）：
+  // 有重试时工具至少两个，工具那一半恒为复数。
+  processSummary_one: '{{count}} tool',
+  processSummary_other: '{{count}} tools',
+  processSummaryWithRetries_one: '{{tools}} tools · {{count}} retry',
+  processSummaryWithRetries_other: '{{tools}} tools · {{count}} retries',
   queueDelete: 'Cancel this instruction',
   queueInterrupt: 'Interrupt now',
 
@@ -878,11 +932,7 @@ export const enAgentPanelV4 = {
   slotTrimScope: 'Highlighted on the timeline, not written',
   slotRejectReason: 'Reason for declining (optional)',
   slotRejectSample: 'Not this time — keep the shot for review',
-  slotSpendTitle: 'Generate these 4 video shots?',
   slotSpendBadge: 'Generation',
-  slotSpendOneTitle: 'Generate this video shot?',
-  slotSpendOneScope: 'Uses the adopted shot-2 image as the first frame · result lands on the canvas and can be dragged onto the timeline',
-  slotGenerate: 'Generate',
   slotQuestionTitle: 'What tone should this narration take?',
   slotOptionVoiceCalm: 'Plain and steady',
   slotOptionVoiceUrgent: 'Tight, held back',
@@ -933,30 +983,20 @@ export const enAgentPanelV4 = {
   slotDeviationTitle: 'Shot 3 has no first frame — skip it or draw one first?',
   slotDeviationDraw: 'Draw one first (+¥0.12)',
   slotDeviationSkip: 'Skip',
-  spendParamsTitle_one: 'Generate this video shot?',
-  spendParamsTitle_other: 'Generate these {{count}} video shots?',
+  spendParamsTitle_one: 'Generate this video?',
+  spendParamsTitle_other: 'Generate these videos?',
+  spendParamsTitleSingle: 'Generate this video?',
   spendParamsTitleImage_one: 'Generate this image?',
-  spendParamsTitleImage_other: 'Generate these {{count}} images?',
-  spendParamsModelPicked: 'Nomi picked',
-  spendParamsBreakdownMixed: '{{count}} shots · settings differ',
-  spendParamsTotalLabel: 'Total',
-  spendParamsUnavailable: 'Processing estimate unavailable right now',
-  spendParamsPerItem: 'Per shot ({{count}})',
-  spendParamsShot: 'Shot {{number}}',
-  spendTotalLeadImage_one: '{{count}} image · selected',
-  spendTotalLeadImage_other: '{{count}} images · selected',
-  spendTotalLeadVideo_one: '{{count}} video shot · selected',
-  spendTotalLeadVideo_other: '{{count}} video shots · selected',
-  spendConfirmThisImage: 'Generate this one',
-  spendConfirmThisVideo: 'Generate this one',
-  spendConfirmThisImagePriced: 'Generate this one',
-  spendConfirmThisVideoPriced: 'Generate this one',
-  spendRemoveThisImage: 'Remove',
-  spendRemoveThisVideo: 'Remove',
-  spendConfirmRemainingImage_one: 'Generate remaining {{count}}',
-  spendConfirmRemainingImage_other: 'Generate remaining {{count}}',
-  spendConfirmRemainingVideo_one: 'Generate remaining {{count}}',
-  spendConfirmRemainingVideo_other: 'Generate remaining {{count}}',
+  spendParamsTitleImage_other: 'Generate these images?',
+  spendParamsTitleImageSingle: 'Generate this image?',
+  spendParamsTitleRemainingVideo: 'Generate the remaining videos?',
+  spendParamsTitleRemainingImage: 'Generate the remaining images?',
+  spendParamsModelPicked: "Nomi's pick",
+  spendParamsPerItem: 'Per shot',
+  spendConfirmRemainingImage_one: 'Generate {{count}} images',
+  spendConfirmRemainingImage_other: 'Generate {{count}} images',
+  spendConfirmRemainingVideo_one: 'Generate {{count}} videos',
+  spendConfirmRemainingVideo_other: 'Generate {{count}} videos',
   spendBatchProgressImage: 'Sending {{current}} of {{total}} images',
   spendBatchProgressVideo: 'Sending {{current}} of {{total}} videos',
   spendBatchStopHint: 'Cancel to stop the rest',
@@ -966,14 +1006,83 @@ export const enAgentPanelV4 = {
   spendBatchStoppedImage_other: 'Sent {{sent}} of {{total}} images; the other {{count}} were not sent.',
   spendBatchStoppedVideo_one: 'Sent {{sent}} of {{total}} videos; the last one was not sent.',
   spendBatchStoppedVideo_other: 'Sent {{sent}} of {{total}} videos; the other {{count}} were not sent.',
-  spendParamsDecline: 'Cancel',
+  spendBatchAllSentImage_one: 'This image was already sent and will keep generating.',
+  spendBatchAllSentImage_other: 'All {{sent}} images were already sent and will keep generating.',
+  spendBatchAllSentVideo_one: 'This video was already sent and will keep generating.',
+  spendBatchAllSentVideo_other: 'All {{sent}} videos were already sent and will keep generating.',
+  spendBatchNoneSentImage_one: 'This image was not sent.',
+  spendBatchNoneSentImage_other: 'None of the {{count}} images were sent.',
+  spendBatchNoneSentVideo_one: 'This video was not sent.',
+  spendBatchNoneSentVideo_other: 'None of the {{count}} videos were sent.',
   spendActionFailed: 'The outcome could not be confirmed. Check the task status before trying again.',
-  spendActionNotStarted: 'That did not go through. Nomi has not started generating — adjust it and press again.',
-  spendActionParameterRejected: 'The parameter "{{field}}" did not pass the check. Nomi has not started generating. Change it on the card and press again; if the card is locked, click Cancel and ask Nomi to draft it again.',
-  spendActionNotStartedLocked: 'That did not go through. Nomi has not started generating. This card can\'t be changed right now: click Cancel and tell Nomi what to change, and it will draft it again.',
+  spendActionNotStarted: 'That did not go through, so Nomi sent nothing. Try pressing again.',
   spendActionCardChanged: 'The card just changed, so Nomi has not started generating. Check what it shows now, then press again.',
-  spendActionShotGone: 'This one is no longer on the card, so Nomi has not started generating it.',
-  spendActionReferenceNotInProject: 'One reference image isn\'t in this project\'s assets, so Nomi hasn\'t started generating. Remove it on the card and press again, or pick it again with @ (images from other projects are copied in first).',
+  spendActionShotGone: 'This shot is no longer on the card, so Nomi has not started generating it.',
+  spendCard: {
+    titleNothing: 'Nothing left to generate',
+    generate: 'Generate',
+    generateAll: 'Generate {{count}} videos',
+    generateAllImage: 'Generate {{count}} images',
+    retry: 'Try again',
+    goEdit: 'Edit {{shot}}',
+    goCheck: 'Check {{shot}}',
+    decline: 'Don\'t send',
+    exclude: 'Skip',
+    excludeName: 'Skip {{shot}}',
+    restore: 'Restore',
+    restoreName: 'Generate {{shot}} again',
+    receiptSentVideo_one: 'Sent {{count}} video',
+    receiptSentVideo_other: 'Sent {{count}} videos',
+    receiptSentImage_one: 'Sent {{count}} image',
+    receiptSentImage_other: 'Sent {{count}} images',
+    receiptGeneratedVideo_one: 'Generated {{count}} video',
+    receiptGeneratedVideo_other: 'Generated {{count}} videos',
+    receiptGeneratedImage_one: 'Generated {{count}} image',
+    receiptGeneratedImage_other: 'Generated {{count}} images',
+    summarySeconds: '{{value}} total',
+    summaryMixed: '{{prefix}} · {{groups}}',
+    summaryAuto: 'Auto',
+    summaryPickedModel: '{{model}} ({{picked}})',
+    summaryGroup: '{{value}} ×{{count}}',
+    pointerFailed: 'Failed',
+    pointerNotSentYet: 'Not sent yet',
+    pointerCannotSend: 'Can\'t send',
+    pointerUnclear: 'Check it',
+    failedTitle: {
+      notSent: '{{shot}} wasn\'t sent',
+      rejected: '{{shot}}: settings rejected',
+      unclear: '{{shot}}: result unclear',
+      blocked: '{{shot}} can\'t be sent yet',
+    },
+    blockedNotice: '{{shot}} can\'t be sent yet: {{reason}}',
+    failure: {
+      provider_not_reached: 'The service is unavailable right now.',
+      project_not_open: 'This project is no longer open.',
+      canvas_node_missing: 'This node is no longer on the canvas.',
+      node_generation_in_flight: 'This node already has a generation on its way, so it wasn\'t sent again — you won\'t pay twice.',
+      node_needs_reconcile: 'This node\'s last generation hasn\'t been checked yet. Recover it on the node first.',
+      asset_hosting_denied: 'Your settings don\'t allow uploading references to the public temporary host. Change the upload channel or allow anonymous asset hosting in Settings, then try again.',
+      renderer_unavailable: 'The window wasn\'t ready.',
+      canvas_landing_failed: 'It couldn\'t be placed on the canvas.',
+      canvas_consent_failed: 'It couldn\'t be handed to the canvas.',
+      canvas_consent_withdrawn: 'It couldn\'t be handed to the canvas.',
+      canvas_not_consented: 'It couldn\'t be handed to the canvas.',
+      canvas_hand_over_failed: 'It couldn\'t be handed to the canvas.',
+      provider_rejected: 'The provider rejected this shot\'s settings.',
+      director_preview_blocked: 'The 3D-BOX preview isn\'t ready or is out of date. Render a preview in the director first.',
+      model_not_selected: 'No model is selected.',
+      local_model_on_card: 'Local models don\'t generate from this card. Press generate on the node.',
+      reference_required: 'This mode needs a reference, and the node has none yet.',
+      reference_combination_invalid: 'This model doesn\'t accept this mix of references (for example, audio alone).',
+      prompt_required: 'The prompt is empty.',
+      anchor_not_frozen: 'A card it references hasn\'t had its look confirmed. Press "Confirm look" on that card first.',
+      upstream_not_ready: 'The shot it builds on has no result yet.',
+      reference_cycle: 'The references form a loop.',
+      notSentFallback: 'This shot wasn\'t sent. You can try again.',
+      rejectedFallback: 'A setting didn\'t pass the check. Change it on the node.',
+      unclear: 'It\'s unclear whether this shot reached the provider. Check the result on the node before sending it again.',
+    },
+  },
 
   autoModeConfirmTitle: 'Switch to Auto-run?',
   autoModeConfirmBody: 'From now on Nomi will **start generating right away, without asking you each time** — this confirmation is your authorisation for it. If one shot keeps failing, or a generation falls outside the plan, it stops and asks you; irreversible actions are still confirmed every time; you can press Stop at any time. Generating from a storyboard plan in your document still asks once per batch.',
@@ -989,7 +1098,6 @@ export const enAgentPanelV4 = {
 
   pagerPrev: 'Previous',
   pagerNext: 'Next',
-  pagerKeyHint: '←→',
 
   slotThreeEdits: '3 edits, highlighted on the timeline',
   slotEditTransition: 'Transition · 12-frame dissolve, shot 2→3',

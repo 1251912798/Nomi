@@ -181,25 +181,58 @@ export type ShotLandingFacts = Readonly<{
 }>;
 
 /**
+ * 一批里每一镜此刻的发送事实（逐镜分类只有这一份；落地失败那一句、用户停下那一句各取各的桶）。判序是有意的：
+ *   ① 可能已经到过供应商（唯一判据 jobMayHaveReachedProvider）——钱的事实压过一切；
+ *   ② 节点被用户删了（detached）——这一批不再派它；
+ *   ③ 画布上没有节点——没放上；
+ *   ④ 画布接手了这一次尝试（用户在节点上自己点了生成）——归画布那一笔，不算这一批的；
+ *   ⑤ 其余：在画布上、还没交出去。
+ */
+type ShotSendFact = "sent" | "removed" | "not_placed" | "taken_by_canvas" | "not_sent";
+
+function shotSendFacts(run: ProductionRun): ReadonlyArray<Readonly<{ shot: LandingShotRef; fact: ShotSendFact }>> {
+  const plan = run.generationPlan;
+  if (!plan) return [];
+  const shots: LandingShotRef[] = plan.shots && plan.shots.length > 0
+    ? plan.shots.filter(shotIncluded).map((shot, index) => ({ shotId: shot.shotId, index: index + 1, ...(shot.title?.trim() ? { title: shot.title.trim() } : {}) }))
+    : [{ shotId: plan.candidate.candidateId, index: 1 }];
+  return shots.map((shot) => {
+    const job = latestJobForShot(run, shot.shotId) ?? (plan.shots?.length ? undefined : run.jobs[run.jobs.length - 1]);
+    const fact: ShotSendFact = job && jobMayHaveReachedProvider(job) ? "sent"
+      : shotRemovedFromCanvas(run, shot.shotId) ? "removed"
+        : !landedNodeOf(run, shot.shotId) ? "not_placed"
+          : shotTakenOverByCanvas(run, shot.shotId) ? "taken_by_canvas"
+            : "not_sent";
+    return { shot, fact };
+  });
+}
+
+const factsIn = (facts: ReturnType<typeof shotSendFacts>, ...wanted: ShotSendFact[]): LandingShotRef[] =>
+  facts.filter((entry) => wanted.includes(entry.fact)).map((entry) => entry.shot);
+
+/**
  * 一批里哪几镜发出了、哪几镜没放到画布上（#1139 B1：按镜头算，不整批说）。只读耐久 Run，回执、Agent 读 Run、
  * 落地失败那一句都读它——「这次没有发出生成请求」只在一镜都没发出时才说。
  */
 export function shotLandingFacts(run: ProductionRun): ShotLandingFacts {
-  const plan = run.generationPlan;
-  if (!plan) return { sent: [], notPlaced: [], removed: [] };
-  const shots = plan.shots && plan.shots.length > 0
-    ? plan.shots.filter(shotIncluded).map((shot, index) => ({ shotId: shot.shotId, index: index + 1, ...(shot.title?.trim() ? { title: shot.title.trim() } : {}) }))
-    : [{ shotId: plan.candidate.candidateId, index: 1 }];
-  const sent: LandingShotRef[] = [];
-  const notPlaced: LandingShotRef[] = [];
-  const removed: LandingShotRef[] = [];
-  for (const shot of shots) {
-    const job = latestJobForShot(run, shot.shotId) ?? (plan.shots?.length ? undefined : run.jobs[run.jobs.length - 1]);
-    if (job && jobMayHaveReachedProvider(job)) sent.push(shot);
-    else if (shotRemovedFromCanvas(run, shot.shotId)) removed.push(shot);
-    else if (!landedNodeOf(run, shot.shotId)) notPlaced.push(shot);
-  }
-  return { sent, notPlaced, removed };
+  const facts = shotSendFacts(run);
+  return { sent: factsIn(facts, "sent"), notPlaced: factsIn(facts, "not_placed"), removed: factsIn(facts, "removed") };
+}
+
+export type ShotStopFacts = Readonly<{
+  /** 停下时已经可能到过供应商的镜：照常生成、照常计费（停不下来）。 */
+  sent: readonly LandingShotRef[];
+  /** 停下时还没交出去的镜（在不在画布上都算）：不再发、不花钱。删掉的、画布接手的不在这里——那不是这一次停下拦下的。 */
+  notSent: readonly LandingShotRef[];
+}>;
+
+/**
+ * 用户停下（暂停 / 取消）这一批时，哪几镜已经发出去了、哪几镜被拦下没发（债 b：停下之后那一句按真实段数说，
+ * 一镜都没剩时不说停下了什么）。和 shotLandingFacts 同一份逐镜分类，「发出了」同一个判据。
+ */
+export function shotStopFacts(run: ProductionRun): ShotStopFacts {
+  const facts = shotSendFacts(run);
+  return { sent: factsIn(facts, "sent"), notSent: factsIn(facts, "not_placed", "not_sent") };
 }
 
 /** 这几镜在计划里的称呼（序号按勾进这一批的镜数，与 shotLandingFacts 同一套）。 */

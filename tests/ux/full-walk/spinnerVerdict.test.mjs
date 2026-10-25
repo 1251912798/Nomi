@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 
 import { finishedNodeSpinner, snapshotIsStale, STALE_AFTER_MS } from './spinnerVerdict.mjs'
 
-const WINDOW_MS = 5000 // 「已保存」回执登记窗口，同 limits.savedFeedbackWindowMs
+// 构造场景用的窗口：比监视器真用的 limits.terminalSpinnerGraceMs（反馈时钟一格 + 三拍采样误差）宽，下面每条结论都不靠具体数。
+const WINDOW_MS = 5000
 const T0 = 1_000_000
 
 /** 修之前监视器的算法（逐字）：读快照的这一刻当它还在转的时刻。 */
@@ -44,7 +45,7 @@ describe('finishedNodeSpinner · 真转圈照样红', () => {
     expect(seen.lingeringMs).toBeGreaterThan(WINDOW_MS)
   })
 
-  it('快照新鲜、转圈还在，但没拖过窗口 → 不红（回执窗口内的转圈是正常收尾）', () => {
+  it('快照新鲜、转圈还在，但没拖过窗口 → 不红（时钟一拍 + 采样误差之内的转圈是正常收尾）', () => {
     const spinner = { firstSeen: T0, lastSeen: T0 + 1200, gone: null }
     const seen = finishedNodeSpinner({ spinner, completedAt: T0, readAt: T0 + 1300, sampledAt: T0 + 1200 })
     expect(seen.verdict).toBe('fresh-present')

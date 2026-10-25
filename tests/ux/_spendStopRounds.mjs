@@ -1,43 +1,29 @@
-// 付费卡「停下」类走查的共用读数与单张轮（agent-spend-stop-midway / agent-spend-confirm-then-close 共用）。
+// 付费卡「停下」类走查的共用读数与单段轮（agent-spend-stop-midway / agent-spend-confirm-then-close 共用）。
+//
+// D2 第③步：卡上「生成 / 全部生成（N）」把这几镜交给画布（宿主在这一次出价上记交接，每一镜走画布单节点提交）；
+// 「取消」收回这一次出价——还没交到供应商手里的不再交（排着队的画布同意当场收回），已经在交的照常交完、算「发出去了」。
+// 读数一律取自宿主账本（这一次出价的交接记录）与假上游（收到几笔），不取自界面。
 import path from 'node:path'
 
 import { clickOrFail, expect } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { COPY } from './_spendRemainingWalk.mjs'
+import { CARD_CANCEL, CARD_PRIMARY, SPEND_CARD, STOP_NOTICE, offerFacts, stoppedLine } from './_spendCardWalk.mjs'
 import { recorded } from './agent-runtime-walk-support.mjs'
 
-/** 停下之后那一条提示（`useAgentPanelSpendConfirm` 推它时的原因是 `spend-batch-stopped`）。 */
-export const STOP_NOTICE = '[data-notification-reason="spend-batch-stopped"]'
-
-/** 这一次生成里落定了（出图或失败）的作业有几个。落图时主进程很忙：下一步之前等它落定，下一步的点击才不用排队。 */
-export async function settledJobs(win, projectId, operationId) {
-  return win.evaluate(async ({ pid, oid }) => {
-    const read = await window.nomiDesktop.productionRuns.read(pid, oid)
-    const run = read?.run ?? read
-    return (run?.jobs ?? []).filter((job) => ['adopted', 'ready', 'failed', 'cancelled'].includes(job.status)).length
-  }, { pid: projectId, oid: operationId })
-}
-
-
-/** 这一次生成在宿主那里批下了几镜（批下的才会派；派完之后供应商收到的就该正好是这么多）。 */
-export async function authorizedShots(win, projectId, operationId) {
-  return win.evaluate(async ({ pid, oid }) => {
-    const read = await window.nomiDesktop.productionRuns.read(pid, oid)
-    const run = read?.run ?? read
-    // Jobs are dispatch records and can appear while the host is still
-    // settling the card. The notice is sourced from the host's final
-    // presentation outcome, so compare against its approved gates instead.
-    const presentation = run?.generationPlan?.presentations?.at(-1)
-    if (!presentation) return 0
-    const inPresentation = new Set(presentation.shotIds ?? [])
-    return new Set((run?.gates ?? [])
-      .slice(Number(presentation.fromGate ?? 0))
-      .filter((gate) => gate.status === 'approved')
-      .flatMap((gate) => gate.authorizationEnvelope?.jobs ?? [])
-      .map((job) => job.shotId)
-      .filter((shotId) => shotId && inPresentation.has(shotId)))
-      .size
-  }, { pid: projectId, oid: operationId })
+/**
+ * 这一次出价的交接此刻落到哪了：交出去了的（供应商受理 / 结果未知）、确定没发的（收回 / 没发出去）、还在交的。
+ * 一镜只交一次的轮里，交出去了的 = 供应商收到的那几镜。
+ */
+export async function handOverCounts(win, projectId, operationId) {
+  const facts = await offerFacts(win, projectId, operationId)
+  const outcomes = facts.handOvers.map((entry) => entry.outcome)
+  return {
+    sent: outcomes.filter((outcome) => outcome === 'accepted' || outcome === 'unknown').length,
+    notSent: outcomes.filter((outcome) => outcome === 'withdrawn' || outcome === 'not_sent').length,
+    pending: outcomes.filter((outcome) => outcome === null).length,
+    total: outcomes.length,
+    closedBy: facts.closedBy,
+  }
 }
 
 /**
@@ -73,39 +59,9 @@ export async function watchStopNotice(win) {
   }, STOP_NOTICE)
 }
 
-/** 「发出了 K 张，剩下 M 张没发」→ { sent, notSent }。 */
-export function parseStopped(locale, said) {
-  const [, sentText, notSentText, lastOne] = COPY[locale].stopped.exec(said ?? '') ?? []
-  return { sent: Number(sentText), notSent: lastOne ? 1 : Number(notSentText) }
-}
-
-/** Read the stop sentence only after the host has settled, and require it to match durable authorization. */
-export async function stoppedCountsAfterHostSettles(win, projectId, operationId, locale, total) {
-  let result
-  await expect.poll(async () => {
-    const said = await win.evaluate(() => window.__spendBatchStopped)
-    const durableSent = await authorizedShots(win, projectId, operationId)
-    const settled = await settledJobs(win, projectId, operationId)
-    if (said) {
-      const parsed = parseStopped(locale, said)
-      // Do not sample a notice while the host still has an approved job in
-      // flight. Keep the exact count assertion after terminal job state.
-      if (settled < durableSent || parsed.sent !== durableSent || parsed.notSent !== total - durableSent) return false
-      result = { ...parsed, said }
-      return true
-    }
-    // A fast run can authorize every shot before the stop notice exists; there is no stopped split to assert then.
-    if (durableSent === total) {
-      result = { sent: total, notSent: 0, said: null }
-      return true
-    }
-    return false
-  }, {
-    message: `${locale}: stop notice must match the host's final authorized shot count`,
-    timeout: stationTimeout({ operations: 12 }),
-    intervals: [100],
-  }).toBe(true)
-  return result
+/** 观察者记下的那一句停下提示（没出现 = null）。 */
+export function stopNoticeSaid(win) {
+  return win.evaluate(() => window.__spendBatchStopped)
 }
 
 /** 供应商这一叠收到的是哪几镜：按每一笔请求的提示词认回卡上的那一镜（认不出的原样留着，断言会把它摆出来）。 */
@@ -117,7 +73,7 @@ export function vendorShots(walk, imagesBefore, prompts) {
 }
 
 /**
- * 不等画面停稳、直接拍一张：这一叠在跑时画面一直在动（节点在落地），而且主进程占着界面线程，截图要等空档。
+ * 不等画面停稳、直接拍一张：这一叠在跑时画面一直在动（节点在落地 / 出图），截图要等空档。
  * 拍不到不算失败（断言另有，图只是给人看的）；拍到没有记进报告。
  */
 export async function quickShot(walk, win, label) {
@@ -127,60 +83,69 @@ export async function quickShot(walk, win, label) {
   return file
 }
 
-
-const CONFIRM = '[data-v4-control="confirm"]'
-const DISMISS = '[data-v4-control="slot-dismiss"]'
-
-/** 宿主那份待决出价里这一次出价还剩几镜没决定（推给面板的对话投影，唯一来路，`tests/ux/_laneSpendProbe.mjs`）；出价没了 = 0。 */
-async function shotsLeftOnCard(win, operationId) {
-  return win.evaluate((oid) => {
-    localStorage.setItem('__nomiE2E', '1')
-    return (window.__nomiLaneWorkspace?.spend?.rows ?? []).find((row) => row.operationId === oid)?.shots.length ?? 0
-  }, operationId)
-}
+/** 单段卡那一镜（走查自己的提示词，按它认回供应商那一笔）。 */
+const oneShot = (tag) => [{ title: `${tag} 六棱柱`, prompt: `${tag} 一个悬浮的六棱柱，柔和的演播室灯光`, taskKind: 'text_to_image', candidate: { providerId: 'apimart', modelId: 'gpt-image-2' } }]
 
 /**
- * ③ 单张「生成这张」和 ×（10-02 搞破坏线 X2；2026-10-10 仲裁器 docs/plan/2026-10-10-spend-arbiter.md）。
- * 两下都走 locator（不再一次采样坐标连点）。`mode`：
- *   · 'after-host-sees'：点了「生成这张」，等宿主那份待决出价少了这一镜（宿主收到了确认并批下），再点 ×——
- *     这一镜已交，× 如实说「发出了 1 张」；
- *   · 'immediate'：点了「生成这张」不等任何东西立刻点 ×（确认中立刻关闭，专门钉住那个竞态）——
- *     不管谁先到，只断言不随它变的：回执里在生成的 = 宿主批下的 = 供应商收到的，且 ≤ 1 张；× 之后没交出去的不再交。
+ * 单段卡上「生成」与「取消」（10-02 搞破坏线 X2；D2 之后「生成」= 交给画布）。`mode`：
+ *   · 'after-host-sees'：点了「生成」，等宿主在出价上记下这一笔交接、请求到了供应商门口（压着受理），再点「取消」——
+ *     这一镜已经在交，「取消」收不回它：照常交完，提示如实说「已经发出去了」。两下都走 locator。
+ *   · 'immediate'：点了「生成」立刻点「取消」（确认中立刻关闭，专门钉住那个竞态）——两下在同一帧里点（真人最快的连点）：
+ *     Playwright 两次 locator 点击之间隔着几十毫秒，单段卡在那之前早就交完、收起来了，「取消」点不到，竞态就钉不住。
+ *     两下都是卡上那两颗真按钮的点击（同一个 React 处理器），第二下重新找按钮（第一下可能已经让动作行重画了）。
+ *     不管谁先到，只断言不随它变的：回执里在生成的 = 交出去了的 = 供应商收到的，且 ≤ 1；取消之后没交出去的不再交；
+ *     出价只有一个终态（取消先到 = 用户关的；交接先落定 = 已交给画布、取消没有可收回的，不说话）。
  */
 export async function singleStopRound(walk, win, projectId, locale, { present, mode }) {
   const imagesBefore = walk.fixture.images.length
-  const { card, operationId, turnDone, receipt } = await present(walk, win, 3, locale)
+  const { card, operationId, turnDone, receipt } = await present(walk, win, { locale, kind: 'image', shots: oneShot })
   await watchStopNotice(win)
-  await clickOrFail(card.locator(CONFIRM), `${locale}：「生成这张」`, { noWaitAfter: true })
-  if (mode === 'after-host-sees') {
-    await expect.poll(() => shotsLeftOnCard(win, operationId), { message: `${locale}：宿主收到确认、批下这一镜（卡上少了一镜）`, timeout: stationTimeout({ operations: 6 }), intervals: [100] }).toBeLessThan(3)
+  if (mode === 'immediate') {
+    const pressed = await win.evaluate(({ cardSelector, primary, cancel }) => {
+      const generate = document.querySelector(`${cardSelector} ${primary}`)
+      generate?.click()
+      const stop = document.querySelector(`${cardSelector} ${cancel}`)
+      stop?.click()
+      return { generate: Boolean(generate), cancel: Boolean(stop) }
+    }, { cardSelector: SPEND_CARD, primary: CARD_PRIMARY, cancel: CARD_CANCEL })
+    expect(pressed, `${locale}：同一帧里「生成」和「取消」都点到了`).toEqual({ generate: true, cancel: true })
+  } else {
+    walk.fixture.holdSubmits(true)
+    try {
+      await clickOrFail(card.locator(CARD_PRIMARY), `${locale}：「生成」`, { noWaitAfter: true })
+      await expect.poll(() => walk.fixture.images.length - imagesBefore, { message: `${locale}：这一镜的请求到了供应商门口（压着受理）`, timeout: stationTimeout({ operations: 6 }), intervals: [100] }).toBe(1)
+      await clickOrFail(card.locator(CARD_CANCEL), `${locale}：「取消」`, { noWaitAfter: true })
+    } finally {
+      walk.fixture.holdSubmits(false)
+    }
   }
-  await clickOrFail(card.locator(DISMISS), `${locale}：×`, { noWaitAfter: true })
-  // × 落在那一下还在路上时，那一句提示和 Agent 的回执差不多同时到：一边等回合说完，一边看提示。
+  // 取消落在那一下还在路上时，那一句提示和 Agent 的回执差不多同时到：一边等回合说完，一边看提示。
   await recorded(turnDone.received, `${locale}: generate returns once the card is closed (single, ${mode})`, stationTimeout({ operations: 6 }))
-  // 宿主批下的几镜都落定、供应商收到的数对上，再读那一句。
-  const settled = async () => {
-    const authorized = await authorizedShots(win, projectId, operationId)
-    return authorized === walk.fixture.images.length - imagesBefore && authorized === await settledJobs(win, projectId, operationId)
-  }
-  await expect.poll(settled, { message: `${locale}: approved shots reached the provider and settled`, timeout: stationTimeout({ operations: 12 }) }).toBe(true)
-  // × 回给卡的那一句只在「确认还在路上时点 ×」推（渲染层 busy 分支）：× 先到、或确认先落定时没有这一句，不是失败。
-  // 给它几秒出现；出现了就必须和账本一致，没出现就只核账本。
-  const said = await expect.poll(() => win.evaluate(() => window.__spendBatchStopped), { timeout: 4000, intervals: [100] }).toBeTruthy().then(() => win.evaluate(() => window.__spendBatchStopped), () => null)
-  const stopped = said ? { ...parseStopped(locale, said), said } : null
+  // 交接都落定、供应商收到的数对上，再读那一句。
+  await expect.poll(async () => {
+    const counts = await handOverCounts(win, projectId, operationId)
+    return counts.pending === 0 && counts.sent === walk.fixture.images.length - imagesBefore
+  }, { message: `${locale}: every hand-over settled and the provider count agrees`, timeout: stationTimeout({ operations: 12 }) }).toBe(true)
+  // 那一句只在这一次出价真有镜交给过画布时才说（「取消」先到、一镜都没交时没有这一句，不是失败）。给它几秒出现；出现了就必须和账本一致。
+  const said = await expect.poll(() => stopNoticeSaid(win), { timeout: 4000, intervals: [100] }).toBeTruthy().then(() => stopNoticeSaid(win), () => null)
   await quickShot(walk, win, `${locale}-single-stopped-${mode}`)
   const decision = receiptDecision(receipt())
-  const authorized = await authorizedShots(win, projectId, operationId)
-  expect(decision.closedBy, `${locale}：回执记成用户关掉了卡`).toBe('user_closed')
-  expect(decision.generating, `${locale}：回执里在生成的张数 = 宿主批下的张数`).toHaveLength(authorized)
-  expect(authorized, `${locale}：只点了一次「生成这张」，最多批下 1 张`).toBeLessThanOrEqual(1)
-  if (mode === 'after-host-sees') expect(authorized, `${locale}：宿主已收到确认，这一镜已交，× 撤不回`).toBe(1)
+  const counts = await handOverCounts(win, projectId, operationId)
+  expect(decision.closedBy, `${locale}：回执记的关因就是账本上那一个（只有一个终态）`).toBe(counts.closedBy)
+  if (mode === 'after-host-sees') expect(decision.closedBy, `${locale}：回执记成用户关掉了卡`).toBe('user_closed')
+  else expect(['user_closed', 'handed_to_canvas'], `${locale}：取消先到 = 用户关的；交接先落定 = 已交给画布`).toContain(decision.closedBy)
+  expect(decision.generating, `${locale}：回执里在生成的 = 交出去了的`).toHaveLength(counts.sent)
+  expect(counts.sent, `${locale}：只点了一次「生成」，最多交出去 1 段`).toBeLessThanOrEqual(1)
+  if (mode === 'after-host-sees') expect(counts.sent, `${locale}：请求已经到了供应商门口，「取消」撤不回它`).toBe(1)
+  if (decision.closedBy === 'handed_to_canvas') {
+    expect(counts.sent, `${locale}：交接先落定，这一镜交出去了`).toBe(1)
+    expect(said, `${locale}：取消到的时候已经没有可收回的，不说话`).toBeNull()
+  }
   expect(vendorShots(walk, imagesBefore, decision.prompts).sort(), `${locale}：回执里在生成的那几镜，正好是供应商收到的那几镜`)
     .toEqual([...decision.generating].sort())
-  // 提示是 × 回给卡的那一句（渲染层只在「确认还在路上时点 ×」推它）：出现了就必须和账本一致。
-  if (stopped) expect(stopped, `${locale}: stop sentence agrees with durable host state`).toEqual({ sent: authorized, notSent: 3 - authorized, said })
+  if (said) expect(said, `${locale}: stop sentence agrees with the host's hand-over ledger`).toBe(stoppedLine(locale, { sent: counts.sent, notSent: 1 - counts.sent, kind: 'image' }))
   walk.report.singleStopped = { ...(walk.report.singleStopped ?? {}), [`${mode}:${locale}`]: {
-    generating: decision.generating, vendor: vendorShots(walk, imagesBefore, decision.prompts), said: said ?? null,
+    closedBy: decision.closedBy, generating: decision.generating, vendor: vendorShots(walk, imagesBefore, decision.prompts), said: said ?? null,
   } }
   return decision.generating.length
 }

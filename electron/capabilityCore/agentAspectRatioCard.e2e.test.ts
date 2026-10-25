@@ -1,8 +1,10 @@
-// 端到端（零额度）：用户在 Agent 对话里说的比例 = 付费卡上印的比例（`docs/plan/2026-10-05-agent-aspect-ratio-semantic.md`）。
+// 端到端（零额度）：用户在 Agent 对话里说的比例 = 落到画布节点上的比例（`docs/plan/2026-10-05-agent-aspect-ratio-semantic.md`）。
+// D2 第③步之后付费卡上没有参数：卡上那一行摘要读节点，发出也读节点，所以「说的 = 卡上的 = 发出的」三处同值的源头就是落地报文。
 //
 // 走的是真链：模型面 `draft_shots` 参数 → lane 翻译（`verbToTransportCall`）→ 宿主规划 handler 的 create
-// （语义翻译就在这里）→ 真的 durable Run（`productionRunRepository`）→ `generate` 那一步的 present →
-// 付费卡投影 `projectPendingSpendConfirm`。没有供应商、不派发、不花钱。
+// （语义翻译就在这里）→ 真的 durable Run（`productionRunRepository`）→ `generate` 那一步的 present（卡出来）→
+// 落地报文 `buildMaterializeShotsPayload`（节点上写的就是它）。节点 → 生成框 → 发出那一段在 `electron/parity/draftNodeSendParity.test.ts`。
+// 没有供应商、不派发、不花钱。
 // 用的是真档案：Z-Image（键 `size`，出厂 1:1）与 Nano Banana 2 的 kie 变体（键 `aspect_ratio`，出厂 auto）
 // ——正是 2026-10-05 实测里卡上印出出厂默认的那两个。
 import fs from "node:fs";
@@ -17,6 +19,7 @@ import { PROJECT_LEASE_ALGORITHM, PROJECT_LEASE_AUDIENCE, PROJECT_LEASE_VERSION,
 import { createProductionGenerationOperationStore } from "../productionRun/productionGenerationOperationStore";
 import { createProductionRunRepository } from "../productionRun/productionRunRepository";
 import { projectPendingSpendConfirm } from "../productionRun/productionPendingSpend";
+import { buildMaterializeShotsPayload } from "../productionRun/multiShotCanvasLanding";
 
 const PROJECT_ID = "project-1";
 const roots: string[] = [];
@@ -65,24 +68,28 @@ function harness() {
   const defaultModelForTaskKind = () => ({ moduleId: "generation.single-shot", providerId: "apimart", modelId: "z-image-turbo", mode: "text_to_image" });
   const handler = createGenerationPlanningHandler({ registry, operations, now, defaultModelForTaskKind });
   const origin = { host: "nomi", actorId: "agent-panel" };
-  /** Agent 调一次 `draft_shots`（lane 真翻译），再 `generate` 把它摆到卡上；回卡上每镜的参数。 */
+  /** 这份计划落到画布上时，每一镜节点上写的参数（卡上摘要与发出都读节点）。 */
+  const landedParameters = (operationId: string) => buildMaterializeShotsPayload(repository.read(PROJECT_ID, operationId)!, { projectRoot: null })!
+    .shots.map((shot) => shot.candidate?.parameters);
+  /** Agent 调一次 `draft_shots`（lane 真翻译），再 `generate` 把它摆到卡上；回落到节点上的每镜参数。 */
   const cardAfter = async (draftShotsArgs: Record<string, unknown>) => {
     const translated = verbToTransportCall({ toolCallId: "call-1", toolName: "draft_shots", args: draftShotsArgs })!;
     const created = await handler({ capability: "create", params: translated.call.args as Record<string, unknown>, lease, origin } as never) as { operation: { operationId: string } };
     const operationId = created.operation.operationId;
     await handler({ capability: "present", params: { operationId }, lease, origin } as never);
     const card = projectPendingSpendConfirm(repository.read(PROJECT_ID, operationId)!, () => undefined);
-    return { operationId, shots: card!.shots.map((shot) => shot.parameters) };
+    expect(card?.shots.length, "卡出来了（摘要读的就是下面这些节点）").toBeGreaterThan(0);
+    return { operationId, shots: landedParameters(operationId) };
   };
-  return { handler, cardAfter, origin, repository };
+  return { handler, cardAfter, landedParameters, origin, repository };
 }
 
 afterEach(() => {
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
 
-describe("Agent 说的比例 = 付费卡上的比例", () => {
-  it("Z-Image：说 16:9，卡上是 size=16:9（不再是出厂 1:1）", async () => {
+describe("Agent 说的比例 = 落到节点上的比例（卡上摘要读节点）", () => {
+  it("Z-Image：说 16:9，节点上是 size=16:9（不再是出厂 1:1）", async () => {
     const { cardAfter } = harness();
     const { shots } = await cardAfter({
       shots: [{ prompt: "海边日出", taskKind: "text_to_image", aspectRatio: "16:9", candidate: { providerId: "apimart", modelId: "z-image-turbo" } }],
@@ -90,7 +97,7 @@ describe("Agent 说的比例 = 付费卡上的比例", () => {
     expect(shots).toEqual([{ size: "16:9" }]);
   });
 
-  it("Nano Banana 2（kie）多镜：说 1:1，每一镜卡上都是 aspect_ratio=1:1（不再是出厂「自动」）", async () => {
+  it("Nano Banana 2（kie）多镜：说 1:1，每一镜节点上都是 aspect_ratio=1:1（不再是出厂「自动」）", async () => {
     const { cardAfter } = harness();
     const { shots } = await cardAfter({
       candidate: { providerId: "kie", modelId: "nano-banana-2" }, taskKind: "text_to_image",
@@ -99,8 +106,8 @@ describe("Agent 说的比例 = 付费卡上的比例", () => {
     expect(shots).toEqual([{ aspect_ratio: "1:1" }, { aspect_ratio: "1:1" }]);
   });
 
-  it("改草稿「把第 2 镜改成 9:16」：卡上那一镜跟着变、清晰度不动，读盘归一不会把它当残留清掉", async () => {
-    const { handler, cardAfter, origin, repository } = harness();
+  it("改草稿「把第 2 镜改成 9:16」：节点上那一镜跟着变、清晰度不动，读盘归一不会把它当残留清掉", async () => {
+    const { handler, cardAfter, landedParameters, origin, repository } = harness();
     const { operationId } = await cardAfter({
       candidate: { providerId: "kie", modelId: "nano-banana-2" }, taskKind: "text_to_image",
       shots: [
@@ -119,10 +126,10 @@ describe("Agent 说的比例 = 付费卡上的比例", () => {
       // 只改比例：4K 留着（整份替换那一版这里会掉回档案默认的 1K）。
       ["shot-1", { aspect_ratio: "16:9", resolution: "4K" }], ["shot-2", { aspect_ratio: "9:16", resolution: "4K" }],
     ]);
-    // 付费卡上印的就是合并后要发出去的那一份。
+    // 重新摆卡：落到节点上的就是合并后要发出去的那一份（卡上摘要读它）。
     await handler({ capability: "present", params: { operationId }, lease, origin } as never);
-    const card = projectPendingSpendConfirm(repository.read(PROJECT_ID, operationId)!, () => undefined)!;
-    expect(card.shots.map((shot) => shot.parameters)).toEqual([
+    expect(projectPendingSpendConfirm(repository.read(PROJECT_ID, operationId)!, () => undefined)!.shots).toHaveLength(2);
+    expect(landedParameters(operationId)).toEqual([
       { aspect_ratio: "16:9", resolution: "4K" }, { aspect_ratio: "9:16", resolution: "4K" },
     ]);
   });

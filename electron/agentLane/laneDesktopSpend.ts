@@ -1,6 +1,6 @@
 import type { PendingSpendRead } from '../shared/contracts/pendingSpendConfirm'
 import type { ProductionRun } from '../productionRun/productionRunTypes'
-import { IN_APP_AGENT_ORIGIN_HOST } from '../productionRun/productionPendingSpend'
+import { IN_APP_AGENT_ORIGIN_HOST } from '../shared/productionGenerationPresentation'
 import { getProductionRunService, subscribeProductionRunChanges } from '../productionRun/productionRunRuntime'
 import { watchSpendCardClose } from './laneSpendCardClose'
 import { readPendingSpend, subscribeResidentSurfaceLifecycle } from '../capabilityCore/residentSurfaceLifecycle'

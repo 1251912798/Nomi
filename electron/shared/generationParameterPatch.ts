@@ -1,7 +1,7 @@
 // 修订一镜的参数：**只改被点名的键，其余不动**；值为 `null` = 删掉这个键。
 //
 // 这就是 JSON Merge Patch（RFC 7396）在「一层参数对象」上的语义。全仓两处修订一镜参数的地方共用这一个函数：
-//   · 宿主改草稿（`capabilityCore/generationPlanPatch.ts` `resolvePlanPatch`，Agent / 外部 MCP / 付费卡）；
+//   · 宿主改草稿（`capabilityCore/generationPlanPatch.ts` `resolvePlanPatch`，Agent / 外部 MCP；付费卡 2026-10-24 起只读、不改候选）；
 //   · 文稿方案改一镜（`shared/storyboard/storyboardSubjectAdapter.ts` `patchStoryboardSubject`，方案正本在渲染层）。
 // 2026-10-05 之前两处都是整份替换：Agent 只改比例，清晰度掉回默认（验收线实测 4K → 1K）。
 

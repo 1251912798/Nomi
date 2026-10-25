@@ -72,17 +72,15 @@ export function parameterOptionLayout(
  * 只有一个参数时它没有那个价值，只剩一层壳——图片节点只有尺寸，改一次要走
  * pill → 面板 → 下拉 → 列表 → 选，四步。直出之后两步。
  *
- * 四个条件缺一不可，而且都是「面板里还有没有别的东西」这同一个问题的不同面：
- * chips 摆法的触发器是 ⚙（它本来就只收长尾，不是这条路的宿主）、供应商和生成方式也各占一组、
- * 而没有候选项的控件（滑杆 / 数字框 / 开关）脱了小标题就读不出在调什么。
+ * 三个条件缺一不可，而且都是「面板里还有没有别的东西」这同一个问题的不同面：
+ * 供应商和生成方式也各占一组、而没有候选项的控件（滑杆 / 数字框 / 开关）脱了小标题就读不出在调什么。
  */
 export function soloOptionControl(input: {
   controls: readonly DynamicModelControl[]
   hasProvider: boolean
   hasModeChoices: boolean
-  chipsMode: boolean
 }): DynamicModelControl | null {
-  if (input.chipsMode || input.hasProvider || input.hasModeChoices) return null
+  if (input.hasProvider || input.hasModeChoices) return null
   if (input.controls.length !== 1) return null
   return hasFlatOptions(input.controls[0]) ? input.controls[0] : null
 }

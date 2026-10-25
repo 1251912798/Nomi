@@ -32,14 +32,17 @@ export function detachShotNodesCommandId(runId: string, nodeIds: readonly string
 }
 
 /**
- * 画布接手一个制作镜头（`shot.claim`，by canvas）的命令号——**认的是这一镜的哪一次尝试**。
+ * 画布接手一个制作镜头（`shot.claim`，by canvas）的命令号——**认的是这一镜的哪一次尝试、被哪一个画布单镜 Run 接手**。
  *
  * 仓库按命令号幂等：同号的第二条命令不执行、原样返回第一次的结果。认领若只按 Run + 镜头造号，同一镜第二次被画布
  * 接手（例：画布接手 → 用户又让制作返工 → 批次停着时画布再生成）就被当成第一次的重放吞掉：新 attempt 没被标走，
  * 用户点「继续」后制作照派——同一镜付两次钱（2026-10-05 双扣路径 6）。号里带 attempt，同一次尝试的重试仍只记一次，
  * 下一次尝试必是新号。attempt 取 `currentShotAttempt`（reducer 记认领、判定口比认领用的同一个值）。
+ *
+ * 号里还带画布 Run（D2 第③步）：同一次尝试先在节点上点过生成、后来又被付费卡交给画布（或反过来），认领记录要换成后来那一个
+ * （从哪来、哪一次出价、哪个画布 Run）；同一个画布 Run 的重试仍是同一个号。
  */
-export function canvasShotClaimCommandId(runId: string, shotId: string, attempt: number): string {
-  const digest = synchronousSha256(JSON.stringify([runId, shotId])).slice(0, 32);
+export function canvasShotClaimCommandId(runId: string, shotId: string, attempt: number, canvasRunId: string): string {
+  const digest = synchronousSha256(JSON.stringify([runId, shotId, canvasRunId])).slice(0, 32);
   return `shot-claim.${digest}.a${attempt}`;
 }

@@ -1,5 +1,5 @@
 /**
- * 「这一镜跑哪个变体」：画布 / 付费卡显示的，与宿主派发的，必须是同一个答案。
+ * 「这一镜跑哪个变体」：画布显示的（付费卡读的就是它），与宿主派发的，必须是同一个答案。
  *
  * 2026-09-26 真付费走查（PR #883 的 T4 / T5）：Agent 付费卡写着 Seedance 2.0「Fast」，宿主却按
  * `transportModelId: doubao-seedance-2.0`、`variantId: standard` 派发——卡上一个价，扣的是另一个。
@@ -8,6 +8,9 @@
  *
  * 这里不挑某一个模型：拿**真实内置目录**（`ensureBuiltinModelSeeds()` 种下来的那份）里每一条带变体的
  * 视频行，各走一遍渲染层与宿主的真实生产函数，逐条比。新接一个带变体的模型，这里自动覆盖到它。
+ *
+ * D2 之后付费卡没有自己那张生成框了：卡上的摘要读的就是画布节点（`nodePointerSummaryFacts`），所以「卡上显示的」
+ * 与「画布显示的」是同一个读口；宿主候选落到节点那一步带不带变体，由 `draftNodeSendParity.test.ts` 逐格守。
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -39,7 +42,6 @@ import { buildVideoModelCandidates, videoArchetypeIdFromMeta } from "../shared/v
 import { modeTransportFor } from "../shared/videoCapabilities/modeTransport";
 import type { VideoModelCandidate } from "../shared/videoCapabilities";
 import { currentArchetypeVariant } from "../../src/workbench/generationCanvas/nodes/controls/archetypeMeta";
-import { projectSpendNode } from "../../src/workbench/ai/v4/spendCardDraft";
 import { seedParityCatalog } from "./generationParityTestUtils";
 import { operationSelectsArchetypeWireModel, resolveWireModel } from "../shared/modelArchetypes/wireModelIdentity";
 import { selectTaskMapping, type CatalogState, type ProfileKind } from "../catalog/types";
@@ -81,7 +83,7 @@ function rendererVariantId(row: VariantRow): string | undefined {
   return currentArchetypeVariant(archetype, { modelKey: row.modelKey, archetype: { id: archetype.id, modeId: archetype.defaultModeId } })?.id;
 }
 
-describe("这一镜跑哪个变体：画布 / 付费卡 === 宿主派发（真实内置目录）", () => {
+describe("这一镜跑哪个变体：画布（付费卡读同一个节点）=== 宿主派发（真实内置目录）", () => {
   it("目录里确实有带变体的视频行（否则下面的断言是空转）", () => {
     expect(rows.map((row) => `${row.vendorKey}/${row.modelKey}`)).toContain("apimart/doubao-seedance-2.0");
   });
@@ -104,24 +106,6 @@ describe("这一镜跑哪个变体：画布 / 付费卡 === 宿主派发（真�
       });
       // 声明收档案线上名的内置 op 发变体串；写死 model 的（Runway）不声明，参数表里就是连接名。
       expect(wire, `${label}：出站 model`).toBe(operationSelectsArchetypeWireModel(mapping?.create) ? variant?.modelKey : row.modelKey);
-    }
-  });
-
-  it("付费卡那张生成框（projectSpendNode）读到的变体 === 宿主按同一镜候选派发的变体（指定或不指定都一样）", () => {
-    for (const row of rows) {
-      const archetype = resolveArchetypeForModel({ modelKey: row.modelKey, vendorKey: row.vendorKey, meta: row.meta })!;
-      const requests: Array<string | undefined> = [undefined, ...(archetype.variants ?? []).map((variant) => variant.id)];
-      for (const variantId of requests) {
-        const label = `${row.vendorKey}/${row.modelKey} variantId=${variantId ?? "（未指定）"}`;
-        const host = videoCandidateForPlan(planCandidate(row, variantId ? { variantId } : {}), row.candidates);
-        const node = projectSpendNode({
-          shotId: "shot-1", index: 1, prompt: "p", providerId: row.vendorKey, modelId: row.modelKey, kind: "video",
-          modeId: archetype.defaultModeId, parameters: {}, price: { known: false },
-          ...(variantId ? { variantId } : {}),
-        });
-        const shown = node ? currentArchetypeVariant(archetype, node.meta as Record<string, unknown>)?.id : undefined;
-        expect(shown, label).toBe(host?.candidate.variantId);
-      }
     }
   });
 });

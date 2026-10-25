@@ -18,14 +18,10 @@
     {
       "path": "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
       "symbol": "parameterControlRole"
-    },
-    {
-      "path": "src/workbench/generationCanvas/nodes/primaryParameterChips.ts",
-      "symbol": "splitPrimaryParameterControls"
     }
   ],
   "forbidden_derivations": [],
   "allowed_consumers": [],
   "since": "2026-10-05",
-  "notes": "同一参数的别名归一只在控制模型的共享等价键边界决定。"
+  "notes": "同一参数的别名归一只在控制模型的共享等价键边界决定。 2026-10-24 D2 第③步：付费卡不再嵌生成框，主参数 chip 那种摆法同提交删光，splitPrimaryParameterControls（哪些控件上卡）一起删。"
 }

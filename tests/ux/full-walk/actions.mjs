@@ -2,7 +2,7 @@
 // 判据不在这里：这里只负责「点到了没有」，点完之后对不对由监视器按铁律判。
 import { clickOrFail, expect, waitForVisualQuiescence } from '../_assert.mjs'
 import { stationTimeout } from '../_station-budget.mjs'
-import { findCanvasBlankPoint, findConnectionStartPoint, findNodeHitPoint, panCanvasUntilInside } from '../_canvasHit.mjs'
+import { findCanvasBlankPoint, findConnectionStartPoint, findEdgeHitPoint, findNodeHitPoint, panCanvasUntilInside, waitForCanvasViewportSettled } from '../_canvasHit.mjs'
 import { canvasFitViewButton } from '../_shell.mjs'
 
 export const nodeSelector = (id) => `.react-flow__node[data-id="${id}"]`
@@ -63,6 +63,32 @@ export async function connectNodes(win, sourceId, targetId, readEdges) {
   await win.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 14 })
   await win.mouse.up()
   await expect.poll(async () => (await readEdges()).length, { message: `${sourceId} → ${targetId} 连上了`, timeout: stationTimeout() }).toBeGreaterThan(before)
+}
+
+/**
+ * 断开一条线：在线上点得到的地方点一下（选中它），再点它旁边那个「×」（同 canvas-edge-disconnect.walk.mjs 的手法）。
+ * 点完核对画布上真少了这一条。
+ */
+export async function disconnectEdge(win, edgeId, readEdges) {
+  const edge = `.generation-canvas-v2__edge[data-edge-id="${edgeId}"]`
+  // 画布可能刚被别的动作挪过（从聊天里点指向元素定位、适应视图都是一段滑动）：等视口停稳再找线上的点，
+  // 不然点的是滑到半路时算出来的位置，落在线外面，线没选中、「×」也不出来。
+  await waitForCanvasViewportSettled(win)
+  let point = null
+  await expect.poll(async () => {
+    point = await findEdgeHitPoint(win, { edgeSelector: `${edge} .generation-canvas-v2__edge-hit`, withinSelector: '.generation-canvas-v2__stage', margins: { left: 140, top: 100, right: 20, bottom: 20 } })
+    return point !== null
+  }, { message: `线 ${edgeId} 上有点得到的地方`, timeout: stationTimeout() }).toBe(true)
+  await win.mouse.click(point.x, point.y)
+  await waitForVisualQuiescence(win)
+  await expect(win.locator(edge).first(), `线 ${edgeId} 点了之后被选中`).toHaveAttribute('data-active', 'true', { timeout: stationTimeout() })
+  const control = win.locator('.generation-canvas-v2__edge-control button[data-edge-disconnect]')
+  await expect(control.first(), `线 ${edgeId} 选中之后旁边出「×」`).toBeAttached({ timeout: stationTimeout() })
+  // 「×」挂在线的正中。线有一半伸在视口外时（比如刚从聊天里点指向元素定位到一头的节点，画布放大居中在它身上），
+  // 「×」也在视口外——人会先缩小一点把它看全再点，不会对着看不见的按钮点。
+  if (!(await zoomOutUntilVisible(win, control.first()))) throw new Error(`线 ${edgeId} 的「×」缩小了几次还是不在视口里`)
+  await clickOrFail(control, `线 ${edgeId} 旁边的「×」`)
+  await expect.poll(async () => (await readEdges()).some((edge) => edge.id === edgeId), { message: `线 ${edgeId} 断开了`, timeout: stationTimeout() }).toBe(false)
 }
 
 /** 这个元素整块都在视口里吗（卡片被放得很大时，它下面那条 composer 常常在视口外）。 */

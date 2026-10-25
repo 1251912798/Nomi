@@ -18,6 +18,8 @@
       "symbol": "planReferenceProjection"
     }
   ],
-  "allowed_consumers": [],
-  "notes": "合同 docs/fixes/2026-10-07-spend-card-references-one-owner.root-cause.json：纯函数——画布上某节点出的图补一条真边，其余补进参考槽，节点上已有的不重复、不删，补进槽前按画布那条规则对齐生成方式。还没有生产调用方：落地链冻结，接线等画布写边界重构（方案 A），届时只许调它，不另写补法。"
+  "allowed_consumers": [
+    "src/workbench/capability/landedShotIntent.ts"
+  ],
+  "notes": "合同 docs/fixes/2026-10-07-spend-card-references-one-owner.root-cause.json：纯函数——画布上某节点出的图补一条真边，其余补进参考槽，节点上已有的不重复、不删，补进槽前按画布那条规则对齐生成方式。D2 第③步（2026-10-24）接进落地链：首次落地与 Agent 改稿都经 landedShotIntent.placeLandedReferences 调它（落地报文带上了宿主解析出的参考地址）；Agent 改稿删掉的参考由 landedShotIntent 按它自己上一版的指纹拿掉，这个函数本身仍只补不删。常驻对等：electron/parity/draftNodeSendParity.test.ts。"
 }

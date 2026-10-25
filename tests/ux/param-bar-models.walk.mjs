@@ -1,6 +1,7 @@
 // R13：验证「主次分层」底栏对其它参数多的模型同样统一生效（seedream 7参数 / wan 含负向提示 / kling）。
 // 用法: node tests/ux/param-bar-models.walk.mjs
-// 隔离目录 + 当场构造含 3 个参数多模型节点的项目（内置目录，不拷真实目录），逐个选中量底栏宽度+点「更多」截图。
+// 隔离目录 + 当场构造含 3 个参数多模型节点的项目（内置目录，不拷真实目录），逐个选中量底栏宽度+点参数摘要 pill 截图
+// （2026-10-24 D2：chips 摆法和「更多参数」溢出钮随旧付费卡一起删了，底栏只剩摘要 pill，点它开参数面板）。
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -53,13 +54,13 @@ for (const b of nodeBoxes.slice(0,5)) {
     if (!card) return null
     const txt = card.textContent || ''
     const model = (txt.match(/Seedream|Wan|Kling|Seedance/) || ['?'])[0]
-    return { model, cardW: Math.round(card.getBoundingClientRect().width), clip: card.scrollWidth > card.clientWidth + 1, hasMore: /更多/.test(txt) }
+    return { model, cardW: Math.round(card.getBoundingClientRect().width), clip: card.scrollWidth > card.clientWidth + 1, hasMore: Boolean(card.querySelector('[data-parameter-summary]')) }
   })
   if (!m) continue
   results.push(m)
   console.log(`  ${m.model}: cardW=${m.cardW} clip=${m.clip} 更多=${m.hasMore}`)
   await snap(win, `bar-${m.model}`)
-  if (m.hasMore) { const mb=win.locator('button[aria-label="更多参数"]').first(); if(await mb.count()){ await mb.click({timeout:2000}).catch(()=>{}); await win.waitForTimeout(400); await snap(win, `more-${m.model}`); await win.keyboard.press('Escape').catch(()=>{}) } }
+  if (m.hasMore) { const mb=win.locator('[data-parameter-summary]').first(); if(await mb.count()){ await mb.click({timeout:2000}).catch(()=>{}); await win.waitForTimeout(400); await snap(win, `more-${m.model}`); await win.keyboard.press('Escape').catch(()=>{}) } }
 }
 console.log('  RESULT anyClip=', results.some(r=>r.clip), '| maxCardW=', Math.max(0,...results.map(r=>r.cardW)))
 await app.close()

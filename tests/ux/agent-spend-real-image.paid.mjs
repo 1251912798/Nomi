@@ -7,7 +7,7 @@
 // 「档位改变了宿主的行为」，证不到「档位代答之后图真的出来了」——那台夹具上封印那步必然被拒。
 // 2026-09-18 修完 `draft_shots` 丢 `candidate` 的根因之后，必须有人亲眼看见两件事在真供应商上成立：
 //
-//   ① 「只问花钱」（safe-auto）档：问一句 → 报价卡出现 → 点确认 → 真图落到画布上；
+//   ① 「只问花钱」（safe-auto）档：问一句 → 付费卡出现（指着草稿落下的那个节点）→ 点「生成」→ 交给画布那一台 → 真图落到画布上；
 //   ② 「全自动」（project）档：同一句话 → **一张卡都不出** → 真图照样落到画布上，
 //      而工具回执说的是「档位替你答了、已经开跑」，不是「有张卡在等你」。
 //
@@ -15,13 +15,14 @@
 // 凭据是**真实资料目录里的 safeStorage 密文 + Windows 的 Local State**，原样拷进隔离副本（_realProfile.mjs）——
 // 明文 key 从头到尾不落任何文件、不进报告、不回显；跑完凭据副本当场删除，原库指纹跑前跑后比对（_paidRun.mjs）。
 // 隔离副本里别的生成模型全部停用：模型从 `list_models` 里点谁，都只能点到 z-image-turbo，花销可预期。
-// 目录行原样用真实的那一行，不再补价格：2026-09-21 起「未知价不许挡生成」，Agent 付费卡未标价照样能确认。
+// 目录行原样用真实的那一行，不再补价格：2026-09-21 起「未知价不许挡生成」，Agent 付费卡未标价照样能按「生成」。
 //
 // zh / en 各留一张真截图：① 在中文界面走，② 走之前从设置里把界面切成 English（真人怎么切就怎么切）。
 import { clickOrFail, expect } from './_assert.mjs'
 import { openPaidWalk } from './_paidRun.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
+import { cardFacts, pointerOf } from './_spendCardWalk.mjs'
 import {
   APPROVAL_CARD, CANVAS_PANEL, COMPOSER_PERMISSION, INTERVENTION_CONFIRM, PERMISSION_POPOVER,
   chooseAssistantModel, openCanvas, permissionTier, readProject, sendCanvas,
@@ -69,8 +70,7 @@ let failure
 try {
   const { win } = await walk.start({ first: true })
   await paid.lockToAuthorizedModels(win)
-  // 宿主拒绝时那句**原话**只进 console（`useAgentPanelSpendConfirm` 的 `[spend-confirm] host refused`）；
-  // 面板上只留一句给用户看的人话。走查要能说清「为什么没出图」，就得同时收着这两路。
+  // 宿主拒了，卡上那一行说明说给用户听（`cardFacts().notices`）；渲染层 console 另收着，出不了图时一起报（诊断用）。
   const consoleLines = []
   win.on('console', (message) => { consoleLines.push(`${message.type()}: ${message.text()}`.slice(0, 400)) })
   const { projectId, projectRoot } = await walk.newProject()
@@ -80,35 +80,24 @@ try {
   // ═══ ① 「只问花钱」档（默认 safe-auto）：卡必须出来，点了才花钱 ═══
   await sendCanvas(win, ASK_PAID)
   const card = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="spend"]`)
-  await expect(card, '「只问花钱」档下，真模型点名一个真模型之后，报价卡必须出现在槽里')
+  await expect(card, '「只问花钱」档下，真模型点名一个真模型之后，付费卡必须出现在槽里')
     .toBeVisible({ timeout: MODEL_TURN_MS })
   // 按下去之前核对这张卡要花在谁身上：画布上的草稿节点必须就是被授权的 z-image-turbo（不对就一分钱不花）。
   const drafted = ((await readProject(win, projectId)).payload.generationCanvas.nodes ?? []).filter((node) => !node.result)
   expect(drafted.map((node) => `${node.meta?.modelVendor}/${node.meta?.modelKey}`), '卡上要花钱的就是被授权的那个图模型')
     .toEqual([`${IMAGE.vendorKey}/${IMAGE.modelKey}`])
+  // 卡 = 指向元素 + 一行只读摘要 +「生成」：它指着的就是草稿落下的那个节点（D2）。
+  await expect(card.locator(pointerOf(drafted[0].id)), '付费卡指着草稿落下的那个节点').toBeVisible()
   await walk.snap('paid-01-zh-spend-card-before-confirm')
-  // 按下去之前先在真实 DOM 上架一个通知观察者：宿主要是拒了，它只会用一条活 6 秒的 toast 说话，
-  // 去 locator 上现断言跟它的自动消失赛跑（与 `agent-spend-confirm-executes.walk.mjs` 同一手法）。
-  await win.evaluate(() => {
-    window.__nomiToastLog = []
-    const record = () => {
-      for (const node of document.querySelectorAll('[class*="mantine-Notification-root"]')) {
-        const text = (node.textContent ?? '').trim()
-        if (text && !window.__nomiToastLog.includes(text)) window.__nomiToastLog.push(text)
-      }
-    }
-    record()
-    new MutationObserver(record).observe(document.body, { childList: true, subtree: true })
-  })
-  // `noWaitAfter`：这一下会触发主进程的落地链，默认的「等页面稳下来」会和它拉锯。
-  await clickOrFail(card.locator(INTERVENTION_CONFIRM), '报价卡上那颗主按钮', { noWaitAfter: true })
+  // `noWaitAfter`：这一下交给画布那一台（和节点 ↑ 同一条提交），默认的「等页面稳下来」会和它拉锯。
+  await clickOrFail(card.locator(INTERVENTION_CONFIRM), '付费卡上的「生成」', { noWaitAfter: true })
   try {
     await expect.poll(() => renderedShots(win, projectId), { timeout: MODEL_TURN_MS }).toBeGreaterThanOrEqual(1)
   } catch (error) {
-    const spoken = (await win.evaluate(() => window.__nomiToastLog ?? [])).join(' | ')
-    const refused = consoleLines.filter((line) => line.includes('spend-confirm') || line.includes('refused') || line.includes('capab'))
-    throw new Error(`点了确认之后图没出来。\n面板对用户说：${spoken || '（一个字都没说——那本身就是 bug）'}`
-      + `\n宿主原话：${refused.join(' | ') || '（console 里也没有）'}\n${error}`)
+    const spoken = ((await cardFacts(win))?.notices ?? []).map((notice) => notice.text).join(' | ')
+    const logged = consoleLines.filter((line) => line.includes('refused') || line.includes('hand-over') || line.includes('capab'))
+    throw new Error(`按了「生成」之后图没出来。\n卡上对用户说：${spoken || '（卡上一个字都没说——那本身就是 bug）'}`
+      + `\n渲染层 console：${logged.join(' | ') || '（console 里也没有）'}\n${error}`)
   }
   await walk.snap('paid-02-zh-image-really-arrived')
 

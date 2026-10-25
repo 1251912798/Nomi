@@ -27,7 +27,7 @@ import { WorkbenchIconButton } from '../../../design'
 import { cn } from '../../../utils/cn'
 import { IconChevronRight, IconX } from './AgentPanelV4Icons'
 import { V4Row } from './AgentPanelV4Row'
-import type { InterventionData, V4InterventionKind } from './agentPanelV4Types'
+import type { V4InterventionKind, V4PagerState } from './agentPanelV4Types'
 
 // 这个文件**不定义任何按钮长相**。卡上的按钮一律是现役组件：
 // 主动作 = `WorkbenchButton variant="primary" size="sm"`、次动作 = `WorkbenchButton size="sm"`、
@@ -38,6 +38,7 @@ import type { InterventionData, V4InterventionKind } from './agentPanelV4Types'
 export function V4SlotShell({
   kind,
   waiting,
+  tone,
   title,
   dismiss,
   footer,
@@ -72,6 +73,11 @@ export function V4SlotShell({
    */
   waiting: boolean
   /**
+   * 这张卡在说一件没成的事（付费卡失败留在卡里，SpendCardQ1 板 card.failure）：外框换警示色那一条发丝线，
+   * 压过「在等你」那一档——没成这件事比「在等你」更要紧，两个颜色只能有一个。
+   */
+  tone?: 'danger'
+  /**
    * 卡头那**一句话**（Recommendation Card 的形状：标题就是一句问话，
    * 「生成这 1 段视频？」）。缺席 = 这张卡自己在 `children` 里画标题——
    * 反问卡就是这一档：多题时标题要跟着题轨一起滑，钉在壳上就滑不动了。
@@ -80,9 +86,8 @@ export function V4SlotShell({
   /** 右上那颗 ×。**位置由外壳定死**，卡自己不摆——这是这次统一的重点之一。 */
   dismiss?: Readonly<{ label: string; onClick: () => void }>
   /**
-   * 页脚。给的是一整块而不是「左/右」两个槽：付费卡的翻页器要**单独占一行**压在动作行上方
-   * （它决定主按钮上印的那个数），拆成两个槽就摆不下了。
-   * 左元信息 / 右动作那条排布由卡自己用一根 `flex-1` 垫片实现，写法三张卡一致。
+   * 页脚。给的是一整块而不是「左/右」两个槽：动作行放不下一行时要折成两行（左边的整颗换到上一行、右边这一组保持一组），
+   * 拆成两个槽就折不了。左元信息 / 右动作那条排布由卡自己用一根 `flex-1` 垫片实现，写法三张卡一致。
    */
   footer?: React.ReactNode
   children: React.ReactNode
@@ -126,13 +131,16 @@ export function V4SlotShell({
       // 动效不加：出现/消失本身已经是那一下变化，再补一段 transition 就是让一张等人答的卡自己动。
       className={cn(
         'relative overflow-hidden rounded-nomi border bg-nomi-paper',
-        waiting
-          ? 'border-nomi-ink-40'
-          : 'border-nomi-line',
+        tone === 'danger'
+          ? 'border-nomi-danger-edge'
+          : waiting
+            ? 'border-nomi-ink-40'
+            : 'border-nomi-line',
         rest.className,
       )}
       data-v4-block="intervention"
       data-kind={kind}
+      data-tone={tone}
       // 待答与否**两态都落属性**（不是「待答时才有」）：走查与单测要能断言「这一张确实回到了
       // 普通纸面」，而属性缺席既可能是「不在等」，也可能是「这一版根本没接这条线」。
       data-waiting={waiting ? 'true' : 'false'}
@@ -164,11 +172,9 @@ export function V4SlotShell({
 }
 
 /**
- * 翻页器（`‹ 2/4 ›`）+ 键盘提示（`←→`）。
+ * 翻页器（`‹ 2/4 ›`）：反问卡多题时用。
  *
- * 2026-09-30 付费卡逐镜：旁边那个「逐镜 / 全部」范围切换随「全部」那条路一起删了——每一页的主按钮只生成这一页
- * 那一镜，没有「全部」可切。
- *
+ * 付费卡的多镜翻页随 D2 第③步删了（组指向把所有段同时摆出来，SpendCardQ1 板）；键盘提示「←→」跟着翻页一起走了。
  * 排布仍守 2026-09-09 的通用规则：两件都在内容流里紧跟彼此，**不靠自动外边距顶到右缘**
  * （`check:tokens` 对 `src/workbench/ai/` 是硬零——连注释里写出那个类名都会被它数进去）。
  *
@@ -178,7 +184,7 @@ export function V4Pager({
   pager,
   onPage,
 }: {
-  pager: NonNullable<InterventionData['pager']>
+  pager: V4PagerState
   onPage?: (index: number) => void
 }): JSX.Element {
   const { t } = useTranslation()
@@ -193,13 +199,6 @@ export function V4Pager({
       <button type="button" className={arrow} aria-label={t('agentPanelV4.pagerNext')} disabled={pager.total < 2} onClick={() => step(1)} data-v4-control="pager-next">
         <IconChevronRight size={12} aria-hidden="true" />
       </button>
-      {/* 键盘提示：只印两个箭头。它不是说明文字，是**告诉你这里有快捷键**的最短形式；
-          写成「按左右键翻页」就是让用户多读一行（D1）。 */}
-      {pager.keyHint ? (
-        <span className="ml-1 shrink-0 select-none text-micro text-nomi-ink-40" data-v4-block="pager-keyhint">
-          {pager.keyHint}
-        </span>
-      ) : null}
     </V4Row>
   )
 }

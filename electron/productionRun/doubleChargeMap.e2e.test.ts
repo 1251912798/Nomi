@@ -13,6 +13,7 @@ import { createModuleRegistry } from "../capabilityCore/moduleRegistry";
 import type { GenerationProvider } from "../capabilityCore/generationRuntimeAdapter";
 import { setupCanvasShots } from "../capabilityCore/canvasShotTestUtils";
 import { detachShotNodesCommandId } from "../shared/productionRunCommandId";
+import { offerShots } from "../shared/productionGenerationPresentation";
 import { createMultiShotBatchScheduler } from "./multiShotBatchScheduler";
 import { sealAndApproveProductionGeneration } from "./productionGenerationAuthorizationTestUtils";
 import { createProductionGenerationSubmission } from "./productionGenerationSubmission";
@@ -161,12 +162,18 @@ describe("双扣地图：同一镜，画布和制作合起来只花一次钱", (
     expect(repository.readBudgetLedger(PROJECT, RUN).reservations).toEqual({});
   });
 
-  it("路径 2：付费卡还摆着等他点头时在画布上生成这一镜——画布被拒，一个字节不发", async () => {
-    const { repository, canvas } = setup({ approved: false });
+  // D2 第③步（Q3c）：卡开着时节点 ↑ 可点——卡上这一镜变成「画布接手」，主按钮改成「生成剩下 N 段」。制作那一侧本来就不再
+  // 派卡上的镜（卡上点「生成」也是交给画布），所以这一镜一共只有画布那一笔；卡再交它会被出价账挡回（`agentPanelSpendCard.e2e`）。
+  it("路径 2：付费卡还摆着等他点头时在画布上生成这一镜——画布接手、只花一次；卡上它不再待决，制作一侧一次都不派", async () => {
+    const { root, repository, canvas } = setup({ approved: false });
     expect(read(repository).generationPlan?.presentations?.at(-1)?.closed).toBeUndefined();
 
-    await expect(canvasGenerates(canvas, "shot-2")).rejects.toMatchObject({ code: "production_shot_claimed", reason: "awaiting_confirmation" });
-    expect(canvas.vendor.executes).toHaveLength(0);
+    await canvasGenerates(canvas, "shot-2");
+    expect(canvasSendsFor(canvas, "shot-2")).toBe(1);
+    expect(offerShots(read(repository)).map((shot) => [shot.shotId, shot.state])).toEqual([["shot-1", "undecided"], ["shot-2", "taken_by_canvas"]]);
+    await scheduler(root, repository, productionProvider([])).runToQuiescence();
+    expect(productionSubmitsFor(repository, "shot-2")).toBe(0);
+    expect(canvasSendsFor(canvas, "shot-2")).toBe(1);
   });
 
   it("路径 3：删掉镜头节点之后——调度器照样跑完别的镜，被删的那一镜一次都不派", async () => {

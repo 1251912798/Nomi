@@ -12,59 +12,43 @@
     "Everyone who presses Remove / Generate this one / × while a single confirm is still on its way (1-3 seconds): the press is swallowed without any sign"
   ],
   "scope_paths": [
-    "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
-    "src/workbench/ai/v4/agentPanelSpendCard.ts",
-    "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
-    "src/workbench/ai/ProjectAgentResidentShell.tsx",
     "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-    "electron/productionRun/productionRunTypes.ts"
+    "electron/capabilityCore/appIntegrationCanvasShot.ts",
+    "electron/productionRun/productionActionIpc.ts",
+    "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+    "src/workbench/ai/v4/agentPanelSpendCard.ts",
+    "electron/productionRun/shotLandingAdmission.ts",
+    "electron/productionRun/productionRunProjections.ts",
+    "electron/capabilityCore/mcpToolResults.ts"
   ],
   "entry_points": [
-    "The card's ×: slot-dismiss -> useAgentPanelSpendConfirm.discard -> productionRunApi.discardSpend -> IPC discard-spend -> appIntegrationSpendConfirm.discardPendingSpend",
-    "Generate remaining N: batch -> useAgentPanelSpendConfirm.confirmRemaining -> persistShown (one revise per page) -> IPC confirm-spend-remaining -> appIntegrationSpendConfirm.confirmRemainingShots (one confirmOneShot per shot)",
-    "Typing while the card is open and stopping the turn close the presentation through the lane (withdrawPresentation), not through the card's gate"
+    "The card's 取消 / 先不发了: V4Intervention reject -> useAgentPanelSpendCard.discard (never behind the busy guard) -> productionRunApi.discardSpend -> IPC discard-spend -> appIntegrationSpendConfirm.discardPendingSpend -> generation.withdrawPresentation",
+    "Shots already handed to the canvas: the ledger change subscription withdrawQueuedHandOvers (appIntegrationCanvasShot) withdraws every bound consent still queued on the canvas, whichever path closed the card",
+    "Typing while the card is open and stopping the turn close the presentation through the lane (withdrawPresentation); the same subscription withdraws the queued consents",
+    "The scheduler path (external host, re-shoot / resume observer, external MCP multi-shot): nomi_run_control pause / cancel -> applyRunControl; the run projection carries stopped (shotStopFacts) and mcpToolResults.userStopLine says it in that receipt and in every later nomi_read run"
   ],
   "external_sources": [],
   "internal_only_reason": "How a paid card is answered, withdrawn and stopped in the middle is Nomi's own spend-authority flow; no external protocol defines it.",
   "invariant_owner_layer": {
     "layer": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
     "tests": [
-      "electron/capabilityCore/agentPanelSpendRemaining.e2e.test.ts",
-      "tests/ux/spend-panel-write-ownership.test.mjs",
+      "electron/capabilityCore/agentPanelSpendCardStop.e2e.test.ts",
+      "src/workbench/ai/v4/useAgentPanelSpendCard.test.ts",
       "tests/ux/agent-spend-stop-midway.walk.mjs"
     ],
-    "why": "Where a running batch stops, and how many shots were approved before it stopped, is decided only by the host: confirmRemainingShots checks between shots whether the card is still open and returns batchStopped, and discardPendingSpend accepts any quote a decision on the card replaced in the open presentation (noteReplacing in confirmOneShot and removePendingSpendShot; not for edits, C09). The renderer only sends the × at once and draws what the host projects. The harness test goes through the renderer's real busy gate, which the host-level tests bypassed."
+    "why": "Where a stop lands is decided only in the ledger: discardPendingSpend closes the offer (unbound hand-overs recorded withdrawn in the same command) and withdrawQueuedHandOvers withdraws the bound consents still queued; what was already dispatched is reported as sent. The renderer only sends the stop at once and draws what the host projects. agentPanelSpendCardStop.e2e covers 取消 with 0 / 1 / 3 shots in flight, a × before the bind, double clicks, typing, a closed window, a superseded presentation and a restart."
   },
   "invariants": [
-    "The card's × reaches the host whenever it is pressed; nothing the card is doing at that moment can swallow it.",
-    "A stopped Generate remaining sends exactly the shots approved before the stop, and the card says how many were sent and how many were not.",
-    "While a batch is running the card does not offer per-shot actions; while a single action is on its way the other actions are visibly disabled."
+    "The card's 取消 reaches the host whenever it is pressed; nothing the card is doing at that moment can swallow it.",
+    "After a stop exactly the shots already handed to the provider (or still being handed over) are sent; consents still queued on the canvas are withdrawn, and the card's notice says how many were sent and how many were not. When every shot had already been handed over it does not say it stopped anything.",
+    "While shots are being handed over the card offers no per-shot action (no primary button, no 不生成 ×); while one action is on its way the others are visibly disabled.",
+    "On the scheduler path a user stop reports the same per-shot facts in nomi_run_control and in nomi_read run: K sent (they finish and bill as usual), M not sent (not charged); when every shot had already been sent it says the stop held back none and offers no continue."
   ],
   "doors": [
     {
       "kind": "read",
-      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "symbol": "replacedInOpenPresentation"
-    },
-    {
-      "kind": "read",
-      "path": "electron/productionRun/productionRunTypes.ts",
+      "path": "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
       "symbol": "batchStopped"
-    },
-    {
-      "kind": "read",
-      "path": "src/devlab/designLab/v4/states/07-spend-params.tsx",
-      "symbol": "projectSpendCard"
-    },
-    {
-      "kind": "read",
-      "path": "src/workbench/ai/ProjectAgentResidentShell.tsx",
-      "symbol": "batchRunning"
-    },
-    {
-      "kind": "read",
-      "path": "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
-      "symbol": "actionsDisabled"
     },
     {
       "kind": "read",
@@ -73,18 +57,28 @@
     },
     {
       "kind": "read",
-      "path": "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
-      "symbol": "projectSpendCard"
+      "path": "src/workbench/ai/v4/agentPanelSpendCard.ts",
+      "symbol": "spendCardStoppedMessage"
     },
     {
-      "kind": "read",
-      "path": "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
-      "symbol": "spendBatchStoppedKey"
+      "kind": "write",
+      "path": "electron/capabilityCore/agentPanelSpendConfirmTestUtils.ts",
+      "symbol": "withdrawQueuedHandOvers"
     },
     {
-      "kind": "read",
-      "path": "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
-      "symbol": "batchStopped"
+      "kind": "write",
+      "path": "electron/capabilityCore/agentPanelSpendConfirmTestUtils.ts",
+      "symbol": "discardPendingSpend"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/appIntegration.ts",
+      "symbol": "withdrawQueuedHandOvers"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "symbol": "withdrawQueuedHandOvers"
     },
     {
       "kind": "write",
@@ -93,98 +87,131 @@
     },
     {
       "kind": "write",
-      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "symbol": "confirmRemainingShots"
-    },
-    {
-      "kind": "write",
       "path": "electron/productionRun/productionActionIpc.ts",
       "symbol": "discardPendingSpendConfirmation"
+    },
+    {
+      "kind": "read",
+      "path": "electron/capabilityCore/mcpToolResults.ts",
+      "symbol": "userStopFacts"
+    },
+    {
+      "kind": "read",
+      "path": "electron/capabilityCore/mcpToolResults.ts",
+      "symbol": "userStopLine"
+    },
+    {
+      "kind": "read",
+      "path": "electron/productionRun/productionRunProjections.ts",
+      "symbol": "shotStopFacts"
+    },
+    {
+      "kind": "read",
+      "path": "electron/productionRun/shotLandingAdmission.ts",
+      "symbol": "shotSendFacts"
     }
   ],
   "door_reduction": {
-    "before": 6,
-    "after": 12,
-    "why_not": "The stop still has one owner (confirmRemainingShots decides where a running batch stops; discardPendingSpend is the × it listens for). Every added door is a reader of that one result: the quotes of a running batch (read only by discardPendingSpend), the batchStopped field on the action result (declared once, read by the card hook), and the card's progress / disabled state (drawn from the host projection by projectSpendCard and the card component). The IPC handler stays the single route from the renderer."
+    "before": 13,
+    "after": 13,
+    "why_not": "The stop has one owner (discardPendingSpend writes the close; withdrawQueuedHandOvers is the ledger's own reaction to any close). The other doors are its IPC route, its wiring in appIntegration and the test world, and the card's readers of the result (the sending look and the stop notice). 2026-10-24 (debt b, second half): the scheduler path's stop words were one generic per-status hint (RUN_STATUS_HINT, a single read door, counted into before); they now read per-shot facts through four read doors: the one per-shot classifier shared with the landing-failure facts (shotSendFacts), the projection reader (shotStopFacts) and the two readers in the MCP receipts (userStopFacts / userStopLine). The generic hint stays for runs without per-shot facts."
   },
-  "generality_proof": "Nothing depends on the model, vendor, shot kind or batch size: the host stops between any two shots of any batch, the renderer sends the × for any card, and the progress and the summary read the host's projection and the click-time stack (image or video wording through the same orderWording rule as the title).",
+  "generality_proof": "Nothing depends on the model, vendor, shot kind or batch size: every close path is the same ledger command, the subscription withdraws queued consents for any presentation, and the notice reads the ledger outcome (image or video wording through the same rule as the title).",
   "shared_boundaries": [
     {
       "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "symbol": "confirmRemainingShots",
-      "responsibility": "Approves the stack one shot at a time, checks between shots whether the card was closed, and reports how many were approved before a stop."
+      "symbol": "discardPendingSpend",
+      "responsibility": "Withdraws the offer in the ledger (generation.withdrawPresentation, user_closed); unbound hand-overs are recorded withdrawn in the same command. Answers batchStopped from the ledger only when this presentation handed shots over: sent = handed over or still being handed, notSent = undecided plus definitely not sent."
     },
     {
-      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "symbol": "discardPendingSpend",
-      "responsibility": "Withdraws the offer; accepts any quote that a decision on the card (Generate this one, Remove, each shot of Generate remaining) replaced in the presentation that is still open. A quote replaced by an edit is not accepted (C09: a delayed close cannot dismiss a newer displayed quote), and an Agent re-bid is a new presentation, so an old card's × is still refused."
+      "path": "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "symbol": "withdrawQueuedHandOvers",
+      "responsibility": "Ledger change subscription: when a presentation closes it withdraws every bound canvas consent that has not been dispatched yet, so no close path depends on a button remembering to do it."
+    },
+    {
+      "path": "electron/productionRun/shotLandingAdmission.ts",
+      "symbol": "shotStopFacts",
+      "responsibility": "The scheduler path's stop facts from the one per-shot classifier (shotSendFacts, the same \"sent\" criterion as the landing-failure facts): sent = may have reached the provider; not sent = not handed out yet, on the canvas or not; shots the user deleted or the canvas took over are not counted as held back."
     }
   ],
   "same_class_entry_points": [
     {
-      "path": "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
-      "entry_point": "discard",
+      "path": "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+      "entry_point": "discard (取消 / 先不发了)",
       "disposition": "enforced",
-      "evidence": "No longer goes through act(): during a batch it marks the stop (the persist loop stops before the next page; after hand-over it sends the × at once); during a single confirm it is sent at once. spend-panel-write-ownership.test.mjs covers both through the real gate."
+      "evidence": "Sent at once, never behind the busy guard; while a hand-over is in flight the card shows the stopping state (useAgentPanelSpendCard.test.ts)."
     },
     {
-      "path": "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
-      "entry_point": "remove / confirm / confirmRemaining while busy",
+      "path": "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+      "entry_point": "generate / exclude / restore while an action is on its way",
       "disposition": "enforced",
-      "evidence": "Stay behind the gate on purpose (the shot they would act on is already being confirmed), but are now visibly disabled (actionsDisabled), and during a batch they are not drawn at all."
+      "evidence": "Behind the busy guard and visibly disabled; while shots are being handed over the projection draws no primary and no exclusion toggles (agentPanelSpendCard.test.ts)."
     },
     {
       "path": "electron/agentLane/laneExtendedDesktopPorts.ts",
       "entry_point": "typing while the card is open / stopping the turn",
       "disposition": "not-affected",
-      "evidence": "These close the presentation through withdrawPresentation in the lane, not through the card's gate; the running batch sees the card closed at its next check and reports batchStopped the same way."
+      "evidence": "Closes the presentation through withdrawPresentation; withdrawQueuedHandOvers reacts to that close as to the card's (agentPanelSpendCardStop.e2e.test.ts user_wrote)."
+    },
+    {
+      "path": "electron/capabilityCore/mcpToolResults.ts",
+      "entry_point": "nomi_run_control pause / cancel and nomi_read run after a user stop of a scheduler batch",
+      "disposition": "enforced",
+      "evidence": "landFirstMultiShot.test.ts stop matrix (stop during submit 1 / 3 / 6 x pause / cancel): the projection's stopped lists the sent and the not-sent shots; both receipts say \"K sent, M not sent\" or, when all were sent, that the stop held back none; no generic \"unsubmitted jobs are not charged\" line; no continue hint when nothing is left; English wording checked too."
     }
   ],
   "recurrence": {
     "classification": "recurring",
-    "reason": "The host-level test of 'stop in the middle' (agentPanelSpendRemaining.e2e) bypassed the renderer, so the green test and the broken user path coexisted; the same shape (a stop routed through the gate of the thing it stops) can come back with any new long-running card action.",
+    "reason": "The host-level test of 'stop in the middle' bypassed the renderer, so a green test and a broken user path coexisted; the same shape (a stop routed through the gate of the thing it stops) can come back with any new long-running card action.",
     "same_class_scan": [
-      "node scripts/door-map.mjs --write=discardPendingSpend,confirmRemainingShots,discardPendingSpendConfirmation --read=replacedInOpenPresentation,spendBatchStoppedKey,batchStopped,batchRunning,actionsDisabled,projectSpendCard",
-      "rg \"act\\(async\" src/workbench/ai/v4/useAgentPanelSpendConfirm.ts -> confirm, confirmRemaining, remove, and the non-busy × path; the × no longer depends on busy"
+      "node scripts/door-map.mjs --write=discardPendingSpend,withdrawQueuedHandOvers,discardPendingSpendConfirmation --read=batchStopped (2026-10-24: 6 doors)",
+      "rg \"withdrawPresentation|operations.withdraw\" electron -> discardPendingSpend, laneExtendedDesktopPorts (redirected, stopped, no window), stalePresentationSweep (startup); every one closes through the ledger that withdrawQueuedHandOvers subscribes to",
+      "node scripts/door-map.mjs --read=shotStopFacts,userStopFacts,userStopLine (2026-10-24: 3 doors, the scheduler path's stop words); node scripts/door-map.mjs createMultiShotBatchScheduler (2026-10-24: appIntegration.ts x2, mcpStdioServer.ts and the test world)"
     ]
   },
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-    "invariant": "A running batch stops at the host between shots when the card is closed, and reports how many shots were approved before the stop; the card's × is never queued behind the card's other actions.",
-    "failure_mode": "If the × arrives after the last shot was approved, nothing is left to stop: the card has already closed with every shot decided, and the result says so.",
+    "invariant": "A stop is one ledger command: it withdraws the offer and records unbound hand-overs as withdrawn, and the ledger subscription withdraws queued canvas consents; the card's 取消 is never queued behind the card's other actions.",
+    "failure_mode": "A shot already dispatched when the stop lands is sent and paid; the notice counts it as sent.",
     "exception_policy": "none",
-    "strategy": "Send the × from the renderer without the busy gate; let the host accept the quotes the card's decisions replaced in the open presentation and return batchStopped; show progress instead of per-shot actions while the batch runs.",
+    "strategy": "Make the ledger the linearization point (close -> later binds refused -> queued consents withdrawn), send the stop from the renderer without the busy guard, and count the notice from the ledger.",
     "artifacts": [
-      "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts",
       "electron/capabilityCore/appIntegrationSpendConfirm.ts",
-      "src/workbench/ai/v4/agentPanelSpendCard.ts"
+      "electron/capabilityCore/appIntegrationCanvasShot.ts",
+      "src/workbench/ai/v4/useAgentPanelSpendCard.ts",
+      "src/workbench/ai/v4/agentPanelSpendCard.ts",
+      "electron/productionRun/shotLandingAdmission.ts",
+      "electron/capabilityCore/mcpToolResults.ts"
     ]
   },
   "regression_tests": [
-    "electron/capabilityCore/agentPanelSpendRemaining.e2e.test.ts",
-    "tests/ux/spend-panel-write-ownership.test.mjs",
+    "electron/capabilityCore/agentPanelSpendCardStop.e2e.test.ts",
     "src/workbench/ai/v4/agentPanelSpendCard.test.ts",
-    "tests/ux/agent-spend-stop-midway.walk.mjs"
+    "src/workbench/ai/v4/useAgentPanelSpendCard.test.ts",
+    "tests/ux/agent-spend-stop-midway.walk.mjs",
+    "electron/productionRun/landFirstMultiShot.test.ts"
   ],
   "class_regression_tests": [
-    "tests/ux/spend-panel-write-ownership.test.mjs"
+    "electron/capabilityCore/agentPanelSpendCardStop.e2e.test.ts",
+    "electron/productionRun/landFirstMultiShot.test.ts"
   ],
   "legacy_paths": {
     "status": "removed",
     "removed_paths": [
       "src/workbench/ai/v4/useAgentPanelSpendConfirm.ts"
     ],
-    "rationale": "Deleted in place: the × going through act() and being dropped while busy; the host's exact-quote-only check for a × that arrives after a decision on the card replaced the quote (first narrowed to a running batch, runningBatches; that narrowing is removed too)."
+    "rationale": "2026-10-24, deleted with the old card: confirmRemainingShots (the host approving shot by shot and checking between shots for a close), noteReplacing / replacedInOpenPresentation, and the old renderer hook. The card hands all its shots to the canvas at once and a stop is a ledger command."
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
     "rationale": "No third-party dependency handles the card's actions.",
     "exit_criteria": []
   },
-  "migration": "No stored data changes.",
+  "migration": "No stored data changes. 2026-10-24 D2 step 3 (design card docs/plan/2026-10-23-d2-pointer-spend-card.md; contract docs/fixes/2026-10-24-spend-card-one-engine.root-cause.json): the paid card became node pointers plus a read-only summary that hands its shots to the canvas engine; confirmRemainingShots (with the old renderer hook useAgentPanelSpendConfirm) was deleted with the old card, so this contract's boundaries, doors, tests and legacy paths were re-pointed to the code that holds the invariant today (problem, symptom, causes and class root above are the original record). 2026-10-24, debt b second half: the scheduler path (createMultiShotBatchScheduler still has callers after the card stopped using it) says the real per-shot counts after a user stop (run projection stopped; nomi_run_control and nomi_read run receipts).",
   "residual_risks": [
-    "While the host approves a shot, the main process blocks the UI thread for about 2 seconds at a time (pre-existing: project-folder containment checks on every run read, and the module registry rebuilt from the catalog on every read). A × pressed then reaches the host one or two shots later; in the fixture walk the stop landed after 4 and 5 of 6. Reported to the coordinator as its own lane.",
-    "With the network down, Generate remaining still approves every shot locally and each then fails to send; nothing is charged, but each has to be retried (known limitation for 0.23; 0.24 stops the batch on the first send that fails for network reasons)."
+    "A shot already dispatched to the provider when the stop lands cannot be recalled; it is generated and paid, and the notice counts it as sent.",
+    "With the network down, shots handed to the canvas fail to send one by one (not charged); the card shows each as not sent with 再试一次.",
+    "On the scheduler path a shot whose submit was in progress when the stop landed counts as sent (its submit intent is on disk and may have reached the provider)."
   ]
 }

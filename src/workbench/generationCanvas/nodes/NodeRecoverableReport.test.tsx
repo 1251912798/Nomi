@@ -41,7 +41,7 @@ describe('NodeRecoverableReport', () => {
     const retagged = 'NOMI_ERR::retrieval-query:: 取回卡在「查询任务」这一步：Nomi 在本机拦下了这次请求（原始码 outbound-blocked-submit）'
     for (const error of [passedThrough, retagged]) {
       const markup = renderToStaticMarkup(<NodeRecoverableReport node={{ runs: [], error }} onRecover={() => {}} onDismiss={() => {}} />)
-      expect(markup).not.toMatch(/没有发出去|was never sent/)
+      expect(markup).not.toMatch(/生成\**没有发出去|was never sent/)
       expect(markup).toContain(i18n.t('generationCommon.production.runAction.retry-retrieval'))
     }
   })

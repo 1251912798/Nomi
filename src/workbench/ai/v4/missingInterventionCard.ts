@@ -55,7 +55,7 @@ export type MissingCardTrace = Readonly<{
 /**
  * 宿主推过来一份「读不到」时，断在哪一环（2026-10-05 起它是推送里的一个值，不再是一次被拒的 IPC）。
  *
- * 判据只有这一个 owner：`useAgentPanelSpendConfirm` 只负责把值交过来。
+ * 判据只有这一个 owner：`useAgentPanelSpendCard` 只负责把值交过来。
  * `surface-unavailable` 是能力核压根没装起来（`residentSurfaceLifecycle` 的 install-failed 相），
  * `projection-failed` 是装着、但投影本身抛了——用户那头读作「读不到主进程那份清单」。
  * 两支穷尽，加第三种原因时编译器在这里当场红。

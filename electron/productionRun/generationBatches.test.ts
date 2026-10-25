@@ -7,11 +7,10 @@ import { prepareProductionGenerationAuthorization } from "./prepareProductionGen
 import { applyProductionCommand } from "./productionRunReducer";
 import type { ProductionGenerationShot, ProductionRun } from "./productionRunTypes";
 
-// `generation.revise` = 「用户在付费确认卡上改了参数」。
+// 同一份计划分几批批准（制作流程的付费门：外部宿主那一条路）。
 //
-// 守的是一条不变量：**收据 = 实际执行**。改了供应商真正会收到的那份载荷，就不许沿用旧授权——
-// 否则面板收据上写的和真正跑的会分叉，而用户是照着收据点的头。所以它必须逐字做到
-// `trial_narrow` 那五件事：门在等 → 没有 job 越线 → 撤门 → 丢旧 digest 的 job → 清封印回 draft。
+// 守的是一条不变量：**收据 = 实际执行**。后一批的授权累计在前一批之上：已经结清的作业、节点身份、硬上限都不丢；
+// 同一镜重新执行拿新的尝试号，载荷变了就不沿用旧授权。
 
 const NOW = "2026-09-11T00:00:00.000Z";
 

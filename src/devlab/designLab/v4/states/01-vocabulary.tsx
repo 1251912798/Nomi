@@ -18,12 +18,10 @@ import { V4ErrorBar, V4ToolReceipt } from '../../../../workbench/ai/v4/AgentPane
 import { V4FlowRow } from '../../../../workbench/ai/v4/AgentPanelV4Panel'
 import { useV4Labels } from '../../../../workbench/ai/v4/agentPanelV4Labels'
 import type { ToolReceipt, V4AssistantStatus } from '../../../../workbench/ai/v4/agentPanelV4Types'
-import { formatMoney } from '../../../../workbench/ai/v4/formatMoney'
-import { Piece, useV4Fixtures, useV4Locale, V4_LAB_SLOT_HANDLERS } from '../agentPanelV4LabKit'
-import type { LaneViewModelLabels } from '../../../../workbench/ai/lane/laneViewModel'
-import { providerFailureText } from '../../../../workbench/ai/lane/laneCommandFailure'
+import { labViewModelLabels, Piece, useV4Fixtures, useV4Locale, V4_LAB_SLOT_HANDLERS } from '../agentPanelV4LabKit'
 import { laneDrivenReceipt, laneSnapshotQuestionAnswered, laneSnapshotToolDenied, laneSnapshotToolRunning } from '../laneDrivenFixtures'
 import type { LabState } from '../../labScreen'
+import { SpendCardSlot, SpendCardStage, type SpendLabScenario } from '../../spendCard/spendCardLabKit'
 
 
 function UserCell({ withChip }: { withChip: boolean }): JSX.Element {
@@ -108,41 +106,6 @@ function ReceiptCell({ pick, errorBar }: { pick: keyof ReturnType<typeof useV4Fi
  * （摘要要按能力渲染、用时要转录时间戳过桥），接上去就是一张不该被录进基线的红——
  * 见 `laneDrivenFixtures.test.ts` 钉住的缺口清单。
  */
-/**
- * 两层投影要的那份词表。**抽出来是因为它有第二个消费者了**（反问答完那一行）——
- * 原地再抄一份就是同一份词表两个主人，而「类型要求穷尽」这条护栏的价值正好会被抄漏抵消。
- */
-export function labViewModelLabels(fx: ReturnType<typeof useV4Fixtures>, toolLabel: string): LaneViewModelLabels {
-  return {
-    toolLabel: () => toolLabel,
-    toolSummary: () => undefined,
-    toolFailure: () => undefined,
-    toolFailureDetail: (failure) => failure.code,
-    assistantFailure: (text, facts) => providerFailureText(text, fx.t, facts),
-    assistantRecovered: fx.t('agentPanelV4.errorRecovered'),
-    thinkingLabel: fx.t('agentPanelV4.thinkingLabel'),
-    formatTokens: (value) => String(value),
-    formatCost: (usd) => `$${usd.toFixed(2)}`,
-    // 三行的两个占位词。这一格只画工具收据，花费/上下文行不进画面；占位词走已有的 contextUnknown，
-    // 「免费」那句不预放死键（3b 的裁决），这里同样借占位符——它在这一格永远不会被渲染。
-    // 3c 的重试行：两个数由调用方填（语序问题），这一格永不渲染重试行，给最朴素的形状。
-    retryLabel: (attempt, maxAttempts) => `${attempt}/${maxAttempts}`,
-    unknown: fx.t('agentPanelV4.contextUnknown'),
-    // 任务卡的四个词条。这一格只画工具收据，一条 task 段都没有，所以它们永远不会被渲染——
-    // 但类型要求穷尽，而穷尽正是它的价值：哪天这一格接上任务卡，缺的那句话是编译错误，
-    // 不是画面上的一块空白。
-    taskTitle: fx.t('agentPanelV4.taskRun'),
-    formatStages: (done, total) => fx.t('agentPanelV4.taskStages', { done, total }),
-    formatMoney: (currency, amount) => formatMoney(fx.locale, currency, amount),
-    taskUnknown: fx.t('agentPanelV4.taskUnknown'),
-    attachmentUnavailable: fx.t('agentPanelV4.attachmentUnavailable'),
-    answered: fx.t('agentPanelV4.questionAnswered'),
-    // 技能名。这一格的转录里一条用户消息都没有，所以永远查不到它——但类型要求穷尽，
-    // 哪天这一格接上带技能的那一轮，缺的那句话是编译错误，不是画面上的一块空白。
-    skillLabel: (key) => key,
-  }
-}
-
 function LaneReceiptCell({ lane }: { lane: (rejectReason: string) => LaneSnapshot }): JSX.Element {
   const fx = useV4Fixtures()
   const labels = useV4Labels()
@@ -173,6 +136,19 @@ function SlotCell({ pick }: { pick: keyof ReturnType<typeof useV4Fixtures>['slot
   return (
     <Piece>
       <V4Intervention {...V4_LAB_SLOT_HANDLERS} data={fx.slots[pick]} labels={labels.intervention} />
+    </Piece>
+  )
+}
+
+/** 一段、等人决定：卡体读画布节点，所以先给画布播种（和付费卡那一屏同一份夹具）。 */
+const ONE_CLIP: SpendLabScenario = { shots: [{ shot: 1, duration: 4, offer: 'undecided' }], pricing: 'flat' }
+
+function SpendSlotCell(): JSX.Element {
+  return (
+    <Piece>
+      <SpendCardStage scenario={ONE_CLIP} bare>
+        <SpendCardSlot scenario={ONE_CLIP} />
+      </SpendCardStage>
     </Piece>
   )
 }
@@ -499,12 +475,14 @@ export const V4_VOCABULARY_STATES: readonly LabState[] = [
     coverage: 'component-only',
     render: () => <SlotCell pick="rejectReason" />,
   },
+  // 「⑤ 介入槽 · 付费」：D2 第③步的新卡（指向元素 + 一行只读摘要 + 「生成」）。卡体读画布节点，所以这一格先给画布播种
+  // （和付费卡那一屏同一份夹具）；整张卡的各种样子住自己的屏 `spend-card`（SpendCardQ1 板）。
   {
     id: 'v4-intervention-spend',
-    name: '⑤ 介入槽 · 付费（永远逐次问）',
-    source: '2026-09-06-agent-panel-v4.md · Vocabulary 板',
+    name: '⑤ 介入槽 · 付费（指向元素 + 一行只读摘要 + 生成）',
+    source: '2026-09-06-agent-panel-v4.md · Vocabulary 板｜docs/design/boards/2026-10-23/SpendCardQ1.board.json',
     coverage: 'component-only',
-    render: () => <SlotCell pick="spend" />,
+    render: () => <SpendSlotCell />,
   },
   {
     id: 'v4-intervention-question',

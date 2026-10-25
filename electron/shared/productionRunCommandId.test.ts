@@ -38,18 +38,20 @@ describe("production run command ids", () => {
 
   it("canvas claim ids: same attempt → same id; the next attempt of the same shot → a new id; always a valid identifier", () => {
     for (const runId of runs) {
-      const id = canvasShotClaimCommandId(runId, "shot-2", 1);
+      const id = canvasShotClaimCommandId(runId, "shot-2", 1, "canvas-run-1");
       expect(isProductionRunIdentifier(id), id).toBe(true);
-      expect(canvasShotClaimCommandId(runId, "shot-2", 1)).toBe(id);
+      expect(canvasShotClaimCommandId(runId, "shot-2", 1, "canvas-run-1")).toBe(id);
     }
     const ids = new Set([
-      canvasShotClaimCommandId("run-1", "shot-2", 1),
-      canvasShotClaimCommandId("run-1", "shot-2", 2),
-      canvasShotClaimCommandId("run-1", "shot-2", 3),
-      canvasShotClaimCommandId("run-1", "shot-3", 1),
-      canvasShotClaimCommandId("run-2", "shot-2", 1),
+      canvasShotClaimCommandId("run-1", "shot-2", 1, "canvas-a"),
+      canvasShotClaimCommandId("run-1", "shot-2", 2, "canvas-a"),
+      canvasShotClaimCommandId("run-1", "shot-2", 3, "canvas-a"),
+      canvasShotClaimCommandId("run-1", "shot-3", 1, "canvas-a"),
+      canvasShotClaimCommandId("run-2", "shot-2", 1, "canvas-a"),
+      // 同一次尝试先在节点上生成、后来被付费卡交给另一个画布 Run：认领记录要换成后来那一个。
+      canvasShotClaimCommandId("run-1", "shot-2", 1, "canvas-b"),
     ]);
-    expect(ids.size).toBe(5);
+    expect(ids.size).toBe(6);
   });
 
   it("rejects the shapes the IPC boundary rejects", () => {
