@@ -3,7 +3,7 @@
   "approvedOn": "2026-10-23",
   "stage": "built",
   "visualReview": "用户 10-23 在 Claude Design 画布「指向元素与付费确认卡 D2 样张」第二版（https://claude.ai/artifact/Y8E9jC8RNrKXVuwxUoWv2f，私有）上选 P1 + Q1（协调转述）；四条连带问题 10-23 由协调与用户定（见 decisions）。",
-  "sourceBoundary": "板源 = 画布 A1–A5 五格（source/A1-anatomy.dc.html … A5-i18n-dark.dc.html 是原样副本，canvas.json 为画布布局，nomi-ds.css 为画布用的 token 抄本）。preview/NodePointer.html 是把五格去掉 <x-dc> 壳拼成的静态页：样式一字未改，每格样式加前缀隔离、图标 id 加前缀，停掉转圈动画（抽取才确定），用户没选的 P3 区块不进预览。候选由 board-extract 的抽取函数在拼页上抽出。画布里的 Q1–Q4 在 SpendCardQ1 板，Q2 / Q3 / Z / 00 不进清单。",
+  "sourceBoundary": "板源 = 画布 A1–A5 五格（source/A1-anatomy.dc.html … A5-i18n-dark.dc.html 是原样副本，canvas.json 为画布布局，nomi-ds.css 为画布用的 token 抄本）。preview/NodePointer.html 是把五格去掉 <x-dc> 壳拼成的静态页：样式一字未改，每格样式加前缀隔离、图标 id 加前缀，停掉转圈动画（抽取才确定），用户没选的 P3 区块不进预览。候选由 board-extract 的抽取函数在拼页上抽出。画布里的 Q1–Q4 在 SpendCardQ1 板，Q2 / Q3 / Z / 00 不进清单。 10-25 方案一改了缩略图状态（和图标合成正中一个胶囊、不再压角标，所有指向卡片一起变），样子以 SpendCardQ1 板预览的「方案一」区为准；本板 A1–A5 的角标画法到此作废。",
   "designIntent": "聊天里代表画布节点的通用零件：长得和节点一样、点一下去节点、悬停两边同亮；所有聊天卡共用一个生产组件（付费卡、以后的时间轴改动、任务卡等）。先在设计实验室搭全状态，不接进聊天。",
   "priorArt": [
     {
@@ -134,9 +134,10 @@
         "dark"
       ],
       "candidates": [],
-      "status": "implemented",
+      "status": "in-progress",
       "assertion": "board:NodePointer/pointer.state.generating",
-      "note": "出处：本画布 canvas.json 的 thumb 注记。"
+      "note": "出处：本画布 canvas.json 的 thumb 注记。 现状：生成中的状态条在左下角（NodePointer.tsx statusBar），还没合进正中胶囊。",
+      "owner": "I-d2-plan1-c"
     },
     {
       "id": "pointer.state.done",
@@ -162,9 +163,10 @@
         "dark"
       ],
       "candidates": [],
-      "status": "implemented",
+      "status": "in-progress",
       "assertion": "board:NodePointer/pointer.state.failed",
-      "note": "出处：本画布 canvas.json 的 thumb 注记。"
+      "note": "出处：本画布 canvas.json 的 thumb 注记。 现状：失败的状态条在左下角（NodePointer.tsx statusBar），正中另有警示圆托；方案一只留正中一个胶囊。",
+      "owner": "I-d2-plan1-c"
     },
     {
       "id": "pointer.deleted",

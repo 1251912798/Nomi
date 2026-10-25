@@ -2,7 +2,7 @@
   "board": "SpendCardQ1",
   "extractor": "board-extract@1",
   "source": "preview/SpendCardQ1.html",
-  "sourceSha256": "d7d37b9c1327d858a3755311a0c64d56e6d80637181a2c22138f676948c5cc0c",
+  "sourceSha256": "8a9cd69aea356b7a70a307558bab34e6260de709aa110cc39141780eb228c886",
   "viewport": {
     "width": 1280,
     "height": 800
@@ -4074,10 +4074,10 @@
       "region": "panel"
     },
     {
-      "id": "311-h3-方案一状态补齐节点上已生",
+      "id": "311-h3-方案一用户1025拍板画",
       "kind": "text",
       "tag": "h3",
-      "text": "方案一 · 状态补齐：节点上已生成剩下 / 一张不剩",
+      "text": "方案一（用户 10-25 拍板）· 画布部件原样渲染：中英 · 明暗 · 宽窄 · 进行中 / 失败 / 一张不剩",
       "bbox": [
         20,
         2185,
@@ -4087,1057 +4087,3386 @@
       "region": "root"
     },
     {
-      "id": "312-div",
-      "kind": "box",
-      "tag": "div",
-      "text": "",
-      "bbox": [
-        44,
-        2237,
-        378,
-        312
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "313-span-Noi",
-      "kind": "text",
-      "tag": "span",
-      "text": "Noi",
-      "bbox": [
-        57,
-        2248,
-        38,
-        24
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "314-b-m",
-      "kind": "text",
-      "tag": "b",
-      "text": "m",
-      "bbox": [
-        77,
-        2250,
-        14,
-        19
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "315-p-已在画布上起草了3个镜头",
+      "id": "312-p-这一区是付费卡的现行标准",
       "kind": "text",
       "tag": "p",
-      "text": "已在画布上起草了 3 个镜头。",
-      "bbox": [
-        59,
-        2294,
-        348,
-        21
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "316-span-生成剩下的视频",
-      "kind": "text",
-      "tag": "span",
-      "text": "生成剩下的视频？",
-      "bbox": [
-        70,
-        2340,
-        112,
-        21
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "317-div",
-      "kind": "box",
-      "tag": "div",
-      "text": "",
-      "bbox": [
-        70,
-        2371,
-        326,
-        82
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "318-button",
-      "kind": "control",
-      "tag": "button",
-      "text": "",
-      "bbox": [
-        70,
-        2371,
-        103,
-        82
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "319-span-镜01",
-      "kind": "text",
-      "tag": "span",
-      "text": "镜 01",
-      "bbox": [
-        70,
-        2371,
-        44,
-        20
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "320-span",
-      "kind": "box",
-      "tag": "span",
-      "text": "",
-      "bbox": [
-        70,
-        2395,
-        103,
-        58
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "321-span-生成中",
-      "kind": "text",
-      "tag": "span",
-      "text": "生成中",
-      "bbox": [
-        74,
-        2429,
-        58,
-        20
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "322-button",
-      "kind": "control",
-      "tag": "button",
-      "text": "",
-      "bbox": [
-        181,
-        2371,
-        103,
-        82
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "323-span-镜02",
-      "kind": "text",
-      "tag": "span",
-      "text": "镜 02",
-      "bbox": [
-        181,
-        2371,
-        46,
-        20
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "324-span",
-      "kind": "text",
-      "tag": "span",
-      "text": "•",
-      "bbox": [
-        219,
-        2410,
-        28,
-        28
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "325-button",
-      "kind": "control",
-      "tag": "button",
-      "text": "",
-      "bbox": [
-        293,
-        2371,
-        103,
-        82
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "326-span-镜03",
-      "kind": "text",
-      "tag": "span",
-      "text": "镜 03",
-      "bbox": [
-        293,
-        2371,
-        46,
-        20
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "327-span",
-      "kind": "text",
-      "tag": "span",
-      "text": "•",
-      "bbox": [
-        330,
-        2410,
-        28,
-        28
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "328-span-Seedance20Fa",
-      "kind": "text",
-      "tag": "span",
-      "text": "Seedance 2.0 Fast · 16:9 · 480p",
-      "bbox": [
-        70,
-        2463,
-        326,
-        18
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "329-span-2段",
-      "kind": "text",
-      "tag": "span",
-      "text": "2 段",
-      "bbox": [
-        70,
-        2498,
-        23,
-        18
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "330-button-取消",
-      "kind": "text",
-      "tag": "button",
-      "text": "取消",
-      "bbox": [
-        261,
-        2491,
-        44,
-        32
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "331-button-生成2段",
-      "kind": "text",
-      "tag": "button",
-      "text": "生成 2 段",
-      "bbox": [
-        311,
-        2491,
-        85,
-        32
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "332-div",
-      "kind": "box",
-      "tag": "div",
-      "text": "",
-      "bbox": [
-        438,
-        2237,
-        378,
-        284
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "333-span-Noi",
-      "kind": "text",
-      "tag": "span",
-      "text": "Noi",
-      "bbox": [
-        451,
-        2248,
-        38,
-        24
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "334-b-m",
-      "kind": "text",
-      "tag": "b",
-      "text": "m",
-      "bbox": [
-        471,
-        2250,
-        14,
-        19
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "335-p-已在画布上起草了3个镜头",
-      "kind": "text",
-      "tag": "p",
-      "text": "已在画布上起草了 3 个镜头。",
-      "bbox": [
-        453,
-        2294,
-        348,
-        21
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "336-span-没有要生成的了",
-      "kind": "text",
-      "tag": "span",
-      "text": "没有要生成的了",
-      "bbox": [
-        464,
-        2340,
-        98,
-        21
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "337-div",
-      "kind": "box",
-      "tag": "div",
-      "text": "",
-      "bbox": [
-        464,
-        2371,
-        326,
-        82
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "338-button",
-      "kind": "control",
-      "tag": "button",
-      "text": "",
-      "bbox": [
-        464,
-        2371,
-        103,
-        82
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "339-span-镜01",
-      "kind": "text",
-      "tag": "span",
-      "text": "镜 01",
-      "bbox": [
-        464,
-        2371,
-        44,
-        20
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "340-span",
-      "kind": "text",
-      "tag": "span",
-      "text": "•",
-      "bbox": [
-        502,
-        2410,
-        28,
-        28
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "341-span-恢复",
-      "kind": "text",
-      "tag": "span",
-      "text": "恢复",
-      "bbox": [
-        464,
-        2398,
-        33,
-        16
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "342-button",
-      "kind": "control",
-      "tag": "button",
-      "text": "",
-      "bbox": [
-        575,
-        2371,
-        103,
-        82
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "343-span-镜02",
-      "kind": "text",
-      "tag": "span",
-      "text": "镜 02",
-      "bbox": [
-        575,
-        2371,
-        46,
-        20
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "344-span",
-      "kind": "text",
-      "tag": "span",
-      "text": "•",
-      "bbox": [
-        613,
-        2410,
-        28,
-        28
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "345-span-恢复",
-      "kind": "text",
-      "tag": "span",
-      "text": "恢复",
-      "bbox": [
-        575,
-        2398,
-        33,
-        16
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "346-button",
-      "kind": "control",
-      "tag": "button",
-      "text": "",
-      "bbox": [
-        687,
-        2371,
-        103,
-        82
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "347-span-镜03",
-      "kind": "text",
-      "tag": "span",
-      "text": "镜 03",
-      "bbox": [
-        687,
-        2371,
-        46,
-        20
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "348-span",
-      "kind": "text",
-      "tag": "span",
-      "text": "•",
-      "bbox": [
-        724,
-        2410,
-        28,
-        28
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "349-span-恢复",
-      "kind": "text",
-      "tag": "span",
-      "text": "恢复",
-      "bbox": [
-        687,
-        2398,
-        33,
-        16
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "350-button-取消",
-      "kind": "text",
-      "tag": "button",
-      "text": "取消",
-      "bbox": [
-        684,
-        2463,
-        44,
-        32
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "351-button-生成",
-      "kind": "text",
-      "tag": "button",
-      "text": "生成",
-      "bbox": [
-        734,
-        2463,
-        56,
-        32
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "352-h3-方案一状态补齐节点上已生",
-      "kind": "text",
-      "tag": "h3",
-      "text": "方案一 · 状态补齐：节点上已生成剩下 / 一张不剩",
+      "text": "这一区是付费卡的现行标准。上面 Q1 / Q4 两区是 10-23 的原样副本；两边不一致的地方以这一区为准：页脚不再写",
       "bbox": [
         20,
-        2605,
-        1240,
+        2213,
+        960,
+        34
+      ],
+      "region": "root"
+    },
+    {
+      "id": "313-figure",
+      "kind": "box",
+      "tag": "figure",
+      "text": "",
+      "bbox": [
+        20,
+        2259,
+        384,
+        523
+      ],
+      "region": "root"
+    },
+    {
+      "id": "314-figcaption-方案一中明宽384聚焦第",
+      "kind": "text",
+      "tag": "figcaption",
+      "text": "方案一 · 中 · 明 · 宽 384 · 聚焦第 1 格",
+      "bbox": [
+        20,
+        2259,
+        384,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "315-span-N",
+      "kind": "text",
+      "tag": "span",
+      "text": "N",
+      "bbox": [
+        33,
+        2296,
+        18,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "316-span-Nomi",
+      "kind": "text",
+      "tag": "span",
+      "text": "Nomi",
+      "bbox": [
+        59,
+        2295,
+        34,
         20
       ],
       "region": "root"
     },
     {
-      "id": "353-div",
-      "kind": "box",
-      "tag": "div",
-      "text": "",
-      "bbox": [
-        44,
-        2657,
-        378,
-        312
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "354-span-Noi",
+      "id": "317-span-已用11",
       "kind": "text",
       "tag": "span",
-      "text": "Noi",
+      "text": "已用 11",
       "bbox": [
-        57,
-        2668,
-        38,
-        24
+        101,
+        2294,
+        65,
+        22
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "355-b-m",
-      "kind": "text",
-      "tag": "b",
-      "text": "m",
+      "id": "318-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
       "bbox": [
-        77,
-        2670,
+        147,
+        2299,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "317-span-已用11"
+    },
+    {
+      "id": "319-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        291,
+        2297,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "313-figure"
+    },
+    {
+      "id": "320-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        346,
+        2298,
         14,
-        19
+        14
       ],
-      "region": "panel"
+      "region": "root",
+      "iconOf": "313-figure"
     },
     {
-      "id": "356-p-已在画布上起草了3个镜头",
-      "kind": "text",
-      "tag": "p",
-      "text": "已在画布上起草了 3 个镜头。",
+      "id": "321-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
       "bbox": [
-        59,
-        2714,
-        348,
-        21
+        370,
+        2298,
+        14,
+        14
       ],
-      "region": "panel"
+      "region": "root",
+      "iconOf": "313-figure"
     },
     {
-      "id": "357-span-生成剩下的视频",
+      "id": "322-div-画3张雨后纸船的图起草好",
       "kind": "text",
-      "tag": "span",
-      "text": "生成剩下的视频？",
-      "bbox": [
-        70,
-        2760,
-        112,
-        21
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "358-div",
-      "kind": "box",
       "tag": "div",
-      "text": "",
+      "text": "画 3 张雨后纸船的图，起草好给我确认。",
       "bbox": [
-        70,
-        2791,
-        326,
-        82
+        152,
+        2412,
+        239,
+        31
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "359-button",
-      "kind": "control",
-      "tag": "button",
+      "id": "323-svg",
+      "kind": "icon",
+      "tag": "svg",
       "text": "",
       "bbox": [
-        70,
-        2791,
-        103,
-        82
+        33,
+        2455,
+        14,
+        14
       ],
-      "region": "panel"
+      "region": "root",
+      "iconOf": "313-figure"
     },
     {
-      "id": "360-span-镜01",
+      "id": "324-span-准备生成",
       "kind": "text",
       "tag": "span",
-      "text": "镜 01",
+      "text": "准备生成",
       "bbox": [
-        70,
-        2791,
-        44,
-        20
+        53,
+        2454,
+        48,
+        17
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "361-span",
-      "kind": "box",
-      "tag": "span",
+      "id": "325-svg",
+      "kind": "icon",
+      "tag": "svg",
       "text": "",
       "bbox": [
-        70,
-        2815,
-        103,
-        58
+        107,
+        2456,
+        12,
+        12
       ],
-      "region": "panel"
+      "region": "root",
+      "iconOf": "313-figure"
     },
     {
-      "id": "362-span-生成中",
+      "id": "326-section-付费卡",
+      "kind": "text",
+      "tag": "section",
+      "text": "付费卡",
+      "bbox": [
+        32,
+        2481,
+        362,
+        198
+      ],
+      "region": "root"
+    },
+    {
+      "id": "327-span-生成这些图片",
       "kind": "text",
       "tag": "span",
-      "text": "生成中",
+      "text": "生成这些图片？",
+      "bbox": [
+        43,
+        2490,
+        91,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "328-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        43,
+        2516,
+        62,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "329-span-出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "出发",
+      "bbox": [
+        105,
+        2516,
+        24,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "330-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
       "bbox": [
         74,
-        2849,
-        58,
-        20
+        2564,
+        11,
+        11
       ],
-      "region": "panel"
+      "region": "root",
+      "iconOf": "326-section-付费卡"
     },
     {
-      "id": "363-button",
-      "kind": "control",
+      "id": "331-span-已定位",
+      "kind": "text",
+      "tag": "span",
+      "text": "已定位",
+      "bbox": [
+        88,
+        2562,
+        33,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "332-button-雨后纸船出发不生成",
+      "kind": "text",
       "tag": "button",
+      "text": "雨后纸船 · 出发不生成",
+      "bbox": [
+        135,
+        2532,
+        24,
+        24
+      ],
+      "region": "root"
+    },
+    {
+      "id": "333-svg",
+      "kind": "icon",
+      "tag": "svg",
       "text": "",
       "bbox": [
-        181,
-        2791,
-        103,
-        82
+        143,
+        2540,
+        8,
+        8
       ],
-      "region": "panel"
+      "region": "root",
+      "iconOf": "332-button-雨后纸船出发不生成"
     },
     {
-      "id": "364-span-镜02",
+      "id": "334-span-雨后纸船",
       "kind": "text",
       "tag": "span",
-      "text": "镜 02",
+      "text": "雨后纸船 ·",
       "bbox": [
-        181,
-        2791,
-        46,
-        20
+        159,
+        2516,
+        60,
+        17
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "365-span",
+      "id": "335-span-越过落叶",
       "kind": "text",
       "tag": "span",
-      "text": "•",
+      "text": "越过落叶",
       "bbox": [
         219,
-        2830,
-        28,
-        28
+        2516,
+        48,
+        17
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "366-button",
-      "kind": "control",
-      "tag": "button",
+      "id": "336-svg",
+      "kind": "icon",
+      "tag": "svg",
       "text": "",
       "bbox": [
-        293,
-        2791,
-        103,
-        82
+        207,
+        2563,
+        13,
+        13
       ],
-      "region": "panel"
+      "region": "root",
+      "iconOf": "326-section-付费卡"
     },
     {
-      "id": "367-span-镜03",
+      "id": "337-span-雨后纸船",
       "kind": "text",
       "tag": "span",
-      "text": "镜 03",
+      "text": "雨后纸船 ·",
       "bbox": [
-        293,
-        2791,
-        46,
-        20
+        275,
+        2516,
+        60,
+        17
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "368-span",
+      "id": "338-span-停在石阶",
       "kind": "text",
       "tag": "span",
-      "text": "•",
+      "text": "停在石阶",
       "bbox": [
-        330,
-        2830,
-        28,
-        28
+        335,
+        2516,
+        48,
+        17
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "369-span-Seedance20Fa",
-      "kind": "text",
-      "tag": "span",
-      "text": "Seedance 2.0 Fast · 16:9 · 480p",
+      "id": "339-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
       "bbox": [
-        70,
-        2884,
-        326,
+        323,
+        2563,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "326-section-付费卡"
+    },
+    {
+      "id": "340-p-GPTImage2Nom",
+      "kind": "text",
+      "tag": "p",
+      "text": "GPT Image 2（Nomi 选的）· 16:9 · 1K",
+      "bbox": [
+        43,
+        2606,
+        340,
         18
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "370-span-2段",
-      "kind": "text",
-      "tag": "span",
-      "text": "2 段",
-      "bbox": [
-        70,
-        2919,
-        23,
-        18
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "371-button-取消",
+      "id": "341-button-取消",
       "kind": "text",
       "tag": "button",
       "text": "取消",
       "bbox": [
-        261,
-        2912,
-        44,
-        32
+        234,
+        2641,
+        50,
+        28
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "372-button-生成2段",
+      "id": "342-button-生成3张",
       "kind": "text",
       "tag": "button",
-      "text": "生成 2 段",
+      "text": "生成 3 张",
       "bbox": [
-        311,
-        2912,
-        85,
-        32
+        290,
+        2641,
+        93,
+        28
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "373-div",
+      "id": "343-span",
+      "kind": "text",
+      "tag": "span",
+      "text": "⏎",
+      "bbox": [
+        360,
+        2647,
+        11,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "344-span-可继续输入将排队发送",
+      "kind": "text",
+      "tag": "span",
+      "text": "可继续输入，将排队发送…",
+      "bbox": [
+        43,
+        2699,
+        338,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "345-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        43,
+        2740,
+        15,
+        15
+      ],
+      "region": "root",
+      "iconOf": "313-figure"
+    },
+    {
+      "id": "346-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        68,
+        2740,
+        15,
+        15
+      ],
+      "region": "root",
+      "iconOf": "313-figure"
+    },
+    {
+      "id": "347-span-Skill",
+      "kind": "text",
+      "tag": "span",
+      "text": "Skill",
+      "bbox": [
+        93,
+        2739,
+        40,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "348-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        93,
+        2741,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "347-span-Skill"
+    },
+    {
+      "id": "349-span-请求批准",
+      "kind": "text",
+      "tag": "span",
+      "text": "请求批准",
+      "bbox": [
+        281,
+        2739,
+        62,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "350-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        331,
+        2741,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "349-span-请求批准"
+    },
+    {
+      "id": "351-figure",
       "kind": "box",
-      "tag": "div",
+      "tag": "figure",
       "text": "",
       "bbox": [
-        438,
-        2657,
-        378,
-        284
+        428,
+        2259,
+        380,
+        523
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "374-span-Noi",
+      "id": "352-figcaption-方案一中明窄320第1张",
+      "kind": "text",
+      "tag": "figcaption",
+      "text": "方案一 · 中 · 明 · 窄 320 · 第 1 张已在节点上点过生成 · 鼠标停在第 2 张",
+      "bbox": [
+        428,
+        2259,
+        380,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "353-span-N",
       "kind": "text",
       "tag": "span",
-      "text": "Noi",
+      "text": "N",
       "bbox": [
-        451,
-        2668,
-        38,
-        24
+        441,
+        2296,
+        18,
+        18
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "375-b-m",
-      "kind": "text",
-      "tag": "b",
-      "text": "m",
-      "bbox": [
-        471,
-        2670,
-        14,
-        19
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "376-p-已在画布上起草了3个镜头",
-      "kind": "text",
-      "tag": "p",
-      "text": "已在画布上起草了 3 个镜头。",
-      "bbox": [
-        453,
-        2714,
-        348,
-        21
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "377-span-没有要生成的了",
+      "id": "354-span-Nomi",
       "kind": "text",
       "tag": "span",
-      "text": "没有要生成的了",
+      "text": "Nomi",
       "bbox": [
-        464,
-        2760,
-        98,
-        21
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "378-div",
-      "kind": "box",
-      "tag": "div",
-      "text": "",
-      "bbox": [
-        464,
-        2791,
-        326,
-        82
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "379-button",
-      "kind": "control",
-      "tag": "button",
-      "text": "",
-      "bbox": [
-        464,
-        2791,
-        103,
-        82
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "380-span-镜01",
-      "kind": "text",
-      "tag": "span",
-      "text": "镜 01",
-      "bbox": [
-        464,
-        2791,
-        44,
+        467,
+        2295,
+        34,
         20
       ],
-      "region": "panel"
+      "region": "root"
+    },
+    {
+      "id": "355-span-已用11",
+      "kind": "text",
+      "tag": "span",
+      "text": "已用 11",
+      "bbox": [
+        509,
+        2294,
+        65,
+        22
+      ],
+      "region": "root"
+    },
+    {
+      "id": "356-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        555,
+        2299,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "355-span-已用11"
+    },
+    {
+      "id": "357-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        635,
+        2297,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "351-figure"
+    },
+    {
+      "id": "358-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        690,
+        2298,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "351-figure"
+    },
+    {
+      "id": "359-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        714,
+        2298,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "351-figure"
+    },
+    {
+      "id": "360-div-画3张雨后纸船的图起草好",
+      "kind": "text",
+      "tag": "div",
+      "text": "画 3 张雨后纸船的图，起草好给我确认。",
+      "bbox": [
+        496,
+        2424,
+        239,
+        31
+      ],
+      "region": "root"
+    },
+    {
+      "id": "361-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        441,
+        2467,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "351-figure"
+    },
+    {
+      "id": "362-span-准备生成",
+      "kind": "text",
+      "tag": "span",
+      "text": "准备生成",
+      "bbox": [
+        461,
+        2466,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "363-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        515,
+        2468,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "351-figure"
+    },
+    {
+      "id": "364-section-付费卡",
+      "kind": "text",
+      "tag": "section",
+      "text": "付费卡",
+      "bbox": [
+        440,
+        2493,
+        298,
+        186
+      ],
+      "region": "root"
+    },
+    {
+      "id": "365-span-生成剩下的图片",
+      "kind": "text",
+      "tag": "span",
+      "text": "生成剩下的图片？",
+      "bbox": [
+        451,
+        2502,
+        104,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "366-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        451,
+        2528,
+        62,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "367-span-出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "出发",
+      "bbox": [
+        513,
+        2528,
+        24,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "368-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        471,
+        2570,
+        11,
+        11
+      ],
+      "region": "root",
+      "iconOf": "364-section-付费卡"
+    },
+    {
+      "id": "369-span-生成中",
+      "kind": "text",
+      "tag": "span",
+      "text": "生成中",
+      "bbox": [
+        485,
+        2568,
+        33,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "370-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        546,
+        2528,
+        39,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "371-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        584,
+        2528,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "372-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        582,
+        2569,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "364-section-付费卡"
+    },
+    {
+      "id": "373-button-雨后纸船越过落叶不生成",
+      "kind": "text",
+      "tag": "button",
+      "text": "雨后纸船 · 越过落叶不生成",
+      "bbox": [
+        616,
+        2544,
+        24,
+        24
+      ],
+      "region": "root"
+    },
+    {
+      "id": "374-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        624,
+        2552,
+        8,
+        8
+      ],
+      "region": "root",
+      "iconOf": "373-button-雨后纸船越过落叶不生成"
+    },
+    {
+      "id": "375-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        640,
+        2528,
+        39,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "376-span-停在石阶",
+      "kind": "text",
+      "tag": "span",
+      "text": "停在石阶",
+      "bbox": [
+        679,
+        2528,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "377-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        677,
+        2569,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "364-section-付费卡"
+    },
+    {
+      "id": "378-p-GPTImage2Nom",
+      "kind": "text",
+      "tag": "p",
+      "text": "GPT Image 2（Nomi 选的）· 16:9 · 1K",
+      "bbox": [
+        451,
+        2606,
+        276,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "379-button-取消",
+      "kind": "text",
+      "tag": "button",
+      "text": "取消",
+      "bbox": [
+        578,
+        2641,
+        50,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "380-button-生成2张",
+      "kind": "text",
+      "tag": "button",
+      "text": "生成 2 张",
+      "bbox": [
+        634,
+        2641,
+        93,
+        28
+      ],
+      "region": "root"
     },
     {
       "id": "381-span",
       "kind": "text",
       "tag": "span",
-      "text": "•",
+      "text": "⏎",
+      "bbox": [
+        704,
+        2647,
+        11,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "382-span-可继续输入将排队发送",
+      "kind": "text",
+      "tag": "span",
+      "text": "可继续输入，将排队发送…",
+      "bbox": [
+        451,
+        2699,
+        274,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "383-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        451,
+        2740,
+        15,
+        15
+      ],
+      "region": "root",
+      "iconOf": "351-figure"
+    },
+    {
+      "id": "384-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        476,
+        2740,
+        15,
+        15
+      ],
+      "region": "root",
+      "iconOf": "351-figure"
+    },
+    {
+      "id": "385-span-Skill",
+      "kind": "text",
+      "tag": "span",
+      "text": "Skill",
+      "bbox": [
+        501,
+        2739,
+        40,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "386-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        501,
+        2741,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "385-span-Skill"
+    },
+    {
+      "id": "387-span-请求批准",
+      "kind": "text",
+      "tag": "span",
+      "text": "请求批准",
+      "bbox": [
+        625,
+        2739,
+        62,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "388-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        675,
+        2741,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "387-span-请求批准"
+    },
+    {
+      "id": "389-figure",
+      "kind": "box",
+      "tag": "figure",
+      "text": "",
+      "bbox": [
+        832,
+        2259,
+        384,
+        523
+      ],
+      "region": "root"
+    },
+    {
+      "id": "390-figcaption-方案一英暗宽384去掉了",
+      "kind": "text",
+      "tag": "figcaption",
+      "text": "方案一 · 英 · 暗 · 宽 384 · 去掉了第 3 张",
+      "bbox": [
+        832,
+        2259,
+        384,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "391-span-N",
+      "kind": "text",
+      "tag": "span",
+      "text": "N",
+      "bbox": [
+        845,
+        2296,
+        18,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "392-span-Nomi",
+      "kind": "text",
+      "tag": "span",
+      "text": "Nomi",
+      "bbox": [
+        871,
+        2295,
+        34,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "393-span-Used11",
+      "kind": "text",
+      "tag": "span",
+      "text": "Used 11",
+      "bbox": [
+        913,
+        2294,
+        68,
+        22
+      ],
+      "region": "root"
+    },
+    {
+      "id": "394-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        962,
+        2299,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "393-span-Used11"
+    },
+    {
+      "id": "395-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1103,
+        2297,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "389-figure"
+    },
+    {
+      "id": "396-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1158,
+        2298,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "389-figure"
+    },
+    {
+      "id": "397-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1182,
+        2298,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "389-figure"
+    },
+    {
+      "id": "398-div-Draw3rainypa",
+      "kind": "text",
+      "tag": "div",
+      "text": "Draw 3 rainy paper-boat images and let me confirm the drafts",
+      "bbox": [
+        889,
+        2395,
+        314,
+        49
+      ],
+      "region": "root"
+    },
+    {
+      "id": "399-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        845,
+        2455,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "389-figure"
+    },
+    {
+      "id": "400-span-Preparegener",
+      "kind": "text",
+      "tag": "span",
+      "text": "Prepare generation",
+      "bbox": [
+        865,
+        2454,
+        107,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "401-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        977,
+        2456,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "389-figure"
+    },
+    {
+      "id": "402-section-Spendcard",
+      "kind": "text",
+      "tag": "section",
+      "text": "Spend card",
+      "bbox": [
+        844,
+        2481,
+        362,
+        198
+      ],
+      "region": "root"
+    },
+    {
+      "id": "403-span-Generatethes",
+      "kind": "text",
+      "tag": "span",
+      "text": "Generate these images?",
+      "bbox": [
+        855,
+        2490,
+        151,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "404-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        855,
+        2516,
+        65,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "405-span-setsoff",
+      "kind": "text",
+      "tag": "span",
+      "text": "sets off",
+      "bbox": [
+        919,
+        2516,
+        43,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "406-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        902,
+        2563,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "402-section-Spendcard"
+    },
+    {
+      "id": "407-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        971,
+        2516,
+        60,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "408-span-driftsby",
+      "kind": "text",
+      "tag": "span",
+      "text": "drifts by",
+      "bbox": [
+        1031,
+        2516,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "409-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1018,
+        2563,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "402-section-Spendcard"
+    },
+    {
+      "id": "410-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        1087,
+        2516,
+        80,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "411-span-rests",
+      "kind": "text",
+      "tag": "span",
+      "text": "rests",
+      "bbox": [
+        1166,
+        2516,
+        28,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "412-button-Restore",
+      "kind": "text",
+      "tag": "button",
+      "text": "Restore",
+      "bbox": [
+        1111,
+        2559,
+        58,
+        22
+      ],
+      "region": "root"
+    },
+    {
+      "id": "413-p-GPTImage2Nom",
+      "kind": "text",
+      "tag": "p",
+      "text": "GPT Image 2 (Nomi's pick) · 16:9 · 1K",
+      "bbox": [
+        855,
+        2606,
+        340,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "414-button-Cancel",
+      "kind": "text",
+      "tag": "button",
+      "text": "Cancel",
+      "bbox": [
+        975,
+        2641,
+        64,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "415-button-Generate2ima",
+      "kind": "text",
+      "tag": "button",
+      "text": "Generate 2 images",
+      "bbox": [
+        1045,
+        2641,
+        149,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "416-span",
+      "kind": "text",
+      "tag": "span",
+      "text": "⏎",
+      "bbox": [
+        1171,
+        2647,
+        11,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "417-span-Keeptypingit",
+      "kind": "text",
+      "tag": "span",
+      "text": "Keep typing — it will be queued…",
+      "bbox": [
+        855,
+        2699,
+        338,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "418-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        855,
+        2740,
+        15,
+        15
+      ],
+      "region": "root",
+      "iconOf": "389-figure"
+    },
+    {
+      "id": "419-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        880,
+        2740,
+        15,
+        15
+      ],
+      "region": "root",
+      "iconOf": "389-figure"
+    },
+    {
+      "id": "420-span-Skill",
+      "kind": "text",
+      "tag": "span",
+      "text": "Skill",
+      "bbox": [
+        905,
+        2739,
+        40,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "421-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        905,
+        2741,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "420-span-Skill"
+    },
+    {
+      "id": "422-span-Askfirst",
+      "kind": "text",
+      "tag": "span",
+      "text": "Ask first",
+      "bbox": [
+        1094,
+        2739,
+        60,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "423-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1143,
+        2741,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "422-span-Askfirst"
+    },
+    {
+      "id": "424-figure",
+      "kind": "box",
+      "tag": "figure",
+      "text": "",
+      "bbox": [
+        20,
+        2806,
+        320,
+        523
+      ],
+      "region": "root"
+    },
+    {
+      "id": "425-figcaption-方案一英暗窄320比例逐",
+      "kind": "text",
+      "tag": "figcaption",
+      "text": "方案一 · 英 · 暗 · 窄 320 · 比例逐镜不同",
+      "bbox": [
+        20,
+        2806,
+        320,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "426-span-N",
+      "kind": "text",
+      "tag": "span",
+      "text": "N",
+      "bbox": [
+        33,
+        2843,
+        18,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "427-span-Nomi",
+      "kind": "text",
+      "tag": "span",
+      "text": "Nomi",
+      "bbox": [
+        59,
+        2842,
+        34,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "428-span-Used11",
+      "kind": "text",
+      "tag": "span",
+      "text": "Used 11",
+      "bbox": [
+        101,
+        2841,
+        68,
+        22
+      ],
+      "region": "root"
+    },
+    {
+      "id": "429-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        151,
+        2846,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "428-span-Used11"
+    },
+    {
+      "id": "430-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        227,
+        2844,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "424-figure"
+    },
+    {
+      "id": "431-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        282,
+        2845,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "424-figure"
+    },
+    {
+      "id": "432-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        306,
+        2845,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "424-figure"
+    },
+    {
+      "id": "433-div-Draw3rainypa",
+      "kind": "text",
+      "tag": "div",
+      "text": "Draw 3 rainy paper-boat images and let me confirm the drafts",
+      "bbox": [
+        66,
+        2954,
+        261,
+        49
+      ],
+      "region": "root"
+    },
+    {
+      "id": "434-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        33,
+        3014,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "424-figure"
+    },
+    {
+      "id": "435-span-Preparegener",
+      "kind": "text",
+      "tag": "span",
+      "text": "Prepare generation",
+      "bbox": [
+        53,
+        3013,
+        107,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "436-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        166,
+        3015,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "424-figure"
+    },
+    {
+      "id": "437-section-Spendcard",
+      "kind": "text",
+      "tag": "section",
+      "text": "Spend card",
+      "bbox": [
+        32,
+        3040,
+        298,
+        186
+      ],
+      "region": "root"
+    },
+    {
+      "id": "438-span-Generatethes",
+      "kind": "text",
+      "tag": "span",
+      "text": "Generate these images?",
+      "bbox": [
+        43,
+        3049,
+        151,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "439-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        43,
+        3075,
+        43,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "440-span-setsoff",
+      "kind": "text",
+      "tag": "span",
+      "text": "sets off",
+      "bbox": [
+        86,
+        3075,
+        43,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "441-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        80,
+        3116,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "437-section-Spendcard"
+    },
+    {
+      "id": "442-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        138,
+        3075,
+        39,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "443-span-driftsby",
+      "kind": "text",
+      "tag": "span",
+      "text": "drifts by",
+      "bbox": [
+        177,
+        3075,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "444-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        174,
+        3116,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "437-section-Spendcard"
+    },
+    {
+      "id": "445-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        232,
+        3075,
+        58,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "446-span-rests",
+      "kind": "text",
+      "tag": "span",
+      "text": "rests",
+      "bbox": [
+        291,
+        3075,
+        28,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "447-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        269,
+        3116,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "437-section-Spendcard"
+    },
+    {
+      "id": "448-p-GPTImage2Nom",
+      "kind": "text",
+      "tag": "p",
+      "text": "GPT Image 2 (Nomi's pick) · 1K · 16:9 ×2 · 9:16 ×1",
+      "bbox": [
+        43,
+        3153,
+        276,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "449-button-Cancel",
+      "kind": "text",
+      "tag": "button",
+      "text": "Cancel",
+      "bbox": [
+        100,
+        3188,
+        64,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "450-button-Generate3ima",
+      "kind": "text",
+      "tag": "button",
+      "text": "Generate 3 images",
+      "bbox": [
+        170,
+        3188,
+        149,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "451-span",
+      "kind": "text",
+      "tag": "span",
+      "text": "⏎",
+      "bbox": [
+        296,
+        3194,
+        11,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "452-span-Keeptypingit",
+      "kind": "text",
+      "tag": "span",
+      "text": "Keep typing — it will be queued…",
+      "bbox": [
+        43,
+        3246,
+        274,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "453-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        43,
+        3287,
+        15,
+        15
+      ],
+      "region": "root",
+      "iconOf": "424-figure"
+    },
+    {
+      "id": "454-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        68,
+        3287,
+        15,
+        15
+      ],
+      "region": "root",
+      "iconOf": "424-figure"
+    },
+    {
+      "id": "455-span-Skill",
+      "kind": "text",
+      "tag": "span",
+      "text": "Skill",
+      "bbox": [
+        93,
+        3286,
+        40,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "456-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        93,
+        3288,
+        13,
+        13
+      ],
+      "region": "root",
+      "iconOf": "455-span-Skill"
+    },
+    {
+      "id": "457-span-Askfirst",
+      "kind": "text",
+      "tag": "span",
+      "text": "Ask first",
+      "bbox": [
+        219,
+        3286,
+        60,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "458-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        267,
+        3288,
+        12,
+        12
+      ],
+      "region": "root",
+      "iconOf": "457-span-Askfirst"
+    },
+    {
+      "id": "459-figure",
+      "kind": "box",
+      "tag": "figure",
+      "text": "",
+      "bbox": [
+        364,
+        2806,
+        384,
+        843
+      ],
+      "region": "root"
+    },
+    {
+      "id": "460-figcaption-两个方案共用中明进行中失",
+      "kind": "text",
+      "tag": "figcaption",
+      "text": "两个方案共用 · 中 · 明 · 进行中 / 失败 / 一张不剩",
+      "bbox": [
+        364,
+        2806,
+        384,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "461-span-进行中交给画布之后还有几",
+      "kind": "text",
+      "tag": "span",
+      "text": "进行中（交给画布之后，还有几张在交）",
+      "bbox": [
+        375,
+        2849,
+        362,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "462-section-付费卡",
+      "kind": "text",
+      "tag": "section",
+      "text": "付费卡",
+      "bbox": [
+        375,
+        2873,
+        362,
+        174
+      ],
+      "region": "root"
+    },
+    {
+      "id": "463-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        386,
+        2884,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "462-section-付费卡"
+    },
+    {
+      "id": "464-span-正在发出23张",
+      "kind": "text",
+      "tag": "span",
+      "text": "正在发出 2/3 张",
+      "bbox": [
+        406,
+        2882,
+        96,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "465-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        386,
+        2909,
+        62,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "466-span-出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "出发",
+      "bbox": [
+        448,
+        2909,
+        24,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "467-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        417,
+        2957,
+        11,
+        11
+      ],
+      "region": "root",
+      "iconOf": "462-section-付费卡"
+    },
+    {
+      "id": "468-span-生成中",
+      "kind": "text",
+      "tag": "span",
+      "text": "生成中",
+      "bbox": [
+        431,
+        2955,
+        33,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "469-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
       "bbox": [
         502,
-        2830,
-        28,
-        28
+        2909,
+        60,
+        17
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "382-span-恢复",
+      "id": "470-span-越过落叶",
       "kind": "text",
       "tag": "span",
-      "text": "恢复",
+      "text": "越过落叶",
       "bbox": [
-        464,
-        2818,
-        33,
-        16
+        562,
+        2909,
+        48,
+        17
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "383-button",
-      "kind": "control",
-      "tag": "button",
+      "id": "471-svg",
+      "kind": "icon",
+      "tag": "svg",
       "text": "",
       "bbox": [
-        575,
-        2791,
-        103,
-        82
+        533,
+        2957,
+        11,
+        11
       ],
-      "region": "panel"
+      "region": "root",
+      "iconOf": "462-section-付费卡"
     },
     {
-      "id": "384-span-镜02",
+      "id": "472-span-提交中",
       "kind": "text",
       "tag": "span",
-      "text": "镜 02",
+      "text": "提交中",
       "bbox": [
-        575,
-        2791,
-        46,
-        20
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "385-span",
-      "kind": "text",
-      "tag": "span",
-      "text": "•",
-      "bbox": [
-        613,
-        2830,
-        28,
-        28
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "386-span-恢复",
-      "kind": "text",
-      "tag": "span",
-      "text": "恢复",
-      "bbox": [
-        575,
-        2818,
+        547,
+        2955,
         33,
         16
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "387-button",
-      "kind": "control",
-      "tag": "button",
+      "id": "473-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        618,
+        2909,
+        60,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "474-span-停在石阶",
+      "kind": "text",
+      "tag": "span",
+      "text": "停在石阶",
+      "bbox": [
+        678,
+        2909,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "475-svg",
+      "kind": "icon",
+      "tag": "svg",
       "text": "",
       "bbox": [
-        687,
-        2791,
-        103,
-        82
+        649,
+        2957,
+        11,
+        11
       ],
-      "region": "panel"
+      "region": "root",
+      "iconOf": "462-section-付费卡"
     },
     {
-      "id": "388-span-镜03",
+      "id": "476-span-排队中",
       "kind": "text",
       "tag": "span",
-      "text": "镜 03",
+      "text": "排队中",
       "bbox": [
-        687,
-        2791,
-        46,
-        20
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "389-span",
-      "kind": "text",
-      "tag": "span",
-      "text": "•",
-      "bbox": [
-        724,
-        2830,
-        28,
-        28
-      ],
-      "region": "panel"
-    },
-    {
-      "id": "390-span-恢复",
-      "kind": "text",
-      "tag": "span",
-      "text": "恢复",
-      "bbox": [
-        687,
-        2818,
+        663,
+        2955,
         33,
         16
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "391-button-取消",
+      "id": "477-span-点取消停下剩下的",
+      "kind": "text",
+      "tag": "span",
+      "text": "点「取消」停下剩下的",
+      "bbox": [
+        386,
+        3016,
+        120,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "478-button-取消",
       "kind": "text",
       "tag": "button",
       "text": "取消",
       "bbox": [
-        684,
-        2884,
-        44,
-        32
+        676,
+        3010,
+        50,
+        28
       ],
-      "region": "panel"
+      "region": "root"
     },
     {
-      "id": "392-button-生成",
+      "id": "479-span-失败有一张没发出去留在卡",
+      "kind": "text",
+      "tag": "span",
+      "text": "失败（有一张没发出去，留在卡里）",
+      "bbox": [
+        375,
+        3071,
+        362,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "480-section-付费卡",
+      "kind": "text",
+      "tag": "section",
+      "text": "付费卡",
+      "bbox": [
+        375,
+        3095,
+        362,
+        198
+      ],
+      "region": "root"
+    },
+    {
+      "id": "481-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        386,
+        3106,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "480-section-付费卡"
+    },
+    {
+      "id": "482-span-镜头2没有发出去",
+      "kind": "text",
+      "tag": "span",
+      "text": "镜头 2 没有发出去",
+      "bbox": [
+        406,
+        3104,
+        107,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "483-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        386,
+        3131,
+        62,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "484-span-出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "出发",
+      "bbox": [
+        448,
+        3131,
+        24,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "485-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        417,
+        3179,
+        11,
+        11
+      ],
+      "region": "root",
+      "iconOf": "480-section-付费卡"
+    },
+    {
+      "id": "486-span-生成中",
+      "kind": "text",
+      "tag": "span",
+      "text": "生成中",
+      "bbox": [
+        431,
+        3176,
+        33,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "487-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        502,
+        3131,
+        60,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "488-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        562,
+        3131,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "489-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        538,
+        3179,
+        11,
+        11
+      ],
+      "region": "root",
+      "iconOf": "480-section-付费卡"
+    },
+    {
+      "id": "490-span-失败",
+      "kind": "text",
+      "tag": "span",
+      "text": "失败",
+      "bbox": [
+        552,
+        3176,
+        22,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "491-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        618,
+        3131,
+        60,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "492-span-停在石阶",
+      "kind": "text",
+      "tag": "span",
+      "text": "停在石阶",
+      "bbox": [
+        678,
+        3131,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "493-span-还没发",
+      "kind": "text",
+      "tag": "span",
+      "text": "还没发",
+      "bbox": [
+        656,
+        3176,
+        33,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "494-p-服务暂时不可用",
+      "kind": "text",
+      "tag": "p",
+      "text": "服务暂时不可用。",
+      "bbox": [
+        386,
+        3221,
+        340,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "495-button-先不发了",
+      "kind": "text",
+      "tag": "button",
+      "text": "先不发了",
+      "bbox": [
+        557,
+        3256,
+        74,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "496-button-再试一次",
+      "kind": "text",
+      "tag": "button",
+      "text": "再试一次",
+      "bbox": [
+        637,
+        3256,
+        89,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "497-span",
+      "kind": "text",
+      "tag": "span",
+      "text": "⏎",
+      "bbox": [
+        703,
+        3262,
+        11,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "498-span-一张不剩三张都去掉了",
+      "kind": "text",
+      "tag": "span",
+      "text": "一张不剩（三张都去掉了）",
+      "bbox": [
+        375,
+        3317,
+        362,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "499-section-付费卡",
+      "kind": "text",
+      "tag": "section",
+      "text": "付费卡",
+      "bbox": [
+        375,
+        3341,
+        362,
+        174
+      ],
+      "region": "root"
+    },
+    {
+      "id": "500-span-没有要生成的了",
+      "kind": "text",
+      "tag": "span",
+      "text": "没有要生成的了",
+      "bbox": [
+        386,
+        3350,
+        91,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "501-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        386,
+        3376,
+        62,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "502-span-出发",
+      "kind": "text",
+      "tag": "span",
+      "text": "出发",
+      "bbox": [
+        448,
+        3376,
+        24,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "503-button-恢复",
+      "kind": "text",
+      "tag": "button",
+      "text": "恢复",
+      "bbox": [
+        420,
+        3419,
+        40,
+        22
+      ],
+      "region": "root"
+    },
+    {
+      "id": "504-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        502,
+        3376,
+        60,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "505-span-越过落叶",
+      "kind": "text",
+      "tag": "span",
+      "text": "越过落叶",
+      "bbox": [
+        562,
+        3376,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "506-button-恢复",
+      "kind": "text",
+      "tag": "button",
+      "text": "恢复",
+      "bbox": [
+        536,
+        3419,
+        40,
+        22
+      ],
+      "region": "root"
+    },
+    {
+      "id": "507-span-雨后纸船",
+      "kind": "text",
+      "tag": "span",
+      "text": "雨后纸船 ·",
+      "bbox": [
+        618,
+        3376,
+        60,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "508-span-停在石阶",
+      "kind": "text",
+      "tag": "span",
+      "text": "停在石阶",
+      "bbox": [
+        678,
+        3376,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "509-button-恢复",
+      "kind": "text",
+      "tag": "button",
+      "text": "恢复",
+      "bbox": [
+        652,
+        3419,
+        40,
+        22
+      ],
+      "region": "root"
+    },
+    {
+      "id": "510-button-取消",
+      "kind": "text",
+      "tag": "button",
+      "text": "取消",
+      "bbox": [
+        590,
+        3478,
+        50,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "511-button-生成",
       "kind": "text",
       "tag": "button",
       "text": "生成",
       "bbox": [
-        734,
-        2884,
-        56,
-        32
+        646,
+        3478,
+        80,
+        28
       ],
-      "region": "panel"
+      "region": "root"
+    },
+    {
+      "id": "512-span",
+      "kind": "text",
+      "tag": "span",
+      "text": "⏎",
+      "bbox": [
+        695,
+        3484,
+        11,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "513-figure",
+      "kind": "box",
+      "tag": "figure",
+      "text": "",
+      "bbox": [
+        772,
+        2806,
+        384,
+        843
+      ],
+      "region": "root"
+    },
+    {
+      "id": "514-figcaption-两个方案共用英暗进行中失",
+      "kind": "text",
+      "tag": "figcaption",
+      "text": "两个方案共用 · 英 · 暗 · 进行中 / 失败 / 一张不剩",
+      "bbox": [
+        772,
+        2806,
+        384,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "515-span-Sendinghande",
+      "kind": "text",
+      "tag": "span",
+      "text": "Sending (handed to the canvas, some still on their way)",
+      "bbox": [
+        783,
+        2849,
+        362,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "516-section-Spendcard",
+      "kind": "text",
+      "tag": "section",
+      "text": "Spend card",
+      "bbox": [
+        783,
+        2873,
+        362,
+        174
+      ],
+      "region": "root"
+    },
+    {
+      "id": "517-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        794,
+        2884,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "516-section-Spendcard"
+    },
+    {
+      "id": "518-span-Sending2of3i",
+      "kind": "text",
+      "tag": "span",
+      "text": "Sending 2 of 3 images",
+      "bbox": [
+        814,
+        2882,
+        140,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "519-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        794,
+        2909,
+        65,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "520-span-setsoff",
+      "kind": "text",
+      "tag": "span",
+      "text": "sets off",
+      "bbox": [
+        859,
+        2909,
+        43,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "521-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        813,
+        2957,
+        11,
+        11
+      ],
+      "region": "root",
+      "iconOf": "516-section-Spendcard"
+    },
+    {
+      "id": "522-span-Generating",
+      "kind": "text",
+      "tag": "span",
+      "text": "Generating",
+      "bbox": [
+        827,
+        2955,
+        56,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "523-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        910,
+        2909,
+        60,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "524-span-driftsby",
+      "kind": "text",
+      "tag": "span",
+      "text": "drifts by",
+      "bbox": [
+        970,
+        2909,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "525-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        929,
+        2957,
+        11,
+        11
+      ],
+      "region": "root",
+      "iconOf": "516-section-Spendcard"
+    },
+    {
+      "id": "526-span-Submitting",
+      "kind": "text",
+      "tag": "span",
+      "text": "Submitting",
+      "bbox": [
+        943,
+        2955,
+        55,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "527-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        1026,
+        2909,
+        80,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "528-span-rests",
+      "kind": "text",
+      "tag": "span",
+      "text": "rests",
+      "bbox": [
+        1106,
+        2909,
+        28,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "529-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        1053,
+        2957,
+        11,
+        11
+      ],
+      "region": "root",
+      "iconOf": "516-section-Spendcard"
+    },
+    {
+      "id": "530-span-Queued",
+      "kind": "text",
+      "tag": "span",
+      "text": "Queued",
+      "bbox": [
+        1067,
+        2955,
+        39,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "531-span-Canceltostop",
+      "kind": "text",
+      "tag": "span",
+      "text": "Cancel to stop the rest",
+      "bbox": [
+        794,
+        3016,
+        129,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "532-button-Cancel",
+      "kind": "text",
+      "tag": "button",
+      "text": "Cancel",
+      "bbox": [
+        1070,
+        3010,
+        64,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "533-span-Failedonesho",
+      "kind": "text",
+      "tag": "span",
+      "text": "Failed (one shot wasn't sent; the card stays)",
+      "bbox": [
+        783,
+        3071,
+        362,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "534-section-Spendcard",
+      "kind": "text",
+      "tag": "section",
+      "text": "Spend card",
+      "bbox": [
+        783,
+        3095,
+        362,
+        198
+      ],
+      "region": "root"
+    },
+    {
+      "id": "535-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        794,
+        3106,
+        14,
+        14
+      ],
+      "region": "root",
+      "iconOf": "534-section-Spendcard"
+    },
+    {
+      "id": "536-span-Shot2wasntse",
+      "kind": "text",
+      "tag": "span",
+      "text": "Shot 2 wasn't sent",
+      "bbox": [
+        814,
+        3104,
+        116,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "537-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        794,
+        3131,
+        65,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "538-span-setsoff",
+      "kind": "text",
+      "tag": "span",
+      "text": "sets off",
+      "bbox": [
+        859,
+        3131,
+        43,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "539-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        813,
+        3179,
+        11,
+        11
+      ],
+      "region": "root",
+      "iconOf": "534-section-Spendcard"
+    },
+    {
+      "id": "540-span-Generating",
+      "kind": "text",
+      "tag": "span",
+      "text": "Generating",
+      "bbox": [
+        827,
+        3176,
+        56,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "541-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        910,
+        3131,
+        60,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "542-span-driftsby",
+      "kind": "text",
+      "tag": "span",
+      "text": "drifts by",
+      "bbox": [
+        970,
+        3131,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "543-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        942,
+        3179,
+        11,
+        11
+      ],
+      "region": "root",
+      "iconOf": "534-section-Spendcard"
+    },
+    {
+      "id": "544-span-Failed",
+      "kind": "text",
+      "tag": "span",
+      "text": "Failed",
+      "bbox": [
+        956,
+        3176,
+        30,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "545-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        1026,
+        3131,
+        80,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "546-span-rests",
+      "kind": "text",
+      "tag": "span",
+      "text": "rests",
+      "bbox": [
+        1106,
+        3131,
+        28,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "547-span-Notsentyet",
+      "kind": "text",
+      "tag": "span",
+      "text": "Not sent yet",
+      "bbox": [
+        1049,
+        3176,
+        63,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "548-p-Theserviceis",
+      "kind": "text",
+      "tag": "p",
+      "text": "The service is unavailable right now.",
+      "bbox": [
+        794,
+        3221,
+        340,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "549-button-Dontsend",
+      "kind": "text",
+      "tag": "button",
+      "text": "Don't send",
+      "bbox": [
+        948,
+        3256,
+        86,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "550-button-Tryagain",
+      "kind": "text",
+      "tag": "button",
+      "text": "Try again",
+      "bbox": [
+        1039,
+        3256,
+        95,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "551-span",
+      "kind": "text",
+      "tag": "span",
+      "text": "⏎",
+      "bbox": [
+        1111,
+        3262,
+        11,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "552-span-Nothinglefta",
+      "kind": "text",
+      "tag": "span",
+      "text": "Nothing left (all three skipped)",
+      "bbox": [
+        783,
+        3317,
+        362,
+        16
+      ],
+      "region": "root"
+    },
+    {
+      "id": "553-section-Spendcard",
+      "kind": "text",
+      "tag": "section",
+      "text": "Spend card",
+      "bbox": [
+        783,
+        3341,
+        362,
+        174
+      ],
+      "region": "root"
+    },
+    {
+      "id": "554-span-Nothingleftt",
+      "kind": "text",
+      "tag": "span",
+      "text": "Nothing left to generate",
+      "bbox": [
+        794,
+        3350,
+        149,
+        18
+      ],
+      "region": "root"
+    },
+    {
+      "id": "555-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        794,
+        3376,
+        65,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "556-span-setsoff",
+      "kind": "text",
+      "tag": "span",
+      "text": "sets off",
+      "bbox": [
+        859,
+        3376,
+        43,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "557-button-Restore",
+      "kind": "text",
+      "tag": "button",
+      "text": "Restore",
+      "bbox": [
+        819,
+        3419,
+        58,
+        22
+      ],
+      "region": "root"
+    },
+    {
+      "id": "558-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        910,
+        3376,
+        60,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "559-span-driftsby",
+      "kind": "text",
+      "tag": "span",
+      "text": "drifts by",
+      "bbox": [
+        970,
+        3376,
+        48,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "560-button-Restore",
+      "kind": "text",
+      "tag": "button",
+      "text": "Restore",
+      "bbox": [
+        935,
+        3419,
+        58,
+        22
+      ],
+      "region": "root"
+    },
+    {
+      "id": "561-span-Paperboat",
+      "kind": "text",
+      "tag": "span",
+      "text": "Paper boat —",
+      "bbox": [
+        1026,
+        3376,
+        80,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "562-span-rests",
+      "kind": "text",
+      "tag": "span",
+      "text": "rests",
+      "bbox": [
+        1106,
+        3376,
+        28,
+        17
+      ],
+      "region": "root"
+    },
+    {
+      "id": "563-button-Restore",
+      "kind": "text",
+      "tag": "button",
+      "text": "Restore",
+      "bbox": [
+        1051,
+        3419,
+        58,
+        22
+      ],
+      "region": "root"
+    },
+    {
+      "id": "564-button-Cancel",
+      "kind": "text",
+      "tag": "button",
+      "text": "Cancel",
+      "bbox": [
+        970,
+        3478,
+        64,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "565-button-Generate",
+      "kind": "text",
+      "tag": "button",
+      "text": "Generate",
+      "bbox": [
+        1041,
+        3478,
+        93,
+        28
+      ],
+      "region": "root"
+    },
+    {
+      "id": "566-span",
+      "kind": "text",
+      "tag": "span",
+      "text": "⏎",
+      "bbox": [
+        1111,
+        3484,
+        11,
+        16
+      ],
+      "region": "root"
     }
   ]
 }
