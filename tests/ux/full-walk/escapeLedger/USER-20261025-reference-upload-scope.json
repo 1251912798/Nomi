@@ -1,0 +1,29 @@
+{
+  "id": "USER-20261025-reference-upload-scope",
+  "since": "2026-10-25",
+  "source": "用户与协调会话复现：真实延迟参考图上传期间，Nomi 自己的项目 / Run 投影写入使 Agent 付费确认被 generation_reference_scope_changed 拒绝。",
+  "category": "reference-integrity",
+  "problem": "参考图上传窗口里的 Nomi 自写会被误判为用户改变了生成范围；确认卡既不提交请求，也没有把拒绝原因落到已有可见错误面上。",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [
+    "真实延迟 multipart 参考图上传期间，Nomi 自己的项目 / Run revision 与 canvas 投影变化不应让仍然相同的候选、参考身份和镜头 Run 语义失效。",
+    "用户改变镜头候选、参考身份或镜头 Run 状态时，上传完成前必须拒绝并沿用 approval-stale 的中英文可见错误。"
+  ],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "协调复现材料：/Users/aoqimin/Nomi-coord/tmp/I-mo64-paid/report-main.json、report-paid.json、main.log、after-click-paid.png。",
+    "electron/capabilityCore/productionReferenceUrls.test.ts：loopback multipart 服务延迟 25ms，真实 FormData 上传返回 URL，证明上传窗口确实存在。",
+    "electron/capabilityCore/generationReferenceScope.test.ts：Nomi 自写 revision / canvas 投影通过；候选、参考身份和 Run 状态变化拒绝。"
+  ],
+  "rootCauseContract": "docs/fixes/2026-10-25-agent-reference-upload-scope.root-cause.json",
+  "completionCommits": [
+    "5408e85b73626b9cfc91bacff33ab1806a9e36cd"
+  ],
+  "classCheck": {
+    "kind": "matrix",
+    "file": "electron/capabilityCore/generationReferenceScope.test.ts"
+  }
+}

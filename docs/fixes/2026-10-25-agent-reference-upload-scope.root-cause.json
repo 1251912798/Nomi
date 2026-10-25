@@ -1,0 +1,152 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-25-agent-reference-upload-scope",
+  "problem_type": "paid generation reference upload scope invalidation",
+  "symptom": "After a real delayed reference-image upload, clicking the spend confirmation is refused with generation_reference_scope_changed; no request is created, the card remains unchanged, and the user sees no reason.",
+  "direct_cause": "appIntegration and mcpStdioServer each compare the whole project revision and Run revision after resolveProductionReferenceUrls returns. The real upload window can contain Nomi-owned project/cache/canvas writes, so the duplicated assertCurrent rejects its own writes.",
+  "class_root": "The upload-time guard has no shared semantic snapshot that separates user-visible generation scope (project identity, selected candidate/reference identities, and the selected shot's Run state) from Nomi-owned projection/cache revisions.",
+  "affected_population": [
+    "Agent-panel and authenticated MCP reference-image generations",
+    "Any provider whose real asset localization is asynchronous",
+    "macOS and other platforms where canvas/cache writes overlap the upload window"
+  ],
+  "scope_paths": [
+    "electron/capabilityCore/generationReferenceScope.ts",
+    "electron/capabilityCore/appIntegration.ts",
+    "electron/capabilityCore/mcpStdioServer.ts",
+    "electron/capabilityCore/appIntegrationProductionActions.test.ts",
+    "electron/capabilityCore/generationReferenceScope.test.ts",
+    "electron/capabilityCore/productionReferenceUrls.test.ts",
+    "src/workbench/ai/v4/spendCardFailure.ts",
+    "src/workbench/ai/v4/spendCardFailure.test.ts",
+    "tests/ux/mcp-l2-journeys.e2e.mjs"
+  ],
+  "entry_points": [
+    "appIntegration startCapabilityCore generation planning prepareAuthorization",
+    "mcpStdioServer authenticated generation planning prepareAuthorization",
+    "prepareProductionGenerationAuthorizationWithReferences reference localization boundary"
+  ],
+  "internal_only_reason": "This is an application-owned authorization invariant; provider upload behavior is already covered by the existing asset-localization contract and does not decide the scope rule.",
+  "invariants": [
+    "Nomi-owned project/cache/canvas projection writes during reference localization do not invalidate a still-current user-approved generation scope.",
+    "A changed project binding, selected candidate/reference identity/content, or selected shot Run semantic state fails closed before an authorization envelope is returned.",
+    "Both production hosts call the same shared scope guard and expose the structured refusal through the existing spend-card i18n path."
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "electron/capabilityCore/generationReferenceScope.ts",
+      "symbol": "createGenerationReferenceScopeGuard"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/appIntegration.ts",
+      "symbol": "prepareProductionGenerationAuthorizationWithReferences"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/mcpStdioServer.ts",
+      "symbol": "prepareProductionGenerationAuthorizationWithReferences"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 3,
+    "why_not": "The two host entry doors remain for app Agent and authenticated MCP, while a single shared read guard replaces their duplicated local assertions; the extra listed door is the centralized owner, not a new rule."
+  },
+  "generality_proof": "The guard snapshots the semantic candidate/reference and selected-shot Run state before any resolver, then re-reads the same fields after every asynchronous resolver callback. It intentionally ignores project and Run revision counters and canvas binding/cache fields, so every provider, caller, and platform using the shared authorization helper gets the same behavior while user edits or external Run progress still fail closed.",
+  "shared_boundaries": [
+    {
+      "path": "electron/capabilityCore/generationReferenceScope.ts",
+      "symbol": "createGenerationReferenceScopeGuard",
+      "responsibility": "Capture and assert the stable project binding, selected candidate/reference identities, and selected-shot Run semantic state while excluding Nomi-owned projection/cache revisions."
+    },
+    {
+      "path": "src/workbench/ai/v4/spendCardFailure.ts",
+      "symbol": "spendActionFailureCopy",
+      "responsibility": "Keep the structured approval-stale refusal on the existing bilingual visible toast."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/capabilityCore/appIntegration.ts",
+      "entry_point": "startCapabilityCore generationPlanning.prepareAuthorization",
+      "disposition": "enforced",
+      "evidence": "App Agent panel calls prepareProductionGenerationAuthorizationWithReferences and will receive the shared guard through its assertCurrent callback."
+    },
+    {
+      "path": "electron/capabilityCore/mcpStdioServer.ts",
+      "entry_point": "authenticated MCP generationPlanning.prepareAuthorization",
+      "disposition": "enforced",
+      "evidence": "The stdio host calls the same shared authorization helper and no longer owns a second comparison."
+    },
+    {
+      "path": "electron/capabilityCore/appIntegrationSpendConfirm.ts",
+      "entry_point": "confirmPendingSpend",
+      "disposition": "enforced",
+      "evidence": "Its existing failed() path carries approval_stale to the renderer; only the source guard changes."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any asynchronous provider upload, cache write, canvas projection, platform file watcher, or alternate host can advance revision counters during the same confirmation window.",
+    "same_class_scan": [
+      "rg generation_reference_scope_changed electron src tests scripts",
+      "node scripts/door-map.mjs prepareAuthorization",
+      "rg resolveProductionReferenceUrls prepareProductionGenerationAuthorizationWithReferences electron",
+      "Checked appIntegration and mcpStdioServer as independent production hosts; both duplicated the same assertion before this fix."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/capabilityCore/generationReferenceScope.ts",
+    "invariant": "Only user-meaningful generation-scope fields may invalidate an authorization while reference localization is in flight; Nomi-owned projection/cache revision changes are ignored.",
+    "failure_mode": "Throw generation_reference_scope_changed before an authorization envelope or provider submission is created.",
+    "exception_policy": "none",
+    "strategy": "Delete both host-local comparisons and make the shared authorization helper require the same guard callback for every asynchronous reference resolver.",
+    "artifacts": [
+      "electron/capabilityCore/generationReferenceScope.ts",
+      "electron/capabilityCore/appIntegration.ts",
+      "electron/capabilityCore/mcpStdioServer.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/capabilityCore/generationReferenceScope.test.ts",
+    "electron/capabilityCore/productionReferenceUrls.test.ts",
+    "electron/capabilityCore/appIntegrationProductionActions.test.ts",
+    "src/workbench/ai/v4/spendCardFailure.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/capabilityCore/generationReferenceScope.test.ts",
+    "electron/capabilityCore/productionReferenceUrls.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/capabilityCore/appIntegration.ts",
+      "electron/capabilityCore/mcpStdioServer.ts",
+      "tests/ux/mcp-l2-journeys.e2e.mjs"
+    ],
+    "rationale": "The duplicate host assertions and the test-only immediate URL bypass are obsolete paths that allowed the class to escape shared coverage."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The invariant is owned by Nomi authorization and asset-localization code; no third-party runtime controls scope comparison.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted schema changes. Existing pending cards and Runs keep their current shape; the next confirmation captures the new semantic scope and either proceeds or returns the existing failed card with approval_stale.",
+  "residual_risks": [
+    "The true paid provider run remains unverified until coordination executes the paid sample on the merged build.",
+    "A provider-specific upload adapter outside resolveProductionReferenceUrls is not covered unless it enters the shared authorization helper; door-map and tests cover the two current production hosts."
+  ],
+  "detected_by": "user",
+  "recurrence_check_on": "2026-10-25",
+  "invariant_owner_layer": {
+    "layer": "electron/capabilityCore/generationReferenceScope.ts",
+    "tests": [
+      "electron/capabilityCore/generationReferenceScope.test.ts",
+      "electron/capabilityCore/productionReferenceUrls.test.ts"
+    ],
+    "why": "The shared guard owns the semantic snapshot and both hosts call it; the listed tests prove self-write tolerance and user-scope rejection."
+  }
+}

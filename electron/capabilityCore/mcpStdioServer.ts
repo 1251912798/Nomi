@@ -1,5 +1,5 @@
 import { resolveIndexedReferencePreview } from './pendingSpendReferences'
-import { spendReferenceKey } from "../shared/contracts/pendingSpendConfirm";
+import { createGenerationReferenceScopeGuard } from './generationReferenceScope'
 
 // 能力核 · MCP stdio server（app 自身二进制以 NOMI_MCP_STDIO 模式跑；见 docs/plan/2026-06-24-packaged-mcp-stdio-server.md）。
 //
@@ -271,9 +271,6 @@ export async function startMcpStdioServer(authorities: McpStdioServerOptions = {
   }
 
   const fixtureBaseUrlOverride = productionFixtureBaseOriginFromEnv(process.env)
-  const fixtureReferenceUrl = fixtureBaseUrlOverride && process.env.NOMI_E2E_FIXTURE_REFERENCE_URL
-    ? process.env.NOMI_E2E_FIXTURE_REFERENCE_URL
-    : undefined
   const liveGenerationRuntime = createLiveGenerationRuntime({
     bootstrap: (state, options) => createGenerationProviderBootstrap(state, {
       ...options,
@@ -317,16 +314,21 @@ export async function startMcpStdioServer(authorities: McpStdioServerOptions = {
         if (!projectRecord || !Number.isInteger(projectRecord.revision)) throw new Error('Generation authorization requires the current project revision')
         const authorizationRun = productionRuns.repository.read(lease.projectId, operation.operationId)
         if (!authorizationRun) throw new Error('Generation authorization requires the current Run snapshot')
+        const assertCurrent = createGenerationReferenceScopeGuard({
+          lease,
+          operation,
+          contract,
+          ...(multiShot ? { multiShot } : {}),
+          initialRun: authorizationRun,
+          readProject: () => {
+            const current = readWorkspaceProject(lease.projectId, getWorkspaceRepositoryDeps())
+            return current ? { id: current.id, immutableProjectUuid: current.immutableProjectUuid, projectGeneration: current.projectGeneration } : null
+          },
+          readRun: () => productionRuns.repository.read(lease.projectId, operation.operationId),
+        })
         return prepareProductionGenerationAuthorizationWithReferences({
           lease,
-            assertCurrent: () => {
-              const currentProject = readWorkspaceProject(lease.projectId, getWorkspaceRepositoryDeps())
-              const currentRun = productionRuns.repository.read(lease.projectId, operation.operationId)
-              if (!currentProject || currentProject.revision !== projectRecord.revision
-                || currentProject.immutableProjectUuid !== lease.immutableProjectUuid
-                || currentProject.projectGeneration !== lease.projectGeneration
-                || currentRun?.revision !== authorizationRun?.revision) throw new Error('generation_reference_scope_changed')
-            },
+          assertCurrent,
           projectRevision: projectRecord.revision,
           operation,
           contract,
@@ -335,7 +337,7 @@ export async function startMcpStdioServer(authorities: McpStdioServerOptions = {
           resolveShotPrice,
             run: authorizationRun,
           now: new Date().toISOString(),
-        }, fixtureReferenceUrl ? async ({ references }) => Object.fromEntries(references.map(reference => [spendReferenceKey(reference), fixtureReferenceUrl])) : undefined)
+        })
       },
       start: async (operation, lease) => {
         const providerBootstrap = readProviderBootstrap()
