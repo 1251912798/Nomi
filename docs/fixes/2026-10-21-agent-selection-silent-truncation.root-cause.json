@@ -71,7 +71,7 @@
   "invariants": [
     "Projection first chooses the richest detail rung that lists every handle; when no rung lists all handles, every kind with a complete reader is omitted as a whole and only kinds without that reader may use the least detailed longest fitting prefix.",
     "total = listed + omitted and listed handles preserve snapshot order.",
-    "The omitted note is derived from one type-to-recovery table: omitted canvasNode kinds direct the model to call look_at_canvas with no arguments, rely on selected row markers, and report a changed selection when its selected count differs from snapshot total; kinds without that reader direct the user to shrink or batch.",
+    "The omitted note is derived from one type-to-recovery table: omitted canvasNode kinds direct the model to call look_at_canvas with no arguments, rely on selected row markers, and report a changed selection when its selected count differs from the canvasNode count in omittedByKind; kinds without that reader direct the user to shrink or batch.",
     "projectionLength uses the exact derived omitted note, and projection output is deterministic and valid JSON within the shared transient budget."
   ],
   "doors": [
@@ -210,7 +210,7 @@
   "migration": "No snapshot format or stored data changes. Existing messages are re-projected through the shared all-or-none complete-reader rule; omitted entries are reported with counts and a user action instead of a paging tool.",
   "residual_risks": [
     "Timeline clips and future asset handles without a selected-marker reader still require users to shrink or batch the selection; this is intentional until a message-scoped read path is approved.",
-    "If the user changes the canvas selection after send, look_at_canvas reads the live selection; the note requires the model to compare its selected count with snapshot total and report a mismatch.",
+    "If the user changes the canvas selection after send, look_at_canvas reads the live selection; the note requires the model to compare its selected count with the canvasNode count in omittedByKind and report a mismatch.",
     "Real-model accuracy for the updated omitted note remains unverified until the coordinator runs the approved paid sample."
   ],
   "invariant_owner_layer": {

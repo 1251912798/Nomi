@@ -126,11 +126,25 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count }])
   })
 
-  it('画布节点即使较省档也放不下：整类不列而不是列一部分', () => {
+  it('首档列不全但较省档能列全：列全并保留能列全的最丰富档细节，不先整类不列', () => {
     const snapshot = compactSnapshot(40, 160)
     const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
-    expect(payload.listed).toBe(0)
-    expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count: 40 }])
+    expect(payload.listed).toBe(40)
+    expect(payload.omitted).toBeUndefined()
+    expect(payload.handles[0]?.display.subtitle).toBeUndefined()
+    expect(payload.handles[0]?.display.title).toBe('镜头0')
+  })
+
+  it('混选首档列不全但较省档能列全：画布和时间轴都全列，不先把画布整类不列', () => {
+    const clips = Array.from({ length: 5 }, (_, index): AgentContextHandle => ({
+      id: `timeline-clip:clip-${index}`, kind: 'timelineClip', targetId: `clip-${index}`, revision: 'timeline-abc',
+      locator: { type: 'timeRange', startMs: index * 1000, endMs: index * 1000 + 900 },
+      display: { title: `片段${index + 1}`, subtitle: 'video' }, intentRole: 'target',
+    }))
+    const snapshot: AgentContextSnapshot = { version: 1, handles: [...compactSnapshot(30, 160).handles, ...clips] }
+    const payload = expectBalanced(snapshot, formatAgentContextSnapshot(snapshot))
+    expect(payload.listed).toBe(35)
+    expect(payload.omitted).toBeUndefined()
   })
 
   it('不再把整份选区抄进每一条句柄：每个节点 id 在文本里至多出现两次（句柄 id + targetId）', () => {
@@ -160,6 +174,9 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.omittedNote).toContain('call look_at_canvas')
     expect(payload.omittedNote).toContain('selection changed after send')
     expect(payload.omittedNote).not.toContain('shrink the selection')
+    // 核对的是画布这一类的数，不是整份快照的 total：混选时 total 还含时间轴等别的类，拿它比必然对不上。
+    expect(payload.omittedNote).toContain('canvasNode count in omittedByKind')
+    expect(payload.omittedNote).not.toContain('snapshot total')
   })
 
   it('只有时间轴片段省略时保留缩小或分批指引，不暗示 look_at_canvas', () => {
@@ -244,7 +261,7 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     expect(payload.listed).toBe(snapshot.handles.length)
   })
 
-  it('画布定位器是句柄意思的一部分：放不下时整类不列', () => {
+  it('定位器是句柄意思的一部分：较省档列全时仍保留每个镜头名', () => {
     const shots = Array.from({ length: 20 }, (_, index): AgentContextHandle => ({
       id: `director-shot:dir-1/shot-${index}`, kind: 'canvasNode', targetId: 'dir-1', revision: 'dplan-abc',
       locator: { type: 'custom', key: 'director.shot', value: `shot-${index}` },
@@ -253,8 +270,8 @@ describe('formatAgentContextSnapshot · 选区投影的账', () => {
     const snapshot: AgentContextSnapshot = { version: 1, handles: shots }
     const text = formatAgentContextSnapshot(snapshot)
     const payload = expectBalanced(snapshot, text)
-    expect(payload.listed).toBe(0)
-    expect(payload.omittedByKind).toEqual([{ kind: 'canvasNode', count: 20 }])
+    expect(payload.listed).toBe(20)
+    for (let index = 0; index < payload.listed; index += 1) expect(text).toContain(`"key":"director.shot","value":"shot-${index}"`)
   })
 
   it('选区定位器里没有对应句柄的 id 不会被当成「重复」而吞掉', () => {

@@ -164,7 +164,7 @@ function contextHeader(version: AgentContextSnapshot['version']): string {
  * without spending resident tool-schema budget.  The note below is derived from this table.
  */
 const OMITTED_KIND_GUIDANCE: Readonly<Partial<Record<AgentContextKind, string>>> = Object.freeze({
-  canvasNode: 'For omitted canvas nodes, call look_at_canvas with no arguments; its node rows mark selected nodes and include all selected nodes. If its selected count differs from this snapshot total, the selection changed after send; tell the user.',
+  canvasNode: 'For omitted canvas nodes, call look_at_canvas with no arguments; its node rows mark selected nodes and include all selected nodes. If its selected count differs from the canvasNode count in omittedByKind, the selection changed after send; tell the user.',
 })
 const OMITTED_FALLBACK_GUIDANCE = 'For omitted kinds without a selected-marker reader, ask the user to shrink the selection or send it in batches.'
 
@@ -323,10 +323,10 @@ function tryEncodeRows({
 }
 
 /**
- * Encode the snapshot inside the hard budget. Preference order: find the first detail rung that
- * lists every handle; if no rung can do that, omit every kind with a complete reader as a whole,
- * then give the remaining kinds the least detailed longest-prefix projection. The returned block
- * (header included) never exceeds the hard bound.
+ * Encode the snapshot inside the hard budget. Preference order: every detail rung first gets the
+ * chance to list every handle; only if none can, omit every kind with a complete reader as a whole,
+ * then give the remaining kinds the first rung that lists them all, or the least detailed rung's
+ * longest prefix. The returned block (header included) never exceeds the hard bound.
  */
 function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLength: number): { body: string; listed: number } {
   const budget = Math.max(256, MAX_TRANSIENT_CONTEXT_CHARS - headerLength)
@@ -336,6 +336,7 @@ function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLeng
   const prepared = handles.map((handle) => prepareHandle(handle, named, selectionCache))
   const fullOmittedCounts = new Map<AgentContextKind, number>()
   for (const handle of handles) fullOmittedCounts.set(handle.kind, (fullOmittedCounts.get(handle.kind) ?? 0) + 1)
+  const rungRows: CompactContextHandle[][] = []
   for (const detail of PROJECTION_LADDER) {
     const rows = prepared.map((item) => compactHandle(item, detail))
     const fullProjection = tryEncodeRows({
@@ -347,30 +348,26 @@ function encodeBoundedHandles(handles: readonly AgentContextHandle[], headerLeng
       allowPrefix: false,
     })
     if (fullProjection) return fullProjection
+    rungRows.push(rows)
+  }
 
-    // A kind with a complete reader is all-or-nothing. Once the whole snapshot no longer fits,
-    // remove those rows as a class and spend the recovered budget on the kinds that have no
-    // selected-marker reader. The remaining kinds retain the old longest-prefix behavior.
-    const fallbackIndexes = handles.flatMap((handle, index) => hasCompleteRead(handle.kind) ? [] : [index])
-    const fallbackRows = fallbackIndexes.map((index) => rows[index])
-    const fallbackHandles = fallbackIndexes.map((index) => handles[index])
+  // No rung lists the whole selection. A kind with a complete reader is all-or-nothing: remove
+  // those rows as a class and spend the recovered budget on the kinds that have no selected-marker
+  // reader, which keep the ladder and, on the least detailed rung, the longest prefix.
+  const fallbackIndexes = handles.flatMap((handle, index) => hasCompleteRead(handle.kind) ? [] : [index])
+  const fallbackHandles = fallbackIndexes.map((index) => handles[index])
+  for (const [rung, rows] of rungRows.entries()) {
     const fallbackProjection = tryEncodeRows({
       total,
       budget,
-      rows: fallbackRows,
+      rows: fallbackIndexes.map((index) => rows[index]),
       sourceHandles: fallbackHandles,
       initialOmittedCounts: fullOmittedCounts,
-      allowPrefix: detail === PROJECTION_LADDER[PROJECTION_LADDER.length - 1],
+      allowPrefix: rung === rungRows.length - 1,
     })
     if (fallbackProjection) return fallbackProjection
-
-    // `tryEncodeRows` only returns a prefix when the caller opts into the final rung. Continue
-    // through richer rungs until the least detailed one is reached.
-    /* istanbul ignore next -- the final rung always fits the ledger-only projection */
-    if (detail === PROJECTION_LADDER[PROJECTION_LADDER.length - 1]) {
-      return { body: encodeProjection(total, [], omittedByKindFromCounts(fullOmittedCounts)), listed: 0 }
-    }
   }
+  /* istanbul ignore next -- the final rung always fits the ledger-only projection */
   return { body: encodeProjection(total, [], omittedByKindFromCounts(fullOmittedCounts)), listed: 0 }
 }
 
