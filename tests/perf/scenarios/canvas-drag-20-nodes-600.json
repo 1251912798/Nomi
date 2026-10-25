@@ -18,6 +18,6 @@
   "budgetBasis": "拖动帧间隔预算为 2 帧（33ms）；本轮新增 I600 以覆盖装载与大画布拖动的最坏节点规模。",
   "measurement": {
     "state": "pending",
-    "reason": "本轮登记新规模；需在门岗锁下用同一台机器背靠背量 origin/main 与本分支后写入结果收据。"
+    "reason": "门岗锁内 --measure-only 5 次都被 react-flow__nodesselection-rect（多选罩子）挡住，frameGapP95 没采到，量具抓不到这个规模，state 保持 pending。"
   }
 }

@@ -12,6 +12,7 @@ import { uiText } from './full-walk/invariants.mjs'
 const repoRoot = process.cwd()
 const locale = process.env.NOMI_WALK_LANG === 'en' ? 'en' : 'zh-CN'
 const languageTag = locale === 'en' ? 'en' : 'zh'
+const generateLabel = uiText(locale, 'generationCommon.composer.generate')
 const tempRoot = path.join(repoRoot, '.tmp', 'nomi-canvas-mode-reopen-' + languageTag)
 const settingsDir = path.join(tempRoot, 'settings')
 const projectsDir = path.join(tempRoot, 'projects')
@@ -169,12 +170,21 @@ try {
   // 只有一个节点时适应视图会放到 200% 以上，生成框被挤出窗口、截图证明不了它；缩回 110% 以内再拍，拍完核生成框整个在窗口里。
   for (let step = 0; step < 6 && (await canvasZoomPercent(win)) > 110; step += 1) await canvasZoomStep(win, 'out', '缩到节点和生成框同屏')
   const shot = path.join(shotsDir, '01-after-reopen-text-to-video.png')
-  await screenshotSettled(win, { path: shot })
   const framed = await win.evaluate(() => {
-    const box = document.querySelector('[data-node-id="legacy-video-target"] .generation-canvas-v2-node__composer')?.getBoundingClientRect()
-    return box ? { top: box.top, bottom: box.bottom, left: box.left, height: window.innerHeight } : null
+    const composer = document.querySelector('[data-node-id="legacy-video-target"] .generation-canvas-v2-node__composer')
+    const generate = composer?.querySelector('[data-bar-segment="generate"]')
+    const box = composer?.getBoundingClientRect()
+    const button = generate?.getBoundingClientRect()
+    const inside = (rect) => Boolean(rect) && rect.left >= 0 && rect.top >= 0 && rect.right <= window.innerWidth && rect.bottom <= window.innerHeight
+    return {
+      composer: box ? { top: box.top, bottom: box.bottom, left: box.left, right: box.right } : null,
+      generate: button ? { top: button.top, bottom: button.bottom, left: button.left, right: button.right } : null,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      fits: inside(box) && inside(button),
+    }
   })
-  check('截图里生成框整个在窗口内（上下边都看得见）', Boolean(framed) && framed.top >= 0 && framed.left >= 0 && framed.bottom <= framed.height, JSON.stringify(framed))
+  check(`截图前生成框与「${generateLabel}」按钮都在窗口内`, framed.fits, JSON.stringify(framed))
+  await screenshotSettled(win, { path: shot })
   console.log('  · shot ' + shot)
 } catch (error) {
   failures.push(String(error))

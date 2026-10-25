@@ -8,10 +8,12 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { expect, expectAbsent, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
 import { canvasFitViewButton, newProjectEntry, switchWorkspace } from './_shell.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const repoRoot = process.cwd()
 const locale = process.env.NOMI_WALK_LANG === 'en' ? 'en' : 'zh-CN'
 const languageTag = locale === 'en' ? 'en' : 'zh'
+const generateLabel = uiText(locale, 'generationCommon.composer.generate')
 const tempRoot = path.join(repoRoot, '.tmp', 'nomi-video-mode-revert-' + languageTag)
 const settingsDir = path.join(tempRoot, 'settings')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/video-mode-revert', languageTag)
@@ -108,7 +110,7 @@ try {
           result: { id: 'video-source-result', type: 'image', url: imageUrl, createdAt: 1 },
         },
         {
-          id: 'video-target', kind: 'video', title: '视频镜头', position: { x: 760, y: 160 }, prompt: currentLocale === 'en' ? 'A slow camera move through the scene.' : '镜头缓慢穿过场景。', categoryId: 'shots',
+          id: 'video-target', kind: 'video', title: '视频镜头', position: { x: 420, y: 160 }, prompt: currentLocale === 'en' ? 'A slow camera move through the scene.' : '镜头缓慢穿过场景。', categoryId: 'shots',
           meta: { modelKey: 'kling-3.0', modelVendor: 'ux-local', vendor: 'ux-local', archetype: { id: 'kling-3.0', modeId: 't2v' } },
         },
       ],
@@ -147,6 +149,22 @@ try {
   await expect(connectedImage, '升格后的生成框没有显示首帧格图片').toBeVisible()
   const connectedImageProof = await proveProbe(connectedImage, '连线后生成框里的首帧图片探针可用')
   if (await panel.isVisible().catch(() => false)) await summary.click()
+  const connectedGeometry = await win.evaluate((label) => {
+    const composer = document.querySelector('[data-node-id="video-target"] .generation-canvas-v2-node__composer')
+    const generate = composer?.querySelector('[data-bar-segment="generate"]')
+    const rect = (element) => element?.getBoundingClientRect()
+    const composerRect = rect(composer)
+    const generateRect = rect(generate)
+    const inside = (box) => Boolean(box) && box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth && box.bottom <= window.innerHeight
+    return {
+      composer: composerRect ? { left: composerRect.left, top: composerRect.top, right: composerRect.right, bottom: composerRect.bottom } : null,
+      generate: generateRect ? { left: generateRect.left, top: generateRect.top, right: generateRect.right, bottom: generateRect.bottom } : null,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      fits: inside(composerRect) && inside(generateRect),
+      label,
+    }
+  }, generateLabel)
+  check(`连线后截图前生成框与「${generateLabel}」按钮都在窗口内`, connectedGeometry.fits, JSON.stringify(connectedGeometry))
   const connectedShot = path.join(shotsDir, '01-connected-single-image.png')
   await screenshotSettled(win, { path: connectedShot })
   console.log('  · shot ' + connectedShot)
@@ -167,6 +185,22 @@ try {
   await expectAbsent(composer.locator('[data-reference-row] img'), { provenBy: connectedImageProof, message: '断线后生成框仍显示首帧图片' })
   await expect(composer.locator('[data-bar-segment="generate"]'), '回到文生后生成按钮不可点').toBeEnabled()
   if (await panel.isVisible().catch(() => false)) await summary.click()
+  const disconnectedGeometry = await win.evaluate((label) => {
+    const composer = document.querySelector('[data-node-id="video-target"] .generation-canvas-v2-node__composer')
+    const generate = composer?.querySelector('[data-bar-segment="generate"]')
+    const rect = (element) => element?.getBoundingClientRect()
+    const composerRect = rect(composer)
+    const generateRect = rect(generate)
+    const inside = (box) => Boolean(box) && box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth && box.bottom <= window.innerHeight
+    return {
+      composer: composerRect ? { left: composerRect.left, top: composerRect.top, right: composerRect.right, bottom: composerRect.bottom } : null,
+      generate: generateRect ? { left: generateRect.left, top: generateRect.top, right: generateRect.right, bottom: generateRect.bottom } : null,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      fits: inside(composerRect) && inside(generateRect),
+      label,
+    }
+  }, generateLabel)
+  check(`断线后截图前生成框与「${generateLabel}」按钮都在窗口内`, disconnectedGeometry.fits, JSON.stringify(disconnectedGeometry))
   const disconnectedShot = path.join(shotsDir, '02-after-disconnected-text-to-video.png')
   await screenshotSettled(win, { path: disconnectedShot })
   console.log('  · shot ' + disconnectedShot)
