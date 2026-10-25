@@ -75,6 +75,32 @@ describe('一轮判分', () => {
     expect(answeredKeys('', scene)).toEqual([])
   })
 
+  // 答案 = 列出来的条目 + 没明说「没选中」的散文行：列全选区后顺手说明「画布上另有 X 没被选中」不是多列。
+  const listed = videoTitles(scene).map((title, index) => `${index + 1}. ${title}`).join('\n')
+
+  it('列表全对、末尾明说另外两个没选中：成功', () => {
+    for (const tail of [
+      '画布上还有「视频·炉火噼啪」和「视频·极光夜空」两个视频节点没有被选中。',
+      '画布上还有两个未选中的：视频·炉火噼啪、视频·极光夜空。',
+      '另外画布上还有「视频·炉火噼啪」和「视频·极光夜空」两个视频节点，但它们没在你的选中范围内。',
+      'The canvas also has 视频·炉火噼啪 and 视频·极光夜空, which are not selected.',
+    ]) expect(score(scene, [{ args: {} }], `选中 40 个节点中，视频节点共 20 个：\n\n${listed}\n\n${tail}`)).toMatchObject({ missing: [], extra: [], success: true })
+  })
+
+  it('不分条、一段话答全并明说没选中的：成功', () => {
+    const prose = `选中的视频节点有：${videoTitles(scene).join('、')}。\n画布上另有视频·炉火噼啪、视频·极光夜空，没有被选中。`
+    expect(score(scene, [{ args: {} }], prose)).toMatchObject({ extra: [], success: true })
+  })
+
+  it('列表里混进没选中的算失败，条目上标了「未选中」也照算', () => {
+    expect(score(scene, [{ args: {} }], `${listed}\n21. 视频·炉火噼啪`).extra).toEqual([{ title: '视频·炉火噼啪', kind: 'video', selected: false }])
+    expect(score(scene, [{ args: {} }], `${listed}\n- 视频·极光夜空（未选中）`).success).toBe(false)
+  })
+
+  it('列表全对、散文里又说干扰节点也选中了：失败', () => {
+    expect(score(scene, [{ args: {} }], `${listed}\n另外视频·炉火噼啪也在你选中的里面。`).success).toBe(false)
+  })
+
 })
 
 describe('转录和汇总', () => {

@@ -141,8 +141,14 @@ export function lookAtCanvasCallLegality(call) {
 }
 
 const squash = (text) => String(text ?? '').replace(/\s+/g, '')
+// 答案 = 列出来的条目（编号 / 项目符号 / 表格行）+ 没明说「没选中」的散文行。
+// 列全选区后顺手说明「画布上另有 X 没被选中」是对用户有用的补充，不算多列；列表项上标了「未选中」照样算多列。
+const LIST_ITEM = /^\s*(?:[-*•·]|\d+\s*[.、)）]|[（(]\d+[)）]|\|)/
+const NOT_SELECTED = /未被?选中|没有?被?选中|[不没]在(?:你的)?选[中区]|not selected|unselected|not in your selection|outside your selection/i
 export function answeredKeys(answer, scene) {
-  const text = squash(answer)
+  const text = String(answer ?? '').split('\n')
+    .filter((line) => LIST_ITEM.test(line) || !NOT_SELECTED.test(line))
+    .map(squash).join('\n')
   return scene.nodes.filter((node) => text.includes(node.key)).map((node) => node.key)
 }
 
