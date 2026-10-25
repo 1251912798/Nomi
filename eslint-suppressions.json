@@ -173,11 +173,6 @@
       "count": 1
     }
   },
-  "scripts/check-file-sizes.test.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "scripts/check-framework-boundary.mjs": {
     "no-undef": {
       "count": 2

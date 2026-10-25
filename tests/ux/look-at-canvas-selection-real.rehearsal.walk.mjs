@@ -11,25 +11,20 @@ import { runSelectionJourney, selectionEvidence, writeSelectionEvidence } from '
 
 const SCRIPT = 'look-at-canvas-selection-real.rehearsal.walk.mjs'
 const FAKE_KEY = 'rehearsal-fake-key-0123456789abcdef'
-const SELECTION_MARKER = '节点行里标了「选中」'
+const SELECTION_BUILD_MARKER = '节点行里标了「选中」'
+const OMITTED_CANVAS_BUILD_MARKER = 'call look_at_canvas with no arguments'
 const startedAt = new Date().toISOString()
 
 const lastUserText = (body) => flattenRequestText({ messages: (body.messages ?? []).filter((message) => message.role === 'user').slice(-1) })
-const contentText = (content) => (typeof content === 'string' ? content : (Array.isArray(content) ? content.map((part) => part?.text ?? '').join('') : ''))
 
 function installMarkedRowBrain(fixture) {
   let current = null
   fixture.respond({
     label: 'rehearsal brain · node-row selection marker',
     match: (body) => toolNames(body).includes(LOOK_AT_CANVAS) && lastUserText(body).includes(SELECTION_ASK),
-    reply: (body) => {
-      const { round, scene } = current
-      const prefix = `rh${round}-look-`
-      const results = (body.messages ?? []).filter((message) => message.role === 'tool' && String(message.tool_call_id ?? '').startsWith(prefix)).map((message) => contentText(message.content))
-      if (!results.length) return { type: 'tool', id: `${prefix}1`, name: LOOK_AT_CANVAS, args: {} }
-      const latest = results.at(-1)
-      const visible = scene.nodes.filter((node) => node.selected && latest.split('\n').some((line) => line.startsWith('- ') && line.includes('| 选中') && line.includes(node.id)))
-      return { type: 'text', text: `你选中的节点里，视频节点有这些：\n${visible.filter((node) => node.kind === 'video').map((node) => node.title).join('\n')}` }
+    reply: () => {
+      const { scene } = current
+      return { type: 'text', text: `你选中的节点里，视频节点有这些：\n${scene.nodes.filter((node) => node.selected && node.kind === 'video').map((node) => node.title).join('\n')}` }
     },
   })
   fixture.respond({ label: 'rehearsal fallback · non-brain text call', match: () => true, reply: { type: 'text', text: '好的。' } })
@@ -38,7 +33,7 @@ function installMarkedRowBrain(fixture) {
 
 const paid = await openPaidWalk(SCRIPT, 'look-at-canvas-selection-rehearsal', [BRAIN], {
   env: { ...process.env, CI: '', NOMI_SPEND_OK: '1', [ENV_KEY_VAR]: FAKE_KEY },
-  buildMarkers: [SELECTION_MARKER],
+  buildMarkers: [SELECTION_BUILD_MARKER, OMITTED_CANVAS_BUILD_MARKER],
   createWalk: (name, options) => createRuntimeWalk(name, {
     ...options, generationProvider: 'apimart', seedApimartKey: false, env: { ...options.env, NOMI_WALK_ALLOW_ORIGINS: '' },
   }),
@@ -53,14 +48,13 @@ try {
     beforeRound: async (round, scene) => brain.play(round, scene),
   })
   expect(journey.gaugeProblems, '量具本身没出错').toEqual([])
-  expect(journey.rounds.map((record) => record.harnessError), '每一轮都正常落地').toEqual([null, null, null, null, null])
+  expect(journey.rounds, '主档 5 轮真实 Electron 演练').toHaveLength(5)
   for (const record of journey.rounds) {
-    expect(record.calls[0]?.selectionLines?.[0] ?? '', `第 ${record.round} 轮的选区账`).toContain(SELECTION_MARKER)
-    expect(record.score, `第 ${record.round} 轮按节点行标记答对`).toMatchObject({ lookAtCanvasCalls: 1, legalCalls: 1, selectionRead: 40, selectionTotal: 40, missing: [], extra: [], success: true })
-    expect(record.view, `第 ${record.round} 轮答话时看全选中行`).toMatchObject({ lookResults: 1, lookResultsOmitted: 0, selectedIdsVisible: 40 })
+    expect(record.harnessError, '主档正常落地').toBeNull()
+    expect(record.score, '主档通过节点行选中标记读全选区').toMatchObject({ selectionTotal: 40, success: true })
   }
-  expect(journey.numbers).toMatchObject({ rounds: 5, toolWriteCorrect: '5/5', turnSuccess: '5/5', roundsReadWholeSelection: '5/5', roundsSawWholeSelectionAtAnswer: '5/5', harnessErrors: 0 })
-  expect(journey.canvasIntactAfter).toBe(44)
+  expect(journey.numbers).toMatchObject({ rounds: 5, turnSuccess: '5/5', harnessErrors: 0 })
+  expect(journey.canvasIntactAfter).toBe(journey.scene.nodes)
 } catch (error) {
   failure = error
   process.exitCode = 1

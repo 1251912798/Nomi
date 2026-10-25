@@ -22,6 +22,16 @@ describe('拆解效果指标', () => {
     expect(metrics.callsMatchShots).toBe(false)
     expect(judgeCase(metrics).join()).toContain('≠ 镜数')
   })
+
+  // 2026-10-19：有人说话的片子对白整列空、没参考稿时 CER 为 null，旧门槛一条都不报——空对白被当成达标。
+  it('有人说话却一镜对白都没有 → 判不达标，并带上整次失败原因', () => {
+    const metrics = scoreDeconstruction({ shots: [shot(), shot()], hasAudio: true, failureReason: '对白没取到：没有可用的转写模型' })
+    expect(judgeCase(metrics).join()).not.toContain('对白覆盖')
+    const misses = judgeCase(metrics, { expectDialogue: true }).join()
+    expect(misses).toContain('对白覆盖 0')
+    expect(misses).toContain('没有可用的转写模型')
+    expect(judgeCase(scoreDeconstruction({ shots: [shot({ dialogue: '你好' })], hasAudio: true }), { expectDialogue: true })).toEqual([])
+  })
 })
 
 describe('对白字错率（对参考稿里最像的那一段）', () => {

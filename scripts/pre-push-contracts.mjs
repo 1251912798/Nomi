@@ -457,7 +457,10 @@ export async function main(argv = process.argv.slice(2), { stdinText = null, hoo
       const started = Date.now()
       let last = { status: 0, output: '' }
       for (const commandArgv of gateCommands(script, changed)) {
-        last = await runNode(commandArgv, {}, { name: gate.name })
+        const gateEnv = gate.name === 'check:filesize' && files !== null
+          ? { NOMI_FILESIZE_PATHS: JSON.stringify(changed) }
+          : {}
+        last = await runNode(commandArgv, gateEnv, { name: gate.name })
         if (last.status !== 0) break
       }
       return { name: gate.name, status: last.status, output: last.output, ms: Date.now() - started }

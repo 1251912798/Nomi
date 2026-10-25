@@ -1,0 +1,94 @@
+[
+  {
+    "selected": 1,
+    "nodesNamedInProjection": 1,
+    "titlesNamedInProjection": 1,
+    "chars": 279,
+    "silentlyMissing": 0,
+    "projection": {
+      "total": 1,
+      "listed": 1,
+      "omitted": 0,
+      "truncated": false
+    }
+  },
+  {
+    "selected": 12,
+    "nodesNamedInProjection": 12,
+    "titlesNamedInProjection": 12,
+    "chars": 2363,
+    "silentlyMissing": 0,
+    "projection": {
+      "total": 12,
+      "listed": 12,
+      "omitted": 0,
+      "truncated": false
+    }
+  },
+  {
+    "selected": 16,
+    "nodesNamedInProjection": 16,
+    "titlesNamedInProjection": 16,
+    "chars": 3123,
+    "silentlyMissing": 0,
+    "projection": {
+      "total": 16,
+      "listed": 16,
+      "omitted": 0,
+      "truncated": false
+    }
+  },
+  {
+    "selected": 24,
+    "nodesNamedInProjection": 24,
+    "titlesNamedInProjection": 24,
+    "chars": 4643,
+    "silentlyMissing": 0,
+    "projection": {
+      "total": 24,
+      "listed": 24,
+      "omitted": 0,
+      "truncated": false
+    }
+  },
+  {
+    "selected": 40,
+    "nodesNamedInProjection": 0,
+    "titlesNamedInProjection": 0,
+    "chars": 399,
+    "silentlyMissing": 0,
+    "omittedByKind": [
+      {
+        "kind": "canvasNode",
+        "count": 40,
+        "readTool": "look_at_canvas"
+      }
+    ],
+    "projection": {
+      "total": 40,
+      "listed": 0,
+      "omitted": 40,
+      "truncated": true
+    }
+  },
+  {
+    "selected": 256,
+    "nodesNamedInProjection": 0,
+    "titlesNamedInProjection": 0,
+    "chars": 402,
+    "silentlyMissing": 0,
+    "omittedByKind": [
+      {
+        "kind": "canvasNode",
+        "count": 256,
+        "readTool": "look_at_canvas"
+      }
+    ],
+    "projection": {
+      "total": 256,
+      "listed": 0,
+      "omitted": 256,
+      "truncated": true
+    }
+  }
+]

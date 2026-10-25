@@ -1,0 +1,24 @@
+{
+  "what": "真付费之前的免费演练：同一入口、同一份真实资料拷贝，NOMI_PAID_CONFIRM=0 只用本地切点数镜、不拆、不发任何读图 / 转写请求",
+  "runner": "evals/deconstruct/run.mjs --only talk-mixed --vision-model apimart/gemini-3.5-flash --transcribe-model apimart/nomi-audio --max-calls 40",
+  "build": "534b8ed3a052996bcf8e807b1d45173657d4116f",
+  "ranAt": "2026-10-25T00:08Z",
+  "mode": "paid-dry",
+  "credentialSource": "real-profile",
+  "seededModels": [
+    "apimart/gemini-3.5-flash",
+    "apimart/nomi-audio"
+  ],
+  "cases": [
+    {
+      "id": "talk-mixed",
+      "skipped": true,
+      "preCountShots": 15
+    }
+  ],
+  "summary": {
+    "ran": 0,
+    "failing": [],
+    "visionCalls": 0
+  }
+}
