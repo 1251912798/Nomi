@@ -7,6 +7,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { expect, expectAbsent, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
 import { canvasFitViewButton, canvasZoomPercent, canvasZoomStep, newProjectEntry, switchWorkspace } from './_shell.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const repoRoot = process.cwd()
 const locale = process.env.NOMI_WALK_LANG === 'en' ? 'en' : 'zh-CN'
@@ -132,13 +133,13 @@ try {
   app = restarted.app
   const win = restarted.win
   win.setDefaultTimeout(stationTimeout())
-  const continueLabel = locale === 'en' ? 'Continue creating' : '继续创作'
+  const continueLabel = uiText(locale, 'library.continueCreating')
   const continueButton = win.getByRole('button', { name: continueLabel, exact: true }).first()
   await continueButton.waitFor({ state: 'visible', timeout: stationTimeout({ operations: 2 }) })
   await continueButton.click({ noWaitAfter: true })
   const syncDialog = win.getByRole('dialog').first()
   if (await syncDialog.isVisible().catch(() => false)) {
-    await syncDialog.getByRole('button', { name: locale === 'en' ? 'Check again' : '重新检查', exact: true }).click()
+    await syncDialog.getByRole('button', { name: uiText(locale, 'library.syncRecheck'), exact: true }).click()
     await syncDialog.waitFor({ state: 'hidden', timeout: stationTimeout({ operations: 2 }) })
     await continueButton.click({ noWaitAfter: true })
   }
