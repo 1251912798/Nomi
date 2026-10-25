@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GenerationCanvasNode } from '../../../model/generationCanvasTypes'
-import { directorPreviewBlocksForOperation, directorPreviewSpendBlock } from './directorPreviewState'
+import { directorPreviewBlocksForOperation, directorPreviewSpendBlock, directorPreviewSpendBlockMessageKey } from './directorPreviewState'
+import { DIRECTOR_PREVIEW_DISMISSED_URL_KEY } from '../agent/attachCameraMoveToTarget'
 
 function director(id: string, preview: Record<string, unknown>): GenerationCanvasNode {
   return { id, kind: 'director', title: '', position: { x: 0, y: 0 }, meta: { directorPreview: { revision: 'dplan-1', ...preview } } } as unknown as GenerationCanvasNode
@@ -53,5 +54,31 @@ describe('directorPreviewSpendBlock (3D-BOX 花钱闸唯一判据)', () => {
   it('a preview that could only be written into the prompt (model has no reference-video slot) is not required in the candidate', () => {
     const nodes = [shot('v1', { materializationOperationId: 'canvas-landing:op-1', productionRunId: 'op-1', productionShotId: 'shot-1' }), director('d1', { status: 'ready', attach: 'prompt_only', assetId: 'asset-p1', targetNodeId: 'v1', updatedAt: 1 })]
     expect(directorPreviewBlocksForOperation(nodes, 'op-1', undefined, { 'shot-1': [] })).toEqual([])
+  })
+
+  it('a ready preview that is no longer attached blocks with the explicit not-attached reason', () => {
+    const preview = { status: 'ready', attach: 'video_ref', videoUrl: 'nomi://preview.mp4', targetNodeId: 'v1', updatedAt: 1 }
+    const nodes = [shot('v1'), director('d1', preview)]
+    const block = directorPreviewSpendBlock('v1', nodes)
+    expect(block).toEqual({ reason: 'not_attached', directorNodeId: 'd1' })
+    expect(directorPreviewSpendBlockMessageKey(block!)).toBe('director.agent.spendBlockedNotAttached')
+  })
+
+  it('an explicit dismissal opens the gate and suppresses Agent not_referenced', () => {
+    const preview = { status: 'ready', attach: 'video_ref', assetId: 'asset-p1', videoUrl: 'nomi://preview.mp4', targetNodeId: 'v1', updatedAt: 1 }
+    const nodes = [
+      shot('v1', { productionRunId: 'op-1', productionShotId: 'shot-1', [DIRECTOR_PREVIEW_DISMISSED_URL_KEY]: 'nomi://preview.mp4' }),
+      director('d1', preview),
+    ]
+    expect(directorPreviewSpendBlock('v1', nodes)).toBeNull()
+    expect(directorPreviewBlocksForOperation(nodes, 'op-1', undefined, { 'shot-1': [] })).toEqual([])
+  })
+
+  it('a new preview URL is not covered by the old dismissal and asks for explicit produce', () => {
+    const nodes = [
+      shot('v1', { [DIRECTOR_PREVIEW_DISMISSED_URL_KEY]: 'nomi://old.mp4' }),
+      director('d1', { status: 'ready', attach: 'video_ref', videoUrl: 'nomi://new.mp4', targetNodeId: 'v1', updatedAt: 2 }),
+    ]
+    expect(directorPreviewSpendBlock('v1', nodes)?.reason).toBe('not_attached')
   })
 })

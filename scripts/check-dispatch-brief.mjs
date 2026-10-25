@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 派工书检查（省 token 与方向检查在派工那一步的执行点）：协调会话发任务书前跑一遍。
 //   node scripts/check-dispatch-brief.mjs <任务书.md>
-// 查五件事：① 写了范围；② 写了不碰清单；③ 写了停点（做到哪就停）；④ 写了「补还是换」（P0 / RW 接到派工入口）；⑤ 若是修补第 3 轮及以上，必须引用方向检查复盘文档。
+// 查六件事：① 写了范围；② 写了不碰清单；③ 写了停点（做到哪就停）；④ 写了「补还是换」（P0 / RW 接到派工入口）；⑤ 若是修补第 3 轮及以上，必须引用方向检查复盘文档；⑥ 讲到模型可见工具改动，必须引用模型可见工具必读清单。
 // 只看有没有写，不判写得好不好；退出码 1 = 缺项（派工前补齐）。纯文本匹配，不调模型。
 import fs from 'node:fs'
 import path from 'node:path'
@@ -16,6 +16,8 @@ const CHECKS = [
 const ROUND = /第\s*([0-9]+|[一二三四五六七八九十]+)\s*轮|round\s*([0-9]+)/i
 const CN = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 }
 const REVIEW_REF = /Direction-Check|方向检查|类根因复盘|direction-check/i
+const MODEL_FACING_TOOL_CHANGE = /模型可见工具|读动词|新动词|动词定义|VERB_DECLARATIONS|verbDeclarations|modelFacingTool|工具\s*schema|tool\s*schema/i
+const MODEL_FACING_TOOL_CHECKLIST = /model-facing-tool-checklist\.md/i
 
 export function roundNumber(text) {
   const m = ROUND.exec(text)
@@ -30,6 +32,7 @@ export function checkDispatchBrief(text) {
   for (const c of CHECKS) if (!c.re.test(text)) problems.push(`缺${c.key}：${c.hint}`)
   const n = roundNumber(text)
   if (n >= 3 && !REVIEW_REF.test(text)) problems.push(`这是第 ${n} 轮修补：同一处第 3 轮就停，改派类根因复盘（docs/engineering/direction-check-template.md），任务书里要引用复盘文档`)
+  if (MODEL_FACING_TOOL_CHANGE.test(text) && !MODEL_FACING_TOOL_CHECKLIST.test(text)) problems.push('讲到模型可见工具改动：任务书必须引用 docs/engineering/model-facing-tool-checklist.md（先调研再动代码）')
   return problems
 }
 

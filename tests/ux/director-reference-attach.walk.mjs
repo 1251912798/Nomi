@@ -14,7 +14,7 @@
 //
 // 三个场景（共用一个导演节点和一份预演）：
 //   A 无参考视频槽的模型备好预演 → 换成有槽的模型 → 出成片 → 请求带预演、提示词引用 @video1
-//   B 已挂好的预演参考被手动删掉 → 再出成片 → 重新挂上
+//   B 已挂好的预演参考被手动删掉 → 生成按文生放行 → 换模型不挂回 → 出成片重新挂上
 //   C 视频节点已有一条用户自己的参考视频 → 出成片 → 请求两条、提示词引用 @video2（指向预演那一条）
 // 证据落 tests/ux/shots/director-reference-attach/<语言>/：每个场景一张截图 + wire-requests.json（抓到的请求体）。
 import fs from 'node:fs'
@@ -123,7 +123,7 @@ fs.writeFileSync(path.join(settingsDir, 'model-catalog.json'), JSON.stringify({
   apiKeysByVendor: {},
 }, null, 2))
 
-const report = { lang, startedAt: new Date().toISOString(), checks: [], scenarios: {} }
+const report = { lang, startedAt: new Date().toISOString(), checks: [], scenarios: {}, deletionPaths: [] }
 const check = (name, ok, detail = '') => {
   report.checks.push({ name, ok: Boolean(ok), detail })
   console.log(`${ok ? '✓' : '✗'} ${name}${detail ? ` — ${detail}` : ''}`)
@@ -152,9 +152,20 @@ const waitFor = async (label, predicate, timeout = 60_000) => {
     await win.waitForTimeout(400)
   }
 }
-// 真鼠标点；画布不替人挪视野，按钮被别的卡盖住 / 在视口外时，退到它自己的点击处理函数（和鼠标点同一个 onClick）。
+// 其它非删除按钮允许用同一 DOM onClick 入口完成走查；删除入口单独只接受真实鼠标点击。
 const clickOrDom = async (locator) => {
   try { await locator.click({ timeout: 4000 }) } catch { await locator.evaluate((element) => element.click()) }
+}
+// 参考条的 × 是用户删除参考的真实入口，最终调用 NodeParameterControls → removeFromArray。
+// 本轮不允许 DOM/onClick fallback：真鼠标命中失败就是走查失败，避免把“真实入口不可达”记成通过。
+const removeReferenceLikeUser = async (nodeId) => {
+  const remove = win.locator(`[data-node-id="${nodeId}"] [data-asset-tile="video"] [data-asset-tile-remove="true"]`).first()
+  if (await remove.count() !== 1) throw new Error(`镜头 ${nodeId} 没有唯一的参考视频删除按钮`)
+  // × 只在 tile hover/focus 时显现；先把鼠标放到 tile，再走 Playwright 真鼠标点击。
+  await remove.locator('xpath=..').hover()
+  await remove.click({ timeout: 4000 })
+  report.deletionPaths.push({ nodeId, path: 'real-mouse: AssetTile [data-asset-tile-remove="true"]' })
+  await waitFor(`镜头 ${nodeId} 的参考删除完成`, async () => !((await nodeById(nodeId))?.meta?.referenceVideoUrls ?? []).length, 5000)
 }
 const modelPatch = (modelKey, archetypeId, modeId) => ({ modelKey, modelVendor: VENDOR, vendor: VENDOR, archetype: { id: archetypeId, modeId } })
 
@@ -248,20 +259,52 @@ try {
   check('A：请求里带着预演参考（一条，且是假上传口发回的预演网址）', Array.isArray(a.videos) && a.videos.length === 1 && uploads.some((u) => u.url === a.videos[0]), JSON.stringify({ videos: a.videos, uploads: uploads.map((u) => ({ id: u.id, filename: u.filename, bytes: u.bytes })) }))
   check('A：请求提示词里的引用是 @video1', /@video1 /.test(a.prompt) && !/@[Vv]ideo2/.test(a.prompt), a.prompt)
 
-  // ── 场景 B：已挂好的预演参考被手动删掉 → 再出成片 ──
+  // ── 场景 B：已挂好的预演参考被手动删掉 → 按文生放行 → 换模型不挂回 → 出成片恢复 ──
   await retarget(ids.b)
   await produce(ids.b, 'B1')
   const nodeB1 = await nodeById(ids.b)
   check('B：出成片后镜头 B 挂上预演', (nodeB1.meta.referenceVideoUrls ?? []).includes(previewUrl))
-  await store((id) => { const state = window.__nomiCanvasStore.getState(); const node = state.nodes.find((n) => n.id === id); state.updateNode(id, { meta: { ...node.meta, referenceVideoUrls: [] } }) }, ids.b)
-  check('B：手动删掉参考后镜头 B 没有参考视频（标记还在）', !((await nodeById(ids.b)).meta.referenceVideoUrls ?? []).length && (await nodeById(ids.b)).meta.cameraMoveAttachedUrl === previewUrl)
+  await removeReferenceLikeUser(ids.b)
+  await win.waitForTimeout(1500)
+  const nodeBAfterDelete = await nodeById(ids.b)
+  const bDeleteButton = win.locator(`[data-node-id="${ids.b}"] button[data-bar-segment="generate"]`).first()
+  const bDeleteTitle = await bDeleteButton.getAttribute('title')
+  check('B：删掉唯一预演参考后 1.5 秒内参考为空、B3 回文生、@ 和运镜句清掉、attached 标记保留', !((nodeBAfterDelete.meta.referenceVideoUrls ?? []).length) && nodeBAfterDelete.meta.cameraMoveAttachedUrl === previewUrl && nodeBAfterDelete.meta.archetype?.modeId === 't2v' && !/@\[asset:[^\]]+\]/.test(nodeBAfterDelete.prompt ?? '') && !/跟随这段参考视频的运镜/.test(nodeBAfterDelete.prompt ?? ''), JSON.stringify({ refs: nodeBAfterDelete.meta.referenceVideoUrls, mode: nodeBAfterDelete.meta.archetype?.modeId, attached: nodeBAfterDelete.meta.cameraMoveAttachedUrl, prompt: nodeBAfterDelete.prompt }))
+  check('B：删除后生成钮可点且没有花钱闸理由', await bDeleteButton.isEnabled(), JSON.stringify({ disabled: await bDeleteButton.isDisabled(), title: bDeleteTitle }))
+  await shot('B-node-after-delete')
+  // Cmd+Z 必须把删除产生的全部字段一次恢复；随后再用真实鼠标删除，继续完成主路径。
+  const stage = win.locator('.generation-canvas-v2__stage').first()
+  const stageBox = await stage.boundingBox()
+  if (!stageBox) throw new Error('找不到画布视口，无法把 Cmd+Z 交给画布快捷键 owner')
+  await win.mouse.click(stageBox.x + Math.min(40, stageBox.width / 2), stageBox.y + Math.min(40, stageBox.height / 2))
+  await win.keyboard.press('Meta+z')
+  await waitFor('B：Cmd+Z 恢复预演参考', async () => ((await nodeById(ids.b))?.meta?.referenceVideoUrls ?? []).includes(previewUrl), 5000)
+  const nodeBUndo = await nodeById(ids.b)
+  check('B：Cmd+Z 同步恢复 @、运镜句与退出事实', /@\[asset:[^\]]+\]/.test(nodeBUndo.prompt ?? '') && /跟随这段参考视频的运镜/.test(nodeBUndo.prompt ?? '') && !nodeBUndo.meta.directorPreviewDismissedUrl, JSON.stringify({ prompt: nodeBUndo.prompt, dismissed: nodeBUndo.meta.directorPreviewDismissedUrl }))
+  // 让同一真实导演台入口重新把镜头带回视口；预演已挂好时这是 kept，不会新增或改写参考。
+  await produce(ids.b, 'B-undo-focus')
+  await removeReferenceLikeUser(ids.b)
+  await win.waitForTimeout(1500)
+  // 有槽 → 无槽 → 有槽：已退出的 URL 不得被模型对账器挂回。
+  await store(({ id, patch }) => { const state = window.__nomiCanvasStore.getState(); state.updateNode(id, { meta: { ...state.nodes.find((n) => n.id === id).meta, ...patch } }) }, { id: ids.b, patch: modelPatch(NO_SLOT_MODEL, 'veo-3.1', 't2v') })
+  await win.waitForTimeout(1500)
+  const bNoSlot = await nodeById(ids.b)
+  check('B：删后换无槽模型不挂回、没有预演运镜文字', !(bNoSlot.meta.referenceVideoUrls ?? []).length && !/3D-BOX 预演运镜：/.test(bNoSlot.prompt ?? ''), JSON.stringify({ refs: bNoSlot.meta.referenceVideoUrls, prompt: bNoSlot.prompt }))
+  await store(({ id, patch }) => { const state = window.__nomiCanvasStore.getState(); state.updateNode(id, { meta: { ...state.nodes.find((n) => n.id === id).meta, ...patch } }) }, { id: ids.b, patch: modelPatch(SLOT_MODEL, 'seedance-2', 't2v') })
+  await win.waitForTimeout(1500)
+  const bSlotAfterSwitch = await nodeById(ids.b)
+  const bSlotButton = win.locator(`[data-node-id="${ids.b}"] button[data-bar-segment="generate"]`).first()
+  check('B：再换回有槽模型仍不挂回、生成钮可点', !(bSlotAfterSwitch.meta.referenceVideoUrls ?? []).length && !/3D-BOX 预演运镜：/.test(bSlotAfterSwitch.prompt ?? '') && await bSlotButton.isEnabled(), JSON.stringify({ refs: bSlotAfterSwitch.meta.referenceVideoUrls, prompt: bSlotAfterSwitch.prompt }))
+  const callBDelete = await spendAndCapture(ids.b, 'B-delete')
+  const bDeleteRequest = refsOf(callBDelete)
+  check('B：删除后的 ↑ 确认请求没有参考视频和运镜句', !bDeleteRequest.videos?.length && !/跟随这段参考视频的运镜/.test(bDeleteRequest.prompt) && !/3D-BOX 预演运镜：/.test(bDeleteRequest.prompt), JSON.stringify(bDeleteRequest))
   await produce(ids.b, 'B2')
   const nodeB2 = await nodeById(ids.b)
   check('B：再出成片 → 预演参考重新挂上', (nodeB2.meta.referenceVideoUrls ?? []).includes(previewUrl), JSON.stringify(nodeB2.meta.referenceVideoUrls))
   await shot('B-node-after-reattach')
   const callB = await spendAndCapture(ids.b, 'B')
   const b = refsOf(callB)
-  report.scenarios.B = { videos: b.videos, prompt: b.prompt }
+  report.scenarios.B = { deletedRequest: bDeleteRequest, videos: b.videos, prompt: b.prompt }
   check('B：请求里带着预演参考', Array.isArray(b.videos) && b.videos.length === 1 && uploads.some((u) => u.url === b.videos[0]), JSON.stringify(b.videos))
 
   // ── 场景 C：节点已有用户自己的一条参考视频 → 出成片 → 预演排第二、提示词引用 @video2 ──
