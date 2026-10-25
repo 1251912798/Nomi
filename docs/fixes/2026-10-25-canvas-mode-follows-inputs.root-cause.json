@@ -234,7 +234,8 @@
   },
   "migration": "No stored schema migration is needed. Existing snapshots and document writes still pass through the same subscription; only their mode projection behavior changes so explicit modes are preserved and empty references still return to text.",
   "residual_risks": [
-    "Real Electron bilingual walks and screenshot review still need to run in the isolated profile for this corrective round.",
-    "A mode intentionally selected for an empty first/last-frame workflow remains unchanged by textModeToReturnTo, matching the existing product rule."
+    "中英真实 Electron 走查和截图逐张复核已完成；走查使用本地假上游记录/拒绝请求，未跑真实供应商付费任务。",
+    "大画布性能收据在高负载 Mac 上完成并在预算内；跨平台旧基线与同平台安静基线仍可能有差异。",
+    "空首尾帧的用户显式意图仍由 textModeToReturnTo 保留，不会被自动回成文生。"
   ]
 }
