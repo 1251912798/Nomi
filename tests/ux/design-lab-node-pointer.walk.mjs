@@ -204,6 +204,7 @@ async function expectNodePointerState(page, state, record) {
         const lit = await page.locator('[data-external-highlight]').evaluateAll((list) => list.map((el) => [el.closest('[data-lab-canvas-node]')?.getAttribute('data-lab-canvas-node'), el.getAttribute('data-external-highlight')]))
         if (!lit.some(([id, kind]) => id === 'np-draft-2' && kind === 'hover') || lit.some(([id]) => id !== 'np-draft-2')) record(`${state.id} ${A.canvasHighlight}: 画布上亮的不是镜 02 一个：${JSON.stringify(lit)}`)
         if (await page.locator('[data-lab-canvas-node="np-control"] [data-external-highlight]').count()) record(`${state.id} ${A.canvasHighlight}: 对照节点 np-control 不应被悬停联动点亮`)
+        await assertLinkBoardLayout(page, state, record)
         const shadow = await page.locator('[data-lab-canvas-node="np-draft-2"] [data-external-highlight="hover"]').first().evaluate((el) => getComputedStyle(el).boxShadow)
         if (!shadow || shadow === 'none') record(`${state.id} ${A.canvasHighlight}: 悬停没有深色细线 + 阴影`)
         if (!(await page.locator('[data-node-pointer-hover-summary]').count())) record(`${state.id} ${A.hoverLink}: 组下方没显示被悬停那一镜的摘要`)
@@ -221,6 +222,7 @@ async function expectNodePointerState(page, state, record) {
         for (const id of ['np-draft-1', 'np-draft-3', 'np-control']) {
           if (await page.locator(`[data-lab-canvas-node="${id}"] [data-external-highlight="flash"]`).count()) record(`${state.id} ${A.canvasHighlight}: ${id} 不应闪一下`)
         }
+        await assertLinkBoardLayout(page, state, record)
         if (await page.locator(`[data-lab-hover="p1"] ${pointer('np-draft-2')} [data-node-pointer-located]`).count() !== 1) record(`${state.id} ${A.located}: P1 那一项没标「已定位」`)
         await noAccentOutline(page, state, record)
         break
@@ -264,6 +266,39 @@ async function expectNodePointerState(page, state, record) {
       default:
         record(`${state.id}: 走查没有登记这一格的断言`)
     }
+}
+
+async function assertLinkBoardLayout(page, state, record) {
+  const halves = await page.locator('[data-link-board-half]').evaluateAll((rows) => rows.map((row) => {
+    const canvas = row.querySelector('.link-board-canvas')
+    const ids = ['np-draft-1', 'np-draft-2', 'np-draft-3', 'np-control']
+    const boxes = Object.fromEntries(ids.map((id) => {
+      const outer = row.querySelector(`[data-lab-canvas-node="${id}"]`)
+      const frame = outer?.querySelector('[data-node-id]')
+      const r = frame?.getBoundingClientRect()
+      const o = outer?.getBoundingClientRect()
+      return [id, r && o ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom, outerTop: o.top } : null]
+    }))
+    return { boxes, canvas: canvas?.getBoundingClientRect() }
+  }))
+  if (halves.length !== 2) record(`${state.id} ${A.canvasHighlight}: 上下两半画布数量不对：${halves.length}`)
+  for (const half of halves) {
+    const boxes = half.boxes
+    const shots = ['np-draft-1', 'np-draft-2', 'np-draft-3'].map((id) => boxes[id])
+    if (shots.some((box) => !box) || !boxes['np-control']) { record(`${state.id} ${A.canvasHighlight}: 四张节点缺少可测框`); continue }
+    const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+    for (let i = 0; i < shots.length; i += 1) for (let j = i + 1; j < shots.length; j += 1) if (overlaps(shots[i], shots[j])) record(`${state.id} ${A.canvasHighlight}: 镜头节点 ${i + 1}/${j + 1} 重叠`)
+    for (const shot of shots) if (overlaps(shot, boxes['np-control'])) record(`${state.id} ${A.canvasHighlight}: 对照节点与镜头重叠`)
+    if (!(boxes['np-control'].top > boxes['np-draft-2'].bottom && boxes['np-control'].left < boxes['np-draft-2'].right && boxes['np-control'].right > boxes['np-draft-2'].left)) record(`${state.id} ${A.canvasHighlight}: 对照节点没有在镜 02 正下方`)
+    if (half.canvas && ['np-draft-1', 'np-draft-2', 'np-draft-3', 'np-control'].some((id) => boxes[id].left < half.canvas.left || boxes[id].right > half.canvas.right || boxes[id].top < half.canvas.top || boxes[id].bottom > half.canvas.bottom)) record(`${state.id} ${A.canvasHighlight}: 节点越出画布底板`)
+  }
+  const controlLabel = page.locator('[data-lab-canvas-node="np-control"] [data-node-label-row]')
+  const visibleLabels = await controlLabel.evaluateAll((labels) => labels.filter((label) => getComputedStyle(label).visibility !== 'hidden' && label.getBoundingClientRect().width > 0).length)
+  if (await controlLabel.count() !== 2 || visibleLabels !== 2) record(`${state.id} ${A.label}: 对照节点标签行不可见`)
+  if ((await controlLabel.evaluateAll((labels) => labels.some((label) => !(label.textContent ?? '').trim())))) record(`${state.id} ${A.label}: 对照节点标签为空`)
+  if (await page.locator('[data-lab-canvas-node="np-control"] [data-shot-number]').count()) record(`${state.id} ${A.label}: 对照节点不应有镜号胶囊`)
+  const widths = await page.locator('[data-link-board-half] > [class*="rounded-r-none"]').evaluateAll((els) => els.map((el) => el.parentElement?.getBoundingClientRect().width ? (el.parentElement.getBoundingClientRect().width - el.getBoundingClientRect().width) : 0))
+  if (widths.some((width) => Math.abs(width - 360) > 1)) record(`${state.id} ${A.row}: 聊天面板宽度不是 360：${widths.join(', ')}`)
 }
 
 await walkDesignLabScreen({
