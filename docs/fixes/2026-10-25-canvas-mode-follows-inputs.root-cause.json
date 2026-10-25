@@ -1,12 +1,12 @@
 {
   "schema_version": 3,
   "id": "2026-10-25-canvas-mode-follows-inputs",
-  "problem_type": "A store write-after subscription promotes a generation node during an explicit multi-step edge-and-mode write, changing the caller-selected input role or mode.",
+  "problem_type": "A store write-after subscription reverts generation mode from the last-input transition without distinguishing authoritative history snapshots from ordinary input writes.",
   "detected_by": "walkthrough",
   "recurrence_check_on": "2026-11-25",
-  "symptom": "On the current implementation, building a first-frame input and then explicitly selecting its first-frame mode leaves the target in the wrong mode; the same shared subscription causes five CI failures across quick actions, storyboard approval and runner state construction.",
-  "direct_cause": "generationCanvasStore.subscribe called the combined mode reconciler for every nodes/edges write, and that function included the promotion branch based on the intermediate graph state. Explicit edge-role and mode writes therefore raced the subscription; the subscription could promote again before the caller finished.",
-  "class_root": "Promotion and empty-input reversion were incorrectly owned by the same all-writes trigger. The shared boundary lacked an invariant that explicit multi-step writes keep their caller-authored edge role and mode while only input disappearance is reconciled after store/document writes.",
+  "symptom": "On the current implementation, a node can remain in a reference or single-image mode after its last reference is removed; the existing single-image exception also prevents real disconnects from returning to text, while undoing an explicit empty first-frame workflow rewrites the restored mode.",
+  "direct_cause": "The subscription decided from the post-write graph only and ran for every node. It neither compared the target input fact before and after the write nor treated undo/redo snapshots as authoritative, so it could both miss a real last-input removal and rewrite a node that was already intentionally empty.",
+  "class_root": "The shared boundary lacked one input fact covering pending edges, node-owned slots/links and planned storyboard first frames, plus a transition invariant: only a write that changes a target from live input to no input may trigger text reversion; complete undo/redo snapshots must pass through unchanged.",
   "affected_population": [
     "Video first-frame, last-frame and first-last workflows built through multi-step quick actions or Agent/storyboard writes",
     "Director camera-reference writes and any future caller that creates an edge before explicitly setting the target mode",
@@ -15,12 +15,13 @@
   "scope_paths": [
     "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
     "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+    "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
     "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts"
   ],
   "entry_points": [
-    "All nodes/edges store and document writes run the empty-input reversion subscription.",
-    "The connect gesture paths call deriveTargetAfterConnect, whose only promotion write is promoteTargetMode.",
-    "Generation composer, submit-time reconciliation and paid-card readers remain consumers; they do not own the store projection."
+    "All nodes/edges store and document writes are observed by the subscription, which compares previous/current input facts.",
+    "The connect gesture paths call deriveTargetAfterConnect; promotion remains there.",
+    "Undo/redo restore complete snapshots through canvasDocumentCommit and bypass derived reversion during the replay write."
   ],
   "external_sources": [
     {
@@ -43,9 +44,10 @@
     }
   ],
   "invariants": [
-    "The store/document subscription changes mode only when the target has no live reference input and textModeToReturnTo returns an explicit text mode.",
+    "A live input is any admitted non-text reference edge (pending or resolved), a node-owned reference link/slot fill, or a planned storyboard keyframe for the target shot.",
+    "The subscription reverts only when the same target was live before the write and empty after it; an already-empty target is untouched.",
     "Promotion is performed only by the connect gesture through deriveTargetAfterConnect and resolveTargetModeForEdge.",
-    "After an explicit multi-step edge then mode write, edge modes and the caller-selected mode remain unchanged; corrections use history:false and are idempotent."
+    "Undo/redo restore snapshots without a second mode projection; corrections outside history use history:false and remain idempotent."
   ],
   "doors": [
     {
@@ -129,22 +131,22 @@
     "after": 15,
     "why_not": "The input-reducing user, Agent and document doors remain required and still converge through the store subscription. The two surviving mode owners are intentionally separate: promoteTargetMode is the connect-gesture write door, while revertTargetModeForEmptyInputs is the all-store-writes empty-input door; merging them recreates the intermediate-state overwrite. Submit and paid-card readers remain separate defensive consumers."
   },
-  "generality_proof": "Every input-reducing caller still mutates the same nodes/edges store identity and is observed by the subscription, so empty-input reversion is independent of UI mount, caller, import format, undo direction or platform. Every connect gesture converges on deriveTargetAfterConnect, so promotion is independent of which gesture entry created the edge. Explicit multi-step callers are protected because the subscription no longer runs promotion at intermediate states.",
+  "generality_proof": "Every input-reducing caller mutates the same nodes/edges store identity and is observed by the subscription; the shared predicate treats unresolved edges, node-owned slots and planned keyframes as inputs, so caller, provider result timing, import format and UI mount do not change the result. Undo/redo is a separate authoritative snapshot boundary, so its explicit empty modes are preserved.",
   "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
+      "symbol": "revertTargetModeForEmptyInputs",
+      "responsibility": "Own the single input predicate and apply text reversion only after a proven live-to-empty transition."
+    },
     {
       "path": "src/workbench/generationCanvas/store/generationCanvasStore.ts",
       "symbol": "useGenerationCanvasStore.subscribe",
-      "responsibility": "Observe every nodes/edges write and invoke only empty-input reversion after the write."
+      "responsibility": "Compare the target in the previous and current store snapshots and invoke reversion only on the transition."
     },
     {
       "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
       "symbol": "deriveTargetAfterConnect",
-      "responsibility": "Own the connect-gesture postcondition and delegate its sole promotion decision to promoteTargetMode."
-    },
-    {
-      "path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
-      "symbol": "revertTargetModeForEmptyInputs",
-      "responsibility": "Use the shared slot and text-mode rules to revert only targets whose reference inputs are all gone."
+      "responsibility": "Own the connect-gesture postcondition and its sole promotion decision."
     }
   ],
   "invariant_owner_layer": {
@@ -205,14 +207,15 @@
   },
   "prevention": {
     "kind": "centralized-boundary",
-    "enforcement_path": "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
-    "invariant": "The all-writes subscription may only revert reference/edit/character/single intent to text when live reference inputs are empty; connect gestures alone may promote based on the newly connected edge.",
+    "enforcement_path": "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+    "invariant": "For every ordinary store/document write, a target is eligible for reversion only when the shared input predicate was true in the previous snapshot and false in the current snapshot; history replay is authoritative and skipped.",
     "failure_mode": "If no archetype, no compatible text mode or no live input fact can be established, no speculative mode switch occurs; existing capability admission and submit-time reconciliation remain responsible for reporting unusable generation.",
     "exception_policy": "none",
-    "strategy": "Keep promotion at deriveTargetAfterConnect and empty-input reversion at the store subscription, use shared capability and slot functions for both decisions, and use history:false so reversion remains part of the triggering write history.",
+    "strategy": "Keep promotion at deriveTargetAfterConnect, keep the input predicate and reversion in canvasConnectDerivations, compare both snapshots at the store boundary, and guard complete undo/redo replacement with the document commit replay marker.",
     "artifacts": [
       "src/workbench/generationCanvas/store/canvasConnectDerivations.ts",
       "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+      "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
       "src/workbench/generationCanvas/store/canvasModeFollowsInputs.test.ts"
     ]
   },
@@ -225,17 +228,17 @@
   "legacy_paths": {
     "status": "not-applicable",
     "removed_paths": [],
-    "rationale": "The obsolete composer effect and its component-only write path were removed in the earlier implementation and remain absent. This corrective change removes only the subscription promotion branch and does not add a fallback."
+    "rationale": "The obsolete composer effect and component-only write path were removed earlier. This change removes the single-image exception, removes post-write promotion from the subscription, and adds no fallback; undo/redo is explicitly marked as an authoritative snapshot path."
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
     "rationale": "No third-party dependency decides Nomi's archetype modes or reference slots; React guidance informed removal of the effect but no dependency change is needed.",
     "exit_criteria": []
   },
-  "migration": "No stored schema migration is needed. Existing snapshots and document writes still pass through the same subscription; only their mode projection behavior changes so explicit modes are preserved and empty references still return to text.",
+  "migration": "No stored schema migration is needed. Existing snapshots keep their nodes, edges and mode ids; ordinary input-removing writes now reconcile only on a live-to-empty transition, while undo/redo restores the stored snapshot as-is.",
   "residual_risks": [
-    "中英真实 Electron 走查和截图逐张复核已完成；走查使用本地假上游记录/拒绝请求，未跑真实供应商付费任务。",
-    "大画布性能收据在高负载 Mac 上完成并在预算内；跨平台旧基线与同平台安静基线仍可能有差异。",
-    "空首尾帧的用户显式意图仍由 textModeToReturnTo 保留，不会被自动回成文生。"
+    "中英真实 Electron 走查和截图逐张复核仍需在本轮最终代码上完成；不跑真实供应商付费任务。",
+    "大画布性能收据需在最终提交后重测；跨平台旧基线与同平台安静基线仍可能有差异。",
+    "规划首帧的识别依赖分镜节点的 storyboardDesignId + shotId + storyboardKeyframe 绑定；未绑定的外部计划数据不会被猜测。"
   ]
 }

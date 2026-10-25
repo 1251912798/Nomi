@@ -37,12 +37,23 @@ type ConnectDerivationStore = {
 type InputState = Pick<ConnectDerivationStore, 'nodes' | 'edges'>
 
 function hasLiveReferenceInput(store: InputState, target: GenerationCanvasNode): boolean {
-  return resolveReferenceSlots(target, store.nodes, store.edges).some((slot) => slot.fills.length > 0)
-    || store.edges.some((edge) => {
+  const meta = (target.meta || {}) as Record<string, unknown>
+  const storyboardDesignId = typeof meta.storyboardDesignId === 'string' ? meta.storyboardDesignId : ''
+  const shotId = typeof meta.shotId === 'string' ? meta.shotId : ''
+  const hasPlannedStoryboardFirstFrame = Boolean(storyboardDesignId && shotId) && store.nodes.some((node) => {
+    const sourceMeta = (node.meta || {}) as Record<string, unknown>
+    return node.id !== target.id
+      && sourceMeta.storyboardKeyframe === true
+      && sourceMeta.storyboardDesignId === storyboardDesignId
+      && sourceMeta.shotId === shotId
+  })
+  const slots = resolveReferenceSlots(target, store.nodes, store.edges).some((slot) => slot.fills.length > 0)
+  const edge = store.edges.some((edge) => {
       if (edge.target !== target.id) return false
       const source = store.nodes.find((node) => node.id === edge.source)
       return Boolean(source && referenceAssetKindForNode(source) && !isTextPromptEdge(source, target, edge.mode))
     })
+  return hasPlannedStoryboardFirstFrame || slots || edge
 }
 
 export function targetHasLiveReferenceInput(store: InputState, targetNodeId: string): boolean {
@@ -78,10 +89,6 @@ export function revertTargetModeForEmptyInputs(
   const archetype = archetypeForNode(target)
   if (!archetype) return
   const activeMode = currentArchetypeMode(archetype, (target.meta || {}) as Record<string, unknown>)
-  // A freshly restored/created empty first-frame card is an explicit workflow
-  // choice. The same explicit choice must survive undo restoring its empty
-  // slots, so a single-frame intent never gets an implicit text switch.
-  if (activeMode.intent === 'single') return
   const hasAnyInput = hasLiveReferenceInput(store, target)
   const nextModeId = textModeToReturnTo(archetype, activeMode, hasAnyInput)
   if (!nextModeId || nextModeId === activeMode.id) return

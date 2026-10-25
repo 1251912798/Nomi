@@ -22,7 +22,7 @@ import type { GenerationCanvasState } from './canvasStoreTypes'
 import { createCanvasNodeActions, removeGroupsEmptiedByNodeDeletion } from './canvasNodeActions'
 import { createCanvasGraphActions } from './canvasGraphActions'
 import { createCanvasRunActions } from './canvasRunActions'
-import { createCanvasDocumentActions } from './canvasDocumentCommit'
+import { createCanvasDocumentActions, isCanvasHistoryReplay } from './canvasDocumentCommit'
 import { reconcileTimelineForDeletedNodes } from './canvasTimelineBridge'
 import { appendAdmittedEdges, reportSkippedEdges, type AppendedEdges } from './canvasEdgeWrite'
 import { assertProductionCanvasProjectIdentity, emitProductionCanvasSignal } from '../../production/productionCanvasSignals'
@@ -228,16 +228,17 @@ export const useGenerationCanvasStore = create<GenerationCanvasState>()(subscrib
 // undo and redo even when no generation composer is mounted.
 let reconcilingInputModes = false
 useGenerationCanvasStore.subscribe((state, previous) => {
-  if (reconcilingInputModes || (state.nodes === previous.nodes && state.edges === previous.edges)) return
+  if (reconcilingInputModes || isCanvasHistoryReplay() || (state.nodes === previous.nodes && state.edges === previous.edges)) return
   reconcilingInputModes = true
   try {
-    const current = useGenerationCanvasStore.getState()
-    for (const node of current.nodes) {
-      // Reconcile empty inputs after every graph/document write. An explicitly
-      // chosen empty first/last-frame workflow must survive node-only writes,
-      // restores and undo; the helper owns that exception.
-      if (targetHasLiveReferenceInput(current, node.id)) continue
-      revertTargetModeForEmptyInputs(current, node.id)
+    for (const node of state.nodes) {
+      // Reconcile only the transition that removes the final input. A node that
+      // was already empty is caller-authored state (imports and planned work
+      // included) and must not be rewritten by this subscription.
+      const before = previous.nodes.find((candidate) => candidate.id === node.id)
+      if (!before || !targetHasLiveReferenceInput(previous, before.id)) continue
+      if (targetHasLiveReferenceInput(state, node.id)) continue
+      revertTargetModeForEmptyInputs(state, node.id)
     }
   } finally {
     reconcilingInputModes = false

@@ -126,6 +126,15 @@ function emitReturnedLandings(returned: readonly Returned[]): void {
 
 type Projection = Readonly<{ nodes: GenerationCanvasNode[]; edges: GenerationCanvasEdge[]; groups: NodeGroup[] }>
 
+// History snapshots are authoritative complete document states. The input-mode
+// subscription must not derive a second correction while undo/redo is restoring
+// one of those snapshots (it would rewrite an explicitly empty first-frame
+// workflow during the rewind itself).
+let canvasHistoryReplay = false
+export function isCanvasHistoryReplay(): boolean {
+  return canvasHistoryReplay
+}
+
 function emitProductionSignalsForDocumentChange(projectId: string | null, before: readonly GenerationCanvasNode[], after: readonly GenerationCanvasNode[]): void {
   const beforeIds = new Set(before.map((node) => node.id))
   const afterIds = new Set(after.map((node) => node.id))
@@ -215,7 +224,12 @@ export const createCanvasDocumentActions: CanvasSliceCreator<CanvasDocumentActio
       case 'rewind': {
         const live = get()
         const next = settleRewind(write.restore, live.nodes, live.heldNodeOutcomes)
-        replaceDocument(next, withoutReturned(live.heldNodeOutcomes, next.returned))
+        canvasHistoryReplay = true
+        try {
+          replaceDocument(next, withoutReturned(live.heldNodeOutcomes, next.returned))
+        } finally {
+          canvasHistoryReplay = false
+        }
         // 影子记账:撤销=全量后态(replay≡snapshot 恒真)
         emitCanvasGesture([{ type: 'canvas.snapshot.restored', payload: { snapshot: { nodes: next.nodes, edges: next.edges, groups: next.groups } } }])
         emitReturnedLandings(next.returned)
