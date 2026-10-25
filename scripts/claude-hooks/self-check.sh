@@ -125,6 +125,7 @@ fi
 # 命令 / 门岗（全表在 docs/engineering/commands.md）
 if hit_block commands 'gates|check:|门岗|命令|pnpm run'; then
   echo "【命令全表】CLAUDE.md 只留 gates 一行（本机完整自检）；各门岗、冒烟、数门、合并前检查命令的全表在 docs/engineering/commands.md；推送前快检与 CI 怎么分工见 docs/engineering/delivery-and-review.md｜门岗红了先读它红在哪条判据，不许抬基线或预算挤 PR(R17)"
+  echo "【文件体积门岗】格式化后的代码行计数，空行和纯注释行不算；650 黄牌点名按职责拆，800 红牌拦；已超线文件冻结只减不增，压行或删注释不算。"
   echo ""
 fi
 # 交付 / 合并 / 交工评审

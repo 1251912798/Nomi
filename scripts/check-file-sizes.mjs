@@ -1,109 +1,240 @@
 #!/usr/bin/env node
-// 文件体积门岗 —— 落实 CLAUDE.md 规则 12（约束代码量、防巨型文件）。
-//
-// 机制（棘轮，只减不增）：
-//   1. 任何非测试的 .ts/.tsx/.mts/.cts，行数不得超过 MAX_LINES（硬上限）。
-//   2. 现存已超限的"巨壳"列入 ALLOWLIST 并记录基线行数；它们：
-//        - 超过基线 → 红牌（你把已知巨壳改得更大了：拆分或精简，别再喂）。
-//        - 低于基线 → 黄牌提示（你瘦身了，请把基线下调以锁定战果）。
-//      目标是逐步把 ALLOWLIST 清空。
-//   3. 新文件不得超过 MAX_LINES —— 想新增超限文件 = 先拆，或人工评审后入白名单。
-//
-// CSS 文件由规则 10 单独治理（只可减不可增），不在本门岗范围。
-//
-// 用法：node ./scripts/check-file-sizes.mjs
+// 文件体积门岗：按仓库 Prettier 配置归一化后统计代码行，防止压行或删注释逃过模块化边界。
+// 650 行黄牌提示最大的顶层声明；800 行红牌。legacy/frozen 基线共用一份 JSON，棘轮只减不增。
 
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { gitPaths } from "./lib/gitPaths.mjs";
+import fs from 'node:fs'
+import path from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
+import * as prettier from 'prettier'
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const MAX_LINES = 800;
-const SCAN_DIRS = ["src", "electron"];
+import { gitPaths } from './lib/gitPaths.mjs'
 
-// 现存巨壳的基线行数（棘轮上限）。清空此表 = 巨壳债还清。
-// 改小某个数 = 你成功瘦身后锁定的新上限。新增条目应经人工评审。
-const ALLOWLIST = {
-  "electron/runtime.ts": 479, // …→ 531（2026-08-27 pi 运行切换移除旧 Agent 再导出）→ 530（2026-08-28 onboarding facade cleanup）→ 526（2026-08-30 runtime lifecycle cleanup）→ 519（2026-09-01 actual-cost 接线时把两处终态 trace 收成单行，净瘦身）→ 490（2026-09-17 TaskRequest/CachedTask 抽到 electron/taskTypes.ts）→ 486（2026-09-21 合并 ① 按门岗提示拧紧）→ 482（2026-10-16 #1213 结果读取收进 tasks/taskResultReading）→ 479（同日 V-1213：无 mapping 兜底也走唯一读法，删 extractAssetUrl 再导出）
-  // Conversational model integration boundary: the session service keeps the
-  // state machine, receipt contract, canonical certification and recovery
-  // transitions together. It is reviewed as one security boundary and must
-  // be split only along a stable ownership seam, not by moving methods into
-  // a second writer. (2026-08-29)
-  "electron/integrationCertification/integrationSession.ts": 1394, // 1695→1652（2026-09-10 把 workflow 绑定净化与「谁来编译说明卡」的裁决各抽成独立模块）→ 1338（2026-09-15 棘轮锁定：门岗自己报「已瘦身」要求下调，来自 main 的既有瘦身，不是本 PR 改的）→ 1394（2026-09-21 会话容量合同：读盘那一段整体搬进 integrationSessionRecord，服务层只剩一行委托）
-  // Existing SettingsDialog shell now owns the durable integration handoff
-  // projection alongside the legacy model settings pages. Keep this reviewed
-  // baseline until the planned settings-surface extraction. (2026-08-29)
-  "src/ui/onboarding/OnboardingDrawer.tsx": 795, // 795（2026-09-21 合并 ① 按门岗提示拧紧，只减不增）
-  "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx": 500, // …→ 524（2026-10-11 全景浮条抽成 PanoramaNodeToolbar）→ 544（2026-10-11 切图确认条抽成 ImageCropGridActionBar）→ 549（2026-10-08 列表角标 / 「在列表里看」进来时把两段多行 import 收成一行）→ 555（2026-10-06 预览底纹收进 previewBackgroundClass）→ 557 → 558（2026-10-02 结果托盘不再要 selected 入参）…→ 560（2026-09-25 浮框放置层删除后的注释收短）…→ 713（2026-08-29 React Flow 单内核：移除旧布局与缩放分支）→ 710（2026-09-07 agent-artifact：正文/浮条插槽移出壳 + composer 排除表收进 resolveRenderKind）→ 677（2026-09-12 S3：四个整表选择器收进 canvasNodeGenerationIndex）→ 654（2026-09-21 合并 ① 按门岗提示拧紧）
-  // Project Agent Host 迁移巨壳（M1 transplant：electron 切片随 r2 入库、renderer 切片随
-  // 本次 cutover 入库；上游 pr223 原型已人工评审同一批 owner，数字按本分支实际行数锁棘轮，
-  // 只减不增，下一个分解批次按稳定 ownership seam 拆分后逐个出表）。834→836：并 origin/main 的
-  // TikHub connector（#296）加 registerTikhubConnectorIpc 的 import+调用两行；836→839：#298-v2
-  // 自定义 MCP 客户端 profile 接入（registerCustomMcpProfileIpc + watchMcpProfiles + import）3行；
-  // 839→846：registerIntegrationHandoffIpc + registerIntegrationSessionIpc 的 import+调用（integration
-  // certification handoff queue，0b6441c6 transplant 时误删后按根因恢复）7行；仍远低于本分支起点 847。
-  // 846→828：console.* 收口到 logging/logger 时，把 registerDevDiagnostics（dev-only 窗口诊断挂钩，
-  // 整族最后都落在 logDevDetail 上）搬进 electron/logging/devDiagnostics.ts（−26 行），
-  // 同 commit 加回「profile 被隔离时日志跟着走」那段带注释的 setPath（+8 行）。
-  "electron/main.ts": 665,
-  // Phase 6 常驻壳成为唯一 Agent UI 后的应用外壳（pr223 评审基线曾为 908；并 origin/main 拆解面板宿主后
-  // 折叠一行多名 import，曾 907；m1 侧栏收起修复顺手折叠 hydrate/navigate 多行调用参数，实际 903，锁棘轮只减不增）。
-  // PR#21 白板节点引入（2026-06-25）：WhiteboardDrawingTool（1032）与 WhiteboardLeaferCanvas（3406）两巨壳
-  // 已按 Rule 9 全部拆完、双双出白名单。LeaferCanvas → whiteboardCanvasTypes/Export/NodeOps/Geometry 四纯模块
-  // + whiteboardSceneRender（渲染树）+ useWhiteboardDrawing/BoxSelection/SelectionActions/SceneSync 四交互 hook，
-  // 壳缩到 740 < 800。DrawingTool → WhiteboardToolbarControls + whiteboardStateOps，壳 760。
-  // generationCanvasStore.ts 曾 871 行（巨壳）；S5-0 按 zustand slice 模式拆出 canvasStoreTypes.ts +
-  // canvasNodeActions.ts + canvasGraphActions.ts + canvasRunActions.ts 后壳文件缩到 161 < 800，已出白名单。
-  // NodeParameterControls.tsx 曾 1097 行（巨壳）；C2b 抽出 controls/parameterControlModel.ts +
-  // archetypeMeta.ts + ModeBar.tsx 后缩到 605 < 800 硬上限，已出白名单（Rule 12：逐步清空白名单）。
-  // Scene3DFullscreen.tsx 曾 3822 行（最大巨壳）；#10b 拆出 scene3dToolbar/inspector/objects/
-  // viewControllers/sceneView/sceneContent/cameraPreview 七个子模块后壳缩到 771 < 800，已出白名单。
-};
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const MAX_LINES = 800
+const WARNING_LINES = 650
+const MIGRATION_FROM = '4236b6b412d92af52c16f012ccaf99f076ca92ae'
+const BASELINE_PATH = 'scripts/file-size-baseline.json'
+const SCAN_DIRS = ['src', 'electron']
+const SOURCE_RE = /\.(?:tsx?|[mc]ts)$/
+const TEST_RE = /\.test\.(?:tsx?|[mc]ts)$/
 
-function listFiles() {
-  // 用 git 列出受跟踪文件，天然排除 node_modules / dist / 未跟踪草稿。
-  return gitPaths(["ls-files", ...SCAN_DIRS], { cwd: ROOT })
-    .filter((f) => /\.(?:tsx?|[mc]ts)$/.test(f))
-    .filter((f) => !/\.test\.(?:tsx?|[mc]ts)$/.test(f))
-    .filter((f) => !/\.d\.(?:ts|[mc]ts)$/.test(f))
-    // i18n 翻译资源是「数据表」不是代码复杂度 —— R9/R12 治的是代码模块化，
-    // locale 词典随翻译量线性增长天然会破 800，不适用本门（2026-07-22 全量 i18n 落地）。
-    .filter((f) => !/^src\/i18n\/(locales\/.*|resources)\.ts$/.test(f))
-    // git ls-files 会连「工作树里已删除、尚未 commit」的文件一起列出——门岗量的是
-    // 工作树现状，消失的文件没有体积可查，跳过（commit 后 CI checkout 恒存在，不削弱棘轮）。
-    .filter((f) => fs.existsSync(path.join(ROOT, f)));
+function readJson(relativePath) {
+  return JSON.parse(fs.readFileSync(path.join(ROOT, relativePath), 'utf8'))
 }
 
-function countLines(absPath) {
-  // 与 `wc -l` 一致：统计换行符数量。
-  const content = fs.readFileSync(absPath, "utf8");
-  return (content.match(/\n/g) || []).length;
-}
+const baseline = readJson(BASELINE_PATH)
+const baselineEntries = baseline.entries ?? {}
 
-const errors = [];
-const warnings = [];
-
-for (const rel of listFiles()) {
-  const lines = countLines(path.join(ROOT, rel));
-  const baseline = ALLOWLIST[rel];
-  if (baseline !== undefined) {
-    if (lines > baseline) {
-      errors.push(`✗ ${rel}: ${lines} 行 > 基线 ${baseline}（已知巨壳又长大了 —— 拆分或精简，别再喂）`);
-    } else if (lines < baseline) {
-      warnings.push(`↓ ${rel}: ${lines} 行 < 基线 ${baseline}（已瘦身，请把 check-file-sizes.mjs 里的基线下调到 ${lines} 以锁定）`);
-    }
-  } else if (lines > MAX_LINES) {
-    errors.push(`✗ ${rel}: ${lines} 行 > 上限 ${MAX_LINES}（新巨型文件 —— 请拆分；确需保留须人工评审后入 ALLOWLIST）`);
+function requestedPaths() {
+  const raw = process.env.NOMI_FILESIZE_PATHS
+  if (!raw) return null
+  try {
+    const values = JSON.parse(raw)
+    if (!Array.isArray(values)) throw new Error('must be an array')
+    return new Set(values)
+  } catch (error) {
+    throw new Error(`NOMI_FILESIZE_PATHS 不是 JSON 路径数组：${error.message}`, { cause: error })
   }
 }
 
-for (const w of warnings) console.warn(w);
-
-if (errors.length > 0) {
-  console.error("\n文件体积门岗未通过（规则 12）：\n" + errors.join("\n") + "\n");
-  process.exit(1);
+function listFiles() {
+  const selected = requestedPaths()
+  return gitPaths(['ls-files', ...SCAN_DIRS], { cwd: ROOT })
+    .filter((file) => SOURCE_RE.test(file))
+    .filter((file) => !TEST_RE.test(file))
+    .filter((file) => !/\.d\.(?:ts|[mc]ts)$/.test(file))
+    .filter((file) => !/^src\/i18n\/(locales\/.*|resources)\.ts$/.test(file))
+    .filter((file) => fs.existsSync(path.join(ROOT, file)))
+    .filter((file) => selected === null || selected.has(file))
 }
 
-console.log(`✓ 文件体积门岗通过：上限 ${MAX_LINES} 行，巨壳白名单 ${Object.keys(ALLOWLIST).length} 个（棘轮只减不增）。`);
+function lineStarts(text) {
+  const starts = [0]
+  for (let index = 0; index < text.length; index += 1) if (text[index] === '\n') starts.push(index + 1)
+  return starts
+}
+
+function lineAt(starts, position) {
+  let low = 0
+  let high = starts.length
+  while (low + 1 < high) {
+    const middle = (low + high) >> 1
+    if (starts[middle] <= position) low = middle
+    else high = middle
+  }
+  return low + 1
+}
+
+function formattedCodeLines(text, languageVariant) {
+  const starts = lineStarts(text)
+  const ends = [...starts.slice(1).map((position) => position - 1), text.length]
+  const comments = []
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, false, languageVariant, text)
+  let token
+  while ((token = scanner.scan()) !== ts.SyntaxKind.EndOfFileToken) {
+    if (token === ts.SyntaxKind.SingleLineCommentTrivia || token === ts.SyntaxKind.MultiLineCommentTrivia) {
+      comments.push([scanner.getTokenPos(), scanner.getTextPos()])
+    }
+  }
+  const coveredByComment = (position) => comments.some(([start, end]) => position >= start && position < end)
+  const codeLines = new Set()
+  for (let index = 0; index < starts.length; index += 1) {
+    const start = starts[index]
+    const end = ends[index]
+    let firstNonWhitespace = start
+    while (firstNonWhitespace < end && /\s/.test(text[firstNonWhitespace])) firstNonWhitespace += 1
+    if (firstNonWhitespace >= end) continue
+    let hasCode = false
+    for (let position = firstNonWhitespace; position < end; position += 1) {
+      if (!/\s/.test(text[position]) && !coveredByComment(position)) {
+        hasCode = true
+        break
+      }
+    }
+    if (hasCode) codeLines.add(index + 1)
+  }
+  return { codeLines, starts }
+}
+
+function declarationName(node) {
+  if (ts.isVariableStatement(node)) return node.declarationList.declarations.map((item) => item.name.getText()).join(', ')
+  if (node.name) return node.name.getText()
+  return `<${ts.SyntaxKind[node.kind]}>`
+}
+
+function topDeclarations(formatted, relativePath, codeLines, starts) {
+  const scriptKind = relativePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  const languageVariant = relativePath.endsWith('.tsx') ? ts.LanguageVariant.JSX : ts.LanguageVariant.Standard
+  const sourceFile = ts.createSourceFile(relativePath, formatted, ts.ScriptTarget.Latest, true, scriptKind)
+  if (sourceFile.parseDiagnostics.length > 0) {
+    const message = ts.flattenDiagnosticMessageText(sourceFile.parseDiagnostics[0].messageText, ' ')
+    throw new Error(`TypeScript AST 解析失败：${message}`)
+  }
+  const declarations = []
+  for (const node of sourceFile.statements) {
+    if (ts.isImportDeclaration(node) || ts.isImportEqualsDeclaration(node) || ts.isExportDeclaration(node)) continue
+    const start = lineAt(starts, node.getStart(sourceFile))
+    const end = lineAt(starts, node.end)
+    const lines = [...codeLines].filter((line) => line >= start && line <= end).length
+    declarations.push({ name: declarationName(node), lines })
+  }
+  return { declarations: declarations.sort((left, right) => right.lines - left.lines).slice(0, 3), languageVariant }
+}
+
+async function analyzeFile(relativePath) {
+  const absolutePath = path.join(ROOT, relativePath)
+  const source = fs.readFileSync(absolutePath, 'utf8')
+  const nonWhitespaceCharacters = source.replace(/\s/g, '').length
+  // 800 is a safe lower bound: a formatted code line must contain at least one non-whitespace character.
+  // This rejects obviously small files before the slower Prettier pass without making the metric evadable by compression.
+  if (nonWhitespaceCharacters < WARNING_LINES + 1) return { relativePath, formattedLines: nonWhitespaceCharacters, declarations: [], skipped: true }
+  const options = (await prettier.resolveConfig(absolutePath)) ?? {}
+  let formatted
+  try {
+    formatted = await prettier.format(source, { ...options, filepath: absolutePath })
+  } catch (error) {
+    throw new Error(`Prettier 格式化失败：${error.message}`, { cause: error })
+  }
+  const languageVariant = relativePath.endsWith('.tsx') ? ts.LanguageVariant.JSX : ts.LanguageVariant.Standard
+  const { codeLines, starts } = formattedCodeLines(formatted, languageVariant)
+  const { declarations } = topDeclarations(formatted, relativePath, codeLines, starts)
+  return { relativePath, formattedLines: codeLines.size, declarations, skipped: false }
+}
+
+function gitShow(ref, relativePath) {
+  try {
+    return execFileSync('git', ['show', `${ref}:${relativePath}`], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+  } catch {
+    return null
+  }
+}
+
+function originEntries() {
+  if (process.env.NOMI_FILESIZE_SKIP_BASELINE_COMPARE === '1') return null
+  const ref = process.env.NOMI_FILESIZE_ORIGIN_REF ?? 'origin/main'
+  const json = gitShow(ref, BASELINE_PATH)
+  if (json) {
+    try {
+      return JSON.parse(json).entries ?? {}
+    } catch (error) {
+      throw new Error(`${ref}:${BASELINE_PATH} 不是合法 JSON：${error.message}`, { cause: error })
+    }
+  }
+  const oldScript = gitShow(ref, 'scripts/check-file-sizes.mjs')
+  if (!oldScript) return null
+  const match = oldScript.match(/const ALLOWLIST = \{([\s\S]*?)\n\};/)
+  if (!match) return {}
+  const entries = {}
+  for (const item of match[1].matchAll(/"([^"]+)"\s*:\s*(\d+)/g)) entries[item[1]] = { kind: 'legacy', max: Number(item[2]) }
+  return entries
+}
+
+function baselineDriftErrors() {
+  const previous = originEntries()
+  if (previous === null) return { errors: [], warnings: ['⚠ 未找到 origin/main 基线，跳过基线漂移比较（本地夹具或无远端引用）'] }
+  const originSha = (() => {
+    try { return execFileSync('git', ['rev-parse', process.env.NOMI_FILESIZE_ORIGIN_REF ?? 'origin/main'], { cwd: ROOT, encoding: 'utf8' }).trim() }
+    catch { return '' }
+  })()
+  const migrationWindow = originSha === MIGRATION_FROM
+  const errors = []
+  const warnings = []
+  for (const [file, entry] of Object.entries(baselineEntries)) {
+    const old = previous[file]
+    if (!old) {
+      if (!migrationWindow) errors.push(`✗ 基线新增 ${file}（清单只许变短；新增冻结/白名单必须先拆）`)
+      continue
+    }
+    if (entry.max > old.max && !migrationWindow) errors.push(`✗ 基线上调 ${file}: ${entry.max} > origin/main ${old.max}（清单只许变短）`)
+    if (entry.max < old.max) warnings.push(`↓ 基线下调 ${file}: ${entry.max} < origin/main ${old.max}`)
+    if (entry.kind !== old.kind && !migrationWindow) errors.push(`✗ 基线 kind 变更 ${file}: ${old.kind ?? 'legacy'} → ${entry.kind}`)
+  }
+  if (migrationWindow) warnings.push(`ℹ 一次性基线迁移已启用：origin/main ${MIGRATION_FROM}`)
+  return { errors, warnings }
+}
+
+function baselineMessage(relativePath, currentLines, entry, declarations) {
+  const largest = declarations[0]?.name ?? entry?.topDeclarations?.[0]?.name ?? '最大顶层声明'
+  if (!entry) {
+    if (currentLines > MAX_LINES) return `✗ ${relativePath}: ${currentLines} 行 > 上限 ${MAX_LINES}（新文件巨壳；最大顶层声明 ${largest}，请按职责拆分）`
+    return null
+  }
+  if (currentLines > entry.max) return `✗ ${relativePath}: ${currentLines} 行 > 冻结上限 ${entry.max}（${largest}；新口径落地时已超线，冻结，按职责逐步拆）`
+  if (currentLines < entry.max) return `↓ ${relativePath}: ${currentLines} 行 < 冻结上限 ${entry.max}（已瘦身，请把上限下调到 ${currentLines} 以锁定）`
+  return null
+}
+
+async function main() {
+  const files = listFiles()
+  const errors = []
+  const warnings = []
+  const drift = baselineDriftErrors()
+  errors.push(...drift.errors)
+  warnings.push(...drift.warnings)
+  for (const relativePath of files) {
+    const result = await analyzeFile(relativePath)
+    if (result.skipped) continue
+    const entry = baselineEntries[relativePath]
+    const currentLines = result.formattedLines
+    const message = baselineMessage(relativePath, currentLines, entry, result.declarations)
+    if (message?.startsWith('✗')) errors.push(message)
+    else if (message) warnings.push(message)
+    if (currentLines >= WARNING_LINES && currentLines <= MAX_LINES && !message?.startsWith('↓')) {
+      warnings.push(`⚠ ${relativePath}: ${currentLines} 行达到黄牌（最大顶层声明 ${result.declarations.map((item) => `${item.name} ${item.lines} 行`).join('、') || '未识别'}；按职责拆分）`)
+    }
+  }
+  for (const warning of warnings) console.warn(warning)
+  if (errors.length > 0) {
+    console.error(`\n文件体积门岗未通过（格式化代码行；650 黄牌，800 红牌）：\n${errors.join('\n')}\n`)
+    process.exitCode = 1
+    return
+  }
+  console.log(`✓ 文件体积门岗通过：格式化代码行；黄牌 ${WARNING_LINES}，红牌 ${MAX_LINES}；冻结/legacy 基线 ${Object.keys(baselineEntries).length} 个（棘轮只减不增）。`)
+}
+
+main().catch((error) => {
+  console.error(`文件体积门岗无法运行：${error.message}`)
+  process.exitCode = 1
+})
