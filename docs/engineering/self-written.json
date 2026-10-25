@@ -119,6 +119,10 @@
       "reason": "阶段 4 画布 / 文稿 / 时间轴面的传输适配"
     },
     {
+      "path": "electron/capabilityCore/mcpToolResults*",
+      "reason": "MCP 工具结果的内容：一次制作发出了哪几镜、停在哪、没发的还能不能继续、进度起步那一句——按镜头花钱的领域事实（协议与传输另在 mcp* 自写登记里）"
+    },
+    {
       "path": "electron/shared/agentCapabilities/",
       "reason": "能力契约与动词：画布 / 文稿 / 时间轴 / 生成的领域读写、审批语义"
     },
