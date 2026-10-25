@@ -210,10 +210,11 @@ try {
   await expect.poll(() => fixture.videos.length, { timeout: stationTimeout({ operations: 4 }), message: 'D：首帧图出来后没有发视频请求' }).toBe(1)
   const videoBody = fixture.videos[0].body ?? {}
   const imageUrls = Array.isArray(videoBody.image_urls) ? videoBody.image_urls : []
+  const uploadedUrl = fixture.images[0]?.resultUrl
   evidence.requests.video = { model: videoBody.model ?? null, image_urls: imageUrls, keys: Object.keys(videoBody).sort() }
   // 这就是「首帧填的是 image_ref」的线上证据：图生视频只有 image_urls 这一个图片入口，首帧图就在里面。
-  if (imageUrls.length !== 1 || imageUrls[0] !== `${fixture.baseURL}/fixture/image.jpg`) {
-    failures.push(`D：视频请求的 image_urls 应当恰好是那一张首帧图（${fixture.baseURL}/fixture/image.jpg），实际 ${JSON.stringify(imageUrls)}`)
+  if (imageUrls.length !== 1 || imageUrls[0] !== uploadedUrl) {
+    failures.push(`D：视频请求的 image_urls 应当恰好是夹具记录的首帧上传地址（${uploadedUrl ?? '缺失'}），实际 ${JSON.stringify(imageUrls)}`)
   }
   // 出片前（视频还在跑）：首帧图已出，参考格里就是它。
   await expectVisible(plannedTile(1).locator('img'), 'D：首帧图出来后参考条里没有那张图')

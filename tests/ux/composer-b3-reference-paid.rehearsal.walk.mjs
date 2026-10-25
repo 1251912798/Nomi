@@ -59,8 +59,8 @@ function judgeFixtureWire(fixture) {
   const body = creates[0]?.body ?? {}
   const roles = (Array.isArray(body.image_with_roles) ? body.image_with_roles : []).map((item) => item?.role ?? null)
   if ([...roles].sort().join() !== 'first_frame,last_frame') problems.push(`请求体 image_with_roles 是 [${roles.join('、')}]（应恰好首帧、尾帧两项）`)
-  const uploadedUrl = `${fixture.baseURL}/fixture/image.jpg`
-  const strangers = urlsIn(body).filter((url) => !MEDIA_NOT_IMAGE.test(url) && url !== uploadedUrl)
+  const uploadedUrls = new Set(fixture.uploads.map((record) => record.uploadUrl).filter(Boolean))
+  const strangers = urlsIn(body).filter((url) => !MEDIA_NOT_IMAGE.test(url) && !uploadedUrls.has(url))
   if (strangers.length) problems.push(`请求体里有 ${strangers.length} 个图片地址不是上传换来的：${strangers.map((url) => url.split('?')[0].split('/').pop()).join('、')}`)
   const uploaded = [...new Set(fixture.uploads.flatMap((record) => record.uploadFileNames ?? []))].sort()
   if (uploaded.join() !== [FIRST_FILE, LAST_FILE].sort().join()) problems.push(`上传过的图是 ${uploaded.join('、') || '（没有）'}（应只有 ${FIRST_FILE}、${LAST_FILE}；没在用的参考一张都不该上传）`)

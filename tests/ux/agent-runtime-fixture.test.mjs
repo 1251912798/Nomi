@@ -361,18 +361,32 @@ describe('agent runtime loopback fixture', () => {
     await expect(chat(fixture, [{ role: 'user', content: 'AFTER' }])).rejects.toThrow()
   })
 
-  test('records each APIMart reference upload with its multipart file names (the bytes are not kept)', async () => {
+  test('records each APIMart reference upload with an independent retrievable URL', async () => {
     const settingsDir = await temporarySettings()
     // seedApimartKey: false = 目录里不预置钥匙，userDataDir / appName 只是夹具要的身份参数，用不到 safeStorage。
     const fixture = await createAgentRuntimeFixture({ rootDir, settingsDir, generationProvider: 'apimart', seedApimartKey: false, userDataDir: settingsDir, appName: 'nomi' })
     cleanups.push(() => fixture.close())
-    const form = new FormData()
-    form.append('file', new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: 'image/png' }), 'first.png')
-    const response = await fetch(`${fixture.baseURL}/v1/uploads/images`, { method: 'POST', body: form })
-    expect(response.status).toBe(200)
-    expect((await response.json()).url).toBe(`${fixture.baseURL}/fixture/image.jpg`)
-    expect(fixture.uploads).toHaveLength(1)
+    const upload = async (name) => {
+      const form = new FormData()
+      form.append('file', new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: 'image/png' }), name)
+      const response = await fetch(`${fixture.baseURL}/v1/uploads/images`, { method: 'POST', body: form })
+      expect(response.status).toBe(200)
+      return (await response.json()).url
+    }
+    const firstUrl = await upload('first.png')
+    const secondUrl = await upload('second.png')
+    expect(firstUrl).not.toBe(`${fixture.baseURL}/fixture/image.jpg`)
+    expect(firstUrl).not.toBe(secondUrl)
+    for (const url of [firstUrl, secondUrl]) {
+      const image = await fetch(url)
+      expect(image.status).toBe(200)
+      expect(image.headers.get('content-type')).toContain('image/jpeg')
+      expect((await image.arrayBuffer()).byteLength).toBeGreaterThan(0)
+    }
+    expect(fixture.uploads).toHaveLength(2)
+    expect(fixture.uploads.every((record) => record.uploadUrl && [firstUrl, secondUrl].includes(record.uploadUrl))).toBe(true)
     expect(fixture.uploads[0].uploadFileNames).toEqual(['first.png'])
+    expect(fixture.uploads[1].uploadFileNames).toEqual(['second.png'])
     expect(fixture.uploads[0].body).toBeNull()
   })
 
