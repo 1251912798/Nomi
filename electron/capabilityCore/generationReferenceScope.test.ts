@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { createGenerationReferenceScopeGuard } from './generationReferenceScope'
+import {
+  createGenerationReferenceScopeGuard,
+  generationReferenceScopeContext,
+  generationReferenceScopeDeclarationSnapshot,
+  generationReferenceScopeSnapshotFromContext,
+  GENERATION_REFERENCE_SCOPE_DECLARATION,
+} from './generationReferenceScope'
 import type { ExecutionContractV1, PlanCandidate } from './executionContract'
+import type { GenerationReferenceScopeGuardInput } from './generationReferenceScope'
 
 const lease = { projectId: 'project-1', immutableProjectUuid: 'uuid-1', projectGeneration: 1, revocationEpoch: 0 }
 const candidate: PlanCandidate = {
@@ -13,9 +20,47 @@ const run = (overrides: Record<string, unknown> = {}) => ({
   generationPlan: { state: 'draft', candidate, cardHidden: false }, jobs: [], ...overrides,
 }) as never
 
+const inputFor = (
+  readProject: GenerationReferenceScopeGuardInput['readProject'],
+  readRun: GenerationReferenceScopeGuardInput['readRun'],
+  initialRun = run(),
+): GenerationReferenceScopeGuardInput => ({
+  lease, operation: { operationId: 'op-1', projectId: 'project-1', candidate, planVersion: 1 }, contract,
+  initialRun, readProject, readRun,
+})
+
+const baseProject = () => ({ id: 'project-1', immutableProjectUuid: 'uuid-1', projectGeneration: 1, revision: 1, updatedAt: 'project-1' })
+
+function setPath(source: unknown, path: readonly string[], value: unknown): unknown {
+  const clone = structuredClone(source)
+  let cursor = clone as Record<string, unknown>
+  for (const segment of path.slice(0, -1)) cursor = cursor[segment] as Record<string, unknown>
+  cursor[path[path.length - 1]] = value
+  return clone
+}
+
 describe('generation reference scope guard', () => {
+  it('derives the guard matrix from one declaration of approved and Nomi-owned fields', () => {
+    const currentProject: unknown = baseProject()
+    const currentRun: unknown = run({ revision: 1, updatedAt: 'run-1', snapshotCursor: 1, generationPlan: { state: 'draft', candidate, cardHidden: false, updatedAt: 'plan-1', nodeId: 'node-1', canvasDetached: false } })
+    const input = inputFor(() => currentProject as never, () => currentRun as never, currentRun as never)
+    const baseline = generationReferenceScopeDeclarationSnapshot(input, currentProject as never, currentRun as never)
+    const context = generationReferenceScopeContext(input as never, currentProject as never, currentRun as never)
+
+    for (const field of GENERATION_REFERENCE_SCOPE_DECLARATION) {
+      const mutatedContext = setPath(context, field.path, `changed:${field.key}`)
+      const mutated = generationReferenceScopeSnapshotFromContext(mutatedContext as never)
+      if (field.owner === 'user-approved') expect(mutated).not.toEqual(baseline)
+      else expect(mutated).toEqual(baseline)
+    }
+
+    expect(Object.keys(baseline).sort()).toEqual(
+      GENERATION_REFERENCE_SCOPE_DECLARATION.filter((field) => field.owner === 'user-approved').map((field) => field.key).sort(),
+    )
+  })
+
   it('ignores Nomi-owned project and canvas projection revision changes during delayed upload', () => {
-    let project = { id: 'project-1', immutableProjectUuid: 'uuid-1', projectGeneration: 1, revision: 1 }
+    let project = baseProject()
     let currentRun = run()
     const assertCurrent = createGenerationReferenceScopeGuard({
       lease, operation: { operationId: 'op-1', projectId: 'project-1', candidate, planVersion: 1 }, contract, initialRun: currentRun,

@@ -10,6 +10,7 @@ import {
 } from './agent-runtime-walk-support.mjs'
 import { openRailDrawer, openSettings } from './_shell.mjs'
 import { repoRoot } from './_launchApp.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const ASK_ZH = '用这张参考图生成一张海边纸船的图。'
 const ASK_EN = 'Use the selected reference image to make a paper boat by the sea.'
@@ -84,7 +85,7 @@ async function runRefusedLeg({ win, projectId, reference, locale, planId, genera
   await win.keyboard.type(locale === 'zh' ? ' 用户改了这一镜' : ' user changed this shot')
   await win.keyboard.press('Tab')
   await walk.fixture.holdReferenceUploads(false)
-  await expect(card, `${locale} 拒绝后卡仍留在介入槽`).toBeVisible({ timeout: 10_000 })
+  await expect(card, `${locale} 拒绝后卡仍留在介入槽`).toBeVisible({ timeout: stationTimeout({ operations: 2 }) })
   await walk.snap(screenshotName)
   await card.locator('[data-v4-control="slot-dismiss"]').click()
   await recorded(turnDone.received, `${locale} generate refusal result`)

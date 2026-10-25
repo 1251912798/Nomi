@@ -15,6 +15,50 @@ type GenerationOperationScope = Readonly<{
 
 type ScopeUnit = Readonly<{ shotId: string; candidate: PlanCandidate; contract: ExecutionContractV1 }>
 
+export type GenerationReferenceScopeFieldOwner = 'user-approved' | 'nomi-owned'
+
+export type GenerationReferenceScopeField = Readonly<{
+  key: string
+  owner: GenerationReferenceScopeFieldOwner
+  path: readonly string[]
+}>
+
+/**
+ * The only declaration of what the delayed reference upload is allowed to observe.
+ * `user-approved` fields fail closed when they change; `nomi-owned` fields are
+ * recorded here so a new projection/cache field cannot silently become a scope
+ * check without a matching class-level test.
+ */
+export const GENERATION_REFERENCE_SCOPE_DECLARATION = [
+  { key: 'project.id', owner: 'user-approved', path: ['project', 'id'] },
+  { key: 'project.immutableProjectUuid', owner: 'user-approved', path: ['project', 'immutableProjectUuid'] },
+  { key: 'project.projectGeneration', owner: 'user-approved', path: ['project', 'projectGeneration'] },
+  { key: 'operation.operationId', owner: 'user-approved', path: ['operation', 'operationId'] },
+  { key: 'operation.projectId', owner: 'user-approved', path: ['operation', 'projectId'] },
+  { key: 'operation.planVersion', owner: 'user-approved', path: ['operation', 'planVersion'] },
+  { key: 'operation.candidates', owner: 'user-approved', path: ['operation', 'candidates'] },
+  { key: 'run.currentCandidates', owner: 'user-approved', path: ['run', 'currentCandidates'] },
+  { key: 'run.status', owner: 'user-approved', path: ['run', 'status'] },
+  { key: 'run.stageId', owner: 'user-approved', path: ['run', 'stageId'] },
+  { key: 'run.stop', owner: 'user-approved', path: ['run', 'stop'] },
+  { key: 'run.planVersion', owner: 'user-approved', path: ['run', 'planVersion'] },
+  { key: 'run.planState', owner: 'user-approved', path: ['run', 'planState'] },
+  { key: 'run.jobs', owner: 'user-approved', path: ['run', 'jobs'] },
+  { key: 'project.revision', owner: 'nomi-owned', path: ['project', 'revision'] },
+  { key: 'project.updatedAt', owner: 'nomi-owned', path: ['project', 'updatedAt'] },
+  { key: 'run.revision', owner: 'nomi-owned', path: ['run', 'revision'] },
+  { key: 'run.snapshotCursor', owner: 'nomi-owned', path: ['run', 'snapshotCursor'] },
+  { key: 'run.updatedAt', owner: 'nomi-owned', path: ['run', 'updatedAt'] },
+  { key: 'run.canvasPlanUpdatedAt', owner: 'nomi-owned', path: ['run', 'canvasPlanUpdatedAt'] },
+  { key: 'run.canvasBindings', owner: 'nomi-owned', path: ['run', 'canvasBindings'] },
+] as const satisfies readonly GenerationReferenceScopeField[]
+
+export type GenerationReferenceScopeContext = Readonly<{
+  project: Readonly<Record<string, unknown>>
+  operation: Readonly<Record<string, unknown>>
+  run: Readonly<Record<string, unknown>> | null
+}>
+
 export type GenerationReferenceScopeGuardInput = Readonly<{
   lease: Pick<ProjectLeaseV2, 'projectId' | 'immutableProjectUuid' | 'projectGeneration'>
   operation: GenerationOperationScope
@@ -72,23 +116,69 @@ function projectIdentityOf(project: ProjectIdentity | null | undefined): unknown
   return { id: project.id, immutableProjectUuid: project.immutableProjectUuid, projectGeneration: project.projectGeneration }
 }
 
-function scopeSnapshot(input: GenerationReferenceScopeGuardInput, project: ProjectIdentity | null | undefined, run: ProductionRun | null | undefined): string {
+function readPath(source: unknown, path: readonly string[]): unknown {
+  let value = source
+  for (const segment of path) {
+    if (!value || typeof value !== 'object' || !(segment in value)) return undefined
+    value = (value as Record<string, unknown>)[segment]
+  }
+  return value
+}
+
+export function generationReferenceScopeContext(input: GenerationReferenceScopeGuardInput, project: ProjectIdentity | null | undefined, run: ProductionRun | null | undefined): GenerationReferenceScopeContext {
   const units = unitsFor(input)
   const shotIds = units.map((unit) => unit.shotId)
-  return stableAuthorizationJson({
-    project: projectIdentityOf(project),
-    operationId: input.operation.operationId,
-    projectId: input.operation.projectId,
-    planVersion: input.operation.planVersion,
-    candidates: units.map((unit) => ({
-      shotId: unit.shotId,
-      candidate: unit.candidate,
-      contractHash: unit.contract.contractHash,
-      references: unit.contract.references,
-    })),
-    currentCandidates: run ? shotIds.map((shotId) => ({ shotId, candidate: candidateForShot(run, shotId) ?? null })) : null,
-    run: run ? semanticRunState(run, shotIds) : null,
-  })
+  const plan = run?.generationPlan
+  const canvasBindings = plan
+    ? [
+      { shotId: plan.candidate.candidateId, nodeId: plan.nodeId, canvasDetached: plan.canvasDetached },
+      ...(plan.shots ?? []).map((shot) => ({ shotId: shot.shotId, nodeId: shot.nodeId, canvasDetached: shot.canvasDetached })),
+    ]
+    : null
+  const identity = projectIdentityOf(project)
+  return {
+    project: {
+      ...(identity && typeof identity === 'object' ? identity : {}),
+      revision: (project as (ProjectIdentity & { revision?: number }) | null | undefined)?.revision,
+      updatedAt: (project as (ProjectIdentity & { updatedAt?: string }) | null | undefined)?.updatedAt,
+    },
+    operation: {
+      operationId: input.operation.operationId,
+      projectId: input.operation.projectId,
+      planVersion: input.operation.planVersion,
+      candidates: units.map((unit) => ({
+        shotId: unit.shotId,
+        candidate: unit.candidate,
+        contractHash: unit.contract.contractHash,
+        references: unit.contract.references,
+      })),
+    },
+    run: run ? {
+      currentCandidates: shotIds.map((shotId) => ({ shotId, candidate: candidateForShot(run, shotId) ?? null })),
+      ...semanticRunState(run, shotIds) as Record<string, unknown>,
+      revision: run.revision,
+      snapshotCursor: run.snapshotCursor,
+      updatedAt: run.updatedAt,
+      canvasPlanUpdatedAt: plan?.updatedAt,
+      canvasBindings,
+    } : null,
+  }
+}
+
+export function generationReferenceScopeSnapshotFromContext(context: GenerationReferenceScopeContext): Readonly<Record<string, unknown>> {
+  const snapshot: Record<string, unknown> = {}
+  for (const field of GENERATION_REFERENCE_SCOPE_DECLARATION) {
+    if (field.owner === 'user-approved') snapshot[field.key] = readPath(context, field.path)
+  }
+  return snapshot
+}
+
+export function generationReferenceScopeDeclarationSnapshot(input: GenerationReferenceScopeGuardInput, project: ProjectIdentity | null | undefined, run: ProductionRun | null | undefined): Readonly<Record<string, unknown>> {
+  return generationReferenceScopeSnapshotFromContext(generationReferenceScopeContext(input, project, run))
+}
+
+function scopeSnapshot(input: GenerationReferenceScopeGuardInput, project: ProjectIdentity | null | undefined, run: ProductionRun | null | undefined): string {
+  return stableAuthorizationJson(generationReferenceScopeDeclarationSnapshot(input, project, run))
 }
 
 /**
@@ -103,13 +193,14 @@ export function createGenerationReferenceScopeGuard(input: GenerationReferenceSc
     immutableProjectUuid: input.lease.immutableProjectUuid,
     projectGeneration: input.lease.projectGeneration,
   }
+  if (!initialProject || stableAuthorizationJson(projectIdentityOf(initialProject)) !== stableAuthorizationJson(expectedProject)) {
+    throw new Error('generation_reference_scope_changed')
+  }
   const expected = scopeSnapshot(input, initialProject, initialRun)
   return () => {
     const currentProject = input.readProject()
     const currentRun = input.readRun()
-    if (!currentProject || !currentRun
-      || stableAuthorizationJson(projectIdentityOf(currentProject)) !== stableAuthorizationJson(expectedProject)
-      || scopeSnapshot(input, currentProject, currentRun) !== expected) {
+    if (!currentProject || !currentRun || scopeSnapshot(input, currentProject, currentRun) !== expected) {
       throw new Error('generation_reference_scope_changed')
     }
   }

@@ -11,7 +11,7 @@
     "用户改变镜头候选、参考身份或镜头 Run 状态时，上传完成前必须拒绝并沿用 approval-stale 的中英文可见错误。"
   ],
   "fullWalkJourneys": [],
-  "status": "fixed",
+  "status": "reviewed",
   "manualReview": "reviewed",
   "evidence": [
     "协调复现材料：/Users/aoqimin/Nomi-coord/tmp/I-mo64-paid/report-main.json、report-paid.json、main.log、after-click-paid.png。",
