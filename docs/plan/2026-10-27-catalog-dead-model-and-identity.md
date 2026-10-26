@@ -79,6 +79,8 @@
 
 复用：`observeModelFetch`、`modelCallFailure`、`describeAgentError` / `encodeVendorErrorMessage`、pi `diagnostics`、渲染层 `parseVendorErrorFromMessage` + `classifyGenerationError` + `UPSTREAM_CODE_KINDS`、`modelReferenceSelection`、`referenceKeyCapacityDeclarationFor`、`assertReferenceCapacity`、`applyBuiltinSeeds` 的退役迁移。新增的只有：中立层一个诊断类型常量 + 一个读函数；provider 里一个按调用记录、在终止事件上挂诊断的薄包装；`observeModelFetch` 的「已包过就复用」一条规则；`modelReferenceSelection` 一个「带 taskKind 时类型上必有 taskKind」的重载。没有第二份分类、第二份编码、第二份身份。证据：`git grep -n "NOMI_VENDOR_ERR_B64"`、`git grep -n "modelReferenceSelection("`、`pnpm run check:self-written`（不新增自写登记）。
 
+实现中追加（10-27，卡上没预见到）：provider 住在 pi 的 NodeNext 岛里，岛编译会把 import 到的整张图一起查；`runtimeVendorError` / `agentError` 原来从 `vendor/vendorHttp` 拿错误类与类别表，一引就把整条 HTTP 传输（目录、代理……里的无扩展名动态 import）拖进岛编译、当场红（`pnpm run test:agent-runtime` 7 处 TS2835）。所以把「失败长什么样」那几样（`VendorRequestError`、类别查表、穿 IPC 的编码，逐字不改）搬进轻模块 `electron/shared/vendorFailure.ts`，`vendorHttp` 照旧转出、已有 import 一行不改；岛这一侧（`runtimeVendorError`、`agentError`）直接引轻模块，`runtimeVendorError` 的 `desktopT` 改从 `desktopStrings` 引（`i18n` 会带进 electron）。同一个原因早先让 `logging/diskSafeFailure.ts` 抄过一份类别表——那份留作后续（不在本卡范围）。
+
 ## ★4 全状态
 
 - 空 / 加载：不变。
