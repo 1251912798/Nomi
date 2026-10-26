@@ -19,6 +19,7 @@
     "evals/journeys/j4-reference.mjs",
     "evals/journeys/j5-edit-export.mjs",
     "docs/engineering/real-media-debt.json",
+    "docs/engineering/concept-owners/asset.local-file-import.json",
     "src/workbench/generationCanvas/adapters/assetImportAdapter.ts",
     "electron/capabilityCore/core.ts",
     "evals/lib/isoApp.mjs"
@@ -105,11 +106,6 @@
       "path": "electron/capabilityCore/core.ts",
       "symbol": "importProjectAsset",
       "responsibility": "MCP 本机路径导入的安全、类型、硬上限和落盘边界。"
-    },
-    {
-      "path": "tests/ux/real-media-import.walk.mjs",
-      "symbol": "assertNodeAndAsset",
-      "responsibility": "真实素材矩阵的类级断言：每个 UI 导入门必须同时有节点、解码预览和项目落盘。"
     }
   ],
   "same_class_entry_points": [
