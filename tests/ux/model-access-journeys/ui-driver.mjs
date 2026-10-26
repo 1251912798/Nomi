@@ -79,7 +79,13 @@ export async function launchJourneyUi({ journey, recorder }) {
   async function openRelayWizard() {
     await expandGenerationProviders()
     // "自定义 API / 中转站" is the relay/custom-base-URL entry on the model home.
-    await win.locator('[data-model-home-action="custom-api"]').first().click()
+    const customApi = win.locator('[data-model-home-action="custom-api"]').first()
+    if (!(await customApi.isVisible().catch(() => false))) {
+      const otherWays = win.locator('[data-model-home-action="other-ways"]').first()
+      if (await otherWays.isVisible().catch(() => false)) await otherWays.click()
+    }
+    await customApi.waitFor({ state: 'visible', timeout: 8000 })
+    await customApi.click()
     // The wizard renders as a page (header 接入 API / 中转站). Anchor on the name
     // field placeholder — it is the first thing the fill step needs anyway.
     await win.getByPlaceholder('如：TOAPI 中转').waitFor({ state: 'visible', timeout: 8000 })
