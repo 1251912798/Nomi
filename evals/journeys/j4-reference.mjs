@@ -5,9 +5,10 @@ import { backToLibrary } from "../../tests/ux/_shell.mjs";
 import { createBlankProject, waitForPersistedCanvas } from "../lib/isoApp.mjs";
 import { requireRealMediaAssets } from "../../tests/ux/fixtures/realMedia.mjs";
 
-const { assets: realMedia } = requireRealMediaAssets(["image-4k-png"]);
-const REAL_IMAGE = realMedia.get("image-4k-png").file;
-const REAL_IMAGE_NAME = path.basename(REAL_IMAGE);
+// 用到时才取登记素材：旅程注册表的契约测试也导入本模块，那里（含 CI）没有 NOMI_REAL_MEDIA_DIR。
+function realImage() {
+  return requireRealMediaAssets(["image-4k-png"]).assets.get("image-4k-png").file;
+}
 
 function containsFile(root, fileName) {
   const stack = [root];
@@ -29,6 +30,7 @@ export default {
   smoke: false,
   successCriterion: "真实上传本地图片，图片进入项目素材并挂到视频节点参考槽，参数可执行",
   async setup({ win, iso }) {
+    realImage(); // 缺素材在起步就红，不等走到上传那一步
     const startedAt = Date.now();
     const projectDir = await createBlankProject(win, iso.projectsDir);
     fs.writeFileSync(path.join(projectDir, ".nomi", "real-media-cold-open.json"), JSON.stringify({ journey: "j4-reference", elapsedMs: Date.now() - startedAt, asset: "image-4k-png" }));
@@ -80,17 +82,18 @@ export default {
         await addReference.click({ timeout: 8_000 });
         const picker = ctx.win.getByTestId("asset-picker");
         await picker.waitFor({ state: "visible", timeout: 8_000 });
-        await picker.locator('input[type="file"][aria-label="上传本地文件"]').setInputFiles(REAL_IMAGE);
+        await picker.locator('input[type="file"][aria-label="上传本地文件"]').setInputFiles(realImage());
         await waitForPersistedCanvas(ctx.win, ctx.projectDir, { settleMs: 1_000, timeoutMs: 30_000 });
         await ctx.win.waitForTimeout(2_000);
       },
       verify(ctx) {
         const target = ctx.created().find((node) => node.kind === "video");
+        const imageName = path.basename(realImage());
         const serializedMeta = JSON.stringify(target?.meta || {});
         const uploadedReferences = Array.isArray(target?.meta?.referenceImageUrls) ? target.meta.referenceImageUrls : [];
         const hasLocalReference = uploadedReferences.some((url) => String(url).startsWith("nomi-local://"));
         return [
-          check("上传登记的 4K PNG 已复制进项目素材", containsFile(ctx.projectDir, REAL_IMAGE_NAME), `${ctx.projectDir}/${REAL_IMAGE_NAME}`, "outcome"),
+          check("上传登记的 4K PNG 已复制进项目素材", containsFile(ctx.projectDir, imageName), `${ctx.projectDir}/${imageName}`, "outcome"),
           check("J4 冷打开耗时已记录", Number(JSON.parse(fs.readFileSync(path.join(ctx.projectDir, ".nomi", "real-media-cold-open.json"))).elapsedMs) >= 0, fs.readFileSync(path.join(ctx.projectDir, ".nomi", "real-media-cold-open.json"), "utf8"), "performance"),
           check("目标切到图生视频模式", target?.meta?.archetype?.modeId === "i2v", serializedMeta, "outcome"),
           check("目标节点 meta.referenceImageUrls 持久化本地图片参考", hasLocalReference, JSON.stringify({ referenceImageUrls: uploadedReferences }), "outcome"),
