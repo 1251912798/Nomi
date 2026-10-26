@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import i18n from '../../i18n'
 import { useSpendConfirmStore } from '../generationCanvas/spend/spendConfirm'
 import { handleCapabilityApply } from './capabilityApplyHandler'
 
@@ -9,6 +10,9 @@ import { handleCapabilityApply } from './capabilityApplyHandler'
 // 不是 AI 助手发起的，也不生成素材，更没有节点。
 // 分流改成按 intent 查表时（docs/plan/2026-10-27-browser-extract-grant.md §3.4），第一格不许变；
 // 第二格等提取专用卡落地时翻过来。
+// 文案一律按词典键取值，不抄字面（check:test-copy-literals）。
+
+const t = (key: string, values?: Record<string, string>) => i18n.t(`runtime.capability.${key}`, values)
 
 beforeEach(() => { vi.restoreAllMocks() })
 
@@ -20,10 +24,15 @@ describe('付费确认卡按 intent 分流（现状）', () => {
     })).resolves.toEqual({ confirmed: true })
     expect(confirm).toHaveBeenCalledTimes(1)
     const card = confirm.mock.calls[0][0]
-    expect(card).toMatchObject({ kind: 'generation', source: 'user', title: '验证 apimart 的密钥', confirmLabel: '确认并验证' })
+    expect(card).toMatchObject({
+      kind: 'generation',
+      source: 'user',
+      title: t('credentialProbeTitle', { vendor: 'apimart' }),
+      confirmLabel: t('confirmCredentialProbe'),
+    })
     expect(card.details).toEqual([
-      { label: '模型', value: 'apimart · gpt-image-2' },
-      { label: '调用次数', value: '1' },
+      { label: t('model'), value: 'apimart · gpt-image-2' },
+      { label: t('callCount'), value: '1' },
     ])
   })
 
@@ -35,11 +44,12 @@ describe('付费确认卡按 intent 分流（现状）', () => {
       legs: [{ role: 'vision', vendor: 'relay', modelKey: 'mystery-vl' }],
     })).resolves.toEqual({ confirmed: false })
     const card = confirm.mock.calls[0][0]
-    expect(card).toMatchObject({ source: 'agent', title: 'AI 助手想生成一个素材' })
+    const asset = t('intent.fallback')
+    expect(card).toMatchObject({ source: 'agent', title: t('spendTitle', { intent: asset }) })
     expect(card.details).toEqual([
-      { label: '节点', value: '新节点' },
-      { label: '读图', value: 'relay · mystery-vl' },
-      { label: '产物', value: '一个素材' },
+      { label: t('node'), value: t('newNode') },
+      { label: t('visionModelLine'), value: 'relay · mystery-vl' },
+      { label: t('output'), value: asset },
     ])
   })
 })
