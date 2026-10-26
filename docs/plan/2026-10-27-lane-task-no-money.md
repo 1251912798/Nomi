@@ -87,6 +87,7 @@
 | 卡片类型 `TaskCardData` | `src/workbench/ai/v4/agentPanelV4Types.ts:152,159-160` | `cost`、`footnoteTrailing` | 先 grep 生产者，再定删不删（见下） |
 | 实验室夹具 | `src/devlab/designLab/v4/agentPanelV4LabKit.tsx:29,117,245,285` | `labViewModelLabels.formatMoney`、两处夹具金额 | 类型删了它就编不过，随删 |
 | 测试夹具 | `laneViewModel.test.ts`、`laneDesktopTasks.test.ts`、`tests/agent-runtime/lane-task-card.test.mts`、`tests/agent-runtime/laneL1Scenarios.mts`，以及 4 份标签夹具 | 写三个字段 / 接 `formatMoney` | 删 |
+| 组件用例（实现时补记） | `src/workbench/ai/v4/agentPanelV4Blocks.test.ts` 的「每张卡都能带花费」 | 直接喂 `cost` 断言预估胶囊上屏 | 换成反向用例：喂删之前的形状，卡上不许出现金额。初稿按符号和字段名数门，数不到对象字面量里的 `cost:`，是实现时 vitest 抓到的 |
 
 读口普查结论：除上表，没有别的读口把这三个字段印成钱。`LanePart` 的 task 段只有 `laneViewModel` 一个消费者；`AgentPanelV4Panel.tsx:191` 渲染 `V4TaskCard`，`laneTaskCandidateActions.ts:45` 只读候选。
 
