@@ -18,10 +18,14 @@ import {
   releaseDeconstructionRun,
   resetDeconstructionRuns,
 } from './deconstructionLifecycle'
-import { cancelDeconstruction, deconstructToShotTable, ensureDeconstructionShotTable } from './factBridge'
+import { cancelDeconstruction, deconstructToShotTable, ensureDeconstructionShotTable, retryShot } from './factBridge'
 
 const bridge = vi.hoisted(() => ({ deconstruct: vi.fn(), onDeconstructionProgress: vi.fn(() => vi.fn()) }))
-vi.mock('../../../../desktop/bridge', () => ({ getDesktopBridge: () => ({ video: bridge }) }))
+/** 渲染层碰了主进程桥的哪几个口（现状特征用：取消那一下一个都不碰）。 */
+const bridgeReads = vi.hoisted(() => [] as string[])
+vi.mock('../../../../desktop/bridge', () => ({
+  getDesktopBridge: () => ({ video: new Proxy(bridge, { get: (target, key) => { bridgeReads.push(String(key)); return Reflect.get(target, key) } }) }),
+}))
 
 const project = vi.hoisted(() => ({ controller: new AbortController() }))
 function originProject() {
@@ -153,6 +157,51 @@ describe('deconstruction node terminal state', () => {
     bridge.deconstruct.mockResolvedValue({ shots: [], durationSeconds: 0, hasAudio: false, failedShotIndexes: [] })
     await deconstructToShotTable(sourceId, originProject())
     expect(tableSource(tableId).status).toBe('ready')
+  })
+})
+
+// 拆解取消 · 渲染层的**现状特征**（2026-10-27 钉住，设计卡 docs/plan/2026-10-27-deconstruct-cancel.md；
+// 修复时翻转成「真的调了取消口」）：取消、项目被换走都只在渲染层落笔，主进程那次 invoke 一个字都收不到；
+// 单镜重试连 requestId 都不带，主进程即使有取消口也认不出它。
+describe('现状特征：取消只活在渲染层（修复前钉住）', () => {
+  it('点取消、项目被换走，都不碰主进程桥；在飞的那次 invoke 照样等它自己回来', async () => {
+    const sourceId = sourceVideo()
+    const tableId = ensureDeconstructionShotTable(sourceId)!
+    let releaseEngine!: () => void
+    const engineHeld = new Promise<void>(resolve => { releaseEngine = resolve })
+    let engineStarted!: () => void
+    const started = new Promise<void>(resolve => { engineStarted = resolve })
+    bridge.deconstruct.mockImplementation(async () => {
+      engineStarted()
+      await engineHeld
+      return { shots: [], durationSeconds: 0, hasAudio: false, failedShotIndexes: [] }
+    })
+    const running = deconstructToShotTable(sourceId, originProject())
+    await started
+    const readsBeforeCancel = bridgeReads.length
+    cancelDeconstruction(tableId)
+    project.controller.abort()
+    expect(tableSource(tableId).status).toBe('cancelled')
+    expect(bridgeReads.slice(readsBeforeCancel)).toEqual([])
+    expect(bridge.deconstruct).toHaveBeenCalledTimes(1)
+    releaseEngine()
+    await running
+  })
+
+  it('单镜重试不带 requestId：主进程无从按请求认出它', async () => {
+    const legacy = {
+      shots: [{ index: 1, startSeconds: 0, endSeconds: 2, durationSeconds: 2, sourceFrameUrl: 'nomi-local://isolated-project/frame.png', shotSize: 'close', mood: 'quiet',
+        visual: 'Door opens', onScreenText: '', dialogue: '', carriedOver: false, imagePrompt: 'A door', motionPrompt: 'Opening', custom: {} }],
+      durationSeconds: 2, hasAudio: false, failedShotIndexes: [],
+    }
+    const store = useGenerationCanvasStore.getState()
+    const node = store.addNode({ kind: 'video', title: 'Reference', position: { x: 0, y: 0 }, meta: { videoDeconstruction: legacy } })
+    store.updateNode(node.id, { result: { id: 'result', type: 'video', url: 'nomi-local://isolated-project/video.mp4', createdAt: 1 } })
+    const tableId = ensureDeconstructionShotTable(node.id)!
+    bridge.deconstruct.mockResolvedValue(legacy)
+    await retryShot(tableId, 'fact-1', originProject())
+    expect(bridge.deconstruct).toHaveBeenCalledTimes(1)
+    expect(bridge.deconstruct.mock.calls[0]?.[0]).not.toHaveProperty('requestId')
   })
 })
 

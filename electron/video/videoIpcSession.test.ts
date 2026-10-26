@@ -2,11 +2,13 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import type { IpcMainInvokeEvent } from 'electron'
 import type { CanvasReadSurfaceIpcCapture } from '../capabilityCore/canvasReadSurfaceIpc'
 
-const mocks = vi.hoisted(() => ({ handlers: new Map<string, (event: IpcMainInvokeEvent, payload: unknown) => Promise<unknown>>(), extract: vi.fn() }))
+const mocks = vi.hoisted(() => ({ handlers: new Map<string, (event: IpcMainInvokeEvent, payload: unknown) => Promise<unknown>>(), extract: vi.fn(), deconstruct: vi.fn() }))
 vi.mock('electron', () => ({ ipcMain: { handle: (name: string, handler: (event: IpcMainInvokeEvent, payload: unknown) => Promise<unknown>) => mocks.handlers.set(name, handler) } }))
 vi.mock('../ipcSenderGuard', () => ({ assertTrustedSender: vi.fn() }))
 vi.mock('./depthVideoIpc', () => ({ registerVideoDepthIpc: vi.fn() }))
 vi.mock('./extractVideoFrame', () => ({ extractVideoFrameToAsset: mocks.extract }))
+vi.mock('./deconstructVideo', () => ({ deconstructVideo: mocks.deconstruct }))
+vi.mock('./deconstructSpend', () => ({ authorizeDeconstructSpend: vi.fn() }))
 import { createProjectInteractionCapture } from '../assets/projectInteractionCapture'
 import { registerVideoIpc } from './videoIpc'
 
@@ -40,4 +42,17 @@ it('treats a frame request without a binding as explicit project IO without inte
   await expect(mocks.handlers.get('nomi:video:extract-frame')!(event, { videoUrl: '/v.mp4', which: 'last', projectId: 'a' })).resolves.toEqual({ url: 'nomi-local://frame' })
   expect(capture.openProjectSession).not.toHaveBeenCalled()
   expect(mocks.extract).toHaveBeenCalledWith(expect.anything(), { assertCurrent: undefined })
+})
+
+// 拆解取消 · IPC 侧的**现状特征**（2026-10-27 钉住，设计卡 docs/plan/2026-10-27-deconstruct-cancel.md；修复时翻转）：
+// 主进程只有「开始拆解」这一个口，没有按 requestId 找到在飞那次的取消口；handler 交给编排的 options 里也没有 signal。
+it('现状特征：拆解只有开始口、没有取消口，handler 不给编排任何 signal（修复前钉住）', async () => {
+  const capture = { openProjectSession: vi.fn(), assertProjectSession: vi.fn() }
+  registerVideoIpc(createProjectInteractionCapture(capture as unknown as CanvasReadSurfaceIpcCapture, () => undefined))
+  expect([...mocks.handlers.keys()].filter((name) => name.startsWith('nomi:video:deconstruct'))).toEqual(['nomi:video:deconstruct'])
+  mocks.deconstruct.mockResolvedValue({ shots: [] })
+  await mocks.handlers.get('nomi:video:deconstruct')!(event, { requestId: 'request-1', videoUrl: '/v.mp4', projectId: 'a', nodeId: 'table-1' })
+  const options = mocks.deconstruct.mock.calls[0]?.[1] as Record<string, unknown>
+  expect(Object.keys(options).sort()).toEqual(['authorizeSpend', 'onPhase'])
+  expect(Object.values(options).some((value) => value instanceof AbortSignal)).toBe(false)
 })
