@@ -209,6 +209,12 @@
 
 独立验收：本改动不属四类（见下），不强制；由协调决定是否派验收线。
 
+### 实现后补记（2026-10-27）
+
+- 全仓普查（`scripts/ui-money-format.test.mjs`，src 1632 个文件）：14 处命中全在 7 个出口文件里，名单外 0 处（真实代码误报 0）。比动手前 grep 多出一处：Agent 提案卡的「预估」一行（`src/workbench/ai/resident/residentToolDisplay.ts`）。
+- `mcpToolResults.ts` 不用改：转述本来只在 `typeof === 'number'` 时写数、结构化结果本来是 `?? null`，投影给 null 之后它就如实了。只加了经真投影的测试。
+- 概念登记：新增 `production.run-known-budget`（owner `knownRunBudget`）与 `delivery.ui-money-format`（owner `MONEY_FORMAT_SELECTORS`）；合同 `docs/fixes/2026-10-27-ui-money-amounts.root-cause.json`。
+
 ### 功能分类
 
 - [x] 新界面 / 改交互（路径推出：改了 `src/**/*.tsx`；实际是删只读文字格，不新增可点目标）
