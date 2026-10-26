@@ -20,16 +20,14 @@
     {
       "id": "image-4k-png",
       "kind": "image",
-      "derivedFrom": {
-        "assetId": "video-4k-hevc-10bit",
-        "how": "ffmpeg -ss 00:00:05 -frames:v 1 抽一帧，PNG 无损，落到测试自己的 tmp 目录（不写用户素材目录）"
-      },
+      "relativePath": "8月9日(1).png",
       "spec": {
         "format": "png",
         "width": 3840,
         "height": 2160,
         "minBytes": 8388608
       },
+      "source": "用户本机真实 4K PNG；素材不进仓库，本机在 localDefaultDir",
       "whyThisOne": "真实照片熵高，压缩率与解码成本比合成色块 PNG 高两个数量级；testsrc2 + drawbox 出来的平坦色块解码几乎免费"
     },
     {

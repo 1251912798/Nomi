@@ -1,15 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { check } from "../lib/journeyRunner.mjs";
+import { backToLibrary } from "../../tests/ux/_shell.mjs";
 import { createBlankProject, waitForPersistedCanvas } from "../lib/isoApp.mjs";
-import { makeTempDir } from "../../scripts/_test-temp.mjs";
 import { requireRealMediaAssets } from "../../tests/ux/fixtures/realMedia.mjs";
 
-const { assets: realMedia } = requireRealMediaAssets(["video-4k-hevc-10bit", "image-4k-png"]);
-const REAL_VIDEO = realMedia.get("video-4k-hevc-10bit").file;
-const REAL_IMAGE = path.join(makeTempDir("nomi-j4-real-media-"), "reference-4k.png");
-execFileSync(process.env.FFMPEG_PATH || "/opt/homebrew/bin/ffmpeg", ["-y", "-ss", "00:00:05", "-i", REAL_VIDEO, "-frames:v", "1", REAL_IMAGE], { stdio: "pipe" });
+const { assets: realMedia } = requireRealMediaAssets(["image-4k-png"]);
+const REAL_IMAGE = realMedia.get("image-4k-png").file;
+const REAL_IMAGE_NAME = path.basename(REAL_IMAGE);
 
 function containsFile(root, fileName) {
   const stack = [root];
@@ -69,6 +67,15 @@ export default {
         await node.click({ position: { x: 24, y: 24 }, timeout: 8_000 });
         const composer = ctx.win.locator(".generation-canvas-v2-node__composer");
         await composer.waitFor({ state: "visible", timeout: 8_000 });
+        const parameterSummary = composer.locator('[data-parameter-summary]').first();
+        await parameterSummary.click({ timeout: 8_000 });
+        const modeOptions = ctx.win.locator('[data-agent-parameter-panel="true"] [role="radiogroup"]').first().locator('[role="radio"]');
+        await modeOptions.first().waitFor({ state: "visible", timeout: 8_000 });
+        // 空节点的产品 UI 会把「参考」显示为当前意图，但节点 meta 仍是 t2v；点「首帧」（图生视频）
+        // 才真正走过一次用户的模式切换写口，而不是只读默认呈现。
+        await modeOptions.nth(1).click();
+        await ctx.win.keyboard.press("Escape");
+        await waitForPersistedCanvas(ctx.win, ctx.projectDir, { settleMs: 500, timeoutMs: 8_000 });
         const addReference = composer.locator('[data-reference-add-entry="true"], [data-asset-add-tile="true"]').first();
         await addReference.click({ timeout: 8_000 });
         const picker = ctx.win.getByTestId("asset-picker");
@@ -80,14 +87,38 @@ export default {
       verify(ctx) {
         const target = ctx.created().find((node) => node.kind === "video");
         const serializedMeta = JSON.stringify(target?.meta || {});
-        const referenceEdges = ctx.edges().filter((edge) => edge.target === target?.id);
-        const referenceNodes = referenceEdges.map((edge) => ctx.nodes().find((node) => node.id === edge.source)).filter(Boolean);
-        const hasLocalReference = referenceNodes.some((node) => String(node.result?.url || "").startsWith("nomi-local://"));
+        const uploadedReferences = Array.isArray(target?.meta?.referenceImageUrls) ? target.meta.referenceImageUrls : [];
+        const hasLocalReference = uploadedReferences.some((url) => String(url).startsWith("nomi-local://"));
         return [
-          check("上传登记的 4K PNG 已复制进项目素材", containsFile(ctx.projectDir, "reference-4k.png"), ctx.projectDir, "outcome"),
+          check("上传登记的 4K PNG 已复制进项目素材", containsFile(ctx.projectDir, REAL_IMAGE_NAME), `${ctx.projectDir}/${REAL_IMAGE_NAME}`, "outcome"),
           check("J4 冷打开耗时已记录", Number(JSON.parse(fs.readFileSync(path.join(ctx.projectDir, ".nomi", "real-media-cold-open.json"))).elapsedMs) >= 0, fs.readFileSync(path.join(ctx.projectDir, ".nomi", "real-media-cold-open.json"), "utf8"), "performance"),
-          check("目标节点通过持久化边接入本地图片参考", hasLocalReference, JSON.stringify({ edges: referenceEdges, referenceNodes }), "outcome"),
+          check("目标切到图生视频模式", target?.meta?.archetype?.modeId === "i2v", serializedMeta, "outcome"),
+          check("目标节点 meta.referenceImageUrls 持久化本地图片参考", hasLocalReference, JSON.stringify({ referenceImageUrls: uploadedReferences }), "outcome"),
           check("上传后节点仍处于可生成参数状态", Boolean(target?.meta?.modelKey && Number(target?.meta?.duration) > 0), serializedMeta, "outcome"),
+        ];
+      },
+    },
+    {
+      id: "reopen-reference",
+      title: "冷重开项目并验证参考仍在",
+      async act(ctx) {
+        await backToLibrary(ctx.win);
+        const card = ctx.win.locator('[data-project-card="true"]').first();
+        await card.waitFor({ state: "visible", timeout: 8_000 });
+        await card.click();
+        await ctx.win.getByRole("button", { name: "生成", exact: true }).first().click();
+        const target = ctx.created().find((node) => node.kind === "video");
+        await ctx.win.locator(`[data-node-id="${target?.id}"]`).first().waitFor({ state: "visible", timeout: 8_000 });
+        await ctx.win.locator(`[data-node-id="${target?.id}"]`).first().click({ position: { x: 24, y: 24 }, timeout: 8_000 });
+        await ctx.win.locator(".generation-canvas-v2-node__composer").waitFor({ state: "visible", timeout: 8_000 });
+        await waitForPersistedCanvas(ctx.win, ctx.projectDir, { settleMs: 500, timeoutMs: 8_000 });
+      },
+      verify(ctx) {
+        const target = ctx.created().find((node) => node.kind === "video");
+        const uploadedReferences = Array.isArray(target?.meta?.referenceImageUrls) ? target.meta.referenceImageUrls : [];
+        return [
+          check("冷重开后仍是图生视频模式", target?.meta?.archetype?.modeId === "i2v", JSON.stringify(target?.meta || {}), "outcome"),
+          check("冷重开后参考图仍在目标节点 meta", uploadedReferences.some((url) => String(url).startsWith("nomi-local://")), JSON.stringify({ referenceImageUrls: uploadedReferences }), "outcome"),
         ];
       },
     },
