@@ -410,7 +410,7 @@ const RETIRED_APIMART_IMAGE_MAPPING_IDS: readonly string[] = ["seed-apimart-imag
 // `deepseek-v3.1-250821` 早期误种；`deepseek-v3.2-think` 2026-09-06 实测退役（仍列在目录里但调用 400 ——
 // 教训同 imagen-4.0-apimart：目录列表不是可用性证据）；`deepseek-v3.2` 2026-10-27 退役（同样仍列在目录里，
 // 10-18 付费走查实录调用 404 `model_not_found`）。证据与回归见 apimartTextMigration.test.ts。
-const RETIRED_APIMART_TEXT_MODEL_KEYS: readonly string[] = ["deepseek-v3.1-250821", "deepseek-v3.2-think", "deepseek-v3.2"];
+const RETIRED_APIMART_TEXT_MODEL_KEYS = Object.freeze(["deepseek-v3.1-250821", "deepseek-v3.2-think", "deepseek-v3.2"]);
 /**
  * Sora 2 退役（2026-09-28 用户拍板，随 0.23.0 发出）：OpenAI 官方文档写明「The Sora 2 models and Videos API were
  * shut down on September 24, 2026」，APIMart 文档里也已经没有 Sora 2——两家的 Sora 2 都只剩必死的请求。
