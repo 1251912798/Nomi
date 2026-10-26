@@ -399,8 +399,8 @@ async function threeTextProtocols(journey, ui, fixture, recorder) {
     await ui.openModels(); await ui.openRelayWizard(); await ui.fillRelay({ name: 'Protocol Fixture', baseUrl: fixture.origin })
     // The advanced disclosure is "高级设置（接口协议 / 自定义请求头）"; inside it a
     // "手动指定" toggle surfaces the three protocol choices.
-    await ui.win.getByText(/高级设置/).first().click()
-    await ui.win.getByText(/手动指定/).first().click()
+    await ui.openRelayProtocols()
+    await ui.showManualProtocol()
     for (const label of ['Chat Completions', 'Responses', 'Anthropic']) await requireVisible(ui.win.getByText(label, { exact: true }).first(), 'protocol-option-missing', `高级设置缺少 ${label}`)
     return { protocols: ['openai-compatible', 'openai-responses', 'anthropic'] }
   })
@@ -418,10 +418,10 @@ async function threeTextProtocols(journey, ui, fixture, recorder) {
       await ui.win.getByText(label, { exact: true }).first().click()
       const before = fixture.requests.length
       await ui.clickTestConnection()
-      // 诚实提示语义：成功但明说「要真跑一次才知道」（探针 2026-09-02 实测文案）。
+      // 诚实提示语义：免费自检只说明地址 / Key 可达，真实生成仍需一次画布试跑。
       await requireVisible(
-        ui.win.locator('[data-model-connection-diagnostics]').getByText(/没问题|真跑一次才知道|连接正常|已连上/).first(),
-        'probe-honesty-missing', `${label} 下测试连接没有给出「探测成功 + 诚实边界」提示`, 15_000,
+        ui.win.locator('[data-model-connection-diagnostics]').getByText(ui.copy.probeSuccess).first(),
+        'probe-honesty-missing', `${label} 下测试连接没有给出「自检通过、还没试跑」的诚实边界提示`, 15_000,
       )
       const seen = fixture.requests.slice(before)
       const probes = seen.filter((request) => request.method === 'GET' && request.path.endsWith('/models'))

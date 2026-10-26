@@ -11,6 +11,7 @@ export function useOnboardingConnectionTest({
   bridge,
   baseUrl,
   apiKey,
+  vendorKey,
   models,
   providerKind,
   kindForced,
@@ -102,7 +103,7 @@ export function useOnboardingConnectionTest({
         }),
       )
     }
-  }, [apiKey, baseUrl, bridge, buildHeadersObject, kindForced, models, noApiKey, onDetectedKind, onProtocolFallback, providerKind, proxyUrl, t])
+  }, [apiKey, baseUrl, bridge, buildHeadersObject, kindForced, models, noApiKey, onDetectedKind, onProtocolFallback, providerKind, proxyUrl, t, vendorKey])
 
   const resetTest = React.useCallback(() => {
     setTestState('idle')
