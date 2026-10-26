@@ -166,7 +166,7 @@ type NomiEvent = {
 
 处置三步(不和稀泥):① **现在**(并入 S3,~0.5h):截断时发 `context.capped` 事件——把"会不会撞"从互相猜测变成可观测事实(P2 在流程层的应用);② **结构修走 S9 不走压缩**:长对话里值得记住的大半是持久事实,本该住记忆卡随 system 常驻,不该赖在历史里怕被裁;③ **触发器**(满足任一才排压缩切片,1-2d 抄 ViMax 抢先式压缩+增量摘要+`context.compacted` 事件):真实项目一周内 `context.capped` ≥3 次 / 用户出现"AI 忘了我前面说的"反馈 / S9 上线后仍现上述任一。
 
-**借鉴**:ViMax context_compactor(抢先式时机+增量摘要)、OpenHands(压缩=可回放事件)、Claude Code CLAUDE.md 形态(项目级人话事实+悄悄注入+可直接改;**不抄全局记忆**——创作项目间风格互窜是事故)、MovieAgent Character Bank(character 事实+pinned)。
+**借鉴**:ViMax context_compactor(抢先式时机+增量摘要)、OpenHands(压缩=可回放事件)、Claude Code CLAUDE.md 形态(项目级人话事实+悄悄注入+可直接改;**不抄全局记忆**——创作项目间风格互窜是事故;**2026-10-26 修订**:改为跨项目只记合作方式与用户确认的偏好、画面风格不跨项目,见 `2026-10-26-agent-capability-roadmap.md` D2)、MovieAgent Character Bank(character 事实+pinned)。
 
 **切片**:层1 随 S0;`context.capped` 并入 S3;层2=S9(**真实依赖:agent 域事件=S3,canvas/锁事件=S5-a/S6**——路线上 S9 本就在 S6 后,依赖天然满足);层3 挂触发器。
 **验收**:J2 扩展「建角色卡→关 app→重开→说『给小鹿加奔跑镜头』,AI 不反问外形直接用对」(N18);删一条错误事实后下轮生成不受影响(N19);`context.capped` 日志可查。
