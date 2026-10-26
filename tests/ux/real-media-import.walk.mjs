@@ -1,24 +1,19 @@
 #!/usr/bin/env node
-// R13 真实素材导入走查：登记的 4K HEVC 视频 + 从它抽出的 4K PNG，逐门经过真实入口。
+// R13 真实素材导入走查：登记的 4K HEVC 视频 + 登记的 4K PNG，逐门经过真实入口。
 // 走查只写隔离项目；NOMI_REAL_MEDIA_DIR 缺失或素材缺失时直接失败，不跳过。
 import fs from 'node:fs'
 import path from 'node:path'
-import { execFileSync } from 'node:child_process'
 import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { launchNomiApp } from './_launchApp.mjs'
 import { requireRealMediaAssets } from './fixtures/realMedia.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 import { openRailDrawer } from './_shell.mjs'
 import { expect } from './_assert.mjs'
 import { makeIsolatedDirs, spawnMcpStdioClient, parseToolResult } from './_mcpJourney.mjs'
 
-const ffmpeg = process.env.FFMPEG_PATH || '/opt/homebrew/bin/ffmpeg'
 const { assets } = requireRealMediaAssets(['video-4k-hevc-10bit', 'image-4k-png'])
 const video = assets.get('video-4k-hevc-10bit').file
-const imageSpec = assets.get('image-4k-png').spec
-const mediaTmp = makeTempDir('nomi-real-media-import-')
-const image = path.join(mediaTmp, 'reference-4k.png')
-execFileSync(ffmpeg, ['-y', '-ss', '00:00:05', '-i', video, '-frames:v', '1', image], { stdio: 'pipe' })
-if (fs.statSync(image).size < imageSpec.minBytes) throw new Error(`4K PNG 太小：${fs.statSync(image).size} < ${imageSpec.minBytes}`)
+const image = assets.get('image-4k-png').file
 
 const CANVAS_FILE = 'input[type="file"][aria-hidden="true"][tabindex="-1"]'
 const MEDIA = [{ id: 'video-4k-hevc-10bit', file: video }, { id: 'image-4k-png', file: image }]
@@ -51,18 +46,19 @@ function projectFiles(root) {
 }
 
 async function openProject(win, name) {
-  await win.locator('[data-project-card="true"]').filter({ hasText: name }).first().click({ timeout: 15_000 })
-  await win.getByRole('button', { name: '生成', exact: true }).first().click({ timeout: 15_000 })
-  await win.locator('[data-nomi-generation-canvas-import-target="true"]').waitFor({ state: 'visible', timeout: 15_000 })
+  await win.locator('[data-project-card="true"]').filter({ hasText: name }).first().click({ timeout: stationTimeout({ operations: 2 }) })
+  await win.getByRole('button', { name: '生成', exact: true }).first().click({ timeout: stationTimeout({ operations: 2 }) })
+  await win.locator('[data-nomi-generation-canvas-import-target="true"]').waitFor({ state: 'visible', timeout: stationTimeout({ operations: 2 }) })
 }
 
 async function assertNodeAndAsset(win, root, beforeNodes, label) {
-  await expect.poll(async () => (await win.locator('.react-flow__node').count()) > beforeNodes, { timeout: 300_000, message: `${label}: 节点没有出现` }).toBe(true)
+  const importBudget = stationTimeout({ operations: 20 })
+  await expect.poll(async () => (await win.locator('.react-flow__node').count()) > beforeNodes, { timeout: importBudget, message: `${label}: 节点没有出现` }).toBe(true)
   const node = win.locator('.react-flow__node').last()
-  await node.waitFor({ state: 'visible', timeout: 300_000 })
-  const decoded = await expect.poll(async () => (await node.locator('img,video').first().evaluate((el) => el.tagName === 'IMG' ? (el.naturalWidth || 0) : (el.videoWidth || 0))) > 0, { timeout: 300_000, message: `${label}: 预览没有解码` }).toBe(true)
-  await expect.poll(() => projectFiles(root).length > 0, { timeout: 300_000, message: `${label}: 素材没有落进项目` }).toBe(true)
-  await expect.poll(() => { try { const persisted = JSON.parse(fs.readFileSync(path.join(root, '.nomi', 'project.json'), 'utf8')); return (persisted.payload?.generationCanvas?.nodes || []).length > beforeNodes } catch { return false } }, { timeout: 300_000, message: `${label}: 节点没有持久化` }).toBe(true)
+  await node.waitFor({ state: 'visible', timeout: importBudget })
+  const decoded = await expect.poll(async () => (await node.locator('img,video').first().evaluate((el) => el.tagName === 'IMG' ? (el.naturalWidth || 0) : (el.videoWidth || 0))) > 0, { timeout: importBudget, message: `${label}: 预览没有解码` }).toBe(true)
+  await expect.poll(() => projectFiles(root).length > 0, { timeout: importBudget, message: `${label}: 素材没有落进项目` }).toBe(true)
+  await expect.poll(() => { try { const persisted = JSON.parse(fs.readFileSync(path.join(root, '.nomi', 'project.json'), 'utf8')); return (persisted.payload?.generationCanvas?.nodes || []).length > beforeNodes } catch { return false } }, { timeout: importBudget, message: `${label}: 节点没有持久化` }).toBe(true)
   const record = JSON.parse(fs.readFileSync(path.join(root, '.nomi', 'project.json'), 'utf8'))
   const nodes = record.payload?.generationCanvas?.nodes || []
   return { nodeCount: nodes.length, fileCount: projectFiles(root).length, decoded }
@@ -90,13 +86,13 @@ async function dropFile(win, file) {
 }
 
 await runUiDoor('canvas-file-picker', async ({ win, root, row }) => {
-  const input = win.locator(CANVAS_FILE).first(); await input.waitFor({ state: 'attached', timeout: 15_000 })
+  const input = win.locator(CANVAS_FILE).first(); await input.waitFor({ state: 'attached', timeout: stationTimeout({ operations: 2 }) })
   for (const media of MEDIA) { const before = await win.locator('.react-flow__node').count(); await input.setInputFiles(media.file); row.results.push({ media: media.id, ...(await assertNodeAndAsset(win, root, before, 'canvas-file-picker')) }) }
 })
 
 await runUiDoor('asset-library-upload', async ({ win, root, row }) => {
   await openRailDrawer(win, 'assets', '素材库')
-  const input = win.locator('section[aria-label="素材库"] input[type="file"]').first(); await input.waitFor({ state: 'attached', timeout: 15_000 })
+  const input = win.locator('section[aria-label="素材库"] input[type="file"]').first(); await input.waitFor({ state: 'attached', timeout: stationTimeout({ operations: 2 }) })
   for (const media of MEDIA) { const before = await win.locator('.react-flow__node').count(); await input.setInputFiles(media.file); row.results.push({ media: media.id, ...(await assertNodeAndAsset(win, root, before, 'asset-library-upload')) }) }
 })
 
