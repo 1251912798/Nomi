@@ -1,10 +1,12 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
 import { resolveFfmpegPath } from "./ffmpegRunner";
 import { ensureExecutable } from "./ensureExecutable";
 import { asarUnpackedPath } from "../shared/asarUnpackedPath";
+import { parseFfmpegProgressChunk } from "./ffmpegProgress";
 
 export const MEDIA_DECODER_PROTOCOL_WHITELIST = "file,pipe,data";
 
@@ -30,6 +32,8 @@ export type BoundedProcessOptions = {
   maxStdoutBytes: number;
   maxStderrBytes: number;
   input?: Uint8Array;
+  onProgress?: (progress: { outTimeMs?: number; stage?: string }) => void;
+  lowPriority?: boolean;
 };
 
 export class BoundedProcessError extends Error {
@@ -62,6 +66,7 @@ type ProcessTreeDeps = {
 
 type BoundedProcessDependencies = {
   terminateTree?: (child: ProcessTreeChild, force: boolean) => Promise<void>;
+  setPriority?: (pid: number) => void;
   cleanupGraceMs?: number;
   cleanupDeadlineMs?: number;
 };
@@ -142,6 +147,8 @@ export async function runBoundedProcess(
 
     const stdoutChunks: Buffer[] = [];
     const stderrChunks: Buffer[] = [];
+    let progressBuffer = "";
+    let progressRecordLines: string[] = [];
     let stdoutBytes = 0;
     let stderrBytes = 0;
     let failure: BoundedProcessError | undefined;
@@ -198,6 +205,14 @@ export async function runBoundedProcess(
     const timer = setTimeout(() => stop("timeout"), Math.max(1, options.timeoutMs));
     options.signal?.addEventListener("abort", onAbort, { once: true });
 
+    if (options.lowPriority && child.pid) {
+      try {
+        (dependencies.setPriority ?? ((pid: number) => os.setPriority(pid, os.constants.priority.PRIORITY_BELOW_NORMAL)))(child.pid);
+      } catch {
+        // Priority is a best-effort guard; process ownership and cancellation remain mandatory.
+      }
+    }
+
     child.stdout?.on("data", (raw: Buffer | string) => {
       const chunk = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
       stdoutBytes += chunk.byteLength;
@@ -215,6 +230,24 @@ export async function runBoundedProcess(
         return;
       }
       stderrChunks.push(chunk);
+      if (options.onProgress) {
+        progressBuffer += chunk.toString("utf8");
+        const lines = progressBuffer.split(/\r?\n/);
+        progressBuffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          progressRecordLines.push(trimmed);
+          if (!trimmed.startsWith("progress=")) continue;
+          const parsed = parseFfmpegProgressChunk(progressRecordLines.join("\n"));
+          progressRecordLines = [];
+          if (parsed.outTimeMs === undefined && parsed.progress === undefined) continue;
+          options.onProgress({
+            ...(parsed.outTimeMs !== undefined ? { outTimeMs: parsed.outTimeMs } : {}),
+            ...(parsed.progress !== undefined ? { stage: parsed.progress } : {}),
+          });
+        }
+      }
     });
     child.stdin?.on("error", () => {
       if (!failure) stop("spawn_failed");

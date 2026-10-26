@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   playableMp4FileName,
+  maxTranscodeThreads,
+  remuxArgsForPlayableMp4,
   transcodeArgsForPlayableMp4,
   videoNeedsPlayabilityTranscode,
 } from "./videoImportNormalize";
@@ -54,7 +56,29 @@ describe("transcodeArgsForPlayableMp4 — 转码参数", () => {
     expect(args).toContain("+faststart")
     expect(args.join(" ")).toContain("scale=trunc(iw/2)*2:trunc(ih/2)*2")
     expect(args[args.length - 1]).toBe("/tmp/out.mp4")
+    expect(Number(args[args.indexOf("-threads") + 1])).toBeGreaterThanOrEqual(1)
   })
+})
+
+describe("remuxArgsForPlayableMp4 — 可播 codec 只换容器", () => {
+  it("视频流 copy，音频可播时也 copy，不出现 libx264", () => {
+    const args = remuxArgsForPlayableMp4("/tmp/in.mkv", "/tmp/out.mp4", true)
+    expect(args).toContain("copy")
+    expect(args).not.toContain("libx264")
+    expect(args[args.indexOf("-c:a") + 1]).toBe("copy")
+  })
+
+  it("只有音频不可播时转 AAC，视频仍 copy", () => {
+    const args = remuxArgsForPlayableMp4("/tmp/in.mkv", "/tmp/out.mp4", false)
+    expect(args[args.indexOf("-c:v") + 1]).toBe("copy")
+    expect(args[args.indexOf("-c:a") + 1]).toBe("aac")
+    expect(args).not.toContain("libx264")
+  })
+})
+
+it("给系统留两个核，至少保留一个线程", () => {
+  expect(maxTranscodeThreads(8)).toBe(6)
+  expect(maxTranscodeThreads(1)).toBe(1)
 })
 
 describe("playableMp4FileName", () => {

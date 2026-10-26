@@ -14,17 +14,13 @@
     "electron/assets/videoImportNormalize.ts",
     "electron/export/mediaProbe.ts",
     "electron/assets/localFileImport.ts",
-    "electron/assets/localFileCopy.ts",
     "electron/assets/assetsIpc.ts",
+    "electron/assets/localFileCopy.ts",
     "electron/assets/importRequests.ts",
     "electron/capabilityCore/core.ts",
     "electron/capabilityCore/dispatcher.ts",
-    "electron/shared/assets/assetLocalizationEvent.ts",
-    "electron/assets/assetImportProgress.ts",
-    "src/workbench/generationCanvas/store/assetImportProgressStore.ts",
-    "src/workbench/generationCanvas/nodes/NodeImportingOverlay.tsx",
-    "src/i18n/locales/generationCommon.ts",
-    "scripts/check-import-ffmpeg-owner.test.mjs"
+    "scripts/check-import-ffmpeg-owner.test.mjs",
+    "electron/assets/assetImportProgress.ts"
   ],
   "entry_points": [
     "Canvas file selection and native upload",
@@ -89,12 +85,47 @@
       "kind": "write",
       "path": "electron/video/trimVideo.ts",
       "symbol": "runFfmpeg"
+    },
+    {
+      "kind": "read",
+      "path": "electron/export/mediaProbe.ts",
+      "symbol": "runBoundedProcess"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/assetsIpc.ts",
+      "symbol": "importLocalFilePaths"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/localFileCopy.ts",
+      "symbol": "importLocalFile"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/core.ts",
+      "symbol": "importLocalFile"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/dispatcher.ts",
+      "symbol": "importProjectAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/importRequests.ts",
+      "symbol": "createImportRequestRegistry"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/assetImportProgress.ts",
+      "symbol": "createAssetImportProgressReporter"
     }
   ],
   "door_reduction": {
     "before": 10,
-    "after": 9,
-    "why_not": "The two localFileImport doors remain because native-path and byte-path imports have different input ownership and publication boundaries. The eight other direct spawns are unrelated export, frame, audio, speech, trim, and fixture paths; they remain a frozen baseline for 0.25 and are not import-transcode callers."
+    "after": 16,
+    "why_not": "The two localFileImport doors remain because native-path and byte-path imports have different input ownership; the normalizer door remains because it owns the single ffmpeg decision. The additional wrapper doors are required to prove canvas/asset-library/Finder/MCP callers converge on the same import owner. The eight unrelated direct spawns remain a frozen 0.25 baseline."
   },
   "generality_proof": "All checked import surfaces converge on importLocalFile or the shared videoImportNormalize functions. The changed normalization boundary owns codec/container selection, the only ffmpeg launch, the shared cancellation signal, and progress projection, so provider, caller, platform, and stored-asset variations cannot reintroduce an unbounded import ffmpeg without bypassing the static regression gate.",
   "shared_boundaries": [
@@ -194,7 +225,7 @@
   "legacy_paths": {
     "status": "removed",
     "removed_paths": [
-      "electron/assets/videoImportNormalize.ts:runFfmpeg"
+      "electron/assets/videoImportNormalize.ts"
     ],
     "rationale": "The private unbounded spawn is deleted in the same implementation commit; no fallback launcher remains."
   },

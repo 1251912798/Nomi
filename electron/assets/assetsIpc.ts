@@ -12,18 +12,34 @@ import type { ProjectInteractionCapture } from './projectInteractionCapture';
 import { surfacePortFailure } from '../shared/surfacePortBinding';
 import { registerOnboardingDemoAssetSourceDir } from '../onboarding/demoAssetSource';
 import { createPreviewRequestRegistry } from './previewRequests';
+import { createImportRequestRegistry, isAssetImportCancelled, type ImportRequestSender } from './importRequests';
+import { registerQuitDrain } from '../quitTeardown';
 
 function importFailure(error: unknown, reason: AssetImportFailure['reason'] = 'import-failed'): AssetImportResult<never> {
   return { ok: false, failure: { code: surfacePortFailure(error).code, reason } };
 }
 
-async function importAssetResult(payload: unknown, capture: () => (() => void) | undefined, allowSourcePath = false): Promise<AssetImportResult<unknown>> {
+async function importAssetResult(
+  payload: unknown,
+  capture: () => (() => void) | undefined,
+  allowSourcePath: boolean,
+  imports: ReturnType<typeof createImportRequestRegistry>,
+  sender: ImportRequestSender,
+): Promise<AssetImportResult<unknown>> {
   let assertCurrent: (() => void) | undefined;
   try { assertCurrent = capture(); } catch (error) { return importFailure(error); }
   const { importLocalFile, MediaImportRejectedError } = await import('./localFileImport');
   try {
-    return { ok: true, asset: await importLocalFile(payload, { allowSourcePath, assertCurrent }) };
+    return {
+      ok: true,
+      asset: await imports.run(sender, assertCurrent, (signal) => importLocalFile(payload, {
+        allowSourcePath,
+        assertCurrent,
+        signal,
+      })),
+    };
   } catch (error) {
+    if (isAssetImportCancelled(error)) return importFailure(error);
     return importFailure(error, error instanceof MediaImportRejectedError ? error.rejection.reason : 'import-failed');
   }
 }
@@ -69,6 +85,8 @@ export function parseCopyProjectAssetPayload(payload: unknown): {
 }
 
 export function registerAssetsIpc(captureInteraction: ProjectInteractionCapture): void {
+  const imports = createImportRequestRegistry();
+  registerQuitDrain('asset-import-transcode', () => { imports.abortAll(); }, { required: false, timeoutMs: 100 });
   // 随包引导示例图目录：引导 seed 与「旧项目里的构建产物地址 → 项目资产」迁移都从这里读原图。
   // 放 `resources/` 而不是 `src/`（Vite 加内容哈希，只有渲染进程算得出地址——事故起点）或 `public/`（进包两份）；
   // `resources/**` 在 package.json > build.files 里随包走，dev（仓库根）与打包版（app.asar 根）是同一条相对路径。
@@ -90,7 +108,7 @@ export function registerAssetsIpc(captureInteraction: ProjectInteractionCapture)
     const parsed = parseCopyFilesPayload(payload);
     if (!parsed) throw new Error("projectId and paths are required");
     const { importLocalFilePaths } = await import("./localFileCopy");
-    return importLocalFilePaths(parsed.projectId, parsed.paths);
+    return imports.run(event.sender, undefined, (signal) => importLocalFilePaths(parsed.projectId, parsed.paths, "asset-library", { signal }));
   });
   // 本机视频解码能力：渲染层探一次送进来，决定导入要不要转码（原来是 hardcode 白名单在猜）。
   ipcMain.handle("nomi:assets:report-video-codecs", async (event, payload) => {
@@ -127,11 +145,11 @@ export function registerAssetsIpc(captureInteraction: ProjectInteractionCapture)
     assertTrustedUiSender(event);
     const raw = (payload || {}) as Record<string, unknown>;
     // 字节通道不接受 renderer 自报路径；原生路径只能经 webUtils 桥进入下面的专用通道。
-    return importAssetResult({ ...raw, sourcePath: undefined }, () => captureInteraction(event, raw));
+    return importAssetResult({ ...raw, sourcePath: undefined }, () => captureInteraction(event, raw), false, imports, event.sender);
   });
   ipcMain.handle("nomi:assets:import-native-file", async (event, payload) => {
     assertTrustedSender(event);
-    return importAssetResult(payload, () => captureInteraction(event, payload), true);
+    return importAssetResult(payload, () => captureInteraction(event, payload), true, imports, event.sender);
   });
   ipcMain.handle("nomi:assets:import-remote-url", async (event, payload): Promise<AssetImportResult<unknown>> => {
     assertTrustedSender(event);

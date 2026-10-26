@@ -411,6 +411,17 @@ describe("runBoundedProcess", () => {
     await expect(pending).rejects.toMatchObject({ code: "cancelled" });
   });
 
+  it("optionally lowers child priority before the bounded process runs", async () => {
+    const setPriority = vi.fn();
+    await runBoundedProcess(
+      process.execPath,
+      ["-e", "process.stdout.write('ok')"],
+      { lowPriority: true, timeoutMs: 1_000, maxStdoutBytes: 1_024, maxStderrBytes: 1_024 },
+      { setPriority },
+    );
+    expect(setPriority).toHaveBeenCalledWith(expect.any(Number));
+  });
+
   it("uses a detached POSIX process group and escalates from TERM to KILL", async () => {
     const killGroup = vi.fn();
     const killChild = vi.fn().mockReturnValue(true);

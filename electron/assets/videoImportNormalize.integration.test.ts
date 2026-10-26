@@ -9,6 +9,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { createProject } from "../runtime";
 import { ensurePlayableAsset, importLocalFile } from "./localFileImport";
+import { resolveFfmpegPath } from "../export/ffmpegRunner";
+import { transcodeFileToPlayableMp4IfNeeded } from "./videoImportNormalize";
 import { probeMediaMetadata } from "../export/mediaProbe";
 
 const tempRoots: string[] = [];
@@ -38,6 +40,7 @@ const require = createRequire(import.meta.url);
 let workspaceId = "";
 let aviBytes: Buffer;
 let mp4Bytes: Buffer;
+let mkvBytes: Buffer;
 
 beforeAll(() => {
   mockedDocumentsRoot = makeTempDir("nomi-video-norm-documents-");
@@ -50,14 +53,18 @@ beforeAll(() => {
   const fixtureDir = makeTempDir("nomi-video-norm-fixtures-");
   const aviPath = path.join(fixtureDir, "legacy.avi");
   const mp4Path = path.join(fixtureDir, "modern.mp4");
+  const mkvPath = path.join(fixtureDir, "real-shot.mkv");
   const base = ["-f", "lavfi", "-i", "testsrc=duration=1:size=192x108:rate=12", "-y"];
   const encodeAvi = spawnSync(ffmpegPath, [...base, "-c:v", "mpeg4", aviPath], { timeout: 60_000 });
   const encodeMp4 = spawnSync(ffmpegPath, [...base, "-c:v", "libx264", "-pix_fmt", "yuv420p", mp4Path], { timeout: 60_000 });
-  if (encodeAvi.status !== 0 || encodeMp4.status !== 0) {
-    throw new Error(`fixture encode failed: avi=${encodeAvi.status} mp4=${encodeMp4.status}`);
+  const realFixture = path.resolve("tests/ux/fixtures/real-shot-640x360.mp4");
+  const deriveMkv = spawnSync(resolveFfmpegPath(), ["-y", "-i", realFixture, "-c", "copy", mkvPath], { timeout: 60_000 });
+  if (encodeAvi.status !== 0 || encodeMp4.status !== 0 || deriveMkv.status !== 0) {
+    throw new Error(`fixture encode failed: avi=${encodeAvi.status} mp4=${encodeMp4.status} mkv=${deriveMkv.status}`);
   }
   aviBytes = fs.readFileSync(aviPath);
   mp4Bytes = fs.readFileSync(mp4Path);
+  mkvBytes = fs.readFileSync(mkvPath);
 }, 120_000);
 
 afterAll(() => {
@@ -74,7 +81,7 @@ describe("导入归一化（importLocalFile）", () => {
     })) as AssetRecord;
     expect(asset.data.absolutePath.endsWith("clip.mp4")).toBe(true);
     expect(asset.data.contentType).toBe("video/mp4");
-    expect(asset.data.playbackNormalizedFrom).toBe("container:avi");
+    expect(asset.data.playbackNormalizedFrom).toBe("codec:mpeg4");
     const probe = await probeMediaMetadata(asset.data.absolutePath);
     expect(probe.videoCodec).toBe("h264");
   }, 60_000);
@@ -88,6 +95,17 @@ describe("导入归一化（importLocalFile）", () => {
     })) as AssetRecord;
     expect(asset.data.playbackNormalizedFrom).toBeUndefined();
     expect(fs.readFileSync(asset.data.absolutePath).length).toBe(mp4Bytes.length);
+  }, 60_000);
+
+  it("登记的真实 H.264 镜头派生 MKV → 只换容器，不重编码，几秒内完成", async () => {
+    const asset = (await importLocalFile({
+      projectId: workspaceId,
+      bytes: mkvBytes,
+      contentType: "video/x-matroska",
+      fileName: "real-shot.mkv",
+    })) as AssetRecord;
+    expect(asset.data.playbackNormalizedFrom).toBe("container:mkv");
+    expect((await probeMediaMetadata(asset.data.absolutePath)).videoCodec).toBe("h264");
   }, 60_000);
 
   it("损坏字节标视频导入 → 回退原样不挡导入（渲染侧守卫兜底报错）", async () => {
@@ -117,7 +135,7 @@ describe("懒自愈（ensurePlayableAsset）", () => {
     const healed = (await ensurePlayableAsset({ url: planted.data.url })) as AssetRecord | null;
     expect(healed).not.toBeNull();
     expect(healed!.data.absolutePath.endsWith(".mp4")).toBe(true);
-    expect(healed!.data.playbackNormalizedFrom).toBe("container:avi");
+    expect(healed!.data.playbackNormalizedFrom).toBe("codec:mpeg4");
     const probe = await probeMediaMetadata(healed!.data.absolutePath);
     expect(probe.videoCodec).toBe("h264");
     // 原文件保留（导出/上游引用不受影响）
@@ -125,6 +143,36 @@ describe("懒自愈（ensurePlayableAsset）", () => {
 
     // 新资产已可播 → 再自愈返回 null（渲染侧一次性防环之外的第二道收敛保证）
     expect(await ensurePlayableAsset({ url: healed!.data.url })).toBeNull();
+  }, 60_000)
+
+  it("注入不可播放 codec → 整段重编码并发出单调进度", async () => {
+    const fixtureDir = makeTempDir("nomi-video-norm-progress-");
+    const inputPath = path.join(fixtureDir, "source.mp4");
+    fs.writeFileSync(inputPath, mp4Bytes);
+    const progress: number[] = [];
+    const result = await transcodeFileToPlayableMp4IfNeeded(inputPath, "source.mp4", fixtureDir, {
+      playableCodecs: new Set(),
+      onProgress: (ratio) => progress.push(ratio),
+    });
+    expect(result?.reason).toBe("codec:h264");
+    expect(progress.length).toBeGreaterThan(1);
+    expect(progress).toEqual([...progress].sort((a, b) => a - b));
+    expect((await probeMediaMetadata(result!.outputPath)).videoCodec).toBe("h264");
+  }, 60_000)
+
+  it("取消正在进行的转码 → bounded runner 拒绝、删掉半成品", async () => {
+    const fixtureDir = makeTempDir("nomi-video-norm-cancel-");
+    const inputPath = path.join(fixtureDir, "long-source.mp4");
+    fs.copyFileSync(path.resolve("tests/ux/fixtures/canvas-follow-hand-1080p15.mp4"), inputPath);
+    const controller = new AbortController();
+    const pending = transcodeFileToPlayableMp4IfNeeded(inputPath, "long-source.mp4", fixtureDir, {
+      playableCodecs: new Set(),
+      signal: controller.signal,
+    });
+    const timer = setTimeout(() => controller.abort(), 20);
+    await expect(pending).rejects.toMatchObject({ code: "cancelled" });
+    clearTimeout(timer);
+    expect(fs.existsSync(path.join(fixtureDir, "long-source-playable.mp4"))).toBe(false);
   }, 60_000)
 
   it("同一份坏资产被多个播放面各触发一次 → 复用同一份转码产物，不重复转码也不堆副本", async () => {

@@ -16,6 +16,7 @@ import { readStorageCapacity } from "./storageCapacity";
 import { parseLocalAssetUrl } from "../protocol/localProtocol";
 import {
   ensurePlayableVideoBytes,
+  isVideoNormalizationCancelled,
   playableMp4FileName,
   transcodeFileToPlayableMp4IfNeeded,
 } from "./videoImportNormalize";
@@ -37,7 +38,7 @@ function bytesFromPayload(value: unknown): Buffer {
   throw new Error("bytes must be an ArrayBuffer");
 }
 
-type ImportLocalFileOptions = { allowSourcePath?: boolean; assertCurrent?: () => void };
+type ImportLocalFileOptions = { allowSourcePath?: boolean; assertCurrent?: () => void; signal?: AbortSignal };
 
 /** 准入闸挡下时抛这个：调用方要把 rejection 里的数字讲给用户听，不许退化成一句「过大」。 */
 export class MediaImportRejectedError extends Error {
@@ -73,7 +74,7 @@ function surfaceFromPayload(raw: JsonRecord): MediaImportSurfaceId {
     : value === "asset-library" || value === "generation-canvas" ? value : "project-storage";
 }
 
-type NativeImportFeedback = { onCopyProgress?: AssetCopyProgress; preparedPreview?: Promise<StoredAssetPreview | undefined> };
+type NativeImportFeedback = { onCopyProgress?: AssetCopyProgress; onConversionProgress?: (ratio: number) => void; preparedPreview?: Promise<StoredAssetPreview | undefined> };
 
 /** 暂存预览只落在项目内（绝不写进用户自己的目录）；文件名带 .preview. 故素材库列表天然过滤掉。 */
 const IMPORT_PREVIEW_SCRATCH_DIR = path.join("assets", "imported", ".import-previews");
@@ -93,6 +94,7 @@ async function prepareNativeImportFeedback(
   sourcePath: string,
   projectId: string,
   contentType: string,
+  signal?: AbortSignal,
 ): Promise<NativeImportFeedback> {
   const nodeId = String(raw.ownerNodeId || "").trim();
   if (!nodeId) return {};
@@ -103,17 +105,21 @@ async function prepareNativeImportFeedback(
   const scratchOwnerPath = importPreviewScratchOwnerPath(projectId, nodeId);
   // 预览与拷贝并行派生：4K 源的 ffprobe + 缩放要好几秒，挡在拷贝前面就是一张长时间的空卡。
   const preparedPreview = scratchOwnerPath
-    ? createStoredAssetPreview(sourcePath, contentType, { previewOwnerPath: scratchOwnerPath }).then((preview) => {
+    ? createStoredAssetPreview(sourcePath, contentType, { previewOwnerPath: scratchOwnerPath, ...(signal ? { signal } : {}) }).then((preview) => {
       const previewPath = preview.previewPath;
       if (previewPath) {
         const relativePath = path.posix.join(IMPORT_PREVIEW_SCRATCH_DIR.split(path.sep).join("/"), path.basename(previewPath));
         reporter.setPreviewUrl(localAssetUrl(projectId, relativePath));
       }
       return preview;
-    }).catch(() => undefined)
+    }).catch((error) => {
+      if (signal?.aborted) throw error;
+      return undefined;
+    })
     : undefined;
   return {
     preparedPreview,
+    onConversionProgress: reporter.convert,
     onCopyProgress: (copiedBytes, streamTotalBytes) => {
       reporter.report(copiedBytes, streamTotalBytes);
       if (copiedBytes < streamTotalBytes) return;
@@ -132,6 +138,7 @@ async function importNativeSourcePath(
   contentType: string,
   context: AssetWriteContext,
   feedback: NativeImportFeedback = {},
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const stat = await fs.promises.stat(sourcePath);
   if (!stat.isFile()) throw new Error("source file is unavailable");
@@ -163,7 +170,10 @@ async function importNativeSourcePath(
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "nomi-video-native-import-"));
   try {
     try {
-      const transcoded = await transcodeFileToPlayableMp4IfNeeded(sourcePath, storedName, tempDir);
+      const transcoded = await transcodeFileToPlayableMp4IfNeeded(sourcePath, storedName, tempDir, {
+        ...(signal ? { signal } : {}),
+        ...(feedback.onConversionProgress ? { onProgress: feedback.onConversionProgress } : {}),
+      });
       if (transcoded) {
         context.assertCurrent();
         return await copyAssetFile(projectId, transcoded.outputPath, playableMp4FileName(storedName), "video/mp4", {
@@ -172,6 +182,7 @@ async function importNativeSourcePath(
         }, expectedKind, context, feedback);
       }
     } catch (error) {
+      if (signal?.aborted || isVideoNormalizationCancelled(error)) throw error;
       logWarn("assets", "video-normalize-failed-import-original-file", undefined, error);
     }
     context.assertCurrent();
@@ -190,15 +201,19 @@ export async function importLocalFile(payload: unknown, options: ImportLocalFile
   const sourcePath = options.allowSourcePath ? String(raw.sourcePath || "").trim() : "";
   // 画布预览（图片缩略 / 视频 poster）在落盘边界统一派生：本地导入与生成结果本地化走同一扇门。
   // 原生路径那条已经在拷贝前先派生过一帧并沿路认领，这里不会再派生第二次。
-  return attachStoredAssetPreview(await importLocalFileToStore(raw, projectId, sourcePath, hintedContentType, context));
+  return attachStoredAssetPreview(
+    await importLocalFileToStore(raw, projectId, sourcePath, hintedContentType, context, options.signal),
+    undefined,
+    options.signal ? { signal: options.signal } : undefined,
+  );
 }
 
-async function importLocalFileToStore(raw: JsonRecord, projectId: string, sourcePath: string, hintedContentType: string, context: AssetWriteContext): Promise<unknown> {
+async function importLocalFileToStore(raw: JsonRecord, projectId: string, sourcePath: string, hintedContentType: string, context: AssetWriteContext, signal?: AbortSignal): Promise<unknown> {
   if (sourcePath) {
     const rawName = String(raw.fileName || path.basename(sourcePath) || `asset-${Date.now()}.bin`);
-    const feedback = await prepareNativeImportFeedback(raw, sourcePath, projectId, hintedContentType);
+    const feedback = await prepareNativeImportFeedback(raw, sourcePath, projectId, hintedContentType, signal);
     try {
-      return await importNativeSourcePath(raw, sourcePath, projectId, rawName, hintedContentType, context, feedback);
+      return await importNativeSourcePath(raw, sourcePath, projectId, rawName, hintedContentType, context, feedback, signal);
     } catch (error) {
       discardPreparedPreview(await feedback.preparedPreview);
       throw error;
@@ -212,10 +227,20 @@ async function importLocalFileToStore(raw: JsonRecord, projectId: string, source
   const ext = extensionFromMime(contentType, "bin");
   const fileName = rawFileName || `asset-${Date.now()}.${ext}`;
   assertAdmitted(projectId, fileName, contentType, bytes.length, surfaceFromPayload(raw));
+  const nodeId = String(raw.ownerNodeId || "").trim();
+  const reporter = contentType.startsWith("video/") && nodeId
+    ? createAssetImportProgressReporter({ projectId, nodeId, totalBytes: bytes.length })
+    : undefined;
+  reporter?.announce();
   // 视频先过可播放归一化（HEVC/AVI 等 Chromium 解不了的转 H.264 MP4；失败回退原字节不挡导入）。
   const normalized = contentType.startsWith("video/")
-    ? await ensurePlayableVideoBytes(bytes, canonicalAssetFileName(fileName, contentType), contentType)
+    ? await ensurePlayableVideoBytes(bytes, canonicalAssetFileName(fileName, contentType), contentType, {
+      ...(signal ? { signal } : {}),
+      ...(reporter ? { onProgress: reporter.convert } : {}),
+    })
     : null;
+  reporter?.report(bytes.length, bytes.length);
+  reporter?.finalize();
   context.assertCurrent();
   return storeAssetBytes(
     projectId,
