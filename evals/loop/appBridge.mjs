@@ -2,7 +2,8 @@
 // 机制(照 tests/ux/r1-upload-verify.mjs):key 是 safeStorage 加密、绑 app 身份,纯 Node 解不开 →
 //   启真 app,密文传进主进程 safeStorage 解密 + 主进程内 fetch(明文 key 不回传 Node)。
 //   ⚠️ 启真 app → 运行时 Nomi 必须关着(单实例锁)。effect-first:自动从 catalog 挑 enabled 模型,免手填。
-import { launchNomiApp } from "../../tests/ux/_launchApp.mjs";
+//   ⚠️ 真实资料起(isolate:false)装不了安静仪表、会到用户面前:要带 NOMI_WALK_FOREGROUND_OK=1,否则不起 app、按 125 退出。
+import { exitIfWalkSkipped, launchNomiApp } from "../../tests/ux/_launchApp.mjs";
 import { readRealCatalog } from "../../tests/ux/_realProfile.mjs";
 
 
@@ -52,7 +53,12 @@ let _app = null;
 async function ensureApp() {
   if (_app) return;
   // isolate:false：key 是 safeStorage 加密、绑 app 身份（见文件头），换隔离 userData 就解不开。
-  ({ app: _app } = await launchNomiApp({ name: "eval-app-bridge", isolate: false, settleMs: 1200 }));
+  ({ app: _app } = await launchNomiApp({
+    name: "eval-app-bridge",
+    isolate: false,
+    settleMs: 1200,
+    foreground: "评测借真实资料里的模型钥匙发请求(safeStorage 绑真实 userData)",
+  }).catch(exitIfWalkSkipped));
 }
 export async function closeApp() {
   if (_app) {

@@ -42,10 +42,18 @@ function keepOffscreen(win) {
 function patchWindow(win) {
   if (ALLOW_FOREGROUND || !win || win.__nomiQuietWalkPatched) return win
   Object.defineProperty(win, '__nomiQuietWalkPatched', { configurable: true, value: true })
-  const showInactive = typeof win.showInactive === 'function' ? win.showInactive.bind(win) : () => undefined
+  const native = (key) => (typeof win[key] === 'function' ? win[key].bind(win) : () => undefined)
+  const showInactive = native('showInactive')
+  const setOpacity = native('setOpacity')
+  const setIgnoreMouseEvents = native('setIgnoreMouseEvents')
   patchMethod(win, 'show', (...args) => { record('window.show', args); return showInactive(...args) })
   patchMethod(win, 'focus', (...args) => { record('window.focus', args); return undefined })
   patchMethod(win, 'moveTop', (...args) => { record('window.moveTop', args); return undefined })
+  // 屏外坐标在 macOS 上不算数：系统把窗口夹回主屏左缘留一条（真机实测 40px 宽），showInactive 还把它排到别的窗口上面。
+  // 所以窗口全透明、鼠标穿透——用户看不见也点不着；App 自己改这两样只记录（应用内浏览器的浮层会切鼠标穿透）。
+  patchMethod(win, 'setOpacity', (...args) => { record('window.setOpacity', args); return undefined })
+  patchMethod(win, 'setIgnoreMouseEvents', (...args) => { record('window.setIgnoreMouseEvents', args); return undefined })
+  try { setOpacity(0); setIgnoreMouseEvents(true) } catch { /* destroyed during startup */ }
   keepOffscreen(win)
   return win
 }
@@ -55,7 +63,7 @@ function QuietBrowserWindow(options = {}) {
   const requestedShow = options.show !== false
   const win = new NativeBrowserWindow(ALLOW_FOREGROUND
     ? options
-    : { ...options, show: false, x: OFFSCREEN[0], y: OFFSCREEN[1], focusable: false })
+    : { ...options, show: false, x: OFFSCREEN[0], y: OFFSCREEN[1], focusable: false, opacity: 0 })
   patchWindow(win)
   if (!ALLOW_FOREGROUND && requestedShow) {
     const showInactive = typeof win.showInactive === 'function' ? win.showInactive.bind(win) : () => undefined
@@ -91,6 +99,9 @@ const quietApp = new Proxy(app, {
   },
 })
 
+// 在 ready 切 accessory。真机试过提前到 will-finish-launching：系统照样先把 App 登记成 Foreground（Dock 那一下没省掉），
+// 用户正在用的是起走查的那个 App（Claude）时照样被系统激活成最前——没换来任何东西，所以留在 ready。
+// 这条「启动即激活」是 AppKit 原生层的，JS 拦不到，见 docs/plan/2026-10-27-walk-quiet.md ★4。
 if (!ALLOW_FOREGROUND && process.platform === 'darwin') {
   app.once('ready', () => {
     try { app.setActivationPolicy('accessory'); record('app.setActivationPolicy', ['accessory']) } catch (error) { record('app.setActivationPolicy.error', [String(error?.message ?? error)]) }

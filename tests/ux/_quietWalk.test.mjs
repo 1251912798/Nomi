@@ -11,6 +11,8 @@ function runInstrumentProbe(extraEnv = {}) {
   const script = `
     const Module = require('node:module')
     const { EventEmitter } = require('node:events')
+    // 仪表只在 macOS 上切 accessory：探针一律按 Mac 跑，Linux CI 上也验得到这一条。
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
     const nativeCalls = []
     class FakeWindow extends EventEmitter {
       static getAllWindows() { return [] }
@@ -19,6 +21,8 @@ function runInstrumentProbe(extraEnv = {}) {
       show(...args) { nativeCalls.push(['show', args]) }
       focus(...args) { nativeCalls.push(['focus', args]) }
       moveTop(...args) { nativeCalls.push(['moveTop', args]) }
+      setOpacity(...args) { nativeCalls.push(['setOpacity', args]) }
+      setIgnoreMouseEvents(...args) { nativeCalls.push(['setIgnoreMouseEvents', args]) }
       setFocusable(value) { nativeCalls.push(['setFocusable', [value]]) }
       getPosition() { return this.position }
       setPosition(x, y) { this.position = [x, y]; nativeCalls.push(['setPosition', [x, y]]); this.emit('moved') }
@@ -44,14 +48,17 @@ function runInstrumentProbe(extraEnv = {}) {
     Module._load = function(request, parent, isMain) { return request === electronName ? fakeElectron : originalLoad.call(this, request, parent, isMain) }
     require(${JSON.stringify(quietWalk)})
     const injected = require(electronName)
+    app.emit('will-finish-launching')
+    const policyCallsBeforeReady = nativeCalls.filter(([name]) => name === 'setActivationPolicy').length
+    app.emit('ready')
     const win = new injected.BrowserWindow({ show: true, width: 10 })
-    win.show(); win.focus(); win.moveTop()
+    win.show(); win.focus(); win.moveTop(); win.setOpacity(1); win.setIgnoreMouseEvents(false)
     injected.app.focus({ steal: true }); injected.app.dock.bounce(); injected.app.dock.show()
     injected.shell.openExternal('https://example.test'); injected.shell.openPath('/tmp/example'); injected.shell.showItemInFolder('/tmp/example')
     const notification = new injected.Notification({ title: 'walk' }); notification.show()
     let dialogError = null
     try { injected.dialog.showOpenDialog({}) } catch (error) { dialogError = error.message }
-    console.log(JSON.stringify({ options: win.options, nativeCalls, events: globalThis.__nomiQuietWalk.events, dialogError }))
+    console.log(JSON.stringify({ options: win.options, nativeCalls, events: globalThis.__nomiQuietWalk.events, dialogError, policyCallsBeforeReady }))
   `
   const result = spawnSync(process.execPath, ['-e', script], { cwd: repoRoot, env: { ...process.env, ...extraEnv }, encoding: 'utf8' })
   expect(result.status, result.stderr).toBe(0)
@@ -73,10 +80,31 @@ describe('quiet-walk main-process instrument', () => {
     expect(probe.nativeCalls.some(([name]) => ['app.focus', 'dock.bounce', 'dock.show', 'openExternal', 'openPath', 'showItemInFolder', 'notification.show', 'showOpenDialog'].includes(name))).toBe(false)
   })
 
+  test('macOS clamps "offscreen" back onto the screen, so the window is fully transparent and click-through, and stays that way', () => {
+    const probe = runInstrumentProbe()
+    expect(probe.options).toMatchObject({ opacity: 0 })
+    // 只有仪表自己那一次：透明、穿透；App 后来想改回不透明 / 接鼠标，只进记录。
+    expect(probe.nativeCalls.filter(([name]) => name === 'setOpacity')).toEqual([['setOpacity', [0]]])
+    expect(probe.nativeCalls.filter(([name]) => name === 'setIgnoreMouseEvents')).toEqual([['setIgnoreMouseEvents', [true]]])
+    expect(probe.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'window.setOpacity', args: [1] }),
+      expect.objectContaining({ type: 'window.setIgnoreMouseEvents', args: [false] }),
+    ]))
+  })
+
+  test('the app turns accessory exactly once, at ready (moving it to will-finish-launching was tried on a real Mac and bought nothing)', () => {
+    const probe = runInstrumentProbe()
+    expect(probe.policyCallsBeforeReady).toBe(0)
+    expect(probe.nativeCalls.filter(([name]) => name === 'setActivationPolicy')).toEqual([['setActivationPolicy', ['accessory']]])
+    expect(probe.events.map((event) => event.type)).toContain('app.setActivationPolicy')
+  })
+
   test('foreground opt-in leaves window and app focus behavior real', () => {
     const probe = runInstrumentProbe({ NOMI_WALK_FOREGROUND_OK: '1' })
-    expect(probe.options).toMatchObject({ show: true, width: 10 })
+    expect(probe.options).toEqual({ show: true, width: 10 })
     expect(probe.nativeCalls.map(([name]) => name)).toEqual(expect.arrayContaining(['show', 'focus', 'moveTop', 'app.focus', 'dock.bounce', 'dock.show']))
+    expect(probe.nativeCalls).toEqual(expect.arrayContaining([['setOpacity', [1]], ['setIgnoreMouseEvents', [false]]]))
+    expect(probe.nativeCalls.map(([name]) => name)).not.toContain('setActivationPolicy')
     expect(probe.events.map((event) => event.type)).not.toContain('window.focus')
   })
 })
