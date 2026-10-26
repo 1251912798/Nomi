@@ -1,0 +1,222 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-27-import-transcode-hogs-and-orphans",
+  "problem_type": "Unbounded import video normalization process",
+  "symptom": "A video whose codec/container needs normalization leaves the import card at preparing with no real progress, can consume all CPU, and can leave an orphan ffmpeg after the app/window/project exits.",
+  "direct_cause": "electron/assets/videoImportNormalize.ts starts ffmpeg with a private spawn without AbortSignal, process-group cleanup, progress parsing, priority lowering, or a bounded thread count; localFileImport awaits it before copy progress begins.",
+  "class_root": "The shared process-owner invariant is missing at the import normalization boundary: every ffmpeg used by a cancellable import must be launched through the bounded process runner and every caller must share one cancellation signal before any output can be published.",
+  "affected_population": [
+    "Native-path video imports from canvas file selection, asset-library upload, Finder drag/drop, and paste on macOS and Windows.",
+    "Byte-path video imports and MCP nomi_asset_import that normalize a non-playable codec/container.",
+    "Existing projects whose lazy playback-heal path invokes the same normalization function."
+  ],
+  "scope_paths": [
+    "electron/assets/videoImportNormalize.ts",
+    "electron/export/mediaProbe.ts",
+    "electron/assets/localFileImport.ts",
+    "electron/assets/localFileCopy.ts",
+    "electron/assets/assetsIpc.ts",
+    "electron/assets/importRequests.ts",
+    "electron/capabilityCore/core.ts",
+    "electron/capabilityCore/dispatcher.ts",
+    "electron/shared/assets/assetLocalizationEvent.ts",
+    "electron/assets/assetImportProgress.ts",
+    "src/workbench/generationCanvas/store/assetImportProgressStore.ts",
+    "src/workbench/generationCanvas/nodes/NodeImportingOverlay.tsx",
+    "src/i18n/locales/generationCommon.ts",
+    "scripts/check-import-ffmpeg-owner.test.mjs"
+  ],
+  "entry_points": [
+    "Canvas file selection and native upload",
+    "Asset-library upload",
+    "Finder drag/drop and paste through copy-files",
+    "MCP nomi_asset_import",
+    "Byte import route through ensurePlayableVideoBytes",
+    "Lazy playback-heal route through ensurePlayableAsset"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The invariant is Nomi's process lifecycle and asset publication contract; official editor documentation informs the UX direction but cannot decide Nomi's IPC, project-binding, or scratch-file ownership.",
+  "invariants": [
+    "No import normalization ffmpeg is spawned directly from an asset module; it runs through runBoundedProcess.",
+    "The import request signal, sender destruction, project binding invalidation, and quit drain all abort the same process before publication.",
+    "Cancellation removes the partial output and scratch directory and is not treated as a missing or failed asset.",
+    "A playable video in an unsupported container is remuxed with stream copy; libx264 is selected only when the video codec is not in the injected machine-playable set.",
+    "Conversion progress is emitted through AssetLocalizationEvent.phase=converting with a monotonic duration ratio.",
+    "Conversion uses below-normal priority and at most max(1, CPU count - 2) threads."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/assets/localFileImport.ts",
+      "symbol": "transcodeFileToPlayableMp4IfNeeded"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/localFileImport.ts",
+      "symbol": "ensurePlayableVideoBytes"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/videoImportNormalize.ts",
+      "symbol": "transcodeFileToPlayableMp4IfNeeded"
+    },
+    {
+      "kind": "write",
+      "path": "electron/localSpeech/localSpeechTranscribe.ts",
+      "symbol": "runFfmpeg"
+    },
+    {
+      "kind": "write",
+      "path": "electron/productionRun/productionRunE2eFixture.ts",
+      "symbol": "runFfmpeg"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/extractAudioTrack.ts",
+      "symbol": "runFfmpeg"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/extractVideoFrame.ts",
+      "symbol": "runFfmpeg"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/framesToVideo.ts",
+      "symbol": "runFfmpeg"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/trimVideo.ts",
+      "symbol": "runFfmpeg"
+    }
+  ],
+  "door_reduction": {
+    "before": 10,
+    "after": 9,
+    "why_not": "The two localFileImport doors remain because native-path and byte-path imports have different input ownership and publication boundaries. The eight other direct spawns are unrelated export, frame, audio, speech, trim, and fixture paths; they remain a frozen baseline for 0.25 and are not import-transcode callers."
+  },
+  "generality_proof": "All checked import surfaces converge on importLocalFile or the shared videoImportNormalize functions. The changed normalization boundary owns codec/container selection, the only ffmpeg launch, the shared cancellation signal, and progress projection, so provider, caller, platform, and stored-asset variations cannot reintroduce an unbounded import ffmpeg without bypassing the static regression gate.",
+  "shared_boundaries": [
+    {
+      "path": "electron/export/mediaProbe.ts",
+      "symbol": "runBoundedProcess",
+      "responsibility": "Own spawn, process-group/taskkill cleanup, timeout, abort, progress callback, and optional priority lowering for bounded child processes."
+    },
+    {
+      "path": "electron/assets/videoImportNormalize.ts",
+      "symbol": "transcodeFileToPlayableMp4IfNeeded",
+      "responsibility": "Own the single import normalization decision and choose remux versus libx264 based on the existing playability reason."
+    },
+    {
+      "path": "electron/assets/localFileImport.ts",
+      "symbol": "importLocalFile",
+      "responsibility": "Thread the import request signal and conversion progress into every native and byte import before publication."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/assets/localFileImport.ts",
+      "entry_point": "importNativeSourcePath",
+      "disposition": "enforced",
+      "evidence": "Native canvas, asset-library, Finder, and paste uploads call the same transcodeFileToPlayableMp4IfNeeded boundary."
+    },
+    {
+      "path": "electron/assets/localFileImport.ts",
+      "entry_point": "importLocalFileToStore byte path",
+      "disposition": "enforced",
+      "evidence": "Byte imports call ensurePlayableVideoBytes, which delegates to the same bounded normalizer."
+    },
+    {
+      "path": "electron/capabilityCore/core.ts",
+      "entry_point": "importProjectAsset",
+      "disposition": "enforced",
+      "evidence": "MCP nomi_asset_import resolves a safe real path then calls importLocalFile with the request signal."
+    },
+    {
+      "path": "electron/assets/localFileImport.ts",
+      "entry_point": "ensurePlayableAsset",
+      "disposition": "enforced",
+      "evidence": "Lazy playback healing invokes the same normalizer and receives the same bounded process behavior."
+    },
+    {
+      "path": "electron/video/trimVideo.ts",
+      "entry_point": "trimVideoToAsset",
+      "disposition": "not-affected",
+      "evidence": "This is timeline editing/export behavior explicitly outside the import normalization scope and remains a frozen direct-spawn baseline."
+    },
+    {
+      "path": "electron/video/extractVideoFrame.ts",
+      "entry_point": "extractVideoFrameToAsset",
+      "disposition": "not-affected",
+      "evidence": "Frame extraction is a separate derivation path and is not called by localFileImport."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any non-playable codec or unsupported container can reach the same private spawn through several import surfaces, and a window/project/app lifecycle event can occur during every long transcode.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs runFfmpeg transcodeFileToPlayableMp4IfNeeded ensurePlayableVideoBytes",
+      "rg -n \"importLocalFile\\(|copy-files|nomi_asset_import\" electron src",
+      "rg -n \"spawn\\(.*ffmpeg|runFfmpeg\" electron/video electron/assets electron/localSpeech electron/review"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/export/mediaProbe.ts",
+    "invariant": "Import normalization launches no direct ffmpeg process; it supplies signal, progress, low-priority, and bounded output options to runBoundedProcess.",
+    "failure_mode": "Abort rejects as cancellation, terminates the process tree, and removes the incomplete output/scratch directory before the caller can publish an asset.",
+    "exception_policy": "none",
+    "strategy": "Keep process ownership at the existing shared runner and thread one request signal from IPC/MCP lifecycle to normalization, so no caller can silently outlive its window, project session, or application.",
+    "artifacts": [
+      "electron/export/mediaProbe.ts",
+      "electron/assets/videoImportNormalize.ts",
+      "electron/assets/localFileImport.ts",
+      "electron/assets/importRequests.ts",
+      "electron/assets/assetsIpc.ts",
+      "electron/capabilityCore/core.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/assets/videoImportNormalize.test.ts",
+    "electron/assets/videoImportNormalize.integration.test.ts",
+    "electron/export/mediaProbe.test.ts",
+    "electron/assets/importRequests.test.ts",
+    "electron/assets/assetImportProgress.test.ts",
+    "src/workbench/generationCanvas/store/assetImportProgressStore.test.ts",
+    "scripts/check-import-ffmpeg-owner.test.mjs"
+  ],
+  "class_regression_tests": [
+    "electron/assets/videoImportNormalize.integration.test.ts",
+    "electron/assets/importRequests.test.ts",
+    "scripts/check-import-ffmpeg-owner.test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/assets/videoImportNormalize.ts:runFfmpeg"
+    ],
+    "rationale": "The private unbounded spawn is deleted in the same implementation commit; no fallback launcher remains."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The bundled ffmpeg/ffprobe version is retained; the defect is application-level process ownership and lifecycle, not a dependency capability gap.",
+    "exit_criteria": []
+  },
+  "migration": "No stored-data migration is required. Existing assets continue to read; new imports use remux or libx264 according to the existing playability reason. Existing direct-spawn non-import paths remain a documented 0.25 baseline.",
+  "residual_risks": [
+    "Windows real Electron and the 4K HEVC walkthrough remain unverified until the separate quiet-walk fix is merged into origin/main.",
+    "The eight non-import ffmpeg spawns remain outside this change and must be migrated or retired in 0.25 before the baseline can be removed."
+  ],
+  "detected_by": "user",
+  "detected_by_detail": "2026-10-26 release-blocker review and 2026-10-27 coordination walk",
+  "recurrence_check_on": "2026-11-27",
+  "invariant_owner_layer": {
+    "layer": "electron/export/mediaProbe.ts",
+    "tests": [
+      "electron/export/mediaProbe.test.ts",
+      "electron/assets/videoImportNormalize.integration.test.ts"
+    ],
+    "why": "The shared process runner is the earliest boundary that can enforce abort, process-tree cleanup, bounded output, optional progress, and low priority for every import normalizer caller."
+  }
+}
