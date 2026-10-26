@@ -71,6 +71,25 @@ afterAll(() => {
   for (const root of tempRoots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
 
+// 登记的真实素材（tests/ux/real-media-fixtures.json）：
+const REAL_SHOT = "tests/ux/fixtures/real-shot-640x360.mp4"; // video-ai-shot-640x360：H.264，无音轨
+const REAL_SHOT_WITH_AUDIO = "tests/ux/fixtures/canvas-follow-hand-1080p15.mp4"; // video-canvas-follow-hand-1080p15：H.264 + AAC
+
+/** 用打包的 ffmpeg 从登记素材派生一份夹具，只落测试 tmp。 */
+function deriveFromRegistered(registeredPath: string, fileName: string, args: string[]): Buffer {
+  const outputPath = path.join(makeTempDir("nomi-video-norm-derived-"), fileName);
+  const derive = spawnSync(resolveFfmpegPath(), ["-hide_banner", "-loglevel", "error", "-y", "-i", path.resolve(registeredPath), ...args, outputPath], { encoding: "utf8", timeout: 120_000 });
+  if (derive.status !== 0) throw new Error(`derive ${fileName} failed: ${derive.stderr}`);
+  return fs.readFileSync(outputPath);
+}
+
+/** 第一条视频流所有压缩包的 MD5：相等 = 视频没被重编码，只是换了容器。 */
+function videoPacketMd5(filePath: string): string {
+  const hash = spawnSync(resolveFfmpegPath(), ["-hide_banner", "-loglevel", "error", "-i", path.resolve(filePath), "-map", "0:v:0", "-c", "copy", "-f", "md5", "-"], { encoding: "utf8", timeout: 60_000 });
+  if (hash.status !== 0) throw new Error(`packet md5 failed: ${hash.stderr}`);
+  return hash.stdout.trim();
+}
+
 describe("导入归一化（importLocalFile）", () => {
   it("mpeg4 AVI 导入 → 落盘即 h264 MP4，可播（群反馈根治主路径）", async () => {
     const asset = (await importLocalFile({
@@ -97,7 +116,7 @@ describe("导入归一化（importLocalFile）", () => {
     expect(fs.readFileSync(asset.data.absolutePath).length).toBe(mp4Bytes.length);
   }, 60_000);
 
-  it("登记的真实 H.264 镜头派生 MKV → 只换容器，不重编码，几秒内完成", async () => {
+  it("登记的真实 H.264 镜头派生 MKV → 只换容器，视频包逐字节没动", async () => {
     const asset = (await importLocalFile({
       projectId: workspaceId,
       bytes: mkvBytes,
@@ -106,7 +125,35 @@ describe("导入归一化（importLocalFile）", () => {
     })) as AssetRecord;
     expect(asset.data.playbackNormalizedFrom).toBe("container:mkv");
     expect((await probeMediaMetadata(asset.data.absolutePath)).videoCodec).toBe("h264");
+    expect(videoPacketMd5(asset.data.absolutePath)).toBe(videoPacketMd5(REAL_SHOT));
   }, 60_000);
+
+  // 换容器只换「换得进 MP4、换完放得了」的；用打包的 ffmpeg 真换一遍，换不进去就会退回放不了的原片。
+  it("H.264 + FLAC 的 MKV → 只换容器、音轨转 AAC（FLAC 进 MP4 要 -strict -2，原样拷就失败）", async () => {
+    const bytes = deriveFromRegistered(REAL_SHOT_WITH_AUDIO, "flac-audio.mkv", ["-map", "0:v:0", "-map", "0:a:0", "-c:v", "copy", "-c:a", "flac"]);
+    const asset = (await importLocalFile({ projectId: workspaceId, bytes, contentType: "video/x-matroska", fileName: "flac-audio.mkv" })) as AssetRecord;
+    expect(asset.data.playbackNormalizedFrom).toBe("container:mkv");
+    const probe = await probeMediaMetadata(asset.data.absolutePath);
+    expect([probe.videoCodec, probe.audioCodec]).toEqual(["h264", "aac"]);
+    // 视频包和登记素材逐字节相同 = 没走整段重编码（不拿墙钟判快慢，见 check:test-waits）。
+    expect(videoPacketMd5(asset.data.absolutePath)).toBe(videoPacketMd5(REAL_SHOT_WITH_AUDIO));
+  }, 120_000);
+
+  it("H.264 + Opus 的 MKV → 只换容器、Opus 也转 AAC（Windows / Linux / Intel Mac 打包的 ffmpeg 4.1 不收 MP4 里的 Opus）", async () => {
+    const bytes = deriveFromRegistered(REAL_SHOT_WITH_AUDIO, "opus-audio.mkv", ["-map", "0:v:0", "-map", "0:a:0", "-c:v", "copy", "-c:a", "libopus", "-b:a", "96k"]);
+    const asset = (await importLocalFile({ projectId: workspaceId, bytes, contentType: "video/x-matroska", fileName: "opus-audio.mkv" })) as AssetRecord;
+    expect(asset.data.playbackNormalizedFrom).toBe("container:mkv");
+    const probe = await probeMediaMetadata(asset.data.absolutePath);
+    expect([probe.videoCodec, probe.audioCodec]).toEqual(["h264", "aac"]);
+    expect(videoPacketMd5(asset.data.absolutePath)).toBe(videoPacketMd5(REAL_SHOT_WITH_AUDIO));
+  }, 120_000);
+
+  it("VP8 的 MKV → MP4 不收 VP8，走整段重编码成 H.264", async () => {
+    const bytes = deriveFromRegistered(REAL_SHOT, "vp8.mkv", ["-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "8", "-b:v", "400k"]);
+    const asset = (await importLocalFile({ projectId: workspaceId, bytes, contentType: "video/x-matroska", fileName: "vp8.mkv" })) as AssetRecord;
+    expect(asset.data.playbackNormalizedFrom).toBe("container:mkv");
+    expect((await probeMediaMetadata(asset.data.absolutePath)).videoCodec).toBe("h264");
+  }, 120_000);
 
   it("损坏字节标视频导入 → 回退原样不挡导入（渲染侧守卫兜底报错）", async () => {
     const garbage = Buffer.from("not a real video at all — corrupted payload");
@@ -160,20 +207,7 @@ describe("懒自愈（ensurePlayableAsset）", () => {
     expect((await probeMediaMetadata(result!.outputPath)).videoCodec).toBe("h264");
   }, 60_000)
 
-  it("取消正在进行的转码 → bounded runner 拒绝、删掉半成品", async () => {
-    const fixtureDir = makeTempDir("nomi-video-norm-cancel-");
-    const inputPath = path.join(fixtureDir, "long-source.mp4");
-    fs.copyFileSync(path.resolve("tests/ux/fixtures/canvas-follow-hand-1080p15.mp4"), inputPath);
-    const controller = new AbortController();
-    const pending = transcodeFileToPlayableMp4IfNeeded(inputPath, "long-source.mp4", fixtureDir, {
-      playableCodecs: new Set(),
-      signal: controller.signal,
-    });
-    const timer = setTimeout(() => controller.abort(), 20);
-    await expect(pending).rejects.toMatchObject({ code: "cancelled" });
-    clearTimeout(timer);
-    expect(fs.existsSync(path.join(fixtureDir, "long-source-playable.mp4"))).toBe(false);
-  }, 60_000)
+  // 转码进行中的取消 / 退出（按 PID 查进程、查临时目录）在 importTranscodeLifecycle.integration.test.ts。
 
   it("同一份坏资产被多个播放面各触发一次 → 复用同一份转码产物，不重复转码也不堆副本", async () => {
     // 守卫已从画布节点提到各播放面共用（时间轴/大图/预览…），同一份坏资产会被反复触发自愈。

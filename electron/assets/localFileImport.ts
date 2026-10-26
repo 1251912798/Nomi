@@ -1,7 +1,6 @@
 // 本地文件 → 项目素材的导入（从 runtime.ts 抽出：它是素材 IO，不是任务执行，放这更内聚，
 // 也给 runtime 这个已知巨壳腾出空间）。writeAsset 仍在 runtime（单向依赖，无循环）。
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
 import { copyAssetFile, storeAssetBytes, writeAsset } from "../runtime";
@@ -19,6 +18,7 @@ import {
   isVideoNormalizationCancelled,
   playableMp4FileName,
   transcodeFileToPlayableMp4IfNeeded,
+  withVideoImportScratchDir,
 } from "./videoImportNormalize";
 import type { JsonRecord } from "../jsonUtils";
 import { logWarn } from "../logging/logger";
@@ -28,7 +28,6 @@ import { attachStoredAssetPreview, createStoredAssetPreview, discardPreparedPrev
 import { createAssetImportProgressReporter, type AssetCopyProgress } from "./assetImportProgress";
 import type { ProjectBinding } from "../shared/projectBinding";
 import { captureAssetWriteContext, type AssetWriteContext } from "./assetWriteContext";
-import { removeScratchAfterUse } from "./scratchCleanup";
 import { localizedAssetTypeOf } from "./localizedAsset";
 
 function bytesFromPayload(value: unknown): Buffer {
@@ -167,11 +166,11 @@ async function importNativeSourcePath(
     return copyAssetFile(projectId, sourcePath, storedName, effectiveContentType, baseMeta, expectedKind, context, feedback);
   }
 
-  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "nomi-video-native-import-"));
-  try {
+  // 临时目录交给转码那一侧建和删：整段登记在导入转码的在途表里，退出排空等它连目录一起删完。
+  return withVideoImportScratchDir("nomi-video-native-import-", signal, async (tempDir, scopedSignal) => {
     try {
       const transcoded = await transcodeFileToPlayableMp4IfNeeded(sourcePath, storedName, tempDir, {
-        ...(signal ? { signal } : {}),
+        signal: scopedSignal,
         ...(feedback.onConversionProgress ? { onProgress: feedback.onConversionProgress } : {}),
       });
       if (transcoded) {
@@ -182,14 +181,12 @@ async function importNativeSourcePath(
         }, expectedKind, context, feedback);
       }
     } catch (error) {
-      if (signal?.aborted || isVideoNormalizationCancelled(error)) throw error;
+      if (scopedSignal.aborted || isVideoNormalizationCancelled(error)) throw error;
       logWarn("assets", "video-normalize-failed-import-original-file", undefined, error);
     }
     context.assertCurrent();
     return await copyAssetFile(projectId, sourcePath, storedName, effectiveContentType, baseMeta, expectedKind, context, feedback);
-  } finally {
-    await removeScratchAfterUse(tempDir);
-  }
+  });
 }
 
 export async function importLocalFile(payload: unknown, options: ImportLocalFileOptions = {}): Promise<unknown> {
@@ -310,8 +307,9 @@ export async function ensureLocalAssetPreview(payload: unknown, options: AssetPr
  * 就地探测 + 转码成新 MP4 资产，返回新资产 DTO；本就可播/无法处理 → null。
  * 覆盖两类存量：① 归一化上线前导入的 HEVC ② 供应商直接回 HEVC 的生成产物（生成落地不做前置转码，
  * 不为没坏的 4K 输出白付转码——坏了才修）。原文件保留（导出/上游引用不受影响）。
+ * 转码跟导入同一个生命周期：发起窗口没了 / 应用退出 → signal 中止，杀进程、删半成品，不发布资产。
  */
-export async function ensurePlayableAsset(payload: unknown): Promise<unknown> {
+export async function ensurePlayableAsset(payload: unknown, options: { signal?: AbortSignal } = {}): Promise<unknown> {
   const raw = payload as JsonRecord;
   const parsed = parseLocalAssetUrl(String(raw.url || "").trim());
   if (!parsed) return null;
@@ -320,7 +318,7 @@ export async function ensurePlayableAsset(payload: unknown): Promise<unknown> {
   const reused = readHealedAsset(filePath);
   if (reused) return reused;
   const sourceName = path.basename(filePath);
-  const transcoded = await transcodeFileToPlayableMp4IfNeeded(filePath, sourceName);
+  const transcoded = await transcodeFileToPlayableMp4IfNeeded(filePath, sourceName, path.dirname(filePath), options.signal ? { signal: options.signal } : {});
   if (!transcoded) return null;
   try {
     const outputBytes = fs.readFileSync(transcoded.outputPath);

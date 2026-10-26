@@ -708,13 +708,21 @@ export async function dispatch(method: string, params: Record<string, unknown>, 
       return writeProjectDocument(lease.projectId, typeof params.documentId === 'string' ? params.documentId : undefined, input.operation, input.content)
     }
     case 'brief.intake': {
+      // W3 幕 0：只组题/给默认，**不落任何状态**——真正的「问」由协议层弹 elicitation（enum 候选），
+      // 客户端不支持表单时协议层退化成把题面交给模型在对话里一次问全。
       assertOnlyFields(params, new Set(['projectId', 'kind']))
       const questions = buildIntakeQuestions({ kind: typeof params.kind === 'string' ? params.kind : '' })
       return { questions, message: buildIntakeMessage(questions), maxQuestions: INTAKE_MAX_QUESTIONS }
     }
     case 'asset.import':
+      // M2：本机文件 → 项目素材 → nomi-local:// URL。安全判据在 importAssetGuard（纯函数，逐条单测）。
       assertOnlyFields(params, new Set(['projectId', 'path', 'title']))
-      return importProjectAsset({ projectId: requiredIdentifier(params.projectId, 'project'), path: String(params.path || ''), ...(typeof params.title === 'string' && params.title.trim() ? { title: params.title.trim() } : {}), ...((params as Record<PropertyKey, unknown>)[MCP_REQUEST_SIGNAL] instanceof AbortSignal ? { signal: (params as Record<PropertyKey, unknown>)[MCP_REQUEST_SIGNAL] as AbortSignal } : {}) })
+      return importProjectAsset({
+        projectId: requiredIdentifier(params.projectId, 'project'),
+        path: String(params.path || ''),
+        ...(typeof params.title === 'string' && params.title.trim() ? { title: params.title.trim() } : {}),
+        ...((params as Record<PropertyKey, unknown>)[MCP_REQUEST_SIGNAL] instanceof AbortSignal ? { signal: (params as Record<PropertyKey, unknown>)[MCP_REQUEST_SIGNAL] as AbortSignal } : {}),
+      })
     case 'integration.begin': {
       const optional = ['sessionId', 'baseUrl', 'docs', 'providerKind', 'authType', 'authHeader', 'authQueryParam', 'clientRequestId'] as const
       return (ctx.integrationSessions || getIntegrationSessionService()).begin(
@@ -732,6 +740,7 @@ export async function dispatch(method: string, params: Record<string, unknown>, 
         params.expectedRevision,
         ctx.origin?.host || 'external',
       )
+      // 窗口可能在「落盘排队」与「叫渲染层」之间消失：不让 MCP 契约因此不可用，排队的交接单会在
       // Nomi 下次打开时重放。一次性凭据页（URL 模式 elicitation）铸在这一层 = 铸在持有会话的那个进程里。
       const ui = await Promise.resolve(ctx.openCredentialsInNomi?.({ sessionId: opened.id, vendorName: opened.config.name })).catch(() => undefined)
       return withCredentialElicitationTicket({ ...opened, credentialUiOpened: ui?.opened === true })

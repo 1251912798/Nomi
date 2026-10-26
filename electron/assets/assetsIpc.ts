@@ -12,7 +12,7 @@ import type { ProjectInteractionCapture } from './projectInteractionCapture';
 import { surfacePortFailure } from '../shared/surfacePortBinding';
 import { registerOnboardingDemoAssetSourceDir } from '../onboarding/demoAssetSource';
 import { createPreviewRequestRegistry } from './previewRequests';
-import { createImportRequestRegistry, isAssetImportCancelled, type ImportRequestSender } from './importRequests';
+import { createImportRequestRegistry, IMPORT_QUIT_DRAIN_TIMEOUT_MS, isAssetImportCancelled, type ImportRequestSender } from './importRequests';
 import { registerQuitDrain } from '../quitTeardown';
 
 function importFailure(error: unknown, reason: AssetImportFailure['reason'] = 'import-failed'): AssetImportResult<never> {
@@ -86,7 +86,18 @@ export function parseCopyProjectAssetPayload(payload: unknown): {
 
 export function registerAssetsIpc(captureInteraction: ProjectInteractionCapture): void {
   const imports = createImportRequestRegistry();
-  registerQuitDrain('asset-import-transcode', () => { imports.abortAll(); }, { required: false, timeoutMs: 100 });
+  // 退出时停导入：界面发起的导入请求（连临时目录一起收尾），加上任何一扇门起的导入转码
+  // （Agent 的 asset.import 不走这张请求表）。两次调用都幂等，同一个函数按 quitTeardown 的语义登记两次：
+  // · 可选项在 will-quit（退出已不可撤销）那一刻就挨着内置收尾链跑：立刻中止。必选项排在 Agent 收尾之后，
+  //   而 Agent 收尾可能正等着一个在转码的导入落定——只靠必选项就互相等到期限，ffmpeg 在退出时还活着；
+  // · 必选项排进串行收尾链、拖住退出：等进程真没了、半成品和临时目录真删了，最多 3 秒（退出预算封顶）。
+  const stopImports = async () => {
+    const requests = imports.drain();
+    const { stopVideoImportTranscodes } = await import('./videoImportNormalize');
+    await Promise.all([requests, stopVideoImportTranscodes()]);
+  };
+  registerQuitDrain('asset-import-abort', stopImports, { required: false });
+  registerQuitDrain('asset-import-transcode', stopImports, { required: true, timeoutMs: IMPORT_QUIT_DRAIN_TIMEOUT_MS });
   // 随包引导示例图目录：引导 seed 与「旧项目里的构建产物地址 → 项目资产」迁移都从这里读原图。
   // 放 `resources/` 而不是 `src/`（Vite 加内容哈希，只有渲染进程算得出地址——事故起点）或 `public/`（进包两份）；
   // `resources/**` 在 package.json > build.files 里随包走，dev（仓库根）与打包版（app.asar 根）是同一条相对路径。
@@ -159,10 +170,11 @@ export function registerAssetsIpc(captureInteraction: ProjectInteractionCapture)
       return { ok: true, asset: await importRemoteAsset(payload as RemoteAssetImportPayload, { assertCurrent }) };
     } catch (error) { return importFailure(error); }
   });
+  // 懒自愈也是导入转码那扇门：跟着发起窗口和应用退出走，同一个排空等它真停。
   ipcMain.handle("nomi:assets:ensure-playable", async (event, payload) => {
     assertTrustedSender(event);
     const { ensurePlayableAsset } = await import("./localFileImport");
-    return ensurePlayableAsset(payload);
+    return imports.run(event.sender, undefined, (signal) => ensurePlayableAsset(payload, { signal }));
   });
   // 补预览：带发起项目的绑定与请求号，项目关了 / 换了 / 窗口没了 / 渲染层撤了就杀掉在途 ffmpeg（previewRequests）。
   const previewRequests = createPreviewRequestRegistry();
