@@ -20,6 +20,7 @@
     "electron/assets/importRequests.ts",
     "electron/capabilityCore/core.ts",
     "electron/capabilityCore/dispatcher.ts",
+    "electron/capabilityCore/assetImportRoute.ts",
     "scripts/check-import-ffmpeg-owner.test.mjs",
     "electron/assets/assetImportProgress.ts"
   ],
@@ -119,6 +120,11 @@
     {
       "kind": "write",
       "path": "electron/capabilityCore/dispatcher.ts",
+      "symbol": "dispatchAssetImport"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/assetImportRoute.ts",
       "symbol": "importProjectAsset"
     },
     {
@@ -134,7 +140,7 @@
   ],
   "door_reduction": {
     "before": 10,
-    "after": 17,
+    "after": 18,
     "why_not": "Every import conversion now goes through one tracked boundary in videoImportNormalize (transcodeFileToPlayableMp4IfNeeded for the process, withVideoImportScratchDir for the scratch directory), so the quit drain has one owner to stop regardless of the caller. The native-path and byte-path doors stay separate because they own different inputs (a path on disk versus bytes from the renderer). The wrapper doors (copy-files, MCP core/dispatcher, IPC request registry, progress reporter) are listed to prove each caller converges on that boundary. The three non-import runBoundedProcess callers are listed because the shared runner changed; they keep the default limit mode. The eleven frozen direct ffmpeg/ffprobe launches outside this boundary are not import doors; they are enumerated and ratcheted (only shrink) by scripts/check-import-ffmpeg-owner.test.mjs."
   },
   "generality_proof": "All checked import surfaces converge on importLocalFile, ensurePlayableAsset, or the shared videoImportNormalize functions, and every conversion registers in the normalizer's in-flight table no matter whether the caller passed a signal. The quit drain stops that table, so a new caller cannot add an unstoppable conversion without bypassing the normalizer, and bypassing it means a direct ffmpeg launch, which the structural scan of all electron/ sources rejects. The output-volume class is fixed at the shared runner (tail mode) rather than in the import, so any later long-running bounded caller gets the same option; the export runner already keeps a capped tail.",
