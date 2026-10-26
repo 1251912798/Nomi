@@ -461,6 +461,12 @@ describe('providerMessage —— 服务商真实原话提到可见区（别埋�
     expect(r.reason).toBe('something odd happened')
     expect(r.providerMessage).toBeUndefined()
   })
+
+  it.each(['ECONNRESET', 'fetch failed'])('现状：本机网络错误 %s 进失败详情时仍被标成服务商原话', (raw) => {
+    const report = classifyGenerationError(raw)
+    expect(report.kind).toBe('network')
+    expect(report.providerMessage).toBe(raw)
+  })
 })
 
 describe('即梦 CLI 错误不被误吞成「模型未开通/火山 Ark 指引」（2026-07-06 真机走查抓出）', () => {
