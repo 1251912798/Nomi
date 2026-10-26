@@ -14,7 +14,7 @@
     "分镜表底栏把读图模型点名成声明不能读图 / 内置纯文本的行：开拆前拒，零报价零调用。"
   ],
   "fullWalkJourneys": [],
-  "status": "reviewed",
+  "status": "fixed",
   "manualReview": "reviewed",
   "evidence": [
     "electron/agentLane/laneImageInputLoopback.test.ts：Agent 车道真门 → 真 pi → 本机回环录请求体；改前没声明的 my-relay/my-gpt、apimart/gpt-5.5 在三种协议下 6 格红（请求体只有「1 张图片未发送」注），改后绿。",
@@ -23,8 +23,10 @@
     "真后端「不知道」的行是否真看见图：未验证，交协调一次最小真实调用。"
   ],
   "completionCommits": [
-    "fb56c9c22"
+    "fb56c9c22",
+    "eab8bbae6"
   ],
+  "fixedInPr": 9999,
   "rootCauseContract": "docs/fixes/2026-10-27-vision-capability-declared.root-cause.json",
   "classCheck": {
     "kind": "matrix",
