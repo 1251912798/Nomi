@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { applyHeadlessParamDefaults, hasImageEditReferences, taskTemplateParams, firstReferenceImage, projectReferencesOntoBodyKeys, unreachableReferenceLabels, imageEditGuardError, NO_MAPPING_FALLBACK_BODY } from "./taskParams";
 import { referenceKeyDeclarationFor } from "../shared/modelArchetypes/referenceKeys";
+import { modelReferenceSelection } from "./modelCatalogListing";
+import { desktopT } from "../desktopStrings";
 
 // 「接入即验证」的零额度一环：在不真跑、不花额度的前提下，核对"摊平给模板的参数"是否完整、类型对。
 // 这些坑都只在真实参数构建里暴露（实测）：① duration 是数字被 firstString 吞成 ""；
@@ -19,42 +21,48 @@ describe("taskTemplateParams — 时长类型", () => {
   });
 });
 
-describe("applyHeadlessParamDefaults — 自写能力合同容量", () => {
-  it("现状：带上限 8 的自写合同，headless 给 9 张参考时第一闸不拒", () => {
-    const references = Array.from({ length: 9 }, (_, index) => `https://cdn.example/reference-${index + 1}.png`);
-    const customCapabilityContract = {
-      version: 1,
-      kind: "video",
-      defaultModeId: "references",
+describe("applyHeadlessParamDefaults — 自写能力合同容量（第一闸收完整身份）", () => {
+  const customCapabilityContract = {
+    version: 1,
+    kind: "video",
+    defaultModeId: "references",
+    transportTaskKind: "image_to_video",
+    modes: [{
+      id: "references",
+      intent: "character",
+      vendorTerm: "Multi reference",
+      hint: "One to eight ordered reference images",
+      promptRequired: true,
       transportTaskKind: "image_to_video",
-      modes: [{
-        id: "references",
-        intent: "character",
-        vendorTerm: "Multi reference",
-        hint: "One to eight ordered reference images",
-        promptRequired: true,
-        transportTaskKind: "image_to_video",
-        slots: [{ kind: "image_ref", label: "Reference images", min: 1, max: 8, inputKey: "image_urls", asArray: true }],
-        params: [],
-      }],
-    } as const;
-    // 同一份合同走完整身份时，容量声明本身能拒绝；这就是当前第三闸已有的事实。
-    expect(() => projectReferencesOntoBodyKeys(
-      { referenceImages: references },
-      { image_urls: "{{request.params.image_urls}}" },
-      { vendorKey: "custom-relay", modelKey: "custom-video-v1", modelMeta: { customCapabilityContract }, taskKind: "image_to_video" },
-    )).toThrow();
-    // 自写合同元数据的上限是 8，但现状调用只传 archetypeId，合同没有进入这一闸。
-    const result = applyHeadlessParamDefaults(
-      { referenceImages: references },
-      undefined,
-      "image_to_video",
-      "custom-relay",
-      undefined,
-      { image_urls: "{{request.params.image_urls}}" },
-      "custom-video-v1",
-    );
-    expect(result?.image_urls).toHaveLength(9);
+      slots: [{ kind: "image_ref", label: "Reference images", min: 1, max: 8, inputKey: "image_urls", asArray: true }],
+      params: [],
+    }],
+  } as const;
+  // 与清单、第三闸、两个运行时调用口同一个 helper 产出的身份（这一次选中的连接：vendor + 模型 + 它自己的 meta + 模式）。
+  const selected = modelReferenceSelection("custom-relay", { modelKey: "custom-video-v1", meta: { customCapabilityContract } }, "image_to_video");
+  const body = { image_urls: "{{request.params.image_urls}}" };
+  const references = (count: number) => Array.from({ length: count }, (_, index) => `https://cdn.example/reference-${index + 1}.png`);
+
+  // 2026-10-27 翻转（原「现状：带上限 8 的自写合同，headless 给 9 张参考时第一闸不拒」）：以前第一闸只收 archetypeId，
+  // 递给投影边界的是 `{ archetypeId }` 缩减对象，自写合同的上限进不来，9 张原样投进 image_urls。
+  it("带上限 8 的自写合同，headless 给 9 张参考：第一闸在出网前拒，与投影边界（第三闸同一份身份）说同一句", () => {
+    let boundary = "";
+    try {
+      projectReferencesOntoBodyKeys({ referenceImages: references(9) }, body, selected);
+    } catch (error) {
+      boundary = (error as Error).message;
+    }
+    expect(boundary).toBe(desktopT("modelConstraints.imageReferenceCapacity", { max: 8 }));
+    expect(() => applyHeadlessParamDefaults({ referenceImages: references(9) }, selected, undefined, body)).toThrow(boundary);
+  });
+
+  it("显式写在 image_urls 里的 9 张（不是投影来的）同样拒", () => {
+    expect(() => applyHeadlessParamDefaults({ image_urls: references(9) }, selected, undefined, body))
+      .toThrow(desktopT("modelConstraints.imageReferenceCapacity", { max: 8 }));
+  });
+
+  it("阳性对照：恰好 8 张照常投进 image_urls", () => {
+    expect(applyHeadlessParamDefaults({ referenceImages: references(8) }, selected, undefined, body)?.image_urls).toHaveLength(8);
   });
 });
 

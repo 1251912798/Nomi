@@ -1,5 +1,7 @@
 # 方向检查：目录退役模型与 headless 身份（B + C）
 
+> **用户 10-27 拍板：三件都照推荐修；雷达 0.24 不加付费探针。**（实现：`docs/plan/2026-10-27-catalog-dead-model-and-identity.md`）
+
 本线只做类根因复盘和现状特征测试，不改 `src/` / `electron/` 产品实现；结构性改法交协调和用户拍板。
 
 ## B：目录仍列 deepseek-v3.2，404 `model_not_found` 落未知
