@@ -338,6 +338,12 @@ describe("applyBuiltinSeeds", () => {
     }
   });
 
+  it("现状：deepseek-v3.2 仍在可选目录里（上游 404 前没有目录级拦截）", () => {
+    const { state } = applyBuiltinSeeds(emptyCatalog(), NOW);
+    expect(state.models.find((model) => model.vendorKey === "apimart" && model.modelKey === "deepseek-v3.2"))
+      .toMatchObject({ kind: "text", enabled: true });
+  });
+
   it("文本大脑：老装机（apimart 已接但无文本模型）→ reconcile 漂移自愈补上大脑", () => {
     // 模拟 Issue #9 上报者：apimart 已接、有生成模型，但没有任何 text 模型。
     const stale = applyBuiltinSeeds(emptyCatalog(), NOW).state;

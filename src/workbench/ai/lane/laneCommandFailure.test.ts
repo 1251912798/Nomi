@@ -93,6 +93,12 @@ describe('服务商报文 → 面板红字（原始 JSON / 分类标记不进界
     spy.mockRestore()
   })
 
+  it('现状：HTTP 404 的 model_not_found 原始 JSON 落进「服务商返回了一个没见过的错误」', () => {
+    const raw = '{"error":{"code":"model_not_found","message":"The model deepseek-v3.2 does not exist","type":"invalid_request_error"}}'
+    expect(providerFailureText(raw, key)).toBe('agentResident.providerUnknownError')
+    expect(providerFailureIsUnclassified(raw)).toBe(true)
+  })
+
   it('class: 带汉字的原始 JSON 也不算人话', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     for (const raw of ['{"code":1,"msg":"系统异常，请稍后"}', '[{"错误":"x","code":7}]', `op-4f2a9c1e-7b3d-4e8a-9c21-0d5e6f7a8b9c 失败了`]) {

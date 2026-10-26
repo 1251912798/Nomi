@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hasImageEditReferences, taskTemplateParams, firstReferenceImage, projectReferencesOntoBodyKeys, unreachableReferenceLabels, imageEditGuardError, NO_MAPPING_FALLBACK_BODY } from "./taskParams";
+import { applyHeadlessParamDefaults, hasImageEditReferences, taskTemplateParams, firstReferenceImage, projectReferencesOntoBodyKeys, unreachableReferenceLabels, imageEditGuardError, NO_MAPPING_FALLBACK_BODY } from "./taskParams";
 import { referenceKeyDeclarationFor } from "../shared/modelArchetypes/referenceKeys";
 
 // 「接入即验证」的零额度一环：在不真跑、不花额度的前提下，核对"摊平给模板的参数"是否完整、类型对。
@@ -16,6 +16,45 @@ describe("taskTemplateParams — 时长类型", () => {
   });
   it("durationSeconds / videoDuration 兜底", () => {
     expect(taskTemplateParams({ extras: { durationSeconds: 10 } }).duration).toBe(10);
+  });
+});
+
+describe("applyHeadlessParamDefaults — 自写能力合同容量", () => {
+  it("现状：带上限 8 的自写合同，headless 给 9 张参考时第一闸不拒", () => {
+    const references = Array.from({ length: 9 }, (_, index) => `https://cdn.example/reference-${index + 1}.png`);
+    const customCapabilityContract = {
+      version: 1,
+      kind: "video",
+      defaultModeId: "references",
+      transportTaskKind: "image_to_video",
+      modes: [{
+        id: "references",
+        intent: "character",
+        vendorTerm: "Multi reference",
+        hint: "One to eight ordered reference images",
+        promptRequired: true,
+        transportTaskKind: "image_to_video",
+        slots: [{ kind: "image_ref", label: "Reference images", min: 1, max: 8, inputKey: "image_urls", asArray: true }],
+        params: [],
+      }],
+    } as const;
+    // 同一份合同走完整身份时，容量声明本身能拒绝；这就是当前第三闸已有的事实。
+    expect(() => projectReferencesOntoBodyKeys(
+      { referenceImages: references },
+      { image_urls: "{{request.params.image_urls}}" },
+      { vendorKey: "custom-relay", modelKey: "custom-video-v1", modelMeta: { customCapabilityContract }, taskKind: "image_to_video" },
+    )).toThrow();
+    // 自写合同元数据的上限是 8，但现状调用只传 archetypeId，合同没有进入这一闸。
+    const result = applyHeadlessParamDefaults(
+      { referenceImages: references },
+      undefined,
+      "image_to_video",
+      "custom-relay",
+      undefined,
+      { image_urls: "{{request.params.image_urls}}" },
+      "custom-video-v1",
+    );
+    expect(result?.image_urls).toHaveLength(9);
   });
 });
 
