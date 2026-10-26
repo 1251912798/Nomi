@@ -13,15 +13,25 @@
     "画布文件选择、素材库上传、Finder 拖放/粘贴和 nomi_asset_import 导入需要转换的视频。"
   ],
   "fullWalkJourneys": [],
-  "status": "candidate",
+  "status": "fixed",
   "manualReview": "reviewed",
   "evidence": [
     "docs/plan/2026-10-27-import-transcode.md",
     "docs/engineering/direction-checks/2026-10-27-ffmpeg-process-owner.md",
     "electron/assets/videoImportNormalize.integration.test.ts：真实登记 H.264 镜头派生 MKV、注入不可播 codec、取消清理。",
-    "scripts/check-import-ffmpeg-owner.test.mjs：删除生命周期 signal 或私有 spawn 时转红；删除 remux copy 档时视频参数测试转红。"
+    "scripts/check-import-ffmpeg-owner.test.mjs：删除生命周期 signal 或私有 spawn 时转红；删除 remux copy 档时视频参数测试转红。",
+    "electron/export/mediaProbe.test.ts：tail 模式下 9000 条进度加告警刷屏不被杀、进度一直来；默认模式同样的输出照旧 output_limit。",
+    "electron/assets/importTranscodeLifecycle.integration.test.ts：真 ffmpeg + 真 IPC 处理器 + 真退出收尾，中止后 PID 没了、半成品删了；界面和 Agent 两扇门同时转码时退出，退出码 0。",
+    "src/workbench/generationCanvas/nodes/NodeImportingOverlay.test.ts：中英文案；探不到片长、比例为 0 时不挂「0%」。",
+    "中英真机走查：未验证，交独立验收线。"
   ],
-  "completionCommits": [],
+  "completionCommits": [
+    "dae9e0fc0",
+    "7a3202d79",
+    "dd2816b10",
+    "82fde9154"
+  ],
+  "fixedInPr": 9999,
   "rootCauseContract": "docs/fixes/2026-10-27-import-transcode-hogs-and-orphans.root-cause.json",
   "classCheck": {
     "kind": "matrix",
