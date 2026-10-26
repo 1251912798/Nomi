@@ -966,7 +966,7 @@
       "count": 1
     }
   },
-  "tests/ux/_offscreenWindows.cjs": {
+  "tests/ux/_quietWalk.cjs": {
     "@typescript-eslint/no-require-imports": {
       "count": 2
     }

@@ -17,7 +17,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 //
 // 跑：pnpm run build && APIMART_E2E=1 NOMI_SPEND_OK=1 node tests/ux/p4-s6p5-multishot-paid.e2e.mjs
 
-import { launchNomiApp, repoRoot, withLinuxNoSandbox } from './_launchApp.mjs'
+import { launchNomiApp, repoRoot, withLinuxNoSandbox, QUIET_WALK_MODULE } from './_launchApp.mjs'
 import { prepareIsolation, createBlankProject, dismissSplashIfPresent } from '../../evals/lib/isoApp.mjs'
 import { realNomiProfile } from './_realProfile.mjs'
 import { clickOrFail, proveProbe } from './_assert.mjs'
@@ -98,7 +98,7 @@ function resolveLocalArtifact(relativePath, projectDir) {
 function spawnAgent(clientProofEnv) {
   const pending = new Map()
   let seq = 0
-  const child = spawn(require('electron'), withLinuxNoSandbox([repoRoot, '--disable-gpu']), {
+  const child = spawn(require('electron'), withLinuxNoSandbox(['-r', QUIET_WALK_MODULE, repoRoot, '--disable-gpu']), {
     cwd: repoRoot,
     env: { ...process.env, ...SEMANTIC_ENV, ...clientProofEnv, NOMI_MCP_STDIO: '1' },
     stdio: ['pipe', 'pipe', 'inherit'],

@@ -15,7 +15,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { WebSocket } from "undici";
-import { prepareHostConfigDir, withIsolatedHostConfig, withLinuxNoSandbox } from "./_launchApp.mjs";
+import { prepareHostConfigDir, withIsolatedHostConfig, withLinuxNoSandbox, QUIET_WALK_MODULE } from "./_launchApp.mjs";
 import { assertFreshBuild } from "../../scripts/package-build-stamp.mjs";
 import { killProcessTree, processTreeSpawnOptions } from "../../scripts/lib/processTree.mjs";
 
@@ -307,7 +307,7 @@ const childEnv = {
   NOMI_DESKTOP_REMOTE_DEBUGGING_PORT: String(debugPort),
 };
 delete childEnv.ELECTRON_RUN_AS_NODE;
-const electronProcess = spawn(require("electron"), withLinuxNoSandbox(["."]), {
+const electronProcess = spawn(require("electron"), withLinuxNoSandbox(["-r", QUIET_WALK_MODULE, "."]), {
   cwd: repoRoot,
   env: childEnv,
   stdio: ["ignore", "ignore", "pipe"],

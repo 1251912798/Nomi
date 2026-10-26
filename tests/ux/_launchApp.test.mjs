@@ -21,7 +21,11 @@ import {
   prepareLocalStorageSeed,
   launchNomiApp,
   mainRequireArgs,
-  withWalkOffscreen,
+  withQuietWalk,
+  assertForegroundAllowed,
+  quietWalkLaunchEnv,
+  WalkSkippedError,
+  frontGuardVerdict,
   repoRoot,
   registerTempRoot,
   requireBeforePackagedMain,
@@ -105,15 +109,31 @@ describe('mainRequire（主进程入口前的 -r 模块）', () => {
     }
   })
 
-  test('NOMI_WALK_OFFSCREEN=1 才补屏外模块；已经带了不重复；没设就原样', () => {
+  test('每个隔离启动默认补 quiet-walk；已经带了不重复', () => {
     const guard = path.join(repoRoot, 'scripts', 'walkthrough-network-guard.cjs')
-    expect(withWalkOffscreen(undefined, {})).toEqual([])
-    expect(withWalkOffscreen([guard], {})).toEqual([guard])
-    const withOffscreen = withWalkOffscreen([guard], { NOMI_WALK_OFFSCREEN: '1' })
-    expect(withOffscreen).toHaveLength(2)
-    expect(withOffscreen[1]).toMatch(/_offscreenWindows.cjs$/)
-    expect(withWalkOffscreen(withOffscreen, { NOMI_WALK_OFFSCREEN: '1' })).toEqual(withOffscreen)
-    expect(mainRequireArgs(withOffscreen)).toHaveLength(4)
+    expect(withQuietWalk(undefined)).toHaveLength(1)
+    expect(withQuietWalk([guard])).toHaveLength(2)
+    const withQuiet = withQuietWalk([guard])
+    expect(withQuiet[1]).toMatch(/_quietWalk.cjs$/)
+    expect(withQuietWalk(withQuiet)).toEqual(withQuiet)
+    expect(mainRequireArgs(withQuiet)).toHaveLength(4)
+  })
+
+  test('foreground 声明缺少放行变量时以退出码 125 跳过', () => {
+    expect(() => assertForegroundAllowed(undefined, {})).not.toThrow()
+    expect(() => assertForegroundAllowed('需要验证前台激活', {})).toThrow(WalkSkippedError)
+    try { assertForegroundAllowed('需要验证前台激活', {}) } catch (error) {
+      expect(error).toMatchObject({ code: 'NOMI_WALK_SKIPPED', exitCode: 125 })
+    }
+    expect(() => assertForegroundAllowed('需要验证前台激活', { NOMI_WALK_FOREGROUND_OK: '1' })).not.toThrow()
+    expect(quietWalkLaunchEnv({ NOMI_WALK_FOREGROUND_OK: '1', KEEP: 'yes' }, false)).toEqual({ KEEP: 'yes' })
+    expect(quietWalkLaunchEnv({ KEEP: 'yes' }, true)).toEqual({ KEEP: 'yes', NOMI_WALK_FOREGROUND_OK: '1' })
+  })
+
+  test('门岗只把走查 App PID 在最前判红，foreground 声明豁免', () => {
+    expect(frontGuardVerdict({ frontPid: 42, appPid: 42 })).toMatchObject({ ok: false, reason: '走查抢了前台' })
+    expect(frontGuardVerdict({ frontPid: 41, appPid: 42 })).toMatchObject({ ok: true })
+    expect(frontGuardVerdict({ frontPid: 42, appPid: 42, foreground: true })).toMatchObject({ ok: true, exempt: true })
   })
 
   test('相对路径与不存在的文件当场拒（相对路径会被 Node 当包名去找，闸就静默没装上）', () => {
@@ -220,7 +240,7 @@ describe('buildNomiLaunchEnv', () => {
 
   test('启动器把显式的 syntheticCredentialStorage: true（且只有它）接成假凭据', () => {
     const source = fs.readFileSync(path.join(repoRoot, 'tests/ux/_launchApp.mjs'), 'utf8')
-    expect(source).toMatch(/buildNomiLaunchEnv\(\{[^}]*fixtureCredentials: options\.syntheticCredentialStorage === true/)
+    expect(source).toMatch(/fixtureCredentials:\s*options\.syntheticCredentialStorage === true/)
   })
 
   test('seedSavedFixtureCredentials 只给显式的隔离假凭据用，且两次起 App 必须同一组目录，否则当场拒绝', async () => {
@@ -295,7 +315,7 @@ describe('宿主配置隔离：隔离起的 App 读写不到用户真实的 Clau
 
   test('launchNomiApp 把 hostConfigDir 接进同一个 env 构造，并在起 App 前把目录建好（Codex 要求 CODEX_HOME 已存在）', () => {
     const launcher = fs.readFileSync(path.join(repoRoot, 'tests/ux/_launchApp.mjs'), 'utf8')
-    expect(launcher).toMatch(/buildNomiLaunchEnv\(\{[^}]*hostConfigDir[^}]*\}\)/)
+    expect(launcher).toMatch(/buildNomiLaunchEnv\(\{[\s\S]*hostConfigDir[\s\S]*\}\)/)
     expect(launcher).toMatch(/if \(isolate\) prepareHostConfigDir\(hostConfigDir, extraEnv\)/)
     const root = makeTempDir('nomi-host-config-')
     try {

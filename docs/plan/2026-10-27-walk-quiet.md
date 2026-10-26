@@ -14,7 +14,7 @@
 
 ## ★3 一致与复用
 
-复用现有 `mainRequireArgs`、打包形态的 `requireBeforePackagedMain`、`closeElectronWithin` 和 `_launchApp.test.mjs`，只把可选 `_offscreenWindows.cjs` 收敛成默认注入的 `_quietWalk.cjs`。不改 `electron/` 或 `src/` 产品代码，不新增 npm 包，不保留 `NOMI_WALK_OFFSCREEN` 旧开关。
+复用现有 `mainRequireArgs`、打包形态的 `requireBeforePackagedMain`、`closeElectronWithin` 和 `_launchApp.test.mjs`，把 `_quietWalk.cjs` 从可选模块提升为默认注入。不改 `electron/` 或 `src/` 产品代码，不新增 npm 包，不保留旧屏外开关。
 
 前台门岗、外部出口记录、原生对话框 fail-closed 和窗口包装都只在 `_quietWalk.cjs` / `_launchApp.mjs` 定义，不在每条走查里复制。
 
@@ -37,7 +37,7 @@
 5. 原生对话框未替身抛出固定中文错误；`electronApp.evaluate()` 替身后调用走替身；`showErrorBox` 不开窗口而写日志。
 6. `foreground` 没有 `NOMI_WALK_FOREGROUND_OK=1` 时不调用 Electron 启动；有放行变量时允许启动。
 7. Mac 真机不设任何屏外变量，排门岗锁跑 `node tests/ux/model-access-journeys/run-journeys.mjs J04` 和 `node tests/ux/library-layout.walk.mjs`：全程最前应用不是走查 PID，`ApplicationType` 不是 `Foreground`，外部打开记录为空。
-8. 反例边界：所有经 `_launchApp.mjs` 的开发版 / 打包版入口都装同一模块；显式 `mainRequire` 不重复注入；`_offscreenWindows.cjs` 和 `NOMI_WALK_OFFSCREEN` 全仓不存在。
+8. 反例边界：所有经 `_launchApp.mjs` 的开发版 / 打包版入口都装同一模块；显式 `mainRequire` 不重复注入；旧屏外模块名和环境开关全仓不存在；唯一保留的是 `_quietWalk.cjs`。
 
 自验命令与回滚：单测、改动文件 ESLint、`check-e2e-launch`、`check-walkthroughs`、`check-file-sizes`、`git diff --check`、`check-root-cause-contracts`、`check-concept-owners`、推送前快检及两条真机走查。回滚为在任务分支上 `git revert <实现提交>`；不改用户资料、不推送、不合并。
 

@@ -145,16 +145,87 @@ app.once('session-created', (session) => {
  * 其实没装。`-r` 必须排在 App 入口（`.`）之前才对主进程生效，所以由启动器来拼。
  * 只收**绝对路径且文件存在**：相对路径会被 Node 当成包名去 node_modules 里找（MODULE_NOT_FOUND）。
  */
-/**
- * 走查窗口屏外开关：环境变量 NOMI_WALK_OFFSCREEN=1 时，给 mainRequire 补上 _offscreenWindows.cjs（窗口建出来就在屏幕外、不抢焦点）。
- * 为什么放在启动器：几百份走查各自决定要不要屏外，没人能保证「在用户正用的电脑上跑」时都带了；跑走查的人 / 夜跑脚本
- * 设一个变量就整批屏外，不用逐份改。已经自己带了就不重复加。
- */
-const OFFSCREEN_WINDOWS_MODULE = path.join(path.dirname(fileURLToPath(import.meta.url)), '_offscreenWindows.cjs')
-export function withWalkOffscreen(modules, env = process.env) {
+/** 每个隔离走查默认注入同一份主进程安静仪表；调用方不再决定是否屏外。 */
+export const QUIET_WALK_MODULE = path.join(path.dirname(fileURLToPath(import.meta.url)), '_quietWalk.cjs')
+export function withQuietWalk(modules) {
   const list = Array.isArray(modules) ? modules : []
-  if (env.NOMI_WALK_OFFSCREEN !== '1' || list.includes(OFFSCREEN_WINDOWS_MODULE)) return list
-  return [...list, OFFSCREEN_WINDOWS_MODULE]
+  if (list.includes(QUIET_WALK_MODULE)) return list
+  return [...list, QUIET_WALK_MODULE]
+}
+
+export class WalkSkippedError extends Error {
+  constructor(reason) {
+    super(reason)
+    this.name = 'WalkSkippedError'
+    this.code = 'NOMI_WALK_SKIPPED'
+    this.exitCode = 125
+  }
+}
+
+export function assertForegroundAllowed(foreground, env = process.env) {
+  if (!foreground || env.NOMI_WALK_FOREGROUND_OK === '1') return
+  const reason = `未跑：这条走查需要前台，会打扰正在用电脑的人（${foreground}）`
+  console.log(reason)
+  throw new WalkSkippedError(reason)
+}
+
+export function quietWalkLaunchEnv(extraEnv = {}, foreground = false) {
+  const env = { ...extraEnv }
+  if (foreground) env.NOMI_WALK_FOREGROUND_OK = '1'
+  else delete env.NOMI_WALK_FOREGROUND_OK
+  return env
+}
+
+export function frontGuardVerdict({ frontPid, appPid, foreground = false }) {
+  if (foreground) return { ok: true, exempt: true, reason: 'foreground declaration' }
+  if (!Number.isInteger(frontPid) || !Number.isInteger(appPid)) return { ok: true, exempt: false, reason: 'front/app pid unavailable' }
+  return frontPid === appPid
+    ? { ok: false, exempt: false, reason: '走查抢了前台' }
+    : { ok: true, exempt: false, reason: 'front pid differs' }
+}
+
+function readMacFront() {
+  if (process.platform !== 'darwin') return null
+  try {
+    const asn = execFileSync('lsappinfo', ['front'], { encoding: 'utf8' }).trim()
+    const pidOutput = execFileSync('lsappinfo', ['info', '-only', 'pid', asn], { encoding: 'utf8' })
+    const typeOutput = execFileSync('lsappinfo', ['info', '-only', 'ApplicationType', asn], { encoding: 'utf8' })
+    const pid = Number(/"pid"=(\d+)/.exec(pidOutput)?.[1])
+    const applicationType = /"ApplicationType"="([^"]+)"/.exec(typeOutput)?.[1] ?? null
+    return { asn, pid: Number.isInteger(pid) ? pid : null, applicationType }
+  } catch (error) {
+    return { asn: null, pid: null, applicationType: null, error: String(error?.message ?? error) }
+  }
+}
+
+export function startMacForegroundGuard({ appPid, foreground = false, intervalMs = 1000, sample = readMacFront } = {}) {
+  const samples = []
+  let violation = null
+  const take = (phase) => {
+    const front = sample()
+    if (!front) return null
+    const verdict = frontGuardVerdict({ frontPid: front.pid, appPid, foreground })
+    const row = { phase, at: new Date().toISOString(), ...front, ...verdict }
+    samples.push(row)
+    if (!verdict.ok && !violation) {
+      violation = row
+      console.error(`[quiet-walk] 走查抢了前台：${JSON.stringify(row)}`)
+      process.exitCode = 1
+    }
+    return row
+  }
+  if (process.platform !== 'darwin') return { sample: () => null, stop: () => ({ samples, violation }) }
+  take('started')
+  const timer = setInterval(() => take('interval'), intervalMs)
+  timer.unref?.()
+  return {
+    sample: take,
+    stop: (phase = 'stopped') => {
+      clearInterval(timer)
+      take(phase)
+      return { samples, violation }
+    },
+  }
 }
 
 export function mainRequireArgs(modules) {
@@ -465,16 +536,18 @@ export async function launchNomiApp(options = {}) {
     executablePath = require('electron'),
     waitForWindow = true,
     allowUntrackedProcessForTest = false,
+    foreground,
   } = options
 
   const isolate = options.isolate !== false
+  assertForegroundAllowed(foreground)
   if (options.initialLocalStorage && !isolate) {
     throw new Error('initialLocalStorage requires an isolated Nomi profile')
   }
   if (options.syntheticCredentialStorage && !isolate) {
     throw new Error('syntheticCredentialStorage requires an isolated Nomi profile')
   }
-  const mainRequire = isolate ? withWalkOffscreen(options.mainRequire) : options.mainRequire
+  const mainRequire = isolate ? withQuietWalk(options.mainRequire) : options.mainRequire
   if (mainRequire?.length && !isolate) {
     throw new Error('mainRequire requires an isolated Nomi profile')
   }
@@ -524,10 +597,14 @@ export async function launchNomiApp(options = {}) {
     ...(options.initialLocalStorage ? prepareLocalStorageSeed(tempRoot, options.initialLocalStorage) : []),
     ...mainRequireArgs(mainRequire),
   ]
-  const packagedPreMain = !isDevElectron && preMainArgs.length
+  // Assembly tests replace electron.launch and do not have a packaged main entry or inspector.
+  // Keep the real packaged injection for every actual launch; only the explicit test hook skips
+  // opening a debugger socket that the mock cannot service.
+  const packagedPreMain = !isDevElectron && preMainArgs.length && !allowUntrackedProcessForTest
     ? { port: await freeLoopbackPort(), modules: preMainArgs.filter((_, index) => index % 2 === 1) }
     : null
 
+  const launchExtraEnv = quietWalkLaunchEnv(extraEnv, Boolean(foreground))
   const launchOptions = {
     executablePath,
     args: withLinuxNoSandbox(withLinuxSyntheticCredentialStorage(
@@ -542,7 +619,11 @@ export async function launchNomiApp(options = {}) {
     )),
     cwd: repoRoot,
     // 只认显式的 syntheticCredentialStorage: true：盘上推出来的那一档也可能是拷进来的真实资料（core-smoke 那种），不能替它关网。
-    env: buildNomiLaunchEnv({ extraEnv, userDataDir, settingsDir, projectsDir, capabilityDir, hostConfigDir, fixtureCredentials: options.syntheticCredentialStorage === true }),
+    env: buildNomiLaunchEnv({
+      extraEnv: launchExtraEnv,
+      userDataDir, settingsDir, projectsDir, capabilityDir, hostConfigDir,
+      fixtureCredentials: options.syntheticCredentialStorage === true,
+    }),
     timeout,
   }
 
@@ -574,8 +655,13 @@ export async function launchNomiApp(options = {}) {
   app[RAW_CLOSE] = rawClose
   app.close = () => closeElectronWithin(app, rawClose, GRACEFUL_CLOSE_BOUND_MS)
   const instanceRegistration = registerWalkProcess(app.process(), { worktree: repoRoot, name, allowUntrackedProcessForTest })
+  const foregroundGuard = startMacForegroundGuard({ appPid: app.process()?.pid, foreground: Boolean(foreground) })
   const close = async () => {
-    try { await closeNomiApp(app) } finally {
+    try {
+      foregroundGuard.sample('before-close')
+      await closeNomiApp(app)
+    } finally {
+      foregroundGuard.stop('after-close')
       instanceRegistration.cleanup()
       cleanupTempRoot(tempRoot)
     }
@@ -622,8 +708,7 @@ export async function launchNomiApp(options = {}) {
     await win.setViewportSize(viewportSize)
     const actualViewport = await win.evaluate(() => ({ width: innerWidth, height: innerHeight }))
     if (actualViewport.width !== viewportSize.width || actualViewport.height !== viewportSize.height) {
-      await closeNomiApp(app)
-      cleanupTempRoot(tempRoot)
+      await close()
       throw new Error(`Acceptance viewport mismatch: expected ${JSON.stringify(viewportSize)}, got ${JSON.stringify(actualViewport)}`)
     }
     console.log('[walkthrough] content viewport', JSON.stringify(actualViewport))
@@ -631,8 +716,7 @@ export async function launchNomiApp(options = {}) {
     try {
       if (options.observeWindow) await options.observeWindow(win)
     } catch (error) {
-      await closeNomiApp(app)
-      cleanupTempRoot(tempRoot)
+      await close()
       throw error
     }
     if (options.initialLocalStorage) {

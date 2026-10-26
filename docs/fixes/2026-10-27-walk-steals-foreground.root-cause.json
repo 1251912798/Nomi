@@ -4,7 +4,7 @@
   "change_kind": "corrective",
   "problem_type": "走查启动与桌面出口未统一安静边界",
   "symptom": "用户在前台使用其它应用时启动 Nomi 走查，走查窗口弹到屏幕中央并把 Nomi 切成最前面的应用，键盘输入离开用户当前窗口。",
-  "direct_cause": "_launchApp.mjs 只有在调用方设置 NOMI_WALK_OFFSCREEN=1 时才注入 _offscreenWindows.cjs；该模块仍让 BrowserWindow 以 show:true 构造，Electron 43.4.1 的 macOS Show() 会激活应用。app.focus、shell 外部打开、Finder、通知和原生对话框也没有统一拦截。",
+  "direct_cause": "_launchApp.mjs 只有在调用方显式打开屏外选项时才注入窗口模块；该模块仍让 BrowserWindow 以 show:true 构造，Electron 43.4.1 的 macOS Show() 会激活应用。app.focus、shell 外部打开、Finder、通知和原生对话框也没有统一拦截。",
   "class_root": "所有经走查启动器创建的 Electron 主进程没有一个默认、集中、fail-closed 的‘不把控制权交给桌面’不变量。",
   "affected_population": [
     "macOS 上所有经 tests/ux/_launchApp.mjs 的开发版和打包版走查",
@@ -13,8 +13,10 @@
   ],
   "scope_paths": [
     "tests/ux/_launchApp.mjs",
-    "tests/ux/_offscreenWindows.cjs",
-    "tests/ux/_launchApp.test.mjs"
+    "tests/ux/_quietWalk.cjs",
+    "tests/ux/_launchApp.test.mjs",
+    "tests/ux/_quietWalk.test.mjs",
+    "tests/ux/mcp-key-window.walk.mjs"
   ],
   "entry_points": [
     "_launchApp.mjs 的开发版 -r 注入",
@@ -91,9 +93,9 @@
       "responsibility": "统一注入走查仪表、执行 foreground 放行判定、启动/停止 Mac 前台门岗。"
     },
     {
-      "path": "tests/ux/_offscreenWindows.cjs",
-      "symbol": "OffscreenBrowserWindow",
-      "responsibility": "旧窗口屏外包装（实现提交中删除并由 _quietWalk.cjs 接管）。"
+      "path": "tests/ux/_quietWalk.cjs",
+      "symbol": "QuietBrowserWindow",
+      "responsibility": "在主进程入口统一包装窗口、应用、桌面出口和对话框；普通走查默认安静。"
     }
   ],
   "same_class_entry_points": [
@@ -126,18 +128,18 @@
     "classification": "recurring",
     "reason": "同一桌面激活机制可由不同窗口、应用焦点、Dock、浏览器/Finder、通知或原生对话框出口再次触发；只给某条走查设置屏外变量不能覆盖其它入口。",
     "same_class_scan": [
-      "node scripts/door-map.mjs launchNomiApp withWalkOffscreen（默认 src/electron 根：0 扇，证明两符号只在走查层；再以 --roots=tests/ux,scripts,evals --include-tests 扫得 406 个 launchNomiApp 调用门）。",
+      "node scripts/door-map.mjs launchNomiApp withQuietWalk（默认 src/electron 根：0 扇，证明两符号只在走查层；再以 --roots=tests/ux,scripts,evals --include-tests 扫得 406 个 launchNomiApp 调用门）。",
       "rg spawn( + electron、open -a、Nomi.app：盘点独立起 App 路径；经 _launchApp.mjs 的开发版/打包版均收进同一注入，未收进的路径列残余风险。",
       "rg app.focus、BrowserWindow.show/focus/moveTop、shell.openExternal/openPath/showItemInFolder、new Notification、dialog.*：盘点全部桌面出口并在 _quietWalk.cjs 集中拦截。"
     ]
   },
   "prevention": {
     "kind": "centralized-boundary",
-    "enforcement_path": "tests/ux/_launchApp.mjs -> tests/ux/_quietWalk.cjs",
+    "enforcement_path": "tests/ux/_quietWalk.cjs",
     "invariant": "每个隔离走查 App 默认安装同一安静仪表；窗口、应用、外部打开、通知和原生对话框在主进程边界统一受控。",
     "failure_mode": "没有 foreground 放行时声明前台行为直接以退出码 125 跳过；未替身原生对话框抛固定错误；Mac 门岗看到走查 PID 在最前则记录并以退出码 1 失败。",
     "exception_policy": "none",
-    "strategy": "删除可选 NOMI_WALK_OFFSCREEN 和旧 _offscreenWindows 路径，把注入从调用方自觉提升为启动器默认，再以主进程 API 包装覆盖所有等价桌面出口。",
+    "strategy": "删除可选 quiet-walk default 和旧 _offscreenWindows 路径，把注入从调用方自觉提升为启动器默认，再以主进程 API 包装覆盖所有等价桌面出口。",
     "artifacts": [
       "tests/ux/_launchApp.mjs",
       "tests/ux/_quietWalk.cjs",
@@ -156,7 +158,7 @@
   "legacy_paths": {
     "status": "not-applicable",
     "removed_paths": [],
-    "rationale": "实现提交会把旧 _offscreenWindows.cjs 与 NOMI_WALK_OFFSCREEN 引用移除；本设计提交先不宣称删除。"
+    "rationale": "旧窗口模块已在实现提交中删除，所有显式注入改为同一 quiet-walk；不存在可继续调用的旧行为。"
   },
   "dependency_lifecycle": {
     "decision": "retain-with-exit",
@@ -168,7 +170,7 @@
       "两条 Mac 真机走查门岗抽样全程不见走查 PID 在最前"
     ]
   },
-  "migration": "走查调用方不需迁移 API；删除旧 NOMI_WALK_OFFSCREEN 环境变量和显式 _offscreenWindows 注入，所有隔离 launchNomiApp 自动获得 quiet-walk。依赖真实前台行为的走查改用 foreground 声明。",
+  "migration": "走查调用方不需迁移 API；旧屏外环境开关和显式旧窗口注入已删除，所有隔离 launchNomiApp 自动获得 quiet-walk。依赖真实前台行为的走查改用 foreground 声明。",
   "residual_risks": [
     "未通过 launchNomiApp、直接 spawn Electron 或直接 open -a/Nomi.app 的外部脚本无法被本轮启动器注入；已按 grep 名单列出并交协调处理。",
     "Windows/Linux 没有 lsappinfo 前台门岗，只依赖窗口/出口包装；Wayland 官方不支持 showInactive。",
@@ -181,5 +183,6 @@
     "tests": [
       "tests/ux/_launchApp.test.mjs"
     ]
-  }
+  },
+  "strategy": "删除可选屏外开关和旧窗口模块，把注入从调用方自觉提升为启动器默认，再以主进程 API 包装覆盖所有等价桌面出口。"
 }
