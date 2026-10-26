@@ -966,11 +966,6 @@
       "count": 1
     }
   },
-  "tests/ux/_quietWalk.cjs": {
-    "@typescript-eslint/no-require-imports": {
-      "count": 2
-    }
-  },
   "tests/ux/_paidNetwork.mjs": {
     "no-useless-escape": {
       "count": 1
@@ -2313,6 +2308,11 @@
     },
     "no-empty": {
       "count": 1
+    }
+  },
+  "tests/ux/_quietWalk.cjs": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 0
     }
   }
 }

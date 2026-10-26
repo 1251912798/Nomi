@@ -1,7 +1,7 @@
 // 主进程走查仪表：隔离走查默认不把窗口、焦点或桌面出口交给用户的 Mac。
 // 这个文件只由 tests/ux/_launchApp.mjs 在 App 主入口前注入；不进产品构建。
-const Module = require('node:module')
-const electron = require('electron')
+const Module = module.require('node:module')
+const electron = module.require('electron')
 
 const OFFSCREEN = [-32000, -32000]
 const ALLOW_FOREGROUND = process.env.NOMI_WALK_FOREGROUND_OK === '1'
