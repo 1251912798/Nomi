@@ -31,6 +31,9 @@
 - 跑走查的终端 export 了 `NOMI_WALK_FOREGROUND_OK=1`：没声明 foreground 的走查起的 App 环境里仍是空串（`buildNomiLaunchEnv` 排在 baseEnv / extraEnv 之后钉死），仪表照样安静；声明了的才是 `'1'`。
 - 非隔离启动（`isolate: false`，真实资料）：mainRequire 只许装进隔离资料，仪表装不上。没声明 foreground → 起 App 之前抛错「非隔离启动装不了安静仪表，要声明 foreground」；声明了没放行 → 退出码 125、不起 App；放行 → 起真实资料 App，门岗豁免。8 个入口（ui-driver、mcp-client-activation `--real-connect`、scripts 下 4 个、evals 下 2 个）都已声明。
 - 依赖真焦点 / 真窗口的旧走查（app-page-zoom、attention-sound、window-drag、windows-freeze-sweep）：声明 foreground，没放行按 125 退出，不在安静模式下悄悄不测还报绿；windows-freeze-sweep 在清掉上一轮报告之前先判放行。
+- 不经 launchNomiApp、直接 spawn Electron 的三处（plan-gate、p4-s6p5-multishot-paid 的 stdio MCP 子进程，memory.e2e 量内存的那个实例，第 3 轮）：一律经 `spawnQuietElectron`——`-r` 装同一份仪表；子进程环境里的放行位钉成空串，排在调用方 env 之后，终端 export 的 `1` 漏不进来；起跑前和 launchNomiApp 开发版同一套核对（构建戳、构建产物、Electron.app 签名）。仓库里直接 spawn Electron 又装仪表的只许经它，单测扫描钉住。
+- 评测借真实资料的 app 桥（`evals/loop/appBridge.mjs`，第 3 轮）：没放行时真实资料一个字节都不读——探可用性的（`resolveModels` / `modelLabels` / `textAvailable`，loop 和 report 拿来打标签、选规则版）一律答「没配」；要发请求的（`chatText` / `chatVision` / `genImage`）在读 catalog 之前按 125 跳过，不起 App。
+- 屏外仪表只剩一份（第 3 轮，P1）：`tests/ux/full-walk/offscreenWindow.cjs` 和装它的地方（9 条走查的 `mainRequire`、full-walk 启动器的 `offscreen` 选项、用这个选项的两条剧本）都删了，这些走查照旧经启动器默认装 `_quietWalk.cjs`。单测钉住「挂 `browser-window-created` 的主进程走查仪表全仓只有 `_quietWalk.cjs`」。
 - 屏外窗口的页面可见性：没碰上遮挡。第 2 轮真机 6 次启动（含透明 + 穿透之后的 4 次），每 3 秒取一次 `document.visibilityState`，全部是 `visible`（共 76 次），截图完整；所以没加 `backgroundThrottling: false` 和三个 Chromium 开关。
 - Windows/Linux：不启用 `lsappinfo` 门岗，窗口/出口仪表仍工作；残余风险写在报告。
 
@@ -45,7 +48,7 @@
 5. 原生对话框未替身抛出固定中文错误；`electronApp.evaluate()` 替身后调用走替身；`showErrorBox` 不开窗口而写日志。
 6. `foreground` 没有 `NOMI_WALK_FOREGROUND_OK=1` 时不调用 Electron 启动；有放行变量时允许启动。
 7. Mac 真机不设任何屏外变量，排门岗锁跑 `node tests/ux/model-access-journeys/run-journeys.mjs J04` 和 `node tests/ux/library-layout.walk.mjs`：全程最前应用不是走查 PID，`ApplicationType` 不是 `Foreground`，外部打开记录为空。
-8. 反例边界：所有经 `_launchApp.mjs` 的开发版 / 打包版入口都装同一模块；显式 `mainRequire` 不重复注入；旧屏外模块 `_offscreenWindows.cjs` 和环境开关全仓不存在。（第 2 轮更正：另有一份 `tests/ux/full-walk/offscreenWindow.cjs`，9 条走查经 `mainRequire` 显式装，和 `_quietWalk.cjs` 叠着跑；不在本轮范围，记在根因契约残余风险。）
+8. 反例边界：所有经 `_launchApp.mjs` 的开发版 / 打包版入口都装同一模块；显式 `mainRequire` 不重复注入；旧屏外模块 `_offscreenWindows.cjs` 和环境开关全仓不存在。（第 2 轮更正：另有一份 `tests/ux/full-walk/offscreenWindow.cjs`，9 条走查经 `mainRequire` 显式装，和 `_quietWalk.cjs` 叠着跑；第 3 轮已删，见第 12 条。）
 
 第 2 轮（协调审 diff 补的 4 件 + 真机）：
 
@@ -63,6 +66,13 @@
     - 实测（第 2 轮）：窗口 alpha 全程 0、页面全程 `visible`、截图完整；「没有一次成为最前」只在用户不在 Claude 里时成立（见 ★4「没管住的一条」），未达标，按停点交协调。
 11. 本轮改过的走查 / 入口都真跑一次跳过路径（不带放行变量）：退出码 125、不起 App；window-drag 在非 Windows 上照旧 0；windows-freeze-sweep 不清上一轮报告。不跑声明了 foreground 的真前台路径（用户就在这台电脑上）。
 
+第 3 轮（第 2 轮发现的问题一起收掉）：
+
+12. 删旧模块（P1）：`tests/ux/full-walk/offscreenWindow.cjs` 删掉；9 条走查只删 `mainRequire: [offscreen]` 和那一行声明；full-walk 启动器的 `offscreen` 选项、两条剧本的 `offscreen: true`、`eslint-suppressions.json` 里那一条一起删。9 条里真跑 2 条（中英各一段，量具同第 10 条的门岗收尾行），其余靠静态门岗和单测。反例：放回一个挂 `browser-window-created` 的屏外模块，单测红。
+13. 直接 spawn Electron 的三处经 `spawnQuietElectron`。反例：去掉子进程环境里的放行位钉死，单测红（终端 export 的 `1` 漏进子进程）；把任一处改回自己 `spawn(require('electron'), ['-r', <仪表>, …])`，扫描单测红。
+14. `evals/loop/appBridge.mjs`：没放行时 `resolveModels` / `modelLabels` / `textAvailable` 不读真实 catalog、答「没配」；`chatText` / `chatVision` / `genImage` 读 catalog 之前按 125 退出、不起 App（单测换掉 `readRealCatalog` 和 `launchNomiApp` 数调用次数）。反例：去掉可用性探测前的放行判断、或去掉发请求前的放行判断，单测红。
+15. 文档：`docs/release-process.md` 的 Windows 卡顿巡检命令带上 `NOMI_WALK_FOREGROUND_OK=1`（PowerShell 写法另注）；`docs/engineering-rules.md` 写 `ui-driver.mjs` 的地方写明它默认开真实资料、要带放行变量。
+
 自验命令与回滚：单测、改动文件 ESLint、`check-e2e-launch`、`check-walkthroughs`、`check-file-sizes`、`git diff --check`、`check-root-cause-contracts`、`check-concept-owners`、推送前快检及三条真机走查。回滚为在任务分支上 `git revert <实现提交>`；不改用户资料、不推送、不合并。
 
 ### 功能分类
@@ -70,7 +80,7 @@
 - [ ] 新界面 / 改交互
 - [ ] 花钱
 - [ ] 长跑 / 可打断
-- [ ] Agent 行为
+- [x] Agent 行为（`evals/` 下两个评测入口 verify-shot-smoke、loop/appBridge 加了放行判断与 125 跳过；不改 Agent 的说法、摆法或方案）
 - [ ] 大数据量 / 画布 / 长列表
 - [ ] 生成效果
 - [ ] 数据格式

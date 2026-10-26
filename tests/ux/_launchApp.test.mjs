@@ -25,6 +25,7 @@ import {
   launchNomiApp,
   mainRequireArgs,
   withQuietWalk,
+  quietElectronSpawn,
   assertForegroundAllowed,
   exitIfWalkSkipped,
   WalkSkippedError,
@@ -250,6 +251,50 @@ describe('mainRequire（主进程入口前的 -r 模块）', () => {
       }
     }
     expect(offenders).toEqual([])
+  })
+
+  // 不经 launchNomiApp、自己 spawn Electron 的走查也装同一份仪表；放行位在子进程环境里同样钉死，终端 export 的 1 漏不进来。
+  test('直接 spawn Electron 的入口：-r 装安静仪表，子进程环境里的放行位钉成空串', () => {
+    const spec = quietElectronSpawn(['.', '--disable-gpu'], { cwd: '/fixture', env: { PATH: '/bin', NOMI_WALK_FOREGROUND_OK: '1' } }, 'darwin')
+    expect(spec.args).toEqual(['-r', expect.stringMatching(/_quietWalk\.cjs$/), '.', '--disable-gpu'])
+    expect(spec.options).toEqual({ cwd: '/fixture', env: { PATH: '/bin', NOMI_WALK_FOREGROUND_OK: '' } })
+    expect(quietElectronSpawn(['.'], {}, 'linux').args).toEqual(['-r', expect.stringMatching(/_quietWalk\.cjs$/), '.', '--no-sandbox', '--enable-unsafe-swiftshader'])
+    const inherited = process.env.NOMI_WALK_FOREGROUND_OK
+    process.env.NOMI_WALK_FOREGROUND_OK = '1'
+    try {
+      expect(quietElectronSpawn(['.']).options.env.NOMI_WALK_FOREGROUND_OK).toBe('')
+    } finally {
+      if (inherited === undefined) delete process.env.NOMI_WALK_FOREGROUND_OK
+      else process.env.NOMI_WALK_FOREGROUND_OK = inherited
+    }
+  })
+
+  // 同类入口：新写一处直接 spawn Electron、自己拼 `-r <仪表>` 和 process.env，放行位就又能被继承进去——只许经 spawnQuietElectron。
+  test('仓库里直接 spawn Electron 又装安静仪表的，都经 spawnQuietElectron（放行位钉死）', () => {
+    const offenders = []
+    const spawnLike = /^(?:spawn|spawnSync|execFile|execFileSync|fork)$/
+    for (const file of launchSources().filter(({ rel, text }) => rel !== 'tests/ux/_launchApp.mjs' && /_quietWalk|QUIET_WALK_MODULE/.test(text))) {
+      const visit = (node) => {
+        if (ts.isCallExpression(node) && spawnLike.test(node.expression.getText(file.source).split('.').pop())) {
+          const args = node.arguments.map((argument) => argument.getText(file.source)).join(' ')
+          if (/require\(\s*['"]electron['"]\s*\)|['"](?:-r|--require)['"]/.test(args)) offenders.push(`${file.rel}:${lineOf(file, node)}`)
+        }
+        ts.forEachChild(node, visit)
+      }
+      visit(file.source)
+    }
+    expect(offenders).toEqual([])
+  })
+
+  // P1：屏外 / 不抢焦点的主进程仪表只有一份。旧的 tests/ux/full-walk/offscreenWindow.cjs 已删，不许再长出并行版。
+  test('挂 browser-window-created 的主进程走查仪表全仓只有 tests/ux/_quietWalk.cjs', () => {
+    const instruments = ['tests', 'scripts', 'evals']
+      .flatMap((directory) => fs.readdirSync(path.join(repoRoot, directory), { recursive: true, withFileTypes: true })
+        .filter((entry) => entry.isFile() && /\.c?js$/.test(entry.name) && !entry.parentPath.includes('node_modules'))
+        .map((entry) => path.join(entry.parentPath, entry.name)))
+      .filter((file) => fs.readFileSync(file, 'utf8').includes('browser-window-created'))
+      .map((file) => path.relative(repoRoot, file).split(path.sep).join('/'))
+    expect(instruments).toEqual(['tests/ux/_quietWalk.cjs'])
   })
 
   // 安静模式下 BrowserWindow 的 focus / moveTop 是空操作、窗口在屏外不可聚焦：靠真焦点、真窗口的走查不声明 foreground，

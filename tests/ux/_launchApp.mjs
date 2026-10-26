@@ -19,7 +19,7 @@ import { cleanupTestTemp, makeTempDir, registerTestTemp } from '../../scripts/_t
 //   const { app, win, projectsDir } = await launchNomiApp({ name: 'my-walk' })
 import { _electron as electron } from 'playwright'
 import { require as tsxRequire } from 'tsx/cjs/api'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
@@ -153,6 +153,27 @@ export function withQuietWalk(modules) {
   return [...list, QUIET_WALK_MODULE]
 }
 
+/**
+ * 不经 launchNomiApp、自己 spawn Electron 的走查（stdio MCP 子进程、按调试口量内存那条）也装同一份安静仪表：`-r` 排在 App
+ * 入口之前；子进程环境里的放行位钉成空串、排在调用方 env 之后——跑走查的终端 export 过 NOMI_WALK_FOREGROUND_OK=1 也漏不进来
+ * （launchNomiApp 那边由 buildNomiLaunchEnv 钉）。直接 spawn Electron 又装仪表的只许经这里，_launchApp.test.mjs 扫描钉住。
+ */
+export function quietElectronSpawn(appArgs, options = {}, platform = process.platform) {
+  return {
+    command: require('electron'),
+    args: withLinuxNoSandbox(['-r', QUIET_WALK_MODULE, ...appArgs], platform),
+    options: { ...options, env: { ...(options.env ?? process.env), NOMI_WALK_FOREGROUND_OK: '' } },
+  }
+}
+/** 起的是本仓库的开发构建：和 launchNomiApp 开发版同一套起跑前核对（构建戳、产物、Electron.app 签名）。 */
+export function spawnQuietElectron(appArgs, options = {}) {
+  const { command, args, options: spawnOptions } = quietElectronSpawn(appArgs, options)
+  assertFreshBuild(repoRoot)
+  assertElectronBuildArtifacts(repoRoot)
+  ensureElectronSignature(command)
+  return spawn(command, args, spawnOptions)
+}
+
 /** 跳过约定：退出码 125（scripts/nightly-walk-summary.mjs 把它记成「跳过」，不算失败）。 */
 export const WALK_SKIPPED_EXIT_CODE = 125
 
@@ -165,8 +186,13 @@ export class WalkSkippedError extends Error {
   }
 }
 
+/** 跑走查的人放没放行前台（只认显式的 NOMI_WALK_FOREGROUND_OK=1）。 */
+export function foregroundAllowed(env = process.env) {
+  return env.NOMI_WALK_FOREGROUND_OK === '1'
+}
+
 export function assertForegroundAllowed(foreground, env = process.env) {
-  if (!foreground || env.NOMI_WALK_FOREGROUND_OK === '1') return
+  if (!foreground || foregroundAllowed(env)) return
   const reason = `未跑：这条走查需要前台，会打扰正在用电脑的人（${foreground}）。确实要跑就带上 NOMI_WALK_FOREGROUND_OK=1`
   console.log(reason)
   throw new WalkSkippedError(reason)
