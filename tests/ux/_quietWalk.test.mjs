@@ -48,17 +48,23 @@ function runInstrumentProbe(extraEnv = {}) {
     Module._load = function(request, parent, isMain) { return request === electronName ? fakeElectron : originalLoad.call(this, request, parent, isMain) }
     require(${JSON.stringify(quietWalk)})
     const injected = require(electronName)
+    // 激活策略在 App 生命周期每一步之后是什么样：模块刚装上 / will-finish-launching / ready / App 自己再改一次。
+    const policies = () => nativeCalls.filter(([name]) => name === 'setActivationPolicy').map(([, args]) => args[0])
+    const policyAt = { loaded: policies() }
     app.emit('will-finish-launching')
-    const policyCallsBeforeReady = nativeCalls.filter(([name]) => name === 'setActivationPolicy').length
+    policyAt.willFinishLaunching = policies()
     app.emit('ready')
+    policyAt.ready = policies()
     const win = new injected.BrowserWindow({ show: true, width: 10 })
     win.show(); win.focus(); win.moveTop(); win.setOpacity(1); win.setIgnoreMouseEvents(false)
     injected.app.focus({ steal: true }); injected.app.dock.bounce(); injected.app.dock.show()
+    injected.app.setActivationPolicy('regular')
+    policyAt.afterAppRequest = policies()
     injected.shell.openExternal('https://example.test'); injected.shell.openPath('/tmp/example'); injected.shell.showItemInFolder('/tmp/example')
     const notification = new injected.Notification({ title: 'walk' }); notification.show()
     let dialogError = null
     try { injected.dialog.showOpenDialog({}) } catch (error) { dialogError = error.message }
-    console.log(JSON.stringify({ options: win.options, nativeCalls, events: globalThis.__nomiQuietWalk.events, dialogError, policyCallsBeforeReady }))
+    console.log(JSON.stringify({ options: win.options, nativeCalls, events: globalThis.__nomiQuietWalk.events, dialogError, policyAt }))
   `
   const result = spawnSync(process.execPath, ['-e', script], { cwd: repoRoot, env: { ...process.env, ...extraEnv }, encoding: 'utf8' })
   expect(result.status, result.stderr).toBe(0)
@@ -92,11 +98,20 @@ describe('quiet-walk main-process instrument', () => {
     ]))
   })
 
-  test('the app turns accessory exactly once, at ready (moving it to will-finish-launching was tried on a real Mac and bought nothing)', () => {
+  // 用户正在用起走查的那个 App（Claude）时，macOS 放行 AppKit 原生的启动激活，JS 拦不到；能管的只有「许不许被激活」。
+  test('Mac: prohibited (cannot be activated) from will-finish-launching, back to accessory at ready; the app cannot change it', () => {
     const probe = runInstrumentProbe()
-    expect(probe.policyCallsBeforeReady).toBe(0)
-    expect(probe.nativeCalls.filter(([name]) => name === 'setActivationPolicy')).toEqual([['setActivationPolicy', ['accessory']]])
-    expect(probe.events.map((event) => event.type)).toContain('app.setActivationPolicy')
+    expect(probe.policyAt).toEqual({
+      loaded: [],
+      willFinishLaunching: ['prohibited'],
+      ready: ['prohibited', 'accessory'],
+      afterAppRequest: ['prohibited', 'accessory'],
+    })
+    expect(probe.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'app.setActivationPolicy', args: ['prohibited'] }),
+      expect.objectContaining({ type: 'app.setActivationPolicy', args: ['accessory'] }),
+      expect.objectContaining({ type: 'app.setActivationPolicy.requested', args: ['regular'] }),
+    ]))
   })
 
   test('foreground opt-in leaves window and app focus behavior real', () => {
@@ -104,7 +119,8 @@ describe('quiet-walk main-process instrument', () => {
     expect(probe.options).toEqual({ show: true, width: 10 })
     expect(probe.nativeCalls.map(([name]) => name)).toEqual(expect.arrayContaining(['show', 'focus', 'moveTop', 'app.focus', 'dock.bounce', 'dock.show']))
     expect(probe.nativeCalls).toEqual(expect.arrayContaining([['setOpacity', [1]], ['setIgnoreMouseEvents', [false]]]))
-    expect(probe.nativeCalls.map(([name]) => name)).not.toContain('setActivationPolicy')
+    // 放行了：仪表不碰激活策略，App 自己改的照真的走。
+    expect(probe.policyAt).toEqual({ loaded: [], willFinishLaunching: [], ready: [], afterAppRequest: ['regular'] })
     expect(probe.events.map((event) => event.type)).not.toContain('window.focus')
   })
 })

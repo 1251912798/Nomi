@@ -56,7 +56,7 @@
       "kind": "official-doc",
       "url": "https://www.electronjs.org/docs/latest/api/app",
       "checked_at": "2026-10-27",
-      "purpose": "确认 app.focus steal 和 accessory activation policy/Dock 语义；will-finish-launching 在 macOS 对应 NSApplication 的 applicationWillFinishLaunching，早于 ready。"
+      "purpose": "确认 app.focus steal 和 accessory / prohibited 激活策略与 Dock 语义（prohibited：不进 Dock、不许被激活）；will-finish-launching 在 macOS 对应 NSApplication 的 applicationWillFinishLaunching，早于 ready。"
     },
     {
       "kind": "official-doc",
@@ -92,7 +92,7 @@
   "invariants": [
     "普通走查构造的每扇 BrowserWindow 都以 show:false、屏外坐标和 focusable:false 创建；调用方需要显示时只走 showInactive。",
     "普通走查的每扇窗口全透明（opacity 0）且鼠标穿透：macOS 不认屏外坐标，会把窗口夹回主屏左缘留一条（真机实测 40px 宽、863px 高），showInactive 又把它排到别的窗口上面；App 自己的 setOpacity / setIgnoreMouseEvents 只记录、不生效。",
-    "Mac 上普通走查的 App 在 ready 切成 accessory（UIElement，不进 Dock、不进 Cmd-Tab），只切一次（第 2 轮试过提前到 will-finish-launching，系统照样先登记成 Foreground，没换来任何东西）。",
+    "Mac 上普通走查的 App 在 will-finish-launching 切 prohibited（BackgroundOnly，系统不许激活它）、ready 切回 accessory（UIElement，不进 Dock、不进 Cmd-Tab）；App 自己调 app.setActivationPolicy 只记录、不生效（第 3 轮方案 B）。",
     "普通走查中的 BrowserWindow.show/focus/moveTop、app.focus、Dock bounce、shell 外部打开、系统 Notification.show 和未替身原生 dialog 不得把控制权交给桌面。",
     "所有 launchNomiApp 开发版与打包版入口都经过同一 quiet-walk 注入；真实前台行为只能通过 foreground 声明和环境放行。",
     "Mac 普通走查期间最前应用 PID 不得等于走查 App PID；门岗按 lsappinfo 抽样并 fail-closed。",
@@ -120,7 +120,7 @@
     "before": 4,
     "after": 2
   },
-  "generality_proof": "所有已盘点的走查入口都汇聚到 launchNomiApp；开发版和打包版都由同一 mainRequire 组装。统一在该边界注入 quiet-walk，并在注入模块内包装 BrowserWindow/app/shell/Notification/dialog，调用方无法绕过默认安静策略；唯一例外是显式 foreground 声明且环境放行。 非隔离启动装不了仪表，由同一个 launchNomiApp 断言必须声明 foreground（不另写仪表）；仪表的放行位由 buildNomiLaunchEnv 按声明钉死，继承的环境变量不能让仪表整体失效；门岗的判红在进程退出前最后一步生效，走查自己的 process.exit 不能把它盖掉。 第 3 轮：原来自己 spawn Electron、自己拼 -r 和 process.env 的三处收进同一个 spawnQuietElectron（放行位钉死），扫描单测保证新写的直接 spawn 绕不开它；并行的屏外模块删掉，单测保证主进程走查仪表只有一份。",
+  "generality_proof": "所有已盘点的走查入口都汇聚到 launchNomiApp；开发版和打包版都由同一 mainRequire 组装。统一在该边界注入 quiet-walk，并在注入模块内包装 BrowserWindow/app/shell/Notification/dialog，调用方无法绕过默认安静策略；唯一例外是显式 foreground 声明且环境放行。 非隔离启动装不了仪表，由同一个 launchNomiApp 断言必须声明 foreground（不另写仪表）；仪表的放行位由 buildNomiLaunchEnv 按声明钉死，继承的环境变量不能让仪表整体失效；门岗的判红在进程退出前最后一步生效，走查自己的 process.exit 不能把它盖掉。 第 3 轮：原来自己 spawn Electron、自己拼 -r 和 process.env 的三处收进同一个 spawnQuietElectron（放行位钉死），扫描单测保证新写的直接 spawn 绕不开它；并行的屏外模块删掉，单测保证主进程走查仪表只有一份。 激活策略也收在仪表里：will-finish-launching 切 prohibited、ready 切回 accessory，App 自己改不动（只记录）。",
   "shared_boundaries": [
     {
       "path": "tests/ux/_launchApp.mjs",
@@ -318,8 +318,8 @@
     "系统层面来自用户手动点击 Dock、通知中心或其它 App 的激活不属于走查进程可控范围。",
     "依赖真焦点的走查（app-page-zoom、attention-sound、window-drag、windows-freeze-sweep、mcp-key-window）和非隔离入口默认按 125 跳过；要跑必须有人在场并带 NOMI_WALK_FOREGROUND_OK=1，nightly 只会把它们记成跳过。",
     "透明、穿透的走查窗口在 macOS 上仍排在主屏左缘那一条（看不见、点不着）；打开调度中心时可能多出一格空白窗口。透明 + 穿透只在 macOS / Windows 生效（Linux 的 setOpacity 是空操作，Linux 上只有 CI）。",
-    "Mac 上 App 从起进程到 ready 那约 0.5 秒登记为 Foreground（开发版 Electron.app 的 Info.plist 没有 LSUIElement，改不了），Dock 可能闪一下图标。",
-    "【未管住，停点】用户正在用的应用就是起走查的那个 App（Claude 桌面版：Claude Code、node、走查 Electron 都是它的子进程）时，走查 App 一登记完就被 macOS 激活成最前应用（lsappinfo listen 记到 BecameFrontmost，菜单栏仍归 Claude，键盘落空）：第 2 轮真机 3/3；用户在 Chrome 时 0/3。走查主进程没有任何聚焦调用（__nomiQuietWalk.events 只有 setActivationPolicy），激活来自 AppKit 原生的启动即激活，按 macOS 协作式激活只在发起启动的 App 正在最前时放行——JS 仪表拦不到。门岗当场判红（退出码 1）。怎么管（换掉起走查的责任进程 / prohibited 激活策略 / 只认门岗）交协调拍板。",
+    "Mac 上 App 从起进程到 will-finish-launching 那一小段仍登记为 Foreground（开发版 Electron.app 的 Info.plist 没有 LSUIElement，改不了），Dock 可能闪一下图标。",
+    "【第 3 轮方案 B 真机未验证】用户正在用起走查的那个 App（Claude 桌面版）时，macOS 放行 AppKit 原生的启动即激活，走查 App 一登记完就成为最前（第 2 轮真机 3/3，用户在 Chrome 时 0/3）。第 3 轮仪表改成 will-finish-launching 切 prohibited、ready 切回 accessory；验证要用户在 Claude 里试跑，按规矩等了 30 分钟（屏幕锁着），0 次，管没管住 unverified。管不住时下一步是变体（prohibited 留到第一扇窗口上屏后约 1 秒），再是换发起方（临时 LaunchAgent）。没管住时门岗当场判红（退出码 1）。",
     "产品 electron/backgroundLaunch.ts 的 backgroundWindowOptions() 把 backgroundThrottling 摊在 BrowserWindow 顶层，Electron 43.4.1 只认 webPreferences.backgroundThrottling：后台冷启那一档实际没关节流（产品问题，不在本轮范围，交协调）。",
     "只跑 _encryptFixtureKey.cjs 生成夹具密文的短命 Electron（tests/ux/agent-runtime-fixture.mjs、tests/ux/_mcpL2Fixture.mjs，scripts/lib/buildGateScan.mjs 的 NON_BUILD_SPAWNERS）不装 quiet-walk：它也是 Electron.app、会登记成前台应用，用户正在用起走查的 App 时同样可能被系统激活一下（门岗只盯 GUI 那一个 PID，看不见它）。"
   ],

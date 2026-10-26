@@ -22,8 +22,8 @@
 
 - 默认走查：窗口放屏外、不可聚焦、全透明（`opacity: 0`）、鼠标穿透；`show()` 转为 `showInactive()`，`focus()` / `moveTop()` 无动作，App 自己的 `setOpacity` / `setIgnoreMouseEvents` 只记录；`app.focus()`、Dock bounce、外部打开、系统通知只记录；未替身的原生对话框抛出「走查要先替身这个对话框」；`showErrorBox` 写主进程日志。
 - 为什么还要透明 + 穿透（第 2 轮真机发现）：macOS 不认屏外坐标，会把窗口夹回主屏可见区左缘（实测窗口落在 x=-1240、y=33、1280×863，主屏左边露出 40px 宽一条），`showInactive()` 又把它排到用户窗口上面。透明 + 穿透之后这一条看不见、点不着；窗口照旧算「显示中」（`isVisible()` 为真），不改成永不显示——task-center-states 的 `capturePage`、canvas-follow-hand 的躲光标都按可见窗口找。
-- Dock：Mac 上 App 在 `ready` 切 accessory。第 2 轮试过挪到 `will-finish-launching`（想省掉起进程到 `ready` 那约 0.5 秒的 `Foreground` 登记）：系统照样先登记成 `Foreground`，没换来任何东西，已改回 `ready`，单测钉住「只在 `ready` 切一次」。代价：那约 0.5 秒 Dock 可能闪一下图标。
-- **没管住的一条（第 2 轮真机发现，停点）**：用户正在用的应用就是起走查的那个 App（Claude 桌面版——Claude Code、node、走查的 Electron 都是它的子进程）时，走查 App 一登记完就被 macOS 激活成最前应用（`lsappinfo listen` 记到 BecameFrontmost；菜单栏仍归 Claude，用户的键盘落空），3 次里 3 次；用户在 Chrome 时 3 次里 0 次。走查主进程这边没有任何聚焦调用（`__nomiQuietWalk.events` 只有一条 setActivationPolicy），激活来自 AppKit 原生的「启动即激活」，按 macOS 的协作式激活规则，只在「发起启动的 App 正在最前」时放行。JS 仪表拦不到；门岗照样当场判红（退出码 1）。怎么管交协调拍板，见报告。
+- 激活策略（第 3 轮，方案 B）：Mac 上仪表在 `will-finish-launching`（AppKit 的 applicationWillFinishLaunching，早于启动即激活）切 `prohibited`（BackgroundOnly：不进 Dock，系统不许激活它），`ready` 切回 `accessory`（UIElement：窗口照常上屏，不进 Dock / Cmd-Tab）。App 自己调 `app.setActivationPolicy` 只记录、不生效，不然 prohibited 那一段会被它提前结束。起进程到 `will-finish-launching` 之间系统仍先登记成 `Foreground`（开发版 Electron.app 的 Info.plist 没有 LSUIElement，改不了），Dock 可能闪一下图标。单测钉住三个时刻：模块刚装上不切、`will-finish-launching` 只切 prohibited、`ready` 再切 accessory，App 自己要 `regular` 只进记录。
+- **启动即激活（第 2 轮真机发现；第 3 轮方案 B，真机未验证）**：用户正在用的应用就是起走查的那个 App（Claude 桌面版——Claude Code、node、走查的 Electron 都是它的子进程）时，走查 App 一登记完就被 macOS 激活成最前应用（第 2 轮 3 次里 3 次；用户在 Chrome 时 3 次里 0 次）。主进程这边没有任何聚焦调用，激活来自 AppKit 原生的启动即激活：LaunchServices 把父 App 推断成 Claude，Claude 在最前时系统放行。第 3 轮改成上面的激活策略（prohibited → accessory）；管没管住要用户在 Claude 里试跑才量得到，第 3 轮按规矩每分钟看一次、等了 30 分钟（10-27 04:50–05:20），最前一直是 loginwindow（屏幕锁着），0 次试跑，结论 unverified。管不住时按方向检查往下走：先试变体（prohibited 留到第一扇窗口上屏后约 1 秒再切 accessory，要核窗口可见、页面 `visible`、截图不空白），再上 A（Mac 上经临时 LaunchAgent 起，换掉发起方）。门岗照样当场判红（退出码 1），当量具。
 - 前台声明缺失放行变量：不启动 Electron，打印「未跑：这条走查需要前台，会打扰正在用电脑的人」，退出码 125。
 - 前台声明并显式放行：窗口/应用前台动作恢复真实行为，仍保留外部打开、通知和未替身对话框的安静边界；门岗不把这条走查判成抢前台。
 - 门岗发现普通走查抢前台：记录时间、PID、应用类型；在进程 `'exit'` 回调里把退出码钉成 1——走查结尾自己 `process.exit(0)` 或 `exit(125)` 都盖不掉，其它非零红码保留走查自己的；不杀用户进程。
@@ -41,9 +41,9 @@
 
 验收清单（实现线先跑，验收线逐项复核）：
 
-1. 反例：去掉 `show()` → `showInactive()` 替换，单测必须红；保留替换时单测绿。去掉透明 + 穿透、去掉 `setOpacity` / `setIgnoreMouseEvents` 两扇门的包装、把切 accessory 挪离 `ready` 或干脆不切，各自的单测也必须红。
+1. 反例：去掉 `show()` → `showInactive()` 替换，单测必须红；保留替换时单测绿。去掉透明 + 穿透、去掉 `setOpacity` / `setIgnoreMouseEvents` 两扇门的包装，各自的单测也必须红（激活策略的反例见第 16 条）。
 2. 反例：去掉前台 PID 相等判定，门岗单测必须红；PID 不相等时单测绿。
-3. 主进程假 Electron：构造选项含 `show:false`、屏外坐标、`focusable:false`、`opacity:0`；调用 `show()` 只触发 `showInactive()`；仪表自己调一次 `setOpacity(0)` / `setIgnoreMouseEvents(true)`，App 后来的改动只进记录；`will-finish-launching` 时不切、`ready` 时切 accessory。
+3. 主进程假 Electron：构造选项含 `show:false`、屏外坐标、`focusable:false`、`opacity:0`；调用 `show()` 只触发 `showInactive()`；仪表自己调一次 `setOpacity(0)` / `setIgnoreMouseEvents(true)`，App 后来的改动只进记录；`will-finish-launching` 切 prohibited、`ready` 切 accessory（第 3 轮），App 自己改激活策略只进记录。
 4. `app.focus`、Dock `bounce`、`shell.openExternal/openPath/showItemInFolder`、`Notification.show` 只进记录数组且不调用原方法。
 5. 原生对话框未替身抛出固定中文错误；`electronApp.evaluate()` 替身后调用走替身；`showErrorBox` 不开窗口而写日志。
 6. `foreground` 没有 `NOMI_WALK_FOREGROUND_OK=1` 时不调用 Electron 启动；有放行变量时允许启动。
@@ -72,6 +72,7 @@
 13. 直接 spawn Electron 的三处经 `spawnQuietElectron`。反例：去掉子进程环境里的放行位钉死，单测红（终端 export 的 `1` 漏进子进程）；把任一处改回自己 `spawn(require('electron'), ['-r', <仪表>, …])`，扫描单测红。
 14. `evals/loop/appBridge.mjs`：没放行时 `resolveModels` / `modelLabels` / `textAvailable` 不读真实 catalog、答「没配」；`chatText` / `chatVision` / `genImage` 读 catalog 之前按 125 退出、不起 App（单测换掉 `readRealCatalog` 和 `launchNomiApp` 数调用次数）。反例：去掉可用性探测前的放行判断、或去掉发请求前的放行判断，单测红。
 15. 文档：`docs/release-process.md` 的 Windows 卡顿巡检命令带上 `NOMI_WALK_FOREGROUND_OK=1`（PowerShell 写法另注）；`docs/engineering-rules.md` 写 `ui-driver.mjs` 的地方写明它默认开真实资料、要带放行变量。
+16. 激活策略（方案 B）：单测钉住三个时刻（模块刚装上不切；`will-finish-launching` 只切 prohibited；`ready` 再切 accessory；App 自己要 `regular` 只进记录）。反例，各自拿掉后单测必须红：去掉 prohibited、把 prohibited 挪到 `ready`、去掉 `ready` 的 accessory、让 App 自己的 `setActivationPolicy` 照真的走。真机：用户在 Claude 里（试跑前 `lsappinfo front` 是 Claude、`vm.loadavg` 第二个数 < 10）J04、library-layout 各跑一次，四份量具（门岗收尾行、外部 `lsappinfo` 抽样、CGWindowList 窗口元数据、`lsappinfo listen`）里走查 App 成为最前 0 次才算管住；管住了再在用户用别的 App 时各跑一次，确认没回退。第 3 轮实测：等了 30 分钟用户不在 Claude 里（屏幕锁着），0 次试跑，unverified。
 
 自验命令与回滚：单测、改动文件 ESLint、`check-e2e-launch`、`check-walkthroughs`、`check-file-sizes`、`git diff --check`、`check-root-cause-contracts`、`check-concept-owners`、推送前快检及三条真机走查。回滚为在任务分支上 `git revert <实现提交>`；不改用户资料、不推送、不合并。
 

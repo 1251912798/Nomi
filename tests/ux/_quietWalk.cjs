@@ -89,23 +89,25 @@ const app = electron.app
 const quietApp = new Proxy(app, {
   get(target, key) {
     if (key === 'focus' && !ALLOW_FOREGROUND) return (...args) => { record('app.focus', args); return undefined }
-    if (key === 'setActivationPolicy' && !ALLOW_FOREGROUND && process.platform === 'darwin' && typeof target.setActivationPolicy === 'function') return (...args) => {
-      record('app.setActivationPolicy', ['accessory', ...args])
-      return target.setActivationPolicy('accessory')
-    }
+    // 激活策略归仪表管（下面那两步）：App 自己改只记录，不然 prohibited 那一段会被它提前结束。
+    if (key === 'setActivationPolicy' && !ALLOW_FOREGROUND && process.platform === 'darwin') return (...args) => { record('app.setActivationPolicy.requested', args); return undefined }
     if (key === 'dock') return quietDock(target.dock)
     const value = Reflect.get(target, key, target)
     return typeof value === 'function' ? value.bind(target) : value
   },
 })
 
-// 在 ready 切 accessory。真机试过提前到 will-finish-launching：系统照样先把 App 登记成 Foreground（Dock 那一下没省掉），
-// 用户正在用的是起走查的那个 App（Claude）时照样被系统激活成最前——没换来任何东西，所以留在 ready。
-// 这条「启动即激活」是 AppKit 原生层的，JS 拦不到，见 docs/plan/2026-10-27-walk-quiet.md ★4。
+// macOS 的「启动即激活」：走查从 Agent 的进程链起（Claude 桌面版 → Claude Code → … → node → Electron），LaunchServices
+// 把父 App 推断成 Claude，Claude 在最前时系统放行 AppKit 原生的启动激活——主进程这边一个聚焦调用都没有，JS 拦不到。
+// 能管的只有「这个 App 许不许被激活」：will-finish-launching（AppKit 的 applicationWillFinishLaunching，早于启动激活）
+// 切 prohibited（BackgroundOnly：不进 Dock，系统不许激活它），ready 切回 accessory（UIElement：窗口照常上屏，不进 Dock / Cmd-Tab）。
+// 见 docs/engineering/direction-checks/2026-10-27-walk-quiet-r3.md。
+function setActivationPolicy(policy) {
+  try { app.setActivationPolicy(policy); record('app.setActivationPolicy', [policy]) } catch (error) { record('app.setActivationPolicy.error', [policy, String(error?.message ?? error)]) }
+}
 if (!ALLOW_FOREGROUND && process.platform === 'darwin') {
-  app.once('ready', () => {
-    try { app.setActivationPolicy('accessory'); record('app.setActivationPolicy', ['accessory']) } catch (error) { record('app.setActivationPolicy.error', [String(error?.message ?? error)]) }
-  })
+  app.once('will-finish-launching', () => setActivationPolicy('prohibited'))
+  app.once('ready', () => setActivationPolicy('accessory'))
 }
 
 app.on?.('browser-window-created', (_event, win) => patchWindow(win))
