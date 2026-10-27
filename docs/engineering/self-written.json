@@ -123,6 +123,10 @@
       "reason": "MCP 工具结果的内容：一次制作发出了哪几镜、停在哪、没发的还能不能继续、进度起步那一句——按镜头花钱的领域事实（协议与传输另在 mcp* 自写登记里）"
     },
     {
+      "path": "electron/capabilityCore/assetImport*",
+      "reason": "素材领域的导入路由：capability / MCP 的 asset.import 落到唯一的本地导入写路 importLocalFile（项目会话、导入请求的中止与转码收尾）；素材是 Nomi 的领域本身。从 dispatcher.ts 体外移出（体积冻结上限），不是新能力"
+    },
+    {
       "path": "electron/shared/agentCapabilities/",
       "reason": "能力契约与动词：画布 / 文稿 / 时间轴 / 生成的领域读写、审批语义"
     },
