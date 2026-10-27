@@ -32,7 +32,7 @@
 | 预测 | 怎么验证 |
 |---|---|
 | 下一次任何门岗被超时 / 手动 SIGKILL，又留下一份带随机后缀的 `nomi-*` 目录，没有任何进程会来收 | 小驱动用真的 `runNode` 杀一个 `makeTempDir` 之后挂住的进程：旧助手实测留下目录（`/Users/aoqimin/Nomi-coord/tmp/I-test-tmp-leak/mini-driver.mjs`，修前 `leftover: ["nomi-prepush-kbsAIA"]`）；`node scripts/door-map.mjs killProcessTree --roots=scripts,tests,evals --include-tests` 另有 5 个杀进程树的入口（`git-delivery.mjs:68`、`daily-radar-session.mjs:82`、`lib/nomiClient.mjs:133`、`tests/ux/memory.e2e.mjs` 两处），它们杀的进程树里要是有 `makeTempDir` 的创建者，同样漏 |
-| 新加的走查 / 测试照旧会绕开分配口，因为门岗看不见它们 | 在 `tests/ux/` 下放一个文件名不带 `.walk` 的辅助文件、一个 `.cjs`、一个 `.mts`（别名）、一个 `process.env.TMPDIR` 写法：旧 `check-test-temp-static.node-test.mjs` 14 条全绿（本线修前实测，见设计卡 ★9 B⑧） |
+| 新加的走查 / 测试照旧会绕开分配口，因为门岗看不见它们 | 在 `tests/ux/` 下放一个文件名不带 `.walk` 的辅助文件、一个 `.cjs`、一个 `.mts`（别名）、一个 `process.env.TMPDIR` 写法：旧 `check-test-temp-static.node-test.mjs` 14 条全绿（本线修前实测：四个探针文件同时放进工作树跑旧门岗，全绿，随后删掉；新门岗对应的红绿证明是设计卡 ★9 B⑧） |
 | 同形的泄漏在别的根继续出：产品侧 `electron/assets/localFileImport.ts:163`（用户机器上 GB 级）、vitest 的 `nomi-vitest-run-*`、`evals/` 的 10 个文件 / 19 处（本线语法树只读扫描；`electron/` + `src/` 另有 332 个文件 / 457 处，绝大多数是落在 vitest 运行根里的测试夹具） | `grep -rn "mkdtemp" electron scripts tests src evals`；本卡把前两者列为残余风险，产品侧等 #14 合入后另派 |
 
 ## 4. 靶子独立性检查
