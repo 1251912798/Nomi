@@ -9,8 +9,12 @@
 // 2026-10-27 起首启第一件事还验开屏「跳过」（中英三轨各一次，都是真首启）：开屏出现时「跳过」中心的最上层就是它自己、
 // 真点一下（不 force）开屏关掉、项目库出现。起因：开屏手写 z-[60]，顶栏取 Mantine 默认 100，「跳过」被顶栏压住点不到；
 // 此前这条走查和十来条别的走查都经 dismissSplashIfPresent 的 DOM click 兜底点掉它，所以一直是绿的。
-// 注意这里量的是 DOM 命中；真用户点击还要过系统拖拽带 / Windows 原生三键区那一关（CDP 合成点击绕过它，见
-// tests/ux/director-windowbar.walk.mjs 头注），所以几何那几项只打印、不判——怎么摆由协调拍板（设计卡「待拍板」）。
+// 2026-10-28 协调拍板方案 B（设计卡「协调 10-28 定 B」）：开屏仍整屏（层级走刻度 applicationModal，盖住顶栏），「跳过」挪到 40px
+// 顶栏带外。DOM 命中只是一半——真用户点击还要过系统拖拽带 / Windows 原生三键区那一关（CDP 合成点击绕过它，见
+// tests/ux/director-windowbar.walk.mjs 头注），所以几何三项是硬断言：中心点系统视角不是拖拽区、与 40px 带重叠 = 0、
+// 不落在 Windows 原生三键区（推算，未在 Windows 实测）；外加「开屏整屏」一项（顶栏带的采样点全命中开屏）。
+// 每一组断言在同一次运行内都有对照（运行时改样式，不动源码），证明它们不恒真：开屏压到 z-60 → 整屏一项必须翻红（顶栏压到开屏上面；
+// 「跳过」在带外，层级退回去也盖不住它，所以层级的守卫落在「整屏」而不是「跳过命中」）；「跳过」挪回老位置 top 28px → 重叠与三键区两项必须翻红。
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -50,6 +54,9 @@ async function measureSplashSkip(win) {
     for (const { value, box } of regions) {
       if (box.width > 0 && box.height > 0 && cx >= box.left && cx < box.right && cy >= box.top && cy < box.bottom) centerStatus = value
     }
+    // 顶栏带（40px）里每 40px 取一点：开屏整屏时全命中开屏；顶栏压在开屏上面时命中顶栏。
+    const bandHits = []
+    for (let x = 20; x < window.innerWidth; x += 40) bandHits.push(Boolean(document.elementFromPoint(x, 20)?.closest('.nomi-splash')))
     const label = hit?.getAttribute('aria-label')
     return {
       present: true,
@@ -59,11 +66,13 @@ async function measureSplashSkip(win) {
       centerStatus,
       overlapBand: Math.max(0, Math.min(rect.bottom, 40) - Math.max(rect.top, 0)),
       inWindowsCaptionZone: rect.left >= window.innerWidth - 138 && rect.top < 40,
+      bandCovered: bandHits.filter(Boolean).length,
+      bandSamples: bandHits.length,
     }
   })
 }
 
-// 首启开屏：先于一切别的断言。三步——命中、真点、项目库出现；中间夹两条同一次运行内的对照（证明断言不恒真）。
+// 首启开屏：先于一切别的断言。命中、几何三项、整屏、真点、项目库出现；中间夹同一次运行内的阳性对照（证明断言不恒真）。
 async function assertSplashSkipReachable(win, tag, lang) {
   const skip = win.locator('[data-splash-skip="true"]')
   await skip.waitFor({ state: 'visible', timeout: stationTimeout() })
@@ -74,17 +83,34 @@ async function assertSplashSkipReachable(win, tag, lang) {
   }, undefined, { timeout: stationTimeout() })
   const asIs = await measureSplashSkip(win)
   check(`[${lang}] 开屏出现时「跳过」中心最上层就是按钮自己`, asIs.isSkip, `命中=${asIs.hit}，按钮 ${asIs.rect}`)
-  console.log(`    几何（只打印、不判，待拍板）：中心系统视角=${asIs.centerStatus} · 与 40px 顶栏带重叠 ${asIs.overlapBand}px · 落在 Windows 原生三键区(推算，未在 Windows 实测)=${asIs.inWindowsCaptionZone}`)
+  // 几何三项：真用户点击要过的那一关，CDP 合成点击量不到，只能量几何。
+  check(`[${lang}] 几何：「跳过」中心点系统视角不是拖拽区（${asIs.centerStatus}）`, asIs.centerStatus !== 'drag', `按钮 ${asIs.rect}`)
+  check(`[${lang}] 几何：「跳过」与 40px 顶栏带重叠 = 0`, asIs.overlapBand === 0, `重叠 ${asIs.overlapBand}px，按钮 ${asIs.rect}`)
+  check(`[${lang}] 几何：「跳过」不落在 Windows 原生三键区（推算，未在 Windows 实测）`, !asIs.inWindowsCaptionZone, `inWindowsCaptionZone=${asIs.inWindowsCaptionZone}`)
+  // 开屏整屏（方案 B：盖住顶栏，不是让开顶栏）：顶栏带的采样点全命中开屏，动画没被顶栏切。
+  check(`[${lang}] 开屏整屏：顶栏带 ${asIs.bandSamples} 个采样点全命中开屏（没被顶栏切）`, asIs.bandSamples > 0 && asIs.bandCovered === asIs.bandSamples, `${asIs.bandCovered}/${asIs.bandSamples}`)
   await screenshotSettled(win, { path: path.join(shotsDir, `${tag}-${lang}-splash.png`) })
 
-  // 对照（同一次运行内，运行时改内联 z-index，不动源码）：压到 60，命中必须翻成别的元素；抬到 9000，命中回到按钮。
+  // 对照 1（同一次运行内，运行时改内联 z-index，不动源码）：开屏压到 60，顶栏就压到开屏上面——顶栏带的采样点必须翻成别的元素（整屏断言翻红）。
+  // 注意「跳过」本身的命中不会翻：方案 B 把它挪到了带外（y ≥ 48，顶栏只有 40px 高），层级退回去也盖不住它，只是动画被顶栏切掉一条。
+  // 这一点是 B 的收益，也是为什么层级的守卫要落在「整屏」这一项上，而不是「跳过命中」那一项。
   await win.evaluate(() => { document.querySelector('.nomi-splash').style.zIndex = '60' })
   const lowered = await measureSplashSkip(win)
-  check(`[${lang}] 阳性对照：开屏压到 z-60，「跳过」被别的元素盖住（断言不恒真）`, !lowered.isSkip, `命中=${lowered.hit}`)
-  await win.evaluate(() => { document.querySelector('.nomi-splash').style.zIndex = '9000' })
-  const raised = await measureSplashSkip(win)
-  check(`[${lang}] 对照：开屏抬到 z-9000，「跳过」命中回到按钮（DOM 命中只取决于层级）`, raised.isSkip, `命中=${raised.hit}`)
+  check(`[${lang}] 阳性对照：开屏压到 z-60，顶栏压到开屏上面、顶栏带不再全是开屏（断言不恒真）`, lowered.bandSamples > 0 && lowered.bandCovered < lowered.bandSamples, `顶栏带命中开屏 ${lowered.bandCovered}/${lowered.bandSamples}；「跳过」命中=${lowered.hit}（在带外，不受层级影响）`)
   await win.evaluate(() => { document.querySelector('.nomi-splash').style.zIndex = '' })
+  // 对照 2：「跳过」挪回老位置（原 top-7 = 28px），重叠与三键区两项必须翻红。中心系统视角这一项在 Mac 当前布局下翻不了
+  // （右上图标簇是 no-drag，把老位置整块罩住，碰巧不是拖拽区），所以它守的是将来图标簇变窄的情形，对照里不测它。
+  const originalTop = await win.evaluate(() => {
+    const el = document.querySelector('[data-splash-skip="true"]')
+    const before = el.style.top
+    el.style.top = '28px'
+    return before
+  })
+  const movedBack = await measureSplashSkip(win)
+  check(`[${lang}] 阳性对照：「跳过」挪回老位置 top 28px，与顶栏带重叠 > 0 且落进三键区（断言不恒真）`, movedBack.overlapBand > 0 && movedBack.inWindowsCaptionZone, `重叠 ${movedBack.overlapBand}px，三键区=${movedBack.inWindowsCaptionZone}`)
+  await win.evaluate((top) => { document.querySelector('[data-splash-skip="true"]').style.top = top }, originalTop)
+  const restored = await measureSplashSkip(win)
+  check(`[${lang}] 对照撤掉后恢复：「跳过」回到带外、命中是按钮自己`, restored.isSkip && restored.overlapBand === 0 && restored.bandCovered === restored.bandSamples, `重叠 ${restored.overlapBand}px，命中=${restored.hit}`)
 
   // 真点（Playwright 会做命中检查，被盖住会超时；不 force）。
   let clicked = true
