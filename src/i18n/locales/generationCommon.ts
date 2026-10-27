@@ -1479,10 +1479,6 @@ export const zhGenerationCommon = {
     runDetails: {
       stages: '阶段进度',
       stageCount: '{{completed}} / {{total}} 个阶段已完成',
-      authorized: '已授权',
-      reserved: '已预留',
-      actual: '已结算',
-      unsettled: '待结算',
       skills: '已加载技能',
       noSkills: '未记录技能证据',
       updatedAt: '最近更新',
@@ -3191,10 +3187,6 @@ export const enGenerationCommon = {
     runDetails: {
       stages: 'Stage progress',
       stageCount: '{{completed}} / {{total}} stages done',
-      authorized: 'Authorized',
-      reserved: 'Reserved',
-      actual: 'Settled',
-      unsettled: 'Unsettled',
       skills: 'Loaded skills',
       noSkills: 'No skill evidence recorded',
       updatedAt: 'Last updated',
