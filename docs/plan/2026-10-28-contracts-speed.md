@@ -35,7 +35,7 @@
 | 11 个测试文件 | `pre-push-contracts.node-test.mjs` 26 条用例**合计 888.9 秒**（= 整条命令 898 秒的 99%）；其余 10 个文件在最初十来秒内跑完 |
 | 克隆 + 检出 + 收尾 | ≤ 9 秒（898 − 889） |
 
-这 26 条里（CI 秒）：改了代码的真入口运行 10 条（11 次钩子运行）**832.0 秒（93.6%）**，每次 38.99–165.81；只改文档的 9 条各约 4.5、合计约 41；立刻返回的 5 条 < 0.5；tsc 探针 15.8；超时用例 3 条各 1.5。
+这 26 条里（CI 秒）：改了代码的真入口运行 10 条（11 次钩子运行）**832.0 秒（93.6%）**，每次 38.99–165.81；只改文档的 7 条（9 次运行，每次约 4.5）合计 35.6；立刻返回的 5 条合计 1.0；tsc 探针 15.8；超时用例 3 条各 1.5。
 
 | 用例（旧） | CI 秒 | 改了什么 |
 |---|---|---|
@@ -68,11 +68,11 @@
 | `git checkout`（整仓检出，~0.87G） | 1 | 5.12 | 1.9% |
 | `git reset --hard` | 22 | 2.08 | 0.8% |
 | `git add` + `git commit` | 21 + 21 | 1.40 + 0.71 | 0.8% |
-| 钩子真入口（`spawnSync pre-push-contracts.mjs`） | 31 | **260.5** | **95.3%** |
+| 钩子真入口（`spawnSync pre-push-contracts.mjs`） | 31 | **260.5** | **95.2%** |
 | 　其中改了代码的重运行 | 11 | **242.1** | 88.5% |
 | 　其中只改文档 / 立刻返回 | 20 | 18.3 | 6.7% |
 
-→ 任务书的线索「检出太大」不成立：克隆 + 检出 + reset + 提交加起来 8.4 秒（3%）；「文件头注释写稀疏检出、代码里没有」属实，但就算真做了也省不到 5 秒。大头是 11 次重运行。
+→ 任务书的线索「检出太大」不成立：克隆 + 检出 + reset + 提交加起来 9.4 秒（3.4%）；「文件头注释写稀疏检出、代码里没有」属实，但就算真做了也省不到 5 秒。大头是 11 次重运行。
 
 11 次重运行（本机秒，括号里是该次最慢的几道门）：必红 filesize 38.3（冷：typecheck 37.8）· ipc 13.6 · 分离 HEAD 18.8 · 推 tag 18.0 · temp-helper 38.1（check:walkthroughs 37.4）· vocabularies 25.0 · store-lifetime 23.5 · census 红 12.5 + 转绿 23.4 · pre-push-structure 14.7 · build 脚本 16.2。这 11 次里各门耗时之和 1050.6 秒，最贵的几道：`check:test-waits` 145.5（每次 ~13，扫全部测试文件语法树，与改了什么无关）· `test:scan-guards` 137.9 · `typecheck` 128.8（8 次）· `check:walkthroughs` 62.7 · `test:related` 60.2 · `check:tokens` 59.3 · `check:vocabularies` 56.1。每一次只为断言其中**一道**门红了或绿了。
 
@@ -121,7 +121,7 @@ S1 的 stderr 拿去对七条用例里全部 12 条 `match` 正则（取自测�
 
 **已知坑**：① 合成一次运行会让「别的探针替它选中那道门」→ 第一条护栏单独核；② 同一道门的两种不同的红证明不能共用一次运行（会互相替）→ 写在 `RED_PROBES` 注释里；③ 合成的红证明里除了各用例点名的门，还会多出别的红（`check:self-written`、`test:related`），没有用例断言它们——要断言某道门的绿，放进 `GREEN_PROBES`；④ 重门岗本身变慢（typecheck 107 秒……）不在本单，次数已压到 4 次；⑤ CI 机器同一类代码上下浮动 ±25%，所以对比口径看 `check:claude-hooks` 这一行和逐条用例耗时，不只看 job 总时长。
 
-**真实任务**（真仓库、真钩子、真 CI 日志，不是合成夹具）：① 本机经锁真跑 `pnpm run check:claude-hooks`：旧版（基线测试文件的搬家副本）与新版在同一棵树、同一个 HEAD 上交错各 ≥ 2 次；② 协调推送后读 CI 的 Contracts job 与 `✅ check:claude-hooks (N s)`；③ 本 PR 自己的推送前快检（`NOMI_PR_BODY_FILE=.tmp-pr-body.md node scripts/pre-push-contracts.mjs`）退出码 0。
+**真实任务**（真仓库、真钩子、真 CI 日志，不是合成夹具）：① 本机经锁真跑 `pnpm run check:claude-hooks`：改前 2 次（基线 HEAD 上带计时预加载 1 次，即上表；同一棵树同一个 HEAD 上用基线测试文件的搬家副本再 1 次）、改后 2 次，后三次在同一次持锁里交错（新 → 旧 → 新）；② 协调推送后读 CI 的 Contracts job 与 `✅ check:claude-hooks (N s)`；③ 本 PR 自己的推送前快检（`NOMI_PR_BODY_FILE=.tmp-pr-body.md node scripts/pre-push-contracts.mjs`）退出码 0。
 
 **指标**（目标 → 信号 → 指标，每个点名量具）：
 - 主：Contracts 不再撞 30 分钟 → `check:claude-hooks` 墙钟 → CI 上 898.5 秒降到 ≤ 550 秒（−39% 以上），Contracts job ≤ 23 分钟。量具：CI 日志行 `✅ check:claude-hooks (N s)` 与 job 起止时间（协调推送后读）；本机 `pnpm run check:claude-hooks` 经锁，`/usr/bin/time -l` 的墙钟与 user+sys。基线：CI 898.5 s；本机 280 s / CPU 1511.7 s。预测（CPU 比例法：重运行 11 → 4，CPU 由约 1380 降到约 650 + 非重运行约 130）：CPU 约降一半，CI ≈ 450–550 s。
@@ -165,7 +165,7 @@ S1 的 stderr 拿去对七条用例里全部 12 条 `match` 正则（取自测�
 
 1. 断言一字不动：基线版本（`git show 889255e98:scripts/pre-push-contracts.node-test.mjs`）与新版里所有含 `assert.` 的行（去首尾空白）按多重集比对：旧断言行（81 条）被删或被改 = 0；新增 = 4 条（合成运行里 `files` 与实际改动同源 1、第一条护栏 2、预算护栏 1）。
 2. `pnpm run check:claude-hooks` 退出码 0：`ℹ tests 233`、`pass 233`、`fail 0`、`skipped 0`、`cancelled 0`（基线 231 条 + 2 条新护栏）。
-3. 本机耗时：同一棵树、同一个 HEAD 上，旧版（基线测试文件的搬家副本，只改 import 路径与 `repoRoot`）与新版交错（新 → 旧 → 新）各 ≥ 2 次，贴墙钟、user+sys CPU、起止负载；基线 HEAD 上带计时预加载的一次（上表）作为第三个「改前」。
+3. 本机耗时：改前 2 次、改后 2 次，贴墙钟、user+sys CPU、起止负载。改前 = 基线 HEAD 上带计时预加载的一次（上表）+ 同一棵树同一个 HEAD 上跑基线测试文件的搬家副本（只改 import 路径与 `repoRoot`）一次；改后 = 新版两次；后三次在同一次持锁里交错（新 → 旧 → 新），唯一的变量是那一个测试文件。
 4. 新版带计时预加载跑一次：选中整套重门岗的钩子运行恰为 4 次（合成的红证明 1、合成的转绿证明 1、分离 HEAD 1、新 tag 1）；各阶段（克隆 / 检出 / reset / 提交 / 钩子）分项。
 5. B 表反例全部真红，按字节还原后回绿（还原后的树 hash 与任务分支一致）。
 6. `pnpm run gates` 退出码 0（自己拿锁，不再套）；推送前快检 `NOMI_PR_BODY_FILE=.tmp-pr-body.md node scripts/pre-push-contracts.mjs`（经锁）退出码 0，最后几行贴报告；`.tmp-pr-body.md` 过 `pnpm run check:pr-judgement`。
