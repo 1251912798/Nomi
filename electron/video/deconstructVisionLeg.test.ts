@@ -51,7 +51,7 @@ async function run(payloadExtra: Record<string, unknown>) {
   const authorizeSpend = vi.fn(async (_plan: DeconstructSpendPlan) => "grant-1" as string | null);
   const result = await deconstructVideo(
     { videoUrl: "nomi-local://asset/p/v.mp4", projectId: "p", framesPerShot: 1, ...payloadExtra } as never,
-    { authorizeSpend },
+    { authorizeSpend, signal: new AbortController().signal },
   ).catch((error: unknown) => error as Error);
   return { result, authorizeSpend };
 }

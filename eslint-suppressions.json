@@ -981,11 +981,6 @@
       "count": 1
     }
   },
-  "tests/ux/_textTasksSteps.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "tests/ux/_walkInstances.mjs": {
     "no-empty": {
       "count": 1
@@ -2278,11 +2273,6 @@
     }
   },
   "tests/ux/video-clip-direct.walk.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "tests/ux/video-deconstruct.e2e.mjs": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
