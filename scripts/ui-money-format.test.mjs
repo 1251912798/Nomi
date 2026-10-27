@@ -1,6 +1,7 @@
 // 界面不印金额的三道保险（方向检查 docs/engineering/direction-checks/2026-10-27-ui-money-amounts.md）：
 // ① 反例必红、正例必绿：选择器认写法（语法树），删之前的任务中心「制作详情」原文件必须红；
 // ② 全仓普查：同一组选择器扫 src，命中只许出现在出口名单里，且每个文件的处数等于名单记的数（只减不增，少了也红）；
+//    货币格式化函数的 import 名单与 src 里真实 import 它的文件逐一相等（出口删了，放行位同提交删）；
 // ③ 接线：仓库 eslint 配置在名单外的真实路径上报 ui-money/*，出口文件不报；货币格式化函数只许名单里的文件 import。
 import fs from 'node:fs'
 import path from 'node:path'
@@ -12,6 +13,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import {
   FORMAT_MONEY_IMPORTERS,
+  FORMAT_MONEY_IMPORT_PATTERN,
   FORMAT_MONEY_MODULE,
   MONEY_FORMAT_EXITS,
   MONEY_FORMAT_SELECTORS,
@@ -21,22 +23,29 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 /** 删之前的 src/workbench/production/ProductionDetails.tsx 原文（2026-10-27 删掉四个金额格之前那一版）。 */
 const BEFORE_DETAILS = fs.readFileSync(path.join(root, 'scripts/fixtures/ui-money/ProductionDetails.before.tsx.txt'), 'utf8')
 
-// 只开这一条规则、不读仓库配置的计数器：出口名单里的文件也照数（同 canvas-store-subscriptions.test.mjs 的做法）。
+// 只开这两条规则、不读仓库配置的计数器：出口名单里的文件也照数（同 canvas-store-subscriptions.test.mjs 的做法）。
+// import 那条用的就是 eslint.config.mjs 里那一个 pattern：普查与 lint 同一个判据。
 const counter = new ESLint({
   cwd: root,
   overrideConfigFile: true,
   overrideConfig: {
     files: ['**/*.{ts,tsx}'],
     languageOptions: { parser: tseslint.parser, parserOptions: { ecmaFeatures: { jsx: true } } },
-    rules: { 'no-restricted-syntax': ['error', ...MONEY_FORMAT_SELECTORS] },
+    rules: {
+      'no-restricted-syntax': ['error', ...MONEY_FORMAT_SELECTORS],
+      'no-restricted-imports': ['error', { patterns: [FORMAT_MONEY_IMPORT_PATTERN] }],
+    },
   },
 })
-async function moneyHits(source, filePath) {
+/** 一个文件里：金额写法几处、import 货币格式化函数几处。 */
+async function scan(source, filePath) {
   const [result] = await counter.lintText(source, { filePath })
   const fatal = result.messages.find((message) => message.fatal)
   if (fatal) throw new Error(`${path.relative(root, filePath)} 解析失败，普查会漏数：${fatal.message}`)
-  return result.messages.filter((message) => message.ruleId === 'no-restricted-syntax').length
+  const hits = (ruleId) => result.messages.filter((message) => message.ruleId === ruleId).length
+  return { money: hits('no-restricted-syntax'), imports: hits('no-restricted-imports') }
 }
+const moneyHits = async (source, filePath) => (await scan(source, filePath)).money
 const probe = (source) => moneyHits(source, path.join(root, 'src/workbench/uiMoneyProbe.tsx'))
 
 describe('写法：金额格式化上屏必红，非金额必绿', () => {
@@ -107,16 +116,28 @@ function sourceFiles(dir) {
 }
 
 describe('普查：现存金额只在出口名单里，只减不增', () => {
+  /** 一趟解析记两本账：文件 → 金额写法处数；import 了货币格式化函数的文件。 */
+  const census = { money: {}, importers: [] }
   // 全 src 逐个解析：2026-10-27 本机 1632 个文件约 6 秒，满载的机器上可能翻几倍，放宽到 120 秒（只放宽，不缩短）。
-  it('src 下每个文件的命中处数与出口名单逐一相等，名单外 0 处', async () => {
-    const actual = {}
+  beforeAll(async () => {
     for (const file of sourceFiles(path.join(root, 'src'))) {
-      const count = await moneyHits(fs.readFileSync(file, 'utf8'), file)
-      if (count > 0) actual[path.relative(root, file).replaceAll(path.sep, '/')] = count
+      const hits = await scan(fs.readFileSync(file, 'utf8'), file)
+      const relative = path.relative(root, file).replaceAll(path.sep, '/')
+      if (hits.money > 0) census.money[relative] = hits.money
+      if (hits.imports > 0) census.importers.push(relative)
     }
-    const expected = Object.fromEntries(Object.entries(MONEY_FORMAT_EXITS).map(([file, exit]) => [file, exit.count]))
-    expect(actual).toEqual(expected)
   }, 120_000)
+
+  it('src 下每个文件的命中处数与出口名单逐一相等，名单外 0 处', () => {
+    const expected = Object.fromEntries(Object.entries(MONEY_FORMAT_EXITS).map(([file, exit]) => [file, exit.count]))
+    expect(census.money).toEqual(expected)
+  })
+
+  // 名单只拦「名单外的文件 import」，不管「名单里的文件还在不在 import」：出口删了、放行位还留着，
+  // 下次有人顺手 import 回来 lint 不报（2026-10-27 删 Agent 面板任务卡那一位时补的这条对账）。
+  it('货币格式化函数的 import 名单与 src 里真实 import 它的文件逐一相等（名单外 0 处，名单里不再 import 的 0 处）', () => {
+    expect([...census.importers].sort()).toEqual(Object.keys(FORMAT_MONEY_IMPORTERS).sort())
+  })
 
   it('名单里的文件都还在，各自写清印的是什么', () => {
     for (const [file, exit] of Object.entries(MONEY_FORMAT_EXITS)) {
