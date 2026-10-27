@@ -865,7 +865,7 @@ export const zhOnboardingProviders = {
     partialHint: '已经通过的调用方式可以在画布使用；其余模型和配置仍已保存，可继续手动配置或重新自动适配。',
     runInBackground: '转后台',
     cancelRun: '停止验证',
-    addedAllPassed: '全部通过真实测试，可以在画布中使用。',
+    addedAllPassed: '全部通过自检，可以在画布里试跑。',
     addedSomeFailed: '其中 {{failed}} 个还不能在画布使用；连接、密钥和模型记录都已保留。',
     selfCheckMeaning: '未通过表示 Nomi 还没有可执行的请求方式，不等于你的模型或密钥一定有问题。可以按下面的原因继续修复。',
     failedBadge: '没通过自检',
@@ -2158,7 +2158,7 @@ export const enOnboardingProviders = {
     progress: '{{completed}}/{{total}} Processed',
     availabilitySummary: '{{verified}} usable · {{pending}} still needs attention',
     elapsed: '{{seconds}}s elapsed',
-    addedAllPassed: 'All models passed a real test and are ready on the canvas.',
+    addedAllPassed: 'All models passed the self-check and can be tried on the canvas.',
     addedSomeFailed: '{{failed}} cannot be used on the canvas yet. The connection, key, and model records are still saved.',
     selfCheckMeaning:
       'A failed check means Nomi does not yet have an executable request method. It does not necessarily mean the model or key is wrong; use the reason below to continue.',

@@ -16,8 +16,10 @@ describe('onboarding self-check copy keeps generation evidence separate', () => 
       adapter.body.verified,
       verification.modelState.verified,
       verification.cardStatus.verified,
+      verification.addedAllPassed,
     ].join(' ')
-    expect(states).not.toMatch(/已验证|已测试|verified|tested/i)
+    expect(states).not.toMatch(/已验证|已测试|真实测试|verified|tested|real test/i)
+    expect(verification.addedAllPassed).toMatch(/自检|self-check/i)
     expect(adapter.title.readyVerified).toMatch(/试跑|tried/i)
     expect(adapter.body.readyVerified).toMatch(/试跑|trial run/i)
     expect(verification.modelState.verified).toBe(verification.cardStatus.verified)
