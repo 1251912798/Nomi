@@ -11,6 +11,7 @@
 //         途中自己点了别的卡 → 照样接上，选中留在用户点的那张。
 import { expect, test } from 'vitest'
 import { chromium } from 'playwright'
+import { expectAbsent, proveProbe } from './_assert.mjs'
 import { useBrowserFixture } from './_browserFixture.mjs'
 
 const ENTRY = 'tests/ux/fixtures/composer-upload-connect-harness.html'
@@ -36,13 +37,16 @@ for (const cell of MATRIX) test(`${cell.host} host × ${cell.action} → ${cell.
     const composer = page.locator('[data-harness-composer]')
     const picker = page.locator('[data-testid="asset-picker"]')
     await composer.locator('[data-asset-add-tile]').click()
+    // 后面要断言「选择器 / 生成框没了」：先证明两个探针此刻都找得到，「没了」才不是探针失效的空话。
+    const pickerProof = await proveProbe(picker, 'asset picker opened from the reference row')
+    const composerProof = await proveProbe(composer, 'composer mounted for the target card')
     await picker.locator('input[type="file"]').setInputFiles({ name: 'reference.png', mimeType: 'image/png', buffer: PNG })
     // 导入已经开始、卡还没建：停在量磁盘余量那道闸上，选择器还开着。
     await expect.poll(() => harness('calls').then((calls) => calls.capacity), SETTLE).toBe(1)
     expect(await picker.count()).toBe(1)
     if (cell.action === 'dismiss-before-card') {
       await page.keyboard.press('Escape')
-      await expect.poll(() => picker.count(), SETTLE).toBe(0)
+      await expectAbsent(picker, { provenBy: pickerProof, message: 'Esc before the card exists closes the picker' })
     }
 
     await harness('releaseCapacity')
@@ -55,13 +59,13 @@ for (const cell of MATRIX) test(`${cell.host} host × ${cell.action} → ${cell.
     expect(building.selected).toEqual([cardId])
     if (cell.host === 'canvas') {
       // 这一类的前提真走到了：生成框随选中卸载（选择器跟着它一起没了）。
-      await expect.poll(() => composer.count(), SETTLE).toBe(0)
+      await expectAbsent(composer, { provenBy: composerProof, message: 'the import selects the new card, so the canvas composer unmounts' })
     } else {
       expect(await picker.count()).toBe(1)
     }
     if (cell.action === 'dismiss-after-card') {
       await page.keyboard.press('Escape')
-      await expect.poll(() => picker.count(), SETTLE).toBe(0)
+      await expectAbsent(picker, { provenBy: pickerProof, message: 'Esc after the card exists closes the picker' })
     }
     if (cell.action === 'select-other') await harness('select', 'other')
 
