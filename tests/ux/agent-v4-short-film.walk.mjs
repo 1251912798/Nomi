@@ -335,7 +335,7 @@ try {
   // 「面板可见吗」，采在它挂上之前，就会去等一颗永远不会出现的小球——15 秒后红，而面板其实已经好好地展开着。
   // 所以先等「面板或小球」其中一个出现，形态落定了再交给它。
   await expect(win.locator(`${CREATION_PANEL}, ${COLLAPSED_DOCK}`).first(), '冷重启后创作面上必须有常驻面板（展开）或小球（收起）')
-    .toBeVisible({ timeout: 60_000 })
+    .toBeVisible({ timeout: stationTimeout() })
   await expandResidentPanel(win)
   const restored = win.locator(CREATION_PANEL)
   await expect(restored.locator(USER_BUBBLE).first(), '冷重启后对话流必须还在').toContainText('20 秒', { timeout: 60_000 })
