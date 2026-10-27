@@ -105,6 +105,7 @@ export const COMPOSER_SEND = '[data-v4-control="send"]'
  * 再由 CSS `::before { content: attr(data-placeholder) }` 画出来（`src/workbench/assets/tiptapPlaceholderClasses.ts`）。
  * 这里读空段落 `::before` 算出来的 content，也就是用户眼睛看到的那句：框里有字（占位不画）、样式丢了（属性在、字画不出来）
  * 都读到 null——只读属性会在后一种坏法下仍然绿。读到的是哪句话由调用方按词典键给，这里不抄任何一句文案。
+ * 这两个是读占位的**唯一**出口：check-walkthroughs 的 composer-input-read 规则拦按 `placeholder` 属性读 Agent 输入框的写法。
  */
 export async function composerPlaceholder(input) {
   return input.evaluate((el) => {
