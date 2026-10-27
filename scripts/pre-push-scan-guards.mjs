@@ -40,6 +40,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'tests/system/walks-never-trash-projects.test.mjs', roots: ['tests/ux', 'tests/system', 'scripts', 'evals', 'docs/evidence'] }, // ⑭：走查 / 脚本不许调产品删除项目口、点确认删除或直接 trashItem（会往用户真回收站塞垃圾）；遍历五个目录的脚本（<1 秒）
   { file: 'scripts/lib/buildGateScan.test.mjs', roots: ['tests'] }, // G-walk-build：tests/ 下起构建产物的入口都先核构建戳；遍历 tests（<1 秒）
   { file: 'electron/offLedgerEgress.structure.test.ts', roots: ELECTRON }, // #1156：新增 child_process 出网口没登记（5 秒）
+  { file: 'scripts/check-import-ffmpeg-owner.test.mjs', roots: ELECTRON }, // 2026-10-27：ffmpeg / ffprobe 子进程只经有界运行器起，直接起的旧门冻结只减不增；遍历 electron 非测试源码按语法树找（2 秒）
   { file: 'electron/capabilityCore/reservationAmountSingleExit.structure.test.ts', roots: ELECTRON }, // 2026-10-18：确认卡金额只许从 reservationMaximumForDisplay 出（遍历 electron 源码，1 秒）
   { file: 'electron/fileIdentity.test.ts', roots: ELECTRON }, // #1142：不许手写 dev / ino 比较（2 秒）
   { file: 'electron/shared/agentCapabilities/canvasReadShotTable.test.ts', roots: ['electron/shared/agentCapabilities', 'electron/agentLane', 'electron/capabilityCore'] }, // 2026-10-19：Agent 面只有 canvasReadShotTable.ts 读分镜表文档（遍历三目录，<1 秒）
@@ -91,6 +92,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'scripts/build-tailwind.test.ts', roots: SRC, exts: [...CODE_EXTS, 'css', 'html'], files: ['tailwind.config.ts'] }, // 跑一次 tailwind content 扫描（12 秒）
   { file: 'scripts/canvas-store-subscriptions.test.mjs', roots: SRC, files: ['eslint.config.mjs'] }, // 画布 nodes / edges 整表订阅存量冻结：遍历 src 按语法树数处数（11 秒）
   { file: 'scripts/ui-money-format.test.mjs', roots: SRC, files: ['eslint.config.mjs', 'scripts/fixtures/ui-money/ProductionDetails.before.tsx.txt'] }, // 界面不印金额的出口名单只减不增：遍历 src 按语法树数处数（Mac 本机单跑约 5–7 秒）
+  { file: 'evals/journeys/journeyContracts.test.ts', roots: ['evals/journeys'], files: ['tests/ux/real-media-fixtures.json'] }, // 旅程读了真素材就必须声明 realMedia（CI 不选它）：遍历 evals/journeys 的旅程源码对全集断言，id 对登记表
   { file: 'src/workbench/project/projectActionIssuance.contract.test.ts', roots: ['src', 'electron'] }, // 13 秒
   { file: 'src/assets/vendor-logos/vendorLogos.test.ts', roots: ['src/assets/vendor-logos', 'src/config', 'src/design', 'src/ui', 'src/workbench'] },
   // ── src/workbench 及以下 ──

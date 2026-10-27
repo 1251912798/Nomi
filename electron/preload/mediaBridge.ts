@@ -169,6 +169,8 @@ export const mediaBridge = {
     },
     deconstruct: (payload: unknown) =>
       ipcRenderer.invoke("nomi:video:deconstruct", payload) as Promise<unknown>,
+    cancelDeconstruct: (payload: unknown) =>
+      ipcRenderer.invoke("nomi:video:deconstruct-cancel", payload) as Promise<{ ok: boolean }>,
   },
   screenshot: {
     get: () => ipcRenderer.invoke("nomi:screenshot:get") as Promise<unknown>,

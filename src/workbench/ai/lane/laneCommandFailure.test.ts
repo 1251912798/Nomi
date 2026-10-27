@@ -182,11 +182,18 @@ describe('服务商报文：断线 / 超时归网络类，不再说「认不出�
   it('原因 + 服务商原话的拼法走 i18n：en 半角冒号加空格，zh 全角冒号', () => {
     const translate = (table: Record<string, string>): ((k: string, o?: Record<string, unknown>) => string) => (k, o) =>
       (table[k.replace('agentPanelV4.', '')] ?? k).replace(/\{\{(\w+)\}\}/g, (_m, name: string) => String(o?.[name] ?? ''))
-    const en = providerFailureText('Connection error.', translate(enAgentPanelV4 as unknown as Record<string, string>))
-    expect(en).toMatch(/: Connection error\.$/)
+    // 只有服务商真回了话（带 httpStatus 的结构化载荷，形状照 pi 运行时那条通道）才有原话可拼（2026-10-27 用户拍板：只认有来源的原话）。
+    const said = 'Too many requests, slow down.'
+    const vendorSaid = `NOMI_VENDOR_ERR_B64::${Buffer.from(JSON.stringify({ vendorKey: 'provider', method: 'POST', url: '', httpStatus: 429, upstreamMsg: said, category: 'quota', retryable: true }), 'utf8').toString('base64')}:: （HTTP 429）${said}`
+    const en = providerFailureText(vendorSaid, translate(enAgentPanelV4 as unknown as Record<string, string>))
+    expect(en).toMatch(/: Too many requests, slow down\.$/)
     expect(en).not.toContain('：')
-    const zh = providerFailureText('Connection error.', translate(zhAgentPanelV4 as unknown as Record<string, string>))
-    expect(zh).toMatch(/：Connection error\.$/)
+    const zh = providerFailureText(vendorSaid, translate(zhAgentPanelV4 as unknown as Record<string, string>))
+    expect(zh).toMatch(/：Too many requests, slow down\.$/)
+    // 本机断线的那句（openai 客户端的 `Connection error.`）不是服务商说的：只给原因，不当原话拼上去。
+    const local = providerFailureText('Connection error.', translate(zhAgentPanelV4 as unknown as Record<string, string>))
+    expect(local).not.toContain('Connection error.')
+    expect(local).toBe(classifyGenerationError('Connection error.').reason)
   })
 
   it('共享嗅探表的「terminated」只认整串：账号被终止 / 策略终止 / 用户终止不会被说成连不上服务商', () => {
