@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { prepareIsolation } from '../../evals/lib/isoApp.mjs'
 import { screenshotSettled } from './_assert.mjs'
+import { backToLibrary } from './_shell.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, '.first-launch-walk')
@@ -159,8 +160,10 @@ if (en) {
       if (dirs.length >= 1) break
       await win.waitForTimeout(300)
     }
-    // 回项目库（点顶栏 Projects 面包屑）
-    await win.getByText('Projects', { exact: true }).first().click({ timeout: 6000 }).catch(() => {})
+    // 回项目库：10-08 外壳起是「顶栏项目名菜单 → 回项目库」，原来的 Projects 面包屑已不存在——旧写法点空、还被 .catch 吞掉，
+    // 于是这一步从 10-08 起一直停在工作区里读不到任何相对时间（红了没人看）。走共用的 backToLibrary，点不到就红。
+    await backToLibrary(win)
+    await win.locator('[data-shell-here]').waitFor({ state: 'visible', timeout: stationTimeout() })
     await win.waitForTimeout(1200)
     const bodyText = await win.evaluate(() => document.body.innerText)
     const hasEnTime = /just now|min ago|hr ago|days ago/i.test(bodyText)
