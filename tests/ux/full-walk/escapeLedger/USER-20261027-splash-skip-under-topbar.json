@@ -10,7 +10,7 @@
     "首次启动点「跳过」进项目库（中英）"
   ],
   "fullWalkJourneys": [],
-  "status": "reviewed",
+  "status": "fixed",
   "manualReview": "reviewed",
   "evidence": [
     "docs/plan/2026-10-27-splash-skip-under-topbar.md",
@@ -33,5 +33,6 @@
   "classCheck": {
     "kind": "matrix",
     "file": "src/ui/app-shell/windowChrome.test.ts"
-  }
+  },
+  "fixedInPr": 1361
 }
