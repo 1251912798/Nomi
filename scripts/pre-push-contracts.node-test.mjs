@@ -11,6 +11,7 @@ import test, { after, before } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import { makeTempDir } from './_test-temp.mjs'
+import { gitPaths } from './lib/gitPaths.mjs'
 import { killProcessTree, processTreeSpawnOptions } from './lib/processTree.mjs'
 import { touchesGateInputs } from './pre-push-gate-inputs.mjs'
 import { PRE_PUSH_GATES, SCAN_TESTS, TAG_IN_MAIN_NOTICE, runNode, runWithDeadline } from './pre-push-contracts.mjs'
@@ -206,7 +207,7 @@ const GREEN_PROBES = Object.freeze([
 function sharedRun(probes) {
   commitChange(() => { for (const probe of probes) probe.apply() })
   // files 与 apply 必须同源：第一条护栏拿 files 核选择范围，apply 实际改了别的路径，它就核错了地方
-  assert.deepEqual(git('diff', '--name-only', baseSha, 'HEAD').split('\n').sort(), probes.flatMap((probe) => probe.files).sort())
+  assert.deepEqual(gitPaths(['diff', '--name-only', baseSha, 'HEAD'], { cwd: work }).sort(), probes.flatMap((probe) => probe.files).sort())
   return { sha: git('rev-parse', 'HEAD'), result: prePush() }
 }
 let redRun = null
