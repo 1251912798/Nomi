@@ -56,7 +56,7 @@ export const UI_MONEY_TEST_FILES = Object.freeze(['src/**/*.test.{ts,tsx}', 'src
  * 都属付费确认卡与 Agent 面板的价格文案，不在 2026-10-27 那次改动范围里，逐个由协调定去留；定了删的，同提交把这一行删掉。
  */
 export const MONEY_FORMAT_EXITS = Object.freeze({
-  'src/workbench/ai/v4/formatMoney.ts': Object.freeze({ count: 2, what: 'Agent 面板付费卡逐镜价、任务卡金额共用的货币格式化（Intl currency，失败退回「货币码 + 两位小数」）' }),
+  'src/workbench/ai/v4/formatMoney.ts': Object.freeze({ count: 2, what: 'Agent 面板付费卡逐镜价的货币格式化（Intl currency，失败退回「货币码 + 两位小数」）' }),
   'src/workbench/ai/resident/residentToolDisplay.ts': Object.freeze({ count: 2, what: 'Agent 提案卡的「预估」一行：预估是 { amount, currency } 时拼「货币码 + 金额」' }),
   'src/workbench/generationCanvas/spend/ProductionContractSummary.tsx': Object.freeze({ count: 3, what: '制作合同确认卡的估价区间与硬上限（文件内自带一份货币格式化）' }),
   'src/workbench/capability/generationGateConfirm.ts': Object.freeze({ count: 2, what: 'MCP 生成闸确认框里的单次最高价（货币码直接拼数字）' }),
@@ -67,10 +67,13 @@ export const MONEY_FORMAT_EXITS = Object.freeze({
 
 /** 现成的货币格式化函数。 */
 export const FORMAT_MONEY_MODULE = 'src/workbench/ai/v4/formatMoney.ts'
-/** 允许 import 它的文件 → 拿它印什么（同样只减不增，去留随上面的出口名单一起定）。 */
+/**
+ * 允许 import 它的文件 → 拿它印什么（同样只减不增，去留随上面的出口名单一起定）。
+ * 名单与 src 里真实 import 它的文件逐一相等（scripts/ui-money-format.test.mjs 普查）：不再 import 的同提交删掉放行位。
+ * 2026-10-27 删了 Agent 面板任务卡那一位（useAgentPanelV4Data.ts：任务卡不再印金额）。
+ */
 export const FORMAT_MONEY_IMPORTERS = Object.freeze({
   'src/workbench/ai/v4/agentPanelSpendCard.ts': 'Agent 付费卡的逐镜价',
-  'src/workbench/ai/v4/useAgentPanelV4Data.ts': 'Agent 面板任务卡的金额（labels.formatMoney → laneViewModel）',
 })
 export const FORMAT_MONEY_IMPORT_PATTERN = Object.freeze({
   regex: '(?:^|/)formatMoney(?:\\.ts)?$',
