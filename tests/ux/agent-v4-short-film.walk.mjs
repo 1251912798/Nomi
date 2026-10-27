@@ -2,7 +2,8 @@
 // 真实用户任务走查（R16）：**让 Agent 从零做一条 20 秒短片**。
 //
 // 不是功能探索，是一个人带着一个目标走完全程：写脚本 → 改文稿 → 去画布生成 → 中途改主意
-// 停下来 → 关掉重开发现东西还在。v4 接线之后每一步都由宿主数据驱动，所以这条走查同时
+// 停下来 → 关掉重开发现东西还在 → 重开后再让它改一下，服务商这回整条回错，收起面板后小球必须亮出「出错」。
+// v4 接线之后每一步都由宿主数据驱动，所以这条走查同时
 // 是接线的行为证据：设计实验室的基线证明「同样的 view model 长同样的样子」，
 // 单测证明「同样的宿主真相产出同样的 view model」，这里证明「人按下去真的发生了事情」。
 //
@@ -31,6 +32,7 @@ import {
   DOCUMENT,
   EMPTY_STARTER,
   EMPTY_STATE,
+  ERROR_BAR,
   PERMISSION_POPOVER,
   TOOL_RECEIPT,
   USER_BUBBLE,
@@ -38,6 +40,7 @@ import {
   V4_PANEL,
   chooseAssistantModel,
   createRuntimeWalk,
+  escapeForRegExp,
   expandResidentPanel,
   hasToolResult,
   openCanvas,
@@ -60,6 +63,7 @@ const TIGHTEN_TOOL = 'v4-doc-tighten-1'
 const REFERENCE = '给这 4 镜生成参考图。'
 const REFERENCE_TOOL = 'v4-canvas-plan-1'
 const SLOW = '再想想整体节奏。'
+const FAIL = '再把结尾润一遍。'
 // 收起/展开要验「他读到哪儿了」，就得有一条**真的翻得动**的对话。收据的展开是 DOM 上的
 // `<details open>`，收起时随子树一起没了，撑不起溢出；只有落进流里的消息才留得下来。
 //
@@ -352,6 +356,33 @@ try {
   expect(laneMessages(restoredLane), '历史消息按原始顺序恢复，不能重放工具').toEqual(messagesBeforeRestart)
   await expect(win.locator(DOCUMENT)).toContainText(TIGHTEN_APPLIED)
   await walk.snap('12-cold-restart')
+
+  // ── 10. 重开之后再发一轮，这回服务商整条回错：收起不吞**坏**消息 ─────────────────────────
+  //
+  // 第 8 步证了「停止不是坏消息」，这一步证它的反面：真坏消息，收起之后小球必须接住。之前全仓只有 `resolveDockStatus`
+  // 的纯函数单测，没有一条走查在真机上量过它（协调 10-28 判）。放在冷重启之后：只多一轮请求、不再多起一个 Electron，
+  // 也顺带量到「恢复出来的会话还能再跑一轮、如实报错」。
+  // 夹具回 HTTP 400 的整条回错（`pb09` 同形），不回 500：lane 对 500 会重试三次（`LANE_RETRY_POLICY`），一轮变四次请求、
+  // 多等约 7 秒，走查还会绑死在重试次数上；这里要证的是「最后一件事是坏的 → 收起后小球报出」，和重试无关。
+  const failedTurn = walk.fixture.expectText({
+    label: 'the provider answers this turn with a hard error',
+    match: (body) => flattenRequestText(body).includes(FAIL),
+    reply: { type: 'http-error', status: 400, json: { error: { message: 'Upstream gateway refused the request', type: 'invalid_request_error', code: 'E7731' } } },
+  })
+  await sendCreation(win, FAIL)
+  await recorded(failedTurn.received, 'failing turn request')
+  // 阳性对照：失败真的落到了面板上（错误带在、composer 退出运行态）。下面小球不报失败，才是产品的错，而不是夹具没出错。
+  await waitForV4TurnIdle(win, { panel: CREATION_PANEL, settledBy: restored.locator(ERROR_BAR).last(), doneTimeout: stationTimeout({ operations: 2 }) })
+  await walk.snap('13-failed-turn-panel')
+  await clickOrFail(restored.locator(COLLAPSE_BUTTON), '收起面板（头部形态切到小球）')
+  const failedDock = win.locator(COLLAPSED_DOCK)
+  await expect(failedDock, '收起后创作面右下必须有那颗小球').toBeVisible()
+  // 收起藏掉的是**面板**，不是那件事：小球「出错」档 = 右上一粒 danger 点，坏消息由无障碍名 / tooltip 说清（文案取词典）。
+  await expect(failedDock).toHaveAttribute('data-agent-dock-status', 'failed')
+  await expect(failedDock).toHaveAttribute('data-agent-ball', 'failed')
+  await expect(failedDock).toHaveAttribute('aria-label', new RegExp(escapeForRegExp(uiText('zh-CN', 'agentPanelV4.dockFailed'))))
+  walk.report.failedDockLabel = await failedDock.getAttribute('aria-label')
+  await walk.snap('14-collapsed-failed')
 
 } catch (error) {
   failure = error
