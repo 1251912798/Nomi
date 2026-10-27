@@ -13,8 +13,8 @@
   "status": "candidate",
   "manualReview": "pending",
   "evidence": [
-    "electron/video/deconstructCancellation.test.ts：现状特征，取消后付费调用照样发满报价的行数，编排里没有任何一步拿得到 signal",
-    "src/workbench/generationCanvas/nodes/shotTable/deconstructionTerminalState.test.ts：点取消、项目被换走都不碰主进程桥；单镜重试不带 requestId",
+    "electron/video/deconstructCancellation.test.ts：六个取消时机，点取消之后不再有新的调用过付费闸、也不再新进闸，抽帧 / 取音轨不再新起；取消那一刻已过闸的照常结算、结果作废；取消不记成失败；已 abort 的 signal 下每个子步骤的调用全集为空；回执 deconstruct.cancelled 逐项对账",
+    "src/workbench/generationCanvas/nodes/shotTable/deconstructionTerminalState.test.ts：点取消、项目被换走都按同一个 requestId 撤主进程那次，表停在已取消 / 已中断；单镜重试带 requestId 与 projectBinding；主进程回 null（项目仍是当前项目）不写表、不抛",
     "docs/engineering/direction-checks/2026-10-27-deconstruct-cancel.md"
   ],
   "completionCommits": []

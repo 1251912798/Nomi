@@ -249,6 +249,18 @@ describe('取消撤到主进程（第一刀）', () => {
     expect(tableMeta(tableId)).toBe(before)
   })
 
+  // 上一条先把项目换走再回 null，`canWrite()` 抢先拦下了，守不住 `if (!result) return` 那一句；这一条把两件事拆开：
+  // 项目仍是当前项目、主进程自己回 null（它说「停下了」）时，也得不写表、不抛、不再撤第二次。
+  it('单镜重试：项目仍是当前项目、主进程回 null → 不写表、不抛', async () => {
+    const tableId = legacyTable()
+    const before = tableMeta(tableId)
+    bridge.deconstruct.mockResolvedValue(null)
+    await expect(retryShot(tableId, 'fact-1', originProject())).resolves.toBeUndefined()
+    expect(tableMeta(tableId)).toBe(before)
+    expect(project.controller.signal.aborted).toBe(false)
+    expect(bridge.cancelDeconstruct).not.toHaveBeenCalled()
+  })
+
   it('项目已经换走了才点单镜重试：一次都不发', async () => {
     const tableId = legacyTable()
     project.controller.abort()

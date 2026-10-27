@@ -274,7 +274,8 @@ describe('第一刀：点取消之后不再发新的付费调用，已经发出�
     const outcome = await run.done
 
     expect(!outcome.ok && outcome.error.name).toBe('DeconstructCancelledError')
-    for (const step of ['resolve', 'probe', 'cuts', 'frame', 'audio', 'runTask']) expect(countOf(step)).toBe(0)
+    // 全集断言，不列步骤名：编排以后新加一个被 mock 的子步骤（再抽一张缩略图之类），不判 signal 就会落进 calls，这里自动红。
+    expect(h.state.calls).toEqual([])
     expect(run.authorizeSpend).not.toHaveBeenCalled()
     expect(h.state.gateEntered).toEqual([])
     expect(run.phases).toEqual([])
