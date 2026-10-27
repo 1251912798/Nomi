@@ -131,7 +131,7 @@
       "path": "scripts/pre-push-contracts.mjs",
       "entry_point": "runWithDeadline whole-hook deadline",
       "disposition": "enforced",
-      "evidence": "The deadline timer calls terminateAndReclaim for every still-running child; the same structure test requires exactly one terminateAndReclaim call in runNode and one in runWithDeadline."
+      "evidence": "The deadline timer calls terminateAndReclaim for every still-running child; the same structure test requires exactly one terminateAndReclaim call in runNode and one in runWithDeadline. Because the kill-wait-reclaim now takes a few milliseconds, the deadline marks itself expired synchronously, stops starting queued tasks and its result wins over the task pool's (found by check:claude-hooks in the first pnpm run gates; fast regression test in scripts/pre-push-structure.node-test.mjs, red when either half is removed)."
     },
     {
       "path": "scripts/git-hook.mjs",
@@ -218,6 +218,7 @@
     "R3: roots adopted through registerTestTemp (launchNomiApp({ tempRoot })) that were created by something other than makeTempDir have no owner pid and stay exit-hook-only; the 24 files / 37 sites in scripts/test-temp-bypass-baseline.json, the 10 files / 19 sites in evals/ and the 332 files / 457 sites in electron/ + src/ (mostly Vitest fixtures that live under the per-run Vitest root; same AST scan, read-only count on 2026-10-28) are the same debt.",
     "R4: process-id reuse can only delay a reclaim (a dead creator whose pid was reused looks alive); it cannot delete a live creator's directory. Containers that share /tmp across PID namespaces would misjudge, but the repository's workflows do not use containers.",
     "R5: the reclaim and the runner wait were verified on macOS only; the Windows branch (taskkill /T, kill(pid, 0) on the group leader only) follows the Node documentation and was not run on Windows. Directory names are now 7-14 characters longer (the p<pid>- segment), which also eats into the Windows MAX_PATH headroom of deep Electron profile paths; not measured.",
-    "R6: a reclaim deletes a directory that an orphaned descendant (for example a detached Electron) may still be using; that orphan is already abandoned, and before this change its directory simply leaked."
+    "R6: a reclaim deletes a directory that an orphaned descendant (for example a detached Electron) may still be using; that orphan is already abandoned, and before this change its directory simply leaked.",
+    "R7: the pre-push runner spawns its gates in their own process groups, so killing an outer process group (for example a runner that is itself a child of another runner, as in scripts/pre-push-contracts.node-test.mjs) does not reach the inner runner's gate processes; they survive as orphans (observed in the forced-timeout runs: orphaned inner gates kept running and even re-created node_modules/.cache/nomi-typecheck inside an already reclaimed clone path). Their dead creator's directories are still reclaimed by the next allocation (observed: a 0.87G leftover shrank to 5 MB through an orphan's first makeTempDir), but the orphan processes themselves are not stopped by this change."
   ]
 }

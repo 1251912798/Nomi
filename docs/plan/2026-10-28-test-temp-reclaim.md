@@ -90,7 +90,7 @@
 4. 单测：别的用户的目录不收（把 `process.getuid` 换成别人，创建者已死的目录也不删；Windows 跳过）。
 5. 真杀：起一个子进程用 `makeTempDir` 建目录后被 `SIGKILL`，目录仍在（退出钩子没机会跑，这是症状本身）；**不经 runner**，下一个任意进程第一次分配就把它收掉。
 6. 真杀（经 runner）：一棵进程树（组长 + 孙进程，**孙进程**建目录——和 `node --test` 起文件子进程同形），`terminateAndReclaim` 杀完后目录没了；创建者还活着的另一份目录不动。
-7. 结构：`pre-push-contracts.mjs` 里所有 `killProcessTree(` 调用都在 `terminateAndReclaim` 里（单门超时、整体超时两处都走它，不留直接杀进程的口子）。
+7. 结构：`pre-push-contracts.mjs` 里所有 `killProcessTree(` 调用都在 `terminateAndReclaim` 里（单门超时、整体超时两处都走它，不留直接杀进程的口子）；整体超时的收尾期间任务池不能抢先 resolve、期限之后不再起新任务（`pre-push-structure.node-test.mjs` 的同形快用例，实现中被 `pnpm run gates` 的 `check:claude-hooks` 抓出来后补的）。
 8. 门岗：`pnpm run check:test-temp-static` 绿；往 `tests/` 加一处 `mkdtemp(path.join(os.tmpdir(), 'x'))` → 红，还原后绿；基线只减不增（比基线多一处红，比基线少一处也红，要求同提交改小基线）。
 9. 实测（经锁）：`NOMI_PR_BODY_FILE=<草稿> node scripts/pre-push-contracts.mjs` 跑完，`ls -d "$TMPDIR"/nomi-prepush-* | wc -l` 没有新增本线的目录；再用驱动脚本让真的 `runNode` 在 `pre-push-contracts.node-test.mjs` 那一步超时被杀一次，跑完同样没有残留。前后计数贴报告。
 10. 交回前：`pnpm run gates` 退出码 0；推送前快检（`node scripts/pre-push-contracts.mjs`）最后几行贴报告；PR 正文草稿 `.tmp-pr-body.md` 过 `check:pr-judgement`。
