@@ -351,9 +351,6 @@
     "e7c7c2430a07eee1e06593fc4ea3949f9167c2309610565d77ca6f410d1d7ae3": 1,
     "3167f2d8fcf5a3f593b96edc0a484b26d6b8456d6c48d84e0a1eaa26f89921fe": 1
   },
-  "tests/ux/deconstruction-panel.walk.mjs": {
-    "2c2bbe2ce7683728d71ac8adbef2577bb3d9a8970d1c0779d62d0ed50bb0100b": 1
-  },
   "tests/ux/deep-link-navigate.walk.mjs": {
     "bf229c1a71944e391bded4fbcbdcab2edca80f8836ec7d576fec662b6b726e10": 1,
     "1ed4e59229a6bb8ebaed160c91a733d97c453543d50a451740a5df85a469db50": 1

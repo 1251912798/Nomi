@@ -11,7 +11,7 @@ import type { AssetImportFailure } from '../shared/contracts/assetImportResult';
 import type { ProjectInteractionCapture } from './projectInteractionCapture';
 import { surfacePortFailure } from '../shared/surfacePortBinding';
 import { registerOnboardingDemoAssetSourceDir } from '../onboarding/demoAssetSource';
-import { createPreviewRequestRegistry } from './previewRequests';
+import { createIpcRequestRegistry } from '../ipcRequestRegistry';
 import { createImportRequestRegistry, IMPORT_QUIT_DRAIN_TIMEOUT_MS, isAssetImportCancelled, type ImportRequestSender } from './importRequests';
 import { registerQuitDrain } from '../quitTeardown';
 
@@ -176,8 +176,8 @@ export function registerAssetsIpc(captureInteraction: ProjectInteractionCapture)
     const { ensurePlayableAsset } = await import("./localFileImport");
     return imports.run(event.sender, undefined, (signal) => ensurePlayableAsset(payload, { signal }));
   });
-  // 补预览：带发起项目的绑定与请求号，项目关了 / 换了 / 窗口没了 / 渲染层撤了就杀掉在途 ffmpeg（previewRequests）。
-  const previewRequests = createPreviewRequestRegistry();
+  // 补预览：带发起项目的绑定与请求号，项目关了 / 换了 / 窗口没了 / 渲染层撤了就杀掉在途 ffmpeg（中立的请求登记 ipcRequestRegistry）。
+  const previewRequests = createIpcRequestRegistry();
   ipcMain.handle("nomi:assets:ensure-preview", async (event, payload) => {
     assertTrustedSender(event);
     const raw = (payload || {}) as Record<string, unknown>;

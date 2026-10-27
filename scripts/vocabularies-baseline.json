@@ -1196,6 +1196,16 @@
     },
     {
       "members": [
+        "failed",
+        "none",
+        "settled",
+        "stopped"
+      ],
+      "reason": "CancelReceipt.transcribe 是拆解被取消时那条主进程日志 deconstruct.cancelled 里转写腿的去向，只给取消对账看：none 没有转写腿（报价前就停了或这次不转写）、stopped 转写腿因取消而停下（按已停收，不算失败）、settled 取消前已过付费闸的那次转写照常回来结算、failed 取消前转写自己失败了。它不是任务或镜头的状态机（LANE_TASK_STATUSES、ProductionShotPhase 都不区分「取消后照常结算」与「因取消停下」），无处可复用；是否计费看同一条日志的 sentOrUnknown（2026-10-27 拆解取消第一刀，合同 docs/fixes/2026-10-27-deconstruct-cancel.root-cause.json）。",
+      "site": "electron/video/deconstructVideo.ts::type:CancelReceipt/property:transcribe/type-union"
+    },
+    {
+      "members": [
         "api_unreachable",
         "catalog_empty",
         "incomplete",
