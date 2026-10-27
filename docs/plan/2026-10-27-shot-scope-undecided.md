@@ -2,7 +2,7 @@
 
 日期：2026-10-27。线：I-shot-scope-undecided（实现）。基线：`origin/main` @ `6c05eebae`。
 类别：花钱（9 格全填，含 ★0）。来源：0.24 发版阻断项里的花钱错；协调调研「付费阻断项」第 2 节的门表与修法。
-**状态：设计卡 + 方向检查已写，实现未开工。** 停在任务书停点：要改的 `electron/capabilityCore/mcpGenerationTools.ts` 本身是热点（14 天内第 3 个 fix），而且门表比调研多出入口（★2）。§四 的决定确认后再开实现提交。
+**状态：已拍板，第 2 轮实现开工。** 用户 2026-10-27「五件都按推荐办」：选「换」，D1–D7 全取推荐项（§四）；热点文件放行，实现提交带 `Direction-Check: docs/plan/2026-10-27-shot-scope-undecided-direction-check.md`；D3 那两条 e2e 照新行为改，PR 正文写清改前 / 改后。本次 docs 提交按拍板补了 §三 合同细节、★2 门表、★9 清单（第 1 轮停在设计卡：要改的 `electron/capabilityCore/mcpGenerationTools.ts` 本身是热点，14 天内第 3 个 fix）。
 方向检查（类根因复盘，结构性结论交用户）：[`2026-10-27-shot-scope-undecided-direction-check.md`](2026-10-27-shot-scope-undecided-direction-check.md)。
 
 ## 开工三问
@@ -48,11 +48,26 @@
 | ★3 一致与复用 | **复用**：出价账读口（`generationPresentationOutcome` / `shotEverSent` / `standingShotIds`）；点名校验沿用旧函数语义（原子、重复即拒、按计划顺序返回，09-19 合同的不变量）；有在等的授权：复用信封 jobs / 点名别的先撤再封，沿用 `resolveGateScope` 现有分支与 `abandonWaitingAuthorization`。**删**：`resolveGenerationShotScope`；`presentationScope` 的「没送过的为空 → 全部再来一轮」；`resolveGateScope` 的 `onCard → open` 回退与 `requestedShotIds` 的静默去重（点名规则只留一份）；`sealScopeOf` 的不点名分支（D4）。**第二份定义**：内存 store 的 present（只有测试在用）见 D5。不新增通用能力 | `git grep -n resolveGenerationShotScope`；`pnpm run check:self-written` |
 | ★4 全状态 | **空**（没东西可摆：全被去掉 / 都送过且从没出过价）：模型收到「没有可摆的镜，要重试就点名」，界面无卡。**加载**：不适用（纯函数，出价写入走现有命令）。**成功**：卡上只有规则给出的镜，回执 `shots` 与卡一致。**失败**：点名无效 / 卡上没剩没定的 → 模型可读拒绝，什么都不写（Run 版本不涨）。**部分成功**：不适用，范围原子，要么整份收下、要么整份拒。**取消中**：上一张卡正在取消、排队的交接在收回时 Agent 不点名再出价：命令串行，读落盘那一刻的出价账；还在「交」的镜不算没定 → 不会被重摆。**过期**：上一张卡因重启被收回（`withdrawStalePresentations`）→ 它仍是「最近一次出价」，没定的就是它的 `undecided`。**能力不可用**：不适用——范围判断不依赖模型或外部资源；供应商不可用时出价照摆，点生成时由现有链路报（不改）。**文案**：只改模型可见英文；界面无新增文案，不写钱话 | ★9 A1–A13；`check:i18n` 不涉及 |
 | 5 中途表 | 见下面「中途表」一节（4 个状态 × 5 种打断，每格「看到什么 · 花费 · 回执在哪」） | ★9 A2、A12；现有 `agentPanelSpendCardStop.e2e.test.ts` 的重启 / 被顶掉 / 交到一半 |
-| 6 外部数据与失败 | **模型写的 `shotIds`**（Agent `generate`）：规范 = `generationPlanSchemas.ts:187`（≤40 个、非空字符串）；偏差：模型常省略或复读上一轮的 id → 省略按 §三；点名无效 → 模型可读拒绝。**外部 MCP 宿主**：`nomi_operation_gate` 不收 `shotIds`（`mcpGenerationToolCatalog.ts:99-124`），外部宿主建的 operation 没有出价（只有 in-app present 会开出价，`productionGenerationPresentationEdits.ts:107`）→ 走「没有当前出价」，形状与今天一致。**旧 Run**（只存 `shots`、没有 `presentations`）：读盘归一 `normalizeLegacyPresentation`（`electron/productionRun/productionRunRepository.ts:176`）是唯一一处把旧 `cardHidden` 折成出价记录的地方；归一后有出价就按它，没有就是「没有当前出价」；不新增归一、不猜用户定没定。**旧 MCP 草稿**：`normalizeStoredDraft`（`mcpGenerationTools.ts:538`）只清参数残留，不涉及范围，不改。**渲染层文稿方案**（`storyboardPresent.ts`，没有出价账）：显式「没有当前出价」→ 这一轮的锚卡与镜头全集，再按现有规则只跑可跑的行，用户在确认框里逐行勾（现有）。**失败时用户看到什么**：界面无新失败；Agent 收到可读拒绝；不甩锅给 key | 各 `文件:行`；★9 A6–A8、A10 |
+| 6 外部数据与失败 | **模型写的 `shotIds`**（Agent `generate`）：规范 = `generationPlanSchemas.ts:187`（≤40 个、非空字符串）；偏差：模型常省略或复读上一轮的 id → 省略按 §三；点名无效 → 模型可读拒绝。**外部 MCP 宿主**：`nomi_operation_gate` 不收 `shotIds`（`mcpGenerationToolCatalog.ts:99-124`）。外部宿主建的草稿不藏卡，建好那一刻就开第 1 次出价（`electron/productionRun/productionRunRepository.ts:450`；第 1 轮这里写成「没有出价」，是错的，已更正）→ gate 不点名 = 最近一次出价上还没定、又还没封的镜，第一次封整份草稿的形状不变；一镜不剩 → 拒绝，告诉它另起一份草稿（`nomi_operation_plan` 不带 operationId）。**旧 Run**（只存 `shots`、没有 `presentations`）：读盘归一 `normalizeLegacyPresentation`（`electron/productionRun/productionRunRepository.ts:176`）是唯一一处把旧 `cardHidden` 折成出价记录的地方；归一后有出价就按它，没有就是「没有当前出价」；不新增归一、不猜用户定没定。**旧 MCP 草稿**：`normalizeStoredDraft`（`mcpGenerationTools.ts:538`）只清参数残留，不涉及范围，不改。**渲染层文稿方案**（`storyboardPresent.ts`，没有出价账）：显式「没有当前出价」→ 这一轮的锚卡与镜头全集，再按现有规则只跑可跑的行，用户在确认框里逐行勾（现有）。**失败时用户看到什么**：界面无新失败；Agent 收到可读拒绝；不甩锅给 key | 各 `文件:行`；★9 A6–A8、A10 |
 | ★7 性能 | 不适用：bug 修复，没有新增用户操作；范围计算是 O(镜数) 纯函数（单次出价 ≤40 镜），不在任何交互热路径上；扫描器若按 `production*` 路径推出「新增功能 / 性能」，PR 正文写同一句不适用理由 | `generationPlanSchemas.ts:187` |
 | 8 真实条件 | Windows：unverified（本线 Mac）；英文界面：不涉及界面（模型可见文案本来就是英文）；最小窗口：不涉及；真规模：40 镜上限的类测试（vitest）；干净安装：不涉及；真付费：unverified（`spend-paid-sample` 交协调：免费演练先过、产物标记字面量 `shot-scope-undecided`、专用工作树）；键盘全程：不涉及 | 人工 |
 | 拍板图清单 | 不适用：不改界面——卡的元素、状态、文案都不变，只是卡上摆的镜按规则不再越界（纯 bug 修复，例外 `pure-bugfix`） | — |
 | ★9 验收与回滚 | 见 §五（验收清单与反例动手前写全）；回滚：revert 实现提交（单提交，无开关、无迁移、无落盘字段），设计卡提交独立；独立验收：待协调派验收线 | §五 |
+
+### ★2 门表补充（第 2 轮，动手前重读代码补的）
+
+★2 的门表之外，实现会碰到这些入口和文件（都在「不点名的默认」这一类里，或是改它必经的契约 / 基线 / 预期）：
+
+| 文件:行 | 是什么 | 怎么处理 |
+|---|---|---|
+| `electron/capabilityCore/generationOperationTypes.ts:83` | store 接口 `present(…, shotIds?: readonly string[], …)`：类型上只能传「点名好的数组」，handler 只好先解析 | 参数改成原样值 `requested: unknown`，由 Run 主人验 |
+| `electron/capabilityCore/mcpGenerationMultiShot.ts:581`（`presentStoryboardAuthoring`） | 文稿方案转交时 `Array.isArray(requested) ? {shotIds} : {}`：非数组被静默丢掉 = 变成没点名 | 有值就原样转交，由渲染层的同一条规则拒 |
+| `electron/productionRun/productionRunIpc.ts`（渲染层 `generation.present`） | 只收点名（非空、无重复） | 不经不点名规则，不改 |
+| `docs/engineering/concept-owners/production.spend-card-presentation.json` | 概念登记 | 加 write_api `resolveUndecidedGenerationShotScope`，notes 记「不点名的范围只有这一条规则」 |
+| `scripts/model-face-baseline.json`、`scripts/file-size-baseline.json` | 模型面基线、文件体积棘轮 | 说明改了就重生成；冻结文件只减不增，减了就把上限下调锁住 |
+| `electron/productionRun/productionMultiShotSchema.test.ts`、`shotPricingWiring.test.ts`、`unknownPriceOpenGate.test.ts`、`electron/capabilityCore/residentProductionJourney.contract.test.ts` | 直接发多镜 `generation.seal`、不带 `scope` | D4：补上 scope。（D4 原写「改夹具 `productionGenerationAuthorizationTestUtils.ts` 一处」不对：那个夹具展开的 `GenerationSealMultiShot` 类型上本来就必带 scope，不用改） |
+| `tests/ux/agent-spend-waiting-owner.walk.mjs:132-175`（④ `wo-generate-4`） | 唯一那一镜批了、卡已关（交给了画布），同一回合不点名再 `generate`，预期「再摆一张卡」 | 旧默认写成的预期，同 D3：改成「被拒、不出卡、供应商仍只收到一次、节点在」；改了就真跑 zh + en（跑不了记 unverified） |
+| 其它把旧默认写成预期的现有测试 | 动手前已知的就是 D3 两条 + 上面的走查；实现后全量跑改到的目录，红的逐条判 | 只把「不点名」改成「点名」，它守的事不变；逐条写进报告 |
 
 ### 功能分类
 
@@ -89,40 +104,64 @@
 
 ## 三、规则（实现合同）
 
+第 2 轮按拍板定稿（和第 1 轮草稿的差别：多了 `door`；出价的事实改成整份结局 `OfferOutcomeFacts`，拒绝时才说得出每一镜的状态；持久出价门的 offerable 按「有没有出价」分两种，见门表）。
+
 ```ts
-/** 最近一次出价（开着或已关）上还没定的镜；或者调用方明说「没有当前出价」。不许传 undefined 混过去。 */
+// electron/shared/agentCapabilities/generationShotScope.ts（旧 resolveGenerationShotScope 同提交删掉）
+
+/** 最近一次出价（开着或已关）上每一镜的结局。只从出价账的唯一读口 `generationPresentationOutcome` 来。 */
+export type OfferOutcomeFacts = Readonly<{
+  generating: readonly string[]; failedBeforeSending: readonly string[];
+  removed: readonly string[]; takenByCanvas: readonly string[];
+  undecided: ReadonlyArray<Readonly<{ shotId: string }>>;
+}>;
+
+/** 有一次出价（最近那张卡），或者从没出过价。调用方必须明说；没有出价账的门（文稿方案、选择）显式传 NO_CURRENT_OFFER。 */
 export type CurrentOfferFacts =
-  | Readonly<{ kind: "offer"; undecided: readonly string[] }>
+  | Readonly<{ kind: "offer"; outcome: OfferOutcomeFacts }>
   | Readonly<{ kind: "no-current-offer" }>;
 
 export function resolveUndecidedGenerationShotScope(input: Readonly<{
-  planShotIds: readonly string[];   // 计划顺序；点名只能在这里面
-  requested: unknown;               // 原样的 shotIds；undefined = 没点名
+  door: "present" | "gate";       // 点名能点哪些、拒绝里给哪条下一步
+  planShotIds: readonly string[];  // 计划顺序
+  requested: unknown;              // 原样的 shotIds；undefined = 没点名
   currentOffer: CurrentOfferFacts;
-  offerable: readonly string[];     // 这一扇门此刻能摆 / 能封的镜（计划顺序）
-}>): string[];                      // 失败抛模型可读的范围拒绝（D6）
+  offerable: readonly string[];    // 这一扇门此刻能摆 / 能封的镜
+}>): string[];                     // 失败抛 GenerationScopeRefusal（码 generation_input_invalid，正文给模型看）
+
+/** 点名那一半（gate 有一道门在等时，先拿点名的和那道门盖的比）。 */
+export function resolveNamedGenerationShots(nameable: readonly string[], requested: unknown): string[];
+
+/** present 回执的 `shots` = 这一次出价摆的镜（结局里五种状态的并集，按计划顺序）。 */
+export function shotsOnOffer(planShotIds: readonly string[], outcome: OfferOutcomeFacts | undefined): string[];
 ```
 
 | 输入 | 结果 |
 |---|---|
-| 点名：非空数组、每项非空字符串、无重复、都在 `planShotIds` 里 | 按计划顺序返回点名的镜；不扩大、不收窄成「只许没定的」（封印门另验 ⊆ 可封） |
-| 点名无效：不是数组 / 空数组 / 空项 / 重复 / 不存在 | 拒绝：哪一镜、可以点哪些 |
+| 点名：非空数组、每项非空字符串、无重复、都在可点名的范围里（present 门 = 计划里任何一镜；gate 门 = `offerable`） | 按计划顺序返回点名的镜；present 门不收窄成「只许没定的」（重试照常，负债检查照旧） |
+| 点名无效：不是数组 / 空数组 / 空项 / 重复 / 不在范围里 | 拒绝：点出哪一镜不行，列出可以点的 id |
 | 没点名 + 有当前出价，`undecided ∩ offerable` 非空 | 这几镜（计划顺序） |
-| 没点名 + 有当前出价，交集为空 | 拒绝：最近一张卡上没有还在等他的镜，要再试就点名（附可点名 id） |
-| 没点名 + 没有当前出价，`offerable` 非空 | `offerable`（本轮仍勾着、没送过 / 没封过、没去掉过的） |
-| 没点名 + 没有当前出价，`offerable` 为空 | 拒绝：没有可摆的镜 |
+| 没点名 + 有当前出价，交集为空 | 拒绝：逐镜说那张卡上每一镜现在怎样（在生成 / 发出前失败 / 去掉了 / 用户在画布上自己生成了），卡外还有哪些镜；按门给下一步（present：要摆就在 shotIds 里点名；gate：另起一份草稿再请求它的门）；附可点名的 id |
+| 没点名 + 没有当前出价，`offerable` 非空 | `offerable` |
+| 没点名 + 没有当前出价，`offerable` 为空 | 拒绝：没有可摆的镜，下一步同上 |
 
 | 门 | 当前出价从哪来 | offerable | 备注 |
 |---|---|---|---|
-| 持久出价 `presentationScope`（`productionGenerationPresentationEdits.ts:66`） | `currentPresentation(plan)` 有 → `generationPresentationOutcome(run).undecided`；没有 → 没有当前出价 | `standingShotIds(run)` 去掉 `shotEverSent` 的 | 负债检查保留：点名重摆送过的镜要等之前的每一笔落定 |
-| handler present（`mcpGenerationTools.ts:558`） | 不算 | — | 原样转交 `params.shotIds`；回执 `shots` 读 store 返回的这一次出价 |
-| 内存 store present（`mcpGenerationOperationMemoryStore.ts:66`） | D5 | D5 | 只有测试在用 |
-| MCP gate `resolveGateScope`（`mcpGenerationMultiShot.ts:677`） | operation 视图 `presentationOutcome` 有 → 有当前出价；没有 → 没有当前出价 | `open`（勾着、没封过；今天的定义不动） | 有在等的授权：没点名或同一批 → 复用信封 jobs；点名别的 → 先撤再封（不变） |
-| reducer `sealScopeOf`（`productionGenerationSeal.ts:122`） | 不算（D4） | 点名 ⊆ open | 多镜封印必须带 scope |
-| 适配器（`generationTransportAdapters.ts:557`，有分镜选择时） | 不算 | — | 选择本身就是用户的点名：模型没点名 → 传选择；点名 → 必须 ⊆ 选择（新函数的点名分支） |
-| 渲染层（`storyboardPresent.ts:50`，文稿方案） | 显式没有当前出价 | 锚卡 + 镜头全集 | 之后照旧只跑可跑的行，确认框逐行勾 |
+| 持久出价 `presentationScope`（`productionGenerationPresentationEdits.ts:66`） | `generationPresentationOutcome(run)`：有 → 有当前出价；没有 → 没有当前出价 | 有出价：还勾在这一批里的镜（`included !== false`），**不另筛「送过没有 / 去掉过没有」**——卡上还没定的重试镜、被点名找回过的镜照样是「还没定」（第 1 轮草稿写的「standing 去掉 everSent」会把它们漏掉）；没有出价：`standingShotIds` 去掉 `shotEverSent` | 删「整份再来一轮」回退和 `generation_nothing_to_present`；负债检查保留在规则之后 |
+| handler present（`mcpGenerationTools.ts:558`） | 不算 | — | 原样转交 `params.shotIds`；回执 `shots = shotsOnOffer(...)`（今天读 `included`，R-a 里回执说三镜、卡上一镜） |
+| store 接口（`generationOperationTypes.ts:83`） | — | — | `present` 的范围参数改成原样值 `requested: unknown` |
+| 内存 store present（`mcpGenerationOperationMemoryStore.ts:61`） | D5 | D5 | 只有测试在用；拒绝 present（它没有出价账） |
+| MCP gate `resolveGateScope`（`mcpGenerationMultiShot.ts:677`） | operation 视图的 `presentationOutcome`（开着或已关） | `open`（勾着、没封过；定义不动） | 有一道门在等：点名先过 `resolveNamedGenerationShots(计划)`，没点名或同一批 → 复用；点名别的 → 先撤再封（不变）。删 `scopeInvalid` / `requestedShotIds` 和 `onCard → open` 回退 |
+| reducer `sealScopeOf`（`productionGenerationSeal.ts:122`） | 不算（D4） | 点名 ⊆ open | 多镜封印不带 scope → 拒；点名过 `resolveNamedGenerationShots(open)`（点名规则只留一份） |
+| 适配器选择（`generationTransportAdapters.ts:557`） | `NO_CURRENT_OFFER` | 选择本身 | 模型没点名 → 整个选择；点名 → 必须 ⊆ 选择 |
+| `presentStoryboardAuthoring`（`mcpGenerationMultiShot.ts:581`） | 不算 | — | 有值就原样转交给渲染层 |
+| 渲染层 `storyboardPresent.ts:50`（文稿方案） | `NO_CURRENT_OFFER` | 锚卡 + 镜头全集 | 之后照旧只跑可跑的行，确认框逐行勾 |
+
+**D6 怎么落地**：`refuseToModel` / `ModelFacingRefusal` 住在 `electron/capabilityCore/transportFailure.ts`，shared 不能值引入 capabilityCore。所以规则抛 shared 里的 `GenerationScopeRefusal`（`code` 就是 `GENERATION_INPUT_INVALID_CODE`）；in-app 适配器 `safeFailure` 的 `ownMessage` 认它（和 `ContractCompilationError` 同一档），正文原样到模型，lane 再补 `DRAFT_REFUSAL_NEXT_ACTION_EN`（「什么都没提交、没扣钱，按正文改了再调同一个工具」）；对外 MCP 对 `generation_input_invalid` 本来就保留正文。效果与 `refuseToModel(GENERATION_ARGUMENT_REFUSAL, 文案)` 相同。
 
 ## 四、要确认的决定（带推荐项与代价）
+
+**拍板（2026-10-27，用户「五件都按推荐办」）**：D1–D7 全取下表的「推荐」一列，不另起方案。D4 的代价那一格实测改正：要补 scope 的是几条直接发多镜封印的测试（见 ★2 门表补充），不是那个夹具。D5 按推荐：A9 写成「内存 store 拒绝 present，持久 store 是唯一实现」。
 
 | # | 问题 | 推荐 | 代价 | 另一选项的代价 |
 |---|---|---|---|---|
@@ -140,23 +179,27 @@ export function resolveUndecidedGenerationShotScope(input: Readonly<{
 
 **A. 类测试（vitest，先红后绿）**
 
-- A1 `electron/capabilityCore/mcpGenerationTools.test.ts`（持久 store，经 handler）：三镜，第一次点名 `shot-a`，卡开着；第二次不点名 → 卡与回执 `shots` 都只有 `shot-a`（R-a）。
-- A2 同文件：第一次不点名摆三镜，`shot-a` 交给画布，取消关卡（没定 b / c）；不点名再出价 → 卡只有 b / c（R-b）；变体：卡上两镜都在交时不点名 → 拒绝，Run 不变。
-- A3 gate：`open=[a,b]`、开着的卡 `undecided=[b]`，不点名 → `seal [b]`；卡已关、`undecided=[b]` → `seal [b]`（R-d）；卡上没剩没定的 → 拒绝、不封（R-c）。
-- A4 gate：有在等的授权（信封 jobs = [b]）：不点名 → 复用 [b]；点名 [b] → 复用；点名 [a] → 先撤再封 [a]。
-- A5 点名：重复 / 空数组 / 空字符串 / 不存在 → `generation_input_invalid`，文案点出那一镜并列出可点名的；Run 版本不涨。点名一镜已送过（重试）→ 收下，不收窄成只许没定的；负债检查照旧。
-- A6 没有出价（新草稿）不点名 → 勾着、没送过、没去掉过的全部，计划顺序。
-- A7 旧 Run：没有 `presentations`、没有 `cardHidden` 的草稿 → 读盘归一成开着的卡（勾着的镜）→ 不点名 = 这几镜；`cardHidden: true` → 走「没有当前出价」。读盘之外不另猜。
-- A8 `electron/capabilityCore/generationTransportAdapters.test.ts`：分镜选择只给 `shot-a`，模型不点名 → present 参数 `shotIds = ["shot-a"]`，不出现 `shot-b`；点名选择外的 `shot-b` → 拒绝；点名未知 → 模型可读拒绝。
-- A9 内存 store vs 持久 store（按 D5）：同输入同范围同顺序，或内存 store 拒绝 present。
-- A10 `src/workbench/capability/storyboardPresent.test.ts`：上一轮问过 `shot-1`（被拒）后，这一轮点名 `shot-2` → 批量与确认框只含 `shot-2` 的节点；不点名 → 显式「没有当前出价」→ 这一轮可跑的全部（现有行为，测试钉住）。
-- A11 画布批量（`batchPlanPreview.test.ts` / `appIntegrationCanvasShot.test.ts`）：只给确认框里勾着的节点开 Run，操作里另有没定的镜不增 Run。
-- A12 直接生成档：R-b 形状下不点名再出价，策略只替这一次出价摆的镜决定，`shot-a` 不被决第二次（一次出价里同一镜交接数 ≤ 1）。
-- A13 reducer：多镜 `generation.seal` 不带 scope → 拒绝（D4）；带 scope 且 ⊆ open → 收下。
+新类测试集中在三个文件，名字落在本卡门表允许的范围里：`electron/capabilityCore/mcpGenerationShotScope.e2e.test.ts`（持久 store + handler + 传输，跑在现有 `spendWorld` 上）、`electron/productionRun/productionGenerationPresentationScope.test.ts`（reducer 一层）、`electron/shared/agentCapabilities/generationShotScope.test.ts`（规则本身的输入表）。
 
-**B. 门岗（每条记退出码）**：改到的 vitest（排锁）；ESLint 改到的文件；`node scripts/typecheck.mjs`（排锁）；`node scripts/check-concept-owners.mjs`；`node scripts/check-root-cause-contracts.mjs`（新合同 `docs/fixes/2026-10-27-shot-scope-undecided.root-cause.json`，doors 取 door-map 输出，door_reduction：7 扇门收成 1 个规则）；`pnpm run check:model-schema`、`check:mcp-tool-refs`、`check:walkthrough-tool-args`（说明改了）；`check:filesize`（`mcpGenerationTools.ts` 冻结 1034 行、`mcpGenerationMultiShot.ts` 冻结 850 行已顶格 → 规则搬进 `generationShotScope.ts`，冻结文件只减不增）；`git diff --check`；推送前快检。
+- A1（R-a）经 handler：三镜，第一次点名 `shot-1`，卡开着；第二次不点名 → 卡与回执 `shots` 都只有 `shot-1`。经传输再跑一次同形（模型那一侧拿到的回执）。
+- A2（R-b）：第一次不点名摆三镜，`shot-1` 交给画布，取消关卡（没定 2 / 3）；不点名再出价 → 卡只有 2 / 3，回执同。变体：卡上两镜都在交时不点名（D3 那条的不点名形状）→ 经传输被拒：`ok:false`、码 `generation_input_invalid`、正文逐镜说「在生成」并列出可点名的 id；Run 不变（版本号不涨）。
+- A3 gate（`resolveGateScope` 纯函数）：`open=[1,2,3]`、开着的卡 `undecided=[2]` → `seal [2]`；卡已关（user_closed）、`undecided=[2]` → `seal [2]`（R-d）；开着的卡上没剩没定的 → 拒绝、不封（R-c）；从没出过价 → `seal open`。再经 handler 跑一次 R-d 的真形状：卡上 `shot-1` 交给画布、`shot-3` 去掉、取消关卡 → `gate_request` 不点名 → 那道在等的门只盖 `shot-2`（`shot-1` 没有合同、今天会被当成「没封过」再封一次）。
+- A4 gate：有一道在等的门（信封 jobs = [2]）：不点名 → 复用 [2]；点名 [2] → 复用；点名 [1] → 先撤再封；点名重复 / 未知 → 拒绝。
+- A5 点名：重复 / 空数组 / 空字符串 / 不是数组 / 不存在 → 经传输是 `generation_input_invalid`，正文点出那一镜并列出可点名的；经 reducer Run 不变。点名一镜已送过（重试）→ 收下，不收窄成只许没定的；负债检查照旧。
+- A6 没有出价（新草稿）不点名 → 勾着、没送过、没去掉过的全部，计划顺序；没有出价、可摆的都送过了 → 拒绝（今天是「整份再来一轮」）。
+- A7 旧 Run：没有 `presentations`、没有 `cardHidden` 的草稿 → 读盘归一成开着的卡（勾着的镜）→ 不点名 = 这几镜；`cardHidden: true` → 没有当前出价。读盘之外不另猜。
+- A8 `electron/capabilityCore/generationTransportAdapters.test.ts`：分镜选择只给 `stable-b`，模型不点名 → present 参数 `shotIds = ["stable-b"]`（现有一格）；点名选择外的 → 模型可读拒绝，planning 一次没调。
+- A9 内存 store（D5）：present 拒绝；持久 store 是唯一实现（A1、A2 跑的就是它）。
+- A10 `src/workbench/capability/storyboardPresent.test.ts`：点名 `shot-2` → 批量与确认框只含 `shot-2`；不点名 → 显式「没有当前出价」→ 这一轮可跑的全部；点名不在方案里的镜 → 拒绝、一个节点都不落。
+- A11 画布批量：不是本卡的门（它只给确认框里勾着的节点开 Run，不经不点名规则），现有 `batchPlanPreview.test.ts` / `appIntegrationCanvasShot.test.ts` 照跑，记「现有覆盖」。
+- A12 直接生成档（「直接生成」不扣两次）：(a) R-b 形状下不点名再出价 → 新卡只有 `shot-2/3`，策略只替它们决定，供应商每一镜恰好收到一次（今天 `shot-1` 会被决第二次）；(b) 卡上的镜都在生成时不点名 → 被拒，一镜都不交。
+- A13 reducer：多镜 `generation.seal` 不带 scope → 拒绝（D4）；带 scope 且 ⊆ open → 收下；scope 重复 → 拒绝。
+- A14 规则输入表（`generationShotScope.test.ts`）：§三 输入表每一行 × 两扇门；计划顺序；拒绝正文含 id 与下一步；`shotsOnOffer` 按计划顺序取五种状态的并集。
+- D3：`agentPanelSpendCardStop.e2e.test.ts` 那两条改成点名再出价（守的事不变：顶掉时排队的同意收回；在交的照样把结论写回自己那一笔）；不点名那一种由 A2 变体守。
 
-**C. 走查（零花钱，`spend-walks` 阻断子集，协调排）**：`tests/ux/agent-spend-card.walk.mjs`、`agent-spend-confirm-executes`、`agent-spend-full-auto`、`agent-spend-generate-remaining`、`agent-spend-stop-midway`、`core-smoke-spend-confirm` 照旧全绿。
+**B. 门岗（每条记退出码）**：改到的 vitest（排锁）；ESLint 改到的文件；`node scripts/typecheck.mjs`（排锁）；`node scripts/check-concept-owners.mjs`；`node scripts/check-root-cause-contracts.mjs`（新合同 `docs/fixes/2026-10-27-shot-scope-undecided.root-cause.json`，doors 取 door-map 输出，door_reduction：7 扇门收成 1 个规则）；`pnpm run check:model-schema`、`check:mcp-tool-refs`、`check:walkthrough-tool-args`（说明改了）；`check:filesize`（`mcpGenerationTools.ts` 冻结 1034 行、`mcpGenerationMultiShot.ts` 冻结 850 行已顶格 → 规则搬进 `generationShotScope.ts`，冻结文件只减不增）；`git diff --check`；推送前快检。说明改了还要 `pnpm run check:model-face-frozen -- --update-baseline` 重生成基线、跑 `check:tool-face`。
+
+**C. 走查（零花钱，`spend-walks` 阻断子集，协调排）**：`tests/ux/agent-spend-card.walk.mjs`、`agent-spend-confirm-executes`、`agent-spend-full-auto`、`agent-spend-generate-remaining`、`agent-spend-stop-midway`、`core-smoke-spend-confirm` 照旧全绿。本线改了 `tests/ux/agent-spend-waiting-owner.walk.mjs`（④ 同回合再 `generate` 改成「被拒、不出卡、供应商仍只收到一次」），本线经锁构建后真跑 zh + en；跑不了如实记 unverified。
 
 **D. 中英**：不涉及界面文案；模型可见文案英文，`check:model-schema` 基线 diff 逐字核。
 
@@ -166,13 +209,15 @@ export function resolveUndecidedGenerationShotScope(input: Readonly<{
 
 | 反例 | 必须红的格 |
 |---|---|
-| H1 把「没给就全量」放回 `generationShotScope.ts` | A1、A2 |
+| H1 把「只取还没定的」过滤拿掉（有出价时也回 offerable 全集） | A1、A2、A12(a)、A14 |
 | H2 handler 继续把「没点名」预解析成「点名全部」（即使 store 规则对） | A1、A2 |
-| H3 只认开着的卡（D1 选另一项） | A3 关卡那格 |
-| H4 卡上没剩没定的时回退全集 | A3 R-c 那格、A2 变体 |
+| H3 只认开着的卡（D1 选另一项） | A3 关卡那格、A2 |
+| H4 「没剩就拒」改成放行（交集为空时回退 offerable） | A2 变体、A3 R-c、A12(b)、A14 拒绝那几格 |
 | H5 点名收窄成「只许没定的」 | A5 重试那格 |
 | H6 `sealScopeOf` 留着不点名回退 | A13 |
-| H7 范围拒绝落兜底码 | A5（断言码与文案里的镜 id） |
+| H7 范围拒绝落兜底码（适配器不认 `GenerationScopeRefusal`） | A5、A2 变体（断言码与正文里的镜 id） |
+
+至少真做 H1、H4 两条（任务书），做完还原；其余能做就做，报告附「反例 → 结果 → 证据」表。
 
 **这一类还会从哪回来**：① 新车道直接调 `store.present` 不经 handler → 规则在 reducer，守住（A1 同形测试经 store 也跑一遍）；② 新的出价写口 → `concept-owners` 守写口；③ 旧数据 → 读盘归一只有一处（A7）；④ 外部宿主 → gate 不收 `shotIds`，走同一个规则（A3）；⑤ 出价账形状升级 → `generationPresentationOutcome` 是唯一读口，类测试读它；⑥ 新的封印调用者不带 scope → reducer 拒绝（A13）。
 
@@ -184,7 +229,7 @@ export function resolveUndecidedGenerationShotScope(input: Readonly<{
 
 - 删掉：四份「没给就全量」回退和旧函数，同一个提交。
 - 结构上做不出来：handler 不再预解析；`CurrentOfferFacts` 逼调用方明说「没有当前出价」，`undefined` 混不过去；多镜封印必须带 scope（D4）；内存 store 不再有第二份 present 默认（D5）。
-- 门岗自动拦：类测试 A1–A13 与反例 H1–H7；根因合同（doors 取 door-map）；model-face 基线锁住说明文案。
+- 门岗自动拦：类测试 A1–A14 与反例 H1–H7；根因合同（doors 取 door-map）；model-face 基线锁住说明文案；规则函数登记成 `production.spend-card-presentation` 的 write_api，第二份定义 `check:concept-owners` 拦。
 - 规则文字：`production.spend-card-presentation` 的 notes 记一句「不点名的范围只有 `resolveUndecidedGenerationShotScope` 一条规则」。
 
 ## 残余风险
@@ -193,3 +238,7 @@ export function resolveUndecidedGenerationShotScope(input: Readonly<{
 - 「这一镜还能封吗」两份定义（MCP 视图 `!shot.contract` 与 reducer「这一次出价里没批过」）会在「新一轮重试已封过的镜」时给出不同答案；本卡不合并。
 - `laneExtendedDesktopPorts.ts:256-264` 不点名时按全集查导演台预览：比实际摆的范围大，只会多拦、不会多花；记后续。
 - 文稿方案没有出价账：不点名时仍是这一轮全集，靠确认框逐行勾控制花钱；要让文稿方案也有「上一轮没定」的事实，得给它建出价账，不在本卡。
+- 文稿方案一张卡、一镜都没有（锚卡和镜头都删光了）时，不点名 `generate` 现在在渲染层被规则拒；渲染层的错过 IPC 只剩一句话（`RendererApplyError`），模型拿到的是兜底码，不是今天的 `nothing_to_generate`。两种都一分钱没花；渲染层范围拒绝过 IPC 不可读是旧问题（点名无效今天就这样），要可读得改 IPC 回包形状，不在本卡。
+- 不点名再出价顶掉一张**开着**的卡时，那张卡上「在交」的镜不算没定，不进新卡；顶掉时还没绑上画布的那几笔被收回，就此不在任何一张卡上，要再摆得点名（第 1 轮报告已记；拒绝文案会列出它们）。
+- 结局把「交到了供应商、后来在画布上失败」的镜仍算「在生成」（`sent`），拒绝文案据此说「在生成」；模型要重试照样点名。
+- 外部宿主在「最近一张卡上没剩没定的」时 gate 被拒（今天封 `open`：卡关掉之后连交给画布的镜也被当成「没封过」再封一次）——这是修复本身，对外部宿主是可见变化，拒绝文案告诉它另起草稿。

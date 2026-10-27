@@ -2,6 +2,7 @@
 
 > 触发：`node scripts/fix-churn.mjs` exit 1——`electron/capabilityCore/mcpGenerationTools.ts` 文件本身 14 天内第 3 个 fix；另有目录 / 概念口径命中（`electron/productionRun/`、`src/workbench/capability/`、`electron/shared/agentCapabilities/verbs/`、概念「参数准入」）。文件本身命中，不属于协调代批的例外，结构性结论交用户拍板。
 > 设计卡：[`2026-10-27-shot-scope-undecided.md`](2026-10-27-shot-scope-undecided.md)。
+> **拍板（2026-10-27）**：用户「五件都按推荐办」——选 §6 的「换」，设计卡 D1–D7 全取推荐项；热点文件放行，实现提交带 `Direction-Check:` trailer 指向本文；§4 那两条 e2e 照新行为改。
 
 ### 0. 一句话根因
 
