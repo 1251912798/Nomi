@@ -336,11 +336,8 @@ try {
   ;({ win } = await walk.start())
   await clickOrFail(win.locator('[data-project-card="true"]').filter({ hasText: project.name }), '冷重启后打开同一项目')
   await clickOrFail(win.getByRole('button', { name: '创作', exact: true }), '创作工作区')
-  // 冷重启后外壳要过一会儿才把常驻面板（按落盘的形态：上一步还原成了展开）挂上来。`expandResidentPanel` 先一次性采样
-  // 「面板可见吗」，采在它挂上之前，就会去等一颗永远不会出现的小球——15 秒后红，而面板其实已经好好地展开着。
-  // 所以先等「面板或小球」其中一个出现，形态落定了再交给它。
-  await expect(win.locator(`${CREATION_PANEL}, ${COLLAPSED_DOCK}`).first(), '冷重启后创作面上必须有常驻面板（展开）或小球（收起）')
-    .toBeVisible({ timeout: stationTimeout() })
+  // 冷重启后外壳要过一会儿才把常驻面板（按落盘的形态：上一步还原成了展开）挂上来；`expandResidentPanel` 经
+  // `_shell.mjs` 的 `ensureAgentPanelOpen` 先等「面板或小球」其中一个出现再判，这里不用再自己绕一遍。
   await expandResidentPanel(win)
   const restored = win.locator(CREATION_PANEL)
   await expect(restored.locator(USER_BUBBLE).first(), '冷重启后对话流必须还在').toContainText('20 秒', { timeout: 60_000 })
