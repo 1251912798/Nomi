@@ -1,0 +1,212 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-27-browser-extract-grant",
+  "change_kind": "corrective",
+  "problem_type": "A renderer-initiated paid text call (browser prompt extraction) reached the main-process spend gate with no grant minted anywhere on its path, so every call was refused; which paid doors carry a grant was recorded only as prose that no check could turn red",
+  "symptom": "Every browser-panel prompt extraction (the hover-menu 提取 on an in-page image and the toolbar 截图提取) failed with SpendNotAuthorizedError ('Authorization expired or does not cover this target; confirm again') since 2026-09-09: 0 vendor requests, 0 prompt-library entries, no confirmation card, and a failure line in the tab.",
+  "direct_cause": "src/ui/browser/prompt/browserPromptExtractionRunner.ts called runWorkbenchTaskByVendor (nomi:tasks:run) with extras that carried no grantId. runTask's text branch defaults to TOKEN_ADMISSION (consumeTaskSpend -> assertAndConsumeQuotedSpend) since 2d907292a, and nothing on this path minted a grant. Concept spend.pending-identity notes ③ said the extraction went through electron/spendConfirmGrant.ts, but no code did.",
+  "class_root": "Where each paid door's grant comes from was written only as prose (concept notes ①–④ and a 'known defect' row in the text-caller matrix), and the one gate on this (scripts/check-run-task-grant.mjs) only inspects runTask calls that build their own request: literal in the main process. A door that arrives from the renderer over IPC, or that forwards a runTask function, is invisible to it, so a paid door with no mint stays green until a user hits it. For this door in particular the trigger is a console line that the remote page itself can write, so 'the click is the confirmation' cannot hold and the card must be shown every time.",
+  "affected_population": [
+    "Every user of the browser panel's prompt extraction since 2026-09-09: the hover-menu 提取 on in-page images and the toolbar 截图提取",
+    "Users on pages that write the extraction console line themselves (a forged trigger with no real click)",
+    "Any future paid door on the token path: a new renderer IPC entry, a forwarded runTask, or a new attachment door in the main process"
+  ],
+  "scope_paths": [
+    "electron/browser/prompt/browserPromptExtractionRun.ts",
+    "electron/main.ts",
+    "scripts/spend-token-doors.mjs",
+    "electron/spendTokenDoors.census.test.ts",
+    "electron/browser/prompt/browserPromptExtraction.ipc.integration.test.ts",
+    "docs/engineering/concept-owners/spend.pending-identity.json",
+    "tests/fixtures/textTasks/textTaskCallerHarness.ts"
+  ],
+  "entry_points": [
+    "Hover-menu 提取 on an in-page image: injected page script -> console line -> main forward promptCaptureEventFromConsole (page = the view's real URL) -> browser:view:prompt-capture -> renderer runner",
+    "Toolbar 截图提取: selection in Nomi's own overlay -> the same renderer runner",
+    "browser:prompt-extraction:run (invoke, main window main frame only) -> runBrowserPromptExtraction -> confirmSpendAndMintGrant -> runTask with the minted grantId",
+    "Every other runTask / runWorkbenchTaskByVendor door that scripts/door-map.mjs counts, judged by the census against SPEND_TOKEN_DOORS"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://www.electronjs.org/docs/latest/tutorial/security",
+      "checked_at": "2026-10-27",
+      "purpose": "Items 17 and 20: validate the sender of every IPC message and treat remote content as untrusted; the new IPC accepts only the main window's main frame, and the page-written console line cannot count as the user's confirmation."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/Security/User_activation",
+      "checked_at": "2026-10-27",
+      "purpose": "Payment-like APIs require transient activation from trusted input only; a click relayed through a page console line is not a trusted gesture, so this door asks every time."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://www.electronjs.org/docs/latest/api/web-contents#contentsgeturl",
+      "checked_at": "2026-10-27",
+      "purpose": "The card's source-page line comes from the view's webContents.getURL(), which the page cannot rewrite, instead of the pageUrl the page reports."
+    }
+  ],
+  "invariants": [
+    "Every runTask / runWorkbenchTaskByVendor door that scripts/door-map.mjs counts is registered in SPEND_TOKEN_DOORS with a role that says where its grant comes from; a mints row's file (or its named mintIn) has a mintSpendGrant / confirmSpendAndMintGrant write door and names an existing real-entry test; a forwards row ends at a mints row.",
+    "A browser prompt extraction reaches the vendor only after the user confirmed a card that names the source page (the view's real host), the image, and the vision model; the grant is minted in the main process and never leaves it.",
+    "browser:prompt-extraction:run accepts only the main window's main frame (assertTrustedSender); browser views, subframes and app-surface windows are refused before any card or grant.",
+    "At most one extraction card is open at a time: a second request returns busy without asking, and the guard is released on confirm, cancel or a missing renderer."
+  ],
+  "doors": [
+    { "kind": "read", "path": "electron/browser/prompt/browserPromptExtractionRun.ts", "symbol": "runTask" },
+    { "kind": "read", "path": "electron/capabilityCore/appIntegration.ts", "symbol": "runTask" },
+    { "kind": "read", "path": "electron/capabilityCore/dispatcher.ts", "symbol": "runTask" },
+    { "kind": "read", "path": "electron/capabilityCore/host.ts", "symbol": "runTask" },
+    { "kind": "read", "path": "electron/capabilityCore/mcpStdioServer.ts", "symbol": "runTask" },
+    { "kind": "read", "path": "electron/capabilityCore/modelOnboarding/dispatch.ts", "symbol": "runTask" },
+    { "kind": "read", "path": "electron/capabilityCore/rpcServer.ts", "symbol": "runTask" },
+    { "kind": "read", "path": "electron/integrationCertification/integrationSession.ts", "symbol": "runTask" },
+    { "kind": "read", "path": "electron/integrationCertification/integrationSession.ts", "symbol": "mintSpendGrant" },
+    { "kind": "read", "path": "electron/tasks/taskIpcHandlers.ts", "symbol": "runTask" },
+    { "kind": "read", "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts", "symbol": "runTask" },
+    { "kind": "read", "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts", "symbol": "runWorkbenchTaskByVendor" },
+    { "kind": "write", "path": "electron/browser/prompt/browserPromptExtractionRun.ts", "symbol": "confirmSpendAndMintGrant" },
+    { "kind": "write", "path": "electron/browser/prompt/browserPromptExtractionRun.ts", "symbol": "runTask" },
+    { "kind": "write", "path": "electron/capabilityCore/canvasTransportProvider.ts", "symbol": "runTask" },
+    { "kind": "write", "path": "electron/capabilityCore/modelOnboarding/tryModel.ts", "symbol": "mintSpendGrant" },
+    { "kind": "write", "path": "electron/capabilityCore/modelOnboarding/tryModel.ts", "symbol": "runTask" },
+    { "kind": "write", "path": "electron/integrationCertification/integrationSession.ts", "symbol": "mintSpendGrant" },
+    { "kind": "write", "path": "electron/integrationCertification/integrationSession.ts", "symbol": "runTask" },
+    { "kind": "write", "path": "electron/integrationCertification/integrationSessionRuntimeInstall.ts", "symbol": "runTask" },
+    { "kind": "write", "path": "electron/integrationCertification/integrationSessionRuntimeInstall.ts", "symbol": "mintSpendGrant" },
+    { "kind": "write", "path": "electron/main.ts", "symbol": "runTask" },
+    { "kind": "write", "path": "electron/parity/generationParityTestUtils.ts", "symbol": "mintSpendGrant" },
+    { "kind": "write", "path": "electron/parity/generationParityTestUtils.ts", "symbol": "runTask" },
+    { "kind": "write", "path": "electron/spendConfirmGrant.ts", "symbol": "mintSpendGrant" },
+    { "kind": "write", "path": "electron/tasks/comfyCandidateTest.ts", "symbol": "runTask" },
+    { "kind": "write", "path": "electron/tasks/taskIpcHandlers.ts", "symbol": "mintSpendGrant" },
+    { "kind": "write", "path": "electron/tasks/taskIpcHandlers.ts", "symbol": "runTask" },
+    { "kind": "write", "path": "electron/video/deconstructSpend.ts", "symbol": "confirmSpendAndMintGrant" },
+    { "kind": "write", "path": "electron/video/deconstructVideo.ts", "symbol": "runTask" },
+    { "kind": "write", "path": "src/ui/onboarding/workflowPage/runTestGeneration.ts", "symbol": "mintSpendGrant" },
+    { "kind": "write", "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts", "symbol": "runTask" }
+  ],
+  "door_reduction": {
+    "before": 30,
+    "after": 32,
+    "why_not": "The doors are every paid call site on the token path (runTask / runWorkbenchTaskByVendor) plus every mint site. They belong to different products with different confirmation surfaces (MCP try-model, certification, deconstruction, the canvas Run transport, local ComfyUI, onboarding), so they cannot merge into one. This change deletes the one door that had no mint (the renderer's runWorkbenchTaskByVendor call in browserPromptExtractionRunner.ts) and adds three in the new main-process module (write runTask, read runTask handed in by the IPC registrar, write confirmSpendAndMintGrant), so the extraction now asks and mints itself like deconstruction. Instead of merging, every door is registered in SPEND_TOKEN_DOORS and the census turns red when a door is unregistered or unpaired."
+  },
+  "generality_proof": "The census counts doors with the same AST door-map the contracts use (doorsForTargets over runTask, runWorkbenchTaskByVendor, mintSpendGrant and confirmSpendAndMintGrant), so any new paid door, in the renderer or in main, a forwarded function or a new attachment door, shows up as an unregistered row and stays red until someone writes where its grant comes from. A mints row whose file has no mint write door, a renderer-one-shot row whose named mint file has none, and a forwards row that does not end at a mints row are red too, so registering a door without a real token source does not pass. The extraction itself now goes through the single registered chain (confirmSpendAndMintGrant), the same one deconstruction uses.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/spend-token-doors.mjs",
+      "symbol": "SPEND_TOKEN_DOORS",
+      "responsibility": "The one registry of paid doors on the token path and where each door's grant comes from; judgeSpendTokenDoors pairs every row with a real mint door, and the census test fails on any unregistered door, stale row, mints row without a mint, or dangling forward."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/browser/prompt/browserPromptExtractionRun.ts",
+      "entry_point": "runBrowserPromptExtraction",
+      "disposition": "enforced",
+      "evidence": "browserPromptExtraction.ipc.integration.test.ts drives the real renderer runner, preload bridge, IPC handler, confirmSpendAndMintGrant, card and runtime gate to a loopback upstream: confirm gives one card, exactly 1 upstream request and 1 consumption; cancel, a forged console line without confirming, and untrusted senders give 0 upstream requests and 0 grants. The census registers it as a mints row."
+    },
+    {
+      "path": "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+      "entry_point": "runWorkbenchTaskByVendor",
+      "disposition": "enforced",
+      "evidence": "The last runWorkbenchTaskByVendor door (census asserts it is the only one). Registered as renderer-one-shot: its grant comes from nomi:tasks:grant-spend minted in electron/tasks/taskIpcHandlers.ts (the census checks that file has a mint write door), and local ComfyUI passes the gate without a grant."
+    },
+    {
+      "path": "electron/video/deconstructVideo.ts",
+      "entry_point": "runTask",
+      "disposition": "enforced",
+      "evidence": "Census mints row with mintIn electron/video/deconstructSpend.ts (confirmSpendAndMintGrant write door) and real-entry test electron/video/deconstructSpend.test.ts."
+    },
+    {
+      "path": "electron/capabilityCore/modelOnboarding/tryModel.ts",
+      "entry_point": "runTask",
+      "disposition": "enforced",
+      "evidence": "Census mints row: mintSpendGrant write door in the same file, test tryModelSubmitBudget.test.ts; the seven capability-core and main.ts doors that hand runTask down are forwards rows that must end at this row."
+    },
+    {
+      "path": "electron/integrationCertification/integrationSession.ts",
+      "entry_point": "runTask",
+      "disposition": "enforced",
+      "evidence": "Census mints row: injected mintSpendGrant write door in the same file, test integrationSession.test.ts; integrationSessionRuntimeInstall.ts is a forwards row to it."
+    },
+    {
+      "path": "electron/tasks/taskIpcHandlers.ts",
+      "entry_point": "nomi:tasks:run",
+      "disposition": "enforced",
+      "evidence": "Census renderer-one-shot row: the handler forwards the grant the renderer brings, minted by nomi:tasks:grant-spend in the same file; the read door that hands runTask to the ComfyUI candidate test is a free-local row."
+    },
+    {
+      "path": "electron/capabilityCore/canvasTransportProvider.ts",
+      "entry_point": "runTask",
+      "disposition": "not-affected",
+      "evidence": "RUN_APPROVED_ADMISSION: approval lives on the single-shot Run gate (main-process gesture receipt), registered as a run-approved row."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Same class as the 2026-09-11 deconstruction incident recorded at the top of scripts/check-run-task-grant.mjs: when 2d907292a (2026-09-09) put the spend gate on runTask's text branch, callers without a grant broke silently. That fix covered the main-process callers the gate can see; the renderer door stayed broken for seven weeks. Any new paid door that is not a main-process runTask call with its own request: literal can come back the same way.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs runTask runWorkbenchTaskByVendor mintSpendGrant confirmSpendAndMintGrant: 32 doors (20 write, 12 read); every runTask / runWorkbenchTaskByVendor door has a SPEND_TOKEN_DOORS row and the census judges zero findings.",
+      "git grep -n runWorkbenchTaskByVendor src/ui/browser returns nothing; runWorkbenchTaskByVendor has a single door, catalogTaskActions.ts.",
+      "tests/fixtures/textTasks/textTaskCallerHarness.ts: RENDERER_ENTRY_GAP_EXCEPTIONS is empty and #7 names the real entry test.",
+      "Found while counting, off the token path and not counted by the census: electron/catalog/catalogCommit.ts testModelCatalogMapping with execute: true calls executeProfileOperation without the spend gate; it has no renderer caller today (residual_risks)."
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/spend-token-doors.mjs",
+    "invariant": "Every paid door on the token path is registered with where its grant comes from, and the registered mint actually exists in the named file.",
+    "failure_mode": "electron/spendTokenDoors.census.test.ts fails with one finding per door: unregistered, stale, mints-without-mint, forwards-dangling, or invalid-row.",
+    "exception_policy": "none",
+    "strategy": "Turn concept spend.pending-identity's prose exceptions ①–④ into the SPEND_TOKEN_DOORS table (one row per door-map door, with a role) plus the pure judge judgeSpendTokenDoors; the census test counts doors with scripts/door-map.mjs and expects zero findings. Move the whole extraction into the main process behind browser:prompt-extraction:run (assertTrustedSender), ask every time through confirmSpendAndMintGrant, and delete the renderer door.",
+    "artifacts": [
+      "scripts/spend-token-doors.mjs",
+      "electron/browser/prompt/browserPromptExtractionRun.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/spendTokenDoors.census.test.ts",
+    "electron/browser/prompt/browserPromptExtraction.ipc.integration.test.ts",
+    "src/ui/browser/prompt/browserPromptExtractionRunner.test.ts",
+    "src/workbench/capability/spendCardRouting.test.ts",
+    "electron/browser/core/browserViewUtils.test.ts",
+    "electron/shared/contracts/browserPromptExtraction.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/spendTokenDoors.census.test.ts",
+    "electron/browser/prompt/browserPromptExtraction.ipc.integration.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/ui/browser/prompt/browserPromptExtractionRunner.ts"
+    ],
+    "rationale": "The renderer's direct runWorkbenchTaskByVendor call (nomi:tasks:run with no grant) is deleted in the same commit; the runner now only prepares the reference image and hands one narrow request to browser:prompt-extraction:run. Task kind, temperature and maxTokens moved to the main process; there is no fallback to the old door."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The registry, the census and the extraction chain are Nomi's own spend code; no third-party runtime changes.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted data changes. Each extraction now shows the existing spend confirmation card with extraction wording; prompt-library entries keep their shape. The settings IPC registration moved inside registerBrowserPromptExtractionIpc with the same channels.",
+  "residual_risks": [
+    "The in-page 提取 trigger stays forgeable until it moves onto Nomi's own surface: a page can keep popping cards one at a time, but cannot spend without a click on the card.",
+    "No cancel once the request is sent: closing the window or restarting mid-request spends once with no receipt (unchanged from before).",
+    "The spend.pending-identity exception ③ for this door expires 2026-11-15 and is not extended here.",
+    "Deconstruction's wording is still three ternaries in the generic branch of capabilityApplyHandler.ts; move it into spendCardByIntent.ts before changing it.",
+    "electron/catalog/catalogCommit.ts testModelCatalogMapping with execute: true calls the provider without the spend gate; it is off the token path, the census does not count it, and it has no renderer caller today.",
+    "The card's model line is the raw 'vendor · modelKey' (spendModelLine), because the display-name helper lives in the hotspot file.",
+    "No paid run and no zero-spend walk on this branch: the chain is verified over a loopback upstream only; the coordinator runs one minimal paid extraction."
+  ],
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-27",
+  "invariant_owner_layer": {
+    "layer": "scripts/spend-token-doors.mjs",
+    "tests": [
+      "electron/spendTokenDoors.census.test.ts",
+      "electron/browser/prompt/browserPromptExtraction.ipc.integration.test.ts"
+    ],
+    "why": "登记表与纯判定住在这里：令牌路上每扇付费门写清令牌从哪来，普查用 door-map 数门，少接一个口就红；浏览器提取这扇门由集成测试从真入口一路走到本机假上游。"
+  }
+}
