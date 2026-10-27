@@ -33,7 +33,7 @@
 |---|---|
 | 下一次任何门岗被超时 / 手动 SIGKILL，又留下一份带随机后缀的 `nomi-*` 目录，没有任何进程会来收 | 小驱动用真的 `runNode` 杀一个 `makeTempDir` 之后挂住的进程：旧助手实测留下目录（`/Users/aoqimin/Nomi-coord/tmp/I-test-tmp-leak/mini-driver.mjs`，修前 `leftover: ["nomi-prepush-kbsAIA"]`）；`node scripts/door-map.mjs killProcessTree --roots=scripts,tests,evals --include-tests` 另有 5 个杀进程树的入口（`git-delivery.mjs:68`、`daily-radar-session.mjs:82`、`lib/nomiClient.mjs:133`、`tests/ux/memory.e2e.mjs` 两处），它们杀的进程树里要是有 `makeTempDir` 的创建者，同样漏 |
 | 新加的走查 / 测试照旧会绕开分配口，因为门岗看不见它们 | 在 `tests/ux/` 下放一个文件名不带 `.walk` 的辅助文件、一个 `.cjs`、一个 `.mts`（别名）、一个 `process.env.TMPDIR` 写法：旧 `check-test-temp-static.node-test.mjs` 14 条全绿（本线修前实测，见设计卡 ★9 B⑧） |
-| 同形的泄漏在别的根继续出：产品侧 `electron/assets/localFileImport.ts:163`（用户机器上 GB 级）、vitest 的 `nomi-vitest-run-*`、`evals/` 的 8 个文件 | `grep -rn "mkdtemp" electron scripts tests src evals`；本卡把前两者列为残余风险，产品侧等 #14 合入后另派 |
+| 同形的泄漏在别的根继续出：产品侧 `electron/assets/localFileImport.ts:163`（用户机器上 GB 级）、vitest 的 `nomi-vitest-run-*`、`evals/` 的 10 个文件 / 19 处（本线语法树只读扫描；`electron/` + `src/` 另有 332 个文件 / 457 处，绝大多数是落在 vitest 运行根里的测试夹具） | `grep -rn "mkdtemp" electron scripts tests src evals`；本卡把前两者列为残余风险，产品侧等 #14 合入后另派 |
 
 ## 4. 靶子独立性检查
 
@@ -59,7 +59,7 @@
 |---|---|---|---|---|
 | 接入现成方案 | 引 `tmp` 等库 | 新依赖 | 解决不了被杀（同样走退出钩子） | ❌ |
 | 补（再补一个清理器） | 门岗 / 每天一次清扫脚本回收 `nomi-*` | 小 | 靠命名约定与年龄猜，不是结构；是第二个清理器，和退出钩子平行 | ❌（最弱的兜底，留给存量） |
-| **换（协调已定）** | 目录名带创建进程号；第一次分配时回收「创建者已死」的同形目录；杀进程的一方杀完等树没了再用同一个回收函数收；退出钩子保留为「创建者自己的即时那一半」，与回收共用一个删除原语；门岗按语法树拦绕过 | 约 60 行助手 + 约 40 行 runner + 门岗换判据 | 进程号被复用只会让回收变慢，不会误删；跨用户靠 EPERM 当活 + uid 校验 + 不跟符号链接 | ✅ |
+| **换（协调已定）** | 目录名带创建进程号；第一次分配时回收「创建者已死」的同形目录；杀进程的一方杀完等树没了再用同一个回收函数收；退出钩子保留为「创建者自己的即时那一半」（只删本进程自己登记的目录，和回收作用在同一批带进程号的目录上，没有第二份命名、登记或判据）；门岗按语法树拦绕过 | 约 60 行助手 + 约 40 行 runner + 门岗换判据 | 进程号被复用只会让回收变慢，不会误删；跨用户靠 EPERM 当活 + uid 校验 + 不跟符号链接 | ✅ |
 | 重写（限一个模块） | 让所有走查 / 测试改用一个统一的"会话临时根" | L：改 400 个调用方的约定 | 不必要：调用方全部汇到 `makeTempDir` 一个符号 | ❌ |
 | 删 | 不再往系统临时目录建（比如整仓克隆改成稀疏检出、或放进仓库内的 `.tmp`） | 每条测试单独改 | 缩小泄漏单位可以另做（调查报告建议 3），但不能代替归属 | 另做 |
 

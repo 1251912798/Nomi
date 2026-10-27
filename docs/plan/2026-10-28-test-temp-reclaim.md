@@ -58,7 +58,7 @@
 
 - 同一件事的另一处做法：`electron/assets/scratchCleanup.ts:24-30,62-79`（目录名 `p<pid>-` + `process.kill(pid, 0)`）。**评估能不能共用一份实现：不能，照抄**——① 它是 TypeScript，住在 Electron 主进程里，依赖 `../jsonFile` 的 `retryOnSharingViolation` 与 `../logging/logger`；`scripts/_test-temp.mjs` 是纯 `node` 直接跑的 `.mjs`，没有 TS 加载器，也不许 import 产品代码；② 反过来产品代码不许 import `scripts/`；③ `_test-temp.mjs` 被构建链用到（`scripts/package-build-stamp.mjs:1`），并且被 `scripts/electron-build.test.mjs:50` 单文件拷进夹具，必须零依赖。共用要么动 `electron/` 的结构（本单不碰，也是任务书的停点），要么新建一个两边都能 import 的跨运行时模块——它需要一个构建步骤，代价远大于这 10 行判据。所以两份，各管一边：`scratchCleanup.ts` 管用户项目根下的上传暂存，`_test-temp.mjs` 管系统临时目录里的测试 / 走查目录；在 `docs/engineering/self-written.json` 登记 `test-temp-owner-reclaim`，写清为什么是两份。
 - 脚本侧已有三份 `process.kill(pid, 0)` 存活判断（`scripts/vitest-fair-share.mjs:44` 的 `isAlive`、`scripts/lib/nomiClient.mjs:44`、`scripts/git-delivery.mjs:480`）。不复用它们的理由：`_test-temp.mjs` 必须零依赖（同上 ③），而且回收要的是比它们更保守的口径（只有 ESRCH 才算死、EPERM 与一切未知错误都算活）。这是第四份，登记在案；合并为一份是另一刀（需要先决定放哪、怎么随构建链拷贝），不在本单。
-- 第二份定义：没有。旧的「只靠 exit 钩子」路径同一提交处理：目录一律带进程号、一律可回收；退出钩子保留为「创建者自己的即时那一半」，与回收共用同一个删除原语 `removeTree`，注释写清分工；`check-test-temp-static.node-test.mjs` 里只认几个固定写法的正则同提交删掉，换成按语法树的 `systemTempBypasses`。
+- 第二份定义：没有。旧的「只靠 exit 钩子」路径同一提交处理：目录一律带进程号、一律可回收；退出钩子保留为「创建者自己的即时那一半」——它只删本进程自己登记的目录（即时，不等下一个进程），回收删「创建者已死」的目录，两者对着同一批带进程号的目录、同一种 `fs.rmSync` 递归删除，没有第二份命名、登记或判据，`scripts/_test-temp.mjs` 抬头注释写清分工；`check-test-temp-static.node-test.mjs` 里只认几个固定写法的正则同提交删掉，换成按语法树的 `systemTempBypasses`。
 - 复用的现成品：`typescript` 语法树（仓库已有依赖，`repoWriteScan.mjs` 同款），`killProcessTree`（`scripts/lib/processTree.mjs`），`fix-churn` / 棘轮基线的既有形状（`scripts/*-baseline.json`）。
 
 ## ★4 全状态
@@ -120,7 +120,7 @@
 | 跨用户共享的 /tmp | EPERM 当活 + uid 校验 + `lstat` 不跟链接 | 反例 ④⑤⑥ |
 | 符号链接 / 目录里带指向真仓库的链接（`pre-push-contracts.node-test.mjs` 的 `node_modules` junction） | `rmSync` 只摘链接不跟进；A2 钉住「外部内容还在」 | 反例 ⑤ |
 | 同一提交没处理的旧泄漏（没带进程号） | 不追溯；现存 10 份由清理脚本处理 | 不归本单 |
-| 其它根：`electron/assets/localFileImport.ts:163`（产品）、`tests/setup/tempWorkspace.ts`（vitest 运行根）、`evals/`（8 个文件）、`registerTestTemp` 登记的外部目录、Python 脚本 | 门岗登记 / 豁免 / 注明；不在本单改 | **残余风险**，写进报告与根因合同 |
+| 其它根：`electron/assets/localFileImport.ts:163`（产品）、`tests/setup/tempWorkspace.ts`（vitest 运行根）、`evals/`（10 个文件 / 19 处）、`electron/` + `src/`（332 个文件 / 457 处，多为 vitest 运行根里的夹具）、`registerTestTemp` 登记的外部目录、Python 脚本 | 门岗登记 / 豁免 / 注明；不在本单改 | **残余风险**，写进报告与根因合同 |
 | Windows | `process.kill(pid, 0)` 与 `taskkill` 的语义看官方文档；没有 Windows 机器 | **unverified**，写进报告 |
 
 ### D 真实条件
