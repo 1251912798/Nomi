@@ -18,7 +18,7 @@
   ],
   "entry_points": [
     "vendorHttp.requestJson / requestBinary / requestMultipart -> VendorRequestError -> taskIpcGuard encodeVendorErrorMessage -> node.error -> classifyGenerationError",
-    "runtimeVendorError.modelCallFailure / describeRuntimeError (text tasks, Agent, pi runtime) -> structured message -> classifyGenerationError",
+    "runtimeVendorError.modelCallFailure (text tasks; the Agent lane mints the same payload at createNomiProvider, see docs/fixes/2026-10-27-agent-upstream-failure-payload.root-cause.json) -> structured message -> classifyGenerationError",
     "taskResultQuery.retrievalStageError re-wrapping a VendorRequestError with the same structured payload",
     "Unstructured raw strings (old stored node.error, local runtimes, browser fetch) -> classifyGenerationError legacy path"
   ],
@@ -92,10 +92,10 @@
       "evidence": "vendorQuoteProvenance.test.ts: a thrown attempt (fetch failed: connect ECONNREFUSED) yields no providerMessage; an HTTP 429 attempt keeps the provider's words."
     },
     {
-      "path": "electron/ai/runtimeVendorError.ts",
-      "entry_point": "describeRuntimeError",
+      "path": "electron/agentLane/laneModelProvider.mts",
+      "entry_point": "createNomiProvider",
       "disposition": "enforced",
-      "evidence": "vendorQuoteProvenance.test.ts: network and timeout facts yield no providerMessage; an HTTP 503 fact keeps the provider's words."
+      "evidence": "The Agent lane mints its failure payload through modelCallFailure at the provider assembly point (describeRuntimeError had no production caller and was deleted with that change). vendorQuoteProvenance.test.ts drives modelCallFailure with a 2xx whose body broke mid-stream (no httpStatus, no providerMessage) and with an HTTP 503 attempt (the provider's words are kept)."
     },
     {
       "path": "electron/tasks/taskResultQuery.ts",

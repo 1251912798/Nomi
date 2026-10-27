@@ -46,3 +46,5 @@
 - 任务失败格式认的 `TaskResult.error` 里，主进程有几条分支写的是我们自己的话（`tasks.missingTaskId`、`tasks.noQueryOperation`、`tasks.modelUnresolvable`、`tasks.trackingLost` / `tasks.unknown`、`LOCAL_TASK_EXPIRED`）：渲染层仍会把它们当服务商原话。不是网络错误；要在主进程给 `TaskResult` 带来源事实，另报协调。
 - MCP 工具 `read_task` 的 `providerMessage`（`electron/capabilityCore/readTask.ts`）直接读 `TaskResult.error`，同上一条的形状；模型可见合同，按模型可见工具清单另做。
 - 生产侧收紧（服务商没回话时不往 `upstreamMsg` 写本机的话，让字段名本身成真）是结构上更强的一层，涉及主进程五个读者（`audioTaskRunner`、`customCallRunner`、`relayNativeWireUpgrade`、`imageRouteFallback`、事件日志），另报协调；本单的渲染层判据对旧数据仍然必要。
+
+> 并 main 后的补记（2026-10-27，协调）：#1340 删了没有生产调用者的 `describeRuntimeError`，Agent 车道改在 `createNomiProvider` 经 `modelCallFailure` 铸载荷。★9 里「pi 运行时 `describeRuntimeError` 的 network 与 timeout」和反例里它的 HTTP 503 那格，改由同一生产者 `modelCallFailure` 的「拿到 2xx 后流中途断了」与「HTTP 503」承担（`src/workbench/observability/vendorQuoteProvenance.test.ts`），network 那格与已有的 thrown 一格重复，删去。

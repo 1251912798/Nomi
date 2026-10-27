@@ -1,8 +1,8 @@
 // 「服务商原话」只认有来源证据的话（2026-10-27 用户拍板：docs/engineering/direction-checks/2026-10-27-vendor-quote-provenance.md）。
 //
-// 类边界是「服务商这次到底回没回话」，不是哪一种网络错误。把失败带过 IPC 的三条通道——vendorHttp（画布生成、取回查询）、
-// modelCallFailure（文本任务 / Agent）、describeRuntimeError（pi 运行时）——在服务商没回话时（连不上 / 超时）也把本机的话
-// 写进 structured.upstreamMsg，字段名不是证据；载荷里的 httpStatus / logicalCode（服务商回了话才有）才是。
+// 类边界是「服务商这次到底回没回话」，不是哪一种网络错误。把失败带过 IPC 的两个生产者——vendorHttp（画布生成、取回查询）、
+// modelCallFailure（文本任务；Agent 车道的 HTTP 失败也经它铸载荷，原先给 pi 运行时的 describeRuntimeError 没有生产调用者，已删）——
+// 在服务商没回话时（连不上 / 超时 / 流中途断了）也把本机的话写进 structured.upstreamMsg，字段名不是证据；载荷里的 httpStatus / logicalCode（服务商回了话才有）才是。
 // 所以这里一律用**真生产者**造错误、不手拼载荷：哪天新长出一个不带回话证据的生产者分支，这张表照样接住它。
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../i18n'
@@ -11,7 +11,7 @@ import { formatTaskFailureMessage } from '../generationCanvas/runner/taskFailure
 import { encodeVendorErrorMessage, requestJson, VendorRequestError } from '../../../electron/vendor/vendorHttp'
 import { setSubmitOutboundDepsForTests } from '../../../electron/vendor/vendorOutboundGuard'
 import { describeAgentError } from '../../../electron/ai/agentError'
-import { describeRuntimeError, modelCallFailure } from '../../../electron/ai/runtimeVendorError'
+import { modelCallFailure } from '../../../electron/ai/runtimeVendorError'
 import { tagNomiError } from '../../../electron/shared/nomiErrorCodes'
 import { desktopT } from '../../../electron/i18n'
 import type { Vendor } from '../../../electron/catalog/types'
@@ -53,7 +53,7 @@ const retrievalWrapped = (error: VendorRequestError): VendorRequestError =>
 
 const connectionReset = () => Promise.reject(new TypeError('fetch failed', { cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }) }))
 
-describe('服务商没回话：三条通道写进 upstreamMsg 的本机的话都不进「服务商原话」', () => {
+describe('服务商没回话：各通道写进 upstreamMsg 的本机的话都不进「服务商原话」', () => {
   const cases: Array<[string, () => Promise<{ message: string; local: string }>]> = [
     ['vendorHttp 提交连不上（fetch failed）', async () => {
       const error = await vendorHttpError('POST', SUBMIT_URL, () => Promise.reject(new TypeError('fetch failed')))
@@ -85,8 +85,10 @@ describe('服务商没回话：三条通道写进 upstreamMsg 的本机的话都
       message: describeAgentError(modelCallFailure({ vendorKey: 'relay', attempt: { kind: 'thrown', reason: 'fetch failed: connect ECONNREFUSED 127.0.0.1:443' } })),
       local: 'ECONNREFUSED',
     })],
-    ['pi 运行时：network', async () => ({ message: describeRuntimeError({ kind: 'network', message: 'fetch failed' }, 'provider'), local: 'fetch failed' })],
-    ['pi 运行时：timeout（我们自己的看门狗句）', async () => ({ message: describeRuntimeError({ kind: 'timeout', message: '模型 90 秒没有回应' }, 'provider'), local: '90 秒' })],
+    ['Agent 车道：拿到 2xx 后流中途断了（我们自己的话）', async () => ({
+      message: describeAgentError(modelCallFailure({ vendorKey: 'provider', attempt: { kind: 'response', status: 200, bodyBroken: true } })),
+      local: desktopT('textTask.streamCut'),
+    })],
   ]
 
   it.each(cases)('%s', async (_label, build) => {
@@ -128,8 +130,8 @@ describe('服务商回了话：原话照旧进「服务商原话」（反例，�
       message: describeAgentError(modelCallFailure({ vendorKey: 'relay', attempt: { kind: 'http', status: 429, body: JSON.stringify({ error: { message: QUOTE } }), url: 'https://fixture.invalid/v1/chat/completions' } })),
       said: QUOTE,
     })],
-    ['pi 运行时：服务商回 HTTP 503', async () => ({
-      message: describeRuntimeError({ kind: 'http', status: 503, message: 'HTTP 503', body: JSON.stringify({ error: { message: QUOTE } }) }, 'provider'),
+    ['Agent 车道：服务商回 HTTP 503', async () => ({
+      message: describeAgentError(modelCallFailure({ vendorKey: 'provider', attempt: { kind: 'http', status: 503, body: JSON.stringify({ error: { message: QUOTE } }), url: 'https://fixture.invalid/v1/chat/completions' } })),
       said: QUOTE,
     })],
     ['异步任务失败格式（只由我们产出，前半句是服务商的话）', async () => {
