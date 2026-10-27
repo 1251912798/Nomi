@@ -6,8 +6,9 @@ import { createBlankProject, waitForPersistedCanvas } from "../lib/isoApp.mjs";
 import { requireRealMediaAssets } from "../../tests/ux/fixtures/realMedia.mjs";
 
 // 用到时才取登记素材：旅程注册表的契约测试也导入本模块，那里（含 CI）没有 NOMI_REAL_MEDIA_DIR。
+const REAL_MEDIA = ["image-4k-png"];
 function realImage() {
-  return requireRealMediaAssets(["image-4k-png"]).assets.get("image-4k-png").file;
+  return requireRealMediaAssets(REAL_MEDIA).assets.get(REAL_MEDIA[0]).file;
 }
 
 function containsFile(root, fileName) {
@@ -27,6 +28,7 @@ export default {
   id: "j4-reference",
   name: "参考图驱动生成准备",
   needsAgent: false,
+  realMedia: REAL_MEDIA, // 要私有真素材：CI 不选它（scripts/eval-journey-selection.mjs）
   smoke: false,
   successCriterion: "真实上传本地图片，图片进入项目素材并挂到视频节点参考槽，参数可执行",
   async setup({ win, iso }) {
