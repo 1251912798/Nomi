@@ -2277,11 +2277,6 @@
       "count": 1
     }
   },
-  "tests/ux/video-deconstruct.e2e.mjs": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "tests/ux/video-depth-real-task.walk.mjs": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
