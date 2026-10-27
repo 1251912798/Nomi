@@ -212,3 +212,26 @@
 **没覆盖（如实）**：Linux 夜跑（本机无 Linux，`unverified`）；英文界面段（短片走查只有中文，`unverified`）；画布节点重开后还在（夹具只读画布、没建节点）；真付费；`collapseAgentPanel` 等同形采样（见上）；`ensureAgentPanelOpen` 的 40 多份调用方里除 ≥3 份实跑外，其余交推送后的 CI。
 
 **回滚**：纯走查 / 门岗改动，`git revert` 对应提交即可（设计卡、第 8 步、真失败场景、priced-card、`composer-input-read`、`ensureAgentPanelOpen` 各自一个提交）。
+
+### r2 实现中补记（2026-10-28；只记实测与新发现，上面动手前定的清单与反例一字未改）
+
+**实测（Mac，本分支最终树，经门岗锁、隔离资料、loopback 夹具，零花费）**
+
+| 验收项 | 结果 |
+|---|---|
+| r1 短片走查最终树连跑 2 遍 | 两遍 `result: passed`、退出码 0，34 秒 / 33 秒；最后一步 `14-collapsed-failed`；`textRequests` = 8、`unexpected` = []、`paidCalls` = 0；日志里没有 `[quiet-walk] 走查抢了前台` |
+| r2 / r3 第 8 步中性、第 10 步真失败 | 第 8 步收起后小球素着（截图 `11-collapsed-stopped`，右上没有 danger 点）；第 10 步：面板上先出现错误带（`13-failed-turn-panel`），收起后小球 `failed` / `failed`，aria-label 实测 `打开 Nomi（⌘J） · 有一步没成`，右上一粒 danger 点（`14-collapsed-failed`） |
+| r4 报价卡走查中英两段 | `passed`、退出码 0；`pricedRows` 四组 `lineBoxes` 都 = 1、`actions` = 2：中文单张 80px / 两张 91.7px、英文单张 94.5px / 两张 150.3px 宽，高度都是 28px，取消钮也是 28px |
+| r5 `ensureAgentPanelOpen` 改完后 CI 分片里的走查 | `agent-spend-priced-card`、`core-smoke-spend-confirm`（走 `form: 'dock'` 分支、`timeout: stationTimeout()`）、`agent-spend-card`、`agent-spend-stop-midway`：四份都 `passed` / 退出码 0（前三份报告里 `unexpected` 为空；`core-smoke` 那份没有 JSON 报告，以日志「通过」行和退出码为准） |
+| r6 反例① 产品把失败从小球上去掉 | 红在第 10 步：`Expected: "failed"`，8 次收到 `done`、6 次收到 `idle`；第 8 步仍绿；按字节还原（sha256 相等）+ 重建后回绿 |
+| r7 反例② 报价卡主按钮被逼成多行 | 红在行盒断言：`Expected: 1  Received: 5`（中文两张）；按字节还原 + 重建后回绿 |
+| r8 反例③ 走查里写回 `toHaveAttribute('placeholder', …)` | `check:walkthroughs` 退出码 1：`composer-input-read` 基线 0 → 现在 1，指向写回的那一行和 `expectComposerPlaceholder`；按字节还原后退出码 0 |
+| r9 反例④ `ensureAgentPanelOpen` 改回一次性采样 | 短片走查两遍都红在第 9 步冷重启后展开：`点不到「展开常驻 Agent 面板（点 Agent 小球）」：等满 15000ms 它都没可见`（2 / 2 稳定复现）；`_shell.test.mjs` 老实现 2 红 3 绿、新实现 5 绿；还原后回绿 |
+
+**动手后才露出来的（卡上没有）**
+
+1. **反例②实测里主按钮的高度在文字折成 5 行时仍是 28px，和取消钮一样高**：r1 备的「与取消钮等高」在这种坏法下仍然是绿的——高度类的代理量不到折行，改数行盒是对的，不是多此一举。
+2. **回 400 的那一轮只发了 1 次请求**（`textRequests` 7 → 8），没有重试；回 500 会被 lane 重试 3 次，这一点只依据 `LANE_RETRY_POLICY` 的配置，没有实测。
+3. **小球 `failed` 的来源**：面板上被断言到的是流末尾那条 error（`[data-v4-block="errorbar"]`）；面板级错误带（`actions.error`）是否同时有值，本走查没有单独断言（小球的 `failed` 取两者之一，`||`）——两个来源分家时，只有 `resolveDockStatus` 的纯函数单测在管，本单不扩。
+4. **`composer-input-read` 把方法链续行并回上一行之后，全仓仍是 0 处命中**：旧的 `toHaveValue` / `inputValue` 判定一并受益，没有新增存量。
+5. **门岗自己的一个坑**：新写的 `_shell.test.mjs` 第一版带了一条「面板一直没有小球」的 `locator(...).count()` 等于 0 断言，被 `check:walkthroughs` 的 `absence-without-baseline` 拦下；改成只断言「面板可见、没点任何东西」（该用例本来就靠「页面里根本没有小球，点就会抛」证明没点）。
