@@ -100,11 +100,11 @@ describe('dismissSplashIfPresent：「跳过」被盖住必须红，不能再用
     expect(evaluate).not.toHaveBeenCalled()
   })
 
-  test('真点超时且中心被顶栏的「全局操作」盖住：抛错点名盖住它的元素，DOM click 不放行', async () => {
+  test('真点超时且中心被顶栏里的别的元素盖住：抛错点名盖住它的元素，DOM click 不放行', async () => {
     const skip = new StubElement({ tagName: 'BUTTON' })
-    const toolbar = new StubElement({ attrs: { 'aria-label': '全局操作' } })
+    const toolbar = new StubElement({ attrs: { 'aria-label': 'probe-toolbar' } })
     const { win } = stubPage({ skip, hit: toolbar, clickFails: true })
-    await expect(dismissSplashIfPresent(win)).rejects.toThrow(/被别的元素盖住.*div\[全局操作\]/)
+    await expect(dismissSplashIfPresent(win)).rejects.toThrow(/被别的元素盖住.*div\[probe-toolbar\]/)
     expect(skip.clicked).toBe(0)
   })
 
