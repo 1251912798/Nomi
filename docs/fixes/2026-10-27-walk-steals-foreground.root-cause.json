@@ -252,6 +252,12 @@
       "entry_point": "量内存的 Electron 实例（直接 spawn，按调试口连）",
       "disposition": "enforced",
       "evidence": "经 spawnQuietElectron 起：-r 装 quiet-walk，子进程环境里的放行位钉成空串；_launchApp.test.mjs 扫描钉住「直接 spawn Electron 又装仪表的只许经 spawnQuietElectron」。"
+    },
+    {
+      "path": ".github/workflows/quality-gate.yml",
+      "entry_point": "CI 的画布性能预算（quality-gate 的 Canvas performance budget）与发版候选的画布性能旅程（desktop-rc.yml 的 Canvas performance RC journey）：量具声明了前台",
+      "disposition": "enforced",
+      "evidence": "两步都在 step 级显式带 NOMI_WALK_FOREGROUND_OK=1（CI 虚拟屏上没有人在用电脑）；check-quality-gate-workflow / check-desktop-rc-workflow 的契约测试钉住，少这一行就红。"
     }
   ],
   "recurrence": {
