@@ -48,6 +48,18 @@ export class MediaImportRejectedError extends Error {
 }
 
 /**
+ * 导入被停下（发起窗口没了 / 项目会话失效 / 应用退出）：既不是成功也不是失败，不发布资产、不写 missing。
+ * 在途请求登记（electron/ipcRequestRegistry.ts）里停下回 null；IPC 层据此以取消收场——
+ * 界面导入回「已取消」的失败回执，拷贝文件 / 懒自愈让 invoke 被拒。
+ */
+export class AssetImportCancelledError extends Error {
+  constructor() {
+    super("asset import cancelled");
+    this.name = "AssetImportCancelledError";
+  }
+}
+
+/**
  * 落盘前的**权威准入闸**（R28：防线建在最早同时握有磁盘事实与真实字节的那层）。
  * 渲染层会先用同一个 admitMediaImport 做预检以免白建节点——同一个函数两个调用者是派生，不是并行版。
  */

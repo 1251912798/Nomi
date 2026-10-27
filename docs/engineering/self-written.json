@@ -1904,7 +1904,7 @@
     },
     {
       "id": "ipc-inflight-request-stop",
-      "capability": "主进程在途 IPC 长请求的停止边界：按「发送方:requestId」登记，渲染层撤回 / 发起窗口销毁 / 项目会话复核失败 / 退出收摊汇成交给干活那一层的同一个 AbortSignal，停下回 null（补预览与视频拆解共用）",
+      "capability": "主进程在途 IPC 长请求的停止边界：按「发送方:requestId」登记，渲染层撤回 / 发起窗口销毁 / 项目会话复核失败 / 退出收摊（drain：立刻中止、此后不接新请求、等收尾做完才兑现）汇成交给干活那一层的同一个 AbortSignal，停下回 null（补预览、视频拆解、本地素材导入共用）",
       "status": "justified",
       "paths": [
         "electron/ipcRequestRegistry.ts"

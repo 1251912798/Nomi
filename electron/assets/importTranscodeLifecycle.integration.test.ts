@@ -10,8 +10,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { installQuitTeardown, resetQuitTeardownForTests, type QuitLifecycleApp, type QuitLifecycleEvent, type QuitTeardownDependencies } from "../quitTeardown";
 import { createProject } from "../runtime";
+import type { IpcRequestSender } from "../ipcRequestRegistry";
 import { registerAssetsIpc } from "./assetsIpc";
-import type { ImportRequestSender } from "./importRequests";
 import { importLocalFile } from "./localFileImport";
 import { resetVideoImportTranscodesForTests, stopVideoImportTranscodes, transcodeFileToPlayableMp4IfNeeded } from "./videoImportNormalize";
 
@@ -127,7 +127,7 @@ function filesUnder(dir: string): string[] {
   return fs.readdirSync(dir, { recursive: true, encoding: "utf8" }).filter((entry) => fs.statSync(path.join(dir, entry)).isFile());
 }
 
-const sender: ImportRequestSender = { id: 1, isDestroyed: () => false, once: () => undefined, removeListener: () => undefined };
+const sender: IpcRequestSender = { id: 1, isDestroyed: () => false, once: () => undefined, removeListener: () => undefined };
 
 /** 真退出 owner + 假 Electron app：quit() = before-quit → will-quit；exited = owner 调 app.exit 的那一刻。 */
 function installQuitOwner(overrides: Partial<QuitTeardownDependencies> = {}) {
