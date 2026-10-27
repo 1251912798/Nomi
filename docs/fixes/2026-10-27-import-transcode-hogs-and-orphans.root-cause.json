@@ -278,7 +278,9 @@
     "Windows real Electron, the 4K HEVC walkthrough, and the zh/en card screenshots remain unverified until the separate quiet-walk fix is merged into origin/main.",
     "The eleven non-import direct ffmpeg/ffprobe launches remain outside this change; the scan only stops the list from growing, they must be migrated or retired in 0.25.",
     "Closing an MCP client mid-request does not stop its conversion before quit: the loopback rpcServer has a request AbortController but does not pass it into dispatch (outside this change).",
-    "H.264 10-bit or 4:2:2 in MKV is remuxed like any H.264 (no profile or pixel-format criterion, same as an as-is MP4)."
+    "H.264 10-bit or 4:2:2 in MKV is remuxed like any H.264 (no profile or pixel-format criterion, same as an as-is MP4).",
+    "Force-killing or crashing the main process does not stop ffmpeg in its own process group (and the OS session-end critical teardown does not include imports): measured 2026-10-27, it was re-parented to init, finished the whole segment, then exited, leaving a partial file in the system tmp dir; the implementer's 'likely exits on SIGPIPE' did not hold. 'No orphans' holds only for orderly quit and abandon.",
+    "Required quit-teardown items run after desktop-lane-ipc. This change avoids the mutual wait by stopping optional items immediately, but the required video-depth-jobs and antigravity-image-jobs teardown items have the same queueing exposure."
   ],
   "detected_by": "user",
   "detected_by_detail": "2026-10-26 release-blocker review and 2026-10-27 coordination walk; round 2 from the coordinator's diff review with the bundled ffmpeg 4.4",
