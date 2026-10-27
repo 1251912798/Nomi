@@ -34,6 +34,7 @@ import {
   parsePushRefs,
   pushDecision,
   runNode,
+  runWithDeadline,
   scanGuardsToRun,
   selectGates,
   softenTimeout,
@@ -327,6 +328,20 @@ const isolatedRun = (argv, env, options) => {
   const blanked = Object.fromEntries(Object.keys(process.env).filter((key) => /_BASE_REF$/.test(key) || key === 'NOMI_CHANGED_BASE').map((key) => [key, '']))
   return runNode(argv, { ...blanked, ...env }, options)
 }
+
+test('必红：整体超时的「杀树 + 等树退净 + 回收」期间，被杀子进程的 close 不能让任务池先跑完——期限的结果压过池的结果，期限之后不再起新任务', async () => {
+  // 杀树要等几毫秒，这期间被杀子进程的 close 事件会让两个任务先结束；早先 runWithDeadline 一到期就同步 resolve，现在要等回收，
+  // 池要是先 resolve，整体超时就被当成「全跑完了」（check:claude-hooks 的同名用例在 CI 才红过一次）。第三个任务排在池里，期限一到就不许再起。
+  let started = 0
+  const tasks = [0, 1, 2].map((index) => async () => {
+    started += 1
+    return { name: `probe:${index}`, ...(await isolatedRun(['-e', 'setInterval(() => {}, 1000)'], {}, { timeoutMs: 60_000, name: `probe:${index}` })) }
+  })
+  const outcome = await runWithDeadline(tasks, 2, 1500)
+  assert.equal(outcome.timedOut, true, '整体超时被当成了「全跑完了」')
+  assert.equal(outcome.stillRunning.length, 2)
+  assert.equal(started, 2, '期限之后不该再起新任务')
+})
 
 test('结构：本文件里只有 isolatedRun 一处直接起子进程（runNode 只调用一次），谁绕开它就红', () => {
   const source = read('scripts/pre-push-structure.node-test.mjs')

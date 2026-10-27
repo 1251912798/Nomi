@@ -425,13 +425,19 @@ async function pool(tasks, limit) {
 /** 跑完所有任务，但整体最多 deadlineMs：到点就终止仍在跑的子进程并点名。返回 { results, timedOut, stillRunning }。 */
 export async function runWithDeadline(tasks, limit, deadlineMs) {
   let timer
+  // 期限一到先同步记下来：杀树 + 等树退干净 + 回收要几毫秒，这期间被杀子进程的 close 会让任务池先「跑完」。
+  // 所以到期后 ① 池里还没开始的任务不再起（否则期限之后还在起新的门岗子进程）；② 池的结果让位给期限的结果，
+  // 否则整体超时会被当成「全跑完了」（pre-push-contracts.node-test.mjs 的「整个钩子超过期限」用例守着）。
+  let expired = false
   const deadline = new Promise((resolve) => {
     timer = setTimeout(() => {
+      expired = true
       const stillRunning = [...running.values()].map((entry) => `${entry.name}（${((Date.now() - entry.started) / 1000).toFixed(0)}s）`)
       terminateAndReclaim([...running.keys()]).then((outcome) => resolve({ results: [], timedOut: true, stillRunning, ...outcome }))
     }, deadlineMs)
   })
-  const finished = pool(tasks, limit).then((results) => ({ results, timedOut: false, stillRunning: [] }))
+  const guarded = tasks.map((task) => () => (expired ? Promise.resolve(null) : task()))
+  const finished = pool(guarded, limit).then((results) => (expired ? deadline : { results, timedOut: false, stillRunning: [] }))
   const outcome = await Promise.race([finished, deadline])
   clearTimeout(timer)
   return outcome
