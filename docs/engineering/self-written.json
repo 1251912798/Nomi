@@ -1899,6 +1899,38 @@
       "revisitWhen": "Vitest 提供按用例的「自定义在途资源」钩子，或导出任务表改成按项目实例化、不再是模块级单例时"
     },
     {
+      "id": "ipc-inflight-request-stop",
+      "capability": "主进程在途 IPC 长请求的停止边界：按「发送方:requestId」登记，渲染层撤回 / 发起窗口销毁 / 项目会话复核失败 / 退出收摊汇成交给干活那一层的同一个 AbortSignal，停下回 null（补预览与视频拆解共用）",
+      "status": "justified",
+      "paths": [
+        "electron/ipcRequestRegistry.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "Electron ipcRenderer.invoke：只有通道与结构化克隆的参数，没有取消机制，AbortSignal 过不了 IPC——取消只能是第二条按请求号寻址的通道",
+          "source": "https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendererinvokechannel-args"
+        },
+        {
+          "name": "Node / WHATWG AbortController 与 AbortSignal（接入：信号本身就是它，abort、throwIfAborted、spawn 的 signal 选项都不自写）",
+          "source": "https://nodejs.org/api/globals.html#class-abortcontroller"
+        },
+        {
+          "name": "Electron webContents 的 destroyed 事件（接入：发起窗口没了就停）",
+          "source": "https://www.electronjs.org/docs/latest/api/web-contents#event-destroyed"
+        },
+        {
+          "name": "LSP / vscode-jsonrpc 的 $/cancelRequest：带取消协议的 JSON-RPC，要把主窗口整条 ipcMain.handle 传输换成 JSON-RPC 连接",
+          "source": "https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#cancelRequest"
+        },
+        {
+          "name": "仓库先例：文本流按 streamId 撤（不校验发起窗口，谁拿到号都能撤）",
+          "source": "electron/ai/textStreamIpc.ts:118"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：「停」在 Nomi 里除了渲染层撤回，还要认两样框架不知道的事——项目会话（切项目 / 关项目 = 停，由发起时 projectInteractionCapture 签发的断言周期复核）与发起窗口（只有发起那个窗口撤得动自己的请求，多窗口下不串）。本模块只把现成的 AbortController、webContents 的 destroyed 事件、registerQuitDrain 接到一起（约 60 行），不重写 IPC 传输、不自造信号；换成 JSON-RPC 的 $/cancelRequest 等于把主窗口整条 ipcMain.handle 传输换掉，代价远大于这 60 行。",
+      "revisitWhen": "Electron 的 invoke 原生支持取消（AbortSignal 或带取消的 MessagePort 请求），或主窗口 IPC 整体换到带取消协议的 RPC 层时，删掉本模块；视频拆解迁进制作 Run（Run 自己持有停止）时，把拆解这一家迁出"
+    },
+    {
       "id": "docs-site-glue",
       "capability": "教程站接入胶水：把 Astro Starlight 的产物搬进官网目录、去掉站内链接的 .html、写页面清单并入 sitePages",
       "status": "justified",
