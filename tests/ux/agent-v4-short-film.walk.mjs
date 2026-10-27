@@ -14,6 +14,7 @@ import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 import {
   APPROVAL_CARD,
   ASSISTANT_MESSAGE,
@@ -46,7 +47,7 @@ import {
   readProject,
   sendCanvas,
   sendCreation,
-  waitForV4TurnIdle, expectComposerText } from './agent-runtime-walk-support.mjs'
+  waitForV4TurnIdle, expectComposerText, expectComposerPlaceholder } from './agent-runtime-walk-support.mjs'
 
 // 空态第一条起手（创作面 = 写脚本）。它的字住 i18n（`agentPanelV4.starterWriteScriptPrompt`），
 // 这里抄一份是为了断言「chip 填进去的就是这句」；两边漂了这条走查会当场红。
@@ -61,14 +62,20 @@ const REFERENCE_TOOL = 'v4-canvas-plan-1'
 const SLOW = '再想想整体节奏。'
 // 收起/展开要验「他读到哪儿了」，就得有一条**真的翻得动**的对话。收据的展开是 DOM 上的
 // `<details open>`，收起时随子树一起没了，撑不起溢出；只有落进流里的消息才留得下来。
+//
+// 这份清单一镜一段、每镜写全（景别 / 声音 / 秒数）——一份要打印贴墙的清单本来就该这样。段与段之间必须是
+// 空行：markdown 里单个换行是软换行，用 `\n` 连起来五镜会糊成**一段**，对话流在最小窗里只溢出 35px
+// （Mac 实测；前提要 ≥ 80，Linux 夜跑上够、Mac 上不够）。前提的量靠内容撑，所以内容要有余量，不靠降阈值。
 const RECAP = '把这 4 镜按顺序完整列一遍，我要打印出来贴墙上。'
 const RECAP_TEXT = [
-  '镜 1｜清晨的街，门牌与霓虹熄灭的余温；手持，轻微呼吸感；3 秒。',
-  '镜 2｜她推门，铜铃响；门缝里的光切进室内；侧光贴着侧脸；4 秒。',
-  '镜 3｜红色杯子落在白桌面上，热气斜着走；微距，焦点从杯沿滑到指节；5 秒。',
-  '镜 4｜她坐下，按下录制键；机身红点亮起，环境声压低；定格 3 秒。',
+  '《咖啡馆推门》20 秒 · 4 镜，按顺序如下，可直接打印。',
+  '镜 1｜清晨的街，门牌与霓虹熄灭的余温；全景，手持，轻微呼吸感；街声由远及近；4 秒。',
+  '镜 2｜她推门，铜铃响；中景，门缝里的光切进室内，侧光贴着侧脸；铜铃声压过街声；5 秒。',
+  '镜 3｜红色杯子落在白桌面上，热气斜着走；微距，焦点从杯沿滑到指节；杯底轻磕桌面；6 秒。',
+  '镜 4｜她坐下，按下录制键；近景，机身红点亮起；环境声压低，只剩一声提示音；定格 5 秒。',
   '整段 20 秒，节奏是「街—门—杯—人」，前两镜给环境，后两镜收到她身上。',
-].join('\n')
+  '声音线：街声 → 铜铃 → 杯底轻磕 → 一声提示音；全片不加配乐，留给环境声。',
+].join('\n\n')
 
 const walk = await createRuntimeWalk('v4-short-film')
 let failure
@@ -210,6 +217,8 @@ try {
   // 就被弹回最新一条——「收起」于是成了一个会悄悄弄丢阅读位置的动作（定稿 §11.2：原宽**原状态**还原）。
   const creationFlow = win.locator(`${CREATION_PANEL} ${V4_FLOW}`)
   const creationOverflow = await creationFlow.evaluate((node) => node.scrollHeight - node.clientHeight)
+  // 实测溢出记进报告：前提靠内容撑，余量要看得见（只在红的时候才看见 px 数，下一次就是「突然红」）。
+  walk.report.minWindowFlowOverflowPx = creationOverflow
   if (creationOverflow < 80) throw new Error(`最小窗下对话流只溢出 ${creationOverflow}px，滚动位置这条断言证不了任何东西`)
   // 停在**半路**（这里取最顶）而不是底：跟到底那条逻辑本来就会把底还原成底，
   // 只有翻在半路才分得出「把位置还回来」与「又跟了一次底」。
@@ -258,8 +267,10 @@ try {
   await recorded(slowTurn.received, 'slow turn request')
   const running = canvas.locator(`${COMPOSER}[data-mode="running"]`)
   await expect(running).toBeVisible()
-  // 运行中占位文案换成「可继续输入，将排队发送」——它是这一刻唯一在说话的东西。
-  await expect(canvas.locator(COMPOSER_INPUT)).toHaveAttribute('placeholder', /排队/)
+  // 运行中占位文案换成「可继续输入，将排队发送」——它是这一刻唯一在说话的东西。输入框是 TipTap，占位不是
+  // `placeholder` 属性，而是空段落上画出来的字：读的是用户眼睛看到的那一句，文案按键从词典取（不抄字面量）。
+  await expectComposerPlaceholder(canvas.locator(COMPOSER_INPUT), uiText('zh-CN', 'agentPanelV4.placeholderRunning'),
+    '运行中输入框画出来的占位必须是词典里的排队提示')
   await walk.snap('09-running')
   await clickOrFail(canvas.locator(`${COMPOSER}[data-mode="running"] ${COMPOSER_SEND}`), 'composer 停止')
   slowTurn.release({ type: 'text', text: '好，先停在这里。' })
@@ -320,6 +331,11 @@ try {
   ;({ win } = await walk.start())
   await clickOrFail(win.locator('[data-project-card="true"]').filter({ hasText: project.name }), '冷重启后打开同一项目')
   await clickOrFail(win.getByRole('button', { name: '创作', exact: true }), '创作工作区')
+  // 冷重启后外壳要过一会儿才把常驻面板（按落盘的形态：上一步还原成了展开）挂上来。`expandResidentPanel` 先一次性采样
+  // 「面板可见吗」，采在它挂上之前，就会去等一颗永远不会出现的小球——15 秒后红，而面板其实已经好好地展开着。
+  // 所以先等「面板或小球」其中一个出现，形态落定了再交给它。
+  await expect(win.locator(`${CREATION_PANEL}, ${COLLAPSED_DOCK}`).first(), '冷重启后创作面上必须有常驻面板（展开）或小球（收起）')
+    .toBeVisible({ timeout: 60_000 })
   await expandResidentPanel(win)
   const restored = win.locator(CREATION_PANEL)
   await expect(restored.locator(USER_BUBBLE).first(), '冷重启后对话流必须还在').toContainText('20 秒', { timeout: 60_000 })
