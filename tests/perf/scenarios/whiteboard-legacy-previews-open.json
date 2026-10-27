@@ -16,12 +16,12 @@
   "budgetStatus": "proposed",
   "budgetBasis": "Default open-to-interactive budget (<=1 s, Nielsen 1 s limit for keeping the flow of thought) from docs/engineering/perf-scenarios.md, applied to the part this feature adds to opening a project: from the twenty cards mounting to all twenty drawn previews on screen. The cold open before the cards mount has its own scenario (project-open-100-nodes); the probe also prints double click to all previews (projectOpenToPreviewsMs) and the longest task in the window (longestTaskMs).",
   "baseline": {
-    "median": 983,
-    "p95": 1014.6,
+    "median": 986,
+    "p95": 1053,
     "runs": 5,
     "machine": "darwin arm64 Apple M5 x10 / 24GB",
     "date": "2026-10-27",
-    "commit": "2c3f9e706",
+    "commit": "7256a78d9",
     "noisy": true
   }
 }

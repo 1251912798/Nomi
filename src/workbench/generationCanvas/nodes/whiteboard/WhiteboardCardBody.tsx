@@ -6,13 +6,19 @@ import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
 import { CardActivationButton, EmptyStateLauncher } from '../render/CardCommon'
 import { DeferredNodeImage, DeferredNodeMediaPlaceholder } from '../DeferredNodeMedia'
-import { useDeferredNodeMediaVisibility } from '../deferredNodeMediaQueue'
+import { useDeferredNodeMediaVisibility, type DeferredNodeMediaState } from '../deferredNodeMediaQueue'
 import { canvasImageSourceOf } from '../canvasImageSource'
 import { openWhiteboard } from './whiteboardSession'
 import { resolveNodeVisualSize } from '../nodeSizing'
 import { readWhiteboardState } from './whiteboardState'
 import { whiteboardHasVisibleContent } from './whiteboardRasterState'
 import { useWhiteboardStatePreview } from './whiteboardStatePreview'
+
+/**
+ * 老画板的预览还没画好时，占位和排队中的图一样静止、不扫光：扫光只给拿到加载槽位的媒体
+ * （mediaPlaceholderShimmer.test.ts）。预览一次只画一张，20 块老画板不让 20 张卡同时动画。
+ */
+const DRAWING_PREVIEW_PLACEHOLDER_STATE: DeferredNodeMediaState = 'queued'
 
 /**
  * 画板节点的 body —— 有画出来的结果就显示那张图（和角色卡一样走画布预览），没有才画「毛笔启动器」
@@ -67,7 +73,7 @@ function WhiteboardCardBodyImpl({
           {pictureSource ? (
             <DeferredNodeImage src={pictureSource} alt={node.title || ''} className="h-full w-full object-contain object-center select-none pointer-events-none" />
           ) : (
-            <DeferredNodeMediaPlaceholder state="queued" />
+            <DeferredNodeMediaPlaceholder state={DRAWING_PREVIEW_PLACEHOLDER_STATE} />
           )}
         </CardActivationButton>
       </div>

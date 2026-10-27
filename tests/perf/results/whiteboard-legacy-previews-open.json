@@ -1,9 +1,9 @@
 {
   "machine": "darwin arm64 Apple M5 x10 / 24GB",
-  "commit": "2c3f9e706",
-  "head": "2c3f9e70698c147a00837ed325d9ebb35e922cc2",
+  "commit": "7256a78d9",
+  "head": "7256a78d989022fd1aa115b2cf5d4010eb449bd0",
   "dirty": true,
-  "sourceTree": "46ce7e531d3f7125509ab56c681ddacf7834fcd0",
+  "sourceTree": "2a91c20233a7535e09ca5254f2da5aa655a1320e",
   "date": "2026-10-27",
   "runs": 5,
   "results": [
@@ -12,8 +12,8 @@
       "metrics": {
         "openToInteractive": {
           "runs": 5,
-          "median": 983,
-          "p95": 1014.6
+          "median": 986,
+          "p95": 1053
         },
         "longTasks": {
           "runs": 5,
@@ -23,19 +23,19 @@
       },
       "samples": {
         "openToInteractive": [
-          964,
-          983,
-          1017,
-          1005,
-          979
+          1060,
+          957,
+          1025,
+          986,
+          984
         ],
         "response": [],
         "frameGapP95": [],
         "longTasks": [
-          0,
-          0,
-          0,
           1,
+          0,
+          0,
+          0,
           0
         ],
         "idleRectReadsPerSec": [],
@@ -44,6 +44,15 @@
         "panelFramesOff": []
       },
       "budget": 1000,
+      "baseline": {
+        "median": 983,
+        "p95": 1014.6,
+        "runs": 5,
+        "machine": "darwin arm64 Apple M5 x10 / 24GB",
+        "date": "2026-10-27",
+        "commit": "2c3f9e706",
+        "noisy": true
+      },
       "verdict": {
         "status": "ok",
         "note": ""

@@ -14,7 +14,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { launchNomiApp } from './_launchApp.mjs'
-import { expect } from './_assert.mjs'
+import { expect, expectAbsent, proveProbe } from './_assert.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 import { buildInlineWhiteboardProject } from './_whiteboardFixture.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 import { collapseAgentPanel, canvasResetView } from './_shell.mjs'
@@ -159,7 +160,8 @@ async function runLegacyPreviewsOnce() {
     await expect(projectCard).toBeVisible()
     await page.evaluate(installLegacyPreviewRecorder, LEGACY_BOARDS)
     await projectCard.dblclick()
-    await expect.poll(() => page.evaluate(() => window.__legacyPreviews.doneAt !== null), { timeout: 60_000, message: 'every legacy board card shows its drawn preview' }).toBe(true)
+    // Two operations: the project opens, then the cards draw their previews one at a time.
+    await expect.poll(() => page.evaluate(() => window.__legacyPreviews.doneAt !== null), { timeout: stationTimeout({ operations: 2 }), message: 'every legacy board card shows its drawn preview' }).toBe(true)
     const measured = await page.evaluate(() => {
       const state = window.__legacyPreviews
       window.__legacyPreviewLongTasks.disconnect()
@@ -172,11 +174,12 @@ async function runLegacyPreviewsOnce() {
       }
     })
     Object.assign(sample, measured)
-    sample.launchersOnLegacyCards = await page.locator('[data-node-id^="legacy-"] [data-testid="whiteboard-empty-action"]').count()
+    // The empty board on the same canvas proves the launcher probe finds launchers; no legacy card may show one.
+    const launcherProof = await proveProbe(page.locator('[data-node-id="board"] [data-testid="whiteboard-empty-action"]'), 'the empty board shows the brush launcher')
+    await expectAbsent(page.locator('[data-node-id^="legacy-"] [data-testid="whiteboard-empty-action"]'), { provenBy: launcherProof, message: 'no legacy board card shows the launcher' })
     await page.waitForTimeout(1500)
     sample.legacyNodesUnchangedOnDisk = legacyNodesOnDisk(project) === legacyBefore
     await page.screenshot({ path: path.join(outputRoot, `legacy-previews-run-${samples.length + 1}.png`) })
-    if (sample.launchersOnLegacyCards !== 0) throw new Error(`${sample.launchersOnLegacyCards} legacy cards still show the launcher`)
     if (!sample.legacyNodesUnchangedOnDisk) throw new Error('opening the project changed a legacy board on disk')
   } catch (error) {
     sample.error = String(error)
