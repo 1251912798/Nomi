@@ -71,10 +71,6 @@
     "count": 2,
     "reason": "引导聚光圈 3400 与说明气泡 3401（fixed）：同引导旅途，该进 popover 档，留待以后迁"
   },
-  "src/workbench/onboarding/SplashIntro.tsx": {
-    "count": 2,
-    "reason": "开屏动画（fixed inset-0，z-[60]，主层与淡出层各一处）：该进 applicationModal 档；这条是临时的——修法含「跳过」要不要挪出系统拖拽带，停在协调拍板（docs/plan/2026-10-27-splash-skip-under-topbar.md「待拍板」），修开屏的提交同时删掉这条"
-  },
   "src/workbench/preview/EditingLayoutMenu.tsx": {
     "count": 1,
     "reason": "预览页布局菜单（absolute，130，开在顶栏的层叠上下文里）：局部层，迁移时降成组件内小数字，不上刻度"
