@@ -83,3 +83,14 @@
 - `electron/video/deconstructCancellation.test.ts`：四个取消时机的在途清单与「取消后照样发满 7/7」；一开始就 abort 的 signal 也被无视（所有子步骤收到的参数里都没有 AbortSignal，`runTask` 只收 1 个参数）。
 - `electron/video/videoIpcSession.test.ts`：主进程只有开始口、没有取消口；handler 交给编排的 options 只有 `authorizeSpend` / `onPhase`。
 - `src/workbench/generationCanvas/nodes/shotTable/deconstructionTerminalState.test.ts`：点取消、项目被换走都不碰主进程桥；单镜重试不带 requestId。
+
+## 8. 拍板结果（2026-10-27，用户「五件都按推荐办」）
+
+- **分两刀**（第 2、6 题合起来定）。第一刀（0.24）：点取消之后不再发任何新的付费调用——付费闸外层判 signal（已取消不进闸、不扣钱）、编排里每一步发之前判 signal、ffmpeg 收到信号就停；`electron/runtime.ts` 一行不动。**取消时已经发出去的那一次请求照常结算**，PR 正文和根因合同的残余风险都写明。第二刀（0.25）：在途那一次立即断开，连同 `runtime.ts` 的迁出抵扣。
+- 第 1 题：接 signal，不迁 Run（迁 Run 另立项）。
+- 第 3 题：单镜重试不加取消按钮。
+- 第 4 题：不撤令牌。
+- 第 5 题：请求登记复用补预览那一份——挪成中立模块 `electron/ipcRequestRegistry.ts`，旧文件 `electron/assets/previewRequests.ts` 同提交删，所有调用方改过去。
+- 第 7 题：主进程直接拒缺 requestId 的拆解请求。
+- 协调补充：吞掉取消的三处（`LocalSpeechError` 归类、读图那段的 `catch`、`transcribeShots` 的 `.catch`）一起修，取消照原样传出去、不记成失败；主进程按项目绑定，`projectBinding` 失效（切项目、关窗）等同取消；导入转码那份请求登记（`electron/assets/importRequests.ts`）还没进 origin/main，本刀只收补预览与拆解两家，协调另派收口。
+- 热点放行：实现提交带 `Direction-Check: docs/engineering/direction-checks/2026-10-27-deconstruct-cancel.md`。设计卡按第一刀改写：`docs/plan/2026-10-27-deconstruct-cancel.md`（第二刀写在「不做」）。
