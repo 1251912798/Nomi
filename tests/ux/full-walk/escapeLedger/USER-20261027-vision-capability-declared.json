@@ -26,7 +26,7 @@
     "fb56c9c22",
     "eab8bbae6"
   ],
-  "fixedInPr": 9999,
+  "fixedInPr": 1346,
   "rootCauseContract": "docs/fixes/2026-10-27-vision-capability-declared.root-cause.json",
   "classCheck": {
     "kind": "matrix",
