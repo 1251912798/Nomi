@@ -190,13 +190,22 @@ const screenshotRequest: BrowserAssetPromptCaptureRequest = {
   sourceRect: { left: 10, top: 10, width: 200, height: 120 },
 };
 
-/** 等主进程把卡弹到渲染层那张唯一的确认卡上。 */
-async function nextCard() {
-  return vi.waitFor(() => {
-    const pending = useSpendConfirmStore.getState().pending;
-    if (!pending) throw new Error("no spend card yet");
-    return pending;
-  }, { timeout: 5000, interval: 5 });
+type PendingCard = NonNullable<ReturnType<typeof useSpendConfirmStore.getState>["pending"]>;
+
+/**
+ * 等主进程把卡弹到渲染层那张唯一的确认卡上：订阅卡自己的 store，卡一挂上就回。
+ * 不设墙钟上限，卡永远不来由 testTimeout 兜底（docs/lessons/fixed-wall-clock-caps-break-when-work-grows.md）。
+ */
+function nextCard(): Promise<PendingCard> {
+  const current = useSpendConfirmStore.getState().pending;
+  if (current) return Promise.resolve(current);
+  return new Promise((resolve) => {
+    const unsubscribe = useSpendConfirmStore.subscribe(({ pending }) => {
+      if (!pending) return;
+      unsubscribe();
+      resolve(pending);
+    });
+  });
 }
 const answerCard = (ok: boolean) => useSpendConfirmStore.getState().resolvePending(ok);
 const cards = () => harness.rendererDecisions.filter((decision) => decision.kind === "spend.confirm");
