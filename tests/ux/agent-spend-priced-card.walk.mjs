@@ -37,7 +37,7 @@ const teacups = (lines) => (tag) => lines.map((line, index) => ({
 /** 有价这一档的卡此刻摆着什么（动作行左边那一格、主按钮），以及两者是不是同一行、有没有折行。 */
 async function pricedRow(card) {
   const primary = card.locator(CARD_PRIMARY)
-  const [primaryBox, actions] = [await primary.boundingBox(), card.locator('[data-v4-block="card-actions"] > *').count()]
+  const [primaryBox, actions] = [await primary.boundingBox(), await card.locator('[data-v4-block="card-actions"] > *').count()]
   return {
     primary: ((await primary.textContent()) ?? '').replace('⏎', '').trim(),
     actionCount: actions,
