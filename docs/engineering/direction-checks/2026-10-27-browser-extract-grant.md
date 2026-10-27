@@ -3,6 +3,7 @@
 **代批与拍板的分界：**
 
 - **协调代批（10-27）：只因目录口径命中、改法是换。** 代批只覆盖本单里除 `src/workbench/capability/capabilityApplyHandler.ts` 以外的命中。
+- **结论：用户 10-27 放行（「五件都按推荐办」，记在 approvals.jsonl）**——热点文件只放行付费卡分流那一处，换成按 intent 查表（决定二推荐项）；入口走 B（决定一推荐项）。实现线 I-browser-extract-grant-r2 照设计卡「第 2 轮定稿」实现，实现提交带本文件的 `Direction-Check:` trailer。
 - **`capabilityApplyHandler.ts` 交用户拍板。** 它本身是**文件级**命中，不在代批范围内。
   - 近 14 天它已有 2 个 fix：`121745347`（确认卡措辞）、`2efa07919`（推送前钩子，拆文件体积）。本单会是第 3 个。
   - 协调推荐放行，理由见 §6、§7。

@@ -1,8 +1,8 @@
 # 浏览器「提取提示词」接上付费令牌 · 设计卡（方案 B：每次提取都问）
 
-日期：2026-10-27。线：I-browser-extract-grant（本单只交特征测试、设计卡、方向复盘）。基线：`origin/main` @ `6c05eebae`。
+日期：2026-10-27。线：I-browser-extract-grant（第 1 轮：特征测试、设计卡、方向复盘）→ I-browser-extract-grant-r2（第 2 轮：实现）。基线：第 1 轮 `origin/main` @ `6c05eebae`，第 2 轮 `50b12b763`（协调已并上最新 origin/main）。
 
-**状态：停在设计卡。** 方案 B 要改 `src/workbench/capability/capabilityApplyHandler.ts` 的付费卡分流一处。这个文件近 14 天已有 2 个 fix，本单会是第 3 个，属于文件级命中，按 P1 交用户拍板。放行后由协调另起实现线，按本卡 ★9 的清单实现和自验。方向复盘：[`docs/engineering/direction-checks/2026-10-27-browser-extract-grant.md`](../engineering/direction-checks/2026-10-27-browser-extract-grant.md)。
+**状态：用户 10-27 放行（「五件都按推荐办」，记在 approvals.jsonl），第 2 轮按本卡实现。** 热点文件 `src/workbench/capability/capabilityApplyHandler.ts` 只放行付费卡分流那一处，换成按 intent 查表。方向复盘：[`docs/engineering/direction-checks/2026-10-27-browser-extract-grant.md`](../engineering/direction-checks/2026-10-27-browser-extract-grant.md)。第 2 轮定稿见下面「第 2 轮定稿」一节；它和后文冲突的地方，以定稿为准（后文相关处已同步改过）。
 
 协调定向（10-27）：
 - 选 B：每次提取都弹确认卡。派工书原第 2 条「点提取＝确认，`askWhenCallsAbove: 1`」作废。
@@ -11,6 +11,39 @@
 - 补普查测试，改正登记。
 - 防卡被刷屏，只做现有边界上几行能做的部分。
 - C（套通用卡）不做。
+
+## 第 2 轮定稿（实现线 I-browser-extract-grant-r2，动手前写定）
+
+**用户拍板（10-27「五件都按推荐办」）：**
+
+1. 热点文件只放行付费卡分流那一处：`confirmSpendFromMainProcess` 里凭据验证那个 `if` 换成一次按 intent 查表。表在自己的文件 `src/workbench/capability/spendCardByIntent.ts`，凭据验证卡、提取卡各占一行；热点文件不再加 `if`。实现提交带 `Direction-Check:` trailer。
+2. 新建提取付费卡 `src/workbench/capability/promptExtractionSpendCard.ts`，文案照 3.3 的表（中英），图标 `source: 'user'`；弹的仍是全仓唯一那张卡，不新画界面、不改布局。
+3. 每次提取都弹卡：页内图片的提取、悬停菜单、工具栏截图提取，三处都经同一个 runner、同一条主进程链，没有「点一下就算确认」的特例。
+4. 整次提取挪进主进程（3.2 选的接法），由 `confirmSpendAndMintGrant` 问人、铸令牌、发出；渲染层不铸令牌。
+5. 新 IPC 只认可信发送方（`assertTrustedSender`）。
+
+**协调定（第 1 轮留下的两件）：**
+
+- 功能分类只勾「花钱」，不勾「新界面 / 改交互」：复用现有对话框，不改布局。花钱类合并前要另一条线独立验收，协调派。
+- 发出中途切了项目：结果照样存进提示词库（库是全局的，钱已经花了）。只丢和项目绑定的副作用——这一路上没有：模板设置的读取、参考图的抓取 / 截图落盘都发生在弹卡之前，那两处切项目仍然整次取消、一分钱不花；弹卡之后只剩「存进全局库」和「在发起的标签页原地报一句」，都不绑项目。
+
+**实现时写定的细节（拍板范围内，不改方向）：**
+
+- **IPC 形状**：`browser:prompt-extraction:run`（invoke），请求 `{ vendor, modelKey, prompt, imageUrl, mode, projectId, pageUrl, imageSourceUrl }`，回 `{ outcome: 'done', result } | { outcome: 'not-confirmed' } | { outcome: 'busy' }`；失败照 `nomi:tasks:run` 的编码抛出（`runTaskIpcGuard`）。
+  - `imageUrl` 是模型真正读的那张（抓到的原图 / 截图的 data URL）；`imageSourceUrl` 是它的来处（原图地址，截图时为空串）；`pageUrl` 是来源页。
+  - 卡上的两行（来源页主机名、图片名）由主进程用共享合同 `electron/shared/contracts/browserPromptExtraction.ts` 算好、编进 `prompt` 字段，卡模块用同一个模块解开。这样 3.3 原写的 `page` / `image` 两个字段换成了它们的来处，格式仍只有一个主人。
+- **转发抽成纯函数**：`browserViews.ts` 里页内「提取」的 console 转发搬进 `electron/browser/core/browserViewUtils.ts` 的 `promptCaptureEventFromConsole`，`pageUrl` 取 `contents.getURL()`。这样 ★9 第 4、5 格能用真转发喂伪造的 console 行。
+- **令牌路普查的登记表放在非测试文件里**：`scripts/spend-token-doors.mjs`（`SPEND_TOKEN_DOORS` 表 + 纯判定 `judgeSpendTokenDoors`），普查测试 `electron/spendTokenDoors.census.test.ts` 读它、用 `scripts/door-map.mjs` 数门。
+  - 为什么不全写在测试里：根因合同（contract v3）要求「复发类」修复的预防件里有一件不是测试的结构件，并且执行边界必须是登记概念的写接口。登记表就是这件结构件，照 `scripts/ui-money-format.mjs` + 普查测试的先例。
+  - 登记表挂在概念 `spend.pending-identity` 上（它 notes 里的例外 ①–④ 就是这张表的文字版）：`write_api` 加 `scripts/spend-token-doors.mjs#SPEND_TOKEN_DOORS`，`parity_test` 指向普查测试，notes ③ 改成和代码一致。不新建概念。
+- **登记表之外要跟着登记的三处**（门岗要求，不是新能力）：
+  - `scripts/generation-entrances-ledger.json`：新模块里的 `runTask(` 是一个新的发请求调用点，登记成「文本任务，不是生成入口」（`check:generation-entrances`）；
+  - `docs/engineering/self-written.json` 的 `domainRoots`：加 `electron/browser/prompt/` 与 `electron/shared/contracts/browserPromptExtraction*`（新文件落在领域目录外，`check:self-written` 会拦；它们是按次付费的领域语义，不是通用能力）；
+  - `tests/fixtures/textTasks/textTaskCallerHarness.ts`：`#7` 换成真入口测试，`RENDERER_ENTRY_GAP_EXCEPTIONS` 清空。
+- **派工书文件清单外、新 IPC 必须的接线**（各一两行）：`electron/main.ts` 注册一行 + import 一行；`electron/preload/mediaBridge.ts` 桥一个方法；`src/desktop/bridgeBrowserTypes.ts` 类型一行。
+- **模式类型只留一个主人**：`'replicate' | 'style'` 定义在共享合同里，`src/ui/browser/prompt/browserPromptExtraction.ts` 改成从那里转出，渲染层用的地方不动。
+- **重试次数**：不传 `maxAttemptsPerNode`，用 `spendGrant` 的缺省（本卡 3.1 原定）。闸只在 `runTask` 里核一次；传输层的自动重试在闸之后，不再过闸。
+- **拍板图**：登记过的例外里最接近的是 `pure-bugfix`，但它写着「不改文案」，而本单新增了卡上的文案（用户 10-27 已拍板）。没有更合适的登记例外，本线不新造；PR 正文先写 `pure-bugfix` 并注明这一点，交协调定。路径规则推不出「新界面」（本单没有 `.tsx`），门岗不判这一节。
 
 ## 零、一句话
 
@@ -73,7 +106,7 @@
 
 主进程新模块按下面 6 步做：
 
-1. **校验窄 payload**：`{ vendor, modelKey, prompt, imageUrl, mode: 'replicate' | 'style', projectId: string | null, page, image }`。
+1. **校验窄 payload**：`{ vendor, modelKey, prompt, imageUrl, mode: 'replicate' | 'style', projectId: string | null, pageUrl, imageSourceUrl }`（第 2 轮定稿：卡上两行由主进程从 `pageUrl` / `imageSourceUrl` 算出，见「第 2 轮定稿」）。
    - 温度、maxTokens、任务种类 `image_to_prompt` 由主进程按 mode 定。
    - 这几项今天写在渲染层 `browserPromptExtractionRunner.ts:96-101`，挪过来以后只在一处定。
 2. **报价身份等于执行身份**：用 `findExecutableModel(vendor, modelKey, 'text')` 取 `vendor.key` / `model.modelKey`。
@@ -116,13 +149,14 @@
 渲染层：
 
 - **删旧**：`browserPromptExtractionRunner.ts` 的 `runPromptExtraction` 改调新桥，**同一提交删掉** `runWorkbenchTaskByVendor` 那条调用。不留开关，不留回退。
-- **传给主进程的两个字段**：
-  - `page`：主进程转发时记下的浏览视图真实地址的主机名（见 3.3）；
-  - `image`：截图时是空串，原图时是原图地址。
+- **传给主进程的两个字段**（第 2 轮定稿）：
+  - `pageUrl`：来源页。原图那一路取主进程转发时记下的浏览视图真实地址（见 3.3），截图那一路取标签页状态里的地址（同样来自主进程的 `browser:view:state`）；
+  - `imageSourceUrl`：截图时是空串，原图时是主进程真正抓图的那个地址（抓图结果的 `sourceUrl`）。
 - **按 outcome 分三种处理**：
   - `done`：照旧解析，进库；
   - `not-confirmed`：在标签页原地报「已取消提取」；
   - `busy`：在标签页原地报「上一张提取确认还没处理」。
+- **切项目**（协调 10-27 定）：弹卡之前的两处 `stillCurrent` 判断保留（那时一分钱没花，整次取消）；弹卡之后的那一处删掉——钱已经花了，结果照样存进全局提示词库。
 - **失败文案**：过 `classifyGenerationError`（`src/workbench/observability/classifyError.ts`）。`NOMI_VENDOR_ERR_B64::` 标记和 Electron 的 `Error invoking remote method …` 前缀都不印给用户。
   - 修前这条路抛在闸上，从没走到过供应商那一步，所以今天的 runner 直接印 `error.message` 也没人发现。
 
@@ -133,7 +167,7 @@
 | 渲染层先要令牌，再走 `runWorkbenchTaskByVendor` | 新 IPC（问人 + 铸）加旧的 `nomi:tasks:run`，两次往返 | 不透明 id 进渲染层 | 主进程算一次，渲染层再发一次参数，两处 | 不选：参数一漂（温度、模型别名），闸上就再弹第二张卡；而且渲染层持有令牌 |
 | **整次提取挪进主进程** | 一个新 IPC；`runWorkbenchTaskByVendor` 少一个令牌路调用方 | 只在主进程 | 同一个函数里算，同一份参数发 | **选**：门少一扇，分层和拆解一致（主进程问、铸、发） |
 
-### 3.3 卡上写什么（文案草案，随热点文件一起拍板）
+### 3.3 卡上写什么（文案，用户 10-27 已拍板）
 
 - **卡模块**：照凭据验证卡的先例（`src/workbench/capability/credentialProbeSpendCard.ts`），单独一个模块 `src/workbench/capability/promptExtractionSpendCard.ts`。
 - **对话框**：弹的仍是全仓唯一那张卡（`useSpendConfirmStore` → `SpendConfirmDialog`）。不新画界面，不改布局。
@@ -142,8 +176,8 @@
 |---|---|---|
 | 标题 | 把这张图写成提示词？ | Turn this image into a prompt? |
 | 说明 | 读图模型会看一次这张图，写好的提示词存进提示词库。 | A vision model reads this image once and saves the prompt to your library. |
-| 行：来源页 | `<主机名>` | Page |
-| 行：图片 | 原图文件名或地址；截图时写「页面截图」 | Image / Page screenshot |
+| 行：来源页（值是主机名） | 来源页 | Page |
+| 行：图片（值是原图文件名，取不到就是缩短的地址；截图时写「页面截图」） | 图片 / 页面截图 | Image / Page screenshot |
 | 行：读图模型 | 沿用 `runtime.capability.visionModelLine` | （沿用） |
 | 确认钮 | 提取 | Extract |
 | 图标 / 来源 | `source: 'user'`（金币图标，同拆解）；不写「AI 助手想生成…」 | — |
@@ -184,7 +218,7 @@
 - 凭据验证那一支同一提交搬进表。它的行为不变，由特征测试 `src/workbench/capability/spendCardRouting.test.ts` 第一格钉住（本单先写，修前绿）。
 - 拆解那三处内嵌三元，本单不搬：搬就要动通用分支的正文，热点文件的改动会变大。这条记进残余风险：以后谁要给拆解换措辞，先把它也搬进表。
 
-### 3.5 不放行时的备选（D）
+### 3.5 不放行时的备选（D，未采用：用户 10-27 放行了 B，留作回滚时的紧急方案）
 
 热点文件不放行，B 就做不了。那样的话 0.24 的提取还是每次被拒，不能让用户继续撞墙。D 的做法：
 
@@ -219,7 +253,7 @@
 | 6 外部数据与失败 | 见下面「6 外部数据与失败」小节 | 故障注入格（★9 第 10 条） |
 | ★7 性能 | 不适用：这是修复，不是新增功能，没有新交互路径的计算量。多一张卡复用现有对话框；提取本身是一次网络调用，耗时由供应商决定。 | — |
 | 8 真实条件 | 见下面「8 真实条件」小节 | 截图（实现线 Read 过） |
-| 拍板图清单 | 不适用：复用现有付费确认对话框，不新画界面、不改布局（按「逻辑 bug 不出样张」那一条）。新文案见 3.3，随热点文件一起交用户拍板。协调若判定这算新界面，就补 Claude Design 探索图。 | — |
+| 拍板图清单 | 不适用：复用现有付费确认对话框，不新画界面、不改布局（按「逻辑 bug 不出样张」那一条；协调 10-27 定不勾「新界面」）。新文案见 3.3，用户 10-27 已拍板。PR 正文的例外 id 见「第 2 轮定稿」最后一条（`pure-bugfix` 不完全贴，交协调定）。 | — |
 | ★9 验收与回滚 | 验收：见第六节「验收清单与反例」。回滚和独立验收见下面「★9 验收与回滚」小节 | `## 独立验收` |
 
 ### 先查别人（★0）
@@ -312,7 +346,8 @@
 
 **系统改进**：让「登记在令牌路上的付费口，少接了铸令牌那一步」以后会变红。
 
-- 新普查 `electron/spendTokenDoors.census.test.ts`：用 `scripts/door-map.mjs` 的 `doorsForTargets(['runTask', 'runWorkbenchTaskByVendor'])` 数出全部门，不写第二个扫描器。
+- 新普查 `electron/spendTokenDoors.census.test.ts`：用 `scripts/door-map.mjs` 的 `doorsForTargets(['runTask', 'runWorkbenchTaskByVendor'])` 数出全部门，不写第二个扫描器；铸令牌的门用同一个函数数 `mintSpendGrant` / `confirmSpendAndMintGrant`。
+- 登记表与判定（第 2 轮定稿）住在非测试文件 `scripts/spend-token-doors.mjs`：`SPEND_TOKEN_DOORS`（一扇门一行，身份 = door-map 的 `kind|path|symbol`）和纯函数 `judgeSpendTokenDoors`。普查测试只做「数门 → 判定 → 期望零条」，反例往纯函数里注入门。
 - 每扇门在表里登记一个角色：
 
 | 角色 | 含义 / 必须写清什么 |
@@ -335,8 +370,9 @@
 
 **登记改正**：
 
-- `spend.pending-identity.json`：notes ③ 的调用方改成 `electron/browser/prompt/browserPromptExtractionRun.ts`；加 `parity_test`，指向普查测试。
+- `spend.pending-identity.json`：notes ③ 的调用方改成 `electron/browser/prompt/browserPromptExtractionRun.ts`；加 `parity_test`，指向普查测试；`write_api` 加 `scripts/spend-token-doors.mjs#SPEND_TOKEN_DOORS`（例外 ①–④ 的结构化形状，第 2 轮定稿）。
 - 文本矩阵 `#7`：`entry` 改成 `{ from: 'renderer', test: <本集成测试> }`，`RENDERER_ENTRY_GAP_EXCEPTIONS` 清空。
+- 热点文件的分支数只减不增：`spendCardRouting.test.ts` 加一格，`capabilityApplyHandler.ts` 里 `intent ===` 只许剩拆解那一处、不许直接 import 任何专用卡的 `confirm…Spend`（专用卡只经查表进来）。
 
 ### ★4 全状态
 
@@ -438,7 +474,7 @@
 | 写库中 | 无 | 写库在渲染层：窗口没了就没写成 · 已扣 · 无回执 | 写库在本机，不受影响 | 同关窗 | 同上 |
 | 完成 | 无 | 无影响 | 无影响 | 库里的条目还在 | 再点是新的一次 |
 
-另外一种打断：发出中切换了项目。现有的 `stillCurrent` 判断会把结果丢掉不进库，但这一次已经花了。修前不花钱，修后这是新后果，记进残余风险，留给实现线和协调定。
+另外一种打断：发出中切换了项目。协调 10-27 定：结果照样存进提示词库（库是全局的，钱已经花了）。弹卡之前（读模板设置、抓图 / 截图）切项目仍整次取消，那时一分钱没花；弹卡之后的 `stillCurrent` 判断删掉。没有别的项目绑定副作用要丢（见「第 2 轮定稿」）。
 
 ## 六、验收清单与反例（★9，动手前写全；验收线只核这份）
 
@@ -449,7 +485,7 @@
 | 1 | **确认（原图）**：只弹一张卡。卡的 payload：`intent: 'prompt-extraction'`、`callCount: 1`、`legs` 是一条 vision；subject 解开后，来源页 = 浏览视图真实主机名，图片 = 原图地址。点确认 → 假上游恰好收到 1 次请求；`assertAndConsumeQuotedSpend` 核销一次，没有触发第二张卡；提示词库多 1 条，标题、提示词来自上游返回；标签页显示成功。 | 拿掉 `confirmSpendAndMintGrant`（没有令牌）→ 上游 0 次，这一格红 |
 | 2 | **确认（截图）**：同第 1 格；卡上「图片」写页面截图（subject 的 image 为空）；`referenceImages` 是截图的 data URL。 | 截图这条路还走旧门 → 红 |
 | 3 | **卡上取消**：上游 0 次；令牌 0 颗（`__spendGrantCountForTests() === 0`）；提示词库 0 条；标签页显示「已取消提取」；不记 `logRendererError`。 | 把 `{ confirmed: false }` 当成错误处理 → 弹错误提示 → 红 |
-| 4 | **网页伪造**：用伪造的 console 行驱动真转发——`browserViews.ts` 挂在假浏览视图 webContents 上的 `console-message` 监听，或者把转发抽成一个导出的纯函数。主窗口收到 `browser:view:prompt-capture` → 提取开跑 → 恰好弹一张卡；不确认 → 上游 0 次，提示词库 0 条。 | 换回 `askWhenCallsAbove: 1`（原第 2 条）→ 0 张卡、上游 1 次 → 红 |
+| 4 | **网页伪造**：用伪造的 console 行驱动真转发（第 2 轮定稿：转发抽成 `browserViewUtils.ts` 的 `promptCaptureEventFromConsole`，`browserViews.ts` 只调它）。转发出的事件 → 渲染层真映射 → 提取开跑 → 恰好弹一张卡；不确认 → 上游 0 次，提示词库 0 条。 | 换回 `askWhenCallsAbove: 1`（原第 2 条）→ 0 张卡、上游 1 次 → 红 |
 | 5 | **来源页可信**：浏览视图在 `https://evil.example/x`，网页伪造 payload 里写 `pageUrl: 'https://nomi.app'` → 卡上来源页显示 `evil.example`。 | 转发照搬网页自报的 `pageUrl` → 红 |
 | 6 | **不可信发送方**：分别从 (a) 浏览视图的 webContents、(b) 主窗口的子帧、(c) app-surface 窗口调用 `browser:prompt-extraction:run` → 全被 `assertTrustedSender` 拒；卡 0 张、令牌 0 颗、上游 0 次。`node scripts/check-ipc-sender-binding.mjs` 绿。 | 换成 `assertTrustedUiSender` → (c) 能过 → 红 |
 | 7 | **卡开着时再点**：第 1 张卡挂着时发第 2 个请求 → 回 `{ outcome: 'busy' }`，记 1 行警告，卡仍是 1 张。第 1 张处理完以后，第 3 个请求正常弹新卡。 | 去掉守卫 → 出现 2 张卡 → 红；`finally` 里没放开 → 第 3 个请求也是 busy → 红 |
@@ -457,13 +493,15 @@
 | 9 | **报价身份**：目录里 brain 的 modelKey 是别名 → 报价那一行用 `findExecutableModel` 解出的正名 → 全程只有 1 张卡（闸上没有第二张）。 | 报价直接用别名 → 卡变 2 张 → 红 |
 | 10 | **故障注入**（`spend-fault-injection`），用本机假上游的 `reset` / `http(401 / 500)` / `hangAfterHeaders` / `empty` 四种回法：提示词库 0 条；标签页文案是 `classifyGenerationError` 的 reason，不含 `NOMI_VENDOR_ERR_B64::`，也不含 `Error invoking remote method`；令牌只核销一次；结果未知时不说「没扣」。 | 把 `error.message` 原样印出来 → 断言里查到标记子串 → 红 |
 | 11 | **旧路删净**：`git grep -n "runWorkbenchTaskByVendor" src/ui/browser` 为空；runner 里没有回退分支；`runWorkbenchTaskByVendor` 只剩 1 扇门（`catalogTaskActions.ts`）。 | 留着旧调用当兜底 → 红 |
-| 12 | **普查**：全部门都已登记，绿。反例都在临时副本里跑，或者往普查的纯判定函数里注入门：(a) 加一个没登记的 `runTask(` 调用方 → 红；(b) 删掉提取模块里的铸令牌调用 → `mints` 行红；(c) 表里留一行代码里已经不存在的门 → 红；(d) 在基线 `6c05eebae` 上，runner 那扇门只能登记成 `known-gap`，证明这份清单会把缺口明摆出来。 | 普查只数门、不配对铸令牌 → (b) 不红 → 不算过 |
+| 12 | **普查**（登记表与纯判定在 `scripts/spend-token-doors.mjs`，测试在 `electron/spendTokenDoors.census.test.ts`）：全部门都已登记，绿。反例都在临时副本里跑，或者往普查的纯判定函数里注入门：(a) 加一个没登记的 `runTask(` 调用方 → 红；(b) 删掉提取模块里的铸令牌调用 → `mints` 行红；(c) 表里留一行代码里已经不存在的门 → 红；(d) 在基线 `6c05eebae` 上，runner 那扇门只能登记成 `known-gap`，证明这份清单会把缺口明摆出来。 | 普查只数门、不配对铸令牌 → (b) 不红 → 不算过 |
 | 13 | **登记一致**：notes ③ 改好、`parity_test` 指向普查之后，`node scripts/check-concept-owners.mjs` 绿；`#7` 带上 entry.test、例外清单清空之后，`electron/ai/textTaskCallers.integration.test.ts` 绿。 | 例外清单里还留着 `#7` → 矩阵测试红 |
 | 14 | **卡分流**：`capabilityApplyHandler.ts` 的 diff 只有一处——凭据验证那一行换成一次查表，加上 import 的变化。`src/workbench/capability/spendCardRouting.test.ts` 第一格（凭据验证）不改且绿；第二格（不认识的 intent 落进通用卡）翻成「提取走专用卡：`source: 'user'`，没有节点行和产物行」；`deconstructSpendCard.test.ts` 绿；handler 里没有新增 `intent ===` 比较（grep）。 | 再加一个 `if` → grep 能查到 → 红；第一格被改动 → 说明凭据验证的行为变了 → 红 |
 | 15 | **文案**：中英 key 齐全；`pnpm run check:i18n` 绿（不出现钱的字眼）；中、英两张卡的真截图由实现线自己 Read 过。截不到图就照实记 `unverified` 并写原因。 | 标题写「AI 助手想生成…」 → 红 |
-| 16 | **门岗**：ESLint、`node scripts/typecheck.mjs`、`node scripts/check-root-cause-contracts.mjs`（同提交带 `docs/fixes/2026-10-27-browser-extract-grant.root-cause.json`，contract v3）、`git diff --check`、推送前快检，每条记退出码；fix 提交带 `Direction-Check: docs/engineering/direction-checks/2026-10-27-browser-extract-grant.md`。 | 缺 trailer → commit-msg 钩子红 |
+| 16 | **门岗**：ESLint、`node scripts/typecheck.mjs`、`node scripts/check-root-cause-contracts.mjs`（同提交带 `docs/fixes/2026-10-27-browser-extract-grant.root-cause.json`，contract v3）、`node scripts/check-concept-owners.mjs`、`pnpm run check:i18n`、`git diff --check`、推送前快检，每条记退出码；跟着登记的三处（生成入口登记表、自写登记的领域目录、文本矩阵）各自的门岗绿；fix 提交带 `Direction-Check: docs/engineering/direction-checks/2026-10-27-browser-extract-grant.md`。 | 缺 trailer → commit-msg 钩子红 |
 | 17 | **真付费**：协调用 `_paidRun` 做一次提取，免费演练先过（`spend-paid-sample`）。本线记 unverified。 | — |
 | 18 | **这一类还会从哪回来**：①另一个渲染层入口为付费种类调 `nomi:tasks:run`；②主进程新的附属付费口不铸令牌；③0.25 把触发点挪到原生右键菜单、改成一键之后，普查行和卡策略没跟着改；④模型别名漂移。 | ①②由普查（没登记的门 / `renderer-one-shot` 必须写令牌来源 / `mints` 配对）和 `check-run-task-grant` 拦；③靠 0.25 的设计卡把普查行列进 ★9；④由第 9 格拦 |
+| 19 | **发出中切项目照存**（协调 10-27 定）：卡开着时切走项目（`stillCurrent` 变假）→ 点确认 → 上游 1 次，提示词库照样多 1 条，标签页报成功；弹卡之前切项目 → 不弹卡、上游 0 次。 | 把弹卡之后的 `stillCurrent` 判断放回去 → 库 0 条 → 红 |
+| 20 | **实现线真做的三条反例**（派工书要求，做完还原）：①拿掉铸令牌那一步 → 第 1 格「上游恰好 1 次」红，普查 `mints` 行也红；②普查登记表里删掉一扇门的登记 → 普查红；③守卫换成 `assertTrustedUiSender` → 第 6 格 (c) 红（另跑一次：浏览视图发来的请求被拒、不铸令牌）。 | — |
 
 ## 七、用户能力变化（PR 正文同节照抄）
 
@@ -485,7 +523,7 @@
 - [ ] 新增功能 / 性能
 ```
 
-「新界面 / 改交互」没勾。理由：卡复用现有对话框，不新画界面、不改布局，新文案随热点文件一起拍板。协调若判定要勾，必交的就多出 `ui-mockup`（设计实验室真组件样张，用户拍板）和按钮普查。
+「新界面 / 改交互」没勾（协调 10-27 定）。理由：卡复用现有对话框，不新画界面、不改布局，新文案用户 10-27 已拍板。卡是用户可见的，实现线交中、英各一张真截图，自己 Read 过。
 
 ## 九、残余风险与其它发现（本单不修）
 
@@ -494,7 +532,7 @@
 - **页内触发点在 0.25 之前仍可伪造**：花不了钱（每次都有卡），但网页能反复弹卡骚扰用户。按页面限流需要新造概念，本单不做；根治见 0.25。
 - **伪造请求在弹卡之前就让主进程抓了一次网页指定的图**：这是现状。走浏览视图自己的会话，不花钱，网页也没因此多拿到什么能力。
 - **发出后没有取消入口**：关窗、重启时，结果没地方落，这一次已经花了，也没有回执。现状如此，修后多了「已花」这一层。
-- **发出中切项目，已付费的结果被丢**：`stillCurrent` 是现有判断，修前不花钱。实现线和协调要定：库是全局的，要不要照存。
+- ~~发出中切项目，已付费的结果被丢~~：协调 10-27 定照存，第 2 轮已改（弹卡之后不再判 `stillCurrent`）。
 - **拆解的措辞仍内嵌在热点文件的通用分支里**：下次要改，先搬进查表。
 - **登记例外 2026-11-15 到期**：本单不延期。
 
