@@ -144,7 +144,8 @@ describe('硬断言：不点名的 generate 摆什么', () => {
     expect(leaked.find((entry) => entry.id === 'unnamed-never-offers-a-sent-shot')).toMatchObject({ ok: false, leaked: ['shot-1'] })
     const turns = [
       { turn: 'T5', calls: [{ id: 'a', name: GENERATE, args: { shotIds: ['shot-1', 'shot-2'] }, isError: null }, { id: 'b', name: GENERATE, args: {}, isError: true }] },
-      { turn: 'T6', calls: [{ id: 'c', name: GENERATE, args: {}, isError: null }, { id: 'd', name: 'draft_shots', args: { shotIds: ['shot-1'] } }] },
+      // 别的工具即使写了 shotIds 也不算点名（工具名取一个不在动词表里的，走查模型面调用门岗只按动词名查键）。
+      { turn: 'T6', calls: [{ id: 'c', name: GENERATE, args: {}, isError: null }, { id: 'd', name: 'some_other_tool', args: { shotIds: ['shot-1'] } }] },
     ]
     expect(namedAgainBy(turns, ['shot-1'])).toEqual(['T5/a'])
     expect(namedAgainBy(turns, ['shot-3'])).toEqual([])
