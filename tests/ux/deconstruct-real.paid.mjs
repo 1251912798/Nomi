@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 真付费走查 · 拆解「点取消 + 整片拆完」（设计卡 docs/plan/2026-10-27-deconstruct-cancel.md ★9 D2；取代旧的 video-deconstruct.e2e.mjs）。
+// 真付费走查 · 拆解「点取消 + 整片拆完」（设计卡 docs/plan/2026-10-27-deconstruct-cancel.md ★9 D2；取代原先那条付费拆解 e2e，旧脚本已删）。
 //
 //   pnpm build && NOMI_SPEND_OK=1 node tests/ux/deconstruct-real.paid.mjs
 //
