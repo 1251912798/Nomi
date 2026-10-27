@@ -277,11 +277,11 @@ try {
   await expect(running, '停止之后 composer 必须退出运行态').toBeHidden({ timeout: 60_000 })
   await walk.snap('10-stopped')
 
-  // ── 8. 收起：坏消息不会被收起吞掉 ─────────────────────────────────────────
+  // ── 8. 收起：用户自己点的停止不是坏消息 ──────────────────────────────────────
   //
   // 2026-09-06 用户改：收起态不再是右侧那条满高 32px rail 上的两颗小 icon，
   // 而是 Nomi 一直延续的那枚 logo 钮（血统 `src/ui/app-shell/CollapsedAiChip.tsx`）。
-  // 空闲档在 §1 已验（待确认档由 shell-redesign 走查覆盖），这里验失败档。
+  // 空闲档在 §1 已验（待确认档由 shell-redesign 走查覆盖），这里验**停止之后**那一档；失败档在第 10 步（真失败）。
   // 收起前先量一下面板宽：定稿说「点角标 = **原宽**原状态还原」（collapse≠unmount），
   // 所以还原之后这个数必须一模一样，不是「又一个默认 340」。
   const beforeCollapseWidth = Math.round((await win.locator(`${CANVAS_PANEL} ${V4_PANEL}`).boundingBox())?.width ?? 0)
@@ -289,13 +289,14 @@ try {
   await expect(win.locator(COLLAPSED_SHELL)).toBeAttached()
   const dock = win.locator(COLLAPSED_DOCK)
   await expect(dock, '收起后画布右下必须有那颗小球').toBeVisible()
-  // 刚被停下的那一轮在面板上留了一条错误带。收起藏掉的是**面板**，不是那件事——
-  // 角标必须把它接住，否则「收起」就成了一个悄悄吞掉坏消息的动作。
-  // 小球的「出错」档 = 右上一粒 danger 点（Chrome 板），坏消息由无障碍名 / tooltip 说清。
-  await expect(dock).toHaveAttribute('data-agent-dock-status', 'failed')
-  await expect(dock).toHaveAttribute('data-agent-ball', 'failed')
-  await expect(dock).toHaveAttribute('aria-label', /有一步没成/)
-  await walk.snap('11-collapsed-failed')
+  // 刚被停下的那一轮在面板上**没有**错误带：用户自己点的停止留下的是一句中性的灰字「已停止」（09-14 定的回执，
+  // `agentPanelV4Blocks.test.ts` 钉着），不是错误。小球的「出错」只认「最后一件事是不是坏的」——面板错误带，或流末尾那条
+  // 未化解的 error（`ProjectAgentResidentShell.tsx` 的 `failed`，用户 09-06 改）。所以收起后它先是「刚做完」（`done`，
+  // 2.4 秒），随后落回「空闲」（`idle`）；这时报「出错」就是假警报（协调 10-28 判：走查过期，产品是对的）。
+  // 「收起不吞**坏**消息」不拿「停止」当失败的替身（替身一过期，真东西就没人量了），由第 10 步那一轮**真失败**去证。
+  await expect(dock).toHaveAttribute('data-agent-dock-status', /^(done|idle)$/)
+  await expect(dock).toHaveAttribute('data-agent-ball', /^(done|idle)$/)
+  await walk.snap('11-collapsed-stopped')
 
   // 点顶栏角标展开：整条对话原样还在，收起从来没有中断过它。
   const widthBeforeCollapse = beforeCollapseWidth
