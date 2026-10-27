@@ -24,7 +24,7 @@
 - **「画布点选」**：画布进点选态，点素材卡就连上线，方式从文生图（t2i）变成参考图生图（i2i）。参考行变成「画布点选」「+」（这时「+」叫「添加参考：上传或从素材库选」，`[data-reference-add-entry]`）加一张在用的小图（`[data-reference-row] [data-asset-slot-group="array"] [data-asset-tile]`），行尾写「参考图 1 张」，提示词占位多了「打 @ 可引用参考图」。
 - **视频节点**：默认模型「可灵 3.0 Turbo」，生成框里同样没有方式分段；视频的方式在参数面板顶部（`src/workbench/generationCanvas/nodes/controls/generationModePresentation.ts:54-89`：图片恒 `where: 'none'`，视频要有 ≥2 种要放素材的方式才 `where: 'panel'`）。
 
-当前构建上的复核（同一组画面加「优化 → 应用」弹层、视频参数面板、英文 1100×720）由走查和报告补。
+14:51 在 `dffacdeeb` 的构建上复核了一遍（同一组画面，加「优化 → 应用」弹层、视频参数面板、英文 1100×720），结论不变：「+」上传后选中项变成素材卡、连线 0 条、选择器和浮框都关了；「画布点选」接上后有一条素材卡 → 图片节点的参考连线；视频节点的参数面板里只有比例 / 清晰度 / 时长，没有方式分段。英文参考行行尾写的是「1 references」（单数没变形，另报）。
 
 ## ★1 用户怎么用
 
@@ -34,18 +34,21 @@
 
 1. 新建空白项目，切到生成工作区。
 2. 画布底部「导入」→ 系统文件选择器 → 选一张真实 4K 照片，画布上出现这张素材卡。
-3. 加图片节点，在生成框底栏点模型芯片，从菜单里选 GPT Image 2（内置 APIMart 档案，文生图 + 参考图生图）。
+3. 加图片节点（新卡落在素材卡左边、一半压在左栏底下，先点缩放簇「适应视图」把两张卡放进视口，再点回这张卡），在生成框底栏点模型芯片，从菜单里选 GPT Image 2（内置 APIMart 档案，文生图 + 参考图生图）。
 4. 点参考行「画布点选」→ 点那张素材卡：参考行出现一张在用的小图（方式随输入从文生图切到参考图生图）。
 5. 拖节点到左下停靠区那片、再压到舞台底边、再把窗口缩到最小（1100×720）：每一格浮框都钉在节点正下方。
 6. 0ms / 5ms 逐键打 ≥80 字中英混合串、Cmd+V 粘贴长文本：逐字相同、文字从不倒退。
 7. 点「优化」→「优化提示」→「应用提示」：编辑器逐字变成文本模型回的那句，接着 0ms 快打追加串不丢字。
-8. 加视频节点，重复第 6 步，浮框钉在下方；换英文界面，重走 2–5 步和 0ms 快打。
+8. 加视频节点 →「适应视图」→ 把它拖到左下停靠区那片（适应视图只按节点框视口，新卡在最下面时生成框伸出舞台、点不进去），重复第 6 步，浮框钉在下方；换英文界面，重走 2–5 步和 0ms 快打。每次点进提示词框前先证它真人点得到（中心点在视口里、最顶层就是它）。
 
 不做什么：不点生成（不发生图请求，生成链路另有走查）；不验「生成方式」分段（B3 图片节点没有，视频的在参数面板顶部，`tests/ux/composer-b3-real.walk.mjs` 在验）；不验参考行「+」→「上传本地文件」（见已知坑，产品问题另报）；不改产品代码；不进夜跑。
 
 已知坑：
 
 - 参考行「+」→「上传本地文件」在还停在文生图的新建图片节点上**接不上**：导入出来的素材卡被选中（`canvasNodeActions.addNode` 默认选中新卡）→ 生成框跟着收起 → `NodeInputReferenceEntry` 卸载、`shouldConnect()` 读到 false → 只建卡不连线（实拍见上一节）。这是产品问题，走查不绕它、也不替它修：加参考改走同样是生成框里真有的「画布点选」（板 `ref.tool.canvas-pick`），上传这条写进报告「发现的问题」交协调定。
+- 新卡的落点由画布避让决定，不保证整张生成框在视口里：画布正中已有素材卡时，新图片节点落在它左边、一半压在左栏底下，生成框左半截（模型芯片）被左栏盖住，点不到；因为节点中心还在视口里，「新节点在…」提示也不出（`canvasArrivalModel.ts` 的 `isNodeSeen` 只看节点中心）。走查走真人会走的路：点「适应视图」。这条另报，不在走查里绕。
+- 「适应视图」只按节点框视口，不算生成框：选中的卡在最下面时，它的生成框伸出舞台底边，提示词框点不进去——Playwright 的 click 照样「点得动」（它会先把容器滚一下），旧写法因此证明不了真人点得到。走查在每次点进提示词框前先证中心点在视口里、最顶层就是它，视频节点适应视图后再拖到左下停靠区那片（和图片节点同一个现场）。
+- 「适应视图」是一段 200ms 的动画：等变换层停稳（`waitForCanvasViewportSettled`）再量、再拖。在动画半路量，拖的起点还是动画前的位置，等于没拖上（15:10 那一轮实测：视频节点没动，生成框留在舞台外，红在「点得到」那格）。
 - 模型菜单只列此刻可用的模型；目录还在加载时芯片是骨架。走查等芯片出现再点，不等时长。
 - 参考图用 `NOMI_REAL_MEDIA_DIR` 下的私有真实素材，CI 上没有：走查留在夜跑排除清单里，理由照实写真实素材。
 
@@ -83,7 +86,9 @@
 ## ★3 一致与复用
 
 - 启动 / 夹具 / 出网闸 / 屏外窗口 / 收尾报告：复用 `tests/ux/agent-runtime-walk-support.mjs` 的 `createRuntimeWalk`（`start` / `snap` / `resizeWindow` / `stopApp` / `finish`）和 `recorded`（等夹具收到请求的有界等待）。旧的 `launchWithDeepSeek`（起两次 App、手写 safeStorage 密文、手改 catalog）、`setViewport`、`redact` 同提交删掉。
-- 外壳：`tests/ux/_shell.mjs` 的 `newProjectEntry`、`switchWorkspace`、`canvasAddBar`、`addCanvasNode`、`setAppLanguage`（`addCanvasNodeFromRail` 只是 `addCanvasNode` 的旧名字，新走查直接用 `_shell.mjs`）。
+- 外壳：`tests/ux/_shell.mjs` 的 `newProjectEntry`、`switchWorkspace`、`canvasAddBar`、`addCanvasNode`、`canvasFitView`、`setAppLanguage`（`addCanvasNodeFromRail` 只是 `addCanvasNode` 的旧名字，新走查直接用 `_shell.mjs`）。
+- 等画布停稳：`tests/ux/_canvasHit.mjs` 的 `waitForCanvasViewportSettled`（读变换层计算样式、连续 800ms 不动才算停），和 `derived-node-placement.walk.mjs` 适应视图之后同一个等法；不写 `waitForTimeout`。
+- 「真人点得到」：`tests/ux/_assert.mjs` 的 `expectHittable`（中心点 `elementFromPoint` 命中它自己），不另写一份。
 - 导入走系统文件选择器（`waitForEvent('filechooser')` → `setFiles`），和 `tests/ux/contextual-node-guidance.walk.mjs` 同一口径；不往隐藏 input 里直接塞文件。
 - 真实素材：`tests/ux/fixtures/realMedia.mjs` 的 `requireRealMediaAssets(['image-4k-png'])` 直接取登记的文件，和 `tests/ux/real-media-import.walk.mjs` 同一口径——登记表是唯一来源，走查里不现场抽帧、不带本机路径；缺素材当场红，不跳过、不退回合成图。（上一条线的草稿是从 4K HEVC 视频现场抽一帧，改掉。）
 - 文案：一律 `uiText(locale, 键)`（`tests/ux/full-walk/invariants.mjs`），不抄词典原文（`check:test-copy-literals` 的棘轮只减不增，这个文件基线 6 处，改完为 0）。
@@ -137,11 +142,12 @@
 | 19 | 「真模型给出优化结果」：「应用提示」钮在限时内出现（L373-375） | 改 | 先给夹具写好改写剧本；等夹具收到带原句的请求（`recorded` 有界等待）再点「应用提示」。 |
 | 20 | 外部改写写进编辑器：改后 ≠ 改前且非空（L377-379） | 改（收紧） | 编辑器**逐字等于**夹具回的那句。 |
 | 21 | 改写后 0ms 追加，逐字 = 改写结果 + 追加串（L436-437） | 保留 | 原样。 |
-| 22 | 新建视频节点后浮出生成浮框（L444） | 保留 | 按节点 id 认。 |
+| 22 | 新建视频节点后浮出生成浮框（L444） | 保留 | 按节点 id 认。旧走查加完视频节点就地打字；现在画布上多了导入的素材卡，视频节点落在最下面、生成框伸出舞台，所以先「适应视图」、等画布停稳，再把它拖到左下停靠区那片（N4 证编辑器真人点得到）。 |
 | 23 | 失败留 `FAIL.png` 和 `report.json`、退出码 1（L479-487） | 改 | `walk.finish`：同样留两样，再加 `fixture.assertClean()`；产出在 `.tmp/pi-composer-overlap-and-fast-typing-development-<时间>/`，不再写进 `tests/ux/shots/`。 |
 | N1 | （新增）模型是从界面上选的 | 新增 | 选之前芯片上不是它 → 菜单里列着它 → 点完芯片显示它 → 再开菜单勾在它那行 → 参考行「画布点选」和「+」可点。中英各一次。 |
 | N2 | （新增）参考图真用上了 | 新增 | 接进来后参考行里在用的小图 = 1，「未用到」= 0（基线由在用小图证明探针活着）。中英各一次。 |
 | N3 | （新增）夹具护栏 | 新增 | 改写请求恰好 1 次；全程出图请求 0（没点生成）；`assertClean()` 没有意外请求、剧本全用完。 |
+| N4 | （新增）提示词框真人点得到 | 新增 | 每次点进提示词框前 `expectHittable`：中心点在视口里、最顶层就是它。起因：14:57 那一轮全绿，可视频节点的提示词框其实在舞台外，是 Playwright 先滚了容器才点进去的——「打字没丢」证明不了真人够得着。 |
 
 ### 验收清单（实现线自验、验收线只核这张）
 
