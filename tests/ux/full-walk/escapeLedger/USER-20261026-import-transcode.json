@@ -31,7 +31,7 @@
     "dd2816b10",
     "82fde9154"
   ],
-  "fixedInPr": 9999,
+  "fixedInPr": 1347,
   "rootCauseContract": "docs/fixes/2026-10-27-import-transcode-hogs-and-orphans.root-cause.json",
   "classCheck": {
     "kind": "matrix",
