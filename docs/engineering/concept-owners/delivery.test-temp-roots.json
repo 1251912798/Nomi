@@ -22,6 +22,14 @@
     {
       "path": "tests/ux/_launchApp.mjs",
       "symbol": "registerTempRoot"
+    },
+    {
+      "path": "scripts/_test-temp.mjs",
+      "symbol": "reclaimAbandonedTestTemp"
+    },
+    {
+      "path": "scripts/pre-push-contracts.mjs",
+      "symbol": "terminateAndReclaim"
     }
   ],
   "forbidden_derivations": [],

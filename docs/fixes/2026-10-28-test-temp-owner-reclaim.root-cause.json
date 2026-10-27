@@ -118,11 +118,6 @@
       "path": "scripts/pre-push-contracts.mjs",
       "symbol": "terminateAndReclaim",
       "responsibility": "The only place the pre-push runner kills a process tree: kill, wait until the tree is really gone, then call the same reclaim function."
-    },
-    {
-      "path": "scripts/lib/systemTempScan.mjs",
-      "symbol": "systemTempBypasses",
-      "responsibility": "Syntax-tree detection of mkdtemp calls rooted at the system temp dir, used by check:test-temp-static."
     }
   ],
   "same_class_entry_points": [
