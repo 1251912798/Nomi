@@ -1,6 +1,6 @@
 // scripts/pre-push-contracts.mjs（pre-push 钩子入口）的「真实路径」行为测试（慢：起 git 副本、spawn 真入口、tsc 探针、超时）。
 // 纯函数 / 结构 / 契约用例在 scripts/pre-push-structure.node-test.mjs（快，推送前钩子自己会跑它）。
-// 红测试走真实路径：在一个真实 git 仓库副本（共享对象的 clone，整仓检出约 0.87G——不是稀疏检出；克隆 + 检出本机约 5 秒、CI 不到 9 秒，
+// 红测试走真实路径：在一个真实 git 仓库副本（共享对象的 clone，整仓检出约 0.87G——不是稀疏检出；克隆 + 检出本机约 5 秒、CI 整个文件除用例外的开销合计约 9 秒，
 // 不是成本所在，成本在重门岗被重复跑，见下面「重门岗只跑几次」一节）里改文件、提交、再用真实的入口脚本跑——
 // 不 mock 门岗，门岗红就是门岗脚本真的 exit 1。
 import assert from 'node:assert/strict'
@@ -88,7 +88,7 @@ function prePush({ body = CARD, cwd = work, args = HOOK_ARGS, refLine, dispatche
 // 改了 src / electron / scripts / tests 下的代码，钩子就选中整套重门岗（typecheck、扫描型守卫批量、相关单测、lint:changed 等），
 // 而下面那些用例各自只断言某一道门红了 / 绿了。以前每条各提交一份改动、各跑一遍整套——同一批重门岗被重复跑了十几次：
 // 2026-10-27 CI（889255e98）check:claude-hooks 898 秒，本文件 26 条用例合计 889 秒，其中改了代码的 10 条（11 次钩子运行）占 832 秒，
-// 每次 39–166 秒；克隆 + 检出 + 收尾加起来不到 9 秒（本机：克隆 0.06 秒 + 检出 5.1 秒，真入口运行占用例总耗时的 95%）。
+// 每次 39–166 秒；克隆 + 检出 + 收尾加起来约 9 秒（本机：克隆 0.06 秒 + 检出 5.1 秒，真入口运行占用例总耗时的 95%）。
 // 「让夹具只触发它要测的那道门」做不到：check:filesize 只看 src / electron 的 ts，ipc-sender-binding 只看 electron，vocabularies /
 // store-lifetime 只看 src，而 src / electron 下任何 ts 改动都选中 typecheck + 扫描型守卫 + lint + 相关单测。
 // 所以改成：每条红 / 绿证明只贡献一份「改动」（RED_PROBES / GREEN_PROBES），同类的合成一次提交、钩子只跑一次，各用例断言自己那道门在这一次

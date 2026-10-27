@@ -33,7 +33,7 @@
 | `check:claude-hooks` | **898.5 秒 = 57%**（第二名 typecheck 107.3、第三 lint:ci 84.5、第四 check:walkthroughs 39.2） |
 | `node --test` 汇总 | 231 条、231 过、0 跳过，`duration_ms` 898119.9 |
 | 11 个测试文件 | `pre-push-contracts.node-test.mjs` 26 条用例**合计 888.9 秒**（= 整条命令 898 秒的 99%）；其余 10 个文件在最初十来秒内跑完 |
-| 克隆 + 检出 + 收尾 | ≤ 9 秒（898 − 889） |
+| 克隆 + 检出 + 收尾（用例之外的开销上限） | 约 9 秒（898.1 − 888.9；这 9 秒里还含其余 10 个文件并发时的争用） |
 
 这 26 条里（CI 秒）：改了代码的真入口运行 10 条（11 次钩子运行）**832.0 秒（93.6%）**，每次 38.99–165.81；只改文档的 7 条（9 次运行，每次约 4.5）合计 35.6；立刻返回的 5 条合计 1.0；tsc 探针 15.8；超时用例 3 条各 1.5。
 
@@ -101,7 +101,7 @@ S1 的 stderr 拿去对七条用例里全部 12 条 `match` 正则（取自测�
 ## 先查别人
 
 - Node 官方文档 <https://nodejs.org/api/test.html>（Test runner execution model）：「each matching test file is executed in a separate child process」，文件数并发由 `--test-concurrency` 管（<https://nodejs.org/api/cli.html>：默认 `os.availableParallelism() - 1`，CI 上 = 3）；同一文件里的测试「will be executed within a single application thread, regardless of the value of the concurrency option」· **确认了**同一个文件里的重运行不可能靠 `concurrency` 并行；要快只能少跑，或把文件拆开让 runner 文件级并行——后者要搬测试（会和「流程分档」线在同一个文件里冲突），而且 4 vCPU 已被 typecheck（5 个 tsc，本机单个进程最大常驻 4.5 GB）+ vitest 占满，并行多份夹具还会共写 `node_modules/.cache/nomi-typecheck`。**决定**：少跑，不拆文件，不并行。
-- git sparse-checkout <https://git-scm.com/docs/git-sparse-checkout>：只决定工作树里放哪些路径（路径外的文件真的不在盘上），不动对象库（`--shared` 本来就不复制对象）；cone 模式是默认、非 cone「deprecated」；「THIS COMMAND IS EXPERIMENTAL」· **确认了**稀疏检出省的只是写盘：本机克隆 0.06 秒 + 检出 5.1 秒、CI 整个文件 898 − 889 ≤ 9 秒；而 37 道总跑门岗里不少读 `docs/` 登记表（如 `check:board-parity` 读 `docs/design/boards/`），路径清单就是又一张会漂的手写表（本仓已为这类表交过学费，见 `scripts/pre-push-gate-inputs.mjs` 抬头）。**决定**：不做真稀疏检出，文件头注释改成实话。
+- git sparse-checkout <https://git-scm.com/docs/git-sparse-checkout>：只决定工作树里放哪些路径（路径外的文件真的不在盘上），不动对象库（`--shared` 本来就不复制对象）；cone 模式是默认、非 cone「deprecated」；「THIS COMMAND IS EXPERIMENTAL」· **确认了**稀疏检出省的只是写盘：本机克隆 0.06 秒 + 检出 5.1 秒、CI 整个文件 898 − 889 约 9 秒；而 37 道总跑门岗里不少读 `docs/` 登记表（如 `check:board-parity` 读 `docs/design/boards/`），路径清单就是又一张会漂的手写表（本仓已为这类表交过学费，见 `scripts/pre-push-gate-inputs.mjs` 抬头）。**决定**：不做真稀疏检出，文件头注释改成实话。
 - Martin Fowler《Eradicating Non-Determinism in Tests》<https://martinfowler.com/articles/nonDeterminism.html>（Lack of Isolation）：「Keep your tests isolated from each other, so that execution of one test will not affect any others.」「Properly isolated tests can be run in any sequence.」· **改了**共用运行的写法：共用的是一次懒计算出来的**值**（不是可变状态），任何一条用例先跑都一样，单跑一条（`--test-name-pattern`）也成立。
 - 仓库内先例：`scripts/pre-push-contracts.mjs` 的 `SCAN_TESTS` 里 `test:pre-push-structure`（上一轮已把「快的结构用例」拆去 `pre-push-structure.node-test.mjs`，推送前跑它）和 `scripts/pre-push-related-tests.mjs` 的 `SLOW_TEST_FILES`（这个文件被明确标成「只在 CI 跑的慢文件」）· **确认了**这个文件的归宿是 CI，所以不能用「搬去推送前」解决。
 
