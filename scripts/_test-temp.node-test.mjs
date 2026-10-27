@@ -55,7 +55,7 @@ test('temp roots are canonical even when TMPDIR is a symlink', async (t) => {
 
 // ── 目录归属与回收（2026-10-28）──────────────────────────────────────────────────────────────────
 // 起因：10-24 到 10-28 门岗超时用 SIGKILL 杀进程组，创建目录的进程被杀，process.once('exit') 不会跑，漏了 10 份、约 8.6G。
-// 现在每个目录名带创建者进程号（<前缀>-p<进程号>-<6 位随机>），谁都能回答「创建者还活着吗」：
+// 现在每个目录名带创建者进程号（nomi-<前缀>-p<进程号>-<6 位随机>），谁都能回答「创建者还活着吗」：
 //   · 创建者自己正常退出：退出钩子立刻删（即时那一半）；
 //   · 被杀：下一个进程第一次分配时回收，或杀它的 runner 等整棵树没了再回收。
 // 下面的用例全部在隔离的临时根里跑（子进程的 TMPDIR 指到 base），不碰系统临时目录里别人的东西。
@@ -122,12 +122,19 @@ const mkdirWith = (dir, files = { 'inner/file.txt': 'x' }) => {
 const trySymlink = (target, link) => { try { fs.symlinkSync(target, link, 'dir'); return true } catch { return false } }
 const entryExists = (entry) => fs.lstatSync(entry, { throwIfNoEntry: false }) !== undefined
 
-test('目录名带创建它的进程号：<前缀>-p<进程号>-<6 位随机>（同步、异步、前缀没带横线都一样）', async () => {
-  const roots = [makeTempDir('nomi-owner-sync-'), await makeTempDirAsync('nomi-owner-async-'), makeTempDir('nomi-owner-nodash')]
+test('目录名带创建它的进程号：nomi-<前缀>-p<进程号>-<6 位随机>（同步、异步；前缀没带横线、没带 nomi-、是空串都一样）', async () => {
+  const roots = [
+    makeTempDir('nomi-owner-sync-'),
+    await makeTempDirAsync('nomi-owner-async-'),
+    makeTempDir('nomi-owner-nodash'),
+    makeTempDir('walk-settings-'),
+    makeTempDir(''),
+  ]
   try {
-    assert.match(path.basename(roots[0]), new RegExp(`^nomi-owner-sync-p${process.pid}-[A-Za-z0-9]{6}$`))
-    assert.match(path.basename(roots[1]), new RegExp(`^nomi-owner-async-p${process.pid}-[A-Za-z0-9]{6}$`))
-    assert.match(path.basename(roots[2]), new RegExp(`^nomi-owner-nodash-p${process.pid}-[A-Za-z0-9]{6}$`))
+    const expected = ['nomi-owner-sync-', 'nomi-owner-async-', 'nomi-owner-nodash-', 'nomi-walk-settings-', 'nomi-']
+    roots.forEach((root, index) => {
+      assert.match(path.basename(root), new RegExp(`^${expected[index]}p${process.pid}-[A-Za-z0-9]{6}$`), root)
+    })
   } finally {
     for (const root of roots) cleanupTestTemp(root)
   }
@@ -150,6 +157,11 @@ test('第一次分配时回收同一临时根下「创建者已死」的同形�
     mkdirWith(path.join(base, `nomi-dead-p${deadPid}-toolong1`)),
     mkdirWith(path.join(base, 'nomi-legacy-AbCdEf')),
     mkdirWith(path.join(base, `nomi-deadp${deadPid}-GgGgGg`)),
+  )
+  // 别的程序的目录：形状碰巧一样（创建者进程号已死），但名字不以 nomi- 开头——不是本仓库发放的，不碰
+  kept.push(
+    mkdirWith(path.join(base, `foreign-tool-p${deadPid}-KkKkKk`)),
+    mkdirWith(path.join(base, `p${deadPid}-LlLlLl`)),
   )
   // 不是目录的不碰：普通文件
   const file = path.join(base, `nomi-file-p${deadPid}-DdDdDd`)

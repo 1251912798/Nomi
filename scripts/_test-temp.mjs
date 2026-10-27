@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-// 目录归属（2026-10-28）：本助手发放的每个目录，名字都是 <前缀>-p<创建者进程号>-<6 位随机>。
+// 目录归属（2026-10-28）：本助手发放的每个目录，名字都是 nomi-<前缀>-p<创建者进程号>-<6 位随机>（前缀已以 nomi- 开头的不重复加）。
 //
 // 为什么：这些目录原来只靠创建者进程里的 process.once('exit') 清理。进程被 SIGKILL（门岗超时、手动杀、崩溃、断电）时它不会跑
 // （Node 文档：'SIGKILL' cannot have a listener installed），目录既没人认领、也没人敢删——10-24 到 10-28 漏了 10 份、约 8.6G，
@@ -16,9 +16,12 @@ import path from 'node:path'
 //     或杀它的一方（scripts/pre-push-contracts.mjs 的 terminateAndReclaim）等整棵进程树没了之后。
 // 两者作用在同一批带进程号的目录上；区别只在「谁来删、什么时候删」，没有第二份命名、登记或判据。
 //
-// 回收只认下面这个尾巴（-p<进程号>-<6 位随机>），并且只动：创建者进程确实已死（kill(pid, 0) 报 ESRCH；EPERM 和一切未知错误都算活）、
-// 属主是当前用户、lstat 看是真目录（符号链接不动，也不跟进）的目录。进程号被别的进程复用只会让回收变慢（把死进程当活），不会误删。
-const OWNER_TAIL = /-p(\d{1,10})-[A-Za-z0-9]{6}$/
+// 回收只认本仓库的名字——nomi- 开头、带 -p<进程号>-<6 位随机> 的尾巴（makeTempDir 给不以 nomi- 开头的前缀补上 nomi-，所以它发放的每个目录都认得出；
+// 别的程序的目录哪怕形状碰巧一样，名字不以 nomi- 开头，不会被碰）——并且只动：创建者进程确实已死（kill(pid, 0) 报 ESRCH；
+// EPERM 和一切未知错误都算活）、属主是当前用户、lstat 看是真目录（符号链接不动，也不跟进）的目录。
+// 进程号被别的进程复用只会让回收变慢（把死进程当活），不会误删。
+const REPO_PREFIX = 'nomi-'
+const OWNER_NAME = /^nomi-(?:.*-)?p(\d{1,10})-[A-Za-z0-9]{6}$/
 
 const owned = new Set()
 // Windows 上 Electron 刚退出时，子进程还可能占着 user-data 里的文件（EBUSY / EPERM）；交给 Node 自带的重试，不手写等待。
@@ -43,7 +46,7 @@ export function registerTestTemp(root) {
 }
 
 function ownerOf(name) {
-  const match = OWNER_TAIL.exec(name)
+  const match = OWNER_NAME.exec(name)
   return match ? Number(match[1]) : null
 }
 
@@ -94,8 +97,11 @@ function sweepOnce(base) {
   reclaimAbandonedTestTemp(base)
 }
 
-/** <前缀>-p<进程号>-，前缀没带横线就补一个，mkdtemp 再接 6 位随机。 */
-const ownedPrefix = (prefix) => `${prefix}${prefix.endsWith('-') ? '' : '-'}p${process.pid}-`
+/** nomi-<前缀>-p<进程号>-：前缀不以 nomi- 开头就补上，不以横线结尾也补一个，mkdtemp 再接 6 位随机。 */
+function ownedPrefix(prefix) {
+  const head = prefix.startsWith(REPO_PREFIX) ? prefix : `${REPO_PREFIX}${prefix}`
+  return `${head}${head.endsWith('-') ? '' : '-'}p${process.pid}-`
+}
 
 // 返回解过符号链接的真路径：macOS 的 tmpdir 是 /var → /private/var 的链接，而 import.meta.url、
 // git rev-parse --show-toplevel、子进程 cwd 拿到的都是真路径。返回链接路径时，拿它比路径的测试只在 Mac 上红，

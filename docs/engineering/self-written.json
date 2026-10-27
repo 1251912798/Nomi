@@ -2195,7 +2195,7 @@
     },
     {
       "id": "test-temp-owner-reclaim",
-      "capability": "测试 / 走查 / 门岗的系统临时目录按「创建者进程号」归属并回收：目录名 <前缀>-p<进程号>-<随机>，创建者被 SIGKILL 后由下一个进程第一次分配、或杀它的 runner（等整棵进程树没了）按进程是否存活回收。脚本侧（scripts/_test-temp.mjs 管系统临时目录里的测试 / 走查目录，scripts/pre-push-contracts.mjs 的 terminateAndReclaim 是杀后回收的唯一口子）与产品侧（electron/assets/scratchCleanup.ts 管用户项目根下的上传暂存）各一份——登记为什么是两份、各管哪边",
+      "capability": "测试 / 走查 / 门岗的系统临时目录按「创建者进程号」归属并回收：目录名 nomi-<前缀>-p<进程号>-<随机>，创建者被 SIGKILL 后由下一个进程第一次分配、或杀它的 runner（等整棵进程树没了）按进程是否存活回收。脚本侧（scripts/_test-temp.mjs 管系统临时目录里的测试 / 走查目录，scripts/pre-push-contracts.mjs 的 terminateAndReclaim 是杀后回收的唯一口子）与产品侧（electron/assets/scratchCleanup.ts 管用户项目根下的上传暂存）各一份——登记为什么是两份、各管哪边",
       "status": "justified",
       "paths": [
         "scripts/_test-temp.mjs",

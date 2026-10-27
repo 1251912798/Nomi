@@ -27,7 +27,7 @@
     "scripts/pre-push-gate-inputs.mjs"
   ],
   "entry_points": [
-    "Allocation: makeTempDir / makeTempDirAsync in scripts/_test-temp.mjs (names now <prefix>-p<creator pid>-<6 random>)",
+    "Allocation: makeTempDir / makeTempDirAsync in scripts/_test-temp.mjs (names now nomi-<prefix>-p<creator pid>-<6 random>; prefixes that do not start with nomi- get it prepended, so every helper-made directory is recognisable)",
     "Reclaim at the next allocation: the first makeTempDir of every process per temp root runs reclaimAbandonedTestTemp",
     "Reclaim by the killer: terminateAndReclaim in scripts/pre-push-contracts.mjs, used by the single-gate timeout (runNode) and the whole-hook deadline (runWithDeadline)",
     "Bypass detection: scripts/check-test-temp-static.node-test.mjs via scripts/lib/systemTempScan.mjs, with the legacy bypasses frozen in scripts/test-temp-bypass-baseline.json"
@@ -60,7 +60,7 @@
   ],
   "invariants": [
     "Every directory handed out by makeTempDir/makeTempDirAsync has the creating process id in its name, so 'does anyone still want this directory' is answerable from the directory alone",
-    "A directory is reclaimed only when its name has the owner shape, its creator is gone (kill(pid, 0) reports ESRCH; EPERM and any unknown error count as alive), it belongs to the current user and lstat says it is a real directory; a live creator's directory is never touched",
+    "A directory is reclaimed only when its name has the owner shape (starts with nomi- and ends with -p<pid>-<6 random>, so another program's directory with a similar tail is never touched), its creator is gone (kill(pid, 0) reports ESRCH; EPERM and any unknown error count as alive), it belongs to the current user and lstat says it is a real directory; a live creator's directory is never touched",
     "The process that kills a process tree reclaims through the same function, after the whole tree is really gone (a SIGKILLed creator is still 'alive' for a few milliseconds)",
     "Every killProcessTree call in the pre-push runner goes through terminateAndReclaim",
     "No file under scripts/ or tests/ may add a direct mkdtemp(<system temp dir>); the existing ones are frozen in a baseline that can only shrink"
