@@ -249,6 +249,34 @@ export async function launchJourneyUi({ journey, recorder }) {
     }
   }
 
+  // 设置页里某个模型的详情页（data-model-settings-page="model"）：模型首页 → 连接行 → 连接页上的模型名 → 模型详情。
+  // 刚接完模型时停在验证结果页，点「完成」会落回接入向导那一页（空表单），所以先一路「返回」到模型首页再往里走。
+  async function openModelDetail({ vendorKey, modelKey }) {
+    const home = win.locator('[data-model-settings-page="home"]')
+    const done = win.getByRole('button', { name: WALK_COPY.done, exact: true })
+    if (await done.isVisible().catch(() => false)) await done.click()
+    for (let step = 0; step < 4 && !(await home.isVisible().catch(() => false)); step += 1) {
+      await win.locator('[data-model-settings-back]:visible').first().click()
+      await win.waitForTimeout(250)
+    }
+    await home.waitFor({ state: 'visible', timeout: stationTimeout() })
+    await win.locator(`[data-model-home-connection="${vendorKey}"]`).first().click()
+    const connection = win.locator(`[data-model-settings-page="connection"][data-model-settings-vendor="${vendorKey}"]`)
+    await connection.waitFor({ state: 'visible', timeout: stationTimeout() })
+    await connection.locator('button', { hasText: modelKey }).first().click()
+    const detail = win.locator(`[data-model-settings-page="model"][data-model-settings-model="${modelKey}"]`)
+    await detail.waitFor({ state: 'visible', timeout: stationTimeout() })
+    return detail
+  }
+
+  // 模型详情是叠在连接页上的一层对话框（OnboardingDrawer 的 renderInModelDialog 同时渲染连接页和详情对话框），连接页那颗
+  // 「返回」被它盖住、点不到——closeAccessModal 按角色取到的第一颗「返回」正是被盖住的那颗。所以先从详情自己的「返回」退一层。
+  async function closeModelDetail() {
+    const dialog = win.locator('[data-model-settings-dialog]')
+    await dialog.locator('[data-model-settings-back]').first().click()
+    await dialog.waitFor({ state: 'hidden', timeout: stationTimeout() })
+  }
+
   // ── Verification-failure repair path (probed 2026-09-01 against a real build) ──
   // When auto-adaptation guesses a mode wrong, the verification screen
   // (AdapterVerificationScreen) surfaces a per-model recovery block *once the whole
@@ -283,6 +311,13 @@ export async function launchJourneyUi({ journey, recorder }) {
     const editor = win.locator('[data-model-settings-page="script"]').first()
     await editor.waitFor({ state: 'visible', timeout: 8000 })
     return editor
+  }
+
+  // 画布 store 的走查桥：项目工作台（ProductionCanvasLandingHost）挂载时读一次 localStorage.__nomiE2E，
+  // 为 '1' 才把 store 挂到 window.__nomiCanvasStore。文字节点的步骤本体（_textTasksSteps.mjs addTextNode）靠它拿节点 id，
+  // 所以要在第一次进项目工作台之前置旗；进去以后再置，这一次挂载读不到。
+  async function enableCanvasBridge() {
+    await win.evaluate(() => localStorage.setItem('__nomiE2E', '1'))
   }
 
   async function openCanvas() {
@@ -324,8 +359,11 @@ export async function launchJourneyUi({ journey, recorder }) {
     catalogSnapshot,
     closeAccessModal,
     closeSettings,
+    openModelDetail,
+    closeModelDetail,
     waitForModeRepairAction,
     openCustomCallFromRepair,
+    enableCanvasBridge,
     openCanvas,
     screenshot: (name) => recorder.screenshot(win, name),
     copy: WALK_COPY,
