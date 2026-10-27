@@ -14,8 +14,9 @@ const PROJECT_NAME = "已有项目：咖啡机短片";
 const NODE_ID = "j5-shot-1";
 const NEW_PROMPT = "清晨露营桌上，钛灰色咖啡机被暖阳照亮，镜头缓慢推近，蒸汽清晰可见。";
 // 用到时才取登记素材：旅程注册表的契约测试也导入本模块，那里（含 CI）没有 NOMI_REAL_MEDIA_DIR。
+const REAL_MEDIA = ["video-4k-hevc-10bit"];
 function realVideo() {
-  return requireRealMediaAssets(["video-4k-hevc-10bit"]).assets.get("video-4k-hevc-10bit").file;
+  return requireRealMediaAssets(REAL_MEDIA).assets.get(REAL_MEDIA[0]).file;
 }
 // 浮框钉在节点正下方的判据（与 src/workbench/generationCanvas/nodes/composerCanvasPlacement.ts 同一组数）：
 // 卡顶边 = 节点底边 + 14×缩放、卡中线 = 节点中线、屏幕宽恒 560。
@@ -307,6 +308,7 @@ export default {
   id: "j5-edit-export",
   name: "修改项目并进入导出",
   needsAgent: false,
+  realMedia: REAL_MEDIA, // 要私有真素材：CI 不选它（scripts/eval-journey-selection.mjs）
   smoke: true,
   successCriterion: "打开已有项目，修改 prompt 后重开仍保留，时间轴可见并真实导出有效 MP4",
   async prepare({ iso, repoRoot }) {

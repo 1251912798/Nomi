@@ -15,7 +15,11 @@ export type VendorErrorStructured = {
   url: string;
   httpStatus?: number;
   logicalCode?: number | string;
-  /** 上游原话,截 256(防日志爆炸,§4.3)。 */
+  /**
+   * 失败那句话,截 256(防日志爆炸,§4.3)。只有服务商回了话(带 httpStatus / logicalCode)时它才是上游原话；连不上 / 超时 /
+   * 本机拒发 / 跳转被拒 / 请求头守卫 / 响应超限这几支装的是本机的话。认「是不是服务商说的」看那两个字段，不看本字段
+   * (渲染层 classifyError.vendorAnswered、audioTaskRunner、relayNativeWireUpgrade 都这么认)。
+   */
   upstreamMsg: string;
   /**
    * 上游**自己给的错误码**（`model_not_found` 这一类字符串标识；没有就不写）。状态码只说「请求有问题」，
