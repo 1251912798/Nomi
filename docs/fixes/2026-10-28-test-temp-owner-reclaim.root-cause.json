@@ -5,7 +5,7 @@
   "symptom": "Between 2026-10-24 and 2026-10-28 ten nomi-prepush-* directories (0.84-0.87G each, about 8.6G) were left in the system temp directory and the disk went from 25G free to 99% full in two days; the user had to run a cleanup script by hand. Every one of them belonged to a process that no longer existed.",
   "direct_cause": "scripts/pre-push-contracts.node-test.mjs:38 clones the whole repository into makeTempDir('nomi-prepush-') (0.85G). scripts/_test-temp.mjs cleaned up only through process.once('exit'). The pre-push runner kills a timed-out gate (scripts/pre-push-contracts.mjs, single-gate timeout and whole-hook deadline) with SIGKILL on the whole process group; Node documents that 'SIGKILL' cannot have a listener installed, so the exit hook of the process that created the directory never ran and nothing else knew the directory existed.",
   "class_root": "Ownership of a temp directory was an in-process fact (an entry in a Set plus an exit listener), not a property of the directory. Nobody else could answer 'is the creator still alive, may I delete this?', so abnormal exits (SIGKILL from a gate timeout, kill -9, crash, OOM, power loss) were unrecoverable by construction. The same repository already had the right answer for product code (electron/assets/scratchCleanup.ts: pid in the directory name plus a liveness check) but it was never promoted to the shared allocation boundary, and check:test-temp-static only recognised five literal spellings in some file suffixes, so bypasses of the boundary were invisible.",
-  "detected_by": "user",
+  "detected_by": "review",
   "recurrence_check_on": "2026-11-28",
   "invariant_owner_layer": {
     "layer": "scripts/_test-temp.mjs",
