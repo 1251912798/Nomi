@@ -1,0 +1,144 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-27-whiteboard-finish",
+  "detected_by": "review",
+  "recurrence_check_on": "2026-11-27",
+  "problem_type": "画板的同一件事有几扇门，只有一部分门守住不变量：画框尺寸变成文档尺寸的写口分散在四处、提交时不看真值；卡片只认结果图，不认画在 state 里的内容；失败文案的键按旧机制命名。",
+  "symptom": "① 0.23.0 和 10-22 之前画的画板（只存了 state、没有结果图）在卡片上和空画板一样只有「打开画板」启动器，创作者以为白画了；② 拖框、连敲尺寸框、撤销、点比例之后，画布尺寸偶尔停在路过的中间值（V 报告 sizerace 18 次里 2 次：敲 640 停在 64、敲 1000 停在 100）；③ 走查第一步不等元素就绪就量，en 首轮拿到 null；④ 出图失败时提示说「画板截图保存失败」，10-22 起「完成」出的已经不是截图。",
+  "direct_cause": "① WhiteboardCardBody 只在 canvasImageSourceOf(node.result) 有值时画图，否则画启动器；② WhiteboardDrawingTool 的 ResizeObserver 回调把观察那一刻的尺寸闭包进 250ms 计时器，两个「同尺寸」早退分支不撤计时器也不清 live 尺寸，比例、尺寸框、撤销三扇写口直接改文档并调宿主，不知道有一个待提交在排队；打开时第一帧量到的旧比例画框也会排进提交；③ whiteboard-refactor.walk.mjs:92 在打开项目后立刻 boundingBox()；④ InlineWhiteboard 两处用 snapshotSaveFailed。",
+  "class_root": "画框 ↔ 文档尺寸同步是手写的「先记下、250ms 后照写」：决定和执行隔了 250ms，执行时不再看真值；「一样」的判据散在多个早退分支里，每加一种判法就多一处要记得撤销；live 尺寸和待提交只归观察回调私有，其余写口看不见它。卡片这一侧是同一类的另一种形状：画板的内容只有一份真相（state），呈现门却只认派生物（结果图），老数据没有派生物就看不见。",
+  "affected_population": [
+    "打开 0.23.0 或 10-22 之前画过画板的项目的创作者（中英界面）",
+    "在画板里拖框、点比例、改尺寸框、撤销的创作者，机器忙的时候更容易碰上",
+    "画板出图或截图失败的创作者",
+    "跑 whiteboard-refactor 走查的验收线"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardStatePreview.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSceneRender.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
+    "src/i18n/locales/generationCommon.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.test.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.test.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardProjectContext.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardFailureCopy.test.ts",
+    "tests/ux/whiteboard-refactor.walk.mjs"
+  ],
+  "entry_points": [
+    "画框尺寸变化：拖框（React Flow NodeResizer 改节点尺寸 → ResizeObserver）",
+    "比例按钮 setActiveRatio",
+    "尺寸框 handleDimensionsChange（含零间隔连敲）",
+    "撤销 / 重做 moveHistory",
+    "打开画板：宿主 InlineWhiteboard 的打开适配把节点调成文档比例",
+    "画布上的画板卡片 WhiteboardCardBody（有结果 / 只有 state / 空）",
+    "出图事务 saveImageWhiteboardSnapshot 的三扇门（画板「完成」、图片入口「完成」、图片入口相机「保存为主图」）与截图事务 handleCreateScreenshotNode"
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.ts",
+    "tests": [
+      "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.test.tsx"
+    ],
+    "why": "画框尺寸什么时候变成文档尺寸只由这个 hook 决定：live 尺寸、待提交、比例和等待中的适配都归它，写口只能调它的 settle；提交时它自己重读真值。卡片那条不变量（有内容就显示画的图）由 WhiteboardCardBody + whiteboardStatePreview 守，测试在 WhiteboardCardBody.test.tsx。"
+  },
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://unpkg.com/@mantine/hooks@8.3.18/esm/use-debounced-callback/use-debounced-callback.mjs",
+      "checked_at": "2026-10-27",
+      "purpose": "确认仓库锁定的 Mantine 8.3.18 的 useDebouncedCallback 存回调于 ref、返回带 cancel / flush 的函数、卸载时 cancel（本机 node_modules 同版本源码），用它替掉手写 setTimeout。"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://unpkg.com/@leafer-in/export@2.1.7/dist/export.esm.js",
+      "checked_at": "2026-10-27",
+      "purpose": "确认 @leafer-in/export 2.1.7 的 export() 走全局串行队列、等 waitViewCompleted 与 Resource.isComplete，screenshot: true 取 leafer 画布范围（本机 node_modules 同版本源码）；据此把离屏预览排成一次一张，不让「完成」排在一串预览后面。"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/utils/export",
+      "checked_at": "2026-10-27",
+      "purpose": "同类白板的做法：exportToCanvas / exportToBlob 按场景现画出图，不另存一份；确认第 1 件按 state 现画、不落盘。"
+    }
+  ],
+  "invariants": [
+    "画框尺寸只在停手 250ms 后、且提交那一刻重读到的画框和文档确实不一样时才写进文档；写的是画框此刻的尺寸。",
+    "比例、尺寸框、撤销 / 重做写进文档的尺寸不会被之前排着的提交盖掉；画框在适配途中路过的尺寸不显示、不提交；打开时宿主的适配不改写文档尺寸。",
+    "画板卡片：有结果显示结果图；没有结果但有可见内容，显示按 state 现画的预览；都没有才显示启动器。现画不写 store、不落盘。",
+    "出图事务失败说 drawingSaveFailed，截图事务失败说 screenshotSaveFailed；旧键 snapshotSaveFailed / screenshotFailed / saveFailed 不再存在。"
+  ],
+  "doors": [],
+  "door_reduction": {
+    "before": 6,
+    "after": 0,
+    "why_not": "草稿：实现后用 node scripts/door-map.mjs 重新生成门表。"
+  },
+  "generality_proof": "草稿：实现后补。",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.ts",
+      "symbol": "useWhiteboardFrameSize",
+      "responsibility": "画框尺寸 → 文档尺寸的唯一入口：观察、防抖提交（提交时重读）和各扇门的 settle 都在这里。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardStatePreview.ts",
+      "symbol": "renderWhiteboardStatePreview",
+      "responsibility": "按画板 state 离屏现画一张有界预览：一次性 Leafer、不带 editor、导出完即销毁，和编辑器共用 renderWhiteboardScene。"
+    }
+  ],
+  "same_class_entry_points": [],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "画框 ↔ 文档尺寸同步这一段 10-22 修过一次（1 像素容差），这是第二次出错；卡片「没结果就当空白」是 10-22 逃逸（FB-20261022-whiteboard-board-unusable）同一类的老数据那扇门。",
+    "same_class_scan": [
+      "草稿：实现后补 door-map 与 git grep 的结果。"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.ts",
+    "invariant": "画框尺寸只经 useWhiteboardFrameSize 写进文档；写口只调 settle；提交时重读真值。",
+    "failure_mode": "草稿：实现后补。",
+    "exception_policy": "none",
+    "strategy": "换：内联 ResizeObserver effect、手写计时器和三扇门对宿主的直接调用同提交删掉，改走 hook；卡片的「只认结果」换成「有内容就显示」；旧文案键同提交删掉。",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.ts",
+      "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+      "src/workbench/generationCanvas/nodes/whiteboard/whiteboardStatePreview.ts",
+      "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.test.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.test.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardProjectContext.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardFailureCopy.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.test.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.test.tsx"
+  ],
+  "rewrite_decision": {
+    "decision": "rewrite",
+    "characterization_test": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.test.tsx"
+  },
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx"
+    ],
+    "rationale": "WhiteboardDrawingTool 里的内联 ResizeObserver effect、viewScaleRef、手写 commitTimer 和三扇门对 onBoardDimensionsChange 的直接调用同提交删掉；文件本身保留为文档历史的 owner。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Mantine 8.3.18 与 Leafer 2.1.7 都已在依赖里，不新增也不升级。",
+    "exit_criteria": []
+  },
+  "migration": "不落盘、不迁移：预览是内存里的派生物，老画板的 state 原样留在盘上；尺寸同步只改提交时机。",
+  "residual_risks": [
+    "草稿：实现后补。"
+  ]
+}

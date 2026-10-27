@@ -2,7 +2,7 @@
 
 触发：`node scripts/fix-churn.mjs` 判定 `src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx` 本身命中——14 天里已有 3 个 fix（05521e29c、ccbbcea64、e26c56a65），这一刀会是第 4 个。设计卡：`docs/plan/2026-10-27-whiteboard-finish.md`。证据：10-24 独立验收报告（协调状态目录 `reports/V-whiteboard.md`，下称 V 报告），以及 10-22 的复盘 `2026-10-22-whiteboard-first-gesture-and-visible-result.md`。
 
-> 状态：📋 方案待拍板（等用户拍板第 6 节的选项）；本轮不动产品代码。
+> 状态：✅ 用户 10-27 拍板「换」（原话「五件都按推荐办」）。第 2 轮按第 6 节「换」实现：尺寸同步抽成 `useWhiteboardFrameSize`，撤销、比例、尺寸框、打开四扇门一次收进去；实现提交带 `Direction-Check:` trailer。
 
 ### 0. 一句话根因
 
@@ -65,9 +65,10 @@
 
 ## 特征测试清单
 
-本轮按派工书停点停在设计卡，下列测试**还没写**。下一轮动结构前先写，并先在现状上跑红：
+第 1 轮停在设计卡时列的清单，第 2 轮落成下面这些（都在动结构前写，先在旧代码上跑红）：
 
-- `src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.test.ts`（若选「补」，改为放在现有文件里的同名用例）：S0 → S1 → S0 往返；取整相等；量不到；撤销、比例、尺寸框输入后的旧提交；打开时节点和文档比例不同。现状上，往返、撤销、打开三条应红。
-- `src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.test.tsx`：老画板显示预览、空画板显示启动器、有结果不现画。现状上「老画板」那条应红。
-- `src/workbench/generationCanvas/nodes/whiteboard/whiteboardProjectContext.test.ts` 的 board Done 组：落盘返回空时的提示键。现状上应红，因为现在是旧键。
-- 走查 `tests/ux/whiteboard-refactor.walk.mjs`：老画板一打开就看得见（现状红）；第一步等就绪再量。
+- `src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardFrameSize.test.tsx`：渲染真的 `WhiteboardDrawingTool`，用假 ResizeObserver 和假计时器。往返（观察到 / 没观察到回原尺寸）、取整相等、量不到；撤销、比例、尺寸框三扇门各一格（门之后适配晚落地）；尺寸框连敲；打开时节点和文档比例不同。旧代码上往返、三扇门、打开都红。
+- `src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.test.tsx`：老画板显示现画的预览、空画板显示启动器、有结果不现画、缓存与一次一张、失败回启动器、不写盘。旧代码上「老画板」那格红。
+- `src/workbench/generationCanvas/nodes/whiteboard/whiteboardProjectContext.test.ts` 的 board Done 组：落盘返回空时的提示键。旧代码上红（旧键）。
+- `src/workbench/generationCanvas/nodes/whiteboard/whiteboardFailureCopy.test.ts`：两个新键中英都在、旧键都不在、出图那句不点名按钮。
+- 走查 `tests/ux/whiteboard-refactor.walk.mjs`：第 2 轮派工书只许加「量前先等就绪」，老画板的真机核对改在本线探针里做（不进仓库），截图中英各一份。
