@@ -318,6 +318,8 @@ export async function runBrowserExtractJourney(journey, { walk, page, locales, e
     }
     let confirmClicks = 0
     pass.counts.base = base
+    // 这一遍开始前库里已有的条目（第二遍时里面有第一遍存的那一条）：「新的那一条」= 不在这里面的那条，不能按列表顺序取。
+    const idsBefore = new Set((await userPrompts(win)).map((prompt) => prompt.id))
 
     // ── ① 悬停 → 出卡 → 取消 ──
     await triggerInPageExtraction(app, viewId)
@@ -364,7 +366,8 @@ export async function runBrowserExtractJourney(journey, { walk, page, locales, e
     confirmClicks += 1
     await expectAbsent(card, { provenBy: cardProof3, message: '③ 点确认后卡关掉' }, SLOW_OP)
     await explain(() => expect.poll(async () => (await userPrompts(win)).length - base.library, { message: '③ 提示词库多 1 条', timeout: SLOW_OP }).toBe(1))
-    const added = (await userPrompts(win)).at(-1)
+    const added = (await userPrompts(win)).find((prompt) => !idsBefore.has(prompt.id))
+    expect(added, '③ 库里多出来的那一条').toBeTruthy()
     // 名字是模型回的（真付费时事先不知道，且词典插值可能转义特殊字符）：核「已存入提示词库：」这个前缀，名字另由库里那一条对账。
     const savedPrefix = L('browserAssets.savedToPromptLibraryNamed').split('{{name}}')[0]
     await expect(feedback, '③ 标签页写「已存入提示词库：<名字>」').toContainText(savedPrefix, { timeout: OP })
