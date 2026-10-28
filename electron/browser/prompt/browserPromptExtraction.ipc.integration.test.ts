@@ -146,6 +146,11 @@ vi.mock("../../../src/workbench/project/projectCanvasReadSurface", async (import
   isProjectExecutionContextCurrent: () => harness.projectCurrent,
 }));
 
+// 看门狗预算的生产值由上面那个 vi.mock 的工厂在 laneProviderGuard 第一次被 import 时才填进 watchdog。故障格改预算之前要拍一份快照、
+// 事后还原；若此刻还没人 import 过它，快照就是三个 0，还原等于把预算写成 0——后面每一格的请求在 0 秒就被掐掉，上游收到 0 次
+// （只单跑故障格时，第一格之后全红；整份按序跑时前面的格子早已把它加载过，所以一直是绿的）。这里静态 import 一次（只为跑工厂），
+// 让快照和执行顺序无关；不能放进钩子里 await import（lint 禁：冷转译算在钩子的超时里）。
+import "../../agentLane/laneProviderGuard.mjs";
 import { startTextUpstream, reply, type UpstreamReply } from "../../../tests/fixtures/textTasks/textUpstream";
 import * as runtime from "../../runtime";
 import { registerAppWindow, setMainWindow } from "../../appWindowRegistry";
@@ -223,10 +228,6 @@ async function extract(request: BrowserAssetPromptCaptureRequest, ok: boolean, p
 }
 
 beforeAll(async () => {
-  // 看门狗预算的生产值由上面那个 vi.mock 的工厂在 laneProviderGuard 第一次被 import 时才填进 watchdog。故障格改预算之前要拍一份快照、
-  // 事后还原；若此刻还没人 import 过它，快照就是三个 0，还原等于把预算写成 0——后面每一格的请求在 0 秒就被掐掉，上游收到 0 次
-  // （只单跑故障格时，第一格之后全红；整份按序跑时前面的格子早已把它加载过，所以一直是绿的）。这里先 import 一次，快照和顺序无关。
-  await import("../../agentLane/laneProviderGuard.mjs");
   upstream = await startTextUpstream("openai-compatible", (_request, index) => harness.upstreamReply(index) as UpstreamReply);
   harness.upstreamBaseURL = upstream.baseURL;
   // 生产装配：浏览器提取的两扇主进程门照 main.ts 注册（懒加载 runtime 换成同一份真模块）。
@@ -407,7 +408,7 @@ describe("浏览器提取提示词：每次弹卡问人，确认后恰好请求�
     ];
     it.each(FAULTS)("$name", async ({ answer, budget }) => {
       const production = { ...watchdog };
-      // 快照是生产值才还原得对：全是 0 说明工厂还没跑过（上面 beforeAll 里的 import 被拿掉了），后面的格子会在 0 秒被掐。
+      // 快照是生产值才还原得对：全是 0 说明工厂还没跑过（文件顶部那行 import "…/laneProviderGuard.mjs" 被拿掉了），后面的格子会在 0 秒被掐。
       expect(production.firstResponseMs, "看门狗生产预算的快照").toBeGreaterThan(0);
       Object.assign(watchdog, budget ?? {});
       try {
