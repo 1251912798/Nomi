@@ -1,8 +1,8 @@
 {
   "script": "agent-image-input-real.rehearsal.walk.mjs",
   "mode": "rehearsal（夹具大脑按请求体里的像素作答，不是模型分数）",
-  "startedAt": "2026-10-28T00:50:09.485Z",
-  "finishedAt": "2026-10-28T00:50:27.355Z",
+  "startedAt": "2026-10-28T02:03:56.912Z",
+  "finishedAt": "2026-10-28T02:04:11.632Z",
   "result": "passed",
   "failure": null,
   "failures": [],
@@ -37,14 +37,14 @@
     }
   ],
   "metrics": {
-    "sawCodeWord": "第 1 轮：回答里有这一次随机暗号的 4 位数字 = 像素到了模型手里（暗号每次现生成，模型猜不中）",
+    "sawCodeWord": "第 1 轮：回答前缀 NOMI 对且 4 位数字按位置至少 3 位对 = 看见了；数字取 2–9 共 8 个，瞎猜概率 29/4096 ≈ 0.71%",
     "realSizeOk": "第 2 轮：没走错误面（面板错误带 / 助手消息 stopReason=error）且回答非空 = 真实大小的图没被后端拒、没被截断",
     "wireImagePart": "发出去的请求体里，带这一轮那句话的用户消息有图片部件（image_url / input_image / image），且没有「图片未发送」那句注"
   },
-  "codeWord": "NOMI 4237",
+  "codeWord": "NOMI 2295",
   "images": {
     "code": {
-      "bytes": 3440,
+      "bytes": 3249,
       "width": 1180,
       "height": 260
     },
@@ -78,7 +78,7 @@
       "id": "sees-code",
       "name": "看得见",
       "ask": "图里写的暗号是什么？只回暗号",
-      "startedAt": "2026-10-28T00:50:21.453Z",
+      "startedAt": "2026-10-28T02:04:08.525Z",
       "harnessError": null,
       "shots": [
         "04-sees-code-attached.png",
@@ -86,8 +86,8 @@
         "06-sees-code-answered.png"
       ],
       "attached": {
-        "sourceBytes": 3440,
-        "landedBytes": 3440
+        "sourceBytes": 3249,
+        "landedBytes": 3249
       },
       "sendAttempts": 1,
       "settle": {
@@ -96,13 +96,13 @@
         "errorBar": null,
         "timedOut": false
       },
-      "ms": 1507,
+      "ms": 1321,
       "sessions": 1,
       "models": [
         "apimart/gpt-5-mini"
       ],
       "attachmentClaims": 1,
-      "finalAnswer": "NOMI 4237",
+      "finalAnswer": "NOMI 2295",
       "stopReason": "stop",
       "errorMessage": null,
       "toolCalls": [],
@@ -124,7 +124,7 @@
           {
             "type": "image_url",
             "mime": "image/png",
-            "bytes": 3440
+            "bytes": 3249
           }
         ],
         "droppedNote": false,
@@ -136,7 +136,7 @@
       "id": "real-size",
       "name": "真尺寸",
       "ask": "用一句话说这张图里有什么",
-      "startedAt": "2026-10-28T00:50:22.964Z",
+      "startedAt": "2026-10-28T02:04:09.847Z",
       "harnessError": null,
       "shots": [
         "07-real-size-attached.png",
@@ -154,7 +154,7 @@
         "errorBar": null,
         "timedOut": false
       },
-      "ms": 3306,
+      "ms": 1608,
       "sessions": 1,
       "models": [
         "apimart/gpt-5-mini"
@@ -216,5 +216,5 @@
     "mediaCalls": 0
   },
   "networkBlocked": [],
-  "walkOutputDir": ".tmp/pi-agent-image-input-rehearsal-development-1793148612056"
+  "walkOutputDir": ".tmp/pi-agent-image-input-rehearsal-development-1793153039275"
 }

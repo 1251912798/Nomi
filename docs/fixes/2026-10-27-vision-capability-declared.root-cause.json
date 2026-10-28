@@ -145,6 +145,6 @@
     "The no-vision-model message in deconstructVideo.ts is Chinese-only; that file is a churn hotspot and was not touched.",
     "image_to_prompt callers outside deconstruct (canvas text node with references, browser picture replication) do not gate on the verdict.",
     "Comments outside the allowed scope still mention the old regex (seedBuiltins.ts, apimartTexts.ts, DeconstructModelPicker.tsx, tests/ux/apimart-gemini-vision.e2e.mjs).",
-    "No real-backend check yet that an 'unknown' row actually sees the image; recorded as unverified for one minimal paid check by the coordinator."
+    "真实核对（2026-10-28 付费 1 次，APIMart 手填 `gpt-5-mini`，读图能力判为「不知道」档）：两轮的图都送到了模型。第 1 轮暗号 `NOMI 4862` 答成 `NOMI 4362`：前缀和 4 位里 3 位对，点阵字的 8 读成了 3，瞎猜做到的概率约 0.71%；当时的量具要求全对，所以判红，之后已改成「前缀对且至少 3 位对」。第 2 轮 3840×2160 的 16 位 PNG（29,703,774 字节）整份送达并被接受，回答准确描述了画面。证据：`docs/evidence/2026-10-27-vision-capability-declared/paid/report.json`（原样保留量具判红的那一版）。"
   ]
 }
