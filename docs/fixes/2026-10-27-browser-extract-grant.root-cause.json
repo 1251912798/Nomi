@@ -20,7 +20,10 @@
     "docs/engineering/concept-owners/spend.pending-identity.json",
     "tests/fixtures/textTasks/textTaskCallerHarness.ts",
     "eslint.config.mjs",
-    "scripts/eslint-script-coverage.test.mjs"
+    "scripts/eslint-script-coverage.test.mjs",
+    "tests/ux/_browserExtractSteps.mjs",
+    "tests/ux/browser-extract-real.paid.mjs",
+    "tests/ux/browser-extract-real.rehearsal.walk.mjs"
   ],
   "entry_points": [
     "Hover-menu 提取 on an in-page image: injected page script -> console line -> main forward promptCaptureEventFromConsole (page = the view's real URL) -> browser:view:prompt-capture -> renderer runner",
@@ -215,7 +218,8 @@
     "The task-run-bridge lint rule works on names, not types: an alias under another variable name (const t = desktop.tasks; t.run()) or desktop.tasks handed to a function as an argument gets past it, and a different object that happens to be called tasks with a run member is flagged (rename it, or add the file to the allowed list). Walk and script files that call window.nomiDesktop.tasks.run inside page.evaluate are outside the rule (it covers src/ only).",
     "The nomi:tasks:grant-spend handler in electron/tasks/taskIpcHandlers.ts still mints a grant for any trusted main-window sender with no confirmation, but no renderer code calls it any more (the onboarding page's dead token was deleted on main; taskApi.mintSpendGrant has no caller). A caller added later could mint and carry the grantId on a request through an already-registered door (catalogTaskActions.ts): the census registers doors, not what flows through them, and a new file calling runWorkbenchTaskByVendor by name would only be caught as an unregistered door. Deleting the handler is a change in the hotspot directory electron/tasks/ and is left to 0.25.",
     "The card's model line is the raw 'vendor · modelKey' (spendModelLine), because the display-name helper lives in the hotspot file.",
-    "No paid run and no zero-spend walk on this branch: the chain is verified over a loopback upstream only; the coordinator runs one minimal paid extraction."
+    "Found by the zero-spend rehearsal, not fixed here (runtime code): after an extraction saves to the user library, the left-rail prompt library panel does not show the new entry until the page reloads. src/workbench/promptLibrary/useUserPrompts.ts keeps a module-level cache that only its own add / update / remove refresh, while the extraction runner writes through promptLibraryApi.addUserPrompt directly, so the cache goes stale. The entry is on disk (userList returns it) and the tab line says it was saved; the same call existed before this change. The walk records it (libraryPanel.entryShownWithoutReload) and reloads before the library screenshot.",
+    "The zero-spend rehearsal (tests/ux/browser-extract-real.rehearsal.walk.mjs, same steps as the paid walk) drives the real browser panel against a loopback page and a loopback vision upstream in zh and en, with hard assertions on the card, the busy line, one supplier call after confirm and none after cancel. No real vision call has been made on this branch: the one minimal paid extraction (tests/ux/browser-extract-real.paid.mjs) is the coordinator's."
   ],
   "detected_by": "review",
   "recurrence_check_on": "2026-11-27",
