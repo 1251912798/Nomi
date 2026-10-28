@@ -302,16 +302,23 @@ describe('转录：这一轮发了什么、答了什么、有没有停在错误�
 describe('判分', () => {
   const codeWord = { prefix: 'NOMI', digits: '4817', text: 'NOMI 4817' }
 
-  it('第 1 轮：回答里有这一次的数字 = 看见了；原样回暗号、带空格 / 横线 / 小写 / 夹在句子里都算', () => {
-    for (const answer of ['NOMI 4817', '4817', 'nomi-4817', 'NOMI4817', '暗号是 NOMI 4817。', '4 8 1 7', '「NOMI 4817」']) {
+  it('第 1 轮：前缀对且 4 位数字按位置至少对 3 位 = 看见了；全对另记', () => {
+    for (const answer of ['NOMI 4817', 'NOMI 4811', 'nomi-4817', 'NOMI4817', '暗号是 NOMI 4817。', '「NOMI 4817」']) {
       expect(scoreSawCodeWord({ answer, codeWord }).saw, answer).toBe(true)
     }
     expect(scoreSawCodeWord({ answer: 'NOMI 4817', codeWord }).fullCodeEchoed).toBe(true)
-    expect(scoreSawCodeWord({ answer: '4817', codeWord }).fullCodeEchoed).toBe(false)
+    expect(scoreSawCodeWord({ answer: 'NOMI 4811', codeWord }).fullCodeEchoed).toBe(false)
+    expect(scoreSawCodeWord({ answer: 'NOMI 4362', codeWord: { prefix: 'NOMI', digits: '4862', text: 'NOMI 4862' } })).toMatchObject({ saw: true, fullCodeEchoed: false })
   })
 
-  it('第 1 轮：别的数字、猜的、没看到图的话、空回答 = 没看见（阴性对照，判分不是恒真）', () => {
-    for (const answer of ['NOMI 4811', 'NOMI 1234', '我这边没有看到图片', '', '   ', undefined, null, 'NOMI']) {
+  it('第 1 轮：只对 2 位或前缀错 = 没看见', () => {
+    for (const answer of ['NOMI 4899', 'NOMI 1234', 'NOIM 4817', '4862']) {
+      expect(scoreSawCodeWord({ answer, codeWord }).saw, answer).toBe(false)
+    }
+  })
+
+  it('第 1 轮：没回答或没有前缀 = 没看见（阴性对照，判分不是恒真）', () => {
+    for (const answer of ['我这边没有看到图片', '', '   ', undefined, null, 'NOMI']) {
       expect(scoreSawCodeWord({ answer, codeWord }).saw, String(answer)).toBe(false)
     }
     // 提问那一句本身不含暗号：模型照抄问题也过不了

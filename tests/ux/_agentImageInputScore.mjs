@@ -47,7 +47,7 @@ export const ROUNDS = Object.freeze([
 
 /** 量具数字的定义（写进证据，PR 正文照抄）。 */
 export const IMAGE_INPUT_METRICS = Object.freeze({
-  sawCodeWord: '第 1 轮：回答里有这一次随机暗号的 4 位数字 = 像素到了模型手里（暗号每次现生成，模型猜不中）',
+  sawCodeWord: '第 1 轮：回答前缀 NOMI 对且 4 位数字按位置至少 3 位对 = 看见了；数字取 2–9 共 8 个，瞎猜概率 29/4096 ≈ 0.71%',
   realSizeOk: '第 2 轮：没走错误面（面板错误带 / 助手消息 stopReason=error）且回答非空 = 真实大小的图没被后端拒、没被截断',
   wireImagePart: '发出去的请求体里，带这一轮那句话的用户消息有图片部件（image_url / input_image / image），且没有「图片未发送」那句注',
 })
@@ -354,11 +354,18 @@ export function roundSettled(sessions) {
 
 const normalize = (text) => String(text ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '')
 
-/** 第 1 轮：回答里有这一次的随机数字 = 看见了。完整暗号（含 NOMI）另记，不作判据——「只回暗号」时模型回 4 位数字也是读到了。 */
+/**
+ * 第 1 轮：前缀 NOMI 对，且 4 位数字按位置至少对 3 位 = 看见了。
+ * 数字只取 2–9 共 8 个，瞎猜至少 3 位对的概率是 (4×7+1)/8⁴ = 29/4096 ≈ 0.71%。
+ * 完整暗号（含 NOMI）另记，不作判据——模型读到图但点阵字误读 1 位仍算看见了。
+ */
 export function scoreSawCodeWord({ answer, codeWord }) {
   const normalized = normalize(answer)
   const text = String(answer ?? '').trim()
-  const saw = text.length > 0 && normalized.includes(codeWord.digits)
+  const prefixAt = normalized.indexOf(normalize(codeWord.prefix))
+  const answerDigits = prefixAt < 0 ? '' : normalized.slice(prefixAt + normalize(codeWord.prefix).length).replace(/[^0-9]/g, '').slice(0, codeWord.digits.length)
+  const matchingDigits = [...codeWord.digits].reduce((matches, digit, index) => matches + (answerDigits[index] === digit ? 1 : 0), 0)
+  const saw = text.length > 0 && prefixAt >= 0 && answerDigits.length === codeWord.digits.length && matchingDigits >= 3
   return { saw, fullCodeEchoed: saw && normalized.includes(normalize(codeWord.text)), answerChars: text.length }
 }
 

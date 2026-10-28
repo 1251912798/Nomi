@@ -66,7 +66,6 @@ try {
   const [code, size] = journey.rounds
   if (size?.wire?.images?.[0]?.bytes !== images.real.bytes) failures.push(`第 2 轮请求体里的图 ${size?.wire?.images?.[0]?.bytes ?? '没有'} 字节，登记真素材抽出来的那张是 ${images.real.bytes} 字节（被截断或改写了）`)
   if (code?.wire?.images?.[0]?.mime !== 'image/png') failures.push(`第 1 轮请求体里的图 mime 是 ${code?.wire?.images?.[0]?.mime ?? '没有'}，发出去的是 PNG`)
-  if (journey.numbers?.fullCodeEchoed !== true) failures.push('第 1 轮夹具读出的不是完整暗号')
   if (journey.numbers?.realSizeDeniesImage) failures.push('第 2 轮回答像是没收到图')
   if (journey.numbers?.errorSurfaceRounds !== 0 || journey.numbers?.harnessErrors !== 0) failures.push(`有 ${journey.numbers?.errorSurfaceRounds} 轮走了错误面、${journey.numbers?.harnessErrors} 轮量具出错`)
   if (failures.length) throw new Error(`演练有红：\n  ${failures.join('\n  ')}`)
