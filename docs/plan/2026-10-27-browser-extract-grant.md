@@ -304,7 +304,7 @@
 **已知坑**：
 
 - 页内触发点可伪造（见第二节）；网页可以反复弹卡骚扰用户，但花不了钱，记进残余风险。
-- 登记的令牌路例外 2026-11-15 到期（见 ★2）。
+- 登记的令牌路例外的到期日在概念 `spend.pending-identity` 的 `exception_deadlines` 里（见 ★2）。
 
 **真实任务**：
 
@@ -331,12 +331,12 @@
 ### ★2 谁说了算
 
 - **问人 → 铸令牌 → 核销**：归主进程唯一链 `confirmSpendAndMintGrant` 加 `spendGrant`。
-  - 这是概念 `spend.pending-identity` 登记的例外 ③，2026-11-15 到期，本单不延期；到期前要么迁进 Run，要么按 0.25 方案换掉，由协调记账。
+  - 这条链属于概念 `spend.pending-identity` 的 `exception_deadlines` 里 `legacy-spend-ports` 那一项，到期日以那里为准（合并 main 后是 main 定的日期），本单不动它；到期前要么迁进 Run，要么按 0.25 方案换掉，由协调记账。
   - 令牌不出主进程。这比派工书写的「渲染层拿不透明 grantId」更窄。
 - **提取参数**（种类、温度、maxTokens）：归主进程新模块，只在一处定（今天在渲染层）。
 - **提取提示词模板**：归用户设置。主进程 `browserPromptExtractionSettings` 负责存；渲染层拼好整句传过来；主进程当作不透明文本，不改。
 - **来源页**：取主进程转发时浏览视图的真实地址。
-- **碰了几个概念**：1 个，`spend.pending-identity`，把例外 ③ 的调用方改成新模块。
+- **碰了几个概念**：1 个，`spend.pending-identity`：写接口加登记表 `SPEND_TOKEN_DOORS`，`parity_test` 指普查；notes 只留一句话，指向登记表和 `exception_deadlines`（10-28 改，合并 main 后例外的日期与原因已在结构化字段里）。
 - **同一份事实存了几份**：1 份。报价身份和执行身份由同一个函数算。
 - **有没有靠猜意图**：没有。取消是卡的显式回复；渲染层没了一律按没确认处理（fail-closed，用 `requestRendererDecision` 的 until-recipient-gone）。
 
@@ -355,8 +355,7 @@
 | `mints` | 同一文件里必须有 `mintSpendGrant` 或 `confirmSpendAndMintGrant` 门，并点名真入口测试 |
 | `forwards` | 点名转到哪一扇 `mints` 门 |
 | `run-approved` | 走 `RUN_APPROVED_ADMISSION`（画布单镜 Run） |
-| `free-local` | 本地 ComfyUI，闸放行 |
-| `renderer-one-shot` | 渲染层 `nomi:tasks:run`；写明令牌来源：`nomi:tasks:grant-spend` 新手例外，或 ComfyUI |
+| `free-local` | 本地 ComfyUI，闸放行；渲染层经 `nomi:tasks:run` 的门也登记成它：没有调用方带令牌，付费种类在 `electron/spendGrant.ts` 被拒（10-28 改：原先设想的「令牌由渲染层带来」那个角色已删，说法对不上代码） |
 | `test-utility` | 测试工具 |
 | `known-gap` | 写明缺什么、谁跟 |
 
@@ -436,7 +435,7 @@
 | 门 | 角色 | 本单 |
 |---|---|---|
 | 写 `src/ui/browser/prompt/browserPromptExtractionRunner.ts` | 浏览器提取，渲染层一次性门，**没有令牌** | 删 |
-| 读 `src/workbench/generationCanvas/runner/catalogTaskActions.ts` | 画布非 Run 路：本地 ComfyUI（闸放行），新手试生成（令牌来自 `nomi:tasks:grant-spend`） | 不动；普查登记 `renderer-one-shot` |
+| 读 `src/workbench/generationCanvas/runner/catalogTaskActions.ts` | 画布非 Run 路，经 `nomi:tasks:run`：没有调用方带令牌，付费种类被闸拒，本地 ComfyUI 放行（10-28 改：新手试生成的死令牌已在 main 上删掉，它走 `comfy-candidate-test`） | 不动；普查登记 `free-local` |
 
 **`confirmSpendAndMintGrant`：1 扇门**
 
@@ -456,7 +455,7 @@
 | `electron/main.ts` | `forwards` | 能力核的 `runTask` 注入 → 试跑（`mints`） |
 | `electron/capabilityCore/appIntegration.ts`、`dispatcher.ts`、`host.ts`、`mcpStdioServer.ts`、`rpcServer.ts`、`modelOnboarding/dispatch.ts` | `forwards`（读：把函数递下去） | 最终到试跑（`mints`） |
 | `electron/tasks/comfyCandidateTest.ts` | `free-local` | ComfyUI 候选试跑，闸放行 |
-| `electron/tasks/taskIpcHandlers.ts` | `renderer-one-shot` 的主进程那一端（`nomi:tasks:run`） | 渲染层带来：新手例外，或 ComfyUI |
+| `electron/tasks/taskIpcHandlers.ts` | `free-local`：`nomi:tasks:run` 的主进程那一端 | 渲染层没人带令牌：付费种类被闸拒，本地 ComfyUI 放行 |
 | `electron/video/deconstructVideo.ts` | `mints`（经 `deconstructSpend.ts`） | 拆解开跑前问人、铸令牌 |
 | `electron/parity/generationParityTestUtils.ts` | `test-utility` | 测试自己铸 |
 | `src/workbench/generationCanvas/runner/catalogTaskActions.ts` | 同名的渲染层局部函数，不是 runtime 的 `runTask` | 普查里单独标出 |
@@ -499,7 +498,7 @@
 | 15 | **文案**：中英 key 齐全；`pnpm run check:i18n` 绿（不出现钱的字眼）；中、英两张卡的真截图由实现线自己 Read 过。截不到图就照实记 `unverified` 并写原因。 | 标题写「AI 助手想生成…」 → 红 |
 | 16 | **门岗**：ESLint、`node scripts/typecheck.mjs`、`node scripts/check-root-cause-contracts.mjs`（同提交带 `docs/fixes/2026-10-27-browser-extract-grant.root-cause.json`，contract v3）、`node scripts/check-concept-owners.mjs`、`pnpm run check:i18n`、`git diff --check`、推送前快检，每条记退出码；跟着登记的三处（生成入口登记表、自写登记的领域目录、文本矩阵）各自的门岗绿；fix 提交带 `Direction-Check: docs/engineering/direction-checks/2026-10-27-browser-extract-grant.md`。 | 缺 trailer → commit-msg 钩子红 |
 | 17 | **真付费**：协调用 `_paidRun` 做一次提取，免费演练先过（`spend-paid-sample`）。本线记 unverified。 | — |
-| 18 | **这一类还会从哪回来**：①另一个渲染层入口为付费种类调 `nomi:tasks:run`；②主进程新的附属付费口不铸令牌；③0.25 把触发点挪到原生右键菜单、改成一键之后，普查行和卡策略没跟着改；④模型别名漂移。 | ①②由普查（没登记的门 / `renderer-one-shot` 必须写令牌来源 / `mints` 配对）和 `check-run-task-grant` 拦；③靠 0.25 的设计卡把普查行列进 ★9；④由第 9 格拦 |
+| 18 | **这一类还会从哪回来**：①另一个渲染层入口为付费种类调 `nomi:tasks:run`；②主进程新的附属付费口不铸令牌；③0.25 把触发点挪到原生右键菜单、改成一键之后，普查行和卡策略没跟着改；④模型别名漂移。 | ①渲染层新文件直调 `desktop.tasks.run`：ESLint 规则 `task-run-bridge` 拦（只许 `taskApi.ts`），经名字数得到的门由普查（没登记的门）拦；②主进程新门：普查（没登记的门 / `mints` 配对）和 `check-run-task-grant` 拦；③靠 0.25 的设计卡把普查行列进 ★9；④由第 9 格拦（10-28 改：①原写「普查拦」，普查按符号名数门，数不到成员调用，补了 ESLint 规则；普查与规则都看不到的口见根因合同 `residual_risks`） |
 | 19 | **发出中切项目照存**（协调 10-27 定）：卡开着时切走项目（`stillCurrent` 变假）→ 点确认 → 上游 1 次，提示词库照样多 1 条，标签页报成功；弹卡之前切项目 → 不弹卡、上游 0 次。 | 把弹卡之后的 `stillCurrent` 判断放回去 → 库 0 条 → 红 |
 | 20 | **实现线真做的三条反例**（派工书要求，做完还原）：①拿掉铸令牌那一步 → 第 1 格「上游恰好 1 次」红，普查 `mints` 行也红；②普查登记表里删掉一扇门的登记 → 普查红；③守卫换成 `assertTrustedUiSender` → 第 6 格 (c) 红（另跑一次：浏览视图发来的请求被拒、不铸令牌）。 | — |
 
@@ -534,7 +533,7 @@
 - **发出后没有取消入口**：关窗、重启时，结果没地方落，这一次已经花了，也没有回执。现状如此，修后多了「已花」这一层。
 - ~~发出中切项目，已付费的结果被丢~~：协调 10-27 定照存，第 2 轮已改（弹卡之后不再判 `stillCurrent`）。
 - **拆解的措辞仍内嵌在热点文件的通用分支里**：下次要改，先搬进查表。
-- **登记例外 2026-11-15 到期**：本单不延期。
+- **登记例外的到期日**在概念 `spend.pending-identity` 的 `exception_deadlines`（`legacy-spend-ports`，main 定的日期）：本单不动它。
 
 **其它发现：**
 

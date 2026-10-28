@@ -62,7 +62,7 @@
 
 **令牌这条线：**
 
-- 令牌路本身是一个登记例外：概念 `spend.pending-identity`，2026-11-15 到期。
+- 令牌路本身是一个登记例外：概念 `spend.pending-identity`，到期日以它的 `exception_deadlines` 为准。
 - 现有两道检查各管一半，没有一道管配对：
   - 登记管的是**谁能铸**：`mintSpendGrant` 等符号上的 `allowed_consumers`；
   - `check-run-task-grant` 管的是**主进程自己拼的请求有没有写 grantId**；

@@ -66,6 +66,13 @@ describe("令牌路付费口普查", () => {
       expect(judge({ doors: [...doors, before], table: honestGap })).toEqual([]);
     });
 
+    it("(e) 渲染层的门没有「自带令牌」这个角色：想把 nomi:tasks:run 那一端登记成 renderer-one-shot → invalid-row（要么写 mints，要么写明缺口）", () => {
+      const door = "write|electron/tasks/taskIpcHandlers.ts|runTask";
+      expect(SPEND_TOKEN_DOORS.find((row) => row.door === door)?.role).toBe("free-local");
+      const revived = SPEND_TOKEN_DOORS.map((row) => (row.door === door ? { ...row, role: "renderer-one-shot" } : row));
+      expect(kinds(judge({ table: revived }))).toEqual([`invalid-row ${door}`]);
+    });
+
     it("forwards 落不到 mints 行 → forwards-dangling", () => {
       const table = SPEND_TOKEN_DOORS.map((row) => row.door === "write|electron/main.ts|runTask" ? { ...row, to: "write|electron/capabilityCore/canvasTransportProvider.ts|runTask" } : row);
       expect(kinds(judge({ table }))).toEqual(["forwards-dangling write|electron/main.ts|runTask"]);
